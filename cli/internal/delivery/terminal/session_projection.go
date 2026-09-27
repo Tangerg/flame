@@ -7,11 +7,12 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/application/extensions"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-func (a *app) restore(snapshot agent.SessionSnapshot) {
+func (a *app) restore(snapshot conversation.SessionSnapshot) {
 	if err := a.execution.conversation.RestoreSnapshot(snapshot); err != nil {
 		a.fail(err)
 		return
@@ -24,12 +25,12 @@ func (a *app) restore(snapshot agent.SessionSnapshot) {
 	a.restoreSteerReceipts(snapshot)
 }
 
-func presentSnapshot(view *transcriptView, snapshot agent.SessionSnapshot, registry *extensions.Registry) error {
+func presentSnapshot(view *transcriptView, snapshot conversation.SessionSnapshot, registry *extensions.Registry) error {
 	view.SetRuns(snapshot.Runs)
 	for _, block := range snapshot.Transcript {
-		var event agent.Event = agent.BlockCompleted{Block: block}
-		if block.Status == agent.BlockStatusRunning {
-			event = agent.BlockStarted{Block: block}
+		var event conversation.Event = conversation.BlockCompleted{Block: block}
+		if block.Status == conversation.BlockStatusRunning {
+			event = conversation.BlockStarted{Block: block}
 		}
 		if err := view.Apply(event, registry); err != nil {
 			return fmt.Errorf("restore transcript block %s: %w", block.ID, err)
@@ -43,7 +44,7 @@ func presentSnapshot(view *transcriptView, snapshot agent.SessionSnapshot, regis
 }
 
 type sessionProjection struct {
-	conversation *agent.Conversation
+	conversation *conversation.Conversation
 	transcript   *transcriptView
 }
 
@@ -53,16 +54,16 @@ func (s sessionProjection) close() {
 	}
 }
 
-func (a *app) projectSession(snapshot agent.SessionSnapshot, attached *agent.SegmentStream) (sessionProjection, error) {
+func (a *app) projectSession(snapshot conversation.SessionSnapshot, attached *conversation.SegmentStream) (sessionProjection, error) {
 	if err := snapshot.Validate(); err != nil {
 		return sessionProjection{}, err
 	}
-	conversation := agent.NewConversation()
+	projection := conversation.New()
 	var err error
 	if active, ok := snapshot.ActiveRun(); attached != nil && ok && active.Status == protocol.RunStatusRunning {
-		err = conversation.RestoreAttachedSnapshot(snapshot, *attached)
+		err = projection.RestoreAttachedSnapshot(snapshot, *attached)
 	} else {
-		err = conversation.RestoreSnapshot(snapshot)
+		err = projection.RestoreSnapshot(snapshot)
 	}
 	if err != nil {
 		return sessionProjection{}, err
@@ -72,7 +73,7 @@ func (a *app) projectSession(snapshot agent.SessionSnapshot, attached *agent.Seg
 		transcript.Close()
 		return sessionProjection{}, err
 	}
-	return sessionProjection{conversation: conversation, transcript: transcript}, nil
+	return sessionProjection{conversation: projection, transcript: transcript}, nil
 }
 
 func (a *app) newTranscript() *transcriptView {
@@ -89,7 +90,7 @@ func (a *app) newTranscript() *transcriptView {
 // segment can no longer be replayed. It deliberately keeps the current stream
 // operation alive: run recovery already attached the replacement stream before
 // taking this snapshot, so canceling that operation here would reopen a gap.
-func (a *app) reconcileRunSnapshot(snapshot agent.SessionSnapshot, stream agent.SegmentStream) error {
+func (a *app) reconcileRunSnapshot(snapshot conversation.SessionSnapshot, stream conversation.SegmentStream) error {
 	if snapshot.Session.ID != a.session.current.ID {
 		return fmt.Errorf("reconcile run snapshot: session %s does not match %s", snapshot.Session.ID, a.session.current.ID)
 	}
@@ -116,7 +117,7 @@ func (a *app) reconcileRunSnapshot(snapshot agent.SessionSnapshot, stream agent.
 	a.steers.observeSnapshot(snapshot)
 
 	switch projection.conversation.Phase() {
-	case agent.ConversationRunning:
+	case conversation.Running:
 		a.execution.following = true
 		a.execution.clock.start(projection.conversation.Usage().Duration, time.Now())
 		active, ok := snapshot.ActiveRun()
@@ -124,14 +125,14 @@ func (a *app) reconcileRunSnapshot(snapshot agent.SessionSnapshot, stream agent.
 			return errors.New("reconcile run snapshot: running conversation has no active run")
 		}
 		a.showRecoveredRunStatus("reconnected", active)
-	case agent.ConversationWaiting:
+	case conversation.Waiting:
 		a.execution.following = false
 		if a.dialogs.interactionReview == nil {
 			a.openInteractions(projection.conversation.Interactions())
 		}
 		a.observeCurrentRunStatus()
 		a.status.note("waiting for your answers")
-	case agent.ConversationIdle:
+	case conversation.Idle:
 		a.execution.following = false
 		if projection.conversation.Outcome().Status != "" {
 			a.settleCurrentRunStatus()
@@ -150,20 +151,20 @@ func (a *app) reconcileRunSnapshot(snapshot agent.SessionSnapshot, stream agent.
 	return nil
 }
 
-func (a *app) restoreActivity(snapshot agent.SessionSnapshot) {
+func (a *app) restoreActivity(snapshot conversation.SessionSnapshot) {
 	a.activity.Set(a.execution.conversation.PlanItems())
 	a.header.SetUsage(a.execution.conversation.Usage())
 	a.header.SetGoal(snapshot.Goal)
 	a.status.setRunningDescendants(a.execution.conversation.RunningDescendants())
 	a.prompt.SetBusy(a.execution.conversation.Busy())
 	switch a.execution.conversation.Phase() {
-	case agent.ConversationWaiting:
+	case conversation.Waiting:
 		if a.dialogs.interactionReview == nil {
 			a.openInteractions(a.execution.conversation.Interactions())
 		}
 		a.observeCurrentRunStatus()
 		a.status.note("waiting for your answers")
-	case agent.ConversationRunning:
+	case conversation.Running:
 		active, ok := snapshot.ActiveRun()
 		if !ok {
 			a.fail(errors.New("session snapshot has a running conversation without an active run"))
@@ -172,7 +173,7 @@ func (a *app) restoreActivity(snapshot agent.SessionSnapshot) {
 		a.execution.clock.start(a.execution.conversation.Usage().Duration, time.Now())
 		a.showRecoveredRunStatus("reconnecting", active)
 		a.followRecoveredSession()
-	case agent.ConversationIdle:
+	case conversation.Idle:
 		if a.execution.conversation.Outcome().Status != "" {
 			a.settleCurrentRunStatus()
 		}
@@ -181,9 +182,9 @@ func (a *app) restoreActivity(snapshot agent.SessionSnapshot) {
 	}
 }
 
-func (a *app) showRecoveredRunStatus(activity string, run agent.Run) {
+func (a *app) showRecoveredRunStatus(activity string, run conversation.Run) {
 	a.status.observeRun(run)
-	a.status.progress(agent.RunProgress{Activity: activity})
+	a.status.progress(conversation.RunProgress{Activity: activity})
 }
 
 func (a *app) observeCurrentRunStatus() {
@@ -200,14 +201,14 @@ func (a *app) settleCurrentRunStatus() {
 	a.status.settled(run)
 }
 
-func displayTitle(session agent.Session) string {
+func displayTitle(session conversation.Session) string {
 	if strings.TrimSpace(session.Title) == "" {
 		return "untitled"
 	}
 	return session.Title
 }
 
-func (a *app) setActiveSession(session agent.Session) {
+func (a *app) setActiveSession(session conversation.Session) {
 	a.session.current = session
 	a.header.SetSession(session)
 	a.brand.SetSession(session)
@@ -218,6 +219,6 @@ func (a *app) setActiveSession(session agent.Session) {
 	a.setWindowTitle()
 }
 
-func (a *app) displayOptions() agent.RunOptions {
+func (a *app) displayOptions() prompt.RunOptions {
 	return displayRunOptions(a.options, a.session.current)
 }

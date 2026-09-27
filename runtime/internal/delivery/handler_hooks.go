@@ -13,9 +13,9 @@ import (
 // (global always; project only when the project is trusted). The client renders
 // this for review and a trust toggle.
 func (s *Handler) ListHooks(ctx context.Context, in protocol.ListHooksRequest) (*protocol.HooksListResult, error) {
-	insp, err := s.workspaceHooks.Inspect(ctx, in.Workspace.Path)
+	insp, err := s.hooks.Inspect(ctx, in.Workspace.Path)
 	if err != nil {
-		return nil, wireWorkspaceError(fmt.Errorf("workspace: inspect hooks: %w", err))
+		return nil, wireWorkspaceError(fmt.Errorf("hooks: inspect: %w", err))
 	}
 	out := &protocol.HooksListResult{
 		ProjectRoot:    insp.ProjectRoot,
@@ -82,5 +82,5 @@ func presentHookScope(scope hooks.Scope) (protocol.HookScope, bool) {
 // setTrust). The change takes effect on the next Run — the resolver re-reads
 // trust per Run.
 func (s *Handler) SetHookTrust(ctx context.Context, in protocol.SetHookTrustRequest) error {
-	return wireWorkspaceError(s.workspaceHooks.SetProjectTrust(ctx, in.ProjectRoot, in.Trusted))
+	return wireWorkspaceError(s.hooks.SetProjectTrust(ctx, in.ProjectRoot, in.Trusted))
 }

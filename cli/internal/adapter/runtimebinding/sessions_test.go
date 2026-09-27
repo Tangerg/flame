@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 type sessionCatalogStub struct {
@@ -45,13 +45,13 @@ func (s sessionCatalogStub) ListSessions(_ context.Context, query protocol.ListS
 func TestSessionCatalogPublishesTheCLIPageDefaultAsPositiveWireIntent(t *testing.T) {
 	t.Parallel()
 	runtime := &Connection{sessionCatalog: sessionCatalogStub{list: func(query protocol.ListSessionsRequest) (*protocol.Page[protocol.Session], error) {
-		if query.Limit == nil || *query.Limit != agent.DefaultPageRows {
-			t.Fatalf("default session page limit = %v, want %d", query.Limit, agent.DefaultPageRows)
+		if query.Limit == nil || *query.Limit != conversation.DefaultPageRows {
+			t.Fatalf("default session page limit = %v, want %d", query.Limit, conversation.DefaultPageRows)
 		}
 		return protocol.NewPage([]protocol.Session{}), nil
 	}}}
 
-	if _, err := runtime.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.DefaultPageSize()}); err != nil {
+	if _, err := runtime.ListSessions(t.Context(), conversation.SessionQuery{PageSize: conversation.DefaultPageSize()}); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -64,8 +64,8 @@ func TestSessionCatalogRejectsOversizedCursorsAtTheAdapterBoundary(t *testing.T)
 		called = true
 		return protocol.NewPage([]protocol.Session{}), nil
 	}}}
-	if _, err := runtime.ListSessions(t.Context(), agent.SessionQuery{
-		PageSize: agent.DefaultPageSize(), Cursor: oversized,
+	if _, err := runtime.ListSessions(t.Context(), conversation.SessionQuery{
+		PageSize: conversation.DefaultPageSize(), Cursor: oversized,
 	}); err == nil || !strings.Contains(err.Error(), "transport limit") {
 		t.Fatalf("oversized request cursor error = %v", err)
 	}
@@ -74,7 +74,7 @@ func TestSessionCatalogRejectsOversizedCursorsAtTheAdapterBoundary(t *testing.T)
 	}
 
 	_, err := projectSessionPage(
-		protocol.NewPageWithCursor([]protocol.Session{}, oversized), agent.SessionQuery{}, agent.DefaultPageRows,
+		protocol.NewPageWithCursor([]protocol.Session{}, oversized), conversation.SessionQuery{}, conversation.DefaultPageRows,
 	)
 	if err == nil || !strings.Contains(err.Error(), "continuation cursor larger") {
 		t.Fatalf("oversized response cursor error = %v", err)
@@ -118,7 +118,7 @@ func TestSessionCatalogRejectsPagesOutsideRuntimeOrder(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			_, err := projectSessionPage(protocol.NewPage(test.sessions), agent.SessionQuery{}, agent.DefaultPageRows)
+			_, err := projectSessionPage(protocol.NewPage(test.sessions), conversation.SessionQuery{}, conversation.DefaultPageRows)
 			requireRuntimeContractViolation(t, err)
 		})
 	}
@@ -135,8 +135,8 @@ func TestSessionCatalogRejectsPagesOutsideWorkspaceFilter(t *testing.T) {
 		}}), nil
 	}}, meta: requestMeta("test")}
 
-	_, err := runtime.ListSessions(t.Context(), agent.SessionQuery{
-		Workspace: "/workspace", PageSize: agent.DefaultPageSize(),
+	_, err := runtime.ListSessions(t.Context(), conversation.SessionQuery{
+		Workspace: "/workspace", PageSize: conversation.DefaultPageSize(),
 	})
 	requireRuntimeContractViolation(t, err)
 }
@@ -152,8 +152,8 @@ func TestSessionCatalogRejectsPagesOutsideSearchFilter(t *testing.T) {
 		}}), nil
 	}}, meta: requestMeta("test")}
 
-	_, err := runtime.ListSessions(t.Context(), agent.SessionQuery{
-		Search: "release", PageSize: agent.DefaultPageSize(),
+	_, err := runtime.ListSessions(t.Context(), conversation.SessionQuery{
+		Search: "release", PageSize: conversation.DefaultPageSize(),
 	})
 	requireRuntimeContractViolation(t, err)
 }
@@ -200,7 +200,7 @@ func TestCreateAndForkSessionRejectAcknowledgementDrift(t *testing.T) {
 				return &result, nil
 			}},
 			invoke: func(runtime *Connection) error {
-				_, err := runtime.CreateSession(t.Context(), agent.CreateSession{Title: base.Title, Workspace: "/workspace"})
+				_, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Title: base.Title, Workspace: "/workspace"})
 				return err
 			},
 		},
@@ -212,7 +212,7 @@ func TestCreateAndForkSessionRejectAcknowledgementDrift(t *testing.T) {
 				return &result, nil
 			}},
 			invoke: func(runtime *Connection) error {
-				_, err := runtime.CreateSession(t.Context(), agent.CreateSession{Title: base.Title, Workspace: "/workspace"})
+				_, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Title: base.Title, Workspace: "/workspace"})
 				return err
 			},
 		},
@@ -224,7 +224,7 @@ func TestCreateAndForkSessionRejectAcknowledgementDrift(t *testing.T) {
 				return &result, nil
 			}},
 			invoke: func(runtime *Connection) error {
-				_, err := runtime.ForkSession(t.Context(), agent.ForkSession{SessionID: "ses_source", Title: base.Title})
+				_, err := runtime.ForkSession(t.Context(), conversation.ForkSession{SessionID: "ses_source", Title: base.Title})
 				return err
 			},
 		},
@@ -239,7 +239,7 @@ func TestCreateAndForkSessionRejectAcknowledgementDrift(t *testing.T) {
 				return &result, nil
 			}},
 			invoke: func(runtime *Connection) error {
-				_, err := runtime.CreateSession(t.Context(), agent.CreateSession{Title: base.Title, Workspace: "/workspace"})
+				_, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Title: base.Title, Workspace: "/workspace"})
 				return err
 			},
 		},
@@ -251,7 +251,7 @@ func TestCreateAndForkSessionRejectAcknowledgementDrift(t *testing.T) {
 				return &result, nil
 			}},
 			invoke: func(runtime *Connection) error {
-				_, err := runtime.ForkSession(t.Context(), agent.ForkSession{SessionID: "ses_source", Title: base.Title})
+				_, err := runtime.ForkSession(t.Context(), conversation.ForkSession{SessionID: "ses_source", Title: base.Title})
 				return err
 			},
 		},
@@ -263,7 +263,7 @@ func TestCreateAndForkSessionRejectAcknowledgementDrift(t *testing.T) {
 				return &result, nil
 			}},
 			invoke: func(runtime *Connection) error {
-				_, err := runtime.ForkSession(t.Context(), agent.ForkSession{SessionID: "ses_source", Title: base.Title})
+				_, err := runtime.ForkSession(t.Context(), conversation.ForkSession{SessionID: "ses_source", Title: base.Title})
 				return err
 			},
 		},
@@ -287,7 +287,7 @@ func TestCreateAndForkSessionRejectAcknowledgementDrift(t *testing.T) {
 
 func TestUpdateSessionProjectsEveryWritableField(t *testing.T) {
 	workspace, title, favorite := "/workspace/new", "Renamed", true
-	model := agent.ModelRef{Provider: "deepseek", Model: "deep"}
+	model := conversation.ModelRef{Provider: "deepseek", Model: "deep"}
 	stub := sessionCatalogStub{update: func(request protocol.UpdateSessionRequest) (*protocol.Session, error) {
 		if request.SessionID != "ses_1" || request.ExpectedRevision != 7 || request.Title == nil || *request.Title != title ||
 			request.Workspace == nil || request.Workspace.Path != workspace || request.Provider == nil || *request.Provider != model.Provider ||
@@ -314,7 +314,7 @@ func TestUpdateSessionProjectsEveryWritableField(t *testing.T) {
 			protocol.FeatureRelocate: {Enabled: true},
 		}),
 	}
-	updated, err := runtime.UpdateSession(t.Context(), agent.UpdateSession{
+	updated, err := runtime.UpdateSession(t.Context(), conversation.UpdateSession{
 		SessionID: "ses_1", Title: &title, Workspace: &workspace, Model: &model,
 		Favorite: &favorite, ExpectedRevision: 7,
 	})
@@ -335,9 +335,9 @@ func TestUpdateSessionRejectsWorkspaceWithoutRelocateCapability(t *testing.T) {
 		return nil, nil
 	}}}
 	workspace := "/workspace/new"
-	if _, err := runtime.UpdateSession(t.Context(), agent.UpdateSession{
+	if _, err := runtime.UpdateSession(t.Context(), conversation.UpdateSession{
 		SessionID: "ses_1", Workspace: &workspace, ExpectedRevision: 7,
-	}); err == nil || !errors.Is(err, agent.ErrIncompatibleRuntime) {
+	}); err == nil || !errors.Is(err, conversation.ErrIncompatibleRuntime) {
 		t.Fatalf("UpdateSession error = %v, want ErrIncompatibleRuntime", err)
 	}
 	if called {
@@ -348,8 +348,8 @@ func TestUpdateSessionRejectsWorkspaceWithoutRelocateCapability(t *testing.T) {
 func TestUpdateSessionRejectsAcknowledgementsThatDidNotApplyTheMutation(t *testing.T) {
 	t.Parallel()
 	workspace, title, favorite := "/workspace/new", "Renamed", true
-	model := agent.ModelRef{Provider: "deepseek", Model: "deep"}
-	request := agent.UpdateSession{
+	model := conversation.ModelRef{Provider: "deepseek", Model: "deep"}
+	request := conversation.UpdateSession{
 		SessionID: "ses_1", Title: &title, Workspace: &workspace, Model: &model,
 		Favorite: &favorite, ExpectedRevision: 7,
 	}
@@ -431,13 +431,13 @@ func TestSessionMutationsUseResolvedWorkspaceIdentity(t *testing.T) {
 			protocol.FeatureRelocate: {Enabled: true},
 		}),
 	}
-	if _, err := runtime.CreateSession(t.Context(), agent.CreateSession{
+	if _, err := runtime.CreateSession(t.Context(), conversation.CreateSession{
 		Title: result.Title, Workspace: requested,
 	}); err != nil {
 		t.Fatalf("CreateSession: %v", err)
 	}
 	requestedWorkspace := requested
-	if _, err := runtime.UpdateSession(t.Context(), agent.UpdateSession{
+	if _, err := runtime.UpdateSession(t.Context(), conversation.UpdateSession{
 		SessionID: result.ID, Workspace: &requestedWorkspace, ExpectedRevision: 1,
 	}); err != nil {
 		t.Fatalf("UpdateSession: %v", err)
@@ -468,7 +468,7 @@ func (s sessionCatalogStub) DeleteSession(_ context.Context, request protocol.De
 
 func TestDeleteSessionUsesTheDurableMutationIdentity(t *testing.T) {
 	t.Parallel()
-	commandID := agent.CommandID("cli_11111111111111111111111111111111")
+	commandID := replay.CommandID("cli_11111111111111111111111111111111")
 	const namespace = compatibleReplayNamespace
 	called := false
 	runtime := &Connection{sessionCatalog: sessionCatalogStub{delete: func(request protocol.DeleteSessionRequest, options flameruntime.CommandOptions) error {
@@ -479,7 +479,7 @@ func TestDeleteSessionUsesTheDurableMutationIdentity(t *testing.T) {
 		}
 		return nil
 	}}, meta: requestMeta("test"), profile: profileWithReplayNamespace(t, namespace)}
-	if err := runtime.DeleteSession(t.Context(), agent.DeleteSession{CommandID: commandID, SessionID: "ses_1"}); err != nil {
+	if err := runtime.DeleteSession(t.Context(), conversation.DeleteSession{CommandID: commandID, SessionID: "ses_1"}); err != nil {
 		t.Fatal(err)
 	}
 	if !called {
@@ -493,14 +493,14 @@ func TestSessionCatalogProjectsFiltersWithoutClientSideCursorScanning(t *testing
 	runtime := &Connection{sessionCatalog: sessionCatalogStub{list: func(request protocol.ListSessionsRequest) (*protocol.Page[protocol.Session], error) {
 		calls++
 		if request.Search != "Needle" || request.Workspace == nil || request.Workspace.Path != "/workspace" ||
-			request.Cursor != "current" || request.Limit == nil || *request.Limit != agent.DefaultPageRows {
+			request.Cursor != "current" || request.Limit == nil || *request.Limit != conversation.DefaultPageRows {
 			t.Fatalf("filtered sessions request = %+v", request)
 		}
 		return protocol.NewPageWithCursor([]protocol.Session{}, "next"), nil
 	}}, meta: requestMeta("test")}
 
-	page, err := runtime.ListSessions(t.Context(), agent.SessionQuery{
-		PageSize: agent.DefaultPageSize(), Search: "  Needle  ", Workspace: "/workspace", Cursor: "current",
+	page, err := runtime.ListSessions(t.Context(), conversation.SessionQuery{
+		PageSize: conversation.DefaultPageSize(), Search: "  Needle  ", Workspace: "/workspace", Cursor: "current",
 	})
 	if err != nil || page.NextCursor != "next" || calls != 1 {
 		t.Fatalf("ListSessions = (%+v, %v), calls=%d", page, err, calls)
@@ -523,10 +523,10 @@ func TestSessionCatalogRejectsAStalledCursorAndMutationIdentity(t *testing.T) {
 		},
 	}, meta: requestMeta("test")}
 
-	_, err := runtime.ListSessions(t.Context(), agent.SessionQuery{Cursor: "stalled", PageSize: agent.DefaultPageSize()})
+	_, err := runtime.ListSessions(t.Context(), conversation.SessionQuery{Cursor: "stalled", PageSize: conversation.DefaultPageSize()})
 	requireRuntimeContractViolation(t, err)
 	title := "Renamed"
-	_, err = runtime.UpdateSession(t.Context(), agent.UpdateSession{SessionID: "ses_1", Title: &title, ExpectedRevision: 1})
+	_, err = runtime.UpdateSession(t.Context(), conversation.UpdateSession{SessionID: "ses_1", Title: &title, ExpectedRevision: 1})
 	requireRuntimeContractViolation(t, err)
 }
 
@@ -534,9 +534,9 @@ func TestSessionCatalogRejectsInvalidLocalFiltersBeforeCallingRuntime(t *testing
 	t.Parallel()
 
 	runtime := &Connection{sessionCatalog: sessionCatalogStub{}, meta: requestMeta("test")}
-	for _, query := range []agent.SessionQuery{
-		{PageSize: agent.DefaultPageSize(), Workspace: "relative/workspace"},
-		{PageSize: agent.DefaultPageSize(), Search: strings.Repeat("x", 1025)},
+	for _, query := range []conversation.SessionQuery{
+		{PageSize: conversation.DefaultPageSize(), Workspace: "relative/workspace"},
+		{PageSize: conversation.DefaultPageSize(), Search: strings.Repeat("x", 1025)},
 	} {
 		if _, err := runtime.ListSessions(t.Context(), query); err == nil {
 			t.Fatalf("ListSessions accepted %+v", query)

@@ -5,13 +5,12 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/grid"
 	"github.com/Tangerg/oolong/core/layout"
 	"github.com/Tangerg/oolong/core/text"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 // toolGroupBlock is one disclosure for adjacent resource-inspection calls.
@@ -57,7 +56,7 @@ func (t *toolGroupBlock) ReadyToFinish() bool {
 		return false
 	}
 	for _, tool := range t.tools {
-		if tool.call.Status == agent.ToolRunning {
+		if tool.call.Status == conversation.ToolRunning {
 			return false
 		}
 	}
@@ -183,11 +182,11 @@ func (t *toolGroupBlock) header() (toggle, label, status string, style grid.Styl
 	running, failed, canceled := 0, 0, 0
 	for _, tool := range t.tools {
 		switch tool.call.Status {
-		case agent.ToolRunning:
+		case conversation.ToolRunning:
 			running++
-		case agent.ToolError:
+		case conversation.ToolError:
 			failed++
-		case agent.ToolCanceled:
+		case conversation.ToolCanceled:
 			canceled++
 		}
 	}
@@ -233,6 +232,6 @@ func (t *toolGroupBlock) notify() {
 	t.observers.notify(t.readerDocument())
 }
 
-func groupableTool(call agent.ToolCall) bool {
-	return slices.Contains([]agent.ToolKind{agent.ToolRead, agent.ToolSearch, agent.ToolWeb}, call.Kind)
+func groupableTool(call conversation.ToolCall) bool {
+	return slices.Contains([]conversation.ToolKind{conversation.ToolRead, conversation.ToolSearch, conversation.ToolWeb}, call.Kind)
 }

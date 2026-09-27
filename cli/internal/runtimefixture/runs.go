@@ -6,33 +6,33 @@ import (
 	"slices"
 	"strconv"
 
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 )
 
-func (r *Runtime) GetRun(ctx context.Context, runID string) (agent.Run, error) {
+func (r *Runtime) GetRun(ctx context.Context, runID string) (conversation.Run, error) {
 	if err := context.Cause(ctx); err != nil {
-		return agent.Run{}, err
+		return conversation.Run{}, err
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	run := r.runs[runID]
 	if run == nil {
-		return agent.Run{}, fmt.Errorf("%w: %s", agent.ErrRunNotFound, runID)
+		return conversation.Run{}, fmt.Errorf("%w: %s", conversation.ErrRunNotFound, runID)
 	}
 	return projectRun(run), nil
 }
 
-func (r *Runtime) ListRuns(ctx context.Context, query agent.RunQuery) (agent.RunPage, error) {
+func (r *Runtime) ListRuns(ctx context.Context, query conversation.RunQuery) (conversation.RunPage, error) {
 	if err := query.Validate(); err != nil {
-		return agent.RunPage{}, fmt.Errorf("mock: %w", err)
+		return conversation.RunPage{}, fmt.Errorf("mock: %w", err)
 	}
 	if err := context.Cause(ctx); err != nil {
-		return agent.RunPage{}, err
+		return conversation.RunPage{}, err
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	items := make([]agent.Run, 0, len(r.runOrder))
+	items := make([]conversation.Run, 0, len(r.runOrder))
 	for _, runID := range slices.Backward(r.runOrder) {
 		run := r.runs[runID]
 		if run == nil || (query.SessionID != "" && run.sessionID != query.SessionID) {
@@ -49,14 +49,14 @@ func (r *Runtime) ListRuns(ctx context.Context, query agent.RunQuery) (agent.Run
 
 	offset, err := pageOffset("run", query.Cursor, len(items))
 	if err != nil {
-		return agent.RunPage{}, err
+		return conversation.RunPage{}, err
 	}
 	limit, err := query.PageSize.Rows()
 	if err != nil {
-		return agent.RunPage{}, fmt.Errorf("mock: %w", err)
+		return conversation.RunPage{}, fmt.Errorf("mock: %w", err)
 	}
 	end := min(offset+limit, len(items))
-	page := agent.RunPage{Items: slices.Clone(items[offset:end])}
+	page := conversation.RunPage{Items: slices.Clone(items[offset:end])}
 	if end < len(items) {
 		page.NextCursor = strconv.Itoa(end)
 	}

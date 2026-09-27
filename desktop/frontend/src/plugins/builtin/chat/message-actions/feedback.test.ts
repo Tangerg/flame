@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { resetContainer, setContainer } from "@/main/container";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import { definePlugin } from "@/plugins/sdk";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
@@ -8,19 +7,23 @@ import {
   RUNTIME_STREAM,
 } from "@/plugins/builtin/runtime/public/services";
 import { submitMessageFeedback } from "./application/feedback";
-import { messageFeedback } from "./feedback";
+import { createMessageFeedbackPlugin } from "./feedback";
 import { rejected } from "@/test/rejected";
+
+let runtimeClient: () => FlameClient = () => {
+  throw new Error("Runtime test client is not configured");
+};
+const getRuntimeClient = () => runtimeClient();
 
 afterEach(async () => {
   await resetKernelForTest();
-  resetContainer();
 });
 
 describe("message feedback Runtime generation wiring", () => {
   it("retires an admitted command when the Runtime process generation changes", async () => {
     const pending = Promise.withResolvers<void>();
     const create = vi.fn(() => pending.promise);
-    setContainer({ client: () => ({ feedback: { create } }) as unknown as FlameClient });
+    runtimeClient = () => ({ feedback: { create } }) as unknown as FlameClient;
     let generation = RuntimeConnectionGeneration.forProcess("runtime_1");
     const subscribers = new Set<() => void>();
     const runtime = definePlugin({
@@ -39,7 +42,7 @@ describe("message feedback Runtime generation wiring", () => {
         };
       },
     });
-    await loadPluginsForTest(runtime, messageFeedback);
+    await loadPluginsForTest(runtime, createMessageFeedbackPlugin(getRuntimeClient));
 
     const command = rejected(
       submitMessageFeedback(

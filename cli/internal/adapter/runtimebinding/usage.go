@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 type usageBinding interface {
@@ -16,19 +15,19 @@ type usageBinding interface {
 	GetUsageSummary(context.Context, protocol.UsageSummaryRequest, flameruntime.CallOptions) (*protocol.UsageSummary, error)
 }
 
-func (r *Connection) SessionUsage(ctx context.Context, sessionID string) (agent.SessionUsageReport, error) {
+func (r *Connection) SessionUsage(ctx context.Context, sessionID string) (conversation.SessionUsageReport, error) {
 	request := protocol.SessionUsageRequest{SessionID: sessionID}
 	if err := request.ValidateWire(); err != nil {
-		return agent.SessionUsageReport{}, fmt.Errorf("session usage: %w", err)
+		return conversation.SessionUsageReport{}, fmt.Errorf("session usage: %w", err)
 	}
 	result, err := r.usage.GetSessionUsage(ctx, request, r.callOptions())
 	if err != nil {
-		return agent.SessionUsageReport{}, classifyError(err)
+		return conversation.SessionUsageReport{}, classifyError(err)
 	}
 	if result == nil {
-		return agent.SessionUsageReport{}, runtimeContractViolation("session usage returned nil")
+		return conversation.SessionUsageReport{}, runtimeContractViolation("session usage returned nil")
 	}
-	report := agent.SessionUsageReport{
+	report := conversation.SessionUsageReport{
 		SessionID: request.SessionID,
 		Total:     result.ModelUsage,
 		ByModel:   make([]protocol.UsageBucket, 0, len(result.ByModel)),
@@ -44,10 +43,10 @@ func (r *Connection) SessionUsage(ctx context.Context, sessionID string) (agent.
 	return report, nil
 }
 
-func (r *Connection) Summary(ctx context.Context, period agent.UsageSummaryPeriod) (agent.UsageSummary, error) {
+func (r *Connection) Summary(ctx context.Context, period conversation.UsageSummaryPeriod) (conversation.UsageSummary, error) {
 	days, recent, err := period.Days()
 	if err != nil {
-		return agent.UsageSummary{}, err
+		return conversation.UsageSummary{}, err
 	}
 	var sinceDays *int
 	if recent {
@@ -55,16 +54,16 @@ func (r *Connection) Summary(ctx context.Context, period agent.UsageSummaryPerio
 	}
 	request := protocol.UsageSummaryRequest{SinceDays: sinceDays}
 	if err := request.ValidateWire(); err != nil {
-		return agent.UsageSummary{}, fmt.Errorf("usage summary: %w", err)
+		return conversation.UsageSummary{}, fmt.Errorf("usage summary: %w", err)
 	}
 	result, err := r.usage.GetUsageSummary(ctx, request, r.callOptions())
 	if err != nil {
-		return agent.UsageSummary{}, classifyError(err)
+		return conversation.UsageSummary{}, classifyError(err)
 	}
 	if result == nil {
-		return agent.UsageSummary{}, runtimeContractViolation("usage summary returned nil")
+		return conversation.UsageSummary{}, runtimeContractViolation("usage summary returned nil")
 	}
-	summary := agent.UsageSummary{
+	summary := conversation.UsageSummary{
 		Period: period, Total: result.Total,
 		ByProvider: result.ByProvider,
 		ByModel:    result.ByModel,

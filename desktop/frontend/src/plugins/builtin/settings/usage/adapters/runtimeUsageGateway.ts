@@ -1,15 +1,11 @@
-import { getContainer } from "@/main/container";
-import { configureUsageGateway, type UsageGateway } from "../application/ports/usageGateway";
+import type { FlameClient } from "@flame/runtime-contract/client";
+import { configureUsageGateway } from "../application/ports/usageGateway";
 
-const gateway: UsageGateway = {
-  loadSummary(period, signal) {
-    const sinceDays = period.recentDays();
-    return getContainer()
-      .client()
-      .usage.summary(sinceDays === undefined ? {} : { sinceDays }, signal);
-  },
-};
-
-export function installUsageGateway(): () => void {
-  return configureUsageGateway(gateway);
+export function installUsageGateway(runtimeClient: () => FlameClient): () => void {
+  return configureUsageGateway({
+    loadSummary(period, signal) {
+      const sinceDays = period.recentDays();
+      return runtimeClient().usage.summary(sinceDays === undefined ? {} : { sinceDays }, signal);
+    },
+  });
 }

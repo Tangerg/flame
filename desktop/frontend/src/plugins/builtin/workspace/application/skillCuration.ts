@@ -68,12 +68,10 @@ class SkillCurationGeneration {
 }
 
 export class SkillCurationOwner {
-  readonly #gateway: SkillCurationGateway;
   #generation: SkillCurationGeneration;
   #disposed = false;
 
   private constructor(gateway: SkillCurationGateway) {
-    this.#gateway = gateway;
     this.#generation = new SkillCurationGeneration(gateway);
   }
 
@@ -105,10 +103,10 @@ export class SkillCurationOwner {
     return this.#generation.rejectProposal(handle);
   }
 
-  replaceRuntimeGeneration(): void {
+  replaceRuntimeGeneration(createGateway: () => SkillCurationGateway): void {
     if (this.#disposed || !skillCurationPublication.owns(this)) return;
     const predecessor = this.#generation;
-    this.#generation = new SkillCurationGeneration(this.#gateway);
+    this.#generation = new SkillCurationGeneration(createGateway());
     predecessor.retire();
   }
 

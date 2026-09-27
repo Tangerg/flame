@@ -6,34 +6,34 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 )
 
 type runtime interface {
-	CreateSession(context.Context, agent.CreateSession) (agent.Session, error)
-	GetSession(context.Context, string) (agent.SessionSnapshot, error)
+	CreateSession(context.Context, conversation.CreateSession) (conversation.Session, error)
+	GetSession(context.Context, string) (conversation.SessionSnapshot, error)
 }
 
 // Open restores the selected session or creates a new one in workspace.
-func Open(ctx context.Context, rt runtime, id, workspace string) (agent.SessionSnapshot, error) {
+func Open(ctx context.Context, rt runtime, id, workspace string) (conversation.SessionSnapshot, error) {
 	if id != "" {
 		snapshot, err := rt.GetSession(ctx, id)
 		if err != nil {
-			return agent.SessionSnapshot{}, fmt.Errorf("open session: %w", err)
+			return conversation.SessionSnapshot{}, fmt.Errorf("open session: %w", err)
 		}
 		if err := snapshot.Validate(); err != nil {
-			return agent.SessionSnapshot{}, fmt.Errorf("open session: %w", err)
+			return conversation.SessionSnapshot{}, fmt.Errorf("open session: %w", err)
 		}
 		return snapshot, nil
 	}
 
-	created, err := rt.CreateSession(ctx, agent.CreateSession{Workspace: workspace})
+	created, err := rt.CreateSession(ctx, conversation.CreateSession{Workspace: workspace})
 	if err != nil {
-		return agent.SessionSnapshot{}, fmt.Errorf("create session: %w", err)
+		return conversation.SessionSnapshot{}, fmt.Errorf("create session: %w", err)
 	}
-	snapshot := agent.SessionSnapshot{Session: created}
+	snapshot := conversation.SessionSnapshot{Session: created}
 	if err := snapshot.Validate(); err != nil {
-		return agent.SessionSnapshot{}, fmt.Errorf("create session: %w", err)
+		return conversation.SessionSnapshot{}, fmt.Errorf("create session: %w", err)
 	}
 	return snapshot, nil
 }

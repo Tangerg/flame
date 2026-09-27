@@ -28,7 +28,7 @@ const BASE_UI = Symbol("set by Base UI's Positioner");
 const RUNTIME_SET = new Map([
   ["--agent-overflow-distance", "src/ui/agent/overflow-label.tsx"],
   ["--agent-overflow-duration", "src/ui/agent/overflow-label.tsx"],
-  ["--dock-measure", "src/plugins/builtin/shell/kernel/panel/dockWidth.ts"],
+  ["--dock-measure", "src/plugins/builtin/shell/workbench/panel/dockWidth.ts"],
   ["--sidebar-width", "src/ui/agent/sidebar.tsx"],
   ["--anchor-width", BASE_UI],
   ["--available-height", BASE_UI],

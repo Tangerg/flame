@@ -1,5 +1,4 @@
 import type { ConfigService, KeyValueStore } from "@/plugins/sdk";
-import { getContainer } from "@/main/container";
 import {
   configureRuntimeEndpoint,
   type RuntimeEndpointTarget,
@@ -19,7 +18,7 @@ export type ReplaceRuntimeEndpoint = (commit: () => void) => void;
 export function installRuntimeEndpointConfiguration(
   ctx: EndpointBindings,
   replaceConnection: ReplaceRuntimeEndpoint,
-  bootstrap: RuntimeEndpointTarget = getContainer().bootstrap().runtime,
+  bootstrap: RuntimeEndpointTarget,
 ): () => void {
   const defaultEndpoint = normalizeRuntimeEndpoint(bootstrap.endpoint);
   if (!defaultEndpoint) throw new Error("invalid bootstrap Runtime endpoint");

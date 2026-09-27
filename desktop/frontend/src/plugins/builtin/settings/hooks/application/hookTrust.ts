@@ -44,12 +44,10 @@ class HookTrustMutationGeneration {
 }
 
 export class HookTrustMutationOwner {
-  readonly #gateway: HookTrustGateway;
   #generation: HookTrustMutationGeneration;
   #disposed = false;
 
   private constructor(gateway: HookTrustGateway) {
-    this.#gateway = gateway;
     this.#generation = new HookTrustMutationGeneration(gateway);
   }
 
@@ -69,10 +67,10 @@ export class HookTrustMutationOwner {
     return this.#generation.setProjectTrust(projectRoot, trusted);
   }
 
-  replaceRuntimeGeneration(): void {
+  replaceRuntimeGeneration(createGateway: () => HookTrustGateway): void {
     if (this.#disposed || !hookTrustPublication.owns(this)) return;
     const predecessor = this.#generation;
-    this.#generation = new HookTrustMutationGeneration(this.#gateway);
+    this.#generation = new HookTrustMutationGeneration(createGateway());
     predecessor.retire();
   }
 

@@ -8,24 +8,23 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
-	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
+	"github.com/Tangerg/flame/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/cli/internal/application/retry"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
+	"github.com/Tangerg/flame/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type rollbackRuntime interface {
-	RollbackSession(context.Context, agent.RollbackSession) (agent.RollbackResult, error)
-	GetSession(context.Context, string) (agent.SessionSnapshot, error)
+	RollbackSession(context.Context, conversation.RollbackSession) (conversation.RollbackResult, error)
+	GetSession(context.Context, string) (conversation.SessionSnapshot, error)
 }
 
 // RollbackPreview is the exact authoritatively-read before/after projection authorized
 // by one rollback confirmation.
 type RollbackPreview struct {
-	request        agent.RollbackSession
+	request        conversation.RollbackSession
 	beforeRevision uint64
 	beforeRunIDs   []string
 	afterRunIDs    []string
@@ -35,7 +34,7 @@ type RollbackPreview struct {
 
 // PreviewRollback derives a rollback proof and recoverable opening input from
 // one authoritative session snapshot.
-func PreviewRollback(snapshot agent.SessionSnapshot, request agent.RollbackSession) (RollbackPreview, error) {
+func PreviewRollback(snapshot conversation.SessionSnapshot, request conversation.RollbackSession) (RollbackPreview, error) {
 	if err := request.Validate(); err != nil {
 		return RollbackPreview{}, err
 	}
@@ -47,9 +46,9 @@ func PreviewRollback(snapshot agent.SessionSnapshot, request agent.RollbackSessi
 	}
 	boundary := -1
 	if request.ToRunID != "" {
-		boundary = slices.IndexFunc(snapshot.Runs, func(run agent.Run) bool { return run.ID == request.ToRunID })
+		boundary = slices.IndexFunc(snapshot.Runs, func(run conversation.Run) bool { return run.ID == request.ToRunID })
 		if boundary < 0 {
-			return RollbackPreview{}, fmt.Errorf("%w: %s", agent.ErrRunNotFound, request.ToRunID)
+			return RollbackPreview{}, fmt.Errorf("%w: %s", conversation.ErrRunNotFound, request.ToRunID)
 		}
 		if !snapshot.Runs[boundary].Lineage.IsRoot() {
 			return RollbackPreview{}, fmt.Errorf("rollback run %s is not a root run", request.ToRunID)
@@ -80,10 +79,10 @@ func PreviewRollback(snapshot agent.SessionSnapshot, request agent.RollbackSessi
 	return preview, nil
 }
 
-func openingInput(transcript []agent.Block, droppedIDs []string) (string, int) {
+func openingInput(transcript []conversation.Block, droppedIDs []string) (string, int) {
 	for _, runID := range droppedIDs {
 		for _, block := range transcript {
-			if block.RunID != runID || block.Kind != agent.BlockUser {
+			if block.RunID != runID || block.Kind != conversation.BlockUser {
 				continue
 			}
 			images := 0
@@ -100,23 +99,23 @@ func openingInput(transcript []agent.Block, droppedIDs []string) (string, int) {
 	return "", 0
 }
 
-func (p RollbackPreview) Request() agent.RollbackSession { return p.request }
+func (p RollbackPreview) Request() conversation.RollbackSession { return p.request }
 
 func (p RollbackPreview) DroppedCount() int {
 	return len(p.beforeRunIDs) - len(p.afterRunIDs)
 }
 
-func (p RollbackPreview) ValidateCommit(snapshot agent.SessionSnapshot) error {
-	return validateBefore(p.journal("", commandreplay.UnprotectedGuard(), time.Time{}), snapshot)
+func (p RollbackPreview) ValidateCommit(snapshot conversation.SessionSnapshot) error {
+	return validateBefore(p.journal("", replay.UnprotectedGuard(), time.Time{}), snapshot)
 }
 
-func (p RollbackPreview) ValidateApplied(snapshot agent.SessionSnapshot) error {
-	return validateApplied(p.journal("", commandreplay.UnprotectedGuard(), time.Time{}), snapshot)
+func (p RollbackPreview) ValidateApplied(snapshot conversation.SessionSnapshot) error {
+	return validateApplied(p.journal("", replay.UnprotectedGuard(), time.Time{}), snapshot)
 }
 
 func (p RollbackPreview) journal(
-	commandID agent.CommandID,
-	replay commandreplay.Guard,
+	commandID replay.CommandID,
+	replayGuard replay.Guard,
 	stagedAt time.Time,
 ) workbench.PendingSessionRollback {
 	pending := workbench.PendingSessionRollback{
@@ -124,7 +123,7 @@ func (p RollbackPreview) journal(
 		SessionID: p.request.SessionID, ToRunID: p.request.ToRunID, Scope: p.request.Scope,
 		BeforeRevision: p.beforeRevision, BeforeRunIDs: slices.Clone(p.beforeRunIDs),
 		AfterRunIDs: slices.Clone(p.afterRunIDs), OpeningText: p.openingText,
-		OpeningImages: p.openingImages, StagedAt: stagedAt, Replay: replay,
+		OpeningImages: p.openingImages, StagedAt: stagedAt, Replay: replayGuard,
 	}
 	return pending
 }
@@ -134,7 +133,7 @@ func (p RollbackPreview) journal(
 type RollbackResult struct {
 	Pending  workbench.PendingSessionRollback
 	Outcome  mutation.Outcome
-	Snapshot agent.SessionSnapshot
+	Snapshot conversation.SessionSnapshot
 }
 
 // Rollback verifies an unchanged preview, stages one command identity, then
@@ -162,14 +161,14 @@ func Rollback(
 		return RollbackResult{}, err
 	}
 	stagedAt := policy.Now()
-	replay := commandreplay.UnprotectedGuard()
+	replayGuard := replay.UnprotectedGuard()
 	if preview.request.RestoresFiles() {
-		replay, err = policy.NewGuardAt(stagedAt)
+		replayGuard, err = policy.NewGuardAt(stagedAt)
 		if err != nil {
 			return RollbackResult{}, err
 		}
 	}
-	pending := preview.journal(commandID, replay, stagedAt)
+	pending := preview.journal(commandID, replayGuard, stagedAt)
 	if err := authoring.StageSessionRollback(pending); err != nil {
 		return RollbackResult{}, fmt.Errorf("stage session rollback: %w", err)
 	}
@@ -211,7 +210,7 @@ func settleRollback(
 	}
 
 	rollbackResult, rollbackErr := executeRollback(ctx, runtime, pending, policy, backoff, fresh)
-	if errors.Is(rollbackErr, agent.ErrCommandStoreMismatch) {
+	if errors.Is(rollbackErr, conversation.ErrCommandStoreMismatch) {
 		result.Outcome = mutation.Unknown
 		return result, fmt.Errorf("rollback session outcome is unknown: %w", rollbackErr)
 	}
@@ -234,7 +233,7 @@ func executeRollback(
 	policy mutation.ReplayPolicy,
 	backoff retry.Backoff,
 	fresh bool,
-) (agent.RollbackResult, error) {
+) (conversation.RollbackResult, error) {
 	if pending.Request().HistoryOnly() {
 		// History rollback has an authoritative before/after projection. One call
 		// followed by another read converges an uncertain acknowledgement without
@@ -245,7 +244,7 @@ func executeRollback(
 	if fresh {
 		admit = mutation.FreshReplayAdmission(policy, pending.Replay)
 	}
-	return mutation.ConfirmAdmitted(ctx, backoff, admit, func(ctx context.Context) (agent.RollbackResult, error) {
+	return mutation.ConfirmAdmitted(ctx, backoff, admit, func(ctx context.Context) (conversation.RollbackResult, error) {
 		return runtime.RollbackSession(ctx, pending.Request())
 	})
 }
@@ -253,9 +252,9 @@ func executeRollback(
 func reconcileRollback(
 	result RollbackResult,
 	pending workbench.PendingSessionRollback,
-	rollbackResult agent.RollbackResult,
+	rollbackResult conversation.RollbackResult,
 	rollbackErr error,
-	after agent.SessionSnapshot,
+	after conversation.SessionSnapshot,
 ) (RollbackResult, error) {
 	result.Snapshot = after
 	if rollbackErr == nil {
@@ -294,7 +293,7 @@ func fileRollbackRefused(err error) bool {
 	return err == protocol.ErrCheckpointUnavailable || err == protocol.ErrCheckpointConflict
 }
 
-func validateBefore(pending workbench.PendingSessionRollback, snapshot agent.SessionSnapshot) error {
+func validateBefore(pending workbench.PendingSessionRollback, snapshot conversation.SessionSnapshot) error {
 	if err := validateSnapshot(pending, snapshot); err != nil {
 		return err
 	}
@@ -305,7 +304,7 @@ func validateBefore(pending workbench.PendingSessionRollback, snapshot agent.Ses
 	return nil
 }
 
-func validateApplied(pending workbench.PendingSessionRollback, snapshot agent.SessionSnapshot) error {
+func validateApplied(pending workbench.PendingSessionRollback, snapshot conversation.SessionSnapshot) error {
 	if pending.Request().FilesOnly() {
 		return errors.New("files-only rollback has no authoritative session outcome")
 	}
@@ -322,8 +321,8 @@ func validateApplied(pending workbench.PendingSessionRollback, snapshot agent.Se
 
 func validateAcknowledged(
 	pending workbench.PendingSessionRollback,
-	result agent.RollbackResult,
-	snapshot agent.SessionSnapshot,
+	result conversation.RollbackResult,
+	snapshot conversation.SessionSnapshot,
 ) error {
 	if err := result.Validate(); err != nil {
 		return err
@@ -348,7 +347,7 @@ func validateAcknowledged(
 	return nil
 }
 
-func validateSnapshot(pending workbench.PendingSessionRollback, snapshot agent.SessionSnapshot) error {
+func validateSnapshot(pending workbench.PendingSessionRollback, snapshot conversation.SessionSnapshot) error {
 	if err := snapshot.Validate(); err != nil {
 		return fmt.Errorf("read rollback outcome: %w", err)
 	}
@@ -358,7 +357,7 @@ func validateSnapshot(pending workbench.PendingSessionRollback, snapshot agent.S
 	return nil
 }
 
-func runIDs(snapshot agent.SessionSnapshot) []string {
+func runIDs(snapshot conversation.SessionSnapshot) []string {
 	ids := make([]string, len(snapshot.Runs))
 	for index, run := range snapshot.Runs {
 		ids[index] = run.ID
@@ -402,7 +401,7 @@ func RecoverRollbacks(
 				return errors.Join(err, rejectErr)
 			}
 		case mutation.Unknown:
-			if errors.Is(err, agent.ErrSessionNotFound) {
+			if errors.Is(err, conversation.ErrSessionNotFound) {
 				if retireErr := authoring.RetireSessionState(pending.SessionID); retireErr != nil {
 					return errors.Join(err, retireErr)
 				}

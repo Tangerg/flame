@@ -5,7 +5,7 @@ import {
   dockWidthFromRatio,
   maxDockWidth,
 } from "../src/lib/shellGeometry";
-import { dockWidthRow } from "../src/plugins/builtin/shell/kernel/panel/dockWidth";
+import { dockWidthRow } from "../src/plugins/builtin/shell/workbench/panel/dockWidth";
 
 async function cssMeasure(
   page: import("@playwright/test").Page,

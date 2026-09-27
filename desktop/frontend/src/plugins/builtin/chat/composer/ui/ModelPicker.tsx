@@ -11,10 +11,7 @@ import {
   type CatalogPickerGroup,
   providerDisplayName,
 } from "@/ui";
-import {
-  type SelectableModel,
-  useModels,
-} from "@/plugins/builtin/settings/providers/public/queries";
+import { type SelectableModel, useModels } from "@/plugins/builtin/providers/public/queries";
 import { useRecentModelsStore, type RecentModel } from "../adapters/recentModels";
 import { AgentComposerChip } from "@/ui/agent";
 import { useSetComposerModelPreference } from "../public/modelPreference";

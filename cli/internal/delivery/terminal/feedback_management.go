@@ -5,7 +5,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -58,10 +58,10 @@ func parseFeedbackRating(value string) (protocol.FeedbackRating, error) {
 	return rating, nil
 }
 
-func latestAssistantTarget(blocks []agent.Block) (string, string) {
+func latestAssistantTarget(blocks []conversation.Block) (string, string) {
 	for index := len(blocks) - 1; index >= 0; index-- {
 		block := blocks[index]
-		if block.Kind == agent.BlockAssistant && block.Status != agent.BlockStatusRunning {
+		if block.Kind == conversation.BlockAssistant && block.Status != conversation.BlockStatusRunning {
 			return block.RunID, block.ID
 		}
 	}

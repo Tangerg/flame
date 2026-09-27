@@ -3,8 +3,7 @@ import { queryClient } from "@/lib/queryClient";
 import { navigator } from "@/lib/navigation";
 import { renderHook } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { resetContainer, setContainer } from "@/main/container";
+import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import type { FlameClient, Methods } from "@flame/runtime-contract/client";
 import { asSessionId } from "@flame/runtime-contract/client";
 import { useAgentSessionStore } from "@/plugins/builtin/agent/adapters/agentSessionStore";
@@ -12,17 +11,21 @@ import { installAgentRuntimeGateway } from "@/plugins/builtin/agent/adapters/age
 import { createSession, type CreateSessionOptions, useCreateSession } from "./createSession";
 import { AGENT_SESSIONS_KEY, type AgentSessionSummary } from "./sessionQueries";
 
+let runtimeClient: () => FlameClient = () => {
+  throw new Error("Runtime test client is not configured");
+};
+const getRuntimeClient = () => runtimeClient();
+
 function wrapper({ children }: { children: ReactNode }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return createElement(QueryClientProvider, { client }, children);
 }
 
 function stubCreate(create: Methods["sessions"]["create"]) {
-  setContainer({ client: () => ({ sessions: { create } }) as unknown as FlameClient });
+  runtimeClient = () => ({ sessions: { create } }) as unknown as FlameClient;
 }
 
 afterEach(() => {
-  resetContainer();
   queryClient.clear();
   navigator().go({ session: "" });
   useAgentSessionStore.setState({
@@ -167,7 +170,7 @@ describe("useCreateSession", () => {
 
     const successorCreate = vi.fn().mockResolvedValue(fakeSession("successor"));
     stubCreate(successorCreate);
-    const disposeSuccessor = installAgentRuntimeGateway();
+    const disposeSuccessor = installAgentRuntimeGateway(getRuntimeClient);
     const successor = result.current({ cwd: "/tmp/successor" });
 
     await Promise.resolve();
@@ -221,3 +224,7 @@ describe("imperative New", () => {
 async function flushMicrotasks(): Promise<void> {
   for (let index = 0; index < 8; index += 1) await Promise.resolve();
 }
+
+beforeEach(() => {
+  installAgentRuntimeGateway(getRuntimeClient);
+});

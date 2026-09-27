@@ -8,7 +8,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/application/retry"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -171,7 +171,7 @@ func (a *app) applySessionInvalidation(catalogChanged, currentSessionChanged boo
 		return
 	}
 	a.session.invalidated = true
-	if a.execution.conversation.Phase() == agent.ConversationRunning || a.execution.following || a.execution.pendingCancel != nil ||
+	if a.execution.conversation.Phase() == conversation.Running || a.execution.following || a.execution.pendingCancel != nil ||
 		a.operations.Active(sessionChangeOperation) {
 		return
 	}
@@ -221,10 +221,10 @@ func invalidationAffectsSession(event changefeed.Event, sessionID, runID string)
 func (a *app) refreshInvalidatedSession(settlementFence bool) {
 	sessionID := a.session.current.ID
 	a.session.invalidated = false
-	read := func(ctx context.Context) (agent.SessionSnapshot, error) {
+	read := func(ctx context.Context) (conversation.SessionSnapshot, error) {
 		return a.readInvalidatedSession(ctx, sessionID)
 	}
-	apply := func(snapshot agent.SessionSnapshot, err error) {
+	apply := func(snapshot conversation.SessionSnapshot, err error) {
 		a.applyInvalidatedSessionRefresh(sessionID, settlementFence, snapshot, err)
 	}
 	// Every authoritative refresh fences queued Run admission. Settlement
@@ -242,7 +242,7 @@ func (a *app) refreshInvalidatedSession(settlementFence bool) {
 func (a *app) applyInvalidatedSessionRefresh(
 	sessionID string,
 	settlementFence bool,
-	snapshot agent.SessionSnapshot,
+	snapshot conversation.SessionSnapshot,
 	err error,
 ) {
 	if a.session.current.ID != sessionID {
@@ -254,7 +254,7 @@ func (a *app) applyInvalidatedSessionRefresh(
 	}
 	if err != nil {
 		a.session.invalidated = true
-		if errors.Is(err, agent.ErrSessionNotFound) && a.execution.conversation.Phase() == agent.ConversationIdle && !a.execution.following {
+		if errors.Is(err, conversation.ErrSessionNotFound) && a.execution.conversation.Phase() == conversation.Idle && !a.execution.following {
 			a.message("the active session was deleted; creating a replacement")
 			a.replaceDeletedSessionInWorkspace(a.session.current.Workspace.Path)
 			return
@@ -262,7 +262,7 @@ func (a *app) applyInvalidatedSessionRefresh(
 		a.message("refresh session after runtime change failed: " + err.Error())
 		return
 	}
-	if !settlementFence && (a.execution.conversation.Phase() == agent.ConversationRunning || a.execution.following) {
+	if !settlementFence && (a.execution.conversation.Phase() == conversation.Running || a.execution.following) {
 		a.session.invalidated = true
 		return
 	}
@@ -279,7 +279,7 @@ func (a *app) applyInvalidatedSessionRefresh(
 			return
 		}
 	}
-	if settlementFence && a.execution.conversation.Phase() == agent.ConversationIdle {
+	if settlementFence && a.execution.conversation.Phase() == conversation.Idle {
 		a.finishFollowing()
 		return
 	}
@@ -291,7 +291,7 @@ func (a *app) applyInvalidatedSessionRefresh(
 	}
 }
 
-func (a *app) readInvalidatedSession(ctx context.Context, sessionID string) (agent.SessionSnapshot, error) {
+func (a *app) readInvalidatedSession(ctx context.Context, sessionID string) (conversation.SessionSnapshot, error) {
 	failures := 0
 	for {
 		snapshot, err := a.runtime.GetSession(ctx, sessionID)
@@ -300,12 +300,12 @@ func (a *app) readInvalidatedSession(ctx context.Context, sessionID string) (age
 		}
 		failures++
 		if err := runtimeRecoveryBackoff.Wait(ctx, failures); err != nil {
-			return agent.SessionSnapshot{}, err
+			return conversation.SessionSnapshot{}, err
 		}
 	}
 }
 
-func (a *app) installSessionMetadata(session agent.Session) {
+func (a *app) installSessionMetadata(session conversation.Session) {
 	a.setActiveSession(session)
 	a.dialogs.sessionCenter.Upsert(session)
 }

@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/session/feedback"
+	"github.com/Tangerg/flame/runtime/internal/domain/feedback"
 )
 
 // FeedbackStore persists the append-only quality ledger. The DB must have been

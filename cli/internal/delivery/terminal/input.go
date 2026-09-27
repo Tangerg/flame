@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/keymap"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 func (a *app) Handle(event input.Event) bool {
@@ -202,14 +201,14 @@ func (a *app) handleQuit() {
 	a.loop.Quit()
 }
 
-func (a *app) currentDraft() (agent.Message, bool, error) {
+func (a *app) currentDraft() (prompt.Message, bool, error) {
 	editor := a.composer.Editor()
 	if editor.Empty() && len(editor.Elements()) == 0 {
-		return agent.Message{}, false, nil
+		return prompt.Message{}, false, nil
 	}
 	message, err := a.composerMessage()
 	if err != nil {
-		return agent.Message{}, false, err
+		return prompt.Message{}, false, err
 	}
 	return message, true, nil
 }
@@ -260,11 +259,11 @@ func (a *app) handleCancelGesture() {
 	a.cancel()
 }
 
-func (a *app) retireDraft(message agent.Message) error {
+func (a *app) retireDraft(message prompt.Message) error {
 	if err := a.rememberPrompt(message); err != nil {
 		return fmt.Errorf("save prompt history: %w", err)
 	}
-	if err := a.commitDraft(agent.Message{}); err != nil {
+	if err := a.commitDraft(prompt.Message{}); err != nil {
 		return fmt.Errorf("retire session draft: %w", err)
 	}
 	a.completion.Dismiss()

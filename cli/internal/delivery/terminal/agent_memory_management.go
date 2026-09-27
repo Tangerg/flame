@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -23,11 +23,11 @@ func (a *app) ShowAgentMemory(argument string) error {
 	return nil
 }
 
-func (a *app) showAgentMemory(target agent.MemoryTarget) {
+func (a *app) showAgentMemory(target conversation.MemoryTarget) {
 	a.executeRuntimeReaderQuery(a.agentMemoryReaderQuery(target))
 }
 
-func (a *app) agentMemoryReaderQuery(target agent.MemoryTarget) runtimeReaderQuery {
+func (a *app) agentMemoryReaderQuery(target conversation.MemoryTarget) runtimeReaderQuery {
 	return runtimeReaderQuery{
 		status: "loading " + string(target.Scope) + " agent memory", mode: runtimeReaderAgentMemory,
 		selection: runtimeReaderSelection{agentMemoryTarget: target},
@@ -41,7 +41,7 @@ func (a *app) agentMemoryReaderQuery(target agent.MemoryTarget) runtimeReaderQue
 	}
 }
 
-func agentMemoryDocument(target agent.MemoryTarget, items []protocol.AgentMemoryItem) readerDocument {
+func agentMemoryDocument(target conversation.MemoryTarget, items []protocol.AgentMemoryItem) readerDocument {
 	title := "Agent memory · " + string(target.Scope)
 	detail := fmt.Sprintf("%d items", len(items))
 	if target.Workspace != "" {
@@ -102,7 +102,7 @@ func (a *app) AddAgentMemory(argument string) error {
 }
 
 func (a *app) EditAgentMemory(argument string) error {
-	return a.loadAgentMemoryItem(argument, "loading agent memory to edit", func(target agent.MemoryTarget, item protocol.AgentMemoryItem) {
+	return a.loadAgentMemoryItem(argument, "loading agent memory to edit", func(target conversation.MemoryTarget, item protocol.AgentMemoryItem) {
 		a.openContextEditor(contextEditorRequest{
 			Title:       "Edit agent memory · " + item.ID,
 			Description: "The item identity and provenance are preserved.",
@@ -129,7 +129,7 @@ func (a *app) SetAgentMemoryPinned(argument string, pinned bool) error {
 	if !pinned {
 		verb = "unpinning"
 	}
-	return a.loadAgentMemoryItem(argument, verb+" agent memory", func(target agent.MemoryTarget, item protocol.AgentMemoryItem) {
+	return a.loadAgentMemoryItem(argument, verb+" agent memory", func(target conversation.MemoryTarget, item protocol.AgentMemoryItem) {
 		if item.Pinned == pinned {
 			state := "unpinned"
 			if pinned {
@@ -150,7 +150,7 @@ func (a *app) PrepareAgentMemoryReview(argument string, approve bool) error {
 	if approve {
 		action, verb, decision = "Approve", "approving", protocol.AgentMemoryReviewApprove
 	}
-	return a.loadAgentMemoryItem(argument, verb+" agent memory", func(target agent.MemoryTarget, item protocol.AgentMemoryItem) {
+	return a.loadAgentMemoryItem(argument, verb+" agent memory", func(target conversation.MemoryTarget, item protocol.AgentMemoryItem) {
 		if item.Status != protocol.AgentMemoryStatusPending {
 			a.message("only pending agent memory can be reviewed · " + item.ID)
 			return
@@ -165,14 +165,14 @@ func (a *app) PrepareAgentMemoryReview(argument string, approve bool) error {
 }
 
 func (a *app) PrepareDeleteAgentMemory(argument string) error {
-	return a.loadAgentMemoryItem(argument, "loading agent memory to delete", func(target agent.MemoryTarget, item protocol.AgentMemoryItem) {
+	return a.loadAgentMemoryItem(argument, "loading agent memory to delete", func(target conversation.MemoryTarget, item protocol.AgentMemoryItem) {
 		a.confirmAction("Delete agent memory", "Delete item "+item.ID+" permanently?", "Delete permanently", func() {
 			a.deleteAgentMemory(target, item.ID)
 		})
 	})
 }
 
-func (a *app) loadAgentMemoryItem(argument, label string, apply func(agent.MemoryTarget, protocol.AgentMemoryItem)) error {
+func (a *app) loadAgentMemoryItem(argument, label string, apply func(conversation.MemoryTarget, protocol.AgentMemoryItem)) error {
 	if a.agentMemory == nil {
 		return errors.New("this runtime composition has no agent memory service")
 	}
@@ -207,44 +207,44 @@ func resolveAgentMemory(items []protocol.AgentMemoryItem, identity string) (prot
 	return resolveByID(items, identity, "agent memory", func(item protocol.AgentMemoryItem) string { return item.ID })
 }
 
-func parseAgentMemoryTarget(argument, workspace string) (agent.MemoryTarget, error) {
+func parseAgentMemoryTarget(argument, workspace string) (conversation.MemoryTarget, error) {
 	argument = strings.TrimSpace(argument)
 	if argument == "" {
 		argument = string(protocol.AgentMemoryScopeProject)
 	}
-	scope, err := agent.ParseMemoryScope(argument)
+	scope, err := conversation.ParseMemoryScope(argument)
 	if err != nil {
-		return agent.MemoryTarget{}, err
+		return conversation.MemoryTarget{}, err
 	}
 	if scope == protocol.AgentMemoryScopeUser {
 		workspace = ""
 	}
-	return agent.NewMemoryTarget(scope, workspace)
+	return conversation.NewMemoryTarget(scope, workspace)
 }
 
-func parseAgentMemoryIdentity(argument, workspace string) (agent.MemoryTarget, string, error) {
+func parseAgentMemoryIdentity(argument, workspace string) (conversation.MemoryTarget, string, error) {
 	fields := strings.Fields(argument)
 	scope, identity := protocol.AgentMemoryScopeProject, ""
 	switch len(fields) {
 	case 1:
 		identity = fields[0]
 	case 2:
-		parsed, err := agent.ParseMemoryScope(fields[0])
+		parsed, err := conversation.ParseMemoryScope(fields[0])
 		if err != nil {
-			return agent.MemoryTarget{}, "", errors.New("usage: [project|user] <memory-id>")
+			return conversation.MemoryTarget{}, "", errors.New("usage: [project|user] <memory-id>")
 		}
 		scope, identity = parsed, fields[1]
 	default:
-		return agent.MemoryTarget{}, "", errors.New("usage: [project|user] <memory-id>")
+		return conversation.MemoryTarget{}, "", errors.New("usage: [project|user] <memory-id>")
 	}
 	if scope == protocol.AgentMemoryScopeUser {
 		workspace = ""
 	}
-	target, err := agent.NewMemoryTarget(scope, workspace)
+	target, err := conversation.NewMemoryTarget(scope, workspace)
 	return target, identity, err
 }
 
-func (a *app) addAgentMemory(target agent.MemoryTarget, content string, complete func(error) bool) error {
+func (a *app) addAgentMemory(target conversation.MemoryTarget, content string, complete func(error) bool) error {
 	presentation := a.session.context
 	a.status.note("adding agent memory")
 	if !a.runAdmissionMutation(agentMemoryOperation, false,
@@ -274,7 +274,7 @@ func (a *app) addAgentMemory(target agent.MemoryTarget, content string, complete
 	return nil
 }
 
-func (a *app) updateAgentMemory(target agent.MemoryTarget, request protocol.AgentMemoryUpdateRequest, label string, complete func(error) bool) error {
+func (a *app) updateAgentMemory(target conversation.MemoryTarget, request protocol.AgentMemoryUpdateRequest, label string, complete func(error) bool) error {
 	presentation := a.session.context
 	a.status.note(label)
 	if !a.runAdmissionMutation(agentMemoryOperation, false,
@@ -302,7 +302,7 @@ func (a *app) updateAgentMemory(target agent.MemoryTarget, request protocol.Agen
 	return nil
 }
 
-func (a *app) reviewAgentMemory(target agent.MemoryTarget, id string, decision protocol.AgentMemoryReviewDecision) {
+func (a *app) reviewAgentMemory(target conversation.MemoryTarget, id string, decision protocol.AgentMemoryReviewDecision) {
 	presentation := a.session.context
 	label := string(decision) + " agent memory " + id
 	a.status.note(label)
@@ -327,7 +327,7 @@ func (a *app) reviewAgentMemory(target agent.MemoryTarget, id string, decision p
 	}
 }
 
-func (a *app) deleteAgentMemory(target agent.MemoryTarget, id string) {
+func (a *app) deleteAgentMemory(target conversation.MemoryTarget, id string) {
 	presentation := a.session.context
 	a.status.note("deleting agent memory " + id)
 	if !a.runAdmissionMutation(agentMemoryOperation, false,

@@ -28,7 +28,7 @@ var rejectedArguments = map[string]string{
 	domaintool.ListSkills:        `{}`,
 	domaintool.LoadSkill:         `{"name":"no-such-skill"}`,
 	domaintool.ReadSkillResource: `{"name":"no-such-skill","path":"no/such/resource.md"}`,
-	// ask_user's refusals are all schema-level, and agentexec's own invoke
+	// ask_user's refusals are all schema-level, and execution adapter's own invoke
 	// settles a Prepare failure as a definite failure — a layer above this one.
 	domaintool.AskUser: "",
 }

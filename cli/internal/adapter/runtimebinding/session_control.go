@@ -8,12 +8,11 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/cli/internal/application/agent/session"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/application/agent/session"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 )
 
 type sessionBinding interface {
@@ -24,65 +23,65 @@ type sessionBinding interface {
 
 var _ session.TransferService = (*Connection)(nil)
 
-func (r *Connection) RollbackSession(ctx context.Context, input agent.RollbackSession) (agent.RollbackResult, error) {
+func (r *Connection) RollbackSession(ctx context.Context, input conversation.RollbackSession) (conversation.RollbackResult, error) {
 	if err := input.Validate(); err != nil {
-		return agent.RollbackResult{}, err
+		return conversation.RollbackResult{}, err
 	}
 	if input.RestoresFiles() {
 		if err := r.requireFeature(protocol.FeatureCheckpoints); err != nil {
-			return agent.RollbackResult{}, err
+			return conversation.RollbackResult{}, err
 		}
 	}
 	options, err := r.commandOptionsFor(input.CommandID)
 	if err != nil {
-		return agent.RollbackResult{}, err
+		return conversation.RollbackResult{}, err
 	}
 	response, err := r.sessions.RollbackSession(ctx, protocol.RollbackSessionRequest{
 		SessionID: input.SessionID, ToRunID: input.ToRunID, RestoreType: input.Scope,
 	}, options)
 	if err != nil {
-		return agent.RollbackResult{}, classifyError(err)
+		return conversation.RollbackResult{}, classifyError(err)
 	}
 	if response == nil || response.Session == nil {
-		return agent.RollbackResult{}, runtimeContractViolation("rollback session returned an incomplete result")
+		return conversation.RollbackResult{}, runtimeContractViolation("rollback session returned an incomplete result")
 	}
-	result := agent.RollbackResult{
+	result := conversation.RollbackResult{
 		Session: projectSession(*response.Session),
-		Dropped: make([]agent.DroppedRun, 0, len(response.DroppedRuns)),
+		Dropped: make([]conversation.DroppedRun, 0, len(response.DroppedRuns)),
 	}
 	if result.Session.ID != input.SessionID {
-		return agent.RollbackResult{}, runtimeContractViolation("rollback session returned session %q for %q", result.Session.ID, input.SessionID)
+		return conversation.RollbackResult{}, runtimeContractViolation("rollback session returned session %q for %q", result.Session.ID, input.SessionID)
 	}
 	for _, dropped := range response.DroppedRuns {
 		if dropped.Run.SessionID != input.SessionID {
-			return agent.RollbackResult{}, runtimeContractViolation(
+			return conversation.RollbackResult{}, runtimeContractViolation(
 				"rollback session %q returned dropped run %q from %q",
 				input.SessionID, dropped.Run.ID, dropped.Run.SessionID,
 			)
 		}
 		projected, err := projectDroppedRun(dropped)
 		if err != nil {
-			return agent.RollbackResult{}, runtimeContractViolation("rollback session returned an invalid dropped run: %v", err)
+			return conversation.RollbackResult{}, runtimeContractViolation("rollback session returned an invalid dropped run: %v", err)
 		}
 		result.Dropped = append(result.Dropped, projected)
 	}
 	return result, nil
 }
 
-func projectDroppedRun(value protocol.DroppedRun) (agent.DroppedRun, error) {
-	projected := agent.DroppedRun{RunID: value.Run.ID, Input: make([]agent.InputContent, 0, len(value.UserInput))}
+func projectDroppedRun(value protocol.DroppedRun) (conversation.DroppedRun, error) {
+	projected := conversation.DroppedRun{RunID: value.Run.ID, Input: make([]conversation.InputContent, 0, len(value.UserInput))}
 	for index, content := range value.UserInput {
 		switch content.Type {
 		case protocol.ContentBlockText:
-			projected.Input = append(projected.Input, agent.InputContent{Kind: content.Type, Text: content.Text})
+			projected.Input = append(projected.Input, conversation.InputContent{Kind: content.Type, Text: content.Text})
 		case protocol.ContentBlockImage:
 			data, err := base64.StdEncoding.DecodeString(content.Data)
 			if err != nil {
-				return agent.DroppedRun{}, fmt.Errorf("rollback dropped run %s image %d: %w", value.Run.ID, index+1, err)
+				return conversation.DroppedRun{}, fmt.Errorf("rollback dropped run %s image %d: %w", value.Run.ID, index+1, err)
 			}
-			projected.Input = append(projected.Input, agent.InputContent{Kind: content.Type, MimeType: content.Mime, Data: data})
+			projected.Input = append(projected.Input, conversation.InputContent{Kind: content.Type, MimeType: content.Mime, Data: data})
 		default:
-			return agent.DroppedRun{}, fmt.Errorf("rollback dropped run %s content %d has unsupported type %q", value.Run.ID, index+1, content.Type)
+			return conversation.DroppedRun{}, fmt.Errorf("rollback dropped run %s content %d has unsupported type %q", value.Run.ID, index+1, content.Type)
 		}
 	}
 	return projected, nil
@@ -136,12 +135,12 @@ func (r *Connection) ExportSession(ctx context.Context, request session.ExportRe
 	return document, nil
 }
 
-func (r *Connection) ImportSession(ctx context.Context, request session.ImportRequest) (agent.Session, error) {
+func (r *Connection) ImportSession(ctx context.Context, request session.ImportRequest) (conversation.Session, error) {
 	if err := request.Validate(); err != nil {
-		return agent.Session{}, err
+		return conversation.Session{}, err
 	}
 	if err := r.requireFeature(protocol.FeatureSessionExport); err != nil {
-		return agent.Session{}, err
+		return conversation.Session{}, err
 	}
 	// An artifact is user-supplied text: duplicate members, unknown members and
 	// a trailing second document all have to fail before it becomes a Session.
@@ -149,34 +148,34 @@ func (r *Connection) ImportSession(ctx context.Context, request session.ImportRe
 	if err := json.Unmarshal(
 		request.Artifact.Bytes(), &artifact, json.RejectUnknownMembers(true),
 	); err != nil {
-		return agent.Session{}, fmt.Errorf("import session: decode artifact: %w", err)
+		return conversation.Session{}, fmt.Errorf("import session: decode artifact: %w", err)
 	}
 	if err := protocol.ValidateWireTree(artifact); err != nil {
-		return agent.Session{}, fmt.Errorf("import session: %w", err)
+		return conversation.Session{}, fmt.Errorf("import session: %w", err)
 	}
 	resolvedWorkspace, err := r.Resolve(ctx, workspace.ResolveRequest{Path: artifact.Session.Workspace.Path})
 	if err != nil {
-		return agent.Session{}, fmt.Errorf("import session workspace: %w", err)
+		return conversation.Session{}, fmt.Errorf("import session workspace: %w", err)
 	}
 	options := r.commandOptions()
 	response, err := r.sessions.ImportSession(ctx, protocol.ImportSessionRequest{Artifact: artifact}, options)
 	if err != nil {
-		return agent.Session{}, classifyError(err)
+		return conversation.Session{}, classifyError(err)
 	}
 	if response == nil || response.Session == nil {
-		return agent.Session{}, runtimeContractViolation("import session returned an incomplete result")
+		return conversation.Session{}, runtimeContractViolation("import session returned an incomplete result")
 	}
 	projected, err := projectSessionResult("import session", artifact.Session.ID, response.Session, nil)
 	if err != nil {
-		return agent.Session{}, err
+		return conversation.Session{}, err
 	}
 	if err := validateImportedSession(artifact.Session, resolvedWorkspace, projected); err != nil {
-		return agent.Session{}, runtimeContractViolation("import session returned an invalid acknowledgement: %v", err)
+		return conversation.Session{}, runtimeContractViolation("import session returned an invalid acknowledgement: %v", err)
 	}
 	return projected, nil
 }
 
-func validateImportedSession(archived protocol.ArtifactSession, resolvedWorkspace workspace.Workspace, result agent.Session) error {
+func validateImportedSession(archived protocol.ArtifactSession, resolvedWorkspace workspace.Workspace, result conversation.Session) error {
 	var problems []error
 	if result.Title != archived.Title {
 		problems = append(problems, fmt.Errorf("runtime returned title %q, want %q", result.Title, archived.Title))
@@ -184,8 +183,8 @@ func validateImportedSession(archived protocol.ArtifactSession, resolvedWorkspac
 	if result.Workspace != resolvedWorkspace {
 		problems = append(problems, fmt.Errorf("runtime returned workspace %+v, want resolved workspace %+v", result.Workspace, resolvedWorkspace))
 	}
-	archivedModel := agent.ModelRef{Provider: archived.Provider, Model: archived.Model}
-	resultModel := agent.ModelRef{Provider: result.Provider, Model: result.Model}
+	archivedModel := conversation.ModelRef{Provider: archived.Provider, Model: archived.Model}
+	resultModel := conversation.ModelRef{Provider: result.Provider, Model: result.Model}
 	if resultModel != archivedModel {
 		problems = append(problems, fmt.Errorf("runtime returned model %q, want %q", resultModel, archivedModel))
 	}

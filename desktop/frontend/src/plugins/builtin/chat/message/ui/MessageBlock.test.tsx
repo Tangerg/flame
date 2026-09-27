@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TranscriptRow } from "@/plugins/builtin/agent/public/conversation";
 import type { AgentMessagePhase } from "@/plugins/sdk/types/agentSessionView";
@@ -171,6 +171,8 @@ describe("MessageBlock action materialization", () => {
       />,
     );
 
+    // Settle the real lazy renderer before checking commentary action ownership.
+    await act(async () => vi.dynamicImportSettled());
     expect(screen.queryByTestId("message.actions")).toBeNull();
 
     rerender(

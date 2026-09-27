@@ -20,6 +20,7 @@
 // true. Where the key IS closed — a union type — `Record<Union, T>` keeps
 // TypeScript's exhaustiveness check and is left alone.
 
+import { assertSourceCoverage, sourceFiles } from "./source-graph.mjs";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
@@ -47,7 +48,9 @@ const TABLE = /\b(?:const|let)\s+(\w+)\s*:\s*Record<\s*string\s*,[\s\S]*?>\s*=\s
 const violations = [];
 
 let examined = 0;
-for (const file of sources(SRC)) {
+const scanned = sources(SRC);
+assertSourceCoverage(sourceFiles(SRC), scanned);
+for (const file of scanned) {
   examined += 1;
   const rel = relative(process.cwd(), file);
   if (EXEMPT.some((prefix) => rel.startsWith(prefix))) continue;
@@ -82,14 +85,6 @@ if (violations.length > 0) {
   process.exit(1);
 }
 
-// Floor, not a target: a guard that read nothing prints the same OK as one that read everything.
-const MIN_FILES_EXAMINED = 500;
-if (examined < MIN_FILES_EXAMINED) {
-  console.error(
-    `[check-lookup-tables] only read ${examined} files (floor ${MIN_FILES_EXAMINED}) — the walk is broken.`,
-  );
-  process.exit(2);
-}
 console.log(
   `[check-lookup-tables] OK — ${examined} files read, no object-literal lookup tables with an open key.`,
 );

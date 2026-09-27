@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 )
 
 // WriteSessionTranscript renders every durable block in an authoritative
 // session snapshot. It intentionally has no live run scope: a saved transcript
 // may contain multiple root runs and their descendants.
-func WriteSessionTranscript(w io.Writer, snapshot agent.SessionSnapshot) error {
+func WriteSessionTranscript(w io.Writer, snapshot conversation.SessionSnapshot) error {
 	if err := snapshot.Validate(); err != nil {
 		return fmt.Errorf("render session transcript: %w", err)
 	}

@@ -1,6 +1,5 @@
 import { t } from "@/lib/i18n";
 import { describeProblem } from "@/lib/rpcErrors";
-import { getContainer } from "@/main/container";
 import type {
   MCPServerCandidate,
   MCPHandshakeTimeout as WireMCPHandshakeTimeout,
@@ -140,11 +139,12 @@ function runtimeMCPServerGateway(client: FlameClient): MCPServerGateway {
   };
 }
 
-export function installMCPServerGateway() {
-  const gateway = runtimeMCPServerGateway(getContainer().client());
+export function installMCPServerGateway(runtimeClient: () => FlameClient) {
+  const gateway = runtimeMCPServerGateway(runtimeClient());
   const mutationOwner = MCPServerMutationOwner.install(gateway);
   return {
-    replaceRuntimeGeneration: () => mutationOwner.replaceRuntimeGeneration(),
+    replaceRuntimeGeneration: () =>
+      mutationOwner.replaceRuntimeGeneration(() => runtimeMCPServerGateway(runtimeClient())),
     dispose() {
       mutationOwner.dispose();
     },

@@ -9,7 +9,7 @@ import (
 
 	"github.com/Tangerg/scope/models/catalog"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec"
+	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
@@ -224,7 +224,7 @@ func TestModelContextCompactionCountsMediaButDoesNotCompactBelowProviderThreshol
 	if err != nil {
 		t.Fatal(err)
 	}
-	request, err := agentexec.NewDurableModelContextCompaction(agentexec.ModelContextCompactionInput{
+	request, err := executionadapter.NewDurableModelContextCompaction(executionadapter.ModelContextCompactionInput{
 		SessionID:     sessionID,
 		Selection:     selection,
 		Instructions:  []chat.Message{chat.NewSystemMessage("frozen instructions")},
@@ -279,7 +279,7 @@ func TestModelContextCompactionCountFailureLeavesDurableStateUntouched(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	request, err := agentexec.NewDurableModelContextCompaction(agentexec.ModelContextCompactionInput{
+	request, err := executionadapter.NewDurableModelContextCompaction(executionadapter.ModelContextCompactionInput{
 		SessionID:     sessionID,
 		Selection:     selection,
 		Instructions:  []chat.Message{chat.NewSystemMessage("frozen instructions")},
@@ -341,7 +341,7 @@ func TestModelContextCompactionCompactsMediaOnlyAtProviderThreshold(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	request, err := agentexec.NewDurableModelContextCompaction(agentexec.ModelContextCompactionInput{
+	request, err := executionadapter.NewDurableModelContextCompaction(executionadapter.ModelContextCompactionInput{
 		SessionID:     sessionID,
 		Selection:     selection,
 		Instructions:  []chat.Message{chat.NewSystemMessage("frozen instructions")},
@@ -409,7 +409,7 @@ func TestModelContextCompactionCalibratesThresholdFromProviderUsage(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	calibration, err := agentexec.NewModelContextTokenCalibration(
+	calibration, err := executionadapter.NewModelContextTokenCalibration(
 		int64(rawEstimate+200),
 		rawEstimate,
 	)
@@ -514,7 +514,7 @@ func TestModelContextCompactionUsesSelectedModelHardInputLimit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request, err := agentexec.NewDurableModelContextCompaction(agentexec.ModelContextCompactionInput{
+	request, err := executionadapter.NewDurableModelContextCompaction(executionadapter.ModelContextCompactionInput{
 		SessionID:     sessionID,
 		Selection:     selection,
 		Instructions:  instructions,
@@ -601,7 +601,7 @@ func TestModelContextCompactionReservesExplicitOutputWindow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request, err := agentexec.NewDurableModelContextCompaction(agentexec.ModelContextCompactionInput{
+	request, err := executionadapter.NewDurableModelContextCompaction(executionadapter.ModelContextCompactionInput{
 		SessionID:    sessionID,
 		Selection:    selection,
 		Instructions: instructions,
@@ -912,13 +912,13 @@ func durableContextRequest(
 	candidate []chat.Message,
 	protectedTail int,
 	preCompact func(context.Context) (bool, error),
-) agentexec.ModelContextCompaction {
+) executionadapter.ModelContextCompaction {
 	return durableContextRequestWithCalibration(
 		t,
 		sessionID,
 		candidate,
 		protectedTail,
-		agentexec.ModelContextTokenCalibration{},
+		executionadapter.ModelContextTokenCalibration{},
 		preCompact,
 	)
 }
@@ -928,15 +928,15 @@ func durableContextRequestWithCalibration(
 	sessionID string,
 	candidate []chat.Message,
 	protectedTail int,
-	calibration agentexec.ModelContextTokenCalibration,
+	calibration executionadapter.ModelContextTokenCalibration,
 	preCompact func(context.Context) (bool, error),
-) agentexec.ModelContextCompaction {
+) executionadapter.ModelContextCompaction {
 	t.Helper()
 	selection, err := modelref.New("anthropic", "claude-test")
 	if err != nil {
 		t.Fatal(err)
 	}
-	request, err := agentexec.NewDurableModelContextCompaction(agentexec.ModelContextCompactionInput{
+	request, err := executionadapter.NewDurableModelContextCompaction(executionadapter.ModelContextCompactionInput{
 		SessionID:     sessionID,
 		Selection:     selection,
 		Instructions:  []chat.Message{chat.NewSystemMessage("frozen instructions")},

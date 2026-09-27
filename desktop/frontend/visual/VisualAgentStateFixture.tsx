@@ -2,8 +2,8 @@ import { useLayoutEffect, useRef } from "react";
 import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
 import { selectCurrentRootAttention } from "@/plugins/builtin/agent/application/view/runTree";
 import type { AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
-import { useSendComposerInput } from "@/plugins/builtin/chat/composer/public/sendToAgent";
-import { ChatPanel } from "@/plugins/builtin/shell/kernel/panel/ChatPanel";
+import { useChatSend } from "@/plugins/builtin/agent/public/input";
+import { ChatPanel } from "@/plugins/builtin/shell/workbench/panel/ChatPanel";
 import { AgentAppShell, AgentRow, AgentSurfaceHeader } from "@/ui/agent";
 import type { VisualAgentState } from "./agentSessionSnapshots";
 import * as stylex from "@stylexjs/stylex";
@@ -85,7 +85,7 @@ export function VisualAgentStateFixture({
   view: AgentSessionView;
 }) {
   const attention = selectCurrentRootAttention(view);
-  const send = useSendComposerInput();
+  const send = useChatSend();
 
   return (
     <AgentAppShell

@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { resetContainer, setContainer } from "@/main/container";
 import {
   RpcError,
   RpcTransportError,
@@ -16,6 +15,11 @@ import { agentRuntime } from "../application/ports/runtimeGateway";
 import { installAgentRuntimeGateway } from "./agentRuntimeGateway";
 import { registerAgentSessionSharedMaterial } from "../application/ports/sessionSharedMaterial";
 
+let runtimeClient: () => FlameClient = () => {
+  throw new Error("Runtime test client is not configured");
+};
+const getRuntimeClient = () => runtimeClient();
+
 let uninstall: ReturnType<typeof installAgentRuntimeGateway> | undefined;
 let uninstallMaterialCommitter: (() => void) | undefined;
 
@@ -24,7 +28,7 @@ afterEach(() => {
   uninstall = undefined;
   uninstallMaterialCommitter?.();
   uninstallMaterialCommitter = undefined;
-  resetContainer();
+
   vi.restoreAllMocks();
   vi.useRealTimers();
 });
@@ -46,10 +50,8 @@ describe("agentRuntimeGateway", () => {
           retry: retiredRetry,
         }) as MutationPromise<{ id: ReturnType<typeof asSessionId> }>,
     );
-    setContainer({
-      client: () => ({ sessions: { create: retiredCreate } }) as unknown as FlameClient,
-    });
-    uninstall = installAgentRuntimeGateway();
+    runtimeClient = () => ({ sessions: { create: retiredCreate } }) as unknown as FlameClient;
+    uninstall = installAgentRuntimeGateway(getRuntimeClient);
 
     await expect(agentRuntime().createSession({ cwd: "/repo" })).rejects.toBe(transportFailure);
     uninstall.dispose();
@@ -62,10 +64,8 @@ describe("agentRuntimeGateway", () => {
           retry: vi.fn(),
         }) as MutationPromise<{ id: ReturnType<typeof asSessionId> }>,
     );
-    setContainer({
-      client: () => ({ sessions: { create: successorCreate } }) as unknown as FlameClient,
-    });
-    uninstall = installAgentRuntimeGateway();
+    runtimeClient = () => ({ sessions: { create: successorCreate } }) as unknown as FlameClient;
+    uninstall = installAgentRuntimeGateway(getRuntimeClient);
 
     await expect(agentRuntime().createSession({ cwd: "/repo" })).resolves.toEqual({
       id: "ses_successor",
@@ -87,10 +87,8 @@ describe("agentRuntimeGateway", () => {
         retry: vi.fn(),
       }) as MutationPromise<{ id: ReturnType<typeof asSessionId> }>;
     });
-    setContainer({
-      client: () => ({ sessions: { create } }) as unknown as FlameClient,
-    });
-    uninstall = installAgentRuntimeGateway();
+    runtimeClient = () => ({ sessions: { create } }) as unknown as FlameClient;
+    uninstall = installAgentRuntimeGateway(getRuntimeClient);
 
     const creating = agentRuntime().createSession({ cwd: "/repo" });
     uninstall.dispose();
@@ -128,10 +126,8 @@ describe("agentRuntimeGateway", () => {
         { signal },
       ),
     );
-    setContainer({
-      client: () => ({ sessions: { create } }) as unknown as FlameClient,
-    });
-    uninstall = installAgentRuntimeGateway();
+    runtimeClient = () => ({ sessions: { create } }) as unknown as FlameClient;
+    uninstall = installAgentRuntimeGateway(getRuntimeClient);
 
     const creating = agentRuntime().createSession({ cwd: "/repo" });
     await vi.advanceTimersByTimeAsync(0);
@@ -150,10 +146,8 @@ describe("agentRuntimeGateway", () => {
   it("forwards the caller snapshot revision without a get-before-write", async () => {
     const get = vi.fn();
     const update = vi.fn().mockResolvedValue({ revision: 12 });
-    setContainer({
-      client: () => ({ sessions: { get, update } }) as unknown as FlameClient,
-    });
-    uninstall = installAgentRuntimeGateway();
+    runtimeClient = () => ({ sessions: { get, update } }) as unknown as FlameClient;
+    uninstall = installAgentRuntimeGateway(getRuntimeClient);
 
     await expect(
       agentRuntime().updateSession({
@@ -173,10 +167,8 @@ describe("agentRuntimeGateway", () => {
 
   it("projects the approval mode saved by the Runtime", async () => {
     const setMode = vi.fn().mockResolvedValue({ mode: "safe" });
-    setContainer({
-      client: () => ({ approval: { setMode } }) as unknown as FlameClient,
-    });
-    uninstall = installAgentRuntimeGateway();
+    runtimeClient = () => ({ approval: { setMode } }) as unknown as FlameClient;
+    uninstall = installAgentRuntimeGateway(getRuntimeClient);
 
     await expect(agentRuntime().setApprovalMode("safe")).resolves.toBe("safe");
     expect(setMode).toHaveBeenCalledWith("safe");
@@ -184,10 +176,8 @@ describe("agentRuntimeGateway", () => {
 
   it("translates structured steering input only at the runtime adapter", async () => {
     const steer = vi.fn().mockResolvedValue({ userItemId: "item_steer" });
-    setContainer({
-      client: () => ({ runs: { steer } }) as unknown as FlameClient,
-    });
-    uninstall = installAgentRuntimeGateway();
+    runtimeClient = () => ({ runs: { steer } }) as unknown as FlameClient;
+    uninstall = installAgentRuntimeGateway(getRuntimeClient);
 
     const result = await agentRuntime().steerRun("run_1", "seg_1", {
       parts: [
@@ -236,13 +226,11 @@ describe("agentRuntimeGateway", () => {
           updatedAt: "2026-08-17T00:01:00Z",
         },
       });
-      setContainer({
-        client: () =>
-          ({
-            sessions: { snapshot: readSnapshot },
-          }) as unknown as FlameClient,
-      });
-      uninstall = installAgentRuntimeGateway();
+      runtimeClient = () =>
+        ({
+          sessions: { snapshot: readSnapshot },
+        }) as unknown as FlameClient;
+      uninstall = installAgentRuntimeGateway(getRuntimeClient);
 
       const snapshot = await agentRuntime().loadSessionSnapshot("ses_1");
 
@@ -270,13 +258,11 @@ describe("agentRuntimeGateway", () => {
       message: "session missing",
       data: { type: "session_not_found" },
     });
-    setContainer({
-      client: () =>
-        ({
-          sessions: { snapshot: vi.fn().mockRejectedValue(missing) },
-        }) as unknown as FlameClient,
-    });
-    uninstall = installAgentRuntimeGateway();
+    runtimeClient = () =>
+      ({
+        sessions: { snapshot: vi.fn().mockRejectedValue(missing) },
+      }) as unknown as FlameClient;
+    uninstall = installAgentRuntimeGateway(getRuntimeClient);
 
     await expect(agentRuntime().loadSessionSnapshot("ses_gone")).resolves.toBeNull();
   });
@@ -287,11 +273,9 @@ describe("agentRuntimeGateway", () => {
       message: "session missing",
       data: { type: "session_not_found" },
     });
-    setContainer({
-      client: () =>
-        ({ sessions: { delete: vi.fn().mockRejectedValue(missing) } }) as unknown as FlameClient,
-    });
-    uninstall = installAgentRuntimeGateway();
+    runtimeClient = () =>
+      ({ sessions: { delete: vi.fn().mockRejectedValue(missing) } }) as unknown as FlameClient;
+    uninstall = installAgentRuntimeGateway(getRuntimeClient);
 
     await expect(agentRuntime().deleteSession("ses_gone")).resolves.toBeUndefined();
   });
@@ -309,10 +293,8 @@ describe("agentRuntimeGateway", () => {
         },
       ],
     });
-    setContainer({
-      client: () => ({ sessions: { rollback } }) as unknown as FlameClient,
-    });
-    uninstall = installAgentRuntimeGateway();
+    runtimeClient = () => ({ sessions: { rollback } }) as unknown as FlameClient;
+    uninstall = installAgentRuntimeGateway(getRuntimeClient);
 
     await expect(
       agentRuntime().rollbackSession({

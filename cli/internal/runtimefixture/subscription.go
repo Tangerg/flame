@@ -5,29 +5,29 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-func (r *Runtime) SubscribeRun(ctx context.Context, in agent.SubscribeRun) (agent.SegmentStream, error) {
+func (r *Runtime) SubscribeRun(ctx context.Context, in conversation.SubscribeRun) (conversation.SegmentStream, error) {
 	if err := in.Validate(); err != nil {
-		return agent.SegmentStream{}, fmt.Errorf("mock: %w", err)
+		return conversation.SegmentStream{}, fmt.Errorf("mock: %w", err)
 	}
 	if err := context.Cause(ctx); err != nil {
-		return agent.SegmentStream{}, err
+		return conversation.SegmentStream{}, err
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	run := r.runs[in.RunID]
 	if run == nil {
-		return agent.SegmentStream{}, fmt.Errorf("%w: %s", agent.ErrRunNotFound, in.RunID)
+		return conversation.SegmentStream{}, fmt.Errorf("%w: %s", conversation.ErrRunNotFound, in.RunID)
 	}
 	if run.active != in.SegmentID || run.status != protocol.RunStatusRunning {
-		return agent.SegmentStream{}, fmt.Errorf("%w: run %s is not executing segment %s", agent.ErrStaleSegment, in.RunID, in.SegmentID)
+		return conversation.SegmentStream{}, fmt.Errorf("%w: run %s is not executing segment %s", conversation.ErrStaleSegment, in.RunID, in.SegmentID)
 	}
 	segment := run.segments[in.SegmentID]
 	if segment == nil {
-		return agent.SegmentStream{}, fmt.Errorf("%w: %s", agent.ErrStaleSegment, in.SegmentID)
+		return conversation.SegmentStream{}, fmt.Errorf("%w: %s", conversation.ErrStaleSegment, in.SegmentID)
 	}
 
 	head := len(segment.events)
@@ -35,28 +35,28 @@ func (r *Runtime) SubscribeRun(ctx context.Context, in agent.SubscribeRun) (agen
 	if in.AfterEventID != "" {
 		at := replayIndex(segment.events, in.AfterEventID)
 		if at < 0 {
-			return agent.SegmentStream{}, fmt.Errorf("%w: event %s", agent.ErrReplayUnavailable, in.AfterEventID)
+			return conversation.SegmentStream{}, fmt.Errorf("%w: event %s", conversation.ErrReplayUnavailable, in.AfterEventID)
 		}
 		start = at + 1
 	}
 	fault, err := r.takeFaultLocked()
 	if err != nil {
-		return agent.SegmentStream{}, err
+		return conversation.SegmentStream{}, err
 	}
 	stream := r.bindSegmentLocked(ctx, run, segment, start, head, "", fault)
 	if in.Snapshot {
 		snapshot, err := r.sessionSnapshotLocked(in.SessionID)
 		if err != nil {
-			return agent.SegmentStream{}, err
+			return conversation.SegmentStream{}, err
 		}
 		stream.Snapshot = &snapshot
 	}
 	return stream, nil
 }
 
-func replayIndex(events []agent.RunEvent, eventID string) int {
+func replayIndex(events []conversation.RunEvent, eventID string) int {
 	for i, event := range events {
-		if event.EventID == eventID && agent.ReplayableEvent(event.Event) {
+		if event.EventID == eventID && conversation.ReplayableEvent(event.Event) {
 			return i
 		}
 	}
@@ -78,10 +78,10 @@ func (r *Runtime) bindSegmentLocked(
 	replayUntil int,
 	userItemID string,
 	fault SubscriptionFault,
-) agent.SegmentStream {
+) conversation.SegmentStream {
 	headEventID := ""
 	for _, event := range slices.Backward(segment.events) {
-		if agent.ReplayableEvent(event.Event) {
+		if conversation.ReplayableEvent(event.Event) {
 			headEventID = event.EventID
 			break
 		}
@@ -90,7 +90,7 @@ func (r *Runtime) bindSegmentLocked(
 		runtime: r, ctx: ctx, run: run, segment: segment,
 		next: start, replayUntil: replayUntil, fault: fault,
 	}
-	return agent.SegmentStream{
+	return conversation.SegmentStream{
 		RunID: run.id, SegmentID: segment.id, UserItemID: userItemID,
 		HeadEventID: headEventID, Events: subscription.stream,
 	}
@@ -108,7 +108,7 @@ type segmentSubscription struct {
 	terminalDelivered bool
 }
 
-func (s *segmentSubscription) stream(yield func(agent.RunEvent, error) bool) {
+func (s *segmentSubscription) stream(yield func(conversation.RunEvent, error) bool) {
 	for {
 		next, closed, changed, terminalErr := s.nextEvent()
 		if next != nil {
@@ -118,7 +118,7 @@ func (s *segmentSubscription) stream(yield func(agent.RunEvent, error) bool) {
 			continue
 		}
 		if terminalErr != nil {
-			yield(agent.RunEvent{}, terminalErr)
+			yield(conversation.RunEvent{}, terminalErr)
 			return
 		}
 		if closed || !s.awaitChange(changed, yield) {
@@ -127,14 +127,14 @@ func (s *segmentSubscription) stream(yield func(agent.RunEvent, error) bool) {
 	}
 }
 
-func (s *segmentSubscription) nextEvent() (*agent.RunEvent, bool, <-chan struct{}, error) {
+func (s *segmentSubscription) nextEvent() (*conversation.RunEvent, bool, <-chan struct{}, error) {
 	s.runtime.mu.Lock()
 	defer s.runtime.mu.Unlock()
 	for s.next < len(s.segment.events) {
 		at := s.next
 		s.next++
 		event := s.segment.events[at]
-		if at < s.replayUntil && !agent.ReplayableEvent(event.Event) {
+		if at < s.replayUntil && !conversation.ReplayableEvent(event.Event) {
 			continue
 		}
 		cloned := event.Clone()
@@ -147,7 +147,7 @@ func (s *segmentSubscription) nextEvent() (*agent.RunEvent, bool, <-chan struct{
 	return nil, s.segment.closed, s.segment.changed, nil
 }
 
-func (s *segmentSubscription) deliver(next agent.RunEvent, yield func(agent.RunEvent, error) bool) bool {
+func (s *segmentSubscription) deliver(next conversation.RunEvent, yield func(conversation.RunEvent, error) bool) bool {
 	s.position++
 	if !yield(next, nil) {
 		return false
@@ -160,23 +160,23 @@ func (s *segmentSubscription) deliver(next agent.RunEvent, yield func(agent.RunE
 			}
 		case FaultConflict:
 			conflict := next.Clone()
-			conflict.Event = agent.BlockCompleted{Block: agent.Block{ID: "conflict", RunID: next.RunID, Status: agent.BlockStatusCompleted, Kind: agent.BlockNotice, Text: "conflicting replay"}}
+			conflict.Event = conversation.BlockCompleted{Block: conversation.Block{ID: "conflict", RunID: next.RunID, Status: conversation.BlockStatusCompleted, Kind: conversation.BlockNotice, Text: "conflicting replay"}}
 			yield(conflict, nil)
 			return false
 		case FaultDisconnect:
-			yield(agent.RunEvent{}, fmt.Errorf("%w after event %s", agent.ErrDisconnected, next.EventID))
+			yield(conversation.RunEvent{}, fmt.Errorf("%w after event %s", conversation.ErrDisconnected, next.EventID))
 			return false
 		}
 	}
 	return true
 }
 
-func (s *segmentSubscription) awaitChange(changed <-chan struct{}, yield func(agent.RunEvent, error) bool) bool {
+func (s *segmentSubscription) awaitChange(changed <-chan struct{}, yield func(conversation.RunEvent, error) bool) bool {
 	select {
 	case <-changed:
 		return true
 	case <-s.ctx.Done():
-		yield(agent.RunEvent{}, context.Cause(s.ctx))
+		yield(conversation.RunEvent{}, context.Cause(s.ctx))
 		return false
 	}
 }

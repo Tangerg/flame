@@ -5,12 +5,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/cli/internal/application/mutation"
+	"github.com/Tangerg/flame/cli/internal/application/retry"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
-	"github.com/Tangerg/flame/cli/internal/application/retry"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 func TestTransportAvailabilityAndMutationCertaintyRemainIndependent(t *testing.T) {
@@ -45,7 +44,7 @@ type runtimeProblemError struct {
 
 func requireRuntimeContractViolation(t testing.TB, err error) {
 	t.Helper()
-	if !errors.Is(err, agent.ErrIncompatibleRuntime) {
+	if !errors.Is(err, conversation.ErrIncompatibleRuntime) {
 		t.Fatalf("error = %v, want ErrIncompatibleRuntime", err)
 	}
 }
@@ -60,14 +59,14 @@ func TestRuntimeContractViolationPreservesValidationCause(t *testing.T) {
 		Fields: []protocol.FieldError{{Field: "sequence", Detail: "must be positive"}},
 	}
 	err := runtimeContractViolation("runtime change event is invalid: %v", cause)
-	if !errors.Is(err, agent.ErrIncompatibleRuntime) {
+	if !errors.Is(err, conversation.ErrIncompatibleRuntime) {
 		t.Fatalf("error = %v, want ErrIncompatibleRuntime", err)
 	}
 	var preserved *protocol.ConstraintError
 	if !errors.As(err, &preserved) || preserved != cause {
 		t.Fatalf("validation cause = %v, want original ConstraintError", preserved)
 	}
-	want := agent.ErrIncompatibleRuntime.Error() + ": runtime change event is invalid: " + cause.Error()
+	want := conversation.ErrIncompatibleRuntime.Error() + ": runtime change event is invalid: " + cause.Error()
 	if err.Error() != want {
 		t.Fatalf("error = %q, want %q", err, want)
 	}
@@ -87,7 +86,7 @@ func TestClassifyErrorPreservesIdentityAndProjectsRecoveryMetadata(t *testing.T)
 		},
 	}
 	err := classifyError(source)
-	if !errors.Is(err, agent.ErrIncompatibleRuntime) || !errors.Is(err, protocol.ErrCapabilityNotNeg) {
+	if !errors.Is(err, conversation.ErrIncompatibleRuntime) || !errors.Is(err, protocol.ErrCapabilityNotNeg) {
 		t.Fatalf("classified identities = %v", err)
 	}
 	var wire protocol.ProblemError
@@ -106,9 +105,9 @@ func TestClassifyErrorExposesCommandReplaySemantics(t *testing.T) {
 		source error
 		want   error
 	}{
-		{source: protocol.ErrIdempotencyInProgress, want: agent.ErrCommandInProgress},
-		{source: protocol.ErrIdempotencyConflict, want: agent.ErrCommandConflict},
-		{source: protocol.ErrIdempotencyStoreMismatch, want: agent.ErrCommandStoreMismatch},
+		{source: protocol.ErrIdempotencyInProgress, want: conversation.ErrCommandInProgress},
+		{source: protocol.ErrIdempotencyConflict, want: conversation.ErrCommandConflict},
+		{source: protocol.ErrIdempotencyStoreMismatch, want: conversation.ErrCommandStoreMismatch},
 	} {
 		problem := protocol.ProblemData{Type: test.source.Error()}
 		if errors.Is(test.source, protocol.ErrIdempotencyInProgress) {

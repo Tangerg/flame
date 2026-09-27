@@ -5,12 +5,12 @@ import (
 	"errors"
 	"fmt"
 
-	flameruntime "github.com/Tangerg/flame/runtime"
-	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/domain/failure"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
+	flameruntime "github.com/Tangerg/flame/runtime"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type projectedError struct {
@@ -37,7 +37,7 @@ func (p projectedError) Unwrap() []error {
 // negotiated at startup. Callers may retry transport and storage failures, but
 // the same malformed response cannot become valid through backoff.
 func runtimeContractViolation(format string, arguments ...any) error {
-	causes := []error{agent.ErrIncompatibleRuntime}
+	causes := []error{conversation.ErrIncompatibleRuntime}
 	for _, argument := range arguments {
 		if cause, ok := argument.(error); ok {
 			causes = append(causes, cause)
@@ -55,7 +55,7 @@ type contractViolationError struct {
 }
 
 func (e *contractViolationError) Error() string {
-	return agent.ErrIncompatibleRuntime.Error() + ": " + e.detail
+	return conversation.ErrIncompatibleRuntime.Error() + ": " + e.detail
 }
 
 func (e *contractViolationError) Unwrap() []error {
@@ -74,26 +74,26 @@ func classifyError(err error) error {
 		source error
 		target error
 	}{
-		{protocol.ErrSessionNotFound, agent.ErrSessionNotFound},
-		{protocol.ErrRunNotFound, agent.ErrRunNotFound},
-		{protocol.ErrInterruptNotOpen, agent.ErrInterruptNotOpen},
-		{protocol.ErrStaleSegment, agent.ErrStaleSegment},
-		{protocol.ErrRunWaiting, agent.ErrRunWaiting},
-		{protocol.ErrRunFinished, agent.ErrRunFinished},
-		{protocol.ErrReplayCursorInvalid, agent.ErrReplayCursorInvalid},
-		{protocol.ErrReplayUnavailable, agent.ErrReplayUnavailable},
-		{protocol.ErrSessionHasActiveRun, agent.ErrSessionHasActiveRun},
-		{protocol.ErrSessionBusy, agent.ErrSessionBusy},
-		{protocol.ErrRevisionConflict, agent.ErrRevisionConflict},
-		{protocol.ErrIdempotencyInProgress, agent.ErrCommandInProgress},
-		{protocol.ErrIdempotencyConflict, agent.ErrCommandConflict},
-		{protocol.ErrIdempotencyStoreMismatch, agent.ErrCommandStoreMismatch},
-		{protocol.ErrCapabilityNotNeg, agent.ErrIncompatibleRuntime},
-		{protocol.ErrInvalidProtocolVersion, agent.ErrIncompatibleRuntime},
+		{protocol.ErrSessionNotFound, conversation.ErrSessionNotFound},
+		{protocol.ErrRunNotFound, conversation.ErrRunNotFound},
+		{protocol.ErrInterruptNotOpen, conversation.ErrInterruptNotOpen},
+		{protocol.ErrStaleSegment, conversation.ErrStaleSegment},
+		{protocol.ErrRunWaiting, conversation.ErrRunWaiting},
+		{protocol.ErrRunFinished, conversation.ErrRunFinished},
+		{protocol.ErrReplayCursorInvalid, conversation.ErrReplayCursorInvalid},
+		{protocol.ErrReplayUnavailable, conversation.ErrReplayUnavailable},
+		{protocol.ErrSessionHasActiveRun, conversation.ErrSessionHasActiveRun},
+		{protocol.ErrSessionBusy, conversation.ErrSessionBusy},
+		{protocol.ErrRevisionConflict, conversation.ErrRevisionConflict},
+		{protocol.ErrIdempotencyInProgress, conversation.ErrCommandInProgress},
+		{protocol.ErrIdempotencyConflict, conversation.ErrCommandConflict},
+		{protocol.ErrIdempotencyStoreMismatch, conversation.ErrCommandStoreMismatch},
+		{protocol.ErrCapabilityNotNeg, conversation.ErrIncompatibleRuntime},
+		{protocol.ErrInvalidProtocolVersion, conversation.ErrIncompatibleRuntime},
 		{protocol.ErrVcsUnavailable, workspace.ErrVersionControlUnavailable},
-		{flameruntime.ErrClosed, agent.ErrDisconnected},
-		{flameruntime.ErrDisconnected, agent.ErrDisconnected},
-		{flameruntime.ErrInvalidResponse, agent.ErrIncompatibleRuntime},
+		{flameruntime.ErrClosed, conversation.ErrDisconnected},
+		{flameruntime.ErrDisconnected, conversation.ErrDisconnected},
+		{flameruntime.ErrInvalidResponse, conversation.ErrIncompatibleRuntime},
 	} {
 		if errors.Is(err, mapping.source) {
 			kind = mapping.target
@@ -101,7 +101,7 @@ func classifyError(err error) error {
 		}
 	}
 	if errors.Is(err, flameruntime.ErrAcknowledgementUnknown) {
-		kind = errors.Join(kind, agent.ErrCommandOutcomeUnknown)
+		kind = errors.Join(kind, replay.ErrCommandOutcomeUnknown)
 	}
 	var problem *protocol.ProblemData
 	if source, ok := errors.AsType[protocol.ProblemError](err); ok {

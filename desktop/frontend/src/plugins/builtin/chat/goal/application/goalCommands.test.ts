@@ -249,7 +249,7 @@ describe("Goal lifecycle commands", () => {
 
     const successorResume = vi.fn().mockResolvedValue(receipt);
     expect(
-      owner.replaceRuntimeGeneration(
+      owner.replaceRuntimeGeneration(() =>
         goalGateway({
           start: vi.fn().mockResolvedValue(receipt),
           stop: vi.fn().mockResolvedValue(receipt),

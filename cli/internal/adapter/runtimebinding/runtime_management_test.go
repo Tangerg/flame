@@ -6,12 +6,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/application/integration/models"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/cli/internal/domain/failure"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/application/integration/models"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/failure"
 )
 
 type usageBindingStub struct {
@@ -77,7 +76,7 @@ func TestUsageAdapterKeepsAllTimeAbsentOnTheWire(t *testing.T) {
 		},
 	}, meta: requestMeta("test")}
 
-	report, err := runtime.Summary(t.Context(), agent.AllTimeUsage())
+	report, err := runtime.Summary(t.Context(), conversation.AllTimeUsage())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +95,7 @@ func TestUsageAdapterRejectsUnknownPeriodBeforeCallingRuntime(t *testing.T) {
 		},
 	}, meta: requestMeta("test")}
 
-	if _, err := runtime.Summary(t.Context(), agent.UsageSummaryPeriod{}); err == nil {
+	if _, err := runtime.Summary(t.Context(), conversation.UsageSummaryPeriod{}); err == nil {
 		t.Fatal("Summary accepted an unknown period")
 	}
 	if called {
@@ -122,11 +121,11 @@ func TestSessionUsageRejectsInvalidIdentityBeforeCallingRuntime(t *testing.T) {
 	}
 }
 
-func recentUsagePeriod(t *testing.T, days int) agent.UsageSummaryPeriod {
+func recentUsagePeriod(t *testing.T, days int) conversation.UsageSummaryPeriod {
 	t.Helper()
-	period, err := agent.RecentUsageDays(days)
+	period, err := conversation.RecentUsageDays(days)
 	if err != nil {
-		t.Fatalf("agent.RecentUsageDays(%d): %v", days, err)
+		t.Fatalf("conversation.RecentUsageDays(%d): %v", days, err)
 	}
 	return period
 }

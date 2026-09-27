@@ -10,29 +10,26 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/attachment"
+	runworkflow "github.com/Tangerg/flame/cli/internal/application/agent/run"
+	"github.com/Tangerg/flame/cli/internal/application/agent/session"
+	"github.com/Tangerg/flame/cli/internal/application/changefeed"
+	"github.com/Tangerg/flame/cli/internal/application/extensions"
+	"github.com/Tangerg/flame/cli/internal/application/mutation"
+	"github.com/Tangerg/flame/cli/internal/application/settings"
+	"github.com/Tangerg/flame/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/core/program"
 	"github.com/Tangerg/oolong/core/term"
-
-	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/attachment"
-	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/workbenchstate"
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
-	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
-	"github.com/Tangerg/flame/cli/internal/application/agent/promptqueue"
-	runworkflow "github.com/Tangerg/flame/cli/internal/application/agent/run"
-	"github.com/Tangerg/flame/cli/internal/application/agent/session"
-	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
-	"github.com/Tangerg/flame/cli/internal/application/changefeed"
-	"github.com/Tangerg/flame/cli/internal/application/extensions"
-	"github.com/Tangerg/flame/cli/internal/application/settings"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 )
 
 // Config describes one terminal application instance.
 type Config struct {
 	Runtime          Runtime
-	RuntimeProfile   *runtimebinding.Profile
+	RuntimeProfile   RuntimeProfile
 	Workspaces       Workspaces
 	Changes          changefeed.Source
 	Transfers        session.TransferService
@@ -55,7 +52,7 @@ type Config struct {
 	PluginSources    []extensions.Source
 	Host             program.Host
 	Settings         *settings.Config
-	StateDirectory   string
+	OpenWorkbench    func() (*workbench.Store, error)
 	// LocalDirectory fixes client-side authoring to this absolute directory.
 	// Runtime workspace references then remain opaque to this client.
 	// When empty, an embedded Runtime's Session workspace is also local.
@@ -97,7 +94,10 @@ func Run(ctx context.Context, cfg Config) (runErr error) {
 	}
 
 	var active *app
-	queue := promptqueue.New()
+	prompts, err := workbench.NewQueue(prepared.workbench)
+	if err != nil {
+		return err
+	}
 	programConfig := program.Config{
 		Root: func(loop *program.Runtime) program.Component {
 			active = newApp(loop, appConfig{
@@ -111,7 +111,7 @@ func Run(ctx context.Context, cfg Config) (runErr error) {
 				registry: registry, pluginHost: extensionHost, pluginIssues: discovered.Issues,
 				attachments: prepared.attachments,
 				settings:    prepared.settings,
-				options:     prepared.options, keyBindings: prepared.keyBindings, queue: queue,
+				options:     prepared.options, keyBindings: prepared.keyBindings, queue: prompts,
 				workbench: prepared.workbench, initialDraft: prepared.draft, editor: prepared.editor,
 				recoveredSteers: prepared.recoveryIssues.receipts,
 				localDirectory:  cfg.LocalDirectory, detachOnExit: cfg.DetachOnExit,
@@ -166,15 +166,15 @@ func (e terminalUnavailableError) Unwrap() error      { return e.cause }
 func (terminalUnavailableError) TerminalUnavailable() {}
 
 type preparedSession struct {
-	opened         agent.SessionSnapshot
-	runtimeProfile *runtimebinding.Profile
+	opened         conversation.SessionSnapshot
+	runtimeProfile RuntimeProfile
 	attachments    *attachment.Resolver
 	keyBindings    keyBindings
 	settings       settings.Config
 
-	options          agent.RunOptions
+	options          prompt.RunOptions
 	workbench        *workbench.Store
-	draft            agent.Message
+	draft            prompt.Message
 	editor           *draftEditor
 	rollbackRecovery *workbench.SessionRollbackRecovery
 	recoveryIssues   sessionCommandRecovery
@@ -193,9 +193,15 @@ func prepareSession(ctx context.Context, cfg Config) (preparedSession, error) {
 	if err != nil {
 		return preparedSession{}, err
 	}
-	authoring, err := workbenchstate.Open(cfg.StateDirectory)
+	if cfg.OpenWorkbench == nil {
+		return preparedSession{}, errors.New("session: workbench factory is required")
+	}
+	authoring, err := cfg.OpenWorkbench()
 	if err != nil {
 		return preparedSession{}, fmt.Errorf("open CLI workbench: %w", err)
+	}
+	if authoring == nil {
+		return preparedSession{}, errors.New("session: workbench factory returned no authoring store")
 	}
 	recovery, err := recoverSessionCommands(ctx, cfg.Runtime, authoring, profile)
 	if err != nil {
@@ -209,17 +215,15 @@ func prepareSession(ctx context.Context, cfg Config) (preparedSession, error) {
 	return prepared, nil
 }
 
-func validatedSessionConfig(cfg Config) (*runtimebinding.Profile, settings.Config, keyBindings, error) {
+func validatedSessionConfig(cfg Config) (RuntimeProfile, settings.Config, keyBindings, error) {
 	if cfg.LocalDirectory != "" && !filepath.IsAbs(cfg.LocalDirectory) {
 		return nil, settings.Config{}, keyBindings{}, errors.New("session local directory is not absolute")
 	}
-	var profile *runtimebinding.Profile
-	if cfg.RuntimeProfile != nil {
-		value := *cfg.RuntimeProfile
-		if err := value.Validate(); err != nil {
+	profile := cfg.RuntimeProfile
+	if profile != nil {
+		if err := profile.Validate(); err != nil {
 			return nil, settings.Config{}, keyBindings{}, fmt.Errorf("session runtime profile: %w", err)
 		}
-		profile = &value
 	}
 	configured := settings.Default()
 	if cfg.Settings != nil {
@@ -239,7 +243,7 @@ func recoverSessionCommands(
 	ctx context.Context,
 	runtime Runtime,
 	authoring *workbench.Store,
-	profile *runtimebinding.Profile,
+	profile RuntimeProfile,
 ) (sessionCommandRecovery, error) {
 	recovery := sessionCommandRecovery{}
 	if err := session.RecoverDeletions(
@@ -268,7 +272,7 @@ func recoverSessionCommands(
 func openPreparedSession(
 	ctx context.Context,
 	cfg Config,
-	profile *runtimebinding.Profile,
+	profile RuntimeProfile,
 	configured settings.Config,
 	bindings keyBindings,
 	authoring *workbench.Store,
@@ -300,7 +304,7 @@ func openPreparedSession(
 	// step may fail after the one-time rollback report becomes unreachable.
 	activation, err := authoring.ActivateSessionDraft(
 		opened.Session.ID,
-		agent.Message{Text: cfg.InitialPrompt},
+		prompt.Message{Text: cfg.InitialPrompt},
 	)
 	if err != nil {
 		return preparedSession{}, fmt.Errorf("activate session draft: %w", err)
@@ -320,32 +324,32 @@ func authoringDirectory(localDirectory, workspace string) string {
 	return workspace
 }
 
-func commandReplayPolicy(profile *runtimebinding.Profile) mutation.ReplayPolicy {
-	policy, err := runtimebinding.CommandReplayPolicy(profile)
+func commandReplayPolicy(profile RuntimeProfile) mutation.ReplayPolicy {
+	policy, err := mutation.PolicyFromProfile(profile, time.Now)
 	if err != nil {
 		return mutation.ReplayPolicy{}
 	}
 	return policy
 }
 
-func commandReplayGuard(profile *runtimebinding.Profile) commandreplay.Guard {
+func commandReplayGuard(profile RuntimeProfile) replay.Guard {
 	guard, err := commandReplayPolicy(profile).NewGuard()
 	if err != nil {
-		return commandreplay.Guard{}
+		return replay.Guard{}
 	}
 	return guard
 }
 
-func commandReplaySafe(guard commandreplay.Guard, profile *runtimebinding.Profile) bool {
+func commandReplaySafe(guard replay.Guard, profile RuntimeProfile) bool {
 	return commandReplaySafeAt(guard, profile, time.Now().UTC())
 }
 
 func commandReplaySafeAt(
-	guard commandreplay.Guard,
-	profile *runtimebinding.Profile,
+	guard replay.Guard,
+	profile RuntimeProfile,
 	now time.Time,
 ) bool {
-	policy, err := runtimebinding.CommandReplayPolicyWithClock(profile, func() time.Time { return now })
+	policy, err := mutation.PolicyFromProfile(profile, func() time.Time { return now })
 	if err != nil {
 		return false
 	}
@@ -353,15 +357,15 @@ func commandReplaySafeAt(
 }
 
 func commandReplayStoreMatches(
-	guard commandreplay.Guard,
-	profile *runtimebinding.Profile,
+	guard replay.Guard,
+	profile RuntimeProfile,
 ) bool {
 	return commandReplayPolicy(profile).SameStore(guard)
 }
 
 func commandReplayAdmission(
-	guard commandreplay.Guard,
-	profile *runtimebinding.Profile,
+	guard replay.Guard,
+	profile RuntimeProfile,
 ) mutation.Admission {
 	return mutation.FreshDynamicReplayAdmission(func() mutation.ReplayPolicy {
 		return commandReplayPolicy(profile)

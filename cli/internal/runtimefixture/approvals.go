@@ -7,9 +7,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 func (r *Runtime) ListApprovalRules(ctx context.Context, sessionID string) ([]protocol.ApprovalRule, error) {
@@ -23,7 +22,7 @@ func (r *Runtime) ListApprovalRules(ctx context.Context, sessionID string) ([]pr
 	defer r.mu.Unlock()
 	session := r.sessions[sessionID]
 	if session == nil {
-		return nil, fmt.Errorf("%w: %s", agent.ErrSessionNotFound, sessionID)
+		return nil, fmt.Errorf("%w: %s", conversation.ErrSessionNotFound, sessionID)
 	}
 	out := make([]protocol.ApprovalRule, 0, len(r.rules))
 	for _, stored := range r.rules {
@@ -52,7 +51,7 @@ func (r *Runtime) DeleteApprovalRule(ctx context.Context, id string) error {
 	return nil
 }
 
-func (r *Runtime) rememberApprovalLocked(run *runState, approval agent.Approval, answer agent.ApprovalAnswer) {
+func (r *Runtime) rememberApprovalLocked(run *runState, approval conversation.Approval, answer conversation.ApprovalAnswer) {
 	if !approval.Rememberable || answer.Remember == "" {
 		return
 	}
@@ -82,35 +81,35 @@ func (r *Runtime) rememberApprovalLocked(run *runState, approval agent.Approval,
 	r.rules = append(r.rules, stored)
 }
 
-func (r *Runtime) resolveRememberedLocked(run *runState, interactions []agent.Interaction) (resolved []agent.InterruptAnswer, pending []agent.Interaction) {
-	resolved = make([]agent.InterruptAnswer, 0, len(interactions))
-	pending = make([]agent.Interaction, 0, len(interactions))
+func (r *Runtime) resolveRememberedLocked(run *runState, interactions []conversation.Interaction) (resolved []conversation.InterruptAnswer, pending []conversation.Interaction) {
+	resolved = make([]conversation.InterruptAnswer, 0, len(interactions))
+	pending = make([]conversation.Interaction, 0, len(interactions))
 	for _, interaction := range interactions {
-		approval, ok := interaction.(agent.Approval)
+		approval, ok := interaction.(conversation.Approval)
 		if !ok {
-			pending = append(pending, agent.CloneInteraction(interaction))
+			pending = append(pending, conversation.CloneInteraction(interaction))
 			continue
 		}
 		answer, matched := r.rememberedAnswerLocked(run, approval)
 		if !matched {
-			pending = append(pending, agent.CloneInteraction(interaction))
+			pending = append(pending, conversation.CloneInteraction(interaction))
 			continue
 		}
-		resolved = append(resolved, agent.InterruptAnswer{ItemID: approval.ItemID, Answer: answer})
+		resolved = append(resolved, conversation.InterruptAnswer{ItemID: approval.ItemID, Answer: answer})
 	}
 	return resolved, pending
 }
 
-func (r *Runtime) rememberedAnswerLocked(run *runState, approval agent.Approval) (agent.ApprovalAnswer, bool) {
+func (r *Runtime) rememberedAnswerLocked(run *runState, approval conversation.Approval) (conversation.ApprovalAnswer, bool) {
 	workspace := r.sessions[run.sessionID].meta.Workspace.ProjectRoot
 	tool, subject := approvalRuleParts(approval)
 	for _, stored := range slices.Backward(r.rules) {
 		rule := stored.view
 		if rule.Tool == tool && rule.Subject == subject && ruleApplies(stored, run.sessionID, workspace) {
-			return agent.ApprovalAnswer{Decision: approvalDecision(rule.Decision), Remember: rememberScope(rule.Scope)}, true
+			return conversation.ApprovalAnswer{Decision: approvalDecision(rule.Decision), Remember: rememberScope(rule.Scope)}, true
 		}
 	}
-	return agent.ApprovalAnswer{}, false
+	return conversation.ApprovalAnswer{}, false
 }
 
 func approvalRuleDecision(decision protocol.ApprovalDecision) protocol.ApprovalRuleDecision {
@@ -166,7 +165,7 @@ func rememberScope(scope protocol.ApprovalRuleScope) protocol.RememberScopeKind 
 	}
 }
 
-func approvalRuleParts(approval agent.Approval) (tool, subject string) {
+func approvalRuleParts(approval conversation.Approval) (tool, subject string) {
 	hint := strings.TrimSpace(approval.RuleHint)
 	if hint != "" {
 		if hintTool, hintSubject, ok := strings.Cut(hint, ":"); ok && strings.TrimSpace(hintTool) != "" {
@@ -181,15 +180,15 @@ func approvalRuleParts(approval agent.Approval) (tool, subject string) {
 		tool = string(approval.Tool.Kind)
 	}
 	switch approval.Tool.Kind {
-	case agent.ToolShell:
+	case conversation.ToolShell:
 		subject = approval.Tool.Command
-	case agent.ToolEdit, agent.ToolRead:
+	case conversation.ToolEdit, conversation.ToolRead:
 		subject = approval.Tool.Path
-	case agent.ToolSearch:
+	case conversation.ToolSearch:
 		subject = approval.Tool.Query
-	case agent.ToolWeb:
+	case conversation.ToolWeb:
 		subject = approval.Tool.URL
-	case agent.ToolUnknown, agent.ToolTask:
+	case conversation.ToolUnknown, conversation.ToolTask:
 	}
 	if strings.TrimSpace(subject) == "" {
 		subject = approval.Tool.Summary

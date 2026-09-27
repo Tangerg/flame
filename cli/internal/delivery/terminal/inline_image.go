@@ -8,12 +8,11 @@ import (
 	_ "image/jpeg"
 	"image/png"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/graphics"
 	"github.com/Tangerg/oolong/core/grid"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 type terminalImagePresenter struct {
@@ -31,7 +30,7 @@ func newTerminalImagePresenter(transport terminalImageTransport) *terminalImageP
 	return &terminalImagePresenter{transport: transport}
 }
 
-func (t *terminalImagePresenter) Present(theme kit.Theme, image agent.InlineImage) headless.Block {
+func (t *terminalImagePresenter) Present(theme kit.Theme, image conversation.InlineImage) headless.Block {
 	fallback := fallbackInlineImage(theme, image)
 	if t == nil || !t.transport.Protocol().Supports(graphics.Live) {
 		return fallback
@@ -84,11 +83,11 @@ func (t *terminalImageBlock) view() kit.Image {
 	return kit.Image{Of: t.handle, Cell: cell, Alt: t.alt, Theme: t.theme}
 }
 
-func fallbackInlineImage(theme kit.Theme, image agent.InlineImage) headless.Block {
+func fallbackInlineImage(theme kit.Theme, image conversation.InlineImage) headless.Block {
 	return &kit.Image{Alt: inlineImageLabel(image), Theme: theme}
 }
 
-func inlineImageLabel(image agent.InlineImage) string {
+func inlineImageLabel(image conversation.InlineImage) string {
 	return fmt.Sprintf("@ %s (%s, %d bytes)", image.Name, image.MIMEType, len(image.Data))
 }
 

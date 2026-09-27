@@ -7,11 +7,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 )
 
 type agentMemoryBinding interface {
@@ -24,7 +23,7 @@ type agentMemoryBinding interface {
 
 type AgentMemory struct{ runtime *Connection }
 
-func (a *AgentMemory) Items(ctx context.Context, target agent.MemoryTarget) ([]protocol.AgentMemoryItem, error) {
+func (a *AgentMemory) Items(ctx context.Context, target conversation.MemoryTarget) ([]protocol.AgentMemoryItem, error) {
 	r := a.runtime
 	validated, err := a.resolveTarget(ctx, target)
 	if err != nil {
@@ -48,7 +47,7 @@ func (a *AgentMemory) Items(ctx context.Context, target agent.MemoryTarget) ([]p
 	seen := make(map[string]struct{}, len(result.Items))
 	for index, value := range result.Items {
 		item := value
-		if err := agent.ValidateMemoryItem(item); err != nil {
+		if err := conversation.ValidateMemoryItem(item); err != nil {
 			return nil, runtimeContractViolation("list agent memory item %d is invalid: %v", index+1, err)
 		}
 		if item.Scope != validated.Scope {
@@ -156,13 +155,13 @@ func (a *AgentMemory) Delete(ctx context.Context, id string) error {
 	return classifyError(r.agentMemory.DeleteAgentMemory(ctx, request, options))
 }
 
-func (a *AgentMemory) Add(ctx context.Context, target agent.MemoryTarget, content string) (protocol.AgentMemoryItem, error) {
+func (a *AgentMemory) Add(ctx context.Context, target conversation.MemoryTarget, content string) (protocol.AgentMemoryItem, error) {
 	r := a.runtime
 	validated, err := a.resolveTarget(ctx, target)
 	if err != nil {
 		return protocol.AgentMemoryItem{}, err
 	}
-	content, err = agent.NormalizeMemoryContent(content)
+	content, err = conversation.NormalizeMemoryContent(content)
 	if err != nil {
 		return protocol.AgentMemoryItem{}, err
 	}
@@ -185,18 +184,18 @@ func (a *AgentMemory) Add(ctx context.Context, target agent.MemoryTarget, conten
 	return item, nil
 }
 
-func (a *AgentMemory) resolveTarget(ctx context.Context, target agent.MemoryTarget) (agent.MemoryTarget, error) {
+func (a *AgentMemory) resolveTarget(ctx context.Context, target conversation.MemoryTarget) (conversation.MemoryTarget, error) {
 	if err := target.Validate(); err != nil {
-		return agent.MemoryTarget{}, err
+		return conversation.MemoryTarget{}, err
 	}
 	if target.Scope != protocol.AgentMemoryScopeProject {
 		return target, nil
 	}
 	resolved, err := a.runtime.Resolve(ctx, workspace.ResolveRequest{Path: target.Workspace})
 	if err != nil {
-		return agent.MemoryTarget{}, fmt.Errorf("resolve agent memory workspace: %w", err)
+		return conversation.MemoryTarget{}, fmt.Errorf("resolve agent memory workspace: %w", err)
 	}
-	return agent.NewMemoryTarget(target.Scope, resolved.Path)
+	return conversation.NewMemoryTarget(target.Scope, resolved.Path)
 }
 
 func agentMemoryResult(
@@ -212,7 +211,7 @@ func agentMemoryResult(
 		return protocol.AgentMemoryItem{}, runtimeContractViolation("%s returned nil", operation)
 	}
 	item := *result
-	if err := agent.ValidateMemoryItem(item); err != nil {
+	if err := conversation.ValidateMemoryItem(item); err != nil {
 		return protocol.AgentMemoryItem{}, runtimeContractViolation("%s returned an invalid item: %v", operation, err)
 	}
 	if err := requireIdentity(operation, item.ID, expectedID); err != nil {

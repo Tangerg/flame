@@ -8,13 +8,12 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/Tangerg/oolong/core/input"
-
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/oolong/core/input"
 )
 
 const terminalSkillRevision = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
@@ -150,7 +149,7 @@ func (s *skillServiceStub) decide(reference workspace.SkillProposalReference, ap
 
 func TestSkillCatalogLifecycleAndProposalReviewCommands(t *testing.T) {
 	service := newSkillServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Skills: service})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Skills: service})
 	host.Shows(t, "Ask flame")
 	host.Type("/skills")
 	host.Press(input.Enter)
@@ -214,7 +213,7 @@ func TestSkillCatalogLifecycleAndProposalReviewCommands(t *testing.T) {
 
 func TestSkillProposalFinalReviewShowsTheExactResolvedRevision(t *testing.T) {
 	service := newSkillServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Skills: service})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Skills: service})
 	defer stop()
 	host.Shows(t, "Ask flame")
 	host.Type("/skill-proposals")
@@ -243,7 +242,7 @@ func TestSkillProposalFinalReviewShowsTheExactResolvedRevision(t *testing.T) {
 
 func TestSkillProposalChangeAfterFinalReviewCannotApproveUnseenContent(t *testing.T) {
 	service := newSkillServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Skills: service})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Skills: service})
 	defer stop()
 	host.Shows(t, "Ask flame")
 	host.Type("/skill-approve user/release-checks")
@@ -266,7 +265,7 @@ func TestSkillProposalChangeAfterFinalReviewCannotApproveUnseenContent(t *testin
 func TestSkillProposalFinalReviewCanScrollToCompleteInstructions(t *testing.T) {
 	service := newSkillServiceStub()
 	service.proposals[0].Instructions = strings.Repeat("A complete instruction line.\n", 80) + "Final instruction must remain reviewable."
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Skills: service})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Skills: service})
 	defer stop()
 	host.Shows(t, "Ask flame")
 	host.Type("/skill-approve user/release-checks")
@@ -289,7 +288,7 @@ func TestSkillProposalFinalReviewCanScrollToCompleteInstructions(t *testing.T) {
 func TestSkillLifecycleDoesNotReportSuccessWhenManagedCatalogIsUnchanged(t *testing.T) {
 	service := newSkillServiceStub()
 	service.ignoreLifecycle = true
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Skills: service})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Skills: service})
 	host.Shows(t, "Ask flame")
 	host.Type("/skill-archive review")
 	host.Press(input.Enter)
@@ -301,7 +300,7 @@ func TestSkillLifecycleDoesNotReportSuccessWhenManagedCatalogIsUnchanged(t *test
 func TestSkillProposalDoesNotReportSuccessWhenReviewedRevisionRemainsPending(t *testing.T) {
 	service := newSkillServiceStub()
 	service.ignoreDecision = true
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Skills: service})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Skills: service})
 	host.Shows(t, "Ask flame")
 	host.Type("/skill-approve user/release-checks")
 	host.Press(input.Enter)
@@ -323,7 +322,7 @@ func TestSkillsChangedRefetchesOnlyAnOpenSkillProjection(t *testing.T) {
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1), supported: []protocol.RuntimeTopic{protocol.TopicSkillsChanged},
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Skills: service, Changes: source})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Skills: service, Changes: source})
 	host.Shows(t, "Ask flame")
 	subscription := awaitValue(t, source.subscription, "skill invalidation subscription")
 	if len(subscription.Topics) != 1 || subscription.Topics[0] != protocol.TopicSkillsChanged {
@@ -358,7 +357,7 @@ func TestSkillLifecycleMutationOutlivesSameSessionProjectionReplacement(t *testi
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1),
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: backend, Skills: service, Changes: source, SessionID: "ses_demo_1"})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: backend, Skills: service, Changes: source, SessionID: "ses_demo_1"})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "runtime change subscription")
 	host.Type("/skill-archive review")
@@ -366,7 +365,7 @@ func TestSkillLifecycleMutationOutlivesSameSessionProjectionReplacement(t *testi
 	if got := awaitValue(t, service.started, "skill archive mutation"); got != "review" {
 		t.Fatalf("archived skill = %q", got)
 	}
-	if _, err := backend.RollbackSession(t.Context(), agent.RollbackSession{
+	if _, err := backend.RollbackSession(t.Context(), conversation.RollbackSession{
 		SessionID: "ses_demo_1", Scope: protocol.RestoreHistory,
 	}); err != nil {
 		t.Fatal(err)

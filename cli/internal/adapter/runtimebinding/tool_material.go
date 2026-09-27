@@ -6,7 +6,7 @@ import (
 	"encoding/json/jsontext"
 	"strings"
 
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 )
 
 // toolText borrows Runtime's decoded JSON object. Unknown tools may use these
@@ -28,7 +28,7 @@ func toolSummary(name string, arguments map[string]any) string {
 	return truncateRunes(text, toolSummaryRuneLimit)
 }
 
-func projectToolResult(tool *agent.ToolCall, value any) {
+func projectToolResult(tool *conversation.ToolCall, value any) {
 	object, _ := value.(map[string]any)
 	tool.Output = toolText(object, "output")
 	if exitCode, ok := toolExitCode(object["exitCode"]); ok {

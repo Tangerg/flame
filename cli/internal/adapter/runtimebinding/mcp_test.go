@@ -7,12 +7,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/cli/internal/domain/failure"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/failure"
 )
 
 const (
@@ -282,7 +281,7 @@ func TestMCPAdapterRejectsUnorderedOrDuplicateServerCatalog(t *testing.T) {
 			first.Name, second.Name = names[0], names[1]
 			stub := &mcpBindingStub{t: t, servers: []protocol.MCPServer{first, second}}
 			runtime := &Connection{mcp: stub, meta: requestMeta("test")}
-			if values, err := runtime.Servers(t.Context()); values != nil || !errors.Is(err, agent.ErrIncompatibleRuntime) {
+			if values, err := runtime.Servers(t.Context()); values != nil || !errors.Is(err, conversation.ErrIncompatibleRuntime) {
 				t.Fatalf("Servers = (%v, %v), want complete ordered-catalog rejection", values, err)
 			}
 		})
@@ -299,7 +298,7 @@ func TestMCPAdapterRejectsUnorderedOrDuplicateToolCatalog(t *testing.T) {
 		t.Run(rows[0].Server+"/"+rows[0].Name+"-"+rows[1].Server+"/"+rows[1].Name, func(t *testing.T) {
 			stub := &mcpBindingStub{t: t, tools: rows}
 			runtime := &Connection{mcp: stub, meta: requestMeta("test")}
-			if values, err := runtime.Tools(t.Context(), ""); values != nil || !errors.Is(err, agent.ErrIncompatibleRuntime) {
+			if values, err := runtime.Tools(t.Context(), ""); values != nil || !errors.Is(err, conversation.ErrIncompatibleRuntime) {
 				t.Fatalf("Tools = (%v, %v), want complete ordered-catalog rejection", values, err)
 			}
 		})
@@ -327,12 +326,12 @@ func TestMCPAuthorizationAdapterPreservesAbsenceAndEnforcesReferenceIdentity(t *
 		Status:    protocol.MCPAuthorizationAttemptStatus{Type: protocol.MCPAuthorizationAttemptSucceeded},
 		CreatedAt: stub.now, FinishedAt: &finished,
 	}
-	if _, err := runtime.GetAuthorization(t.Context(), reference); !errors.Is(err, agent.ErrIncompatibleRuntime) {
+	if _, err := runtime.GetAuthorization(t.Context(), reference); !errors.Is(err, conversation.ErrIncompatibleRuntime) {
 		t.Fatalf("mismatched authorization identity = %v, want ErrIncompatibleRuntime", err)
 	}
 	stub.authGet.ID = reference.ID
 	stub.authGet.Server = "other"
-	if _, err := runtime.GetAuthorization(t.Context(), reference); !errors.Is(err, agent.ErrIncompatibleRuntime) {
+	if _, err := runtime.GetAuthorization(t.Context(), reference); !errors.Is(err, conversation.ErrIncompatibleRuntime) {
 		t.Fatalf("mismatched authorization server = %v, want ErrIncompatibleRuntime", err)
 	}
 
@@ -522,7 +521,7 @@ func TestMCPToolsRejectAForeignServer(t *testing.T) {
 	stub := &mcpBindingStub{t: t}
 	runtime := &Connection{mcp: stub, meta: requestMeta("test")}
 	stub.tools = []protocol.MCPTool{{Server: "other", Name: "read"}}
-	if values, err := runtime.Tools(t.Context(), "docs"); values != nil || !errors.Is(err, agent.ErrIncompatibleRuntime) || !strings.Contains(err.Error(), "other") {
+	if values, err := runtime.Tools(t.Context(), "docs"); values != nil || !errors.Is(err, conversation.ErrIncompatibleRuntime) || !strings.Contains(err.Error(), "other") {
 		t.Fatalf("Tools = (%v, %v), want no values and a server contract violation", values, err)
 	}
 }

@@ -1,4 +1,4 @@
-import { CLIENT_VERSION } from "@/main/config";
+import { CLIENT_VERSION } from "@/product";
 import { getConfig } from "@/plugins/sdk/config";
 import type { ObservabilityTeardown } from "./observabilityLifecycle";
 

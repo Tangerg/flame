@@ -7,12 +7,11 @@ import (
 	"testing"
 
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
-	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// fakeHookTrust records the workspace coordinator's trust calls (Trust/Untrust)
+// fakeHookTrust records the Hook catalog's trust calls (Trust/Untrust)
 // so the hooks delivery handler can be tested against a wired trust store.
 type fakeHookTrust struct {
 	projectRoot string
@@ -34,7 +33,7 @@ func (f *fakeHookTrust) Untrust(_ context.Context, projectRoot string) error {
 	return nil
 }
 
-func handlerWithHookTrust(trust workspaceapp.HookTrustStore) *Handler {
+func handlerWithHookTrust(trust apphooks.TrustStore) *Handler {
 	return newWorkspaceHandlerWithConfig("", workspaceTestConfig{Trust: trust})
 }
 

@@ -2,7 +2,7 @@
 
 > 重构时**改什么、怎么改、按什么节奏**。文档分工（尽量不重述）：
 >
-> - [`CLAUDE.md`](CLAUDE.md)：决策透镜 + 硬约定 + 反向不变量 —— "**能不能**这么写"。两档节奏、Fowler 清单、React effect 纪律、工作流已在那里。
+> - [`README.md`](README.md): decision rules, architectural constraints, React effect discipline, and the working process.
 > - [`frontend/ARCHITECTURE.md`](frontend/ARCHITECTURE.md)：系统长什么样。[`frontend/DESIGN.md`](frontend/DESIGN.md)：视觉规范。
 > - **本篇**：把上面的判据落成几面可执行的**重构镜头**（命名 / 派生态 / 边界吞空 / 作用域卫生 / 卫语句 / 就近组织 / 节奏）。
 >
@@ -12,7 +12,7 @@
 
 ## 0. 总则
 
-- **精修 ≠ 重写**：外科级、可逆、**在源头改对**，不在错的设计上叠补丁（呼应 CLAUDE.md 两条法则：不留债、必治本）。
+- Refactor in reviewable steps and fix the responsible owner, following the two principles in `README.md`: leave no obsolete design behind and repair the root cause.
 - 参考业界**只取思想、不作命名锚**。
 - 唯一允许背的"债"是"设计还没想清楚"；**绝不允许"明知更好却为省事不改"**。
 
@@ -58,7 +58,7 @@
 - **JSX 里**：loading / empty 早返，别在一个 `return` 里堆三层三元；分支一多就抽子组件让主体扁平。
 - 但 `for await (ev of stream)` / reducer 派发这类**流式 / 事件驱动的嵌套**是结构性的，不是逻辑复杂度 —— 别为"看起来浅"硬平铺。
 
-## 7. 现代 JS / TS —— 判据照 CLAUDE.md §3
+## 7. Modern JS / TS — criteria in README.md §3
 
 不重复。要点：现代特性**只在"可读性 / 正确性↑ 且 不引入分配 / 不退化热路径"时采用**；复制整组的 `toReversed` / `toSorted` 在 reducer / 每 token 调的函数里就是回归。**地道 ≠ 最新。**
 
@@ -69,14 +69,14 @@
 - **大但内聚、单一职责的不拆**：判据是"能真正切断耦合且不破坏公开面"，不是单纯按行数；拆了反破坏内聚的保留。
 - 拆完 **barrel 作为目录唯一公开面**，对外形状不变，消费方零改动。
 
-## 9. 工程硬规则（补 CLAUDE.md §4 之外）
+## 9. Engineering constraints supplementing README.md §4
 
 - **工厂 / 构造类函数返回"有效值或抛错"**，不返回半成品（别让调用方拿到字段缺失、需自己补全校验的对象）。
 - **死代码立刻删**（`knip` 扫未引用的 export / 文件 / 依赖），不留"将来可能用"；禁推测性占位（"以后接" / 空 stub）。
 - 重构途中发现的**真实 bug 顺手修，但单独成 commit**，与纯重构分开，便于独立 revert 与 review。
 - **边界校验用 Zod、内部数据流不加**：重构时别顺手给内部流加 Zod，也别把边界校验拆掉。
 
-## 10. 节奏与纪律 —— 详见 CLAUDE.md §3「重构」+ §7「工作流」
+## 10. Working discipline — see README.md §3 and §7
 
 那两节已给全（两档节奏、先给候选方案 + 权衡、等确认再动、每批一 commit、`npm run check` 全绿、commit 写 why）。本篇补两条精修中反复验证、值得单列的：
 
@@ -87,4 +87,4 @@
 
 ## 一句话
 
-设计前问"**该不该**"（CLAUDE.md 决策透镜）；重构时对照本篇镜头定"**改什么、怎么改**"；每批一个可独立 revert 的 commit、`npm run check` 全绿再推。**镜头是工程通则，例子活在代码里。**
+Use the decision rules in `README.md` before choosing a design and this guide to scope each refactoring step. Keep each commit independently reversible and pass `npm run check` before pushing. Keep implementation examples in the code.

@@ -120,12 +120,10 @@ export class MCPServerMutationOwner {
   static #materialGeneration = 0n;
   static readonly #materialListeners = new Set<() => void>();
 
-  readonly #gateway: MCPServerGateway;
   #generation: MCPServerMutationGeneration;
   #disposed = false;
 
   private constructor(gateway: MCPServerGateway) {
-    this.#gateway = gateway;
     this.#generation = new MCPServerMutationGeneration(gateway);
   }
 
@@ -179,10 +177,10 @@ export class MCPServerMutationOwner {
     return this.#generation.authorize(name, signal);
   }
 
-  replaceRuntimeGeneration(): void {
+  replaceRuntimeGeneration(createGateway: () => MCPServerGateway): void {
     if (this.#disposed || !mcpServerMutationPublication.owns(this)) return;
     const predecessor = this.#generation;
-    this.#generation = new MCPServerMutationGeneration(this.#gateway);
+    this.#generation = new MCPServerMutationGeneration(createGateway());
     predecessor.retire();
     MCPServerMutationOwner.#advanceMaterialGeneration();
   }

@@ -1,3 +1,6 @@
+import { createFlameClient, type FlameClient } from "@flame/runtime-contract/client";
+import { createMemoryTransport } from "@flame/runtime-contract/client/transports/memory";
+import { definePlugin } from "@/plugins/sdk";
 import { createRoot } from "react-dom/client";
 import type { ReactNode } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -127,6 +130,19 @@ rootElement.dataset.visualTheme = theme;
 const container = document.getElementById("root");
 if (!container) throw new Error("Visual fixture root element is missing");
 
+async function installVisualRuntimeClient(): Promise<FlameClient> {
+  const client = createFlameClient(createMemoryTransport());
+  await loadPluginsForTest(
+    definePlugin({
+      name: "flame.visual.runtime-client",
+      setup(ctx) {
+        ctx.cleanup(() => client.close());
+      },
+    }),
+  );
+  return client;
+}
+
 async function fixtureNode(): Promise<ReactNode> {
   if (fixture === "foundation" || fixture === "atoms") {
     const [
@@ -154,7 +170,8 @@ async function fixtureNode(): Promise<ReactNode> {
       import("./VisualWorkspaceFixture"),
       import("./installVisualWorkspaceFixture"),
     ]);
-    await installVisualWorkspaceFixture(workspaceState, theme, {
+    const runtimeClient = await installVisualRuntimeClient();
+    await installVisualWorkspaceFixture(() => runtimeClient, workspaceState, theme, {
       pane: settingsPane,
       fullViewId: requestedFullView,
       reviewFiles: requestedReviewFiles,
@@ -176,7 +193,8 @@ async function fixtureNode(): Promise<ReactNode> {
   const output = query.has("long-output")
     ? Array.from({ length: 50_000 }, (_, index) => `build output line ${index}`).join("\n")
     : undefined;
-  const view = await installVisualAgentFixture(state, output);
+  const runtimeClient = await installVisualRuntimeClient();
+  const view = await installVisualAgentFixture(() => runtimeClient, state, output);
   return <VisualAgentStateFixture state={state} view={view} />;
 }
 

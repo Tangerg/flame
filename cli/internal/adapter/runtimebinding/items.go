@@ -8,57 +8,56 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/domain/failure"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-func projectItem(value protocol.Item) (agent.Block, error) {
+func projectItem(value protocol.Item) (conversation.Block, error) {
 	projection := itemProjection{
 		source: value,
-		block: agent.Block{
-			ID: value.ID, RunID: value.RunID, Status: agent.BlockStatus(value.Status), CreatedAt: value.CreatedAt,
+		block: conversation.Block{
+			ID: value.ID, RunID: value.RunID, Status: conversation.BlockStatus(value.Status), CreatedAt: value.CreatedAt,
 		},
 	}
 	if err := projection.project(); err != nil {
-		return agent.Block{}, err
+		return conversation.Block{}, err
 	}
 	if err := validateProjectedBlock(projection.block); err != nil {
-		return agent.Block{}, fmt.Errorf("runtime item %s: %w", value.ID, err)
+		return conversation.Block{}, fmt.Errorf("runtime item %s: %w", value.ID, err)
 	}
 	return projection.block, nil
 }
 
 type itemProjection struct {
 	source protocol.Item
-	block  agent.Block
+	block  conversation.Block
 }
 
 func (i *itemProjection) project() error {
 	switch i.source.Type {
 	case protocol.ItemTypeUserMessage:
-		i.block.Kind = agent.BlockUser
+		i.block.Kind = conversation.BlockUser
 		return i.projectMessage(true)
 	case protocol.ItemTypeAgentMessage:
-		i.block.Kind = agent.BlockAssistant
+		i.block.Kind = conversation.BlockAssistant
 		return i.projectMessage(false)
 	case protocol.ItemTypeReasoning:
-		i.block.Kind = agent.BlockReasoning
+		i.block.Kind = conversation.BlockReasoning
 		i.block.Text = i.source.Text
 		i.block.Redacted = i.source.Redacted
 		if i.block.Redacted && strings.TrimSpace(i.block.Text) == "" {
 			i.block.Text = "Reasoning redacted by provider."
 		}
 	case protocol.ItemTypeQuestion:
-		i.block.Kind = agent.BlockQuestion
+		i.block.Kind = conversation.BlockQuestion
 		question, err := projectQuestion(i.source.RunID, i.source.ID, i.source.Question)
 		if err != nil {
 			return err
 		}
 		i.block.Question = &question
 	case protocol.ItemTypeToolCall:
-		i.block.Kind = agent.BlockTool
+		i.block.Kind = conversation.BlockTool
 		tool, err := projectTool(toolProjection{
 			invocation: i.source.Tool,
 			status:     i.source.Status, safety: i.source.SafetyClass,
@@ -103,44 +102,44 @@ func (i *itemProjection) projectCompaction() error {
 	if i.source.Summary != strings.TrimSpace(i.source.Summary) {
 		return fmt.Errorf("item %s has a non-canonical compaction summary", i.source.ID)
 	}
-	i.block.Kind = agent.BlockNotice
+	i.block.Kind = conversation.BlockNotice
 	i.block.Text = i.source.Summary
 	i.block.DroppedMessages = i.source.DroppedMessages
 	return nil
 }
 
-func validateProjectedBlock(block agent.Block) error {
-	event := agent.Event(agent.BlockCompleted{Block: block})
-	if block.Status == agent.BlockStatusRunning {
-		event = agent.BlockStarted{Block: block}
+func validateProjectedBlock(block conversation.Block) error {
+	event := conversation.Event(conversation.BlockCompleted{Block: block})
+	if block.Status == conversation.BlockStatusRunning {
+		event = conversation.BlockStarted{Block: block}
 	}
-	return agent.ValidateEvent(event)
+	return conversation.ValidateEvent(event)
 }
 
-func projectQuestion(runID, itemID string, value *protocol.Question) (agent.Question, error) {
+func projectQuestion(runID, itemID string, value *protocol.Question) (conversation.Question, error) {
 	if value == nil {
-		return agent.Question{}, fmt.Errorf("question item %s has no payload", itemID)
+		return conversation.Question{}, fmt.Errorf("question item %s has no payload", itemID)
 	}
-	question := agent.Question{
-		RunID: runID, ItemID: itemID, Fields: make([]agent.QuestionField, 0, len(value.Fields)),
-		Answers: agent.CloneAnswers(value.Answers),
+	question := conversation.Question{
+		RunID: runID, ItemID: itemID, Fields: make([]conversation.QuestionField, 0, len(value.Fields)),
+		Answers: conversation.CloneAnswers(value.Answers),
 	}
 	for _, field := range value.Fields {
-		projected := agent.QuestionField{
+		projected := conversation.QuestionField{
 			Prompt: field.Prompt, Header: field.Header, AllowCustom: field.AllowCustom,
 			Options: slices.Clone(field.Options),
 		}
 		switch field.Type {
 		case protocol.QuestionFieldText:
-			projected.Kind = agent.QuestionText
+			projected.Kind = conversation.QuestionText
 		case protocol.QuestionFieldChoice:
 			if field.Multiple {
-				projected.Kind = agent.QuestionMulti
+				projected.Kind = conversation.QuestionMulti
 			} else {
-				projected.Kind = agent.QuestionSingle
+				projected.Kind = conversation.QuestionSingle
 			}
 		default:
-			return agent.Question{}, fmt.Errorf("question item %s has unsupported field type %q", itemID, field.Type)
+			return conversation.Question{}, fmt.Errorf("question item %s has unsupported field type %q", itemID, field.Type)
 		}
 		question.Fields = append(question.Fields, projected)
 	}
@@ -154,7 +153,7 @@ func projectQuestion(runID, itemID string, value *protocol.Question) (agent.Ques
 		question.Title = "Question"
 	}
 	if err := question.Validate(); err != nil {
-		return agent.Question{}, err
+		return conversation.Question{}, err
 	}
 	return question, nil
 }
@@ -169,16 +168,16 @@ type toolProjection struct {
 	problem        *protocol.ProblemData
 }
 
-func projectTool(projection toolProjection) (agent.ToolCall, error) {
+func projectTool(projection toolProjection) (conversation.ToolCall, error) {
 	value := projection.invocation
 	if value == nil {
-		return agent.ToolCall{}, errors.New("tool payload is absent")
+		return conversation.ToolCall{}, errors.New("tool payload is absent")
 	}
 	argumentsJSON, err := encodeProjection(value.Arguments)
 	if err != nil {
-		return agent.ToolCall{}, fmt.Errorf("encode tool arguments: %w", err)
+		return conversation.ToolCall{}, fmt.Errorf("encode tool arguments: %w", err)
 	}
-	tool := agent.ToolCall{
+	tool := conversation.ToolCall{
 		Kind: kindForTool(value.Name), Name: value.Name, Summary: toolSummary(value.Name, value.Arguments),
 		Safety:    projection.safety,
 		StartedAt: projection.startedAt, FinishedAt: projection.finishedAt,
@@ -192,7 +191,7 @@ func projectTool(projection toolProjection) (agent.ToolCall, error) {
 	if value.Result != nil {
 		resultJSON, err := encodeProjection(value.Result)
 		if err != nil {
-			return agent.ToolCall{}, fmt.Errorf("encode tool result: %w", err)
+			return conversation.ToolCall{}, fmt.Errorf("encode tool result: %w", err)
 		}
 		tool.ResultJSON = resultJSON
 		projectToolResult(&tool, value.Result)
@@ -205,23 +204,23 @@ func projectTool(projection toolProjection) (agent.ToolCall, error) {
 	}
 	switch projection.status {
 	case protocol.ItemStatusRunning:
-		tool.Status = agent.ToolRunning
+		tool.Status = conversation.ToolRunning
 	case protocol.ItemStatusCompleted:
-		tool.Status = agent.ToolOK
+		tool.Status = conversation.ToolOK
 	case protocol.ItemStatusIncomplete:
-		tool.Status = agent.ToolError
+		tool.Status = conversation.ToolError
 		if projection.problem != nil && (projection.problem.Type == protocol.ProblemDeniedByUser ||
 			projection.problem.Type == protocol.ProblemChildRunCanceled || projection.problem.Type == protocol.ProblemToolCanceled) {
-			tool.Status = agent.ToolCanceled
+			tool.Status = conversation.ToolCanceled
 		}
 	default:
-		return agent.ToolCall{}, fmt.Errorf("tool status %q is unsupported", projection.status)
+		return conversation.ToolCall{}, fmt.Errorf("tool status %q is unsupported", projection.status)
 	}
 	if projection.problem != nil && strings.TrimSpace(projection.problem.Detail) != "" {
 		tool.Output = projection.problem.Detail
 	}
 	if err := tool.Validate(); err != nil {
-		return agent.ToolCall{}, err
+		return conversation.ToolCall{}, err
 	}
 	return tool, nil
 }
@@ -265,24 +264,24 @@ const (
 	builtInWebSearch         builtInToolName = "web_search"
 )
 
-func kindForTool(name string) agent.ToolKind {
+func kindForTool(name string) conversation.ToolKind {
 	switch builtInToolName(name) {
 	case builtInShell, builtInReadShellOutput, builtInStopShell:
-		return agent.ToolShell
+		return conversation.ToolShell
 	case builtInApplyPatch:
-		return agent.ToolEdit
+		return conversation.ToolEdit
 	case builtInRead, builtInReadSkillResource, builtInReadToolResult:
-		return agent.ToolRead
+		return conversation.ToolRead
 	case builtInGlob, builtInGrep, builtInSearchMemory, builtInSearchTools, builtInLSP:
-		return agent.ToolSearch
+		return conversation.ToolSearch
 	case builtInWebSearch, builtInWebFetch, builtInHTTPRequest:
-		return agent.ToolWeb
+		return conversation.ToolWeb
 	case builtInAskUser, builtInDelegateTask, builtInCreateGoal, builtInGetGoal, builtInReportGoalOutcome,
 		builtInCreateSchedule, builtInListSchedules, builtInDeleteSchedule, builtInLoadSkill, builtInListSkills,
 		builtInProposeSkill, builtInEnterPlanMode, builtInExitPlanMode, builtInSetPlan:
-		return agent.ToolTask
+		return conversation.ToolTask
 	default:
-		return agent.ToolUnknown
+		return conversation.ToolUnknown
 	}
 }
 

@@ -13,16 +13,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
 	"github.com/Tangerg/flame/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/cli/internal/application/integration/models"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/application/mutation"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/domain/failure"
 	workspaceapi "github.com/Tangerg/flame/cli/internal/domain/workspace"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestRuntimeConnectionPreservesCallerCancellation(t *testing.T) {
@@ -40,7 +39,7 @@ func TestRuntimeConnectionPreservesCallerCancellation(t *testing.T) {
 			if models != nil || !errors.Is(err, cause) {
 				t.Errorf("ListModels = (%+v, %v), want caller %v", models, err, cause)
 			}
-			created, err := runtime.CreateSession(ctx, agent.CreateSession{Title: "canceled session"})
+			created, err := runtime.CreateSession(ctx, conversation.CreateSession{Title: "canceled session"})
 			if created.ID != "" || !errors.Is(err, cause) || !mutation.AcknowledgementUncertain(err) {
 				t.Errorf("CreateSession = (%+v, %v), want an unconfirmed canceled command", created, err)
 			}
@@ -299,7 +298,7 @@ func requireContextManagement(t *testing.T, runtime *Connection, workspace strin
 	if agentMemory == nil {
 		t.Fatal("context adapters were not advertised")
 	}
-	userTarget, err := agent.NewMemoryTarget(protocol.AgentMemoryScopeUser, "")
+	userTarget, err := conversation.NewMemoryTarget(protocol.AgentMemoryScopeUser, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -339,7 +338,7 @@ func requireSessionPortability(t *testing.T, runtime *Connection, sessionID stri
 	if err != nil || imported.ID != sessionID {
 		t.Fatalf("ImportSession = (%+v, %v)", imported, err)
 	}
-	rolledBack, err := runtime.RollbackSession(t.Context(), agent.RollbackSession{
+	rolledBack, err := runtime.RollbackSession(t.Context(), conversation.RollbackSession{
 		SessionID: sessionID, Scope: protocol.RestoreHistory,
 	})
 	if err != nil || rolledBack.Session.ID != sessionID || len(rolledBack.Dropped) != 0 {
@@ -476,13 +475,13 @@ func openIntegrationRuntime(t *testing.T, workspace string) *Connection {
 	return runtime
 }
 
-func requireSessionCatalog(t *testing.T, runtime *Connection, workspace string) agent.Session {
+func requireSessionCatalog(t *testing.T, runtime *Connection, workspace string) conversation.Session {
 	t.Helper()
-	created, err := runtime.CreateSession(t.Context(), agent.CreateSession{Title: "adapter session", Workspace: workspace})
+	created, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Title: "adapter session", Workspace: workspace})
 	if err != nil {
 		t.Fatalf("CreateSession: %v", err)
 	}
-	page, err := runtime.ListSessions(t.Context(), agent.SessionQuery{
+	page, err := runtime.ListSessions(t.Context(), conversation.SessionQuery{
 		PageSize: catalogPageSize(t, 10), Search: "ADAPTER", Workspace: created.Workspace.Path,
 	})
 	if err != nil {
@@ -502,23 +501,23 @@ func requireSessionCatalog(t *testing.T, runtime *Connection, workspace string) 
 	if snapshot.Session.ID != created.ID || len(snapshot.Runs) != 0 || len(snapshot.Transcript) != 0 {
 		t.Fatalf("snapshot = %+v", snapshot)
 	}
-	runs, err := runtime.ListRuns(t.Context(), agent.RunQuery{
-		SessionID: created.ID, IncludeDescendants: true, PageSize: agent.DefaultPageSize(),
+	runs, err := runtime.ListRuns(t.Context(), conversation.RunQuery{
+		SessionID: created.ID, IncludeDescendants: true, PageSize: conversation.DefaultPageSize(),
 	})
 	if err != nil || len(runs.Items) != 0 {
 		t.Fatalf("ListRuns = (%+v, %v)", runs, err)
 	}
-	if _, err := runtime.GetRun(t.Context(), "run_missing"); !errors.Is(err, agent.ErrRunNotFound) {
+	if _, err := runtime.GetRun(t.Context(), "run_missing"); !errors.Is(err, conversation.ErrRunNotFound) {
 		t.Fatalf("GetRun missing = %v, want ErrRunNotFound", err)
 	}
 	return created
 }
 
-func requireSessionMutation(t *testing.T, runtime *Connection, created agent.Session, workspace string) agent.Session {
+func requireSessionMutation(t *testing.T, runtime *Connection, created conversation.Session, workspace string) conversation.Session {
 	t.Helper()
 	title, favorite := "renamed adapter session", true
-	model := agent.ModelRef{Provider: created.Provider, Model: "integration-model"}
-	updated, err := runtime.UpdateSession(t.Context(), agent.UpdateSession{
+	model := conversation.ModelRef{Provider: created.Provider, Model: "integration-model"}
+	updated, err := runtime.UpdateSession(t.Context(), conversation.UpdateSession{
 		SessionID: created.ID, Title: &title, Workspace: &workspace, Model: &model,
 		Favorite: &favorite, ExpectedRevision: created.Revision,
 	})
@@ -533,7 +532,7 @@ func requireSessionMutation(t *testing.T, runtime *Connection, created agent.Ses
 		!updated.Favorite || updated.Revision <= created.Revision {
 		t.Fatalf("updated = %+v", updated)
 	}
-	forked, err := runtime.ForkSession(t.Context(), agent.ForkSession{SessionID: created.ID, Title: "forked adapter session"})
+	forked, err := runtime.ForkSession(t.Context(), conversation.ForkSession{SessionID: created.ID, Title: "forked adapter session"})
 	if err != nil {
 		t.Fatalf("ForkSession: %v", err)
 	}
@@ -601,7 +600,7 @@ func requireRuntimeCatalogs(t *testing.T, runtime *Connection, sessionID, worksp
 	if err != nil || sessionUsage.SessionID != sessionID {
 		t.Fatalf("SessionUsage = (%+v, %v)", sessionUsage, err)
 	}
-	usagePeriod, err := agent.RecentUsageDays(30)
+	usagePeriod, err := conversation.RecentUsageDays(30)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -830,12 +829,12 @@ func requireScheduleLifecycle(t *testing.T, runtime *Connection, workspace strin
 func requireSessionDeletion(t *testing.T, runtime *Connection, sessionIDs ...string) {
 	t.Helper()
 	for _, sessionID := range sessionIDs {
-		if err := runtime.DeleteSession(t.Context(), agent.DeleteSession{SessionID: sessionID}); err != nil {
+		if err := runtime.DeleteSession(t.Context(), conversation.DeleteSession{SessionID: sessionID}); err != nil {
 			t.Fatalf("DeleteSession %s: %v", sessionID, err)
 		}
 	}
 	_, err := runtime.GetSession(t.Context(), sessionIDs[0])
-	if !errors.Is(err, agent.ErrSessionNotFound) {
+	if !errors.Is(err, conversation.ErrSessionNotFound) {
 		t.Fatalf("GetSession after delete = %v, want ErrSessionNotFound", err)
 	}
 	problem, ok := errors.AsType[protocol.ProblemError](err)
@@ -849,7 +848,7 @@ func requireClosedRuntime(t *testing.T, runtime *Connection) {
 	if err := runtime.Close(); err != nil {
 		t.Fatalf("Close: %v", err)
 	}
-	if _, err := runtime.ListModels(t.Context()); !errors.Is(err, agent.ErrDisconnected) {
+	if _, err := runtime.ListModels(t.Context()); !errors.Is(err, conversation.ErrDisconnected) {
 		t.Fatalf("ListModels after Close = %v, want ErrDisconnected", err)
 	}
 }
@@ -890,7 +889,7 @@ func TestOwnerOpensOnceAndRefusesReopenAfterClose(t *testing.T) {
 	if err := owner.Close(); err != nil {
 		t.Fatalf("repeated Close: %v", err)
 	}
-	if _, err := owner.Connection(t.Context(), ""); !errors.Is(err, agent.ErrDisconnected) {
+	if _, err := owner.Connection(t.Context(), ""); !errors.Is(err, conversation.ErrDisconnected) {
 		t.Fatalf("Connection after Close = %v, want ErrDisconnected", err)
 	}
 }

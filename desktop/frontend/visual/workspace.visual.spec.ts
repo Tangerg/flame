@@ -20,7 +20,8 @@ import {
 } from "./workspaceFixtureStates";
 
 const SETTINGS_SEARCH = { name: en["settings.searchPlaceholder"]! };
-const ACTIVE_FILE_PATH = "desktop/frontend/src/plugins/builtin/shell/kernel/panel/DockResizer.tsx";
+const ACTIVE_FILE_PATH =
+  "desktop/frontend/src/plugins/builtin/shell/workbench/panel/DockResizer.tsx";
 
 test.use({ viewport: VISUAL_WORKSPACE_VIEWPORT });
 

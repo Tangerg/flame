@@ -1,4 +1,4 @@
-import { getContainer } from "@/main/container";
+import type { FlameClient, SidecarClient } from "@flame/runtime-contract/client";
 import {
   HTTP_ENDPOINTS,
   type DiscoverResponse,
@@ -60,11 +60,14 @@ function assertRuntimeProcessGeneration(
   return generation;
 }
 
-export function runtimeServiceInspector(): RuntimeConnectionInspector<ServerCapabilities> {
+export function runtimeServiceInspector(
+  runtimeClient: () => FlameClient,
+  runtimeSidecar: () => SidecarClient,
+): RuntimeConnectionInspector<ServerCapabilities> {
   return {
     async inspect(signal) {
-      const sidecar = getContainer().sidecar();
-      const client = getContainer().client();
+      const sidecar = runtimeSidecar();
+      const client = runtimeClient();
       const cohort = new AbortController();
       const linkedSignal = AbortSignal.any([signal, cohort.signal]);
       let info: RuntimeInfo;

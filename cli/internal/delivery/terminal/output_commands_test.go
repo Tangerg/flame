@@ -10,14 +10,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/application/agent/session"
+	"github.com/Tangerg/flame/cli/internal/application/changefeed"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/programtest"
-
-	"github.com/Tangerg/flame/cli/internal/application/agent/session"
-	"github.com/Tangerg/flame/cli/internal/application/changefeed"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 )
 
 func TestParseExportArgumentSeparatesTheFormatFromAnOptionalSpacedFilename(t *testing.T) {
@@ -76,8 +75,8 @@ func (outputTransferStub) ExportSession(_ context.Context, request session.Expor
 	return session.NewDocument(protocol.ExportFormatJSON, []byte(`{"version":17}`))
 }
 
-func (outputTransferStub) ImportSession(context.Context, session.ImportRequest) (agent.Session, error) {
-	return agent.Session{}, errors.New("unexpected import")
+func (outputTransferStub) ImportSession(context.Context, session.ImportRequest) (conversation.Session, error) {
+	return conversation.Session{}, errors.New("unexpected import")
 }
 
 func runUIWithCopyHost(t *testing.T, backend Runtime, workspace string) (*copyTestHost, func()) {
@@ -86,7 +85,7 @@ func runUIWithCopyHost(t *testing.T, backend Runtime, workspace string) (*copyTe
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{Runtime: backend, Transfers: outputTransferStub{}, Workspace: workspace, Host: host})
+		done <- Run(ctx, Config{OpenWorkbench: memoryTestWorkbench, Runtime: backend, Transfers: outputTransferStub{}, Workspace: workspace, Host: host})
 	}()
 	var once sync.Once
 	stop := func() {
@@ -141,7 +140,7 @@ func TestCopyLastAndExportCommandsUseTheDurableSessionSnapshot(t *testing.T) {
 func TestSessionExportOutlivesSameSessionProjectionReplacement(t *testing.T) {
 	workspace := t.TempDir()
 	backend := runtimefixture.New()
-	created, err := backend.CreateSession(t.Context(), agent.CreateSession{
+	created, err := backend.CreateSession(t.Context(), conversation.CreateSession{
 		Title: "Export ownership", Workspace: workspace,
 	})
 	if err != nil {
@@ -168,7 +167,7 @@ func TestSessionExportOutlivesSameSessionProjectionReplacement(t *testing.T) {
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1),
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: backend, Transfers: transfer, Changes: source, SessionID: created.ID})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: backend, Transfers: transfer, Changes: source, SessionID: created.ID})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "runtime change subscription")
 	host.Type("/export markdown owned.md")

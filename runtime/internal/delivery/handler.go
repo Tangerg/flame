@@ -46,7 +46,7 @@ type HandlerConfig struct {
 	WorkspaceVCS           workspaceVCSUseCases
 	WorkspaceDiscovery     workspaceDiscoveryUseCases
 	WorkspaceSkills        workspaceSkillUseCases
-	WorkspaceHooks         workspaceHookUseCases
+	Hooks                  hookUseCases
 	WorkspaceWatch         workspaceWatchUseCases
 	WorkspaceAuthoredWatch workspaceAuthoredWatchUseCases
 
@@ -81,7 +81,7 @@ type Handler struct {
 	workspaceVCS           workspaceVCSUseCases
 	workspaceDiscovery     workspaceDiscoveryUseCases
 	workspaceSkills        workspaceSkillUseCases
-	workspaceHooks         workspaceHookUseCases
+	hooks                  hookUseCases
 	workspaceWatch         workspaceWatchUseCases
 	workspaceAuthoredWatch workspaceAuthoredWatchUseCases
 
@@ -152,7 +152,7 @@ func (c HandlerConfig) validate() error {
 		{name: "WorkspaceVCS", value: c.WorkspaceVCS},
 		{name: "WorkspaceDiscovery", value: c.WorkspaceDiscovery},
 		{name: "WorkspaceSkills", value: c.WorkspaceSkills},
-		{name: "WorkspaceHooks", value: c.WorkspaceHooks},
+		{name: "Hooks", value: c.Hooks},
 		{name: "WorkspaceWatch", value: c.WorkspaceWatch},
 		{name: "WorkspaceAuthoredWatch", value: c.WorkspaceAuthoredWatch},
 	} {
@@ -232,7 +232,7 @@ func newHandler(cfg HandlerConfig, facts contractFacts) *Handler {
 		workspaceVCS:             cfg.WorkspaceVCS,
 		workspaceDiscovery:       cfg.WorkspaceDiscovery,
 		workspaceSkills:          cfg.WorkspaceSkills,
-		workspaceHooks:           cfg.WorkspaceHooks,
+		hooks:                    cfg.Hooks,
 		workspaceWatch:           cfg.WorkspaceWatch,
 		workspaceAuthoredWatch:   cfg.WorkspaceAuthoredWatch,
 		features:                 facts.features,

@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { resetContainer, setContainer } from "@/main/container";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import { exportConversationMarkdown } from "../application/conversationExport";
 import { installConversationArchiveGateway } from "./runtimeConversationArchiveGateway";
@@ -44,17 +43,16 @@ beforeEach(() => mocks.download.mockReset());
 afterEach(async () => {
   for (const installation of installations.splice(0).reverse()) installation.dispose();
   vi.restoreAllMocks();
-  await resetContainer();
 });
 
 describe("runtimeConversationArchiveGateway", () => {
   it("binds a Host owner to the exact client installed at composition time", async () => {
     const retiredExport = vi.fn().mockResolvedValue({ format: "md", markdown: "retired" });
     const successorExport = vi.fn().mockResolvedValue({ format: "md", markdown: "successor" });
-    setContainer({ client: () => clientWithExport(retiredExport) });
-    installations.push(installConversationArchiveGateway());
+    let runtimeClient = () => clientWithExport(retiredExport);
+    installations.push(installConversationArchiveGateway(() => runtimeClient()));
 
-    setContainer({ client: () => clientWithExport(successorExport) });
+    runtimeClient = () => clientWithExport(successorExport);
     await exportConversationMarkdown();
 
     expect(retiredExport).toHaveBeenCalledWith("session-current", "md");
@@ -68,17 +66,16 @@ describe("runtimeConversationArchiveGateway", () => {
 
   it("retires an admitted export when the same Host observes a Runtime generation", async () => {
     const response = Promise.withResolvers<{ format: "md"; markdown: string }>();
-    const exportConversation = vi
-      .fn()
-      .mockReturnValueOnce(response.promise)
-      .mockResolvedValueOnce({ format: "md", markdown: "current" });
-    setContainer({ client: () => clientWithExport(exportConversation) });
-    const installation = installConversationArchiveGateway();
+    const exportConversation = vi.fn(() => response.promise);
+    const successorExport = vi.fn().mockResolvedValue({ format: "md", markdown: "current" });
+    let runtimeClient = () => clientWithExport(exportConversation);
+    const installation = installConversationArchiveGateway(() => runtimeClient());
     installations.push(installation);
 
     const retired = exportConversationMarkdown();
     const hasSettled = observedSettlement(retired);
     await vi.waitFor(() => expect(exportConversation).toHaveBeenCalledOnce());
+    runtimeClient = () => clientWithExport(successorExport);
     installation.replaceRuntimeGeneration();
     await drainMicrotasks();
     const settledAtReplacement = hasSettled();
@@ -89,6 +86,8 @@ describe("runtimeConversationArchiveGateway", () => {
     expect(mocks.download).not.toHaveBeenCalled();
 
     await exportConversationMarkdown();
+    expect(successorExport).toHaveBeenCalledExactlyOnceWith("session-current", "md");
+    expect(exportConversation).toHaveBeenCalledOnce();
     expect(mocks.download).toHaveBeenCalledWith(
       expect.stringContaining("flame-session-current-"),
       "current",

@@ -1,1 +1,1 @@
-export { HOOKS_KEY, type HooksQuery } from "../application/hookQueries";
+export { HOOKS_KEY } from "../application/hookQueries";

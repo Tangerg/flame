@@ -13,17 +13,6 @@ export {
   useWorkspaceListFiles,
   useWorkspaceProjects,
 } from "../application/workspaceQueries";
-export {
-  type WorkspaceDiff,
-  type WorkspaceDiffQuery,
-  type WorkspaceFileChange,
-  type WorkspaceFileChangesQuery,
-  type WorkspaceListFilesQuery,
-  type WorkspaceCatalogQuery,
-  type WorkspaceSkillDetailQuery,
-  type WorkspaceProjectSummary,
-  type WorkspaceReadFileQuery,
-  type AgentMemoryQuery,
-} from "../application/workspaceQueries";
+export type { WorkspaceProjectSummary } from "../application/workspaceQueries";
 
 export { useWorkingTreeChanges } from "../application/workingTreeChanges";

@@ -1,4 +1,3 @@
-import { getContainer } from "@/main/container";
 import { isErrorType, type FlameClient } from "@flame/runtime-contract/client";
 import { SkillCurationOwner } from "../application/skillCuration";
 import {
@@ -35,11 +34,12 @@ function runtimeSkillCurationGateway(client: FlameClient): SkillCurationGateway 
   };
 }
 
-export function installSkillCurationGateway() {
-  const gateway = runtimeSkillCurationGateway(getContainer().client());
+export function installSkillCurationGateway(runtimeClient: () => FlameClient) {
+  const gateway = runtimeSkillCurationGateway(runtimeClient());
   const owner = SkillCurationOwner.install(gateway);
   return {
-    replaceRuntimeGeneration: () => owner.replaceRuntimeGeneration(),
+    replaceRuntimeGeneration: () =>
+      owner.replaceRuntimeGeneration(() => runtimeSkillCurationGateway(runtimeClient())),
     dispose: () => owner.dispose(),
   };
 }

@@ -1,6 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { AgentRunFact as RunRef } from "@/plugins/sdk";
-import { setContainer } from "@/main/container";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import { navigator } from "@/lib/navigation";
 import { installAgentRuntimeGateway } from "../../adapters/agentRuntimeGateway";
@@ -13,6 +12,11 @@ import {
 import { configureAgentSessionViewPort, type AgentSessionViewPort } from "../ports/sessionView";
 import { forkAgentSessionAtRun, rollbackSessionToBeforeRun } from "./historyActions";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
+
+let runtimeClient: () => FlameClient = () => {
+  throw new Error("Runtime test client is not configured");
+};
+const getRuntimeClient = () => runtimeClient();
 
 let restoreRuntime: (() => void) | undefined;
 let restoreView: (() => void) | undefined;
@@ -110,12 +114,10 @@ describe("rollbackSessionToBeforeRun", () => {
       getSession: () => ({ synchronize: vi.fn().mockResolvedValue(true) }),
     } as unknown as AgentSessionViewPort);
     const successorRollback = vi.fn().mockResolvedValue({ droppedRuns: [] });
-    setContainer({
-      client: () => ({ sessions: { rollback: successorRollback } }) as unknown as FlameClient,
-    });
+    runtimeClient = () => ({ sessions: { rollback: successorRollback } }) as unknown as FlameClient;
 
     const retired = rollbackSessionToBeforeRun("ses_1", "run_2");
-    const disposeSuccessor = installAgentRuntimeGateway();
+    const disposeSuccessor = installAgentRuntimeGateway(getRuntimeClient);
     let retiredSettled = false;
     void retired.then(() => {
       retiredSettled = true;
@@ -162,12 +164,10 @@ describe("forkAgentSessionAtRun", () => {
       forkSession: vi.fn(() => retiredFork.promise),
     } as unknown as AgentRuntimeGateway);
     const successorFork = vi.fn().mockResolvedValue({ id: "fork_successor" });
-    setContainer({
-      client: () => ({ sessions: { fork: successorFork } }) as unknown as FlameClient,
-    });
+    runtimeClient = () => ({ sessions: { fork: successorFork } }) as unknown as FlameClient;
 
     const retired = forkAgentSessionAtRun("ses_1", "run_1");
-    const disposeSuccessor = installAgentRuntimeGateway();
+    const disposeSuccessor = installAgentRuntimeGateway(getRuntimeClient);
     const successor = forkAgentSessionAtRun("ses_1", "run_1");
     await Promise.resolve();
     const successorStartedBeforeRetiredSettlement = successorFork.mock.calls.length;

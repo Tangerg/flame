@@ -2,7 +2,7 @@ package run
 
 import (
 	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/statefile"
-	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
+	"github.com/Tangerg/flame/cli/internal/application/workbench"
 )
 
 func openTestWorkbench(directory string) (*workbench.Store, error) {

@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
-import { toolPreviewPlugins } from "@/plugins/builtin";
+import { toolPreviewPlugins } from "@/main/builtinPlugins";
 import { ToolPreview } from "./ToolPreview";
 
 function show(tool: ToolCall) {

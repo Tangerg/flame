@@ -105,6 +105,18 @@ go generate ./...
 
 The default suite is offline. Module rules live in [Module instructions](#module-instructions) below; current boundaries live in [`doc/ARCHITECTURE.md`](doc/ARCHITECTURE.md).
 
+The source map follows responsibility within each ring: Run execution and input
+translation live in `internal/adapter/run`, model translation in
+`internal/adapter/integration/model`, and Hook management in
+`internal/application/integration/hooks`. Feedback has its own Domain value and
+Application recorder because its lifetime is independent of Session cleanup.
+The architecture gate rejects unclassified production packages and imports.
+
+Waiting executor checkpoints require the exact executable BuildID. A rebuilt
+binary can reject them after source-only changes, including directory moves.
+Finish or cancel waiting executions before replacing their owning build. This
+does not require a migration of completed history or alter the public protocol.
+
 `make run` builds and runs the development server in the foreground. Use Ctrl-C
 and wait for it to return before starting a replacement. For a fresh database,
 run `FLAME_HOME="$(mktemp -d)" make run`; the new product root is isolated and is

@@ -3,9 +3,8 @@ package terminal
 import (
 	"fmt"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/components/headless"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 type trackedQuestion struct {
@@ -17,15 +16,15 @@ type trackedQuestion struct {
 // acceptQuestions reveals the durable Question replacements acknowledged by a
 // successful resume command. Validation is all-or-nothing so a malformed local
 // projection cannot leave only part of a multi-question set visible.
-func (t *transcriptView) acceptQuestions(blocks []agent.Block) error {
+func (t *transcriptView) acceptQuestions(blocks []conversation.Block) error {
 	type acceptance struct {
 		key      string
 		tracked  trackedQuestion
-		question agent.Question
+		question conversation.Question
 	}
 	accepted := make([]acceptance, 0, len(blocks))
 	for _, block := range blocks {
-		if block.Kind != agent.BlockQuestion || block.Question == nil {
+		if block.Kind != conversation.BlockQuestion || block.Question == nil {
 			return fmt.Errorf("terminal transcript: accepted interaction block %s is not a question", block.ID)
 		}
 		key := transcriptBlockKey(block.RunID, block.ID)
@@ -65,10 +64,10 @@ func (t *transcriptView) finishPendingQuestions(runID string) {
 // An unanswered durable Question remains hidden and retained only when the same
 // snapshot exposes it as an open interaction. Canceled historical questions are
 // still intentionally invisible, but must not pin the transcript forever.
-func (t *transcriptView) reconcilePendingQuestions(interactions []agent.Interaction) error {
+func (t *transcriptView) reconcilePendingQuestions(interactions []conversation.Interaction) error {
 	open := make(map[string]struct{}, len(interactions))
 	for _, interaction := range interactions {
-		question, ok := interaction.(agent.Question)
+		question, ok := interaction.(conversation.Question)
 		if !ok {
 			continue
 		}

@@ -1,3 +1,4 @@
+import type { FlameClient } from "@flame/runtime-contract/client";
 import { lazy } from "react";
 import { definePlugin } from "@/plugins/sdk";
 import { registerSettingsPane } from "../kit";
@@ -10,26 +11,28 @@ const McpServersPane = lazy(() =>
   import("./ui/McpServersPane").then(({ McpServersPane }) => ({ default: McpServersPane })),
 );
 
-export default definePlugin({
-  name: "flame.builtin.mcp-servers-pane",
-  requires: { runtime: RUNTIME_STREAM },
-  setup(ctx) {
-    const gateway = installMCPServerGateway();
-    const unsubscribeRuntime = followRuntimeGeneration(ctx.runtime, () =>
-      gateway.replaceRuntimeGeneration(),
-    );
-    registerMCPDataProviders(ctx);
-    registerSettingsPane(ctx, {
-      id: MCP_SERVERS_PANE,
-      label: "settings.pane.mcpServers",
-      group: "integrations",
-      icon: "tool",
-      order: 56,
-      component: McpServersPane,
-    });
-    ctx.cleanup(() => {
-      unsubscribeRuntime();
-      gateway.dispose();
-    });
-  },
-});
+export function createMCPServersPlugin(runtimeClient: () => FlameClient) {
+  return definePlugin({
+    name: "flame.builtin.mcp-servers-pane",
+    requires: { runtime: RUNTIME_STREAM },
+    setup(ctx) {
+      const gateway = installMCPServerGateway(runtimeClient);
+      const unsubscribeRuntime = followRuntimeGeneration(ctx.runtime, () =>
+        gateway.replaceRuntimeGeneration(),
+      );
+      registerMCPDataProviders(ctx, runtimeClient);
+      registerSettingsPane(ctx, {
+        id: MCP_SERVERS_PANE,
+        label: "settings.pane.mcpServers",
+        group: "integrations",
+        icon: "tool",
+        order: 56,
+        component: McpServersPane,
+      });
+      ctx.cleanup(() => {
+        unsubscribeRuntime();
+        gateway.dispose();
+      });
+    },
+  });
+}

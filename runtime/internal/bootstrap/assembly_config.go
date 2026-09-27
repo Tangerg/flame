@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
+	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
@@ -17,7 +17,7 @@ import (
 
 // ChatResolver combines the execution and model-validation views of one provider boundary.
 type ChatResolver interface {
-	agentexec.InteractionChatResolver
+	executionadapter.InteractionChatResolver
 	models.ChatModelValidator
 }
 
@@ -44,7 +44,7 @@ type Config struct {
 	SkillsUserDir string
 
 	// Maintenance overrides the default post-Run maintenance pipeline.
-	Maintenance agentexec.RunMaintenance
+	Maintenance executionadapter.RunMaintenance
 
 	// Resources are one-shot process adapters whose ownership transfers to
 	// the Runtime lifecycle when construction starts. It bounds each Close

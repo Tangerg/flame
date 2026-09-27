@@ -5,22 +5,21 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/keymap"
 	"github.com/Tangerg/oolong/core/layout"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 type questionnaire struct {
-	question  agent.Question
+	question  conversation.Question
 	current   int
 	responses []questionResponse
 }
 
 type questionResponse struct {
-	field    agent.QuestionField
+	field    conversation.QuestionField
 	text     string
 	single   questionChoice
 	multiple []questionChoice
@@ -36,12 +35,12 @@ func offeredQuestionChoice(value string) questionChoice { return questionChoice{
 
 func customQuestionChoice() questionChoice { return questionChoice{custom: true} }
 
-func newQuestionnaire(question agent.Question, previous agent.Answer) (*questionnaire, error) {
+func newQuestionnaire(question conversation.Question, previous conversation.Answer) (*questionnaire, error) {
 	if len(question.Fields) == 0 {
 		return nil, errors.New("runtime returned a question without fields")
 	}
 	review := &questionnaire{question: question.Clone(), responses: make([]questionResponse, len(question.Fields))}
-	answer, ok := previous.(agent.QuestionAnswer)
+	answer, ok := previous.(conversation.QuestionAnswer)
 	for index, field := range review.question.Fields {
 		var values []string
 		if ok && index < len(answer.Values) {
@@ -52,9 +51,9 @@ func newQuestionnaire(question agent.Question, previous agent.Answer) (*question
 	return review, nil
 }
 
-func newQuestionResponse(field agent.QuestionField, previous []string) questionResponse {
+func newQuestionResponse(field conversation.QuestionField, previous []string) questionResponse {
 	response := questionResponse{field: field}
-	if field.Kind == agent.QuestionSingle && len(field.Options) > 0 {
+	if field.Kind == conversation.QuestionSingle && len(field.Options) > 0 {
 		response.single = offeredQuestionChoice(field.Options[0].Label)
 	}
 	response.restore(previous)
@@ -63,11 +62,11 @@ func newQuestionResponse(field agent.QuestionField, previous []string) questionR
 
 func (q *questionResponse) restore(values []string) {
 	switch q.field.Kind {
-	case agent.QuestionText:
+	case conversation.QuestionText:
 		if len(values) > 0 {
 			q.text = values[0]
 		}
-	case agent.QuestionSingle:
+	case conversation.QuestionSingle:
 		if len(values) == 0 {
 			return
 		}
@@ -77,7 +76,7 @@ func (q *questionResponse) restore(values []string) {
 		}
 		q.single = customQuestionChoice()
 		q.custom = values[0]
-	case agent.QuestionMulti:
+	case conversation.QuestionMulti:
 		custom := make([]string, 0, len(values))
 		for _, value := range values {
 			if fieldOffers(q.field, value) || !q.field.AllowCustom {
@@ -93,9 +92,9 @@ func (q *questionResponse) restore(values []string) {
 	}
 }
 
-func (q *questionnaire) Current() (int, agent.QuestionField, bool) {
+func (q *questionnaire) Current() (int, conversation.QuestionField, bool) {
 	if q.current < 0 || q.current >= len(q.question.Fields) {
-		return 0, agent.QuestionField{}, false
+		return 0, conversation.QuestionField{}, false
 	}
 	return q.current, q.question.Fields[q.current], true
 }
@@ -130,31 +129,31 @@ func (q *questionnaire) response(index int) *questionResponse {
 	return &q.responses[index]
 }
 
-func (q *questionnaire) Answer() (agent.QuestionAnswer, error) {
+func (q *questionnaire) Answer() (conversation.QuestionAnswer, error) {
 	if q == nil {
-		return agent.QuestionAnswer{}, errors.New("questionnaire is not active")
+		return conversation.QuestionAnswer{}, errors.New("questionnaire is not active")
 	}
-	answer := agent.QuestionAnswer{Values: make([][]string, len(q.question.Fields))}
+	answer := conversation.QuestionAnswer{Values: make([][]string, len(q.question.Fields))}
 	for index := range q.responses {
 		values, err := q.responses[index].values()
 		if err != nil {
-			return agent.QuestionAnswer{}, fmt.Errorf("answer question field %d: %w", index+1, err)
+			return conversation.QuestionAnswer{}, fmt.Errorf("answer question field %d: %w", index+1, err)
 		}
 		answer.Values[index] = values
 	}
-	if err := agent.ValidateAnswer(q.question, answer); err != nil {
-		return agent.QuestionAnswer{}, fmt.Errorf("answer question: %w", err)
+	if err := conversation.ValidateAnswer(q.question, answer); err != nil {
+		return conversation.QuestionAnswer{}, fmt.Errorf("answer question: %w", err)
 	}
 	return answer, nil
 }
 
 func (q *questionResponse) values() ([]string, error) {
 	switch q.field.Kind {
-	case agent.QuestionText:
+	case conversation.QuestionText:
 		return requiredQuestionValue(q.text)
-	case agent.QuestionSingle:
+	case conversation.QuestionSingle:
 		return q.singleValue()
-	case agent.QuestionMulti:
+	case conversation.QuestionMulti:
 		return q.multipleValues()
 	default:
 		return nil, errors.New("runtime returned an unsupported question field kind")
@@ -205,7 +204,7 @@ func (q *questionResponse) multipleValues() ([]string, error) {
 	return values, nil
 }
 
-func (a *app) openQuestion(question agent.Question) {
+func (a *app) openQuestion(question conversation.Question) {
 	review, err := newQuestionnaire(question, a.dialogs.interactionReview.CurrentAnswer())
 	if err != nil {
 		a.fail(err)
@@ -239,12 +238,12 @@ func (a *app) buildQuestionFields(response *questionResponse) ([]headless.Field,
 	specification := response.field
 	label := questionFieldLabel(specification)
 	switch specification.Kind {
-	case agent.QuestionText:
+	case conversation.QuestionText:
 		return []headless.Field{a.buildQuestionText(&response.text, label, "", requiredText)}, nil
-	case agent.QuestionSingle:
+	case conversation.QuestionSingle:
 		fields := []headless.Field{a.buildQuestionSingle(response, specification, label)}
 		return a.appendCustomQuestionField(fields, response), nil
-	case agent.QuestionMulti:
+	case conversation.QuestionMulti:
 		fields := []headless.Field{a.buildQuestionMulti(response, specification, label)}
 		return a.appendCustomQuestionField(fields, response), nil
 	default:
@@ -258,7 +257,7 @@ func (a *app) buildQuestionText(value *string, label, placeholder string, check 
 	return field
 }
 
-func (a *app) buildQuestionSingle(response *questionResponse, specification agent.QuestionField, label string) headless.Field {
+func (a *app) buildQuestionSingle(response *questionResponse, specification conversation.QuestionField, label string) headless.Field {
 	options := questionOptions(specification)
 	field := &headless.Select[questionChoice]{
 		Label: label, Value: headless.Bind(&response.single), Rows: min(len(options), 5),
@@ -268,7 +267,7 @@ func (a *app) buildQuestionSingle(response *questionResponse, specification agen
 	return field
 }
 
-func (a *app) buildQuestionMulti(response *questionResponse, specification agent.QuestionField, label string) headless.Field {
+func (a *app) buildQuestionMulti(response *questionResponse, specification conversation.QuestionField, label string) headless.Field {
 	options := questionOptions(specification)
 	field := &headless.MultiSelect[questionChoice]{
 		Label: label, Value: headless.Bind(&response.multiple), Rows: min(len(options), 5),
@@ -283,7 +282,7 @@ func (a *app) appendCustomQuestionField(fields []headless.Field, response *quest
 		return fields
 	}
 	placeholder := "Used when “Other” is selected"
-	if response.field.Kind == agent.QuestionMulti {
+	if response.field.Kind == conversation.QuestionMulti {
 		placeholder += "; separate multiple values with commas"
 	}
 	check := func(value string) error {
@@ -296,7 +295,7 @@ func (a *app) appendCustomQuestionField(fields []headless.Field, response *quest
 	return append(fields, a.buildQuestionText(&response.custom, "Custom answer", placeholder, check))
 }
 
-func questionFieldLabel(specification agent.QuestionField) string {
+func questionFieldLabel(specification conversation.QuestionField) string {
 	if specification.Header == "" {
 		return specification.Prompt
 	}
@@ -304,7 +303,7 @@ func questionFieldLabel(specification agent.QuestionField) string {
 }
 
 func (q *questionResponse) choosesCustom() bool {
-	if q.field.Kind == agent.QuestionSingle {
+	if q.field.Kind == conversation.QuestionSingle {
 		return q.single.custom
 	}
 	for _, choice := range q.multiple {
@@ -402,7 +401,7 @@ func (a *app) finishQuestionnaire(canceled bool) {
 	a.advanceInteractionReview()
 }
 
-func questionOptions(field agent.QuestionField) []headless.Option[questionChoice] {
+func questionOptions(field conversation.QuestionField) []headless.Option[questionChoice] {
 	out := make([]headless.Option[questionChoice], 0, len(field.Options)+1)
 	for _, option := range field.Options {
 		label := option.Label
@@ -420,7 +419,7 @@ func questionOptions(field agent.QuestionField) []headless.Option[questionChoice
 	return out
 }
 
-func fieldOffers(field agent.QuestionField, value string) bool {
+func fieldOffers(field conversation.QuestionField, value string) bool {
 	for _, option := range field.Options {
 		if option.Label == value {
 			return true

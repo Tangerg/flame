@@ -8,8 +8,8 @@ import (
 	"reflect"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec"
-	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -30,8 +30,8 @@ var (
 // transient child history is reduced only in the returned Interaction state.
 func (c *Compactor) CompactModelContext(
 	ctx context.Context,
-	request agentexec.ModelContextCompaction,
-) (agentexec.ModelContextCompactionResult, error) {
+	request executionadapter.ModelContextCompaction,
+) (executionadapter.ModelContextCompactionResult, error) {
 	candidate := request.Candidate()
 	history := candidate
 	protectedTail := request.ProtectedTail()
@@ -39,14 +39,14 @@ func (c *Compactor) CompactModelContext(
 	if request.Durable() {
 		stored, err := c.store.Read(ctx, request.SessionID())
 		if err != nil {
-			return agentexec.ModelContextCompactionResult{}, fmt.Errorf("maintenance: read model context: %w", err)
+			return executionadapter.ModelContextCompactionResult{}, fmt.Errorf("maintenance: read model context: %w", err)
 		}
 		candidatePrefix, matches, difference, err := semanticMessagePrefix(candidate, stored)
 		if err != nil {
-			return agentexec.ModelContextCompactionResult{}, err
+			return executionadapter.ModelContextCompactionResult{}, err
 		}
 		if !matches {
-			return agentexec.ModelContextCompactionResult{}, fmt.Errorf(
+			return executionadapter.ModelContextCompactionResult{}, fmt.Errorf(
 				"%w: candidate_messages=%d durable_messages=%d first_difference=%s",
 				ErrModelContextDiverged,
 				len(candidate),
@@ -62,7 +62,7 @@ func (c *Compactor) CompactModelContext(
 		// the durable history, which is the sequence this compaction folds.
 		protectedTail = max(protectedTail-len(ephemeral), 0)
 		if protectedTail > len(history) {
-			return agentexec.ModelContextCompactionResult{}, fmt.Errorf(
+			return executionadapter.ModelContextCompactionResult{}, fmt.Errorf(
 				"%w: protected durable tail %d exceeds stored history %d",
 				ErrModelContextDiverged,
 				protectedTail,
@@ -73,12 +73,12 @@ func (c *Compactor) CompactModelContext(
 
 	limits, _, err := modeladapter.LookupTokenLimits(request.ModelSelection())
 	if err != nil {
-		return agentexec.ModelContextCompactionResult{}, err
+		return executionadapter.ModelContextCompactionResult{}, err
 	}
 	options := request.Options()
 	trigger, err := c.policy.tokenTrigger(limits, options)
 	if err != nil {
-		return agentexec.ModelContextCompactionResult{}, fmt.Errorf(
+		return executionadapter.ModelContextCompactionResult{}, fmt.Errorf(
 			"maintenance: resolve model-context token trigger: %w",
 			err,
 		)
@@ -94,17 +94,17 @@ func (c *Compactor) CompactModelContext(
 	)
 	plan, err := c.planCompactionWithProtectedTail(ctx, history, budget, protectedTail)
 	if err != nil {
-		return agentexec.ModelContextCompactionResult{}, err
+		return executionadapter.ModelContextCompactionResult{}, err
 	}
 	if plan.action == noCompaction {
 		return unchangedModelContextResult(candidate, plan.estimatedTokens)
 	}
 	allowed, err := request.AllowsCompaction(ctx)
 	if err != nil {
-		return agentexec.ModelContextCompactionResult{}, fmt.Errorf("maintenance: pre-compaction hooks: %w", err)
+		return executionadapter.ModelContextCompactionResult{}, fmt.Errorf("maintenance: pre-compaction hooks: %w", err)
 	}
 	if !allowed {
-		return agentexec.ModelContextCompactionResult{}, ErrModelContextCompactionVetoed
+		return executionadapter.ModelContextCompactionResult{}, ErrModelContextCompactionVetoed
 	}
 
 	replacement, summary, cutoff, prefixAfter, err := c.materializeModelContextPlan(
@@ -113,17 +113,17 @@ func (c *Compactor) CompactModelContext(
 		plan,
 	)
 	if err != nil {
-		return agentexec.ModelContextCompactionResult{}, err
+		return executionadapter.ModelContextCompactionResult{}, err
 	}
 	overBudget, estimatedTokens, err := budget.exceeded(ctx, replacement)
 	if err != nil {
-		return agentexec.ModelContextCompactionResult{}, err
+		return executionadapter.ModelContextCompactionResult{}, err
 	}
 	if overBudget {
-		return agentexec.ModelContextCompactionResult{}, ErrModelContextCannotFit
+		return executionadapter.ModelContextCompactionResult{}, ErrModelContextCannotFit
 	}
 	effective := slices.Concat(replacement, ephemeral)
-	result, err := agentexec.NewModelContextCompactionResult(
+	result, err := executionadapter.NewModelContextCompactionResult(
 		effective,
 		true,
 		summary,
@@ -131,7 +131,7 @@ func (c *Compactor) CompactModelContext(
 		estimatedTokens,
 	)
 	if err != nil {
-		return agentexec.ModelContextCompactionResult{}, err
+		return executionadapter.ModelContextCompactionResult{}, err
 	}
 	if request.Durable() {
 		if err := c.store.RewriteForCompaction(
@@ -142,7 +142,7 @@ func (c *Compactor) CompactModelContext(
 			prefixAfter,
 			replacement...,
 		); err != nil {
-			return agentexec.ModelContextCompactionResult{}, fmt.Errorf(
+			return executionadapter.ModelContextCompactionResult{}, fmt.Errorf(
 				"maintenance: persist model context compaction: %w",
 				err,
 			)
@@ -155,8 +155,8 @@ func (c *Compactor) CompactModelContext(
 func unchangedModelContextResult(
 	candidate []chat.Message,
 	estimatedTokens int,
-) (agentexec.ModelContextCompactionResult, error) {
-	return agentexec.NewModelContextCompactionResult(
+) (executionadapter.ModelContextCompactionResult, error) {
+	return executionadapter.NewModelContextCompactionResult(
 		candidate,
 		false,
 		"",
@@ -165,9 +165,9 @@ func unchangedModelContextResult(
 	)
 }
 
-type modelContextCounter agentexec.ModelContextCompaction
+type modelContextCounter executionadapter.ModelContextCompaction
 
-func newModelContextCounter(request agentexec.ModelContextCompaction) modelContextInputTokenCounter {
+func newModelContextCounter(request executionadapter.ModelContextCompaction) modelContextInputTokenCounter {
 	if !request.HasInputTokenCounter() {
 		return nil
 	}
@@ -178,7 +178,7 @@ func (m modelContextCounter) CountInputTokens(
 	ctx context.Context,
 	messages []chat.Message,
 ) (int64, error) {
-	return agentexec.ModelContextCompaction(m).CountInputTokens(ctx, messages)
+	return executionadapter.ModelContextCompaction(m).CountInputTokens(ctx, messages)
 }
 
 func (c *Compactor) materializeModelContextPlan(
@@ -351,4 +351,4 @@ func normalizedSemanticMessages(messages []chat.Message, owner string) ([]semant
 	return normalized, nil
 }
 
-var _ agentexec.ModelContextCompactor = (*Compactor)(nil)
+var _ executionadapter.ModelContextCompactor = (*Compactor)(nil)

@@ -10,10 +10,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 type runBindingStub struct {
@@ -47,10 +48,10 @@ func (r runBindingStub) CancelRun(ctx context.Context, request protocol.CancelRu
 	return r.cancel(ctx, request, options)
 }
 
-func testStartRequest(sessionID string, message agent.Message) agent.StartRun {
-	return agent.StartRun{
+func testStartRequest(sessionID string, message prompt.Message) prompt.StartRun {
+	return prompt.StartRun{
 		SessionID: sessionID, Message: message,
-		Options: agent.RunOptions{},
+		Options: prompt.RunOptions{},
 	}
 }
 
@@ -95,8 +96,8 @@ func TestStartRunMapsOptionsAndProjectsAtomicStream(t *testing.T) {
 		}, nil
 	}
 	runtime := &Connection{runs: stub, meta: requestMeta("test"), loadAttachment: loadAttachmentFile}
-	stream, err := runtime.StartRun(t.Context(), agent.StartRun{
-		SessionID: "ses_1", Message: agent.Message{Text: "hello"}, Options: agent.RunOptions{
+	stream, err := runtime.StartRun(t.Context(), prompt.StartRun{
+		SessionID: "ses_1", Message: prompt.Message{Text: "hello"}, Options: prompt.RunOptions{
 			Provider: "deepseek", Model: "deepseek-reasoner", ReasoningEffort: "high",
 		},
 	})
@@ -106,7 +107,7 @@ func TestStartRunMapsOptionsAndProjectsAtomicStream(t *testing.T) {
 	if stream.RunID != runID || stream.SegmentID != segmentID || stream.UserItemID != "item_user" {
 		t.Fatalf("stream = %+v", stream)
 	}
-	var events []agent.RunEvent
+	var events []conversation.RunEvent
 	for event, err := range stream.Events {
 		if err != nil {
 			t.Fatalf("stream: %v", err)
@@ -116,16 +117,16 @@ func TestStartRunMapsOptionsAndProjectsAtomicStream(t *testing.T) {
 	if len(events) != 2 {
 		t.Fatalf("events = %+v", events)
 	}
-	if _, ok := events[0].Event.(agent.SegmentStarted); !ok {
+	if _, ok := events[0].Event.(conversation.SegmentStarted); !ok {
 		t.Fatalf("first event = %T", events[0].Event)
 	}
-	if finished, ok := events[1].Event.(agent.RunFinished); !ok || finished.Outcome.Status != protocol.OutcomeCompleted || finished.ContextTokens != 12_345 {
+	if finished, ok := events[1].Event.(conversation.RunFinished); !ok || finished.Outcome.Status != protocol.OutcomeCompleted || finished.ContextTokens != 12_345 {
 		t.Fatalf("second event = %+v", events[1].Event)
 	}
 }
 
 func TestRunMutationsPreserveCallerCommandIdentity(t *testing.T) {
-	commandID := agent.CommandID("cli_0123456789abcdef0123456789abcdef")
+	commandID := replay.CommandID("cli_0123456789abcdef0123456789abcdef")
 	const namespace = compatibleReplayNamespace
 	stub := runBindingStub{}
 	stub.start = func(_ context.Context, request protocol.StartRunRequest, options flameruntime.RunCommandOptions) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
@@ -164,29 +165,29 @@ func TestRunMutationsPreserveCallerCommandIdentity(t *testing.T) {
 		runs: stub, meta: requestMeta("test"),
 		profile: profileWithReplayNamespace(t, namespace),
 	}
-	request := testStartRequest("ses_1", agent.Message{Text: "start"})
+	request := testStartRequest("ses_1", prompt.Message{Text: "start"})
 	request.CommandID = commandID
 	if _, err := runtime.StartRun(t.Context(), request); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := runtime.ResumeRun(t.Context(), agent.ResumeRun{CommandID: commandID, RunID: "run_1", Answers: []agent.InterruptAnswer{{ItemID: "item_approval", Answer: agent.ApprovalAnswer{Decision: protocol.ApprovalDeny}}}}); err != nil {
+	if _, err := runtime.ResumeRun(t.Context(), conversation.ResumeRun{CommandID: commandID, RunID: "run_1", Answers: []conversation.InterruptAnswer{{ItemID: "item_approval", Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalDeny}}}}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := runtime.CancelRun(t.Context(), agent.CancelRun{CommandID: commandID, RunID: "run_1"}); err != nil {
+	if _, err := runtime.CancelRun(t.Context(), conversation.CancelRun{CommandID: commandID, RunID: "run_1"}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := runtime.SteerRun(t.Context(), agent.SteerRun{CommandID: commandID, RunID: "run_1", SegmentID: "seg_1", Message: agent.Message{Text: "steer"}}); err != nil {
+	if _, err := runtime.SteerRun(t.Context(), prompt.SteerRun{CommandID: commandID, RunID: "run_1", SegmentID: "seg_1", Message: prompt.Message{Text: "steer"}}); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestRunInputMutationsRejectImagesBeforeCallingBindingWithoutMultimodalCapability(t *testing.T) {
 	t.Parallel()
-	attachment := agent.Attachment{
+	attachment := prompt.Attachment{
 		ID: "image", Kind: protocol.ContentBlockImage, Name: "image.png", Path: "/image.png",
 		MimeType: "image/png", Size: 5,
 	}
-	message := agent.Message{Attachments: []agent.Attachment{attachment}}
+	message := prompt.Message{Attachments: []prompt.Attachment{attachment}}
 	for _, test := range []struct {
 		name string
 		call func(context.Context, *Connection) error
@@ -201,10 +202,10 @@ func TestRunInputMutationsRejectImagesBeforeCallingBindingWithoutMultimodalCapab
 		{
 			name: "resume",
 			call: func(ctx context.Context, runtime *Connection) error {
-				_, err := runtime.ResumeRun(ctx, agent.ResumeRun{
+				_, err := runtime.ResumeRun(ctx, conversation.ResumeRun{
 					RunID: "run_1", Message: &message,
-					Answers: []agent.InterruptAnswer{{
-						ItemID: "item_approval", Answer: agent.ApprovalAnswer{Decision: protocol.ApprovalDeny},
+					Answers: []conversation.InterruptAnswer{{
+						ItemID: "item_approval", Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalDeny},
 					}},
 				})
 				return err
@@ -213,7 +214,7 @@ func TestRunInputMutationsRejectImagesBeforeCallingBindingWithoutMultimodalCapab
 		{
 			name: "steer",
 			call: func(ctx context.Context, runtime *Connection) error {
-				_, err := runtime.SteerRun(ctx, agent.SteerRun{RunID: "run_1", SegmentID: "seg_1", Message: message})
+				_, err := runtime.SteerRun(ctx, prompt.SteerRun{RunID: "run_1", SegmentID: "seg_1", Message: message})
 				return err
 			},
 		},
@@ -243,7 +244,7 @@ func TestRunInputMutationsRejectImagesBeforeCallingBindingWithoutMultimodalCapab
 				},
 			}
 			err := test.call(t.Context(), runtime)
-			if err == nil || !errors.Is(err, agent.ErrIncompatibleRuntime) {
+			if err == nil || !errors.Is(err, conversation.ErrIncompatibleRuntime) {
 				t.Fatalf("run mutation error = %v, want ErrIncompatibleRuntime", err)
 			}
 			if called {
@@ -262,7 +263,7 @@ func TestSubscribeRunPassesOpaqueReplayCursor(t *testing.T) {
 		return &protocol.SubscribeRunResponse{RunID: request.RunID, SegmentID: request.SegmentID, HeadEventID: runStringPointer("evt_head")}, func(func(protocol.RunEvent, error) bool) {}, nil
 	}
 	runtime := &Connection{runs: stub, meta: requestMeta("test")}
-	stream, err := runtime.SubscribeRun(t.Context(), agent.SubscribeRun{
+	stream, err := runtime.SubscribeRun(t.Context(), conversation.SubscribeRun{
 		RunID: "run_1", SegmentID: "seg_1", AfterEventID: "evt_opaque-event-cursor",
 	})
 	if err != nil {
@@ -284,7 +285,7 @@ func TestSubscribeRunRejectsInvalidReplayCursorBeforeBinding(t *testing.T) {
 		"opaque",
 		protocol.IDPrefixEvent + strings.Repeat("x", protocol.MaximumRunEventIDCharacters),
 	} {
-		if _, err := runtime.SubscribeRun(t.Context(), agent.SubscribeRun{
+		if _, err := runtime.SubscribeRun(t.Context(), conversation.SubscribeRun{
 			RunID: "run_1", SegmentID: "seg_1", AfterEventID: cursor,
 		}); err == nil {
 			t.Fatalf("SubscribeRun accepted cursor of length %d", len(cursor))
@@ -300,7 +301,7 @@ func TestProjectedStreamClassifiesClosedRuntime(t *testing.T) {
 		yield(protocol.RunEvent{}, flameruntime.ErrClosed)
 	}, "seg_1")
 	for _, err := range stream {
-		if !errors.Is(err, agent.ErrDisconnected) || !errors.Is(err, flameruntime.ErrClosed) {
+		if !errors.Is(err, conversation.ErrDisconnected) || !errors.Is(err, flameruntime.ErrClosed) {
 			t.Fatalf("stream error = %v", err)
 		}
 		return
@@ -332,15 +333,15 @@ func TestRunAdaptersRejectMismatchedAcknowledgements(t *testing.T) {
 		},
 	}, meta: requestMeta("test")}
 
-	stream, err := runtime.ResumeRun(t.Context(), agent.ResumeRun{RunID: "run_1", Answers: []agent.InterruptAnswer{{
-		ItemID: "approval", Answer: agent.ApprovalAnswer{Decision: protocol.ApprovalDeny},
+	stream, err := runtime.ResumeRun(t.Context(), conversation.ResumeRun{RunID: "run_1", Answers: []conversation.InterruptAnswer{{
+		ItemID: "approval", Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalDeny},
 	}}})
 	requireRuntimeContractViolation(t, err)
-	receipt, accepted := agent.AcceptedMutationReceipt(err)
+	receipt, accepted := conversation.AcceptedMutationReceipt(err)
 	if !accepted || !segmentStreamEmpty(stream) || receipt.RunID != "run_other" || receipt.SegmentID != "seg_2" {
 		t.Fatalf("accepted mismatched resume = stream %+v, receipt %+v, accepted %t", stream, receipt, accepted)
 	}
-	_, err = runtime.SubscribeRun(t.Context(), agent.SubscribeRun{RunID: "run_1", SegmentID: "seg_1"})
+	_, err = runtime.SubscribeRun(t.Context(), conversation.SubscribeRun{RunID: "run_1", SegmentID: "seg_1"})
 	requireRuntimeContractViolation(t, err)
 }
 
@@ -356,24 +357,24 @@ func TestRunMutationAdaptersPreservePartialAcceptedReceipts(t *testing.T) {
 		},
 	}, meta: requestMeta("test")}
 
-	started, err := runtime.StartRun(t.Context(), testStartRequest("ses_1", agent.Message{Text: "start"}))
+	started, err := runtime.StartRun(t.Context(), testStartRequest("ses_1", prompt.Message{Text: "start"}))
 	requireRuntimeContractViolation(t, err)
-	receipt, accepted := agent.AcceptedMutationReceipt(err)
+	receipt, accepted := conversation.AcceptedMutationReceipt(err)
 	if !accepted || !segmentStreamEmpty(started) || receipt.RunID != "run_started" || receipt.SegmentID != "seg_started" {
 		t.Fatalf("partial accepted start = stream %+v, receipt %+v, accepted %t", started, receipt, accepted)
 	}
 
-	resumed, err := runtime.ResumeRun(t.Context(), agent.ResumeRun{RunID: "run_1", Answers: []agent.InterruptAnswer{{
-		ItemID: "approval", Answer: agent.ApprovalAnswer{Decision: protocol.ApprovalDeny},
+	resumed, err := runtime.ResumeRun(t.Context(), conversation.ResumeRun{RunID: "run_1", Answers: []conversation.InterruptAnswer{{
+		ItemID: "approval", Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalDeny},
 	}}})
 	requireRuntimeContractViolation(t, err)
-	receipt, accepted = agent.AcceptedMutationReceipt(err)
+	receipt, accepted = conversation.AcceptedMutationReceipt(err)
 	if !accepted || !segmentStreamEmpty(resumed) || receipt.RunID != "run_1" || receipt.SegmentID != "" {
 		t.Fatalf("partial accepted resume = stream %+v, receipt %+v, accepted %t", resumed, receipt, accepted)
 	}
 }
 
-func segmentStreamEmpty(stream agent.SegmentStream) bool {
+func segmentStreamEmpty(stream conversation.SegmentStream) bool {
 	return stream.RunID == "" && stream.SegmentID == "" && stream.UserItemID == "" &&
 		stream.HeadEventID == "" && stream.Events == nil
 }
@@ -381,7 +382,7 @@ func segmentStreamEmpty(stream agent.SegmentStream) bool {
 func runStringPointer(value string) *string { return &value }
 
 func TestResumeAndCancelMapControlContracts(t *testing.T) {
-	override, err := agent.ParseToolArgumentOverride([]byte(`{"command":"go test -race ./...","count":9007199254740993}`))
+	override, err := conversation.ParseToolArgumentOverride([]byte(`{"command":"go test -race ./...","count":9007199254740993}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -415,10 +416,10 @@ func TestResumeAndCancelMapControlContracts(t *testing.T) {
 		}}, nil
 	}
 	runtime := &Connection{runs: stub, meta: requestMeta("test")}
-	resumed, err := runtime.ResumeRun(t.Context(), agent.ResumeRun{
-		RunID: "run_1", Answers: []agent.InterruptAnswer{{
+	resumed, err := runtime.ResumeRun(t.Context(), conversation.ResumeRun{
+		RunID: "run_1", Answers: []conversation.InterruptAnswer{{
 			ItemID: "item_approval",
-			Answer: agent.ApprovalAnswer{
+			Answer: conversation.ApprovalAnswer{
 				Decision: protocol.ApprovalApprove, Remember: protocol.RememberProject, ArgumentOverride: override,
 			},
 		}},
@@ -429,7 +430,7 @@ func TestResumeAndCancelMapControlContracts(t *testing.T) {
 	if resumed.RunID != "run_1" || resumed.SegmentID != "seg_2" {
 		t.Fatalf("resumed = %+v", resumed)
 	}
-	canceled, err := runtime.CancelRun(t.Context(), agent.CancelRun{RunID: "run_1", Reason: "stop"})
+	canceled, err := runtime.CancelRun(t.Context(), conversation.CancelRun{RunID: "run_1", Reason: "stop"})
 	if err != nil {
 		t.Fatalf("CancelRun: %v", err)
 	}
@@ -441,9 +442,9 @@ func TestResumeAndCancelMapControlContracts(t *testing.T) {
 
 func TestProjectAnswerMapsRememberedDenial(t *testing.T) {
 	t.Parallel()
-	projected, err := projectAnswer(agent.InterruptAnswer{
+	projected, err := projectAnswer(conversation.InterruptAnswer{
 		ItemID: "item_denial",
-		Answer: agent.ApprovalAnswer{
+		Answer: conversation.ApprovalAnswer{
 			Decision: protocol.ApprovalDeny, Remember: protocol.RememberGlobal, Reason: "protect generated files",
 		},
 	})
@@ -463,12 +464,12 @@ func TestProjectAnswerMapsRememberedDenial(t *testing.T) {
 
 func TestProjectAnswerPreservesQuestionFieldOrderAndOwnsValues(t *testing.T) {
 	t.Parallel()
-	answer := agent.QuestionAnswer{Values: [][]string{
+	answer := conversation.QuestionAnswer{Values: [][]string{
 		{"concise explanation"},
 		{"linux", "darwin"},
 		{"custom target"},
 	}}
-	projected, err := projectAnswer(agent.InterruptAnswer{ItemID: "item_question", Answer: answer})
+	projected, err := projectAnswer(conversation.InterruptAnswer{ItemID: "item_question", Answer: answer})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -489,17 +490,17 @@ func TestProjectAnswerRejectsInvalidRuntimeWireVariants(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name   string
-		answer agent.Answer
+		answer conversation.Answer
 		field  string
 	}{
 		{
 			name:   "approval decision",
-			answer: agent.ApprovalAnswer{Decision: protocol.ApprovalDecision("later")},
+			answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalDecision("later")},
 			field:  "response.decision",
 		},
 		{
 			name: "remember scope",
-			answer: agent.ApprovalAnswer{
+			answer: conversation.ApprovalAnswer{
 				Decision: protocol.ApprovalApprove,
 				Remember: protocol.RememberScopeKind("workspace"),
 			},
@@ -507,14 +508,14 @@ func TestProjectAnswerRejectsInvalidRuntimeWireVariants(t *testing.T) {
 		},
 		{
 			name:   "empty question answer",
-			answer: agent.QuestionAnswer{},
+			answer: conversation.QuestionAnswer{},
 			field:  "response.answers",
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			_, err := projectAnswer(agent.InterruptAnswer{ItemID: "item_answer", Answer: test.answer})
+			_, err := projectAnswer(conversation.InterruptAnswer{ItemID: "item_answer", Answer: test.answer})
 			if err == nil || !strings.Contains(err.Error(), test.field) {
 				t.Fatalf("projectAnswer error = %v, want field %q", err, test.field)
 			}
@@ -554,7 +555,7 @@ func TestCancelRunProjectsChildAndSurvivingRootAtomically(t *testing.T) {
 		}, nil
 	}
 	runtime := &Connection{runs: stub, meta: requestMeta("test")}
-	result, err := runtime.CancelRun(t.Context(), agent.CancelRun{RunID: "run_child", Reason: "stop child"})
+	result, err := runtime.CancelRun(t.Context(), conversation.CancelRun{RunID: "run_child", Reason: "stop child"})
 	if err != nil {
 		t.Fatalf("CancelRun: %v", err)
 	}
@@ -598,7 +599,7 @@ func TestCancelRunRejectsMalformedClosedResults(t *testing.T) {
 				return test.response, nil
 			}}
 			runtime := &Connection{runs: stub, meta: requestMeta("test")}
-			if _, err := runtime.CancelRun(t.Context(), agent.CancelRun{RunID: "run_1"}); !errors.Is(err, agent.ErrIncompatibleRuntime) {
+			if _, err := runtime.CancelRun(t.Context(), conversation.CancelRun{RunID: "run_1"}); !errors.Is(err, conversation.ErrIncompatibleRuntime) {
 				t.Fatalf("CancelRun error = %v, want ErrIncompatibleRuntime", err)
 			}
 		})
@@ -617,10 +618,10 @@ func TestSteerRunBindsStructuredInputToTheObservedSegment(t *testing.T) {
 		return nil, protocol.ErrStaleSegment
 	}
 	runtime := &Connection{runs: stub, meta: requestMeta("test"), loadAttachment: loadAttachmentFile}
-	_, err := runtime.SteerRun(t.Context(), agent.SteerRun{
-		RunID: "run_1", SegmentID: "seg_2", Message: agent.Message{Text: "focus on the parser"},
+	_, err := runtime.SteerRun(t.Context(), prompt.SteerRun{
+		RunID: "run_1", SegmentID: "seg_2", Message: prompt.Message{Text: "focus on the parser"},
 	})
-	if !errors.Is(err, agent.ErrStaleSegment) {
+	if !errors.Is(err, conversation.ErrStaleSegment) {
 		t.Fatalf("SteerRun error = %v, want ErrStaleSegment", err)
 	}
 }
@@ -632,8 +633,8 @@ func TestSteerRunReturnsTheExactAcceptanceReceipt(t *testing.T) {
 			return &want, nil
 		},
 	}}
-	got, err := connection.SteerRun(t.Context(), agent.SteerRun{
-		RunID: "run_1", SegmentID: "seg_1", Message: agent.Message{Text: "preserve the receipt"},
+	got, err := connection.SteerRun(t.Context(), prompt.SteerRun{
+		RunID: "run_1", SegmentID: "seg_1", Message: prompt.Message{Text: "preserve the receipt"},
 	})
 	if err != nil || got != want {
 		t.Fatalf("steer receipt = %+v, error %v", got, err)
@@ -646,10 +647,10 @@ func TestSteerRunDistinguishesMissingReceiptFromRefusal(t *testing.T) {
 			return nil, nil
 		},
 	}}
-	_, err := connection.SteerRun(t.Context(), agent.SteerRun{
-		RunID: "run_1", SegmentID: "seg_1", Message: agent.Message{Text: "preserve accepted input"},
+	_, err := connection.SteerRun(t.Context(), prompt.SteerRun{
+		RunID: "run_1", SegmentID: "seg_1", Message: prompt.Message{Text: "preserve accepted input"},
 	})
-	if !errors.Is(err, agent.ErrSteerReceiptUnavailable) || !errors.Is(err, agent.ErrIncompatibleRuntime) {
+	if !errors.Is(err, conversation.ErrSteerReceiptUnavailable) || !errors.Is(err, conversation.ErrIncompatibleRuntime) {
 		t.Fatalf("missing accepted receipt = %v", err)
 	}
 }

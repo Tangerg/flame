@@ -71,18 +71,6 @@ func (p Profile) AvailableFeatureNames() []string {
 	return names
 }
 
-// MarshalJSON presents the protocol facts and client agreement without a second
-// CLI schema for Runtime identity, capabilities, or hard limits.
-func (p Profile) MarshalJSON() ([]byte, error) {
-	if err := p.Validate(); err != nil {
-		return nil, err
-	}
-	return encodeProjection(struct {
-		Discovery          protocol.DiscoverResponse    `json:"discovery"`
-		ClientCapabilities *protocol.ClientCapabilities `json:"clientCapabilities,omitzero"`
-	}{p.discovery, p.client})
-}
-
 func cloneDiscovery(discovery protocol.DiscoverResponse) protocol.DiscoverResponse {
 	capabilities := &discovery.Capabilities
 	capabilities.RunEvents = slices.Clone(capabilities.RunEvents)

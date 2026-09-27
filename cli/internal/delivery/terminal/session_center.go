@@ -5,40 +5,39 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/grid"
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/layout"
 	"github.com/Tangerg/oolong/core/text"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 type sessionCenterPane struct {
 	theme          kit.Theme
 	glyphs         kit.Glyphs
-	picker         *picker[agent.Session]
-	items          []agent.Session
+	picker         *picker[conversation.Session]
+	items          []conversation.Session
 	cursor         string
 	seenCursors    map[string]struct{}
 	loadMore       func()
-	toggleFavorite func(agent.Session)
-	rename         func(agent.Session)
-	delete         func(agent.Session)
+	toggleFavorite func(conversation.Session)
+	rename         func(conversation.Session)
+	delete         func(conversation.Session)
 }
 
-func newSessionCenterPane(theme kit.Theme, glyphs kit.Glyphs, open func(agent.Session)) *sessionCenterPane {
+func newSessionCenterPane(theme kit.Theme, glyphs kit.Glyphs, open func(conversation.Session)) *sessionCenterPane {
 	center := &sessionCenterPane{theme: theme, glyphs: glyphs}
 	center.picker = newPicker(theme, glyphs, "search loaded sessions",
-		func(session agent.Session) string {
+		func(session conversation.Session) string {
 			group := "Recent"
 			if session.Favorite {
 				group = glyphs.Taken + " Favorites"
 			}
 			return group + " · " + displayTitle(session)
 		},
-		func(session agent.Session) string { return compactRelativeAge(session.UpdatedAt) },
+		func(session conversation.Session) string { return compactRelativeAge(session.UpdatedAt) },
 		open,
 	)
 	center.Reset()
@@ -52,7 +51,7 @@ func (s *sessionCenterPane) Reset() {
 	s.picker.SetItems(nil)
 }
 
-func (s *sessionCenterPane) SetPage(page agent.SessionPage, appendPage bool) error {
+func (s *sessionCenterPane) SetPage(page conversation.SessionPage, appendPage bool) error {
 	if !appendPage {
 		s.seenCursors = map[string]struct{}{"": {}}
 	}
@@ -83,7 +82,7 @@ func (s *sessionCenterPane) SetPage(page agent.SessionPage, appendPage bool) err
 	return nil
 }
 
-func (s *sessionCenterPane) Upsert(session agent.Session) {
+func (s *sessionCenterPane) Upsert(session conversation.Session) {
 	selected, selectedOK := s.picker.Current()
 	updated := false
 	for index := range s.items {
@@ -103,7 +102,7 @@ func (s *sessionCenterPane) Upsert(session agent.Session) {
 }
 
 func (s *sessionCenterPane) Remove(id string) {
-	s.items = slices.DeleteFunc(s.items, func(session agent.Session) bool { return session.ID == id })
+	s.items = slices.DeleteFunc(s.items, func(session conversation.Session) bool { return session.ID == id })
 	s.picker.SetItems(s.items)
 }
 
@@ -180,9 +179,9 @@ func (s *sessionCenterPane) Handle(event input.Event) bool {
 
 func (s *sessionCenterPane) Focus(has bool) { s.picker.Focus(has) }
 
-func sortSessionCenter(sessions []agent.Session) []agent.Session {
+func sortSessionCenter(sessions []conversation.Session) []conversation.Session {
 	sorted := slices.Clone(sessions)
-	slices.SortStableFunc(sorted, func(left, right agent.Session) int {
+	slices.SortStableFunc(sorted, func(left, right conversation.Session) int {
 		if left.Favorite != right.Favorite {
 			if left.Favorite {
 				return -1

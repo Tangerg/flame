@@ -3,11 +3,11 @@ package terminal
 import (
 	"strings"
 
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/grid"
 	"github.com/Tangerg/oolong/core/text"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 const brandMarkMinWidth = 40
@@ -51,8 +51,8 @@ func newBrandBanner(
 	theme kit.Theme,
 	glyphs kit.Glyphs,
 	version string,
-	session agent.Session,
-	options agent.RunOptions,
+	session conversation.Session,
+	options prompt.RunOptions,
 ) *brandBanner {
 	banner := &brandBanner{theme: theme, glyphs: glyphs, version: brandVersion(version)}
 	banner.SetSession(session)
@@ -60,13 +60,13 @@ func newBrandBanner(
 	return banner
 }
 
-func (b *brandBanner) SetSession(session agent.Session) {
+func (b *brandBanner) SetSession(session conversation.Session) {
 	if b != nil {
 		b.workspace = displayWorkspace(session.Workspace)
 	}
 }
 
-func (b *brandBanner) SetOptions(options agent.RunOptions) {
+func (b *brandBanner) SetOptions(options prompt.RunOptions) {
 	if b != nil {
 		b.model = modelLabel(options)
 	}

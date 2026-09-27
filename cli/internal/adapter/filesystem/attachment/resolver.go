@@ -1,7 +1,7 @@
 // Package attachment turns local files into the runtime-neutral attachment
 // values accepted by the agent domain. It is a filesystem adapter: callers
 // depend on its small Resolver surface, while runtime implementations receive
-// only agent.Attachment values and never learn how the CLI found them.
+// only prompt.Attachment values and never learn how the CLI found them.
 package attachment
 
 import (
@@ -21,12 +21,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Tangerg/oolong/core/fuzzy"
-
-	"github.com/Tangerg/flame/runtime/protocol"
-
 	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/fileinput"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/oolong/core/fuzzy"
 )
 
 const (
@@ -71,18 +69,18 @@ func New(root string) (*Resolver, error) {
 	} else if !errors.Is(evalErr, os.ErrNotExist) {
 		return nil, fmt.Errorf("attachment: resolve workspace symlinks: %w", evalErr)
 	}
-	return &Resolver{root: abs, maxBytes: agent.MaxAttachmentBytes}, nil
+	return &Resolver{root: abs, maxBytes: prompt.MaxAttachmentBytes}, nil
 }
 
 // Resolve validates and classifies one explicit path. Symlinks are resolved so
 // identity and duplicate detection refer to the same underlying file.
-func (r *Resolver) Resolve(ctx context.Context, input string) (agent.Attachment, error) {
+func (r *Resolver) Resolve(ctx context.Context, input string) (prompt.Attachment, error) {
 	if err := context.Cause(ctx); err != nil {
-		return agent.Attachment{}, err
+		return prompt.Attachment{}, err
 	}
 	canonical, info, header, err := r.inspect(input)
 	if err != nil {
-		return agent.Attachment{}, err
+		return prompt.Attachment{}, err
 	}
 	return r.project(canonical, info, header)
 }
@@ -147,11 +145,11 @@ func readAttachmentHeader(file io.Reader, input string) ([]byte, error) {
 	return header[:n], nil
 }
 
-func (r *Resolver) project(canonical string, info fs.FileInfo, header []byte) (agent.Attachment, error) {
+func (r *Resolver) project(canonical string, info fs.FileInfo, header []byte) (prompt.Attachment, error) {
 	mimeType := classifyMIME(canonical, header)
 	kind, supported := attachmentKind(mimeType)
 	if !supported {
-		return agent.Attachment{}, fmt.Errorf("%w: %s (%s)", ErrUnsupportedType, canonical, mimeType)
+		return prompt.Attachment{}, fmt.Errorf("%w: %s (%s)", ErrUnsupportedType, canonical, mimeType)
 	}
 	name := filepath.Base(canonical)
 	if relative, ok := r.relative(canonical); ok {
@@ -162,7 +160,7 @@ func (r *Resolver) project(canonical string, info fs.FileInfo, header []byte) (a
 		size:          info.Size(),
 		modifiedAt:    info.ModTime().UnixNano(),
 	}).digest()
-	return agent.Attachment{
+	return prompt.Attachment{
 		ID: "att_" + hex.EncodeToString(digest[:8]), Kind: kind, Name: filepath.ToSlash(name),
 		Path: canonical, MimeType: mimeType, Size: info.Size(),
 	}, nil

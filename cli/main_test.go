@@ -21,14 +21,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/protocol"
-	"github.com/Tangerg/oolong/ptytest"
-
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
+	"github.com/Tangerg/flame/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/cli/internal/delivery/cmd"
 	"github.com/Tangerg/flame/cli/internal/delivery/terminal"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
+	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/oolong/ptytest"
 )
 
 type terminalModeCase struct {
@@ -426,7 +425,8 @@ func TestMixedInteractionPTYRuntime(t *testing.T) {
 	backend.Instant = true
 	backend.Script = func(string) runtimefixture.Script { return mixedInteractionPTYScript() }
 	if err := terminal.Run(t.Context(), terminal.Config{
-		Runtime: backend, Workspace: t.TempDir(),
+		OpenWorkbench: func() (*workbench.Store, error) { return workbenchFactory("")("") },
+		Runtime:       backend, Workspace: t.TempDir(),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -488,14 +488,15 @@ func TestCancelReentryPTYRuntime(t *testing.T) {
 			return cancelReentryPTYScript()
 		}
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
-			{Event: agent.BlockCompleted{Block: agent.Block{
-				ID: "reentry", Kind: agent.BlockNotice, Text: "PTY cancellation reentry accepted",
+			{Event: conversation.BlockCompleted{Block: conversation.Block{
+				ID: "reentry", Kind: conversation.BlockNotice, Text: "PTY cancellation reentry accepted",
 			}}},
-			{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
+			{Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	if err := terminal.Run(t.Context(), terminal.Config{
-		Runtime: backend, Workspace: t.TempDir(),
+		OpenWorkbench: func() (*workbench.Store, error) { return workbenchFactory("")("") },
+		Runtime:       backend, Workspace: t.TempDir(),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -504,12 +505,12 @@ func TestCancelReentryPTYRuntime(t *testing.T) {
 func cancelReentryPTYScript() runtimefixture.Script {
 	return runtimefixture.Script{
 		Interactions: mixedInteractionPTYInteractions(),
-		Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
+		Continue: func([]conversation.InterruptAnswer) []runtimefixture.Step {
 			return []runtimefixture.Step{
-				{Event: agent.BlockCompleted{Block: agent.Block{
-					ID: "violation", Kind: agent.BlockError, Text: "PTY cancellation contract violated",
+				{Event: conversation.BlockCompleted{Block: conversation.Block{
+					ID: "violation", Kind: conversation.BlockError, Text: "PTY cancellation contract violated",
 				}}},
-				{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeFailed}}},
+				{Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeFailed}}},
 			}
 		},
 	}
@@ -518,69 +519,69 @@ func cancelReentryPTYScript() runtimefixture.Script {
 func mixedInteractionPTYScript() runtimefixture.Script {
 	return runtimefixture.Script{
 		Interactions: mixedInteractionPTYInteractions(),
-		Continue: func(provided []agent.InterruptAnswer) []runtimefixture.Step {
+		Continue: func(provided []conversation.InterruptAnswer) []runtimefixture.Step {
 			result := "PTY HITL contract rejected"
 			if mixedInteractionPTYAnswersMatch(provided) {
 				result = "PTY HITL contract accepted"
 			}
 			return []runtimefixture.Step{
-				{Event: agent.BlockCompleted{Block: agent.Block{ID: "result", Kind: agent.BlockNotice, Text: result}}},
-				{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
+				{Event: conversation.BlockCompleted{Block: conversation.Block{ID: "result", Kind: conversation.BlockNotice, Text: result}}},
+				{Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 			}
 		},
 	}
 }
 
-func mixedInteractionPTYInteractions() []agent.Interaction {
-	return []agent.Interaction{
-		agent.Approval{
+func mixedInteractionPTYInteractions() []conversation.Interaction {
+	return []conversation.Interaction{
+		conversation.Approval{
 			ItemID: "approval", Title: "Run contract checks", Rememberable: true,
 			RuleHint: "shell:go test ./...",
-			Tool: &agent.ToolCall{
-				Kind: agent.ToolShell, Name: "shell", Command: "go test ./...", Status: agent.ToolRunning,
+			Tool: &conversation.ToolCall{
+				Kind: conversation.ToolShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning,
 				ArgumentsJSON: []byte(`{"command":"go test ./...","count":1}`),
 			},
 		},
-		agent.Question{
+		conversation.Question{
 			ItemID: "intent", Title: "Describe intent",
-			Fields: []agent.QuestionField{{Prompt: "Intent", Kind: agent.QuestionText}},
+			Fields: []conversation.QuestionField{{Prompt: "Intent", Kind: conversation.QuestionText}},
 		},
-		agent.Question{
+		conversation.Question{
 			ItemID: "platform", Title: "Choose platform",
-			Fields: []agent.QuestionField{{
-				Prompt: "Platform", Kind: agent.QuestionSingle,
+			Fields: []conversation.QuestionField{{
+				Prompt: "Platform", Kind: conversation.QuestionSingle,
 				Options: []protocol.QuestionOption{{Label: "Linux"}, {Label: "Darwin"}},
 			}},
 		},
-		agent.Question{
+		conversation.Question{
 			ItemID: "checks", Title: "Choose checks",
-			Fields: []agent.QuestionField{{
-				Prompt: "Checks", Kind: agent.QuestionMulti,
+			Fields: []conversation.QuestionField{{
+				Prompt: "Checks", Kind: conversation.QuestionMulti,
 				Options: []protocol.QuestionOption{{Label: "Unit"}, {Label: "Integration"}},
 			}},
 		},
 	}
 }
 
-func mixedInteractionPTYAnswersMatch(provided []agent.InterruptAnswer) bool {
+func mixedInteractionPTYAnswersMatch(provided []conversation.InterruptAnswer) bool {
 	if len(provided) != 4 {
 		return false
 	}
-	approval, ok := provided[0].Answer.(agent.ApprovalAnswer)
+	approval, ok := provided[0].Answer.(conversation.ApprovalAnswer)
 	if !ok || approval.Decision != protocol.ApprovalApprove || approval.Remember != protocol.RememberProject ||
 		approval.ArgumentOverride == nil ||
 		string(approval.ArgumentOverride.JSON()) != `{"command":"go test ./...","count":2}` {
 		return false
 	}
-	intent, ok := provided[1].Answer.(agent.QuestionAnswer)
+	intent, ok := provided[1].Answer.(conversation.QuestionAnswer)
 	if !ok || len(intent.Values) != 1 || !slices.Equal(intent.Values[0], []string{"ship safely"}) {
 		return false
 	}
-	platform, ok := provided[2].Answer.(agent.QuestionAnswer)
+	platform, ok := provided[2].Answer.(conversation.QuestionAnswer)
 	if !ok || len(platform.Values) != 1 || !slices.Equal(platform.Values[0], []string{"Darwin"}) {
 		return false
 	}
-	checks, ok := provided[3].Answer.(agent.QuestionAnswer)
+	checks, ok := provided[3].Answer.(conversation.QuestionAnswer)
 	return ok && len(checks.Values) == 1 && slices.Equal(checks.Values[0], []string{"Unit", "Integration"})
 }
 
@@ -818,8 +819,9 @@ func TestFlameProcess(t *testing.T) {
 		announced = true
 	}
 	stateDirectory := filepath.Join(flameHome, "cli")
+	openWorkbench := workbenchFactory(stateDirectory)
 	dependencies := cmd.Dependencies{
-		OpenRuntime: func(context.Context, string) (cmd.Runtime, *runtimebinding.Profile, error) {
+		OpenRuntime: func(context.Context, string) (cmd.Runtime, cmd.RuntimeProfile, error) {
 			announce()
 			return runtime, nil, nil
 		},
@@ -829,10 +831,10 @@ func TestFlameProcess(t *testing.T) {
 			return terminal.Run(ctx, terminal.Config{
 				Runtime: runtime, SessionID: request.SessionID, Workspace: request.Workspace,
 				InitialPrompt: request.InitialPrompt, Settings: &configured,
-				StateDirectory: request.StateDirectory,
+				OpenWorkbench: func() (*workbench.Store, error) { return openWorkbench(request.Settings.Runtime.Endpoint) },
 			})
 		},
-		StateDirectory: stateDirectory,
+		OpenWorkbench: openWorkbench,
 	}
 	os.Exit(runWithDependencies(dependencies, new(scriptedRuntimeOwner)))
 }

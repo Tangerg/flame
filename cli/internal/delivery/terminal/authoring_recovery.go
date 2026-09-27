@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 )
 
 // restoreSessionOutbox resumes durable runtime deliveries owned by the active
@@ -40,7 +40,7 @@ func (a *app) restorePendingRuns() {
 		a.fail(errors.New("recover pending run cancellation: replay guarantee expired or belongs to another runtime"))
 		return
 	}
-	if err := a.restorePendingQueue(pending); err != nil {
+	if err := a.restorePendingQueue(); err != nil {
 		a.fail(err)
 		return
 	}
@@ -104,19 +104,19 @@ func (a *app) restorePendingResume() {
 	a.deliverInteractionResume(review, pending.Command.Clone(), pending.Replay)
 }
 
-func sameInteractions(left, right []agent.Interaction) bool {
+func sameInteractions(left, right []conversation.Interaction) bool {
 	if len(left) != len(right) {
 		return false
 	}
 	for index, item := range left {
 		switch typed := item.(type) {
-		case agent.Approval:
-			other, ok := right[index].(agent.Approval)
+		case conversation.Approval:
+			other, ok := right[index].(conversation.Approval)
 			if !ok || !typed.Equal(other) {
 				return false
 			}
-		case agent.Question:
-			other, ok := right[index].(agent.Question)
+		case conversation.Question:
+			other, ok := right[index].(conversation.Question)
 			if !ok || !typed.Equal(other) {
 				return false
 			}
@@ -127,16 +127,8 @@ func sameInteractions(left, right []agent.Interaction) bool {
 	return true
 }
 
-func (a *app) restorePendingQueue(pending []workbench.PendingRun) error {
-	commands := make([]agent.StartRun, 0, len(pending))
-	for _, entry := range pending {
-		commands = append(commands, entry.Command.Clone())
-	}
-	var dispatching agent.CommandID
-	if len(pending) > 0 && pending[0].State != workbench.PendingRunQueued {
-		dispatching = pending[0].Command.CommandID
-	}
-	if err := a.queue.Restore(a.session.current.ID, commands, dispatching); err != nil {
+func (a *app) restorePendingQueue() error {
+	if err := a.queue.Restore(a.session.current.ID); err != nil {
 		return fmt.Errorf("restore pending runs: %w", err)
 	}
 	a.syncQueue()
@@ -174,16 +166,15 @@ func (a *app) reconcilePendingRun(pending workbench.PendingRun) {
 				err = a.retireQueuedCommand(command.SessionID, command.CommandID)
 			case accepted:
 				err = fmt.Errorf("pending command %s opened run %s while session projects %s", command.CommandID, observed.RunID, activeRunID)
-			case errors.Is(err, agent.ErrSessionHasActiveRun):
-				_, err = a.workbench.RequeuePendingRun(command.SessionID, command.CommandID)
+			case errors.Is(err, conversation.ErrSessionHasActiveRun):
+				err = a.queue.RequeueDispatch(command.SessionID, command.CommandID)
+				if err == nil {
+					a.syncQueue()
+				}
 			default:
 				err = fmt.Errorf("reconcile pending run: %w", err)
 			}
 			if err != nil {
-				a.fail(err)
-				return
-			}
-			if err := a.restorePendingQueue(a.workbench.PendingRuns(command.SessionID)); err != nil {
 				a.fail(err)
 			}
 		})

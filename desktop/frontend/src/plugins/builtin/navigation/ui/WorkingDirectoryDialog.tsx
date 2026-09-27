@@ -1,3 +1,4 @@
+import { workingDirectoryPicker } from "../application/ports/workingDirectoryPicker";
 import { useT } from "@/lib/i18n";
 import { InputDialog } from "@/ui";
 import { notifyError } from "@/plugins/sdk";
@@ -5,7 +6,6 @@ import { useCreateSession } from "@/plugins/builtin/agent/public/session";
 import { focusComposer } from "@/plugins/builtin/chat/composer/public/focus";
 import { runtimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
 import {
-  browseWorkingDirectory,
   updateWorkingDirectorySelection,
   useWorkingDirectorySelection,
 } from "../adapters/workingDirectorySelection";
@@ -20,7 +20,7 @@ export function WorkingDirectoryDialog() {
     if (current?.owner !== selection.owner || current.busy) return;
     updateWorkingDirectorySelection(selection, { busy: true });
     try {
-      await browseWorkingDirectory(selection);
+      await workingDirectoryPicker().browse(selection.owner);
     } catch (error) {
       if (useWorkingDirectorySelection.getState().selection?.owner !== selection.owner) return;
       notifyError(t("session.error.chooseWorkingDirectory"), {

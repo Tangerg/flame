@@ -1,10 +1,10 @@
 # Flame development workflow
 
-Repository rules live in [`AGENTS.md`](AGENTS.md), design rationale in [`DESIGN_PHILOSOPHY.md`](DESIGN_PHILOSOPHY.md), and the structural method in [`REFACTORING.md`](REFACTORING.md). Module-specific boundaries live in [`cli/ARCHITECTURE.md`](cli/ARCHITECTURE.md) and [`runtime/doc/ARCHITECTURE.md`](runtime/doc/ARCHITECTURE.md).
+Repository rules live in [`AGENTS.md`](AGENTS.md), design rationale in [`DESIGN_PHILOSOPHY.md`](DESIGN_PHILOSOPHY.md), and the structural method in [`REFACTORING.md`](REFACTORING.md). Module-specific boundaries live in [`cli/ARCHITECTURE.md`](cli/ARCHITECTURE.md), [`runtime/doc/ARCHITECTURE.md`](runtime/doc/ARCHITECTURE.md), and [`desktop/frontend/ARCHITECTURE.md`](desktop/frontend/ARCHITECTURE.md).
 
 ## Active boundary
 
-Current Runtime and CLI refactoring may change `cli`, `runtime`, `runtime/localruntime`, and the repository documents that describe them. Treat all Desktop changes as unrelated user work unless the user explicitly expands the scope.
+The task defines the active boundary. A Runtime/CLI-only task does not authorize Desktop or IDE edits. Repository-wide ownership or directory work includes the requested modules and every affected in-repository consumer of a replaced contract; preserve unrelated product work.
 
 Breaking changes are authorized. Migrate all in-scope consumers and leave one current shape.
 
@@ -51,6 +51,14 @@ GOWORK=off go test ./...
 GOWORK=off go vet ./...
 GOWORK=off go build ./...
 ```
+
+The graphical client has one required gate, run from `desktop/frontend`:
+
+```sh
+npm run check
+```
+
+Its TypeScript dependencies are installed after `runtime/contract/typescript`. Run the shared client's `npm run check` when changing that boundary, and `npm run check` from `ide` when its consumers are affected. Wails native builds follow the supported targets in `desktop/Taskfile.yml`; a browser build does not prove a native package works.
 
 Run `go generate ./...` in Runtime when the protocol catalog changes. Run `go mod tidy` only when imports or dependencies change, and inspect any `go.mod`, `go.sum`, or `go.work.sum` changes before keeping them. Always run `git diff --check`.
 

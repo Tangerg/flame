@@ -6,14 +6,13 @@ import (
 	"fmt"
 	"strings"
 	"text/tabwriter"
+	"time"
 
-	"github.com/spf13/cobra"
-
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
-	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
+	"github.com/Tangerg/flame/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/cli/internal/delivery/cmd/render"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/spf13/cobra"
 )
 
 func newRunsCommand(provider runtimeProvider) *cobra.Command {
@@ -67,8 +66,8 @@ func (r *runsListFlags) register(command *cobra.Command) {
 		&r.limit,
 		"limit",
 		"n",
-		agent.DefaultPageRows,
-		fmt.Sprintf("Maximum runs to return (up to %d)", agent.MaximumPageRows),
+		conversation.DefaultPageRows,
+		fmt.Sprintf("Maximum runs to return (up to %d)", conversation.MaximumPageRows),
 	)
 	command.Flags().BoolVar(&r.asJSON, "json", false, "Write the page as JSON")
 }
@@ -82,7 +81,7 @@ func (r *runsListFlags) execute(cmd *cobra.Command, provider runtimeProvider) er
 	if err != nil {
 		return err
 	}
-	query := agent.RunQuery{
+	query := conversation.RunQuery{
 		SessionID: r.sessionID, Statuses: statuses, IncludeDescendants: r.includeDescendants,
 		Cursor: r.cursor, PageSize: pageSize,
 	}
@@ -116,7 +115,7 @@ func (r *runsListFlags) execute(cmd *cobra.Command, provider runtimeProvider) er
 	return err
 }
 
-func writeRunList(cmd *cobra.Command, page agent.RunPage) error {
+func writeRunList(cmd *cobra.Command, page conversation.RunPage) error {
 	writer := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
 	for _, run := range page.Items {
 		if _, err := fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\n",
@@ -158,7 +157,7 @@ func newRunsShowCommand(provider runtimeProvider) *cobra.Command {
 	return command
 }
 
-func writeRunDetails(cmd *cobra.Command, run agent.Run) error {
+func writeRunDetails(cmd *cobra.Command, run conversation.Run) error {
 	writer := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
 	rows := [][2]string{
 		{"id", run.ID},
@@ -206,16 +205,16 @@ func newRunsCancelCommand(provider runtimeProvider) *cobra.Command {
 				return err
 			}
 			commandID := mutation.NewCommandID()
-			request := agent.CancelRun{CommandID: commandID, RunID: args[0], Reason: reason}
-			replayPolicy, err := runtimebinding.CommandReplayPolicy(profile)
+			request := conversation.CancelRun{CommandID: commandID, RunID: args[0], Reason: reason}
+			replayPolicy, err := mutation.PolicyFromProfile(profile, time.Now)
 			if err != nil {
 				return fmt.Errorf("runtime command replay policy: %w", err)
 			}
-			replay, err := replayPolicy.NewGuard()
+			replayGuard, err := replayPolicy.NewGuard()
 			if err != nil {
 				return fmt.Errorf("prepare run cancellation replay guard: %w", err)
 			}
-			result, err := mutation.ConfirmAdmitted(cmd.Context(), mutation.AcknowledgementBackoff(), mutation.FreshReplayAdmission(replayPolicy, replay), func(ctx context.Context) (agent.RunCancellation, error) {
+			result, err := mutation.ConfirmAdmitted(cmd.Context(), mutation.AcknowledgementBackoff(), mutation.FreshReplayAdmission(replayPolicy, replayGuard), func(ctx context.Context) (conversation.RunCancellation, error) {
 				return runtime.CancelRun(ctx, request)
 			})
 			if err != nil {
@@ -252,7 +251,7 @@ func parseRunStatuses(names []string) ([]protocol.RunStatus, error) {
 		}
 		statuses = append(statuses, status)
 	}
-	query := agent.RunQuery{Statuses: statuses, PageSize: agent.DefaultPageSize()}
+	query := conversation.RunQuery{Statuses: statuses, PageSize: conversation.DefaultPageSize()}
 	if err := query.Validate(); err != nil {
 		return nil, err
 	}
@@ -279,8 +278,8 @@ func completeFirstRunArgument(provider runtimeProvider) cobra.CompletionFunc {
 		}
 		includeDescendants := profile == nil ||
 			profile.Supports(protocol.FeatureSubagents)
-		page, err := runtime.ListRuns(cmd.Context(), agent.RunQuery{
-			IncludeDescendants: includeDescendants, PageSize: agent.MaximumPageSize(),
+		page, err := runtime.ListRuns(cmd.Context(), conversation.RunQuery{
+			IncludeDescendants: includeDescendants, PageSize: conversation.MaximumPageSize(),
 		})
 		if err != nil || page.Validate() != nil {
 			return nil, cobra.ShellCompDirectiveError
@@ -307,14 +306,14 @@ func filterCompletionPrefix(items []string, prefix string) []string {
 	return filtered
 }
 
-func runScope(run agent.Run) string {
+func runScope(run conversation.Run) string {
 	if run.Lineage.IsRoot() {
 		return "root"
 	}
 	return "child of " + run.Lineage.ParentRunID()
 }
 
-func runModel(run agent.Run) string {
+func runModel(run conversation.Run) string {
 	if run.Provider == "" {
 		return "-"
 	}

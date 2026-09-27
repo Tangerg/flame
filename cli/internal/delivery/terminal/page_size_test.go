@@ -3,14 +3,14 @@ package terminal
 import (
 	"testing"
 
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 )
 
-func catalogPageSize(t testing.TB, rows int) agent.PageSize {
+func catalogPageSize(t testing.TB, rows int) conversation.PageSize {
 	t.Helper()
-	pageSize, err := agent.NewPageSize(rows)
+	pageSize, err := conversation.NewPageSize(rows)
 	if err != nil {
-		t.Fatalf("agent.NewPageSize(%d): %v", rows, err)
+		t.Fatalf("conversation.NewPageSize(%d): %v", rows, err)
 	}
 	return pageSize
 }

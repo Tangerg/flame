@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { queryClient } from "@/lib/queryClient";
-import { resetContainer, setContainer } from "@/main/container";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import { definePlugin } from "@/plugins/sdk";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
@@ -12,13 +11,18 @@ import {
 import * as runtimeEndpoint from "@/plugins/builtin/runtime/public/endpoint";
 import { forgetRules } from "../application/approvalPolicy";
 import { APPROVAL_RULES_KEY } from "../application/approvalPolicyQueries";
-import agentBootstrap from "./index";
+import { createAgentBootstrapPlugin } from "./index";
 import { rejected } from "@/test/rejected";
+
+let runtimeClient: () => FlameClient = () => {
+  throw new Error("Runtime test client is not configured");
+};
+const getRuntimeClient = () => runtimeClient();
 
 afterEach(async () => {
   await resetKernelForTest();
   vi.restoreAllMocks();
-  resetContainer();
+
   queryClient.removeQueries({ queryKey: [APPROVAL_RULES_KEY] });
 });
 
@@ -26,9 +30,7 @@ describe("Agent bootstrap Runtime generation wiring", () => {
   it("retires an admitted approval command when the Runtime process generation changes", async () => {
     const retired = deferred();
     const forgetRule = vi.fn(() => retired.promise);
-    setContainer({
-      client: () => ({ approval: { forgetRule } }) as unknown as FlameClient,
-    });
+    runtimeClient = () => ({ approval: { forgetRule } }) as unknown as FlameClient;
     let generation = RuntimeConnectionGeneration.forProcess("runtime_1");
     const subscribers = new Set<() => void>();
     const runtime = definePlugin({
@@ -51,7 +53,7 @@ describe("Agent bootstrap Runtime generation wiring", () => {
         };
       },
     });
-    await loadPluginsForTest(runtime, agentBootstrap);
+    await loadPluginsForTest(runtime, createAgentBootstrapPlugin(getRuntimeClient));
 
     const command = rejected(forgetRules(["rule-1"]));
     await vi.waitFor(() => expect(forgetRule).toHaveBeenCalledOnce());

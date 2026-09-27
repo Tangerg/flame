@@ -1,0 +1,78 @@
+package execution
+
+import (
+	"fmt"
+	"strings"
+
+	"github.com/Tangerg/flame/runtime/internal/application/workspace"
+)
+
+const agentDocPromptMaxBytes = 32 * 1024
+
+const agentDocPromptHeader = "## Project context (from AGENTS.md cascade)"
+
+// agentDocumentsPrompt formats discovered files for the agent system prompt. The
+// provenance marker and byte budget are part of the model-facing prompt, not
+// the agent-document domain value.
+type agentDocumentsPrompt struct {
+	text    string
+	sources contextSources
+}
+
+type agentDocumentBlock struct {
+	text string
+	path string
+}
+
+func newAgentDocumentsPrompt(files []workspace.AgentDocFile, maxBytes int) (agentDocumentsPrompt, error) {
+	if len(files) == 0 {
+		return agentDocumentsPrompt{}, nil
+	}
+	if err := workspace.ValidateAgentDocumentCascade(files); err != nil {
+		return agentDocumentsPrompt{}, err
+	}
+	blocks, total := buildAgentDocumentBlocks(files)
+	if total > maxBytes {
+		return agentDocumentsPrompt{}, fmt.Errorf(
+			"%w: complete AGENTS.md cascade needs %d bytes, exceeds the %d-byte Run guidance budget; shorten the source documents",
+			workspace.ErrPromptSourceTooLarge, total, maxBytes,
+		)
+	}
+	return renderAgentDocumentBlocks(blocks, total), nil
+}
+
+func buildAgentDocumentBlocks(files []workspace.AgentDocFile) ([]agentDocumentBlock, int) {
+	blocks := make([]agentDocumentBlock, len(files))
+	total := len(agentDocPromptHeader) + 2 + max(0, len(files)-1)
+	for i, file := range files {
+		text := "<!-- From: " + file.Path + " -->\n" + file.Content + "\n"
+		blocks[i] = agentDocumentBlock{text: text, path: file.Path}
+		total += len(text)
+	}
+	return blocks, total
+}
+
+func renderAgentDocumentBlocks(blocks []agentDocumentBlock, total int) agentDocumentsPrompt {
+	var prompt strings.Builder
+	prompt.Grow(total)
+	sources := make(contextSources, 0, len(blocks))
+	for i, block := range blocks {
+		if i > 0 {
+			prompt.WriteByte('\n')
+		}
+		prompt.WriteString(block.text)
+		sources = append(sources, contextSourceAgentDocument.source(block.path))
+	}
+	return agentDocumentsPrompt{text: prompt.String(), sources: sources}
+}
+
+func (a agentDocumentsPrompt) appendTo(composition *promptComposition) {
+	if a.text == "" {
+		return
+	}
+	composition.append(
+		agentDocPromptHeader+"\n\n"+a.text,
+		a.sources[0],
+		a.sources[1:]...,
+	)
+}

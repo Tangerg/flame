@@ -3,7 +3,7 @@ package terminal
 import (
 	"slices"
 
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 )
 
 func (a *app) openApprovalArgumentEditor() {
@@ -16,7 +16,7 @@ func (a *app) openApprovalArgumentEditor() {
 		Content:     a.dialogs.approvalArguments,
 		Placeholder: "{\n  \"argument\": \"replacement\"\n}",
 		Save: func(value string, complete func(error) bool) error {
-			override, err := agent.ParseToolArgumentOverride([]byte(value))
+			override, err := conversation.ParseToolArgumentOverride([]byte(value))
 			if err != nil {
 				complete(err)
 				return nil
@@ -55,7 +55,7 @@ func (a *app) dismissApprovalEditor() {
 	a.dialogs.approvalEditor = nil
 }
 
-func editableApprovalArguments(call *agent.ToolCall) string {
+func editableApprovalArguments(call *conversation.ToolCall) string {
 	if call == nil || len(call.ArgumentsJSON) == 0 {
 		return "{}"
 	}

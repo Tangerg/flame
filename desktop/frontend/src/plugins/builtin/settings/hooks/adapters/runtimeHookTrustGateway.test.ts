@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { queryClient } from "@/lib/queryClient";
-import { resetContainer, setContainer } from "@/main/container";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import { setHookTrust } from "../application/hookTrust";
 import { HOOKS_KEY } from "../application/hookQueries";
@@ -12,7 +11,7 @@ let uninstall: (() => void) | undefined;
 afterEach(() => {
   uninstall?.();
   uninstall = undefined;
-  resetContainer();
+
   queryClient.removeQueries({ queryKey: [HOOKS_KEY] });
 });
 
@@ -21,19 +20,15 @@ describe("runtimeHookTrustGateway", () => {
     const retiredWrite = deferred();
     const setTrustRetired = vi.fn(() => retiredWrite.promise);
     const setTrustSuccessor = vi.fn().mockResolvedValue(undefined);
-    setContainer({
-      client: () => ({ hooks: { setTrust: setTrustRetired } }) as unknown as FlameClient,
-    });
-    const retiredInstallation = installHookTrustGateway();
+    let runtimeClient = () => ({ hooks: { setTrust: setTrustRetired } }) as unknown as FlameClient;
+    const retiredInstallation = installHookTrustGateway(() => runtimeClient());
 
     const inFlight = rejected(setHookTrust("/repo", true));
     const queued = rejected(setHookTrust("/repo", false));
     await vi.waitFor(() => expect(setTrustRetired).toHaveBeenCalledOnce());
 
-    setContainer({
-      client: () => ({ hooks: { setTrust: setTrustSuccessor } }) as unknown as FlameClient,
-    });
-    const successorInstallation = installHookTrustGateway();
+    runtimeClient = () => ({ hooks: { setTrust: setTrustSuccessor } }) as unknown as FlameClient;
+    const successorInstallation = installHookTrustGateway(() => runtimeClient());
     uninstall = () => {
       successorInstallation.dispose();
       retiredInstallation.dispose();

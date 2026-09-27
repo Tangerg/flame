@@ -11,9 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 func TestProjectToolPreservesStructuredDetails(t *testing.T) {
@@ -30,7 +29,7 @@ func TestProjectToolPreservesStructuredDetails(t *testing.T) {
 	if err != nil {
 		t.Fatalf("projectTool: %v", err)
 	}
-	if tool.Kind != agent.ToolShell || tool.Command != "go test ./..." || tool.Output != "ok" ||
+	if tool.Kind != conversation.ToolShell || tool.Command != "go test ./..." || tool.Output != "ok" ||
 		tool.Safety != protocol.SafetyClassExec || !tool.StartedAt.Equal(started) || !tool.FinishedAt.Equal(finished) ||
 		tool.ExitCode == nil || *tool.ExitCode != 0 || tool.Duration != 1250*time.Millisecond ||
 		!jsontext.Value(tool.ArgumentsJSON).IsValid() || !bytes.Contains(tool.ArgumentsJSON, []byte(`"command":"go test ./..."`)) ||
@@ -51,7 +50,7 @@ func TestProjectUnknownToolPreservesCompleteArgumentsAndResult(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if tool.Kind != agent.ToolUnknown || tool.Name != "mcp__calendar__create_event" ||
+	if tool.Kind != conversation.ToolUnknown || tool.Name != "mcp__calendar__create_event" ||
 		!bytes.Contains(tool.ArgumentsJSON, []byte(`"guests"`)) ||
 		!bytes.Contains(tool.ArgumentsJSON, []byte(`"source":"flame"`)) ||
 		!bytes.Contains(tool.ResultJSON, []byte(`"eventId":"evt_123"`)) {
@@ -110,18 +109,18 @@ func TestProjectToolRetainsDisplayAfterSourceReuse(t *testing.T) {
 func TestToolKindUsesOnlyCurrentRuntimeVocabulary(t *testing.T) {
 	tests := []struct {
 		name     string
-		expected agent.ToolKind
+		expected conversation.ToolKind
 	}{
-		{name: "shell", expected: agent.ToolShell},
-		{name: "apply_patch", expected: agent.ToolEdit},
-		{name: "read", expected: agent.ToolRead},
-		{name: "grep", expected: agent.ToolSearch},
-		{name: "web_search", expected: agent.ToolWeb},
-		{name: "delegate_task", expected: agent.ToolTask},
-		{name: "write_file", expected: agent.ToolUnknown},
-		{name: "edit_file", expected: agent.ToolUnknown},
-		{name: "read_file", expected: agent.ToolUnknown},
-		{name: "mcp_custom_tool", expected: agent.ToolUnknown},
+		{name: "shell", expected: conversation.ToolShell},
+		{name: "apply_patch", expected: conversation.ToolEdit},
+		{name: "read", expected: conversation.ToolRead},
+		{name: "grep", expected: conversation.ToolSearch},
+		{name: "web_search", expected: conversation.ToolWeb},
+		{name: "delegate_task", expected: conversation.ToolTask},
+		{name: "write_file", expected: conversation.ToolUnknown},
+		{name: "edit_file", expected: conversation.ToolUnknown},
+		{name: "read_file", expected: conversation.ToolUnknown},
+		{name: "mcp_custom_tool", expected: conversation.ToolUnknown},
 	}
 	for _, test := range tests {
 		if actual := kindForTool(test.name); actual != test.expected {
@@ -228,7 +227,7 @@ func TestProjectToolRecognizesRootRunCancellation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("projectTool: %v", err)
 	}
-	if tool.Status != agent.ToolCanceled || tool.Output != "run canceled" ||
+	if tool.Status != conversation.ToolCanceled || tool.Output != "run canceled" ||
 		tool.Problem == nil || tool.Problem.Type != "tool_canceled" {
 		t.Fatalf("tool = %+v", tool)
 	}
@@ -253,7 +252,7 @@ func TestQuestionItemAndInterruptShareProjection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("projectInteraction: %v", err)
 	}
-	if block.Question == nil || !reflect.DeepEqual(*block.Question, interaction.(agent.Question)) {
+	if block.Question == nil || !reflect.DeepEqual(*block.Question, interaction.(conversation.Question)) {
 		t.Fatalf("block question = %+v, interrupt = %+v", block.Question, interaction)
 	}
 }
@@ -300,7 +299,7 @@ func TestApprovalInterruptPreservesCompleteToolArguments(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	approval := interaction.(agent.Approval)
+	approval := interaction.(conversation.Approval)
 	if approval.Tool == nil || approval.Tool.Name != "mcp__calendar__create_event" ||
 		!bytes.Contains(approval.Tool.ArgumentsJSON, []byte(`"source":"approval"`)) ||
 		approval.Risk != protocol.ApprovalRiskHigh || approval.Detail != "creates a shared event" || !approval.Rememberable {
@@ -311,7 +310,7 @@ func TestApprovalInterruptPreservesCompleteToolArguments(t *testing.T) {
 func TestProjectEventPreservesEphemeralFramesAndClassifiesStreams(t *testing.T) {
 	step, contextTokens, cost := 3, int64(8_192), 0.25
 	at := time.Date(2026, time.August, 12, 9, 0, 0, 0, time.UTC)
-	project := func(eventID string, event protocol.StreamEvent) (agent.RunEvent, bool, error) {
+	project := func(eventID string, event protocol.StreamEvent) (conversation.RunEvent, bool, error) {
 		return projectEvent(protocol.RunEvent{
 			EventID: protocol.IDPrefixEvent + eventID, RunID: "run_1", SegmentID: "segment_1", Timestamp: at, Event: event,
 		})
@@ -326,7 +325,7 @@ func TestProjectEventPreservesEphemeralFramesAndClassifiesStreams(t *testing.T) 
 	if err != nil || !include {
 		t.Fatalf("progress = (include %v, error %v)", include, err)
 	}
-	progress, ok := progressEvent.Event.(agent.RunProgress)
+	progress, ok := progressEvent.Event.(conversation.RunProgress)
 	if !ok || progress.Step == nil || *progress.Step != step || progress.ContextTokens == nil ||
 		*progress.ContextTokens != contextTokens || progress.Usage == nil || progress.Usage.InputTokens != 12 ||
 		progress.Usage.CostUSD == nil || *progress.Usage.CostUSD != cost || progress.Activity != "thinking" {
@@ -337,7 +336,7 @@ func TestProjectEventPreservesEphemeralFramesAndClassifiesStreams(t *testing.T) 
 		Type: protocol.StreamItemDelta, ItemID: "tool_1",
 		Delta: &protocol.ItemDelta{Type: protocol.DeltaToolArguments, ArgumentsTextDelta: `{"path":"/tmp`},
 	})
-	if err != nil || !include || arguments.Event != (agent.ToolArgumentsDelta{BlockID: "tool_1", Text: `{"path":"/tmp`}) {
+	if err != nil || !include || arguments.Event != (conversation.ToolArgumentsDelta{BlockID: "tool_1", Text: `{"path":"/tmp`}) {
 		t.Fatalf("tool arguments = %#v, include %v, error %v", arguments.Event, include, err)
 	}
 
@@ -348,7 +347,7 @@ func TestProjectEventPreservesEphemeralFramesAndClassifiesStreams(t *testing.T) 
 	if err != nil || !include {
 		t.Fatalf("content = (include %v, error %v)", include, err)
 	}
-	delta, ok := content.Event.(agent.BlockDelta)
+	delta, ok := content.Event.(conversation.BlockDelta)
 	if !ok || delta.BlockID != "answer" || delta.Text != "third block" {
 		t.Fatalf("content delta = %#v", content.Event)
 	}
@@ -373,7 +372,7 @@ func TestProjectEventConsumesAuthoritativeItemAndStateFrames(t *testing.T) {
 	tests := []struct {
 		name   string
 		event  protocol.StreamEvent
-		assert func(*testing.T, agent.RunEvent)
+		assert func(*testing.T, conversation.RunEvent)
 	}{
 		{
 			name: "item started",
@@ -381,9 +380,9 @@ func TestProjectEventConsumesAuthoritativeItemAndStateFrames(t *testing.T) {
 				ID: "answer", RunID: "run_1", Status: protocol.ItemStatusRunning, Type: protocol.ItemTypeAgentMessage,
 				CreatedAt: at,
 			}},
-			assert: func(t *testing.T, event agent.RunEvent) {
-				started, ok := event.Event.(agent.BlockStarted)
-				if !ok || started.Block.ID != "answer" || started.Block.Status != agent.BlockStatusRunning {
+			assert: func(t *testing.T, event conversation.RunEvent) {
+				started, ok := event.Event.(conversation.BlockStarted)
+				if !ok || started.Block.ID != "answer" || started.Block.Status != conversation.BlockStatusRunning {
 					t.Fatalf("item.started = %#v", event.Event)
 				}
 			},
@@ -395,9 +394,9 @@ func TestProjectEventConsumesAuthoritativeItemAndStateFrames(t *testing.T) {
 				CreatedAt: at, Phase: protocol.MessagePhaseFinalAnswer,
 				Content: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "done"}},
 			}},
-			assert: func(t *testing.T, event agent.RunEvent) {
-				completed, ok := event.Event.(agent.BlockCompleted)
-				if !ok || completed.Block.Text != "done" || completed.Block.Status != agent.BlockStatusCompleted {
+			assert: func(t *testing.T, event conversation.RunEvent) {
+				completed, ok := event.Event.(conversation.BlockCompleted)
+				if !ok || completed.Block.Text != "done" || completed.Block.Status != conversation.BlockStatusCompleted {
 					t.Fatalf("item.completed = %#v", event.Event)
 				}
 			},
@@ -410,8 +409,8 @@ func TestProjectEventConsumesAuthoritativeItemAndStateFrames(t *testing.T) {
 					Steps: []protocol.PlanStep{{ID: "step_1", Description: "verify", Status: protocol.PlanStatusInProgress}},
 				},
 			}},
-			assert: func(t *testing.T, event agent.RunEvent) {
-				plan, ok := event.Event.(agent.PlanChanged)
+			assert: func(t *testing.T, event conversation.RunEvent) {
+				plan, ok := event.Event.(conversation.PlanChanged)
 				items := plan.Plan.State.Steps
 				if !ok || plan.Plan.State.Revision != 2 || len(items) != 1 || items[0].Description != "verify" || items[0].Status != protocol.PlanStatusInProgress {
 					t.Fatalf("plan.updated = %#v", event.Event)
@@ -454,7 +453,7 @@ func TestProjectChildRunPreservesLineage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("projectRun: %v", err)
 	}
-	want, err := agent.NewChildRunLineage("run_child", "item_delegate", "run_root", "run_root")
+	want, err := conversation.NewChildRunLineage("run_child", "item_delegate", "run_root", "run_root")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -487,7 +486,7 @@ func TestProjectTreeStreamRetainsProducerAndStreamSegments(t *testing.T) {
 		if event.StreamSegment() != "seg_root" || event.SegmentID != "seg_root" {
 			t.Fatalf("event segments = producer %s stream %s", event.SegmentID, event.StreamSegment())
 		}
-		suspended, ok := event.Event.(agent.RunSuspended)
+		suspended, ok := event.Event.(conversation.RunSuspended)
 		if !ok {
 			t.Fatalf("event = %T, want RunSuspended", event.Event)
 		}
@@ -546,7 +545,7 @@ func TestProjectSnapshotMatchesApprovalInvocationWithoutErasingItemLifecycle(t *
 	if err := snapshot.Validate(); err != nil {
 		t.Fatalf("snapshot: %v", err)
 	}
-	approval, ok := snapshot.Interactions[0].(agent.Approval)
+	approval, ok := snapshot.Interactions[0].(conversation.Approval)
 	itemTool := snapshot.Transcript[0].Tool
 	if !ok || itemTool == nil || approval.Tool == nil ||
 		itemTool.Safety != protocol.SafetyClassExec || !itemTool.StartedAt.Equal(startedAt) ||
@@ -618,13 +617,13 @@ func TestProjectIncompleteModelObservationsFromRuntime(t *testing.T) {
 	at := time.Date(2026, time.September, 18, 0, 0, 0, 0, time.UTC)
 	for _, test := range []struct {
 		item protocol.Item
-		kind agent.BlockKind
+		kind conversation.BlockKind
 	}{
 		{protocol.Item{ID: "item_message", RunID: "run_1", Type: protocol.ItemTypeAgentMessage,
 			Status: protocol.ItemStatusIncomplete, CreatedAt: at, Phase: protocol.MessagePhaseCommentary,
-			Content: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "visible prefix"}}}, agent.BlockAssistant},
+			Content: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "visible prefix"}}}, conversation.BlockAssistant},
 		{protocol.Item{ID: "item_reasoning", RunID: "run_1", Type: protocol.ItemTypeReasoning,
-			Status: protocol.ItemStatusIncomplete, CreatedAt: at, Text: "visible prefix"}, agent.BlockReasoning},
+			Status: protocol.ItemStatusIncomplete, CreatedAt: at, Text: "visible prefix"}, conversation.BlockReasoning},
 	} {
 		t.Run(string(test.item.Type), func(t *testing.T) {
 			event := protocol.StreamEvent{Type: protocol.StreamItemCompleted, Item: &test.item}
@@ -637,7 +636,7 @@ func TestProjectIncompleteModelObservationsFromRuntime(t *testing.T) {
 			if err != nil || !included {
 				t.Fatalf("live observation: %+v, %v", live, err)
 			}
-			completed, ok := live.Event.(agent.BlockCompleted)
+			completed, ok := live.Event.(conversation.BlockCompleted)
 			if !ok {
 				t.Fatalf("event = %T", live.Event)
 			}
@@ -645,7 +644,7 @@ func TestProjectIncompleteModelObservationsFromRuntime(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !reflect.DeepEqual(completed.Block, restored) || restored.Status != agent.BlockStatusIncomplete || restored.Kind != test.kind || restored.Text != "visible prefix" {
+			if !reflect.DeepEqual(completed.Block, restored) || restored.Status != conversation.BlockStatusIncomplete || restored.Kind != test.kind || restored.Text != "visible prefix" {
 				t.Fatalf("live/restored observation differs: live=%+v restored=%+v", completed.Block, restored)
 			}
 		})

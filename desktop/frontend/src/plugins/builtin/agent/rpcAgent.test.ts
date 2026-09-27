@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { resetContainer, setContainer } from "@/main/container";
 import {
   asItemId,
   asRunId,
@@ -15,7 +14,12 @@ import {
   RuntimeConnectionGeneration,
   RUNTIME_STREAM,
 } from "@/plugins/builtin/runtime/public/services";
-import rpcAgent from "./rpcAgent";
+import { createRpcAgentPlugin } from "./rpcAgent";
+
+let runtimeClient: () => FlameClient = () => {
+  throw new Error("Runtime test client is not configured");
+};
+const getRuntimeClient = () => runtimeClient();
 
 vi.mock("@/plugins/builtin/agent/public/session", () => ({
   getActiveSessionId: () => "ses_1",
@@ -23,7 +27,7 @@ vi.mock("@/plugins/builtin/agent/public/session", () => ({
 
 afterEach(async () => {
   await resetKernelForTest();
-  await resetContainer();
+
   vi.restoreAllMocks();
 });
 
@@ -50,12 +54,10 @@ describe("RPC Agent Runtime generation wiring", () => {
           retry: predecessorRetry,
         }) as ReturnType<FlameClient["runs"]["start"]>,
     );
-    setContainer({
-      client: () => ({ runs: { start: predecessorStart } }) as unknown as FlameClient,
-    });
+    runtimeClient = () => ({ runs: { start: predecessorStart } }) as unknown as FlameClient;
 
     const runtime = new RuntimeGenerationFixture("test.rpc-agent-runtime-generation");
-    await loadPluginsForTest(runtime.plugin, rpcAgent);
+    await loadPluginsForTest(runtime.plugin, createRpcAgentPlugin(getRuntimeClient));
     const source = pickAgentSource();
     expect(source?.id).toBe("rpc");
     const driver = source!.factory();
@@ -76,9 +78,7 @@ describe("RPC Agent Runtime generation wiring", () => {
         "successor-opening",
       ),
     );
-    setContainer({
-      client: () => ({ runs: { start: successorStart } }) as unknown as FlameClient,
-    });
+    runtimeClient = () => ({ runs: { start: successorStart } }) as unknown as FlameClient;
     runtime.replace("runtime_2");
 
     await expect(driver.start(input, {})).resolves.toMatchObject({
@@ -104,12 +104,10 @@ describe("RPC Agent Runtime generation wiring", () => {
         "accepted-opening",
       );
     });
-    setContainer({
-      client: () => ({ runs: { start } }) as unknown as FlameClient,
-    });
+    runtimeClient = () => ({ runs: { start } }) as unknown as FlameClient;
 
     const runtime = new RuntimeGenerationFixture("test.rpc-agent-accepted-stream-generation");
-    await loadPluginsForTest(runtime.plugin, rpcAgent);
+    await loadPluginsForTest(runtime.plugin, createRpcAgentPlugin(getRuntimeClient));
     await pickAgentSource()!
       .factory()
       .start([{ type: "text", text: "accepted" }], {});

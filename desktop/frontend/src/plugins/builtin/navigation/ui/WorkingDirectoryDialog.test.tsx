@@ -14,12 +14,6 @@ const runtime = vi.hoisted(() => ({
   endpoint: "https://runtime.example",
   focus: vi.fn(),
 }));
-vi.mock("@/main/container", () => ({
-  getContainer: () => ({
-    host: { chooseWorkingDirectory: runtime.browse },
-    localWorkspaceAvailable: () => runtime.local,
-  }),
-}));
 vi.mock("@/plugins/builtin/runtime/public/endpoint", () => ({
   currentRuntimeEndpoint: () => runtime.endpoint,
 }));
@@ -37,7 +31,7 @@ beforeEach(() => {
   runtime.browse.mockReset();
   runtime.focus.mockReset();
   runtime.local = false;
-  picker = installWorkingDirectoryPicker();
+  picker = installWorkingDirectoryPicker(runtime.browse, () => runtime.local);
 });
 afterEach(() => picker.dispose());
 
@@ -103,7 +97,7 @@ describe("Runtime workspace selection", () => {
 
   it("keeps successor dialog ownership when an older plugin is disposed", () => {
     open();
-    const successor = installWorkingDirectoryPicker();
+    const successor = installWorkingDirectoryPicker(runtime.browse, () => runtime.local);
     act(() => {
       workingDirectoryPicker().open();
       picker.dispose();

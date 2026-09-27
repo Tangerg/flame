@@ -1,0 +1,1590 @@
+package workbench
+
+import (
+	"bytes"
+	json "encoding/json/v2"
+	"fmt"
+	"os"
+	"path/filepath"
+	"reflect"
+	"slices"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/statefile"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/runtime/protocol"
+)
+
+func TestStoreRejectsInvalidAuthoringMessagesBeforePersistence(t *testing.T) {
+	store, err := OpenMemory(Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	invalid := prompt.Message{Attachments: []prompt.Attachment{{ID: "invalid"}}}
+	if err := store.Remember(invalid); err == nil || !strings.Contains(err.Error(), "remember prompt") {
+		t.Fatalf("Remember invalid message error = %v", err)
+	}
+	if err := store.SaveDraft("session", invalid); err == nil || !strings.Contains(err.Error(), "session draft") {
+		t.Fatalf("SaveDraft invalid message error = %v", err)
+	}
+	if history := store.History(); len(history) != 0 {
+		t.Fatalf("invalid message entered history: %+v", history)
+	}
+	if _, found := store.Draft("session"); found {
+		t.Fatal("invalid message entered drafts")
+	}
+}
+
+func TestStoreRejectsInvalidPersistedSessionDraft(t *testing.T) {
+	directory := t.TempDir()
+	persistence, err := statefile.Open(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const sessionID = "session"
+	memory, err := OpenMemory(Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	invalid := prompt.Message{Attachments: []prompt.Attachment{{ID: "invalid"}}}
+	encoded, err := json.Marshal(envelope[sessionState]{
+		Version: formatVersion,
+		Value:   sessionState{SessionID: sessionID, Draft: invalid},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := persistence.Replace(memory.sessionStateName(sessionID), encoded); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Open(persistence, Config{}); err == nil || !strings.Contains(err.Error(), "session draft") {
+		t.Fatalf("Open invalid persisted draft error = %v", err)
+	}
+}
+
+func TestStorePersistsBoundedHistoryDraftsStashesAndWorkspaces(t *testing.T) {
+	directory := t.TempDir()
+	now := time.Date(2026, 8, 11, 12, 0, 0, 0, time.UTC)
+	store, err := OpenDirectory(directory, Config{
+		HistoryCapacity: testCapacity(t, 2), StashCapacity: testCapacity(t, 2), WorkspaceCapacity: testCapacity(t, 2),
+		Now: func() time.Time { return now }, Random: bytes.NewReader([]byte("12345678abcdefgh")),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, text := range []string{"one", "two", "three"} {
+		if rememberErr := store.Remember(prompt.Message{Text: text}); rememberErr != nil {
+			t.Fatal(rememberErr)
+		}
+	}
+	draft := prompt.Message{Text: "unfinished", Attachments: []prompt.Attachment{{ID: "attachment", Path: "/tmp/a.go", Name: "a.go", Kind: protocol.ContentBlockText}}}
+	if saveDraftErr := store.SaveDraft("../../session", draft); saveDraftErr != nil {
+		t.Fatal(saveDraftErr)
+	}
+	if _, stashPromptErr := store.StashPrompt(prompt.Message{Text: "saved prompt"}); stashPromptErr != nil {
+		t.Fatal(stashPromptErr)
+	}
+	for _, workspace := range []string{"one", "two", "three"} {
+		if rememberWorkspaceErr := store.RememberWorkspace(filepath.Join(directory, workspace)); rememberWorkspaceErr != nil {
+			t.Fatal(rememberWorkspaceErr)
+		}
+	}
+
+	reopened, err := OpenDirectory(directory, Config{
+		HistoryCapacity: testCapacity(t, 2), StashCapacity: testCapacity(t, 2), WorkspaceCapacity: testCapacity(t, 2),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	history := reopened.History()
+	if len(history) != 2 || history[0].Text != "two" || history[1].Text != "three" {
+		t.Fatalf("history = %+v", history)
+	}
+	restored, ok := reopened.Draft("../../session")
+	if !ok || restored.Text != draft.Text || restored.Attachments[0].ID != "attachment" {
+		t.Fatalf("draft = %+v, %v", restored, ok)
+	}
+	if stashes := reopened.Stashes(); len(stashes) != 1 || stashes[0].Message.Text != "saved prompt" {
+		t.Fatalf("stashes = %+v", stashes)
+	}
+	workspaces := reopened.Workspaces()
+	if len(workspaces) != 2 || workspaces[0].Path != filepath.Join(directory, "three") || workspaces[1].Path != filepath.Join(directory, "two") {
+		t.Fatalf("workspaces = %+v", workspaces)
+	}
+	if _, err := os.Stat(filepath.Join(directory, "session")); !os.IsNotExist(err) {
+		t.Fatalf("untrusted session id escaped state root: %v", err)
+	}
+}
+
+func TestStorePreservesRemoteWorkspaceIdentityAcrossRestart(t *testing.T) {
+	directory := t.TempDir()
+	store, err := OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	paths := []string{`C:\work\project`, `\\server\share\project`, "/remote/work/project"}
+	for _, path := range paths {
+		if err := store.RememberWorkspace(path); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+	reopened, err := OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = reopened.Close() })
+	workspaces := reopened.Workspaces()
+	for index, path := range paths {
+		if workspaces[len(paths)-index-1].Path != path {
+			t.Fatalf("reloaded Runtime workspace references = %+v", workspaces)
+		}
+	}
+}
+
+func TestStoreDoesNotMutateMemoryWhenPersistenceFails(t *testing.T) {
+	directory := t.TempDir()
+	store, err := OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(directory, 0o500); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(directory, 0o700) })
+	if err := store.Remember(prompt.Message{Text: "should fail"}); err == nil {
+		t.Skip("filesystem permits writes despite directory mode")
+	}
+	if history := store.History(); len(history) != 0 {
+		t.Fatalf("failed persistence mutated history: %+v", history)
+	}
+}
+
+func TestStorePreservesCachedDraftWhenDurableDeletionFails(t *testing.T) {
+	directory := t.TempDir()
+	store, err := OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	const sessionID = "session"
+	want := prompt.Message{Text: "keep this draft"}
+	if saveDraftErr := store.SaveDraft(sessionID, want); saveDraftErr != nil {
+		t.Fatal(saveDraftErr)
+	}
+	draftPath := filepath.Join(directory, store.sessionStateName(sessionID))
+	if removeErr := os.Remove(draftPath); removeErr != nil {
+		t.Fatal(removeErr)
+	}
+	if mkdirErr := os.Mkdir(draftPath, 0o700); mkdirErr != nil {
+		t.Fatal(mkdirErr)
+	}
+	if writeFileErr := os.WriteFile(filepath.Join(draftPath, "blocker"), []byte("block deletion"), 0o600); writeFileErr != nil {
+		t.Fatal(writeFileErr)
+	}
+
+	if discardDraftErr := store.SaveDraft(sessionID, prompt.Message{}); discardDraftErr == nil {
+		t.Fatal("durable draft deletion unexpectedly succeeded")
+	}
+	got, ok := store.Draft(sessionID)
+	if !ok || got.Text != want.Text {
+		t.Fatalf("cached draft after failed deletion = %+v, %v; want %+v, true", got, ok, want)
+	}
+}
+
+func TestStoreRollsBackAStashWhenDraftRetirementFails(t *testing.T) {
+	directory := t.TempDir()
+	store, err := OpenDirectory(directory, Config{
+		StashCapacity: testCapacity(t, 1), Random: bytes.NewReader([]byte("12345678abcdefgh")),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.StashPrompt(prompt.Message{Text: "older stash"}); err != nil {
+		t.Fatal(err)
+	}
+	const sessionID = "session"
+	draft := prompt.Message{Text: "draft must keep one owner"}
+	if err := store.SaveDraft(sessionID, draft); err != nil {
+		t.Fatal(err)
+	}
+	draftPath := filepath.Join(directory, store.sessionStateName(sessionID))
+	if err := os.Remove(draftPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(draftPath, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(draftPath, "blocker"), []byte("block deletion"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := store.StashDraft(sessionID, draft); err == nil {
+		t.Fatal("stash transaction unexpectedly retired the blocked draft")
+	}
+	if stashes := store.Stashes(); len(stashes) != 1 || stashes[0].Message.Text != "older stash" {
+		t.Fatalf("stashes after rollback = %+v, want the pre-transaction collection", stashes)
+	}
+	if got, found := store.Draft(sessionID); !found || !got.Equal(draft) {
+		t.Fatalf("draft after failed stash = %+v, %t", got, found)
+	}
+}
+
+func TestStoreStashesDraftWithoutRetiringSessionOutboxes(t *testing.T) {
+	directory := t.TempDir()
+	store, err := OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	const sessionID = "session"
+	pending := PendingRun{
+		State: PendingRunQueued, Replay: replay.UnprotectedGuard(),
+		CancelReplay: replay.UnprotectedGuard(),
+		Command: prompt.StartRun{
+			CommandID: replay.CommandID("cli_11111111111111111111111111111111"),
+			SessionID: sessionID, Message: prompt.Message{Text: "pending run"},
+			Options: prompt.RunOptions{},
+		},
+	}
+	if stagePendingRunErr := store.StagePendingRun(pending); stagePendingRunErr != nil {
+		t.Fatal(stagePendingRunErr)
+	}
+	approval := conversation.Approval{
+		RunID: "run_waiting", ItemID: "approval", Title: "Approve",
+		Tool: &conversation.ToolCall{Kind: conversation.ToolRead, Name: "read", Path: "README.md", Status: conversation.ToolRunning},
+	}
+	resume := PendingResume{
+		Command: conversation.ResumeRun{
+			CommandID: replay.CommandID("cli_22222222222222222222222222222222"), RunID: approval.RunID,
+			Answers: []conversation.InterruptAnswer{{ItemID: approval.ItemID, Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalDeny}}},
+		},
+		Interactions: []conversation.Interaction{approval}, Replay: replay.UnprotectedGuard(),
+	}
+	if stagePendingResumeErr := store.StagePendingResume(sessionID, resume, nil); stagePendingResumeErr != nil {
+		t.Fatal(stagePendingResumeErr)
+	}
+	draft := prompt.Message{Text: "stash only this draft"}
+	if saveDraftErr := store.SaveDraft(sessionID, draft); saveDraftErr != nil {
+		t.Fatal(saveDraftErr)
+	}
+	if _, stashDraftErr := store.StashDraft(sessionID, draft); stashDraftErr != nil {
+		t.Fatal(stashDraftErr)
+	}
+
+	reopened, err := OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, found := reopened.Draft(sessionID); found {
+		t.Fatal("draft survived stash")
+	}
+	if stashes := reopened.Stashes(); len(stashes) != 1 || !stashes[0].Message.Equal(draft) {
+		t.Fatalf("stashes = %+v", stashes)
+	}
+	if runs := reopened.PendingRuns(sessionID); len(runs) != 1 || runs[0].Command.CommandID != pending.Command.CommandID {
+		t.Fatalf("pending runs after stash = %+v", runs)
+	}
+	if got, found := reopened.PendingResume(sessionID); !found || got.Command.CommandID != resume.Command.CommandID {
+		t.Fatalf("pending resume after stash = %+v, %t", got, found)
+	}
+}
+
+func TestStoreCompletesInterruptedStashTransfersOnOpen(t *testing.T) {
+	for _, phase := range []string{"intent saved", "stash saved", "source retired", "source retired before stash survived"} {
+		t.Run(phase, func(t *testing.T) {
+			directory := t.TempDir()
+			store, err := OpenDirectory(directory, Config{StashCapacity: testCapacity(t, 2)})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, stashPromptErr := store.StashPrompt(prompt.Message{Text: "older stash"}); stashPromptErr != nil {
+				t.Fatal(stashPromptErr)
+			}
+			const sessionID = "session"
+			draft := prompt.Message{Text: "restart-safe draft transfer"}
+			if saveDraftErr := store.SaveDraft(sessionID, draft); saveDraftErr != nil {
+				t.Fatal(saveDraftErr)
+			}
+			transfer := stashTransfer{
+				SessionID: sessionID, Draft: draft,
+				Stash: Stash{
+					ID: "0123456789abcdef", CreatedAt: time.Date(2026, 8, 13, 20, 0, 0, 0, time.UTC),
+					Message: draft,
+				},
+			}
+			if saveErr := store.save(stashTransferName, transfer); saveErr != nil {
+				t.Fatal(saveErr)
+			}
+			if phase == "stash saved" || phase == "source retired" {
+				next := tailStashes(append(slices.Clone(store.stashes), transfer.Stash), store.stashCapacity)
+				if saveErr := store.save(stashesName, next); saveErr != nil {
+					t.Fatal(saveErr)
+				}
+			}
+			if phase == "source retired" || phase == "source retired before stash survived" {
+				if saveSessionStateErr := store.saveSessionState(sessionID, prompt.Message{}, nil); saveSessionStateErr != nil {
+					t.Fatal(saveSessionStateErr)
+				}
+			}
+
+			reopened, err := OpenDirectory(directory, Config{StashCapacity: testCapacity(t, 2)})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, found := reopened.Draft(sessionID); found {
+				t.Fatal("draft survived recovery")
+			}
+			stashes := reopened.Stashes()
+			if len(stashes) != 2 || stashes[0].ID != transfer.Stash.ID || !stashes[0].Message.Equal(draft) {
+				t.Fatalf("stashes after recovery = %+v", stashes)
+			}
+			settled, err := OpenDirectory(directory, Config{StashCapacity: testCapacity(t, 2)})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if stashes := settled.Stashes(); len(stashes) != 2 || stashes[0].ID != transfer.Stash.ID {
+				t.Fatalf("stashes after idempotent reopen = %+v", stashes)
+			}
+		})
+	}
+}
+
+func TestStoreBlocksWritesWhenCommittedStashTransferJournalCannotRetire(t *testing.T) {
+	directory := t.TempDir()
+	persistence, err := statefile.Open(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	failing := &removeFailurePersistence{Persistence: persistence, name: stashTransferName}
+	store, err := Open(failing, Config{Random: bytes.NewReader([]byte("12345678"))})
+	if err != nil {
+		t.Fatal(err)
+	}
+	const sessionID = "session"
+	draft := prompt.Message{Text: "same text must not become the old owner again"}
+	if err := store.SaveDraft(sessionID, draft); err != nil {
+		t.Fatal(err)
+	}
+	failing.enabled = true
+	if _, err := store.StashDraft(sessionID, draft); err == nil || !strings.Contains(err.Error(), "requires reopen") {
+		t.Fatalf("stash cleanup error = %v", err)
+	}
+	if err := store.SaveDraft(sessionID, draft); err == nil || !strings.Contains(err.Error(), "requires reopen") {
+		t.Fatalf("new identical draft was not fenced: %v", err)
+	}
+	if _, found := store.Draft(sessionID); found {
+		t.Fatal("committed source draft remains")
+	}
+	if _, err := Open(failing, Config{}); err == nil {
+		t.Fatal("reopen accepted a stash journal it could not retire")
+	}
+
+	failing.enabled = false
+	reopened, err := Open(persistence, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stashes := reopened.Stashes(); len(stashes) != 1 || !stashes[0].Message.Equal(draft) {
+		t.Fatalf("recovered stashes = %+v", stashes)
+	}
+	if err := reopened.SaveDraft(sessionID, draft); err != nil {
+		t.Fatalf("write after recovery = %v", err)
+	}
+}
+
+func TestStoreDoesNotReplayAStashTransferOverANewerDraft(t *testing.T) {
+	directory := t.TempDir()
+	store, err := OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	const sessionID = "session"
+	old := prompt.Message{Text: "old transfer source"}
+	if saveDraftErr := store.SaveDraft(sessionID, old); saveDraftErr != nil {
+		t.Fatal(saveDraftErr)
+	}
+	transfer := stashTransfer{
+		SessionID: sessionID, Draft: old,
+		Stash: Stash{ID: "0123456789abcdef", CreatedAt: time.Now().UTC(), Message: old},
+	}
+	if saveErr := store.save(stashTransferName, transfer); saveErr != nil {
+		t.Fatal(saveErr)
+	}
+	newer := prompt.Message{Text: "new owner"}
+	if saveDraftErr := store.SaveDraft(sessionID, newer); saveDraftErr != nil {
+		t.Fatal(saveDraftErr)
+	}
+
+	reopened, err := OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if draft, found := reopened.Draft(sessionID); !found || !draft.Equal(newer) {
+		t.Fatalf("newer draft after recovery = %+v, %t", draft, found)
+	}
+	if stashes := reopened.Stashes(); len(stashes) != 0 {
+		t.Fatalf("superseded transfer created stashes = %+v", stashes)
+	}
+}
+
+func TestStoreDoesNotRewriteAnAlreadyEmptyDraft(t *testing.T) {
+	directory := t.TempDir()
+	store, err := OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	const sessionID = "session"
+	draftPath := filepath.Join(directory, store.sessionStateName(sessionID))
+	if err := os.MkdirAll(draftPath, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(draftPath, "blocker"), []byte("block writes"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := store.SaveDraft(sessionID, prompt.Message{}); err != nil {
+		t.Fatalf("saving the already-empty draft rewrote session state: %v", err)
+	}
+}
+
+func TestStoreRetiresCompleteSessionStateBehindADurableTombstone(t *testing.T) {
+	directory := t.TempDir()
+	store, err := OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	const sessionID = "session"
+	command := PendingRun{
+		State: PendingRunQueued, Replay: replay.UnprotectedGuard(),
+		CancelReplay: replay.UnprotectedGuard(),
+		Command: prompt.StartRun{
+			CommandID: replay.CommandID("cli_11111111111111111111111111111111"),
+			SessionID: sessionID, Message: prompt.Message{Text: "pending run"},
+			Options: prompt.RunOptions{},
+		},
+	}
+	if stagePendingRunErr := store.StagePendingRun(command); stagePendingRunErr != nil {
+		t.Fatal(stagePendingRunErr)
+	}
+	approval := conversation.Approval{
+		RunID: "run_waiting", ItemID: "approval", Title: "Approve",
+		Tool: &conversation.ToolCall{Kind: conversation.ToolRead, Name: "read", Path: "README.md", Status: conversation.ToolRunning},
+	}
+	resume := PendingResume{
+		Command: conversation.ResumeRun{
+			CommandID: replay.CommandID("cli_22222222222222222222222222222222"), RunID: approval.RunID,
+			Answers: []conversation.InterruptAnswer{{ItemID: approval.ItemID, Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalDeny}}},
+		},
+		Interactions: []conversation.Interaction{approval}, Replay: replay.UnprotectedGuard(),
+	}
+	if stagePendingResumeErr := store.StagePendingResume(sessionID, resume, nil); stagePendingResumeErr != nil {
+		t.Fatal(stagePendingResumeErr)
+	}
+	draft := prompt.Message{Text: "unsent draft"}
+	if saveDraftErr := store.SaveDraft(sessionID, draft); saveDraftErr != nil {
+		t.Fatal(saveDraftErr)
+	}
+
+	statePath := filepath.Join(directory, store.sessionStateName(sessionID))
+	backupPath := statePath + ".backup"
+	if renameErr := os.Rename(statePath, backupPath); renameErr != nil {
+		t.Fatal(renameErr)
+	}
+	if mkdirErr := os.Mkdir(statePath, 0o700); mkdirErr != nil {
+		t.Fatal(mkdirErr)
+	}
+	blocker := filepath.Join(statePath, "blocker")
+	if writeFileErr := os.WriteFile(blocker, []byte("block deletion"), 0o600); writeFileErr != nil {
+		t.Fatal(writeFileErr)
+	}
+
+	if retireSessionStateErr := store.RetireSessionState(sessionID); retireSessionStateErr != nil {
+		t.Fatal(retireSessionStateErr)
+	}
+	if got, found := store.Draft(sessionID); found {
+		t.Fatalf("retired draft = %+v, %v", got, found)
+	}
+	if got := store.PendingRuns(sessionID); len(got) != 0 {
+		t.Fatalf("retired runs remain = %+v", got)
+	}
+	if got, found := store.PendingResume(sessionID); found {
+		t.Fatalf("retired resume remains = %+v", got)
+	}
+	if deletions := store.PendingSessionDeletions(); len(deletions) != 1 ||
+		deletions[0].SessionID != sessionID || deletions[0].Phase != SessionDeletionConfirmed {
+		t.Fatalf("session deletion tombstones = %+v", deletions)
+	}
+	reopened, err := OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, found := reopened.Draft(sessionID); found || len(reopened.PendingRuns(sessionID)) != 0 {
+		t.Fatalf("reopened retired state has draft=%+v found=%v runs=%+v", got, found, reopened.PendingRuns(sessionID))
+	}
+	if pending, found := reopened.PendingResume(sessionID); found {
+		t.Fatalf("reopened retired resume = %+v", pending)
+	}
+	if deletions := reopened.PendingSessionDeletions(); len(deletions) != 1 || deletions[0].Phase != SessionDeletionConfirmed {
+		t.Fatalf("reopened deletion tombstones = %+v", deletions)
+	}
+
+	if removeErr := os.Remove(blocker); removeErr != nil {
+		t.Fatal(removeErr)
+	}
+	if removeErr := os.Remove(statePath); removeErr != nil {
+		t.Fatal(removeErr)
+	}
+	if renameErr := os.Rename(backupPath, statePath); renameErr != nil {
+		t.Fatal(renameErr)
+	}
+	reopened, err = OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, found := reopened.Draft(sessionID); found || len(reopened.PendingRuns(sessionID)) != 0 {
+		t.Fatalf("reopened retired state has draft=%v runs=%+v", found, reopened.PendingRuns(sessionID))
+	}
+	if pending, found := reopened.PendingResume(sessionID); found {
+		t.Fatalf("reopened retired resume = %+v", pending)
+	}
+	if deletions := reopened.PendingSessionDeletions(); len(deletions) != 0 {
+		t.Fatalf("cleaned deletion tombstones = %+v", deletions)
+	}
+}
+
+func TestStoreRecoversPreparedSessionDeletionWithStableIdentity(t *testing.T) {
+	directory := t.TempDir()
+	store, err := OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	const sessionID = "session"
+	request := conversation.DeleteSession{
+		CommandID: replay.CommandID("cli_33333333333333333333333333333333"), SessionID: sessionID,
+	}
+	if saveDraftErr := store.SaveDraft(sessionID, prompt.Message{Text: "owned until runtime confirmation"}); saveDraftErr != nil {
+		t.Fatal(saveDraftErr)
+	}
+	if stageSessionDeletionErr := store.StageSessionDeletion(request, replay.UnprotectedGuard()); stageSessionDeletionErr != nil {
+		t.Fatal(stageSessionDeletionErr)
+	}
+
+	reopened, err := OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	deletions := reopened.PendingSessionDeletions()
+	if len(deletions) != 1 || deletions[0].Phase != SessionDeletionPrepared || deletions[0].Request() != request {
+		t.Fatalf("prepared deletion = %+v", deletions)
+	}
+	if draft, found := reopened.Draft(sessionID); !found || draft.Text != "owned until runtime confirmation" {
+		t.Fatalf("prepared deletion draft = %+v, %t", draft, found)
+	}
+	if err := reopened.ConfirmSessionDeletion(sessionID, request.CommandID); err != nil {
+		t.Fatal(err)
+	}
+	if draft, found := reopened.Draft(sessionID); found {
+		t.Fatalf("confirmed deletion draft = %+v, %t", draft, found)
+	}
+	if deletions := reopened.PendingSessionDeletions(); len(deletions) != 0 {
+		t.Fatalf("settled deletions = %+v", deletions)
+	}
+}
+
+func TestStoreDoesNotNormalizeSessionDeletionIdentity(t *testing.T) {
+	store, err := OpenMemory(Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := conversation.DeleteSession{
+		CommandID: replay.CommandID("cli_33333333333333333333333333333334"),
+		SessionID: " session ",
+	}
+	if err := store.StageSessionDeletion(request, replay.UnprotectedGuard()); err == nil {
+		t.Fatal("StageSessionDeletion accepted an identity that requires trimming")
+	}
+	if deletions := store.PendingSessionDeletions(); len(deletions) != 0 {
+		t.Fatalf("invalid identity created deletion state: %+v", deletions)
+	}
+}
+
+func TestStoreRejectsNonExactSessionIdentityInDeletionJournal(t *testing.T) {
+	directory := t.TempDir()
+	store, err := OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := conversation.DeleteSession{
+		CommandID: replay.CommandID("cli_33333333333333333333333333333335"),
+		SessionID: "session",
+	}
+	if err := store.StageSessionDeletion(request, replay.UnprotectedGuard()); err != nil {
+		t.Fatal(err)
+	}
+	journalPath := filepath.Join(directory, sessionDeletionsName)
+	content, err := os.ReadFile(journalPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content = bytes.Replace(content, []byte(`"sessionId": "session"`), []byte(`"sessionId": " session"`), 1)
+	if !bytes.Contains(content, []byte(`"sessionId": " session"`)) {
+		t.Fatal("fixture did not corrupt the durable session identity")
+	}
+	if err := os.WriteFile(journalPath, content, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := OpenDirectory(directory, Config{}); err == nil {
+		t.Fatal("OpenDirectory repaired a non-exact durable session identity")
+	}
+}
+
+func TestStoreRejectsOnlyTheExactPreparedSessionDeletion(t *testing.T) {
+	store, err := OpenDirectory(t.TempDir(), Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := conversation.DeleteSession{
+		CommandID: replay.CommandID("cli_44444444444444444444444444444444"), SessionID: "session",
+	}
+	if err := store.StageSessionDeletion(request, replay.UnprotectedGuard()); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.RejectSessionDeletion(request.SessionID, replay.CommandID("cli_55555555555555555555555555555555")); err == nil {
+		t.Fatal("stale rejection removed another deletion intent")
+	}
+	if err := store.RejectSessionDeletion(request.SessionID, request.CommandID); err != nil {
+		t.Fatal(err)
+	}
+	if deletions := store.PendingSessionDeletions(); len(deletions) != 0 {
+		t.Fatalf("rejected deletions = %+v", deletions)
+	}
+}
+
+func TestStorePersistsAndAtomicallyActivatesSessionRollbackRecovery(t *testing.T) {
+	directory := t.TempDir()
+	store, err := OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	const sessionID = "session"
+	if saveDraftErr := store.SaveDraft(sessionID, prompt.Message{Text: "new thought"}); saveDraftErr != nil {
+		t.Fatal(saveDraftErr)
+	}
+	pending := PendingSessionRollback{
+		Phase:     SessionRollbackPrepared,
+		CommandID: replay.CommandID("cli_66666666666666666666666666666666"),
+		Replay:    replay.UnprotectedGuard(),
+		SessionID: sessionID, ToRunID: "run_1", Scope: protocol.RestoreHistory,
+		BeforeRevision: 7, BeforeRunIDs: []string{"run_1", "run_2"}, AfterRunIDs: []string{"run_1"},
+		OpeningText: "restored opening", OpeningImages: 2,
+		StagedAt: time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC),
+	}
+	if stageSessionRollbackErr := store.StageSessionRollback(pending); stageSessionRollbackErr != nil {
+		t.Fatal(stageSessionRollbackErr)
+	}
+
+	reopened, err := OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored, exists := reopened.PendingSessionRollback(sessionID)
+	if !exists || !pendingSessionRollbackEqual(stored, pending) {
+		t.Fatalf("prepared rollback = %+v, present %t", stored, exists)
+	}
+	if confirmSessionRollbackErr := reopened.ConfirmSessionRollback(sessionID, pending.CommandID); confirmSessionRollbackErr != nil {
+		t.Fatal(confirmSessionRollbackErr)
+	}
+	activation, err := reopened.ActivateSessionDraft(sessionID, prompt.Message{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	recovery := activation.Rollback
+	if recovery == nil || !recovery.Merged || recovery.DroppedCount != 1 || recovery.OpeningImages != 2 ||
+		recovery.Draft.Text != "restored opening\n\nnew thought" {
+		t.Fatalf("rollback activation = %+v", activation)
+	}
+
+	reopened, err = OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pending := reopened.PendingSessionRollbacks(); len(pending) != 0 {
+		t.Fatalf("consumed rollback journals = %+v", pending)
+	}
+	if draft, found := reopened.Draft(sessionID); !found || !draft.Equal(recovery.Draft) {
+		t.Fatalf("recovered draft = %+v, present %t", draft, found)
+	}
+}
+
+func TestSessionRollbackDoesNotNormalizeRunIdentity(t *testing.T) {
+	pending := PendingSessionRollback{
+		Phase:          SessionRollbackPrepared,
+		CommandID:      replay.CommandID("cli_66666666666666666666666666666667"),
+		SessionID:      "session",
+		ToRunID:        " run_1",
+		Scope:          protocol.RestoreHistory,
+		BeforeRevision: 1,
+		BeforeRunIDs:   []string{" run_1"},
+		AfterRunIDs:    []string{" run_1"},
+		StagedAt:       time.Now().UTC(),
+		Replay:         replay.UnprotectedGuard(),
+	}
+	if err := pending.Validate(); err == nil {
+		t.Fatal("PendingSessionRollback accepted a run identity that requires trimming")
+	}
+}
+
+func TestStoreDoesNotDuplicateAnEditedRecoveredRollbackDraft(t *testing.T) {
+	store, err := OpenDirectory(t.TempDir(), Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	pending := PendingSessionRollback{
+		Phase:     SessionRollbackPrepared,
+		CommandID: replay.CommandID("cli_77777777777777777777777777777777"),
+		Replay:    replay.UnprotectedGuard(),
+		SessionID: "session", Scope: protocol.RestoreHistory,
+		BeforeRevision: 2, BeforeRunIDs: []string{"run_1"}, OpeningText: "opening",
+		StagedAt: time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC),
+	}
+	if stageSessionRollbackErr := store.StageSessionRollback(pending); stageSessionRollbackErr != nil {
+		t.Fatal(stageSessionRollbackErr)
+	}
+	if saveDraftErr := store.SaveDraft(pending.SessionID, prompt.Message{Text: "opening!"}); saveDraftErr != nil {
+		t.Fatal(saveDraftErr)
+	}
+	if confirmSessionRollbackErr := store.ConfirmSessionRollback(pending.SessionID, pending.CommandID); confirmSessionRollbackErr != nil {
+		t.Fatal(confirmSessionRollbackErr)
+	}
+	activation, err := store.ActivateSessionDraft(pending.SessionID, prompt.Message{})
+	if err != nil || activation.Rollback == nil || activation.Rollback.Merged ||
+		activation.Rollback.Draft.Text != "opening!" {
+		t.Fatalf("edited rollback activation = %+v, err %v", activation, err)
+	}
+}
+
+func TestRetiringSessionStateAlsoRetiresItsRollbackJournal(t *testing.T) {
+	store, err := OpenDirectory(t.TempDir(), Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	pending := PendingSessionRollback{
+		Phase:     SessionRollbackPrepared,
+		CommandID: replay.CommandID("cli_88888888888888888888888888888888"),
+		Replay:    replay.UnprotectedGuard(),
+		SessionID: "session", Scope: protocol.RestoreHistory,
+		BeforeRevision: 2, BeforeRunIDs: []string{"run_1"},
+		StagedAt: time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC),
+	}
+	if err := store.StageSessionRollback(pending); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.RetireSessionState(pending.SessionID); err != nil {
+		t.Fatal(err)
+	}
+	if rollbacks := store.PendingSessionRollbacks(); len(rollbacks) != 0 {
+		t.Fatalf("retired rollback journals = %+v", rollbacks)
+	}
+}
+
+func TestStoreDoesNotDeduplicateChangedAttachmentMetadata(t *testing.T) {
+	store, err := OpenMemory(Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	first := prompt.Message{Text: "inspect", Attachments: []prompt.Attachment{{ID: "file", Path: "/tmp/file", Name: "old.go", Kind: protocol.ContentBlockText}}}
+	second := first.Clone()
+	second.Attachments[0].Name = "new.go"
+	if err := store.Remember(first); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Remember(second); err != nil {
+		t.Fatal(err)
+	}
+	history := store.History()
+	if len(history) != 2 || history[1].Attachments[0].Name != "new.go" {
+		t.Fatalf("history = %+v, want both attachment metadata revisions", history)
+	}
+}
+
+func TestStoreRejectsUnknownOnDiskFormat(t *testing.T) {
+	directory := t.TempDir()
+	if err := os.WriteFile(filepath.Join(directory, "history.json"), []byte(`{"version":99,"value":[]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := OpenDirectory(directory, Config{}); err == nil {
+		t.Fatal("unknown format was accepted")
+	}
+}
+
+func TestStoreRejectsTrailingAndOversizedStateSnapshots(t *testing.T) {
+	valid := []byte(`{"version":1,"value":[]}`)
+	tests := []struct {
+		name string
+		body []byte
+	}{
+		{name: "trailing value", body: append(slices.Clone(valid), []byte(` {}`)...)},
+		{name: "oversized valid prefix", body: append(slices.Clone(valid), []byte(strings.Repeat(" ", maximumStateBytes-len(valid)+1))...)},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			directory := t.TempDir()
+			if err := os.WriteFile(filepath.Join(directory, "history.json"), test.body, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := OpenDirectory(directory, Config{}); err == nil {
+				t.Fatal("invalid workbench snapshot was accepted")
+			}
+		})
+	}
+}
+
+func TestStoreRejectsUnknownStateFields(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+	}{
+		{
+			name: "envelope",
+			body: `{"version":1,"value":[],"future":true}`,
+		},
+		{
+			name: "value",
+			body: `{"version":1,"value":[{"path":"/tmp/workspace","lastOpened":"2026-08-31T00:00:00Z","future":true}]}`,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			directory := t.TempDir()
+			if err := os.WriteFile(filepath.Join(directory, "workspaces.json"), []byte(test.body), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := OpenDirectory(directory, Config{}); err == nil {
+				t.Fatal("workbench snapshot with an unknown field was accepted")
+			}
+		})
+	}
+}
+
+func TestStoreRejectsInvalidDurableCatalogValues(t *testing.T) {
+	tests := []struct {
+		name string
+		file string
+		body string
+	}{
+		{
+			name: "duplicate stash identity",
+			file: stashesName,
+			body: `{"version":1,"value":[` +
+				`{"id":"0123456789abcdef","createdAt":"2026-08-31T00:00:00Z","Message":{"Text":"first"}},` +
+				`{"id":"0123456789abcdef","createdAt":"2026-08-31T00:00:01Z","Message":{"Text":"second"}}]}`,
+		},
+		{
+			name: "empty stash prompt",
+			file: stashesName,
+			body: `{"version":1,"value":[` +
+				`{"id":"0123456789abcdef","createdAt":"2026-08-31T00:00:00Z","Message":{"Text":""}}]}`,
+		},
+		{
+			name: "empty workspace",
+			file: "workspaces.json",
+			body: `{"version":1,"value":[` +
+				`{"path":"","lastOpened":"2026-08-31T00:00:00Z"}]}`,
+		},
+		{
+			name: "duplicate workspace",
+			file: "workspaces.json",
+			body: `{"version":1,"value":[` +
+				`{"path":"/workspace","lastOpened":"2026-08-31T00:00:00Z"},` +
+				`{"path":"/workspace","lastOpened":"2026-08-31T00:00:01Z"}]}`,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			directory := t.TempDir()
+			if err := os.WriteFile(filepath.Join(directory, test.file), []byte(test.body), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := OpenDirectory(directory, Config{}); err == nil {
+				t.Fatal("invalid durable catalog value was accepted")
+			}
+		})
+	}
+}
+
+func TestStoreDoesNotWriteStateItCannotReopen(t *testing.T) {
+	directory := t.TempDir()
+	store, err := OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SaveDraft("session", prompt.Message{Text: strings.Repeat("x", maximumStateBytes)}); err == nil {
+		t.Fatal("oversized workbench snapshot was written")
+	}
+	if draft, found := store.Draft("session"); found {
+		t.Fatalf("failed oversized save mutated memory: draft=%+v found=%t", draft, found)
+	}
+}
+
+func TestStorePersistsAndAcknowledgesPendingRunsByCommandIdentity(t *testing.T) {
+	directory := t.TempDir()
+	store, err := OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	commandID := replay.CommandID("cli_0123456789abcdef0123456789abcdef")
+	pending := prompt.StartRun{
+		CommandID: commandID, SessionID: "ses_1", Message: prompt.Message{Text: "recover this start"},
+		Options: prompt.RunOptions{Provider: "deepseek", Model: "deepseek-v4-flash", Generation: protocol.GenerationParams{Stop: []string{"done"}}},
+	}
+	if saveDraftErr := store.SaveDraft("ses_1", pending.Message); saveDraftErr != nil {
+		t.Fatal(saveDraftErr)
+	}
+	stageDispatchingPendingRun(t, store, pending)
+	pending.Message.Text = "mutated"
+	pending.Options.Generation.Stop[0] = "mutated"
+
+	reopened, err := OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored := reopened.PendingRuns("ses_1")
+	if len(restored) != 1 || restored[0].State != PendingRunDispatching || restored[0].Command.Message.Text != "recover this start" || restored[0].Command.Options.Generation.Stop[0] != "done" {
+		t.Fatalf("restored pending runs = %+v", restored)
+	}
+	if err := reopened.AcknowledgePendingRun("ses_1", replay.CommandID("cli_ffffffffffffffffffffffffffffffff")); err == nil {
+		t.Fatal("mismatched acknowledgement removed pending run")
+	}
+	if len(reopened.PendingRuns("ses_1")) != 1 {
+		t.Fatal("mismatched acknowledgement removed pending run")
+	}
+	if err := reopened.AcknowledgePendingRun("ses_1", commandID); err != nil {
+		t.Fatal(err)
+	}
+	if len(reopened.PendingRuns("ses_1")) != 0 {
+		t.Fatal("acknowledged pending run remains")
+	}
+}
+
+func TestPendingRunAcknowledgementIsIdempotentAfterSessionStatePersistenceFailure(t *testing.T) {
+	directory := t.TempDir()
+	store, err := OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := prompt.StartRun{
+		CommandID: replay.CommandID("cli_99999999999999999999999999999999"),
+		SessionID: "ses_1", Message: prompt.Message{Text: "commit this prompt exactly once"},
+	}
+	stageDispatchingPendingRun(t, store, command)
+
+	statePath := filepath.Join(directory, store.sessionStateName(command.SessionID))
+	backupPath := statePath + ".backup"
+	if renameErr := os.Rename(statePath, backupPath); renameErr != nil {
+		t.Fatal(renameErr)
+	}
+	if mkdirErr := os.Mkdir(statePath, 0o700); mkdirErr != nil {
+		t.Fatal(mkdirErr)
+	}
+	blocker := filepath.Join(statePath, "blocker")
+	if writeFileErr := os.WriteFile(blocker, []byte("block outbox retirement"), 0o600); writeFileErr != nil {
+		t.Fatal(writeFileErr)
+	}
+	if acknowledgePendingRunErr := store.AcknowledgePendingRun(command.SessionID, command.CommandID); acknowledgePendingRunErr == nil {
+		t.Fatal("pending run acknowledgement survived blocked outbox retirement")
+	}
+	if history := store.History(); len(history) != 1 || !history[0].Equal(command.Message) {
+		t.Fatalf("first settlement half did not publish history: %+v", history)
+	}
+
+	if removeErr := os.Remove(blocker); removeErr != nil {
+		t.Fatal(removeErr)
+	}
+	if removeErr := os.Remove(statePath); removeErr != nil {
+		t.Fatal(removeErr)
+	}
+	if renameErr := os.Rename(backupPath, statePath); renameErr != nil {
+		t.Fatal(renameErr)
+	}
+	reopened, err := OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if acknowledgePendingRunErr := reopened.AcknowledgePendingRun(command.SessionID, command.CommandID); acknowledgePendingRunErr != nil {
+		t.Fatal(acknowledgePendingRunErr)
+	}
+	if history := reopened.History(); len(history) != 1 || !history[0].Equal(command.Message) {
+		t.Fatalf("retried settlement duplicated history: %+v", history)
+	}
+	if pending := reopened.PendingRuns(command.SessionID); len(pending) != 0 {
+		t.Fatalf("retried settlement retained outbox: %+v", pending)
+	}
+
+	settled, err := OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if history := settled.History(); len(history) != 1 || !history[0].Equal(command.Message) {
+		t.Fatalf("durable history after restart = %+v", history)
+	}
+}
+
+func TestBoundedHistoryRetainsAnUnsettledCommandIdentity(t *testing.T) {
+	directory := t.TempDir()
+	store, err := OpenDirectory(directory, Config{HistoryCapacity: testCapacity(t, 1)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := prompt.StartRun{
+		CommandID: replay.CommandID("cli_abababababababababababababababab"),
+		SessionID: "ses_1", Message: prompt.Message{Text: "unsettled accepted prompt"},
+	}
+	stageDispatchingPendingRun(t, store, command)
+
+	statePath := filepath.Join(directory, store.sessionStateName(command.SessionID))
+	backupPath := statePath + ".backup"
+	if renameErr := os.Rename(statePath, backupPath); renameErr != nil {
+		t.Fatal(renameErr)
+	}
+	if mkdirErr := os.Mkdir(statePath, 0o700); mkdirErr != nil {
+		t.Fatal(mkdirErr)
+	}
+	blocker := filepath.Join(statePath, "blocker")
+	if writeFileErr := os.WriteFile(blocker, []byte("block outbox retirement"), 0o600); writeFileErr != nil {
+		t.Fatal(writeFileErr)
+	}
+	if acknowledgePendingRunErr := store.AcknowledgePendingRun(command.SessionID, command.CommandID); acknowledgePendingRunErr == nil {
+		t.Fatal("acknowledgement unexpectedly retired the blocked outbox")
+	}
+	if rememberErr := store.Remember(prompt.Message{Text: "newer plain history"}); rememberErr != nil {
+		t.Fatal(rememberErr)
+	}
+	if history := store.History(); len(history) != 2 || !history[0].Equal(command.Message) || history[1].Text != "newer plain history" {
+		t.Fatalf("history limit evicted unsettled command identity: %+v", history)
+	}
+
+	if removeErr := os.Remove(blocker); removeErr != nil {
+		t.Fatal(removeErr)
+	}
+	if removeErr := os.Remove(statePath); removeErr != nil {
+		t.Fatal(removeErr)
+	}
+	if renameErr := os.Rename(backupPath, statePath); renameErr != nil {
+		t.Fatal(renameErr)
+	}
+	reopened, err := OpenDirectory(directory, Config{HistoryCapacity: testCapacity(t, 1)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := reopened.AcknowledgePendingRun(command.SessionID, command.CommandID); err != nil {
+		t.Fatal(err)
+	}
+	if history := reopened.History(); len(history) != 1 || history[0].Text != "newer plain history" {
+		t.Fatalf("bounded settlement did not restore ordinary history policy: %+v", history)
+	}
+}
+
+func testCapacity(t *testing.T, value int) *Capacity {
+	t.Helper()
+	capacity, err := NewCapacity(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &capacity
+}
+
+func TestStoreRejectsDuplicateHistoryCommandIdentity(t *testing.T) {
+	directory := t.TempDir()
+	commandID := replay.CommandID("cli_cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd")
+	encoded := fmt.Sprintf(`{"version":1,"value":[{"Text":"one","commandId":%q},{"Text":"two","commandId":%q}]}`, commandID, commandID)
+	if err := os.WriteFile(filepath.Join(directory, "history.json"), []byte(encoded), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := OpenDirectory(directory, Config{}); err == nil {
+		t.Fatal("duplicate history command identity was accepted")
+	}
+}
+
+func TestStagingTheSameCommandRejectsADifferentPayload(t *testing.T) {
+	store, err := OpenDirectory(t.TempDir(), Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	pending := PendingRun{State: PendingRunQueued, Command: prompt.StartRun{
+		CommandID: replay.CommandID("cli_33333333333333333333333333333333"),
+		SessionID: "ses_1", Message: prompt.Message{Text: "original"},
+		Options: prompt.RunOptions{Provider: "deepseek", Model: "v4"},
+	}, Replay: replay.UnprotectedGuard(), CancelReplay: replay.UnprotectedGuard()}
+	if err := store.StagePendingRun(pending); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.StagePendingRun(pending); err != nil {
+		t.Fatalf("identical idempotent staging returned %v", err)
+	}
+	conflict := pending
+	conflict.Command.Message.Text = "different"
+	if err := store.StagePendingRun(conflict); err == nil {
+		t.Fatal("same command identity accepted a different payload")
+	}
+	conflict = pending
+	conflict.Command.Options.Model = "v5"
+	if err := store.StagePendingRun(conflict); err == nil {
+		t.Fatal("same command identity accepted different run options")
+	}
+	if got := store.PendingRuns("ses_1"); len(got) != 1 || got[0].Command.Message.Text != "original" {
+		t.Fatalf("conflicting staging mutated outbox: %+v", got)
+	}
+}
+
+func TestRejectedDispatchRequeuesWithANewCommandIdentity(t *testing.T) {
+	store, err := OpenDirectory(t.TempDir(), Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := replay.CommandID("cli_11111111111111111111111111111111")
+	command := prompt.StartRun{
+		CommandID: original, SessionID: "ses_1", Message: prompt.Message{Text: "wait behind active run"},
+	}
+	stageDispatchingPendingRun(t, store, command)
+	replacement, err := store.RequeuePendingRun(command.SessionID, original)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if replacement == original || replacement.Validate() != nil {
+		t.Fatalf("replacement command id = %q", replacement)
+	}
+	pending := store.PendingRuns(command.SessionID)
+	if len(pending) != 1 || pending[0].State != PendingRunQueued ||
+		pending[0].Command.CommandID != replacement || !pending[0].Command.Message.Equal(command.Message) {
+		t.Fatalf("requeued command = %+v", pending)
+	}
+}
+
+func TestPendingRunStateMachineRejectsUndeliveredSettlement(t *testing.T) {
+	store, err := OpenDirectory(t.TempDir(), Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := prompt.StartRun{
+		CommandID: replay.CommandID("cli_44444444444444444444444444444444"),
+		SessionID: "ses_1", Message: prompt.Message{Text: "must be delivered before settlement"},
+	}
+	if err := store.StagePendingRun(queuedPendingRun(command)); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.AcknowledgePendingRun(command.SessionID, command.CommandID); err == nil {
+		t.Fatal("queued run was acknowledged before delivery")
+	}
+	if _, err := store.RequeuePendingRun(command.SessionID, command.CommandID); err == nil {
+		t.Fatal("queued run was reidentified before delivery")
+	}
+	if _, err := store.MarkPendingRunCanceling(command.SessionID, command.CommandID, replay.UnprotectedGuard()); err == nil {
+		t.Fatal("queued run entered cancellation before delivery")
+	}
+	pending := store.PendingRuns(command.SessionID)
+	if len(pending) != 1 || pending[0].State != PendingRunQueued || pending[0].Command.CommandID != command.CommandID {
+		t.Fatalf("invalid transitions mutated outbox: %+v", pending)
+	}
+	if history := store.History(); len(history) != 0 {
+		t.Fatalf("invalid acknowledgement committed history: %+v", history)
+	}
+
+	if err := store.MarkPendingRunDispatching(command.SessionID, command.CommandID, replay.UnprotectedGuard(), nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.MarkPendingRunDispatching(command.SessionID, command.CommandID, replay.UnprotectedGuard(), nil); err != nil {
+		t.Fatalf("idempotent dispatch returned %v", err)
+	}
+	if err := store.AcknowledgePendingRun(command.SessionID, command.CommandID); err != nil {
+		t.Fatal(err)
+	}
+	if pending := store.PendingRuns(command.SessionID); len(pending) != 0 {
+		t.Fatalf("acknowledged dispatch remains: %+v", pending)
+	}
+	if history := store.History(); len(history) != 1 || !history[0].Equal(command.Message) {
+		t.Fatalf("acknowledged history = %+v", history)
+	}
+}
+
+func TestCancelingPendingRunCannotReturnToQueuedDelivery(t *testing.T) {
+	store, err := OpenDirectory(t.TempDir(), Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := prompt.StartRun{
+		CommandID: replay.CommandID("cli_55555555555555555555555555555555"),
+		SessionID: "ses_1", Message: prompt.Message{Text: "canceling delivery"},
+	}
+	stageDispatchingPendingRun(t, store, command)
+	cancelID, err := store.MarkPendingRunCanceling(command.SessionID, command.CommandID, replay.UnprotectedGuard())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.RequeuePendingRun(command.SessionID, command.CommandID); err == nil {
+		t.Fatal("canceling run returned to queued delivery")
+	}
+	pending := store.PendingRuns(command.SessionID)
+	if len(pending) != 1 || pending[0].State != PendingRunCanceling || pending[0].CancelCommandID != cancelID {
+		t.Fatalf("invalid requeue mutated canceling run: %+v", pending)
+	}
+	if err := store.AcknowledgePendingRun(command.SessionID, command.CommandID); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCancelingDispatchPersistsBothMutationIdentities(t *testing.T) {
+	directory := t.TempDir()
+	store, err := OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := prompt.StartRun{
+		CommandID: replay.CommandID("cli_88888888888888888888888888888888"),
+		SessionID: "ses_1", Message: prompt.Message{Text: "cancel this uncertain start"},
+	}
+	stageDispatchingPendingRun(t, store, command)
+	cancelID, err := store.MarkPendingRunCanceling(command.SessionID, command.CommandID, replay.UnprotectedGuard())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if replayed, markPendingRunCancelingErr := store.MarkPendingRunCanceling(command.SessionID, command.CommandID, replay.UnprotectedGuard()); markPendingRunCancelingErr != nil || replayed != cancelID {
+		t.Fatalf("idempotent cancel transition = %q, %v; want %q", replayed, markPendingRunCancelingErr, cancelID)
+	}
+	reopened, err := OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	pending := reopened.PendingRuns(command.SessionID)
+	if len(pending) != 1 || pending[0].State != PendingRunCanceling ||
+		pending[0].Command.CommandID != command.CommandID || pending[0].CancelCommandID != cancelID {
+		t.Fatalf("restored canceling dispatch = %+v", pending)
+	}
+}
+
+func TestPendingRunSequenceKeepsTheOnlyDeliveryStateAtTheFIFOBoundary(t *testing.T) {
+	store, err := OpenDirectory(t.TempDir(), Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	commands := []PendingRun{
+		{State: PendingRunQueued, Command: prompt.StartRun{
+			CommandID: replay.CommandID("cli_11111111111111111111111111111111"),
+			SessionID: "ses_1", Message: prompt.Message{Text: "first"}, Options: prompt.RunOptions{},
+		}, Replay: replay.UnprotectedGuard(), CancelReplay: replay.UnprotectedGuard()},
+		{State: PendingRunQueued, Command: prompt.StartRun{
+			CommandID: replay.CommandID("cli_22222222222222222222222222222222"),
+			SessionID: "ses_1", Message: prompt.Message{Text: "second"}, Options: prompt.RunOptions{},
+		}, Replay: replay.UnprotectedGuard(), CancelReplay: replay.UnprotectedGuard()},
+	}
+	if err := store.SavePendingRuns("ses_1", commands); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.MarkPendingRunDispatching("ses_1", commands[1].Command.CommandID, replay.UnprotectedGuard(), nil); err == nil {
+		t.Fatal("non-front command entered dispatching state")
+	}
+	if got := store.PendingRuns("ses_1"); len(got) != 2 || got[0].State != PendingRunQueued || got[1].State != PendingRunQueued {
+		t.Fatalf("rejected transition mutated pending runs: %+v", got)
+	}
+	invalid := clonePendingRunSlice(commands)
+	invalid[1].State = PendingRunDispatching
+	if err := store.SavePendingRuns("ses_1", invalid); err == nil {
+		t.Fatal("durable replacement accepted delivery state behind the FIFO boundary")
+	}
+}
+
+func TestPendingRunCannotBeStagedWithoutAQueuedCommandIdentity(t *testing.T) {
+	store, err := OpenDirectory(t.TempDir(), Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := prompt.StartRun{SessionID: "ses_1", Message: prompt.Message{Text: "missing identity"}}
+	if err := store.StagePendingRun(queuedPendingRun(command)); err == nil {
+		t.Fatal("pending run without a command identity was staged")
+	}
+	command.CommandID = replay.CommandID("cli_99999999999999999999999999999999")
+	invalidDispatch := queuedPendingRun(command)
+	invalidDispatch.State = PendingRunDispatching
+	if err := store.StagePendingRun(invalidDispatch); err == nil {
+		t.Fatal("pending run bypassed the queued initial state")
+	}
+	if pending := store.PendingRuns(command.SessionID); len(pending) != 0 {
+		t.Fatalf("invalid staging mutated outbox: %+v", pending)
+	}
+}
+
+func TestInvalidPendingRunTransitionsPreserveMutationIdentity(t *testing.T) {
+	pending := PendingRun{State: PendingRunQueued, Command: prompt.StartRun{
+		CommandID: replay.CommandID("cli_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+		SessionID: "ses_1", Message: prompt.Message{Text: "still queued"},
+	}, Replay: replay.UnprotectedGuard(), CancelReplay: replay.UnprotectedGuard()}
+	if _, err := pending.beginCancellation(replay.UnprotectedGuard()); err == nil {
+		t.Fatal("queued run began cancellation")
+	}
+	if _, err := pending.requeue(); err == nil {
+		t.Fatal("queued run was reidentified")
+	}
+	if pending.State != PendingRunQueued || pending.Command.CommandID != replay.CommandID("cli_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa") {
+		t.Fatalf("invalid transitions mutated pending run: %+v", pending)
+	}
+}
+
+func stageDispatchingPendingRun(t *testing.T, store *Store, command prompt.StartRun) {
+	t.Helper()
+	if err := store.StagePendingRun(queuedPendingRun(command)); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.MarkPendingRunDispatching(command.SessionID, command.CommandID, replay.UnprotectedGuard(), nil); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestStorePersistsPendingInteractionResumeUntilExactSettlement(t *testing.T) {
+	directory := t.TempDir()
+	store, err := OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	approval := conversation.Approval{
+		RunID: "run_1", ItemID: "item_approval_1", Title: "Delete generated files",
+		Tool:         &conversation.ToolCall{Kind: conversation.ToolEdit, Name: "delete", Status: conversation.ToolRunning},
+		Rememberable: true,
+	}
+	override, err := conversation.ParseToolArgumentOverride([]byte(`{"path":"generated/fixture.go"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pending := PendingResume{
+		Command: conversation.ResumeRun{
+			CommandID: replay.CommandID("cli_33333333333333333333333333333333"), RunID: approval.RunID,
+			Answers: []conversation.InterruptAnswer{{
+				ItemID: approval.ItemID,
+				Answer: conversation.ApprovalAnswer{
+					Decision: protocol.ApprovalApprove, ArgumentOverride: override,
+				},
+			}},
+		},
+		Interactions: []conversation.Interaction{approval}, Replay: replay.UnprotectedGuard(),
+	}
+	if stagePendingResumeErr := store.StagePendingResume("ses_1", pending, nil); stagePendingResumeErr != nil {
+		t.Fatal(stagePendingResumeErr)
+	}
+	pending.Command.Answers[0].Answer = conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove}
+	pending.Interactions[0] = conversation.Approval{RunID: "mutated"}
+
+	reopened, err := OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, ok := reopened.PendingResume("ses_1")
+	if !ok || restored.Command.CommandID != replay.CommandID("cli_33333333333333333333333333333333") ||
+		restored.Command.RunID != approval.RunID || len(restored.Interactions) != 1 {
+		t.Fatalf("restored pending resume = %+v, present = %v", restored, ok)
+	}
+	answer, ok := restored.Command.Answers[0].Answer.(conversation.ApprovalAnswer)
+	if !ok || answer.Decision != protocol.ApprovalApprove || answer.ArgumentOverride == nil ||
+		string(answer.ArgumentOverride.JSON()) != `{"path":"generated/fixture.go"}` {
+		t.Fatalf("restored pending answer = %#v", restored.Command.Answers[0].Answer)
+	}
+	if err := reopened.AcknowledgePendingResume("ses_1", replay.CommandID("cli_44444444444444444444444444444444")); err == nil {
+		t.Fatal("mismatched acknowledgement retired pending resume")
+	}
+	if _, ok := reopened.PendingResume("ses_1"); !ok {
+		t.Fatal("mismatched acknowledgement removed pending resume")
+	}
+	if err := reopened.AcknowledgePendingResume("ses_1", restored.Command.CommandID); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := reopened.PendingResume("ses_1"); ok {
+		t.Fatal("acknowledged pending resume remains")
+	}
+}
+
+func TestStagingTheSameResumeCommandRejectsDifferentDecisions(t *testing.T) {
+	store, err := OpenDirectory(t.TempDir(), Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	approval := conversation.Approval{
+		RunID: "run_1", ItemID: "item_1", Title: "Run checks", Rememberable: true,
+		Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Status: conversation.ToolRunning},
+	}
+	pending := PendingResume{
+		Command: conversation.ResumeRun{
+			CommandID: replay.CommandID("cli_66666666666666666666666666666666"), RunID: approval.RunID,
+			Answers: []conversation.InterruptAnswer{{ItemID: approval.ItemID, Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove}}},
+		},
+		Interactions: []conversation.Interaction{approval}, Replay: replay.UnprotectedGuard(),
+	}
+	if err := store.StagePendingResume("ses_1", pending, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.StagePendingResume("ses_1", pending, nil); err != nil {
+		t.Fatalf("identical idempotent resume staging returned %v", err)
+	}
+
+	changedAnswer := clonePendingResume(pending)
+	changedAnswer.Command.Answers[0].Answer = conversation.ApprovalAnswer{
+		Decision: protocol.ApprovalDeny, Reason: "not this command",
+	}
+	if err := store.StagePendingResume("ses_1", changedAnswer, nil); err == nil {
+		t.Fatal("same resume identity accepted a different answer")
+	}
+	changedInteraction := clonePendingResume(pending)
+	changedInteraction.Interactions[0] = conversation.Approval{
+		RunID: approval.RunID, ItemID: approval.ItemID, Title: "Different request", Rememberable: true,
+		Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Status: conversation.ToolRunning},
+	}
+	if err := store.StagePendingResume("ses_1", changedInteraction, nil); err == nil {
+		t.Fatal("same resume identity accepted a different interaction")
+	}
+	message := prompt.Message{Text: "additional guidance"}
+	changedMessage := clonePendingResume(pending)
+	changedMessage.Command.Message = &message
+	if err := store.StagePendingResume("ses_1", changedMessage, nil); err == nil {
+		t.Fatal("same resume identity accepted a different message")
+	}
+
+	stored, ok := store.PendingResume("ses_1")
+	if !ok || !pendingResumeEqual(stored, pending) {
+		t.Fatalf("conflicting resume staging mutated outbox: %+v, present %t", stored, ok)
+	}
+}
+
+func TestStoreRequeuesAnExpiredResumeWithOneDurableReplacementIdentity(t *testing.T) {
+	directory := t.TempDir()
+	store, err := OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	approval := conversation.Approval{
+		RunID: "run_1", ItemID: "item_1", Title: "Run checks",
+		Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Status: conversation.ToolRunning},
+	}
+	pending := PendingResume{
+		Command: conversation.ResumeRun{
+			CommandID: "cli_cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd", RunID: approval.RunID,
+			Answers: []conversation.InterruptAnswer{{
+				ItemID: approval.ItemID,
+				Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove},
+			}},
+		},
+		Interactions: []conversation.Interaction{approval},
+		Replay:       protectedReplayGuard(t, "runtime-a", time.Now().UTC().Add(-time.Second)),
+	}
+	if stagePendingResumeErr := store.StagePendingResume("ses_1", pending, nil); stagePendingResumeErr != nil {
+		t.Fatal(stagePendingResumeErr)
+	}
+	replayGuard := protectedReplayGuard(t, "runtime-a", time.Now().UTC().Add(time.Hour))
+	requeued, err := store.RequeuePendingResume("ses_1", pending.Command.CommandID, replayGuard)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if requeued.Command.CommandID == pending.Command.CommandID || requeued.Replay != replayGuard ||
+		len(requeued.Command.Answers) != 1 || !conversation.InteractionsEqual(requeued.Interactions, pending.Interactions) {
+		t.Fatalf("requeued resume = %+v", requeued)
+	}
+	reopened, err := OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	durable, found := reopened.PendingResume("ses_1")
+	if !found || !pendingResumeEqual(durable, requeued) {
+		t.Fatalf("durable replacement = %+v, found %t", durable, found)
+	}
+	if _, err := reopened.RequeuePendingResume("ses_1", pending.Command.CommandID, replayGuard); err == nil {
+		t.Fatal("stale resume identity replaced the durable command")
+	}
+	if after, _ := reopened.PendingResume("ses_1"); !pendingResumeEqual(after, durable) {
+		t.Fatalf("stale replacement mutated resume: %+v", after)
+	}
+}
+
+func TestStoreRejectsPendingResumeWithoutCommandIdentity(t *testing.T) {
+	store, err := OpenDirectory(t.TempDir(), Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	approval := conversation.Approval{
+		RunID: "run_1", ItemID: "item_1", Title: "Run checks",
+		Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Status: conversation.ToolRunning},
+	}
+	pending := PendingResume{
+		Command: conversation.ResumeRun{
+			RunID: approval.RunID,
+			Answers: []conversation.InterruptAnswer{{
+				ItemID: approval.ItemID,
+				Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove},
+			}},
+		},
+		Interactions: []conversation.Interaction{approval}, Replay: replay.UnprotectedGuard(),
+	}
+
+	if err := store.StagePendingResume("ses_1", pending, nil); err == nil {
+		t.Fatal("pending resume without command identity was accepted")
+	}
+	if restored, found := store.PendingResume("ses_1"); found {
+		t.Fatalf("invalid pending resume mutated the outbox: %+v", restored)
+	}
+}
+
+func TestStorePersistsTheCompleteMixedInteractionReview(t *testing.T) {
+	directory := t.TempDir()
+	store, err := OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	approval := conversation.Approval{
+		RunID: "run_1", ItemID: "item_approval", Title: "Run checks", Rememberable: true,
+		Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Status: conversation.ToolRunning},
+	}
+	question := conversation.Question{
+		RunID: "run_1", ItemID: "item_question", Title: "Choose targets",
+		Fields: []conversation.QuestionField{
+			{Prompt: "Reason", Kind: conversation.QuestionText},
+			{Prompt: "Platforms", Kind: conversation.QuestionMulti, AllowCustom: true, Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}}},
+		},
+	}
+	pending := PendingResume{
+		Command: conversation.ResumeRun{
+			CommandID: replay.CommandID("cli_77777777777777777777777777777777"), RunID: "run_1",
+			Answers: []conversation.InterruptAnswer{
+				{ItemID: approval.ItemID, Answer: conversation.ApprovalAnswer{
+					Decision: protocol.ApprovalDeny, Remember: protocol.RememberProject, Reason: "protect generated output",
+				}},
+				{ItemID: question.ItemID, Answer: conversation.QuestionAnswer{Values: [][]string{{"portable"}, {"linux", "freebsd"}}}},
+			},
+		},
+		Interactions: []conversation.Interaction{approval, question}, Replay: replay.UnprotectedGuard(),
+	}
+	if stagePendingResumeErr := store.StagePendingResume("ses_1", pending, nil); stagePendingResumeErr != nil {
+		t.Fatal(stagePendingResumeErr)
+	}
+	reopened, err := OpenDirectory(directory, Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	restored, ok := reopened.PendingResume("ses_1")
+	if !ok || len(restored.Command.Answers) != 2 || len(restored.Interactions) != 2 {
+		t.Fatalf("restored mixed resume = %+v, present = %t", restored, ok)
+	}
+	approvalAnswer, ok := restored.Command.Answers[0].Answer.(conversation.ApprovalAnswer)
+	if !ok || approvalAnswer.Decision != protocol.ApprovalDeny || approvalAnswer.Remember != protocol.RememberProject ||
+		approvalAnswer.Reason != "protect generated output" {
+		t.Fatalf("restored approval answer = %#v", restored.Command.Answers[0].Answer)
+	}
+	questionAnswer, ok := restored.Command.Answers[1].Answer.(conversation.QuestionAnswer)
+	if !ok || !reflect.DeepEqual(questionAnswer.Values, [][]string{{"portable"}, {"linux", "freebsd"}}) {
+		t.Fatalf("restored question answer = %#v", restored.Command.Answers[1].Answer)
+	}
+	questionAnswer.Values[1][0] = "mutated"
+	again, _ := reopened.PendingResume("ses_1")
+	againQuestion := again.Command.Answers[1].Answer.(conversation.QuestionAnswer)
+	if againQuestion.Values[1][0] != "linux" {
+		t.Fatal("pending resume exposed shared nested question storage")
+	}
+}

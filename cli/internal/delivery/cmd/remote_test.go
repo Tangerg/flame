@@ -9,9 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/application/settings"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 )
 
 func TestRuntimeEndpointPreferenceAndCredentialBoundary(t *testing.T) {
@@ -44,7 +43,7 @@ func TestRuntimeEndpointPreferenceAndCredentialBoundary(t *testing.T) {
 }
 
 func TestRemoteTerminalSeparatesTargetWorkspaceFromLocalAuthoring(t *testing.T) {
-	local, state := t.TempDir(), t.TempDir()
+	local := t.TempDir()
 	canonical, err := filepath.EvalSymlinks(local)
 	if err != nil {
 		t.Fatal(err)
@@ -52,7 +51,6 @@ func TestRemoteTerminalSeparatesTargetWorkspaceFromLocalAuthoring(t *testing.T) 
 	var requests []TerminalRequest
 	for index, endpoint := range []string{"https://one.example", "https://two.example"} {
 		root := NewRoot(Dependencies{
-			StateDirectory: state,
 			StartTerminal: func(_ context.Context, request TerminalRequest) error {
 				requests = append(requests, request)
 				return nil
@@ -68,15 +66,15 @@ func TestRemoteTerminalSeparatesTargetWorkspaceFromLocalAuthoring(t *testing.T) 
 		}
 	}
 	for _, request := range requests {
-		if request.LocalDirectory != canonical || request.StateDirectory == state {
+		if request.LocalDirectory != canonical {
 			t.Fatalf("remote terminal request = %+v", request)
 		}
 	}
 	if requests[0].Workspace != `C:\remote\project` || requests[1].Workspace != "" {
 		t.Fatalf("explicit/default Runtime workspace = %q, %q", requests[0].Workspace, requests[1].Workspace)
 	}
-	if requests[0].StateDirectory == requests[1].StateDirectory {
-		t.Fatal("distinct Runtime targets share authoring state")
+	if requests[0].Settings.Runtime.Endpoint == requests[1].Settings.Runtime.Endpoint {
+		t.Fatal("distinct Runtime target selections were lost")
 	}
 }
 
@@ -85,7 +83,7 @@ func TestRemoteRunAttachesLocalBytesToAnExistingRemoteSession(t *testing.T) {
 	writeCommandFixture(t, filepath.Join(local, "notes.txt"), []byte("local attachment"))
 	runtime := instantRuntime()
 	runtime.Script = shortCompletedScript
-	created, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: `C:\remote\project`})
+	created, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: `C:\remote\project`})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,20 +96,20 @@ func TestRemoteRunAttachesLocalBytesToAnExistingRemoteSession(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	prompt := userPromptBlock(t, snapshot.Transcript)
+	authoredPrompt := userPromptBlock(t, snapshot.Transcript)
 	canonical, err := filepath.EvalSymlinks(filepath.Join(local, "notes.txt"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(prompt.Attachments) != 1 || prompt.Attachments[0].Path != canonical {
-		t.Fatalf("local attachment = %+v", prompt.Attachments)
+	if len(authoredPrompt.Attachments) != 1 || authoredPrompt.Attachments[0].Path != canonical {
+		t.Fatalf("local attachment = %+v", authoredPrompt.Attachments)
 	}
 }
 
 func TestRemoteFileCompletionDoesNotOpenRuntime(t *testing.T) {
 	local := t.TempDir()
 	writeCommandFixture(t, filepath.Join(local, "notes.txt"), []byte("notes"))
-	root := NewRoot(Dependencies{OpenRuntime: func(context.Context, string) (Runtime, *runtimebinding.Profile, error) {
+	root := NewRoot(Dependencies{OpenRuntime: func(context.Context, string) (Runtime, RuntimeProfile, error) {
 		t.Fatal("local file completion opened Runtime")
 		return nil, nil, nil
 	}})
@@ -132,7 +130,7 @@ func TestDynamicCompletionLoadsTheConfiguredRuntimeTarget(t *testing.T) {
 	local := t.TempDir()
 	writeCommandFixture(t, filepath.Join(local, ".flame.yaml"), []byte("runtime:\n  endpoint: https://configured.example/flame\n"))
 	var target string
-	root := NewRoot(Dependencies{OpenRuntime: func(_ context.Context, endpoint string) (Runtime, *runtimebinding.Profile, error) {
+	root := NewRoot(Dependencies{OpenRuntime: func(_ context.Context, endpoint string) (Runtime, RuntimeProfile, error) {
 		target = endpoint
 		return instantRuntime(), nil, nil
 	}})
@@ -151,7 +149,7 @@ func TestDynamicCompletionLoadsTheConfiguredRuntimeTarget(t *testing.T) {
 func TestExplicitRemoteFailureDoesNotOpenAnEmbeddedRuntime(t *testing.T) {
 	want := errors.New("remote endpoint unavailable")
 	var endpoints []string
-	root := NewRoot(Dependencies{OpenRuntime: func(_ context.Context, endpoint string) (Runtime, *runtimebinding.Profile, error) {
+	root := NewRoot(Dependencies{OpenRuntime: func(_ context.Context, endpoint string) (Runtime, RuntimeProfile, error) {
 		endpoints = append(endpoints, endpoint)
 		return nil, nil, want
 	}})

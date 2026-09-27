@@ -54,13 +54,13 @@ func newShellView(
 	header *sessionHeader,
 	transcript *transcriptView,
 	activity *activityView,
-	queue *queueView,
+	prompts *queueView,
 	status *statusView,
-	prompt *promptView,
+	authoredPrompt *promptView,
 ) *shellView {
 	shell := &shellView{
-		transcript: transcript, prompt: prompt, header: header,
-		activity: activity, queue: queue, status: status, density: shellDensityNormal,
+		transcript: transcript, prompt: authoredPrompt, header: header,
+		activity: activity, queue: prompts, status: status, density: shellDensityNormal,
 	}
 	rows := headless.NewContainer(layout.Down, shell.items(shellDensityNormal)...)
 	keys := headless.DefaultContainerKeys()

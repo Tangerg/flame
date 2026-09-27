@@ -50,16 +50,16 @@ contributions -> ui/application public facade
 ```text
 domain -> React / Zustand / RPC / components
 application -> components
-ui -> rpc / main/container
+ui -> raw protocol client / main composition
 plugin A -> plugin B internal files
 ```
 
 允许共享的层：
 
-- `components/common`：设计系统原子、Base UI 薄封装、纯展示 primitive。
-- `plugins/sdk`：插件平台公共契约与 extension point。
-- `rpc`：Runtime Protocol wire boundary，只表达外部协议。
-- `state`：可以作为跨插件 read model 或 store bridge，但不应成为业务规则中心。
+- `ui/primitives`, `ui/atoms`, and `ui/agent`: shared design-system primitives and presentation components.
+- `plugins/sdk`: public plugin contracts, extension points, and shared projection types.
+- `@flame/runtime-contract/client`: the public Runtime Protocol client consumed at adapter boundaries.
+- Context-owned application ports and public read models: state stays with its owner instead of becoming a global store bridge.
 - `lib`：只放真正跨上下文的纯函数或薄 use-case facade；当某段逻辑只属于一个上下文，应逐步靠近对应插件。
 
 ## 3. 业务上下文划分
@@ -106,9 +106,10 @@ plugins/builtin/agent/
 
 业务侧只通过 Agent `public/` 消费：
 
-- `viewState.ts` 发布稳定 view types；
+- `viewState.ts` exports the shared `toolCategory` presentation query; stable projection types belong to the SDK.
 - `conversation.ts` 发布 root narrative 与 delegated narratives；
 - `run.ts` 用名字显式区分 current root、active Session 与 exact Run command；
+- `plan.ts` publishes the active Session's Plan through `useSessionPlan`.
 - `input.ts` / `session.ts` 发布用户意图与 Session use case。
 
 SDK 的泛内容块扩展契约独立在 `plugins/sdk/types/contentBlock.ts`，Session projection
@@ -152,11 +153,18 @@ Composer 不应直接依赖 agent 内部 store。它可以依赖 agent 暴露的
 - 管理 view placement、active file、tool detail 路由。
 - 消费 agent public read model，不读取 agent 内部实现。
 
+### Providers
+
+`plugins/builtin/providers` owns provider configuration, model discovery, connection
+checks, and their application ports. `createProvidersPlugin` installs the provider
+gateway and queries, then contributes its configuration pane through the Settings
+extension point. The pane's placement does not transfer Provider ownership to
+Settings.
+
 ### Settings / Configuration
 
 核心语言：
 
-- ProviderConfig
 - MCPServer
 - Schedule
 - Hook
@@ -187,8 +195,8 @@ Composer 不应直接依赖 agent 内部 store。它可以依赖 agent 暴露的
 
 边界：
 
-- `main/container` 通过 Runtime `public/endpoint` 读取 active endpoint；
-- Runtime adapter 可以调用 composition root 与 typed SDK，application/domain 不可以；
+- `main/runtimeConnection.ts` reads the active target through Runtime `public/endpoint` and owns the concrete client lifetime;
+- Composition injects a client provider into Runtime adapters; adapters never import `main`, and application/domain consume their own ports;
 - endpoint rejection reason 是稳定 application vocabulary，locale 文案归 Settings UI；
 - local desktop shell URL 属于 composition，不是 Runtime endpoint 的第二个名字。
 
@@ -267,6 +275,7 @@ composer.submitDraft()
 plugins/builtin/agent/public/
   input.ts
   conversation.ts
+  plan.ts
   run.ts
   session.ts
   viewState.ts
@@ -275,8 +284,8 @@ plugins/builtin/agent/public/
 Agent Run public language 的实际形态：
 
 ```ts
-useCurrentRootRunId();
-useCurrentRootPlan();
+useCurrentRootMaterial().runId;
+useSessionPlan();
 useIsCurrentRootRunning();
 stopCurrentRootRun();
 
@@ -284,7 +293,7 @@ useActiveSessionRunTree();
 useActiveSessionTimeline();
 useActiveSessionToolCalls();
 
-cancelActiveSessionRun(runId);
+cancelSessionRun({ sessionId, runId });
 subscribeRootRunSettlements(listener);
 ```
 

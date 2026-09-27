@@ -6,6 +6,18 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/attachment"
+	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/sessionartifact"
+	runworkflow "github.com/Tangerg/flame/cli/internal/application/agent/run"
+	"github.com/Tangerg/flame/cli/internal/application/agent/session"
+	"github.com/Tangerg/flame/cli/internal/application/changefeed"
+	"github.com/Tangerg/flame/cli/internal/application/extensions"
+	"github.com/Tangerg/flame/cli/internal/application/mutation"
+	"github.com/Tangerg/flame/cli/internal/application/settings"
+	"github.com/Tangerg/flame/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/input"
@@ -13,20 +25,6 @@ import (
 	"github.com/Tangerg/oolong/core/layout"
 	"github.com/Tangerg/oolong/core/program"
 	"github.com/Tangerg/oolong/highlight"
-
-	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/attachment"
-	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/sessionartifact"
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
-	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
-	"github.com/Tangerg/flame/cli/internal/application/agent/promptqueue"
-	runworkflow "github.com/Tangerg/flame/cli/internal/application/agent/run"
-	"github.com/Tangerg/flame/cli/internal/application/agent/session"
-	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
-	"github.com/Tangerg/flame/cli/internal/application/changefeed"
-	"github.com/Tangerg/flame/cli/internal/application/extensions"
-	"github.com/Tangerg/flame/cli/internal/application/settings"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 )
 
 const (
@@ -74,7 +72,7 @@ type app struct {
 	authoringContext AuthoringContext
 	hooks            Hooks
 	feedback         Feedback
-	runtimeProfile   *runtimebinding.Profile
+	runtimeProfile   RuntimeProfile
 	artifacts        sessionartifact.Store
 	registry         *extensions.Registry
 	pluginHost       *extensions.Host
@@ -94,7 +92,7 @@ type app struct {
 	status      *statusView
 	settings    settings.Config
 
-	options        agent.RunOptions
+	options        prompt.RunOptions
 	composer       kit.Composer
 	prompt         *promptView
 	commands       commandCatalog
@@ -102,7 +100,7 @@ type app struct {
 	completionGate completionGate
 	shell          *shellView
 	stack          headless.Stack
-	queue          *promptqueue.Queue
+	queue          *workbench.Queue
 	workbench      *workbench.Store
 	drafts         *draftPersistence
 	draftState     draftObservation
@@ -112,7 +110,7 @@ type app struct {
 	detachOnExit   bool
 
 	attachments        *attachment.Resolver
-	attachmentElements map[uint64]agent.Attachment
+	attachmentElements map[uint64]prompt.Attachment
 	history            promptHistory
 	workbenchHealth    workbenchHealth
 	commandOperations  commandOperationRegistry
@@ -146,20 +144,20 @@ type appConfig struct {
 	authoringContext AuthoringContext
 	hooks            Hooks
 	feedback         Feedback
-	runtimeProfile   *runtimebinding.Profile
+	runtimeProfile   RuntimeProfile
 	clientVersion    string
-	snapshot         agent.SessionSnapshot
+	snapshot         conversation.SessionSnapshot
 	registry         *extensions.Registry
 	pluginHost       *extensions.Host
 	pluginIssues     []extensions.SourceIssue
 	attachments      *attachment.Resolver
-	initialDraft     agent.Message
+	initialDraft     prompt.Message
 	recoveredSteers  []runworkflow.SteerResult
 	settings         settings.Config
 
-	options        agent.RunOptions
+	options        prompt.RunOptions
 	keyBindings    keyBindings
-	queue          *promptqueue.Queue
+	queue          *workbench.Queue
 	workbench      *workbench.Store
 	editor         *draftEditor
 	localDirectory string
@@ -206,7 +204,7 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 		session:    sessionState{current: cfg.snapshot.Session, context: newSessionContextLease()},
 		registry:   cfg.registry,
 		pluginHost: cfg.pluginHost, pluginIssues: cfg.pluginIssues,
-		execution:          executionState{conversation: agent.NewConversation()},
+		execution:          executionState{conversation: conversation.New()},
 		operations:         newOperationOwner(cfg.context),
 		transcript:         transcript,
 		brand:              brand,
@@ -223,7 +221,7 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 		options:            cfg.options,
 		syntax:             appearance.syntax,
 		attachments:        cfg.attachments,
-		attachmentElements: make(map[uint64]agent.Attachment),
+		attachmentElements: make(map[uint64]prompt.Attachment),
 		commandOperations:  newCommandOperationRegistry(),
 		commands:           newCommandCatalog(),
 		attention:          newAttentionCenter(),
@@ -260,7 +258,7 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 	return a
 }
 
-func (a *app) configureComposer(appearance terminalAppearance, keys *keymap.Map, initial agent.Message) {
+func (a *app) configureComposer(appearance terminalAppearance, keys *keymap.Map, initial prompt.Message) {
 	a.composer = kit.Composer{
 		Theme: appearance.theme, Prompt: appearance.glyphs.Marker + " ",
 		MaxRows: 6,
@@ -328,7 +326,7 @@ func (a *app) wireTranscript(transcript *transcriptView) {
 }
 
 func (a *app) buildSessionPicker(theme kit.Theme, glyphs kit.Glyphs) {
-	a.dialogs.sessionCenter = newSessionCenterPane(theme, glyphs, func(session agent.Session) {
+	a.dialogs.sessionCenter = newSessionCenterPane(theme, glyphs, func(session conversation.Session) {
 		a.dialogs.sessionDialog.Dismiss()
 		a.switchSession(session.ID)
 	})
@@ -367,10 +365,10 @@ func (a *app) Close(ctx context.Context) error {
 	}
 	a.closed = true
 	var (
-		target           agent.CancelRun
-		openingCommandID agent.CommandID
+		target           conversation.CancelRun
+		openingCommandID replay.CommandID
 		cancelRuntime    bool
-		cancelReplay     commandreplay.Guard
+		cancelReplay     replay.Guard
 	)
 	if a.execution.pendingCancel != nil {
 		target, openingCommandID, cancelRuntime = a.execution.pendingCancel.request, a.execution.pendingCancel.openingCommandID, true
@@ -443,7 +441,7 @@ func (a *app) submit() {
 		// A command acts on the staged composer context. Clear its command text but
 		// put attachment elements back so /attachments and /detach can inspect or
 		// mutate them without accidentally sending a user turn.
-		a.restoreComposer(agent.Message{Attachments: message.Attachments})
+		a.restoreComposer(prompt.Message{Attachments: message.Attachments})
 		a.operations.Cancel(completionOperation)
 		a.completion.Dismiss()
 		a.runCommand(name, arg)
@@ -455,7 +453,7 @@ func (a *app) submit() {
 // dispatchPrompt owns the single path from an authored message to either the
 // active run or its durable follow-up queue. Callers such as prompt submission
 // cannot bypass session-change exclusion, prompt history, or composer cleanup.
-func (a *app) dispatchPrompt(message agent.Message) {
+func (a *app) dispatchPrompt(message prompt.Message) {
 	if err := a.validateMessageCapabilities(message); err != nil {
 		a.message(err.Error())
 		return
@@ -465,19 +463,14 @@ func (a *app) dispatchPrompt(message agent.Message) {
 		return
 	}
 	commandID := mutation.NewCommandID()
-	if commitPromptSubmissionErr := a.commitPromptSubmission(commandID, message); commitPromptSubmissionErr != nil {
-		a.reportWorkbenchIssue(workbenchRunOutbox, commitPromptSubmissionErr)
-		a.message("prompt submission blocked: " + commitPromptSubmissionErr.Error())
+	if _, err := a.queue.EnqueueCommand(commandID, a.session.current.ID, message, a.options); err != nil {
+		a.reportWorkbenchIssue(workbenchRunOutbox, err)
+		a.message("prompt submission blocked: " + err.Error())
 		return
 	}
 	a.reportWorkbenchIssue(workbenchRunOutbox, nil)
 	if a.runAdmissionBlocked() {
-		a.enqueueDeferredPrompt(commandID, message)
-		return
-	}
-	_, err := a.queue.EnqueueCommand(commandID, a.session.current.ID, message, a.options)
-	if err != nil {
-		a.message(err.Error())
+		a.enqueueDeferredPrompt()
 		return
 	}
 	a.operations.Cancel(pickerCatalogOperation)
@@ -489,28 +482,6 @@ func (a *app) dispatchPrompt(message agent.Message) {
 	if !a.drainQueue() {
 		a.syncQueue()
 	}
-}
-
-// commitPromptSubmission is the durable ownership boundary between the composer
-// and a runtime run or follow-up queue. Once submission starts, a restart must
-// not resurrect the same prompt as an unsent draft.
-func (a *app) commitPromptSubmission(commandID agent.CommandID, message agent.Message) error {
-	if err := message.Validate(); err != nil {
-		return err
-	}
-	if a.workbench != nil {
-		pending := workbench.PendingRun{
-			State: workbench.PendingRunQueued, Replay: commandreplay.UnprotectedGuard(),
-			CancelReplay: commandreplay.UnprotectedGuard(),
-			Command: agent.StartRun{
-				CommandID: commandID, SessionID: a.session.current.ID, Message: message.Clone(), Options: a.options.Clone(),
-			},
-		}
-		if err := a.workbench.StagePendingRun(pending); err != nil {
-			return fmt.Errorf("save pending run: %w", err)
-		}
-	}
-	return nil
 }
 
 func (a *app) sendNextQueuedIfBusy() {
@@ -534,7 +505,7 @@ func (a *app) sendNextQueuedIfBusy() {
 }
 
 func (a *app) message(label string) {
-	if a.execution.conversation.Phase() == agent.ConversationRunning {
+	if a.execution.conversation.Phase() == conversation.Running {
 		a.status.active(label)
 		return
 	}

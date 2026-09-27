@@ -14,7 +14,7 @@ import (
 // is skipped entirely.
 //
 // This trim is LOSSY and NOT retrievable, unlike the fresh-result offload
-// (agentexec tool-result eviction, which keeps a read_tool_result handle): these
+// (execution adapter tool-result eviction, which keeps a read_tool_result handle): these
 // are OLD messages already near the summary boundary, about to be folded into a
 // summary on the next rung anyway, so a durable blob per body isn't warranted.
 // The markers say so, and never point at read_tool_result, so the model won't

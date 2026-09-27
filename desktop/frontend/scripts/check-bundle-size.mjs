@@ -111,12 +111,18 @@ const LAZY_FEATURES = [
     ],
     ceiling: 200_000,
   },
-  // Named one by one rather than pattern-matched: the list IS the coverage proof, so a
-  // view added without registering it here fails as "missing chunk" rather than passing
-  // quietly. What this guards is the barrel, which pulled all twenty onto startup.
+  // Each dynamically imported view entry must retain its own lazy chunk. Keep
+  // these names aligned with the entries when views are added or renamed.
   {
     label: "workspace views",
-    prefixes: ["agentMemory-", "diff-", "file-", "skills-", "SubagentsPanel-", "timeline-"],
+    prefixes: [
+      "AgentMemory-",
+      "DiffWorkspace-",
+      "FileWorkspace-",
+      "Skills-",
+      "SubagentsPanel-",
+      "Timeline-",
+    ],
     ceiling: 250_000,
   },
   { label: "syntax highlighting", prefix: "shiki-", ceiling: 3_000_000 },

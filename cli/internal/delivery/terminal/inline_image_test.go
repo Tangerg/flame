@@ -8,14 +8,13 @@ import (
 	"image/png"
 	"testing"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/graphics"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 func TestInlineImageFallbackPreservesOutputIdentity(t *testing.T) {
-	block := fallbackInlineImage(kit.Dark(), agent.InlineImage{
+	block := fallbackInlineImage(kit.Dark(), conversation.InlineImage{
 		Name: "chart.png", MIMEType: "image/png", Data: []byte("1234"),
 	})
 	picture, ok := block.(*kit.Image)
@@ -48,7 +47,7 @@ func TestTerminalImageBlockReflowsWithTheHostCellSize(t *testing.T) {
 	}
 	transport := &imageTransportStub{cell: image.Pt(10, 20)}
 	presenter := newTerminalImagePresenter(transport)
-	block := presenter.Present(kit.Dark(), agent.InlineImage{
+	block := presenter.Present(kit.Dark(), conversation.InlineImage{
 		Name: "chart.png", MIMEType: "image/png", Data: data.Bytes(),
 	})
 	before := block.(*terminalImageBlock).HeightForWidth(40)

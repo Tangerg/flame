@@ -1,0 +1,174 @@
+package execution
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"slices"
+
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	agent "github.com/Tangerg/scope/agent"
+)
+
+func (i *interactionSession) admitProcess(
+	ctx context.Context,
+	admission agent.ProcessAdmission,
+) error {
+	if !admission.Valid() {
+		return errors.New("execution: Interaction received an invalid Process admission")
+	}
+	relation := admission.Relation()
+	i.state.mu.Lock()
+	deployments := i.state.deployments
+	i.state.mu.Unlock()
+	if deployments == nil {
+		return errors.New("execution: Interaction deployments are unavailable")
+	}
+	if relation.IsRoot() {
+		if admission.DeploymentRef() != deployments.root.DeploymentRef() {
+			return errors.New("execution: Interaction root admission changed Deployment")
+		}
+		i.state.mu.Lock()
+		defer i.state.mu.Unlock()
+		if i.state.admittedProcessID.Valid() && i.state.admittedProcessID != relation.ProcessID() {
+			return errors.New("execution: Interaction root admission identity changed")
+		}
+		i.state.admittedProcessID = relation.ProcessID()
+		return nil
+	}
+	if !deployments.managedChild(admission.DeploymentRef()) {
+		return errors.New("execution: unmanaged child Process is outside the Runtime projection contract")
+	}
+	// An ordinary Tool call runs as a child Process of the Interaction it belongs
+	// to. It is projected as a Tool Item of its parent Run by the Tool boundary,
+	// so admission has no separate product fact to commit.
+	if deployments.toolChild(admission.DeploymentRef()) {
+		return nil
+	}
+	parentID, _ := relation.ParentID()
+	childKey, _ := relation.ChildKey()
+	identity := delegateCallIdentity{parentID: parentID, childKey: childKey}
+	i.state.mu.Lock()
+	managed := i.state.delegateCalls[identity]
+	i.state.mu.Unlock()
+	if managed == nil {
+		return errors.New("execution: child admission has no durably observed Delegate call")
+	}
+	managed.mu.Lock()
+	defer managed.mu.Unlock()
+	if managed.target != admission.DeploymentRef() || managed.parentRelation.ProcessID() != parentID {
+		return errors.New("execution: child admission differs from its Delegate binding")
+	}
+	if managed.admission.Valid() {
+		if !sameManagedAdmission(managed.admission, admission) ||
+			(managed.binding != (runs.ChildRunBinding{}) && managed.binding.Validate() != nil) {
+			return errors.New("execution: repeated child admission changed immutable identity")
+		}
+		return nil
+	}
+	parent := i.executorMember(managed.parentRelation)
+	if err := i.commitFact(ctx, parent, managed.toolStart()); err != nil {
+		return fmt.Errorf("execution: commit Delegate call start: %w", err)
+	}
+	if err := i.rememberToolMetadata(toolResultMetadata{
+		MemberID: parent.MemberID, Start: managed.toolStart(), Arguments: managed.arguments.Canonical(),
+	}); err != nil {
+		return err
+	}
+	member := runs.ExecutorMember{
+		MemberID: relation.ProcessID().String(), ParentID: parentID.String(),
+		SpawnCallID: managed.call.ID,
+	}
+	request, receipt := runs.NewChildRunReservationRequest()
+	if err := i.sendExecutorRequest(ctx, runs.ExecutorEvent{Member: member, Payload: request}); err != nil {
+		return err
+	}
+	binding, err := receipt.Await(ctx)
+	if err != nil {
+		return err
+	}
+	if binding.MemberID != member.MemberID || binding.ParentRunID == "" {
+		return errors.New("child Run reservation returned a different executor member")
+	}
+	managed.admission = admission
+	managed.binding = binding
+	return nil
+}
+
+func sameManagedAdmission(left, right agent.ProcessAdmission) bool {
+	return left.Valid() && right.Valid() && left.Relation() == right.Relation() &&
+		left.DeploymentRef() == right.DeploymentRef() &&
+		left.Descriptor().Digest() == right.Descriptor().Digest() &&
+		left.Budget() == right.Budget() &&
+		slices.Equal(left.Capabilities().Values(), right.Capabilities().Values())
+}
+
+func (i *interactionSession) acknowledgeProcessInitializationOutcome(
+	ctx context.Context,
+	outcome agent.ProcessInitializationOutcome,
+) error {
+	if !outcome.Valid() {
+		return errors.New("execution: Interaction received an invalid Process initialization outcome")
+	}
+	admission := outcome.Admission()
+	relation := admission.Relation()
+	if relation.IsRoot() {
+		if outcome.Status() != agent.ProcessInitializationOutcomeStatusInitialized {
+			return errors.New("execution: accepted Interaction root aborted during initialization")
+		}
+		return nil
+	}
+	i.state.mu.Lock()
+	deployments := i.state.deployments
+	i.state.mu.Unlock()
+	// A Tool call's child Process carries no Delegate binding, so its initialization
+	// outcome has nothing to acknowledge against one.
+	if deployments != nil && deployments.toolChild(admission.DeploymentRef()) {
+		return nil
+	}
+	parentID, _ := relation.ParentID()
+	childKey, _ := relation.ChildKey()
+	i.state.mu.Lock()
+	managed := i.state.delegateCalls[delegateCallIdentity{parentID: parentID, childKey: childKey}]
+	i.state.mu.Unlock()
+	if managed == nil {
+		return errors.New("execution: child initialization outcome has no Delegate admission")
+	}
+	managed.mu.Lock()
+	defer managed.mu.Unlock()
+	if !sameManagedAdmission(managed.admission, admission) || managed.binding.MemberID == "" {
+		return errors.New("execution: child initialization outcome differs from its reservation")
+	}
+	applicationOutcome := runs.ChildRunStartAborted
+	startedAt, hasStartedAt := outcome.StartedAt()
+	if outcome.Status() == agent.ProcessInitializationOutcomeStatusInitialized {
+		if !hasStartedAt {
+			return errors.New("execution: started child outcome has no lifecycle start time")
+		}
+		applicationOutcome = runs.ChildRunStarted
+	} else if hasStartedAt {
+		return errors.New("execution: aborted child outcome has a lifecycle start time")
+	}
+	request, receipt := runs.NewChildRunStartOutcomeRequest(
+		managed.binding, applicationOutcome, startedAt,
+	)
+	member := runs.ExecutorMember{
+		MemberID: relation.ProcessID().String(), ParentID: parentID.String(),
+		SpawnCallID: managed.call.ID,
+	}
+	if err := i.sendExecutorRequest(ctx, runs.ExecutorEvent{Member: member, Payload: request}); err != nil {
+		return err
+	}
+	if err := receipt.Await(ctx); err != nil {
+		return err
+	}
+	if outcome.Status() == agent.ProcessInitializationOutcomeStatusFailed {
+		return nil
+	}
+
+	managed.childProcessID = relation.ProcessID()
+	i.state.mu.Lock()
+	i.state.delegateChildren[relation.ProcessID()] = managed
+	i.state.mu.Unlock()
+	return nil
+}

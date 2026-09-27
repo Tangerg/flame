@@ -1,3 +1,4 @@
+import type { FlameClient } from "@flame/runtime-contract/client";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { contributeLayout, definePlugin, notifyError, type SlashCommandSpec } from "@/plugins/sdk";
 import {
@@ -30,50 +31,55 @@ const GOAL_SLASH_COMMAND: SlashCommandSpec = {
   description: "slash.goal",
 };
 
-export default definePlugin({
-  name: "flame.builtin.goal",
-  requires: { runtime: RUNTIME_STREAM },
-  setup(ctx) {
-    const composerMode = GoalComposerModeOwner.install();
-    const runtimeAdapter = installGoalRuntimeAdapter(ctx.runtime.connectionGeneration() !== null);
-    const unsubscribeRuntime = followRuntimeGeneration(ctx.runtime, (next) => {
-      if (next === null) runtimeAdapter.retireRuntimeGeneration();
-      else runtimeAdapter.replaceRuntimeGeneration();
-    });
-    contributeLayout(ctx, "composer.overlay.top", {
-      id: "goal",
-      order: 10,
-      component: GoalStatusSurface,
-    });
-    contributeLayout(ctx, "composer.toolbar.start", {
-      id: "goal-mode",
-      order: 4,
-      component: GoalModeIndicator,
-    });
-    for (const key of GOAL_STANDING_TOOLS) {
-      ctx.contribute(TOOL_STANDING_SURFACE, GOAL_SURFACE, { key });
-    }
-    ctx.contribute(
-      COMPOSER_SUBMIT_MODE,
-      createGoalComposerSubmitMode(composerMode, {
-        getActiveSessionId,
-        composerText: getComposerText,
-        goalState: (sessionId) => getAgentSessionSharedMaterial<GoalState>(sessionId, "goal"),
-        runtimeAvailable: runtimeCommandsAvailable,
-        modelPreference: selectedComposerModelPreference,
-        start: startGoal,
-        focusComposer,
-        reportUnavailable: () => notifyError(t("goal.error.unavailable")),
-        reportUnsupportedAttachments: () => notifyError(t("goal.error.attachmentsUnsupported")),
-        reportStartError: (error) => notifyError(rpcErrorText(error) ?? t("goal.error.start")),
-        retired: wasGenerationRetired,
-      }),
-    );
-    ctx.contribute(SLASH_COMMAND, GOAL_SLASH_COMMAND, { key: "/goal" });
-    ctx.cleanup(() => {
-      unsubscribeRuntime();
-      composerMode.dispose();
-      runtimeAdapter.dispose();
-    });
-  },
-});
+export function createGoalPlugin(runtimeClient: () => FlameClient) {
+  return definePlugin({
+    name: "flame.builtin.goal",
+    requires: { runtime: RUNTIME_STREAM },
+    setup(ctx) {
+      const composerMode = GoalComposerModeOwner.install();
+      const runtimeAdapter = installGoalRuntimeAdapter(
+        runtimeClient,
+        ctx.runtime.connectionGeneration() !== null,
+      );
+      const unsubscribeRuntime = followRuntimeGeneration(ctx.runtime, (next) => {
+        if (next === null) runtimeAdapter.retireRuntimeGeneration();
+        else runtimeAdapter.replaceRuntimeGeneration();
+      });
+      contributeLayout(ctx, "composer.overlay.top", {
+        id: "goal",
+        order: 10,
+        component: GoalStatusSurface,
+      });
+      contributeLayout(ctx, "composer.toolbar.start", {
+        id: "goal-mode",
+        order: 4,
+        component: GoalModeIndicator,
+      });
+      for (const key of GOAL_STANDING_TOOLS) {
+        ctx.contribute(TOOL_STANDING_SURFACE, GOAL_SURFACE, { key });
+      }
+      ctx.contribute(
+        COMPOSER_SUBMIT_MODE,
+        createGoalComposerSubmitMode(composerMode, {
+          getActiveSessionId,
+          composerText: getComposerText,
+          goalState: (sessionId) => getAgentSessionSharedMaterial<GoalState>(sessionId, "goal"),
+          runtimeAvailable: runtimeCommandsAvailable,
+          modelPreference: selectedComposerModelPreference,
+          start: startGoal,
+          focusComposer,
+          reportUnavailable: () => notifyError(t("goal.error.unavailable")),
+          reportUnsupportedAttachments: () => notifyError(t("goal.error.attachmentsUnsupported")),
+          reportStartError: (error) => notifyError(rpcErrorText(error) ?? t("goal.error.start")),
+          retired: wasGenerationRetired,
+        }),
+      );
+      ctx.contribute(SLASH_COMMAND, GOAL_SLASH_COMMAND, { key: "/goal" });
+      ctx.cleanup(() => {
+        unsubscribeRuntime();
+        composerMode.dispose();
+        runtimeAdapter.dispose();
+      });
+    },
+  });
+}

@@ -14,6 +14,7 @@
 // The cure is to write the longhands: `paddingInline` beside `paddingTop` and `paddingBottom`
 // says the same thing in keys that cannot collide.
 
+import { assertSourceCoverage, sourceFiles } from "./source-graph.mjs";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { extname, join, relative } from "node:path";
 
@@ -82,7 +83,10 @@ function walk(dir) {
 
 const violations = [];
 let examined = 0;
-for (const path of [join(ROOT, "src"), join(ROOT, "visual")].flatMap(walk)) {
+const roots = [join(ROOT, "src"), join(ROOT, "visual")];
+const scanned = roots.flatMap(walk);
+assertSourceCoverage(roots.flatMap(sourceFiles), scanned);
+for (const path of scanned) {
   if (![".ts", ".tsx"].includes(extname(path))) continue;
   examined += 1;
   const rel = relative(ROOT, path);
@@ -124,14 +128,6 @@ if (violations.length > 0) {
   console.error("Write the longhands. `paddingInline` beside `paddingTop` says the same thing in");
   console.error("keys StyleX can resolve; a shorthand and its longhand are two keys it cannot.");
   process.exit(1);
-}
-
-const MIN_FILES_EXAMINED = 500;
-if (examined < MIN_FILES_EXAMINED) {
-  console.error(
-    `check-shorthand-longhand: only read ${examined} files (floor ${MIN_FILES_EXAMINED}) — the walk is broken.`,
-  );
-  process.exit(2);
 }
 
 console.log(

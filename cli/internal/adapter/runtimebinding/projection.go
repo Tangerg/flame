@@ -6,18 +6,17 @@ import (
 	"slices"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/domain/failure"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-func projectRun(value protocol.RunRef) (agent.Run, error) {
+func projectRun(value protocol.RunRef) (conversation.Run, error) {
 	lineage, err := projectRunLineage(value)
 	if err != nil {
-		return agent.Run{}, fmt.Errorf("run %s: %w", value.ID, err)
+		return conversation.Run{}, fmt.Errorf("run %s: %w", value.ID, err)
 	}
-	projected := agent.Run{
+	projected := conversation.Run{
 		ID: value.ID, SessionID: value.SessionID,
 		Provider: value.Provider, Model: value.Model, ReasoningEffort: value.ReasoningEffort,
 		Lineage: lineage,
@@ -32,11 +31,11 @@ func projectRun(value protocol.RunRef) (agent.Run, error) {
 	return projected, nil
 }
 
-func projectRunLineage(value protocol.RunRef) (agent.RunLineage, error) {
+func projectRunLineage(value protocol.RunRef) (conversation.RunLineage, error) {
 	if value.SpawnedByItemID == "" && value.ParentRunID == "" && value.RootRunID == "" {
-		return agent.RootRunLineage(), nil
+		return conversation.RootRunLineage(), nil
 	}
-	return agent.NewChildRunLineage(value.ID, value.SpawnedByItemID, value.ParentRunID, value.RootRunID)
+	return conversation.NewChildRunLineage(value.ID, value.SpawnedByItemID, value.ParentRunID, value.RootRunID)
 }
 
 func projectRunProtocolProfile(profile protocol.RunProtocolProfile) *protocol.RunProtocolProfile {
@@ -46,8 +45,8 @@ func projectRunProtocolProfile(profile protocol.RunProtocolProfile) *protocol.Ru
 	return &projected
 }
 
-func projectUsage(metrics protocol.RunMetrics) agent.Usage {
-	usage := agent.Usage{
+func projectUsage(metrics protocol.RunMetrics) conversation.Usage {
+	usage := conversation.Usage{
 		Steps: metrics.Steps, Duration: time.Duration(metrics.ActiveDurationMillis) * time.Millisecond,
 	}
 	if metrics.Usage == nil {
@@ -58,8 +57,8 @@ func projectUsage(metrics protocol.RunMetrics) agent.Usage {
 	return projected
 }
 
-func projectUsageBreakdown(value protocol.Usage) agent.Usage {
-	usage := agent.Usage{
+func projectUsageBreakdown(value protocol.Usage) conversation.Usage {
+	usage := conversation.Usage{
 		InputTokens: value.InputTokens, OutputTokens: value.OutputTokens,
 		CacheReadTokens: value.CacheReadTokens, CacheWriteTokens: value.CacheWriteTokens,
 		ReasoningTokens: value.ReasoningTokens, ByModel: cloneUsageByModel(value.ByModel),
@@ -81,15 +80,15 @@ func cloneUsageByModel(values map[string]protocol.ModelUsage) map[string]protoco
 	return projected
 }
 
-func projectRunOutcome(value protocol.RunOutcome) agent.Outcome {
+func projectRunOutcome(value protocol.RunOutcome) conversation.Outcome {
 	return projectOutcome(value.Type, value.Error, value.Detail)
 }
 
 // projectOutcome folds a terminal Run or Segment outcome into the CLI's flat
 // presentation value. The wire contract already keeps Error and Detail on
 // disjoint terminals, so each tag carries at most one of them.
-func projectOutcome(status protocol.RunOutcomeType, problem *protocol.ProblemData, detail string) agent.Outcome {
-	return agent.Outcome{Status: status, Detail: detail, Problem: failure.Clone(problem)}
+func projectOutcome(status protocol.RunOutcomeType, problem *protocol.ProblemData, detail string) conversation.Outcome {
+	return conversation.Outcome{Status: status, Detail: detail, Problem: failure.Clone(problem)}
 }
 
 func projectPlan(plan *protocol.Plan) (*protocol.Plan, error) {
@@ -106,7 +105,7 @@ func projectPlan(plan *protocol.Plan) (*protocol.Plan, error) {
 	return &projected, nil
 }
 
-func projectInteraction(value protocol.Interrupt) (agent.Interaction, error) {
+func projectInteraction(value protocol.Interrupt) (conversation.Interaction, error) {
 	if value.Payload == nil {
 		return nil, fmt.Errorf("interrupt %s has no payload", value.ItemID)
 	}
@@ -116,19 +115,19 @@ func projectInteraction(value protocol.Interrupt) (agent.Interaction, error) {
 		if err != nil {
 			return nil, fmt.Errorf("approval %s: %w", value.ItemID, err)
 		}
-		return agent.Approval{
+		return conversation.Approval{
 			RunID: value.RunID, ItemID: value.ItemID, Title: "Approve " + tool.Name, Detail: value.Payload.Reason,
 			Tool: &tool, Risk: value.Payload.Risk, Rememberable: value.Payload.Rememberable,
 		}, nil
 	case protocol.InterruptQuestion:
 		return projectQuestion(value.RunID, value.ItemID, value.Payload.Question)
 	default:
-		return nil, fmt.Errorf("%w: interrupt type %q is unsupported", agent.ErrIncompatibleRuntime, value.Type)
+		return nil, fmt.Errorf("%w: interrupt type %q is unsupported", conversation.ErrIncompatibleRuntime, value.Type)
 	}
 }
 
-func projectInteractions(values []protocol.Interrupt) ([]agent.Interaction, error) {
-	interactions := make([]agent.Interaction, 0, len(values))
+func projectInteractions(values []protocol.Interrupt) ([]conversation.Interaction, error) {
+	interactions := make([]conversation.Interaction, 0, len(values))
 	for _, value := range values {
 		projected, err := projectInteraction(value)
 		if err != nil {

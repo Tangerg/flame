@@ -1,3 +1,4 @@
+import type { FlameClient } from "@flame/runtime-contract/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { subscribeRuntimeWorkspaceEvents } from "./runtimeWorkspaceEvents";
 
@@ -14,14 +15,11 @@ vi.mock("@/plugins/builtin/runtime/public/capabilities", () => ({
   runtimeSupportsTopic: (topic: string) => supportedTopics.has(topic),
 }));
 
-vi.mock("@/main/container", () => ({
-  getContainer: () => ({
-    client: () => ({
-      workspaces: { resolve: resolveWorkspace },
-      runtimeEvents: { subscribe },
-    }),
-  }),
-}));
+const runtimeClient = () =>
+  ({
+    workspaces: { resolve: resolveWorkspace },
+    runtimeEvents: { subscribe },
+  }) as unknown as FlameClient;
 
 const events = {
   async *[Symbol.asyncIterator]() {},
@@ -60,6 +58,7 @@ describe("runtime workspace event subscription", () => {
       events: { [Symbol.asyncIterator]: () => ({ next: vi.fn(), return: release }) },
     });
     const observed = await subscribeRuntimeWorkspaceEvents(
+      runtimeClient,
       { type: "workspace", cwd: "/repo" },
       new AbortController().signal,
     );
@@ -82,6 +81,7 @@ describe("runtime workspace event subscription", () => {
       })(),
     });
     const result = await subscribeRuntimeWorkspaceEvents(
+      runtimeClient,
       {
         type: "workspace",
         cwd: "/alias/first",
@@ -116,6 +116,7 @@ describe("runtime workspace event subscription", () => {
     const signal = new AbortController().signal;
 
     const observed = await subscribeRuntimeWorkspaceEvents(
+      runtimeClient,
       { type: "workspace", cwd: "/linked/repo" },
       signal,
     );
@@ -140,7 +141,9 @@ describe("runtime workspace event subscription", () => {
     supportedTopics.delete("hooks.changed");
     const signal = new AbortController().signal;
 
-    await expect(subscribeRuntimeWorkspaceEvents({ type: "none" }, signal)).resolves.toBe(events);
+    await expect(
+      subscribeRuntimeWorkspaceEvents(runtimeClient, { type: "none" }, signal),
+    ).resolves.toBe(events);
 
     expect(subscribe).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -163,6 +166,7 @@ describe("runtime workspace event subscription", () => {
     );
 
     const opening = subscribeRuntimeWorkspaceEvents(
+      runtimeClient,
       { type: "workspace", cwd: "/repo" },
       controller.signal,
     );
@@ -181,7 +185,11 @@ describe("runtime workspace event subscription", () => {
     const signal = new AbortController().signal;
 
     await expect(
-      subscribeRuntimeWorkspaceEvents({ type: "workspace", cwd: "/missing/repo" }, signal),
+      subscribeRuntimeWorkspaceEvents(
+        runtimeClient,
+        { type: "workspace", cwd: "/missing/repo" },
+        signal,
+      ),
     ).resolves.toBe(events);
 
     expect(subscribe).toHaveBeenCalledWith(
@@ -194,9 +202,9 @@ describe("runtime workspace event subscription", () => {
     fileWatch.mockReturnValue(false);
     const signal = new AbortController().signal;
 
-    await expect(subscribeRuntimeWorkspaceEvents({ type: "workspace" }, signal)).resolves.toBe(
-      events,
-    );
+    await expect(
+      subscribeRuntimeWorkspaceEvents(runtimeClient, { type: "workspace" }, signal),
+    ).resolves.toBe(events);
 
     expect(resolveWorkspace).not.toHaveBeenCalled();
     expect(subscribe).toHaveBeenCalledWith(
@@ -208,7 +216,9 @@ describe("runtime workspace event subscription", () => {
   it("subscribes global topics without resolving a default watch while identity is unknown", async () => {
     const signal = new AbortController().signal;
 
-    await expect(subscribeRuntimeWorkspaceEvents({ type: "none" }, signal)).resolves.toBe(events);
+    await expect(
+      subscribeRuntimeWorkspaceEvents(runtimeClient, { type: "none" }, signal),
+    ).resolves.toBe(events);
 
     expect(resolveWorkspace).not.toHaveBeenCalled();
     expect(subscribe).toHaveBeenCalledWith(

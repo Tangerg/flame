@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 )
 
 type sessionCatalogBinding interface {
@@ -20,17 +19,17 @@ type sessionCatalogBinding interface {
 	DeleteSession(context.Context, protocol.DeleteSessionRequest, flameruntime.CommandOptions) error
 }
 
-func (r *Connection) ListSessions(ctx context.Context, query agent.SessionQuery) (agent.SessionPage, error) {
+func (r *Connection) ListSessions(ctx context.Context, query conversation.SessionQuery) (conversation.SessionPage, error) {
 	query, err := query.Normalize()
 	if err != nil {
-		return agent.SessionPage{}, err
+		return conversation.SessionPage{}, err
 	}
 	limit, err := query.PageSize.Rows()
 	if err != nil {
-		return agent.SessionPage{}, err
+		return conversation.SessionPage{}, err
 	}
 	if err := validateRequestCursor("list sessions", query.Cursor); err != nil {
-		return agent.SessionPage{}, err
+		return conversation.SessionPage{}, err
 	}
 	request := protocol.ListSessionsRequest{
 		PageQuery: protocol.PageQuery{Limit: protocolPositiveInt(limit), Cursor: query.Cursor},
@@ -41,32 +40,32 @@ func (r *Connection) ListSessions(ctx context.Context, query agent.SessionQuery)
 	}
 	page, err := r.sessionCatalog.ListSessions(ctx, request, r.callOptions())
 	if err != nil {
-		return agent.SessionPage{}, classifyError(err)
+		return conversation.SessionPage{}, classifyError(err)
 	}
 	return projectSessionPage(page, query, limit)
 }
 
-func projectSessionPage(page *protocol.Page[protocol.Session], query agent.SessionQuery, limit int) (agent.SessionPage, error) {
+func projectSessionPage(page *protocol.Page[protocol.Session], query conversation.SessionQuery, limit int) (conversation.SessionPage, error) {
 	if page == nil {
-		return agent.SessionPage{}, runtimeContractViolation("list sessions returned a nil page")
+		return conversation.SessionPage{}, runtimeContractViolation("list sessions returned a nil page")
 	}
 	if len(page.Data) > limit {
-		return agent.SessionPage{}, runtimeContractViolation("list sessions returned %d rows for limit %d", len(page.Data), limit)
+		return conversation.SessionPage{}, runtimeContractViolation("list sessions returned %d rows for limit %d", len(page.Data), limit)
 	}
 	if err := validateContinuationCursor("list sessions", query.Cursor, page.NextCursor); err != nil {
-		return agent.SessionPage{}, err
+		return conversation.SessionPage{}, err
 	}
-	result := agent.SessionPage{Items: make([]agent.Session, 0, len(page.Data)), NextCursor: page.NextCursor}
+	result := conversation.SessionPage{Items: make([]conversation.Session, 0, len(page.Data)), NextCursor: page.NextCursor}
 	for _, value := range page.Data {
 		projected := projectSession(value)
 		if query.Workspace != "" && projected.Workspace.Path != query.Workspace {
-			return agent.SessionPage{}, runtimeContractViolation(
+			return conversation.SessionPage{}, runtimeContractViolation(
 				"list sessions for workspace %q returned session %q from %q",
 				query.Workspace, projected.ID, projected.Workspace.Path,
 			)
 		}
 		if query.Search != "" && !sessionMatchesSearch(projected, query.Search) {
-			return agent.SessionPage{}, runtimeContractViolation(
+			return conversation.SessionPage{}, runtimeContractViolation(
 				"list sessions for search %q returned non-matching session %q",
 				query.Search,
 				projected.ID,
@@ -80,29 +79,29 @@ func projectSessionPage(page *protocol.Page[protocol.Session], query agent.Sessi
 					(projected.UpdatedAt.Equal(previous.UpdatedAt) && projected.ID > previous.ID)
 			}
 			if misordered {
-				return agent.SessionPage{}, runtimeContractViolation(
+				return conversation.SessionPage{}, runtimeContractViolation(
 					"list sessions returned session %q out of catalog order after %q", projected.ID, previous.ID,
 				)
 			}
 		}
 		result.Items = append(result.Items, projected)
 	}
-	if err := requireUniqueIdentities("list sessions", result.Items, func(value agent.Session) string {
+	if err := requireUniqueIdentities("list sessions", result.Items, func(value conversation.Session) string {
 		return value.ID
 	}); err != nil {
-		return agent.SessionPage{}, err
+		return conversation.SessionPage{}, err
 	}
 	return result, nil
 }
 
-func sessionMatchesSearch(value agent.Session, search string) bool {
+func sessionMatchesSearch(value conversation.Session, search string) bool {
 	search = strings.ToLower(search)
 	return strings.Contains(strings.ToLower(value.Title), search) ||
 		strings.Contains(strings.ToLower(value.Workspace.Path), search)
 }
 
-func projectSession(value protocol.Session) agent.Session {
-	return agent.Session{
+func projectSession(value protocol.Session) conversation.Session {
+	return conversation.Session{
 		ID: value.ID, Title: value.Title, Status: value.Status,
 		Provider: value.Provider, Model: value.Model, ReasoningEffort: value.ReasoningEffort,
 		Workspace: projectWorkspace(value.Workspace), CreatedAt: value.CreatedAt, UpdatedAt: value.UpdatedAt,
@@ -110,16 +109,16 @@ func projectSession(value protocol.Session) agent.Session {
 	}
 }
 
-func (r *Connection) CreateSession(ctx context.Context, input agent.CreateSession) (agent.Session, error) {
+func (r *Connection) CreateSession(ctx context.Context, input conversation.CreateSession) (conversation.Session, error) {
 	if err := input.Validate(); err != nil {
-		return agent.Session{}, err
+		return conversation.Session{}, err
 	}
 	options := r.commandOptions()
 	validated := input
 	if input.Workspace != "" {
 		resolved, resolveErr := r.Resolve(ctx, workspace.ResolveRequest{Path: input.Workspace})
 		if resolveErr != nil {
-			return agent.Session{}, fmt.Errorf("create session workspace: %w", resolveErr)
+			return conversation.Session{}, fmt.Errorf("create session workspace: %w", resolveErr)
 		}
 		validated.Workspace = resolved.Path
 	}
@@ -130,21 +129,21 @@ func (r *Connection) CreateSession(ctx context.Context, input agent.CreateSessio
 	created, err := r.sessionCatalog.CreateSession(ctx, request, options)
 	projected, err := projectSessionResult("create session", "", created, err)
 	if err != nil {
-		return agent.Session{}, err
+		return conversation.Session{}, err
 	}
 	if err := validated.ValidateResult(projected); err != nil {
-		return agent.Session{}, runtimeContractViolation("create session returned an invalid acknowledgement: %v", err)
+		return conversation.Session{}, runtimeContractViolation("create session returned an invalid acknowledgement: %v", err)
 	}
 	return projected, nil
 }
 
-func (r *Connection) UpdateSession(ctx context.Context, input agent.UpdateSession) (agent.Session, error) {
+func (r *Connection) UpdateSession(ctx context.Context, input conversation.UpdateSession) (conversation.Session, error) {
 	if err := input.Validate(); err != nil {
-		return agent.Session{}, err
+		return conversation.Session{}, err
 	}
 	if input.Workspace != nil {
 		if err := r.requireFeature(protocol.FeatureRelocate); err != nil {
-			return agent.Session{}, err
+			return conversation.Session{}, err
 		}
 	}
 	options := r.commandOptions()
@@ -152,7 +151,7 @@ func (r *Connection) UpdateSession(ctx context.Context, input agent.UpdateSessio
 	if input.Workspace != nil {
 		resolved, resolveErr := r.Resolve(ctx, workspace.ResolveRequest{Path: *input.Workspace})
 		if resolveErr != nil {
-			return agent.Session{}, fmt.Errorf("update session workspace: %w", resolveErr)
+			return conversation.Session{}, fmt.Errorf("update session workspace: %w", resolveErr)
 		}
 		validated.Workspace = &resolved.Path
 	}
@@ -170,17 +169,17 @@ func (r *Connection) UpdateSession(ctx context.Context, input agent.UpdateSessio
 	updated, err := r.sessionCatalog.UpdateSession(ctx, request, options)
 	projected, err := projectSessionResult("update session", input.SessionID, updated, err)
 	if err != nil {
-		return agent.Session{}, err
+		return conversation.Session{}, err
 	}
 	if err := validated.ValidateResult(projected); err != nil {
-		return agent.Session{}, runtimeContractViolation("update session returned an invalid acknowledgement: %v", err)
+		return conversation.Session{}, runtimeContractViolation("update session returned an invalid acknowledgement: %v", err)
 	}
 	return projected, nil
 }
 
-func (r *Connection) ForkSession(ctx context.Context, input agent.ForkSession) (agent.Session, error) {
+func (r *Connection) ForkSession(ctx context.Context, input conversation.ForkSession) (conversation.Session, error) {
 	if err := input.Validate(); err != nil {
-		return agent.Session{}, err
+		return conversation.Session{}, err
 	}
 	options := r.commandOptions()
 	forked, err := r.sessionCatalog.ForkSession(ctx, protocol.ForkSessionRequest{
@@ -188,29 +187,29 @@ func (r *Connection) ForkSession(ctx context.Context, input agent.ForkSession) (
 	}, options)
 	projected, err := projectSessionResult("fork session", "", forked, err)
 	if err != nil {
-		return agent.Session{}, err
+		return conversation.Session{}, err
 	}
 	if err := input.ValidateResult(projected); err != nil {
-		return agent.Session{}, runtimeContractViolation("fork session returned an invalid acknowledgement: %v", err)
+		return conversation.Session{}, runtimeContractViolation("fork session returned an invalid acknowledgement: %v", err)
 	}
 	return projected, nil
 }
 
-func projectSessionResult(operation, expectedID string, result *protocol.Session, err error) (agent.Session, error) {
+func projectSessionResult(operation, expectedID string, result *protocol.Session, err error) (conversation.Session, error) {
 	if err != nil {
-		return agent.Session{}, classifyError(err)
+		return conversation.Session{}, classifyError(err)
 	}
 	if result == nil {
-		return agent.Session{}, runtimeContractViolation("%s returned nil", operation)
+		return conversation.Session{}, runtimeContractViolation("%s returned nil", operation)
 	}
 	projected := projectSession(*result)
 	if err := requireIdentity(operation, projected.ID, expectedID); err != nil {
-		return agent.Session{}, err
+		return conversation.Session{}, err
 	}
 	return projected, nil
 }
 
-func (r *Connection) DeleteSession(ctx context.Context, input agent.DeleteSession) error {
+func (r *Connection) DeleteSession(ctx context.Context, input conversation.DeleteSession) error {
 	if err := input.Validate(); err != nil {
 		return err
 	}

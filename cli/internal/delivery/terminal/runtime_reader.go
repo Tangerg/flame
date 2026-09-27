@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 )
 
 type runtimeReaderMode uint8
@@ -45,7 +45,7 @@ type runtimeReaderQuery struct {
 // or transport state.
 type runtimeReaderSelection struct {
 	skillName         string
-	agentMemoryTarget agent.MemoryTarget
+	agentMemoryTarget conversation.MemoryTarget
 }
 
 func (a *app) setRuntimeReader(mode runtimeReaderMode) {

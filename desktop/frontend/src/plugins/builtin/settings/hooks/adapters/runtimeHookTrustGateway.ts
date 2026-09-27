@@ -1,4 +1,3 @@
-import { getContainer } from "@/main/container";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import { HookTrustMutationOwner, type HookTrustGateway } from "../application/hookTrust";
 
@@ -10,10 +9,11 @@ function runtimeHookTrustGateway(client: FlameClient): HookTrustGateway {
   };
 }
 
-export function installHookTrustGateway() {
-  const owner = HookTrustMutationOwner.install(runtimeHookTrustGateway(getContainer().client()));
+export function installHookTrustGateway(runtimeClient: () => FlameClient) {
+  const owner = HookTrustMutationOwner.install(runtimeHookTrustGateway(runtimeClient()));
   return {
-    replaceRuntimeGeneration: () => owner.replaceRuntimeGeneration(),
+    replaceRuntimeGeneration: () =>
+      owner.replaceRuntimeGeneration(() => runtimeHookTrustGateway(runtimeClient())),
     dispose() {
       owner.dispose();
     },

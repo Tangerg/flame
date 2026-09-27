@@ -5,14 +5,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestSessionJSONPreservesReasoningSelection(t *testing.T) {
 	t.Parallel()
-	session := agent.Session{
+	session := conversation.Session{
 		ID: "ses_1", Status: protocol.SessionStatusIdle,
 		Provider: "openai", Model: "gpt-5.6-sol", ReasoningEffort: "xhigh",
 		Workspace: workspace.Workspace{Path: "/workspace", ProjectRoot: "/workspace", Availability: protocol.WorkspaceAvailable},
@@ -30,11 +30,11 @@ func TestSessionJSONPreservesReasoningSelection(t *testing.T) {
 func TestRunJSONPreservesNegotiatedProtocolProfile(t *testing.T) {
 	t.Parallel()
 
-	run := agent.Run{
+	run := conversation.Run{
 		ID: "run_1", SessionID: "session_1", Status: protocol.RunStatusRunning, ActiveSegmentID: "segment_1",
 		Provider: "openai", Model: "gpt-5.6-sol", ReasoningEffort: "xhigh",
 		ContextTokens: 32_768,
-		Lineage:       agent.RootRunLineage(),
+		Lineage:       conversation.RootRunLineage(),
 		ProtocolProfile: &protocol.RunProtocolProfile{
 			RequiredFeatures: []protocol.RunProtocolFeature{protocol.RunProtocolFeatureSubagents},
 			InterruptTypes:   []protocol.InterruptType{protocol.InterruptApproval, protocol.InterruptQuestion},

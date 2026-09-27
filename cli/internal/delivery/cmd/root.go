@@ -8,19 +8,16 @@ package cmd
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/Tangerg/flame/cli/internal/application/settings"
+	"github.com/Tangerg/flame/cli/internal/application/workbench"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
-	"github.com/Tangerg/flame/cli/internal/application/settings"
 )
 
 // version is overridden at link time via -ldflags "-X ...cmd.version=...".
@@ -36,9 +33,9 @@ const configIndependentAnnotation = "flame/config-independent"
 // not open sockets, databases, or other process-owned resources. Dynamic value
 // completion may resolve the Runtime when it needs authoritative catalog data.
 type Dependencies struct {
-	OpenRuntime    func(context.Context, string) (Runtime, *runtimebinding.Profile, error)
-	StartTerminal  func(context.Context, TerminalRequest) error
-	StateDirectory string
+	OpenRuntime   func(context.Context, string) (Runtime, RuntimeProfile, error)
+	StartTerminal func(context.Context, TerminalRequest) error
+	OpenWorkbench func(string) (*workbench.Store, error)
 }
 
 // TerminalRequest is the command-owned input needed to start one interactive
@@ -49,13 +46,13 @@ type TerminalRequest struct {
 	LocalDirectory string
 	InitialPrompt  string
 	Settings       settings.Config
-	StateDirectory string
 }
 
 // runtimeProvider delays construction until a command needs the runtime. It
 // owns delivery-only diagnostics so factories remain independent of Cobra.
 type runtimeProvider struct {
-	open          func(context.Context) (Runtime, *runtimebinding.Profile, error)
+	open          func(context.Context) (Runtime, RuntimeProfile, error)
+	openWorkbench func(string) (*workbench.Store, error)
 	configuration *viper.Viper
 	prepare       func(*cobra.Command) error
 }
@@ -65,7 +62,7 @@ func (r runtimeProvider) Runtime(cmd *cobra.Command) (Runtime, error) {
 	return runtime, err
 }
 
-func (r runtimeProvider) Open(cmd *cobra.Command) (Runtime, *runtimebinding.Profile, error) {
+func (r runtimeProvider) Open(cmd *cobra.Command) (Runtime, RuntimeProfile, error) {
 	ctx := cmd.Context()
 	if r.prepare != nil {
 		if err := r.prepare(cmd); err != nil {
@@ -83,11 +80,9 @@ func (r runtimeProvider) Open(cmd *cobra.Command) (Runtime, *runtimebinding.Prof
 		return nil, nil, errors.New("runtime factory returned no agent runtime")
 	}
 	if profile != nil {
-		value := *profile
-		if err := value.Validate(); err != nil {
+		if err := profile.Validate(); err != nil {
 			return nil, nil, err
 		}
-		profile = &value
 	}
 	return runtime, profile, nil
 }
@@ -106,9 +101,9 @@ func NewRoot(dependencies Dependencies) *cobra.Command {
 		loaded = true
 		return nil
 	}
-	provider := runtimeProvider{configuration: v, prepare: prepare}
+	provider := runtimeProvider{configuration: v, prepare: prepare, openWorkbench: dependencies.OpenWorkbench}
 	if dependencies.OpenRuntime != nil {
-		provider.open = func(ctx context.Context) (Runtime, *runtimebinding.Profile, error) {
+		provider.open = func(ctx context.Context) (Runtime, RuntimeProfile, error) {
 			configured, err := readSettings(v)
 			if err != nil {
 				return nil, nil, err
@@ -116,7 +111,7 @@ func NewRoot(dependencies Dependencies) *cobra.Command {
 			return dependencies.OpenRuntime(ctx, configured.Runtime.Endpoint)
 		}
 	}
-	root := newRootCommand(v, dependencies.StartTerminal, dependencies.StateDirectory, prepare)
+	root := newRootCommand(v, dependencies.StartTerminal, prepare)
 	configureRoot(v, root)
 	root.Flags().StringP("session", "s", "", "Open an existing session instead of a new one")
 	root.PersistentFlags().StringP("cwd", "C", "", "Local directory for CLI configuration and attachments; also the embedded Runtime workspace")
@@ -127,14 +122,13 @@ func NewRoot(dependencies Dependencies) *cobra.Command {
 		&cobra.Group{ID: "manage", Title: "Manage:"},
 		&cobra.Group{ID: "setup", Title: "Setup:"},
 	)
-	addRootCommands(root, provider, v, dependencies.StateDirectory)
+	addRootCommands(root, provider, v)
 	return root
 }
 
 func newRootCommand(
 	v *viper.Viper,
 	startTerminal func(context.Context, TerminalRequest) error,
-	stateDirectory string,
 	prepare func(*cobra.Command) error,
 ) *cobra.Command {
 	return &cobra.Command{
@@ -169,7 +163,7 @@ func newRootCommand(
 			if err != nil {
 				return err
 			}
-			return runInteractive(cmd, args, startTerminal, config, stateDirectory)
+			return runInteractive(cmd, args, startTerminal, config)
 		},
 	}
 }
@@ -178,10 +172,10 @@ func configIndependent(cmd *cobra.Command) bool {
 	return cmd.Annotations[configIndependentAnnotation] == "true" || cmd.Name() == cobra.ShellCompRequestCmd
 }
 
-func addRootCommands(root *cobra.Command, provider runtimeProvider, v *viper.Viper, stateDirectory string) {
+func addRootCommands(root *cobra.Command, provider runtimeProvider, v *viper.Viper) {
 	run := newRunCommand(provider, v)
 	run.GroupID = "work"
-	sessions := newSessionsCommand(provider, stateDirectory)
+	sessions := newSessionsCommand(provider)
 	sessions.GroupID = "manage"
 	runs := newRunsCommand(provider)
 	runs.GroupID = "manage"
@@ -207,7 +201,6 @@ func runInteractive(
 	args []string,
 	startTerminal func(context.Context, TerminalRequest) error,
 	config settings.Config,
-	stateDirectory string,
 ) error {
 	if startTerminal == nil {
 		return errors.New("terminal starter is required")
@@ -230,7 +223,6 @@ func runInteractive(
 		LocalDirectory: localDirectory,
 		InitialPrompt:  strings.TrimSpace(strings.Join(args, " ")),
 		Settings:       config.Clone(),
-		StateDirectory: targetStateDirectory(stateDirectory, config.Runtime.Endpoint),
 	})
 	var unavailable interface {
 		error
@@ -277,20 +269,22 @@ func (r runtimeProvider) workspacePath(path string) (string, error) {
 	return canonicalWorkspacePath(path)
 }
 
-func (r runtimeProvider) stateDirectory(base string) (string, error) {
+func (r runtimeProvider) workbench() (*workbench.Store, error) {
+	if r.openWorkbench == nil {
+		return nil, errors.New("workbench factory is required")
+	}
 	configured, err := readSettings(r.configuration)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return targetStateDirectory(base, configured.Runtime.Endpoint), nil
-}
-
-func targetStateDirectory(base, endpoint string) string {
-	if base == "" || endpoint == "" {
-		return base
+	authoring, err := r.openWorkbench(configured.Runtime.Endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("open CLI workbench: %w", err)
 	}
-	identity := sha256.Sum256([]byte(endpoint))
-	return filepath.Join(base, "targets", hex.EncodeToString(identity[:]))
+	if authoring == nil {
+		return nil, errors.New("workbench factory returned no authoring store")
+	}
+	return authoring, nil
 }
 
 func canonicalWorkspacePath(path string) (string, error) {

@@ -1,3 +1,4 @@
+import type { ClientHost } from "@/platform/host";
 import { playCompletionChime } from "./chime";
 import { disposeOnHmr } from "@/lib/hmr";
 import { t } from "@/lib/i18n";
@@ -13,7 +14,6 @@ import {
 } from "@/plugins/builtin/agent/public/run";
 import { selectAgentSession } from "@/plugins/builtin/agent/public/session";
 import { selectWorkspaceChat } from "@/plugins/builtin/workspace/public/navigation";
-import { revealClientWindow } from "./adapters/windowFocus";
 import { installNotificationCentre } from "./adapters/systemNotifier";
 import { definePlugin, READY_HANDLER } from "@/plugins/sdk";
 import { useCompletionSoundStore } from "./completionSound";
@@ -27,8 +27,8 @@ const SETTLEMENT_COPY = {
   canceled: ["notify.canceled.title", "notify.canceled.body"],
 } as const satisfies Record<RootRunSettlement["status"], readonly [string, string]>;
 
-function openSettledSession(sessionId: string): void {
-  void revealClientWindow().catch((error: unknown) =>
+function openSettledSession(sessionId: string, revealWindow: () => Promise<void>): void {
+  void revealWindow().catch((error: unknown) =>
     console.error("[notify] reveal window failed:", error),
   );
   selectAgentSession(sessionId);
@@ -53,14 +53,16 @@ export async function announceSettlement({
   });
 }
 
-export function startCompletionNotifications(): () => void {
+export function startCompletionNotifications(revealWindow: () => Promise<void>): () => void {
   const unsubscribe = subscribeRootRunSettlements(
     (settlement) =>
       void announceSettlement(settlement).catch((error: unknown) =>
         console.error("[notify] system notification failed:", error),
       ),
   );
-  const stopOpening = onSystemNotificationOpened(openSettledSession);
+  const stopOpening = onSystemNotificationOpened((sessionId) =>
+    openSettledSession(sessionId, revealWindow),
+  );
   void refreshNotificationAuthorization().catch((error: unknown) =>
     console.error("[notify] notification authorization check failed:", error),
   );
@@ -70,16 +72,27 @@ export function startCompletionNotifications(): () => void {
   };
 }
 
-export const completionNotify = definePlugin({
-  name: "flame.builtin.completion-notify",
-  setup(ctx) {
-    const uninstall = installNotificationCentre();
-    ctx.cleanup(uninstall);
-    let stop: (() => void) | undefined;
-    ctx.contribute(READY_HANDLER, () => {
-      stop = startCompletionNotifications();
-      disposeOnHmr(stop);
-    });
-    ctx.cleanup(() => stop?.());
-  },
-});
+export function createCompletionNotifyPlugin(
+  host: Pick<
+    ClientHost,
+    | "notificationAuthorization"
+    | "requestNotificationAuthorization"
+    | "sendNotification"
+    | "onNotificationOpened"
+    | "revealWindow"
+  >,
+) {
+  return definePlugin({
+    name: "flame.builtin.completion-notify",
+    setup(ctx) {
+      const uninstall = installNotificationCentre(host);
+      ctx.cleanup(uninstall);
+      let stop: (() => void) | undefined;
+      ctx.contribute(READY_HANDLER, () => {
+        stop = startCompletionNotifications(() => host.revealWindow());
+        disposeOnHmr(stop);
+      });
+      ctx.cleanup(() => stop?.());
+    },
+  });
+}

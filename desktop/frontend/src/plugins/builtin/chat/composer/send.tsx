@@ -1,5 +1,4 @@
 import { IconButton } from "@/ui";
-import { useSendComposerInput } from "./public/sendToAgent";
 import { useIsCurrentRootRunning, useStopCurrentRootRun } from "@/plugins/builtin/agent/public/run";
 import { useT } from "@/lib/i18n";
 import { contributeLayout, definePlugin } from "@/plugins/sdk";
@@ -9,7 +8,7 @@ import { useRecordComposerHistory } from "./public/history";
 import { composerActionLayout } from "./application/composerActionLayout";
 import { submitComposer } from "./application/submitComposer";
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
-import { useCanSendToAgent } from "@/plugins/builtin/agent/public/input";
+import { useCanSendToAgent, useChatSend } from "@/plugins/builtin/agent/public/input";
 import { useActiveSessionId } from "@/plugins/builtin/agent/public/session";
 import { runtimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
 
@@ -20,7 +19,7 @@ function SendButton() {
   const pastes = useComposerPastes();
   const recordHistory = useRecordComposerHistory();
   const clear = useClearComposerDraft();
-  const send = useSendComposerInput();
+  const send = useChatSend();
   const stop = useStopCurrentRootRun();
   const running = useIsCurrentRootRunning();
   const runtimeAvailable = useRuntimeCommandsAvailable();

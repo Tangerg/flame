@@ -35,14 +35,18 @@ const testAgentSessions: AgentSessions = {
   subscribeLifecycle: subscribeAgentSessionLifecycle,
 };
 
+const unavailableRuntime = (): never => {
+  throw new Error("Runtime test client is not configured");
+};
+
 const testEndpoint = () => "https://runtime.test";
 const testScope = { subscribeReplacement: () => () => undefined };
 
 configureNavigator(createMemoryNavigator());
 activateAgentSessionStorage(testEndpoint());
 installAgentStatePorts();
-installAgentDefaultSessionPort();
-installAgentRuntimeGateway();
+installAgentDefaultSessionPort(unavailableRuntime);
+installAgentRuntimeGateway(unavailableRuntime);
 installComposerStatePorts(testAgentSessions, testEndpoint, testScope);
 installWorkspaceNavigationPort(testEndpoint);
 installRuntimeCapabilityPort();
@@ -54,8 +58,8 @@ beforeEach(async () => {
   configureNavigator(createMemoryNavigator());
   activateAgentSessionStorage(testEndpoint());
   installAgentStatePorts();
-  installAgentDefaultSessionPort();
-  installAgentRuntimeGateway();
+  installAgentDefaultSessionPort(unavailableRuntime);
+  installAgentRuntimeGateway(unavailableRuntime);
   installComposerStatePorts(testAgentSessions, testEndpoint, testScope);
   installWorkspaceNavigationPort(testEndpoint);
   resetRuntimeConnectionForTest();

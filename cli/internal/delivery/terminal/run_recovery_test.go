@@ -2,21 +2,21 @@ package terminal
 
 import (
 	"errors"
-	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/workbenchstate"
 	"testing"
 	"time"
 
 	runworkflow "github.com/Tangerg/flame/cli/internal/application/agent/run"
-	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
+	"github.com/Tangerg/flame/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestPrepareSessionKeepsExpiredSteerAsARecoveryIssue(t *testing.T) {
 	stateDirectory := t.TempDir()
-	store, err := workbenchstate.Open(stateDirectory)
+	store, err := openTestWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,17 +26,17 @@ func TestPrepareSessionKeepsExpiredSteerAsARecoveryIssue(t *testing.T) {
 		terminalTestReplayNamespace,
 		time.Now().UTC().Add(-time.Minute),
 	)
-	command := agent.SteerRun{
+	command := prompt.SteerRun{
 		CommandID: "cli_55555555555555555555555555555555",
 		RunID:     "run_expired",
 		SegmentID: "seg_expired",
-		Message:   agent.Message{Text: "preserve me"},
+		Message:   prompt.Message{Text: "preserve me"},
 	}
 	pending, err := workbench.NewPendingSteer("ses_expired", command, stagedAt, guard)
 	if err != nil {
 		t.Fatal(err)
 	}
-	source := agent.Message{Text: "/steer preserve me"}
+	source := prompt.Message{Text: "/steer preserve me"}
 	if err := store.SaveDraft(pending.SessionID(), source); err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +54,7 @@ func TestPrepareSessionKeepsExpiredSteerAsARecoveryIssue(t *testing.T) {
 		Runtime:        runtimefixture.New(),
 		RuntimeProfile: &profile,
 		Workspace:      workspace,
-		StateDirectory: stateDirectory,
+		OpenWorkbench:  persistentTestWorkbench(stateDirectory),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -71,16 +71,16 @@ func TestPrepareSessionKeepsExpiredSteerAsARecoveryIssue(t *testing.T) {
 func TestPrepareSessionMergesInitialPromptAfterConfirmedRollbackRecovery(t *testing.T) {
 	runtime := runtimefixture.New()
 	workspace := t.TempDir()
-	created, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: workspace})
+	created, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: workspace})
 	if err != nil {
 		t.Fatal(err)
 	}
 	stateDirectory := t.TempDir()
-	store, err := workbenchstate.Open(stateDirectory)
+	store, err := openTestWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := store.SaveDraft(created.ID, agent.Message{Text: "existing draft"}); err != nil {
+	if err := store.SaveDraft(created.ID, prompt.Message{Text: "existing draft"}); err != nil {
 		t.Fatal(err)
 	}
 	pending := workbench.PendingSessionRollback{
@@ -92,7 +92,7 @@ func TestPrepareSessionMergesInitialPromptAfterConfirmedRollbackRecovery(t *test
 		BeforeRunIDs:   []string{"run_1"},
 		OpeningText:    "restored opening",
 		StagedAt:       time.Now().UTC(),
-		Replay:         commandreplay.UnprotectedGuard(),
+		Replay:         replay.UnprotectedGuard(),
 	}
 	if err := store.StageSessionRollback(pending); err != nil {
 		t.Fatal(err)
@@ -102,16 +102,16 @@ func TestPrepareSessionMergesInitialPromptAfterConfirmedRollbackRecovery(t *test
 	}
 
 	prepared, err := prepareSession(t.Context(), Config{
-		Runtime:        runtime,
-		SessionID:      created.ID,
-		Workspace:      workspace,
-		StateDirectory: stateDirectory,
-		InitialPrompt:  "from argv",
+		Runtime:       runtime,
+		SessionID:     created.ID,
+		Workspace:     workspace,
+		OpenWorkbench: persistentTestWorkbench(stateDirectory),
+		InitialPrompt: "from argv",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := agent.Message{Text: "restored opening\n\nexisting draft\n\nfrom argv"}
+	want := prompt.Message{Text: "restored opening\n\nexisting draft\n\nfrom argv"}
 	if !prepared.draft.Equal(want) {
 		t.Fatalf("prepared draft = %+v, want %+v", prepared.draft, want)
 	}

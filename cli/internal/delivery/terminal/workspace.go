@@ -10,14 +10,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/oolong/components/kit"
-	"github.com/Tangerg/oolong/core/layout"
-
 	"github.com/Tangerg/flame/cli/internal/application/agent/session"
-	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/oolong/components/kit"
+	"github.com/Tangerg/oolong/core/layout"
 )
 
 type workspaceChoice struct {
@@ -243,19 +242,19 @@ func (a *app) relocateSession(path string) {
 	}
 	sessionID := a.session.current.ID
 	a.runSessionChange("relocating session",
-		func(ctx context.Context) (agent.SessionSnapshot, error) {
+		func(ctx context.Context) (conversation.SessionSnapshot, error) {
 			latest, err := a.runtime.GetSession(ctx, sessionID)
 			if err != nil {
-				return agent.SessionSnapshot{}, err
+				return conversation.SessionSnapshot{}, err
 			}
-			if _, err := session.Update(ctx, a.runtime, agent.UpdateSession{
+			if _, err := session.Update(ctx, a.runtime, conversation.UpdateSession{
 				SessionID: sessionID, Workspace: &path, ExpectedRevision: latest.Session.Revision,
 			}); err != nil {
-				return agent.SessionSnapshot{}, err
+				return conversation.SessionSnapshot{}, err
 			}
 			return a.readSessionAfterMutation(ctx, sessionID)
 		},
-		func(snapshot agent.SessionSnapshot) error { return a.installSnapshot(snapshot) },
+		func(snapshot conversation.SessionSnapshot) error { return a.installSnapshot(snapshot) },
 	)
 }
 
@@ -264,11 +263,11 @@ func (a *app) relocateSession(path string) {
 // reuses the runtime-authoritative workspace of the current session directly.
 func (a *app) startSessionInWorkspace(workspace string) {
 	a.runSessionChange("creating session in "+workspace,
-		func(ctx context.Context) (agent.SessionSnapshot, error) {
-			created, err := a.runtime.CreateSession(ctx, agent.CreateSession{Workspace: workspace})
-			return agent.SessionSnapshot{Session: created}, err
+		func(ctx context.Context) (conversation.SessionSnapshot, error) {
+			created, err := a.runtime.CreateSession(ctx, conversation.CreateSession{Workspace: workspace})
+			return conversation.SessionSnapshot{Session: created}, err
 		},
-		func(snapshot agent.SessionSnapshot) error { return a.installSnapshot(snapshot) },
+		func(snapshot conversation.SessionSnapshot) error { return a.installSnapshot(snapshot) },
 	)
 }
 
@@ -278,11 +277,11 @@ func (a *app) startSessionInWorkspace(workspace string) {
 func (a *app) replaceDeletedSessionInWorkspace(workspace string) {
 	retiredSessionID := a.session.current.ID
 	a.runSessionChangeWithDraftDisposition("creating replacement session in "+workspace, retireSourceDraft,
-		func(ctx context.Context) (agent.SessionSnapshot, error) {
-			created, err := a.runtime.CreateSession(ctx, agent.CreateSession{Workspace: workspace})
-			return agent.SessionSnapshot{Session: created}, err
+		func(ctx context.Context) (conversation.SessionSnapshot, error) {
+			created, err := a.runtime.CreateSession(ctx, conversation.CreateSession{Workspace: workspace})
+			return conversation.SessionSnapshot{Session: created}, err
 		},
-		func(snapshot agent.SessionSnapshot) error {
+		func(snapshot conversation.SessionSnapshot) error {
 			if err := a.installSnapshot(snapshot); err != nil {
 				return err
 			}

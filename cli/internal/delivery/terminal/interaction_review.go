@@ -5,28 +5,28 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 )
 
 // interactionReview owns the terminal-side draft of a runtime interaction
 // batch. Runtime interactions remain immutable; only the answers and cursor
 // change until the user commits the complete batch once.
 type interactionReview struct {
-	items             []agent.Interaction
-	answers           []agent.Answer
+	items             []conversation.Interaction
+	answers           []conversation.Answer
 	current           int
 	submissionFailure string
 }
 
-func newInteractionReview(items []agent.Interaction) (*interactionReview, error) {
-	if err := agent.ValidateInteractions(items); err != nil {
+func newInteractionReview(items []conversation.Interaction) (*interactionReview, error) {
+	if err := conversation.ValidateInteractions(items); err != nil {
 		return nil, err
 	}
-	cloned := agent.CloneInteractions(items)
-	return &interactionReview{items: cloned, answers: make([]agent.Answer, len(cloned))}, nil
+	cloned := conversation.CloneInteractions(items)
+	return &interactionReview{items: cloned, answers: make([]conversation.Answer, len(cloned))}, nil
 }
 
-func restoreInteractionReview(items []agent.Interaction, responses []agent.InterruptAnswer) (*interactionReview, error) {
+func restoreInteractionReview(items []conversation.Interaction, responses []conversation.InterruptAnswer) (*interactionReview, error) {
 	review, err := newInteractionReview(items)
 	if err != nil {
 		return nil, err
@@ -35,7 +35,7 @@ func restoreInteractionReview(items []agent.Interaction, responses []agent.Inter
 		return nil, errors.New("interaction response count does not match review")
 	}
 	for index, response := range responses {
-		if response.ItemID != agent.InteractionItemID(items[index]) {
+		if response.ItemID != conversation.InteractionItemID(items[index]) {
 			return nil, fmt.Errorf("interaction response %d targets another item", index+1)
 		}
 		if err := review.Record(response.Answer); err != nil {
@@ -48,29 +48,29 @@ func restoreInteractionReview(items []agent.Interaction, responses []agent.Inter
 	return review, nil
 }
 
-func (i *interactionReview) Current() (agent.Interaction, bool) {
+func (i *interactionReview) Current() (conversation.Interaction, bool) {
 	if i.current < 0 || i.current >= len(i.items) {
 		return nil, false
 	}
-	return agent.CloneInteraction(i.items[i.current]), true
+	return conversation.CloneInteraction(i.items[i.current]), true
 }
 
-func (i *interactionReview) CurrentAnswer() agent.Answer {
+func (i *interactionReview) CurrentAnswer() conversation.Answer {
 	if i.current < 0 || i.current >= len(i.answers) {
 		return nil
 	}
-	return agent.CloneAnswer(i.answers[i.current])
+	return conversation.CloneAnswer(i.answers[i.current])
 }
 
-func (i *interactionReview) Record(answer agent.Answer) error {
+func (i *interactionReview) Record(answer conversation.Answer) error {
 	item, ok := i.Current()
 	if !ok {
 		return errors.New("interaction review has no current item")
 	}
-	if err := agent.ValidateAnswer(item, answer); err != nil {
+	if err := conversation.ValidateAnswer(item, answer); err != nil {
 		return err
 	}
-	i.answers[i.current] = agent.CloneAnswer(answer)
+	i.answers[i.current] = conversation.CloneAnswer(answer)
 	return nil
 }
 
@@ -117,31 +117,31 @@ func (i *interactionReview) Position() (current, total int) {
 	return min(i.current+1, len(i.items)), len(i.items)
 }
 
-func (i *interactionReview) Responses() ([]agent.InterruptAnswer, error) {
+func (i *interactionReview) Responses() ([]conversation.InterruptAnswer, error) {
 	if len(i.items) == 0 {
 		return nil, errors.New("interaction review is empty")
 	}
-	responses := make([]agent.InterruptAnswer, len(i.items))
+	responses := make([]conversation.InterruptAnswer, len(i.items))
 	for index, item := range i.items {
 		if i.answers[index] == nil {
 			return nil, fmt.Errorf("interaction %d has no answer", index+1)
 		}
-		responses[index] = agent.InterruptAnswer{
-			ItemID: agent.InteractionItemID(item),
-			Answer: agent.CloneAnswer(i.answers[index]),
+		responses[index] = conversation.InterruptAnswer{
+			ItemID: conversation.InteractionItemID(item),
+			Answer: conversation.CloneAnswer(i.answers[index]),
 		}
 	}
 	return responses, nil
 }
 
-func (i *interactionReview) Items() []agent.Interaction {
-	return agent.CloneInteractions(i.items)
+func (i *interactionReview) Items() []conversation.Interaction {
+	return conversation.CloneInteractions(i.items)
 }
 
-func (i *interactionReview) Answers() []agent.Answer {
+func (i *interactionReview) Answers() []conversation.Answer {
 	answers := slices.Clone(i.answers)
 	for index := range answers {
-		answers[index] = agent.CloneAnswer(answers[index])
+		answers[index] = conversation.CloneAnswer(answers[index])
 	}
 	return answers
 }

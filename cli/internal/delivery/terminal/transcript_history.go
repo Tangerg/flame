@@ -3,9 +3,8 @@ package terminal
 import (
 	"slices"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/components/headless"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 // transcriptHistory owns the retained transcript projection for each run and
@@ -13,13 +12,13 @@ import (
 // navigation and presentation from advancing independent run views.
 type transcriptHistory struct {
 	entries  map[string][]headless.BlockID
-	lineages map[string]agent.RunLineage
+	lineages map[string]conversation.RunLineage
 }
 
 func newTranscriptHistory() transcriptHistory {
 	return transcriptHistory{
 		entries:  make(map[string][]headless.BlockID),
-		lineages: make(map[string]agent.RunLineage),
+		lineages: make(map[string]conversation.RunLineage),
 	}
 }
 
@@ -28,14 +27,14 @@ func (h *transcriptHistory) Reset() {
 	clear(h.lineages)
 }
 
-func (h *transcriptHistory) ReplaceRuns(runs []agent.Run) {
+func (h *transcriptHistory) ReplaceRuns(runs []conversation.Run) {
 	clear(h.lineages)
 	for _, run := range runs {
 		h.Observe(run)
 	}
 }
 
-func (h *transcriptHistory) Observe(run agent.Run) {
+func (h *transcriptHistory) Observe(run conversation.Run) {
 	h.lineages[run.ID] = run.Lineage
 }
 
@@ -69,13 +68,13 @@ func (h *transcriptHistory) FirstRetained(
 	return 0, false
 }
 
-func (h *transcriptHistory) Speaker(block agent.Block) string {
+func (h *transcriptHistory) Speaker(block conversation.Block) string {
 	lineage, known := h.lineages[block.RunID]
 	if !known || lineage.IsRoot() {
 		switch block.Kind {
-		case agent.BlockUser:
+		case conversation.BlockUser:
 			return selfSpeaker
-		case agent.BlockReasoning:
+		case conversation.BlockReasoning:
 			return "thinking"
 		default:
 			return "flame"
@@ -83,9 +82,9 @@ func (h *transcriptHistory) Speaker(block agent.Block) string {
 	}
 	identity := shortIdentity(block.RunID)
 	switch block.Kind {
-	case agent.BlockUser:
+	case conversation.BlockUser:
 		return "subagent input · " + identity
-	case agent.BlockReasoning:
+	case conversation.BlockReasoning:
 		return "subagent thinking · " + identity
 	default:
 		return "subagent · " + identity

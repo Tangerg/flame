@@ -1,12 +1,12 @@
 # Repository instructions
 
-Flame is a local agent product. `runtime` owns durable product semantics and exposes them through one in-process Go binding and one Runtime Protocol. `cli` and `desktop` are consumers that own command, terminal, and graphical presentation. Scope supplies released framework and provider libraries; Flame does not rebuild them.
+Flame is an agent product. `runtime` owns durable product semantics and exposes them through one in-process Go binding and one Runtime Protocol. `cli`, `desktop` (Web/Wails), and `ide` are consumers that own command, terminal, graphical, and editor interaction. Scope supplies released framework and provider libraries; Flame does not rebuild them.
 
 Stable design rationale lives in [`DESIGN_PHILOSOPHY.md`](DESIGN_PHILOSOPHY.md). Structural changes follow [`REFACTORING.md`](REFACTORING.md). Repository workflow, verification, active scope, and reference-project rules live in [`DEVELOPMENT.md`](DEVELOPMENT.md). Read the target module's `README.md` before changing that module.
 
 - Do not preserve backward compatibility for a wrong design. Fix the semantic owner, migrate every in-scope consumer, and remove obsolete APIs, packages, schemas, aliases, fallbacks, tests, and documentation in the same batch.
 - Every abstraction, representation, state, dependency, package, and call path must justify its existence against a proven requirement.
-- Runtime is the sole authority for Session, Run, Segment, Item, Goal, Plan, Interrupt, execution, persistence, recovery, provider/model selection, and compaction. CLI and Desktop do not rebuild those state machines.
+- Runtime is the sole authority for Session, Run, Segment, Item, Goal, Plan, Interrupt, execution, persistence, recovery, provider/model selection, and compaction. CLI, Desktop/Web, and IDE do not rebuild those state machines.
 - The Runtime Go binding and Runtime Protocol are two projections of one semantic core. Both enter the same delivery endpoint before capability checks, idempotency, lifecycle control, Application invocation, and error or event projection.
 - Use domain-driven design and clean dependency direction to express ownership, not to generate a directory matrix. Domain models own invariants and pure transitions; Application owns use-case ordering; external adapters own translation; delivery owns bindings; bootstrap owns composition and shutdown.
 - Prefer behavior-rich owners over procedural orchestration around mutable records. An aggregate or value object validates construction, protects its state, and exposes intention-revealing queries and transitions. Configuration, wire, storage, request, response, and projection structs remain data unless they own a real invariant.

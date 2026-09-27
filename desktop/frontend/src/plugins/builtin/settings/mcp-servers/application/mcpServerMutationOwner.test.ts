@@ -19,10 +19,11 @@ afterEach(() => {
 describe("MCPServerMutationOwner", () => {
   it("publishes one material generation for install, Runtime replacement, and final disposal", () => {
     const start = MCPServerMutationOwner.materialGeneration();
-    owner = MCPServerMutationOwner.install({} as MCPServerGateway);
+    const gateway = {} as MCPServerGateway;
+    owner = MCPServerMutationOwner.install(gateway);
     expect(MCPServerMutationOwner.materialGeneration()).toBe(start + 1n);
 
-    owner.replaceRuntimeGeneration();
+    owner.replaceRuntimeGeneration(() => gateway);
     expect(MCPServerMutationOwner.materialGeneration()).toBe(start + 2n);
 
     owner.dispose();
@@ -36,7 +37,8 @@ describe("MCPServerMutationOwner", () => {
       .fn()
       .mockReturnValueOnce(retired.promise)
       .mockResolvedValueOnce(server({ status: "connected", tools: 2 }));
-    owner = MCPServerMutationOwner.install({ setEnabled } as unknown as MCPServerGateway);
+    const gateway = { setEnabled } as unknown as MCPServerGateway;
+    owner = MCPServerMutationOwner.install(gateway);
     queryClient.setQueryData([MCP_SERVERS_KEY], [server()]);
 
     const inFlight = owner.setEnabled("cloud", false);
@@ -45,7 +47,7 @@ describe("MCPServerMutationOwner", () => {
     const queuedSettlement = rejected(queued);
     await vi.waitFor(() => expect(setEnabled).toHaveBeenCalledOnce());
 
-    owner.replaceRuntimeGeneration();
+    owner.replaceRuntimeGeneration(() => gateway);
     await expect(inFlightSettlement).resolves.toMatchObject({
       message: "mcp_server_mutation_generation_retired",
     });
@@ -116,14 +118,15 @@ describe("MCPServerMutationOwner", () => {
   it("retires authorization polling and clears its generation timer", async () => {
     vi.useFakeTimers();
     const getAuthorizationAttempt = vi.fn();
-    owner = MCPServerMutationOwner.install({
+    const gateway = {
       createAuthorizationAttempt: vi.fn().mockResolvedValue({ id: "mcpauth_1", status: "pending" }),
       getAuthorizationAttempt,
-    } as unknown as MCPServerGateway);
+    } as unknown as MCPServerGateway;
+    owner = MCPServerMutationOwner.install(gateway);
 
     const authorization = rejected(owner.authorize("github"));
     await vi.waitFor(() => expect(vi.getTimerCount()).toBe(1));
-    owner.replaceRuntimeGeneration();
+    owner.replaceRuntimeGeneration(() => gateway);
 
     await expect(authorization).resolves.toMatchObject({
       message: "mcp_server_mutation_generation_retired",

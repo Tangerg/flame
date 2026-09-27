@@ -3,16 +3,15 @@ package runtimebinding
 import (
 	"fmt"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
-func projectEvent(value protocol.RunEvent) (agent.RunEvent, bool, error) {
+func projectEvent(value protocol.RunEvent) (conversation.RunEvent, bool, error) {
 	projection := runEventProjection{source: value}
 	projected, err := projection.project()
 	if err != nil || !projected.included {
-		return agent.RunEvent{}, projected.included, err
+		return conversation.RunEvent{}, projected.included, err
 	}
 	return projection.envelope(projected.event), true, nil
 }
@@ -22,16 +21,16 @@ type runEventProjection struct {
 }
 
 type projectedRunEvent struct {
-	event    agent.Event
+	event    conversation.Event
 	included bool
 }
 
-func includeRunEvent(event agent.Event) projectedRunEvent {
+func includeRunEvent(event conversation.Event) projectedRunEvent {
 	return projectedRunEvent{event: event, included: true}
 }
 
-func (r runEventProjection) envelope(event agent.Event) agent.RunEvent {
-	return agent.RunEvent{
+func (r runEventProjection) envelope(event conversation.Event) conversation.RunEvent {
+	return conversation.RunEvent{
 		EventID: r.source.EventID,
 		RunID:   r.source.RunID, SegmentID: r.source.SegmentID,
 		At: r.source.Timestamp, Event: event,
@@ -64,7 +63,7 @@ func (r runEventProjection) segmentProgress() (projectedRunEvent, error) {
 	if value == nil {
 		return projectedRunEvent{}, fmt.Errorf("event %s: segment.progress has no progress", r.source.EventID)
 	}
-	progress := agent.RunProgress{
+	progress := conversation.RunProgress{
 		Activity: value.Activity,
 	}
 	if value.Step != nil {
@@ -85,7 +84,7 @@ func (r runEventProjection) segmentStarted() (projectedRunEvent, error) {
 		return projectedRunEvent{}, fmt.Errorf("event %s: segment.started has no run", r.source.EventID)
 	}
 	run, err := projectRun(*r.source.Event.Run)
-	return includeRunEvent(agent.SegmentStarted{Run: run}), err
+	return includeRunEvent(conversation.SegmentStarted{Run: run}), err
 }
 
 func (r runEventProjection) itemStarted() (projectedRunEvent, error) {
@@ -93,7 +92,7 @@ func (r runEventProjection) itemStarted() (projectedRunEvent, error) {
 		return projectedRunEvent{}, fmt.Errorf("event %s: item.started has no item", r.source.EventID)
 	}
 	block, err := projectItem(*r.source.Event.Item)
-	return includeRunEvent(agent.BlockStarted{Block: block}), err
+	return includeRunEvent(conversation.BlockStarted{Block: block}), err
 }
 
 func (r runEventProjection) itemCompleted() (projectedRunEvent, error) {
@@ -101,7 +100,7 @@ func (r runEventProjection) itemCompleted() (projectedRunEvent, error) {
 		return projectedRunEvent{}, fmt.Errorf("event %s: item.completed has no item", r.source.EventID)
 	}
 	block, err := projectItem(*r.source.Event.Item)
-	return includeRunEvent(agent.BlockCompleted{Block: block}), err
+	return includeRunEvent(conversation.BlockCompleted{Block: block}), err
 }
 
 func (r runEventProjection) itemDelta() (projectedRunEvent, error) {
@@ -111,15 +110,15 @@ func (r runEventProjection) itemDelta() (projectedRunEvent, error) {
 	}
 	switch delta.Type {
 	case protocol.DeltaToolArguments:
-		return includeRunEvent(agent.ToolArgumentsDelta{
+		return includeRunEvent(conversation.ToolArgumentsDelta{
 			BlockID: r.source.Event.ItemID, Text: delta.ArgumentsTextDelta,
 		}), nil
 	case protocol.DeltaContent:
-		return includeRunEvent(agent.BlockDelta{
+		return includeRunEvent(conversation.BlockDelta{
 			BlockID: r.source.Event.ItemID, Text: delta.Text,
 		}), nil
 	case protocol.DeltaReasoning, protocol.DeltaToolOutput:
-		return includeRunEvent(agent.BlockDelta{BlockID: r.source.Event.ItemID, Text: delta.Text}), nil
+		return includeRunEvent(conversation.BlockDelta{BlockID: r.source.Event.ItemID, Text: delta.Text}), nil
 	default:
 		return projectedRunEvent{}, fmt.Errorf("event %s: unsupported item delta %q", r.source.EventID, delta.Type)
 	}
@@ -133,7 +132,7 @@ func (r runEventProjection) planUpdated() (projectedRunEvent, error) {
 	if plan == nil {
 		return projectedRunEvent{}, fmt.Errorf("event %s: plan.updated has no committed state", r.source.EventID)
 	}
-	return includeRunEvent(agent.PlanChanged{Plan: *plan}), nil
+	return includeRunEvent(conversation.PlanChanged{Plan: *plan}), nil
 }
 
 func (r runEventProjection) segmentFinished() (projectedRunEvent, error) {
@@ -149,13 +148,13 @@ func (r runEventProjection) segmentFinished() (projectedRunEvent, error) {
 		if err != nil {
 			return projectedRunEvent{}, fmt.Errorf("event %s: %w", r.source.EventID, err)
 		}
-		return includeRunEvent(agent.RunInterrupted{
+		return includeRunEvent(conversation.RunInterrupted{
 			Interactions: interactions, Usage: usage, ContextTokens: contextTokens,
 		}), nil
 	case protocol.SegmentSuspended:
-		return includeRunEvent(agent.RunSuspended{Usage: usage, ContextTokens: contextTokens}), nil
+		return includeRunEvent(conversation.RunSuspended{Usage: usage, ContextTokens: contextTokens}), nil
 	default:
-		return includeRunEvent(agent.RunFinished{
+		return includeRunEvent(conversation.RunFinished{
 			// Every segment terminal that reaches here is a run terminal: the two
 			// segment-only tags are answered by the cases above.
 			Outcome: projectOutcome(

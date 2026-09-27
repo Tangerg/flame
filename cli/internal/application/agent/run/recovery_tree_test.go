@@ -7,7 +7,7 @@ import (
 	"time"
 
 	runworkflow "github.com/Tangerg/flame/cli/internal/application/agent/run"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -29,23 +29,23 @@ func TestColdRecoveryDoesNotInstallAChildCompletionAheadOfItsTail(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
-			conversation := agent.NewConversation()
-			if err := conversation.RestoreAttachedSnapshot(recovered.Snapshot, recovered.Stream); err != nil {
+			projection := conversation.New()
+			if err := projection.RestoreAttachedSnapshot(recovered.Snapshot, recovered.Stream); err != nil {
 				t.Fatal(err)
 			}
-			if conversation.Checkpoint() != "evt_opaque_head" {
-				t.Fatalf("checkpoint before any tail event = %q", conversation.Checkpoint())
+			if projection.Checkpoint() != "evt_opaque_head" {
+				t.Fatalf("checkpoint before any tail event = %q", projection.Checkpoint())
 			}
 			for event, err := range recovered.Stream.Events {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if _, err := conversation.ApplyRunEvent(event); err != nil {
+				if _, err := projection.ApplyRunEvent(event); err != nil {
 					t.Fatalf("apply successor %s: %v", event.EventID, err)
 				}
 			}
-			if conversation.Phase() != agent.ConversationIdle || conversation.Checkpoint() != "evt_root_finished" {
-				t.Fatalf("root did not finish after both children: phase=%s checkpoint=%s", conversation.Phase(), conversation.Checkpoint())
+			if projection.Phase() != conversation.Idle || projection.Checkpoint() != "evt_root_finished" {
+				t.Fatalf("root did not finish after both children: phase=%s checkpoint=%s", projection.Phase(), projection.Checkpoint())
 			}
 			if source.reads != 1 || !source.request.Snapshot || source.request.AfterEventID != "" {
 				t.Fatalf("recovery reads=%d subscription=%+v", source.reads, source.request)
@@ -61,18 +61,18 @@ func TestRecoveryRetainsTheOpaqueSnapshotHeadAcrossAnImmediateDisconnect(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	conversation := agent.NewConversation()
-	if err := conversation.RestoreAttachedSnapshot(recovered.Snapshot, recovered.Stream); err != nil {
+	projection := conversation.New()
+	if err := projection.RestoreAttachedSnapshot(recovered.Snapshot, recovered.Stream); err != nil {
 		t.Fatal(err)
 	}
 	for _, err := range recovered.Stream.Events {
-		if !errors.Is(err, agent.ErrDisconnected) {
+		if !errors.Is(err, conversation.ErrDisconnected) {
 			t.Fatalf("immediate disconnect = %v", err)
 		}
 	}
-	_, err = source.SubscribeRun(t.Context(), agent.SubscribeRun{
-		RunID: conversation.RunID(), SegmentID: recovered.Stream.SegmentID,
-		AfterEventID: conversation.Checkpoint(),
+	_, err = source.SubscribeRun(t.Context(), conversation.SubscribeRun{
+		RunID: projection.RunID(), SegmentID: recovered.Stream.SegmentID,
+		AfterEventID: projection.Checkpoint(),
 	})
 	if err != nil || source.request.AfterEventID != "evt_opaque_head" || source.request.Snapshot {
 		t.Fatalf("reconnect = %+v, %v", source.request, err)
@@ -80,53 +80,53 @@ func TestRecoveryRetainsTheOpaqueSnapshotHeadAcrossAnImmediateDisconnect(t *test
 }
 
 type coldTreeSource struct {
-	snapshot   agent.SessionSnapshot
-	tail       []agent.RunEvent
+	snapshot   conversation.SessionSnapshot
+	tail       []conversation.RunEvent
 	reads      int
-	request    agent.SubscribeRun
+	request    conversation.SubscribeRun
 	disconnect bool
 }
 
 func newColdTreeSource(t *testing.T) *coldTreeSource {
 	t.Helper()
-	root := agent.Run{
-		ID: "run_root", SessionID: "ses_tree", Lineage: agent.RootRunLineage(),
+	root := conversation.Run{
+		ID: "run_root", SessionID: "ses_tree", Lineage: conversation.RootRunLineage(),
 		Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_root",
 	}
-	source := &coldTreeSource{snapshot: agent.SessionSnapshot{
-		Session: agent.Session{ID: root.SessionID, Status: protocol.SessionStatusRunning},
-		Runs:    []agent.Run{root},
+	source := &coldTreeSource{snapshot: conversation.SessionSnapshot{
+		Session: conversation.Session{ID: root.SessionID, Status: protocol.SessionStatusRunning},
+		Runs:    []conversation.Run{root},
 	}}
 	for _, id := range []string{"a", "b"} {
-		lineage, err := agent.NewChildRunLineage("run_"+id, "item_delegate_"+id, root.ID, root.ID)
+		lineage, err := conversation.NewChildRunLineage("run_"+id, "item_delegate_"+id, root.ID, root.ID)
 		if err != nil {
 			t.Fatal(err)
 		}
-		child := agent.Run{
+		child := conversation.Run{
 			ID: "run_" + id, SessionID: root.SessionID, Lineage: lineage,
 			Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_" + id,
 		}
 		source.snapshot.Runs = append(source.snapshot.Runs, child)
-		source.tail = append(source.tail, agent.RunEvent{
+		source.tail = append(source.tail, conversation.RunEvent{
 			EventID: "evt_finished_" + id, RunID: child.ID, SegmentID: child.ActiveSegmentID,
 			StreamSegmentID: root.ActiveSegmentID, At: time.Unix(1, 0),
-			Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
+			Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
 		})
 	}
-	source.tail = append(source.tail, agent.RunEvent{
+	source.tail = append(source.tail, conversation.RunEvent{
 		EventID: "evt_root_finished", RunID: root.ID, SegmentID: root.ActiveSegmentID,
-		At: time.Unix(2, 0), Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
+		At: time.Unix(2, 0), Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
 	})
 	return source
 }
 
-func (s *coldTreeSource) GetSession(context.Context, string) (agent.SessionSnapshot, error) {
+func (s *coldTreeSource) GetSession(context.Context, string) (conversation.SessionSnapshot, error) {
 	s.reads++
 	snapshot := s.snapshot
 	if s.reads > 1 {
 		// The child commits after subscription and before an independent read.
 		// Installing this material would reject its already-buffered completion.
-		snapshot.Runs = append([]agent.Run(nil), snapshot.Runs...)
+		snapshot.Runs = append([]conversation.Run(nil), snapshot.Runs...)
 		snapshot.Runs[1].Status = protocol.RunStatusFinished
 		snapshot.Runs[1].ActiveSegmentID = ""
 		snapshot.Runs[1].Outcome.Status = protocol.OutcomeCompleted
@@ -134,16 +134,16 @@ func (s *coldTreeSource) GetSession(context.Context, string) (agent.SessionSnaps
 	return snapshot, nil
 }
 
-func (s *coldTreeSource) SubscribeRun(_ context.Context, request agent.SubscribeRun) (agent.SegmentStream, error) {
+func (s *coldTreeSource) SubscribeRun(_ context.Context, request conversation.SubscribeRun) (conversation.SegmentStream, error) {
 	s.request = request
-	stream := agent.SegmentStream{RunID: "run_root", SegmentID: "seg_root", HeadEventID: "evt_opaque_head"}
+	stream := conversation.SegmentStream{RunID: "run_root", SegmentID: "seg_root", HeadEventID: "evt_opaque_head"}
 	if request.Snapshot {
 		snapshot := s.snapshot
 		stream.Snapshot = &snapshot
 	}
-	stream.Events = func(yield func(agent.RunEvent, error) bool) {
+	stream.Events = func(yield func(conversation.RunEvent, error) bool) {
 		if s.disconnect {
-			yield(agent.RunEvent{}, agent.ErrDisconnected)
+			yield(conversation.RunEvent{}, conversation.ErrDisconnected)
 			return
 		}
 		for _, event := range s.tail {

@@ -5,24 +5,24 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/cli/internal/application/settings"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/queue"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/grid"
 	"github.com/Tangerg/oolong/core/input"
-
-	"github.com/Tangerg/flame/cli/internal/application/agent/promptqueue"
-	"github.com/Tangerg/flame/cli/internal/application/settings"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 )
 
 func TestSessionHeaderUsesSpaceProgressively(t *testing.T) {
-	header := newSessionHeader(kit.Dark(), kit.Unicode(), agent.Session{
+	header := newSessionHeader(kit.Dark(), kit.Unicode(), conversation.Session{
 		Title:     "Architecture review",
 		Workspace: workspace.Workspace{Path: "/workspace/scope", ProjectRoot: "/workspace", Availability: protocol.WorkspaceAvailable},
 	})
-	header.SetUsage(agent.Usage{InputTokens: 1_234, OutputTokens: 56_789})
+	header.SetUsage(conversation.Usage{InputTokens: 1_234, OutputTokens: 56_789})
 
 	if got := header.HeightForWidth(headerMinWidth - 1); got != 0 {
 		t.Fatalf("narrow header height = %d, want 0", got)
@@ -47,7 +47,7 @@ func TestSessionHeaderUsesSpaceProgressively(t *testing.T) {
 func TestSessionHeaderExposesMissingWorkspace(t *testing.T) {
 	t.Parallel()
 
-	header := newSessionHeader(kit.Dark(), kit.Unicode(), agent.Session{
+	header := newSessionHeader(kit.Dark(), kit.Unicode(), conversation.Session{
 		Title: "History", Workspace: workspace.Workspace{
 			Path: "/gone/work", ProjectRoot: "/gone", Availability: protocol.WorkspaceMissing,
 		},
@@ -61,7 +61,7 @@ func TestSessionHeaderExposesMissingWorkspace(t *testing.T) {
 }
 
 func TestSessionHeaderUsesItsReservedSecondRowForGoalState(t *testing.T) {
-	header := newSessionHeader(kit.Dark(), kit.Unicode(), agent.Session{
+	header := newSessionHeader(kit.Dark(), kit.Unicode(), conversation.Session{
 		Title: "Release", Workspace: workspace.Workspace{Path: "/workspace/flame", Availability: protocol.WorkspaceAvailable},
 	})
 	current := testGoal(t, "ship the release safely")
@@ -88,7 +88,7 @@ func TestGoalUsageLabelDoesNotPresentPartialCostAsTotal(t *testing.T) {
 func TestStatusProgressIncludesRuntimeActivityStepAndContext(t *testing.T) {
 	status := newStatusView(kit.Dark(), kit.Unicode())
 	step, contextTokens := 7, int64(12_345)
-	status.progress(agent.RunProgress{Step: &step, ContextTokens: &contextTokens, Activity: "calling tools"})
+	status.progress(conversation.RunProgress{Step: &step, ContextTokens: &contextTokens, Activity: "calling tools"})
 	if !status.busy || status.doing != "calling tools · step 7" || status.contextTokens != contextTokens {
 		t.Fatalf("progress status = busy %t, doing %q", status.busy, status.doing)
 	}
@@ -96,10 +96,10 @@ func TestStatusProgressIncludesRuntimeActivityStepAndContext(t *testing.T) {
 	if got := drawStatic(t, status, 72, 1); !strings.Contains(got, "using shell") || !strings.Contains(got, "ctx 12,345") {
 		t.Fatalf("sparse activity lost the latest context footprint:\n%s", got)
 	}
-	status.settled(agent.Run{
+	status.settled(conversation.Run{
 		ContextTokens: contextTokens,
-		Outcome:       agent.Outcome{Status: protocol.OutcomeCompleted},
-		Usage:         agent.Usage{InputTokens: 20, OutputTokens: 4},
+		Outcome:       conversation.Outcome{Status: protocol.OutcomeCompleted},
+		Usage:         conversation.Usage{InputTokens: 20, OutputTokens: 4},
 	})
 	if got := drawStatic(t, status, 72, 1); !strings.Contains(got, "complete") ||
 		!strings.Contains(got, "ctx 12,345") || !strings.Contains(got, "↑20") {
@@ -113,7 +113,7 @@ func TestStatusProgressIncludesRuntimeActivityStepAndContext(t *testing.T) {
 
 func TestSettledStatusIncludesRunRecoveryMetadata(t *testing.T) {
 	status := newStatusView(kit.Dark(), kit.Unicode())
-	status.settled(agent.Run{Outcome: agent.Outcome{
+	status.settled(conversation.Run{Outcome: conversation.Outcome{
 		Status: protocol.OutcomeFailed,
 		Problem: &protocol.ProblemData{
 			Type: "rate_limited", Detail: "quota exhausted", RetryAfterSeconds: 12,
@@ -230,10 +230,10 @@ func TestPromptMovesRunOptionsIntoTheFrameAndChangesContext(t *testing.T) {
 		t.Fatal(err)
 	}
 	composer := kit.Composer{Theme: kit.Dark(), Prompt: "> "}
-	prompt := newPromptView(kit.Dark(), kit.Unicode(), bindings.editor, &composer, defaultRunOptions(t))
-	prompt.Focus(true)
+	authoredPrompt := newPromptView(kit.Dark(), kit.Unicode(), bindings.editor, &composer, defaultRunOptions(t))
+	authoredPrompt.Focus(true)
 
-	idle := drawRoot(t, prompt, 120, prompt.HeightForWidth(120))
+	idle := drawRoot(t, authoredPrompt, 120, authoredPrompt.HeightForWidth(120))
 	for _, want := range []string{"runtime default", "enter", "shift+enter", "ctrl+p"} {
 		if !strings.Contains(idle, want) {
 			t.Errorf("idle prompt does not contain %q:\n%s", want, idle)
@@ -243,8 +243,8 @@ func TestPromptMovesRunOptionsIntoTheFrameAndChangesContext(t *testing.T) {
 		t.Fatalf("status repeated the model already owned by the composer footer:\n%s", status)
 	}
 
-	prompt.SetBusy(true)
-	busy := drawRoot(t, prompt, 120, prompt.HeightForWidth(120))
+	authoredPrompt.SetBusy(true)
+	busy := drawRoot(t, authoredPrompt, 120, authoredPrompt.HeightForWidth(120))
 	for _, want := range []string{"enter", "queue follow up", "ctrl+c", "shift+enter", "ctrl+o"} {
 		if !strings.Contains(busy, want) {
 			t.Errorf("busy prompt does not contain %q:\n%s", want, busy)
@@ -262,15 +262,15 @@ func TestShellRendersAtSupportedAndConstrainedTerminalSizes(t *testing.T) {
 	}
 	theme, glyphs := kit.Dark(), kit.Unicode()
 	transcript := testTranscriptView(t)
-	header := newSessionHeader(theme, glyphs, agent.Session{Title: "New session", Workspace: workspace.Workspace{
+	header := newSessionHeader(theme, glyphs, conversation.Session{Title: "New session", Workspace: workspace.Workspace{
 		Path: "/workspace/scope", ProjectRoot: "/workspace", Availability: protocol.WorkspaceAvailable,
 	}})
 	activity := newActivityView(theme, glyphs)
 	activity.Set([]protocol.PlanStep{{Description: "Inspect", Status: protocol.PlanStatusInProgress}})
 	status := newStatusView(theme, glyphs)
 	composer := kit.Composer{Theme: theme, Prompt: glyphs.Marker + " ", MaxRows: 6}
-	prompt := newPromptView(theme, glyphs, bindings.editor, &composer, defaultRunOptions(t))
-	shell := newShellView(header, transcript, activity, newQueueView(theme, glyphs), status, prompt)
+	authoredPrompt := newPromptView(theme, glyphs, bindings.editor, &composer, defaultRunOptions(t))
+	shell := newShellView(header, transcript, activity, newQueueView(theme, glyphs), status, authoredPrompt)
 	shell.Focus(true)
 
 	for _, size := range []struct{ width, height int }{
@@ -293,7 +293,7 @@ func TestShellUsesTwoRowChromeOnTinyTerminals(t *testing.T) {
 	theme, glyphs := kit.Dark(), kit.Unicode()
 	transcript := testTranscriptView(t)
 	transcript.Append(&kit.Entry{Theme: theme, Label: "flame", Body: "VISIBLE_TRANSCRIPT"})
-	header := newSessionHeader(theme, glyphs, agent.Session{Title: "Hidden title", Workspace: workspace.Workspace{
+	header := newSessionHeader(theme, glyphs, conversation.Session{Title: "Hidden title", Workspace: workspace.Workspace{
 		Path: "/hidden/workspace", ProjectRoot: "/hidden/workspace", Availability: protocol.WorkspaceAvailable,
 	}})
 	activity := newActivityView(theme, glyphs)
@@ -301,12 +301,12 @@ func TestShellUsesTwoRowChromeOnTinyTerminals(t *testing.T) {
 	composer := kit.Composer{Theme: theme, Prompt: glyphs.Marker + " ", MaxRows: 6}
 	composer.Editor().Keys = bindings.editor
 	composer.Editor().SetText("TINY_DRAFT")
-	prompt := newPromptView(theme, glyphs, bindings.editor, &composer, defaultRunOptions(t))
-	shell := newShellView(header, transcript, activity, newQueueView(theme, glyphs), newStatusView(theme, glyphs), prompt)
+	authoredPrompt := newPromptView(theme, glyphs, bindings.editor, &composer, defaultRunOptions(t))
+	shell := newShellView(header, transcript, activity, newQueueView(theme, glyphs), newStatusView(theme, glyphs), authoredPrompt)
 	shell.Focus(true)
 
 	tiny := drawRoot(t, shell, 20, minimalShellHeight-1)
-	if !shell.density.usesMinimalPrompt() || !prompt.compact {
+	if !shell.density.usesMinimalPrompt() || !authoredPrompt.compact {
 		t.Fatal("tiny shell did not enter compact layout")
 	}
 	for _, want := range []string{"VISIBLE", "TINY_DRAFT", "rea"} {
@@ -321,7 +321,7 @@ func TestShellUsesTwoRowChromeOnTinyTerminals(t *testing.T) {
 	}
 
 	normal := drawRoot(t, shell, 96, 28)
-	if shell.density.usesMinimalPrompt() || prompt.compact {
+	if shell.density.usesMinimalPrompt() || authoredPrompt.compact {
 		t.Fatal("resized shell did not leave compact layout")
 	}
 	for _, want := range []string{"/hidden/workspace", "HIDDEN_PLAN", "TINY_DRAFT", "shift+enter"} {
@@ -339,18 +339,18 @@ func TestShortShellYieldsOptionalPanesToTranscriptAndPrompt(t *testing.T) {
 	theme, glyphs := kit.Dark(), kit.Unicode()
 	transcript := testTranscriptView(t)
 	transcript.Append(&kit.Entry{Theme: theme, Label: "flame", Body: "VISIBLE_TRANSCRIPT"})
-	header := newSessionHeader(theme, glyphs, agent.Session{Title: "HIDDEN_TITLE", Workspace: workspace.Workspace{
+	header := newSessionHeader(theme, glyphs, conversation.Session{Title: "HIDDEN_TITLE", Workspace: workspace.Workspace{
 		Path: "/hidden/workspace", ProjectRoot: "/hidden/workspace", Availability: protocol.WorkspaceAvailable,
 	}})
 	activity := newActivityView(theme, glyphs)
 	activity.Set([]protocol.PlanStep{{Description: "HIDDEN_PLAN", Status: protocol.PlanStatusInProgress}})
-	queue := newQueueView(theme, glyphs)
-	queue.Set(promptqueue.Snapshot{Entries: []promptqueue.Entry{{Message: agent.Message{Text: "HIDDEN_QUEUE"}}}})
+	prompts := newQueueView(theme, glyphs)
+	prompts.Set(queue.Snapshot{Entries: []queue.Entry{{Message: prompt.Message{Text: "HIDDEN_QUEUE"}}}})
 	composer := kit.Composer{Theme: theme, Prompt: glyphs.Marker + " ", MaxRows: 6}
 	composer.Editor().Keys = bindings.editor
 	composer.Editor().SetText("VISIBLE_DRAFT")
-	prompt := newPromptView(theme, glyphs, bindings.editor, &composer, defaultRunOptions(t))
-	shell := newShellView(header, transcript, activity, queue, newStatusView(theme, glyphs), prompt)
+	authoredPrompt := newPromptView(theme, glyphs, bindings.editor, &composer, defaultRunOptions(t))
+	shell := newShellView(header, transcript, activity, prompts, newStatusView(theme, glyphs), authoredPrompt)
 	shell.Focus(true)
 
 	short := drawRoot(t, shell, 96, 16)
@@ -377,11 +377,11 @@ func TestResponsiveShellPreservesTranscriptFocusAndDraft(t *testing.T) {
 	composer := kit.Composer{Theme: theme, Prompt: glyphs.Marker + " ", MaxRows: 6}
 	composer.Editor().Keys = bindings.editor
 	composer.Editor().SetText("PRESERVED_DRAFT")
-	prompt := newPromptView(theme, glyphs, bindings.editor, &composer, defaultRunOptions(t))
+	authoredPrompt := newPromptView(theme, glyphs, bindings.editor, &composer, defaultRunOptions(t))
 	shell := newShellView(
-		newSessionHeader(theme, glyphs, agent.Session{}), transcript,
+		newSessionHeader(theme, glyphs, conversation.Session{}), transcript,
 		newActivityView(theme, glyphs), newQueueView(theme, glyphs),
-		newStatusView(theme, glyphs), prompt,
+		newStatusView(theme, glyphs), authoredPrompt,
 	)
 	shell.Focus(true)
 	if !shell.Handle(input.Key{Code: input.Tab}) || !shell.TranscriptFocused() {
@@ -410,15 +410,15 @@ func TestShellMovesFocusBetweenPromptAndTranscript(t *testing.T) {
 	transcript := testTranscriptView(t)
 	appendTestTool(transcript, "focus", "detail")
 	composer := kit.Composer{Theme: theme, Prompt: glyphs.Marker + " ", MaxRows: 6}
-	prompt := newPromptView(theme, glyphs, bindings.editor, &composer, defaultRunOptions(t))
+	authoredPrompt := newPromptView(theme, glyphs, bindings.editor, &composer, defaultRunOptions(t))
 	shell := newShellView(
-		newSessionHeader(theme, glyphs, agent.Session{}), transcript,
+		newSessionHeader(theme, glyphs, conversation.Session{}), transcript,
 		newActivityView(theme, glyphs), newQueueView(theme, glyphs),
-		newStatusView(theme, glyphs), prompt,
+		newStatusView(theme, glyphs), authoredPrompt,
 	)
-	prompt.SetTranscriptKeys(transcript.Keys())
-	transcript.OnFocusChange(prompt.SetTranscriptFocused)
-	transcript.OnSelection(prompt.SetTranscriptSelection)
+	authoredPrompt.SetTranscriptKeys(transcript.Keys())
+	transcript.OnFocusChange(authoredPrompt.SetTranscriptFocused)
+	transcript.OnSelection(authoredPrompt.SetTranscriptSelection)
 	shell.Focus(true)
 
 	if !shell.PromptFocused() {

@@ -1,7 +1,7 @@
 import { contributeLayout, definePlugin } from "@/plugins/sdk";
 import { NotificationsBadge } from "./ui/NotificationsBadge";
 
-export { completionNotify } from "./completionNotify";
+export { createCompletionNotifyPlugin } from "./completionNotify";
 export { windowTitle } from "./windowTitle";
 
 export const statusNotifications = definePlugin({

@@ -4,17 +4,16 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/headless"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 func TestPromptHistoryRestoresAttachmentsAndDraft(t *testing.T) {
-	file := agent.Attachment{ID: "att_1", Kind: protocol.ContentBlockText, Name: "main.go", Path: "/tmp/main.go", Size: 10}
+	file := prompt.Attachment{ID: "att_1", Kind: protocol.ContentBlockText, Name: "main.go", Path: "/tmp/main.go", Size: 10}
 	var history promptHistory
-	history.Add(agent.Message{Text: "inspect", Attachments: []agent.Attachment{file}})
-	got, ok := history.Back(agent.Message{Text: "draft"})
+	history.Add(prompt.Message{Text: "inspect", Attachments: []prompt.Attachment{file}})
+	got, ok := history.Back(prompt.Message{Text: "draft"})
 	if !ok || got.Text != "inspect" || len(got.Attachments) != 1 || got.Attachments[0].ID != file.ID {
 		t.Fatalf("back = %+v, %v", got, ok)
 	}
@@ -23,7 +22,7 @@ func TestPromptHistoryRestoresAttachmentsAndDraft(t *testing.T) {
 	if !ok || draft.Text != "draft" {
 		t.Fatalf("forward = %+v, %v", draft, ok)
 	}
-	again, _ := history.Back(agent.Message{})
+	again, _ := history.Back(prompt.Message{})
 	if again.Attachments[0].Name != "main.go" {
 		t.Fatalf("history leaked caller mutation: %+v", again)
 	}
@@ -31,8 +30,8 @@ func TestPromptHistoryRestoresAttachmentsAndDraft(t *testing.T) {
 
 func TestPromptHistoryDropsConsecutiveDuplicates(t *testing.T) {
 	var history promptHistory
-	history.Add(agent.Message{Text: "same"})
-	history.Add(agent.Message{Text: "same"})
+	history.Add(prompt.Message{Text: "same"})
+	history.Add(prompt.Message{Text: "same"})
 	if len(history.entries) != 1 {
 		t.Fatalf("entries = %d, want 1", len(history.entries))
 	}
@@ -41,7 +40,7 @@ func TestPromptHistoryDropsConsecutiveDuplicates(t *testing.T) {
 func TestPromptHistoryOwnsAndEnforcesItsRetentionCapacity(t *testing.T) {
 	var history promptHistory
 	for index := range promptHistoryCapacity + 5 {
-		history.Add(agent.Message{Text: fmt.Sprintf("prompt %d", index)})
+		history.Add(prompt.Message{Text: fmt.Sprintf("prompt %d", index)})
 	}
 	if len(history.entries) != promptHistoryCapacity {
 		t.Fatalf("entries = %d, want %d", len(history.entries), promptHistoryCapacity)
@@ -55,10 +54,10 @@ func TestPromptHistoryOwnsAndEnforcesItsRetentionCapacity(t *testing.T) {
 }
 
 func TestCommittedComposerCannotUndoIntoReleasedAttachmentPayloads(t *testing.T) {
-	a := &app{attachmentElements: make(map[uint64]agent.Attachment)}
+	a := &app{attachmentElements: make(map[uint64]prompt.Attachment)}
 	editor := a.composer.Editor()
 	element := editor.InsertElement(fileElement, "@design.md")
-	a.attachmentElements[element.ID] = agent.Attachment{Name: "design.md"}
+	a.attachmentElements[element.ID] = prompt.Attachment{Name: "design.md"}
 	editor.Insert(" inspect this")
 	a.clearComposer()
 	editor.Do(headless.Undo)

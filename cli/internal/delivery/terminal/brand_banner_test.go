@@ -4,18 +4,18 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/cli/internal/application/settings"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/program"
 	"github.com/Tangerg/oolong/core/text"
-
-	"github.com/Tangerg/flame/cli/internal/application/settings"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 )
 
 func TestBrandBannerProjectsBuildModelAndWorkspaceResponsively(t *testing.T) {
-	session := agent.Session{Provider: "mock", Model: "balanced", ReasoningEffort: "high", Workspace: workspace.Workspace{
+	session := conversation.Session{Provider: "mock", Model: "balanced", ReasoningEffort: "high", Workspace: workspace.Workspace{
 		Path: "/workspace/scope", ProjectRoot: "/workspace", Availability: protocol.WorkspaceAvailable,
 	}}
 	banner := newBrandBanner(kit.Dark(), kit.Unicode(), "1.2.3", session, displayRunOptions(defaultRunOptions(t), session))
@@ -61,7 +61,7 @@ func TestLargeBrandMarksFitTheirResponsiveBreakpoint(t *testing.T) {
 }
 
 func TestBrandBannerUsesASCIIMarkForASCIITerminals(t *testing.T) {
-	banner := newBrandBanner(kit.Dark(), kit.ASCII(), "dev", agent.Session{}, agent.RunOptions{})
+	banner := newBrandBanner(kit.Dark(), kit.ASCII(), "dev", conversation.Session{}, prompt.RunOptions{})
 	got := drawStatic(t, banner, 72, 12)
 	if !strings.Contains(got, "FFFFF L      AAA") || strings.Contains(got, "██") {
 		t.Fatalf("ASCII brand banner used the wrong mark:\n%s", got)
@@ -70,7 +70,7 @@ func TestBrandBannerUsesASCIIMarkForASCIITerminals(t *testing.T) {
 
 func TestTranscriptBrandIsAOneShotEntranceProjection(t *testing.T) {
 	view := testTranscriptView(t)
-	banner := newBrandBanner(kit.Dark(), kit.Unicode(), "test", agent.Session{}, agent.RunOptions{})
+	banner := newBrandBanner(kit.Dark(), kit.Unicode(), "test", conversation.Session{}, prompt.RunOptions{})
 	view.SetEntrance(banner)
 
 	if empty := drawRoot(t, view, 72, 12); !strings.Contains(empty, "Flame CLI  vtest") {
@@ -90,7 +90,7 @@ func TestTranscriptBrandIsAOneShotEntranceProjection(t *testing.T) {
 
 func TestTranscriptResetConsumesAnUnshownEntranceProjection(t *testing.T) {
 	view := testTranscriptView(t)
-	view.SetEntrance(newBrandBanner(kit.Dark(), kit.Unicode(), "test", agent.Session{}, agent.RunOptions{}))
+	view.SetEntrance(newBrandBanner(kit.Dark(), kit.Unicode(), "test", conversation.Session{}, prompt.RunOptions{}))
 
 	view.Reset()
 	if got := drawRoot(t, view, 72, 12); strings.Contains(got, "Flame CLI") {
@@ -100,7 +100,7 @@ func TestTranscriptResetConsumesAnUnshownEntranceProjection(t *testing.T) {
 
 func TestReplacementTranscriptDoesNotInheritTheBrand(t *testing.T) {
 	initial := testTranscriptView(t)
-	initial.SetEntrance(newBrandBanner(kit.Dark(), kit.Unicode(), "test", agent.Session{}, agent.RunOptions{}))
+	initial.SetEntrance(newBrandBanner(kit.Dark(), kit.Unicode(), "test", conversation.Session{}, prompt.RunOptions{}))
 	initial.images = newTerminalImagePresenter(program.Images{})
 	a := &app{ctx: t.Context(), transcript: initial, syntax: initial.syntax, settings: settings.Default()}
 

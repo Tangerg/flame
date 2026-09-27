@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"iter"
 
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 type runBinding interface {
@@ -19,20 +20,20 @@ type runBinding interface {
 	CancelRun(context.Context, protocol.CancelRunRequest, flameruntime.CommandOptions) (*protocol.CancelRunResponse, error)
 }
 
-func (r *Connection) StartRun(ctx context.Context, input agent.StartRun) (agent.SegmentStream, error) {
+func (r *Connection) StartRun(ctx context.Context, input prompt.StartRun) (conversation.SegmentStream, error) {
 	if err := input.Validate(); err != nil {
-		return agent.SegmentStream{}, fmt.Errorf("%w: %w", agent.ErrCommandNotDispatched, err)
+		return conversation.SegmentStream{}, fmt.Errorf("%w: %w", replay.ErrCommandNotDispatched, err)
 	}
 	if err := r.requireInputCapabilities(input.Message); err != nil {
-		return agent.SegmentStream{}, fmt.Errorf("%w: %w", agent.ErrCommandNotDispatched, err)
+		return conversation.SegmentStream{}, fmt.Errorf("%w: %w", replay.ErrCommandNotDispatched, err)
 	}
 	content, err := input.Message.PreparedInput(input.Input)
 	if err != nil {
-		return agent.SegmentStream{}, fmt.Errorf("%w: %w", agent.ErrCommandNotDispatched, err)
+		return conversation.SegmentStream{}, fmt.Errorf("%w: %w", replay.ErrCommandNotDispatched, err)
 	}
 	options, err := r.runCommandOptionsFor(input.CommandID)
 	if err != nil {
-		return agent.SegmentStream{}, fmt.Errorf("%w: %w", agent.ErrCommandNotDispatched, err)
+		return conversation.SegmentStream{}, fmt.Errorf("%w: %w", replay.ErrCommandNotDispatched, err)
 	}
 	request := protocol.StartRunRequest{
 		SessionID: input.SessionID, Input: content,
@@ -45,9 +46,9 @@ func (r *Connection) StartRun(ctx context.Context, input agent.StartRun) (agent.
 	}
 	ack, events, err := r.runs.StartRun(ctx, request, options)
 	if err != nil {
-		return agent.SegmentStream{}, classifyError(err)
+		return conversation.SegmentStream{}, classifyError(err)
 	}
-	stream := agent.SegmentStream{}
+	stream := conversation.SegmentStream{}
 	if ack != nil {
 		stream.RunID, stream.SegmentID, stream.UserItemID = ack.RunID, ack.SegmentID, ack.UserItemID
 	}
@@ -55,12 +56,12 @@ func (r *Connection) StartRun(ctx context.Context, input agent.StartRun) (agent.
 		stream.Events = projectEventStream(events, stream.SegmentID)
 	}
 	if ack == nil || events == nil {
-		return agent.SegmentStream{}, agent.NewAcceptedMutationError(
+		return conversation.SegmentStream{}, conversation.NewAcceptedMutationError(
 			stream, runtimeContractViolation("start run returned an incomplete stream"),
 		)
 	}
 	if err := stream.ValidateStart(); err != nil {
-		return agent.SegmentStream{}, agent.NewAcceptedMutationError(
+		return conversation.SegmentStream{}, conversation.NewAcceptedMutationError(
 			stream, runtimeContractViolation("start run returned an invalid stream: %v", err),
 		)
 	}
@@ -71,37 +72,37 @@ func generationParamsPresent(value protocol.GenerationParams) bool {
 	return value.Temperature != nil || value.MaxTokens != nil || value.TopP != nil || len(value.Stop) != 0
 }
 
-func (r *Connection) ResumeRun(ctx context.Context, input agent.ResumeRun) (agent.SegmentStream, error) {
+func (r *Connection) ResumeRun(ctx context.Context, input conversation.ResumeRun) (conversation.SegmentStream, error) {
 	if err := input.Validate(); err != nil {
-		return agent.SegmentStream{}, fmt.Errorf("%w: %w", agent.ErrCommandNotDispatched, err)
+		return conversation.SegmentStream{}, fmt.Errorf("%w: %w", replay.ErrCommandNotDispatched, err)
 	}
 	request := protocol.ResumeRunRequest{RunID: input.RunID, Responses: make([]protocol.InterruptResponse, 0, len(input.Answers))}
 	for _, answer := range input.Answers {
 		projected, err := projectAnswer(answer)
 		if err != nil {
-			return agent.SegmentStream{}, fmt.Errorf("%w: %w", agent.ErrCommandNotDispatched, err)
+			return conversation.SegmentStream{}, fmt.Errorf("%w: %w", replay.ErrCommandNotDispatched, err)
 		}
 		request.Responses = append(request.Responses, projected)
 	}
 	if input.Message != nil {
 		if err := r.requireInputCapabilities(*input.Message); err != nil {
-			return agent.SegmentStream{}, fmt.Errorf("%w: %w", agent.ErrCommandNotDispatched, err)
+			return conversation.SegmentStream{}, fmt.Errorf("%w: %w", replay.ErrCommandNotDispatched, err)
 		}
 		content, err := input.Message.PreparedInput(input.Input)
 		if err != nil {
-			return agent.SegmentStream{}, fmt.Errorf("%w: %w", agent.ErrCommandNotDispatched, err)
+			return conversation.SegmentStream{}, fmt.Errorf("%w: %w", replay.ErrCommandNotDispatched, err)
 		}
 		request.Input = content
 	}
 	options, err := r.runCommandOptionsFor(input.CommandID)
 	if err != nil {
-		return agent.SegmentStream{}, fmt.Errorf("%w: %w", agent.ErrCommandNotDispatched, err)
+		return conversation.SegmentStream{}, fmt.Errorf("%w: %w", replay.ErrCommandNotDispatched, err)
 	}
 	ack, events, err := r.runs.ResumeRun(ctx, request, options)
 	if err != nil {
-		return agent.SegmentStream{}, classifyError(err)
+		return conversation.SegmentStream{}, classifyError(err)
 	}
-	stream := agent.SegmentStream{}
+	stream := conversation.SegmentStream{}
 	if ack != nil {
 		stream.RunID, stream.SegmentID = ack.RunID, ack.SegmentID
 		if ack.UserItemID != nil {
@@ -112,22 +113,22 @@ func (r *Connection) ResumeRun(ctx context.Context, input agent.ResumeRun) (agen
 		stream.Events = projectEventStream(events, stream.SegmentID)
 	}
 	if ack == nil || events == nil {
-		return agent.SegmentStream{}, agent.NewAcceptedMutationError(
+		return conversation.SegmentStream{}, conversation.NewAcceptedMutationError(
 			stream, runtimeContractViolation("resume run returned an incomplete stream"),
 		)
 	}
 	if err := stream.ValidateResume(input.RunID, input.Message); err != nil {
-		return agent.SegmentStream{}, agent.NewAcceptedMutationError(
+		return conversation.SegmentStream{}, conversation.NewAcceptedMutationError(
 			stream, runtimeContractViolation("resume run returned an invalid stream: %v", err),
 		)
 	}
 	return stream, nil
 }
 
-func projectAnswer(value agent.InterruptAnswer) (protocol.InterruptResponse, error) {
+func projectAnswer(value conversation.InterruptAnswer) (protocol.InterruptResponse, error) {
 	response := protocol.InterruptResponse{ItemID: value.ItemID}
 	switch answer := value.Answer.(type) {
-	case agent.ApprovalAnswer:
+	case conversation.ApprovalAnswer:
 		response.Response.Type = protocol.InterruptResponseApproval
 		response.Response.Decision = answer.Decision
 		response.Response.Reason = answer.Reason
@@ -141,9 +142,9 @@ func projectAnswer(value agent.InterruptAnswer) (protocol.InterruptResponse, err
 		if answer.Remember != "" {
 			response.Response.Remember = &protocol.RememberScope{Scope: answer.Remember}
 		}
-	case agent.QuestionAnswer:
+	case conversation.QuestionAnswer:
 		response.Response.Type = protocol.InterruptResponseAnswer
-		response.Response.Answers = agent.CloneAnswers(answer.Values)
+		response.Response.Answers = conversation.CloneAnswers(answer.Values)
 	default:
 		return protocol.InterruptResponse{}, fmt.Errorf("answer for item %s has unsupported type %T", value.ItemID, value.Answer)
 	}
@@ -153,9 +154,9 @@ func projectAnswer(value agent.InterruptAnswer) (protocol.InterruptResponse, err
 	return response, nil
 }
 
-func (r *Connection) SubscribeRun(ctx context.Context, input agent.SubscribeRun) (agent.SegmentStream, error) {
+func (r *Connection) SubscribeRun(ctx context.Context, input conversation.SubscribeRun) (conversation.SegmentStream, error) {
 	if err := input.Validate(); err != nil {
-		return agent.SegmentStream{}, err
+		return conversation.SegmentStream{}, err
 	}
 	if input.Snapshot {
 		return r.subscribeSnapshot(ctx, input)
@@ -164,39 +165,39 @@ func (r *Connection) SubscribeRun(ctx context.Context, input agent.SubscribeRun)
 	return stream, err
 }
 
-func (r *Connection) subscribeRun(ctx context.Context, input agent.SubscribeRun) (agent.SegmentStream, *protocol.SessionSnapshot, error) {
+func (r *Connection) subscribeRun(ctx context.Context, input conversation.SubscribeRun) (conversation.SegmentStream, *protocol.SessionSnapshot, error) {
 	options, err := r.subscriptionOptions(input.AfterEventID)
 	if err != nil {
-		return agent.SegmentStream{}, nil, err
+		return conversation.SegmentStream{}, nil, err
 	}
 	ack, events, err := r.runs.SubscribeRun(ctx, protocol.SubscribeRunRequest{
 		RunID: input.RunID, SegmentID: input.SegmentID, Snapshot: input.Snapshot,
 	}, options)
 	if err != nil {
-		return agent.SegmentStream{}, nil, classifyError(err)
+		return conversation.SegmentStream{}, nil, classifyError(err)
 	}
 	if ack == nil || events == nil {
-		return agent.SegmentStream{}, nil, runtimeContractViolation("subscribe run returned an incomplete stream")
+		return conversation.SegmentStream{}, nil, runtimeContractViolation("subscribe run returned an incomplete stream")
 	}
 	if (ack.Snapshot != nil) != input.Snapshot {
-		return agent.SegmentStream{}, nil, runtimeContractViolation("subscribe run snapshot does not match the request")
+		return conversation.SegmentStream{}, nil, runtimeContractViolation("subscribe run snapshot does not match the request")
 	}
 	headEventID := ""
 	if ack.HeadEventID != nil {
 		headEventID = *ack.HeadEventID
 	}
 	if _, err := r.subscriptionOptions(headEventID); err != nil {
-		return agent.SegmentStream{}, nil, runtimeContractViolation("subscribe run returned an invalid head event id: %v", err)
+		return conversation.SegmentStream{}, nil, runtimeContractViolation("subscribe run returned an invalid head event id: %v", err)
 	}
-	stream := agent.SegmentStream{
+	stream := conversation.SegmentStream{
 		RunID: ack.RunID, SegmentID: ack.SegmentID, HeadEventID: headEventID,
 		Events: projectEventStream(events, ack.SegmentID),
 	}
 	if err := stream.ValidateSubscription(); err != nil {
-		return agent.SegmentStream{}, nil, runtimeContractViolation("subscribe run returned an invalid stream: %v", err)
+		return conversation.SegmentStream{}, nil, runtimeContractViolation("subscribe run returned an invalid stream: %v", err)
 	}
 	if stream.RunID != input.RunID || stream.SegmentID != input.SegmentID {
-		return agent.SegmentStream{}, nil, runtimeContractViolation(
+		return conversation.SegmentStream{}, nil, runtimeContractViolation(
 			"subscribe run returned segment %s/%s for %s/%s",
 			stream.RunID, stream.SegmentID, input.RunID, input.SegmentID,
 		)
@@ -204,64 +205,64 @@ func (r *Connection) subscribeRun(ctx context.Context, input agent.SubscribeRun)
 	return stream, ack.Snapshot, nil
 }
 
-func (r *Connection) CancelRun(ctx context.Context, input agent.CancelRun) (agent.RunCancellation, error) {
+func (r *Connection) CancelRun(ctx context.Context, input conversation.CancelRun) (conversation.RunCancellation, error) {
 	if err := input.Validate(); err != nil {
-		return agent.RunCancellation{}, err
+		return conversation.RunCancellation{}, err
 	}
 	options, err := r.commandOptionsFor(input.CommandID)
 	if err != nil {
-		return agent.RunCancellation{}, err
+		return conversation.RunCancellation{}, err
 	}
 	result, err := r.runs.CancelRun(ctx, protocol.CancelRunRequest{RunID: input.RunID, Reason: input.Reason}, options)
 	if err != nil {
-		return agent.RunCancellation{}, classifyError(err)
+		return conversation.RunCancellation{}, classifyError(err)
 	}
 	if result == nil {
-		return agent.RunCancellation{}, runtimeContractViolation("cancel run returned nil")
+		return conversation.RunCancellation{}, runtimeContractViolation("cancel run returned nil")
 	}
 	canceled, err := projectRun(result.Run)
 	if err != nil {
-		return agent.RunCancellation{}, runtimeContractViolation("cancel run returned an invalid run: %v", err)
+		return conversation.RunCancellation{}, runtimeContractViolation("cancel run returned an invalid run: %v", err)
 	}
-	var root agent.Run
+	var root conversation.Run
 	switch result.Type {
 	case protocol.CancelRunRoot:
 		if result.RootRun != nil {
-			return agent.RunCancellation{}, runtimeContractViolation("root cancellation carries rootRun")
+			return conversation.RunCancellation{}, runtimeContractViolation("root cancellation carries rootRun")
 		}
 		root = canceled.Clone()
 	case protocol.CancelRunChild:
 		if result.RootRun == nil {
-			return agent.RunCancellation{}, runtimeContractViolation("child cancellation omits rootRun")
+			return conversation.RunCancellation{}, runtimeContractViolation("child cancellation omits rootRun")
 		}
 		root, err = projectRun(*result.RootRun)
 		if err != nil {
-			return agent.RunCancellation{}, runtimeContractViolation("cancel run returned an invalid root: %v", err)
+			return conversation.RunCancellation{}, runtimeContractViolation("cancel run returned an invalid root: %v", err)
 		}
 	default:
-		return agent.RunCancellation{}, runtimeContractViolation("cancel run returned unknown result type %q", result.Type)
+		return conversation.RunCancellation{}, runtimeContractViolation("cancel run returned unknown result type %q", result.Type)
 	}
-	projected := agent.RunCancellation{Canceled: canceled, Root: root}
+	projected := conversation.RunCancellation{Canceled: canceled, Root: root}
 	if err := projected.ValidateTarget(input.RunID); err != nil {
-		return agent.RunCancellation{}, runtimeContractViolation("cancel run returned an invalid projection: %v", err)
+		return conversation.RunCancellation{}, runtimeContractViolation("cancel run returned an invalid projection: %v", err)
 	}
 	return projected, nil
 }
 
-func (r *Connection) SteerRun(ctx context.Context, input agent.SteerRun) (protocol.SteerRunResponse, error) {
+func (r *Connection) SteerRun(ctx context.Context, input prompt.SteerRun) (protocol.SteerRunResponse, error) {
 	if err := input.Validate(); err != nil {
-		return protocol.SteerRunResponse{}, fmt.Errorf("%w: %w", agent.ErrCommandNotDispatched, err)
+		return protocol.SteerRunResponse{}, fmt.Errorf("%w: %w", replay.ErrCommandNotDispatched, err)
 	}
 	if err := r.requireInputCapabilities(input.Message); err != nil {
-		return protocol.SteerRunResponse{}, fmt.Errorf("%w: %w", agent.ErrCommandNotDispatched, err)
+		return protocol.SteerRunResponse{}, fmt.Errorf("%w: %w", replay.ErrCommandNotDispatched, err)
 	}
 	content, err := input.Message.PreparedInput(input.Input)
 	if err != nil {
-		return protocol.SteerRunResponse{}, fmt.Errorf("%w: %w", agent.ErrCommandNotDispatched, err)
+		return protocol.SteerRunResponse{}, fmt.Errorf("%w: %w", replay.ErrCommandNotDispatched, err)
 	}
 	options, err := r.commandOptionsFor(input.CommandID)
 	if err != nil {
-		return protocol.SteerRunResponse{}, fmt.Errorf("%w: %w", agent.ErrCommandNotDispatched, err)
+		return protocol.SteerRunResponse{}, fmt.Errorf("%w: %w", replay.ErrCommandNotDispatched, err)
 	}
 	receipt, err := r.runs.SteerRun(ctx, protocol.SteerRunRequest{
 		RunID: input.RunID, ExpectedSegmentID: input.SegmentID, Input: content,
@@ -270,21 +271,21 @@ func (r *Connection) SteerRun(ctx context.Context, input agent.SteerRun) (protoc
 		return protocol.SteerRunResponse{}, classifyError(err)
 	}
 	if receipt == nil {
-		return protocol.SteerRunResponse{}, fmt.Errorf("%w: %w", agent.ErrSteerReceiptUnavailable, runtimeContractViolation("steer run returned nil"))
+		return protocol.SteerRunResponse{}, fmt.Errorf("%w: %w", conversation.ErrSteerReceiptUnavailable, runtimeContractViolation("steer run returned nil"))
 	}
 	return *receipt, nil
 }
 
-func projectEventStream(source iter.Seq2[protocol.RunEvent, error], streamSegmentID string) agent.EventStream {
-	return func(yield func(agent.RunEvent, error) bool) {
+func projectEventStream(source iter.Seq2[protocol.RunEvent, error], streamSegmentID string) conversation.EventStream {
+	return func(yield func(conversation.RunEvent, error) bool) {
 		for value, streamErr := range source {
 			if streamErr != nil {
-				yield(agent.RunEvent{}, classifyError(streamErr))
+				yield(conversation.RunEvent{}, classifyError(streamErr))
 				return
 			}
 			projected, include, err := projectEvent(value)
 			if err != nil {
-				yield(agent.RunEvent{}, runtimeContractViolation("run stream returned an invalid event: %v", err))
+				yield(conversation.RunEvent{}, runtimeContractViolation("run stream returned an invalid event: %v", err))
 				return
 			}
 			projected.StreamSegmentID = streamSegmentID

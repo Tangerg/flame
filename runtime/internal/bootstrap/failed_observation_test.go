@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/protocol"

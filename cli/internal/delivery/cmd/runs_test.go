@@ -10,12 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/spf13/cobra"
-
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/spf13/cobra"
 )
 
 func TestCatalogListCommandsRejectNonPositiveAndOversizedPageFlags(t *testing.T) {
@@ -26,7 +25,7 @@ func TestCatalogListCommandsRejectNonPositiveAndOversizedPageFlags(t *testing.T)
 		{"runs", "ls", "--limit", "0"},
 		{"runs", "ls", "--limit", "101"},
 	} {
-		if _, _, err := executeCommand(t, instantRuntime(), "", arguments...); !errors.Is(err, agent.ErrInvalidPageSize) {
+		if _, _, err := executeCommand(t, instantRuntime(), "", arguments...); !errors.Is(err, conversation.ErrInvalidPageSize) {
 			t.Fatalf("%v error = %v, want ErrInvalidPageSize", arguments, err)
 		}
 	}
@@ -34,10 +33,10 @@ func TestCatalogListCommandsRejectNonPositiveAndOversizedPageFlags(t *testing.T)
 
 type recordingRunCatalog struct {
 	Runtime
-	queries []agent.RunQuery
+	queries []conversation.RunQuery
 }
 
-func (r *recordingRunCatalog) ListRuns(ctx context.Context, query agent.RunQuery) (agent.RunPage, error) {
+func (r *recordingRunCatalog) ListRuns(ctx context.Context, query conversation.RunQuery) (conversation.RunPage, error) {
 	r.queries = append(r.queries, query)
 	return r.Runtime.ListRuns(ctx, query)
 }
@@ -84,9 +83,9 @@ func TestRunsListConsumesFiltersAndStableJSON(t *testing.T) {
 func TestRunsListKeepsPaginationOutOfMachineOutput(t *testing.T) {
 	runtime := instantRuntime()
 	runtime.Script = shortCompletedScript
-	stream, err := runtime.StartRun(t.Context(), agent.StartRun{
-		SessionID: "ses_demo_1", Message: agent.Message{Text: "newer run"},
-		Options: agent.RunOptions{},
+	stream, err := runtime.StartRun(t.Context(), prompt.StartRun{
+		SessionID: "ses_demo_1", Message: prompt.Message{Text: "newer run"},
+		Options: prompt.RunOptions{},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -109,7 +108,7 @@ func TestRunsListKeepsPaginationOutOfMachineOutput(t *testing.T) {
 
 func TestRunsListRejectsAnInvalidStatusBeforeOpeningTheRuntime(t *testing.T) {
 	var opened bool
-	provider := runtimeProvider{open: func(context.Context) (Runtime, *runtimebinding.Profile, error) {
+	provider := runtimeProvider{open: func(context.Context) (Runtime, RuntimeProfile, error) {
 		opened = true
 		return instantRuntime(), nil, nil
 	}}
@@ -133,7 +132,7 @@ func TestRunsListRejectsDescendantsBeforeCallingAnUnnegotiatedRuntime(t *testing
 		}
 	})
 	runtime := &recordingRunCatalog{Runtime: instantRuntime()}
-	provider := runtimeProvider{open: func(context.Context) (Runtime, *runtimebinding.Profile, error) {
+	provider := runtimeProvider{open: func(context.Context) (Runtime, RuntimeProfile, error) {
 		return runtime, new(profile), nil
 	}}
 	command := newRunsListCommand(provider)
@@ -175,12 +174,12 @@ func TestRunsCancelRequiresConfirmationAndReturnsRootSnapshot(t *testing.T) {
 	runtime.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
 			Delay: time.Hour,
-			Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
+			Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
-	opened, err := runtime.StartRun(t.Context(), agent.StartRun{
-		SessionID: "ses_demo_1", Message: agent.Message{Text: "keep running"},
-		Options: agent.RunOptions{},
+	opened, err := runtime.StartRun(t.Context(), prompt.StartRun{
+		SessionID: "ses_demo_1", Message: prompt.Message{Text: "keep running"},
+		Options: prompt.RunOptions{},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -221,51 +220,51 @@ func TestRunsCancelRequiresConfirmationAndReturnsRootSnapshot(t *testing.T) {
 
 type childCancellationRuntime struct {
 	Runtime
-	result agent.RunCancellation
+	result conversation.RunCancellation
 }
 
 type uncertainRunCancellationRuntime struct {
 	Runtime
 
 	mu       sync.Mutex
-	attempts []agent.CancelRun
+	attempts []conversation.CancelRun
 }
 
-func (u *uncertainRunCancellationRuntime) CancelRun(ctx context.Context, request agent.CancelRun) (agent.RunCancellation, error) {
+func (u *uncertainRunCancellationRuntime) CancelRun(ctx context.Context, request conversation.CancelRun) (conversation.RunCancellation, error) {
 	u.mu.Lock()
 	u.attempts = append(u.attempts, request)
 	attempt := len(u.attempts)
 	u.mu.Unlock()
 	if attempt == 1 {
-		return agent.RunCancellation{}, fmt.Errorf("cancellation acknowledgement timed out: %w", context.DeadlineExceeded)
+		return conversation.RunCancellation{}, fmt.Errorf("cancellation acknowledgement timed out: %w", context.DeadlineExceeded)
 	}
 	return u.Runtime.CancelRun(ctx, request)
 }
 
-func (u *uncertainRunCancellationRuntime) cancelAttempts() []agent.CancelRun {
+func (u *uncertainRunCancellationRuntime) cancelAttempts() []conversation.CancelRun {
 	u.mu.Lock()
 	defer u.mu.Unlock()
-	return append([]agent.CancelRun(nil), u.attempts...)
+	return append([]conversation.CancelRun(nil), u.attempts...)
 }
 
-func (c childCancellationRuntime) CancelRun(context.Context, agent.CancelRun) (agent.RunCancellation, error) {
+func (c childCancellationRuntime) CancelRun(context.Context, conversation.CancelRun) (conversation.RunCancellation, error) {
 	return c.result, nil
 }
 
 func TestRunsCancelPreservesSurvivingRootStateForAChild(t *testing.T) {
-	lineage, err := agent.NewChildRunLineage("run_child", "item_spawn", "run_root", "run_root")
+	lineage, err := conversation.NewChildRunLineage("run_child", "item_spawn", "run_root", "run_root")
 	if err != nil {
 		t.Fatal(err)
 	}
-	child := agent.Run{
+	child := conversation.Run{
 		ID: "run_child", SessionID: "ses_1",
 		Lineage: lineage,
-		Status:  protocol.RunStatusFinished, Outcome: agent.Outcome{Status: protocol.OutcomeCanceled},
+		Status:  protocol.RunStatusFinished, Outcome: conversation.Outcome{Status: protocol.OutcomeCanceled},
 	}
-	root := agent.Run{ID: "run_root", SessionID: "ses_1", Lineage: agent.RootRunLineage(), Status: protocol.RunStatusWaiting}
+	root := conversation.Run{ID: "run_root", SessionID: "ses_1", Lineage: conversation.RootRunLineage(), Status: protocol.RunStatusWaiting}
 	runtime := childCancellationRuntime{
 		Runtime: instantRuntime(),
-		result:  agent.RunCancellation{Canceled: child, Root: root},
+		result:  conversation.RunCancellation{Canceled: child, Root: root},
 	}
 	out, _, err := executeCommand(t, runtime, "", "runs", "cancel", "run_child", "--yes", "--json")
 	if err != nil {
@@ -281,12 +280,12 @@ func TestRunsCancelConfirmsTimeoutWithOneMutationIdentity(t *testing.T) {
 	base.Instant = false
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
+			Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
-	opened, err := base.StartRun(t.Context(), agent.StartRun{
-		SessionID: "ses_demo_1", Message: agent.Message{Text: "cancel through subcommand"},
-		Options: agent.RunOptions{},
+	opened, err := base.StartRun(t.Context(), prompt.StartRun{
+		SessionID: "ses_demo_1", Message: prompt.Message{Text: "cancel through subcommand"},
+		Options: prompt.RunOptions{},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -313,7 +312,7 @@ func TestRunIDCompletionIncludesDescendants(t *testing.T) {
 		t.Fatalf("completion queries = %+v", runtime.queries)
 	}
 	rows, rowsErr := runtime.queries[0].PageSize.Rows()
-	if !runtime.queries[0].IncludeDescendants || rowsErr != nil || rows != agent.MaximumPageRows {
+	if !runtime.queries[0].IncludeDescendants || rowsErr != nil || rows != conversation.MaximumPageRows {
 		t.Fatalf("completion query = %+v", runtime.queries)
 	}
 }
@@ -326,7 +325,7 @@ func TestRunIDCompletionFallsBackToRootsWithoutSubagents(t *testing.T) {
 		}
 	})
 	runtime := &recordingRunCatalog{Runtime: instantRuntime()}
-	provider := runtimeProvider{open: func(context.Context) (Runtime, *runtimebinding.Profile, error) {
+	provider := runtimeProvider{open: func(context.Context) (Runtime, RuntimeProfile, error) {
 		return runtime, new(profile), nil
 	}}
 	command := newRunsShowCommand(provider)
@@ -339,7 +338,7 @@ func TestRunIDCompletionFallsBackToRootsWithoutSubagents(t *testing.T) {
 		t.Fatalf("completion queries = %+v", runtime.queries)
 	}
 	rows, rowsErr := runtime.queries[0].PageSize.Rows()
-	if runtime.queries[0].IncludeDescendants || rowsErr != nil || rows != agent.MaximumPageRows {
+	if runtime.queries[0].IncludeDescendants || rowsErr != nil || rows != conversation.MaximumPageRows {
 		t.Fatalf("completion query = %+v", runtime.queries)
 	}
 }

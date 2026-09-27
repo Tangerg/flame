@@ -1,0 +1,1691 @@
+package execution
+
+import (
+	"bytes"
+	"context"
+	"errors"
+	"iter"
+	"log/slog"
+	"slices"
+	"strconv"
+	"strings"
+	"sync"
+	"testing"
+	"testing/synctest"
+	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/scope/core/chat"
+	toolcontract "github.com/Tangerg/scope/core/tool"
+)
+
+func TestInteractionExecutorProjectsAuthoritativeModelToolLifecycleAndAccounting(t *testing.T) {
+	providerCallID := " provider\u200b" + strings.Repeat("界", 513) + "\n"
+	type echoInput struct {
+		Value string `json:"value"`
+	}
+	var toolCalls int
+	echo, err := toolcontract.NewFunc(toolcontract.FuncConfig{
+		Name: "echo", Description: "Return the supplied value.",
+	}, func(_ context.Context, input echoInput) (string, error) {
+		toolCalls++
+		return input.Value, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	model := &observationScriptModel{responses: []*chat.Response{
+		interactionToolResponse(chat.ToolCall{ID: providerCallID, Name: "echo", Arguments: `{"value":"hello"}`}, 7, 2),
+		interactionUsageTextResponse("done", 11, 3),
+	}}
+	hooks := &recordingInteractionHooks{}
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
+		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{echo}}},
+		ToolInterpreter: testInteractionToolInterpreter{}, ToolPresenter: testInteractionToolPresenter{},
+		ToolAuthorizer: allowInteractionTools{}, ToolHooks: hooks,
+		Pricing: fixedInteractionPricing(0.25),
+	})
+
+	events := runInteractionHarness(context.Background(), t, executor, interactionTestStart(), nil)
+	if toolCalls != 1 {
+		t.Fatalf("Tool calls = %d, want 1", toolCalls)
+	}
+	if got := len(payloadsOf[runs.ModelCallStarted](events)); got != 2 {
+		t.Fatalf("model starts = %d, want 2", got)
+	}
+	models := payloadsOf[runs.ModelCallCompleted](events)
+	if len(models) != 2 {
+		t.Fatalf("model completions = %#v", models)
+	}
+	if models[0].FirstOutputLatencyMillis != nil || models[1].FirstOutputLatencyMillis != nil {
+		t.Fatal("nonstreaming call invented first output latency")
+	}
+	if models[0].ReportedUsage == nil || models[1].ReportedUsage == nil ||
+		models[0].ReportedUsage.InputTokens != 7 || models[1].ReportedUsage.InputTokens != 11 ||
+		models[1].ReportedUsage.OutputTokens != 3 {
+		t.Fatalf("per-call usage was lost or replaced with cumulative usage: %#v", models)
+	}
+	modelCost, modelCostAvailable := models[1].Cost.USD()
+	if models[1].Steps != 2 || models[1].Tokens.InputTokens != 18 ||
+		models[1].Tokens.OutputTokens != 5 || !modelCostAvailable || modelCost != 0.5 {
+		t.Fatalf("model completions = %#v", models)
+	}
+	starts := payloadsOf[runs.ToolCallStarted](events)
+	finishes := payloadsOf[runs.ToolCallFinished](events)
+	modelResultText := ""
+	modelResultTextual := false
+	if len(finishes) == 1 && finishes[0].ModelResult != nil {
+		modelResultText, modelResultTextual = finishes[0].ModelResult.Output.Text()
+	}
+	if len(starts) != 1 || len(finishes) != 1 || starts[0].SourceCallID != providerCallID ||
+		starts[0].Activity != "Echoing value" || starts[0].SafetyClass != domaintool.SafetyClassSafe ||
+		finishes[0].Result == nil || finishes[0].ModelResult == nil ||
+		finishes[0].ModelResult.ID != providerCallID || finishes[0].ModelResult.Name != "echo" ||
+		!modelResultTextual || modelResultText != "hello" || finishes[0].Failure != nil {
+		t.Fatalf("Tool lifecycle = starts %#v; finishes %#v", starts, finishes)
+	}
+	if hooks.before != 1 || hooks.after != 1 {
+		t.Fatalf("hook calls = before %d after %d", hooks.before, hooks.after)
+	}
+	ended := payloadsOf[runs.SegmentEnded](events)
+	if len(ended) != 1 || ended[0].Usage() == nil {
+		t.Fatalf("segment accounting = %#v", ended)
+	}
+	segmentUsage := ended[0].Usage()
+	segmentCost, segmentCostAvailable := segmentUsage.Cost.USD()
+	if segmentUsage.Steps != 2 ||
+		segmentUsage.Tokens.InputTokens != 18 || !segmentCostAvailable || segmentCost != 0.5 {
+		t.Fatalf("segment accounting = %#v", ended)
+	}
+}
+
+func TestInteractionExecutorCalibratesNextModelContextFromProviderUsage(t *testing.T) {
+	type echoInput struct {
+		Value string `json:"value"`
+	}
+	echo, err := toolcontract.NewFunc(toolcontract.FuncConfig{
+		Name: "echo", Description: "Return the supplied value.",
+	}, func(_ context.Context, input echoInput) (string, error) {
+		return input.Value, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	compactor := &calibrationCaptureCompactor{estimatedTokens: 100}
+	model := &observationScriptModel{responses: []*chat.Response{
+		interactionToolResponse(chat.ToolCall{
+			ID: "provider_call", Name: "echo", Arguments: `{"value":"hello"}`,
+		}, 7, 2),
+		interactionUsageTextResponse("done", 11, 3),
+	}}
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
+		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{echo}}},
+		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
+		ModelContextCompactor: compactor, ModelContextState: emptyInteractionModelContextState{},
+	})
+
+	runInteractionHarness(context.Background(), t, executor, interactionTestStart(), nil)
+	if !slices.Equal(compactor.adjustments, []int{0, -93}) {
+		t.Fatalf("model context calibration adjustments = %v, want [0 -93]", compactor.adjustments)
+	}
+}
+
+func TestInteractionExecutorDoesNotInventCalibrationWhenProviderUsageIsMissing(t *testing.T) {
+	type echoInput struct {
+		Value string `json:"value"`
+	}
+	echo, err := toolcontract.NewFunc(toolcontract.FuncConfig{
+		Name: "echo", Description: "Return the supplied value.",
+	}, func(_ context.Context, input echoInput) (string, error) {
+		return input.Value, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	compactor := &calibrationCaptureCompactor{estimatedTokens: 100}
+	model := &observationScriptModel{responses: []*chat.Response{
+		interactionToolResponse(chat.ToolCall{
+			ID: "provider_call", Name: "echo", Arguments: `{"value":"hello"}`,
+		}, 0, 0),
+		interactionUsageTextResponse("done", 11, 3),
+	}}
+	model.responses[0].Metadata.Usage = nil
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
+		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{echo}}},
+		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
+		ModelContextCompactor: compactor, ModelContextState: emptyInteractionModelContextState{},
+	})
+
+	runInteractionHarness(context.Background(), t, executor, interactionTestStart(), nil)
+	if !slices.Equal(compactor.adjustments, []int{0, 0}) {
+		t.Fatalf("model context calibration adjustments = %v, want [0 0]", compactor.adjustments)
+	}
+}
+
+type countingObservationModel struct {
+	*observationScriptModel
+}
+
+func (*countingObservationModel) CountInputTokens(context.Context, *chat.Request) (int64, error) {
+	return 123, nil
+}
+
+func TestInteractionExecutorCarriesProviderInputCountingIntoEveryMainCallReduction(t *testing.T) {
+	compactor := &calibrationCaptureCompactor{estimatedTokens: 100}
+	model := &countingObservationModel{observationScriptModel: &observationScriptModel{
+		responses: []*chat.Response{interactionUsageTextResponse("done", 11, 3)},
+	}}
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
+		ModelContextCompactor: compactor,
+		ModelContextState:     emptyInteractionModelContextState{},
+	})
+
+	runInteractionHarness(context.Background(), t, executor, interactionTestStart(), nil)
+	if !slices.Equal(compactor.providerCounts, []int64{123}) {
+		t.Fatalf("provider input counts = %v, want [123]", compactor.providerCounts)
+	}
+}
+
+func TestInteractionExecutorPublishesModelContextCompactionSummary(t *testing.T) {
+	const summary = "MID-RUN SUMMARY"
+	var maintenanceInput RunMaintenanceInput
+	model := &observationScriptModel{
+		responses: []*chat.Response{interactionUsageTextResponse("done", 11, 3)},
+	}
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
+		ModelContextCompactor: summarizingObservationCompactor{summary: summary},
+		ModelContextState:     emptyInteractionModelContextState{},
+		Maintenance:           fixedRunMaintenance{input: &maintenanceInput},
+	})
+
+	events := runInteractionHarness(context.Background(), t, executor, interactionTestStart(), nil)
+	boundaries := payloadsOf[runs.CompactionBoundary](events)
+	if len(boundaries) != 1 || boundaries[0].Summary != summary {
+		t.Fatalf("compaction boundaries = %#v, want summary %q", boundaries, summary)
+	}
+	if !maintenanceInput.DurableContextCompacted {
+		t.Fatal("Run maintenance did not receive the durable compaction fact")
+	}
+}
+
+type summarizingObservationCompactor struct {
+	summary string
+}
+
+func (c summarizingObservationCompactor) CompactModelContext(
+	_ context.Context,
+	request ModelContextCompaction,
+) (ModelContextCompactionResult, error) {
+	return NewModelContextCompactionResult(
+		request.Candidate(),
+		true,
+		c.summary,
+		len(request.Candidate()),
+		100,
+	)
+}
+
+type fixedRunMaintenance struct {
+	result     RunMaintenanceResult
+	contextErr *error
+	input      *RunMaintenanceInput
+}
+
+func (m fixedRunMaintenance) Maintain(ctx context.Context, input RunMaintenanceInput) RunMaintenanceResult {
+	if m.contextErr != nil {
+		*m.contextErr = ctx.Err()
+	}
+	if m.input != nil {
+		*m.input = input
+	}
+	return m.result
+}
+
+type calibrationCaptureCompactor struct {
+	estimatedTokens int
+	adjustments     []int
+	providerCounts  []int64
+}
+
+func (c *calibrationCaptureCompactor) CompactModelContext(
+	ctx context.Context,
+	request ModelContextCompaction,
+) (ModelContextCompactionResult, error) {
+	c.adjustments = append(c.adjustments, request.TokenEstimateAdjustment())
+	if request.HasInputTokenCounter() {
+		count, err := request.CountInputTokens(ctx, request.Candidate())
+		if err != nil {
+			return ModelContextCompactionResult{}, err
+		}
+		c.providerCounts = append(c.providerCounts, count)
+	}
+	return NewModelContextCompactionResult(
+		request.Candidate(),
+		false,
+		"",
+		len(request.Candidate()),
+		c.estimatedTokens,
+	)
+}
+
+type emptyInteractionModelContextState struct{}
+
+func (emptyInteractionModelContextState) CurrentSessionState(
+	context.Context,
+	string,
+) ([]chat.Message, error) {
+	return nil, nil
+}
+
+func TestInteractionExecutorCancellationStopsCooperativeInflightTool(t *testing.T) {
+	toolStarted := make(chan struct{})
+	toolReturned := make(chan struct{})
+	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
+		Name: "block", Description: "Block until canceled.",
+	}, func(ctx context.Context, _ struct{}) (string, error) {
+		close(toolStarted)
+		<-ctx.Done()
+		close(toolReturned)
+		return "", ctx.Err()
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	model := &observationScriptModel{responses: []*chat.Response{
+		interactionToolResponse(chat.ToolCall{ID: "provider_call", Name: "block", Arguments: `{}`}, 1, 1),
+	}}
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
+		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolInterpreter: testInteractionToolInterpreter{},
+		ToolAuthorizer:  allowInteractionTools{},
+	})
+	ref, err := executor.StageRoot(t.Context(), interactionTestStart())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if releaseErr := executor.Release(context.Background(), ref); releaseErr != nil {
+			t.Errorf("Release: %v", releaseErr)
+		}
+	})
+	sequence, err := observeTestInteraction(t, executor, context.Background(), ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	eventsReady := make(chan []runs.ExecutorEvent, 1)
+	go func() {
+		var events []runs.ExecutorEvent
+		for event := range sequence {
+
+			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
+				commit.Complete(nil)
+				event.Payload = commit.Fact()
+			}
+			events = append(events, event)
+		}
+		eventsReady <- events
+	}()
+	if err := executor.BeginRoot(t.Context(), ref); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-toolStarted:
+	case <-time.After(waitBudget(time.Second)):
+		t.Fatal("Tool did not start")
+	}
+	if err := executor.RequestRootCancellation(t.Context(), ref, "operator canceled"); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-toolReturned:
+	case <-time.After(waitBudget(time.Second)):
+		t.Fatal("Tool context was not canceled")
+	}
+	var events []runs.ExecutorEvent
+	select {
+	case events = <-eventsReady:
+	case <-time.After(waitBudget(time.Second)):
+		t.Fatal("canceled Interaction did not reach a terminal boundary")
+	}
+	if unknown := unresolvedTerminals(events); len(unknown) != 0 {
+		t.Fatalf("canceled Tool became an unknown Effect: %#v", unknown)
+	}
+	if finished := payloadsOf[runs.ToolCallFinished](events); len(finished) != 0 {
+		t.Fatalf("cancellation without a definite outcome produced a Tool result: %#v", finished)
+	}
+
+	ended := payloadsOf[runs.SegmentEnded](events)
+	if len(ended) != 1 || ended[0].Reason != run.OutcomeCanceled {
+		for _, end := range ended {
+			t.Logf("terminal reason=%s failure=%+v", end.Reason, end.Failure())
+		}
+		t.Fatalf("segment end = %#v, want canceled", ended)
+	}
+}
+
+func TestInteractionExecutorCancellationStopsCooperativeInflightModel(t *testing.T) {
+	for _, streaming := range []bool{false, true} {
+		t.Run(strconv.FormatBool(streaming), func(t *testing.T) {
+			modelStarted := make(chan struct{})
+			modelReturned := make(chan struct{})
+			model := cancelableObservationModel{started: modelStarted, returned: modelReturned}
+			executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{StreamModelResponses: streaming})
+			ref, err := executor.StageRoot(t.Context(), interactionTestStart())
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() {
+				if releaseErr := executor.Release(context.Background(), ref); releaseErr != nil {
+					t.Errorf("Release: %v", releaseErr)
+				}
+			})
+			sequence, err := observeTestInteraction(t, executor, context.Background(), ref)
+			if err != nil {
+				t.Fatal(err)
+			}
+			eventsReady := make(chan []runs.ExecutorEvent, 1)
+			go func() {
+				var events []runs.ExecutorEvent
+				for event := range sequence {
+
+					if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
+						commit.Complete(nil)
+						event.Payload = commit.Fact()
+					}
+					events = append(events, event)
+				}
+				eventsReady <- events
+			}()
+			if err := executor.BeginRoot(t.Context(), ref); err != nil {
+				t.Fatal(err)
+			}
+			select {
+			case <-modelStarted:
+			case <-time.After(waitBudget(time.Second)):
+				t.Fatal("model did not start")
+			}
+			if err := executor.RequestRootCancellation(t.Context(), ref, "operator canceled"); err != nil {
+				t.Fatal(err)
+			}
+			select {
+			case <-modelReturned:
+			case <-time.After(waitBudget(time.Second)):
+				t.Fatal("model context was not canceled")
+			}
+			var events []runs.ExecutorEvent
+			select {
+			case events = <-eventsReady:
+			case <-time.After(waitBudget(time.Second)):
+				t.Fatal("canceled Interaction did not reach a terminal boundary")
+			}
+			if unknown := unresolvedTerminals(events); len(unknown) != 0 {
+				t.Fatalf("canceled model became an unknown Effect: %#v", unknown)
+			}
+			failed := payloadsOf[runs.ModelCallFailed](events)
+			if len(failed) != 1 {
+				t.Fatalf("model failures = %#v, want one definite failed invocation", failed)
+			}
+			if (failed[0].FirstOutputLatencyMillis != nil) != streaming {
+				t.Fatalf("canceled call latency = %v, streaming = %v", failed[0].FirstOutputLatencyMillis, streaming)
+			}
+			ended := payloadsOf[runs.SegmentEnded](events)
+			if len(ended) != 1 || ended[0].Reason != run.OutcomeCanceled {
+				t.Fatalf("segment end = %#v, want canceled", ended)
+			}
+		})
+	}
+}
+
+func TestInteractionExecutorCancellationWinsWhileModelStartCommitIsSettling(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		var modelCalls int
+		model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+			modelCalls++
+			return interactionUsageTextResponse("unexpected", 1, 1), nil
+		})
+		executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{})
+		ref, err := executor.StageRoot(t.Context(), interactionTestStart())
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			if releaseErr := executor.Release(context.Background(), ref); releaseErr != nil {
+				t.Errorf("Release: %v", releaseErr)
+			}
+		})
+		sequence, err := observeTestInteraction(t, executor, context.Background(), ref)
+		if err != nil {
+			t.Fatal(err)
+		}
+		startCommitSeen := make(chan struct{})
+		releaseCommit := make(chan struct{})
+		eventsReady := make(chan []runs.ExecutorEvent, 1)
+		go func() {
+			var events []runs.ExecutorEvent
+			for event := range sequence {
+
+				if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
+					if _, starting := commit.Fact().(runs.ModelCallStarted); starting {
+						close(startCommitSeen)
+						<-releaseCommit
+					}
+					commit.Complete(nil)
+					event.Payload = commit.Fact()
+				}
+				events = append(events, event)
+			}
+			eventsReady <- events
+		}()
+		if err := executor.BeginRoot(t.Context(), ref); err != nil {
+			t.Fatal(err)
+		}
+		<-startCommitSeen
+		if err := executor.RequestRootCancellation(t.Context(), ref, "operator canceled before model admission"); err != nil {
+			t.Fatal(err)
+		}
+		// Submission only queues the intent. Let Scope apply it while the start
+		// commit is still blocked before asserting that external admission is closed.
+		synctest.Wait()
+		close(releaseCommit)
+		var events []runs.ExecutorEvent
+		select {
+		case events = <-eventsReady:
+		case <-time.After(waitBudget(time.Second)):
+			t.Fatal("canceled pre-model boundary did not settle")
+		}
+		if modelCalls != 0 {
+			t.Fatalf("model calls = %d, want 0 before a settled start boundary", modelCalls)
+		}
+		ended := payloadsOf[runs.SegmentEnded](events)
+		if len(ended) != 1 || ended[0].Reason != run.OutcomeCanceled {
+			t.Fatalf("segment end = %#v, want canceled", ended)
+		}
+	})
+}
+
+func TestInteractionExecutorBindsResolvedRunScopeToManifestAndToolCalls(t *testing.T) {
+	start := interactionTestStart()
+	start.CWD = "/isolated/project"
+	start.WorkspaceCWD = "/workspace/project"
+	start.Isolated = true
+	start.GoalIncarnationID = "goal_lease"
+	want := rootExecutionScope(start)
+	var toolScope runs.ExecutionScope
+	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
+		Name: "scope", Description: "Return the current execution scope.",
+	}, func(ctx context.Context, _ struct{}) (string, error) {
+		toolScope, _ = executionctx.Scope(ctx)
+		return "ok", nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolver := &scopeRecordingInteractionTools{manifest: toolset.Manifest{
+		Visible: []toolcontract.Tool{executable},
+	}}
+	model := &observationScriptModel{responses: []*chat.Response{
+		interactionToolResponse(chat.ToolCall{ID: "scope_call", Name: "scope", Arguments: `{}`}, 1, 1),
+		interactionUsageTextResponse("done", 1, 1),
+	}}
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
+		ToolResolver: resolver, ToolInterpreter: testInteractionToolInterpreter{},
+		ToolAuthorizer: allowInteractionTools{},
+	})
+	runInteractionHarness(context.Background(), t, executor, start, nil)
+	if !resolver.ok || resolver.scope != want {
+		t.Fatalf("manifest scope = (%+v, %t), want %+v", resolver.scope, resolver.ok, want)
+	}
+	if toolScope != want {
+		t.Fatalf("Tool scope = %+v, want %+v", toolScope, want)
+	}
+}
+
+func TestInteractionExecutorChunkDropPreservesFinalAndUsage(t *testing.T) {
+	const chunks = 256
+	model := streamingObservationModel{chunks: chunks, streamed: make(chan struct{})}
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
+		StreamModelResponses: true,
+		DeltaBufferCapacity:  intPointer(1),
+	})
+	ref, err := executor.StageRoot(t.Context(), interactionTestStart())
+	if err != nil {
+		t.Fatal(err)
+	}
+	sequence, err := observeTestInteraction(t, executor, context.Background(), ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	eventsReady := make(chan []runs.ExecutorEvent, 1)
+	go func() {
+		var events []runs.ExecutorEvent
+		blocked := false
+		for event := range sequence {
+
+			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
+				commit.Complete(nil)
+				event.Payload = commit.Fact()
+			}
+			events = append(events, event)
+			if _, delta := event.Payload.(runs.MessageDelta); delta && !blocked {
+				blocked = true
+				<-model.streamed
+			}
+		}
+		eventsReady <- events
+	}()
+	if err := executor.BeginRoot(t.Context(), ref); err != nil {
+		t.Fatal(err)
+	}
+	events := <-eventsReady
+	if err := executor.Release(context.Background(), ref); err != nil {
+		t.Fatal(err)
+	}
+	deltas := payloadsOf[runs.MessageDelta](events)
+	if len(deltas) >= chunks {
+		t.Fatalf("streaming deltas = %d, want an observable bounded-buffer drop below %d", len(deltas), chunks)
+	}
+	completionSeen := false
+	for _, event := range events {
+		switch event.Payload.(type) {
+		case runs.ModelCallCompleted:
+			completionSeen = true
+		case runs.MessageDelta:
+			if completionSeen {
+				t.Fatal("accepted stream Delta arrived after authoritative model completion")
+			}
+		}
+	}
+	completed := payloadsOf[runs.ModelCallCompleted](events)
+	if len(completed) != 1 || completed[0].Message.Text() != strings.Repeat("x", chunks) ||
+		completed[0].FirstOutputLatencyMillis == nil || *completed[0].FirstOutputLatencyMillis < 0 ||
+		completed[0].Tokens.InputTokens != 5 || completed[0].Tokens.OutputTokens != 2 {
+		t.Fatalf("authoritative model completion = %#v", completed)
+	}
+	ended := payloadsOf[runs.SegmentEnded](events)
+	if len(ended) != 1 || ended[0].Usage() == nil || ended[0].Usage().Tokens.InputTokens != 5 ||
+		ended[0].Usage().Tokens.OutputTokens != 2 {
+		t.Fatalf("terminal usage = %#v", ended)
+	}
+}
+
+func TestInteractionExecutorStreamsProviderRefusalAsVisibleText(t *testing.T) {
+	executor := newObservedTestInteractionExecutor(t, refusalObservationModel{}, InteractionExecutorConfig{
+		StreamModelResponses: true,
+	})
+	events := runInteractionHarness(context.Background(), t, executor, interactionTestStart(), nil)
+
+	deltas := payloadsOf[runs.MessageDelta](events)
+	if len(deltas) != 1 || deltas[0].Text != "I cannot help with that request." {
+		t.Fatalf("refusal deltas = %#v", deltas)
+	}
+	completed := payloadsOf[runs.ModelCallCompleted](events)
+	if len(completed) != 1 || len(completed[0].Message.Parts) != 1 ||
+		completed[0].Message.Parts[0].Kind != chat.PartRefusal {
+		t.Fatalf("refusal completion = %#v", completed)
+	}
+}
+
+func TestInteractionExecutorCommitsDeferredAdvertisementThroughAgentFramework(t *testing.T) {
+	hidden, err := toolcontract.NewFunc(toolcontract.FuncConfig{
+		Name: "hidden_lookup", Description: "Read a hidden value.",
+	}, func(context.Context, struct{}) (string, error) { return "found", nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	search, err := toolset.NewDiscovery([]toolcontract.Tool{hidden})
+	if err != nil {
+		t.Fatal(err)
+	}
+	model := &manifestScriptModel{}
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
+		ToolResolver: staticInteractionTools{manifest: toolset.Manifest{
+			Visible: []toolcontract.Tool{search}, Deferred: []toolcontract.Tool{hidden},
+		}},
+		ToolInterpreter: testInteractionToolInterpreter{},
+		ToolAuthorizer:  allowInteractionTools{},
+	})
+	events := runInteractionHarness(context.Background(), t, executor, interactionTestStart(), nil)
+	if want := [][]string{{"search_tools"}, {"search_tools", "hidden_lookup"}, {"search_tools", "hidden_lookup"}}; !slices.EqualFunc(model.manifests, want, slices.Equal[[]string]) {
+		t.Fatalf("model manifests = %v, want %v", model.manifests, want)
+	}
+	starts := payloadsOf[runs.ToolCallStarted](events)
+	if len(starts) != 2 || starts[0].ToolName != "search_tools" || starts[1].ToolName != "hidden_lookup" {
+		t.Fatalf("Tool starts = %#v", starts)
+	}
+}
+
+func TestInteractionExecutorKeepsRefetchableProjectionAndPostHookObservational(t *testing.T) {
+	var diagnostics bytes.Buffer
+	previousLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&diagnostics, nil)))
+	t.Cleanup(func() { slog.SetDefault(previousLogger) })
+	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
+		Name: "observe", Description: "Return a value.",
+	}, func(context.Context, struct{}) (string, error) { return "value", nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	model := &observationScriptModel{responses: []*chat.Response{
+		interactionToolResponse(chat.ToolCall{ID: "observe_call", Name: "observe", Arguments: `{}`}, 1, 1),
+		interactionUsageTextResponse("done", 1, 1),
+	}}
+	hooks := &failingAfterInteractionHooks{}
+	interpreter := &failingOutcomeInteractionInterpreter{}
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
+		ToolResolver: staticInteractionTools{manifest: toolset.Manifest{
+			Visible: []toolcontract.Tool{executable},
+		}},
+		ToolInterpreter: interpreter,
+		ToolAuthorizer:  allowInteractionTools{},
+		ToolHooks:       hooks,
+	})
+	events := runInteractionHarness(context.Background(), t, executor, interactionTestStart(), nil)
+	if hooks.after != 1 {
+		t.Fatalf("post-Tool hooks = %d, want 1", hooks.after)
+	}
+	// The outcome projection is detached so a canceled Run still records it, and
+	// it is losable by its own contract. Losable and unbounded do not go
+	// together: an interpreter that never answers would hold the Tool call, and
+	// with it the model loop, forever.
+	bounded := interpreter.boundedProjections()
+	if len(bounded) == 0 || slices.Contains(bounded, false) {
+		t.Fatalf("outcome projection deadlines = %v, want every context bounded", bounded)
+	}
+	if len(unresolvedTerminals(events)) != 0 {
+		t.Fatalf("refetchable projection or observational hook made Effect unknown: %#v", events)
+	}
+	ended := payloadsOf[runs.SegmentEnded](events)
+	if len(ended) != 1 || ended[0].Reason != run.OutcomeCompleted {
+		t.Fatalf("terminal = %#v, want completed", ended)
+	}
+	for _, detail := range []string{"projection unavailable", "post-Tool hook unavailable", "session.id=session_1", "tool.name=observe"} {
+		if output := diagnostics.String(); !strings.Contains(output, detail) {
+			t.Fatalf("observational failure lost diagnostic %q: %s", detail, output)
+		}
+	}
+}
+
+func TestInteractionExecutorDoesNotCallProviderWhenModelStartCommitFails(t *testing.T) {
+	var calls int
+	model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+		calls++
+		return interactionTextResponse("unexpected"), nil
+	})
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{})
+	events := runInteractionHarnessWithCommit(t, executor, interactionTestStart(), func(fact runs.ExecutionFact) error {
+		if _, start := fact.(runs.ModelCallStarted); start {
+			return errors.New("model start store unavailable")
+		}
+		return nil
+	})
+	if calls != 0 {
+		t.Fatalf("provider calls = %d, want 0", calls)
+	}
+	if len(unresolvedTerminals(events)) != 0 {
+		t.Fatalf("pre-call failure became unknown: %#v", events)
+	}
+	assertInternalProjectionTerminal(t, events)
+}
+
+func TestInteractionExecutorDoesNotCallToolWhenToolStartCommitFails(t *testing.T) {
+	var toolCalls int
+	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
+		Name: "echo", Description: "Return a value.",
+	}, func(context.Context, struct{}) (string, error) {
+		toolCalls++
+		return "unexpected", nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	model := &observationScriptModel{responses: []*chat.Response{
+		interactionToolResponse(chat.ToolCall{ID: "provider_call", Name: "echo", Arguments: `{}`}, 1, 1),
+		interactionUsageTextResponse("recovered", 1, 1),
+	}}
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
+		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolInterpreter: testInteractionToolInterpreter{},
+		ToolAuthorizer:  allowInteractionTools{},
+	})
+	events := runInteractionHarnessWithCommit(t, executor, interactionTestStart(), func(fact runs.ExecutionFact) error {
+		if _, start := fact.(runs.ToolCallStarted); start {
+			return errors.New("tool start store unavailable")
+		}
+		return nil
+	})
+	if toolCalls != 0 {
+		t.Fatalf("Tool calls = %d, want 0", toolCalls)
+	}
+	assertUnrecordedToolCallTerminal(t, events)
+	model.mu.Lock()
+	remainingResponses := len(model.responses)
+	model.mu.Unlock()
+	if remainingResponses != 1 {
+		t.Fatalf("remaining model responses = %d, want no model turn after rejected Tool start", remainingResponses)
+	}
+}
+
+func TestInteractionExecutorStopsWhenPreparationFailureCannotCommit(t *testing.T) {
+	var toolCalls int
+	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
+		Name: "echo", Description: "Return a value.",
+	}, func(context.Context, struct{}) (string, error) {
+		toolCalls++
+		return "unexpected", nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	model := &observationScriptModel{responses: []*chat.Response{
+		interactionToolResponse(chat.ToolCall{ID: "provider_call", Name: "echo", Arguments: `{}`}, 1, 1),
+		interactionUsageTextResponse("must not run", 1, 1),
+	}}
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
+		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolInterpreter: testInteractionToolInterpreter{},
+		ToolAuthorizer:  allowInteractionTools{},
+		ToolHooks:       failingPreparationHooks{},
+	})
+	events := runInteractionHarnessWithCommit(t, executor, interactionTestStart(), func(fact runs.ExecutionFact) error {
+		if _, result := fact.(runs.ToolResultsCommitted); result {
+			return errors.New("tool result store unavailable")
+		}
+		return nil
+	})
+	if toolCalls != 0 {
+		t.Fatalf("Tool calls = %d, want 0", toolCalls)
+	}
+	model.mu.Lock()
+	remainingResponses := len(model.responses)
+	model.mu.Unlock()
+	if remainingResponses != 1 {
+		t.Fatalf("remaining model responses = %d, want no model turn after rejected preparation result", remainingResponses)
+	}
+	assertUnrecordedToolCallTerminal(t, events)
+}
+
+type failingPreparationHooks struct{}
+
+func (failingPreparationHooks) BeforeToolUse(context.Context, InteractionToolHookInput) (InteractionToolHookDecision, error) {
+	return InteractionToolHookDecision{}, errors.New("hook configuration unavailable")
+}
+
+func (failingPreparationHooks) AfterToolUse(context.Context, InteractionToolHookInput) error {
+	return nil
+}
+
+// An unrecorded external result remains unknown; stopping the process allows
+// its immutable terminal and evidence to commit together without replay.
+func assertUnrecordedToolCallTerminal(t *testing.T, events []runs.ExecutorEvent) {
+	t.Helper()
+	if unknown := unresolvedTerminals(events); len(unknown) != 1 {
+		t.Fatalf("unrecorded Tool call observations = %#v, want one unknown Effect", unknown)
+	}
+	if ended := payloadsOf[runs.SegmentEnded](events); len(ended) != 1 || ended[0].Reason != run.OutcomeLost {
+		t.Fatalf("unknown Tool Effect did not retain its lost terminal: %#v", ended)
+	}
+}
+
+func assertInternalProjectionTerminal(t *testing.T, events []runs.ExecutorEvent) {
+	t.Helper()
+	ended := payloadsOf[runs.SegmentEnded](events)
+	if len(ended) != 1 || ended[0].Reason != run.OutcomeFailed ||
+		ended[0].Failure() == nil || ended[0].Failure().Kind != run.FailureInternal {
+		t.Fatalf("projection terminal = %#v, want one internal failure", ended)
+	}
+}
+
+func TestInteractionExecutorReconcilesModelFinalCommitFailureAsUnknown(t *testing.T) {
+	var calls int
+	model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+		calls++
+		return interactionUsageTextResponse("answer", 2, 1), nil
+	})
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{})
+	events := runInteractionHarnessWithCommit(t, executor, interactionTestStart(), func(fact runs.ExecutionFact) error {
+		if _, complete := fact.(runs.ModelCallCompleted); complete {
+			return errors.New("model final store unavailable")
+		}
+		return nil
+	})
+	if calls != 1 {
+		t.Fatalf("provider calls = %d, want 1", calls)
+	}
+	unknown := unresolvedTerminals(events)
+	if len(unknown) != 1 {
+		t.Fatalf("unknown observations = %#v, want one Effect", unknown)
+	}
+	if ends := payloadsOf[runs.SegmentEnded](events); len(ends) != 1 || ends[0].Reason != run.OutcomeLost {
+		t.Fatalf("unknown Effect did not retain its lost terminal: %#v", events)
+	}
+}
+
+func TestInteractionExecutorPollingFindsUnknownWhenDirectWakeIsLost(t *testing.T) {
+	model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+		return interactionUsageTextResponse("answer", 2, 1), nil
+	})
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
+		UnknownEffectPollInterval: durationPointer(5 * time.Millisecond),
+	})
+	ref, err := executor.StageRoot(t.Context(), interactionTestStart())
+	if err != nil {
+		t.Fatal(err)
+	}
+	session, err := executor.session(ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A nil wake channel makes the direct notification intentionally lossy while
+	// leaving the periodic public-state reconciliation active.
+	session.lifetime.unknownWake = nil
+	sequence, err := observeTestInteraction(t, executor, context.Background(), ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	eventsReady := make(chan []runs.ExecutorEvent, 1)
+	go func() {
+		var events []runs.ExecutorEvent
+		for event := range sequence {
+
+			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
+				var commitErr error
+				if _, completion := commit.Fact().(runs.ModelCallCompleted); completion {
+					commitErr = errors.New("model final store unavailable")
+				}
+				commit.Complete(commitErr)
+				event.Payload = commit.Fact()
+			}
+			events = append(events, event)
+			if _, unknown := event.Payload.(runs.SegmentEnded); unknown {
+				break
+			}
+		}
+		eventsReady <- events
+	}()
+	if err := executor.BeginRoot(t.Context(), ref); err != nil {
+		t.Fatal(err)
+	}
+	var events []runs.ExecutorEvent
+	select {
+	case events = <-eventsReady:
+	case <-time.After(waitBudget(time.Second)):
+		t.Fatal("periodic reconciliation did not report unknown Effect")
+	}
+	if unknown := unresolvedTerminals(events); len(unknown) != 1 {
+		t.Fatalf("unknown observations = %#v, want polling fallback", unknown)
+	}
+	if err := executor.Release(context.Background(), ref); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestInteractionExecutorReconcilesToolResultCommitFailureAsUnknown(t *testing.T) {
+	var toolCalls int
+	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
+		Name: "echo", Description: "Return a value.",
+	}, func(context.Context, struct{}) (string, error) {
+		toolCalls++
+		return "done", nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	model := &observationScriptModel{responses: []*chat.Response{
+		interactionToolResponse(chat.ToolCall{ID: "provider_call", Name: "echo", Arguments: `{}`}, 1, 1),
+	}}
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
+		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolInterpreter: testInteractionToolInterpreter{},
+		ToolAuthorizer:  allowInteractionTools{},
+	})
+	events := runInteractionHarnessWithCommit(t, executor, interactionTestStart(), func(fact runs.ExecutionFact) error {
+		if _, complete := fact.(runs.ToolResultsCommitted); complete {
+			return errors.New("Tool result store unavailable")
+		}
+		return nil
+	})
+	if toolCalls != 1 {
+		t.Fatalf("Tool calls = %d, want 1", toolCalls)
+	}
+	if unknown := unresolvedTerminals(events); len(unknown) != 1 {
+		t.Fatalf("unknown observations = %#v, want one Effect", unknown)
+	}
+	if len(payloadsOf[runs.ToolCallFinished](events)) != 1 {
+		t.Fatalf("failed authoritative fact was not observed by the harness: %#v", events)
+	}
+}
+
+func TestInteractionExecutorPreservesConcurrentToolAttributionWhenCompletionIsOutOfOrder(t *testing.T) {
+	type input struct {
+		Value string `json:"value"`
+	}
+	allowFirst := make(chan struct{})
+	var mu sync.Mutex
+	calls := make(map[string]int)
+	inner, err := toolcontract.NewFunc(toolcontract.FuncConfig{
+		Name: "parallel_echo", Description: "Return the supplied value.",
+	}, func(_ context.Context, value input) (string, error) {
+		mu.Lock()
+		calls[value.Value]++
+		mu.Unlock()
+		if value.Value == "first" {
+			<-allowFirst
+		} else {
+			close(allowFirst)
+		}
+		return value.Value, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	executable := concurrentInteractionTool{Tool: inner}
+	model := &observationScriptModel{responses: []*chat.Response{
+		interactionToolBatchResponse([]chat.ToolCall{
+			{ID: "provider_first", Name: "parallel_echo", Arguments: `{"value":"first"}`},
+			{ID: "provider_second", Name: "parallel_echo", Arguments: `{"value":"second"}`},
+		}, 1, 1),
+		interactionUsageTextResponse("done", 1, 1),
+	}}
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
+		ToolResolver:           staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolInterpreter:        immutableToolInterpreter{},
+		ToolAuthorizer:         allowInteractionTools{},
+		MaxConcurrentToolCalls: intPointer(2),
+	})
+	events := runInteractionHarnessWithCommit(t, executor, interactionTestStart(), func(fact runs.ExecutionFact) error {
+		return nil
+	})
+	finishes := payloadsOf[runs.ToolCallFinished](events)
+	if len(finishes) != 2 || finishes[0].CallID == finishes[1].CallID {
+		t.Fatalf("tool completion attribution = %#v", finishes)
+	}
+	starts := payloadsOf[runs.ToolCallStarted](events)
+	byIndex := make(map[uint32]runs.ToolCallStarted, len(starts))
+	for _, started := range starts {
+		if started.ModelCallSequence != 1 {
+			t.Fatalf("Tool attribution = %#v", starts)
+		}
+		byIndex[started.ToolCallIndex] = started
+	}
+	if len(starts) != 2 || byIndex[0].SourceCallID != "provider_first" ||
+		byIndex[1].SourceCallID != "provider_second" {
+		t.Fatalf("Tool attribution = %#v", starts)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if calls["first"] != 1 || calls["second"] != 1 {
+		t.Fatalf("Tool calls = %#v", calls)
+	}
+}
+
+func TestInteractionExecutorKeepsPublicationUnknownWhenResultWriteFails(t *testing.T) {
+	type input struct {
+		Value string `json:"value"`
+	}
+	allowFirst := make(chan struct{})
+	allCallsStarted := make(chan struct{})
+	var calls int
+	var mu sync.Mutex
+	inner, err := toolcontract.NewFunc(toolcontract.FuncConfig{
+		Name: "parallel_write", Description: "Perform one independently safe write.",
+	}, func(_ context.Context, value input) (string, error) {
+		mu.Lock()
+		calls++
+		if calls == 2 {
+			close(allCallsStarted)
+		}
+		mu.Unlock()
+		// Both external calls complete before their publication fails.
+		<-allCallsStarted
+		if value.Value == "first" {
+			<-allowFirst
+		} else {
+			close(allowFirst)
+		}
+		return value.Value, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	model := &observationScriptModel{responses: []*chat.Response{
+		interactionToolBatchResponse([]chat.ToolCall{
+			{ID: "write_first", Name: "parallel_write", Arguments: `{"value":"first"}`},
+			{ID: "write_second", Name: "parallel_write", Arguments: `{"value":"second"}`},
+		}, 1, 1),
+	}}
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
+		ToolResolver: staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{
+			concurrentInteractionTool{Tool: inner},
+		}}},
+		ToolInterpreter:        immutableToolInterpreter{},
+		ToolAuthorizer:         allowInteractionTools{},
+		MaxConcurrentToolCalls: intPointer(2),
+	})
+	projectionFailure := errors.New("canonical concurrent Tool batch unavailable")
+	events := runInteractionHarnessWithCommit(t, executor, interactionTestStart(), func(fact runs.ExecutionFact) error {
+		if _, ok := fact.(runs.ToolResultsCommitted); ok {
+			return projectionFailure
+		}
+		return nil
+	})
+	mu.Lock()
+	gotCalls := calls
+	mu.Unlock()
+	if gotCalls != 2 {
+		t.Fatalf("external Tool calls = %d, want both exactly once", gotCalls)
+	}
+	unknown := unresolvedTerminals(events)
+	if len(unknown) != 1 {
+		t.Fatalf("unknown observations = %#v", unknown)
+	}
+	evidence := unknown[0].UnresolvedEffects()
+	if len(evidence) == 0 || len(evidence) > 2 || evidence[0].EffectID() == "" || !strings.Contains(evidence[0].Detail(), projectionFailure.Error()) {
+		t.Fatalf("publication lost diagnostic: %+v", evidence)
+	}
+	if ends := payloadsOf[runs.SegmentEnded](events); len(ends) != 1 || ends[0].Reason != run.OutcomeLost {
+		t.Fatalf("unknown publication did not retain its lost terminal: %#v", events)
+	}
+}
+
+func TestInteractionExecutorKeepsPublicationUnknownWhenDeniedSiblingProjectionFails(t *testing.T) {
+	deniedInner, err := toolcontract.NewFunc(toolcontract.FuncConfig{
+		Name: "denied_write", Description: "A write rejected by policy.",
+	}, func(context.Context, struct{}) (string, error) {
+		return "unexpected", nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var externalCalls int
+	externalInner, err := toolcontract.NewFunc(toolcontract.FuncConfig{
+		Name: "external_write", Description: "An external write before a policy denial.",
+	}, func(context.Context, struct{}) (string, error) {
+		externalCalls++
+		return "written", nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	model := &observationScriptModel{responses: []*chat.Response{
+		interactionToolBatchResponse([]chat.ToolCall{
+			{ID: "provider_external", Name: "external_write", Arguments: `{}`},
+			{ID: "provider_denied", Name: "denied_write", Arguments: `{}`},
+		}, 1, 1),
+	}}
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
+		ToolResolver: staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{
+			concurrentInteractionTool{Tool: deniedInner},
+			concurrentInteractionTool{Tool: externalInner},
+		}}},
+		ToolInterpreter: testInteractionToolInterpreter{},
+		ToolAuthorizer: selectiveDenyInteractionTools{
+			name: "denied_write", reason: "blocked by policy",
+		},
+		MaxConcurrentToolCalls: intPointer(2),
+	})
+	projectionFailure := errors.New("denial store unavailable")
+	ref, err := executor.StageRoot(t.Context(), interactionTestStart())
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if releaseErr := executor.Release(context.Background(), ref); releaseErr != nil {
+			t.Errorf("Release: %v", releaseErr)
+		}
+	})
+	sequence, err := observeTestInteraction(t, executor, context.Background(), ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	eventsReady := make(chan []runs.ExecutorEvent, 1)
+	go func() {
+		var events []runs.ExecutorEvent
+		for event := range sequence {
+
+			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
+				if _, toolFinished := commit.Fact().(runs.ToolResultsCommitted); toolFinished {
+					commit.Complete(projectionFailure)
+				} else {
+					commit.Complete(nil)
+				}
+
+				event.Payload = commit.Fact()
+			}
+			events = append(events, event)
+			if _, unknown := event.Payload.(runs.SegmentEnded); unknown {
+				break
+			}
+		}
+		eventsReady <- events
+	}()
+	if err := executor.BeginRoot(t.Context(), ref); err != nil {
+		t.Fatal(err)
+	}
+	var events []runs.ExecutorEvent
+	select {
+	case events = <-eventsReady:
+	case <-time.After(waitBudget(time.Second)):
+		t.Fatal("Tool batch remained blocked on the sibling's canonical result receipt")
+	}
+	if externalCalls != 1 {
+		t.Fatalf("external Tool calls = %d, want 1", externalCalls)
+	}
+	unknown := unresolvedTerminals(events)
+	if len(unknown) != 1 {
+		t.Fatalf("unknown observations = %#v", unknown)
+	}
+	evidence := unknown[0].UnresolvedEffects()
+	if len(evidence) == 0 || len(evidence) > 2 || evidence[0].EffectID() == "" || !strings.Contains(evidence[0].Detail(), projectionFailure.Error()) {
+		t.Fatalf("publication lost diagnostic: %+v", evidence)
+	}
+	if ended := payloadsOf[runs.SegmentEnded](events); len(ended) != 1 || ended[0].Reason != run.OutcomeLost {
+		t.Fatalf("external Effect did not retain its lost terminal: %#v", ended)
+	}
+}
+
+func TestInteractionExecutorCommitsAutomaticDenialWithoutCallingTool(t *testing.T) {
+	var toolCalls int
+	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
+		Name: "write", Description: "Write a value.",
+	}, func(context.Context, struct{}) (string, error) {
+		toolCalls++
+		return "unexpected", nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	model := &observationScriptModel{responses: []*chat.Response{
+		interactionToolResponse(chat.ToolCall{ID: "provider_call", Name: "write", Arguments: `{}`}, 1, 1),
+		interactionUsageTextResponse("done", 1, 1),
+	}}
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
+		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolInterpreter: testInteractionToolInterpreter{},
+		ToolAuthorizer:  denyingInteractionTools{reason: "blocked by automatic policy"},
+	})
+	events := runInteractionHarness(context.Background(), t, executor, interactionTestStart(), nil)
+	if toolCalls != 0 {
+		t.Fatalf("Tool calls = %d, want 0", toolCalls)
+	}
+	finished := payloadsOf[runs.ToolCallFinished](events)
+	if len(finished) != 1 || finished[0].Failure == nil ||
+		finished[0].Failure.Kind != domaintool.FailureDenied {
+		t.Fatalf("denied Tool completion = %#v", finished)
+	}
+}
+
+func TestInteractionExecutorTerminatesWhenAutomaticDenialCommitFails(t *testing.T) {
+	var toolCalls int
+	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
+		Name: "write", Description: "Write a value.",
+	}, func(context.Context, struct{}) (string, error) {
+		toolCalls++
+		return "unexpected", nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	model := &observationScriptModel{responses: []*chat.Response{
+		interactionToolResponse(chat.ToolCall{ID: "provider_call", Name: "write", Arguments: `{}`}, 1, 1),
+		interactionUsageTextResponse("must not run", 1, 1),
+	}}
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
+		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolInterpreter: testInteractionToolInterpreter{},
+		ToolAuthorizer:  denyingInteractionTools{reason: "blocked by automatic policy"},
+	})
+	events := runInteractionHarnessWithCommit(t, executor, interactionTestStart(), func(fact runs.ExecutionFact) error {
+		if _, denied := fact.(runs.ToolResultsCommitted); denied {
+			return errors.New("denial store unavailable")
+		}
+		return nil
+	})
+	if toolCalls != 0 {
+		t.Fatalf("Tool calls = %d, want 0", toolCalls)
+	}
+	model.mu.Lock()
+	remainingResponses := len(model.responses)
+	model.mu.Unlock()
+	if remainingResponses != 1 {
+		t.Fatalf("remaining model responses = %d, want no model turn after rejected denial", remainingResponses)
+	}
+	assertUnrecordedToolCallTerminal(t, events)
+}
+
+func TestInteractionExecutorAllowsRepeatedPolling(t *testing.T) {
+	var toolCalls int
+	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
+		Name: "lookup", Description: "Return an unchanged value.",
+	}, func(context.Context, struct{}) (string, error) {
+		toolCalls++
+		return "unchanged", nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	model := &pollingScriptModel{}
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
+		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolInterpreter: testInteractionToolInterpreter{},
+		ToolAuthorizer:  allowInteractionTools{},
+	})
+	events := runInteractionHarness(context.Background(), t, executor, interactionTestStart(), nil)
+	if toolCalls != 8 {
+		t.Fatalf("Tool calls = %d, want %d", toolCalls, 8)
+	}
+	finished := payloadsOf[runs.ToolCallFinished](events)
+	if len(finished) != 8 || finished[len(finished)-1].Failure != nil {
+		t.Fatalf("polling Tool completions = %#v", finished)
+	}
+}
+
+func TestInteractionExecutorPreservesToolResultOffload(t *testing.T) {
+	store := &fakeOffloader{}
+	body := strings.Repeat("large result ", 100)
+	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{
+		Name: "large", Description: "Return a large value.",
+	}, func(context.Context, struct{}) (string, error) { return body, nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	model := &observationScriptModel{responses: []*chat.Response{
+		interactionToolResponse(chat.ToolCall{ID: "provider_call", Name: "large", Arguments: `{}`}, 1, 1),
+		interactionUsageTextResponse("done", 1, 1),
+	}}
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
+		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolInterpreter: testInteractionToolInterpreter{},
+		ToolAuthorizer:  allowInteractionTools{},
+		ToolResultStore: store,
+		ToolResultOffload: ToolResultOffloadPolicyValues{
+			Threshold: intPointer(100), ReaderName: testToolResultReaderName,
+		},
+	})
+	events := runInteractionHarness(context.Background(), t, executor, interactionTestStart(), nil)
+	finished := payloadsOf[runs.ToolCallFinished](events)
+	if store.calls != 1 || len(finished) != 1 || finished[0].Offload == nil ||
+		finished[0].Offload.ID != store.lastStage.ID || store.lastStage.SessionID != interactionTestStart().SessionID {
+		t.Fatalf("offload calls=%d stage=%#v completions=%#v", store.calls, store.lastStage, finished)
+	}
+	if finished[0].Result == nil {
+		t.Fatal("offloaded Tool result has no inline preview")
+	}
+	preview, ok := finished[0].Result.String()
+	if !ok || !strings.Contains(preview, store.lastStage.ID.String()) || len(preview) >= len(store.lastStage.Body) {
+		t.Fatalf("offloaded preview = %q, body bytes = %d", preview, len(store.lastStage.Body))
+	}
+}
+
+type staticInteractionTools struct{ manifest toolset.Manifest }
+
+var _ InteractionToolResolver = (*toolset.Resolver)(nil)
+
+func (s staticInteractionTools) Manifest(context.Context, domaintool.Group) (toolset.Manifest, error) {
+	return s.manifest, nil
+}
+
+type scopeRecordingInteractionTools struct {
+	manifest toolset.Manifest
+	scope    runs.ExecutionScope
+	ok       bool
+}
+
+func (s *scopeRecordingInteractionTools) Manifest(ctx context.Context, _ domaintool.Group) (toolset.Manifest, error) {
+	s.scope, s.ok = executionctx.Scope(ctx)
+	return s.manifest, nil
+}
+
+type concurrentInteractionTool struct{ toolcontract.Tool }
+
+func (concurrentInteractionTool) ConcurrencyPolicy() func(toolcontract.Invocation) (string, bool) {
+	return func(toolcontract.Invocation) (string, bool) { return "", true }
+}
+
+type allowInteractionTools struct{}
+
+func (allowInteractionTools) AuthorizeTool(context.Context, ToolAuthorizationRequest) (ToolAuthorizationDecision, error) {
+	return AllowTool(), nil
+}
+
+func (allowInteractionTools) ResolveToolApproval(context.Context, ToolAuthorizationRequest, runs.ApprovalPrompt, interrupt.Resolution) (ToolAuthorizationDecision, error) {
+	return AllowTool(), nil
+}
+
+type denyingInteractionTools struct{ reason string }
+
+func (d denyingInteractionTools) AuthorizeTool(context.Context, ToolAuthorizationRequest) (ToolAuthorizationDecision, error) {
+	return DenyTool(d.reason), nil
+}
+
+func (d denyingInteractionTools) ResolveToolApproval(context.Context, ToolAuthorizationRequest, runs.ApprovalPrompt, interrupt.Resolution) (ToolAuthorizationDecision, error) {
+	return DenyTool(d.reason), nil
+}
+
+type selectiveDenyInteractionTools struct {
+	name   string
+	reason string
+}
+
+func (s selectiveDenyInteractionTools) AuthorizeTool(
+	_ context.Context,
+	request ToolAuthorizationRequest,
+) (ToolAuthorizationDecision, error) {
+	if request.ToolName != s.name {
+		return AllowTool(), nil
+	}
+	return DenyTool(s.reason), nil
+}
+
+func (s selectiveDenyInteractionTools) ResolveToolApproval(
+	ctx context.Context,
+	request ToolAuthorizationRequest,
+	_ runs.ApprovalPrompt,
+	_ interrupt.Resolution,
+) (ToolAuthorizationDecision, error) {
+	return s.AuthorizeTool(ctx, request)
+}
+
+type testInteractionToolInterpreter struct{}
+
+func (testInteractionToolInterpreter) SafetyClass(string) domaintool.SafetyClass {
+	return domaintool.SafetyClassSafe
+}
+
+func (testInteractionToolInterpreter) UsesStandardPolicy(string) bool { return true }
+
+func (testInteractionToolInterpreter) ApprovalSubject(string, domaintool.Arguments) (string, error) {
+	return "", nil
+}
+
+func (testInteractionToolInterpreter) ShellCommand(string, string) string { return "" }
+
+func (testInteractionToolInterpreter) ProjectOutcome(context.Context, string, string, bool) (runs.ExecutionFact, error) {
+	return nil, nil
+}
+
+type failingOutcomeInteractionInterpreter struct {
+	testInteractionToolInterpreter
+	mu       sync.Mutex
+	deadline []bool
+}
+
+func (f *failingOutcomeInteractionInterpreter) ProjectOutcome(ctx context.Context, _, _ string, _ bool) (runs.ExecutionFact, error) {
+	_, bounded := ctx.Deadline()
+	f.mu.Lock()
+	f.deadline = append(f.deadline, bounded)
+	f.mu.Unlock()
+	return nil, errors.New("projection unavailable")
+}
+
+func (f *failingOutcomeInteractionInterpreter) boundedProjections() []bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.deadline)
+}
+
+type testInteractionToolPresenter struct{}
+
+func (testInteractionToolPresenter) Activity(string, domaintool.Arguments) string {
+	return "Echoing value"
+}
+
+func (testInteractionToolPresenter) Present(_ string, _ domaintool.Arguments, result domaintool.Result) (domaintool.Result, string) {
+	return result, "presented"
+}
+
+type recordingInteractionHooks struct {
+	before int
+	after  int
+}
+
+type failingAfterInteractionHooks struct{ after int }
+
+func (*failingAfterInteractionHooks) BeforeToolUse(context.Context, InteractionToolHookInput) (InteractionToolHookDecision, error) {
+	return InteractionToolHookDecision{}, nil
+}
+
+func (f *failingAfterInteractionHooks) AfterToolUse(context.Context, InteractionToolHookInput) error {
+	f.after++
+	return errors.New("post-Tool hook unavailable")
+}
+
+func (r *recordingInteractionHooks) BeforeToolUse(context.Context, InteractionToolHookInput) (InteractionToolHookDecision, error) {
+	r.before++
+	return InteractionToolHookDecision{}, nil
+}
+
+func (r *recordingInteractionHooks) AfterToolUse(context.Context, InteractionToolHookInput) error {
+	r.after++
+	return nil
+}
+
+type observationScriptModel struct {
+	mu        sync.Mutex
+	responses []*chat.Response
+}
+
+type streamingObservationModel struct {
+	chunks   int
+	streamed chan struct{}
+}
+
+type refusalObservationModel struct{}
+
+func (refusalObservationModel) Call(context.Context, *chat.Request) (*chat.Response, error) {
+	return nil, errors.New("unexpected synchronous model call")
+}
+
+func (refusalObservationModel) Stream(context.Context, *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
+	return func(yield func(*chat.ResponseDelta, error) bool) {
+		yield(&chat.ResponseDelta{
+			Parts:        []chat.PartDelta{chat.NewRefusalDelta("I cannot help with that request.")},
+			FinishReason: chat.FinishReasonRefusal,
+		}, nil)
+	}
+}
+
+func (streamingObservationModel) Call(context.Context, *chat.Request) (*chat.Response, error) {
+	return nil, errors.New("unexpected synchronous model call")
+}
+
+func (s streamingObservationModel) Stream(context.Context, *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
+	return func(yield func(*chat.ResponseDelta, error) bool) {
+		defer close(s.streamed)
+		for index := range s.chunks {
+			delta := &chat.ResponseDelta{Parts: []chat.PartDelta{chat.NewTextDelta("x")}}
+			if index == s.chunks-1 {
+				delta.Metadata = &chat.ResponseMetadata{
+					Model: "test-model", Usage: &chat.Usage{InputTokens: 5, OutputTokens: 2},
+				}
+				delta.FinishReason = chat.FinishReasonStop
+			}
+			if !yield(delta, nil) {
+				return
+			}
+		}
+	}
+}
+
+func (o *observationScriptModel) Call(context.Context, *chat.Request) (*chat.Response, error) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if len(o.responses) == 0 {
+		return nil, errors.New("unexpected model call")
+	}
+	response := o.responses[0]
+	o.responses = o.responses[1:]
+	return response.Clone(), nil
+}
+
+type manifestScriptModel struct {
+	mu        sync.Mutex
+	call      int
+	manifests [][]string
+}
+
+type pollingScriptModel struct {
+	mu   sync.Mutex
+	call int
+}
+
+func (d *pollingScriptModel) Call(context.Context, *chat.Request) (*chat.Response, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.call++
+	if d.call <= 8 {
+		return interactionToolResponse(chat.ToolCall{
+			ID: "lookup_" + strconv.Itoa(d.call), Name: "lookup", Arguments: `{}`,
+		}, 1, 1), nil
+	}
+	return interactionUsageTextResponse("polling complete", 1, 1), nil
+}
+
+func (m *manifestScriptModel) Call(_ context.Context, request *chat.Request) (*chat.Response, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	names := make([]string, len(request.Tools))
+	for index, definition := range request.Tools {
+		names[index] = definition.Name
+	}
+	m.manifests = append(m.manifests, names)
+	m.call++
+	switch m.call {
+	case 1:
+		return interactionToolResponse(chat.ToolCall{
+			ID: "discover", Name: "search_tools", Arguments: `{"query":"select:hidden_lookup"}`,
+		}, 1, 1), nil
+	case 2:
+		return interactionToolResponse(chat.ToolCall{
+			ID: "lookup", Name: "hidden_lookup", Arguments: `{}`,
+		}, 1, 1), nil
+	default:
+		return interactionUsageTextResponse("done", 1, 1), nil
+	}
+}
+
+func newObservedTestInteractionExecutor(
+	t *testing.T,
+	model chat.Model,
+	extra InteractionExecutorConfig,
+) *InteractionExecutor {
+	t.Helper()
+	var counter modeladapter.InputTokenCounter
+	if modelCounter, ok := model.(modeladapter.InputTokenCounter); ok {
+		counter = modelCounter
+	}
+	extra.ChatResolver = interactionChatResolver(model, counter)
+	extra.Lifetime = t.Context()
+	extra.ImplementationIdentity = "interaction-observation-test-build"
+	extra.ConfigurationIdentity = "interaction-observation-test-config"
+	extra.BuildID = interactionTestBuildID
+	extra.UnknownEffectPollInterval = durationPointer(5 * time.Millisecond)
+	executor, err := newTestConfiguredInteractionExecutor(t, extra)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return executor
+}
+
+func runInteractionHarnessWithCommit(
+	t *testing.T,
+	executor *InteractionExecutor,
+	start runs.RootExecutionStart,
+	commitFact func(runs.ExecutionFact) error,
+) []runs.ExecutorEvent {
+	t.Helper()
+	ref, err := executor.StageRoot(t.Context(), start)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sequence, err := observeTestInteraction(t, executor, context.Background(), ref)
+	if err != nil {
+		t.Fatal(err)
+	}
+	eventsReady := make(chan []runs.ExecutorEvent, 1)
+	go func() {
+		var events []runs.ExecutorEvent
+		for event := range sequence {
+
+			if commit, authoritative := event.Payload.(runs.ExecutionFactCommit); authoritative {
+				commit.Complete(commitFact(commit.Fact()))
+				event.Payload = commit.Fact()
+			}
+			events = append(events, event)
+			if _, unknown := event.Payload.(runs.SegmentEnded); unknown {
+				break
+			}
+		}
+		eventsReady <- events
+	}()
+	if err := executor.BeginRoot(t.Context(), ref); err != nil {
+		t.Fatal(err)
+	}
+	events := <-eventsReady
+	if err := executor.Release(context.Background(), ref); err != nil {
+		t.Fatal(err)
+	}
+	return events
+}
+
+func interactionToolResponse(call chat.ToolCall, inputTokens, outputTokens int64) *chat.Response {
+	message := chat.NewAssistantMessage(chat.NewToolCallPart(call))
+	return &chat.Response{
+		Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls},
+		Metadata: &chat.ResponseMetadata{
+			Model: "test-model", Usage: &chat.Usage{InputTokens: inputTokens, OutputTokens: outputTokens},
+		},
+	}
+}
+
+func interactionToolBatchResponse(calls []chat.ToolCall, inputTokens, outputTokens int64) *chat.Response {
+	parts := make([]chat.Part, len(calls))
+	for index, call := range calls {
+		parts[index] = chat.NewToolCallPart(call)
+	}
+	message := chat.NewAssistantMessage(parts...)
+	return &chat.Response{
+		Output: &chat.Output{Message: &message, FinishReason: chat.FinishReasonToolCalls},
+		Metadata: &chat.ResponseMetadata{
+			Model: "test-model", Usage: &chat.Usage{InputTokens: inputTokens, OutputTokens: outputTokens},
+		},
+	}
+}
+
+func interactionUsageTextResponse(text string, inputTokens, outputTokens int64) *chat.Response {
+	response := interactionTextResponse(text)
+	response.Metadata = &chat.ResponseMetadata{
+		Model: "test-model", Usage: &chat.Usage{InputTokens: inputTokens, OutputTokens: outputTokens},
+	}
+	return response
+}
+
+// Both projections block at the provider boundary until the Run cancels them.
+type cancelableObservationModel struct {
+	started  chan struct{}
+	returned chan struct{}
+}
+
+func (m cancelableObservationModel) Call(ctx context.Context, _ *chat.Request) (*chat.Response, error) {
+	close(m.started)
+	<-ctx.Done()
+	close(m.returned)
+	return nil, ctx.Err()
+}
+
+func (m cancelableObservationModel) Stream(ctx context.Context, _ *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
+	return func(yield func(*chat.ResponseDelta, error) bool) {
+		defer close(m.returned)
+		if !yield(&chat.ResponseDelta{Parts: []chat.PartDelta{chat.NewTextDelta("partial")}}, nil) {
+			return
+		}
+		close(m.started)
+		<-ctx.Done()
+		yield(nil, ctx.Err())
+	}
+}

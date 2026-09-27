@@ -1,4 +1,3 @@
-import { getContainer } from "@/main/container";
 import {
   asSessionId,
   createMutationSettler,
@@ -109,11 +108,10 @@ export interface GoalRuntimeAdapterInstallation {
 }
 
 export function installGoalRuntimeAdapter(
+  runtimeClient: () => FlameClient,
   hasRuntimeGeneration: boolean,
 ): GoalRuntimeAdapterInstallation {
-  let gateway = hasRuntimeGeneration
-    ? new RuntimeGoalCommandsGateway(getContainer().client())
-    : null;
+  let gateway = hasRuntimeGeneration ? new RuntimeGoalCommandsGateway(runtimeClient()) : null;
   const commandOwner = GoalCommandOwner.install(gateway, (sessionId) =>
     synchronizeMountedAgentSession(sessionId, "replace-live"),
   );
@@ -125,13 +123,13 @@ export function installGoalRuntimeAdapter(
   );
   return {
     replaceRuntimeGeneration() {
-      const successor = new RuntimeGoalCommandsGateway(getContainer().client());
-      if (!commandOwner.replaceRuntimeGeneration(successor)) {
-        successor.dispose();
-        return;
-      }
       const predecessor = gateway;
-      gateway = successor;
+      if (
+        !commandOwner.replaceRuntimeGeneration(
+          () => (gateway = new RuntimeGoalCommandsGateway(runtimeClient())),
+        )
+      )
+        return;
       predecessor?.dispose();
     },
     retireRuntimeGeneration() {

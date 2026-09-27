@@ -30,6 +30,8 @@ knows where to look and a writer knows where to add.
 | [`REFACTORING.md`](REFACTORING.md) | How to make a structural change and prove it |
 | [`DEVELOPMENT.md`](DEVELOPMENT.md) | Active scope, workflow, and verification commands |
 | [`runtime/doc/ARCHITECTURE.md`](runtime/doc/ARCHITECTURE.md) | Current Runtime boundaries |
+| [`cli/ARCHITECTURE.md`](cli/ARCHITECTURE.md) | CLI authoring, Workbench, delivery, and binding boundaries |
+| [`desktop/frontend/ARCHITECTURE.md`](desktop/frontend/ARCHITECTURE.md) | Graphical feature owners, plugin composition, and connection lifetimes |
 | [`docs/`](docs/) | Comparisons against reference runtimes, and the Scope adoption record |
 
 ## Development

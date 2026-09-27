@@ -4,19 +4,18 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/grid"
 	"github.com/Tangerg/oolong/core/input"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 func TestSessionCenterRejectsActionsAfterItsControllerCloses(t *testing.T) {
 	favorites := 0
-	center := newSessionCenterPane(kit.Dark(), kit.Unicode(), func(agent.Session) {})
-	center.toggleFavorite = func(agent.Session) { favorites++ }
-	if err := center.SetPage(agent.SessionPage{Items: []agent.Session{{ID: "ses_1", Title: "One"}}}, false); err != nil {
+	center := newSessionCenterPane(kit.Dark(), kit.Unicode(), func(conversation.Session) {})
+	center.toggleFavorite = func(conversation.Session) { favorites++ }
+	if err := center.SetPage(conversation.SessionPage{Items: []conversation.Session{{ID: "ses_1", Title: "One"}}}, false); err != nil {
 		t.Fatal(err)
 	}
 	center.Focus(true)
@@ -46,14 +45,14 @@ func TestSessionCenterRejectsActionsAfterItsControllerCloses(t *testing.T) {
 
 func TestSessionCenterRejectsCursorCyclesAcrossUserLoadedPages(t *testing.T) {
 	t.Parallel()
-	center := newSessionCenterPane(kit.Theme{}, kit.Glyphs{}, func(agent.Session) {})
+	center := newSessionCenterPane(kit.Theme{}, kit.Glyphs{}, func(conversation.Session) {})
 	center.Reset()
-	for _, page := range []agent.SessionPage{{NextCursor: "first"}, {NextCursor: "second"}} {
+	for _, page := range []conversation.SessionPage{{NextCursor: "first"}, {NextCursor: "second"}} {
 		if err := center.SetPage(page, center.Cursor() != ""); err != nil {
 			t.Fatalf("SetPage(%q): %v", page.NextCursor, err)
 		}
 	}
-	err := center.SetPage(agent.SessionPage{NextCursor: "first"}, true)
+	err := center.SetPage(conversation.SessionPage{NextCursor: "first"}, true)
 	if err == nil || !strings.Contains(err.Error(), "cyclic continuation cursor") {
 		t.Fatalf("SetPage cycle error = %v", err)
 	}
@@ -61,10 +60,10 @@ func TestSessionCenterRejectsCursorCyclesAcrossUserLoadedPages(t *testing.T) {
 
 func TestSessionCenterCommandInterruptsAPendingPickerClick(t *testing.T) {
 	opened, loaded := 0, 0
-	center := newSessionCenterPane(kit.Dark(), kit.Unicode(), func(agent.Session) { opened++ })
+	center := newSessionCenterPane(kit.Dark(), kit.Unicode(), func(conversation.Session) { opened++ })
 	center.loadMore = func() { loaded++ }
-	if err := center.SetPage(agent.SessionPage{
-		Items:      []agent.Session{{ID: "one"}, {ID: "two"}},
+	if err := center.SetPage(conversation.SessionPage{
+		Items:      []conversation.Session{{ID: "one"}, {ID: "two"}},
 		NextCursor: "next",
 	}, false); err != nil {
 		t.Fatal(err)

@@ -1,6 +1,6 @@
 # Flame refactoring guide
 
-This guide applies [`DESIGN_PHILOSOPHY.md`](DESIGN_PHILOSOPHY.md) to structural changes in Runtime and CLI. Execution details live in [`DEVELOPMENT.md`](DEVELOPMENT.md).
+This guide applies [`DESIGN_PHILOSOPHY.md`](DESIGN_PHILOSOPHY.md) to structural changes in Runtime and its clients. Execution details live in [`DEVELOPMENT.md`](DEVELOPMENT.md).
 
 ## Establish the boundary
 
@@ -48,6 +48,7 @@ Prefer responsibility-named files inside a cohesive package. Use a context names
 - Protocol changes require generation, validation, and binding parity.
 - CLI changes require fresh-root command tests, captured streams, and a real Runtime lifecycle where the boundary changed.
 - Terminal changes require deterministic state/render snapshots at representative dimensions; use a PTY only for terminal behavior.
+- Graphical client changes require the frontend check pipeline, plugin disposal, connection replacement, and surviving feature-consumer tests. Native host behavior requires verification on its supported platform.
 - Lifecycle changes require deterministic cancellation and shutdown tests.
 - Goal, Plan, steer, compaction, long-context, long-execution, restart, and recovery changes require focused end-to-end lifecycle coverage.
 - Structural changes require surviving consumer tests and dependency-direction checks.

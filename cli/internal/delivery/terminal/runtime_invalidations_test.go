@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/workbenchstate"
 	"slices"
 	"strings"
 	"sync"
@@ -12,15 +11,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/application/changefeed"
+	"github.com/Tangerg/flame/cli/internal/application/integration/models"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/cli/internal/domain/workspace"
+	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/programtest"
-
-	"github.com/Tangerg/flame/cli/internal/application/changefeed"
-	"github.com/Tangerg/flame/cli/internal/application/integration/models"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/workspace"
-	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 )
 
 type runtimeChangeSourceStub struct {
@@ -47,7 +45,7 @@ func installChangedSessionProjection(
 	title string,
 ) {
 	t.Helper()
-	if _, err := runtime.RollbackSession(t.Context(), agent.RollbackSession{
+	if _, err := runtime.RollbackSession(t.Context(), conversation.RollbackSession{
 		SessionID: sessionID, Scope: protocol.RestoreHistory,
 	}); err != nil {
 		t.Fatal(err)
@@ -56,7 +54,7 @@ func installChangedSessionProjection(
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := runtime.UpdateSession(t.Context(), agent.UpdateSession{
+	if _, err := runtime.UpdateSession(t.Context(), conversation.UpdateSession{
 		SessionID: sessionID, Title: &title, ExpectedRevision: snapshot.Session.Revision,
 	}); err != nil {
 		t.Fatal(err)
@@ -87,7 +85,7 @@ type blockingApprovalModeRuntime struct {
 
 type blockingSessionDeleteRuntime struct {
 	Runtime
-	started  chan agent.DeleteSession
+	started  chan conversation.DeleteSession
 	release  chan struct{}
 	canceled chan struct{}
 }
@@ -102,8 +100,8 @@ type blockingSessionCatalogRuntime struct {
 
 func (b *blockingSessionCatalogRuntime) ListSessions(
 	ctx context.Context,
-	query agent.SessionQuery,
-) (agent.SessionPage, error) {
+	query conversation.SessionQuery,
+) (conversation.SessionPage, error) {
 	if b.calls.Add(1) != 2 {
 		return b.Runtime.ListSessions(ctx, query)
 	}
@@ -113,13 +111,13 @@ func (b *blockingSessionCatalogRuntime) ListSessions(
 		return b.Runtime.ListSessions(ctx, query)
 	case <-ctx.Done():
 		close(b.refreshCanceled)
-		return agent.SessionPage{}, context.Cause(ctx)
+		return conversation.SessionPage{}, context.Cause(ctx)
 	}
 }
 
 func (b *blockingSessionDeleteRuntime) DeleteSession(
 	ctx context.Context,
-	request agent.DeleteSession,
+	request conversation.DeleteSession,
 ) error {
 	select {
 	case b.started <- request:
@@ -198,7 +196,7 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 		catalog := &mutableRuntimeCatalog{Runtime: runtimefixture.New()}
 		catalog.setModels(protocol.Model{ID: "old", Provider: "mock", DisplayName: "Old model"})
 		source := runtimeResourceChangeSource(protocol.TopicModelsChanged)
-		host, stop := runUIWithRuntimeServices(t, Config{Runtime: catalog, Changes: source})
+		host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: catalog, Changes: source})
 		host.Shows(t, "Ask flame")
 		assertSingleRuntimeTopic(t, source.subscription, protocol.TopicModelsChanged)
 		host.Type("/model")
@@ -217,7 +215,7 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 		catalog := &mutableRuntimeCatalog{Runtime: runtimefixture.New()}
 		catalog.setModels(protocol.Model{ID: "old", Provider: "mock", DisplayName: "Old catalog model"})
 		source := runtimeResourceChangeSource(protocol.TopicModelsChanged)
-		host, stop := runUIWithRuntimeServices(t, Config{Runtime: catalog, Changes: source})
+		host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: catalog, Changes: source})
 		host.Shows(t, "Ask flame")
 		assertSingleRuntimeTopic(t, source.subscription, protocol.TopicModelsChanged)
 		host.Type("/models")
@@ -235,7 +233,7 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 	t.Run("model roles", func(t *testing.T) {
 		service := newModelConfigServiceStub()
 		source := runtimeResourceChangeSource(protocol.TopicModelsChanged)
-		host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), ModelConfig: service, Changes: source})
+		host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), ModelConfig: service, Changes: source})
 		host.Shows(t, "Ask flame")
 		assertSingleRuntimeTopic(t, source.subscription, protocol.TopicModelsChanged)
 		host.Type("/roles")
@@ -260,7 +258,7 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 	t.Run("providers", func(t *testing.T) {
 		service := newModelConfigServiceStub()
 		source := runtimeResourceChangeSource(protocol.TopicModelsChanged)
-		host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), ModelConfig: service, Changes: source})
+		host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), ModelConfig: service, Changes: source})
 		host.Shows(t, "Ask flame")
 		assertSingleRuntimeTopic(t, source.subscription, protocol.TopicModelsChanged)
 		host.Type("/providers")
@@ -282,7 +280,7 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 	t.Run("approval rules", func(t *testing.T) {
 		catalog := &mutableRuntimeCatalog{Runtime: runtimefixture.New()}
 		source := runtimeResourceChangeSource(protocol.TopicApprovalsChanged)
-		host, stop := runUIWithRuntimeServices(t, Config{Runtime: catalog, Changes: source})
+		host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: catalog, Changes: source})
 		host.Shows(t, "Ask flame")
 		assertSingleRuntimeTopic(t, source.subscription, protocol.TopicApprovalsChanged)
 		host.Type("/rules")
@@ -303,7 +301,7 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 	t.Run("agent memory", func(t *testing.T) {
 		memory := newAgentMemoryServiceStub()
 		source := runtimeResourceChangeSource(protocol.TopicAgentMemoryChanged)
-		host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), AgentMemory: memory, Changes: source, Workspace: "/workspace"})
+		host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), AgentMemory: memory, Changes: source, Workspace: "/workspace"})
 		host.Shows(t, "Ask flame")
 		assertSingleRuntimeTopic(t, source.subscription, protocol.TopicAgentMemoryChanged)
 		host.Type("/memory project")
@@ -328,7 +326,7 @@ func TestApprovalRuleDeletionResolvesAUniquePrefixAndSurvivesResize(t *testing.T
 		ID: "rule_external_123", Scope: protocol.ApprovalRuleScopeGlobal, Tool: "shell",
 		Subject: "go test ./...", Decision: protocol.ApprovalRuleDecisionAllow,
 	})
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: catalog})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: catalog})
 	host.Shows(t, "Ask flame")
 	host.Type("/rules")
 	host.Press(input.Enter)
@@ -359,7 +357,7 @@ func TestApprovalRuleDeletionDoesNotReportSuccessWhenRuleRemains(t *testing.T) {
 		ID: "rule_external_123", Scope: protocol.ApprovalRuleScopeGlobal, Tool: "shell",
 		Subject: "go test ./...", Decision: protocol.ApprovalRuleDecisionAllow,
 	})
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: catalog})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: catalog})
 	host.Shows(t, "Ask flame")
 	host.Type("/rule-delete rule_external_123")
 	host.Press(input.Enter)
@@ -398,7 +396,7 @@ func TestApprovalModeMutationOutlivesSameSessionProjectionReplacement(t *testing
 		t.Fatalf("approval mode mutation = %q, want safe", mode)
 	}
 
-	if _, err := base.RollbackSession(t.Context(), agent.RollbackSession{
+	if _, err := base.RollbackSession(t.Context(), conversation.RollbackSession{
 		SessionID: "ses_demo_1", Scope: protocol.RestoreHistory,
 	}); err != nil {
 		t.Fatal(err)
@@ -408,7 +406,7 @@ func TestApprovalModeMutationOutlivesSameSessionProjectionReplacement(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, updateSessionErr := base.UpdateSession(t.Context(), agent.UpdateSession{
+	if _, updateSessionErr := base.UpdateSession(t.Context(), conversation.UpdateSession{
 		SessionID: snapshot.Session.ID, Title: &title, ExpectedRevision: snapshot.Session.Revision,
 	}); updateSessionErr != nil {
 		t.Fatal(updateSessionErr)
@@ -477,14 +475,14 @@ func TestSessionCenterMutationOutlivesCurrentSessionProjectionReplacement(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	target, err := base.CreateSession(t.Context(), agent.CreateSession{
+	target, err := base.CreateSession(t.Context(), conversation.CreateSession{
 		Title: "Catalog deletion target", Workspace: current.Session.Workspace.Path,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	runtime := &blockingSessionDeleteRuntime{
-		Runtime: base, started: make(chan agent.DeleteSession, 1),
+		Runtime: base, started: make(chan conversation.DeleteSession, 1),
 		release: make(chan struct{}), canceled: make(chan struct{}, 1),
 	}
 	release := sync.OnceFunc(func() { close(runtime.release) })
@@ -513,7 +511,7 @@ func TestSessionCenterMutationOutlivesCurrentSessionProjectionReplacement(t *tes
 	host.Press(input.Enter)
 	host.Shows(t, "wait for the current session action to finish")
 
-	if _, rollbackSessionErr := base.RollbackSession(t.Context(), agent.RollbackSession{
+	if _, rollbackSessionErr := base.RollbackSession(t.Context(), conversation.RollbackSession{
 		SessionID: "ses_demo_1", Scope: protocol.RestoreHistory,
 	}); rollbackSessionErr != nil {
 		t.Fatal(rollbackSessionErr)
@@ -523,7 +521,7 @@ func TestSessionCenterMutationOutlivesCurrentSessionProjectionReplacement(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := base.UpdateSession(t.Context(), agent.UpdateSession{
+	if _, err := base.UpdateSession(t.Context(), conversation.UpdateSession{
 		SessionID: snapshot.Session.ID, Title: &title, ExpectedRevision: snapshot.Session.Revision,
 	}); err != nil {
 		t.Fatal(err)
@@ -542,7 +540,7 @@ func TestSessionCenterMutationOutlivesCurrentSessionProjectionReplacement(t *tes
 
 	release()
 	host.Shows(t, "deleted session")
-	if _, err := base.GetSession(t.Context(), target.ID); !errors.Is(err, agent.ErrSessionNotFound) {
+	if _, err := base.GetSession(t.Context(), target.ID); !errors.Is(err, conversation.ErrSessionNotFound) {
 		t.Fatalf("deleted session read error = %v", err)
 	}
 	stop()
@@ -703,10 +701,10 @@ func TestRuntimeChangeMonitorStopsOnAnIncompatibleSubscription(t *testing.T) {
 		subscribeErr: make(chan error, 1),
 		subscription: make(chan changefeed.Subscription, 1),
 	}
-	source.subscribeErr <- agent.ErrIncompatibleRuntime
+	source.subscribeErr <- conversation.ErrIncompatibleRuntime
 
 	err := (runtimeChangeMonitor{source: source}).run(t.Context())
-	if !errors.Is(err, agent.ErrIncompatibleRuntime) {
+	if !errors.Is(err, conversation.ErrIncompatibleRuntime) {
 		t.Fatalf("run error = %v, want ErrIncompatibleRuntime", err)
 	}
 	if subscriptions := len(source.subscription); subscriptions != 1 {
@@ -740,10 +738,10 @@ func TestRuntimeChangeMonitorStopsOnAnIncompatibleStream(t *testing.T) {
 		streamErrors: make(chan error, 1),
 		subscription: make(chan changefeed.Subscription, 1),
 	}
-	source.streamErrors <- agent.ErrIncompatibleRuntime
+	source.streamErrors <- conversation.ErrIncompatibleRuntime
 
 	err := (runtimeChangeMonitor{source: source}).run(t.Context())
-	if !errors.Is(err, agent.ErrIncompatibleRuntime) {
+	if !errors.Is(err, conversation.ErrIncompatibleRuntime) {
 		t.Fatalf("run error = %v, want ErrIncompatibleRuntime", err)
 	}
 	if subscriptions := len(source.subscription); subscriptions != 1 {
@@ -1107,8 +1105,8 @@ func TestRuntimeInvalidationDefersColdReplacementUntilTheStreamSettles(t *testin
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
-			{Event: agent.BlockStarted{Block: agent.Block{ID: "thinking", Kind: agent.BlockReasoning}}},
-			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
+			{Event: conversation.BlockStarted{Block: conversation.Block{ID: "thinking", Kind: conversation.BlockReasoning}}},
+			{Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	backend := &snapshotCountingRuntime{Runtime: base, readSignal: make(chan struct{}, 16)}
@@ -1132,7 +1130,7 @@ func TestRuntimeInvalidationDefersColdReplacementUntilTheStreamSettles(t *testin
 		t.Fatal(err)
 	}
 	title := "Changed while streaming"
-	if _, err := base.UpdateSession(t.Context(), agent.UpdateSession{
+	if _, err := base.UpdateSession(t.Context(), conversation.UpdateSession{
 		SessionID: snapshot.Session.ID, Title: &title, ExpectedRevision: snapshot.Session.Revision,
 	}); err != nil {
 		t.Fatal(err)
@@ -1164,10 +1162,10 @@ func TestRuntimeInvalidationDefersColdReplacementUntilTheStreamSettles(t *testin
 func TestRuntimeInvalidationFencesRunAdmissionUntilRefreshApplies(t *testing.T) {
 	base := runtimefixture.New()
 	runStarted := make(chan string, 1)
-	base.Script = func(prompt string) runtimefixture.Script {
-		runStarted <- prompt
+	base.Script = func(authoredPrompt string) runtimefixture.Script {
+		runStarted <- authoredPrompt
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
+			Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	backend := &blockingSnapshotRuntime{
@@ -1185,7 +1183,7 @@ func TestRuntimeInvalidationFencesRunAdmissionUntilRefreshApplies(t *testing.T) 
 		t.Fatal(err)
 	}
 	title := "Synchronized before blocked refresh"
-	if _, err := base.UpdateSession(t.Context(), agent.UpdateSession{
+	if _, err := base.UpdateSession(t.Context(), conversation.UpdateSession{
 		SessionID: snapshot.Session.ID, Title: &title, ExpectedRevision: snapshot.Session.Revision,
 	}); err != nil {
 		t.Fatal(err)
@@ -1208,14 +1206,14 @@ func TestRuntimeInvalidationFencesRunAdmissionUntilRefreshApplies(t *testing.T) 
 	host.Press(input.Enter)
 	host.Shows(t, "queued behind runtime change")
 	select {
-	case prompt := <-runStarted:
-		t.Fatalf("Run started before invalidation refresh applied with prompt %q", prompt)
+	case authoredPrompt := <-runStarted:
+		t.Fatalf("Run started before invalidation refresh applied with prompt %q", authoredPrompt)
 	case <-time.After(200 * time.Millisecond):
 	}
 
 	close(backend.release)
-	if prompt := awaitSignalValue(t, runStarted, "queued Run admission"); prompt != "wait for the authoritative refresh" {
-		t.Fatalf("started prompt = %q", prompt)
+	if authoredPrompt := awaitSignalValue(t, runStarted, "queued Run admission"); authoredPrompt != "wait for the authoritative refresh" {
+		t.Fatalf("started prompt = %q", authoredPrompt)
 	}
 	host.Shows(t, "complete")
 	stop()
@@ -1257,7 +1255,7 @@ func TestSessionChangeSettlementReconcilesItsDeferredInvalidation(t *testing.T) 
 				t.Fatal(err)
 			}
 			title := "Changed during " + test.name + " session creation"
-			if _, err := base.UpdateSession(t.Context(), agent.UpdateSession{
+			if _, err := base.UpdateSession(t.Context(), conversation.UpdateSession{
 				SessionID: snapshot.Session.ID, Title: &title, ExpectedRevision: snapshot.Session.Revision,
 			}); err != nil {
 				t.Fatal(err)
@@ -1300,7 +1298,7 @@ type blockingSnapshotRuntime struct {
 	release     chan struct{}
 }
 
-func (b *blockingSnapshotRuntime) GetSession(ctx context.Context, id string) (agent.SessionSnapshot, error) {
+func (b *blockingSnapshotRuntime) GetSession(ctx context.Context, id string) (conversation.SessionSnapshot, error) {
 	if b.blockNext.CompareAndSwap(true, false) {
 		select {
 		case b.readStarted <- struct{}{}:
@@ -1309,7 +1307,7 @@ func (b *blockingSnapshotRuntime) GetSession(ctx context.Context, id string) (ag
 		select {
 		case <-b.release:
 		case <-ctx.Done():
-			return agent.SessionSnapshot{}, context.Cause(ctx)
+			return conversation.SessionSnapshot{}, context.Cause(ctx)
 		}
 	}
 	return b.Runtime.GetSession(ctx, id)
@@ -1317,27 +1315,27 @@ func (b *blockingSnapshotRuntime) GetSession(ctx context.Context, id string) (ag
 
 type blockedResumeRuntime struct {
 	Runtime
-	started chan agent.ResumeRun
+	started chan conversation.ResumeRun
 	release chan struct{}
 	calls   atomic.Int32
 }
 
-func (b *blockedResumeRuntime) ResumeRun(ctx context.Context, input agent.ResumeRun) (agent.SegmentStream, error) {
+func (b *blockedResumeRuntime) ResumeRun(ctx context.Context, input conversation.ResumeRun) (conversation.SegmentStream, error) {
 	b.calls.Add(1)
 	select {
 	case b.started <- input.Clone():
 	case <-ctx.Done():
-		return agent.SegmentStream{}, context.Cause(ctx)
+		return conversation.SegmentStream{}, context.Cause(ctx)
 	}
 	select {
 	case <-b.release:
-		return agent.SegmentStream{}, agent.ErrInterruptNotOpen
+		return conversation.SegmentStream{}, conversation.ErrInterruptNotOpen
 	case <-ctx.Done():
-		return agent.SegmentStream{}, context.Cause(ctx)
+		return conversation.SegmentStream{}, context.Cause(ctx)
 	}
 }
 
-func (s *snapshotCountingRuntime) GetSession(ctx context.Context, id string) (agent.SessionSnapshot, error) {
+func (s *snapshotCountingRuntime) GetSession(ctx context.Context, id string) (conversation.SessionSnapshot, error) {
 	s.reads.Add(1)
 	if s.readSignal != nil {
 		select {
@@ -1347,7 +1345,7 @@ func (s *snapshotCountingRuntime) GetSession(ctx context.Context, id string) (ag
 	}
 	for remaining := s.failures.Load(); remaining > 0; remaining = s.failures.Load() {
 		if s.failures.CompareAndSwap(remaining, remaining-1) {
-			return agent.SessionSnapshot{}, s.failure
+			return conversation.SessionSnapshot{}, s.failure
 		}
 	}
 	return s.Runtime.GetSession(ctx, id)
@@ -1363,7 +1361,7 @@ func runUIWithRuntimeChangeServices(t *testing.T, runtime Runtime, workspaces Wo
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{Runtime: runtime, Workspaces: workspaces, Changes: source, SessionID: sessionID, Host: host})
+		done <- Run(ctx, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtime, Workspaces: workspaces, Changes: source, SessionID: sessionID, Host: host})
 	}()
 	var once sync.Once
 	stop := func() {
@@ -1382,7 +1380,7 @@ func TestRuntimeInvalidationRecoversAReadOnlyProjectionAfterTransientFailures(t 
 	base := runtimefixture.New()
 	backend := &snapshotCountingRuntime{
 		Runtime:    base,
-		failure:    fmt.Errorf("temporary session projection failure: %w", agent.ErrDisconnected),
+		failure:    fmt.Errorf("temporary session projection failure: %w", conversation.ErrDisconnected),
 		readSignal: make(chan struct{}, 16),
 	}
 	source := &runtimeChangeSourceStub{
@@ -1400,7 +1398,7 @@ func TestRuntimeInvalidationRecoversAReadOnlyProjectionAfterTransientFailures(t 
 		t.Fatal(err)
 	}
 	title := "Recovered without another event"
-	if _, err := base.UpdateSession(t.Context(), agent.UpdateSession{
+	if _, err := base.UpdateSession(t.Context(), conversation.UpdateSession{
 		SessionID: snapshot.Session.ID, Title: &title, ExpectedRevision: snapshot.Session.Revision,
 	}); err != nil {
 		t.Fatal(err)
@@ -1457,7 +1455,7 @@ func TestExternalWorkspaceChangeRebindsTheRuntimeWatch(t *testing.T) {
 		t.Fatal(err)
 	}
 	workspacePath := t.TempDir()
-	if _, err := backend.UpdateSession(t.Context(), agent.UpdateSession{
+	if _, err := backend.UpdateSession(t.Context(), conversation.UpdateSession{
 		SessionID: snapshot.Session.ID, Workspace: &workspacePath, ExpectedRevision: snapshot.Session.Revision,
 	}); err != nil {
 		t.Fatal(err)
@@ -1543,7 +1541,7 @@ func TestRuntimeInvalidationsRefetchTheCurrentAuthoritativeSession(t *testing.T)
 		t.Fatal(err)
 	}
 	title := "Renamed elsewhere"
-	if _, err := backend.UpdateSession(t.Context(), agent.UpdateSession{
+	if _, err := backend.UpdateSession(t.Context(), conversation.UpdateSession{
 		SessionID: snapshot.Session.ID, Title: &title, ExpectedRevision: snapshot.Session.Revision,
 	}); err != nil {
 		t.Fatal(err)
@@ -1592,7 +1590,7 @@ func TestDeletedActiveSessionIsReplacedFromItsWorkspace(t *testing.T) {
 	for backend.reads.Load() < 2 {
 		awaitSignal(t, backend.readSignal, "the attach-first session read")
 	}
-	if err := backend.DeleteSession(t.Context(), agent.DeleteSession{SessionID: "ses_demo_1"}); err != nil {
+	if err := backend.DeleteSession(t.Context(), conversation.DeleteSession{SessionID: "ses_demo_1"}); err != nil {
 		t.Fatal(err)
 	}
 	source.events <- changefeed.Event{
@@ -1613,14 +1611,14 @@ func TestDeletedActiveSessionTransfersItsUnsentDraftToTheReplacement(t *testing.
 	stateDirectory := t.TempDir()
 	host, stop := runUIFromConfig(t, Config{
 		Runtime: base, Changes: source, SessionID: "ses_demo_1",
-		StateDirectory: stateDirectory,
+		OpenWorkbench: persistentTestWorkbench(stateDirectory),
 	})
 	host.Shows(t, "Ask flame")
 	awaitSignal(t, source.subscription, "runtime invalidation subscription")
 	host.Type("unsent draft survives forced replacement")
 	host.Shows(t, "unsent draft survives forced replacement")
 
-	if err := base.DeleteSession(t.Context(), agent.DeleteSession{SessionID: "ses_demo_1"}); err != nil {
+	if err := base.DeleteSession(t.Context(), conversation.DeleteSession{SessionID: "ses_demo_1"}); err != nil {
 		t.Fatal(err)
 	}
 	source.events <- changefeed.Event{
@@ -1633,7 +1631,7 @@ func TestDeletedActiveSessionTransfersItsUnsentDraftToTheReplacement(t *testing.
 	replacementID := firstRuntimeSession(t, base)
 	stop()
 
-	store, err := workbenchstate.Open(stateDirectory)
+	store, err := openTestWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1650,7 +1648,7 @@ func TestDeletedSessionReplacementClosesItsQueueEditor(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
-			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
+			{Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	backend := &snapshotCountingRuntime{Runtime: base, readSignal: make(chan struct{}, 8)}
@@ -1679,7 +1677,7 @@ func TestDeletedSessionReplacementClosesItsQueueEditor(t *testing.T) {
 	if !ok {
 		t.Fatal("queued editor test has no active run")
 	}
-	if _, cancelRunErr := base.CancelRun(t.Context(), agent.CancelRun{RunID: active.ID}); cancelRunErr != nil {
+	if _, cancelRunErr := base.CancelRun(t.Context(), conversation.CancelRun{RunID: active.ID}); cancelRunErr != nil {
 		t.Fatal(cancelRunErr)
 	}
 	snapshot, err = base.GetSession(t.Context(), "ses_demo_1")
@@ -1690,7 +1688,7 @@ func TestDeletedSessionReplacementClosesItsQueueEditor(t *testing.T) {
 		t.Fatal("canceling the active run did not make the session deletable")
 	}
 
-	if err := base.DeleteSession(t.Context(), agent.DeleteSession{SessionID: "ses_demo_1"}); err != nil {
+	if err := base.DeleteSession(t.Context(), conversation.DeleteSession{SessionID: "ses_demo_1"}); err != nil {
 		t.Fatal(err)
 	}
 	source.events <- changefeed.Event{
@@ -1707,16 +1705,16 @@ func TestDeletedSessionReplacementClosesItsQueueEditor(t *testing.T) {
 func TestMatchingInterruptInvalidationPreservesTheOpenApproval(t *testing.T) {
 	base := runtimefixture.New()
 	base.Instant = true
-	answers := make(chan []agent.InterruptAnswer, 1)
+	answers := make(chan []conversation.InterruptAnswer, 1)
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{
-			Interactions: []agent.Interaction{agent.Approval{
+			Interactions: []conversation.Interaction{conversation.Approval{
 				ItemID: "approval_invalidation", Title: "Run generated command",
-				Tool: &agent.ToolCall{Kind: agent.ToolShell, Name: "shell", Command: "go test ./...", Status: agent.ToolRunning},
+				Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning},
 			}},
-			Continue: func(provided []agent.InterruptAnswer) []runtimefixture.Step {
+			Continue: func(provided []conversation.InterruptAnswer) []runtimefixture.Step {
 				answers <- provided
-				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -1749,7 +1747,7 @@ func TestMatchingInterruptInvalidationPreservesTheOpenApproval(t *testing.T) {
 	if len(provided) != 1 {
 		t.Fatalf("approval responses = %+v", provided)
 	}
-	answer, ok := provided[0].Answer.(agent.ApprovalAnswer)
+	answer, ok := provided[0].Answer.(conversation.ApprovalAnswer)
 	if !ok || answer.Decision != protocol.ApprovalDeny || answer.Reason != "PRESERVED_INVALIDATION_FEEDBACK" {
 		t.Fatalf("preserved approval answer = %#v", provided[0].Answer)
 	}
@@ -1761,15 +1759,15 @@ func TestAdvancedInterruptInvalidationClosesTheApprovalArgumentEditor(t *testing
 	base.Instant = true
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{
-			Interactions: []agent.Interaction{agent.Approval{
+			Interactions: []conversation.Interaction{conversation.Approval{
 				ItemID: "approval_editor_invalidation", Title: "Run generated command",
-				Tool: &agent.ToolCall{
-					Kind: agent.ToolShell, Name: "shell", Command: "go test ./...", Status: agent.ToolRunning,
+				Tool: &conversation.ToolCall{
+					Kind: conversation.ToolShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning,
 					ArgumentsJSON: []byte(`{"command":"go test ./..."}`),
 				},
 			}},
-			Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
-				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
+			Continue: func([]conversation.InterruptAnswer) []runtimefixture.Step {
+				return []runtimefixture.Step{{Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -1797,7 +1795,7 @@ func TestAdvancedInterruptInvalidationClosesTheApprovalArgumentEditor(t *testing
 	if !ok {
 		t.Fatal("approval editor invalidation test has no waiting run")
 	}
-	if _, err := base.CancelRun(t.Context(), agent.CancelRun{RunID: active.ID, Reason: "settled elsewhere"}); err != nil {
+	if _, err := base.CancelRun(t.Context(), conversation.CancelRun{RunID: active.ID, Reason: "settled elsewhere"}); err != nil {
 		t.Fatal(err)
 	}
 	drainSignals(backend.readSignal)
@@ -1818,18 +1816,18 @@ func TestInterruptInvalidationWinsARejectedStaleResume(t *testing.T) {
 	base.Instant = true
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{
-			Interactions: []agent.Interaction{agent.Approval{
+			Interactions: []conversation.Interaction{conversation.Approval{
 				ItemID: "approval_resume_race", Title: "Run generated command",
-				Tool: &agent.ToolCall{Kind: agent.ToolShell, Name: "shell", Command: "go test ./...", Status: agent.ToolRunning},
+				Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning},
 			}},
-			Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
-				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
+			Continue: func([]conversation.InterruptAnswer) []runtimefixture.Step {
+				return []runtimefixture.Step{{Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}
 	backend := &snapshotCountingRuntime{Runtime: base, readSignal: make(chan struct{}, 8)}
 	runtime := &blockedResumeRuntime{
-		Runtime: backend, started: make(chan agent.ResumeRun, 1), release: make(chan struct{}),
+		Runtime: backend, started: make(chan conversation.ResumeRun, 1), release: make(chan struct{}),
 	}
 	source := &runtimeChangeSourceStub{
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),

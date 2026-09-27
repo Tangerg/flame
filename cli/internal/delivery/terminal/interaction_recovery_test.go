@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/core/input"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 )
 
 type invalidEventAfterInterruptRuntime struct {
@@ -22,15 +22,15 @@ type invalidEventAfterInterruptRuntime struct {
 
 func (i invalidEventAfterInterruptRuntime) StartRun(
 	ctx context.Context,
-	command agent.StartRun,
-) (agent.SegmentStream, error) {
+	command prompt.StartRun,
+) (conversation.SegmentStream, error) {
 	stream, err := i.Runtime.StartRun(ctx, command)
 	if err != nil {
-		return agent.SegmentStream{}, err
+		return conversation.SegmentStream{}, err
 	}
 	i.started <- command.SessionID
 	original := stream.Events
-	stream.Events = func(yield func(agent.RunEvent, error) bool) {
+	stream.Events = func(yield func(conversation.RunEvent, error) bool) {
 		for event, streamErr := range original {
 			if !yield(event, streamErr) {
 				return
@@ -41,27 +41,27 @@ func (i invalidEventAfterInterruptRuntime) StartRun(
 		case <-ctx.Done():
 			return
 		}
-		yield(agent.RunEvent{
+		yield(conversation.RunEvent{
 			EventID: "evt_invalid_after_interrupt", RunID: stream.RunID, SegmentID: stream.SegmentID,
-			At: time.Now(), Event: agent.BlockDelta{BlockID: "missing", Text: "invalid tail"},
+			At: time.Now(), Event: conversation.BlockDelta{BlockID: "missing", Text: "invalid tail"},
 		}, nil)
 	}
 	return stream, nil
 }
 
 func TestStreamFailureRetiresTheObsoleteInteractionProjection(t *testing.T) {
-	approval := func(arguments bool) agent.Approval {
-		call := &agent.ToolCall{
-			Kind: agent.ToolShell, Name: "shell", Command: "go test ./...", Status: agent.ToolRunning,
+	approval := func(arguments bool) conversation.Approval {
+		call := &conversation.ToolCall{
+			Kind: conversation.ToolShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning,
 		}
 		if arguments {
 			call.ArgumentsJSON = []byte(`{"command":"go test ./..."}`)
 		}
-		return agent.Approval{ItemID: "approval_before_stream_failure", Title: "Approve before failure", Tool: call}
+		return conversation.Approval{ItemID: "approval_before_stream_failure", Title: "Approve before failure", Tool: call}
 	}
 	tests := []struct {
 		name        string
-		interaction agent.Interaction
+		interaction conversation.Interaction
 		open        string
 		editArgs    bool
 		obsolete    []string
@@ -77,10 +77,10 @@ func TestStreamFailureRetiresTheObsoleteInteractionProjection(t *testing.T) {
 		},
 		{
 			name: "question",
-			interaction: agent.Question{
+			interaction: conversation.Question{
 				ItemID: "question_before_stream_failure", Title: "Choose before failure",
-				Fields: []agent.QuestionField{{
-					Header: "Strategy", Prompt: "Choose a strategy", Kind: agent.QuestionSingle,
+				Fields: []conversation.QuestionField{{
+					Header: "Strategy", Prompt: "Choose a strategy", Kind: conversation.QuestionSingle,
 					Options: []protocol.QuestionOption{{Label: "Safe"}, {Label: "Fast"}},
 				}},
 			},
@@ -93,9 +93,9 @@ func TestStreamFailureRetiresTheObsoleteInteractionProjection(t *testing.T) {
 			backend.Instant = true
 			backend.Script = func(string) runtimefixture.Script {
 				return runtimefixture.Script{
-					Interactions: []agent.Interaction{test.interaction},
-					Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
-						return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
+					Interactions: []conversation.Interaction{test.interaction},
+					Continue: func([]conversation.InterruptAnswer) []runtimefixture.Step {
+						return []runtimefixture.Step{{Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}
 					},
 				}
 			}
@@ -132,23 +132,23 @@ func TestStreamFailureRetiresTheObsoleteInteractionProjection(t *testing.T) {
 func TestPendingResumePersistenceFailureReopensTheInteractionForRetry(t *testing.T) {
 	backend := runtimefixture.New()
 	backend.Instant = true
-	answers := make(chan agent.ApprovalAnswer, 1)
+	answers := make(chan conversation.ApprovalAnswer, 1)
 	backend.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{
-			Interactions: []agent.Interaction{agent.Approval{
+			Interactions: []conversation.Interaction{conversation.Approval{
 				ItemID: "approval_resume_persistence", Title: "Persist before resuming",
-				Tool: &agent.ToolCall{
-					Kind: agent.ToolShell, Name: "shell", Command: "go test ./...", Status: agent.ToolRunning,
+				Tool: &conversation.ToolCall{
+					Kind: conversation.ToolShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning,
 				},
 			}},
-			Continue: func(provided []agent.InterruptAnswer) []runtimefixture.Step {
-				answers <- provided[0].Answer.(agent.ApprovalAnswer)
-				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
+			Continue: func(provided []conversation.InterruptAnswer) []runtimefixture.Step {
+				answers <- provided[0].Answer.(conversation.ApprovalAnswer)
+				return []runtimefixture.Step{{Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}
 	stateDirectory := t.TempDir()
-	host, stop := runUIFromConfig(t, Config{Runtime: backend, Workspace: t.TempDir(), StateDirectory: stateDirectory})
+	host, stop := runUIFromConfig(t, Config{Runtime: backend, Workspace: t.TempDir(), OpenWorkbench: persistentTestWorkbench(stateDirectory)})
 	host.Shows(t, "Ask flame")
 	host.Type("exercise local resume persistence")
 	host.Press(input.Enter)
@@ -176,24 +176,24 @@ func TestPendingResumePersistenceFailureReopensTheInteractionForRetry(t *testing
 func TestPendingResumePersistenceFailureReopensTheQuestionForRetry(t *testing.T) {
 	backend := runtimefixture.New()
 	backend.Instant = true
-	answers := make(chan agent.QuestionAnswer, 1)
+	answers := make(chan conversation.QuestionAnswer, 1)
 	backend.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{
-			Interactions: []agent.Interaction{agent.Question{
+			Interactions: []conversation.Interaction{conversation.Question{
 				ItemID: "question_resume_persistence", Title: "Persist question before resuming",
-				Fields: []agent.QuestionField{{
-					Prompt: "Strategy", Kind: agent.QuestionSingle,
+				Fields: []conversation.QuestionField{{
+					Prompt: "Strategy", Kind: conversation.QuestionSingle,
 					Options: []protocol.QuestionOption{{Label: "Safe"}, {Label: "Fast"}},
 				}},
 			}},
-			Continue: func(provided []agent.InterruptAnswer) []runtimefixture.Step {
-				answers <- provided[0].Answer.(agent.QuestionAnswer)
-				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
+			Continue: func(provided []conversation.InterruptAnswer) []runtimefixture.Step {
+				answers <- provided[0].Answer.(conversation.QuestionAnswer)
+				return []runtimefixture.Step{{Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}
 	stateDirectory := t.TempDir()
-	host, stop := runUIFromConfig(t, Config{Runtime: backend, Workspace: t.TempDir(), StateDirectory: stateDirectory})
+	host, stop := runUIFromConfig(t, Config{Runtime: backend, Workspace: t.TempDir(), OpenWorkbench: persistentTestWorkbench(stateDirectory)})
 	host.Shows(t, "Ask flame")
 	host.Type("exercise question resume persistence")
 	host.Press(input.Enter)
@@ -223,10 +223,10 @@ func TestPendingResumePersistenceFailureReopensTheQuestionForRetry(t *testing.T)
 func TestPendingResumePersistenceFailureReopensTheBatchReviewForRetry(t *testing.T) {
 	backend := runtimefixture.New()
 	backend.Instant = true
-	answers := make(chan []agent.InterruptAnswer, 1)
+	answers := make(chan []conversation.InterruptAnswer, 1)
 	backend.Script = func(string) runtimefixture.Script { return multiInteractionReviewScript(answers) }
 	stateDirectory := t.TempDir()
-	host, stop := runUIFromConfig(t, Config{Runtime: backend, Workspace: t.TempDir(), StateDirectory: stateDirectory})
+	host, stop := runUIFromConfig(t, Config{Runtime: backend, Workspace: t.TempDir(), OpenWorkbench: persistentTestWorkbench(stateDirectory)})
 	host.Shows(t, "Ask flame")
 	host.Type("exercise batch resume persistence")
 	host.Press(input.Enter)

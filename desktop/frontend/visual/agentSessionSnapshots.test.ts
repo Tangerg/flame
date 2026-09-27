@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { validateWire } from "@flame/runtime-contract/validate";
 import { lookupExtensionByKey, TOOL_PREVIEW } from "@/plugins/sdk";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
-import { toolPreviewPlugins } from "@/plugins/builtin";
+import { toolPreviewPlugins } from "@/main/builtinPlugins";
 import { TOOL_ICON_BY_NAME } from "@/lib/toolFamilies";
 import {
   RUNTIME_AGENT_SESSION_SNAPSHOTS,

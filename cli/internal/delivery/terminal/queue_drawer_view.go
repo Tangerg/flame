@@ -6,13 +6,12 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/queue"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/grid"
 	"github.com/Tangerg/oolong/core/layout"
 	"github.com/Tangerg/oolong/core/text"
-
-	"github.com/Tangerg/flame/cli/internal/application/agent/promptqueue"
 )
 
 func (q *queueDrawer) Place(space image.Point) layout.Placement {
@@ -137,7 +136,7 @@ func (q *queueDrawer) drawSelectedPreview(view grid.View) int {
 	return 0
 }
 
-func (q *queueDrawer) drawEntry(view grid.View, entry promptqueue.Entry, index, rowY, width int) []queueHit {
+func (q *queueDrawer) drawEntry(view grid.View, entry queue.Entry, index, rowY, width int) []queueHit {
 	row := grid.Area(0, rowY, width, 1)
 	rowTarget := queueTarget{kind: queueTargetRow, id: entry.ID}
 	style := q.theme.Text
@@ -164,7 +163,7 @@ func (q *queueDrawer) drawEntry(view grid.View, entry promptqueue.Entry, index, 
 	return hits
 }
 
-func (q *queueDrawer) drawActions(view grid.View, row image.Rectangle, id promptqueue.EntryID, right int, rowStyle grid.Style, hits *[]queueHit) int {
+func (q *queueDrawer) drawActions(view grid.View, row image.Rectangle, id queue.EntryID, right int, rowStyle grid.Style, hits *[]queueHit) int {
 	buttons := []struct {
 		label  string
 		target queueTarget

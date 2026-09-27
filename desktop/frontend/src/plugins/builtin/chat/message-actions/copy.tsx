@@ -7,7 +7,7 @@ import { canCopyMessage } from "./application/messageActionAvailability";
 import { messageCopyPayloads } from "./presentation/copyPayloads";
 import { MessageActionButton } from "./MessageActionButton";
 import { type as typeStep } from "@/styles/tokens.stylex";
-import { chatStyles as ct } from "../chatStyles";
+import { chatStyles as ct } from "@/ui/agent/chatStyles";
 
 function CopyButton() {
   const t = useT();

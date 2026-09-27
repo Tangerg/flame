@@ -6,10 +6,11 @@ import (
 	"os"
 
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
+	"github.com/Tangerg/flame/cli/internal/adapter/sideload"
 	"github.com/Tangerg/flame/cli/internal/application/extensions"
+	"github.com/Tangerg/flame/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/cli/internal/delivery/cmd"
 	"github.com/Tangerg/flame/cli/internal/delivery/terminal"
-	"github.com/Tangerg/flame/cli/internal/delivery/terminal/sideload"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -26,39 +27,42 @@ func newRuntimeOwnerAt(flameHome string) (*runtimebinding.Owner, error) {
 }
 
 func runtimeDependencies(owner *runtimebinding.Owner, stateDirectory string) cmd.Dependencies {
+	openWorkbench := workbenchFactory(stateDirectory)
 	return cmd.Dependencies{
-		OpenRuntime: func(ctx context.Context, endpoint string) (cmd.Runtime, *runtimebinding.Profile, error) {
+		OpenRuntime: func(ctx context.Context, endpoint string) (cmd.Runtime, cmd.RuntimeProfile, error) {
 			connection, err := owner.Connection(ctx, endpoint)
 			if err != nil {
 				return nil, nil, err
 			}
 			profile := connection.Profile()
-			return connection, &profile, nil
+			return connection, profile, nil
 		},
 		StartTerminal: func(ctx context.Context, request cmd.TerminalRequest) error {
 			connection, err := owner.Connection(ctx, request.Settings.Runtime.Endpoint)
 			if err != nil {
 				return err
 			}
-			return startTerminal(ctx, connection, request)
+			return startTerminal(ctx, connection, request, func() (*workbench.Store, error) {
+				return openWorkbench(request.Settings.Runtime.Endpoint)
+			})
 		},
-		StateDirectory: stateDirectory,
+		OpenWorkbench: openWorkbench,
 	}
 }
 
-func startTerminal(ctx context.Context, connection *runtimebinding.Connection, request cmd.TerminalRequest) error {
+func startTerminal(ctx context.Context, connection *runtimebinding.Connection, request cmd.TerminalRequest, openWorkbench func() (*workbench.Store, error)) error {
 	profile := connection.Profile()
 	configured := request.Settings.Clone()
 	cfg := terminal.Config{
-		Runtime: connection, RuntimeProfile: &profile,
+		Runtime: connection, RuntimeProfile: profile,
 		Workspaces: connection, Changes: connection, Usage: connection, ModelConfig: connection,
 		DiagnosticTools:  connection.DiagnosticTools(),
 		AuthoringContext: connection.AuthoringContext(), Hooks: connection.Hooks(),
 		Feedback:      connection.Feedback(),
 		ClientVersion: cmd.Version(), SessionID: request.SessionID, Workspace: request.Workspace,
 		InitialPrompt: request.InitialPrompt, Settings: &configured,
-		PluginSources:  []extensions.Source{sideload.New(configured.Plugins.Directories)},
-		StateDirectory: request.StateDirectory,
+		PluginSources: []extensions.Source{sideload.New(configured.Plugins.Directories)},
+		OpenWorkbench: openWorkbench,
 	}
 	if configured.Runtime.Endpoint != "" {
 		cfg.LocalDirectory = request.LocalDirectory

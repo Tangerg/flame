@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+import { assertSourceCoverage, sourceFiles } from "./source-graph.mjs";
+import { builtinContext } from "./builtin-contexts.mjs";
 
 const SRC = join(process.cwd(), "src");
 const TEXT_EXT = /\.(ts|tsx|md)$/;
@@ -62,8 +64,8 @@ function collectVocabulary(rel, source) {
 }
 
 function boundedContext(rel) {
-  const builtin = /^plugins\/builtin\/([^/]+)\//.exec(rel);
-  if (builtin) return `builtin:${builtin[1]}`;
+  const builtin = builtinContext(rel);
+  if (builtin) return builtin;
   if (rel.startsWith("plugins/")) return "plugin-platform";
   return rel.split("/")[0];
 }
@@ -126,8 +128,10 @@ function reportDuplicateVocabulary() {
   }
 }
 
+const scanned = files(SRC);
+assertSourceCoverage(sourceFiles(SRC), scanned);
 let examined = 0;
-for (const file of files(SRC)) {
+for (const file of scanned) {
   const rel = relative(SRC, file);
   const text = readFileSync(file, "utf8");
   const isTest = /\.(test|spec)\.[tj]sx?$/.test(rel);
@@ -470,7 +474,7 @@ for (const file of files(SRC)) {
   // domain rings describe policy and use cases that must be executable without
   // the assembled app; concrete access belongs in that context's adapters.
   // This is intentionally one rule for every context — the previous
-  // context-by-context list only guarded `main/container`, so Runtime
+  // context-by-context list guarded only one locator module, so Runtime
   // application code reached `main/config` and the hole looked legitimate.
   if (
     !isTest &&
@@ -513,20 +517,15 @@ for (const file of files(SRC)) {
     });
   }
 
-  // Reaching the composition root is an adapter's job — every context keeps that
-  // pair (get the client, coerce to the wire's branded ids) in `adapters/`. This was
-  // written for `defaults/` only, so the same shape read as a local exception
-  // elsewhere: the rpc-agent's root held a runs gateway as an object literal inside
-  // `setup()`, and the runtime's root reached for `client().rpc` inline. A root
-  // assembles; it does not wire.
   if (
     !isTest &&
-    /plugins\/builtin\/(?!.+\/adapters\/).+\.(ts|tsx)$/.test(rel) &&
-    /from\s+["']@\/main\/container["']/.test(text)
+    !rel.startsWith("main/") &&
+    /from\s+["']@\/main(?:\/[^"']*)?["']/.test(text) &&
+    rel.includes("/")
   ) {
     violations.push({
       file: rel,
-      reason: "only an adapter may reach the composition root; a root assembles",
+      reason: "composition supplies dependencies; consumers must not import main",
     });
   }
 
@@ -578,15 +577,6 @@ if (violations.length > 0) {
   console.error(`[check-published-boundaries] Found ${violations.length} violation(s):`);
   for (const violation of violations) console.error(`  ${violation.file}: ${violation.reason}`);
   process.exit(1);
-}
-
-// Floor, not a target: a guard that read nothing prints the same OK as one that read everything.
-const MIN_FILES_EXAMINED = 700;
-if (examined < MIN_FILES_EXAMINED) {
-  console.error(
-    `[check-published-boundaries] only read ${examined} source files (floor ${MIN_FILES_EXAMINED}) — the walk is broken.`,
-  );
-  process.exit(2);
 }
 
 console.log(

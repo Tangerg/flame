@@ -6,9 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 var errCanceled = errors.New("mock: run canceled")
@@ -36,7 +35,7 @@ type SubscriptionFault struct {
 // and complete interrupt sets independently from any delivery transport.
 type Runtime struct {
 	Instant bool
-	Script  func(prompt string) Script
+	Script  func(authoredPrompt string) Script
 	Faults  []SubscriptionFault
 
 	mu           sync.Mutex
@@ -51,7 +50,7 @@ type Runtime struct {
 }
 
 type sessionState struct {
-	meta      agent.Session
+	meta      conversation.Session
 	items     []durableItem
 	plan      *protocol.Plan
 	planAtRun map[string]*protocol.Plan
@@ -61,7 +60,7 @@ type sessionState struct {
 
 type durableItem struct {
 	runID string
-	block agent.Block
+	block conversation.Block
 }
 
 type storedRule struct {
@@ -72,7 +71,7 @@ type storedRule struct {
 type runState struct {
 	id              string
 	sessionID       string
-	lineage         agent.RunLineage
+	lineage         conversation.RunLineage
 	provider        string
 	model           string
 	reasoningEffort string
@@ -81,17 +80,17 @@ type runState struct {
 	active          string
 	segments        map[string]*segmentState
 	script          Script
-	interactions    []agent.Interaction
-	answers         map[string]agent.Answer
+	interactions    []conversation.Interaction
+	answers         map[string]conversation.Answer
 	cancel          chan struct{}
 	cancelOnce      sync.Once
-	usage           agent.Usage
-	outcome         agent.Outcome
+	usage           conversation.Usage
+	outcome         conversation.Outcome
 }
 
 type segmentState struct {
 	id          string
-	events      []agent.RunEvent
+	events      []conversation.RunEvent
 	changed     chan struct{}
 	closed      bool
 	terminalErr error

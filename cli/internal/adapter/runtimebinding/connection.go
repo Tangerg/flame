@@ -14,13 +14,13 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/Tangerg/flame/cli/internal/application/changefeed"
+	"github.com/Tangerg/flame/cli/internal/application/mutation"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/localruntime"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
-	"github.com/Tangerg/flame/cli/internal/application/changefeed"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 const clientName = "flame-cli"
@@ -229,7 +229,7 @@ func (r *Connection) commandOptions() flameruntime.CommandOptions {
 	}
 }
 
-func (r *Connection) commandOptionsFor(commandID agent.CommandID) (flameruntime.CommandOptions, error) {
+func (r *Connection) commandOptionsFor(commandID replay.CommandID) (flameruntime.CommandOptions, error) {
 	if commandID == "" {
 		return r.commandOptions(), nil
 	}
@@ -250,7 +250,7 @@ func (r *Connection) runCommandOptions() flameruntime.RunCommandOptions {
 	}
 }
 
-func (r *Connection) runCommandOptionsFor(commandID agent.CommandID) (flameruntime.RunCommandOptions, error) {
+func (r *Connection) runCommandOptionsFor(commandID replay.CommandID) (flameruntime.RunCommandOptions, error) {
 	if commandID == "" {
 		return r.runCommandOptions(), nil
 	}
@@ -287,37 +287,37 @@ func (r *Connection) changeSubscriptionOptions() flameruntime.SubscriptionOption
 
 func validateDiscovery(discovery *protocol.DiscoverResponse) error {
 	if discovery == nil {
-		return fmt.Errorf("%w: discovery response is nil", agent.ErrIncompatibleRuntime)
+		return fmt.Errorf("%w: discovery response is nil", conversation.ErrIncompatibleRuntime)
 	}
 	if discovery.ProtocolVersion != protocol.ProtocolVersion {
 		return fmt.Errorf(
 			"%w: runtime serves %s, CLI requires %s",
-			agent.ErrIncompatibleRuntime,
+			conversation.ErrIncompatibleRuntime,
 			discovery.ProtocolVersion,
 			protocol.ProtocolVersion,
 		)
 	}
 	if discovery.Capabilities.Limits.RunReplay.Scope != protocol.ReplayScopeRuntimeInstanceRootSegment {
-		return fmt.Errorf("%w: unsupported run replay scope %q", agent.ErrIncompatibleRuntime, discovery.Capabilities.Limits.RunReplay.Scope)
+		return fmt.Errorf("%w: unsupported run replay scope %q", conversation.ErrIncompatibleRuntime, discovery.Capabilities.Limits.RunReplay.Scope)
 	}
 	for _, method := range []string{"runs.start", "runs.resume", "runs.subscribe"} {
 		if !slices.Contains(discovery.Capabilities.StreamingMethods, method) {
-			return fmt.Errorf("%w: runtime does not stream %s", agent.ErrIncompatibleRuntime, method)
+			return fmt.Errorf("%w: runtime does not stream %s", conversation.ErrIncompatibleRuntime, method)
 		}
 	}
 	for _, eventType := range discovery.Capabilities.RunEvents {
 		if !slices.Contains(recognizedRunEventTypes(), eventType) {
-			return fmt.Errorf("%w: runtime advertises unsupported run event %q", agent.ErrIncompatibleRuntime, eventType)
+			return fmt.Errorf("%w: runtime advertises unsupported run event %q", conversation.ErrIncompatibleRuntime, eventType)
 		}
 	}
 	for _, eventType := range requiredRunEventTypes() {
 		if !slices.Contains(discovery.Capabilities.RunEvents, eventType) {
-			return fmt.Errorf("%w: runtime does not advertise %s", agent.ErrIncompatibleRuntime, eventType)
+			return fmt.Errorf("%w: runtime does not advertise %s", conversation.ErrIncompatibleRuntime, eventType)
 		}
 	}
 	for _, topic := range discovery.Capabilities.RuntimeTopics {
 		if !slices.Contains(changefeed.Topics(), topic) {
-			return fmt.Errorf("%w: runtime advertises unsupported change topic %q", agent.ErrIncompatibleRuntime, topic)
+			return fmt.Errorf("%w: runtime advertises unsupported change topic %q", conversation.ErrIncompatibleRuntime, topic)
 		}
 	}
 	return nil
@@ -352,7 +352,7 @@ func (o *Owner) Connection(ctx context.Context, endpoint string) (*Connection, e
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	if o.closing {
-		return nil, agent.ErrDisconnected
+		return nil, conversation.ErrDisconnected
 	}
 	if o.connection != nil {
 		if endpoint != o.endpoint {
@@ -418,7 +418,7 @@ func (r *Connection) requireFeature(name string) error {
 	if r.supportsFeature(name) {
 		return nil
 	}
-	return fmt.Errorf("%w: runtime capability %q was not negotiated", agent.ErrIncompatibleRuntime, name)
+	return fmt.Errorf("%w: runtime capability %q was not negotiated", conversation.ErrIncompatibleRuntime, name)
 }
 
 func (o *Owner) Close() error {

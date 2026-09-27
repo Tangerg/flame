@@ -4,6 +4,7 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -201,7 +202,19 @@ func TestShell_RunInBackground(t *testing.T) {
 	shell := shellTool(t, shells, "shell")
 	output := shellTool(t, shells, "read_shell_output")
 
-	out, err := callTextTool(context.Background(), shell, `{"command":"printf hi","description":"Print hi","run_in_background":true}`)
+	// A completed command may correctly return inline even when background was
+	// requested. Hold this one alive until the test owns its background handle.
+	release := filepath.Join(t.TempDir(), "release")
+	quotedRelease := "'" + strings.ReplaceAll(release, "'", "'\"'\"'") + "'"
+	arguments, err := json.Marshal(shellArgs{
+		Command:         "while [ ! -f " + quotedRelease + " ]; do sleep 0.01; done; printf hi",
+		Description:     "Print hi after release",
+		RunInBackground: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := callTextTool(context.Background(), shell, string(arguments))
 	if err != nil {
 		t.Fatalf("shell(bg) = %q err=%v", out, err)
 	}
@@ -213,6 +226,9 @@ func TestShell_RunInBackground(t *testing.T) {
 	sh, ok := shells.Get(id)
 	if !ok {
 		t.Fatalf("background shell %q should still be registered", id)
+	}
+	if err := os.WriteFile(release, nil, 0o600); err != nil {
+		t.Fatal(err)
 	}
 	<-sh.Done()
 	read, err := callTextTool(context.Background(), output, `{"shell_id":"`+id+`"}`)

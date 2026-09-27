@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { queryClient } from "@/lib/queryClient";
 import { AGENT_SESSIONS_KEY } from "@/plugins/builtin/agent/public/session";
-import { RpcError } from "@flame/runtime-contract/client";
+import { RpcError, type FlameClient } from "@flame/runtime-contract/client";
 import { resolveActiveSessionWorkspaceCwd } from "./sessionWorkspaceCwd";
 
 const { getActiveSessionId, getSession } = vi.hoisted(() => ({
@@ -9,11 +9,7 @@ const { getActiveSessionId, getSession } = vi.hoisted(() => ({
   getSession: vi.fn(),
 }));
 
-vi.mock("@/main/container", () => ({
-  getContainer: () => ({
-    client: () => ({ sessions: { get: getSession } }),
-  }),
-}));
+const runtimeClient = () => ({ sessions: { get: getSession } }) as unknown as FlameClient;
 
 afterEach(() => {
   getActiveSessionId.mockReturnValue("");
@@ -24,7 +20,11 @@ afterEach(() => {
 describe("active session workspace resolution", () => {
   it("resolves no active session to the runtime default workspace", async () => {
     await expect(
-      resolveActiveSessionWorkspaceCwd({ getActiveSessionId }, new AbortController().signal),
+      resolveActiveSessionWorkspaceCwd(
+        runtimeClient,
+        { getActiveSessionId },
+        new AbortController().signal,
+      ),
     ).resolves.toEqual({ status: "resolved" });
     expect(getSession).not.toHaveBeenCalled();
   });
@@ -42,7 +42,11 @@ describe("active session workspace resolution", () => {
     );
 
     await expect(
-      resolveActiveSessionWorkspaceCwd({ getActiveSessionId }, new AbortController().signal),
+      resolveActiveSessionWorkspaceCwd(
+        runtimeClient,
+        { getActiveSessionId },
+        new AbortController().signal,
+      ),
     ).resolves.toEqual({ status: "resolved", cwd: "/cached/repo" });
     expect(getSession).not.toHaveBeenCalled();
   });
@@ -53,12 +57,12 @@ describe("active session workspace resolution", () => {
     getSession.mockResolvedValue({ workspace: { ref: { path: "/draft/repo" } } });
     const signal = new AbortController().signal;
 
-    await expect(resolveActiveSessionWorkspaceCwd({ getActiveSessionId }, signal)).resolves.toEqual(
-      {
-        status: "resolved",
-        cwd: "/draft/repo",
-      },
-    );
+    await expect(
+      resolveActiveSessionWorkspaceCwd(runtimeClient, { getActiveSessionId }, signal),
+    ).resolves.toEqual({
+      status: "resolved",
+      cwd: "/draft/repo",
+    });
     expect(getSession).toHaveBeenCalledWith("ses_draft", signal);
   });
 
@@ -73,7 +77,11 @@ describe("active session workspace resolution", () => {
     );
 
     await expect(
-      resolveActiveSessionWorkspaceCwd({ getActiveSessionId }, new AbortController().signal),
+      resolveActiveSessionWorkspaceCwd(
+        runtimeClient,
+        { getActiveSessionId },
+        new AbortController().signal,
+      ),
     ).resolves.toEqual({ status: "unavailable" });
   });
 
@@ -82,7 +90,11 @@ describe("active session workspace resolution", () => {
     getSession.mockRejectedValue(new Error("offline"));
 
     await expect(
-      resolveActiveSessionWorkspaceCwd({ getActiveSessionId }, new AbortController().signal),
+      resolveActiveSessionWorkspaceCwd(
+        runtimeClient,
+        { getActiveSessionId },
+        new AbortController().signal,
+      ),
     ).rejects.toThrow("offline");
   });
 });

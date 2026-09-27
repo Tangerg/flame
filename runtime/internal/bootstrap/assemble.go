@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	ownershipadapter "github.com/Tangerg/flame/runtime/internal/adapter/ownership"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/recovery"
@@ -15,6 +15,7 @@ import (
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/feedback"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
@@ -25,6 +26,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/taskgroup"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/flame/runtime/internal/infra/git"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/sandbox"
 )
 
@@ -390,7 +392,7 @@ func buildAssemblyCore(
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct usage reporter: %w", err)
 	}
-	feedback, err := sessions.NewFeedbackRecorder(cfg.Stores.Feedback)
+	feedback, err := feedback.NewRecorder(cfg.Stores.Feedback)
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct feedback recorder: %w", err)
 	}
@@ -412,14 +414,14 @@ func buildAssemblyCore(
 				WorkspaceVCS:           workspaceVCS,
 				WorkspaceDiscovery:     workspaceDiscovery,
 				WorkspaceSkills:        workspaceServices.skills,
-				WorkspaceHooks:         workspaceServices.hooks,
+				Hooks:                  workspaceServices.hooks,
 				WorkspaceWatch:         workspaceWatch,
 				WorkspaceAuthoredWatch: workspaceServices.authoredWatch,
 				Schedules:              policy.schedules,
 				ScheduleFiring:         scheduleFiring,
 				Goals:                  goalDriver,
 				AgentMemory:            workspaceServices.agentMemory,
-				GitAvailable:           workspaceadapter.GitAvailable(),
+				GitAvailable:           git.Available(),
 				IsolationAvailable:     sandbox.Available(),
 			},
 			sessions: sessionCoordinator,

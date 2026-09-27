@@ -4,10 +4,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/grid"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 func TestUserMessageBlockUsesAQuietSurfaceWithoutChangingCopiedText(t *testing.T) {
@@ -53,10 +53,10 @@ func TestUserMessageBlockDegradesWithoutLosingTextAtMinimalWidth(t *testing.T) {
 }
 
 func TestUserPresenterKeepsAttachmentsInsideTheMessageSurface(t *testing.T) {
-	rendered := presentUser(BlockPresentation{Theme: kit.Dark()}, agent.Block{
-		Kind:        agent.BlockUser,
+	rendered := presentUser(BlockPresentation{Theme: kit.Dark()}, conversation.Block{
+		Kind:        conversation.BlockUser,
 		Text:        "review this",
-		Attachments: []agent.Attachment{{Name: "design.md", MimeType: "text/markdown"}},
+		Attachments: []prompt.Attachment{{Name: "design.md", MimeType: "text/markdown"}},
 	})
 	if len(rendered) != 1 {
 		t.Fatalf("presented blocks = %d, want 1", len(rendered))
@@ -70,11 +70,11 @@ func TestUserPresenterKeepsAttachmentsInsideTheMessageSurface(t *testing.T) {
 func TestQuestionPresenterShowsAcceptedTranscriptAnswers(t *testing.T) {
 	t.Parallel()
 
-	question := agent.Question{
-		Title: "Target", Fields: []agent.QuestionField{{Prompt: "Which platform?"}},
+	question := conversation.Question{
+		Title: "Target", Fields: []conversation.QuestionField{{Prompt: "Which platform?"}},
 		Answers: [][]string{{"linux"}},
 	}
-	rendered := presentQuestion(BlockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode()}, agent.Block{Question: &question})
+	rendered := presentQuestion(BlockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode()}, conversation.Block{Question: &question})
 	if len(rendered) != 1 {
 		t.Fatalf("presented blocks = %d, want 1", len(rendered))
 	}
@@ -86,11 +86,11 @@ func TestQuestionPresenterShowsAcceptedTranscriptAnswers(t *testing.T) {
 
 func TestPendingQuestionPresenterHasNoVisibleInteractionSurface(t *testing.T) {
 	t.Parallel()
-	question := agent.Question{
+	question := conversation.Question{
 		RunID: "run_1", ItemID: "question_1", Title: "Target",
-		Fields: []agent.QuestionField{{Prompt: "Which platform?", Kind: agent.QuestionText}},
+		Fields: []conversation.QuestionField{{Prompt: "Which platform?", Kind: conversation.QuestionText}},
 	}
-	rendered := presentQuestion(BlockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode()}, agent.Block{Question: &question})
+	rendered := presentQuestion(BlockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode()}, conversation.Block{Question: &question})
 	block, ok := rendered[0].(*questionBlock)
 	if !ok {
 		t.Fatalf("presented question = %T", rendered[0])

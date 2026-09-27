@@ -1,4 +1,3 @@
-import { getContainer } from "@/main/container";
 import { DATA_PROVIDER, type Contributor } from "@/plugins/sdk";
 import { runtimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
 import { SCHEDULES_KEY } from "../application/scheduleQueries";
@@ -65,22 +64,26 @@ function runtimeScheduleGateway(client: FlameClient): ScheduleGateway {
   };
 }
 
-export function installScheduleGateway() {
-  const owner = ScheduleMutationOwner.install(runtimeScheduleGateway(getContainer().client()));
+export function installScheduleGateway(runtimeClient: () => FlameClient) {
+  const owner = ScheduleMutationOwner.install(runtimeScheduleGateway(runtimeClient()));
   return {
-    replaceRuntimeGeneration: () => owner.replaceRuntimeGeneration(),
+    replaceRuntimeGeneration: () =>
+      owner.replaceRuntimeGeneration(() => runtimeScheduleGateway(runtimeClient())),
     dispose() {
       owner.dispose();
     },
   };
 }
 
-export function registerScheduleDataProvider(ctx: Contributor): void {
+export function registerScheduleDataProvider(
+  ctx: Contributor,
+  runtimeClient: () => FlameClient,
+): void {
   ctx.contribute(DATA_PROVIDER, {
     key: SCHEDULES_KEY,
     fetcher: async () => {
       if (!runtimeCapability("schedules")) return [];
-      const client = getContainer().client();
+      const client = runtimeClient();
       return (await client.schedules.list().autoPagingToArray()).map(scheduleConfig);
     },
   });

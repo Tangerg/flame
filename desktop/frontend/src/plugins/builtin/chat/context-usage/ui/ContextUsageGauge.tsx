@@ -4,10 +4,10 @@ import { fmtTokens } from "@/lib/format";
 import { useT } from "@/lib/i18n";
 import { useCurrentRootMaterial } from "@/plugins/builtin/agent/public/run";
 import { useActiveSessionId, useAgentSessions } from "@/plugins/builtin/agent/public/session";
-import { useModels } from "@/plugins/builtin/settings/providers/public/queries";
+import { useModels } from "@/plugins/builtin/providers/public/queries";
 import { contextUsageReadout } from "../application/contextUsageReadout";
 import { color, motion, radius, space, surface } from "@/styles/tokens.stylex";
-import { chatStyles as ct } from "../../chatStyles";
+import { chatStyles as ct } from "@/ui/agent/chatStyles";
 
 const cu = stylex.create({
   trigger: {

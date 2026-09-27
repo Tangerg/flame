@@ -10,32 +10,31 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/protocol"
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/programtest"
-
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/application/integration/models"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
+	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/oolong/core/input"
+	"github.com/Tangerg/oolong/core/programtest"
 )
 
 type usageServiceStub struct{}
 
-func (usageServiceStub) SessionUsage(_ context.Context, sessionID string) (agent.SessionUsageReport, error) {
+func (usageServiceStub) SessionUsage(_ context.Context, sessionID string) (conversation.SessionUsageReport, error) {
 	cost := 0.25
-	return agent.SessionUsageReport{
+	return conversation.SessionUsageReport{
 		SessionID: sessionID, Total: protocol.ModelUsage{InputTokens: 1_200, OutputTokens: 300, CostUSD: &cost},
 		ByModel: []protocol.UsageBucket{{Key: "deepseek/model", ModelUsage: protocol.ModelUsage{InputTokens: 1_200}}},
 	}, nil
 }
 
-func (usageServiceStub) Summary(_ context.Context, period agent.UsageSummaryPeriod) (agent.UsageSummary, error) {
+func (usageServiceStub) Summary(_ context.Context, period conversation.UsageSummaryPeriod) (conversation.UsageSummary, error) {
 	cost := 1.5
-	return agent.UsageSummary{
+	return conversation.UsageSummary{
 		Period: period, Total: protocol.ModelUsage{InputTokens: 8_000, OutputTokens: 2_000, CostUSD: &cost},
 		ByProvider: []protocol.UsageBucket{{Key: "deepseek", Runs: 4}}, Sessions: 2, Runs: 4,
 	}, nil
@@ -46,20 +45,20 @@ type blockingUsageService struct {
 	canceled chan struct{}
 }
 
-func (b blockingUsageService) SessionUsage(ctx context.Context, _ string) (agent.SessionUsageReport, error) {
+func (b blockingUsageService) SessionUsage(ctx context.Context, _ string) (conversation.SessionUsageReport, error) {
 	close(b.started)
 	<-ctx.Done()
 	close(b.canceled)
-	return agent.SessionUsageReport{}, context.Cause(ctx)
+	return conversation.SessionUsageReport{}, context.Cause(ctx)
 }
 
-func (blockingUsageService) Summary(context.Context, agent.UsageSummaryPeriod) (agent.UsageSummary, error) {
+func (blockingUsageService) Summary(context.Context, conversation.UsageSummaryPeriod) (conversation.UsageSummary, error) {
 	panic("summary must not run after the session usage query is canceled")
 }
 
 func TestUsageAndModelRoleCommandsProjectRuntimeConfiguration(t *testing.T) {
 	models := newModelConfigServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Usage: usageServiceStub{}, ModelConfig: models})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Usage: usageServiceStub{}, ModelConfig: models})
 	host.Shows(t, "Ask flame")
 	host.Type("/usage 30")
 	host.Press(input.Enter)
@@ -122,7 +121,7 @@ func TestRuntimeStatusConsumesTheNegotiatedDiscoveryProfile(t *testing.T) {
 		discovery.Capabilities.RuntimeTopics = []protocol.RuntimeTopic{protocol.TopicFilesChanged}
 		discovery.Capabilities.Features[protocol.FeatureMCP] = protocol.FeatureCapability{Enabled: true}
 	})
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), RuntimeProfile: &profile})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), RuntimeProfile: &profile})
 	host.Shows(t, "Ask flame")
 	host.Type("/status")
 	host.Press(input.Enter)
@@ -170,9 +169,9 @@ func profileWithReplay(t *testing.T, profile runtimebinding.Profile, namespace s
 	return updated
 }
 
-func protectedCommandReplayGuard(t *testing.T, namespace string, until time.Time) commandreplay.Guard {
+func protectedCommandReplayGuard(t *testing.T, namespace string, until time.Time) replay.Guard {
 	t.Helper()
-	guard, err := commandreplay.NewProtectedGuard(namespace, until)
+	guard, err := replay.NewProtectedGuard(namespace, until)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -181,7 +180,7 @@ func protectedCommandReplayGuard(t *testing.T, namespace string, until time.Time
 
 func TestSessionReplacementCancelsAnOutstandingSideQuery(t *testing.T) {
 	usageService := blockingUsageService{started: make(chan struct{}), canceled: make(chan struct{})}
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Usage: usageService})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Usage: usageService})
 	host.Shows(t, "Ask flame")
 	host.Type("/usage")
 	host.Press(input.Enter)
@@ -310,7 +309,7 @@ func (*modelConfigServiceStub) TestProvider(_ context.Context, providerID string
 
 func TestProviderConfigurationMasksSecretsAndPreservesExplicitChanges(t *testing.T) {
 	service := newModelConfigServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), ModelConfig: service})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), ModelConfig: service})
 	host.Shows(t, "Ask flame")
 	host.Type("/providers")
 	host.Press(input.Enter)
@@ -351,7 +350,7 @@ func TestEnvironmentProviderCanBeOverriddenByStoredKey(t *testing.T) {
 	service.providers[0] = terminalTestProvider(
 		"deepseek", "https://api.deepseek.example", "sk****env", protocol.ProviderKeySourceEnv,
 	)
-	host, stop := runUIWithRuntimeServices(t, Config{
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench,
 		Runtime: runtimefixture.New(), ModelConfig: service,
 	})
 	host.Shows(t, "Ask flame")
@@ -389,7 +388,7 @@ func TestProviderMutationOutlivesSameSessionProjectionReplacement(t *testing.T) 
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1),
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: backend, ModelConfig: service, Changes: source, SessionID: "ses_demo_1"})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: backend, ModelConfig: service, Changes: source, SessionID: "ses_demo_1"})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "runtime change subscription")
 	host.Type("/provider-config deepseek")
@@ -406,7 +405,7 @@ func TestProviderMutationOutlivesSameSessionProjectionReplacement(t *testing.T) 
 		t.Fatalf("provider update = %+v", update)
 	}
 
-	if _, err := backend.RollbackSession(t.Context(), agent.RollbackSession{
+	if _, err := backend.RollbackSession(t.Context(), conversation.RollbackSession{
 		SessionID: "ses_demo_1", Scope: protocol.RestoreHistory,
 	}); err != nil {
 		t.Fatal(err)
@@ -416,7 +415,7 @@ func TestProviderMutationOutlivesSameSessionProjectionReplacement(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := backend.UpdateSession(t.Context(), agent.UpdateSession{
+	if _, err := backend.UpdateSession(t.Context(), conversation.UpdateSession{
 		SessionID: snapshot.Session.ID, Title: &title, ExpectedRevision: snapshot.Session.Revision,
 	}); err != nil {
 		t.Fatal(err)
@@ -573,7 +572,7 @@ func TestGoalLifecycleAndInvalidationRefreshTheOpenGoalReader(t *testing.T) {
 		events: make(chan changefeed.Event, 2), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 2), supported: []protocol.RuntimeTopic{protocol.TopicGoalsChanged},
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Goals: goals, Changes: source})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Goals: goals, Changes: source})
 	host.Shows(t, "Ask flame")
 	subscription := awaitValue(t, source.subscription, "goal invalidation subscription")
 	if len(subscription.Topics) != 1 || subscription.Topics[0] != protocol.TopicGoalsChanged {
@@ -666,7 +665,7 @@ func TestGoalInvalidationConvergesAfterATransientReadFailure(t *testing.T) {
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1), supported: []protocol.RuntimeTopic{protocol.TopicGoalsChanged},
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Goals: goals, Changes: source})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Goals: goals, Changes: source})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "goal invalidation subscription")
 	host.Type("/goal")
@@ -674,7 +673,7 @@ func TestGoalInvalidationConvergesAfterATransientReadFailure(t *testing.T) {
 	host.Shows(t, "original objective")
 
 	goals.set(testGoal(t, "converged objective"))
-	goals.readErr <- fmt.Errorf("temporary goal read failure: %w", agent.ErrDisconnected)
+	goals.readErr <- fmt.Errorf("temporary goal read failure: %w", conversation.ErrDisconnected)
 	baseline := goals.reads.Load()
 	source.events <- changefeed.Event{
 		Type: protocol.RuntimeGoalsChanged, Sequence: 1,
@@ -698,7 +697,7 @@ func TestGoalInvalidationDoesNotRetryAnIncompatibleProjection(t *testing.T) {
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1), supported: []protocol.RuntimeTopic{protocol.TopicGoalsChanged},
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Goals: goals, Changes: source})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Goals: goals, Changes: source})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "goal invalidation subscription")
 	host.Type("/goal")
@@ -706,7 +705,7 @@ func TestGoalInvalidationDoesNotRetryAnIncompatibleProjection(t *testing.T) {
 	host.Shows(t, "original objective")
 	drainSignals(goals.readSignal)
 
-	goals.readErr <- agent.ErrIncompatibleRuntime
+	goals.readErr <- conversation.ErrIncompatibleRuntime
 	source.events <- changefeed.Event{
 		Type: protocol.RuntimeGoalsChanged, Sequence: 1,
 		SessionIDs: []string{"ses_demo_1"},
@@ -731,7 +730,7 @@ func TestGoalInvalidationDoesNotRetryAPermanentProjectionFailure(t *testing.T) {
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1), supported: []protocol.RuntimeTopic{protocol.TopicGoalsChanged},
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Goals: goals, Changes: source})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Goals: goals, Changes: source})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "goal invalidation subscription")
 	host.Type("/goal")
@@ -782,7 +781,7 @@ func TestLatestReaderQueryRetiresAnOlderBoundedContextProjection(t *testing.T) {
 		started:              make(chan struct{}, 1),
 		canceled:             make(chan struct{}, 1),
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Workspaces: workspaces, Goals: new(goalServiceStub)})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Workspaces: workspaces, Goals: new(goalServiceStub)})
 	host.Shows(t, "Ask flame")
 	host.Type("/workspaces")
 	host.Press(input.Enter)
@@ -828,7 +827,7 @@ func TestReaderRefreshDoesNotCancelAGoalLifecycleCommand(t *testing.T) {
 	}
 	release := sync.OnceFunc(func() { close(service.release) })
 	t.Cleanup(release)
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Goals: service})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Goals: service})
 	host.Shows(t, "Ask flame")
 	host.Type("/goal-stop")
 	host.Press(input.Enter)
@@ -863,7 +862,7 @@ func TestGoalMutationOutlivesSameSessionProjectionReplacement(t *testing.T) {
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1),
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: backend, Goals: service, Changes: source, SessionID: "ses_demo_1"})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: backend, Goals: service, Changes: source, SessionID: "ses_demo_1"})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "runtime change subscription")
 	host.Type("/goal-stop")
@@ -894,7 +893,7 @@ func TestGoalMutationDoesNotInstallAReaderAfterSessionSwitch(t *testing.T) {
 	}
 	release := sync.OnceFunc(func() { close(service.release) })
 	t.Cleanup(release)
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Goals: service, SessionID: "ses_demo_1"})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Goals: service, SessionID: "ses_demo_1"})
 	host.Shows(t, "Ask flame")
 	host.Type("/goal-stop")
 	host.Press(input.Enter)

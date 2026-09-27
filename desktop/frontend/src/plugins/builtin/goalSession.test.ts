@@ -1,13 +1,18 @@
+import { installAgentRuntimeGateway } from "./agent/adapters/agentRuntimeGateway";
 import { renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgentDriver } from "@/plugins/sdk/types";
 import type { FlameClient, RunEvent, RunRef } from "@flame/runtime-contract/client";
-import { resetContainer, setContainer } from "@/main/container";
 import { useAgentStore } from "./agent/adapters/agentStore";
 import { useAgentSessionStore } from "./agent/adapters/agentSessionStore";
 import { useAgentSession } from "./agent/adapters/useAgentSession";
 import { selectCurrentRootRun } from "./agent/application/view/runTree";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
+
+let runtimeClient: () => FlameClient = () => {
+  throw new Error("Runtime test client is not configured");
+};
+const getRuntimeClient = () => runtimeClient();
 
 const SID = "ses_goal_live";
 const run: RunRef = {
@@ -24,11 +29,11 @@ const run: RunRef = {
 
 beforeEach(async () => {
   await loadPluginsForTest();
+  installAgentRuntimeGateway(getRuntimeClient);
 });
 afterEach(async () => {
   useAgentStore.getState().dropSession(SID);
   useAgentSessionStore.setState({ openSessionIds: [], lastSessionId: "" });
-  await resetContainer();
 });
 
 describe("Goal and mounted Session integration", () => {
@@ -56,17 +61,15 @@ describe("Goal and mounted Session integration", () => {
         }),
       },
     });
-    setContainer({
-      client: () =>
-        ({
-          sessions: { snapshot },
-          runs: { subscribe },
-          goals: { update, stop },
-        }) as unknown as FlameClient,
-    });
-    const adapter = installGoalRuntimeAdapter(true);
+    runtimeClient = () =>
+      ({
+        sessions: { snapshot },
+        runs: { subscribe },
+        goals: { update, stop },
+      }) as unknown as FlameClient;
+    const adapter = installGoalRuntimeAdapter(getRuntimeClient, true);
     const driver = { start: vi.fn(), resume: vi.fn() } as unknown as AgentDriver;
-    const mounted = renderHook(() => useAgentSession(() => driver, SID));
+    const mounted = renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID));
     try {
       await waitFor(() => expect(subscribe).toHaveBeenCalledOnce());
       let edited = false;

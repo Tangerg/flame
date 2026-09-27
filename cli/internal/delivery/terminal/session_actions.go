@@ -6,16 +6,15 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/cli/internal/application/agent/session"
+	"github.com/Tangerg/flame/cli/internal/application/mutation"
+	"github.com/Tangerg/flame/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/keymap"
 	"github.com/Tangerg/oolong/core/layout"
-
-	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
-	"github.com/Tangerg/flame/cli/internal/application/agent/session"
-	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type sessionImport struct {
@@ -58,14 +57,14 @@ func (a *app) prepareSessionImport(path string) error {
 
 func (a *app) importSession(artifact session.Document) {
 	a.runSessionChange("importing session",
-		func(ctx context.Context) (agent.SessionSnapshot, error) {
+		func(ctx context.Context) (conversation.SessionSnapshot, error) {
 			imported, err := a.transfers.ImportSession(ctx, session.ImportRequest{Artifact: artifact})
 			if err != nil {
-				return agent.SessionSnapshot{}, err
+				return conversation.SessionSnapshot{}, err
 			}
 			return a.readSessionAfterMutation(ctx, imported.ID)
 		},
-		func(snapshot agent.SessionSnapshot) error {
+		func(snapshot conversation.SessionSnapshot) error {
 			if err := a.installSnapshot(snapshot); err != nil {
 				return err
 			}
@@ -114,23 +113,23 @@ func (a *app) prepareSessionRollback(argument string) error {
 }
 
 type rollbackPreview struct {
-	request    agent.RollbackSession
+	request    conversation.RollbackSession
 	settlement session.RollbackPreview
 }
 
-func previewRollback(snapshot agent.SessionSnapshot, request agent.RollbackSession) (rollbackPreview, error) {
+func previewRollback(snapshot conversation.SessionSnapshot, request conversation.RollbackSession) (rollbackPreview, error) {
 	settlement, err := session.PreviewRollback(snapshot, request)
 	return rollbackPreview{request: request, settlement: settlement}, err
 }
 
-func (r rollbackPreview) ValidateCommit(snapshot agent.SessionSnapshot) error {
+func (r rollbackPreview) ValidateCommit(snapshot conversation.SessionSnapshot) error {
 	return r.settlement.ValidateCommit(snapshot)
 }
 
 // ValidateApplied proves a history rollback committed when its command result
 // was lost behind a post-commit cleanup error. Files-only rollback has no
 // observable session projection change and therefore cannot use this proof.
-func (r rollbackPreview) ValidateApplied(snapshot agent.SessionSnapshot) error {
+func (r rollbackPreview) ValidateApplied(snapshot conversation.SessionSnapshot) error {
 	return r.settlement.ValidateApplied(snapshot)
 }
 
@@ -249,10 +248,10 @@ func (a *app) reportSessionRollbackRecovery(recovery workbench.SessionRollbackRe
 	a.message(label)
 }
 
-func parseRollbackArgument(sessionID, argument string) (agent.RollbackSession, error) {
+func parseRollbackArgument(sessionID, argument string) (conversation.RollbackSession, error) {
 	fields := strings.Fields(argument)
 	if len(fields) == 0 || len(fields) > 2 {
-		return agent.RollbackSession{}, errors.New("usage: /rollback <run-id|all> [history|files|both]")
+		return conversation.RollbackSession{}, errors.New("usage: /rollback <run-id|all> [history|files|both]")
 	}
 	boundary := fields[0]
 	if strings.EqualFold(boundary, "all") {
@@ -262,9 +261,9 @@ func parseRollbackArgument(sessionID, argument string) (agent.RollbackSession, e
 	if len(fields) == 2 {
 		scope = protocol.RestoreType(strings.ToLower(fields[1]))
 	}
-	request := agent.RollbackSession{SessionID: sessionID, ToRunID: boundary, Scope: scope}
+	request := conversation.RollbackSession{SessionID: sessionID, ToRunID: boundary, Scope: scope}
 	if err := request.Validate(); err != nil {
-		return agent.RollbackSession{}, err
+		return conversation.RollbackSession{}, err
 	}
 	return request, nil
 }

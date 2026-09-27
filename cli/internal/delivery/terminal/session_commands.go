@@ -7,17 +7,17 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/attachment"
+	"github.com/Tangerg/flame/cli/internal/application/agent/session"
+	"github.com/Tangerg/flame/cli/internal/application/mutation"
+	"github.com/Tangerg/flame/cli/internal/application/retry"
+	"github.com/Tangerg/flame/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/keymap"
 	"github.com/Tangerg/oolong/core/layout"
-
-	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/attachment"
-	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
-	"github.com/Tangerg/flame/cli/internal/application/agent/session"
-	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
-	"github.com/Tangerg/flame/cli/internal/application/retry"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 func (a *app) ShowSessions() {
@@ -40,10 +40,10 @@ func (a *app) loadMoreSessions() {
 func (a *app) loadSessionPage(cursor string, appendPage bool) {
 	a.message("loading sessions")
 	a.runOperation(pickerCatalogOperation, true,
-		func(ctx context.Context) (agent.SessionPage, error) {
-			return a.runtime.ListSessions(ctx, agent.SessionQuery{PageSize: agent.DefaultPageSize(), Cursor: cursor})
+		func(ctx context.Context) (conversation.SessionPage, error) {
+			return a.runtime.ListSessions(ctx, conversation.SessionQuery{PageSize: conversation.DefaultPageSize(), Cursor: cursor})
 		},
-		func(page agent.SessionPage, err error) {
+		func(page conversation.SessionPage, err error) {
 			if appendPage && !a.dialogs.sessionDialog.Open() {
 				return
 			}
@@ -63,14 +63,14 @@ func (a *app) loadSessionPage(cursor string, appendPage bool) {
 	)
 }
 
-func (a *app) toggleSessionFavorite(session agent.Session) {
+func (a *app) toggleSessionFavorite(session conversation.Session) {
 	desired := !session.Favorite
-	a.updateSessionFromCenter(session.ID, "updating favorite", func(latest agent.Session) agent.UpdateSession {
-		return agent.UpdateSession{SessionID: latest.ID, Favorite: &desired, ExpectedRevision: latest.Revision}
+	a.updateSessionFromCenter(session.ID, "updating favorite", func(latest conversation.Session) conversation.UpdateSession {
+		return conversation.UpdateSession{SessionID: latest.ID, Favorite: &desired, ExpectedRevision: latest.Revision}
 	})
 }
 
-func (a *app) openSessionRename(session agent.Session) {
+func (a *app) openSessionRename(session conversation.Session) {
 	title := displayTitle(session)
 	field := &headless.Text{Label: "Session title", Value: headless.Bind(&title), Check: requiredText}
 	field.Clipboard = a.loop.Clipboard()
@@ -84,8 +84,8 @@ func (a *app) openSessionRename(session agent.Session) {
 		dialog.Controller().Dismiss()
 		a.dialogs.sessionRenameDialog = nil
 		trimmed := strings.TrimSpace(title)
-		a.updateSessionFromCenter(session.ID, "renaming session", func(latest agent.Session) agent.UpdateSession {
-			return agent.UpdateSession{SessionID: latest.ID, Title: &trimmed, ExpectedRevision: latest.Revision}
+		a.updateSessionFromCenter(session.ID, "renaming session", func(latest conversation.Session) conversation.UpdateSession {
+			return conversation.UpdateSession{SessionID: latest.ID, Title: &trimmed, ExpectedRevision: latest.Revision}
 		})
 	}
 	form.GaveUp = func() {
@@ -107,7 +107,7 @@ func (a *app) openSessionRename(session agent.Session) {
 	dialog.Controller().Show()
 }
 
-func (a *app) openSessionDelete(session agent.Session) {
+func (a *app) openSessionDelete(session conversation.Session) {
 	if session.ID == a.session.current.ID {
 		a.message("switch away before deleting the current session")
 		return
@@ -147,16 +147,16 @@ func (a *app) openSessionDelete(session agent.Session) {
 	dialog.Controller().Show()
 }
 
-func (a *app) updateSessionFromCenter(id, label string, build func(agent.Session) agent.UpdateSession) {
+func (a *app) updateSessionFromCenter(id, label string, build func(conversation.Session) conversation.UpdateSession) {
 	started := a.runApplicationOperation(sessionCenterOperation, false,
-		func(ctx context.Context) (agent.Session, error) {
+		func(ctx context.Context) (conversation.Session, error) {
 			latest, err := a.runtime.GetSession(ctx, id)
 			if err != nil {
-				return agent.Session{}, err
+				return conversation.Session{}, err
 			}
 			return session.Update(ctx, a.runtime, build(latest.Session))
 		},
-		func(updated agent.Session, err error) {
+		func(updated conversation.Session, err error) {
 			if err != nil {
 				a.message(label + " failed: " + err.Error())
 				return
@@ -206,7 +206,7 @@ func (a *app) deleteSessionFromCenter(id string) {
 				return
 			}
 			if a.queue != nil {
-				a.queue.Clear(result.Request.SessionID)
+				a.queue.ForgetSession(result.Request.SessionID)
 			}
 			a.dialogs.sessionCenter.Remove(id)
 			a.message("deleted session")
@@ -233,16 +233,16 @@ func (a *app) RenameSession(title string) {
 	}
 	sessionID := a.session.current.ID
 	a.runSessionChange("renaming session",
-		func(ctx context.Context) (agent.Session, error) {
+		func(ctx context.Context) (conversation.Session, error) {
 			latest, err := a.runtime.GetSession(ctx, sessionID)
 			if err != nil {
-				return agent.Session{}, err
+				return conversation.Session{}, err
 			}
-			return session.Update(ctx, a.runtime, agent.UpdateSession{
+			return session.Update(ctx, a.runtime, conversation.UpdateSession{
 				SessionID: sessionID, Title: &title, ExpectedRevision: latest.Session.Revision,
 			})
 		},
-		func(updated agent.Session) error {
+		func(updated conversation.Session) error {
 			a.setActiveSession(updated)
 			a.message("renamed session to " + updated.Title)
 			return nil
@@ -253,14 +253,14 @@ func (a *app) RenameSession(title string) {
 func (a *app) ForkSession(title string) {
 	source := a.session.current.ID
 	a.runSessionChange("forking session",
-		func(ctx context.Context) (agent.SessionSnapshot, error) {
-			forked, err := a.runtime.ForkSession(ctx, agent.ForkSession{SessionID: source, Title: strings.TrimSpace(title)})
+		func(ctx context.Context) (conversation.SessionSnapshot, error) {
+			forked, err := a.runtime.ForkSession(ctx, conversation.ForkSession{SessionID: source, Title: strings.TrimSpace(title)})
 			if err != nil {
-				return agent.SessionSnapshot{}, err
+				return conversation.SessionSnapshot{}, err
 			}
 			return a.readSessionAfterMutation(ctx, forked.ID)
 		},
-		func(snapshot agent.SessionSnapshot) error { return a.installSnapshot(snapshot) },
+		func(snapshot conversation.SessionSnapshot) error { return a.installSnapshot(snapshot) },
 	)
 }
 
@@ -268,16 +268,16 @@ func (a *app) forkSessionFromRun(runID string) {
 	source := a.session.current.ID
 	short := shortIdentity(runID)
 	a.runSessionChange("forking session from "+short,
-		func(ctx context.Context) (agent.SessionSnapshot, error) {
-			forked, err := a.runtime.ForkSession(ctx, agent.ForkSession{
+		func(ctx context.Context) (conversation.SessionSnapshot, error) {
+			forked, err := a.runtime.ForkSession(ctx, conversation.ForkSession{
 				SessionID: source, FromRunID: runID, Title: "Fork from " + short,
 			})
 			if err != nil {
-				return agent.SessionSnapshot{}, err
+				return conversation.SessionSnapshot{}, err
 			}
 			return a.readSessionAfterMutation(ctx, forked.ID)
 		},
-		func(snapshot agent.SessionSnapshot) error { return a.installSnapshot(snapshot) },
+		func(snapshot conversation.SessionSnapshot) error { return a.installSnapshot(snapshot) },
 	)
 }
 
@@ -287,8 +287,8 @@ func (a *app) switchSession(id string) {
 		return
 	}
 	a.runSessionChange("loading session",
-		func(ctx context.Context) (agent.SessionSnapshot, error) { return a.runtime.GetSession(ctx, id) },
-		func(snapshot agent.SessionSnapshot) error { return a.installSnapshot(snapshot) },
+		func(ctx context.Context) (conversation.SessionSnapshot, error) { return a.runtime.GetSession(ctx, id) },
+		func(snapshot conversation.SessionSnapshot) error { return a.installSnapshot(snapshot) },
 	)
 }
 
@@ -370,7 +370,7 @@ func (a *app) cancelSessionChange() bool {
 // any authoritative refresh that runtime notifications deferred behind it.
 func (a *app) settleSessionChange() {
 	a.session.draftTransition = nil
-	if a.session.invalidated && a.execution.conversation.Phase() != agent.ConversationRunning &&
+	if a.session.invalidated && a.execution.conversation.Phase() != conversation.Running &&
 		!a.execution.following && a.execution.pendingCancel == nil {
 		a.refreshInvalidatedSession(false)
 	}
@@ -388,24 +388,24 @@ const (
 // forced replacement transfers it because the source session no longer exists.
 type sessionDraftTransition struct {
 	sourceSessionID string
-	baseline        agent.Message
+	baseline        prompt.Message
 	disposition     sourceDraftDisposition
 }
 
 func (s sessionDraftTransition) resolve(
 	store *workbench.Store,
 	destinationSessionID string,
-	destinationDraft agent.Message,
-	currentDraft agent.Message,
-) (agent.Message, error) {
+	destinationDraft prompt.Message,
+	currentDraft prompt.Message,
+) (prompt.Message, error) {
 	switch s.disposition {
 	case retireSourceDraft:
 		if destinationSessionID == s.sourceSessionID {
-			return agent.Message{}, fmt.Errorf("replacement session reused retired identity %s", destinationSessionID)
+			return prompt.Message{}, fmt.Errorf("replacement session reused retired identity %s", destinationSessionID)
 		}
 		merged, err := workbench.MergeSessionDraft(destinationDraft, currentDraft)
 		if err != nil {
-			return agent.Message{}, fmt.Errorf("merge replacement session draft: %w", err)
+			return prompt.Message{}, fmt.Errorf("merge replacement session draft: %w", err)
 		}
 		if strings.TrimSpace(currentDraft.Text) == "" && len(currentDraft.Attachments) == 0 {
 			return merged, nil
@@ -415,7 +415,7 @@ func (s sessionDraftTransition) resolve(
 			SourceBefore: currentDraft, DestinationBefore: destinationDraft,
 			DestinationAfter: merged,
 		}); err != nil {
-			return agent.Message{}, fmt.Errorf("transfer replacement session draft: %w", err)
+			return prompt.Message{}, fmt.Errorf("transfer replacement session draft: %w", err)
 		}
 		return merged, nil
 	case preserveSourceDraft:
@@ -430,30 +430,30 @@ func (s sessionDraftTransition) resolve(
 		}
 		merged, err := workbench.MergeSessionDraft(destinationDraft, currentDraft)
 		if err != nil {
-			return agent.Message{}, fmt.Errorf("merge session draft: %w", err)
+			return prompt.Message{}, fmt.Errorf("merge session draft: %w", err)
 		}
 		if err := store.ApplyDraftTransfer(workbench.DraftTransfer{
 			SourceSessionID: s.sourceSessionID, DestinationSessionID: destinationSessionID,
 			SourceBefore: currentDraft, SourceAfter: s.baseline,
 			DestinationBefore: destinationDraft, DestinationAfter: merged,
 		}); err != nil {
-			return agent.Message{}, fmt.Errorf("transfer session draft: %w", err)
+			return prompt.Message{}, fmt.Errorf("transfer session draft: %w", err)
 		}
 		return merged, nil
 	default:
-		return agent.Message{}, errors.New("session draft transition has an invalid source disposition")
+		return prompt.Message{}, errors.New("session draft transition has an invalid source disposition")
 	}
 }
 
 type sessionInstallation struct {
-	snapshot         agent.SessionSnapshot
+	snapshot         conversation.SessionSnapshot
 	attachments      *attachment.Resolver
 	projection       sessionProjection
-	draft            agent.Message
+	draft            prompt.Message
 	rollbackRecovery *workbench.SessionRollbackRecovery
 }
 
-func (a *app) prepareSessionInstallation(snapshot agent.SessionSnapshot) (sessionInstallation, error) {
+func (a *app) prepareSessionInstallation(snapshot conversation.SessionSnapshot) (sessionInstallation, error) {
 	attachments, err := attachment.New(authoringDirectory(a.localDirectory, snapshot.Session.Workspace.Path))
 	if err != nil {
 		return sessionInstallation{}, fmt.Errorf("session attachments: %w", err)
@@ -474,34 +474,34 @@ func (a *app) prepareSessionInstallation(snapshot agent.SessionSnapshot) (sessio
 }
 
 func (a *app) prepareDestinationDraft(
-	session agent.Session,
-) (agent.Message, *workbench.SessionRollbackRecovery, error) {
+	session conversation.Session,
+) (prompt.Message, *workbench.SessionRollbackRecovery, error) {
 	current, _, err := a.currentDraft()
 	if err != nil {
-		return agent.Message{}, nil, err
+		return prompt.Message{}, nil, err
 	}
 	if saveDraftErr := a.saveDraft(current); saveDraftErr != nil {
-		return agent.Message{}, nil, fmt.Errorf("save source session draft: %w", saveDraftErr)
+		return prompt.Message{}, nil, fmt.Errorf("save source session draft: %w", saveDraftErr)
 	}
 	if activateSessionStateErr := a.workbench.ActivateSessionState(session.ID); activateSessionStateErr != nil {
-		return agent.Message{}, nil, fmt.Errorf("activate destination session state: %w", activateSessionStateErr)
+		return prompt.Message{}, nil, fmt.Errorf("activate destination session state: %w", activateSessionStateErr)
 	}
 	draft, _ := a.workbench.Draft(session.ID)
 	if rememberWorkspaceErr := a.workbench.RememberWorkspace(session.Workspace.Path); rememberWorkspaceErr != nil {
-		return agent.Message{}, nil, fmt.Errorf("remember workspace: %w", rememberWorkspaceErr)
+		return prompt.Message{}, nil, fmt.Errorf("remember workspace: %w", rememberWorkspaceErr)
 	}
 	transition := a.session.draftTransition
 	if transition != nil {
 		if _, transitionErr := transition.resolve(a.workbench, session.ID, draft, current); transitionErr != nil {
-			return agent.Message{}, nil, transitionErr
+			return prompt.Message{}, nil, transitionErr
 		}
 	}
 	// Draft transfer is the last separate preparation that can abort projection
 	// installation. Activation then materializes rollback recovery and retires
 	// its one-time report in the same durable Session state replacement.
-	activation, err := a.workbench.ActivateSessionDraft(session.ID, agent.Message{})
+	activation, err := a.workbench.ActivateSessionDraft(session.ID, prompt.Message{})
 	if err != nil {
-		return agent.Message{}, nil, fmt.Errorf("activate destination session draft: %w", err)
+		return prompt.Message{}, nil, fmt.Errorf("activate destination session draft: %w", err)
 	}
 	return activation.Draft, activation.Rollback, nil
 }
@@ -514,7 +514,7 @@ func (a *app) retireSessionState(sessionID string) (int, error) {
 	}
 	discarded := 0
 	if a.queue != nil {
-		discarded = a.queue.Clear(sessionID)
+		discarded = a.queue.ForgetSession(sessionID)
 	}
 	return discarded, nil
 }
@@ -522,7 +522,7 @@ func (a *app) retireSessionState(sessionID string) (int, error) {
 // readSessionAfterMutation converges the authoritative projection without
 // repeating a mutation that may already be durable. Its caller owns cancellation,
 // just as the observer owns live Run recovery.
-func (a *app) readSessionAfterMutation(ctx context.Context, sessionID string) (agent.SessionSnapshot, error) {
+func (a *app) readSessionAfterMutation(ctx context.Context, sessionID string) (conversation.SessionSnapshot, error) {
 	for failures := 0; ; {
 		snapshot, err := a.runtime.GetSession(ctx, sessionID)
 		if err == nil {
@@ -531,13 +531,13 @@ func (a *app) readSessionAfterMutation(ctx context.Context, sessionID string) (a
 		failures++
 		delay, shouldRetry, policyErr := retry.ReconnectDelay(failures, err)
 		if policyErr != nil {
-			return agent.SessionSnapshot{}, policyErr
+			return conversation.SessionSnapshot{}, policyErr
 		}
 		if !shouldRetry {
-			return agent.SessionSnapshot{}, err
+			return conversation.SessionSnapshot{}, err
 		}
 		if err := retry.Wait(ctx, delay); err != nil {
-			return agent.SessionSnapshot{}, err
+			return conversation.SessionSnapshot{}, err
 		}
 	}
 }
@@ -578,7 +578,7 @@ func (s sessionInstallation) apply(a *app) {
 	if a.session.current.Workspace != previousWorkspace {
 		a.followRuntimeChanges()
 	}
-	if a.execution.conversation.Phase() == agent.ConversationIdle {
+	if a.execution.conversation.Phase() == conversation.Idle {
 		a.message("session · " + displayTitle(s.snapshot.Session))
 		if a.session.invalidated {
 			a.refreshInvalidatedSession(false)
@@ -587,7 +587,7 @@ func (s sessionInstallation) apply(a *app) {
 	a.restoreSteerReceipts(s.snapshot)
 }
 
-func (a *app) installSnapshot(snapshot agent.SessionSnapshot) error {
+func (a *app) installSnapshot(snapshot conversation.SessionSnapshot) error {
 	installation, err := a.prepareSessionInstallation(snapshot)
 	if err != nil {
 		return err

@@ -5,22 +5,22 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
-	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
+	"github.com/Tangerg/flame/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/cli/internal/application/retry"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
+	"github.com/Tangerg/flame/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
 type deletionRuntime interface {
-	DeleteSession(context.Context, agent.DeleteSession) error
-	GetSession(context.Context, string) (agent.SessionSnapshot, error)
+	DeleteSession(context.Context, conversation.DeleteSession) error
+	GetSession(context.Context, string) (conversation.SessionSnapshot, error)
 }
 
 // DeletionResult binds settlement to the exact durable runtime command.
 type DeletionResult struct {
-	Request agent.DeleteSession
+	Request conversation.DeleteSession
 	Outcome mutation.Outcome
 }
 
@@ -50,12 +50,12 @@ func Delete(
 	request := pending.Request()
 	if !exists {
 		commandID := mutation.NewCommandID()
-		request = agent.DeleteSession{CommandID: commandID, SessionID: sessionID}
-		replay, err := policy.NewGuard()
+		request = conversation.DeleteSession{CommandID: commandID, SessionID: sessionID}
+		replayGuard, err := policy.NewGuard()
 		if err != nil {
 			return DeletionResult{}, err
 		}
-		if err := authoring.StageSessionDeletion(request, replay); err != nil {
+		if err := authoring.StageSessionDeletion(request, replayGuard); err != nil {
 			return DeletionResult{}, fmt.Errorf("stage session deletion: %w", err)
 		}
 		pending, exists = authoring.PendingSessionDeletion(sessionID)
@@ -81,24 +81,24 @@ func Delete(
 func settleDeletion(
 	ctx context.Context,
 	runtime deletionRuntime,
-	request agent.DeleteSession,
-	replay commandreplay.Guard,
+	request conversation.DeleteSession,
+	replayGuard replay.Guard,
 	policy mutation.ReplayPolicy,
 	backoff retry.Backoff,
 	fresh bool,
 ) (mutation.Outcome, error) {
-	admit := mutation.ReplayAdmission(policy, replay)
+	admit := mutation.ReplayAdmission(policy, replayGuard)
 	if fresh {
-		admit = mutation.FreshReplayAdmission(policy, replay)
+		admit = mutation.FreshReplayAdmission(policy, replayGuard)
 	}
 	_, err := mutation.ConfirmAdmitted(ctx, backoff, admit, func(ctx context.Context) (struct{}, error) {
 		return struct{}{}, runtime.DeleteSession(ctx, request)
 	})
-	if err == nil || errors.Is(err, agent.ErrSessionNotFound) {
+	if err == nil || errors.Is(err, conversation.ErrSessionNotFound) {
 		return mutation.Confirmed, nil
 	}
 	if errors.Is(err, mutation.ErrReplayGuaranteeUnavailable) {
-		outcome, resolveErr := resolveExpired(ctx, runtime, request.SessionID, replay, policy)
+		outcome, resolveErr := resolveExpired(ctx, runtime, request.SessionID, replayGuard, policy)
 		if outcome != mutation.Unknown {
 			return outcome, resolveErr
 		}
@@ -110,7 +110,7 @@ func settleDeletion(
 		return mutation.Unknown, fmt.Errorf("delete session outcome is unknown: %w", err)
 	}
 	_, readErr := runtime.GetSession(ctx, request.SessionID)
-	if errors.Is(readErr, agent.ErrSessionNotFound) {
+	if errors.Is(readErr, conversation.ErrSessionNotFound) {
 		return mutation.Confirmed, nil
 	}
 	if readErr != nil {
@@ -192,14 +192,14 @@ func resolveExpired(
 	ctx context.Context,
 	runtime deletionRuntime,
 	sessionID string,
-	replay commandreplay.Guard,
+	replayGuard replay.Guard,
 	policy mutation.ReplayPolicy,
 ) (mutation.Outcome, error) {
-	if !policy.SameStore(replay) {
+	if !policy.SameStore(replayGuard) {
 		return mutation.Unknown, errors.New("session deletion belongs to another runtime")
 	}
 	_, err := runtime.GetSession(ctx, sessionID)
-	if errors.Is(err, agent.ErrSessionNotFound) {
+	if errors.Is(err, conversation.ErrSessionNotFound) {
 		return mutation.Confirmed, nil
 	}
 	if err != nil {

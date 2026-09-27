@@ -127,7 +127,7 @@ class MessageFeedbackGeneration {
 export class MessageFeedbackOwner {
   static readonly #listeners = new Map<string, Set<RatingListener>>();
 
-  readonly #gateway: MessageFeedbackGateway;
+  #gateway: MessageFeedbackGateway;
   #generation: MessageFeedbackGeneration;
   #disposed = false;
 
@@ -175,9 +175,10 @@ export class MessageFeedbackOwner {
     return this.#generation.submit(target, rating);
   }
 
-  replaceRuntimeGeneration(): void {
+  replaceRuntimeGeneration(createGateway: () => MessageFeedbackGateway): void {
     if (this.#disposed || !messageFeedbackPublication.owns(this)) return;
     const predecessor = this.#generation;
+    this.#gateway = createGateway();
     this.#generation = this.#newGeneration();
     predecessor.retire();
     MessageFeedbackOwner.#publishAll();

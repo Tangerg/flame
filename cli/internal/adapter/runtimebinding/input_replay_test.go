@@ -13,14 +13,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/application/mutation"
+	"github.com/Tangerg/flame/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/workbenchstate"
-	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
-	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 )
 
 // The binding stub records the actual protocol request after the production
@@ -38,11 +37,11 @@ func TestMutationReplaysActualAttachmentBytesAfterWorkbenchRestart(t *testing.T)
 				if err := os.WriteFile(imagePath, []byte{0x89, 'P', 'N', 'G'}, 0o600); err != nil {
 					t.Fatal(err)
 				}
-				message := agent.Message{Text: "inspect inputs", Attachments: []agent.Attachment{
+				message := prompt.Message{Text: "inspect inputs", Attachments: []prompt.Attachment{
 					{ID: "notes", Kind: protocol.ContentBlockText, Name: "notes.txt", Path: textPath, MimeType: "text/plain", Size: 14},
 					{ID: "pixel", Kind: protocol.ContentBlockImage, Name: "pixel.png", Path: imagePath, MimeType: "image/png", Size: 4},
 				}}
-				const commandID agent.CommandID = "cli_0123456789abcdef0123456789abcdef"
+				const commandID replay.CommandID = "cli_0123456789abcdef0123456789abcdef"
 				var first []byte
 				calls := 0
 				capture := func(request any, key, namespace string) error {
@@ -88,21 +87,21 @@ func TestMutationReplaysActualAttachmentBytesAfterWorkbenchRestart(t *testing.T)
 				connection := &Connection{runs: binding, loadAttachment: loadAttachmentFile, meta: requestMeta("test"),
 					profile: profileWithFeatures(t, map[string]protocol.FeatureCapability{protocol.FeatureMultimodal: {Enabled: true}}),
 				}
-				store, err := workbenchstate.Open(directory)
+				store, err := openTestWorkbench(directory)
 				if err != nil {
 					t.Fatal(err)
 				}
-				guard, err := commandreplay.NewProtectedGuard(compatibleReplayNamespace, time.Now().Add(time.Hour))
+				guard, err := replay.NewProtectedGuard(compatibleReplayNamespace, time.Now().Add(time.Hour))
 				if err != nil {
 					t.Fatal(err)
 				}
-				start := agent.StartRun{CommandID: commandID, SessionID: "ses_1", Message: message,
-					Options: agent.RunOptions{Provider: "mock", Model: "balanced"},
+				start := prompt.StartRun{CommandID: commandID, SessionID: "ses_1", Message: message,
+					Options: prompt.RunOptions{Provider: "mock", Model: "balanced"},
 				}
 				if method == "start" {
 					if err := store.StagePendingRun(workbench.PendingRun{
 						State: workbench.PendingRunQueued, Command: start,
-						Replay: commandreplay.UnprotectedGuard(), CancelReplay: commandreplay.UnprotectedGuard(),
+						Replay: replay.UnprotectedGuard(), CancelReplay: replay.UnprotectedGuard(),
 					}); err != nil {
 						t.Fatal(err)
 					}
@@ -127,19 +126,19 @@ func TestMutationReplaysActualAttachmentBytesAfterWorkbenchRestart(t *testing.T)
 				case "start":
 					err = store.MarkPendingRunDispatching(start.SessionID, commandID, guard, prepared)
 				case "resume":
-					approval := agent.Approval{RunID: "run_1", ItemID: "item_approval", Title: "Proceed?",
-						Tool: &agent.ToolCall{Kind: agent.ToolShell, Name: "shell", Status: agent.ToolRunning}}
+					approval := conversation.Approval{RunID: "run_1", ItemID: "item_approval", Title: "Proceed?",
+						Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Status: conversation.ToolRunning}}
 					err = store.StagePendingResume("ses_1", workbench.PendingResume{
-						Command: agent.ResumeRun{CommandID: commandID, RunID: "run_1", Message: &message, Input: input,
-							Answers: []agent.InterruptAnswer{{ItemID: approval.ItemID, Answer: agent.ApprovalAnswer{Decision: protocol.ApprovalDeny}}}},
-						Interactions: []agent.Interaction{approval}, Replay: guard,
+						Command: conversation.ResumeRun{CommandID: commandID, RunID: "run_1", Message: &message, Input: input,
+							Answers: []conversation.InterruptAnswer{{ItemID: approval.ItemID, Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalDeny}}}},
+						Interactions: []conversation.Interaction{approval}, Replay: guard,
 					}, prepared)
 				case "steer":
-					draft := agent.Message{Text: "/steer " + message.Text, Attachments: slices.Clone(message.Attachments)}
+					draft := prompt.Message{Text: "/steer " + message.Text, Attachments: slices.Clone(message.Attachments)}
 					if err := store.SaveDraft("ses_1", draft); err != nil {
 						t.Fatal(err)
 					}
-					pending, createErr := workbench.NewPendingSteer("ses_1", agent.SteerRun{
+					pending, createErr := workbench.NewPendingSteer("ses_1", prompt.SteerRun{
 						CommandID: commandID, RunID: "run_1", SegmentID: "seg_1", Message: message, Input: input,
 					}, time.Now(), guard)
 					if createErr != nil {
@@ -198,7 +197,7 @@ func TestMutationReplaysActualAttachmentBytesAfterWorkbenchRestart(t *testing.T)
 					t.Fatal("mutation replay reopened an original source path")
 					return nil, nil
 				}
-				reopened, err := workbenchstate.Open(directory)
+				reopened, err := openTestWorkbench(directory)
 				if err != nil {
 					t.Fatal(err)
 				}

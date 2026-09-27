@@ -3,17 +3,17 @@ package render
 import (
 	"fmt"
 
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 )
 
 // runScope protects a renderer from mixing unrelated streams while allowing a
 // root stream to carry events from its negotiated child-run tree.
 type runScope struct {
 	rootID  string
-	members map[string]agent.RunLineage
+	members map[string]conversation.RunLineage
 }
 
-func (r *runScope) bind(run agent.Run) error {
+func (r *runScope) bind(run conversation.Run) error {
 	if err := run.Validate(); err != nil {
 		return err
 	}
@@ -29,8 +29,8 @@ func (r *runScope) bind(run agent.Run) error {
 	return nil
 }
 
-func (r *runScope) accept(envelope agent.RunEvent) error {
-	if started, opening := envelope.Event.(agent.SegmentStarted); opening {
+func (r *runScope) accept(envelope conversation.RunEvent) error {
+	if started, opening := envelope.Event.(conversation.SegmentStarted); opening {
 		return r.acceptSegmentStarted(envelope.RunID, started.Run)
 	}
 	if _, exists := r.members[envelope.RunID]; !exists {
@@ -39,7 +39,7 @@ func (r *runScope) accept(envelope agent.RunEvent) error {
 	return validateRunEventOwnership(envelope)
 }
 
-func (r *runScope) acceptSegmentStarted(envelopeRunID string, run agent.Run) error {
+func (r *runScope) acceptSegmentStarted(envelopeRunID string, run conversation.Run) error {
 	if run.ID != envelopeRunID {
 		return fmt.Errorf("segment start run %s does not match envelope %s", run.ID, envelopeRunID)
 	}
@@ -60,27 +60,27 @@ func (r *runScope) acceptSegmentStarted(envelopeRunID string, run agent.Run) err
 	return nil
 }
 
-func validateRunEventOwnership(envelope agent.RunEvent) error {
+func validateRunEventOwnership(envelope conversation.RunEvent) error {
 	switch event := envelope.Event.(type) {
-	case agent.BlockStarted:
+	case conversation.BlockStarted:
 		if event.Block.RunID != envelope.RunID {
 			return fmt.Errorf("block %s belongs to run %s, not %s", event.Block.ID, event.Block.RunID, envelope.RunID)
 		}
-	case agent.BlockCompleted:
+	case conversation.BlockCompleted:
 		if event.Block.RunID != envelope.RunID {
 			return fmt.Errorf("block %s belongs to run %s, not %s", event.Block.ID, event.Block.RunID, envelope.RunID)
 		}
-	case agent.RunInterrupted:
+	case conversation.RunInterrupted:
 		for _, interaction := range event.Interactions {
-			if agent.InteractionRunID(interaction) != envelope.RunID {
-				return fmt.Errorf("interrupt for run %s carries an interaction from run %s", envelope.RunID, agent.InteractionRunID(interaction))
+			if conversation.InteractionRunID(interaction) != envelope.RunID {
+				return fmt.Errorf("interrupt for run %s carries an interaction from run %s", envelope.RunID, conversation.InteractionRunID(interaction))
 			}
 		}
 	}
 	return nil
 }
 
-func (r *runScope) restore(snapshot agent.SessionSnapshot, rootID string) error {
+func (r *runScope) restore(snapshot conversation.SessionSnapshot, rootID string) error {
 	run, exists := snapshot.RunByID(rootID)
 	if !exists {
 		return fmt.Errorf("run %s is absent from the snapshot", rootID)
@@ -110,6 +110,6 @@ func (r *runScope) isChild(runID string) bool {
 
 func (r *runScope) ensureMembers() {
 	if r.members == nil {
-		r.members = make(map[string]agent.RunLineage)
+		r.members = make(map[string]conversation.RunLineage)
 	}
 }

@@ -10,12 +10,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/protocol"
-
 	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/cli/internal/application/retry"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/domain/failure"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 const mcpAuthorizationPollInterval = 500 * time.Millisecond
@@ -431,7 +430,7 @@ func (m mcpAuthorizationObserver) observe(
 		if nextReference != reference {
 			return protocol.MCPAuthorizationAttempt{}, fmt.Errorf(
 				"%w: authorization observation moved from %+v to %+v",
-				agent.ErrIncompatibleRuntime,
+				conversation.ErrIncompatibleRuntime,
 				reference,
 				nextReference,
 			)

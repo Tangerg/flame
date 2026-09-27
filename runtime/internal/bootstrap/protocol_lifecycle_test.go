@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
+	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/config"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -390,9 +390,9 @@ type noMaintenance struct{}
 
 func (noMaintenance) Maintain(
 	context.Context,
-	agentexec.RunMaintenanceInput,
-) agentexec.RunMaintenanceResult {
-	return agentexec.RunMaintenanceResult{}
+	executionadapter.RunMaintenanceInput,
+) executionadapter.RunMaintenanceResult {
+	return executionadapter.RunMaintenanceResult{}
 }
 
 func openProtocolRuntime(t *testing.T, model chat.Model) (*Instance, *delivery.Handler) {

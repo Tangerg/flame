@@ -8,7 +8,7 @@ import type { Message } from "@/plugins/sdk/types/agentSessionView";
 import { Pressable, RichTooltip, vocab } from "@/ui";
 import { foldExchanges, scrollToTurn, useTranscriptMap } from "../adapters/transcriptAnchors";
 import { color, corner, motion, space, surface, type as typeStep } from "@/styles/tokens.stylex";
-import { chatStyles as ct } from "../../chatStyles";
+import { chatStyles as ct } from "@/ui/agent/chatStyles";
 
 const tr = stylex.create({
   tickBar: {

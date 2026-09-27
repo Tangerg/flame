@@ -5,13 +5,12 @@ import (
 	"image"
 	"slices"
 
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/queue"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/keymap"
-
-	"github.com/Tangerg/flame/cli/internal/application/agent/promptqueue"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 const queueDrawerVisibleRows = 3
@@ -28,7 +27,7 @@ const (
 
 type queueTarget struct {
 	kind queueTargetKind
-	id   promptqueue.EntryID
+	id   queue.EntryID
 }
 
 type queueHit struct {
@@ -70,12 +69,12 @@ func (q *queuePointerGesture) release(target queueTarget) bool {
 func (q *queuePointerGesture) cancel() { *q = queuePointerGesture{} }
 
 type queueDrawerActions struct {
-	BeginEdit  func(promptqueue.Entry) error
-	SaveEdit   func(promptqueue.Entry, agent.Message, bool) error
-	CancelEdit func(promptqueue.Entry) error
-	Remove     func(promptqueue.EntryID) error
-	Move       func(promptqueue.EntryID, int) error
-	SendNow    func(promptqueue.EntryID) error
+	BeginEdit  func(queue.Entry) error
+	SaveEdit   func(queue.Entry, prompt.Message, bool) error
+	CancelEdit func(queue.Entry) error
+	Remove     func(queue.EntryID) error
+	Move       func(queue.EntryID, int) error
+	SendNow    func(queue.EntryID) error
 	Dismiss    func()
 }
 
@@ -88,13 +87,13 @@ type queueDrawer struct {
 	keys    *keymap.Map
 	actions queueDrawerActions
 
-	snapshot   promptqueue.Snapshot
+	snapshot   queue.Snapshot
 	selected   int
-	selectedID *promptqueue.EntryID
+	selectedID *queue.EntryID
 	viewport   int
 
-	editingEntry   *promptqueue.Entry
-	editingMessage agent.Message
+	editingEntry   *queue.Entry
+	editingMessage prompt.Message
 	editor         kit.Composer
 	focused        bool
 
@@ -118,14 +117,26 @@ func newQueueDrawer(theme kit.Theme, glyphs kit.Glyphs, keys *keymap.Map, clipbo
 
 func (q *queueDrawer) SetActions(actions queueDrawerActions) { q.actions = actions }
 
-func (q *queueDrawer) Set(snapshot promptqueue.Snapshot) {
+func (q *queueDrawer) Set(snapshot queue.Snapshot) {
 	q.hovered = queueTarget{}
 	q.pointerGesture.cancel()
-	q.lifecycle.renew()
-	q.snapshot = snapshot
 	entries := snapshot.Entries
-	if q.Editing() && queueEntryIndex(entries, q.editingEntry.ID) < 0 {
-		if err := q.releaseEdit(); err != nil && !errors.Is(err, promptqueue.ErrEntryNotFound) {
+	editingIndex := -1
+	if q.Editing() {
+		editingIndex = queueEntryIndex(entries, q.editingEntry.ID)
+		if editingIndex >= 0 && entries[editingIndex].SessionID != q.editingEntry.SessionID {
+			editingIndex = -1
+		}
+	}
+	retainsEditor := editingIndex >= 0 && entries[editingIndex].Held &&
+		entries[editingIndex].CommandID == q.editingEntry.CommandID
+	// A sibling's transition does not replace the held editor or its input lease.
+	if !retainsEditor {
+		q.lifecycle.renew()
+	}
+	q.snapshot = snapshot
+	if q.Editing() && editingIndex < 0 {
+		if err := q.releaseEdit(); err != nil && !errors.Is(err, queue.ErrEntryNotFound) {
 			q.notice = err.Error()
 		}
 	}
@@ -318,9 +329,9 @@ func (q *queueDrawer) Closed() {
 	q.pointerGesture.cancel()
 }
 
-func (q *queueDrawer) selectedEntry() (promptqueue.Entry, bool) {
+func (q *queueDrawer) selectedEntry() (queue.Entry, bool) {
 	if q.selected < 0 || q.selected >= len(q.snapshot.Entries) {
-		return promptqueue.Entry{}, false
+		return queue.Entry{}, false
 	}
 	return q.snapshot.Entries[q.selected], true
 }
@@ -382,7 +393,7 @@ func (q *queueDrawer) releaseEdit() error {
 
 func (q *queueDrawer) cancelEditState() {
 	q.editingEntry = nil
-	q.editingMessage = agent.Message{}
+	q.editingMessage = prompt.Message{}
 	q.editor.Editor().Clear()
 	q.editor.Focus(false)
 }
@@ -423,7 +434,7 @@ func (q *queueDrawer) moveSelected(offset int) {
 		return
 	}
 	if err := q.actions.Move(entry.ID, offset); err != nil {
-		if !errors.Is(err, promptqueue.ErrMoveUnavailable) {
+		if !errors.Is(err, queue.ErrMoveUnavailable) {
 			q.notice = err.Error()
 		}
 		return
@@ -438,7 +449,7 @@ func (q *queueDrawer) sendSelected() {
 	}
 }
 
-func (q *queueDrawer) send(id promptqueue.EntryID) {
+func (q *queueDrawer) send(id queue.EntryID) {
 	if q.actions.SendNow == nil {
 		return
 	}
@@ -468,7 +479,7 @@ func (q *queueDrawer) activate(target queueTarget) {
 	}
 }
 
-func (q *queueDrawer) selectID(id promptqueue.EntryID) {
+func (q *queueDrawer) selectID(id queue.EntryID) {
 	if index := queueEntryIndex(q.snapshot.Entries, id); index >= 0 {
 		q.selectIndex(index)
 	}
@@ -484,8 +495,8 @@ func (q *queueDrawer) hitAt(point image.Point) queueTarget {
 	return queueTarget{}
 }
 
-func queueEntryIndex(entries []promptqueue.Entry, id promptqueue.EntryID) int {
-	return slices.IndexFunc(entries, func(entry promptqueue.Entry) bool { return entry.ID == id })
+func queueEntryIndex(entries []queue.Entry, id queue.EntryID) int {
+	return slices.IndexFunc(entries, func(entry queue.Entry) bool { return entry.ID == id })
 }
 
 func visibleQueueStart(current, selected, rows, entries int) int {

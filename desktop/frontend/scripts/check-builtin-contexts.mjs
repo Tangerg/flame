@@ -4,79 +4,8 @@
 // guard watches the remaining legal seam — public-to-public context imports —
 // and fails only when those public edges form a context-level cycle.
 
-import { execFileSync } from "node:child_process";
-import { closeSync, openSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-
-const CONTEXT_BOUNDARY = new Set([
-  "application",
-  "presentation",
-  "domain",
-  "adapters",
-  "public",
-  "ui",
-]);
-
-function contextRootFromBoundary(path) {
-  const parts = path.split("/");
-  if (parts[0] !== "plugins" || parts[1] !== "builtin") return null;
-  for (let i = 2; i < parts.length; i++) {
-    if (CONTEXT_BOUNDARY.has(parts[i])) return i > 2 ? parts.slice(0, i).join("/") : null;
-  }
-  return null;
-}
-
-function contextRootsOf(graph) {
-  const roots = new Set();
-  for (const [file, deps] of Object.entries(graph)) {
-    const fileRoot = contextRootFromBoundary(file);
-    if (fileRoot) roots.add(fileRoot);
-    for (const dep of deps) {
-      const depRoot = contextRootFromBoundary(dep);
-      if (depRoot) roots.add(depRoot);
-    }
-  }
-  return [...roots].sort((a, b) => b.length - a.length);
-}
-
-function builtinContext(path, contextRoots) {
-  if (!path.startsWith("plugins/builtin/")) return null;
-  return contextRoots.find((root) => path === root || path.startsWith(`${root}/`)) ?? null;
-}
-
-function isPublicContextFile(path, context) {
-  return path.startsWith(`${context}/public/`);
-}
-
-function readMadgeGraph() {
-  const graphFile = join(tmpdir(), "flame-check-builtin-contexts-madge.json");
-  let raw = "";
-  try {
-    const fd = openSync(graphFile, "w");
-    try {
-      execFileSync(
-        "npx",
-        ["madge", "--extensions", "ts,tsx", "--ts-config", "tsconfig.json", "--json", "src/"],
-        { stdio: ["ignore", fd, "inherit"] },
-      );
-    } catch {
-      // madge can exit non-zero on warnings yet still write a full graph.
-    } finally {
-      closeSync(fd);
-    }
-    raw = readFileSync(graphFile, "utf8");
-  } finally {
-    rmSync(graphFile, { force: true });
-  }
-  try {
-    return JSON.parse(raw);
-  } catch {
-    console.error("[check-builtin-contexts] madge did not produce valid JSON:");
-    console.error(raw);
-    process.exit(2);
-  }
-}
+import { readSourceGraph } from "./source-graph.mjs";
+import { builtinContext, contextRootsOf, isPublishedContextFile } from "./builtin-contexts.mjs";
 
 function contextName(root) {
   return root.replace("plugins/builtin/", "");
@@ -106,21 +35,7 @@ function findCycles(edges) {
   return cycles;
 }
 
-const graph = readMadgeGraph();
-// An empty or truncated graph makes every rule below vacuously true, and still prints OK.
-const MIN_MODULES = 600;
-const MIN_EDGES = 1000;
-const moduleCount = Object.keys(graph).length;
-const graphEdgeCount = Object.values(graph).reduce((total, deps) => total + deps.length, 0);
-if (moduleCount < MIN_MODULES || graphEdgeCount < MIN_EDGES) {
-  console.error(
-    `[check-builtin-contexts] graph has ${moduleCount} modules and ${graphEdgeCount} edges ` +
-      `(expected at least ${MIN_MODULES} and ${MIN_EDGES}).`,
-  );
-  console.error("Module resolution broke — this run proves nothing.");
-  process.exit(2);
-}
-
+const { graph } = readSourceGraph();
 const contextRoots = contextRootsOf(graph);
 const edges = new Map();
 const edgeFiles = new Map();
@@ -131,7 +46,7 @@ for (const [file, deps] of Object.entries(graph)) {
   if (!from) continue;
   for (const dep of deps) {
     const to = builtinContext(dep, contextRoots);
-    if (!to || to === from || !isPublicContextFile(dep, to)) continue;
+    if (!to || to === from || !isPublishedContextFile(dep, to)) continue;
     if (!edges.has(from)) edges.set(from, new Set());
     edges.get(from).add(to);
     edgeFiles.set(`${from}→${to}`, `${file} → ${dep}`);

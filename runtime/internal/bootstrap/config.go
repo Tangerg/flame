@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"os"
 
-	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/config"
 	mcpserversvc "github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"

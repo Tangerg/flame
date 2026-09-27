@@ -133,10 +133,10 @@ export class GoalCommandOwner {
     return this.#currentGeneration().resume(sessionId);
   }
 
-  replaceRuntimeGeneration(gateway: GoalCommandsGateway): boolean {
+  replaceRuntimeGeneration(createGateway: () => GoalCommandsGateway): boolean {
     if (this.#disposed || !goalCommandPublication.owns(this)) return false;
     const predecessor = this.#generation;
-    this.#generation = new GoalCommandGeneration(gateway, this.#repairProjection);
+    this.#generation = new GoalCommandGeneration(createGateway(), this.#repairProjection);
     predecessor?.retire();
     return true;
   }

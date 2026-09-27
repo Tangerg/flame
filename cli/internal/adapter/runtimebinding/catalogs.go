@@ -6,10 +6,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 type modelCatalogBinding interface {
@@ -60,7 +59,7 @@ func (r *Connection) ListModels(ctx context.Context) ([]protocol.Model, error) {
 				return nil, ctx.Err()
 			}
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) ||
-				errors.Is(err, agent.ErrDisconnected) || errors.Is(err, agent.ErrIncompatibleRuntime) {
+				errors.Is(err, conversation.ErrDisconnected) || errors.Is(err, conversation.ErrIncompatibleRuntime) {
 				return nil, err
 			}
 			discoveryErrors = append(discoveryErrors, fmt.Errorf("%s: %w", provider.ID, err))

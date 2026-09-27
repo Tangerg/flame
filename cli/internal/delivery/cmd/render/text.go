@@ -15,7 +15,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -50,7 +51,7 @@ type Text struct {
 }
 
 type plainTextStream struct {
-	text    agent.StreamedText
+	text    conversation.StreamedText
 	emitted strings.Builder
 }
 
@@ -70,7 +71,7 @@ func NewText(w io.Writer) *Text {
 // Begin binds subsequent live and recovered output to the accepted run. Text
 // does not print the identity, but retaining it prevents a cold read from
 // accidentally selecting a newer run in the same session.
-func (t *Text) Begin(run agent.Run, _ agent.RunOptions) error {
+func (t *Text) Begin(run conversation.Run, _ prompt.RunOptions) error {
 	if t.err != nil {
 		return t.err
 	}
@@ -87,11 +88,11 @@ func (t *Text) Begin(run agent.Run, _ agent.RunOptions) error {
 
 // Render writes one event. The first error is remembered and returned by every
 // later call, so a caller may render a whole run and check once.
-func (t *Text) Render(envelope agent.RunEvent) error {
+func (t *Text) Render(envelope conversation.RunEvent) error {
 	if t.err != nil {
 		return t.err
 	}
-	if err := agent.ValidateEvent(envelope.Event); err != nil {
+	if err := conversation.ValidateEvent(envelope.Event); err != nil {
 		t.err = fmt.Errorf("render text event: %w", err)
 		return t.err
 	}
@@ -103,31 +104,31 @@ func (t *Text) Render(envelope agent.RunEvent) error {
 	return t.err
 }
 
-func (t *Text) renderEvent(envelope agent.RunEvent) {
+func (t *Text) renderEvent(envelope conversation.RunEvent) {
 	switch event := envelope.Event.(type) {
-	case agent.SegmentStarted:
+	case conversation.SegmentStarted:
 		// A run's identity is machinery, not content.
-	case agent.BlockStarted:
+	case conversation.BlockStarted:
 		t.begin(event.Block)
-	case agent.BlockDelta:
+	case conversation.BlockDelta:
 		t.delta(envelope.RunID, event)
-	case agent.ToolArgumentsDelta, agent.RunProgress, agent.CustomEvent:
+	case conversation.ToolArgumentsDelta, conversation.RunProgress, conversation.CustomEvent:
 		// These previews are available in NDJSON and the interactive terminal.
 		// Plain text stays focused on human-readable transcript content.
-	case agent.BlockCompleted:
+	case conversation.BlockCompleted:
 		t.finish(event.Block)
-	case agent.PlanChanged:
+	case conversation.PlanChanged:
 		t.plan(event.Plan.State.Steps)
-	case agent.RunInterrupted:
+	case conversation.RunInterrupted:
 		for _, interaction := range event.Interactions {
 			t.showInteraction(interaction)
 		}
 		t.showUsage(event.Usage)
-	case agent.RunSuspended:
+	case conversation.RunSuspended:
 		if t.scope.isRoot(envelope.RunID) {
 			t.showUsage(event.Usage)
 		}
-	case agent.RunFinished:
+	case conversation.RunFinished:
 		if t.scope.isRoot(envelope.RunID) {
 			t.finished(event)
 			t.settled = true
@@ -143,26 +144,26 @@ func (t *Text) Close() error {
 	return t.err
 }
 
-func (t *Text) begin(b agent.Block) {
+func (t *Text) begin(b conversation.Block) {
 	key := streamBlockKey(b.RunID, b.ID)
 	switch b.Kind {
-	case agent.BlockAssistant:
+	case conversation.BlockAssistant:
 		t.blank()
 		if t.scope.isChild(b.RunID) {
 			t.line("subagent · " + b.RunID)
 		}
-		stream := &plainTextStream{text: agent.NewStreamedText(b.Text)}
+		stream := &plainTextStream{text: conversation.NewStreamedText(b.Text)}
 		stream.emitted.WriteString(b.Text)
 		t.streaming[key] = stream
 		t.write(b.Text)
-	case agent.BlockReasoning, agent.BlockTool, agent.BlockUser, agent.BlockQuestion, agent.BlockNotice, agent.BlockError:
+	case conversation.BlockReasoning, conversation.BlockTool, conversation.BlockUser, conversation.BlockQuestion, conversation.BlockNotice, conversation.BlockError:
 		pending := &pendingTextBlock{}
 		pending.body.WriteString(b.Text)
 		t.pending[key] = pending
 	}
 }
 
-func (t *Text) delta(runID string, d agent.BlockDelta) {
+func (t *Text) delta(runID string, d conversation.BlockDelta) {
 	key := streamBlockKey(runID, d.BlockID)
 	if stream := t.streaming[key]; stream != nil {
 		if err := stream.text.Apply(d); err != nil {
@@ -178,7 +179,7 @@ func (t *Text) delta(runID string, d agent.BlockDelta) {
 	}
 }
 
-func (t *Text) finish(b agent.Block) {
+func (t *Text) finish(b conversation.Block) {
 	key := streamBlockKey(b.RunID, b.ID)
 	if _, duplicate := t.seen[key]; duplicate {
 		return
@@ -208,7 +209,7 @@ func (t *Text) finish(b agent.Block) {
 // Reconcile replaces missing streamed facts with an authoritative cold-read
 // projection after replay is no longer possible. Already rendered blocks and
 // interactions are not printed twice.
-func (t *Text) Reconcile(snapshot agent.SessionSnapshot) error {
+func (t *Text) Reconcile(snapshot conversation.SessionSnapshot) error {
 	if t.err != nil {
 		return t.err
 	}
@@ -228,7 +229,7 @@ func (t *Text) Reconcile(snapshot agent.SessionSnapshot) error {
 	}
 	for _, block := range snapshot.Transcript {
 		if t.scope.contains(block.RunID) {
-			if block.Status == agent.BlockStatusRunning {
+			if block.Status == conversation.BlockStatusRunning {
 				t.resume(block)
 			} else {
 				t.finish(block)
@@ -242,13 +243,13 @@ func (t *Text) Reconcile(snapshot agent.SessionSnapshot) error {
 		t.showUsage(target.Usage)
 	}
 	if target.Status == protocol.RunStatusFinished && !t.settled {
-		t.finished(agent.RunFinished{Outcome: target.Outcome, Usage: target.Usage})
+		t.finished(conversation.RunFinished{Outcome: target.Outcome, Usage: target.Usage})
 		t.settled = true
 	}
 	return t.err
 }
 
-func (t *Text) resume(block agent.Block) {
+func (t *Text) resume(block conversation.Block) {
 	key := streamBlockKey(block.RunID, block.ID)
 	if _, present := t.streaming[key]; present {
 		return
@@ -259,8 +260,8 @@ func (t *Text) resume(block agent.Block) {
 	t.begin(block)
 }
 
-func (t *Text) showInteraction(interaction agent.Interaction) {
-	key := streamBlockKey(agent.InteractionRunID(interaction), agent.InteractionItemID(interaction))
+func (t *Text) showInteraction(interaction conversation.Interaction) {
+	key := streamBlockKey(conversation.InteractionRunID(interaction), conversation.InteractionItemID(interaction))
 	if _, duplicate := t.shown[key]; duplicate {
 		return
 	}
@@ -268,7 +269,7 @@ func (t *Text) showInteraction(interaction agent.Interaction) {
 	t.interrupted(interaction)
 }
 
-func (t *Text) completedText(block agent.Block) string {
+func (t *Text) completedText(block conversation.Block) string {
 	if block.Text != "" {
 		return block.Text
 	}
@@ -278,36 +279,36 @@ func (t *Text) completedText(block agent.Block) string {
 	return ""
 }
 
-func (t *Text) renderCompletedBlock(b agent.Block, text string) {
+func (t *Text) renderCompletedBlock(b conversation.Block, text string) {
 	switch b.Kind {
-	case agent.BlockUser:
+	case conversation.BlockUser:
 		t.userBlock(b, text)
-	case agent.BlockAssistant:
+	case conversation.BlockAssistant:
 		t.proseBlock(b, text)
-	case agent.BlockReasoning:
+	case conversation.BlockReasoning:
 		t.blank()
 		t.block("· ", text)
-	case agent.BlockTool:
+	case conversation.BlockTool:
 		t.tool(b)
-	case agent.BlockQuestion:
+	case conversation.BlockQuestion:
 		if b.Question != nil {
 			t.shown[streamBlockKey(b.RunID, b.ID)] = struct{}{}
 			t.interrupted(*b.Question)
 		}
-	case agent.BlockNotice:
+	case conversation.BlockNotice:
 		t.blank()
 		t.block("! ", text)
-	case agent.BlockError:
+	case conversation.BlockError:
 		t.blank()
 		t.block("× ", text)
 	}
 }
 
 func streamBlockKey(runID, blockID string) string {
-	return (agent.BlockIdentity{RunID: runID, BlockID: blockID}).Key()
+	return (conversation.BlockIdentity{RunID: runID, BlockID: blockID}).Key()
 }
 
-func (t *Text) userBlock(block agent.Block, text string) {
+func (t *Text) userBlock(block conversation.Block, text string) {
 	t.blank()
 	if text != "" {
 		t.block("› ", text)
@@ -317,7 +318,7 @@ func (t *Text) userBlock(block agent.Block, text string) {
 	}
 }
 
-func (t *Text) proseBlock(block agent.Block, text string) {
+func (t *Text) proseBlock(block conversation.Block, text string) {
 	t.blank()
 	if t.scope.isChild(block.RunID) {
 		t.line("subagent · " + block.RunID)
@@ -327,20 +328,20 @@ func (t *Text) proseBlock(block agent.Block, text string) {
 	t.showImages(block.Images)
 }
 
-func (t *Text) showImages(images []agent.InlineImage) {
+func (t *Text) showImages(images []conversation.InlineImage) {
 	for _, image := range images {
 		t.line("  @ " + image.Name + " (" + image.MIMEType + ", " + strconv.Itoa(len(image.Data)) + " bytes)")
 	}
 }
 
-func (t *Text) tool(b agent.Block) {
+func (t *Text) tool(b conversation.Block) {
 	call := b.Tool
 	if call == nil {
 		return
 	}
 	// A running tool announces itself only once its result is in: printing a
 	// header, then a body arriving later, reads as two events rather than one.
-	if call.Status == agent.ToolRunning {
+	if call.Status == conversation.ToolRunning {
 		return
 	}
 	t.blank()
@@ -349,7 +350,7 @@ func (t *Text) tool(b agent.Block) {
 	t.toolVerdict(call)
 }
 
-func (t *Text) toolHeader(call *agent.ToolCall) {
+func (t *Text) toolHeader(call *conversation.ToolCall) {
 	head := "● " + textToolName(call)
 	if call.Safety != "" {
 		head += " · " + string(call.Safety)
@@ -364,7 +365,7 @@ func (t *Text) toolHeader(call *agent.ToolCall) {
 	t.line(head)
 }
 
-func (t *Text) toolBody(call *agent.ToolCall) {
+func (t *Text) toolBody(call *conversation.ToolCall) {
 	if call.Output != "" {
 		lines := strings.Split(strings.TrimRight(call.Output, "\n"), "\n")
 		shown := min(len(lines), maxToolOutputLines)
@@ -380,17 +381,17 @@ func (t *Text) toolBody(call *agent.ToolCall) {
 	}
 }
 
-func (t *Text) toolVerdict(call *agent.ToolCall) {
+func (t *Text) toolVerdict(call *conversation.ToolCall) {
 	// The verdict goes last, under what it is a verdict on.
 	mark := "✓"
 	switch call.Status {
-	case agent.ToolError:
+	case conversation.ToolError:
 		mark = "✗"
-	case agent.ToolCanceled:
+	case conversation.ToolCanceled:
 		mark = "−"
 	}
 	status := "  " + mark
-	if call.Status == agent.ToolCanceled {
+	if call.Status == conversation.ToolCanceled {
 		status += " canceled"
 	}
 	if call.ExitCode != nil && *call.ExitCode != 0 {
@@ -402,21 +403,21 @@ func (t *Text) toolVerdict(call *agent.ToolCall) {
 	t.line(status)
 }
 
-func textToolName(call *agent.ToolCall) string {
+func textToolName(call *conversation.ToolCall) string {
 	switch call.Kind {
-	case agent.ToolShell:
+	case conversation.ToolShell:
 		return "shell"
-	case agent.ToolEdit:
+	case conversation.ToolEdit:
 		return "edit"
-	case agent.ToolRead:
+	case conversation.ToolRead:
 		return "read"
-	case agent.ToolSearch:
+	case conversation.ToolSearch:
 		return "search"
-	case agent.ToolWeb:
+	case conversation.ToolWeb:
 		return "web"
-	case agent.ToolTask:
+	case conversation.ToolTask:
 		return "task"
-	case agent.ToolUnknown:
+	case conversation.ToolUnknown:
 		if call.Name != "" {
 			return call.Name
 		}
@@ -426,18 +427,18 @@ func textToolName(call *agent.ToolCall) string {
 	}
 }
 
-func textToolPrimary(call *agent.ToolCall) string {
+func textToolPrimary(call *conversation.ToolCall) string {
 	var value string
 	switch call.Kind {
-	case agent.ToolShell:
+	case conversation.ToolShell:
 		value = call.Command
-	case agent.ToolEdit, agent.ToolRead:
+	case conversation.ToolEdit, conversation.ToolRead:
 		value = call.Path
-	case agent.ToolSearch:
+	case conversation.ToolSearch:
 		value = call.Query
-	case agent.ToolWeb:
+	case conversation.ToolWeb:
 		value = call.URL
-	case agent.ToolUnknown, agent.ToolTask:
+	case conversation.ToolUnknown, conversation.ToolTask:
 		// These kinds have no more specific primary field.
 	default:
 	}
@@ -474,10 +475,10 @@ func (t *Text) plan(items []protocol.PlanStep) {
 	}
 }
 
-func (t *Text) interrupted(interaction agent.Interaction) {
+func (t *Text) interrupted(interaction conversation.Interaction) {
 	t.blank()
 	switch item := interaction.(type) {
-	case agent.Approval:
+	case conversation.Approval:
 		t.line("? " + item.Title)
 		if item.Detail != "" {
 			t.block("  ", item.Detail)
@@ -485,7 +486,7 @@ func (t *Text) interrupted(interaction agent.Interaction) {
 		if item.Diff != "" {
 			t.diff(item.Diff)
 		}
-	case agent.Question:
+	case conversation.Question:
 		t.line("? " + item.Title)
 		for index, field := range item.Fields {
 			t.line("  - " + field.Prompt)
@@ -496,7 +497,7 @@ func (t *Text) interrupted(interaction agent.Interaction) {
 	}
 }
 
-func (t *Text) finished(e agent.RunFinished) {
+func (t *Text) finished(e conversation.RunFinished) {
 	t.blank()
 	if e.Outcome.Status != protocol.OutcomeCompleted {
 		msg := string(e.Outcome.Status)
@@ -508,7 +509,7 @@ func (t *Text) finished(e agent.RunFinished) {
 	t.showUsage(e.Usage)
 }
 
-func (t *Text) showUsage(u agent.Usage) {
+func (t *Text) showUsage(u conversation.Usage) {
 	parts := []string{"↑ " + formatThousands(u.InputTokens), "↓ " + formatThousands(u.OutputTokens)}
 	if u.CacheReadTokens > 0 {
 		parts = append(parts, "cached "+formatThousands(u.CacheReadTokens))

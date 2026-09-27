@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { queryClient } from "@/lib/queryClient";
-import { resetContainer, setContainer } from "@/main/container";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import { installAgentRuntimeGateway } from "../adapters/agentRuntimeGateway";
 import { configureAgentRuntimeGateway, type AgentRuntimeGateway } from "./ports/runtimeGateway";
@@ -13,6 +12,11 @@ import {
 import type { ApprovalMode } from "../domain/hitl";
 import { rejected } from "@/test/rejected";
 
+let runtimeClient: () => FlameClient = () => {
+  throw new Error("Runtime test client is not configured");
+};
+const getRuntimeClient = () => runtimeClient();
+
 let uninstall: (() => void) | undefined;
 
 afterEach(() => {
@@ -21,7 +25,6 @@ afterEach(() => {
   queryClient.removeQueries({ queryKey: [APPROVAL_MODE_KEY] });
   queryClient.removeQueries({ queryKey: [APPROVAL_RULES_KEY] });
   vi.restoreAllMocks();
-  resetContainer();
 });
 
 describe("approval policy", () => {
@@ -79,10 +82,8 @@ describe("approval policy", () => {
     const retired = setApprovalMode("safe");
 
     const successorSetMode = vi.fn().mockResolvedValue({ mode: "yolo" });
-    setContainer({
-      client: () => ({ approval: { setMode: successorSetMode } }) as unknown as FlameClient,
-    });
-    const disposeSuccessor = installAgentRuntimeGateway();
+    runtimeClient = () => ({ approval: { setMode: successorSetMode } }) as unknown as FlameClient;
+    const disposeSuccessor = installAgentRuntimeGateway(getRuntimeClient);
     const successor = setApprovalMode("yolo");
     await Promise.resolve();
     const successorStartedBeforeRetiredSettlement = successorSetMode.mock.calls.length;
@@ -131,17 +132,13 @@ describe("approval policy", () => {
     const retiredWrite = Promise.withResolvers<void>();
     const forgetRetired = vi.fn(() => retiredWrite.promise);
     const forgetSuccessor = vi.fn().mockResolvedValue(undefined);
-    setContainer({
-      client: () => ({ approval: { forgetRule: forgetRetired } }) as unknown as FlameClient,
-    });
-    const retiredInstallation = installAgentRuntimeGateway();
+    runtimeClient = () => ({ approval: { forgetRule: forgetRetired } }) as unknown as FlameClient;
+    const retiredInstallation = installAgentRuntimeGateway(getRuntimeClient);
     const command = rejected(forgetRules(["rule-1", "rule-2"]));
     await vi.waitFor(() => expect(forgetRetired).toHaveBeenCalledOnce());
 
-    setContainer({
-      client: () => ({ approval: { forgetRule: forgetSuccessor } }) as unknown as FlameClient,
-    });
-    const successorInstallation = installAgentRuntimeGateway();
+    runtimeClient = () => ({ approval: { forgetRule: forgetSuccessor } }) as unknown as FlameClient;
+    const successorInstallation = installAgentRuntimeGateway(getRuntimeClient);
     try {
       await expect(command).resolves.toMatchObject({ message: "agent_command_owner_retired" });
       expect(forgetSuccessor).not.toHaveBeenCalled();

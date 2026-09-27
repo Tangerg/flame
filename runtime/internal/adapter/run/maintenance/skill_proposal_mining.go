@@ -11,7 +11,7 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 	skillspec "github.com/Tangerg/scope/skills"
 
-	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"

@@ -5,9 +5,13 @@ import { configureAgentRuntimeGateway, type AgentRuntimeGateway } from "../ports
 import { useToggleFavorite } from "./favoriteSession";
 import { useRenameSession } from "./renameSession";
 import { AGENT_SESSIONS_KEY, type AgentSessionSummary } from "./sessionQueries";
-import { setContainer } from "@/main/container";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import { installAgentRuntimeGateway } from "../../adapters/agentRuntimeGateway";
+
+let runtimeClient: () => FlameClient = () => {
+  throw new Error("Runtime test client is not configured");
+};
+const getRuntimeClient = () => runtimeClient();
 
 let restoreRuntime: (() => void) | undefined;
 
@@ -148,10 +152,8 @@ describe("optimistic Session summary mutations", () => {
     await vi.waitFor(() => expect(retiredUpdateCall).toHaveBeenCalledTimes(1));
 
     const successorUpdate = vi.fn().mockResolvedValue({ revision: 4 });
-    setContainer({
-      client: () => ({ sessions: { update: successorUpdate } }) as unknown as FlameClient,
-    });
-    const disposeSuccessor = installAgentRuntimeGateway();
+    runtimeClient = () => ({ sessions: { update: successorUpdate } }) as unknown as FlameClient;
+    const disposeSuccessor = installAgentRuntimeGateway(getRuntimeClient);
     try {
       expect(
         queryClient.getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY])?.[0]?.title,

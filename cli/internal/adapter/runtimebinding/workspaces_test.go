@@ -8,11 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 )
 
 type workspaceBindingStub struct {
@@ -377,12 +376,12 @@ func TestWorkspaceAdapterRejectsGitReadsBeforeCallingBinding(t *testing.T) {
 	t.Parallel()
 	stub := &workspaceBindingStub{}
 	runtime := &Connection{workspaces: stub}
-	if _, err := runtime.Changes(t.Context(), "/workspace"); err == nil || !errors.Is(err, agent.ErrIncompatibleRuntime) {
+	if _, err := runtime.Changes(t.Context(), "/workspace"); err == nil || !errors.Is(err, conversation.ErrIncompatibleRuntime) {
 		t.Fatalf("Changes error = %v, want ErrIncompatibleRuntime", err)
 	}
 	if _, err := runtime.Diff(t.Context(), workspace.DiffRequest{
 		Workspace: "/workspace", RowLimit: workspace.DefaultDiffRowLimit(),
-	}); err == nil || !errors.Is(err, agent.ErrIncompatibleRuntime) {
+	}); err == nil || !errors.Is(err, conversation.ErrIncompatibleRuntime) {
 		t.Fatalf("Diff error = %v, want ErrIncompatibleRuntime", err)
 	}
 	if stub.changesCalls != 0 || stub.diffCalls != 0 {

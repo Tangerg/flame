@@ -167,7 +167,7 @@ func TestWorkspaceMutationFailuresMatchPublishedContracts(t *testing.T) {
 		"sch_1": mustServerSchedule(t, schedule.Snapshot{ID: "sch_1", Instructions: "Review", CWD: root}),
 	}}
 	s := handlerWithSchedules(t, reg)
-	s.workspaceHooks = newWorkspaceHandler(root).workspaceHooks
+	s.hooks = newWorkspaceHandler(root).hooks
 	endpoint := mustNewEndpoint(t, s, EndpointConfig{})
 	for _, tc := range []struct {
 		method Name

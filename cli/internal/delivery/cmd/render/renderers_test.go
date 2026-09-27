@@ -7,7 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -34,10 +35,10 @@ func TestTextRendersStreamedAnswerToolAndUsage(t *testing.T) {
 func TestTextRendersRunRecoveryMetadata(t *testing.T) {
 	var output bytes.Buffer
 	renderer := NewText(&output)
-	if err := renderer.Begin(testRun(), agent.RunOptions{}); err != nil {
+	if err := renderer.Begin(testRun(), prompt.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	if err := renderer.Render(testEvent("failed", agent.RunFinished{Outcome: agent.Outcome{
+	if err := renderer.Render(testEvent("failed", conversation.RunFinished{Outcome: conversation.Outcome{
 		Status: protocol.OutcomeFailed,
 		Problem: &protocol.ProblemData{
 			Type: "rate_limited", Detail: "quota exhausted", RetryAfterSeconds: 12,
@@ -57,7 +58,7 @@ func TestTextRendersRunRecoveryMetadata(t *testing.T) {
 
 func TestRunOptionsJSONPreservesGenerationParameterPresence(t *testing.T) {
 	temperature, topP, maxTokens := 0.7, 0.9, int64(2_048)
-	configured, err := json.Marshal(encodeRunOptions(agent.RunOptions{
+	configured, err := json.Marshal(encodeRunOptions(prompt.RunOptions{
 		Provider: "mock", Model: "balanced", ReasoningEffort: "high",
 		Generation: protocol.GenerationParams{
 			Temperature: &temperature, MaxTokens: &maxTokens, TopP: &topP, Stop: []string{"END"},
@@ -70,7 +71,7 @@ func TestRunOptionsJSONPreservesGenerationParameterPresence(t *testing.T) {
 		t.Fatalf("configured options = %s, want %s", got, want)
 	}
 
-	inherited, err := json.Marshal(encodeRunOptions(agent.RunOptions{Provider: "mock", Model: "balanced"}))
+	inherited, err := json.Marshal(encodeRunOptions(prompt.RunOptions{Provider: "mock", Model: "balanced"}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,13 +83,13 @@ func TestRunOptionsJSONPreservesGenerationParameterPresence(t *testing.T) {
 func TestTextStreamsOrderedDeltasUntilAuthoritativeCompletion(t *testing.T) {
 	var output bytes.Buffer
 	renderer := NewText(&output)
-	if err := renderer.Begin(testRun(), agent.RunOptions{}); err != nil {
+	if err := renderer.Begin(testRun(), prompt.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	for _, event := range []agent.RunEvent{
-		testEvent("start", agent.BlockStarted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant}}),
-		testEvent("first", agent.BlockDelta{BlockID: "answer", Text: "first"}),
-		testEvent("second", agent.BlockDelta{BlockID: "answer", Text: " second"}),
+	for _, event := range []conversation.RunEvent{
+		testEvent("start", conversation.BlockStarted{Block: conversation.Block{ID: "answer", Kind: conversation.BlockAssistant}}),
+		testEvent("first", conversation.BlockDelta{BlockID: "answer", Text: "first"}),
+		testEvent("second", conversation.BlockDelta{BlockID: "answer", Text: " second"}),
 	} {
 		if err := renderer.Render(event); err != nil {
 			t.Fatal(err)
@@ -97,8 +98,8 @@ func TestTextStreamsOrderedDeltasUntilAuthoritativeCompletion(t *testing.T) {
 	if got := output.String(); !strings.Contains(got, "first second") {
 		t.Fatalf("ordered content stream = %q", got)
 	}
-	if err := renderer.Render(testEvent("complete", agent.BlockCompleted{Block: agent.Block{
-		ID: "answer", Kind: agent.BlockAssistant, Text: "first second",
+	if err := renderer.Render(testEvent("complete", conversation.BlockCompleted{Block: conversation.Block{
+		ID: "answer", Kind: conversation.BlockAssistant, Text: "first second",
 	}})); err != nil {
 		t.Fatal(err)
 	}
@@ -113,11 +114,11 @@ func TestTextStreamsOrderedDeltasUntilAuthoritativeCompletion(t *testing.T) {
 func TestNDJSONCarriesSegmentIdentityAndInterruptSet(t *testing.T) {
 	var output bytes.Buffer
 	renderer := NewNDJSON(&output)
-	events := []agent.RunEvent{
-		testEvent("evt_start", agent.SegmentStarted{Run: testRun()}),
-		testEvent("evt_wait", agent.RunInterrupted{Usage: agent.Usage{InputTokens: 42}, Interactions: []agent.Interaction{
+	events := []conversation.RunEvent{
+		testEvent("evt_start", conversation.SegmentStarted{Run: testRun()}),
+		testEvent("evt_wait", conversation.RunInterrupted{Usage: conversation.Usage{InputTokens: 42}, Interactions: []conversation.Interaction{
 			testApproval("tool_1", "shell"),
-			agent.Question{RunID: "run_1", ItemID: "question_1", Title: "choose", Fields: []agent.QuestionField{{Prompt: "Target", Kind: agent.QuestionSingle, Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}}}}},
+			conversation.Question{RunID: "run_1", ItemID: "question_1", Title: "choose", Fields: []conversation.QuestionField{{Prompt: "Target", Kind: conversation.QuestionSingle, Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}}}}},
 		}}),
 	}
 	for _, event := range events {
@@ -158,23 +159,23 @@ func TestNDJSONCarriesSegmentIdentityAndInterruptSet(t *testing.T) {
 func TestCompletedQuestionAnswersReachTextAndNDJSON(t *testing.T) {
 	t.Parallel()
 
-	question := agent.Question{
+	question := conversation.Question{
 		RunID: "run_1", ItemID: "question_1", Title: "choose",
-		Fields: []agent.QuestionField{{
-			Prompt: "Target", Kind: agent.QuestionSingle,
+		Fields: []conversation.QuestionField{{
+			Prompt: "Target", Kind: conversation.QuestionSingle,
 			Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}},
 		}},
 		Answers: [][]string{{"linux"}},
 	}
-	block := agent.Block{
-		ID: "question_1", RunID: "run_1", Kind: agent.BlockQuestion,
-		Status: agent.BlockStatusCompleted, Question: &question,
+	block := conversation.Block{
+		ID: "question_1", RunID: "run_1", Kind: conversation.BlockQuestion,
+		Status: conversation.BlockStatusCompleted, Question: &question,
 	}
-	event := testEvent("question", agent.BlockCompleted{Block: block})
+	event := testEvent("question", conversation.BlockCompleted{Block: block})
 
 	var textOutput bytes.Buffer
 	textRenderer := NewText(&textOutput)
-	if err := textRenderer.Begin(testRun(), agent.RunOptions{}); err != nil {
+	if err := textRenderer.Begin(testRun(), prompt.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := textRenderer.Render(event); err != nil {
@@ -189,7 +190,7 @@ func TestCompletedQuestionAnswersReachTextAndNDJSON(t *testing.T) {
 
 	var jsonOutput bytes.Buffer
 	jsonRenderer := NewNDJSON(&jsonOutput)
-	if err := jsonRenderer.Begin(testRun(), agent.RunOptions{}); err != nil {
+	if err := jsonRenderer.Begin(testRun(), prompt.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := jsonRenderer.Render(event); err != nil {
@@ -206,14 +207,14 @@ func TestCompletedQuestionAnswersReachTextAndNDJSON(t *testing.T) {
 func TestNDJSONPreservesProgressToolArgumentsAndCustomPayloads(t *testing.T) {
 	var output bytes.Buffer
 	renderer := NewNDJSON(&output)
-	if err := renderer.Begin(testRun(), agent.RunOptions{}); err != nil {
+	if err := renderer.Begin(testRun(), prompt.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	step, contextTokens := 4, int64(16_384)
-	events := []agent.RunEvent{
-		testEvent("progress", agent.RunProgress{Step: &step, ContextTokens: &contextTokens, Activity: "thinking", Usage: &agent.Usage{InputTokens: 22}}),
-		testEvent("arguments", agent.ToolArgumentsDelta{BlockID: "tool_1", Text: `{"path":"/tmp`}),
-		testEvent("custom", agent.CustomEvent{Name: "vendor.trace", PayloadJSON: []byte(`{"span":"abc","sampled":true}`)}),
+	events := []conversation.RunEvent{
+		testEvent("progress", conversation.RunProgress{Step: &step, ContextTokens: &contextTokens, Activity: "thinking", Usage: &conversation.Usage{InputTokens: 22}}),
+		testEvent("arguments", conversation.ToolArgumentsDelta{BlockID: "tool_1", Text: `{"path":"/tmp`}),
+		testEvent("custom", conversation.CustomEvent{Name: "vendor.trace", PayloadJSON: []byte(`{"span":"abc","sampled":true}`)}),
 	}
 	for _, event := range events {
 		if err := renderer.Render(event); err != nil {
@@ -245,10 +246,10 @@ func TestNDJSONPreservesProgressToolArgumentsAndCustomPayloads(t *testing.T) {
 func TestNDJSONCarriesContentDelta(t *testing.T) {
 	var output bytes.Buffer
 	renderer := NewNDJSON(&output)
-	if err := renderer.Begin(testRun(), agent.RunOptions{}); err != nil {
+	if err := renderer.Begin(testRun(), prompt.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	if err := renderer.Render(testEvent("content", agent.BlockDelta{BlockID: "answer", Text: "third"})); err != nil {
+	if err := renderer.Render(testEvent("content", conversation.BlockDelta{BlockID: "answer", Text: "third"})); err != nil {
 		t.Fatal(err)
 	}
 	var frame map[string]any
@@ -265,8 +266,8 @@ func TestNDJSONCarriesContentDelta(t *testing.T) {
 
 func TestBlockJSONPreservesRuntimeItemMetadata(t *testing.T) {
 	created := time.Date(2026, time.August, 12, 9, 0, 0, 0, time.UTC)
-	reasoning := encodeBlock(agent.Block{
-		ID: "reasoning", RunID: "run_1", Status: agent.BlockStatusCompleted, Kind: agent.BlockReasoning,
+	reasoning := encodeBlock(conversation.Block{
+		ID: "reasoning", RunID: "run_1", Status: conversation.BlockStatusCompleted, Kind: conversation.BlockReasoning,
 		CreatedAt: created, Redacted: true, Text: "Reasoning redacted by provider.",
 	})
 	if !reasoning.CreatedAt.Equal(created) || !reasoning.Redacted {
@@ -274,10 +275,10 @@ func TestBlockJSONPreservesRuntimeItemMetadata(t *testing.T) {
 	}
 
 	started, finished := created, created.Add(2*time.Second)
-	tool := encodeBlock(agent.Block{
-		ID: "tool", RunID: "run_1", Status: agent.BlockStatusIncomplete, Kind: agent.BlockTool,
-		Tool: &agent.ToolCall{
-			Kind: agent.ToolShell, Name: "shell", Status: agent.ToolError, Safety: protocol.SafetyClassExec,
+	tool := encodeBlock(conversation.Block{
+		ID: "tool", RunID: "run_1", Status: conversation.BlockStatusIncomplete, Kind: conversation.BlockTool,
+		Tool: &conversation.ToolCall{
+			Kind: conversation.ToolShell, Name: "shell", Status: conversation.ToolError, Safety: protocol.SafetyClassExec,
 			StartedAt: started, FinishedAt: finished,
 			Problem: &protocol.ProblemData{Type: protocol.ProblemRateLimited, RetryAfterSeconds: 2},
 		},
@@ -289,8 +290,8 @@ func TestBlockJSONPreservesRuntimeItemMetadata(t *testing.T) {
 		t.Fatalf("tool problem frame = %+v", tool.Tool.Problem)
 	}
 
-	compaction := encodeBlock(agent.Block{
-		ID: "compact", RunID: "run_1", Status: agent.BlockStatusCompleted, Kind: agent.BlockNotice,
+	compaction := encodeBlock(conversation.Block{
+		ID: "compact", RunID: "run_1", Status: conversation.BlockStatusCompleted, Kind: conversation.BlockNotice,
 		CreatedAt: created, DroppedMessages: 17, Text: "Conversation compacted.",
 	})
 	if compaction.DroppedMessages != 17 {
@@ -301,11 +302,11 @@ func TestBlockJSONPreservesRuntimeItemMetadata(t *testing.T) {
 func TestRunJSONPreservesLifecycleTimestamps(t *testing.T) {
 	created := time.Date(2026, time.August, 12, 9, 0, 0, 0, time.UTC)
 	finished := created.Add(2 * time.Second)
-	frame := encodeRun(agent.Run{
+	frame := encodeRun(conversation.Run{
 		ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusFinished,
 		Provider: "openai", Model: "gpt-5.6-sol", ReasoningEffort: "xhigh",
 		ContextTokens: 32_768,
-		CreatedAt:     created, FinishedAt: finished, Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
+		CreatedAt:     created, FinishedAt: finished, Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted},
 	})
 	if frame.ReasoningEffort != "xhigh" || frame.ContextTokens != 32_768 ||
 		!frame.CreatedAt.Equal(created) || !frame.FinishedAt.Equal(finished) {
@@ -314,7 +315,7 @@ func TestRunJSONPreservesLifecycleTimestamps(t *testing.T) {
 }
 
 func TestOutcomeJSONPreservesStructuredProblem(t *testing.T) {
-	encoded, err := json.Marshal(encodeOutcome(agent.Outcome{
+	encoded, err := json.Marshal(encodeOutcome(conversation.Outcome{
 		Status: protocol.OutcomeFailed,
 		Problem: &protocol.ProblemData{
 			Type: "rate_limited", Detail: "quota exhausted", RetryAfterSeconds: 2,
@@ -333,10 +334,10 @@ func TestOutcomeJSONPreservesStructuredProblem(t *testing.T) {
 func TestResultJSONRetainsLatestRootProgressUsageBeforeSettlement(t *testing.T) {
 	var output bytes.Buffer
 	renderer := NewResultJSON(&output)
-	if err := renderer.Begin(testRun(), agent.RunOptions{}); err != nil {
+	if err := renderer.Begin(testRun(), prompt.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	if err := renderer.Render(testEvent("progress", agent.RunProgress{Usage: &agent.Usage{InputTokens: 33, OutputTokens: 5}})); err != nil {
+	if err := renderer.Render(testEvent("progress", conversation.RunProgress{Usage: &conversation.Usage{InputTokens: 33, OutputTokens: 5}})); err != nil {
 		t.Fatal(err)
 	}
 	if err := renderer.Close(); err != nil {
@@ -354,13 +355,13 @@ func TestResultJSONRetainsLatestRootProgressUsageBeforeSettlement(t *testing.T) 
 func TestResultJSONUsesAuthoritativeAssistantCompletionAfterDeltas(t *testing.T) {
 	var output bytes.Buffer
 	renderer := NewResultJSON(&output)
-	for _, event := range []agent.RunEvent{
-		testEvent("segment", agent.SegmentStarted{Run: testRun()}),
-		testEvent("start", agent.BlockStarted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant}}),
-		testEvent("first", agent.BlockDelta{BlockID: "answer", Text: "provisional first"}),
-		testEvent("second", agent.BlockDelta{BlockID: "answer", Text: " provisional second"}),
-		testEvent("complete", agent.BlockCompleted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant, Text: "authoritative"}}),
-		testEvent("finished", agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}),
+	for _, event := range []conversation.RunEvent{
+		testEvent("segment", conversation.SegmentStarted{Run: testRun()}),
+		testEvent("start", conversation.BlockStarted{Block: conversation.Block{ID: "answer", Kind: conversation.BlockAssistant}}),
+		testEvent("first", conversation.BlockDelta{BlockID: "answer", Text: "provisional first"}),
+		testEvent("second", conversation.BlockDelta{BlockID: "answer", Text: " provisional second"}),
+		testEvent("complete", conversation.BlockCompleted{Block: conversation.Block{ID: "answer", Kind: conversation.BlockAssistant, Text: "authoritative"}}),
+		testEvent("finished", conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}),
 	} {
 		if err := renderer.Render(event); err != nil {
 			t.Fatal(err)
@@ -381,11 +382,11 @@ func TestResultJSONUsesAuthoritativeAssistantCompletionAfterDeltas(t *testing.T)
 func TestResultJSONKeepsPartialAssistantOutputInEventOrder(t *testing.T) {
 	var output bytes.Buffer
 	renderer := NewResultJSON(&output)
-	for _, event := range []agent.RunEvent{
-		testEvent("segment", agent.SegmentStarted{Run: testRun()}),
-		testEvent("start", agent.BlockStarted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant}}),
-		testEvent("first", agent.BlockDelta{BlockID: "answer", Text: "first"}),
-		testEvent("second", agent.BlockDelta{BlockID: "answer", Text: " second"}),
+	for _, event := range []conversation.RunEvent{
+		testEvent("segment", conversation.SegmentStarted{Run: testRun()}),
+		testEvent("start", conversation.BlockStarted{Block: conversation.Block{ID: "answer", Kind: conversation.BlockAssistant}}),
+		testEvent("first", conversation.BlockDelta{BlockID: "answer", Text: "first"}),
+		testEvent("second", conversation.BlockDelta{BlockID: "answer", Text: " second"}),
 	} {
 		if err := renderer.Render(event); err != nil {
 			t.Fatal(err)
@@ -406,12 +407,12 @@ func TestResultJSONKeepsPartialAssistantOutputInEventOrder(t *testing.T) {
 func TestResultJSONDoesNotRetainProvisionalTextForEmptyCompletion(t *testing.T) {
 	var output bytes.Buffer
 	renderer := NewResultJSON(&output)
-	for _, event := range []agent.RunEvent{
-		testEvent("segment", agent.SegmentStarted{Run: testRun()}),
-		testEvent("start", agent.BlockStarted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant}}),
-		testEvent("delta", agent.BlockDelta{BlockID: "answer", Text: "provisional"}),
-		testEvent("complete", agent.BlockCompleted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant}}),
-		testEvent("finished", agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}),
+	for _, event := range []conversation.RunEvent{
+		testEvent("segment", conversation.SegmentStarted{Run: testRun()}),
+		testEvent("start", conversation.BlockStarted{Block: conversation.Block{ID: "answer", Kind: conversation.BlockAssistant}}),
+		testEvent("delta", conversation.BlockDelta{BlockID: "answer", Text: "provisional"}),
+		testEvent("complete", conversation.BlockCompleted{Block: conversation.Block{ID: "answer", Kind: conversation.BlockAssistant}}),
+		testEvent("finished", conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}),
 	} {
 		if err := renderer.Render(event); err != nil {
 			t.Fatal(err)
@@ -426,16 +427,16 @@ func TestResultJSONDoesNotRetainProvisionalTextForEmptyCompletion(t *testing.T) 
 }
 
 func TestRenderersPreserveAssistantInlineImages(t *testing.T) {
-	image := agent.InlineImage{
+	image := conversation.InlineImage{
 		ID: "answer:image:0", Name: "chart.png", MIMEType: "image/png", Data: []byte("png bytes"),
 	}
-	completed := testEvent("image", agent.BlockCompleted{Block: agent.Block{
-		ID: "answer", Kind: agent.BlockAssistant, Text: "Generated chart", Images: []agent.InlineImage{image},
+	completed := testEvent("image", conversation.BlockCompleted{Block: conversation.Block{
+		ID: "answer", Kind: conversation.BlockAssistant, Text: "Generated chart", Images: []conversation.InlineImage{image},
 	}})
 
 	var stream bytes.Buffer
 	ndjson := NewNDJSON(&stream)
-	if err := ndjson.Begin(testRun(), agent.RunOptions{}); err != nil {
+	if err := ndjson.Begin(testRun(), prompt.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := ndjson.Render(completed); err != nil {
@@ -452,7 +453,7 @@ func TestRenderersPreserveAssistantInlineImages(t *testing.T) {
 
 	var resultOutput bytes.Buffer
 	result := NewResultJSON(&resultOutput)
-	if err := result.Begin(testRun(), agent.RunOptions{}); err != nil {
+	if err := result.Begin(testRun(), prompt.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := result.Render(completed); err != nil {
@@ -471,7 +472,7 @@ func TestRenderersPreserveAssistantInlineImages(t *testing.T) {
 
 	var textOutput bytes.Buffer
 	plain := NewText(&textOutput)
-	if err := plain.Begin(testRun(), agent.RunOptions{}); err != nil {
+	if err := plain.Begin(testRun(), prompt.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := plain.Render(completed); err != nil {
@@ -485,12 +486,12 @@ func TestRenderersPreserveAssistantInlineImages(t *testing.T) {
 func TestNDJSONPreservesCompleteToolArgumentsAndResult(t *testing.T) {
 	var output bytes.Buffer
 	renderer := NewNDJSON(&output)
-	if err := renderer.Begin(testRun(), agent.RunOptions{}); err != nil {
+	if err := renderer.Begin(testRun(), prompt.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	event := testEvent("tool", agent.BlockCompleted{Block: agent.Block{
-		ID: "tool_1", Kind: agent.BlockTool, Tool: &agent.ToolCall{
-			Kind: agent.ToolUnknown, Name: "mcp__calendar__create", Status: agent.ToolOK,
+	event := testEvent("tool", conversation.BlockCompleted{Block: conversation.Block{
+		ID: "tool_1", Kind: conversation.BlockTool, Tool: &conversation.ToolCall{
+			Kind: conversation.ToolUnknown, Name: "mcp__calendar__create", Status: conversation.ToolOK,
 			ArgumentsJSON: []byte(`{"guests":["a@example.com"]}`), ResultJSON: []byte(`{"eventId":"evt_123"}`),
 		},
 	}})
@@ -512,19 +513,19 @@ func TestNDJSONPreservesCompleteToolArgumentsAndResult(t *testing.T) {
 func TestResultJSONClearsPriorInterruptWhenANewSegmentStarts(t *testing.T) {
 	var output bytes.Buffer
 	renderer := NewResultJSON(&output)
-	if err := renderer.Begin(testRun(), agent.RunOptions{}); err != nil {
+	if err := renderer.Begin(testRun(), prompt.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	question := agent.Question{
+	question := conversation.Question{
 		RunID: "run_1", ItemID: "question_1", Title: "choose",
-		Fields: []agent.QuestionField{{Prompt: "Target", Kind: agent.QuestionSingle, Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}}}},
+		Fields: []conversation.QuestionField{{Prompt: "Target", Kind: conversation.QuestionSingle, Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}}}},
 	}
 	resumed := testRun()
 	resumed.ActiveSegmentID = "seg_2"
-	for _, event := range []agent.RunEvent{
-		testEvent("start", agent.SegmentStarted{Run: testRun()}),
-		testEvent("wait", agent.RunInterrupted{Interactions: []agent.Interaction{question}}),
-		{EventID: "resume", RunID: "run_1", SegmentID: "seg_2", Event: agent.SegmentStarted{Run: resumed}},
+	for _, event := range []conversation.RunEvent{
+		testEvent("start", conversation.SegmentStarted{Run: testRun()}),
+		testEvent("wait", conversation.RunInterrupted{Interactions: []conversation.Interaction{question}}),
+		{EventID: "resume", RunID: "run_1", SegmentID: "seg_2", Event: conversation.SegmentStarted{Run: resumed}},
 	} {
 		if err := renderer.Render(event); err != nil {
 			t.Fatal(err)
@@ -545,7 +546,7 @@ func TestResultJSONClearsPriorInterruptWhenANewSegmentStarts(t *testing.T) {
 func TestResultJSONFoldsFinalAssistantProjection(t *testing.T) {
 	var output bytes.Buffer
 	renderer := NewResultJSON(&output)
-	if err := renderer.Begin(testRun(), agent.RunOptions{Provider: "mock", Model: "balanced"}); err != nil {
+	if err := renderer.Begin(testRun(), prompt.RunOptions{Provider: "mock", Model: "balanced"}); err != nil {
 		t.Fatal(err)
 	}
 	for _, event := range testEvents() {
@@ -570,7 +571,7 @@ func TestRenderersPreserveChildRunIdentityWithoutSettlingTheRoot(t *testing.T) {
 
 	var textOutput bytes.Buffer
 	textRenderer := NewText(&textOutput)
-	if err := textRenderer.Begin(testRun(), agent.RunOptions{}); err != nil {
+	if err := textRenderer.Begin(testRun(), prompt.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	for _, event := range events {
@@ -592,7 +593,7 @@ func TestRenderersPreserveChildRunIdentityWithoutSettlingTheRoot(t *testing.T) {
 
 	var streamOutput bytes.Buffer
 	streamRenderer := NewNDJSON(&streamOutput)
-	if err := streamRenderer.Begin(testRun(), agent.RunOptions{}); err != nil {
+	if err := streamRenderer.Begin(testRun(), prompt.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	for _, event := range events {
@@ -613,7 +614,7 @@ func TestRenderersPreserveChildRunIdentityWithoutSettlingTheRoot(t *testing.T) {
 
 	var resultOutput bytes.Buffer
 	resultRenderer := NewResultJSON(&resultOutput)
-	if err := resultRenderer.Begin(testRun(), agent.RunOptions{}); err != nil {
+	if err := resultRenderer.Begin(testRun(), prompt.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	for _, event := range events {
@@ -640,34 +641,34 @@ func TestColdReconciliationKeepsOneShotOutputScopedToItsRun(t *testing.T) {
 	requireScopedStream(t, snapshot)
 }
 
-func reconciliationSnapshot(t testing.TB) agent.SessionSnapshot {
+func reconciliationSnapshot(t testing.TB) conversation.SessionSnapshot {
 	t.Helper()
 	plan := protocol.Plan{SessionID: "ses_1", State: &protocol.PlanState{Revision: 3, UpdatedAt: time.Unix(1, 0).UTC(), Steps: []protocol.PlanStep{
 		{ID: "1", Description: "newer plan", Status: protocol.PlanStatusCompleted},
 	}}}
-	return agent.SessionSnapshot{
-		Session: agent.Session{ID: "ses_1", Status: protocol.SessionStatusIdle, Provider: "mock", Model: "balanced", Workspace: workspace.Workspace{
+	return conversation.SessionSnapshot{
+		Session: conversation.Session{ID: "ses_1", Status: protocol.SessionStatusIdle, Provider: "mock", Model: "balanced", Workspace: workspace.Workspace{
 			Path: "/tmp/demo", ProjectRoot: "/tmp/demo", Availability: protocol.WorkspaceAvailable,
 		}, Revision: 1},
-		Transcript: []agent.Block{
-			{ID: "old", RunID: "run_old", Status: agent.BlockStatusCompleted, Kind: agent.BlockAssistant, Text: "historical answer"},
-			{ID: "current", RunID: "run_1", Status: agent.BlockStatusCompleted, Kind: agent.BlockAssistant, Text: "current answer"},
-			{ID: "new", RunID: "run_new", Status: agent.BlockStatusCompleted, Kind: agent.BlockAssistant, Text: "newer answer"},
+		Transcript: []conversation.Block{
+			{ID: "old", RunID: "run_old", Status: conversation.BlockStatusCompleted, Kind: conversation.BlockAssistant, Text: "historical answer"},
+			{ID: "current", RunID: "run_1", Status: conversation.BlockStatusCompleted, Kind: conversation.BlockAssistant, Text: "current answer"},
+			{ID: "new", RunID: "run_new", Status: conversation.BlockStatusCompleted, Kind: conversation.BlockAssistant, Text: "newer answer"},
 		},
-		Runs: []agent.Run{
-			{ID: "run_old", SessionID: "ses_1", Lineage: agent.RootRunLineage(), Status: protocol.RunStatusFinished, Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
-			{ID: "run_1", SessionID: "ses_1", Lineage: agent.RootRunLineage(), Status: protocol.RunStatusFinished, Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
-			{ID: "run_new", SessionID: "ses_1", Lineage: agent.RootRunLineage(), Status: protocol.RunStatusFinished, Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
+		Runs: []conversation.Run{
+			{ID: "run_old", SessionID: "ses_1", Lineage: conversation.RootRunLineage(), Status: protocol.RunStatusFinished, Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
+			{ID: "run_1", SessionID: "ses_1", Lineage: conversation.RootRunLineage(), Status: protocol.RunStatusFinished, Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
+			{ID: "run_new", SessionID: "ses_1", Lineage: conversation.RootRunLineage(), Status: protocol.RunStatusFinished, Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
 		},
 		Plan: &plan,
 	}
 }
 
-func requireScopedResultJSON(t *testing.T, snapshot agent.SessionSnapshot) {
+func requireScopedResultJSON(t *testing.T, snapshot conversation.SessionSnapshot) {
 	t.Helper()
 	var output bytes.Buffer
 	renderer := NewResultJSON(&output)
-	if err := renderer.Begin(testRun(), agent.RunOptions{}); err != nil {
+	if err := renderer.Begin(testRun(), prompt.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := renderer.Reconcile(snapshot); err != nil {
@@ -681,11 +682,11 @@ func requireScopedResultJSON(t *testing.T, snapshot agent.SessionSnapshot) {
 	}
 }
 
-func requireScopedText(t *testing.T, snapshot agent.SessionSnapshot) {
+func requireScopedText(t *testing.T, snapshot conversation.SessionSnapshot) {
 	t.Helper()
 	var output bytes.Buffer
 	textRenderer := NewText(&output)
-	if err := textRenderer.Begin(testRun(), agent.RunOptions{}); err != nil {
+	if err := textRenderer.Begin(testRun(), prompt.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := textRenderer.Reconcile(snapshot); err != nil {
@@ -699,11 +700,11 @@ func requireScopedText(t *testing.T, snapshot agent.SessionSnapshot) {
 	}
 }
 
-func requireScopedStream(t *testing.T, snapshot agent.SessionSnapshot) {
+func requireScopedStream(t *testing.T, snapshot conversation.SessionSnapshot) {
 	t.Helper()
 	var output bytes.Buffer
 	streamRenderer := NewNDJSON(&output)
-	if err := streamRenderer.Begin(testRun(), agent.RunOptions{}); err != nil {
+	if err := streamRenderer.Begin(testRun(), prompt.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	if err := streamRenderer.Reconcile(snapshot); err != nil {
@@ -722,7 +723,7 @@ func requireScopedStream(t *testing.T, snapshot agent.SessionSnapshot) {
 }
 
 func TestRenderersRejectInvalidEvents(t *testing.T) {
-	invalid := agent.RunEvent{EventID: "evt", RunID: "run_1", SegmentID: "seg_1", Event: agent.BlockDelta{}}
+	invalid := conversation.RunEvent{EventID: "evt", RunID: "run_1", SegmentID: "seg_1", Event: conversation.BlockDelta{}}
 	var output bytes.Buffer
 	if err := NewText(&output).Render(invalid); err == nil {
 		t.Fatal("text accepted invalid event")
@@ -736,14 +737,14 @@ func TestRenderersRejectInvalidEvents(t *testing.T) {
 }
 
 func TestUsageJSONDistinguishesUnknownFromKnownZeroCost(t *testing.T) {
-	unknown, err := json.Marshal(encodeUsage(agent.Usage{}))
+	unknown, err := json.Marshal(encodeUsage(conversation.Usage{}))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if bytes.Contains(unknown, []byte(`"costUsd"`)) {
 		t.Fatalf("unknown cost was serialized: %s", unknown)
 	}
-	known, err := json.Marshal(encodeUsage(agent.Usage{CostUSD: new(0.0)}))
+	known, err := json.Marshal(encodeUsage(conversation.Usage{CostUSD: new(0.0)}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -751,7 +752,7 @@ func TestUsageJSONDistinguishesUnknownFromKnownZeroCost(t *testing.T) {
 		t.Fatalf("known zero cost was omitted: %s", known)
 	}
 	modelCost := 0.25
-	detailed, err := json.Marshal(encodeUsage(agent.Usage{
+	detailed, err := json.Marshal(encodeUsage(conversation.Usage{
 		Steps: 3,
 		ByModel: map[string]protocol.ModelUsage{
 			"deepseek/v4": {InputTokens: 12, ReasoningTokens: 4, CostUSD: &modelCost},
@@ -767,87 +768,87 @@ func TestUsageJSONDistinguishesUnknownFromKnownZeroCost(t *testing.T) {
 	}
 }
 
-func testEvents() []agent.RunEvent {
+func testEvents() []conversation.RunEvent {
 	code := 0
-	return []agent.RunEvent{
-		testEvent("evt_start", agent.SegmentStarted{Run: testRun()}),
-		testEvent("evt_message_start", agent.BlockStarted{Block: agent.Block{ID: "msg_1", Kind: agent.BlockAssistant}}),
-		testEvent("evt_message_delta_1", agent.BlockDelta{BlockID: "msg_1", Text: "hello "}),
-		testEvent("evt_message_delta_2", agent.BlockDelta{BlockID: "msg_1", Text: "world"}),
-		testEvent("evt_message_done", agent.BlockCompleted{Block: agent.Block{ID: "msg_1", Kind: agent.BlockAssistant, Text: "hello world"}}),
-		testEvent("evt_tool", agent.BlockCompleted{Block: agent.Block{ID: "tool_1", Kind: agent.BlockTool, Tool: &agent.ToolCall{
-			Kind: agent.ToolShell, Name: "shell", Summary: "go test ./...", Status: agent.ToolOK,
+	return []conversation.RunEvent{
+		testEvent("evt_start", conversation.SegmentStarted{Run: testRun()}),
+		testEvent("evt_message_start", conversation.BlockStarted{Block: conversation.Block{ID: "msg_1", Kind: conversation.BlockAssistant}}),
+		testEvent("evt_message_delta_1", conversation.BlockDelta{BlockID: "msg_1", Text: "hello "}),
+		testEvent("evt_message_delta_2", conversation.BlockDelta{BlockID: "msg_1", Text: "world"}),
+		testEvent("evt_message_done", conversation.BlockCompleted{Block: conversation.Block{ID: "msg_1", Kind: conversation.BlockAssistant, Text: "hello world"}}),
+		testEvent("evt_tool", conversation.BlockCompleted{Block: conversation.Block{ID: "tool_1", Kind: conversation.BlockTool, Tool: &conversation.ToolCall{
+			Kind: conversation.ToolShell, Name: "shell", Summary: "go test ./...", Status: conversation.ToolOK,
 			Command: "go test ./...", Output: "PASS", ExitCode: &code,
 		}}}),
-		testEvent("evt_done", agent.RunFinished{
-			Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
-			Usage:   agent.Usage{InputTokens: 1_200, OutputTokens: 80, CacheReadTokens: 600, CostUSD: new(0.01), Duration: time.Second},
+		testEvent("evt_done", conversation.RunFinished{
+			Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted},
+			Usage:   conversation.Usage{InputTokens: 1_200, OutputTokens: 80, CacheReadTokens: 600, CostUSD: new(0.01), Duration: time.Second},
 		}),
 	}
 }
 
-func runTreeEvents(t *testing.T) []agent.RunEvent {
+func runTreeEvents(t *testing.T) []conversation.RunEvent {
 	t.Helper()
 	root := testRun()
-	lineage, err := agent.NewChildRunLineage("run_child", "spawn", root.ID, root.ID)
+	lineage, err := conversation.NewChildRunLineage("run_child", "spawn", root.ID, root.ID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	child := agent.Run{
+	child := conversation.Run{
 		ID: "run_child", SessionID: root.SessionID,
 		Lineage:  lineage,
 		Provider: root.Provider, Model: root.Model, Status: protocol.RunStatusRunning, ActiveSegmentID: "seg_child",
 	}
-	event := func(id, runID, segmentID string, payload agent.Event) agent.RunEvent {
-		return agent.RunEvent{
+	event := func(id, runID, segmentID string, payload conversation.Event) conversation.RunEvent {
+		return conversation.RunEvent{
 			EventID: id, RunID: runID, SegmentID: segmentID, StreamSegmentID: root.ActiveSegmentID,
 			At: time.Unix(1, 0), Event: payload,
 		}
 	}
-	block := func(runID, text string, status agent.BlockStatus) agent.Block {
-		return agent.Block{ID: "answer", RunID: runID, Kind: agent.BlockAssistant, Status: status, Text: text}
+	block := func(runID, text string, status conversation.BlockStatus) conversation.Block {
+		return conversation.Block{ID: "answer", RunID: runID, Kind: conversation.BlockAssistant, Status: status, Text: text}
 	}
-	return []agent.RunEvent{
-		event("root-started", root.ID, root.ActiveSegmentID, agent.SegmentStarted{Run: root}),
-		event("child-started", child.ID, child.ActiveSegmentID, agent.SegmentStarted{Run: child}),
-		event("child-block-started", child.ID, child.ActiveSegmentID, agent.BlockStarted{Block: block(child.ID, "", agent.BlockStatusRunning)}),
-		event("child-delta", child.ID, child.ActiveSegmentID, agent.BlockDelta{BlockID: "answer", Text: "child answer"}),
-		event("child-block-completed", child.ID, child.ActiveSegmentID, agent.BlockCompleted{Block: block(child.ID, "child answer", agent.BlockStatusCompleted)}),
-		event("child-finished", child.ID, child.ActiveSegmentID, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}),
-		event("root-block-started", root.ID, root.ActiveSegmentID, agent.BlockStarted{Block: block(root.ID, "", agent.BlockStatusRunning)}),
-		event("root-delta", root.ID, root.ActiveSegmentID, agent.BlockDelta{BlockID: "answer", Text: "root answer"}),
-		event("root-block-completed", root.ID, root.ActiveSegmentID, agent.BlockCompleted{Block: block(root.ID, "root answer", agent.BlockStatusCompleted)}),
-		event("root-finished", root.ID, root.ActiveSegmentID, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}),
+	return []conversation.RunEvent{
+		event("root-started", root.ID, root.ActiveSegmentID, conversation.SegmentStarted{Run: root}),
+		event("child-started", child.ID, child.ActiveSegmentID, conversation.SegmentStarted{Run: child}),
+		event("child-block-started", child.ID, child.ActiveSegmentID, conversation.BlockStarted{Block: block(child.ID, "", conversation.BlockStatusRunning)}),
+		event("child-delta", child.ID, child.ActiveSegmentID, conversation.BlockDelta{BlockID: "answer", Text: "child answer"}),
+		event("child-block-completed", child.ID, child.ActiveSegmentID, conversation.BlockCompleted{Block: block(child.ID, "child answer", conversation.BlockStatusCompleted)}),
+		event("child-finished", child.ID, child.ActiveSegmentID, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}),
+		event("root-block-started", root.ID, root.ActiveSegmentID, conversation.BlockStarted{Block: block(root.ID, "", conversation.BlockStatusRunning)}),
+		event("root-delta", root.ID, root.ActiveSegmentID, conversation.BlockDelta{BlockID: "answer", Text: "root answer"}),
+		event("root-block-completed", root.ID, root.ActiveSegmentID, conversation.BlockCompleted{Block: block(root.ID, "root answer", conversation.BlockStatusCompleted)}),
+		event("root-finished", root.ID, root.ActiveSegmentID, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}),
 	}
 }
 
-func testEvent(id string, event agent.Event) agent.RunEvent {
+func testEvent(id string, event conversation.Event) conversation.RunEvent {
 	switch item := event.(type) {
-	case agent.BlockStarted:
+	case conversation.BlockStarted:
 		item.Block.RunID = "run_1"
-		item.Block.Status = agent.BlockStatusRunning
+		item.Block.Status = conversation.BlockStatusRunning
 		event = item
-	case agent.BlockCompleted:
+	case conversation.BlockCompleted:
 		item.Block.RunID = "run_1"
-		item.Block.Status = agent.BlockStatusCompleted
+		item.Block.Status = conversation.BlockStatusCompleted
 		event = item
 	}
-	return agent.RunEvent{EventID: id, RunID: "run_1", SegmentID: "seg_1", At: time.Unix(1, 0), Event: event}
+	return conversation.RunEvent{EventID: id, RunID: "run_1", SegmentID: "seg_1", At: time.Unix(1, 0), Event: event}
 }
 
-func testRun() agent.Run {
-	return agent.Run{
+func testRun() conversation.Run {
+	return conversation.Run{
 		ID: "run_1", SessionID: "ses_1", Provider: "mock", Model: "balanced",
-		Lineage: agent.RootRunLineage(),
+		Lineage: conversation.RootRunLineage(),
 		Status:  protocol.RunStatusRunning, ActiveSegmentID: "seg_1",
 	}
 }
 
-func testApproval(itemID, title string) agent.Approval {
-	return agent.Approval{
+func testApproval(itemID, title string) conversation.Approval {
+	return conversation.Approval{
 		RunID: "run_1", ItemID: itemID, Title: title, Rememberable: true,
-		Tool: &agent.ToolCall{
-			Kind: agent.ToolShell, Name: "shell", Command: "go test ./...", Status: agent.ToolRunning,
+		Tool: &conversation.ToolCall{
+			Kind: conversation.ToolShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning,
 			ArgumentsJSON: []byte(`{"command":"go test ./...","timeoutMs":30000}`),
 		},
 	}

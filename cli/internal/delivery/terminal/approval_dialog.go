@@ -7,6 +7,10 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Tangerg/flame/cli/internal/application/mutation"
+	"github.com/Tangerg/flame/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
@@ -14,11 +18,6 @@ import (
 	"github.com/Tangerg/oolong/core/keymap"
 	"github.com/Tangerg/oolong/core/layout"
 	"github.com/Tangerg/oolong/core/text"
-
-	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
-	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
 )
 
 type approvalPane struct {
@@ -38,10 +37,10 @@ type approvalDecisionDraft struct {
 	reason string
 }
 
-func (a approvalDecisionDraft) answer(action approvalAction, override *agent.ToolArgumentOverride) (agent.ApprovalAnswer, bool) {
+func (a approvalDecisionDraft) answer(action approvalAction, override *conversation.ToolArgumentOverride) (conversation.ApprovalAnswer, bool) {
 	decision, ok := action.Answer()
 	if !ok {
-		return agent.ApprovalAnswer{}, false
+		return conversation.ApprovalAnswer{}, false
 	}
 	if decision.Decision == protocol.ApprovalDeny {
 		decision.Reason = strings.TrimSpace(a.reason)
@@ -144,14 +143,14 @@ func (a *app) setApprovalForm(initial approvalAction) {
 	a.dialogs.approvalPane.form = dressed
 }
 
-func (a *app) openApproval(approval agent.Approval) {
+func (a *app) openApproval(approval conversation.Approval) {
 	cloned := approval.Clone()
 	a.dialogs.approval = &cloned
 	a.dialogs.approvalDraft = &approvalDecisionDraft{}
 	a.dialogs.approvalArguments = editableApprovalArguments(approval.Tool)
 	a.dialogs.approvalOverride = nil
 	initial := defaultApprovalAction(a.settings.Approval.Remember.Scope())
-	if answer, ok := a.dialogs.interactionReview.CurrentAnswer().(agent.ApprovalAnswer); ok {
+	if answer, ok := a.dialogs.interactionReview.CurrentAnswer().(conversation.ApprovalAnswer); ok {
 		initial = approvalActionFromAnswer(answer)
 		a.dialogs.approvalDraft.reason = answer.Reason
 		if answer.ArgumentOverride != nil {
@@ -210,7 +209,7 @@ func (a *app) setApprovalPreview(sections []ToolSection) {
 	a.dialogs.approvalPane.view.Scroll = &a.dialogs.approvalPane.scroll
 }
 
-func (a *app) openInteractions(interactions []agent.Interaction) {
+func (a *app) openInteractions(interactions []conversation.Interaction) {
 	if a.dialogs.interactionReview != nil {
 		a.fail(errors.New("runtime opened interactions while another set is active"))
 		return
@@ -239,9 +238,9 @@ func (a *app) openCurrentInteraction() {
 		return
 	}
 	switch item := interaction.(type) {
-	case agent.Approval:
+	case conversation.Approval:
 		a.openApproval(item)
-	case agent.Question:
+	case conversation.Question:
 		a.openQuestion(item)
 	default:
 		a.fail(errors.New("runtime returned an unknown interaction"))
@@ -266,7 +265,7 @@ func (a *app) answerApproval(action approvalAction) {
 	a.submitApproval(decision)
 }
 
-func (a *app) submitApproval(decision agent.ApprovalAnswer) {
+func (a *app) submitApproval(decision conversation.ApprovalAnswer) {
 	if a.dialogs.interactionReview == nil {
 		return
 	}
@@ -336,11 +335,11 @@ func (a *app) resumeInteractions() {
 		return
 	}
 	commandID := mutation.NewCommandID()
-	command := agent.ResumeRun{CommandID: commandID, RunID: runID, Answers: answers}
-	replay := commandReplayGuard(a.runtimeProfile)
+	command := conversation.ResumeRun{CommandID: commandID, RunID: runID, Answers: answers}
+	replayGuard := commandReplayGuard(a.runtimeProfile)
 	if a.workbench != nil {
 		pending := workbench.PendingResume{
-			Command: command.Clone(), Interactions: review.Items(), Replay: replay,
+			Command: command.Clone(), Interactions: review.Items(), Replay: replayGuard,
 		}
 		if err := a.workbench.StagePendingResume(a.session.current.ID, pending, nil); err != nil {
 			failure := fmt.Errorf("resume blocked: save interaction decisions: %w", err)
@@ -353,7 +352,7 @@ func (a *app) resumeInteractions() {
 			return
 		}
 	}
-	a.deliverInteractionResume(review, command, replay)
+	a.deliverInteractionResume(review, command, replayGuard)
 }
 
 // reopenCompletedInteractionReview restores the UI owner of a completed HITL
@@ -381,29 +380,29 @@ func (a *app) reopenCompletedInteractionReview(review *interactionReview) error 
 
 func (a *app) deliverInteractionResume(
 	review *interactionReview,
-	command agent.ResumeRun,
-	replay commandreplay.Guard,
+	command conversation.ResumeRun,
+	replayGuard replay.Guard,
 ) {
 	a.status.active("resuming")
 	a.syncAnimation()
-	a.followOpening(func(ctx context.Context) (agent.SegmentStream, error) {
-		if err := commandReplayAdmission(replay, a.runtimeProfile)(); err != nil {
-			return agent.SegmentStream{}, &resumeRunCallError{err: err}
+	a.followOpening(func(ctx context.Context) (conversation.SegmentStream, error) {
+		if err := commandReplayAdmission(replayGuard, a.runtimeProfile)(); err != nil {
+			return conversation.SegmentStream{}, &resumeRunCallError{err: err}
 		}
 		stream, err := a.runtime.ResumeRun(ctx, command)
 		if err != nil {
-			if _, accepted := agent.AcceptedMutationReceipt(err); accepted {
-				return agent.SegmentStream{}, err
+			if _, accepted := conversation.AcceptedMutationReceipt(err); accepted {
+				return conversation.SegmentStream{}, err
 			}
-			return agent.SegmentStream{}, &resumeRunCallError{err: err}
+			return conversation.SegmentStream{}, &resumeRunCallError{err: err}
 		}
 		if err := stream.ValidateResume(command.RunID, command.Message); err != nil {
-			return agent.SegmentStream{}, agent.NewAcceptedMutationError(stream, fmt.Errorf("resume run: %w", err))
+			return conversation.SegmentStream{}, conversation.NewAcceptedMutationError(stream, fmt.Errorf("resume run: %w", err))
 		}
 		return stream, nil
 	}, streamOpeningObserver{
 		persistent: true,
-		accepted: func(agent.SegmentStream) streamOpeningDisposition {
+		accepted: func(conversation.SegmentStream) streamOpeningDisposition {
 			a.dialogs.interactionReview = nil
 			a.settleAcknowledgedResume(command.CommandID)
 			acceptedQuestions, err := a.execution.conversation.RecordAcceptedInteractionAnswers(command.Answers)
@@ -412,7 +411,7 @@ func (a *app) deliverInteractionResume(
 			}
 			if err != nil {
 				failure := fmt.Errorf("project accepted interaction answers: %w", err)
-				a.cancelRuntimePreservingFailure(agent.CancelRun{
+				a.cancelRuntimePreservingFailure(conversation.CancelRun{
 					RunID: command.RunID, Reason: "terminal could not project accepted interaction answers",
 				})
 				a.fail(failure)
@@ -421,9 +420,9 @@ func (a *app) deliverInteractionResume(
 			return followOpenedStream
 		},
 		rejected: func(failure error) error {
-			if _, accepted := agent.AcceptedMutationReceipt(failure); accepted {
+			if _, accepted := conversation.AcceptedMutationReceipt(failure); accepted {
 				a.dialogs.interactionReview = nil
-				a.cancelRuntimePreservingFailure(agent.CancelRun{
+				a.cancelRuntimePreservingFailure(conversation.CancelRun{
 					RunID: command.RunID, Reason: "runtime returned an invalid resume receipt",
 				})
 				return failure
@@ -433,7 +432,7 @@ func (a *app) deliverInteractionResume(
 	})
 }
 
-func (a *app) settleAcknowledgedResume(commandID agent.CommandID) {
+func (a *app) settleAcknowledgedResume(commandID replay.CommandID) {
 	if err := a.retireAcknowledgedResume(commandID); err != nil {
 		a.reportWorkbenchIssue(workbenchResumeOutbox, err)
 		a.message("could not settle acknowledged interaction decisions: " + err.Error())
@@ -447,7 +446,7 @@ func (a *app) settleAcknowledgedResume(commandID agent.CommandID) {
 	a.reportWorkbenchIssue(workbenchResumeOutbox, nil)
 }
 
-func (a *app) retireAcknowledgedResume(commandID agent.CommandID) error {
+func (a *app) retireAcknowledgedResume(commandID replay.CommandID) error {
 	if _, ok := a.workbench.PendingResume(a.session.current.ID); !ok {
 		return nil
 	}
@@ -456,14 +455,14 @@ func (a *app) retireAcknowledgedResume(commandID agent.CommandID) error {
 	return a.workbench.AcknowledgePendingResume(a.session.current.ID, commandID)
 }
 
-func (a *app) restoreRejectedInteractionReview(review *interactionReview, command agent.ResumeRun, failure error) error {
+func (a *app) restoreRejectedInteractionReview(review *interactionReview, command conversation.ResumeRun, failure error) error {
 	callFailure, refused := errors.AsType[*resumeRunCallError](failure)
 	if refused && a.workbench != nil && errors.Is(callFailure.err, mutation.ErrReplayGuaranteeUnavailable) {
 		a.reconcileExpiredResume(command)
 		return nil
 	}
 	if !refused || mutation.OutcomeUnknown(callFailure.err) || a.dialogs.interactionReview != review ||
-		a.execution.conversation.Phase() != agent.ConversationWaiting || a.execution.conversation.RunID() != command.RunID {
+		a.execution.conversation.Phase() != conversation.Waiting || a.execution.conversation.RunID() != command.RunID {
 		return failure
 	}
 	if a.workbench != nil {
@@ -485,16 +484,16 @@ func (a *app) restoreRejectedInteractionReview(review *interactionReview, comman
 	return nil
 }
 
-func (a *app) reconcileExpiredResume(command agent.ResumeRun) {
+func (a *app) reconcileExpiredResume(command conversation.ResumeRun) {
 	a.execution.following = false
 	a.status.note("resume replay expired · checking runtime state")
 	a.syncAnimation()
 	sessionID := a.session.current.ID
 	started := a.runSessionSettlement(resumeRecoveryOperation, false,
-		func(ctx context.Context) (agent.SessionSnapshot, error) {
+		func(ctx context.Context) (conversation.SessionSnapshot, error) {
 			return a.readInvalidatedSession(ctx, sessionID)
 		},
-		func(snapshot agent.SessionSnapshot, err error) {
+		func(snapshot conversation.SessionSnapshot, err error) {
 			if err != nil {
 				a.message("could not reconcile expired interaction delivery: " + err.Error())
 				a.status.note("resume outcome unknown · decisions preserved")
@@ -525,7 +524,7 @@ func (a *app) abortInteractions(reason string) {
 		a.dialogs.reviewDialog = nil
 	}
 	if runID := a.execution.conversation.RunID(); runID != "" {
-		a.cancelRuntime(agent.CancelRun{RunID: runID, Reason: reason})
+		a.cancelRuntime(conversation.CancelRun{RunID: runID, Reason: reason})
 	}
 }
 

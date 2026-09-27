@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { SelectableModel } from "@/plugins/builtin/settings/providers/public/queries";
+import { SelectableModel } from "@/plugins/builtin/providers/public/queries";
 import { ScheduleForm } from "./ScheduleForm";
 
 const { updateSchedule, createSchedule, useModels } = vi.hoisted(() => ({
@@ -14,8 +14,8 @@ vi.mock("../application/scheduleCommands", () => ({
   updateSchedule,
 }));
 
-vi.mock("@/plugins/builtin/settings/providers/public/queries", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/plugins/builtin/settings/providers/public/queries")>()),
+vi.mock("@/plugins/builtin/providers/public/queries", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/plugins/builtin/providers/public/queries")>()),
   useModels,
 }));
 

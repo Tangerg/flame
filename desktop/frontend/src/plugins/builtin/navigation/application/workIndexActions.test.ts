@@ -51,7 +51,10 @@ beforeEach(() => {
   mocks.create.mockReset().mockResolvedValue("session-new");
   mocks.focusComposer.mockReset();
   mocks.notifyError.mockReset();
-  disposePicker = configureWorkingDirectoryPicker({ open: mocks.open });
+  disposePicker = configureWorkingDirectoryPicker({
+    open: mocks.open,
+    browse: async () => undefined,
+  });
 });
 
 afterEach(() => disposePicker());

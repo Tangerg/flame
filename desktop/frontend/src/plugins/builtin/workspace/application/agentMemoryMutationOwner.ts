@@ -82,12 +82,10 @@ class AgentMemoryMutationGeneration {
 }
 
 export class AgentMemoryMutationOwner {
-  readonly #gateway: AgentMemoryGateway;
   #generation: AgentMemoryMutationGeneration;
   #disposed = false;
 
   private constructor(gateway: AgentMemoryGateway) {
-    this.#gateway = gateway;
     this.#generation = new AgentMemoryMutationGeneration(gateway);
   }
 
@@ -123,10 +121,10 @@ export class AgentMemoryMutationOwner {
     return this.#generation.add(input);
   }
 
-  replaceRuntimeGeneration(): void {
+  replaceRuntimeGeneration(createGateway: () => AgentMemoryGateway): void {
     if (this.#disposed || !agentMemoryMutationPublication.owns(this)) return;
     const predecessor = this.#generation;
-    this.#generation = new AgentMemoryMutationGeneration(this.#gateway);
+    this.#generation = new AgentMemoryMutationGeneration(createGateway());
     predecessor.retire();
   }
 

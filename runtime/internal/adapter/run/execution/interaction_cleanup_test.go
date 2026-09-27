@@ -1,0 +1,153 @@
+package execution
+
+import (
+	"context"
+	"errors"
+	"sync"
+	"sync/atomic"
+	"testing"
+	"testing/synctest"
+
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	agent "github.com/Tangerg/scope/agent"
+	"github.com/Tangerg/scope/core/chat"
+	toolcontract "github.com/Tangerg/scope/core/tool"
+)
+
+func TestInteractionShutdownJoinsAssemblyBeforeReleasingResources(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		entered, proceed := make(chan struct{}), make(chan struct{})
+		model := chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+			t.Error("staging called the model")
+			return nil, errors.New("unexpected model call")
+		})
+		executor := newTestInteractionExecutor(t, model)
+		resolver := executor.config.ChatResolver
+		executor.config.ChatResolver = interactionChatResolverFunc(func(ctx context.Context, selection modelref.Selection) (modeladapter.ResolvedChat, error) {
+			close(entered)
+			<-proceed
+			return resolver.ResolveChat(ctx, selection)
+		})
+		staged := make(chan error, 1)
+		go func() {
+			_, err := executor.StageRoot(t.Context(), interactionTestStart())
+			staged <- err
+		}()
+		<-entered
+		executor.BeginShutdown()
+		closed := make(chan error, 1)
+		go func() { closed <- executor.AwaitShutdown(t.Context()) }()
+		synctest.Wait()
+		select {
+		case err := <-closed:
+			t.Fatalf("shutdown abandoned in-flight assembly: %v", err)
+		default:
+		}
+		canceled, cancel := context.WithCancel(t.Context())
+		cancel()
+		if err := executor.AwaitShutdown(canceled); !errors.Is(err, context.Canceled) {
+			t.Fatalf("interrupted assembly join = %v", err)
+		}
+		close(proceed)
+		if err := <-staged; err == nil {
+			t.Fatal("assembly published after shutdown admission closed")
+		}
+		if err := <-closed; err != nil {
+			t.Fatalf("shutdown after assembly rollback: %v", err)
+		}
+	})
+}
+
+func TestInteractionFailedDiscardRemainsOwnedUntilShutdown(t *testing.T) {
+	workspace := t.TempDir()
+	checkpoint := captureInteractionQuestionCheckpoint(t, workspace)
+	synctest.Test(t, func(t *testing.T) {
+		executor := newObservedTestInteractionExecutor(t, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+			t.Error("restored waiting tree called the model")
+			return nil, errors.New("unexpected model call")
+		}), InteractionExecutorConfig{
+			ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{newQuestionCheckpointTool(t)}}},
+			ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
+		})
+		start := interactionTestStart()
+		start.CWD, start.WorkspaceCWD = workspace, workspace
+		start.ModelSelection = checkpoint.ModelSelection
+		start.InterruptKinds = []interrupt.Kind{interrupt.Question}
+		state, err := decodeExecutorCheckpoint(checkpoint)
+		if err != nil {
+			t.Fatal(err)
+		}
+		start.WorkingContext = cloneChatMessages(state.instructions)
+		ref := runs.ExecutorRef{SessionID: start.SessionID, ExecutorID: "exec_unpublished"}
+		session, err := executor.assembleInteraction(t.Context(), ref, start)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := session.engine.Close(t.Context()); err != nil {
+			t.Fatal(err)
+		}
+		entered, proceed := make(chan struct{}), make(chan struct{})
+		unblock := sync.OnceFunc(func() { close(proceed) })
+		defer unblock()
+		writer := state.tree.IncarnationID()
+		if err := session.executionTrees.SaveExecutionTree(t.Context(), runs.ExecutionTreeUpdate{Head: runs.ExecutionTreeHead{Sequence: 1, CommitID: "initial", CommitDigest: "initial", SessionID: start.SessionID, RootID: state.tree.RootID().String(), Writer: writer.String(), Digest: state.tree.Digest().String(), Payload: state.tree.JSON()}}); err != nil {
+			t.Fatal(err)
+		}
+		durability := &blockingCheckpointDurability{interactionSession: session, entered: entered, proceed: proceed}
+		session.engine, err = agent.NewEngine(agent.EngineConfig{
+			DeploymentResolver: session.state.deployments,
+			TreeCommitter:      durability,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		process, err := session.engine.RestoreTree(t.Context(), session.deployment, state.tree)
+		if err != nil {
+			t.Fatal(err)
+		}
+		session.state.setProcess(process)
+		durability.armed.Store(true)
+		discarded := make(chan error, 1)
+		go func() { discarded <- executor.discardInteraction(session) }()
+		<-entered
+		if err := <-discarded; !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("discard with blocked terminal observer = %v", err)
+		}
+		if _, err := executor.session(ref); !errors.Is(err, runs.ErrExecutorNotLive) {
+			t.Fatalf("failed assembly became callable: %v", err)
+		}
+		closed := make(chan error, 1)
+		go func() { closed <- executor.AwaitShutdown(t.Context()) }()
+		synctest.Wait()
+		select {
+		case err := <-closed:
+			t.Fatalf("shutdown abandoned failed cleanup: %v", err)
+		default:
+		}
+		unblock()
+		if err := <-closed; err != nil {
+			t.Fatalf("shutdown retry: %v", err)
+		}
+		if _, err := session.engine.RestoreTree(t.Context(), session.deployment, state.tree); !errors.Is(err, agent.ErrEngineClosed) {
+			t.Fatalf("shutdown did not close recovered engine: %v", err)
+		}
+	})
+}
+
+type blockingCheckpointDurability struct {
+	*interactionSession
+	armed            atomic.Bool
+	entered, proceed chan struct{}
+}
+
+func (b *blockingCheckpointDurability) CommitCheckpoint(ctx context.Context, checkpoint agent.TreeCheckpoint) error {
+	if b.armed.CompareAndSwap(true, false) {
+		close(b.entered)
+		<-b.proceed
+	}
+	return b.interactionSession.CommitCheckpoint(ctx, checkpoint)
+}

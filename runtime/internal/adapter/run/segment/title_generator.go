@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 )
 
 // titleMaxInputRunes caps the slice of the opening user message fed to the

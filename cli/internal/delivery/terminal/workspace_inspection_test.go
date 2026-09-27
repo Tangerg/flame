@@ -9,13 +9,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/protocol"
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/programtest"
-
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
+	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/oolong/core/input"
+	"github.com/Tangerg/oolong/core/programtest"
 )
 
 type workspaceServiceStub struct {
@@ -178,7 +177,7 @@ func runUIWithWorkspaceBackend(t *testing.T, service Workspaces, source changefe
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{Runtime: backend, Workspaces: service, Changes: source, Workspace: "/tmp/flame-cli-test", Host: host})
+		done <- Run(ctx, Config{OpenWorkbench: memoryTestWorkbench, Runtime: backend, Workspaces: service, Changes: source, Workspace: "/tmp/flame-cli-test", Host: host})
 	}()
 	var once sync.Once
 	stop := func() {

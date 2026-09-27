@@ -1,4 +1,4 @@
-import { getContainer } from "@/main/container";
+import type { FlameClient } from "@flame/runtime-contract/client";
 import {
   asRunId,
   asSegmentId,
@@ -15,10 +15,12 @@ import { AgentCommandOwner } from "../application/agentCommandOwner";
 import { AgentSessionUsageOwner } from "../application/session/sessionUsage";
 
 class RuntimeAgentGateway implements AgentRuntimeGateway {
+  constructor(private readonly runtimeClient: () => FlameClient) {}
+
   #sessionMutations = createMutationSettler();
 
   async createSession(input: Parameters<AgentRuntimeGateway["createSession"]>[0]) {
-    const client = getContainer().client();
+    const client = this.runtimeClient();
     const session = await this.#sessionMutations.settle(
       JSON.stringify(["sessions.create", input.cwd]),
       (signal) => client.sessions.create({ workspace: { path: input.cwd } }, signal),
@@ -28,7 +30,7 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
 
   async deleteSession(sessionId: string) {
     try {
-      await getContainer().client().sessions.delete(asSessionId(sessionId));
+      await this.runtimeClient().sessions.delete(asSessionId(sessionId));
     } catch (error) {
       if (isErrorType(error, "session_not_found")) return;
       throw error;
@@ -40,28 +42,24 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
     cwd,
     ...patch
   }: Parameters<AgentRuntimeGateway["updateSession"]>[0]) {
-    const updated = await getContainer()
-      .client()
-      .sessions.update({
-        sessionId: asSessionId(sessionId),
-        ...patch,
-        ...(cwd ? { workspace: { path: cwd } } : {}),
-      });
+    const updated = await this.runtimeClient().sessions.update({
+      sessionId: asSessionId(sessionId),
+      ...patch,
+      ...(cwd ? { workspace: { path: cwd } } : {}),
+    });
     return { revision: updated.revision };
   }
 
   async forkSession(input: Parameters<AgentRuntimeGateway["forkSession"]>[0]) {
-    const fork = await getContainer()
-      .client()
-      .sessions.fork({
-        sessionId: asSessionId(input.sessionId),
-        ...(input.fromRunId ? { fromRunId: asRunId(input.fromRunId) } : {}),
-      });
+    const fork = await this.runtimeClient().sessions.fork({
+      sessionId: asSessionId(input.sessionId),
+      ...(input.fromRunId ? { fromRunId: asRunId(input.fromRunId) } : {}),
+    });
     return { id: fork.id };
   }
 
   async loadSessionSnapshot(sessionId: string, signal?: AbortSignal) {
-    const client = getContainer().client();
+    const client = this.runtimeClient();
     const sid = asSessionId(sessionId);
     const includeDescendants = runtimeCapability("subagents");
     try {
@@ -74,17 +72,15 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
   }
 
   loadSessionUsage(sessionId: string, signal?: AbortSignal) {
-    return getContainer().client().usage.session(asSessionId(sessionId), signal);
+    return this.runtimeClient().usage.session(asSessionId(sessionId), signal);
   }
 
   async rollbackSession(input: Parameters<AgentRuntimeGateway["rollbackSession"]>[0]) {
-    const response = await getContainer()
-      .client()
-      .sessions.rollback({
-        sessionId: asSessionId(input.sessionId),
-        ...(input.toRunId ? { toRunId: asRunId(input.toRunId) } : {}),
-        ...(input.restoreType ? { restoreType: input.restoreType } : {}),
-      });
+    const response = await this.runtimeClient().sessions.rollback({
+      sessionId: asSessionId(input.sessionId),
+      ...(input.toRunId ? { toRunId: asRunId(input.toRunId) } : {}),
+      ...(input.restoreType ? { restoreType: input.restoreType } : {}),
+    });
     return {
       droppedRuns: response.droppedRuns.map((dropped) => ({
         runId: dropped.run.id,
@@ -100,9 +96,11 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
     segmentId: string,
     input: Parameters<AgentRuntimeGateway["steerRun"]>[2],
   ) {
-    return getContainer()
-      .client()
-      .runs.steer(asRunId(runId), asSegmentId(segmentId), agentInputToContentBlocks(input));
+    return this.runtimeClient().runs.steer(
+      asRunId(runId),
+      asSegmentId(segmentId),
+      agentInputToContentBlocks(input),
+    );
   }
 
   isRunGone(error: unknown) {
@@ -119,11 +117,11 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
   }
 
   async setApprovalMode(mode: Parameters<AgentRuntimeGateway["setApprovalMode"]>[0]) {
-    return (await getContainer().client().approval.setMode(mode)).mode;
+    return (await this.runtimeClient().approval.setMode(mode)).mode;
   }
 
   async forgetApprovalRule(id: string) {
-    await getContainer().client().approval.forgetRule(id);
+    await this.runtimeClient().approval.forgetRule(id);
   }
 
   replaceRuntimeGeneration(): void {
@@ -137,9 +135,9 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
   }
 }
 
-export function installAgentRuntimeGateway() {
+export function installAgentRuntimeGateway(runtimeClient: () => FlameClient) {
   let commandOwner = AgentCommandOwner.install();
-  const gateway = new RuntimeAgentGateway();
+  const gateway = new RuntimeAgentGateway(runtimeClient);
   let usageOwner = AgentSessionUsageOwner.install(gateway);
   const disposePort = configureAgentRuntimeGateway(gateway);
   let disposed = false;

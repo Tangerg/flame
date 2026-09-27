@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { resetContainer, setContainer } from "@/main/container";
 import {
   asItemId,
   asRunId,
@@ -13,8 +12,12 @@ import { createMutationPromise } from "@flame/runtime-contract/client/mutation";
 import { runtimeRunsGateway } from "./runtimeRunsGateway";
 import { MUTATION_ATTEMPT_TIMEOUT_MS } from "@flame/runtime-contract/client";
 
+let runtimeClient: () => FlameClient = () => {
+  throw new Error("Runtime test client is not configured");
+};
+const getRuntimeClient = () => runtimeClient();
+
 afterEach(() => {
-  resetContainer();
   vi.useRealTimers();
 });
 
@@ -52,10 +55,8 @@ describe("runtimeRunsGateway", () => {
           retry: retiredRetry,
         }) as ReturnType<FlameClient["runs"]["start"]>,
     );
-    setContainer({
-      client: () => ({ runs: { start: retiredStart } }) as unknown as FlameClient,
-    });
-    const retiredGateway = runtimeRunsGateway();
+    runtimeClient = () => ({ runs: { start: retiredStart } }) as unknown as FlameClient;
+    const retiredGateway = runtimeRunsGateway(getRuntimeClient);
 
     await expect(retiredGateway.start(params)).rejects.toBe(transportFailure);
 
@@ -73,10 +74,8 @@ describe("runtimeRunsGateway", () => {
           { idempotencyKey: "successor-run-start", retry: vi.fn() },
         ) as ReturnType<FlameClient["runs"]["start"]>,
     );
-    setContainer({
-      client: () => ({ runs: { start: successorStart } }) as unknown as FlameClient,
-    });
-    const successorGateway = runtimeRunsGateway();
+    runtimeClient = () => ({ runs: { start: successorStart } }) as unknown as FlameClient;
+    const successorGateway = runtimeRunsGateway(getRuntimeClient);
 
     await expect(successorGateway.start(params)).resolves.toMatchObject({
       result: {
@@ -121,10 +120,8 @@ describe("runtimeRunsGateway", () => {
         { signal },
       ),
     );
-    setContainer({
-      client: () => ({ runs: { start } }) as unknown as FlameClient,
-    });
-    const gateway = runtimeRunsGateway();
+    runtimeClient = () => ({ runs: { start } }) as unknown as FlameClient;
+    const gateway = runtimeRunsGateway(getRuntimeClient);
     const params = { sessionId: "ses_1", input: [{ type: "text" as const, text: "ship it" }] };
 
     const first = gateway.start(params);
@@ -158,10 +155,8 @@ describe("runtimeRunsGateway", () => {
           retry: retiredRetry,
         }) as ReturnType<FlameClient["runs"]["resume"]>,
     );
-    setContainer({
-      client: () => ({ runs: { resume: retiredResume } }) as unknown as FlameClient,
-    });
-    const gateway = runtimeRunsGateway();
+    runtimeClient = () => ({ runs: { resume: retiredResume } }) as unknown as FlameClient;
+    const gateway = runtimeRunsGateway(getRuntimeClient);
 
     await expect(gateway.resume(params)).rejects.toBe(transportFailure);
 
@@ -174,9 +169,7 @@ describe("runtimeRunsGateway", () => {
         { idempotencyKey: "successor-run-resume", retry: vi.fn() },
       ),
     );
-    setContainer({
-      client: () => ({ runs: { resume: successorResume } }) as unknown as FlameClient,
-    });
+    runtimeClient = () => ({ runs: { resume: successorResume } }) as unknown as FlameClient;
     gateway.replaceRuntimeGeneration();
 
     await expect(gateway.resume(params)).resolves.toMatchObject({

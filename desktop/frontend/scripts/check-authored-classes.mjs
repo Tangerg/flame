@@ -12,6 +12,7 @@
 // closed, and ours. Anything else is either a utility from a framework that is gone or a
 // typo, and both render nothing.
 
+import { assertSourceCoverage, sourceFiles } from "./source-graph.mjs";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { extname, join, relative } from "node:path";
 
@@ -67,7 +68,10 @@ const BARE = new Set(
 
 const violations = [];
 let examined = 0;
-for (const path of [join(ROOT, "src"), join(ROOT, "visual")].flatMap(walk)) {
+const roots = [join(ROOT, "src"), join(ROOT, "visual")];
+const scanned = roots.flatMap(walk);
+assertSourceCoverage(roots.flatMap(sourceFiles), scanned);
+for (const path of scanned) {
   if (![".ts", ".tsx"].includes(extname(path))) continue;
   if (/\.(test|spec)\.tsx?$/.test(path)) continue;
   examined += 1;
@@ -108,14 +112,6 @@ if (violations.length > 0) {
   console.error("what StyleX cannot express — a descendant rule or a global — and globals.css");
   console.error("has to define it.");
   process.exit(1);
-}
-
-const MIN_FILES_EXAMINED = 500;
-if (examined < MIN_FILES_EXAMINED) {
-  console.error(
-    `check-authored-classes: only read ${examined} files (floor ${MIN_FILES_EXAMINED}) — the walk is broken.`,
-  );
-  process.exit(2);
 }
 
 console.log(

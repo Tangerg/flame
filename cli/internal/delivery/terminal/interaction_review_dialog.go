@@ -4,14 +4,13 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/keymap"
 	"github.com/Tangerg/oolong/core/layout"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 type interactionSummaryPane struct {
@@ -143,10 +142,10 @@ func interactionSummary(review *interactionReview) string {
 	return strings.Join(lines, "\n\n")
 }
 
-func summarizeInteraction(item agent.Interaction, answer agent.Answer) string {
+func summarizeInteraction(item conversation.Interaction, answer conversation.Answer) string {
 	switch interaction := item.(type) {
-	case agent.Approval:
-		provided, _ := answer.(agent.ApprovalAnswer)
+	case conversation.Approval:
+		provided, _ := answer.(conversation.ApprovalAnswer)
 		decision := "allow once"
 		if provided.Decision == protocol.ApprovalDeny {
 			decision = "deny once"
@@ -163,8 +162,8 @@ func summarizeInteraction(item agent.Interaction, answer agent.Answer) string {
 			decision += " with edited arguments: " + string(provided.ArgumentOverride.JSON())
 		}
 		return interaction.Title + " — " + decision
-	case agent.Question:
-		provided, _ := answer.(agent.QuestionAnswer)
+	case conversation.Question:
+		provided, _ := answer.(conversation.QuestionAnswer)
 		values := make([]string, 0, len(provided.Values))
 		for _, field := range provided.Values {
 			values = append(values, strings.Join(field, ", "))

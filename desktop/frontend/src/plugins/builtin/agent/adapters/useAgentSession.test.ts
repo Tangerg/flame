@@ -1,3 +1,4 @@
+import { installAgentRuntimeGateway } from "@/plugins/builtin/agent/adapters/agentRuntimeGateway";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { navigator } from "@/lib/navigation";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -10,12 +11,16 @@ import {
   type RunRef,
 } from "@flame/runtime-contract/client";
 import { agentTextInput } from "@/plugins/builtin/agent/domain/input";
-import { resetContainer, setContainer } from "@/main/container";
 import { useAgentStore } from "./agentStore";
 import { useAgentSessionStore } from "./agentSessionStore";
 import { useAgentSession } from "./useAgentSession";
 import { selectCurrentRootRun } from "../application/view/runTree";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
+
+let runtimeClient: () => FlameClient = () => {
+  throw new Error("Runtime test client is not configured");
+};
+const getRuntimeClient = () => runtimeClient();
 
 const SID = "ses_dbl";
 const SID_B = "ses_next";
@@ -55,7 +60,7 @@ afterEach(async () => {
     draftSessionIds: new Set(),
     freshDraftSessionIds: new Set(),
   });
-  await resetContainer();
+
   vi.restoreAllMocks();
 });
 
@@ -63,23 +68,21 @@ describe("useAgentSession driver lifecycle", () => {
   it("holds a directly mounted session open before lifecycle pruning can drop its view", () => {
     const { driver } = parkedDriver();
     useAgentSessionStore.setState({ openSessionIds: [], lastSessionId: "" });
-    setContainer({
-      client: () =>
-        ({
-          sessions: {
-            snapshot: vi.fn().mockResolvedValue({
-              items: [],
-              runs: [],
-              interrupts: [],
-              plan: {
-                sessionId: SID,
-              },
-            }),
-          },
-        }) as unknown as FlameClient,
-    });
+    runtimeClient = () =>
+      ({
+        sessions: {
+          snapshot: vi.fn().mockResolvedValue({
+            items: [],
+            runs: [],
+            interrupts: [],
+            plan: {
+              sessionId: SID,
+            },
+          }),
+        },
+      }) as unknown as FlameClient;
 
-    renderHook(() => useAgentSession(() => driver, SID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID));
 
     expect(useAgentSessionStore.getState().openSessionIds).toContain(SID);
     expect(useAgentSessionStore.getState().lastSessionId).toBe(SID);
@@ -101,7 +104,8 @@ describe("useAgentSession driver lifecycle", () => {
       sessionId: string;
     };
     const { rerender } = renderHook(
-      ({ makeDriver, sessionId }: HookProps) => useAgentSession(makeDriver, sessionId),
+      ({ makeDriver, sessionId }: HookProps) =>
+        useAgentSession(getRuntimeClient, makeDriver, sessionId),
       { initialProps: { makeDriver: firstFactory, sessionId: SID } },
     );
 
@@ -120,7 +124,7 @@ describe("useAgentSession driver lifecycle", () => {
 describe("useAgentSession send re-entrancy", () => {
   it("ignores a second send before the first run starts (no duplicate run/bubble)", () => {
     const { driver, start } = parkedDriver();
-    renderHook(() => useAgentSession(() => driver, SID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID));
 
     act(() => {
       const send = useAgentStore.getState().sessions[SID]!.send!;
@@ -136,7 +140,7 @@ describe("useAgentSession send re-entrancy", () => {
 
   it("rejects a fresh send while the current root is parked for HITL", () => {
     const { driver, start } = parkedDriver();
-    renderHook(() => useAgentSession(() => driver, SID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID));
     act(() => {
       useAgentStore
         .getState()
@@ -175,7 +179,7 @@ describe("useAgentSession run timing guards", () => {
         parkUntilAborted(signal),
       ),
     } as unknown as AgentDriver;
-    renderHook(() => useAgentSession(() => driver, SID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID));
 
     act(() => {
       useAgentStore.getState().sessions[SID]!.send!(agentTextInput("first"));
@@ -205,7 +209,7 @@ describe("useAgentSession run timing guards", () => {
       ),
       resume,
     } as unknown as AgentDriver;
-    renderHook(() => useAgentSession(() => driver, SID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID));
 
     let firstAccepted = false;
     let secondAccepted = true;
@@ -230,24 +234,22 @@ describe("useAgentSession run timing guards", () => {
       finishedAt: "2026-07-30T02:00:01.000Z",
     });
     const cancel = vi.fn(() => cancellation.promise);
-    setContainer({
-      client: () =>
-        ({
-          sessions: {
-            snapshot: vi.fn().mockResolvedValue({
-              items: [],
-              runs: [canceledRun],
-              interrupts: [],
-              plan: {
-                sessionId: SID,
-              },
-            }),
-          },
-          runs: {
-            cancel,
-          },
-        }) as unknown as FlameClient,
-    });
+    runtimeClient = () =>
+      ({
+        sessions: {
+          snapshot: vi.fn().mockResolvedValue({
+            items: [],
+            runs: [canceledRun],
+            interrupts: [],
+            plan: {
+              sessionId: SID,
+            },
+          }),
+        },
+        runs: {
+          cancel,
+        },
+      }) as unknown as FlameClient;
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const onSettled = vi.fn();
     const onStartError = vi.fn();
@@ -263,7 +265,7 @@ describe("useAgentSession run timing guards", () => {
       ),
       resume,
     } as unknown as AgentDriver;
-    renderHook(() => useAgentSession(() => driver, SID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID));
 
     act(() => {
       useAgentStore.getState().sessions[SID]!.resume!(
@@ -303,11 +305,9 @@ describe("useAgentSession run timing guards", () => {
   it("does not fold a cancellation response after its Runtime generation retires", async () => {
     const cancellation = Promise.withResolvers<CancelRunResponse>();
     const cancel = vi.fn(() => cancellation.promise);
-    setContainer({
-      client: () => ({ runs: { cancel } }) as unknown as FlameClient,
-    });
+    runtimeClient = () => ({ runs: { cancel } }) as unknown as FlameClient;
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(() => driver, SID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID));
     act(() => {
       useAgentStore
         .getState()
@@ -353,11 +353,9 @@ describe("useAgentSession run timing guards", () => {
       successorAccepted = true;
       return response;
     });
-    setContainer({
-      client: () => ({ runs: { cancel: predecessorCancel } }) as unknown as FlameClient,
-    });
+    runtimeClient = () => ({ runs: { cancel: predecessorCancel } }) as unknown as FlameClient;
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(() => driver, SID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID));
     act(() => {
       useAgentStore
         .getState()
@@ -376,34 +374,32 @@ describe("useAgentSession run timing guards", () => {
       status: "waiting",
       activeSegmentId: undefined,
     });
-    setContainer({
-      client: () =>
-        ({
-          sessions: {
-            snapshot: vi.fn().mockImplementation(() =>
-              Promise.resolve({
-                items: [],
-                runs: [
-                  successorAccepted
-                    ? runRef({
-                        id: "run-replaced-cancel",
-                        status: "finished",
-                        activeSegmentId: undefined,
-                        outcome: { type: "canceled" },
-                        finishedAt: "2026-07-30T02:00:03.000Z",
-                      })
-                    : restoredRun,
-                ],
-                interrupts: [],
-                plan: {
-                  sessionId: SID,
-                },
-              }),
-            ),
-          },
-          runs: { cancel: successorCancel },
-        }) as unknown as FlameClient,
-    });
+    runtimeClient = () =>
+      ({
+        sessions: {
+          snapshot: vi.fn().mockImplementation(() =>
+            Promise.resolve({
+              items: [],
+              runs: [
+                successorAccepted
+                  ? runRef({
+                      id: "run-replaced-cancel",
+                      status: "finished",
+                      activeSegmentId: undefined,
+                      outcome: { type: "canceled" },
+                      finishedAt: "2026-07-30T02:00:03.000Z",
+                    })
+                  : restoredRun,
+              ],
+              interrupts: [],
+              plan: {
+                sessionId: SID,
+              },
+            }),
+          ),
+        },
+        runs: { cancel: successorCancel },
+      }) as unknown as FlameClient;
 
     let replacement!: Promise<boolean>;
     act(() => {
@@ -462,11 +458,9 @@ describe("useAgentSession run timing guards", () => {
         data: { type: "stale_segment", detail: "run already moved" },
       }),
     );
-    setContainer({
-      client: () => ({ runs: { cancel } }) as unknown as FlameClient,
-    });
+    runtimeClient = () => ({ runs: { cancel } }) as unknown as FlameClient;
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(() => driver, SID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID));
     act(() => {
       useAgentStore
         .getState()
@@ -501,27 +495,25 @@ describe("useAgentSession run timing guards", () => {
         data: { type: "run_finished" },
       }),
     );
-    setContainer({
-      client: () =>
-        ({
-          sessions: {
-            snapshot: vi.fn().mockResolvedValue({
-              items: [],
-              runs: [terminal],
-              interrupts: [],
-              plan: {
-                sessionId: SID,
-              },
-            }),
-          },
-          runs: {
-            cancel,
-          },
-        }) as unknown as FlameClient,
-    });
+    runtimeClient = () =>
+      ({
+        sessions: {
+          snapshot: vi.fn().mockResolvedValue({
+            items: [],
+            runs: [terminal],
+            interrupts: [],
+            plan: {
+              sessionId: SID,
+            },
+          }),
+        },
+        runs: {
+          cancel,
+        },
+      }) as unknown as FlameClient;
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(() => driver, SID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID));
     act(() => {
       useAgentStore
         .getState()
@@ -576,16 +568,14 @@ describe("useAgentSession durable recovery", () => {
         events: abortRejectingEvents(signal),
       }),
     );
-    setContainer({
-      client: () =>
-        ({
-          sessions: { snapshot: readSnapshot },
-          runs: {
-            subscribe,
-            ...(runOverrides as object),
-          },
-        }) as unknown as FlameClient,
-    });
+    runtimeClient = () =>
+      ({
+        sessions: { snapshot: readSnapshot },
+        runs: {
+          subscribe,
+          ...(runOverrides as object),
+        },
+      }) as unknown as FlameClient;
     return { readSnapshot, subscribe };
   }
 
@@ -598,7 +588,6 @@ describe("useAgentSession durable recovery", () => {
   });
   afterEach(() => {
     useAgentStore.getState().dropSession(RID);
-    resetContainer();
   });
 
   it("rebuilds pending approval cards from the material snapshot", async () => {
@@ -616,7 +605,7 @@ describe("useAgentSession durable recovery", () => {
       },
     );
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(() => driver, RID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID));
 
     await waitFor(() => {
       expect(useAgentStore.getState().sessions[RID]!.view.pendingInterrupts).toHaveLength(1);
@@ -638,7 +627,7 @@ describe("useAgentSession durable recovery", () => {
     const { readSnapshot } = stubClient();
     const { driver } = parkedDriver();
 
-    renderHook(() => useAgentSession(() => driver, RID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID));
 
     await waitFor(() => expect(readSnapshot).toHaveBeenCalledOnce());
     expect(useAgentSessionStore.getState().draftSessionIds.has(RID)).toBe(true);
@@ -680,7 +669,7 @@ describe("useAgentSession durable recovery", () => {
     );
     const { driver } = parkedDriver();
 
-    renderHook(() => useAgentSession(() => driver, RID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID));
 
     await waitFor(() =>
       expect(useAgentStore.getState().sessions[RID]?.view.messages).toHaveLength(1),
@@ -721,7 +710,7 @@ describe("useAgentSession durable recovery", () => {
       },
     );
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(() => driver, RID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID));
 
     await waitFor(() => {
       expect(selectCurrentRootRun(useAgentStore.getState().sessions[RID]!.view)?.status).toBe(
@@ -821,15 +810,13 @@ describe("useAgentSession durable recovery", () => {
         },
       }),
     );
-    setContainer({
-      client: () =>
-        ({
-          sessions: { snapshot: readSnapshot },
-          runs: { subscribe },
-        }) as unknown as FlameClient,
-    });
+    runtimeClient = () =>
+      ({
+        sessions: { snapshot: readSnapshot },
+        runs: { subscribe },
+      }) as unknown as FlameClient;
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(() => driver, RID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID));
 
     await waitFor(() => expect(releaseOldNext).toBeTypeOf("function"));
     expect(selectCurrentRootRun(useAgentStore.getState().sessions[RID]!.view)?.id).toBe(
@@ -925,14 +912,12 @@ describe("useAgentSession durable recovery", () => {
         );
       },
     );
-    setContainer({
-      client: () =>
-        ({
-          sessions: { snapshot: readSnapshot },
-        }) as unknown as FlameClient,
-    });
+    runtimeClient = () =>
+      ({
+        sessions: { snapshot: readSnapshot },
+      }) as unknown as FlameClient;
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(() => driver, RID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID));
 
     await waitFor(() => expect(firstSignal).toBeInstanceOf(AbortSignal));
     restarted = true;
@@ -1008,15 +993,13 @@ describe("useAgentSession durable recovery", () => {
         },
       });
     const readSnapshot = vi.fn().mockImplementation(async () => readMaterial());
-    setContainer({
-      client: () =>
-        ({
-          sessions: { snapshot: readSnapshot },
-          runs: { subscribe },
-        }) as unknown as FlameClient,
-    });
+    runtimeClient = () =>
+      ({
+        sessions: { snapshot: readSnapshot },
+        runs: { subscribe },
+      }) as unknown as FlameClient;
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(() => driver, RID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID));
 
     await waitFor(() => expect(subscribe).toHaveBeenCalledOnce());
     restarted = true;
@@ -1092,15 +1075,13 @@ describe("useAgentSession durable recovery", () => {
         },
       });
     const readSnapshot = vi.fn().mockImplementation(async () => readMaterial());
-    setContainer({
-      client: () =>
-        ({
-          sessions: { snapshot: readSnapshot },
-          runs: { subscribe },
-        }) as unknown as FlameClient,
-    });
+    runtimeClient = () =>
+      ({
+        sessions: { snapshot: readSnapshot },
+        runs: { subscribe },
+      }) as unknown as FlameClient;
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(() => driver, RID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID));
 
     await waitFor(() => expect(subscribe).toHaveBeenCalledTimes(2));
     restarted = true;
@@ -1173,15 +1154,13 @@ describe("useAgentSession durable recovery", () => {
         },
       });
     const readSnapshot = vi.fn().mockImplementation(async () => readMaterial());
-    setContainer({
-      client: () =>
-        ({
-          sessions: { snapshot: readSnapshot },
-          runs: { get, subscribe },
-        }) as unknown as FlameClient,
-    });
+    runtimeClient = () =>
+      ({
+        sessions: { snapshot: readSnapshot },
+        runs: { get, subscribe },
+      }) as unknown as FlameClient;
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(() => driver, RID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID));
 
     await waitFor(() => expect(get).toHaveBeenCalledOnce());
     restarted = true;
@@ -1235,15 +1214,13 @@ describe("useAgentSession durable recovery", () => {
       .fn()
       .mockResolvedValueOnce(materialSnapshot({ runs: [running] }))
       .mockResolvedValue(materialSnapshot({ runs: [finished] }));
-    setContainer({
-      client: () =>
-        ({
-          sessions: { snapshot: readSnapshot },
-          runs: { subscribe },
-        }) as unknown as FlameClient,
-    });
+    runtimeClient = () =>
+      ({
+        sessions: { snapshot: readSnapshot },
+        runs: { subscribe },
+      }) as unknown as FlameClient;
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(() => driver, RID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID));
 
     await waitFor(() => {
       expect(
@@ -1298,18 +1275,16 @@ describe("useAgentSession durable recovery", () => {
         runs: canceled ? [rootAfter, childAfter] : [rootBefore, childBefore],
       });
     const readSnapshot = vi.fn().mockImplementation(async () => readMaterial());
-    setContainer({
-      client: () =>
-        ({
-          sessions: { snapshot: readSnapshot },
-          runs: {
-            subscribe,
-            cancel,
-          },
-        }) as unknown as FlameClient,
-    });
+    runtimeClient = () =>
+      ({
+        sessions: { snapshot: readSnapshot },
+        runs: {
+          subscribe,
+          cancel,
+        },
+      }) as unknown as FlameClient;
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(() => driver, RID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID));
 
     await waitFor(() => {
       expect(subscribe).toHaveBeenCalledWith(
@@ -1380,3 +1355,7 @@ function abortRejectingEvents(signal: AbortSignal): AsyncIterable<RunEvent> {
     },
   };
 }
+
+beforeEach(() => {
+  installAgentRuntimeGateway(getRuntimeClient);
+});

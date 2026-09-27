@@ -5,9 +5,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 func TestRuntimeProfilePreservesDiscoveryAndNegotiatesWithProtocolRules(t *testing.T) {
@@ -81,7 +80,7 @@ func TestRuntimeProfileRejectsInvalidDiscoveryAtConstruction(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			discovery := compatibleDiscovery()
 			test.invalidate(discovery)
-			if _, err := NewProfile(discovery, nil); !errors.Is(err, agent.ErrIncompatibleRuntime) {
+			if _, err := NewProfile(discovery, nil); !errors.Is(err, conversation.ErrIncompatibleRuntime) {
 				t.Fatalf("NewProfile = %v, want incompatible runtime", err)
 			}
 		})

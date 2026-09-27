@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/session/feedback"
+	"github.com/Tangerg/flame/runtime/internal/domain/feedback"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 

@@ -3,7 +3,7 @@ package bootstrap
 import (
 	"context"
 
-	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	agentmemoryapp "github.com/Tangerg/flame/runtime/internal/application/workspace/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"

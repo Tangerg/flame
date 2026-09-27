@@ -117,7 +117,7 @@ func bootstrapClaimedResumeTerminalPlan(
 
 // bootstrapCheckpoint deliberately treats the executor payload as opaque. These
 // Bootstrap fixtures verify Application write-sets, not Agent Framework wire;
-// only adapter/agentexec may construct or interpret a tree snapshot.
+// only adapter/run/execution may construct or interpret a tree snapshot.
 func bootstrapCheckpoint(rootMemberID, sessionID string) runsapp.ExecutorCheckpoint {
 	return runsapp.ExecutorCheckpoint{
 		RootMemberID:   rootMemberID,

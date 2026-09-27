@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/graphics"
@@ -15,8 +16,6 @@ import (
 	"github.com/Tangerg/oolong/core/program"
 	"github.com/Tangerg/oolong/core/programtest"
 	"github.com/Tangerg/oolong/highlight"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 const diagramMarkdown = "Before diagram\n\n```mermaid\nflowchart TD\n A --> B\n```\n\nAfter diagram"
@@ -84,12 +83,12 @@ func TestMermaidWaitsForCompleteSourceAndReleasesEveryPlacement(t *testing.T) {
 			return nil, ctx.Err()
 		}
 	})
-	block := agent.Block{ID: "diagram", Kind: agent.BlockAssistant}
+	block := conversation.Block{ID: "diagram", Kind: conversation.BlockAssistant}
 	onOwner(func(view *transcriptView) {
-		if err := view.Apply(agent.BlockStarted{Block: block}, nil); err != nil {
+		if err := view.Apply(conversation.BlockStarted{Block: block}, nil); err != nil {
 			t.Error(err)
 		}
-		if err := view.Apply(agent.BlockDelta{BlockID: block.ID, Text: diagramMarkdown}, nil); err != nil {
+		if err := view.Apply(conversation.BlockDelta{BlockID: block.ID, Text: diagramMarkdown}, nil); err != nil {
 			t.Error(err)
 		}
 	})
@@ -101,7 +100,7 @@ func TestMermaidWaitsForCompleteSourceAndReleasesEveryPlacement(t *testing.T) {
 	}
 	block.Text = diagramMarkdown + "\n\n```mermaid\nflowchart TD\n A --> B\n```"
 	onOwner(func(view *transcriptView) {
-		if err := view.Apply(agent.BlockCompleted{Block: block}, nil); err != nil {
+		if err := view.Apply(conversation.BlockCompleted{Block: block}, nil); err != nil {
 			t.Error(err)
 		}
 		if view.content.Finished(view.content.FirstBlock()) {
@@ -242,18 +241,18 @@ func TestMarkdownMathUsesNativeLayoutAndShowsDiagnostics(t *testing.T) {
 
 func TestStreamingMathReplacesProvisionalDiagnostics(t *testing.T) {
 	view := testTranscriptView(t)
-	block := agent.Block{ID: "math", Kind: agent.BlockAssistant}
-	if err := view.Apply(agent.BlockStarted{Block: block}, nil); err != nil {
+	block := conversation.Block{ID: "math", Kind: conversation.BlockAssistant}
+	if err := view.Apply(conversation.BlockStarted{Block: block}, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := view.Apply(agent.BlockDelta{BlockID: block.ID, Text: "$$\n\\fra"}, nil); err != nil {
+	if err := view.Apply(conversation.BlockDelta{BlockID: block.ID, Text: "$$\n\\fra"}, nil); err != nil {
 		t.Fatal(err)
 	}
 	message := view.entries[view.content.FirstBlock()].content.(*markdownBlock)
 	if message.diagnostic == nil {
 		t.Fatal("invalid provisional formula has no diagnostic")
 	}
-	if err := view.Apply(agent.BlockDelta{BlockID: block.ID, Text: "c{a}{b}\n$$"}, nil); err != nil {
+	if err := view.Apply(conversation.BlockDelta{BlockID: block.ID, Text: "c{a}{b}\n$$"}, nil); err != nil {
 		t.Fatal(err)
 	}
 	if message.diagnostic != nil {

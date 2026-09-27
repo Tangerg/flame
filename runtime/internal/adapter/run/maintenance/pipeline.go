@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec"
+	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 )
 
 // Pipeline composes the post-Run maintenance workers. It keeps the lifecycle
@@ -33,8 +33,8 @@ func NewPipeline(consolidator *MemoryConsolidator, skillMiner *SkillProposalMine
 // cost-amortized behind a durable summary already produced by the exact
 // model-request compaction path; this pipeline never makes a second context
 // reduction decision from a partial request projection.
-func (p *Pipeline) Maintain(ctx context.Context, input agentexec.RunMaintenanceInput) agentexec.RunMaintenanceResult {
-	result := agentexec.RunMaintenanceResult{}
+func (p *Pipeline) Maintain(ctx context.Context, input executionadapter.RunMaintenanceInput) executionadapter.RunMaintenanceResult {
+	result := executionadapter.RunMaintenanceResult{}
 	if err := p.skillMiner.MineIfDue(ctx, input.SessionID, input.WorkspaceCWD, input.ToolCalls); err != nil {
 		result.Errors = append(result.Errors, err)
 	}

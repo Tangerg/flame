@@ -1,32 +1,34 @@
-import { getContainer } from "@/main/container";
+import type { ClientHost } from "@/platform/host";
 import {
   configureNotificationCentre,
   type NotificationCentre,
 } from "../application/ports/notificationCentre";
 
-function createNotificationCentre(): NotificationCentre {
-  const host = () => getContainer().host;
-  return {
-    authorization: () => host().notificationAuthorization(),
-    requestAuthorization: () => host().requestNotificationAuthorization(),
-    send: (notification) => host().sendNotification(notification),
+export function installNotificationCentre(
+  host: Pick<
+    ClientHost,
+    | "notificationAuthorization"
+    | "requestNotificationAuthorization"
+    | "sendNotification"
+    | "onNotificationOpened"
+  >,
+): () => void {
+  const centre: NotificationCentre = {
+    authorization: () => host.notificationAuthorization(),
+    requestAuthorization: () => host.requestNotificationAuthorization(),
+    send: (notification) => host.sendNotification(notification),
     onOpened(open) {
       let stopHost: (() => void) | undefined;
       let stopped = false;
-      void host()
-        .onNotificationOpened(open)
-        .then((stop) => {
-          if (stopped) stop();
-          else stopHost = stop;
-        });
+      void host.onNotificationOpened(open).then((stop) => {
+        if (stopped) stop();
+        else stopHost = stop;
+      });
       return () => {
         stopped = true;
         stopHost?.();
       };
     },
   };
-}
-
-export function installNotificationCentre(): () => void {
-  return configureNotificationCentre(createNotificationCentre());
+  return configureNotificationCentre(centre);
 }

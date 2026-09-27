@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/application/agent/session"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/application/agent/session"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 )
 
 type sessionBindingStub struct {
@@ -48,7 +48,7 @@ func (s sessionBindingStub) ImportSession(ctx context.Context, request protocol.
 
 func TestSessionControlProjectsRollbackWithoutLosingInlineInput(t *testing.T) {
 	image := []byte("image body")
-	commandID := agent.CommandID("cli_77777777777777777777777777777777")
+	commandID := replay.CommandID("cli_77777777777777777777777777777777")
 	stub := sessionBindingStub{}
 	stub.rollback = func(_ context.Context, request protocol.RollbackSessionRequest, options flameruntime.CommandOptions) (*protocol.RollbackSessionResponse, error) {
 		if request.SessionID != "ses_1" || request.ToRunID != "run_1" || request.RestoreType != protocol.RestoreBoth {
@@ -76,7 +76,7 @@ func TestSessionControlProjectsRollbackWithoutLosingInlineInput(t *testing.T) {
 		sessions: stub, meta: requestMeta("test"),
 		profile: sessionControlProfile(t, protocol.FeatureCheckpoints),
 	}
-	result, err := runtime.RollbackSession(t.Context(), agent.RollbackSession{
+	result, err := runtime.RollbackSession(t.Context(), conversation.RollbackSession{
 		CommandID: commandID, SessionID: "ses_1", ToRunID: "run_1", Scope: protocol.RestoreBoth,
 	})
 	if err != nil {
@@ -118,7 +118,7 @@ func TestSessionControlRejectsCrossSessionResponses(t *testing.T) {
 		sessions: stub, meta: requestMeta("test"),
 		profile: sessionControlProfile(t, protocol.FeatureSessionExport),
 	}
-	_, err := runtime.RollbackSession(t.Context(), agent.RollbackSession{SessionID: "ses_1", Scope: protocol.RestoreHistory})
+	_, err := runtime.RollbackSession(t.Context(), conversation.RollbackSession{SessionID: "ses_1", Scope: protocol.RestoreHistory})
 	requireRuntimeContractViolation(t, err)
 	_, err = runtime.ExportSession(t.Context(), session.ExportRequest{SessionID: "ses_1", Format: protocol.ExportFormatJSON})
 	requireRuntimeContractViolation(t, err)
@@ -421,14 +421,14 @@ func TestSessionControlRejectsConditionalOperationsBeforeCallingBinding(t *testi
 		},
 	}
 	runtime := &Connection{sessions: stub, meta: requestMeta("test")}
-	if _, err := runtime.RollbackSession(t.Context(), agent.RollbackSession{
+	if _, err := runtime.RollbackSession(t.Context(), conversation.RollbackSession{
 		SessionID: "ses_1", ToRunID: "run_1", Scope: protocol.RestoreFiles,
-	}); err == nil || !errors.Is(err, agent.ErrIncompatibleRuntime) {
+	}); err == nil || !errors.Is(err, conversation.ErrIncompatibleRuntime) {
 		t.Fatalf("files rollback error = %v, want ErrIncompatibleRuntime", err)
 	}
 	if _, err := runtime.ExportSession(t.Context(), session.ExportRequest{
 		SessionID: "ses_1", Format: protocol.ExportFormatJSON,
-	}); err == nil || !errors.Is(err, agent.ErrIncompatibleRuntime) {
+	}); err == nil || !errors.Is(err, conversation.ErrIncompatibleRuntime) {
 		t.Fatalf("export error = %v, want ErrIncompatibleRuntime", err)
 	}
 	artifactJSON := fmt.Sprintf(`{"version":%d,"session":{"id":"ses_1","workspace":{"path":"/workspace"},"provider":"mock","model":"balanced"},"messages":[],"runs":[],"items":[],"toolResults":[]}`, protocol.SessionArtifactVersion)
@@ -436,7 +436,7 @@ func TestSessionControlRejectsConditionalOperationsBeforeCallingBinding(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := runtime.ImportSession(t.Context(), session.ImportRequest{Artifact: document}); err == nil || !errors.Is(err, agent.ErrIncompatibleRuntime) {
+	if _, err := runtime.ImportSession(t.Context(), session.ImportRequest{Artifact: document}); err == nil || !errors.Is(err, conversation.ErrIncompatibleRuntime) {
 		t.Fatalf("import error = %v, want ErrIncompatibleRuntime", err)
 	}
 	if called {

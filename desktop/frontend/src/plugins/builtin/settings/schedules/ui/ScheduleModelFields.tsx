@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { useT } from "@/lib/i18n";
-import { useModels } from "@/plugins/builtin/settings/providers/public/queries";
-import { reasoningEffortLabel } from "@/plugins/builtin/settings/providers/public/reasoningEffort";
+import { useModels } from "@/plugins/builtin/providers/public/queries";
+import { reasoningEffortLabel } from "@/plugins/builtin/providers/public/reasoningEffort";
 import { Button, DropdownMenu, Icon, SelectTrigger, providerDisplayName, vocab } from "@/ui";
 import type { ScheduleModelSelection } from "../application/scheduleConfig";
 import { settingStyles as ss } from "../../kit/settingStyles";

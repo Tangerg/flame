@@ -143,14 +143,15 @@ describe("conversation archive generation", () => {
     const hydration = Promise.withResolvers<void>();
     mocks.rehydrateSessionView.mockReturnValueOnce(hydration.promise);
     installFiles({ download, pickText: () => Promise.resolve(validArtifact("imported")) });
-    const owner = installGateway({
+    const gateway = {
       importConversation: vi.fn().mockResolvedValue({ id: "imported", title: "Imported" }),
-    });
+    } as unknown as ConversationArchiveGateway;
+    const owner = installGateway(gateway);
 
     const retired = importConversationJson();
     const hasSettled = observedSettlement(retired);
     await vi.waitFor(() => expect(mocks.rehydrateSessionView).toHaveBeenCalledWith("imported"));
-    owner.replaceRuntimeGeneration();
+    owner.replaceRuntimeGeneration(() => gateway);
     await drainMicrotasks();
     const settledAtReplacement = hasSettled();
 
@@ -167,14 +168,15 @@ describe("conversation archive generation", () => {
     const repair = Promise.withResolvers<void>();
     mocks.invalidateAgentSessions.mockReturnValueOnce(repair.promise);
     installFiles({ download, pickText: () => Promise.resolve(validArtifact("imported")) });
-    const owner = installGateway({
+    const gateway = {
       importConversation: vi.fn().mockResolvedValue({ id: "imported", title: "Imported" }),
-    });
+    } as unknown as ConversationArchiveGateway;
+    const owner = installGateway(gateway);
 
     const retired = importConversationJson();
     const hasSettled = observedSettlement(retired);
     await vi.waitFor(() => expect(mocks.invalidateAgentSessions).toHaveBeenCalledOnce());
-    owner.replaceRuntimeGeneration();
+    owner.replaceRuntimeGeneration(() => gateway);
     await drainMicrotasks();
     const settledAtReplacement = hasSettled();
 

@@ -9,7 +9,7 @@ const state = vi.hoisted(() => ({
   setModel: vi.fn(),
 }));
 
-vi.mock("@/plugins/builtin/settings/providers/public/queries", () => ({
+vi.mock("@/plugins/builtin/providers/public/queries", () => ({
   useModels: () => ({ data: state.models, isLoading: false, isError: false }),
 }));
 

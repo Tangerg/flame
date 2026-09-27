@@ -1,5 +1,5 @@
 // Package workspace contains focused project-scoped application use cases for
-// workspace identity, browsing, skills, hooks, and Git observation.
+// workspace identity, browsing, skills, and Git observation.
 package workspace
 
 import (
@@ -47,7 +47,9 @@ func NewScope(defaultWorkspacePath, userHome string, paths Paths) (*Scope, error
 	return &Scope{defaultWorkspacePath: defaultWorkspacePath, userHome: userHome, paths: paths}, nil
 }
 
-func (s *Scope) root(cwd string) (string, error) {
+// ResolveRoot returns the effective, existing working directory for a workspace
+// request. Empty cwd selects the host-provided default workspace.
+func (s *Scope) ResolveRoot(cwd string) (string, error) {
 	root := cwd
 	if root == "" {
 		root = s.defaultWorkspacePath
@@ -57,10 +59,4 @@ func (s *Scope) root(cwd string) (string, error) {
 		return "", fmt.Errorf("%w: %s: %w", ErrCWDUnavailable, root, err)
 	}
 	return resolved, nil
-}
-
-// ResolveRoot returns the effective, existing working directory for a workspace
-// request. Empty cwd selects the host-provided default workspace.
-func (s *Scope) ResolveRoot(cwd string) (string, error) {
-	return s.root(cwd)
 }

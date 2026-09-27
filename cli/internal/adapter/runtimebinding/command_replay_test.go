@@ -4,13 +4,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
+	"github.com/Tangerg/flame/cli/internal/application/mutation"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
 )
 
-func TestCommandReplayPolicyKeepsUnavailableAndInvalidDistinct(t *testing.T) {
+func TestNegotiatedReplayPolicyKeepsUnavailableAndInvalidDistinct(t *testing.T) {
 	t.Parallel()
 
-	unavailable, err := CommandReplayPolicy(nil)
+	unavailable, err := mutation.PolicyFromProfile(nil, time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -21,21 +22,21 @@ func TestCommandReplayPolicyKeepsUnavailableAndInvalidDistinct(t *testing.T) {
 	if unavailable.Available() || !unavailable.CanStart(guard) || unavailable.Replayable(guard) {
 		t.Fatalf("unavailable policy = %+v, guard %+v", unavailable, guard)
 	}
-	if _, err := CommandReplayPolicy(&Profile{}); err == nil {
+	if _, err := mutation.PolicyFromProfile(&Profile{}, time.Now); err == nil {
 		t.Fatal("invalid advertised command replay capability degraded to unavailable")
 	}
 }
 
-func TestCommandReplayPolicyProjectsTheAdvertisedStoreAndClock(t *testing.T) {
+func TestNegotiatedReplayPolicyProjectsTheAdvertisedStoreAndClock(t *testing.T) {
 	t.Parallel()
 
-	capability, err := commandreplay.NewCapability(compatibleReplayNamespace, 10*time.Minute)
+	capability, err := replay.NewCapability(compatibleReplayNamespace, 10*time.Minute)
 	if err != nil {
 		t.Fatal(err)
 	}
 	now := time.Date(2026, 8, 29, 12, 0, 0, 0, time.UTC)
 	profile := new(profileWithReplayNamespace(t, capability.Namespace()))
-	policy, err := CommandReplayPolicyWithClock(profile, func() time.Time { return now })
+	policy, err := mutation.PolicyFromProfile(profile, func() time.Time { return now })
 	if err != nil {
 		t.Fatal(err)
 	}

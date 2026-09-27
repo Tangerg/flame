@@ -1,12 +1,12 @@
 # Flame design philosophy
 
-Flame is one product with one durable model. Runtime owns product semantics and exposes them through an in-process Go binding and the Runtime Protocol. CLI and Desktop own presentation and interaction. Scope owns the agent framework and provider libraries.
+Flame is one product with one durable model. Runtime owns product semantics and exposes them through an in-process Go binding and the Runtime Protocol. CLI, Desktop/Web, and IDE own presentation and interaction. Scope owns the agent framework and provider libraries.
 
 ## Why Runtime owns the durable facts
 
 [`AGENTS.md`](AGENTS.md) states the general rule, and [`PROJECT_RULES.md`](PROJECT_RULES.md) names the exact facts Runtime owns. What that ownership buys is the reason to keep it.
 
-A product with three surfaces — an in-process binding, a protocol, and a desktop client — can give each surface its own copy of a Run's state and reconcile them later. Flame does not, because reconciliation is where the cost lands: every added surface multiplies the pairs that can disagree, and a crash during disagreement leaves no representation that can be trusted to say what happened.
+A product with in-process, terminal, graphical, and editor consumers can give each surface its own copy of a Run's state and reconcile them later. Flame does not, because reconciliation is where the cost lands: every added surface multiplies the pairs that can disagree, and a crash during disagreement leaves no representation that can be trusted to say what happened.
 
 Concentrating the transitions in Runtime moves that cost once, into one state machine that persistence and recovery already have to be correct about. The surfaces keep only what they can rebuild by reading: selection, focus, drafts, rendering. Losing a surface then costs nothing a restart cannot restore.
 

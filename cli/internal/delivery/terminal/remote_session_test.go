@@ -10,10 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/workbenchstate"
-	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
 	"github.com/Tangerg/flame/cli/internal/application/extensions"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -33,19 +34,19 @@ func TestRemoteSessionAttachmentsStayLocalAcrossSwitchAndRelocation(t *testing.T
 	backend := &recordingRuntime{Runtime: runtimefixture.New()}
 	backend.Instant = true
 	backend.Script = stableCompletedScript
-	first, err := backend.CreateSession(t.Context(), agent.CreateSession{
+	first, err := backend.CreateSession(t.Context(), conversation.CreateSession{
 		Title: "Remote first", Workspace: `C:\server\first`,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := backend.CreateSession(t.Context(), agent.CreateSession{
+	second, err := backend.CreateSession(t.Context(), conversation.CreateSession{
 		Title: "Remote second", Workspace: "/server/second",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	host, stop := runUIFromConfig(t, Config{
+	host, stop := runUIFromConfig(t, Config{OpenWorkbench: memoryTestWorkbench,
 		Runtime: backend, SessionID: first.ID, LocalDirectory: local, DetachOnExit: true,
 	})
 	host.Shows(t, "Ask flame")
@@ -100,7 +101,7 @@ func TestRemoteSessionEditorAndDocumentsUseTheLocalDirectory(t *testing.T) {
 	backend := &recordingRuntime{Runtime: runtimefixture.New()}
 	backend.Instant = true
 	backend.Script = stableCompletedScript
-	host, stop := runUIFromConfig(t, Config{
+	host, stop := runUIFromConfig(t, Config{OpenWorkbench: memoryTestWorkbench,
 		Runtime: backend, Workspace: `Z:\server\project`, LocalDirectory: local,
 		DetachOnExit: true, Transfers: outputTransferStub{},
 	})
@@ -133,32 +134,32 @@ func TestRemotePluginCommandsReceiveLocalAndRuntimeDirectories(t *testing.T) {
 	local := t.TempDir()
 	const remote = `C:\server\project`
 	backend := runtimefixture.New()
-	created, err := backend.CreateSession(t.Context(), agent.CreateSession{Workspace: remote})
+	created, err := backend.CreateSession(t.Context(), conversation.CreateSession{Workspace: remote})
 	if err != nil {
 		t.Fatal(err)
 	}
-	delivered := make(chan CommandRequest, 1)
+	delivered := make(chan extensions.CommandRequest, 1)
 	plugin := extensions.Plugin{
 		ID: "test.locations", Version: "1.0.0", APIVersion: extensions.HostAPIVersion,
-		Capabilities: []extensions.Capability{SlashCommands.Capability()},
+		Capabilities: []extensions.Capability{extensions.SlashCommands.Capability()},
 		Setup: func(scope *extensions.Scope) error {
-			_, err := scope.Contribute(SlashCommands, SlashCommand{
-				Descriptor: CommandDescriptor{Name: "locations", Title: "inspect command directories"},
-				Available: func(request CommandRequest) CommandAvailability {
+			_, err := scope.Contribute(extensions.SlashCommands, extensions.SlashCommand{
+				Descriptor: extensions.CommandDescriptor{Name: "locations", Title: "inspect command directories"},
+				Available: func(request extensions.CommandRequest) extensions.CommandAvailability {
 					if request.Workspace != remote || request.LocalDirectory != local || request.SessionID != created.ID {
-						return CommandUnavailable("local and Runtime directories were not supplied")
+						return extensions.CommandUnavailable("local and Runtime directories were not supplied")
 					}
-					return CommandAvailable()
+					return extensions.CommandAvailable()
 				},
-				Execute: func(_ context.Context, request CommandRequest) (CommandResult, error) {
+				Execute: func(_ context.Context, request extensions.CommandRequest) (extensions.CommandResult, error) {
 					delivered <- request
-					return CommandResult{Message: "plugin directory context received"}, nil
+					return extensions.CommandResult{Message: "plugin directory context received"}, nil
 				},
 			}, extensions.Contribution{})
 			return err
 		},
 	}
-	host, stop := runUIFromConfig(t, Config{
+	host, stop := runUIFromConfig(t, Config{OpenWorkbench: memoryTestWorkbench,
 		Runtime: backend, SessionID: created.ID, LocalDirectory: local,
 		DetachOnExit: true, Plugins: []extensions.Plugin{plugin},
 	})
@@ -181,7 +182,7 @@ func TestSharedTerminalExitLeavesNewAndAttachedRunsAlive(t *testing.T) {
 		}
 		t.Run(name, func(t *testing.T) {
 			backend := newSharedTerminalRuntime()
-			created, err := backend.CreateSession(t.Context(), agent.CreateSession{Workspace: `C:\server\project`})
+			created, err := backend.CreateSession(t.Context(), conversation.CreateSession{Workspace: `C:\server\project`})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -191,7 +192,7 @@ func TestSharedTerminalExitLeavesNewAndAttachedRunsAlive(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			host, stop := runUIFromConfig(t, Config{
+			host, stop := runUIFromConfig(t, Config{OpenWorkbench: memoryTestWorkbench,
 				Runtime: backend, SessionID: created.ID, LocalDirectory: t.TempDir(), DetachOnExit: true,
 			})
 			if !attached {
@@ -221,17 +222,17 @@ type heldStartReceiptsRuntime struct {
 	*idempotentStartRuntime
 	hold      int32
 	calls     atomic.Int32
-	forwarded chan agent.StartRun
+	forwarded chan prompt.StartRun
 }
 
-func (r *heldStartReceiptsRuntime) StartRun(ctx context.Context, command agent.StartRun) (agent.SegmentStream, error) {
+func (r *heldStartReceiptsRuntime) StartRun(ctx context.Context, command prompt.StartRun) (conversation.SegmentStream, error) {
 	opened, err := r.idempotentStartRuntime.StartRun(ctx, command)
 	if err != nil || r.calls.Add(1) > r.hold {
 		return opened, err
 	}
 	r.forwarded <- command.Clone()
 	<-ctx.Done()
-	return agent.SegmentStream{}, context.Cause(ctx)
+	return conversation.SegmentStream{}, context.Cause(ctx)
 }
 
 func TestSharedTerminalExitPreservesUnknownStartsAndHonorsExplicitCancellation(t *testing.T) {
@@ -243,14 +244,14 @@ func TestSharedTerminalExitPreservesUnknownStartsAndHonorsExplicitCancellation(t
 		}
 		t.Run(name, func(t *testing.T) {
 			base := newSharedTerminalRuntime()
-			created, err := base.CreateSession(t.Context(), agent.CreateSession{Workspace: `C:\server\project`})
+			created, err := base.CreateSession(t.Context(), conversation.CreateSession{Workspace: `C:\server\project`})
 			if err != nil {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { cancelFixtureSession(t, base, created.ID) })
 			backend := &heldStartReceiptsRuntime{
 				idempotentStartRuntime: &idempotentStartRuntime{Runtime: base},
-				hold:                   hold, forwarded: make(chan agent.StartRun, 2),
+				hold:                   hold, forwarded: make(chan prompt.StartRun, 2),
 			}
 			local, state := t.TempDir(), t.TempDir()
 			if err := os.WriteFile(filepath.Join(local, "context.txt"), []byte("local input"), 0o600); err != nil {
@@ -259,7 +260,7 @@ func TestSharedTerminalExitPreservesUnknownStartsAndHonorsExplicitCancellation(t
 			profile := steerReplayTestProfile(t, created.Workspace.Path)
 			host, stop := runUIFromConfig(t, Config{
 				Runtime: backend, RuntimeProfile: &profile, SessionID: created.ID,
-				LocalDirectory: local, StateDirectory: state, DetachOnExit: true,
+				LocalDirectory: local, OpenWorkbench: persistentTestWorkbench(state), DetachOnExit: true,
 			})
 			host.Shows(t, "Ask flame")
 			host.Type("/attach context.txt")
@@ -276,7 +277,7 @@ func TestSharedTerminalExitPreservesUnknownStartsAndHonorsExplicitCancellation(t
 				awaitValue(t, backend.forwarded, "explicit cancellation reconciliation")
 			}
 			stop()
-			store, err := workbenchstate.Open(state)
+			store, err := openTestWorkbench(state)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -313,25 +314,25 @@ func TestSharedTerminalExitPreservesUnknownStartsAndHonorsExplicitCancellation(t
 type openingCancellationReplayRuntime struct {
 	*idempotentStartRuntime
 	mu           sync.Mutex
-	cancellation agent.CancelRun
-	receipt      agent.RunCancellation
+	cancellation conversation.CancelRun
+	receipt      conversation.RunCancellation
 }
 
-func (r *openingCancellationReplayRuntime) CancelRun(ctx context.Context, command agent.CancelRun) (agent.RunCancellation, error) {
+func (r *openingCancellationReplayRuntime) CancelRun(ctx context.Context, command conversation.CancelRun) (conversation.RunCancellation, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if r.cancellation.CommandID != "" {
 		if command != r.cancellation {
-			return agent.RunCancellation{}, agent.ErrCommandConflict
+			return conversation.RunCancellation{}, conversation.ErrCommandConflict
 		}
 		return r.receipt, nil
 	}
 	receipt, err := r.Runtime.CancelRun(ctx, command)
 	if err != nil {
-		return agent.RunCancellation{}, err
+		return conversation.RunCancellation{}, err
 	}
 	r.cancellation, r.receipt = command, receipt
-	return agent.RunCancellation{}, agent.ErrCommandOutcomeUnknown
+	return conversation.RunCancellation{}, replay.ErrCommandOutcomeUnknown
 }
 
 func TestOpeningCancellationReplaysTheSamePayloadAfterCloseAndRestart(t *testing.T) {
@@ -340,7 +341,7 @@ func TestOpeningCancellationReplaysTheSamePayloadAfterCloseAndRestart(t *testing
 	const sessionID = "ses_demo_1"
 	t.Cleanup(func() { cancelFixtureSession(t, base, sessionID) })
 	state := t.TempDir()
-	store, err := workbenchstate.Open(state)
+	store, err := openTestWorkbench(state)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -356,16 +357,16 @@ func TestOpeningCancellationReplaysTheSamePayloadAfterCloseAndRestart(t *testing
 	}
 	profile := steerReplayTestProfile(t, "/tmp/flame-cli-test")
 	closing := &app{runtime: backend, runtimeProfile: &profile}
-	if err := closing.cancelOpeningRunNow(t.Context(), pending); !errors.Is(err, agent.ErrCommandOutcomeUnknown) {
+	if err := closing.cancelOpeningRunNow(t.Context(), pending); !errors.Is(err, replay.ErrCommandOutcomeUnknown) {
 		t.Fatalf("terminal-close cancellation = %v, want unknown acknowledgement", err)
 	}
 	host, stop := runUIFromConfig(t, Config{
 		Runtime: backend, RuntimeProfile: &profile, SessionID: sessionID,
-		LocalDirectory: t.TempDir(), StateDirectory: state, DetachOnExit: true,
+		LocalDirectory: t.TempDir(), OpenWorkbench: persistentTestWorkbench(state), DetachOnExit: true,
 	})
 	host.Shows(t, "canceled")
 	awaitState(t, "the exact cancellation to be confirmed after restart", func() bool {
-		recovered, openErr := workbenchstate.Open(state)
+		recovered, openErr := openTestWorkbench(state)
 		if openErr != nil {
 			return false
 		}
@@ -379,7 +380,7 @@ func newSharedTerminalRuntime() *runtimefixture.Runtime {
 	backend := runtimefixture.New()
 	backend.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
+			Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	return backend
@@ -393,14 +394,14 @@ func cancelFixtureSession(t *testing.T, backend *runtimefixture.Runtime, session
 		return
 	}
 	if active, ok := snapshot.ActiveRun(); ok {
-		if _, err := backend.CancelRun(context.Background(), agent.CancelRun{RunID: active.ID}); err != nil {
+		if _, err := backend.CancelRun(context.Background(), conversation.CancelRun{RunID: active.ID}); err != nil {
 			t.Error(err)
 		}
 	}
 }
 
 func TestRemoteWorkspaceInputsAndPickerPreserveRuntimePaths(t *testing.T) {
-	application := &app{localDirectory: t.TempDir(), session: sessionState{current: agent.Session{
+	application := &app{localDirectory: t.TempDir(), session: sessionState{current: conversation.Session{
 		Workspace: workspace.Workspace{Path: `C:\remote\current`},
 	}}}
 	for _, path := range []string{`D:\remote\new`, `\\server\share\project`, "/remote/unavailable", "~/remote", "../project"} {

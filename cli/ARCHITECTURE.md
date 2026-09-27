@@ -67,7 +67,7 @@ The connection shares its immutable request metadata with synchronous binding ca
 
 MCP management consumes Runtime server, tool, probe, and authorization values directly. Runtime also owns MCP error identities; the adapter applies the shared problem formatter without adding synonymous CLI errors. CLI retains form drafts, write intent, and acknowledgement checks; the terminal formats tool schemas when building the displayed document. An editor takes ownership of its fresh server query result.
 
-The binding adapter's immutable `Profile` retains the validated `protocol.DiscoverResponse` and client capability declaration. Runtime owns the wire constraints and feature-negotiation rule; CLI adds only its supported-surface checks and local command-replay policy. The mutation application owns the live replay clock and admission policy; Domain owns the immutable capability and guard values. Readers receive owned protocol values. `runtime info --json` publishes these values under `discovery` and `clientCapabilities`, using the Runtime field names and limit representations directly.
+The binding adapter's immutable `Profile` retains the validated `protocol.DiscoverResponse` and client capability declaration. Command and terminal delivery declare their own read interfaces; only process composition imports the concrete binding. Runtime owns the wire constraints and feature-negotiation rule; CLI adds only its supported-surface checks and local command-replay policy. The mutation application projects the negotiated replay limits and owns the live replay clock and admission policy; Domain owns the immutable capability and guard values. Readers receive owned protocol values. Command delivery renders `runtime info --json` under `discovery` and `clientCapabilities`, using the Runtime field names and limit representations directly.
 
 The terminal model catalog aggregates Runtime's per-provider discovery results. A provider discovery failure remains visible beside successfully discovered models; the CLI never invents fallback models. Cancellation, Runtime closure, and invalid protocol responses abort the aggregate read.
 
@@ -97,7 +97,7 @@ Long-lived terminal features own their cancellation and settlement locally. The 
 
 Whether the connected Runtime offers an optional surface is the composition root's question, answered once against the negotiated `Profile` and expressed by leaving that consumer port unset. A binding accessor therefore returns a usable value and never reports absence with a nil pointer: assigned into a consumer's interface-typed port, a nil pointer arrives as a non-nil interface, so the consumer's own "is this wired?" check cannot fire and its first call dereferences nil. Absence is the absent field, not a present value that fails on use.
 
-A mode the composition root never produces is not a mode. The terminal always opens a workbench — an in-memory one when no state directory is configured — so there is no draft-less, outbox-less terminal to guard against, and code that asked anyway had to invent an answer per call site: two refused, eight silently succeeded, and one reported a run as durably dispatched without writing it.
+The terminal requires an explicit workbench factory and owns the returned Store until shutdown. Process composition supplies the same lazy factory to terminal startup and command-side Session deletion. It selects in-memory persistence when no state directory is configured, and otherwise opens the rooted state-file adapter. Delivery never chooses persistence or interprets a state directory. Help and completion-script generation do not invoke the factory.
 
 Optional terminal state is asked about once, where the choice is made. A dialog, a draft writer or a pane that has not been opened is absent from the application state, and the code that reads it says so; the type itself assumes it exists rather than returning a zero answer that reads the same as "open, but empty". A presentation block that cannot render fails where it renders instead of drawing nothing.
 
@@ -107,9 +107,13 @@ Runtime workspace references and local authoring directories have separate owner
 
 Sideloaded command protocol 2 carries both the Runtime workspace reference and the local authoring directory. The executable remains rooted in its discovered plugin directory. Manifest schema version 3 declares these semantics so an older executable is rejected before invocation; responses must also declare command protocol 2. Extension-host API version 1 is unchanged.
 
+`application/extensions` owns contributed command identity, argument cardinality, availability, request snapshots, results, and the typed command contribution point. `adapter/sideload` translates manifests and bounded process I/O into that contract without importing terminal delivery. Oolong block, tool, and custom-event presentation points remain in terminal delivery.
+
 Remote authoring persistence is partitioned by the configured endpoint; embedded state keeps its existing directory. The terminal and command-side session deletion workflow use the same partition. Endpoint identity scopes local drafts and journals, while Runtime's advertised idempotency namespace and retention independently decide whether an exact command may replay. Neither a new process instance ID nor an endpoint spelling change authorizes migration of a pending mutation.
 
-Workbench persistence contains only CLI-authored facts. The workbench aggregate owns record names, the strict current shape, and recovery semantics; its narrow persistence port carries opaque bytes while the filesystem adapter owns rooted paths, regular-file checks, and atomic replacement. Records fail closed on unknown, malformed, oversized, truncated, or trailing content. Queue and replay are CLI aggregates with explicit identities and legal transitions; terminal code commands them instead of mutating slices and flags independently.
+Workbench persistence contains only CLI-authored facts. The workbench Application owner owns record names, the strict current shape, and recovery semantics; its narrow persistence port carries opaque bytes while the filesystem adapter owns rooted paths, regular-file checks, and atomic replacement. Records fail closed on unknown, malformed, oversized, truncated, or trailing content.
+
+The authoring Domain owns prompt values, deterministic FIFO and reservation transitions, and exact replay identities and guards. Workbench owns the live queue's transaction with the durable outbox: enqueue transfers the draft before dispatch, edits roll back the complete FIFO state on a failed write, and acknowledgement commits history and outbox retirement before releasing the opening reservation. A partial history commit is retried under the same command identity. A definitive refusal replaces that identity durably before returning the command to the FIFO. Terminal controllers issue these Workbench commands and render detached queue snapshots; they do not persist queue ordering, restore transactional state, or settle the outbox themselves.
 
 Drafts and queued prompts keep attachment paths editable. Before the first mutation dispatch, the binding adapter materializes those paths into Runtime content under the existing per-file size and encoding limits. Start binds that content when it leaves the queue; Steer and a Resume carrying additional input bind it before staging. Every later attempt uses the same prepared content, command identity, and replay guard without reopening the original paths. Plain text already lives completely in the immutable command and needs no external materialization. The terminal uses its existing operation owner to prepare and save content in the background. Only a current UI callback can publish the small session journal before starting delivery; cancellation or editing the source draft discards the prepared result. Large file writes hold their own pinned directory handle without holding the authoring or filesystem-store mutex. A live filesystem Store stays bound to its original physical state directory: replacing that directory requires reopening the workbench as a new owner, with the original directory retained for reconciliation. Temporarily blocking the path and then restoring the same directory allows the original owner to continue.
 
@@ -122,6 +126,24 @@ The CLI speaks one JSON vocabulary, `encoding/json/v2`. Duplicate members, trail
 ## Package shape
 
 A package must own a coherent CLI vocabulary, local aggregate, workflow lifecycle, external translation, or terminal mechanism. Related behavior stays in responsibility-named files inside one package. Context namespace directories exist only for several peer packages and contain no facade Go files. A package does not earn a boundary merely because its type has an interface or its workflow has one action.
+
+| Owner | Package | Responsibility |
+| --- | --- | --- |
+| Prompt authoring | `domain/authoring/prompt` | Message and attachment values, authored model options, Start and Steer intents, frozen input |
+| FIFO authoring | `domain/authoring/queue` | Pure entry identity, editing holds, ordering and dispatch reservations |
+| Exact replay | `domain/authoring/replay` | Stable command identity, capability and replay-guard values |
+| Conversation | `domain/conversation` | Transcript folding, stream deduplication, interaction review and Runtime projections |
+| Workbench | `application/workbench` | Local authoring lifetime, durable records, draft transfers, queue transactions and outbox settlement |
+| Mutation admission | `application/mutation` | Identity generation, replay clocks and exact acknowledgement policy shared by workflows |
+| Agent workflows | `application/agent/run`, `application/agent/session` | Run observation and command workflows over consumer-owned Runtime ports |
+| Extensions | `application/extensions` | Plugin activation, command contracts, contribution ownership and cleanup |
+| Runtime binding | `adapter/runtimebinding` | Embedded/HTTP binding lifecycle, negotiation and projection translation |
+| Local storage | `adapter/filesystem` | Scoped filesystem adapters for attachments, editors, session artifacts and opaque state records |
+| Sideload execution | `adapter/sideload` | Manifest translation, confined executable invocation and command-protocol validation |
+| User delivery | `delivery/cmd`, `delivery/terminal` | Cobra commands and Oolong interaction, rendering and view lifetimes |
+| Process composition | CLI root package | Immutable Runtime target, lazy Workbench factory, port wiring and shutdown |
+
+`authoring`, `agent`, `integration` and `filesystem` are sparse namespace directories. They contain no facade package. The Workbench Store retains clocks, randomness and persistence in Application; moving its pure queue transitions to Domain does not move filesystem or process lifetime there. Conversation is a CLI projection owner and does not become a second Runtime Session or Run state machine.
 
 Do not create packages for individual actions, interfaces, or DTOs. Merge a single-consumer forwarding package into the consumer unless the package owns an external translation or reusable technical mechanism. Do not create broad `service`, `manager`, `backend`, `common`, or `helpers` packages.
 

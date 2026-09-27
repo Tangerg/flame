@@ -1,5 +1,4 @@
-import { CLIENT_VERSION } from "@/main/config";
-import { PRODUCT_SLUG } from "@/product";
+import { CLIENT_VERSION, PRODUCT_SLUG } from "@/product";
 import { PROTOCOL_VERSION } from "@flame/runtime-contract/client";
 import type { ClientCapabilities, RequestMeta } from "@flame/runtime-contract/client";
 

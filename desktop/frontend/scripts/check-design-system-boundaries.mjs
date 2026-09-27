@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { assertSourceCoverage, sourceFiles } from "./source-graph.mjs";
 import { readFileSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import { API } from "typescript/unstable/sync";
@@ -186,6 +187,7 @@ process.once("exit", closeCompiler);
 const snapshot = compiler.updateSnapshot({ openProjects: [TSCONFIG] });
 const project = snapshot.getProject(TSCONFIG);
 if (!project) throw new Error("TypeScript did not load tsconfig.json");
+assertSourceCoverage(sourceFiles(SRC), project.program.getSourceFileNames());
 
 let examined = 0;
 const shapesSeenAtOwner = new Set();
@@ -269,15 +271,6 @@ if (violations.length > 0) {
   console.error(`check-design-system-boundaries: ${violations.length} abstraction bypass(es)\n`);
   for (const violation of violations) console.error(`  ${violation}`);
   process.exit(1);
-}
-
-// Floor, not a target: a guard that read nothing prints the same OK as one that read everything.
-const MIN_FILES_EXAMINED = 500;
-if (examined < MIN_FILES_EXAMINED) {
-  console.error(
-    `check-design-system-boundaries: only read ${examined} files (floor ${MIN_FILES_EXAMINED}) — the program is not loading src.`,
-  );
-  process.exit(2);
 }
 
 // A shape whose own atom no longer matches it has drifted, and a drifted shape matches nothing

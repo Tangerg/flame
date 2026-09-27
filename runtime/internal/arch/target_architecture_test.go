@@ -1,6 +1,7 @@
 package arch
 
 import (
+	"fmt"
 	"go/parser"
 	"go/token"
 	"io/fs"
@@ -33,6 +34,9 @@ type dependencyViolation struct {
 }
 
 func dependencyViolationsInFile(path, fromRing string) ([]dependencyViolation, error) {
+	if fromRing == ringUnknown {
+		return nil, fmt.Errorf("unclassified production package: %s", path)
+	}
 	file, err := parser.ParseFile(token.NewFileSet(), path, nil, parser.ImportsOnly)
 	if err != nil {
 		return nil, err
@@ -41,11 +45,14 @@ func dependencyViolationsInFile(path, fromRing string) ([]dependencyViolation, e
 	for _, imported := range file.Imports {
 		importPath := strings.Trim(imported.Path.Value, `"`)
 		relativeImport, internal := strings.CutPrefix(importPath, runtimeModulePath+"/")
+		if importPath == runtimeModulePath {
+			relativeImport, internal = ".", true
+		}
 		if !internal {
 			continue
 		}
 		toRing := layerOf(relativeImport)
-		if toRing != "" && forbidden(fromRing, toRing) {
+		if forbidden(fromRing, toRing) {
 			violations = append(violations, dependencyViolation{importPath: relativeImport, toRing: toRing})
 		}
 	}
@@ -83,8 +90,16 @@ func TestDeliveryDependencyRuleAllowsIndependentMechanisms(t *testing.T) {
 		wantViolations int
 	}{
 		{name: "inward", dependency: "internal/application/agent/runs"},
-		{name: "adapter", dependency: "internal/adapter/agentexec", wantViolations: 1},
+		{name: "adapter", dependency: "internal/adapter/run/execution", wantViolations: 1},
 		{name: "bootstrap", dependency: "internal/bootstrap", wantViolations: 1},
+		{name: "unknown target", dependency: "internal/newfeature", wantViolations: 1},
+		{name: "public protocol", dependency: "protocol"},
+		{name: "pure value", dependency: "internal/identity"},
+		{name: "technical mechanism", dependency: "internal/keylock"},
+		{name: "generator", dependency: "internal/contractcatalog", wantViolations: 1},
+		{name: "test support", dependency: "internal/testsupport", wantViolations: 1},
+		{name: "fixture inside a ring", dependency: "internal/domain/testdata/fixture", wantViolations: 1},
+		{name: "deployment", dependency: "localruntime", wantViolations: 1},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			directory := filepath.Join(t.TempDir(), "internal", "delivery", "newmechanism")
@@ -104,6 +119,64 @@ func TestDeliveryDependencyRuleAllowsIndependentMechanisms(t *testing.T) {
 				t.Fatalf("dependency violations = %v, want %d", violations, test.wantViolations)
 			}
 		})
+	}
+}
+
+func TestDependencyRuleRejectsUnclassifiedProductionSources(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "feature.go")
+	if err := os.WriteFile(path, []byte("package newfeature\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := dependencyViolationsInFile(path, layerOf("internal/newfeature")); err == nil {
+		t.Fatal("production package without imports escaped classification")
+	}
+}
+
+func TestDependencyRuleClassifiesSharedAndPublicBoundaries(t *testing.T) {
+	for _, test := range []struct {
+		from, to string
+		allowed  bool
+	}{
+		{from: ".", to: "internal/bootstrap", allowed: true},
+		{from: "internal/domain/newaggregate", to: "internal/identity", allowed: true},
+		{from: "internal/domain/newaggregate", to: "protocol"},
+		{from: "internal/domain/newaggregate", to: "internal/completion"},
+		{from: "internal/application/agent/newusecase", to: "internal/completion", allowed: true},
+		{from: "internal/identity", to: "internal/domain/session"},
+		{from: "internal/completion", to: "internal/application/agent/runs"},
+		{from: "protocol", to: "internal/contractshape", allowed: true},
+		{from: "protocol", to: "internal/application/agent/runs"},
+		{from: "protocol", to: "internal/capture"},
+		{from: "localruntime", to: "internal/bootstrap"},
+		{from: "cmd/contractgen", to: "internal/contractcatalog", allowed: true},
+		{from: "internal/adapter/newtranslation", to: "internal/contractcatalog"},
+		{from: ".", to: "internal/testsupport"},
+		{from: "internal/testsupport", to: "internal/application/agent/runs", allowed: true},
+	} {
+		t.Run(test.from+" -> "+test.to, func(t *testing.T) {
+			from, to := layerOf(test.from), layerOf(test.to)
+			if from == ringUnknown || to == ringUnknown {
+				t.Fatalf("intended boundary is unclassified: %s -> %s", from, to)
+			}
+			if allowed := !forbidden(from, to); allowed != test.allowed {
+				t.Fatalf("allowed = %v, want %v", allowed, test.allowed)
+			}
+		})
+	}
+}
+
+func TestDependencyRuleRejectsImportingTheModuleRootFromDelivery(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "delivery.go")
+	source := "package delivery\nimport _ \"" + runtimeModulePath + "\"\n"
+	if err := os.WriteFile(path, []byte(source), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	violations, err := dependencyViolationsInFile(path, ringDelivery)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(violations) != 1 || violations[0].toRing != ringComposition {
+		t.Fatalf("module-root binding escaped the composition rule: %+v", violations)
 	}
 }
 

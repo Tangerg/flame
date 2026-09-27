@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec/interactioninput"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
+	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
@@ -76,7 +76,7 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		MCPTools:        mcpTools,
 		A2AAgents:       cfg.A2AAgents,
 		Plan:            deps.plan,
-		Interrupt:       interactioninput.Require,
+		Interrupt:       runinput.Require,
 		MCPToolDisabled: deps.mcp.policy.ToolDisabled,
 		SkillProposals:  deps.skillProposals,
 		// Opt-in per-command OS isolation for the shell tools (off by default).

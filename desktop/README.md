@@ -1,4 +1,4 @@
-# CLAUDE.md — project context for Claude Code
+# Flame graphical client
 
 > **Flame** — one React/TypeScript workbench for the Wails desktop host and the browser, driven by **Flame Runtime Protocol v2**. Runtime owns durable sessions and execution; each client owns presentation and its connection lifetime.
 > 结构看 `frontend/ARCHITECTURE.md`，主 UI 心智模型看 `docs/FRONTEND_AGENT_WORKSPACE_MODEL.md`，视觉规范看 `frontend/DESIGN.md`，桌面质感防回归清单看 `frontend/DESKTOP_UI_POLISH.md`，后端数据 ↔ 渲染意图的自包含规格看 `frontend/CONTENT_RENDERING.md`，协议看 `../runtime/contract/`。
@@ -117,9 +117,9 @@ perf 排查沉淀的硬规则 —— 几个"看似没事其实在累积"的坑�
 
 ### 6.2 协议 / 后端边界
 
-- ❌ **后端做用户鉴权 / 账号 / 订阅 / 多租户**：Flame Runtime 是无状态纯计算单元，协议层零 user 概念；鉴权由更外层（OS 信任 / 本地门禁 token / 未来 facade）解决。
+- Runtime owns durable Session, Run, Item, and recovery state. The protocol has no account, subscription, or tenant model; the configured local bearer gate and deployment trust boundary protect access. Do not add an account system to Runtime.
 - ❌ **给 LLM provider 加 OAuth / token refresh / 订阅检测**：用户填 API key、存 keychain、401 让 UI 提示重填。
-- ❌ **把"远程后端 / 团队 server / 云端订阅"当部署形态**：那是未来 facade 层的事，Runtime 协议永不感知 facade（同一份代码跑桌面也跑服务器）。
+- Runtime supports explicit local and remote attachment through the same protocol. Workspace paths and execution belong to the serving Runtime. Account, team, and subscription policy belongs outside this product protocol.
 - ❌ **协议 envelope 装 transport 元数据**（session id / auth token / trace id / idempotency key）：走 `context.Context` 或 HTTP header，永不进 message body。
 - ❌ **协议 wire 用 REST + verb / 状态码**：是 JSON-RPC 2.0 envelope（参考 MCP），HTTP 只是其中一种 transport；method 名照搬 method 表、点保留（不斜杠化）；不加 RESTy read-only shadow（sidecar 只限 info / health）；业务 error 走 `error.code`，不映射 HTTP status。
 - 协议细节见 `../runtime/contract/API_REFERENCE.md`（method 表、envelope、HTTP 端点与 sidecar 同在一处）；传输与协议投影的归属边界见 `../runtime/doc/ARCHITECTURE.md`。

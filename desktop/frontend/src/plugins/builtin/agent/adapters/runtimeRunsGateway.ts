@@ -1,4 +1,4 @@
-import { getContainer } from "@/main/container";
+import type { FlameClient } from "@flame/runtime-contract/client";
 import {
   asItemId,
   asRunId,
@@ -23,10 +23,12 @@ export interface RuntimeRunsGateway extends RpcRunsGateway {
 }
 
 class DefaultRuntimeRunsGateway implements RuntimeRunsGateway {
+  constructor(private readonly runtimeClient: () => FlameClient) {}
+
   #openings = createMutationSettler({ acceptedAttempt: "retained" });
 
   async start({ sessionId, ...params }: RpcRunStartParams, signal?: AbortSignal) {
-    const client = getContainer().client();
+    const client = this.runtimeClient();
     const { result, events } = await this.#openings.settle(
       runOpeningIdentity("start", { sessionId, ...params }),
       (attemptSignal) =>
@@ -37,7 +39,7 @@ class DefaultRuntimeRunsGateway implements RuntimeRunsGateway {
   }
 
   async resume(params: RpcRunResumeParams, signal?: AbortSignal) {
-    const client = getContainer().client();
+    const client = this.runtimeClient();
     const { result, events } = await this.#openings.settle(
       runOpeningIdentity("resume", params),
       (attemptSignal) => client.runs.resume(params, attemptSignal),
@@ -64,8 +66,8 @@ class DefaultRuntimeRunsGateway implements RuntimeRunsGateway {
   }
 }
 
-export function runtimeRunsGateway(): RuntimeRunsGateway {
-  return new DefaultRuntimeRunsGateway();
+export function runtimeRunsGateway(runtimeClient: () => FlameClient): RuntimeRunsGateway {
+  return new DefaultRuntimeRunsGateway(runtimeClient);
 }
 
 function brandStartedRun(result: StartRunResponse) {

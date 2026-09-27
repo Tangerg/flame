@@ -1,3 +1,4 @@
+import type { FlameClient } from "@flame/runtime-contract/client";
 import { definePlugin } from "@/plugins/sdk";
 import { AGENT_SESSIONS } from "@/plugins/builtin/agent/public/services";
 import { installProjectIndexRefresh } from "./adapters/projectIndexRefresh";
@@ -25,50 +26,54 @@ import {
 import { RUNTIME_SERVER_SCOPE, RUNTIME_STREAM } from "@/plugins/builtin/runtime/public/services";
 import { WORKSPACE_MUTATION_LIFECYCLE } from "@/plugins/builtin/workspace/public/services";
 
-export default definePlugin({
-  name: "flame.builtin.workspace-events",
-  requires: {
-    runtime: RUNTIME_STREAM,
-    serverScope: RUNTIME_SERVER_SCOPE,
-    mutationLifecycle: WORKSPACE_MUTATION_LIFECYCLE,
-    sessions: AGENT_SESSIONS,
-  },
-  setup(ctx) {
-    const loop = createWorkspaceEventLoop({
-      subscribe: ({ target, signal }) => subscribeRuntimeWorkspaceEvents(target, signal),
-      handleEvent: invalidateWorkspaceEvent,
-      invalidateAll: invalidateWorkspaceEverything,
-      reportDisconnect: (connectionGeneration) => {
-        ctx.runtime.reportConnectionLoss(connectionGeneration);
-      },
-    });
+export function createWorkspaceEventsPlugin(runtimeClient: () => FlameClient) {
+  return definePlugin({
+    name: "flame.builtin.workspace-events",
+    requires: {
+      runtime: RUNTIME_STREAM,
+      serverScope: RUNTIME_SERVER_SCOPE,
+      mutationLifecycle: WORKSPACE_MUTATION_LIFECYCLE,
+      sessions: AGENT_SESSIONS,
+    },
+    setup(ctx) {
+      const loop = createWorkspaceEventLoop({
+        subscribe: ({ target, signal }) =>
+          subscribeRuntimeWorkspaceEvents(runtimeClient, target, signal),
+        handleEvent: invalidateWorkspaceEvent,
+        invalidateAll: invalidateWorkspaceEverything,
+        reportDisconnect: (connectionGeneration) => {
+          ctx.runtime.reportConnectionLoss(connectionGeneration);
+        },
+      });
 
-    const disposeProjectIndex = installProjectIndexRefresh();
-    const disposeFocus = installWorkspaceFocusRefresh();
-    const disposeServerScope = ctx.serverScope.subscribeReplacement(replaceWorkspaceServerScope);
-    const disposeSubscription = startWorkspaceEventSubscription({
-      canSubscribe: canSubscribeWorkspaceEvents,
-      connectionGeneration: ctx.runtime.connectionGeneration,
-      subscribeConnection: ctx.runtime.subscribeConnection,
-      retireReadModels: () => {
-        ctx.mutationLifecycle.replaceRuntimeGeneration();
-        retireWorkspaceReadModels();
-      },
-      resolveWorkspaceCwd: (signal) => resolveActiveSessionWorkspaceCwd(ctx.sessions, signal),
-      reportResolutionError: (error) =>
-        console.warn("[workspace-events] target resolution failed:", error),
-      subscribeWorkspaceCwdInputs: (onChange) =>
-        subscribeWorkspaceCwdInputs(ctx.sessions, onChange),
-      readTargets: workspaceReadTargets,
-      subscribeReadTargets: subscribeWorkspaceReadTargets,
-      loop,
-    });
+      const disposeProjectIndex = installProjectIndexRefresh();
+      const disposeFocus = installWorkspaceFocusRefresh();
+      const disposeServerScope = ctx.serverScope.subscribeReplacement(replaceWorkspaceServerScope);
+      const disposeSubscription = startWorkspaceEventSubscription({
+        canSubscribe: canSubscribeWorkspaceEvents,
+        connectionGeneration: ctx.runtime.connectionGeneration,
+        subscribeConnection: ctx.runtime.subscribeConnection,
+        retireReadModels: () => {
+          ctx.mutationLifecycle.replaceRuntimeGeneration();
+          retireWorkspaceReadModels();
+        },
+        resolveWorkspaceCwd: (signal) =>
+          resolveActiveSessionWorkspaceCwd(runtimeClient, ctx.sessions, signal),
+        reportResolutionError: (error) =>
+          console.warn("[workspace-events] target resolution failed:", error),
+        subscribeWorkspaceCwdInputs: (onChange) =>
+          subscribeWorkspaceCwdInputs(ctx.sessions, onChange),
+        readTargets: workspaceReadTargets,
+        subscribeReadTargets: subscribeWorkspaceReadTargets,
+        loop,
+      });
 
-    ctx.cleanup(() => {
-      disposeSubscription();
-      disposeServerScope();
-      disposeProjectIndex();
-      disposeFocus();
-    });
-  },
-});
+      ctx.cleanup(() => {
+        disposeSubscription();
+        disposeServerScope();
+        disposeProjectIndex();
+        disposeFocus();
+      });
+    },
+  });
+}

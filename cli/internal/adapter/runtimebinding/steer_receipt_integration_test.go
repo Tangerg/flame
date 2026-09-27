@@ -12,7 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -79,13 +80,13 @@ func testSteerReceiptAtModelBoundary(t *testing.T, mode protocol.ApprovalMode) {
 	if _, err := connection.SetApprovalMode(t.Context(), mode); err != nil {
 		t.Fatal(err)
 	}
-	session, err := connection.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
+	session, err := connection.CreateSession(t.Context(), conversation.CreateSession{Workspace: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
-	opened, err := connection.StartRun(ctx, testStartRequest(session.ID, agent.Message{Text: "steer admission probe"}))
+	opened, err := connection.StartRun(ctx, testStartRequest(session.ID, prompt.Message{Text: "steer admission probe"}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,10 +95,10 @@ func testSteerReceiptAtModelBoundary(t *testing.T, mode protocol.ApprovalMode) {
 	case <-ctx.Done():
 		t.Fatal(ctx.Err())
 	}
-	receipt, err := connection.SteerRun(ctx, agent.SteerRun{
+	receipt, err := connection.SteerRun(ctx, prompt.SteerRun{
 		CommandID: "cli_77777777777777777777777777777777",
 		RunID:     opened.RunID, SegmentID: opened.SegmentID,
-		Message: agent.Message{Text: "finish with the steered marker"},
+		Message: prompt.Message{Text: "finish with the steered marker"},
 	})
 	if err != nil || receipt.UserItemID == "" {
 		t.Fatalf("accepted steer receipt = %+v, %v", receipt, err)
@@ -106,8 +107,8 @@ func testSteerReceiptAtModelBoundary(t *testing.T, mode protocol.ApprovalMode) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	findReceiptItem := func(block agent.Block) bool {
-		return block.RunID == opened.RunID && block.ID == receipt.UserItemID && block.Kind == agent.BlockUser
+	findReceiptItem := func(block conversation.Block) bool {
+		return block.RunID == opened.RunID && block.ID == receipt.UserItemID && block.Kind == conversation.BlockUser
 	}
 	if slices.ContainsFunc(accepted.Transcript, findReceiptItem) {
 		t.Fatal("steer acceptance already claimed application before the model boundary")
@@ -129,8 +130,8 @@ func testSteerReceiptAtModelBoundary(t *testing.T, mode protocol.ApprovalMode) {
 			t.Fatalf("accepted steer crossed the model boundary before approval: %+v", waiting)
 		}
 		previousSegment := opened.SegmentID
-		opened, err = connection.ResumeRun(ctx, agent.ResumeRun{RunID: opened.RunID, Answers: []agent.InterruptAnswer{{
-			ItemID: agent.InteractionItemID(waiting.Interactions[0]), Answer: agent.ApprovalAnswer{Decision: protocol.ApprovalApprove},
+		opened, err = connection.ResumeRun(ctx, conversation.ResumeRun{RunID: opened.RunID, Answers: []conversation.InterruptAnswer{{
+			ItemID: conversation.InteractionItemID(waiting.Interactions[0]), Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove},
 		}}})
 		if err != nil || opened.SegmentID == previousSegment {
 			t.Fatalf("resume after accepted steer: segment=%s err=%v", opened.SegmentID, err)
@@ -145,8 +146,8 @@ func testSteerReceiptAtModelBoundary(t *testing.T, mode protocol.ApprovalMode) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.ContainsFunc(applied.Transcript, func(block agent.Block) bool {
-		return findReceiptItem(block) && block.Status == agent.BlockStatusCompleted && block.Text == "finish with the steered marker"
+	if !slices.ContainsFunc(applied.Transcript, func(block conversation.Block) bool {
+		return findReceiptItem(block) && block.Status == conversation.BlockStatusCompleted && block.Text == "finish with the steered marker"
 	}) {
 		t.Fatalf("applied receipt Item %s is absent from the authoritative transcript", receipt.UserItemID)
 	}

@@ -9,12 +9,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/workspace"
+	"github.com/Tangerg/flame/runtime/internal/infra/git"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestWorkspaceVcsUnavailable(t *testing.T) {
-	if !workspace.GitAvailable() {
+	if !git.Available() {
 		t.Skip("git not on PATH")
 	}
 	s := newWorkspaceHandler(t.TempDir())
@@ -42,7 +42,7 @@ func TestWorkspaceDiffRejectsMeaninglessOrNonPositiveRowLimits(t *testing.T) {
 }
 
 func TestWorkspaceGitWireMapping(t *testing.T) {
-	if !workspace.GitAvailable() {
+	if !git.Available() {
 		t.Skip("git not on PATH")
 	}
 	dir := t.TempDir()

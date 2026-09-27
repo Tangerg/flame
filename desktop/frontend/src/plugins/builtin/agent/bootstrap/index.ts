@@ -1,3 +1,5 @@
+import { registerAgentDataProviders } from "../adapters/runtimeDataProviders";
+import type { FlameClient } from "@flame/runtime-contract/client";
 import { definePlugin } from "@/plugins/sdk";
 import { installAgentSessionScope } from "../adapters/agentSessionScope";
 import { installAgentDefaultSessionPort } from "../adapters/agentDefaultSessionPort";
@@ -18,34 +20,37 @@ import {
 } from "@/plugins/builtin/runtime/public/services";
 import { currentRuntimeEndpoint } from "@/plugins/builtin/runtime/public/endpoint";
 
-export default definePlugin({
-  name: "flame.builtin.agent-bootstrap",
-  requires: { runtime: RUNTIME_STREAM, scope: RUNTIME_SERVER_SCOPE },
-  provides: { sessions: AGENT_SESSIONS },
-  setup(ctx) {
-    const disposeState = installAgentStatePorts();
-    const disposeDefaultSession = installAgentDefaultSessionPort();
-    const runtimeGateway = installAgentRuntimeGateway();
-    const unsubscribeRuntime = followRuntimeGeneration(ctx.runtime, () =>
-      runtimeGateway.replaceRuntimeGeneration(),
-    );
-    const disposeInterruptResponses = installInterruptResponseCoordinator();
-    const disposeSessionScope = installAgentSessionScope(ctx.scope, currentRuntimeEndpoint);
-    ctx.cleanup(() => {
-      disposeSessionScope();
-      disposeInterruptResponses();
-      unsubscribeRuntime();
-      runtimeGateway.dispose();
-      disposeDefaultSession();
-      disposeState();
-    });
-    return {
-      sessions: {
-        getActiveSessionId,
-        getLifecycleSnapshot: getAgentSessionLifecycleSnapshot,
-        subscribeActiveSessionId,
-        subscribeLifecycle: subscribeAgentSessionLifecycle,
-      },
-    };
-  },
-});
+export function createAgentBootstrapPlugin(runtimeClient: () => FlameClient) {
+  return definePlugin({
+    name: "flame.builtin.agent-bootstrap",
+    requires: { runtime: RUNTIME_STREAM, scope: RUNTIME_SERVER_SCOPE },
+    provides: { sessions: AGENT_SESSIONS },
+    setup(ctx) {
+      registerAgentDataProviders(ctx, runtimeClient);
+      const disposeState = installAgentStatePorts();
+      const disposeDefaultSession = installAgentDefaultSessionPort(runtimeClient);
+      const runtimeGateway = installAgentRuntimeGateway(runtimeClient);
+      const unsubscribeRuntime = followRuntimeGeneration(ctx.runtime, () =>
+        runtimeGateway.replaceRuntimeGeneration(),
+      );
+      const disposeInterruptResponses = installInterruptResponseCoordinator();
+      const disposeSessionScope = installAgentSessionScope(ctx.scope, currentRuntimeEndpoint);
+      ctx.cleanup(() => {
+        disposeSessionScope();
+        disposeInterruptResponses();
+        unsubscribeRuntime();
+        runtimeGateway.dispose();
+        disposeDefaultSession();
+        disposeState();
+      });
+      return {
+        sessions: {
+          getActiveSessionId,
+          getLifecycleSnapshot: getAgentSessionLifecycleSnapshot,
+          subscribeActiveSessionId,
+          subscribeLifecycle: subscribeAgentSessionLifecycle,
+        },
+      };
+    },
+  });
+}

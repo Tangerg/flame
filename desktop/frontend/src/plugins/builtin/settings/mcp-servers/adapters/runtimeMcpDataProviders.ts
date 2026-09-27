@@ -1,4 +1,4 @@
-import { getContainer } from "@/main/container";
+import type { FlameClient } from "@flame/runtime-contract/client";
 import { emptyListIfUngated } from "@/lib/rpcErrors";
 import type { Contributor, DataProviderSpec } from "@/plugins/sdk";
 import { DATA_PROVIDER } from "@/plugins/sdk/kernelPoints";
@@ -18,21 +18,20 @@ function requiredQuery(params: unknown): McpToolsQuery {
   return params as McpToolsQuery;
 }
 
-export function registerMCPDataProviders(ctx: Contributor): void {
-  const client = () => getContainer().client();
+export function registerMCPDataProviders(ctx: Contributor, runtimeClient: () => FlameClient): void {
   const contribute = (provider: DataProviderSpec): void => {
     ctx.contribute(DATA_PROVIDER, provider);
   };
   contribute({
     key: MCP_SERVERS_KEY,
     fetcher: async () =>
-      (await pageData(client().mcp.list()).catch(emptyListIfUngated)).map(mcpServerSettings),
+      (await pageData(runtimeClient().mcp.list()).catch(emptyListIfUngated)).map(mcpServerSettings),
   });
   contribute({
     key: MCP_TOOLS_KEY,
     fetcher: async (params) =>
       (
-        await pageData(client().mcp.listTools(requiredQuery(params).server)).catch(
+        await pageData(runtimeClient().mcp.listTools(requiredQuery(params).server)).catch(
           emptyListIfUngated,
         )
       ).map((tool) => ({ name: tool.name, description: tool.description ?? "" })),

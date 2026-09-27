@@ -7,22 +7,22 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
-	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
+	"github.com/Tangerg/flame/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/cli/internal/application/retry"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
+	"github.com/Tangerg/flame/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type steerRuntimeStub struct {
-	requests     []agent.SteerRun
+	requests     []prompt.SteerRun
 	err          error
 	afterRequest func()
 }
 
-func (s *steerRuntimeStub) SteerRun(_ context.Context, request agent.SteerRun) (protocol.SteerRunResponse, error) {
+func (s *steerRuntimeStub) SteerRun(_ context.Context, request prompt.SteerRun) (protocol.SteerRunResponse, error) {
 	s.requests = append(s.requests, request.Clone())
 	err := s.err
 	if s.afterRequest != nil {
@@ -59,7 +59,7 @@ func TestRecoverReplaysAndAcknowledgesTheExactDurableSteer(t *testing.T) {
 func TestRecoverReturnsAttachmentsAfterAReplayableRefusal(t *testing.T) {
 	fixture := stagedSteer(t)
 	store, pending := fixture.store, fixture.pending
-	runtime := &steerRuntimeStub{err: agent.ErrStaleSegment}
+	runtime := &steerRuntimeStub{err: conversation.ErrStaleSegment}
 	fixture.now = pending.StagedAt().Add(time.Minute)
 	if _, err := RecoverSteers(t.Context(), runtime, store, fixture.policy(t), fastBackoff(t)); err != nil {
 		t.Fatal(err)
@@ -103,17 +103,17 @@ func TestRecoverContinuesPastAnUnreplayableSteer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	secondCommand := agent.SteerRun{
+	secondCommand := prompt.SteerRun{
 		CommandID: "cli_44444444444444444444444444444444",
 		RunID:     "run_2",
 		SegmentID: "seg_2",
-		Message:   agent.Message{Text: "recover safely"},
+		Message:   prompt.Message{Text: "recover safely"},
 	}
 	second, err := workbench.NewPendingSteer("ses_2", secondCommand, secondStagedAt, guard)
 	if err != nil {
 		t.Fatal(err)
 	}
-	secondSource := agent.Message{Text: "/steer recover safely"}
+	secondSource := prompt.Message{Text: "/steer recover safely"}
 	if err := fixture.store.SaveDraft(second.SessionID(), secondSource); err != nil {
 		t.Fatal(err)
 	}
@@ -144,10 +144,10 @@ func TestRecoverContinuesPastAnUnreplayableSteer(t *testing.T) {
 func TestDeliverPreservesACommandRejectedByAnotherRuntimeStore(t *testing.T) {
 	fixture := stagedSteer(t)
 	pending := fixture.pending
-	runtime := &steerRuntimeStub{err: agent.ErrCommandStoreMismatch}
+	runtime := &steerRuntimeStub{err: conversation.ErrCommandStoreMismatch}
 	fixture.now = pending.StagedAt().Add(time.Minute)
 	result, err := DeliverSteer(t.Context(), runtime, pending, fixture.policy(t), fastBackoff(t))
-	if !errors.Is(err, agent.ErrCommandStoreMismatch) || result.Outcome != mutation.Unknown {
+	if !errors.Is(err, conversation.ErrCommandStoreMismatch) || result.Outcome != mutation.Unknown {
 		t.Fatalf("store mismatch settlement = outcome %v, error %v", result.Outcome, err)
 	}
 	if len(runtime.requests) != 1 {
@@ -157,12 +157,12 @@ func TestDeliverPreservesACommandRejectedByAnotherRuntimeStore(t *testing.T) {
 
 func TestSteerConflictCannotRetireAnUncertainOriginalCommand(t *testing.T) {
 	fixture := stagedSteer(t)
-	runtime := &steerRuntimeStub{err: agent.ErrCommandConflict}
+	runtime := &steerRuntimeStub{err: conversation.ErrCommandConflict}
 	result, err := DeliverSteer(t.Context(), runtime, fixture.pending, fixture.policy(t), fastBackoff(t))
-	if result.Outcome != mutation.Unknown || !errors.Is(err, agent.ErrCommandConflict) {
+	if result.Outcome != mutation.Unknown || !errors.Is(err, conversation.ErrCommandConflict) {
 		t.Fatalf("conflict settlement = %s, %v", result.Outcome, err)
 	}
-	if _, err := RecoverSteers(t.Context(), runtime, fixture.store, fixture.policy(t), fastBackoff(t)); !errors.Is(err, agent.ErrCommandConflict) {
+	if _, err := RecoverSteers(t.Context(), runtime, fixture.store, fixture.policy(t), fastBackoff(t)); !errors.Is(err, conversation.ErrCommandConflict) {
 		t.Fatalf("conflict recovery = %v", err)
 	}
 	pending, found := fixture.store.PendingSteer(fixture.pending.SessionID())
@@ -184,7 +184,7 @@ func TestUnpreparedLegacySteerHasUnknownOutcomeWithoutADispatch(t *testing.T) {
 	}
 	runtime := new(steerRuntimeStub)
 	result, err := DeliverSteer(t.Context(), runtime, legacy, fixture.policy(t), fastBackoff(t))
-	if result.Outcome != mutation.Unknown || !errors.Is(err, agent.ErrCommandInputUnavailable) || len(runtime.requests) != 0 {
+	if result.Outcome != mutation.Unknown || !errors.Is(err, replay.ErrCommandInputUnavailable) || len(runtime.requests) != 0 {
 		t.Fatalf("legacy steer = %s, %v, %d dispatches", result.Outcome, err, len(runtime.requests))
 	}
 }
@@ -199,13 +199,13 @@ func TestDeliverRetainsTheExactSteerAcceptanceReceipt(t *testing.T) {
 
 func TestMissingSteerReceiptCannotRejectOrRetryAcceptedInput(t *testing.T) {
 	fixture := stagedSteer(t)
-	runtime := &steerRuntimeStub{err: agent.ErrSteerReceiptUnavailable}
+	runtime := &steerRuntimeStub{err: conversation.ErrSteerReceiptUnavailable}
 	result, err := DeliverSteer(t.Context(), runtime, fixture.pending, fixture.policy(t), fastBackoff(t))
-	if !errors.Is(err, agent.ErrSteerReceiptUnavailable) || result.Outcome != mutation.Unknown || len(runtime.requests) != 1 {
+	if !errors.Is(err, conversation.ErrSteerReceiptUnavailable) || result.Outcome != mutation.Unknown || len(runtime.requests) != 1 {
 		t.Fatalf("missing receipt settlement = %+v, error %v, attempts %d", result, err, len(runtime.requests))
 	}
 	_, err = RecoverSteers(t.Context(), runtime, fixture.store, fixture.policy(t), fastBackoff(t))
-	if !errors.Is(err, agent.ErrSteerReceiptUnavailable) {
+	if !errors.Is(err, conversation.ErrSteerReceiptUnavailable) {
 		t.Fatalf("missing receipt recovery = %v", err)
 	}
 	if _, found := fixture.store.PendingSteer(fixture.pending.SessionID()); !found {
@@ -221,7 +221,7 @@ func TestRecoverStopsRetryingWhenTheReplayGuaranteeExpires(t *testing.T) {
 	store, pending := fixture.store, fixture.pending
 	fixture.now = pending.Replay().Until().Add(-time.Nanosecond)
 	runtime := new(steerRuntimeStub)
-	runtime.err = agent.ErrDisconnected
+	runtime.err = conversation.ErrDisconnected
 	runtime.afterRequest = func() {
 		fixture.now = pending.Replay().Until()
 		runtime.err = nil
@@ -240,20 +240,20 @@ func TestUnavailableRuntimeSeparatesFreshSteerDeliveryFromColdRecovery(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	attachment := agent.Attachment{
+	attachment := prompt.Attachment{
 		ID: "att_notes", Kind: protocol.ContentBlockText, Name: "notes.txt",
 		Path: filepath.Join(t.TempDir(), "notes.txt"), MimeType: "text/plain", Size: 5,
 	}
-	request := agent.SteerRun{
+	request := prompt.SteerRun{
 		CommandID: "cli_33333333333333333333333333333333",
 		RunID:     "run_1", SegmentID: "seg_1",
-		Message: agent.Message{Text: "inspect ownership", Attachments: []agent.Attachment{attachment}},
+		Message: prompt.Message{Text: "inspect ownership", Attachments: []prompt.Attachment{attachment}},
 		Input: []protocol.ContentBlock{
 			{Type: protocol.ContentBlockText, Text: "inspect ownership"},
 			{Type: protocol.ContentBlockText, Text: "fixture attachment"},
 		},
 	}
-	source := agent.Message{Text: "/steer inspect ownership", Attachments: []agent.Attachment{attachment}}
+	source := prompt.Message{Text: "/steer inspect ownership", Attachments: []prompt.Attachment{attachment}}
 	if err := store.SaveDraft("ses_1", source); err != nil {
 		t.Fatal(err)
 	}
@@ -262,7 +262,7 @@ func TestUnavailableRuntimeSeparatesFreshSteerDeliveryFromColdRecovery(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	runtime := &steerRuntimeStub{err: agent.ErrDisconnected}
+	runtime := &steerRuntimeStub{err: conversation.ErrDisconnected}
 	result, err := DeliverSteer(t.Context(), runtime, pending, policy, fastBackoff(t))
 	if result.Outcome != mutation.Unknown || !errors.Is(err, mutation.ErrReplayGuaranteeUnavailable) || len(runtime.requests) != 1 {
 		t.Fatalf("fresh delivery = outcome %v, error %v, requests %+v", result.Outcome, err, runtime.requests)
@@ -281,7 +281,7 @@ func TestUnavailableRuntimeSeparatesFreshSteerDeliveryFromColdRecovery(t *testin
 type steerFixture struct {
 	store      *workbench.Store
 	pending    workbench.PendingSteer
-	capability commandreplay.Capability
+	capability replay.Capability
 	now        time.Time
 }
 
@@ -301,25 +301,25 @@ func stagedSteer(t *testing.T) *steerFixture {
 		t.Fatal(err)
 	}
 	stagedAt := time.Date(2026, 8, 13, 12, 0, 0, 0, time.UTC)
-	capability, err := commandreplay.NewCapability("runtime-test", time.Hour)
+	capability, err := replay.NewCapability("runtime-test", time.Hour)
 	if err != nil {
 		t.Fatal(err)
 	}
 	fixture := &steerFixture{store: store, capability: capability, now: stagedAt}
-	attachment := agent.Attachment{
+	attachment := prompt.Attachment{
 		ID: "att_notes", Kind: protocol.ContentBlockText, Name: "notes.txt",
 		Path: filepath.Join(t.TempDir(), "notes.txt"), MimeType: "text/plain", Size: 5,
 	}
-	request := agent.SteerRun{
+	request := prompt.SteerRun{
 		CommandID: "cli_22222222222222222222222222222222",
 		RunID:     "run_1", SegmentID: "seg_1",
-		Message: agent.Message{Text: "inspect the parser", Attachments: []agent.Attachment{attachment}},
+		Message: prompt.Message{Text: "inspect the parser", Attachments: []prompt.Attachment{attachment}},
 		Input: []protocol.ContentBlock{
 			{Type: protocol.ContentBlockText, Text: "inspect the parser"},
 			{Type: protocol.ContentBlockText, Text: "fixture attachment"},
 		},
 	}
-	source := agent.Message{Text: "/steer inspect the parser", Attachments: []agent.Attachment{attachment}}
+	source := prompt.Message{Text: "/steer inspect the parser", Attachments: []prompt.Attachment{attachment}}
 	if saveDraftErr := store.SaveDraft("ses_1", source); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
@@ -342,7 +342,7 @@ func fastBackoff(t testing.TB) retry.Backoff {
 	return backoff
 }
 
-func prepareSteerTestInput(t *testing.T, store *workbench.Store, request agent.SteerRun) *workbench.PreparedInput {
+func prepareSteerTestInput(t *testing.T, store *workbench.Store, request prompt.SteerRun) *workbench.PreparedInput {
 	t.Helper()
 	input, err := store.PrepareInput(t.Context(), request.Message, request.Input)
 	if err != nil {

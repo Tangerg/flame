@@ -1,0 +1,151 @@
+import { type PropsWithChildren } from "react";
+import { act, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { TranscriptRow } from "@/plugins/builtin/agent/public/conversation";
+import type { BlockCtx } from "@/plugins/builtin/chat/message/public/rendering";
+
+const { root } = vi.hoisted(() => ({
+  root: {
+    current: {
+      running: true,
+      terminalTurnIndex: (): number => -1,
+    },
+  },
+}));
+
+vi.mock("@/plugins/builtin/agent/public/run", () => ({
+  useCurrentRootMaterial: () => root.current,
+}));
+
+vi.mock("@/plugins/builtin/chat/message/public/rendering", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/plugins/builtin/chat/message/public/rendering")>();
+  return {
+    ...actual,
+    RootRunOutcome: () => <div data-testid="root-run-outcome" />,
+  };
+});
+
+vi.mock("@/plugins/host/Slot", () => ({
+  Slot: ({ name }: { name: string }) => <div data-testid={name} />,
+}));
+
+vi.mock("motion/react", () => ({
+  AnimatePresence: ({ children }: PropsWithChildren) => children,
+  motion: {
+    div: ({ children, "data-turn-id": turnId }: PropsWithChildren<{ "data-turn-id"?: string }>) => (
+      <div data-turn-id={turnId}>{children}</div>
+    ),
+  },
+}));
+
+vi.mock("use-stick-to-bottom", () => {
+  const context = { isAtBottom: true, scrollToBottom: vi.fn() };
+  const StickToBottom = Object.assign(({ children }: PropsWithChildren) => <div>{children}</div>, {
+    Content: ({ children }: PropsWithChildren) => <div>{children}</div>,
+  });
+  return {
+    StickToBottom,
+    useStickToBottomContext: () => context,
+  };
+});
+
+import { MessageStream } from "./MessageStream";
+
+const CTX: BlockCtx = {
+  expandedIds: new Set(),
+  onToggleExpand: vi.fn(),
+  textReveal: "smooth",
+};
+
+function transcriptRow(status: "running" | "complete"): TranscriptRow {
+  const runStatus = status === "running" ? "running" : "finished";
+  return {
+    message: {
+      id: "assistant-terminal-footer",
+      runId: "run-terminal-footer",
+      role: "assistant",
+      blocks: [
+        {
+          kind: "text",
+          itemId: "answer-terminal-footer",
+          text: "A long terminal answer whose visible projection still has a reveal backlog.",
+          status,
+        },
+      ],
+    },
+    runOwner: { kind: "owned", runId: "run-terminal-footer", status: runStatus },
+    facts: { toolCalls: {}, delegatedRuns: {} },
+  };
+}
+
+function optimisticUserRow(): TranscriptRow {
+  return {
+    message: {
+      id: "local-successor-user",
+      runId: null,
+      role: "user",
+      blocks: [
+        {
+          kind: "text",
+          itemId: "local-successor-text",
+          text: "Start another run",
+          status: "complete",
+        },
+      ],
+    },
+    runOwner: { kind: "unassigned" },
+    facts: { toolCalls: {}, delegatedRuns: {} },
+  };
+}
+
+describe("MessageStream terminal footer materialization", () => {
+  afterEach(() => {
+    document.documentElement.removeAttribute("data-motion");
+    root.current = { running: true, terminalTurnIndex: () => -1 };
+  });
+
+  it("keeps the Run outcome out of layout until the terminal visible generation settles", async () => {
+    root.current = { running: true, terminalTurnIndex: () => -1 };
+    const { rerender } = render(
+      <MessageStream rows={[transcriptRow("running")]} ctx={CTX} sessionId="session-footer" />,
+    );
+    expect(screen.queryByTestId("root-run-outcome")).toBeNull();
+
+    // Settle the real lazy renderer before testing its visible reveal generation.
+    await act(async () => vi.dynamicImportSettled());
+    expect(screen.queryByTestId("root-run-outcome")).toBeNull();
+
+    root.current = { running: false, terminalTurnIndex: () => 0 };
+    rerender(
+      <MessageStream rows={[transcriptRow("complete")]} ctx={CTX} sessionId="session-footer" />,
+    );
+
+    expect(screen.queryByTestId("root-run-outcome")).toBeNull();
+
+    document.documentElement.setAttribute("data-motion", "off");
+    rerender(
+      <MessageStream rows={[transcriptRow("complete")]} ctx={CTX} sessionId="session-footer" />,
+    );
+
+    expect(await screen.findByTestId("root-run-outcome")).toBeTruthy();
+  });
+
+  it("keeps a finished Run outcome with its exact turn while a successor user message is unassigned", async () => {
+    root.current = { running: false, terminalTurnIndex: () => 0 };
+
+    render(
+      <MessageStream
+        rows={[transcriptRow("complete"), optimisticUserRow()]}
+        ctx={CTX}
+        sessionId="session-footer"
+      />,
+    );
+
+    await act(async () => vi.dynamicImportSettled());
+
+    expect(
+      screen.getByTestId("root-run-outcome").closest<HTMLElement>("[data-turn-id]")?.dataset.turnId,
+    ).toBe("assistant-terminal-footer");
+  });
+});

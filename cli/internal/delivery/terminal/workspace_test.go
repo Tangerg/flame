@@ -2,18 +2,16 @@ package terminal
 
 import (
 	"context"
-	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/workbenchstate"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/Tangerg/oolong/core/input"
-
-	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
+	"github.com/Tangerg/oolong/core/input"
 )
 
 func TestResolveWorkspaceUsesTheCurrentRootForRelativePathsAndRejectsFiles(t *testing.T) {
@@ -67,7 +65,7 @@ type workspaceRecordingRuntime struct {
 	created chan string
 }
 
-func (w *workspaceRecordingRuntime) CreateSession(ctx context.Context, input agent.CreateSession) (agent.Session, error) {
+func (w *workspaceRecordingRuntime) CreateSession(ctx context.Context, input conversation.CreateSession) (conversation.Session, error) {
 	w.created <- input.Workspace
 	return w.Runtime.CreateSession(ctx, input)
 }
@@ -90,7 +88,7 @@ func TestRecentWorkspacePickerCreatesAndSwitchesToTheSelectedRoot(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	store, err := workbenchstate.Open(state)
+	store, err := openTestWorkbench(state)
 	if err != nil {
 		t.Fatal(err)
 	}

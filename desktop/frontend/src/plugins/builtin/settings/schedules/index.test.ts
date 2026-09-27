@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { queryClient } from "@/lib/queryClient";
-import { resetContainer, setContainer } from "@/main/container";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import { definePlugin } from "@/plugins/sdk";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
@@ -10,7 +9,7 @@ import {
 } from "@/plugins/builtin/runtime/public/services";
 import { runScheduleNow } from "./application/scheduleCommands";
 import { SCHEDULES_KEY } from "./application/scheduleQueries";
-import schedulesPlugin from "./index";
+import { createSchedulesPlugin } from "./index";
 import { rejected } from "@/test/rejected";
 
 const { selectAgentSession } = vi.hoisted(() => ({ selectAgentSession: vi.fn() }));
@@ -19,7 +18,7 @@ vi.mock("@/plugins/builtin/agent/public/session", () => ({ selectAgentSession })
 
 afterEach(async () => {
   await resetKernelForTest();
-  resetContainer();
+
   queryClient.removeQueries({ queryKey: [SCHEDULES_KEY] });
   selectAgentSession.mockReset();
 });
@@ -28,9 +27,7 @@ describe("schedules plugin Runtime generation wiring", () => {
   it("retires run-now navigation when the Runtime process generation changes", async () => {
     const retired = Promise.withResolvers<{ sessionId: string; runId: string }>();
     const runNow = vi.fn(() => retired.promise);
-    setContainer({
-      client: () => ({ schedules: { runNow } }) as unknown as FlameClient,
-    });
+    let runtimeClient = () => ({ schedules: { runNow } }) as unknown as FlameClient;
     let generation = RuntimeConnectionGeneration.forProcess("runtime_1");
     const subscribers = new Set<() => void>();
     const runtime = definePlugin({
@@ -49,11 +46,17 @@ describe("schedules plugin Runtime generation wiring", () => {
         };
       },
     });
-    await loadPluginsForTest(runtime, schedulesPlugin);
+    await loadPluginsForTest(
+      runtime,
+      createSchedulesPlugin(() => runtimeClient()),
+    );
 
     const command = rejected(runScheduleNow("sch_1"));
     await vi.waitFor(() => expect(runNow).toHaveBeenCalledOnce());
 
+    const successorRun = { sessionId: "ses_successor", runId: "run_successor" };
+    const successorRunNow = vi.fn().mockResolvedValue(successorRun);
+    runtimeClient = () => ({ schedules: { runNow: successorRunNow } }) as unknown as FlameClient;
     generation = RuntimeConnectionGeneration.forProcess("runtime_2");
     for (const subscriber of subscribers) subscriber();
     await expect(command).resolves.toMatchObject({
@@ -62,5 +65,9 @@ describe("schedules plugin Runtime generation wiring", () => {
     expect(selectAgentSession).not.toHaveBeenCalled();
 
     retired.resolve({ sessionId: "ses_retired", runId: "run_retired" });
+    await expect(runScheduleNow("sch_1")).resolves.toEqual(successorRun);
+    expect(successorRunNow).toHaveBeenCalledExactlyOnceWith("sch_1");
+    expect(selectAgentSession).toHaveBeenCalledExactlyOnceWith("ses_successor");
+    expect(runNow).toHaveBeenCalledOnce();
   });
 });

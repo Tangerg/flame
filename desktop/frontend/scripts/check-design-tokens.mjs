@@ -15,6 +15,7 @@
 // signal the ladder needs a step, not that this callsite needs an exception —
 // add the step in globals.css so every other callsite can reach it too.
 
+import { assertSourceCoverage, sourceFiles } from "./source-graph.mjs";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { extname, join, relative } from "node:path";
 
@@ -211,7 +212,9 @@ function rulesFor(path) {
 // utilities: `--radius-scale` is a multiplier and `--leading-markdown-*` are stylesheet
 const violations = [];
 let examined = 0;
-for (const path of walk(SRC)) {
+const scanned = [...walk(SRC)];
+assertSourceCoverage(sourceFiles(SRC), scanned);
+for (const path of scanned) {
   const rules = rulesFor(path);
   if (rules.length === 0) continue;
   examined += 1;
@@ -252,14 +255,6 @@ if (NAMED_EDGE_WIDTHS.length < 2) {
   process.exit(2);
 }
 
-// Floor, not a target: a guard that read nothing prints the same OK as one that read everything.
-const MIN_FILES_EXAMINED = 500;
-if (examined < MIN_FILES_EXAMINED) {
-  console.error(
-    `check-design-tokens: only read ${examined} files (floor ${MIN_FILES_EXAMINED}) — the walk is broken.`,
-  );
-  process.exit(2);
-}
 console.log(
   `check-design-tokens: ${examined} files read; type + leading + radius + tone + colour + depth + edge + layer + motion ladders clean`,
 );

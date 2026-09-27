@@ -5,7 +5,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -91,13 +91,13 @@ type runCancellationRecord struct {
 
 // WriteSessionJSON writes one session using the same field contract as session
 // pages and cold snapshots.
-func WriteSessionJSON(w io.Writer, session agent.Session) error {
+func WriteSessionJSON(w io.Writer, session conversation.Session) error {
 	return WriteJSONLine(w, encodeSession(session))
 }
 
 // WriteSessionPageJSON writes a validated runtime page without losing its
 // opaque continuation cursor.
-func WriteSessionPageJSON(w io.Writer, page agent.SessionPage) error {
+func WriteSessionPageJSON(w io.Writer, page conversation.SessionPage) error {
 	record := sessionPageRecord{Items: make([]sessionFrame, 0, len(page.Items)), NextCursor: page.NextCursor}
 	for _, session := range page.Items {
 		record.Items = append(record.Items, encodeSession(session))
@@ -108,7 +108,7 @@ func WriteSessionPageJSON(w io.Writer, page agent.SessionPage) error {
 // WriteSessionSnapshotJSON writes the CLI's stable cold-read JSON projection.
 // Domain values intentionally carry no encoding tags, so this adapter owns the
 // external field names instead of leaking a delivery format into the core.
-func WriteSessionSnapshotJSON(w io.Writer, snapshot agent.SessionSnapshot) error {
+func WriteSessionSnapshotJSON(w io.Writer, snapshot conversation.SessionSnapshot) error {
 	if err := snapshot.Validate(); err != nil {
 		return fmt.Errorf("render session snapshot: %w", err)
 	}
@@ -128,7 +128,7 @@ func WriteSessionSnapshotJSON(w io.Writer, snapshot agent.SessionSnapshot) error
 	return WriteJSONLine(w, record)
 }
 
-func encodeSession(session agent.Session) sessionFrame {
+func encodeSession(session conversation.Session) sessionFrame {
 	return sessionFrame{
 		ID: session.ID, Title: session.Title, Status: string(session.Status),
 		Provider: session.Provider, Model: session.Model, ReasoningEffort: session.ReasoningEffort,
@@ -143,14 +143,14 @@ func encodeSession(session agent.Session) sessionFrame {
 
 // WriteRunJSON writes one durable run projection using the same field contract
 // as runs embedded in a session snapshot.
-func WriteRunJSON(w io.Writer, run agent.Run) error {
+func WriteRunJSON(w io.Writer, run conversation.Run) error {
 	if err := run.Validate(); err != nil {
 		return fmt.Errorf("render run: %w", err)
 	}
 	return WriteJSONLine(w, encodeRun(run))
 }
 
-func WriteRunPageJSON(w io.Writer, page agent.RunPage) error {
+func WriteRunPageJSON(w io.Writer, page conversation.RunPage) error {
 	if err := page.Validate(); err != nil {
 		return fmt.Errorf("render run page: %w", err)
 	}
@@ -161,7 +161,7 @@ func WriteRunPageJSON(w io.Writer, page agent.RunPage) error {
 	return WriteJSONLine(w, record)
 }
 
-func WriteRunCancellationJSON(w io.Writer, result agent.RunCancellation) error {
+func WriteRunCancellationJSON(w io.Writer, result conversation.RunCancellation) error {
 	if err := result.Validate(); err != nil {
 		return fmt.Errorf("render run cancellation: %w", err)
 	}
@@ -171,7 +171,7 @@ func WriteRunCancellationJSON(w io.Writer, result agent.RunCancellation) error {
 	})
 }
 
-func encodeRun(run agent.Run) runFrame {
+func encodeRun(run conversation.Run) runFrame {
 	encoded := runFrame{
 		ID: run.ID, SessionID: run.SessionID,
 		SpawnedByBlockID: run.Lineage.SpawnedByBlockID(),

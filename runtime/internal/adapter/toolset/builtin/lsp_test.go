@@ -78,7 +78,7 @@ func TestLSPToolValidation(t *testing.T) {
 	lsp := lspTool(t, ci)
 
 	// The operation enum is rejected by the argument schema, one layer above the
-	// handler: agentexec's own invoke settles a Prepare failure as a definite
+	// handler: execution adapter's own invoke settles a Prepare failure as a definite
 	// failure, which this helper does not model.
 	_, err := callTextTool(context.Background(), lsp, `{"operation":"bogus"}`)
 	if err == nil {

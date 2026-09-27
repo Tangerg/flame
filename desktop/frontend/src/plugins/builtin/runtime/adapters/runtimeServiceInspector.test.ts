@@ -1,5 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { resetContainer, setContainer } from "@/main/container";
+import { describe, expect, it, vi } from "vitest";
 import {
   HTTP_ENDPOINTS,
   PROTOCOL_VERSION,
@@ -8,6 +7,15 @@ import {
   type SidecarClient,
 } from "@flame/runtime-contract/client";
 import { runtimeServiceInspector } from "./runtimeServiceInspector";
+
+let activeClientProvider: () => FlameClient = () => {
+  throw new Error("Runtime test client is not configured");
+};
+const getRuntimeClient = () => activeClientProvider();
+let runtimeSidecar: () => SidecarClient = () => {
+  throw new Error("Runtime test sidecar is not configured");
+};
+const getRuntimeSidecar = () => runtimeSidecar();
 
 const discovery: DiscoverResponse = {
   protocolVersion: PROTOCOL_VERSION,
@@ -65,16 +73,17 @@ function sidecar(overrides: Partial<SidecarClient> = {}): SidecarClient {
   };
 }
 
-afterEach(resetContainer);
-
 describe("runtime service inspector", () => {
   it("resolves the active endpoint clients for each inspection", async () => {
     const previousSidecar = sidecar();
     const previousRuntime = runtimeClient();
     let activeSidecar = previousSidecar;
     let activeRuntime = previousRuntime;
-    setContainer({ sidecar: () => activeSidecar, client: () => activeRuntime });
-    const inspector = runtimeServiceInspector();
+    ({ client: activeClientProvider, sidecar: runtimeSidecar } = {
+      sidecar: () => activeSidecar,
+      client: () => activeRuntime,
+    });
+    const inspector = runtimeServiceInspector(getRuntimeClient, getRuntimeSidecar);
     const signal = new AbortController().signal;
     await inspector.inspect(signal);
 
@@ -91,10 +100,15 @@ describe("runtime service inspector", () => {
   it("consumes all sidecars and removes their HTTP representation", async () => {
     const client = sidecar();
     const runtime = runtimeClient();
-    setContainer({ sidecar: () => client, client: () => runtime });
+    ({ client: activeClientProvider, sidecar: runtimeSidecar } = {
+      sidecar: () => client,
+      client: () => runtime,
+    });
     const signal = new AbortController().signal;
 
-    await expect(runtimeServiceInspector().inspect(signal)).resolves.toEqual({
+    await expect(
+      runtimeServiceInspector(getRuntimeClient, getRuntimeSidecar).inspect(signal),
+    ).resolves.toEqual({
       processGeneration: "runtime_1",
       service: {
         server: { name: "flame", version: "1.2.3" },
@@ -126,11 +140,16 @@ describe("runtime service inspector", () => {
         },
       }),
     });
-    setContainer({ sidecar: () => client, client: () => runtimeClient() });
+    ({ client: activeClientProvider, sidecar: runtimeSidecar } = {
+      sidecar: () => client,
+      client: () => runtimeClient(),
+    });
 
-    await expect(runtimeServiceInspector().inspect(new AbortController().signal)).rejects.toThrow(
-      "incompatible rpc endpoint",
-    );
+    await expect(
+      runtimeServiceInspector(getRuntimeClient, getRuntimeSidecar).inspect(
+        new AbortController().signal,
+      ),
+    ).rejects.toThrow("incompatible rpc endpoint");
   });
 
   it("refuses a split observation from different HTTP and RPC server identities", async () => {
@@ -139,14 +158,16 @@ describe("runtime service inspector", () => {
       ...discovery,
       serverInfo: { ...discovery.serverInfo, version: "9.9.9" },
     };
-    setContainer({
+    ({ client: activeClientProvider, sidecar: runtimeSidecar } = {
       sidecar: () => client,
       client: () => runtimeClient(vi.fn().mockResolvedValue(mismatched)),
     });
 
-    await expect(runtimeServiceInspector().inspect(new AbortController().signal)).rejects.toThrow(
-      "different servers",
-    );
+    await expect(
+      runtimeServiceInspector(getRuntimeClient, getRuntimeSidecar).inspect(
+        new AbortController().signal,
+      ),
+    ).rejects.toThrow("different servers");
   });
 
   it("refuses one inspection stitched across Runtime process generations", async () => {
@@ -172,14 +193,16 @@ describe("runtime service inspector", () => {
       ...discovery,
       serverInfo: { ...discovery.serverInfo, instanceId: "runtime_successor" },
     } satisfies DiscoverResponse;
-    setContainer({
+    ({ client: activeClientProvider, sidecar: runtimeSidecar } = {
       sidecar: () => client,
       client: () => runtimeClient(vi.fn().mockResolvedValue(successor)),
     });
 
-    await expect(runtimeServiceInspector().inspect(new AbortController().signal)).rejects.toThrow(
-      "different Runtime process generations",
-    );
+    await expect(
+      runtimeServiceInspector(getRuntimeClient, getRuntimeSidecar).inspect(
+        new AbortController().signal,
+      ),
+    ).rejects.toThrow("different Runtime process generations");
   });
 
   it("cancels sibling sidecars when one member of the inspection fails", async () => {
@@ -195,11 +218,16 @@ describe("runtime service inspector", () => {
       }),
       readiness: vi.fn().mockRejectedValue(new Error("readiness failed")),
     });
-    setContainer({ sidecar: () => client, client: () => runtimeClient() });
+    ({ client: activeClientProvider, sidecar: runtimeSidecar } = {
+      sidecar: () => client,
+      client: () => runtimeClient(),
+    });
 
-    await expect(runtimeServiceInspector().inspect(new AbortController().signal)).rejects.toThrow(
-      "readiness failed",
-    );
+    await expect(
+      runtimeServiceInspector(getRuntimeClient, getRuntimeSidecar).inspect(
+        new AbortController().signal,
+      ),
+    ).rejects.toThrow("readiness failed");
     expect(infoSignal?.aborted).toBe(true);
   });
 
@@ -216,11 +244,16 @@ describe("runtime service inspector", () => {
       }),
     });
     const discover = vi.fn().mockRejectedValue(new Error("protocol mismatch"));
-    setContainer({ sidecar: () => client, client: () => runtimeClient(discover) });
+    ({ client: activeClientProvider, sidecar: runtimeSidecar } = {
+      sidecar: () => client,
+      client: () => runtimeClient(discover),
+    });
 
-    await expect(runtimeServiceInspector().inspect(new AbortController().signal)).rejects.toThrow(
-      "protocol mismatch",
-    );
+    await expect(
+      runtimeServiceInspector(getRuntimeClient, getRuntimeSidecar).inspect(
+        new AbortController().signal,
+      ),
+    ).rejects.toThrow("protocol mismatch");
     expect(liveSignal?.aborted).toBe(true);
   });
 
@@ -242,11 +275,16 @@ describe("runtime service inspector", () => {
     const discover = vi.fn(() => {
       throw failure;
     });
-    setContainer({ sidecar: () => client, client: () => runtimeClient(discover) });
+    ({ client: activeClientProvider, sidecar: runtimeSidecar } = {
+      sidecar: () => client,
+      client: () => runtimeClient(discover),
+    });
 
-    await expect(runtimeServiceInspector().inspect(new AbortController().signal)).rejects.toBe(
-      failure,
-    );
+    await expect(
+      runtimeServiceInspector(getRuntimeClient, getRuntimeSidecar).inspect(
+        new AbortController().signal,
+      ),
+    ).rejects.toBe(failure);
     expect(canceled).toHaveBeenCalledTimes(3);
   });
 });

@@ -1,27 +1,30 @@
+import { createBrowserHost } from "@/platform/browserHost";
+import { installLocalWorkspaceActions } from "@/plugins/builtin/workspace/adapters/localWorkspaceActions";
+import { HOOKS_KEY } from "@/plugins/builtin/settings/hooks/public/queries";
 import { queryClient } from "@/lib/queryClient";
 import { WORKSPACE_DOCK_CATALOG } from "@/plugins/builtin/workspace/public/navigation";
 import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
 import shortcutsSettings from "@/plugins/builtin/command/shortcuts";
 import { useRuntimeConnectionStore } from "@/plugins/builtin/runtime/adapters/runtimeConnectionProjection";
-import { kernelSettings } from "@/plugins/builtin/shell/kernel";
+import { workbenchSettings } from "@/plugins/builtin/shell/workbench";
 import appearanceSettings from "@/plugins/builtin/settings/appearance";
-import providersSettings from "@/plugins/builtin/settings/providers";
+import { createProvidersPlugin } from "@/plugins/builtin/providers";
 import approvalsSettings from "@/plugins/builtin/settings/approvals";
 import brandIconsSettings from "@/plugins/builtin/settings/icon-gallery";
 import diagnosticsView from "@/plugins/builtin/workspace/diagnostics";
 import connectionSettings from "@/plugins/builtin/settings/connection-settings";
-import hooksSettings from "@/plugins/builtin/settings/hooks";
-import mcpServersSettings from "@/plugins/builtin/settings/mcp-servers";
+import { createHooksPlugin } from "@/plugins/builtin/settings/hooks";
+import { createMCPServersPlugin } from "@/plugins/builtin/settings/mcp-servers";
 import personalizationSettings from "@/plugins/builtin/settings/personalization";
 import pluginsSettings from "@/plugins/builtin/settings/plugins-pane";
-import usageSettings from "@/plugins/builtin/settings/usage";
+import { createUsagePlugin } from "@/plugins/builtin/settings/usage";
 import { configureUsageGateway } from "@/plugins/builtin/settings/usage/application/ports/usageGateway";
 import {
   EMBEDDING_ROLE_KEY,
   PROVIDERS_KEY,
   ProviderConfiguration,
   UTILITY_ROLE_KEY,
-} from "@/plugins/builtin/settings/providers/public/queries";
+} from "@/plugins/builtin/providers/public/queries";
 import {
   MCP_SERVERS_KEY,
   type MCPServerSettings,
@@ -56,10 +59,14 @@ import {
   timelineView,
   skillsView,
   agentMemoryView,
-} from "@/plugins/builtin/workspace/workspace-views";
+} from "@/plugins/builtin/workspace/views";
 import { DATA_PROVIDER, SHORTCUT, definePlugin } from "@/plugins/sdk";
 import type { AnyPlugin } from "dougong";
-import type { FeatureCapability, ServerCapabilities } from "@flame/runtime-contract/client";
+import type {
+  FlameClient,
+  FeatureCapability,
+  ServerCapabilities,
+} from "@flame/runtime-contract/client";
 import {
   useContextDockStore,
   WorkspaceFileFocus,
@@ -79,7 +86,8 @@ import {
   DOCK_VIEW_BY_STATE,
 } from "./workspaceFixtureStates";
 
-const ACTIVE_DIFF_FILE = "desktop/frontend/src/plugins/builtin/shell/kernel/panel/DockResizer.tsx";
+const ACTIVE_DIFF_FILE =
+  "desktop/frontend/src/plugins/builtin/shell/workbench/panel/DockResizer.tsx";
 
 const REVIEW_DIFF: WorkspaceDiff = {
   baseline: { type: "head", commit: "1234567890abcdef1234567890abcdef12345678" },
@@ -276,6 +284,11 @@ function workspaceDataPlugin(state: VisualWorkspaceState, review: WorkspaceDiff)
   return definePlugin({
     name: "flame.visual.workspace-data",
     setup(ctx) {
+      ctx.cleanup(installLocalWorkspaceActions(createBrowserHost(), () => false));
+      ctx.contribute(DATA_PROVIDER, {
+        key: HOOKS_KEY,
+        fetcher: async () => ({ hooks: [], projectTrusted: false }),
+      });
       ctx.contribute(DATA_PROVIDER, {
         key: SCHEDULES_KEY,
         fetcher: async () => VISUAL_SCHEDULES,
@@ -479,11 +492,13 @@ export interface VisualWorkspaceConfig {
 }
 
 export async function installVisualWorkspaceFixture(
+  runtimeClient: () => FlameClient,
   state: VisualWorkspaceState,
   theme: VisualWorkspaceTheme,
   { pane = "appearance", fullViewId = FULL_VIEW_ID, reviewFiles }: VisualWorkspaceConfig = {},
 ): Promise<void> {
   await installVisualAgentFixture(
+    runtimeClient,
     state === "dock-light"
       ? "running"
       : state === "dock-runs" || state === "dock-subagents"
@@ -494,7 +509,7 @@ export async function installVisualWorkspaceFixture(
   );
 
   installWorkspaceErrorClassifier();
-  installNotificationCentre();
+  installNotificationCentre(createBrowserHost());
   useRuntimeConnectionStore.setState({
     capabilities:
       state === "dock-feature-off"
@@ -548,28 +563,28 @@ export async function installVisualWorkspaceFixture(
   });
 
   await loadVisualPlugins([
-    workspaceDataPlugin(state, reviewFiles === undefined ? REVIEW_DIFF : scaledReview(reviewFiles)),
     diffView,
     fileView,
     timelineView,
     skillsView,
     agentMemoryView,
     diagnosticsView,
-    kernelSettings,
+    workbenchSettings,
     ...localePlugins,
     appearanceSettings,
-    providersSettings,
+    createProvidersPlugin(runtimeClient),
     shortcutsSettings,
     approvalsSettings,
     brandIconsSettings,
     connectionSettings,
-    hooksSettings,
-    mcpServersSettings,
+    createHooksPlugin(runtimeClient),
+    createMCPServersPlugin(runtimeClient),
     personalizationSettings,
     pluginsSettings,
-    usageSettings,
+    createUsagePlugin(runtimeClient),
     visualNotifier,
     visualShortcuts,
+    workspaceDataPlugin(state, reviewFiles === undefined ? REVIEW_DIFF : scaledReview(reviewFiles)),
   ]);
 
   const root = document.documentElement;

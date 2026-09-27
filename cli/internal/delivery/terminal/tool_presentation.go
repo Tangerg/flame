@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/domain/failure"
 )
 
@@ -57,33 +57,33 @@ type ToolPresentation struct {
 // generic presenter remains the final fallback.
 type ToolPresenter struct {
 	ID      string
-	Matches func(agent.ToolCall) bool
-	Present func(agent.ToolCall) ToolPresentation
+	Matches func(conversation.ToolCall) bool
+	Present func(conversation.ToolCall) ToolPresentation
 }
 
 func defaultToolPresenters() []ToolPresenter {
 	return []ToolPresenter{
-		kindToolPresenter("shell", agent.ToolShell, presentShellTool),
-		kindToolPresenter("edit", agent.ToolEdit, presentEditTool),
-		kindToolPresenter("read", agent.ToolRead, presentReadTool),
-		kindToolPresenter("search", agent.ToolSearch, presentSearchTool),
-		kindToolPresenter("web", agent.ToolWeb, presentWebTool),
-		kindToolPresenter("task", agent.ToolTask, presentTaskTool),
-		{ID: "generic", Matches: func(agent.ToolCall) bool { return true }, Present: presentUnknownTool},
+		kindToolPresenter("shell", conversation.ToolShell, presentShellTool),
+		kindToolPresenter("edit", conversation.ToolEdit, presentEditTool),
+		kindToolPresenter("read", conversation.ToolRead, presentReadTool),
+		kindToolPresenter("search", conversation.ToolSearch, presentSearchTool),
+		kindToolPresenter("web", conversation.ToolWeb, presentWebTool),
+		kindToolPresenter("task", conversation.ToolTask, presentTaskTool),
+		{ID: "generic", Matches: func(conversation.ToolCall) bool { return true }, Present: presentUnknownTool},
 	}
 }
 
-func kindToolPresenter(id string, kind agent.ToolKind, present func(agent.ToolCall) ToolPresentation) ToolPresenter {
+func kindToolPresenter(id string, kind conversation.ToolKind, present func(conversation.ToolCall) ToolPresentation) ToolPresenter {
 	return ToolPresenter{
 		ID: id,
-		Matches: func(call agent.ToolCall) bool {
+		Matches: func(call conversation.ToolCall) bool {
 			return call.Kind == kind
 		},
 		Present: present,
 	}
 }
 
-func presentShellTool(call agent.ToolCall) ToolPresentation {
+func presentShellTool(call conversation.ToolCall) ToolPresentation {
 	return ToolPresentation{
 		Label: shellToolLabel(call),
 		Sections: toolSections(call, ToolSection{
@@ -92,7 +92,7 @@ func presentShellTool(call agent.ToolCall) ToolPresentation {
 	}
 }
 
-func presentEditTool(call agent.ToolCall) ToolPresentation {
+func presentEditTool(call conversation.ToolCall) ToolPresentation {
 	return ToolPresentation{
 		Label: toolKindLabel("edit", toolPrimary(call.Path, call.Summary)),
 		Sections: toolSections(call, ToolSection{
@@ -101,7 +101,7 @@ func presentEditTool(call agent.ToolCall) ToolPresentation {
 	}
 }
 
-func presentReadTool(call agent.ToolCall) ToolPresentation {
+func presentReadTool(call conversation.ToolCall) ToolPresentation {
 	return ToolPresentation{
 		Label: toolKindLabel("read", toolPrimary(call.Path, call.Summary)),
 		Sections: toolSections(call, ToolSection{
@@ -110,7 +110,7 @@ func presentReadTool(call agent.ToolCall) ToolPresentation {
 	}
 }
 
-func presentSearchTool(call agent.ToolCall) ToolPresentation {
+func presentSearchTool(call conversation.ToolCall) ToolPresentation {
 	return ToolPresentation{
 		Label: toolKindLabel("search", toolPrimary(call.Query, call.Summary)),
 		Sections: toolSections(call, ToolSection{
@@ -119,7 +119,7 @@ func presentSearchTool(call agent.ToolCall) ToolPresentation {
 	}
 }
 
-func presentWebTool(call agent.ToolCall) ToolPresentation {
+func presentWebTool(call conversation.ToolCall) ToolPresentation {
 	return ToolPresentation{
 		Label: toolKindLabel("web", toolPrimary(call.URL, call.Summary)),
 		Sections: toolSections(call, ToolSection{
@@ -128,7 +128,7 @@ func presentWebTool(call agent.ToolCall) ToolPresentation {
 	}
 }
 
-func presentTaskTool(call agent.ToolCall) ToolPresentation {
+func presentTaskTool(call conversation.ToolCall) ToolPresentation {
 	return ToolPresentation{
 		Label: toolKindLabel("task", strings.TrimSpace(call.Summary)),
 		Sections: toolSections(call, ToolSection{
@@ -137,7 +137,7 @@ func presentTaskTool(call agent.ToolCall) ToolPresentation {
 	}
 }
 
-func presentUnknownTool(call agent.ToolCall) ToolPresentation {
+func presentUnknownTool(call conversation.ToolCall) ToolPresentation {
 	return ToolPresentation{
 		Label: unknownToolLabel(call),
 		Sections: toolSections(call, ToolSection{
@@ -146,7 +146,7 @@ func presentUnknownTool(call agent.ToolCall) ToolPresentation {
 	}
 }
 
-func toolSections(call agent.ToolCall, output ToolSection) []ToolSection {
+func toolSections(call conversation.ToolCall, output ToolSection) []ToolSection {
 	sections := make([]ToolSection, 0, 6)
 	metadata := make([]string, 0, 3)
 	if call.Safety != "" {
@@ -193,7 +193,7 @@ func toolSections(call agent.ToolCall, output ToolSection) []ToolSection {
 	return sections
 }
 
-func selectToolPresentation(presenters []ToolPresenter, call agent.ToolCall) (ToolPresentation, error) {
+func selectToolPresentation(presenters []ToolPresenter, call conversation.ToolCall) (ToolPresentation, error) {
 	if len(presenters) == 0 {
 		presenters = defaultToolPresenters()
 	} else {
@@ -236,7 +236,7 @@ func validateToolPresenter(presenter ToolPresenter) error {
 	}
 }
 
-func matchToolSafely(presenter ToolPresenter, call agent.ToolCall) (matched bool, err error) {
+func matchToolSafely(presenter ToolPresenter, call conversation.ToolCall) (matched bool, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			err = fmt.Errorf("tool presenter %q matcher panicked: %v", presenter.ID, recovered)
@@ -245,7 +245,7 @@ func matchToolSafely(presenter ToolPresenter, call agent.ToolCall) (matched bool
 	return presenter.Matches(call), nil
 }
 
-func presentToolSafely(presenter ToolPresenter, call agent.ToolCall) (presentation ToolPresentation, err error) {
+func presentToolSafely(presenter ToolPresenter, call conversation.ToolCall) (presentation ToolPresentation, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			err = fmt.Errorf("tool presenter %q projection panicked: %v", presenter.ID, recovered)
@@ -254,7 +254,7 @@ func presentToolSafely(presenter ToolPresenter, call agent.ToolCall) (presentati
 	return presenter.Present(call), nil
 }
 
-func toolLabel(call agent.ToolCall) string {
+func toolLabel(call conversation.ToolCall) string {
 	presentation, err := selectToolPresentation(nil, call)
 	if err != nil {
 		return unknownToolLabel(call)
@@ -262,7 +262,7 @@ func toolLabel(call agent.ToolCall) string {
 	return presentation.Label
 }
 
-func shellToolLabel(call agent.ToolCall) string {
+func shellToolLabel(call conversation.ToolCall) string {
 	primary := toolPrimary(call.Command, call.Summary)
 	if primary == "" {
 		return "shell"
@@ -270,7 +270,7 @@ func shellToolLabel(call agent.ToolCall) string {
 	return "$ " + primary
 }
 
-func unknownToolLabel(call agent.ToolCall) string {
+func unknownToolLabel(call conversation.ToolCall) string {
 	name := strings.TrimSpace(call.Name)
 	if name == "" {
 		name = "tool"

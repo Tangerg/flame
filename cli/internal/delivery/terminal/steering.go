@@ -7,10 +7,11 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
 	runworkflow "github.com/Tangerg/flame/cli/internal/application/agent/run"
-	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/application/mutation"
+	"github.com/Tangerg/flame/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 )
 
 func (a *app) steerRun(instruction string) error {
@@ -19,19 +20,19 @@ func (a *app) steerRun(instruction string) error {
 		return errors.New("/steer needs a non-empty instruction")
 	}
 	runID, segmentID := a.execution.conversation.RunID(), a.execution.conversation.SegmentID()
-	if runID == "" || segmentID == "" || a.execution.conversation.Phase() != agent.ConversationRunning {
+	if runID == "" || segmentID == "" || a.execution.conversation.Phase() != conversation.Running {
 		return errors.New("no observed run segment is available to steer")
 	}
 	draft, _, err := a.currentDraft()
 	if err != nil {
 		return err
 	}
-	message := agent.Message{Text: instruction, Attachments: slices.Clone(draft.Attachments)}
+	message := prompt.Message{Text: instruction, Attachments: slices.Clone(draft.Attachments)}
 	if validateMessageCapabilitiesErr := a.validateMessageCapabilities(message); validateMessageCapabilitiesErr != nil {
 		return validateMessageCapabilitiesErr
 	}
 	commandID := mutation.NewCommandID()
-	request := agent.SteerRun{CommandID: commandID, RunID: runID, SegmentID: segmentID, Message: message}
+	request := prompt.SteerRun{CommandID: commandID, RunID: runID, SegmentID: segmentID, Message: message}
 	if validateErr := request.Validate(); validateErr != nil {
 		return validateErr
 	}
@@ -40,7 +41,7 @@ func (a *app) steerRun(instruction string) error {
 	// process stops before staging, restart restores the command for retry. The
 	// following aggregate replacement then transfers it and its attachments into
 	// the steer journal atomically.
-	sourceDraft := agent.Message{Text: "/steer " + instruction, Attachments: slices.Clone(draft.Attachments)}
+	sourceDraft := prompt.Message{Text: "/steer " + instruction, Attachments: slices.Clone(draft.Attachments)}
 	if saveDraftErr := a.saveDraft(sourceDraft); saveDraftErr != nil {
 		a.reportWorkbenchIssue(workbenchDraft, saveDraftErr)
 		return fmt.Errorf("steer blocked: save command draft: %w", saveDraftErr)
@@ -83,7 +84,7 @@ func (a *app) steerRun(instruction string) error {
 	return nil
 }
 
-func (a *app) deliverPreparedSteer(request agent.SteerRun, sourceDraft agent.Message, input *workbench.PreparedInput) error {
+func (a *app) deliverPreparedSteer(request prompt.SteerRun, sourceDraft prompt.Message, input *workbench.PreparedInput) error {
 	pending, err := runworkflow.StageSteer(
 		a.workbench, a.session.current.ID, request, sourceDraft, commandReplayPolicy(a.runtimeProfile), input,
 	)
@@ -92,8 +93,8 @@ func (a *app) deliverPreparedSteer(request agent.SteerRun, sourceDraft agent.Mes
 		return err
 	}
 	a.reportWorkbenchIssue(workbenchSteerOutbox, nil)
-	a.restoreComposer(agent.Message{})
-	a.draftState.Reset(a.session.current.ID, agent.Message{})
+	a.restoreComposer(prompt.Message{})
+	a.draftState.Reset(a.session.current.ID, prompt.Message{})
 	a.steers.track(pending)
 	started := a.runSessionSettlement(steerRunOperation, false,
 		func(ctx context.Context) (runworkflow.SteerResult, error) {
@@ -167,14 +168,14 @@ func (a *app) acknowledgeSteer(pending workbench.PendingSteer) error {
 	return nil
 }
 
-func (a *app) rejectSteer(pending workbench.PendingSteer) (agent.Message, error) {
+func (a *app) rejectSteer(pending workbench.PendingSteer) (prompt.Message, error) {
 	current, _, err := a.currentDraft()
 	if err != nil {
-		return agent.Message{}, fmt.Errorf("read composer for attachment recovery: %w", err)
+		return prompt.Message{}, fmt.Errorf("read composer for attachment recovery: %w", err)
 	}
 	if saveDraftErr := a.saveDraft(current); saveDraftErr != nil {
 		a.reportWorkbenchIssue(workbenchDraft, saveDraftErr)
-		return agent.Message{}, fmt.Errorf("save current session draft: %w", saveDraftErr)
+		return prompt.Message{}, fmt.Errorf("save current session draft: %w", saveDraftErr)
 	}
 	a.reportWorkbenchIssue(workbenchDraft, nil)
 	recovered, err := a.workbench.RejectPendingSteer(
@@ -182,16 +183,16 @@ func (a *app) rejectSteer(pending workbench.PendingSteer) (agent.Message, error)
 	)
 	if err != nil {
 		a.reportWorkbenchIssue(workbenchSteerOutbox, fmt.Errorf("settle rejected steer command: %w", err))
-		return agent.Message{}, fmt.Errorf("save restored attachments: %w", err)
+		return prompt.Message{}, fmt.Errorf("save restored attachments: %w", err)
 	}
 	a.reportWorkbenchIssue(workbenchSteerOutbox, nil)
 	return recovered, nil
 }
 
-func workbenchMergeSteerAttachments(a *app, rejected []agent.Attachment) agent.Message {
+func workbenchMergeSteerAttachments(a *app, rejected []prompt.Attachment) prompt.Message {
 	current, _, err := a.currentDraft()
 	if err != nil {
-		return agent.Message{Attachments: slices.Clone(rejected)}
+		return prompt.Message{Attachments: slices.Clone(rejected)}
 	}
 	return workbench.MergeSteerAttachments(current, rejected)
 }

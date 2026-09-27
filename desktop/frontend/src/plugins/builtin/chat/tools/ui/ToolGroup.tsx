@@ -7,7 +7,7 @@ import { useT } from "@/lib/i18n";
 import { toolGroupModel, type ToolGroupPinnedState } from "../application/toolGroupModel";
 import { ToolGroupMember } from "./ToolGroupMember";
 import { face, space, type as typeStep } from "@/styles/tokens.stylex";
-import { chatStyles as ct } from "../../chatStyles";
+import { chatStyles as ct } from "@/ui/agent/chatStyles";
 import { vocab } from "@/ui";
 
 interface Props {

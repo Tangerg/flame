@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/workbenchstate"
 	"os"
 	"path/filepath"
 	"slices"
@@ -12,28 +11,27 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/programtest"
-
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
-	"github.com/Tangerg/flame/cli/internal/application/agent/promptqueue"
 	"github.com/Tangerg/flame/cli/internal/application/agent/session"
-	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
+	"github.com/Tangerg/flame/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/oolong/core/input"
+	"github.com/Tangerg/oolong/core/programtest"
 )
 
 type postCommitSessionDeleteRuntime struct {
 	Runtime
 	mu      sync.Mutex
-	request agent.DeleteSession
+	request conversation.DeleteSession
 	calls   int
 	deleted chan struct{}
 }
 
-func (p *postCommitSessionDeleteRuntime) DeleteSession(ctx context.Context, request agent.DeleteSession) error {
+func (p *postCommitSessionDeleteRuntime) DeleteSession(ctx context.Context, request conversation.DeleteSession) error {
 	if err := p.Runtime.DeleteSession(ctx, request); err != nil {
 		return err
 	}
@@ -48,7 +46,7 @@ func (p *postCommitSessionDeleteRuntime) DeleteSession(ctx context.Context, requ
 	return errors.New("runtime cleanup failed after durable deletion")
 }
 
-func (p *postCommitSessionDeleteRuntime) deletion() (agent.DeleteSession, int) {
+func (p *postCommitSessionDeleteRuntime) deletion() (conversation.DeleteSession, int) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	return p.request, p.calls
@@ -59,34 +57,34 @@ func TestRetiringSessionStateClearsOnlyTheRetiredSession(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	queue := promptqueue.New()
+	prompts := newTestQueue(t, store)
 	for _, sessionID := range []string{"retired", "active"} {
-		if saveDraftErr := store.SaveDraft(sessionID, agent.Message{Text: sessionID + " draft"}); saveDraftErr != nil {
+		enqueueTestPrompt(t, prompts, sessionID, prompt.Message{Text: sessionID + " queued"})
+		if saveDraftErr := store.SaveDraft(sessionID, prompt.Message{Text: sessionID + " draft"}); saveDraftErr != nil {
 			t.Fatal(saveDraftErr)
 		}
-		enqueueTestPrompt(t, queue, sessionID, agent.Message{Text: sessionID + " queued"})
-		approval := agent.Approval{
+		approval := conversation.Approval{
 			RunID: sessionID + "_run", ItemID: sessionID + "_approval", Title: "Approve",
-			Tool: &agent.ToolCall{Kind: agent.ToolRead, Name: "read", Path: "README.md", Status: agent.ToolRunning},
+			Tool: &conversation.ToolCall{Kind: conversation.ToolRead, Name: "read", Path: "README.md", Status: conversation.ToolRunning},
 		}
 		if stagePendingResumeErr := store.StagePendingResume(sessionID, workbench.PendingResume{
-			Replay: commandreplay.UnprotectedGuard(),
-			Command: agent.ResumeRun{
-				CommandID: agent.CommandID("cli_" + map[string]string{
+			Replay: replay.UnprotectedGuard(),
+			Command: conversation.ResumeRun{
+				CommandID: replay.CommandID("cli_" + map[string]string{
 					"retired": "11111111111111111111111111111111",
 					"active":  "22222222222222222222222222222222",
 				}[sessionID]),
 				RunID: approval.RunID,
-				Answers: []agent.InterruptAnswer{{
-					ItemID: approval.ItemID, Answer: agent.ApprovalAnswer{Decision: protocol.ApprovalDeny},
+				Answers: []conversation.InterruptAnswer{{
+					ItemID: approval.ItemID, Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalDeny},
 				}},
 			},
-			Interactions: []agent.Interaction{approval},
+			Interactions: []conversation.Interaction{approval},
 		}, nil); stagePendingResumeErr != nil {
 			t.Fatal(stagePendingResumeErr)
 		}
 	}
-	application := &app{workbench: store, queue: queue}
+	application := &app{workbench: store, queue: prompts}
 
 	discarded, err := application.retireSessionState("retired")
 	if err != nil {
@@ -98,7 +96,7 @@ func TestRetiringSessionStateClearsOnlyTheRetiredSession(t *testing.T) {
 	if draft, found := store.Draft("retired"); found {
 		t.Fatalf("retired draft = %+v, found %t", draft, found)
 	}
-	if entries := queue.Snapshot("retired").Entries; len(entries) != 0 {
+	if entries := prompts.Snapshot("retired").Entries; len(entries) != 0 {
 		t.Fatalf("retired queue = %+v", entries)
 	}
 	if _, found := store.PendingResume("retired"); found {
@@ -107,7 +105,7 @@ func TestRetiringSessionStateClearsOnlyTheRetiredSession(t *testing.T) {
 	if draft, found := store.Draft("active"); !found || draft.Text != "active draft" {
 		t.Fatalf("active draft = %+v, found %t", draft, found)
 	}
-	if entries := queue.Snapshot("active").Entries; len(entries) != 1 || entries[0].Message.Text != "active queued" {
+	if entries := prompts.Snapshot("active").Entries; len(entries) != 1 || entries[0].Message.Text != "active queued" {
 		t.Fatalf("active queue = %+v", entries)
 	}
 	if _, found := store.PendingResume("active"); !found {
@@ -120,9 +118,9 @@ func TestSessionDraftTransitionMergesAnExistingDestinationDraft(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	baseline := agent.Message{Text: "source baseline"}
-	current := agent.Message{Text: "source baseline plus input authored during navigation"}
-	destination := agent.Message{Text: "destination draft"}
+	baseline := prompt.Message{Text: "source baseline"}
+	current := prompt.Message{Text: "source baseline plus input authored during navigation"}
+	destination := prompt.Message{Text: "destination draft"}
 	if err := store.SaveDraft("source", current); err != nil {
 		t.Fatal(err)
 	}
@@ -137,7 +135,7 @@ func TestSessionDraftTransitionMergesAnExistingDestinationDraft(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantDestination := agent.Message{Text: "destination draft\n\nsource baseline plus input authored during navigation"}
+	wantDestination := prompt.Message{Text: "destination draft\n\nsource baseline plus input authored during navigation"}
 	if !resolved.Equal(wantDestination) {
 		t.Fatalf("resolved draft = %+v, want %+v", resolved, wantDestination)
 	}
@@ -151,16 +149,16 @@ func TestSessionDraftTransitionMergesAnExistingDestinationDraft(t *testing.T) {
 
 func TestRetiringSessionStateClearsTheQueueAfterDurableTombstone(t *testing.T) {
 	directory := t.TempDir()
-	store, err := workbenchstate.Open(directory)
+	store, err := openTestWorkbench(directory)
 	if err != nil {
 		t.Fatal(err)
 	}
 	const sessionID = "session"
-	if saveDraftErr := store.SaveDraft(sessionID, agent.Message{Text: "keep authoring state"}); saveDraftErr != nil {
+	if saveDraftErr := store.SaveDraft(sessionID, prompt.Message{Text: "keep authoring state"}); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
-	queue := promptqueue.New()
-	enqueueTestPrompt(t, queue, sessionID, agent.Message{Text: "keep queued prompt"})
+	prompts := newTestQueue(t, store)
+	enqueueTestPrompt(t, prompts, sessionID, prompt.Message{Text: "keep queued prompt"})
 	entries, err := os.ReadDir(filepath.Join(directory, "sessions"))
 	if err != nil || len(entries) != 1 {
 		t.Fatalf("session state files = %d, %v", len(entries), err)
@@ -176,7 +174,7 @@ func TestRetiringSessionStateClearsTheQueueAfterDurableTombstone(t *testing.T) {
 		t.Fatal(writeFileErr)
 	}
 
-	application := &app{workbench: store, queue: queue}
+	application := &app{workbench: store, queue: prompts}
 	discarded, err := application.retireSessionState(sessionID)
 	if err != nil {
 		t.Fatal(err)
@@ -184,7 +182,7 @@ func TestRetiringSessionStateClearsTheQueueAfterDurableTombstone(t *testing.T) {
 	if discarded != 1 {
 		t.Fatalf("retirement reported %d discarded prompts", discarded)
 	}
-	if got := queue.Snapshot(sessionID).Entries; len(got) != 0 {
+	if got := prompts.Snapshot(sessionID).Entries; len(got) != 0 {
 		t.Fatalf("retirement left queue = %+v", got)
 	}
 	if draft, found := store.Draft(sessionID); found {
@@ -199,20 +197,20 @@ func TestRetiringSessionStateClearsTheQueueAfterDurableTombstone(t *testing.T) {
 func TestSessionCenterConvergesPostCommitDeleteFailureAndRetiresLocalState(t *testing.T) {
 	base := runtimefixture.New()
 	workspace := t.TempDir()
-	target, err := base.CreateSession(t.Context(), agent.CreateSession{Title: "Post-commit delete target", Workspace: workspace})
+	target, err := base.CreateSession(t.Context(), conversation.CreateSession{Title: "Post-commit delete target", Workspace: workspace})
 	if err != nil {
 		t.Fatal(err)
 	}
 	stateDirectory := t.TempDir()
-	store, err := workbenchstate.Open(stateDirectory)
+	store, err := openTestWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if saveDraftErr := store.SaveDraft(target.ID, agent.Message{Text: "must not survive deletion"}); saveDraftErr != nil {
+	if saveDraftErr := store.SaveDraft(target.ID, prompt.Message{Text: "must not survive deletion"}); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
 	backend := &postCommitSessionDeleteRuntime{Runtime: base, deleted: make(chan struct{}, 1)}
-	host, stop := runUIFromConfig(t, Config{Runtime: backend, SessionID: "ses_demo_1", StateDirectory: stateDirectory})
+	host, stop := runUIFromConfig(t, Config{Runtime: backend, SessionID: "ses_demo_1", OpenWorkbench: persistentTestWorkbench(stateDirectory)})
 	host.Shows(t, "Ask flame")
 	host.Send(input.Key{Code: input.Character, Rune: 'r', Mods: input.Ctrl})
 	host.Shows(t, "Sessions · Center")
@@ -232,10 +230,10 @@ func TestSessionCenterConvergesPostCommitDeleteFailureAndRetiresLocalState(t *te
 	if calls != 1 || request.SessionID != target.ID || request.CommandID == "" {
 		t.Fatalf("runtime deletion = %+v, calls %d", request, calls)
 	}
-	if _, getSessionErr := base.GetSession(t.Context(), target.ID); !errors.Is(getSessionErr, agent.ErrSessionNotFound) {
+	if _, getSessionErr := base.GetSession(t.Context(), target.ID); !errors.Is(getSessionErr, conversation.ErrSessionNotFound) {
 		t.Fatalf("deleted session read = %v", getSessionErr)
 	}
-	reopened, err := workbenchstate.Open(stateDirectory)
+	reopened, err := openTestWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -250,20 +248,20 @@ func TestSessionCenterConvergesPostCommitDeleteFailureAndRetiresLocalState(t *te
 func TestStartupReplaysPreparedSessionDeletionBeforeLoadingDrafts(t *testing.T) {
 	backend := runtimefixture.New()
 	workspace := t.TempDir()
-	target, err := backend.CreateSession(t.Context(), agent.CreateSession{Title: "Interrupted delete target", Workspace: workspace})
+	target, err := backend.CreateSession(t.Context(), conversation.CreateSession{Title: "Interrupted delete target", Workspace: workspace})
 	if err != nil {
 		t.Fatal(err)
 	}
 	stateDirectory := t.TempDir()
-	store, err := workbenchstate.Open(stateDirectory)
+	store, err := openTestWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if saveDraftErr := store.SaveDraft(target.ID, agent.Message{Text: "orphaned draft"}); saveDraftErr != nil {
+	if saveDraftErr := store.SaveDraft(target.ID, prompt.Message{Text: "orphaned draft"}); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
-	request := agent.DeleteSession{
-		CommandID: agent.CommandID("cli_66666666666666666666666666666666"), SessionID: target.ID,
+	request := conversation.DeleteSession{
+		CommandID: replay.CommandID("cli_66666666666666666666666666666666"), SessionID: target.ID,
 	}
 	if stageSessionDeletionErr := store.StageSessionDeletion(request, durableCommandReplayGuard(t)); stageSessionDeletionErr != nil {
 		t.Fatal(stageSessionDeletionErr)
@@ -272,10 +270,10 @@ func TestStartupReplaysPreparedSessionDeletionBeforeLoadingDrafts(t *testing.T) 
 	host, stop := runUIWithReplayState(t, backend, workspace, "ses_demo_1", stateDirectory)
 	host.Shows(t, "Ask flame")
 	stop()
-	if _, getSessionErr := backend.GetSession(t.Context(), target.ID); !errors.Is(getSessionErr, agent.ErrSessionNotFound) {
+	if _, getSessionErr := backend.GetSession(t.Context(), target.ID); !errors.Is(getSessionErr, conversation.ErrSessionNotFound) {
 		t.Fatalf("recovered deletion read = %v", getSessionErr)
 	}
-	reopened, err := workbenchstate.Open(stateDirectory)
+	reopened, err := openTestWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -313,7 +311,7 @@ func TestRollbackPreviewRejectsEverySessionRevisionChange(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := agent.RollbackSession{
+	request := conversation.RollbackSession{
 		SessionID: snapshot.Session.ID, ToRunID: snapshot.Runs[0].ID, Scope: protocol.RestoreFiles,
 	}
 	preview, err := previewRollback(snapshot, request)
@@ -335,7 +333,7 @@ func TestRollbackPreviewProvesOnlyTheExactHistoryOutcome(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := agent.RollbackSession{SessionID: before.Session.ID, Scope: protocol.RestoreHistory}
+	request := conversation.RollbackSession{SessionID: before.Session.ID, Scope: protocol.RestoreHistory}
 	preview, err := previewRollback(before, request)
 	if err != nil {
 		t.Fatal(err)
@@ -359,7 +357,7 @@ func TestRollbackPreviewProvesOnlyTheExactHistoryOutcome(t *testing.T) {
 	if validateAppliedErr := preview.ValidateApplied(wrong); validateAppliedErr == nil {
 		t.Fatal("rollback outcome with a surviving dropped run was accepted")
 	}
-	files, err := previewRollback(before, agent.RollbackSession{
+	files, err := previewRollback(before, conversation.RollbackSession{
 		SessionID: before.Session.ID, ToRunID: before.Runs[0].ID, Scope: protocol.RestoreFiles,
 	})
 	if err != nil {
@@ -407,27 +405,27 @@ type committedThenCanceledRollbackRuntime struct {
 
 func (c *committedThenCanceledRollbackRuntime) RollbackSession(
 	ctx context.Context,
-	request agent.RollbackSession,
-) (agent.RollbackResult, error) {
+	request conversation.RollbackSession,
+) (conversation.RollbackResult, error) {
 	if _, err := c.Runtime.RollbackSession(ctx, request); err != nil {
-		return agent.RollbackResult{}, err
+		return conversation.RollbackResult{}, err
 	}
 	c.once.Do(func() { close(c.committed) })
 	<-ctx.Done()
-	return agent.RollbackResult{}, context.Cause(ctx)
+	return conversation.RollbackResult{}, context.Cause(ctx)
 }
 
 type postCommitRollbackRuntime struct {
 	*runtimefixture.Runtime
 
 	mu      sync.Mutex
-	request agent.RollbackSession
+	request conversation.RollbackSession
 }
 
 func (p *postCommitRollbackRuntime) RollbackSession(
 	ctx context.Context,
-	request agent.RollbackSession,
-) (agent.RollbackResult, error) {
+	request conversation.RollbackSession,
+) (conversation.RollbackResult, error) {
 	result, err := p.Runtime.RollbackSession(ctx, request)
 	if err != nil {
 		return result, err
@@ -435,10 +433,10 @@ func (p *postCommitRollbackRuntime) RollbackSession(
 	p.mu.Lock()
 	p.request = request
 	p.mu.Unlock()
-	return agent.RollbackResult{}, errors.New("runtime cleanup failed after durable rollback")
+	return conversation.RollbackResult{}, errors.New("runtime cleanup failed after durable rollback")
 }
 
-func (p *postCommitRollbackRuntime) rollbackRequest() agent.RollbackSession {
+func (p *postCommitRollbackRuntime) rollbackRequest() conversation.RollbackSession {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	return p.request
@@ -482,7 +480,7 @@ func TestRollbackPreservesDraftAuthoredWhileTheRuntimeSettles(t *testing.T) {
 	close(backend.release)
 	host.Shows(t, "Why is the cache expiry test flaky?")
 	host.Shows(t, "new thought")
-	awaitStoredDraft(t, stateDirectory, "ses_demo_1", agent.Message{
+	awaitStoredDraft(t, stateDirectory, "ses_demo_1", prompt.Message{
 		Text: "Why is the cache expiry test flaky?\n\nnew thought",
 	})
 	stop()
@@ -509,7 +507,7 @@ func TestRestartRecoversCommittedRollbackAndOpeningInput(t *testing.T) {
 	)
 	restarted.Shows(t, "Why is the cache expiry test flaky?")
 	restarted.Shows(t, "recovered rollback input · 1 runs removed")
-	reopened, err := workbenchstate.Open(stateDirectory)
+	reopened, err := openTestWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -519,7 +517,7 @@ func TestRestartRecoversCommittedRollbackAndOpeningInput(t *testing.T) {
 	stopRestarted()
 }
 
-func (b *blockedRollbackRuntime) RollbackSession(ctx context.Context, request agent.RollbackSession) (agent.RollbackResult, error) {
+func (b *blockedRollbackRuntime) RollbackSession(ctx context.Context, request conversation.RollbackSession) (conversation.RollbackResult, error) {
 	select {
 	case b.entered <- struct{}{}:
 	default:
@@ -527,7 +525,7 @@ func (b *blockedRollbackRuntime) RollbackSession(ctx context.Context, request ag
 	select {
 	case <-b.release:
 	case <-ctx.Done():
-		return agent.RollbackResult{}, ctx.Err()
+		return conversation.RollbackResult{}, ctx.Err()
 	}
 	return b.Runtime.RollbackSession(ctx, request)
 }
@@ -556,7 +554,7 @@ func TestRollbackKeepsRecoveredTextAndReportsItsPersistenceFailure(t *testing.T)
 	host.Shows(t, "workbench:")
 	restoreWrites()
 	host.Type("!")
-	awaitStoredDraft(t, stateDirectory, "ses_demo_1", agent.Message{Text: "Why is the cache expiry test flaky?!"})
+	awaitStoredDraft(t, stateDirectory, "ses_demo_1", prompt.Message{Text: "Why is the cache expiry test flaky?!"})
 	host.Shows(t, "rolled back 1 runs; restored text was not saved")
 	host.Hides(t, "rolled back session · 1 runs removed")
 	stop()
@@ -568,11 +566,11 @@ func (i importingTransfer) ExportSession(context.Context, session.ExportRequest)
 	return session.Document{}, errors.New("unexpected export")
 }
 
-func (i importingTransfer) ImportSession(ctx context.Context, request session.ImportRequest) (agent.Session, error) {
+func (i importingTransfer) ImportSession(ctx context.Context, request session.ImportRequest) (conversation.Session, error) {
 	if err := request.Validate(); err != nil {
-		return agent.Session{}, err
+		return conversation.Session{}, err
 	}
-	return i.runtime.CreateSession(ctx, agent.CreateSession{Title: "Imported session", Workspace: "/tmp/flame-imported"})
+	return i.runtime.CreateSession(ctx, conversation.CreateSession{Title: "Imported session", Workspace: "/tmp/flame-imported"})
 }
 
 func TestImportRequiresConfirmationAndInstallsTheAuthoritativeSession(t *testing.T) {
@@ -586,7 +584,7 @@ func TestImportRequiresConfirmationAndInstallsTheAuthoritativeSession(t *testing
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{Runtime: backend, Transfers: importingTransfer{runtime: backend}, Workspace: workspace, Host: host})
+		done <- Run(ctx, Config{OpenWorkbench: memoryTestWorkbench, Runtime: backend, Transfers: importingTransfer{runtime: backend}, Workspace: workspace, Host: host})
 	}()
 	var once sync.Once
 	stop := func() {
@@ -666,19 +664,19 @@ type steeringRuntime struct {
 	*runtimefixture.Runtime
 
 	mu      sync.Mutex
-	request agent.SteerRun
+	request prompt.SteerRun
 	err     error
 }
 
 type blockedSteeringRuntime struct {
 	*runtimefixture.Runtime
 
-	entered chan agent.SteerRun
+	entered chan prompt.SteerRun
 	release chan struct{}
 	err     error
 }
 
-func (b *blockedSteeringRuntime) SteerRun(ctx context.Context, request agent.SteerRun) (protocol.SteerRunResponse, error) {
+func (b *blockedSteeringRuntime) SteerRun(ctx context.Context, request prompt.SteerRun) (protocol.SteerRunResponse, error) {
 	select {
 	case b.entered <- request:
 	case <-ctx.Done():
@@ -692,14 +690,14 @@ func (b *blockedSteeringRuntime) SteerRun(ctx context.Context, request agent.Ste
 	}
 }
 
-func (s *steeringRuntime) SteerRun(_ context.Context, request agent.SteerRun) (protocol.SteerRunResponse, error) {
+func (s *steeringRuntime) SteerRun(_ context.Context, request prompt.SteerRun) (protocol.SteerRunResponse, error) {
 	s.mu.Lock()
 	s.request = request
 	s.mu.Unlock()
 	return protocol.SteerRunResponse{}, s.err
 }
 
-func (s *steeringRuntime) lastSteer() agent.SteerRun {
+func (s *steeringRuntime) lastSteer() prompt.SteerRun {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	request := s.request
@@ -711,20 +709,20 @@ type uncertainSteeringRuntime struct {
 	*runtimefixture.Runtime
 
 	mu       sync.Mutex
-	requests []agent.SteerRun
+	requests []prompt.SteerRun
 	receipt  protocol.SteerRunResponse
 }
 
 type committedThenCanceledSteeringRuntime struct {
 	*runtimefixture.Runtime
 
-	committed chan agent.SteerRun
+	committed chan prompt.SteerRun
 	receipt   protocol.SteerRunResponse
 }
 
 func (c *committedThenCanceledSteeringRuntime) SteerRun(
 	ctx context.Context,
-	request agent.SteerRun,
+	request prompt.SteerRun,
 ) (protocol.SteerRunResponse, error) {
 	receipt, err := c.Runtime.SteerRun(ctx, request)
 	if err != nil {
@@ -742,12 +740,12 @@ func (c *committedThenCanceledSteeringRuntime) SteerRun(
 type cachedSteeringRuntime struct {
 	*runtimefixture.Runtime
 
-	accepted agent.SteerRun
-	attempts []agent.SteerRun
+	accepted prompt.SteerRun
+	attempts []prompt.SteerRun
 	receipt  protocol.SteerRunResponse
 }
 
-func (c *cachedSteeringRuntime) SteerRun(_ context.Context, request agent.SteerRun) (protocol.SteerRunResponse, error) {
+func (c *cachedSteeringRuntime) SteerRun(_ context.Context, request prompt.SteerRun) (protocol.SteerRunResponse, error) {
 	c.attempts = append(c.attempts, request.Clone())
 	if !request.Equal(c.accepted) {
 		return protocol.SteerRunResponse{}, errors.New("replayed steer does not match the accepted command")
@@ -755,7 +753,7 @@ func (c *cachedSteeringRuntime) SteerRun(_ context.Context, request agent.SteerR
 	return c.receipt, nil
 }
 
-func (u *uncertainSteeringRuntime) SteerRun(ctx context.Context, request agent.SteerRun) (protocol.SteerRunResponse, error) {
+func (u *uncertainSteeringRuntime) SteerRun(ctx context.Context, request prompt.SteerRun) (protocol.SteerRunResponse, error) {
 	u.mu.Lock()
 	u.requests = append(u.requests, request)
 	attempt := len(u.requests)
@@ -771,7 +769,7 @@ func (u *uncertainSteeringRuntime) SteerRun(ctx context.Context, request agent.S
 	return u.receipt, nil
 }
 
-func (u *uncertainSteeringRuntime) steerAttempts() []agent.SteerRun {
+func (u *uncertainSteeringRuntime) steerAttempts() []prompt.SteerRun {
 	u.mu.Lock()
 	defer u.mu.Unlock()
 	return slices.Clone(u.requests)
@@ -781,11 +779,11 @@ func TestSteerTargetsTheObservedSegmentAndRestoresAttachmentsOnRefusal(t *testin
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
-			{Event: agent.BlockStarted{Block: agent.Block{ID: "thinking", Kind: agent.BlockReasoning}}},
-			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
+			{Event: conversation.BlockStarted{Block: conversation.Block{ID: "thinking", Kind: conversation.BlockReasoning}}},
+			{Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
-	backend := &steeringRuntime{Runtime: base, err: agent.ErrStaleSegment}
+	backend := &steeringRuntime{Runtime: base, err: conversation.ErrStaleSegment}
 	workspace := t.TempDir()
 	attachment := filepath.Join(workspace, "notes.txt")
 	if err := os.WriteFile(attachment, []byte("notes"), 0o600); err != nil {
@@ -817,12 +815,12 @@ func TestSteerReportsWhenRejectedAttachmentsCannotBePersisted(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
-			{Event: agent.BlockStarted{Block: agent.Block{ID: "thinking", Kind: agent.BlockReasoning}}},
-			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
+			{Event: conversation.BlockStarted{Block: conversation.Block{ID: "thinking", Kind: conversation.BlockReasoning}}},
+			{Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	backend := &blockedSteeringRuntime{
-		Runtime: base, entered: make(chan agent.SteerRun, 1), release: make(chan struct{}), err: agent.ErrStaleSegment,
+		Runtime: base, entered: make(chan prompt.SteerRun, 1), release: make(chan struct{}), err: conversation.ErrStaleSegment,
 	}
 	workspace := t.TempDir()
 	stateDirectory := t.TempDir()
@@ -839,7 +837,7 @@ func TestSteerReportsWhenRejectedAttachmentsCannotBePersisted(t *testing.T) {
 	host.Type("/attach notes.txt")
 	host.Press(input.Enter)
 	host.Shows(t, "attached notes.txt")
-	var staged agent.Message
+	var staged prompt.Message
 	awaitState(t, "the attachment draft to become durable", func() bool {
 		var found bool
 		var err error
@@ -877,8 +875,8 @@ func TestSteerConfirmsATimedOutAcknowledgementWithOneIdentity(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
-			{Event: agent.BlockStarted{Block: agent.Block{ID: "thinking", Kind: agent.BlockReasoning}}},
-			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
+			{Event: conversation.BlockStarted{Block: conversation.Block{ID: "thinking", Kind: conversation.BlockReasoning}}},
+			{Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	backend := &uncertainSteeringRuntime{Runtime: base}
@@ -903,12 +901,12 @@ func TestRestartSettlesAcceptedSteerWithoutReturningItsAttachments(t *testing.T)
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
-			{Event: agent.BlockStarted{Block: agent.Block{ID: "thinking", Kind: agent.BlockReasoning}}},
-			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
+			{Event: conversation.BlockStarted{Block: conversation.Block{ID: "thinking", Kind: conversation.BlockReasoning}}},
+			{Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	runtime := &committedThenCanceledSteeringRuntime{
-		Runtime: base, committed: make(chan agent.SteerRun, 1),
+		Runtime: base, committed: make(chan prompt.SteerRun, 1),
 	}
 	workspace := t.TempDir()
 	stateDirectory := t.TempDir()
@@ -919,7 +917,7 @@ func TestRestartSettlesAcceptedSteerWithoutReturningItsAttachments(t *testing.T)
 	profile := steerReplayTestProfile(t, workspace)
 	host, stop := runUIFromConfig(t, Config{
 		Runtime: runtime, RuntimeProfile: &profile, Workspace: workspace,
-		StateDirectory: stateDirectory,
+		OpenWorkbench: persistentTestWorkbench(stateDirectory),
 	})
 	host.Shows(t, "Ask flame")
 	sessionID := firstRuntimeSession(t, base)
@@ -932,7 +930,7 @@ func TestRestartSettlesAcceptedSteerWithoutReturningItsAttachments(t *testing.T)
 	host.Type("/steer focus on parsing")
 	host.Press(input.Enter)
 	accepted := awaitSignalValue(t, runtime.committed, "accepted steer before acknowledgement")
-	store, err := workbenchstate.Open(stateDirectory)
+	store, err := openTestWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -942,17 +940,17 @@ func TestRestartSettlesAcceptedSteerWithoutReturningItsAttachments(t *testing.T)
 	}
 	stop()
 
-	replay := &cachedSteeringRuntime{Runtime: base, accepted: accepted, receipt: runtime.receipt}
+	replayGuard := &cachedSteeringRuntime{Runtime: base, accepted: accepted, receipt: runtime.receipt}
 	restarted, stopRestarted := runUIFromConfig(t, Config{
-		Runtime: replay, RuntimeProfile: &profile, Workspace: workspace,
-		SessionID: sessionID, StateDirectory: stateDirectory,
+		Runtime: replayGuard, RuntimeProfile: &profile, Workspace: workspace,
+		SessionID: sessionID, OpenWorkbench: persistentTestWorkbench(stateDirectory),
 	})
 	restarted.Shows(t, "focus on parsing")
 	restarted.Shows(t, "steer applied to model context")
-	if len(replay.attempts) != 1 || !replay.attempts[0].Equal(accepted) {
-		t.Fatalf("restart steer attempts = %+v", replay.attempts)
+	if len(replayGuard.attempts) != 1 || !replayGuard.attempts[0].Equal(accepted) {
+		t.Fatalf("restart steer attempts = %+v", replayGuard.attempts)
 	}
-	reopened, err := workbenchstate.Open(stateDirectory)
+	reopened, err := openTestWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}

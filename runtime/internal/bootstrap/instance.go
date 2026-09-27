@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	ownershipadapter "github.com/Tangerg/flame/runtime/internal/adapter/ownership"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/config"

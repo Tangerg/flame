@@ -14,7 +14,7 @@ import (
 type VCS struct{}
 
 func (VCS) Changes(ctx context.Context, root string, maxChanges int) ([]workspaceapp.FileChange, error) {
-	changes, err := ListChanges(ctx, root, maxChanges)
+	changes, err := git.ListChanges(ctx, root, maxChanges)
 	if err != nil {
 		return nil, vcsError(err)
 	}
@@ -38,7 +38,7 @@ func (VCS) StructuredDiff(
 	base bool,
 	maxFiles, maxRows, maxBytes int,
 ) (workspaceapp.StructuredDiffResult, error) {
-	result, err := Diff(ctx, root, path, base, maxFiles, maxRows, maxBytes)
+	result, err := git.Diff(ctx, root, path, diffMode(base), maxFiles, maxRows, maxBytes)
 	if err != nil {
 		return workspaceapp.StructuredDiffResult{}, vcsError(err)
 	}
@@ -70,7 +70,7 @@ func (VCS) StructuredDiff(
 }
 
 func (VCS) RawDiff(ctx context.Context, root, path string, base bool, maxBytes int) (workspaceapp.RawDiffResult, error) {
-	result, err := RawDiff(ctx, root, path, base, maxBytes)
+	result, err := git.RawDiff(ctx, root, path, diffMode(base), maxBytes)
 	return workspaceapp.RawDiffResult{
 		Baseline: workspaceapp.DiffBaseline{Type: workspaceapp.DiffBaselineType(result.Baseline.Type), Commit: result.Baseline.Commit},
 		Patch:    result.Patch,
@@ -122,4 +122,11 @@ func vcsError(err error) error {
 	default:
 		return err
 	}
+}
+
+func diffMode(base bool) git.Mode {
+	if base {
+		return git.Base
+	}
+	return git.Worktree
 }

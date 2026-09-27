@@ -6,9 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 func (r *Runtime) play(run *runState, steps []Step, interrupt bool) {
@@ -22,13 +21,13 @@ func (r *Runtime) playSteps(run *runState, steps []Step) bool {
 	for _, step := range steps {
 		if err := r.pause(run, step.Delay); err != nil {
 			if errors.Is(err, errCanceled) {
-				r.finish(run, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCanceled}})
+				r.finish(run, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCanceled}})
 			}
 			return false
 		}
 		switch {
 		case step.Event != nil:
-			if finished, done := step.Event.(agent.RunFinished); done {
+			if finished, done := step.Event.(conversation.RunFinished); done {
 				r.finish(run, finished)
 				return false
 			}
@@ -55,7 +54,7 @@ func (r *Runtime) park(run *runState) {
 	interactionEvents, err := r.interruptItemEventsLocked(run)
 	if err != nil {
 		r.mu.Unlock()
-		r.finish(run, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeFailed, Problem: &protocol.ProblemData{Type: protocol.ProblemInternalError, Detail: err.Error()}}})
+		r.finish(run, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeFailed, Problem: &protocol.ProblemData{Type: protocol.ProblemInternalError, Detail: err.Error()}}})
 		return
 	}
 	resolved, pending := r.resolveRememberedLocked(run, run.script.Interactions)
@@ -79,7 +78,7 @@ func (r *Runtime) park(run *runState) {
 		return
 	}
 	for _, answer := range resolved {
-		run.answers[answer.ItemID] = agent.CloneAnswer(answer.Answer)
+		run.answers[answer.ItemID] = conversation.CloneAnswer(answer.Answer)
 	}
 	if len(resolved) != 0 {
 		if err := r.emitAllLocked(run, approvalEvents); err != nil {
@@ -87,8 +86,8 @@ func (r *Runtime) park(run *runState) {
 			r.mu.Unlock()
 			return
 		}
-		if err := r.emitLocked(run, agent.BlockCompleted{Block: agent.Block{
-			ID: run.id + "_approval_rule", Kind: agent.BlockNotice,
+		if err := r.emitLocked(run, conversation.BlockCompleted{Block: conversation.Block{
+			ID: run.id + "_approval_rule", Kind: conversation.BlockNotice,
 			Text: "Applied remembered approval rules.",
 		}}); err != nil {
 			r.failSegmentLocked(run, err)
@@ -104,7 +103,7 @@ func (r *Runtime) park(run *runState) {
 			steps, err = continueSafely(run.script, answers)
 		}
 		if err != nil {
-			r.finish(run, agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeFailed, Problem: &protocol.ProblemData{Type: protocol.ProblemInternalError, Detail: err.Error()}}})
+			r.finish(run, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeFailed, Problem: &protocol.ProblemData{Type: protocol.ProblemInternalError, Detail: err.Error()}}})
 			return
 		}
 		r.mu.Lock()
@@ -117,9 +116,9 @@ func (r *Runtime) park(run *runState) {
 		return
 	}
 	run.status = protocol.RunStatusWaiting
-	run.interactions = agent.CloneInteractions(pending)
+	run.interactions = conversation.CloneInteractions(pending)
 	run.usage = run.script.InterruptUsage.Clone()
-	if err := r.emitLocked(run, agent.RunInterrupted{Interactions: agent.CloneInteractions(run.interactions), Usage: run.usage}); err != nil {
+	if err := r.emitLocked(run, conversation.RunInterrupted{Interactions: conversation.CloneInteractions(run.interactions), Usage: run.usage}); err != nil {
 		r.failSegmentLocked(run, err)
 		r.mu.Unlock()
 		return
@@ -133,74 +132,74 @@ func (r *Runtime) park(run *runState) {
 	r.mu.Unlock()
 }
 
-func (r *Runtime) interruptItemEventsLocked(run *runState) ([]agent.Event, error) {
+func (r *Runtime) interruptItemEventsLocked(run *runState) ([]conversation.Event, error) {
 	session := r.sessions[run.sessionID]
-	events := make([]agent.Event, 0, len(run.script.Interactions))
+	events := make([]conversation.Event, 0, len(run.script.Interactions))
 	for _, interaction := range run.script.Interactions {
-		itemID := agent.InteractionItemID(interaction)
+		itemID := conversation.InteractionItemID(interaction)
 		if block, exists := durableBlock(session, run.id, itemID); exists {
 			switch interaction.(type) {
-			case agent.Approval:
-				if block.Kind != agent.BlockTool || block.Status != agent.BlockStatusRunning {
+			case conversation.Approval:
+				if block.Kind != conversation.BlockTool || block.Status != conversation.BlockStatusRunning {
 					return nil, fmt.Errorf("approval item %s is not a running tool", itemID)
 				}
-			case agent.Question:
-				if block.Kind != agent.BlockQuestion || block.Status != agent.BlockStatusCompleted {
+			case conversation.Question:
+				if block.Kind != conversation.BlockQuestion || block.Status != conversation.BlockStatusCompleted {
 					return nil, fmt.Errorf("question item %s is not a completed question", itemID)
 				}
 			}
 			continue
 		}
 		switch item := interaction.(type) {
-		case agent.Approval:
-			events = append(events, agent.BlockStarted{Block: agent.Block{
-				ID: item.ItemID, Kind: agent.BlockTool, Tool: cloneTool(item.Tool),
+		case conversation.Approval:
+			events = append(events, conversation.BlockStarted{Block: conversation.Block{
+				ID: item.ItemID, Kind: conversation.BlockTool, Tool: cloneTool(item.Tool),
 			}})
-		case agent.Question:
+		case conversation.Question:
 			question := item.Clone()
-			events = append(events, agent.BlockCompleted{Block: agent.Block{
-				ID: item.ItemID, Kind: agent.BlockQuestion, Question: &question,
+			events = append(events, conversation.BlockCompleted{Block: conversation.Block{
+				ID: item.ItemID, Kind: conversation.BlockQuestion, Question: &question,
 			}})
 		}
 	}
 	return events, nil
 }
 
-func approvalCompletionEvents(run *runState, answers []agent.InterruptAnswer) []agent.Event {
-	events := make([]agent.Event, 0, len(answers))
+func approvalCompletionEvents(run *runState, answers []conversation.InterruptAnswer) []conversation.Event {
+	events := make([]conversation.Event, 0, len(answers))
 	for _, response := range answers {
 		approval := findApproval(run.script.Interactions, response.ItemID)
-		answer, ok := response.Answer.(agent.ApprovalAnswer)
+		answer, ok := response.Answer.(conversation.ApprovalAnswer)
 		if approval == nil || !ok {
 			continue
 		}
 		tool := cloneTool(approval.Tool)
-		tool.Status = agent.ToolOK
+		tool.Status = conversation.ToolOK
 		if answer.ArgumentOverride != nil {
 			tool.ArgumentsJSON = answer.ArgumentOverride.JSON()
 		}
 		if answer.Decision == protocol.ApprovalDeny {
-			tool.Status = agent.ToolError
+			tool.Status = conversation.ToolError
 			tool.Output = strings.TrimSpace(answer.Reason)
 			if tool.Output == "" {
 				tool.Output = "tool call denied by user"
 			}
 		}
-		events = append(events, agent.BlockCompleted{Block: agent.Block{ID: approval.ItemID, Kind: agent.BlockTool, Tool: tool}})
+		events = append(events, conversation.BlockCompleted{Block: conversation.Block{ID: approval.ItemID, Kind: conversation.BlockTool, Tool: tool}})
 	}
 	return events
 }
 
-func durableBlock(session *sessionState, runID, itemID string) (agent.Block, bool) {
+func durableBlock(session *sessionState, runID, itemID string) (conversation.Block, bool) {
 	for _, item := range session.items {
 		if item.runID == runID && item.block.ID == itemID {
 			return item.block.Clone(), true
 		}
 	}
-	return agent.Block{}, false
+	return conversation.Block{}, false
 }
 
-func cloneTool(tool *agent.ToolCall) *agent.ToolCall {
+func cloneTool(tool *conversation.ToolCall) *conversation.ToolCall {
 	if tool == nil {
 		return nil
 	}
@@ -227,7 +226,7 @@ func (r *Runtime) pause(run *runState, delay time.Duration) error {
 	}
 }
 
-func (r *Runtime) emit(run *runState, event agent.Event) bool {
+func (r *Runtime) emit(run *runState, event conversation.Event) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if run.status != protocol.RunStatusRunning {
@@ -252,14 +251,14 @@ func (r *Runtime) replacePlan(run *runState, steps []protocol.PlanStep) bool {
 		r.failSegmentLocked(run, fmt.Errorf("mock: commit scripted Plan: %w", err))
 		return false
 	}
-	if err := r.emitLocked(run, agent.PlanChanged{Plan: *plan}); err != nil {
+	if err := r.emitLocked(run, conversation.PlanChanged{Plan: *plan}); err != nil {
 		r.failSegmentLocked(run, err)
 		return false
 	}
 	return true
 }
 
-func (r *Runtime) emitAllLocked(run *runState, events []agent.Event) error {
+func (r *Runtime) emitAllLocked(run *runState, events []conversation.Event) error {
 	for _, event := range events {
 		if err := r.emitLocked(run, event); err != nil {
 			return err
@@ -268,7 +267,7 @@ func (r *Runtime) emitAllLocked(run *runState, events []agent.Event) error {
 	return nil
 }
 
-func (r *Runtime) emitLocked(run *runState, event agent.Event) error {
+func (r *Runtime) emitLocked(run *runState, event conversation.Event) error {
 	segment := run.segments[run.active]
 	if segment == nil {
 		return errors.New("mock: active run has no segment")
@@ -282,51 +281,51 @@ func (r *Runtime) emitLocked(run *runState, event agent.Event) error {
 		return err
 	}
 	switch item := event.(type) {
-	case agent.BlockStarted:
+	case conversation.BlockStarted:
 		item.Block.RunID = run.id
-		item.Block.Status = agent.BlockStatusRunning
+		item.Block.Status = conversation.BlockStatusRunning
 		event = item
-	case agent.BlockCompleted:
+	case conversation.BlockCompleted:
 		item.Block.RunID = run.id
-		if item.Block.Status != agent.BlockStatusIncomplete {
+		if item.Block.Status != conversation.BlockStatusIncomplete {
 			item.Block.Status = completedBlockStatus(item.Block)
 		}
 		event = item
-	case agent.RunInterrupted:
+	case conversation.RunInterrupted:
 		item.ContextTokens = run.contextTokens
 		event = item
-	case agent.RunSuspended:
+	case conversation.RunSuspended:
 		item.ContextTokens = run.contextTokens
 		event = item
-	case agent.RunFinished:
+	case conversation.RunFinished:
 		item.ContextTokens = run.contextTokens
 		event = item
 	}
-	envelope := agent.RunEvent{
+	envelope := conversation.RunEvent{
 		EventID: r.identities.next(eventIdentity), RunID: run.id,
-		SegmentID: segment.id, At: meta.UpdatedAt, Event: agent.CloneEvent(event),
+		SegmentID: segment.id, At: meta.UpdatedAt, Event: conversation.CloneEvent(event),
 	}
 	segment.events = append(segment.events, envelope)
 	session.meta = meta
 	switch item := event.(type) {
-	case agent.BlockStarted:
-		if item.Block.Kind == agent.BlockTool {
+	case conversation.BlockStarted:
+		if item.Block.Kind == conversation.BlockTool {
 			persistBlock(session, run.id, item.Block)
 		}
-	case agent.BlockCompleted:
+	case conversation.BlockCompleted:
 		persistBlock(session, run.id, item.Block)
-	case agent.PlanChanged:
-		session.plan = agent.ClonePlan(&item.Plan)
-	case agent.RunProgress:
+	case conversation.PlanChanged:
+		session.plan = conversation.ClonePlan(&item.Plan)
+	case conversation.RunProgress:
 		if item.ContextTokens != nil {
 			run.contextTokens = *item.ContextTokens
 		}
 		if item.Usage != nil {
 			run.usage = item.Usage.Clone()
 		}
-	case agent.RunInterrupted:
+	case conversation.RunInterrupted:
 		r.closeSegmentLocked(segment)
-	case agent.RunFinished:
+	case conversation.RunFinished:
 		r.closeSegmentLocked(segment)
 	}
 	close(segment.changed)
@@ -334,7 +333,7 @@ func (r *Runtime) emitLocked(run *runState, event agent.Event) error {
 	return nil
 }
 
-func persistBlock(session *sessionState, runID string, block agent.Block) {
+func persistBlock(session *sessionState, runID string, block conversation.Block) {
 	for i := range session.items {
 		if session.items[i].runID == runID && session.items[i].block.ID == block.ID {
 			session.items[i] = durableItem{runID: runID, block: block.Clone()}
@@ -362,7 +361,7 @@ func (r *Runtime) failSegmentLocked(run *runState, err error) {
 	segment.changed = make(chan struct{})
 }
 
-func (r *Runtime) finish(run *runState, event agent.RunFinished) {
+func (r *Runtime) finish(run *runState, event conversation.RunFinished) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if err := r.finishLocked(run, event); err != nil {
@@ -370,7 +369,7 @@ func (r *Runtime) finish(run *runState, event agent.RunFinished) {
 	}
 }
 
-func (r *Runtime) finishLocked(run *runState, event agent.RunFinished) error {
+func (r *Runtime) finishLocked(run *runState, event conversation.RunFinished) error {
 	if run.status == protocol.RunStatusFinished {
 		return nil
 	}
@@ -391,7 +390,7 @@ func (r *Runtime) finishLocked(run *runState, event agent.RunFinished) error {
 	run.usage = event.Usage.Clone()
 	if run.active != "" {
 		for _, block := range settlements {
-			if err := r.emitLocked(run, agent.BlockCompleted{Block: block}); err != nil {
+			if err := r.emitLocked(run, conversation.BlockCompleted{Block: block}); err != nil {
 				return err
 			}
 		}
@@ -409,22 +408,22 @@ func (r *Runtime) finishLocked(run *runState, event agent.RunFinished) error {
 	if session.planAtRun == nil {
 		session.planAtRun = make(map[string]*protocol.Plan)
 	}
-	session.planAtRun[run.id] = agent.ClonePlan(session.plan)
+	session.planAtRun[run.id] = conversation.ClonePlan(session.plan)
 	session.active = ""
 	return r.setSessionStatusLocked(session, protocol.SessionStatusIdle)
 }
 
-func (r *Runtime) runningItemSettlementsLocked(run *runState, outcome agent.Outcome) []agent.Block {
+func (r *Runtime) runningItemSettlementsLocked(run *runState, outcome conversation.Outcome) []conversation.Block {
 	session := r.sessions[run.sessionID]
-	var unsettled []agent.Block
+	var unsettled []conversation.Block
 	for _, item := range session.items {
-		if item.runID == run.id && item.block.Status == agent.BlockStatusRunning {
+		if item.runID == run.id && item.block.Status == conversation.BlockStatusRunning {
 			block := item.block.Clone()
-			block.Status = agent.BlockStatusIncomplete
+			block.Status = conversation.BlockStatusIncomplete
 			if block.Tool != nil {
-				block.Tool.Status = agent.ToolError
+				block.Tool.Status = conversation.ToolError
 				if outcome.Status == protocol.OutcomeCanceled {
-					block.Tool.Status = agent.ToolCanceled
+					block.Tool.Status = conversation.ToolCanceled
 				}
 			}
 			unsettled = append(unsettled, block)

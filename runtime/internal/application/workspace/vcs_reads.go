@@ -187,7 +187,7 @@ type Diff struct {
 
 // Changes reads the root's VCS status.
 func (v *VCS) Changes(ctx context.Context, cwd string) ([]FileChange, error) {
-	root, err := v.scope.root(cwd)
+	root, err := v.scope.ResolveRoot(cwd)
 	if err != nil {
 		return nil, err
 	}
@@ -212,7 +212,7 @@ func (v *VCS) Changes(ctx context.Context, cwd string) ([]FileChange, error) {
 // Diff reads a workspace VCS diff, keeping path confinement and file-boundary
 // truncation in the application use case.
 func (v *VCS) Diff(ctx context.Context, input DiffInput) (Diff, error) {
-	root, err := v.scope.root(input.CWD)
+	root, err := v.scope.ResolveRoot(input.CWD)
 	if err != nil {
 		return Diff{}, err
 	}

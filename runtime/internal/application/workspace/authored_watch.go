@@ -115,7 +115,7 @@ func (a *AuthoredWatch) Watch(cwds []string, resources []AuthoredResource, notif
 	seen := make(map[authoredScopeKey]struct{}, len(cwds))
 	scopes := make([]AuthoredScope, 0, len(cwds))
 	for _, cwd := range cwds {
-		root, err := a.scope.root(cwd)
+		root, err := a.scope.ResolveRoot(cwd)
 		if err != nil {
 			return nil, err
 		}

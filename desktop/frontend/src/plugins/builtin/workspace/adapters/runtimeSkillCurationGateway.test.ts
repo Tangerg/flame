@@ -1,5 +1,5 @@
+import { rejected } from "@/test/rejected";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { resetContainer, setContainer } from "@/main/container";
 import { RpcError, type FlameClient } from "@flame/runtime-contract/client";
 import {
   approveSkillProposal,
@@ -15,10 +15,27 @@ let installation: ReturnType<typeof installSkillCurationGateway> | undefined;
 afterEach(async () => {
   installation?.dispose();
   installation = undefined;
-  await resetContainer();
 });
 
 describe("runtimeSkillCurationGateway", () => {
+  it("captures a replacement client at the Runtime generation boundary", async () => {
+    const response = Promise.withResolvers<void>();
+    const retiredArchive = vi.fn(() => response.promise);
+    const successorArchive = vi.fn().mockResolvedValue(undefined);
+    let client = { skills: { archive: retiredArchive } } as unknown as FlameClient;
+    installation = installSkillCurationGateway(() => client);
+
+    const retired = rejected(archiveSkill("verify"));
+    await vi.waitFor(() => expect(retiredArchive).toHaveBeenCalledOnce());
+    client = { skills: { archive: successorArchive } } as unknown as FlameClient;
+    installation.replaceRuntimeGeneration();
+    await expect(retired).resolves.toMatchObject({ message: "skill_curation_generation_retired" });
+    await archiveSkill("verify");
+    expect(successorArchive).toHaveBeenCalledExactlyOnceWith("verify");
+    expect(retiredArchive).toHaveBeenCalledOnce();
+    response.resolve();
+  });
+
   it.each(["approveProposal", "rejectProposal"] as const)(
     "%ss against the workspace that supplied the reviewed proposal",
     async (decision) => {
@@ -27,14 +44,12 @@ describe("runtimeSkillCurationGateway", () => {
       const open = vi.fn().mockResolvedValue({
         skills: { approveProposal, rejectProposal },
       });
-      setContainer({
-        client: () =>
-          ({
-            skills: {},
-            workspaces: { open },
-          }) as unknown as FlameClient,
-      });
-      installation = installSkillCurationGateway();
+      const runtimeClient = () =>
+        ({
+          skills: {},
+          workspaces: { open },
+        }) as unknown as FlameClient;
+      installation = installSkillCurationGateway(() => runtimeClient());
 
       await (decision === "approveProposal" ? approveSkillProposal : rejectSkillProposal)({
         workspace: "/work/reviewed",
@@ -61,8 +76,8 @@ describe("runtimeSkillCurationGateway", () => {
       });
       const command = vi.fn().mockRejectedValue(cause);
       const open = vi.fn().mockResolvedValue({ skills: { [decision]: command } });
-      setContainer({ client: () => ({ workspaces: { open } }) as unknown as FlameClient });
-      installation = installSkillCurationGateway();
+      const runtimeClient = () => ({ workspaces: { open } }) as unknown as FlameClient;
+      installation = installSkillCurationGateway(() => runtimeClient());
       await expect(
         (decision === "approveProposal" ? approveSkillProposal : rejectSkillProposal)({
           workspace: "/repo",
@@ -84,10 +99,8 @@ describe("runtimeSkillCurationGateway", () => {
     async (decision) => {
       const archive = vi.fn().mockResolvedValue(undefined);
       const restore = vi.fn().mockResolvedValue(undefined);
-      setContainer({
-        client: () => ({ skills: { archive, restore } }) as unknown as FlameClient,
-      });
-      installation = installSkillCurationGateway();
+      const runtimeClient = () => ({ skills: { archive, restore } }) as unknown as FlameClient;
+      installation = installSkillCurationGateway(() => runtimeClient());
 
       await (decision === "archive" ? archiveSkill : restoreSkill)("verify");
 

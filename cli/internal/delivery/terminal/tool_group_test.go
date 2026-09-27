@@ -4,9 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/core/grid"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 func TestToolGroupObserverIdentityExhaustionPreservesExistingSubscription(t *testing.T) {
@@ -26,9 +25,9 @@ func TestToolGroupObserverIdentityExhaustionPreservesExistingSubscription(t *tes
 
 func TestAdjacentResourceToolsShareOneDisclosureWithoutLosingChildDetails(t *testing.T) {
 	view := testTranscriptView(t)
-	read := resourceTool(view, agent.ToolRead, "read · main.go", "package main")
+	read := resourceTool(view, conversation.ToolRead, "read · main.go", "package main")
 	first := view.addGroupedTool("run-1", read)
-	search := resourceTool(view, agent.ToolSearch, "search · TODO", "main.go:8")
+	search := resourceTool(view, conversation.ToolSearch, "search · TODO", "main.go:8")
 	second := view.addGroupedTool("run-1", search)
 	if first != second || view.content.Len() != 1 || len(first.block.tools) != 2 {
 		t.Fatalf("adjacent group = first %p second %p blocks %d children %d", first, second, view.content.Len(), len(first.block.tools))
@@ -58,9 +57,9 @@ func TestAdjacentResourceToolsShareOneDisclosureWithoutLosingChildDetails(t *tes
 
 func TestAConversationBlockClosesToolAdjacency(t *testing.T) {
 	view := testTranscriptView(t)
-	first := view.addGroupedTool("run-1", resourceTool(view, agent.ToolRead, "read · a.go", "a"))
+	first := view.addGroupedTool("run-1", resourceTool(view, conversation.ToolRead, "read · a.go", "a"))
 	view.Append(newUserMessageBlock(view.theme, selfSpeaker, "semantic boundary"))
-	second := view.addGroupedTool("run-1", resourceTool(view, agent.ToolWeb, "web · docs", "docs"))
+	second := view.addGroupedTool("run-1", resourceTool(view, conversation.ToolWeb, "web · docs", "docs"))
 	if first == second || view.content.Len() != 3 {
 		t.Fatalf("boundary did not split groups: first %p second %p blocks %d", first, second, view.content.Len())
 	}
@@ -71,19 +70,19 @@ func TestAConversationBlockClosesToolAdjacency(t *testing.T) {
 
 func TestLiveGroupedToolFinishesOnlyAfterItsAdjacencyWindowCloses(t *testing.T) {
 	view := testTranscriptView(t)
-	call := agent.ToolCall{Kind: agent.ToolRead, Path: "live.go", Status: agent.ToolRunning}
-	tool := newToolBlock(toolGroupPresentation(view), agent.Block{ID: "read", RunID: "run-1", Kind: agent.BlockTool, Tool: &call})
+	call := conversation.ToolCall{Kind: conversation.ToolRead, Path: "live.go", Status: conversation.ToolRunning}
+	tool := newToolBlock(toolGroupPresentation(view), conversation.Block{ID: "read", RunID: "run-1", Kind: conversation.BlockTool, Tool: &call})
 	group := view.addGroupedTool("run-1", tool)
 	tracked := trackedTool{id: group.id, block: tool}
 	key := transcriptBlockKey("run-1", "read")
 	view.tools[key] = liveTool{runID: "run-1", blocks: []trackedTool{tracked}, group: group}
-	if err := view.deltaTool(key, agent.BlockDelta{BlockID: "read", Text: "package live\n"}); err != nil {
+	if err := view.deltaTool(key, conversation.BlockDelta{BlockID: "read", Text: "package live\n"}); err != nil {
 		t.Fatal(err)
 	}
 	completed := call
-	completed.Status = agent.ToolOK
+	completed.Status = conversation.ToolOK
 	completed.Output = "package final\n"
-	if !view.completeLiveTool(agent.Block{ID: "read", RunID: "run-1", Kind: agent.BlockTool, Tool: &completed}) {
+	if !view.completeLiveTool(conversation.Block{ID: "read", RunID: "run-1", Kind: conversation.BlockTool, Tool: &completed}) {
 		t.Fatal("live grouped tool was not completed")
 	}
 	if view.content.Finished(group.id) {
@@ -98,17 +97,17 @@ func TestLiveGroupedToolFinishesOnlyAfterItsAdjacencyWindowCloses(t *testing.T) 
 	}
 }
 
-func resourceTool(view *transcriptView, kind agent.ToolKind, summary, output string) *toolBlock {
-	call := agent.ToolCall{Kind: kind, Summary: summary, Output: output, Status: agent.ToolOK}
+func resourceTool(view *transcriptView, kind conversation.ToolKind, summary, output string) *toolBlock {
+	call := conversation.ToolCall{Kind: kind, Summary: summary, Output: output, Status: conversation.ToolOK}
 	switch kind {
-	case agent.ToolRead:
+	case conversation.ToolRead:
 		call.Path = strings.TrimPrefix(summary, "read · ")
-	case agent.ToolSearch:
+	case conversation.ToolSearch:
 		call.Query = strings.TrimPrefix(summary, "search · ")
-	case agent.ToolWeb:
+	case conversation.ToolWeb:
 		call.URL = strings.TrimPrefix(summary, "web · ")
 	}
-	return newToolBlock(toolGroupPresentation(view), agent.Block{Kind: agent.BlockTool, Tool: &call})
+	return newToolBlock(toolGroupPresentation(view), conversation.Block{Kind: conversation.BlockTool, Tool: &call})
 }
 
 func toolGroupPresentation(view *transcriptView) BlockPresentation {

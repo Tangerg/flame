@@ -23,7 +23,7 @@ interface UsageSummaryReadModel {
   runs?: number;
 }
 
-export interface UsageGateway {
+interface UsageGateway {
   loadSummary(period: UsagePeriod, signal?: AbortSignal): Promise<UsageSummaryReadModel>;
 }
 

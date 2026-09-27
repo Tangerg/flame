@@ -1,5 +1,4 @@
-import type { RuntimeTopic } from "@flame/runtime-contract/client";
-import { getContainer } from "@/main/container";
+import type { FlameClient, RuntimeTopic } from "@flame/runtime-contract/client";
 import { RUNTIME_SUBSCRIBE_METHOD } from "@flame/runtime-contract/client/transport";
 import {
   runtimeCapability,
@@ -30,10 +29,11 @@ export function canSubscribeWorkspaceEvents(): boolean {
 }
 
 export async function subscribeRuntimeWorkspaceEvents(
+  runtimeClient: () => FlameClient,
   target: WorkspaceWatchTarget,
   signal: AbortSignal,
 ): Promise<AsyncIterable<WorkspaceEventLike>> {
-  const client = getContainer().client();
+  const client = runtimeClient();
   const requested = new Map<
     string | undefined,
     { watchId: string; cwd?: string; paths: Set<string> }

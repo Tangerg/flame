@@ -7,13 +7,12 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/protocol"
-	"github.com/Tangerg/oolong/core/input"
-
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
+	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/oolong/core/input"
 )
 
 type diagnosticToolServiceStub struct {
@@ -34,7 +33,7 @@ func (d *diagnosticToolServiceStub) Invoke(_ context.Context, invocation workspa
 
 func TestDiagnosticToolsRenderSchemaAndConfinedResultAcrossResize(t *testing.T) {
 	tools := &diagnosticToolServiceStub{invoked: make(chan workspace.DiagnosticToolInvocation, 1)}
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), DiagnosticTools: tools, Workspace: "/workspace"})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), DiagnosticTools: tools, Workspace: "/workspace"})
 	host.Shows(t, "Ask flame")
 	host.Type("/tools")
 	host.Press(input.Enter)
@@ -65,7 +64,7 @@ func (authoringContextServiceStub) Documents(context.Context, string) ([]protoco
 func TestAuthoringDocumentsUseTheUnifiedReaderPath(t *testing.T) {
 	runtime := &recordingRuntime{Runtime: runtimefixture.New()}
 	runtime.Instant = true
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtime, AuthoringContext: authoringContextServiceStub{}, Workspace: "/workspace"})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtime, AuthoringContext: authoringContextServiceStub{}, Workspace: "/workspace"})
 	host.Shows(t, "Ask flame")
 	host.Type("/agent-docs")
 	host.Press(input.Enter)
@@ -119,7 +118,7 @@ func (h *hookServiceStub) SetProjectTrust(_ context.Context, _ string, trusted b
 
 func TestHookAuditAndTrustRequireResizeSafeConfirmation(t *testing.T) {
 	hooks := &hookServiceStub{changed: make(chan bool, 1)}
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Hooks: hooks, Workspace: "/workspace"})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Hooks: hooks, Workspace: "/workspace"})
 	host.Shows(t, "Ask flame")
 	host.Type("/hooks")
 	host.Press(input.Enter)
@@ -144,7 +143,7 @@ func TestHookAuditAndTrustRequireResizeSafeConfirmation(t *testing.T) {
 
 func TestHookTrustDoesNotReportSuccessWhenAuthoritativeCatalogIsUnchanged(t *testing.T) {
 	hooks := &hookServiceStub{ignoreTrust: true, changed: make(chan bool, 1)}
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Hooks: hooks, Workspace: "/workspace"})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Hooks: hooks, Workspace: "/workspace"})
 	host.Shows(t, "Ask flame")
 	host.Type("/hooks-trust")
 	host.Press(input.Enter)
@@ -165,7 +164,7 @@ func TestHookChangeConvergesTheOpenAuditProjection(t *testing.T) {
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1), supported: []protocol.RuntimeTopic{protocol.TopicHooksChanged},
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Hooks: hooks, Changes: source, Workspace: "/workspace"})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Hooks: hooks, Changes: source, Workspace: "/workspace"})
 	host.Shows(t, "Ask flame")
 	subscription := awaitValue(t, source.subscription, "hook change subscription")
 	if !slices.Equal(subscription.Topics, []protocol.RuntimeTopic{protocol.TopicHooksChanged}) {
@@ -197,7 +196,7 @@ func TestHookTrustMutationOutlivesSameSessionProjectionReplacement(t *testing.T)
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1),
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: backend, Hooks: hooks, Changes: source, SessionID: "ses_demo_1"})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: backend, Hooks: hooks, Changes: source, SessionID: "ses_demo_1"})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "runtime change subscription")
 	host.Type("/hooks-trust")
@@ -208,7 +207,7 @@ func TestHookTrustMutationOutlivesSameSessionProjectionReplacement(t *testing.T)
 	if trusted := awaitValue(t, hooks.started, "hook trust mutation"); !trusted {
 		t.Fatal("hook trust mutation revoked trust")
 	}
-	if _, err := backend.RollbackSession(t.Context(), agent.RollbackSession{
+	if _, err := backend.RollbackSession(t.Context(), conversation.RollbackSession{
 		SessionID: "ses_demo_1", Scope: protocol.RestoreHistory,
 	}); err != nil {
 		t.Fatal(err)
@@ -271,7 +270,7 @@ func TestParseFeedbackRatingUsesRuntimeVocabulary(t *testing.T) {
 
 func TestFeedbackTargetsLatestDurableAssistantItem(t *testing.T) {
 	feedbacks := &feedbackServiceStub{recorded: make(chan protocol.FeedbackRequest, 1)}
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), Feedback: feedbacks, SessionID: "ses_demo_1"})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Feedback: feedbacks, SessionID: "ses_demo_1"})
 	host.Shows(t, "The fixed sleep races the janitor")
 	host.Type("/feedback positive useful explanation")
 	host.Press(input.Enter)
@@ -295,7 +294,7 @@ func TestFeedbackMutationOutlivesSameSessionProjectionReplacement(t *testing.T) 
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1),
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: backend, Feedback: feedbacks, Changes: source, SessionID: "ses_demo_1"})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: backend, Feedback: feedbacks, Changes: source, SessionID: "ses_demo_1"})
 	host.Shows(t, "The fixed sleep races the janitor")
 	awaitValue(t, source.subscription, "runtime change subscription")
 	host.Type("/feedback positive durable signal")

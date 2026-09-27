@@ -1,17 +1,16 @@
 package terminal
 
 import (
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 // sessionState owns the active Runtime projection and the lease that prevents
 // work started for an older Session from mutating its replacement.
 type sessionState struct {
-	current         agent.Session
+	current         conversation.Session
 	context         *sessionContextLease
 	invalidated     bool
 	draftTransition *sessionDraftTransition
@@ -21,7 +20,7 @@ type sessionState struct {
 // Durable Run facts remain owned by Runtime; these fields only track the local
 // stream, cancellation, and elapsed-time presentation lifecycle.
 type executionState struct {
-	conversation     *agent.Conversation
+	conversation     *conversation.Conversation
 	openingRunID     string
 	pendingCancel    *pendingCancellation
 	following        bool
@@ -50,10 +49,10 @@ func (a *app) runtimeChangeBlocksRunAdmission() bool {
 // application root makes it impossible to mistake dialog drafts, selections,
 // or readers for durable Runtime state.
 type dialogState struct {
-	approval            *agent.Approval
+	approval            *conversation.Approval
 	approvalDraft       *approvalDecisionDraft
 	approvalArguments   string
-	approvalOverride    *agent.ToolArgumentOverride
+	approvalOverride    *conversation.ToolArgumentOverride
 	approvalSections    []ToolSection
 	approvalEditor      *contextEditorSession
 	approvalForm        *headless.Form

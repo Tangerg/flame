@@ -1,14 +1,19 @@
+import type { FlameClient } from "@flame/runtime-contract/client";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { resetContainer, setContainer } from "@/main/container";
 import { createFlameClient } from "@flame/runtime-contract/client";
 import { createMemoryTransport } from "@flame/runtime-contract/client/transports/memory";
 import { respondSuccess } from "@flame/runtime-contract/client/transports/memory.testkit";
 import { AGENT_SESSION_USAGE_KEY, useAgentSessionUsage } from "../application/session/sessionUsage";
 import { installAgentRuntimeGateway } from "./agentRuntimeGateway";
 import { queryClient } from "@/lib/queryClient";
+
+let runtimeClient: () => FlameClient = () => {
+  throw new Error("Runtime test client is not configured");
+};
+const getRuntimeClient = () => runtimeClient();
 
 let transport: ReturnType<typeof createMemoryTransport>;
 let client: ReturnType<typeof createFlameClient>;
@@ -45,8 +50,8 @@ beforeEach(() => {
   queryClient.clear();
   transport = createMemoryTransport();
   client = createFlameClient(transport);
-  setContainer({ client: () => client });
-  restoreGateway = installAgentRuntimeGateway();
+  runtimeClient = () => client;
+  restoreGateway = installAgentRuntimeGateway(getRuntimeClient);
 });
 
 afterEach(async () => {
@@ -58,7 +63,7 @@ afterEach(async () => {
   restoreQueryDefaults?.();
   restoreQueryDefaults = undefined;
   await client.close();
-  await resetContainer();
+
   vi.restoreAllMocks();
 });
 
@@ -76,7 +81,7 @@ describe("mounted Session usage generation", () => {
     const cancelQueries = vi
       .spyOn(queryClient, "cancelQueries")
       .mockReturnValueOnce(handoffSettlement);
-    restoreGateway = installAgentRuntimeGateway();
+    restoreGateway = installAgentRuntimeGateway(getRuntimeClient);
 
     const hook = renderHook(() => useAgentSessionUsage("ses_future"), { wrapper });
     unmountHook = hook.unmount;
@@ -134,10 +139,10 @@ describe("mounted Session usage generation", () => {
     const successorTransport = createMemoryTransport();
     const successorClient = createFlameClient(successorTransport);
     const successorSend = vi.spyOn(successorTransport, "send");
-    setContainer({ client: () => successorClient });
+    runtimeClient = () => successorClient;
     let disposeSuccessor!: ReturnType<typeof installAgentRuntimeGateway>;
     await act(async () => {
-      disposeSuccessor = installAgentRuntimeGateway();
+      disposeSuccessor = installAgentRuntimeGateway(getRuntimeClient);
       await Promise.resolve();
     });
     restoreGateway?.dispose();

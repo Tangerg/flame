@@ -1,0 +1,378 @@
+package conversation
+
+import (
+	"bytes"
+	"encoding/json/jsontext"
+	json "encoding/json/v2"
+	"errors"
+	"fmt"
+	"slices"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/failure"
+	"github.com/Tangerg/flame/runtime/protocol"
+)
+
+// Errors a Runtime binding reports by identity rather than by message, mirroring the
+// symbolic names the runtime protocol uses for the same conditions. Commands
+// branch on these; nothing branches on error text.
+var (
+	ErrSessionNotFound      = errors.New("session not found")
+	ErrRunNotFound          = errors.New("run not found")
+	ErrInterruptNotOpen     = errors.New("interrupt not open")
+	ErrStaleSegment         = errors.New("stale segment")
+	ErrRunWaiting           = errors.New("run is waiting")
+	ErrRunFinished          = errors.New("run is finished")
+	ErrReplayCursorInvalid  = errors.New("event replay cursor is invalid")
+	ErrReplayUnavailable    = errors.New("event replay unavailable")
+	ErrSessionHasActiveRun  = errors.New("session has an active run")
+	ErrSessionBusy          = errors.New("session is busy")
+	ErrRevisionConflict     = errors.New("revision conflict")
+	ErrEventConflict        = errors.New("event identity conflict")
+	ErrCommandInProgress    = errors.New("command is still committing")
+	ErrCommandConflict      = errors.New("command identity conflict")
+	ErrCommandStoreMismatch = errors.New("command belongs to another runtime idempotency store")
+	ErrDisconnected         = errors.New("runtime disconnected")
+	ErrIncompatibleRuntime  = errors.New("runtime protocol is incompatible")
+)
+
+// BlockKind names what a transcript block is. The set is closed: an item a
+// Runtime binding cannot classify becomes a [BlockNotice], never a new
+// kind invented at the render site.
+type BlockKind string
+
+const (
+	BlockUser      BlockKind = "user"
+	BlockAssistant BlockKind = "assistant"
+	BlockReasoning BlockKind = "reasoning"
+	BlockQuestion  BlockKind = "question"
+	BlockTool      BlockKind = "tool"
+	BlockNotice    BlockKind = "notice"
+	BlockError     BlockKind = "error"
+)
+
+// BlockStatus is the durable lifecycle of a transcript item. Incomplete is a
+// terminal item-level failure; it does not imply that the owning Run failed.
+type BlockStatus string
+
+const (
+	BlockStatusRunning    BlockStatus = "running"
+	BlockStatusCompleted  BlockStatus = "completed"
+	BlockStatusIncomplete BlockStatus = "incomplete"
+)
+
+// Block is one renderable unit of a transcript. RunID preserves the durable
+// item's provenance across cold reads; ID identifies the item within that Run.
+type Block struct {
+	ID        string
+	RunID     string
+	Status    BlockStatus
+	Kind      BlockKind
+	CreatedAt time.Time
+	Redacted  bool
+	// DroppedMessages is meaningful only for a compaction notice.
+	DroppedMessages int
+	Attachments     []prompt.Attachment
+	Images          []InlineImage
+	// Text is the block's body. Assistant and reasoning bodies are markdown and
+	// arrive in pieces (see [BlockDelta]). Tool deltas append to Tool.Output;
+	// the remaining block kinds arrive whole.
+	Text string
+	// Question carries the durable prompt when Kind is [BlockQuestion]. Its
+	// ItemID is the same identity as this block's ID.
+	Question *Question
+	// Tool carries the call's projection when Kind is [BlockTool].
+	Tool *ToolCall
+}
+
+// BlockIdentity names one presentation block within its owning Run. Block IDs
+// are only run-local, so consumers must retain both fields as one value object.
+type BlockIdentity struct {
+	RunID   string
+	BlockID string
+}
+
+const blockIdentityLengthSeparator byte = ':'
+
+// Key serializes the value object for terminal frameworks that require string
+// keys. Length framing keeps arbitrary run and block IDs collision-free.
+func (i BlockIdentity) Key() string {
+	var encoded strings.Builder
+	encoded.Grow(len(i.RunID) + len(i.BlockID) + 2*4)
+	writeBlockIdentityField(&encoded, i.RunID)
+	writeBlockIdentityField(&encoded, i.BlockID)
+	return encoded.String()
+}
+
+func writeBlockIdentityField(encoded *strings.Builder, value string) {
+	encoded.WriteString(strconv.Itoa(len(value)))
+	encoded.WriteByte(blockIdentityLengthSeparator)
+	encoded.WriteString(value)
+}
+
+func (b Block) Identity() BlockIdentity {
+	return BlockIdentity{RunID: b.RunID, BlockID: b.ID}
+}
+
+// Clone returns a block with no mutable storage shared with the caller.
+func (b Block) Clone() Block {
+	b.Attachments = slices.Clone(b.Attachments)
+	b.Images = cloneInlineImages(b.Images)
+	if b.Question != nil {
+		question := cloneQuestion(*b.Question)
+		b.Question = &question
+	}
+	if b.Tool != nil {
+		tool := b.Tool.Clone()
+		b.Tool = &tool
+	}
+	return b
+}
+
+// Equal reports whether two blocks carry the same complete presentation fact.
+// It deliberately compares nested projections by value so replay consistency
+// does not depend on pointer identity or on a reflection-based struct layout.
+func (b Block) Equal(other Block) bool {
+	if b.ID != other.ID || b.RunID != other.RunID || b.Status != other.Status || b.Kind != other.Kind ||
+		!b.CreatedAt.Equal(other.CreatedAt) || b.Redacted != other.Redacted || b.DroppedMessages != other.DroppedMessages ||
+		b.Text != other.Text || !slices.Equal(b.Attachments, other.Attachments) || !equalInlineImages(b.Images, other.Images) {
+		return false
+	}
+	if (b.Question == nil) != (other.Question == nil) ||
+		(b.Question != nil && !b.Question.Equal(*other.Question)) {
+		return false
+	}
+	return (b.Tool == nil) == (other.Tool == nil) &&
+		(b.Tool == nil || b.Tool.Equal(*other.Tool))
+}
+
+// InlineImage is model-produced media embedded in an assistant message. It is
+// deliberately separate from Attachment: attachments are workspace-backed
+// authoring inputs, while an inline image is immutable output owned by the
+// transcript itself.
+type InlineImage struct {
+	ID       string
+	Name     string
+	MIMEType string
+	Data     []byte
+}
+
+func (i InlineImage) Clone() InlineImage {
+	i.Data = bytes.Clone(i.Data)
+	return i
+}
+
+func (i InlineImage) Equal(other InlineImage) bool {
+	return i.ID == other.ID && i.Name == other.Name && i.MIMEType == other.MIMEType &&
+		bytes.Equal(i.Data, other.Data)
+}
+
+func cloneInlineImages(images []InlineImage) []InlineImage {
+	if images == nil {
+		return nil
+	}
+	cloned := make([]InlineImage, len(images))
+	for index, image := range images {
+		cloned[index] = image.Clone()
+	}
+	return cloned
+}
+
+func equalInlineImages(left, right []InlineImage) bool {
+	return slices.EqualFunc(left, right, func(left, right InlineImage) bool { return left.Equal(right) })
+}
+
+// ToolStatus is where a tool call is in its life.
+type ToolStatus string
+
+const (
+	ToolRunning  ToolStatus = "running"
+	ToolOK       ToolStatus = "ok"
+	ToolError    ToolStatus = "error"
+	ToolCanceled ToolStatus = "canceled"
+)
+
+// ToolKind is a terminal-relevant semantic category assigned by a runtime
+// adapter. Delivery adapters switch on this closed projection, never on a
+// provider's tool name.
+type ToolKind string
+
+const (
+	ToolUnknown ToolKind = "unknown"
+	ToolShell   ToolKind = "shell"
+	ToolEdit    ToolKind = "edit"
+	ToolRead    ToolKind = "read"
+	ToolSearch  ToolKind = "search"
+	ToolWeb     ToolKind = "web"
+	ToolTask    ToolKind = "task"
+)
+
+// ToolCall is a tool invocation as the Runtime binding chose to present it.
+//
+// Every field is a projection the adapter already computed. Name preserves the
+// provider-facing label for diagnostics; Kind and the structured fields below
+// are the stable vocabulary renderers use. This keeps provider tool semantics in
+// one adapter rather than rediscovering them in every UI.
+type ToolCall struct {
+	Kind       ToolKind
+	Name       string
+	Summary    string
+	Status     ToolStatus
+	Safety     protocol.SafetyClass
+	StartedAt  time.Time
+	FinishedAt time.Time
+	Command    string
+	Path       string
+	Query      string
+	URL        string
+	Output     string
+	// ArgumentsJSON and ResultJSON preserve the complete, normalized JSON
+	// values for generic presenters and machine consumers. Semantic fields such
+	// as Command and Path remain the high-quality projection for known tools.
+	ArgumentsJSON []byte
+	// ArgumentsText preserves the original input of a rejected call.
+	ArgumentsText string
+	ResultJSON    []byte
+	// Problem retains the structured tool-level failure, including documentation,
+	// retry guidance, and capability or field-level details.
+	Problem *protocol.ProblemData
+	// Diff is a unified diff when the call changed files.
+	Diff string
+	// ExitCode is set for completed process-like tools. Nil distinguishes an
+	// absent code from a successful zero.
+	ExitCode *int
+	// Duration is how long the call took, once it has finished.
+	Duration time.Duration
+}
+
+func (t ToolCall) Clone() ToolCall {
+	t.ArgumentsJSON = bytes.Clone(t.ArgumentsJSON)
+	t.ResultJSON = bytes.Clone(t.ResultJSON)
+	t.Problem = failure.Clone(t.Problem)
+	if t.ExitCode != nil {
+		t.ExitCode = new(*t.ExitCode)
+	}
+	return t
+}
+
+// Equal reports whether two tool projections describe the same invocation
+// state. An absent exit code remains distinct from an explicit successful zero.
+func (t ToolCall) Equal(other ToolCall) bool {
+	if t.Kind != other.Kind || t.Name != other.Name || t.Summary != other.Summary ||
+		t.Status != other.Status || t.Safety != other.Safety || !t.StartedAt.Equal(other.StartedAt) ||
+		!t.FinishedAt.Equal(other.FinishedAt) || t.Command != other.Command || t.Path != other.Path ||
+		t.Query != other.Query || t.URL != other.URL || t.Output != other.Output ||
+		t.ArgumentsText != other.ArgumentsText || !bytes.Equal(t.ArgumentsJSON, other.ArgumentsJSON) || !bytes.Equal(t.ResultJSON, other.ResultJSON) ||
+		!failure.Equal(t.Problem, other.Problem) ||
+		t.Diff != other.Diff || t.Duration != other.Duration ||
+		(t.ExitCode == nil) != (other.ExitCode == nil) {
+		return false
+	}
+	return t.ExitCode == nil || *t.ExitCode == *other.ExitCode
+}
+
+// sameInvocation compares the provider-visible call while deliberately
+// excluding Item-owned lifecycle and result fields. Approval interrupts repeat
+// the invocation, not the surrounding ToolCall Item's safety or timestamps.
+func (t ToolCall) sameInvocation(other ToolCall) bool {
+	return t.Kind == other.Kind && t.Name == other.Name && t.Summary == other.Summary &&
+		t.Command == other.Command && t.Path == other.Path && t.Query == other.Query &&
+		t.URL == other.URL && t.ArgumentsText == other.ArgumentsText && bytes.Equal(t.ArgumentsJSON, other.ArgumentsJSON)
+}
+
+func (t ToolCall) Validate() error {
+	var problems []error
+	switch t.Kind {
+	case ToolUnknown, ToolShell, ToolEdit, ToolRead, ToolSearch, ToolWeb, ToolTask:
+	default:
+		problems = append(problems, fmt.Errorf("kind %q is invalid", t.Kind))
+	}
+	switch t.Status {
+	case ToolRunning, ToolOK, ToolError, ToolCanceled:
+	default:
+		problems = append(problems, fmt.Errorf("status %q is invalid", t.Status))
+	}
+	switch t.Safety {
+	case "", protocol.SafetyClassSafe, protocol.SafetyClassWrite, protocol.SafetyClassExec, protocol.SafetyClassNetwork:
+	default:
+		problems = append(problems, fmt.Errorf("safety class %q is invalid", t.Safety))
+	}
+	if t.Kind == ToolUnknown && strings.TrimSpace(t.Name) == "" {
+		problems = append(problems, errors.New("unknown tool has no provider name"))
+	}
+	if t.Status == ToolRunning && t.ExitCode != nil {
+		problems = append(problems, errors.New("running tool has an exit code"))
+	}
+	if t.Duration < 0 {
+		problems = append(problems, errors.New("tool duration is negative"))
+	}
+	if t.Status == ToolRunning && t.Duration != 0 {
+		problems = append(problems, errors.New("running tool has a duration"))
+	}
+	if t.Status == ToolRunning && !t.FinishedAt.IsZero() {
+		problems = append(problems, errors.New("running tool has a finish time"))
+	}
+	if !t.FinishedAt.IsZero() && t.StartedAt.IsZero() {
+		problems = append(problems, errors.New("finished tool has no start time"))
+	}
+	if !t.FinishedAt.IsZero() && t.FinishedAt.Before(t.StartedAt) {
+		problems = append(problems, errors.New("tool finish time precedes start time"))
+	}
+	if len(t.ArgumentsJSON) > 0 {
+		var arguments map[string]any
+		if !jsontext.Value(t.ArgumentsJSON).IsValid() || json.Unmarshal(t.ArgumentsJSON, &arguments) != nil || arguments == nil {
+			problems = append(problems, errors.New("arguments JSON is not an object"))
+		}
+	}
+	if len(t.ResultJSON) > 0 && !jsontext.Value(t.ResultJSON).IsValid() {
+		problems = append(problems, errors.New("result JSON is invalid"))
+	}
+	if t.Problem != nil {
+		if t.Status != ToolError && t.Status != ToolCanceled {
+			problems = append(problems, errors.New("successful or running tool carries a problem"))
+		}
+	}
+	if err := errors.Join(problems...); err != nil {
+		return fmt.Errorf("tool call: %w", err)
+	}
+	return nil
+}
+
+// Outcome is a finished run's verdict.
+type Outcome struct {
+	Status protocol.RunOutcomeType
+	// Problem is the single source of failure classification, display text, and
+	// recovery metadata for failed, timed-out, and lost outcomes.
+	Problem *protocol.ProblemData
+	// Detail carries the Runtime-provided explanation for the outcome.
+	Detail string
+}
+
+func (o Outcome) Clone() Outcome {
+	o.Problem = failure.Clone(o.Problem)
+	return o
+}
+
+func (o Outcome) Equal(other Outcome) bool {
+	return o.Status == other.Status && o.Detail == other.Detail && failure.Equal(o.Problem, other.Problem)
+}
+
+// Description returns the concise explanation appropriate for status lines.
+func (o Outcome) Description() string {
+	if o.Problem != nil {
+		return failure.Message(o.Problem, "")
+	}
+	return strings.TrimSpace(o.Detail)
+}
+
+// Explanation returns the complete single-line human projection, including
+// recovery metadata carried by a structured failure.
+func (o Outcome) Explanation() string {
+	if o.Problem != nil {
+		return failure.String(o.Problem)
+	}
+	return strings.TrimSpace(o.Detail)
+}

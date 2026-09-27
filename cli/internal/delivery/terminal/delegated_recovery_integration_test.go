@@ -7,10 +7,11 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/workbenchstate"
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
-	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/core/input"
@@ -49,13 +50,13 @@ func TestTerminalResumesAColdDelegatedApprovalThroughTheWorkbench(t *testing.T) 
 			if _, err := connection.SetApprovalMode(t.Context(), protocol.ApprovalModeSafe); err != nil {
 				t.Fatal(err)
 			}
-			session, err := connection.CreateSession(t.Context(), agent.CreateSession{Workspace: workspace})
+			session, err := connection.CreateSession(t.Context(), conversation.CreateSession{Workspace: workspace})
 			if err != nil {
 				t.Fatal(err)
 			}
-			stream, err := connection.StartRun(t.Context(), agent.StartRun{
-				SessionID: session.ID, Message: agent.Message{Text: "delegate approval probe"},
-				Options: agent.RunOptions{Provider: "deepseek", Model: "deepseek-chat"},
+			stream, err := connection.StartRun(t.Context(), prompt.StartRun{
+				SessionID: session.ID, Message: prompt.Message{Text: "delegate approval probe"},
+				Options: prompt.RunOptions{Provider: "deepseek", Model: "deepseek-chat"},
 			})
 			if err != nil {
 				t.Fatal(err)
@@ -73,22 +74,22 @@ func TestTerminalResumesAColdDelegatedApprovalThroughTheWorkbench(t *testing.T) 
 			if !ok || root.Status != protocol.RunStatusWaiting || len(snapshot.Interactions) != 1 {
 				t.Fatalf("waiting tree = %+v", snapshot)
 			}
-			childID := agent.InteractionRunID(snapshot.Interactions[0])
+			childID := conversation.InteractionRunID(snapshot.Interactions[0])
 			if childID == root.ID {
 				t.Fatal("fixture did not delegate the approval")
 			}
 			profile := connection.Profile()
 			stateDirectory := t.TempDir()
-			var stagedCommand agent.CommandID
+			var stagedCommand replay.CommandID
 			if pendingAtStartup {
-				store, err := workbenchstate.Open(stateDirectory)
+				store, err := openTestWorkbench(stateDirectory)
 				if err != nil {
 					t.Fatal(err)
 				}
 				stagedCommand = "cli_33333333333333333333333333333333"
 				pending := workbench.PendingResume{
-					Command: agent.ResumeRun{CommandID: stagedCommand, RunID: root.ID, Answers: []agent.InterruptAnswer{{
-						ItemID: agent.InteractionItemID(snapshot.Interactions[0]), Answer: agent.ApprovalAnswer{Decision: protocol.ApprovalApprove},
+					Command: conversation.ResumeRun{CommandID: stagedCommand, RunID: root.ID, Answers: []conversation.InterruptAnswer{{
+						ItemID: conversation.InteractionItemID(snapshot.Interactions[0]), Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove},
 					}}},
 					Interactions: snapshot.Interactions, Replay: commandReplayGuard(&profile),
 				}
@@ -105,7 +106,7 @@ func TestTerminalResumesAColdDelegatedApprovalThroughTheWorkbench(t *testing.T) 
 			}
 			host, stop := runUIFromConfig(t, Config{
 				Runtime: backend, RuntimeProfile: &profile, Workspace: workspace,
-				SessionID: session.ID, StateDirectory: stateDirectory,
+				SessionID: session.ID, OpenWorkbench: persistentTestWorkbench(stateDirectory),
 			})
 			if !pendingAtStartup {
 				host.Shows(t, "Tool approval")
@@ -117,7 +118,7 @@ func TestTerminalResumesAColdDelegatedApprovalThroughTheWorkbench(t *testing.T) 
 				if err != nil {
 					return false
 				}
-				return slices.ContainsFunc(finished.Runs, func(run agent.Run) bool {
+				return slices.ContainsFunc(finished.Runs, func(run conversation.Run) bool {
 					return run.ID == root.ID && run.Status == protocol.RunStatusFinished && run.Outcome.Status == protocol.OutcomeCompleted
 				})
 			})
@@ -128,7 +129,7 @@ func TestTerminalResumesAColdDelegatedApprovalThroughTheWorkbench(t *testing.T) 
 			default:
 				t.Fatal("resume reached Runtime without its durable decision")
 			}
-			if pending.Command.RunID != root.ID || agent.InteractionRunID(pending.Interactions[0]) != childID ||
+			if pending.Command.RunID != root.ID || conversation.InteractionRunID(pending.Interactions[0]) != childID ||
 				(pendingAtStartup && pending.Command.CommandID != stagedCommand) {
 				t.Fatalf("dispatched root/member review = %+v", pending)
 			}
@@ -136,12 +137,12 @@ func TestTerminalResumesAColdDelegatedApprovalThroughTheWorkbench(t *testing.T) 
 			if err != nil {
 				t.Fatal(err)
 			}
-			if len(finished.Runs) != 2 || !slices.ContainsFunc(finished.Runs, func(run agent.Run) bool {
+			if len(finished.Runs) != 2 || !slices.ContainsFunc(finished.Runs, func(run conversation.Run) bool {
 				return run.ID == root.ID && run.Status == protocol.RunStatusFinished && run.Outcome.Status == protocol.OutcomeCompleted
 			}) {
 				t.Fatalf("resumed tree = %+v", finished.Runs)
 			}
-			store, err := workbenchstate.Open(stateDirectory)
+			store, err := openTestWorkbench(stateDirectory)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -160,14 +161,14 @@ type persistedTreeResumeRuntime struct {
 	observed       chan workbench.PendingResume
 }
 
-func (r *persistedTreeResumeRuntime) ResumeRun(ctx context.Context, command agent.ResumeRun) (agent.SegmentStream, error) {
-	store, err := workbenchstate.Open(r.stateDirectory)
+func (r *persistedTreeResumeRuntime) ResumeRun(ctx context.Context, command conversation.ResumeRun) (conversation.SegmentStream, error) {
+	store, err := openTestWorkbench(r.stateDirectory)
 	if err != nil {
-		return agent.SegmentStream{}, err
+		return conversation.SegmentStream{}, err
 	}
 	pending, found := store.PendingResume(r.sessionID)
 	if err := store.Close(); err != nil {
-		return agent.SegmentStream{}, err
+		return conversation.SegmentStream{}, err
 	}
 	if found && pending.Command.Equal(command) {
 		r.observed <- pending

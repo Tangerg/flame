@@ -8,17 +8,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/workbenchstate"
-	"github.com/Tangerg/flame/cli/internal/application/agent/promptqueue"
-	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/core/input"
 )
 
 func TestStartConflictAndLocalPreparationFailuresKeepOriginalDispatchIdentity(t *testing.T) {
-	for _, cause := range []error{agent.ErrCommandConflict, agent.ErrCommandInputUnavailable, errors.Join(agent.ErrCommandNotDispatched, errors.New("local failure"))} {
+	for _, cause := range []error{conversation.ErrCommandConflict, replay.ErrCommandInputUnavailable, errors.Join(replay.ErrCommandNotDispatched, errors.New("local failure"))} {
 		t.Run(cause.Error(), func(t *testing.T) {
 			store, err := workbench.OpenMemory(workbench.Config{})
 			if err != nil {
@@ -27,11 +27,11 @@ func TestStartConflictAndLocalPreparationFailuresKeepOriginalDispatchIdentity(t 
 			command := testStartRun("ses_1", "original command")
 			command.CommandID = "cli_11111111111111111111111111111111"
 			stageDispatchingRun(t, store, command)
-			queue := promptqueue.New()
-			if err := queue.Restore(command.SessionID, []agent.StartRun{command}, command.CommandID); err != nil {
+			prompts := newTestQueue(t, store)
+			if err := prompts.Restore(command.SessionID); err != nil {
 				t.Fatal(err)
 			}
-			application := &app{workbench: store, queue: queue}
+			application := &app{workbench: store, queue: prompts}
 			if err := application.requeueDefinitivelyRefusedStart(command, &startRunCallError{err: cause}); err != nil {
 				t.Fatal(err)
 			}
@@ -39,7 +39,7 @@ func TestStartConflictAndLocalPreparationFailuresKeepOriginalDispatchIdentity(t 
 			if len(pending) != 1 || pending[0].State != workbench.PendingRunDispatching || pending[0].Command.CommandID != command.CommandID {
 				t.Fatal("uncertain start was requeued under a new identity")
 			}
-			if dispatch, found := queue.Dispatching(command.SessionID); !found || dispatch.CommandID != command.CommandID {
+			if dispatch, found := prompts.Dispatching(command.SessionID); !found || dispatch.CommandID != command.CommandID {
 				t.Fatal("uncertain start lost its queue reservation")
 			}
 		})
@@ -48,7 +48,7 @@ func TestStartConflictAndLocalPreparationFailuresKeepOriginalDispatchIdentity(t 
 
 type unavailableAttachmentRuntime struct{ *steeringRuntime }
 
-func (r unavailableAttachmentRuntime) PrepareInput(ctx context.Context, message agent.Message) ([]protocol.ContentBlock, error) {
+func (r unavailableAttachmentRuntime) PrepareInput(ctx context.Context, message prompt.Message) ([]protocol.ContentBlock, error) {
 	if len(message.Attachments) != 0 {
 		return nil, os.ErrNotExist
 	}
@@ -59,8 +59,8 @@ func TestSteerPreparationFailurePreservesTheEditableInstructionAndAttachments(t 
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
-			{Event: agent.BlockStarted{Block: agent.Block{ID: "thinking", Kind: agent.BlockReasoning}}},
-			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
+			{Event: conversation.BlockStarted{Block: conversation.Block{ID: "thinking", Kind: conversation.BlockReasoning}}},
+			{Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	backend := unavailableAttachmentRuntime{steeringRuntime: &steeringRuntime{Runtime: base}}
@@ -81,7 +81,7 @@ func TestSteerPreparationFailurePreservesTheEditableInstructionAndAttachments(t 
 	host.Press(input.Enter)
 	host.Shows(t, "prepare steer input")
 	stop()
-	store, err := workbenchstate.Open(state)
+	store, err := openTestWorkbench(state)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +102,7 @@ type pausedInputRuntime struct {
 	release  chan struct{}
 }
 
-func (r *pausedInputRuntime) PrepareInput(ctx context.Context, message agent.Message) ([]protocol.ContentBlock, error) {
+func (r *pausedInputRuntime) PrepareInput(ctx context.Context, message prompt.Message) ([]protocol.ContentBlock, error) {
 	if len(message.Attachments) == 0 {
 		return r.Runtime.PrepareInput(ctx, message)
 	}
@@ -123,8 +123,8 @@ func TestInputPreparationLeavesTheUIResponsiveAndUnsentInputEditable(t *testing.
 				base := runtimefixture.New()
 				base.Script = func(string) runtimefixture.Script {
 					return runtimefixture.Script{Prelude: []runtimefixture.Step{
-						{Event: agent.BlockStarted{Block: agent.Block{ID: "thinking", Kind: agent.BlockReasoning}}},
-						{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
+						{Event: conversation.BlockStarted{Block: conversation.Block{ID: "thinking", Kind: conversation.BlockReasoning}}},
+						{Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 					}}
 				}
 				backend := &pausedInputRuntime{
@@ -153,9 +153,9 @@ func TestInputPreparationLeavesTheUIResponsiveAndUnsentInputEditable(t *testing.
 				host.Type(text)
 				host.Press(input.Enter)
 				awaitSignal(t, backend.entered, "attachment preparation")
-				var originalID agent.CommandID
+				var originalID replay.CommandID
 				if command == "start" {
-					observer, err := workbenchstate.Open(state)
+					observer, err := openTestWorkbench(state)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -177,7 +177,7 @@ func TestInputPreparationLeavesTheUIResponsiveAndUnsentInputEditable(t *testing.
 				}
 				stop()
 				awaitSignal(t, backend.canceled, "preparation cancellation")
-				store, err := workbenchstate.Open(state)
+				store, err := openTestWorkbench(state)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -218,8 +218,8 @@ func TestEditingSteerDuringInputPreparationPreservesTheNewDraft(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
-			{Event: agent.BlockStarted{Block: agent.Block{ID: "thinking", Kind: agent.BlockReasoning}}},
-			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
+			{Event: conversation.BlockStarted{Block: conversation.Block{ID: "thinking", Kind: conversation.BlockReasoning}}},
+			{Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	backend := &pausedInputRuntime{
@@ -250,7 +250,7 @@ func TestEditingSteerDuringInputPreparationPreservesTheNewDraft(t *testing.T) {
 	close(backend.release)
 	host.Shows(t, "steer preparation canceled because the draft changed")
 	stop()
-	store, err := workbenchstate.Open(state)
+	store, err := openTestWorkbench(state)
 	if err != nil {
 		t.Fatal(err)
 	}

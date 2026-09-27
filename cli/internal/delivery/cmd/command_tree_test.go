@@ -7,7 +7,6 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/workbenchstate"
 	"io"
 	"os"
 	"path/filepath"
@@ -17,22 +16,23 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/Tangerg/flame/cli/internal/application/settings"
+	"github.com/Tangerg/flame/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
-	"github.com/Tangerg/flame/cli/internal/application/settings"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 )
 
 type postCommitDeleteRuntime struct {
 	Runtime
-	request agent.DeleteSession
+	request conversation.DeleteSession
 }
 
-func (p *postCommitDeleteRuntime) DeleteSession(ctx context.Context, request agent.DeleteSession) error {
+func (p *postCommitDeleteRuntime) DeleteSession(ctx context.Context, request conversation.DeleteSession) error {
 	if err := p.Runtime.DeleteSession(ctx, request); err != nil {
 		return err
 	}
@@ -54,15 +54,16 @@ func executeCommand(t *testing.T, rt Runtime, stdin string, args ...string) (str
 func executeCommandWithRuntime(
 	t *testing.T,
 	runtime Runtime,
-	profile *runtimebinding.Profile,
+	profile RuntimeProfile,
 	stdin string,
 	args ...string,
 ) (string, string, error) {
 	t.Helper()
 	var out, errb bytes.Buffer
-	dependencies := Dependencies{OpenRuntime: func(context.Context, string) (Runtime, *runtimebinding.Profile, error) {
-		return runtime, profile, nil
-	}}
+	dependencies := Dependencies{
+		OpenRuntime:   func(context.Context, string) (Runtime, RuntimeProfile, error) { return runtime, profile, nil },
+		OpenWorkbench: func(string) (*workbench.Store, error) { return workbench.OpenMemory(workbench.Config{}) },
+	}
 	root := NewRoot(dependencies)
 	root.SetOut(&out)
 	root.SetErr(&errb)
@@ -80,7 +81,7 @@ func instantRuntime() *runtimefixture.Runtime {
 
 func firstSession(t *testing.T, rt Runtime) string {
 	t.Helper()
-	sessions, err := rt.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.DefaultPageSize()})
+	sessions, err := rt.ListSessions(t.Context(), conversation.SessionQuery{PageSize: conversation.DefaultPageSize()})
 	if err != nil {
 		t.Fatalf("ListSessions: %v", err)
 	}
@@ -265,18 +266,18 @@ type ambiguousControls struct {
 	resumes      int
 	loseStart    bool
 	loseResume   bool
-	startStream  agent.SegmentStream
-	resumeStream agent.SegmentStream
-	startID      agent.CommandID
-	resumeID     agent.CommandID
+	startStream  conversation.SegmentStream
+	resumeStream conversation.SegmentStream
+	startID      replay.CommandID
+	resumeID     replay.CommandID
 }
 
-func (a *ambiguousControls) StartRun(ctx context.Context, input agent.StartRun) (agent.SegmentStream, error) {
+func (a *ambiguousControls) StartRun(ctx context.Context, input prompt.StartRun) (conversation.SegmentStream, error) {
 	a.mu.Lock()
 	if a.startID != "" {
 		if a.startID != input.CommandID {
 			a.mu.Unlock()
-			return agent.SegmentStream{}, agent.ErrCommandConflict
+			return conversation.SegmentStream{}, conversation.ErrCommandConflict
 		}
 		a.starts++
 		stream := a.startStream
@@ -286,7 +287,7 @@ func (a *ambiguousControls) StartRun(ctx context.Context, input agent.StartRun) 
 	a.mu.Unlock()
 	stream, err := a.Runtime.StartRun(ctx, input)
 	if err != nil {
-		return agent.SegmentStream{}, err
+		return conversation.SegmentStream{}, err
 	}
 	a.mu.Lock()
 	a.starts++
@@ -295,17 +296,17 @@ func (a *ambiguousControls) StartRun(ctx context.Context, input agent.StartRun) 
 	lost := a.loseStart
 	a.mu.Unlock()
 	if lost {
-		return agent.SegmentStream{}, fmt.Errorf("lost start response: %w", agent.ErrDisconnected)
+		return conversation.SegmentStream{}, fmt.Errorf("lost start response: %w", conversation.ErrDisconnected)
 	}
 	return stream, nil
 }
 
-func (a *ambiguousControls) ResumeRun(ctx context.Context, input agent.ResumeRun) (agent.SegmentStream, error) {
+func (a *ambiguousControls) ResumeRun(ctx context.Context, input conversation.ResumeRun) (conversation.SegmentStream, error) {
 	a.mu.Lock()
 	if a.resumeID != "" {
 		if a.resumeID != input.CommandID {
 			a.mu.Unlock()
-			return agent.SegmentStream{}, agent.ErrCommandConflict
+			return conversation.SegmentStream{}, conversation.ErrCommandConflict
 		}
 		a.resumes++
 		stream := a.resumeStream
@@ -315,7 +316,7 @@ func (a *ambiguousControls) ResumeRun(ctx context.Context, input agent.ResumeRun
 	a.mu.Unlock()
 	stream, err := a.Runtime.ResumeRun(ctx, input)
 	if err != nil {
-		return agent.SegmentStream{}, err
+		return conversation.SegmentStream{}, err
 	}
 	a.mu.Lock()
 	a.resumes++
@@ -324,7 +325,7 @@ func (a *ambiguousControls) ResumeRun(ctx context.Context, input agent.ResumeRun
 	lost := a.loseResume
 	a.mu.Unlock()
 	if lost {
-		return agent.SegmentStream{}, fmt.Errorf("lost resume response: %w", agent.ErrDisconnected)
+		return conversation.SegmentStream{}, fmt.Errorf("lost resume response: %w", conversation.ErrDisconnected)
 	}
 	return stream, nil
 }
@@ -368,7 +369,7 @@ func TestRunRejectsConflictingReplay(t *testing.T) {
 	rt.Script = shortCompletedScript
 	rt.Faults = []runtimefixture.SubscriptionFault{{Kind: runtimefixture.FaultConflict, After: 1}}
 	_, _, err := executeCommand(t, rt, "", "run", "--output-format", "streaming-json", "-s", firstSession(t, rt), "conflict")
-	if !errors.Is(err, agent.ErrEventConflict) {
+	if !errors.Is(err, conversation.ErrEventConflict) {
 		t.Fatalf("run error = %v, want ErrEventConflict", err)
 	}
 }
@@ -376,9 +377,9 @@ func TestRunRejectsConflictingReplay(t *testing.T) {
 func TestRunQuestionNamesTheResumableSession(t *testing.T) {
 	rt := instantRuntime()
 	rt.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{Interactions: []agent.Interaction{agent.Question{
+		return runtimefixture.Script{Interactions: []conversation.Interaction{conversation.Question{
 			ItemID: "question_1", Title: "Choose a strategy",
-			Fields: []agent.QuestionField{{Prompt: "Strategy", Kind: agent.QuestionText}},
+			Fields: []conversation.QuestionField{{Prompt: "Strategy", Kind: conversation.QuestionText}},
 		}}}
 	}
 	id := firstSession(t, rt)
@@ -398,7 +399,7 @@ func TestRunQuestionNamesTheResumableSession(t *testing.T) {
 	if !activeOK || active.Status != protocol.RunStatusWaiting {
 		t.Fatalf("question did not leave a resumable waiting run: %+v", snapshot.Runs)
 	}
-	if len(snapshot.Interactions) != 1 || agent.InteractionItemID(snapshot.Interactions[0]) == "" {
+	if len(snapshot.Interactions) != 1 || conversation.InteractionItemID(snapshot.Interactions[0]) == "" {
 		t.Fatalf("question waiting set = %+v, want one pending interaction", snapshot.Interactions)
 	}
 }
@@ -406,16 +407,16 @@ func TestRunQuestionNamesTheResumableSession(t *testing.T) {
 func TestRunReturnsAnErrorForNonCompletedOutcomes(t *testing.T) {
 	for _, test := range []struct {
 		name    string
-		outcome agent.Outcome
+		outcome conversation.Outcome
 		want    string
 	}{
-		{name: "failed", outcome: agent.Outcome{Status: protocol.OutcomeFailed, Problem: &protocol.ProblemData{Type: "rate_limited", Detail: "provider refused", RetryAfterSeconds: 9}}, want: "retry after 9s"},
-		{name: "canceled", outcome: agent.Outcome{Status: protocol.OutcomeCanceled}, want: "run canceled"},
+		{name: "failed", outcome: conversation.Outcome{Status: protocol.OutcomeFailed, Problem: &protocol.ProblemData{Type: "rate_limited", Detail: "provider refused", RetryAfterSeconds: 9}}, want: "retry after 9s"},
+		{name: "canceled", outcome: conversation.Outcome{Status: protocol.OutcomeCanceled}, want: "run canceled"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			runtime := instantRuntime()
 			runtime.Script = func(string) runtimefixture.Script {
-				return runtimefixture.Script{Prelude: []runtimefixture.Step{{Event: agent.RunFinished{Outcome: test.outcome}}}}
+				return runtimefixture.Script{Prelude: []runtimefixture.Step{{Event: conversation.RunFinished{Outcome: test.outcome}}}}
 			}
 			id := firstSession(t, runtime)
 			out, _, err := executeCommand(t, runtime, "", "run", "--json", "-s", id, "finish this way")
@@ -444,11 +445,11 @@ func TestRunRejectsInvalidAndConflictingOutputFormatsBeforeCreatingASession(t *t
 	} {
 		t.Run(strings.Join(args[1:3], " "), func(t *testing.T) {
 			runtime := instantRuntime()
-			before, _ := runtime.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.MaximumPageSize()})
+			before, _ := runtime.ListSessions(t.Context(), conversation.SessionQuery{PageSize: conversation.MaximumPageSize()})
 			if _, _, err := executeCommand(t, runtime, "", args...); err == nil {
 				t.Fatalf("arguments %v were accepted", args)
 			}
-			after, _ := runtime.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.MaximumPageSize()})
+			after, _ := runtime.ListSessions(t.Context(), conversation.SessionQuery{PageSize: conversation.MaximumPageSize()})
 			if len(after.Items) != len(before.Items) {
 				t.Fatalf("invalid output format created a session: %d -> %d", len(before.Items), len(after.Items))
 			}
@@ -465,42 +466,42 @@ func TestOutputFormatCompletionFiltersCandidates(t *testing.T) {
 
 type alwaysDisconnected struct{ Runtime }
 
-func (a alwaysDisconnected) StartRun(ctx context.Context, input agent.StartRun) (agent.SegmentStream, error) {
+func (a alwaysDisconnected) StartRun(ctx context.Context, input prompt.StartRun) (conversation.SegmentStream, error) {
 	stream, err := a.Runtime.StartRun(ctx, input)
 	if err != nil {
-		return agent.SegmentStream{}, err
+		return conversation.SegmentStream{}, err
 	}
 	upstream := stream.Events
-	stream.Events = func(yield func(agent.RunEvent, error) bool) {
+	stream.Events = func(yield func(conversation.RunEvent, error) bool) {
 		for event, streamErr := range upstream {
 			if !yield(event, streamErr) || streamErr != nil {
 				return
 			}
-			yield(agent.RunEvent{}, fmt.Errorf("test transport: %w", agent.ErrDisconnected))
+			yield(conversation.RunEvent{}, fmt.Errorf("test transport: %w", conversation.ErrDisconnected))
 			return
 		}
 	}
 	return stream, nil
 }
 
-func (alwaysDisconnected) SubscribeRun(context.Context, agent.SubscribeRun) (agent.SegmentStream, error) {
-	return agent.SegmentStream{}, fmt.Errorf("test transport: %w", agent.ErrDisconnected)
+func (alwaysDisconnected) SubscribeRun(context.Context, conversation.SubscribeRun) (conversation.SegmentStream, error) {
+	return conversation.SegmentStream{}, fmt.Errorf("test transport: %w", conversation.ErrDisconnected)
 }
 
 func shortCompletedScript(string) runtimefixture.Script {
 	return runtimefixture.Script{Prelude: []runtimefixture.Step{
-		{Event: agent.BlockCompleted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant, Text: "done"}}},
-		{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
+		{Event: conversation.BlockCompleted{Block: conversation.Block{ID: "answer", Kind: conversation.BlockAssistant, Text: "done"}}},
+		{Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 	}}
 }
 
 func TestRunReadsAPipedPromptAndCombinesItWithTheArgument(t *testing.T) {
 	var captured string
 	rt := instantRuntime()
-	rt.Script = func(prompt string) runtimefixture.Script {
-		captured = prompt
-		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Event: agent.RunFinished{
-			Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
+	rt.Script = func(authoredPrompt string) runtimefixture.Script {
+		captured = authoredPrompt
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Event: conversation.RunFinished{
+			Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}
 	if _, _, err := executeCommand(t, rt, "file contents\n", "run", "-s", firstSession(t, rt), "explain this"); err != nil {
@@ -516,12 +517,12 @@ func TestReadPipedPromptRejectsUnboundedOrInvalidInput(t *testing.T) {
 		name  string
 		input io.Reader
 	}{
-		{name: "oversized", input: strings.NewReader(strings.Repeat("x", agent.MaxMessageTextBytes+1))},
+		{name: "oversized", input: strings.NewReader(strings.Repeat("x", prompt.MaxMessageTextBytes+1))},
 		{name: "invalid UTF-8", input: bytes.NewReader([]byte{0xff})},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			if prompt, err := readPipedPrompt(test.input); err == nil {
-				t.Fatalf("invalid piped prompt was accepted with %d bytes", len(prompt))
+			if authoredPrompt, err := readPipedPrompt(test.input); err == nil {
+				t.Fatalf("invalid piped prompt was accepted with %d bytes", len(authoredPrompt))
 			}
 		})
 	}
@@ -539,7 +540,7 @@ func TestRunResolvesAttachmentOnlyPromptAgainstExistingSessionWorkspace(t *testi
 	writeCommandFixture(t, first, []byte("notes"))
 	writeCommandFixture(t, second, append([]byte("\x89PNG\r\n\x1a\n"), make([]byte, 32)...))
 	runtime := instantRuntime()
-	created, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: workspace})
+	created, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: workspace})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -551,14 +552,14 @@ func TestRunResolvesAttachmentOnlyPromptAgainstExistingSessionWorkspace(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	prompt := userPromptBlock(t, snapshot.Transcript)
-	if prompt.Text != "" || len(prompt.Attachments) != 2 {
-		t.Fatalf("prompt block = %+v", prompt)
+	authoredPrompt := userPromptBlock(t, snapshot.Transcript)
+	if authoredPrompt.Text != "" || len(authoredPrompt.Attachments) != 2 {
+		t.Fatalf("prompt block = %+v", authoredPrompt)
 	}
-	if prompt.Attachments[0].Kind != protocol.ContentBlockText || prompt.Attachments[1].Kind != protocol.ContentBlockImage {
-		t.Fatalf("attachment kinds = %+v", prompt.Attachments)
+	if authoredPrompt.Attachments[0].Kind != protocol.ContentBlockText || authoredPrompt.Attachments[1].Kind != protocol.ContentBlockImage {
+		t.Fatalf("attachment kinds = %+v", authoredPrompt.Attachments)
 	}
-	for _, attachment := range prompt.Attachments {
+	for _, attachment := range authoredPrompt.Attachments {
 		if !strings.HasPrefix(attachment.Path, canonicalWorkspace+string(filepath.Separator)) {
 			t.Fatalf("attachment path = %q, want existing Session workspace %q", attachment.Path, canonicalWorkspace)
 		}
@@ -571,7 +572,7 @@ func TestRunFileCompletionUsesExistingSessionWorkspace(t *testing.T) {
 	writeCommandFixture(t, filepath.Join(workspace, "session-notes.txt"), []byte("notes"))
 	writeCommandFixture(t, filepath.Join(unrelatedWorkspace, "unrelated-notes.txt"), []byte("other"))
 	runtime := instantRuntime()
-	created, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: workspace})
+	created, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: workspace})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -595,25 +596,25 @@ func writeCommandFixture(t *testing.T, path string, content []byte) {
 	}
 }
 
-func userPromptBlock(t *testing.T, blocks []agent.Block) agent.Block {
+func userPromptBlock(t *testing.T, blocks []conversation.Block) conversation.Block {
 	t.Helper()
 	for _, block := range slices.Backward(blocks) {
-		if block.Kind == agent.BlockUser {
+		if block.Kind == conversation.BlockUser {
 			return block
 		}
 	}
 	t.Fatal("user prompt block was not emitted")
-	return agent.Block{}
+	return conversation.Block{}
 }
 
 func TestRunRejectsInvalidAttachmentBeforeCreatingASession(t *testing.T) {
 	runtime := instantRuntime()
-	before, _ := runtime.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.MaximumPageSize()})
+	before, _ := runtime.ListSessions(t.Context(), conversation.SessionQuery{PageSize: conversation.MaximumPageSize()})
 	_, _, err := executeCommand(t, runtime, "", "-C", t.TempDir(), "run", "-f", "missing.txt")
 	if err == nil || !strings.Contains(err.Error(), "missing.txt") {
 		t.Fatalf("error = %v", err)
 	}
-	after, _ := runtime.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.MaximumPageSize()})
+	after, _ := runtime.ListSessions(t.Context(), conversation.SessionQuery{PageSize: conversation.MaximumPageSize()})
 	if len(after.Items) != len(before.Items) {
 		t.Fatalf("invalid input created a session: %d -> %d", len(before.Items), len(after.Items))
 	}
@@ -647,18 +648,18 @@ func TestRunWithNothingToSay(t *testing.T) {
 
 func TestRunRejectsAnUnknownSession(t *testing.T) {
 	_, _, err := executeCommand(t, instantRuntime(), "", "run", "-s", "ses_nope", "why?")
-	if !errors.Is(err, agent.ErrSessionNotFound) {
+	if !errors.Is(err, conversation.ErrSessionNotFound) {
 		t.Fatalf("err = %v, want ErrSessionNotFound", err)
 	}
 }
 
 func TestRunCreatesASessionWhenNoneIsNamed(t *testing.T) {
 	rt := instantRuntime()
-	before, _ := rt.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.MaximumPageSize()})
+	before, _ := rt.ListSessions(t.Context(), conversation.SessionQuery{PageSize: conversation.MaximumPageSize()})
 	if _, _, err := executeCommand(t, rt, "", "run", "--approve-all", "why?"); err != nil {
 		t.Fatalf("run: %v", err)
 	}
-	after, _ := rt.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.MaximumPageSize()})
+	after, _ := rt.ListSessions(t.Context(), conversation.SessionQuery{PageSize: conversation.MaximumPageSize()})
 	if len(after.Items) != len(before.Items)+1 {
 		t.Fatalf("session count went %d -> %d, want one more", len(before.Items), len(after.Items))
 	}
@@ -678,11 +679,11 @@ func TestWorkspaceFlagIsNormalizedBeforeCreatingASession(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	before, _ := runtime.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.MaximumPageSize()})
+	before, _ := runtime.ListSessions(t.Context(), conversation.SessionQuery{PageSize: conversation.MaximumPageSize()})
 	if _, _, err := executeCommand(t, runtime, "", "-C", relative, "run", "--approve-all", "normalize workspace"); err != nil {
 		t.Fatal(err)
 	}
-	after, _ := runtime.ListSessions(t.Context(), agent.SessionQuery{PageSize: agent.MaximumPageSize()})
+	after, _ := runtime.ListSessions(t.Context(), conversation.SessionQuery{PageSize: conversation.MaximumPageSize()})
 	if len(after.Items) != len(before.Items)+1 || after.Items[0].Workspace.Path != want {
 		t.Fatalf("newest session workspace = %q, want %q", after.Items[0].Workspace.Path, want)
 	}
@@ -735,7 +736,7 @@ func TestSessionUpdateRejectsWorkspaceBeforeCallingAnUnnegotiatedRuntime(t *test
 	})
 	configuration := viper.New()
 	setDefaults(configuration, settings.Default())
-	provider := runtimeProvider{configuration: configuration, open: func(context.Context) (Runtime, *runtimebinding.Profile, error) {
+	provider := runtimeProvider{configuration: configuration, open: func(context.Context) (Runtime, RuntimeProfile, error) {
 		return base, new(profile), nil
 	}}
 	command := newSessionsUpdateCommand(provider)
@@ -876,20 +877,20 @@ func TestSessionsDeleteConvergesPostCommitFailureAndRetiresWorkbenchState(t *tes
 	base := instantRuntime()
 	target := firstSession(t, base)
 	stateDirectory := t.TempDir()
-	authoring, err := workbenchstate.Open(stateDirectory)
+	authoring, err := openTestWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if saveDraftErr := authoring.SaveDraft(target, agent.Message{Text: "must be retired"}); saveDraftErr != nil {
+	if saveDraftErr := authoring.SaveDraft(target, prompt.Message{Text: "must be retired"}); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
 	runtime := &postCommitDeleteRuntime{Runtime: base}
 	var output bytes.Buffer
 	root := NewRoot(Dependencies{
-		OpenRuntime: func(context.Context, string) (Runtime, *runtimebinding.Profile, error) {
+		OpenRuntime: func(context.Context, string) (Runtime, RuntimeProfile, error) {
 			return runtime, nil, nil
 		},
-		StateDirectory: stateDirectory,
+		OpenWorkbench: func(string) (*workbench.Store, error) { return openTestWorkbench(stateDirectory) },
 	})
 	root.SetOut(&output)
 	root.SetErr(io.Discard)
@@ -903,7 +904,7 @@ func TestSessionsDeleteConvergesPostCommitFailureAndRetiresWorkbenchState(t *tes
 	if runtime.request.SessionID != target || runtime.request.CommandID == "" {
 		t.Fatalf("delete request = %+v", runtime.request)
 	}
-	reopened, err := workbenchstate.Open(stateDirectory)
+	reopened, err := openTestWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -934,7 +935,7 @@ func TestSessionsListCanonicalizesWorkspaceFilter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	created, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: workspace, Title: "Canonical workspace"})
+	created, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: workspace, Title: "Canonical workspace"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1007,9 +1008,9 @@ func TestApprovalRuleCommandsInspectAndForget(t *testing.T) {
 
 func createProjectApprovalRule(t *testing.T, runtime Runtime, sessionID string) string {
 	t.Helper()
-	stream, err := runtime.StartRun(t.Context(), agent.StartRun{
-		SessionID: sessionID, Message: agent.Message{Text: "remember this"},
-		Options: agent.RunOptions{},
+	stream, err := runtime.StartRun(t.Context(), prompt.StartRun{
+		SessionID: sessionID, Message: prompt.Message{Text: "remember this"},
+		Options: prompt.RunOptions{},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -1020,18 +1021,18 @@ func createProjectApprovalRule(t *testing.T, runtime Runtime, sessionID string) 
 	return onlyApprovalRule(t, runtime, sessionID).ID
 }
 
-func followApprovalInterrupt(t *testing.T, stream agent.SegmentStream) agent.Approval {
+func followApprovalInterrupt(t *testing.T, stream conversation.SegmentStream) conversation.Approval {
 	t.Helper()
-	var interrupted agent.Approval
+	var interrupted conversation.Approval
 	for event, streamErr := range stream.Events {
 		if streamErr != nil {
 			t.Fatal(streamErr)
 		}
-		if parked, ok := event.Event.(agent.RunInterrupted); ok {
+		if parked, ok := event.Event.(conversation.RunInterrupted); ok {
 			if len(parked.Interactions) != 1 {
 				t.Fatalf("pending interactions = %+v, want one", parked.Interactions)
 			}
-			interrupted, _ = parked.Interactions[0].(agent.Approval)
+			interrupted, _ = parked.Interactions[0].(conversation.Approval)
 		}
 	}
 	if interrupted.ItemID == "" {
@@ -1040,12 +1041,12 @@ func followApprovalInterrupt(t *testing.T, stream agent.SegmentStream) agent.App
 	return interrupted
 }
 
-func resumeProjectApproval(t *testing.T, runtime Runtime, runID string, interrupted agent.Approval) agent.SegmentStream {
+func resumeProjectApproval(t *testing.T, runtime Runtime, runID string, interrupted conversation.Approval) conversation.SegmentStream {
 	t.Helper()
-	stream, err := runtime.ResumeRun(t.Context(), agent.ResumeRun{
-		RunID: runID, Answers: []agent.InterruptAnswer{{
+	stream, err := runtime.ResumeRun(t.Context(), conversation.ResumeRun{
+		RunID: runID, Answers: []conversation.InterruptAnswer{{
 			ItemID: interrupted.ItemID,
-			Answer: agent.ApprovalAnswer{Decision: protocol.ApprovalApprove, Remember: protocol.RememberProject},
+			Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove, Remember: protocol.RememberProject},
 		}},
 	})
 	if err != nil {
@@ -1054,7 +1055,7 @@ func resumeProjectApproval(t *testing.T, runtime Runtime, runID string, interrup
 	return stream
 }
 
-func drainContinuation(t *testing.T, stream agent.SegmentStream) {
+func drainContinuation(t *testing.T, stream conversation.SegmentStream) {
 	t.Helper()
 	for _, streamErr := range stream.Events {
 		if streamErr != nil {
@@ -1097,7 +1098,7 @@ func TestCompletionCommand(t *testing.T) {
 // database, a socket, or anything else a real runtime needs.
 func TestHelpDoesNotResolveARuntime(t *testing.T) {
 	var resolved bool
-	root := NewRoot(Dependencies{OpenRuntime: func(context.Context, string) (Runtime, *runtimebinding.Profile, error) {
+	root := NewRoot(Dependencies{OpenRuntime: func(context.Context, string) (Runtime, RuntimeProfile, error) {
 		resolved = true
 		return instantRuntime(), nil, nil
 	}})

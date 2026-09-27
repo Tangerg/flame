@@ -5,13 +5,12 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/oolong/core/program"
-
-	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
 	runworkflow "github.com/Tangerg/flame/cli/internal/application/agent/run"
+	"github.com/Tangerg/flame/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/cli/internal/application/retry"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/oolong/core/program"
 )
 
 // followRecoveredSession closes the read-then-subscribe gap when the terminal
@@ -57,8 +56,8 @@ type streamFollower struct {
 	dispatcher program.Dispatcher
 	lease      operationLease
 	sessionID  string
-	open       func(context.Context) (agent.SegmentStream, error)
-	applyEvent func(agent.RunEvent) error
+	open       func(context.Context) (conversation.SegmentStream, error)
+	applyEvent func(conversation.RunEvent) error
 
 	opening    streamOpeningObserver
 	failures   int
@@ -91,7 +90,7 @@ func (e *eventApplicationError) Error() string { return e.err.Error() }
 func (e *eventApplicationError) Unwrap() error { return e.err }
 
 func (s *streamFollower) run() {
-	var current agent.SegmentStream
+	var current conversation.SegmentStream
 	for {
 		opened, err := s.open(s.ctx)
 		if err == nil {
@@ -109,7 +108,7 @@ func (s *streamFollower) run() {
 	s.runStream(current)
 }
 
-func (s *streamFollower) postOpenAccepted(opened agent.SegmentStream) bool {
+func (s *streamFollower) postOpenAccepted(opened conversation.SegmentStream) bool {
 	if s.opening.accepted == nil {
 		return true
 	}
@@ -141,7 +140,7 @@ func (s *streamFollower) waitBeforeOpenRetry(cause error) bool {
 	return s.postRetryStatus(false) && retry.Wait(s.ctx, delay) == nil
 }
 
-func (s *streamFollower) runStream(current agent.SegmentStream) {
+func (s *streamFollower) runStream(current conversation.SegmentStream) {
 	if err := current.Validate(); err != nil {
 		s.postFailure(err)
 		return
@@ -160,12 +159,12 @@ func (s *streamFollower) runStream(current agent.SegmentStream) {
 			return
 		}
 		s.checkpoint = snapshot.checkpoint
-		if snapshot.phase != agent.ConversationRunning {
+		if snapshot.phase != conversation.Running {
 			s.finish()
 			return
 		}
 		if streamErr == nil {
-			streamErr = fmt.Errorf("%w: segment stream ended without a terminal event", agent.ErrDisconnected)
+			streamErr = fmt.Errorf("%w: segment stream ended without a terminal event", conversation.ErrDisconnected)
 		}
 		if context.Cause(s.ctx) != nil {
 			return
@@ -181,7 +180,7 @@ func (s *streamFollower) runStream(current agent.SegmentStream) {
 	}
 }
 
-func (s *streamFollower) consume(stream agent.EventStream) (bool, int, error) {
+func (s *streamFollower) consume(stream conversation.EventStream) (bool, int, error) {
 	applied := 0
 	for event, err := range stream {
 		if err != nil {
@@ -196,7 +195,7 @@ func (s *streamFollower) consume(stream agent.EventStream) (bool, int, error) {
 	return true, applied, nil
 }
 
-func (s *streamFollower) apply(event agent.RunEvent) (bool, error) {
+func (s *streamFollower) apply(event conversation.RunEvent) (bool, error) {
 	active := true
 	var applyErr error
 	err := post(s.ctx, s.dispatcher, func() {
@@ -216,7 +215,7 @@ func (s *streamFollower) apply(event agent.RunEvent) (bool, error) {
 type followSnapshot struct {
 	active     bool
 	checkpoint string
-	phase      agent.ConversationPhase
+	phase      conversation.Phase
 }
 
 type recoveryDisposition uint8
@@ -229,7 +228,7 @@ const (
 
 type recoveryAttempt struct {
 	disposition recoveryDisposition
-	stream      agent.SegmentStream
+	stream      conversation.SegmentStream
 	cause       error
 }
 
@@ -246,12 +245,12 @@ func (s *streamFollower) snapshot() (followSnapshot, error) {
 	return snapshot, err
 }
 
-func (s *streamFollower) reconnect(runID, segmentID string, cause error) (agent.SegmentStream, bool) {
+func (s *streamFollower) reconnect(runID, segmentID string, cause error) (conversation.SegmentStream, bool) {
 	for {
 		if !s.waitBeforeRetry(cause) {
-			return agent.SegmentStream{}, false
+			return conversation.SegmentStream{}, false
 		}
-		rebound, err := s.app.runtime.SubscribeRun(s.ctx, agent.SubscribeRun{
+		rebound, err := s.app.runtime.SubscribeRun(s.ctx, conversation.SubscribeRun{
 			RunID: runID, SegmentID: segmentID, AfterEventID: s.checkpoint,
 		})
 		if err == nil {
@@ -268,7 +267,7 @@ func (s *streamFollower) reconnect(runID, segmentID string, cause error) (agent.
 		case recoveryAttached:
 			return recovery.stream, true
 		default:
-			return agent.SegmentStream{}, false
+			return conversation.SegmentStream{}, false
 		}
 	}
 }
@@ -301,14 +300,14 @@ func (s *streamFollower) postRetryStatus(persistent bool) bool {
 	return err == nil
 }
 
-func (s *streamFollower) acceptRebound(runID, segmentID string, rebound agent.SegmentStream) (agent.SegmentStream, bool) {
+func (s *streamFollower) acceptRebound(runID, segmentID string, rebound conversation.SegmentStream) (conversation.SegmentStream, bool) {
 	if err := rebound.ValidateSubscription(); err != nil {
 		s.postFailure(err)
-		return agent.SegmentStream{}, false
+		return conversation.SegmentStream{}, false
 	}
 	if rebound.RunID != runID || rebound.SegmentID != segmentID {
 		s.postFailure(errors.New("runtime rebound a different run segment"))
-		return agent.SegmentStream{}, false
+		return conversation.SegmentStream{}, false
 	}
 	return rebound, true
 }

@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec"
 	adapterhooks "github.com/Tangerg/flame/runtime/internal/adapter/integration/hooks"
-	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
+	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/isolation"
@@ -17,6 +17,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
 	"github.com/Tangerg/flame/runtime/internal/application/automation/schedules"
+	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
 	agentmemoryapp "github.com/Tangerg/flame/runtime/internal/application/workspace/agentmemory"
@@ -100,7 +101,7 @@ func buildPolicyComposition(ctx context.Context, cfg Config) (policyComposition,
 type workspaceComposition struct {
 	scope            *workspace.Scope
 	hookResolver     *adapterhooks.Resolver
-	hooks            *workspace.Hooks
+	hooks            *apphooks.Catalog
 	agentMemory      *agentmemoryapp.Coordinator
 	memoryCuration   *agentmemoryapp.Curation
 	authoredWatch    *workspace.AuthoredWatch
@@ -122,7 +123,7 @@ func buildWorkspaceComposition(
 	if err != nil {
 		return workspaceComposition{}, fmt.Errorf("runtime: build hook resolver: %w", err)
 	}
-	hooks, err := workspace.NewHooks(scope, hookResolver, cfg.Stores.Trust, publish)
+	hooks, err := apphooks.NewCatalog(scope, hookResolver, cfg.Stores.Trust, publish)
 	if err != nil {
 		return workspaceComposition{}, fmt.Errorf("runtime: build hook management: %w", err)
 	}
@@ -190,9 +191,9 @@ type executionComposition struct {
 	models            modelEnvironment
 	tools             toolEnvironment
 	isolation         *isolation.Isolator
-	workingContexts   *agentexec.WorkingContextComposer
-	transientSessions *agentexec.TransientSessionState
-	executor          *agentexec.InteractionExecutor
+	workingContexts   *executionadapter.WorkingContextComposer
+	transientSessions *executionadapter.TransientSessionState
+	executor          *executionadapter.InteractionExecutor
 	toolRegistry      toolset.DiagnosticRegistry
 }
 
@@ -255,7 +256,7 @@ func buildExecutionComposition(
 	if err != nil {
 		return executionComposition{}, err
 	}
-	workingContexts, err := agentexec.NewWorkingContextComposer(agentexec.WorkingContextConfig{
+	workingContexts, err := executionadapter.NewWorkingContextComposer(executionadapter.WorkingContextConfig{
 		UserHome:          cfg.UserHome,
 		AgentMemory:       modelServices.agentMemoryRead,
 		AgentMemorySearch: modelServices.agentMemoryRead,
@@ -266,7 +267,7 @@ func buildExecutionComposition(
 	if err != nil {
 		return executionComposition{}, fmt.Errorf("runtime: build working context: %w", err)
 	}
-	transientSessions, err := agentexec.NewTransientSessionState(
+	transientSessions, err := executionadapter.NewTransientSessionState(
 		workingContexts,
 		toolRuntime.tools.Resolver,
 		toolRuntime.tools.Shells,
@@ -274,7 +275,7 @@ func buildExecutionComposition(
 	if err != nil {
 		return executionComposition{}, fmt.Errorf("runtime: build transient Session state: %w", err)
 	}
-	toolAuthorizer, err := agentexec.NewToolAuthorizer(policy.approvals)
+	toolAuthorizer, err := executionadapter.NewToolAuthorizer(policy.approvals)
 	if err != nil {
 		return executionComposition{}, fmt.Errorf("runtime: Tool authorizer: %w", err)
 	}
@@ -292,7 +293,7 @@ func buildExecutionComposition(
 		return executionComposition{}, fmt.Errorf("runtime: build Run maintenance: %w", err)
 	}
 	maxConcurrentToolCalls := 8
-	interactionConfig := agentexec.InteractionExecutorConfig{
+	interactionConfig := executionadapter.InteractionExecutorConfig{
 		Lifetime:               lifetime.context,
 		ExecutionTrees:         cfg.Stores.ExecutorCheckpoints,
 		BuildID:                cfg.BuildID,
@@ -328,12 +329,12 @@ func buildExecutionComposition(
 	if cfg.ToolResultOffloadEnabled {
 		toolResultThreshold := cfg.ToolResultThreshold
 		interactionConfig.ToolResultStore = cfg.Stores.ToolResults
-		interactionConfig.ToolResultOffload = agentexec.ToolResultOffloadPolicyValues{
+		interactionConfig.ToolResultOffload = executionadapter.ToolResultOffloadPolicyValues{
 			Threshold:  &toolResultThreshold,
 			ReaderName: tool.ReadToolResult,
 		}
 	}
-	interactionExecutor, err := agentexec.NewInteractionExecutor(interactionConfig)
+	interactionExecutor, err := executionadapter.NewInteractionExecutor(interactionConfig)
 	if err != nil {
 		return executionComposition{}, fmt.Errorf("runtime: Interaction executor: %w", err)
 	}

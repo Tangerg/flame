@@ -5,60 +5,59 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/Tangerg/flame/cli/internal/application/extensions"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/headless"
-
-	"github.com/Tangerg/flame/cli/internal/application/extensions"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
-func (t *transcriptView) Apply(event agent.Event, registry *extensions.Registry) error {
+func (t *transcriptView) Apply(event conversation.Event, registry *extensions.Registry) error {
 	return t.apply("", event, registry)
 }
 
-func (t *transcriptView) ApplyRunEvent(envelope agent.RunEvent, registry *extensions.Registry) error {
-	if started, ok := envelope.Event.(agent.SegmentStarted); ok {
+func (t *transcriptView) ApplyRunEvent(envelope conversation.RunEvent, registry *extensions.Registry) error {
+	if started, ok := envelope.Event.(conversation.SegmentStarted); ok {
 		t.history.Observe(started.Run)
 	}
 	return t.apply(envelope.RunID, envelope.Event, registry)
 }
 
-func (t *transcriptView) apply(runID string, event agent.Event, registry *extensions.Registry) error {
+func (t *transcriptView) apply(runID string, event conversation.Event, registry *extensions.Registry) error {
 	switch e := event.(type) {
-	case agent.BlockStarted:
-		if e.Block.Kind == agent.BlockAssistant || e.Block.Kind == agent.BlockReasoning {
+	case conversation.BlockStarted:
+		if e.Block.Kind == conversation.BlockAssistant || e.Block.Kind == conversation.BlockReasoning {
 			return t.begin(e.Block)
 		}
-		if e.Block.Kind == agent.BlockTool {
+		if e.Block.Kind == conversation.BlockTool {
 			return t.beginTool(e.Block, registry)
 		}
 		t.sealToolGroup()
-	case agent.BlockDelta:
+	case conversation.BlockDelta:
 		key := transcriptBlockKey(runID, e.BlockID)
 		if _, live := t.tools[key]; live {
 			return t.deltaTool(key, e)
 		}
 		return t.delta(key, e)
-	case agent.ToolArgumentsDelta, agent.RunProgress:
+	case conversation.ToolArgumentsDelta, conversation.RunProgress:
 		// Tool arguments are provisional JSON and progress belongs in the status
 		// chrome. Neither creates an authoritative transcript block.
-	case agent.CustomEvent:
+	case conversation.CustomEvent:
 		return t.appendCustom(runID, e, registry)
-	case agent.BlockCompleted:
+	case conversation.BlockCompleted:
 		return t.complete(e.Block, registry)
-	case agent.RunFinished:
+	case conversation.RunFinished:
 		if runID == "" {
 			t.settleLive(e.Outcome)
 		} else {
 			t.settleRun(runID, e.Outcome)
 		}
-	case agent.RunInterrupted:
+	case conversation.RunInterrupted:
 		t.sealToolGroup()
 	}
 	return nil
 }
 
-func (t *transcriptView) appendCustom(runID string, event agent.CustomEvent, registry *extensions.Registry) error {
+func (t *transcriptView) appendCustom(runID string, event conversation.CustomEvent, registry *extensions.Registry) error {
 	for _, presenter := range registry.Values(CustomEventPresenters) {
 		if presenter.Name != event.Name {
 			continue
@@ -80,7 +79,7 @@ func (t *transcriptView) appendCustom(runID string, event agent.CustomEvent, reg
 	return nil
 }
 
-func presentCustomSafely(presenter CustomEventPresenter, presentation BlockPresentation, event agent.CustomEvent) (rendered []headless.Block, err error) {
+func presentCustomSafely(presenter CustomEventPresenter, presentation BlockPresentation, event conversation.CustomEvent) (rendered []headless.Block, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			err = fmt.Errorf("terminal transcript: custom presenter for %q panicked: %v", presenter.Name, recovered)
@@ -89,7 +88,7 @@ func presentCustomSafely(presenter CustomEventPresenter, presentation BlockPrese
 	return presenter.Present(presentation, event), nil
 }
 
-func (t *transcriptView) begin(block agent.Block) error {
+func (t *transcriptView) begin(block conversation.Block) error {
 	key := transcriptBlockKey(block.RunID, block.ID)
 	if _, exists := t.textStreams[key]; exists {
 		return fmt.Errorf("terminal transcript: text block %s started twice", block.ID)
@@ -100,7 +99,7 @@ func (t *transcriptView) begin(block agent.Block) error {
 	t.sealToolGroup()
 	speaker := t.history.Speaker(block)
 	live := &liveText{
-		runID: block.RunID, kind: block.Kind, text: agent.NewStreamedText(block.Text),
+		runID: block.RunID, kind: block.Kind, text: conversation.NewStreamedText(block.Text),
 		block: &markdownBlock{theme: t.theme, speaker: speaker},
 	}
 	live.stream.SetLook(t.lookFor(block.Kind))
@@ -113,7 +112,7 @@ func (t *transcriptView) begin(block agent.Block) error {
 	return nil
 }
 
-func (t *transcriptView) delta(key string, delta agent.BlockDelta) error {
+func (t *transcriptView) delta(key string, delta conversation.BlockDelta) error {
 	live, ok := t.textStreams[key]
 	if !ok {
 		return fmt.Errorf("terminal transcript: delta for inactive text block %s", delta.BlockID)
@@ -139,7 +138,7 @@ func (t *transcriptView) updateLiveText(live *liveText, text string) {
 	t.refreshSearch()
 }
 
-func (t *transcriptView) deltaTool(key string, delta agent.BlockDelta) error {
+func (t *transcriptView) deltaTool(key string, delta conversation.BlockDelta) error {
 	live, ok := t.tools[key]
 	if !ok {
 		return fmt.Errorf("terminal transcript: delta for inactive tool block %s", delta.BlockID)
@@ -153,18 +152,18 @@ func (t *transcriptView) deltaTool(key string, delta agent.BlockDelta) error {
 	return nil
 }
 
-func (t *transcriptView) complete(block agent.Block, registry *extensions.Registry) error {
+func (t *transcriptView) complete(block conversation.Block, registry *extensions.Registry) error {
 	key := transcriptBlockKey(block.RunID, block.ID)
 	if _, live := t.textStreams[key]; live {
 		return t.completeStream(block)
 	}
-	if block.Kind == agent.BlockTool && t.completeLiveTool(block) {
+	if block.Kind == conversation.BlockTool && t.completeLiveTool(block) {
 		return nil
 	}
 	return t.appendCompleted(block, registry)
 }
 
-func (t *transcriptView) completeStream(block agent.Block) error {
+func (t *transcriptView) completeStream(block conversation.Block) error {
 	key := transcriptBlockKey(block.RunID, block.ID)
 	live, ok := t.textStreams[key]
 	if !ok {
@@ -184,7 +183,7 @@ func (t *transcriptView) completeStream(block agent.Block) error {
 	return nil
 }
 
-func (t *transcriptView) completeLiveTool(block agent.Block) bool {
+func (t *transcriptView) completeLiveTool(block conversation.Block) bool {
 	key := transcriptBlockKey(block.RunID, block.ID)
 	live, ok := t.tools[key]
 	if !ok {
@@ -213,15 +212,15 @@ func (t *transcriptView) completeLiveTool(block agent.Block) bool {
 	return true
 }
 
-func (t *transcriptView) settleLive(outcome agent.Outcome) {
-	toolStatus := agent.ToolError
+func (t *transcriptView) settleLive(outcome conversation.Outcome) {
+	toolStatus := conversation.ToolError
 	if outcome.Status == protocol.OutcomeCanceled {
-		toolStatus = agent.ToolCanceled
+		toolStatus = conversation.ToolCanceled
 	}
 	t.settleLivePresentation(toolStatus)
 }
 
-func (t *transcriptView) settleLivePresentation(toolStatus agent.ToolStatus) {
+func (t *transcriptView) settleLivePresentation(toolStatus conversation.ToolStatus) {
 	for id, live := range t.textStreams {
 		live.block.setSource(live.text.String(), t.lookFor(live.kind))
 		t.finishMarkdown(live.id, live.block)
@@ -255,10 +254,10 @@ func (t *transcriptView) settleLivePresentation(toolStatus agent.ToolStatus) {
 // can no longer trust its event projection. It does not invent a Runtime Run
 // outcome; an authoritative cold snapshot will replace this presentation.
 func (t *transcriptView) rejectLivePresentation() {
-	t.settleLivePresentation(agent.ToolError)
+	t.settleLivePresentation(conversation.ToolError)
 }
 
-func (t *transcriptView) settleRun(runID string, outcome agent.Outcome) {
+func (t *transcriptView) settleRun(runID string, outcome conversation.Outcome) {
 	for id, live := range t.textStreams {
 		if live.runID != runID {
 			continue
@@ -268,9 +267,9 @@ func (t *transcriptView) settleRun(runID string, outcome agent.Outcome) {
 		live.stream.Reset()
 		delete(t.textStreams, id)
 	}
-	toolStatus := agent.ToolError
+	toolStatus := conversation.ToolError
 	if outcome.Status == protocol.OutcomeCanceled {
-		toolStatus = agent.ToolCanceled
+		toolStatus = conversation.ToolCanceled
 	}
 	selectedCollapsed := false
 	for id, live := range t.tools {

@@ -6,10 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 type snapshotBindingStub struct {
@@ -105,7 +104,7 @@ func TestSessionColdReadRejectsMismatchedMetadataIdentity(t *testing.T) {
 	wrong.ID = "ses_2"
 	stub := &snapshotBindingStub{sessions: []*protocol.Session{wrong}, snapshot: &protocol.SessionSnapshot{}}
 	runtime := &Connection{snapshot: stub, meta: requestMeta("test")}
-	if _, err := runtime.GetSession(t.Context(), "ses_1"); !errors.Is(err, agent.ErrIncompatibleRuntime) {
+	if _, err := runtime.GetSession(t.Context(), "ses_1"); !errors.Is(err, conversation.ErrIncompatibleRuntime) {
 		t.Fatalf("mismatched Session error = %v", err)
 	}
 	if stub.sessionCalls != 1 || len(stub.snapshotRequests) != 0 {
@@ -208,7 +207,7 @@ func TestSessionColdReadStopsWhenMetadataNeverStabilizes(t *testing.T) {
 	}
 	runtime := &Connection{snapshot: stub, meta: requestMeta("test")}
 	_, err := runtime.GetSession(t.Context(), "ses_1")
-	if !errors.Is(err, agent.ErrDisconnected) || len(stub.snapshotRequests) != snapshotStabilityAttempts {
+	if !errors.Is(err, conversation.ErrDisconnected) || len(stub.snapshotRequests) != snapshotStabilityAttempts {
 		t.Fatalf("cold read error = %v, material calls = %d", err, len(stub.snapshotRequests))
 	}
 }

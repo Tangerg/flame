@@ -4,16 +4,15 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/layout"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 type timelineEntry struct {
-	Run          agent.Run
+	Run          conversation.Run
 	RootPosition int
 	RootTotal    int
 	Depth        int
@@ -51,20 +50,20 @@ func newTimelinePane(theme kit.Theme, glyphs kit.Glyphs, jump func(timelineEntry
 	return pane
 }
 
-func (t *timelinePane) SetRuns(runs []agent.Run) {
+func (t *timelinePane) SetRuns(runs []conversation.Run) {
 	t.picker.Reset()
 	t.picker.SetItems(buildTimelineEntries(runs))
 }
 
-func (t *timelinePane) RefreshRuns(runs []agent.Run) {
+func (t *timelinePane) RefreshRuns(runs []conversation.Run) {
 	t.picker.SetItems(buildTimelineEntries(runs))
 }
 
 func (t *timelinePane) SetLive(live bool) { t.live = live }
 
-func buildTimelineEntries(runs []agent.Run) []timelineEntry {
-	children := make(map[string][]agent.Run)
-	var roots []agent.Run
+func buildTimelineEntries(runs []conversation.Run) []timelineEntry {
+	children := make(map[string][]conversation.Run)
+	var roots []conversation.Run
 	for _, run := range runs {
 		if run.Lineage.IsRoot() {
 			roots = append(roots, run)
@@ -85,7 +84,7 @@ func buildTimelineEntries(runs []agent.Run) []timelineEntry {
 
 func appendTimelineDescendants(
 	entries *[]timelineEntry,
-	children map[string][]agent.Run,
+	children map[string][]conversation.Run,
 	parentID string,
 	rootPosition, rootTotal, depth int,
 ) {

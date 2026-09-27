@@ -11,10 +11,10 @@ codeberg.org/go-latex/latex v0.3.0/go.mod h1:8ETijTpK2bFtwRAXLXe1RZJrYxnc5pibibZ
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/toml v1.6.0 h1:dRaEfpa2VI55EwlIW72hMRHdWouJeRF7TPYhI+AUQjk=
 github.com/BurntSushi/toml v1.6.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
-github.com/Tangerg/flame/runtime v0.0.0-20260923200329-a7b29b7e4362 h1:x5I1y0EvXGqC/lC1wvA1C6La/wfbCr2hjjb7TSydMFs=
-github.com/Tangerg/flame/runtime v0.0.0-20260923200329-a7b29b7e4362/go.mod h1:Wtwsv9x30LwE37tqVPuEXawcqBZGQrlNJ36xoWWSMkU=
-github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260923200329-a7b29b7e4362 h1:OmIRdx93z1NPlVXYYHGJDs3NZSj+vDeg/ZVflDK0Tjs=
-github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260923200329-a7b29b7e4362/go.mod h1:XqeITG7pzIeQNDNRQQ3Jg63RVvKlXYmURgLHPPrIZ5g=
+github.com/Tangerg/flame/runtime v0.0.0-20260926203038-0bc454c0f395 h1:6TBjFesLqzrczdi2cnYdwTjiOyAEQ+1mUE6PHByI1Qc=
+github.com/Tangerg/flame/runtime v0.0.0-20260926203038-0bc454c0f395/go.mod h1:+8TF3bvgXkiUAW9czMbQjdVSoovelroFV5B+/4loFmE=
+github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260926203038-0bc454c0f395 h1:Kb4czKolPlf723cLvpyLkLfD90/rvE0PytgKeqI4RGg=
+github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260926203038-0bc454c0f395/go.mod h1:XqeITG7pzIeQNDNRQQ3Jg63RVvKlXYmURgLHPPrIZ5g=
 github.com/Tangerg/go-sdk v1.8.1-scope.1 h1:8V8k8aeqbEDgLlH3T4+DZnf0DM1dSOGofkAXb3dZjKM=
 github.com/Tangerg/go-sdk v1.8.1-scope.1/go.mod h1:9ZBcxdycY3/8/I1dCH3Uo5rCY3Run9Y4ZmEmiQIulUw=
 github.com/Tangerg/oolong/components v0.21.0 h1:x/sdZjMm0ZmrZ8iuW4nTbjpDFOh9TFmk7VZRQnp4wK0=
@@ -130,6 +130,10 @@ github.com/frankban/quicktest v1.14.6 h1:7Xjx+VpznH+oBnejlPUj8oUpdxnVs4f8XU8WnHk
 github.com/frankban/quicktest v1.14.6/go.mod h1:4ptaffx2x8+WTWXmUCuVU6aPUX1/Mz7zb5vbUoiM6w0=
 github.com/fsnotify/fsnotify v1.10.1 h1:b0/UzAf9yR5rhf3RPm9gf3ehBPpf0oZKIjtpKrx59Ho=
 github.com/fsnotify/fsnotify v1.10.1/go.mod h1:TLheqan6HD6GBK6PrDWyDPBaEV8LspOxvPSjC+bVfgo=
+github.com/go-chi/chi/v5 v5.3.2 h1:5YQkICvTCSZ25hoRsyJazN0scjzKGiu4VAUc7H1o1nY=
+github.com/go-chi/chi/v5 v5.3.2/go.mod h1:R+tYY2hNuVUUjxoPtqUdgBqevM9s9njzkTLutVsOCto=
+github.com/go-chi/cors v1.2.2 h1:Jmey33TE+b+rB7fT8MUy1u0I4L+NARQlK6LhzKPSyQE=
+github.com/go-chi/cors v1.2.2/go.mod h1:sSbTewc+6wYHBBCW7ytsFSn836hqM7JxpglAy2Vzc58=
 github.com/go-logr/logr v1.2.2/go.mod h1:jdQByPbusPIv2/zmleS9BjJVeZ6kBagPoEUsqbVz/1A=
 github.com/go-logr/logr v1.4.4 h1:tG4xh9yMsRCAiodLVTxyrkzSZ9+o0L1Kg/+cPVcbP/8=
 github.com/go-logr/logr v1.4.4/go.mod h1:9T104GzyrTigFIr8wt5mBrctHMim0Nb2HLGrmQ40KvY=

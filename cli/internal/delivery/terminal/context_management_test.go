@@ -7,12 +7,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/application/changefeed"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/core/input"
-
-	"github.com/Tangerg/flame/cli/internal/application/changefeed"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 )
 
 const (
@@ -89,7 +88,7 @@ func newAgentMemoryServiceStub() *agentMemoryServiceStub {
 	}
 }
 
-func (a *agentMemoryServiceStub) Items(_ context.Context, target agent.MemoryTarget) ([]protocol.AgentMemoryItem, error) {
+func (a *agentMemoryServiceStub) Items(_ context.Context, target conversation.MemoryTarget) ([]protocol.AgentMemoryItem, error) {
 	if err := target.Validate(); err != nil {
 		return nil, err
 	}
@@ -165,7 +164,7 @@ func (a *agentMemoryServiceStub) Delete(_ context.Context, id string) error {
 	return errors.New("not found")
 }
 
-func (a *agentMemoryServiceStub) Add(_ context.Context, target agent.MemoryTarget, content string) (protocol.AgentMemoryItem, error) {
+func (a *agentMemoryServiceStub) Add(_ context.Context, target conversation.MemoryTarget, content string) (protocol.AgentMemoryItem, error) {
 	if err := target.Validate(); err != nil {
 		return protocol.AgentMemoryItem{}, err
 	}
@@ -187,7 +186,7 @@ func (a *agentMemoryServiceStub) Add(_ context.Context, target agent.MemoryTarge
 
 func TestAgentMemoryReaderShowsScopeAndProvenance(t *testing.T) {
 	memory := newAgentMemoryServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), AgentMemory: memory, Workspace: "/workspace"})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), AgentMemory: memory, Workspace: "/workspace"})
 	host.Shows(t, "Ask flame")
 	host.Type("/memory project")
 	host.Press(input.Enter)
@@ -198,7 +197,7 @@ func TestAgentMemoryReaderShowsScopeAndProvenance(t *testing.T) {
 
 func TestAgentMemoryMultilineAddSurvivesResize(t *testing.T) {
 	memory := newAgentMemoryServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), AgentMemory: memory, Workspace: "/workspace"})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), AgentMemory: memory, Workspace: "/workspace"})
 	host.Shows(t, "Ask flame")
 	host.Type("/memory-add user")
 	host.Press(input.Enter)
@@ -221,7 +220,7 @@ func TestAgentMemoryMultilineAddSurvivesResize(t *testing.T) {
 
 func TestPendingAgentMemoryReviewRequiresResizeSafeConfirmation(t *testing.T) {
 	memory := newAgentMemoryServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), AgentMemory: memory, Workspace: "/workspace"})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), AgentMemory: memory, Workspace: "/workspace"})
 	host.Shows(t, "Ask flame")
 	host.Type("/memory-approve project " + terminalMemoryPendingID)
 	host.Press(input.Enter)
@@ -253,7 +252,7 @@ func TestAgentMemoryReviewOutlivesSameSessionProjectionReplacement(t *testing.T)
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1),
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: backend, AgentMemory: memory, Changes: source, SessionID: "ses_demo_1"})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: backend, AgentMemory: memory, Changes: source, SessionID: "ses_demo_1"})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "runtime change subscription")
 	host.Type("/memory-approve project " + terminalMemoryPendingID)
@@ -264,7 +263,7 @@ func TestAgentMemoryReviewOutlivesSameSessionProjectionReplacement(t *testing.T)
 	if decision := awaitValue(t, memory.started, "agent memory review"); decision != protocol.AgentMemoryReviewApprove {
 		t.Fatalf("review decision = %q", decision)
 	}
-	if _, err := backend.RollbackSession(t.Context(), agent.RollbackSession{
+	if _, err := backend.RollbackSession(t.Context(), conversation.RollbackSession{
 		SessionID: "ses_demo_1", Scope: protocol.RestoreHistory,
 	}); err != nil {
 		t.Fatal(err)
@@ -283,7 +282,7 @@ func TestAgentMemoryReviewOutlivesSameSessionProjectionReplacement(t *testing.T)
 	if decision := awaitValue(t, base.review, "committed agent memory review"); decision != protocol.AgentMemoryReviewApprove {
 		t.Fatalf("committed review decision = %q", decision)
 	}
-	items, err := base.Items(t.Context(), agent.MemoryTarget{Scope: protocol.AgentMemoryScopeProject, Workspace: "/tmp/demo/store"})
+	items, err := base.Items(t.Context(), conversation.MemoryTarget{Scope: protocol.AgentMemoryScopeProject, Workspace: "/tmp/demo/store"})
 	if err != nil || len(items) != 1 || items[0].Status != protocol.AgentMemoryStatusActive {
 		t.Fatalf("project memory after review = (%+v, %v)", items, err)
 	}
@@ -298,7 +297,7 @@ func TestAgentMemoryUpdateDoesNotInstallAReaderAfterSessionSwitch(t *testing.T) 
 	}
 	release := sync.OnceFunc(func() { close(memory.release) })
 	t.Cleanup(release)
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), AgentMemory: memory, SessionID: "ses_demo_1"})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), AgentMemory: memory, SessionID: "ses_demo_1"})
 	host.Shows(t, "Ask flame")
 	host.Type("/memory-unpin user " + terminalMemoryUserID)
 	host.Press(input.Enter)
@@ -317,7 +316,7 @@ func TestAgentMemoryUpdateDoesNotInstallAReaderAfterSessionSwitch(t *testing.T) 
 	release()
 	host.Shows(t, "agent memory updated · "+terminalMemoryUserID)
 	host.Hides(t, "Agent memory · user")
-	items, err := base.Items(t.Context(), agent.MemoryTarget{Scope: protocol.AgentMemoryScopeUser})
+	items, err := base.Items(t.Context(), conversation.MemoryTarget{Scope: protocol.AgentMemoryScopeUser})
 	if err != nil || len(items) != 1 || items[0].Pinned {
 		t.Fatalf("user memory after update = (%+v, %v)", items, err)
 	}
@@ -326,7 +325,7 @@ func TestAgentMemoryUpdateDoesNotInstallAReaderAfterSessionSwitch(t *testing.T) 
 
 func TestAgentMemoryEditPinAndDeleteRoundTripThroughAuthoritativeReads(t *testing.T) {
 	memory := newAgentMemoryServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), AgentMemory: memory, Workspace: "/workspace"})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), AgentMemory: memory, Workspace: "/workspace"})
 	host.Shows(t, "Ask flame")
 
 	host.Type("/memory-edit user " + terminalMemoryUserID)
@@ -342,7 +341,7 @@ func TestAgentMemoryEditPinAndDeleteRoundTripThroughAuthoritativeReads(t *testin
 	host.Send(input.Key{Code: input.Character, Rune: 's', Mods: input.Ctrl})
 	host.Shows(t, "Agent memory · user")
 	host.Shows(t, "prefer explicit answers")
-	items, err := memory.Items(t.Context(), agent.MemoryTarget{Scope: protocol.AgentMemoryScopeUser})
+	items, err := memory.Items(t.Context(), conversation.MemoryTarget{Scope: protocol.AgentMemoryScopeUser})
 	if err != nil || len(items) != 1 || items[0].Content != "prefer explicit answers\nwith evidence" {
 		t.Fatalf("edited user memory = (%+v, %v)", items, err)
 	}
@@ -352,7 +351,7 @@ func TestAgentMemoryEditPinAndDeleteRoundTripThroughAuthoritativeReads(t *testin
 	host.Type("/memory-unpin user " + terminalMemoryUserID)
 	host.Press(input.Enter)
 	host.Shows(t, "Agent memory · user")
-	items, err = memory.Items(t.Context(), agent.MemoryTarget{Scope: protocol.AgentMemoryScopeUser})
+	items, err = memory.Items(t.Context(), conversation.MemoryTarget{Scope: protocol.AgentMemoryScopeUser})
 	if err != nil || len(items) != 1 || items[0].Pinned {
 		t.Fatalf("unpinned user memory = (%+v, %v)", items, err)
 	}
@@ -362,7 +361,7 @@ func TestAgentMemoryEditPinAndDeleteRoundTripThroughAuthoritativeReads(t *testin
 	host.Type("/memory-pin user " + terminalMemoryUserID)
 	host.Press(input.Enter)
 	host.Shows(t, "pinned")
-	items, err = memory.Items(t.Context(), agent.MemoryTarget{Scope: protocol.AgentMemoryScopeUser})
+	items, err = memory.Items(t.Context(), conversation.MemoryTarget{Scope: protocol.AgentMemoryScopeUser})
 	if err != nil || len(items) != 1 || !items[0].Pinned {
 		t.Fatalf("pinned user memory = (%+v, %v)", items, err)
 	}
@@ -378,7 +377,7 @@ func TestAgentMemoryEditPinAndDeleteRoundTripThroughAuthoritativeReads(t *testin
 	host.Press(input.Down)
 	host.Press(input.Enter)
 	host.Shows(t, "No active or pending memory")
-	items, err = memory.Items(t.Context(), agent.MemoryTarget{Scope: protocol.AgentMemoryScopeUser})
+	items, err = memory.Items(t.Context(), conversation.MemoryTarget{Scope: protocol.AgentMemoryScopeUser})
 	if err != nil || len(items) != 0 {
 		t.Fatalf("deleted user memory = (%+v, %v)", items, err)
 	}

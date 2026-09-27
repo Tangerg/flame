@@ -231,13 +231,13 @@ export interface ConversationArchiveOwnerDependencies {
 }
 
 export class ConversationArchiveOwner {
-  readonly #dependencies: ConversationArchiveOwnerDependencies;
+  readonly #files: FileTransferPort;
   #generation: ConversationArchiveGeneration;
   #disposed = false;
 
   private constructor(dependencies: ConversationArchiveOwnerDependencies) {
-    this.#dependencies = dependencies;
-    this.#generation = this.#newGeneration();
+    this.#files = dependencies.files;
+    this.#generation = new ConversationArchiveGeneration(dependencies.gateway, this.#files);
   }
 
   static install(dependencies: ConversationArchiveOwnerDependencies): ConversationArchiveOwner {
@@ -260,10 +260,10 @@ export class ConversationArchiveOwner {
     return this.#generation.importJson();
   }
 
-  replaceRuntimeGeneration(): void {
+  replaceRuntimeGeneration(createGateway: () => ConversationArchiveGateway): void {
     if (this.#disposed || !conversationArchivePublication.owns(this)) return;
     const predecessor = this.#generation;
-    this.#generation = this.#newGeneration();
+    this.#generation = new ConversationArchiveGeneration(createGateway(), this.#files);
     predecessor.retire();
   }
 
@@ -272,10 +272,6 @@ export class ConversationArchiveOwner {
     this.#disposed = true;
     this.#generation.retire();
     conversationArchivePublication.withdraw(this);
-  }
-
-  #newGeneration(): ConversationArchiveGeneration {
-    return new ConversationArchiveGeneration(this.#dependencies.gateway, this.#dependencies.files);
   }
 }
 

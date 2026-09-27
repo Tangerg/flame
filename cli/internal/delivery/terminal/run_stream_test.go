@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/workbenchstate"
 	"os"
 	"path/filepath"
 	"slices"
@@ -13,14 +12,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/application/mutation"
+	"github.com/Tangerg/flame/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/core/input"
-
-	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
-	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
-	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 )
 
 func TestDropStreamPermanentlyRetiresFollowerOwnership(t *testing.T) {
@@ -64,7 +63,7 @@ type sessionReadRecordingRuntime struct {
 func (s *sessionReadRecordingRuntime) GetSession(
 	ctx context.Context,
 	sessionID string,
-) (agent.SessionSnapshot, error) {
+) (conversation.SessionSnapshot, error) {
 	s.mu.Lock()
 	s.sessionIDs = append(s.sessionIDs, sessionID)
 	s.mu.Unlock()
@@ -82,8 +81,8 @@ type replayingStartRuntime struct {
 
 	mu         sync.Mutex
 	attempts   int
-	inputs     []agent.StartRun
-	stream     agent.SegmentStream
+	inputs     []prompt.StartRun
+	stream     conversation.SegmentStream
 	failure    error
 	afterFirst func()
 }
@@ -92,8 +91,8 @@ type idempotentStartRuntime struct {
 	*runtimefixture.Runtime
 
 	mu       sync.Mutex
-	receipts map[agent.CommandID]agent.SegmentStream
-	inputs   []agent.StartRun
+	receipts map[replay.CommandID]conversation.SegmentStream
+	inputs   []prompt.StartRun
 }
 
 type heldCancellationResultRuntime struct {
@@ -104,8 +103,8 @@ type heldCancellationResultRuntime struct {
 
 func (h *heldCancellationResultRuntime) CancelRun(
 	ctx context.Context,
-	input agent.CancelRun,
-) (agent.RunCancellation, error) {
+	input conversation.CancelRun,
+) (conversation.RunCancellation, error) {
 	result, err := h.Runtime.CancelRun(ctx, input)
 	select {
 	case h.settled <- struct{}{}:
@@ -115,89 +114,89 @@ func (h *heldCancellationResultRuntime) CancelRun(
 	case <-h.release:
 		return result, err
 	case <-ctx.Done():
-		return agent.RunCancellation{}, context.Cause(ctx)
+		return conversation.RunCancellation{}, context.Cause(ctx)
 	}
 }
 
 type activeConflictRuntime struct {
 	Runtime
-	attempted chan agent.StartRun
-	conflict  agent.CommandID
+	attempted chan prompt.StartRun
+	conflict  replay.CommandID
 }
 
 type refusingFirstCommandRuntime struct {
 	*runtimefixture.Runtime
 
 	mu      sync.Mutex
-	refused agent.CommandID
-	inputs  []agent.StartRun
+	refused replay.CommandID
+	inputs  []prompt.StartRun
 }
 
 type invalidAcceptedStartRuntime struct {
 	Runtime
 
 	mu                  sync.Mutex
-	starts              []agent.StartRun
-	cancellations       []agent.CancelRun
+	starts              []prompt.StartRun
+	cancellations       []conversation.CancelRun
 	refuseFirst         bool
 	refreshFailure      error
 	releaseCancellation <-chan struct{}
 }
 
-func (i *invalidAcceptedStartRuntime) StartRun(ctx context.Context, input agent.StartRun) (agent.SegmentStream, error) {
+func (i *invalidAcceptedStartRuntime) StartRun(ctx context.Context, input prompt.StartRun) (conversation.SegmentStream, error) {
 	opened, err := i.Runtime.StartRun(ctx, input)
 	if err != nil {
-		return agent.SegmentStream{}, err
+		return conversation.SegmentStream{}, err
 	}
 	i.mu.Lock()
 	i.starts = append(i.starts, input.Clone())
 	i.mu.Unlock()
 	opened.UserItemID = ""
-	return agent.SegmentStream{}, agent.NewAcceptedMutationError(
+	return conversation.SegmentStream{}, conversation.NewAcceptedMutationError(
 		opened, fmt.Errorf("start run: %w", opened.ValidateStart()),
 	)
 }
 
-func (i *invalidAcceptedStartRuntime) CancelRun(ctx context.Context, input agent.CancelRun) (agent.RunCancellation, error) {
+func (i *invalidAcceptedStartRuntime) CancelRun(ctx context.Context, input conversation.CancelRun) (conversation.RunCancellation, error) {
 	i.mu.Lock()
 	i.cancellations = append(i.cancellations, input)
 	refuse := i.refuseFirst && len(i.cancellations) == 1
 	i.mu.Unlock()
 	if refuse {
-		return agent.RunCancellation{}, errors.New("temporary malformed-receipt cleanup failure")
+		return conversation.RunCancellation{}, errors.New("temporary malformed-receipt cleanup failure")
 	}
 	if i.releaseCancellation != nil {
 		select {
 		case <-i.releaseCancellation:
 		case <-ctx.Done():
-			return agent.RunCancellation{}, context.Cause(ctx)
+			return conversation.RunCancellation{}, context.Cause(ctx)
 		}
 	}
 	return i.Runtime.CancelRun(ctx, input)
 }
 
-func (i *invalidAcceptedStartRuntime) GetSession(ctx context.Context, sessionID string) (agent.SessionSnapshot, error) {
+func (i *invalidAcceptedStartRuntime) GetSession(ctx context.Context, sessionID string) (conversation.SessionSnapshot, error) {
 	i.mu.Lock()
 	failure := i.refreshFailure
 	canceled := len(i.cancellations) > 0
 	i.mu.Unlock()
 	if canceled && failure != nil {
-		return agent.SessionSnapshot{}, failure
+		return conversation.SessionSnapshot{}, failure
 	}
 	return i.Runtime.GetSession(ctx, sessionID)
 }
 
-func (i *invalidAcceptedStartRuntime) attempts() ([]agent.StartRun, []agent.CancelRun) {
+func (i *invalidAcceptedStartRuntime) attempts() ([]prompt.StartRun, []conversation.CancelRun) {
 	i.mu.Lock()
 	defer i.mu.Unlock()
-	starts := make([]agent.StartRun, len(i.starts))
+	starts := make([]prompt.StartRun, len(i.starts))
 	for index, input := range i.starts {
 		starts[index] = input.Clone()
 	}
 	return starts, slices.Clone(i.cancellations)
 }
 
-func (r *refusingFirstCommandRuntime) StartRun(ctx context.Context, input agent.StartRun) (agent.SegmentStream, error) {
+func (r *refusingFirstCommandRuntime) StartRun(ctx context.Context, input prompt.StartRun) (conversation.SegmentStream, error) {
 	r.mu.Lock()
 	if r.refused == "" {
 		r.refused = input.CommandID
@@ -206,21 +205,21 @@ func (r *refusingFirstCommandRuntime) StartRun(ctx context.Context, input agent.
 	refused := r.refused
 	r.mu.Unlock()
 	if input.CommandID == refused {
-		return agent.SegmentStream{}, fmt.Errorf("runtime refused start: %w", agent.ErrSessionHasActiveRun)
+		return conversation.SegmentStream{}, fmt.Errorf("runtime refused start: %w", conversation.ErrSessionHasActiveRun)
 	}
 	return r.Runtime.StartRun(ctx, input)
 }
 
-func (r *refusingFirstCommandRuntime) refusedCommand() agent.StartRun {
+func (r *refusingFirstCommandRuntime) refusedCommand() prompt.StartRun {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if len(r.inputs) == 0 {
-		return agent.StartRun{}
+		return prompt.StartRun{}
 	}
 	return r.inputs[0].Clone()
 }
 
-func (a *activeConflictRuntime) StartRun(ctx context.Context, input agent.StartRun) (agent.SegmentStream, error) {
+func (a *activeConflictRuntime) StartRun(ctx context.Context, input prompt.StartRun) (conversation.SegmentStream, error) {
 	if input.CommandID != a.conflict {
 		return a.Runtime.StartRun(ctx, input)
 	}
@@ -228,41 +227,41 @@ func (a *activeConflictRuntime) StartRun(ctx context.Context, input agent.StartR
 	case a.attempted <- input.Clone():
 	default:
 	}
-	return agent.SegmentStream{}, fmt.Errorf("active run owns session: %w", agent.ErrSessionHasActiveRun)
+	return conversation.SegmentStream{}, fmt.Errorf("active run owns session: %w", conversation.ErrSessionHasActiveRun)
 }
 
-func (i *idempotentStartRuntime) StartRun(ctx context.Context, input agent.StartRun) (agent.SegmentStream, error) {
+func (i *idempotentStartRuntime) StartRun(ctx context.Context, input prompt.StartRun) (conversation.SegmentStream, error) {
 	i.mu.Lock()
 	i.inputs = append(i.inputs, input.Clone())
-	opened, replay := i.receipts[input.CommandID]
+	opened, replayGuard := i.receipts[input.CommandID]
 	i.mu.Unlock()
-	if replay {
+	if replayGuard {
 		return opened, nil
 	}
 	opened, err := i.Runtime.StartRun(ctx, input)
 	if err != nil {
-		return agent.SegmentStream{}, err
+		return conversation.SegmentStream{}, err
 	}
 	i.mu.Lock()
 	if i.receipts == nil {
-		i.receipts = make(map[agent.CommandID]agent.SegmentStream)
+		i.receipts = make(map[replay.CommandID]conversation.SegmentStream)
 	}
 	i.receipts[input.CommandID] = opened
 	i.mu.Unlock()
 	return opened, nil
 }
 
-func (i *idempotentStartRuntime) attempts() []agent.StartRun {
+func (i *idempotentStartRuntime) attempts() []prompt.StartRun {
 	i.mu.Lock()
 	defer i.mu.Unlock()
-	out := make([]agent.StartRun, len(i.inputs))
+	out := make([]prompt.StartRun, len(i.inputs))
 	for index, input := range i.inputs {
 		out[index] = input.Clone()
 	}
 	return out
 }
 
-func (r *replayingStartRuntime) StartRun(ctx context.Context, input agent.StartRun) (agent.SegmentStream, error) {
+func (r *replayingStartRuntime) StartRun(ctx context.Context, input prompt.StartRun) (conversation.SegmentStream, error) {
 	r.mu.Lock()
 	r.attempts++
 	r.inputs = append(r.inputs, cloneStartRun(input))
@@ -272,7 +271,7 @@ func (r *replayingStartRuntime) StartRun(ctx context.Context, input agent.StartR
 	if attempt == 1 {
 		opened, err := r.Runtime.StartRun(ctx, input)
 		if err != nil {
-			return agent.SegmentStream{}, err
+			return conversation.SegmentStream{}, err
 		}
 		r.mu.Lock()
 		r.stream = opened
@@ -282,26 +281,26 @@ func (r *replayingStartRuntime) StartRun(ctx context.Context, input agent.StartR
 		}
 		failure := r.failure
 		if failure == nil {
-			failure = agent.ErrDisconnected
+			failure = conversation.ErrDisconnected
 		}
-		return agent.SegmentStream{}, fmt.Errorf("lost start acknowledgement: %w", failure)
+		return conversation.SegmentStream{}, fmt.Errorf("lost start acknowledgement: %w", failure)
 	}
 	return cached, nil
 }
 
-func (r *replayingStartRuntime) startAttempts() []agent.StartRun {
+func (r *replayingStartRuntime) startAttempts() []prompt.StartRun {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	out := make([]agent.StartRun, len(r.inputs))
+	out := make([]prompt.StartRun, len(r.inputs))
 	for index, input := range r.inputs {
 		out[index] = cloneStartRun(input)
 	}
 	return out
 }
 
-func (s *sessionReadFailureRuntime) GetSession(ctx context.Context, sessionID string) (agent.SessionSnapshot, error) {
+func (s *sessionReadFailureRuntime) GetSession(ctx context.Context, sessionID string) (conversation.SessionSnapshot, error) {
 	if s.reads.Add(1) == s.failureAt {
-		return agent.SessionSnapshot{}, agent.ErrDisconnected
+		return conversation.SessionSnapshot{}, conversation.ErrDisconnected
 	}
 	return s.Runtime.GetSession(ctx, sessionID)
 }
@@ -309,8 +308,8 @@ func (s *sessionReadFailureRuntime) GetSession(ctx context.Context, sessionID st
 func TestRecoveredSessionRetriesATransientColdRead(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{
-			Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: conversation.RunFinished{
+			Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}
 	_, err := base.StartRun(t.Context(), testStartRun("ses_demo_1", "recover attach"))
@@ -330,13 +329,13 @@ func TestStreamRecoveryUsesTheFollowerSessionIdentity(t *testing.T) {
 	runtime := &sessionReadRecordingRuntime{Runtime: runtimefixture.New()}
 	application := &app{
 		runtime: runtime,
-		session: sessionState{current: agent.Session{ID: "ses_demo_2"}},
+		session: sessionState{current: conversation.Session{ID: "ses_demo_2"}},
 	}
 	follower := streamFollower{
 		app: application, ctx: t.Context(), sessionID: "ses_demo_1",
 	}
 
-	follower.recover("run_missing", agent.ErrDisconnected)
+	follower.recover("run_missing", conversation.ErrDisconnected)
 
 	if got := runtime.requestedSessionIDs(); !slices.Equal(got, []string{"ses_demo_1"}) {
 		t.Fatalf("recovery Session reads = %v, want frozen follower Session", got)
@@ -348,11 +347,11 @@ func TestRunStatusRetainsRuntimeContextFootprintAfterSettlement(t *testing.T) {
 	contextTokens := int64(12_345)
 	backend.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
-			{Delay: 10 * time.Millisecond, Event: agent.RunProgress{Activity: "thinking", ContextTokens: &contextTokens}},
-			{Delay: 10 * time.Millisecond, Event: agent.BlockCompleted{Block: agent.Block{
-				ID: "answer", Kind: agent.BlockAssistant, Text: "context-aware answer",
+			{Delay: 10 * time.Millisecond, Event: conversation.RunProgress{Activity: "thinking", ContextTokens: &contextTokens}},
+			{Delay: 10 * time.Millisecond, Event: conversation.BlockCompleted{Block: conversation.Block{
+				ID: "answer", Kind: conversation.BlockAssistant, Text: "context-aware answer",
 			}}},
-			{Delay: 10 * time.Millisecond, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
+			{Delay: 10 * time.Millisecond, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	host, stop := runUIWith(t, backend)
@@ -413,7 +412,7 @@ func TestDefinitivelyRefusedStartReturnsToTheDurableQueueWithANewIdentity(t *tes
 	base.Instant = true
 	runtime := &refusingFirstCommandRuntime{Runtime: base}
 	stateDirectory := t.TempDir()
-	host, stop := runUIFromConfig(t, Config{Runtime: runtime, Workspace: "/tmp/flame-cli-test", StateDirectory: stateDirectory})
+	host, stop := runUIFromConfig(t, Config{Runtime: runtime, Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(stateDirectory)})
 	host.Shows(t, "Ask flame")
 	host.Type("preserve a refused start")
 	host.Press(input.Enter)
@@ -421,13 +420,13 @@ func TestDefinitivelyRefusedStartReturnsToTheDurableQueueWithANewIdentity(t *tes
 	host.Shows(t, "1 queued")
 
 	var pending []workbench.PendingRun
-	var refused agent.StartRun
+	var refused prompt.StartRun
 	awaitState(t, "the refused start to return to the durable FIFO", func() bool {
 		refused = runtime.refusedCommand()
 		if refused.SessionID == "" {
 			return false
 		}
-		store, err := workbenchstate.Open(stateDirectory)
+		store, err := openTestWorkbench(stateDirectory)
 		if err != nil {
 			return false
 		}
@@ -446,7 +445,7 @@ func TestInvalidAcceptedStartReceiptCancelsAndSettlesTheExactMutation(t *testing
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
+			Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	releaseCancellation := make(chan struct{})
@@ -465,7 +464,7 @@ func TestInvalidAcceptedStartReceiptCancelsAndSettlesTheExactMutation(t *testing
 		if len(starts) != 1 || len(cancellations) != 1 {
 			return false
 		}
-		reopened, err := workbenchstate.Open(stateDirectory)
+		reopened, err := openTestWorkbench(stateDirectory)
 		return err == nil && len(reopened.PendingRuns(starts[0].SessionID)) == 0
 	})
 	starts, cancellations := runtime.attempts()
@@ -473,7 +472,7 @@ func TestInvalidAcceptedStartReceiptCancelsAndSettlesTheExactMutation(t *testing
 		cancellations[0].Reason != "runtime returned an invalid start receipt" {
 		t.Fatalf("malformed receipt cleanup = starts %+v, cancellations %+v", starts, cancellations)
 	}
-	reopened, err := workbenchstate.Open(stateDirectory)
+	reopened, err := openTestWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -501,7 +500,7 @@ func TestInvalidAcceptedStartReceiptSettlesTheMemoryOnlyQueue(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
+			Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	releaseCancellation := make(chan struct{})
@@ -528,7 +527,7 @@ func TestInvalidAcceptedStartBlocksTheNextRunUntilColdRecoverySucceeds(t *testin
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
+			Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	runtime := &invalidAcceptedStartRuntime{
@@ -553,7 +552,7 @@ func TestRetryingInvalidAcceptedStartCleanupRecoversAuthoritativeProjection(t *t
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}},
+			Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	runtime := &invalidAcceptedStartRuntime{Runtime: base, refuseFirst: true}
@@ -569,7 +568,7 @@ func TestRetryingInvalidAcceptedStartCleanupRecoversAuthoritativeProjection(t *t
 		if len(starts) != 1 || len(cancellations) != 2 {
 			return false
 		}
-		reopened, err := workbenchstate.Open(stateDirectory)
+		reopened, err := openTestWorkbench(stateDirectory)
 		return err == nil && len(reopened.PendingRuns(starts[0].SessionID)) == 0
 	})
 	_, cancellations := runtime.attempts()
@@ -588,14 +587,14 @@ func TestLaunchReplaysADispatchingRunFromTheDurableOutbox(t *testing.T) {
 	base.Instant = true
 	base.Script = stableCompletedScript
 	stateDirectory := t.TempDir()
-	store, err := workbenchstate.Open(stateDirectory)
+	store, err := openTestWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
-	command := agent.StartRun{
-		CommandID: agent.CommandID("cli_0123456789abcdef0123456789abcdef"),
-		SessionID: "ses_demo_1", Message: agent.Message{Text: "replay after launch"},
-		Options: agent.RunOptions{},
+	command := prompt.StartRun{
+		CommandID: replay.CommandID("cli_0123456789abcdef0123456789abcdef"),
+		SessionID: "ses_demo_1", Message: prompt.Message{Text: "replay after launch"},
+		Options: prompt.RunOptions{},
 	}
 	stageDispatchingRun(t, store, command)
 	runtime := &recordingRuntime{Runtime: base}
@@ -605,7 +604,7 @@ func TestLaunchReplaysADispatchingRunFromTheDurableOutbox(t *testing.T) {
 	if started := runtime.startInput(); started.CommandID != command.CommandID || started.Message.Text != command.Message.Text {
 		t.Fatalf("replayed start = %+v, want %+v", started, command)
 	}
-	reopened, err := workbenchstate.Open(stateDirectory)
+	reopened, err := openTestWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -618,19 +617,19 @@ func TestLaunchReplaysADispatchingRunFromTheDurableOutbox(t *testing.T) {
 func TestLaunchDoesNotReplayAnOutboxCommandAlreadyVisibleInRuntime(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}}
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}}
 	}
-	command := agent.StartRun{
-		CommandID: agent.CommandID("cli_abcdef0123456789abcdef0123456789"),
-		SessionID: "ses_demo_1", Message: agent.Message{Text: "already accepted"},
-		Options: agent.RunOptions{},
+	command := prompt.StartRun{
+		CommandID: replay.CommandID("cli_abcdef0123456789abcdef0123456789"),
+		SessionID: "ses_demo_1", Message: prompt.Message{Text: "already accepted"},
+		Options: prompt.RunOptions{},
 	}
 	runtime := &idempotentStartRuntime{Runtime: base}
 	if _, err := runtime.StartRun(t.Context(), command); err != nil {
 		t.Fatal(err)
 	}
 	stateDirectory := t.TempDir()
-	store, err := workbenchstate.Open(stateDirectory)
+	store, err := openTestWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -642,7 +641,7 @@ func TestLaunchDoesNotReplayAnOutboxCommandAlreadyVisibleInRuntime(t *testing.T)
 	if len(attempts) != 2 || attempts[0].CommandID != attempts[1].CommandID {
 		t.Fatalf("launch reconciliation attempts = %+v", attempts)
 	}
-	reopened, err := workbenchstate.Open(stateDirectory)
+	reopened, err := openTestWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -655,8 +654,8 @@ func TestLaunchDoesNotReplayAnOutboxCommandAlreadyVisibleInRuntime(t *testing.T)
 func TestLaunchRequeuesARejectedHandshakeBehindAnotherActiveRun(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{
-			Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: conversation.RunFinished{
+			Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}
 	active := testStartRun("ses_demo_1", "already active")
@@ -664,17 +663,17 @@ func TestLaunchRequeuesARejectedHandshakeBehindAnotherActiveRun(t *testing.T) {
 		t.Fatal(err)
 	}
 	stateDirectory := t.TempDir()
-	store, err := workbenchstate.Open(stateDirectory)
+	store, err := openTestWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
-	original := agent.CommandID("cli_22222222222222222222222222222222")
-	command := agent.StartRun{
-		CommandID: original, SessionID: active.SessionID, Message: agent.Message{Text: "queue after recovery"},
-		Options: agent.RunOptions{},
+	original := replay.CommandID("cli_22222222222222222222222222222222")
+	command := prompt.StartRun{
+		CommandID: original, SessionID: active.SessionID, Message: prompt.Message{Text: "queue after recovery"},
+		Options: prompt.RunOptions{},
 	}
 	stageDispatchingRun(t, store, command)
-	runtime := &activeConflictRuntime{Runtime: base, attempted: make(chan agent.StartRun, 1), conflict: original}
+	runtime := &activeConflictRuntime{Runtime: base, attempted: make(chan prompt.StartRun, 1), conflict: original}
 	host, stop := runUIWithReplayState(t, runtime, "/tmp/flame-cli-test", command.SessionID, stateDirectory)
 	host.Shows(t, "already active")
 	host.Shows(t, "1 queued")
@@ -688,7 +687,7 @@ func TestLaunchRequeuesARejectedHandshakeBehindAnotherActiveRun(t *testing.T) {
 	}
 	var pending []workbench.PendingRun
 	awaitState(t, "the refused command to become an ordinary queued intent", func() bool {
-		reopened, openErr := workbenchstate.Open(stateDirectory)
+		reopened, openErr := openTestWorkbench(stateDirectory)
 		if openErr != nil {
 			return false
 		}
@@ -705,14 +704,14 @@ func TestLaunchRequeuesARejectedHandshakeBehindAnotherActiveRun(t *testing.T) {
 func TestLaunchFinishesCancellationOfAnUnconfirmedRunStart(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{
-			Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: conversation.RunFinished{
+			Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}
-	command := agent.StartRun{
-		CommandID: agent.CommandID("cli_77777777777777777777777777777777"),
-		SessionID: "ses_demo_1", Message: agent.Message{Text: "cancel after restart"},
-		Options: agent.RunOptions{},
+	command := prompt.StartRun{
+		CommandID: replay.CommandID("cli_77777777777777777777777777777777"),
+		SessionID: "ses_demo_1", Message: prompt.Message{Text: "cancel after restart"},
+		Options: prompt.RunOptions{},
 	}
 	idempotent := &idempotentStartRuntime{Runtime: base}
 	runtime := &heldCancellationResultRuntime{
@@ -726,7 +725,7 @@ func TestLaunchFinishesCancellationOfAnUnconfirmedRunStart(t *testing.T) {
 		t.Fatal(err)
 	}
 	stateDirectory := t.TempDir()
-	store, err := workbenchstate.Open(stateDirectory)
+	store, err := openTestWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -738,7 +737,7 @@ func TestLaunchFinishesCancellationOfAnUnconfirmedRunStart(t *testing.T) {
 
 	host, stop := runUIWithReplayState(t, runtime, "/tmp/flame-cli-test", command.SessionID, stateDirectory)
 	awaitSignal(t, runtime.settled, "runtime cancellation settlement")
-	reopened, err := workbenchstate.Open(stateDirectory)
+	reopened, err := openTestWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -748,7 +747,7 @@ func TestLaunchFinishesCancellationOfAnUnconfirmedRunStart(t *testing.T) {
 	}
 	release()
 	awaitState(t, "the canceled opening command to leave the durable outbox", func() bool {
-		current, openErr := workbenchstate.Open(stateDirectory)
+		current, openErr := openTestWorkbench(stateDirectory)
 		return openErr == nil && len(current.PendingRuns(command.SessionID)) == 0
 	})
 	host.Shows(t, command.Message.Text)
@@ -761,14 +760,14 @@ func TestLaunchFinishesCancellationOfAnUnconfirmedRunStart(t *testing.T) {
 func TestCanceledStartRetainsOwnershipUntilDurableSettlementRecovers(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{
-			Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: conversation.RunFinished{
+			Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}
-	command := agent.StartRun{
-		CommandID: agent.CommandID("cli_99999999999999999999999999999999"),
-		SessionID: "ses_demo_1", Message: agent.Message{Text: "recover canceled start ownership"},
-		Options: agent.RunOptions{},
+	command := prompt.StartRun{
+		CommandID: replay.CommandID("cli_99999999999999999999999999999999"),
+		SessionID: "ses_demo_1", Message: prompt.Message{Text: "recover canceled start ownership"},
+		Options: prompt.RunOptions{},
 	}
 	runtime := &heldCancellationResultRuntime{
 		idempotentStartRuntime: &idempotentStartRuntime{Runtime: base},
@@ -781,7 +780,7 @@ func TestCanceledStartRetainsOwnershipUntilDurableSettlementRecovers(t *testing.
 		t.Fatal(err)
 	}
 	stateDirectory := t.TempDir()
-	store, err := workbenchstate.Open(stateDirectory)
+	store, err := openTestWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -822,7 +821,7 @@ func TestCanceledStartRetainsOwnershipUntilDurableSettlementRecovers(t *testing.
 		t.Fatal(err)
 	}
 	awaitState(t, "the canceled opening ownership to settle after storage recovers", func() bool {
-		reopened, openErr := workbenchstate.Open(stateDirectory)
+		reopened, openErr := openTestWorkbench(stateDirectory)
 		return openErr == nil && len(reopened.PendingRuns(command.SessionID)) == 0
 	})
 	host.Hides(t, "workbench:")
@@ -835,17 +834,17 @@ func TestCanceledStartRetainsOwnershipUntilDurableSettlementRecovers(t *testing.
 func TestLaunchCancelsAnAcceptedRunWithAnInvalidRecoveredReceipt(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{
-			Outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: conversation.RunFinished{
+			Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}
-	command := agent.StartRun{
-		CommandID: agent.CommandID("cli_88888888888888888888888888888888"),
-		SessionID: "ses_demo_1", Message: agent.Message{Text: "cancel malformed start after restart"},
-		Options: agent.RunOptions{},
+	command := prompt.StartRun{
+		CommandID: replay.CommandID("cli_88888888888888888888888888888888"),
+		SessionID: "ses_demo_1", Message: prompt.Message{Text: "cancel malformed start after restart"},
+		Options: prompt.RunOptions{},
 	}
 	stateDirectory := t.TempDir()
-	store, err := workbenchstate.Open(stateDirectory)
+	store, err := openTestWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -858,7 +857,7 @@ func TestLaunchCancelsAnAcceptedRunWithAnInvalidRecoveredReceipt(t *testing.T) {
 	host, stop := runUIWithReplayState(t, runtime, "/tmp/flame-cli-test", command.SessionID, stateDirectory)
 	host.Shows(t, "canceled")
 	awaitState(t, "the invalid recovered start to leave the durable outbox", func() bool {
-		reopened, openErr := workbenchstate.Open(stateDirectory)
+		reopened, openErr := openTestWorkbench(stateDirectory)
 		return openErr == nil && len(reopened.PendingRuns(command.SessionID)) == 0
 	})
 	starts, cancellations := runtime.attempts()
@@ -876,11 +875,11 @@ func TestLaunchCancelsAnAcceptedRunWithAnInvalidRecoveredReceipt(t *testing.T) {
 	stop()
 }
 
-func stageDispatchingRun(t *testing.T, store *workbench.Store, command agent.StartRun) {
+func stageDispatchingRun(t *testing.T, store *workbench.Store, command prompt.StartRun) {
 	t.Helper()
 	if err := store.StagePendingRun(workbench.PendingRun{
 		State: workbench.PendingRunQueued, Command: command,
-		Replay: commandreplay.UnprotectedGuard(), CancelReplay: commandreplay.UnprotectedGuard(),
+		Replay: replay.UnprotectedGuard(), CancelReplay: replay.UnprotectedGuard(),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -907,9 +906,9 @@ func TestRecoveredStartStopsBeforeRetryingOutsideItsReplayStore(t *testing.T) {
 	runtime.afterFirst = func() {
 		profile = profileWithReplay(t, profile, "idp_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", 10*time.Minute)
 	}
-	command := agent.StartRun{
+	command := prompt.StartRun{
 		CommandID: "cli_cccccccccccccccccccccccccccccccc", SessionID: "ses_demo_1",
-		Message: agent.Message{Text: "do not replay outside the owning store"}, Options: agent.RunOptions{},
+		Message: prompt.Message{Text: "do not replay outside the owning store"}, Options: prompt.RunOptions{},
 	}
 	_, err := openStartRunWithBackoff(
 		t.Context(), runtime, command,
@@ -933,13 +932,13 @@ func TestLaunchDoesNotReplayRunOrResumeOwnershipIntoAnotherRuntimeStore(t *testi
 		{
 			name: "run start",
 			stage: func(t *testing.T, store *workbench.Store) {
-				command := agent.StartRun{
+				command := prompt.StartRun{
 					CommandID: "cli_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", SessionID: "ses_demo_1",
-					Message: agent.Message{Text: "do not replay across stores"}, Options: agent.RunOptions{},
+					Message: prompt.Message{Text: "do not replay across stores"}, Options: prompt.RunOptions{},
 				}
 				if err := store.StagePendingRun(workbench.PendingRun{
 					State: workbench.PendingRunQueued, Command: command,
-					Replay: commandreplay.UnprotectedGuard(), CancelReplay: commandreplay.UnprotectedGuard(),
+					Replay: replay.UnprotectedGuard(), CancelReplay: replay.UnprotectedGuard(),
 				}); err != nil {
 					t.Fatal(err)
 				}
@@ -954,18 +953,18 @@ func TestLaunchDoesNotReplayRunOrResumeOwnershipIntoAnotherRuntimeStore(t *testi
 		{
 			name: "interaction resume",
 			stage: func(t *testing.T, store *workbench.Store) {
-				approval := agent.Approval{
+				approval := conversation.Approval{
 					RunID: "run_waiting", ItemID: "approval_1", Title: "Proceed?",
-					Tool: &agent.ToolCall{Kind: agent.ToolShell, Name: "shell", Status: agent.ToolRunning},
+					Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Status: conversation.ToolRunning},
 				}
 				pending := workbench.PendingResume{
-					Command: agent.ResumeRun{
+					Command: conversation.ResumeRun{
 						CommandID: "cli_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", RunID: approval.RunID,
-						Answers: []agent.InterruptAnswer{{
-							ItemID: approval.ItemID, Answer: agent.ApprovalAnswer{Decision: protocol.ApprovalDeny},
+						Answers: []conversation.InterruptAnswer{{
+							ItemID: approval.ItemID, Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalDeny},
 						}},
 					},
-					Interactions: []agent.Interaction{approval},
+					Interactions: []conversation.Interaction{approval},
 					Replay:       protectedCommandReplayGuard(t, "idp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", time.Now().UTC().Add(time.Hour)),
 				}
 				if err := store.StagePendingResume("ses_demo_1", pending, nil); err != nil {
@@ -977,7 +976,7 @@ func TestLaunchDoesNotReplayRunOrResumeOwnershipIntoAnotherRuntimeStore(t *testi
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			stateDirectory := t.TempDir()
-			store, err := workbenchstate.Open(stateDirectory)
+			store, err := openTestWorkbench(stateDirectory)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -988,13 +987,13 @@ func TestLaunchDoesNotReplayRunOrResumeOwnershipIntoAnotherRuntimeStore(t *testi
 			profile = profileWithReplay(t, profile, "idp_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", 10*time.Minute)
 			host, stop := runUIFromConfig(t, Config{
 				Runtime: runtime, RuntimeProfile: &profile, SessionID: "ses_demo_1",
-				Workspace: "/tmp/flame-cli-test", StateDirectory: stateDirectory,
+				Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(stateDirectory),
 			})
 			host.Shows(t, test.want)
 			if runtime.startCount() != 0 {
 				t.Fatalf("cross-store recovery opened %d runs", runtime.startCount())
 			}
-			reopened, err := workbenchstate.Open(stateDirectory)
+			reopened, err := openTestWorkbench(stateDirectory)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -7,13 +7,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/grid"
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/highlight"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 func TestReaderKeepsToolContentThatTheInlineBlockSummarizes(t *testing.T) {
@@ -21,12 +20,12 @@ func TestReaderKeepsToolContentThatTheInlineBlockSummarizes(t *testing.T) {
 	for i := range lines {
 		lines[i] = fmt.Sprintf("contract line %03d", i+1)
 	}
-	call := agent.ToolCall{
-		Kind: agent.ToolShell, Command: "long output", Status: agent.ToolOK,
+	call := conversation.ToolCall{
+		Kind: conversation.ToolShell, Command: "long output", Status: conversation.ToolOK,
 		Output: strings.Join(lines, "\n"),
 	}
 	presentation := BlockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}
-	tool := newToolBlock(presentation, agent.Block{Kind: agent.BlockTool, Tool: &call})
+	tool := newToolBlock(presentation, conversation.Block{Kind: conversation.BlockTool, Tool: &call})
 	tool.SetExpanded(true)
 	inline := drawToolBlock(tool, 72)
 	if !strings.Contains(inline, "lines omitted") {
@@ -51,11 +50,11 @@ func TestReaderKeepsToolContentThatTheInlineBlockSummarizes(t *testing.T) {
 
 func TestReaderLiveTailFollowsOnlyAfterTheReaderMovesToTheBottom(t *testing.T) {
 	presentation := BlockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}
-	call := agent.ToolCall{
-		Kind: agent.ToolShell, Command: "stream", Status: agent.ToolRunning,
+	call := conversation.ToolCall{
+		Kind: conversation.ToolShell, Command: "stream", Status: conversation.ToolRunning,
 		Output: strings.Repeat("initial output row\n", 40),
 	}
-	tool := newToolBlock(presentation, agent.Block{Kind: agent.BlockTool, Tool: &call})
+	tool := newToolBlock(presentation, conversation.Block{Kind: conversation.BlockTool, Tool: &call})
 	reader := newReaderPane(presentation.Theme, presentation.Glyphs, presentation.Syntax, input.Wheel{}, nil)
 	t.Cleanup(reader.Shutdown)
 	reader.Open(readerTarget{source: tool})
@@ -175,11 +174,11 @@ func TestSameSessionProjectionReplacementRetiresALiveTranscriptReader(t *testing
 	t.Cleanup(operations.Close)
 	application := &app{
 		operations: operations,
-		session:    sessionState{current: agent.Session{ID: "session"}},
-		execution:  executionState{conversation: agent.NewConversation()},
+		session:    sessionState{current: conversation.Session{ID: "session"}},
+		execution:  executionState{conversation: conversation.New()},
 		dialogs:    dialogState{reader: reader},
 	}
-	application.prepareSessionProjectionReplacement(agent.Session{ID: "session"}, agent.NewConversation())
+	application.prepareSessionProjectionReplacement(conversation.Session{ID: "session"}, conversation.New())
 
 	if source.released != 1 {
 		t.Fatalf("live reader source released %d times, want 1", source.released)
@@ -192,11 +191,11 @@ func TestSameSessionProjectionReplacementPreservesAStaticReader(t *testing.T) {
 	reader.Open(readerTarget{document: readerDocument{Title: "authoritative runtime document"}})
 
 	application := &app{
-		session:   sessionState{current: agent.Session{ID: "session"}},
-		execution: executionState{conversation: agent.NewConversation()},
+		session:   sessionState{current: conversation.Session{ID: "session"}},
+		execution: executionState{conversation: conversation.New()},
 		dialogs:   dialogState{reader: reader, runtimeReader: runtimeReaderGoal},
 	}
-	application.prepareSessionProjectionReplacement(agent.Session{ID: "session"}, agent.NewConversation())
+	application.prepareSessionProjectionReplacement(conversation.Session{ID: "session"}, conversation.New())
 
 	if application.dialogs.runtimeReader != runtimeReaderGoal {
 		t.Fatalf("runtime reader mode = %d, want the static reader preserved", application.dialogs.runtimeReader)

@@ -1,3 +1,7 @@
+import type { FlameClient } from "@flame/runtime-contract/client";
+import type { ClientHost } from "@/platform/host";
+import { installLocalWorkspaceActions } from "./adapters/localWorkspaceActions";
+import { registerWorkspaceDataProviders } from "./adapters/runtimeDataProviders";
 import { definePlugin } from "@/plugins/sdk";
 import { installConversationArchiveGateway } from "./adapters/runtimeConversationArchiveGateway";
 import { installAgentMemoryGateway } from "./adapters/runtimeAgentMemoryGateway";
@@ -14,46 +18,49 @@ import { WORKSPACE_MUTATION_LIFECYCLE } from "@/plugins/builtin/workspace/public
 import { RUNTIME_STREAM } from "@/plugins/builtin/runtime/public/services";
 import { currentRuntimeEndpoint } from "@/plugins/builtin/runtime/public/endpoint";
 
-export default definePlugin({
-  name: "flame.builtin.workspace-bootstrap",
-  // The owners installed here bind one Runtime connection generation — that is
-  // what the mutation lifecycle replaces — and each is composed from the client
-  // the container assembles out of the Runtime plugin's endpoint and mutation
-  // journal. Declaring the stream is what orders this setup after that plugin;
-  // without it the gateways compose against a client the container has yet to
-  // finish, and then retires.
-  requires: { runtime: RUNTIME_STREAM },
-  provides: {
-    scopes: WORKSPACE_SCOPE,
-    mutationLifecycle: WORKSPACE_MUTATION_LIFECYCLE,
-  },
-  setup(ctx) {
-    const agentMemory = installAgentMemoryGateway();
-    const skillCuration = installSkillCurationGateway();
-    const conversationArchive = installConversationArchiveGateway();
-    const disposers = [
-      () => conversationArchive.dispose(),
-      () => agentMemory.dispose(),
-      () => skillCuration.dispose(),
-      installWorkspaceErrorClassifier(),
-      installWorkspaceNavigationPort(currentRuntimeEndpoint),
-    ];
-    ctx.cleanup(() => {
-      for (let index = disposers.length - 1; index >= 0; index--) disposers[index]!();
-    });
-    return {
-      scopes: {
-        adoptSessionScope: adoptWorkspaceSessionScope,
-        activateSessionScope: activateWorkspaceSessionScope,
-        forgetSessionScopes: forgetWorkspaceSessionScopes,
-      },
-      mutationLifecycle: {
-        replaceRuntimeGeneration() {
-          skillCuration.replaceRuntimeGeneration();
-          agentMemory.replaceRuntimeGeneration();
-          conversationArchive.replaceRuntimeGeneration();
+export function createWorkspaceBootstrapPlugin(
+  runtimeClient: () => FlameClient,
+  host: Pick<ClientHost, "openPath" | "revealPath">,
+  canAccessLocalWorkspace: () => boolean,
+) {
+  return definePlugin({
+    name: "flame.builtin.workspace-bootstrap",
+    // Runtime setup installs the mutation journal before a generation captures its client.
+    requires: { runtime: RUNTIME_STREAM },
+    provides: {
+      scopes: WORKSPACE_SCOPE,
+      mutationLifecycle: WORKSPACE_MUTATION_LIFECYCLE,
+    },
+    setup(ctx) {
+      registerWorkspaceDataProviders(ctx, runtimeClient);
+      const agentMemory = installAgentMemoryGateway(runtimeClient);
+      const skillCuration = installSkillCurationGateway(runtimeClient);
+      const conversationArchive = installConversationArchiveGateway(runtimeClient);
+      const disposers = [
+        installLocalWorkspaceActions(host, canAccessLocalWorkspace),
+        () => conversationArchive.dispose(),
+        () => agentMemory.dispose(),
+        () => skillCuration.dispose(),
+        installWorkspaceErrorClassifier(),
+        installWorkspaceNavigationPort(currentRuntimeEndpoint),
+      ];
+      ctx.cleanup(() => {
+        for (let index = disposers.length - 1; index >= 0; index--) disposers[index]!();
+      });
+      return {
+        scopes: {
+          adoptSessionScope: adoptWorkspaceSessionScope,
+          activateSessionScope: activateWorkspaceSessionScope,
+          forgetSessionScopes: forgetWorkspaceSessionScopes,
         },
-      },
-    };
-  },
-});
+        mutationLifecycle: {
+          replaceRuntimeGeneration() {
+            skillCuration.replaceRuntimeGeneration();
+            agentMemory.replaceRuntimeGeneration();
+            conversationArchive.replaceRuntimeGeneration();
+          },
+        },
+      };
+    },
+  });
+}

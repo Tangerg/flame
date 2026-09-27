@@ -1,6 +1,6 @@
 import { createBrowserHost } from "@/platform/browserHost";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getContainer, initializeClientHost, resetContainer, setContainer } from "@/main/container";
+import { createRuntimeConnection } from "@/main/runtimeConnection";
 import { getConfig, hasConfig, setConfig, useConfigStore } from "@/plugins/sdk/config";
 import type { ConfigService, KeyValueStore } from "@/plugins/sdk";
 import {
@@ -46,13 +46,16 @@ function connectionHost(initial?: unknown): {
   };
 }
 
-beforeEach(() => {
+let runtimeConnection: ReturnType<typeof createRuntimeConnection>;
+beforeEach(async () => {
+  runtimeConnection = createRuntimeConnection(createBrowserHost());
+  await runtimeConnection.initialize();
   useConfigStore.setState({ values: new Map(), subscribers: new Map() });
 });
 
 afterEach(async () => {
   for (const cleanup of cleanups.splice(0).reverse()) cleanup();
-  await resetContainer();
+  await runtimeConnection.dispose();
   vi.restoreAllMocks();
 });
 
@@ -175,13 +178,13 @@ describe("runtime endpoint", () => {
 
   it("rebuilds the shared Runtime client after an endpoint change", () => {
     installConnection();
-    const first = getContainer().client();
+    const first = runtimeConnection.client();
 
     applyRuntimeEndpoint("http://127.0.0.1:27171");
-    const second = getContainer().client();
+    const second = runtimeConnection.client();
 
     expect(second).not.toBe(first);
-    expect(getContainer().client()).toBe(second);
+    expect(runtimeConnection.client()).toBe(second);
   });
 });
 
@@ -192,13 +195,13 @@ describe("Runtime target credentials", () => {
       replacements++;
       commit();
     });
-    const first = getContainer().client();
+    const first = runtimeConnection.client();
     expect(applyRuntimeEndpoint(DEFAULT_RUNTIME_ENDPOINT, "window-secret")).toMatchObject({
       kind: "applied",
       changed: true,
     });
     expect(replacements).toBe(1);
-    expect(getContainer().client()).not.toBe(first);
+    expect(runtimeConnection.client()).not.toBe(first);
     expect([...stored.values()]).toEqual([DEFAULT_RUNTIME_ENDPOINT]);
     expect([...useConfigStore.getState().values.values()]).not.toContain("window-secret");
     expect(applyRuntimeEndpoint(DEFAULT_RUNTIME_ENDPOINT, "window-secret")).toMatchObject({
@@ -258,27 +261,32 @@ it("rejects malformed credentials before replacing the connection", () => {
 
 it("binds the local token and filesystem capability only to the bootstrapped Runtime", async () => {
   const endpoint = "http://127.0.0.1:17171";
-  setContainer({
-    host: {
-      ...createBrowserHost(),
-      kind: "desktop",
-      bootstrap: async () => ({
-        runtime: { endpoint, localToken: "native-token" },
-        localFilesystemEndpoint: endpoint,
-      }),
-    },
+  await runtimeConnection.dispose();
+  runtimeConnection = createRuntimeConnection({
+    ...createBrowserHost(),
+    kind: "desktop",
+    bootstrap: async () => ({
+      runtime: { endpoint, localToken: "native-token" },
+      localFilesystemEndpoint: endpoint,
+    }),
   });
-  await initializeClientHost();
+  await runtimeConnection.initialize();
   const connection = connectionHost();
-  cleanups.push(installRuntimeEndpointConfiguration(connection.host, (commit) => commit()));
+  cleanups.push(
+    installRuntimeEndpointConfiguration(
+      connection.host,
+      (commit) => commit(),
+      runtimeConnection.bootstrap().runtime,
+    ),
+  );
   const request = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("captured request"));
-  expect(getContainer().localWorkspaceAvailable()).toBe(true);
-  await expect(getContainer().client().runtime.discover()).rejects.toThrow("captured request");
+  expect(runtimeConnection.localWorkspaceAvailable()).toBe(true);
+  await expect(runtimeConnection.client().runtime.discover()).rejects.toThrow("captured request");
   expect(new Headers(request.mock.calls[0]?.[1]?.headers).get("Authorization")).toBe(
     "Bearer native-token",
   );
   applyRuntimeEndpoint("https://remote.example");
-  expect(getContainer().localWorkspaceAvailable()).toBe(false);
-  await expect(getContainer().client().runtime.discover()).rejects.toThrow("captured request");
+  expect(runtimeConnection.localWorkspaceAvailable()).toBe(false);
+  await expect(runtimeConnection.client().runtime.discover()).rejects.toThrow("captured request");
   expect(new Headers(request.mock.calls[1]?.[1]?.headers).get("Authorization")).toBeNull();
 });

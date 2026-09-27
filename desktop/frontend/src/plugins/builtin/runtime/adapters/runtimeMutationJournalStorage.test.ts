@@ -1,16 +1,21 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getContainer, initializeClientHost, resetContainer } from "@/main/container";
+import { createRuntimeConnection } from "@/main/runtimeConnection";
+import { createBrowserHost } from "@/platform/browserHost";
 import type { KeyValueStore } from "@/plugins/sdk";
 import { installedRuntimeMutationJournalStorage } from "../application/ports/mutationJournal";
 import { installRuntimeMutationJournalStorage } from "./runtimeMutationJournalStorage";
 
 const cleanups: Array<() => void> = [];
 
-beforeEach(initializeClientHost);
+let connection: ReturnType<typeof createRuntimeConnection>;
+beforeEach(async () => {
+  connection = createRuntimeConnection(createBrowserHost());
+  await connection.initialize();
+});
 
 afterEach(async () => {
   for (const cleanup of cleanups.splice(0).reverse()) cleanup();
-  await resetContainer();
+  await connection.dispose();
 });
 
 describe("Runtime mutation journal storage adapter", () => {
@@ -105,14 +110,14 @@ describe("Runtime mutation journal storage adapter", () => {
         clear: () => stored.clear(),
       },
     };
-    const beforeInstall = getContainer().client();
+    const beforeInstall = connection.client();
     const closeBeforeInstall = vi.spyOn(beforeInstall, "close");
 
     cleanups.push(installRuntimeMutationJournalStorage(ctx));
-    const afterInstall = getContainer().client();
+    const afterInstall = connection.client();
 
     expect(afterInstall).not.toBe(beforeInstall);
     expect(closeBeforeInstall).toHaveBeenCalledOnce();
-    expect(getContainer().client()).toBe(afterInstall);
+    expect(connection.client()).toBe(afterInstall);
   });
 });

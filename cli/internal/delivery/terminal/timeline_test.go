@@ -5,27 +5,26 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/grid"
 	"github.com/Tangerg/oolong/core/input"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestTimelineGroupsDescendantsBeneathNewestRoots(t *testing.T) {
-	child, err := agent.NewChildRunLineage("run_child", "spawn", "run_new", "run_new")
+	child, err := conversation.NewChildRunLineage("run_child", "spawn", "run_new", "run_new")
 	if err != nil {
 		t.Fatal(err)
 	}
-	grandchild, err := agent.NewChildRunLineage("run_grandchild", "nested", "run_child", "run_new")
+	grandchild, err := conversation.NewChildRunLineage("run_grandchild", "nested", "run_child", "run_new")
 	if err != nil {
 		t.Fatal(err)
 	}
-	runs := []agent.Run{
-		{ID: "run_old", Lineage: agent.RootRunLineage()},
-		{ID: "run_new", Lineage: agent.RootRunLineage()},
+	runs := []conversation.Run{
+		{ID: "run_old", Lineage: conversation.RootRunLineage()},
+		{ID: "run_new", Lineage: conversation.RootRunLineage()},
 		{ID: "run_child", Lineage: child},
 		{ID: "run_grandchild", Lineage: grandchild},
 	}
@@ -50,9 +49,9 @@ func TestTimelineCommandInterruptsAPendingPickerClick(t *testing.T) {
 		func(timelineEntry) { jumped++ },
 		func(timelineEntry) { forked++ },
 	)
-	pane.SetRuns([]agent.Run{
-		{ID: "one", Lineage: agent.RootRunLineage()},
-		{ID: "two", Lineage: agent.RootRunLineage()},
+	pane.SetRuns([]conversation.Run{
+		{ID: "one", Lineage: conversation.RootRunLineage()},
+		{ID: "two", Lineage: conversation.RootRunLineage()},
 	})
 	pane.Focus(true)
 	root := headless.NewRoot(pane)
@@ -74,7 +73,7 @@ func TestTimelineCommandInterruptsAPendingPickerClick(t *testing.T) {
 func TestLiveTimelineDisablesForkAndExplainsItsMode(t *testing.T) {
 	forked := 0
 	pane := newTimelinePane(kit.Dark(), kit.Unicode(), nil, func(timelineEntry) { forked++ })
-	pane.SetRuns([]agent.Run{{ID: "root", Lineage: agent.RootRunLineage(), Status: protocol.RunStatusRunning}})
+	pane.SetRuns([]conversation.Run{{ID: "root", Lineage: conversation.RootRunLineage(), Status: protocol.RunStatusRunning}})
 	pane.SetLive(true)
 	pane.Focus(true)
 

@@ -7,12 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/oolong/core/input"
-	"github.com/Tangerg/oolong/core/programtest"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/oolong/core/input"
+	"github.com/Tangerg/oolong/core/programtest"
 )
 
 func TestAttentionCenterRetainsTheMostImportantUnreadSignalUntilUserInput(t *testing.T) {
@@ -71,7 +70,7 @@ func runUIWithAttentionHost(t *testing.T, backend Runtime) (*attentionTestHost, 
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{Runtime: backend, Workspace: "/tmp/flame-attention-test", Host: host})
+		done <- Run(ctx, Config{OpenWorkbench: memoryTestWorkbench, Runtime: backend, Workspace: "/tmp/flame-attention-test", Host: host})
 	}()
 	var once sync.Once
 	stop := func() {
@@ -109,16 +108,16 @@ func TestUnfocusedApprovalRequestsAttention(t *testing.T) {
 	backend := runtimefixture.New()
 	backend.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{
-			Prelude: []runtimefixture.Step{{Delay: 50 * time.Millisecond, Event: agent.BlockCompleted{Block: agent.Block{
-				ID: "thinking", Kind: agent.BlockReasoning, Text: "checking permissions",
+			Prelude: []runtimefixture.Step{{Delay: 50 * time.Millisecond, Event: conversation.BlockCompleted{Block: conversation.Block{
+				ID: "thinking", Kind: conversation.BlockReasoning, Text: "checking permissions",
 			}}}},
-			Interactions: []agent.Interaction{agent.Approval{
-				ItemID: "approval", Title: "Write config", Tool: &agent.ToolCall{
-					Kind: agent.ToolEdit, Name: "edit", Path: "config.json", Status: agent.ToolRunning,
+			Interactions: []conversation.Interaction{conversation.Approval{
+				ItemID: "approval", Title: "Write config", Tool: &conversation.ToolCall{
+					Kind: conversation.ToolEdit, Name: "edit", Path: "config.json", Status: conversation.ToolRunning,
 				},
 			}},
-			Continue: func([]agent.InterruptAnswer) []runtimefixture.Step {
-				return []runtimefixture.Step{{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}
+			Continue: func([]conversation.InterruptAnswer) []runtimefixture.Step {
+				return []runtimefixture.Step{{Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}

@@ -8,12 +8,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/program"
 	"github.com/Tangerg/oolong/core/programtest"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 func editWithTerminal(t *testing.T, ctx context.Context, editor *draftEditor, workspace, original string) (edited string, err error) {
@@ -71,7 +70,7 @@ func TestDraftEditorHonorsApplicationCancellation(t *testing.T) {
 func TestDraftEditorRejectsOversizedSourceBeforeLaunching(t *testing.T) {
 	editor := &draftEditor{command: []string{"sh", "-c", "exit 99"}}
 	_, err := editor.Edit(
-		t.Context(), program.Session{}, t.TempDir(), strings.Repeat("x", agent.MaxMessageTextBytes+1),
+		t.Context(), program.Session{}, t.TempDir(), strings.Repeat("x", prompt.MaxMessageTextBytes+1),
 	)
 	if err == nil || !strings.Contains(err.Error(), "editor draft exceeds") {
 		t.Fatalf("oversized source error = %v", err)

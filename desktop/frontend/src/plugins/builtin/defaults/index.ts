@@ -4,7 +4,6 @@ import { DEFAULT_ACCENTS, defaultMessageRoles } from "./application/defaultContr
 import { PRODUCT_NAME } from "@/product";
 
 export { defaultCommands } from "./commands";
-export { defaultDataProviders } from "./dataProviders";
 
 export const defaultTitle = definePlugin({
   name: "flame.builtin.default-title",

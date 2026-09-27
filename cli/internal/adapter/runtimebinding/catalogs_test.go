@@ -7,10 +7,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 type approvalBindingRecorder struct {
@@ -68,7 +67,7 @@ func TestModelCatalogAbortsPartialResultsWhenTheReadIsInvalid(t *testing.T) {
 			if models != nil || !errors.Is(err, cause) {
 				t.Fatalf("ListModels = (%+v, %v), want no models and %v", models, err, cause)
 			}
-			if cause == flameruntime.ErrClosed && !errors.Is(err, agent.ErrDisconnected) {
+			if cause == flameruntime.ErrClosed && !errors.Is(err, conversation.ErrDisconnected) {
 				t.Fatalf("closed Runtime lost classification: %v", err)
 			}
 		})

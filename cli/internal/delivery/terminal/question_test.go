@@ -4,20 +4,20 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestQuestionnaireOwnsAnswersAndNavigation(t *testing.T) {
-	question := agent.Question{
+	question := conversation.Question{
 		RunID: "run_1", ItemID: "plan", Title: "Plan deployment",
-		Fields: []agent.QuestionField{
-			{Prompt: "Goal", Kind: agent.QuestionText},
-			{Prompt: "Strategy", Kind: agent.QuestionSingle, Options: []protocol.QuestionOption{{Label: "Safe"}, {Label: "Fast"}}},
-			{Prompt: "Checks", Kind: agent.QuestionMulti, Options: []protocol.QuestionOption{{Label: "Unit"}, {Label: "Integration"}}},
+		Fields: []conversation.QuestionField{
+			{Prompt: "Goal", Kind: conversation.QuestionText},
+			{Prompt: "Strategy", Kind: conversation.QuestionSingle, Options: []protocol.QuestionOption{{Label: "Safe"}, {Label: "Fast"}}},
+			{Prompt: "Checks", Kind: conversation.QuestionMulti, Options: []protocol.QuestionOption{{Label: "Unit"}, {Label: "Integration"}}},
 		},
 	}
-	previous := agent.QuestionAnswer{Values: [][]string{{"release"}, {"Fast"}, {"Unit"}}}
+	previous := conversation.QuestionAnswer{Values: [][]string{{"release"}, {"Fast"}, {"Unit"}}}
 	review, err := newQuestionnaire(question, previous)
 	if err != nil {
 		t.Fatal(err)
@@ -45,10 +45,10 @@ func TestQuestionnaireOwnsAnswersAndNavigation(t *testing.T) {
 }
 
 func TestQuestionnaireNormalizesCustomMultipleValues(t *testing.T) {
-	question := agent.Question{
+	question := conversation.Question{
 		RunID: "run_1", ItemID: "targets", Title: "Targets",
-		Fields: []agent.QuestionField{{
-			Prompt: "Targets", Kind: agent.QuestionMulti, AllowCustom: true,
+		Fields: []conversation.QuestionField{{
+			Prompt: "Targets", Kind: conversation.QuestionMulti, AllowCustom: true,
 			Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}},
 		}},
 	}
@@ -69,14 +69,14 @@ func TestQuestionnaireNormalizesCustomMultipleValues(t *testing.T) {
 }
 
 func TestQuestionnaireRestoresOfferedAndCustomChoices(t *testing.T) {
-	question := agent.Question{
+	question := conversation.Question{
 		RunID: "run_1", ItemID: "targets", Title: "Targets",
-		Fields: []agent.QuestionField{
-			{Prompt: "Platform", Kind: agent.QuestionSingle, AllowCustom: true, Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}}},
-			{Prompt: "Checks", Kind: agent.QuestionMulti, AllowCustom: true, Options: []protocol.QuestionOption{{Label: "unit"}, {Label: "integration"}}},
+		Fields: []conversation.QuestionField{
+			{Prompt: "Platform", Kind: conversation.QuestionSingle, AllowCustom: true, Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}}},
+			{Prompt: "Checks", Kind: conversation.QuestionMulti, AllowCustom: true, Options: []protocol.QuestionOption{{Label: "unit"}, {Label: "integration"}}},
 		},
 	}
-	previous := agent.QuestionAnswer{Values: [][]string{{"freebsd"}, {"unit", "smoke", "manual"}}}
+	previous := conversation.QuestionAnswer{Values: [][]string{{"freebsd"}, {"unit", "smoke", "manual"}}}
 	review, err := newQuestionnaire(question, previous)
 	if err != nil {
 		t.Fatal(err)
@@ -114,12 +114,12 @@ func TestCustomMultipleValuesRejectEmptyAndDuplicateInput(t *testing.T) {
 }
 
 func TestQuestionnaireRejectsMissingFieldsAndIncompleteAnswers(t *testing.T) {
-	if _, err := newQuestionnaire(agent.Question{}, nil); err == nil {
+	if _, err := newQuestionnaire(conversation.Question{}, nil); err == nil {
 		t.Fatal("question without fields was accepted")
 	}
-	question := agent.Question{
+	question := conversation.Question{
 		RunID: "run_1", ItemID: "goal", Title: "Goal",
-		Fields: []agent.QuestionField{{Prompt: "Goal", Kind: agent.QuestionText}},
+		Fields: []conversation.QuestionField{{Prompt: "Goal", Kind: conversation.QuestionText}},
 	}
 	review, err := newQuestionnaire(question, nil)
 	if err != nil {

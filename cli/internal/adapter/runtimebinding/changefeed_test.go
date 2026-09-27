@@ -7,11 +7,10 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/Tangerg/flame/cli/internal/application/changefeed"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/application/changefeed"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 type changeBindingStub struct {
@@ -183,7 +182,7 @@ func TestChangefeedAdapterRejectsWatchesWithoutFileWatchCapability(t *testing.T)
 		Topics:  []protocol.RuntimeTopic{protocol.TopicFilesChanged},
 		Watches: []changefeed.Watch{{ID: "active", Workspace: "/workspace"}},
 	})
-	if err == nil || !errors.Is(err, agent.ErrIncompatibleRuntime) {
+	if err == nil || !errors.Is(err, conversation.ErrIncompatibleRuntime) {
 		t.Fatalf("Subscribe error = %v, want ErrIncompatibleRuntime", err)
 	}
 	if stub.called {

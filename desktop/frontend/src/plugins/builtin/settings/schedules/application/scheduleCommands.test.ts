@@ -129,7 +129,8 @@ describe("schedule commands", () => {
     };
     const updated = { ...current, enabled: false, revision: 8 };
     const setEnabled = vi.fn().mockResolvedValue(updated);
-    owner = ScheduleMutationOwner.install({ setEnabled } as unknown as ScheduleGateway);
+    const gateway = { setEnabled } as unknown as ScheduleGateway;
+    owner = ScheduleMutationOwner.install(gateway);
     const repair = Promise.withResolvers<void>();
     const invalidate = vi.spyOn(queryClient, "invalidateQueries").mockReturnValue(repair.promise);
     queryClient.setQueryData([SCHEDULES_KEY], [current]);
@@ -137,7 +138,7 @@ describe("schedule commands", () => {
     const mutation = setScheduleEnabled(current, false);
     await vi.waitFor(() => expect(invalidate).toHaveBeenCalled());
 
-    owner.replaceRuntimeGeneration();
+    owner.replaceRuntimeGeneration(() => gateway);
     repair.resolve();
 
     await expect(mutation).rejects.toMatchObject({

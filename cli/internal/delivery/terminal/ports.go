@@ -3,32 +3,32 @@ package terminal
 import (
 	"context"
 
-	"github.com/Tangerg/flame/runtime/protocol"
-
 	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/cli/internal/application/integration/models"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // Runtime is the terminal's complete consumer surface. Feature-specific
 // capabilities remain separate so an unavailable negotiated feature is nil
 // instead of a partially functioning Runtime method set.
 type Runtime interface {
-	PrepareInput(context.Context, agent.Message) ([]protocol.ContentBlock, error)
-	ListSessions(context.Context, agent.SessionQuery) (agent.SessionPage, error)
-	GetSession(context.Context, string) (agent.SessionSnapshot, error)
-	CreateSession(context.Context, agent.CreateSession) (agent.Session, error)
-	UpdateSession(context.Context, agent.UpdateSession) (agent.Session, error)
-	ForkSession(context.Context, agent.ForkSession) (agent.Session, error)
-	RollbackSession(context.Context, agent.RollbackSession) (agent.RollbackResult, error)
-	DeleteSession(context.Context, agent.DeleteSession) error
-	GetRun(context.Context, string) (agent.Run, error)
-	StartRun(context.Context, agent.StartRun) (agent.SegmentStream, error)
-	ResumeRun(context.Context, agent.ResumeRun) (agent.SegmentStream, error)
-	SubscribeRun(context.Context, agent.SubscribeRun) (agent.SegmentStream, error)
-	SteerRun(context.Context, agent.SteerRun) (protocol.SteerRunResponse, error)
-	CancelRun(context.Context, agent.CancelRun) (agent.RunCancellation, error)
+	PrepareInput(context.Context, prompt.Message) ([]protocol.ContentBlock, error)
+	ListSessions(context.Context, conversation.SessionQuery) (conversation.SessionPage, error)
+	GetSession(context.Context, string) (conversation.SessionSnapshot, error)
+	CreateSession(context.Context, conversation.CreateSession) (conversation.Session, error)
+	UpdateSession(context.Context, conversation.UpdateSession) (conversation.Session, error)
+	ForkSession(context.Context, conversation.ForkSession) (conversation.Session, error)
+	RollbackSession(context.Context, conversation.RollbackSession) (conversation.RollbackResult, error)
+	DeleteSession(context.Context, conversation.DeleteSession) error
+	GetRun(context.Context, string) (conversation.Run, error)
+	StartRun(context.Context, prompt.StartRun) (conversation.SegmentStream, error)
+	ResumeRun(context.Context, conversation.ResumeRun) (conversation.SegmentStream, error)
+	SubscribeRun(context.Context, conversation.SubscribeRun) (conversation.SegmentStream, error)
+	SteerRun(context.Context, prompt.SteerRun) (protocol.SteerRunResponse, error)
+	CancelRun(context.Context, conversation.CancelRun) (conversation.RunCancellation, error)
 	// ListModels may return discovered models and provider-specific errors together.
 	ListModels(context.Context) ([]protocol.Model, error)
 	GetApprovalMode(context.Context) (protocol.ApprovalMode, error)
@@ -53,8 +53,8 @@ type WorkspaceChanges interface {
 }
 
 type Usage interface {
-	SessionUsage(context.Context, string) (agent.SessionUsageReport, error)
-	Summary(context.Context, agent.UsageSummaryPeriod) (agent.UsageSummary, error)
+	SessionUsage(context.Context, string) (conversation.SessionUsageReport, error)
+	Summary(context.Context, conversation.UsageSummaryPeriod) (conversation.UsageSummary, error)
 }
 
 type ModelConfiguration interface {
@@ -110,11 +110,11 @@ type Schedules interface {
 }
 
 type AgentMemory interface {
-	Items(context.Context, agent.MemoryTarget) ([]protocol.AgentMemoryItem, error)
+	Items(context.Context, conversation.MemoryTarget) ([]protocol.AgentMemoryItem, error)
 	Review(context.Context, string, protocol.AgentMemoryReviewDecision) error
 	Update(context.Context, protocol.AgentMemoryUpdateRequest) (protocol.AgentMemoryItem, error)
 	Delete(context.Context, string) error
-	Add(context.Context, agent.MemoryTarget, string) (protocol.AgentMemoryItem, error)
+	Add(context.Context, conversation.MemoryTarget, string) (protocol.AgentMemoryItem, error)
 }
 
 type DiagnosticTools interface {

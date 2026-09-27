@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 )
 
 // ReconnectDelay retries classified transport failures for as long as the
@@ -17,7 +17,7 @@ func ReconnectDelay(n int, failure error) (time.Duration, bool, error) {
 	if err != nil {
 		return 0, false, err
 	}
-	if errors.Is(failure, agent.ErrCommandInProgress) {
+	if errors.Is(failure, conversation.ErrCommandInProgress) {
 		delay = time.Second
 	}
 	return delay, true, nil
@@ -26,5 +26,5 @@ func ReconnectDelay(n int, failure error) (time.Duration, bool, error) {
 // IsReconnectable reports whether another transport attempt can repair the
 // classified failure. Business, validation, and compatibility errors are permanent.
 func IsReconnectable(err error) bool {
-	return errors.Is(err, agent.ErrDisconnected) || errors.Is(err, agent.ErrCommandInProgress)
+	return errors.Is(err, conversation.ErrDisconnected) || errors.Is(err, conversation.ErrCommandInProgress)
 }

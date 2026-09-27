@@ -1,4 +1,4 @@
-import { useModels } from "@/plugins/builtin/settings/providers/public/queries";
+import { useModels } from "@/plugins/builtin/providers/public/queries";
 import { useActiveSessionId, useAgentSessions } from "@/plugins/builtin/agent/public/session";
 import { resolveComposerModelSelection } from "../application/modelSelection";
 import { useComposerModelPreference } from "./modelPreference";

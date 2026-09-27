@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { resetContainer, setContainer } from "@/main/container";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import { definePlugin } from "@/plugins/sdk";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
@@ -8,21 +7,18 @@ import {
   RUNTIME_STREAM,
 } from "@/plugins/builtin/runtime/public/services";
 import { setHookTrust } from "./application/hookTrust";
-import hooksPlugin from "./index";
+import { createHooksPlugin } from "./index";
 import { rejected } from "@/test/rejected";
 
 afterEach(async () => {
   await resetKernelForTest();
-  resetContainer();
 });
 
 describe("hooks plugin Runtime generation wiring", () => {
   it("retires an admitted trust command when the Runtime process generation changes", async () => {
     const retired = deferred();
     const setTrust = vi.fn(() => retired.promise);
-    setContainer({
-      client: () => ({ hooks: { setTrust } }) as unknown as FlameClient,
-    });
+    let runtimeClient = () => ({ hooks: { setTrust } }) as unknown as FlameClient;
     let generation = RuntimeConnectionGeneration.forProcess("runtime_1");
     const subscribers = new Set<() => void>();
     const runtime = definePlugin({
@@ -41,11 +37,16 @@ describe("hooks plugin Runtime generation wiring", () => {
         };
       },
     });
-    await loadPluginsForTest(runtime, hooksPlugin);
+    await loadPluginsForTest(
+      runtime,
+      createHooksPlugin(() => runtimeClient()),
+    );
 
     const command = rejected(setHookTrust("/repo", true));
     await vi.waitFor(() => expect(setTrust).toHaveBeenCalledOnce());
 
+    const successorTrust = vi.fn().mockResolvedValue(undefined);
+    runtimeClient = () => ({ hooks: { setTrust: successorTrust } }) as unknown as FlameClient;
     generation = RuntimeConnectionGeneration.forProcess("runtime_2");
     for (const subscriber of subscribers) subscriber();
     await expect(command).resolves.toMatchObject({
@@ -53,6 +54,9 @@ describe("hooks plugin Runtime generation wiring", () => {
     });
 
     retired.resolve();
+    await setHookTrust("/repo", false);
+    expect(successorTrust).toHaveBeenCalledExactlyOnceWith("/repo", false);
+    expect(setTrust).toHaveBeenCalledOnce();
   });
 });
 

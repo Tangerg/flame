@@ -5,8 +5,8 @@ import (
 
 	skillspec "github.com/Tangerg/scope/skills"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/agentexec"
-	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/model"
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/maintenance"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace/agentmemory"
@@ -22,7 +22,7 @@ func buildRunMaintenance(
 	memoryCuration *agentmemory.Curation,
 	resolveUtility modeladapter.AuxiliaryResolver,
 	contextState maintenance.SessionContextInvalidator,
-) (agentexec.RunMaintenance, agentexec.ModelContextCompactor, error) {
+) (executionadapter.RunMaintenance, executionadapter.ModelContextCompactor, error) {
 	compactor, err := maintenance.NewCompactor(
 		conversationServices.messages,
 		resolveUtility,

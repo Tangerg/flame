@@ -119,7 +119,7 @@ func primitiveNumericType(name string) bool {
 //	                                             but nothing imports IT.
 //	protocol       protocol/**                   public binding-neutral values and strict validation
 //	delivery       internal/delivery/**          Endpoint, JSON-RPC dispatch, and HTTP/SSE transport
-//	adapter        internal/adapter/**           capability adapters, incl. adapter/agentexec (the
+//	adapter        internal/adapter/**           capability adapters, incl. adapter/run/execution (the
 //	                                              agent-execution adapter over the agent SDK)
 //	application    internal/application/**        use-case coordinators (runs / sessions / capabilities /
 //	                                              workspace / schedules) — engine- and wire-neutral
@@ -144,8 +144,9 @@ func primitiveNumericType(name string) bool {
 //	delivery → domain, application
 //	composition → anything        the root wires every ring
 //
-// The ring rule is the backbone. Dedicated tests below cover the unclassified
-// component umbrella, framework imports, wire isolation, and semantic ownership.
+// Every production package is classified, including public bindings, pure
+// values, shared mechanisms, deployment, generation, and test support. Dedicated
+// tests also enforce framework imports, wire isolation, and semantic ownership.
 // The Go compiler enforces the remaining package DAG by rejecting import cycles.
 func TestDependencyRule(t *testing.T) {
 	root := moduleRoot(t)
@@ -157,7 +158,7 @@ func TestDependencyRule(t *testing.T) {
 		}
 		if d.IsDir() {
 			name := d.Name()
-			if name == "vendor" || (strings.HasPrefix(name, ".") && path != root) {
+			if name == "vendor" || name == "node_modules" || name == "testdata" || (strings.HasPrefix(name, ".") && path != root) {
 				return filepath.SkipDir
 			}
 			return nil
@@ -173,9 +174,6 @@ func TestDependencyRule(t *testing.T) {
 			return err
 		}
 		from := layerOf(filepath.ToSlash(rel))
-		if from == "" {
-			return nil // unclassified importer (e.g. a module-root helper)
-		}
 
 		fileViolations, err := dependencyViolationsInFile(path, from)
 		if err != nil {
@@ -191,7 +189,7 @@ func TestDependencyRule(t *testing.T) {
 		t.Fatalf("walk module: %v", walkErr)
 	}
 	if violations == 0 {
-		t.Log("dependency rule holds: all cross-ring edges point inward")
+		t.Log("dependency rule holds: every production package is classified and cross-ring edges point inward")
 	}
 }
 
@@ -248,7 +246,7 @@ func TestTransparentAliasesStayAtTheTransportBoundary(t *testing.T) {
 }
 
 // TestOpaqueExecutorCheckpointConsumersDoNotModelFrameworkTrees keeps every
-// checkpoint consumer outside agentexec byte-oriented. Runsegment and Bootstrap
+// checkpoint consumer outside the execution adapter byte-oriented. Segment and Bootstrap
 // may bind, save, replace, or delete the opaque envelope, but tree shape and
 // snapshot parsing remain exclusively in the Agent Framework ACL.
 func TestOpaqueExecutorCheckpointConsumersDoNotModelFrameworkTrees(t *testing.T) {
@@ -298,7 +296,7 @@ func TestDomainHooksStayPure(t *testing.T) {
 // heavy runtime coupling: no filesystem or
 // process I/O, network, database driver, or external SDK/storage library
 // (including the reusable history adapter contract). Domain has no Agent
-// SDK exception: agentexec projects framework values into application-owned
+// SDK exception: the execution adapter projects framework values into application-owned
 // domain values at the boundary.
 func TestDomainStaysFrameworkFree(t *testing.T) {
 	root := moduleRoot(t)
@@ -314,8 +312,8 @@ func TestDomainDoesNotRenderAgentOrToolPresentation(t *testing.T) {
 	root := moduleRoot(t)
 	checks := map[string]map[string]string{
 		filepath.Join(root, "internal", "domain", "workspace", "agentmemory"): {
-			"Render":         "memory prompt rendering belongs to adapter/agentexec",
-			"EstimateTokens": "model token approximation belongs to adapter/agentexec",
+			"Render":         "memory prompt rendering belongs to adapter/run/execution",
+			"EstimateTokens": "model token approximation belongs to adapter/run/execution",
 			"NormalizeFacts": "LLM Markdown extraction belongs to adapter/maintenance",
 		},
 		filepath.Join(root, "internal", "domain", "session", "plan"): {
@@ -326,10 +324,10 @@ func TestDomainDoesNotRenderAgentOrToolPresentation(t *testing.T) {
 			"Info":       "discovered-skill client projection belongs to application/workspace",
 		},
 		filepath.Join(root, "internal", "domain", "run", "approval"): {
-			"RiskFor": "approval-risk wording belongs to adapter/agentexec",
+			"RiskFor": "approval-risk wording belongs to adapter/run/execution",
 		},
 		filepath.Join(root, "internal", "domain", "run", "tool"): {
-			"BypassImmuneReason": "tool refusal wording belongs to adapter/agentexec",
+			"BypassImmuneReason": "tool refusal wording belongs to adapter/run/execution",
 		},
 	}
 	for dir, banned := range checks {
@@ -355,6 +353,26 @@ func TestSharedCapabilitiesStayPure(t *testing.T) {
 			"github.com/Tangerg/flame/runtime/internal/delivery",
 			"github.com/Tangerg/flame/runtime/internal/bootstrap",
 		})
+	}
+}
+
+func TestSharedValuesStayFreeOfExternalCapabilities(t *testing.T) {
+	root := moduleRoot(t)
+	checked := make(map[string]bool)
+	err := walkProductionGoFiles(filepath.Join(root, "internal"), func(path string, _ *ast.File) error {
+		directory := filepath.Dir(path)
+		relative, err := filepath.Rel(root, directory)
+		if err != nil {
+			return err
+		}
+		if layerOf(filepath.ToSlash(relative)) == ringValue && !checked[directory] {
+			checked[directory] = true
+			forbidExternalImports(t, directory, frameworkImports)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("scan shared values: %v", err)
 	}
 }
 
@@ -428,12 +446,15 @@ func TestApplicationDoesNotInterpretExecutorContinuationState(t *testing.T) {
 	}
 }
 
-// TestAgentFrameworkStaysBehindAgentexec keeps the Agent Framework at Runtime's
+// TestAgentFrameworkStaysBehindRunAdapters keeps the Agent Framework at Runtime's
 // single anti-corruption edge. Both the importing Runtime leaf and the imported
 // Agent Framework packages are explicit: widening either set requires a reviewed contract
 // decision instead of silently turning an umbrella prefix into an allowlist.
-func TestAgentFrameworkStaysBehindAgentexec(t *testing.T) {
-	const agentexecDir = "internal/adapter/agentexec"
+func TestAgentFrameworkStaysBehindRunAdapters(t *testing.T) {
+	allowedConsumers := map[string]struct{}{
+		"internal/adapter/run/execution": {},
+		"internal/adapter/run/input":     {},
+	}
 	allowedImports := map[string]struct{}{
 		"github.com/Tangerg/scope/agent":                      {},
 		"github.com/Tangerg/scope/agent/strategy/interaction": {},
@@ -470,8 +491,8 @@ func TestAgentFrameworkStaysBehindAgentexec(t *testing.T) {
 			}
 			relativePath = filepath.ToSlash(relativePath)
 			relativeDir := filepath.ToSlash(filepath.Dir(relativePath))
-			if relativeDir != agentexecDir && !strings.HasPrefix(relativeDir, agentexecDir+"/") {
-				t.Errorf("Agent Framework import escaped %s: %s imports %q", agentexecDir, relativePath, importPath)
+			if _, allowed := allowedConsumers[relativeDir]; !allowed {
+				t.Errorf("Agent Framework import escaped the Run execution/input adapters: %s imports %q", relativePath, importPath)
 			}
 			_, allowed := allowedImports[importPath]
 			if importPath == "github.com/Tangerg/scope/agent/agenttest" && strings.HasSuffix(path, "_test.go") {
@@ -491,9 +512,9 @@ func TestAgentFrameworkStaysBehindAgentexec(t *testing.T) {
 // TestDomainStaysPure protects every bounded context in the innermost ring:
 // it must not touch the filesystem, a SQL driver, HTTP, OTel, the agent SDK, or a
 // shared runtime coordination primitives. (The accounting sub-context
-// maps the SDK's token counts at the agentexec boundary, so it holds only the
+// maps the SDK's token counts at the execution adapter boundary, so it holds only the
 // neutral core chat model, never agent/*.) The shared-capability ban is listed
-// explicitly because layerOf intentionally leaves those exact packages unclassified.
+// explicitly to retain its I/O ban even for shared technical mechanisms.
 func TestDomainStaysPure(t *testing.T) {
 	root := moduleRoot(t)
 	domain := filepath.Join(root, "internal", "domain")
@@ -524,11 +545,14 @@ func TestDeliveryStaysFrameworkFree(t *testing.T) {
 // data, but it must not plan, rebuild, assert, or steer concrete Agent execution
 // handles.
 func TestDeliveryDoesNotControlAgentExecutions(t *testing.T) {
-	const agentExecPkg = "github.com/Tangerg/flame/runtime/internal/adapter/agentexec"
+	executionPackages := []string{
+		"github.com/Tangerg/flame/runtime/internal/adapter/run/execution",
+		"github.com/Tangerg/flame/runtime/internal/adapter/run/input",
+	}
 	root := moduleRoot(t)
 	delivery := filepath.Join(root, "internal", "delivery")
-	forbidExternalImports(t, delivery, []string{agentExecPkg})
-	forbidTestImports(t, delivery, []string{agentExecPkg})
+	forbidExternalImports(t, delivery, executionPackages)
+	forbidTestImports(t, delivery, executionPackages)
 }
 
 // TestDeliveryDoesNotWireApplicationCollaborators keeps construction cycles and
@@ -675,30 +699,26 @@ func TestDeliveryDoesNotOwnModelPolicy(t *testing.T) {
 
 // TestApplicationDoesNotDependOnConcreteAgentEngine keeps the Agent runtime
 // behind Bootstrap and the execution adapter. Application owns consumer-side
-// ports and must not regain a dependency on the concrete agentexec Engine or
+// ports and must not regain a dependency on the concrete execution adapter Engine or
 // one of its implementation subpackages.
 func TestApplicationDoesNotDependOnConcreteAgentEngine(t *testing.T) {
-	const agentExecPkg = "github.com/Tangerg/flame/runtime/internal/adapter/agentexec"
 	root := moduleRoot(t)
-	forbidExternalImports(t, filepath.Join(root, "internal", "application"), []string{agentExecPkg})
+	forbidExternalImports(t, filepath.Join(root, "internal", "application"), []string{
+		"github.com/Tangerg/flame/runtime/internal/adapter/run/execution",
+		"github.com/Tangerg/flame/runtime/internal/adapter/run/input",
+	})
 }
 
-// TestAgentExecDelegatesManagedExecution locks the Framework/Host ownership
-// boundary. The agent adapter may supply product prompts, pricing, observers,
-// tools, and responses, but it must not rebuild the framework's ToolLoop,
-// decode ProcessSnapshot continuation payloads, or record framework aggregate
-// usage directly. Managed interaction owns those execution mechanics; Application
-// observes its boundaries and owns the detailed accounting projection.
-// TestAgentExecDelegatesManagedExecution pins what the rule is actually about:
+// TestExecutionAdapterDelegatesManagedExecution pins what the rule is actually about:
 // the framework's managed interaction drives the tool loop and records framework
 // usage, so this adapter must never construct a runner or record usage itself.
 // The prohibition is stated per behavior rather than as a ban on naming the
 // package, because touching a pure value helper there — the manifest projection
 // that pairs with PromoteTools — drives nothing and records nothing. Only
 // NewRunner can produce a Runner, so forbidding it forbids driving a loop.
-func TestAgentExecDelegatesManagedExecution(t *testing.T) {
+func TestExecutionAdapterDelegatesManagedExecution(t *testing.T) {
 	root := moduleRoot(t)
-	dir := filepath.Join(root, "internal", "adapter", "agentexec")
+	dir := filepath.Join(root, "internal", "adapter", "run", "execution")
 
 	forbiddenSelectors := map[string]string{
 		"toolloop.NewRunner": "managed interaction owns the ToolLoop runner",
@@ -731,7 +751,7 @@ func TestAgentExecDelegatesManagedExecution(t *testing.T) {
 		return nil
 	})
 	if walkErr != nil {
-		t.Fatalf("walk agentexec: %v", walkErr)
+		t.Fatalf("walk execution: %v", walkErr)
 	}
 }
 
@@ -772,7 +792,7 @@ func receiverName(recv *ast.FieldList) string {
 // field would need the import; this also catches a held cancel-func group); (b)
 // a struct-field AST walk forbids a held checkpoint store or run registry,
 // whose packages the Server imports for other reasons (adapter/workspace's
-// GitAvailable probe; application/agent/runs' Coordinator + Event).
+// Git capability probe; application/agent/runs' Coordinator + Event).
 func TestDeliveryHoldsNoRunLifecycleState(t *testing.T) {
 	root := moduleRoot(t)
 	dir := filepath.Join(root, "internal", "delivery", "handler.go")
@@ -1442,7 +1462,7 @@ func assertCanonicalExecutionRecordSource(t *testing.T, root, path string, file 
 
 // TestRuntimeInterruptValuesStayWireFree keeps the application interrupt plan
 // and the domain resume decision free of Agent Framework pending-input and
-// Signal wire. The interactioninput ACL owns that translation; these values
+// Signal wire. The Run input ACL owns that translation; these values
 // retain only product vocabulary.
 func TestRuntimeInterruptValuesStayWireFree(t *testing.T) {
 	root := moduleRoot(t)
@@ -1877,57 +1897,99 @@ const (
 	ringApplication = "application"
 	ringInfra       = "infra"
 	ringDomain      = "domain"
+	ringProtocol    = "protocol"
+	ringValue       = "value"
+	ringMechanism   = "mechanism"
+	ringDeployment  = "deployment"
+	ringGenerator   = "generator"
+	ringTestSupport = "test support"
+	ringUnknown     = "unclassified"
 )
 
-// layerOf classifies a module-relative package dir (e.g. "internal/infra/sqlite")
-// into its ring, or "" when the path is outside the rings under test.
+// layerOf classifies every production package. Context packages inherit their
+// ring; shared capabilities need an explicit policy instead of an unrestricted
+// internal/* escape hatch. Test fixtures are checked by their dedicated tests.
 func layerOf(rel string) string {
+	if strings.Contains("/"+rel+"/", "/testdata/") {
+		return ringTestSupport
+	}
+	switch rel {
+	case "internal/dependency", "internal/exactint", "internal/exactjson", "internal/identity", "internal/optional":
+		return ringValue
+	case "internal/cancelread", "internal/capture", "internal/completion", "internal/httporigin", "internal/idempotency", "internal/keylock":
+		return ringMechanism
+	case "internal/contractshape":
+		return ringProtocol
+	case "internal/contractcatalog":
+		return ringGenerator
+	}
 	switch {
-	case rel == "internal/bootstrap" || strings.HasPrefix(rel, "internal/bootstrap/") ||
-		rel == "internal/config" || strings.HasPrefix(rel, "cmd/"):
+	case rel == "." || inPackageTree(rel, "internal/bootstrap") || inPackageTree(rel, "internal/config"):
 		return ringComposition
-	case rel == "internal/delivery" || strings.HasPrefix(rel, "internal/delivery/"):
+	case inPackageTree(rel, "cmd/contractgen"):
+		return ringGenerator
+	case inPackageTree(rel, "cmd"):
+		return ringComposition
+	case inPackageTree(rel, "protocol"):
+		return ringProtocol
+	case inPackageTree(rel, "localruntime"):
+		return ringDeployment
+	case inPackageTree(rel, "internal/delivery"):
 		return ringDelivery
-	case rel == "internal/adapter" || strings.HasPrefix(rel, "internal/adapter/"):
+	case inPackageTree(rel, "internal/adapter"):
 		return ringAdapter
-	case rel == "internal/application" || strings.HasPrefix(rel, "internal/application/"):
+	case inPackageTree(rel, "internal/application"):
 		return ringApplication
-	case rel == "internal/infra" || strings.HasPrefix(rel, "internal/infra/"):
+	case inPackageTree(rel, "internal/infra"):
 		return ringInfra
-	case rel == "internal/domain" || strings.HasPrefix(rel, "internal/domain/"):
+	case inPackageTree(rel, "internal/domain"):
 		return ringDomain
+	case inPackageTree(rel, "internal/testsupport"):
+		return ringTestSupport
 	default:
-		return ""
+		return ringUnknown
 	}
 }
 
-// forbidden reports whether a package in ring "from" may NOT import one in "to".
-// The composition root (runtime facade / bootstrap / config / cmd) wires every
-// ring, so it forbids nothing as an importer — but it is a forbidden TARGET for
-// every other ring, so assembly logic can never be pulled back into a business
-// ring (there is no blanket skip: composition is a normal ring here that happens
-// to import freely, while nothing imports it).
+func inPackageTree(path, root string) bool {
+	return path == root || strings.HasPrefix(path, root+"/")
+}
+
+// forbidden applies to every classified edge, including module-root bindings,
+// protocol values, generators, deployment files, and shared mechanisms.
 func forbidden(from, to string) bool {
+	if from == ringUnknown || to == ringUnknown {
+		return true
+	}
+	if to == ringTestSupport {
+		return from != ringTestSupport
+	}
+	if to == ringGenerator {
+		return from != ringGenerator && from != ringTestSupport
+	}
 	switch from {
 	case ringDomain:
-		return to != ringDomain
+		return to != ringDomain && to != ringValue
 	case ringApplication:
-		return to != ringDomain && to != ringApplication
+		return to != ringDomain && to != ringApplication && to != ringValue && to != ringMechanism
 	case ringInfra:
-		// Infra is a reusable technical mechanism. I/O consumer ports belong to
-		// Application and are translated by Adapter, so Infra never reaches either.
-		return to != ringDomain && to != ringInfra
+		return to != ringDomain && to != ringInfra && to != ringValue && to != ringMechanism && to != ringDeployment
 	case ringAdapter:
-		// Adapters implement domain/application ports and wrap infra; they must
-		// never reach up into delivery or the composition root (the latter would
-		// let assembly logic hide inside a capability adapter).
-		return to == ringDelivery || to == ringComposition
+		return to != ringDomain && to != ringApplication && to != ringAdapter && to != ringInfra && to != ringValue && to != ringMechanism && to != ringDeployment
 	case ringDelivery:
-		// Delivery drives Application use cases and projects domain values. It
-		// never reaches a concrete Adapter, raw Infra, or the composition root.
-		return to == ringAdapter || to == ringInfra || to == ringComposition
-	default: // composition imports anything inward
+		return to != ringDomain && to != ringApplication && to != ringDelivery && to != ringProtocol && to != ringValue && to != ringMechanism
+	case ringProtocol:
+		return to != ringProtocol && to != ringValue
+	case ringValue:
+		return to != ringValue
+	case ringMechanism:
+		return to != ringValue && to != ringMechanism
+	case ringDeployment:
+		return to != ringDeployment
+	case ringComposition, ringGenerator, ringTestSupport:
 		return false
+	default:
+		return true
 	}
 }
 

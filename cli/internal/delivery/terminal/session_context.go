@@ -1,6 +1,8 @@
 package terminal
 
-import "github.com/Tangerg/flame/cli/internal/domain/agent"
+import (
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+)
 
 type sessionContextLease struct {
 	retired bool
@@ -20,13 +22,13 @@ func (s *sessionContextLease) current(candidate *sessionContextLease) bool {
 	return s != nil && s == candidate && !s.retired
 }
 
-func (a *app) canPreserveInteractionProjection(next *agent.Conversation) bool {
-	return a.dialogs.interactionReview != nil && a.execution.conversation.Phase() == agent.ConversationWaiting &&
-		next != nil && next.Phase() == agent.ConversationWaiting && a.execution.conversation.RunID() == next.RunID() &&
+func (a *app) canPreserveInteractionProjection(next *conversation.Conversation) bool {
+	return a.dialogs.interactionReview != nil && a.execution.conversation.Phase() == conversation.Waiting &&
+		next != nil && next.Phase() == conversation.Waiting && a.execution.conversation.RunID() == next.RunID() &&
 		sameInteractions(a.execution.conversation.Interactions(), next.Interactions())
 }
 
-func (a *app) prepareSessionProjectionReplacement(next agent.Session, conversation *agent.Conversation) {
+func (a *app) prepareSessionProjectionReplacement(next conversation.Session, projection *conversation.Conversation) {
 	if next.ID != a.session.current.ID || next.Workspace != a.session.current.Workspace {
 		a.retireSessionContext()
 		return
@@ -34,7 +36,7 @@ func (a *app) prepareSessionProjectionReplacement(next agent.Session, conversati
 	if a.dialogs.reader.ObservingSource() {
 		a.dismissReader()
 	}
-	if !a.canPreserveInteractionProjection(conversation) {
+	if !a.canPreserveInteractionProjection(projection) {
 		a.dismissInteractionProjection()
 	}
 }

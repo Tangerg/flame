@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/cli/internal/exactint"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -57,7 +57,7 @@ func (s *sessionState) requireRevisionCapacity(changes sessionRevisionChanges) e
 	return nil
 }
 
-func (s *sessionState) commitMeta(candidate agent.Session) error {
+func (s *sessionState) commitMeta(candidate conversation.Session) error {
 	committed, err := nextSessionMeta(s.meta, candidate)
 	if err != nil {
 		return err
@@ -66,14 +66,14 @@ func (s *sessionState) commitMeta(candidate agent.Session) error {
 	return nil
 }
 
-func nextSessionMeta(current, candidate agent.Session) (agent.Session, error) {
+func nextSessionMeta(current, candidate conversation.Session) (conversation.Session, error) {
 	revision, err := exactint.Restore(current.Revision)
 	if err != nil {
-		return agent.Session{}, fmt.Errorf("mock: session revision: %w", err)
+		return conversation.Session{}, fmt.Errorf("mock: session revision: %w", err)
 	}
 	next, err := revision.Next()
 	if err := classifySessionRevisionAdvance(err); err != nil {
-		return agent.Session{}, err
+		return conversation.Session{}, err
 	}
 	candidate.Revision = next.Value()
 	return candidate, nil
@@ -86,18 +86,18 @@ func classifySessionRevisionAdvance(err error) error {
 	return err
 }
 
-func (r *Runtime) ListSessions(ctx context.Context, query agent.SessionQuery) (agent.SessionPage, error) {
+func (r *Runtime) ListSessions(ctx context.Context, query conversation.SessionQuery) (conversation.SessionPage, error) {
 	if err := context.Cause(ctx); err != nil {
-		return agent.SessionPage{}, err
+		return conversation.SessionPage{}, err
 	}
 	query, err := query.Normalize()
 	if err != nil {
-		return agent.SessionPage{}, fmt.Errorf("mock: %w", err)
+		return conversation.SessionPage{}, fmt.Errorf("mock: %w", err)
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	items := make([]agent.Session, 0, len(r.sessions))
+	items := make([]conversation.Session, 0, len(r.sessions))
 	needle := strings.ToLower(query.Search)
 	workspace := query.Workspace
 	for _, state := range r.sessions {
@@ -109,7 +109,7 @@ func (r *Runtime) ListSessions(ctx context.Context, query agent.SessionQuery) (a
 		}
 		items = append(items, state.meta)
 	}
-	slices.SortStableFunc(items, func(a, b agent.Session) int {
+	slices.SortStableFunc(items, func(a, b conversation.Session) int {
 		if a.Favorite != b.Favorite {
 			if a.Favorite {
 				return -1
@@ -121,14 +121,14 @@ func (r *Runtime) ListSessions(ctx context.Context, query agent.SessionQuery) (a
 
 	offset, err := pageOffset("session", query.Cursor, len(items))
 	if err != nil {
-		return agent.SessionPage{}, err
+		return conversation.SessionPage{}, err
 	}
 	limit, err := query.PageSize.Rows()
 	if err != nil {
-		return agent.SessionPage{}, fmt.Errorf("mock: %w", err)
+		return conversation.SessionPage{}, fmt.Errorf("mock: %w", err)
 	}
 	end := min(offset+limit, len(items))
-	page := agent.SessionPage{Items: slices.Clone(items[offset:end])}
+	page := conversation.SessionPage{Items: slices.Clone(items[offset:end])}
 	if end < len(items) {
 		page.NextCursor = strconv.Itoa(end)
 	}
@@ -146,25 +146,25 @@ func pageOffset(collection, cursor string, length int) (int, error) {
 	return offset, nil
 }
 
-func (r *Runtime) GetSession(ctx context.Context, id string) (agent.SessionSnapshot, error) {
+func (r *Runtime) GetSession(ctx context.Context, id string) (conversation.SessionSnapshot, error) {
 	if err := context.Cause(ctx); err != nil {
-		return agent.SessionSnapshot{}, err
+		return conversation.SessionSnapshot{}, err
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.sessionSnapshotLocked(id)
 }
 
-func (r *Runtime) sessionSnapshotLocked(id string) (agent.SessionSnapshot, error) {
+func (r *Runtime) sessionSnapshotLocked(id string) (conversation.SessionSnapshot, error) {
 	state, ok := r.sessions[id]
 	if !ok {
-		return agent.SessionSnapshot{}, fmt.Errorf("%w: %s", agent.ErrSessionNotFound, id)
+		return conversation.SessionSnapshot{}, fmt.Errorf("%w: %s", conversation.ErrSessionNotFound, id)
 	}
-	snapshot := agent.SessionSnapshot{
+	snapshot := conversation.SessionSnapshot{
 		Session:    state.meta,
-		Transcript: make([]agent.Block, len(state.items)),
-		Runs:       make([]agent.Run, 0, len(state.runs)),
-		Plan:       agent.ClonePlan(state.plan),
+		Transcript: make([]conversation.Block, len(state.items)),
+		Runs:       make([]conversation.Run, 0, len(state.runs)),
+		Plan:       conversation.ClonePlan(state.plan),
 	}
 	for i, item := range state.items {
 		snapshot.Transcript[i] = item.block.Clone()
@@ -175,21 +175,21 @@ func (r *Runtime) sessionSnapshotLocked(id string) (agent.SessionSnapshot, error
 		}
 	}
 	if active := r.runs[state.active]; active != nil {
-		snapshot.Interactions = agent.CloneInteractions(active.interactions)
+		snapshot.Interactions = conversation.CloneInteractions(active.interactions)
 	}
 	if err := snapshot.Validate(); err != nil {
-		return agent.SessionSnapshot{}, fmt.Errorf("mock: invalid session snapshot: %w", err)
+		return conversation.SessionSnapshot{}, fmt.Errorf("mock: invalid session snapshot: %w", err)
 	}
 	return snapshot, nil
 }
 
-func (r *Runtime) CreateSession(ctx context.Context, in agent.CreateSession) (agent.Session, error) {
+func (r *Runtime) CreateSession(ctx context.Context, in conversation.CreateSession) (conversation.Session, error) {
 	if err := context.Cause(ctx); err != nil {
-		return agent.Session{}, err
+		return conversation.Session{}, err
 	}
 	workspace := strings.TrimSpace(in.Workspace)
 	if workspace == "" {
-		return agent.Session{}, errors.New("mock: workspace is required")
+		return conversation.Session{}, errors.New("mock: workspace is required")
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -199,7 +199,7 @@ func (r *Runtime) CreateSession(ctx context.Context, in agent.CreateSession) (ag
 		title = "Untitled session"
 	}
 	now := r.now()
-	session := agent.Session{
+	session := conversation.Session{
 		ID: id, Title: title, Status: protocol.SessionStatusIdle,
 		Provider: defaultProvider, Model: defaultModel,
 		Workspace: availableWorkspace(workspace), CreatedAt: now, UpdatedAt: now, Revision: 1,
@@ -208,27 +208,27 @@ func (r *Runtime) CreateSession(ctx context.Context, in agent.CreateSession) (ag
 	return session, nil
 }
 
-func (r *Runtime) UpdateSession(ctx context.Context, in agent.UpdateSession) (agent.Session, error) {
+func (r *Runtime) UpdateSession(ctx context.Context, in conversation.UpdateSession) (conversation.Session, error) {
 	if err := in.Validate(); err != nil {
-		return agent.Session{}, fmt.Errorf("mock: %w", err)
+		return conversation.Session{}, fmt.Errorf("mock: %w", err)
 	}
 	if err := context.Cause(ctx); err != nil {
-		return agent.Session{}, err
+		return conversation.Session{}, err
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	state, ok := r.sessions[in.SessionID]
 	if !ok {
-		return agent.Session{}, fmt.Errorf("%w: %s", agent.ErrSessionNotFound, in.SessionID)
+		return conversation.Session{}, fmt.Errorf("%w: %s", conversation.ErrSessionNotFound, in.SessionID)
 	}
 	if in.ExpectedRevision != state.meta.Revision {
-		return agent.Session{}, fmt.Errorf("%w: session %s is at revision %d", agent.ErrRevisionConflict, in.SessionID, state.meta.Revision)
+		return conversation.Session{}, fmt.Errorf("%w: session %s is at revision %d", conversation.ErrRevisionConflict, in.SessionID, state.meta.Revision)
 	}
 	candidate := state.meta
 	if in.Title != nil {
 		title := strings.TrimSpace(*in.Title)
 		if title == "" {
-			return agent.Session{}, errors.New("mock: session title is empty")
+			return conversation.Session{}, errors.New("mock: session title is empty")
 		}
 		candidate.Title = title
 	}
@@ -245,7 +245,7 @@ func (r *Runtime) UpdateSession(ctx context.Context, in agent.UpdateSession) (ag
 	}
 	candidate.UpdatedAt = r.now()
 	if err := state.commitMeta(candidate); err != nil {
-		return agent.Session{}, err
+		return conversation.Session{}, err
 	}
 	return state.meta, nil
 }
@@ -254,19 +254,19 @@ func availableWorkspace(path string) workspace.Workspace {
 	return workspace.Workspace{Path: path, ProjectRoot: path, Availability: protocol.WorkspaceAvailable}
 }
 
-func (r *Runtime) ForkSession(ctx context.Context, in agent.ForkSession) (agent.Session, error) {
+func (r *Runtime) ForkSession(ctx context.Context, in conversation.ForkSession) (conversation.Session, error) {
 	if err := context.Cause(ctx); err != nil {
-		return agent.Session{}, err
+		return conversation.Session{}, err
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	source, ok := r.sessions[in.SessionID]
 	if !ok {
-		return agent.Session{}, fmt.Errorf("%w: %s", agent.ErrSessionNotFound, in.SessionID)
+		return conversation.Session{}, fmt.Errorf("%w: %s", conversation.ErrSessionNotFound, in.SessionID)
 	}
 	boundary, err := r.resolveForkBoundary(source, in.FromRunID)
 	if err != nil {
-		return agent.Session{}, err
+		return conversation.Session{}, err
 	}
 	id := r.identities.next(sessionIdentity)
 	title := strings.TrimSpace(in.Title)
@@ -274,7 +274,7 @@ func (r *Runtime) ForkSession(ctx context.Context, in agent.ForkSession) (agent.
 		title = source.meta.Title + " (fork)"
 	}
 	now := r.now()
-	meta := agent.Session{
+	meta := conversation.Session{
 		ID: id, Title: title, Status: protocol.SessionStatusIdle,
 		Provider: source.meta.Provider, Model: source.meta.Model, ReasoningEffort: source.meta.ReasoningEffort,
 		Workspace: source.meta.Workspace, CreatedAt: now, UpdatedAt: now, Revision: 1,
@@ -283,49 +283,49 @@ func (r *Runtime) ForkSession(ctx context.Context, in agent.ForkSession) (agent.
 	if boundary.plan != nil {
 		state.plan, err = commitInitialPlan(meta.ID, now, boundary.plan.State.Steps)
 		if err != nil {
-			return agent.Session{}, fmt.Errorf("mock: fork plan: %w", err)
+			return conversation.Session{}, fmt.Errorf("mock: fork plan: %w", err)
 		}
 	}
 	r.sessions[id] = state
 	return meta, nil
 }
 
-func (r *Runtime) RollbackSession(ctx context.Context, in agent.RollbackSession) (agent.RollbackResult, error) {
+func (r *Runtime) RollbackSession(ctx context.Context, in conversation.RollbackSession) (conversation.RollbackResult, error) {
 	if err := in.Validate(); err != nil {
-		return agent.RollbackResult{}, fmt.Errorf("mock: %w", err)
+		return conversation.RollbackResult{}, fmt.Errorf("mock: %w", err)
 	}
 	if err := context.Cause(ctx); err != nil {
-		return agent.RollbackResult{}, err
+		return conversation.RollbackResult{}, err
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	state := r.sessions[in.SessionID]
 	if state == nil {
-		return agent.RollbackResult{}, fmt.Errorf("%w: %s", agent.ErrSessionNotFound, in.SessionID)
+		return conversation.RollbackResult{}, fmt.Errorf("%w: %s", conversation.ErrSessionNotFound, in.SessionID)
 	}
 	if state.active != "" {
-		return agent.RollbackResult{}, fmt.Errorf("%w: %s", agent.ErrSessionBusy, in.SessionID)
+		return conversation.RollbackResult{}, fmt.Errorf("%w: %s", conversation.ErrSessionBusy, in.SessionID)
 	}
 	if in.FilesOnly() {
-		return agent.RollbackResult{Session: state.meta}, nil
+		return conversation.RollbackResult{Session: state.meta}, nil
 	}
 	keep := -1
 	if in.ToRunID != "" {
 		keep = slices.Index(state.runs, in.ToRunID)
 		if keep < 0 {
-			return agent.RollbackResult{}, fmt.Errorf("%w: %s", agent.ErrRunNotFound, in.ToRunID)
+			return conversation.RollbackResult{}, fmt.Errorf("%w: %s", conversation.ErrRunNotFound, in.ToRunID)
 		}
 	}
 	droppedIDs := slices.Clone(state.runs[keep+1:])
 	droppedSet := make(map[string]struct{}, len(droppedIDs))
-	result := agent.RollbackResult{Dropped: make([]agent.DroppedRun, 0, len(droppedIDs))}
+	result := conversation.RollbackResult{Dropped: make([]conversation.DroppedRun, 0, len(droppedIDs))}
 	planAtRun := maps.Clone(state.planAtRun)
 	for _, runID := range droppedIDs {
 		droppedSet[runID] = struct{}{}
-		dropped := agent.DroppedRun{RunID: runID}
+		dropped := conversation.DroppedRun{RunID: runID}
 		for _, item := range state.items {
-			if item.runID == runID && item.block.Kind == agent.BlockUser && strings.TrimSpace(item.block.Text) != "" {
-				dropped.Input = append(dropped.Input, agent.InputContent{Kind: protocol.ContentBlockText, Text: item.block.Text})
+			if item.runID == runID && item.block.Kind == conversation.BlockUser && strings.TrimSpace(item.block.Text) != "" {
+				dropped.Input = append(dropped.Input, conversation.InputContent{Kind: protocol.ContentBlockText, Text: item.block.Text})
 				break
 			}
 		}
@@ -345,17 +345,17 @@ func (r *Runtime) RollbackSession(ctx context.Context, in agent.RollbackSession)
 	}
 	plan, err := commitNextPlan(state.plan, state.meta.ID, r.now(), steps)
 	if err != nil {
-		return agent.RollbackResult{}, fmt.Errorf("mock: rollback Plan: %w", err)
+		return conversation.RollbackResult{}, fmt.Errorf("mock: rollback Plan: %w", err)
 	}
 	meta := state.meta
 	meta.UpdatedAt = r.now()
 	meta, err = nextSessionMeta(state.meta, meta)
 	if err != nil {
-		return agent.RollbackResult{}, err
+		return conversation.RollbackResult{}, err
 	}
 	result.Session = meta
 	if err := result.Validate(); err != nil {
-		return agent.RollbackResult{}, fmt.Errorf("mock: %w", err)
+		return conversation.RollbackResult{}, fmt.Errorf("mock: %w", err)
 	}
 	for _, runID := range droppedIDs {
 		delete(r.runs, runID)
@@ -380,7 +380,7 @@ func (r *Runtime) resolveForkBoundary(source *sessionState, fromRunID string) (f
 	if fromRunID != "" {
 		boundaryIndex = slices.Index(source.runs, fromRunID)
 		if boundaryIndex < 0 || r.runs[fromRunID] == nil || r.runs[fromRunID].status != protocol.RunStatusFinished {
-			return forkBoundary{}, fmt.Errorf("%w: %s", agent.ErrRunNotFound, fromRunID)
+			return forkBoundary{}, fmt.Errorf("%w: %s", conversation.ErrRunNotFound, fromRunID)
 		}
 	} else {
 		for i, runID := range slices.Backward(source.runs) {
@@ -395,10 +395,10 @@ func (r *Runtime) resolveForkBoundary(source *sessionState, fromRunID string) (f
 	}
 
 	boundaryRunID := source.runs[boundaryIndex]
-	return forkBoundary{plan: agent.ClonePlan(source.planAtRun[boundaryRunID])}, nil
+	return forkBoundary{plan: conversation.ClonePlan(source.planAtRun[boundaryRunID])}, nil
 }
 
-func (r *Runtime) DeleteSession(ctx context.Context, in agent.DeleteSession) error {
+func (r *Runtime) DeleteSession(ctx context.Context, in conversation.DeleteSession) error {
 	if err := context.Cause(ctx); err != nil {
 		return err
 	}
@@ -406,10 +406,10 @@ func (r *Runtime) DeleteSession(ctx context.Context, in agent.DeleteSession) err
 	defer r.mu.Unlock()
 	state, ok := r.sessions[in.SessionID]
 	if !ok {
-		return fmt.Errorf("%w: %s", agent.ErrSessionNotFound, in.SessionID)
+		return fmt.Errorf("%w: %s", conversation.ErrSessionNotFound, in.SessionID)
 	}
 	if state.active != "" {
-		return fmt.Errorf("%w: %s", agent.ErrSessionBusy, in.SessionID)
+		return fmt.Errorf("%w: %s", conversation.ErrSessionBusy, in.SessionID)
 	}
 	for _, runID := range state.runs {
 		delete(r.runs, runID)
@@ -425,17 +425,17 @@ func (r *Runtime) seedHistory() {
 	}
 	run := &runState{
 		id: "run_demo_history", sessionID: state.meta.ID, provider: "mock", model: "balanced",
-		lineage: agent.RootRunLineage(),
+		lineage: conversation.RootRunLineage(),
 		status:  protocol.RunStatusFinished, segments: make(map[string]*segmentState),
-		outcome: agent.Outcome{Status: protocol.OutcomeCompleted},
-		usage:   agent.Usage{InputTokens: 820, OutputTokens: 94, CacheReadTokens: 512, Duration: 3 * time.Second},
+		outcome: conversation.Outcome{Status: protocol.OutcomeCompleted},
+		usage:   conversation.Usage{InputTokens: 820, OutputTokens: 94, CacheReadTokens: 512, Duration: 3 * time.Second},
 	}
 	r.runs[run.id] = run
 	r.runOrder = append(r.runOrder, run.id)
 	state.runs = append(state.runs, run.id)
 	state.items = append(state.items,
-		durableItem{runID: run.id, block: agent.Block{ID: "demo_prompt", RunID: run.id, Status: agent.BlockStatusCompleted, Kind: agent.BlockUser, Text: "Why is the cache expiry test flaky?"}},
-		durableItem{runID: run.id, block: agent.Block{ID: "demo_answer", RunID: run.id, Status: agent.BlockStatusCompleted, Kind: agent.BlockAssistant, Text: "The fixed sleep races the janitor. Wait for its sweep signal instead."}},
+		durableItem{runID: run.id, block: conversation.Block{ID: "demo_prompt", RunID: run.id, Status: conversation.BlockStatusCompleted, Kind: conversation.BlockUser, Text: "Why is the cache expiry test flaky?"}},
+		durableItem{runID: run.id, block: conversation.Block{ID: "demo_answer", RunID: run.id, Status: conversation.BlockStatusCompleted, Kind: conversation.BlockAssistant, Text: "The fixed sleep races the janitor. Wait for its sweep signal instead."}},
 	)
 	state.planAtRun = map[string]*protocol.Plan{run.id: nil}
 }

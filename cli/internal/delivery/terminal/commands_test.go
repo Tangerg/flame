@@ -7,9 +7,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/cli/internal/application/extensions"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 func TestPluginCommandIdentityExhaustionPreservesExistingCancellationOwner(t *testing.T) {
@@ -50,66 +51,6 @@ func TestPluginCommandRegistryTakesOnlySelectedOwner(t *testing.T) {
 	}
 }
 
-func TestCommandDescriptorValidatesItsIdentityNamespace(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		name       string
-		descriptor CommandDescriptor
-		want       string
-	}{
-		{name: "valid", descriptor: CommandDescriptor{Name: "inspect", Title: "inspect workspace", Aliases: []string{"look"}}},
-		{name: "missing name", descriptor: CommandDescriptor{Title: "inspect workspace"}, want: "has no name"},
-		{name: "invalid name", descriptor: CommandDescriptor{Name: "in spect", Title: "inspect workspace"}, want: "invalid name"},
-		{name: "missing title", descriptor: CommandDescriptor{Name: "inspect"}, want: "has no title"},
-		{name: "invalid arguments", descriptor: CommandDescriptor{Name: "inspect", Title: "inspect workspace", Arguments: ArgumentMode("invalid")}, want: "argument mode"},
-		{name: "invalid alias", descriptor: CommandDescriptor{Name: "inspect", Title: "inspect workspace", Aliases: []string{"bad alias"}}, want: "invalid alias"},
-		{name: "duplicate alias", descriptor: CommandDescriptor{Name: "inspect", Title: "inspect workspace", Aliases: []string{"look", "look"}}, want: "repeats name or alias"},
-		{name: "alias repeats name", descriptor: CommandDescriptor{Name: "inspect", Title: "inspect workspace", Aliases: []string{"inspect"}}, want: "repeats name or alias"},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			err := test.descriptor.Validate()
-			if test.want == "" && err != nil {
-				t.Fatalf("Validate() error = %v", err)
-			}
-			if test.want != "" && (err == nil || !strings.Contains(err.Error(), test.want)) {
-				t.Fatalf("Validate() error = %v, want substring %q", err, test.want)
-			}
-		})
-	}
-}
-
-func TestArgumentModeValidatesInvocations(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		name     string
-		mode     ArgumentMode
-		argument string
-		want     string
-	}{
-		{name: "none empty", mode: NoArguments},
-		{name: "none populated", mode: NoArguments, argument: "surprise", want: "does not accept"},
-		{name: "optional empty", mode: OptionalArguments},
-		{name: "optional populated", mode: OptionalArguments, argument: "value"},
-		{name: "required empty", mode: RequiredArguments, want: "needs an argument"},
-		{name: "required populated", mode: RequiredArguments, argument: "value"},
-		{name: "invalid", mode: ArgumentMode("invalid"), want: "invalid argument contract"},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			err := test.mode.ValidateInvocation("inspect", test.argument)
-			if test.want == "" && err != nil {
-				t.Fatalf("ValidateInvocation() error = %v", err)
-			}
-			if test.want != "" && (err == nil || !strings.Contains(err.Error(), test.want)) {
-				t.Fatalf("ValidateInvocation() error = %v, want substring %q", err, test.want)
-			}
-		})
-	}
-}
-
 func TestCommandsWithUsefulDefaultsDeclareOptionalArguments(t *testing.T) {
 	t.Parallel()
 	want := map[string]bool{
@@ -121,7 +62,7 @@ func TestCommandsWithUsefulDefaultsDeclareOptionalArguments(t *testing.T) {
 			continue
 		}
 		delete(want, command.Descriptor.Name)
-		if command.Descriptor.Arguments != OptionalArguments {
+		if command.Descriptor.Arguments != extensions.OptionalArguments {
 			t.Errorf("/%s arguments = %v, want optional", command.Descriptor.Name, command.Descriptor.Arguments)
 		}
 	}
@@ -140,11 +81,11 @@ func TestBuiltinCommandsHonorNegotiatedFineGrainedCapabilities(t *testing.T) {
 	})
 	application := &app{
 		runtimeProfile: &profile,
-		execution:      executionState{conversation: agent.NewConversation()},
+		execution:      executionState{conversation: conversation.New()},
 		workspaces:     &workspaceServiceStub{},
 		transfers:      outputTransferStub{},
 	}
-	for name, availability := range map[string]CommandAvailability{
+	for name, availability := range map[string]extensions.CommandAvailability{
 		"changes":  availableWithGitWorkspaceService(application),
 		"relocate": availableForRelocation(application),
 		"export":   availableWithSessionTransfer(application),
@@ -181,7 +122,7 @@ func TestRuntimeFeatureServicesRequireBothPortAndPublishedCapability(t *testing.
 		schedules:      newScheduleServiceStub(),
 		agentMemory:    newAgentMemoryServiceStub(),
 	}
-	checks := map[string]func(*app) CommandAvailability{
+	checks := map[string]func(*app) extensions.CommandAvailability{
 		protocol.FeatureGoals:       availableWithGoals,
 		protocol.FeatureSkills:      availableWithSkills,
 		protocol.FeatureMCP:         availableWithMCP,
@@ -215,11 +156,11 @@ func TestMessageCapabilitiesRejectImagesOnlyWhenMultimodalWasNotNegotiated(t *te
 	application := &app{runtimeProfile: new(terminalProfileWithFeatures(t, map[string]protocol.FeatureCapability{
 		protocol.FeatureMultimodal: {Enabled: false},
 	}))}
-	text := agent.Message{Attachments: []agent.Attachment{{Kind: protocol.ContentBlockText}}}
+	text := prompt.Message{Attachments: []prompt.Attachment{{Kind: protocol.ContentBlockText}}}
 	if err := application.validateMessageCapabilities(text); err != nil {
 		t.Fatalf("text attachment: %v", err)
 	}
-	image := agent.Message{Attachments: []agent.Attachment{{Kind: protocol.ContentBlockImage}}}
+	image := prompt.Message{Attachments: []prompt.Attachment{{Kind: protocol.ContentBlockImage}}}
 	if err := application.validateMessageCapabilities(image); err == nil || !strings.Contains(err.Error(), "multimodal") {
 		t.Fatalf("image attachment error = %v", err)
 	}
@@ -228,11 +169,11 @@ func TestMessageCapabilitiesRejectImagesOnlyWhenMultimodalWasNotNegotiated(t *te
 func TestCommandCatalogRejectsNameAndAliasConflicts(t *testing.T) {
 	t.Parallel()
 	catalog := newCommandCatalog()
-	first := CommandDescriptor{Name: "inspect", Title: "inspect workspace", Aliases: []string{"look"}}
+	first := extensions.CommandDescriptor{Name: "inspect", Title: "inspect workspace", Aliases: []string{"look"}}
 	if err := catalog.add("first", first, func(string) {}, nil); err != nil {
 		t.Fatal(err)
 	}
-	conflicting := CommandDescriptor{Name: "look", Title: "conflict with an alias"}
+	conflicting := extensions.CommandDescriptor{Name: "look", Title: "conflict with an alias"}
 	if err := catalog.add("second", conflicting, func(string) {}, nil); err == nil {
 		t.Fatal("alias conflict was accepted")
 	}
@@ -292,7 +233,7 @@ func TestBuiltinCommandsOwnTheirCategoryAndAvailabilityPolicy(t *testing.T) {
 		if err := command.validate(); err != nil {
 			t.Fatalf("validate /%s: %v", command.Descriptor.Name, err)
 		}
-		for _, identity := range command.Descriptor.identities() {
+		for _, identity := range command.Descriptor.Identities() {
 			if _, duplicate := seen[identity]; duplicate {
 				t.Fatalf("command identity %q is duplicated", identity)
 			}
@@ -317,35 +258,15 @@ func TestBuiltinCommandsOwnTheirCategoryAndAvailabilityPolicy(t *testing.T) {
 func TestCommandCatalogRanksAnExactAliasAheadOfFuzzyNames(t *testing.T) {
 	t.Parallel()
 	catalog := newCommandCatalog()
-	if err := catalog.add("test", CommandDescriptor{Name: "goal-resume", Title: "resume goal"}, func(string) {}, nil); err != nil {
+	if err := catalog.add("test", extensions.CommandDescriptor{Name: "goal-resume", Title: "resume goal"}, func(string) {}, nil); err != nil {
 		t.Fatal(err)
 	}
-	if err := catalog.add("test", CommandDescriptor{Name: "sessions", Title: "resume session", Aliases: []string{"resume"}}, func(string) {}, nil); err != nil {
+	if err := catalog.add("test", extensions.CommandDescriptor{Name: "sessions", Title: "resume session", Aliases: []string{"resume"}}, func(string) {}, nil); err != nil {
 		t.Fatal(err)
 	}
 
 	found := catalog.find("resume")
 	if len(found) == 0 || found[0].Command.Name != "sessions" {
 		t.Fatalf("find exact alias = %v, want sessions first", found)
-	}
-}
-
-// TestCommandAvailabilityCannotSayOneThingAndMeanAnother pins the pairing the
-// two-field shape used to allow: an enabled command carrying a reason it is
-// not, and a disabled one carrying nothing to show the operator.
-func TestCommandAvailabilityCannotSayOneThingAndMeanAnother(t *testing.T) {
-	available := CommandAvailable()
-	if !available.Enabled() || available.Reason() != "" {
-		t.Fatalf("available = (%v, %q)", available.Enabled(), available.Reason())
-	}
-	for _, reason := range []string{"", "   ", "\n\t"} {
-		blank := CommandUnavailable(reason)
-		if blank.Enabled() || blank.Reason() != "not available in the current context" {
-			t.Fatalf("CommandUnavailable(%q) = (%v, %q)", reason, blank.Enabled(), blank.Reason())
-		}
-	}
-	stated := CommandUnavailable("  an active run owns this session  ")
-	if stated.Enabled() || stated.Reason() != "an active run owns this session" {
-		t.Fatalf("stated = (%v, %q)", stated.Enabled(), stated.Reason())
 	}
 }

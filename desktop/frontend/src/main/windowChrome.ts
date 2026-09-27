@@ -1,12 +1,12 @@
-import { getContainer } from "@/main/container";
+import type { ClientHost } from "@/platform/host";
 
 const CONTROL_GAP_PX = 6;
 
 const GUTTER_PROPERTY = "--window-controls-gutter";
 const CENTRE_PROPERTY = "--window-controls-centre";
 
-export async function applyWindowChrome(): Promise<void> {
-  const chrome = await getContainer().host.windowChrome();
+export async function applyWindowChrome(host: Pick<ClientHost, "windowChrome">): Promise<void> {
+  const chrome = await host.windowChrome();
   const root = document.documentElement;
   if (!chrome) {
     root.style.removeProperty(GUTTER_PROPERTY);
@@ -22,8 +22,8 @@ export async function applyWindowChrome(): Promise<void> {
   if (hidden) root.style.removeProperty(CENTRE_PROPERTY);
 }
 
-export function watchWindowChrome(): () => void {
-  const refresh = () => void applyWindowChrome();
+export function watchWindowChrome(host: Pick<ClientHost, "windowChrome">): () => void {
+  const refresh = () => void applyWindowChrome(host);
   addEventListener("resize", refresh);
   return () => removeEventListener("resize", refresh);
 }

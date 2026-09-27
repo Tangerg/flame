@@ -1,3 +1,4 @@
+import { createBrowserHost } from "@/platform/browserHost";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const calls = vi.hoisted(() => ({
@@ -10,7 +11,6 @@ vi.mock("@/plugins/builtin/agent/public/session", () => ({ selectAgentSession: c
 vi.mock("@/plugins/builtin/workspace/public/navigation", () => ({
   selectWorkspaceChat: calls.chat,
 }));
-vi.mock("./adapters/windowFocus", () => ({ revealClientWindow: calls.reveal }));
 vi.mock("./chime", () => ({ playCompletionChime: vi.fn() }));
 
 import { announceSettlement, startCompletionNotifications } from "./completionNotify";
@@ -35,8 +35,8 @@ describe("announceSettlement", () => {
   let stop: () => void;
   let uninstall: () => void;
   beforeEach(() => {
-    uninstall = installNotificationCentre();
-    stop = startCompletionNotifications();
+    uninstall = installNotificationCentre(createBrowserHost());
+    stop = startCompletionNotifications(calls.reveal);
     vi.stubGlobal("Notification", FakeNotification);
     vi.spyOn(document, "hasFocus").mockReturnValue(false);
     FakeNotification.permission = "granted";

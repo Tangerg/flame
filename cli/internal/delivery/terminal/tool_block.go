@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	coreDiff "github.com/Tangerg/oolong/core/diff"
@@ -13,8 +14,6 @@ import (
 	"github.com/Tangerg/oolong/core/layout"
 	"github.com/Tangerg/oolong/core/text"
 	"github.com/Tangerg/oolong/highlight"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 const (
@@ -37,9 +36,9 @@ type toolDisclosure interface {
 // domain only knows ToolCall values.
 type mutableToolBlock interface {
 	toolDisclosure
-	Update(agent.Block)
+	Update(conversation.Block)
 	AppendOutput(string)
-	Finish(agent.ToolStatus)
+	Finish(conversation.ToolStatus)
 }
 
 type toolBlock struct {
@@ -47,7 +46,7 @@ type toolBlock struct {
 	glyphs       kit.Glyphs
 	syntax       highlight.Renderer
 	presenters   []ToolPresenter
-	call         agent.ToolCall
+	call         conversation.ToolCall
 	presentation ToolPresentation
 	expanded     bool
 	body         []headless.Block
@@ -60,15 +59,15 @@ var (
 	_ mutableToolBlock       = (*toolBlock)(nil)
 )
 
-func newToolBlock(p BlockPresentation, block agent.Block) *toolBlock {
+func newToolBlock(p BlockPresentation, block conversation.Block) *toolBlock {
 	t := &toolBlock{theme: p.Theme, glyphs: p.Glyphs, syntax: p.Syntax, presenters: slices.Clone(p.Tools)}
 	t.Update(block)
 	return t
 }
 
-func (t *toolBlock) Update(block agent.Block) {
+func (t *toolBlock) Update(block conversation.Block) {
 	if block.Tool == nil {
-		t.call = agent.ToolCall{Kind: agent.ToolUnknown, Name: "invalid tool", Summary: "runtime omitted the tool projection", Status: agent.ToolError}
+		t.call = conversation.ToolCall{Kind: conversation.ToolUnknown, Name: "invalid tool", Summary: "runtime omitted the tool projection", Status: conversation.ToolError}
 	} else {
 		t.call = block.Tool.Clone()
 	}
@@ -83,8 +82,8 @@ func (t *toolBlock) AppendOutput(chunk string) {
 	t.rebuild()
 }
 
-func (t *toolBlock) Finish(status agent.ToolStatus) {
-	if t.call.Status != agent.ToolRunning {
+func (t *toolBlock) Finish(status conversation.ToolStatus) {
+	if t.call.Status != conversation.ToolRunning {
 		return
 	}
 	t.call.Status = status
@@ -93,7 +92,9 @@ func (t *toolBlock) Finish(status agent.ToolStatus) {
 
 func (t *toolBlock) SetExpanded(expanded bool) { t.expanded = expanded && t.Expandable() }
 
-func (t *toolBlock) Expandable() bool { return t.call.Status == agent.ToolRunning || len(t.body) > 0 }
+func (t *toolBlock) Expandable() bool {
+	return t.call.Status == conversation.ToolRunning || len(t.body) > 0
+}
 
 func (t *toolBlock) Expanded() bool { return t.expanded && t.Expandable() }
 
@@ -200,16 +201,16 @@ func (t *toolBlock) header() (toggle, label, status string, statusStyle grid.Sty
 	}
 	statusStyle = t.theme.Muted
 	switch t.call.Status {
-	case agent.ToolRunning:
+	case conversation.ToolRunning:
 		status = t.glyphs.Marker + " running"
 		statusStyle = t.theme.Info
-	case agent.ToolOK:
+	case conversation.ToolOK:
 		status = t.glyphs.Taken + " done"
 		statusStyle = t.theme.Success
-	case agent.ToolError:
+	case conversation.ToolError:
 		status = t.glyphs.Taken + " error"
 		statusStyle = t.theme.Danger
-	case agent.ToolCanceled:
+	case conversation.ToolCanceled:
 		status = t.glyphs.Bullet + " canceled"
 		statusStyle = t.theme.Warning
 	default:

@@ -1,7 +1,5 @@
 #!/usr/bin/env node
-// Layer-boundary guard. Complements check-circular.mjs: that one forbids
-// cycles, this one forbids *upward* / cross-layer import edges that the
-// clean-architecture layering disallows. Run off the same madge graph.
+// Layer and owner boundaries over the compiler-resolved source graph.
 //
 // Philosophy mirrors CLAUDE.md's "强反向不变量 (known wrong directions)":
 // rather than a full allow-matrix (brittle, false-positive prone), each
@@ -10,14 +8,16 @@
 // regressions we care about (UI/plugin upward deps, rpc purity) without
 // policing every legitimate inward dependency.
 
-import { execFileSync } from "node:child_process";
-import { closeSync, openSync, readFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { importsRuntimeClient } from "./runtime-client-imports.mjs";
+import { readSourceGraph, RUNTIME_CLIENT_EDGE } from "./source-graph.mjs";
+import {
+  atCompositionRoot,
+  builtinContext,
+  contextRootsOf,
+  isPublishedContextFile,
+} from "./builtin-contexts.mjs";
 
 // Ordered longest-prefix-first: first match wins. Paths are relative to
-// src/ (how madge reports them when invoked with `src/`).
+// src/. The compiler resolves both relative imports and path aliases.
 //
 // Every entry names a directory that EXISTS. Rules for a layer that was retired
 // (or never built) guard nothing while reading as architecture, so the shape of
@@ -48,8 +48,6 @@ const LAYER_PREFIXES = [
 // Roots that carry no dependency direction: assets, the test harness, and the
 // bare entry files that sit beside them at src/ root.
 const UNGUARDED_ROOTS = new Set(["styles", "test"]);
-
-const RUNTIME_CLIENT_EDGE = "@flame/runtime-contract/client";
 
 function layerOf(path) {
   if (path === RUNTIME_CLIENT_EDGE) return "rpc";
@@ -84,7 +82,9 @@ const FORBIDDEN = {
   rpc: [...UI, "main", "sdk", "lib", "platform"],
   // The plugin SDK is a platform layer — it must not depend on the UI it
   // is consumed by (locks the MessageContext inversion fix).
-  sdk: [...UI, "platform"],
+  sdk: [...UI, "platform", "main"],
+  "plugins-glue": ["main", "builtin"],
+  builtin: ["main"],
   // Utility layer. `rpc` stays allowed — it's the standalone protocol layer
   // below lib (see `rpc` above, which forbids lib), so mapping an error type to
   // copy from here runs downhill. Everything else is uphill and was the hole
@@ -120,65 +120,9 @@ const FORBIDDEN = {
   "ui-agent": ["platform", "main", "rpc", "pages", "builtin", "plugins-glue", "sdk"],
   // The view layer reaches the backend only through hooks — the SDK's
   // data-query hooks and selectors — never the composition root
-  // (`main/container`) or the raw protocol client (`rpc`) directly.
+  // (`main composition`) or the raw protocol client (`rpc`) directly.
   pages: ["main", "rpc", "platform"],
 };
-
-// A directory named any of these under plugins/builtin/<ctx>/ marks <ctx> as a
-// bounded context (it has opted into the layout). `public/` is the only surface
-// a foreign context may import; the rest are context-private. Contexts with no
-// boundary dir (flat plugin folders like theme/ or defaults/) aren't policed.
-const CONTEXT_BOUNDARY = new Set([
-  "application",
-  "presentation",
-  "domain",
-  "adapters",
-  "public",
-  "ui",
-]);
-
-function contextRootFromBoundary(path) {
-  const parts = path.split("/");
-  if (parts[0] !== "plugins" || parts[1] !== "builtin") return null;
-  for (let i = 2; i < parts.length; i++) {
-    if (CONTEXT_BOUNDARY.has(parts[i])) return i > 2 ? parts.slice(0, i).join("/") : null;
-  }
-  return null;
-}
-
-function contextRootsOf(graph) {
-  const roots = new Set();
-  for (const [file, deps] of Object.entries(graph)) {
-    const fileRoot = contextRootFromBoundary(file);
-    if (fileRoot) roots.add(fileRoot);
-    for (const dep of deps) {
-      const depRoot = contextRootFromBoundary(dep);
-      if (depRoot) roots.add(depRoot);
-    }
-  }
-  return [...roots].sort((a, b) => b.length - a.length);
-}
-
-function builtinContext(path, contextRoots) {
-  if (!path.startsWith("plugins/builtin/")) return null;
-  return contextRoots.find((root) => path === root || path.startsWith(`${root}/`)) ?? null;
-}
-
-// The builtin manifest is the plugin composition root: it imports every
-// plugin's registration entry wherever it lives in the tree (a context holds
-// several plugins, each with its own index/bootstrap), exactly as
-// main/container may reach anything. It's exempt as an importer; peer contexts
-// get no such license.
-const BUILTIN_MANIFEST = "plugins/builtin/index.ts";
-const TEST_SETUP = "test/setup.ts";
-// A test sitting in the manifest's own directory tests the *assembled* plugin
-// set — cross-context invariants no single context can check — so it loads
-// plugins the way the manifest does. Nested test files get no such license.
-const COMPOSITION_TEST = /^plugins\/builtin\/[^/]+\.test\.tsx?$/;
-
-function atCompositionRoot(file) {
-  return file === BUILTIN_MANIFEST || file === TEST_SETUP || COMPOSITION_TEST.test(file);
-}
 
 // A peer context may import only another context's `public/` facade. Any other
 // cross-context import — including into a loose file sitting at the context
@@ -192,7 +136,7 @@ function crossContextViolation(file, dep, contextRoots) {
   if (!depContext) return null; // dep isn't inside any recognized context
   const fromContext = builtinContext(file, contextRoots);
   if (fromContext === depContext) return null; // same context — its own business
-  if (dep.startsWith(`${depContext}/public/`)) return null; // the published facade
+  if (isPublishedContextFile(dep, depContext)) return null; // the published facade
   return {
     file,
     dep,
@@ -250,64 +194,9 @@ function ringViolation(file, dep, contextRoots) {
   return { from: `${context.replace("plugins/builtin/", "")}/${from}`, to };
 }
 
-// Redirect madge's JSON to a temp FILE rather than capturing its stdout pipe.
-// madge calls process.exit() before an async stdout *pipe* finishes draining
-// (Node's classic exit-truncates-piped-stdout bug), so a captured pipe is
-// silently capped at the 64KB buffer once the graph grows past it — which
-// check:circular dodges only because `--circular` output is tiny. A file fd
-// flushes synchronously on close, so the whole graph survives at any size.
-const graphFile = join(tmpdir(), "flame-check-layers-madge.json");
-let raw = "";
-try {
-  const fd = openSync(graphFile, "w");
-  try {
-    execFileSync(
-      "npx",
-      ["madge", "--extensions", "ts,tsx", "--ts-config", "tsconfig.json", "--json", "src/"],
-      { stdio: ["ignore", fd, "inherit"] },
-    );
-  } catch {
-    // madge can exit non-zero on warnings yet still write a full graph — read
-    // whatever landed and let JSON.parse below be the judge.
-  } finally {
-    closeSync(fd);
-  }
-  raw = readFileSync(graphFile, "utf8");
-} finally {
-  rmSync(graphFile, { force: true });
-}
-
-let graph;
-try {
-  graph = JSON.parse(raw);
-} catch {
-  console.error("[check-layers] madge did not produce valid JSON:");
-  console.error(raw);
-  process.exit(2);
-}
-
-// An empty or truncated graph makes every rule below vacuously true, and still prints OK.
-const MIN_MODULES = 600;
-const MIN_EDGES = 1000;
+const { graph } = readSourceGraph();
 const moduleCount = Object.keys(graph).length;
 const graphEdgeCount = Object.values(graph).reduce((total, deps) => total + deps.length, 0);
-if (moduleCount < MIN_MODULES || graphEdgeCount < MIN_EDGES) {
-  console.error(
-    `[check-layers] graph has ${moduleCount} modules and ${graphEdgeCount} edges ` +
-      `(expected at least ${MIN_MODULES} and ${MIN_EDGES}).`,
-  );
-  console.error("Module resolution broke — this run proves nothing.");
-  process.exit(2);
-}
-
-// Package imports are omitted by madge. Preserve the same outbound boundary
-// now that Desktop and IDE consume the Runtime-owned client package.
-for (const [file, deps] of Object.entries(graph)) {
-  if (file.startsWith("../")) continue;
-  if (importsRuntimeClient(readFileSync(join("src", file), "utf8"))) {
-    deps.push(RUNTIME_CLIENT_EDGE);
-  }
-}
 
 const violations = [];
 const contextRoots = contextRootsOf(graph);
@@ -371,15 +260,13 @@ if (violations.length > 0) {
   }
   console.error("");
   console.error("An inner layer is importing an outer one, or a plugin context");
-  console.error("is reaching past another context's public/ facade (that facade is");
-  console.error("the only surface importable across contexts). Invert the dependency,");
+  console.error("is reaching past another context's declared public surface.");
+  console.error("Invert the dependency,");
   console.error("or route it through the public surface.");
   process.exit(1);
 }
 
-// The counts are on the success line for the same reason every other guard here puts them
-// there: "no violations" reads identically whether the walk covered the tree or nothing at
-// all. The floors above already refuse an empty walk; this makes a shrinking one visible.
+// Source coverage is established before evaluating any dependency rules.
 console.log(
   `[check-layers] OK — no layer-boundary violations across ${moduleCount} modules, ${graphEdgeCount} edges.`,
 );

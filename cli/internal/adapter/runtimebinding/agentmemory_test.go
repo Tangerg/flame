@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -83,7 +83,7 @@ func TestAgentMemoryAdapterRejectsBrokenRuntimeProjections(t *testing.T) {
 				}},
 				meta: requestMeta("test"),
 			}}
-			target, err := agent.NewMemoryTarget(protocol.AgentMemoryScopeProject, "/workspace")
+			target, err := conversation.NewMemoryTarget(protocol.AgentMemoryScopeProject, "/workspace")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -157,7 +157,7 @@ func TestAgentMemoryAdapterRejectsCatalogOrderViolations(t *testing.T) {
 				}},
 				meta: requestMeta("test"),
 			}}
-			target, err := agent.NewMemoryTarget(protocol.AgentMemoryScopeProject, "/workspace")
+			target, err := conversation.NewMemoryTarget(protocol.AgentMemoryScopeProject, "/workspace")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -236,7 +236,7 @@ func TestAgentMemoryAdapterPreservesTargetReviewAndMutationSemantics(t *testing.
 		}},
 		meta: requestMeta("test"),
 	}}
-	project, err := agent.NewMemoryTarget(protocol.AgentMemoryScopeProject, "/workspace")
+	project, err := conversation.NewMemoryTarget(protocol.AgentMemoryScopeProject, "/workspace")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -244,7 +244,7 @@ func TestAgentMemoryAdapterPreservesTargetReviewAndMutationSemantics(t *testing.
 	if err != nil || len(items) != 1 || items[0].Status != protocol.AgentMemoryStatusPending {
 		t.Fatalf("Items = (%+v, %v)", items, err)
 	}
-	user, err := agent.NewMemoryTarget(protocol.AgentMemoryScopeUser, "")
+	user, err := conversation.NewMemoryTarget(protocol.AgentMemoryScopeUser, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -358,7 +358,7 @@ func TestAgentMemoryAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 			name: "add identity",
 			stub: &agentMemoryBindingStub{addResult: &unidentifiedAdd},
 			invoke: func(adapter *AgentMemory) error {
-				target, err := agent.NewMemoryTarget(protocol.AgentMemoryScopeUser, "")
+				target, err := conversation.NewMemoryTarget(protocol.AgentMemoryScopeUser, "")
 				if err != nil {
 					return err
 				}
@@ -370,7 +370,7 @@ func TestAgentMemoryAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 			name: "add content",
 			stub: &agentMemoryBindingStub{addResult: &wrongAdd},
 			invoke: func(adapter *AgentMemory) error {
-				target, err := agent.NewMemoryTarget(protocol.AgentMemoryScopeUser, "")
+				target, err := conversation.NewMemoryTarget(protocol.AgentMemoryScopeUser, "")
 				if err != nil {
 					return err
 				}

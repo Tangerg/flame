@@ -6,7 +6,8 @@ import (
 	"io"
 	"strings"
 
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -28,7 +29,7 @@ type assistantProse struct {
 }
 
 type assistantProseBlock struct {
-	text agent.StreamedText
+	text conversation.StreamedText
 }
 
 func (a *assistantProse) reset() {
@@ -36,17 +37,17 @@ func (a *assistantProse) reset() {
 	a.index = make(map[string]int)
 }
 
-func (a *assistantProse) begin(block agent.Block) {
+func (a *assistantProse) begin(block conversation.Block) {
 	a.ensureIndex()
 	if at, exists := a.index[block.ID]; exists {
-		a.blocks[at].text = agent.NewStreamedText(block.Text)
+		a.blocks[at].text = conversation.NewStreamedText(block.Text)
 		return
 	}
 	a.index[block.ID] = len(a.blocks)
-	a.blocks = append(a.blocks, assistantProseBlock{text: agent.NewStreamedText(block.Text)})
+	a.blocks = append(a.blocks, assistantProseBlock{text: conversation.NewStreamedText(block.Text)})
 }
 
-func (a *assistantProse) delta(delta agent.BlockDelta) error {
+func (a *assistantProse) delta(delta conversation.BlockDelta) error {
 	a.ensureIndex()
 	at, exists := a.index[delta.BlockID]
 	if !exists {
@@ -55,7 +56,7 @@ func (a *assistantProse) delta(delta agent.BlockDelta) error {
 	return a.blocks[at].text.Apply(delta)
 }
 
-func (a *assistantProse) complete(block agent.Block) {
+func (a *assistantProse) complete(block conversation.Block) {
 	a.ensureIndex()
 	at, exists := a.index[block.ID]
 	if !exists {
@@ -63,7 +64,7 @@ func (a *assistantProse) complete(block agent.Block) {
 		a.blocks = append(a.blocks, assistantProseBlock{})
 		at = len(a.blocks) - 1
 	}
-	a.blocks[at].text = agent.NewStreamedText(block.Text)
+	a.blocks[at].text = conversation.NewStreamedText(block.Text)
 }
 
 func (a *assistantProse) text() string {
@@ -102,7 +103,7 @@ func NewResultJSON(w io.Writer) *ResultJSON {
 
 // Begin records the accepted run before its first subscription opens, so a
 // transport failure can still produce a useful incomplete result.
-func (r *ResultJSON) Begin(run agent.Run, options agent.RunOptions) error {
+func (r *ResultJSON) Begin(run conversation.Run, options prompt.RunOptions) error {
 	if r.err != nil {
 		return r.err
 	}
@@ -127,7 +128,7 @@ func (r *ResultJSON) Begin(run agent.Run, options agent.RunOptions) error {
 }
 
 // Render folds one validated event into the final result.
-func (r *ResultJSON) Render(envelope agent.RunEvent) error {
+func (r *ResultJSON) Render(envelope conversation.RunEvent) error {
 	if r.err != nil {
 		return r.err
 	}
@@ -135,7 +136,7 @@ func (r *ResultJSON) Render(envelope agent.RunEvent) error {
 		r.err = errors.New("render result after close")
 		return r.err
 	}
-	if err := agent.ValidateEvent(envelope.Event); err != nil {
+	if err := conversation.ValidateEvent(envelope.Event); err != nil {
 		r.err = fmt.Errorf("render result event: %w", err)
 		return r.err
 	}
@@ -152,7 +153,7 @@ func (r *ResultJSON) Render(envelope agent.RunEvent) error {
 
 // Reconcile replaces the folded result with durable cold-read values after the
 // runtime reports that the live segment can no longer be replayed.
-func (r *ResultJSON) Reconcile(snapshot agent.SessionSnapshot) error {
+func (r *ResultJSON) Reconcile(snapshot conversation.SessionSnapshot) error {
 	if r.err != nil {
 		return r.err
 	}
@@ -178,7 +179,7 @@ func (r *ResultJSON) Reconcile(snapshot agent.SessionSnapshot) error {
 		return r.err
 	}
 	for _, block := range snapshot.Transcript {
-		if block.RunID == targetRunID && block.Status != agent.BlockStatusRunning && block.Kind == agent.BlockAssistant {
+		if block.RunID == targetRunID && block.Status != conversation.BlockStatusRunning && block.Kind == conversation.BlockAssistant {
 			r.prose.complete(block)
 			r.appendImages(block.Images)
 		}
@@ -196,16 +197,16 @@ func (r *ResultJSON) Reconcile(snapshot agent.SessionSnapshot) error {
 		r.frame.Usage = encodeUsage(target.Usage)
 	case protocol.RunStatusFinished:
 		r.frame.Status = string(target.Outcome.Status)
-		finished := encodeFinishedFrame(agent.RunFinished{Outcome: target.Outcome, Usage: target.Usage})
+		finished := encodeFinishedFrame(conversation.RunFinished{Outcome: target.Outcome, Usage: target.Usage})
 		r.frame.Outcome, r.frame.Usage = finished.Outcome, finished.Usage
 	case protocol.RunStatusRunning:
 	}
 	return nil
 }
 
-func (r *ResultJSON) fold(envelope agent.RunEvent) {
+func (r *ResultJSON) fold(envelope conversation.RunEvent) {
 	switch event := envelope.Event.(type) {
-	case agent.SegmentStarted:
+	case conversation.SegmentStarted:
 		if !event.Run.Lineage.IsRoot() {
 			return
 		}
@@ -219,63 +220,63 @@ func (r *ResultJSON) fold(envelope agent.RunEvent) {
 		if r.frame.RunID == "" {
 			r.frame.RunID = envelope.RunID
 		}
-	case agent.BlockStarted:
+	case conversation.BlockStarted:
 		if r.scope.isRoot(envelope.RunID) {
 			r.begin(event.Block)
 		}
-	case agent.BlockDelta:
+	case conversation.BlockDelta:
 		if r.scope.isRoot(envelope.RunID) {
 			if err := r.prose.delta(event); err != nil {
 				r.err = fmt.Errorf("fold result delta %s: %w", event.BlockID, err)
 			}
 		}
-	case agent.RunProgress:
+	case conversation.RunProgress:
 		if r.scope.isRoot(envelope.RunID) && event.Usage != nil {
 			r.frame.Usage = encodeUsage(*event.Usage)
 		}
-	case agent.BlockCompleted:
+	case conversation.BlockCompleted:
 		if r.scope.isRoot(envelope.RunID) {
 			r.complete(event.Block)
 		}
-	case agent.RunInterrupted:
+	case conversation.RunInterrupted:
 		r.frame.Interactions = append(r.frame.Interactions, encodeInteractions(event.Interactions)...)
 		if r.scope.isRoot(envelope.RunID) {
 			r.frame.Status = "interrupted"
 			r.frame.Usage = encodeUsage(event.Usage)
 		}
-	case agent.RunSuspended:
+	case conversation.RunSuspended:
 		if r.scope.isRoot(envelope.RunID) {
 			r.frame.Status = "interrupted"
 			r.frame.Usage = encodeUsage(event.Usage)
 		}
-	case agent.RunFinished:
+	case conversation.RunFinished:
 		if r.scope.isRoot(envelope.RunID) {
 			r.frame.Status = string(event.Outcome.Status)
 			r.frame.Interactions = nil
 			finished := encodeFinishedFrame(event)
 			r.frame.Outcome, r.frame.Usage = finished.Outcome, finished.Usage
 		}
-	case agent.PlanChanged, agent.ToolArgumentsDelta, agent.CustomEvent:
+	case conversation.PlanChanged, conversation.ToolArgumentsDelta, conversation.CustomEvent:
 		// A final result intentionally omits incremental plan state.
 	}
 }
 
-func (r *ResultJSON) begin(block agent.Block) {
-	if block.Kind != agent.BlockAssistant {
+func (r *ResultJSON) begin(block conversation.Block) {
+	if block.Kind != conversation.BlockAssistant {
 		return
 	}
 	r.prose.begin(block)
 }
 
-func (r *ResultJSON) complete(block agent.Block) {
-	if block.Kind != agent.BlockAssistant {
+func (r *ResultJSON) complete(block conversation.Block) {
+	if block.Kind != conversation.BlockAssistant {
 		return
 	}
 	r.prose.complete(block)
 	r.appendImages(block.Images)
 }
 
-func (r *ResultJSON) appendImages(images []agent.InlineImage) {
+func (r *ResultJSON) appendImages(images []conversation.InlineImage) {
 	for _, image := range images {
 		r.frame.Images = append(r.frame.Images, imageFrame{
 			ID: image.ID, Name: image.Name, MIMEType: image.MIMEType,

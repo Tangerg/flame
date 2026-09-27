@@ -1,3 +1,4 @@
+import type { FlameClient } from "@flame/runtime-contract/client";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useT } from "@/lib/i18n";
 import {
@@ -54,22 +55,24 @@ function RateableFeedbackButtons({ msg }: { msg: Message }) {
   );
 }
 
-export const messageFeedback = definePlugin({
-  name: "flame.builtin.message-feedback",
-  requires: { runtime: RUNTIME_STREAM },
-  setup(ctx) {
-    const gateway = installRuntimeFeedbackGateway();
-    const unsubscribeRuntime = followRuntimeGeneration(ctx.runtime, () =>
-      gateway.replaceRuntimeGeneration(),
-    );
-    contributeLayout(ctx, "message.actions", {
-      id: "feedback",
-      order: 15,
-      component: FeedbackButtons,
-    });
-    ctx.cleanup(() => {
-      unsubscribeRuntime();
-      gateway.dispose();
-    });
-  },
-});
+export function createMessageFeedbackPlugin(runtimeClient: () => FlameClient) {
+  return definePlugin({
+    name: "flame.builtin.message-feedback",
+    requires: { runtime: RUNTIME_STREAM },
+    setup(ctx) {
+      const gateway = installRuntimeFeedbackGateway(runtimeClient);
+      const unsubscribeRuntime = followRuntimeGeneration(ctx.runtime, () =>
+        gateway.replaceRuntimeGeneration(),
+      );
+      contributeLayout(ctx, "message.actions", {
+        id: "feedback",
+        order: 15,
+        component: FeedbackButtons,
+      });
+      ctx.cleanup(() => {
+        unsubscribeRuntime();
+        gateway.dispose();
+      });
+    },
+  });
+}

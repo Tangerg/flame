@@ -133,12 +133,10 @@ class ScheduleMutationGeneration {
 }
 
 export class ScheduleMutationOwner {
-  readonly #gateway: ScheduleGateway;
   #generation: ScheduleMutationGeneration;
   #disposed = false;
 
   private constructor(gateway: ScheduleGateway) {
-    this.#gateway = gateway;
     this.#generation = new ScheduleMutationGeneration(gateway);
   }
 
@@ -174,10 +172,10 @@ export class ScheduleMutationOwner {
     return this.#generation.runNow(id);
   }
 
-  replaceRuntimeGeneration(): void {
+  replaceRuntimeGeneration(createGateway: () => ScheduleGateway): void {
     if (this.#disposed || !scheduleMutationPublication.owns(this)) return;
     const predecessor = this.#generation;
-    this.#generation = new ScheduleMutationGeneration(this.#gateway);
+    this.#generation = new ScheduleMutationGeneration(createGateway());
     predecessor.retire();
   }
 

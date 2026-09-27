@@ -4,14 +4,13 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/grid"
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/program"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 func TestApprovalPaneRoutesInputToTheLastPresentedForm(t *testing.T) {
@@ -64,7 +63,7 @@ func TestReplacedApprovalFormCannotMutateTheCurrentDraft(t *testing.T) {
 		Theme: transcript.theme, Glyphs: transcript.glyphs,
 	}
 	application.dialogs.interactionReview = &interactionReview{}
-	application.dialogs.approval = &agent.Approval{}
+	application.dialogs.approval = &conversation.Approval{}
 	application.setApprovalForm(approvalAllowOnce)
 	retired := application.dialogs.approvalDraft
 	application.dialogs.approvalPane.Focus(true)
@@ -73,7 +72,7 @@ func TestReplacedApprovalFormCannotMutateTheCurrentDraft(t *testing.T) {
 	root.Draw(surface.View())
 
 	application.dialogs.interactionReview = &interactionReview{}
-	application.dialogs.approval = &agent.Approval{}
+	application.dialogs.approval = &conversation.Approval{}
 	application.dialogs.approvalDraft = &approvalDecisionDraft{}
 	application.setApprovalForm(approvalAllowOnce)
 	root.Handle(input.Key{Code: input.Down})
@@ -112,7 +111,7 @@ func TestApprovalChoiceMapsEveryDecisionAndRememberScope(t *testing.T) {
 			}
 		})
 	}
-	if answer, ok := approvalEditArgs.Answer(); ok || answer != (agent.ApprovalAnswer{}) {
+	if answer, ok := approvalEditArgs.Answer(); ok || answer != (conversation.ApprovalAnswer{}) {
 		t.Fatalf("editor choice projected a runtime answer: %+v, %v", answer, ok)
 	}
 }

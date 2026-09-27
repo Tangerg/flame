@@ -7,13 +7,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/oolong/core/term"
-
-	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
-	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
+	"github.com/Tangerg/flame/cli/internal/application/mutation"
+	"github.com/Tangerg/flame/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/oolong/core/term"
 )
 
 const (
@@ -59,8 +59,8 @@ func (a *activeDurationClock) elapsed(at time.Time) time.Duration {
 	return a.carried + current
 }
 
-func (a *app) startRun(commandID agent.CommandID, message agent.Message, options agent.RunOptions, status string) bool {
-	input := agent.StartRun{CommandID: commandID, SessionID: a.session.current.ID, Message: message.Clone(), Options: options.Clone()}
+func (a *app) startRun(commandID replay.CommandID, message prompt.Message, options prompt.RunOptions, status string) bool {
+	input := prompt.StartRun{CommandID: commandID, SessionID: a.session.current.ID, Message: message.Clone(), Options: options.Clone()}
 	pending, ok := pendingRunByCommandID(a.workbench.PendingRuns(input.SessionID), input.CommandID)
 	if !ok {
 		a.fail(errors.New("run is absent from the durable outbox"))
@@ -99,40 +99,40 @@ func (a *app) startRun(commandID agent.CommandID, message agent.Message, options
 	return started
 }
 
-func (a *app) startPreparedRun(input agent.StartRun, prepared *workbench.PreparedInput, status string) bool {
-	replay, ready := a.prepareRunStart(&input, prepared)
+func (a *app) startPreparedRun(input prompt.StartRun, prepared *workbench.PreparedInput, status string) bool {
+	replayGuard, ready := a.prepareRunStart(&input, prepared)
 	if !ready {
 		return false
 	}
 	a.presentRunStart(status)
-	a.followOpening(func(ctx context.Context) (agent.SegmentStream, error) {
-		if err := commandReplayAdmission(replay, a.runtimeProfile)(); err != nil {
-			return agent.SegmentStream{}, err
+	a.followOpening(func(ctx context.Context) (conversation.SegmentStream, error) {
+		if err := commandReplayAdmission(replayGuard, a.runtimeProfile)(); err != nil {
+			return conversation.SegmentStream{}, err
 		}
 		opened, err := a.runtime.StartRun(ctx, input)
 		if err != nil {
-			if _, accepted := agent.AcceptedMutationReceipt(err); accepted {
-				return agent.SegmentStream{}, err
+			if _, accepted := conversation.AcceptedMutationReceipt(err); accepted {
+				return conversation.SegmentStream{}, err
 			}
-			return agent.SegmentStream{}, &startRunCallError{err: err}
+			return conversation.SegmentStream{}, &startRunCallError{err: err}
 		}
 		if err := opened.ValidateStart(); err != nil {
-			return agent.SegmentStream{}, agent.NewAcceptedMutationError(opened, fmt.Errorf("start run: %w", err))
+			return conversation.SegmentStream{}, conversation.NewAcceptedMutationError(opened, fmt.Errorf("start run: %w", err))
 		}
 		return opened, nil
 	}, streamOpeningObserver{
 		persistent: true,
-		accepted: func(opened agent.SegmentStream) streamOpeningDisposition {
+		accepted: func(opened conversation.SegmentStream) streamOpeningDisposition {
 			a.acceptStartedRun(input, opened)
 			return followOpenedStream
 		},
 		rejected: func(err error) error {
-			if receipt, accepted := agent.AcceptedMutationReceipt(err); accepted {
+			if receipt, accepted := conversation.AcceptedMutationReceipt(err); accepted {
 				if identityErr := runtimeprotocol.ValidateRunID(receipt.RunID); identityErr != nil {
 					return errors.Join(err, identityErr, a.requeueDefinitivelyRefusedStart(input, err))
 				}
 				a.execution.openingRunID = receipt.RunID
-				a.cancelRuntimePreservingFailure(agent.CancelRun{
+				a.cancelRuntimePreservingFailure(conversation.CancelRun{
 					RunID: receipt.RunID, Reason: "runtime returned an invalid start receipt",
 				})
 			}
@@ -142,37 +142,37 @@ func (a *app) startPreparedRun(input agent.StartRun, prepared *workbench.Prepare
 	return true
 }
 
-func (a *app) prepareRunStart(input *agent.StartRun, prepared *workbench.PreparedInput) (commandreplay.Guard, bool) {
+func (a *app) prepareRunStart(input *prompt.StartRun, prepared *workbench.PreparedInput) (replay.Guard, bool) {
 	pending, ok := pendingRunByCommandID(a.workbench.PendingRuns(input.SessionID), input.CommandID)
 	if !ok {
 		a.fail(errors.New("run is absent from the durable outbox"))
-		return commandreplay.Guard{}, false
+		return replay.Guard{}, false
 	}
 	if pending.State != workbench.PendingRunQueued {
 		command, err := pending.ReplayCommand()
 		if err != nil {
 			a.fail(fmt.Errorf("recover pending run input: %w", err))
-			return commandreplay.Guard{}, false
+			return replay.Guard{}, false
 		}
 		*input = command
 	}
 	if err := a.execution.conversation.Starting(); err != nil {
 		a.fail(err)
-		return commandreplay.Guard{}, false
+		return replay.Guard{}, false
 	}
-	replay := commandReplayGuard(a.runtimeProfile)
-	if err := a.workbench.MarkPendingRunDispatching(input.SessionID, input.CommandID, replay, prepared); err != nil {
+	replayGuard := commandReplayGuard(a.runtimeProfile)
+	if err := a.workbench.MarkPendingRunDispatching(input.SessionID, input.CommandID, replayGuard, prepared); err != nil {
 		rollbackErr := a.execution.conversation.CancelStarting()
 		a.message("run start blocked: save dispatching run: " + err.Error())
 		if rollbackErr != nil {
 			a.fail(errors.Join(err, rollbackErr))
 		}
-		return commandreplay.Guard{}, false
+		return replay.Guard{}, false
 	}
 	pending, ok = pendingRunByCommandID(a.workbench.PendingRuns(input.SessionID), input.CommandID)
 	if !ok {
 		a.fail(errors.New("dispatching run disappeared from the durable outbox"))
-		return commandreplay.Guard{}, false
+		return replay.Guard{}, false
 	}
 	*input = pending.Command.Clone()
 	return pending.Replay, true
@@ -182,14 +182,14 @@ func (a *app) presentRunStart(status string) {
 	a.execution.projectionFailed = false
 	a.transcript.Follow()
 	a.activity.Reset()
-	a.header.SetUsage(agent.Usage{})
+	a.header.SetUsage(conversation.Usage{})
 	a.prompt.SetBusy(true)
 	a.status.beginRun(status)
 	a.execution.clock.start(0, time.Now())
 	a.syncAnimation()
 }
 
-func (a *app) acceptStartedRun(input agent.StartRun, opened agent.SegmentStream) {
+func (a *app) acceptStartedRun(input prompt.StartRun, opened conversation.SegmentStream) {
 	a.execution.openingRunID = opened.RunID
 	pending := a.workbench.PendingRuns(input.SessionID)
 	if len(pending) == 0 || pending[0].Command.CommandID != input.CommandID {
@@ -199,31 +199,21 @@ func (a *app) acceptStartedRun(input agent.StartRun, opened agent.SegmentStream)
 		return
 	}
 	a.status.active("canceling")
-	a.requestRuntimeCancellation(agent.CancelRun{
+	a.requestRuntimeCancellation(conversation.CancelRun{
 		CommandID: pending[0].CancelCommandID,
 		RunID:     opened.RunID,
 		Reason:    unconfirmedStartCancellationReason,
 	}, applyRuntimeSettlement)
 }
 
-func (a *app) requeueDefinitivelyRefusedStart(input agent.StartRun, failure error) error {
+func (a *app) requeueDefinitivelyRefusedStart(input prompt.StartRun, failure error) error {
 	callFailure, refused := errors.AsType[*startRunCallError](failure)
 	_, dispatchingPresent := a.queue.Dispatching(input.SessionID)
 	if !refused || mutation.OutcomeUnknown(callFailure.err) || !dispatchingPresent {
 		return nil
 	}
-	var replacement agent.CommandID
-	var err error
-	if a.workbench != nil {
-		replacement, err = a.workbench.RequeuePendingRun(input.SessionID, input.CommandID)
-		if err != nil {
-			return fmt.Errorf("requeue refused run: %w", err)
-		}
-	} else {
-		replacement = mutation.NewCommandID()
-	}
-	if err := a.queue.RequeueDispatch(input.SessionID, input.CommandID, replacement); err != nil {
-		return fmt.Errorf("reidentify refused run: %w", err)
+	if err := a.queue.RequeueDispatch(input.SessionID, input.CommandID); err != nil {
+		return fmt.Errorf("requeue refused run: %w", err)
 	}
 	return nil
 }
@@ -239,7 +229,7 @@ type streamOpeningObserver struct {
 	// accepted owns the linearization boundary between command acknowledgement
 	// and stream consumption. It may reject a valid runtime stream when the local
 	// projection cannot safely install the acknowledged state.
-	accepted func(agent.SegmentStream) streamOpeningDisposition
+	accepted func(conversation.SegmentStream) streamOpeningDisposition
 	rejected func(error) error
 	// persistent makes retryable opening failures wait for either an
 	// acknowledgement or owner cancellation. It is reserved for idempotent
@@ -248,7 +238,7 @@ type streamOpeningObserver struct {
 }
 
 func (a *app) followOpening(
-	open func(context.Context) (agent.SegmentStream, error),
+	open func(context.Context) (conversation.SegmentStream, error),
 	observer streamOpeningObserver,
 ) {
 	sessionID := a.session.current.ID
@@ -262,7 +252,7 @@ func (a *app) followOpening(
 	})
 }
 
-func (a *app) apply(event agent.RunEvent) error {
+func (a *app) apply(event conversation.RunEvent) error {
 	result, err := a.execution.conversation.ApplyRunEvent(event)
 	if err != nil {
 		return fmt.Errorf("apply runtime event %s: %w", event.EventID, err)
@@ -277,7 +267,7 @@ func (a *app) apply(event agent.RunEvent) error {
 	a.observeSteerEvent(event)
 	a.status.setRunningDescendants(a.execution.conversation.RunningDescendants())
 	switch event.Event.(type) {
-	case agent.SegmentStarted, agent.RunProgress, agent.RunInterrupted, agent.RunSuspended, agent.RunFinished:
+	case conversation.SegmentStarted, conversation.RunProgress, conversation.RunInterrupted, conversation.RunSuspended, conversation.RunFinished:
 		a.refreshOpenTimeline()
 	}
 	a.transcript.DiscardExcess()
@@ -285,9 +275,9 @@ func (a *app) apply(event agent.RunEvent) error {
 	return nil
 }
 
-func (a *app) applyPresentationEvent(envelope agent.RunEvent) {
+func (a *app) applyPresentationEvent(envelope conversation.RunEvent) {
 	switch event := envelope.Event.(type) {
-	case agent.SegmentStarted:
+	case conversation.SegmentStarted:
 		if event.Run.Lineage.IsRoot() {
 			a.observeCurrentRunStatus()
 			if settled := a.settleQueuedDispatch(); settled {
@@ -300,15 +290,15 @@ func (a *app) applyPresentationEvent(envelope agent.RunEvent) {
 			}
 			a.execution.clock.start(event.Run.Usage.Duration, time.Now())
 		}
-	case agent.BlockStarted:
+	case conversation.BlockStarted:
 		a.noteBlockStarted(event.Block)
-	case agent.BlockCompleted:
-		if event.Block.Kind == agent.BlockTool {
+	case conversation.BlockCompleted:
+		if event.Block.Kind == conversation.BlockTool {
 			a.status.active("working")
 		}
-	case agent.PlanChanged:
+	case conversation.PlanChanged:
 		a.activity.Set(a.execution.conversation.PlanItems())
-	case agent.RunProgress:
+	case conversation.RunProgress:
 		if envelope.RunID == a.execution.conversation.RunID() {
 			a.header.SetUsage(a.execution.conversation.Usage())
 			a.observeCurrentRunStatus()
@@ -316,31 +306,31 @@ func (a *app) applyPresentationEvent(envelope agent.RunEvent) {
 		} else if strings.TrimSpace(event.Activity) != "" {
 			a.status.active("subagent · " + event.Activity)
 		}
-	case agent.RunInterrupted:
-		if a.execution.conversation.Phase() == agent.ConversationWaiting {
+	case conversation.RunInterrupted:
+		if a.execution.conversation.Phase() == conversation.Waiting {
 			a.openInteractions(a.execution.conversation.Interactions())
 			a.header.SetUsage(a.execution.conversation.Usage())
 			a.observeCurrentRunStatus()
 			a.status.note("waiting for your answers")
 		}
-	case agent.RunSuspended:
-		if a.execution.conversation.Phase() == agent.ConversationWaiting {
+	case conversation.RunSuspended:
+		if a.execution.conversation.Phase() == conversation.Waiting {
 			a.openInteractions(a.execution.conversation.Interactions())
 			a.header.SetUsage(a.execution.conversation.Usage())
 			a.observeCurrentRunStatus()
 			a.status.note("waiting for your answers")
 		}
-	case agent.RunFinished:
+	case conversation.RunFinished:
 		if envelope.RunID == a.execution.conversation.RunID() {
 			a.noteRunFinished()
 		}
-	case agent.BlockDelta, agent.ToolArgumentsDelta, agent.CustomEvent:
+	case conversation.BlockDelta, conversation.ToolArgumentsDelta, conversation.CustomEvent:
 	default:
 	}
 }
 
-func (a *app) noteBlockStarted(block agent.Block) {
-	if block.Kind == agent.BlockTool && block.Tool != nil {
+func (a *app) noteBlockStarted(block conversation.Block) {
+	if block.Kind == conversation.BlockTool && block.Tool != nil {
 		label := strings.TrimSpace(block.Tool.Summary)
 		if label == "" {
 			label = "using " + toolLabel(*block.Tool)
@@ -363,7 +353,7 @@ func (a *app) finishFollowing() {
 		a.refreshInvalidatedSession(true)
 		return
 	}
-	if a.execution.conversation.Phase() != agent.ConversationIdle || a.execution.conversation.Outcome().Status == "" {
+	if a.execution.conversation.Phase() != conversation.Idle || a.execution.conversation.Outcome().Status == "" {
 		return
 	}
 	a.settleCurrentRunStatus()
@@ -383,7 +373,7 @@ func (a *app) finishFollowing() {
 	a.raiseAttention(outcomeAttention(a.execution.conversation.Outcome()))
 }
 
-func outcomeNotification(outcome agent.Outcome) string {
+func outcomeNotification(outcome conversation.Outcome) string {
 	switch outcome.Status {
 	case runtimeprotocol.OutcomeCompleted:
 		return "flame run completed"
@@ -404,7 +394,7 @@ func (a *app) fail(err error) {
 	}
 	a.execution.following = false
 	a.dismissInteractionProjection()
-	if a.execution.conversation.Phase() == agent.ConversationRunning &&
+	if a.execution.conversation.Phase() == conversation.Running &&
 		a.execution.conversation.RunID() == "" && a.execution.openingRunID == "" {
 		err = errors.Join(err, a.execution.conversation.CancelStarting())
 	}
@@ -435,7 +425,7 @@ func (a *app) startFollowing(work func(context.Context, operationLease)) {
 }
 
 func (a *app) syncAnimation() {
-	running := a.execution.conversation.Phase() == agent.ConversationRunning && a.execution.following
+	running := a.execution.conversation.Phase() == conversation.Running && a.execution.following
 	switch {
 	case running && a.execution.stopClock == nil:
 		a.execution.stopClock = a.loop.Every(animationInterval, func() {

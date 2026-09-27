@@ -159,11 +159,12 @@ describe("skill curation generation", () => {
   it("retires in-flight curation on an in-place Runtime generation change", async () => {
     const archived = Promise.withResolvers<void>();
     const archive = vi.fn().mockReturnValueOnce(archived.promise).mockResolvedValueOnce(undefined);
-    owner = SkillCurationOwner.install({ archive } as unknown as SkillCurationGateway);
+    const gateway = { archive } as unknown as SkillCurationGateway;
+    owner = SkillCurationOwner.install(gateway);
 
     const retired = rejected(archiveSkill("review-checklist"));
     await vi.waitFor(() => expect(archive).toHaveBeenCalledOnce());
-    owner.replaceRuntimeGeneration();
+    owner.replaceRuntimeGeneration(() => gateway);
 
     await expect(retired).resolves.toMatchObject({
       message: "skill_curation_generation_retired",

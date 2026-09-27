@@ -1,4 +1,3 @@
-import { getContainer } from "@/main/container";
 import { queryClient } from "@/lib/queryClient";
 import type { AgentSessions } from "@/plugins/builtin/agent/public/services";
 import {
@@ -6,13 +5,14 @@ import {
   subscribeAgentSessionProjection,
   type AgentSessionSummary,
 } from "@/plugins/builtin/agent/public/session";
-import { asSessionId, isErrorType } from "@flame/runtime-contract/client";
+import { asSessionId, isErrorType, type FlameClient } from "@flame/runtime-contract/client";
 import type {
   WorkspaceCwdInputChange,
   WorkspaceCwdResolution,
 } from "../application/workspaceEventSubscription";
 
 export async function resolveActiveSessionWorkspaceCwd(
+  runtimeClient: () => FlameClient,
   sessions: Pick<AgentSessions, "getActiveSessionId">,
   signal: AbortSignal,
 ): Promise<WorkspaceCwdResolution> {
@@ -21,8 +21,7 @@ export async function resolveActiveSessionWorkspaceCwd(
   const list = queryClient.getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY]);
   const cached = list?.find((session) => session.id === id);
   if (cached) return { status: "resolved", cwd: cached.workspace.path };
-  return getContainer()
-    .client()
+  return runtimeClient()
     .sessions.get(asSessionId(id), signal)
     .then((session) => ({ status: "resolved", cwd: session.workspace.ref.path }) as const)
     .catch((error: unknown) => {

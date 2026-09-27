@@ -8,11 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
 	runworkflow "github.com/Tangerg/flame/cli/internal/application/agent/run"
-	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
+	"github.com/Tangerg/flame/cli/internal/application/mutation"
+	"github.com/Tangerg/flame/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/core/input"
@@ -31,18 +32,18 @@ func TestSteerReceiptRequiresTheExactCompletedUserItem(t *testing.T) {
 			if !itemBeforeACK {
 				receipts.accept(result)
 			}
-			for _, block := range []agent.Block{
-				{ID: "item_other", RunID: "run_1", Kind: agent.BlockUser, Status: agent.BlockStatusCompleted, Text: "same text"},
-				{ID: "item_exact", RunID: "run_other", Kind: agent.BlockUser, Status: agent.BlockStatusCompleted},
-				{ID: "item_exact", RunID: "run_1", Kind: agent.BlockAssistant, Status: agent.BlockStatusCompleted},
-				{ID: "item_exact", RunID: "run_1", Kind: agent.BlockUser, Status: agent.BlockStatusRunning},
+			for _, block := range []conversation.Block{
+				{ID: "item_other", RunID: "run_1", Kind: conversation.BlockUser, Status: conversation.BlockStatusCompleted, Text: "same text"},
+				{ID: "item_exact", RunID: "run_other", Kind: conversation.BlockUser, Status: conversation.BlockStatusCompleted},
+				{ID: "item_exact", RunID: "run_1", Kind: conversation.BlockAssistant, Status: conversation.BlockStatusCompleted},
+				{ID: "item_exact", RunID: "run_1", Kind: conversation.BlockUser, Status: conversation.BlockStatusRunning},
 			} {
 				entry.observeBlock(block)
 			}
 			if got := entry.status(); got == steerApplied {
 				t.Fatalf("unrelated content claimed applied: %s", got)
 			}
-			entry.observeBlock(agent.Block{ID: "item_exact", RunID: "run_1", Kind: agent.BlockUser, Status: agent.BlockStatusCompleted})
+			entry.observeBlock(conversation.Block{ID: "item_exact", RunID: "run_1", Kind: conversation.BlockUser, Status: conversation.BlockStatusCompleted})
 			if itemBeforeACK {
 				if got := entry.status(); got != "" {
 					t.Fatalf("unacknowledged item claimed steer: %s", got)
@@ -67,12 +68,12 @@ func TestSteerReceiptRetainsAnAuthoritativeReadBeforeACK(t *testing.T) {
 			var receipts steerReceipts
 			result := receiptTestResult(t, "ses_1", "run_1", "seg_1", "item_exact")
 			entry := receipts.track(result.Pending)
-			snapshot := agent.SessionSnapshot{
-				Session: agent.Session{ID: "ses_1"},
-				Runs:    []agent.Run{{ID: "run_1", Status: protocol.RunStatusFinished}},
+			snapshot := conversation.SessionSnapshot{
+				Session: conversation.Session{ID: "ses_1"},
+				Runs:    []conversation.Run{{ID: "run_1", Status: protocol.RunStatusFinished}},
 			}
 			if itemApplied {
-				snapshot.Transcript = []agent.Block{{ID: "item_exact", RunID: "run_1", Kind: agent.BlockUser, Status: agent.BlockStatusCompleted}}
+				snapshot.Transcript = []conversation.Block{{ID: "item_exact", RunID: "run_1", Kind: conversation.BlockUser, Status: conversation.BlockStatusCompleted}}
 			}
 			receipts.observeSnapshot(snapshot)
 			if got := entry.status(); got != steerUnconfirmed {
@@ -91,24 +92,24 @@ func TestSteerReceiptCanApplyAfterAnInterruptedSegment(t *testing.T) {
 	result := receiptTestResult(t, "ses_1", "run_root", "seg_root", "item_exact")
 	receipts.accept(result)
 	entry := receipts.entries[0]
-	receipts.observeEvent("ses_1", agent.RunEvent{RunID: "run_child", SegmentID: "seg_child", Event: agent.RunInterrupted{}})
+	receipts.observeEvent("ses_1", conversation.RunEvent{RunID: "run_child", SegmentID: "seg_child", Event: conversation.RunInterrupted{}})
 	if got := entry.status(); got != steerAccepted || len(receipts.needingRead("ses_1")) != 0 {
 		t.Fatalf("member interrupt settled root receipt: %s", got)
 	}
-	receipts.observeEvent("ses_1", agent.RunEvent{RunID: "run_root", SegmentID: "seg_root", Event: agent.RunSuspended{}})
+	receipts.observeEvent("ses_1", conversation.RunEvent{RunID: "run_root", SegmentID: "seg_root", Event: conversation.RunSuspended{}})
 	if got := entry.status(); got != steerAccepted || len(receipts.needingRead("ses_1")) != 0 {
 		t.Fatalf("paused run without item = %s", got)
 	}
-	receipts.observeSnapshot(agent.SessionSnapshot{
-		Session: agent.Session{ID: "ses_1"}, Runs: []agent.Run{{ID: "run_root", Status: protocol.RunStatusWaiting}},
+	receipts.observeSnapshot(conversation.SessionSnapshot{
+		Session: conversation.Session{ID: "ses_1"}, Runs: []conversation.Run{{ID: "run_root", Status: protocol.RunStatusWaiting}},
 	})
 	if got := entry.status(); got != steerAccepted {
 		t.Fatalf("authoritative waiting snapshot = %s", got)
 	}
-	receipts.observeEvent("ses_1", agent.RunEvent{
+	receipts.observeEvent("ses_1", conversation.RunEvent{
 		RunID: "run_root", SegmentID: "seg_continuation",
-		Event: agent.BlockCompleted{Block: agent.Block{
-			ID: "item_exact", RunID: "run_root", Kind: agent.BlockUser, Status: agent.BlockStatusCompleted,
+		Event: conversation.BlockCompleted{Block: conversation.Block{
+			ID: "item_exact", RunID: "run_root", Kind: conversation.BlockUser, Status: conversation.BlockStatusCompleted,
 		}},
 	})
 	if got := entry.status(); got != steerApplied {
@@ -122,9 +123,9 @@ func TestRecoveredSteerReceiptsKeepTheirSessionAndRunIdentities(t *testing.T) {
 	second := receiptTestResult(t, "ses_2", "run_2", "seg_2", "item_2")
 	receipts.accept(first)
 	receipts.accept(second)
-	receipts.observeSnapshot(agent.SessionSnapshot{
-		Session: agent.Session{ID: "ses_1"}, Runs: []agent.Run{{ID: "run_1", Status: protocol.RunStatusFinished}},
-		Transcript: []agent.Block{{ID: "item_2", RunID: "run_2", Kind: agent.BlockUser, Status: agent.BlockStatusCompleted}},
+	receipts.observeSnapshot(conversation.SessionSnapshot{
+		Session: conversation.Session{ID: "ses_1"}, Runs: []conversation.Run{{ID: "run_1", Status: protocol.RunStatusFinished}},
+		Transcript: []conversation.Block{{ID: "item_2", RunID: "run_2", Kind: conversation.BlockUser, Status: conversation.BlockStatusCompleted}},
 	})
 	if got := receipts.entries[0].status(); got != steerNotApplied {
 		t.Fatalf("first session receipt = %s", got)
@@ -132,9 +133,9 @@ func TestRecoveredSteerReceiptsKeepTheirSessionAndRunIdentities(t *testing.T) {
 	if got := receipts.entries[1].status(); got != steerAccepted {
 		t.Fatalf("another session changed the second receipt = %s", got)
 	}
-	receipts.observeSnapshot(agent.SessionSnapshot{
-		Session: agent.Session{ID: "ses_2"}, Runs: []agent.Run{{ID: "run_2", Status: protocol.RunStatusFinished}},
-		Transcript: []agent.Block{{ID: "item_2", RunID: "run_2", Kind: agent.BlockUser, Status: agent.BlockStatusCompleted}},
+	receipts.observeSnapshot(conversation.SessionSnapshot{
+		Session: conversation.Session{ID: "ses_2"}, Runs: []conversation.Run{{ID: "run_2", Status: protocol.RunStatusFinished}},
+		Transcript: []conversation.Block{{ID: "item_2", RunID: "run_2", Kind: conversation.BlockUser, Status: conversation.BlockStatusCompleted}},
 	})
 	if got := receipts.entries[1].status(); got != steerApplied {
 		t.Fatalf("second session restored receipt = %s", got)
@@ -163,13 +164,13 @@ func TestSteerPresentationKeepsAnUnappliedInstructionVisibleBesideAppliedInput(t
 			if !missingFirst {
 				receipts.entries[0], receipts.entries[1] = receipts.entries[1], receipts.entries[0]
 			}
-			receipts.observeSnapshot(agent.SessionSnapshot{
-				Session: agent.Session{ID: "ses_1"}, Runs: []agent.Run{{ID: "run_1", Status: protocol.RunStatusFinished}},
-				Transcript: []agent.Block{{ID: "item_applied", RunID: "run_1", Kind: agent.BlockUser, Status: agent.BlockStatusCompleted}},
+			receipts.observeSnapshot(conversation.SessionSnapshot{
+				Session: conversation.Session{ID: "ses_1"}, Runs: []conversation.Run{{ID: "run_1", Status: protocol.RunStatusFinished}},
+				Transcript: []conversation.Block{{ID: "item_applied", RunID: "run_1", Kind: conversation.BlockUser, Status: conversation.BlockStatusCompleted}},
 			})
 			terminal := app{
-				session:   sessionState{current: agent.Session{ID: "ses_1"}},
-				execution: executionState{conversation: agent.NewConversation()}, status: &statusView{}, steers: receipts,
+				session:   sessionState{current: conversation.Session{ID: "ses_1"}},
+				execution: executionState{conversation: conversation.New()}, status: &statusView{}, steers: receipts,
 			}
 			terminal.presentSteerReceipts()
 			want := "steer not applied"
@@ -196,13 +197,13 @@ func TestLateSteerACKCannotHideAnotherUnappliedInstructionInTheSameRun(t *testin
 	receipts.accept(runworkflow.SteerResult{
 		Pending: pending, Outcome: mutation.Confirmed, Receipt: protocol.SteerRunResponse{UserItemID: "item_missing"},
 	})
-	receipts.observeSnapshot(agent.SessionSnapshot{
-		Session: agent.Session{ID: "ses_1"}, Runs: []agent.Run{{ID: "run_1", Status: protocol.RunStatusFinished}},
-		Transcript: []agent.Block{{ID: "item_applied", RunID: "run_1", Kind: agent.BlockUser, Status: agent.BlockStatusCompleted}},
+	receipts.observeSnapshot(conversation.SessionSnapshot{
+		Session: conversation.Session{ID: "ses_1"}, Runs: []conversation.Run{{ID: "run_1", Status: protocol.RunStatusFinished}},
+		Transcript: []conversation.Block{{ID: "item_applied", RunID: "run_1", Kind: conversation.BlockUser, Status: conversation.BlockStatusCompleted}},
 	})
 	terminal := app{
-		session:   sessionState{current: agent.Session{ID: "ses_1"}},
-		execution: executionState{conversation: agent.NewConversation()}, status: &statusView{}, steers: receipts,
+		session:   sessionState{current: conversation.Session{ID: "ses_1"}},
+		execution: executionState{conversation: conversation.New()}, status: &statusView{}, steers: receipts,
 	}
 	terminal.presentSteerReceipts()
 	if !strings.Contains(terminal.status.doing, "steer not applied") || !strings.Contains(terminal.status.doing, "item_missing") {
@@ -217,10 +218,10 @@ func TestLateSteerACKCannotHideAnotherUnappliedInstructionInTheSameRun(t *testin
 
 func receiptTestResult(t *testing.T, sessionID, runID, segmentID, itemID string) runworkflow.SteerResult {
 	t.Helper()
-	pending, err := workbench.NewPendingSteer(sessionID, agent.SteerRun{
+	pending, err := workbench.NewPendingSteer(sessionID, prompt.SteerRun{
 		CommandID: "cli_55555555555555555555555555555555", RunID: runID, SegmentID: segmentID,
-		Message: agent.Message{Text: "same text"},
-	}, time.Date(2026, 9, 26, 1, 0, 0, 0, time.UTC), commandreplay.UnprotectedGuard())
+		Message: prompt.Message{Text: "same text"},
+	}, time.Date(2026, 9, 26, 1, 0, 0, 0, time.UTC), replay.UnprotectedGuard())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -232,14 +233,14 @@ type delayedSteerReceiptRuntime struct {
 	mu          sync.Mutex
 	target      string
 	applyInput  bool
-	requests    chan agent.SteerRun
+	requests    chan prompt.SteerRun
 	acknowledge chan struct{}
 	read        chan struct{}
 	allowRead   chan struct{}
 	readError   error
 }
 
-func (r *delayedSteerReceiptRuntime) SteerRun(ctx context.Context, request agent.SteerRun) (protocol.SteerRunResponse, error) {
+func (r *delayedSteerReceiptRuntime) SteerRun(ctx context.Context, request prompt.SteerRun) (protocol.SteerRunResponse, error) {
 	r.mu.Lock()
 	r.target = request.RunID
 	r.mu.Unlock()
@@ -264,7 +265,7 @@ func (r *delayedSteerReceiptRuntime) SteerRun(ctx context.Context, request agent
 	}
 }
 
-func (r *delayedSteerReceiptRuntime) GetSession(ctx context.Context, sessionID string) (agent.SessionSnapshot, error) {
+func (r *delayedSteerReceiptRuntime) GetSession(ctx context.Context, sessionID string) (conversation.SessionSnapshot, error) {
 	snapshot, err := r.Runtime.GetSession(ctx, sessionID)
 	if err != nil {
 		return snapshot, err
@@ -284,7 +285,7 @@ func (r *delayedSteerReceiptRuntime) GetSession(ctx context.Context, sessionID s
 			select {
 			case <-r.allowRead:
 			case <-ctx.Done():
-				return agent.SessionSnapshot{}, ctx.Err()
+				return conversation.SessionSnapshot{}, ctx.Err()
 			}
 		}
 		return snapshot, r.readError
@@ -309,15 +310,15 @@ func TestTerminalSteerSettlesAReadThatArrivesBeforeACK(t *testing.T) {
 			host.Type("/steer same text")
 			host.Press(input.Enter)
 			request := awaitSignalValue(t, backend.requests, "steer admission")
-			if _, err := backend.Runtime.CancelRun(t.Context(), agent.CancelRun{RunID: request.RunID}); err != nil {
+			if _, err := backend.Runtime.CancelRun(t.Context(), conversation.CancelRun{RunID: request.RunID}); err != nil {
 				t.Fatal(err)
 			}
 			awaitSignalValue(t, backend.read, "authoritative read after segment completion")
 			host.Shows(t, "steer application remains unconfirmed")
 			close(backend.acknowledge)
 			host.Shows(t, label)
-			page, err := backend.Runtime.ListRuns(t.Context(), agent.RunQuery{
-				SessionID: firstRuntimeSession(t, backend.Runtime), PageSize: agent.DefaultPageSize(),
+			page, err := backend.Runtime.ListRuns(t.Context(), conversation.RunQuery{
+				SessionID: firstRuntimeSession(t, backend.Runtime), PageSize: conversation.DefaultPageSize(),
 			})
 			if err != nil || len(page.Items) != 1 {
 				t.Fatalf("steer settlement started another run: %+v, %v", page, err)
@@ -328,7 +329,7 @@ func TestTerminalSteerSettlesAReadThatArrivesBeforeACK(t *testing.T) {
 }
 
 func TestTerminalSteerWaitsForTheAuthoritativeReadAndReportsReadFailure(t *testing.T) {
-	for _, failure := range []error{nil, agent.ErrIncompatibleRuntime} {
+	for _, failure := range []error{nil, conversation.ErrIncompatibleRuntime} {
 		name, label := "missing item", "steer not applied to this run"
 		if failure != nil {
 			name, label = "read failed", "steer application remains unconfirmed"
@@ -348,7 +349,7 @@ func TestTerminalSteerWaitsForTheAuthoritativeReadAndReportsReadFailure(t *testi
 			close(backend.acknowledge)
 			host.Shows(t, "steer accepted")
 			host.Hides(t, "steer applied")
-			if _, err := backend.Runtime.CancelRun(t.Context(), agent.CancelRun{RunID: request.RunID}); err != nil {
+			if _, err := backend.Runtime.CancelRun(t.Context(), conversation.CancelRun{RunID: request.RunID}); err != nil {
 				t.Fatal(err)
 			}
 			awaitSignalValue(t, backend.read, "authoritative read after segment completion")
@@ -356,7 +357,7 @@ func TestTerminalSteerWaitsForTheAuthoritativeReadAndReportsReadFailure(t *testi
 			host.Hides(t, "steer not applied")
 			close(backend.allowRead)
 			host.Shows(t, label)
-			if errors.Is(failure, agent.ErrIncompatibleRuntime) {
+			if errors.Is(failure, conversation.ErrIncompatibleRuntime) {
 				host.Hides(t, "steer not applied")
 			}
 			stop()
@@ -368,13 +369,13 @@ func TestTerminalDoesNotReplayOldSteerStatusAfterALaterRun(t *testing.T) {
 	backend := delayedSteerRuntime(t)
 	backend.applyInput = true
 	longWork := backend.Runtime.Script
-	backend.Runtime.Script = func(prompt string) runtimefixture.Script {
-		if prompt == "later work" {
+	backend.Runtime.Script = func(authoredPrompt string) runtimefixture.Script {
+		if authoredPrompt == "later work" {
 			return runtimefixture.Script{Prelude: []runtimefixture.Step{
-				{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
+				{Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 			}}
 		}
-		return longWork(prompt)
+		return longWork(authoredPrompt)
 	}
 	close(backend.acknowledge)
 	host, stop := runUIWithWorkspace(t, backend, t.TempDir())
@@ -386,7 +387,7 @@ func TestTerminalDoesNotReplayOldSteerStatusAfterALaterRun(t *testing.T) {
 	host.Press(input.Enter)
 	request := awaitSignalValue(t, backend.requests, "steer admission")
 	host.Shows(t, "steer applied to model context")
-	if _, err := backend.Runtime.CancelRun(t.Context(), agent.CancelRun{RunID: request.RunID}); err != nil {
+	if _, err := backend.Runtime.CancelRun(t.Context(), conversation.CancelRun{RunID: request.RunID}); err != nil {
 		t.Fatal(err)
 	}
 	host.Type("later work")
@@ -401,11 +402,11 @@ func delayedSteerRuntime(t *testing.T) *delayedSteerReceiptRuntime {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
-			{Event: agent.BlockStarted{Block: agent.Block{ID: "thinking", Kind: agent.BlockReasoning}}},
-			{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
+			{Event: conversation.BlockStarted{Block: conversation.Block{ID: "thinking", Kind: conversation.BlockReasoning}}},
+			{Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	return &delayedSteerReceiptRuntime{
-		Runtime: base, requests: make(chan agent.SteerRun, 1), acknowledge: make(chan struct{}), read: make(chan struct{}, 1),
+		Runtime: base, requests: make(chan prompt.SteerRun, 1), acknowledge: make(chan struct{}), read: make(chan struct{}, 1),
 	}
 }

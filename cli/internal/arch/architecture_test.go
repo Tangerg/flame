@@ -53,6 +53,9 @@ func TestDependenciesPointInward(t *testing.T) {
 			if !mayDependOn(from, to) {
 				t.Errorf("%s imports %s: dependencies must point inward", relative, internal)
 			}
+			if internal == "internal/adapter/runtimebinding" && from != ringComposition {
+				t.Errorf("%s imports runtimebinding: only process composition may bind consumer ports", relative)
+			}
 			if deliveryPeers(relative, internal) {
 				t.Errorf("%s imports peer delivery adapter %s; compose them in main", relative, internal)
 			}

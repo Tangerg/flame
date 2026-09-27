@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { validateWire, type WireTypeName } from "@flame/runtime-contract/validate";
-import { resetContainer, setContainer } from "@/main/container";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import { queryClient } from "@/lib/queryClient";
 import {
@@ -23,11 +22,32 @@ function expectSendable(shape: WireTypeName, call: ReturnType<typeof vi.fn>): vo
 afterEach(() => {
   uninstall?.();
   uninstall = undefined;
-  resetContainer();
+
   queryClient.removeQueries({ queryKey: [WORKSPACE_AGENT_MEMORY_KEY] });
 });
 
 describe("runtimeAgentMemoryGateway", () => {
+  it("captures a replacement client at the Runtime generation boundary", async () => {
+    const response = Promise.withResolvers<ReturnType<typeof memoryItem>>();
+    const retiredUpdate = vi.fn(() => response.promise);
+    const successorUpdate = vi.fn().mockResolvedValue(memoryItem({ pinned: true }));
+    let client = { agentMemory: { update: retiredUpdate } } as unknown as FlameClient;
+    const installation = installAgentMemoryGateway(() => client);
+    uninstall = installation.dispose;
+
+    const retired = rejected(setAgentMemoryPinned(MEMORY_ID, true));
+    await vi.waitFor(() => expect(retiredUpdate).toHaveBeenCalledOnce());
+    client = { agentMemory: { update: successorUpdate } } as unknown as FlameClient;
+    installation.replaceRuntimeGeneration();
+    await expect(retired).resolves.toMatchObject({
+      message: "agent_memory_mutation_generation_retired",
+    });
+    await setAgentMemoryPinned(MEMORY_ID, true);
+    expect(successorUpdate).toHaveBeenCalledExactlyOnceWith({ id: MEMORY_ID, pinned: true });
+    expect(retiredUpdate).toHaveBeenCalledOnce();
+    response.resolve(memoryItem());
+  });
+
   it("maps returned add and update items into the workspace language", async () => {
     const item = {
       id: MEMORY_ID,
@@ -45,10 +65,8 @@ describe("runtimeAgentMemoryGateway", () => {
       pinned: true,
       updatedAt: "2026-08-12T12:00:01Z",
     });
-    setContainer({
-      client: () => ({ agentMemory: { add, update } }) as unknown as FlameClient,
-    });
-    uninstall = installAgentMemoryGateway().dispose;
+    const runtimeClient = () => ({ agentMemory: { add, update } }) as unknown as FlameClient;
+    uninstall = installAgentMemoryGateway(() => runtimeClient()).dispose;
 
     await expect(addAgentMemory({ scope: "user", content: item.content })).resolves.toMatchObject({
       id: MEMORY_ID,
@@ -72,10 +90,9 @@ describe("runtimeAgentMemoryGateway", () => {
       .mockResolvedValue(
         memoryItem({ content: "successor", pinned: false, updatedAt: "2026-08-17T12:00:02Z" }),
       );
-    setContainer({
-      client: () => ({ agentMemory: { update: updateRetired } }) as unknown as FlameClient,
-    });
-    const retiredInstallation = installAgentMemoryGateway();
+    let runtimeClient = () =>
+      ({ agentMemory: { update: updateRetired } }) as unknown as FlameClient;
+    const retiredInstallation = installAgentMemoryGateway(() => runtimeClient());
     queryClient.setQueryData([WORKSPACE_AGENT_MEMORY_KEY, query], [memoryEntry()]);
 
     const inFlight = setAgentMemoryPinned(MEMORY_ID, true);
@@ -84,10 +101,8 @@ describe("runtimeAgentMemoryGateway", () => {
     const queuedSettlement = rejected(queued);
     await vi.waitFor(() => expect(updateRetired).toHaveBeenCalledOnce());
 
-    setContainer({
-      client: () => ({ agentMemory: { update: updateSuccessor } }) as unknown as FlameClient,
-    });
-    const successorInstallation = installAgentMemoryGateway();
+    runtimeClient = () => ({ agentMemory: { update: updateSuccessor } }) as unknown as FlameClient;
+    const successorInstallation = installAgentMemoryGateway(() => runtimeClient());
     uninstall = () => {
       successorInstallation.dispose();
       retiredInstallation.dispose();

@@ -3,13 +3,13 @@ package runtimefixture
 import (
 	"context"
 
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 // PrepareInput supplies deterministic fixture content. Real filesystem bytes
 // and their restart behavior are exercised at the runtimebinding boundary.
-func (*Runtime) PrepareInput(ctx context.Context, message agent.Message) ([]protocol.ContentBlock, error) {
+func (*Runtime) PrepareInput(ctx context.Context, message prompt.Message) ([]protocol.ContentBlock, error) {
 	if err := context.Cause(ctx); err != nil {
 		return nil, err
 	}

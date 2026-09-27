@@ -1,0 +1,116 @@
+package conversation
+
+import (
+	"bytes"
+	json "encoding/json/v2"
+	"errors"
+	"fmt"
+
+	"github.com/Tangerg/flame/cli/internal/exactjson"
+)
+
+// ToolArgumentOverride is a validated, immutable replacement for one pending
+// tool call's argument object. It is deliberately a value object instead of an
+// exported map so interaction drafts, durable outbox entries, and adapters
+// cannot share mutable approval state.
+type ToolArgumentOverride struct {
+	encoded []byte
+}
+
+// ParseToolArgumentOverride accepts exactly one non-empty JSON object. Duplicate
+// keys are rejected because their last-value-wins decoding would make the
+// reviewed text and the executed argument object disagree.
+func ParseToolArgumentOverride(encoded []byte) (*ToolArgumentOverride, error) {
+	value, err := decodeToolArgumentJSON(encoded)
+	if err != nil {
+		return nil, err
+	}
+	object, ok := value.(map[string]any)
+	if !ok {
+		return nil, errors.New("tool argument override must be a JSON object")
+	}
+	if len(object) == 0 {
+		return nil, errors.New("tool argument override must contain at least one argument")
+	}
+	normalized, err := json.Marshal(object, json.Deterministic(true))
+	if err != nil {
+		return nil, fmt.Errorf("encode tool argument override: %w", err)
+	}
+	return &ToolArgumentOverride{encoded: normalized}, nil
+}
+
+// Validate reports whether this optional override was constructed. Single JSON
+// value, distinct keys, object shape, non-empty arguments and normalized
+// encoding are established once — by [ParseToolArgumentOverride], which
+// [ToolArgumentOverride.UnmarshalJSON] also goes through — so the only value
+// that can reach here without them is an unconstructed one.
+func (t *ToolArgumentOverride) Validate() error {
+	if t == nil || len(t.encoded) == 0 {
+		return errors.New("tool argument override is not constructed")
+	}
+	return nil
+}
+
+func (t *ToolArgumentOverride) Clone() *ToolArgumentOverride {
+	if t == nil {
+		return nil
+	}
+	return &ToolArgumentOverride{encoded: bytes.Clone(t.encoded)}
+}
+
+func (t *ToolArgumentOverride) Equal(other *ToolArgumentOverride) bool {
+	if t == nil || other == nil {
+		return t == other
+	}
+	return bytes.Equal(t.encoded, other.encoded)
+}
+
+// JSON returns a detached normalized representation for editors and durable
+// projections.
+func (t *ToolArgumentOverride) JSON() []byte {
+	if t == nil {
+		return nil
+	}
+	return bytes.Clone(t.encoded)
+}
+
+// Object returns a detached protocol-ready object without reducing JSON
+// numbers to float64.
+func (t *ToolArgumentOverride) Object() (map[string]any, error) {
+	if err := t.Validate(); err != nil {
+		return nil, err
+	}
+	value, err := decodeToolArgumentJSON(t.encoded)
+	if err != nil {
+		return nil, err
+	}
+	return value.(map[string]any), nil
+}
+
+func (t ToolArgumentOverride) MarshalJSON() ([]byte, error) {
+	if err := (&t).Validate(); err != nil {
+		return nil, err
+	}
+	return bytes.Clone(t.encoded), nil
+}
+
+func (t *ToolArgumentOverride) UnmarshalJSON(encoded []byte) error {
+	parsed, err := ParseToolArgumentOverride(encoded)
+	if err != nil {
+		return err
+	}
+	*t = *parsed
+	return nil
+}
+
+// decodeToolArgumentJSON reads the edited text once. The decoder admits exactly
+// one RFC 7493 value, rejecting the duplicate names that would make the reviewed
+// text and the executed argument object disagree, and [exactjson.Numbers] keeps
+// each identifier as written rather than rounding it through float64.
+func decodeToolArgumentJSON(encoded []byte) (any, error) {
+	var value any
+	if err := json.Unmarshal(encoded, &value, exactjson.Numbers()); err != nil {
+		return nil, fmt.Errorf("tool argument override: %w", err)
+	}
+	return value, nil
+}

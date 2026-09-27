@@ -6,32 +6,33 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
+	"github.com/Tangerg/flame/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/cli/internal/application/retry"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 const cancellationTimeout = 5 * time.Second
 
 type Renderer interface {
-	Begin(agent.Run, agent.RunOptions) error
-	Render(agent.RunEvent) error
-	Reconcile(agent.SessionSnapshot) error
+	Begin(conversation.Run, prompt.RunOptions) error
+	Render(conversation.RunEvent) error
+	Reconcile(conversation.SessionSnapshot) error
 	Close() error
 }
 
 type SessionReader interface {
-	GetSession(context.Context, string) (agent.SessionSnapshot, error)
+	GetSession(context.Context, string) (conversation.SessionSnapshot, error)
 }
 
 type Lifecycle interface {
-	PrepareInput(context.Context, agent.Message) ([]protocol.ContentBlock, error)
-	StartRun(context.Context, agent.StartRun) (agent.SegmentStream, error)
-	ResumeRun(context.Context, agent.ResumeRun) (agent.SegmentStream, error)
-	SubscribeRun(context.Context, agent.SubscribeRun) (agent.SegmentStream, error)
-	SteerRun(context.Context, agent.SteerRun) (protocol.SteerRunResponse, error)
-	CancelRun(context.Context, agent.CancelRun) (agent.RunCancellation, error)
+	PrepareInput(context.Context, prompt.Message) ([]protocol.ContentBlock, error)
+	StartRun(context.Context, prompt.StartRun) (conversation.SegmentStream, error)
+	ResumeRun(context.Context, conversation.ResumeRun) (conversation.SegmentStream, error)
+	SubscribeRun(context.Context, conversation.SubscribeRun) (conversation.SegmentStream, error)
+	SteerRun(context.Context, prompt.SteerRun) (protocol.SteerRunResponse, error)
+	CancelRun(context.Context, conversation.CancelRun) (conversation.RunCancellation, error)
 }
 
 type Runtime interface {
@@ -42,7 +43,7 @@ type Runtime interface {
 type Invocation struct {
 	Runtime    Runtime
 	Renderer   Renderer
-	Start      agent.StartRun
+	Start      prompt.StartRun
 	ApproveAll bool
 
 	ReplayPolicy mutation.ReplayPolicy
@@ -84,7 +85,7 @@ func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 	opened, err := openRun(ctx, invocation.Runtime, invocation.Start,
 		mutation.FreshReplayAdmission(invocation.ReplayPolicy, startReplay))
 	if err != nil {
-		if receipt, accepted := agent.AcceptedMutationReceipt(err); accepted {
+		if receipt, accepted := conversation.AcceptedMutationReceipt(err); accepted {
 			opened = receipt
 		} else {
 			return err
@@ -101,9 +102,9 @@ func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 	if validateStartErr := opened.ValidateStart(); validateStartErr != nil {
 		return fmt.Errorf("start run: %w", validateStartErr)
 	}
-	run := agent.Run{
+	run := conversation.Run{
 		ID: opened.RunID, SessionID: invocation.Start.SessionID,
-		Lineage:  agent.RootRunLineage(),
+		Lineage:  conversation.RootRunLineage(),
 		Provider: invocation.Start.Options.Provider, Model: invocation.Start.Options.Model,
 		ReasoningEffort: invocation.Start.Options.ReasoningEffort,
 		Status:          protocol.RunStatusRunning, ActiveSegmentID: opened.SegmentID,
@@ -124,12 +125,12 @@ func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 func openRun(
 	ctx context.Context,
 	runtime Runtime,
-	command agent.StartRun,
+	command prompt.StartRun,
 	admit mutation.Admission,
-) (agent.SegmentStream, error) {
+) (conversation.SegmentStream, error) {
 	return mutation.ConfirmAdmitted(
 		ctx, mutation.AcknowledgementBackoff(), admit,
-		func(ctx context.Context) (agent.SegmentStream, error) { return runtime.StartRun(ctx, command) },
+		func(ctx context.Context) (conversation.SegmentStream, error) { return runtime.StartRun(ctx, command) },
 	)
 }
 
@@ -173,19 +174,19 @@ func cancelRequestedRun(
 	commandID := mutation.NewCommandID()
 	cancelCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), cancellationTimeout)
 	defer cancel()
-	replay, err := replayPolicy.NewGuard()
+	replayGuard, err := replayPolicy.NewGuard()
 	if err != nil {
 		return fmt.Errorf("prepare requested run cancellation replay guard: %w", err)
 	}
 	result, err := mutation.ConfirmAdmitted(
-		cancelCtx, mutation.AcknowledgementBackoff(), mutation.FreshReplayAdmission(replayPolicy, replay),
-		func(ctx context.Context) (agent.RunCancellation, error) {
-			return runtime.CancelRun(ctx, agent.CancelRun{
+		cancelCtx, mutation.AcknowledgementBackoff(), mutation.FreshReplayAdmission(replayPolicy, replayGuard),
+		func(ctx context.Context) (conversation.RunCancellation, error) {
+			return runtime.CancelRun(ctx, conversation.CancelRun{
 				CommandID: commandID, RunID: runID, Reason: "CLI execution canceled",
 			})
 		},
 	)
-	if errors.Is(err, agent.ErrRunFinished) {
+	if errors.Is(err, conversation.ErrRunFinished) {
 		return nil
 	}
 	if err != nil {
@@ -197,10 +198,10 @@ func cancelRequestedRun(
 	return nil
 }
 
-func drive(ctx context.Context, invocation Invocation, opened agent.SegmentStream) error {
+func drive(ctx context.Context, invocation Invocation, opened conversation.SegmentStream) error {
 	driver := executionDriver{
 		invocation: invocation, openedRunID: opened.RunID,
-		conversation: agent.NewConversation(), current: opened,
+		conversation: conversation.New(), current: opened,
 	}
 	return driver.run(ctx)
 }
@@ -208,8 +209,8 @@ func drive(ctx context.Context, invocation Invocation, opened agent.SegmentStrea
 type executionDriver struct {
 	invocation   Invocation
 	openedRunID  string
-	conversation *agent.Conversation
-	current      agent.SegmentStream
+	conversation *conversation.Conversation
+	current      conversation.SegmentStream
 	failures     int
 }
 
@@ -218,9 +219,9 @@ func (e *executionDriver) run(ctx context.Context) error {
 		followed := consume(e.current.Events, e.conversation, e.invocation.Renderer)
 		if followed.err == nil && e.conversation.RunID() == e.current.RunID {
 			switch e.conversation.Phase() {
-			case agent.ConversationIdle:
+			case conversation.Idle:
 				return errorForOutcome(e.conversation.Outcome())
-			case agent.ConversationWaiting:
+			case conversation.Waiting:
 				if err := e.resume(ctx, e.conversation.Interactions(), e.current.RunID); err != nil {
 					return err
 				}
@@ -229,7 +230,7 @@ func (e *executionDriver) run(ctx context.Context) error {
 		}
 		cause := followed.err
 		if cause == nil {
-			cause = fmt.Errorf("%w: segment stream ended without a terminal event", agent.ErrDisconnected)
+			cause = fmt.Errorf("%w: segment stream ended without a terminal event", conversation.ErrDisconnected)
 		}
 		if followed.applied > 0 {
 			e.failures = 0
@@ -241,20 +242,20 @@ func (e *executionDriver) run(ctx context.Context) error {
 	}
 }
 
-func (e *executionDriver) resume(ctx context.Context, interactions []agent.Interaction, runID string) error {
+func (e *executionDriver) resume(ctx context.Context, interactions []conversation.Interaction, runID string) error {
 	answers, err := unattendedAnswers(interactions, e.invocation.ApproveAll, e.invocation.Start.SessionID)
 	if err != nil {
 		return err
 	}
 	commandID := mutation.NewCommandID()
-	command := agent.ResumeRun{CommandID: commandID, RunID: runID, Answers: answers}
-	replay, err := e.invocation.ReplayPolicy.NewGuard()
+	command := conversation.ResumeRun{CommandID: commandID, RunID: runID, Answers: answers}
+	replayGuard, err := e.invocation.ReplayPolicy.NewGuard()
 	if err != nil {
 		return fmt.Errorf("prepare one-shot resume replay guard: %w", err)
 	}
 	continued, err := mutation.ConfirmAdmitted(
-		ctx, mutation.AcknowledgementBackoff(), mutation.FreshReplayAdmission(e.invocation.ReplayPolicy, replay),
-		func(ctx context.Context) (agent.SegmentStream, error) {
+		ctx, mutation.AcknowledgementBackoff(), mutation.FreshReplayAdmission(e.invocation.ReplayPolicy, replayGuard),
+		func(ctx context.Context) (conversation.SegmentStream, error) {
 			return e.invocation.Runtime.ResumeRun(ctx, command)
 		},
 	)
@@ -282,7 +283,7 @@ func (e *executionDriver) reconnect(ctx context.Context, cause error) (bool, err
 		if err := retry.Wait(ctx, delay); err != nil {
 			return false, err
 		}
-		rebound, err := e.invocation.Runtime.SubscribeRun(ctx, agent.SubscribeRun{
+		rebound, err := e.invocation.Runtime.SubscribeRun(ctx, conversation.SubscribeRun{
 			RunID: e.current.RunID, SegmentID: e.current.SegmentID, AfterEventID: e.conversation.Checkpoint(),
 		})
 		if err == nil {
@@ -327,14 +328,14 @@ func (e *executionDriver) installRecovery(ctx context.Context, recovered Recover
 	return true, nil
 }
 
-func restoreRecoveredConversation(conversation *agent.Conversation, recovered Recovery) error {
+func restoreRecoveredConversation(projection *conversation.Conversation, recovered Recovery) error {
 	if recovered.Run.Status == protocol.RunStatusRunning {
-		return conversation.RestoreAttachedSnapshot(recovered.Snapshot, recovered.Stream)
+		return projection.RestoreAttachedSnapshot(recovered.Snapshot, recovered.Stream)
 	}
-	return conversation.RestoreSnapshot(recovered.Snapshot)
+	return projection.RestoreSnapshot(recovered.Snapshot)
 }
 
-func validateContinuation(stream agent.SegmentStream, runID string) error {
+func validateContinuation(stream conversation.SegmentStream, runID string) error {
 	return stream.ValidateResume(runID, nil)
 }
 
@@ -343,14 +344,14 @@ type followResult struct {
 	applied int
 }
 
-func consume(stream agent.EventStream, conversation *agent.Conversation, renderer Renderer) followResult {
+func consume(stream conversation.EventStream, projection *conversation.Conversation, renderer Renderer) followResult {
 	var followed followResult
 	for event, streamErr := range stream {
 		if streamErr != nil {
 			followed.err = streamErr
 			break
 		}
-		result, err := conversation.ApplyRunEvent(event)
+		result, err := projection.ApplyRunEvent(event)
 		if err != nil {
 			followed.err = fmt.Errorf("accept runtime event %s: %w", event.EventID, err)
 			break
@@ -364,8 +365,8 @@ func consume(stream agent.EventStream, conversation *agent.Conversation, rendere
 			break
 		}
 		switch event.Event.(type) {
-		case agent.RunInterrupted, agent.RunSuspended, agent.RunFinished:
-			if event.RunID == conversation.RunID() {
+		case conversation.RunInterrupted, conversation.RunSuspended, conversation.RunFinished:
+			if event.RunID == projection.RunID() {
 				// The root boundary follows every member's terminal projection.
 				// Conversation now owns the complete outcome or pending set.
 				return followed
@@ -375,7 +376,7 @@ func consume(stream agent.EventStream, conversation *agent.Conversation, rendere
 	return followed
 }
 
-type outcomeError struct{ outcome agent.Outcome }
+type outcomeError struct{ outcome conversation.Outcome }
 
 func (o *outcomeError) Error() string {
 	if detail := o.outcome.Explanation(); detail != "" {
@@ -384,20 +385,20 @@ func (o *outcomeError) Error() string {
 	return "run " + string(o.outcome.Status)
 }
 
-func errorForOutcome(outcome agent.Outcome) error {
+func errorForOutcome(outcome conversation.Outcome) error {
 	if outcome.Status == protocol.OutcomeCompleted {
 		return nil
 	}
 	return &outcomeError{outcome: outcome}
 }
 
-func unattendedAnswers(interactions []agent.Interaction, approveAll bool, sessionID string) ([]agent.InterruptAnswer, error) {
-	answers := make([]agent.InterruptAnswer, 0, len(interactions))
+func unattendedAnswers(interactions []conversation.Interaction, approveAll bool, sessionID string) ([]conversation.InterruptAnswer, error) {
+	answers := make([]conversation.InterruptAnswer, 0, len(interactions))
 	for _, interaction := range interactions {
 		switch item := interaction.(type) {
-		case agent.Approval:
-			answers = append(answers, agent.InterruptAnswer{ItemID: item.ItemID, Answer: approvalAnswer(approveAll)})
-		case agent.Question:
+		case conversation.Approval:
+			answers = append(answers, conversation.InterruptAnswer{ItemID: item.ItemID, Answer: approvalAnswer(approveAll)})
+		case conversation.Question:
 			return nil, &interactionRequiredError{title: item.Title, sessionID: sessionID}
 		default:
 			return nil, errors.New("runtime returned an unknown interaction")
@@ -406,11 +407,11 @@ func unattendedAnswers(interactions []agent.Interaction, approveAll bool, sessio
 	return answers, nil
 }
 
-func approvalAnswer(approveAll bool) agent.ApprovalAnswer {
+func approvalAnswer(approveAll bool) conversation.ApprovalAnswer {
 	if approveAll {
-		return agent.ApprovalAnswer{Decision: protocol.ApprovalApprove}
+		return conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove}
 	}
-	return agent.ApprovalAnswer{
+	return conversation.ApprovalAnswer{
 		Decision: protocol.ApprovalDeny,
 		Reason:   "declined: this run is unattended (rerun with --approve-all to allow it)",
 	}

@@ -241,7 +241,11 @@ Flame 是桌面工作台，不能像网页后台。判断标准：
 
 默认应偏向 **Baseline + Collapsed Dock**，只有用户或 agent 明确进入 review/diff/file context 时才进入 Review Workspace。
 
-**密度由材料声明，不由用户切开关**：dock view 在 `WorkspaceViewSpec.density` 上声明自己要多宽（`light` / `review`），dock 为每种密度各记一份宽度。所以"进入 Review Workspace"就是打开一个 review 密度的 destination —— 没有第三个模式开关，也不会因为为读代码拖宽过一次，就让之后每个清单都停在 review 宽度。
+Dock width belongs to the shell layout owner. It persists one `dockWidthRatio`
+across destination changes, and resizing updates that preference. A
+`WorkspaceViewSpec` declares its identity, presentation, component, and optional
+`dock` scope. The light and review descriptions above express reading needs;
+they do not select separate width preferences or a view-level density field.
 
 **checklist / comments 不进 Review Workspace**：todos 与 plan 已是 run-scoped destination，各自独立更清楚；comments（行内评审批注）当前**没有任何生产者**，所以不留空槽 —— 声明一个没人实现的面板，就是让 UI 替不存在的能力打广告。
 
@@ -249,45 +253,40 @@ Flame 是桌面工作台，不能像网页后台。判断标准：
 
 保持插件式架构，但不要让插件直接把任何东西塞到左侧。
 
-不要再建一套万能 placement 枚举。现在的模型是两套聚焦注册表：
+The SDK provides two contribution surfaces:
 
-1. **Work Index Item**：左侧 source list / collapsed rail 的贡献点，只表达“找工作”和“切工作”的入口。
-2. **Context Dock Destination**：右侧工作上下文的贡献点，只表达 active session/cwd/run 下可展开的材料。
-
-Work Index 贡献声明 scope 与 variant：
-
-```ts
-type WorkIndexItemScope = "global" | "session";
-type WorkIndexItemVariant = "expanded" | "rail";
-```
-
-Context Dock 贡献只声明 scope；placement 由 `flame.contextDock.destination` 这个扩展点身份隐含：
+1. **Work Index Item** uses `WORK_INDEX_ITEM`. Its `WorkIndexItemSpec` contains
+   `id`, optional `order`, and `component`. Navigation owns the work model, while
+   the sidebar and contributed components render expanded and collapsed states.
+2. **Workspace View** uses `WORKSPACE_VIEW` (`flame.workspaceView`). Its
+   `WorkspaceViewSpec` supplies view identity and presentation. The optional
+   `dock` field declares the destination's context:
 
 ```ts
 type ContextDockDestinationScope = "workspace" | "session" | "run";
 ```
 
-推荐归属：
+`useContextDockCatalog` derives the dock catalog from registered Workspace views.
+Navigation owns the selected destination. Work Index contributions do not carry
+scope or variant fields; their components consume the appropriate public read
+models and layout state.
 
-| Feature                       | Registry                   | Scope       | Variant / Placement                            |
-| ----------------------------- | -------------------------- | ----------- | ---------------------------------------------- |
-| New Session                   | `WorkIndexItem`            | `global`    | `expanded` and `rail`                          |
-| Current session list          | `WorkIndexItem`            | `session`   | `expanded` and `rail`                          |
-| Settings                      | `WorkIndexItem`            | `global`    | `rail` utility                                 |
-| Context launcher              | `WorkIndexItem`            | `session`   | `rail` handle into Context Dock                |
-| Files / File Tree             | `ContextDockDestination`   | `workspace` | Context Dock placement is implicit             |
-| Diff / Review                 | `ContextDockDestination`   | `workspace` | Context Dock placement is implicit             |
-| Skills                        | `ContextDockDestination`   | `workspace` | Context Dock placement is implicit             |
-| Memory                        | `ContextDockDestination`   | `workspace` | Context Dock placement is implicit             |
-| Tool Detail                   | `ContextDockDestination`   | `run`       | Context Dock placement is implicit             |
-| Timeline / run notes          | `ContextDockDestination`   | `session`   | Context Dock placement is implicit             |
-| Approval / Question           | Agent Narrative projection | `run`       | Narrative first, Work Index attention second   |
+The intended UI ownership remains:
 
-规则：
+| Feature | Surface | Context |
+| --- | --- | --- |
+| New Session and session list | Work Index | Navigation commands and session read models |
+| Settings and context launcher | Work Index | Entry points into their owned surfaces |
+| Files, Diff, Skills, Memory | Workspace view | `dock: "workspace"` |
+| Timeline and delegated transcripts | Workspace view | `dock: "session"` |
+| Run-specific material | Workspace view | `dock: "run"` when contributed |
+| Approval / Question | Agent Narrative | Run interaction, with attention in Work Index |
 
-- Work Index 只接受 `global` 或 `session` scope；workspace/run 级材料不能回到左侧顶级。
-- `expanded` 与 `rail` 是同一 Work Index 的两种呈现，不是两个业务入口；贡献方需要明确自己在哪个 variant 出现。
-- Context Dock destination 不声明 placement；它的 placement 由扩展点身份决定，spec 只负责声明 `workspace / session / run` scope。
+Rules:
+
+- Work Index organizes finding and switching work; Workspace views present the selected material.
+- Expanded and collapsed Work Index rendering share the same navigation owner.
+- A dock destination declares its context through `WorkspaceViewSpec.dock`; view registration and navigation determine placement.
 - run-scoped blocking action 优先在 Agent Narrative 完成，只把 attention 投影到 Work Index，避免用户必须去右侧找“为什么停住了”。
 - 插件贡献 UI 可以多样，但 contribution registry 必须表达心智归属，不能只表达 slot。
 
@@ -309,16 +308,22 @@ plugins/builtin/navigation/
     workIndex.ts
 ```
 
-Context Dock 可作为 workspace 上下文的子域演进：
+Context Dock catalog and navigation belong to Workspace application; view
+contributions and their UI stay with the same context:
 
 ```text
-plugins/builtin/workspace/context-dock/
-  index.ts
-plugins/builtin/workspace/application/
-  contextDock.ts
-  contextDockDestinations.ts
-  contextDockDestinationGroups.ts
-  useContextDockLauncher.ts
+plugins/builtin/workspace/
+  views.ts
+  application/
+    useContextDockCatalog.ts
+    contextDockDestinationGroups.ts
+    navigation.ts
+  ui/
+    files/
+    review/
+    skills/
+    memory/
+    timeline/
 ```
 
 关键边界：

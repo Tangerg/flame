@@ -652,10 +652,7 @@ for (const path of sourceFiles(SRC_DIR)) {
   const UNDECIDED = new Map([
     ["timeline", 'tab "Timeline" vs header "Run timeline" — is the short one for the strip?'],
   ]);
-  const views = readFileSync(
-    join(SRC_DIR, "plugins/builtin/workspace/workspace-views/index.ts"),
-    "utf8",
-  );
+  const views = readFileSync(join(SRC_DIR, "plugins/builtin/workspace/views.ts"), "utf8");
   for (const match of views.matchAll(/id:\s*"([^"]+)",\s*\n\s*title:\s*"([^"]+)"/g)) {
     const [, id, tabKey] = match;
     const headerKey = `${id.replace(/-([a-z])/g, (_, c) => c.toUpperCase())}.title`;

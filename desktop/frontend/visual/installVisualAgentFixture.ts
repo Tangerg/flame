@@ -1,3 +1,4 @@
+import type { FlameClient } from "@flame/runtime-contract/client";
 import { subagentsView } from "@/plugins/builtin/chat/message/subagents";
 import { installAgentStatePorts } from "@/plugins/builtin/agent/adapters/agentStatePorts";
 import { navigator } from "@/lib/navigation";
@@ -36,7 +37,7 @@ import narrativeRails from "@/plugins/builtin/chat/narrative-rails";
 import {
   messageCopy,
   messageEdit,
-  messageFeedback,
+  createMessageFeedbackPlugin,
   messageRegenerate,
 } from "@/plugins/builtin/chat/message-actions";
 import { builtinVisualStyles } from "@/plugins/builtin/theme/visualStyles";
@@ -44,12 +45,12 @@ import customTheme from "@/plugins/builtin/theme/themes/custom-theme";
 import flameDark from "@/plugins/builtin/theme/themes/flame-dark";
 import flameLight from "@/plugins/builtin/theme/themes/flame-light";
 import { defaultAccents } from "@/plugins/builtin/defaults";
-import goal from "@/plugins/builtin/chat/goal";
+import { createGoalPlugin } from "@/plugins/builtin/chat/goal";
 import type { GoalState } from "@/plugins/builtin/chat/goal/application/goalReadModel";
 import planProgress from "@/plugins/builtin/chat/plan-progress";
-import schedulesPane from "@/plugins/builtin/settings/schedules";
-import { kernelChat } from "@/plugins/builtin/shell/kernel";
-import { MODELS_KEY, SelectableModel } from "@/plugins/builtin/settings/providers/public/queries";
+import { createSchedulesPlugin } from "@/plugins/builtin/settings/schedules";
+import { workbenchChat } from "@/plugins/builtin/shell/workbench";
+import { MODELS_KEY, SelectableModel } from "@/plugins/builtin/providers/public/queries";
 import { installWorkspaceNavigationPort } from "@/plugins/builtin/workspace/adapters/navigationStatePort";
 import { installRuntimeCapabilityPort } from "@/plugins/builtin/runtime/adapters/runtimeConnectionProjection";
 import {
@@ -58,7 +59,7 @@ import {
 } from "@/plugins/builtin/runtime/public/services";
 import { queryClient } from "@/lib/queryClient";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
-import { toolRenderingPlugins } from "@/plugins/builtin";
+import { toolRenderingPlugins } from "@/main/builtinPlugins";
 import { DATA_PROVIDER, definePlugin } from "@/plugins/sdk";
 import { useRuntimeConnectionStore } from "@/plugins/builtin/runtime/adapters/runtimeConnectionProjection";
 import { visualFeatureCapabilities } from "./agentFixtureFacts";
@@ -237,6 +238,7 @@ const visualAgentLifecycle = definePlugin({
 });
 
 export async function installVisualAgentFixture(
+  runtimeClient: () => FlameClient,
   state: VisualAgentState,
   commandOutput?: string,
 ): Promise<AgentSessionView> {
@@ -297,15 +299,15 @@ export async function installVisualAgentFixture(
     contextUsage,
     composerSend,
     narrativeRails,
-    kernelChat,
+    workbenchChat,
     messageCopy,
     messageEdit,
     messageRegenerate,
-    messageFeedback,
-    goal,
+    createMessageFeedbackPlugin(runtimeClient),
+    createGoalPlugin(runtimeClient),
     planProgress,
     subagentsView,
-    schedulesPane,
+    createSchedulesPlugin(runtimeClient),
     ...toolRenderingPlugins,
     fileListProvider,
   );

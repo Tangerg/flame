@@ -12,14 +12,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/oolong/core/input"
-
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/domain/failure"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/oolong/core/input"
 )
 
 const terminalMCPAuthorizationAttemptID = "mcpauth_AAAAAAAAAAAAAAAAAAAAAAAAAA"
@@ -215,8 +214,8 @@ func (m *mcpServiceStub) GetAuthorization(context.Context, mcp.AuthorizationRefe
 func TestMCPAuthorizationObserverRecoversTransientReadsAndStopsOnAuthoritativeAbsence(t *testing.T) {
 	service := newMCPServiceStub()
 	service.authErrors = make(chan error, 2)
-	service.authErrors <- fmt.Errorf("temporary authorization read failure: %w", agent.ErrDisconnected)
-	service.authErrors <- fmt.Errorf("another temporary authorization read failure: %w", agent.ErrDisconnected)
+	service.authErrors <- fmt.Errorf("temporary authorization read failure: %w", conversation.ErrDisconnected)
+	service.authErrors <- fmt.Errorf("another temporary authorization read failure: %w", conversation.ErrDisconnected)
 	observer := mcpAuthorizationObserver{
 		service: service, pollInterval: time.Nanosecond,
 		recovery: testBackoff(t, time.Nanosecond, time.Nanosecond),
@@ -266,7 +265,7 @@ func TestMCPAuthorizationOutlivesSameSessionProjectionReplacement(t *testing.T) 
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1),
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: backend, MCP: service, Changes: source, SessionID: "ses_demo_1"})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: backend, MCP: service, Changes: source, SessionID: "ses_demo_1"})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "runtime change subscription")
 	host.Type("/mcp-auth docs")
@@ -274,7 +273,7 @@ func TestMCPAuthorizationOutlivesSameSessionProjectionReplacement(t *testing.T) 
 	host.Shows(t, "status   pending")
 	awaitValue(t, service.started, "MCP authorization observation")
 
-	if _, err := backend.RollbackSession(t.Context(), agent.RollbackSession{
+	if _, err := backend.RollbackSession(t.Context(), conversation.RollbackSession{
 		SessionID: "ses_demo_1", Scope: protocol.RestoreHistory,
 	}); err != nil {
 		t.Fatal(err)
@@ -284,7 +283,7 @@ func TestMCPAuthorizationOutlivesSameSessionProjectionReplacement(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := backend.UpdateSession(t.Context(), agent.UpdateSession{
+	if _, err := backend.UpdateSession(t.Context(), conversation.UpdateSession{
 		SessionID: snapshot.Session.ID, Title: &title, ExpectedRevision: snapshot.Session.Revision,
 	}); err != nil {
 		t.Fatal(err)
@@ -326,7 +325,7 @@ func TestMCPLifecycleMutationOutlivesSameSessionProjectionReplacement(t *testing
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1),
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: backend, MCP: service, Changes: source, SessionID: "ses_demo_1"})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: backend, MCP: service, Changes: source, SessionID: "ses_demo_1"})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "runtime change subscription")
 	host.Type("/mcp-reconnect docs")
@@ -335,7 +334,7 @@ func TestMCPLifecycleMutationOutlivesSameSessionProjectionReplacement(t *testing
 		t.Fatalf("reconnect server = %q, want docs", server)
 	}
 
-	if _, err := backend.RollbackSession(t.Context(), agent.RollbackSession{
+	if _, err := backend.RollbackSession(t.Context(), conversation.RollbackSession{
 		SessionID: "ses_demo_1", Scope: protocol.RestoreHistory,
 	}); err != nil {
 		t.Fatal(err)
@@ -345,7 +344,7 @@ func TestMCPLifecycleMutationOutlivesSameSessionProjectionReplacement(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := backend.UpdateSession(t.Context(), agent.UpdateSession{
+	if _, err := backend.UpdateSession(t.Context(), conversation.UpdateSession{
 		SessionID: snapshot.Session.ID, Title: &title, ExpectedRevision: snapshot.Session.Revision,
 	}); err != nil {
 		t.Fatal(err)
@@ -397,7 +396,7 @@ func TestMCPToolsDocumentFormatsRuntimeSchema(t *testing.T) {
 
 func TestMCPReadersFormsAndLifecycleCommands(t *testing.T) {
 	service := newMCPServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), MCP: service})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), MCP: service})
 	host.Shows(t, "Ask flame")
 	host.Type("/mcp")
 	host.Press(input.Enter)
@@ -489,7 +488,7 @@ func TestMCPReadersFormsAndLifecycleCommands(t *testing.T) {
 
 func TestMCPProbeValidatesAnUnpersistedCandidateAcrossResize(t *testing.T) {
 	service := newMCPServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), MCP: service})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), MCP: service})
 	host.Shows(t, "Ask flame")
 	host.Type("/mcp-probe")
 	host.Press(input.Enter)
@@ -520,7 +519,7 @@ func TestMCPProbeValidatesAnUnpersistedCandidateAcrossResize(t *testing.T) {
 
 func TestMCPStdioWizardKeepsEveryFieldVisibleAndSecretsMasked(t *testing.T) {
 	service := newMCPServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), MCP: service})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), MCP: service})
 	host.Shows(t, "Ask flame")
 	host.Type("/mcp-create")
 	host.Press(input.Enter)
@@ -583,7 +582,7 @@ func TestMCPChangedRefetchesTheOpenServerReader(t *testing.T) {
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1), supported: []protocol.RuntimeTopic{protocol.TopicMCPChanged},
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{Runtime: runtimefixture.New(), MCP: service, Changes: source})
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), MCP: service, Changes: source})
 	host.Shows(t, "Ask flame")
 	subscription := awaitValue(t, source.subscription, "MCP invalidation subscription")
 	if len(subscription.Topics) != 1 || subscription.Topics[0] != protocol.TopicMCPChanged {

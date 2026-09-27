@@ -8,7 +8,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/application/retry"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -267,7 +267,7 @@ func (r runtimeChangeMonitor) consumeSubscription(
 		}
 		progressed = progressed || applied
 	}
-	return progressed, fmt.Errorf("%w: runtime change stream ended", agent.ErrDisconnected)
+	return progressed, fmt.Errorf("%w: runtime change stream ended", conversation.ErrDisconnected)
 }
 
 func (r runtimeChangeMonitor) consumeChangeEvent(

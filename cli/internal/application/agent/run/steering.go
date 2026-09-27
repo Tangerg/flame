@@ -6,15 +6,16 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
-	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
+	"github.com/Tangerg/flame/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/cli/internal/application/retry"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type steerRuntime interface {
-	SteerRun(context.Context, agent.SteerRun) (protocol.SteerRunResponse, error)
+	SteerRun(context.Context, prompt.SteerRun) (protocol.SteerRunResponse, error)
 }
 
 // ErrSteerReplayUnavailable reports a durable steer whose outcome can no
@@ -27,8 +28,8 @@ var ErrSteerReplayUnavailable = errors.New("steer replay guarantee is unavailabl
 func StageSteer(
 	authoring *workbench.Store,
 	sessionID string,
-	request agent.SteerRun,
-	sourceDraft agent.Message,
+	request prompt.SteerRun,
+	sourceDraft prompt.Message,
 	policy mutation.ReplayPolicy,
 	input *workbench.PreparedInput,
 ) (workbench.PendingSteer, error) {
@@ -97,7 +98,7 @@ func DeliverSteer(
 		result.Receipt = receipt
 		return result, nil
 	}
-	if mutation.OutcomeUnknown(err) || errors.Is(err, agent.ErrSteerReceiptUnavailable) {
+	if mutation.OutcomeUnknown(err) || errors.Is(err, conversation.ErrSteerReceiptUnavailable) {
 		result.Outcome = mutation.Unknown
 		return result, fmt.Errorf("steer command outcome is unknown: %w", err)
 	}

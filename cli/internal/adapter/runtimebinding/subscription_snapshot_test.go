@@ -6,7 +6,7 @@ import (
 	"iter"
 	"testing"
 
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -32,7 +32,7 @@ func TestSnapshotSubscriptionProjectsOnlyTheAcknowledgedMaterial(t *testing.T) {
 			RunID: root.ID, SegmentID: root.ActiveSegmentID, Snapshot: material, HeadEventID: &head,
 		}, func(func(protocol.RunEvent, error) bool) {}, nil
 	}}
-	stream, err := runtime.SubscribeRun(t.Context(), agent.SubscribeRun{
+	stream, err := runtime.SubscribeRun(t.Context(), conversation.SubscribeRun{
 		SessionID: metadata.ID, RunID: root.ID, SegmentID: root.ActiveSegmentID, Snapshot: true,
 	})
 	if err != nil {
@@ -76,7 +76,7 @@ func TestSnapshotSubscriptionReleasesTheTailWhenSessionMetadataChanges(t *testin
 			Snapshot: &protocol.SessionSnapshot{Runs: []protocol.RunRef{root}},
 		}, func(func(protocol.RunEvent, error) bool) {}, nil
 	}}
-	stream, err := runtime.SubscribeRun(t.Context(), agent.SubscribeRun{
+	stream, err := runtime.SubscribeRun(t.Context(), conversation.SubscribeRun{
 		SessionID: first.ID, RunID: root.ID, SegmentID: root.ActiveSegmentID, Snapshot: true,
 	})
 	if err != nil {
@@ -107,8 +107,8 @@ func TestSnapshotSubscriptionRejectsMissingOrMisdirectedMaterial(t *testing.T) {
 				}
 				return ack, func(func(protocol.RunEvent, error) bool) {}, nil
 			}}
-			_, err := runtime.SubscribeRun(t.Context(), agent.SubscribeRun{SessionID: metadata.ID, RunID: "run_root", SegmentID: "seg_root", Snapshot: true})
-			if !errors.Is(err, agent.ErrIncompatibleRuntime) || attached.Err() == nil {
+			_, err := runtime.SubscribeRun(t.Context(), conversation.SubscribeRun{SessionID: metadata.ID, RunID: "run_root", SegmentID: "seg_root", Snapshot: true})
+			if !errors.Is(err, conversation.ErrIncompatibleRuntime) || attached.Err() == nil {
 				t.Fatalf("mismatched snapshot: error=%v context=%v", err, attached.Err())
 			}
 		})

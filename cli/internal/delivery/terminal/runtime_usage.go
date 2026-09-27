@@ -7,13 +7,13 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type usageReport struct {
-	session agent.SessionUsageReport
-	summary agent.UsageSummary
+	session conversation.SessionUsageReport
+	summary conversation.UsageSummary
 }
 
 func (a *app) ShowUsage(argument string) error {
@@ -40,16 +40,16 @@ func (a *app) ShowUsage(argument string) error {
 	return nil
 }
 
-func parseUsagePeriod(argument string) (agent.UsageSummaryPeriod, error) {
+func parseUsagePeriod(argument string) (conversation.UsageSummaryPeriod, error) {
 	argument = strings.TrimSpace(argument)
 	if argument == "" || strings.EqualFold(argument, "all") {
-		return agent.AllTimeUsage(), nil
+		return conversation.AllTimeUsage(), nil
 	}
 	days, err := strconv.Atoi(argument)
 	if err != nil || days <= 0 {
-		return agent.UsageSummaryPeriod{}, errors.New("usage: /usage [positive-days|all]")
+		return conversation.UsageSummaryPeriod{}, errors.New("usage: /usage [positive-days|all]")
 	}
-	return agent.RecentUsageDays(days)
+	return conversation.RecentUsageDays(days)
 }
 
 func usageDocument(report usageReport) (readerDocument, error) {

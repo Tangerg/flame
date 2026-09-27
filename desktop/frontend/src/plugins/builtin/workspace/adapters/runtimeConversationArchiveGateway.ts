@@ -1,4 +1,3 @@
-import { getContainer } from "@/main/container";
 import {
   asSessionId,
   type FlameClient,
@@ -23,13 +22,14 @@ function runtimeConversationArchiveGateway(client: FlameClient): ConversationArc
   };
 }
 
-export function installConversationArchiveGateway() {
+export function installConversationArchiveGateway(runtimeClient: () => FlameClient) {
   const owner = ConversationArchiveOwner.install({
-    gateway: runtimeConversationArchiveGateway(getContainer().client()),
+    gateway: runtimeConversationArchiveGateway(runtimeClient()),
     files: browserFileTransfer(),
   });
   return {
-    replaceRuntimeGeneration: () => owner.replaceRuntimeGeneration(),
+    replaceRuntimeGeneration: () =>
+      owner.replaceRuntimeGeneration(() => runtimeConversationArchiveGateway(runtimeClient())),
     dispose: () => owner.dispose(),
   };
 }

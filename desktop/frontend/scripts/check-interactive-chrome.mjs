@@ -32,6 +32,7 @@
 // signal that the interaction model needs a third state, not that this callsite
 // needs its own alpha — add it in globals.css so everything else can reach it.
 
+import { assertSourceCoverage, sourceFiles } from "./source-graph.mjs";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { extname, join, relative } from "node:path";
 
@@ -218,7 +219,9 @@ function transitionsWithNoCurve(lines) {
 
 const violations = [];
 let examined = 0;
-for (const path of walk(SRC)) {
+const scanned = [...walk(SRC)];
+assertSourceCoverage(sourceFiles(SRC), scanned);
+for (const path of scanned) {
   if (![".ts", ".tsx", ".css"].includes(extname(path))) continue;
   examined += 1;
   const rel = relative(SRC, path);
@@ -275,14 +278,6 @@ if (violations.length > 0) {
   console.error(`check-interactive-chrome: ${violations.length} callsite-decided state(s)\n`);
   for (const violation of violations) console.error(`  ${violation}`);
   process.exit(1);
-}
-// Floor, not a target: a guard that read nothing prints the same OK as one that read everything.
-const MIN_FILES_EXAMINED = 500;
-if (examined < MIN_FILES_EXAMINED) {
-  console.error(
-    `check-interactive-chrome: only read ${examined} files (floor ${MIN_FILES_EXAMINED}) — the walk is broken.`,
-  );
-  process.exit(2);
 }
 console.log(
   `check-interactive-chrome: ${examined} files read; hover + selected + press + focus + motion each hold one value`,

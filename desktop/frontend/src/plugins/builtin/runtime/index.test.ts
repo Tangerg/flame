@@ -1,5 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { initializeClientHost, resetContainer, setContainer } from "@/main/container";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   HTTP_ENDPOINTS,
   PROTOCOL_VERSION,
@@ -13,9 +12,18 @@ import {
   resetRuntimeConnectionForTest,
   useRuntimeConnectionStore,
 } from "./adapters/runtimeConnectionProjection";
-import runtimePlugin from "./index";
+import { createRuntimePlugin } from "./index";
 import { startKernel, stopKernel } from "@/plugins/sdk/bootstrap";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
+
+let runtimeClient: () => FlameClient = () => {
+  throw new Error("Runtime test client is not configured");
+};
+const getRuntimeClient = () => runtimeClient();
+let runtimeSidecar: () => SidecarClient = () => {
+  throw new Error("Runtime test sidecar is not configured");
+};
+const getRuntimeSidecar = () => runtimeSidecar();
 
 const discovery: DiscoverResponse = {
   protocolVersion: PROTOCOL_VERSION,
@@ -64,11 +72,11 @@ function healthySidecar(): SidecarClient {
   };
 }
 
-function stubContainer(
+function stubRuntime(
   discover: Methods["runtime"]["discover"],
   sidecar: SidecarClient = healthySidecar(),
 ) {
-  setContainer({
+  ({ client: runtimeClient, sidecar: runtimeSidecar } = {
     client: () =>
       ({
         runtime: { discover },
@@ -77,11 +85,9 @@ function stubContainer(
   });
 }
 
-beforeEach(initializeClientHost);
-
 afterEach(async () => {
   await resetKernelForTest();
-  await resetContainer();
+
   resetRuntimeConnectionForTest();
   vi.restoreAllMocks();
 });
@@ -89,9 +95,13 @@ afterEach(async () => {
 describe("runtime plugin", () => {
   it("discovers capabilities through the supervised Runtime connection", async () => {
     const discover = vi.fn().mockResolvedValue(discovery);
-    stubContainer(discover);
+    stubRuntime(discover);
 
-    await loadPluginsForTest(runtimePlugin);
+    await loadPluginsForTest(
+      createRuntimePlugin(getRuntimeClient, getRuntimeSidecar, () => ({
+        endpoint: window.location.origin,
+      })),
+    );
 
     await vi.waitFor(() => {
       expect(useRuntimeConnectionStore.getState().capabilities).not.toBeNull();
@@ -101,9 +111,13 @@ describe("runtime plugin", () => {
 
   it("inspects all operational endpoints through the Runtime context", async () => {
     const sidecar = healthySidecar();
-    stubContainer(vi.fn().mockResolvedValue(discovery), sidecar);
+    stubRuntime(vi.fn().mockResolvedValue(discovery), sidecar);
 
-    await loadPluginsForTest(runtimePlugin);
+    await loadPluginsForTest(
+      createRuntimePlugin(getRuntimeClient, getRuntimeSidecar, () => ({
+        endpoint: window.location.origin,
+      })),
+    );
 
     await vi.waitFor(() => {
       expect(useRuntimeConnectionStore.getState().service.phase).toBe("ready");
@@ -116,9 +130,13 @@ describe("runtime plugin", () => {
   it("publishes sidecar failure without preserving a stale ready phase", async () => {
     const sidecar = healthySidecar();
     sidecar.readiness = vi.fn().mockRejectedValue(new Error("connection refused"));
-    stubContainer(vi.fn().mockResolvedValue(discovery), sidecar);
+    stubRuntime(vi.fn().mockResolvedValue(discovery), sidecar);
 
-    await loadPluginsForTest(runtimePlugin);
+    await loadPluginsForTest(
+      createRuntimePlugin(getRuntimeClient, getRuntimeSidecar, () => ({
+        endpoint: window.location.origin,
+      })),
+    );
 
     await vi.waitFor(() => {
       expect(useRuntimeConnectionStore.getState().service).toMatchObject({
@@ -130,9 +148,13 @@ describe("runtime plugin", () => {
 
   it("degrades without publishing stale capabilities when discovery fails", async () => {
     useRuntimeConnectionStore.setState({ capabilities: discovery.capabilities });
-    stubContainer(vi.fn().mockRejectedValue(new Error("method not found")));
+    stubRuntime(vi.fn().mockRejectedValue(new Error("method not found")));
 
-    await loadPluginsForTest(runtimePlugin);
+    await loadPluginsForTest(
+      createRuntimePlugin(getRuntimeClient, getRuntimeSidecar, () => ({
+        endpoint: window.location.origin,
+      })),
+    );
 
     await vi.waitFor(() => {
       expect(useRuntimeConnectionStore.getState().service).toMatchObject({
@@ -151,9 +173,13 @@ describe("runtime plugin", () => {
           resolveDiscovery = resolve;
         }),
     );
-    stubContainer(discover);
+    stubRuntime(discover);
 
-    await loadPluginsForTest(runtimePlugin);
+    await loadPluginsForTest(
+      createRuntimePlugin(getRuntimeClient, getRuntimeSidecar, () => ({
+        endpoint: window.location.origin,
+      })),
+    );
     await vi.waitFor(() => expect(discover).toHaveBeenCalledOnce());
     await resetKernelForTest();
 
@@ -171,9 +197,13 @@ describe("runtime plugin", () => {
         .fn()
         .mockRejectedValueOnce(new Error("offline"))
         .mockResolvedValue(discovery);
-      stubContainer(discover);
+      stubRuntime(discover);
 
-      await loadPluginsForTest(runtimePlugin);
+      await loadPluginsForTest(
+        createRuntimePlugin(getRuntimeClient, getRuntimeSidecar, () => ({
+          endpoint: window.location.origin,
+        })),
+      );
       await vi.advanceTimersByTimeAsync(0);
       expect(useRuntimeConnectionStore.getState().capabilities).toBeNull();
       expect(useRuntimeConnectionStore.getState().service.phase).toBe("unavailable");
@@ -196,9 +226,13 @@ describe("runtime plugin", () => {
           resolveReadiness = resolve;
         }),
     );
-    stubContainer(vi.fn().mockResolvedValue(discovery), sidecar);
+    stubRuntime(vi.fn().mockResolvedValue(discovery), sidecar);
 
-    await loadPluginsForTest(runtimePlugin);
+    await loadPluginsForTest(
+      createRuntimePlugin(getRuntimeClient, getRuntimeSidecar, () => ({
+        endpoint: window.location.origin,
+      })),
+    );
     await vi.waitFor(() => expect(sidecar.readiness).toHaveBeenCalledOnce());
     await resetKernelForTest();
 
@@ -214,16 +248,24 @@ describe("runtime plugin", () => {
   });
 
   it("does not let a retired Runtime installation clear its successor projection", async () => {
-    stubContainer(vi.fn().mockResolvedValue(discovery));
-    const retired = await startKernel([runtimePlugin]);
+    stubRuntime(vi.fn().mockResolvedValue(discovery));
+    const retired = await startKernel([
+      createRuntimePlugin(getRuntimeClient, getRuntimeSidecar, () => ({
+        endpoint: window.location.origin,
+      })),
+    ]);
     let successor: Awaited<ReturnType<typeof startKernel>> | undefined;
     try {
       await vi.waitFor(() => {
         expect(useRuntimeConnectionStore.getState().service.phase).toBe("ready");
       });
 
-      stubContainer(vi.fn().mockResolvedValue(discovery));
-      successor = await startKernel([runtimePlugin]);
+      stubRuntime(vi.fn().mockResolvedValue(discovery));
+      successor = await startKernel([
+        createRuntimePlugin(getRuntimeClient, getRuntimeSidecar, () => ({
+          endpoint: window.location.origin,
+        })),
+      ]);
       await vi.waitFor(() => {
         expect(useRuntimeConnectionStore.getState().service.phase).toBe("ready");
         expect(useRuntimeConnectionStore.getState().capabilities).toEqual(discovery.capabilities);

@@ -9,11 +9,12 @@ import (
 	"net/http/httptest"
 	"sync"
 	"testing"
+	"time"
 
-	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
 	"github.com/Tangerg/flame/cli/internal/application/agent/session"
-	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/application/mutation"
+	"github.com/Tangerg/flame/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -21,7 +22,7 @@ import (
 func TestRemoteConnectionRecoversLostDeletionAcknowledgement(t *testing.T) {
 	target, owner, connection, created, attempts := remoteDeletionConnection(t, false)
 	profile := connection.Profile()
-	policy, err := CommandReplayPolicy(&profile)
+	policy, err := mutation.PolicyFromProfile(&profile, time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +53,7 @@ func TestRemoteConnectionRecoversLostDeletionAcknowledgement(t *testing.T) {
 func TestRemoteMalformedAcknowledgementRetainsDurableIntentWithoutRetry(t *testing.T) {
 	_, _, connection, created, attempts := remoteDeletionConnection(t, true)
 	profile := connection.Profile()
-	policy, err := CommandReplayPolicy(&profile)
+	policy, err := mutation.PolicyFromProfile(&profile, time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +63,7 @@ func TestRemoteMalformedAcknowledgementRetainsDurableIntentWithoutRetry(t *testi
 	}
 	t.Cleanup(func() { _ = store.Close() })
 	result, err := session.Delete(t.Context(), connection, store, created.ID, policy, mutation.AcknowledgementBackoff())
-	if result.Outcome != mutation.Unknown || !errors.Is(err, agent.ErrIncompatibleRuntime) || !mutation.OutcomeUnknown(err) {
+	if result.Outcome != mutation.Unknown || !errors.Is(err, conversation.ErrIncompatibleRuntime) || !mutation.OutcomeUnknown(err) {
 		t.Fatalf("malformed acknowledgement = %+v, %v", result, err)
 	}
 	if mutation.AcknowledgementUncertain(err) || len(attempts()) != 1 {

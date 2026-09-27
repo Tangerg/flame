@@ -7,17 +7,18 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 	"unicode/utf8"
 
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-
 	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/attachment"
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	runworkflow "github.com/Tangerg/flame/cli/internal/application/agent/run"
 	"github.com/Tangerg/flame/cli/internal/application/agent/session"
+	"github.com/Tangerg/flame/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/cli/internal/delivery/cmd/render"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 func newRunCommand(provider runtimeProvider, v *viper.Viper) *cobra.Command {
@@ -82,9 +83,9 @@ func (r *runFlags) execute(cmd *cobra.Command, args []string, provider runtimePr
 
 	var (
 		runtime Runtime
-		profile *runtimebinding.Profile
-		opened  agent.SessionSnapshot
-		message agent.Message
+		profile RuntimeProfile
+		opened  conversation.SessionSnapshot
+		message prompt.Message
 	)
 	if r.sessionID == "" {
 		workspacePath, workspaceErr := resolveWorkspace(cmd, config)
@@ -127,14 +128,14 @@ func (r *runFlags) execute(cmd *cobra.Command, args []string, provider runtimePr
 	if err != nil {
 		return err
 	}
-	replayPolicy, err := runtimebinding.CommandReplayPolicy(profile)
+	replayPolicy, err := mutation.PolicyFromProfile(profile, time.Now)
 	if err != nil {
 		return fmt.Errorf("runtime command replay policy: %w", err)
 	}
 	return runworkflow.Execute(cmd.Context(), runworkflow.Invocation{
 		Runtime:  runtime,
 		Renderer: newRunRenderer(cmd, format),
-		Start: agent.StartRun{
+		Start: prompt.StartRun{
 			SessionID: opened.Session.ID,
 			Message:   message,
 			Options:   runOptions,
@@ -192,12 +193,12 @@ func (r *runFlags) readMessageText(cmd *cobra.Command, args []string) (string, e
 	return text, nil
 }
 
-func (r *runFlags) buildMessage(ctx context.Context, text, workspace string) (agent.Message, error) {
+func (r *runFlags) buildMessage(ctx context.Context, text, workspace string) (prompt.Message, error) {
 	attached, err := resolveAttachments(ctx, workspace, r.files)
 	if err != nil {
-		return agent.Message{}, err
+		return prompt.Message{}, err
 	}
-	return agent.Message{Text: text, Attachments: attached}, nil
+	return prompt.Message{Text: text, Attachments: attached}, nil
 }
 
 func newRunRenderer(cmd *cobra.Command, format outputFormat) runworkflow.Renderer {
@@ -262,7 +263,7 @@ func runFileCompletionWorkspace(cmd *cobra.Command, provider runtimeProvider) (s
 	return snapshot.Session.Workspace.Path, nil
 }
 
-func resolveAttachments(ctx context.Context, workspace string, paths []string) ([]agent.Attachment, error) {
+func resolveAttachments(ctx context.Context, workspace string, paths []string) ([]prompt.Attachment, error) {
 	if len(paths) == 0 {
 		return nil, nil
 	}
@@ -271,7 +272,7 @@ func resolveAttachments(ctx context.Context, workspace string, paths []string) (
 		return nil, err
 	}
 	seen := make(map[string]struct{}, len(paths))
-	out := make([]agent.Attachment, 0, len(paths))
+	out := make([]prompt.Attachment, 0, len(paths))
 	for _, path := range paths {
 		item, err := resolver.Resolve(ctx, path)
 		if err != nil {
@@ -280,8 +281,8 @@ func resolveAttachments(ctx context.Context, workspace string, paths []string) (
 		if _, duplicate := seen[item.Path]; duplicate {
 			continue
 		}
-		if len(out) >= agent.MaxMessageAttachments {
-			return nil, fmt.Errorf("at most %d unique attachments are allowed", agent.MaxMessageAttachments)
+		if len(out) >= prompt.MaxMessageAttachments {
+			return nil, fmt.Errorf("at most %d unique attachments are allowed", prompt.MaxMessageAttachments)
 		}
 		seen[item.Path] = struct{}{}
 		out = append(out, item)
@@ -305,14 +306,14 @@ func readPrompt(cmd *cobra.Command, args []string) (string, error) {
 	if len(parts) == 0 {
 		return "", errNoPrompt
 	}
-	prompt := strings.Join(parts, "\n\n")
-	if len(prompt) > agent.MaxMessageTextBytes {
-		return "", fmt.Errorf("prompt exceeds the %d-byte limit", agent.MaxMessageTextBytes)
+	authoredPrompt := strings.Join(parts, "\n\n")
+	if len(authoredPrompt) > prompt.MaxMessageTextBytes {
+		return "", fmt.Errorf("prompt exceeds the %d-byte limit", prompt.MaxMessageTextBytes)
 	}
-	if !utf8.ValidString(prompt) {
+	if !utf8.ValidString(authoredPrompt) {
 		return "", errors.New("prompt is not valid UTF-8")
 	}
-	return prompt, nil
+	return authoredPrompt, nil
 }
 
 // readPipedPrompt reads stdin when it is not a terminal. A terminal is left alone: a
@@ -327,12 +328,12 @@ func readPipedPrompt(in io.Reader) (string, error) {
 			return "", nil
 		}
 	}
-	b, err := io.ReadAll(io.LimitReader(in, agent.MaxMessageTextBytes+1))
+	b, err := io.ReadAll(io.LimitReader(in, prompt.MaxMessageTextBytes+1))
 	if err != nil {
 		return "", fmt.Errorf("read stdin: %w", err)
 	}
-	if len(b) > agent.MaxMessageTextBytes {
-		return "", fmt.Errorf("piped prompt exceeds the %d-byte limit", agent.MaxMessageTextBytes)
+	if len(b) > prompt.MaxMessageTextBytes {
+		return "", fmt.Errorf("piped prompt exceeds the %d-byte limit", prompt.MaxMessageTextBytes)
 	}
 	if !utf8.Valid(b) {
 		return "", errors.New("piped prompt is not valid UTF-8")

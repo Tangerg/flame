@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
-	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
 	runworkflow "github.com/Tangerg/flame/cli/internal/application/agent/run"
-	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
+	"github.com/Tangerg/flame/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/cli/internal/application/retry"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/commandreplay"
+	"github.com/Tangerg/flame/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -73,7 +73,7 @@ func (a *app) cancel() {
 		a.reconcileCanceledStart(pending)
 		return
 	}
-	a.cancelRuntime(agent.CancelRun{RunID: runID, Reason: "canceled by the terminal user"})
+	a.cancelRuntime(conversation.CancelRun{RunID: runID, Reason: "canceled by the terminal user"})
 }
 
 func (a *app) stageOpeningCancellation() (workbench.PendingRun, bool, error) {
@@ -139,7 +139,7 @@ func (a *app) reconcileCanceledStart(pending workbench.PendingRun) {
 			if receiptErr := errors.Join(err, validationErr); receiptErr != nil {
 				a.message("runtime returned an invalid start receipt; canceling accepted run: " + receiptErr.Error())
 			}
-			a.requestRuntimeCancellation(agent.CancelRun{
+			a.requestRuntimeCancellation(conversation.CancelRun{
 				CommandID: pending.CancelCommandID,
 				RunID:     observed.RunID,
 				Reason:    unconfirmedStartCancellationReason,
@@ -151,24 +151,24 @@ func (a *app) reconcileCanceledStart(pending workbench.PendingRun) {
 func openStartRunWithBackoff(
 	ctx context.Context,
 	runtime runworkflow.Lifecycle,
-	command agent.StartRun,
-	replay commandreplay.Guard,
-	profile *runtimebinding.Profile,
+	command prompt.StartRun,
+	replayGuard replay.Guard,
+	profile RuntimeProfile,
 	backoff retry.Backoff,
-) (agent.SegmentStream, error) {
+) (conversation.SegmentStream, error) {
 	return mutation.ConfirmAdmitted(
-		ctx, backoff, commandReplayAdmission(replay, profile),
-		func(ctx context.Context) (agent.SegmentStream, error) {
+		ctx, backoff, commandReplayAdmission(replayGuard, profile),
+		func(ctx context.Context) (conversation.SegmentStream, error) {
 			return runtime.StartRun(ctx, command)
 		},
 	)
 }
 
-func observedSegmentStream(stream agent.SegmentStream, err error) (agent.SegmentStream, bool) {
+func observedSegmentStream(stream conversation.SegmentStream, err error) (conversation.SegmentStream, bool) {
 	if err == nil {
 		return stream, true
 	}
-	receipt, accepted := agent.AcceptedMutationReceipt(err)
+	receipt, accepted := conversation.AcceptedMutationReceipt(err)
 	return receipt, accepted
 }
 
@@ -181,27 +181,27 @@ func (a *app) retireCanceledStart(pending workbench.PendingRun) error {
 	return nil
 }
 
-func (a *app) activeCancellation() (agent.CancelRun, bool) {
+func (a *app) activeCancellation() (conversation.CancelRun, bool) {
 	if a.execution.projectionFailed {
-		return agent.CancelRun{}, false
+		return conversation.CancelRun{}, false
 	}
 	if runID := a.execution.conversation.RunID(); runID != "" && a.execution.conversation.Busy() {
-		return agent.CancelRun{RunID: runID, Reason: "terminal closed"}, true
+		return conversation.CancelRun{RunID: runID, Reason: "terminal closed"}, true
 	}
 	if a.execution.openingRunID != "" && a.execution.conversation.Busy() {
-		return agent.CancelRun{RunID: a.execution.openingRunID, Reason: "terminal closed"}, true
+		return conversation.CancelRun{RunID: a.execution.openingRunID, Reason: "terminal closed"}, true
 	}
-	return agent.CancelRun{}, false
+	return conversation.CancelRun{}, false
 }
 
-func (a *app) cancelRuntime(target agent.CancelRun) {
+func (a *app) cancelRuntime(target conversation.CancelRun) {
 	a.requestRuntimeCancellation(target, applyRuntimeSettlement)
 }
 
 // cancelRuntimePreservingFailure stops a run whose event stream has already been
 // rejected locally. The cancellation receipt proves cleanup, but only a cold
 // Session read can replace the now-untrustworthy transcript projection.
-func (a *app) cancelRuntimePreservingFailure(target agent.CancelRun) {
+func (a *app) cancelRuntimePreservingFailure(target conversation.CancelRun) {
 	a.requestRuntimeCancellation(target, recoverProjectionFailure)
 }
 
@@ -214,23 +214,23 @@ const (
 )
 
 type pendingCancellation struct {
-	request          agent.CancelRun
-	openingCommandID agent.CommandID
+	request          conversation.CancelRun
+	openingCommandID replay.CommandID
 	policy           cancellationResultPolicy
-	replay           commandreplay.Guard
+	replay           replay.Guard
 }
 
-func (a *app) requestRuntimeCancellation(target agent.CancelRun, policy cancellationResultPolicy) {
+func (a *app) requestRuntimeCancellation(target conversation.CancelRun, policy cancellationResultPolicy) {
 	if target.CommandID == "" {
 		commandID := mutation.NewCommandID()
 		target.CommandID = commandID
 	}
-	replay := commandReplayGuard(a.runtimeProfile)
+	replayGuard := commandReplayGuard(a.runtimeProfile)
 	if current := a.execution.pendingCancel; current != nil && current.request.CommandID == target.CommandID {
-		replay = current.replay
+		replayGuard = current.replay
 	}
 	pending := pendingCancellation{
-		request: target, openingCommandID: a.openingCommandForRun(target.RunID), policy: policy, replay: replay,
+		request: target, openingCommandID: a.openingCommandForRun(target.RunID), policy: policy, replay: replayGuard,
 	}
 	if pending.openingCommandID == "" && a.execution.pendingCancel != nil && a.execution.pendingCancel.request.RunID == target.RunID {
 		pending.openingCommandID = a.execution.pendingCancel.openingCommandID
@@ -258,12 +258,12 @@ func (a *app) requestRuntimeCancellation(target agent.CancelRun, policy cancella
 // the durable run projection is the successful settlement of the same intent.
 func (a *app) cancelRootRun(
 	ctx context.Context,
-	target agent.CancelRun,
-	replay commandreplay.Guard,
-) (agent.Run, error) {
+	target conversation.CancelRun,
+	replayGuard replay.Guard,
+) (conversation.Run, error) {
 	result, err := mutation.ConfirmAdmitted(
-		ctx, runtimeRecoveryBackoff, commandReplayAdmission(replay, a.runtimeProfile),
-		func(ctx context.Context) (agent.RunCancellation, error) {
+		ctx, runtimeRecoveryBackoff, commandReplayAdmission(replayGuard, a.runtimeProfile),
+		func(ctx context.Context) (conversation.RunCancellation, error) {
 			attemptCtx, cancel := context.WithTimeout(ctx, runtimeControlTimeout)
 			defer cancel()
 			return a.runtime.CancelRun(attemptCtx, target)
@@ -271,22 +271,22 @@ func (a *app) cancelRootRun(
 	)
 	if err == nil {
 		if validateTargetErr := result.ValidateTarget(target.RunID); validateTargetErr != nil {
-			return agent.Run{}, fmt.Errorf("cancel run: %w", validateTargetErr)
+			return conversation.Run{}, fmt.Errorf("cancel run: %w", validateTargetErr)
 		}
 		return result.Root, nil
 	}
-	if !errors.Is(err, agent.ErrRunFinished) {
-		return agent.Run{}, err
+	if !errors.Is(err, conversation.ErrRunFinished) {
+		return conversation.Run{}, err
 	}
 	settled, readErr := a.runtime.GetRun(ctx, target.RunID)
 	if readErr != nil {
-		return agent.Run{}, fmt.Errorf("read run after cancellation race: %w", readErr)
+		return conversation.Run{}, fmt.Errorf("read run after cancellation race: %w", readErr)
 	}
 	if validateErr := settled.Validate(); validateErr != nil {
-		return agent.Run{}, fmt.Errorf("validate run after cancellation race: %w", validateErr)
+		return conversation.Run{}, fmt.Errorf("validate run after cancellation race: %w", validateErr)
 	}
 	if settled.ID != target.RunID || !settled.Lineage.IsRoot() || settled.Status != protocol.RunStatusFinished {
-		return agent.Run{}, fmt.Errorf("cancellation race returned non-terminal root run %s", settled.ID)
+		return conversation.Run{}, fmt.Errorf("cancellation race returned non-terminal root run %s", settled.ID)
 	}
 	return settled, nil
 }
@@ -294,7 +294,7 @@ func (a *app) cancelRootRun(
 func (a *app) handleRuntimeCancellation(
 	lease operationLease,
 	pending pendingCancellation,
-	settled agent.Run,
+	settled conversation.Run,
 	err error,
 ) {
 	if !a.operations.Current(lease) || a.closed {
@@ -355,7 +355,7 @@ func (a *app) handleRuntimeCancellation(
 	a.drainQueue()
 }
 
-func (a *app) openingCommandForRun(runID string) agent.CommandID {
+func (a *app) openingCommandForRun(runID string) replay.CommandID {
 	if runID == "" || runID != a.execution.openingRunID {
 		return ""
 	}
@@ -366,7 +366,7 @@ func (a *app) openingCommandForRun(runID string) agent.CommandID {
 	return entry.CommandID
 }
 
-func (a *app) retireCanceledRuntimeOwnership(runID string, openingCommandID agent.CommandID) error {
+func (a *app) retireCanceledRuntimeOwnership(runID string, openingCommandID replay.CommandID) error {
 	var err error
 	if a.workbench != nil {
 		if pending, ok := a.workbench.PendingResume(a.session.current.ID); ok && pending.Command.RunID == runID {
@@ -381,23 +381,23 @@ func (a *app) retireCanceledRuntimeOwnership(runID string, openingCommandID agen
 
 func (a *app) cancelRuntimeNow(
 	ownerCtx context.Context,
-	target agent.CancelRun,
-	replay commandreplay.Guard,
+	target conversation.CancelRun,
+	replayGuard replay.Guard,
 ) error {
 	if target.CommandID == "" {
 		commandID := mutation.NewCommandID()
 		target.CommandID = commandID
-		replay = commandReplayGuard(a.runtimeProfile)
+		replayGuard = commandReplayGuard(a.runtimeProfile)
 	}
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ownerCtx), runtimeControlTimeout)
 	defer cancel()
 	result, err := mutation.ConfirmAdmitted(
-		ctx, runtimeRecoveryBackoff, commandReplayAdmission(replay, a.runtimeProfile),
-		func(ctx context.Context) (agent.RunCancellation, error) {
+		ctx, runtimeRecoveryBackoff, commandReplayAdmission(replayGuard, a.runtimeProfile),
+		func(ctx context.Context) (conversation.RunCancellation, error) {
 			return a.runtime.CancelRun(ctx, target)
 		},
 	)
-	if errors.Is(err, agent.ErrRunFinished) {
+	if errors.Is(err, conversation.ErrRunFinished) {
 		return nil
 	}
 	if err != nil {
@@ -430,7 +430,7 @@ func (a *app) cancelOpeningRunNow(ownerCtx context.Context, pending workbench.Pe
 			validationErr,
 		)
 	}
-	cancelErr := a.cancelRuntimeNow(ctx, agent.CancelRun{
+	cancelErr := a.cancelRuntimeNow(ctx, conversation.CancelRun{
 		CommandID: pending.CancelCommandID,
 		RunID:     opened.RunID,
 		Reason:    unconfirmedStartCancellationReason,

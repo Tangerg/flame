@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 func TestProjectInputReadsTypedAttachmentsAtDispatch(t *testing.T) {
@@ -31,9 +31,9 @@ func TestProjectInputReadsTypedAttachmentsAtDispatch(t *testing.T) {
 			protocol.FeatureMultimodal: {Enabled: true},
 		}),
 	}
-	blocks, err := runtime.PrepareInput(t.Context(), agent.Message{
+	blocks, err := runtime.PrepareInput(t.Context(), prompt.Message{
 		Text: "prompt",
-		Attachments: []agent.Attachment{
+		Attachments: []prompt.Attachment{
 			{ID: "text", Kind: protocol.ContentBlockText, Name: "notes.txt", Path: textPath, MimeType: "text/plain", Size: 5},
 			{ID: "image", Kind: protocol.ContentBlockImage, Name: "pixel.png", Path: imagePath, MimeType: "image/png", Size: int64(len(image))},
 		},
@@ -54,14 +54,14 @@ func TestProjectInputPreservesMeaningfulTextAndOmitsBlankText(t *testing.T) {
 	}}
 
 	const authored = "  indented\ntrailing  \n"
-	blocks, err := runtime.PrepareInput(t.Context(), agent.Message{Text: authored})
+	blocks, err := runtime.PrepareInput(t.Context(), prompt.Message{Text: authored})
 	if err != nil || len(blocks) != 1 || blocks[0].Text != authored {
 		t.Fatalf("meaningful projection = (%+v, %v)", blocks, err)
 	}
 
-	blocks, err = runtime.PrepareInput(t.Context(), agent.Message{
+	blocks, err = runtime.PrepareInput(t.Context(), prompt.Message{
 		Text: " \n\t",
-		Attachments: []agent.Attachment{{
+		Attachments: []prompt.Attachment{{
 			ID: "text", Kind: protocol.ContentBlockText, Name: "notes.txt", Path: "/notes.txt",
 			MimeType: "text/plain", Size: 5,
 		}},
@@ -81,11 +81,11 @@ func TestProjectInputRejectsImagesBeforeReadingWithoutMultimodalCapability(t *te
 		reads++
 		return []byte("image"), nil
 	}}
-	blocks, err := runtime.PrepareInput(t.Context(), agent.Message{Attachments: []agent.Attachment{{
+	blocks, err := runtime.PrepareInput(t.Context(), prompt.Message{Attachments: []prompt.Attachment{{
 		ID: "image", Kind: protocol.ContentBlockImage, Name: "image.png", Path: "/image.png",
 		MimeType: "image/png", Size: 5,
 	}}})
-	if err == nil || !errors.Is(err, agent.ErrIncompatibleRuntime) {
+	if err == nil || !errors.Is(err, conversation.ErrIncompatibleRuntime) {
 		t.Fatalf("PrepareInput error = %v, want ErrIncompatibleRuntime", err)
 	}
 	if blocks != nil || reads != 0 {
@@ -106,7 +106,7 @@ func TestProjectInputRejectsInvalidTextBytesAtDispatch(t *testing.T) {
 			runtime := &Connection{loadAttachment: func(context.Context, string, int64) ([]byte, error) {
 				return test.data, nil
 			}}
-			blocks, err := runtime.PrepareInput(t.Context(), agent.Message{Attachments: []agent.Attachment{{
+			blocks, err := runtime.PrepareInput(t.Context(), prompt.Message{Attachments: []prompt.Attachment{{
 				ID: "text", Kind: protocol.ContentBlockText, Name: "notes.txt", Path: "/notes.txt",
 				MimeType: "text/plain", Size: int64(len(test.data)),
 			}}})

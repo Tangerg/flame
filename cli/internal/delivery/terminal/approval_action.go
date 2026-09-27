@@ -3,10 +3,9 @@ package terminal
 import (
 	"slices"
 
-	"github.com/Tangerg/oolong/components/headless"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/oolong/components/headless"
 )
 
 // approvalAction is the terminal's complete decision vocabulary for one tool
@@ -69,30 +68,30 @@ func defaultApprovalAction(scope protocol.RememberScopeKind) approvalAction {
 	}
 }
 
-func (a approvalAction) Answer() (agent.ApprovalAnswer, bool) {
+func (a approvalAction) Answer() (conversation.ApprovalAnswer, bool) {
 	switch a {
 	case approvalAllowSession:
-		return agent.ApprovalAnswer{Decision: protocol.ApprovalApprove, Remember: protocol.RememberSession}, true
+		return conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove, Remember: protocol.RememberSession}, true
 	case approvalAllowProject:
-		return agent.ApprovalAnswer{Decision: protocol.ApprovalApprove, Remember: protocol.RememberProject}, true
+		return conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove, Remember: protocol.RememberProject}, true
 	case approvalAllowGlobal:
-		return agent.ApprovalAnswer{Decision: protocol.ApprovalApprove, Remember: protocol.RememberGlobal}, true
+		return conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove, Remember: protocol.RememberGlobal}, true
 	case approvalAllowOnce:
-		return agent.ApprovalAnswer{Decision: protocol.ApprovalApprove}, true
+		return conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove}, true
 	case approvalDenySession:
-		return agent.ApprovalAnswer{Decision: protocol.ApprovalDeny, Remember: protocol.RememberSession}, true
+		return conversation.ApprovalAnswer{Decision: protocol.ApprovalDeny, Remember: protocol.RememberSession}, true
 	case approvalDenyProject:
-		return agent.ApprovalAnswer{Decision: protocol.ApprovalDeny, Remember: protocol.RememberProject}, true
+		return conversation.ApprovalAnswer{Decision: protocol.ApprovalDeny, Remember: protocol.RememberProject}, true
 	case approvalDenyGlobal:
-		return agent.ApprovalAnswer{Decision: protocol.ApprovalDeny, Remember: protocol.RememberGlobal}, true
+		return conversation.ApprovalAnswer{Decision: protocol.ApprovalDeny, Remember: protocol.RememberGlobal}, true
 	case approvalDenyOnce:
-		return agent.ApprovalAnswer{Decision: protocol.ApprovalDeny}, true
+		return conversation.ApprovalAnswer{Decision: protocol.ApprovalDeny}, true
 	default:
-		return agent.ApprovalAnswer{}, false
+		return conversation.ApprovalAnswer{}, false
 	}
 }
 
-func approvalActionFromAnswer(answer agent.ApprovalAnswer) approvalAction {
+func approvalActionFromAnswer(answer conversation.ApprovalAnswer) approvalAction {
 	if answer.Decision == protocol.ApprovalDeny {
 		switch answer.Remember {
 		case protocol.RememberSession:

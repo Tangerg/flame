@@ -4,31 +4,30 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 func TestInteractionReviewRecordsEditsAndCommitsInRuntimeOrder(t *testing.T) {
-	approval := agent.Approval{
+	approval := conversation.Approval{
 		RunID: "run_1", ItemID: "approval", Title: "Run command", Rememberable: true,
-		Tool: &agent.ToolCall{Kind: agent.ToolShell, Name: "shell", Command: "go test ./...", Status: agent.ToolRunning},
+		Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning},
 	}
-	question := agent.Question{
+	question := conversation.Question{
 		RunID: "run_1", ItemID: "question", Title: "Choose target",
-		Fields: []agent.QuestionField{{Prompt: "Target", Kind: agent.QuestionSingle, Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}}}},
+		Fields: []conversation.QuestionField{{Prompt: "Target", Kind: conversation.QuestionSingle, Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}}}},
 	}
-	review, err := newInteractionReview([]agent.Interaction{approval, question})
+	review, err := newInteractionReview([]conversation.Interaction{approval, question})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if recordErr := review.Record(agent.ApprovalAnswer{Decision: protocol.ApprovalApprove, Remember: protocol.RememberSession}); recordErr != nil {
+	if recordErr := review.Record(conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove, Remember: protocol.RememberSession}); recordErr != nil {
 		t.Fatal(recordErr)
 	}
 	if !review.Advance() {
 		t.Fatal("review did not advance to the question")
 	}
-	if recordErr := review.Record(agent.QuestionAnswer{Values: [][]string{{"linux"}}}); recordErr != nil {
+	if recordErr := review.Record(conversation.QuestionAnswer{Values: [][]string{{"linux"}}}); recordErr != nil {
 		t.Fatal(recordErr)
 	}
 	if review.Advance() || !review.Reviewing() {
@@ -37,7 +36,7 @@ func TestInteractionReviewRecordsEditsAndCommitsInRuntimeOrder(t *testing.T) {
 	if !review.Back() {
 		t.Fatal("review did not return to the final item")
 	}
-	if recordErr := review.Record(agent.QuestionAnswer{Values: [][]string{{"darwin"}}}); recordErr != nil {
+	if recordErr := review.Record(conversation.QuestionAnswer{Values: [][]string{{"darwin"}}}); recordErr != nil {
 		t.Fatal(recordErr)
 	}
 	review.Advance()
@@ -48,22 +47,22 @@ func TestInteractionReviewRecordsEditsAndCommitsInRuntimeOrder(t *testing.T) {
 	if len(responses) != 2 || responses[0].ItemID != "approval" || responses[1].ItemID != "question" {
 		t.Fatalf("responses = %+v", responses)
 	}
-	answer, ok := responses[1].Answer.(agent.QuestionAnswer)
+	answer, ok := responses[1].Answer.(conversation.QuestionAnswer)
 	if !ok || answer.Values[0][0] != "darwin" {
 		t.Fatalf("edited question answer = %#v", responses[1].Answer)
 	}
 }
 
 func TestInteractionReviewRejectsInvalidAnswersAndIncompleteCommit(t *testing.T) {
-	approval := agent.Approval{
+	approval := conversation.Approval{
 		RunID: "run_1", ItemID: "approval", Title: "Read file",
-		Tool: &agent.ToolCall{Kind: agent.ToolRead, Name: "read", Path: "README.md", Status: agent.ToolRunning},
+		Tool: &conversation.ToolCall{Kind: conversation.ToolRead, Name: "read", Path: "README.md", Status: conversation.ToolRunning},
 	}
-	review, err := newInteractionReview([]agent.Interaction{approval})
+	review, err := newInteractionReview([]conversation.Interaction{approval})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := review.Record(agent.QuestionAnswer{}); err == nil {
+	if err := review.Record(conversation.QuestionAnswer{}); err == nil {
 		t.Fatal("invalid answer was accepted")
 	}
 	if _, err := review.Responses(); err == nil {
@@ -72,34 +71,34 @@ func TestInteractionReviewRejectsInvalidAnswersAndIncompleteCommit(t *testing.T)
 }
 
 func TestInteractionReviewRestoresACommittedBatchWithoutSharingAnswers(t *testing.T) {
-	approval := agent.Approval{
+	approval := conversation.Approval{
 		RunID: "run_1", ItemID: "approval", Title: "Run command", Rememberable: true,
-		Tool: &agent.ToolCall{Kind: agent.ToolShell, Name: "shell", Command: "go test ./...", Status: agent.ToolRunning},
+		Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning},
 	}
-	question := agent.Question{
+	question := conversation.Question{
 		RunID: "run_1", ItemID: "question", Title: "Choose target",
-		Fields: []agent.QuestionField{{
-			Prompt: "Target", Kind: agent.QuestionMulti,
+		Fields: []conversation.QuestionField{{
+			Prompt: "Target", Kind: conversation.QuestionMulti,
 			Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}},
 		}},
 	}
-	responses := []agent.InterruptAnswer{
-		{ItemID: approval.ItemID, Answer: agent.ApprovalAnswer{Decision: protocol.ApprovalApprove, Remember: protocol.RememberSession}},
-		{ItemID: question.ItemID, Answer: agent.QuestionAnswer{Values: [][]string{{"linux", "darwin"}}}},
+	responses := []conversation.InterruptAnswer{
+		{ItemID: approval.ItemID, Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove, Remember: protocol.RememberSession}},
+		{ItemID: question.ItemID, Answer: conversation.QuestionAnswer{Values: [][]string{{"linux", "darwin"}}}},
 	}
-	review, err := restoreInteractionReview([]agent.Interaction{approval, question}, responses)
+	review, err := restoreInteractionReview([]conversation.Interaction{approval, question}, responses)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !review.Reviewing() {
 		t.Fatal("restored review is not at its committed summary")
 	}
-	responses[1].Answer.(agent.QuestionAnswer).Values[0][0] = "mutated"
+	responses[1].Answer.(conversation.QuestionAnswer).Values[0][0] = "mutated"
 	committed, err := review.Responses()
 	if err != nil {
 		t.Fatal(err)
 	}
-	answer := committed[1].Answer.(agent.QuestionAnswer)
+	answer := committed[1].Answer.(conversation.QuestionAnswer)
 	if answer.Values[0][0] != "linux" {
 		t.Fatalf("restored answer shares caller storage: %+v", answer.Values)
 	}
@@ -107,19 +106,19 @@ func TestInteractionReviewRestoresACommittedBatchWithoutSharingAnswers(t *testin
 
 func TestInteractionSummaryDisclosesEditedApprovalArguments(t *testing.T) {
 	t.Parallel()
-	approval := agent.Approval{
+	approval := conversation.Approval{
 		RunID: "run_1", ItemID: "approval", Title: "Run command",
-		Tool: &agent.ToolCall{Kind: agent.ToolShell, Name: "shell", Status: agent.ToolRunning},
+		Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Status: conversation.ToolRunning},
 	}
-	override, err := agent.ParseToolArgumentOverride([]byte(`{"command":"echo safe"}`))
+	override, err := conversation.ParseToolArgumentOverride([]byte(`{"command":"echo safe"}`))
 	if err != nil {
 		t.Fatal(err)
 	}
 	review, err := restoreInteractionReview(
-		[]agent.Interaction{approval},
-		[]agent.InterruptAnswer{{
+		[]conversation.Interaction{approval},
+		[]conversation.InterruptAnswer{{
 			ItemID: approval.ItemID,
-			Answer: agent.ApprovalAnswer{
+			Answer: conversation.ApprovalAnswer{
 				Decision: protocol.ApprovalApprove, ArgumentOverride: override,
 			},
 		}},
@@ -137,8 +136,8 @@ func TestInteractionSummaryDisclosesEditedApprovalArguments(t *testing.T) {
 
 func TestInteractionSummaryDisclosesRememberedDenial(t *testing.T) {
 	t.Parallel()
-	approval := agent.Approval{Title: "Delete generated file"}
-	answer := agent.ApprovalAnswer{
+	approval := conversation.Approval{Title: "Delete generated file"}
+	answer := conversation.ApprovalAnswer{
 		Decision: protocol.ApprovalDeny, Remember: protocol.RememberProject, Reason: "preserve fixtures",
 	}
 	got := summarizeInteraction(approval, answer)

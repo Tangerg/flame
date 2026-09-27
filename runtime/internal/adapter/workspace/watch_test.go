@@ -15,6 +15,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
+	"github.com/Tangerg/flame/runtime/internal/infra/git"
 )
 
 type gitFailureSignal struct{ failed chan struct{} }
@@ -30,7 +31,7 @@ func (s gitFailureSignal) Write(data []byte) (int, error) {
 }
 
 func TestGitWatchRetriesFailedSamplingWithoutAnotherEvent(t *testing.T) {
-	if !GitAvailable() {
+	if !git.Available() {
 		t.Skip("git not on PATH")
 	}
 	root := t.TempDir()
@@ -90,7 +91,7 @@ func TestGitWatchRetriesFailedSamplingWithoutAnotherEvent(t *testing.T) {
 }
 
 func TestGitWatchReportsBackendTermination(t *testing.T) {
-	if !GitAvailable() {
+	if !git.Available() {
 		t.Skip("git not on PATH")
 	}
 	root := t.TempDir()
@@ -112,7 +113,7 @@ func TestGitWatchReportsBackendTermination(t *testing.T) {
 }
 
 func TestGitWatcherAllowsNonRepositoryRoot(t *testing.T) {
-	if !GitAvailable() {
+	if !git.Available() {
 		t.Skip("git not on PATH")
 	}
 	root := t.TempDir()
@@ -139,7 +140,7 @@ func TestGitWatcherPreservesRegistrationCancellation(t *testing.T) {
 }
 
 func TestGitWatcherRejectsCorruptRepositoryConfiguration(t *testing.T) {
-	if !GitAvailable() {
+	if !git.Available() {
 		t.Skip("git not on PATH")
 	}
 	root := t.TempDir()
@@ -173,7 +174,7 @@ func TestGitWatcherRejectsCorruptRepositoryConfiguration(t *testing.T) {
 }
 
 func TestGitWatcherIgnoresIndexStatRefreshButPublishesStageChange(t *testing.T) {
-	if !GitAvailable() {
+	if !git.Available() {
 		t.Skip("git not on PATH")
 	}
 	root := t.TempDir()
@@ -205,7 +206,7 @@ func TestGitWatcherIgnoresIndexStatRefreshButPublishesStageChange(t *testing.T) 
 	// This compound read makes Git refresh index stat data on versions where
 	// diff treats that refresh as mandatory. The physical index replacement is
 	// not a staged/HEAD change and must stay below the watcher abstraction.
-	if _, err := ListChanges(t.Context(), root, 10_000); err != nil {
+	if _, err := git.ListChanges(t.Context(), root, 10_000); err != nil {
 		t.Fatalf("ListChanges: %v", err)
 	}
 	select {
@@ -226,7 +227,7 @@ func TestGitWatcherIgnoresIndexStatRefreshButPublishesStageChange(t *testing.T) 
 }
 
 func TestGitWatcherResolvesRepositoryFromNestedWorkspace(t *testing.T) {
-	if !GitAvailable() {
+	if !git.Available() {
 		t.Skip("git not on PATH")
 	}
 	root := t.TempDir()
@@ -263,7 +264,7 @@ func TestGitWatcherResolvesRepositoryFromNestedWorkspace(t *testing.T) {
 }
 
 func TestGitWatcherKeepsDistinctScopesWithinOneRepository(t *testing.T) {
-	if !GitAvailable() {
+	if !git.Available() {
 		t.Skip("git not on PATH")
 	}
 	root := t.TempDir()
@@ -304,7 +305,7 @@ func TestGitWatcherKeepsDistinctScopesWithinOneRepository(t *testing.T) {
 }
 
 func TestGitWatcherObservesLinkedWorktreeFromNestedWorkspace(t *testing.T) {
-	if !GitAvailable() {
+	if !git.Available() {
 		t.Skip("git not on PATH")
 	}
 	base := t.TempDir()
@@ -367,7 +368,7 @@ func TestGitWatcherObservesLinkedWorktreeFromNestedWorkspace(t *testing.T) {
 }
 
 func TestGitWatcherIgnoresAmbientRepositoryRouting(t *testing.T) {
-	if !GitAvailable() {
+	if !git.Available() {
 		t.Skip("git not on PATH")
 	}
 	root := t.TempDir()
@@ -407,7 +408,7 @@ func gitCommand(t *testing.T, dir string, args ...string) {
 }
 
 func TestGitWatcherRejectsUnreadableInitialIndex(t *testing.T) {
-	if !GitAvailable() {
+	if !git.Available() {
 		t.Skip("git not on PATH")
 	}
 	root := t.TempDir()
@@ -426,7 +427,7 @@ func TestGitWatcherRejectsUnreadableInitialIndex(t *testing.T) {
 }
 
 func TestGitObservationFailurePreservesLastSuccessfulState(t *testing.T) {
-	if !GitAvailable() {
+	if !git.Available() {
 		t.Skip("git not on PATH")
 	}
 	root := t.TempDir()

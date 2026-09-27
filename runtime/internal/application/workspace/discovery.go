@@ -205,7 +205,7 @@ type AgentDocFinder interface {
 // AgentDocs returns the unique instruction-document cascade for one workspace in
 // home, project-root, and cwd render phases.
 func (d *Discovery) AgentDocs(ctx context.Context, cwd string) ([]AgentDoc, error) {
-	root, err := d.scope.root(cwd)
+	root, err := d.scope.ResolveRoot(cwd)
 	if err != nil {
 		return nil, err
 	}

@@ -69,7 +69,7 @@ describe("message feedback generation", () => {
     const inFlight = rejected(submitMessageFeedback(target, "positive"));
     const queued = rejected(submitMessageFeedback(target, "negative"));
     await vi.waitFor(() => expect(createMessageFeedback).toHaveBeenCalledOnce());
-    owner.replaceRuntimeGeneration();
+    owner.replaceRuntimeGeneration(() => ({ createMessageFeedback }));
 
     await expect(inFlight).resolves.toMatchObject({
       message: "message_feedback_generation_retired",

@@ -2,7 +2,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { resetContainer, setContainer } from "@/main/container";
 import { createFlameClient } from "@flame/runtime-contract/client";
 import { createMemoryTransport } from "@flame/runtime-contract/client/transports/memory";
 import { respondSuccess } from "@flame/runtime-contract/client/transports/memory.testkit";
@@ -35,8 +34,8 @@ beforeEach(() => {
   });
   transport = createMemoryTransport();
   client = createFlameClient(transport);
-  setContainer({ client: () => client });
-  restoreGateway = installUsageGateway();
+  const runtimeClient = () => client;
+  restoreGateway = installUsageGateway(() => runtimeClient());
 });
 
 afterEach(async () => {
@@ -46,7 +45,7 @@ afterEach(async () => {
   restoreGateway = undefined;
   queryClient.clear();
   await client.close();
-  await resetContainer();
+
   vi.restoreAllMocks();
 });
 

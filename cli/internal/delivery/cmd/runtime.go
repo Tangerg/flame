@@ -11,32 +11,41 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/application/mutation"
+	"github.com/Tangerg/flame/cli/internal/delivery/cmd/render"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/spf13/cobra"
-
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
-	"github.com/Tangerg/flame/cli/internal/delivery/cmd/render"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
+
+// RuntimeProfile is the immutable negotiated view used for command admission
+// and runtime-info presentation. Runtime binding owns its construction.
+type RuntimeProfile interface {
+	mutation.ReplayProfile
+	Discovery() protocol.DiscoverResponse
+	ClientCapabilities() *protocol.ClientCapabilities
+	Supports(string) bool
+}
 
 // Runtime is the command delivery surface consumed across the Cobra tree.
 // Individual command implementations still accept narrower local interfaces
 // when they need only one operation.
 type Runtime interface {
-	PrepareInput(context.Context, agent.Message) ([]protocol.ContentBlock, error)
-	ListSessions(context.Context, agent.SessionQuery) (agent.SessionPage, error)
-	GetSession(context.Context, string) (agent.SessionSnapshot, error)
-	CreateSession(context.Context, agent.CreateSession) (agent.Session, error)
-	UpdateSession(context.Context, agent.UpdateSession) (agent.Session, error)
-	ForkSession(context.Context, agent.ForkSession) (agent.Session, error)
-	DeleteSession(context.Context, agent.DeleteSession) error
-	GetRun(context.Context, string) (agent.Run, error)
-	ListRuns(context.Context, agent.RunQuery) (agent.RunPage, error)
-	StartRun(context.Context, agent.StartRun) (agent.SegmentStream, error)
-	ResumeRun(context.Context, agent.ResumeRun) (agent.SegmentStream, error)
-	SubscribeRun(context.Context, agent.SubscribeRun) (agent.SegmentStream, error)
-	SteerRun(context.Context, agent.SteerRun) (protocol.SteerRunResponse, error)
-	CancelRun(context.Context, agent.CancelRun) (agent.RunCancellation, error)
+	PrepareInput(context.Context, prompt.Message) ([]protocol.ContentBlock, error)
+	ListSessions(context.Context, conversation.SessionQuery) (conversation.SessionPage, error)
+	GetSession(context.Context, string) (conversation.SessionSnapshot, error)
+	CreateSession(context.Context, conversation.CreateSession) (conversation.Session, error)
+	UpdateSession(context.Context, conversation.UpdateSession) (conversation.Session, error)
+	ForkSession(context.Context, conversation.ForkSession) (conversation.Session, error)
+	DeleteSession(context.Context, conversation.DeleteSession) error
+	GetRun(context.Context, string) (conversation.Run, error)
+	ListRuns(context.Context, conversation.RunQuery) (conversation.RunPage, error)
+	StartRun(context.Context, prompt.StartRun) (conversation.SegmentStream, error)
+	ResumeRun(context.Context, conversation.ResumeRun) (conversation.SegmentStream, error)
+	SubscribeRun(context.Context, conversation.SubscribeRun) (conversation.SegmentStream, error)
+	SteerRun(context.Context, prompt.SteerRun) (protocol.SteerRunResponse, error)
+	CancelRun(context.Context, conversation.CancelRun) (conversation.RunCancellation, error)
 	ListApprovalRules(context.Context, string) ([]protocol.ApprovalRule, error)
 	DeleteApprovalRule(context.Context, string) error
 }
@@ -65,16 +74,19 @@ func newRuntimeInfoCommand(provider runtimeProvider) *cobra.Command {
 				return errors.New("runtime discovery profile is unavailable")
 			}
 			if asJSON {
-				return render.WriteJSONLine(cmd.OutOrStdout(), *profile)
+				return render.WriteJSONLine(cmd.OutOrStdout(), struct {
+					Discovery          protocol.DiscoverResponse    `json:"discovery"`
+					ClientCapabilities *protocol.ClientCapabilities `json:"clientCapabilities,omitzero"`
+				}{profile.Discovery(), profile.ClientCapabilities()})
 			}
-			return writeRuntimeProfile(cmd.OutOrStdout(), *profile)
+			return writeRuntimeProfile(cmd.OutOrStdout(), profile)
 		},
 	}
 	command.Flags().BoolVar(&asJSON, "json", false, "Write the complete profile as JSON")
 	return command
 }
 
-func writeRuntimeProfile(output io.Writer, profile runtimebinding.Profile) error {
+func writeRuntimeProfile(output io.Writer, profile RuntimeProfile) error {
 	writer := tabwriter.NewWriter(output, 0, 0, 2, ' ', 0)
 	discovery := profile.Discovery()
 	capabilities := discovery.Capabilities

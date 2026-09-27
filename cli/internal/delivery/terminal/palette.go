@@ -4,6 +4,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Tangerg/flame/cli/internal/application/extensions"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/keymap"
@@ -13,7 +14,7 @@ import (
 type commandPaletteItem struct {
 	command      headless.Command
 	category     string
-	availability CommandAvailability
+	availability extensions.CommandAvailability
 }
 
 func (a *app) buildCommandPalette(theme kit.Theme, glyphs kit.Glyphs) {

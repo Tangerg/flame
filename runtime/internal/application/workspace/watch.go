@@ -62,7 +62,7 @@ func (w *Watch) Watch(scopes []WatchScope, notify func(ObservationChange), repor
 		if total > MaxWatchPaths {
 			return nil, fmt.Errorf("%w: at most %d paths per subscription", ErrWatchLimit, MaxWatchPaths)
 		}
-		root, err := w.scope.root(candidate.Root)
+		root, err := w.scope.ResolveRoot(candidate.Root)
 		if err != nil {
 			return nil, err
 		}

@@ -3,10 +3,9 @@ package terminal
 import (
 	"strings"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/core/input"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 type attentionPriority uint8
@@ -104,20 +103,20 @@ func (a *app) setWindowTitle() {
 	a.loop.Session().SetTitle(title)
 }
 
-func interactionAttention(interactions []agent.Interaction) attentionSignal {
+func interactionAttention(interactions []conversation.Interaction) attentionSignal {
 	message := "flame needs your input"
 	if len(interactions) == 1 {
 		switch interactions[0].(type) {
-		case agent.Approval:
+		case conversation.Approval:
 			message = "flame needs tool approval"
-		case agent.Question:
+		case conversation.Question:
 			message = "flame has a question"
 		}
 	}
 	return attentionSignal{priority: attentionActionRequired, marker: "action required", notification: message}
 }
 
-func outcomeAttention(outcome agent.Outcome) attentionSignal {
+func outcomeAttention(outcome conversation.Outcome) attentionSignal {
 	notification := outcomeNotification(outcome)
 	if notification == "" {
 		return attentionSignal{}

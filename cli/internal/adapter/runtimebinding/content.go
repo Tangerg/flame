@@ -13,10 +13,10 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Tangerg/flame/runtime/protocol"
-
 	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/fileinput"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 type attachmentTooLargeError struct {
@@ -102,7 +102,7 @@ func (c contextReader) Read(buffer []byte) (int, error) {
 }
 
 // PrepareInput materializes files before a workflow binds content to a command.
-func (r *Connection) PrepareInput(ctx context.Context, message agent.Message) ([]protocol.ContentBlock, error) {
+func (r *Connection) PrepareInput(ctx context.Context, message prompt.Message) ([]protocol.ContentBlock, error) {
 	if err := message.Validate(); err != nil {
 		return nil, err
 	}
@@ -117,7 +117,7 @@ func (r *Connection) PrepareInput(ctx context.Context, message agent.Message) ([
 		if err := context.Cause(ctx); err != nil {
 			return nil, err
 		}
-		data, err := r.loadAttachment(ctx, attachment.Path, agent.MaxAttachmentBytes)
+		data, err := r.loadAttachment(ctx, attachment.Path, prompt.MaxAttachmentBytes)
 		if err != nil {
 			return nil, fmt.Errorf("read attachment %q: %w", attachment.Name, err)
 		}
@@ -145,7 +145,7 @@ func (r *Connection) PrepareInput(ctx context.Context, message agent.Message) ([
 	return blocks, nil
 }
 
-func (r *Connection) requireInputCapabilities(message agent.Message) error {
+func (r *Connection) requireInputCapabilities(message prompt.Message) error {
 	for _, attachment := range message.Attachments {
 		if attachment.Kind == protocol.ContentBlockImage {
 			return r.requireFeature(protocol.FeatureMultimodal)
@@ -154,26 +154,26 @@ func (r *Connection) requireInputCapabilities(message agent.Message) error {
 	return nil
 }
 
-func projectContent(itemID string, content []protocol.ContentBlock) (string, []agent.Attachment, error) {
+func projectContent(itemID string, content []protocol.ContentBlock) (string, []prompt.Attachment, error) {
 	projected, err := projectContentValue(itemID, content)
 	return projected.text, projected.attachments, err
 }
 
-func projectAssistantContent(itemID string, content []protocol.ContentBlock) (string, []agent.InlineImage, error) {
+func projectAssistantContent(itemID string, content []protocol.ContentBlock) (string, []conversation.InlineImage, error) {
 	projected, err := projectContentValue(itemID, content)
 	return projected.text, projected.images, err
 }
 
 type contentProjection struct {
 	text        string
-	attachments []agent.Attachment
-	images      []agent.InlineImage
+	attachments []prompt.Attachment
+	images      []conversation.InlineImage
 }
 
 func projectContentValue(itemID string, content []protocol.ContentBlock) (contentProjection, error) {
 	textParts := make([]string, 0, len(content))
-	attachments := make([]agent.Attachment, 0, len(content))
-	images := make([]agent.InlineImage, 0, len(content))
+	attachments := make([]prompt.Attachment, 0, len(content))
+	images := make([]conversation.InlineImage, 0, len(content))
 	for index, block := range content {
 		switch block.Type {
 		case protocol.ContentBlockText:
@@ -189,11 +189,11 @@ func projectContentValue(itemID string, content []protocol.ContentBlock) (conten
 			} else if subtype := strings.TrimPrefix(block.Mime, "image/"); subtype != block.Mime && subtype != "" {
 				name += "." + filepath.Base(subtype)
 			}
-			attachments = append(attachments, agent.Attachment{
+			attachments = append(attachments, prompt.Attachment{
 				ID: fmt.Sprintf("%s:image:%d", itemID, index), Kind: protocol.ContentBlockImage,
 				Name: name, MimeType: block.Mime, Size: int64(len(data)),
 			})
-			images = append(images, agent.InlineImage{
+			images = append(images, conversation.InlineImage{
 				ID: fmt.Sprintf("%s:image:%d", itemID, index), Name: name, MIMEType: block.Mime, Data: data,
 			})
 		default:

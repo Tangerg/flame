@@ -8,10 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/protocol"
-
 	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestRuntimeInfoWritesCompleteHumanAndMachineProfiles(t *testing.T) {
@@ -56,7 +55,7 @@ func TestRuntimeInfoWritesCompleteHumanAndMachineProfiles(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			var output bytes.Buffer
-			root := NewRoot(Dependencies{OpenRuntime: func(context.Context, string) (Runtime, *runtimebinding.Profile, error) {
+			root := NewRoot(Dependencies{OpenRuntime: func(context.Context, string) (Runtime, RuntimeProfile, error) {
 				return runtimefixture.New(), new(profile), nil
 			}})
 			root.SetOut(&output)

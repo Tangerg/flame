@@ -47,7 +47,7 @@ import {
   surface,
   type as typeStep,
 } from "@/styles/tokens.stylex";
-import { chatStyles as ct } from "../../../chatStyles";
+import { chatStyles as ct } from "@/ui/agent/chatStyles";
 import { messageStyles as ms } from "../messageStyles";
 import { vocab } from "@/ui";
 

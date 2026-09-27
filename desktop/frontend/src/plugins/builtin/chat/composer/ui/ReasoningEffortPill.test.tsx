@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { SelectableModel } from "@/plugins/builtin/settings/providers/public/queries";
+import { SelectableModel } from "@/plugins/builtin/providers/public/queries";
 import { ReasoningEffortPill } from "./ReasoningEffortPill";
 
 const state = vi.hoisted(() => ({

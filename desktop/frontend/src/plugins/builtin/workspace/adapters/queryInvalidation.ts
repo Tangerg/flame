@@ -16,7 +16,7 @@ import {
   MODELS_KEY,
   PROVIDERS_KEY,
   UTILITY_ROLE_KEY,
-} from "@/plugins/builtin/settings/providers/public/queries";
+} from "@/plugins/builtin/providers/public/queries";
 import {
   MCP_SERVERS_KEY,
   MCP_TOOLS_KEY,

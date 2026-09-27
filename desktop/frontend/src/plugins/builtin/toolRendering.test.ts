@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { TOOL_ICON_BY_NAME } from "@/lib/toolFamilies";
 import { lookupExtensionByKey, TOOL_PREVIEW } from "@/plugins/sdk";
-import { toolPreviewPlugins } from "./index";
+import { toolPreviewPlugins } from "@/main/builtinPlugins";
 import { GOAL_STANDING_TOOLS } from "./chat/goal";
 import { PLAN_STANDING_TOOLS } from "./chat/plan-progress";
 import { SCHEDULE_STANDING_TOOLS } from "./settings/schedules";

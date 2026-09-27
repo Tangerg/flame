@@ -7,23 +7,24 @@ import (
 	"math"
 	"strings"
 
+	"github.com/Tangerg/flame/cli/internal/application/extensions"
 	"github.com/Tangerg/oolong/components/headless"
 )
 
 type registeredCommand struct {
 	category  string
-	arguments ArgumentMode
+	arguments extensions.ArgumentMode
 	run       func(string)
-	evaluate  func(*app) CommandAvailability
+	evaluate  func(*app) extensions.CommandAvailability
 }
 
-func (r registeredCommand) availability(host *app) (availability CommandAvailability) {
+func (r registeredCommand) availability(host *app) (availability extensions.CommandAvailability) {
 	if r.evaluate == nil {
-		return CommandAvailable()
+		return extensions.CommandAvailable()
 	}
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			availability = CommandUnavailable(fmt.Sprintf("availability check panicked: %v", recovered))
+			availability = extensions.CommandUnavailable(fmt.Sprintf("availability check panicked: %v", recovered))
 		}
 	}()
 	return r.evaluate(host)
@@ -41,8 +42,8 @@ func (c *commandCatalog) reset() {
 	}
 }
 
-func (c *commandCatalog) add(owner string, descriptor CommandDescriptor, run func(string), evaluate func(*app) CommandAvailability) error {
-	for _, identity := range descriptor.identities() {
+func (c *commandCatalog) add(owner string, descriptor extensions.CommandDescriptor, run func(string), evaluate func(*app) extensions.CommandAvailability) error {
+	for _, identity := range descriptor.Identities() {
 		if existing, _, found := c.index.Lookup(identity); found {
 			return fmt.Errorf("plugin %s command /%s conflicts with /%s", owner, descriptor.Name, existing.Name)
 		}
@@ -50,7 +51,7 @@ func (c *commandCatalog) add(owner string, descriptor CommandDescriptor, run fun
 	c.index.Add(headless.Command{
 		Name: descriptor.Name, Title: descriptor.Title, Aliases: descriptor.Aliases,
 	}, registeredCommand{
-		category: descriptor.category(), arguments: descriptor.Arguments, run: run, evaluate: evaluate,
+		category: descriptor.CategoryLabel(), arguments: descriptor.Arguments, run: run, evaluate: evaluate,
 	})
 	return nil
 }
@@ -92,18 +93,18 @@ func (c *commandCatalog) category(name string) string {
 	return command.category
 }
 
-func (c *commandCatalog) arguments(name string) ArgumentMode {
+func (c *commandCatalog) arguments(name string) extensions.ArgumentMode {
 	_, command, found := c.index.Lookup(name)
 	if !found {
-		return NoArguments
+		return extensions.NoArguments
 	}
 	return command.arguments
 }
 
-func (c *commandCatalog) availability(name string, host *app) CommandAvailability {
+func (c *commandCatalog) availability(name string, host *app) extensions.CommandAvailability {
 	_, command, found := c.index.Lookup(name)
 	if !found {
-		return CommandAvailable()
+		return extensions.CommandAvailable()
 	}
 	return command.availability(host)
 }
@@ -127,17 +128,17 @@ func (a *app) registerCommands() {
 			a.message(err.Error())
 		}
 	}
-	for _, contributed := range a.registry.OwnedValues(SlashCommands) {
+	for _, contributed := range a.registry.OwnedValues(extensions.SlashCommands) {
 		command := contributed.Value
 		pluginID := contributed.PluginID
-		if err := command.validate(); err != nil {
+		if err := command.Validate(); err != nil {
 			a.message("plugin " + pluginID + ": " + err.Error())
 			continue
 		}
-		var evaluate func(*app) CommandAvailability
+		var evaluate func(*app) extensions.CommandAvailability
 		if command.Available != nil {
-			evaluate = func(host *app) CommandAvailability {
-				request := CommandRequest{
+			evaluate = func(host *app) extensions.CommandAvailability {
+				request := extensions.CommandRequest{
 					Workspace: host.session.current.Workspace.Path, SessionID: host.session.current.ID,
 					LocalDirectory: authoringDirectory(host.localDirectory, host.session.current.Workspace.Path),
 				}
@@ -222,10 +223,10 @@ func (r *commandOperationRegistry) take(pluginIDs ...string) []commandOperation 
 	return operations
 }
 
-func (a *app) executeCommand(pluginID string, command SlashCommand, argument string) {
+func (a *app) executeCommand(pluginID string, command extensions.SlashCommand, argument string) {
 	name := command.Descriptor.Name
 	a.status.note("running /" + name)
-	request := CommandRequest{
+	request := extensions.CommandRequest{
 		Argument: argument, Workspace: a.session.current.Workspace.Path, SessionID: a.session.current.ID,
 		LocalDirectory: authoringDirectory(a.localDirectory, a.session.current.Workspace.Path),
 	}
@@ -269,7 +270,7 @@ func (a *app) cancelPluginCommands(pluginIDs ...string) {
 	}
 }
 
-func executeCommandSafely(ctx context.Context, command SlashCommand, request CommandRequest) (result CommandResult, err error) {
+func executeCommandSafely(ctx context.Context, command extensions.SlashCommand, request extensions.CommandRequest) (result extensions.CommandResult, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			err = fmt.Errorf("command /%s panicked: %v", command.Descriptor.Name, recovered)

@@ -109,6 +109,15 @@ Provider selection is either an exact provider/model pair or absent. Absence mea
 
 [`ARCHITECTURE.md`](ARCHITECTURE.md) defines ownership, dependency direction, Runtime isolation, command construction, terminal state, and local authoring. Mandatory module rules live in [Module instructions](#module-instructions) below.
 
+The directory map follows ownership. `domain/authoring/{prompt,queue,replay}` holds
+pure local intent, while `domain/conversation` folds Runtime facts for presentation.
+`application/workbench` commits authoring and outbox transactions; terminal code
+commands that owner instead of coordinating durable and live queue state itself.
+`application/mutation` shares exact replay admission across Run and Session
+workflows. Root composition opens Workbench lazily and supplies consumer-owned
+Runtime ports. Executable plugins live in `adapter/sideload`, with command contracts
+in `application/extensions` and Oolong presentation contributions in terminal.
+
 ## Verify
 
 ```sh

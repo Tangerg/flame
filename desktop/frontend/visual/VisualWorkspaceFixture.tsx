@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from "react";
 import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
-import { ChatPanel } from "@/plugins/builtin/shell/kernel/panel/ChatPanel";
+import { ChatPanel } from "@/plugins/builtin/shell/workbench/panel/ChatPanel";
 import { AppToaster } from "@/plugins/builtin/shell/toaster";
 import {
   useActiveWorkspaceViewId,

@@ -7,7 +7,8 @@ import (
 	"slices"
 	"time"
 
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/domain/failure"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -32,7 +33,7 @@ func NewNDJSON(w io.Writer) *NDJSON {
 
 // Begin binds the stream to the accepted run without emitting a synthetic
 // event. The runtime's segment.started event remains the first output frame.
-func (n *NDJSON) Begin(run agent.Run, _ agent.RunOptions) error {
+func (n *NDJSON) Begin(run conversation.Run, _ prompt.RunOptions) error {
 	if n.err != nil {
 		return n.err
 	}
@@ -215,11 +216,11 @@ type modelUsageJSON struct {
 }
 
 // Render writes one line. As with [Text], the first error sticks.
-func (n *NDJSON) Render(envelope agent.RunEvent) error {
+func (n *NDJSON) Render(envelope conversation.RunEvent) error {
 	if n.err != nil {
 		return n.err
 	}
-	if err := agent.ValidateEvent(envelope.Event); err != nil {
+	if err := conversation.ValidateEvent(envelope.Event); err != nil {
 		n.err = fmt.Errorf("render NDJSON event: %w", err)
 		return n.err
 	}
@@ -243,7 +244,7 @@ func (n *NDJSON) Render(envelope agent.RunEvent) error {
 // Reconcile emits a replacement snapshot frame. Unlike a runtime event it has
 // no eventId: consumers replace their durable projection with this frame, then
 // continue folding later segment events on top.
-func (n *NDJSON) Reconcile(snapshot agent.SessionSnapshot) error {
+func (n *NDJSON) Reconcile(snapshot conversation.SessionSnapshot) error {
 	if n.err != nil {
 		return n.err
 	}
@@ -284,30 +285,30 @@ func (n *NDJSON) Reconcile(snapshot agent.SessionSnapshot) error {
 		frame.Interactions = encodeInteractions(snapshot.Interactions)
 	}
 	if target.Status == protocol.RunStatusFinished {
-		finished := encodeFinishedFrame(agent.RunFinished{Outcome: target.Outcome, Usage: target.Usage})
+		finished := encodeFinishedFrame(conversation.RunFinished{Outcome: target.Outcome, Usage: target.Usage})
 		frame.Outcome, frame.Usage = finished.Outcome, finished.Usage
 	}
 	n.err = WriteJSONLine(n.out, frame)
 	return n.err
 }
 
-func encodeEventFrame(envelope agent.RunEvent) (eventRecord, error) {
+func encodeEventFrame(envelope conversation.RunEvent) (eventRecord, error) {
 	switch event := envelope.Event.(type) {
-	case agent.SegmentStarted:
+	case conversation.SegmentStarted:
 		return eventRecord{
 			Type: "segment.started", RunID: event.Run.ID, SessionID: event.Run.SessionID,
 			SpawnedByBlockID: event.Run.Lineage.SpawnedByBlockID(),
 			ParentRunID:      event.Run.Lineage.ParentRunID(), RootRunID: event.Run.Lineage.RootRunID(),
 		}, nil
-	case agent.BlockStarted:
+	case conversation.BlockStarted:
 		return eventRecord{Type: "block.started", Block: encodeBlock(event.Block)}, nil
-	case agent.BlockDelta:
+	case conversation.BlockDelta:
 		return eventRecord{
 			Type: "block.delta", BlockID: event.BlockID, Text: event.Text,
 		}, nil
-	case agent.ToolArgumentsDelta:
+	case conversation.ToolArgumentsDelta:
 		return eventRecord{Type: "tool.arguments.delta", BlockID: event.BlockID, Text: event.Text}, nil
-	case agent.RunProgress:
+	case conversation.RunProgress:
 		frame := eventRecord{
 			Type: "run.progress", Step: event.Step, ContextTokens: event.ContextTokens, Activity: event.Activity,
 		}
@@ -315,24 +316,24 @@ func encodeEventFrame(envelope agent.RunEvent) (eventRecord, error) {
 			frame.Usage = encodeUsage(*event.Usage)
 		}
 		return frame, nil
-	case agent.CustomEvent:
+	case conversation.CustomEvent:
 		return eventRecord{Type: "custom", Name: event.Name, Payload: jsontext.Value(event.PayloadJSON)}, nil
-	case agent.BlockCompleted:
+	case conversation.BlockCompleted:
 		return eventRecord{Type: "block.completed", Block: encodeBlock(event.Block)}, nil
-	case agent.PlanChanged:
+	case conversation.PlanChanged:
 		return eventRecord{Type: "plan.changed", Revision: event.Plan.State.Revision, Plan: encodePlan(event.Plan.State.Steps)}, nil
-	case agent.RunInterrupted:
+	case conversation.RunInterrupted:
 		return eventRecord{Type: "run.interrupted", Interactions: encodeInteractions(event.Interactions), Usage: encodeUsage(event.Usage)}, nil
-	case agent.RunSuspended:
+	case conversation.RunSuspended:
 		return eventRecord{Type: "run.suspended", Usage: encodeUsage(event.Usage)}, nil
-	case agent.RunFinished:
+	case conversation.RunFinished:
 		return encodeFinishedFrame(event), nil
 	default:
 		return eventRecord{}, fmt.Errorf("render NDJSON event: unsupported event %T", envelope.Event)
 	}
 }
 
-func encodeFinishedFrame(event agent.RunFinished) eventRecord {
+func encodeFinishedFrame(event conversation.RunFinished) eventRecord {
 	return eventRecord{
 		Type:    "run.finished",
 		Outcome: encodeOutcome(event.Outcome),
@@ -340,7 +341,7 @@ func encodeFinishedFrame(event agent.RunFinished) eventRecord {
 	}
 }
 
-func encodeOutcome(outcome agent.Outcome) *outcomeJSON {
+func encodeOutcome(outcome conversation.Outcome) *outcomeJSON {
 	errorText := ""
 	if outcome.Problem != nil {
 		errorText = failure.Message(outcome.Problem, "")
@@ -351,7 +352,7 @@ func encodeOutcome(outcome agent.Outcome) *outcomeJSON {
 	}
 }
 
-func encodeUsage(usage agent.Usage) *usageJSON {
+func encodeUsage(usage conversation.Usage) *usageJSON {
 	encoded := &usageJSON{
 		InputTokens:      usage.InputTokens,
 		OutputTokens:     usage.OutputTokens,
@@ -382,7 +383,7 @@ func cloneFloat64(value *float64) *float64 {
 	return new(*value)
 }
 
-func encodeRunOptions(options agent.RunOptions) *runOptionsJSON {
+func encodeRunOptions(options prompt.RunOptions) *runOptionsJSON {
 	options = options.Clone()
 	return &runOptionsJSON{
 		Provider: options.Provider, Model: options.Model, ReasoningEffort: options.ReasoningEffort,
@@ -400,7 +401,7 @@ func encodeGenerationParams(params protocol.GenerationParams) *generationParamsJ
 	}
 }
 
-func encodeInteractions(interactions []agent.Interaction) []interactionJSON {
+func encodeInteractions(interactions []conversation.Interaction) []interactionJSON {
 	out := make([]interactionJSON, 0, len(interactions))
 	for _, interaction := range interactions {
 		if encoded := encodeInteraction(interaction); encoded != nil {
@@ -410,18 +411,18 @@ func encodeInteractions(interactions []agent.Interaction) []interactionJSON {
 	return out
 }
 
-func encodeInteraction(interaction agent.Interaction) *interactionJSON {
+func encodeInteraction(interaction conversation.Interaction) *interactionJSON {
 	switch item := interaction.(type) {
-	case agent.Approval:
+	case conversation.Approval:
 		return &interactionJSON{
 			Kind: "approval", RunID: item.RunID, ItemID: item.ItemID, Title: item.Title,
 			Detail: item.Detail, Tool: encodeTool(item.Tool), Diff: item.Diff, Risk: string(item.Risk),
 			RuleHint: item.RuleHint, Rememberable: item.Rememberable,
 		}
-	case agent.Question:
+	case conversation.Question:
 		out := &interactionJSON{
 			Kind: "question", RunID: item.RunID, ItemID: item.ItemID,
-			Title: item.Title, Detail: item.Detail, Answers: agent.CloneAnswers(item.Answers),
+			Title: item.Title, Detail: item.Detail, Answers: conversation.CloneAnswers(item.Answers),
 		}
 		for _, field := range item.Fields {
 			encoded := questionFieldJSON{
@@ -445,7 +446,7 @@ func encodeInteraction(interaction agent.Interaction) *interactionJSON {
 // is encoded per event.
 func (n *NDJSON) Close() error { return n.err }
 
-func encodeBlock(b agent.Block) *blockFrame {
+func encodeBlock(b conversation.Block) *blockFrame {
 	out := &blockFrame{
 		ID: b.ID, RunID: b.RunID, Status: string(b.Status), Kind: string(b.Kind),
 		CreatedAt: b.CreatedAt, Redacted: b.Redacted, DroppedMessages: b.DroppedMessages, Text: b.Text,
@@ -471,7 +472,7 @@ func encodeBlock(b agent.Block) *blockFrame {
 	return out
 }
 
-func encodeTool(tool *agent.ToolCall) *toolFrame {
+func encodeTool(tool *conversation.ToolCall) *toolFrame {
 	if tool == nil {
 		return nil
 	}

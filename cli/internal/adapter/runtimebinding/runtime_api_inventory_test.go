@@ -6,11 +6,10 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/Tangerg/flame/cli/internal/application/changefeed"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/application/changefeed"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 func TestRuntimeAPIInventoryHasNoUnreviewedMethods(t *testing.T) {
@@ -160,7 +159,7 @@ func TestDiscoveryRejectsUnprojectedStreamAndChangeCapabilities(t *testing.T) {
 			t.Parallel()
 			discovery := compatibleDiscovery()
 			test.mutate(discovery)
-			if err := validateDiscovery(discovery); !errors.Is(err, agent.ErrIncompatibleRuntime) {
+			if err := validateDiscovery(discovery); !errors.Is(err, conversation.ErrIncompatibleRuntime) {
 				t.Fatalf("validateDiscovery = %v, want ErrIncompatibleRuntime", err)
 			}
 		})

@@ -81,7 +81,7 @@ func NewSkills(scope *Scope, catalog SkillCatalog, curator SkillCurator, proposa
 // List enumerates the one precedence-resolved Skill per name visible from cwd,
 // ordered by name.
 func (s *Skills) List(ctx context.Context, cwd string) (SkillDiscovery, error) {
-	root, err := s.scope.root(cwd)
+	root, err := s.scope.ResolveRoot(cwd)
 	if err != nil {
 		return SkillDiscovery{}, err
 	}
@@ -127,7 +127,7 @@ func (s *Skills) Get(ctx context.Context, cwd, name string) (SkillDetail, error)
 	if err := skills.ValidateName(name); err != nil {
 		return SkillDetail{}, err
 	}
-	root, err := s.scope.root(cwd)
+	root, err := s.scope.ResolveRoot(cwd)
 	if err != nil {
 		return SkillDetail{}, err
 	}
@@ -201,7 +201,7 @@ func (s *Skills) SubmitProposal(ctx context.Context, cwd string, proposal skills
 	if err := proposal.Validate(); err != nil {
 		return skills.ProposalRef{}, err
 	}
-	root, err := s.scope.root(cwd)
+	root, err := s.scope.ResolveRoot(cwd)
 	if err != nil {
 		return skills.ProposalRef{}, err
 	}
@@ -225,7 +225,7 @@ func (s *Skills) SubmitProposal(ctx context.Context, cwd string, proposal skills
 // Proposals returns the current immutable Skill proposals visible from cwd,
 // ordered by scope and name.
 func (s *Skills) Proposals(ctx context.Context, cwd string) ([]skills.ProposalReview, error) {
-	root, err := s.scope.root(cwd)
+	root, err := s.scope.ResolveRoot(cwd)
 	if err != nil {
 		return nil, err
 	}
@@ -270,7 +270,7 @@ func (s *Skills) ApproveProposal(ctx context.Context, cwd string, ref skills.Pro
 	if err := ref.Validate(); err != nil {
 		return err
 	}
-	root, err := s.scope.root(cwd)
+	root, err := s.scope.ResolveRoot(cwd)
 	if err != nil {
 		return err
 	}
@@ -284,7 +284,7 @@ func (s *Skills) RejectProposal(ctx context.Context, cwd string, ref skills.Prop
 	if err := ref.Validate(); err != nil {
 		return err
 	}
-	root, err := s.scope.root(cwd)
+	root, err := s.scope.ResolveRoot(cwd)
 	if err != nil {
 		return err
 	}

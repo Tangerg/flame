@@ -3,10 +3,20 @@ package terminal
 import (
 	"fmt"
 
+	"github.com/Tangerg/flame/cli/internal/application/extensions"
+	"github.com/Tangerg/flame/cli/internal/application/mutation"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
+
+// RuntimeProfile is the negotiated view needed for terminal admission and
+// presentation. Its implementation owns immutable discovery and agreement data.
+type RuntimeProfile interface {
+	mutation.ReplayProfile
+	Discovery() protocol.DiscoverResponse
+	Supports(string) bool
+	AvailableFeatureNames() []string
+}
 
 // runtimeSupports is optimistic only for backends without discovery, such as
 // the scripted demo runtime. A discovered runtime is authoritative: a missing,
@@ -22,7 +32,7 @@ func (a *app) requireRuntimeFeature(feature string) error {
 	return fmt.Errorf("runtime capability %q was not negotiated", feature)
 }
 
-func (a *app) validateMessageCapabilities(message agent.Message) error {
+func (a *app) validateMessageCapabilities(message prompt.Message) error {
 	for _, attachment := range message.Attachments {
 		if attachment.Kind == protocol.ContentBlockImage {
 			return a.requireRuntimeFeature(protocol.FeatureMultimodal)
@@ -31,9 +41,9 @@ func (a *app) validateMessageCapabilities(message agent.Message) error {
 	return nil
 }
 
-func availableWithRuntimeFeature(a *app, feature string) CommandAvailability {
+func availableWithRuntimeFeature(a *app, feature string) extensions.CommandAvailability {
 	if err := a.requireRuntimeFeature(feature); err != nil {
-		return CommandUnavailable(err.Error())
+		return extensions.CommandUnavailable(err.Error())
 	}
-	return CommandAvailable()
+	return extensions.CommandAvailable()
 }

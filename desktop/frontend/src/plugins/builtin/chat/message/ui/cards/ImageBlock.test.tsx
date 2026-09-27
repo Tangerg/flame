@@ -8,8 +8,8 @@ const mocks = vi.hoisted(() => ({
   saveImage: vi.fn<(source: string) => Promise<boolean>>(),
 }));
 
-vi.mock("@/main/container", () => ({
-  getContainer: () => ({ host: { saveImage: mocks.saveImage } }),
+vi.mock("../../application/imageSave", () => ({
+  saveInlineImage: mocks.saveImage,
 }));
 
 const FIRST_PNG =

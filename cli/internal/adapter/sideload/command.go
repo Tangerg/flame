@@ -1,0 +1,201 @@
+package sideload
+
+import (
+	"bytes"
+	"context"
+	json "encoding/json/v2"
+	"errors"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/fileinput"
+	"github.com/Tangerg/flame/cli/internal/application/extensions"
+	"github.com/Tangerg/flame/runtime/protocol"
+)
+
+const (
+	commandProtocolVersion  = 2
+	maxCommandOutputBytes   = 1 << 20
+	maxCommandMessageBytes  = 4096
+	maxCommandArgumentBytes = 64 << 10
+	maxCommandPathBytes     = 32 << 10
+	maxCommandRequestBytes  = 128 << 10
+)
+
+type executableCommand struct {
+	pluginID  string
+	command   string
+	source    executableSource
+	directory string
+	timeout   time.Duration
+}
+
+type executableSource struct {
+	path     string
+	identity os.FileInfo
+}
+
+type commandRequest struct {
+	Protocol       int    `json:"protocol"`
+	PluginID       string `json:"pluginId"`
+	Command        string `json:"command"`
+	Argument       string `json:"argument,omitzero"`
+	Workspace      string `json:"workspace"`
+	LocalDirectory string `json:"localDirectory"`
+	SessionID      string `json:"sessionId"`
+}
+
+type commandResponse struct {
+	Protocol int    `json:"protocol"`
+	Message  string `json:"message"`
+}
+
+func (e executableCommand) Execute(ctx context.Context, request extensions.CommandRequest) (extensions.CommandResult, error) {
+	if err := validateCommandRequest(request); err != nil {
+		return extensions.CommandResult{}, fmt.Errorf("plugin %s command /%s request: %w", e.pluginID, e.command, err)
+	}
+	executable, opened, err := fileinput.OpenExpected(e.source.path, e.source.identity, 0)
+	if err != nil {
+		switch {
+		case errors.Is(err, fileinput.ErrChanged):
+			return extensions.CommandResult{}, fmt.Errorf("plugin %s command /%s entry changed since discovery", e.pluginID, e.command)
+		case errors.Is(err, fileinput.ErrNotRegular):
+			return extensions.CommandResult{}, fmt.Errorf("plugin %s command /%s entry is not a regular file", e.pluginID, e.command)
+		default:
+			return extensions.CommandResult{}, fmt.Errorf("plugin %s command /%s open discovered entry: %w", e.pluginID, e.command, err)
+		}
+	}
+	defer func() { _ = executable.Close() }()
+	if err := validateExecutable(e.source.path, opened); err != nil {
+		return extensions.CommandResult{}, fmt.Errorf("plugin %s command /%s: %w", e.pluginID, e.command, err)
+	}
+	ctx, cancel := context.WithTimeout(ctx, e.timeout)
+	defer cancel()
+	payload, err := json.Marshal(commandRequest{
+		Protocol: commandProtocolVersion, PluginID: e.pluginID, Command: e.command,
+		Argument: request.Argument, Workspace: request.Workspace, SessionID: request.SessionID,
+		LocalDirectory: request.LocalDirectory,
+	})
+	if err != nil {
+		return extensions.CommandResult{}, fmt.Errorf("encode plugin command request: %w", err)
+	}
+	if len(payload) > maxCommandRequestBytes {
+		return extensions.CommandResult{}, fmt.Errorf("plugin %s command /%s request exceeds %d bytes", e.pluginID, e.command, maxCommandRequestBytes)
+	}
+	// #nosec G204 -- discovery confines the manifest entry to the explicitly
+	// configured plugin directory, and Execute reopens the same discovered
+	// executable identity immediately before process admission.
+	process := exec.CommandContext(ctx, e.source.path)
+	configureProcess(process)
+	process.Dir = e.directory
+	process.Env = commandEnvironment(e.pluginID, e.command)
+	process.Stdin = bytes.NewReader(append(payload, '\n'))
+	var stdout, stderr cappedBuffer
+	stdout.limit, stderr.limit = maxCommandOutputBytes, maxCommandOutputBytes
+	process.Stdout, process.Stderr = &stdout, &stderr
+	if err := process.Run(); err != nil {
+		if cause := context.Cause(ctx); cause != nil {
+			return extensions.CommandResult{}, fmt.Errorf("plugin %s command /%s: %w", e.pluginID, e.command, cause)
+		}
+		detail := strings.TrimSpace(stderr.String())
+		if detail == "" {
+			detail = err.Error()
+		}
+		return extensions.CommandResult{}, fmt.Errorf("plugin %s command /%s failed: %s", e.pluginID, e.command, detail)
+	}
+	if stdout.overflow || stderr.overflow {
+		return extensions.CommandResult{}, fmt.Errorf("plugin %s command /%s exceeded the %d-byte output limit", e.pluginID, e.command, maxCommandOutputBytes)
+	}
+	return decodeCommandResponse(e.pluginID, e.command, stdout.Bytes())
+}
+
+func validateCommandRequest(request extensions.CommandRequest) error {
+	switch {
+	case len(request.Argument) > maxCommandArgumentBytes:
+		return fmt.Errorf("argument exceeds %d bytes", maxCommandArgumentBytes)
+	case len(request.Workspace) > maxCommandPathBytes:
+		return fmt.Errorf("workspace exceeds %d bytes", maxCommandPathBytes)
+	case len(request.LocalDirectory) > maxCommandPathBytes:
+		return fmt.Errorf("local directory exceeds %d bytes", maxCommandPathBytes)
+	case !filepath.IsAbs(request.LocalDirectory):
+		return errors.New("local directory is not absolute")
+	}
+	if request.SessionID != "" {
+		if err := protocol.ValidateSessionID(request.SessionID); err != nil {
+			return fmt.Errorf("session id: %w", err)
+		}
+	}
+	return nil
+}
+
+func commandEnvironment(pluginID, command string) []string {
+	keys := []string{"PATH", "LANG", "LC_ALL", "LC_CTYPE", "TMPDIR", "TMP", "TEMP"}
+	if runtime.GOOS == "windows" {
+		keys = append(keys, "SystemRoot", "ComSpec", "PATHEXT", "USERPROFILE")
+	}
+	environment := make([]string, 0, len(keys)+3)
+	seen := make(map[string]struct{}, len(keys))
+	for _, key := range keys {
+		lookup := key
+		if runtime.GOOS == "windows" {
+			lookup = strings.ToUpper(key)
+		}
+		if _, duplicate := seen[lookup]; duplicate {
+			continue
+		}
+		seen[lookup] = struct{}{}
+		if value, ok := os.LookupEnv(key); ok {
+			environment = append(environment, key+"="+value)
+		}
+	}
+	return append(environment,
+		"FLAME_PLUGIN_PROTOCOL="+strconv.Itoa(commandProtocolVersion),
+		"FLAME_PLUGIN_ID="+pluginID,
+		"FLAME_PLUGIN_COMMAND="+command,
+	)
+}
+
+func decodeCommandResponse(pluginID, command string, output []byte) (extensions.CommandResult, error) {
+	var response commandResponse
+	if err := json.Unmarshal(output, &response, json.RejectUnknownMembers(true)); err != nil {
+		return extensions.CommandResult{}, fmt.Errorf("decode plugin %s command /%s response: %w", pluginID, command, err)
+	}
+	if response.Protocol != commandProtocolVersion {
+		return extensions.CommandResult{}, fmt.Errorf("plugin %s command /%s responded with protocol %d, want %d", pluginID, command, response.Protocol, commandProtocolVersion)
+	}
+	message := strings.TrimSpace(response.Message)
+	if len(message) > maxCommandMessageBytes {
+		return extensions.CommandResult{}, fmt.Errorf("plugin %s command /%s message exceeds %d bytes", pluginID, command, maxCommandMessageBytes)
+	}
+	return extensions.CommandResult{Message: message}, nil
+}
+
+// cappedBuffer keeps at most limit bytes of a plugin's output. The buffer is a
+// field rather than an embedded type on purpose: bytes.Buffer implements
+// io.ReaderFrom, and os/exec copies a non-file Stdout with io.Copy, which takes
+// that fast path and would read the whole stream past the cap.
+type cappedBuffer struct {
+	buffer   bytes.Buffer
+	limit    int
+	overflow bool
+}
+
+func (c *cappedBuffer) Write(value []byte) (int, error) {
+	length := len(value)
+	remaining := max(c.limit-c.buffer.Len(), 0)
+	if len(value) > remaining {
+		value = value[:remaining]
+		c.overflow = true
+	}
+	_, _ = c.buffer.Write(value)
+	return length, nil
+}
+
+func (c *cappedBuffer) Bytes() []byte  { return c.buffer.Bytes() }
+func (c *cappedBuffer) String() string { return c.buffer.String() }

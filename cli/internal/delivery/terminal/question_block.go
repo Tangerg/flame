@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/grid"
 	"github.com/Tangerg/oolong/core/text"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 // questionBlock separates an open human decision from its durable transcript
@@ -19,7 +18,7 @@ import (
 type questionBlock struct {
 	theme    kit.Theme
 	glyphs   kit.Glyphs
-	question agent.Question
+	question conversation.Question
 	message  kit.Entry
 }
 
@@ -28,7 +27,7 @@ var (
 	_ headless.TextProjector = (*questionBlock)(nil)
 )
 
-func newQuestionBlock(theme kit.Theme, glyphs kit.Glyphs, question agent.Question) *questionBlock {
+func newQuestionBlock(theme kit.Theme, glyphs kit.Glyphs, question conversation.Question) *questionBlock {
 	block := &questionBlock{theme: theme, glyphs: glyphs}
 	block.setQuestion(question)
 	return block
@@ -36,11 +35,11 @@ func newQuestionBlock(theme kit.Theme, glyphs kit.Glyphs, question agent.Questio
 
 func (q *questionBlock) answered() bool { return q.question.Answered() }
 
-func (q *questionBlock) validateAccepted(question agent.Question) error {
+func (q *questionBlock) validateAccepted(question conversation.Question) error {
 	if !question.Answered() {
 		return fmt.Errorf("question %s has no accepted answers", question.ItemID)
 	}
-	expected, err := q.question.Accept(agent.QuestionAnswer{Values: question.Answers})
+	expected, err := q.question.Accept(conversation.QuestionAnswer{Values: question.Answers})
 	if err != nil {
 		return err
 	}
@@ -50,7 +49,7 @@ func (q *questionBlock) validateAccepted(question agent.Question) error {
 	return nil
 }
 
-func (q *questionBlock) accept(question agent.Question) {
+func (q *questionBlock) accept(question conversation.Question) {
 	q.setQuestion(question)
 }
 
@@ -74,7 +73,7 @@ func (q *questionBlock) Rows(width int) []text.Row {
 	return q.message.Rows(width)
 }
 
-func (q *questionBlock) setQuestion(question agent.Question) {
+func (q *questionBlock) setQuestion(question conversation.Question) {
 	q.question = question.Clone()
 	q.message = kit.Entry{
 		Theme: q.theme, Label: question.Title,
@@ -82,7 +81,7 @@ func (q *questionBlock) setQuestion(question agent.Question) {
 	}
 }
 
-func presentQuestionBody(glyphs kit.Glyphs, question agent.Question) string {
+func presentQuestionBody(glyphs kit.Glyphs, question conversation.Question) string {
 	lines := make([]string, 0, len(question.Fields)*2)
 	for index, field := range question.Fields {
 		lines = append(lines, glyphs.Bullet+" "+field.Prompt)

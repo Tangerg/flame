@@ -3,13 +3,12 @@ package terminal
 import (
 	"strings"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
-func presentUser(p BlockPresentation, block agent.Block) []headless.Block {
+func presentUser(p BlockPresentation, block conversation.Block) []headless.Block {
 	body := strings.TrimSpace(block.Text)
 	if len(block.Attachments) > 0 {
 		lines := make([]string, 0, len(block.Attachments))
@@ -28,15 +27,15 @@ func presentUser(p BlockPresentation, block agent.Block) []headless.Block {
 	return []headless.Block{newUserMessageBlock(p.Theme, speaker, body)}
 }
 
-func presentMarkdown(speaker string) func(BlockPresentation, agent.Block) []headless.Block {
-	return func(p BlockPresentation, block agent.Block) []headless.Block {
+func presentMarkdown(speaker string) func(BlockPresentation, conversation.Block) []headless.Block {
+	return func(p BlockPresentation, block conversation.Block) []headless.Block {
 		label := speaker
 		if p.Speaker != "" {
 			label = p.Speaker
 		}
 		message := &markdownBlock{theme: p.Theme, speaker: label}
 		look := p.Look
-		if block.Kind == agent.BlockReasoning {
+		if block.Kind == conversation.BlockReasoning {
 			look.Text, look.Strong = p.Theme.Muted, p.Theme.Subtle
 		}
 		message.setSource(block.Text, look)
@@ -52,21 +51,21 @@ func presentMarkdown(speaker string) func(BlockPresentation, agent.Block) []head
 	}
 }
 
-func presentTool(p BlockPresentation, block agent.Block) []headless.Block {
+func presentTool(p BlockPresentation, block conversation.Block) []headless.Block {
 	return []headless.Block{newToolBlock(p, block)}
 }
 
-func presentQuestion(p BlockPresentation, block agent.Block) []headless.Block {
+func presentQuestion(p BlockPresentation, block conversation.Block) []headless.Block {
 	if block.Question == nil {
 		return nil
 	}
 	return []headless.Block{newQuestionBlock(p.Theme, p.Glyphs, *block.Question)}
 }
 
-func presentNotice(p BlockPresentation, block agent.Block) []headless.Block {
+func presentNotice(p BlockPresentation, block conversation.Block) []headless.Block {
 	return []headless.Block{&kit.Entry{Theme: p.Theme, Label: "notice", Body: block.Text}}
 }
 
-func presentFailure(p BlockPresentation, block agent.Block) []headless.Block {
+func presentFailure(p BlockPresentation, block conversation.Block) []headless.Block {
 	return []headless.Block{presentError(p.Theme, block.Text)}
 }

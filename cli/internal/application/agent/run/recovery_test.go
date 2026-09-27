@@ -9,7 +9,8 @@ import (
 	"time"
 
 	runworkflow "github.com/Tangerg/flame/cli/internal/application/agent/run"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -18,7 +19,7 @@ func TestRecoverReadsAFinishedRunAfterItsSegmentExpires(t *testing.T) {
 	runtime := runtimefixture.New()
 	runtime.Instant = true
 	runtime.Script = completedScript
-	session, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
+	session, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,7 +28,7 @@ func TestRecoverReadsAFinishedRunAfterItsSegmentExpires(t *testing.T) {
 		t.Fatal(err)
 	}
 	consumeSegment(t, opened)
-	if _, subscribeRunErr := runtime.SubscribeRun(t.Context(), agent.SubscribeRun{RunID: opened.RunID, SegmentID: opened.SegmentID}); !runworkflow.RecoveryRequired(subscribeRunErr) {
+	if _, subscribeRunErr := runtime.SubscribeRun(t.Context(), conversation.SubscribeRun{RunID: opened.RunID, SegmentID: opened.SegmentID}); !runworkflow.RecoveryRequired(subscribeRunErr) {
 		t.Fatalf("subscribe error = %v, want a cold-recovery condition", subscribeRunErr)
 	}
 	recovered, err := runworkflow.RecoverSegment(t.Context(), runtime, session.ID, opened.RunID)
@@ -45,9 +46,9 @@ func TestRecoverReadsAFinishedRunAfterItsSegmentExpires(t *testing.T) {
 func TestRecoverInstallsTheSnapshotSubscriptionHeadForALiveRun(t *testing.T) {
 	runtime := runtimefixture.New()
 	runtime.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}}
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}}
 	}
-	session, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
+	session, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,14 +63,14 @@ func TestRecoverInstallsTheSnapshotSubscriptionHeadForALiveRun(t *testing.T) {
 	if recovered.Run.Status != protocol.RunStatusRunning || recovered.Stream.RunID != opened.RunID || recovered.Stream.SegmentID != opened.SegmentID || recovered.Stream.Events == nil {
 		t.Fatalf("recovered state = %+v", recovered)
 	}
-	conversation := agent.NewConversation()
-	if err := conversation.RestoreAttachedSnapshot(recovered.Snapshot, recovered.Stream); err != nil {
+	projection := conversation.New()
+	if err := projection.RestoreAttachedSnapshot(recovered.Snapshot, recovered.Stream); err != nil {
 		t.Fatal(err)
 	}
-	if conversation.Checkpoint() != recovered.Stream.HeadEventID || conversation.Checkpoint() == "" {
-		t.Fatalf("recovery checkpoint = %q, head = %q", conversation.Checkpoint(), recovered.Stream.HeadEventID)
+	if projection.Checkpoint() != recovered.Stream.HeadEventID || projection.Checkpoint() == "" {
+		t.Fatalf("recovery checkpoint = %q, head = %q", projection.Checkpoint(), recovered.Stream.HeadEventID)
 	}
-	if _, err := runtime.CancelRun(t.Context(), agent.CancelRun{RunID: opened.RunID, Reason: "test complete"}); err != nil {
+	if _, err := runtime.CancelRun(t.Context(), conversation.CancelRun{RunID: opened.RunID, Reason: "test complete"}); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -77,9 +78,9 @@ func TestRecoverInstallsTheSnapshotSubscriptionHeadForALiveRun(t *testing.T) {
 func TestAttachSessionUsesTheSubscriptionSnapshotWithoutASecondMaterialRead(t *testing.T) {
 	runtime := runtimefixture.New()
 	runtime.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}}}}
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}}
 	}
-	session, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
+	session, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +99,7 @@ func TestAttachSessionUsesTheSubscriptionSnapshotWithoutASecondMaterialRead(t *t
 	if got := observed.snapshot(); !slices.Equal(got, []string{"read", "snapshot subscribe"}) {
 		t.Fatalf("recovery operations = %v", got)
 	}
-	if _, err := runtime.CancelRun(t.Context(), agent.CancelRun{RunID: opened.RunID, Reason: "test complete"}); err != nil {
+	if _, err := runtime.CancelRun(t.Context(), conversation.CancelRun{RunID: opened.RunID, Reason: "test complete"}); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -108,18 +109,18 @@ func TestAttachSessionReturnsAuthoritativeStateWhenNoStreamIsRequired(t *testing
 		runtime := runtimefixture.New()
 		runtime.Instant = true
 		runtime.Script = func(string) runtimefixture.Script {
-			return runtimefixture.Script{Interactions: []agent.Interaction{agent.Approval{
+			return runtimefixture.Script{Interactions: []conversation.Interaction{conversation.Approval{
 				ItemID: "approval_1", Title: "Run checks",
-				Tool: &agent.ToolCall{Kind: agent.ToolShell, Name: "shell", Command: "go test ./...", Status: agent.ToolRunning},
+				Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning},
 			}}}
 		}
-		session, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
+		session, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: t.TempDir()})
 		if err != nil {
 			t.Fatal(err)
 		}
-		opened, err := runtime.StartRun(t.Context(), agent.StartRun{
-			SessionID: session.ID, Message: agent.Message{Text: "wait for approval"},
-			Options: agent.RunOptions{},
+		opened, err := runtime.StartRun(t.Context(), prompt.StartRun{
+			SessionID: session.ID, Message: prompt.Message{Text: "wait for approval"},
+			Options: prompt.RunOptions{},
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -140,13 +141,13 @@ func TestAttachSessionReturnsAuthoritativeStateWhenNoStreamIsRequired(t *testing
 		runtime := runtimefixture.New()
 		runtime.Instant = true
 		runtime.Script = completedScript
-		session, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
+		session, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: t.TempDir()})
 		if err != nil {
 			t.Fatal(err)
 		}
-		opened, err := runtime.StartRun(t.Context(), agent.StartRun{
-			SessionID: session.ID, Message: agent.Message{Text: "finish"},
-			Options: agent.RunOptions{},
+		opened, err := runtime.StartRun(t.Context(), prompt.StartRun{
+			SessionID: session.ID, Message: prompt.Message{Text: "finish"},
+			Options: prompt.RunOptions{},
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -164,7 +165,7 @@ func TestAttachSessionReturnsAuthoritativeStateWhenNoStreamIsRequired(t *testing
 
 	t.Run("empty", func(t *testing.T) {
 		runtime := runtimefixture.New()
-		session, err := runtime.CreateSession(t.Context(), agent.CreateSession{Workspace: t.TempDir()})
+		session, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: t.TempDir()})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -178,14 +179,14 @@ func TestAttachSessionReturnsAuthoritativeStateWhenNoStreamIsRequired(t *testing
 	})
 }
 
-func testRunStart(sessionID, text string) agent.StartRun {
-	return agent.StartRun{
-		SessionID: sessionID, Message: agent.Message{Text: text},
-		Options: agent.RunOptions{},
+func testRunStart(sessionID, text string) prompt.StartRun {
+	return prompt.StartRun{
+		SessionID: sessionID, Message: prompt.Message{Text: text},
+		Options: prompt.RunOptions{},
 	}
 }
 
-func consumeSegment(t *testing.T, stream agent.SegmentStream) {
+func consumeSegment(t *testing.T, stream conversation.SegmentStream) {
 	t.Helper()
 	for _, streamErr := range stream.Events {
 		if streamErr != nil {
@@ -196,22 +197,22 @@ func consumeSegment(t *testing.T, stream agent.SegmentStream) {
 
 func TestRequiredRecognizesOnlyColdRecoveryConditions(t *testing.T) {
 	for _, err := range []error{
-		agent.ErrStaleSegment, agent.ErrRunWaiting, agent.ErrRunFinished,
-		agent.ErrReplayCursorInvalid, agent.ErrReplayUnavailable,
+		conversation.ErrStaleSegment, conversation.ErrRunWaiting, conversation.ErrRunFinished,
+		conversation.ErrReplayCursorInvalid, conversation.ErrReplayUnavailable,
 	} {
 		if !runworkflow.RecoveryRequired(errors.Join(errors.New("adapter"), err)) {
 			t.Fatalf("RecoveryRequired(%v) = false", err)
 		}
 	}
-	if runworkflow.RecoveryRequired(agent.ErrDisconnected) {
+	if runworkflow.RecoveryRequired(conversation.ErrDisconnected) {
 		t.Fatal("a transport disconnect was classified as cold recovery")
 	}
 }
 
 func completedScript(string) runtimefixture.Script {
 	return runtimefixture.Script{Prelude: []runtimefixture.Step{
-		{Event: agent.BlockCompleted{Block: agent.Block{ID: "answer", Kind: agent.BlockAssistant, Text: "done"}}},
-		{Event: agent.RunFinished{Outcome: agent.Outcome{Status: protocol.OutcomeCompleted}}},
+		{Event: conversation.BlockCompleted{Block: conversation.Block{ID: "answer", Kind: conversation.BlockAssistant, Text: "done"}}},
+		{Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 	}}
 }
 
@@ -222,12 +223,12 @@ type orderedSource struct {
 	operations []string
 }
 
-func (o *orderedSource) GetSession(ctx context.Context, id string) (agent.SessionSnapshot, error) {
+func (o *orderedSource) GetSession(ctx context.Context, id string) (conversation.SessionSnapshot, error) {
 	o.record("read")
 	return o.source.GetSession(ctx, id)
 }
 
-func (o *orderedSource) SubscribeRun(ctx context.Context, request agent.SubscribeRun) (agent.SegmentStream, error) {
+func (o *orderedSource) SubscribeRun(ctx context.Context, request conversation.SubscribeRun) (conversation.SegmentStream, error) {
 	if request.Snapshot && request.SessionID != "" && request.AfterEventID == "" {
 		o.record("snapshot subscribe")
 	} else {

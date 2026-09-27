@@ -6,8 +6,9 @@ import (
 	"slices"
 
 	runworkflow "github.com/Tangerg/flame/cli/internal/application/agent/run"
-	"github.com/Tangerg/flame/cli/internal/application/agent/workbench"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/application/workbench"
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -25,7 +26,7 @@ const (
 // Item and terminal-read evidence may both arrive before the acknowledgement.
 type steerReceipt struct {
 	sessionID         string
-	commandID         agent.CommandID
+	commandID         replay.CommandID
 	runID             string
 	receipt           protocol.SteerRunResponse
 	userItems         map[string]struct{}
@@ -56,8 +57,8 @@ func (s *steerReceipt) status() steerReceiptStatus {
 	return ""
 }
 
-func (s *steerReceipt) observeBlock(block agent.Block) {
-	if block.RunID != s.runID || block.Kind != agent.BlockUser || block.Status != agent.BlockStatusCompleted {
+func (s *steerReceipt) observeBlock(block conversation.Block) {
+	if block.RunID != s.runID || block.Kind != conversation.BlockUser || block.Status != conversation.BlockStatusCompleted {
 		return
 	}
 	if s.receipt.UserItemID == "" || block.ID == s.receipt.UserItemID {
@@ -94,7 +95,7 @@ func (s *steerReceipts) reject(pending workbench.PendingSteer) {
 	})
 }
 
-func (s *steerReceipts) observeSnapshot(snapshot agent.SessionSnapshot) {
+func (s *steerReceipts) observeSnapshot(snapshot conversation.SessionSnapshot) {
 	for _, entry := range s.entries {
 		if entry.sessionID != snapshot.Session.ID {
 			continue
@@ -112,15 +113,15 @@ func (s *steerReceipts) observeSnapshot(snapshot agent.SessionSnapshot) {
 	}
 }
 
-func (s *steerReceipts) observeEvent(sessionID string, envelope agent.RunEvent) {
+func (s *steerReceipts) observeEvent(sessionID string, envelope conversation.RunEvent) {
 	for _, entry := range s.entries {
 		if entry.sessionID != sessionID || entry.runID != envelope.RunID {
 			continue
 		}
 		switch event := envelope.Event.(type) {
-		case agent.BlockCompleted:
+		case conversation.BlockCompleted:
 			entry.observeBlock(event.Block)
-		case agent.RunFinished:
+		case conversation.RunFinished:
 			entry.finishedObserved = true
 		}
 	}
@@ -137,7 +138,7 @@ func (s *steerReceipts) needingRead(sessionID string) []*steerReceipt {
 	return pending
 }
 
-func (a *app) restoreSteerReceipts(snapshot agent.SessionSnapshot) {
+func (a *app) restoreSteerReceipts(snapshot conversation.SessionSnapshot) {
 	for _, pending := range a.workbench.PendingSteers() {
 		a.steers.track(pending)
 	}
@@ -154,7 +155,7 @@ func (a *app) refreshSteerPresentation() {
 	a.presentSteerReceipts()
 }
 
-func (a *app) observeSteerEvent(event agent.RunEvent) {
+func (a *app) observeSteerEvent(event conversation.RunEvent) {
 	a.steers.observeEvent(a.session.current.ID, event)
 	a.presentSteerReceipts()
 	a.readSteerReceipts()
@@ -167,10 +168,10 @@ func (a *app) readSteerReceipts() {
 		return
 	}
 	a.runOperation(steerReceiptReadOperation, false,
-		func(ctx context.Context) (agent.SessionSnapshot, error) {
+		func(ctx context.Context) (conversation.SessionSnapshot, error) {
 			return a.readSessionAfterMutation(ctx, sessionID)
 		},
-		func(snapshot agent.SessionSnapshot, err error) {
+		func(snapshot conversation.SessionSnapshot, err error) {
 			if err == nil && snapshot.Session.ID != sessionID {
 				err = fmt.Errorf("steer receipt read returned session %s instead of %s", snapshot.Session.ID, sessionID)
 			}

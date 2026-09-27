@@ -33,13 +33,60 @@ Domain does not depend on Application or outer rings. Application depends on Dom
 
 External SDK types do not cross their adapter. Protocol types do not enter Domain or Application. Persistence records are decoded into valid Domain values before use.
 
+## Package organization
+
+Packages follow the responsibility that changes, with a sparse `ring/context/package`
+shape where a context has several peers. A namespace adds no facade or service
+locator. Cohesive workflows keep responsibility-named files together; an operation
+name alone does not justify a package.
+
+| Owner | Package | Boundary |
+| --- | --- | --- |
+| Product execution | `application/agent/runs` | Admission, publication ordering, and durable Run transitions |
+| Scope execution translation | `adapter/run/execution` | Deployment, tree observation, checkpoints, and execution resource lifetime |
+| Human-input translation | `adapter/run/input` | Strict prompt, resolution, and continuation codecs against Scope's input contract |
+| Model integration | `adapter/integration/model` | Provider selection translation, capabilities, pricing, and auxiliary calls |
+| Lifecycle Hooks | `application/integration/hooks` | Catalog inspection, project trust changes, and event decisions |
+| Feedback | `domain/feedback`, `application/agent/feedback` | Independent quality observations and their durable append use case |
+| Workspace observations | `application/workspace`, `adapter/workspace` | Resolved workspace scope and translation of filesystem and Git observations |
+
+Hook management consumes its own `Roots`, `Inspector`, and `TrustStore` ports.
+Bootstrap supplies the existing workspace scope as the root resolver, so Hooks
+share canonical workspace identity without depending on the Workspace use-case
+implementation. Global hooks remain active independently of project trust;
+successful trust writes publish the Hook invalidation.
+
+Feedback references to Sessions, Runs, and Items are optional historical context.
+They do not make feedback part of a Session aggregate or its deletion lifecycle.
+The feedback recorder validates one observation and appends it without loading
+or acquiring those aggregates.
+
+The workspace VCS adapter translates Git results and failures directly from
+`infra/git`. Checkpoint adapters remain separate because they own snapshot
+eligibility, unavailable/conflict outcomes, and Session-scoped restore policy.
+`adapter/persistence` likewise retains its real atomic material-read and write-set
+translation; `infra/sqlite` owns SQL and physical transaction mechanics.
+
+The dependency gate classifies every production Go package and local import.
+Besides the rings, it distinguishes public protocol values, deterministic shared
+values, technical mechanisms, local deployment files, generators, and test
+support. Unknown packages or import targets fail the gate. Technical mechanisms
+cannot acquire product dependencies; Domain may consume deterministic values
+but not shared lifecycle or I/O mechanisms. Product runtime packages cannot
+depend on generators or test support. Counterexamples exercise these rules, including
+module-root imports and new packages, instead of freezing a file inventory.
+
 ## Execution boundary
 
 Scope's Agent Framework is the only process, strategy, child-tree, tool-loop, and checkpoint execution engine. Runtime does not copy its scheduler or interpret private framework state.
 
 Scope owns canonical model-response byte budgets and checks that a complete response can fit before provider dispatch. A rejected pre-call budget is a definite host failure with no model attempt or unknown external effect; exceeding the budget after dispatch retains the unknown outcome. Deferred Tool advertisements belong to the exact Tool invocation and close when it returns, including through Runtime's Tool adapters.
 
-`adapter/agentexec` is the anti-corruption boundary. It maps Runtime commands and values to public Scope contracts, observes framework outcomes, and maps them back to Runtime facts. Application owns product admission, transaction ordering, cancellation intent, durable waiting state, and durable terminal publication. Scope owns execution cancellation and immutable termination; Runtime does not maintain a second dispatch cancellation tree or override a settled termination with later intent.
+`adapter/run/execution` is the anti-corruption boundary. It maps Runtime commands and values to public Scope contracts, observes framework outcomes, and maps them back to Runtime facts. Application owns product admission, transaction ordering, cancellation intent, durable waiting state, and durable terminal publication. Scope owns execution cancellation and immutable termination; Runtime does not maintain a second dispatch cancellation tree or override a settled termination with later intent.
+
+Unknown-effect reconciliation submits a stop through Scope's cancellation queue. It maps that stop to Lost only when Scope's immutable root termination attributes the cancellation to it. An earlier operator cancellation remains Canceled, and Scope's deadline priority remains intact. Every terminal outcome retains unresolved Effect identities and diagnostics, including those collected while in-flight siblings drain. Stopping an observation worker during terminal publication cannot originate a second terminal fact.
+
+Application keeps the exact user cancellation note. The execution adapter encodes that note as a bounded Scope diagnostic under a distinct cancellation prefix for root, running-child, and waiting-child requests. User text cannot become an internal model-failure or unknown-effect stop reason, and a maximum-length Unicode note still fits Scope's diagnostic contract.
 
 A model error remains an unknown external outcome in Scope. Its Dispatcher alone distinguishes definite settlements from errors requiring an unknown settlement; Runtime does not maintain a second external-dispatch state machine. Runtime retains diagnostics and gates dispatch on the active product Segment. After committing the failed-call fact, Runtime explicitly cancels that member and projects its provider failure only when Scope acknowledges that model-failure stop. Interrupted Effects retained in terminal snapshots are evidence, not resumable work. A failed authoritative projection after external execution still follows the unknown-effect recovery path. If Scope stops consuming a stream, a failed observation commit is retained as diagnostic evidence without yielding again.
 
@@ -144,6 +191,14 @@ Background recovery reports the first consecutive sweep failure through the same
 The active development contract has one current storage shape. SQLite installs that shape directly and does not maintain a schema-version or migration graph. A breaking schema change replaces the old shape completely; incompatible development state is reset explicitly unless the user authorizes a real migration requirement.
 
 Executor restore compatibility belongs to the exact BuildID and framework Deployment references. Checkpoint payloads, policy, context sources, and Tool-input continuations encode the current shape without independent hand-maintained schema counters. Decoding still validates complete identities, capabilities, prompt digests, and structural relationships before restoring execution.
+
+BuildID is the SHA-256 identity of the complete executable. Rebuilding after a
+source or package move can therefore make an older waiting checkpoint
+incompatible even when the public protocol and SQLite history shape are
+unchanged. Complete or cancel waiting executions with their owning build before
+upgrading; the replacement retains the existing rejection/recovery policy and
+does not reinterpret old checkpoints. Completed history needs no migration for
+package organization alone.
 
 ## Provider and integration boundaries
 

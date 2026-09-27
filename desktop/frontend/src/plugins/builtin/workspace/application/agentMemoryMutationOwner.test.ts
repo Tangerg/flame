@@ -23,7 +23,8 @@ describe("AgentMemoryMutationOwner", () => {
       .fn()
       .mockReturnValueOnce(retired.promise)
       .mockResolvedValueOnce(memory({ content: "successor", pinned: false }));
-    owner = AgentMemoryMutationOwner.install({ setPinned } as unknown as AgentMemoryGateway);
+    const gateway = { setPinned } as unknown as AgentMemoryGateway;
+    owner = AgentMemoryMutationOwner.install(gateway);
     queryClient.setQueryData([WORKSPACE_AGENT_MEMORY_KEY, QUERY], [memory()]);
 
     const inFlight = owner.setPinned(MEMORY_ID, true);
@@ -32,7 +33,7 @@ describe("AgentMemoryMutationOwner", () => {
     const queuedSettlement = rejected(queued);
     await vi.waitFor(() => expect(setPinned).toHaveBeenCalledOnce());
 
-    owner.replaceRuntimeGeneration();
+    owner.replaceRuntimeGeneration(() => gateway);
     await expect(inFlightSettlement).resolves.toMatchObject({
       message: "agent_memory_mutation_generation_retired",
     });

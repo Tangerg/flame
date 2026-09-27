@@ -1,6 +1,5 @@
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { resetContainer, setContainer } from "@/main/container";
 import type { Goal, FlameClient, MutationPromise } from "@flame/runtime-contract/client";
 import { definePlugin } from "@/plugins/sdk";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
@@ -10,8 +9,13 @@ import {
   type RuntimeConnectionGeneration as RuntimeConnectionGenerationValue,
 } from "@/plugins/builtin/runtime/public/services";
 import { resumeGoal, stopGoal } from "./application/goalCommands";
-import goalPlugin from "./index";
+import { createGoalPlugin } from "./index";
 import { rejected } from "@/test/rejected";
+
+let runtimeClient: () => FlameClient = () => {
+  throw new Error("Runtime test client is not configured");
+};
+const getRuntimeClient = () => runtimeClient();
 
 const { synchronizeMountedAgentSession } = vi.hoisted(() => ({
   synchronizeMountedAgentSession: vi.fn().mockResolvedValue(true),
@@ -24,7 +28,7 @@ vi.mock("@/plugins/builtin/agent/public/session", async (importOriginal) => ({
 
 afterEach(async () => {
   await resetKernelForTest();
-  resetContainer();
+
   synchronizeMountedAgentSession.mockClear();
   vi.restoreAllMocks();
 });
@@ -33,9 +37,7 @@ describe("Goal plugin Runtime generation wiring", () => {
   it("retires predecessor commands and binds successor commands to the successor client", async () => {
     const retired = Promise.withResolvers<Goal>();
     const retiredStop = vi.fn(() => mutation(retired.promise, "retired-stop"));
-    setContainer({
-      client: () => ({ goals: { stop: retiredStop } }) as unknown as FlameClient,
-    });
+    runtimeClient = () => ({ goals: { stop: retiredStop } }) as unknown as FlameClient;
     let generation = RuntimeConnectionGeneration.forProcess("runtime_1");
     const subscribers = new Set<() => void>();
     const runtime = definePlugin({
@@ -54,16 +56,14 @@ describe("Goal plugin Runtime generation wiring", () => {
         };
       },
     });
-    await loadPluginsForTest(runtime, goalPlugin);
+    await loadPluginsForTest(runtime, createGoalPlugin(getRuntimeClient));
     const predecessor = rejected(stopGoal("ses_goal"));
     await vi.waitFor(() => expect(retiredStop).toHaveBeenCalledOnce());
 
     const successorResume = vi.fn(() =>
       mutation(Promise.resolve(runtimeGoal("ses_goal")), "successor-resume"),
     );
-    setContainer({
-      client: () => ({ goals: { resume: successorResume } }) as unknown as FlameClient,
-    });
+    runtimeClient = () => ({ goals: { resume: successorResume } }) as unknown as FlameClient;
     generation = RuntimeConnectionGeneration.forProcess("runtime_2");
     for (const subscriber of subscribers) subscriber();
 
@@ -81,9 +81,7 @@ describe("Goal plugin Runtime generation wiring", () => {
   });
 
   it("does not construct a successor client when the Runtime connection is withdrawn", async () => {
-    setContainer({
-      client: () => ({ goals: {} }) as unknown as FlameClient,
-    });
+    runtimeClient = () => ({ goals: {} }) as unknown as FlameClient;
     let generation: RuntimeConnectionGenerationValue | null =
       RuntimeConnectionGeneration.forProcess("runtime_1");
     const subscribers = new Set<() => void>();
@@ -103,13 +101,11 @@ describe("Goal plugin Runtime generation wiring", () => {
         };
       },
     });
-    await loadPluginsForTest(runtime, goalPlugin);
+    await loadPluginsForTest(runtime, createGoalPlugin(getRuntimeClient));
 
-    setContainer({
-      client: () => {
-        throw new Error("Desktop container is closed");
-      },
-    });
+    runtimeClient = () => {
+      throw new Error("Desktop container is closed");
+    };
     generation = null;
 
     expect(() => {
@@ -121,9 +117,7 @@ describe("Goal plugin Runtime generation wiring", () => {
     const successorResume = vi.fn(() =>
       mutation(Promise.resolve(runtimeGoal("ses_goal")), "successor-resume"),
     );
-    setContainer({
-      client: () => ({ goals: { resume: successorResume } }) as unknown as FlameClient,
-    });
+    runtimeClient = () => ({ goals: { resume: successorResume } }) as unknown as FlameClient;
     generation = RuntimeConnectionGeneration.forProcess("runtime_2");
     for (const subscriber of subscribers) subscriber();
 

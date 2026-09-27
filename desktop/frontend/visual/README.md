@@ -24,8 +24,8 @@ values and the production `projectAgentSessionSnapshot` fold; its state selector
 covers empty, idle, Running, Waiting/HITL, terminal, error, delegated-tree, and
 long-content cases. The `workspace` fixture starts from the canonical Agent
 snapshot installer, registers the real workspace views and Settings pane
-plugins, and supplies only deterministic data providers. It covers per-density
-dock widths, navigation identity, diff loading/empty/error states, and the
+plugins, and supplies only deterministic data providers. It covers dock width
+and resizing, navigation identity, diff loading/empty/error states, and the
 production Settings surface without a parallel presentation model.
 
 `closure.visual.spec.ts` adds cross-surface release evidence: WCAG A/AA audits,

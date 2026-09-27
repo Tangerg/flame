@@ -1,0 +1,276 @@
+package execution
+
+import (
+	"cmp"
+	"errors"
+	"fmt"
+	"slices"
+	"strings"
+	"sync"
+
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	agent "github.com/Tangerg/scope/agent"
+	"github.com/Tangerg/scope/agent/strategy/interaction"
+	corechat "github.com/Tangerg/scope/core/chat"
+)
+
+// delegateCallIdentity mirrors Agent Framework's documented parent-scoped ChildKey
+// identity without copying any Framework tree wire into Runtime state.
+type delegateCallIdentity struct {
+	parentID agent.ProcessID
+	childKey agent.ChildKey
+}
+
+type managedDelegateCall struct {
+	mu sync.Mutex
+
+	identity           delegateCallIdentity
+	parentRelation     agent.ProcessRelation
+	target             agent.DeploymentRef
+	call               corechat.ToolCall
+	input              delegateInput
+	arguments          tool.Arguments
+	modelCallSequence  uint64
+	toolCallIndex      uint32
+	callID             runtimeidentity.EffectID
+	admission          agent.ProcessAdmission
+	binding            runs.ChildRunBinding
+	childProcessID     agent.ProcessID
+	parentToolFinished bool
+	segmentProjected   bool
+}
+
+func (m *managedDelegateCall) toolStart() runs.ToolCallStarted {
+	return runs.ToolCallStarted{
+		CallID: m.callID.String(), ModelCallSequence: m.modelCallSequence,
+		ToolCallIndex: m.toolCallIndex, SourceCallID: m.call.ID,
+		ToolName: m.call.Name, Arguments: m.arguments.Canonical(),
+		Activity: "Delegating " + m.input.Summary, SafetyClass: tool.SafetyClassExec,
+	}
+}
+
+// continuedDelegateTools reopens the parent Tool attempt in the new Segment.
+// Scope retains the admitted child, so continuation does not repeat admission
+// and cannot obtain this start from admitProcess again. A prepared cancellation
+// reopens only the parent attempts that survive its committed subtree change.
+func (i *interactionSession) continuedDelegateTools() []runs.ExecutorEvent {
+	i.state.mu.Lock()
+	var canceled []agent.ProcessID
+	switch i.state.boundary {
+	case interactionBoundaryContinuationStaged:
+	case interactionBoundarySubtreePrepared:
+		canceled = i.state.subtreeChange.canceled
+	default:
+		i.state.mu.Unlock()
+		return nil
+	}
+	calls := make([]*managedDelegateCall, 0, len(i.state.delegateChildren))
+	for _, managed := range i.state.delegateChildren {
+		// A canceled member's own spawning Tool is still owed to its surviving
+		// parent, so it reopens with its siblings. Only a Tool owned by a canceled
+		// member has nobody left to answer to.
+		if slices.Contains(canceled, managed.identity.parentID) {
+			continue
+		}
+		calls = append(calls, managed)
+	}
+	i.state.mu.Unlock()
+	type reopenedTool struct {
+		member runs.ExecutorMember
+		start  runs.ToolCallStarted
+	}
+	var reopened []reopenedTool
+	for _, managed := range calls {
+		managed.mu.Lock()
+		finished := managed.parentToolFinished
+		parent, start := managed.parentRelation, managed.toolStart()
+		managed.mu.Unlock()
+		if !finished {
+			reopened = append(reopened, reopenedTool{member: i.executorMember(parent), start: start})
+		}
+	}
+	slices.SortFunc(reopened, func(left, right reopenedTool) int {
+		if parent := strings.Compare(left.member.MemberID, right.member.MemberID); parent != 0 {
+			return parent
+		}
+		if call := cmp.Compare(left.start.ModelCallSequence, right.start.ModelCallSequence); call != 0 {
+			return call
+		}
+		return cmp.Compare(left.start.ToolCallIndex, right.start.ToolCallIndex)
+	})
+	events := make([]runs.ExecutorEvent, len(reopened))
+	for index, value := range reopened {
+		events[index] = runs.ExecutorEvent{Member: value.member, Payload: value.start}
+	}
+	return events
+}
+
+func (i *interactionSession) installDeployments(deployments *interactionDeploymentSet) error {
+	if deployments == nil || !deployments.root.Valid() {
+		return errors.New("execution: install invalid Interaction deployments")
+	}
+	i.state.mu.Lock()
+	i.state.deployments = deployments
+	i.deployment = deployments.root
+	i.state.mu.Unlock()
+	return nil
+}
+
+// registerDelegateCalls records only model calls whose exact Deployment has a
+// managed Delegate binding. Invalid delegate arguments never reach admission
+// and are therefore intentionally absent from this lifecycle correlation.
+func (i *interactionSession) registerDelegateCalls(
+	invocation interaction.ModelInvocation,
+	message *corechat.Message,
+) error {
+	if !invocation.Valid() || message == nil {
+		return errors.New("execution: cannot register unattributed Delegate calls")
+	}
+	i.state.mu.Lock()
+	deployments := i.state.deployments
+	i.state.mu.Unlock()
+	if deployments == nil {
+		return errors.New("execution: Interaction deployments are unavailable")
+	}
+	toolCallIndex := uint32(0)
+	for _, part := range message.Parts {
+		if part.Kind != corechat.PartToolCall || part.ToolCall == nil {
+			continue
+		}
+		call := *part.ToolCall
+		target, managed := deployments.delegateTarget(invocation.DeploymentRef(), call.Name)
+		if !managed {
+			toolCallIndex++
+			continue
+		}
+		input, arguments, err := decodeDelegateCall(call, target.Descriptor())
+		if err != nil {
+			// Agent Framework applies the same Descriptor contract before creating a child
+			// Effect and returns an ordinary Tool error for malformed input.
+			toolCallIndex++
+			continue
+		}
+		childKey, err := interaction.DelegateChildKey(invocation.ModelCallSequence(), call)
+		if err != nil {
+			return err
+		}
+		identity := delegateCallIdentity{
+			parentID: invocation.Relation().ProcessID(), childKey: childKey,
+		}
+		callID, err := logicalToolCallID(
+			invocation.Relation().ProcessID(), invocation.ModelCallSequence(), toolCallIndex, call.ID, call.Name,
+		)
+		if err != nil {
+			return err
+		}
+		managedCall := &managedDelegateCall{
+			identity: identity, parentRelation: invocation.Relation(), target: target.DeploymentRef(),
+			call: call, input: input, arguments: arguments,
+			modelCallSequence: invocation.ModelCallSequence(), toolCallIndex: toolCallIndex,
+			callID: callID,
+		}
+		i.state.mu.Lock()
+		if prior := i.state.delegateCalls[identity]; prior != nil {
+			i.state.mu.Unlock()
+			return fmt.Errorf(
+				"execution: Delegate child %q was registered more than once for parent %s",
+				childKey, invocation.Relation().ProcessID(),
+			)
+		}
+		i.state.delegateCalls[identity] = managedCall
+		i.state.mu.Unlock()
+		toolCallIndex++
+	}
+	return nil
+}
+
+func decodeDelegateCall(call corechat.ToolCall, descriptor agent.Descriptor) (delegateInput, tool.Arguments, error) {
+	erased, err := agent.ParsePayload([]byte(call.Arguments))
+	if err != nil {
+		return delegateInput{}, tool.Arguments{}, err
+	}
+	if err := descriptor.ValidateInput(erased); err != nil {
+		return delegateInput{}, tool.Arguments{}, err
+	}
+	input, err := erased.Decode[delegateInput]()
+	if err != nil {
+		return delegateInput{}, tool.Arguments{}, err
+	}
+	arguments, err := tool.ParseArguments(string(erased.JSON()))
+	if err != nil {
+		return delegateInput{}, tool.Arguments{}, err
+	}
+	return input, arguments, nil
+}
+
+func (i *interactionSession) executorMember(
+	relation agent.ProcessRelation,
+) runs.ExecutorMember {
+	member := basicExecutorMember(relation)
+	if relation.IsRoot() {
+		return member
+	}
+	i.state.mu.Lock()
+	managed := i.state.delegateChildren[relation.ProcessID()]
+	i.state.mu.Unlock()
+	if managed == nil {
+		return member
+	}
+	managed.mu.Lock()
+	member.SpawnCallID = managed.call.ID
+	managed.mu.Unlock()
+	return member
+}
+
+func (i *interactionSession) executorMemberByProcessID(
+	processID agent.ProcessID,
+) (runs.ExecutorMember, bool) {
+	if !processID.Valid() {
+		return runs.ExecutorMember{}, false
+	}
+	i.state.mu.Lock()
+	root := i.state.process
+	managed := i.state.delegateChildren[processID]
+	i.state.mu.Unlock()
+	if root != nil && root.ID() == processID {
+		return basicExecutorMember(root.Relation()), true
+	}
+	if managed == nil {
+		return runs.ExecutorMember{}, false
+	}
+	managed.mu.Lock()
+	member := runs.ExecutorMember{
+		MemberID: processID.String(), ParentID: managed.identity.parentID.String(),
+		SpawnCallID: managed.call.ID,
+	}
+	managed.mu.Unlock()
+	return member, true
+}
+
+// toolCallMember resolves the product member that requested one Tool call. The
+// call runs in its own child Process, which spawns no Run and therefore never
+// becomes a member; its durable facts and its input wait alike belong to the
+// Interaction member that called it. An unbound caller means the product has
+// retired that member, so the call has no product owner left.
+func (i *interactionSession) toolCallMember(
+	relation agent.ProcessRelation,
+) (runs.ExecutorMember, bool) {
+	callerID, child := relation.ParentID()
+	if !child {
+		return runs.ExecutorMember{}, false
+	}
+	i.state.mu.Lock()
+	managed := i.state.delegateChildren[callerID]
+	i.state.mu.Unlock()
+	if managed != nil {
+		managed.mu.Lock()
+		retired := managed.segmentProjected
+		managed.mu.Unlock()
+		if retired {
+			return runs.ExecutorMember{}, false
+		}
+	}
+	return i.executorMemberByProcessID(callerID)
+}

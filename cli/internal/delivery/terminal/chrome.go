@@ -6,13 +6,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/grid"
 	"github.com/Tangerg/oolong/core/text"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 )
 
 const (
@@ -24,21 +24,21 @@ const (
 type sessionHeader struct {
 	theme        kit.Theme
 	glyphs       kit.Glyphs
-	session      agent.Session
-	usage        agent.Usage
+	session      conversation.Session
+	usage        conversation.Usage
 	goal         protocol.Goal
 	goalPresent  bool
 	changes      int
 	changesKnown bool
 }
 
-func newSessionHeader(theme kit.Theme, glyphs kit.Glyphs, session agent.Session) *sessionHeader {
+func newSessionHeader(theme kit.Theme, glyphs kit.Glyphs, session conversation.Session) *sessionHeader {
 	return &sessionHeader{theme: theme, glyphs: glyphs, session: session}
 }
 
-func (s *sessionHeader) SetSession(session agent.Session) { s.session = session }
+func (s *sessionHeader) SetSession(session conversation.Session) { s.session = session }
 
-func (s *sessionHeader) SetUsage(usage agent.Usage) { s.usage = usage.Clone() }
+func (s *sessionHeader) SetUsage(usage conversation.Usage) { s.usage = usage.Clone() }
 
 func (s *sessionHeader) SetGoal(current *protocol.Goal) {
 	if current == nil {
@@ -141,7 +141,7 @@ func goalUsageLabel(used protocol.GoalUsage) string {
 	return strings.Join(parts, "  ")
 }
 
-func headerRightLabel(usage agent.Usage, changes int, known bool) string {
+func headerRightLabel(usage conversation.Usage, changes int, known bool) string {
 	parts := make([]string, 0, 2)
 	if tokens := headerUsageLabel(usage); tokens != "" {
 		parts = append(parts, tokens)
@@ -163,7 +163,7 @@ func displayWorkspace(value workspace.Workspace) string {
 	return path
 }
 
-func headerUsageLabel(usage agent.Usage) string {
+func headerUsageLabel(usage conversation.Usage) string {
 	if usage.InputTokens == 0 && usage.OutputTokens == 0 {
 		return ""
 	}
@@ -288,9 +288,9 @@ type statusView struct {
 	doing              string
 	problem            string
 	elapsed            string
-	usage              agent.Usage
+	usage              conversation.Usage
 	contextTokens      int64
-	outcome            agent.Outcome
+	outcome            conversation.Outcome
 	status             kit.Status
 	busy               bool
 	danger             bool
@@ -396,12 +396,12 @@ func contextLabel(contextTokens int64) string {
 	return "ctx " + formatThousands(contextTokens)
 }
 
-func optionsLabel(options agent.RunOptions) string {
+func optionsLabel(options prompt.RunOptions) string {
 	parts := []string{modelLabel(options)}
 	return strings.Join(parts, " · ")
 }
 
-func modelLabel(options agent.RunOptions) string {
+func modelLabel(options prompt.RunOptions) string {
 	if options.Provider != "" && options.Model != "" {
 		label := options.Provider + "/" + options.Model
 		if options.ReasoningEffort != "" {
@@ -415,7 +415,7 @@ func modelLabel(options agent.RunOptions) string {
 // displayRunOptions resolves an omitted CLI override only for presentation.
 // Commands retain the empty pair so Runtime can read the active Session's
 // durable selection instead of receiving a second client-owned default.
-func displayRunOptions(options agent.RunOptions, session agent.Session) agent.RunOptions {
+func displayRunOptions(options prompt.RunOptions, session conversation.Session) prompt.RunOptions {
 	if options.Provider == "" && options.Model == "" {
 		options.Provider, options.Model = session.Provider, session.Model
 		options.ReasoningEffort = session.ReasoningEffort
@@ -428,7 +428,7 @@ func (s *statusView) tick(elapsed time.Duration) {
 	s.elapsed = fmt.Sprintf("%4.1fs", elapsed.Seconds())
 }
 
-func (s *statusView) settled(run agent.Run) {
+func (s *statusView) settled(run conversation.Run) {
 	s.observeRun(run)
 	s.outcome, s.elapsed = run.Outcome.Clone(), ""
 	s.busy = false
@@ -451,25 +451,25 @@ func (s *statusView) settled(run agent.Run) {
 }
 
 func (s *statusView) beginRun(label string) {
-	s.usage = agent.Usage{}
+	s.usage = conversation.Usage{}
 	s.contextTokens = 0
 	s.active(label)
 }
 
-func (s *statusView) observeRun(run agent.Run) {
+func (s *statusView) observeRun(run conversation.Run) {
 	s.usage = run.Usage.Clone()
 	s.contextTokens = run.ContextTokens
 }
 
 func (s *statusView) active(label string) {
 	s.doing = label
-	s.outcome = agent.Outcome{}
+	s.outcome = conversation.Outcome{}
 	s.elapsed = ""
 	s.busy = true
 	s.danger = false
 }
 
-func (s *statusView) progress(progress agent.RunProgress) {
+func (s *statusView) progress(progress conversation.RunProgress) {
 	if progress.Usage != nil {
 		s.usage = progress.Usage.Clone()
 	}
@@ -489,20 +489,20 @@ func (s *statusView) progress(progress agent.RunProgress) {
 
 func (s *statusView) note(label string) {
 	s.doing = label
-	s.outcome = agent.Outcome{}
+	s.outcome = conversation.Outcome{}
 	s.busy = false
 	s.danger = false
 }
 
 func (s *statusView) fail(detail string, busy bool) {
 	s.doing = "client failed: " + detail
-	s.outcome = agent.Outcome{}
+	s.outcome = conversation.Outcome{}
 	s.elapsed = ""
 	s.busy = busy
 	s.danger = true
 }
 
-func usageLabel(usage agent.Usage) string {
+func usageLabel(usage conversation.Usage) string {
 	if usage.Empty() {
 		return ""
 	}

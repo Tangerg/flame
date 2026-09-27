@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { resetContainer, setContainer } from "@/main/container";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import { queryClient } from "@/lib/queryClient";
 import {
@@ -18,7 +17,7 @@ let uninstall: (() => void) | undefined;
 afterEach(() => {
   uninstall?.();
   uninstall = undefined;
-  resetContainer();
+
   queryClient.removeQueries({ queryKey: [MCP_SERVERS_KEY] });
   vi.useRealTimers();
 });
@@ -56,8 +55,8 @@ describe("runtimeMcpServerGateway", () => {
       handshakeTimeout: { type: "unbounded" },
       status: { type: "connected", toolCount: 0 },
     });
-    setContainer({ client: () => ({ mcp: { create } }) as unknown as FlameClient });
-    uninstall = installMCPServerGateway().dispose;
+    const runtimeClient = () => ({ mcp: { create } }) as unknown as FlameClient;
+    uninstall = installMCPServerGateway(() => runtimeClient()).dispose;
 
     await createMCPServer(input);
 
@@ -74,8 +73,8 @@ describe("runtimeMcpServerGateway", () => {
       disabledTools: ["delete"],
       autoApproveTools: ["read"],
     });
-    setContainer({ client: () => ({ mcp: { create } }) as unknown as FlameClient });
-    uninstall = installMCPServerGateway().dispose;
+    const runtimeClient = () => ({ mcp: { create } }) as unknown as FlameClient;
+    uninstall = installMCPServerGateway(() => runtimeClient()).dispose;
 
     await expect(
       createMCPServer({
@@ -107,8 +106,8 @@ describe("runtimeMcpServerGateway", () => {
       handshakeTimeout: { type: "unbounded" },
       status: { type: "disabled" },
     });
-    setContainer({ client: () => ({ mcp: { update } }) as unknown as FlameClient });
-    uninstall = installMCPServerGateway().dispose;
+    const runtimeClient = () => ({ mcp: { update } }) as unknown as FlameClient;
+    uninstall = installMCPServerGateway(() => runtimeClient()).dispose;
 
     await expect(setMCPServerEnabled("cloud", false)).resolves.toMatchObject({
       name: "cloud",
@@ -125,10 +124,8 @@ describe("runtimeMcpServerGateway", () => {
     const updateSuccessor = vi
       .fn()
       .mockResolvedValue(runtimeServer({ status: { type: "connected", toolCount: 2 } }));
-    setContainer({
-      client: () => ({ mcp: { update: updateRetired } }) as unknown as FlameClient,
-    });
-    const retiredInstallation = installMCPServerGateway();
+    let runtimeClient = () => ({ mcp: { update: updateRetired } }) as unknown as FlameClient;
+    const retiredInstallation = installMCPServerGateway(() => runtimeClient());
     queryClient.setQueryData([MCP_SERVERS_KEY], [server()]);
 
     const inFlight = setMCPServerEnabled("cloud", false);
@@ -137,10 +134,8 @@ describe("runtimeMcpServerGateway", () => {
     const queuedSettlement = rejected(queued);
     await vi.waitFor(() => expect(updateRetired).toHaveBeenCalledOnce());
 
-    setContainer({
-      client: () => ({ mcp: { update: updateSuccessor } }) as unknown as FlameClient,
-    });
-    const successorInstallation = installMCPServerGateway();
+    runtimeClient = () => ({ mcp: { update: updateSuccessor } }) as unknown as FlameClient;
+    const successorInstallation = installMCPServerGateway(() => runtimeClient());
     uninstall = () => {
       successorInstallation.dispose();
       retiredInstallation.dispose();
@@ -166,13 +161,11 @@ describe("runtimeMcpServerGateway", () => {
       id: "mcpauth_retired",
       status: { type: "pending" },
     });
-    setContainer({
-      client: () =>
-        ({
-          mcp: { authorizationAttempts: { create: createRetired } },
-        }) as unknown as FlameClient,
-    });
-    const retiredInstallation = installMCPServerGateway();
+    let runtimeClient = () =>
+      ({
+        mcp: { authorizationAttempts: { create: createRetired } },
+      }) as unknown as FlameClient;
+    const retiredInstallation = installMCPServerGateway(() => runtimeClient());
     const authorization = rejected(authorizeMCPServer("github"));
     await vi.waitFor(() => expect(createRetired).toHaveBeenCalledOnce());
 
@@ -180,11 +173,9 @@ describe("runtimeMcpServerGateway", () => {
       id: "mcpauth_retired",
       status: { type: "succeeded" },
     });
-    setContainer({
-      client: () =>
-        ({ mcp: { authorizationAttempts: { get: getSuccessor } } }) as unknown as FlameClient,
-    });
-    const successorInstallation = installMCPServerGateway();
+    runtimeClient = () =>
+      ({ mcp: { authorizationAttempts: { get: getSuccessor } } }) as unknown as FlameClient;
+    const successorInstallation = installMCPServerGateway(() => runtimeClient());
     uninstall = () => {
       successorInstallation.dispose();
       retiredInstallation.dispose();
@@ -199,15 +190,11 @@ describe("runtimeMcpServerGateway", () => {
 
   it("binds reconnect to the exact Runtime client captured by its installation", async () => {
     const reconnectRetired = vi.fn().mockResolvedValue(undefined);
-    setContainer({
-      client: () => ({ mcp: { reconnect: reconnectRetired } }) as unknown as FlameClient,
-    });
-    uninstall = installMCPServerGateway().dispose;
+    let runtimeClient = () => ({ mcp: { reconnect: reconnectRetired } }) as unknown as FlameClient;
+    uninstall = installMCPServerGateway(() => runtimeClient()).dispose;
 
     const reconnectSuccessor = vi.fn().mockResolvedValue(undefined);
-    setContainer({
-      client: () => ({ mcp: { reconnect: reconnectSuccessor } }) as unknown as FlameClient,
-    });
+    runtimeClient = () => ({ mcp: { reconnect: reconnectSuccessor } }) as unknown as FlameClient;
 
     await reconnectMCPServer("cloud");
 
@@ -218,18 +205,14 @@ describe("runtimeMcpServerGateway", () => {
   it("retires an admitted reconnect when a successor Host takes ownership", async () => {
     const retired = Promise.withResolvers<void>();
     const reconnectRetired = vi.fn(() => retired.promise);
-    setContainer({
-      client: () => ({ mcp: { reconnect: reconnectRetired } }) as unknown as FlameClient,
-    });
-    const retiredInstallation = installMCPServerGateway();
+    let runtimeClient = () => ({ mcp: { reconnect: reconnectRetired } }) as unknown as FlameClient;
+    const retiredInstallation = installMCPServerGateway(() => runtimeClient());
     const reconnect = rejected(reconnectMCPServer("cloud"));
     await vi.waitFor(() => expect(reconnectRetired).toHaveBeenCalledOnce());
 
     const reconnectSuccessor = vi.fn().mockResolvedValue(undefined);
-    setContainer({
-      client: () => ({ mcp: { reconnect: reconnectSuccessor } }) as unknown as FlameClient,
-    });
-    const successorInstallation = installMCPServerGateway();
+    runtimeClient = () => ({ mcp: { reconnect: reconnectSuccessor } }) as unknown as FlameClient;
+    const successorInstallation = installMCPServerGateway(() => runtimeClient());
     uninstall = () => {
       successorInstallation.dispose();
       retiredInstallation.dispose();

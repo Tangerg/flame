@@ -32,7 +32,7 @@ vi.mock("@/plugins/builtin/agent/public/approvalPolicy", () => ({
   APPROVAL_RULES_KEY: "approval-rules",
 }));
 
-vi.mock("@/plugins/builtin/settings/providers/public/queries", () => ({
+vi.mock("@/plugins/builtin/providers/public/queries", () => ({
   EMBEDDING_ROLE_KEY: "embedding-role",
   MODELS_KEY: "models",
   PROVIDERS_KEY: "providers",

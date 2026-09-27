@@ -6,6 +6,8 @@ import (
 	"io"
 	"slices"
 
+	"github.com/Tangerg/flame/cli/internal/application/extensions"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/grid"
@@ -13,9 +15,6 @@ import (
 	"github.com/Tangerg/oolong/core/keymap"
 	"github.com/Tangerg/oolong/highlight"
 	"github.com/Tangerg/oolong/markdown"
-
-	"github.com/Tangerg/flame/cli/internal/application/extensions"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 type transcriptView struct {
@@ -69,8 +68,8 @@ type liveTool struct {
 
 type liveText struct {
 	runID      string
-	kind       agent.BlockKind
-	text       agent.StreamedText
+	kind       conversation.BlockKind
+	text       conversation.StreamedText
 	stream     markdown.Stream
 	stable     []markdown.Block
 	diagnostic error
@@ -344,12 +343,12 @@ func (t *transcriptView) mutateTrackedTool(tracked trackedTool, mutate func(muta
 	return t.focused && tracked.id == t.selected && before && !tracked.block.Expanded()
 }
 
-func (t *transcriptView) appendCompleted(block agent.Block, registry *extensions.Registry) error {
+func (t *transcriptView) appendCompleted(block conversation.Block, registry *extensions.Registry) error {
 	rendered, err := t.present(block, registry)
 	if err != nil {
 		return err
 	}
-	if block.Kind == agent.BlockTool {
+	if block.Kind == conversation.BlockTool {
 		if tool, grouped := groupedTool(rendered); grouped {
 			t.addGroupedTool(block.RunID, tool)
 			t.refreshSearch()
@@ -384,7 +383,7 @@ func (t *transcriptView) appendCompleted(block agent.Block, registry *extensions
 	return nil
 }
 
-func (t *transcriptView) beginTool(block agent.Block, registry *extensions.Registry) error {
+func (t *transcriptView) beginTool(block conversation.Block, registry *extensions.Registry) error {
 	key := transcriptBlockKey(block.RunID, block.ID)
 	if _, exists := t.tools[key]; exists {
 		return fmt.Errorf("terminal transcript: tool block %s started twice", block.ID)
@@ -471,7 +470,7 @@ func (t *transcriptView) finishToolGroupIfReady(group *trackedToolGroup) {
 // A live event stream closes it naturally on the next semantic boundary.
 func (t *transcriptView) SealToolGroups() { t.sealToolGroup() }
 
-func (t *transcriptView) present(block agent.Block, registry *extensions.Registry) ([]headless.Block, error) {
+func (t *transcriptView) present(block conversation.Block, registry *extensions.Registry) ([]headless.Block, error) {
 	for _, presenter := range registry.Values(BlockPresenters) {
 		if presenter.Kind == block.Kind {
 			return presentSafely(presenter, BlockPresentation{
@@ -483,14 +482,14 @@ func (t *transcriptView) present(block agent.Block, registry *extensions.Registr
 	return nil, fmt.Errorf("terminal transcript: no presenter for block kind %q", block.Kind)
 }
 
-func (t *transcriptView) presentImage(image agent.InlineImage) headless.Block {
+func (t *transcriptView) presentImage(image conversation.InlineImage) headless.Block {
 	if t.images != nil {
 		return t.images.Present(t.theme, image)
 	}
 	return fallbackInlineImage(t.theme, image)
 }
 
-func presentSafely(presenter BlockPresenter, presentation BlockPresentation, block agent.Block) (rendered []headless.Block, err error) {
+func presentSafely(presenter BlockPresenter, presentation BlockPresentation, block conversation.Block) (rendered []headless.Block, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
 			err = fmt.Errorf("terminal transcript: presenter for %q panicked: %v", presenter.Kind, recovered)
@@ -596,7 +595,7 @@ func (t *transcriptView) Reset() {
 	t.toolViews = nil
 }
 
-func (t *transcriptView) SetRuns(runs []agent.Run) {
+func (t *transcriptView) SetRuns(runs []conversation.Run) {
 	t.history.ReplaceRuns(runs)
 }
 
@@ -619,12 +618,12 @@ func blockOffset(index int) headless.BlockID {
 }
 
 func transcriptBlockKey(runID, blockID string) string {
-	return (agent.BlockIdentity{RunID: runID, BlockID: blockID}).Key()
+	return (conversation.BlockIdentity{RunID: runID, BlockID: blockID}).Key()
 }
 
-func (t *transcriptView) lookFor(kind agent.BlockKind) markdown.Look {
+func (t *transcriptView) lookFor(kind conversation.BlockKind) markdown.Look {
 	look := t.look
-	if kind == agent.BlockReasoning {
+	if kind == conversation.BlockReasoning {
 		look.Text, look.Strong, look.Code = t.theme.Muted, t.theme.Subtle, t.theme.Info
 	}
 	return look

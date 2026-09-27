@@ -2,6 +2,7 @@ import { createSingletonPort } from "@/lib/ports/singletonPort";
 
 interface WorkingDirectoryPicker {
   open(): void;
+  browse(expectedOwner: object): Promise<void>;
 }
 
 const port = createSingletonPort<WorkingDirectoryPicker>(

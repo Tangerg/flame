@@ -5,14 +5,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	coreDiff "github.com/Tangerg/oolong/core/diff"
 	"github.com/Tangerg/oolong/core/grid"
 	"github.com/Tangerg/oolong/highlight"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestToolObserverIdentityExhaustionPreservesExistingSubscription(t *testing.T) {
@@ -32,11 +31,11 @@ func TestToolObserverIdentityExhaustionPreservesExistingSubscription(t *testing.
 
 func TestPluginPresenterPanicBecomesAnError(t *testing.T) {
 	_, err := presentSafely(BlockPresenter{
-		Kind: agent.BlockAssistant,
-		Present: func(BlockPresentation, agent.Block) []headless.Block {
+		Kind: conversation.BlockAssistant,
+		Present: func(BlockPresentation, conversation.Block) []headless.Block {
 			panic("present boom")
 		},
-	}, BlockPresentation{}, agent.Block{Kind: agent.BlockAssistant})
+	}, BlockPresentation{}, conversation.Block{Kind: conversation.BlockAssistant})
 	if err == nil || !strings.Contains(err.Error(), "present boom") {
 		t.Fatalf("presenter panic error = %v", err)
 	}
@@ -45,24 +44,24 @@ func TestPluginPresenterPanicBecomesAnError(t *testing.T) {
 func TestCustomEventPresenterPanicBecomesAnError(t *testing.T) {
 	_, err := presentCustomSafely(CustomEventPresenter{
 		Name: "vendor.broken",
-		Present: func(BlockPresentation, agent.CustomEvent) []headless.Block {
+		Present: func(BlockPresentation, conversation.CustomEvent) []headless.Block {
 			panic("custom boom")
 		},
-	}, BlockPresentation{}, agent.CustomEvent{Name: "vendor.broken", PayloadJSON: []byte(`null`)})
+	}, BlockPresentation{}, conversation.CustomEvent{Name: "vendor.broken", PayloadJSON: []byte(`null`)})
 	if err == nil || !strings.Contains(err.Error(), "custom boom") {
 		t.Fatalf("custom presenter panic error = %v", err)
 	}
 }
 
 func TestToolPresentersUseOrderedMatchingAndAGenericFallback(t *testing.T) {
-	call := agent.ToolCall{Kind: agent.ToolUnknown, Name: "provider_tool", Summary: "work", Status: agent.ToolRunning}
+	call := conversation.ToolCall{Kind: conversation.ToolUnknown, Name: "provider_tool", Summary: "work", Status: conversation.ToolRunning}
 	presenters := []ToolPresenter{
 		{
 			ID:      "specific",
-			Matches: func(got agent.ToolCall) bool { return got.Name == "provider_tool" },
-			Present: func(agent.ToolCall) ToolPresentation { return ToolPresentation{Label: "specific view"} },
+			Matches: func(got conversation.ToolCall) bool { return got.Name == "provider_tool" },
+			Present: func(conversation.ToolCall) ToolPresentation { return ToolPresentation{Label: "specific view"} },
 		},
-		{ID: "fallback", Matches: func(agent.ToolCall) bool { return true }, Present: presentUnknownTool},
+		{ID: "fallback", Matches: func(conversation.ToolCall) bool { return true }, Present: presentUnknownTool},
 	}
 	presentation, err := selectToolPresentation(presenters, call)
 	if err != nil {
@@ -72,7 +71,7 @@ func TestToolPresentersUseOrderedMatchingAndAGenericFallback(t *testing.T) {
 		t.Fatalf("selected label = %q", presentation.Label)
 	}
 
-	fallback, err := selectToolPresentation(nil, agent.ToolCall{Kind: agent.ToolUnknown, Name: "other", Status: agent.ToolRunning})
+	fallback, err := selectToolPresentation(nil, conversation.ToolCall{Kind: conversation.ToolUnknown, Name: "other", Status: conversation.ToolRunning})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,10 +83,10 @@ func TestToolPresentersUseOrderedMatchingAndAGenericFallback(t *testing.T) {
 func TestToolPresenterPanicsBecomePresentationErrors(t *testing.T) {
 	presenter := ToolPresenter{
 		ID:      "broken",
-		Matches: func(agent.ToolCall) bool { return true },
-		Present: func(agent.ToolCall) ToolPresentation { panic("projection boom") },
+		Matches: func(conversation.ToolCall) bool { return true },
+		Present: func(conversation.ToolCall) ToolPresentation { panic("projection boom") },
 	}
-	_, err := selectToolPresentation([]ToolPresenter{presenter}, agent.ToolCall{})
+	_, err := selectToolPresentation([]ToolPresenter{presenter}, conversation.ToolCall{})
 	if err == nil || !strings.Contains(err.Error(), "projection boom") {
 		t.Fatalf("tool presenter error = %v", err)
 	}
@@ -110,11 +109,11 @@ func requireSingleHunk(t *testing.T, hunks []coreDiff.Hunk, oldStart, newStart, 
 }
 
 func TestToolLabelUsesSemanticKindInsteadOfProviderName(t *testing.T) {
-	call := agent.ToolCall{Kind: agent.ToolShell, Name: "opaque_provider_17", Command: "go test ./...", Summary: "ignored fallback"}
+	call := conversation.ToolCall{Kind: conversation.ToolShell, Name: "opaque_provider_17", Command: "go test ./...", Summary: "ignored fallback"}
 	if got := toolLabel(call); got != "$ go test ./..." || strings.Contains(got, call.Name) {
 		t.Fatalf("label = %q", got)
 	}
-	call = agent.ToolCall{Kind: agent.ToolUnknown, Name: "custom", Summary: "do work"}
+	call = conversation.ToolCall{Kind: conversation.ToolUnknown, Name: "custom", Summary: "do work"}
 	if got := toolLabel(call); got != "custom · do work" {
 		t.Fatalf("unknown label = %q", got)
 	}
@@ -136,19 +135,19 @@ func TestToolKindsBuildSpecializedOolongBlocks(t *testing.T) {
 	diff := "--- a/a.go\n+++ b/a.go\n@@ -1 +1 @@\n-old\n+new\n"
 	tests := []struct {
 		name string
-		call agent.ToolCall
+		call conversation.ToolCall
 		want string
 	}{
-		{name: "shell", call: agent.ToolCall{Kind: agent.ToolShell, Status: agent.ToolOK, Output: "ok"}, want: "code"},
-		{name: "read", call: agent.ToolCall{Kind: agent.ToolRead, Status: agent.ToolOK, Path: "main.go", Output: "package main"}, want: "numbered-code"},
-		{name: "edit", call: agent.ToolCall{Kind: agent.ToolEdit, Status: agent.ToolOK, Path: "a.go", Diff: diff}, want: "diff"},
-		{name: "search", call: agent.ToolCall{Kind: agent.ToolSearch, Status: agent.ToolOK, Query: "needle", Output: "a.go:1"}, want: "paragraph"},
-		{name: "web", call: agent.ToolCall{Kind: agent.ToolWeb, Status: agent.ToolOK, URL: "https://example.com", Output: "https://example.com/result"}, want: "linked-paragraph"},
-		{name: "task", call: agent.ToolCall{Kind: agent.ToolTask, Status: agent.ToolOK, Summary: "delegate", Output: "done"}, want: "paragraph"},
+		{name: "shell", call: conversation.ToolCall{Kind: conversation.ToolShell, Status: conversation.ToolOK, Output: "ok"}, want: "code"},
+		{name: "read", call: conversation.ToolCall{Kind: conversation.ToolRead, Status: conversation.ToolOK, Path: "main.go", Output: "package main"}, want: "numbered-code"},
+		{name: "edit", call: conversation.ToolCall{Kind: conversation.ToolEdit, Status: conversation.ToolOK, Path: "a.go", Diff: diff}, want: "diff"},
+		{name: "search", call: conversation.ToolCall{Kind: conversation.ToolSearch, Status: conversation.ToolOK, Query: "needle", Output: "a.go:1"}, want: "paragraph"},
+		{name: "web", call: conversation.ToolCall{Kind: conversation.ToolWeb, Status: conversation.ToolOK, URL: "https://example.com", Output: "https://example.com/result"}, want: "linked-paragraph"},
+		{name: "task", call: conversation.ToolCall{Kind: conversation.ToolTask, Status: conversation.ToolOK, Summary: "delegate", Output: "done"}, want: "paragraph"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			block := newToolBlock(presentation, agent.Block{ID: test.name, Kind: agent.BlockTool, Tool: &test.call})
+			block := newToolBlock(presentation, conversation.Block{ID: test.name, Kind: conversation.BlockTool, Tool: &test.call})
 			if len(block.body) == 0 {
 				t.Fatal("tool built no detail body")
 			}
@@ -158,8 +157,8 @@ func TestToolKindsBuildSpecializedOolongBlocks(t *testing.T) {
 }
 
 func TestUnknownToolPresentsCompleteArgumentsAndResult(t *testing.T) {
-	call := agent.ToolCall{
-		Kind: agent.ToolUnknown, Name: "mcp__calendar__create", Status: agent.ToolOK,
+	call := conversation.ToolCall{
+		Kind: conversation.ToolUnknown, Name: "mcp__calendar__create", Status: conversation.ToolOK,
 		ArgumentsJSON: []byte(`{"calendar":"work","guests":["a@example.com"]}`),
 		ResultJSON:    []byte(`{"eventId":"evt_123","accepted":true}`),
 	}
@@ -173,8 +172,8 @@ func TestUnknownToolPresentsCompleteArgumentsAndResult(t *testing.T) {
 }
 
 func TestKnownToolAlsoPresentsCompleteArgumentsAndResult(t *testing.T) {
-	call := agent.ToolCall{
-		Kind: agent.ToolShell, Command: "go test ./...", Status: agent.ToolOK,
+	call := conversation.ToolCall{
+		Kind: conversation.ToolShell, Command: "go test ./...", Status: conversation.ToolOK,
 		ArgumentsJSON: []byte(`{"command":"go test ./...","timeoutMs":30000}`),
 		ResultJSON:    []byte(`{"exitCode":0,"truncated":false}`),
 	}
@@ -189,8 +188,8 @@ func TestKnownToolAlsoPresentsCompleteArgumentsAndResult(t *testing.T) {
 
 func TestToolDetailsPresentSafetyAndLifecycleMetadata(t *testing.T) {
 	started := time.Date(2026, time.August, 12, 9, 0, 0, 0, time.UTC)
-	presentation := presentShellTool(agent.ToolCall{
-		Kind: agent.ToolShell, Command: "go test ./...", Status: agent.ToolOK,
+	presentation := presentShellTool(conversation.ToolCall{
+		Kind: conversation.ToolShell, Command: "go test ./...", Status: conversation.ToolOK,
 		Safety: protocol.SafetyClassExec, StartedAt: started, FinishedAt: started.Add(2 * time.Second),
 	})
 	if len(presentation.Sections) == 0 || presentation.Sections[0].Title != "Execution" ||
@@ -202,8 +201,8 @@ func TestToolDetailsPresentSafetyAndLifecycleMetadata(t *testing.T) {
 }
 
 func TestToolDetailsPreserveStructuredProblems(t *testing.T) {
-	presentation := presentUnknownTool(agent.ToolCall{
-		Kind: agent.ToolUnknown, Name: "provider_tool", Status: agent.ToolError,
+	presentation := presentUnknownTool(conversation.ToolCall{
+		Kind: conversation.ToolUnknown, Name: "provider_tool", Status: conversation.ToolError,
 		Problem: &protocol.ProblemData{
 			Type:   protocol.ProblemToolFailed,
 			DocURL: "https://docs.example/errors/rate-limit",
@@ -218,11 +217,11 @@ func TestToolDetailsPreserveStructuredProblems(t *testing.T) {
 
 func TestToolBlockOwnsCompleteToolValues(t *testing.T) {
 	presentation := BlockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}
-	call := agent.ToolCall{
-		Kind: agent.ToolUnknown, Name: "provider_tool", Status: agent.ToolOK,
+	call := conversation.ToolCall{
+		Kind: conversation.ToolUnknown, Name: "provider_tool", Status: conversation.ToolOK,
 		ArgumentsJSON: []byte(`{"scope":"source"}`), ResultJSON: []byte(`{"status":"source"}`),
 	}
-	block := newToolBlock(presentation, agent.Block{ID: "tool", Kind: agent.BlockTool, Tool: &call})
+	block := newToolBlock(presentation, conversation.Block{ID: "tool", Kind: conversation.BlockTool, Tool: &call})
 	copy(call.ArgumentsJSON, `{"scope":"mutant"}`)
 	copy(call.ResultJSON, `{"status":"mutant"}`)
 
@@ -233,14 +232,14 @@ func TestToolBlockOwnsCompleteToolValues(t *testing.T) {
 
 func TestUpdatingARunningToolPreservesItsDetailChoice(t *testing.T) {
 	presentation := BlockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}
-	running := agent.ToolCall{Kind: agent.ToolShell, Command: "go test ./...", Status: agent.ToolRunning}
-	block := newToolBlock(presentation, agent.Block{ID: "tool", Kind: agent.BlockTool, Tool: &running})
+	running := conversation.ToolCall{Kind: conversation.ToolShell, Command: "go test ./...", Status: conversation.ToolRunning}
+	block := newToolBlock(presentation, conversation.Block{ID: "tool", Kind: conversation.BlockTool, Tool: &running})
 	block.ToggleExpanded()
 
 	completed := running
-	completed.Status = agent.ToolOK
+	completed.Status = conversation.ToolOK
 	completed.Output = "ok"
-	block.Update(agent.Block{ID: "tool", Kind: agent.BlockTool, Tool: &completed})
+	block.Update(conversation.Block{ID: "tool", Kind: conversation.BlockTool, Tool: &completed})
 	if !block.Expanded() {
 		t.Fatal("tool completion discarded the reader's expanded state")
 	}
@@ -248,8 +247,8 @@ func TestUpdatingARunningToolPreservesItsDetailChoice(t *testing.T) {
 
 func TestToolBlockStreamsOutputWithoutLosingItsDetailChoice(t *testing.T) {
 	presentation := BlockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}
-	running := agent.ToolCall{Kind: agent.ToolShell, Command: "go test ./...", Status: agent.ToolRunning}
-	block := newToolBlock(presentation, agent.Block{ID: "tool", Kind: agent.BlockTool, Tool: &running})
+	running := conversation.ToolCall{Kind: conversation.ToolShell, Command: "go test ./...", Status: conversation.ToolRunning}
+	block := newToolBlock(presentation, conversation.Block{ID: "tool", Kind: conversation.BlockTool, Tool: &running})
 	if !block.Expandable() {
 		t.Fatal("running tool was not expandable before its first output")
 	}
@@ -270,8 +269,8 @@ func TestToolBlockStreamsOutputWithoutLosingItsDetailChoice(t *testing.T) {
 
 func TestCompletedToolWithoutDetailsCannotExpand(t *testing.T) {
 	presentation := BlockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode(), Syntax: highlight.New("github-dark")}
-	completed := agent.ToolCall{Kind: agent.ToolShell, Command: "true", Status: agent.ToolOK}
-	block := newToolBlock(presentation, agent.Block{ID: "tool", Kind: agent.BlockTool, Tool: &completed})
+	completed := conversation.ToolCall{Kind: conversation.ToolShell, Command: "true", Status: conversation.ToolOK}
+	block := newToolBlock(presentation, conversation.Block{ID: "tool", Kind: conversation.BlockTool, Tool: &completed})
 	if block.Expandable() || block.Expanded() {
 		t.Fatal("detail-free completed tool was expandable")
 	}
@@ -290,11 +289,11 @@ func TestCompletedToolWithoutDetailsCannotExpand(t *testing.T) {
 
 func TestToolBlockDrawsALocaleSafeStatusRailThroughExpandedDetails(t *testing.T) {
 	theme, glyphs := kit.Dark(), kit.ASCII()
-	call := agent.ToolCall{
-		Kind: agent.ToolShell, Command: "go test ./...", Status: agent.ToolOK, Output: "all packages passed",
+	call := conversation.ToolCall{
+		Kind: conversation.ToolShell, Command: "go test ./...", Status: conversation.ToolOK, Output: "all packages passed",
 	}
-	block := newToolBlock(BlockPresentation{Theme: theme, Glyphs: glyphs, Syntax: highlight.New("github-dark")}, agent.Block{
-		ID: "test", Kind: agent.BlockTool, Tool: &call,
+	block := newToolBlock(BlockPresentation{Theme: theme, Glyphs: glyphs, Syntax: highlight.New("github-dark")}, conversation.Block{
+		ID: "test", Kind: conversation.BlockTool, Tool: &call,
 	})
 	block.SetExpanded(true)
 	width, height := 48, block.HeightForWidth(48)
@@ -326,16 +325,16 @@ func TestToolBlockDrawsALocaleSafeStatusRailThroughExpandedDetails(t *testing.T)
 func TestToolStatusVocabularyDoesNotCollideWithRunOutcomes(t *testing.T) {
 	presentation := BlockPresentation{Theme: kit.Dark(), Glyphs: kit.Unicode()}
 	for _, test := range []struct {
-		status agent.ToolStatus
+		status conversation.ToolStatus
 		want   string
 	}{
-		{status: agent.ToolOK, want: "done"},
-		{status: agent.ToolError, want: "error"},
-		{status: agent.ToolCanceled, want: "canceled"},
-		{status: agent.ToolRunning, want: "running"},
+		{status: conversation.ToolOK, want: "done"},
+		{status: conversation.ToolError, want: "error"},
+		{status: conversation.ToolCanceled, want: "canceled"},
+		{status: conversation.ToolRunning, want: "running"},
 	} {
-		call := agent.ToolCall{Kind: agent.ToolTask, Status: test.status}
-		block := newToolBlock(presentation, agent.Block{Kind: agent.BlockTool, Tool: &call})
+		call := conversation.ToolCall{Kind: conversation.ToolTask, Status: test.status}
+		block := newToolBlock(presentation, conversation.Block{Kind: conversation.BlockTool, Tool: &call})
 		_, _, status, _ := block.header()
 		if !strings.Contains(status, test.want) || strings.Contains(status, "complete") || strings.Contains(status, "failed") {
 			t.Errorf("tool status %q = %q", test.status, status)

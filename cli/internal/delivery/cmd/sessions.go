@@ -8,18 +8,15 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/spf13/cobra"
-
-	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/workbenchstate"
-	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
-	"github.com/Tangerg/flame/cli/internal/application/agent/mutation"
 	"github.com/Tangerg/flame/cli/internal/application/agent/session"
+	"github.com/Tangerg/flame/cli/internal/application/mutation"
 	"github.com/Tangerg/flame/cli/internal/delivery/cmd/render"
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/spf13/cobra"
 )
 
-func newSessionsCommand(provider runtimeProvider, stateDirectory string) *cobra.Command {
+func newSessionsCommand(provider runtimeProvider) *cobra.Command {
 	sessions := &cobra.Command{
 		Use:     "sessions",
 		Short:   "Inspect and manage sessions",
@@ -32,7 +29,7 @@ func newSessionsCommand(provider runtimeProvider, stateDirectory string) *cobra.
 		newSessionsUpdateCommand(provider),
 		newSessionsRenameCommand(provider),
 		newSessionsForkCommand(provider),
-		newSessionsDeleteCommand(provider, stateDirectory),
+		newSessionsDeleteCommand(provider),
 	)
 	return sessions
 }
@@ -49,7 +46,7 @@ func newSessionsUpdateCommand(provider runtimeProvider) *cobra.Command {
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			update := agent.UpdateSession{SessionID: args[0], ExpectedRevision: revision}
+			update := conversation.UpdateSession{SessionID: args[0], ExpectedRevision: revision}
 			if cmd.Flags().Changed("title") {
 				update.Title = &title
 			}
@@ -61,7 +58,7 @@ func newSessionsUpdateCommand(provider runtimeProvider) *cobra.Command {
 				update.Workspace = &resolved
 			}
 			if cmd.Flags().Changed("model") {
-				ref, err := agent.ParseModelRef(model)
+				ref, err := conversation.ParseModelRef(model)
 				if err != nil {
 					return err
 				}
@@ -100,8 +97,8 @@ func newSessionsUpdateCommand(provider runtimeProvider) *cobra.Command {
 
 func newSessionsListCommand(provider runtimeProvider) *cobra.Command {
 	var (
-		query     agent.SessionQuery
-		limitRows = agent.DefaultPageRows
+		query     conversation.SessionQuery
+		limitRows = conversation.DefaultPageRows
 		asJSON    bool
 	)
 	cmd := &cobra.Command{
@@ -157,8 +154,8 @@ func newSessionsListCommand(provider runtimeProvider) *cobra.Command {
 		&limitRows,
 		"limit",
 		"n",
-		agent.DefaultPageRows,
-		fmt.Sprintf("Maximum sessions to return (up to %d)", agent.MaximumPageRows),
+		conversation.DefaultPageRows,
+		fmt.Sprintf("Maximum sessions to return (up to %d)", conversation.MaximumPageRows),
 	)
 	cmd.Flags().StringVar(&query.Cursor, "cursor", "", "Opaque cursor returned by the previous page")
 	cmd.Flags().StringVarP(&query.Search, "search", "q", "", "Search session titles and workspaces")
@@ -167,7 +164,7 @@ func newSessionsListCommand(provider runtimeProvider) *cobra.Command {
 	return cmd
 }
 
-func sessionWorkspaceLabel(session agent.Session) string {
+func sessionWorkspaceLabel(session conversation.Session) string {
 	if session.Workspace.IsAvailable() {
 		return session.Workspace.Path
 	}
@@ -201,7 +198,7 @@ func newSessionsShowCommand(provider runtimeProvider) *cobra.Command {
 	return cmd
 }
 
-func writeSessionSnapshot(cmd *cobra.Command, snapshot agent.SessionSnapshot, asJSON bool) error {
+func writeSessionSnapshot(cmd *cobra.Command, snapshot conversation.SessionSnapshot, asJSON bool) error {
 	if asJSON {
 		return render.WriteSessionSnapshotJSON(cmd.OutOrStdout(), snapshot)
 	}
@@ -224,7 +221,7 @@ func newSessionsRenameCommand(provider runtimeProvider) *cobra.Command {
 				return err
 			}
 			title := args[1]
-			updated, err := session.Update(cmd.Context(), runtime, agent.UpdateSession{
+			updated, err := session.Update(cmd.Context(), runtime, conversation.UpdateSession{
 				SessionID: args[0], Title: &title, ExpectedRevision: revision,
 			})
 			if err != nil {
@@ -255,7 +252,7 @@ func newSessionsForkCommand(provider runtimeProvider) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			forked, err := runtime.ForkSession(cmd.Context(), agent.ForkSession{SessionID: args[0], FromRunID: fromRun, Title: title})
+			forked, err := runtime.ForkSession(cmd.Context(), conversation.ForkSession{SessionID: args[0], FromRunID: fromRun, Title: title})
 			if err != nil {
 				return err
 			}
@@ -269,7 +266,7 @@ func newSessionsForkCommand(provider runtimeProvider) *cobra.Command {
 	return cmd
 }
 
-func newSessionsDeleteCommand(provider runtimeProvider, stateDirectory string) *cobra.Command {
+func newSessionsDeleteCommand(provider runtimeProvider) *cobra.Command {
 	var yes bool
 	cmd := &cobra.Command{
 		Use:          "delete <session-id>",
@@ -285,16 +282,12 @@ func newSessionsDeleteCommand(provider runtimeProvider, stateDirectory string) *
 			if err != nil {
 				return err
 			}
-			targetDirectory, err := provider.stateDirectory(stateDirectory)
+			authoring, err := provider.workbench()
 			if err != nil {
 				return err
 			}
-			authoring, err := workbenchstate.Open(targetDirectory)
-			if err != nil {
-				return fmt.Errorf("open CLI workbench: %w", err)
-			}
 			defer func() { runErr = errors.Join(runErr, authoring.Close()) }()
-			replayPolicy, err := runtimebinding.CommandReplayPolicy(profile)
+			replayPolicy, err := mutation.PolicyFromProfile(profile, time.Now)
 			if err != nil {
 				return fmt.Errorf("runtime command replay policy: %w", err)
 			}
@@ -346,7 +339,7 @@ func completeSessionIDs(provider runtimeProvider) cobra.CompletionFunc {
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}
-		page, err := runtime.ListSessions(cmd.Context(), agent.SessionQuery{PageSize: agent.MaximumPageSize(), Search: toComplete})
+		page, err := runtime.ListSessions(cmd.Context(), conversation.SessionQuery{PageSize: conversation.MaximumPageSize(), Search: toComplete})
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}

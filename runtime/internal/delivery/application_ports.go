@@ -5,9 +5,11 @@ import (
 	"io"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/application/agent/feedback"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/automation/schedules"
+	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
@@ -104,7 +106,7 @@ type usageUseCases interface {
 }
 
 type feedbackUseCases interface {
-	Record(ctx context.Context, command sessions.FeedbackCommand) error
+	Record(ctx context.Context, command feedback.Command) error
 }
 
 // scheduleManagementUseCases borrows mutation inputs for each synchronous call.
@@ -149,8 +151,8 @@ type workspaceSkillUseCases interface {
 	Restore(ctx context.Context, name string) error
 }
 
-type workspaceHookUseCases interface {
-	Inspect(ctx context.Context, cwd string) (workspaceapp.HookInspection, error)
+type hookUseCases interface {
+	Inspect(ctx context.Context, cwd string) (apphooks.CatalogView, error)
 	SetProjectTrust(ctx context.Context, projectRoot string, trusted bool) error
 }
 

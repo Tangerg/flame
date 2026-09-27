@@ -14,6 +14,7 @@ import (
 
 	workspaceadapter "github.com/Tangerg/flame/runtime/internal/adapter/workspace"
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
+	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
@@ -24,8 +25,8 @@ type workspaceTestConfig struct {
 	Skills          workspaceapp.SkillCatalog
 	Curator         workspaceapp.SkillCurator
 	Proposals       workspaceapp.SkillProposals
-	Hooks           workspaceapp.HookInspector
-	Trust           workspaceapp.HookTrustStore
+	Hooks           apphooks.Inspector
+	Trust           apphooks.TrustStore
 	Watcher         workspaceapp.FileWatcher
 	AuthoredWatcher workspaceapp.AuthoredResourceWatcher
 }
@@ -36,7 +37,7 @@ type workspaceSurfaces struct {
 	vcs           *workspaceapp.VCS
 	discovery     *workspaceapp.Discovery
 	skills        *workspaceapp.Skills
-	hooks         *workspaceapp.Hooks
+	hooks         *apphooks.Catalog
 	watch         *workspaceapp.Watch
 	authoredWatch *workspaceapp.AuthoredWatch
 }
@@ -93,7 +94,7 @@ func newWorkspaceSurfaces(cwd string, cfg workspaceTestConfig) workspaceSurfaces
 	if cfg.Trust == nil {
 		cfg.Trust = &fakeHookTrust{}
 	}
-	hooks, err := workspaceapp.NewHooks(roots, cfg.Hooks, cfg.Trust, nil)
+	hooks, err := apphooks.NewCatalog(roots, cfg.Hooks, cfg.Trust, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -147,7 +148,7 @@ func applyWorkspaceSurfaces(s *Handler, surfaces workspaceSurfaces) {
 	s.workspaceVCS = surfaces.vcs
 	s.workspaceDiscovery = surfaces.discovery
 	s.workspaceSkills = surfaces.skills
-	s.workspaceHooks = surfaces.hooks
+	s.hooks = surfaces.hooks
 	s.workspaceWatch = surfaces.watch
 	s.workspaceAuthoredWatch = surfaces.authoredWatch
 }

@@ -190,7 +190,7 @@ const (
 
 // List returns one stable cursor page of entries below a workspace root.
 func (f *Files) List(ctx context.Context, input FileListInput) (FilePage, error) {
-	root, err := f.scope.root(input.CWD)
+	root, err := f.scope.ResolveRoot(input.CWD)
 	if err != nil {
 		return FilePage{}, err
 	}
@@ -227,7 +227,7 @@ func (f *Files) List(ctx context.Context, input FileListInput) (FilePage, error)
 
 // Head returns the first requested lines of one workspace file.
 func (f *Files) Head(ctx context.Context, cwd, path string, limit HeadLineLimit) (FileHead, error) {
-	root, err := f.scope.root(cwd)
+	root, err := f.scope.ResolveRoot(cwd)
 	if err != nil {
 		return FileHead{}, err
 	}
@@ -268,7 +268,7 @@ func (f *Files) Read(ctx context.Context, cwd string, input FileReadInput) (File
 	if err != nil {
 		return FileReadResult{}, err
 	}
-	root, err := f.scope.root(cwd)
+	root, err := f.scope.ResolveRoot(cwd)
 	if err != nil {
 		return FileReadResult{}, err
 	}
@@ -344,7 +344,7 @@ func (f *Files) Grep(ctx context.Context, cwd string, input GrepInput) (GrepResu
 	if err != nil {
 		return GrepResult{}, fmt.Errorf("%w: %v", ErrInvalidGrepQuery, err)
 	}
-	root, err := f.scope.root(cwd)
+	root, err := f.scope.ResolveRoot(cwd)
 	if err != nil {
 		return GrepResult{}, err
 	}

@@ -1,849 +1,291 @@
-# Flame 前端架构
+# Flame graphical client architecture
 
-> 本文档描述 `frontend/` 这个 React + TypeScript 应用是怎么组织、怎么运行的。
-> 主 UI 心智模型看 [`../docs/FRONTEND_AGENT_WORKSPACE_MODEL.md`](../docs/FRONTEND_AGENT_WORKSPACE_MODEL.md)；
-> 设计系统 / 视觉规范看 `DESIGN.md`；决策透镜 / 工程约定看仓库根的 `CLAUDE.md`；
-> 协议权威定义看 `runtime/contract/`（`API_REFERENCE.md` 是生成索引，JSON 是机器真值）。
->
-> **分工**：`CLAUDE.md` 讲"怎么判断"（决策与硬约定），本文讲"系统长什么样"（结构与运行）。两者尽量不重述。
+The same React application runs in a browser and a Wails WebView. Runtime owns
+execution and durable product facts; the graphical client owns authoring,
+navigation, projections, and presentation. The IDE is a separate consumer of the
+same Runtime-owned TypeScript client.
 
----
+Repository rules live in [`../../AGENTS.md`](../../AGENTS.md). The Runtime
+contract lives in [`../../runtime/contract/`](../../runtime/contract/), including
+its generated API reference. Visual rules remain in [`DESIGN.md`](DESIGN.md) and
+[`DESKTOP_UI_POLISH.md`](DESKTOP_UI_POLISH.md). This document describes the
+current ownership and dependency structure.
 
-## 1. 一句话概括
+## Directory map
 
-**Flame 前端 = 自研 Flame Runtime Protocol v2 流式协议 + 插件化 React 外壳。**
+| Location | Responsibility |
+| --- | --- |
+| `src/main.tsx`, `src/App.tsx` | Construct the client environment, mount React, and supply the selected plugins |
+| `src/main/` | Concrete connection ownership, product plugin selection, renderer startup and shutdown, protocol client identity |
+| `src/platform/` | Browser/Wails bootstrap and actual native capabilities |
+| `src/plugins/host/` | React integration with the plugin Host, installation readiness, disposal, slots, shortcuts, error boundaries |
+| `src/plugins/sdk/` | Typed extension points, contribution policy, plugin contracts, selectors, installation state |
+| `src/plugins/builtin/` | Product feature owners and their plugin contributions |
+| `src/ui/primitives/` | Headless interaction contracts backed by Base UI |
+| `src/ui/atoms/` | Token-dressed controls and shared visual vocabulary |
+| `src/ui/agent/` | Presentation composites for the workbench and conversation |
+| `src/lib/` | Shared technical mechanisms, including query caching, navigation ports, publication identity, task lifetimes, highlighting, and telemetry |
+| `src/foundation/` | Consumer-neutral scalar contracts, including exact sequence values |
+| `src/styles/` | StyleX tokens and the existing global stylesheets |
+| `src/test/`, `visual/` | Test setup and explicit visual-fixture composition |
+| `../../runtime/contract/typescript/` | Generated wire contract and reusable HTTP/SSE client |
 
-外壳几乎不长肉——路由、布局、内容渲染、命令、快捷键、主题、协议事件处理（StreamEvent fold）、设置面板，全部由内置插件贡献。Kernel 由 dougong `Host` 的契约图与生命周期、Flame 的开放扩展点策略和少量共享 Zustand store组成；插件经 `PluginContext` 写贡献，经 typed selector 消费稳定 read model。
+There is no graphical-client copy of the protocol implementation and no global
+client locator. `main/` constructs dependencies and passes them outward through
+plugin factories; consumers never import the composition root.
 
----
+## Product owners
 
-## 2. 技术栈
+| Feature | Owns |
+| --- | --- |
+| `agent/` | Session and Run projections, streaming fold, input submission, interruption responses, recovery, and consumer-facing command/read ports |
+| `chat/composer/` | Drafts, local attachments, authoring history, explicit Run overrides, and submission intent |
+| Other `chat/` features | Conversation rendering, tool previews, message actions, Goal/Plan presentation, search, and related contributions |
+| `providers/` | Provider/model catalog, exact model identity, configuration drafts, role selection, and configuration mutations |
+| `runtime/` | Endpoint configuration, capability negotiation, connection generation, server scope, and mutation-journal storage installation |
+| `navigation/` | Work Index projections and working-directory selection |
+| `workspace/` | Workspace materials, view navigation, file and review reads, skill/memory curation, conversation export, and subscription invalidation |
+| `settings/` features | Their own settings policies and presentation contributions |
+| `shell/workbench/` | Product composition of chat, sidebar, settings, and dock surfaces |
+| Other `shell/` features | Native chrome, notifications, status, route, and overlay contributions |
+| `sidebar/` | Work Index rendering and actions |
+| `theme/` | Appearance preferences, theme publication, and document appearance |
+| `defaults/` | Default commands, titles, roles, and accents |
 
-| 层       | 选型                                                              |
-| -------- | ----------------------------------------------------------------- |
-| UI       | React 19 + TypeScript                                             |
-| 样式     | StyleX（编译期原子 CSS）+ `globals.css` 的令牌与机制类            |
-| Headless | Base UI primitives first（Dialog / Popover / Menu / Tooltip / …） |
-| 特定件   | `cmdk`（命令面板）/ `sonner`（Toast）/ `lucide-react`（图标）     |
-| 状态     | Zustand（多 store，无 context 链）                                |
-| 路由     | TanStack Router（route tree 动态构建）                            |
-| 数据     | TanStack React Query                                              |
-| 协议     | 自研 Flame Runtime Protocol v2（JSON-RPC 2.0，`@flame/runtime-contract/client`）        |
-| 动画     | motion/react                                                      |
-| 桌面壳   | Wails v3 beta（Go 后端 + WebView 前端，版本钉死）                 |
-| 测试     | Vitest 4 + Testing Library + happy-dom                            |
-| 构建     | Vite 8（内置 Rolldown bundler）                                   |
-| Lint     | OxLint 1.x（Rust-based）；`prettier` 格式化                       |
+Providers are consumed by Composer, schedules, and setup prompts as well as
+Settings. They therefore own a top-level feature directory and contribute their
+configuration pane through the Settings extension point. Settings placement does
+not own the provider catalog.
 
-> 已弃用 AG-UI——协议、类型、reducer 全部自研原生模型（见 `CLAUDE.md` 第一法则）。
+The workbench is product UI composition. The plugin platform remains in
+`plugins/host` and `plugins/sdk`; product layout does not become a second kernel.
 
----
-
-## 3. 目录速览
-
-```
-src/
-├── main.tsx              入口 — createRoot(<App/>)
-├── App.tsx               顶层 Provider 链：QueryClient → PluginProvider → AppRouter
-├── router.tsx            TanStack 路由；session / 主视图 / dock 目标 / settings 面板住在 search param
-│
-├── pages/
-│   └── AgentClientPage.tsx   kernel：app.sidebar / app.main / app.overlay 三个 Slot
-│
-├── plugins/              插件系统
-│   ├── host/                 插件宿主运行时
-│   │   ├── PluginProvider.tsx    启动编排与代际 owner：Host.start → ready → stop
-│   │   ├── Slot.tsx              <Slot name="…"/> 渲染注册到该 slot 的插件组件
-│   │   ├── PluginBoundary.tsx    每个插件组件的 React Error Boundary
-│   │   └── ShortcutsProvider.tsx 全局键盘快捷键派发
-│   │
-│   ├── sdk/                  插件平台
-│   │   ├── types/                17 个 domain 文件 + barrel（按贡献面拆）
-│   │   ├── kernelPoints.ts       ~35 个内置 ExtensionPoint（THEME / COMMAND / LAYOUT_SLOT / …）
-│   │   ├── contracts.ts          dougong token + Flame key/read policy
-│   │   ├── definePlugin.ts       绑定 dougong context 与 Flame contribute policy
-│   │   ├── bootstrap.ts          Host create/start/stop + installation transaction
-│   │   ├── kernel.ts             当前 Host 代际、ContributionView cache 与安装 read model
-│   │   ├── services.ts / shellServices.ts  typed shell capability contracts
-│   │   ├── selectors/            按面分组的 useXxx / lookupXxx + extensions.ts（读侧底座 + O(1) 索引）
-│   │   └── config.ts / storage.ts / notifications.ts / errors.ts
-│   │
-│   └── builtin/              内置插件，按领域（限界上下文）分组
-│       ├── index.ts          manifest（依赖由 requires / provides contract graph 驱动）
-│       ├── agent/            agent ports bootstrap · fold（StreamEvent→view state）· rpc-agent
-│       ├── chat/             composer · message/(渲染 ui/ + public) · message-actions · plan-progress ·
-│       │                     slash-hints · chat-search · file-references ·
-│       │                     tools/(meta + previews + ui/)
-│       ├── command/          session-search · global-keymap · shortcuts
-│       ├── defaults/         默认 commands / data / accents / roles / title
-│       ├── i18n/             locales pack（8 语言）
-│       ├── navigation/       Work Index read model（projects/sessions/attention）
-│       ├── observability/    OTel 生命周期插件
-│       ├── runtime/          连接配置 · capability discovery/read model
-│       ├── settings/         appearance · personalization · connection-settings ·
-│       │                     plugins-pane · providers · icon-gallery
-│       ├── shell/            纯框架：kernel · main-route · status · toaster ·
-│       │                     topbar-new-tab · welcome-screen
-│       ├── sidebar/          Work Index renderer / footer / rail surfaces
-│       ├── theme/            kit（defineColorThemePlugin helper）+ themes（10+ 主题）+ visualStyles
-│       └── workspace/        workspace-views · tasks · diagnostics · conversation-export
-│
-├── plugins/builtin/agent/                          Agent 限界上下文
-│   ├── domain/             AgentInput 等业务输入语言
-│   ├── application/        fold / input / session / run / HITL 用例
-│   ├── adapters/           driver lifecycle / Zustand read model / wire input bridge
-│   ├── presentation/       message/tool/HITL/run digest view model
-│   └── public/             对其他上下文发布 input / session / run / conversation ports
-│
-├── plugins/builtin/chat/composer/                  Composer 限界上下文
-│   ├── domain/             Draft / Attachment / SendIntent / history archive
-│   ├── application/        submit / draft mutation / file mention use case
-│   ├── adapters/           composer Zustand adapter + draft port implementation
-│   └── public/             draft / submit / history / attachment public facade
-│
-├── plugins/builtin/navigation/                     Navigation 限界上下文
-│   ├── domain/             Work Index / Work Group / Work Session read model
-│   ├── application/        projects + sessions + active context projection
-│   └── public/             Work Index renderer consumption facade
-│
-├── plugins/builtin/runtime/                        Runtime 限界上下文
-│   ├── domain/             capability published language
-│   ├── application/        endpoint policy / discovery / consumer-owned ports
-│   ├── adapters/           Host config、typed SDK discovery、capability read model
-│   └── public/             endpoint / capability facade
-│
-├── plugins/builtin/workspace/                      Workspace 限界上下文
-│   ├── application/        navigation / tool routing / activity projection
-│   ├── adapters/           workspace navigation port adapters
-│   ├── events.ts           runtime workspace event loop + invalidation rules
-│   └── public/             navigation / deeplink / sidebar rail facade
-│
-│                         （全局 toast 层是一个内置插件：plugins/builtin/shell/toaster/）
-│
-
-├── ui/                   本地 UI kit：primitives(Base UI 防腐层) / atoms / agent 业务原子
-│                         页面只消费 atoms 或 agent 原子，不直连 headless 外部库
-│
-├── lib/                  共享 hook + 纯函数（跨插件共享，不属于上述任一层）
-│   ├── highlight/        shiki（懒加载 + 缓存 + 语言解析）
-│   ├── i18n/             i18next 接线 + 分词 + 相对时间
-│   ├── navigation.ts     Navigator port —— 「我此刻在哪」的唯一 owner（URL search param）
-│   ├── observability/    OTel 三信号（setup/sink/stores/tracing/logBridge）—— 见 §5.5
-│   ├── ports/            createSingletonPort（上下文内部的依赖倒置）
-│   ├── queryClient.ts    单一 QueryClient + 代际缓存修复
-│   ├── taskQueue.ts      RetirableTaskCohort / SerialTaskChain
-│   └── classNames.ts / motion.ts / metrics.ts / hmr.ts / combo.ts / shellGeometry.ts
-
-会话用例 hook 不在 `lib/` —— 它们已经住进 agent 上下文的 `application/`（`input/chatSend`、
-`hitl/useApprovalSubmit`、`session/createSession` …）。markdown 渲染同理，住在 chat 上下文里。
-│
-├── platform/             actual client host: Wails or browser
-│   ├── host.ts           narrow native/window/bootstrap capabilities
-│   ├── clientHost.ts     selects the environment; lazy Wails import
-│   ├── desktopHost.ts    native binding validation
-│   └── browserHost.ts    same-origin bootstrap and browser downloads
-│
-├── main/                 composition root
-│   ├── container.ts      owns host bootstrap and active protocol-client lifetime
-│   ├── renderer.ts       structured bootstrap/mount/connection shutdown
-│   └── runtimeProtocol.ts  surface identity and protocol capabilities
-│
-├── styles/               globals.css（reset + 令牌 + keyframes + 机制类，唯一主样式；入口最后加载）
-│                         + markdown/overlays.css（只承载 StyleX 表达不了的后代规则）
-│                         + stylex.css（编译产物注入点，源文件是空表）
-└── test/                 测试 setup
-```
-
-### 3.1 Dependency and outbound boundaries
-
-The reusable TypeScript protocol implementation lives beside its generated contract
-in `runtime/contract/typescript/client`. Desktop, Web, and the IDE import
-`@flame/runtime-contract/client`; there is no desktop protocol facade. The client
-owns JSON-RPC validation, HTTP/SSE, command settlement, and subscriptions. It owns
-no React state, plugin registry, Wails binding, or implicit process-global client.
-
-`platform/` owns actual host variation. `main/container.ts` completes the selected
-host's bootstrap before constructing the product. It caches the active protocol
-client by normalized address, in-memory token, and journal storage owner. Replacing
-that signature closes the predecessor synchronously before the successor starts
-work. Renderer shutdown joins connection teardown, without stopping Runtime.
-
-Business applications continue to define narrow consumer-owned ports. Adapters
-connect those ports to the composition root and the reusable protocol client.
-Components and pages consume context public facades, stores, and selectors; they
-do not import the composition root or protocol client. Fold remains a pure
-wire-to-view projection and never depends on host or rendering infrastructure.
-
-The existing layer, context, publication, and circular-dependency checks enforce
-these directions. Cross-context collaboration still uses each context's `public/`
-facade. Shared protocol extraction does not move the plugin platform, stores,
-React Query, or UI into a general SDK.
-
-React Query 的 cache 与 provider lookup 是共享技术机制，留在 `lib/data/dataQuery.ts` 与 `queryClient.ts`。Session、Workspace、Approval、Provider、MCP、Hooks、Schedules、Usage 的 query key、read model 与 hook 均由所属上下文拥有；跨上下文消费必须经过该上下文的 `public/queries.ts`（或既有 public facade）。`lib/data` 不再充当全局业务模型仓库。
-
-Session 的 served-model identity 是 Runtime 持久化的 exact `provider + model` pair。Agent Session adapter
-必须把两者共同投影到 `AgentSessionSummary`；Composer restore 与 Context usage 只按 pair 查模型目录，不能按
-model id 取首项或在既有 Session 上回落 Runtime 全局默认。无 Session 的 welcome surface 才能采用目录默认；
-Session summary 尚未到达时保持 unresolved，不能把 query race 固化成覆盖。该选择只在 render 中派生，不反写
-Composer store；只有用户在 picker 中的明确选择才写入 process preference 并成为 Run override。未明确选择时
-Run 请求省略 pair，由 Runtime 从 durable Session 读取，因此不建立第二个 Session selection owner。
-
-Session workspace 在 Agent consumer 中保持一个 `workspace { path, availability }` 值。Runtime adapter 从
-`Session.workspace` 一次性投影该值；Shell missing banner、Work Index、active-workspace resolution 与 create
-inheritance 直接读取它，不再平铺 `cwd` / `cwdMissing` 镜像字段，也不通过 effect 或第二 store 同步。
-下游命令/查询的 `cwd` 参数只表达一次技术调用的工作目录，不反向成为 Session identity owner。
-
-Application port 使用 `lib/ports/singletonPort.ts` 管理进程内绑定。每个 adapter installer 必须返回 disposer，plugin `setup` 必须把它交给 `ctx.cleanup`；Installation remove、Host stop 或 HMR owner 退休会断开旧 adapter。disposer 按实例比较，旧插件的迟到 cleanup 不会误清除后来安装的新 adapter。`public/` 不暴露 adapter installer，组合入口在同一上下文内直接装配。
-
-需要全局命令入口的 replaceable application owner 使用 `lib/publicationSlot.ts`：slot 只拥有 process-local exact object identity，先发布 successor、再同步退休 predecessor，并只允许 exact owner withdraw。它不能持有 task、cache、event、error 或任意业务状态；serialization、abort、projection repair、material generation 和 typed retired error 必须继续留在 concrete owner。Singleton port 复用同一 identity primitive，业务类不再各自复制 `static #active` lifecycle protocol。
-
-The shared client mutation journal persists only unresolved command identity. It
-owns strict storage encoding, Runtime namespace fencing and bounded replay.
-Each journal has one explicit client owner; constructing a different connection
-does not retire it. The composition root closes the predecessor client before
-publishing replacement effects. Closing synchronously retires that journal, so
-late responses and cleanup cannot settle a successor's reused identity. Mutation
-parameters are cloned once at command creation and every retry uses that prepared
-input. Desktop owns its storage adapter; the IDE additionally owns immutable
-prepared command records containing exact editor snapshots for restart recovery.
-
-The Runtime context owns the active target and connection replacement. Its endpoint
-adapter restores the persisted address after host bootstrap, while credentials
-remain in memory and are valid only for that normalized address. URL parsing is
-shared with the reusable client: HTTP(S), no embedded credentials, query, or
-fragment. The browser's default is its serving origin; the Desktop default comes
-from Wails. There is no second frontend copy of the native default port.
-
-Settings → Connection applies address or token changes inside the same connection
-replacement transaction. It retires the previous generation, commits the target,
-clears server projections, and immediately inspects the successor. Stream loss
-withdraws the generation and schedules bounded exponential reconnect. Workspace
-subscriptions report loss rather than running a competing reconnect loop.
-
-Navigation owns the workspace-selection dialog. New Session without an active
-Session opens that dialog; recent Session workspaces remain selectable through the
-existing project selector. The directory is explicitly on the connected Runtime
-and `sessions.create` validates it. Native browsing and filesystem Open/Reveal
-require the exact local endpoint handed over by Wails. A target replacement or
-plugin retirement clears the dialog and prevents late native results from touching
-a successor selection. Runtime authorization failure leaves Settings accessible.
-
-Workspace event context 是 `runtime.subscribe` 的唯一产品 consumer：global topics 在 active
-Session 工作区暂不可解析时仍保持在线，file watch 则 fail closed 为 `none`。Session adapter
-只把权威 `session_not_found` 投影为 unavailable；network/transport/protocol 瞬时故障保留为
-failure，由 event application 以可取消、有上限退避在同一 identity 上恢复。Session retarget
-和 plugin dispose 必须使旧解析 generation 失效，旧 cwd 不能重新安装 watch。wire 错误识别、
-订阅 lifecycle 和 Agent Session 投影因此仍分别留在 adapter、Workspace application 与 Agent
-public facade，不互相泄露抽象。
-
-**增加新协议方法的步骤**：
-
-1. 在 Runtime Contract Registry 声明 method、shape、error、capability 与 wire
-   constraint，并从同一来源生成 schema、OpenRPC、API Reference 与 Desktop wire。
-2. `runtime/contract/typescript/client/methods.ts` 只补不能由生成 metadata 表达的 typed transport 编排；禁止手写第二份
-   wire union，也禁止编辑 `wire.*.generated.ts`。
-3. 所属 bounded context 在 application 定义最小 consumer-owned port / use case，
-   adapter 才通过 `getContainer().client().foo(...)` 实现它。
-4. 业务 UI 只消费该 context 的 `public/` facade；application 测试替换 port，adapter /
-   protocol boundary 测试才注入 fake client。
-
-> 协议 method 表 / envelope / transport 形状的权威定义在
-> [`runtime/contract/API_REFERENCE.md`](../../runtime/contract/API_REFERENCE.md)（生成的人读索引，
-> HTTP 端点与 sidecar 同在一处）与它旁边的 `manifest.json` / `openrpc.json` / `schema.json`，勿在本文重述。
-
-### 3.2 Design System 反腐边界
-
-交互实现沿一个方向组合：
+Workspace views are organized by the material they present:
 
 ```text
-Base UI / browser-native semantics
-  → ui/primitives
-  → ui/atoms
-  → ui/agent
-  → feature / plugin UI
+workspace/
+  application/        navigation, queries, curation, export, subscription policy
+  adapters/           Runtime translations, local actions, and stores
+  domain/             deterministic workspace rules and values
+  public/             cross-feature commands, queries, and navigation vocabulary
+  ui/
+    files/            file workspace, tree, and content
+    review/           diff workspace and review presentation
+    timeline/         timeline and model-invocation history
+    skills/           available skills, library, and proposals
+    memory/           Agent memory presentation
+    ViewHeader.tsx
+    WorkspaceViewLayout.tsx
+    viewStyles.ts
+  views.ts            view contributions
+  events.ts           workspace subscription installation
 ```
 
-每层只回答自己的问题：
+These UI groups share the existing Workspace owner. They do not each introduce a
+new application, domain, adapter, or navigation stack.
 
-- `ui/primitives` 是唯一可直接 import `@base-ui/react`、渲染原生交互标签或声明底层
-  ARIA widget role 的防腐层。它只做第三方/浏览器语义归一，不知道产品 tone、密度和业务。
-- `ui/atoms` 定义产品交互词汇与横切策略：可见动作使用 `Button`，纯图标动作使用
-  `IconButton`，文字动作使用 `TextButton`；整行、卡片、图片、色块等由内容自身拥有
-  外观的复合控件使用 `Pressable`。后者只提供 button 语义与 accessibility baseline，
-  不能被当作普通按钮的无样式逃生口。
-- 浏览器专属行为由语义 atom 收口：`HiddenFileInput`、`ColorPickerInput`、
-  `ExternalLink`、`ResizeHandle` 分别拥有固定 input type、隐藏/覆盖策略、外链安全策略
-  和 separator/focus 语义；feature 不重复这些实现知识。
-- `ui/agent` 只用 atoms 组合 Agent presentation primitive；feature/plugin 只消费
-  atoms 或 agent primitive，并继续拥有自己的业务状态、文案、布局和领域视觉。
+## Dependencies and public surfaces
 
-`npm run check:design-system` 使用 TypeScript AST 强制上述边界：禁止 primitives 外部
-直接 import Base UI、禁止 design-system 外部 import primitives、禁止 primitives 外部
-渲染原生交互标签或手写交互 role。测试文件可以直接渲染 DOM 以断言行为，但 production
-代码没有白名单和兼容出口。
+A feature uses only the rings it needs. Pure values and transitions belong in
+`domain`; use-case ordering and consumer ports belong in `application`; external
+translation belongs in `adapters`; view-model construction belongs in
+`presentation`; rendering belongs in `ui`. A small contribution can remain one
+file. Directory names do not create an architectural obligation to add layers.
 
-### 3.3 Reuse with concrete consumers
+Within an owner, dependencies point inward. Domain does not import application,
+adapters, rendering, stores, or host effects. Application consumes its own ports,
+not concrete adapters. An adapter may depend on a Domain or Application
+contract; it never reaches back into `main` to locate a client.
 
-Only the protocol client is extracted beside the Runtime contract because Desktop,
-Web, and the IDE consume it. The React workbench runs directly in both Wails and a
-browser. The repository keeps its existing top-level modules; shared packages are
-not a reason to rebuild the directory layout or duplicate business state.
+Cross-feature consumers use the owner's `public/` modules. Public modules expose
+that owner's language and supported behavior; they do not rename another
+owner's types or re-export adapter implementations. Shared SDK vocabulary is
+imported directly from the SDK. The small Settings presentation kit has existing
+explicit entrypoints (`index.ts`, `panes.ts`, `settingStyles.ts`); its other
+implementation files remain private without another forwarding directory.
 
----
+`chat`, `command`, `settings`, and `shell` group independent feature owners.
+Architecture checks classify those owners even when their directories are flat.
+Shared conversation styling lives in `ui/agent/chatStyles.ts`, so the `chat`
+namespace does not also act as an enclosing feature.
 
-## 4. 启动流程
+Static registration belongs beside the feature's plugin entry. A function that
+only wraps an extension specification does not need an Application package.
+Interfaces are shaped around real consumer needs. Neither a broad dependency
+bag nor a parallel service locator is a substitute for explicit construction.
 
-```
-main.tsx
-  └─ createRoot(<App/>)
-       │
-       ▼
-App.tsx
-  <QueryClientProvider client={queryClient}>   ◄── 最宽：plugins + queries 都需要
-    <PluginProvider>                            ◄── 在 QueryClient 内，插件组件可用 query
-      <AppRouter />                             ◄── 在 Plugins 内，路由能渲染插件贡献
-    </PluginProvider>
-  </QueryClientProvider>
-```
+## Composition and connection lifetime
 
-### 4.1 PluginProvider 启动步骤
+`main.tsx` chooses a `ClientHost`, constructs `createRuntimeConnection(host)`, and
+passes that connection and host to `createBuiltinPlugins`. `App` supplies the
+resulting list to `PluginProvider`. The Host knows how to install the supplied
+plugins; it does not choose Flame's built-ins.
 
-`src/plugins/host/PluginProvider.tsx`：
+`ClientRenderer` owns host initialization, initial window chrome, the window
+watcher, the React root, and final connection disposal. Closing the window or
+retiring the module during HMR uses that same teardown path. A renderer retired
+while bootstrap is pending cannot later mount or publish its bootstrap result.
 
-1. **`startKernel(builtinPlugins, signal)`** — 创建 dougong Host，将 shell Services 与全部 built-ins 作为一个启动事务安装；Host 根据 `requires` / `provides` 解析契约图。启动失败整笔 rollback，不暴露半启动 read model。
-2. **`publishKernel(host)` + ready handlers** — `host.start()` 成功后才发布当前 Host 代际与安装 read model，并触发 ready contributions。
-3. **`setReady(true)`** — 解除 children 渲染门。
-4. **effect cleanup** — `stopKernel(ownedHost)` 同步撤销 exact Host publication，再等待 Host 结构化资源回收。旧 renderer 的迟到 cleanup 不能撤销 successor Host；启动在 owner 退休后才结算时也必须 rollback。`main.tsx` 的 `beforeunload` 直接关闭它拥有的 renderer。
+The concrete Runtime connection owns a cached client for the exact normalized
+endpoint, token, and mutation-journal storage identity. Replacing any of these
+retires the previous client before successor work is issued. Final disposal joins
+all outstanding retirements and reports their failures. A disposed connection
+cannot create new clients.
 
-外层再包一个 `TooltipProvider`（Base UI provider，250ms delay），让 kernel + 任意插件的 `<Tooltip>` 不必各自带 provider。
+Plugins receive a required provider such as `runtimeClient: () => FlameClient`.
+The provider resolves the current connection. A query captures that client once
+for the whole operation, including pagination or a provider-to-model lookup, so
+one logical read cannot cross endpoints halfway through.
 
-> **为什么门控？** AppRouter 挂载时要读取已经提交的 route contributions。门控保证消费者只观察完整 Host transaction，不会看到"一部分插件已启动、另一部分仍缺失"的中间态。
+A long-lived mutation owner captures a gateway for its own generation. On a
+Runtime replacement, only the current installed owner may construct the
+successor gateway. The old generation is retired with its original gateway;
+late replies cannot publish into the successor's projection. Merely replacing a
+task queue while retaining its old gateway is insufficient.
 
-### 4.2 AgentClientPage —— 整个 Kernel
+Application ports use `lib/ports/singletonPort.ts` where a React or command
+consumer requires a published binding. Each installation returns its disposer.
+The owning plugin registers that disposer with `ctx.cleanup`. Publication and
+withdrawal compare exact owner identity, so a predecessor's late cleanup cannot
+remove a successor. This publication mechanism carries the installed value;
+concrete owners retain task, error, cache, and mutation state.
 
-`src/pages/AgentClientPage.tsx` 只把 plugin slots 填进 agent shell：
+`PluginProvider` tracks each installation generation independently of the plugin
+array identity. Removing and later reinstalling the same list must wait for the
+new Host to become ready. It stops only the Host it started, including when
+startup finishes after the installation has been retired.
 
-```tsx
-<AgentAppShell
-  sidebarLabel={t("shell.region.workIndex")}
-  sidebarResizeLabel={t("sidebar.action.resize")}
-  sidebarOpen={!drawer.collapsed}
-  sidebarWidth={width}
-  onResize={setWidth}
-  sidebar={activeViewId === "settings" ? undefined : <Slot name="app.sidebar" />}
-  main={<Slot name="app.main" />}
-  overlay={<Slot name="app.overlay" />}
-/>
-```
+## Query ownership
 
-三个 Slot 是 kernel 的全部肉（没有底部状态栏——run telemetry 在 composer footer，全局指示/通知在 sidebar footer）：
+React Query caching and `DATA_PROVIDER` lookup are shared mechanisms. Query keys,
+read models, fetchers, Runtime translation, and registration belong to the
+feature that understands the data:
 
-| Slot          | 典型贡献者                                                 |
-| ------------- | ---------------------------------------------------------- |
-| `app.sidebar` | `kernel-sidebar`                                           |
-| `app.main`    | `kernel-chat`（ChatPanel）                                 |
-| `app.overlay` | `session-search` / `chat-search` / `toaster` / `shortcuts` |
+- Agent registers Session and model-invocation reads.
+- Workspace registers projects, files, diffs, skills, and memory reads.
+- Providers registers provider/model catalogs, configuration, and role reads.
+- Hooks registers inspection and trust reads.
+- MCP registers its server and tool data through its own plugin.
 
-`AgentAppShell` 拥有窗口外壳、Work Index 区域和 settings 的 single-surface
-组合；实时 resize 只写 shell custom property，release/keyboard step 才通过
-`onResize` 持久化。插件只贡献 slot 内容，不直接组织顶层 layout。
+Each feature registers once and removes its contribution with its own plugin
+installation. Defaults has no business-data registry or cross-feature mapper.
+Components consume query hooks and read models rather than RPC envelopes.
 
----
+A complete list uses the SDK's paging surface. A deliberately bounded preview
+names its limit. Awaiting one page and discarding its continuation is not a
+complete catalog.
 
-## 5. 三大支柱
+## State and command ownership
 
-### 5.1 插件系统 —— Plugin SDK + 开放扩展点底座
+Runtime alone advances durable Session, Run, Segment, Item, Goal, Plan,
+Interrupt, and execution state. The Agent context folds Runtime events into a
+view, and recovery replaces that view from a coherent durable snapshot. Those
+are projections of one authority, not independent product transitions.
 
-#### 数据流：贡献 → Host read model → 订阅 → 渲染
+The client owns authoring facts: drafts, attachment preparation, queued intent,
+and unresolved command identity. Changing the endpoint scopes this local state
+to the selected Runtime. A remote path describes the Runtime machine; a browser
+file selection does not turn it into a server workspace.
 
-```
-PluginSpec.setup(ctx)
-       │  ctx.contribute(POINT, item, opts?)
-       ▼
-dougong Host —— owner-qualified contribution storage + transaction + cleanup
-       │  host.contributions(POINT.token)
-       ▼
-kernel.ts —— current Host generation + cached ContributionView + Flame single/multi policy
-       │
-       ▼
-selectors（sdk/selectors/）
-       │
-       ▼
-React hooks / imperative lookup consumers
-```
+The URL owns current navigation: active Session, main view, dock target, and
+Settings pane. Stores retain tab sets, drafts, per-view state, and continuity.
+Restored continuity can seed navigation; effects do not keep a second writable
+copy of the same current-location value.
 
-`contracts.ts` 把 dougong `ExtensionPoint` token 与 Flame 的领域 key、排序、capability 和 `single | multi` read policy绑定。Core 保留所有 owner-qualified contribution；Flame selector 才按领域 key 解析 shadow。因而覆盖插件卸载后，被遮蔽的原贡献会重新出现，而不是在写入时被破坏。
+Provider identity is the exact provider/model pair. An existing Session supplies
+its own durable selection. An explicit user choice in Composer becomes a Run
+override; incomplete catalog reads do not overwrite the Session's selection.
 
-#### 一个插件长这样
+Composer owns submission intent and accepts an injected send function. Agent
+owns the send use case. Workbench consumers call Agent's public input surface
+directly; Composer does not republish that same hook under another name.
 
-```ts
-import { definePlugin } from "@/plugins/sdk";
-import { AGENT_SOURCE } from "@/plugins/sdk/kernelPoints";
+A mutation's prepared parameters, idempotency key, and Runtime namespace survive
+an uncertain acknowledgement. A transport failure does not authorize creating a
+new command identity. The reusable client owns strict journal encoding and
+replay rules; the graphical application supplies its storage lifetime and renders
+the outcome. A delayed result may settle its original command, but cannot
+advance a retired view generation.
 
-export default definePlugin({
-  name: "flame.builtin.rpc-agent",
-  setup(ctx) {
-    ctx.contribute(AGENT_SOURCE, rpcAgentSource(t, getActiveSessionId, runtimeRunsGateway));
-  },
-});
-```
+## Runtime events and interruption
 
-`requires` / `provides` 是 typed service contract，不是插件名排序提示。`ctx.cleanup`、contributions、spawned tasks 与 abort signal 全部归当前 Installation lifetime；Host stop 或 Installation remove 会按结构化生命周期回收。
+The shared client validates wire values and owns HTTP/SSE transport. Agent fold
+routes the resulting events to source-owned projection handlers. View models
+preserve exact sequence and identity values; timestamps come from the event
+that established a fact rather than the client clock.
 
-#### Host、Services 与 read policy
+An accepted start establishes the Runtime's Run, Segment, and opening user Item.
+The returned Item identity reconciles optimistic input. Steer is reconciled by
+its reserved Item identity; identical text is not command identity.
 
-- dougong `Host` 只由 composition root 持有：安装、启动、事务变更、贡献 read model 与 stop；产品插件不通过全局 Host 绕过契约。
-- 插件间命令式能力通过 `services.ts` token 与 `requires` / `provides` 注入。Flame shell 只提供 config、i18n、window、workspace、commands、plugins 六类明确 Service。
-- Runtime 网络访问不属于通用 shell Service；内置业务仍经 context adapter → `main/container` → typed JSON-RPC client，Runtime DTO 停在 Adapter。
-- `kernel.ts` 只发布一个 Host generation。views 与 installed-plugin read model 都绑定该 Host identity；stale stop / subscription callback 不能清理或写入 successor generation。
+A waiting Run exposes durable interrupts. The client submits responses against
+those exact identities; Runtime owns admission and continuation. Closing a
+client releases its transport and projection resources. It does not stop the
+Runtime or cancel accepted execution. Cancellation is an explicit command.
 
-#### 启动
+Workspace subscriptions publish invalidation, not a second filesystem database.
+The Workspace owner manages subscription replacement and reconnect, then
+revalidates the affected reads. A failed or retired stream cannot claim current
+workspace state from a stale callback.
 
-- **built-ins**：`createKernel` 先安装 shell Services 和 manifest，`host.start()` 作为一个完整 transaction；任一 setup 失败就 rollback 全部，不发布半成品。
+## Native and browser boundaries
 
-Desktop 只安装同 bundle 静态 import 的内置插件。不存在外部插件目录、动态 module
-import、Host API 版本协商或 permission manifest；需要新的内置能力时直接改当前
-manifest 和调用方，不留兼容 loader。
+`platform/clientHost.ts` selects the environment before bootstrap. The desktop
+host validates native IPC replies. The browser host provides same-origin
+bootstrap and browser downloads without importing Wails into the protocol SDK.
 
-`builtin/index.ts` 的分组只供人阅读；依赖真相在各 spec 的 `requires` / `provides`，贡献覆盖的稳定 tie-break 才使用 manifest 顺序。
+Only a connection matching the Runtime bootstrapped by Wails may use native
+workspace Open, Reveal, or folder selection. These actions recheck current
+locality when invoked. A connection replacement fences late picker results.
+The relevant features consume narrow local-action, notification, window, and
+image-save ports rather than a host bag.
 
----
+The Go package under `desktop/` remains a small Wails host. Its files name actual
+host responsibilities. Runtime execution, domain packages, and persistence are
+not copied into it. Native method names are a cross-language contract guarded by
+`binding_names_test.go` and the validated TypeScript host bridge.
 
-### 5.2 协议 fold 层（数据流入口）
+## Design system and observability
 
-#### 形状：Session projection + normalized Run tree
+The presentation dependency direction is primitives, atoms, then Agent
+composites. Business UI consumes dressed controls, not headless library internals.
+Shared UI does not fetch Runtime data or read plugin-owned state. StyleX and the
+existing global stylesheets remain the styling mechanism; this ownership
+refactor does not introduce another visual system.
 
-```
-FlameClient（shared protocol client）—— runs.start / runs.resume 流式返回 RunEvent
-   │   useAgentSession → AgentRunPump：for await (event of stream.events)
-   ▼
-useAgentStore.applyRunEvents(sessionId, batch)  ◄── rAF 批处理，~1 commit/帧
-   │   reduceAgentEvent(view, envelope)
-   ▼
-agent/application/fold/reducer.ts
-   │
-   └─ protocol event      → lookupStreamHandlers(type)
-       └─ source Run / Segment / eventId / timestamp 全部来自 RunEvent envelope
-   ▼
-新的 AgentSessionView
-   │   Zustand 通知订阅者
-   ▼
-Agent public read model → Chat / Workspace / Shell consumers
+Observability installs through an explicit product plugin. It owns telemetry
+setup and cleanup, while shared telemetry mechanisms stay in `lib/observability`.
+Transport and execution instrumentation remain at their respective boundaries;
+no per-token UI instrumentation is needed to express these lifetimes.
 
-durable items + runs + pending interrupts + optional Plan
-   │   projectAgentSessionSnapshot（Store 外完整构建）
-   ▼
-refreshSequence + viewRevision CAS → 整份 AgentSessionView 原子替换
-```
+## Verification
 
-#### 唯一 projection 与来源规则
+Run the complete frontend gate from this directory:
 
-`AgentSessionView` 是一个 Session 的唯一 Agent projection：
-
-- `runsById` 保存 root / child / sibling / nested Run 的独立 lifecycle；
-- `plan` 是 Session 级的单一 Plan projection，`assistantTurnByRunId` 按 source Run 隔离；
-- `Message.runId`、`ToolCall.runId`、`TimelineEntry.runId` 保留 durable ownership；
-- `pendingInterrupts`、`shared` 和 `commandError` 保留 Session 级事实；
-- children、roots、depth 与 narrative placement 由 selector 从 lineage 派生，不保存第二份索引。
-
-live fold 只接受完整 `RunEvent`；durable Item、Run snapshot、PendingInterruptSet 与 local
-optimistic message 各有独立入口，不能伪装成 stream event。若 Item owner 与 envelope
-owner 冲突、`item.completed` 仍是 running 等不变量失败，fold fail closed，不猜 root、
-不改写状态。每个注册 handler 独立隔离，错误进入 plugin diagnostics。
-
-`fold` 是 wire → published view language 的反腐层：协议 DTO 只在 fold / adapter
-边界出现，`AgentSessionView` 本身不持有 `@flame/runtime-contract/client` 类型。连续 assistant-side Item
-折成一个 UI turn，但 cursor 按 RunID 保存，因此 child 与 root 事件即使交错也不会拼进同一气泡。
-
-#### 对外 Run API 按真实 scope 命名
-
-`agent/public/run.ts` 不发布内部 Store，也不把整个 Session 伪称成 Active Run：
-
-- 当前 root：`useCurrentRootMaterial`（一次读出 run/plan/progress，不发布多个各自订阅的
-  标量）、`useIsCurrentRootRunning`、`stopCurrentRootRun`、`useStopCurrentRootRun`；
-- 活动 Session：`useActiveSessionRunTree`、`useActiveSessionTimeline`、
-  `useActiveSessionToolCalls`、`useActiveSessionProblem`；
-- 精确 Run 命令：`cancelSessionRun(sessionId, runId)`、`dismissActiveSessionProblem()`；
-- window-level attention：`subscribeAnySessionRunning`、
-  `subscribeRootRunSettlements`。
-
-内部同样按职责分成 `runReadModel.ts`、`runCommands.ts` 与 `rootAttention.ts`，不保留旧
-`activeRun` alias。
-
-#### useAgentSession 编排会话生命周期
-
-`plugins/builtin/agent/adapters/useAgentSession.ts` 为**一个 Session**拥有 driver 生命周期：
-
-```
-useEffect([sessionId])
-  → driver = makeDriver()                         // 来自 priority 最高的 AGENT_SOURCE
-  → store.ensureSession(sessionId)                // 保留已 materialized projection
-  → 非 draft：读取完整 durable Session snapshot
-  → off-store projection + CAS commit；并按 active root Segment reattach
-  → 绑定 send / stop / resume / synchronize / cancelRun capability
-  → 若有 pending（welcome 屏排队的首条消息）→ send 之
-
-send(input):
-  → 乐观渲染本地 userMessage
-  → driver.start(input, signal) = client.runs.start(...)
-  → StartRunResponse 必须返回 userItemId
-  → 占位按 exact ItemID relabel；durable Item 按 id 去重，不做内容匹配
-  → pump root Segment 的 tree-wide stream（rAF 批处理 + cursor reattach）
-
-resume(runId, responses):
-  → driver.resume = client.runs.resume(...)
-  → ResumeRunResponse 只在请求同时提交新 input 时返回 userItemId
-
-stop():
-  → Session-owned command 只取消当前 running root，并返回是否接受
-
-cancelRun(runId):
-  → 精确取消 active Session 内的 root 或 descendant
-  → 只合并 committed CancelRunResponse，再触发 authoritative synchronize
-
-unmount → abort follower + 解绑 actions；projection 留到 Session 不再 open 时统一 prune
+```sh
+npm run check
 ```
 
-`runs.start/resume` 的 ack 是 accepted boundary：只有 ack 前拒绝进入 command error / HITL
-`onStartError`；ack 后 stream/recovery failure 不能否定已经提交的命令。cold recovery 或 replay
-reattach 通过 `runs.subscribe({ snapshot: true })` 获取同一次交接的完整 Session snapshot
-与后续流；Runtime 的 publication fence 排除持久化提交与事件发布之间的空窗。Application
-仍是 snapshot 的唯一 CAS 提交者。冷恢复以该 ack 的 headEventId 重置游标；普通 replay
-保留已消费游标。若目标已经 terminal/waiting/stale，则经 Agent application port 重读完整
-durable projection；不能把旧 Running 留给 UI 等待偶然 invalidation。
-
-Session snapshot 的同步 Promise 在权威投影提交后结束；由该快照恢复的 Run 订阅继续存活，
-并沿用会话持有的 generation signal，直到替换或卸载时回收。Goal 命令提交后通过
-`replace-live` 读取新快照并恢复订阅，再放行下一条 Goal 命令；不能等待长任务的流结束。
-普通变更通知仍使用 `after-live`，合并到下一次空闲边界，避免和 live fold 并发写入。
-
-Run observation recovery stays in the existing pump. Repeated acknowledged streams ending
-at the same opaque cursor get two replay attempts with abortable exponential backoff, then
-one coherent snapshot and tail. A further failure without progress stops observation and
-reports incomplete synchronization while preserving the confirmed Run facts. Successfully
-folded progress or a successor Segment restores the cold recovery budget. Snapshot head
-changes alone do not forgive repeated projection failures. Connection loss remains owned by
-the Runtime connection controller; recovery never resubmits a user command.
-
-Steer receipts annotate only the exact reserved user Item. The local message shows accepted
-until its durable Item establishes application at a model boundary. Coherent refreshes retain
-accepted inputs while their Run remains active or waiting, and after-live terminal refreshes
-remove absent inputs with an explicit notification. No missing input is submitted to another
-Run. Applied annotations are session-local receipt evidence, not reconstructed from text.
-
-Terminal Run outcomes retain unresolved Effect evidence in every projection. Root narrative
-footers and delegated Run details expose the original identifiers and diagnostics without
-asserting success, failure, or rollback of those operations.
-
-默认 driver 由 `rpc-agent` 插件贡献（`AGENT_SOURCE`，走 JSON-RPC）；插件可替换成 mock / IPC / 本地模型等。
-
----
-
-### 5.3 状态分层（除 agent 外的 UI 状态）
-
-| Store                              | 内容                                                                | 持久化                 |
-| ---------------------------------- | ------------------------------------------------------------------- | ---------------------- |
-| `agentStore`                       | 每 Session 的 `AgentSessionView`、refresh revision 与已绑定 actions | ❌ ephemeral           |
-| `agentSessionStore`                | active/open/draft Session、selection epoch 与 welcome pending input | ✅（部分字段）         |
-| `appearanceStore`                  | theme / accent / tint / 字号 / 密度 / motion / visual style         | ✅                     |
-| `shellLayoutStore`                 | 抽屉折叠与宽度、右栏宽度比                                          | ✅                     |
-| Runtime capability store           | 握手协商能力（由 runtime context 私有持有）                         | ❌ ephemeral           |
-| `tasksStore`                       | host.tasks 的后台任务                                               | ❌                     |
-| `composerStore`                    | 撰写区文本 / 模式 / 附件 / provider+model                           | ✅（仅草稿文本）       |
-| `contextDockStore`                 | 按 Session 隔离的 file/tool/dock material                           | ✅（仅 session scope） |
-| `recentModels`                     | 模型选择器的最近列表                                                | ✅                     |
-| `streamReveal` / `completionSound` | 两个各自独立的偏好（逐字显示、完成提示音）                          | ✅                     |
-| `useConfigStore`                   | 插件可读写的全局 config（如 `runtime.endpoint`）                    | ✅                     |
-
-「我此刻在哪」不在任何 store 里：session / 主视图 / dock 目标 / settings 面板四个标量住在
-路由 search param（`lib/navigation` 的 Navigator port），所以前进后退成立。曾经的
-`workspaceSurfaceStore` 就是这条规则缺席时长出来的。
-
-每个 store 各自用 Zustand `persist` + 自己的 `version`；**schema 变了就 bump version 丢旧数据，不写 migration**（开发期无历史包袱）。
-
-Session references, composer drafts, and workspace dock material are partitioned by
-the canonical Runtime endpoint. Their stores defer hydration until the Runtime
-plugin restores the active address. Replacing that address saves the outgoing
-in-memory authoring state and restores the incoming bucket before Session lifecycle
-callbacks can prune it. The URL still owns the selected Session, main view, dock,
-and subagent; target replacement clears those selections through the Navigator.
-Abandoned-draft cleanup retains the target ownership of the previous selection,
-including delayed navigation, so it cannot delete a draft on the successor server.
-Pending image reads lose their staging ownership on an address change. Refreshing
-credentials or restarting the Runtime at the same address preserves local drafts.
-In-process switching retains attachments and input history; renderer restarts
-restore only the existing durable codecs, including composer text but not images.
-
-This is an intentional storage break: `agentSessionStore` advances from version 7
-to 8, `composerStore` from 2 to 3, and `contextDockStore` from 2 to 3. The old
-unscoped `flame.agent-session`, `flame.composer`, and `flame.context-dock` entries
-are discarded on first activation because they cannot establish server ownership.
-Previously saved local UI drafts, open Session references, and dock state in those
-entries are not migrated. Runtime databases, conversation history, and server-side
-Sessions are neither migrated nor deleted by this local storage change. Endpoint
-credentials remain in memory and never enter these storage keys or payloads.
-
----
-
-### 5.4 主题系统（IDE 风格的"主题即插件"）
-
-每个主题就是一个完整的 CSS 变量调色板，用 `defineColorThemePlugin()` helper（`theme/kit/`）声明独有部分：
-
-```ts
-defineColorThemePlugin({
-  id, label, scheme: "dark" | "light", order,
-  palette: { "color-bg": "#…", "color-surface": "#…", "color-accent": "#…", … },
-});
-```
-
-helper 自动补 shadow ladder + CTA defaults + `ctx.contribute(THEME, …)` 注册仪式。切主题时 `uiStore` 副作用：替换 `<html>` 的 `theme-{scheme}` class + 把 `palette` 全部 inline 写到 `:root.style`（内联永远胜过 stylesheet，插件完全拥有调色板）+ 最后写一次用户选的 `--color-accent`。
-
-加新主题 = 新文件（调 `defineColorThemePlugin`）+ `theme/themes/index.ts` 加一行；Settings → Appearance 的 picker 从主题 extension view 自动读列表。首屏防闪烁靠 `index.html` 内嵌一段同步 JS 在 CSS 解析前贴 `theme-{scheme}` class。
-
----
-
-### 5.5 可观测性（OpenTelemetry 三信号）
-
-`lib/observability/` 是后端 `setupObservability` 的前端镜像：**一处**装好三个全局 OTel provider（Tracer / Meter / Logger）+ 共享 Resource（`service.name=flame-frontend`）+ W3C TraceContext+Baggage propagator，其余代码只用 `trace.getTracer` / `metrics.getMeter` / `logs.getLogger` 这些静态访问器（无注入）。
-
-- **安装时机**：独立 `observability` 插件**动态导入** `setup.ts` 并 always-on 安装——重 SDK 进懒 chunk、不碰首屏；trace context 传播又始终在线。
-- **可切换 exporter**（同后端）：本地有界内存 sink（dev 可见，`stores.ts`）始终在；配了 `otel.endpoint` config 才追加 OTLP（prod 切换，懒导入 + 批处理）。
-- **三信号**：①Traces——`tracing.ts` 给每个 run 开 span（`useAgentSession`），`runtime/contract/typescript/client/transports/http.ts` 给每个 RPC 开 CLIENT span 并把 `traceparent` 注入 header（接上后端已有 trace，§6.2：trace 元数据走 header 不进 body）。**粗粒度**——绝不按 StreamEvent/token 开 span。②Metrics——`lib/metrics.ts` 的 histogram/counter。③Logs——`logBridge.ts` 把 `host.log.*` 也发成 OTel LogRecord（按 active span 关联）。
-- **性能/存储**：本地 sink 是**内存有界环形缓冲**（最新 N，非 localStorage/IndexedDB——高频遥测不该落前端，持久化交给 OTLP→collector），sink 批量刷新（一波一次 store commit）；Diagnostics view 三页（traces/metrics/logs）的 traces/logs 用 `@tanstack/react-virtual` 虚拟滚动。
-
----
-
-## 6. 渲染端：Slot 与各种 useXxx Hook
-
-### 6.1 `<Slot name="…"/>`
-
-`src/plugins/host/Slot.tsx` 是 kernel ↔ 插件的"插槽桥"：
-
-```ts
-const specs = useLayoutSlot("app.sidebar");   // 订阅当前 Host contribution view
-return specs.map(spec => (
-  <PluginBoundary key={spec.id} plugin={spec.pluginName}>
-    <spec.component />
-  </PluginBoundary>
-));
-```
-
-- 按 `order ?? 100` 升序渲染。
-- 每个 spec 包一层 `PluginBoundary`（React Error Boundary）——单个插件 render 抛错只是它自己空白，kernel 不挂。
-- 默认透明（Fragment），不引入额外 DOM。
-
-### 6.2 其它"消费端"选择器（`sdk/selectors/`）
-
-贡献面塌进单一 `extensions` 底座之后，**没有 per-point 的 hook**：任一贡献面都用同一对泛型
-读法，只有真正需要额外投影的才另立函数。
-
-| Hook / 函数                                                              | 用途                                       |
-| ------------------------------------------------------------------------ | ------------------------------------------ |
-| `useExtensionPoint(POINT)` / `useExtensionByKey(POINT, key)`             | 任一贡献面的通用读法                       |
-| `useExtensionEntries(POINT)`                                             | 带 owner 的条目（错误归因）                |
-| `lookupExtensionPoint` / `lookupExtensionByKey` / `lookupExtensionOwner` | 同上的非 React 读法                        |
-| `createPointSubIndex(POINT, …)`                                          | 按 key 建子索引，避免每次线性扫            |
-| `useWorkspaceViews()` / `useSettingsPanes()` / `useLayoutSlot(slot)`     | 主区 workspace view / 设置左栏 / 命名 slot |
-| `useWorkIndexItems()` / `useContextDockDestinations()`                   | 侧栏工作索引 / dock 目的地                 |
-| `executeCommand()` / `useSlashCommands()` / `lookupSlashCommandOwner()`  | 命令调用 / composer slash 提示             |
-| `lookupToolActionOwner()` / `lookupToolViewOpenerOwner()`                | 工具动作 / 视图打开器的归属                |
-| `lookupDataProvider(key)`                                                | `DATA_PROVIDER` 的读路径                   |
-| `pickAgentSource()` / `resolveAgentRunStartOptions()`                    | agent source 选择 / run 启动参数           |
-| `lookupStreamHandlers(type)`                                             | reducer 内部用，非 React 选择器            |
-
----
-
-## 7. 端到端的几个典型流程
-
-### 7.1 用户输入消息发送
-
-```
-Composer onKeyDown (Enter) → submitComposer → useChatSend(text)
-   → 有 active session → agentStore.send；无 → useCreateSession 起草稿 + 排队首条
-   → useAgentSession.send → 乐观渲染 local 气泡 + driver.start
-   → StartRunResponse.userItemId 精确 relabel optimistic Item
-   → client.runs.start → 流出 segment.* / item.* / state.* …
-   → pump（rAF 批）→ agentStore.applyRunEvents → reduceAgentEvent → 新 projection
-   → React 订阅者重渲染（ChatStream 等）
-```
-
-### 7.2 工具调用展开 / 打开完整视图
-
-```
-ChatPanel → ChatStream → MessageBlock → BlockRenderer
-   ─ kind="tool" 分支 → <ToolCard />
-
-用户点 "Open in …"
-   → ToolCard 从 TOOL_VIEW_OPENER 里挑第一个 predicate 命中的 opener
-   → workspace 的那个 opener → openWorkspaceViewForTool(tool)
-   → File edits open Diff; reads with an authoritative path open the file viewer.
-   → Command output stays in the conversation tool card.
-   → openWorkspaceViewInDock(id)：dock tab set 里新增或聚焦这个 singleton tab
-```
-
-kernel 不认识任何具体工具：它只知道有一个 `TOOL_VIEW_OPENER` 贡献面。opener 抛错
-只归因到它的 owner 插件，不影响卡片本身。
-
-### 7.3 HITL（人审）—— R-model
-
-```
-后端的 run 以 outcome.type="interrupt" 结束（释放资源），落一条 durable OpenInterrupt
-   → agent fold 物化一个 approval / question 块（status="requires-action"）
-   → 绑定 { parentRunId, itemId }
-用户点 Approve / Decline（或回答 question）
-   → useApprovalSubmit / useQuestionAnswer → useAgentSession.resume(parentRunId, responses)
-   → client.runs.resume 起一个续跑 Run（parentRunId 链接），新 RunEvent 流接着 fold
-   → 卡片乐观 settle（resolveInterrupt）
-```
-
-## 8. 错误隔离策略
-
-| 失败点                                  | 行为                                                      |
-| --------------------------------------- | --------------------------------------------------------- |
-| 插件 `setup` 抛错                       | dispose 已注册部分；其它插件继续；写错误到 Plugins 面板   |
-| 插件组件 render 抛错                    | PluginBoundary 接住画 fallback；其余 kernel 正常          |
-| stream handler 抛错                     | 该 handler 跳过，state 保持入态；其余 handler 继续        |
-| 插件 tool action / command 抛错         | console.error + `reportPluginError`，UI 不挂              |
-| `runs.start/resume` 在 ack 前 reject    | channel-a 失败：无流；保存 Session command problem        |
-| 已 accepted Run 的 stream/recovery 失败 | 不回滚命令；durable projection 负责权威收敛               |
-| `segment.finished{error}`               | terminal Run outcome 投影为可 dismiss problem             |
-| stream 断线且 replay 可用               | 从最后 folded eventId reattach                            |
-| `replay_unavailable` / runtime resync   | 读取完整 durable Session snapshot，再做 CAS 原子替换      |
-| fold 来源或 lifecycle 不变量失败        | 当前 handler fail closed；保留入态并写 plugin diagnostics |
-
-Plugins 面板（Settings → Plugins）汇总所有 `reportPluginError` 的红 badge。
-
----
-
-## 9. 怎么写一个插件
-
-最小三件套：
-
-```ts
-import { definePlugin } from "@/plugins/sdk";
-import { COMMAND } from "@/plugins/sdk/kernelPoints";
-
-export default definePlugin({
-  name: "flame.example.hello",
-  capabilities: ["commands"],
-  setup(ctx) {
-    // 1. 注册一个可按 id 执行的命令
-    ctx.contribute(COMMAND, {
-      id: "hello.world",
-      label: "Hello, world!",
-      run: () => ctx.notify("hi", "info"),
-    });
-    // 2. 副作用归当前 Installation lifetime
-    const unsub = someStore.subscribe(/* … */);
-    ctx.cleanup(unsub);
-  },
-});
-```
-
-> 放到 `plugins/builtin/<domain>/<name>/index.ts(x)`，在 `builtin/index.ts` 合适分组 import 并加入数组。
-
-静态 registration 是 plugin composition，不是 application use case。只返回 `{ id, order, component }` 或同类 extension spec 的 factory 必须直接写在插件入口；不得为它单建 `application/*Contributions.ts` 和只复述字面量的测试。只有 contribution module 自己拥有稳定策略或行为时才保留，例如 Composer key-binding 语义、默认命令集合、tool family 映射，或跨 context 的 SDK published-language facade。`check:published-boundaries` 会拒绝只投影对象字面量的 application contribution module。
-
-Runtime fold 产生的 closed content-block union（text/image/reasoning/tool/approval/question/compaction）由
-`plugins/builtin/chat/message/ui/BlockRenderer.tsx` 直接穷举渲染；不存在未接线 block 或第二 renderer registry。
-
----
-
-## 10. 不变量速查
-
-- **Kernel 不知道任何具体功能**——所有看得见的元素都来自插件。改一处功能 = 改一个插件目录。
-- **当前 Host contribution view 是插件真相**——不直接 import 内置插件取贡献，永远走 `useXxx` / `lookupXxx`。
-- **store 是单 Zustand instance**——多 selector 订阅，不要把 store 包进 context。
-- **Agent projection 只有一个作者**——live fold 与 durable snapshot 投影共享规则；
-  render 不回写 store，跨 context 只调用 Agent `public/` command/read model。
-- **components 不直连后端**——只经 context public facade / store selector / SDK selector，**禁** import `@/main` / `@flame/runtime-contract/client`（`check:layers` 强制）。
-- **插件资源归结构化 lifetime**——setup 中用 `ctx.cleanup`，composition root 只停止自己持有的 exact Host generation。
-- Runtime I/O uses the shared protocol client. Native I/O uses `platform/`. UI and stores do not call HTTP, SSE, or Wails directly.
-- **交互语义只向外组合**——Base UI / 原生标签只在 primitives；业务 UI 只用 atoms /
-  agent primitives，复合内容用 `Pressable` 而不是反向撤销 `Button` 样式。
-
----
-
-## 11. 进一步的阅读路径
-
-| 想了解                                                      | 先看                                                                                        |
-| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| 决策透镜 / 工程约定 / 反向不变量                            | 仓库根 `CLAUDE.md`                                                                          |
-| 视觉规范 / 颜色 / 排版                                      | `frontend/DESIGN.md`                                                                        |
-| 后端给什么数据 / 每个字段要表达什么（自包含，可给外部人看） | `frontend/CONTENT_RENDERING.md`                                                             |
-| 协议 method 表 / envelope / 语义 / HTTP 端点                | `runtime/contract/API_REFERENCE.md` + `runtime/contract/*.json`                             |
-| transport / handshake / 错误码                              | `runtime/contract/schema.json` + `runtime/doc/ARCHITECTURE.md`                              |
-| 插件 context / shell contracts                              | `src/plugins/sdk/definePlugin.ts` + `src/plugins/sdk/services.ts`                           |
-| 协议 fold                                                   | `src/plugins/builtin/agent/application/fold/reducer.ts` + `builtin/agent/application/fold/` |
-| 一个完整内置插件                                            | `src/plugins/builtin/agent/rpc-agent/index.ts`                                              |
-| Agent Session driver / recovery                             | `src/plugins/builtin/agent/adapters/useAgentSession.ts`                                     |
-| Run tree read model / commands                              | `src/plugins/builtin/agent/application/run/` + `src/plugins/builtin/agent/public/run.ts`    |
-| 主题如何注册                                                | `src/plugins/builtin/theme/kit/` + 任意 `theme/themes/*`                                    |
-
----
-
-## 12. 改进方向（forward-looking analysis）
-
-这份清单**有依据**而非 wishlist——每条标"做/不做的理由 + 触发条件"，避免 backlog 变成永不收敛的"理想架构"幻象。
-
-### 12.1 已落地的改进（现在只随 wire 新形态维护）
-
-> 这些曾是 backlog；截至当前 HEAD 都已落地。保留在此是记录「完成态 + 维护触发点」，不是待办 —— 下一轮别再当新活做。
-
-#### A. agent fold 各 handler 的语义测试（已落地）
-
-**现状**：`builtin/agent/application/fold/` 拆成 `handlers`（派发）/
-`projections`（纯 wire → view）/ `fold`（source-owned upsert）；`reducer.*.test.ts`
-覆盖 dispatcher、聚合、root/child/sibling/nested lifecycle 与主要 Item 路径。
-`reducer.handlers.test.ts` 为每个 handler 钉住“完整 RunEvent → 隔离 projection delta”
-契约，包括 Plan replacement、未知 ItemID delta no-op、`segment.started` lifecycle 初始化与
-`plan.updated` 只更新显式 `plan` projection。
-**维护触发**：加新的内置事件类型 / Item 类型时，一并补对应 handler 的语义测试（input→state delta）。
-
-#### B. search / webSearch 富结果渲染（已落地）
-
-**现状**：view 层已直接从 tool 自带结果渲染，不再「只投影计数 + 从 workspace 取数」——`webSearch.tsx` 解析 `tool.result` 的 title/url/snippet/favicon；grep preview 优先用 call-scoped `tool.result`（`inlineGrepRows`），workspace.grep query 降为 fallback。
-**维护触发**：wire 出现新的富结果形态（新字段 / 新 tool family）时，扩展
-`application/specialisedPreviewProjections` 的解析并补 preview 测试。
-
-#### C. fileChange diff 直渲（已落地）
-
-**现状**：`previews/patch.tsx` 直接从这一次调用渲染——落地的用 `projectPatchChanges(tool.result)`，还在跑的用 `tool.changes` 的提议列表——不再回落到整树 worktree query。
-**维护触发**：后端下发更细的 diff（多文件 `changes[].diff` / 更大 diff 行）时按需扩展投影。
-
-#### D. Work Index read model（首批落地）
-
-**现状**：`plugins/builtin/navigation/` 已承接左侧工作索引投影，`sidebar/` 不再现场 join `projects + sessions + active session`，expanded sidebar 与 rail 都从 `navigation/public/workIndex` 消费分组 / 最近会话 read model。会话运行状态在 navigation application 投影为 `WorkSession.attention`，sidebar 只显示 Work Index attention，不泄漏底层 `AgentSessionSummary.status`。
-**维护触发**：继续推进 `FRONTEND_AGENT_WORKSPACE_MODEL.md` 的后续阶段时，新的 workspace/cwd 面板不要塞回 `sidebar/`。
-
-#### E. Right workspace open intent（已落地）
-
-**现状**：右侧已从“单一 dock view + context launcher”改为用户拥有的 workspace tab set。`openWorkspaceViewInDock(id)` 负责新增或聚焦 singleton tab；header 的 add-panel menu 直接读取 `CONTEXT_DOCK_DESTINATION`，按 `workspace / run / session` scope 分组，不再用中间 launcher view 替换当前材料。tab 可逐个关闭，关闭 active tab 后选相邻项；折叠只隐藏 workspace，不销毁 tab set 或已挂载 view。Settings 等 global surface 仍使用 full workspace view。
-**维护触发**：新 workspace/cwd-scoped 入口贡献 `CONTEXT_DOCK_DESTINATION` 并默认走 `openWorkspaceViewInDock`。不要重建 launcher view、固定 pinned tabs 或 dock→full 的隐式迁移路径。
-
-#### F. Context Dock session scope（已落地）
-
-**现状**：`contextDockStore` 已把 dock 的 view 集合与 material state 按 active session scope 保存/恢复；app-global surface（主视图 / settings target）不在 store 里，住在路由 search param。`workspace.session-navigation` 监听 agent session selection/lifecycle，切换 session 时保存离开的右侧 workspace、恢复进入的 workspace，关闭 session 后清理不再打开的 scope。右栏宽度是稳定的单一用户偏好，切换 tab 不改变列宽。
-**维护触发**：后续如果引入 cwd 级共享，不要把 app-global surface state 从 URL 挪回 store，也不要与 session-scoped dock state 揉回一处；在 workspace application 层显式定义 `sessionId -> cwd` 的归属规则。
-
-### 12.2 想做但当前 KISS / YAGNI 不允许
-
-- **`<ToolPrimitive>` headless 组件**：目前只有 `approval` 一个真正 actionable 的块（tool 是只读指针，code/search 是被动展示）。给单一消费者抽 primitive 违反"3+ 重复才抽象"。**触发条件**：第二个 actionable block 出现（如 code-proposal 升级为 accept/reject）。
-- ~~**把 `lib/agent` 提成独立 `application/` 层**~~：已经做了，而且做过了头——`lib/agent` 不再
-  存在，那些用例 hook 住进了 agent 上下文自己的 `application/`（`input/chatSend`、
-  `hitl/useApprovalSubmit`、`session/createSession` …），由 layer-guard 守着。触发条件当时写的是
-  "用例 hook 显著增多"，后来确实增多了。
-- **MessageStream 虚拟化**：长会话（1000+ 消息）目前无人抱怨。**触发条件**：实测 > 500 消息卡顿时引入 `@tanstack/react-virtual`。
-- Additional reusable packages require a concrete second consumer and an invariant or lifecycle to own; the protocol client already has those consumers.
-
-### 12.3 反向不变量（已知错的方向，别再提）
-
-与 `CLAUDE.md §6` 一致，不重述。要点：不换 Zustand / React Query / Wails /
-OxLint / Vite；不给内部数据流加 Zod（只在信任边界）；不把贡献面退回 per-slot
-add/remove map（已塌进 `extensions` 底座）；协议保持 JSON-RPC，不 RESTy 化、不在
-envelope 装 transport 元数据。详见 `CLAUDE.md §6` +
-`runtime/doc/ARCHITECTURE.md`。
-
----
-
-> 当前架构通过所有审计原则（KISS / SOLID / YAGNI / DRY），无 AG-UI 残留，文件 LOC 在合理范围，热路径有测试覆盖。日常维护维持现状，**继续等触发条件出现**，不做投机式重构。
+The gate includes typechecking, lint, formatting, tests, dead-code checks,
+architecture, content and visual rules, and a production bundle. The HTTP e2e
+suite builds an isolated Runtime and uses local fake providers; it requires the
+repository's Go toolchain and no live provider credentials.
+
+Layer, context, and cycle checks share one compiler-resolved dependency graph.
+Every TypeScript source must be loaded, every local import must resolve, and
+runtime cycles use the frontend's TypeScript erasure rather than matching
+filenames or guessing from import text. Flat features receive the same boundary
+as layered ones. Port usage is attributed through TypeScript symbols, so an
+unrelated method with the same name cannot satisfy an unused interface clause.
+Source coverage is checked against actual files, not minimum file or edge counts.
+
+Guard regression tests cover unresolved imports, omitted source files, module
+extensions, type-only erasure, real cycles, private feature dependencies, and
+port consumers. Product tests cover failure ordering, installation replacement,
+connection retirement, command identity, and surviving feature behavior.
+
+Visual fixtures compose their own plugins and memory-transport clients. Their
+resources belong to fixture cleanup; they do not discover a default production
+connection. Native package verification follows the supported Wails target in
+[`../Taskfile.yml`](../Taskfile.yml); a successful Web bundle does not establish a
+macOS packaging result.

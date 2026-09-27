@@ -1,4 +1,3 @@
-import { getContainer } from "@/main/container";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import { asItemId, asRunId, asSessionId } from "@flame/runtime-contract/client";
 import { MessageFeedbackOwner, type MessageFeedbackGateway } from "../application/feedback";
@@ -16,10 +15,11 @@ function runtimeFeedbackGateway(client: FlameClient): MessageFeedbackGateway {
   };
 }
 
-export function installRuntimeFeedbackGateway() {
-  const owner = MessageFeedbackOwner.install(runtimeFeedbackGateway(getContainer().client()));
+export function installRuntimeFeedbackGateway(runtimeClient: () => FlameClient) {
+  const owner = MessageFeedbackOwner.install(runtimeFeedbackGateway(runtimeClient()));
   return {
-    replaceRuntimeGeneration: () => owner.replaceRuntimeGeneration(),
+    replaceRuntimeGeneration: () =>
+      owner.replaceRuntimeGeneration(() => runtimeFeedbackGateway(runtimeClient())),
     dispose: () => owner.dispose(),
   };
 }

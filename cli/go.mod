@@ -3,8 +3,8 @@ module github.com/Tangerg/flame/cli
 go 1.27.0
 
 require (
-	github.com/Tangerg/flame/runtime v0.0.0-20260923200329-a7b29b7e4362
-	github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260923200329-a7b29b7e4362
+	github.com/Tangerg/flame/runtime v0.0.0-20260926203038-0bc454c0f395
+	github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260926203038-0bc454c0f395
 	github.com/Tangerg/oolong/components v0.21.0
 	github.com/Tangerg/oolong/core v0.21.0
 	github.com/Tangerg/oolong/highlight v0.21.0
@@ -72,6 +72,8 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/felixge/httpsnoop v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.10.1 // indirect
+	github.com/go-chi/chi/v5 v5.3.2 // indirect
+	github.com/go-chi/cors v1.2.2 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-resty/resty/v2 v2.17.2 // indirect

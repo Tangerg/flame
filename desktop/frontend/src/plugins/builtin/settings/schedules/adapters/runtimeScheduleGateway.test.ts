@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { queryClient } from "@/lib/queryClient";
-import { resetContainer, setContainer } from "@/main/container";
 import type { FlameClient, Schedule } from "@flame/runtime-contract/client";
 import {
   createSchedule,
@@ -28,7 +27,7 @@ let installation: ReturnType<typeof installScheduleGateway> | undefined;
 afterEach(() => {
   installation?.dispose();
   installation = undefined;
-  resetContainer();
+
   queryClient.removeQueries({ queryKey: [SCHEDULES_KEY] });
   selectAgentSession.mockReset();
   runtimeCapability.mockReset();
@@ -58,8 +57,8 @@ describe("runtimeScheduleGateway", () => {
   it("sends and returns the exact model selection when creating a schedule", async () => {
     const selection = { provider: "openai", model: "gpt-5", reasoningEffort: "high" };
     const create = vi.fn().mockResolvedValue({ ...schedule(), ...selection });
-    setContainer({ client: () => ({ schedules: { create } }) as unknown as FlameClient });
-    installation = installScheduleGateway();
+    const runtimeClient = () => ({ schedules: { create } }) as unknown as FlameClient;
+    installation = installScheduleGateway(() => runtimeClient());
 
     await expect(
       createSchedule({
@@ -89,8 +88,8 @@ describe("runtimeScheduleGateway", () => {
     "replaces the complete model selection on an intentional edit",
     async (modelSelection, expected) => {
       const update = vi.fn().mockResolvedValue(schedule());
-      setContainer({ client: () => ({ schedules: { update } }) as unknown as FlameClient });
-      installation = installScheduleGateway();
+      const runtimeClient = () => ({ schedules: { update } }) as unknown as FlameClient;
+      installation = installScheduleGateway(() => runtimeClient());
       await updateSchedule({
         id: "sch_1",
         title: "Review",
@@ -107,8 +106,8 @@ describe("runtimeScheduleGateway", () => {
 
   it("omits workspace when a new schedule deliberately uses the Runtime default", async () => {
     const create = vi.fn().mockResolvedValue(schedule());
-    setContainer({ client: () => ({ schedules: { create } }) as unknown as FlameClient });
-    installation = installScheduleGateway();
+    const runtimeClient = () => ({ schedules: { create } }) as unknown as FlameClient;
+    installation = installScheduleGateway(() => runtimeClient());
 
     await createSchedule({
       title: "Review",
@@ -127,8 +126,8 @@ describe("runtimeScheduleGateway", () => {
 
   it("uses the explicit Runtime-default mode when an edit clears a binding", async () => {
     const update = vi.fn().mockResolvedValue(schedule());
-    setContainer({ client: () => ({ schedules: { update } }) as unknown as FlameClient });
-    installation = installScheduleGateway();
+    const runtimeClient = () => ({ schedules: { update } }) as unknown as FlameClient;
+    installation = installScheduleGateway(() => runtimeClient());
 
     await updateSchedule({
       id: "sch_1",
@@ -152,8 +151,8 @@ describe("runtimeScheduleGateway", () => {
 
   it("sends a valid workspace ref when an edit sets an explicit binding", async () => {
     const update = vi.fn().mockResolvedValue(schedule({ path: "/workspace" }));
-    setContainer({ client: () => ({ schedules: { update } }) as unknown as FlameClient });
-    installation = installScheduleGateway();
+    const runtimeClient = () => ({ schedules: { update } }) as unknown as FlameClient;
+    installation = installScheduleGateway(() => runtimeClient());
 
     await updateSchedule({
       id: "sch_1",
@@ -177,8 +176,8 @@ describe("runtimeScheduleGateway", () => {
 
   it("preserves the launched session and run identities from run-now", async () => {
     const runNow = vi.fn().mockResolvedValue({ sessionId: "ses_scheduled", runId: "run_1" });
-    setContainer({ client: () => ({ schedules: { runNow } }) as unknown as FlameClient });
-    installation = installScheduleGateway();
+    const runtimeClient = () => ({ schedules: { runNow } }) as unknown as FlameClient;
+    installation = installScheduleGateway(() => runtimeClient());
 
     await expect(runScheduleNow("sch_1")).resolves.toEqual({
       sessionId: "ses_scheduled",
@@ -190,8 +189,8 @@ describe("runtimeScheduleGateway", () => {
   it("preserves the authoritative revision returned by an enablement change", async () => {
     const updated = { ...schedule(), enabled: false, revision: 8 };
     const update = vi.fn().mockResolvedValue(updated);
-    setContainer({ client: () => ({ schedules: { update } }) as unknown as FlameClient });
-    installation = installScheduleGateway();
+    const runtimeClient = () => ({ schedules: { update } }) as unknown as FlameClient;
+    installation = installScheduleGateway(() => runtimeClient());
 
     await expect(setScheduleEnabled(schedule(), false)).resolves.toMatchObject({
       enabled: false,
@@ -206,17 +205,13 @@ describe("runtimeScheduleGateway", () => {
       sessionId: "ses_successor",
       runId: "run_successor",
     });
-    setContainer({
-      client: () => ({ schedules: { runNow: runNowRetired } }) as unknown as FlameClient,
-    });
-    const retiredInstallation = installScheduleGateway();
+    let runtimeClient = () => ({ schedules: { runNow: runNowRetired } }) as unknown as FlameClient;
+    const retiredInstallation = installScheduleGateway(() => runtimeClient());
     const command = rejected(runScheduleNow("sch_1"));
     await vi.waitFor(() => expect(runNowRetired).toHaveBeenCalledOnce());
 
-    setContainer({
-      client: () => ({ schedules: { runNow: runNowSuccessor } }) as unknown as FlameClient,
-    });
-    const successorInstallation = installScheduleGateway();
+    runtimeClient = () => ({ schedules: { runNow: runNowSuccessor } }) as unknown as FlameClient;
+    const successorInstallation = installScheduleGateway(() => runtimeClient());
     installation = {
       replaceRuntimeGeneration: () => successorInstallation.replaceRuntimeGeneration(),
       dispose() {
@@ -235,9 +230,9 @@ describe("runtimeScheduleGateway", () => {
 });
 
 describe("the schedules read", () => {
-  async function read(): Promise<unknown> {
+  async function read(runtimeClient: () => FlameClient): Promise<unknown> {
     await contributeForTest((ctx) => {
-      registerScheduleDataProvider(ctx);
+      registerScheduleDataProvider(ctx, runtimeClient);
     }, "test.schedule-data-provider");
     const fetcher = lookupDataProvider(SCHEDULES_KEY);
     expect(fetcher).toBeDefined();
@@ -248,28 +243,30 @@ describe("the schedules read", () => {
     const list = vi.fn(() => ({
       autoPagingToArray: () => Promise.resolve([schedule({ path: "/repo" })]),
     }));
-    setContainer({ client: () => ({ schedules: { list } }) as unknown as FlameClient });
+    const runtimeClient = () => ({ schedules: { list } }) as unknown as FlameClient;
 
-    await expect(read()).resolves.toEqual([expect.objectContaining({ id: "sch_1", cwd: "/repo" })]);
-    expect(await read()).not.toContainEqual(
+    await expect(read(runtimeClient)).resolves.toEqual([
+      expect.objectContaining({ id: "sch_1", cwd: "/repo" }),
+    ]);
+    expect(await read(runtimeClient)).not.toContainEqual(
       expect.objectContaining({ workspace: expect.anything() }),
     );
   });
 
   it("omits cwd entirely when the Runtime sent no workspace", async () => {
     const list = vi.fn(() => ({ autoPagingToArray: () => Promise.resolve([schedule()]) }));
-    setContainer({ client: () => ({ schedules: { list } }) as unknown as FlameClient });
+    const runtimeClient = () => ({ schedules: { list } }) as unknown as FlameClient;
 
-    const [config] = (await read()) as Record<string, unknown>[];
+    const [config] = (await read(runtimeClient)) as Record<string, unknown>[];
     expect(config).not.toHaveProperty("cwd");
   });
 
   it("answers empty without reaching the wire when the Runtime cannot schedule", async () => {
     runtimeCapability.mockReturnValue(false);
     const list = vi.fn();
-    setContainer({ client: () => ({ schedules: { list } }) as unknown as FlameClient });
+    const runtimeClient = () => ({ schedules: { list } }) as unknown as FlameClient;
 
-    await expect(read()).resolves.toEqual([]);
+    await expect(read(runtimeClient)).resolves.toEqual([]);
     expect(list).not.toHaveBeenCalled();
   });
 });

@@ -6,10 +6,9 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 type snapshotBinding interface {
@@ -31,42 +30,42 @@ type coldRead struct {
 // GetSession binds independently owned Session metadata to one transactionally
 // coherent material snapshot. Identical metadata projections around the read
 // prove that its lifecycle cannot belong to a different Session generation.
-func (r *Connection) GetSession(ctx context.Context, sessionID string) (agent.SessionSnapshot, error) {
+func (r *Connection) GetSession(ctx context.Context, sessionID string) (conversation.SessionSnapshot, error) {
 	sessionRequest := protocol.GetSessionRequest{SessionID: sessionID}
 	if err := sessionRequest.ValidateWire(); err != nil {
-		return agent.SessionSnapshot{}, fmt.Errorf("get session: %w", err)
+		return conversation.SessionSnapshot{}, fmt.Errorf("get session: %w", err)
 	}
 	snapshotRequest := protocol.GetSessionSnapshotRequest{
 		SessionID: sessionID, IncludeDescendants: r.profile.Supports(protocol.FeatureSubagents),
 	}
 	if err := snapshotRequest.ValidateWire(); err != nil {
-		return agent.SessionSnapshot{}, fmt.Errorf("get session: %w", err)
+		return conversation.SessionSnapshot{}, fmt.Errorf("get session: %w", err)
 	}
 
 	previous, err := r.readSession(ctx, sessionRequest)
 	if err != nil {
-		return agent.SessionSnapshot{}, err
+		return conversation.SessionSnapshot{}, err
 	}
 	for range snapshotStabilityAttempts {
 		material, err := r.readMaterialSnapshot(ctx, snapshotRequest)
 		if err != nil {
-			return agent.SessionSnapshot{}, err
+			return conversation.SessionSnapshot{}, err
 		}
 		current, err := r.readSession(ctx, sessionRequest)
 		if err != nil {
-			return agent.SessionSnapshot{}, err
+			return conversation.SessionSnapshot{}, err
 		}
 		if sessionProjectionEqual(previous, current) {
 			material.session = current
 			projected, err := projectSnapshot(material)
 			if err != nil {
-				return agent.SessionSnapshot{}, runtimeContractViolation("get session projection is invalid: %v", err)
+				return conversation.SessionSnapshot{}, runtimeContractViolation("get session projection is invalid: %v", err)
 			}
 			return projected, nil
 		}
 		previous = current
 	}
-	return agent.SessionSnapshot{}, fmt.Errorf("%w: session %s changed throughout cold recovery", agent.ErrDisconnected, sessionID)
+	return conversation.SessionSnapshot{}, fmt.Errorf("%w: session %s changed throughout cold recovery", conversation.ErrDisconnected, sessionID)
 }
 
 func (r *Connection) readSession(ctx context.Context, request protocol.GetSessionRequest) (protocol.Session, error) {
@@ -127,23 +126,23 @@ func (r *Connection) snapshotMaterial(snapshot *protocol.SessionSnapshot) (coldR
 	}, nil
 }
 
-func (r *Connection) subscribeSnapshot(ctx context.Context, input agent.SubscribeRun) (agent.SegmentStream, error) {
+func (r *Connection) subscribeSnapshot(ctx context.Context, input conversation.SubscribeRun) (conversation.SegmentStream, error) {
 	request := protocol.GetSessionRequest{SessionID: input.SessionID}
 	previous, err := r.readSession(ctx, request)
 	if err != nil {
-		return agent.SegmentStream{}, err
+		return conversation.SegmentStream{}, err
 	}
 	for range snapshotStabilityAttempts {
 		streamCtx, release := context.WithCancel(ctx)
 		stream, snapshot, err := r.subscribeRun(streamCtx, input)
 		if err != nil {
 			release()
-			return agent.SegmentStream{}, err
+			return conversation.SegmentStream{}, err
 		}
 		current, err := r.readSession(ctx, request)
 		if err != nil {
 			release()
-			return agent.SegmentStream{}, err
+			return conversation.SegmentStream{}, err
 		}
 		if !sessionProjectionEqual(previous, current) {
 			release()
@@ -153,40 +152,40 @@ func (r *Connection) subscribeSnapshot(ctx context.Context, input agent.Subscrib
 		material, err := r.snapshotMaterial(snapshot)
 		if err != nil {
 			release()
-			return agent.SegmentStream{}, err
+			return conversation.SegmentStream{}, err
 		}
 		for _, run := range material.runs {
 			if run.SessionID != input.SessionID {
 				release()
-				return agent.SegmentStream{}, runtimeContractViolation("subscribe run snapshot returned run %s from session %s for %s", run.ID, run.SessionID, input.SessionID)
+				return conversation.SegmentStream{}, runtimeContractViolation("subscribe run snapshot returned run %s from session %s for %s", run.ID, run.SessionID, input.SessionID)
 			}
 		}
 		material.session = current
 		projected, err := projectSnapshot(material)
 		if err != nil {
 			release()
-			return agent.SegmentStream{}, runtimeContractViolation("subscribe run snapshot projection is invalid: %v", err)
+			return conversation.SegmentStream{}, runtimeContractViolation("subscribe run snapshot projection is invalid: %v", err)
 		}
 		stream.Snapshot = &projected
 		events := stream.Events
-		stream.Events = func(yield func(agent.RunEvent, error) bool) {
+		stream.Events = func(yield func(conversation.RunEvent, error) bool) {
 			defer release()
 			events(yield)
 		}
 		return stream, nil
 	}
-	return agent.SegmentStream{}, fmt.Errorf("%w: session %s changed throughout snapshot subscription", agent.ErrDisconnected, input.SessionID)
+	return conversation.SegmentStream{}, fmt.Errorf("%w: session %s changed throughout snapshot subscription", conversation.ErrDisconnected, input.SessionID)
 }
 
-func projectSnapshot(read coldRead) (agent.SessionSnapshot, error) {
-	snapshot := agent.SessionSnapshot{
+func projectSnapshot(read coldRead) (conversation.SessionSnapshot, error) {
+	snapshot := conversation.SessionSnapshot{
 		Session:    projectSession(read.session),
-		Transcript: make([]agent.Block, 0, len(read.items)),
+		Transcript: make([]conversation.Block, 0, len(read.items)),
 	}
 	for _, value := range read.items {
 		block, projectItemErr := projectItem(value)
 		if projectItemErr != nil {
-			return agent.SessionSnapshot{}, projectItemErr
+			return conversation.SessionSnapshot{}, projectItemErr
 		}
 		snapshot.Transcript = append(snapshot.Transcript, block)
 	}
@@ -194,18 +193,18 @@ func projectSnapshot(read coldRead) (agent.SessionSnapshot, error) {
 	slices.SortFunc(orderedRuns, func(first, second protocol.RunRef) int {
 		return cmp.Or(first.CreatedAt.Compare(second.CreatedAt), cmp.Compare(first.ID, second.ID))
 	})
-	snapshot.Runs = make([]agent.Run, 0, len(orderedRuns))
+	snapshot.Runs = make([]conversation.Run, 0, len(orderedRuns))
 	for _, value := range orderedRuns {
 		run, projectRunErr := projectRun(value)
 		if projectRunErr != nil {
-			return agent.SessionSnapshot{}, projectRunErr
+			return conversation.SessionSnapshot{}, projectRunErr
 		}
 		snapshot.Runs = append(snapshot.Runs, run)
 	}
 	if read.plan != nil {
 		plan, err := projectPlan(read.plan)
 		if err != nil {
-			return agent.SessionSnapshot{}, err
+			return conversation.SessionSnapshot{}, err
 		}
 		snapshot.Plan = plan
 	}
@@ -215,22 +214,22 @@ func projectSnapshot(read coldRead) (agent.SessionSnapshot, error) {
 	}
 	if active, ok := snapshot.ActiveRun(); ok && active.Status == protocol.RunStatusWaiting {
 		if len(read.interrupts) != 1 {
-			return agent.SessionSnapshot{}, fmt.Errorf("waiting run %s has %d pending interrupt sets", active.ID, len(read.interrupts))
+			return conversation.SessionSnapshot{}, fmt.Errorf("waiting run %s has %d pending interrupt sets", active.ID, len(read.interrupts))
 		}
 		set := read.interrupts[0]
 		if set.SessionID != snapshot.Session.ID {
-			return agent.SessionSnapshot{}, fmt.Errorf("waiting run %s has a pending interrupt set for session %s", active.ID, set.SessionID)
+			return conversation.SessionSnapshot{}, fmt.Errorf("waiting run %s has a pending interrupt set for session %s", active.ID, set.SessionID)
 		}
 		if set.RootRunID != active.ID {
-			return agent.SessionSnapshot{}, fmt.Errorf("waiting run %s has a pending interrupt set for root %s", active.ID, set.RootRunID)
+			return conversation.SessionSnapshot{}, fmt.Errorf("waiting run %s has a pending interrupt set for root %s", active.ID, set.RootRunID)
 		}
 		interactions, err := projectInteractions(set.Interrupts)
 		if err != nil {
-			return agent.SessionSnapshot{}, err
+			return conversation.SessionSnapshot{}, err
 		}
 		snapshot.Interactions = interactions
 	} else if len(read.interrupts) != 0 {
-		return agent.SessionSnapshot{}, fmt.Errorf("session %s has interrupts without a waiting root run", snapshot.Session.ID)
+		return conversation.SessionSnapshot{}, fmt.Errorf("session %s has interrupts without a waiting root run", snapshot.Session.ID)
 	}
 	return snapshot, nil
 }

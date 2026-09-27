@@ -1,16 +1,17 @@
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { TooltipProvider } from "@/ui";
-import { builtinPlugins } from "../builtin";
 import { startKernel, stopKernel } from "../sdk";
-import type { Host } from "dougong";
+import type { AnyPlugin, Host } from "dougong";
 
 interface Props {
   children: ReactNode;
+  plugins: AnyPlugin[];
 }
 
-export function PluginProvider({ children }: Props) {
-  const [ready, setReady] = useState(false);
+export function PluginProvider({ children, plugins }: Props) {
+  const installation = useMemo(() => ({ plugins }), [plugins]);
+  const [readyInstallation, setReadyInstallation] = useState<object | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -29,12 +30,12 @@ export function PluginProvider({ children }: Props) {
 
     void (async () => {
       try {
-        host = await startKernel(builtinPlugins, controller.signal);
+        host = await startKernel(installation.plugins, controller.signal);
         if (retired) {
           void disposeOwnedResources();
           return;
         }
-        setReady(true);
+        setReadyInstallation(installation);
       } catch (error) {
         if (!retired) console.error("[plugin] kernel startup failed:", error);
       }
@@ -45,9 +46,9 @@ export function PluginProvider({ children }: Props) {
       controller.abort();
       void disposeOwnedResources();
     };
-  }, []);
+  }, [installation]);
 
-  if (!ready) return null;
+  if (readyInstallation !== installation) return null;
 
   return <TooltipProvider>{children}</TooltipProvider>;
 }

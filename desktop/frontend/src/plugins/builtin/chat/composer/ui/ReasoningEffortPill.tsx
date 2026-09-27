@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { useT } from "@/lib/i18n";
-import { reasoningEffortLabel } from "@/plugins/builtin/settings/providers/public/reasoningEffort";
+import { reasoningEffortLabel } from "@/plugins/builtin/providers/public/reasoningEffort";
 import { DropdownMenu, Icon, vocab } from "@/ui";
 import { AgentComposerChip } from "@/ui/agent";
 import { corner, space, type as typeStep } from "@/styles/tokens.stylex";

@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { getContainer } from "@/main/container";
 import { currentRuntimeEndpoint } from "@/plugins/builtin/runtime/public/endpoint";
 import { configureWorkingDirectoryPicker } from "../application/ports/workingDirectoryPicker";
 
@@ -27,19 +26,10 @@ export function updateWorkingDirectorySelection(
   return true;
 }
 
-export async function browseWorkingDirectory(expected: DirectorySelection): Promise<void> {
-  const current = useWorkingDirectorySelection.getState().selection;
-  if (
-    current?.owner !== expected.owner ||
-    !expected.canBrowse ||
-    !getContainer().localWorkspaceAvailable()
-  )
-    return;
-  const path = await getContainer().host.chooseWorkingDirectory();
-  if (path) updateWorkingDirectorySelection(expected, { path });
-}
-
-export function installWorkingDirectoryPicker(): { dispose(): void; cancel(): void } {
+export function installWorkingDirectoryPicker(
+  chooseDirectory: () => Promise<string | null>,
+  canBrowse: () => boolean,
+): { dispose(): void; cancel(): void } {
   let currentOwner: object | undefined;
   const cancel = () => {
     const selection = useWorkingDirectorySelection.getState().selection;
@@ -48,6 +38,19 @@ export function installWorkingDirectoryPicker(): { dispose(): void; cancel(): vo
     currentOwner = undefined;
   };
   const disconnect = configureWorkingDirectoryPicker({
+    async browse(expectedOwner) {
+      const current = useWorkingDirectorySelection.getState().selection;
+      if (
+        !current ||
+        current.owner !== expectedOwner ||
+        current.owner !== currentOwner ||
+        !current.canBrowse ||
+        !canBrowse()
+      )
+        return;
+      const path = await chooseDirectory();
+      if (path) updateWorkingDirectorySelection(current, { path });
+    },
     open() {
       const current = useWorkingDirectorySelection.getState().selection;
       if (current && current.owner === currentOwner) return;
@@ -56,7 +59,7 @@ export function installWorkingDirectoryPicker(): { dispose(): void; cancel(): vo
         selection: {
           owner: currentOwner,
           endpoint: currentRuntimeEndpoint(),
-          canBrowse: getContainer().localWorkspaceAvailable(),
+          canBrowse: canBrowse(),
           path: "",
           busy: false,
         },

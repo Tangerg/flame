@@ -1,13 +1,12 @@
 package terminal
 
 import (
+	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/input"
 	"github.com/Tangerg/oolong/core/keymap"
 	"github.com/Tangerg/oolong/core/layout"
-
-	"github.com/Tangerg/flame/cli/internal/domain/agent"
 )
 
 type promptView struct {
@@ -33,7 +32,7 @@ func newPromptView(
 	glyphs kit.Glyphs,
 	keys *keymap.Map,
 	composer *kit.Composer,
-	options agent.RunOptions,
+	options prompt.RunOptions,
 ) *promptView {
 	panel := kit.NewPanel(kit.PanelConfig{
 		Box:     kit.Box{Theme: theme, Glyphs: glyphs},
@@ -109,7 +108,7 @@ func (p *promptView) syncFocus() {
 	p.rows.Focus(p.focused)
 }
 
-func (p *promptView) SetOptions(options agent.RunOptions) {
+func (p *promptView) SetOptions(options prompt.RunOptions) {
 	p.panel.Box.Footer = optionsLabel(options)
 }
 

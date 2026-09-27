@@ -1,3 +1,4 @@
+import type { FlameClient } from "@flame/runtime-contract/client";
 import { t } from "@/lib/i18n";
 import { notifyError } from "@/plugins/sdk";
 import type { AgentDriver, AgentRunStartOptions } from "@/plugins/sdk/types";
@@ -10,7 +11,6 @@ import type { InterruptResumeInput } from "../application/ports/sessionView";
 import { selectCurrentRootRun } from "../application/view/runTree";
 import { AGENT_SESSION_USAGE_KEY } from "../application/session/sessionUsage";
 import { agentInputToContentBlocks } from "@/plugins/builtin/agent/adapters/wireInput";
-import { getContainer } from "@/main/container";
 import { useAgentStore } from "./agentStore";
 import { createAgentRunPump } from "./agentRunPump";
 import { createRunStreamReattach } from "./runStreamReattach";
@@ -24,13 +24,16 @@ import { createSessionProjectionSynchronization } from "../application/session/s
 import { createRunCancellationController } from "./runCancellationController";
 import { revalidateRunTermination } from "../application/run/revalidateRunTermination";
 
-export function useAgentSession(makeDriver: () => AgentDriver, sessionId: string): AgentSession {
+export function useAgentSession(
+  client: () => FlameClient,
+  makeDriver: () => AgentDriver,
+  sessionId: string,
+): AgentSession {
   const createDriver = useEffectEvent(makeDriver);
 
   useEffect(() => {
     if (!sessionId) return;
     const driver = createDriver();
-    const client = () => getContainer().client();
     const store = () => useAgentStore.getState();
 
     const sessionMemory = useAgentSessionStore.getState();
@@ -238,7 +241,7 @@ export function useAgentSession(makeDriver: () => AgentDriver, sessionId: string
       store().setSynchronize(sessionId, null);
       store().setCancelRun(sessionId, null);
     };
-  }, [sessionId]);
+  }, [client, sessionId]);
 
   return {
     send: (input: AgentInput, options?: AgentRunStartOptions) =>

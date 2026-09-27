@@ -1,9 +1,12 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { PROBLEM_CODES } from "@flame/runtime-contract/wire";
-import { resetContainer, setContainer } from "@/main/container";
 import { definePlugin } from "@/plugins/sdk";
 import { lookupDataProvider } from "@/plugins/sdk/selectors";
-import { createFlameClient, JSONRPC_VERSION } from "@flame/runtime-contract/client";
+import {
+  createFlameClient,
+  JSONRPC_VERSION,
+  type FlameClient,
+} from "@flame/runtime-contract/client";
 import { createMemoryTransport } from "@flame/runtime-contract/client/transports/memory";
 import {
   respondSuccess,
@@ -12,13 +15,6 @@ import {
 import type { MCPServerSettings, MCPToolSummary } from "../application/mcpServerQueries";
 import { registerMCPDataProviders } from "./runtimeMcpDataProviders";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
-
-const mcpDataProviders = definePlugin({
-  name: "test.mcp-data-providers",
-  setup(ctx) {
-    registerMCPDataProviders(ctx);
-  },
-});
 
 const clients: Array<ReturnType<typeof createFlameClient>> = [];
 
@@ -30,10 +26,18 @@ function testClient(transport: ReturnType<typeof createMemoryTransport>) {
 
 afterEach(async () => {
   await Promise.all(clients.splice(0).map((client) => client.close()));
-  await resetContainer();
 });
 
-async function provider<T>(key: string): Promise<(params?: unknown) => Promise<T>> {
+async function provider<T>(
+  runtimeClient: () => FlameClient,
+  key: string,
+): Promise<(params?: unknown) => Promise<T>> {
+  const mcpDataProviders = definePlugin({
+    name: "test.mcp-data-providers",
+    setup(ctx) {
+      registerMCPDataProviders(ctx, runtimeClient);
+    },
+  });
   await loadPluginsForTest(mcpDataProviders);
   const fetcher = lookupDataProvider<T>(key);
   if (!fetcher) throw new Error(`no provider for "${key}"`);
@@ -44,8 +48,8 @@ describe("runtime MCP data providers", () => {
   it("maps unified configuration, lifecycle, and localized inline errors", async () => {
     const transport = createMemoryTransport();
     const client = testClient(transport);
-    setContainer({ client: () => client });
-    const fetcher = await provider<MCPServerSettings[]>("mcp-servers");
+    const runtimeClient = () => client;
+    const fetcher = await provider<MCPServerSettings[]>(runtimeClient, "mcp-servers");
 
     const pending = fetcher();
     const request = await waitForRequest(transport, "mcp.servers.list");
@@ -106,8 +110,8 @@ describe("runtime MCP data providers", () => {
   it("requires an explicit server and maps tool descriptions", async () => {
     const transport = createMemoryTransport();
     const client = testClient(transport);
-    setContainer({ client: () => client });
-    const fetcher = await provider<MCPToolSummary[]>("mcp-tools");
+    const runtimeClient = () => client;
+    const fetcher = await provider<MCPToolSummary[]>(runtimeClient, "mcp-tools");
 
     await expect(fetcher()).rejects.toThrow('Data provider "mcp-tools" requires parameters');
     const pending = fetcher({ server: "git" });
@@ -129,8 +133,8 @@ describe("runtime MCP data providers", () => {
   it("treats an unnegotiated optional MCP capability as an empty catalog", async () => {
     const transport = createMemoryTransport();
     const client = testClient(transport);
-    setContainer({ client: () => client });
-    const fetcher = await provider<MCPServerSettings[]>("mcp-servers");
+    const runtimeClient = () => client;
+    const fetcher = await provider<MCPServerSettings[]>(runtimeClient, "mcp-servers");
 
     const pending = fetcher();
     const request = await waitForRequest(transport, "mcp.servers.list");

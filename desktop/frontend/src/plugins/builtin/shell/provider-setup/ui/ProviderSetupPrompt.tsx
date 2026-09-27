@@ -3,10 +3,7 @@ import { PROVIDERS_PANE } from "@/plugins/builtin/settings/kit/panes";
 import { Icon, PillButton, Surface } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { openWorkspaceSettingsPane } from "@/plugins/builtin/workspace/public/navigation";
-import {
-  needsProviderSetup,
-  useProviders,
-} from "@/plugins/builtin/settings/providers/public/queries";
+import { needsProviderSetup, useProviders } from "@/plugins/builtin/providers/public/queries";
 import { color, leading, space, type as typeStep, weight } from "@/styles/tokens.stylex";
 
 const ps = stylex.create({

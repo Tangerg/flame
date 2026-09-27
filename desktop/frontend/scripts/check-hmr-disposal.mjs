@@ -11,6 +11,7 @@
 // exactly the set of calls that run at import; a registration inside a function or a callback is
 // indented, runs when its owner runs, and is that owner's to clean up.
 
+import { assertSourceCoverage, sourceFiles } from "./source-graph.mjs";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { extname, join, relative } from "node:path";
 
@@ -64,7 +65,9 @@ function* walk(dir) {
 const violations = [];
 let examined = 0;
 let registered = 0;
-for (const path of walk(SRC)) {
+const scanned = [...walk(SRC)];
+assertSourceCoverage(sourceFiles(SRC), scanned);
+for (const path of scanned) {
   if (![".ts", ".tsx"].includes(extname(path))) continue;
   const rel = relative(SRC, path);
   if (rel.includes(".test.") || rel === "lib/hmr.ts") continue;
@@ -87,14 +90,6 @@ if (violations.length > 0) {
   for (const violation of violations) console.error(`  ${violation}`);
   console.error("\n  pair each with `disposeOnHmr(...)` from `@/lib/hmr` (CLAUDE.md §5).");
   process.exit(1);
-}
-
-const MIN_FILES_EXAMINED = 500;
-if (examined < MIN_FILES_EXAMINED) {
-  console.error(
-    `check-hmr-disposal: only read ${examined} files (floor ${MIN_FILES_EXAMINED}) — the walk is broken.`,
-  );
-  process.exit(2);
 }
 
 console.log(
