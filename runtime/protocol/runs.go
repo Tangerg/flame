@@ -427,12 +427,12 @@ type InterruptResponse struct {
 
 // InterruptResponseValue is the discriminated response payload.
 type InterruptResponseValue struct {
-	Type       InterruptResponseType `json:"type"`                 // see InterruptResponseType
-	Decision   ApprovalDecision      `json:"decision,omitempty"`   // approval: see ApprovalDecision
-	Remember   *RememberScope        `json:"remember,omitzero"`    // approval: keep this decision
-	EditedArgs map[string]any        `json:"editedArgs,omitempty"` // approval: one-shot arg override
-	Reason     string                `json:"reason,omitempty"`     // approval (deny rationale)
-	Answers    [][]string            `json:"answers,omitempty"`    // answer: one values array per Question.fields entry, in the same order
+	Type       InterruptResponseType `json:"type"`                // see InterruptResponseType
+	Decision   ApprovalDecision      `json:"decision,omitempty"`  // approval: see ApprovalDecision
+	Remember   *RememberScope        `json:"remember,omitzero"`   // approval: keep this decision
+	EditedArgs map[string]any        `json:"editedArgs,omitzero"` // approval: nil keeps arguments; a present empty map replaces them with {}
+	Reason     string                `json:"reason,omitempty"`    // approval (deny rationale)
+	Answers    [][]string            `json:"answers,omitempty"`   // answer: one values array per Question.fields entry, in the same order
 }
 
 // RememberScopeKind is the persistence scope of a remembered approval. The

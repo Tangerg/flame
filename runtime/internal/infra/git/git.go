@@ -253,7 +253,7 @@ func ListFiles(ctx context.Context, dir, relPath string, maxFiles int) ([]string
 	if !repository {
 		return nil, ErrNotRepo
 	}
-	args := []string{"ls-files", "--cached", "--others", "--exclude-standard", "-z"}
+	args := []string{"ls-files", "--cached", "--deduplicate", "--others", "--exclude-standard", "-z"}
 	if relPath != "" && relPath != "." {
 		args = append(args, "--", ":(literal)"+relPath)
 	}

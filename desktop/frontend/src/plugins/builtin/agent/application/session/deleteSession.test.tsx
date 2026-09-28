@@ -40,12 +40,12 @@ describe("useDeleteSession", () => {
           commit = resolve;
         }),
     );
-    const closeSession = vi.fn();
+    const localDeletion = vi.fn();
     restoreRuntime = configureAgentRuntimeGateway({
       deleteSession,
     } as unknown as AgentRuntimeGateway);
     restoreState = configureAgentSessionStatePort({
-      closeSession,
+      deleteSession: localDeletion,
     } as unknown as AgentSessionStatePort);
     queryClient.setQueryData([AGENT_SESSIONS_KEY], [session("ses_a"), session("ses_b")]);
     const { result } = renderHook(() => useDeleteSession());
@@ -60,11 +60,11 @@ describe("useDeleteSession", () => {
       session("ses_a"),
       session("ses_b"),
     ]);
-    expect(closeSession).not.toHaveBeenCalled();
+    expect(localDeletion).not.toHaveBeenCalled();
 
     commit();
     await act(async () => deleting);
-    expect(closeSession).toHaveBeenCalledWith("ses_a");
+    expect(localDeletion).toHaveBeenCalledWith("ses_a");
   });
 
   it("retires delete loading before an old non-cooperative RPC responds", async () => {
@@ -75,12 +75,12 @@ describe("useDeleteSession", () => {
           commit = resolve;
         }),
     );
-    const closeSession = vi.fn();
+    const localDeletion = vi.fn();
     restoreRuntime = configureAgentRuntimeGateway({
       deleteSession,
     } as unknown as AgentRuntimeGateway);
     restoreState = configureAgentSessionStatePort({
-      closeSession,
+      deleteSession: localDeletion,
     } as unknown as AgentSessionStatePort);
     const retiredOwner = AgentCommandOwner.install();
     const { result } = renderHook(() => useDeleteSession());
@@ -100,7 +100,7 @@ describe("useDeleteSession", () => {
     commit();
     await deleting;
     expect(settledBeforeOldRPC).toBe(true);
-    expect(closeSession).not.toHaveBeenCalled();
+    expect(localDeletion).not.toHaveBeenCalled();
     retiredOwner.dispose();
     successor.dispose();
   });

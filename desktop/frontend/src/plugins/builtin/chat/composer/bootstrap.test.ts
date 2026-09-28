@@ -32,6 +32,7 @@ describe("Composer bootstrap", () => {
             getLifecycleSnapshot: lifecycleSnapshot,
             subscribeActiveSessionId: () => () => undefined,
             subscribeLifecycle,
+            subscribeDeleted: () => () => undefined,
           },
         };
       },

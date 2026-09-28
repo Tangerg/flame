@@ -72,24 +72,42 @@ func setDefaults(v *viper.Viper, defaults settings.Config) {
 	}
 }
 
+type configAuthority uint8
+
+const (
+	projectConfigAuthority configAuthority = iota
+	explicitConfigAuthority
+	userConfigAuthority
+)
+
+type selectedConfigSource struct {
+	path      string
+	authority configAuthority
+}
+
 func loadConfig(v *viper.Viper, cmd *cobra.Command) error {
 	path, err := cmd.Flags().GetString("config")
 	if err != nil {
 		return err
 	}
-	source, found, err := selectConfigSource(cmd, path)
+	source, err := selectConfigSource(cmd, path)
 	if err != nil {
 		return err
 	}
-	if found {
-		content, err := readConfigFile(source)
+	if source != nil {
+		content, err := readConfigFile(source.path)
 		if err != nil {
-			return fmt.Errorf("read configuration %q: %w", source, err)
+			return fmt.Errorf("read configuration %q: %w", source.path, err)
 		}
 		v.SetConfigType("yaml")
-		v.SetConfigFile(source)
+		v.SetConfigFile(source.path)
 		if err := v.ReadConfig(bytes.NewReader(content)); err != nil {
-			return fmt.Errorf("read configuration %q: %w", source, err)
+			return fmt.Errorf("read configuration %q: %w", source.path, err)
+		}
+		// Project preferences cannot choose where a process-owned bearer is sent.
+		// Validate the already-read bytes, not a second read of a mutable file.
+		if source.authority == projectConfigAuthority && v.InConfig("runtime.endpoint") {
+			return errors.New("project configuration cannot select a runtime endpoint; use --runtime-url, FLAME_CLI_RUNTIME_ENDPOINT, user configuration, or an explicit --config")
 		}
 	}
 	if bindSettingFlagsErr := bindSettingFlags(v, cmd); bindSettingFlagsErr != nil {
@@ -99,38 +117,38 @@ func loadConfig(v *viper.Viper, cmd *cobra.Command) error {
 	return err
 }
 
-func selectConfigSource(cmd *cobra.Command, explicitPath string) (string, bool, error) {
+func selectConfigSource(cmd *cobra.Command, explicitPath string) (*selectedConfigSource, error) {
 	if explicitPath != "" {
 		if !strings.EqualFold(filepath.Ext(explicitPath), ".yaml") {
-			return "", false, errors.New("--config must name a .yaml file")
+			return nil, errors.New("--config must name a .yaml file")
 		}
-		return explicitPath, true, nil
+		return &selectedConfigSource{path: explicitPath, authority: explicitConfigAuthority}, nil
 	}
 	workspace, err := resolveLocalDirectory(cmd)
 	if err != nil {
-		return "", false, fmt.Errorf("resolve project configuration workspace: %w", err)
+		return nil, fmt.Errorf("resolve project configuration workspace: %w", err)
 	}
 	projectConfig := filepath.Join(workspace, ".flame.yaml")
 	_, err = os.Stat(projectConfig)
 	switch {
 	case err == nil:
-		return projectConfig, true, nil
+		return &selectedConfigSource{path: projectConfig, authority: projectConfigAuthority}, nil
 	case !errors.Is(err, os.ErrNotExist):
-		return "", false, fmt.Errorf("inspect project configuration: %w", err)
+		return nil, fmt.Errorf("inspect project configuration: %w", err)
 	}
 	configDir, err := os.UserConfigDir()
 	if err != nil {
-		return "", false, fmt.Errorf("resolve user config directory: %w", err)
+		return nil, fmt.Errorf("resolve user config directory: %w", err)
 	}
 	userConfig := filepath.Join(configDir, "flame", "config.yaml")
 	_, err = os.Stat(userConfig)
 	switch {
 	case err == nil:
-		return userConfig, true, nil
+		return &selectedConfigSource{path: userConfig, authority: userConfigAuthority}, nil
 	case errors.Is(err, os.ErrNotExist):
-		return "", false, nil
+		return nil, nil
 	default:
-		return "", false, fmt.Errorf("inspect user configuration: %w", err)
+		return nil, fmt.Errorf("inspect user configuration: %w", err)
 	}
 }
 

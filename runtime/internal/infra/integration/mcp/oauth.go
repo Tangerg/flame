@@ -42,9 +42,8 @@ const (
 
 // oauthCallback is the authorization-server redirect outcome.
 type oauthCallback struct {
-	code  string
-	state string
-	err   error
+	response auth.AuthorizationResult
+	err      error
 }
 
 // oauthFlow is one interactive authorization: a loopback HTTP server on an
@@ -84,18 +83,20 @@ func newOAuthFlow(ctx context.Context) (*oauthFlow, error) {
 // shows the user a close-this-tab page, and hands the outcome to fetch.
 func (o *oauthFlow) handleCallback(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	cb := oauthCallback{code: q.Get("code"), state: q.Get("state")}
+	cb := oauthCallback{response: auth.AuthorizationResult{
+		Code: q.Get("code"), State: q.Get("state"), Iss: q.Get("iss"),
+	}}
 	switch {
 	case q.Get("error") != "":
 		cb.err = fmt.Errorf("authorization denied: %s", q.Get("error"))
-	case cb.code == "":
+	case cb.response.Code == "":
 		cb.err = errors.New("authorization response missing code")
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if cb.err != nil {
 		_, _ = w.Write([]byte(oauthResultHTML("Authorization failed — you can close this tab.")))
 	} else {
-		_, _ = w.Write([]byte(oauthResultHTML("Authorized — close this tab and return to Flame.")))
+		_, _ = w.Write([]byte(oauthResultHTML("Authorization response received — return to Flame to check the result.")))
 	}
 	select {
 	case o.result <- cb:
@@ -114,7 +115,7 @@ func (o *oauthFlow) fetch(ctx context.Context, args *auth.AuthorizationArgs) (*a
 		if cb.err != nil {
 			return nil, cb.err
 		}
-		return &auth.AuthorizationResult{Code: cb.code, State: cb.state}, nil
+		return &cb.response, nil
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}

@@ -285,7 +285,7 @@ describe("mutation journal", () => {
     },
   );
 
-  it("retires identities from a replaced Runtime store instead of replaying them", () => {
+  it("retains replaced-store evidence without replaying it in the replacement", () => {
     const storage = new MemoryStorage();
     let namespace = "idp_runtime_store_a";
     const predecessor = journal(storage, () => scope(namespace));
@@ -297,7 +297,13 @@ describe("mutation journal", () => {
     const replacement = successor.reserve("runs.start", { prompt: "hello" })!;
 
     expect(replacement.idempotencyKey).not.toBe(old.idempotencyKey);
-    expect(storage.keys()).toHaveLength(1);
+    expect(storage.keys()).toHaveLength(2);
+    predecessor.dispose();
+    namespace = "idp_runtime_store_a";
+    const recovered = journal(storage, () => scope(namespace)).reserve("runs.start", {
+      prompt: "hello",
+    })!;
+    expect(recovered.idempotencyKey).toBe(old.idempotencyKey);
   });
 
   it("fails closed on corrupted records, identity collisions, and capacity", () => {

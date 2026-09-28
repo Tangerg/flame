@@ -15,22 +15,19 @@ describe("Composer", () => {
     expect(composer.activate("s2").activate("s1").draft.value).toBe("hello");
   });
 
-  it("keeps the scratch and active drafts when pruning to the live set", () => {
-    const composer = typed(Composer.empty(), "scratch")
-      .activate("s1")
-      .edit((d) => d.withValue("one"))
+  it("discards only the draft and history of a deleted Session", () => {
+    const composer = typed(Composer.empty().activate("s1").record("sent"), "unsent")
       .activate("s2")
-      .edit((d) => d.withValue("two"))
-      .activate("stale")
-      .edit((d) => d.withValue("gone"))
-      .activate("s2")
-      .prune(new Set(["s1"]));
+      .edit((draft) => draft.withValue("keep"))
+      .discardSession("s1");
+    expect(composer.activate("s1").draft.value).toBe("");
+    expect(composer.activate("s1").recallOlder()).toBeNull();
+    expect(composer.activate("s2").draft.value).toBe("keep");
+  });
 
-    expect([...composer.durableDraftTexts().keys()].sort()).toEqual([
-      SCRATCH_SESSION_ID,
-      "s1",
-      "s2",
-    ]);
+  it("never discards the scratch draft as a Session", () => {
+    const composer = typed(Composer.empty(), "scratch");
+    expect(composer.discardSession(SCRATCH_SESSION_ID)).toBe(composer);
   });
 
   it("does not record blank text or an immediate repeat", () => {
@@ -72,11 +69,13 @@ describe("Composer", () => {
 
   it("persists only non-empty draft text", () => {
     const composer = typed(Composer.empty().activate("s1"), "kept").activate("s2");
-    expect([...composer.durableDraftTexts()]).toEqual([["s1", "kept"]]);
+    expect([...composer.durableDraftTexts()]).toEqual([["s1", { value: "kept", pastes: [] }]]);
   });
 
   it("restores durable text into empty drafts", () => {
-    const restored = Composer.restoreDrafts(new Map([["s1", "kept"]])).activate("s1");
+    const restored = Composer.restoreDrafts(
+      new Map([["s1", { value: "kept", pastes: [] }]]),
+    ).activate("s1");
     expect(restored.draft.value).toBe("kept");
     expect(restored.draft.images).toEqual([]);
   });

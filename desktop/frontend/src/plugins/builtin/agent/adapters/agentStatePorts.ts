@@ -47,6 +47,21 @@ function goToSession(id: string, options?: { replace?: boolean }): void {
 
 export function installAgentStatePorts(): () => void {
   const refreshOwner = AgentViewRefreshOwner.install();
+  const deletedSessionListeners = new Set<(id: string) => void>();
+  const closeSession = (id: string) => {
+    const store = useAgentSessionStore.getState();
+    const currentSessionId = activeSessionId();
+    const next = closeOpenSession(
+      { activeSessionId: currentSessionId, openSessionIds: store.openSessionIds },
+      id,
+    );
+    store.release(id);
+    if (next.activeSessionId === currentSessionId) {
+      store.rememberSession(next.activeSessionId);
+      return;
+    }
+    goToSession(next.activeSessionId);
+  };
   const disposeSessionState = configureAgentSessionStatePort({
     useActiveSessionId: () => navigator().use((location) => location.session),
     getActiveSessionId: activeSessionId,
@@ -76,19 +91,14 @@ export function installAgentStatePorts(): () => void {
       };
     },
     selectSession: goToSession,
-    closeSession: (id) => {
-      const store = useAgentSessionStore.getState();
-      const currentSessionId = activeSessionId();
-      const next = closeOpenSession(
-        { activeSessionId: currentSessionId, openSessionIds: store.openSessionIds },
-        id,
-      );
-      store.release(id);
-      if (next.activeSessionId === currentSessionId) {
-        store.rememberSession(next.activeSessionId);
-        return;
-      }
-      goToSession(next.activeSessionId);
+    closeSession,
+    deleteSession: (id) => {
+      closeSession(id);
+      for (const listener of deletedSessionListeners) listener(id);
+    },
+    subscribeDeletedSession: (listener) => {
+      deletedSessionListeners.add(listener);
+      return () => deletedSessionListeners.delete(listener);
     },
     useDraftSessionIds: () => useAgentSessionStore((state) => state.draftSessionIds),
     isDraftSession: (id) => useAgentSessionStore.getState().draftSessionIds.has(id),
@@ -161,6 +171,7 @@ export function installAgentStatePorts(): () => void {
     subscribeSessions: (onChange) => useAgentStore.subscribe((state) => onChange(state.sessions)),
   });
   return () => {
+    deletedSessionListeners.clear();
     refreshOwner.dispose();
     disposeViewState();
     disposeSessionState();

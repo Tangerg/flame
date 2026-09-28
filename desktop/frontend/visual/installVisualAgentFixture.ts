@@ -202,6 +202,7 @@ const visualAgentSessions = definePlugin({
         getLifecycleSnapshot: getAgentSessionLifecycleSnapshot,
         subscribeActiveSessionId,
         subscribeLifecycle: subscribeAgentSessionLifecycle,
+        subscribeDeleted: () => () => undefined,
       },
     };
   },

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"reflect"
 
+	corechat "github.com/Tangerg/scope/core/chat"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -56,6 +58,20 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 		return StartResult{}, validatePendingRunTreeErr
 	}
 
+	rootContinuation, ok := pending.RootContinuation()
+	if !ok {
+		return StartResult{}, errors.New("runs: pending interrupt set has no root continuation")
+	}
+	if len(cmd.Input) > 0 {
+		message, err := MaterializeUserMessage(cmd.Input)
+		if err != nil {
+			return StartResult{}, err
+		}
+		if err := c.models.AdmitInput(rootContinuation.ModelSelection, []corechat.Message{message}); err != nil {
+			return StartResult{}, fmt.Errorf("%w: %w", ErrUnsupportedMedia, err)
+		}
+	}
+
 	claim, err := NewResumeClaimCommit(newRunCommitID(), pending, answers, c.publications.nowUTC())
 	if err != nil {
 		return StartResult{}, fmt.Errorf("runs: prepare resume claim: %w", err)
@@ -73,10 +89,6 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 	}()
 	if validateClaimedResumeErr := validateClaimedResume(claimed, pending, answers, sess); validateClaimedResumeErr != nil {
 		return StartResult{}, validateClaimedResumeErr
-	}
-	rootContinuation, ok := pending.RootContinuation()
-	if !ok {
-		return StartResult{}, errors.New("runs: pending interrupt set has no root continuation")
 	}
 	waiting, err := NewWaitingContinuation(WaitingContinuation{
 		SessionID: pending.SessionID, ExecutorID: pending.ExecutorID,

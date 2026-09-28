@@ -131,7 +131,7 @@ func decodeApprovalResponse(wire protocol.InterruptResponseValue) (*runs.Approva
 	switch wire.Decision {
 	case protocol.ApprovalApprove:
 		approval.Approved = true
-		if len(wire.EditedArgs) > 0 {
+		if wire.EditedArgs != nil {
 			encoded, err := json.Marshal(wire.EditedArgs, json.Deterministic(true))
 			if err != nil {
 				return nil, fmt.Errorf("runs.resume: editedArgs: %w", err)

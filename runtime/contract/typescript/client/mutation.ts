@@ -18,7 +18,18 @@ function retryableTransportFailure(error: unknown): error is RpcTransportError {
   return error.status === undefined || error.status === 408 || (error.status ?? 0) >= 500;
 }
 
+class MutationObservationInterruptedError extends Error {
+  readonly lastObservation: unknown;
+
+  constructor(lastObservation: unknown, cause: unknown) {
+    super("mutation observation ended before settlement", { cause });
+    this.name = "MutationObservationInterruptedError";
+    this.lastObservation = lastObservation;
+  }
+}
+
 export function mutationSettlementIsUnknown(error: unknown): boolean {
+  if (error instanceof MutationObservationInterruptedError) return true;
   if (error instanceof RpcProtocolError) return true;
   if (retryableTransportFailure(error)) return true;
   // These responses do not settle the original command. Preserve its identity for
@@ -69,7 +80,12 @@ async function settleMutation<T>(
       }
       if (!waitedForInProgress && isErrorType(error, "idempotency_in_progress")) {
         waitedForInProgress = true;
-        await waitForReplay(error.data.retryAfterSeconds, options.signal);
+        try {
+          await waitForReplay(error.data.retryAfterSeconds, options.signal);
+        } catch (cause) {
+          // Stopping observation cannot settle the command already reserved by Runtime.
+          throw new MutationObservationInterruptedError(error, cause);
+        }
         continue;
       }
       throw error;

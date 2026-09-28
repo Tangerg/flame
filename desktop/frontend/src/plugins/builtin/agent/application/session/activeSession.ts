@@ -1,4 +1,3 @@
-import { discardAbandonedDraft } from "./discardAbandonedDraft";
 import type { AgentSessionSummary } from "./sessionQueries";
 import { useAgentSessions } from "./sessionQueries";
 import { agentSessionState, type AgentOpenSessions } from "../ports/sessionState";
@@ -30,6 +29,10 @@ export function subscribeAgentSessionLifecycle(
   return agentSessionState().subscribeLifecycle(onChange);
 }
 
+export function subscribeDeletedAgentSession(onDeleted: (sessionId: string) => void): () => void {
+  return agentSessionState().subscribeDeletedSession(onDeleted);
+}
+
 export function selectAgentSession(id: string): void {
   agentSessionState().selectSession(id);
 }
@@ -37,7 +40,6 @@ export function selectAgentSession(id: string): void {
 export function closeActiveAgentSession(): boolean {
   const id = getActiveSessionId();
   if (!id) return false;
-  discardAbandonedDraft(id);
   agentSessionState().closeSession(id);
   return true;
 }

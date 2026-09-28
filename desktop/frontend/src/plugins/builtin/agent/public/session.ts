@@ -4,6 +4,7 @@ export {
   getActiveSessionId,
   selectAgentSession,
   subscribeAgentSessionLifecycle,
+  subscribeDeletedAgentSession,
   subscribeActiveSessionId,
   useActiveSession,
   useActiveSessionWorkspace,

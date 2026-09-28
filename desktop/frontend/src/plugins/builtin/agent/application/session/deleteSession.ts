@@ -13,7 +13,7 @@ export function useDeleteSession(): (id: string) => Promise<void> {
     try {
       await owner.settle(runtime.deleteSession(id));
       owner.assertCurrent();
-      state.closeSession(id);
+      state.deleteSession(id);
       void invalidateAgentSessions();
     } catch (err) {
       if (owner.isCurrent()) reportSessionError("delete", err);

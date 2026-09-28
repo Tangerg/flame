@@ -5,6 +5,11 @@ export const SCRATCH_SESSION_ID = "";
 
 const HISTORY_CAP = 50;
 
+export interface ComposerDraftText {
+  value: string;
+  pastes: readonly Pick<PastedText, "id" | "text">[];
+}
+
 export class ComposerDraft {
   private static readonly EMPTY = new ComposerDraft("", Object.freeze([]), Object.freeze([]));
 
@@ -68,9 +73,16 @@ export class Composer {
     return new Composer(new Map(), new Map(), SCRATCH_SESSION_ID, NOT_RECALLING);
   }
 
-  static restoreDrafts(texts: ReadonlyMap<string, string>): Composer {
+  static restoreDrafts(texts: ReadonlyMap<string, ComposerDraftText>): Composer {
     const drafts = new Map<string, ComposerDraft>();
-    for (const [sessionId, value] of texts) drafts.set(sessionId, ComposerDraft.restoreText(value));
+    for (const [sessionId, text] of texts) {
+      drafts.set(
+        sessionId,
+        ComposerDraft.restoreText(text.value).withPastes(
+          text.pastes.map(({ id, text }) => ({ id, text, lines: countLines(text) })),
+        ),
+      );
+    }
     return new Composer(drafts, new Map(), SCRATCH_SESSION_ID, NOT_RECALLING);
   }
 
@@ -82,10 +94,15 @@ export class Composer {
     return this.recall.active;
   }
 
-  durableDraftTexts(): Map<string, string> {
-    const texts = new Map<string, string>();
+  durableDraftTexts(): Map<string, ComposerDraftText> {
+    const texts = new Map<string, ComposerDraftText>();
     for (const [sessionId, draft] of this.drafts) {
-      if (draft.value) texts.set(sessionId, draft.value);
+      if (!draft.value && draft.pastes.length === 0) continue;
+      // Flattening a paste into value could turn authored content into a slash command.
+      texts.set(sessionId, {
+        value: draft.value,
+        pastes: draft.pastes.map(({ id, text }) => ({ id, text })),
+      });
     }
     return texts;
   }
@@ -103,17 +120,13 @@ export class Composer {
     return new Composer(this.drafts, this.rings, sessionId, NOT_RECALLING);
   }
 
-  prune(liveSessionIds: ReadonlySet<string>): Composer {
-    const keep = (sessionId: string) =>
-      sessionId === SCRATCH_SESSION_ID ||
-      sessionId === this.activeSessionId ||
-      liveSessionIds.has(sessionId);
-    return new Composer(
-      retain(this.drafts, keep),
-      retain(this.rings, keep),
-      this.activeSessionId,
-      this.recall,
-    );
+  discardSession(sessionId: string): Composer {
+    if (sessionId === SCRATCH_SESSION_ID) return this;
+    const drafts = new Map(this.drafts);
+    const rings = new Map(this.rings);
+    drafts.delete(sessionId);
+    rings.delete(sessionId);
+    return new Composer(drafts, rings, this.activeSessionId, NOT_RECALLING);
   }
 
   record(text: string): Composer {
@@ -172,13 +185,4 @@ export class Composer {
       recall,
     );
   }
-}
-
-function retain<T>(
-  source: ReadonlyMap<string, T>,
-  keep: (key: string) => boolean,
-): ReadonlyMap<string, T> {
-  const kept = new Map<string, T>();
-  for (const [key, value] of source) if (keep(key)) kept.set(key, value);
-  return kept;
 }

@@ -15,7 +15,8 @@ import (
 
 func TestRuntimeEndpointPreferenceAndCredentialBoundary(t *testing.T) {
 	local := t.TempDir()
-	writeCommandFixture(t, filepath.Join(local, ".flame.yaml"), []byte("runtime:\n  endpoint: https://file.example/flame\n"))
+	configPath := filepath.Join(local, ".flame.yaml")
+	writeCommandFixture(t, configPath, []byte("runtime:\n  endpoint: https://file.example/flame\n"))
 	t.Setenv("FLAME_CLI_RUNTIME_ENDPOINT", "https://environment.example/flame")
 	t.Setenv("FLAME_RUNTIME_TOKEN", "secret-runtime-token")
 	for _, test := range []struct {
@@ -26,7 +27,7 @@ func TestRuntimeEndpointPreferenceAndCredentialBoundary(t *testing.T) {
 		{flags: []string{"--runtime-url", "https://flag.example/flame"}, want: "https://flag.example/flame"},
 		{flags: []string{"--runtime-url="}, want: ""},
 	} {
-		args := append([]string{"-C", local}, test.flags...)
+		args := append([]string{"-C", local, "--config", configPath}, test.flags...)
 		args = append(args, "config", "show")
 		out, _, err := executeCommand(t, instantRuntime(), "", args...)
 		if err != nil {
@@ -128,7 +129,8 @@ func TestRemoteFileCompletionDoesNotOpenRuntime(t *testing.T) {
 
 func TestDynamicCompletionLoadsTheConfiguredRuntimeTarget(t *testing.T) {
 	local := t.TempDir()
-	writeCommandFixture(t, filepath.Join(local, ".flame.yaml"), []byte("runtime:\n  endpoint: https://configured.example/flame\n"))
+	configPath := filepath.Join(local, ".flame.yaml")
+	writeCommandFixture(t, configPath, []byte("runtime:\n  endpoint: https://configured.example/flame\n"))
 	var target string
 	root := NewRoot(Dependencies{OpenRuntime: func(_ context.Context, endpoint string) (Runtime, RuntimeProfile, error) {
 		target = endpoint
@@ -137,7 +139,7 @@ func TestDynamicCompletionLoadsTheConfiguredRuntimeTarget(t *testing.T) {
 	var out bytes.Buffer
 	root.SetOut(&out)
 	root.SetErr(&out)
-	root.SetArgs([]string{"__complete", "-C", local, "sessions", "show", ""})
+	root.SetArgs([]string{"__complete", "-C", local, "--config", configPath, "sessions", "show", ""})
 	if err := root.ExecuteContext(t.Context()); err != nil {
 		t.Fatal(err)
 	}

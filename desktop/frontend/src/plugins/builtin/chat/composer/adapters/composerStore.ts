@@ -30,7 +30,7 @@ interface ComposerActions {
   editPaste: (id: string, text: string) => void;
   restorePaste: (id: string) => void;
   loadSession: (sessionId: string) => void;
-  pruneDrafts: (liveSessionIds: Set<string>) => void;
+  discardSession: (sessionId: string) => void;
   pushHistory: (text: string) => void;
   historyPrev: () => boolean;
   historyNext: () => boolean;
@@ -94,8 +94,8 @@ export const useComposerStore = create<ComposerState & ComposerActions>()(
         editPaste: (id, text) => edit((draft) => draft.editPaste(id, text)),
         restorePaste: (id) => edit((draft) => draft.restorePaste(id)),
         loadSession: (sessionId) => set((s) => ({ composer: s.composer.activate(sessionId) })),
-        pruneDrafts: (liveSessionIds) =>
-          set((s) => ({ composer: s.composer.prune(liveSessionIds) })),
+        discardSession: (sessionId) =>
+          set((s) => ({ composer: s.composer.discardSession(sessionId) })),
         pushHistory: (text) => set((s) => ({ composer: s.composer.record(text) })),
         historyPrev: () => {
           const recalled = get().composer.recallOlder();
@@ -115,7 +115,7 @@ export const useComposerStore = create<ComposerState & ComposerActions>()(
       name: STORAGE_KEY,
       storage: createJSONStorage(() => persistence.storage),
       skipHydration: true,
-      version: 3,
+      version: 4,
       migrate: discardOlderVersions,
       onRehydrateStorage: () => (_state, error) => {
         if (error) useComposerStore.setState(emptyComposerState());

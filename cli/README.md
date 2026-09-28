@@ -31,12 +31,22 @@ Run subscriptions reconnect with bounded backoff until canceled.
 ## Connect to a shared Runtime
 
 With no endpoint configured, CLI owns one embedded Runtime and closes it on exit.
-Set `--runtime-url`, `FLAME_CLI_RUNTIME_ENDPOINT`, or `runtime.endpoint` in CLI YAML
-to attach to an already running Runtime through its HTTP/SSE binding. The value is
-the base URL, such as `http://127.0.0.1:17171`; the client appends `/v2/rpc`.
+Set `--runtime-url`, `FLAME_CLI_RUNTIME_ENDPOINT`, or `runtime.endpoint` in user-level
+or explicitly selected `--config` YAML to attach to an already running Runtime
+through its HTTP/SSE binding. The value is the base URL, such as
+`http://127.0.0.1:17171`; the client appends `/v2/rpc`.
 `FLAME_RUNTIME_TOKEN` supplies the bearer credential separately from printable
 preferences. Endpoint failure or protocol incompatibility remains an error; it
 never starts a replacement Runtime or falls back to local storage.
+
+An automatically discovered project `.flame.yaml` cannot declare `runtime.endpoint`.
+Such a file is rejected before Runtime discovery, including dynamic completion;
+it cannot select the destination of a process-owned bearer. Remove that setting
+from project preferences and choose the endpoint through one of the explicit or
+user-level sources above. Passing `--config` explicitly authorizes the chosen file.
+The automatic selector loads one file, not a merged user/project pair. When
+project preferences are present, choose the endpoint with the environment or
+flag, or select a trusted file explicitly with `--config`.
 
 ```sh
 flame --runtime-url http://127.0.0.1:17171 sessions ls

@@ -49,6 +49,7 @@ const ports = definePlugin({
       }),
       subscribeActiveSessionId: (fn: (sessionId: string) => void) => agentSession.subscribe(fn),
       subscribeLifecycle: () => () => {},
+      subscribeDeleted: () => () => {},
     },
     scopes: {
       adoptSessionScope: adoptWorkspaceSessionScope,

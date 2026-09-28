@@ -62,19 +62,20 @@ function installComposerSessionSync(
   scope: RuntimeServerScope,
 ): () => void {
   stopSessionSync?.();
-  const sync = ({
-    activeSessionId,
-    openSessionIds,
-  }: ReturnType<AgentSessions["getLifecycleSnapshot"]>) => {
+  const sync = ({ activeSessionId }: ReturnType<AgentSessions["getLifecycleSnapshot"]>) => {
     activateComposerStorage(endpoint());
     const composer = useComposerStore.getState();
     composer.loadSession(activeSessionId);
-    composer.pruneDrafts(new Set(openSessionIds));
   };
   const stopLifecycle = sessions.subscribeLifecycle(sync);
+  const stopDeletion = sessions.subscribeDeleted((sessionId) => {
+    activateComposerStorage(endpoint());
+    useComposerStore.getState().discardSession(sessionId);
+  });
   const stopScope = scope.subscribeReplacement(() => sync(sessions.getLifecycleSnapshot()));
   const stop = () => {
     stopLifecycle();
+    stopDeletion();
     stopScope();
   };
   stopSessionSync = stop;

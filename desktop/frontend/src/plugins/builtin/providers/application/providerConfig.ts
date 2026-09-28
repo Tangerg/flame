@@ -98,9 +98,14 @@ export async function updateProvider(input: ProviderUpdate): Promise<ProviderCon
 }
 
 export function useUpdateProvider(): (input: ProviderUpdate) => Promise<ProviderConfiguration> {
-  return useCallback((input) => {
-    return updateProvider(input);
-  }, []);
+  const generation = useProviderMutationMaterialGeneration();
+  return useCallback(
+    (input) => {
+      ProviderMutationOwner.assertMaterialGeneration(generation);
+      return updateProvider(input);
+    },
+    [generation],
+  );
 }
 
 export async function setUtilityRole(role: ProviderRole): Promise<ProviderTestOutcome> {
@@ -134,11 +139,16 @@ export async function setEmbeddingRole(role: ProviderRole): Promise<ProviderTest
 }
 
 export function useTestProvider(): (provider: string) => Promise<ProviderTestOutcome> {
-  return useCallback(async (provider) => {
-    const res = await ProviderMutationOwner.current().testProvider(provider);
-    return {
-      ok: res.ok,
-      error: res.ok ? undefined : (res.error ?? t("providers.error.test")),
-    };
-  }, []);
+  const generation = useProviderMutationMaterialGeneration();
+  return useCallback(
+    async (provider) => {
+      ProviderMutationOwner.assertMaterialGeneration(generation);
+      const res = await ProviderMutationOwner.current().testProvider(provider);
+      return {
+        ok: res.ok,
+        error: res.ok ? undefined : (res.error ?? t("providers.error.test")),
+      };
+    },
+    [generation],
+  );
 }

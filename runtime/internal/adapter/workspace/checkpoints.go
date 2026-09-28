@@ -4,6 +4,7 @@ package workspace
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/infra/git"
 	"github.com/Tangerg/flame/runtime/internal/infra/git/checkpoint"
@@ -47,8 +48,8 @@ func (c *Checkpoints) CheckpointsEnabled() bool {
 }
 
 // Snapshot anchors sessionID's working tree (at cwd) under runID so a later
-// Restore can revert to it. Best-effort: a disabled store is a silent no-op,
-// so the caller never fails a run on snapshot trouble.
+// Restore can revert to it. A disabled store is a no-op. Operational failures
+// remain observable; the caller owns best-effort maintenance policy.
 func (c *Checkpoints) Snapshot(ctx context.Context, sessionID, cwd, runID string) error {
 	if !c.CheckpointsEnabled() {
 		return nil
@@ -67,7 +68,7 @@ func (c *Checkpoints) Snapshot(ctx context.Context, sessionID, cwd, runID string
 		if contextErr := ctx.Err(); contextErr != nil {
 			return contextErr
 		}
-		return nil
+		return fmt.Errorf("checkpoints: inspect workspace: %w", err)
 	}
 	if !repository {
 		return nil

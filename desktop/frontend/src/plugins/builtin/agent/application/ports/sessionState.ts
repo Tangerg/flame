@@ -12,6 +12,8 @@ export interface AgentSessionStatePort {
   subscribeLifecycle(onChange: (snapshot: AgentOpenSessions) => void): () => void;
   selectSession(id: string): void;
   closeSession(id: string): void;
+  deleteSession(id: string): void;
+  subscribeDeletedSession(listener: (id: string) => void): () => void;
   useDraftSessionIds(): Set<string>;
   isDraftSession(id: string): boolean;
   reconcileSessions(liveIds: string[]): void;

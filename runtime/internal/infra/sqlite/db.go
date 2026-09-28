@@ -13,6 +13,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/url"
+	"path/filepath"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
@@ -56,7 +58,7 @@ func modelInvocationUsageColumn() string {
 func Open(ctx context.Context, path string) (*sql.DB, error) {
 	dsn := fmt.Sprintf(
 		"file:%s?_pragma=journal_mode(WAL)&_pragma=foreign_keys(ON)&_pragma=busy_timeout(5000)",
-		path,
+		url.PathEscape(filepath.ToSlash(path)),
 	)
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {

@@ -1,4 +1,5 @@
 import { lazy } from "react";
+import { observeProviderDraftLifetime } from "./application/providerDrafts";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import { registerProviderDataProviders } from "./adapters/runtimeDataProviders";
 import { definePlugin } from "@/plugins/sdk";
@@ -18,6 +19,7 @@ export function createProvidersPlugin(runtimeClient: () => FlameClient) {
     setup(ctx) {
       const gateway = installProviderGateway(runtimeClient);
       ctx.cleanup(() => gateway.dispose());
+      ctx.cleanup(observeProviderDraftLifetime());
       registerProviderDataProviders(ctx, runtimeClient);
       ctx.cleanup(followRuntimeGeneration(ctx.runtime, () => gateway.replaceRuntimeGeneration()));
       registerSettingsPane(ctx, {

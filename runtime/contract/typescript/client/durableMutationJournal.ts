@@ -343,14 +343,9 @@ export function openDurableMutationJournal(
       if (preferredKey !== undefined && !validText(preferredKey, MAX_IDENTITY_LENGTH)) {
         throw new MutationJournalError("Runtime mutation identity candidate is invalid");
       }
-      const currentTime = options.now();
-      let entries = loadEntries(options.storage);
-      for (const entry of entries) {
-        if (entry.expiresAt <= currentTime || entry.namespace !== scope.namespace) {
-          removeEntry(entry);
-        }
-      }
-      entries = loadEntries(options.storage);
+      // These records are unresolved evidence, not a cache of completed receipts.
+      // Neither expiry nor replacement of the serving store settles their outcome.
+      const entries = loadEntries(options.storage);
       const matches = (entry: JournalEntry) =>
         entry.namespace === scope.namespace && matchesCommand(entry, method, params);
       const preferred =
@@ -377,7 +372,9 @@ export function openDurableMutationJournal(
         }
         entry = createEntry(method, params, scope, preferredKey ?? crypto.randomUUID());
       }
-      return { entry };
+      const identity = { entry };
+      validateIdentity(identity, scope);
+      return identity;
     },
     authorize(identity) {
       const scope = currentScope();

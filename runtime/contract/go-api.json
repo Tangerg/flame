@@ -4776,7 +4776,7 @@
             {
               "name": "EditedArgs",
               "type": "map[string]any",
-              "tag": "json:\"editedArgs,omitempty\""
+              "tag": "json:\"editedArgs,omitzero\""
             },
             {
               "name": "Reason",

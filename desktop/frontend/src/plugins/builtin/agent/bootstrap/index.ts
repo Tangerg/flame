@@ -11,6 +11,7 @@ import {
   getAgentSessionLifecycleSnapshot,
   subscribeActiveSessionId,
   subscribeAgentSessionLifecycle,
+  subscribeDeletedAgentSession,
 } from "@/plugins/builtin/agent/public/session";
 import { AGENT_SESSIONS } from "@/plugins/builtin/agent/public/services";
 import {
@@ -42,6 +43,7 @@ export function createAgentBootstrapPlugin(runtimeClient: () => FlameClient) {
           getLifecycleSnapshot: getAgentSessionLifecycleSnapshot,
           subscribeActiveSessionId,
           subscribeLifecycle: subscribeAgentSessionLifecycle,
+          subscribeDeleted: subscribeDeletedAgentSession,
         },
       };
     },

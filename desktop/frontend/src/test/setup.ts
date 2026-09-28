@@ -18,6 +18,7 @@ import {
   getAgentSessionLifecycleSnapshot,
   getActiveSessionId,
   subscribeAgentSessionLifecycle,
+  subscribeDeletedAgentSession,
   subscribeActiveSessionId,
 } from "@/plugins/builtin/agent/public/session";
 import type { AgentSessions } from "@/plugins/builtin/agent/public/services";
@@ -33,6 +34,7 @@ const testAgentSessions: AgentSessions = {
   getLifecycleSnapshot: getAgentSessionLifecycleSnapshot,
   subscribeActiveSessionId,
   subscribeLifecycle: subscribeAgentSessionLifecycle,
+  subscribeDeleted: subscribeDeletedAgentSession,
 };
 
 const unavailableRuntime = (): never => {

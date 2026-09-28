@@ -168,6 +168,8 @@ func (c *Compactor) planCompactionWithProtectedTail(
 // summaryCutoffWithProtectedTail preserves the latest foldable user turn and
 // the caller-owned exact suffix. When one long turn alone fills the context,
 // the complete foldable turn is summarized so the next model request can fit.
+// A prior summary can already represent the user turn; its continuation remains
+// foldable even though no original User message survives.
 func summaryCutoffWithProtectedTail(
 	messages []chat.Message,
 	protectedTail int,
@@ -184,5 +186,5 @@ func summaryCutoffWithProtectedTail(
 			return len(foldable)
 		}
 	}
-	return 0
+	return len(foldable)
 }

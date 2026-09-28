@@ -95,6 +95,12 @@ export class ProviderMutationOwner {
     return ProviderMutationOwner.#materialGeneration;
   }
 
+  static assertMaterialGeneration(generation: bigint): void {
+    if (generation !== ProviderMutationOwner.#materialGeneration) {
+      throw new GenerationRetiredError("provider_mutation_generation");
+    }
+  }
+
   static subscribeMaterialGeneration(listener: () => void): () => void {
     ProviderMutationOwner.#materialListeners.add(listener);
     return () => ProviderMutationOwner.#materialListeners.delete(listener);

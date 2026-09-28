@@ -15,13 +15,19 @@ import {
 } from "@/plugins/builtin/workspace/public/navigation";
 import type { RuntimeServerScope } from "@/plugins/builtin/runtime/public/services";
 import {
+  closeActiveAgentSession,
   getActiveSessionId,
   getAgentSessionLifecycleSnapshot,
   selectAgentSession,
   subscribeActiveSessionId,
   subscribeAgentSessionLifecycle,
+  subscribeDeletedAgentSession,
 } from "@/plugins/builtin/agent/public/session";
-import * as abandoned from "@/plugins/builtin/agent/application/session/discardAbandonedDraft";
+import {
+  configureAgentRuntimeGateway,
+  type AgentRuntimeGateway,
+} from "@/plugins/builtin/agent/application/ports/runtimeGateway";
+import { agentSessionState } from "@/plugins/builtin/agent/application/ports/sessionState";
 import { installAgentSessionScope } from "@/plugins/builtin/agent/adapters/agentSessionScope";
 import { useAgentSessionStore } from "@/plugins/builtin/agent/adapters/agentSessionStore";
 
@@ -30,6 +36,7 @@ const sessions = {
   getLifecycleSnapshot: getAgentSessionLifecycleSnapshot,
   subscribeActiveSessionId,
   subscribeLifecycle: subscribeAgentSessionLifecycle,
+  subscribeDeleted: subscribeDeletedAgentSession,
 };
 const disposers: (() => void)[] = [];
 const composer = () => useComposerStore.getState();
@@ -52,7 +59,8 @@ function installTargets(name: string, navigation: Navigator = createMemoryNaviga
       return () => callbacks.delete(callback);
     },
   };
-  const discard = vi.spyOn(abandoned, "discardAbandonedDraft").mockImplementation(() => undefined);
+  const deleteSession = vi.fn().mockResolvedValue(undefined);
+  disposers.push(configureAgentRuntimeGateway({ deleteSession } as unknown as AgentRuntimeGateway));
   disposers.push(configureNavigator(navigation));
   disposers.push(installAgentSessionScope(scope, () => endpoint));
   disposers.push(installComposerStatePorts(sessions, () => endpoint, scope));
@@ -68,7 +76,7 @@ function installTargets(name: string, navigation: Navigator = createMemoryNaviga
   return {
     targetA,
     targetB,
-    discard,
+    deleteSession,
     replace(target: string) {
       endpoint = target;
       for (const callback of callbacks) callback();
@@ -89,7 +97,7 @@ describe("Runtime target authoring ownership", () => {
     navigator().go({ view: "files", subagent: "child-on-A", settings: "connection" });
     const keyA = useComposerStore.persist.getOptions().name!;
     const storedA = localStorage.getItem(keyA);
-    targets.discard.mockClear();
+    targets.deleteSession.mockClear();
 
     targets.replace(targets.targetB);
 
@@ -104,7 +112,7 @@ describe("Runtime target authoring ownership", () => {
     expect(refs().draftSessionIds).toEqual(new Set());
     expect(composer().composer.draft).toMatchObject({ value: "", images: [], pastes: [] });
     expect(dock().fileViewer).toBeNull();
-    expect(targets.discard).not.toHaveBeenCalled();
+    expect(targets.deleteSession).not.toHaveBeenCalled();
     expect(localStorage.getItem(keyA)).toBe(storedA);
 
     selectAgentSession("shared");
@@ -112,11 +120,11 @@ describe("Runtime target authoring ownership", () => {
     openWorkspaceFile("src/only-on-B.ts", 24);
     const keyB = useComposerStore.persist.getOptions().name!;
     expect(keyB).not.toBe(keyA);
-    targets.discard.mockClear();
+    targets.deleteSession.mockClear();
 
     targets.replace(targets.targetA);
 
-    expect(targets.discard).not.toHaveBeenCalled();
+    expect(targets.deleteSession).not.toHaveBeenCalled();
     expect(refs().openSessionIds).toEqual(["shared"]);
     expect(refs().draftSessionIds).toEqual(new Set(["shared"]));
     expect(refs().freshDraftSessionIds).toEqual(new Set(["shared"]));
@@ -191,7 +199,7 @@ describe("Runtime target authoring ownership", () => {
     };
     const targets = installTargets("delayed-route", delayed);
     selectAgentSession("shared");
-    targets.discard.mockClear();
+    targets.deleteSession.mockClear();
 
     targets.replace(targets.targetB);
     refs().holdOpen("shared");
@@ -201,12 +209,27 @@ describe("Runtime target authoring ownership", () => {
     for (const navigate of pending.splice(0)) navigate();
 
     expect(getActiveSessionId()).toBe("");
-    expect(targets.discard).not.toHaveBeenCalled();
+    expect(targets.deleteSession).not.toHaveBeenCalled();
     expect(refs().draftSessionIds.has("shared")).toBe(true);
     selectAgentSession("shared");
-    targets.discard.mockClear();
+    composer().setValue("important unsent input");
+    composer().addPaste("unsent source text");
+    composer().addImages([{ mime: "image/png", data: "unsent-image" }]);
+    const draft = composer().composer.draft;
+    targets.deleteSession.mockClear();
     selectAgentSession("another");
-    expect(targets.discard).toHaveBeenCalledWith("shared");
+    expect(targets.deleteSession).not.toHaveBeenCalled();
+    expect(refs().openSessionIds).toContain("shared");
+    selectAgentSession("shared");
+    expect(composer().composer.draft).toEqual(draft);
+    expect(closeActiveAgentSession()).toBe(true);
+    expect(targets.deleteSession).not.toHaveBeenCalled();
+    selectAgentSession("shared");
+    expect(composer().composer.draft).toEqual(draft);
+    agentSessionState().deleteSession("shared");
+    selectAgentSession("shared");
+    expect(composer().composer.draft).toMatchObject({ value: "", images: [], pastes: [] });
+    expect(composer().composer.durableDraftTexts().has("shared")).toBe(false);
   });
 
   it("hydrates only the restored endpoint after renderer replacement and discards unscoped state", async () => {

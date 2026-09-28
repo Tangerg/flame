@@ -11,7 +11,11 @@ interface Props {
 
 export function PluginProvider({ children, plugins }: Props) {
   const installation = useMemo(() => ({ plugins }), [plugins]);
-  const [readyInstallation, setReadyInstallation] = useState<object | null>(null);
+  const [outcome, setOutcome] = useState<
+    | { installation: object; status: "ready" }
+    | { installation: object; status: "failed"; error: Error }
+    | null
+  >(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -35,9 +39,15 @@ export function PluginProvider({ children, plugins }: Props) {
           void disposeOwnedResources();
           return;
         }
-        setReadyInstallation(installation);
+        setOutcome({ installation, status: "ready" });
       } catch (error) {
-        if (!retired) console.error("[plugin] kernel startup failed:", error);
+        if (!retired) {
+          setOutcome({
+            installation,
+            status: "failed",
+            error: new Error("plugin kernel startup failed", { cause: error }),
+          });
+        }
       }
     })();
 
@@ -48,7 +58,8 @@ export function PluginProvider({ children, plugins }: Props) {
     };
   }, [installation]);
 
-  if (readyInstallation !== installation) return null;
+  if (outcome?.installation !== installation) return null;
+  if (outcome.status === "failed") throw outcome.error;
 
   return <TooltipProvider>{children}</TooltipProvider>;
 }
