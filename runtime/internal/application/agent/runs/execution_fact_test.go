@@ -34,9 +34,12 @@ func TestNewExecutionFactCommitRejectsUnsupportedFactRepresentation(t *testing.T
 
 func TestExecutionFactCommitOwnsMutableFacts(t *testing.T) {
 	model := ModelCallCompleted{
-		ReportedUsage: &corechat.Usage{InputTokens: 17},
-		Message:       new(corechat.NewAssistantMessage(corechat.NewTextPart("original"))),
-		ByModel:       []accounting.ModelUsage{{Model: "model-original", Calls: 1}},
+		ReportedUsage: &corechat.Usage{
+			InputTokens: 17, OutputTokens: 5, ReasoningTokens: new(int64(3)),
+			CacheReadInputTokens: new(int64(2)), CacheWriteInputTokens: new(int64(1)),
+		},
+		Message: new(corechat.NewAssistantMessage(corechat.NewTextPart("original"))),
+		ByModel: []accounting.ModelUsage{{Model: "model-original", Calls: 1}},
 	}
 	modelCommit, _, err := NewExecutionFactCommit(model)
 	if err != nil {
@@ -45,15 +48,26 @@ func TestExecutionFactCommitOwnsMutableFacts(t *testing.T) {
 	model.Message.Parts[0].Text = "changed"
 	model.ByModel[0].Model = "model-changed"
 	model.ReportedUsage.InputTokens = 99
+	*model.ReportedUsage.ReasoningTokens = 4
+	*model.ReportedUsage.CacheReadInputTokens = 6
+	*model.ReportedUsage.CacheWriteInputTokens = 7
 	projectedModel := modelCommit.Fact().(ModelCallCompleted)
 	projectedModel.Message.Parts[0].Text = "projected"
 	projectedModel.ByModel[0].Model = "model-projected"
-	if projectedModel.ReportedUsage.InputTokens != 17 {
+	if projectedModel.ReportedUsage.InputTokens != 17 ||
+		*projectedModel.ReportedUsage.ReasoningTokens != 3 ||
+		*projectedModel.ReportedUsage.CacheReadInputTokens != 2 ||
+		*projectedModel.ReportedUsage.CacheWriteInputTokens != 1 {
 		t.Fatal("model usage aliases its producer")
 	}
 	projectedModel.ReportedUsage.InputTokens = 44
+	*projectedModel.ReportedUsage.ReasoningTokens = 5
+	*projectedModel.ReportedUsage.CacheReadInputTokens = 8
+	*projectedModel.ReportedUsage.CacheWriteInputTokens = 9
 	ownedModel := modelCommit.Fact().(ModelCallCompleted)
-	if ownedModel.Message.Text() != "original" || ownedModel.ByModel[0].Model != "model-original" || ownedModel.ReportedUsage.InputTokens != 17 {
+	if ownedModel.Message.Text() != "original" || ownedModel.ByModel[0].Model != "model-original" ||
+		ownedModel.ReportedUsage.InputTokens != 17 || *ownedModel.ReportedUsage.ReasoningTokens != 3 ||
+		*ownedModel.ReportedUsage.CacheReadInputTokens != 2 || *ownedModel.ReportedUsage.CacheWriteInputTokens != 1 {
 		t.Fatalf("owned model fact = %+v", ownedModel)
 	}
 

@@ -5,13 +5,15 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-09-26` · 84 methods
+Protocol `2026-09-28` · 86 methods
 
 ## Methods
 
 | method | operation | response | retry | run replay cursor | pagination | materializes | features | documented errors |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `runtime.discover` | query | unary | none | none | none | — | — | — |
+| `sessions.trajectory` | query | unary | none | none | cursor | `runs.list`, `items.list`, `modelInvocations.list` | `subagents` | `session_not_found`, `capability_not_negotiated` |
+| `sessions.exportTrajectory` | query | unary | none | none | none | `sessions.get`, `runs.list`, `items.list`, `modelInvocations.list`, `plan.get` | `sessionExport` | `session_not_found`, `session_busy`, `export_too_large`, `capability_not_negotiated` |
 | `sessions.list` | query | unary | none | none | cursor | — | — | — |
 | `sessions.get` | query | unary | none | none | none | — | — | `session_not_found` |
 | `sessions.snapshot` | query | unary | none | none | none | `items.list`, `runs.list`, `interrupts.list`, `plan.get`, `goals.get` | `subagents` | `session_not_found`, `capability_not_negotiated` |
@@ -147,6 +149,7 @@ publish one namespaced pattern branch without weakening first-party tags.
 | `checkpoint_unavailable` | — | `detail`, `docUrl` |
 | `child_run_canceled` | — | `detail`, `docUrl` |
 | `denied_by_user` | — | `detail`, `docUrl` |
+| `export_too_large` | — | `detail`, `docUrl` |
 | `idempotency_conflict` | — | `detail`, `docUrl` |
 | `idempotency_in_progress` | `retryAfterSeconds` | `detail`, `docUrl` |
 | `idempotency_store_mismatch` | — | `detail`, `docUrl` |
@@ -224,6 +227,14 @@ publish one namespaced pattern branch without weakening first-party tags.
 | `failed` | `error` | `unresolvedEffects` |
 | `canceled` | — | `detail`, `unresolvedEffects` |
 | `lost` | `error` | `unresolvedEffects` |
+
+### `TrajectoryEntry`
+
+| tag | required | optional |
+| --- | --- | --- |
+| `run` | `occurredAt`, `run` | — |
+| `model` | `occurredAt`, `model` | — |
+| `item` | `occurredAt`, `item` | — |
 
 ### `Item`
 
@@ -458,6 +469,12 @@ TypeScript validator from this single registry projection.
 | `GetSessionSnapshotRequest` | `sessionId` | `nonEmpty` |
 | `GetSessionSnapshotRequest` | `sessionId` | `identity` |
 | `GetSessionSnapshotRequest` | `sessionId` | `maxLength(256)` |
+| `ListSessionTrajectoryRequest` | `sessionId` | `nonEmpty` |
+| `ListSessionTrajectoryRequest` | `sessionId` | `identity` |
+| `ListSessionTrajectoryRequest` | `sessionId` | `maxLength(256)` |
+| `ExportTrajectoryRequest` | `sessionId` | `nonEmpty` |
+| `ExportTrajectoryRequest` | `sessionId` | `identity` |
+| `ExportTrajectoryRequest` | `sessionId` | `maxLength(256)` |
 | `DeleteSessionRequest` | `sessionId` | `nonEmpty` |
 | `DeleteSessionRequest` | `sessionId` | `identity` |
 | `DeleteSessionRequest` | `sessionId` | `maxLength(256)` |
@@ -487,6 +504,8 @@ TypeScript validator from this single registry projection.
 | `UpdateSessionRequest` | `model` | `maxLength(256)` |
 | `UpdateSessionRequest` | `reasoningEffort` | `identity` |
 | `UpdateSessionRequest` | `reasoningEffort` | `maxLength(32)` |
+| `SessionTrajectory` | `schemaVersion` | `minimum(1)` |
+| `SessionTrajectory` | `schemaVersion` | `maximum(1)` |
 | `ArtifactSession` | `id` | `nonEmpty` |
 | `ArtifactSession` | `id` | `identity` |
 | `ArtifactSession` | `id` | `maxLength(256)` |
@@ -699,6 +718,34 @@ TypeScript validator from this single registry projection.
 | `StreamEvent` | `itemId` | `identity` |
 | `StreamEvent` | `itemId` | `maxLength(256)` |
 | `StreamEvent` | `contextTokens` | `nonNegative` |
+| `ListModelInvocationsRequest` | `runId` | `nonEmpty` |
+| `ListModelInvocationsRequest` | `runId` | `identity` |
+| `ListModelInvocationsRequest` | `runId` | `maxLength(256)` |
+| `ModelInvocation` | `runId` | `nonEmpty` |
+| `ModelInvocation` | `runId` | `identity` |
+| `ModelInvocation` | `runId` | `maxLength(256)` |
+| `ModelInvocation` | `segmentId` | `nonEmpty` |
+| `ModelInvocation` | `segmentId` | `identity` |
+| `ModelInvocation` | `segmentId` | `maxLength(256)` |
+| `ModelInvocation` | `callId` | `pattern("^[A-Za-z0-9._~-]+$")` |
+| `ModelInvocation` | `callId` | `maxLength(256)` |
+| `ModelInvocation` | `firstOutputLatencyMillis` | `nonNegative` |
+| `ToolAttempt` | `runId` | `nonEmpty` |
+| `ToolAttempt` | `runId` | `identity` |
+| `ToolAttempt` | `runId` | `maxLength(256)` |
+| `ToolAttempt` | `segmentId` | `nonEmpty` |
+| `ToolAttempt` | `segmentId` | `identity` |
+| `ToolAttempt` | `segmentId` | `maxLength(256)` |
+| `ToolAttempt` | `callId` | `pattern("^[A-Za-z0-9._~-]+$")` |
+| `ToolAttempt` | `callId` | `maxLength(256)` |
+| `ToolAttempt` | `itemId` | `nonEmpty` |
+| `ToolAttempt` | `itemId` | `identity` |
+| `ToolAttempt` | `itemId` | `maxLength(256)` |
+| `ModelInvocationUsage` | `inputTokens` | `nonNegative` |
+| `ModelInvocationUsage` | `outputTokens` | `nonNegative` |
+| `ModelInvocationUsage` | `cacheReadTokens` | `nonNegative` |
+| `ModelInvocationUsage` | `cacheWriteTokens` | `nonNegative` |
+| `ModelInvocationUsage` | `reasoningTokens` | `nonNegative` |
 | `GetPlanRequest` | `sessionId` | `nonEmpty` |
 | `GetPlanRequest` | `sessionId` | `identity` |
 | `GetPlanRequest` | `sessionId` | `maxLength(256)` |
@@ -749,6 +796,12 @@ TypeScript validator from this single registry projection.
 | `SessionUsageRequest` | `sessionId` | `identity` |
 | `SessionUsageRequest` | `sessionId` | `maxLength(256)` |
 | `UsageSummaryRequest` | `sinceDays` | `positive` |
+| `FeedbackEntry` | `sessionId` | `identity` |
+| `FeedbackEntry` | `sessionId` | `maxLength(256)` |
+| `FeedbackEntry` | `runId` | `identity` |
+| `FeedbackEntry` | `runId` | `maxLength(256)` |
+| `FeedbackEntry` | `itemId` | `identity` |
+| `FeedbackEntry` | `itemId` | `maxLength(256)` |
 | `FeedbackRequest` | `sessionId` | `identity` |
 | `FeedbackRequest` | `sessionId` | `maxLength(256)` |
 | `FeedbackRequest` | `runId` | `identity` |
@@ -1039,6 +1092,8 @@ available. Refusal is `capability_not_negotiated` — never a silent downgrade.
 
 | method | when | requires |
 | --- | --- | --- |
+| `sessions.trajectory` | `includeDescendants` present | `subagents` |
+| `sessions.exportTrajectory` | always | `sessionExport` |
 | `sessions.snapshot` | `includeDescendants` present | `subagents` |
 | `sessions.update` | `workspace` present | `relocate` |
 | `sessions.update` | `isolated` present | `isolation` |

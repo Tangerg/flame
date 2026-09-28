@@ -482,23 +482,31 @@ func TestOpeningCommitOwnsItsValidatedWriteSet(t *testing.T) {
 }
 
 func TestModelInvocationUsageBelongsOnlyToCompletedCallsAndIsIsolated(t *testing.T) {
-	usage := &corechat.Usage{InputTokens: 7}
+	usage := &corechat.Usage{
+		InputTokens: 7, OutputTokens: 5, ReasoningTokens: new(int64(3)),
+		CacheReadInputTokens: new(int64(2)), CacheWriteInputTokens: new(int64(1)),
+	}
 	invocation := ModelInvocationCommit{CallID: "call_usage", SegmentID: "segment_1", State: ModelInvocationCompleted, StartedAt: time.Unix(1, 0), FinishedAt: time.Unix(2, 0), Usage: usage}
-	if err := invocation.validate(); err != nil {
+	if err := invocation.Validate(); err != nil {
 		t.Fatal(err)
 	}
 	clone := (EventCommit{ModelInvocations: []ModelInvocationCommit{invocation}}).clone()
 	usage.InputTokens = 99
-	if clone.ModelInvocations[0].Usage.InputTokens != 7 {
+	*usage.ReasoningTokens = 4
+	*usage.CacheReadInputTokens = 5
+	*usage.CacheWriteInputTokens = 6
+	owned := clone.ModelInvocations[0].Usage
+	if owned.InputTokens != 7 || *owned.ReasoningTokens != 3 ||
+		*owned.CacheReadInputTokens != 2 || *owned.CacheWriteInputTokens != 1 {
 		t.Fatal("commit aliases reported usage")
 	}
 	invocation.State = ModelInvocationUnknown
-	if err := invocation.validate(); err == nil {
+	if err := invocation.Validate(); err == nil {
 		t.Fatal("unknown outcome accepted completed-call usage")
 	}
 	invocation.State = ModelInvocationCompleted
 	usage.InputTokens = -1
-	if err := invocation.validate(); err == nil {
+	if err := invocation.Validate(); err == nil {
 		t.Fatal("accepted negative call usage")
 	}
 }
@@ -506,7 +514,7 @@ func TestModelInvocationUsageBelongsOnlyToCompletedCallsAndIsIsolated(t *testing
 func TestFirstOutputLatencyIsOptionalOwnedMeasurement(t *testing.T) {
 	latency := int64(0)
 	invocation := ModelInvocationCommit{CallID: "call_latency", SegmentID: "segment_1", State: ModelInvocationCompleted, StartedAt: time.Unix(1, 0), FinishedAt: time.Unix(2, 0), FirstOutputLatencyMillis: &latency}
-	if err := invocation.validate(); err != nil {
+	if err := invocation.Validate(); err != nil {
 		t.Fatal(err)
 	}
 	cloned := (EventCommit{ModelInvocations: []ModelInvocationCommit{invocation}}).clone()
@@ -515,20 +523,20 @@ func TestFirstOutputLatencyIsOptionalOwnedMeasurement(t *testing.T) {
 		t.Fatal("latency aliases its producer")
 	}
 	latency = -1
-	if err := invocation.validate(); err == nil {
+	if err := invocation.Validate(); err == nil {
 		t.Fatal("negative latency accepted")
 	}
 	latency = 0
 	invocation.State = ModelInvocationFailed
-	if err := invocation.validate(); err != nil {
+	if err := invocation.Validate(); err != nil {
 		t.Fatal(err)
 	}
 	invocation.State = ModelInvocationUnknown
-	if err := invocation.validate(); err == nil {
+	if err := invocation.Validate(); err == nil {
 		t.Fatal("recovery invented first output latency")
 	}
 	invocation.FirstOutputLatencyMillis = nil
-	if err := invocation.validate(); err != nil {
+	if err := invocation.Validate(); err != nil {
 		t.Fatal(err)
 	}
 }

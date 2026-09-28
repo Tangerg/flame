@@ -26,3 +26,5 @@ export {
   setQuestionText,
 } from "../presentation/questionPresentation";
 export type { QuestionAnswers, QuestionDraft } from "../presentation/questionPresentation";
+
+export { projectToolCall } from "../application/fold/projections";

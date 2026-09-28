@@ -44,6 +44,7 @@ type Bundle struct {
 	Providers           *sqlitestore.ProviderStore
 	MCPServers          *sqlitestore.MCPServerStore
 	ChatHistory         *sqlitestore.MessageStore
+	Trajectory          *TrajectoryReader
 	ModelInvocations    *sqlitestore.ModelInvocationStore
 	ToolInvocations     *sqlitestore.ToolInvocationStore
 	ChildRunStarts      *sqlitestore.ChildRunStartReservationStore
@@ -185,6 +186,7 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 		Providers:           sqlitestore.NewProviderStore(db),
 		MCPServers:          sqlitestore.NewMCPServerStore(db),
 		ChatHistory:         sqlitestore.NewMessageStore(db),
+		Trajectory:          &TrajectoryReader{store: sqlitestore.NewTrajectoryStore(db)},
 		ModelInvocations:    sqlitestore.NewModelInvocationStore(db),
 		ToolInvocations:     sqlitestore.NewToolInvocationStore(db),
 		ChildRunStarts:      sqlitestore.NewChildRunStartReservationStore(db),

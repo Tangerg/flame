@@ -13,5 +13,6 @@ export interface ConversationArchiveGateway {
     sessionId: string,
     format: ConversationExportFormat,
   ): Promise<ConversationExportResult>;
+  exportTrajectory(sessionId: string): Promise<string>;
   importConversation(artifact: unknown): Promise<ImportedConversation>;
 }

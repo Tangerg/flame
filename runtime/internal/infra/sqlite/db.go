@@ -233,9 +233,8 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			ON model_invocations(run_id, started_at DESC, call_id DESC)`,
 		fmt.Sprintf(`CREATE INDEX IF NOT EXISTS idx_model_invocations_open
 			ON model_invocations(state) WHERE state = '%s'`, modelInvocationStarted.databaseValue()),
-		// tool_invocations has the same Run-bounded tombstone lifecycle. Its
-		// independent row lets concurrent calls start in scheduler order while
-		// history_items receives only final semantic Items in declared order.
+		// Attempts retain their Segment identity across waits; the final Tool Item
+		// cannot reconstruct the execution intervals that preceded continuation.
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS tool_invocations (
 			call_id     TEXT    NOT NULL,
 			item_id     TEXT    NOT NULL,
@@ -268,15 +267,7 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			ON tool_invocations(run_id, segment_id)`,
 		fmt.Sprintf(`CREATE INDEX IF NOT EXISTS idx_tool_invocations_open
 			ON tool_invocations(state) WHERE state = '%s'`, toolInvocationStarted.databaseValue()),
-		// Replace the former trigger on existing databases as well. Previously it
-		// erased model-call history as soon as a Run ended.
 		`DROP TRIGGER IF EXISTS prune_terminal_run_invocations`,
-		fmt.Sprintf(`CREATE TRIGGER prune_terminal_run_invocations
-			AFTER UPDATE OF state ON runs
-			WHEN OLD.state != '%[1]s' AND NEW.state = '%[1]s'
-			BEGIN
-				DELETE FROM tool_invocations WHERE run_id = NEW.run_id;
-			END`, runStateTerminal.databaseValue()),
 		fmt.Sprintf(`CREATE TRIGGER IF NOT EXISTS require_settled_model_invocations
 			BEFORE UPDATE OF state ON runs
 			WHEN OLD.state != '%[1]s' AND NEW.state = '%[1]s'

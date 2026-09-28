@@ -6,9 +6,6 @@ export {
 } from "../application/run/runCommands";
 export {
   useActiveSessionProblem,
-  useActiveSessionRunTree,
-  useActiveSessionTimeline,
-  useActiveSessionToolCalls,
   useCurrentRootMaterial,
   useIsCurrentRootRunning,
 } from "../application/run/runReadModel";
@@ -18,7 +15,6 @@ export {
   subscribeRootRunSettlements,
 } from "../application/run/rootAttention";
 export type { RootRunSettlement } from "../application/run/rootAttention";
-export type { AgentRunTreeNode } from "../application/view/runTree";
 
-export { useModelInvocations } from "../application/run/modelInvocations";
-export type { ModelInvocation } from "../application/run/modelInvocations";
+export { useSessionTrajectory, useTrajectoryRun } from "../application/run/trajectory";
+export type { ModelInvocation, TrajectoryEntry } from "../application/run/trajectory";

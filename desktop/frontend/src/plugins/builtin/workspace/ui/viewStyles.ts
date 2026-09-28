@@ -132,64 +132,6 @@ export const viewStyles = stylex.create({
   editorInset: { paddingBottom: space.s3, paddingLeft: space.s10 },
 });
 
-export const timelineStyles = stylex.create({
-  glyph: { marginTop: space.s1, flexShrink: 0, color: color.fgFaint },
-  kind: { color: color.fg, fontWeight: weight.medium },
-  mark: { marginTop: space.s1, flexShrink: 0, lineHeight: 1 },
-  stamp: {
-    marginTop: space.s0_5,
-    flexShrink: 0,
-    fontFamily: "var(--font-mono)",
-    color: color.fgFaint,
-  },
-  duration: { minWidth: "calc(var(--spacing) * 12)", textAlign: "right" },
-  runHeader: {
-    display: "flex",
-    minHeight: space.s10,
-    alignItems: "flex-start",
-    gap: space.s2,
-    borderRadius: radius.card,
-    backgroundColor: surface.sunken,
-    marginInline: space.s2,
-    paddingBlock: space.s2,
-    paddingLeft: "calc(var(--reading-gutter-wide) - var(--spacing) * 2)",
-    paddingRight:
-      "calc(var(--reading-gutter-wide) - var(--spacing) * 2 - (var(--control-height-md) - var(--icon-md)) / 2)",
-  },
-  runDetail: {
-    marginTop: space.s0_5,
-    display: "flex",
-    minWidth: 0,
-    gap: space.s2,
-    color: color.fgMuted,
-  },
-  groupGap: { marginTop: space.s3, paddingTop: space.s1 },
-  nested: {
-    borderLeftWidth: "var(--control-edge-width)",
-    borderLeftStyle: "solid",
-    borderLeftColor: surface.field,
-    paddingLeft: space.s2,
-  },
-});
-
-const indentStyles = stylex.create({
-  d0: {},
-  d1: { marginLeft: space.s3 },
-  d2: { marginLeft: space.s6 },
-  d3: { marginLeft: space.s9 },
-  d4: { marginLeft: space.s12 },
-  d5: { marginLeft: space.s16 },
-});
-
-export const indent = [
-  indentStyles.d0,
-  indentStyles.d1,
-  indentStyles.d2,
-  indentStyles.d3,
-  indentStyles.d4,
-  indentStyles.d5,
-] as const;
-
 export const codeStyles = stylex.create({
   sheet: { paddingBlock: space.s2, fontFamily: "var(--font-mono)", lineHeight: leading.relaxed },
   gutter: { textAlign: "right", color: color.fgFaint, userSelect: "none" },

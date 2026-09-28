@@ -1,4 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type {
+  ExportTrajectoryRequest,
+  ExportTrajectoryResponse,
+  FeedbackEntry,
+  ListSessionTrajectoryRequest,
+  ModelInvocation,
+  Session,
+  SessionTrajectory,
+  TrajectoryEntry,
+} from "@flame/runtime-contract/client";
 import {
   createRpcClient,
   type RpcCallOptions,
@@ -25,6 +35,7 @@ import { waitForRequest } from "@flame/runtime-contract/client/transports/memory
 import type { RpcMessage } from "@flame/runtime-contract/client/types";
 import { JSONRPC_VERSION } from "@flame/runtime-contract/client/types";
 import runRef from "@flame/runtime-contract/samples/runref.full.json";
+import session from "@flame/runtime-contract/samples/session.json";
 
 function runEvent(runId: string, segmentId: string, eventId: string, event: StreamEvent): RunEvent {
   return {
@@ -36,7 +47,11 @@ function runEvent(runId: string, segmentId: string, eventId: string, event: Stre
   } as RunEvent;
 }
 
-function agentMessageItem(id: string, runId: string, status: Item["status"]): Item {
+function agentMessageItem(
+  id: string,
+  runId: string,
+  status: Item["status"],
+): Extract<Item, { type: "agentMessage" }> {
   return {
     id,
     runId,
@@ -49,7 +64,7 @@ function agentMessageItem(id: string, runId: string, status: Item["status"]): It
           phase: "finalAnswer" as const,
           content: [{ type: "text" as const, text: "done" }],
         }),
-  } as Item;
+  };
 }
 
 afterEach(() => vi.useRealTimers());
@@ -97,6 +112,127 @@ describe("methods factory", () => {
       expect.objectContaining({ signal: controller.signal }),
     );
   });
+
+  it("reads one mixed trajectory page with the exact scope, cursor, and signal", async () => {
+    const transport = createMemoryTransport();
+    const send = vi.spyOn(transport, "send");
+    const client = createRpcClient(transport);
+    const methods = createMethods(client);
+    const controller = new AbortController();
+    const query: ListSessionTrajectoryRequest = {
+      sessionId: asSessionId("ses_01"),
+      includeDescendants: false,
+      cursor: "opaque-current-page",
+      limit: 3,
+    };
+    const model: ModelInvocation = {
+      callId: "call_01",
+      runId: "run_02",
+      segmentId: "seg_01",
+      startedAt: "2026-07-07T10:00:01Z",
+      settledAt: "2026-07-07T10:00:02Z",
+      state: "unknown",
+    };
+    const item = {
+      ...agentMessageItem("item_01", "run_02", "incomplete"),
+      createdAt: "2026-07-07T10:00:02Z",
+    };
+    const response = {
+      data: [
+        { type: "item", occurredAt: item.createdAt, item },
+        { type: "model", occurredAt: model.startedAt, model },
+        { type: "run", occurredAt: runRef.createdAt, run: runRef },
+      ],
+      nextCursor: "opaque-older-page",
+    };
+
+    const page = methods.sessions.trajectory(query, controller.signal);
+    const request = await waitForRequest(transport, "sessions.trajectory");
+    expect(request.params).toEqual(query);
+    expect(send.mock.calls[0]?.[1]).toBe(controller.signal);
+    transport.inject({ jsonrpc: JSONRPC_VERSION, id: request.id, result: response });
+
+    const entries: TrajectoryEntry[] = (await page).data;
+    expect(entries).toEqual(response.data);
+    expect(await page).toEqual(response);
+    expect(transport.outbox()).toHaveLength(1);
+    await client.close();
+  });
+
+  it("keeps trajectory scope and cancellation when collecting older pages", async () => {
+    const controller = new AbortController();
+    const first = { type: "run", occurredAt: runRef.createdAt, run: runRef };
+    const item = agentMessageItem("item_01", "run_02", "completed");
+    const second = {
+      type: "item",
+      occurredAt: item.createdAt,
+      item,
+    };
+    const call = vi
+      .fn()
+      .mockResolvedValueOnce({ data: [first], nextCursor: "opaque-older-page" })
+      .mockResolvedValueOnce({ data: [second] });
+    const methods = createMethods({ call } as unknown as RpcClient);
+    const query: ListSessionTrajectoryRequest = {
+      sessionId: asSessionId("ses_01"),
+      includeDescendants: true,
+      limit: 1,
+    };
+
+    const entries = await methods.sessions.trajectory(query, controller.signal).autoPagingToArray();
+
+    expect(entries).toEqual([first, second]);
+    expect(call.mock.calls).toEqual([
+      ["sessions.trajectory", query, { signal: controller.signal }],
+      [
+        "sessions.trajectory",
+        { ...query, cursor: "opaque-older-page" },
+        { signal: controller.signal },
+      ],
+    ]);
+  });
+
+  it("exports authoritative trajectory evidence through one cancellable read", async () => {
+    const transport = createMemoryTransport();
+    const send = vi.spyOn(transport, "send");
+    const client = createRpcClient(transport);
+    const methods = createMethods(client);
+    const controller = new AbortController();
+    const params: ExportTrajectoryRequest = { sessionId: asSessionId("ses_01") };
+    const feedback: FeedbackEntry = {
+      sessionId: "ses_01",
+      rating: "positive",
+      text: "  Useful trace\nKeep exact evidence.  ",
+      createdAt: "2026-07-07T10:04:00Z",
+    };
+    const trajectory: SessionTrajectory = {
+      schemaVersion: 1,
+      collectedAt: "2026-07-07T10:05:00Z",
+      session: session as Session,
+      runs: [],
+      items: [],
+      modelInvocations: [],
+      toolAttempts: [],
+      feedback: [feedback],
+      limitations: [],
+      messages: [],
+      toolResults: [],
+      plan: [],
+    };
+    const response: ExportTrajectoryResponse = { trajectory };
+
+    const result = methods.sessions.exportTrajectory(params, controller.signal);
+    const request = await waitForRequest(transport, "sessions.exportTrajectory");
+    expect(request.params).toEqual(params);
+    expect(send.mock.calls[0]?.[1]).toBe(controller.signal);
+    expect(result).not.toHaveProperty("idempotencyKey");
+    transport.inject({ jsonrpc: JSONRPC_VERSION, id: request.id, result: response });
+
+    await expect(result).resolves.toEqual(response);
+    expect(transport.outbox()).toHaveLength(1);
+    await client.close();
+  });
+
   it("forwards the complete generated schedule update contract", async () => {
     const call = vi.fn().mockResolvedValue({ id: "schedule_1", revision: 3 });
     const methods = createMethods({ call } as unknown as RpcClient);

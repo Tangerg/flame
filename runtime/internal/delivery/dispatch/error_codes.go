@@ -41,4 +41,5 @@ const (
 	codeScheduleNotFound                = -32036
 	codeCheckpointConflict              = -32037
 	codePromptSourceTooLarge            = -32038
+	codeExportTooLarge                  = -32039
 )

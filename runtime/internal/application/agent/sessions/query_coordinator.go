@@ -84,6 +84,7 @@ type QueryRunReader interface {
 // QueryCoordinator serves the session read projections. Stateless beyond its store
 // collaborators; safe to share.
 type QueryCoordinator struct {
+	trajectory       QueryTrajectoryReader
 	modelInvocations QueryModelInvocationReader
 	transcript       QueryTranscriptReader
 	interrupts       QueryInterruptReader
@@ -94,6 +95,7 @@ type QueryCoordinator struct {
 
 // QueryDependencies is the collaborator set [NewQueryCoordinator] wires into a QueryCoordinator.
 type QueryDependencies struct {
+	Trajectory       QueryTrajectoryReader
 	ModelInvocations QueryModelInvocationReader
 	Transcript       QueryTranscriptReader
 	Interrupts       QueryInterruptReader
@@ -114,6 +116,7 @@ func NewQueryCoordinator(deps QueryDependencies) (*QueryCoordinator, error) {
 		{"session reader", deps.Sessions},
 		{"Plan reader", deps.Plan},
 		{"model invocation reader", deps.ModelInvocations},
+		{"trajectory reader", deps.Trajectory},
 	}
 	for _, required := range required {
 		if dependency.Missing(required.value) {
@@ -121,6 +124,7 @@ func NewQueryCoordinator(deps QueryDependencies) (*QueryCoordinator, error) {
 		}
 	}
 	return &QueryCoordinator{
+		trajectory:       deps.Trajectory,
 		transcript:       deps.Transcript,
 		modelInvocations: deps.ModelInvocations,
 		interrupts:       deps.Interrupts,

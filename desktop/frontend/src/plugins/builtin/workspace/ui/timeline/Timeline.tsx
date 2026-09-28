@@ -1,295 +1,259 @@
 import { useState } from "react";
-import { ModelInvocationHistory } from "./ModelInvocationHistory";
 import * as stylex from "@stylexjs/stylex";
-import type { Tone } from "@/lib/tone";
-import type { IconName } from "@/ui";
-import type { TimelineEntry, TimelineEntryKind } from "@/plugins/sdk/types/agentSessionView";
-import { Badge, EmptyState, Icon, IconButton, toneInk, vocab } from "@/ui";
-import { ToolText } from "@/ui/agent";
-import { useT, type Translate } from "@/lib/i18n";
-import { formatClock, formatDateTime } from "@/lib/i18n/relativeTime";
-import { fmtDuration } from "@/lib/format";
-import { TIMELINE_WINDOW_SIZE } from "@/plugins/sdk/types/agentTimeline";
-import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
-import { toolIntent, type ToolDetail } from "@/plugins/builtin/agent/public/messagePresentation";
-import { toolCallIconFor } from "@/plugins/builtin/agent/public/toolIcon";
-import { useActiveSessionToolCalls } from "@/plugins/builtin/agent/public/run";
-import { WorkspaceViewLayout } from "../WorkspaceViewLayout";
-import { face, type as typeStep } from "@/styles/tokens.stylex";
-import { indent, timelineStyles as ts, viewStyles as vs } from "../viewStyles";
-import {
-  cancelSessionRun,
-  useActiveSessionRunTree,
-  useActiveSessionTimeline,
-} from "@/plugins/builtin/agent/public/run";
-import {
-  locateWorkspaceTool,
-  openWorkspaceSubagentRun,
-} from "@/plugins/builtin/workspace/public/navigation";
-import {
-  timelineGroupKey,
-  type TimelineRunGroup,
-  timelineRunStatusView,
-  timelineSubtext,
-  timelineViewModel,
-} from "@/plugins/builtin/workspace/application/timelineViewModel";
+import { notifyError } from "@/plugins/sdk";
+import { useT } from "@/lib/i18n";
+import { useActiveSession, useActiveSessionId } from "@/plugins/builtin/agent/public/session";
+import { useSessionTrajectory } from "@/plugins/builtin/agent/public/run";
+import { useRuntimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
+import { exportSessionTrajectory } from "@/plugins/builtin/workspace/public/conversationArchive";
+import {
+  Button,
+  DataView,
+  DropdownMenu,
+  EmptyState,
+  IconButton,
+  SearchField,
+  SelectTrigger,
+  vocab,
+} from "@/ui";
+import { face, space, type as typeStep } from "@/styles/tokens.stylex";
+import { type TimelineCategory, timelineViewModel } from "../../application/timelineViewModel";
+import { WorkspaceViewLayout } from "../WorkspaceViewLayout";
+import { viewStyles as vs } from "../viewStyles";
+import { TimelineRecord } from "./TimelineRecord";
 
-const KIND_ICON: Record<TimelineEntryKind, IconName> = {
-  "run-start": "play",
-  "run-end": "check",
-  "run-error": "bug",
-  tool: "tool",
-  "approval-request": "shield",
-  "approval-result": "shield",
-  compaction: "history",
-};
+const styles = stylex.create({
+  toolbar: { display: "grid", gap: space.s2, paddingBlock: space.s2 },
+  filters: { display: "flex", flexWrap: "wrap", gap: space.s2, minWidth: 0 },
+  filter: { minWidth: 0, maxWidth: "100%" },
+  metrics: { display: "flex", flexWrap: "wrap", gap: space.s3 },
+  pagination: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: space.s2,
+    paddingBlock: space.s3,
+  },
+});
 
-const KIND_I18N: Record<TimelineEntryKind, string> = {
-  "run-start": "timeline.kind.runStart",
-  "run-end": "timeline.kind.runEnd",
-  "run-error": "timeline.kind.runError",
-  tool: "timeline.kind.toolStart",
-  "approval-request": "timeline.kind.approvalRequest",
-  "approval-result": "timeline.kind.approvalResult",
-  compaction: "timeline.kind.compaction",
-};
-
-const STATUS_MARK: Record<NonNullable<TimelineEntry["status"]>, { icon: IconName; tone: Tone }> = {
-  ok: { icon: "check", tone: "success" },
-  err: { icon: "alert", tone: "negative" },
-  approved: { icon: "check", tone: "success" },
-  declined: { icon: "x", tone: "warning" },
-};
-
-function entrySubject(t: Translate, entry: TimelineEntry, tool: ToolCall | undefined): ToolDetail {
-  if (!tool) return { kind: "prose", value: entry.summary ?? "" };
-  if (entry.kind !== "tool" && entry.summary !== tool.name) {
-    return { kind: "prose", value: entry.summary ?? "" };
-  }
-  const intent = toolIntent(t, tool);
-  return intent.detail ?? intent.label;
-}
-
-function TimelineRow({ entry, tool }: { entry: TimelineEntry; tool: ToolCall | undefined }) {
-  const t = useT();
-  const icon = entry.kind === "tool" && tool ? toolCallIconFor(tool) : KIND_ICON[entry.kind];
-  const subject = entrySubject(t, entry, tool);
-  return (
-    <div {...stylex.props(vs.rowTop, vs.gutter, vs.groupPad)}>
-      <Icon name={icon} size="xs" className={stylex.props(ts.glyph).className} />
-      <div {...stylex.props(vocab.fill)}>
-        <div {...stylex.props(vs.lineBaseline)}>
-          <span {...stylex.props(vocab.hold, ts.kind, typeStep.uiMd)}>
-            {t(
-              entry.kind === "tool" && entry.status !== undefined
-                ? "timeline.kind.toolEnd"
-                : KIND_I18N[entry.kind],
-            )}
-          </span>
-          {subject.value && (
-            <span data-timeline-subject="" {...stylex.props(vs.subject)}>
-              <ToolText value={subject} styles={[vocab.muted, typeStep.uiMd]} />
-            </span>
-          )}
-        </div>
-        {entry.kind === "tool" && entry.status !== undefined && tool?.exitCode !== undefined && (
-          <div {...stylex.props(vocab.faint, face.mono, typeStep.uiXs)}>
-            {t("tool.meta.exit", { code: tool.exitCode })}
-          </div>
-        )}
-        {entry.kind === "tool" && entry.status !== undefined && tool?.error && (
-          <div {...stylex.props(vs.body, typeStep.uiXs)}>{tool.error}</div>
-        )}
-      </div>
-      {entry.status && (
-        <span
-          role="img"
-          aria-label={entry.status}
-          {...stylex.props(ts.mark, toneInk[STATUS_MARK[entry.status].tone])}
-        >
-          <Icon name={STATUS_MARK[entry.status].icon} size="xs" />
-        </span>
-      )}
-      {entry.status !== undefined && (
-        <span
-          title={entry.kind === "tool" ? t("timeline.executionDuration") : undefined}
-          {...stylex.props(ts.stamp, ts.duration, typeStep.uiXs)}
-        >
-          {entry.kind !== "tool"
-            ? ""
-            : tool?.durationMillis === undefined
-              ? "—"
-              : fmtDuration(tool.durationMillis)}
-        </span>
-      )}
-      <time
-        dateTime={new Date(entry.ts).toISOString()}
-        title={`${t(KIND_I18N[entry.kind])}: ${formatDateTime(entry.ts)}`}
-        {...stylex.props(ts.stamp, typeStep.uiXs)}
-      >
-        {formatClock(entry.ts, "second")}
-      </time>
-    </div>
-  );
-}
-
-function TimelineRunHeader({
-  group,
-  runtimeAvailable,
-}: {
-  group: TimelineRunGroup;
-  runtimeAvailable: boolean;
-}) {
-  const t = useT();
-  const run = group.run;
-  const [showModels, setShowModels] = useState(false);
-  if (!run) {
-    return group.runId ? (
-      <div {...stylex.props(vs.gutter, vs.sectionPad, vocab.faint, typeStep.uiXs, face.mono)}>
-        {t("timeline.unknownRun", { id: group.runId })}
-      </div>
-    ) : null;
-  }
-
-  const status = timelineRunStatusView(run);
-  const parentRunId = run.parentRunId;
-  const spawnedByItemId = run.spawnedByItemId;
-  const child = parentRunId !== null;
-  return (
-    <>
-      <div {...stylex.props(ts.runHeader)}>
-        <span {...stylex.props(vocab.firstLine, typeStep.uiMd)}>
-          <Icon
-            name={child ? "bot" : "branch"}
-            size="sm"
-            className={stylex.props(vocab.muted).className}
-          />
-        </span>
-        <div {...stylex.props(vocab.fill)}>
-          <div {...stylex.props(vs.titleLine)}>
-            <span {...stylex.props(vocab.hold, vs.title, typeStep.uiMd)}>
-              {t(child ? "timeline.delegatedRun" : "timeline.rootRun")}
-            </span>
-            <span
-              title={run.id}
-              {...stylex.props(vocab.truncate, vocab.faint, typeStep.uiXs, face.mono)}
-            >
-              {run.id}
-            </span>
-            <Badge tone={status.tone}>{t(status.labelKey)}</Badge>
-            <span {...stylex.props(vocab.hold, vocab.faint, typeStep.uiXs, face.mono)}>
-              {t("agent.steps", { count: status.stepCount })}
-            </span>
-          </div>
-          {(status.detail || child) && (
-            <div {...stylex.props(ts.runDetail, typeStep.uiXs)}>
-              {status.detail && (
-                <span title={status.detail} {...stylex.props(vocab.truncate)}>
-                  {status.detail}
-                </span>
-              )}
-              {child && (
-                <span title={parentRunId} {...stylex.props(vocab.truncate, vocab.faint, face.mono)}>
-                  {t("timeline.parentRun", { id: parentRunId })}
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-        <span {...stylex.props(vocab.firstLine, typeStep.uiMd)}>
-          <IconButton
-            icon="bot"
-            size="sm"
-            quiet
-            title={t("timeline.modelCalls")}
-            aria-expanded={showModels}
-            onClick={() => setShowModels(!showModels)}
-          />
-          {spawnedByItemId && (
-            <IconButton
-              icon="chat"
-              size="sm"
-              quiet
-              title={t("timeline.locateParent")}
-              onClick={() => {
-                if (parentRunId && parentRunId !== run.rootRunId) {
-                  openWorkspaceSubagentRun(parentRunId);
-                } else {
-                  locateWorkspaceTool(spawnedByItemId);
-                }
-              }}
-            />
-          )}
-          {status.cancelable && (
-            <IconButton
-              icon="stop"
-              size="sm"
-              quiet
-              disabled={!runtimeAvailable}
-              title={t("agent.runTree.action.cancel")}
-              onClick={() => {
-                cancelSessionRun({ sessionId: run.sessionId, runId: run.id });
-              }}
-            />
-          )}
-        </span>
-      </div>
-      {showModels && <ModelInvocationHistory key={run.id} run={run} />}
-    </>
-  );
-}
+const CATEGORIES: readonly TimelineCategory[] = [
+  "all",
+  "model",
+  "toolCall",
+  "message",
+  "run",
+  "attention",
+];
 
 export function Timeline() {
+  const sessionId = useActiveSessionId();
+  const includeDescendants = useRuntimeCapability("subagents");
+  return (
+    <SessionTimeline
+      key={`${sessionId}:${includeDescendants}`}
+      sessionId={sessionId}
+      includeDescendants={includeDescendants}
+    />
+  );
+}
+
+function SessionTimeline({
+  sessionId,
+  includeDescendants,
+}: {
+  sessionId: string;
+  includeDescendants: boolean;
+}) {
   const t = useT();
-  const timeline = useActiveSessionTimeline();
-  const runTree = useActiveSessionRunTree();
-  const toolCalls = useActiveSessionToolCalls();
   const runtimeAvailable = useRuntimeCommandsAvailable();
-  const view = timelineViewModel(timeline, runTree);
+  const canExport = useRuntimeCapability("sessionExport");
+  const session = useActiveSession();
+  const [cursors, setCursors] = useState<string[]>([]);
+  const [category, setCategory] = useState<TimelineCategory>("all");
+  const [query, setQuery] = useState("");
+  const [runId, setRunId] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const cursor = cursors.at(-1);
+  const history = useSessionTrajectory(sessionId || null, includeDescendants, cursor);
+  const view = timelineViewModel(history.data?.data ?? [], { category, query, runId });
+  const exportReady = runtimeAvailable && canExport && session?.status === "idle";
+
+  async function exportTrajectory() {
+    setExporting(true);
+    try {
+      await exportSessionTrajectory();
+    } catch (error) {
+      notifyError(error instanceof Error ? error.message : t("timeline.exportFailed"), {
+        source: "session",
+      });
+    } finally {
+      setExporting(false);
+    }
+  }
 
   return (
     <WorkspaceViewLayout
       icon="history"
       title="timeline.title"
-      sub={
-        timeline.length === TIMELINE_WINDOW_SIZE
-          ? t("timeline.recentWindow", { count: TIMELINE_WINDOW_SIZE })
-          : timelineSubtext(t, view)
+      sub={t("timeline.pageSummary", { visible: view.records.length, total: view.recordCount })}
+      actions={
+        <>
+          <IconButton
+            icon="loop"
+            size="sm"
+            disabled={!sessionId || !runtimeAvailable || history.isFetching}
+            title={t("timeline.refresh")}
+            onClick={() => {
+              void history.refetch();
+            }}
+          />
+          <IconButton
+            icon="download"
+            size="sm"
+            disabled={!sessionId || !exportReady || exporting}
+            title={t(session?.status === "idle" ? "timeline.export" : "timeline.exportWhenIdle")}
+            onClick={() => {
+              void exportTrajectory();
+            }}
+          />
+        </>
       }
     >
-      {view.groups.length === 0 ? (
+      {!sessionId ? (
         <EmptyState
           icon="history"
           title={t("timeline.empty.title")}
           sub={t("timeline.empty.sub")}
         />
       ) : (
-        view.groups.map((group, index) => (
-          <div
-            key={timelineGroupKey(group)}
-            {...stylex.props(
-              index > 0 && ts.groupGap,
-              indent[Math.min(group.depth, indent.length - 1)],
-              group.depth > 0 && ts.nested,
-            )}
+        <>
+          <div {...stylex.props(vs.gutter, styles.toolbar)}>
+            <SearchField
+              size="sm"
+              value={query}
+              aria-label={t("timeline.search")}
+              placeholder={t("timeline.search")}
+              onChange={(event) => setQuery(event.target.value)}
+              onClear={() => setQuery("")}
+              clearLabel={t("timeline.clearSearch")}
+            />
+            <div {...stylex.props(styles.filters)}>
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger
+                  render={
+                    <SelectTrigger
+                      aria-label={t("timeline.filterKind")}
+                      label={t(`timeline.filter.${category}`)}
+                      className={stylex.props(styles.filter).className}
+                    />
+                  }
+                />
+                <DropdownMenu.Content>
+                  {CATEGORIES.map((value) => (
+                    <DropdownMenu.Item key={value} onClick={() => setCategory(value)}>
+                      {t(`timeline.filter.${value}`)}
+                    </DropdownMenu.Item>
+                  ))}
+                </DropdownMenu.Content>
+              </DropdownMenu.Root>
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger
+                  render={
+                    <SelectTrigger
+                      aria-label={t("timeline.filterRun")}
+                      label={runId ?? t("timeline.allRuns")}
+                      className={stylex.props(styles.filter).className}
+                    />
+                  }
+                />
+                <DropdownMenu.Content>
+                  <DropdownMenu.Item onClick={() => setRunId(null)}>
+                    {t("timeline.allRuns")}
+                  </DropdownMenu.Item>
+                  {view.runIds.map((id) => (
+                    <DropdownMenu.Item key={id} onClick={() => setRunId(id)}>
+                      {id}
+                    </DropdownMenu.Item>
+                  ))}
+                </DropdownMenu.Content>
+              </DropdownMenu.Root>
+            </div>
+            <div {...stylex.props(styles.metrics, vocab.muted, typeStep.uiXs, vocab.figures)}>
+              <span>
+                {t("timeline.pageModels")}{" "}
+                <span {...stylex.props(face.mono)}>{view.modelCount}</span>
+              </span>
+              <span>
+                {t("timeline.pageTools")} <span {...stylex.props(face.mono)}>{view.toolCount}</span>
+              </span>
+              <span>
+                {t("timeline.pageAttention")}{" "}
+                <span {...stylex.props(face.mono)}>{view.attentionCount}</span>
+              </span>
+            </div>
+            <p {...stylex.props(vocab.faint, typeStep.uiXs)}>{t("timeline.pageScope")}</p>
+          </div>
+          <DataView
+            items={view.records}
+            isLoading={history.isLoading}
+            failure={history.error}
+            onRetry={() => {
+              void history.refetch();
+            }}
+            skeletonCount={4}
+            empty={{
+              icon: "history",
+              title: t(view.recordCount === 0 ? "timeline.empty.title" : "timeline.noMatches"),
+              sub: t(view.recordCount === 0 ? "timeline.empty.sub" : "timeline.filterScope"),
+            }}
           >
-            <TimelineRunHeader group={group} runtimeAvailable={runtimeAvailable} />
-            {group.items.length > 0 ? (
-              group.items.map((entry) => (
-                <TimelineRow
-                  key={entry.id}
-                  entry={entry}
-                  tool={entry.refId === undefined ? undefined : toolCalls[entry.refId]}
+            {(records) =>
+              records.map((record) => (
+                <TimelineRecord
+                  key={record.key}
+                  record={record}
+                  runtimeAvailable={runtimeAvailable}
                 />
               ))
-            ) : (
-              <p {...stylex.props(vs.gutter, vs.rowPad, vocab.pretty, vocab.faint, typeStep.uiXs)}>
-                {t("timeline.noEvents")}
-              </p>
+            }
+          </DataView>
+          <div {...stylex.props(vs.gutter, styles.pagination)}>
+            {cursor && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={history.isLoading}
+                  onClick={() => setCursors([])}
+                >
+                  {t("timeline.newest")}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={history.isLoading}
+                  onClick={() => setCursors((current) => current.slice(0, -1))}
+                >
+                  {t("timeline.newer")}
+                </Button>
+              </>
+            )}
+            {history.data?.nextCursor && (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={history.isFetching}
+                onClick={() => setCursors((current) => [...current, history.data!.nextCursor!])}
+              >
+                {t("timeline.older")}
+              </Button>
+            )}
+            {history.data && !history.data.nextCursor && (
+              <span {...stylex.props(vocab.faint, typeStep.uiXs)}>{t("timeline.end")}</span>
             )}
           </div>
-        ))
+        </>
       )}
     </WorkspaceViewLayout>
   );

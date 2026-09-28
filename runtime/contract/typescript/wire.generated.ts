@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-09-26";
+export const PROTOCOL_VERSION = "2026-09-28";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 28;
@@ -82,6 +82,7 @@ export const PROBLEM_CODES = {
   "capability_not_negotiated": -32006,
   "checkpoint_conflict": -32037,
   "checkpoint_unavailable": -32009,
+  "export_too_large": -32039,
   "idempotency_conflict": -32020,
   "idempotency_in_progress": -32021,
   "idempotency_store_mismatch": -32033,
@@ -409,6 +410,14 @@ export interface ExportSessionResponse {
   markdown?: string;
 }
 
+export interface ExportTrajectoryRequest {
+  sessionId: string;
+}
+
+export interface ExportTrajectoryResponse {
+  trajectory: SessionTrajectory;
+}
+
 export interface FeatureCapability {
   clientOptIn: boolean;
   enabled: boolean;
@@ -417,6 +426,15 @@ export interface FeatureCapability {
 
 export interface FeaturePreference {
   enabled: boolean;
+}
+
+export interface FeedbackEntry {
+  createdAt: string;
+  itemId?: string;
+  rating?: FeedbackRating;
+  runId?: string;
+  sessionId?: string;
+  text?: string;
 }
 
 export type FeedbackRating = "positive" | "negative";
@@ -726,6 +744,13 @@ export interface ListRunsRequest {
   statuses?: RunStatus[];
 }
 
+export interface ListSessionTrajectoryRequest {
+  cursor?: string;
+  includeDescendants?: boolean;
+  limit?: number;
+  sessionId: string;
+}
+
 export interface ListSessionsRequest {
   cursor?: string;
   limit?: number;
@@ -947,6 +972,8 @@ export type PageOfSkillProposal = Page<SkillProposal>;
 
 export type PageOfToolSpec = Page<ToolSpec>;
 
+export type PageOfTrajectoryEntry = Page<TrajectoryEntry>;
+
 export type PageOfWorkspaceFileChange = Page<WorkspaceFileChange>;
 
 export type PageOfWorkspaceSummary = Page<WorkspaceSummary>;
@@ -993,6 +1020,7 @@ export type ProblemData =
   | { type: "checkpoint_unavailable"; detail?: string; docUrl?: string }
   | { type: "child_run_canceled"; detail?: string; docUrl?: string }
   | { type: "denied_by_user"; detail?: string; docUrl?: string }
+  | { type: "export_too_large"; detail?: string; docUrl?: string }
   | { type: "idempotency_conflict"; detail?: string; docUrl?: string }
   | { type: "idempotency_in_progress"; detail?: string; docUrl?: string; retryAfterSeconds: number }
   | { type: "idempotency_store_mismatch"; detail?: string; docUrl?: string }
@@ -1387,6 +1415,21 @@ export interface SessionSnapshot {
 
 export type SessionStatus = "running" | "waiting" | "idle";
 
+export interface SessionTrajectory {
+  collectedAt: string;
+  feedback: FeedbackEntry[];
+  items: Item[];
+  limitations: string[];
+  messages: unknown[];
+  modelInvocations: ModelInvocation[];
+  plan: PlanStep[];
+  runs: RunRef[];
+  schemaVersion: number;
+  session: Session;
+  toolAttempts: ToolAttempt[];
+  toolResults: ArtifactToolResult[];
+}
+
 export interface SessionUsageRequest {
   sessionId: string;
 }
@@ -1529,6 +1572,18 @@ export interface TestProviderRequest {
   provider: string;
 }
 
+export interface ToolAttempt {
+  callId: string;
+  itemId: string;
+  runId: string;
+  segmentId: string;
+  settledAt?: string;
+  startedAt: string;
+  state: ToolAttemptState;
+}
+
+export type ToolAttemptState = "started" | "completed" | "incomplete";
+
 export interface ToolInvocation {
   arguments: Record<string, unknown>;
   argumentsText?: string;
@@ -1542,6 +1597,13 @@ export interface ToolSpec {
   parameters?: Record<string, unknown>;
   safetyClass?: SafetyClass;
 }
+
+export type TrajectoryEntry =
+  | { type: "run"; occurredAt: string; run: RunRef }
+  | { type: "model"; model: ModelInvocation; occurredAt: string }
+  | { type: "item"; item: Item; occurredAt: string };
+
+export type TrajectoryEntryType = "run" | "model" | "item";
 
 export type TransportKind = "http";
 
@@ -1757,6 +1819,8 @@ export const WIRE_ENUMS = {
   SkillScope: ["project", "user"],
   StreamEventType: ["segment.started", "segment.progress", "segment.finished", "item.started", "item.delta", "item.completed", "plan.updated"],
   SuppressibleRunEventType: ["segment.progress", "item.delta"],
+  ToolAttemptState: ["started", "completed", "incomplete"],
+  TrajectoryEntryType: ["run", "model", "item"],
   TransportKind: ["http"],
   WorkspaceAvailability: ["available", "missing"],
 } as const;

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Flame Runtime Protocol wire types",
-  "protocolVersion": "2026-09-26",
+  "protocolVersion": "2026-09-28",
   "$defs": {
     "ActiveRunRef": {
       "type": "object",
@@ -2018,6 +2018,31 @@
         "format"
       ]
     },
+    "ExportTrajectoryRequest": {
+      "type": "object",
+      "properties": {
+        "sessionId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        }
+      },
+      "required": [
+        "sessionId"
+      ]
+    },
+    "ExportTrajectoryResponse": {
+      "type": "object",
+      "properties": {
+        "trajectory": {
+          "$ref": "#/$defs/SessionTrajectory"
+        }
+      },
+      "required": [
+        "trajectory"
+      ]
+    },
     "FeatureCapability": {
       "type": "object",
       "properties": {
@@ -2046,6 +2071,55 @@
       },
       "required": [
         "enabled"
+      ]
+    },
+    "FeedbackEntry": {
+      "type": "object",
+      "properties": {
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "itemId": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
+        "rating": {
+          "$ref": "#/$defs/FeedbackRating"
+        },
+        "runId": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
+        "sessionId": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "createdAt"
+      ],
+      "allOf": [
+        {
+          "anyOf": [
+            {
+              "required": [
+                "rating"
+              ]
+            },
+            {
+              "required": [
+                "text"
+              ]
+            }
+          ]
+        }
       ]
     },
     "FeedbackRating": {
@@ -4188,7 +4262,10 @@
           "minimum": 1
         },
         "runId": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
         }
       },
       "required": [
@@ -4233,6 +4310,31 @@
           }
         }
       }
+    },
+    "ListSessionTrajectoryRequest": {
+      "type": "object",
+      "properties": {
+        "cursor": {
+          "type": "string",
+          "maxLength": 65536
+        },
+        "includeDescendants": {
+          "type": "boolean"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sessionId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        }
+      },
+      "required": [
+        "sessionId"
+      ]
     },
     "ListSessionsRequest": {
       "type": "object",
@@ -5173,16 +5275,25 @@
       "type": "object",
       "properties": {
         "callId": {
-          "type": "string"
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^[A-Za-z0-9._~-]+$"
         },
         "firstOutputLatencyMillis": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 0
         },
         "runId": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
         },
         "segmentId": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
         },
         "settledAt": {
           "type": "string",
@@ -5205,6 +5316,85 @@
         "segmentId",
         "startedAt",
         "state"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "started"
+              }
+            },
+            "required": [
+              "state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "firstOutputLatencyMillis": false,
+              "settledAt": false,
+              "usage": false
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "completed"
+              }
+            },
+            "required": [
+              "state"
+            ]
+          },
+          "then": {
+            "required": [
+              "settledAt"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "failed"
+              }
+            },
+            "required": [
+              "state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "usage": false
+            },
+            "required": [
+              "settledAt"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "unknown"
+              }
+            },
+            "required": [
+              "state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "firstOutputLatencyMillis": false,
+              "usage": false
+            },
+            "required": [
+              "settledAt"
+            ]
+          }
+        }
       ]
     },
     "ModelInvocationState": {
@@ -5220,19 +5410,24 @@
       "type": "object",
       "properties": {
         "cacheReadTokens": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 0
         },
         "cacheWriteTokens": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 0
         },
         "inputTokens": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 0
         },
         "outputTokens": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 0
         },
         "reasoningTokens": {
-          "type": "integer"
+          "type": "integer",
+          "minimum": 0
         }
       },
       "required": [
@@ -5580,6 +5775,24 @@
         "data"
       ]
     },
+    "PageOfTrajectoryEntry": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TrajectoryEntry"
+          }
+        },
+        "nextCursor": {
+          "type": "string",
+          "maxLength": 65536
+        }
+      },
+      "required": [
+        "data"
+      ]
+    },
     "PageOfWorkspaceFileChange": {
       "type": "object",
       "properties": {
@@ -5862,6 +6075,20 @@
             "retryAfterSeconds": false,
             "type": {
               "const": "denied_by_user"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "properties": {
+            "activeRun": false,
+            "errors": false,
+            "requiredCapabilities": false,
+            "retryAfterSeconds": false,
+            "type": {
+              "const": "export_too_large"
             }
           },
           "required": [
@@ -8790,6 +9017,89 @@
         "idle"
       ]
     },
+    "SessionTrajectory": {
+      "type": "object",
+      "properties": {
+        "collectedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "feedback": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FeedbackEntry"
+          }
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Item"
+          }
+        },
+        "limitations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "messages": {
+          "type": "array",
+          "items": {}
+        },
+        "modelInvocations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ModelInvocation"
+          }
+        },
+        "plan": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PlanStep"
+          }
+        },
+        "runs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RunRef"
+          }
+        },
+        "schemaVersion": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1
+        },
+        "session": {
+          "$ref": "#/$defs/Session"
+        },
+        "toolAttempts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ToolAttempt"
+          }
+        },
+        "toolResults": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ArtifactToolResult"
+          }
+        }
+      },
+      "required": [
+        "collectedAt",
+        "feedback",
+        "items",
+        "limitations",
+        "messages",
+        "modelInvocations",
+        "plan",
+        "runs",
+        "schemaVersion",
+        "session",
+        "toolAttempts",
+        "toolResults"
+      ]
+    },
     "SessionUsageRequest": {
       "type": "object",
       "properties": {
@@ -9645,6 +9955,114 @@
         "provider"
       ]
     },
+    "ToolAttempt": {
+      "type": "object",
+      "properties": {
+        "callId": {
+          "type": "string",
+          "maxLength": 256,
+          "pattern": "^[A-Za-z0-9._~-]+$"
+        },
+        "itemId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
+        "runId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
+        "segmentId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[^\\p{C}\\p{Z}]*$"
+        },
+        "settledAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "state": {
+          "$ref": "#/$defs/ToolAttemptState"
+        }
+      },
+      "required": [
+        "callId",
+        "itemId",
+        "runId",
+        "segmentId",
+        "startedAt",
+        "state"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "started"
+              }
+            },
+            "required": [
+              "state"
+            ]
+          },
+          "then": {
+            "properties": {
+              "settledAt": false
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "completed"
+              }
+            },
+            "required": [
+              "state"
+            ]
+          },
+          "then": {
+            "required": [
+              "settledAt"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "incomplete"
+              }
+            },
+            "required": [
+              "state"
+            ]
+          },
+          "then": {
+            "required": [
+              "settledAt"
+            ]
+          }
+        }
+      ]
+    },
+    "ToolAttemptState": {
+      "type": "string",
+      "enum": [
+        "started",
+        "completed",
+        "incomplete"
+      ]
+    },
     "ToolInvocation": {
       "type": "object",
       "properties": {
@@ -9685,6 +10103,79 @@
       },
       "required": [
         "name"
+      ]
+    },
+    "TrajectoryEntry": {
+      "type": "object",
+      "properties": {
+        "item": {
+          "$ref": "#/$defs/Item"
+        },
+        "model": {
+          "$ref": "#/$defs/ModelInvocation"
+        },
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "run": {
+          "$ref": "#/$defs/RunRef"
+        },
+        "type": {
+          "$ref": "#/$defs/TrajectoryEntryType"
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "item": false,
+            "model": false,
+            "type": {
+              "const": "run"
+            }
+          },
+          "required": [
+            "occurredAt",
+            "run",
+            "type"
+          ]
+        },
+        {
+          "properties": {
+            "item": false,
+            "run": false,
+            "type": {
+              "const": "model"
+            }
+          },
+          "required": [
+            "model",
+            "occurredAt",
+            "type"
+          ]
+        },
+        {
+          "properties": {
+            "model": false,
+            "run": false,
+            "type": {
+              "const": "item"
+            }
+          },
+          "required": [
+            "item",
+            "occurredAt",
+            "type"
+          ]
+        }
+      ]
+    },
+    "TrajectoryEntryType": {
+      "type": "string",
+      "enum": [
+        "run",
+        "model",
+        "item"
       ]
     },
     "TransportKind": {

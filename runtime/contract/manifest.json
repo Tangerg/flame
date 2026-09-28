@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-09-26",
+  "protocolVersion": "2026-09-28",
   "features": [
     "reasoning",
     "multimodal",
@@ -27,6 +27,50 @@
       "idempotency": "none",
       "replayCursor": "none",
       "pagination": "none"
+    },
+    {
+      "name": "sessions.trajectory",
+      "kind": "unary",
+      "operation": "query",
+      "idempotency": "none",
+      "replayCursor": "none",
+      "pagination": "cursor",
+      "errors": [
+        "session_not_found",
+        "capability_not_negotiated"
+      ],
+      "features": [
+        "subagents"
+      ],
+      "materializes": [
+        "runs.list",
+        "items.list",
+        "modelInvocations.list"
+      ]
+    },
+    {
+      "name": "sessions.exportTrajectory",
+      "kind": "unary",
+      "operation": "query",
+      "idempotency": "none",
+      "replayCursor": "none",
+      "pagination": "none",
+      "errors": [
+        "session_not_found",
+        "session_busy",
+        "export_too_large",
+        "capability_not_negotiated"
+      ],
+      "features": [
+        "sessionExport"
+      ],
+      "materializes": [
+        "sessions.get",
+        "runs.list",
+        "items.list",
+        "modelInvocations.list",
+        "plan.get"
+      ]
     },
     {
       "name": "sessions.list",
@@ -1224,9 +1268,11 @@
           "schedules.runNow",
           "schedules.update",
           "sessions.export",
+          "sessions.exportTrajectory",
           "sessions.import",
           "sessions.rollback",
           "sessions.snapshot",
+          "sessions.trajectory",
           "sessions.update",
           "skills.discovered.get",
           "skills.discovered.list",
@@ -1254,6 +1300,14 @@
         "recoveryAction": "promptUser",
         "methods": [
           "sessions.rollback"
+        ]
+      },
+      {
+        "type": "export_too_large",
+        "code": -32039,
+        "recoveryAction": "promptUser",
+        "methods": [
+          "sessions.exportTrajectory"
         ]
       },
       {
@@ -1465,6 +1519,7 @@
         "methods": [
           "runs.cancel",
           "runs.start",
+          "sessions.exportTrajectory",
           "sessions.rollback"
         ]
       },
@@ -1492,10 +1547,12 @@
           "runs.start",
           "sessions.delete",
           "sessions.export",
+          "sessions.exportTrajectory",
           "sessions.fork",
           "sessions.get",
           "sessions.rollback",
           "sessions.snapshot",
+          "sessions.trajectory",
           "sessions.update",
           "usage.session"
         ]
@@ -1599,6 +1656,32 @@
     ]
   },
   "capabilityPolicy": [
+    {
+      "method": "sessions.trajectory",
+      "rules": [
+        {
+          "when": [
+            {
+              "field": "includeDescendants",
+              "operator": "present"
+            }
+          ],
+          "requires": [
+            "subagents"
+          ]
+        }
+      ]
+    },
+    {
+      "method": "sessions.exportTrajectory",
+      "rules": [
+        {
+          "requires": [
+            "sessionExport"
+          ]
+        }
+      ]
+    },
     {
       "method": "sessions.snapshot",
       "rules": [
@@ -2273,6 +2356,13 @@
           ]
         },
         {
+          "tag": "export_too_large",
+          "optional": [
+            "detail",
+            "docUrl"
+          ]
+        },
+        {
           "tag": "idempotency_conflict",
           "optional": [
             "detail",
@@ -2718,6 +2808,33 @@
           ],
           "optional": [
             "unresolvedEffects"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "TrajectoryEntry",
+      "discriminator": "type",
+      "variants": [
+        {
+          "tag": "run",
+          "required": [
+            "occurredAt",
+            "run"
+          ]
+        },
+        {
+          "tag": "model",
+          "required": [
+            "occurredAt",
+            "model"
+          ]
+        },
+        {
+          "tag": "item",
+          "required": [
+            "occurredAt",
+            "item"
           ]
         }
       ]
@@ -3666,6 +3783,109 @@
   ],
   "objectConstraints": [
     {
+      "type": "ModelInvocation",
+      "rules": [
+        {
+          "when": [
+            {
+              "field": "state",
+              "operator": "equals",
+              "value": "started"
+            }
+          ],
+          "forbidden": [
+            "settledAt",
+            "usage",
+            "firstOutputLatencyMillis"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "state",
+              "operator": "equals",
+              "value": "completed"
+            }
+          ],
+          "required": [
+            "settledAt"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "state",
+              "operator": "equals",
+              "value": "failed"
+            }
+          ],
+          "required": [
+            "settledAt"
+          ],
+          "forbidden": [
+            "usage"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "state",
+              "operator": "equals",
+              "value": "unknown"
+            }
+          ],
+          "required": [
+            "settledAt"
+          ],
+          "forbidden": [
+            "usage",
+            "firstOutputLatencyMillis"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "ToolAttempt",
+      "rules": [
+        {
+          "when": [
+            {
+              "field": "state",
+              "operator": "equals",
+              "value": "started"
+            }
+          ],
+          "forbidden": [
+            "settledAt"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "state",
+              "operator": "equals",
+              "value": "completed"
+            }
+          ],
+          "required": [
+            "settledAt"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "state",
+              "operator": "equals",
+              "value": "incomplete"
+            }
+          ],
+          "required": [
+            "settledAt"
+          ]
+        }
+      ]
+    },
+    {
       "type": "ModelTokenLimits",
       "rules": [
         {
@@ -3679,6 +3899,17 @@
     },
     {
       "type": "FeedbackRequest",
+      "rules": [
+        {
+          "requiredAny": [
+            "rating",
+            "text"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "FeedbackEntry",
       "rules": [
         {
           "requiredAny": [
@@ -5454,6 +5685,40 @@
       ]
     },
     {
+      "type": "ListSessionTrajectoryRequest",
+      "rules": [
+        {
+          "field": "sessionId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "identity"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "maxLength(256)"
+        }
+      ]
+    },
+    {
+      "type": "ExportTrajectoryRequest",
+      "rules": [
+        {
+          "field": "sessionId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "identity"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "maxLength(256)"
+        }
+      ]
+    },
+    {
       "type": "DeleteSessionRequest",
       "rules": [
         {
@@ -5591,6 +5856,19 @@
         {
           "field": "reasoningEffort",
           "constraint": "maxLength(32)"
+        }
+      ]
+    },
+    {
+      "type": "SessionTrajectory",
+      "rules": [
+        {
+          "field": "schemaVersion",
+          "constraint": "minimum(1)"
+        },
+        {
+          "field": "schemaVersion",
+          "constraint": "maximum(1)"
         }
       ]
     },
@@ -6633,6 +6911,138 @@
       ]
     },
     {
+      "type": "ListModelInvocationsRequest",
+      "rules": [
+        {
+          "field": "runId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "runId",
+          "constraint": "identity"
+        },
+        {
+          "field": "runId",
+          "constraint": "maxLength(256)"
+        }
+      ]
+    },
+    {
+      "type": "ModelInvocation",
+      "rules": [
+        {
+          "field": "runId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "runId",
+          "constraint": "identity"
+        },
+        {
+          "field": "runId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "segmentId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "segmentId",
+          "constraint": "identity"
+        },
+        {
+          "field": "segmentId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "callId",
+          "constraint": "pattern(\"^[A-Za-z0-9._~-]+$\")"
+        },
+        {
+          "field": "callId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "firstOutputLatencyMillis",
+          "constraint": "nonNegative"
+        }
+      ]
+    },
+    {
+      "type": "ToolAttempt",
+      "rules": [
+        {
+          "field": "runId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "runId",
+          "constraint": "identity"
+        },
+        {
+          "field": "runId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "segmentId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "segmentId",
+          "constraint": "identity"
+        },
+        {
+          "field": "segmentId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "callId",
+          "constraint": "pattern(\"^[A-Za-z0-9._~-]+$\")"
+        },
+        {
+          "field": "callId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "itemId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "itemId",
+          "constraint": "identity"
+        },
+        {
+          "field": "itemId",
+          "constraint": "maxLength(256)"
+        }
+      ]
+    },
+    {
+      "type": "ModelInvocationUsage",
+      "rules": [
+        {
+          "field": "inputTokens",
+          "constraint": "nonNegative"
+        },
+        {
+          "field": "outputTokens",
+          "constraint": "nonNegative"
+        },
+        {
+          "field": "cacheReadTokens",
+          "constraint": "nonNegative"
+        },
+        {
+          "field": "cacheWriteTokens",
+          "constraint": "nonNegative"
+        },
+        {
+          "field": "reasoningTokens",
+          "constraint": "nonNegative"
+        }
+      ]
+    },
+    {
       "type": "GetPlanRequest",
       "rules": [
         {
@@ -6949,6 +7359,35 @@
         {
           "field": "sinceDays",
           "constraint": "positive"
+        }
+      ]
+    },
+    {
+      "type": "FeedbackEntry",
+      "rules": [
+        {
+          "field": "sessionId",
+          "constraint": "identity"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "runId",
+          "constraint": "identity"
+        },
+        {
+          "field": "runId",
+          "constraint": "maxLength(256)"
+        },
+        {
+          "field": "itemId",
+          "constraint": "identity"
+        },
+        {
+          "field": "itemId",
+          "constraint": "maxLength(256)"
         }
       ]
     },

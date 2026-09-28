@@ -9,6 +9,7 @@ import {
 import type { WireMethodName } from "@flame/runtime-contract/methods";
 import { contributeForTest } from "@/plugins/sdk/testKernel";
 import type { AgentSessionSummary } from "../application/session/sessionQueries";
+import type { TrajectoryPage } from "../application/run/trajectory";
 import { registerAgentDataProviders } from "./runtimeDataProviders";
 
 async function runProvider<T>(
@@ -42,7 +43,7 @@ describe("agent Runtime data providers", () => {
     try {
       await contributeForTest((ctx) => registerAgentDataProviders(ctx, () => client));
 
-      for (const key of ["model-invocations", "approval-rules"]) {
+      for (const key of ["session-trajectory", "trajectory-run", "approval-rules"]) {
         const fetcher = lookupDataProvider(key);
         expect(fetcher).toBeDefined();
         await expect(fetcher!()).rejects.toThrow(`Data provider "${key}" requires parameters`);
@@ -50,6 +51,77 @@ describe("agent Runtime data providers", () => {
     } finally {
       await client.close();
     }
+  });
+
+  it("projects a durable trajectory page without loading its next cursor", async () => {
+    const query = { sessionId: "ses_1", includeDescendants: true, limit: 100, cursor: "older" };
+    const occurredAt = "2026-09-28T00:00:00Z";
+    const { value, requests } = await runProvider<TrajectoryPage>(
+      "session-trajectory",
+      [
+        [
+          "sessions.trajectory",
+          {
+            nextCursor: "earlier",
+            data: [
+              {
+                type: "model",
+                occurredAt,
+                model: {
+                  callId: "call_1",
+                  runId: "run_1",
+                  segmentId: "seg_1",
+                  state: "unknown",
+                  startedAt: occurredAt,
+                  settledAt: "2026-09-28T00:00:03Z",
+                },
+              },
+              {
+                type: "item",
+                occurredAt,
+                item: {
+                  id: "item_1",
+                  runId: "run_1",
+                  type: "toolCall",
+                  status: "incomplete",
+                  startedAt: occurredAt,
+                  finishedAt: "2026-09-28T00:00:02Z",
+                  durationMillis: 0,
+                  approvalDecision: "deny",
+                  tool: { name: "shell", arguments: {}, result: {} },
+                  error: { type: "denied_by_user", detail: "denied" },
+                },
+              },
+            ],
+          },
+        ],
+      ],
+      query,
+    );
+
+    expect(requests).toEqual([{ method: "sessions.trajectory", params: query }]);
+    expect(value.nextCursor).toBe("earlier");
+    expect(value.data[0]).toEqual({
+      type: "model",
+      occurredAt,
+      model: {
+        callId: "call_1",
+        runId: "run_1",
+        segmentId: "seg_1",
+        state: "unknown",
+        startedAt: occurredAt,
+        settledAt: "2026-09-28T00:00:03Z",
+      },
+    });
+    expect(value.data[1]).toMatchObject({
+      type: "item",
+      item: {
+        durationMillis: 0,
+        approvalDecision: "declined",
+        error: { code: "denied_by_user" },
+        tool: { result: {} },
+      },
+    });
   });
 
   it("sessions: maps Page<Session>.data into AgentSessionSummary rows (updatedAt → time)", async () => {

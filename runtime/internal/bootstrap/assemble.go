@@ -376,6 +376,7 @@ func buildAssemblyCore(
 		return nil, fmt.Errorf("runtime: construct model invocation reader: %w", err)
 	}
 	queries, err := sessions.NewQueryCoordinator(sessions.QueryDependencies{
+		Trajectory:       cfg.Stores.Trajectory,
 		ModelInvocations: modelInvocations,
 		Transcript:       cfg.Stores.Transcript,
 		Interrupts:       cfg.Stores.Interrupts,
@@ -396,6 +397,18 @@ func buildAssemblyCore(
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct feedback recorder: %w", err)
 	}
+	trajectoryReader, err := persistence.NewTrajectoryExportReader(persistence.TrajectoryExportConfig{
+		Snapshots: sessionStores, Sessions: cfg.Stores.Sessions, ModelInvocations: modelInvocations,
+		ToolInvocations: cfg.Stores.ToolInvocations,
+		Feedback:        cfg.Stores.Feedback, Tx: persistence.Transactor(cfg.Stores.Transactor),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("runtime: construct trajectory export reader: %w", err)
+	}
+	trajectoryExports, err := sessions.NewTrajectoryExporter(sessionCoordinator, trajectoryReader)
+	if err != nil {
+		return nil, fmt.Errorf("runtime: construct trajectory exporter: %w", err)
+	}
 	host := &Instance{
 		application: &runtimeApplication{
 			delivery: delivery.HandlerConfig{
@@ -410,6 +423,7 @@ func buildAssemblyCore(
 				Queries:                queries,
 				Usage:                  usage,
 				Feedback:               feedback,
+				TrajectoryExports:      trajectoryExports,
 				WorkspaceFiles:         workspaceFiles,
 				WorkspaceVCS:           workspaceVCS,
 				WorkspaceDiscovery:     workspaceDiscovery,

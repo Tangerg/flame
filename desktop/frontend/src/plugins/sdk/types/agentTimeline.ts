@@ -2,7 +2,7 @@ import type { AgentSessionView, TimelineEntry } from "@/plugins/sdk/types/agentS
 
 type StateUpdate = (state: AgentSessionView) => AgentSessionView;
 
-export const TIMELINE_WINDOW_SIZE = 500;
+const TIMELINE_WINDOW_SIZE = 500;
 
 export function setTimelineEntry(entry: TimelineEntry): StateUpdate {
   return (state) => {

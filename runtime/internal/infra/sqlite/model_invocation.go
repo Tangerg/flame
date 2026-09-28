@@ -240,25 +240,9 @@ func (m *ModelInvocationStore) PageModelInvocations(ctx context.Context, runID s
 	defer func() { _ = rows.Close() }()
 	var records []ModelInvocationRecord
 	for rows.Next() {
-		var record ModelInvocationRecord
-		var startedAt, finishedAt int64
-		var usage sql.NullString
-		var latency sql.NullInt64
-		if err := rows.Scan(&record.CallID, &record.SegmentID, &record.State, &startedAt, &finishedAt, &usage, &latency); err != nil {
-			return nil, fmt.Errorf("sqlite: scan model invocation: %w", err)
-		}
-		if latency.Valid {
-			record.FirstOutputLatencyMillis = new(latency.Int64)
-		}
-		if usage.Valid {
-			record.Usage, err = decodeModelInvocationUsage(usage.String)
-			if err != nil {
-				return nil, err
-			}
-		}
-		record.StartedAt = time.Unix(0, startedAt).UTC()
-		if finishedAt != 0 {
-			record.FinishedAt = time.Unix(0, finishedAt).UTC()
+		record, err := scanModelInvocation(rows)
+		if err != nil {
+			return nil, err
 		}
 		records = append(records, record)
 	}
@@ -266,4 +250,29 @@ func (m *ModelInvocationStore) PageModelInvocations(ctx context.Context, runID s
 		return nil, fmt.Errorf("sqlite: iterate model invocations: %w", err)
 	}
 	return records, nil
+}
+
+func scanModelInvocation(row scanRow) (ModelInvocationRecord, error) {
+	var record ModelInvocationRecord
+	var startedAt, finishedAt int64
+	var usage sql.NullString
+	var latency sql.NullInt64
+	if err := row.Scan(&record.CallID, &record.SegmentID, &record.State, &startedAt, &finishedAt, &usage, &latency); err != nil {
+		return ModelInvocationRecord{}, fmt.Errorf("sqlite: scan model invocation: %w", err)
+	}
+	if latency.Valid {
+		record.FirstOutputLatencyMillis = new(latency.Int64)
+	}
+	if usage.Valid {
+		var err error
+		record.Usage, err = decodeModelInvocationUsage(usage.String)
+		if err != nil {
+			return ModelInvocationRecord{}, err
+		}
+	}
+	record.StartedAt = time.Unix(0, startedAt).UTC()
+	if finishedAt != 0 {
+		record.FinishedAt = time.Unix(0, finishedAt).UTC()
+	}
+	return record, nil
 }

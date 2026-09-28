@@ -3,15 +3,16 @@ package runs
 import (
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/optional"
 	"slices"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
@@ -106,7 +107,7 @@ type ToolInvocationCommit struct {
 	FinishedAt time.Time
 }
 
-func (t ToolInvocationCommit) validate() error {
+func (t ToolInvocationCommit) Validate() error {
 	if err := runtimeidentity.ValidateEffect(t.CallID); err != nil {
 		return fmt.Errorf("runs: Tool invocation: %w", err)
 	}
@@ -137,7 +138,7 @@ func (t ToolInvocationCommit) validate() error {
 	return nil
 }
 
-func (m ModelInvocationCommit) validate() error {
+func (m ModelInvocationCommit) Validate() error {
 	if m.FirstOutputLatencyMillis != nil {
 		if *m.FirstOutputLatencyMillis < 0 || (m.State != ModelInvocationCompleted && m.State != ModelInvocationFailed) {
 			return errors.New("runs: first output latency requires a nonnegative measurement and a definite model outcome")
@@ -254,7 +255,7 @@ func (e EventCommit) clone() EventCommit {
 			e.ModelInvocations[index].FirstOutputLatencyMillis = new(*latency)
 		}
 		if usage := e.ModelInvocations[index].Usage; usage != nil {
-			copy := *usage
+			copy := accounting.CloneReportedUsage(*usage)
 			e.ModelInvocations[index].Usage = &copy
 		}
 	}
@@ -365,7 +366,7 @@ func (e EventCommit) validateInvocations() error {
 func (e EventCommit) validateModelInvocations() error {
 	seenInvocations := make(map[string]struct{}, len(e.ModelInvocations))
 	for index, invocation := range e.ModelInvocations {
-		if err := invocation.validate(); err != nil {
+		if err := invocation.Validate(); err != nil {
 			return fmt.Errorf("runs: event commit model invocation[%d]: %w", index, err)
 		}
 		if _, duplicate := seenInvocations[invocation.CallID]; duplicate {
@@ -383,7 +384,7 @@ func (e EventCommit) validateToolInvocations(items map[string]transcript.Item) e
 	seenTools := make(map[string]struct{}, len(e.ToolInvocations))
 	seenToolItems := make(map[string]struct{}, len(e.ToolInvocations))
 	for index, invocation := range e.ToolInvocations {
-		if err := invocation.validate(); err != nil {
+		if err := invocation.Validate(); err != nil {
 			return fmt.Errorf("runs: event commit Tool invocation[%d]: %w", index, err)
 		}
 		if _, duplicate := seenTools[invocation.CallID]; duplicate {
@@ -482,11 +483,6 @@ func validateTerminalGoalRun(value run.Run, record *goal.RunRecord) error {
 	}
 	return nil
 }
-
-// goalRunRecordDescribes proves one Goal accounting record is exactly the
-// terminal Run it names. The live commit and boot recovery write this record
-// from the same Run, so both must agree on what "exactly" means. It reports the
-// defect as a phrase, so each caller keeps its own way of failing.
 
 func (e EventCommit) isEmpty() bool {
 	return len(e.Items) == 0 &&

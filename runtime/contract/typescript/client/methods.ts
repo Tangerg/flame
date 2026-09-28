@@ -15,6 +15,8 @@ import type {
   CreateSessionRequest,
   Diff,
   ExportSessionResponse,
+  ExportTrajectoryRequest,
+  ExportTrajectoryResponse,
   FeedbackRequest,
   FileContent,
   FileEntry,
@@ -28,6 +30,7 @@ import type {
   ListFilesRequest,
   ListItemsResponse,
   ListSessionsRequest,
+  ListSessionTrajectoryRequest,
   MCPAuthorizationAttempt,
   MCPServer,
   MCPTestResult,
@@ -60,6 +63,7 @@ import type {
   Session,
   SessionArtifact,
   SessionSnapshot,
+  TrajectoryEntry,
   SkillDiscovery,
   SkillDetail,
   ManagedSkill,
@@ -157,6 +161,10 @@ export interface Methods {
       includeDescendants?: boolean,
       signal?: AbortSignal,
     ) => Promise<SessionSnapshot>;
+    trajectory: (
+      query: ListSessionTrajectoryRequest,
+      signal?: AbortSignal,
+    ) => AutoPagingPromise<Page<TrajectoryEntry>>;
     create: (params?: CreateSessionRequest, signal?: AbortSignal) => MutationPromise<Session>;
     update: (params: UpdateSessionRequest) => MutationPromise<Session>;
     delete: (sessionId: SessionId) => MutationPromise<void>;
@@ -167,6 +175,10 @@ export interface Methods {
       format?: "md" | "json",
       signal?: AbortSignal,
     ) => Promise<ExportSessionResponse>;
+    exportTrajectory: (
+      params: ExportTrajectoryRequest,
+      signal?: AbortSignal,
+    ) => Promise<ExportTrajectoryResponse>;
     import: (artifact: SessionArtifact) => MutationPromise<ImportSessionResponse>;
   };
   modelInvocations: {
@@ -388,6 +400,7 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
           },
           { signal },
         ),
+      trajectory: (query, signal) => call("sessions.trajectory", query, { signal }),
       create: (params, signal) => call("sessions.create", params ?? {}, { signal }),
       update: (params) => call("sessions.update", params),
       delete: (sessionId) => call("sessions.delete", { sessionId }),
@@ -395,6 +408,7 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       rollback: (params) => call("sessions.rollback", params),
       export: (sessionId, format, signal) =>
         call("sessions.export", { sessionId, format }, { signal }),
+      exportTrajectory: (params, signal) => call("sessions.exportTrajectory", params, { signal }),
       import: (artifact) =>
         call("sessions.import", {
           artifact,

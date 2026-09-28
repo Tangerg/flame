@@ -10,7 +10,6 @@ import type {
   AgentSessionView,
   Message,
   TimelineEntry,
-  ToolCall,
 } from "@/plugins/sdk/types/agentSessionView";
 import type { AgentRunTreeNode } from "../view/runTree";
 import type { TranscriptRow } from "../conversation/transcriptRows";
@@ -77,7 +76,6 @@ export interface AgentProjectionMaterial<T> {
 export interface AgentSessionViewPort {
   useCurrentRootRun(): AgentRunView | null;
   useCurrentRootRunning(): boolean;
-  useToolCalls(): Record<string, ToolCall>;
   useSessionTimeline(): TimelineEntry[];
   useRootNarrativeMessages(): Message[];
   useTranscriptRows(): readonly TranscriptRow[];

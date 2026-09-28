@@ -10,6 +10,8 @@ export const VISUAL_RUNTIME_FEATURES = [
   "agentMemory",
   "schedules",
   "relocate",
+  "subagents",
+  "sessionExport",
 ] as const;
 
 export function visualFeatureCapabilities(): Record<

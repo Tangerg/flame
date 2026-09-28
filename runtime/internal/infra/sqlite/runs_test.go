@@ -281,7 +281,7 @@ func TestRunAdmitEnforcesOneActivePerSession(t *testing.T) {
 	}
 }
 
-func TestRunLifecycleRetainsSettledModelInvocationsUntilDeletion(t *testing.T) {
+func TestRunLifecycleRetainsInvocationEvidenceUntilDeletion(t *testing.T) {
 	for _, test := range []struct {
 		name   string
 		settle func(context.Context, *sqlite.RunStore, run.Draft) error
@@ -342,7 +342,7 @@ func TestRunLifecycleRetainsSettledModelInvocationsUntilDeletion(t *testing.T) {
 					t.Fatalf("count %s: %v", table, err)
 				}
 				want := 0
-				if table == "model_invocations" && test.name == "terminal" {
+				if test.name == "terminal" {
 					want = 1
 				}
 				if rows != want {

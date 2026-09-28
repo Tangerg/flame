@@ -291,9 +291,11 @@ func runtimeAPIConsumptionByMethod() map[string]runtimeAPIConsumption {
 		return runtimeAPIConsumption{Area: area, Mode: materializedByAggregate, Entry: entry}
 	}
 	return map[string]runtimeAPIConsumption{
-		"ListModelInvocations": {Area: "model-call diagnostics", Mode: desktopDiagnostics, Entry: "Desktop exposes paged attempt history; CLI exposes Run aggregate metrics"},
-		"Discover":             lifecycle("lifecycle", "startup negotiation, capability gates, TUI status, and runtime info"),
-		"Close":                lifecycle("lifecycle", "process-owned connection shutdown"),
+		"ListModelInvocations":  {Area: "model-call diagnostics", Mode: desktopDiagnostics, Entry: "Desktop exposes paged attempt history; CLI exposes Run aggregate metrics"},
+		"ListSessionTrajectory": {Area: "trajectory diagnostics", Mode: desktopDiagnostics, Entry: "Desktop browses durable Run, model, and Item observations; CLI retains its terminal timeline"},
+		"ExportTrajectory":      {Area: "evaluation evidence", Mode: desktopDiagnostics, Entry: "Desktop exports retained trajectory evidence; CLI Session exports remain importable artifacts"},
+		"Discover":              lifecycle("lifecycle", "startup negotiation, capability gates, TUI status, and runtime info"),
+		"Close":                 lifecycle("lifecycle", "process-owned connection shutdown"),
 
 		"CreateSession": flow("sessions", "interactive and one-shot session opening"),
 		"DeleteSession": command("sessions", "sessions delete"),

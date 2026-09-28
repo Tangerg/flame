@@ -20,6 +20,8 @@ const (
 )
 
 func registerSessions(registry *Registry) {
+	registerSessionTrajectory(registry)
+	registerExportTrajectory(registry)
 	registry.query(MethodMeta{Name: SessionsList},
 		func(service interface {
 			ListSessions(context.Context, protocol.ListSessionsRequest) (*protocol.Page[protocol.Session], error)

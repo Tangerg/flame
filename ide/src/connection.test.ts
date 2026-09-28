@@ -36,7 +36,7 @@ async function fixture(
       response.setHeader("Content-Type", "application/json");
       response.end(
         JSON.stringify({
-          protocolVersion: PROTOCOL_VERSION,
+          protocolVersion: advertised.protocolVersion,
           transport: "http",
           server: { name: "flame", version: "0.1.0", instanceId: discovery.serverInfo.instanceId },
           endpoints: {
@@ -77,6 +77,16 @@ async function fixture(
 }
 
 describe("IDE connection lifetime and replay", () => {
+  it("rejects the preceding Runtime protocol before dispatching any RPC", async () => {
+    const server = await fixture();
+    server.advertised.protocolVersion = "2026-09-26";
+
+    await expect(Connection.open(server.endpoint, undefined, server.directory)).rejects.toThrow(
+      `Runtime protocol 2026-09-26 does not match ${PROTOCOL_VERSION}`,
+    );
+    expect(server.requests).toEqual([]);
+  });
+
   it("rejects malformed command parameters before saving or dispatching them", async () => {
     const server = await fixture();
     const connection = await Connection.open(server.endpoint, undefined, server.directory);

@@ -234,6 +234,9 @@ func newQueryCoordinator(t *testing.T, deps QueryDependencies) *QueryCoordinator
 	if deps.ModelInvocations == nil {
 		deps.ModelInvocations = emptyModelInvocations{}
 	}
+	if deps.Trajectory == nil {
+		deps.Trajectory = emptyTrajectoryReader{}
+	}
 	coordinator, err := NewQueryCoordinator(deps)
 	if err != nil {
 		t.Fatal(err)

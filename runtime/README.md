@@ -19,10 +19,17 @@ All Runtime operations enter one delivery endpoint. The Go binding avoids JSON a
 
 RPC parameters and `_meta` use exact, case-sensitive schema field names. Unknown members, duplicate members, invalid Unicode, trailing JSON values, and explicit `null` in typed fields are rejected. Omit optional fields; use the declared change variants to clear configuration. Opaque tool arguments may contain `null`. Clients must not rely on case folding or replacement of malformed text.
 
-## Protocol 2026-09-26
+## Protocol 2026-09-28
 
-Upgrade Runtime, CLI, Desktop, and generated contract consumers together. This
-version adds bounded `WatchSpec.paths` with advertised subscription limits,
+Rebuild and deploy Runtime, CLI, Desktop/Web, IDE, and generated contract
+consumers together. The timeline requires `sessions.trajectory`, and evaluation
+export requires `sessions.exportTrajectory`. Bundled clients reject an older
+Runtime through the existing exact protocol-version checks; an updated Runtime
+likewise refuses requests declaring an older version. There is no legacy endpoint
+fallback. The trajectory document has its own `schemaVersion: 1`, independent of
+the Runtime protocol and importable Session artifacts.
+
+The protocol includes bounded `WatchSpec.paths` with advertised subscription limits,
 `checkpoint_conflict` for a safely refused file restore, and
 `prompt_source_too_large` for an AGENTS.md cascade that cannot be included whole.
 The existing Run, Segment, Item, and command identities keep their meanings.
@@ -162,6 +169,37 @@ The optional `firstOutputLatencyMillis` is measured with the monotonic clock at 
 
 The optional `usage` records provider-reported tokens for that call before Run aggregation. Missing usage means it was not reported or the attempt predates usage recording; an explicit zero remains zero. Prompt inspection is not present in this read. Aggregate Run accounting remains separate. Existing databases receive the nullable usage column in one schema transaction; historical values are not reconstructed.
 
+## Session trajectory
+
+`sessions.trajectory` / `ListSessionTrajectory` reads one bounded page of durable
+Run, model-invocation, and transcript Item observations for a Session. The default
+and maximum page size is 100. `includeDescendants` defaults to false; requesting
+true includes the complete Run tree and requires the subagent capability.
+
+Entries reuse `RunRef`, `ModelInvocation`, and `Item`. Their discriminated source
+and original identity identify the row; there is no additional trajectory journal
+or execution state machine. Run records retain outcomes, unresolved effects,
+accounting, and parent/root edges. Model records retain the exact call and Segment
+identities and reported measurements. Items retain their content, tool arguments,
+results, approval decision, and original timing. An Item without a recorded model
+association must not be assigned to a model call by timestamp proximity. Fetch an
+entry's owning Run through `runs.get` when that Run is outside the loaded page.
+
+The order is newest occurrence first, followed by source kind and source identity
+as deterministic tie breakers. Run admission, model start, and Item occurrence
+supply the respective timestamps. This is an observation ordering, not a global
+event sequence or proof of causality. Each entry contains its source record's
+current state, so completion updates that entry without moving its page position.
+Unknown model settlement remains an observation of uncertainty and supplies no
+measured execution duration or inferred throughput.
+
+A page's existence check, source selection, and record hydration share one SQLite
+transaction. Its cursor is opaque and bound to the Session and descendant filter.
+Pages remain bounded as history grows. Continuations do not freeze an entire
+Session across subsequent writes; refresh the read after execution changes, and
+use the idle Session evidence export when a coherent complete document is needed.
+Completed observations survive restart for as long as their source records remain.
+
 ## Auxiliary model observation
 
 Compaction, memory extraction and curation, skill mining, and title generation emit an `auxiliary model` OpenTelemetry span through the existing Runtime exporter. `auxiliary.operation` identifies the caller's purpose. Auxiliary calls follow their caller's cancellation and deadline; the adapter adds no wall-clock timeout. Input and output envelopes remain bounded. The span covers selection resolution, the model request, and response acceptance; its duration is not isolated provider latency. The live resolver records the exact provider/model selection, and a valid response contributes its finish reason and reported token usage. Optional cache and reasoning counts remain absent when unreported, including the distinction between absence and an explicit zero. A valid but incomplete response retains its reported usage even though its text is rejected.
@@ -171,6 +209,42 @@ Failed attempts record the `resolve`, `call`, or `response` stage and distinguis
 Auxiliary text generation uses Scope's `Client.Output` with its `Text` contract. Scope admits only naturally completed text and reasoning; refusals, media, and Tool calls cannot become summaries, memory, skill proposals, or titles by dropping their non-text parts. Runtime additionally rejects blank text and retains its resource limits and observation policy.
 
 Title generation is nested under `run segment maintenance`, with `run.id`, `gen_ai.conversation.id`, `maintenance.operation`, and `run.parked` identifying its boundary. A parked Run can generate its initial Session title while waiting for user input; this span does not mean the Run has completed. Workspace checkpoints use the same span name and run only at a terminal boundary.
+
+## Trajectory evidence export
+
+`sessions.exportTrajectory` / `Runtime.ExportTrajectory` exports one JSON evaluation
+document with `schemaVersion: 1` and a collection timestamp. It includes the Session,
+all root and child Runs, Items, retained conversation messages, offloaded Tool bodies,
+current Plan, model attempts, Tool attempts, and matching user feedback. Child evidence
+requires negotiated `subagents`; the export never silently omits it. The existing
+`sessions.export` / `sessions.import` portable artifact remains version 28 and retains
+its separate import contract.
+
+Export holds the idle Session admission and reads every source in one SQLite
+transaction. An active or waiting Run returns `session_busy`; finish or cancel it
+before exporting. The complete stored input is limited to 64 MiB and 100,000 source
+records before bodies are loaded, and the final JSON response is independently
+limited to 64 MiB. Exceeding either bound returns `export_too_large`, with no partial
+document. These bounds apply to evidence export, not ordinary trajectory pagination.
+
+The export contains all currently retained evidence, not every historical state
+transition or every provider request. Compaction can replace old conversation context;
+per-call prompts, provider request bodies, and auxiliary telemetry spans are absent.
+Model and Tool journal records now survive terminal Runs and Runtime restart until
+their Run is deleted. Opening an existing database removes the old terminal-pruning
+trigger without recreating already deleted attempts. Tool attempts preserve separate
+Segments: `completed` means an observed definite result, `incomplete` includes
+suspension for input, and `started` carries no known settlement. Neither these states
+nor Run completion evaluates answer quality.
+
+Feedback remains an independent append-only user signal. Matching any supplied
+Session, retained Run, or retained Item reference includes the original observation;
+references remain unverified and may identify records already removed. General
+feedback without a matching reference is excluded. Export never manufactures a score
+from execution status, reconstructs missing attempts, or fills absent usage with zero.
+Run metrics include descendant accounting: do not add root and child totals together
+or combine those totals with per-call usage. The document carries these limitations
+alongside its evidence so downstream evaluation can preserve the distinctions.
 
 ## Background shell lifetime
 

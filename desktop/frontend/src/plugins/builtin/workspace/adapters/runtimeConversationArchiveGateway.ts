@@ -12,6 +12,12 @@ function runtimeConversationArchiveGateway(client: FlameClient): ConversationArc
     async exportConversation(sessionId, format) {
       return client.sessions.export(asSessionId(sessionId), format);
     },
+    async exportTrajectory(sessionId) {
+      const response = await client.sessions.exportTrajectory({
+        sessionId: asSessionId(sessionId),
+      });
+      return JSON.stringify(response.trajectory, null, 2);
+    },
     async importConversation(artifact) {
       const { session } = await client.sessions.import(artifact as SessionArtifact);
       return {

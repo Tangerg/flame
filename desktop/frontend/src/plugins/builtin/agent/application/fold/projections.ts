@@ -274,7 +274,7 @@ export function argsText(tool: AgentToolInvocation): string {
   return Object.keys(tool.arguments).length > 0 ? JSON.stringify(tool.arguments, null, 2) : "";
 }
 
-export function toolStatus(item: Extract<AgentItem, { type: "toolCall" }>): ToolCallStatus {
+function toolStatus(item: Extract<AgentItem, { type: "toolCall" }>): ToolCallStatus {
   if (item.error?.code === "denied_by_user") return "denied";
   if (item.error || item.status === "incomplete") return "err";
   if (item.status === "running") return "running";
@@ -289,4 +289,28 @@ export function commandString(tool: AgentToolInvocation): string {
 export function editableArgs(tool: AgentToolInvocation): Record<string, unknown> | undefined {
   const cat = toolCategory(tool.name);
   return cat === "generic" || cat === "subagent" ? tool.arguments : undefined;
+}
+
+export function projectToolCall(
+  item: Extract<AgentItem, { type: "toolCall" }>,
+  previous?: ToolCall,
+): ToolCall {
+  return {
+    id: item.id,
+    runId: item.runId,
+    name: item.tool.name,
+    fn: toolLabel(item.tool),
+    ...(toolLabelKind(item.tool) === "path" ? { fnKind: "path" as const } : {}),
+    args:
+      item.status === "running"
+        ? (previous?.args ?? "") || argsText(item.tool)
+        : argsText(item.tool),
+    status: toolStatus(item),
+    result: previous?.result,
+    error: item.error ? (item.error.message ?? item.error.code) : undefined,
+    durationMillis: item.durationMillis,
+    safetyClass: item.safetyClass,
+    approvalDecision: item.approvalDecision,
+    ...toolFields(item.tool),
+  };
 }

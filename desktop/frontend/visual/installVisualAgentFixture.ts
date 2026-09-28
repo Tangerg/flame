@@ -10,6 +10,7 @@ import { installInterruptResponseCoordinator } from "@/plugins/builtin/agent/app
 import {
   configureAgentRuntimeGateway,
   type AgentRuntimeGateway,
+  type AgentSessionSnapshot,
 } from "@/plugins/builtin/agent/application/ports/runtimeGateway";
 import { projectAgentSessionSnapshot } from "@/plugins/builtin/agent/application/session/sessionSnapshot";
 import type { AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
@@ -60,6 +61,7 @@ import {
 import { queryClient } from "@/lib/queryClient";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 import { toolRenderingPlugins } from "@/main/builtinPlugins";
+import type { InterruptResumeInput } from "@/plugins/builtin/agent/application/ports/sessionView";
 import { DATA_PROVIDER, definePlugin } from "@/plugins/sdk";
 import { useRuntimeConnectionStore } from "@/plugins/builtin/runtime/adapters/runtimeConnectionProjection";
 import { visualFeatureCapabilities } from "./agentFixtureFacts";
@@ -134,8 +136,7 @@ function visualSession(state: VisualAgentState): AgentSessionSummary {
   };
 }
 
-function visualAgentRuntimeGateway(state: VisualAgentState): AgentRuntimeGateway {
-  const snapshot = AGENT_SESSION_SNAPSHOTS[state];
+function visualAgentRuntimeGateway(snapshot: AgentSessionSnapshot): AgentRuntimeGateway {
   return {
     createSession: async () => ({ id: VISUAL_SESSION_ID }),
     deleteSession: async () => undefined,
@@ -242,6 +243,7 @@ export async function installVisualAgentFixture(
   runtimeClient: () => FlameClient,
   state: VisualAgentState,
   commandOutput?: string,
+  snapshot: AgentSessionSnapshot = structuredClone(AGENT_SESSION_SNAPSHOTS[state]),
 ): Promise<AgentSessionView> {
   const projectless = state === "empty" || state === "runtime-down";
   queryClient.clear();
@@ -269,7 +271,7 @@ export async function installVisualAgentFixture(
   installVisualRuntimeServiceStatusPort(state === "runtime-down" ? "unavailable" : "ready");
   installAgentStatePorts();
   installWorkspaceNavigationPort(() => "https://visual.flame.test");
-  configureAgentRuntimeGateway(visualAgentRuntimeGateway(state));
+  configureAgentRuntimeGateway(visualAgentRuntimeGateway(snapshot));
 
   useAgentSessionStore.setState({
     openSessionIds: projectless ? [] : [VISUAL_SESSION_ID],
@@ -327,7 +329,7 @@ export async function installVisualAgentFixture(
     },
   }));
 
-  let view = projectAgentSessionSnapshot(AGENT_SESSION_SNAPSHOTS[state]);
+  let view = projectAgentSessionSnapshot(snapshot);
   if (commandOutput !== undefined) {
     const command = Object.values(view.toolCalls).find((tool) => tool.name === "shell");
     if (!command) throw new Error("The fixture needs a shell call to show command output");
@@ -365,6 +367,7 @@ export async function installVisualAgentFixture(
     return true;
   });
   store.setResume(VISUAL_SESSION_ID, (runId, responses, onSettled) => {
+    commitVisualInterruptResponses(snapshot, responses);
     document.documentElement.dataset.visualResumedRun = runId;
     document.documentElement.dataset.visualResumedItem = responses[0]?.itemId ?? "";
     document.documentElement.dataset.visualResumedResponse = JSON.stringify(
@@ -378,4 +381,57 @@ export async function installVisualAgentFixture(
   });
 
   return view;
+}
+
+function commitVisualInterruptResponses(
+  snapshot: AgentSessionSnapshot,
+  responses: InterruptResumeInput[],
+): void {
+  for (const { itemId, response } of responses) {
+    const group = snapshot.pendingInterruptSets.find((pending) =>
+      pending.interrupts.some((interrupt) => interrupt.itemId === itemId),
+    );
+    const interrupt = group?.interrupts.find((candidate) => candidate.itemId === itemId);
+    if (!interrupt || !group) continue;
+    if (interrupt.type === "approval" && response.type === "approval") {
+      const approved = response.decision === "approve";
+      snapshot.items = [
+        ...snapshot.items.filter((item) => item.id !== itemId),
+        {
+          type: "toolCall",
+          id: itemId,
+          runId: interrupt.runId,
+          startedAt: group.createdAt,
+          status: approved ? "running" : "completed",
+          approvalDecision: approved ? "approved" : "declined",
+          tool: {
+            ...interrupt.payload.tool,
+            arguments: response.editedArgs ?? interrupt.payload.tool.arguments,
+          },
+          ...(approved
+            ? {}
+            : { finishedAt: new Date().toISOString(), error: { code: "denied_by_user" } }),
+        },
+      ];
+    }
+    if (interrupt.type === "question" && response.type === "answer") {
+      snapshot.items = [
+        ...snapshot.items.filter((item) => item.id !== itemId),
+        {
+          type: "question",
+          id: itemId,
+          runId: interrupt.runId,
+          createdAt: group.createdAt,
+          status: "completed",
+          question: { ...interrupt.payload.question, answers: response.answers },
+        },
+      ];
+    }
+    snapshot.pendingInterruptSets = snapshot.pendingInterruptSets
+      .map((pending) => ({
+        ...pending,
+        interrupts: pending.interrupts.filter((candidate) => candidate.itemId !== itemId),
+      }))
+      .filter((pending) => pending.interrupts.length > 0);
+  }
 }

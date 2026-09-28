@@ -74,7 +74,13 @@ import {
 import { useAppearanceStore } from "@/plugins/builtin/theme/adapters/appearanceStore";
 import { useShellLayoutStore } from "@/plugins/builtin/workspace/adapters/shellLayoutStore";
 import { navigator } from "@/lib/navigation";
-import { VISUAL_SESSION_ID } from "./agentSessionSnapshots";
+import {
+  TRAJECTORY_KEY,
+  TRAJECTORY_RUN_KEY,
+  type TrajectoryEntry,
+} from "@/plugins/builtin/agent/application/run/trajectory";
+import { AGENT_SESSION_SNAPSHOTS, VISUAL_SESSION_ID } from "./agentSessionSnapshots";
+import type { AgentSessionSnapshot } from "@/plugins/builtin/agent/application/ports/runtimeGateway";
 import { installVisualAgentFixture } from "./installVisualAgentFixture";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 import {
@@ -280,11 +286,72 @@ function scaledReview(fileCount: number): WorkspaceDiff {
   return { baseline: REVIEW_DIFF.baseline, files };
 }
 
-function workspaceDataPlugin(state: VisualWorkspaceState, review: WorkspaceDiff): AnyPlugin {
+function visualTrajectory(snapshot: AgentSessionSnapshot): TrajectoryEntry[] {
+  const run = snapshot.runs[0]!;
+  const entries: TrajectoryEntry[] = [
+    ...snapshot.runs.map((value): TrajectoryEntry => ({
+      type: "run",
+      occurredAt: value.createdAt,
+      run: value,
+    })),
+    ...snapshot.items.map((item): TrajectoryEntry => ({
+      type: "item",
+      occurredAt: item.type === "toolCall" ? item.startedAt : item.createdAt,
+      item,
+    })),
+    {
+      type: "model",
+      occurredAt: "2026-07-31T08:00:01.000Z",
+      model: {
+        callId: "call_visual_inspect",
+        runId: run.id,
+        segmentId: "segment_visual",
+        state: "completed",
+        startedAt: "2026-07-31T08:00:01.000Z",
+        settledAt: "2026-07-31T08:00:02.420Z",
+        firstOutputLatencyMillis: 320,
+        usage: { inputTokens: 24_000, outputTokens: 310, cacheReadTokens: 18_000 },
+      },
+    },
+    {
+      type: "model",
+      occurredAt: "2026-07-31T08:00:06.000Z",
+      model: {
+        callId: "call_visual_recovered",
+        runId: run.id,
+        segmentId: "segment_visual",
+        state: "unknown",
+        startedAt: "2026-07-31T08:00:06.000Z",
+        settledAt: "2026-07-31T08:01:00.000Z",
+      },
+    },
+  ];
+  return entries.sort((left, right) => Date.parse(right.occurredAt) - Date.parse(left.occurredAt));
+}
+
+function workspaceDataPlugin(
+  state: VisualWorkspaceState,
+  review: WorkspaceDiff,
+  snapshot: AgentSessionSnapshot,
+): AnyPlugin {
   return definePlugin({
     name: "flame.visual.workspace-data",
     setup(ctx) {
       ctx.cleanup(installLocalWorkspaceActions(createBrowserHost(), () => false));
+      ctx.contribute(DATA_PROVIDER, {
+        key: TRAJECTORY_KEY,
+        fetcher: async () => ({ data: visualTrajectory(snapshot) }),
+      });
+      ctx.contribute(DATA_PROVIDER, {
+        key: TRAJECTORY_RUN_KEY,
+        fetcher: async (params) => {
+          const run = snapshot.runs.find(
+            (value) => value.id === (params as { runId: string }).runId,
+          );
+          if (!run) throw new Error("visual.trajectory.runMissing");
+          return run;
+        },
+      });
       ctx.contribute(DATA_PROVIDER, {
         key: HOOKS_KEY,
         fetcher: async () => ({ hooks: [], projectTrusted: false }),
@@ -497,16 +564,16 @@ export async function installVisualWorkspaceFixture(
   theme: VisualWorkspaceTheme,
   { pane = "appearance", fullViewId = FULL_VIEW_ID, reviewFiles }: VisualWorkspaceConfig = {},
 ): Promise<void> {
-  await installVisualAgentFixture(
-    runtimeClient,
+  const agentState =
     state === "dock-light"
       ? "running"
       : state === "dock-runs" || state === "dock-subagents"
         ? "delegated"
         : state === "dock-timeline"
           ? "tool-shells"
-          : "idle",
-  );
+          : "idle";
+  const snapshot = structuredClone(AGENT_SESSION_SNAPSHOTS[agentState]);
+  await installVisualAgentFixture(runtimeClient, agentState, undefined, snapshot);
 
   installWorkspaceErrorClassifier();
   installNotificationCentre(createBrowserHost());
@@ -584,7 +651,11 @@ export async function installVisualWorkspaceFixture(
     createUsagePlugin(runtimeClient),
     visualNotifier,
     visualShortcuts,
-    workspaceDataPlugin(state, reviewFiles === undefined ? REVIEW_DIFF : scaledReview(reviewFiles)),
+    workspaceDataPlugin(
+      state,
+      reviewFiles === undefined ? REVIEW_DIFF : scaledReview(reviewFiles),
+      snapshot,
+    ),
   ]);
 
   const root = document.documentElement;

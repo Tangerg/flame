@@ -33,6 +33,7 @@ func registerValueConstraints(s *Shapes) {
 	registerSessionValues(s)
 	registerArtifactValues(s)
 	registerRunValues(s)
+	registerTrajectoryValues(s)
 	registerPlanValues(s)
 	registerWorkspaceValues(s)
 	registerUsageValues(s)
@@ -163,6 +164,8 @@ func registerSessionValues(s *Shapes) {
 	for _, request := range []reflect.Type{
 		typeOf[protocol.GetSessionRequest](),
 		typeOf[protocol.GetSessionSnapshotRequest](),
+		typeOf[protocol.ListSessionTrajectoryRequest](),
+		typeOf[protocol.ExportTrajectoryRequest](),
 		typeOf[protocol.DeleteSessionRequest](),
 		typeOf[protocol.ExportSessionRequest](),
 	} {
@@ -189,6 +192,13 @@ func registerSessionValues(s *Shapes) {
 }
 
 func registerArtifactValues(s *Shapes) {
+	s.valueConstraint(FieldConstraintSpec{
+		GoType: typeOf[protocol.SessionTrajectory](),
+		Constraints: []FieldConstraint{
+			{Field: "schemaVersion", Kind: ConstraintMinimum, Limit: protocol.SessionTrajectoryVersion},
+			{Field: "schemaVersion", Kind: ConstraintMaximum, Limit: protocol.SessionTrajectoryVersion},
+		},
+	})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.ArtifactSession](),
 		Constraints: append(append(requiredResourceIdentity("id"), []FieldConstraint{
@@ -558,6 +568,10 @@ func registerUsageValues(s *Shapes) {
 }
 
 func registerFeedbackValues(s *Shapes) {
+	s.valueConstraint(FieldConstraintSpec{
+		GoType:      typeOf[protocol.FeedbackEntry](),
+		Constraints: append(append(resourceIdentity("sessionId"), resourceIdentity("runId")...), resourceIdentity("itemId")...),
+	})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.FeedbackRequest](),
 		Constraints: append(
@@ -1012,4 +1026,23 @@ func registerRuntimeValues(s *Shapes) {
 			{Field: "maxFileBytes", Kind: ConstraintPositive},
 		},
 	})
+}
+
+func registerTrajectoryValues(s *Shapes) {
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.ListModelInvocationsRequest](), Constraints: requiredResourceIdentity("runId")})
+	for _, owner := range []reflect.Type{typeOf[protocol.ModelInvocation](), typeOf[protocol.ToolAttempt]()} {
+		constraints := append(requiredResourceIdentity("runId"), requiredResourceIdentity("segmentId")...)
+		constraints = append(constraints,
+			FieldConstraint{Field: "callId", Kind: ConstraintPattern, Value: `^[A-Za-z0-9._~-]+$`},
+			FieldConstraint{Field: "callId", Kind: ConstraintMaxLength, Limit: runtimeidentity.MaximumExecutorIdentityBytes},
+		)
+		if owner == typeOf[protocol.ToolAttempt]() {
+			constraints = append(constraints, requiredResourceIdentity("itemId")...)
+		}
+		if owner == typeOf[protocol.ModelInvocation]() {
+			constraints = append(constraints, FieldConstraint{Field: "firstOutputLatencyMillis", Kind: ConstraintNonNegative})
+		}
+		s.valueConstraint(FieldConstraintSpec{GoType: owner, Constraints: constraints})
+	}
+	nonNegative[protocol.ModelInvocationUsage](s, "inputTokens", "outputTokens", "cacheReadTokens", "cacheWriteTokens", "reasoningTokens")
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AgentRunView } from "@/plugins/sdk/types/agentSessionView";
-import { agentRunDetail, agentRunPresentationState, agentRunStepCount } from "./runPresentation";
+import { agentRunDetail, agentRunPresentationState } from "./runPresentation";
 
 function run(overrides: Partial<AgentRunView> = {}): AgentRunView {
   return {
@@ -32,7 +32,6 @@ describe("Run presentation facts", () => {
       "waiting",
     );
     expect(agentRunDetail(run())).toBe("Inspecting tests");
-    expect(agentRunStepCount(run())).toBe(4);
   });
 
   it.each([
@@ -58,6 +57,5 @@ describe("Run presentation facts", () => {
           ? outcome.error.message
           : outcome.detail,
     );
-    expect(agentRunStepCount(finished)).toBe(3);
   });
 });

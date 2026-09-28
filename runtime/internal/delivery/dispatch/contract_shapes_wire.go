@@ -21,6 +21,8 @@ func buildShapes() *Shapes {
 	registerNotifications(s)
 	registerProblemUnion(s)
 	registerRunUnions(s)
+	registerTrajectoryUnion(s)
+	registerTrajectoryObservationConstraints(s)
 	registerItemUnions(s)
 	registerProviderUnions(s)
 	registerMCPUnions(s)
@@ -522,6 +524,7 @@ func registerObjectConstraints(s *Shapes) {
 	}{
 		{goType: typeOf[protocol.ModelTokenLimits](), requiredAny: []string{"contextWindow", "maxInputTokens", "maxOutputTokens"}},
 		{goType: typeOf[protocol.FeedbackRequest](), requiredAny: []string{"rating", "text"}},
+		{goType: typeOf[protocol.FeedbackEntry](), requiredAny: []string{"rating", "text"}},
 	} {
 		s.constraint(ObjectConstraintSpec{
 			GoType: constrained.goType,
@@ -1060,4 +1063,35 @@ func registerCarriedShapes(s *Shapes) {
 	// `params._meta` is stripped before typed params are decoded, so the walk cannot
 	// reach it, yet every client constructs it.
 	s.carriedShape(CarriedSpec{Carrier: "params._meta", GoType: typeOf[protocol.RequestMeta]()})
+}
+
+func registerTrajectoryUnion(s *Shapes) {
+	s.union(UnionSpec{
+		GoType: typeOf[protocol.TrajectoryEntry](), Discriminator: "type",
+		Variants: []VariantSpec{
+			{Tag: string(protocol.TrajectoryEntryRun), Required: []string{"occurredAt", "run"}},
+			{Tag: string(protocol.TrajectoryEntryModel), Required: []string{"occurredAt", "model"}},
+			{Tag: string(protocol.TrajectoryEntryItem), Required: []string{"occurredAt", "item"}},
+		},
+	})
+}
+
+func registerTrajectoryObservationConstraints(s *Shapes) {
+	s.constraint(ObjectConstraintSpec{
+		GoType: typeOf[protocol.ModelInvocation](),
+		Rules: []ConditionalRule{
+			{When: []delivery.FieldCondition{{Field: "state", Operator: delivery.OperatorEquals, Value: string(protocol.ModelInvocationStarted)}}, Forbidden: []string{"settledAt", "usage", "firstOutputLatencyMillis"}},
+			{When: []delivery.FieldCondition{{Field: "state", Operator: delivery.OperatorEquals, Value: string(protocol.ModelInvocationCompleted)}}, Required: []string{"settledAt"}},
+			{When: []delivery.FieldCondition{{Field: "state", Operator: delivery.OperatorEquals, Value: string(protocol.ModelInvocationFailed)}}, Required: []string{"settledAt"}, Forbidden: []string{"usage"}},
+			{When: []delivery.FieldCondition{{Field: "state", Operator: delivery.OperatorEquals, Value: string(protocol.ModelInvocationUnknown)}}, Required: []string{"settledAt"}, Forbidden: []string{"usage", "firstOutputLatencyMillis"}},
+		},
+	})
+	s.constraint(ObjectConstraintSpec{
+		GoType: typeOf[protocol.ToolAttempt](),
+		Rules: []ConditionalRule{
+			{When: []delivery.FieldCondition{{Field: "state", Operator: delivery.OperatorEquals, Value: string(protocol.ToolAttemptStarted)}}, Forbidden: []string{"settledAt"}},
+			{When: []delivery.FieldCondition{{Field: "state", Operator: delivery.OperatorEquals, Value: string(protocol.ToolAttemptCompleted)}}, Required: []string{"settledAt"}},
+			{When: []delivery.FieldCondition{{Field: "state", Operator: delivery.OperatorEquals, Value: string(protocol.ToolAttemptIncomplete)}}, Required: []string{"settledAt"}},
+		},
+	})
 }

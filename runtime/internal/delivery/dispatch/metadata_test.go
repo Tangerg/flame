@@ -103,17 +103,9 @@ func TestExtractRequestMetaRejectsNullMeta(t *testing.T) {
 	}
 }
 
-// TestBindRequestMetaRejectsUnsupportedProtocolVersion pins the cutover's refusal
-// half: this build serves ONE version, and everything else is turned away with the
-// same typed answer rather than served a best effort.
-//
-// "2026-07-19" is the version this runtime served until the cutover, and it is the
-// case that matters — a client that still ships it must be told so, not quietly
-// handed current frames it will fold as if they were the old shape. A far-past date
-// alone would not prove that the predecessor is rejected.
 func TestDispatchRejectsUnsupportedProtocolVersion(t *testing.T) {
 	for _, version := range []string{
-		"2026-07-19", // the version served before the current protocol cutover
+		"2026-09-26",
 		"2027-01-01", // a client newer than this build
 		"1900-01-01",
 		"not-a-date",

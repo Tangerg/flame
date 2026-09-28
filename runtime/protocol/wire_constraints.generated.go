@@ -2,6 +2,24 @@
 
 package protocol
 
+func (l ListSessionTrajectoryRequest) ValidateWire() error {
+	return collectWireViolations("ListSessionTrajectoryRequest",
+		requiredText("sessionId", l.SessionID),
+		identity("sessionId", l.SessionID),
+		maxLength("sessionId", l.SessionID, 256),
+		optionalPositiveNumber("limit", l.Limit),
+		maxLength("cursor", l.Cursor, 65536),
+	)
+}
+
+func (e ExportTrajectoryRequest) ValidateWire() error {
+	return collectWireViolations("ExportTrajectoryRequest",
+		requiredText("sessionId", e.SessionID),
+		identity("sessionId", e.SessionID),
+		maxLength("sessionId", e.SessionID, 256),
+	)
+}
+
 func (l ListSessionsRequest) ValidateWire() error {
 	return collectWireViolations("ListSessionsRequest",
 		maxLength("search", l.Search, 1024),
@@ -88,6 +106,9 @@ func (e ExportSessionRequest) ValidateWire() error {
 
 func (l ListModelInvocationsRequest) ValidateWire() error {
 	return collectWireViolations("ListModelInvocationsRequest",
+		requiredText("runId", l.RunID),
+		identity("runId", l.RunID),
+		maxLength("runId", l.RunID, 256),
 		optionalPositiveNumber("limit", l.Limit),
 		maxLength("cursor", l.Cursor, 65536),
 	)
@@ -564,7 +585,7 @@ func (p ProblemData) ValidateWire() error {
 		maximumNumber("retryAfterSeconds", p.RetryAfterSeconds, 9223372036),
 		nonEmptyItems("requiredCapabilities", p.RequiredCapabilities),
 		uniqueItems("requiredCapabilities", p.RequiredCapabilities),
-		unionTag("type", string(p.Type), []string{"agent_stuck", "capability_not_negotiated", "checkpoint_conflict", "checkpoint_unavailable", "child_run_canceled", "denied_by_user", "idempotency_conflict", "idempotency_in_progress", "idempotency_store_mismatch", "internal_error", "interrupt_not_open", "invalid_api_key", "invalid_params", "invalid_protocol_version", "invalid_request", "item_not_found", "mcp_authorization_attempt_not_found", "mcp_authorization_failed", "mcp_authorization_required", "mcp_dial_failed", "mcp_server_already_exists", "mcp_server_disabled", "mcp_server_not_found", "method_not_found", "path_outside_root", "prompt_source_too_large", "provider_error", "provider_not_configured", "provider_rejected", "provider_test_failed", "provider_unavailable", "rate_limited", "replay_cursor_invalid", "replay_unavailable", "revision_conflict", "run_finished", "run_lost", "run_not_found", "run_not_root", "run_waiting", "schedule_not_found", "session_busy", "session_has_active_run", "session_not_found", "skill_not_found", "skill_unavailable", "stale_segment", "timeout", "tool_canceled", "tool_failed", "unsupported_mime", "vcs_unavailable", "workspace_unavailable"}, "^plugin:[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$"),
+		unionTag("type", string(p.Type), []string{"agent_stuck", "capability_not_negotiated", "checkpoint_conflict", "checkpoint_unavailable", "child_run_canceled", "denied_by_user", "export_too_large", "idempotency_conflict", "idempotency_in_progress", "idempotency_store_mismatch", "internal_error", "interrupt_not_open", "invalid_api_key", "invalid_params", "invalid_protocol_version", "invalid_request", "item_not_found", "mcp_authorization_attempt_not_found", "mcp_authorization_failed", "mcp_authorization_required", "mcp_dial_failed", "mcp_server_already_exists", "mcp_server_disabled", "mcp_server_not_found", "method_not_found", "path_outside_root", "prompt_source_too_large", "provider_error", "provider_not_configured", "provider_rejected", "provider_test_failed", "provider_unavailable", "rate_limited", "replay_cursor_invalid", "replay_unavailable", "revision_conflict", "run_finished", "run_lost", "run_not_found", "run_not_root", "run_waiting", "schedule_not_found", "session_busy", "session_has_active_run", "session_not_found", "skill_not_found", "skill_unavailable", "stale_segment", "timeout", "tool_canceled", "tool_failed", "unsupported_mime", "vcs_unavailable", "workspace_unavailable"}, "^plugin:[a-z0-9][a-z0-9._-]*/[a-z0-9][a-z0-9._-]*$"),
 		forbiddenWhen(wireFieldEquals(p, "type", "agent_stuck"), "requiredCapabilities", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "agent_stuck"), "retryAfterSeconds", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "agent_stuck"), "errors", p),
@@ -589,6 +610,10 @@ func (p ProblemData) ValidateWire() error {
 		forbiddenWhen(wireFieldEquals(p, "type", "denied_by_user"), "retryAfterSeconds", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "denied_by_user"), "errors", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "denied_by_user"), "activeRun", p),
+		forbiddenWhen(wireFieldEquals(p, "type", "export_too_large"), "requiredCapabilities", p),
+		forbiddenWhen(wireFieldEquals(p, "type", "export_too_large"), "retryAfterSeconds", p),
+		forbiddenWhen(wireFieldEquals(p, "type", "export_too_large"), "errors", p),
+		forbiddenWhen(wireFieldEquals(p, "type", "export_too_large"), "activeRun", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "idempotency_conflict"), "requiredCapabilities", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "idempotency_conflict"), "retryAfterSeconds", p),
 		forbiddenWhen(wireFieldEquals(p, "type", "idempotency_conflict"), "errors", p),
@@ -839,6 +864,24 @@ func (s SegmentOutcome) ValidateWire() error {
 		requiredWhen(wireFieldEquals(s, "type", "lost"), "error", s),
 		forbiddenWhen(wireFieldEquals(s, "type", "lost"), "interrupts", s),
 		forbiddenWhen(wireFieldEquals(s, "type", "lost"), "detail", s),
+	)
+}
+
+func (t TrajectoryEntry) ValidateWire() error {
+	return collectWireViolations("TrajectoryEntry",
+		closedEnum("type", string(t.Type), []string{"run", "model", "item"}, false),
+		requiredWhen(wireFieldEquals(t, "type", "run"), "occurredAt", t),
+		requiredWhen(wireFieldEquals(t, "type", "run"), "run", t),
+		forbiddenWhen(wireFieldEquals(t, "type", "run"), "model", t),
+		forbiddenWhen(wireFieldEquals(t, "type", "run"), "item", t),
+		requiredWhen(wireFieldEquals(t, "type", "model"), "occurredAt", t),
+		requiredWhen(wireFieldEquals(t, "type", "model"), "model", t),
+		forbiddenWhen(wireFieldEquals(t, "type", "model"), "run", t),
+		forbiddenWhen(wireFieldEquals(t, "type", "model"), "item", t),
+		requiredWhen(wireFieldEquals(t, "type", "item"), "occurredAt", t),
+		requiredWhen(wireFieldEquals(t, "type", "item"), "item", t),
+		forbiddenWhen(wireFieldEquals(t, "type", "item"), "run", t),
+		forbiddenWhen(wireFieldEquals(t, "type", "item"), "model", t),
 	)
 }
 
@@ -1622,12 +1665,69 @@ func (d DiffRow) ValidateWire() error {
 	)
 }
 
+func (m ModelInvocation) ValidateWire() error {
+	return collectWireViolations("ModelInvocation",
+		requiredText("runId", m.RunID),
+		identity("runId", m.RunID),
+		maxLength("runId", m.RunID, 256),
+		requiredText("segmentId", m.SegmentID),
+		identity("segmentId", m.SegmentID),
+		maxLength("segmentId", m.SegmentID, 256),
+		requiredTextPattern("callId", m.CallID, "^[A-Za-z0-9._~-]+$"),
+		maxLength("callId", m.CallID, 256),
+		optionalNonNegativeNumber("firstOutputLatencyMillis", m.FirstOutputLatencyMillis),
+		closedEnum("state", string(m.State), []string{"started", "completed", "failed", "unknown"}, false),
+		forbiddenWhen(wireFieldEquals(m, "state", "started"), "settledAt", m),
+		forbiddenWhen(wireFieldEquals(m, "state", "started"), "usage", m),
+		forbiddenWhen(wireFieldEquals(m, "state", "started"), "firstOutputLatencyMillis", m),
+		requiredWhen(wireFieldEquals(m, "state", "completed"), "settledAt", m),
+		requiredWhen(wireFieldEquals(m, "state", "failed"), "settledAt", m),
+		forbiddenWhen(wireFieldEquals(m, "state", "failed"), "usage", m),
+		requiredWhen(wireFieldEquals(m, "state", "unknown"), "settledAt", m),
+		forbiddenWhen(wireFieldEquals(m, "state", "unknown"), "usage", m),
+		forbiddenWhen(wireFieldEquals(m, "state", "unknown"), "firstOutputLatencyMillis", m),
+	)
+}
+
+func (t ToolAttempt) ValidateWire() error {
+	return collectWireViolations("ToolAttempt",
+		requiredText("runId", t.RunID),
+		identity("runId", t.RunID),
+		maxLength("runId", t.RunID, 256),
+		requiredText("segmentId", t.SegmentID),
+		identity("segmentId", t.SegmentID),
+		maxLength("segmentId", t.SegmentID, 256),
+		requiredTextPattern("callId", t.CallID, "^[A-Za-z0-9._~-]+$"),
+		maxLength("callId", t.CallID, 256),
+		requiredText("itemId", t.ItemID),
+		identity("itemId", t.ItemID),
+		maxLength("itemId", t.ItemID, 256),
+		closedEnum("state", string(t.State), []string{"started", "completed", "incomplete"}, false),
+		forbiddenWhen(wireFieldEquals(t, "state", "started"), "settledAt", t),
+		requiredWhen(wireFieldEquals(t, "state", "completed"), "settledAt", t),
+		requiredWhen(wireFieldEquals(t, "state", "incomplete"), "settledAt", t),
+	)
+}
+
 func (m ModelTokenLimits) ValidateWire() error {
 	return collectWireViolations("ModelTokenLimits",
 		optionalPositiveNumber("contextWindow", m.ContextWindow),
 		optionalPositiveNumber("maxInputTokens", m.MaxInputTokens),
 		optionalPositiveNumber("maxOutputTokens", m.MaxOutputTokens),
 		requiredAnyWhen(true, []string{"contextWindow", "maxInputTokens", "maxOutputTokens"}, m),
+	)
+}
+
+func (f FeedbackEntry) ValidateWire() error {
+	return collectWireViolations("FeedbackEntry",
+		identity("sessionId", f.SessionID),
+		maxLength("sessionId", f.SessionID, 256),
+		identity("runId", f.RunID),
+		maxLength("runId", f.RunID, 256),
+		identity("itemId", f.ItemID),
+		maxLength("itemId", f.ItemID, 256),
+		closedEnum("rating", string(f.Rating), []string{"positive", "negative"}, true),
+		requiredAnyWhen(true, []string{"rating", "text"}, f),
 	)
 }
 
@@ -2045,6 +2145,13 @@ func (p PageContinuation) ValidateWire() error {
 	)
 }
 
+func (s SessionTrajectory) ValidateWire() error {
+	return collectWireViolations("SessionTrajectory",
+		minimumNumber("schemaVersion", s.SchemaVersion, 1),
+		maximumNumber("schemaVersion", s.SchemaVersion, 1),
+	)
+}
+
 func (s SessionArtifact) ValidateWire() error {
 	return collectWireViolations("SessionArtifact",
 		minimumNumber("version", s.Version, 28),
@@ -2179,6 +2286,16 @@ func (s SteerRunResponse) ValidateWire() error {
 		requiredText("userItemId", s.UserItemID),
 		identity("userItemId", s.UserItemID),
 		maxLength("userItemId", s.UserItemID, 256),
+	)
+}
+
+func (m ModelInvocationUsage) ValidateWire() error {
+	return collectWireViolations("ModelInvocationUsage",
+		nonNegativeNumber("inputTokens", m.InputTokens),
+		nonNegativeNumber("outputTokens", m.OutputTokens),
+		optionalNonNegativeNumber("cacheReadTokens", m.CacheReadTokens),
+		optionalNonNegativeNumber("cacheWriteTokens", m.CacheWriteTokens),
+		optionalNonNegativeNumber("reasoningTokens", m.ReasoningTokens),
 	)
 }
 
@@ -2518,12 +2635,6 @@ func (i InterruptPayload) ValidateWire() error {
 func (l ListItemsResponse) ValidateWire() error {
 	return collectWireViolations("ListItemsResponse",
 		maxLength("nextCursor", l.NextCursor, 65536),
-	)
-}
-
-func (m ModelInvocation) ValidateWire() error {
-	return collectWireViolations("ModelInvocation",
-		closedEnum("state", string(m.State), []string{"started", "completed", "failed", "unknown"}, false),
 	)
 }
 

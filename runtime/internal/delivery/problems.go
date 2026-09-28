@@ -47,6 +47,7 @@ var problemSpecs = mustProblemSpecs([]problemSpec{
 	declaredProblem(protocol.ErrCheckpointUnavailable, protocol.RecoveryPromptUser),
 	declaredProblem(protocol.ErrCheckpointConflict, protocol.RecoveryPromptUser),
 	declaredProblem(protocol.ErrPromptSourceTooLarge, protocol.RecoveryPromptUser),
+	declaredProblem(protocol.ErrExportTooLarge, protocol.RecoveryPromptUser),
 	declaredProblem(protocol.ErrUnsupportedMime, protocol.RecoveryPromptUser),
 	declaredProblem(protocol.ErrPathOutsideRoot, protocol.RecoveryPromptUser),
 	declaredProblem(protocol.ErrVcsUnavailable, protocol.RecoveryPromptUser),

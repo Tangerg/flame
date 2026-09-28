@@ -64,17 +64,22 @@ describe("the capability preflight", () => {
     expect(unnegotiated("sessions.list", {}, advertising({}))).toEqual([]);
   });
 
-  it("requires the request to opt into a clientOptIn feature", () => {
-    const subagents = advertising({ subagents: true }, ["subagents"]);
-    const params = { includeDescendants: true };
+  it.each(["runs.list", "sessions.trajectory"] as const)(
+    "%s requires subagent opt-in only when descendants are requested",
+    (method) => {
+      const subagents = advertising({ subagents: true }, ["subagents"]);
+      const params = { includeDescendants: true };
 
-    expect(unnegotiated("runs.list", params, subagents)).toEqual(["subagents"]);
-    expect(
-      unnegotiated("runs.list", params, subagents, {
-        features: { subagents: { enabled: true } },
-      }),
-    ).toEqual([]);
-  });
+      expect(unnegotiated(method, {}, subagents)).toEqual([]);
+      expect(unnegotiated(method, { includeDescendants: false }, subagents)).toEqual([]);
+      expect(unnegotiated(method, params, subagents)).toEqual(["subagents"]);
+      expect(
+        unnegotiated(method, params, subagents, {
+          features: { subagents: { enabled: true } },
+        }),
+      ).toEqual([]);
+    },
+  );
 
   describe("a conditional rule only bites the gated request", () => {
     const noWatch = advertising({ fileWatch: false });

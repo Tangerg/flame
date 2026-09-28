@@ -2,7 +2,6 @@ package recovery
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"reflect"
 	"testing"
@@ -576,10 +575,10 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 		t.Fatalf("recovered model invocation = %q, %v, want retained unknown outcome", modelState, scanErr)
 	}
 	if scanErr := db.QueryRowContext(ctx,
-		`SELECT call_id FROM tool_invocations WHERE call_id = ? AND segment_id = ?`,
+		`SELECT state FROM tool_invocations WHERE call_id = ? AND segment_id = ?`,
 		"tool_call_lost", "segment",
-	).Scan(&toolState); !errors.Is(scanErr, sql.ErrNoRows) {
-		t.Fatalf("recovered Tool invocation read = %v, want consumed journal row", scanErr)
+	).Scan(&toolState); scanErr != nil || toolState != "incomplete" {
+		t.Fatalf("recovered Tool invocation = %q, %v, want retained incomplete observation", toolState, scanErr)
 	}
 	if _, loadCheckpointErr := checkpointStore.LoadCheckpoint(ctx, checkpoint.RootMemberID); !errors.Is(loadCheckpointErr, runs.ErrExecutorCheckpointNotFound) {
 		t.Fatalf("orphan checkpoint after recovery = %v", loadCheckpointErr)

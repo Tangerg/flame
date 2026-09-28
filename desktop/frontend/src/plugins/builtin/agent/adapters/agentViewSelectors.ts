@@ -7,7 +7,6 @@ import type {
   AgentSessionView,
   Message,
   TimelineEntry,
-  ToolCall,
 } from "@/plugins/sdk/types/agentSessionView";
 import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
 import {
@@ -75,10 +74,6 @@ export function useAgentAction(
 ): StopCurrentRootRunAction | SendAgentInputAction | null {
   const sessionId = navigator().use((location) => location.session);
   return useAgentStore((state) => state.sessions[sessionId]?.[kind] ?? null);
-}
-
-export function useAgentToolCalls(): Record<string, ToolCall> {
-  return useActiveAgentView((view) => view.toolCalls);
 }
 
 export function useRootNarrativeMessages(): Message[] {

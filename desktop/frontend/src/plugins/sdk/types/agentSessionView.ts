@@ -131,7 +131,7 @@ export interface AgentRunView {
   finishedAt: string | null;
 }
 
-export type TimelineEntryKind =
+type TimelineEntryKind =
   | "run-start"
   | "run-end"
   | "run-error"

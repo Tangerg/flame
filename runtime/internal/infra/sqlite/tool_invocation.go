@@ -20,9 +20,8 @@ const (
 
 func (t toolInvocationState) databaseValue() string { return string(t) }
 
-// ToolInvocationStore is the SQLite operational journal for Tool attempts.
-// Arguments and results deliberately stay in the canonical Transcript Item;
-// terminal rows are Run-bounded idempotency tombstones.
+// Arguments and results stay in the canonical Transcript Item. Each retained
+// attempt records one Segment's observation, not the Tool's external outcome.
 type ToolInvocationStore struct{ db *sql.DB }
 
 func NewToolInvocationStore(db *sql.DB) *ToolInvocationStore {
@@ -205,4 +204,58 @@ func validateToolInvocationIdentity(sessionID, runID, segmentID, callID, itemID 
 		return fmt.Errorf("sqlite: Tool invocation: %w", err)
 	}
 	return nil
+}
+
+type ToolInvocationRecord struct {
+	CallID     string
+	ItemID     string
+	RunID      string
+	SegmentID  string
+	State      string
+	StartedAt  time.Time
+	FinishedAt time.Time
+}
+
+// The export reader bounds the complete Session's stored bytes and record count
+// in its transaction before reading this untruncated evidence collection.
+func (t *ToolInvocationStore) ListSession(ctx context.Context, sessionID string) ([]ToolInvocationRecord, error) {
+	if err := validateSessionResource("tool invocation", sessionID); err != nil {
+		return nil, err
+	}
+	rows, err := conn(ctx, t.db).QueryContext(ctx, `
+		SELECT attempt.call_id, attempt.item_id, attempt.run_id, attempt.segment_id,
+		       attempt.state, attempt.started_at, attempt.finished_at, owner.session_id
+		  FROM tool_invocations attempt
+		  LEFT JOIN runs owner ON owner.run_id = attempt.run_id
+		 WHERE attempt.session_id = ?
+		 ORDER BY attempt.started_at, attempt.call_id, attempt.segment_id`, sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("sqlite: list session tool invocations: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	var records []ToolInvocationRecord
+	for rows.Next() {
+		var record ToolInvocationRecord
+		var startedAt, finishedAt int64
+		var ownerSessionID sql.NullString
+		if err := rows.Scan(&record.CallID, &record.ItemID, &record.RunID, &record.SegmentID,
+			&record.State, &startedAt, &finishedAt, &ownerSessionID); err != nil {
+			return nil, fmt.Errorf("sqlite: scan session tool invocation: %w", err)
+		}
+		if !ownerSessionID.Valid || ownerSessionID.String != sessionID {
+			return nil, errors.New("sqlite: tool invocation run belongs to another session")
+		}
+		if err := validateToolInvocationIdentity(sessionID, record.RunID, record.SegmentID, record.CallID, record.ItemID); err != nil {
+			return nil, fmt.Errorf("sqlite: restore tool invocation: %w", err)
+		}
+		record.StartedAt = time.Unix(0, startedAt).UTC()
+		if finishedAt != 0 {
+			record.FinishedAt = time.Unix(0, finishedAt).UTC()
+		}
+		records = append(records, record)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("sqlite: iterate session tool invocations: %w", err)
+	}
+	return records, nil
 }

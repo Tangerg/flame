@@ -119,6 +119,10 @@
               "signature": "func(ctx context.Context, request protocol.ExportSessionRequest, options CallOptions) (*protocol.ExportSessionResponse, error)"
             },
             {
+              "name": "ExportTrajectory",
+              "signature": "func(ctx context.Context, request protocol.ExportTrajectoryRequest, options CallOptions) (*protocol.ExportTrajectoryResponse, error)"
+            },
+            {
               "name": "ForgetApprovalRule",
               "signature": "func(ctx context.Context, request protocol.ForgetApprovalRuleRequest, options CommandOptions) error"
             },
@@ -249,6 +253,10 @@
             {
               "name": "ListSchedules",
               "signature": "func(ctx context.Context, request protocol.PageQuery, options CallOptions) (*protocol.Page[protocol.Schedule], error)"
+            },
+            {
+              "name": "ListSessionTrajectory",
+              "signature": "func(ctx context.Context, request protocol.ListSessionTrajectoryRequest, options CallOptions) (*protocol.Page[protocol.TrajectoryEntry], error)"
             },
             {
               "name": "ListSessions",
@@ -559,6 +567,10 @@
               "signature": "func(ctx context.Context, request protocol.ExportSessionRequest, options CallOptions) (*protocol.ExportSessionResponse, error)"
             },
             {
+              "name": "ExportTrajectory",
+              "signature": "func(ctx context.Context, request protocol.ExportTrajectoryRequest, options CallOptions) (*protocol.ExportTrajectoryResponse, error)"
+            },
+            {
               "name": "ForgetApprovalRule",
               "signature": "func(ctx context.Context, request protocol.ForgetApprovalRuleRequest, options CommandOptions) error"
             },
@@ -689,6 +701,10 @@
             {
               "name": "ListSchedules",
               "signature": "func(ctx context.Context, request protocol.PageQuery, options CallOptions) (*protocol.Page[protocol.Schedule], error)"
+            },
+            {
+              "name": "ListSessionTrajectory",
+              "signature": "func(ctx context.Context, request protocol.ListSessionTrajectoryRequest, options CallOptions) (*protocol.Page[protocol.TrajectoryEntry], error)"
             },
             {
               "name": "ListSessions",
@@ -1912,7 +1928,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-09-26\""
+          "value": "\"2026-09-28\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -2210,6 +2226,11 @@
           "value": "\"waiting\""
         },
         {
+          "name": "SessionTrajectoryVersion",
+          "type": "untyped int",
+          "value": "1"
+        },
+        {
           "name": "SkillLifecycleActive",
           "type": "SkillLifecycle",
           "value": "\"active\""
@@ -2285,6 +2306,21 @@
           "value": "\"segment.progress\""
         },
         {
+          "name": "ToolAttemptCompleted",
+          "type": "ToolAttemptState",
+          "value": "\"completed\""
+        },
+        {
+          "name": "ToolAttemptIncomplete",
+          "type": "ToolAttemptState",
+          "value": "\"incomplete\""
+        },
+        {
+          "name": "ToolAttemptStarted",
+          "type": "ToolAttemptState",
+          "value": "\"started\""
+        },
+        {
           "name": "TopicAgentMemoryChanged",
           "type": "RuntimeTopic",
           "value": "\"agentMemory.changed\""
@@ -2350,6 +2386,21 @@
           "value": "\"skills.changed\""
         },
         {
+          "name": "TrajectoryEntryItem",
+          "type": "TrajectoryEntryType",
+          "value": "\"item\""
+        },
+        {
+          "name": "TrajectoryEntryModel",
+          "type": "TrajectoryEntryType",
+          "value": "\"model\""
+        },
+        {
+          "name": "TrajectoryEntryRun",
+          "type": "TrajectoryEntryType",
+          "value": "\"run\""
+        },
+        {
           "name": "WorkspaceAvailable",
           "type": "WorkspaceAvailability",
           "value": "\"available\""
@@ -2371,6 +2422,10 @@
         },
         {
           "name": "ErrCheckpointUnavailable",
+          "type": "error"
+        },
+        {
+          "name": "ErrExportTooLarge",
           "type": "error"
         },
         {
@@ -3822,6 +3877,34 @@
           ]
         },
         {
+          "name": "ExportTrajectoryRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "SessionID",
+              "type": "string",
+              "tag": "json:\"sessionId\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "ExportTrajectoryResponse",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Trajectory",
+              "type": "SessionTrajectory",
+              "tag": "json:\"trajectory\""
+            }
+          ]
+        },
+        {
           "name": "Feature",
           "kind": "struct",
           "fields": [
@@ -3868,6 +3951,48 @@
               "name": "Enabled",
               "type": "bool",
               "tag": "json:\"enabled\""
+            }
+          ]
+        },
+        {
+          "name": "FeedbackEntry",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "SessionID",
+              "type": "string",
+              "tag": "json:\"sessionId,omitempty\""
+            },
+            {
+              "name": "RunID",
+              "type": "string",
+              "tag": "json:\"runId,omitempty\""
+            },
+            {
+              "name": "ItemID",
+              "type": "string",
+              "tag": "json:\"itemId,omitempty\""
+            },
+            {
+              "name": "Rating",
+              "type": "FeedbackRating",
+              "tag": "json:\"rating,omitempty\""
+            },
+            {
+              "name": "Text",
+              "type": "string",
+              "tag": "json:\"text,omitempty\""
+            },
+            {
+              "name": "CreatedAt",
+              "type": "time.Time",
+              "tag": "json:\"createdAt\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },
@@ -5248,6 +5373,32 @@
           ]
         },
         {
+          "name": "ListSessionTrajectoryRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "SessionID",
+              "type": "string",
+              "tag": "json:\"sessionId\""
+            },
+            {
+              "name": "IncludeDescendants",
+              "type": "bool",
+              "tag": "json:\"includeDescendants,omitzero\""
+            },
+            {
+              "name": "PageQuery",
+              "type": "PageQuery"
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
           "name": "ListSessionsRequest",
           "kind": "struct",
           "fields": [
@@ -6012,6 +6163,12 @@
               "name": "ReasoningTokens",
               "type": "*int64",
               "tag": "json:\"reasoningTokens,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },
@@ -7636,6 +7793,78 @@
           "underlying": "string"
         },
         {
+          "name": "SessionTrajectory",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "SchemaVersion",
+              "type": "int",
+              "tag": "json:\"schemaVersion\""
+            },
+            {
+              "name": "CollectedAt",
+              "type": "time.Time",
+              "tag": "json:\"collectedAt\""
+            },
+            {
+              "name": "Session",
+              "type": "Session",
+              "tag": "json:\"session\""
+            },
+            {
+              "name": "Runs",
+              "type": "[]RunRef",
+              "tag": "json:\"runs\""
+            },
+            {
+              "name": "Items",
+              "type": "[]Item",
+              "tag": "json:\"items\""
+            },
+            {
+              "name": "Messages",
+              "type": "[]jsontext.Value",
+              "tag": "json:\"messages\""
+            },
+            {
+              "name": "ToolResults",
+              "type": "[]ArtifactToolResult",
+              "tag": "json:\"toolResults\""
+            },
+            {
+              "name": "Plan",
+              "type": "[]PlanStep",
+              "tag": "json:\"plan\""
+            },
+            {
+              "name": "ModelInvocations",
+              "type": "[]ModelInvocation",
+              "tag": "json:\"modelInvocations\""
+            },
+            {
+              "name": "ToolAttempts",
+              "type": "[]ToolAttempt",
+              "tag": "json:\"toolAttempts\""
+            },
+            {
+              "name": "Feedback",
+              "type": "[]FeedbackEntry",
+              "tag": "json:\"feedback\""
+            },
+            {
+              "name": "Limitations",
+              "type": "[]string",
+              "tag": "json:\"limitations\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
           "name": "SessionUsageRequest",
           "kind": "struct",
           "fields": [
@@ -8269,6 +8498,58 @@
           ]
         },
         {
+          "name": "ToolAttempt",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "CallID",
+              "type": "string",
+              "tag": "json:\"callId\""
+            },
+            {
+              "name": "ItemID",
+              "type": "string",
+              "tag": "json:\"itemId\""
+            },
+            {
+              "name": "RunID",
+              "type": "string",
+              "tag": "json:\"runId\""
+            },
+            {
+              "name": "SegmentID",
+              "type": "string",
+              "tag": "json:\"segmentId\""
+            },
+            {
+              "name": "State",
+              "type": "ToolAttemptState",
+              "tag": "json:\"state\""
+            },
+            {
+              "name": "StartedAt",
+              "type": "time.Time",
+              "tag": "json:\"startedAt\""
+            },
+            {
+              "name": "SettledAt",
+              "type": "time.Time",
+              "tag": "json:\"settledAt,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "ToolAttemptState",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
           "name": "ToolInvocation",
           "kind": "struct",
           "fields": [
@@ -8331,6 +8612,48 @@
               "signature": "func() error"
             }
           ]
+        },
+        {
+          "name": "TrajectoryEntry",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Type",
+              "type": "TrajectoryEntryType",
+              "tag": "json:\"type\""
+            },
+            {
+              "name": "OccurredAt",
+              "type": "time.Time",
+              "tag": "json:\"occurredAt\""
+            },
+            {
+              "name": "Run",
+              "type": "*RunRef",
+              "tag": "json:\"run,omitzero\""
+            },
+            {
+              "name": "Model",
+              "type": "*ModelInvocation",
+              "tag": "json:\"model,omitzero\""
+            },
+            {
+              "name": "Item",
+              "type": "*Item",
+              "tag": "json:\"item,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "TrajectoryEntryType",
+          "kind": "defined",
+          "underlying": "string"
         },
         {
           "name": "UnresolvedEffect",

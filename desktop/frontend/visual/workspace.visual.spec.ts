@@ -114,9 +114,9 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
   }
   if (state === "dock-runs") {
     const view = page.locator(".agent-workspace-view:visible");
-    await expect(view).toContainText("7 runs");
-    await expect(view).toContainText("parent run_child");
-    await expect(view).toContainText("Tool started");
+    await expect(view.locator('[data-trajectory-kind="run"]')).toHaveCount(7);
+    await expect(view).toContainText("run_nested");
+    await expect(view).toContainText("grid-cols-subgrid");
     for (const status of ["Canceled", "Error", "Finished"]) {
       await expect(view.getByText(status, { exact: true }).first()).toBeVisible();
     }
@@ -124,8 +124,9 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
   }
   if (state === "dock-timeline") {
     const view = page.locator(".agent-workspace-view:visible");
-    await expect(view).toContainText("8 events");
-    await expect(view.getByRole("img", { name: "err" })).toBeVisible();
+    await expect(view).toContainText("Counts and filters apply to this page");
+    await expect(view.getByText("Outcome unknown", { exact: true })).toBeVisible();
+    await expect(view.getByText("Failed", { exact: true }).first()).toBeVisible();
     return;
   }
   const CATALOGUE_READY: Partial<Record<VisualWorkspaceState, string>> = {
@@ -387,8 +388,8 @@ test("file and timeline tabs render through their production view plugins", asyn
   await page.getByRole("tab", { name: "Timeline" }).click();
   await expect(page.getByTestId("active-dock-view")).toHaveText("timeline");
   await expect(fileView.getByText(/const currentWidth = readDockWidth/)).toBeHidden();
-  await expect(page.getByText("Root run", { exact: true })).toBeVisible();
-  await expect(page.getByText("run_root", { exact: true })).toBeVisible();
+  await expect(page.locator('[data-trajectory-record="run:run_root"]')).toBeVisible();
+  await expect(page.locator('[data-dock-view-id="timeline"]')).toContainText("run_root");
 });
 
 test("automatic dock sizing never records a user preference", async ({ page }) => {
@@ -864,16 +865,19 @@ test("every dock state renders its view inside the frame that paints one", async
 });
 
 for (const answer of [
-  { button: "Allow once", mark: "approved" },
-  { button: "Deny", mark: "declined" },
+  { button: "Allow once", mark: "Approved" },
+  { button: "Deny", mark: "Declined" },
 ] as const) {
-  test(`answering an approval with ${answer.button} writes a settled entry`, async ({ page }) => {
+  test(`answering an approval with ${answer.button} exposes its retained tool decision`, async ({
+    page,
+  }) => {
     await openWorkspace(page, { state: "dock-runs" });
     await waitForWorkspaceState(page, "dock-runs");
 
     const timeline = page.locator("[data-dock-view-id='timeline']");
-    await expect(timeline.getByText("Approval requested")).toBeVisible();
-    await expect(timeline.getByRole("img", { name: answer.mark })).toHaveCount(0);
+    await expect(timeline.getByRole("button", { name: "Inspect item_child_approval" })).toHaveCount(
+      0,
+    );
 
     await page
       .locator('[data-slot="delegated-run-link"][data-run-id="run_child"]')
@@ -886,8 +890,10 @@ for (const answer of [
     await expect(subagent.getByRole("button", { name: answer.button, exact: true })).toHaveCount(0);
     await page.getByRole("tab", { name: "Timeline", exact: true }).click();
 
-    await expect(timeline.getByRole("img", { name: answer.mark })).toBeVisible();
-    const settled = timeline.getByText("Approval settled").locator("xpath=ancestor::*[2]");
+    const settled = timeline.locator('[data-trajectory-record="item:item_child_approval"]');
     await expect(settled).toContainText("go list -deps ./...");
+    await settled.getByRole("button", { name: "Inspect item_child_approval" }).click();
+    await expect(settled.getByText("Approval", { exact: true })).toBeVisible();
+    await expect(settled.getByText(answer.mark, { exact: true }).last()).toBeVisible();
   });
 }

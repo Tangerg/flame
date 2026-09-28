@@ -1,195 +1,315 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
-import type { AgentRunView, TimelineEntry, ToolCall } from "@/plugins/sdk/types/agentSessionView";
-import { WORKSPACE_VIEW } from "@/plugins/sdk/kernelPoints";
-import { lookupExtensionPoint } from "@/plugins/sdk/selectors/extensions";
-import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
+import type { AgentRunFact } from "@/plugins/sdk";
+import type { TrajectoryEntry } from "@/plugins/builtin/agent/public/run";
 
 const projection = vi.hoisted(() => ({
   runtimeAvailable: false,
-  child: null as AgentRunView | null,
+  includeDescendants: true,
+  sessionId: "session_one",
+  entries: [] as TrajectoryEntry[],
+  nextCursor: undefined as string | undefined,
+  read: vi.fn(),
+  runContext: vi.fn(),
+  refetch: vi.fn(),
   openSubagent: vi.fn(),
   locateTool: vi.fn(),
   cancelRun: vi.fn(),
-  timeline: [] as TimelineEntry[],
-  tools: {} as Record<string, ToolCall>,
+  exportTrajectory: vi.fn(),
 }));
 
-const running: AgentRunView = {
-  id: "run-1",
-  sessionId: "session-1",
+const run: AgentRunFact = {
+  id: "run_one",
+  sessionId: "session_one",
   parentRunId: null,
-  rootRunId: "run-1",
+  rootRunId: "run_one",
   spawnedByItemId: null,
   status: "running",
-  activeSegmentId: "segment-1",
+  activeSegmentId: "segment_one",
   outcome: null,
+  modelSelection: { provider: "deepseek", model: "deepseek-chat", reasoningEffort: "high" },
   metrics: {
     steps: 2,
     activeDurationMillis: 10,
     usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0 },
   },
-  progress: { step: 3, activity: "Inspecting" },
-  contextTokens: null,
-  createdAt: "2026-01-01T00:00:00.000Z",
+  createdAt: "2026-09-14T01:00:00Z",
   finishedAt: null,
 };
 
 vi.mock("@/plugins/builtin/agent/public/run", () => ({
   cancelSessionRun: projection.cancelRun,
-  useActiveSessionRunTree: () => [
-    { run: running, children: projection.child ? [{ run: projection.child, children: [] }] : [] },
-  ],
-  useActiveSessionTimeline: () => projection.timeline,
-  useActiveSessionToolCalls: () => projection.tools,
+  useSessionTrajectory: projection.read,
+  useTrajectoryRun: projection.runContext,
 }));
-
+vi.mock("@/plugins/builtin/agent/public/session", () => ({
+  useActiveSessionId: () => projection.sessionId,
+  useActiveSession: () => ({ id: projection.sessionId, status: "idle" }),
+}));
 vi.mock("@/plugins/builtin/runtime/public/serviceStatus", () => ({
   useRuntimeCommandsAvailable: () => projection.runtimeAvailable,
 }));
-
+vi.mock("@/plugins/builtin/runtime/public/capabilities", () => ({
+  useRuntimeCapability: (capability: string) =>
+    capability === "subagents" ? projection.includeDescendants : true,
+}));
 vi.mock("@/plugins/builtin/workspace/public/navigation", () => ({
   locateWorkspaceTool: projection.locateTool,
   openWorkspaceSubagentRun: projection.openSubagent,
-  selectWorkspaceChat: vi.fn(),
 }));
-
+vi.mock("@/plugins/builtin/workspace/public/conversationArchive", () => ({
+  exportSessionTrajectory: projection.exportTrajectory,
+}));
 vi.mock("../WorkspaceViewLayout", () => ({
-  WorkspaceViewLayout: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  WorkspaceViewLayout: ({
+    children,
+    sub,
+    actions,
+  }: {
+    children: ReactNode;
+    sub: ReactNode;
+    actions: ReactNode;
+  }) => (
+    <div>
+      {sub}
+      {actions}
+      {children}
+    </div>
+  ),
 }));
-
-import { timelineView } from "../../views";
 import { Timeline } from "./Timeline";
 
-describe("Timeline runtime actions", () => {
+describe("durable timeline", () => {
   beforeEach(() => {
-    projection.child = null;
+    vi.clearAllMocks();
+    projection.entries = [];
+    projection.nextCursor = undefined;
+    projection.sessionId = "session_one";
     projection.runtimeAvailable = false;
-    projection.openSubagent.mockClear();
-    projection.locateTool.mockClear();
-    projection.timeline = [];
-    projection.tools = {};
+    projection.includeDescendants = true;
+    projection.read.mockImplementation((_sessionId, _includeDescendants, cursor) => ({
+      data: cursor ? { data: [] } : { data: projection.entries, nextCursor: projection.nextCursor },
+      isLoading: false,
+      isFetching: false,
+      error: null,
+      refetch: projection.refetch,
+    }));
+    projection.runContext.mockReturnValue({
+      data: run,
+      isLoading: false,
+      error: null,
+      refetch: vi.fn(),
+    });
+    projection.exportTrajectory.mockResolvedValue(undefined);
   });
 
-  it("shows measured execution time and keeps absent timing unknown", () => {
-    projection.tools = {
-      measured: {
-        id: "measured",
-        runId: running.id,
-        name: "shell",
-        fn: "Verify axios",
-        args: "",
-        status: "ok",
-        durationMillis: 230,
-      },
-      unknown: {
-        id: "unknown",
-        runId: running.id,
-        name: "shell",
-        fn: "Inspect axios",
-        args: "",
-        status: "ok",
-      },
-    };
-    projection.timeline = [
+  it("unifies model and tool records, exposes evidence, and keeps unmeasured outcomes unknown", () => {
+    projection.entries = [
       {
-        id: "measured-end",
-        runId: running.id,
-        refId: "measured",
-        kind: "tool",
-        status: "ok",
-        ts: 1,
+        type: "model",
+        occurredAt: run.createdAt,
+        model: {
+          callId: "call_unknown",
+          runId: run.id,
+          segmentId: "segment_one",
+          state: "unknown",
+          startedAt: run.createdAt,
+          settledAt: "2026-09-14T02:00:00Z",
+        },
       },
-      { id: "unknown-end", runId: running.id, refId: "unknown", kind: "tool", status: "ok", ts: 2 },
-      { id: "compact", runId: running.id, refId: "item_compact", kind: "compaction", ts: 3 },
+      {
+        type: "item",
+        occurredAt: run.createdAt,
+        item: {
+          type: "toolCall",
+          id: "tool_zero",
+          runId: run.id,
+          startedAt: run.createdAt,
+          status: "completed",
+          durationMillis: 0,
+          tool: {
+            name: "shell",
+            arguments: { command: "rg axios", description: "Find axios" },
+            result: { exitCode: 1, stdout: "No matches" },
+          },
+        },
+      },
     ];
     render(<Timeline />);
-    expect(screen.getByText("230ms")).toBeTruthy();
-    expect(screen.getByText("—")).toBeTruthy();
-    expect(screen.getByText("Verify axios")).toBeTruthy();
-    expect(screen.getByText("Context compacted")).toBeTruthy();
+    expect(screen.getByText("This page: 2 / 2")).toBeTruthy();
+    expect(screen.getByText("Outcome unknown")).toBeTruthy();
+    expect(screen.getByText("rg axios")).toBeTruthy();
+    expect(screen.getByText("0ms")).toBeTruthy();
+    expect(screen.queryByText("1h 00m")).toBeNull();
+    expect(projection.runContext).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Inspect call_unknown" }));
+    expect(screen.getByText("Recorded settlement")).toBeTruthy();
+    expect(screen.getByText("2026-09-14T02:00:00Z")).toBeTruthy();
     expect(
-      screen.getAllByTitle(/^Tool started:/).map((time) => time.getAttribute("datetime")),
-    ).toEqual(["1970-01-01T00:00:00.001Z", "1970-01-01T00:00:00.002Z"]);
+      screen.getByText(
+        "The final outcome was not observed. Settlement time is not measured execution time.",
+      ),
+    ).toBeTruthy();
+    expect(screen.getByText("deepseek/deepseek-chat")).toBeTruthy();
+    expect(projection.runContext).toHaveBeenCalledWith(run.id);
+    fireEvent.click(screen.getByRole("button", { name: "Inspect tool_zero" }));
+    expect(screen.getByText("Arguments")).toBeTruthy();
+    expect(screen.getByText("Result")).toBeTruthy();
+    expect(screen.getAllByText("Completed")).toHaveLength(1);
   });
-  it("shows outcome details only on completion and does not classify a nonzero exit as failure", () => {
-    projection.tools = {
-      failed: {
-        id: "failed",
-        runId: running.id,
-        name: "shell",
-        fn: "Verify axios",
-        args: "",
-        status: "err",
-        error: "request canceled while reading the response body",
-        exitCode: 2,
-      },
-      noMatch: {
-        id: "noMatch",
-        runId: running.id,
-        name: "shell",
-        fn: "Find axios TODOs",
-        args: "",
-        status: "ok",
-        exitCode: 1,
-      },
-    };
-    projection.timeline = [
+
+  it("shows zero usage, first output timing, and the assistant message phase", () => {
+    projection.entries = [
       {
-        id: "failed-end",
-        runId: running.id,
-        refId: "failed",
-        kind: "tool",
-        ts: 2,
-        status: "err",
+        type: "model",
+        occurredAt: run.createdAt,
+        model: {
+          callId: "call_done",
+          runId: run.id,
+          segmentId: "segment_one",
+          state: "completed",
+          startedAt: run.createdAt,
+          settledAt: "2026-09-14T01:00:02Z",
+          firstOutputLatencyMillis: 0,
+          usage: {
+            inputTokens: 123,
+            outputTokens: 0,
+            cacheReadTokens: 31,
+            cacheWriteTokens: 0,
+            reasoningTokens: 0,
+          },
+        },
       },
       {
-        id: "no-match-end",
-        runId: running.id,
-        refId: "noMatch",
-        kind: "tool",
-        ts: 3,
-        status: "ok",
+        type: "item",
+        occurredAt: run.createdAt,
+        item: {
+          type: "agentMessage",
+          id: "answer",
+          runId: run.id,
+          createdAt: run.createdAt,
+          status: "completed",
+          phase: "finalAnswer",
+          content: [{ type: "text", text: "All done" }],
+        },
       },
     ];
     render(<Timeline />);
-    expect(screen.getAllByText("request canceled while reading the response body")).toHaveLength(1);
-    expect(screen.getAllByText("exit 2")).toHaveLength(1);
-    expect(screen.getByText("exit 1")).toBeTruthy();
-    expect(screen.getAllByRole("img", { name: "err" })).toHaveLength(1);
-    expect(screen.getByRole("img", { name: "ok" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Inspect call_done" }));
+    expect(screen.getByText("First output")).toBeTruthy();
+    expect(screen.getByText("0ms")).toBeTruthy();
+    expect(screen.getByText("123")).toBeTruthy();
+    expect(screen.getByText("31")).toBeTruthy();
+    expect(screen.getByText("Output tokens").nextElementSibling?.textContent).toBe("0");
+    expect(screen.getByText("cache write").nextElementSibling?.textContent).toBe("0");
+    expect(screen.getByText("reasoning").nextElementSibling?.textContent).toBe("0");
+    fireEvent.click(screen.getByRole("button", { name: "Inspect answer" }));
+    expect(screen.getByText("Final answer")).toBeTruthy();
   });
-  it.each([
-    ["run-1", null],
-    ["child-parent", "child-parent"],
-  ])(
-    "opens the retained transcript that owns parent %s while offline",
-    (parentRunId, subagentRunId) => {
-      projection.child = {
-        ...running,
-        id: "child",
-        rootRunId: running.id,
-        parentRunId,
-        spawnedByItemId: "parent-delegation",
-      };
-      render(<Timeline />);
-      fireEvent.click(screen.getByRole("button", { name: "Locate parent task" }));
-      expect(projection.openSubagent.mock.calls).toEqual(subagentRunId ? [[subagentRunId]] : []);
-      expect(projection.locateTool.mock.calls).toEqual(
-        subagentRunId ? [] : [["parent-delegation"]],
-      );
-    },
-  );
-  it("does not offer an active cancel command while the Runtime is unavailable", async () => {
-    await loadPluginsForTest(timelineView);
-    expect(lookupExtensionPoint(WORKSPACE_VIEW).some((view) => view.id === "timeline")).toBe(true);
 
+  it("reveals retained image evidence only when its record is opened", () => {
+    projection.entries = [
+      {
+        type: "item",
+        occurredAt: run.createdAt,
+        item: {
+          type: "userMessage",
+          id: "image_input",
+          runId: run.id,
+          createdAt: run.createdAt,
+          status: "completed",
+          content: [{ type: "image", mime: "image/png", data: "aW1hZ2U=" }],
+        },
+      },
+    ];
     render(<Timeline />);
+    expect(screen.queryByRole("img", { name: "image/png" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Inspect image_input" }));
+    expect(screen.getByRole("img", { name: "image/png" }).getAttribute("src")).toBe(
+      "data:image/png;base64,aW1hZ2U=",
+    );
+  });
 
-    const cancel = screen.getByRole("button", { name: "Cancel this run" });
-    expect((cancel as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.click(cancel);
+  it("filters current-page evidence and pages only on request", () => {
+    projection.nextCursor = "older";
+    projection.entries = [
+      {
+        type: "item",
+        occurredAt: run.createdAt,
+        item: {
+          type: "toolCall",
+          id: "tool_search",
+          runId: run.id,
+          startedAt: run.createdAt,
+          status: "completed",
+          tool: {
+            name: "shell",
+            arguments: { command: "rg needle" },
+            result: "searchable evidence",
+          },
+        },
+      },
+    ];
+    const { rerender } = render(<Timeline />);
+    expect(projection.read).toHaveBeenLastCalledWith("session_one", true, undefined);
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "missing" } });
+    expect(screen.getByText("This page: 0 / 1")).toBeTruthy();
+    expect(screen.getByText("No matching records on this page")).toBeTruthy();
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "searchable evidence" } });
+    expect(screen.getByRole("button", { name: "Inspect tool_search" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Older records" }));
+    expect(projection.read).toHaveBeenLastCalledWith("session_one", true, "older");
+    fireEvent.click(screen.getByRole("button", { name: "Newer records" }));
+    expect(projection.read).toHaveBeenLastCalledWith("session_one", true, undefined);
+    fireEvent.click(screen.getByRole("button", { name: "Older records" }));
+    projection.sessionId = "session_two";
+    rerender(<Timeline />);
+    expect(projection.read).toHaveBeenLastCalledWith("session_two", true, undefined);
+    expect((screen.getByRole("searchbox") as HTMLInputElement).value).toBe("");
+    fireEvent.click(screen.getByRole("button", { name: "Older records" }));
+    projection.includeDescendants = false;
+    rerender(<Timeline />);
+    expect(projection.read).toHaveBeenLastCalledWith("session_two", false, undefined);
+    expect(
+      projection.read.mock.calls
+        .filter(([, descendants]) => descendants === false)
+        .every(([, , cursor]) => cursor === undefined),
+    ).toBe(true);
+  });
+
+  it.each([
+    ["run_one", null],
+    ["child_parent", "child_parent"],
+  ])("locates the task's owning parent %s while offline", (parentRunId, expectedChild) => {
+    projection.entries = [
+      {
+        type: "run",
+        occurredAt: run.createdAt,
+        run: { ...run, id: "child", parentRunId, spawnedByItemId: "parent_task" },
+      },
+    ];
+    render(<Timeline />);
+    fireEvent.click(screen.getByRole("button", { name: "Locate parent task" }));
+    expect(projection.openSubagent.mock.calls).toEqual(expectedChild ? [[expectedChild]] : []);
+    expect(projection.locateTool.mock.calls).toEqual(expectedChild ? [] : [["parent_task"]]);
+  });
+
+  it("gates mutations offline and exports complete history independently of page filters", async () => {
+    projection.entries = [{ type: "run", occurredAt: run.createdAt, run }];
+    const { rerender } = render(<Timeline />);
+    expect(
+      (screen.getByRole("button", { name: "Cancel this run" }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+    expect(
+      (screen.getByRole("button", { name: "Export complete trajectory" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+    projection.runtimeAvailable = true;
+    rerender(<Timeline />);
+    fireEvent.change(screen.getByRole("searchbox"), { target: { value: "missing" } });
+    fireEvent.click(screen.getByRole("button", { name: "Export complete trajectory" }));
+    await waitFor(() => expect(projection.exportTrajectory).toHaveBeenCalledTimes(1));
     expect(projection.cancelRun).not.toHaveBeenCalled();
   });
 });

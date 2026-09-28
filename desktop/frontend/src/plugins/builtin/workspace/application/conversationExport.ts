@@ -152,6 +152,23 @@ class ConversationArchiveGeneration {
     }
   }
 
+  async exportTrajectory(): Promise<void> {
+    try {
+      const sessionId = getActiveSessionId();
+      if (!sessionId) return;
+      const stamp = timestampForFilename(new Date());
+      const content = await this.#cohort.run(() => this.#gateway.exportTrajectory(sessionId));
+      this.#download({
+        sessionId,
+        filename: `flame-${sessionId}-trajectory-${stamp}.json`,
+        content,
+        mime: "application/json;charset=utf-8",
+      });
+    } catch (error) {
+      if (!this.#cohort.retired) throw error;
+    }
+  }
+
   importJson(): Promise<void> {
     if (this.#importOperation) return this.#importOperation;
     const operation = this.#runImport();
@@ -256,6 +273,10 @@ export class ConversationArchiveOwner {
     return this.#generation.export(format);
   }
 
+  exportTrajectory(): Promise<void> {
+    return this.#generation.exportTrajectory();
+  }
+
   importJson(): Promise<void> {
     return this.#generation.importJson();
   }
@@ -283,6 +304,10 @@ export function exportConversationMarkdown(): Promise<void> {
 
 export function exportConversationJson(): Promise<void> {
   return ConversationArchiveOwner.current().export("json");
+}
+
+export function exportSessionTrajectory(): Promise<void> {
+  return ConversationArchiveOwner.current().exportTrajectory();
 }
 
 export function importConversationJson(): Promise<void> {

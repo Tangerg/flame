@@ -1,128 +1,192 @@
 import { describe, expect, it } from "vitest";
-import { t } from "@/lib/i18n";
-import type { AgentRunView, TimelineEntry } from "@/plugins/sdk/types/agentSessionView";
-import type { AgentRunTreeNode } from "@/plugins/builtin/agent/public/run";
-import {
-  timelineGroupKey,
-  timelineRunStatusView,
-  timelineSubtext,
-  timelineViewModel,
-} from "./timelineViewModel";
+import type { AgentRunFact } from "@/plugins/sdk";
+import type { TrajectoryEntry } from "@/plugins/builtin/agent/public/run";
+import { elapsedMillis, timelineViewModel, type TimelineFilters } from "./timelineViewModel";
 
-const entry = (id: string, runId: string | null): TimelineEntry => ({
-  id,
-  runId,
-  kind: "run-start",
-  ts: 0,
-});
+const filters: TimelineFilters = { category: "all", query: "", runId: null };
+const startedAt = "2026-09-14T01:00:00Z";
 
-function run(id: string, overrides: Partial<AgentRunView> = {}): AgentRunView {
-  return {
-    id,
-    sessionId: "session-1",
-    parentRunId: null,
-    rootRunId: id,
-    spawnedByItemId: null,
-    status: "running",
-    activeSegmentId: `segment-${id}`,
-    outcome: null,
-    metrics: {
-      steps: 2,
-      activeDurationMillis: 10,
-      usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0 },
+const run: AgentRunFact = {
+  id: "run_root",
+  sessionId: "session_one",
+  parentRunId: null,
+  rootRunId: "run_root",
+  spawnedByItemId: null,
+  status: "finished",
+  activeSegmentId: null,
+  outcome: { type: "completed" },
+  metrics: {
+    steps: 2,
+    activeDurationMillis: 90,
+    usage: { inputTokens: 10, outputTokens: 20, cacheReadTokens: 0 },
+  },
+  createdAt: startedAt,
+  finishedAt: "2026-09-14T01:00:10Z",
+};
+
+const entries: TrajectoryEntry[] = [
+  {
+    type: "item",
+    occurredAt: startedAt,
+    item: {
+      type: "toolCall",
+      id: "tool_no_match",
+      runId: "run_child",
+      status: "completed",
+      startedAt,
+      durationMillis: 0,
+      tool: {
+        name: "shell",
+        arguments: { command: "rg missing" },
+        result: { exitCode: 1, stdout: "needle-result" },
+      },
     },
-    progress: { step: 3, activity: "Inspecting" },
-    contextTokens: null,
-    createdAt: "2026-01-01T00:00:00.000Z",
-    finishedAt: null,
-    ...overrides,
-  };
-}
+  },
+  {
+    type: "model",
+    occurredAt: startedAt,
+    model: {
+      callId: "model_unknown",
+      runId: "run_child",
+      segmentId: "segment_child",
+      state: "unknown",
+      startedAt,
+      settledAt: "2026-09-14T02:00:00Z",
+    },
+  },
+  {
+    type: "item",
+    occurredAt: startedAt,
+    item: {
+      type: "agentMessage",
+      id: "output",
+      runId: "run_root",
+      status: "completed",
+      createdAt: startedAt,
+      content: [{ type: "text", text: "The answer" }],
+    },
+  },
+  { type: "run", occurredAt: startedAt, run },
+];
 
-function node(value: AgentRunView, children: AgentRunTreeNode[] = []): AgentRunTreeNode {
-  return { run: value, children };
-}
-
-describe("timelineViewModel", () => {
-  it("groups all events by lineage instead of adjacent arrival order", () => {
-    const root = run("root");
-    const child = run("child", {
-      parentRunId: root.id,
-      rootRunId: root.id,
-      spawnedByItemId: "task-item",
-    });
-    const view = timelineViewModel(
-      [
-        entry("session", null),
-        entry("root-1", root.id),
-        entry("child-1", child.id),
-        entry("root-2", root.id),
-      ],
-      [node(root, [node(child)])],
-    );
-
-    expect(view).toMatchObject({ eventCount: 4, runCount: 2 });
-    expect(
-      view.groups.map(({ runId, depth, items }) => [runId, depth, items.map((x) => x.id)]),
-    ).toEqual([
-      [null, 0, ["session"]],
-      ["root", 0, ["root-1", "root-2"]],
-      ["child", 1, ["child-1"]],
+describe("durable timeline projection", () => {
+  it("preserves the Runtime's total ordering across concurrent Runs and equal timestamps", () => {
+    const view = timelineViewModel(entries, filters);
+    expect(view.records.map((record) => record.key)).toEqual([
+      "item:tool_no_match",
+      "model:model_unknown",
+      "item:output",
+      "run:run_root",
     ]);
-  });
-
-  it("retains Runs without events and events whose Run is unknown", () => {
-    const root = run("root");
-    const view = timelineViewModel([entry("unknown-event", "unknown")], [node(root)]);
-    expect(view.groups.map((group) => [group.runId, group.run?.id ?? null])).toEqual([
-      ["root", "root"],
-      ["unknown", null],
-    ]);
-  });
-});
-
-describe("timeline Run status", () => {
-  it("projects exact progress and cancelability", () => {
-    expect(timelineRunStatusView(run("running"))).toMatchObject({
-      state: "running",
-      labelKey: "agent.runTree.status.running",
-      tone: "accent",
-      detail: "Inspecting",
-      stepCount: 3,
-      cancelable: true,
+    expect(view).toMatchObject({
+      recordCount: 4,
+      modelCount: 1,
+      toolCount: 1,
+      attentionCount: 1,
+      runIds: ["run_child", "run_root"],
     });
+    expect(view.records[0]).toMatchObject({ tone: "neutral", attention: false, durationMillis: 0 });
+    expect(view.records[1]?.durationMillis).toBeUndefined();
+    expect(view.records[3]?.durationMillis).toBe(10_000);
   });
 
-  it("projects terminal error without offering cancel", () => {
+  it("filters within the current page without hiding its coverage or Run identities", () => {
+    const view = timelineViewModel(entries, {
+      category: "toolCall",
+      query: "NEEDLE-result",
+      runId: "run_child",
+    });
+    expect(view.records.map((record) => record.id)).toEqual(["tool_no_match"]);
+    expect(view.recordCount).toBe(4);
+    expect(view.runIds).toEqual(["run_child", "run_root"]);
     expect(
-      timelineRunStatusView(
-        run("failed", {
-          status: "finished",
-          activeSegmentId: null,
-          progress: null,
-          contextTokens: null,
-          outcome: { type: "failed", error: { message: "Provider failed" } },
-          finishedAt: "2026-01-01T00:00:01.000Z",
-        }),
+      timelineViewModel(entries, { ...filters, category: "attention" }).records.map(
+        (record) => record.id,
       ),
-    ).toMatchObject({
-      state: "error",
-      tone: "negative",
-      detail: "Provider failed",
-      stepCount: 2,
-      cancelable: false,
-    });
+    ).toEqual(["model_unknown"]);
+    expect(
+      timelineViewModel(entries, { ...filters, query: "segment_child" }).records.map(
+        (record) => record.id,
+      ),
+    ).toEqual(["model_unknown"]);
+    expect(
+      timelineViewModel(entries, { ...filters, category: "message" }).records.map(
+        (record) => record.id,
+      ),
+    ).toEqual(["output"]);
+  });
+
+  it("distinguishes declined and incomplete tools from recorded tool errors", () => {
+    const values = [
+      { approvalDecision: "declined" as const },
+      { status: "incomplete" as const },
+      { error: { message: "connection failed" } },
+    ].map((patch, index): TrajectoryEntry => ({
+      type: "item",
+      occurredAt: startedAt,
+      item: {
+        type: "toolCall",
+        id: `tool_${index}`,
+        runId: run.id,
+        startedAt,
+        status: "completed",
+        tool: { name: "shell", arguments: {} },
+        ...patch,
+      },
+    }));
+    expect(
+      timelineViewModel(values, filters).records.map((record) => [
+        record.statusKey,
+        record.tone,
+        record.attention,
+      ]),
+    ).toEqual([
+      ["timeline.state.declined", "warning", true],
+      ["timeline.state.incomplete", "warning", true],
+      ["timeline.modelCall.failed", "negative", true],
+    ]);
+  });
+
+  it("does not search redacted reasoning or image payloads", () => {
+    const values: TrajectoryEntry[] = [
+      {
+        type: "item",
+        occurredAt: startedAt,
+        item: {
+          type: "reasoning",
+          id: "hidden",
+          runId: run.id,
+          createdAt: startedAt,
+          status: "completed",
+          redacted: true,
+          text: "hidden-reasoning",
+        },
+      },
+      {
+        type: "item",
+        occurredAt: startedAt,
+        item: {
+          type: "userMessage",
+          id: "image",
+          runId: run.id,
+          createdAt: startedAt,
+          status: "completed",
+          content: [{ type: "image", mime: "image/png", data: "hidden-image" }],
+        },
+      },
+    ];
+    expect(timelineViewModel(values, { ...filters, query: "hidden-reasoning" }).records).toEqual(
+      [],
+    );
+    expect(timelineViewModel(values, { ...filters, query: "hidden-image" }).records).toEqual([]);
   });
 });
 
-describe("timeline view helpers", () => {
-  it("builds stable keys and header subtext", () => {
-    expect(timelineGroupKey({ runId: null, run: null, depth: 0, items: [] })).toBe("session");
-    expect(timelineGroupKey({ runId: "run-a", run: run("run-a"), depth: 0, items: [] })).toBe(
-      "run-a",
-    );
-    expect(timelineSubtext(t, { eventCount: 0, runCount: 0 })).toBe("0 events · 0 runs");
-    expect(timelineSubtext(t, { eventCount: 3, runCount: 2 })).toBe("3 events · 2 runs");
-    expect(timelineSubtext(t, { eventCount: 1, runCount: 1 })).toBe("1 event · 1 run");
+describe("measured durations", () => {
+  it("keeps zero measured while rejecting missing and invalid clock intervals", () => {
+    expect(elapsedMillis(startedAt, startedAt)).toBe(0);
+    expect(elapsedMillis(startedAt, undefined)).toBeUndefined();
+    expect(elapsedMillis("invalid", startedAt)).toBeUndefined();
+    expect(elapsedMillis(startedAt, "2026-09-14T00:59:59Z")).toBeUndefined();
   });
 });

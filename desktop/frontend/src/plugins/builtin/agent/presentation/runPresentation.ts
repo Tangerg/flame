@@ -26,7 +26,3 @@ export function agentRunDetail(run: AgentRunView): string | null {
       return null;
   }
 }
-
-export function agentRunStepCount(run: AgentRunView): number {
-  return run.progress?.step ?? run.metrics.steps;
-}

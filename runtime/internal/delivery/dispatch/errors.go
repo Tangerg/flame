@@ -45,6 +45,7 @@ var rpcCodeSpecs = mustRPCCodeSpecs([]rpcCodeSpec{
 	{protocol.ErrCheckpointUnavailable.Error(), codeCheckpointUnavail},
 	{protocol.ErrCheckpointConflict.Error(), codeCheckpointConflict},
 	{protocol.ErrPromptSourceTooLarge.Error(), codePromptSourceTooLarge},
+	{protocol.ErrExportTooLarge.Error(), codeExportTooLarge},
 	{protocol.ErrUnsupportedMime.Error(), codeUnsupportedMime},
 	{protocol.ErrPathOutsideRoot.Error(), codePathOutsideRoot},
 	{protocol.ErrVcsUnavailable.Error(), codeVCSUnavailable},

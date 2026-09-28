@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/feedback"
 )
@@ -33,4 +34,33 @@ func (f *FeedbackStore) Append(ctx context.Context, entry feedback.Entry) error 
 		return fmt.Errorf("sqlite: append feedback: %w", err)
 	}
 	return nil
+}
+
+// ListSession includes observations whose optional references name the Session
+// or its retained Runs and Items. References remain user claims, not foreign keys.
+func (f *FeedbackStore) ListSession(ctx context.Context, sessionID string) ([]feedback.Entry, error) {
+	rows, err := conn(ctx, f.db).QueryContext(ctx,
+		`SELECT session_id, run_id, item_id, rating, text, created_at FROM feedback_entries WHERE `+
+			sessionFeedbackPredicate+` ORDER BY created_at, id`, sessionID, sessionID, sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("sqlite: list Session feedback: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	entries := make([]feedback.Entry, 0)
+	for rows.Next() {
+		var entry feedback.Entry
+		var createdAt int64
+		if err := rows.Scan(&entry.SessionID, &entry.RunID, &entry.ItemID, &entry.Rating, &entry.Text, &createdAt); err != nil {
+			return nil, fmt.Errorf("sqlite: scan Session feedback: %w", err)
+		}
+		entry.CreatedAt = time.UnixMilli(createdAt).UTC()
+		if err := entry.Validate(); err != nil {
+			return nil, fmt.Errorf("sqlite: restore Session feedback: %w", err)
+		}
+		entries = append(entries, entry)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("sqlite: iterate Session feedback: %w", err)
+	}
+	return entries, nil
 }

@@ -2,14 +2,10 @@ import type { AgentItem } from "@/plugins/sdk";
 import type { BlockStatus, ContentBlock } from "@/plugins/sdk/types/contentBlock";
 import type { AgentSessionView, Message, ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import {
-  argsText,
   contentText,
+  projectToolCall,
   mapQuestion,
   mapQuestionAnswers,
-  toolFields,
-  toolLabel,
-  toolLabelKind,
-  toolStatus,
   userContentBlocks,
 } from "./projections";
 
@@ -366,23 +362,7 @@ export function writeToolCall(
           item.startedAt,
         )
       : state;
-  const prev = withBlock.toolCalls[item.id];
-  const tool: ToolCall = {
-    id: item.id,
-    runId: item.runId,
-    name: item.tool.name,
-    fn: toolLabel(item.tool),
-    ...(toolLabelKind(item.tool) === "path" ? { fnKind: "path" as const } : {}),
-    args:
-      item.status === "running" ? (prev?.args ?? "") || argsText(item.tool) : argsText(item.tool),
-    status: toolStatus(item),
-    result: prev?.result,
-    error: item.error ? (item.error.message ?? item.error.code) : undefined,
-    durationMillis: item.durationMillis,
-    safetyClass: item.safetyClass,
-    approvalDecision: item.approvalDecision,
-    ...toolFields(item.tool),
-  };
+  const tool = projectToolCall(item, withBlock.toolCalls[item.id]);
   return { state: { ...withBlock, toolCalls: { ...withBlock.toolCalls, [item.id]: tool } }, tool };
 }
 

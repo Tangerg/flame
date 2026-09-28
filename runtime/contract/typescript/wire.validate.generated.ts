@@ -75,8 +75,11 @@ export type WireTypeName =
   | "ExportFormat"
   | "ExportSessionRequest"
   | "ExportSessionResponse"
+  | "ExportTrajectoryRequest"
+  | "ExportTrajectoryResponse"
   | "FeatureCapability"
   | "FeaturePreference"
+  | "FeedbackEntry"
   | "FeedbackRating"
   | "FeedbackRequest"
   | "FieldError"
@@ -138,6 +141,7 @@ export type WireTypeName =
   | "ListModelInvocationsRequest"
   | "ListModelsRequest"
   | "ListRunsRequest"
+  | "ListSessionTrajectoryRequest"
   | "ListSessionsRequest"
   | "LivenessState"
   | "LivenessStatus"
@@ -188,6 +192,7 @@ export type WireTypeName =
   | "PageOfSession"
   | "PageOfSkillProposal"
   | "PageOfToolSpec"
+  | "PageOfTrajectoryEntry"
   | "PageOfWorkspaceFileChange"
   | "PageOfWorkspaceSummary"
   | "PageQuery"
@@ -257,6 +262,7 @@ export type WireTypeName =
   | "SessionArtifact"
   | "SessionSnapshot"
   | "SessionStatus"
+  | "SessionTrajectory"
   | "SessionUsageRequest"
   | "SetApprovalModeRequest"
   | "SetHookTrustRequest"
@@ -283,8 +289,12 @@ export type WireTypeName =
   | "SubscriptionLimits"
   | "SuppressibleRunEventType"
   | "TestProviderRequest"
+  | "ToolAttempt"
+  | "ToolAttemptState"
   | "ToolInvocation"
   | "ToolSpec"
+  | "TrajectoryEntry"
+  | "TrajectoryEntryType"
   | "TransportKind"
   | "UnresolvedEffect"
   | "UpdateGoalRequest"
@@ -956,6 +966,12 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     format: ref(() => CHECKS.ExportFormat),
     markdown: text(),
   }, ["format"]),
+  ExportTrajectoryRequest: object({
+    sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+  }, ["sessionId"]),
+  ExportTrajectoryResponse: object({
+    trajectory: ref(() => CHECKS.SessionTrajectory),
+  }, ["trajectory"]),
   FeatureCapability: object({
     clientOptIn: flag(),
     enabled: flag(),
@@ -964,6 +980,17 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   FeaturePreference: object({
     enabled: flag(),
   }, ["enabled"]),
+  FeedbackEntry: allOf([
+    object({
+      createdAt: text(),
+      itemId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      rating: ref(() => CHECKS.FeedbackRating),
+      runId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      sessionId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      text: text(),
+    }, ["createdAt"]),
+    anyOf([fields({}, ["rating"]), fields({}, ["text"])]),
+  ]),
   FeedbackRating: enumOf(["positive", "negative"]),
   FeedbackRequest: allOf([
     object({
@@ -1670,7 +1697,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ListModelInvocationsRequest: object({
     cursor: allOf([text(), maxLength(65536)]),
     limit: allOf([integer(), minimum(1)]),
-    runId: text(),
+    runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["runId"]),
   ListModelsRequest: object({
     provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -1682,6 +1709,12 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     sessionId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
     statuses: allOf([array(ref(() => CHECKS.RunStatus)), minItems(1), uniqueItems()]),
   }, []),
+  ListSessionTrajectoryRequest: object({
+    cursor: allOf([text(), maxLength(65536)]),
+    includeDescendants: flag(),
+    limit: allOf([integer(), minimum(1)]),
+    sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+  }, ["sessionId"]),
   ListSessionsRequest: object({
     cursor: allOf([text(), maxLength(65536)]),
     limit: allOf([integer(), minimum(1)]),
@@ -1981,23 +2014,58 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     structuredOutput: flag(),
     toolUse: flag(),
   }, []),
-  ModelInvocation: object({
-    callId: text(),
-    firstOutputLatencyMillis: integer(),
-    runId: text(),
-    segmentId: text(),
-    settledAt: text(),
-    startedAt: text(),
-    state: ref(() => CHECKS.ModelInvocationState),
-    usage: ref(() => CHECKS.ModelInvocationUsage),
-  }, ["callId", "runId", "segmentId", "startedAt", "state"]),
+  ModelInvocation: allOf([
+    object({
+      callId: allOf([text(), maxLength(256), pattern("^[A-Za-z0-9._~-]+$")]),
+      firstOutputLatencyMillis: allOf([integer(), minimum(0)]),
+      runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      segmentId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      settledAt: text(),
+      startedAt: text(),
+      state: ref(() => CHECKS.ModelInvocationState),
+      usage: ref(() => CHECKS.ModelInvocationUsage),
+    }, ["callId", "runId", "segmentId", "startedAt", "state"]),
+    ifThen(
+      fields({
+        state: literal("started"),
+      }, ["state"]),
+      fields({
+        firstOutputLatencyMillis: absent(),
+        settledAt: absent(),
+        usage: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        state: literal("completed"),
+      }, ["state"]),
+      fields({}, ["settledAt"]),
+    ),
+    ifThen(
+      fields({
+        state: literal("failed"),
+      }, ["state"]),
+      fields({
+        usage: absent(),
+      }, ["settledAt"]),
+    ),
+    ifThen(
+      fields({
+        state: literal("unknown"),
+      }, ["state"]),
+      fields({
+        firstOutputLatencyMillis: absent(),
+        usage: absent(),
+      }, ["settledAt"]),
+    ),
+  ]),
   ModelInvocationState: enumOf(["started", "completed", "failed", "unknown"]),
   ModelInvocationUsage: object({
-    cacheReadTokens: integer(),
-    cacheWriteTokens: integer(),
-    inputTokens: integer(),
-    outputTokens: integer(),
-    reasoningTokens: integer(),
+    cacheReadTokens: allOf([integer(), minimum(0)]),
+    cacheWriteTokens: allOf([integer(), minimum(0)]),
+    inputTokens: allOf([integer(), minimum(0)]),
+    outputTokens: allOf([integer(), minimum(0)]),
+    reasoningTokens: allOf([integer(), minimum(0)]),
   }, ["inputTokens", "outputTokens"]),
   ModelPricing: object({
     cacheReadUsdPerMillionTokens: allOf([numeric(), minimum(0)]),
@@ -2075,6 +2143,10 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["data"]),
   PageOfToolSpec: object({
     data: array(ref(() => CHECKS.ToolSpec)),
+    nextCursor: allOf([text(), maxLength(65536)]),
+  }, ["data"]),
+  PageOfTrajectoryEntry: object({
+    data: array(ref(() => CHECKS.TrajectoryEntry)),
     nextCursor: allOf([text(), maxLength(65536)]),
   }, ["data"]),
   PageOfWorkspaceFileChange: object({
@@ -2164,6 +2236,13 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         requiredCapabilities: absent(),
         retryAfterSeconds: absent(),
         type: literal("denied_by_user"),
+      }, ["type"]),
+      fields({
+        activeRun: absent(),
+        errors: absent(),
+        requiredCapabilities: absent(),
+        retryAfterSeconds: absent(),
+        type: literal("export_too_large"),
       }, ["type"]),
       fields({
         activeRun: absent(),
@@ -3193,6 +3272,20 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     runs: array(ref(() => CHECKS.RunRef)),
   }, ["interrupts", "items", "runs"]),
   SessionStatus: enumOf(["running", "waiting", "idle"]),
+  SessionTrajectory: object({
+    collectedAt: text(),
+    feedback: array(ref(() => CHECKS.FeedbackEntry)),
+    items: array(ref(() => CHECKS.Item)),
+    limitations: array(text()),
+    messages: array(anything()),
+    modelInvocations: array(ref(() => CHECKS.ModelInvocation)),
+    plan: array(ref(() => CHECKS.PlanStep)),
+    runs: array(ref(() => CHECKS.RunRef)),
+    schemaVersion: allOf([integer(), minimum(1), maximum(1)]),
+    session: ref(() => CHECKS.Session),
+    toolAttempts: array(ref(() => CHECKS.ToolAttempt)),
+    toolResults: array(ref(() => CHECKS.ArtifactToolResult)),
+  }, ["collectedAt", "feedback", "items", "limitations", "messages", "modelInvocations", "plan", "runs", "schemaVersion", "session", "toolAttempts", "toolResults"]),
   SessionUsageRequest: object({
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["sessionId"]),
@@ -3455,6 +3548,38 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   TestProviderRequest: object({
     provider: allOf([text(), minLength(1), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["provider"]),
+  ToolAttempt: allOf([
+    object({
+      callId: allOf([text(), maxLength(256), pattern("^[A-Za-z0-9._~-]+$")]),
+      itemId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      segmentId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      settledAt: text(),
+      startedAt: text(),
+      state: ref(() => CHECKS.ToolAttemptState),
+    }, ["callId", "itemId", "runId", "segmentId", "startedAt", "state"]),
+    ifThen(
+      fields({
+        state: literal("started"),
+      }, ["state"]),
+      fields({
+        settledAt: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        state: literal("completed"),
+      }, ["state"]),
+      fields({}, ["settledAt"]),
+    ),
+    ifThen(
+      fields({
+        state: literal("incomplete"),
+      }, ["state"]),
+      fields({}, ["settledAt"]),
+    ),
+  ]),
+  ToolAttemptState: enumOf(["started", "completed", "incomplete"]),
   ToolInvocation: object({
     arguments: record(anything()),
     argumentsText: text(),
@@ -3467,6 +3592,33 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     parameters: record(anything()),
     safetyClass: ref(() => CHECKS.SafetyClass),
   }, ["name"]),
+  TrajectoryEntry: allOf([
+    object({
+      item: ref(() => CHECKS.Item),
+      model: ref(() => CHECKS.ModelInvocation),
+      occurredAt: text(),
+      run: ref(() => CHECKS.RunRef),
+      type: ref(() => CHECKS.TrajectoryEntryType),
+    }, []),
+    oneOf([
+      fields({
+        item: absent(),
+        model: absent(),
+        type: literal("run"),
+      }, ["occurredAt", "run", "type"]),
+      fields({
+        item: absent(),
+        run: absent(),
+        type: literal("model"),
+      }, ["model", "occurredAt", "type"]),
+      fields({
+        model: absent(),
+        run: absent(),
+        type: literal("item"),
+      }, ["item", "occurredAt", "type"]),
+    ]),
+  ]),
+  TrajectoryEntryType: enumOf(["run", "model", "item"]),
   TransportKind: enumOf(["http"]),
   UnresolvedEffect: object({
     cause: text(),
@@ -3670,6 +3822,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
 
 const METHOD_PARAMS: Record<WireMethodName, WireCheck> = {
   "runtime.discover": object({}, []),
+  "sessions.trajectory": ref(() => CHECKS.ListSessionTrajectoryRequest),
+  "sessions.exportTrajectory": ref(() => CHECKS.ExportTrajectoryRequest),
   "sessions.list": ref(() => CHECKS.ListSessionsRequest),
   "sessions.get": ref(() => CHECKS.GetSessionRequest),
   "sessions.snapshot": ref(() => CHECKS.GetSessionSnapshotRequest),
@@ -3764,6 +3918,8 @@ export function validateMethodParams(method: WireMethodName, value: unknown): Wi
 
 const METHOD_RESULTS: Record<WireMethodName, WireCheck> = {
   "runtime.discover": ref(() => CHECKS.DiscoverResponse),
+  "sessions.trajectory": ref(() => CHECKS.PageOfTrajectoryEntry),
+  "sessions.exportTrajectory": ref(() => CHECKS.ExportTrajectoryResponse),
   "sessions.list": ref(() => CHECKS.PageOfSession),
   "sessions.get": ref(() => CHECKS.Session),
   "sessions.snapshot": ref(() => CHECKS.SessionSnapshot),

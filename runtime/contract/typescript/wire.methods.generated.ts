@@ -27,6 +27,8 @@ import type {
   EmbeddingRole,
   ExportSessionRequest,
   ExportSessionResponse,
+  ExportTrajectoryRequest,
+  ExportTrajectoryResponse,
   FeedbackRequest,
   FileContent,
   FileHead,
@@ -56,6 +58,7 @@ import type {
   ListModelInvocationsRequest,
   ListModelsRequest,
   ListRunsRequest,
+  ListSessionTrajectoryRequest,
   ListSessionsRequest,
   MCPAuthorizationAttempt,
   MCPAuthorizationAttemptRequest,
@@ -78,6 +81,7 @@ import type {
   PageOfSession,
   PageOfSkillProposal,
   PageOfToolSpec,
+  PageOfTrajectoryEntry,
   PageOfWorkspaceFileChange,
   PageOfWorkspaceSummary,
   PageQuery,
@@ -155,6 +159,8 @@ export type WireFeature = (typeof FEATURES)[number];
 // Every method the runtime routes, in registration order.
 const METHOD_NAMES = [
   "runtime.discover",
+  "sessions.trajectory",
+  "sessions.exportTrajectory",
   "sessions.list",
   "sessions.get",
   "sessions.snapshot",
@@ -262,6 +268,8 @@ export function isWireStreamingMethodName(
 // Methods whose validated wire result becomes a value in the ergonomic SDK.
 const VALUE_METHOD_NAMES = [
   "runtime.discover",
+  "sessions.trajectory",
+  "sessions.exportTrajectory",
   "sessions.list",
   "sessions.get",
   "sessions.snapshot",
@@ -357,6 +365,20 @@ export interface WireMethodPolicy {
 
 export const WIRE_METHOD_POLICY = {
   "runtime.discover": {
+    operation: "query",
+    response: "unary",
+    idempotency: "none",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "sessions.trajectory": {
+    operation: "query",
+    response: "unary",
+    idempotency: "none",
+    replayCursor: "none",
+    pagination: "cursor",
+  },
+  "sessions.exportTrajectory": {
     operation: "query",
     response: "unary",
     idempotency: "none",
@@ -1002,6 +1024,12 @@ export interface WireCapabilityRule {
 export const WIRE_CAPABILITY_POLICY: {
   readonly [M in WireMethodName]?: readonly WireCapabilityRule[];
 } = {
+  "sessions.trajectory": [
+    { when: [{ field: "includeDescendants", operator: "present" }], requires: ["subagents"] },
+  ],
+  "sessions.exportTrajectory": [
+    { requires: ["sessionExport"] },
+  ],
   "sessions.snapshot": [
     { when: [{ field: "includeDescendants", operator: "present" }], requires: ["subagents"] },
   ],
@@ -1141,6 +1169,8 @@ export const WIRE_CAPABILITY_POLICY: {
 /** The frames each method carries. */
 export interface WireShapes {
   "runtime.discover": { params: Record<string, never>; result: DiscoverResponse };
+  "sessions.trajectory": { params: ListSessionTrajectoryRequest; result: PageOfTrajectoryEntry };
+  "sessions.exportTrajectory": { params: ExportTrajectoryRequest; result: ExportTrajectoryResponse };
   "sessions.list": { params: ListSessionsRequest; result: PageOfSession };
   "sessions.get": { params: GetSessionRequest; result: Session };
   "sessions.snapshot": { params: GetSessionSnapshotRequest; result: SessionSnapshot };

@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FlameClient } from "@flame/runtime-contract/client";
-import { exportConversationMarkdown } from "../application/conversationExport";
+import {
+  exportConversationMarkdown,
+  exportSessionTrajectory,
+} from "../application/conversationExport";
 import { installConversationArchiveGateway } from "./runtimeConversationArchiveGateway";
 
 const mocks = vi.hoisted(() => ({
@@ -46,6 +49,30 @@ afterEach(async () => {
 });
 
 describe("runtimeConversationArchiveGateway", () => {
+  it("downloads the complete Runtime evidence envelope with no UI reconstruction", async () => {
+    const trajectory = {
+      schemaVersion: 1,
+      collectedAt: "2026-09-28T00:00:00Z",
+      session: { id: "session-current" },
+      runs: [{ id: "run_child" }],
+      modelInvocations: [{ callId: "call_unknown", state: "unknown" }],
+      feedback: [{ rating: "negative", text: "incorrect result" }],
+      limitations: ["retained evidence"],
+    };
+    const exportTrajectory = vi.fn().mockResolvedValue({ trajectory });
+    const client = { sessions: { exportTrajectory } } as unknown as FlameClient;
+    installations.push(installConversationArchiveGateway(() => client));
+
+    await exportSessionTrajectory();
+
+    expect(exportTrajectory).toHaveBeenCalledExactlyOnceWith({ sessionId: "session-current" });
+    expect(mocks.download).toHaveBeenCalledWith(
+      expect.stringContaining("flame-session-current-trajectory-"),
+      JSON.stringify(trajectory, null, 2),
+      "application/json;charset=utf-8",
+    );
+  });
+
   it("binds a Host owner to the exact client installed at composition time", async () => {
     const retiredExport = vi.fn().mockResolvedValue({ format: "md", markdown: "retired" });
     const successorExport = vi.fn().mockResolvedValue({ format: "md", markdown: "successor" });

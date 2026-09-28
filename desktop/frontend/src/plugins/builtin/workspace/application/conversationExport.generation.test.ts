@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ConversationArchiveOwner,
   exportConversationMarkdown,
+  exportSessionTrajectory,
   importConversationJson,
 } from "./conversationExport";
 import type { ConversationArchiveGateway } from "./ports/conversationArchiveGateway";
@@ -70,6 +71,76 @@ afterEach(() => {
 });
 
 describe("conversation archive generation", () => {
+  it("exports captured Session evidence without reading the visible conversation", async () => {
+    const response = Promise.withResolvers<string>();
+    const exportTrajectory = vi.fn(() => response.promise);
+    installFiles({ download, pickText: vi.fn() });
+    installGateway({ exportTrajectory });
+
+    const exporting = exportSessionTrajectory();
+    mocks.activeSessionId = "session-other";
+    response.resolve('{"schemaVersion":1,"evidence":"complete"}');
+    await exporting;
+
+    expect(exportTrajectory).toHaveBeenCalledExactlyOnceWith("session-current");
+    expect(mocks.getActiveConversationSnapshot).not.toHaveBeenCalled();
+    expect(download).toHaveBeenCalledWith(
+      expect.stringContaining("flame-session-current-trajectory-"),
+      '{"schemaVersion":1,"evidence":"complete"}',
+      "application/json;charset=utf-8",
+    );
+  });
+
+  it("propagates evidence export failure without downloading a partial substitute", async () => {
+    const failure = new Error("session is busy");
+    installFiles({ download, pickText: vi.fn() });
+    installGateway({ exportTrajectory: vi.fn().mockRejectedValue(failure) });
+
+    await expect(exportSessionTrajectory()).rejects.toBe(failure);
+
+    expect(mocks.getActiveConversationSnapshot).not.toHaveBeenCalled();
+    expect(download).not.toHaveBeenCalled();
+  });
+
+  it("retires a pending evidence export before the previous Runtime can download", async () => {
+    const response = Promise.withResolvers<string>();
+    const exportTrajectory = vi.fn(() => response.promise);
+    installFiles({ download, pickText: vi.fn() });
+    const owner = installGateway({ exportTrajectory });
+
+    const exporting = exportSessionTrajectory();
+    await vi.waitFor(() => expect(exportTrajectory).toHaveBeenCalledOnce());
+    owner.replaceRuntimeGeneration(
+      () =>
+        ({
+          exportTrajectory: vi.fn().mockResolvedValue("current"),
+        }) as unknown as ConversationArchiveGateway,
+    );
+    await exporting;
+    response.resolve("retired");
+    await drainMicrotasks();
+
+    expect(download).not.toHaveBeenCalled();
+    await exportSessionTrajectory();
+    expect(download).toHaveBeenCalledWith(
+      expect.stringContaining("flame-session-current-trajectory-"),
+      "current",
+      "application/json;charset=utf-8",
+    );
+  });
+
+  it("does not request evidence when no Session is selected", async () => {
+    const exportTrajectory = vi.fn();
+    mocks.activeSessionId = undefined;
+    installFiles({ download, pickText: vi.fn() });
+    installGateway({ exportTrajectory });
+
+    await exportSessionTrajectory();
+
+    expect(exportTrajectory).not.toHaveBeenCalled();
+    expect(download).not.toHaveBeenCalled();
+  });
+
   it("retires a picker before its continuation can borrow the successor gateway", async () => {
     const picker = Promise.withResolvers<string | null>();
     const successorImport = vi.fn().mockResolvedValue({ id: "successor-session" });

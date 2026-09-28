@@ -1164,6 +1164,9 @@ func mustQueryCoordinator(deps sessions.QueryDependencies) *sessions.QueryCoordi
 	if deps.ModelInvocations == nil {
 		deps.ModelInvocations = emptyModelInvocations{}
 	}
+	if deps.Trajectory == nil {
+		deps.Trajectory = emptyTrajectoryReader{}
+	}
 	coordinator, err := sessions.NewQueryCoordinator(deps)
 	if err != nil {
 		panic(err)

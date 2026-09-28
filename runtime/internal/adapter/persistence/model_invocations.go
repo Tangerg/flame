@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
@@ -25,7 +26,22 @@ func (m ModelInvocationReader) PageModelInvocations(ctx context.Context, runID s
 	}
 	records := make([]runs.ModelInvocationCommit, len(rows))
 	for index, row := range rows {
-		records[index] = runs.ModelInvocationCommit{FirstOutputLatencyMillis: row.FirstOutputLatencyMillis, Usage: row.Usage, CallID: row.CallID, SegmentID: row.SegmentID, State: runs.ModelInvocationState(row.State), StartedAt: row.StartedAt, FinishedAt: row.FinishedAt}
+		records[index], err = modelInvocationFromRecord(row)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return records, nil
+}
+
+func modelInvocationFromRecord(row sqlite.ModelInvocationRecord) (runs.ModelInvocationCommit, error) {
+	record := runs.ModelInvocationCommit{
+		FirstOutputLatencyMillis: row.FirstOutputLatencyMillis, Usage: row.Usage,
+		CallID: row.CallID, SegmentID: row.SegmentID, State: runs.ModelInvocationState(row.State),
+		StartedAt: row.StartedAt, FinishedAt: row.FinishedAt,
+	}
+	if err := record.Validate(); err != nil {
+		return runs.ModelInvocationCommit{}, fmt.Errorf("persistence: restore model invocation: %w", err)
+	}
+	return record, nil
 }

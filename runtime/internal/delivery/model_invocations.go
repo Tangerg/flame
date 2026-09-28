@@ -3,6 +3,8 @@ package delivery
 import (
 	"context"
 
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -21,15 +23,20 @@ func (s *Handler) ListModelInvocations(ctx context.Context, in protocol.ListMode
 	}
 	rows := make([]protocol.ModelInvocation, len(page.Rows))
 	for index, row := range page.Rows {
-		rows[index] = protocol.ModelInvocation{FirstOutputLatencyMillis: row.FirstOutputLatencyMillis, CallID: row.CallID, RunID: in.RunID, SegmentID: row.SegmentID, State: protocol.ModelInvocationState(row.State), StartedAt: row.StartedAt, SettledAt: row.FinishedAt}
-		if usage := row.Usage; usage != nil {
-			owned := accounting.CloneReportedUsage(*usage)
-			rows[index].Usage = &protocol.ModelInvocationUsage{
-				InputTokens: owned.InputTokens, OutputTokens: owned.OutputTokens,
-				CacheReadTokens: owned.CacheReadInputTokens, CacheWriteTokens: owned.CacheWriteInputTokens,
-				ReasoningTokens: owned.ReasoningTokens,
-			}
-		}
+		rows[index] = presentModelInvocation(in.RunID, row)
 	}
 	return protocol.NewPageWithCursor(rows, page.NextCursor), nil
+}
+
+func presentModelInvocation(runID string, row runs.ModelInvocationCommit) protocol.ModelInvocation {
+	out := protocol.ModelInvocation{FirstOutputLatencyMillis: row.FirstOutputLatencyMillis, CallID: row.CallID, RunID: runID, SegmentID: row.SegmentID, State: protocol.ModelInvocationState(row.State), StartedAt: row.StartedAt, SettledAt: row.FinishedAt}
+	if usage := row.Usage; usage != nil {
+		owned := accounting.CloneReportedUsage(*usage)
+		out.Usage = &protocol.ModelInvocationUsage{
+			InputTokens: owned.InputTokens, OutputTokens: owned.OutputTokens,
+			CacheReadTokens: owned.CacheReadInputTokens, CacheWriteTokens: owned.CacheWriteInputTokens,
+			ReasoningTokens: owned.ReasoningTokens,
+		}
+	}
+	return out
 }

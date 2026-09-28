@@ -13,15 +13,16 @@ import (
 // HandlerConfig declares the application use cases, notification sources, and
 // contract facts required to construct a Handler.
 type HandlerConfig struct {
-	Sessions  sessionUseCases
-	MCP       mcpUseCases
-	Approvals approvalUseCases
-	Models    modelUseCases
-	Tools     toolUseCases
-	Runs      runUseCases
-	Queries   queryUseCases
-	Usage     usageUseCases
-	Feedback  feedbackUseCases
+	Sessions          sessionUseCases
+	MCP               mcpUseCases
+	Approvals         approvalUseCases
+	Models            modelUseCases
+	Tools             toolUseCases
+	Runs              runUseCases
+	Queries           queryUseCases
+	Usage             usageUseCases
+	Feedback          feedbackUseCases
+	TrajectoryExports trajectoryExportUseCases
 
 	FileChanges func(func(workspaceapp.FileChangeNotice))
 
@@ -62,17 +63,18 @@ type HandlerConfig struct {
 type Handler struct {
 	serverInfo protocol.ServerInfo
 
-	sessions       sessionUseCases
-	mcp            mcpUseCases
-	approvals      approvalUseCases
-	models         modelUseCases
-	tools          toolUseCases
-	runs           runUseCases
-	queries        queryUseCases
-	usage          usageUseCases
-	feedback       feedbackUseCases
-	schedules      scheduleManagementUseCases
-	scheduleFiring scheduleFiringUseCases
+	sessions          sessionUseCases
+	mcp               mcpUseCases
+	approvals         approvalUseCases
+	models            modelUseCases
+	tools             toolUseCases
+	runs              runUseCases
+	queries           queryUseCases
+	usage             usageUseCases
+	feedback          feedbackUseCases
+	trajectoryExports trajectoryExportUseCases
+	schedules         scheduleManagementUseCases
+	scheduleFiring    scheduleFiringUseCases
 
 	goals       goalUseCases
 	agentMemory agentMemoryUseCases
@@ -144,6 +146,7 @@ func (c HandlerConfig) validate() error {
 		{name: "Queries", value: c.Queries},
 		{name: "Usage", value: c.Usage},
 		{name: "Feedback", value: c.Feedback},
+		{name: "TrajectoryExports", value: c.TrajectoryExports},
 		{name: "Schedules", value: c.Schedules},
 		{name: "ScheduleFiring", value: c.ScheduleFiring},
 		{name: "AgentMemory", value: c.AgentMemory},
@@ -222,6 +225,7 @@ func newHandler(cfg HandlerConfig, facts contractFacts) *Handler {
 		queries:                  cfg.Queries,
 		usage:                    cfg.Usage,
 		feedback:                 cfg.Feedback,
+		trajectoryExports:        cfg.TrajectoryExports,
 		serverInfo:               cfg.ServerInfo,
 		workspaceHub:             newWorkspaceHub(),
 		schedules:                cfg.Schedules,
