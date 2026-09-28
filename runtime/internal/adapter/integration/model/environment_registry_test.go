@@ -6,11 +6,22 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 )
 
 type fakeRegistry struct {
 	stored map[string]provider.Provider
+}
+
+func TestEnvironmentRegistryRejectsMissingStore(t *testing.T) {
+	var typedNil *fakeRegistry
+	for _, store := range []models.ProviderRegistry{nil, typedNil} {
+		registry, err := WithEnvironmentKeys(store, nil)
+		if err == nil || registry != nil {
+			t.Fatal("environment registry accepted a missing durable store")
+		}
+	}
 }
 
 func (f *fakeRegistry) List(context.Context) ([]provider.Provider, error) {

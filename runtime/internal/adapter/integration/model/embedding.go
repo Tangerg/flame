@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/scope/core/embedding"
 	"github.com/Tangerg/scope/core/embeddingclient"
 
 	agentmemoryapp "github.com/Tangerg/flame/runtime/internal/application/workspace/agentmemory"
@@ -95,11 +96,7 @@ func (e *embedder) Embed(ctx context.Context, texts []string) ([][]float32, erro
 	}
 	out := make([][]float32, len(vecs))
 	for i, v := range vecs {
-		f := make([]float32, len(v))
-		for j, x := range v {
-			f[j] = float32(x)
-		}
-		out[i] = f
+		out[i] = embedding.Float32Vector(v)
 	}
 	return out, nil
 }

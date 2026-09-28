@@ -8,6 +8,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/Tangerg/scope/tools/content"
+
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
@@ -219,8 +221,8 @@ func commandResultContract() resultProjectionContract {
 // commandExecutionResult is the shell tool's own result shape. The shell
 // captures one interleaved stream, so there is no separate stderr to carry.
 type commandExecutionResult struct {
-	Stdout   string `json:"stdout"`
-	ExitCode *int   `json:"exit_code"`
+	Stdout   content.Content `json:"stdout"`
+	ExitCode *int            `json:"exit_code"`
 }
 
 // CommandResult is the transcript result of shell.
@@ -237,8 +239,16 @@ func presentCommandResult(result tool.Result) (tool.Result, string) {
 	if !ok {
 		return result, ""
 	}
-	presentation := CommandResult{Output: raw.Stdout, ExitCode: raw.ExitCode}
-	return projectResult(result, presentation), raw.Stdout
+	output, text := raw.Stdout.Text()
+	if !text {
+		encoded, err := json.Marshal(raw.Stdout)
+		if err != nil {
+			return result, ""
+		}
+		output = string(encoded)
+	}
+	presentation := CommandResult{Output: output, ExitCode: raw.ExitCode}
+	return projectResult(result, presentation), output
 }
 
 func searchResultContract() resultProjectionContract {

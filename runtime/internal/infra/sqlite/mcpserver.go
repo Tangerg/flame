@@ -32,6 +32,22 @@ const mcpColumns = `name, transport, enabled, description, url, authorization, h
 	        command, args, env, dir, timeout`
 
 func (m *MCPServerStore) List(ctx context.Context) ([]mcpserver.Server, error) {
+	var servers []mcpserver.Server
+	err := RunInTx(ctx, m.db, func(ctx context.Context) error {
+		var err error
+		servers, err = m.listServers(ctx)
+		if err != nil {
+			return err
+		}
+		return m.loadToolPolicies(ctx, servers)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return servers, nil
+}
+
+func (m *MCPServerStore) listServers(ctx context.Context) ([]mcpserver.Server, error) {
 	rows, err := conn(ctx, m.db).QueryContext(ctx,
 		`SELECT `+mcpColumns+` FROM mcp_servers`)
 	if err != nil {
@@ -53,33 +69,50 @@ func (m *MCPServerStore) List(ctx context.Context) ([]mcpserver.Server, error) {
 	if err := rows.Close(); err != nil {
 		return nil, fmt.Errorf("sqlite: close mcp server rows: %w", err)
 	}
-	if err := m.loadToolPolicies(ctx, out); err != nil {
-		return nil, err
-	}
 	return out, nil
 }
 
 func (m *MCPServerStore) Get(ctx context.Context, name mcpserver.ServerName) (mcpserver.Server, bool, error) {
-	row := conn(ctx, m.db).QueryRowContext(ctx,
-		`SELECT `+mcpColumns+` FROM mcp_servers WHERE name = ?`, name.String())
-	srv, err := scanMCPServer(row.Scan)
-	if errors.Is(err, sql.ErrNoRows) {
-		return mcpserver.Server{}, false, nil
-	}
+	var srv mcpserver.Server
+	found := false
+	// Connection settings and authorization rules describe one saved server.
+	// Both reads must observe the same revision while Save replaces that value.
+	err := RunInTx(ctx, m.db, func(ctx context.Context) error {
+		row := conn(ctx, m.db).QueryRowContext(ctx,
+			`SELECT `+mcpColumns+` FROM mcp_servers WHERE name = ?`, name.String())
+		var err error
+		srv, err = scanMCPServer(row.Scan)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		srv.ToolPolicy, err = m.loadToolPolicy(ctx, name)
+		found = err == nil
+		return err
+	})
 	if err != nil {
 		return mcpserver.Server{}, false, err
 	}
-	policy, err := m.loadToolPolicy(ctx, name)
-	if err != nil {
-		return mcpserver.Server{}, false, err
-	}
-	srv.ToolPolicy = policy
-	return srv, true, nil
+	return srv, found, nil
 }
 
 func (m *MCPServerStore) Save(ctx context.Context, srv mcpserver.Server) error {
 	if err := srv.Validate(); err != nil {
 		return fmt.Errorf("sqlite: validate mcp server: %w", err)
+	}
+	headers, err := encodeStringMap(srv.Headers)
+	if err != nil {
+		return fmt.Errorf("sqlite: encode mcp headers: %w", err)
+	}
+	args, err := encodeStrings(srv.Args)
+	if err != nil {
+		return fmt.Errorf("sqlite: encode mcp args: %w", err)
+	}
+	env, err := encodeStringMap(srv.Env)
+	if err != nil {
+		return fmt.Errorf("sqlite: encode mcp env: %w", err)
 	}
 	var timeoutNS any
 	if timeout, bounded := srv.HandshakeTimeout.Duration(); bounded {
@@ -98,8 +131,8 @@ func (m *MCPServerStore) Save(ctx context.Context, srv mcpserver.Server) error {
 			    command = excluded.command, args = excluded.args, env = excluded.env,
 			    dir = excluded.dir, timeout = excluded.timeout`,
 			srv.Name.String(), string(srv.Transport), srv.Enabled, srv.Description, srv.URL, srv.Authorization,
-			encodeStringMap(srv.Headers), srv.Command, encodeStrings(srv.Args),
-			encodeStringMap(srv.Env), srv.Dir, timeoutNS,
+			headers, srv.Command, args,
+			env, srv.Dir, timeoutNS,
 		); err != nil {
 			return fmt.Errorf("sqlite: save mcp server: %w", err)
 		}
@@ -128,54 +161,6 @@ func (m *MCPServerStore) Save(ctx context.Context, srv mcpserver.Server) error {
 func (m *MCPServerStore) Remove(ctx context.Context, name mcpserver.ServerName) error {
 	if _, err := conn(ctx, m.db).ExecContext(ctx, `DELETE FROM mcp_servers WHERE name = ?`, name.String()); err != nil {
 		return fmt.Errorf("sqlite: remove mcp server: %w", err)
-	}
-	return nil
-}
-
-// LoadOAuthSession returns the opaque MCP-owned credential payload only when
-// both the server name and normalized origin match. A stale credential can
-// never be restored for a different origin.
-func (m *MCPServerStore) LoadOAuthSession(ctx context.Context, server mcpserver.ServerName, origin string) ([]byte, bool, error) {
-	var payload []byte
-	err := conn(ctx, m.db).QueryRowContext(ctx,
-		`SELECT payload FROM mcp_oauth_sessions WHERE server_name = ? AND origin = ?`,
-		server.String(), origin).Scan(&payload)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, false, nil
-	}
-	if err != nil {
-		return nil, false, fmt.Errorf("sqlite: load mcp oauth session: %w", err)
-	}
-	return payload, true, nil
-}
-
-// SaveOAuthSession atomically replaces one server's origin-bound OAuth
-// session. The foreign key rejects credentials for an unconfigured server.
-func (m *MCPServerStore) SaveOAuthSession(ctx context.Context, server mcpserver.ServerName, origin string, payload []byte) error {
-	if err := server.Validate(); err != nil {
-		return fmt.Errorf("sqlite: mcp oauth session server: %w", err)
-	}
-	if origin == "" || len(payload) == 0 {
-		return errors.New("sqlite: mcp oauth session requires origin and payload")
-	}
-	_, err := conn(ctx, m.db).ExecContext(ctx,
-		`INSERT INTO mcp_oauth_sessions (server_name, origin, payload)
-		 VALUES (?, ?, ?)
-		 ON CONFLICT(server_name) DO UPDATE SET
-		    origin = excluded.origin, payload = excluded.payload`,
-		server.String(), origin, payload)
-	if err != nil {
-		return fmt.Errorf("sqlite: save mcp oauth session: %w", err)
-	}
-	return nil
-}
-
-// RemoveOAuthSession invalidates a server's persisted OAuth credentials. It is
-// idempotent so a rejected token and a concurrent server removal converge.
-func (m *MCPServerStore) RemoveOAuthSession(ctx context.Context, server mcpserver.ServerName) error {
-	if _, err := conn(ctx, m.db).ExecContext(ctx,
-		`DELETE FROM mcp_oauth_sessions WHERE server_name = ?`, server.String()); err != nil {
-		return fmt.Errorf("sqlite: remove mcp oauth session: %w", err)
 	}
 	return nil
 }
@@ -320,15 +305,12 @@ func mcpJSONFieldError(server mcpserver.ServerName, field string, err error) err
 
 // encodeStrings JSON-encodes a string slice for a TEXT column; a nil/empty
 // slice stores "" (decoded back to nil) so empty and absent read identically.
-func encodeStrings(v []string) string {
+func encodeStrings(v []string) (string, error) {
 	if len(v) == 0 {
-		return ""
+		return "", nil
 	}
 	b, err := encodeStoredJSON(v)
-	if err != nil {
-		return ""
-	}
-	return string(b)
+	return string(b), err
 }
 
 // decodeStrings reverses encodeStrings. A blank column is the canonical empty
@@ -346,15 +328,12 @@ func decodeStrings(s string) ([]string, error) {
 
 // encodeStringMap JSON-encodes a string map for a TEXT column; a nil/empty map
 // stores "" (decoded back to nil) so empty and absent read identically.
-func encodeStringMap(m map[string]string) string {
+func encodeStringMap(m map[string]string) (string, error) {
 	if len(m) == 0 {
-		return ""
+		return "", nil
 	}
 	b, err := encodeStoredJSON(m)
-	if err != nil {
-		return ""
-	}
-	return string(b)
+	return string(b), err
 }
 
 // decodeStringMap reverses encodeStringMap. A blank column is the canonical

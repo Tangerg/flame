@@ -79,6 +79,7 @@ type PlanBoundaries interface {
 // derived from the Run timeline, so it reads the Runs themselves rather than
 // inferring them from the items they produced.
 type RunStore interface {
+	runs.ToolResultPublications
 	RunReader
 	// ListNonTerminalRuns returns the durable activity facts for every Session in
 	// admission order in one read. Session list pages filter this set to their own

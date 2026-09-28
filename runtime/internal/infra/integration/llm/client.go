@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/Tangerg/scope/core/chat"
 
@@ -28,6 +27,7 @@ import (
 	"github.com/Tangerg/scope/models/xiaomi"
 	"github.com/Tangerg/scope/models/zhipu"
 
+	providerdomain "github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
 
@@ -36,96 +36,28 @@ const (
 	defaultOpenAIModel    = "gpt-5.6-sol"
 )
 
-// ClientCredential is one exact API key — every provider this Runtime serves
-// requires one, so the zero value is invalid. Raw secret access remains inside
-// the provider implementation.
-type ClientCredential struct {
-	apiKey string
-}
-
-func NewAPIKeyCredential(apiKey string) (ClientCredential, error) {
-	if strings.TrimSpace(apiKey) == "" {
-		return ClientCredential{}, errors.New("llm: API key is blank")
-	}
-	return ClientCredential{apiKey: apiKey}, nil
-}
-
-func (c ClientCredential) validate() error {
-	if strings.TrimSpace(c.apiKey) == "" {
-		return errors.New("API key is blank")
-	}
-	return nil
-}
-
-func (c ClientCredential) sdkAPIKey() string { return c.apiKey }
-
-type clientEndpointKind uint8
-
-const (
-	clientEndpointAbsent clientEndpointKind = iota + 1
-	clientEndpointConfigured
-)
-
-type clientEndpoint struct {
-	kind    clientEndpointKind
-	baseURL string
-}
-
-func noClientEndpoint() clientEndpoint {
-	return clientEndpoint{kind: clientEndpointAbsent}
-}
-
-func configuredClientEndpoint(baseURL string) (clientEndpoint, error) {
-	if err := validateCatalogBaseURL(baseURL); err != nil {
-		return clientEndpoint{}, err
-	}
-	return clientEndpoint{kind: clientEndpointConfigured, baseURL: baseURL}, nil
-}
-
-func (e clientEndpoint) validate() error {
-	switch e.kind {
-	case clientEndpointAbsent:
-		if e.baseURL != "" {
-			return errors.New("absent endpoint carries a base URL")
-		}
-	case clientEndpointConfigured:
-		if err := validateCatalogBaseURL(e.baseURL); err != nil {
-			return err
-		}
-	default:
-		return fmt.Errorf("unknown endpoint kind %d", e.kind)
-	}
-	return nil
-}
-
-func (e clientEndpoint) configured() bool { return e.kind == clientEndpointConfigured }
-
-func (e clientEndpoint) sdkBaseURL() string {
-	if !e.configured() {
-		return ""
-	}
-	return e.baseURL
-}
-
-// ClientSpec is the constructed input for one chat or embedding client. Its
-// fields are private so endpoint and credential absence, and unbounded response
-// admission, cannot be encoded by blank strings or a partial struct literal.
 type ClientSpec struct {
 	provider   Provider
 	model      modelref.ModelIdentity
-	credential ClientCredential
-	endpoint   clientEndpoint
+	credential providerdomain.APIKey
+	endpoint   providerdomain.BaseURL
 	httpClient *http.Client
 }
 
-func NewClientSpec(provider Provider, model string, credential ClientCredential) (ClientSpec, error) {
+// fmt does not invoke a nested value's Formatter through an unexported field.
+func (s ClientSpec) Format(state fmt.State, _ rune) {
+	_, _ = fmt.Fprintf(state, "{Provider:%s Model:%s Credential:%v Endpoint:%s}",
+		s.provider, s.model.String(), s.credential, s.endpoint.String())
+}
+
+func NewClientSpec(provider Provider, model string, credential providerdomain.APIKey) (ClientSpec, error) {
 	identity, err := modelref.NewModelIdentity(model)
 	if err != nil {
 		return ClientSpec{}, fmt.Errorf("llm: model: %w", err)
 	}
 	spec := ClientSpec{
 		provider: provider, model: identity, credential: credential,
-		endpoint: noClientEndpoint(), httpClient: newModelHTTPClient(),
+		httpClient: newModelHTTPClient(),
 	}
 	if err := spec.validate(); err != nil {
 		return ClientSpec{}, err
@@ -134,7 +66,7 @@ func NewClientSpec(provider Provider, model string, credential ClientCredential)
 }
 
 func (s ClientSpec) WithBaseURL(baseURL string) (ClientSpec, error) {
-	endpoint, err := configuredClientEndpoint(baseURL)
+	endpoint, err := providerdomain.NewBaseURL(baseURL)
 	if err != nil {
 		return ClientSpec{}, fmt.Errorf("llm: base URL: %w", err)
 	}
@@ -147,14 +79,11 @@ func (s ClientSpec) validate() error {
 	if !found {
 		return fmt.Errorf("llm: unsupported provider %q", s.provider)
 	}
-	if _, err := modelref.NewModelIdentity(s.model.String()); err != nil {
-		return fmt.Errorf("llm: model: %w", err)
+	if s.model.String() == "" {
+		return errors.New("llm: model identity is required")
 	}
-	if err := s.credential.validate(); err != nil {
-		return fmt.Errorf("llm: provider %q credential: %w", s.provider, err)
-	}
-	if err := s.endpoint.validate(); err != nil {
-		return fmt.Errorf("llm: endpoint: %w", err)
+	if !s.credential.Present() {
+		return fmt.Errorf("llm: provider %q credential: %w", s.provider, providerdomain.ErrAPIKeyRequired)
 	}
 	if s.httpClient == nil || s.httpClient.Transport == nil {
 		return errors.New("llm: bounded HTTP client is required")
@@ -162,13 +91,13 @@ func (s ClientSpec) validate() error {
 	return nil
 }
 
-func (s ClientSpec) sdkAPIKey() string { return s.credential.sdkAPIKey() }
+func (s ClientSpec) sdkAPIKey() string { return s.credential.Reveal() }
 
-func (s ClientSpec) sdkBaseURL() string { return s.endpoint.sdkBaseURL() }
+func (s ClientSpec) sdkBaseURL() string { return s.endpoint.String() }
 
 func (s ClientSpec) sdkHTTPClient() *http.Client { return s.httpClient }
 
-func (s ClientSpec) withEndpoint(endpoint clientEndpoint) ClientSpec {
+func (s ClientSpec) withEndpoint(endpoint providerdomain.BaseURL) ClientSpec {
 	s.endpoint = endpoint
 	return s
 }

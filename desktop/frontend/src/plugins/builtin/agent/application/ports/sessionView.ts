@@ -1,7 +1,7 @@
 import { createSingletonPort } from "@/lib/ports/singletonPort";
 import type { AgentRunStartOptions } from "@/plugins/sdk";
 import type { AgentInput } from "../../domain/input";
-import type { ApprovalDecision, RememberScope } from "../../domain/hitl";
+import type { RememberScope } from "../../domain/hitl";
 import type { WireDecision } from "../hitl/wireDecision";
 import type {
   AgentProblem,
@@ -13,12 +13,6 @@ import type {
 } from "@/plugins/sdk/types/agentSessionView";
 import type { AgentRunTreeNode } from "../view/runTree";
 import type { TranscriptRow } from "../conversation/transcriptRows";
-
-export type ResolvePatch = {
-  decision?: ApprovalDecision;
-  answered?: boolean;
-  answers?: string[][];
-};
 
 export type StopCurrentRootRunAction = () => boolean;
 export type SessionProjectionSynchronizationOwnership =
@@ -109,12 +103,6 @@ export interface AgentSessionViewPort {
   retireProjectionGeneration(sessionIds: readonly string[]): void;
   replaceServerScope(sessionIds: readonly string[]): void;
   clearProblem(sessionId: string): void;
-  resolveInterrupt(
-    sessionId: string,
-    itemId: string,
-    settled: ResolvePatch,
-    resolvedAt: number,
-  ): void;
   subscribeSessions(
     onChange: (sessions: Record<string, AgentSessionViewEntry>) => void,
   ): () => void;

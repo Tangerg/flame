@@ -34,6 +34,7 @@ type reductionBatch struct {
 // before Run events are projected into their durable publication shape.
 type factReduction struct {
 	resultPublication    *ResultPublication
+	toolResults          []corechat.ToolResult
 	events               []ProjectionEvent
 	items                []transcript.Item
 	parkItems            []transcript.Item
@@ -87,7 +88,9 @@ func (r *reducer) projectFact(reduced factReduction) (reductionBatch, error) {
 		if len(batch.events) == 0 || batch.parkCommit != nil {
 			return reductionBatch{}, fmt.Errorf("%w: result publication has no ordinary batch", errReducerInvariant)
 		}
-		r.ensureLastEventCommit(&batch).ResultPublication = new(*reduced.resultPublication)
+		commit := r.ensureLastEventCommit(&batch)
+		commit.ResultPublication = new(*reduced.resultPublication)
+		commit.ToolResults = cloneToolResults(reduced.toolResults)
 	}
 	return batch, nil
 }

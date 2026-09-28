@@ -22,8 +22,7 @@ func newProbeServer(t *testing.T, probes ...flamehttp.HealthProbe) *httptest.Ser
 			Name: "flame-test", Version: "0.0.0", InstanceID: testRuntimeInstanceID,
 			DefaultWorkspace: protocol.WorkspaceRef{Path: "/secret/project"}, Home: "/secret/home",
 		},
-		ProtocolVersion: testProtocolVersion,
-		HealthProbes:    probes,
+		HealthProbes: probes,
 	})
 	if err != nil {
 		t.Fatalf("NewServer: %v", err)
@@ -59,7 +58,7 @@ func TestInfoIsMinimalAndTyped(t *testing.T) {
 	if err := json.UnmarshalRead(resp.Body, &body); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if body.ProtocolVersion != testProtocolVersion {
+	if body.ProtocolVersion != protocol.ProtocolVersion {
 		t.Fatalf("protocolVersion = %q", body.ProtocolVersion)
 	}
 	if body.Server.Name != "flame-test" || body.Server.Version != "0.0.0" || body.Server.InstanceID != testRuntimeInstanceID {
@@ -189,10 +188,9 @@ func TestNewServerRequiresCanonicalRuntimeInstanceIdentity(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			_, err := flamehttp.NewServer(flamehttp.Config{
-				Endpoint:        newTestEndpoint(t, &fakeRuntime{}, delivery.EndpointConfig{}),
-				Addr:            ":0",
-				ServerInfo:      protocol.ServerInfo{Name: "flame-test", Version: "0.0.0", InstanceID: test.instanceID},
-				ProtocolVersion: testProtocolVersion,
+				Endpoint:   newTestEndpoint(t, &fakeRuntime{}, delivery.EndpointConfig{}),
+				Addr:       ":0",
+				ServerInfo: protocol.ServerInfo{Name: "flame-test", Version: "0.0.0", InstanceID: test.instanceID},
 			})
 			if err == nil {
 				t.Fatalf("NewServer accepted Runtime instance identity %q", test.instanceID)
@@ -203,10 +201,9 @@ func TestNewServerRequiresCanonicalRuntimeInstanceIdentity(t *testing.T) {
 
 func TestNewServerRejectsAmbiguousHealthProbes(t *testing.T) {
 	base := flamehttp.Config{
-		Endpoint:        newTestEndpoint(t, &fakeRuntime{}, delivery.EndpointConfig{}),
-		Addr:            ":0",
-		ServerInfo:      protocol.ServerInfo{Name: "flame-test", Version: "0.0.0", InstanceID: testRuntimeInstanceID},
-		ProtocolVersion: testProtocolVersion,
+		Endpoint:   newTestEndpoint(t, &fakeRuntime{}, delivery.EndpointConfig{}),
+		Addr:       ":0",
+		ServerInfo: protocol.ServerInfo{Name: "flame-test", Version: "0.0.0", InstanceID: testRuntimeInstanceID},
 	}
 	tests := []struct {
 		name   string

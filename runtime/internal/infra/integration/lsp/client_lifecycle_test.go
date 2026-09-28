@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/infra/process/procgroup"
 )
 
 func TestPipeRWCCloseJoinsBothPipeErrors(t *testing.T) {
@@ -39,6 +41,7 @@ func TestCloseUnstartedPipesClosesPartialSetupAndPreservesErrors(t *testing.T) {
 func TestKillAndJoinProcessReapsWaiter(t *testing.T) {
 	cmd := exec.Command(os.Args[0], "-test.run=^TestLSPProcessHelper$")
 	cmd.Env = append(os.Environ(), "SCOPE_LSP_PROCESS_HELPER=1")
+	procgroup.Prepare(cmd)
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("start helper process: %v", err)
 	}
@@ -49,7 +52,7 @@ func TestKillAndJoinProcessReapsWaiter(t *testing.T) {
 		close(wait)
 	}()
 
-	if err := killAndJoinProcess("test", cmd.Process, wait); err != nil {
+	if err := killAndJoinProcess("test", func() error { return procgroup.Stop(cmd) }, wait); err != nil {
 		t.Fatalf("killAndJoinProcess: %v", err)
 	}
 	if _, open := <-wait; open {

@@ -1294,7 +1294,7 @@ func (stubRunState) ResultPublicationCommitted(context.Context, string, string, 
 	return false, nil
 }
 
-func (stubRunState) RecordResultPublication(context.Context, string, string, string, string, string) error {
+func (stubRunState) RecordResultPublication(context.Context, string, string, string, string, string, []chat.ToolResult) error {
 	return nil
 }
 
@@ -1495,4 +1495,14 @@ func (inertRuntimeStores) SaveExecutionTree(context.Context, runs.ExecutionTreeU
 }
 func (inertRuntimeStores) ExecutionResultCommitted(context.Context, string, runs.ResultPublication) (bool, error) {
 	return false, errors.New("unused execution tree store")
+}
+
+func (emptySessionRunStore) UnpublishedToolResults(context.Context, string, string) ([]chat.ToolResult, error) {
+	return nil, nil
+}
+func (stubRunState) UnpublishedToolResults(context.Context, string, string) ([]chat.ToolResult, error) {
+	return nil, nil
+}
+func (s stubMessageCounter) Read(ctx context.Context, sessionID string) ([]chat.Message, error) {
+	return s.rt.ReadHistory(ctx, sessionID)
 }

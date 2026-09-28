@@ -238,7 +238,7 @@ func requireExternalAuthoredInvalidations(t *testing.T, runtime *Connection, wor
 		t.Fatalf("skills after external invalidation = (%+v, %v)", discovered, err)
 	}
 	detail, err := runtime.InspectSkill(t.Context(), workspace, "external-observed")
-	if err != nil || detail.Scope != protocol.SkillScopeProject || detail.Instructions != "# Observe edits" {
+	if err != nil || detail.Scope != protocol.SkillScopeProject || detail.Instructions != "# Observe edits\n" {
 		t.Fatalf("skill detail after edit = (%+v, %v)", detail, err)
 	}
 }

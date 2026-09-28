@@ -110,10 +110,10 @@ func post(ctx context.Context, dispatcher program.Dispatcher, fn func()) error {
 	finished := make(chan struct{})
 	var claimed atomic.Bool
 	dispatcher.Post(func() {
+		defer close(finished)
 		if claimed.CompareAndSwap(false, true) {
 			fn()
 		}
-		close(finished)
 	})
 	abort := func(err error) error {
 		if claimed.CompareAndSwap(false, true) {

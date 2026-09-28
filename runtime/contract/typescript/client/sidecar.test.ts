@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { RpcTransportError } from "@flame/runtime-contract/client/errors";
+import { RpcProtocolError, RpcTransportError } from "@flame/runtime-contract/client/errors";
 import { createSidecarClient } from "@flame/runtime-contract/client/sidecar";
 import { PROTOCOL_VERSION } from "@flame/runtime-contract/wire";
 
@@ -88,9 +88,9 @@ describe("SidecarClient", () => {
       }),
     });
     await expect(info.info()).rejects.toMatchObject({
-      name: "RpcTransportError",
-      message: expect.stringContaining("response violates its contract"),
-    } satisfies Partial<RpcTransportError>);
+      name: "RpcProtocolError",
+      message: expect.stringContaining("invalid sidecar"),
+    } satisfies Partial<RpcProtocolError>);
 
     const readiness = createSidecarClient({
       baseUrl: "http://x",
@@ -99,7 +99,26 @@ describe("SidecarClient", () => {
         checks: { storage: "unknown" },
       }),
     });
-    await expect(readiness.readiness()).rejects.toBeInstanceOf(RpcTransportError);
+    await expect(readiness.readiness()).rejects.toBeInstanceOf(RpcProtocolError);
+  });
+
+  it("rejects duplicate members in a sidecar response", async () => {
+    const client = createSidecarClient({
+      baseUrl: "http://x",
+      fetch: makeFetch(200, '{"status":"ok","status":"ok","instanceId":"runtime_1"}'),
+    });
+    await expect(client.liveness()).rejects.toBeInstanceOf(RpcProtocolError);
+  });
+
+  it("rejects invalid UTF-8 before sidecar JSON parsing", async () => {
+    const client = createSidecarClient({
+      baseUrl: "http://x",
+      fetch: vi.fn(async () => new Response(new Uint8Array([0xff]))),
+    });
+    await expect(client.liveness()).rejects.toMatchObject({
+      name: "RpcProtocolError",
+      message: expect.stringContaining("valid UTF-8"),
+    });
   });
 
   it("uses distinct liveness and readiness endpoints", async () => {

@@ -47,7 +47,7 @@ func TestCompactorPreservesUnreadCompletedShell(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sh, ok := shells.Get(id)
+	sh, ok := shells.Get(sessID, id)
 	if !ok {
 		t.Fatal("launched shell is missing")
 	}

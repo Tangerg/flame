@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 // RecordRunCommit stamps one exact active Segment's latest immutable
@@ -216,7 +217,7 @@ func (r *RunStore) ResultPublicationCommitted(ctx context.Context, sessionID, ru
 }
 
 // RecordResultPublication participates in the transaction owning its results.
-func (r *RunStore) RecordResultPublication(ctx context.Context, sessionID, runID, segmentID, publicationID, digest string) error {
+func (r *RunStore) RecordResultPublication(ctx context.Context, sessionID, runID, segmentID, publicationID, digest string, results []chat.ToolResult) error {
 	if err := r.RequireActiveSegment(ctx, sessionID, runID, segmentID); err != nil {
 		return err
 	}
@@ -226,9 +227,54 @@ func (r *RunStore) RecordResultPublication(ctx context.Context, sessionID, runID
 	if digest == "" {
 		return errors.New("sqlite: result publication digest is required")
 	}
-	_, err := conn(ctx, r.db).ExecContext(ctx, `INSERT INTO result_publications(publication_id, digest, session_id, run_id, segment_id) VALUES (?, ?, ?, ?, ?)`, publicationID, digest, sessionID, runID, segmentID)
+
+	for _, result := range results {
+		if err := result.Validate(); err != nil {
+			return fmt.Errorf("sqlite: exact tool result: %w", err)
+		}
+	}
+	encoded, err := encodeStoredJSON(results)
+	if err != nil {
+		return fmt.Errorf("sqlite: encode exact tool results: %w", err)
+	}
+	_, err = conn(ctx, r.db).ExecContext(ctx, `INSERT INTO result_publications(publication_id, digest, session_id, run_id, segment_id, source_message_seq, model_results)
+ VALUES (?, ?, ?, ?, ?, (SELECT max(seq) FROM messages WHERE conversation_id = ?), ?)`, publicationID, digest, sessionID, runID, segmentID, sessionID, string(encoded))
 	if err != nil {
 		return fmt.Errorf("sqlite: record result publication: %w", err)
 	}
 	return nil
+}
+
+func (r *RunStore) UnpublishedToolResults(ctx context.Context, sessionID, runID string) ([]chat.ToolResult, error) {
+	rows, err := conn(ctx, r.db).QueryContext(ctx, `SELECT model_results FROM result_publications
+ WHERE session_id = ? AND run_id = ? AND (model_results IS NULL OR source_message_seq = (SELECT max(seq) FROM messages WHERE conversation_id = ?))
+ ORDER BY publication_id`, sessionID, runID, sessionID)
+	if err != nil {
+		return nil, fmt.Errorf("sqlite: read unpublished tool results: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	var results []chat.ToolResult
+	for rows.Next() {
+		var encoded sql.NullString
+		if err := rows.Scan(&encoded); err != nil {
+			return nil, fmt.Errorf("sqlite: scan unpublished tool results: %w", err)
+		}
+		if !encoded.Valid {
+			return nil, errors.New("sqlite: run has publication receipts without exact tool result evidence; terminal conversation cannot be reconstructed")
+		}
+		var batch []chat.ToolResult
+		if err := decodeStoredJSON([]byte(encoded.String), &batch); err != nil {
+			return nil, fmt.Errorf("sqlite: decode unpublished tool results: %w", err)
+		}
+		for _, result := range batch {
+			if err := result.Validate(); err != nil {
+				return nil, fmt.Errorf("sqlite: stored unpublished tool result: %w", err)
+			}
+		}
+		results = append(results, batch...)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("sqlite: iterate unpublished tool results: %w", err)
+	}
+	return results, nil
 }

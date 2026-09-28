@@ -546,6 +546,7 @@ func combineAuthoritativeCommit(route *executorRoute, sessionID string, batch re
 				return EventCommit{}, errors.New("runs: repeated result publication")
 			}
 			combined.ResultPublication = new(*reduced.Commit.ResultPublication)
+			combined.ToolResults = cloneToolResults(reduced.Commit.ToolResults)
 		}
 		combined.Items = append(combined.Items, reduced.Commit.Items...)
 		combined.ConversationMessages = appendClonedMessages(

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { RunEvent, RunRef, SessionSnapshot } from "@flame/runtime-contract/wire";
 import runRef from "@flame/runtime-contract/samples/runref.full.json";
 import { observeRun } from "./observation";
+import { RpcError } from "@flame/runtime-contract/client";
 
 const running: RunRef = {
   ...(runRef as RunRef),
@@ -31,7 +32,7 @@ describe("IDE run attachment", () => {
       })(),
     });
     await observeRun(
-      { runs: { get, subscribe } },
+      { runs: { get, subscribe }, sessions: { snapshot: vi.fn().mockResolvedValue(snapshot) } },
       running.id,
       { snapshot: () => order.push("snapshot"), event: () => order.push("tail") },
       new AbortController().signal,
@@ -41,7 +42,7 @@ describe("IDE run attachment", () => {
       segmentId: "seg_current",
       snapshot: true,
     });
-    expect(order).toEqual(["snapshot", "tail"]);
+    expect(order).toEqual(["snapshot", "tail", "snapshot"]);
     expect(get).toHaveBeenCalledTimes(2);
   });
 
@@ -54,7 +55,10 @@ describe("IDE run attachment", () => {
       events: { [Symbol.asyncIterator]: () => ({ next, return: returned }) },
     });
     await observeRun(
-      { runs: { get: vi.fn().mockResolvedValue(running), subscribe } },
+      {
+        runs: { get: vi.fn().mockResolvedValue(running), subscribe },
+        sessions: { snapshot: vi.fn() },
+      },
       running.id,
       {
         snapshot: () => abort.abort(),
@@ -67,4 +71,50 @@ describe("IDE run attachment", () => {
     expect(returned).toHaveBeenCalledOnce();
     expect(subscribe).toHaveBeenCalledOnce();
   });
+
+  it.each(["waiting", "finished"])(
+    "refreshes durable material when the Run is already %s before attachment",
+    async (status) => {
+      const complete = { ...snapshot, runs: [{ ...running, status }] };
+      const readSnapshot = vi.fn().mockResolvedValue(complete);
+      const sink = { snapshot: vi.fn(), event: vi.fn() };
+      const subscribe = vi.fn();
+      await observeRun(
+        {
+          runs: { get: vi.fn().mockResolvedValue({ ...running, status }), subscribe },
+          sessions: { snapshot: readSnapshot },
+        },
+        running.id,
+        sink,
+        new AbortController().signal,
+      );
+      expect(readSnapshot).toHaveBeenCalledWith(running.sessionId, true, expect.any(AbortSignal));
+      expect(sink.snapshot).toHaveBeenCalledWith(complete);
+      expect(subscribe).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["stale_segment", "run_waiting", "run_finished"] as const)(
+    "rereads authoritative state when subscription races a %s boundary",
+    async (type) => {
+      const get = vi
+        .fn()
+        .mockResolvedValueOnce(running)
+        .mockResolvedValueOnce({
+          ...running,
+          status: "finished",
+        });
+      const subscribe = vi.fn().mockRejectedValue(new RpcError({ message: type, data: { type } }));
+      const sink = { snapshot: vi.fn(), event: vi.fn() };
+      await observeRun(
+        { runs: { get, subscribe }, sessions: { snapshot: vi.fn().mockResolvedValue(snapshot) } },
+        running.id,
+        sink,
+        new AbortController().signal,
+      );
+      expect(get).toHaveBeenCalledTimes(2);
+      expect(subscribe).toHaveBeenCalledOnce();
+      expect(sink.snapshot).toHaveBeenCalledWith(snapshot);
+    },
+  );
 });

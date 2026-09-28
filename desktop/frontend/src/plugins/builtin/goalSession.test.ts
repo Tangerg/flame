@@ -69,7 +69,7 @@ describe("Goal and mounted Session integration", () => {
       }) as unknown as FlameClient;
     const adapter = installGoalRuntimeAdapter(getRuntimeClient, true);
     const driver = { start: vi.fn(), resume: vi.fn() } as unknown as AgentDriver;
-    const mounted = renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID));
+    const mounted = renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID, vi.fn()));
     try {
       await waitFor(() => expect(subscribe).toHaveBeenCalledOnce());
       let edited = false;

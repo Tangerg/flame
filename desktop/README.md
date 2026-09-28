@@ -51,6 +51,7 @@
 - **状态 / 数据 / 路由**：Zustand（多小 store）/ TanStack React Query / TanStack Router。
 - **协议**：自研 Flame Runtime Protocol v2（JSON-RPC 2.0，已弃用 AG-UI），权威定义见 `../runtime/contract/`（`manifest.json` / `openrpc.json` / `schema.json` 是机器真值，`API_REFERENCE.md` 是它们生成的人读索引）。
 - **桌面壳**：Wails v3（beta，版本钉在 `go.mod`）。**测试**：Vitest + Testing Library。**构建 / 质检**：VoidZero 栈（Vite + Rolldown / Vitest / OxLint）+ prettier + knip。
+- **运行基线**：macOS 宿主最低为 12.0，系统 Safari / WebKit 必须为 17.4 或更新版本；Wails 的 WKWebView 使用系统 WebKit。Dougong 的浏览器契约和前端使用的 `Promise.withResolvers()`、`AbortSignal.any()` 都要求该基线。Monterey / Ventura 可以通过软件更新单独升级 Safari，无须为此升级 macOS，见 [WebKit 的 Safari 17.4 发布说明](https://webkit.org/blog/15063/webkit-features-in-safari-17-4/)。Web 客户端的构建目标为 Chromium 131 与 Safari 17.4，统一在 `frontend/vite.config.ts` 声明；Node 测试通过不代表旧 WebView 支持这些 API。
 - 具体库（命令面板 / Toast / 图标 / 高亮 / i18n / 动画 等）见 `package.json` 与 §3「不重复造轮子」。
 
 ---

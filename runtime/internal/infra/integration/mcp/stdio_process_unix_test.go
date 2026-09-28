@@ -94,7 +94,11 @@ func runStdioProcessServer() {
 
 func runStdioProcessDescendant() {
 	pidFile := os.Getenv(stdioDescendantPID)
-	if err := os.WriteFile(pidFile, []byte(strconv.Itoa(os.Getpid())), 0o600); err != nil {
+	pendingPIDFile := pidFile + ".pending"
+	if err := os.WriteFile(pendingPIDFile, []byte(strconv.Itoa(os.Getpid())), 0o600); err != nil {
+		os.Exit(2)
+	}
+	if err := os.Rename(pendingPIDFile, pidFile); err != nil {
 		os.Exit(2)
 	}
 	for {

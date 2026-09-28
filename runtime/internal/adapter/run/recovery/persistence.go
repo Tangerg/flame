@@ -18,6 +18,7 @@ import (
 )
 
 type RunStore interface {
+	runs.ToolResultPublications
 	ListNonTerminalRuns(ctx context.Context) ([]run.Run, error)
 	RecoverLost(ctx context.Context, replacement run.Replacement) error
 }
@@ -208,6 +209,10 @@ func (p *Persistence) ListTranscript(ctx context.Context, sessionID string) ([]t
 
 func (p *Persistence) CountMessages(ctx context.Context, sessionID string) (int, error) {
 	return p.messages.Count(ctx, sessionID)
+}
+
+func (p *Persistence) UnpublishedToolResults(ctx context.Context, sessionID, runID string) ([]corechat.ToolResult, error) {
+	return p.runs.UnpublishedToolResults(ctx, sessionID, runID)
 }
 
 func (p *Persistence) ReadMessages(ctx context.Context, sessionID string) ([]corechat.Message, error) {

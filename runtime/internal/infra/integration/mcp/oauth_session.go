@@ -19,13 +19,14 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/httporigin"
 )
 
-// OAuthSessionStore is the durable boundary for MCP OAuth credentials. The
-// MCP infrastructure owns the opaque payload; storage implementations only
-// bind it to one configured server and normalized HTTP origin.
+// OAuthSessionStore fences credential writes by their authorization grant.
+// Begin and Load verify the current credential configuration; Save and Remove
+// must refuse a superseded binding without changing its replacement.
 type OAuthSessionStore interface {
-	LoadOAuthSession(ctx context.Context, server mcpserver.ServerName, origin string) (payload []byte, found bool, err error)
-	SaveOAuthSession(ctx context.Context, server mcpserver.ServerName, origin string, payload []byte) error
-	RemoveOAuthSession(ctx context.Context, server mcpserver.ServerName) error
+	BeginOAuthSession(ctx context.Context, target mcpserver.OAuthTarget) (binding string, err error)
+	LoadOAuthSession(ctx context.Context, target mcpserver.OAuthTarget) (payload []byte, binding string, found bool, err error)
+	SaveOAuthSession(ctx context.Context, server mcpserver.ServerName, origin, binding string, payload []byte) error
+	RemoveOAuthSession(ctx context.Context, server mcpserver.ServerName, binding string) error
 }
 
 const oauthSessionVersion = 1
@@ -160,15 +161,26 @@ func validateStoredOAuthURL(field, raw string) error {
 	return nil
 }
 
-func persistOAuthSession(ctx context.Context, store OAuthSessionStore, server mcpserver.ServerName, origin string, cfg *oauth2.Config, token *oauth2.Token) error {
+type oauthSession struct {
+	store   OAuthSessionStore
+	server  mcpserver.ServerName
+	origin  string
+	binding string
+}
+
+func (s *oauthSession) save(ctx context.Context, cfg *oauth2.Config, token *oauth2.Token) error {
 	payload, err := encodeOAuthSession(cfg, token)
 	if err != nil {
 		return err
 	}
-	if err := store.SaveOAuthSession(ctx, server, origin, payload); err != nil {
-		return fmt.Errorf("mcp oauth: persist session for %q: %w", server, err)
+	if err := s.store.SaveOAuthSession(ctx, s.server, s.origin, s.binding, payload); err != nil {
+		return fmt.Errorf("mcp oauth: persist session for %q: %w", s.server, err)
 	}
 	return nil
+}
+
+func (s *oauthSession) remove(ctx context.Context) error {
+	return s.store.RemoveOAuthSession(ctx, s.server, s.binding)
 }
 
 type savingTokenSource struct {
@@ -183,8 +195,7 @@ type invalidatingTokenSource struct {
 	mu          sync.Mutex
 	source      oauth2.TokenSource
 	lifetime    context.Context
-	store       OAuthSessionStore
-	server      mcpserver.ServerName
+	session     *oauthSession
 	invalidated bool
 }
 
@@ -233,7 +244,7 @@ func (i *invalidatingTokenSource) Token() (*oauth2.Token, error) {
 		return token, err
 	}
 	i.invalidated = true
-	removeErr := i.store.RemoveOAuthSession(i.lifetime, i.server)
+	removeErr := i.session.remove(i.lifetime)
 	return nil, errors.Join(mcpserver.ErrAuthorizationRequired, errStoredOAuthRejected, err, removeErr)
 }
 
@@ -254,14 +265,13 @@ func oauthCredentialRejected(err error) bool {
 func invalidateRejectedTokens(
 	source oauth2.TokenSource,
 	lifetime context.Context,
-	store OAuthSessionStore,
-	server mcpserver.ServerName,
+	session *oauthSession,
 ) oauth2.TokenSource {
-	if store == nil {
+	if session == nil {
 		return source
 	}
 	return &invalidatingTokenSource{
-		source: source, lifetime: lifetime, store: store, server: server,
+		source: source, lifetime: lifetime, session: session,
 	}
 }
 
@@ -269,10 +279,9 @@ func invalidateRejectedTokens(
 // during boot. A rejected credential is removed and the dial is classified as
 // needsAuth; the explicit Authorize command then owns user interaction.
 type restoredOAuthHandler struct {
-	mu     sync.RWMutex
-	source oauth2.TokenSource
-	store  OAuthSessionStore
-	server mcpserver.ServerName
+	mu      sync.RWMutex
+	source  oauth2.TokenSource
+	session *oauthSession
 }
 
 var _ auth.OAuthHandler = (*restoredOAuthHandler)(nil)
@@ -291,7 +300,7 @@ func (r *restoredOAuthHandler) Authorize(ctx context.Context, _ *http.Request, r
 	r.mu.Lock()
 	r.source = nil
 	r.mu.Unlock()
-	removeErr := r.store.RemoveOAuthSession(ctx, r.server)
+	removeErr := r.session.remove(ctx)
 	return errors.Join(errStoredOAuthRejected, responseErr, removeErr)
 }
 
@@ -299,8 +308,7 @@ func restoreOAuthHandler(
 	ctx context.Context,
 	lifetime context.Context,
 	store OAuthSessionStore,
-	server mcpserver.ServerName,
-	endpoint string,
+	target mcpserver.OAuthTarget,
 ) (auth.OAuthHandler, error) {
 	if store == nil {
 		return nil, nil
@@ -308,24 +316,25 @@ func restoreOAuthHandler(
 	if lifetime == nil {
 		return nil, errors.New("mcp oauth: lifetime is required")
 	}
-	origin, err := oauthOrigin(endpoint)
+	origin, err := oauthOrigin(target.URL)
 	if err != nil {
 		return nil, err
 	}
-	payload, found, err := store.LoadOAuthSession(ctx, server, origin)
+	payload, binding, found, err := store.LoadOAuthSession(ctx, target)
 	if err != nil {
-		return nil, fmt.Errorf("mcp oauth: load session for %q: %w", server, err)
+		return nil, fmt.Errorf("mcp oauth: load session for %q: %w", target.Server, err)
 	}
 	if !found {
 		return nil, nil
 	}
 	cfg, token, err := decodeOAuthSession(payload)
 	if err != nil {
-		return nil, fmt.Errorf("mcp oauth: restore session for %q: %w", server, err)
+		return nil, fmt.Errorf("mcp oauth: restore session for %q: %w", target.Server, err)
 	}
+	session := &oauthSession{store: store, server: target.Server, origin: origin, binding: binding}
 	if token.RefreshToken == "" && !token.Valid() {
-		if err := store.RemoveOAuthSession(ctx, server); err != nil {
-			return nil, fmt.Errorf("mcp oauth: remove expired session for %q: %w", server, err)
+		if err := session.remove(ctx); err != nil {
+			return nil, fmt.Errorf("mcp oauth: remove expired session for %q: %w", target.Server, err)
 		}
 		return nil, nil
 	}
@@ -334,9 +343,9 @@ func restoreOAuthHandler(
 		cfg,
 		token,
 		func(updatedConfig *oauth2.Config, updatedToken *oauth2.Token) error {
-			return persistOAuthSession(lifetime, store, server, origin, updatedConfig, updatedToken)
+			return session.save(lifetime, updatedConfig, updatedToken)
 		},
 	)
-	source = invalidateRejectedTokens(source, lifetime, store, server)
-	return &restoredOAuthHandler{source: source, store: store, server: server}, nil
+	source = invalidateRejectedTokens(source, lifetime, session)
+	return &restoredOAuthHandler{source: source, session: session}, nil
 }

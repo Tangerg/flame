@@ -1,21 +1,25 @@
 import { useSyncExternalStore } from "react";
-import type { ContributionView, Host, HostSnapshot } from "dougong";
+import { SnapshotPublisher, type ContributionView, type Host, type HostSnapshot } from "dougong";
 import type { Contribution } from "./contracts";
 import type { ExtensionPoint } from "./types/extensions";
+import { reportPluginError } from "./errors";
 
 const NOTHING: ReadonlyArray<Contribution<never>> = Object.freeze([]);
 const EMPTY_NAMES: ReadonlyArray<string> = Object.freeze([]);
 
 let host: Host | undefined;
 let installations: { source: HostSnapshot; names: ReadonlyArray<string> } | undefined;
-const listeners = new Set<() => void>();
+const publication = new SnapshotPublisher(
+  () => host,
+  (error) => reportPluginError("kernel", "events", error),
+);
 
 let views = new Map<string, ContributionView<Contribution<unknown>>>();
 let releases: Array<() => void> = [];
 let entries = new Map<string, ReadonlyArray<Contribution<unknown>>>();
 
 function announce(): void {
-  for (const listener of [...listeners]) listener();
+  publication.invalidate();
 }
 
 function retractViews(): void {
@@ -43,7 +47,7 @@ export function retractKernel(owner: Host): boolean {
 }
 
 export function publishedKernel(): Host | undefined {
-  return host;
+  return publication.view.get();
 }
 
 function viewOf<T>(point: ExtensionPoint<T>): ContributionView<Contribution<T>> | undefined {
@@ -93,8 +97,8 @@ export function contributionsTo<T>(point: ExtensionPoint<T>): ReadonlyArray<Cont
 }
 
 function subscribe(onChange: () => void): () => void {
-  listeners.add(onChange);
-  return () => listeners.delete(onChange);
+  const subscription = publication.view.subscribe(onChange);
+  return () => subscription.dispose();
 }
 
 export function subscribeContributions(listener: () => void): () => void {

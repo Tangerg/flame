@@ -3,6 +3,7 @@ package sessions
 import (
 	"context"
 	"errors"
+	"reflect"
 	"testing"
 	"time"
 
@@ -267,8 +268,10 @@ func TestApplyRunCancelSettlesQuestionToolAndClosesModelContext(t *testing.T) {
 	createdAt := finishedAt.Add(-time.Minute)
 	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Favorite color?", Kind: transcript.QuestionText}}}
 	selection := testsupport.DefaultModelSelection()
+	known := chat.ToolResult{ID: "provider_written", Name: "write", Output: chat.NewTextToolOutput("acknowledged before the question parked")}
 	var applied TerminalPlan
 	stores := coordinatorStores{
+		results: []chat.ToolResult{known},
 		interrupts: &coordinatorInterrupts{pending: map[string]runs.Pending{
 			"run_1": {
 				RootRunID: "run_1", SessionID: "ses_1", ExecutorID: "turn_1",
@@ -297,7 +300,7 @@ func TestApplyRunCancelSettlesQuestionToolAndClosesModelContext(t *testing.T) {
 				chat.NewUserMessage(chat.NewTextPart("ask me")),
 				chat.NewAssistantMessage(chat.NewToolCallPart(chat.ToolCall{
 					ID: "provider_call_1", Name: "ask_user", Arguments: "{}",
-				})),
+				}), chat.NewToolCallPart(chat.ToolCall{ID: known.ID, Name: known.Name, Arguments: `{}`})),
 			},
 			Runs: []run.Run{testsupport.MustRestoreRun(run.Snapshot{
 				ID: "run_1", SessionID: "ses_1", State: run.Waiting,
@@ -336,8 +339,8 @@ func TestApplyRunCancelSettlesQuestionToolAndClosesModelContext(t *testing.T) {
 	}
 	messages := applied.Messages()
 	if len(messages) != 1 || messages[0].Role != chat.RoleTool ||
-		len(messages[0].Parts) != 1 || messages[0].Parts[0].ToolResult == nil {
-		t.Fatalf("terminal Messages = %+v, want one Tool result", messages)
+		len(messages[0].Parts) != 2 || messages[0].Parts[0].ToolResult == nil {
+		t.Fatalf("terminal Messages = %+v, want ordered unknown and acknowledged results", messages)
 	}
 	result := *messages[0].Parts[0].ToolResult
 	resultText, textual := result.Output.Text()
@@ -345,6 +348,11 @@ func TestApplyRunCancelSettlesQuestionToolAndClosesModelContext(t *testing.T) {
 		!textual || resultText != "tool call canceled before completion: user dismissed the question" {
 		t.Fatalf("terminal Tool result = %+v", result)
 	}
+	preserved := messages[0].Parts[1].ToolResult
+	if preserved == nil || !reflect.DeepEqual(*preserved, known) {
+		t.Fatalf("parked cancellation lost acknowledged result: %+v", preserved)
+	}
+
 }
 
 func TestApplyRunLostProjectsTerminalTranscript(t *testing.T) {

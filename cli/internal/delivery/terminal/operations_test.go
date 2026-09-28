@@ -2,10 +2,40 @@ package terminal
 
 import (
 	"context"
+	"errors"
 	"math"
 	"sync/atomic"
 	"testing"
+
+	"github.com/Tangerg/oolong/components/headless"
+	"github.com/Tangerg/oolong/components/kit"
+	"github.com/Tangerg/oolong/core/program"
+	"github.com/Tangerg/oolong/core/programtest"
 )
+
+func TestPostReleasesItsCallerWhenTheClaimedCallbackPanics(t *testing.T) {
+	host := programtest.New(t, programtest.Config{Width: 20, Height: 4})
+	ready := make(chan program.Dispatcher, 1)
+	panicked := make(chan any, 1)
+	go func() {
+		defer func() { panicked <- recover() }()
+		if err := program.Run(t.Context(), program.Config{Host: host, Root: func(loop *program.Runtime) program.Component {
+			ready <- loop.Dispatcher()
+			return headless.NewRoot(&headless.Static{Of: kit.Label{Text: "ready"}})
+		}}); err != nil {
+			t.Error(err)
+		}
+	}()
+	dispatcher := awaitValue(t, ready, "terminal dispatcher")
+	posted := make(chan error, 1)
+	go func() { posted <- post(t.Context(), dispatcher, func() { panic("callback failed") }) }()
+	if got := awaitValue(t, panicked, "original callback panic"); got != "callback failed" {
+		t.Fatalf("callback panic = %v", got)
+	}
+	if err := awaitValue(t, posted, "post caller release"); err != nil && !errors.Is(err, program.ErrStopped) {
+		t.Fatal(err)
+	}
+}
 
 func TestOperationOwnerExhaustionDoesNotCancelTheCurrentLease(t *testing.T) {
 	owner := newOperationOwner(t.Context())

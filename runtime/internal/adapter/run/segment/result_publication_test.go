@@ -3,8 +3,11 @@ package segment
 import (
 	"context"
 	"crypto/sha256"
+	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -20,6 +23,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/scope/core/chat"
 	chathistory "github.com/Tangerg/scope/core/history"
+	"github.com/Tangerg/scope/core/metadata"
 )
 
 func TestResultPublicationTransactionReceiptsAndSegmentFence(t *testing.T) {
@@ -68,6 +72,7 @@ func TestResultPublicationTransactionReceiptsAndSegmentFence(t *testing.T) {
 			commit := runs.EventCommit{
 				RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID, CommitID: testCommitID("run_commit_result_first"),
 				ResultPublication: &runs.ResultPublication{ID: "effect_result_first", Digest: "sha256:" + strings.Repeat("a", 64)},
+				ToolResults:       []chat.ToolResult{modelResult},
 				Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 					SessionID: draft.SessionID, RunID: draft.RunID, ID: "item_rejected", OccurredAt: started, FinishedAt: started.Add(time.Second),
 					Status: transcript.ItemCompleted, Kind: transcript.ToolCall, SafetyClass: tool.SafetyClassSafe,
@@ -146,6 +151,95 @@ func TestResultPublicationTransactionReceiptsAndSegmentFence(t *testing.T) {
 			}
 			if found, err := state.ResultPublicationCommitted(ctx, draft.SessionID, draft.RunID, "seg_next", commit.ResultPublication.ID, commit.ResultPublication.Digest); err == nil || found {
 				t.Fatalf("foreign Segment reused receipt: %t, %v", found, err)
+			}
+		})
+	}
+}
+
+func TestTerminalConversationPreservesSparseResultsAcrossRestart(t *testing.T) {
+	for _, restart := range []bool{false, true} {
+		t.Run(fmt.Sprintf("restart=%t", restart), func(t *testing.T) {
+			ctx := t.Context()
+			path := filepath.Join(t.TempDir(), "flame.db")
+			var db *sql.DB
+			var state *sqlite.RunStore
+			var messages *sqlite.MessageStore
+			var effects *Effects
+			open := func() {
+				var err error
+				db, err = sqlite.Open(ctx, path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				state, messages = sqlite.NewRunStore(db), sqlite.NewMessageStore(db)
+				effects = mustNewEffects(Config{
+					State: state, Transcript: sqlite.NewTranscriptStore(db), Conversation: mustConversationStore(t, messages), ToolInvocations: sqlite.NewToolInvocationStore(db),
+					Tx: func(ctx context.Context, fn func(context.Context) error) error { return sqlite.RunInTx(ctx, db, fn) },
+				})
+			}
+			open()
+			t.Cleanup(func() { _ = db.Close() })
+			started := time.Unix(1, 0).UTC()
+			draft := run.Draft{RunID: "run_sparse", SessionID: "ses_sparse", SegmentID: "seg_first", CreatedAt: started, ModelSelection: testsupport.DefaultModelSelection()}
+			if err := state.Admit(ctx, draft); err != nil {
+				t.Fatal(err)
+			}
+			request := chat.NewAssistantMessage(
+				chat.NewToolCallPart(chat.ToolCall{ID: "first", Name: "waiting", Arguments: `{}`}),
+				chat.NewToolCallPart(chat.ToolCall{ID: "second", Name: "write", Arguments: `{}`}),
+			)
+			if _, err := messages.Write(ctx, chathistory.ConversationID(draft.SessionID), request); err != nil {
+				t.Fatal(err)
+			}
+			exact := chat.ToolResult{ID: "second", Name: "write", Output: chat.ToolOutput{
+				Content: []chat.ToolContent{{Kind: chat.PartText, Text: "external write acknowledged", Metadata: metadata.Map{"evidence": json.RawMessage(`{"etag":"ack-1","rank":9007199254740993}`)}}, {Kind: chat.PartText, Text: "second exact block"}},
+				Details: json.RawMessage(`{"written":true,"bytes":42}`),
+			}}
+			preview := tool.StringResult("UI preview is intentionally different")
+			partial := runs.EventCommit{
+				RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID, CommitID: testCommitID("run_commit_sparse"),
+				ResultPublication: &runs.ResultPublication{ID: "publication_sparse", Digest: "sha256:" + strings.Repeat("a", 64)}, ToolResults: []chat.ToolResult{exact},
+				Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
+					SessionID: draft.SessionID, RunID: draft.RunID, ID: "item_known", OccurredAt: started, FinishedAt: started.Add(time.Second),
+					Kind: transcript.ToolCall, Status: transcript.ItemCompleted, Tool: &transcript.ToolInvocation{Name: "write", Arguments: tool.Arguments{}, Result: &preview},
+				})},
+				ToolInvocations: []runs.ToolInvocationCommit{{CallID: "tool_known", ItemID: "item_known", SegmentID: draft.SegmentID, State: runs.ToolInvocationCompleted, StartedAt: started, FinishedAt: started.Add(time.Second)}},
+			}
+			if err := effects.CommitEvent(ctx, partial); err != nil {
+				t.Fatal(err)
+			}
+			if count, err := messages.Count(ctx, chathistory.ConversationID(draft.SessionID)); err != nil || count != 1 {
+				t.Fatalf("sparse result changed canonical round order: %d, %v", count, err)
+			}
+			if restart {
+				if err := db.Close(); err != nil {
+					t.Fatal(err)
+				}
+				open()
+			}
+			if err := effects.CommitEvent(ctx, runs.EventCommit{
+				RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID, CommitID: testCommitID("run_commit_terminal_sparse"),
+				State: runs.StateTerminalize, Outcome: run.OutcomeCanceled, Run: finishedRunRecord(draft.RunID, draft.SessionID, run.OutcomeCanceled),
+			}); err != nil {
+				t.Fatal(err)
+			}
+			stored, err := messages.Read(ctx, chathistory.ConversationID(draft.SessionID))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(stored) != 2 || len(stored[1].Parts) != 2 {
+				t.Fatalf("terminal history = %+v", stored)
+			}
+			first, second := stored[1].Parts[0].ToolResult, stored[1].Parts[1].ToolResult
+			if first == nil || first.ID != "first" || !first.IsError || second == nil || !reflect.DeepEqual(*second, exact) {
+				t.Fatalf("terminal discarded exact output or call order: %+v", stored[1])
+			}
+			terminal, found, err := state.Run(ctx, draft.RunID)
+			if err != nil || !found || terminal.MessageMark() != 2 {
+				t.Fatalf("terminal watermark = %+v, %t, %v", terminal, found, err)
+			}
+			if results, err := state.UnpublishedToolResults(ctx, draft.SessionID, draft.RunID); err != nil || len(results) != 0 {
+				t.Fatalf("closed round still unpublished: %+v, %v", results, err)
 			}
 		})
 	}

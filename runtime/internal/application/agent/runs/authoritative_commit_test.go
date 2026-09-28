@@ -534,3 +534,55 @@ func TestSparseSettlementPersistsBeforeCanonicalModelRound(t *testing.T) {
 		t.Fatalf("model order = %+v", message)
 	}
 }
+
+func TestSparseToolResultSurvivesSiblingCancellation(t *testing.T) {
+	reducer := newReducer(testReducerConfig())
+	first := corechat.ToolCall{ID: "provider_first", Name: "first", Arguments: `{}`}
+	second := corechat.ToolCall{ID: "provider_second", Name: "second", Arguments: `{}`}
+	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
+	model := mustReduce(t, reducer, ModelCallCompleted{
+		CallID: "model_call_1", Steps: 1,
+		Message: new(corechat.NewAssistantMessage(corechat.NewToolCallPart(first), corechat.NewToolCallPart(second))),
+	})
+	result := corechat.ToolResult{ID: second.ID, Name: second.Name, Output: corechat.NewTextToolOutput("external write acknowledged")}
+	settlement := testToolPublication([]ToolCallStarted{{
+		CallID: "tool_second", SourceCallID: second.ID, ModelCallSequence: 1,
+		ToolCallIndex: 1, ToolName: second.Name, Arguments: second.Arguments,
+	}}, ToolCallFinished{CallID: "tool_second", ModelResult: &result})
+	settlement.ModelResults = nil
+	completed := mustReduce(t, reducer, settlement)
+	terminal := mustReduce(t, reducer, SegmentEnded{Reason: run.OutcomeCanceled})
+	messages := committedConversationMessages(model)
+	messages = append(messages, committedConversationMessages(completed)...)
+	if terminalMessages := committedConversationMessages(terminal); len(terminalMessages) != 0 {
+		t.Fatalf("terminal reducer owns a second conversation: %#v", terminalMessages)
+	}
+	var exact []corechat.ToolResult
+	for _, reduced := range completed {
+		if reduced.Commit != nil {
+			exact = append(exact, reduced.Commit.ToolResults...)
+		}
+	}
+	store := &recoveryStoreStub{results: map[string][]corechat.ToolResult{"run_1": exact}}
+	closure, err := TerminalConversation(t.Context(), store, "ses_1", "run_1", messages, run.OutcomeCanceled, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	messages = append(messages, closure...)
+	results := make(map[string]corechat.ToolResult)
+	for _, message := range messages {
+		for _, part := range message.Parts {
+			if part.ToolResult != nil {
+				results[part.ToolResult.ID] = *part.ToolResult
+			}
+		}
+	}
+	known, found := results[second.ID]
+	text, _ := known.Output.Text()
+	if !found || known.IsError || text != "external write acknowledged" {
+		t.Fatalf("terminal history lost the acknowledged result: %+v", results)
+	}
+	if canceled, found := results[first.ID]; !found || !canceled.IsError {
+		t.Fatalf("terminal history did not close the uncompleted sibling: %+v", results)
+	}
+}

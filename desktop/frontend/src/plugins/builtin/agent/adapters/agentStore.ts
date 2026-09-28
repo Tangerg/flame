@@ -19,9 +19,7 @@ import {
   dismissVisibleProblem,
   dropMessage,
   reconcileMessageIdentity,
-  resolveInterrupt,
   setCommandError,
-  type SettledInterrupt,
 } from "@/plugins/builtin/agent/application/view/viewMutations";
 import { useAgentSessionStore } from "./agentSessionStore";
 import { runtimeAgentEvent, runtimeCancelResult, runtimeRunFact } from "./runtimeAgentFacts";
@@ -78,12 +76,6 @@ interface AgentStore {
   setCancelRun: (sessionId: string, action: CancelRunAction | null) => void;
   clearProblem: (sessionId: string) => void;
   setCommandError: (sessionId: string, error: AgentProblem | null) => void;
-  resolveInterrupt: (
-    sessionId: string,
-    itemId: string,
-    settled: SettledInterrupt,
-    resolvedAt: number,
-  ) => void;
 }
 
 const initialProjectionCounter = 0n;
@@ -323,13 +315,6 @@ export const useAgentStore = create<AgentStore>((set) => ({
   setCommandError: (sessionId, error) =>
     set((state) => {
       const sessions = patchView(state.sessions, sessionId, (view) => setCommandError(view, error));
-      return sessions === state.sessions ? state : { sessions };
-    }),
-  resolveInterrupt: (sessionId, itemId, settled, resolvedAt) =>
-    set((state) => {
-      const sessions = patchView(state.sessions, sessionId, (view) =>
-        resolveInterrupt(view, itemId, settled, resolvedAt),
-      );
       return sessions === state.sessions ? state : { sessions };
     }),
 }));

@@ -41,10 +41,9 @@ func newLifecycleServer(t *testing.T, configure func(*Config)) *Server {
 		t.Fatal(err)
 	}
 	cfg := Config{
-		Endpoint:        endpoint,
-		Addr:            "127.0.0.1:0",
-		ServerInfo:      protocol.ServerInfo{Name: "test", Version: "1", InstanceID: testsupport.RuntimeInstanceID},
-		ProtocolVersion: "test",
+		Endpoint:   endpoint,
+		Addr:       "127.0.0.1:0",
+		ServerInfo: protocol.ServerInfo{Name: "test", Version: "1", InstanceID: testsupport.RuntimeInstanceID},
 	}
 	if configure != nil {
 		configure(&cfg)

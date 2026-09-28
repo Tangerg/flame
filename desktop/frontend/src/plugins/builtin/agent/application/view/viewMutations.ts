@@ -1,35 +1,6 @@
-import type { ContentBlock } from "@/plugins/sdk/types/contentBlock";
-import type { PendingInterruptKind } from "@/plugins/sdk/types/agentSessionView";
-import type { ApprovalDecision } from "../../domain/hitl";
 import type { AgentProblem, AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
-import { setTimelineEntry } from "@/plugins/sdk/types/agentTimeline";
 import { selectCurrentRootRun } from "./runTree";
 import { isAgentRunFailure } from "./runOutcome";
-
-export interface SettledInterrupt {
-  decision?: ApprovalDecision;
-  answered?: boolean;
-  answers?: string[][];
-}
-
-type InterruptBlock = Extract<ContentBlock, { kind: PendingInterruptKind }>;
-
-function matchesInterruptBlock(block: ContentBlock, itemId: string): block is InterruptBlock {
-  return (block.kind === "approval" || block.kind === "question") && block.itemId === itemId;
-}
-
-function settleInterruptedTool(
-  view: AgentSessionView,
-  itemId: string,
-  status: "denied" | "running",
-): AgentSessionView {
-  const tool = view.toolCalls[itemId];
-  if (!tool || tool.status !== "requires-action") return view;
-  return {
-    ...view,
-    toolCalls: { ...view.toolCalls, [itemId]: { ...tool, status } },
-  };
-}
 
 export function reconcileMessageIdentity(
   view: AgentSessionView,
@@ -130,78 +101,4 @@ export function dismissVisibleProblem(view: AgentSessionView): AgentSessionView 
     return view;
   }
   return { ...view, commandError: null, dismissedProblemRunId };
-}
-
-export function resolveInterrupt(
-  view: AgentSessionView,
-  itemId: string,
-  settled: SettledInterrupt,
-  resolvedAt: number,
-): AgentSessionView {
-  let touchedBlock = false;
-  let touchedApproval = false;
-  const settledMessages = view.messages.map((message) => {
-    if (!message.blocks.some((block) => matchesInterruptBlock(block, itemId))) {
-      return message;
-    }
-    return {
-      ...message,
-      blocks: message.blocks.map((block) => {
-        if (!matchesInterruptBlock(block, itemId)) return block;
-        touchedBlock = true;
-        if (block.kind === "approval") {
-          touchedApproval = true;
-          return { ...block, status: "complete" as const, decision: settled.decision };
-        }
-        return {
-          ...block,
-          status: "complete" as const,
-          answered: settled.answered ?? true,
-          answers: settled.answers ?? block.answers,
-        };
-      }),
-    };
-  });
-  const messages = touchedBlock ? settledMessages : view.messages;
-
-  let touchedInterrupt = false;
-  let ownerRunId: string | null = null;
-  const settledPendingInterrupts = view.pendingInterrupts.flatMap((group) => {
-    const hasItem = group.interrupts.some((interrupt) => interrupt.itemId === itemId);
-    if (!hasItem) return [group];
-    touchedInterrupt = true;
-    ownerRunId = group.runId;
-    touchedApproval ||= group.interrupts.some(
-      (interrupt) => interrupt.itemId === itemId && interrupt.kind === "approval",
-    );
-    const interrupts = group.interrupts.filter((interrupt) => interrupt.itemId !== itemId);
-    return interrupts.length > 0 ? [{ ...group, interrupts }] : [];
-  });
-  const pendingInterrupts = touchedInterrupt ? settledPendingInterrupts : view.pendingInterrupts;
-
-  if (!touchedBlock && !touchedInterrupt) return view;
-
-  let next: AgentSessionView = { ...view, messages, pendingInterrupts };
-  if (touchedInterrupt) {
-    next = settleInterruptedTool(
-      next,
-      itemId,
-      touchedApproval && settled.decision === "declined" ? "denied" : "running",
-    );
-  }
-  if (settled.decision && touchedApproval && ownerRunId) {
-    const requested = next.timeline.find(
-      (entry) => entry.kind === "approval-request" && entry.refId === itemId,
-    );
-    next = setTimelineEntry({
-      id: `timeline:local:approval-result:${itemId}:${settled.decision}`,
-      ts: resolvedAt,
-      kind: "approval-result",
-      runId: ownerRunId,
-      refId: itemId,
-      status: settled.decision,
-      ...(requested?.summary !== undefined ? { summary: requested.summary } : {}),
-    })(next);
-  }
-  return next;
 }

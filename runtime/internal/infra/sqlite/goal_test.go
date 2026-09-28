@@ -25,6 +25,37 @@ func newGoalStore(t *testing.T) (*sqlite.GoalStore, *sqlite.SessionStore) {
 	return goals, sessions
 }
 
+func TestGoalStoreRejectsUnknownAccountingFields(t *testing.T) {
+	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	store := sqlite.NewGoalStore(db)
+	const sessionID = "ses_accounting"
+	if err := sqlite.NewSessionStore(db).Insert(t.Context(), testsupport.MustRestoreSession(session.Snapshot{ID: sessionID})); err != nil {
+		t.Fatal(err)
+	}
+	value, err := goal.New(sessionID, "review", testsupport.MustModelSelection("openai", "gpt-test"), run.Capabilities{}, "incarnation_accounting", time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if applied, err := store.Save(t.Context(), goalReplacement(t, value, unwrittenVersion(t, sessionID))); err != nil || !applied {
+		t.Fatalf("save Goal: applied=%v err=%v", applied, err)
+	}
+	for _, encoded := range []string{`{"Runs":7,"steps":2}`, `{"runs":7,"steps":2,"future":true}`} {
+		if _, err := db.ExecContext(t.Context(), `UPDATE goals SET used = ? WHERE session_id = ?`, encoded, sessionID); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := store.Get(t.Context(), sessionID); err == nil {
+			t.Errorf("Get discarded unknown accounting in %s", encoded)
+		}
+		if _, err := store.List(t.Context()); err == nil {
+			t.Errorf("List discarded unknown accounting in %s", encoded)
+		}
+	}
+}
+
 func newGoalRunStores(t *testing.T) (*sqlite.GoalStore, *sqlite.SessionStore, *sqlite.RunStore) {
 	t.Helper()
 	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))

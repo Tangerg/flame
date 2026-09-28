@@ -69,6 +69,8 @@ func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 		return fmt.Errorf("one-shot command replay policy: %w", err)
 	}
 	defer func() { runErr = errors.Join(runErr, invocation.Renderer.Close()) }()
+	observationCtx, releaseObservation := context.WithCancel(ctx)
+	defer releaseObservation()
 	invocation.Start = invocation.Start.Clone()
 	if invocation.Start.Input == nil {
 		prepared, err := invocation.Runtime.PrepareInput(ctx, invocation.Start.Message)
@@ -82,7 +84,7 @@ func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 	if err != nil {
 		return fmt.Errorf("prepare one-shot start replay guard: %w", err)
 	}
-	opened, err := openRun(ctx, invocation.Runtime, invocation.Start,
+	opened, err := openRun(observationCtx, invocation.Runtime, invocation.Start,
 		mutation.FreshReplayAdmission(invocation.ReplayPolicy, startReplay))
 	if err != nil {
 		if receipt, accepted := conversation.AcceptedMutationReceipt(err); accepted {
@@ -119,7 +121,7 @@ func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 		return beginErr
 	}
 
-	return drive(ctx, invocation, opened)
+	return drive(observationCtx, invocation, opened)
 }
 
 func openRun(

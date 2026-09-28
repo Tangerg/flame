@@ -1,83 +1,40 @@
 package runs
 
 import (
+	"context"
+	"fmt"
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-// appendToolContext advances the reducer-local model-context ledger only for a
-// root Run. Child model context belongs to its executor; Runtime's durable
-// Session conversation is the root projection.
-func (r *reducer) appendToolContext(messages []corechat.Message) error {
-	if !r.cfg.Lineage.IsRoot() || len(messages) == 0 {
-		return nil
-	}
-	next, err := r.toolContext.Append(messages...)
-	if err != nil {
-		return err
-	}
-	r.toolContext = next
-	return nil
+type ToolResultPublications interface {
+	UnpublishedToolResults(ctx context.Context, sessionID, runID string) ([]corechat.ToolResult, error)
 }
 
-// trackStartedToolCall covers resumed calls whose assistant ToolCall was
-// committed by an earlier Segment. Repeating an already-open provider call is
-// harmless: Conversation.CloseOpenToolCalls treats it as the same generation.
-func (r *reducer) trackStartedToolCall(started ToolCallStarted) error {
-	if !r.cfg.Lineage.IsRoot() || started.ModelCallSequence == 0 {
-		return nil
-	}
-	return r.appendToolContext([]corechat.Message{corechat.NewAssistantMessage(
-		corechat.NewToolCallPart(corechat.ToolCall{
-			ID: started.SourceCallID, Name: started.ToolName, Arguments: started.Arguments,
-		}),
-	)})
-}
-
-// trackUnconsumedResumeToolCalls covers cancellation before the resumed
-// executor can re-announce its suspended tools. Those calls are present in the
-// durable conversation and continuation, so terminalization must close them.
-func (r *reducer) trackUnconsumedResumeToolCalls() error {
-	if !r.cfg.Lineage.IsRoot() || r.resume == nil {
-		return nil
-	}
-	var parts []corechat.Part
-	for _, drained := range r.resume.remainingDrainedTools() {
-		if drained.SourceCallID == "" {
-			continue
-		}
-		parts = append(parts, corechat.NewToolCallPart(corechat.ToolCall{
-			ID: drained.SourceCallID, Name: drained.Name, Arguments: drained.Arguments,
-		}))
-	}
-	if len(parts) == 0 {
-		return nil
-	}
-	return r.appendToolContext([]corechat.Message{corechat.NewAssistantMessage(parts...)})
-}
-
-func (r *reducer) closeOpenToolContext(
-	result string,
-	completed []corechat.ToolResult,
+func TerminalConversation(
+	ctx context.Context,
+	publications ToolResultPublications,
+	sessionID, runID string,
+	messages []corechat.Message,
+	outcome run.Outcome,
+	detail string,
 ) ([]corechat.Message, error) {
-	if !r.cfg.Lineage.IsRoot() {
-		return nil, nil
-	}
-	closed, appended, err := r.toolContext.CloseOpenToolCallsWithResults(result, completed)
+	history, err := conversation.New(messages)
 	if err != nil {
 		return nil, err
 	}
-	r.toolContext = closed
-	return appended, nil
-}
-
-func (r *reducer) cancelReason() string {
-	if r.cfg.CancelReason == nil {
-		return ""
+	if !history.HasOpenToolCalls() {
+		return nil, nil
 	}
-	return r.cfg.CancelReason()
+	completed, err := publications.UnpublishedToolResults(ctx, sessionID, runID)
+	if err != nil {
+		return nil, fmt.Errorf("runs: read exact Tool results for terminal Run %q: %w", runID, err)
+	}
+	_, appended, err := history.CloseOpenToolCallsWithResults(TerminalToolResult(outcome, detail), completed)
+	return appended, err
 }
 
 // TerminalToolResult is the text an open tool call carries once its Run ended

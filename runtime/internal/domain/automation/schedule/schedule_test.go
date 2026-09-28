@@ -3,7 +3,6 @@ package schedule
 import (
 	"errors"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -12,20 +11,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/exactint"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
-
-func TestScheduleDomainValuesOwnAllMutableState(t *testing.T) {
-	t.Parallel()
-
-	for _, value := range []any{Schedule{}, Replacement{}, Execution{}, Occurrence{}, Claim{}, Acceptance{}, RunRecord{}, RunRequest{}} {
-		typ := reflect.TypeOf(value)
-		for index := range typ.NumField() {
-			field := typ.Field(index)
-			if field.IsExported() {
-				t.Errorf("%s.%s is exported; domain state must change only through behavior", typ.Name(), field.Name)
-			}
-		}
-	}
-}
 
 func TestScheduleNewOwnsInitialLifecycle(t *testing.T) {
 	createdAt := time.Date(2026, 8, 29, 8, 30, 0, 123, time.FixedZone("test", 8*60*60))
@@ -346,5 +331,36 @@ func TestNextRun(t *testing.T) {
 func TestNextRunInvalid(t *testing.T) {
 	if _, err := NextRun("nonsense", time.Now()); !errors.Is(err, ErrInvalidCron) {
 		t.Errorf("NextRun error = %v, want ErrInvalidCron", err)
+	}
+}
+
+func TestNextRunUsesDurableTimezoneAcrossLifecycle(t *testing.T) {
+	local := time.Date(2026, 9, 28, 8, 0, 0, 0, time.FixedZone("UTC+8", 8*60*60))
+	scheduled, err := New("sch_timezone", Draft{Instructions: "review", Cron: "0 9 * * *", Enabled: true}, local)
+	if err != nil {
+		t.Fatal(err)
+	}
+	edited, err := scheduled.Edit(Patch{}, scheduled.Revision(), local)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !edited.NextRunAt().Equal(scheduled.NextRunAt()) || edited.NextRunAt().Location() != time.UTC {
+		t.Fatalf("editing changed cron timezone: created=%v edited=%v", scheduled.NextRunAt(), edited.NextRunAt())
+	}
+	for _, after := range []time.Time{local, local.UTC()} {
+		next, err := NextRun("CRON_TZ=Asia/Shanghai 0 9 * * *", after)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := time.Date(2026, 9, 28, 1, 0, 0, 0, time.UTC)
+		if !next.Equal(want) || next.Location() != time.UTC {
+			t.Fatalf("explicit cron timezone = %v, want %v", next, want)
+		}
+	}
+}
+
+func TestNextRunRejectsUnreachableCron(t *testing.T) {
+	if _, err := NextRun("0 0 30 2 *", time.Date(2026, 9, 28, 0, 0, 0, 0, time.UTC)); !errors.Is(err, ErrInvalidCron) {
+		t.Fatalf("unreachable cron error = %v, want ErrInvalidCron", err)
 	}
 }

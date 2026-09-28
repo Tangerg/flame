@@ -68,8 +68,8 @@ const runEffectDrainTimeout = 5 * time.Second
 // finally enters terminal resource teardown.
 // Each caller has a bounded wait, but its deadline cannot abandon or duplicate
 // that generation. A completed component error permits a later Close to start
-// one new generation; terminal resource diagnostics close the graph. Idempotent
-// across Instance copies once the graph has fully closed.
+// one new generation. Terminal diagnostics remain the result of every later
+// Close without replaying resource teardown.
 func (i *Instance) Close() error {
 	return closeRuntimeLifetime(i.lifetime)
 }
@@ -84,7 +84,7 @@ func closeRuntimeLifetime(lifetime *runtimeLifetime) error {
 	}
 	attempt, closed := beginShutdown(ownerCtx, lifetime)
 	if closed {
-		return nil
+		return attempt.err
 	}
 	waitCtx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -101,7 +101,7 @@ func beginShutdown(
 	lifetime.closeMu.Lock()
 	defer lifetime.closeMu.Unlock()
 	if lifetime.closed {
-		return nil, true
+		return lifetime.shutdown, true
 	}
 	attempt = lifetime.shutdown
 	if attempt == nil || attempt.completed {

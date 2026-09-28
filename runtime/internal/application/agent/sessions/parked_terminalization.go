@@ -6,7 +6,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -17,14 +16,15 @@ import (
 // one waiting Run tree. It combines a coherent Session snapshot with the exact
 // Pending hand-off, but owns neither persistence nor executor cleanup.
 type parkedRunTerminalization struct {
-	sessionID     string
-	rootRunID     string
-	finishedAt    time.Time
-	outcome       rundomain.Outcome
-	detail        string
-	pending       runs.Pending
-	snapshot      Snapshot
-	resumeClaimed bool
+	sessionID            string
+	rootRunID            string
+	finishedAt           time.Time
+	outcome              rundomain.Outcome
+	detail               string
+	pending              runs.Pending
+	snapshot             Snapshot
+	resumeClaimed        bool
+	conversationMessages []corechat.Message
 }
 
 func (p parkedRunTerminalization) build() (TerminalPlan, rundomain.Run, error) {
@@ -47,10 +47,7 @@ func (p parkedRunTerminalization) build() (TerminalPlan, rundomain.Run, error) {
 	if err != nil {
 		return TerminalPlan{}, rundomain.Run{}, err
 	}
-	conversationMessages, err := p.terminalConversationMessages()
-	if err != nil {
-		return TerminalPlan{}, rundomain.Run{}, err
-	}
+	conversationMessages := p.conversationMessages
 	terminalRuns, err := p.terminalRuns(
 		runsByID,
 		rootAdmission,
@@ -373,25 +370,4 @@ func (p parkedRunTerminalization) abandonmentFailure() *tool.Failure {
 		Kind:   tool.FailureExecution,
 		Detail: "tool call abandoned because its run could not be resumed",
 	}
-}
-
-func (p parkedRunTerminalization) terminalConversationMessages() ([]corechat.Message, error) {
-	resultText := runs.TerminalToolResult(p.outcome, p.detail)
-	history, err := conversation.New(p.snapshot.Messages)
-	if err != nil {
-		return nil, fmt.Errorf(
-			"sessions: terminalize parked Run tree %q conversation: %w",
-			p.rootRunID,
-			err,
-		)
-	}
-	_, appended, err := history.CloseOpenToolCalls(resultText)
-	if err != nil {
-		return nil, fmt.Errorf(
-			"sessions: close parked Run tree %q Tool context: %w",
-			p.rootRunID,
-			err,
-		)
-	}
-	return appended, nil
 }

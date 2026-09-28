@@ -70,6 +70,8 @@ func (c Conversation) Append(messages ...chat.Message) (Conversation, error) {
 	return Conversation{messages: combined}, nil
 }
 
+func (c Conversation) HasOpenToolCalls() bool { return !indexOpenToolCalls(c.messages).empty() }
+
 // CloseOpenToolCalls returns the conversation with one error result appended
 // for every provider ToolCall that has no later ToolResult. The results are
 // ordered by the calls' first unresolved occurrence and share one Tool message,

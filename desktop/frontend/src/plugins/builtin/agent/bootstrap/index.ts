@@ -29,7 +29,12 @@ export function createAgentBootstrapPlugin(runtimeClient: () => FlameClient) {
     setup(ctx) {
       registerAgentDataProviders(ctx, runtimeClient);
       ctx.cleanup(installAgentStatePorts());
-      ctx.cleanup(installAgentDefaultSessionPort(runtimeClient));
+      ctx.cleanup(
+        installAgentDefaultSessionPort(runtimeClient, () => {
+          const generation = ctx.runtime.connectionGeneration();
+          if (generation) ctx.runtime.reportConnectionLoss(generation);
+        }),
+      );
       const runtimeGateway = installAgentRuntimeGateway(runtimeClient);
       ctx.cleanup(() => runtimeGateway.dispose());
       ctx.cleanup(

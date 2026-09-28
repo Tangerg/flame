@@ -22,75 +22,45 @@ type DesktopBootstrap struct {
 	LocalRuntime LocalRuntimeConnection `json:"localRuntime"`
 }
 
-// WindowChrome is where the platform put the window's own controls, in CSS pixels
-// from the window's top-left.
-//
-// `Measured` false means there was nothing to measure — a platform whose controls
-// sit outside the content, or no window yet — and the frontend keeps the gutter and
-// alignment its stylesheet declares. Zeroes with `Measured` true are a different
-// answer and a real one: the window is fullscreen, the marks are gone with the menu
-// bar, and nothing should be reserved for or aligned to them.
+// Geometry uses CSS pixels from the window top-left. Measured zeroes mean fullscreen;
+// Measured false means the platform supplied no geometry, so CSS keeps its defaults.
 type WindowChrome struct {
 	ControlsCentreY   float64 `json:"controlsCentreY"`
 	ControlsInlineEnd float64 `json:"controlsInlineEnd"`
 	Measured          bool    `json:"measured"`
 }
 
-// The window whose frame the header is laid out around — narrowed to the one thing
-// this file needs of it, so nothing here depends on the shape of a Wails window.
-// `*application.WebviewWindow` satisfies it.
 type nativeWindow interface {
 	NativeWindow() unsafe.Pointer
 }
 
-// workingDirectoryPicker is owned by the host because choosing a directory is
-// a packaged-application capability, not part of the Runtime Protocol. The Wails
-// adapter satisfies it after the application and its window exist; tests use a
-// small fake without constructing either.
 type workingDirectoryPicker interface {
 	ChooseWorkingDirectory() (string, error)
 }
 
-// imageSaver owns the native save dialog and the final write. The frontend only
-// hands DesktopHost an inline image; it never receives a filesystem path and cannot
-// bypass the platform picker with a browser download.
+// The native picker owns the write destination; IPC callers supply only image bytes.
 type imageSaver interface {
 	SaveImage(suggestedFilename string, contents []byte) (bool, error)
 }
 
-// pathRevealer shows a path in the platform file manager. Revealing reads
-// nothing and grants the frontend no file access; it only hands the path to the OS.
 type pathRevealer interface {
 	OpenFileManager(path string, selectFile bool) error
 }
 
-// pathOpener hands a path to the platform's default application for it. Like
-// revealing, it reads nothing and grants the frontend no file access.
 type pathOpener interface {
 	OpenFile(path string) error
 }
 
-// DesktopHost is the Wails-owned boundary for capabilities that belong to the
-// packaged application rather than the Runtime Protocol.
-//
-// EVERY EXPORTED METHOD ON THIS TYPE IS AN IPC ENTRY POINT. v3 binds a service by
-// reflecting over its exported methods, so adding one here hands it to the frontend
-// whether or not that was the intent — which is why the window is attached through an
-// unexported setter rather than a method that reads like one. `TestDesktopHostBinds`
-// pins the set.
+// Every exported method becomes a Wails IPC entry point. Keep composition setters
+// unexported; TestDesktopHostBinds checks the exposed method set.
 type DesktopHost struct {
 	localTokenPath         string
 	workingDirectoryPicker workingDirectoryPicker
 	imageSaver             imageSaver
-	// Nil until the window exists. The application is constructed with this service
-	// before it has any window, and `WindowChrome` is only reachable from a frontend
-	// that a window had to load — but nil is answered honestly rather than assumed away.
-	window nativeWindow
-	// Brings the window back from minimised or behind other apps. Owned here because
-	// a webview's window.focus() cannot un-minimise its own native window.
-	reveal       func()
-	pathRevealer pathRevealer
-	pathOpener   pathOpener
+	window                 nativeWindow
+	reveal                 func()
+	pathRevealer           pathRevealer
+	pathOpener             pathOpener
 	// Started in ServiceStartup; notificationsReady flips once, before the frontend
 	// can call, and is read from IPC goroutines afterwards.
 	notifications      systemNotifications
@@ -107,38 +77,26 @@ func newDesktopHost(home string) (*DesktopHost, error) {
 	}, nil
 }
 
-// useWindow names the window whose chrome `WindowChrome` measures. Unexported on
-// purpose: see the note on DesktopHost.
 func (d *DesktopHost) useWindow(window nativeWindow) {
 	d.window = window
 }
 
-// useRevealer attaches how the packaged window is brought to the front.
-// Unexported on purpose: see the note on DesktopHost.
 func (d *DesktopHost) useRevealer(reveal func()) {
 	d.reveal = reveal
 }
 
-// usePathRevealer attaches the platform file manager. Unexported on purpose: see
-// the note on DesktopHost.
 func (d *DesktopHost) usePathRevealer(revealer pathRevealer) {
 	d.pathRevealer = revealer
 }
 
-// usePathOpener attaches the platform's default-application launcher. Unexported
-// on purpose: see the note on DesktopHost.
 func (d *DesktopHost) usePathOpener(opener pathOpener) {
 	d.pathOpener = opener
 }
 
-// useWorkingDirectoryPicker attaches the packaged application's native directory
-// chooser. Unexported on purpose: see the note on DesktopHost.
 func (d *DesktopHost) useWorkingDirectoryPicker(picker workingDirectoryPicker) {
 	d.workingDirectoryPicker = picker
 }
 
-// useImageSaver attaches the packaged application's native image-save capability.
-// Unexported on purpose: see the note on DesktopHost.
 func (d *DesktopHost) useImageSaver(saver imageSaver) {
 	d.imageSaver = saver
 }
@@ -151,13 +109,7 @@ func defaultDesktopHost() (*DesktopHost, error) {
 	return newDesktopHost(home)
 }
 
-// WindowChrome hands the frontend the geometry of the platform's own window
-// controls, so the header drawn under them can be laid out against measurements
-// instead of literals.
-//
-// Read on demand rather than cached: the titlebar is rebuilt on the way into and
-// out of fullscreen, and the controls go away entirely while fullscreen, so the
-// answer has a shelf life of one layout.
+// Fullscreen transitions rebuild the native titlebar, so cached geometry would be stale.
 func (d *DesktopHost) WindowChrome() WindowChrome {
 	if d.window == nil {
 		return WindowChrome{}
@@ -173,8 +125,6 @@ func (d *DesktopHost) WindowChrome() WindowChrome {
 	}
 }
 
-// RevealWindow un-minimises, shows and focuses the window, so a notification the
-// user clicked lands them in the app rather than on a dock bounce.
 func (d *DesktopHost) RevealWindow() error {
 	if d.reveal == nil {
 		return errors.New("desktop host: window is not attached")
@@ -183,7 +133,6 @@ func (d *DesktopHost) RevealWindow() error {
 	return nil
 }
 
-// RevealPath selects an existing absolute path in the platform file manager.
 func (d *DesktopHost) RevealPath(path string) error {
 	if d.pathRevealer == nil {
 		return errors.New("desktop host: file manager is not attached")
@@ -198,8 +147,6 @@ func (d *DesktopHost) RevealPath(path string) error {
 	return nil
 }
 
-// OpenPath opens an existing absolute path with the platform's default
-// application for it.
 func (d *DesktopHost) OpenPath(path string) error {
 	if d.pathOpener == nil {
 		return errors.New("desktop host: default application launcher is not attached")
@@ -225,9 +172,7 @@ func existingAbsolutePath(path string) (string, error) {
 	return clean, nil
 }
 
-// ChooseWorkingDirectory opens the platform directory picker and returns one
-// absolute, existing directory. An empty string is the explicit cancellation
-// result; it is not rewritten to the process working directory.
+// An empty selection means cancellation and must not become the process working directory.
 func (d *DesktopHost) ChooseWorkingDirectory() (string, error) {
 	if d.workingDirectoryPicker == nil {
 		return "", errors.New("desktop host: working directory picker is not configured")
@@ -253,8 +198,7 @@ func (d *DesktopHost) ChooseWorkingDirectory() (string, error) {
 	return filepath.Clean(absolute), nil
 }
 
-// SaveImage validates and decodes one inline image before handing it to the native
-// save owner. The bool distinguishes a completed write from user cancellation.
+// The bool distinguishes a completed write from user cancellation.
 func (d *DesktopHost) SaveImage(source string) (bool, error) {
 	if d.imageSaver == nil {
 		return false, errors.New("desktop host: image saver is not configured")
@@ -270,8 +214,6 @@ func (d *DesktopHost) SaveImage(source string) (bool, error) {
 	return saved, nil
 }
 
-// Bootstrap returns the local runtime connection the frontend needs before it
-// starts the application.
 func (d *DesktopHost) Bootstrap() (DesktopBootstrap, error) {
 	token, err := d.localToken()
 	if err != nil {

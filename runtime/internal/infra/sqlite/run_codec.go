@@ -2,7 +2,6 @@ package sqlite
 
 import (
 	"database/sql"
-	json "encoding/json/v2"
 	"fmt"
 	"time"
 
@@ -372,7 +371,7 @@ func decodeRunUsage(encoded string) (*accounting.Usage, error) {
 		return nil, nil
 	}
 	var row runUsageRow
-	if err := json.Unmarshal([]byte(encoded), &row); err != nil {
+	if err := decodeStoredJSON([]byte(encoded), &row); err != nil {
 		return nil, err
 	}
 	return row.usage(), nil
@@ -411,7 +410,7 @@ func decodeRunFailure(encoded string) (*rundomain.Failure, error) {
 		return nil, nil
 	}
 	var row runProblemRow
-	if err := json.Unmarshal([]byte(encoded), &row); err != nil {
+	if err := decodeStoredJSON([]byte(encoded), &row); err != nil {
 		return nil, err
 	}
 	if !row.Kind.Valid() {

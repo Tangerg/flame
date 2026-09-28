@@ -2,15 +2,12 @@ package goals
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 )
 
-// Store is the autonomous-goal use case's durable state. It is deliberately
-// owned here: the domain owns goal values and invariants, while application
-// workflows decide when those values are read, persisted, cleared, or
-// reconciled.
+// Store returns restored Domain values. Get addresses the exact Session; List
+// contains each Session once. Decoding and row integrity belong to the store.
 type Store interface {
 	Get(ctx context.Context, sessionID string) (goal.Current, error)
 	// Save executes one domain-decided exact durable replacement. Persistence
@@ -26,23 +23,6 @@ func loadGoal(ctx context.Context, store Store, sessionID string) (goal.Goal, bo
 	if err != nil {
 		return goal.Goal{}, false, err
 	}
-	if err := current.ValidateFor(sessionID); err != nil {
-		return goal.Goal{}, false, fmt.Errorf("goals: store Get(%q) returned invalid Current: %w", sessionID, err)
-	}
 	value, exists := current.Goal()
 	return value, exists, nil
-}
-
-func validateGoalCatalog(values []goal.Goal) error {
-	seen := make(map[string]struct{}, len(values))
-	for index, value := range values {
-		if err := value.ValidateSnapshot(); err != nil {
-			return fmt.Errorf("goals: store List item[%d] is invalid: %w", index, err)
-		}
-		if _, duplicate := seen[value.SessionID()]; duplicate {
-			return fmt.Errorf("goals: store List returned duplicate Session %q", value.SessionID())
-		}
-		seen[value.SessionID()] = struct{}{}
-	}
-	return nil
 }

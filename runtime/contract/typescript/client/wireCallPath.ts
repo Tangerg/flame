@@ -190,10 +190,11 @@ export function createWireCallPath(client: RpcClient, options: MethodsOptions): 
     callOptions?: RpcCallOptions,
   ): WireCallResult<M> => {
     if (wireMethodIsPaginated(method)) {
-      const initialCursor = (params as { cursor?: string }).cursor;
+      const query = structuredClone(params);
+      const initialCursor = (query as { cursor?: string }).cursor;
       return createAutoPagingPromise<CursorPage>(
         (cursor) => {
-          const continuation = { ...params, cursor } as WireParams<M> & {
+          const continuation = { ...query, cursor } as WireParams<M> & {
             cursor?: string;
           };
           if (cursor === undefined) delete continuation.cursor;

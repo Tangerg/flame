@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -182,5 +183,33 @@ func TestWebDirectoryUsesTheServerConfigurationSource(t *testing.T) {
 	}
 	if settings.Server.WebDirectory != "/environment/web" {
 		t.Fatalf("environment web directory = %q", settings.Server.WebDirectory)
+	}
+}
+
+func TestLoadRejectsInvalidEnvironmentOnlySandboxSetting(t *testing.T) {
+	t.Setenv("FLAME_PROVIDER", "anthropic")
+	t.Setenv("FLAME_SANDBOX_SHELL", "tru")
+	if _, err := Load([]string{t.TempDir()}); err == nil {
+		t.Fatal("invalid sandbox setting silently disabled shell isolation")
+	}
+}
+
+func TestLoadUsesDecodedEnvironmentLists(t *testing.T) {
+	t.Setenv("FLAME_PROVIDER", "anthropic")
+	t.Setenv("FLAME_SANDBOX_SHELL", "true")
+	t.Setenv("FLAME_SERVER_CORSORIGINS", "https://first.example,https://second.example")
+	t.Setenv("FLAME_SANDBOX_READONLYPATHS", "/toolchains/first,/toolchains/second")
+	settings, err := Load([]string{t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !settings.SandboxShell {
+		t.Fatal("environment-only sandbox setting was ignored")
+	}
+	if !slices.Equal(settings.Server.CORSOrigins, []string{"https://first.example", "https://second.example"}) {
+		t.Fatalf("CORS origins = %q", settings.Server.CORSOrigins)
+	}
+	if !slices.Equal(settings.SandboxReadOnlyPaths, []string{"/toolchains/first", "/toolchains/second"}) {
+		t.Fatalf("sandbox read-only paths = %q", settings.SandboxReadOnlyPaths)
 	}
 }

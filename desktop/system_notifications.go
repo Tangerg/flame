@@ -35,7 +35,6 @@ type DesktopNotification struct {
 	Target string `json:"target,omitempty"`
 }
 
-// systemNotifications is what DesktopHost needs of the platform notification centre.
 type systemNotifications interface {
 	start(ctx context.Context) error
 	authorized() (bool, error)
@@ -84,8 +83,6 @@ func (w wailsNotifications) send(notification DesktopNotification) error {
 	})
 }
 
-// useNotifications attaches the platform notification centre. Unexported on purpose:
-// see the note on DesktopHost.
 func (d *DesktopHost) useNotifications(centre systemNotifications) {
 	d.notifications = centre
 }
@@ -105,7 +102,6 @@ func (d *DesktopHost) ServiceStartup(ctx context.Context, _ application.ServiceO
 	return nil
 }
 
-// NotificationAuthorization reports whether the app may notify, without asking.
 func (d *DesktopHost) NotificationAuthorization() (NotificationAuthorization, error) {
 	if !d.notificationsReady.Load() {
 		return NotificationsUnsupported, nil
@@ -136,7 +132,6 @@ func (d *DesktopHost) RequestNotificationAuthorization() (NotificationAuthorizat
 	return NotificationsDenied, nil
 }
 
-// SendNotification delivers one message to the platform notification centre.
 func (d *DesktopHost) SendNotification(notification DesktopNotification) error {
 	if !d.notificationsReady.Load() {
 		return errors.New("desktop host: system notifications are unavailable")

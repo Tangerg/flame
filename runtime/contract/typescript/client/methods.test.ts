@@ -70,6 +70,33 @@ function agentMessageItem(
 afterEach(() => vi.useRealTimers());
 
 describe("methods factory", () => {
+  it("retains the original filters for every page after the caller edits its query", async () => {
+    const requests: unknown[] = [];
+    const call = vi.fn(async (_method: string, params: unknown) => {
+      requests.push(structuredClone(params));
+      return requests.length === 1
+        ? { data: [], nextCursor: "original-workspace-next" }
+        : { data: [] };
+    });
+    const methods = createMethods({ call } as unknown as RpcClient);
+    const query = { search: "original", workspace: { path: "/first" }, limit: 25 };
+    const pages = methods.sessions.list(query);
+    await pages;
+    query.search = "replacement";
+    query.workspace.path = "/second";
+    query.limit = 1;
+    await pages.autoPagingToArray();
+    expect(requests).toEqual([
+      { search: "original", workspace: { path: "/first" }, limit: 25 },
+      {
+        search: "original",
+        workspace: { path: "/first" },
+        limit: 25,
+        cursor: "original-workspace-next",
+      },
+    ]);
+  });
+
   it("retains the exact mutation input and key across automatic and explicit replay", async () => {
     const attempts: Array<{ params: unknown; key?: string }> = [];
     const call = vi.fn(async (_method: string, params: unknown, options?: RpcCallOptions) => {

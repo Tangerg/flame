@@ -16,7 +16,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/webassets"
 	"github.com/Tangerg/flame/runtime/internal/infra/telemetry"
 	"github.com/Tangerg/flame/runtime/localruntime"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 const (
@@ -100,14 +99,13 @@ func buildHTTPServer(instance *bootstrap.Instance, srv config.Server, tokenValue
 	}
 	info := instance.ServerInfo()
 	return flamehttp.NewServer(flamehttp.Config{
-		Endpoint:        instance.Endpoint(),
-		Addr:            srv.Listen,
-		ServerInfo:      info,
-		ProtocolVersion: protocol.ProtocolVersion,
-		LocalToken:      tokenValue,
-		CORSOrigins:     srv.CORSOrigins,
-		WebApplication:  web,
-		HealthProbes:    []flamehttp.HealthProbe{storageHealthProbe(instance.CheckStorage)},
+		Endpoint:       instance.Endpoint(),
+		Addr:           srv.Listen,
+		ServerInfo:     info,
+		LocalToken:     tokenValue,
+		CORSOrigins:    srv.CORSOrigins,
+		WebApplication: web,
+		HealthProbes:   []flamehttp.HealthProbe{storageHealthProbe(instance.CheckStorage)},
 	})
 }
 

@@ -60,16 +60,12 @@ export function useApprovalSubmit(rootRunId?: string, itemId?: string): Approval
 
   const submit = useCallback(
     (decision: ApprovalDecision, opts?: ApprovalSubmitOptions) => {
-      resume(
-        decision,
-        {
-          type: "approval",
-          decision: WIRE_DECISION[decision],
-          ...(opts?.editedArgs ? { editedArgs: opts.editedArgs } : {}),
-          ...(opts?.rememberScope ? { remember: { scope: opts.rememberScope } } : {}),
-        },
-        { decision },
-      );
+      resume(decision, {
+        type: "approval",
+        decision: WIRE_DECISION[decision],
+        ...(opts?.editedArgs ? { editedArgs: opts.editedArgs } : {}),
+        ...(opts?.rememberScope ? { remember: { scope: opts.rememberScope } } : {}),
+      });
     },
     [resume],
   );

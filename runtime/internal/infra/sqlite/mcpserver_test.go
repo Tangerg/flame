@@ -1,7 +1,8 @@
 package sqlite_test
 
 import (
-	"bytes"
+	"context"
+	"errors"
 	"maps"
 	"path/filepath"
 	"slices"
@@ -243,72 +244,105 @@ func TestMCPServerStoreRejectsMalformedJSONFields(t *testing.T) {
 	}
 }
 
-func TestMCPServerStoreBindsOAuthSessionLifecycle(t *testing.T) {
+func TestMCPServerStorePreservesConfigurationWhenEncodingFails(t *testing.T) {
 	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
 	if err != nil {
-		t.Fatalf("Open: %v", err)
+		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	store := sqlite.NewMCPServerStore(db)
-	server := mcpserver.Server{
-		Name: testMCPServerName("remote"), Transport: mcpserver.TransportStreamableHTTP,
-		Enabled: true, URL: "https://mcp.example.test/tools",
+	original := mcpserver.Server{
+		Name: testMCPServerName("files"), Transport: mcpserver.TransportStdio,
+		Command: "mcp-files", Args: []string{"--root", "/repo"},
+		Env:        map[string]string{"MODE": "local"},
+		ToolPolicy: testServerToolPolicy([]string{"remove"}, nil),
 	}
-	if saveErr := store.Save(t.Context(), server); saveErr != nil {
-		t.Fatalf("Save server: %v", saveErr)
+	if err := store.Save(t.Context(), original); err != nil {
+		t.Fatal(err)
 	}
+	for _, field := range []string{"args", "env"} {
+		t.Run(field, func(t *testing.T) {
+			invalid := original.Clone()
+			invalid.ToolPolicy = testServerToolPolicy(nil, []string{"remove"})
+			if field == "args" {
+				invalid.Args = []string{"\xff"}
+			} else {
+				invalid.Env = map[string]string{"MODE": "\xff"}
+			}
+			if err := store.Save(t.Context(), invalid); err == nil {
+				t.Errorf("invalid UTF-8 in %s was silently saved as empty configuration", field)
+			}
+			got, found, err := store.Get(t.Context(), original.Name)
+			if err != nil || !found || !equalMCPServer(got, original) {
+				t.Fatalf("failed save changed server or policy: found=%v err=%v", found, err)
+			}
+		})
+	}
+}
 
-	origin := "https://mcp.example.test:443"
-	payload := []byte(`{"version":1}`)
-	if saveOAuthSessionErr := store.SaveOAuthSession(t.Context(), server.Name, origin, payload); saveOAuthSessionErr != nil {
-		t.Fatalf("SaveOAuthSession: %v", saveOAuthSessionErr)
-	}
-	got, found, err := store.LoadOAuthSession(t.Context(), server.Name, origin)
-	if err != nil || !found || !bytes.Equal(got, payload) {
-		t.Fatalf("LoadOAuthSession = %q, %v, %v", got, found, err)
-	}
-	if _, found, err := store.LoadOAuthSession(t.Context(), server.Name, "https://other.example:443"); err != nil || found {
-		t.Fatalf("cross-origin LoadOAuthSession: found=%v err=%v", found, err)
-	}
-
-	server.Description = "same endpoint"
-	if err := store.Save(t.Context(), server); err != nil {
-		t.Fatalf("Save metadata update: %v", err)
-	}
-	if _, found, err := store.LoadOAuthSession(t.Context(), server.Name, origin); err != nil || !found {
-		t.Fatalf("metadata update removed OAuth session: found=%v err=%v", found, err)
-	}
-	server.Authorization = "Bearer static"
-	if err := store.Save(t.Context(), server); err != nil {
-		t.Fatalf("Save static authorization: %v", err)
-	}
-	if _, found, err := store.LoadOAuthSession(t.Context(), server.Name, origin); err != nil || found {
-		t.Fatalf("static authorization retained OAuth session: found=%v err=%v", found, err)
-	}
-	server.Authorization = ""
-	if err := store.Save(t.Context(), server); err != nil {
-		t.Fatalf("Clear static authorization: %v", err)
-	}
-	if err := store.SaveOAuthSession(t.Context(), server.Name, origin, payload); err != nil {
-		t.Fatalf("SaveOAuthSession after static authorization: %v", err)
-	}
-
-	server.URL = "https://new.example.test/tools"
-	if err := store.Save(t.Context(), server); err != nil {
-		t.Fatalf("Save endpoint update: %v", err)
-	}
-	if _, found, err := store.LoadOAuthSession(t.Context(), server.Name, origin); err != nil || found {
-		t.Fatalf("endpoint update retained OAuth session: found=%v err=%v", found, err)
-	}
-
-	newOrigin := "https://new.example.test:443"
-	if err := store.SaveOAuthSession(t.Context(), server.Name, newOrigin, payload); err != nil {
-		t.Fatalf("SaveOAuthSession after update: %v", err)
-	}
-	if err := store.Remove(t.Context(), server.Name); err != nil {
-		t.Fatalf("Remove server: %v", err)
-	}
-	if _, found, err := store.LoadOAuthSession(t.Context(), server.Name, newOrigin); err != nil || found {
-		t.Fatalf("server removal retained OAuth session: found=%v err=%v", found, err)
+func TestMCPServerStoreReadsOneConfigurationDuringConcurrentSave(t *testing.T) {
+	for _, read := range []string{"get", "list"} {
+		t.Run(read, func(t *testing.T) {
+			db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = db.Close() })
+			store := sqlite.NewMCPServerStore(db)
+			initial := mcpserver.Server{
+				Name: testMCPServerName("files"), Transport: mcpserver.TransportStdio,
+				Command: "first", ToolPolicy: testServerToolPolicy([]string{"first"}, nil),
+			}
+			replacement := initial.Clone()
+			replacement.Command = "second"
+			replacement.ToolPolicy = testServerToolPolicy([]string{"second"}, nil)
+			if err := store.Save(t.Context(), initial); err != nil {
+				t.Fatal(err)
+			}
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			done := make(chan error, 1)
+			go func() {
+				for iteration := 0; iteration < 256; iteration++ {
+					server := initial
+					if iteration%2 == 0 {
+						server = replacement
+					}
+					if err := store.Save(ctx, server); err != nil {
+						done <- err
+						return
+					}
+				}
+				done <- nil
+			}()
+			defer func() {
+				cancel()
+				if err := <-done; err != nil && !errors.Is(err, context.Canceled) {
+					t.Errorf("concurrent save: %v", err)
+				}
+			}()
+			for range 256 {
+				var servers []mcpserver.Server
+				if read == "get" {
+					server, found, err := store.Get(ctx, initial.Name)
+					if err != nil || !found {
+						t.Fatalf("Get: found=%v err=%v", found, err)
+					}
+					servers = []mcpserver.Server{server}
+				} else {
+					servers, err = store.List(ctx)
+					if err != nil {
+						t.Fatal(err)
+					}
+				}
+				if len(servers) != 1 {
+					t.Fatalf("server count = %d, want 1", len(servers))
+				}
+				server := servers[0]
+				if !equalMCPServer(server, initial) && !equalMCPServer(server, replacement) {
+					t.Fatalf("read combined one command with another command's authorization policy")
+				}
+			}
+		})
 	}
 }

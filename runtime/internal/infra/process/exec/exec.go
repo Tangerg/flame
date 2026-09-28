@@ -180,6 +180,9 @@ type Shell struct {
 const NoExitStatus = -1
 
 func (s *Shells) Launch(ctx context.Context, sessionID, cwd, command string, timeout Timeout, isolated bool) (string, error) {
+	if cause := context.Cause(ctx); cause != nil {
+		return "", cause
+	}
 	if err := timeout.Validate(); err != nil {
 		return "", err
 	}
@@ -238,6 +241,11 @@ func (s *Shells) Launch(ctx context.Context, sessionID, cwd, command string, tim
 		cancel()
 		return "", ErrShellsClosed
 	}
+	if cause := context.Cause(ctx); cause != nil {
+		s.mu.Unlock()
+		cancel()
+		return "", cause
+	}
 	if s.nextID == math.MaxUint64 {
 		s.mu.Unlock()
 		cancel()
@@ -284,8 +292,7 @@ func (s *Shells) Launch(ctx context.Context, sessionID, cwd, command string, tim
 	return id.String(), nil
 }
 
-// Get returns the shell with id and whether it exists.
-func (s *Shells) Get(id string) (*Shell, bool) {
+func (s *Shells) Get(sessionID, id string) (*Shell, bool) {
 	identity, valid := parseShellID(id)
 	if !valid {
 		return nil, false
@@ -293,7 +300,10 @@ func (s *Shells) Get(id string) (*Shell, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	sh, ok := s.shells[identity]
-	return sh, ok
+	if !ok || sh.sessionID != sessionID {
+		return nil, false
+	}
+	return sh, true
 }
 
 // RetainedShell identifies an addressable command, including completed commands
@@ -318,11 +328,10 @@ func (s *Shells) RetainedForSession(sessionID string) []RetainedShell {
 	return out
 }
 
-// Kill stops a background shell and reports whether it was still running.
-// Missing ids have the stable [ErrShellNotFound] identity. A process that exits
-// between the state snapshot and the kill is an idempotent success.
-func (s *Shells) Kill(id string) (running bool, err error) {
-	sh, ok := s.Get(id)
+// Missing and foreign Session handles have the same ErrShellNotFound outcome.
+// A process that exits between lookup and stop remains an idempotent success.
+func (s *Shells) Kill(sessionID, id string) (running bool, err error) {
+	sh, ok := s.Get(sessionID, id)
 	if !ok {
 		return false, fmt.Errorf("%w: %q", ErrShellNotFound, id)
 	}

@@ -208,6 +208,7 @@ func (r ProgressCommit) validate() error {
 
 type EventCommit struct {
 	ResultPublication *ResultPublication
+	ToolResults       []corechat.ToolResult
 	RunID             string
 	SessionID         string
 	// SegmentID owns the complete event write-set, including projections that do
@@ -247,6 +248,7 @@ func (e EventCommit) clone() EventCommit {
 	if e.ResultPublication != nil {
 		e.ResultPublication = new(*e.ResultPublication)
 	}
+	e.ToolResults = cloneToolResults(e.ToolResults)
 	e.Items = slices.Clone(e.Items)
 	e.ConversationMessages = cloneCommitMessages(e.ConversationMessages)
 	e.ModelInvocations = slices.Clone(e.ModelInvocations)
@@ -266,6 +268,14 @@ func (e EventCommit) clone() EventCommit {
 	return e
 }
 
+func cloneToolResults(results []corechat.ToolResult) []corechat.ToolResult {
+	owned := make([]corechat.ToolResult, len(results))
+	for index, result := range results {
+		owned[index] = result.Clone()
+	}
+	return owned
+}
+
 func cloneCommitMessages(messages []corechat.Message) []corechat.Message {
 	owned := make([]corechat.Message, len(messages))
 	for index, message := range messages {
@@ -277,11 +287,20 @@ func cloneCommitMessages(messages []corechat.Message) []corechat.Message {
 // Validate proves that one event projection is owner-bound and that any Goal
 // charge is exactly the accounting fact implied by its terminal Run.
 func (e EventCommit) Validate() error {
+	if len(e.ToolResults) > 0 && e.ResultPublication == nil {
+		return errors.New("runs: exact Tool results require a publication receipt")
+	}
+	for index, result := range e.ToolResults {
+		if err := result.Validate(); err != nil {
+			return fmt.Errorf("runs: exact Tool result[%d]: %w", index, err)
+		}
+	}
+
 	if e.ResultPublication != nil {
 		if err := e.ResultPublication.Validate(); err != nil {
 			return err
 		}
-		if e.State != StateUnchanged || len(e.ToolInvocations) == 0 {
+		if e.State != StateUnchanged || len(e.ToolInvocations) == 0 || len(e.ToolResults) != len(e.ToolInvocations) {
 			return errors.New("runs: result publication requires a Tool result transaction")
 		}
 	}
@@ -485,7 +504,7 @@ func validateTerminalGoalRun(value run.Run, record *goal.RunRecord) error {
 }
 
 func (e EventCommit) isEmpty() bool {
-	return len(e.Items) == 0 &&
+	return len(e.ToolResults) == 0 && len(e.Items) == 0 &&
 		len(e.ConversationMessages) == 0 &&
 		len(e.ModelInvocations) == 0 &&
 		len(e.ToolInvocations) == 0 && e.ResultPublication == nil &&

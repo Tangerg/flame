@@ -3,8 +3,10 @@ import {
   errorMessage,
   parseTransportProblem,
   RpcConnectionError,
+  RpcProtocolError,
   RpcTransportError,
 } from "./errors";
+import { parseWireJSON } from "./json";
 import { validateHTTPSidecarResponse } from "@flame/runtime-contract/validate";
 import {
   HTTP_ENDPOINTS,
@@ -55,14 +57,27 @@ export function createSidecarClient(config: SidecarClientConfig): SidecarClient 
     } catch (err) {
       throw new RpcConnectionError(`sidecar ${path}: ${errorMessage(err)}`);
     }
-    let text: string;
+    const requestId = res.headers.get("Request-Id") ?? undefined;
+    let bytes: ArrayBuffer;
     try {
-      text = await res.text();
+      bytes = await res.arrayBuffer();
     } catch (err) {
       throw new RpcConnectionError(
         `sidecar ${path}: response could not be read: ${errorMessage(err)}`,
-        res.headers.get("Request-Id") ?? undefined,
+        requestId,
       );
+    }
+    let text: string;
+    try {
+      text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    } catch (cause) {
+      const error = new RpcProtocolError(
+        `sidecar ${path} response`,
+        [{ path: "$", detail: "must contain valid UTF-8" }],
+        requestId,
+      );
+      error.cause = cause;
+      throw error;
     }
     if (!specification.responseStatuses.some((status) => status === res.status)) {
       const problem = parseTransportProblem(text);
@@ -77,21 +92,17 @@ export function createSidecarClient(config: SidecarClientConfig): SidecarClient 
     }
     let json: unknown;
     try {
-      json = JSON.parse(text);
+      json = parseWireJSON(text);
     } catch (err) {
-      throw new RpcTransportError(
-        `sidecar ${path}: invalid JSON: ${errorMessage(err)}`,
-        res.status,
-        res.headers.get("Request-Id") ?? undefined,
+      throw new RpcProtocolError(
+        `sidecar ${path} response`,
+        [{ path: "$", detail: `must contain valid JSON: ${errorMessage(err)}` }],
+        requestId,
       );
     }
     const violations = validateHTTPSidecarResponse(endpoint, json);
     if (violations.length > 0) {
-      throw new RpcTransportError(
-        `sidecar ${path}: response violates its contract: ${violations.map(({ path: field, detail }) => `${field} ${detail}`).join("; ")}`,
-        res.status,
-        res.headers.get("Request-Id") ?? undefined,
-      );
+      throw new RpcProtocolError(`sidecar ${path} response`, violations, requestId);
     }
     return json as HTTPSidecarResponses[Endpoint];
   }

@@ -46,9 +46,6 @@ func TestNewBuildsCommittedActiveGoal(t *testing.T) {
 	if !value.Capabilities().Equal(wantCapabilities) {
 		t.Fatalf("capabilities = %v, want %v", value.Capabilities(), wantCapabilities)
 	}
-	if err := value.ValidateSnapshot(); err != nil {
-		t.Fatalf("ValidateSnapshot: %v", err)
-	}
 }
 
 func TestNewRejectsIncompleteIdentityPolicyAndTime(t *testing.T) {
@@ -184,19 +181,21 @@ func TestCurrentAndVersionDistinguishAbsenceFromCommittedState(t *testing.T) {
 	}
 }
 
-func TestCurrentValidatesExactSessionIdentity(t *testing.T) {
-	unwritten, err := Unwritten("ses_1")
+func TestCurrentConstructionOwnsSessionIdentity(t *testing.T) {
+	if _, err := Unwritten(""); err == nil {
+		t.Fatal("Unwritten accepted a missing Session")
+	}
+	if _, err := CurrentOf(Goal{}); err == nil {
+		t.Fatal("CurrentOf accepted an unconstructed Goal")
+	}
+	value := testGoalAt(t, run.Capabilities{}, time.Unix(10, 0).UTC())
+	current, err := CurrentOf(value)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := unwritten.ValidateFor("ses_1"); err != nil {
-		t.Fatalf("ValidateFor exact unwritten Current: %v", err)
-	}
-	if err := unwritten.ValidateFor("ses_2"); !errors.Is(err, ErrInvalid) {
-		t.Fatalf("ValidateFor mismatched Current error = %v, want ErrInvalid", err)
-	}
-	if err := (Current{}).ValidateFor("ses_1"); err == nil {
-		t.Fatal("ValidateFor accepted invalid Current")
+	stored, found := current.Goal()
+	if !found || stored.SessionID() != value.SessionID() || current.Version() != value.Version() {
+		t.Fatal("Current changed the committed Goal identity")
 	}
 }
 

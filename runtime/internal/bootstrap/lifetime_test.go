@@ -129,8 +129,8 @@ func TestInstanceShutdownAdvancesPastCompletedCloserError(t *testing.T) {
 	if resourceCalls != 1 {
 		t.Fatalf("dependent resource close calls = %d, want 1 after tool reached its terminal state", resourceCalls)
 	}
-	if err := host.Close(); err != nil {
-		t.Fatalf("second Close = %v, want already-closed Instance", err)
+	if err := host.Close(); !errors.Is(err, closeErr) {
+		t.Fatalf("second Close = %v, want retained terminal diagnostic", err)
 	}
 	if toolCalls != 1 || resourceCalls != 1 {
 		t.Fatalf("second Close replayed terminal work: tool=%d resource=%d", toolCalls, resourceCalls)

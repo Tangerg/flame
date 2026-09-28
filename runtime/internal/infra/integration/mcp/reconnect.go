@@ -11,14 +11,8 @@ import (
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/flame/runtime/internal/httporigin"
 )
 
-// Reconnect tears down a configured server's current session (if any) and
-// re-dials it, then rebuilds the live model-facing tool set and pushes it to
-// the tool sink so the model immediately sees the refreshed server. The status
-// walks connecting -> (connected | failed). Returns [mcpserver.ErrUnknownServer] for an
-// unconfigured name.
 // planAttempt claims a known, open server and detaches its live session under
 // one hold of the lock: the session to close, the configuration to dial, and the
 // attempt that owns the outcome. plan decides what to dial and may refuse, and
@@ -80,7 +74,7 @@ func (c *Connections) Configure(ctx context.Context, cfg ServerConfig) error {
 	restored := cfg.OAuthHandler
 	if cfg.Transport == TransportHTTP && restored == nil && cfg.Authorization == "" {
 		var err error
-		restored, err = restoreOAuthHandler(ctx, c.lifetime, c.oauthSessions, cfg.Name, cfg.Endpoint)
+		restored, err = restoreOAuthHandler(ctx, c.lifetime, c.oauthSessions, cfg.oauthTarget())
 		if err != nil {
 			return err
 		}
@@ -106,7 +100,7 @@ func (c *Connections) Configure(ctx context.Context, cfg ServerConfig) error {
 	configuredServer.session = nil
 	configuredServer.tools = nil
 	configuredServer.state = mcpserver.ConnectionConnecting
-	cfg.OAuthHandler = oauth // only reusable while the configured origin is unchanged
+	cfg.OAuthHandler = oauth
 	attempt := c.beginAttempt(ctx, configuredServer)
 	c.mu.Unlock()
 	defer c.finishAttempt(attempt)
@@ -122,7 +116,7 @@ func reusableOAuth(current, candidate ServerConfig, handler auth.OAuthHandler) a
 		current.Transport != TransportHTTP ||
 		candidate.Transport != TransportHTTP ||
 		candidate.Authorization != "" ||
-		!httporigin.Same(current.Endpoint, candidate.Endpoint) {
+		!current.oauthTarget().Equal(candidate.oauthTarget()) {
 		return nil
 	}
 	return handler
@@ -168,7 +162,7 @@ func (c *Connections) Authorize(ctx context.Context, name mcpserver.ServerName) 
 		return errors.Join(closeErr, err)
 	}
 	defer func() { err = errors.Join(err, flow.close(ctx)) }()
-	handler, err := newOAuthHandler(flow, c.lifetime, c.oauthSessions, cfg.Name, cfg.Endpoint)
+	handler, err := newOAuthHandler(ctx, flow, c.lifetime, c.oauthSessions, cfg.oauthTarget())
 	if err != nil {
 		c.failAttempt(attempt)
 		return errors.Join(closeErr, err)

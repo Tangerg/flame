@@ -3817,7 +3817,7 @@ for await (const line of lines) {
         origin: "requested",
         sourceSession: projectSession.id,
         description: "Preserve the project-side HTTP E2E workflow.",
-        instructions: "Run the project-side HTTP E2E workflow and report its result.",
+        instructions: "\nRun the project-side HTTP E2E workflow and report its result.\n",
         revision: expect.stringMatching(/^[a-f0-9]+$/),
       }),
     ]);

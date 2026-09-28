@@ -35,15 +35,25 @@ func (oauthHandlerStub) Authorize(context.Context, *http.Request, *http.Response
 	return nil
 }
 
-func TestReusableOAuthIsBoundToEndpointOrigin(t *testing.T) {
+func TestReusableOAuthIsBoundToCredentialConfiguration(t *testing.T) {
 	handler := oauthHandlerStub{}
 	current := ServerConfig{
 		Name: testMCPServerName("server"), Transport: TransportHTTP, Endpoint: "https://EXAMPLE.com/mcp",
 	}
 	if got := reusableOAuth(current, ServerConfig{
-		Name: testMCPServerName("server"), Transport: TransportHTTP, Endpoint: "https://example.com:443/other",
+		Name: testMCPServerName("server"), Transport: TransportHTTP, Endpoint: "https://EXAMPLE.com/mcp",
 	}, handler); got == nil {
-		t.Fatal("same-origin endpoint did not preserve OAuth handler")
+		t.Fatal("unchanged credential configuration did not preserve OAuth handler")
+	}
+	changedPath := current.Clone()
+	changedPath.Endpoint = "https://EXAMPLE.com/other"
+	if got := reusableOAuth(current, changedPath, handler); got != nil {
+		t.Fatal("changed endpoint preserved an invalidated OAuth handler")
+	}
+	changedHeaders := current.Clone()
+	changedHeaders.Headers = map[string]string{"X-API-Key": "changed"}
+	if got := reusableOAuth(current, changedHeaders, handler); got != nil {
+		t.Fatal("changed authentication headers preserved an invalidated OAuth handler")
 	}
 	if got := reusableOAuth(current, ServerConfig{
 		Name: testMCPServerName("server"), Transport: TransportHTTP, Endpoint: "https://other.example/mcp",

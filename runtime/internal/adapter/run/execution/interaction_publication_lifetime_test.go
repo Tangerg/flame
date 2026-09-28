@@ -50,7 +50,7 @@ func TestExecutionWaitsForSlowDurableReceipts(t *testing.T) {
 			if commit, ok := event.Payload.(runs.ExecutionFactCommit); ok {
 				switch commit.Fact().(type) {
 				case runs.ModelCallCompleted, runs.ToolResultsCommitted:
-					time.Sleep(executionTreeCommitTimeout / 2)
+					time.Sleep(time.Minute)
 					delayed++
 				}
 				if _, modelCompletion := commit.Fact().(runs.ModelCallCompleted); modelCompletion {
@@ -104,7 +104,7 @@ func TestObservedFactSurvivesExecutionCancellationUntilRelease(t *testing.T) {
 			t.Fatal("canceled admission entered publication")
 		default:
 		}
-		time.Sleep(executionTreeCommitTimeout / 2)
+		time.Sleep(time.Minute)
 		select {
 		case err := <-result:
 			t.Fatalf("abandoned known fact before release: %v", err)

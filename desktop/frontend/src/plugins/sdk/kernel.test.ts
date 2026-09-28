@@ -1,8 +1,9 @@
 import { createHost, type AnyPlugin, type Host } from "dougong";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { defineExtensionPoint } from "./contracts";
 import { contributionsTo, publishKernel, retractKernel, subscribeContributions } from "./kernel";
 import { definePlugin } from "./definePlugin";
+import { usePluginErrorStore } from "./errors";
 
 interface Theme {
   id: string;
@@ -38,6 +39,26 @@ async function start(plugins: AnyPlugin[]) {
 }
 
 describe("kernel contribution reads", () => {
+  it("reports a failing observer while still notifying the remaining consumers", async () => {
+    await start([]);
+    const failure = new Error("contribution observer failed");
+    const failed = subscribeContributions(() => {
+      throw failure;
+    });
+    const survivor = vi.fn();
+    const survived = subscribeContributions(survivor);
+    try {
+      expect(() => publishKernel(host!)).not.toThrow();
+      expect(survivor).toHaveBeenCalledOnce();
+      expect(usePluginErrorStore.getState().log).toContainEqual(
+        expect.objectContaining({ plugin: "kernel", source: "events", message: failure.message }),
+      );
+    } finally {
+      failed();
+      survived();
+    }
+  });
+
   it("publishes a contribution under its domain key, not Core's owner-qualified one", async () => {
     const contributor = definePlugin({
       name: "test.contributor",

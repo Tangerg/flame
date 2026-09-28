@@ -1,21 +1,3 @@
-// Package http implements the Flame Runtime Protocol's streamable-HTTP
-// transport. One endpoint carries JSON-RPC:
-//
-//	POST /v2/rpc            Request / Notification. A streaming method
-//	                        (runs.start/resume/subscribe)
-//	                        replies text/event-stream — the response body
-//	                        IS the call's event stream;
-//	                        everything else replies application/json.
-//
-// Operational sidecars use typed JSON without an envelope or auth:
-//
-//	GET /v2/info              Public server and protocol identity
-//	GET /v2/health/live       Process liveness
-//	GET /v2/health/ready      Dependency readiness
-//
-// See doc/{API,TRANSPORT}.md for the wire details. The middleware here wraps
-// each request in an OTel span and sets the X-Method header — the router
-// itself stays transport-agnostic.
 package http
 
 import (
@@ -39,21 +21,10 @@ import (
 
 const serverReadHeaderTimeout = 10 * time.Second
 
-// messageDispatcher is the dispatch surface this transport needs: route
-// one inbound message, return the synchronous reply plus any stream.
-// Defined here (consumer side) so the transport depends on the single
-// method it calls rather than the concrete *dispatch.Router — the
-// router's per-conn state stays its own concern, and tests can
-// inject a fake without standing up a Runtime.
 type messageDispatcher interface {
 	Dispatch(ctx context.Context, message transport.Message) dispatch.Result
 }
 
-// Server is the HTTP transport. One instance per process — a thin
-// adapter over the router: it decodes a POST, dispatches, and either
-// writes one application/json reply or (for streaming methods) streams
-// the call's event sequence as text/event-stream. It
-// holds no per-run state — the event hubs + replay live in the runtime.
 type Server struct {
 	info     RuntimeInfo
 	serverID string
@@ -73,7 +44,6 @@ type Server struct {
 	started bool
 }
 
-// Config bundles construction inputs.
 type Config struct {
 	// Endpoint is the Runtime instance's binding-neutral operation entrypoint.
 	// Required. HTTP never constructs a second policy pipeline.
@@ -82,10 +52,7 @@ type Config struct {
 	// Addr is the listen address (":8080", "127.0.0.1:0", ...). Required.
 	Addr string
 
-	// ServerInfo + ProtocolVersion populate the
-	// /v2/info sidecar response. Required.
-	ServerInfo      protocol.ServerInfo
-	ProtocolVersion string
+	ServerInfo protocol.ServerInfo
 
 	// ServerID identifies this process in X-Server response
 	// header. Defaults to ServerInfo.Name + "/" + ServerInfo.Version.
@@ -113,16 +80,12 @@ type Config struct {
 	HealthProbes []HealthProbe
 }
 
-// NewServer assembles a Server.
 func NewServer(cfg Config) (*Server, error) {
 	if cfg.Endpoint == nil {
 		return nil, errors.New("http: Endpoint is required")
 	}
 	if cfg.Addr == "" {
 		return nil, errors.New("http: Addr is required")
-	}
-	if cfg.ProtocolVersion == "" {
-		return nil, errors.New("http: ProtocolVersion is required")
 	}
 	if _, err := runtimeidentity.ParseRuntimeInstance(cfg.ServerInfo.InstanceID); err != nil {
 		return nil, fmt.Errorf("http: ServerInfo.InstanceID: %w", err)
@@ -158,7 +121,7 @@ func NewServer(cfg Config) (*Server, error) {
 		web:          cfg.WebApplication,
 		handlerCtx:   handlerCtx,
 		stopHandlers: stopHandlers,
-		info:         newInfoResponse(cfg.ServerInfo, cfg.ProtocolVersion),
+		info:         newInfoResponse(cfg.ServerInfo),
 	}
 	s.httpServer = &http.Server{
 		Addr:              cfg.Addr,

@@ -15,6 +15,7 @@ interface RunStreamReattachOptions {
   client: () => Pick<FlameClient, "runs">;
   isCancelled: () => boolean;
   recoverProjection: (signal: AbortSignal) => Promise<void>;
+  onConnectionLost: () => void;
 }
 
 export function createRunStreamReattach({
@@ -22,6 +23,7 @@ export function createRunStreamReattach({
   client,
   isCancelled,
   recoverProjection,
+  onConnectionLost,
 }: RunStreamReattachOptions) {
   return async function reattach(
     position: RunStreamPosition,
@@ -58,7 +60,11 @@ export function createRunStreamReattach({
           await recoverProjection(signal);
           return null;
         }
-        if (isCancelled() || signal.aborted || tailErr instanceof RpcConnectionError) return null;
+        if (isCancelled() || signal.aborted) return null;
+        if (tailErr instanceof RpcConnectionError) {
+          onConnectionLost();
+          return null;
+        }
         throw tailErr;
       }
     };
@@ -87,12 +93,12 @@ export function createRunStreamReattach({
         await recoverProjection(signal);
         return null;
       }
-      if (err instanceof RpcConnectionError) return null;
-      if (err instanceof RpcProtocolError) throw err;
-      if (!agentRuntime().isReplayLost(err)) {
-        console.warn("[agent] run reattach failed:", sessionId, err);
+      if (err instanceof RpcConnectionError) {
+        onConnectionLost();
         return null;
       }
+      if (err instanceof RpcProtocolError) throw err;
+      if (!agentRuntime().isReplayLost(err)) throw err;
       return recoverAndTail();
     }
   };

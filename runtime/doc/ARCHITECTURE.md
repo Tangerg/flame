@@ -218,6 +218,8 @@ A provider declares whether its model identities come from the bundled catalog o
 
 MCP, LSP, Git, filesystem, execution, and other integrations are grouped by the external system they translate. A wrapper remains only when it owns policy, translation, confinement, authority, or resource lifecycle.
 
+MCP OAuth persistence fences each authorization grant independently of the live connection catalog. An explicit sign-in issues a new grant against the current exact credential configuration. Refreshes and rejections carry that grant through their lifetime; storage compares it before changing credential material. Configuration invalidation removes the same grant, and callbacks from a superseded handler cannot mutate its replacement.
+
 ## Protocol and bindings
 
 The Contract Registry is the method and policy source used by delivery and contract generation. Generated artifacts in `contract` are the machine truth for methods, schemas, capabilities, errors, unions, and transport endpoints. Discovery identity and capability-catalog constraints are declared there and enforced by the generated validators, so consumers do not maintain another schema.
@@ -276,6 +278,8 @@ Skill discovery, library curation, and proposal review require complete implemen
 
 Every goroutine has one owner, stop condition, and join path. Request cancellation governs the request; accepted Run execution uses a Runtime-owned lifetime. Transport disconnect does not implicitly cancel durable execution.
 
+Language-server clients own their launched process group, including descendants left by a launcher. Initialization failure, natural launcher exit, and shutdown share one stop operation and join the process waiter. Inherited output pipes have a bounded close delay, so a descendant cannot indefinitely prevent resource reclamation.
+
 Authoritative execution publication has no fixed wall-clock deadline. Admission follows its execution context; observed model and Tool outcomes survive execution cancellation until the product owner releases the executor. Release cancels outstanding publication waits when the Run pump stops consuming. Tree reconciliation and final effect inspection follow their owner lifetime. Best-effort lifecycle notifications, refetchable hints, and cleanup callers retain bounded waits. Auxiliary model resolution and generation follow their caller's context, including required compaction, without an adapter-imposed timeout.
 
 The execution registry owns each Interaction session from assembly until release
@@ -290,6 +294,8 @@ until its handler returns or transfers ownership to a stream, including panic ex
 A Goal drive's completion includes releasing its execution lease. Lifecycle commands retain the same join handle while release is in progress, including after a caller stops waiting, so a successor cannot mistake its predecessor's unfinished cleanup for foreign ownership.
 
 Detached shells remain Runtime-owned after the Tool call and Run that launched them. Changing a Session's workspace or isolation policy stops that Session's shells and retires its derived context and isolated copy before exposing the replacement. Session deletion and rollback stop the same owned processes; a destructive working-tree restore additionally stops shells below the shared workspace across every Session before touching files. History or file rollback discards the old isolated copy so removed effects cannot reappear in a later Run. Runtime shutdown stops shells before destroying the isolated directories they may still use.
+
+The shell owner scopes individual handle lookup and stop to the calling Session. A shell ID carries no authority across Sessions; host teardown remains explicitly scoped by Session, workspace, or Runtime. Shell output bytes use Scope's content encoding through foreground completion and incremental reads, so binary bytes and incomplete UTF-8 sequences cannot turn an observed command result into an encoding failure.
 
 Foreground Run and Session commands wait, with caller cancellation, while an in-process recovery probe holds their Session. Recovery is an internal consistency check, not a user-visible live execution conflict. Genuine live Run and destructive-mutation conflicts still reject admission. Ownership releases the kernel lease before publishing local availability so a woken command cannot race an unreleased lease.
 

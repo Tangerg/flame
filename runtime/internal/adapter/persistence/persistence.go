@@ -113,17 +113,16 @@ type externalChangeObserver struct {
 	failed  bool
 }
 
-// poll bounds one tick and reports whether the observer should keep running. A
-// defect in a tick is that tick's failure — the next read sees the same counter
-// and the notification it describes is a resync the next external commit will
-// raise again — while a panic leaving the observer goroutine would end the
-// process and every Session in it. notify reaches the delivery fan-out, which
-// is the widest surface any background loop here calls into.
+// A failed fan-out must leave the version pending: there may be no later commit
+// to wake subscribers. Invalidations are safe to repeat after partial delivery.
 func (o *externalChangeObserver) poll(ctx context.Context) (running bool) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			slog.ErrorContext(ctx, "persistence: external change poll panicked",
-				"panic", fmt.Sprint(recovered), "stack", string(debug.Stack()))
+			if !o.failed {
+				slog.ErrorContext(ctx, "persistence: external change poll panicked",
+					"panic", fmt.Sprint(recovered), "stack", string(debug.Stack()))
+			}
+			o.failed = true
 			running = true
 		}
 	}()
@@ -138,11 +137,11 @@ func (o *externalChangeObserver) poll(ctx context.Context) (running bool) {
 		o.failed = true
 		return true
 	}
-	o.failed = false
 	if current != o.version {
-		o.version = current
 		o.notify()
+		o.version = current
 	}
+	o.failed = false
 	return true
 }
 

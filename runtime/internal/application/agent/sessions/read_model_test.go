@@ -3,6 +3,7 @@ package sessions
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/scope/core/chat"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -47,4 +48,8 @@ func TestActivitiesComeFromDurableRunLifecycle(t *testing.T) {
 		activities["ses_idle"] != ActivityIdle {
 		t.Fatalf("Activities = %+v, want durable running/waiting/idle", activities)
 	}
+}
+
+func (activityRunStore) UnpublishedToolResults(context.Context, string, string) ([]chat.ToolResult, error) {
+	return nil, nil
 }

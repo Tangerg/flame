@@ -8,9 +8,6 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
-// wailsImageSaver is the platform adapter for DesktopHost's image-save capability.
-// It attaches the sheet to the exact window that issued the request, then writes only
-// after the user has chosen a destination.
 type wailsImageSaver struct {
 	dialogs *application.DialogManager
 	window  application.Window

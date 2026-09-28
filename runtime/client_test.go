@@ -383,7 +383,7 @@ func remoteHTTPHandler(t *testing.T, endpoint *delivery.Endpoint, info protocol.
 	t.Helper()
 	server, err := flamehttp.NewServer(flamehttp.Config{
 		Endpoint: endpoint, Addr: "127.0.0.1:0", ServerInfo: info,
-		ProtocolVersion: protocol.ProtocolVersion, LocalToken: "test-local-token",
+		LocalToken: "test-local-token",
 	})
 	if err != nil {
 		t.Fatal(err)

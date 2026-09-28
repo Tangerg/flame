@@ -12,13 +12,6 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// testProtocolVersion is what the test server is configured to announce. It reads
-// the build's constant rather than a literal because the discover assertion below
-// reaches the real ProtocolVersion — spelling the date here would make these
-// transport tests fail on the next version bump for a reason that has nothing to do
-// with transport.
-const testProtocolVersion = protocol.ProtocolVersion
-
 // TestSidecarInfo confirms /v2/info returns the minimal typed bootstrap shape.
 func TestSidecarInfo(t *testing.T) {
 	ts, _ := newTestServer(t)
@@ -41,7 +34,7 @@ func TestSidecarInfo(t *testing.T) {
 	if err := json.UnmarshalRead(resp.Body, &body); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if body.ProtocolVersion != testProtocolVersion {
+	if body.ProtocolVersion != protocol.ProtocolVersion {
 		t.Fatalf("protocolVersion = %q", body.ProtocolVersion)
 	}
 	if body.Server.Name != "flame-test" {
@@ -102,7 +95,7 @@ func TestDiscoverOverRPC(t *testing.T) {
 	if env.Error != nil {
 		t.Fatalf("got error envelope: %s", string(*env.Error))
 	}
-	if !strings.Contains(string(env.Result), testProtocolVersion) {
+	if !strings.Contains(string(env.Result), protocol.ProtocolVersion) {
 		t.Fatalf("result missing protocolVersion: %s", string(env.Result))
 	}
 }

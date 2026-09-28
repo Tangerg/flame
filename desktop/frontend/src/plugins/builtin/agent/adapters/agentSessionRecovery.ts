@@ -16,6 +16,7 @@ interface AgentSessionRecoveryOptions {
   isFollowing: (runId: string, segmentId: string) => boolean;
   setAbortController: (controller: AbortController) => void;
   pump: (stream: RunStream, signal: AbortSignal) => Promise<void>;
+  onConnectionLost: () => void;
 }
 
 export function startAgentSessionRecovery(
@@ -23,7 +24,8 @@ export function startAgentSessionRecovery(
 ): Promise<AgentSessionView | null> {
   return recover(options).catch((error: unknown) => {
     if (!options.signal.aborted && !options.isCancelled()) {
-      console.error("[agent] session recovery failed:", options.sessionId, error);
+      if (error instanceof RpcConnectionError) options.onConnectionLost();
+      else console.error("[agent] session recovery failed:", options.sessionId, error);
     }
     return null;
   });
@@ -90,10 +92,17 @@ async function attachRootRun(
         await refreshAgentSessionProjection(options.sessionId, {
           canCommit: () => !stale(options),
           signal: options.signal,
+        }).catch((readError: unknown) => {
+          if (options.isCancelled() || controller.signal.aborted) return;
+          if (readError instanceof RpcConnectionError) options.onConnectionLost();
+          else throw readError;
         });
         return;
       }
-      if (error instanceof RpcConnectionError) return;
+      if (error instanceof RpcConnectionError) {
+        options.onConnectionLost();
+        return;
+      }
       console.warn("[agent] run reattach failed:", options.sessionId, error);
       return;
     }

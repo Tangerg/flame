@@ -1,11 +1,10 @@
 package config
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
-	"strings"
 	"testing"
-
-	"github.com/spf13/viper"
 )
 
 func TestLoadOnline_EnvOverridesYAML(t *testing.T) {
@@ -13,18 +12,23 @@ func TestLoadOnline_EnvOverridesYAML(t *testing.T) {
 	t.Setenv("FLAME_TAVILY_API_KEY", "tavily-env")
 	t.Setenv("FLAME_HTTP_ALLOWED_HOSTS", "api.github.com, *.example.com ")
 
-	v := viper.New()
-	v.SetConfigType("yaml")
-	if err := v.ReadConfig(strings.NewReader(`
+	directory := t.TempDir()
+	if err := os.WriteFile(filepath.Join(directory, "config.yaml"), []byte(`
+provider: anthropic
 online:
   jinaApiKey: jina-yaml
   tavilyApiKey: tavily-yaml
   httpAllowedHosts: ["yaml.example.com"]
-`)); err != nil {
+`), 0o600); err != nil {
 		t.Fatalf("read config: %v", err)
 	}
 
-	got := loadOnline(v)
+	t.Setenv("FLAME_PROVIDER", "")
+	settings, err := Load([]string{directory})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := settings.Online
 	want := Online{
 		JinaAPIKey:       "jina-env",
 		TavilyAPIKey:     "tavily-env",

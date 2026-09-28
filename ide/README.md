@@ -62,7 +62,10 @@ workspace.
 The output channel projects durable Items. Token previews are not negotiated.
 An active Run is attached with the atomic `runs.subscribe(snapshot: true)`
 snapshot and its successor event tail. Session changes and pending waits refresh
-through the Runtime subscription. If observation fails, **Refresh Session**
+through the Runtime subscription. A Segment change during attachment causes a new
+authoritative read. Waiting and finished Runs refresh their durable snapshot before
+observation ends. Selecting another Session retires the previous observation before
+the replacement is displayed. If observation fails, **Refresh Session**
 reattaches from authoritative state; **Connect to Runtime** replaces a failed
 connection and restores global notifications.
 

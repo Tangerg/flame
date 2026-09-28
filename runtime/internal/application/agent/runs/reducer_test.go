@@ -355,14 +355,15 @@ func TestReducerProjectsModelToolContextWithProviderCallIdentity(t *testing.T) {
 		t.Fatalf("model ToolCall conversation projection = %#v", modelMessages)
 	}
 
-	mustReduce(t, reducer, ToolCallStarted{
+	start := ToolCallStarted{
 		CallID: "runtime_call_1", SourceCallID: call.ID,
 		ModelCallSequence: 1, ToolCallIndex: 0,
 		ToolName: call.Name, Arguments: call.Arguments, SafetyClass: tool.SafetyClassSafe,
-	})
-	toolBatch := mustFinishTool(t, reducer, ToolCallFinished{
+	}
+	mustReduce(t, reducer, start)
+	toolBatch := mustReduce(t, reducer, testToolPublication([]ToolCallStarted{start}, ToolCallFinished{
 		CallID: "runtime_call_1", Result: testToolResult(t, "contents"), ModelResult: &corechat.ToolResult{ID: call.ID, Name: call.Name, Output: corechat.NewTextToolOutput("contents")},
-	})
+	}))
 	toolMessages := committedConversationMessages(toolBatch)
 	if len(toolMessages) != 1 || toolMessages[0].Role != corechat.RoleTool || len(toolMessages[0].Parts) != 1 {
 		t.Fatalf("Tool result conversation projection = %#v", toolMessages)
@@ -388,12 +389,9 @@ func TestReducerRejectsMissingProviderToolCallIDBeforeProjection(t *testing.T) {
 	}); !errors.Is(err, errExecutorContract) {
 		t.Fatalf("missing ToolCall ID error = %v, want executor contract failure", err)
 	}
-	if reducer.toolContext.Count() != 0 {
-		t.Fatal("invalid ToolCall entered model Tool context")
-	}
 }
 
-func TestReducerTerminalClosesProviderToolCallCanceledBeforeRuntimeStart(t *testing.T) {
+func TestTerminalConversationClosesProviderToolCallCanceledBeforeRuntimeStart(t *testing.T) {
 	reducer := newReducer(testReducerConfig())
 	first := corechat.ToolCall{ID: "provider_first", Name: "glob", Arguments: `{"pattern":"**/*"}`}
 	second := corechat.ToolCall{ID: "provider_second", Name: "search_tools", Arguments: `{"query":"lookup"}`}
@@ -407,21 +405,31 @@ func TestReducerTerminalClosesProviderToolCallCanceledBeforeRuntimeStart(t *test
 		Steps: 1,
 	})
 
-	mustReduce(t, reducer, ToolCallStarted{
+	start := ToolCallStarted{
 		CallID: "runtime_first", SourceCallID: first.ID,
 		ModelCallSequence: 1, ToolCallIndex: 0,
 		ToolName: first.Name, Arguments: first.Arguments,
-	})
-	toolBatch := mustFinishTool(t, reducer, ToolCallFinished{
+	}
+	mustReduce(t, reducer, start)
+	settlement := testToolPublication([]ToolCallStarted{start}, ToolCallFinished{
 		CallID: "runtime_first", Result: testToolResult(t, "first result"), ModelResult: &corechat.ToolResult{ID: first.ID, Name: first.Name, Output: corechat.NewTextToolOutput("first result")},
 	})
+	settlement.ModelResults = nil
+	toolBatch := mustReduce(t, reducer, settlement)
 	terminalBatch := mustReduce(t, reducer, SegmentEnded{Reason: run.OutcomeCanceled})
-	terminalMessages := committedConversationMessages(terminalBatch)
-	if len(terminalMessages) != 1 || terminalMessages[0].Role != corechat.RoleTool ||
-		len(terminalMessages[0].Parts) != 1 {
-		t.Fatalf("terminal conversation closure = %#v, want one Tool result", terminalMessages)
+	if messages := committedConversationMessages(terminalBatch); len(messages) != 0 {
+		t.Fatalf("reducer duplicated terminal conversation ownership: %#v", messages)
 	}
-	result := terminalMessages[0].Parts[0].ToolResult
+	durable := append(committedConversationMessages(modelBatch), committedConversationMessages(toolBatch)...)
+	terminalMessages, err := TerminalConversation(t.Context(), &recoveryStoreStub{results: map[string][]corechat.ToolResult{"run_1": {settlement.Results[0].ModelResult.Clone()}}}, "ses_1", "run_1", durable, run.OutcomeCanceled, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(terminalMessages) != 1 || terminalMessages[0].Role != corechat.RoleTool ||
+		len(terminalMessages[0].Parts) != 2 {
+		t.Fatalf("terminal conversation closure = %#v, want original ordered Tool results", terminalMessages)
+	}
+	result := terminalMessages[0].Parts[1].ToolResult
 	if result == nil {
 		t.Fatal("terminal Tool result is missing")
 	}
@@ -824,22 +832,23 @@ func TestReducerSeparatesModelAndPresentedToolResults(t *testing.T) {
 		Message: new(corechat.NewAssistantMessage(corechat.NewToolCallPart(call))),
 		Steps:   1,
 	})
-	mustReduce(t, reducer, ToolCallStarted{
+	start := ToolCallStarted{
 		CallID: "runtime_shell", SourceCallID: call.ID,
 		ModelCallSequence: 1, ToolCallIndex: 0,
 		ToolName: call.Name, Arguments: call.Arguments,
-	})
+	}
+	mustReduce(t, reducer, start)
 	exact := corechat.ToolResult{
 		ID: call.ID, Name: call.Name,
 		Output: corechat.NewTextToolOutput(`{"stdout":"hello","stderr":"","exit_code":0}`),
 	}
-	reduced := mustFinishTool(t, reducer, ToolCallFinished{
+	reduced := mustReduce(t, reducer, testToolPublication([]ToolCallStarted{start}, ToolCallFinished{
 		CallID:      "runtime_shell",
 		ModelResult: &exact,
 		Result: testToolResult(t, map[string]any{
 			"output": "hello", "exitCode": 0,
 		}),
-	})
+	}))
 	messages := committedConversationMessages(reduced)
 	if len(messages) != 1 || len(messages[0].Parts) != 1 ||
 		messages[0].Parts[0].ToolResult == nil || !reflect.DeepEqual(*messages[0].Parts[0].ToolResult, exact) {
@@ -1479,7 +1488,16 @@ func TestReducerTerminalizationClosesUnrestartedResumeTool(t *testing.T) {
 			if duration, known := settled.ExecutionDuration(); known {
 				t.Fatalf("unrestarted resume Tool fabricated execution duration %v", duration)
 			}
-			closure := committedConversationMessages(testReductions(batch))
+			if messages := committedConversationMessages(testReductions(batch)); len(messages) != 0 {
+				t.Fatalf("reducer duplicated resumed conversation ownership: %#v", messages)
+			}
+			durable := []corechat.Message{corechat.NewAssistantMessage(corechat.NewToolCallPart(corechat.ToolCall{
+				ID: "provider_original", Name: "shell", Arguments: `{"command":"pwd"}`,
+			}))}
+			closure, err := TerminalConversation(t.Context(), &recoveryStoreStub{}, "ses_1", "run_1", durable, run.OutcomeCanceled, "")
+			if err != nil {
+				t.Fatal(err)
+			}
 			if len(closure) != 1 || len(closure[0].Parts) != 1 ||
 				closure[0].Parts[0].ToolResult == nil ||
 				closure[0].Parts[0].ToolResult.ID != "provider_original" ||

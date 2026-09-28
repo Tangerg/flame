@@ -136,8 +136,8 @@ func (r *Runtime) endpoint() (*delivery.Endpoint, error) {
 }
 
 // Close stops new calls, ends subscriptions, joins Runtime-owned workers and
-// closes resources. If Close returns an error, call it again to resume the
-// incomplete teardown.
+// closes resources. Another Close joins or resumes incomplete teardown;
+// completed teardown retains its terminal diagnostics without repeating work.
 func (r *Runtime) Close() error {
 	if r == nil {
 		return nil

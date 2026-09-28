@@ -47,7 +47,7 @@ const testScope = { subscribeReplacement: () => () => undefined };
 configureNavigator(createMemoryNavigator());
 activateAgentSessionStorage(testEndpoint());
 installAgentStatePorts();
-installAgentDefaultSessionPort(unavailableRuntime);
+installAgentDefaultSessionPort(unavailableRuntime, () => undefined);
 installAgentRuntimeGateway(unavailableRuntime);
 installComposerStatePorts(testAgentSessions, testEndpoint, testScope);
 installWorkspaceNavigationPort(testEndpoint);
@@ -60,7 +60,7 @@ beforeEach(async () => {
   configureNavigator(createMemoryNavigator());
   activateAgentSessionStorage(testEndpoint());
   installAgentStatePorts();
-  installAgentDefaultSessionPort(unavailableRuntime);
+  installAgentDefaultSessionPort(unavailableRuntime, () => undefined);
   installAgentRuntimeGateway(unavailableRuntime);
   installComposerStatePorts(testAgentSessions, testEndpoint, testScope);
   installWorkspaceNavigationPort(testEndpoint);

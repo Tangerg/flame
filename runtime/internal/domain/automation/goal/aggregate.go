@@ -107,42 +107,11 @@ func Unwritten(sessionID string) (Current, error) {
 
 // CurrentOf owns one validated committed Goal as its Session's latest value.
 func CurrentOf(value Goal) (Current, error) {
-	if err := value.ValidateSnapshot(); err != nil {
+	if err := value.validate(); err != nil {
 		return Current{}, err
 	}
 	owned := value.Clone()
 	return Current{sessionID: owned.sessionID, goal: &owned}, nil
-}
-
-func (c Current) Validate() error {
-	if err := validateSessionIdentity(c.sessionID); err != nil {
-		return err
-	}
-	if c.goal == nil {
-		return nil
-	}
-	if c.goal.sessionID != c.sessionID {
-		return fmt.Errorf("%w: Current Session identity does not match Goal", ErrInvalid)
-	}
-	return c.goal.ValidateSnapshot()
-}
-
-// ValidateFor verifies the complete current value and its exact expected
-// Session identity. Point reads use it before stored Goal state can influence a
-// use case.
-func (c Current) ValidateFor(expectedSessionID string) error {
-	if err := c.Validate(); err != nil {
-		return err
-	}
-	if c.sessionID != expectedSessionID {
-		return fmt.Errorf(
-			"%w: Current Session %q does not match requested identity %q",
-			ErrInvalid,
-			c.sessionID,
-			expectedSessionID,
-		)
-	}
-	return nil
 }
 
 func (c Current) Goal() (Goal, bool) {
@@ -186,7 +155,7 @@ func New(
 func Restore(snapshot Snapshot) (Goal, error) {
 	incarnationID, err := goalref.ParseIncarnation(snapshot.IncarnationID)
 	if err != nil {
-		return Goal{}, fmt.Errorf("%w: %v", ErrInvalid, err)
+		return Goal{}, fmt.Errorf("%w: %w", ErrInvalid, err)
 	}
 	reason := Reason{}
 	if snapshot.ReasonCode != ReasonNone || snapshot.ReasonDetail != "" {
@@ -209,13 +178,13 @@ func Restore(snapshot Snapshot) (Goal, error) {
 		createdAt:     snapshot.CreatedAt.UTC(),
 		updatedAt:     snapshot.UpdatedAt.UTC(),
 	}
-	if err := value.ValidateSnapshot(); err != nil {
+	if err := value.validate(); err != nil {
 		return Goal{}, err
 	}
 	return value, nil
 }
 
-func (g Goal) ValidateSnapshot() error {
+func (g Goal) validate() error {
 	if err := validateSessionIdentity(g.sessionID); err != nil {
 		return err
 	}
@@ -226,7 +195,7 @@ func (g Goal) ValidateSnapshot() error {
 		return fmt.Errorf("%w: objective has surrounding whitespace", ErrInvalid)
 	}
 	if err := g.incarnationID.Validate(); err != nil {
-		return fmt.Errorf("%w: %v", ErrInvalid, err)
+		return fmt.Errorf("%w: %w", ErrInvalid, err)
 	}
 	if g.revision <= 0 {
 		return fmt.Errorf("%w: revision must be positive", ErrInvalid)
@@ -235,13 +204,13 @@ func (g Goal) ValidateSnapshot() error {
 		return fmt.Errorf("%w: unknown status %q", ErrInvalid, g.status)
 	}
 	if err := g.selection.ValidateExact(); err != nil {
-		return fmt.Errorf("%w: %v", ErrInvalid, err)
+		return fmt.Errorf("%w: %w", ErrInvalid, err)
 	}
 	if err := g.capabilities.Validate(); err != nil {
-		return fmt.Errorf("%w: capabilities: %v", ErrInvalid, err)
+		return fmt.Errorf("%w: capabilities: %w", ErrInvalid, err)
 	}
 	if err := g.used.validate(); err != nil {
-		return fmt.Errorf("%w: %v", ErrInvalid, err)
+		return fmt.Errorf("%w: %w", ErrInvalid, err)
 	}
 	if g.createdAt.IsZero() || g.updatedAt.IsZero() {
 		return fmt.Errorf("%w: creation and update times are required", ErrInvalid)
@@ -310,7 +279,7 @@ func (v Version) Validate() error {
 		return nil
 	}
 	if err := v.incarnationID.Validate(); err != nil {
-		return fmt.Errorf("%w: %v", ErrInvalid, err)
+		return fmt.Errorf("%w: %w", ErrInvalid, err)
 	}
 	if v.revision <= 0 {
 		return fmt.Errorf("%w: committed Version revision must be positive", ErrInvalid)
@@ -324,7 +293,7 @@ func (v Version) AdvancesTo(next Goal) error {
 	if err := v.Validate(); err != nil {
 		return err
 	}
-	if err := next.ValidateSnapshot(); err != nil {
+	if err := next.validate(); err != nil {
 		return err
 	}
 	if next.sessionID != v.sessionID {
@@ -361,7 +330,7 @@ func (g Goal) Complete(now time.Time) (Goal, error) {
 		return Goal{}, err
 	}
 	next.status, next.reason = StatusComplete, Reason{}
-	return next, next.ValidateSnapshot()
+	return next, next.validate()
 }
 
 func (g Goal) Pause(code ReasonCode, detail string, now time.Time) (Goal, error) {
@@ -377,7 +346,7 @@ func (g Goal) Pause(code ReasonCode, detail string, now time.Time) (Goal, error)
 		return Goal{}, err
 	}
 	next.status, next.reason = StatusPaused, reason
-	return next, next.ValidateSnapshot()
+	return next, next.validate()
 }
 
 // Stop returns the user-authored paused state after an owned drive has been
@@ -394,7 +363,7 @@ func (g Goal) Stop(now time.Time) (Goal, error) {
 	if err != nil {
 		return Goal{}, err
 	}
-	return next, next.ValidateSnapshot()
+	return next, next.validate()
 }
 
 func (g Goal) Block(code ReasonCode, detail string, now time.Time) (Goal, error) {
@@ -410,7 +379,7 @@ func (g Goal) Block(code ReasonCode, detail string, now time.Time) (Goal, error)
 		return Goal{}, err
 	}
 	next.status, next.reason = StatusBlocked, reason
-	return next, next.ValidateSnapshot()
+	return next, next.validate()
 }
 
 func (g Goal) Resume(now time.Time) (Goal, error) {
@@ -422,7 +391,7 @@ func (g Goal) Resume(now time.Time) (Goal, error) {
 		return Goal{}, err
 	}
 	next.status, next.reason = StatusActive, Reason{}
-	return next, next.ValidateSnapshot()
+	return next, next.validate()
 }
 
 func (g Goal) ReviseObjective(objective, incarnationID string, now time.Time) (Goal, error) {
@@ -447,7 +416,7 @@ func (g Goal) reviseObjective(objective, incarnationID string, resume bool, now 
 	}
 	parsedIncarnationID, err := goalref.ParseIncarnation(incarnationID)
 	if err != nil {
-		return Goal{}, fmt.Errorf("%w: %v", ErrInvalid, err)
+		return Goal{}, fmt.Errorf("%w: %w", ErrInvalid, err)
 	}
 	if parsedIncarnationID == g.incarnationID {
 		return Goal{}, fmt.Errorf("%w: revised objective requires a fresh incarnation", ErrInvalid)
@@ -462,13 +431,10 @@ func (g Goal) reviseObjective(objective, incarnationID string, resume bool, now 
 	if resume {
 		next.status, next.reason = StatusActive, Reason{}
 	}
-	return next, next.ValidateSnapshot()
+	return next, next.validate()
 }
 
 func (g Goal) next(now time.Time) (Goal, error) {
-	if err := g.ValidateSnapshot(); err != nil {
-		return Goal{}, err
-	}
 	if g.revision == math.MaxInt64 {
 		return Goal{}, fmt.Errorf("%w: revision exhausted", ErrInvalid)
 	}

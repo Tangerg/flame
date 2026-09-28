@@ -146,16 +146,16 @@ func (o *oauthFlow) close(ctx context.Context) error {
 // sign-in, registering the flow's loopback redirect via Dynamic Client
 // Registration so no client id need be preconfigured.
 func newOAuthHandler(
+	ctx context.Context,
 	flow *oauthFlow,
 	lifetime context.Context,
 	store OAuthSessionStore,
-	server mcpserver.ServerName,
-	endpoint string,
+	target mcpserver.OAuthTarget,
 ) (auth.OAuthHandler, error) {
 	if lifetime == nil {
 		return nil, errors.New("mcp oauth: lifetime is required")
 	}
-	origin, err := oauthOrigin(endpoint)
+	origin, err := oauthOrigin(target.URL)
 	if err != nil {
 		return nil, err
 	}
@@ -174,19 +174,28 @@ func newOAuthHandler(
 		RequestRefreshToken:      store != nil,
 	}
 	if store != nil {
-		config.NewTokenSource = func(ctx context.Context, cfg *oauth2.Config, token *oauth2.Token) (oauth2.TokenSource, error) {
-			if err := persistOAuthSession(ctx, store, server, origin, cfg, token); err != nil {
+		binding, err := store.BeginOAuthSession(ctx, target)
+		if err != nil {
+			return nil, fmt.Errorf("mcp oauth: begin session for %q: %w", target.Server, err)
+		}
+		session := &oauthSession{store: store, server: target.Server, origin: origin, binding: binding}
+		config.NewTokenSource = func(tokenCtx context.Context, cfg *oauth2.Config, token *oauth2.Token) (oauth2.TokenSource, error) {
+			if err := session.save(ctx, cfg, token); err != nil {
 				return nil, err
 			}
+			refreshCtx := lifetime
+			if client := tokenCtx.Value(oauth2.HTTPClient); client != nil {
+				refreshCtx = context.WithValue(refreshCtx, oauth2.HTTPClient, client)
+			}
 			source := newSavingTokenSource(
-				cfg.TokenSource(ctx, token),
+				cfg.TokenSource(refreshCtx, token),
 				cfg,
 				token,
 				func(updatedConfig *oauth2.Config, updatedToken *oauth2.Token) error {
-					return persistOAuthSession(lifetime, store, server, origin, updatedConfig, updatedToken)
+					return session.save(lifetime, updatedConfig, updatedToken)
 				},
 			)
-			return invalidateRejectedTokens(source, lifetime, store, server), nil
+			return invalidateRejectedTokens(source, lifetime, session), nil
 		}
 	}
 	return auth.NewAuthorizationCodeHandler(config)

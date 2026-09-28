@@ -675,69 +675,48 @@ func (d *Driver) Reconcile(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if err := validateGoalCatalog(all); err != nil {
-		return err
-	}
 	for _, g := range all {
-		lease, acquired, leaseErr := d.ownership.TryGoalDrive(g.SessionID())
-		if leaseErr != nil {
-			return fmt.Errorf("goals: acquire recovery drive %q: %w", g.SessionID(), leaseErr)
-		}
-		if !acquired {
-			// A different Runtime still owns the live drive. Its Goal and Run
-			// facts are not crash leftovers for this process to rewrite.
-			continue
-		}
-		_, exists, err := d.sessions.ModelSelection(ctx, g.SessionID())
-		if err != nil {
-			lease.Release()
+		if err := d.reconcileGoal(ctx, g); err != nil {
 			return err
 		}
-		if !exists {
-			applied, err := d.goals.ClearIf(ctx, g.SessionID(), g.Version())
-			if err != nil {
-				lease.Release()
-				return err
-			}
-			if !applied {
-				lease.Release()
-				return ErrGoalConflict
-			}
-			lease.Release()
-			continue
+	}
+	return nil
+}
+
+func (d *Driver) reconcileGoal(ctx context.Context, g goal.Goal) error {
+	lease, acquired, err := d.ownership.TryGoalDrive(g.SessionID())
+	if err != nil {
+		return fmt.Errorf("goals: acquire recovery drive %q: %w", g.SessionID(), err)
+	}
+	if !acquired {
+		return nil
+	}
+	defer lease.Release()
+	_, exists, err := d.sessions.ModelSelection(ctx, g.SessionID())
+	if err != nil {
+		return err
+	}
+	var applied bool
+	if !exists || g.Status() == goal.StatusComplete {
+		applied, err = d.goals.ClearIf(ctx, g.SessionID(), g.Version())
+	} else if g.Status() == goal.StatusActive {
+		replacement, transitionErr := g.Pause(goal.ReasonRuntimeRestarted, "", d.now())
+		if transitionErr != nil {
+			return transitionErr
 		}
-		switch g.Status() {
-		case goal.StatusActive:
-			expected := g.Version()
-			replacement, transitionErr := g.Pause(goal.ReasonRuntimeRestarted, "", d.now())
-			if transitionErr != nil {
-				lease.Release()
-				return transitionErr
-			}
-			change, replacementErr := goal.NewReplacement(expected, replacement)
-			if replacementErr != nil {
-				lease.Release()
-				return replacementErr
-			}
-			if applied, err := d.goals.Save(ctx, change); err != nil {
-				lease.Release()
-				return err
-			} else if !applied {
-				lease.Release()
-				return ErrGoalConflict
-			}
-		case goal.StatusComplete:
-			applied, err := d.goals.ClearIf(ctx, g.SessionID(), g.Version())
-			if err != nil {
-				lease.Release()
-				return err
-			}
-			if !applied {
-				lease.Release()
-				return ErrGoalConflict
-			}
+		change, replacementErr := goal.NewReplacement(g.Version(), replacement)
+		if replacementErr != nil {
+			return replacementErr
 		}
-		lease.Release()
+		applied, err = d.goals.Save(ctx, change)
+	} else {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if !applied {
+		return ErrGoalConflict
 	}
 	return nil
 }

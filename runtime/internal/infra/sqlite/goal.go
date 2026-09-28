@@ -3,7 +3,6 @@ package sqlite
 import (
 	"context"
 	"database/sql"
-	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"time"
@@ -307,7 +306,7 @@ func scanGoal(row scanRow) (goal.Goal, error) {
 		return goal.Goal{}, fmt.Errorf("sqlite: decode goal capabilities: %w", err)
 	}
 	var used goalUsed
-	if err := json.Unmarshal([]byte(usedJSON), &used); err != nil {
+	if err := decodeStoredJSON([]byte(usedJSON), &used); err != nil {
 		return goal.Goal{}, fmt.Errorf("sqlite: decode goal used: %w", err)
 	}
 	usedCost, err := accounting.CostFromOptional(used.CostUSD)

@@ -158,6 +158,8 @@ startup finishes after the installation has been retired.
 The installed-plugin list is a read-only projection of the current Host's
 diagnostics. Installing, removing, or rolling back a plugin changes the list
 through Dougong alone; the client has no separate registration path for names.
+Dougong's `SnapshotPublisher` owns notifications to React and query consumers,
+including observer failure isolation and reentrant publication ordering.
 
 Plugins transfer each acquired resource to `ctx.cleanup` immediately. Dougong
 owns rollback, reverse-order release, and failure aggregation; a plugin does not
@@ -243,6 +245,14 @@ A waiting Run exposes durable interrupts. The client submits responses against
 those exact identities; Runtime owns admission and continuation. Closing a
 client releases its transport and projection resources. It does not stop the
 Runtime or cancel accepted execution. Cancellation is an explicit command.
+
+An accepted resume settles local submission identity, then replaces its original
+transport with the existing atomic Session snapshot and Run tail. Answers,
+approval decisions, and pending interrupts come from that material and subsequent
+Runtime events. Snapshot failure after acceptance remains a synchronization
+failure; it cannot turn an accepted command into a new submission. A connection
+failure in recovery or reattachment is reported to the Runtime connection owner,
+which controls generation replacement and reconnection.
 
 Workspace subscriptions publish invalidation, not a second filesystem database.
 The Workspace owner manages subscription replacement and reconnect, then

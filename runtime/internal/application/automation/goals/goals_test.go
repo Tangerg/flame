@@ -704,72 +704,27 @@ func testGoalModelSelection() modelref.Selection {
 	return selection
 }
 
-func TestDriverCurrentRejectsInvalidOrMismatchedStoreValue(t *testing.T) {
-	mismatched, err := goal.Unwritten("other-session")
+func TestGoalReadsPreservePersistenceFailure(t *testing.T) {
+	cause := errors.New("stored Goal is corrupt")
+	base := newMemStore()
+	store := boundaryGoalStore{
+		Store: base,
+		get: func(context.Context, string) (goal.Current, error) {
+			return goal.Current{}, cause
+		},
+	}
+	driver := mustDriver(t, store, &fakeRuns{t: t, store: base}, &fakeSessions{},
+		goals.NewSessionMutations(), uncontendedDriveOwnership{}, testPrompt)
+	cleanupDriver(t, driver)
+	if _, _, err := driver.Current(t.Context(), "requested-session"); !errors.Is(err, cause) {
+		t.Fatalf("Driver.Current error = %v, want storage cause", err)
+	}
+	reader, err := goals.NewReader(store)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, test := range []struct {
-		name    string
-		current goal.Current
-	}{
-		{name: "invalid current"},
-		{name: "mismatched session", current: mismatched},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			base := newMemStore()
-			store := boundaryGoalStore{
-				Store: base,
-				get: func(context.Context, string) (goal.Current, error) {
-					return test.current, nil
-				},
-			}
-			driver := mustDriver(
-				t,
-				store,
-				&fakeRuns{t: t, store: base},
-				&fakeSessions{},
-				goals.NewSessionMutations(),
-				uncontendedDriveOwnership{},
-				testPrompt,
-			)
-			cleanupDriver(t, driver)
-
-			if _, _, err := driver.Current(t.Context(), "requested-session"); err == nil {
-				t.Fatal("Current accepted an invalid persistence result")
-			}
-		})
-	}
-}
-
-func TestReaderRejectsInvalidOrMismatchedStoreValue(t *testing.T) {
-	mismatched, err := goal.Unwritten("other-session")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, test := range []struct {
-		name    string
-		current goal.Current
-	}{
-		{name: "invalid current"},
-		{name: "mismatched session", current: mismatched},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			store := boundaryGoalStore{
-				Store: newMemStore(),
-				get: func(context.Context, string) (goal.Current, error) {
-					return test.current, nil
-				},
-			}
-			reader, err := goals.NewReader(store)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			if _, _, err := reader.Current(t.Context(), "requested-session"); err == nil {
-				t.Fatal("Current accepted an invalid persistence result")
-			}
-		})
+	if _, _, err := reader.Current(t.Context(), "requested-session"); !errors.Is(err, cause) {
+		t.Fatalf("Reader.Current error = %v, want storage cause", err)
 	}
 }
 
@@ -1867,51 +1822,24 @@ func TestReconcilePreservesOwnershipFailureAndActiveGoal(t *testing.T) {
 	}
 }
 
-func TestReconcileValidatesCompleteCatalogBeforeAcquiringOwnership(t *testing.T) {
-	now := time.Unix(0, 0).UTC()
-	active, err := goal.New(
-		"session", "objective", testGoalModelSelection(),
-		run.Capabilities{}, "incarnation", now,
-	)
-	if err != nil {
-		t.Fatal(err)
+func TestReconcilePreservesCatalogFailureBeforeAcquiringOwnership(t *testing.T) {
+	cause := errors.New("stored Goal catalog is corrupt")
+	base := newMemStore()
+	store := boundaryGoalStore{
+		Store: base,
+		list: func(context.Context) ([]goal.Goal, error) {
+			return nil, cause
+		},
 	}
-	for _, test := range []struct {
-		name   string
-		listed []goal.Goal
-	}{
-		{name: "invalid item", listed: []goal.Goal{{}}},
-		{name: "duplicate session", listed: []goal.Goal{active, active}},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			base := newMemStore()
-			store := boundaryGoalStore{
-				Store: base,
-				list: func(context.Context) ([]goal.Goal, error) {
-					return test.listed, nil
-				},
-			}
-			ownership := &selectiveDriveOwnership{
-				busy: map[string]bool{}, released: map[string]int{},
-			}
-			driver := mustDriver(
-				t,
-				store,
-				&fakeRuns{t: t, store: base},
-				&fakeSessions{},
-				goals.NewSessionMutations(),
-				ownership,
-				testPrompt,
-			)
-			cleanupDriver(t, driver)
-
-			if err := driver.Reconcile(t.Context()); err == nil {
-				t.Fatal("Reconcile accepted an invalid persistence catalog")
-			}
-			if ownership.calls != 0 {
-				t.Fatalf("drive ownership acquired %d times before catalog validation", ownership.calls)
-			}
-		})
+	ownership := &selectiveDriveOwnership{busy: map[string]bool{}, released: map[string]int{}}
+	driver := mustDriver(t, store, &fakeRuns{t: t, store: base}, &fakeSessions{},
+		goals.NewSessionMutations(), ownership, testPrompt)
+	cleanupDriver(t, driver)
+	if err := driver.Reconcile(t.Context()); !errors.Is(err, cause) {
+		t.Fatalf("Reconcile error = %v, want storage cause", err)
+	}
+	if ownership.calls != 0 {
+		t.Fatalf("acquired drive ownership %d times after a failed catalog read", ownership.calls)
 	}
 }
 

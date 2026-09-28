@@ -54,6 +54,7 @@ describe("run stream reattach", () => {
       client: () => runClient(subscribe),
       isCancelled: () => false,
       recoverProjection,
+      onConnectionLost: vi.fn(),
     });
     await expect(reattach(position("replay"), new AbortController().signal)).rejects.toBe(error);
     expect(recoverProjection).not.toHaveBeenCalled();
@@ -78,6 +79,7 @@ describe("run stream reattach", () => {
       client: () => runClient(subscribe),
       isCancelled: () => false,
       recoverProjection,
+      onConnectionLost: vi.fn(),
     });
     const signal = new AbortController().signal;
     const result = await reattach(position("cold"), signal);
@@ -98,6 +100,7 @@ describe("run stream reattach", () => {
       client: () => runClient(subscribe),
       isCancelled: () => false,
       recoverProjection,
+      onConnectionLost: vi.fn(),
     });
     const signal = new AbortController().signal;
 
@@ -123,6 +126,7 @@ describe("run stream reattach", () => {
       client: () => runClient(subscribe),
       isCancelled: () => false,
       recoverProjection,
+      onConnectionLost: vi.fn(),
     });
 
     await expect(reattach(position("replay"), new AbortController().signal)).resolves.toBeNull();
@@ -145,6 +149,7 @@ describe("run stream reattach", () => {
       client: () => runClient(subscribe),
       isCancelled: () => false,
       recoverProjection,
+      onConnectionLost: vi.fn(),
     });
 
     await expect(reattach(position("cold"), new AbortController().signal)).resolves.toBeNull();
@@ -153,22 +158,25 @@ describe("run stream reattach", () => {
     expect(warning).not.toHaveBeenCalled();
   });
 
-  it("does not diagnose a disappeared Runtime as a reattach failure", async () => {
+  it("reports a disappeared Runtime to the connection owner for recovery", async () => {
     const warning = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const recoverProjection = vi.fn(async (_signal: AbortSignal) => {});
     const subscribe = vi
       .fn<FlameClient["runs"]["subscribe"]>()
       .mockRejectedValue(new RpcConnectionError("fetch failed"));
+    const onConnectionLost = vi.fn();
     const reattach = createRunStreamReattach({
       sessionId: "ses_1",
       client: () => runClient(subscribe),
       isCancelled: () => false,
       recoverProjection,
+      onConnectionLost,
     });
 
     await expect(reattach(position("replay"), new AbortController().signal)).resolves.toBeNull();
 
     expect(recoverProjection).not.toHaveBeenCalled();
     expect(warning).not.toHaveBeenCalled();
+    expect(onConnectionLost).toHaveBeenCalledOnce();
   });
 });

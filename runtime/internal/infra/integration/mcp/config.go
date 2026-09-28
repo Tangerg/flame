@@ -36,6 +36,10 @@ const (
 	TransportStdio Transport = "stdio"
 )
 
+func (s ServerConfig) oauthTarget() mcpserver.OAuthTarget {
+	return mcpserver.OAuthTarget{Server: s.Name, URL: s.Endpoint, Headers: maps.Clone(s.Headers)}
+}
+
 // Valid reports whether transport names one supported MCP connection mode.
 func (t Transport) Valid() bool {
 	return t == TransportHTTP || t == TransportStdio

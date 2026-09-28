@@ -6,15 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 )
-
-const executionTreeCommitTimeout = 30 * time.Second
 
 type treeCommit struct {
 	PreviousWriter string
@@ -55,8 +52,6 @@ func (i *interactionSession) CommitCheckpoint(ctx context.Context, checkpoint ag
 func (i *interactionSession) commitTree(ctx context.Context, tree agent.TreeSnapshot, commit treeCommit) error {
 	ctx, cancel := i.lifetime.publicationContext(ctx)
 	defer cancel()
-	ctx, timeout := context.WithTimeout(ctx, executionTreeCommitTimeout)
-	defer timeout()
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -166,9 +161,7 @@ func (i *interactionSession) commitTree(ctx context.Context, tree agent.TreeSnap
 		err = i.executionTrees.SaveExecutionTree(ctx, update)
 		if err != nil {
 			readCtx, stop := i.lifetime.publicationContext(context.WithoutCancel(ctx))
-			readCtx, deadline := context.WithTimeout(readCtx, executionTreeCommitTimeout)
 			head, found, readErr := i.executionTrees.LoadExecutionTree(readCtx, update.Head.SessionID, update.Head.RootID)
-			deadline()
 			stop()
 			if readErr == nil && found && head.SameCommit(update.Head) {
 				err = nil

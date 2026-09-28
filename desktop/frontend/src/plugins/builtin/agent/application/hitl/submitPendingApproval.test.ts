@@ -73,7 +73,9 @@ describe("submitPendingApproval", () => {
     expect(submitPendingApproval("approved")).toBe(true);
 
     accept?.();
-    expect(useAgentStore.getState().sessions[SESSION_ID]!.view.pendingInterrupts).toEqual([]);
+    expect(useAgentStore.getState().sessions[SESSION_ID]!.view.pendingInterrupts).toHaveLength(2);
+    expect(submitPendingApproval("approved")).toBe(true);
+    expect(resume).toHaveBeenCalledOnce();
   });
 
   it("does not consume the approval shortcut for a question-only barrier", () => {

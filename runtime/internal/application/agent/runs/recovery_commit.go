@@ -445,14 +445,7 @@ func validateRecoveryClosureMessages(rootID string, messages []corechat.Message)
 		}
 		for _, part := range message.Parts {
 			result := part.ToolResult
-			if result == nil || !result.IsError {
-				return fmt.Errorf(
-					"runs: recovery commit conversation transition for root Run %q has an invalid Tool result",
-					rootID,
-				)
-			}
-			text, textual := result.Output.Text()
-			if !textual || text != lostToolResult {
+			if result == nil {
 				return fmt.Errorf(
 					"runs: recovery commit conversation transition for root Run %q has an invalid Tool result",
 					rootID,

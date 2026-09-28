@@ -132,13 +132,7 @@ export interface AgentRunView {
 }
 
 type TimelineEntryKind =
-  | "run-start"
-  | "run-end"
-  | "run-error"
-  | "tool"
-  | "approval-request"
-  | "compaction"
-  | "approval-result";
+  "run-start" | "run-end" | "run-error" | "tool" | "approval-request" | "compaction";
 
 export interface TimelineEntry {
   id: string;
@@ -150,7 +144,7 @@ export interface TimelineEntry {
   status?: "ok" | "err" | "approved" | "declined";
 }
 
-export type PendingInterruptKind = "approval" | "question";
+type PendingInterruptKind = "approval" | "question";
 
 export interface PendingInterrupt {
   itemId: string;

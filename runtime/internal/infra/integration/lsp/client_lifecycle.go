@@ -9,8 +9,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/infra/process/procgroup"
 	"github.com/sourcegraph/jsonrpc2"
 )
 
@@ -35,6 +37,8 @@ func startClient(ctx context.Context, spec ServerSpec, root string) (*client, er
 	cmd := exec.Command(spec.Command, spec.Args...) //nolint:noctx
 	cmd.Dir = root
 	cmd.Stderr = io.Discard // server logs are noise; failures surface as call errors
+	cmd.WaitDelay = time.Second
+	procgroup.Prepare(cmd)
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -49,9 +53,22 @@ func startClient(ctx context.Context, spec ServerSpec, root string) (*client, er
 	if err := cmd.Start(); err != nil {
 		return nil, closeUnstartedPipes(spec.Command, pipes, fmt.Errorf("lsp: start %s: %w", spec.Command, err))
 	}
+	stopProcess := sync.OnceValue(func() error {
+		err := procgroup.Stop(cmd)
+		if errors.Is(err, os.ErrProcessDone) {
+			return nil
+		}
+		return err
+	})
 	wait := make(chan error, 1)
 	go func() {
-		wait <- cmd.Wait()
+		err := cmd.Wait()
+		if errors.Is(err, exec.ErrWaitDelay) && cmd.ProcessState != nil && cmd.ProcessState.Success() {
+			err = nil
+		}
+		// Server launchers may exit while their children retain the pipes.
+		// Completion owns those descendants even without an explicit Close.
+		wait <- errors.Join(err, stopProcess())
 		close(wait)
 	}()
 
@@ -63,7 +80,7 @@ func startClient(ctx context.Context, spec ServerSpec, root string) (*client, er
 	c := &client{
 		spec:         spec,
 		root:         root,
-		cmd:          cmd,
+		stopProcess:  stopProcess,
 		cancel:       cancel,
 		wait:         wait,
 		shutdownBase: shutdownBase,
@@ -136,7 +153,7 @@ func (c *client) close() error {
 				clientShutdownTimeout,
 				ctx.Err(),
 			))
-			if err := killAndJoinProcess(c.spec.Name, c.cmd.Process, c.wait); err != nil {
+			if err := killAndJoinProcess(c.spec.Name, c.stopProcess, c.wait); err != nil {
 				errs = append(errs, err)
 			}
 		}
@@ -149,11 +166,8 @@ func (c *client) close() error {
 // dedicated goroutine, so this function sends the terminal signal and consumes
 // that goroutine's result before returning. The resulting ExitError is expected
 // after Kill; the caller already reports why a hard stop was necessary.
-func killAndJoinProcess(name string, process *os.Process, wait <-chan error) error {
-	if process == nil {
-		return fmt.Errorf("lsp: kill unresponsive %s: process is unavailable", name)
-	}
-	if err := process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
+func killAndJoinProcess(name string, stop func() error, wait <-chan error) error {
+	if err := stop(); err != nil {
 		return fmt.Errorf("lsp: kill unresponsive %s: %w", name, err)
 	}
 	<-wait

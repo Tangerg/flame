@@ -44,6 +44,11 @@ func modelInvocationUsageColumn() string {
 	)
 }
 
+const oauthBindingColumn = "binding TEXT NOT NULL DEFAULT ''"
+
+const resultPublicationSourceColumn = "source_message_seq INTEGER REFERENCES messages(seq) ON DELETE SET NULL"
+const resultPublicationResultsColumn = "model_results TEXT CHECK (model_results IS NULL OR json_valid(model_results))"
+
 // Open dials a SQLite database at path and installs any missing objects from
 // the current schema. The returned *sql.DB is safe for concurrent use; callers
 // share it across every
@@ -261,7 +266,9 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			digest TEXT NOT NULL,
 			session_id TEXT NOT NULL,
 			run_id TEXT NOT NULL REFERENCES runs(run_id) ON DELETE CASCADE,
-			segment_id TEXT NOT NULL
+			segment_id TEXT NOT NULL,
+			` + resultPublicationSourceColumn + `,
+			` + resultPublicationResultsColumn + `
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_tool_invocations_run
 			ON tool_invocations(run_id, segment_id)`,
@@ -433,12 +440,14 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		`CREATE TABLE IF NOT EXISTS mcp_oauth_sessions (
 			server_name TEXT PRIMARY KEY REFERENCES mcp_servers(name) ON DELETE CASCADE,
 			origin      TEXT NOT NULL,
+			` + oauthBindingColumn + `,
 			payload     BLOB NOT NULL
 		)`,
-		`CREATE TRIGGER IF NOT EXISTS invalidate_mcp_oauth_session
-			AFTER UPDATE OF transport, url, authorization, headers ON mcp_servers
+		`DROP TRIGGER IF EXISTS invalidate_mcp_oauth_session`,
+		`CREATE TRIGGER invalidate_mcp_oauth_session
+			AFTER UPDATE OF transport, enabled, url, authorization, headers ON mcp_servers
 			WHEN OLD.transport <> NEW.transport OR OLD.url <> NEW.url OR
-			     OLD.authorization <> NEW.authorization OR OLD.headers <> NEW.headers
+			     OLD.enabled <> NEW.enabled OR OLD.authorization <> NEW.authorization OR OLD.headers <> NEW.headers
 			BEGIN
 				DELETE FROM mcp_oauth_sessions WHERE server_name = NEW.name;
 			END`,
@@ -750,6 +759,43 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 	}
 	if err := rows.Close(); err != nil {
 		return fmt.Errorf("sqlite: inspect execution tree schema: %w", err)
+	}
+
+	for _, column := range []struct{ name, definition string }{
+		{"source_message_seq", resultPublicationSourceColumn},
+		{"model_results", resultPublicationResultsColumn},
+	} {
+		var present int
+		if err := tx.QueryRowContext(ctx, "SELECT count(*) FROM pragma_table_info('result_publications') WHERE name = ?", column.name).Scan(&present); err != nil {
+			return fmt.Errorf("sqlite: inspect result publication schema: %w", err)
+		}
+		if present == 0 {
+			if _, err := tx.ExecContext(ctx, "ALTER TABLE result_publications ADD COLUMN "+column.definition); err != nil {
+				return fmt.Errorf("sqlite: add exact result publication evidence: %w", err)
+			}
+		}
+	}
+	for _, stmt := range []string{
+		`CREATE INDEX IF NOT EXISTS idx_result_publications_run_context ON result_publications(session_id, run_id, source_message_seq)`,
+		`CREATE INDEX IF NOT EXISTS idx_result_publications_source_message ON result_publications(source_message_seq) WHERE source_message_seq IS NOT NULL`,
+	} {
+		if _, err := tx.ExecContext(ctx, stmt); err != nil {
+			return fmt.Errorf("sqlite: index result publication context: %w", err)
+		}
+	}
+	var oauthBindingColumnCount int
+	if err := tx.QueryRowContext(ctx,
+		"SELECT count(*) FROM pragma_table_info('mcp_oauth_sessions') WHERE name = 'binding'",
+	).Scan(&oauthBindingColumnCount); err != nil {
+		return fmt.Errorf("sqlite: inspect mcp oauth binding schema: %w", err)
+	}
+	if oauthBindingColumnCount == 0 {
+		if _, err := tx.ExecContext(ctx, "ALTER TABLE mcp_oauth_sessions ADD COLUMN "+oauthBindingColumn); err != nil {
+			return fmt.Errorf("sqlite: add mcp oauth binding: %w", err)
+		}
+		if _, err := tx.ExecContext(ctx, "UPDATE mcp_oauth_sessions SET binding = lower(hex(randomblob(16)))"); err != nil {
+			return fmt.Errorf("sqlite: bind existing mcp oauth credentials: %w", err)
+		}
 	}
 	// The feedback ledger has no reader inside Runtime, so an index on its
 	// timestamp only charged every insert for a query nobody makes; the pending

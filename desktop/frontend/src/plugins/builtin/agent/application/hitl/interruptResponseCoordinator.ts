@@ -5,13 +5,11 @@ import type {
   AgentSessionViewEntry,
   AgentSessionViewPort,
   InterruptResumeInput,
-  ResolvePatch,
 } from "../ports/sessionView";
 import { agentSessionView } from "../ports/sessionView";
 
 interface StagedResponse {
   input: InterruptResumeInput;
-  settled: ResolvePatch;
   onSettled?: () => void;
   onError?: () => void;
 }
@@ -25,6 +23,7 @@ interface SubmittedResponseBatch {
   openedAt: ProjectionBoundary;
   awaitingAuthority: ProjectionBoundary | null;
   superseded: boolean;
+  acknowledged: boolean;
 }
 
 class InterruptResponseBatch {
@@ -62,6 +61,7 @@ class InterruptResponseBatch {
       openedAt: this.#boundary(entry),
       awaitingAuthority: null,
       superseded: false,
+      acknowledged: false,
     };
   }
 
@@ -71,6 +71,14 @@ class InterruptResponseBatch {
 
   openingRejectionIsStale(): boolean {
     return this.#submission?.superseded ?? false;
+  }
+
+  acknowledge(): void {
+    if (this.#submission) this.#submission.acknowledged = true;
+  }
+
+  needsRollback(): boolean {
+    return !this.#submission?.acknowledged || !this.#submission.superseded;
   }
 
   reconcile(entry: AgentSessionViewEntry | undefined): boolean {
@@ -125,7 +133,6 @@ class InterruptResponseCoordinator {
   stage(
     { sessionId, rootRunId, itemId }: InterruptRef,
     response: InterruptResumeInput["response"],
-    settled: ResolvePatch,
     hooks?: { onSettled?: () => void; onError?: () => void },
   ): boolean {
     if (this.#retired) return false;
@@ -144,7 +151,6 @@ class InterruptResponseCoordinator {
 
     batch.stage(itemId, {
       input: { itemId, response },
-      settled,
       ...hooks,
     });
 
@@ -156,12 +162,7 @@ class InterruptResponseCoordinator {
       ordered.map(({ input }) => input),
       () => {
         if (this.#batches.get(key) !== batch) return;
-        this.#batches.delete(key);
-        const resolvedAt = Date.now();
-        for (const staged of ordered) {
-          this.#view.resolveInterrupt(sessionId, staged.input.itemId, staged.settled, resolvedAt);
-          staged.onSettled?.();
-        }
+        batch.acknowledge();
       },
       () => {
         const superseded = batch.openingRejectionIsStale();
@@ -192,7 +193,10 @@ class InterruptResponseCoordinator {
     const key = batchKey(batch.sessionId, batch.rootRunId);
     if (this.#batches.get(key) !== batch) return;
     this.#batches.delete(key);
-    for (const response of batch.responses()) response.onError?.();
+    for (const response of batch.responses()) {
+      if (batch.needsRollback()) response.onError?.();
+      else response.onSettled?.();
+    }
   }
 
   #reconcile(sessions: Record<string, AgentSessionViewEntry>): void {
@@ -215,10 +219,9 @@ function coordinator(): InterruptResponseCoordinator {
 export function stageInterruptResponse(
   ref: InterruptRef,
   response: InterruptResumeInput["response"],
-  settled: ResolvePatch,
   hooks?: { onSettled?: () => void; onError?: () => void },
 ): boolean {
-  return coordinator().stage(ref, response, settled, hooks);
+  return coordinator().stage(ref, response, hooks);
 }
 
 export function interruptResponseIsStaged(ref: InterruptRef): boolean {

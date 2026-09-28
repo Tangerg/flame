@@ -2,7 +2,12 @@ import type { FlameClient } from "@flame/runtime-contract/client";
 import { t } from "@/lib/i18n";
 import { notifyError } from "@/plugins/sdk";
 import type { AgentDriver, AgentRunStartOptions } from "@/plugins/sdk/types";
-import { asItemId, asRunId, type InterruptResponse } from "@flame/runtime-contract/client";
+import {
+  asItemId,
+  asRunId,
+  RpcConnectionError,
+  type InterruptResponse,
+} from "@flame/runtime-contract/client";
 import { useEffect, useEffectEvent } from "react";
 import { queryClient } from "@/lib/queryClient";
 import type { AgentInput } from "@/plugins/builtin/agent/domain/input";
@@ -12,7 +17,7 @@ import { selectCurrentRootRun } from "../application/view/runTree";
 import { AGENT_SESSION_USAGE_KEY } from "../application/session/sessionUsage";
 import { agentInputToContentBlocks } from "@/plugins/builtin/agent/adapters/wireInput";
 import { useAgentStore } from "./agentStore";
-import { createAgentRunPump } from "./agentRunPump";
+import { createAgentRunPump, type RunStream } from "./agentRunPump";
 import { createRunStreamReattach } from "./runStreamReattach";
 import { refreshAgentSessionProjection } from "../application/session/refreshSessionProjection";
 import { startAgentSessionRecovery } from "./agentSessionRecovery";
@@ -23,13 +28,16 @@ import { agentProblemFromRpcFailure } from "./rpcProblem";
 import { createSessionProjectionSynchronization } from "../application/session/sessionProjectionSynchronization";
 import { createRunCancellationController } from "./runCancellationController";
 import { revalidateRunTermination } from "../application/run/revalidateRunTermination";
+import { replaceResumedRunStream } from "./resumeRunStream";
 
 export function useAgentSession(
   client: () => FlameClient,
   makeDriver: () => AgentDriver,
   sessionId: string,
+  onConnectionLost: () => void,
 ): AgentSession {
   const createDriver = useEffectEvent(makeDriver);
+  const reportConnectionLoss = useEffectEvent(onConnectionLost);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -48,6 +56,11 @@ export function useAgentSession(
       typeof createSessionProjectionSynchronization
     > | null = null;
 
+    const reportSynchronizationFailure = (error: unknown) => {
+      if (error instanceof RpcConnectionError) reportConnectionLoss();
+      else notifyError(t("agent.synchronizationIncomplete"), { source: "session" });
+    };
+
     const runPump = createAgentRunPump({
       sessionId,
       isCancelled: () => cancelled,
@@ -59,14 +72,14 @@ export function useAgentSession(
         sessionId,
         client,
         isCancelled: () => cancelled,
+        onConnectionLost: reportConnectionLoss,
         recoverProjection: (signal) =>
           refreshAgentSessionProjection(sessionId, {
             canCommit: () => !cancelled && !signal.aborted,
             signal,
           }).then(() => undefined),
       }),
-      onSynchronizationFailed: () =>
-        notifyError(t("agent.synchronizationIncomplete"), { source: "session" }),
+      onSynchronizationFailed: reportSynchronizationFailure,
       onIdle: () => projectionSynchronization?.liveStreamSettled(),
     });
 
@@ -91,6 +104,7 @@ export function useAgentSession(
             abort = controller;
           },
           pump: runPump.pump,
+          onConnectionLost: reportConnectionLoss,
         }).then((authoritativeView) => {
           const state = useAgentSessionStore.getState();
           if (state.draftSessionIds.has(sessionId) && authoritativeView?.messages.length) {
@@ -146,10 +160,27 @@ export function useAgentSession(
         itemId: asItemId(response.itemId),
         response: response.response,
       }));
+      const resumedClient = client();
       runOpening.begin(
         (signal) => driver.resume(asRunId(runId), { responses: wireResponses }, signal),
         onSettled ? () => onSettled() : undefined,
         onStartError,
+        async (stream, signal) => {
+          let tail: RunStream | null;
+          try {
+            tail = await replaceResumedRunStream({
+              client: resumedClient,
+              sessionId,
+              stream,
+              signal,
+              isCancelled: () => cancelled,
+            });
+          } catch (error) {
+            if (!cancelled && !signal.aborted) reportSynchronizationFailure(error);
+            throw error;
+          }
+          if (tail) await runPump.pump(tail, signal);
+        },
       );
       return true;
     };

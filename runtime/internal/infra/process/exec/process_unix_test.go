@@ -38,7 +38,7 @@ func TestShellKillReclaimsDescendants(t *testing.T) {
 		}
 	})
 
-	if running, err := shells.Kill(id); err != nil || !running {
+	if running, err := shells.Kill("", id); err != nil || !running {
 		t.Fatalf("Kill = (running=%v, err=%v), want stopped running shell", running, err)
 	}
 	waitDone(t, shells, id)
@@ -73,7 +73,7 @@ func TestShellCompletionReclaimsDescendantsWithoutRewritingLeaderExit(t *testing
 	})
 	waitDone(t, shells, id)
 
-	code, killed, _, cleanupErr := mustShell(t, shells, id).Outcome()
+	code, killed, _, cleanupErr := mustShell(t, shells, "", id).Outcome()
 	if code != 0 || killed || cleanupErr != nil {
 		t.Fatalf("Outcome = (code=%d, killed=%v, cleanup=%v), want successful leader", code, killed, cleanupErr)
 	}

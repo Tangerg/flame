@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/scope/tools/content"
 )
 
 func TestPresenterActivity(t *testing.T) {
@@ -55,7 +56,7 @@ func TestPresenterCommandResult(t *testing.T) {
 	presented, outputText := Presenter{}.Present(
 		tool.Shell,
 		tool.Arguments{},
-		mustToolResult(t, map[string]any{"stdout": "out\nerr", "exit_code": 0}),
+		mustToolResult(t, map[string]any{"stdout": content.New([]byte("out\nerr")), "exit_code": 0}),
 	)
 	want := map[string]any{"output": "out\nerr", "exitCode": jsonv1.Number("0")}
 	if got := presented.Any(); !reflect.DeepEqual(got, want) {
@@ -129,7 +130,7 @@ func TestPublishedResultContractsDecodePresenterOutput(t *testing.T) {
 		name   string
 		result map[string]any
 	}{
-		{name: tool.Shell, result: map[string]any{"stdout": "ok", "exit_code": 0}},
+		{name: tool.Shell, result: map[string]any{"stdout": content.New([]byte("ok")), "exit_code": 0}},
 		{name: tool.Glob, result: map[string]any{"paths": []string{"main.go"}}},
 		{name: tool.Grep, result: map[string]any{"matches": []any{map[string]any{"path": "main.go", "line": 1, "text": "package main"}}}},
 		{name: tool.WebSearch, result: map[string]any{"results": []any{map[string]any{"url": "https://example.com"}}}},

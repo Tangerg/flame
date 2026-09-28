@@ -490,40 +490,36 @@ func (r *reducer) spawningItem(sourceCallID string) (transcript.Item, error) {
 	return r.runningToolItem(match)
 }
 
-func (r *reducer) toolEnd(e ToolCallFinished) ([]ProjectionEvent, []ToolInvocationCommit, []corechat.Message, error) {
+func (r *reducer) toolEnd(e ToolCallFinished) ([]ProjectionEvent, []ToolInvocationCommit, error) {
 	if err := runtimeidentity.ValidateEffect(e.CallID); err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 	ref, ok := r.tools.get(e.CallID)
 	if !ok {
-		return nil, nil, nil, fmt.Errorf("tool call %q ended without an open start", e.CallID)
+		return nil, nil, fmt.Errorf("tool call %q ended without an open start", e.CallID)
 	}
 	if ref.modelCallSequence > 0 {
 		if e.ModelResult == nil {
-			return nil, nil, nil, errors.New("model-attributed Tool completion requires its exact model result")
+			return nil, nil, errors.New("model-attributed Tool completion requires its exact model result")
 		}
 		if err := e.ModelResult.Validate(); err != nil {
-			return nil, nil, nil, err
+			return nil, nil, err
 		}
 		if e.ModelResult.ID != ref.sourceCallID || e.ModelResult.Name != ref.name {
-			return nil, nil, nil, errors.New("Tool result differs from its source call")
+			return nil, nil, errors.New("Tool result differs from its source call")
 		}
 	}
 	r.endToolAttempt(ref)
 	events, err := r.completeTool(ref, e)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 	r.tools.remove(ref.callID)
 	var invocations []ToolInvocationCommit
-	var messages []corechat.Message
 	if ref.modelCallSequence > 0 {
 		invocations = []ToolInvocationCommit{{CallID: ref.callID, ItemID: ref.id, SegmentID: r.cfg.SegmentID, State: ToolInvocationCompleted, StartedAt: ref.attemptStartedAt, FinishedAt: ref.finishedAt}}
-		if r.cfg.Lineage.IsRoot() {
-			messages = []corechat.Message{corechat.NewToolMessage(e.ModelResult.Clone())}
-		}
 	}
-	return events, invocations, messages, nil
+	return events, invocations, nil
 }
 
 func (r *reducer) completeTool(ref *openTool, e ToolCallFinished) ([]ProjectionEvent, error) {

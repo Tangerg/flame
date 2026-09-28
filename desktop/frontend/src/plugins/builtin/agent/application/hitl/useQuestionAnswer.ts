@@ -13,7 +13,7 @@ export function useQuestionAnswer(runId?: string, itemId?: string): QuestionAnsw
 
   const submit = useCallback(
     (answers: QuestionAnswers) => {
-      resume(true, { type: "answer", answers }, { answered: true, answers });
+      resume(true, { type: "answer", answers });
     },
     [resume],
   );

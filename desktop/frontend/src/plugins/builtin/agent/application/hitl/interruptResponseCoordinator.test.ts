@@ -62,7 +62,7 @@ describe("interrupt response coordinator", () => {
       stageInterruptResponse(
         { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "approval_a" },
         { type: "approval", decision: "approve" },
-        { decision: "approved" },
+
         { onSettled: approvalSettled },
       ),
     ).toBe(true);
@@ -79,7 +79,7 @@ describe("interrupt response coordinator", () => {
       stageInterruptResponse(
         { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "question_b" },
         { type: "answer", answers: [["Postgres"]] },
-        { answered: true, answers: [["Postgres"]] },
+
         { onSettled: questionSettled },
       ),
     ).toBe(true);
@@ -104,6 +104,10 @@ describe("interrupt response coordinator", () => {
     expect(questionSettled).not.toHaveBeenCalled();
 
     accept?.();
+    expect(approvalSettled).not.toHaveBeenCalled();
+    expect(questionSettled).not.toHaveBeenCalled();
+    expect(useAgentStore.getState().sessions[SESSION_ID]!.view.pendingInterrupts).toEqual(groups());
+    seedPending([]);
     expect(approvalSettled).toHaveBeenCalledOnce();
     expect(questionSettled).toHaveBeenCalledOnce();
     expect(useAgentStore.getState().sessions[SESSION_ID]!.view.pendingInterrupts).toEqual([]);
@@ -122,13 +126,13 @@ describe("interrupt response coordinator", () => {
     stageInterruptResponse(
       { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "approval_a" },
       { type: "approval", decision: "deny" },
-      { decision: "declined" },
+
       { onError: approvalError },
     );
     stageInterruptResponse(
       { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "question_b" },
       { type: "answer", answers: [["SQLite"]] },
-      { answered: true, answers: [["SQLite"]] },
+
       { onError: questionError },
     );
 
@@ -156,13 +160,13 @@ describe("interrupt response coordinator", () => {
     stageInterruptResponse(
       { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "approval_a" },
       { type: "approval", decision: "approve" },
-      { decision: "approved" },
+
       { onError: approvalError },
     );
     stageInterruptResponse(
       { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "question_b" },
       { type: "answer", answers: [["Postgres"]] },
-      { answered: true, answers: [["Postgres"]] },
+
       { onError: questionError },
     );
 
@@ -189,7 +193,7 @@ describe("interrupt response coordinator", () => {
     stageInterruptResponse(
       { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "approval_a" },
       { type: "approval", decision: "approve" },
-      { decision: "approved" },
+
       { onError },
     );
     seedPending([]);
@@ -224,13 +228,13 @@ describe("interrupt response coordinator", () => {
     stageInterruptResponse(
       { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "approval_a" },
       { type: "approval", decision: "approve" },
-      { decision: "approved" },
+
       { onSettled: approvalSettled, onError: approvalError },
     );
     stageInterruptResponse(
       { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "question_b" },
       { type: "answer", answers: [["Postgres"]] },
-      { answered: true, answers: [["Postgres"]] },
+
       { onSettled: questionSettled, onError: questionError },
     );
 
@@ -269,13 +273,13 @@ describe("interrupt response coordinator", () => {
     stageInterruptResponse(
       { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "approval_a" },
       { type: "approval", decision: "approve" },
-      { decision: "approved" },
+
       { onSettled: approvalSettled, onError: approvalError },
     );
     stageInterruptResponse(
       { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "question_b" },
       { type: "answer", answers: [["Postgres"]] },
-      { answered: true, answers: [["Postgres"]] },
+
       { onSettled: questionSettled, onError: questionError },
     );
     expect(retiredResume).toHaveBeenCalledOnce();
@@ -330,7 +334,7 @@ describe("interrupt response coordinator", () => {
     stageInterruptResponse(
       { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "approval_a" },
       { type: "approval", decision: "approve" },
-      { decision: "approved" },
+
       { onError },
     );
     retired();
@@ -363,13 +367,13 @@ describe("interrupt response coordinator", () => {
     stageInterruptResponse(
       { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "approval_a" },
       { type: "approval", decision: "approve" },
-      { decision: "approved" },
+
       { onSettled: retiredApprovalSettled, onError: retiredApprovalError },
     );
     stageInterruptResponse(
       { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "question_b" },
       { type: "answer", answers: [["Retired"]] },
-      { answered: true, answers: [["Retired"]] },
+
       { onSettled: retiredQuestionSettled, onError: retiredQuestionError },
     );
     expect(retiredResume).toHaveBeenCalledOnce();
@@ -385,7 +389,7 @@ describe("interrupt response coordinator", () => {
       stageInterruptResponse(
         { sessionId: SESSION_ID, rootRunId: ROOT_RUN_ID, itemId: "approval_a" },
         { type: "approval", decision: "deny" },
-        { decision: "declined" },
+
         { onError: successorError },
       ),
     ).toBe(true);

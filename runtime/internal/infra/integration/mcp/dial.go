@@ -69,7 +69,7 @@ func Dial(
 			return nil, nil, fmt.Errorf("mcp: invalid server %q: %w", srv.Name, verr)
 		}
 		if srv.Transport == TransportHTTP && srv.OAuthHandler == nil && srv.Authorization == "" {
-			handler, err := restoreOAuthHandler(ctx, lifetime, oauthSessions, srv.Name, srv.Endpoint)
+			handler, err := restoreOAuthHandler(ctx, lifetime, oauthSessions, srv.oauthTarget())
 			if err != nil {
 				return nil, nil, err
 			}

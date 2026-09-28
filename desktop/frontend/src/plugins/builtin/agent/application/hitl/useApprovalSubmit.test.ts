@@ -124,24 +124,23 @@ describe("useApprovalSubmit", () => {
     expect(resume).toHaveBeenCalledTimes(1);
   });
 
-  it("commits resolveInterrupt only after the run starts (onSettled)", () => {
+  it("acknowledges submission without inventing an approval fact", () => {
     bindResume((_run, _resp, onSettled) => (onSettled as () => void)());
     seedPending("item_ok");
-    const spy = vi.spyOn(useAgentStore.getState(), "resolveInterrupt");
+    const before = useAgentStore.getState().sessions[SID]!.view;
     const { result } = renderHook(() => useApprovalSubmit("run_1", "item_ok"));
     act(() => result.current.submit("approved"));
-    expect(spy).toHaveBeenCalledWith(SID, "item_ok", { decision: "approved" }, expect.any(Number));
-    spy.mockRestore();
+    expect(useAgentStore.getState().sessions[SID]!.view).toBe(before);
+    expect(result.current.pending).toBe("approved");
   });
 
   it("rolls back pending and does NOT resolve when the resume rejects (channel-a)", () => {
     bindResume((_run, _resp, _onSettled, onStartError) => (onStartError as () => void)());
     seedPending("item_fail");
-    const spy = vi.spyOn(useAgentStore.getState(), "resolveInterrupt");
+    const before = useAgentStore.getState().sessions[SID]!.view;
     const { result } = renderHook(() => useApprovalSubmit("run_1", "item_fail"));
     act(() => result.current.submit("approved"));
-    expect(spy).not.toHaveBeenCalled();
+    expect(useAgentStore.getState().sessions[SID]!.view).toBe(before);
     expect(result.current.pending).toBeNull();
-    spy.mockRestore();
   });
 });

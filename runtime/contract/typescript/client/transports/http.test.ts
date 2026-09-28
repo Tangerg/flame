@@ -1,6 +1,10 @@
 import type { TransportRequest } from "@flame/runtime-contract/client/transport";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { RpcConnectionError, RpcTransportError } from "@flame/runtime-contract/client/errors";
+import {
+  RpcConnectionError,
+  RpcProtocolError,
+  RpcTransportError,
+} from "@flame/runtime-contract/client/errors";
 import type { WireMethodName } from "@flame/runtime-contract/methods";
 import { createHttpTransport } from "@flame/runtime-contract/client/transports/http";
 
@@ -611,9 +615,172 @@ describe("HTTPTransport — streamable HTTP", () => {
       type: "streamEnd",
       method: "runs.start",
       requestRpcId: "1",
-      error: expect.any(RpcTransportError),
+      error: expect.any(RpcProtocolError),
     });
   });
+
+  it("cancels an unread response body after rejecting a malformed frame", async () => {
+    const canceled = vi.fn();
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode("data: {not json}\n\n"));
+      },
+      cancel: canceled,
+    });
+    const transport = createHttpTransport({
+      baseUrl: "http://x",
+      fetch: vi.fn(
+        async () =>
+          new Response(body, {
+            headers: { "Content-Type": "text/event-stream" },
+          }),
+      ),
+    });
+    const events = transport.recv()[Symbol.asyncIterator]();
+    try {
+      await transport.send(req("1", "runs.start"));
+      await expect(events.next()).resolves.toMatchObject({
+        value: { type: "requestError", rpcId: "1" },
+      });
+      expect(canceled).toHaveBeenCalledOnce();
+      expect(body.locked).toBe(false);
+    } finally {
+      await transport.close();
+    }
+  });
+
+  it("cancels an unread response body when its sole consumer returns", async () => {
+    const canceled = vi.fn();
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(
+          new TextEncoder().encode(
+            frame({ jsonrpc: "2.0", id: "1", result: {} }) +
+              frame({ jsonrpc: "2.0", method: "notifications.run.event", params: {} }),
+          ),
+        );
+      },
+      cancel: canceled,
+    });
+    const transport = createHttpTransport({
+      baseUrl: "http://x",
+      fetch: vi.fn(
+        async () => new Response(body, { headers: { "Content-Type": "text/event-stream" } }),
+      ),
+    });
+    const events = transport.recv()[Symbol.asyncIterator]();
+    try {
+      await transport.send(req("1", "runs.start"));
+      await events.next();
+      await events.return?.();
+      await vi.waitFor(() => expect(canceled).toHaveBeenCalledOnce());
+      expect(body.locked).toBe(false);
+    } finally {
+      await transport.close();
+    }
+  });
+
+  it("reports an abort-shaped body failure while the request owner remains live", async () => {
+    const transport = createHttpTransport({
+      baseUrl: "http://x",
+      fetch: vi.fn(async () =>
+        abortingSseResponse(frame({ jsonrpc: "2.0", id: "1", result: { runId: "run_01" } })),
+      ),
+    });
+    const events = transport.recv()[Symbol.asyncIterator]();
+    try {
+      await transport.send(req("1", "runs.start"));
+      await events.next();
+      await expect(events.next()).resolves.toMatchObject({
+        done: false,
+        value: { type: "streamEnd", error: expect.any(RpcConnectionError) },
+      });
+    } finally {
+      await transport.close();
+    }
+  });
+
+  it("retains the primary stream failure when canceling its body also fails", async () => {
+    const failure = new RpcConnectionError("response read failed");
+    const cleanup = new Error("response cancellation failed");
+    const response = sseResponse([]);
+    const reader = response.body!.getReader();
+    reader.releaseLock();
+    vi.spyOn(response.body!, "getReader").mockReturnValue(reader);
+    vi.spyOn(reader, "read").mockRejectedValue(failure);
+    vi.spyOn(reader, "cancel").mockRejectedValue(cleanup);
+    const transport = createHttpTransport({
+      baseUrl: "http://x",
+      fetch: vi.fn(async () => response),
+    });
+    const events = transport.recv()[Symbol.asyncIterator]();
+    try {
+      await transport.send(req("1", "runs.start"));
+      const event = await events.next();
+      expect(event.value).toMatchObject({ type: "requestError", error: failure });
+      expect(failure.cause).toBe(cleanup);
+    } finally {
+      await transport.close();
+    }
+  });
+
+  it.each([200, 400])("rejects invalid UTF-8 in an HTTP %d response", async (status) => {
+    const prefix = new TextEncoder().encode('{"jsonrpc":"2.0","id":"1","result":{"text":"');
+    const suffix = new TextEncoder().encode('"}}');
+    const transport = createHttpTransport({
+      baseUrl: "http://x",
+      fetch: vi.fn(
+        async () =>
+          new Response(new Uint8Array([...prefix, 0xff, ...suffix]), {
+            status,
+            headers: { "Content-Type": "application/json", "Request-Id": "req_utf8" },
+          }),
+      ),
+    });
+    const pendingEvent = transport.recv()[Symbol.asyncIterator]().next();
+    try {
+      await expect(transport.send(req("1", "sessions.get"))).rejects.toMatchObject({
+        name: "RpcProtocolError",
+        requestId: "req_utf8",
+      });
+    } finally {
+      await transport.close();
+      await pendingEvent;
+    }
+  });
+
+  it.each(["invalid byte", "truncated sequence"])(
+    "rejects an SSE %s before delivering repaired content",
+    async (kind) => {
+      const prefix = new TextEncoder().encode('data: {"jsonrpc":"2.0","id":"1","result":"');
+      const suffix = new TextEncoder().encode('"}\n\n');
+      const bytes =
+        kind === "invalid byte"
+          ? new Uint8Array([...prefix, 0xff, ...suffix])
+          : new Uint8Array([...prefix, 0xe2, 0x82]);
+      const transport = createHttpTransport({
+        baseUrl: "http://x",
+        fetch: vi.fn(
+          async () =>
+            new Response(bytes, {
+              headers: { "Content-Type": "text/event-stream", "Request-Id": "req_utf8" },
+            }),
+        ),
+      });
+      const events = transport.recv()[Symbol.asyncIterator]();
+      try {
+        await transport.send(req("1", "runs.start"));
+        await expect(events.next()).resolves.toMatchObject({
+          value: {
+            type: "requestError",
+            error: expect.any(RpcProtocolError),
+          },
+        });
+      } finally {
+        await transport.close();
+      }
+    },
+  );
 });
 
 it("keeps an authenticated request on its exact configured target", async () => {

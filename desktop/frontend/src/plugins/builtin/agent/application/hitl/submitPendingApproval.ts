@@ -44,12 +44,9 @@ export function submitPendingApproval(decision: ApprovalDecision): boolean {
     return true;
   }
 
-  resumeInterrupt(
-    sid,
-    oi.rootRunId,
-    itemId,
-    { type: "approval", decision: WIRE_DECISION[decision] },
-    { decision },
-  );
+  resumeInterrupt(sid, oi.rootRunId, itemId, {
+    type: "approval",
+    decision: WIRE_DECISION[decision],
+  });
   return true;
 }

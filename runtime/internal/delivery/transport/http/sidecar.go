@@ -31,9 +31,9 @@ type RuntimeInfo struct {
 	Endpoints       RuntimeInfoEndpoints `json:"endpoints"`
 }
 
-func newInfoResponse(server protocol.ServerInfo, currentVersion string) RuntimeInfo {
+func newInfoResponse(server protocol.ServerInfo) RuntimeInfo {
 	return RuntimeInfo{
-		ProtocolVersion: currentVersion,
+		ProtocolVersion: protocol.ProtocolVersion,
 		Server: RuntimeServerInfo{
 			InstanceID: server.InstanceID,
 			Name:       server.Name,

@@ -109,7 +109,7 @@ func (p *promptView) syncFocus() {
 }
 
 func (p *promptView) SetOptions(options prompt.RunOptions) {
-	p.panel.Box.Footer = optionsLabel(options)
+	p.panel.Box.Footer = modelLabel(options)
 }
 
 func (p *promptView) SetPendingKeySequence(hint string) {

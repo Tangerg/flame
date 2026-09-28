@@ -31,19 +31,14 @@ const maximumRuntimeConfigBytes int64 = 256 << 10
 // outside config-source parsing because they depend on the live provider
 // catalog.
 func Load(configDirectories []string) (Settings, error) {
-	v := viper.New()
+	v := viper.NewWithOptions(viper.ExperimentalBindStruct())
 	v.SetConfigType("yaml")
 
-	// No default provider — it must be set explicitly in config/config.yaml
-	// or via FLAME_PROVIDER. (No vendor is privileged as the implicit default.)
 	v.SetDefault("server.listen", "127.0.0.1:17171")
 	v.SetDefault("server.noLocalToken", false)
-	// Tool-result eviction is on by default. Enablement and threshold are
-	// independent so zero never acts as a hidden feature flag.
 	v.SetDefault("toolResultOffload.enabled", true)
 	v.SetDefault("toolResultOffload.threshold", DefaultToolResultOffloadThreshold)
 
-	// FLAME_* env override yaml (e.g. FLAME_PROVIDER, FLAME_SERVER_LISTEN).
 	v.SetEnvPrefix(environmentPrefix.String())
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
@@ -58,20 +53,18 @@ func Load(configDirectories []string) (Settings, error) {
 			return Settings{}, fmt.Errorf("config: read config file: %w", err)
 		}
 	}
-	if err := validateConfigShape(v); err != nil {
+	source, err := decodeConfig(v)
+	if err != nil {
 		return Settings{}, err
 	}
 
-	provider := v.GetString("provider")
-	if provider == "" {
+	if source.Provider == "" {
 		return Settings{}, errors.New("config: provider is required — set `provider:` in config/config.yaml or FLAME_PROVIDER (see providers.list for the supported set)")
 	}
 
-	model := v.GetString("model")
-
 	// Viper applies FLAME_APIKEY over yaml `apiKey`; recover that source here so
 	// later composition cannot mistake a process-scoped secret for durable input.
-	apiKey := FileAPIKey(v.GetString("apiKey"))
+	apiKey := FileAPIKey(source.APIKey)
 	if environmentKey := apiKeyEnvironment.Value(); environmentKey != "" {
 		apiKey = EnvironmentAPIKey(environmentKey)
 	}
@@ -90,41 +83,25 @@ func Load(configDirectories []string) (Settings, error) {
 		return Settings{}, fmt.Errorf("config: %s: %w", a2aOriginsEnvironment, err)
 	}
 
-	lspServers, err := loadLSPServers(v)
-	if err != nil {
-		return Settings{}, err
-	}
-	toolResultOffloadThreshold := v.GetInt("toolResultOffload.threshold")
-	if toolResultOffloadThreshold <= 0 {
+	if source.ToolResultOffload.Threshold <= 0 {
 		return Settings{}, errors.New("config: toolResultOffload.threshold must be positive; use toolResultOffload.enabled: false to disable eviction")
 	}
 
 	return Settings{
-		Provider:     provider,
-		Model:        model,
+		Provider:     source.Provider,
+		Model:        source.Model,
 		APIKey:       apiKey,
-		BaseURL:      v.GetString("baseURL"),
-		UtilityModel: v.GetString("utilityModel"),
-		Online:       loadOnline(v),
+		BaseURL:      source.BaseURL,
+		UtilityModel: source.UtilityModel,
+		Online:       loadOnline(source.Online),
 		MCPServers:   servers,
 		A2AAgents:    a2aAgents,
-		LSPServers:   lspServers,
+		LSPServers:   source.LSP.Servers,
 
-		ToolResultOffload: ToolResultOffloadSettings{
-			Enabled:   v.GetBool("toolResultOffload.enabled"),
-			Threshold: toolResultOffloadThreshold,
-		},
-
-		SandboxShell:         v.GetBool("sandbox.shell"),
-		SandboxReadOnlyPaths: v.GetStringSlice("sandbox.readOnlyPaths"),
-
-		Server: Server{
-			Listen:         v.GetString("server.listen"),
-			NoLocalToken:   v.GetBool("server.noLocalToken"),
-			LocalTokenPath: v.GetString("server.localTokenPath"),
-			CORSOrigins:    v.GetStringSlice("server.corsOrigins"),
-			WebDirectory:   v.GetString("server.webDirectory"),
-		},
+		ToolResultOffload:    source.ToolResultOffload,
+		SandboxShell:         source.Sandbox.Shell,
+		SandboxReadOnlyPaths: source.Sandbox.ReadOnlyPaths,
+		Server:               source.Server,
 	}, nil
 }
 
@@ -193,10 +170,10 @@ type configShape struct {
 	} `mapstructure:"lsp"`
 }
 
-func validateConfigShape(v *viper.Viper) error {
+func decodeConfig(v *viper.Viper) (configShape, error) {
 	var shape configShape
 	if err := v.UnmarshalExact(&shape); err != nil {
-		return fmt.Errorf("config: decode configuration: %w", err)
+		return configShape{}, fmt.Errorf("config: decode configuration: %w", err)
 	}
-	return nil
+	return shape, nil
 }

@@ -187,7 +187,7 @@ func (p *picker[T]) handleListMouse(mouse input.Mouse) bool {
 			p.pointerGesture.cancel()
 			return false
 		}
-		pressed, commit := p.pointerGesture.release(p.listIndexAt(mouse.Pos.Y))
+		pressed, commit := p.pointerGesture.release(p.listIndexAt(mouse.Pos))
 		if commit && p.items.Selected() == pressed {
 			if item, ok := p.items.Current(); ok && p.pick != nil {
 				p.pick(item)
@@ -199,11 +199,12 @@ func (p *picker[T]) handleListMouse(mouse input.Mouse) bool {
 	}
 }
 
-func (p *picker[T]) listIndexAt(row int) int {
-	if row < 0 {
+func (p *picker[T]) listIndexAt(point image.Point) int {
+	area := p.areas.Value().list
+	if !point.In(area.Sub(area.Min)) {
 		return -1
 	}
-	index := p.items.Scroll().Offset() + row
+	index := p.items.Scroll().Offset() + point.Y
 	if index >= p.items.Matched() {
 		return -1
 	}

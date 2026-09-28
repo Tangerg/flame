@@ -12,7 +12,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
@@ -93,12 +92,6 @@ type reducer struct {
 	// changed the projection, and a segment that changed nothing has nothing to
 	// fence.
 	plan *PlanSnapshot
-	// toolContext mirrors only this root Segment's provider-neutral assistant
-	// ToolCall and ToolResult messages. It lets a terminal boundary close calls
-	// the model committed even when cancellation won before ToolCallStarted.
-	// The durable Conversation remains owned by the conversation store; this
-	// immutable aggregate is only the reducer's atomic projection ledger.
-	toolContext conversation.Conversation
 }
 
 type openTool struct {
@@ -375,9 +368,6 @@ func (r *reducer) completeModelCall(completed ModelCallCompleted) (factReduction
 	if err != nil {
 		return factReduction{}, fmt.Errorf("%w: model call metrics: %w", errExecutorContract, err)
 	}
-	if err := r.appendToolContext(conversationMessages); err != nil {
-		return factReduction{}, fmt.Errorf("%w: track model Tool context: %w", errReducerInvariant, err)
-	}
 	return factReduction{
 		events:               append(events, progressEvents...),
 		conversationMessages: conversationMessages,
@@ -440,9 +430,6 @@ func (r *reducer) startToolCall(started ToolCallStarted) (factReduction, error) 
 	}
 	reduced := factReduction{events: events, items: []transcript.Item{running}}
 	if ref.modelCallSequence > 0 {
-		if err := r.trackStartedToolCall(started); err != nil {
-			return factReduction{}, fmt.Errorf("%w: track started Tool context: %w", errReducerInvariant, err)
-		}
 		reduced.toolInvocations = []ToolInvocationCommit{{
 			CallID: ref.callID, ItemID: ref.id, SegmentID: r.cfg.SegmentID,
 			State: ToolInvocationStarted, StartedAt: ref.attemptStartedAt,
@@ -452,15 +439,12 @@ func (r *reducer) startToolCall(started ToolCallStarted) (factReduction, error) 
 }
 
 func (r *reducer) finishToolCall(finished ToolCallFinished) (factReduction, error) {
-	events, invocations, messages, err := r.toolEnd(finished)
+	events, invocations, err := r.toolEnd(finished)
 	if err != nil {
 		return factReduction{}, fmt.Errorf("%w: tool call end: %w", errExecutorContract, err)
 	}
-	if err := r.appendToolContext(messages); err != nil {
-		return factReduction{}, fmt.Errorf("%w: track completed Tool context: %w", errReducerInvariant, err)
-	}
 	return factReduction{
-		events: events, conversationMessages: messages,
+		events:          events,
 		toolInvocations: invocations,
 	}, nil
 }
@@ -477,26 +461,15 @@ func (r *reducer) endSegment(ended SegmentEnded) (factReduction, error) {
 	if err != nil {
 		return factReduction{}, err
 	}
-	if trackUnconsumedResumeToolCallsErr := r.trackUnconsumedResumeToolCalls(); trackUnconsumedResumeToolCallsErr != nil {
-		return factReduction{}, fmt.Errorf("%w: track resumed Tool context: %w", errReducerInvariant, trackUnconsumedResumeToolCallsErr)
-	}
 	openTools := r.tools.ordered()
 	events, err := r.segmentEnd(ended)
 	if err != nil {
 		return factReduction{}, fmt.Errorf("%w: segment end: %w", errExecutorContract, err)
 	}
-	closure, err := r.closeOpenToolContext(
-		TerminalToolResult(ended.Reason, r.cancelReason()),
-		nil,
-	)
-	if err != nil {
-		return factReduction{}, fmt.Errorf("%w: close terminal Tool context: %w", errReducerInvariant, err)
-	}
 	return factReduction{
-		events:               events,
-		conversationMessages: closure,
-		modelInvocations:     modelInvocations,
-		toolInvocations:      closedToolInvocationCommits(r.cfg.SegmentID, openTools),
+		events:           events,
+		modelInvocations: modelInvocations,
+		toolInvocations:  closedToolInvocationCommits(r.cfg.SegmentID, openTools),
 	}, nil
 }
 
@@ -551,9 +524,6 @@ func closedToolInvocationCommits(segmentID string, tools []*openTool) []ToolInvo
 }
 
 func (r *reducer) synthesizeTerminal() (reductionBatch, error) {
-	if err := r.trackUnconsumedResumeToolCalls(); err != nil {
-		return reductionBatch{}, fmt.Errorf("%w: track resumed Tool context: %w", errReducerInvariant, err)
-	}
 	out, err := r.closeStreaming(transcript.MessageCommentary)
 	if err != nil {
 		return reductionBatch{}, fmt.Errorf("%w: close streaming: %w", errReducerInvariant, err)
@@ -602,20 +572,13 @@ func (r *reducer) synthesizeTerminal() (reductionBatch, error) {
 		return reductionBatch{}, fmt.Errorf("%w: synthesize terminal: %w", errReducerInvariant, err)
 	}
 	out = append(out, terminal)
-	closure, err := r.closeOpenToolContext(
-		TerminalToolResult(outcome, detail),
-		nil,
-	)
-	if err != nil {
-		return reductionBatch{}, fmt.Errorf("%w: close synthesized Tool context: %w", errReducerInvariant, err)
-	}
 	batch, err := r.project(out)
 	if err != nil {
 		return reductionBatch{}, err
 	}
 	if err := r.attachDurableObservation(
 		&batch,
-		closure,
+		nil,
 		modelInvocations,
 		closedToolInvocationCommits(r.cfg.SegmentID, openTools),
 		nil,
@@ -710,6 +673,7 @@ func (r *reducer) finishToolResults(batch ToolResultsCommitted) (factReduction, 
 		if err != nil {
 			return factReduction{}, err
 		}
+		reduced.toolResults = append(reduced.toolResults, result.ModelResult.Clone())
 		reduced.events = append(reduced.events, finished.events...)
 		reduced.toolInvocations = append(reduced.toolInvocations, finished.toolInvocations...)
 	}

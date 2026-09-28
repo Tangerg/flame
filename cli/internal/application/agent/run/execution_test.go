@@ -30,6 +30,16 @@ func unavailableReplayPolicy(t testing.TB) mutation.ReplayPolicy {
 
 type invalidOpeningRuntime struct{ *runtimefixture.Runtime }
 
+type observedOpeningRuntime struct {
+	*runtimefixture.Runtime
+	observation context.Context
+}
+
+func (r *observedOpeningRuntime) StartRun(ctx context.Context, input prompt.StartRun) (conversation.SegmentStream, error) {
+	r.observation = ctx
+	return r.Runtime.StartRun(ctx, input)
+}
+
 type treeReconnectRuntime struct {
 	*runtimefixture.Runtime
 	initial       conversation.SegmentStream
@@ -570,6 +580,48 @@ func TestExecutePropagatesRendererFailure(t *testing.T) {
 	})
 	if !errors.Is(err, want) {
 		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestExecuteReleasesAnUnconsumedOpeningWithoutCancelingItsRun(t *testing.T) {
+	base := runtimefixture.New()
+	base.Script = func(string) runtimefixture.Script {
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
+			Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
+		}}}
+	}
+	runtime := &observedOpeningRuntime{Runtime: base}
+	session, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := errors.New("output unavailable")
+	err = Execute(t.Context(), Invocation{
+		Runtime: runtime, Renderer: &recordingRenderer{err: want},
+		ReplayPolicy: unavailableReplayPolicy(t),
+		Start:        testRunStart(session.ID, "keep executing after observation fails"),
+	})
+	if !errors.Is(err, want) {
+		t.Fatalf("execute = %v", err)
+	}
+	if runtime.observation.Err() == nil {
+		t.Fatal("execute retained the unconsumed opening observation")
+	}
+	if t.Context().Err() != nil {
+		t.Fatal("releasing observation canceled its caller")
+	}
+	snapshot, err := base.GetSession(t.Context(), session.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	run, ok := snapshot.LatestRun()
+	if !ok || run.Status != protocol.RunStatusRunning {
+		t.Fatalf("releasing observation canceled accepted execution: %+v", run)
+	}
+	if _, err := base.CancelRun(t.Context(), conversation.CancelRun{
+		CommandID: mutation.NewCommandID(), RunID: run.ID, Reason: "test cleanup",
+	}); err != nil {
+		t.Fatal(err)
 	}
 }
 

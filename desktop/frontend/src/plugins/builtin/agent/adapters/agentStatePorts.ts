@@ -164,8 +164,6 @@ export function installAgentStatePorts(): () => void {
     retireProjectionGeneration: (sessionIds) => refreshOwner.retireProjectionGeneration(sessionIds),
     replaceServerScope: (sessionIds) => refreshOwner.replaceServerScope(sessionIds),
     clearProblem: (sessionId) => useAgentStore.getState().clearProblem(sessionId),
-    resolveInterrupt: (sessionId, itemId, settled, resolvedAt) =>
-      useAgentStore.getState().resolveInterrupt(sessionId, itemId, settled, resolvedAt),
     subscribeSessions: (onChange) => useAgentStore.subscribe((state) => onChange(state.sessions)),
   });
   return () => {

@@ -86,30 +86,22 @@ describe("useQuestionAnswer", () => {
     );
   });
 
-  it("commits resolveInterrupt only after the run starts; rolls back on reject", () => {
+  it("settles only local submission state after acceptance and rolls back on rejection", () => {
     const onStarted = bindResume((_r, _resp, onSettled) => (onSettled as () => void)());
     seedPending("q_ok");
-    const spy = vi.spyOn(useAgentStore.getState(), "resolveInterrupt");
+    const before = useAgentStore.getState().sessions[SID]!.view;
     const { result } = renderHook(() => useQuestionAnswer("run_1", "q_ok"));
     act(() => result.current.submit([["x"]]));
-    expect(spy).toHaveBeenCalledWith(
-      SID,
-      "q_ok",
-      { answered: true, answers: [["x"]] },
-      expect.any(Number),
-    );
+    expect(useAgentStore.getState().sessions[SID]!.view).toBe(before);
     expect(onStarted).toHaveBeenCalledTimes(1);
-    expect(result.current.pending).toBe(false);
+    expect(result.current.pending).toBe(true);
     act(() => result.current.submit([["again"]]));
     expect(onStarted).toHaveBeenCalledTimes(1);
 
-    spy.mockClear();
     bindResume((_r, _resp, _s, onStartError) => (onStartError as () => void)());
     seedPending("q_fail");
     const { result: r2 } = renderHook(() => useQuestionAnswer("run_1", "q_fail"));
     act(() => r2.current.submit([["x"]]));
-    expect(spy).not.toHaveBeenCalled();
     expect(r2.current.pending).toBe(false);
-    spy.mockRestore();
   });
 });

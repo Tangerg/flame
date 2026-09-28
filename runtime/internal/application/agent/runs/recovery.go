@@ -25,6 +25,7 @@ const lostToolResult = "tool result unavailable because execution state was lost
 // recovery plan derived from them. It never validates executor payloads or
 // decides which Run tree survives.
 type RecoveryStore interface {
+	ToolResultPublications
 	ListNonTerminalRuns(ctx context.Context) ([]rundomain.Run, error)
 	ListPendingInterrupts(ctx context.Context) ([]Pending, error)
 	ListOpenModelInvocations(ctx context.Context) ([]OpenModelInvocation, error)
@@ -570,7 +571,7 @@ func (r *recoveryPlanner) planTree(rootRunID string) error {
 	if err != nil {
 		return err
 	}
-	_, closure, err := conversationSnapshot.history.CloseOpenToolCalls(lostToolResult)
+	closure, err := TerminalConversation(r.ctx, r.store, tree.root.SessionID(), tree.root.ID(), conversationSnapshot.history.Messages(), rundomain.OutcomeLost, "")
 	if err != nil {
 		return fmt.Errorf(
 			"runs: close recovery conversation for root Run %q: %w",

@@ -30,7 +30,7 @@ func TestLaunchSandboxConfinesWrites(t *testing.T) {
 		if launchErr != nil {
 			t.Fatalf("launch: %v", launchErr)
 		}
-		sh, ok := shells.Get(id)
+		sh, ok := shells.Get("s1", id)
 		if !ok {
 			t.Fatal("launched shell vanished")
 		}
@@ -75,7 +75,7 @@ func TestLaunchIsolatedJailsWithoutGlobalFlag(t *testing.T) {
 	if err != nil {
 		t.Fatalf("launch: %v", err)
 	}
-	sh, ok := shells.Get(id)
+	sh, ok := shells.Get("s1", id)
 	if !ok {
 		t.Fatal("launched shell vanished")
 	}

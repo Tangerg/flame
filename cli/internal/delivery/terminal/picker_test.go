@@ -1,6 +1,7 @@
 package terminal
 
 import (
+	"fmt"
 	"image"
 	"testing"
 
@@ -56,6 +57,29 @@ func TestPickerDragChangesSelectionWithoutActivation(t *testing.T) {
 	}
 	if got := picker.items.Selected(); got != 2 {
 		t.Fatalf("drag selection = %d, want 2", got)
+	}
+}
+
+func TestPickerReleaseOutsideTheListDoesNotActivateThePressedRow(t *testing.T) {
+	for _, x := range []int{-1, 40} {
+		t.Run(fmt.Sprint(x), func(t *testing.T) {
+			picked := ""
+			picker := newPicker(kit.Dark(), kit.Unicode(), "search",
+				func(value string) string { return value },
+				func(string) string { return "" },
+				func(value string) { picked = value },
+			)
+			picker.SetItems([]string{"first", "second", "third"})
+			root := headless.NewRoot(picker)
+			root.Draw(grid.NewSurface(40, 7).View())
+			second := pickerPoint(picker, 1)
+
+			root.Handle(input.Mouse{Pos: second, Action: input.MouseDown, Button: input.ButtonLeft})
+			root.Handle(input.Mouse{Pos: image.Pt(x, second.Y), Action: input.MouseUp, Button: input.ButtonLeft})
+			if picked != "" {
+				t.Fatalf("release outside the list activated %q", picked)
+			}
+		})
 	}
 }
 

@@ -147,12 +147,18 @@ func TestMutationRecordingPreservesScopePartialEffects(t *testing.T) {
 			var recorded []string
 			ctx := WithMutationRecorder(t.Context(), func(paths []string) { recorded = append(recorded, paths...) })
 			_, err = callTextTool(ctx, tools.applyPatch, string(arguments))
-			var failure *toolcontract.Failure
-			if !errors.As(err, &failure) {
-				t.Fatalf("partial patch error = %v", err)
+			if !errors.Is(err, os.ErrPermission) {
+				t.Fatalf("partial patch error = %v, want permission error", err)
+			}
+			if _, definite := errors.AsType[*toolcontract.Failure](err); definite {
+				t.Fatalf("partial patch became a definite failure: %v", err)
+			}
+			callErr, observed := errors.AsType[*toolcontract.CallError](err)
+			if !observed {
+				t.Fatalf("partial patch lost execution evidence: %v", err)
 			}
 			var response fs.ApplyPatchResponse
-			if err := json.Unmarshal(failure.Output().Details, &response); err != nil {
+			if err := json.Unmarshal(callErr.Evidence().Details, &response); err != nil {
 				t.Fatal(err)
 			}
 			if len(response.Files) != 1 || response.Files[0].Path != "created" || !response.Files[0].Created || response.Files[0].MovedFrom != "" {

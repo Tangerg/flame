@@ -82,6 +82,32 @@ describe("parseRpcMessage envelope gate", () => {
     expect(parseRpcMessage("{unterminated")).toBeNull();
   });
 
+  it.each([
+    ["equal duplicate member", '{"value":1,"value":1}'],
+    ["different duplicate member", '{"value":1,"value":2}'],
+    ["escaped duplicate member", '{"value":1,"\\u0076alue":2}'],
+    ["nested duplicate member", '{"nested":{"value":1,"value":2}}'],
+    ["object duplicate member", '{"value":{},"value":{}}'],
+    ["unpaired high surrogate", '{"value":"\\ud800"}'],
+    ["unpaired low surrogate", '{"value":"\\udc00"}'],
+    ["unpaired key surrogate", '{"\\ud800":"value"}'],
+    ["raw unpaired surrogate", '{"value":"\ud800"}'],
+    ["comment", '{"value":/* repaired */1}'],
+    ["trailing comma", '{"value":1,}'],
+  ])("rejects a payload with %s", (_name, payload) => {
+    expect(parseRpcMessage('{"jsonrpc":"2.0","id":"1","result":' + payload + "}")).toBeNull();
+  });
+
+  it("preserves native JSON numbers, member ownership, and valid Unicode", () => {
+    const wire =
+      '{"jsonrpc":"2.0","id":"1","result":{"__proto__":{"owned":true},"numbers":[-0,9007199254740993,1e400,1e-400],"text":"\\ud83d\\ude00","objects":[{"same":1},{"same":2}]}}';
+    const message = parseRpcMessage(wire);
+    expect(message).toEqual(JSON.parse(wire));
+    const result = (message as { result: object }).result;
+    expect(Object.hasOwn(result, "__proto__")).toBe(true);
+    expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
+  });
+
   it("rejects non-envelopes (wrong/missing jsonrpc, non-objects)", () => {
     expect(parseRpcMessage(`{"id":"1","result":1}`)).toBeNull();
     expect(parseRpcMessage(`{"jsonrpc":"1.0","id":"1","result":1}`)).toBeNull();

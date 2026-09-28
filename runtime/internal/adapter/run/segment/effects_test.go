@@ -1236,6 +1236,11 @@ func (inlineTaskLauncher) Start(ctx context.Context, task func(context.Context))
 func (*fakeRunState) ResultPublicationCommitted(context.Context, string, string, string, string, string) (bool, error) {
 	return false, nil
 }
-func (*fakeRunState) RecordResultPublication(context.Context, string, string, string, string, string) error {
+func (*fakeRunState) RecordResultPublication(context.Context, string, string, string, string, string, []chat.ToolResult) error {
 	return nil
 }
+
+func (*fakeRunState) UnpublishedToolResults(context.Context, string, string) ([]chat.ToolResult, error) {
+	return nil, nil
+}
+func (*fakeStores) Read(context.Context, string) ([]chat.Message, error) { return nil, nil }

@@ -1,6 +1,7 @@
 package builtin
 
 import (
+	"bytes"
 	"context"
 	json "encoding/json/v2"
 	"errors"
@@ -12,9 +13,91 @@ import (
 	"time"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
+	"github.com/Tangerg/scope/tools/content"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/exec"
 )
+
+func TestShellToolsCannotReadOrStopAnotherSession(t *testing.T) {
+	shells := exec.NewShells(nil, false)
+	cleanupShells(t, shells)
+	owner := executionctx.WithScope(t.Context(), runs.ExecutionScope{SessionID: "owner"})
+	other := executionctx.WithScope(t.Context(), runs.ExecutionScope{SessionID: "other"})
+	started, err := callTextTool(owner, shellTool(t, shells, "shell"),
+		`{"command":"sleep 30","description":"Keep session shell alive","run_in_background":true}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := backgroundShellID(t, started)
+	sh, found := shells.Get("owner", id)
+	if !found {
+		t.Fatal("launch did not use its execution Session")
+	}
+	if _, err := sh.Write([]byte("private output")); err != nil {
+		t.Fatal(err)
+	}
+	arguments := `{"shell_id":"` + id + `"}`
+	for _, name := range []string{"read_shell_output", "stop_shell"} {
+		result, err := callTextTool(other, shellTool(t, shells, name), arguments)
+		if err != nil || !strings.Contains(result, "No background shell") {
+			t.Fatalf("foreign %s = %q, %v; want unavailable shell", name, result, err)
+		}
+	}
+	if finished, _ := sh.Status(); finished {
+		t.Fatal("foreign stop terminated the owner's shell")
+	}
+	if _, err := callTextTool(owner, shellTool(t, shells, "stop_shell"), arguments); err != nil {
+		t.Fatal(err)
+	}
+	<-sh.Done()
+	result, err := callTextTool(owner, shellTool(t, shells, "read_shell_output"), arguments)
+	if err != nil || !strings.Contains(result, "private output") {
+		t.Fatalf("owner final read = %q, %v; foreign read consumed its output", result, err)
+	}
+}
+
+func TestShellOutputsPreserveArbitraryBytes(t *testing.T) {
+	for _, background := range []bool{false, true} {
+		t.Run(map[bool]string{false: "foreground", true: "background"}[background], func(t *testing.T) {
+			shells := exec.NewShells(nil, false)
+			cleanupShells(t, shells)
+			command := `printf '\377\000\303'`
+			var output string
+			var err error
+			if background {
+				id, launchErr := shells.Launch(t.Context(), "", t.TempDir(), command, exec.Timeout{}, false)
+				if launchErr != nil {
+					t.Fatal(launchErr)
+				}
+				output, err = callTextTool(t.Context(), shellTool(t, shells, "read_shell_output"),
+					`{"shell_id":"`+id+`","wait":true}`)
+			} else {
+				arguments, marshalErr := json.Marshal(shellArgs{Command: command, Description: "Print arbitrary bytes"})
+				if marshalErr != nil {
+					t.Fatal(marshalErr)
+				}
+				output, err = callTextTool(t.Context(), shellTool(t, shells, "shell"), string(arguments))
+			}
+			if err != nil {
+				t.Fatalf("shell output was lost: %v", err)
+			}
+			var result struct {
+				Stdout content.Content `json:"stdout"`
+			}
+			if err := json.Unmarshal([]byte(output), &result); err != nil {
+				t.Fatalf("decode shell output %q: %v", output, err)
+			}
+			if got := result.Stdout.Bytes(); !bytes.Equal(got, []byte{0xff, 0, 0xc3}) {
+				t.Fatalf("shell bytes = %x, want ff00c3", got)
+			}
+			if retained := shells.RetainedForSession(""); len(retained) != 0 {
+				t.Fatal("completed shell remained after its output was published")
+			}
+		})
+	}
+}
 
 func shellIntPointer(value int) *int { return &value }
 
@@ -46,20 +129,15 @@ func cleanupShells(t *testing.T, shells *exec.Shells) {
 func backgroundShellID(t *testing.T, result string) string {
 	t.Helper()
 	var payload struct {
-		Stdout string `json:"stdout"`
+		ShellID string `json:"shell_id"`
 	}
 	if err := json.Unmarshal([]byte(result), &payload); err != nil {
 		t.Fatalf("decode background shell result %q: %v", result, err)
 	}
-	_, suffix, found := strings.Cut(payload.Stdout, "shell ")
-	if !found {
-		t.Fatalf("background shell result has no identity: %q", payload.Stdout)
+	if payload.ShellID == "" {
+		t.Fatalf("background shell result has no identity: %q", result)
 	}
-	identity, _, found := strings.Cut(suffix, ".")
-	if !found || identity == "" {
-		t.Fatalf("background shell result has malformed identity: %q", payload.Stdout)
-	}
-	return identity
+	return payload.ShellID
 }
 
 // TestShell_CompletesInline checks the foreground fast path: a quick command
@@ -75,10 +153,10 @@ func TestShell_CompletesInline(t *testing.T) {
 		t.Fatalf("shell err = %v", err)
 	}
 	var res struct {
-		Stdout   string `json:"stdout"`
-		ExitCode int    `json:"exit_code"`
+		Stdout   content.Content `json:"stdout"`
+		ExitCode int             `json:"exit_code"`
 	}
-	if json.Unmarshal([]byte(out), &res) != nil || res.Stdout != "hello" || res.ExitCode != 0 {
+	if json.Unmarshal([]byte(out), &res) != nil || string(res.Stdout.Bytes()) != "hello" || res.ExitCode != 0 {
 		t.Fatalf("result = %q, want {stdout:hello, exit_code:0}", out)
 	}
 	// A completed command is removed, not left as a background job.
@@ -223,7 +301,7 @@ func TestShell_RunInBackground(t *testing.T) {
 	if strings.Contains(out, "exit_code") {
 		t.Errorf("backgrounded result must omit exit_code: %q", out)
 	}
-	sh, ok := shells.Get(id)
+	sh, ok := shells.Get("", id)
 	if !ok {
 		t.Fatalf("background shell %q should still be registered", id)
 	}
@@ -235,7 +313,7 @@ func TestShell_RunInBackground(t *testing.T) {
 	if err != nil || !strings.Contains(read, "hi") {
 		t.Fatalf("read_shell_output = %q err=%v, want the command's output", read, err)
 	}
-	if _, retained := shells.Get(id); retained {
+	if _, retained := shells.Get("", id); retained {
 		t.Fatal("finished background shell retained after its final output was read")
 	}
 	again, err := callTextTool(t.Context(), output, `{"shell_id":"`+id+`"}`)
@@ -288,7 +366,7 @@ func TestReadShellOutput_WaitTimeout(t *testing.T) {
 	if !strings.Contains(read, "still running") {
 		t.Fatalf("read_shell_output(wait,timeout_millis) = %q, want a still-running status", read)
 	}
-	if _, retained := shells.Get(id); !retained {
+	if _, retained := shells.Get("", id); !retained {
 		t.Fatal("reading a live background shell released its handle")
 	}
 }
@@ -306,7 +384,7 @@ func TestShell_AutoBackground(t *testing.T) {
 		t.Fatalf("shell(auto-bg) = %q err=%v", out, err)
 	}
 	id := backgroundShellID(t, out)
-	if running, err := shells.Kill(id); err != nil || !running {
+	if running, err := shells.Kill("", id); err != nil || !running {
 		t.Fatalf("kill = (running=%v err=%v), want the backgrounded shell still running", running, err)
 	}
 }
@@ -329,7 +407,7 @@ func TestShellCanceledForegroundJoinsBeforeRemoval(t *testing.T) {
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
 		if live := shells.RetainedForSession(""); len(live) == 1 {
-			shell, ok := shells.Get(live[0].ID)
+			shell, ok := shells.Get("", live[0].ID)
 			if ok {
 				running = shell
 			}
@@ -398,19 +476,19 @@ func TestShellReportsACommandThatNeverStarted(t *testing.T) {
 			}
 
 			var result struct {
-				Stdout   string `json:"stdout"`
-				ExitCode int    `json:"exit_code"`
+				Stdout   content.Content `json:"stdout"`
+				ExitCode int             `json:"exit_code"`
 			}
 			if err := json.Unmarshal([]byte(out), &result); err != nil {
 				t.Fatalf("decode %q: %v", out, err)
 			}
-			if strings.Contains(result.Stdout, "running in background") {
+			if strings.Contains(string(result.Stdout.Bytes()), "running in background") {
 				t.Fatalf("a command that never started was reported as backgrounded: %q", out)
 			}
 			if result.ExitCode != exec.NoExitStatus {
 				t.Fatalf("exit_code = %d, want %d", result.ExitCode, exec.NoExitStatus)
 			}
-			if !strings.Contains(result.Stdout, "start failed") {
+			if !strings.Contains(string(result.Stdout.Bytes()), "start failed") {
 				t.Fatalf("result gives no account of the failure: %q", out)
 			}
 		})

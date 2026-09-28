@@ -28,6 +28,8 @@ func newTestRecovery(
 }
 
 type recoveryStoreStub struct {
+	results      map[string][]corechat.ToolResult
+	resultErr    error
 	runs         []rundomain.Run
 	pending      []Pending
 	models       []OpenModelInvocation
@@ -1415,13 +1417,15 @@ func TestRecoveryAtomicallyClosesLostQuestionToolContext(t *testing.T) {
 		CallID: "tool:runtime:0", SourceCallID: "provider_call_open",
 		Name: "ask_user", Arguments: "{}",
 	}}
+	known := corechat.ToolResult{ID: "provider_written", Name: "write", Output: corechat.NewTextToolOutput("external write acknowledged before restart")}
 	conversation := []corechat.Message{
 		corechat.NewUserMessage(corechat.NewTextPart("ask me")),
 		corechat.NewAssistantMessage(corechat.NewToolCallPart(corechat.ToolCall{
 			ID: "provider_call_open", Name: "ask_user", Arguments: "{}",
-		})),
+		}), corechat.NewToolCallPart(corechat.ToolCall{ID: known.ID, Name: known.Name, Arguments: `{}`})),
 	}
 	store := &recoveryStoreStub{
+		results:     map[string][]corechat.ToolResult{run.ID(): {known}},
 		runs:        []rundomain.Run{run},
 		pending:     []Pending{pending},
 		transcripts: map[string][]transcript.Item{run.SessionID(): {questionItem, toolItem}},
@@ -1449,6 +1453,13 @@ func TestRecoveryAtomicallyClosesLostQuestionToolContext(t *testing.T) {
 	if transition.RootRunID != run.ID() || transition.SessionID != run.SessionID() ||
 		transition.ExpectedCount != 2 || len(transition.Messages) != 1 {
 		t.Fatalf("conversation transition = %+v", transition)
+	}
+	if len(transition.Messages[0].Parts) != 2 {
+		t.Fatalf("lost recovery omitted known result: %+v", transition.Messages)
+	}
+	preserved := transition.Messages[0].Parts[1].ToolResult
+	if preserved == nil || !reflect.DeepEqual(*preserved, known) {
+		t.Fatalf("lost recovery replaced acknowledged result: %+v", preserved)
 	}
 	result := transition.Messages[0].Parts[0].ToolResult
 	if result == nil {
@@ -1679,4 +1690,29 @@ func coherentRecoveryPark(t *testing.T) (rundomain.Run, Pending, transcript.Item
 		Question: question, OccurredAt: interrupt.ItemOccurredAt,
 	})
 	return run, pending, item
+}
+
+func (r *recoveryStoreStub) UnpublishedToolResults(_ context.Context, _, runID string) ([]corechat.ToolResult, error) {
+	return cloneToolResults(r.results[runID]), r.resultErr
+}
+
+func TestRecoveryRejectsMissingExactResultEvidenceBeforeMutation(t *testing.T) {
+	root, pending, item := coherentRecoveryPark(t)
+	missing := errors.New("legacy receipt contains no exact result evidence")
+	store := &recoveryStoreStub{
+		runs: []rundomain.Run{root}, pending: []Pending{pending},
+		transcripts:  map[string][]transcript.Item{root.SessionID(): {item}},
+		messages:     map[string][]corechat.Message{root.SessionID(): {corechat.NewAssistantMessage(corechat.NewToolCallPart(corechat.ToolCall{ID: "provider_call", Name: "write", Arguments: `{}`}))}},
+		messageMarks: map[string]int{root.SessionID(): 1}, resultErr: missing,
+	}
+	recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(func(context.Context, WaitingContinuation) (bool, error) { return false, nil }))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := recovery.Reconcile(t.Context()); !errors.Is(err, missing) {
+		t.Fatalf("missing evidence was hidden: %v", err)
+	}
+	if store.commits != 0 {
+		t.Fatalf("legacy missing evidence mutated durable history: %d commits", store.commits)
+	}
 }

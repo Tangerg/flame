@@ -2,7 +2,6 @@ package lsp
 
 import (
 	"context"
-	"os/exec"
 	"sync"
 
 	"github.com/sourcegraph/jsonrpc2"
@@ -17,10 +16,10 @@ type client struct {
 	spec ServerSpec
 	root string
 
-	cmd    *exec.Cmd
-	conn   *jsonrpc2.Conn
-	cancel context.CancelFunc // tears down the connection's read loop
-	wait   <-chan error       // exactly one goroutine owns cmd.Wait
+	conn        *jsonrpc2.Conn
+	cancel      context.CancelFunc
+	wait        <-chan error
+	stopProcess func() error
 	// shutdownBase retains the process-lifetime values while allowing Close to
 	// use its own bounded graceful-shutdown budget after lifetime cancellation.
 	shutdownBase context.Context

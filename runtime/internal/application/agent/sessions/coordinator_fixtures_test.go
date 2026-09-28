@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/scope/core/chat"
 	"strings"
 	"testing"
 	"time"
@@ -49,6 +50,7 @@ func TestNewRejectsMalformedDependencies(t *testing.T) {
 }
 
 type coordinatorStores struct {
+	results       []chat.ToolResult
 	interrupts    *coordinatorInterrupts
 	snapshot      Snapshot
 	terminal      *TerminalPlan
@@ -74,7 +76,7 @@ type testStores interface {
 func (c coordinatorStores) Session() Store              { return emptySessionStore{} }
 func (c coordinatorStores) Interrupts() InterruptStore  { return c.interrupts }
 func (c coordinatorStores) Transcript() TranscriptStore { return emptyTranscript{} }
-func (c coordinatorStores) Runs() RunStore              { return emptyTranscript{} }
+func (c coordinatorStores) Runs() RunStore              { return coordinatorRunStore{results: c.results} }
 func (c coordinatorStores) ReadSnapshot(context.Context, string) (Snapshot, error) {
 	if c.snapshotReads != nil {
 		*c.snapshotReads++
@@ -417,4 +419,17 @@ func (emptyTranscript) ListRuns(context.Context, string) ([]run.Run, error) {
 
 func (emptyTranscript) ListNonTerminalRuns(context.Context) ([]run.Run, error) {
 	return nil, nil
+}
+
+func (emptyTranscript) UnpublishedToolResults(context.Context, string, string) ([]chat.ToolResult, error) {
+	return nil, nil
+}
+
+type coordinatorRunStore struct {
+	emptyTranscript
+	results []chat.ToolResult
+}
+
+func (r coordinatorRunStore) UnpublishedToolResults(context.Context, string, string) ([]chat.ToolResult, error) {
+	return r.results, nil
 }

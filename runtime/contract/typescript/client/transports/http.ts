@@ -13,6 +13,7 @@ import {
   errorMessage,
   parseTransportProblem,
   RpcConnectionError,
+  RpcProtocolError,
   RpcTransportError,
 } from "../errors";
 import {
@@ -120,9 +121,9 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
         if (!event.data) return;
         const msg = parseRpcMessage(event.data);
         if (!msg) {
-          streamError = new RpcTransportError(
-            "invalid JSON-RPC envelope in event stream",
-            undefined,
+          streamError = new RpcProtocolError(
+            "event stream",
+            [{ path: "$", detail: "must contain a valid JSON-RPC envelope" }],
             metadata.requestId,
           );
           throw streamError;
@@ -156,32 +157,57 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
     };
     const reader = body.getReader();
     readers.add(reader);
-    const decoder = new TextDecoder();
+    const decoder = new TextDecoder("utf-8", { fatal: true });
+    const decodeChunk = (chunk?: Uint8Array): string => {
+      try {
+        return decoder.decode(chunk, { stream: chunk !== undefined });
+      } catch (cause) {
+        const error = new RpcProtocolError(
+          "event stream",
+          [{ path: "$", detail: "must contain valid UTF-8" }],
+          metadata.requestId,
+        );
+        error.cause = cause;
+        throw error;
+      }
+    };
     let aborted = false;
+    let bodyComplete = false;
     try {
       for (;;) {
         const { done, value } = await reader.read();
-        if (done) break;
-        if (
-          !(await feedEventStreamText(
-            parser,
-            decoder.decode(value, { stream: true }),
-            deliverParsedEvent,
-          ))
-        ) {
+        if (done) {
+          bodyComplete = true;
+          break;
+        }
+        if (!(await feedEventStreamText(parser, decodeChunk(value), deliverParsedEvent))) {
           return;
         }
       }
-      if (!(await feedEventStreamText(parser, decoder.decode(), deliverParsedEvent))) return;
+      if (!(await feedEventStreamText(parser, decodeChunk(), deliverParsedEvent))) return;
     } catch (err) {
-      aborted = signal?.aborted === true || (err instanceof Error && err.name === "AbortError");
+      aborted = signal?.aborted === true;
       if (!aborted && !channel.closed) {
         streamError =
-          err instanceof RpcTransportError
+          err instanceof RpcTransportError || err instanceof RpcProtocolError
             ? err
             : new RpcConnectionError(errorMessage(err), metadata.requestId);
+        if (streamError !== err) streamError.cause = err;
       }
     } finally {
+      try {
+        if (!bodyComplete) await reader.cancel(streamError);
+      } catch (cancelError) {
+        if (streamError && cancelError !== streamError && cancelError !== streamError.cause) {
+          streamError.cause =
+            streamError.cause === undefined
+              ? cancelError
+              : new AggregateError(
+                  [streamError.cause, cancelError],
+                  "response body cancellation failed after its primary failure",
+                );
+        }
+      }
       readers.delete(reader);
       reader.releaseLock();
     }
@@ -270,22 +296,7 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       throw err;
     }
 
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      const problem = parseTransportProblem(text);
-      const requestId = problem?.requestId ?? metadata.requestId;
-      const detail = problem?.detail || res.statusText || "transport request failed";
-      const err = new RpcTransportError(
-        `http ${res.status}: ${detail}${requestId ? ` (request ${requestId})` : ""}`,
-        res.status,
-        requestId,
-        problem?.type,
-      );
-      endSpan(span, err);
-      throw err;
-    }
-
-    if ((res.headers.get("Content-Type") ?? "").includes("text/event-stream")) {
+    if (res.ok && (res.headers.get("Content-Type") ?? "").includes("text/event-stream")) {
       if (!isWireStreamingMethodName(method)) {
         const err = new RpcTransportError(
           `non-streaming RPC method ${method} returned an event stream`,
@@ -315,13 +326,39 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       return;
     }
 
-    let text: string;
+    let bytes: ArrayBuffer;
     try {
-      text = await res.text();
+      bytes = await res.arrayBuffer();
     } catch (cause) {
       const err = new RpcConnectionError(
         `failed to read RPC response: ${errorMessage(cause)}`,
         metadata.requestId,
+      );
+      endSpan(span, err);
+      throw err;
+    }
+    let text: string;
+    try {
+      text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    } catch (cause) {
+      const err = new RpcProtocolError(
+        "RPC response",
+        [{ path: "$", detail: "must contain valid UTF-8" }],
+        metadata.requestId,
+      );
+      err.cause = cause;
+      endSpan(span, err);
+      throw err;
+    }
+    if (!res.ok) {
+      const problem = parseTransportProblem(text);
+      const requestId = problem?.requestId ?? metadata.requestId;
+      const detail = problem?.detail || res.statusText || "transport request failed";
+      const err = new RpcTransportError(
+        `http ${res.status}: ${detail}${requestId ? ` (request ${requestId})` : ""}`,
+        res.status,
+        requestId,
+        problem?.type,
       );
       endSpan(span, err);
       throw err;
@@ -337,9 +374,9 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
     }
     const inbound = parseRpcMessage(text);
     if (!inbound) {
-      const err = new RpcTransportError(
-        `invalid JSON-RPC envelope in response body: ${text.slice(0, 200)}`,
-        undefined,
+      const err = new RpcProtocolError(
+        "RPC response",
+        [{ path: "$", detail: "must contain a valid JSON-RPC envelope" }],
         metadata.requestId,
       );
       endSpan(span, err);

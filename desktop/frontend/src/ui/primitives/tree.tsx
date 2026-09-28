@@ -1,9 +1,6 @@
 import type { ComponentPropsWithoutRef, KeyboardEvent, Ref } from "react";
 
-// The WAI-ARIA tree pattern: one row sits in the tab order, the arrows walk the
-// visible rows in document order, Right opens a branch or enters it, Left closes it
-// or climbs to its parent. Opening and closing go through the row's own click, so a
-// branch has one toggle whether it is pressed, clicked or reached by keyboard.
+// Base UI has no Tree primitive. Native divs therefore carry the tree keyboard contract.
 function moveInTree(event: KeyboardEvent<HTMLDivElement>) {
   const item = (event.target as HTMLElement).closest<HTMLElement>('[role="treeitem"]');
   if (!item || !event.currentTarget.contains(item)) return;
@@ -30,7 +27,10 @@ function moveInTree(event: KeyboardEvent<HTMLDivElement>) {
     case "ArrowRight":
       if (!branch) return;
       if (!open) item.click();
-      else target = items[index + 1];
+      else {
+        const next = items[index + 1];
+        if (next && Number(next.getAttribute("aria-level")) > level) target = next;
+      }
       break;
     case "ArrowLeft":
       if (branch && open) item.click();

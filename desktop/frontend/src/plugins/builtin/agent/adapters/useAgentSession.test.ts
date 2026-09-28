@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgentDriver } from "@/plugins/sdk/types";
 import {
   RpcError,
+  RpcConnectionError,
   type CancelRunResponse,
   type FlameClient,
   type RunEvent,
@@ -82,7 +83,7 @@ describe("useAgentSession driver lifecycle", () => {
         },
       }) as unknown as FlameClient;
 
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID, vi.fn()));
 
     expect(useAgentSessionStore.getState().openSessionIds).toContain(SID);
     expect(useAgentSessionStore.getState().lastSessionId).toBe(SID);
@@ -105,7 +106,7 @@ describe("useAgentSession driver lifecycle", () => {
     };
     const { rerender } = renderHook(
       ({ makeDriver, sessionId }: HookProps) =>
-        useAgentSession(getRuntimeClient, makeDriver, sessionId),
+        useAgentSession(getRuntimeClient, makeDriver, sessionId, vi.fn()),
       { initialProps: { makeDriver: firstFactory, sessionId: SID } },
     );
 
@@ -124,7 +125,7 @@ describe("useAgentSession driver lifecycle", () => {
 describe("useAgentSession send re-entrancy", () => {
   it("ignores a second send before the first run starts (no duplicate run/bubble)", () => {
     const { driver, start } = parkedDriver();
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID, vi.fn()));
 
     act(() => {
       const send = useAgentStore.getState().sessions[SID]!.send!;
@@ -140,7 +141,7 @@ describe("useAgentSession send re-entrancy", () => {
 
   it("rejects a fresh send while the current root is parked for HITL", () => {
     const { driver, start } = parkedDriver();
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID, vi.fn()));
     act(() => {
       useAgentStore
         .getState()
@@ -179,7 +180,7 @@ describe("useAgentSession run timing guards", () => {
         parkUntilAborted(signal),
       ),
     } as unknown as AgentDriver;
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID, vi.fn()));
 
     act(() => {
       useAgentStore.getState().sessions[SID]!.send!(agentTextInput("first"));
@@ -209,7 +210,7 @@ describe("useAgentSession run timing guards", () => {
       ),
       resume,
     } as unknown as AgentDriver;
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID, vi.fn()));
 
     let firstAccepted = false;
     let secondAccepted = true;
@@ -265,7 +266,7 @@ describe("useAgentSession run timing guards", () => {
       ),
       resume,
     } as unknown as AgentDriver;
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID, vi.fn()));
 
     act(() => {
       useAgentStore.getState().sessions[SID]!.resume!(
@@ -307,7 +308,7 @@ describe("useAgentSession run timing guards", () => {
     const cancel = vi.fn(() => cancellation.promise);
     runtimeClient = () => ({ runs: { cancel } }) as unknown as FlameClient;
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID, vi.fn()));
     act(() => {
       useAgentStore
         .getState()
@@ -355,7 +356,7 @@ describe("useAgentSession run timing guards", () => {
     });
     runtimeClient = () => ({ runs: { cancel: predecessorCancel } }) as unknown as FlameClient;
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID, vi.fn()));
     act(() => {
       useAgentStore
         .getState()
@@ -460,7 +461,7 @@ describe("useAgentSession run timing guards", () => {
     );
     runtimeClient = () => ({ runs: { cancel } }) as unknown as FlameClient;
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID, vi.fn()));
     act(() => {
       useAgentStore
         .getState()
@@ -513,7 +514,7 @@ describe("useAgentSession run timing guards", () => {
       }) as unknown as FlameClient;
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID, vi.fn()));
     act(() => {
       useAgentStore
         .getState()
@@ -590,6 +591,46 @@ describe("useAgentSession durable recovery", () => {
     useAgentStore.getState().dropSession(RID);
   });
 
+  it("hands failed recovery back to the Runtime connection owner", async () => {
+    const { readSnapshot } = stubClient();
+    readSnapshot.mockRejectedValue(new RpcConnectionError("Runtime disconnected"));
+    const onConnectionLost = vi.fn();
+    const { driver } = parkedDriver();
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, onConnectionLost));
+
+    await waitFor(() => expect(onConnectionLost).toHaveBeenCalledOnce());
+    expect(useAgentStore.getState().sessions[RID]!.view.messages).toEqual([]);
+  });
+
+  it("reports a lost connection when a completed run needs a final recovery snapshot", async () => {
+    const running = runRef({
+      id: "run_finished_before_attach",
+      sessionId: RID,
+      activeSegmentId: "seg_finished_before_attach",
+    });
+    const { readSnapshot, subscribe } = stubClient();
+    readSnapshot
+      .mockResolvedValueOnce(materialSnapshot({ runs: [running] }))
+      .mockRejectedValue(new RpcConnectionError("Runtime disconnected before final read"));
+    subscribe.mockRejectedValue(
+      new RpcError({
+        code: -32002,
+        message: "run finished",
+        data: { type: "run_finished" },
+      }),
+    );
+    const onConnectionLost = vi.fn();
+    const { driver } = parkedDriver();
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, onConnectionLost));
+
+    await waitFor(() => expect(onConnectionLost).toHaveBeenCalledOnce());
+    expect(subscribe).toHaveBeenCalledOnce();
+    expect(readSnapshot).toHaveBeenCalledTimes(2);
+    expect(useAgentStore.getState().sessions[RID]!.view.runsById[running.id]?.status).toBe(
+      "running",
+    );
+  });
+
   it("rebuilds pending approval cards from the material snapshot", async () => {
     stubClient(
       {},
@@ -605,7 +646,7 @@ describe("useAgentSession durable recovery", () => {
       },
     );
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, vi.fn()));
 
     await waitFor(() => {
       expect(useAgentStore.getState().sessions[RID]!.view.pendingInterrupts).toHaveLength(1);
@@ -627,7 +668,7 @@ describe("useAgentSession durable recovery", () => {
     const { readSnapshot } = stubClient();
     const { driver } = parkedDriver();
 
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, vi.fn()));
 
     await waitFor(() => expect(readSnapshot).toHaveBeenCalledOnce());
     expect(useAgentSessionStore.getState().draftSessionIds.has(RID)).toBe(true);
@@ -669,7 +710,7 @@ describe("useAgentSession durable recovery", () => {
     );
     const { driver } = parkedDriver();
 
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, vi.fn()));
 
     await waitFor(() =>
       expect(useAgentStore.getState().sessions[RID]?.view.messages).toHaveLength(1),
@@ -710,7 +751,7 @@ describe("useAgentSession durable recovery", () => {
       },
     );
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, vi.fn()));
 
     await waitFor(() => {
       expect(selectCurrentRootRun(useAgentStore.getState().sessions[RID]!.view)?.status).toBe(
@@ -816,7 +857,7 @@ describe("useAgentSession durable recovery", () => {
         runs: { subscribe },
       }) as unknown as FlameClient;
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, vi.fn()));
 
     await waitFor(() => expect(releaseOldNext).toBeTypeOf("function"));
     expect(selectCurrentRootRun(useAgentStore.getState().sessions[RID]!.view)?.id).toBe(
@@ -917,7 +958,7 @@ describe("useAgentSession durable recovery", () => {
         sessions: { snapshot: readSnapshot },
       }) as unknown as FlameClient;
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, vi.fn()));
 
     await waitFor(() => expect(firstSignal).toBeInstanceOf(AbortSignal));
     restarted = true;
@@ -999,7 +1040,7 @@ describe("useAgentSession durable recovery", () => {
         runs: { subscribe },
       }) as unknown as FlameClient;
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, vi.fn()));
 
     await waitFor(() => expect(subscribe).toHaveBeenCalledOnce());
     restarted = true;
@@ -1081,7 +1122,7 @@ describe("useAgentSession durable recovery", () => {
         runs: { subscribe },
       }) as unknown as FlameClient;
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, vi.fn()));
 
     await waitFor(() => expect(subscribe).toHaveBeenCalledTimes(2));
     restarted = true;
@@ -1160,7 +1201,7 @@ describe("useAgentSession durable recovery", () => {
         runs: { get, subscribe },
       }) as unknown as FlameClient;
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, vi.fn()));
 
     await waitFor(() => expect(get).toHaveBeenCalledOnce());
     restarted = true;
@@ -1220,7 +1261,7 @@ describe("useAgentSession durable recovery", () => {
         runs: { subscribe },
       }) as unknown as FlameClient;
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, vi.fn()));
 
     await waitFor(() => {
       expect(
@@ -1284,7 +1325,7 @@ describe("useAgentSession durable recovery", () => {
         },
       }) as unknown as FlameClient;
     const { driver } = parkedDriver();
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID));
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, vi.fn()));
 
     await waitFor(() => {
       expect(subscribe).toHaveBeenCalledWith(

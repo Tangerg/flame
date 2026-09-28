@@ -146,6 +146,6 @@ export default defineConfig({
         },
       },
     },
-    target: "chrome131",
+    target: ["chrome131", "safari17.4"],
   },
 });

@@ -4,7 +4,10 @@ import { navigator } from "@/lib/navigation";
 import { configureAgentDefaultSessionPort } from "../application/ports/defaultSession";
 import { useAgentSession } from "./useAgentSession";
 
-export function installAgentDefaultSessionPort(runtimeClient: () => FlameClient): () => void {
+export function installAgentDefaultSessionPort(
+  runtimeClient: () => FlameClient,
+  onConnectionLost: () => void,
+): () => void {
   function useDefaultChatSession() {
     const activeSessionId = navigator().use((location) => location.session);
     return useAgentSession(
@@ -15,6 +18,7 @@ export function installAgentDefaultSessionPort(runtimeClient: () => FlameClient)
         return source.factory();
       },
       activeSessionId,
+      onConnectionLost,
     );
   }
   return configureAgentDefaultSessionPort({ useDefaultChatSession });

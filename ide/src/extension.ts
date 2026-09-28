@@ -255,6 +255,7 @@ class Workbench implements vscode.TreeDataProvider<Session> {
         )
       )?.value;
     if (!selected || this.#connection !== connection) return;
+    this.#observation?.abort();
     this.#session = selected;
     await this.#refresh();
     this.#output.show(true);
@@ -341,6 +342,7 @@ class Workbench implements vscode.TreeDataProvider<Session> {
         connection.signal,
       );
       if (this.#connection !== connection) return;
+      this.#observation?.abort();
       this.#session = session;
     }
     await this.#refresh();
@@ -370,6 +372,7 @@ class Workbench implements vscode.TreeDataProvider<Session> {
         connection.signal,
       );
       if (this.#connection !== connection) return;
+      this.#observation?.abort();
       this.#session = session;
     }
     await this.#refresh();

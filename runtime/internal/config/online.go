@@ -3,17 +3,15 @@ package config
 import (
 	"cmp"
 	"strings"
-
-	"github.com/spf13/viper"
 )
 
 // loadOnline reads the optional provider-tool credentials. yaml under
 // `online:`; the FLAME_* env vars take precedence over yaml, matching
 // the overall source ordering (env over file).
-func loadOnline(v *viper.Viper) Online {
-	jina := cmp.Or(jinaAPIKeyEnvironment.Value(), v.GetString("online.jinaApiKey"))
-	tavily := cmp.Or(tavilyAPIKeyEnvironment.Value(), v.GetString("online.tavilyApiKey"))
-	hosts := v.GetStringSlice("online.httpAllowedHosts")
+func loadOnline(source Online) Online {
+	jina := cmp.Or(jinaAPIKeyEnvironment.Value(), source.JinaAPIKey)
+	tavily := cmp.Or(tavilyAPIKeyEnvironment.Value(), source.TavilyAPIKey)
+	hosts := source.HTTPAllowedHosts
 	if env := httpHostsEnvironment.Value(); env != "" {
 		hosts = splitHosts(env)
 	}

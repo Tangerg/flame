@@ -4,11 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"slices"
-	"strings"
 	"unicode"
 
+	providerdomain "github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
 
@@ -119,35 +118,18 @@ func (p endpointPolicy) requiresConfiguration() bool {
 	return p.kind == endpointMustBeConfigured
 }
 
-func (p endpointPolicy) resolve(configured clientEndpoint) (clientEndpoint, error) {
-	if configured.configured() {
+func (p endpointPolicy) resolve(configured providerdomain.BaseURL) (providerdomain.BaseURL, error) {
+	if configured.Present() {
 		return configured, nil
 	}
 	switch p.kind {
 	case endpointOwnedByAdapter:
-		return noClientEndpoint(), nil
+		return providerdomain.BaseURL{}, nil
 	case endpointMustBeConfigured:
-		return clientEndpoint{}, errors.New("a base URL must be configured")
+		return providerdomain.BaseURL{}, errors.New("a base URL must be configured")
 	default:
-		return clientEndpoint{}, fmt.Errorf("unknown endpoint policy %d", p.kind)
+		return providerdomain.BaseURL{}, fmt.Errorf("unknown endpoint policy %d", p.kind)
 	}
-}
-
-func validateCatalogBaseURL(raw string) error {
-	if strings.TrimSpace(raw) == "" || raw != strings.TrimSpace(raw) {
-		return errors.New("URL must be non-blank and canonical")
-	}
-	parsed, err := url.Parse(raw)
-	if err != nil {
-		return err
-	}
-	if (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
-		return errors.New("URL must use http or https and include a host")
-	}
-	if parsed.User != nil || parsed.Fragment != "" {
-		return errors.New("URL cannot contain user info or a fragment")
-	}
-	return nil
 }
 
 type credentialPolicy struct {

@@ -26,7 +26,7 @@ type server struct {
 
 	// oauth is either a restored durable OAuth handler or the handler obtained by
 	// a successful [Connections.Authorize]. nil until a saved session exists or
-	// the user signs in. It is reusable only within the same HTTP origin.
+	// the user signs in. It is reusable only for the same credential configuration.
 	oauth auth.OAuthHandler
 
 	attempt *connectionAttempt

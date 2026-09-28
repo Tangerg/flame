@@ -10,6 +10,7 @@ import (
 	"time"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
+	"github.com/Tangerg/scope/tools/content"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
@@ -164,7 +165,7 @@ func (c *commandTools) run(ctx context.Context, a shellArgs) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	sh, ok := c.shells.Get(id)
+	sh, ok := c.shells.Get(executionctx.SessionID(ctx), id)
 	if !ok { // just launched — unreachable
 		return "", fmt.Errorf("shell: background shell %s vanished", id)
 	}
@@ -211,7 +212,7 @@ func (c *commandTools) cancelForeground(ctx context.Context, id string, sh *exec
 		// Canceled mid-run: kill, join the process-tree cleanup, then remove. A
 		// discarded foreground command has no background handle that could retain
 		// ownership after this call returns.
-		if _, err := c.shells.Kill(id); err != nil && !errors.Is(err, exec.ErrShellNotFound) {
+		if _, err := c.shells.Kill(executionctx.SessionID(ctx), id); err != nil && !errors.Is(err, exec.ErrShellNotFound) {
 			return "", errors.Join(ctx.Err(), fmt.Errorf("shell: stop canceled foreground command %q: %w", id, err))
 		}
 		<-sh.Done()
@@ -225,7 +226,7 @@ func (c *commandTools) output(ctx context.Context, a shellOutputArgs) (string, e
 	if err := a.validate(); err != nil {
 		return "", toolfailure.Definite(err)
 	}
-	sh, ok := c.shells.Get(a.ShellID)
+	sh, ok := c.shells.Get(executionctx.SessionID(ctx), a.ShellID)
 	if !ok {
 		return fmt.Sprintf("No background shell %s.", a.ShellID), nil
 	}
@@ -250,19 +251,23 @@ func (c *commandTools) output(ctx context.Context, a shellOutputArgs) (string, e
 		c.shells.Remove(a.ShellID)
 		state = "finished (" + info + ")"
 	}
-	var b []byte
-	if dropped {
-		b = append(b, "[earlier output dropped — buffer overflowed]\n"...)
+	encoded, err := json.Marshal(struct {
+		ShellID string          `json:"shell_id"`
+		Status  string          `json:"status"`
+		Stdout  content.Content `json:"stdout"`
+		Dropped bool            `json:"output_dropped,omitzero"`
+	}{ShellID: a.ShellID, Status: state, Stdout: content.New([]byte(out)), Dropped: dropped})
+	if err != nil {
+		return "", fmt.Errorf("shell: encode background command output: %w", err)
 	}
-	b = append(b, out...)
-	return fmt.Sprintf("Shell %s %s.\n%s", a.ShellID, state, string(b)), nil
+	return string(encoded), nil
 }
 
-func (c *commandTools) kill(_ context.Context, a shellIDArgs) (string, error) {
+func (c *commandTools) kill(ctx context.Context, a shellIDArgs) (string, error) {
 	if err := a.validate(); err != nil {
 		return "", toolfailure.Definite(err)
 	}
-	running, err := c.shells.Kill(a.ShellID)
+	running, err := c.shells.Kill(executionctx.SessionID(ctx), a.ShellID)
 	switch {
 	case errors.Is(err, exec.ErrShellNotFound):
 		return fmt.Sprintf("No background shell %s.", a.ShellID), nil
@@ -296,11 +301,11 @@ func completedJSON(
 		out = strings.TrimLeft(info+"\n"+out, "\n")
 	}
 	b, err := json.Marshal(struct {
-		Stdout   string `json:"stdout"`
-		ExitCode int    `json:"exit_code"`
-		Killed   bool   `json:"killed,omitzero"`
-		Duration string `json:"duration"`
-	}{Stdout: out, ExitCode: code, Killed: killed, Duration: dur.String()})
+		Stdout   content.Content `json:"stdout"`
+		ExitCode int             `json:"exit_code"`
+		Killed   bool            `json:"killed,omitzero"`
+		Duration string          `json:"duration"`
+	}{Stdout: content.New([]byte(out)), ExitCode: code, Killed: killed, Duration: dur.String()})
 	if err != nil {
 		return "", fmt.Errorf("shell: encode completed command result: %w", err)
 	}
@@ -312,10 +317,11 @@ func completedJSON(
 // has not exited and therefore has no exit status.
 func backgroundedJSON(id string) (string, error) {
 	b, err := json.Marshal(struct {
-		Stdout string `json:"stdout"`
-	}{Stdout: fmt.Sprintf(
+		ShellID string          `json:"shell_id"`
+		Stdout  content.Content `json:"stdout"`
+	}{ShellID: id, Stdout: content.New([]byte(fmt.Sprintf(
 		"Command running in background as shell %s. Continue with read_shell_output {\"shell_id\":%q} or stop_shell {\"shell_id\":%q}.",
-		id, id, id)})
+		id, id, id)))})
 	if err != nil {
 		return "", fmt.Errorf("shell: encode background command result: %w", err)
 	}

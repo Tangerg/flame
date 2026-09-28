@@ -1,17 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { ContentBlock } from "@/plugins/sdk/types/contentBlock";
-import type {
-  AgentProblem,
-  AgentSessionView,
-  Message,
-  PendingInterruptGroup,
-} from "@/plugins/sdk/types/agentSessionView";
+import type { AgentProblem, AgentSessionView, Message } from "@/plugins/sdk/types/agentSessionView";
 import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
 import {
   dropMessage,
   reconcileMessageIdentity,
   reconcileSteerMessages,
-  resolveInterrupt,
   setCommandError,
 } from "./viewMutations";
 
@@ -29,51 +23,6 @@ function view(partial: Partial<AgentSessionView> = {}): AgentSessionView {
 
 function message(id: string, blocks: ContentBlock[] = []): Message {
   return { id, role: "assistant", createdAt: time, runId: "run_1", blocks };
-}
-
-function approvalBlock(itemId: string): ContentBlock {
-  return {
-    kind: "approval",
-    status: "requires-action",
-    toolName: "shell",
-    command: "rm x",
-    reason: "Needs confirmation",
-    itemId,
-    runId: "run_1",
-  };
-}
-
-function questionBlock(itemId: string): ContentBlock {
-  return {
-    kind: "question",
-    status: "requires-action",
-    itemId,
-    runId: "run_1",
-    questions: [
-      {
-        type: "choice",
-        prompt: "Which option?",
-        header: "Choose",
-        options: [
-          { label: "A", description: "Option A" },
-          { label: "B", description: "Option B" },
-        ],
-        multiple: false,
-        allowCustom: true,
-      },
-    ],
-  };
-}
-
-function pendingInterrupt(
-  items: Array<{ itemId: string; kind: "approval" | "question" }>,
-): PendingInterruptGroup {
-  return {
-    runId: "run_1",
-    rootRunId: "run_1",
-    sessionId: "ses_1",
-    interrupts: items,
-  };
 }
 
 describe("view mutations - messages", () => {
@@ -170,115 +119,5 @@ describe("view mutations - run state", () => {
 
     expect(setCommandError(original, error)).toBe(original);
     expect(setCommandError(original, null)).toMatchObject({ commandError: null });
-  });
-});
-
-describe("view mutations - interrupts", () => {
-  it("settles an approval block, drops its interrupt, and stamps an approval result", () => {
-    const original = view({
-      messages: [message("assistant-1", [approvalBlock("tool_1")])],
-      pendingInterrupts: [pendingInterrupt([{ itemId: "tool_1", kind: "approval" }])],
-      toolCalls: {
-        tool_1: {
-          id: "tool_1",
-          runId: "run_1",
-          name: "shell",
-          fn: "rm x",
-          args: "",
-          status: "requires-action",
-        },
-      },
-    });
-
-    const next = resolveInterrupt(original, "tool_1", { decision: "approved" }, 123);
-
-    expect(next.messages[0]!.blocks[0]).toMatchObject({
-      kind: "approval",
-      status: "complete",
-      decision: "approved",
-    });
-    expect(next.pendingInterrupts).toEqual([]);
-    expect(next.toolCalls.tool_1?.status).toBe("running");
-    expect(next.timeline.at(-1)).toMatchObject({
-      kind: "approval-result",
-      ts: 123,
-      refId: "tool_1",
-      status: "approved",
-    });
-  });
-
-  it("settles a question answer without stamping an approval result", () => {
-    const answers = [["A"]];
-    const original = view({
-      messages: [message("assistant-1", [questionBlock("question_1")])],
-      pendingInterrupts: [pendingInterrupt([{ itemId: "question_1", kind: "question" }])],
-    });
-
-    const next = resolveInterrupt(original, "question_1", { answers }, 123);
-
-    expect(next.messages[0]!.blocks[0]).toMatchObject({
-      kind: "question",
-      status: "complete",
-      answered: true,
-      answers,
-    });
-    expect(next.pendingInterrupts).toEqual([]);
-    expect(next.timeline.some((entry) => entry.kind === "approval-result")).toBe(false);
-  });
-
-  it("removes only the resolved interrupt from a shared envelope", () => {
-    const original = view({
-      messages: [message("assistant-1", [approvalBlock("tool_1"), approvalBlock("tool_2")])],
-      toolCalls: {
-        tool_1: {
-          id: "tool_1",
-          runId: "run_1",
-          name: "shell",
-          fn: "rm x",
-          args: "",
-          status: "requires-action",
-        },
-        tool_2: {
-          id: "tool_2",
-          runId: "run_1",
-          name: "shell",
-          fn: "rm y",
-          args: "",
-          status: "requires-action",
-        },
-      },
-      pendingInterrupts: [
-        pendingInterrupt([
-          { itemId: "tool_1", kind: "approval" },
-          { itemId: "tool_2", kind: "approval" },
-        ]),
-      ],
-    });
-
-    const next = resolveInterrupt(original, "tool_1", { decision: "declined" }, 123);
-
-    expect(next.pendingInterrupts).toHaveLength(1);
-    expect(next.pendingInterrupts[0]!.interrupts.map((interrupt) => interrupt.itemId)).toEqual([
-      "tool_2",
-    ]);
-    expect(next.messages[0]!.blocks[0]).toMatchObject({
-      kind: "approval",
-      status: "complete",
-      decision: "declined",
-    });
-    expect(next.toolCalls.tool_1?.status).toBe("denied");
-    expect(next.messages[0]!.blocks[1]).toMatchObject({
-      kind: "approval",
-      status: "requires-action",
-    });
-  });
-
-  it("does not churn state or stamp results for an unknown item id", () => {
-    const original = view({
-      messages: [message("assistant-1", [approvalBlock("tool_1")])],
-      pendingInterrupts: [pendingInterrupt([{ itemId: "tool_1", kind: "approval" }])],
-    });
-
-    expect(resolveInterrupt(original, "missing", { decision: "approved" }, 123)).toBe(original);
   });
 });

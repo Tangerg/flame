@@ -4,6 +4,7 @@ import (
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	providerdomain "github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/models/deepseek"
@@ -19,7 +21,7 @@ import (
 
 func mustClientSpec(t testing.TB, provider Provider, model, apiKey, baseURL string) ClientSpec {
 	t.Helper()
-	credential, err := NewAPIKeyCredential(apiKey)
+	credential, err := providerdomain.NewAPIKey(apiKey)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,6 +36,16 @@ func mustClientSpec(t testing.TB, provider Provider, model, apiKey, baseURL stri
 		}
 	}
 	return spec
+}
+
+func TestClientSpecKeepsCredentialRedacted(t *testing.T) {
+	const secret = "private-credential-fixture"
+	spec := mustClientSpec(t, ProviderOpenAI, defaultOpenAIModel, secret, "")
+	for _, format := range []string{"%v", "%+v", "%#v"} {
+		if strings.Contains(fmt.Sprintf(format, spec), secret) {
+			t.Errorf("ClientSpec exposes its credential through %s", format)
+		}
+	}
 }
 
 // TestChatProviderCatalogSatisfiesConstructionContract holds the constructed
@@ -149,8 +161,8 @@ func TestBuildChatDeepSeekReasoningSurvivesOrdinarySecondTurn(t *testing.T) {
 		t.Fatal("complete call did not use streaming transport")
 	}
 	assistant := findWireAssistant(t, secondRequest.Messages)
-	if _, exists := assistant["reasoning_content"]; exists {
-		t.Fatalf("ordinary prior turn replayed reasoning_content: %#v", assistant)
+	if assistant["reasoning_content"] != "private chain" {
+		t.Fatalf("ordinary prior turn lost provider-owned reasoning: %#v", assistant)
 	}
 }
 
@@ -250,7 +262,7 @@ func TestQueries(t *testing.T) {
 // until a call is made).
 func TestBuildChat(t *testing.T) {
 	// Unknown provider → error.
-	if _, err := NewClientSpec("nope", "x", ClientCredential{}); err == nil {
+	if _, err := NewClientSpec("nope", "x", providerdomain.APIKey{}); err == nil {
 		t.Error("unknown provider must error")
 	}
 	// A requiresBaseURL provider without a base URL → error naming the gap.
@@ -271,11 +283,11 @@ func TestBuildChat(t *testing.T) {
 }
 
 func TestClientSpecRejectsPrimitiveSentinelsAndPartialState(t *testing.T) {
-	credential, err := NewAPIKeyCredential(" key with exact surrounding whitespace ")
+	credential, err := providerdomain.NewAPIKey("exact-key-material")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if credential.sdkAPIKey() != " key with exact surrounding whitespace " {
+	if credential.Reveal() != "exact-key-material" {
 		t.Fatal("API key material was normalized")
 	}
 	if _, err := NewClientSpec(ProviderOpenAI, " ", credential); err == nil {
@@ -284,10 +296,10 @@ func TestClientSpecRejectsPrimitiveSentinelsAndPartialState(t *testing.T) {
 	if _, err := NewClientSpec(ProviderOpenAI, "model\x00shadow", credential); err == nil {
 		t.Fatal("non-printing model identity was accepted")
 	}
-	if _, err := NewClientSpec(ProviderOpenAI, defaultOpenAIModel, ClientCredential{}); err == nil {
+	if _, err := NewClientSpec(ProviderOpenAI, defaultOpenAIModel, providerdomain.APIKey{}); err == nil {
 		t.Fatal("zero credential state was accepted")
 	}
-	if _, err := NewAPIKeyCredential("\t \n"); err == nil {
+	if _, err := providerdomain.NewAPIKey("\t \n"); err == nil {
 		t.Fatal("blank API key was accepted")
 	}
 
@@ -300,7 +312,7 @@ func TestClientSpecRejectsPrimitiveSentinelsAndPartialState(t *testing.T) {
 	if _, _, err := BuildChat(t.Context(), unbounded); err == nil {
 		t.Fatal("ClientSpec without bounded response admission was accepted")
 	}
-	for _, invalid := range []string{"", " https://example.test", "ftp://example.test", "https://user@example.test", "https://example.test/#fragment"} {
+	for _, invalid := range []string{"", " https://example.test", "ftp://example.test", "https://user@example.test", "https://example.test/#fragment", "https://example.test/?api_key=hidden", "https://example.test:99999"} {
 		if _, err := spec.WithBaseURL(invalid); err == nil {
 			t.Errorf("base URL %q was accepted", invalid)
 		}
@@ -415,7 +427,7 @@ func TestRemovedProviderCannotBeSelected(t *testing.T) {
 	if _, found := LookupProvider(Provider("ollama")); found {
 		t.Fatal("removed provider can be resolved")
 	}
-	key, err := NewAPIKeyCredential("test-key")
+	key, err := providerdomain.NewAPIKey("test-key")
 	if err != nil {
 		t.Fatal(err)
 	}

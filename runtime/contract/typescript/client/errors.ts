@@ -1,5 +1,6 @@
 import type { ProblemData } from "@flame/runtime-contract/wire";
 import type { WireViolation } from "@flame/runtime-contract/wire-check";
+import { parseWireJSON } from "./json";
 
 type ProblemOf<Type extends ProblemData["type"]> = Type extends `plugin:${string}/${string}`
   ? Extract<ProblemData, { type: `plugin:${string}/${string}` }>
@@ -80,7 +81,7 @@ interface TransportProblem {
 
 export function parseTransportProblem(text: string): TransportProblem | undefined {
   try {
-    const value: unknown = JSON.parse(text);
+    const value = parseWireJSON(text);
     if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
     const fields = value as Record<string, unknown>;
     return {

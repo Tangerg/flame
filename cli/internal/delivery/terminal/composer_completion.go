@@ -174,14 +174,11 @@ func (a *app) drawCompletion(frame headless.Frame) {
 		Padding: layout.Symmetric(0, 1), Title: title, Footer: footer,
 		FooterAlign: layout.End,
 	}
-	popupWidth := min(max(a.completion.Width()+4, 32), width-2)
-	popupHeight := min(rows+2, availableHeight)
-	// The popup is anchored to the complete prompt chrome, not just the editor
-	// body. The panel border, model footer and help row occupy real terminal
-	// cells; only the viewport above that chrome is available to the popup.
-	y := availableHeight - popupHeight
-	area := grid.Area(1, y, popupWidth, popupHeight)
+	space := frame.Sub(grid.Area(1, 0, width-2, availableHeight))
+	area := (layout.Placement{
+		Anchor: layout.BottomLeft, Width: max(a.completion.Width()+4, 32), Height: rows + 2,
+	}).In(space.Bounds().Size())
 	inner := box.InnerRect(area.Size())
-	box.Draw(frame.View.Sub(area))
-	a.completion.Draw(frame.Sub(area).Sub(inner))
+	box.Draw(space.View.Sub(area))
+	a.completion.Draw(space.Sub(area).Sub(inner))
 }

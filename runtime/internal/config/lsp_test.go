@@ -1,16 +1,14 @@
 package config
 
 import (
-	"strings"
+	"os"
+	"path/filepath"
 	"testing"
-
-	"github.com/spf13/viper"
 )
 
-// TestLoadLSPServers_FromYAML verifies the yaml `lsp.servers` table unmarshals
-// into LSPServer (case-insensitive keys: languageId → LanguageID, etc.).
 func TestLoadLSPServers_FromYAML(t *testing.T) {
 	const yaml = `
+provider: anthropic
 lsp:
   servers:
     - name: gopls
@@ -25,15 +23,15 @@ lsp:
       extensions: [".py"]
       rootMarkers: ["pyproject.toml", "setup.py"]
 `
-	v := viper.New()
-	v.SetConfigType("yaml")
-	if err := v.ReadConfig(strings.NewReader(yaml)); err != nil {
-		t.Fatalf("read config: %v", err)
+	directory := t.TempDir()
+	if err := os.WriteFile(filepath.Join(directory, "config.yaml"), []byte(yaml), 0o600); err != nil {
+		t.Fatal(err)
 	}
-
-	servers, err := loadLSPServers(v)
+	t.Setenv("FLAME_PROVIDER", "")
+	settings, err := Load([]string{directory})
+	servers := settings.LSPServers
 	if err != nil {
-		t.Fatalf("loadLSPServers: %v", err)
+		t.Fatal(err)
 	}
 	if len(servers) != 2 {
 		t.Fatalf("got %d servers, want 2", len(servers))
@@ -53,16 +51,12 @@ lsp:
 	}
 }
 
-// TestLoadLSPServers_Absent returns nil (→ engine defaults) when no table.
 func TestLoadLSPServers_Absent(t *testing.T) {
-	v := viper.New()
-	v.SetConfigType("yaml")
-	if err := v.ReadConfig(strings.NewReader("provider: anthropic\n")); err != nil {
-		t.Fatalf("read config: %v", err)
-	}
-	servers, err := loadLSPServers(v)
+	t.Setenv("FLAME_PROVIDER", "anthropic")
+	settings, err := Load([]string{t.TempDir()})
+	servers := settings.LSPServers
 	if err != nil {
-		t.Fatalf("loadLSPServers: %v", err)
+		t.Fatal(err)
 	}
 	if servers != nil {
 		t.Errorf("got %v, want nil (fall back to engine defaults)", servers)

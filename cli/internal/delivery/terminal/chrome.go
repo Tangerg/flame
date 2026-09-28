@@ -396,11 +396,6 @@ func contextLabel(contextTokens int64) string {
 	return "ctx " + formatThousands(contextTokens)
 }
 
-func optionsLabel(options prompt.RunOptions) string {
-	parts := []string{modelLabel(options)}
-	return strings.Join(parts, " · ")
-}
-
 func modelLabel(options prompt.RunOptions) string {
 	if options.Provider != "" && options.Model != "" {
 		label := options.Provider + "/" + options.Model

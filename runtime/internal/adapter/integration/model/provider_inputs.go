@@ -33,12 +33,7 @@ func (i providerClientInputs) clientSpec(model string) (llm.ClientSpec, error) {
 	if !configured {
 		return llm.ClientSpec{}, ErrCredentialUnavailable
 	}
-	credential, err := llm.NewAPIKeyCredential(apiKey.Reveal())
-	if err != nil {
-		return llm.ClientSpec{}, err
-	}
-
-	spec, err := llm.NewClientSpec(i.profile.ID(), model, credential)
+	spec, err := llm.NewClientSpec(i.profile.ID(), model, apiKey)
 	if err != nil {
 		return llm.ClientSpec{}, err
 	}

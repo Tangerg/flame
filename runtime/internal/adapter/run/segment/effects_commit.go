@@ -653,6 +653,23 @@ func (e *Effects) applyCommit(ctx context.Context, commit runs.EventCommit) erro
 		}
 	}
 
+	if commit.State == runs.StateTerminalize && commit.Run.Lineage().IsRoot() {
+		messages, err := e.conversation.Read(ctx, commit.SessionID)
+		if err != nil {
+			return fmt.Errorf("segment: read terminal conversation: %w", err)
+		}
+		closure, err := runs.TerminalConversation(ctx, e.runState, commit.SessionID, commit.RunID, append(messages, commit.ConversationMessages...), commit.Outcome, commit.Run.Detail())
+		if err != nil {
+			return err
+		}
+		commit.ConversationMessages = append(commit.ConversationMessages, closure...)
+	}
+	if publication := commit.ResultPublication; publication != nil {
+		if err := e.runState.RecordResultPublication(ctx, commit.SessionID, commit.RunID, commit.SegmentID, publication.ID, publication.Digest, commit.ToolResults); err != nil {
+			return err
+		}
+	}
+
 	for _, item := range commit.Items {
 		if err := e.appendItem(ctx, item); err != nil {
 			return err
@@ -678,11 +695,6 @@ func (e *Effects) applyCommit(ctx context.Context, commit runs.EventCommit) erro
 	if commit.GoalRun != nil {
 		if err := e.goalRuns.RecordRun(ctx, *commit.GoalRun); err != nil {
 			return fmt.Errorf("segment: record Goal Run: %w", err)
-		}
-	}
-	if publication := commit.ResultPublication; publication != nil {
-		if err := e.runState.RecordResultPublication(ctx, commit.SessionID, commit.RunID, commit.SegmentID, publication.ID, publication.Digest); err != nil {
-			return err
 		}
 	}
 

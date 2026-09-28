@@ -1,7 +1,9 @@
 package mcp
 
 import (
+	"bytes"
 	"context"
+	"crypto/rand"
 	"errors"
 	"net/http"
 	"strings"
@@ -15,37 +17,118 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
+func TestSupersededOAuthHandlersCannotChangeReplacementCredentials(t *testing.T) {
+	for _, operation := range []string{"refresh", "refresh rejected", "server rejected"} {
+		t.Run(operation, func(t *testing.T) {
+			target := mcpserver.OAuthTarget{Server: testMCPServerName("remote"), URL: "https://mcp.example/tools"}
+			store := &memoryOAuthStore{}
+			binding, err := store.BeginOAuthSession(t.Context(), target)
+			if err != nil {
+				t.Fatal(err)
+			}
+			old := &oauthSession{store: store, server: target.Server, origin: store.origin, binding: binding}
+			initial := &oauth2.Token{AccessToken: "initial", Expiry: time.Now().Add(time.Hour)}
+			cfg, _ := oauthSessionFixture(t, initial)
+			if err := old.save(t.Context(), cfg, initial); err != nil {
+				t.Fatal(err)
+			}
+
+			replacementBinding, err := store.BeginOAuthSession(t.Context(), target)
+			if err != nil {
+				t.Fatal(err)
+			}
+			replacement := &oauthSession{store: store, server: target.Server, origin: store.origin, binding: replacementBinding}
+			if err := replacement.save(t.Context(), cfg, &oauth2.Token{AccessToken: "replacement"}); err != nil {
+				t.Fatal(err)
+			}
+			before := bytes.Clone(store.payload)
+
+			switch operation {
+			case "refresh":
+				source := newSavingTokenSource(tokenSourceFunc(func() (*oauth2.Token, error) {
+					return &oauth2.Token{AccessToken: "late refresh"}, nil
+				}), cfg, initial, func(cfg *oauth2.Config, token *oauth2.Token) error {
+					return old.save(t.Context(), cfg, token)
+				})
+				_, err = source.Token()
+			case "refresh rejected":
+				source := invalidateRejectedTokens(tokenSourceFunc(func() (*oauth2.Token, error) {
+					return nil, &oauth2.RetrieveError{ErrorCode: "invalid_grant"}
+				}), t.Context(), old)
+				_, err = source.Token()
+			case "server rejected":
+				handler := &restoredOAuthHandler{session: old}
+				err = handler.Authorize(t.Context(), nil, &http.Response{Body: http.NoBody})
+			}
+			if !errors.Is(err, mcpserver.ErrOAuthSessionSuperseded) {
+				t.Fatalf("stale %s did not retain the superseded grant error: %v", operation, err)
+			}
+			if !bytes.Equal(before, store.payload) || store.binding != replacementBinding {
+				t.Fatal("superseded handler changed its replacement's credentials")
+			}
+		})
+	}
+}
+
 type memoryOAuthStore struct {
 	mu      sync.Mutex
 	origin  string
 	payload []byte
+	binding string
 	removed int
 	saveErr error
 }
 
-func (m *memoryOAuthStore) LoadOAuthSession(_ context.Context, _ mcpserver.ServerName, origin string) ([]byte, bool, error) {
+func (m *memoryOAuthStore) BeginOAuthSession(ctx context.Context, target mcpserver.OAuthTarget) (string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if m.origin != origin || len(m.payload) == 0 {
-		return nil, false, nil
+	if err := ctx.Err(); err != nil {
+		return "", err
 	}
-	return append([]byte(nil), m.payload...), true, nil
+	origin, err := oauthOrigin(target.URL)
+	if err != nil {
+		return "", err
+	}
+	m.origin, m.binding, m.payload = origin, rand.Text(), nil
+	return m.binding, nil
 }
 
-func (m *memoryOAuthStore) SaveOAuthSession(_ context.Context, _ mcpserver.ServerName, origin string, payload []byte) error {
+func (m *memoryOAuthStore) LoadOAuthSession(_ context.Context, target mcpserver.OAuthTarget) ([]byte, string, bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	origin, err := oauthOrigin(target.URL)
+	if err != nil {
+		return nil, "", false, err
+	}
+	if m.origin != origin || len(m.payload) == 0 {
+		return nil, "", false, nil
+	}
+	return append([]byte(nil), m.payload...), m.binding, true, nil
+}
+
+func (m *memoryOAuthStore) SaveOAuthSession(ctx context.Context, _ mcpserver.ServerName, origin, binding string, payload []byte) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if m.saveErr != nil {
 		return m.saveErr
+	}
+	if binding != m.binding || origin != m.origin {
+		return mcpserver.ErrOAuthSessionSuperseded
 	}
 	m.origin = origin
 	m.payload = append([]byte(nil), payload...)
 	return nil
 }
 
-func (m *memoryOAuthStore) RemoveOAuthSession(context.Context, mcpserver.ServerName) error {
+func (m *memoryOAuthStore) RemoveOAuthSession(_ context.Context, _ mcpserver.ServerName, binding string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if binding != m.binding {
+		return mcpserver.ErrOAuthSessionSuperseded
+	}
 	m.payload = nil
 	m.removed++
 	return nil
@@ -154,7 +237,7 @@ func TestInvalidatingTokenSourceDeletesRejectedRefresh(t *testing.T) {
 	store := &memoryOAuthStore{payload: []byte("saved")}
 	source := invalidateRejectedTokens(tokenSourceFunc(func() (*oauth2.Token, error) {
 		return nil, &oauth2.RetrieveError{ErrorCode: "invalid_grant"}
-	}), t.Context(), store, testMCPServerName("remote"))
+	}), t.Context(), &oauthSession{store: store, server: testMCPServerName("remote"), binding: store.binding})
 
 	if token, err := source.Token(); token != nil || dialStatus(err) != "needsAuth" {
 		t.Fatalf("Token = %+v, %v, want needsAuth", token, err)
@@ -172,7 +255,9 @@ func TestRestoreOAuthHandlerRejectsCredentialWithoutInteractiveFlow(t *testing.T
 	_, payload := oauthSessionFixture(t, token)
 	store := &memoryOAuthStore{origin: "https://mcp.example:443", payload: payload}
 
-	handler, err := restoreOAuthHandler(t.Context(), t.Context(), store, testMCPServerName("remote"), "https://MCP.example/tools")
+	handler, err := restoreOAuthHandler(t.Context(), t.Context(), store, mcpserver.OAuthTarget{
+		Server: testMCPServerName("remote"), URL: "https://MCP.example/tools",
+	})
 	if err != nil {
 		t.Fatalf("restoreOAuthHandler: %v", err)
 	}
@@ -203,7 +288,7 @@ func TestRestoreOAuthHandlerRejectsCredentialWithoutInteractiveFlow(t *testing.T
 func TestRestoreOAuthHandlerDoesNotDrainRejectedResponse(t *testing.T) {
 	store := &memoryOAuthStore{payload: []byte("saved")}
 	body := &observedResponseBody{}
-	handler := &restoredOAuthHandler{store: store, server: testMCPServerName("remote")}
+	handler := &restoredOAuthHandler{session: &oauthSession{store: store, server: testMCPServerName("remote"), binding: store.binding}}
 
 	err := handler.Authorize(t.Context(), nil, &http.Response{Body: body})
 	if !errors.Is(err, errStoredOAuthRejected) {
@@ -223,7 +308,9 @@ func TestRestoreOAuthHandlerRejectsMalformedPayload(t *testing.T) {
 		payload: []byte(`{"version":1,"unknown":true}`),
 	}
 	var handler auth.OAuthHandler
-	handler, err := restoreOAuthHandler(t.Context(), t.Context(), store, testMCPServerName("remote"), "https://mcp.example/tools")
+	handler, err := restoreOAuthHandler(t.Context(), t.Context(), store, mcpserver.OAuthTarget{
+		Server: testMCPServerName("remote"), URL: "https://mcp.example/tools",
+	})
 	if handler != nil || err == nil || !strings.Contains(err.Error(), "unknown object member name") {
 		t.Fatalf("restore malformed = handler %v, err %v", handler, err)
 	}

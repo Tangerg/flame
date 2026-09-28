@@ -172,7 +172,8 @@ type RunWriter interface {
 // prove and reconstruct a result after an ambiguous command commit.
 type RunStore interface {
 	ResultPublicationCommitted(ctx context.Context, sessionID, runID, segmentID, publicationID, digest string) (bool, error)
-	RecordResultPublication(ctx context.Context, sessionID, runID, segmentID, publicationID, digest string) error
+	RecordResultPublication(ctx context.Context, sessionID, runID, segmentID, publicationID, digest string, results []chat.ToolResult) error
+	runs.ToolResultPublications
 	RunWriter
 	Run(ctx context.Context, runID string) (run.Run, bool, error)
 	RunCommitCommitted(ctx context.Context, sessionID, runID, segmentID string, commitID runtimeidentity.CommitID) (bool, error)
@@ -223,6 +224,7 @@ type Transactor func(ctx context.Context, fn func(context.Context) error) error
 // ConversationStore appends root execution context and resolves the watermark
 // recorded by a terminal Run. Both operations join the event transaction.
 type ConversationStore interface {
+	Read(ctx context.Context, sessionID string) ([]chat.Message, error)
 	Write(ctx context.Context, sessionID string, messages ...chat.Message) error
 	Count(ctx context.Context, sessionID string) (int, error)
 }

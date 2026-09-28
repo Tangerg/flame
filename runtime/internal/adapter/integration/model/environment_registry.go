@@ -8,6 +8,7 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 )
 
@@ -25,6 +26,9 @@ type environmentRegistry struct {
 // exposing the effective registry. Invalid host input fails composition instead
 // of becoming a partially configured provider later in a Run.
 func WithEnvironmentKeys(inner models.ProviderRegistry, envKeys map[string]string) (models.ProviderRegistry, error) {
+	if dependency.Missing(inner) {
+		return nil, errors.New("model: durable provider registry is required")
+	}
 	snapshot := make(map[string]provider.APIKey, len(envKeys))
 	for id, rawKey := range envKeys {
 		if _, err := provider.New(id); err != nil {

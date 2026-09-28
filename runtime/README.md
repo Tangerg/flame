@@ -64,6 +64,10 @@ if err != nil {
 
 Hosts must close each Runtime they open. Protocol errors support `errors.Is` against public sentinel errors and `errors.As` to `protocol.ProblemError` for structured recovery information.
 
+Repeated `Close` calls join or resume an incomplete shutdown. Once terminal
+resource teardown finishes, every call returns its retained diagnostic without
+repeating cleanup; a later call cannot turn a failed close into apparent success.
+
 ## Attach without owning the Runtime
 
 ```go
@@ -90,6 +94,8 @@ The standalone Runtime can publish the built `desktop/frontend/dist` directory o
 Static assets and application navigation are public. All Runtime calls still use the generated `/v2/rpc` endpoint and its existing bearer gate; static routing never replaces protocol or health routes. The asset server confines reads to the distribution, rejects hidden files and directory listings, and keeps application HTML revalidated on reload. No token is embedded in HTML or placed in a URL.
 
 The browser starts at its own origin and accepts the Runtime token in the connection dialog. Desktop uses its native bootstrap. Both consume the same TypeScript client from `contract/typescript/client`; Wails capabilities belong only to the desktop platform adapter.
+
+The shared TypeScript client owns strict response decoding for JSON-RPC, event streams, and HTTP sidecars. HTTP bytes must be valid UTF-8. Microsoft `jsonc-parser` visits decoded members and strings to reject duplicate members and unpaired Unicode surrogates before native `JSON.parse` constructs values; JavaScript number and object-member semantics remain unchanged. Malformed responses are `RpcProtocolError`, which preserves unknown mutation settlement without treating invalid wire data as a recoverable connection failure. Event-stream observations cancel unread bodies before releasing their readers, including when their sole consumer returns early.
 
 ## Errors and acknowledgement certainty
 
@@ -250,6 +256,10 @@ alongside its evidence so downstream evaluation can preserve the distinctions.
 
 Background commands remain addressable after they exit until `read_shell_output` consumes their final output. That final read reports completion and releases the shell handle and retained buffer; later reads report that the shell is absent. Compaction reminders preserve these retained handles, including commands that have finished with unread output. Reads while a command is running keep its handle available. Stopping a command preserves its unread output for the final read. Session teardown and Runtime shutdown also reclaim owned commands.
 
+Reading or stopping a shell requires its owning Session, even when another Session knows the exact shell ID. Host teardown retains its authority to stop a Session, a shared workspace, or the complete Runtime. A call canceled before process admission cannot launch a detached command.
+
+Shell output uses Scope's `tools/content.Content`: `stdout` is an object with `encoding` (`utf8` or `base64`) and `data`. Both foreground completion and `read_shell_output` preserve arbitrary process bytes, including output truncated inside a UTF-8 character. Background launch responses include an explicit `shell_id`; incremental reads include `shell_id`, `status`, `stdout`, and an optional `output_dropped` flag. The command transcript still renders valid text directly and represents binary output with its lossless encoded content. Consumers of raw Tool output must use this current shape; there is no string-output compatibility decoder.
+
 ## Execution lifecycle
 
 Root and delegated Interactions, ordinary Tools, and lifetime child/process counts use Scope's unlimited cumulative quotas. Usage remains metered; completion, cancellation, model-reported blocking, and actual failures control lifecycle. Delegation depth, active-child and Tool concurrency, pending mailbox capacity, and operation-specific waits bound resource use. Execution follows its owner's lifetime.
@@ -264,7 +274,11 @@ Repeated identical Tool results are allowed, including polling. Tool authorizati
 
 Canceling a delegated Run still cancels that child. If its in-flight model attempt returns no definite result, Scope retains the unknown Effect and fails the parent instead of delivering a normal delegate result. Runtime projects the actual Scope outcome and preserves unresolved Effect IDs separately; it does not manufacture a settlement or retry the attempt. This intentionally replaces the earlier behavior that allowed the parent to continue despite the child's unresolved Effect. Cancellation before external dispatch and terminal children with definite results remain distinct cases.
 
-Known Tool and Delegate results, including rejected calls, are extracted through Scope's `interaction.SettledResults` at its `TreeCommitter` boundaries. Runtime atomically commits the authoritative execution-tree head, exact model-visible results, product Items, invocation journal, and content-bound result receipts. Settled calls retain their original round indexes even when other calls remain unresolved. Their exact model results are retained in the durable tree immediately; the model conversation receives one ordered Tool message only once the round is complete. Cancellation stops new execution and model continuation while allowing bounded settlement writes: completed calls remain known, uncertain effects retain their evidence, and unstarted calls do not execute. Tree updates compare the previous writer and digest and require the next incarnation-local commit sequence. Checkpoint identities include the writer and sequence; Effect identities include the Effect ID and boundary kind across writers. SQLite commits the head and deduplication facts atomically. Restoration activates a new writer at sequence zero. A historical commit cannot succeed merely because tree content repeats. Repeated known results are checked against durable receipts before retired presentation metadata is accessed. Ambiguous COMMIT responses are reconciled by reading the tree and product receipts, without rerunning tools. Storage callbacks have a 30-second deadline and are interrupted when the executor is released.
+Known Tool and Delegate results, including rejected calls, are extracted through Scope's `interaction.SettledResults` at its `TreeCommitter` boundaries. Runtime atomically commits the authoritative execution-tree head, product Items, invocation journal, and content-bound result receipts. Each receipt retains its exact model-visible Tool results, including ordered content, metadata, and structured details. Settled calls retain their original round indexes even when other calls remain unresolved. The model conversation receives one ordered Tool message when the round completes. Live termination, cancellation of a parked Run, and boot recovery share the same conversation closure: already acknowledged results retain their exact output, and only unresolved calls receive an unavailable-result marker. The reducer keeps no separate conversation ledger.
+
+Result receipts bind to the durable source message's unique sequence identity before the complete Tool message is appended. Reused provider call IDs in another round cannot adopt prior results. Compaction, rollback, and history replacement invalidate removed message references while retaining immutable publication identities for deduplication. Schema installation adds receipt evidence columns to existing databases without inventing old results. A Run with unresolved Tool calls and legacy receipts that lack exact evidence fails terminal reconstruction explicitly; its acknowledged work is never silently rewritten as failure feedback.
+
+Tree updates compare the previous writer and digest and require the next incarnation-local commit sequence. Checkpoint identities include the writer and sequence; Effect identities include the Effect ID and boundary kind across writers. SQLite commits the head and deduplication facts atomically. Restoration activates a new writer at sequence zero. A historical commit cannot succeed merely because tree content repeats. Repeated known results are checked against durable receipts before retired presentation metadata is accessed. Ambiguous COMMIT responses are reconciled by reading the tree and product receipts, without rerunning tools. Cancellation stops new execution and model continuation while observed settlement writes remain owned by the executor's release lifetime. Storage latency has no separate elapsed-time failure threshold: release cancels pending publication, then joins the execution workers and Scope Engine before revoking Tool resources.
 
 Recovery probes only validate persisted state; they never activate a writer. Waiting checkpoints retain product bindings, while the committed execution-tree head is authoritative for restoration. This integration requires the current Scope snapshots and the current execution-tree schema. Older waiting snapshots and databases are not converted or replayed. Schema installation rejects the former execution-tree table without modifying existing data; use a fresh data directory and retain the old one separately.
 
@@ -351,9 +365,18 @@ A successful start commits the Run, first Segment, and opening user Item. Resume
 
 Disabling or deleting a schedule stops future occurrence claims. An already claimed occurrence retains its accepted input and may still start after that change; its Run must be canceled separately when required. Editing a schedule does not rewrite an occurrence already claimed from an earlier revision.
 
+Calendar cron expressions use UTC unless they declare `CRON_TZ`. Creation,
+editing, and recurrence use that same rule regardless of the caller's local
+timezone. An expression with no reachable occurrence is invalid.
+
 Abrupt process-exit tests exercise claim, business commit, and receipt commit separately against a temporary SQLite database. A committed receipt replays the same identity without executing again. A claim without a receipt remains unresolved, including when the business effect committed: restart and elapsed time do not prove success or failure. Keep the original key and store namespace, inspect authoritative session state, and do not issue a fresh command to bypass the reservation. There is no general automatic reconciliation across command receipts and arbitrary business or external effects.
 
 For an existing Session, omitting both provider and model uses that Session's stored selection. An explicit pair overrides it for the Run. Global defaults do not silently replace an existing Session's selection.
+
+Process configuration decodes YAML, defaults, and environment overrides into one
+typed snapshot. Invalid boolean and integer overrides reject startup, including
+settings present only in the environment. List overrides use comma-separated
+entries; the resolved configuration consumes the same values that were validated.
 
 | Change | Effective boundary |
 | --- | --- |
@@ -372,6 +395,10 @@ An unset utility role uses the Runtime composition's default model selection. It
 Discovery, inspection, and model loading use the same Scope resolver. Project bundles own a colliding name even when malformed; they never expose the user copy as a fallback. Invalid or oversized selected documents appear as diagnostics alongside usable entries. Filesystem, confinement, capacity, and cancellation failures remain explicit query failures. Instructions retain the existing 1 MiB document bound and source directories retain their entry bounds. Inspection describes current authored content, not proof that it was loaded into an existing model conversation.
 
 Inspection distinguishes invalid names (`invalid_params`), absent skills (`skill_not_found`), and invalid or oversized selected documents (`skill_unavailable`). Archive and restore also report `skill_not_found` for absent entries. Consumers should refresh a missing resource and offer document correction for an unavailable resource; public errors exclude parser diagnostics and document contents. Proposal revision failures remain `revision_conflict` because the reviewed content must be fetched again before applying it.
+
+## MCP OAuth credentials
+
+MCP OAuth credentials belong to one persisted authorization grant. Starting an explicit sign-in replaces that grant; token refresh and credential rejection can update or remove only their own grant. Changes to transport, enablement, endpoint, static authorization, or extra HTTP headers invalidate the grant, while descriptive metadata and Tool policy changes preserve it. Grant creation and restoration verify the current exact connection configuration. A superseded callback fails explicitly and cannot overwrite or delete replacement credentials. Existing saved OAuth payloads receive a binding when the database opens; their token representation is unchanged.
 
 ## Integration probes
 

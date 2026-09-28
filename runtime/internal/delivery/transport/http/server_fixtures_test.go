@@ -86,10 +86,9 @@ func newTestEndpoint(t *testing.T, target any, config delivery.EndpointConfig) *
 func newTestServerFor(t *testing.T, api any) *httptest.Server {
 	t.Helper()
 	srv, err := flamehttp.NewServer(flamehttp.Config{
-		Endpoint:        newTestEndpoint(t, api, delivery.EndpointConfig{IdempotencyNamespace: testsupport.IdempotencyNamespace}),
-		Addr:            ":0",
-		ServerInfo:      protocol.ServerInfo{Name: "flame-test", Version: "0.0.0", InstanceID: testRuntimeInstanceID},
-		ProtocolVersion: testProtocolVersion,
+		Endpoint:   newTestEndpoint(t, api, delivery.EndpointConfig{IdempotencyNamespace: testsupport.IdempotencyNamespace}),
+		Addr:       ":0",
+		ServerInfo: protocol.ServerInfo{Name: "flame-test", Version: "0.0.0", InstanceID: testRuntimeInstanceID},
 	})
 	if err != nil {
 		t.Fatalf("NewServer: %v", err)

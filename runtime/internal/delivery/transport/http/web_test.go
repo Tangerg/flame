@@ -40,8 +40,8 @@ func TestWebApplicationKeepsProtocolAuthenticationAndAssetConfinement(t *testing
 		t.Fatal(err)
 	}
 	server, err := flamehttp.NewServer(flamehttp.Config{
-		Endpoint: newTestEndpoint(t, &fakeRuntime{}, delivery.EndpointConfig{IdempotencyNamespace: testsupport.IdempotencyNamespace}),
-		Addr:     ":0", ProtocolVersion: protocol.ProtocolVersion,
+		Endpoint:   newTestEndpoint(t, &fakeRuntime{}, delivery.EndpointConfig{IdempotencyNamespace: testsupport.IdempotencyNamespace}),
+		Addr:       ":0",
 		ServerInfo: protocol.ServerInfo{Name: "flame-test", Version: "dev", InstanceID: testRuntimeInstanceID},
 		LocalToken: "web-test-token", WebApplication: assets,
 	})

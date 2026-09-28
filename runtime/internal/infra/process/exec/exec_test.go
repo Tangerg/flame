@@ -10,6 +10,48 @@ import (
 	"time"
 )
 
+func TestLaunchRejectsCanceledCallerBeforeDetaching(t *testing.T) {
+	shells := NewShells(nil, false)
+	t.Cleanup(func() { _ = shells.KillAll() })
+	ctx, cancel := context.WithCancelCause(t.Context())
+	cause := errors.New("run stopped before shell launch")
+	cancel(cause)
+	id, err := shells.Launch(ctx, "session", t.TempDir(), "sleep 30", Timeout{}, false)
+	if !errors.Is(err, cause) || id != "" {
+		t.Fatalf("canceled launch = (%q, %v), want original cancellation", id, err)
+	}
+	if retained := shells.RetainedForSession("session"); len(retained) != 0 {
+		t.Fatal("canceled caller launched a detached process")
+	}
+}
+
+func TestShellLookupAndStopRequireTheOwningSession(t *testing.T) {
+	shells := NewShells(nil, false)
+	t.Cleanup(func() { _ = shells.KillAll() })
+	id, err := shells.Launch(t.Context(), "owner", t.TempDir(), "sleep 30", Timeout{}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sh, found := shells.Get("other", id); found || sh != nil {
+		t.Fatal("another Session acquired the shell handle")
+	}
+	if running, err := shells.Kill("other", id); running || !errors.Is(err, ErrShellNotFound) {
+		t.Fatalf("another Session stopped shell: running=%t, error=%v", running, err)
+	}
+	sh := mustShell(t, shells, "owner", id)
+	if finished, _ := sh.Status(); finished {
+		t.Fatal("refused foreign stop terminated the shell")
+	}
+	if err := shells.StopSession("owner"); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-sh.Done():
+	default:
+		t.Fatal("host Session cleanup did not join its shell")
+	}
+}
+
 // TestLaunchIsolatedWithoutBackendFailsClosed proves an isolated-session command
 // on a host with no sandbox backend is refused rather than run unconfined.
 func TestLaunchIsolatedWithoutBackendFailsClosed(t *testing.T) {
@@ -41,16 +83,16 @@ func TestShells_RunReadKill(t *testing.T) {
 		t.Fatal(err)
 	}
 	waitDone(t, shells, id)
-	out, _ := mustShell(t, shells, id).Read()
+	out, _ := mustShell(t, shells, "", id).Read()
 	if !strings.Contains(out, "hello") {
 		t.Errorf("output = %q, want hello", out)
 	}
-	done, info := mustShell(t, shells, id).Status()
+	done, info := mustShell(t, shells, "", id).Status()
 	if !done || info != "exit 0" {
 		t.Errorf("status = (%v, %q), want done exit 0", done, info)
 	}
 	// Second read returns only new output (none) — incremental.
-	if out2, _ := mustShell(t, shells, id).Read(); out2 != "" {
+	if out2, _ := mustShell(t, shells, "", id).Read(); out2 != "" {
 		t.Errorf("second read = %q, want empty (incremental)", out2)
 	}
 
@@ -59,12 +101,12 @@ func TestShells_RunReadKill(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	running, err := shells.Kill(longID)
+	running, err := shells.Kill("", longID)
 	if err != nil || !running {
 		t.Fatalf("kill = (running=%v err=%v), want a running shell stopped", running, err)
 	}
 	waitDone(t, shells, longID)
-	if running2, err := shells.Kill(longID); err != nil || running2 {
+	if running2, err := shells.Kill("", longID); err != nil || running2 {
 		t.Error("second kill should report not-running")
 	}
 }
@@ -83,7 +125,7 @@ func TestShells_TimeoutKills(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sh := mustShell(t, shells, id)
+	sh := mustShell(t, shells, "", id)
 	select {
 	case <-sh.Done():
 	case <-time.After(10 * time.Second):
@@ -107,7 +149,7 @@ func TestShellsKillAllJoinsProcesses(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sh := mustShell(t, shells, id)
+	sh := mustShell(t, shells, "", id)
 
 	if err := shells.KillAll(); err != nil {
 		t.Fatalf("KillAll: %v", err)
@@ -117,7 +159,7 @@ func TestShellsKillAllJoinsProcesses(t *testing.T) {
 	default:
 		t.Fatal("KillAll returned before the process wait goroutine finished")
 	}
-	if _, ok := shells.Get(id); ok {
+	if _, ok := shells.Get("", id); ok {
 		t.Fatal("KillAll retained a stopped shell")
 	}
 }
@@ -134,7 +176,7 @@ func TestShellsRejectLaunchAfterKillAll(t *testing.T) {
 
 func TestShellsKillMissingHasStableIdentity(t *testing.T) {
 	shells := NewShells(nil, false)
-	if _, err := shells.Kill("bg_missing"); !errors.Is(err, ErrShellNotFound) {
+	if _, err := shells.Kill("", "bg_missing"); !errors.Is(err, ErrShellNotFound) {
 		t.Fatalf("Kill missing shell = %v, want ErrShellNotFound", err)
 	}
 }
@@ -157,7 +199,7 @@ func TestShellIdentityDoesNotAliasAcrossOwners(t *testing.T) {
 	if firstID == secondID {
 		t.Fatalf("different Shells owners minted the same identity %q", firstID)
 	}
-	if _, found := second.Get(firstID); found {
+	if _, found := second.Get("", firstID); found {
 		t.Fatalf("second owner resolved first owner's identity %q", firstID)
 	}
 }
@@ -215,7 +257,7 @@ func TestShellsLaunchRacesKillAll(t *testing.T) {
 			t.Fatalf("Launch error = %v", got.err)
 		}
 		if got.id != "" {
-			if _, ok := shells.Get(got.id); ok {
+			if _, ok := shells.Get("", got.id); ok {
 				t.Fatalf("KillAll retained racing shell %q", got.id)
 			}
 		}
@@ -225,15 +267,15 @@ func TestShellsLaunchRacesKillAll(t *testing.T) {
 func waitDone(t *testing.T, shells *Shells, id string) {
 	t.Helper()
 	select {
-	case <-mustShell(t, shells, id).Done():
+	case <-mustShell(t, shells, "", id).Done():
 	case <-time.After(10 * time.Second):
 		t.Fatalf("shell %s did not finish in time", id)
 	}
 }
 
-func mustShell(t *testing.T, shells *Shells, id string) *Shell {
+func mustShell(t *testing.T, shells *Shells, sessionID, id string) *Shell {
 	t.Helper()
-	sh, ok := shells.Get(id)
+	sh, ok := shells.Get(sessionID, id)
 	if !ok {
 		t.Fatalf("shell %s not found", id)
 	}
@@ -267,10 +309,10 @@ func TestShells_RetainedForSession(t *testing.T) {
 	}
 
 	// Stopping a command does not discard its unread final output.
-	if _, err := shells.Kill(bID); err != nil {
+	if _, err := shells.Kill("sess-b", bID); err != nil {
 		t.Fatalf("kill b: %v", err)
 	}
-	waitForDone(t, shells, bID)
+	waitForDone(t, shells, "sess-b", bID)
 	if got := shells.RetainedForSession("sess-b"); len(got) != 1 || got[0].ID != bID {
 		t.Fatalf("session b lost its unread command: %+v", got)
 	}
@@ -302,14 +344,14 @@ func TestShellsStopOwnedProcesses(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rootShell := mustShell(t, shells, rootID)
-	nestedShell := mustShell(t, shells, nestedID)
+	rootShell := mustShell(t, shells, "owner", rootID)
+	nestedShell := mustShell(t, shells, "sibling", nestedID)
 
 	if err := shells.StopWorkspace(root); err != nil {
 		t.Fatalf("StopWorkspace: %v", err)
 	}
 	for id, sh := range map[string]*Shell{rootID: rootShell, nestedID: nestedShell} {
-		if _, exists := shells.Get(id); exists {
+		if _, exists := shells.Get(sh.sessionID, id); exists {
 			t.Fatalf("StopWorkspace retained shell %s", id)
 		}
 		select {
@@ -318,21 +360,21 @@ func TestShellsStopOwnedProcesses(t *testing.T) {
 			t.Fatalf("StopWorkspace returned before shell %s joined", id)
 		}
 	}
-	if _, exists := shells.Get(outsideID); !exists {
+	if _, exists := shells.Get("owner", outsideID); !exists {
 		t.Fatal("StopWorkspace removed a shell outside its tree")
 	}
 
 	if err := shells.StopSession("owner"); err != nil {
 		t.Fatalf("StopSession: %v", err)
 	}
-	if _, exists := shells.Get(outsideID); exists {
+	if _, exists := shells.Get("owner", outsideID); exists {
 		t.Fatal("StopSession retained its shell outside the restored tree")
 	}
 }
 
-func waitForDone(t *testing.T, shells *Shells, id string) {
+func waitForDone(t *testing.T, shells *Shells, sessionID, id string) {
 	t.Helper()
-	sh, ok := shells.Get(id)
+	sh, ok := shells.Get(sessionID, id)
 	if !ok {
 		return
 	}
@@ -362,12 +404,12 @@ func TestShellsStopEveryAliasOfTheRestoredTree(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	aliasShell := mustShell(t, shells, aliasID)
+	aliasShell := mustShell(t, shells, "sibling", aliasID)
 
 	if err := shells.StopWorkspace(tree); err != nil {
 		t.Fatalf("StopWorkspace: %v", err)
 	}
-	if _, exists := shells.Get(aliasID); exists {
+	if _, exists := shells.Get("sibling", aliasID); exists {
 		t.Fatal("a shell inside the restored tree survived because its cwd spells the tree through a symlink")
 	}
 	select {
