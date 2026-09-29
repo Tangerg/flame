@@ -25,7 +25,9 @@ func TestSQLiteTreeCommitterConformance(t *testing.T) {
 		})
 		driver := &sqliteTreeCommitterDriver{interactionSession: &interactionSession{
 			start: runs.RootExecutionStart{SessionID: "session"}, lifetime: newInteractionLifetime(t.Context()),
-			executionTrees: persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db)),
+			executionTrees: &scopeCommitCheckingStore{
+				ExecutionTreeStore: persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db)),
+			},
 		}}
 		t.Cleanup(driver.lifetime.stopRelease)
 		t.Cleanup(driver.lifetime.stopReconciling)

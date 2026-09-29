@@ -21,7 +21,9 @@ export class RetirableTaskCohort {
   }
 
   settle<T>(operation: PromiseLike<T>): Promise<T> {
-    this.assertCurrent();
+    // The operation has already started and can retire its cohort before handoff.
+    // Observe it even when this waiter no longer has publication rights.
+    const observed = Promise.resolve(operation);
     return new Promise<T>((resolve, reject) => {
       let pending = true;
       const finish = () => {
@@ -34,7 +36,7 @@ export class RetirableTaskCohort {
         if (finish()) reject(this.#retiredError);
       };
       this.#settlers.add(retire);
-      operation.then(
+      void observed.then(
         (value) => {
           if (finish()) resolve(value);
         },
