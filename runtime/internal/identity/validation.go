@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -49,23 +50,19 @@ func ValidateText(value string, maximumCharacters int) error {
 	return nil
 }
 
-// ValidateURISafeASCII is the byte envelope shared by every identity that must
-// survive a URI path segment unescaped: 1 to maximumBytes of unreserved ASCII.
+// URISafeASCIIPattern preserves the executor's colon-delimited identities. The
+// protocol generator consumes this same envelope instead of redefining it.
+const URISafeASCIIPattern = `^[A-Za-z0-9._:-]+$`
+
+var uriSafeASCII = regexp.MustCompile(URISafeASCIIPattern)
+
+// ValidateURISafeASCII is the byte envelope shared by durable execution identities:
+// ASCII letters, digits, dot, underscore, colon, and hyphen, within maximumBytes.
 // Like ValidateText it reports the defect as a phrase, so each caller names the
 // kind it validated. A byte is a character here because the set is ASCII.
 func ValidateURISafeASCII(value string, maximumBytes int) error {
 	envelope := fmt.Errorf("must contain 1 to %d URI-safe ASCII bytes", maximumBytes)
-	if len(value) == 0 || len(value) > maximumBytes {
-		return envelope
-	}
-	for index := range len(value) {
-		character := value[index]
-		if character >= 'a' && character <= 'z' ||
-			character >= 'A' && character <= 'Z' ||
-			character >= '0' && character <= '9' ||
-			character == '-' || character == '_' || character == '.' || character == ':' {
-			continue
-		}
+	if len(value) > maximumBytes || !uriSafeASCII.MatchString(value) {
 		return envelope
 	}
 	return nil

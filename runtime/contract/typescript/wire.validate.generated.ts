@@ -2016,7 +2016,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, []),
   ModelInvocation: allOf([
     object({
-      callId: allOf([text(), maxLength(256), pattern("^[A-Za-z0-9._~-]+$")]),
+      callId: allOf([text(), maxLength(256), pattern("^[A-Za-z0-9._:-]+$")]),
       firstOutputLatencyMillis: allOf([integer(), minimum(0)]),
       runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       segmentId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -3550,7 +3550,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["provider"]),
   ToolAttempt: allOf([
     object({
-      callId: allOf([text(), maxLength(256), pattern("^[A-Za-z0-9._~-]+$")]),
+      callId: allOf([text(), maxLength(256), pattern("^[A-Za-z0-9._:-]+$")]),
       itemId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       segmentId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),

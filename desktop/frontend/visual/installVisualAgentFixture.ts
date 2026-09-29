@@ -54,7 +54,9 @@ import { workbenchChat } from "@/plugins/builtin/shell/workbench";
 import { MODELS_KEY, SelectableModel } from "@/plugins/builtin/providers/public/queries";
 import { installWorkspaceNavigationPort } from "@/plugins/builtin/workspace/adapters/navigationStatePort";
 import { installRuntimeCapabilityPort } from "@/plugins/builtin/runtime/adapters/runtimeConnectionProjection";
+import { bindRuntimeEndpointConfiguration } from "@/plugins/builtin/runtime/adapters/runtimeEndpointConfiguration";
 import {
+  RUNTIME_SERVER_SCOPE,
   RUNTIME_STREAM,
   RuntimeConnectionGeneration,
 } from "@/plugins/builtin/runtime/public/services";
@@ -62,7 +64,7 @@ import { queryClient } from "@/lib/queryClient";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 import { toolRenderingPlugins } from "@/main/builtinPlugins";
 import type { InterruptResumeInput } from "@/plugins/builtin/agent/application/ports/sessionView";
-import { DATA_PROVIDER, definePlugin } from "@/plugins/sdk";
+import { CONFIG, DATA_PROVIDER, definePlugin } from "@/plugins/sdk";
 import { useRuntimeConnectionStore } from "@/plugins/builtin/runtime/adapters/runtimeConnectionProjection";
 import { visualFeatureCapabilities } from "./agentFixtureFacts";
 import {
@@ -215,9 +217,14 @@ const VISUAL_RUNTIME_GENERATION = RuntimeConnectionGeneration.forProcess(
 
 const visualRuntimeStream = definePlugin({
   name: "flame.visual.runtime-stream-ports",
-  provides: { stream: RUNTIME_STREAM },
-  setup() {
+  provides: { stream: RUNTIME_STREAM, scope: RUNTIME_SERVER_SCOPE },
+  requires: { config: CONFIG },
+  setup(ctx) {
+    bindRuntimeEndpointConfiguration(ctx, (commit) => commit(), {
+      endpoint: "https://visual.flame.test",
+    });
     return {
+      scope: { subscribeReplacement: () => () => undefined },
       stream: {
         connectionGeneration: () => VISUAL_RUNTIME_GENERATION,
         subscribeConnection: () => () => undefined,

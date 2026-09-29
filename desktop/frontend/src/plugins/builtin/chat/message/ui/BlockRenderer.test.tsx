@@ -1,4 +1,5 @@
 import { navigator } from "@/lib/navigation";
+import { AnimatePresence } from "motion/react";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { AgentRunView, Message, ToolCall } from "@/plugins/sdk/types/agentSessionView";
@@ -15,6 +16,76 @@ const CTX: BlockCtx = {
   onToggleExpand: vi.fn(),
   textReveal: "smooth",
 };
+
+it("animates opaque tool arrivals without remounting their surface when regrouped", () => {
+  const first: ToolCall = {
+    id: "read-first",
+    runId: "root-run",
+    name: "read",
+    fn: "Read first file",
+    args: "{}",
+    safetyClass: "safe",
+    status: "running",
+  };
+  const row = {
+    message: { ...message("tool-arrivals", "root-run", first.id), blocks: [] as Message["blocks"] },
+    facts: { toolCalls: {} as Record<string, ToolCall>, delegatedRuns: {} },
+  };
+  const renderRow = () => (
+    <MessageContext.Provider value={{ sessionId: "session-1", message: row.message }}>
+      <AnimatePresence initial={false}>{renderMessageBlocks(row, CTX)}</AnimatePresence>
+    </MessageContext.Provider>
+  );
+  const { container, rerender } = render(renderRow());
+  const expectImmediate = () => {
+    const units = container.querySelectorAll<HTMLElement>("[data-block-anchor]");
+    expect(units.length).toBeGreaterThan(0);
+    for (const unit of units) {
+      const style = getComputedStyle(unit);
+      expect(Number(style.opacity || "1")).toBe(1);
+      expect(style.transform || "none").toBe("none");
+    }
+  };
+
+  row.facts.toolCalls[first.id] = first;
+  row.message.blocks.push({ kind: "tool", toolCallId: first.id });
+  rerender(renderRow());
+  expectImmediate();
+  const surface = container.querySelector<HTMLElement>("[data-block-anchor]")!;
+  expect(surface.style.top).toBe("4px");
+
+  const second = { ...first, id: "read-second", fn: "Read second file" };
+  row.facts.toolCalls[second.id] = second;
+  row.message.blocks.push({ kind: "tool", toolCallId: second.id });
+  rerender(renderRow());
+  expectImmediate();
+  expect(container.querySelector("[data-block-anchor]")).toBe(surface);
+
+  row.message.blocks.push({
+    kind: "reasoning",
+    reasoningId: "compare-files",
+    text: "Compare the files",
+    status: "complete",
+  });
+  row.message.blocks.push({ kind: "text", text: "Both files agree.", status: "complete" });
+  rerender(renderRow());
+  expectImmediate();
+  expect(container.querySelector("[data-block-anchor]")).toBe(surface);
+});
+
+it("does not animate historical tools on initial render", () => {
+  const call = tool("historical-tool");
+  const row = {
+    message: message("historical-message", "root-run", call.id),
+    facts: { toolCalls: { [call.id]: call }, delegatedRuns: {} },
+  };
+  const { container } = render(
+    <MessageContext.Provider value={{ sessionId: "session-1", message: row.message }}>
+      <AnimatePresence initial={false}>{renderMessageBlocks(row, CTX)}</AnimatePresence>
+    </MessageContext.Provider>,
+  );
+  expect(container.querySelector<HTMLElement>("[data-block-anchor]")!.style.top).toBe("0px");
+});
 
 const agentRunCommands = vi.hoisted(() => ({ cancel: vi.fn() }));
 vi.mock("@/plugins/builtin/agent/public/run", () => ({

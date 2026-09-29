@@ -1,8 +1,22 @@
 package identity
 
 import (
+	"strings"
 	"testing"
 )
+
+func TestExecutorIdentityEnvelope(t *testing.T) {
+	for _, value := range []string{"model:root:19", "tool:root:1", "AZaz09._:-", strings.Repeat("x", MaximumExecutorIdentityBytes)} {
+		if err := ValidateEffect(value); err != nil {
+			t.Errorf("valid identity %q: %v", value, err)
+		}
+	}
+	for _, value := range []string{"", "call~1", "call/1", "call%3A1", "call 1", "call\n", "call\x00", "调用", strings.Repeat("x", MaximumExecutorIdentityBytes+1)} {
+		if err := ValidateEffect(value); err == nil {
+			t.Errorf("invalid identity %q accepted", value)
+		}
+	}
+}
 
 func TestExecutorIdentitiesAreDistinctExactValues(t *testing.T) {
 	const text = "process:root_1"

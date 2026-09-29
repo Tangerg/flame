@@ -2,6 +2,13 @@ import type { MessageRenderUnit } from "@/plugins/builtin/agent/public/messagePr
 
 export const BLOCK_ANCHOR_ATTR = "data-block-anchor";
 
+// Grouping changes the navigation target, but not the identity of its first material.
+export function renderUnitKey(messageId: string, unit: MessageRenderUnit): string {
+  if (unit.kind === "wave" && unit.units[0]) return renderUnitKey(messageId, unit.units[0]);
+  if (unit.kind === "toolGroup") return `${messageId}:t:${unit.tools[0]?.id ?? "0"}`;
+  return renderUnitAnchor(messageId, unit);
+}
+
 export function renderUnitAnchor(messageId: string, unit: MessageRenderUnit): string {
   if (unit.kind === "wave") {
     const first = unit.units[0];

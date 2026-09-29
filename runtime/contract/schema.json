@@ -5277,7 +5277,7 @@
         "callId": {
           "type": "string",
           "maxLength": 256,
-          "pattern": "^[A-Za-z0-9._~-]+$"
+          "pattern": "^[A-Za-z0-9._:-]+$"
         },
         "firstOutputLatencyMillis": {
           "type": "integer",
@@ -9961,7 +9961,7 @@
         "callId": {
           "type": "string",
           "maxLength": 256,
-          "pattern": "^[A-Za-z0-9._~-]+$"
+          "pattern": "^[A-Za-z0-9._:-]+$"
         },
         "itemId": {
           "type": "string",

@@ -4,7 +4,28 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
+
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
+
+func TestObservationCallIDsPreserveExecutorIdentityContract(t *testing.T) {
+	values := []string{"", "model:root:19", "tool:root:1", "call~1", "调用", strings.Repeat("a", 256), strings.Repeat("a", 257)}
+	for character := range 128 {
+		values = append(values, "call"+string(rune(character)))
+	}
+	for _, value := range values {
+		wantValid := runtimeidentity.ValidateEffect(value) == nil
+		for _, observation := range []WireValidator{
+			ModelInvocation{CallID: value, RunID: "run_1", SegmentID: "seg_1", State: ModelInvocationStarted, StartedAt: time.Unix(1, 0)},
+			ToolAttempt{CallID: value, RunID: "run_1", SegmentID: "seg_1", ItemID: "item_1", State: ToolAttemptStarted, StartedAt: time.Unix(1, 0)},
+		} {
+			if err := observation.ValidateWire(); (err == nil) != wantValid {
+				t.Errorf("%T callId %q: %v; executor accepts = %t", observation, value, err, wantValid)
+			}
+		}
+	}
+}
 
 func TestPublicIdentityValidationUsesRuntimeSemantics(t *testing.T) {
 	for name, validate := range map[string]func(string) error{

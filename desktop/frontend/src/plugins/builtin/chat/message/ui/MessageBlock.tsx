@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { AnimatePresence } from "motion/react";
 import type { BlockCtx } from "./BlockRenderer";
 import type { TranscriptRow } from "@/plugins/builtin/agent/public/conversation";
 import { memo, useEffect, useMemo, useRef, type ReactNode } from "react";
@@ -16,7 +17,6 @@ import { cn } from "@/lib/classNames";
 import { useT } from "@/lib/i18n";
 import { MESSAGE_CONTENT_CLASS } from "./messageContent";
 import { MessageContextMenu } from "./MessageContextMenu";
-import { AnimatePresence } from "motion/react";
 import { renderBlock, renderMessageBlocks } from "./BlockRenderer";
 import {
   MessageVisibleMaterialOwner,

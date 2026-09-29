@@ -12,11 +12,17 @@ import { ToolCard, ToolGroup } from "@/plugins/builtin/chat/tools/public/renderi
 import { lookupExtensionByKey } from "@/plugins/sdk";
 import { TOOL_STANDING_SURFACE } from "@/plugins/sdk/kernelPoints";
 import { messageBlockRenderUnits, narratedBlocks } from "../application/messageBlockModel";
-import { BLOCK_ANCHOR_ATTR, renderUnitAnchor } from "../application/renderUnitAnchor";
+import {
+  BLOCK_ANCHOR_ATTR,
+  renderUnitAnchor,
+  renderUnitKey,
+} from "../application/renderUnitAnchor";
 import { unitSeam } from "../application/renderUnitRhythm";
 import { seamStep } from "./messageStyles";
 import { DelegatedRunLink } from "./DelegatedRunLink";
 import { NarrativeWave } from "./NarrativeWave";
+
+const styles = stylex.create({ arrival: { position: "relative" } });
 
 export function renderBlock(block: ContentBlock, key: number, facts: TurnFacts, ctx: BlockCtx) {
   switch (block.kind) {
@@ -137,10 +143,13 @@ export function renderMessageBlocks(
     const anchor = renderUnitAnchor(message.id, unit);
     return (
       <motion.div
-        key={anchor}
+        key={renderUnitKey(message.id, unit)}
         {...stepEnter}
         {...{ [BLOCK_ANCHOR_ATTR]: anchor }}
-        className={stylex.props(seamStep[unitSeam(units[index - 1], unit) ?? "none"]).className}
+        className={
+          stylex.props(styles.arrival, seamStep[unitSeam(units[index - 1], unit) ?? "none"])
+            .className
+        }
       >
         {renderUnit(unit, facts, ctx)}
       </motion.div>

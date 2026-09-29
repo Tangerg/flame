@@ -103,7 +103,7 @@ func TestExportTrajectoryReopensCompleteEvidenceThroughBinding(t *testing.T) {
 		}
 		if _, err := db.ExecContext(t.Context(), `INSERT INTO model_invocations
 			(call_id,session_id,run_id,segment_id,state,started_at,finished_at,usage) VALUES(?,?,?,?,?,?,?,?)`,
-			fmt.Sprintf("call_export_%03d", index), ses.ID, runID, "seg_export", state,
+			fmt.Sprintf("model:export:%03d", index), ses.ID, runID, "seg_export", state,
 			at.Add(time.Duration(index)*time.Millisecond).UnixNano(), at.Add(time.Second).UnixNano(), usage,
 		); err != nil {
 			t.Fatal(err)
@@ -112,7 +112,7 @@ func TestExportTrajectoryReopensCompleteEvidenceThroughBinding(t *testing.T) {
 	for index, state := range []string{"incomplete", "completed"} {
 		if _, err := db.ExecContext(t.Context(), `INSERT INTO tool_invocations
 			(call_id,item_id,session_id,run_id,segment_id,state,started_at,finished_at) VALUES(?,?,?,?,?,?,?,?)`,
-			"call_export_tool", "item_export_spawn", ses.ID, root.ID(), fmt.Sprintf("seg_tool_%d", index), state,
+			"tool:export:1", "item_export_spawn", ses.ID, root.ID(), fmt.Sprintf("seg_tool_%d", index), state,
 			at.Add(time.Duration(index)*time.Second).UnixNano(), at.Add(time.Duration(index+1)*time.Second).UnixNano(),
 		); err != nil {
 			t.Fatal(err)
@@ -142,6 +142,19 @@ func TestExportTrajectoryReopensCompleteEvidenceThroughBinding(t *testing.T) {
 	options := CallOptions{RequestMeta: protocol.RequestMeta{ClientCapabilities: &protocol.ClientCapabilities{
 		Features: map[string]protocol.FeaturePreference{protocol.FeatureSubagents: {Enabled: true}},
 	}}}
+	page, err := rt.ListSessionTrajectory(t.Context(), protocol.ListSessionTrajectoryRequest{SessionID: ses.ID}, options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.ContainsFunc(page.Data, func(entry protocol.TrajectoryEntry) bool {
+		return entry.Model != nil && entry.Model.CallID == "model:export:100"
+	}) {
+		t.Fatal("timeline lost the exact persisted model identity")
+	}
+	calls, err := rt.ListModelInvocations(t.Context(), protocol.ListModelInvocationsRequest{RunID: root.ID()}, options)
+	if err != nil || len(calls.Data) == 0 || calls.Data[0].CallID != "model:export:100" {
+		t.Fatalf("model invocation page = %+v, %v", calls, err)
+	}
 	exported, err := rt.ExportTrajectory(t.Context(), request, options)
 	if err != nil {
 		t.Fatal(err)
@@ -152,6 +165,9 @@ func TestExportTrajectoryReopensCompleteEvidenceThroughBinding(t *testing.T) {
 		len(trajectory.ToolAttempts) != 2 || len(trajectory.Messages) != 1 || len(trajectory.Feedback) != 4 {
 		t.Fatalf("incomplete exported evidence: runs=%d items=%d models=%d tools=%d messages=%d feedback=%d",
 			len(trajectory.Runs), len(trajectory.Items), len(trajectory.ModelInvocations), len(trajectory.ToolAttempts), len(trajectory.Messages), len(trajectory.Feedback))
+	}
+	if trajectory.ModelInvocations[0].CallID != "model:export:000" || trajectory.ToolAttempts[0].CallID != "tool:export:1" {
+		t.Fatal("export changed persisted execution identities")
 	}
 	if trajectory.ModelInvocations[0].Usage == nil || trajectory.ModelInvocations[1].Usage != nil ||
 		trajectory.ModelInvocations[101].State != protocol.ModelInvocationUnknown {

@@ -153,7 +153,7 @@ describe("methods factory", () => {
       limit: 3,
     };
     const model: ModelInvocation = {
-      callId: "call_01",
+      callId: "model:b19956e8cd75a2d474df1e5cfac72dcd864555f47da0bbd39585ec54f7d0957d:19",
       runId: "run_02",
       segmentId: "seg_01",
       startedAt: "2026-07-07T10:00:01Z",

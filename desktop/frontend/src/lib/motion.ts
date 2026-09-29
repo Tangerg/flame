@@ -38,15 +38,16 @@ export const chipPresence = {
   transition: selectionTransition,
 };
 
+// Transcript rows sit inside a masked scroller. Animate their painted position
+// without fading or transforming the whole surface into a composited layer.
 export const stepEnter = {
-  initial: { opacity: 0, y: 4 },
-  animate: { opacity: 1, y: 0 },
+  initial: { top: 4 },
+  animate: { top: 0 },
   transition: selectionTransition,
 };
 
 export const enterUp = {
-  initial: { opacity: 0, y: 6 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -4, transition: disclosureExitTransition },
+  initial: { top: 6 },
+  animate: { top: 0 },
   transition: disclosureTransition,
 };

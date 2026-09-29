@@ -1033,7 +1033,7 @@ func registerTrajectoryValues(s *Shapes) {
 	for _, owner := range []reflect.Type{typeOf[protocol.ModelInvocation](), typeOf[protocol.ToolAttempt]()} {
 		constraints := append(requiredResourceIdentity("runId"), requiredResourceIdentity("segmentId")...)
 		constraints = append(constraints,
-			FieldConstraint{Field: "callId", Kind: ConstraintPattern, Value: `^[A-Za-z0-9._~-]+$`},
+			FieldConstraint{Field: "callId", Kind: ConstraintPattern, Value: runtimeidentity.URISafeASCIIPattern},
 			FieldConstraint{Field: "callId", Kind: ConstraintMaxLength, Limit: runtimeidentity.MaximumExecutorIdentityBytes},
 		)
 		if owner == typeOf[protocol.ToolAttempt]() {

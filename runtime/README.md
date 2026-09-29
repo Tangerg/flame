@@ -29,6 +29,12 @@ likewise refuses requests declaring an older version. There is no legacy endpoin
 fallback. The trajectory document has its own `schemaVersion: 1`, independent of
 the Runtime protocol and importable Session artifacts.
 
+Model invocation and Tool attempt `callId` values preserve the executor's exact
+identity: 1–256 ASCII letters, digits, dots, underscores, colons, or hyphens.
+Their wire validators are generated from the same rule used for persistence.
+Rebuild Runtime and contract consumers together after updating these validators;
+existing stored identities need no migration or rewriting.
+
 The protocol includes bounded `WatchSpec.paths` with advertised subscription limits,
 `checkpoint_conflict` for a safely refused file restore, and
 `prompt_source_too_large` for an AGENTS.md cascade that cannot be included whole.

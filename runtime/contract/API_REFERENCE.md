@@ -727,7 +727,7 @@ TypeScript validator from this single registry projection.
 | `ModelInvocation` | `segmentId` | `nonEmpty` |
 | `ModelInvocation` | `segmentId` | `identity` |
 | `ModelInvocation` | `segmentId` | `maxLength(256)` |
-| `ModelInvocation` | `callId` | `pattern("^[A-Za-z0-9._~-]+$")` |
+| `ModelInvocation` | `callId` | `pattern("^[A-Za-z0-9._:-]+$")` |
 | `ModelInvocation` | `callId` | `maxLength(256)` |
 | `ModelInvocation` | `firstOutputLatencyMillis` | `nonNegative` |
 | `ToolAttempt` | `runId` | `nonEmpty` |
@@ -736,7 +736,7 @@ TypeScript validator from this single registry projection.
 | `ToolAttempt` | `segmentId` | `nonEmpty` |
 | `ToolAttempt` | `segmentId` | `identity` |
 | `ToolAttempt` | `segmentId` | `maxLength(256)` |
-| `ToolAttempt` | `callId` | `pattern("^[A-Za-z0-9._~-]+$")` |
+| `ToolAttempt` | `callId` | `pattern("^[A-Za-z0-9._:-]+$")` |
 | `ToolAttempt` | `callId` | `maxLength(256)` |
 | `ToolAttempt` | `itemId` | `nonEmpty` |
 | `ToolAttempt` | `itemId` | `identity` |

@@ -66,6 +66,76 @@ test("WebKit agent HITL remains keyboard-operable", async ({ page }) => {
   await expectNoPageOverflow(page);
 });
 
+for (const theme of ["light", "dark"] as const) {
+  test(`WebKit tool arrivals animate while staying opaque in ${theme} mode`, async ({ page }) => {
+    await openFixture(page, { fixture: "agent", state: "tool-shells", theme, motion: "full" });
+
+    const frames = await page.evaluate(async () => {
+      const storePath = "/src/plugins/builtin/agent/adapters/agentStore.ts";
+      const fixturePath = "/visual/agentSessionSnapshots.ts";
+      const projectionPath = "/src/plugins/builtin/agent/application/session/sessionSnapshot.ts";
+      const { useAgentStore } = (await import(
+        storePath
+      )) as typeof import("../src/plugins/builtin/agent/adapters/agentStore");
+      const { AGENT_SESSION_SNAPSHOTS, VISUAL_SESSION_ID } = (await import(
+        fixturePath
+      )) as typeof import("./agentSessionSnapshots");
+      const { projectAgentSessionSnapshot } = (await import(
+        projectionPath
+      )) as typeof import("../src/plugins/builtin/agent/application/session/sessionSnapshot");
+      const snapshot = AGENT_SESSION_SNAPSHOTS["tool-shells"];
+      const store = useAgentStore.getState();
+      const frames: { count: number; opacity: string; transform: string; top: number }[][] = [];
+      for (let count = 1; count <= snapshot.items.length; count += 1) {
+        const token = store.beginViewRefresh(VISUAL_SESSION_ID, true);
+        if (!token) throw new Error("Expected a refresh token");
+        const view = projectAgentSessionSnapshot({
+          ...snapshot,
+          items: snapshot.items.slice(0, count),
+        });
+        if (!store.commitViewRefresh(VISUAL_SESSION_ID, token, view)) {
+          throw new Error("Expected the tool arrival to be published");
+        }
+        await new Promise(requestAnimationFrame);
+        await new Promise(requestAnimationFrame);
+        frames.push(
+          [...document.querySelectorAll("[data-turn-id], [data-block-anchor]")].map((node) => {
+            const style = getComputedStyle(node);
+            return {
+              count,
+              opacity: style.opacity,
+              transform: style.transform,
+              top: Number.parseFloat(style.top) || 0,
+            };
+          }),
+        );
+      }
+      return frames;
+    });
+
+    expect(frames.length).toBeGreaterThan(1);
+    expect(frames.flat().some((surface) => surface.top > 0)).toBe(true);
+    for (const frame of frames) {
+      expect(frame.length).toBeGreaterThan(0);
+      for (const surface of frame) {
+        expect(surface.opacity, `item ${surface.count}`).toBe("1");
+        expect(surface.transform, `item ${surface.count}`).toBe("none");
+      }
+    }
+    await expect
+      .poll(() =>
+        page.locator("[data-turn-id], [data-block-anchor]").evaluateAll((nodes) =>
+          nodes.every((node) => {
+            const style = getComputedStyle(node);
+            return style.top === "0px" && style.opacity === "1" && style.transform === "none";
+          }),
+        ),
+      )
+      .toBe(true);
+    await expectNoPageOverflow(page);
+  });
+}
+
 test("WebKit question radio navigation advances through Base UI semantics", async ({ page }) => {
   await openFixture(page, { fixture: "agent", state: "question", theme: "dark" });
 

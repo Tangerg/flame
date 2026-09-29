@@ -1,12 +1,12 @@
 import * as stylex from "@stylexjs/stylex";
+import { AnimatePresence, motion } from "motion/react";
+import { enterUp } from "@/lib/motion";
 import { publishStreamFollow } from "./streamFollow";
 import type { BlockCtx } from "@/plugins/builtin/chat/message/public/rendering";
 import type { TranscriptRow } from "@/plugins/builtin/agent/public/conversation";
 import type { Message } from "@/plugins/sdk/types/agentSessionView";
-import { AnimatePresence, motion } from "motion/react";
 import { memo, useEffect } from "react";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
-import { enterUp } from "@/lib/motion";
 import { cn } from "@/lib/classNames";
 import { dayKey, formatDay } from "@/lib/i18n/relativeTime";
 import { useT } from "@/lib/i18n";
@@ -25,6 +25,7 @@ import { transcriptTurnContentVisibility } from "./transcriptTurnContentVisibili
 import { space } from "@/styles/tokens.stylex";
 
 const ms = stylex.create({
+  arrival: { position: "relative" },
   viewport: { minHeight: 0, flex: 1, overflowY: "auto", overscrollBehavior: "contain" },
   dayPad: { paddingBlock: space.s1 },
   content: { position: "relative", display: "flex", flexDirection: "column", paddingTop: space.s8 },
@@ -118,7 +119,12 @@ const TranscriptTurn = memo(function TranscriptTurn({
         data-turn-id={row.message.id}
         data-turn-role={row.message.role}
         className={
-          stylex.props(rc.gutter, TURN_GAP[gap], transcriptTurnContentVisibility(isLast)).className
+          stylex.props(
+            ms.arrival,
+            rc.gutter,
+            TURN_GAP[gap],
+            transcriptTurnContentVisibility(isLast),
+          ).className
         }
       >
         <MessageBlock

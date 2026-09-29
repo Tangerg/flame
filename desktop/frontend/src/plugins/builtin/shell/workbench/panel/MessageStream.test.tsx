@@ -30,15 +30,6 @@ vi.mock("@/plugins/host/Slot", () => ({
   Slot: ({ name }: { name: string }) => <div data-testid={name} />,
 }));
 
-vi.mock("motion/react", () => ({
-  AnimatePresence: ({ children }: PropsWithChildren) => children,
-  motion: {
-    div: ({ children, "data-turn-id": turnId }: PropsWithChildren<{ "data-turn-id"?: string }>) => (
-      <div data-turn-id={turnId}>{children}</div>
-    ),
-  },
-}));
-
 vi.mock("use-stick-to-bottom", () => {
   const context = { isAtBottom: true, scrollToBottom: vi.fn() };
   const StickToBottom = Object.assign(({ children }: PropsWithChildren) => <div>{children}</div>, {
@@ -103,6 +94,21 @@ describe("MessageStream terminal footer materialization", () => {
   afterEach(() => {
     document.documentElement.removeAttribute("data-motion");
     root.current = { running: true, terminalTurnIndex: () => -1 };
+  });
+
+  it("animates a newly appended turn without fading or transforming its surface", () => {
+    const { container, rerender } = render(
+      <MessageStream rows={[]} ctx={CTX} sessionId="session-arrival" />,
+    );
+    rerender(
+      <MessageStream rows={[transcriptRow("running")]} ctx={CTX} sessionId="session-arrival" />,
+    );
+    const turn = container.querySelector<HTMLElement>("[data-turn-id]");
+    expect(turn).not.toBeNull();
+    const style = getComputedStyle(turn!);
+    expect(Number(style.opacity || "1")).toBe(1);
+    expect(style.transform || "none").toBe("none");
+    expect(turn!.style.top).toBe("6px");
   });
 
   it("keeps the Run outcome out of layout until the terminal visible generation settles", async () => {
