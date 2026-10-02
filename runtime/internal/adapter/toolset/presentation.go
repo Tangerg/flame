@@ -8,10 +8,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Tangerg/scope/tools/content"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/scope/tools/content"
 )
 
 // Presenter owns the client-facing projection of concrete tool schemas. Its
@@ -47,8 +46,8 @@ func PresentationContracts() []PresentationContract {
 }
 
 // Activity returns concise progress text for a known concrete tool.
-func (Presenter) Activity(name string, arguments tool.Arguments) string {
-	descriptor, ok := descriptorFor(name)
+func (Presenter) Activity(ref tool.Ref, arguments tool.Arguments) string {
+	descriptor, ok := descriptorFor(ref)
 	if !ok {
 		return ""
 	}
@@ -190,8 +189,8 @@ func httpMethod(method string) string {
 // Present projects a known tool's canonical arguments and result into the
 // client transcript shape. The second result is optional plain output for
 // clients that render command text separately.
-func (Presenter) Present(name string, arguments tool.Arguments, result tool.Result) (tool.Result, string) {
-	descriptor, ok := descriptorFor(name)
+func (Presenter) Present(ref tool.Ref, arguments tool.Arguments, result tool.Result) (tool.Result, string) {
+	descriptor, ok := descriptorFor(ref)
 	if !ok || descriptor.result.project == nil {
 		return result, ""
 	}

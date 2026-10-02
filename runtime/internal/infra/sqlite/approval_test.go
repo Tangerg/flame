@@ -2,6 +2,7 @@ package sqlite_test
 
 import (
 	"context"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"path/filepath"
 	"testing"
 
@@ -32,7 +33,7 @@ func TestApprovalRuleStore_VisibleScopes(t *testing.T) {
 		}
 	}
 	sessionRule := newApprovalRule(t, approval.ScopeSession, "sess1", "shell", "", approval.Allow)
-	projectRule := newApprovalRule(t, approval.ScopeProject, "/proj/a", "write", "", approval.Deny)
+	projectRule := newApprovalRule(t, approval.ScopeProject, "/proj/a", "edit", "", approval.Deny)
 	globalRule := newApprovalRule(t, approval.ScopeGlobal, "", "read", "", approval.Allow)
 	put(sessionRule)
 	put(projectRule)
@@ -64,28 +65,95 @@ func TestApprovalRuleStore_VisibleScopes(t *testing.T) {
 	}
 }
 
-// TestApprovalRuleStore_UpsertAndDelete verifies Put upserts by id (decision
-// flips, no duplicate row) and Delete removes by id.
-func TestApprovalRuleStore_UpsertAndDelete(t *testing.T) {
-	ctx := context.Background()
+func TestApprovalRuleStoreReplacesDecisionAndAuthority(t *testing.T) {
+	ctx := t.Context()
 	store := newApprovalStore(t)
-	r := newApprovalRule(t, approval.ScopeGlobal, "", "shell", "npm run *", approval.Allow)
-	if err := store.Put(ctx, r); err != nil {
-		t.Fatalf("put: %v", err)
+	rule, err := approval.NewRule(approval.ScopeGlobal, "", testsupport.A2ATool(t, "remote"), "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", approval.Subject{Type: approval.SubjectAll}, approval.Deny)
+	if err != nil {
+		t.Fatal(err)
 	}
-	r.Decision = approval.Deny
-	if err := store.Put(ctx, r); err != nil {
-		t.Fatalf("re-put: %v", err)
+	id := rule.ID
+	for _, decision := range []approval.Decision{approval.Deny, approval.Allow, approval.Deny} {
+		fingerprint := rule.SourceFingerprint
+		if decision == approval.Allow {
+			fingerprint = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+		}
+		next, err := approval.NewRule(rule.Scope, rule.ScopeKey, rule.Tool, fingerprint, rule.Subject, decision)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if next.ID != id {
+			t.Fatal("changing a decision changed the rule identity")
+		}
+		if err := store.Put(ctx, next); err != nil {
+			t.Fatal(err)
+		}
+		rules, err := store.Visible(ctx, "s", "/p", approval.MaximumVisibleRules+1)
+		if err != nil || len(rules) != 1 || rules[0] != next {
+			t.Fatalf("rules after %s = %v, %v; want [%v]", decision, rules, err, next)
+		}
+		if got, found, err := approval.Decide(rules, approval.Query{Tool: next.Tool, SourceFingerprint: fingerprint}); err != nil || !found || got != decision {
+			t.Fatalf("decision = %v, %v, %v; want %s", got, found, err, decision)
+		}
 	}
-	rules, _ := store.Visible(ctx, "s", "/p", approval.MaximumVisibleRules+1)
-	if len(rules) != 1 || rules[0].Decision != approval.Deny || rules[0].Subject != "npm run *" {
-		t.Fatalf("after upsert = %+v, want one Deny rule (no duplicate)", rules)
+	if err := store.Delete(ctx, id); err != nil {
+		t.Fatal(err)
 	}
-	if err := store.Delete(ctx, r.ID); err != nil {
-		t.Fatalf("delete: %v", err)
+	rules, err := store.Visible(ctx, "s", "/p", approval.MaximumVisibleRules+1)
+	if err != nil || len(rules) != 0 {
+		t.Fatalf("after delete = %v, %v", rules, err)
 	}
-	if rules, _ := store.Visible(ctx, "s", "/p", approval.MaximumVisibleRules+1); len(rules) != 0 {
-		t.Fatalf("after delete = %+v, want none", rules)
+}
+
+func TestApprovalSubjectTypesSurviveRestart(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "flame.db")
+	db, err := sqlite.Open(t.Context(), dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	store := sqlite.NewApprovalRuleStore(db)
+	ref := testsupport.BuiltInTool(t, "shell")
+	for _, subject := range []approval.Subject{
+		{Type: approval.SubjectGlob, Value: "echo *"},
+		approval.InvocationSubject("echo *"),
+		approval.InvocationSubject("echo ["),
+	} {
+		decision := approval.Deny
+		if subject.Type == approval.SubjectExact {
+			decision = approval.Allow
+		}
+		rule, err := approval.NewRule(approval.ScopeGlobal, "", ref, "", subject, decision)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := store.Put(t.Context(), rule); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	db, err = sqlite.Open(t.Context(), dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rules, err := sqlite.NewApprovalRuleStore(db).Visible(t.Context(), "", "", approval.MaximumVisibleRules+1)
+	if err != nil || len(rules) != 3 {
+		t.Fatalf("restored rules = %+v, %v; want three distinct matchers", rules, err)
+	}
+	for _, test := range []struct {
+		subject string
+		want    approval.Decision
+	}{
+		{"echo *", approval.Allow},
+		{"echo [", approval.Allow},
+		{"echo something else", approval.Deny},
+	} {
+		got, found, err := approval.Decide(rules, approval.Query{Tool: ref, Subject: test.subject})
+		if err != nil || !found || got != test.want {
+			t.Fatalf("subject %q: %s, %t, %v; want %s", test.subject, got, found, err, test.want)
+		}
 	}
 }
 
@@ -94,7 +162,7 @@ func TestApprovalRuleStore_DeleteSessionPreservesBroaderScopes(t *testing.T) {
 	store := newApprovalStore(t)
 	sessionOne := newApprovalRule(t, approval.ScopeSession, "sess1", "shell", "", approval.Allow)
 	sessionTwo := newApprovalRule(t, approval.ScopeSession, "sess2", "shell", "", approval.Allow)
-	project := newApprovalRule(t, approval.ScopeProject, "/proj", "write", "", approval.Allow)
+	project := newApprovalRule(t, approval.ScopeProject, "/proj", "edit", "", approval.Allow)
 	global := newApprovalRule(t, approval.ScopeGlobal, "", "read", "", approval.Allow)
 	for _, rule := range []approval.Rule{sessionOne, sessionTwo, project, global} {
 		if err := store.Put(ctx, rule); err != nil {
@@ -141,7 +209,7 @@ func TestApprovalRuleStore_VisibleEnforcesRequestedBound(t *testing.T) {
 
 func newApprovalRule(t *testing.T, scope approval.Scope, scopeKey, toolName, subject string, decision approval.Decision) approval.Rule {
 	t.Helper()
-	rule, err := approval.NewRule(scope, scopeKey, toolName, subject, decision)
+	rule, err := approval.NewRule(scope, scopeKey, testsupport.BuiltInTool(t, toolName), testsupport.ToolFingerprint(testsupport.BuiltInTool(t, toolName)), approval.InvocationSubject(subject), decision)
 	if err != nil {
 		t.Fatalf("new approval rule: %v", err)
 	}

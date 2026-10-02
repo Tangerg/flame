@@ -15,18 +15,3 @@ func testRemoteToolName(raw string) RemoteToolName {
 	}
 	return name
 }
-
-func testServerToolPolicy(disabled, autoApproved []string) ServerToolPolicy {
-	toNames := func(raw []string) []RemoteToolName {
-		names := make([]RemoteToolName, len(raw))
-		for i, value := range raw {
-			names[i] = testRemoteToolName(value)
-		}
-		return names
-	}
-	policy, err := NewServerToolPolicy(toNames(disabled), toNames(autoApproved))
-	if err != nil {
-		panic(err)
-	}
-	return policy
-}

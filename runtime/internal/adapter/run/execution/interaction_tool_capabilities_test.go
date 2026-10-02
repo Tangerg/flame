@@ -4,6 +4,7 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"reflect"
 	"sync/atomic"
 	"testing"
@@ -38,7 +39,7 @@ func TestInteractionToolUsesScopeAdmittedArguments(t *testing.T) {
 				return interactionToolResponse(chat.ToolCall{ID: "inspect_call", Name: "inspect", Arguments: arguments}, 1, 1), nil
 			})
 			executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-				ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+				ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "inspect")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 				ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 			})
 			events := runInteractionHarness(t.Context(), t, executor, interactionTestStart(), nil)
@@ -91,7 +92,7 @@ func TestInteractionToolSchedulingUsesSafeArguments(t *testing.T) {
 					}, 1, 1), nil
 				})
 				config := InteractionExecutorConfig{
-					ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{resourceScheduledTool{executable}}}},
+					ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "resource")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{resourceScheduledTool{executable}}}},
 					ToolInterpreter: immutableToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 					MaxConcurrentToolCalls: intPointer(2),
 				}
@@ -150,7 +151,7 @@ func (resourceScheduledTool) ConcurrencyPolicy() func(toolcontract.Invocation) (
 
 type immutableToolInterpreter struct{ testInteractionToolInterpreter }
 
-func (immutableToolInterpreter) UsesStandardPolicy(string) bool { return false }
+func (immutableToolInterpreter) UsesStandardPolicy(domaintool.Ref) bool { return false }
 
 type rewriteResourceHook struct{}
 
@@ -187,7 +188,7 @@ func TestInteractionDirectToolCompletionUsesCommittedResults(t *testing.T) {
 		}, 1, 1), nil
 	})
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{directResultTool{executable}}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "answer")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{directResultTool{executable}}}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 	})
 	var committed []chat.ToolResult

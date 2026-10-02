@@ -27,34 +27,34 @@ require (
 	codeberg.org/go-latex/latex v0.3.0 // indirect
 	github.com/BurntSushi/toml v1.6.0 // indirect
 	github.com/Tangerg/go-sdk v1.8.1-scope.1 // indirect
-	github.com/Tangerg/scope/a2a v0.40.0 // indirect
-	github.com/Tangerg/scope/agent v0.40.0 // indirect
-	github.com/Tangerg/scope/core v0.40.0 // indirect
-	github.com/Tangerg/scope/mcp v0.40.0 // indirect
-	github.com/Tangerg/scope/models/alibaba v0.40.0 // indirect
-	github.com/Tangerg/scope/models/anthropic v0.40.0 // indirect
-	github.com/Tangerg/scope/models/azureopenai v0.40.0 // indirect
-	github.com/Tangerg/scope/models/catalog v0.40.0 // indirect
-	github.com/Tangerg/scope/models/deepseek v0.40.0 // indirect
-	github.com/Tangerg/scope/models/fireworks v0.40.0 // indirect
-	github.com/Tangerg/scope/models/google v0.40.0 // indirect
-	github.com/Tangerg/scope/models/groq v0.40.0 // indirect
-	github.com/Tangerg/scope/models/huggingface v0.40.0 // indirect
-	github.com/Tangerg/scope/models/minimax v0.40.0 // indirect
-	github.com/Tangerg/scope/models/mistral v0.40.0 // indirect
-	github.com/Tangerg/scope/models/moonshot v0.40.0 // indirect
-	github.com/Tangerg/scope/models/openai v0.40.0 // indirect
-	github.com/Tangerg/scope/models/openrouter v0.40.0 // indirect
-	github.com/Tangerg/scope/models/perplexity v0.40.0 // indirect
-	github.com/Tangerg/scope/models/protocol/anthropic v0.40.0 // indirect
-	github.com/Tangerg/scope/models/protocol/openai v0.40.0 // indirect
-	github.com/Tangerg/scope/models/together v0.40.0 // indirect
-	github.com/Tangerg/scope/models/xai v0.40.0 // indirect
-	github.com/Tangerg/scope/models/xiaomi v0.40.0 // indirect
-	github.com/Tangerg/scope/models/zhipu v0.40.0 // indirect
-	github.com/Tangerg/scope/otel v0.40.0 // indirect
-	github.com/Tangerg/scope/skills v0.40.0 // indirect
-	github.com/Tangerg/scope/tools v0.40.0 // indirect
+	github.com/Tangerg/scope/a2a v0.41.0 // indirect
+	github.com/Tangerg/scope/agent v0.41.0 // indirect
+	github.com/Tangerg/scope/core v0.41.0 // indirect
+	github.com/Tangerg/scope/mcp v0.41.0 // indirect
+	github.com/Tangerg/scope/models/alibaba v0.41.0 // indirect
+	github.com/Tangerg/scope/models/anthropic v0.41.0 // indirect
+	github.com/Tangerg/scope/models/azureopenai v0.41.0 // indirect
+	github.com/Tangerg/scope/models/catalog v0.41.0 // indirect
+	github.com/Tangerg/scope/models/deepseek v0.41.0 // indirect
+	github.com/Tangerg/scope/models/fireworks v0.41.0 // indirect
+	github.com/Tangerg/scope/models/google v0.41.0 // indirect
+	github.com/Tangerg/scope/models/groq v0.41.0 // indirect
+	github.com/Tangerg/scope/models/huggingface v0.41.0 // indirect
+	github.com/Tangerg/scope/models/minimax v0.41.0 // indirect
+	github.com/Tangerg/scope/models/mistral v0.41.0 // indirect
+	github.com/Tangerg/scope/models/moonshot v0.41.0 // indirect
+	github.com/Tangerg/scope/models/openai v0.41.0 // indirect
+	github.com/Tangerg/scope/models/openrouter v0.41.0 // indirect
+	github.com/Tangerg/scope/models/perplexity v0.41.0 // indirect
+	github.com/Tangerg/scope/models/protocol/anthropic v0.41.0 // indirect
+	github.com/Tangerg/scope/models/protocol/openai v0.41.0 // indirect
+	github.com/Tangerg/scope/models/together v0.41.0 // indirect
+	github.com/Tangerg/scope/models/xai v0.41.0 // indirect
+	github.com/Tangerg/scope/models/xiaomi v0.41.0 // indirect
+	github.com/Tangerg/scope/models/zhipu v0.41.0 // indirect
+	github.com/Tangerg/scope/otel v0.41.0 // indirect
+	github.com/Tangerg/scope/skills v0.41.0 // indirect
+	github.com/Tangerg/scope/tools v0.41.0 // indirect
 	github.com/Tangerg/sse v0.0.6 // indirect
 	github.com/a2aproject/a2a-go/v2 v2.5.0 // indirect
 	github.com/adrg/frontmatter v0.2.0 // indirect

@@ -27,7 +27,7 @@ var (
 
 // RemoteToolName is the unchanged, case-sensitive identity advertised by one
 // MCP server. It is deliberately distinct from the lossy, provider-facing
-// function name produced by [ToolName].
+// function name projected for the model.
 type RemoteToolName struct {
 	value string
 }

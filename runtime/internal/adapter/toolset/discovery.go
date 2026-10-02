@@ -19,13 +19,11 @@ import (
 	"slices"
 	"strings"
 
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/optional"
 	"github.com/Tangerg/scope/core/chat"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 // defaultLimit caps how many tools one search returns (and promotes). Kept small
@@ -88,16 +86,18 @@ func NewDiscovery(withheld []toolcontract.Tool) (*Discovery, error) {
 		return nil, nil
 	}
 	t := &Discovery{byName: make(map[string]discoverableTool, len(withheld))}
-	for _, tool := range withheld {
-		ref, found, err := mcp.IdentifyTool(tool)
+	for _, executable := range withheld {
+		ref, err := Identify(executable)
 		if err != nil {
 			return nil, fmt.Errorf("discovery: resolve Tool identity: %w", err)
 		}
 		source := "built-in"
-		if found {
-			source = ref.Server.String()
+		if ref.Kind() == tool.MCPKind {
+			source = ref.Server().String()
+		} else if ref.Kind() == tool.A2AKind {
+			source = "a2a:" + ref.Name()
 		}
-		def := tool.Definition()
+		def := executable.Definition()
 		e := discoverableTool{
 			definition: def,
 			source:     source,
@@ -376,3 +376,5 @@ func firstLine(s string) string {
 	}
 	return strings.TrimSpace(s)
 }
+
+func (d *Discovery) ToolRef() tool.Ref { ref, _ := tool.BuiltIn(tool.SearchTools); return ref }

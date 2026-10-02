@@ -1,9 +1,12 @@
 package toolset
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 	"slices"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	oteltool "github.com/Tangerg/scope/otel/tool"
 )
@@ -46,12 +49,13 @@ type manifestBuilder struct {
 	visible  []toolcontract.Tool
 	deferred []toolcontract.Tool
 	close    func() error
+	err      error
 }
 
 func (m *manifestBuilder) direct(tools ...toolcontract.Tool) {
 	for _, candidate := range tools {
 		if candidate != nil {
-			m.visible = append(m.visible, candidate)
+			m.visible = append(m.visible, m.builtIn(candidate))
 		}
 	}
 }
@@ -59,7 +63,7 @@ func (m *manifestBuilder) direct(tools ...toolcontract.Tool) {
 func (m *manifestBuilder) deferTools(tools ...toolcontract.Tool) {
 	for _, candidate := range tools {
 		if candidate != nil {
-			m.deferred = append(m.deferred, candidate)
+			m.deferred = append(m.deferred, m.builtIn(candidate))
 		}
 	}
 }
@@ -69,6 +73,9 @@ func (m *manifestBuilder) deferTools(tools ...toolcontract.Tool) {
 // arguments or results, and keeps the capability chain reachable through
 // Unwrap, so identity resolution still sees the original Tool.
 func (m manifestBuilder) manifest(telemetry oteltool.Middleware) (Manifest, error) {
+	if m.err != nil {
+		return Manifest{}, m.err
+	}
 	visible, err := instrumentTools(telemetry, m.visible)
 	if err != nil {
 		return Manifest{}, err
@@ -90,4 +97,62 @@ func instrumentTools(telemetry oteltool.Middleware, tools []toolcontract.Tool) (
 		instrumented = append(instrumented, wrapped)
 	}
 	return instrumented, nil
+}
+
+func (m *manifestBuilder) builtIn(executable toolcontract.Tool) toolcontract.Tool {
+	ref, err := tool.BuiltIn(executable.Definition().Name)
+	if err != nil {
+		m.err = err
+		return executable
+	}
+	identified, err := WithIdentity(executable, ref, "")
+	if err != nil {
+		m.err = err
+		return executable
+	}
+	return identified
+}
+
+// Filter before constructing discovery so excluded tools cannot be advertised.
+func (m *manifestBuilder) excludeCollisions(ctx context.Context) error {
+	if m.err != nil {
+		return m.err
+	}
+	refs := make([]tool.Ref, 0, len(m.visible)+len(m.deferred))
+	for _, executable := range append(slices.Clone(m.visible), m.deferred...) {
+		ref, err := Identify(executable)
+		if err != nil {
+			return err
+		}
+		refs = append(refs, ref)
+	}
+	conflicts := tool.NameConflicts(refs)
+	for ref, others := range conflicts {
+		slog.WarnContext(ctx, "toolset: excluded colliding remote tool", "tool", ref, "conflicts", others)
+	}
+	remove := func(executable toolcontract.Tool) bool {
+		ref, _ := Identify(executable)
+		return len(conflicts[ref]) != 0
+	}
+	m.visible = slices.DeleteFunc(m.visible, remove)
+	m.deferred = slices.DeleteFunc(m.deferred, remove)
+	return nil
+}
+
+// ToolNameConflicts projects the same exclusion rule used by each frozen manifest
+// over the current remote catalog, including exposure changes and A2A sources.
+func (r *Resolver) ToolNameConflicts() (map[tool.Ref][]tool.Ref, error) {
+	mcpTools, err := r.mcpTools()
+	if err != nil {
+		return nil, err
+	}
+	refs := make([]tool.Ref, 0, len(mcpTools)+len(r.a2a))
+	for _, executable := range append(slices.Clone(mcpTools), r.a2a...) {
+		ref, err := Identify(executable)
+		if err != nil {
+			return nil, err
+		}
+		refs = append(refs, ref)
+	}
+	return tool.NameConflicts(refs), nil
 }

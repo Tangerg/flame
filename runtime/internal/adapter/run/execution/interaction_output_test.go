@@ -76,9 +76,7 @@ func TestDelegatedOutputSurvivesColdRestoreWithoutReplyCache(t *testing.T) {
 			store := agent.NewMemoryTreeCommitter()
 			newEngine := func() *agent.Engine {
 				t.Helper()
-				engine, err := agent.NewEngine(agent.EngineConfig{TreeCommitter: store, DeploymentResolver: &interactionDeploymentSet{
-					byRef: map[agent.DeploymentRef]agent.Deployment{tools.Deployment().DeploymentRef(): tools.Deployment()},
-				}})
+				engine, err := agent.NewEngine(agent.EngineConfig{TreeCommitter: store})
 				if err != nil {
 					t.Fatal(err)
 				}

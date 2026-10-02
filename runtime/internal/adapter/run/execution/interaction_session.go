@@ -11,9 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/trace"
-
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
@@ -23,6 +20,8 @@ import (
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
 	otelagent "github.com/Tangerg/scope/otel/agent"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type interactionSession struct {
@@ -39,7 +38,6 @@ type interactionSession struct {
 	accounting          interactionAccounting
 	unknownPollInterval time.Duration
 	statePollInterval   time.Duration
-	mcpToolAutoApproved func(server, tool string) bool
 	maintenance         RunMaintenance
 	lifecycleHooks      InteractionLifecycleHooks
 	buildID             runtimeidentity.BuildID
@@ -133,7 +131,6 @@ func newInteractionSession(
 		),
 		unknownPollInterval: policy.unknownEffectPollInterval,
 		statePollInterval:   policy.statePollInterval,
-		mcpToolAutoApproved: config.MCPToolAutoApproved,
 		maintenance:         config.Maintenance,
 		lifecycleHooks:      config.LifecycleHooks,
 		buildID:             buildID, start: start,
@@ -569,8 +566,8 @@ func executorCheckpointsEqual(left, right runs.ExecutorCheckpoint) bool {
 
 func (i *interactionSession) reportUnknownEffects() bool {
 	ctx := i.lifetime.reconciling
-	ids, readable := i.unknownEffectIDs(ctx)
-	if !readable || len(ids) == 0 {
+	ids, err := i.unknownEffectIDs(ctx)
+	if err != nil || len(ids) == 0 {
 		return false
 	}
 	i.state.mu.Lock()
@@ -792,8 +789,6 @@ func segmentEndFromTermination(termination agent.Termination, duration time.Dura
 			Detail: executorDiagnostic(errors.New(failure.Message())),
 		}
 		switch failure.Code() {
-		case "interaction.model.failed":
-			problem.Kind = run.FailureProviderUnavailable
 		case "interaction.model.invalid_response", "interaction.model.tool_calls_not_completed":
 			problem.Kind = run.FailureProviderRejected
 		case "interaction.delegate.unresolved_effects":

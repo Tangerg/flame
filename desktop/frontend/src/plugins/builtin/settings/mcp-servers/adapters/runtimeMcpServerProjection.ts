@@ -32,8 +32,6 @@ export function mcpServerSettings(server: MCPServer): MCPServerSettings {
       server.handshakeTimeout.type === "bounded"
         ? boundedMCPHandshakeTimeout(server.handshakeTimeout.seconds)
         : UNBOUNDED_MCP_HANDSHAKE,
-    disabledTools: server.disabledTools,
-    autoApproveTools: server.autoApproveTools,
     toolCount: status.type === "connected" ? status.toolCount : undefined,
   };
 }

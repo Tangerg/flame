@@ -7,6 +7,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -25,6 +26,7 @@ type approvalPolicyFake struct {
 	rules            []approval.Rule
 	rulesForSession  string
 	forgottenRuleIDs []string
+	setRuleErr       error
 }
 
 func (a *approvalPolicyFake) DefaultMode(context.Context) (approval.Mode, error) { return a.mode, nil }
@@ -34,9 +36,13 @@ func (a *approvalPolicyFake) SetDefaultMode(_ context.Context, mode approval.Mod
 	return nil
 }
 
-func (a *approvalPolicyFake) Rules(_ context.Context, sessionID, _ string) ([]approval.Rule, error) {
+func (a *approvalPolicyFake) Rules(_ context.Context, sessionID, _ string) ([]approvals.RuleView, error) {
 	a.rulesForSession = sessionID
-	return a.rules, nil
+	var view []approvals.RuleView
+	for _, rule := range a.rules {
+		view = append(view, approvals.RuleView{Rule: rule})
+	}
+	return view, nil
 }
 
 func (a *approvalPolicyFake) Forget(_ context.Context, id string) error {
@@ -118,8 +124,14 @@ func TestListApprovalRulesMapsToWire(t *testing.T) {
 		ID:       "rule_1",
 		Scope:    approval.ScopeProject,
 		ScopeKey: "/repo",
-		Tool:     "shell",
-		Subject:  "npm test",
+		Tool: func() tool.Ref {
+			ref, err := tool.BuiltIn("shell")
+			if err != nil {
+				panic(err)
+			}
+			return ref
+		}(),
+		Subject:  approval.InvocationSubject("npm test"),
 		Decision: approval.Allow,
 	}}}
 	s := handlerWithApprovals(rt, fakeSessionLookup{err: session.ErrNotFound})
@@ -145,5 +157,32 @@ func TestForgetApprovalRuleMapsToWire(t *testing.T) {
 	}
 	if len(rt.forgottenRuleIDs) != 1 || rt.forgottenRuleIDs[0] != "rule_1" {
 		t.Fatalf("forgotten = %+v, want rule_1", rt.forgottenRuleIDs)
+	}
+}
+
+func (a *approvalPolicyFake) SetRule(context.Context, tool.Ref, approval.Scope, string, string, approval.Subject, approval.Decision) error {
+	return a.setRuleErr
+}
+
+func TestSetApprovalRuleProjectsActionableFailures(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		cause error
+		want  error
+	}{
+		{"invalid subject or source", approval.ErrInvalidRule, protocol.ErrInvalidParams},
+		{"unknown session", session.ErrNotFound, protocol.ErrSessionNotFound},
+		{"storage failure", errors.New("storage unavailable"), protocol.ErrInternalError},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			handler := handlerWithApprovals(&approvalPolicyFake{setRuleErr: test.cause}, nil)
+			err := handler.SetApprovalRule(t.Context(), protocol.SetApprovalRuleRequest{Subject: protocol.ApprovalSubject{Type: protocol.ApprovalSubjectAll}, Tool: protocol.ToolRef{Type: protocol.ToolRefBuiltIn, Name: "shell"}, Scope: protocol.ApprovalRuleScopeGlobal, Decision: protocol.ApprovalRuleDecisionAllow})
+			if failure := ProjectError(err); !errors.Is(failure, test.want) {
+				t.Fatalf("failure = %v, want %v", failure, test.want)
+			}
+			if test.cause == approval.ErrInvalidRule && !errors.Is(err, test.cause) {
+				t.Fatal("validation projection discarded its cause")
+			}
+		})
 	}
 }

@@ -119,14 +119,25 @@ describe("runtime MCP data providers", () => {
     expect(request.params).toEqual({ server: "git" });
     respondSuccess(transport, request.id, {
       data: [
-        { server: "git", name: "status" },
-        { server: "git", name: "log", description: "Read history" },
+        { server: "git", name: "status", modelName: "git_status", nameConflicts: [] },
+        {
+          server: "git",
+          name: "log",
+          description: "Read history",
+          modelName: "git_log",
+          nameConflicts: [{ type: "mcp", server: "git.log", name: "query" }],
+        },
       ],
     });
 
     await expect(pending).resolves.toEqual([
-      { name: "status", description: "" },
-      { name: "log", description: "Read history" },
+      { name: "status", description: "", modelName: "git_status", nameConflicts: [] },
+      {
+        name: "log",
+        description: "Read history",
+        modelName: "git_log",
+        nameConflicts: ["mcp/git.log/query"],
+      },
     ]);
   });
 

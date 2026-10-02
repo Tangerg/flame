@@ -31,7 +31,7 @@ func (a *app) applyRuntimeInvalidation(event changefeed.Event) {
 	a.refreshScheduleReader(event.Type == protocol.RuntimeSchedulesChanged)
 	a.refreshHooksReader(event.Type == protocol.RuntimeHooksChanged)
 	a.refreshModelReader(event.Type == protocol.RuntimeModelsChanged)
-	a.refreshApprovalReader(event.Type == protocol.RuntimeApprovalsChanged)
+	a.refreshApprovalReader(event.Type == protocol.RuntimeApprovalsChanged || event.Type == protocol.RuntimeMCPChanged)
 	a.refreshAgentMemoryReader(event.Type == protocol.RuntimeAgentMemoryChanged)
 	a.applySessionInvalidation(
 		invalidatesSessionCatalog(event),
@@ -46,7 +46,7 @@ func (a *app) applyRuntimeResync(topics []protocol.RuntimeTopic) {
 	a.refreshScheduleReader(slices.Contains(topics, protocol.TopicSchedulesChanged))
 	a.refreshHooksReader(slices.Contains(topics, protocol.TopicHooksChanged))
 	a.refreshModelReader(slices.Contains(topics, protocol.TopicModelsChanged))
-	a.refreshApprovalReader(slices.Contains(topics, protocol.TopicApprovalsChanged))
+	a.refreshApprovalReader(slices.Contains(topics, protocol.TopicApprovalsChanged) || slices.Contains(topics, protocol.TopicMCPChanged))
 	a.refreshAgentMemoryReader(slices.Contains(topics, protocol.TopicAgentMemoryChanged))
 	a.applySessionInvalidation(
 		invalidatesSessionCatalog(changefeed.Event{Type: protocol.RuntimeResync, Topics: topics}),

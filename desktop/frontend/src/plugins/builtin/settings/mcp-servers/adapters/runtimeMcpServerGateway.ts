@@ -64,8 +64,6 @@ function candidate(input: MCPServerInput): MCPServerCandidate {
     description: input.description,
     connection: connectionInput(input),
     handshakeTimeout: wireHandshakeTimeout(input.handshakeTimeout),
-    disabledTools: input.disabledTools,
-    autoApproveTools: input.autoApproveTools,
   };
 }
 
@@ -75,8 +73,6 @@ function updateRequest(name: string, input: MCPServerInput): UpdateMCPServerRequ
     description: input.description ?? "",
     connection: connectionInput(input),
     handshakeTimeout: wireHandshakeTimeout(input.handshakeTimeout),
-    disabledTools: input.disabledTools ?? [],
-    autoApproveTools: input.autoApproveTools ?? [],
   };
 }
 
@@ -117,6 +113,9 @@ function runtimeMCPServerGateway(client: FlameClient): MCPServerGateway {
     async setEnabled(name, enabled) {
       const saved = await client.mcp.update({ server: name, enabled });
       return mcpServerSettings(saved);
+    },
+    async setToolExposure(server, name, disabled) {
+      await client.mcp.setToolExposure({ server, name, disabled });
     },
     async reconnect(name) {
       await client.mcp.reconnect(name);

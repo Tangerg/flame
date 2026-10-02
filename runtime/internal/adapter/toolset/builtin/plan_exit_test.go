@@ -2,6 +2,7 @@ package builtin
 
 import (
 	"context"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"strings"
 	"testing"
 	"time"
@@ -53,7 +54,7 @@ func planContext(t *testing.T, sessionID string) context.Context {
 
 func balancedPlanPolicy(t *testing.T) *approvals.RuntimePolicy {
 	t.Helper()
-	policy, err := approvals.NewRuntimePolicy(approval.ModeBalanced, emptyPlanRules{}, &modeStore{states: make(map[string]approval.SessionMode)}, nil)
+	policy, err := approvals.NewRuntimePolicy(approval.ModeBalanced, emptyPlanRules{}, &modeStore{states: make(map[string]approval.SessionMode)}, testsupport.ToolAuthorities{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

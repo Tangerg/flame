@@ -2,6 +2,8 @@ package execution
 
 import (
 	"context"
+	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
@@ -61,7 +63,7 @@ func TestDurableProjectStateIsAddressedByTheWorkspace(t *testing.T) {
 		), nil
 	})
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver: staticInteractionTools{
+		ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "write")},
 			manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}},
 		},
 		ToolInterpreter: testInteractionToolInterpreter{},

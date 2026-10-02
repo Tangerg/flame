@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-09-28",
+  "protocolVersion": "2026-10-02",
   "features": [
     "reasoning",
     "multimodal",
@@ -622,6 +622,34 @@
       ]
     },
     {
+      "name": "mcp.tools.exposure",
+      "kind": "unary",
+      "operation": "query",
+      "idempotency": "none",
+      "replayCursor": "none",
+      "pagination": "none",
+      "errors": [
+        "capability_not_negotiated"
+      ],
+      "features": [
+        "mcp"
+      ]
+    },
+    {
+      "name": "mcp.tools.setExposure",
+      "kind": "unary",
+      "operation": "command",
+      "idempotency": "replayResponse",
+      "replayCursor": "none",
+      "pagination": "none",
+      "errors": [
+        "capability_not_negotiated"
+      ],
+      "features": [
+        "mcp"
+      ]
+    },
+    {
       "name": "mcp.servers.list",
       "kind": "unary",
       "operation": "query",
@@ -776,6 +804,14 @@
       "errors": [
         "workspace_unavailable"
       ]
+    },
+    {
+      "name": "approval.setRule",
+      "kind": "unary",
+      "operation": "command",
+      "idempotency": "replayResponse",
+      "replayCursor": "none",
+      "pagination": "none"
     },
     {
       "name": "approval.getMode",
@@ -1252,7 +1288,9 @@
           "mcp.servers.reconnect",
           "mcp.servers.test",
           "mcp.servers.update",
+          "mcp.tools.exposure",
           "mcp.tools.list",
+          "mcp.tools.setExposure",
           "modelInvocations.list",
           "plan.get",
           "runs.cancel",
@@ -1933,6 +1971,26 @@
       ]
     },
     {
+      "method": "mcp.tools.exposure",
+      "rules": [
+        {
+          "requires": [
+            "mcp"
+          ]
+        }
+      ]
+    },
+    {
+      "method": "mcp.tools.setExposure",
+      "rules": [
+        {
+          "requires": [
+            "mcp"
+          ]
+        }
+      ]
+    },
+    {
       "method": "mcp.servers.list",
       "rules": [
         {
@@ -2275,6 +2333,12 @@
   ],
   "toolResultPresentations": [
     {
+      "toolName": "apply_patch",
+      "schema": {
+        "$ref": "schema.json#/$defs/PatchResult"
+      }
+    },
+    {
       "toolName": "glob",
       "schema": {
         "$ref": "schema.json#/$defs/SearchResult"
@@ -2284,12 +2348,6 @@
       "toolName": "grep",
       "schema": {
         "$ref": "schema.json#/$defs/SearchResult"
-      }
-    },
-    {
-      "toolName": "apply_patch",
-      "schema": {
-        "$ref": "schema.json#/$defs/PatchResult"
       }
     },
     {
@@ -3280,6 +3338,89 @@
       ]
     },
     {
+      "type": "ToolRef",
+      "discriminator": "type",
+      "variants": [
+        {
+          "tag": "builtIn",
+          "required": [
+            "name"
+          ],
+          "allowedValues": [
+            {
+              "field": "name",
+              "values": [
+                "apply_patch",
+                "ask_user",
+                "create_goal",
+                "create_schedule",
+                "delete_schedule",
+                "delegate_task",
+                "edit",
+                "enter_plan_mode",
+                "exit_plan_mode",
+                "get_goal",
+                "glob",
+                "grep",
+                "http_request",
+                "list_schedules",
+                "list_skills",
+                "load_skill",
+                "lsp",
+                "propose_skill",
+                "read",
+                "read_shell_output",
+                "read_skill_resource",
+                "read_tool_result",
+                "report_goal_outcome",
+                "search_memory",
+                "search_tools",
+                "set_plan",
+                "shell",
+                "stop_shell",
+                "web_fetch",
+                "web_search"
+              ]
+            }
+          ]
+        },
+        {
+          "tag": "mcp",
+          "required": [
+            "server",
+            "name"
+          ]
+        },
+        {
+          "tag": "a2a",
+          "required": [
+            "endpoint"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "ApprovalSubject",
+      "discriminator": "type",
+      "variants": [
+        {
+          "tag": "all"
+        },
+        {
+          "tag": "exact",
+          "required": [
+            "value"
+          ]
+        },
+        {
+          "tag": "glob",
+          "required": [
+            "value"
+          ]
+        }
+      ]
+    },
+    {
       "type": "Interrupt",
       "discriminator": "type",
       "variants": [
@@ -3881,6 +4022,47 @@
           ],
           "required": [
             "settledAt"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "SetApprovalRuleRequest",
+      "rules": [
+        {
+          "when": [
+            {
+              "field": "scope",
+              "operator": "equals",
+              "value": "global"
+            }
+          ],
+          "forbidden": [
+            "sessionId"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "scope",
+              "operator": "equals",
+              "value": "session"
+            }
+          ],
+          "required": [
+            "sessionId"
+          ]
+        },
+        {
+          "when": [
+            {
+              "field": "scope",
+              "operator": "equals",
+              "value": "project"
+            }
+          ],
+          "required": [
+            "sessionId"
           ]
         }
       ]
@@ -7547,6 +7729,36 @@
       ]
     },
     {
+      "type": "ToolRef",
+      "rules": [
+        {
+          "field": "server",
+          "constraint": "pattern(\"^[a-z0-9][a-z0-9._-]{0,31}$\")"
+        },
+        {
+          "field": "name",
+          "constraint": "pattern(\"^[A-Za-z0-9_.-]{1,128}$\")"
+        },
+        {
+          "field": "endpoint",
+          "constraint": "pattern(\"^[A-Za-z0-9_-]{1,64}$\")"
+        }
+      ]
+    },
+    {
+      "type": "SetApprovalRuleRequest",
+      "rules": [
+        {
+          "field": "sessionId",
+          "constraint": "identity"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "maxLength(256)"
+        }
+      ]
+    },
+    {
       "type": "ApprovalRule",
       "rules": [
         {
@@ -7562,18 +7774,14 @@
           "constraint": "maxLength(256)"
         },
         {
-          "field": "tool",
-          "constraint": "pattern(\"\\\\S\")"
+          "field": "modelName",
+          "constraint": "pattern(\"^[A-Za-z0-9_-]{1,64}$\")"
         }
       ]
     },
     {
       "type": "ListApprovalRulesRequest",
       "rules": [
-        {
-          "field": "sessionId",
-          "constraint": "nonEmpty"
-        },
         {
           "field": "sessionId",
           "constraint": "identity"
@@ -7599,6 +7807,40 @@
         {
           "field": "id",
           "constraint": "nonEmpty"
+        }
+      ]
+    },
+    {
+      "type": "MCPToolExposure",
+      "rules": [
+        {
+          "field": "server",
+          "constraint": "pattern(\"^[a-z0-9][a-z0-9._-]{0,31}$\")"
+        },
+        {
+          "field": "disabledTools",
+          "constraint": "maxItems(2048)"
+        },
+        {
+          "field": "disabledTools",
+          "constraint": "uniqueItems"
+        },
+        {
+          "field": "disabledTools",
+          "constraint": "patternItems(\"^[A-Za-z0-9_.-]{1,128}$\")"
+        }
+      ]
+    },
+    {
+      "type": "SetMCPToolExposureRequest",
+      "rules": [
+        {
+          "field": "server",
+          "constraint": "pattern(\"^[a-z0-9][a-z0-9._-]{0,31}$\")"
+        },
+        {
+          "field": "name",
+          "constraint": "pattern(\"^[A-Za-z0-9_.-]{1,128}$\")"
         }
       ]
     },
@@ -7648,30 +7890,6 @@
         {
           "field": "name",
           "constraint": "pattern(\"^[a-z0-9][a-z0-9._-]{0,31}$\")"
-        },
-        {
-          "field": "disabledTools",
-          "constraint": "maxItems(2048)"
-        },
-        {
-          "field": "disabledTools",
-          "constraint": "uniqueItems"
-        },
-        {
-          "field": "disabledTools",
-          "constraint": "patternItems(\"^[A-Za-z0-9_.-]{1,128}$\")"
-        },
-        {
-          "field": "autoApproveTools",
-          "constraint": "maxItems(2048)"
-        },
-        {
-          "field": "autoApproveTools",
-          "constraint": "uniqueItems"
-        },
-        {
-          "field": "autoApproveTools",
-          "constraint": "patternItems(\"^[A-Za-z0-9_.-]{1,128}$\")"
         }
       ]
     },
@@ -7685,6 +7903,10 @@
         {
           "field": "name",
           "constraint": "pattern(\"^[A-Za-z0-9_.-]{1,128}$\")"
+        },
+        {
+          "field": "modelName",
+          "constraint": "pattern(\"^[A-Za-z0-9_-]{1,64}$\")"
         }
       ]
     },
@@ -7782,30 +8004,6 @@
         {
           "field": "name",
           "constraint": "pattern(\"^[a-z0-9][a-z0-9._-]{0,31}$\")"
-        },
-        {
-          "field": "disabledTools",
-          "constraint": "maxItems(2048)"
-        },
-        {
-          "field": "disabledTools",
-          "constraint": "uniqueItems"
-        },
-        {
-          "field": "disabledTools",
-          "constraint": "patternItems(\"^[A-Za-z0-9_.-]{1,128}$\")"
-        },
-        {
-          "field": "autoApproveTools",
-          "constraint": "maxItems(2048)"
-        },
-        {
-          "field": "autoApproveTools",
-          "constraint": "uniqueItems"
-        },
-        {
-          "field": "autoApproveTools",
-          "constraint": "patternItems(\"^[A-Za-z0-9_.-]{1,128}$\")"
         }
       ]
     },
@@ -7815,30 +8013,6 @@
         {
           "field": "server",
           "constraint": "pattern(\"^[a-z0-9][a-z0-9._-]{0,31}$\")"
-        },
-        {
-          "field": "disabledTools",
-          "constraint": "maxItems(2048)"
-        },
-        {
-          "field": "disabledTools",
-          "constraint": "uniqueItems"
-        },
-        {
-          "field": "disabledTools",
-          "constraint": "patternItems(\"^[A-Za-z0-9_.-]{1,128}$\")"
-        },
-        {
-          "field": "autoApproveTools",
-          "constraint": "maxItems(2048)"
-        },
-        {
-          "field": "autoApproveTools",
-          "constraint": "uniqueItems"
-        },
-        {
-          "field": "autoApproveTools",
-          "constraint": "patternItems(\"^[A-Za-z0-9_.-]{1,128}$\")"
         }
       ]
     },

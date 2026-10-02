@@ -20,6 +20,7 @@ import {
 import {
   MCP_SERVERS_KEY,
   MCP_TOOLS_KEY,
+  MCP_EXPOSURE_KEY,
 } from "@/plugins/builtin/settings/mcp-servers/public/serverCatalog";
 import {
   WORKSPACE_DIFF_KEY,
@@ -54,6 +55,7 @@ const QUERY_KEYS: Record<
   models: MODELS_KEY,
   mcpServers: MCP_SERVERS_KEY,
   mcpTools: MCP_TOOLS_KEY,
+  mcpExposure: MCP_EXPOSURE_KEY,
   providers: PROVIDERS_KEY,
   schedules: SCHEDULES_KEY,
   sessions: AGENT_SESSIONS_KEY,

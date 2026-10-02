@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"reflect"
 	"sync/atomic"
 	"testing"
@@ -71,7 +72,7 @@ func TestInteractionToolFailureFeedbackMatchesDurableResult(t *testing.T) {
 				return interactionUsageTextResponse("recovered", 1, 1), nil
 			})
 			executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-				ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+				ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "write")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 				ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 			})
 			events := runInteractionHarnessWithCommit(t, executor, interactionTestStart(), func(fact runs.ExecutionFact) error {
@@ -116,7 +117,7 @@ func TestInteractionResponseLostAfterSideEffectRemainsUnknown(t *testing.T) {
 		return interactionToolResponse(chat.ToolCall{ID: "external_write", Name: "write", Arguments: `{}`}, 1, 1), nil
 	})
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "write")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 	})
 	events := runInteractionHarnessWithCommit(t, executor, interactionTestStart(), func(fact runs.ExecutionFact) error {
@@ -174,7 +175,7 @@ func TestInteractionRejectedToolFeedbackMatchesDurableResult(t *testing.T) {
 				return interactionUsageTextResponse("recovered", 1, 1), nil
 			})
 			executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-				ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+				ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.BuiltInTool(t, "read")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 				ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 			})
 			events := runInteractionHarnessWithCommit(t, executor, interactionTestStart(), func(fact runs.ExecutionFact) error {

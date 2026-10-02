@@ -22,23 +22,31 @@ func (i *interactionSession) validateWaitingTree(ctx context.Context, continuati
 	for _, snapshot := range checkpoint.tree.ProcessSnapshots() {
 		snapshots[snapshot.ProcessID()] = snapshot
 		if len(snapshot.UnknownEffectIDs()) != 0 {
-			return errors.New("waiting tree contains unresolved effects")
+			return fmt.Errorf("%w: waiting tree contains unresolved effects", runs.ErrExecutorStateLost)
 		}
 	}
-	// The Engine answers restorability with the same prepare pass RestoreTree
-	// runs, so this admission and the restore below cannot disagree.
+	// Scope's pure restore validation may wrap cancellation as an invalid
+	// snapshot. An interrupted check proves nothing about checkpoint validity.
 	if err := i.engine.ValidateRestorableTree(ctx, i.deployment, checkpoint.tree); err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return err
+		}
+		if errors.Is(err, agent.ErrInvalidTreeSnapshot) {
+			return fmt.Errorf("%w: %w", runs.ErrExecutorStateLost, err)
+		}
 		return err
 	}
 	members, err := i.restoredWaitingMembers(continuation, snapshots, checkpoint.tree.RootID())
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: waiting members: %w", runs.ErrExecutorStateLost, err)
 	}
 	if _, _, err := restoreInteractionAccounting(continuation.Checkpoint.Usage, checkpoint, members); err != nil {
-		return err
+		return fmt.Errorf("%w: waiting accounting: %w", runs.ErrExecutorStateLost, err)
 	}
-	_, _, err = i.restoreDelegateCalls(snapshots, members)
-	return err
+	if _, _, err := i.restoreDelegateCalls(snapshots, members); err != nil {
+		return fmt.Errorf("%w: waiting Delegate bindings: %w", runs.ErrExecutorStateLost, err)
+	}
+	return nil
 }
 
 func (i *interactionSession) initializeRestoredContinuation(

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -30,9 +31,13 @@ func (a *approvalStore) SetDefaultMode(_ context.Context, mode approval.Mode) er
 	return nil
 }
 
-func (a *approvalStore) Rules(_ context.Context, sessionID, projectDir string) ([]approval.Rule, error) {
+func (a *approvalStore) Rules(_ context.Context, sessionID, projectDir string) ([]RuleView, error) {
 	a.ruleScopes = append(a.ruleScopes, approvalRuleScope{sessionID: sessionID, projectDir: projectDir})
-	return a.rules, nil
+	var view []RuleView
+	for _, rule := range a.rules {
+		view = append(view, RuleView{Rule: rule})
+	}
+	return view, nil
 }
 
 func (a *approvalStore) Forget(_ context.Context, id string) error {
@@ -129,4 +134,8 @@ func TestForgetRuleUsesDeletionPort(t *testing.T) {
 	if len(store.forgotten) != 1 || store.forgotten[0] != "rule_1" {
 		t.Fatalf("forgotten = %+v, want rule_1", store.forgotten)
 	}
+}
+
+func (*approvalStore) SetRule(context.Context, tool.Ref, approval.Scope, string, string, approval.Subject, approval.Decision) error {
+	return nil
 }

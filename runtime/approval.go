@@ -26,3 +26,7 @@ func (r *binding) ListApprovalRules(ctx context.Context, request protocol.ListAp
 func (r *binding) ForgetApprovalRule(ctx context.Context, request protocol.ForgetApprovalRuleRequest, options CommandOptions) error {
 	return r.invokeAck(ctx, delivery.ApprovalForgetRule, request, commandOptions(options))
 }
+
+func (r *binding) SetApprovalRule(ctx context.Context, request protocol.SetApprovalRuleRequest, options CommandOptions) error {
+	return r.invokeAck(ctx, delivery.ApprovalSetRule, request, commandOptions(options))
+}

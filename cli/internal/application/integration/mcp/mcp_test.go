@@ -76,7 +76,6 @@ func TestMCPMutationResultsMustFulfillTheCommand(t *testing.T) {
 			Transport: protocol.MCPTransportStreamableHTTP, URL: "https://mcp.example/tools",
 			Authorization: &authorization, Headers: &headers,
 		},
-		DisabledTools: []string{"write"}, AutoApproveTools: []string{"search"},
 	}
 	valid := protocol.MCPServer{
 		Name: candidate.Name, Description: candidate.Description, HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeBounded, Seconds: new(15)},
@@ -84,7 +83,6 @@ func TestMCPMutationResultsMustFulfillTheCommand(t *testing.T) {
 			Type: protocol.MCPTransportStreamableHTTP, URL: candidate.Connection.URL,
 			AuthorizationMasked: "****", HeadersMasked: map[string]string{"X-Key": "****"},
 		},
-		DisabledTools: []string{"write"}, AutoApproveTools: []string{"search"},
 		Status: protocol.MCPServerState{Type: protocol.MCPServerDisconnected},
 	}
 	if err := candidate.ValidateResult(valid); err != nil {
@@ -103,7 +101,6 @@ func TestMCPMutationResultsMustFulfillTheCommand(t *testing.T) {
 		{name: "authorization", mutate: func(result *protocol.MCPServer) { result.Connection.AuthorizationMasked = "" }, want: "authorization"},
 		{name: "headers", mutate: func(result *protocol.MCPServer) { result.Connection.HeadersMasked = nil }, want: "headers"},
 		{name: "enabled", mutate: func(result *protocol.MCPServer) { result.Status.Type = protocol.MCPServerDisabled }, want: "enabled"},
-		{name: "disabled tools", mutate: func(result *protocol.MCPServer) { result.DisabledTools = nil }, want: "disabled tools"},
 	} {
 		t.Run("create "+test.name, func(t *testing.T) {
 			result := valid
@@ -117,14 +114,13 @@ func TestMCPMutationResultsMustFulfillTheCommand(t *testing.T) {
 
 	description, enabled := "Updated", false
 	updatedTimeout := mustHandshakeTimeout(t, 30)
-	disabledTools := []string{"delete"}
 	update := ServerUpdate{
 		Server: candidate.Name, Enabled: &enabled, Description: &description,
-		HandshakeTimeout: &updatedTimeout, DisabledTools: &disabledTools,
+		HandshakeTimeout: &updatedTimeout,
 	}
 	updated := valid
 	updated.Description, updated.HandshakeTimeout = description, protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeBounded, Seconds: new(30)}
-	updated.DisabledTools, updated.Status = disabledTools, protocol.MCPServerState{Type: protocol.MCPServerDisabled}
+	updated.Status = protocol.MCPServerState{Type: protocol.MCPServerDisabled}
 	if err := update.ValidateResult(updated); err != nil {
 		t.Fatalf("valid update result: %v", err)
 	}
@@ -179,36 +175,6 @@ func TestMCPMutationResultsMustFulfillTheCommand(t *testing.T) {
 	missingEnvironment.Connection.EnvMasked = nil
 	if err := stdioCandidate.ValidateResult(missingEnvironment); err == nil || !strings.Contains(err.Error(), "environment") {
 		t.Fatalf("stdio result error = %v", err)
-	}
-}
-
-func TestMCPMutationResultsAcceptRuntimeToolPolicyCanonicalization(t *testing.T) {
-	candidate := Candidate{
-		Name: "docs", Enabled: true,
-		Connection:       ConnectionInput{Transport: protocol.MCPTransportStdio, Command: "docs-server"},
-		DisabledTools:    []string{"write", "read"},
-		AutoApproveTools: []string{"search", "fetch"},
-	}
-	result := protocol.MCPServer{
-		HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},
-		Name:             candidate.Name, Connection: protocol.MCPConnection{Type: protocol.MCPTransportStdio, Command: "docs-server"},
-		DisabledTools: []string{"read", "write"}, AutoApproveTools: []string{"fetch", "search"},
-		Status: protocol.MCPServerState{Type: protocol.MCPServerDisconnected},
-	}
-	if err := candidate.ValidateResult(result); err != nil {
-		t.Fatalf("canonical create result: %v", err)
-	}
-
-	disabled := []string{"write", "read"}
-	update := ServerUpdate{Server: "docs", DisabledTools: &disabled}
-	if err := update.ValidateResult(result); err != nil {
-		t.Fatalf("canonical update result: %v", err)
-	}
-
-	contradictory := candidate
-	contradictory.AutoApproveTools = []string{"write"}
-	if err := contradictory.Validate(); err == nil {
-		t.Fatal("candidate accepted contradictory tool policy")
 	}
 }
 

@@ -30,6 +30,10 @@ func TestInteractionExecutorRestoresWaitingDelegateChildWithoutReadmission(t *te
 	}
 
 	continuation := waitingDelegateContinuation(barrier)
+	resumable, err := fixture.executor.CanResumeWaitingExecution(t.Context(), continuation)
+	if err != nil || !resumable {
+		t.Fatalf("waiting Delegate CanResumeWaitingExecution = %t, %v, want true", resumable, err)
+	}
 	for _, member := range continuation.Members {
 		if member.RunID == continuation.RootRunID &&
 			(len(member.DrainedTools) != 1 || member.DrainedTools[0].SourceCallID != fixture.model.delegateCallID) {

@@ -31,6 +31,8 @@ type mcpServiceStub struct {
 	updated     chan mcp.ServerUpdate
 	deleted     chan string
 	reconnected chan string
+	exposure    chan protocol.SetMCPToolExposureRequest
+	disabled    map[string][]string
 	authReads   atomic.Int32
 	authErrors  chan error
 	now         time.Time
@@ -97,8 +99,9 @@ func newMCPServiceStub() *mcpServiceStub {
 			Status:     protocol.MCPServerState{Type: protocol.MCPServerConnected, ToolCount: &count},
 		}},
 		created: make(chan mcp.Candidate, 1), probed: make(chan mcp.Candidate, 1),
-		updated: make(chan mcp.ServerUpdate, 1),
-		deleted: make(chan string, 1), reconnected: make(chan string, 1), now: time.Unix(100, 0),
+		updated:  make(chan mcp.ServerUpdate, 1),
+		exposure: make(chan protocol.SetMCPToolExposureRequest, 1),
+		deleted:  make(chan string, 1), reconnected: make(chan string, 1), now: time.Unix(100, 0),
 	}
 }
 
@@ -119,9 +122,8 @@ func (m *mcpServiceStub) CreateServer(_ context.Context, candidate mcp.Candidate
 	m.created <- candidate.Clone()
 	server := protocol.MCPServer{
 		Name: candidate.Name, Description: candidate.Description, HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},
-		Connection:    protocol.MCPConnection{Type: candidate.Connection.Transport, URL: candidate.Connection.URL, Command: candidate.Connection.Command, Args: candidate.Connection.Args, Dir: candidate.Connection.Directory},
-		DisabledTools: candidate.DisabledTools, AutoApproveTools: candidate.AutoApproveTools,
-		Status: protocol.MCPServerState{Type: protocol.MCPServerDisconnected},
+		Connection: protocol.MCPConnection{Type: candidate.Connection.Transport, URL: candidate.Connection.URL, Command: candidate.Connection.Command, Args: candidate.Connection.Args, Dir: candidate.Connection.Directory},
+		Status:     protocol.MCPServerState{Type: protocol.MCPServerDisconnected},
 	}
 	if seconds, bounded := candidate.HandshakeTimeout.Seconds(); bounded {
 		server.HandshakeTimeout = protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeBounded, Seconds: &seconds}
@@ -434,7 +436,7 @@ func TestMCPReadersFormsAndLifecycleCommands(t *testing.T) {
 	}
 	host.Press(input.Enter)
 	host.Shows(t, "Create MCP server · 3/3")
-	host.Shows(t, "Disabled tools")
+	host.Shows(t, "Handshake timeout seconds")
 	host.Press(input.Enter)
 	host.Shows(t, "private-docs · disconnected")
 	created := <-service.created
@@ -552,23 +554,12 @@ func TestMCPStdioWizardKeepsEveryFieldVisibleAndSecretsMasked(t *testing.T) {
 	host.Press(input.Enter)
 	host.Shows(t, "Create MCP server · 3/3")
 	host.Press(input.Tab)
-	host.Type("read, read")
-	host.Press(input.Enter)
-	host.Shows(t, `tool "read" is duplicated`)
-	select {
-	case candidate := <-service.created:
-		t.Fatalf("invalid MCP policy reached the service: %+v", candidate)
-	default:
-	}
-	host.Send(input.Key{Code: input.Character, Rune: 'a', Mods: input.Alt})
-	host.Type("read")
 	host.Press(input.Enter)
 	host.Shows(t, "local-tools · disconnected")
 	created := <-service.created
 	if created.Connection.Transport != protocol.MCPTransportStdio || created.Connection.Command != "local-mcp" ||
 		!slices.Equal(created.Connection.Args, []string{"--stdio"}) || created.Connection.Directory != "/tmp" ||
-		created.Connection.Environment == nil || created.Connection.Environment.Value["TOKEN"] != "MCP_STDIO_SECRET" ||
-		!slices.Equal(created.DisabledTools, []string{"read"}) {
+		created.Connection.Environment == nil || created.Connection.Environment.Value["TOKEN"] != "MCP_STDIO_SECRET" {
 		t.Fatalf("created stdio MCP candidate = %+v", created)
 	}
 
@@ -605,8 +596,6 @@ func cloneMCPServer(server protocol.MCPServer) protocol.MCPServer {
 	server.Connection.Args = slices.Clone(server.Connection.Args)
 	server.Connection.HeadersMasked = maps.Clone(server.Connection.HeadersMasked)
 	server.Connection.EnvMasked = maps.Clone(server.Connection.EnvMasked)
-	server.DisabledTools = slices.Clone(server.DisabledTools)
-	server.AutoApproveTools = slices.Clone(server.AutoApproveTools)
 	if server.HandshakeTimeout.Seconds != nil {
 		server.HandshakeTimeout.Seconds = new(*server.HandshakeTimeout.Seconds)
 	}
@@ -615,4 +604,86 @@ func cloneMCPServer(server protocol.MCPServer) protocol.MCPServer {
 	}
 	server.Status.Error = failure.Clone(server.Status.Error)
 	return server
+}
+
+func (m *mcpServiceStub) ToolExposure(_ context.Context, server string) (protocol.MCPToolExposure, error) {
+	return protocol.MCPToolExposure{Server: server, DisabledTools: slices.Clone(m.disabled[server])}, nil
+}
+func (m *mcpServiceStub) SetToolExposure(_ context.Context, request protocol.SetMCPToolExposureRequest) error {
+	m.exposure <- request
+	return nil
+}
+
+func TestMCPToolCommandsUseSeparateExposureAndApprovalOwners(t *testing.T) {
+	service := newMCPServiceStub()
+	runtime := runtimefixture.New()
+	runtime.ToolModelNames = map[protocol.ToolRef]string{{Type: protocol.ToolRefMCP, Server: "docs", Name: "read"}: "docs_read"}
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtime, MCP: service})
+	defer stop()
+	host.Shows(t, "Ask flame")
+	host.Type("/mcp-tool docs read disable")
+	host.Press(input.Enter)
+	want := protocol.SetMCPToolExposureRequest{Server: "docs", Name: "read", Disabled: true}
+	if got := awaitValue(t, service.exposure, "tool exposure"); got != want {
+		t.Fatalf("exposure = %+v, want %+v", got, want)
+	}
+	host.Shows(t, "setting tool exposure docs/read accepted")
+	for _, decision := range []protocol.ApprovalRuleDecision{protocol.ApprovalRuleDecisionAllow, protocol.ApprovalRuleDecisionDeny} {
+		host.Type("/mcp-tool docs read " + string(decision))
+		host.Press(input.Enter)
+		host.Shows(t, "remembering global "+string(decision)+" for mcp/docs/read accepted")
+	}
+	rules, err := runtime.ListApprovalRules(t.Context(), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rules) != 1 || rules[0].Decision != protocol.ApprovalRuleDecisionDeny {
+		t.Fatalf("rules = %+v, want the latest standing decision", rules)
+	}
+	for _, rule := range rules {
+		if rule.Tool != (protocol.ToolRef{Type: protocol.ToolRefMCP, Server: "docs", Name: "read"}) || rule.Scope != protocol.ApprovalRuleScopeGlobal || rule.Subject != (protocol.ApprovalSubject{Type: protocol.ApprovalSubjectAll}) {
+			t.Fatalf("rule lost source identity or whole-tool scope: %+v", rule)
+		}
+	}
+	select {
+	case got := <-service.exposure:
+		t.Fatalf("approval command changed exposure: %+v", got)
+	default:
+	}
+}
+
+func TestMCPApprovalMutationDoesNotWaitForReconnect(t *testing.T) {
+	service := &blockingMCPReconnectService{mcpServiceStub: newMCPServiceStub(), started: make(chan string, 1), release: make(chan struct{}), canceled: make(chan struct{}, 1)}
+	defer close(service.release)
+	backend := runtimefixture.New()
+	backend.ToolModelNames = map[protocol.ToolRef]string{{Type: protocol.ToolRefMCP, Server: "docs", Name: "read"}: "docs_read"}
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: backend, MCP: service})
+	defer stop()
+	host.Shows(t, "Ask flame")
+	host.Type("/mcp-reconnect docs")
+	host.Press(input.Enter)
+	awaitValue(t, service.started, "reconnect admission")
+	host.Type("/mcp-tool docs read allow")
+	host.Press(input.Enter)
+	host.Shows(t, "remembering global allow for mcp/docs/read accepted")
+	rules, err := backend.ListApprovalRules(t.Context(), "")
+	if err != nil || len(rules) != 1 {
+		t.Fatalf("approval while reconnecting = %v, %v", rules, err)
+	}
+}
+
+func TestUnscopedMCPToolsIncludesDisabledTools(t *testing.T) {
+	service := newMCPServiceStub()
+	service.disabled = map[string][]string{"docs": {"read"}}
+	app := &app{mcp: service}
+	document, err := app.mcpToolsReaderQuery("").read(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, section := range document.Sections {
+		if section.Title == "Disabled tools · docs" && section.Text == "read" {
+			return
+		}
+	}
+	t.Fatalf("disabled tools missing from %+v", document)
 }

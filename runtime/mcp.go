@@ -51,3 +51,10 @@ func (r *binding) CreateMCPAuthorizationAttempt(ctx context.Context, request pro
 func (r *binding) GetMCPAuthorizationAttempt(ctx context.Context, request protocol.MCPAuthorizationAttemptRequest, options CallOptions) (*protocol.MCPAuthorizationAttempt, error) {
 	return r.invoke[protocol.MCPAuthorizationAttemptRequest, *protocol.MCPAuthorizationAttempt](ctx, delivery.MCPAuthorizationAttemptsGet, request, callOptions(options))
 }
+
+func (r *binding) GetMCPToolExposure(ctx context.Context, request protocol.MCPServerRequest, options CallOptions) (*protocol.MCPToolExposure, error) {
+	return r.invoke[protocol.MCPServerRequest, *protocol.MCPToolExposure](ctx, delivery.MCPToolsExposure, request, callOptions(options))
+}
+func (r *binding) SetMCPToolExposure(ctx context.Context, request protocol.SetMCPToolExposureRequest, options CommandOptions) error {
+	return r.invokeAck(ctx, delivery.MCPToolsSetExposure, request, commandOptions(options))
+}

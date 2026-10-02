@@ -151,6 +151,10 @@
               "signature": "func(ctx context.Context, request protocol.MCPAuthorizationAttemptRequest, options CallOptions) (*protocol.MCPAuthorizationAttempt, error)"
             },
             {
+              "name": "GetMCPToolExposure",
+              "signature": "func(ctx context.Context, request protocol.MCPServerRequest, options CallOptions) (*protocol.MCPToolExposure, error)"
+            },
+            {
               "name": "GetPlan",
               "signature": "func(ctx context.Context, request protocol.GetPlanRequest, options CallOptions) (*protocol.Plan, error)"
             },
@@ -331,12 +335,20 @@
               "signature": "func(ctx context.Context, request protocol.SetApprovalModeRequest, options CommandOptions) (*protocol.ApprovalModeResult, error)"
             },
             {
+              "name": "SetApprovalRule",
+              "signature": "func(ctx context.Context, request protocol.SetApprovalRuleRequest, options CommandOptions) error"
+            },
+            {
               "name": "SetEmbeddingRole",
               "signature": "func(ctx context.Context, request protocol.EmbeddingRole, options CommandOptions) (*protocol.EmbeddingRole, error)"
             },
             {
               "name": "SetHookTrust",
               "signature": "func(ctx context.Context, request protocol.SetHookTrustRequest, options CommandOptions) error"
+            },
+            {
+              "name": "SetMCPToolExposure",
+              "signature": "func(ctx context.Context, request protocol.SetMCPToolExposureRequest, options CommandOptions) error"
             },
             {
               "name": "SetUtilityRole",
@@ -599,6 +611,10 @@
               "signature": "func(ctx context.Context, request protocol.MCPAuthorizationAttemptRequest, options CallOptions) (*protocol.MCPAuthorizationAttempt, error)"
             },
             {
+              "name": "GetMCPToolExposure",
+              "signature": "func(ctx context.Context, request protocol.MCPServerRequest, options CallOptions) (*protocol.MCPToolExposure, error)"
+            },
+            {
               "name": "GetPlan",
               "signature": "func(ctx context.Context, request protocol.GetPlanRequest, options CallOptions) (*protocol.Plan, error)"
             },
@@ -779,12 +795,20 @@
               "signature": "func(ctx context.Context, request protocol.SetApprovalModeRequest, options CommandOptions) (*protocol.ApprovalModeResult, error)"
             },
             {
+              "name": "SetApprovalRule",
+              "signature": "func(ctx context.Context, request protocol.SetApprovalRuleRequest, options CommandOptions) error"
+            },
+            {
               "name": "SetEmbeddingRole",
               "signature": "func(ctx context.Context, request protocol.EmbeddingRole, options CommandOptions) (*protocol.EmbeddingRole, error)"
             },
             {
               "name": "SetHookTrust",
               "signature": "func(ctx context.Context, request protocol.SetHookTrustRequest, options CommandOptions) error"
+            },
+            {
+              "name": "SetMCPToolExposure",
+              "signature": "func(ctx context.Context, request protocol.SetMCPToolExposureRequest, options CommandOptions) error"
             },
             {
               "name": "SetUtilityRole",
@@ -1079,6 +1103,21 @@
           "name": "ApprovalRuleScopeSession",
           "type": "ApprovalRuleScope",
           "value": "\"session\""
+        },
+        {
+          "name": "ApprovalSubjectAll",
+          "type": "ApprovalSubjectType",
+          "value": "\"all\""
+        },
+        {
+          "name": "ApprovalSubjectExact",
+          "type": "ApprovalSubjectType",
+          "value": "\"exact\""
+        },
+        {
+          "name": "ApprovalSubjectGlob",
+          "type": "ApprovalSubjectType",
+          "value": "\"glob\""
         },
         {
           "name": "ArtifactOutcomeCanceled",
@@ -1928,7 +1967,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-09-28\""
+          "value": "\"2026-10-02\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -2319,6 +2358,21 @@
           "name": "ToolAttemptStarted",
           "type": "ToolAttemptState",
           "value": "\"started\""
+        },
+        {
+          "name": "ToolRefA2A",
+          "type": "ToolRefType",
+          "value": "\"a2a\""
+        },
+        {
+          "name": "ToolRefBuiltIn",
+          "type": "ToolRefType",
+          "value": "\"builtIn\""
+        },
+        {
+          "name": "ToolRefMCP",
+          "type": "ToolRefType",
+          "value": "\"mcp\""
         },
         {
           "name": "TopicAgentMemoryChanged",
@@ -2934,6 +2988,16 @@
           "kind": "struct",
           "fields": [
             {
+              "name": "ModelName",
+              "type": "string",
+              "tag": "json:\"modelName\""
+            },
+            {
+              "name": "Stale",
+              "type": "bool",
+              "tag": "json:\"stale\""
+            },
+            {
               "name": "ID",
               "type": "string",
               "tag": "json:\"id\""
@@ -2945,13 +3009,13 @@
             },
             {
               "name": "Tool",
-              "type": "string",
+              "type": "ToolRef",
               "tag": "json:\"tool\""
             },
             {
               "name": "Subject",
-              "type": "string",
-              "tag": "json:\"subject,omitempty\""
+              "type": "ApprovalSubject",
+              "tag": "json:\"subject\""
             },
             {
               "name": "Dir",
@@ -2978,6 +3042,33 @@
         },
         {
           "name": "ApprovalRuleScope",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "ApprovalSubject",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Type",
+              "type": "ApprovalSubjectType",
+              "tag": "json:\"type\""
+            },
+            {
+              "name": "Value",
+              "type": "string",
+              "tag": "json:\"value,omitempty\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "ApprovalSubjectType",
           "kind": "defined",
           "underlying": "string"
         },
@@ -5151,7 +5242,7 @@
             {
               "name": "SessionID",
               "type": "string",
-              "tag": "json:\"sessionId\""
+              "tag": "json:\"sessionId,omitempty\""
             }
           ],
           "methods": [
@@ -5766,16 +5857,6 @@
               "tag": "json:\"handshakeTimeout\""
             },
             {
-              "name": "DisabledTools",
-              "type": "[]string",
-              "tag": "json:\"disabledTools,omitempty\""
-            },
-            {
-              "name": "AutoApproveTools",
-              "type": "[]string",
-              "tag": "json:\"autoApproveTools,omitempty\""
-            },
-            {
               "name": "Status",
               "type": "MCPServerState",
               "tag": "json:\"status\""
@@ -5816,16 +5897,6 @@
               "name": "HandshakeTimeout",
               "type": "MCPHandshakeTimeout",
               "tag": "json:\"handshakeTimeout\""
-            },
-            {
-              "name": "DisabledTools",
-              "type": "[]string",
-              "tag": "json:\"disabledTools,omitempty\""
-            },
-            {
-              "name": "AutoApproveTools",
-              "type": "[]string",
-              "tag": "json:\"autoApproveTools,omitempty\""
             }
           ],
           "methods": [
@@ -5905,6 +5976,16 @@
           "kind": "struct",
           "fields": [
             {
+              "name": "ModelName",
+              "type": "string",
+              "tag": "json:\"modelName\""
+            },
+            {
+              "name": "NameConflicts",
+              "type": "[]ToolRef",
+              "tag": "json:\"nameConflicts\""
+            },
+            {
               "name": "Server",
               "type": "string",
               "tag": "json:\"server\""
@@ -5923,6 +6004,28 @@
               "name": "InputSchema",
               "type": "map[string]any",
               "tag": "json:\"inputSchema,omitempty\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "MCPToolExposure",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Server",
+              "type": "string",
+              "tag": "json:\"server\""
+            },
+            {
+              "name": "DisabledTools",
+              "type": "[]string",
+              "tag": "json:\"disabledTools\""
             }
           ],
           "methods": [
@@ -7899,6 +8002,43 @@
           ]
         },
         {
+          "name": "SetApprovalRuleRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "SessionID",
+              "type": "string",
+              "tag": "json:\"sessionId,omitempty\""
+            },
+            {
+              "name": "Scope",
+              "type": "ApprovalRuleScope",
+              "tag": "json:\"scope\""
+            },
+            {
+              "name": "Tool",
+              "type": "ToolRef",
+              "tag": "json:\"tool\""
+            },
+            {
+              "name": "Subject",
+              "type": "ApprovalSubject",
+              "tag": "json:\"subject\""
+            },
+            {
+              "name": "Decision",
+              "type": "ApprovalRuleDecision",
+              "tag": "json:\"decision\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
           "name": "SetHookTrustRequest",
           "kind": "struct",
           "fields": [
@@ -7911,6 +8051,33 @@
               "name": "Trusted",
               "type": "bool",
               "tag": "json:\"trusted\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "SetMCPToolExposureRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Server",
+              "type": "string",
+              "tag": "json:\"server\""
+            },
+            {
+              "name": "Name",
+              "type": "string",
+              "tag": "json:\"name\""
+            },
+            {
+              "name": "Disabled",
+              "type": "bool",
+              "tag": "json:\"disabled\""
             }
           ],
           "methods": [
@@ -8582,6 +8749,43 @@
           ]
         },
         {
+          "name": "ToolRef",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Type",
+              "type": "ToolRefType",
+              "tag": "json:\"type\""
+            },
+            {
+              "name": "Name",
+              "type": "string",
+              "tag": "json:\"name,omitempty\""
+            },
+            {
+              "name": "Endpoint",
+              "type": "string",
+              "tag": "json:\"endpoint,omitempty\""
+            },
+            {
+              "name": "Server",
+              "type": "string",
+              "tag": "json:\"server,omitempty\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "ToolRefType",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
           "name": "ToolSpec",
           "kind": "struct",
           "fields": [
@@ -8736,16 +8940,6 @@
               "name": "HandshakeTimeout",
               "type": "*MCPHandshakeTimeout",
               "tag": "json:\"handshakeTimeout,omitzero\""
-            },
-            {
-              "name": "DisabledTools",
-              "type": "*[]string",
-              "tag": "json:\"disabledTools,omitzero\""
-            },
-            {
-              "name": "AutoApproveTools",
-              "type": "*[]string",
-              "tag": "json:\"autoApproveTools,omitzero\""
             }
           ],
           "methods": [

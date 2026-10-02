@@ -33,6 +33,7 @@ type Runtime interface {
 	ListModels(context.Context) ([]protocol.Model, error)
 	GetApprovalMode(context.Context) (protocol.ApprovalMode, error)
 	SetApprovalMode(context.Context, protocol.ApprovalMode) (protocol.ApprovalMode, error)
+	SetApprovalRule(context.Context, protocol.SetApprovalRuleRequest) error
 	ListApprovalRules(context.Context, string) ([]protocol.ApprovalRule, error)
 	DeleteApprovalRule(context.Context, string) error
 }
@@ -68,6 +69,8 @@ type ModelConfiguration interface {
 // MCPManagement borrows synchronous inputs and transfers owned Runtime
 // observations to readers and editors. Retaining inputs requires a snapshot.
 type MCPManagement interface {
+	ToolExposure(context.Context, string) (protocol.MCPToolExposure, error)
+	SetToolExposure(context.Context, protocol.SetMCPToolExposureRequest) error
 	Servers(context.Context) ([]protocol.MCPServer, error)
 	CreateServer(context.Context, mcp.Candidate) (protocol.MCPServer, error)
 	UpdateServer(context.Context, mcp.ServerUpdate) (protocol.MCPServer, error)

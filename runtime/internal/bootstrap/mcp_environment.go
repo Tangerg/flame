@@ -6,19 +6,21 @@ import (
 
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
 // mcpServerList is the boot-time snapshot view of the MCP registry: building the
-// live policy + dial descriptors needs only one List, not configure/remove.
+// exposure and dial descriptors come from the same initial registry view.
 type mcpServerList interface {
 	List(ctx context.Context) ([]mcpserver.Server, error)
+	ListExposure(ctx context.Context) ([]tool.Ref, error)
 }
 
 // mcpEnvironment is the boot-time MCP material: the application-owned live
-// policy state and the enabled durable server definitions to connect.
+// exposure state and the enabled durable server definitions to connect.
 type mcpEnvironment struct {
-	policy  *mcpapp.ToolPolicyState
-	servers []mcpserver.Server
+	exposure *mcpapp.ExposureState
+	servers  []mcpserver.Server
 }
 
 func buildMCPEnvironment(ctx context.Context, registry mcpServerList) (mcpEnvironment, error) {
@@ -26,10 +28,13 @@ func buildMCPEnvironment(ctx context.Context, registry mcpServerList) (mcpEnviro
 	if err != nil {
 		return mcpEnvironment{}, fmt.Errorf("bootstrap: load mcp registry: %w", err)
 	}
-	policy := mcpserver.NewToolPolicy(servers)
+	disabled, err := registry.ListExposure(ctx)
+	if err != nil {
+		return mcpEnvironment{}, err
+	}
 	return mcpEnvironment{
-		policy:  mcpapp.NewToolPolicyState(policy),
-		servers: enabledMCPServers(servers),
+		exposure: mcpapp.NewExposureState(servers, disabled),
+		servers:  enabledMCPServers(servers),
 	}, nil
 }
 

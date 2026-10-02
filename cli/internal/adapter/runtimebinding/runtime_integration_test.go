@@ -660,7 +660,7 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 			Transport: protocol.MCPTransportStreamableHTTP, URL: "https://mcp.example/tools",
 			Authorization: &authorization, Headers: &headers,
 		},
-		HandshakeTimeout: timeout, DisabledTools: []string{"write"}, AutoApproveTools: []string{"search"},
+		HandshakeTimeout: timeout,
 	}
 	created, err := runtime.CreateServer(t.Context(), candidate)
 	if err != nil {
@@ -671,7 +671,6 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 	}
 	maskedHeader := created.Connection.HeadersMasked["X-Key"]
 	created.Connection.HeadersMasked["X-Key"] = "caller-reused-header"
-	created.DisabledTools[0] = "caller-reused-policy"
 	*created.HandshakeTimeout.Seconds = 1
 	servers, err := runtime.Servers(t.Context())
 	if err != nil {
@@ -730,8 +729,6 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 		})
 	}
 	expectedCandidate := candidate.Clone()
-	candidate.DisabledTools[0] = "caller-reused-disabled"
-	candidate.AutoApproveTools[0] = "caller-reused-auto-approved"
 	delete(candidate.Connection.Headers.Value, "X-Key")
 	candidate.Connection.Headers.Value["X-Reused"] = "caller-reused-header"
 	servers, err = runtime.Servers(t.Context())

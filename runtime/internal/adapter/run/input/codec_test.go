@@ -2,6 +2,7 @@ package input
 
 import (
 	json "encoding/json/v2"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"strings"
 	"testing"
 
@@ -47,7 +48,7 @@ func TestDecodePromptDiscriminatesAndRejectsGuesses(t *testing.T) {
 		Kind: interrupt.Approval,
 		Approval: &runs.ApprovalPrompt{
 			CallID: "tool_approval_1", ToolName: "web_fetch", Arguments: `{"url":"https://example.com"}`,
-			SafetyClass: tool.SafetyClassNetwork, Risk: tool.RiskHigh,
+			SafetyClass: tool.SafetyClassNetwork, Risk: tool.RiskHigh, Tool: testsupport.BuiltInTool(t, "web_fetch"), SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "web_fetch")),
 		},
 	}
 	raw, err = json.Marshal(promptWireFrom(approval))
@@ -77,6 +78,38 @@ func TestDecodePromptDiscriminatesAndRejectsGuesses(t *testing.T) {
 	} {
 		if _, err := DecodePrompt(raw); err == nil {
 			t.Errorf("DecodePrompt(%s) succeeded, want error", raw)
+		}
+	}
+}
+
+func TestApprovalPromptRequiresIdentityRegardlessOfRememberability(t *testing.T) {
+	for _, rememberable := range []bool{false, true} {
+		for _, fingerprint := range []string{"", strings.Repeat("a", 64)} {
+			prompt := runs.Interrupt{
+				Kind: interrupt.Approval,
+				Approval: &runs.ApprovalPrompt{
+					CallID: "call_approval", ToolName: "shell", Arguments: `{}`,
+					SafetyClass: tool.SafetyClassExec, Risk: tool.RiskHigh,
+					Rememberable: rememberable, SourceFingerprint: fingerprint,
+				},
+			}
+			if _, err := EncodePrompt(prompt); err == nil {
+				t.Errorf("encoded an approval without a tool reference: rememberable=%v fingerprint=%q", rememberable, fingerprint)
+			}
+			raw, err := json.Marshal(map[string]any{
+				"kind": "approval",
+				"approval": map[string]any{
+					"callId": "call_approval", "toolName": "shell", "arguments": "{}",
+					"safetyClass": "exec", "risk": "high", "rememberable": rememberable,
+					"sourceFingerprint": fingerprint,
+				},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := DecodePrompt(raw); err == nil {
+				t.Errorf("restored an approval without a tool reference: %s", raw)
+			}
 		}
 	}
 }

@@ -78,6 +78,22 @@ type interactionCheckpointState struct {
 	pendingContinuation *pendingInteractionContinuation
 }
 
+func (i interactionCheckpointState) restoredStart(continuation runs.WaitingContinuation) runs.RootExecutionStart {
+	checkpoint := continuation.Checkpoint
+	return runs.RootExecutionStart{
+		SessionID:                continuation.SessionID,
+		CWD:                      checkpoint.Scope.CWD,
+		WorkspaceCWD:             checkpoint.Scope.WorkspaceCWD,
+		Isolated:                 checkpoint.Scope.Isolated,
+		GoalIncarnationID:        checkpoint.Scope.GoalIncarnationID,
+		ModelSelection:           checkpoint.ModelSelection,
+		InterruptKinds:           slices.Clone(continuation.Capabilities.InterruptKinds),
+		ChildRunAdmissionEnabled: continuation.ChildRunAdmissionEnabled,
+		WorkingContext:           cloneChatMessages(i.instructions),
+		Options:                  new(i.options.Clone()),
+	}
+}
+
 func (i *interactionSession) executorCheckpoint(
 	tree agent.TreeSnapshot,
 ) (runs.ExecutorCheckpoint, error) {

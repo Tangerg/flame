@@ -82,8 +82,8 @@ func TestRegistryMutationIsLinearizedThroughLiveApply(t *testing.T) {
 		releaseSave:   make(chan struct{}),
 	}
 	live := &liveSet{servers: map[mcpserver.ServerName]bool{}}
-	policy := mcpserver.NewToolPolicy(nil)
-	c := testCoordinator(t, Config{Registry: registry, ConnectionLifecycle: live, Policy: NewToolPolicyState(policy)})
+	policy := NewExposureState(nil, nil)
+	c := testCoordinator(t, Config{Registry: registry, ConnectionLifecycle: live, Exposure: policy})
 	server := mcpserver.Server{Name: testMCPServerName("files"), Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-files"}
 
 	configured := make(chan error, 1)
@@ -124,8 +124,8 @@ func TestPostCommitReconciliationOutlivesRequestCancellation(t *testing.T) {
 		releaseSave:   make(chan struct{}),
 	}
 	live := &liveSet{servers: map[mcpserver.ServerName]bool{}, configured: make(chan string, 1)}
-	policy := mcpserver.NewToolPolicy(nil)
-	c := testCoordinator(t, Config{Registry: registry, ConnectionLifecycle: live, Policy: NewToolPolicyState(policy)})
+	policy := NewExposureState(nil, nil)
+	c := testCoordinator(t, Config{Registry: registry, ConnectionLifecycle: live, Exposure: policy})
 	server := mcpserver.Server{Name: testMCPServerName("files"), Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-files"}
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
@@ -172,7 +172,7 @@ func input(server mcpserver.Server) ServerInput {
 			Authorization: authorization, Headers: headers,
 			Command: server.Command, Args: server.Args, Environment: environment, Dir: server.Dir,
 		},
-		HandshakeTimeout: server.HandshakeTimeout, ToolPolicy: server.ToolPolicy,
+		HandshakeTimeout: server.HandshakeTimeout,
 	}
 }
 
@@ -186,13 +186,13 @@ func TestRemoveDoesNotWaitForInteractiveConnection(t *testing.T) {
 		reconnectStarted: make(chan struct{}),
 		releaseReconnect: make(chan struct{}),
 	}
-	policy := mcpserver.NewToolPolicy([]mcpserver.Server{server})
+	policy := NewExposureState([]mcpserver.Server{server}, nil)
 	c := testCoordinator(t, Config{
 		Registry:            registry,
 		StatusReader:        live,
 		ConnectionControl:   live,
 		ConnectionLifecycle: live,
-		Policy:              NewToolPolicyState(policy),
+		Exposure:            policy,
 	})
 	defer requireCoordinatorShutdown(t, c)
 
@@ -241,13 +241,13 @@ func TestQueuedReconnectCannotReviveRemovedServer(t *testing.T) {
 		reconnectStarted: make(chan struct{}),
 		releaseReconnect: make(chan struct{}),
 	}
-	policy := mcpserver.NewToolPolicy([]mcpserver.Server{server})
+	policy := NewExposureState([]mcpserver.Server{server}, nil)
 	c := testCoordinator(t, Config{
 		Registry:            registry,
 		StatusReader:        live,
 		ConnectionControl:   live,
 		ConnectionLifecycle: live,
-		Policy:              NewToolPolicyState(policy),
+		Exposure:            policy,
 	})
 
 	removed := make(chan error, 1)

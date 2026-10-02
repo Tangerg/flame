@@ -4,6 +4,7 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"iter"
 	"slices"
 	"strings"
@@ -11,11 +12,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/dependency"
-
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
@@ -91,7 +91,10 @@ func TestInteractionToolManifestRequiresPolicyOwners(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	manifest := toolset.Manifest{Visible: []toolcontract.Tool{executable}}
+	manifest, err := identifyTestManifest(toolset.Manifest{Visible: []toolcontract.Tool{executable}}, testsupport.A2ATool(t, "echo"))
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	for _, test := range []struct {
 		name   string
@@ -531,7 +534,8 @@ func TestInteractionTerminationMappingIsComplete(t *testing.T) {
 		{name: "host cancellation", status: "canceled", cause: "host_cancellation", reason: "host canceled", wantOutcome: run.OutcomeCanceled},
 		{name: "unresolved effects stop", status: "canceled", cause: "host_cancellation", reason: unresolvedEffectsStopReason, wantOutcome: run.OutcomeLost, wantFailure: run.FailureLost, hasFailure: true},
 		{name: "strategy failure", status: "failed", cause: "execution_failure", reason: "strategy failed", failureKind: "execution", failureCode: "execution.failed", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureAgentStuck, hasFailure: true},
-		{name: "external failure", status: "failed", cause: "external_failure", reason: "provider unavailable", failureKind: "external", failureCode: "interaction.model.failed", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureProviderUnavailable, hasFailure: true},
+		{name: "invalid model response", status: "failed", cause: "external_failure", reason: "invalid response", failureKind: "external", failureCode: "interaction.model.invalid_response", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureProviderRejected, hasFailure: true},
+		{name: "incomplete tool calls", status: "failed", cause: "external_failure", reason: "incomplete tool calls", failureKind: "external", failureCode: "interaction.model.tool_calls_not_completed", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureProviderRejected, hasFailure: true},
 		{name: "unknown external failure", status: "failed", cause: "external_failure", reason: "external failure", failureKind: "external", failureCode: "new.external.failure", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureInternal, hasFailure: true},
 		{name: "unresolved delegate", status: "failed", cause: "external_failure", reason: "unresolved external work", failureKind: "external", failureCode: "interaction.delegate.unresolved_effects", wantOutcome: run.OutcomeLost, wantFailure: run.FailureLost, hasFailure: true},
 		{name: "host projection failure", status: "failed", cause: "external_failure", reason: "journal unavailable", failureKind: "external", failureCode: "interaction.host.failed", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureInternal, hasFailure: true},
@@ -698,11 +702,11 @@ func interactionTextResponse(text string) *chat.Response {
 // place that can tell the difference.
 type typedNilToolPresenter struct{}
 
-func (*typedNilToolPresenter) Activity(string, tool.Arguments) string {
+func (*typedNilToolPresenter) Activity(tool.Ref, tool.Arguments) string {
 	panic("execution: a typed-nil presenter was asked for an activity")
 }
 
-func (*typedNilToolPresenter) Present(string, tool.Arguments, tool.Result) (tool.Result, string) {
+func (*typedNilToolPresenter) Present(tool.Ref, tool.Arguments, tool.Result) (tool.Result, string) {
 	panic("execution: a typed-nil presenter was asked to present")
 }
 

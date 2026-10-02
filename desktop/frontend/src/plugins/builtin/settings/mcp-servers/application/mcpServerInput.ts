@@ -14,6 +14,4 @@ export interface MCPServerInput {
   authorization?: string | null;
   headers?: Record<string, string> | null;
   handshakeTimeout: MCPHandshakeTimeout;
-  disabledTools?: string[];
-  autoApproveTools?: string[];
 }

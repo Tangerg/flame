@@ -6,6 +6,7 @@ import {
   createMCPServer,
   reconnectMCPServer,
   setMCPServerEnabled,
+  setMCPToolExposure,
 } from "../application/mcpServerConfig";
 import { MCP_SERVERS_KEY, type MCPServerSettings } from "../application/mcpServerQueries";
 import { validateWire } from "@flame/runtime-contract/validate";
@@ -23,6 +24,18 @@ afterEach(() => {
 });
 
 describe("runtimeMcpServerGateway", () => {
+  it("changes exposure through its own operation without updating the server", async () => {
+    const setToolExposure = vi.fn().mockResolvedValue(undefined);
+    const update = vi.fn();
+    const client = { mcp: { setToolExposure, update } } as unknown as FlameClient;
+    uninstall = installMCPServerGateway(() => client).dispose;
+
+    await setMCPToolExposure("docs", "read", true);
+
+    expect(setToolExposure).toHaveBeenCalledWith({ server: "docs", name: "read", disabled: true });
+    expect(update).not.toHaveBeenCalled();
+  });
+
   it.each([
     [
       "stdio",
@@ -70,8 +83,6 @@ describe("runtimeMcpServerGateway", () => {
       connection: { type: "stdio", command: "tool-server", args: ["--stdio"] },
       handshakeTimeout: { type: "bounded", seconds: 15 },
       status: { type: "connected", toolCount: 3 },
-      disabledTools: ["delete"],
-      autoApproveTools: ["read"],
     });
     const runtimeClient = () => ({ mcp: { create } }) as unknown as FlameClient;
     uninstall = installMCPServerGateway(() => runtimeClient()).dispose;

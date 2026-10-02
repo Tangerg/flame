@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"log/slog"
 	"reflect"
 	"strings"
@@ -66,7 +67,7 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 	})
 	compactor := &calibrationCaptureCompactor{estimatedTokens: 100}
 	executor := newObservedTestInteractionExecutor(t, recordingModel, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{question}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "ask")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{question}}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 		ModelContextCompactor: compactor, ModelContextState: emptyInteractionModelContextState{},
 	})
@@ -93,6 +94,10 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 		ref.ExecutorID,
 		run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}},
 	)
+	resumable, err := executor.CanResumeWaitingExecution(t.Context(), continuation)
+	if err != nil || !resumable {
+		t.Fatalf("CanResumeWaitingExecution with generation options = %t, %v, want true", resumable, err)
+	}
 
 	restoredWaiting, err := executor.RestoreWaitingExecution(t.Context(), continuation)
 	if err != nil {
@@ -192,7 +197,7 @@ func TestInteractionExecutorRestoresRuntimeAskUserTool(t *testing.T) {
 		interactionUsageTextResponse("continued after the answer", 1, 1),
 	}}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{ask}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.BuiltInTool(t, "ask_user")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{ask}}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 	})
 	start := interactionTestStart()
@@ -269,7 +274,7 @@ func TestInteractionExecutorRestoresInteractiveApprovalWithoutRepeatingPolicyOrH
 	hooks := &recordingInteractionHooks{}
 	approvals := &promptingInteractionAuthorizer{}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "mutate")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: approvals, ToolHooks: hooks,
 	})
 	start := interactionTestStart()
@@ -341,7 +346,7 @@ func TestInteractionExecutorCancellationStopsApprovedInflightTool(t *testing.T) 
 		interactionToolResponse(chat.ToolCall{ID: "mutate_call", Name: "mutate", Arguments: `{}`}, 1, 1),
 	}}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "mutate")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: &promptingInteractionAuthorizer{},
 	})
 	start := interactionTestStart()
@@ -416,7 +421,7 @@ func TestInteractionExecutorCancellationStopsApprovedForegroundShell(t *testing.
 		}, 1, 1),
 	}}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: shellTools}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.BuiltInTool(t, "shell"), testsupport.BuiltInTool(t, "read_shell_output"), testsupport.BuiltInTool(t, "stop_shell")}, manifest: toolset.Manifest{Visible: shellTools}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: &promptingInteractionAuthorizer{},
 	})
 	start := interactionTestStart()
@@ -480,7 +485,11 @@ func TestInteractionExecutorPreservesDeferredAdvertisementAcrossWaitingRestore(t
 	if err != nil {
 		t.Fatal(err)
 	}
-	search, err := toolset.NewDiscovery([]toolcontract.Tool{hidden})
+	identifiedHidden, err := toolset.WithIdentity(hidden, testsupport.A2ATool(t, "hidden_lookup"), testsupport.ToolFingerprint(testsupport.A2ATool(t, "hidden_lookup")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	search, err := toolset.NewDiscovery([]toolcontract.Tool{identifiedHidden})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -504,8 +513,8 @@ func TestInteractionExecutorPreservesDeferredAdvertisementAcrossWaitingRestore(t
 	}
 	model := &advertisementWaitingModel{}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver: staticInteractionTools{manifest: toolset.Manifest{
-			Visible: []toolcontract.Tool{search, question}, Deferred: []toolcontract.Tool{hidden},
+		ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.BuiltInTool(t, "search_tools"), testsupport.A2ATool(t, "ask")}, manifest: toolset.Manifest{
+			Visible: []toolcontract.Tool{search, question}, Deferred: []toolcontract.Tool{identifiedHidden},
 		}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 	})
@@ -644,7 +653,7 @@ func (p *promptingInteractionAuthorizer) AuthorizeTool(
 	prompt := runs.ApprovalPrompt{
 		CallID: request.CallID, ToolName: request.ToolName, Arguments: request.Arguments.Canonical(),
 		SafetyClass: request.SafetyClass, Risk: domaintool.RiskHigh,
-		Reason: "This Tool changes external state.", Rememberable: true,
+		Reason: "This Tool changes external state.", Rememberable: true, Tool: request.Tool, SourceFingerprint: request.SourceFingerprint,
 	}
 	return AskToolApproval(prompt)
 }
@@ -740,7 +749,7 @@ func TestInteractionExecutorProbesWaitingCheckpointThroughExactRestorePath(t *te
 	executor := newObservedTestInteractionExecutor(t, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 		return nil, errors.New("model must not be called while probing a waiting checkpoint")
 	}), InteractionExecutorConfig{
-		ToolResolver: staticInteractionTools{manifest: toolset.Manifest{
+		ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "ask")}, manifest: toolset.Manifest{
 			Visible: []toolcontract.Tool{newQuestionCheckpointTool(t)},
 		}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
@@ -750,6 +759,10 @@ func TestInteractionExecutorProbesWaitingCheckpointThroughExactRestorePath(t *te
 		"exec_probe",
 		run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}},
 	)
+	head, found, err := executor.config.ExecutionTrees.LoadExecutionTree(t.Context(), continuation.SessionID, checkpoint.RootMemberID)
+	if err != nil || !found {
+		t.Fatalf("LoadExecutionTree before probe = %t, %v", found, err)
+	}
 	resumable, err := executor.CanResumeWaitingExecution(t.Context(), continuation)
 	if err != nil || !resumable {
 		t.Fatalf("CanResumeWaitingExecution = %t, %v, want true", resumable, err)
@@ -761,6 +774,10 @@ func TestInteractionExecutorProbesWaitingCheckpointThroughExactRestorePath(t *te
 	resumable, err = executor.CanResumeWaitingExecution(t.Context(), foreign)
 	if err != nil || resumable {
 		t.Fatalf("foreign CanResumeWaitingExecution = %t, %v, want false", resumable, err)
+	}
+	after, found, err := executor.config.ExecutionTrees.LoadExecutionTree(t.Context(), continuation.SessionID, checkpoint.RootMemberID)
+	if err != nil || !found || !head.SameCommit(after) {
+		t.Fatalf("probe changed the durable execution tree or its writer: found=%t, error=%v", found, err)
 	}
 }
 
@@ -978,7 +995,7 @@ func captureInteractionQuestionCheckpoint(t *testing.T, workspace string) runs.E
 	executor := newObservedTestInteractionExecutor(t, &observationScriptModel{responses: []*chat.Response{
 		interactionToolResponse(chat.ToolCall{ID: "ask_call", Name: "ask", Arguments: `{}`}, 1, 1),
 	}}, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{question}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "ask")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{question}}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 	})
 	start := interactionTestStart()

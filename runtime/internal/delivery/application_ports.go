@@ -5,6 +5,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/feedback"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
@@ -43,21 +44,24 @@ type sessionUseCases interface {
 }
 
 type mcpUseCases interface {
+	ToolExposure(context.Context, mcpserver.ServerName) ([]toolsvc.Ref, error)
+	SetToolExposure(context.Context, toolsvc.Ref, bool) error
 	CreateAuthorizationAttempt(ctx context.Context, name mcpserver.ServerName) (mcpapp.AuthorizationAttempt, error)
 	CreateServer(ctx context.Context, input mcpapp.ServerInput) (mcpapp.Server, error)
 	DeleteServer(ctx context.Context, name mcpserver.ServerName) error
 	AuthorizationAttempt(ctx context.Context, id string) (mcpapp.AuthorizationAttempt, error)
 	AuthorizationAttemptRetention() time.Duration
 	Servers(ctx context.Context) ([]mcpapp.Server, error)
-	Tools(ctx context.Context, server *mcpserver.ServerName) ([]mcpserver.AdvertisedTool, error)
+	Tools(ctx context.Context, server *mcpserver.ServerName) ([]mcpapp.ToolView, error)
 	ReconnectServer(ctx context.Context, name mcpserver.ServerName) error
 	TestServer(ctx context.Context, input mcpapp.ServerInput) (mcpapp.TestResult, error)
 	UpdateServer(ctx context.Context, name mcpserver.ServerName, patch mcpapp.ServerPatch) (mcpapp.Server, error)
 }
 
 type approvalUseCases interface {
+	SetRule(context.Context, toolsvc.Ref, approval.Scope, string, approval.Subject, approval.Decision) error
 	ForgetRule(ctx context.Context, id string) error
-	ListRules(ctx context.Context, sessionID string) ([]approval.Rule, error)
+	ListRules(ctx context.Context, sessionID string) ([]approvals.RuleView, error)
 	DefaultMode(ctx context.Context) (approval.Mode, error)
 	SetDefaultMode(ctx context.Context, mode approval.Mode) error
 }

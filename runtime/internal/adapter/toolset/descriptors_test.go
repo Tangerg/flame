@@ -3,13 +3,12 @@ package toolset
 import (
 	"context"
 	json "encoding/json/v2"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
 	"unicode"
-
-	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
@@ -28,6 +27,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 type activeGoalStub struct{}
@@ -279,9 +279,21 @@ func testApprovalPolicy(t *testing.T) *approvals.RuntimePolicy {
 			t.Error(err)
 		}
 	})
-	policy, err := approvals.NewRuntimePolicy(approval.ModeBalanced, sqlite.NewApprovalRuleStore(db), sqlite.NewPermissionModeStore(db), nil)
+	policy, err := approvals.NewRuntimePolicy(approval.ModeBalanced, sqlite.NewApprovalRuleStore(db), sqlite.NewPermissionModeStore(db), testsupport.ToolAuthorities{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return policy
+}
+
+func TestEveryBuiltInHasBehavior(t *testing.T) {
+	for _, name := range tool.BuiltInNames() {
+		ref, err := tool.BuiltIn(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if descriptor, ok := descriptorFor(ref); !ok || !descriptor.safety.Valid() {
+			t.Errorf("built-in %s has no valid behavior: %+v", name, descriptor)
+		}
+	}
 }

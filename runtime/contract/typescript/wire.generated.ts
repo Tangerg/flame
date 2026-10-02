@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-09-28";
+export const PROTOCOL_VERSION = "2026-10-02";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 28;
@@ -211,14 +211,23 @@ export interface ApprovalRule {
   decision: ApprovalRuleDecision;
   dir?: string;
   id: string;
+  modelName: string;
   scope: ApprovalRuleScope;
-  subject?: string;
-  tool: string;
+  stale: boolean;
+  subject: ApprovalSubject;
+  tool: ToolRef;
 }
 
 export type ApprovalRuleDecision = "allow" | "deny";
 
 export type ApprovalRuleScope = "session" | "project" | "global";
+
+export type ApprovalSubject =
+  | { type: "all" }
+  | { type: "exact"; value: string }
+  | { type: "glob"; value: string };
+
+export type ApprovalSubjectType = "all" | "exact" | "glob";
 
 export type ArtifactItem =
   | { type: "userMessage"; content: ContentBlock[]; createdAt: string; id: string; runId: string; status: "completed" }
@@ -685,7 +694,7 @@ export type ItemStatus = "running" | "completed" | "incomplete";
 export type ItemType = "userMessage" | "agentMessage" | "reasoning" | "question" | "toolCall" | "compaction";
 
 export interface ListApprovalRulesRequest {
-  sessionId: string;
+  sessionId?: string;
 }
 
 export interface ListApprovalRulesResult {
@@ -822,20 +831,16 @@ export interface MCPListToolsRequest {
 export type MCPSecretChangeType = "set" | "clear";
 
 export interface MCPServer {
-  autoApproveTools?: string[];
   connection: MCPConnection;
   description?: string;
-  disabledTools?: string[];
   handshakeTimeout: MCPHandshakeTimeout;
   name: string;
   status: MCPServerState;
 }
 
 export interface MCPServerCandidate {
-  autoApproveTools?: string[];
   connection: MCPConnectionInput;
   description?: string;
-  disabledTools?: string[];
   enabled: boolean;
   handshakeTimeout: MCPHandshakeTimeout;
   name: string;
@@ -863,7 +868,14 @@ export interface MCPTestResult {
 export interface MCPTool {
   description?: string;
   inputSchema?: Record<string, unknown>;
+  modelName: string;
   name: string;
+  nameConflicts: ToolRef[];
+  server: string;
+}
+
+export interface MCPToolExposure {
+  disabledTools: string[];
   server: string;
 }
 
@@ -1438,9 +1450,23 @@ export interface SetApprovalModeRequest {
   mode: ApprovalMode;
 }
 
+export interface SetApprovalRuleRequest {
+  decision: ApprovalRuleDecision;
+  scope: ApprovalRuleScope;
+  sessionId?: string;
+  subject: ApprovalSubject;
+  tool: ToolRef;
+}
+
 export interface SetHookTrustRequest {
   projectRoot: string;
   trusted: boolean;
+}
+
+export interface SetMCPToolExposureRequest {
+  disabled: boolean;
+  name: string;
+  server: string;
 }
 
 export interface Skill {
@@ -1591,6 +1617,13 @@ export interface ToolInvocation {
   result?: unknown;
 }
 
+export type ToolRef =
+  | { type: "builtIn"; name: "apply_patch" | "ask_user" | "create_goal" | "create_schedule" | "delete_schedule" | "delegate_task" | "edit" | "enter_plan_mode" | "exit_plan_mode" | "get_goal" | "glob" | "grep" | "http_request" | "list_schedules" | "list_skills" | "load_skill" | "lsp" | "propose_skill" | "read" | "read_shell_output" | "read_skill_resource" | "read_tool_result" | "report_goal_outcome" | "search_memory" | "search_tools" | "set_plan" | "shell" | "stop_shell" | "web_fetch" | "web_search" }
+  | { type: "mcp"; name: string; server: string }
+  | { type: "a2a"; endpoint: string };
+
+export type ToolRefType = "builtIn" | "mcp" | "a2a";
+
 export interface ToolSpec {
   description?: string;
   name: string;
@@ -1621,10 +1654,8 @@ export interface UpdateGoalRequest {
 }
 
 export interface UpdateMCPServerRequest {
-  autoApproveTools?: string[];
   connection?: MCPConnectionInput;
   description?: string;
-  disabledTools?: string[];
   enabled?: boolean;
   handshakeTimeout?: MCPHandshakeTimeout;
   server: string;
@@ -1762,6 +1793,7 @@ export const WIRE_ENUMS = {
   ApprovalRisk: ["low", "medium", "high"],
   ApprovalRuleDecision: ["allow", "deny"],
   ApprovalRuleScope: ["session", "project", "global"],
+  ApprovalSubjectType: ["all", "exact", "glob"],
   ArtifactOutcomeType: ["completed", "timedOut", "failed", "canceled", "lost"],
   ArtifactProblemType: ["internalError", "runLost", "agentStuck", "rateLimited", "invalidApiKey", "timeout", "providerUnavailable", "providerRejected", "deniedByUser", "toolFailed", "childRunCanceled", "toolCanceled"],
   CancelRunResponseType: ["root", "child"],
@@ -1820,6 +1852,7 @@ export const WIRE_ENUMS = {
   StreamEventType: ["segment.started", "segment.progress", "segment.finished", "item.started", "item.delta", "item.completed", "plan.updated"],
   SuppressibleRunEventType: ["segment.progress", "item.delta"],
   ToolAttemptState: ["started", "completed", "incomplete"],
+  ToolRefType: ["builtIn", "mcp", "a2a"],
   TrajectoryEntryType: ["run", "model", "item"],
   TransportKind: ["http"],
   WorkspaceAvailability: ["available", "missing"],

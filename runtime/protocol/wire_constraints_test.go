@@ -722,8 +722,8 @@ func TestScheduleRequiresCreationTime(t *testing.T) {
 
 func TestApprovalRuleWireConstraintsCloseScopeShape(t *testing.T) {
 	t.Parallel()
-	valid := ApprovalRule{
-		ID: "rule_1", Scope: ApprovalRuleScopeGlobal, Tool: "shell",
+	valid := ApprovalRule{Subject: ApprovalSubject{Type: ApprovalSubjectAll},
+		ID: "rule_1", Scope: ApprovalRuleScopeGlobal, Tool: ToolRef{Type: ToolRefBuiltIn, Name: "shell"}, ModelName: "shell",
 		Decision: ApprovalRuleDecisionAllow,
 	}
 	if err := valid.ValidateWire(); err != nil {
@@ -741,7 +741,7 @@ func TestApprovalRuleWireConstraintsCloseScopeShape(t *testing.T) {
 		value ApprovalRule
 	}{
 		{name: "missing id", field: "id", value: func() ApprovalRule { value := valid; value.ID = ""; return value }()},
-		{name: "blank tool", field: "tool", value: func() ApprovalRule { value := valid; value.Tool = " \t"; return value }()},
+		{name: "blank model name", field: "modelName", value: func() ApprovalRule { value := valid; value.ModelName = " \t"; return value }()},
 		{name: "project without directory", field: "dir", value: func() ApprovalRule { value := valid; value.Scope = ApprovalRuleScopeProject; return value }()},
 		{name: "session with directory", field: "dir", value: func() ApprovalRule {
 			value := valid
@@ -846,7 +846,7 @@ func TestMCPServerIdentityUsesCanonicalWireGrammar(t *testing.T) {
 		MCPServerCandidate{Name: maximum},
 		UpdateMCPServerRequest{Server: maximum},
 		MCPServer{Name: maximum},
-		MCPTool{Server: maximum, Name: "read"},
+		MCPTool{Server: maximum, Name: "read", ModelName: "source_read"},
 	}
 	for _, value := range valid {
 		if err := value.ValidateWire(); err != nil {
@@ -879,9 +879,9 @@ func TestMCPServerIdentityUsesCanonicalWireGrammar(t *testing.T) {
 func TestMCPRemoteToolIdentityUsesCanonicalWireGrammar(t *testing.T) {
 	maximum := strings.Repeat("a", mcpserver.MaximumRemoteToolNameCharacters)
 	valid := []WireValidator{
-		MCPServerCandidate{Name: "files", DisabledTools: []string{maximum}},
-		MCPServer{Name: "files", AutoApproveTools: []string{maximum}},
-		MCPTool{Server: "files", Name: maximum},
+		MCPToolExposure{Server: "files", DisabledTools: []string{maximum}},
+		SetMCPToolExposureRequest{Server: "files", Name: maximum, Disabled: true},
+		MCPTool{Server: "files", Name: maximum, ModelName: "files_read"},
 	}
 	for _, value := range valid {
 		if err := value.ValidateWire(); err != nil {
@@ -889,17 +889,16 @@ func TestMCPRemoteToolIdentityUsesCanonicalWireGrammar(t *testing.T) {
 		}
 	}
 
-	invalidUpdate := []string{"tool/name"}
 	overlongTool := strings.Repeat("a", mcpserver.MaximumRemoteToolNameCharacters+1)
 	tests := []struct {
 		shape string
 		field string
 		err   error
 	}{
-		{"MCPServerCandidate", "disabledTools[0]", (MCPServerCandidate{Name: "files", DisabledTools: []string{"with space"}}).ValidateWire()},
-		{"UpdateMCPServerRequest", "autoApproveTools[0]", (UpdateMCPServerRequest{Server: "files", AutoApproveTools: &invalidUpdate}).ValidateWire()},
-		{"MCPServer", "disabledTools[0]", (MCPServer{Name: "files", DisabledTools: []string{"工具"}}).ValidateWire()},
-		{"MCPServerCandidate", "autoApproveTools[0]", (MCPServerCandidate{Name: "files", AutoApproveTools: []string{overlongTool}}).ValidateWire()},
+		{"MCPToolExposure", "disabledTools[0]", (MCPToolExposure{Server: "files", DisabledTools: []string{"with space"}}).ValidateWire()},
+		{"SetMCPToolExposureRequest", "name", (SetMCPToolExposureRequest{Server: "files", Name: "tool/name"}).ValidateWire()},
+		{"MCPToolExposure", "disabledTools[0]", (MCPToolExposure{Server: "files", DisabledTools: []string{"工具"}}).ValidateWire()},
+		{"MCPToolExposure", "disabledTools[0]", (MCPToolExposure{Server: "files", DisabledTools: []string{overlongTool}}).ValidateWire()},
 		{"MCPTool", "name", (MCPTool{Server: "files", Name: overlongTool}).ValidateWire()},
 	}
 	for _, test := range tests {
@@ -912,10 +911,64 @@ func TestMCPRemoteToolIdentityUsesCanonicalWireGrammar(t *testing.T) {
 	}
 	assertConstraintField(
 		t,
-		(MCPServerCandidate{Name: "files", DisabledTools: tooMany}).ValidateWire(),
-		"MCPServerCandidate",
+		(MCPToolExposure{Server: "files", DisabledTools: tooMany}).ValidateWire(),
+		"MCPToolExposure",
 		"disabledTools",
 	)
+}
+
+func TestSetApprovalRuleBindsSourceAndScope(t *testing.T) {
+	global := SetApprovalRuleRequest{Subject: ApprovalSubject{Type: ApprovalSubjectAll}, Tool: ToolRef{Type: ToolRefMCP, Server: "files", Name: "read"}, Scope: ApprovalRuleScopeGlobal, Decision: ApprovalRuleDecisionAllow}
+	for _, scope := range []ApprovalRuleScope{ApprovalRuleScopeGlobal, ApprovalRuleScopeSession, ApprovalRuleScopeProject} {
+		request := global
+		request.Scope = scope
+		if scope != ApprovalRuleScopeGlobal {
+			request.SessionID = "ses_1"
+		}
+		if err := ValidateWireTree(request); err != nil {
+			t.Errorf("valid %s scope: %v", scope, err)
+		}
+	}
+	for _, mutate := range []func(*SetApprovalRuleRequest){
+		func(r *SetApprovalRuleRequest) { r.SessionID = "ses_1" },
+		func(r *SetApprovalRuleRequest) { r.Scope = ApprovalRuleScopeSession },
+		func(r *SetApprovalRuleRequest) { r.Scope = ApprovalRuleScopeProject },
+		func(r *SetApprovalRuleRequest) { r.Tool.Server = "" },
+		func(r *SetApprovalRuleRequest) { r.Tool.Endpoint = "extra" },
+		func(r *SetApprovalRuleRequest) { r.Tool = ToolRef{Type: ToolRefBuiltIn, Name: "unknown"} },
+	} {
+		request := global
+		mutate(&request)
+		if err := ValidateWireTree(request); err == nil {
+			t.Errorf("invalid request accepted: %+v", request)
+		}
+	}
+	if err := (ListApprovalRulesRequest{}).ValidateWire(); err != nil {
+		t.Fatalf("global rules require a session: %v", err)
+	}
+}
+
+func TestApprovalSubjectWireRequiresExplicitMatchType(t *testing.T) {
+	for _, subject := range []ApprovalSubject{
+		{Type: ApprovalSubjectAll},
+		{Type: ApprovalSubjectExact, Value: "echo ["},
+		{Type: ApprovalSubjectGlob, Value: "echo *"},
+	} {
+		if err := subject.ValidateWire(); err != nil {
+			t.Errorf("valid subject %+v: %v", subject, err)
+		}
+	}
+	for _, subject := range []ApprovalSubject{
+		{},
+		{Type: "unknown", Value: "echo *"},
+		{Type: ApprovalSubjectAll, Value: "echo *"},
+		{Type: ApprovalSubjectExact},
+		{Type: ApprovalSubjectGlob},
+	} {
+		if err := subject.ValidateWire(); err == nil {
+			t.Errorf("invalid subject accepted: %+v", subject)
+		}
+	}
 }
 
 func TestProblemDataWireUnion(t *testing.T) {
@@ -2264,8 +2317,7 @@ func TestOptionalMCPUpdateConstraintsPreserveAndValidatePresentValues(t *testing
 	assertConstraintField(t, timeout.ValidateWire(), "MCPHandshakeTimeout", "seconds")
 
 	repeated := []string{"read", "read"}
-	request.DisabledTools = &repeated
-	assertConstraintField(t, request.ValidateWire(), "UpdateMCPServerRequest", "disabledTools")
+	assertConstraintField(t, (MCPToolExposure{Server: "files", DisabledTools: repeated}).ValidateWire(), "MCPToolExposure", "disabledTools")
 }
 
 func assertConstraintField(t *testing.T, err error, shape, field string) {

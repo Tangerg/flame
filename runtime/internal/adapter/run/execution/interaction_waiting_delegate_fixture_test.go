@@ -3,6 +3,7 @@ package execution
 import (
 	"context"
 	"errors"
+	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"slices"
 	"testing"
 	"time"
@@ -41,7 +42,7 @@ func newWaitingDelegateFixture(t *testing.T, identity string) *waitingDelegateFi
 		ImplementationIdentity: identity + "-build",
 		ConfigurationIdentity:  identity + "-config",
 		BuildID:                interactionTestBuildID,
-		ToolResolver: staticInteractionTools{manifest: toolset.Manifest{
+		ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "ask")}, manifest: toolset.Manifest{
 			Visible: []toolcontract.Tool{question},
 		}},
 		ToolInterpreter: testInteractionToolInterpreter{},

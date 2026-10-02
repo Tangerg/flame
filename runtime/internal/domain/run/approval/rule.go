@@ -1,13 +1,14 @@
 package approval
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
-	"hash/fnv"
-	"path"
 	"strconv"
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
 type ruleSet []Rule
@@ -60,9 +61,9 @@ func ValidateVisibleRules(rules []Rule, sessionID, projectDir string) error {
 }
 
 // NewRule constructs one durable rule and derives its deterministic identity.
-func NewRule(scope Scope, scopeKey, toolName, subject string, decision Decision) (Rule, error) {
+func NewRule(scope Scope, scopeKey string, ref tool.Ref, fingerprint string, subject Subject, decision Decision) (Rule, error) {
 	rule := Rule{
-		Scope: scope, ScopeKey: scopeKey, Tool: toolName,
+		Scope: scope, ScopeKey: scopeKey, Tool: ref, SourceFingerprint: fingerprint,
 		Subject: subject, Decision: decision,
 	}
 	rule.ID = rule.stableID()
@@ -92,40 +93,19 @@ func (r Rule) Validate() error {
 			return fmt.Errorf("%w: global scope cannot carry a key", ErrInvalidRule)
 		}
 	}
-	if strings.TrimSpace(r.Tool) == "" || strings.TrimSpace(r.Tool) != r.Tool {
-		return fmt.Errorf("%w: tool name is required without surrounding whitespace", ErrInvalidRule)
+	if err := r.Tool.ValidateFingerprint(r.SourceFingerprint); err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidRule, err)
 	}
 	if !r.Decision.Valid() {
 		return fmt.Errorf("%w: unknown decision %q", ErrInvalidRule, r.Decision)
 	}
-	if hasGlob(r.Subject) {
-		if _, err := path.Match(r.Subject, ""); err != nil {
-			return fmt.Errorf("%w: invalid subject glob %q: %w", ErrInvalidRule, r.Subject, err)
-		}
+	if err := r.Subject.Validate(); err != nil {
+		return err
 	}
 	if r.ID == "" || r.ID != r.stableID() {
 		return fmt.Errorf("%w: identity %q does not match rule contents", ErrInvalidRule, r.ID)
 	}
 	return nil
-}
-
-// hasGlob reports whether a subject pattern carries glob metacharacters.
-func hasGlob(pattern string) bool {
-	return strings.ContainsAny(pattern, "*?[")
-}
-
-// matchesSubject uses path.Match for glob subjects; "*" intentionally does not
-// cross "/" and "**" is not special.
-func (r Rule) matchesSubject(subject string) bool {
-	switch {
-	case r.Subject == "":
-		return true
-	case !hasGlob(r.Subject):
-		return r.Subject == subject
-	default:
-		ok, err := path.Match(r.Subject, subject)
-		return err == nil && ok
-	}
 }
 
 // specificity encodes the conflict policy: narrower scope beats wider scope,
@@ -140,12 +120,10 @@ func (r Rule) specificity() int {
 	case ScopeGlobal:
 		score = 100
 	}
-	switch {
-	case r.Subject == "":
-		score += 0
-	case hasGlob(r.Subject):
+	switch r.Subject.Type {
+	case SubjectGlob:
 		score++
-	default:
+	case SubjectExact:
 		score += 2
 	}
 	return score
@@ -158,8 +136,8 @@ func (q Query) Validate() error {
 			return fmt.Errorf("%w: session: %v", ErrInvalidQuery, err)
 		}
 	}
-	if strings.TrimSpace(q.Tool) == "" || strings.TrimSpace(q.Tool) != q.Tool {
-		return fmt.Errorf("%w: tool name is required without surrounding whitespace", ErrInvalidQuery)
+	if err := q.Tool.ValidateFingerprint(q.SourceFingerprint); err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidQuery, err)
 	}
 	return nil
 }
@@ -177,7 +155,7 @@ func (r ruleSet) decide(q Query) (Decision, bool, error) {
 	var verdict Decision
 	conflict := false
 	for _, rule := range r {
-		if rule.Tool != q.Tool || !rule.matchesSubject(q.Subject) {
+		if rule.Tool != q.Tool || rule.SourceFingerprint != q.SourceFingerprint || !rule.Subject.matches(q.Subject) {
 			continue
 		}
 		switch score := rule.specificity(); {
@@ -221,22 +199,21 @@ func (r RememberRequest) Rule() (Rule, error) {
 	if !ok {
 		return Rule{}, fmt.Errorf("%w: scope %q has no usable key", ErrInvalidRule, r.Scope)
 	}
-	if strings.TrimSpace(r.Tool) == "" || strings.TrimSpace(r.Tool) != r.Tool {
-		return Rule{}, fmt.Errorf("%w: tool name is required without surrounding whitespace", ErrInvalidRule)
+	if err := r.Tool.ValidateFingerprint(r.SourceFingerprint); err != nil {
+		return Rule{}, fmt.Errorf("%w: %w", ErrInvalidRule, err)
 	}
 	if !r.Decision.Valid() {
 		return Rule{}, fmt.Errorf("%w: unknown decision %q", ErrInvalidRule, r.Decision)
 	}
-	return NewRule(r.Scope, key, r.Tool, r.Subject, r.Decision)
+	return NewRule(r.Scope, key, r.Tool, r.SourceFingerprint, r.Subject, r.Decision)
 }
 
 // stableID makes re-remembering the same rule an upsert and supplies a durable
 // handle for forgetting it later.
 func (r Rule) stableID() string {
-	h := fnv.New64a()
-	for _, part := range []string{string(r.Scope), r.ScopeKey, r.Tool, r.Subject} {
-		_, _ = h.Write([]byte(part))
-		_, _ = h.Write([]byte{0})
+	h := sha256.New()
+	for _, part := range []string{string(r.Scope), r.ScopeKey, r.Tool.String(), string(r.Subject.Type), r.Subject.Value} {
+		h.Write([]byte(strconv.Itoa(len(part)) + ":" + part))
 	}
-	return "rule_" + strconv.FormatUint(h.Sum64(), 16)
+	return "rule_" + hex.EncodeToString(h.Sum(nil))
 }

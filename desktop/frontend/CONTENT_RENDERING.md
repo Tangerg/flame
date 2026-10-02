@@ -1924,8 +1924,11 @@ interface McpServer {
   connection: McpConnection;
   status: McpServerState;
   handshakeTimeout: McpHandshakeTimeout;
-  disabledTools?: string[];      // 用远端原名，不受塌名影响
-  autoApproveTools?: string[];   // 同上
+}
+
+interface MCPToolExposure {
+  server: string;
+  disabledTools: string[]; // Exact remote names; separate from the connection record.
 }
 
 type McpHandshakeTimeout =
@@ -1960,6 +1963,12 @@ interface McpAuthorizationAttempt {
 /** 写入：省略 = 保留（仅同 secret scope 内）；scope 变了必须显式 set 或 clear */
 type SecretChange = { type: "set"; value: string } | { type: "clear" };
 ```
+
+`mcp.tools.exposure` reads visibility and `mcp.tools.setExposure` changes it for
+new Runs. Auto-approve writes a global whole-tool allow rule through
+`approval.setRule`; switching it off removes that rule through
+`approval.forgetRule`. The control projects current, non-stale allow rules;
+remembered denials still apply. MCP connection records contain no approval state.
 
 - **终态保留窗口由服务端能力公布**（pending 不按该窗口清理）→ 过期后的查询要引导「重新发起登录」，而不是「重试这个 id」。
 - UI 换 URL origin / 换进程目标时**必须**逼用户对凭证表态 —— 运行时绝不把凭证静默带到新 origin。
@@ -1999,15 +2008,25 @@ interface HookInfo {
 
 ```ts
 type ApprovalMode = "safe" | "balanced" | "yolo";   // 全局姿态，不是 per-run
+type ToolRef =
+  | { type: "builtIn"; name: string }
+  | { type: "mcp"; server: string; name: string }
+  | { type: "a2a"; endpoint: string };
+
 interface ApprovalRule {
   id: string;
-  tool: string;                                     // 模型可见名
+  tool: ToolRef;
+  modelName: string; // Display only; never parsed into an authority key.
+  stale: boolean;
   decision: "allow" | "deny";
   scope: "session" | "project" | "global";
   subject?: string;
   dir?: string;
 }
 ```
+
+Runtime resolves source fingerprints when recording rules. Endpoint changes make
+existing grants stale; clients render that state and never recompute it.
 
 ### 9.11 工具目录（G 区）
 

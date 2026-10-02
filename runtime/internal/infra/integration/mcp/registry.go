@@ -7,11 +7,9 @@ import (
 	"runtime/debug"
 	"slices"
 
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
-	sdkmcp "github.com/Tangerg/go-sdk/mcp"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	sdkmcp "github.com/Tangerg/go-sdk/mcp"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 // Statuses returns one cached entry per server attached to the live projection
@@ -53,7 +51,7 @@ func (c *Connections) Tools(serverName *mcpserver.ServerName) ([]mcpserver.Adver
 			return nil, errors.New("mcp: admitted tool has no MCP identity")
 		}
 		out = append(out, mcpserver.AdvertisedTool{
-			Server: ref.Server, Name: ref.Tool, Definition: executable.Definition(),
+			Server: ref.Server(), Name: ref.Remote(), Definition: executable.Definition(),
 		})
 	}
 	return out, nil

@@ -14,14 +14,19 @@
 //     can stay narrower than allowing every operation of that tool.
 package approval
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+)
 
 var (
-	ErrInvalidMode        = errors.New("approval: invalid mode")
-	ErrInvalidSessionMode = errors.New("approval: invalid session mode")
-	ErrInvalidQuery       = errors.New("approval: invalid query")
-	ErrInvalidRule        = errors.New("approval: invalid rule")
-	ErrRuleCapacity       = errors.New("approval: visible rule capacity exceeded")
+	ErrInvalidMode            = errors.New("approval: invalid mode")
+	ErrInvalidSessionMode     = errors.New("approval: invalid session mode")
+	ErrInvalidQuery           = errors.New("approval: invalid query")
+	ErrInvalidRule            = errors.New("approval: invalid rule")
+	ErrSourceAuthorityChanged = errors.New("approval: source authority changed")
+	ErrRuleCapacity           = errors.New("approval: visible rule capacity exceeded")
 )
 
 // MaximumVisibleRules bounds the complete, non-paginated relation consulted
@@ -102,35 +107,37 @@ func (d Decision) Valid() bool { return d == Allow || d == Deny }
 
 // Rule is one standing approval decision. A rule matches a tool call when the
 // call's scope key matches (same session / same project dir / always for
-// global), the tool name matches, and the call's per-tool subject matches the
-// Subject glob (empty Subject = any arguments for that tool).
+// global), the tool reference and source fingerprint match, and the call's
+// per-tool subject matches the explicit Subject matcher.
 type Rule struct {
-	ID       string   // deterministic over (Scope, ScopeKey, Tool, Subject)
-	Scope    Scope    // session | project | global
-	ScopeKey string   // session id | project dir | "" for global
-	Tool     string   // tool name, e.g. "shell"
-	Subject  string   // glob over the call's subject (command / path); "" = any
-	Decision Decision // allow | deny
+	ID                string // deterministic over (Scope, ScopeKey, Tool, Subject)
+	Scope             Scope  // session | project | global
+	ScopeKey          string // session id | project dir | "" for global
+	Tool              tool.Ref
+	SourceFingerprint string
+	Subject           Subject
+	Decision          Decision // allow | deny
 }
 
 // Query identifies one gated tool call for [Policy.Decide]. ProjectDir is the
 // call's working directory (the project scope key); empty for sessions without
 // a cwd. Subject is derived by the concrete tool owner before policy evaluation.
 type Query struct {
-	SessionID  string
-	ProjectDir string
-	Tool       string
-	Subject    string
+	SessionID         string
+	ProjectDir        string
+	Tool              tool.Ref
+	SourceFingerprint string
+	Subject           string
 }
 
 // RememberRequest persists a rule from a user's "approve/deny + remember{scope}"
-// choice. Subject is the same concrete-tool identity used for matching the
-// current call; an empty subject deliberately means a whole-tool rule.
+// choice. Subject is derived from the confirmed invocation by InvocationSubject.
 type RememberRequest struct {
-	Scope      Scope
-	SessionID  string
-	ProjectDir string
-	Tool       string
-	Subject    string
-	Decision   Decision
+	Scope             Scope
+	SessionID         string
+	ProjectDir        string
+	Tool              tool.Ref
+	SourceFingerprint string
+	Subject           Subject
+	Decision          Decision
 }

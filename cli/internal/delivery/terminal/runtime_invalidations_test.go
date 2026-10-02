@@ -277,26 +277,29 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 		stop()
 	})
 
-	t.Run("approval rules", func(t *testing.T) {
-		catalog := &mutableRuntimeCatalog{Runtime: runtimefixture.New()}
-		source := runtimeResourceChangeSource(protocol.TopicApprovalsChanged)
-		host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: catalog, Changes: source})
-		host.Shows(t, "Ask flame")
-		assertSingleRuntimeTopic(t, source.subscription, protocol.TopicApprovalsChanged)
-		host.Type("/rules")
-		host.Press(input.Enter)
-		host.Shows(t, "No remembered approval rules")
+	for _, topic := range []protocol.RuntimeTopic{protocol.TopicApprovalsChanged, protocol.TopicMCPChanged} {
+		t.Run("approval rules/"+string(topic), func(t *testing.T) {
+			catalog := &mutableRuntimeCatalog{Runtime: runtimefixture.New()}
+			source := runtimeResourceChangeSource(topic)
+			host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: catalog, Changes: source})
+			host.Shows(t, "Ask flame")
+			assertSingleRuntimeTopic(t, source.subscription, topic)
+			host.Type("/rules")
+			host.Press(input.Enter)
+			host.Shows(t, "No remembered approval rules")
 
-		catalog.setRules(protocol.ApprovalRule{
-			ID: "rule_external", Scope: protocol.ApprovalRuleScopeGlobal, Tool: "shell",
-			Subject: "go test ./...", Decision: protocol.ApprovalRuleDecisionAllow,
+			catalog.setRules(protocol.ApprovalRule{
+				ID: "rule_external", Scope: protocol.ApprovalRuleScopeGlobal, Tool: protocol.ToolRef{Type: protocol.ToolRefBuiltIn, Name: "shell"}, ModelName: "shell",
+				Subject: protocol.ApprovalSubject{Type: protocol.ApprovalSubjectExact, Value: "go test ./..."}, Decision: protocol.ApprovalRuleDecisionAllow,
+			})
+			source.events <- changefeed.Event{Type: protocol.RuntimeEventType(topic), Sequence: 1}
+			awaitSignal(t, source.applied, "approvals.changed delivery")
+			host.Shows(t, "rule_external")
+			host.Hides(t, "No remembered approval rules")
+			stop()
 		})
-		source.events <- changefeed.Event{Type: protocol.RuntimeApprovalsChanged, Sequence: 1}
-		awaitSignal(t, source.applied, "approvals.changed delivery")
-		host.Shows(t, "rule_external")
-		host.Hides(t, "No remembered approval rules")
-		stop()
-	})
+
+	}
 
 	t.Run("agent memory", func(t *testing.T) {
 		memory := newAgentMemoryServiceStub()
@@ -323,8 +326,8 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 func TestApprovalRuleDeletionResolvesAUniquePrefixAndSurvivesResize(t *testing.T) {
 	catalog := &mutableRuntimeCatalog{Runtime: runtimefixture.New(), deleted: make(chan string, 1)}
 	catalog.setRules(protocol.ApprovalRule{
-		ID: "rule_external_123", Scope: protocol.ApprovalRuleScopeGlobal, Tool: "shell",
-		Subject: "go test ./...", Decision: protocol.ApprovalRuleDecisionAllow,
+		ID: "rule_external_123", Scope: protocol.ApprovalRuleScopeGlobal, Tool: protocol.ToolRef{Type: protocol.ToolRefBuiltIn, Name: "shell"}, ModelName: "shell",
+		Subject: protocol.ApprovalSubject{Type: protocol.ApprovalSubjectExact, Value: "go test ./..."}, Decision: protocol.ApprovalRuleDecisionAllow,
 	})
 	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: catalog})
 	host.Shows(t, "Ask flame")
@@ -354,8 +357,8 @@ func TestApprovalRuleDeletionDoesNotReportSuccessWhenRuleRemains(t *testing.T) {
 		Runtime: runtimefixture.New(), deleted: make(chan string, 1), ignoreRuleDeletion: true,
 	}
 	catalog.setRules(protocol.ApprovalRule{
-		ID: "rule_external_123", Scope: protocol.ApprovalRuleScopeGlobal, Tool: "shell",
-		Subject: "go test ./...", Decision: protocol.ApprovalRuleDecisionAllow,
+		ID: "rule_external_123", Scope: protocol.ApprovalRuleScopeGlobal, Tool: protocol.ToolRef{Type: protocol.ToolRefBuiltIn, Name: "shell"}, ModelName: "shell",
+		Subject: protocol.ApprovalSubject{Type: protocol.ApprovalSubjectExact, Value: "go test ./..."}, Decision: protocol.ApprovalRuleDecisionAllow,
 	})
 	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: catalog})
 	host.Shows(t, "Ask flame")

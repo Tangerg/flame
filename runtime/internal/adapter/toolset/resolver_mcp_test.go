@@ -5,10 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	identitytool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/scope/core/chat"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 type mcpToolStub struct {
@@ -28,8 +27,8 @@ func (mcpToolStub) Call(context.Context, toolcontract.Invocation) (chat.ToolOutp
 func (m mcpToolStub) MCPToolIdentity() (string, string) { return m.server, m.remote }
 
 func TestResolverMCPToolsReadsCurrentPolicy(t *testing.T) {
-	disabled := map[mcpserver.ToolRef]bool{}
-	resolver := &Resolver{mcpToolDisabled: func(ref mcpserver.ToolRef) bool { return disabled[ref] }}
+	disabled := map[identitytool.Ref]bool{}
+	resolver := &Resolver{mcpToolDisabled: func(ref identitytool.Ref) bool { return disabled[ref] }}
 	resolver.SetMCPTools([]toolcontract.Tool{
 		wrappedMCPTool(mcpToolStub{name: "files_read", server: "files", remote: "read"}),
 		wrappedMCPTool(mcpToolStub{name: "files_write", server: "files", remote: "write"}),
@@ -37,16 +36,16 @@ func TestResolverMCPToolsReadsCurrentPolicy(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		disabled map[mcpserver.ToolRef]bool
+		disabled map[identitytool.Ref]bool
 		want     []string
 	}{
-		{name: "no disabled tools", disabled: map[mcpserver.ToolRef]bool{}, want: []string{"files_read", "files_write"}},
+		{name: "no disabled tools", disabled: map[identitytool.Ref]bool{}, want: []string{"files_read", "files_write"}},
 		{
 			name:     "policy update hides tool",
-			disabled: map[mcpserver.ToolRef]bool{{Server: testMCPServerName("files"), Tool: testRemoteToolName("write")}: true},
+			disabled: map[identitytool.Ref]bool{testMCPRef(testMCPServerName("files"), testRemoteToolName("write")): true},
 			want:     []string{"files_read"},
 		},
-		{name: "later policy restores tool", disabled: map[mcpserver.ToolRef]bool{}, want: []string{"files_read", "files_write"}},
+		{name: "later policy restores tool", disabled: map[identitytool.Ref]bool{}, want: []string{"files_read", "files_write"}},
 	}
 
 	for _, tt := range tests {
@@ -77,17 +76,17 @@ func wrappedMCPTool(inner toolcontract.Tool) toolcontract.Tool {
 }
 
 func TestResolverMCPPolicyUsesSourceIdentityNotModelName(t *testing.T) {
-	disabledRef := mcpserver.ToolRef{Server: testMCPServerName("a_b"), Tool: testRemoteToolName("c")}
-	liveRef := mcpserver.ToolRef{Server: testMCPServerName("a"), Tool: testRemoteToolName("b_c")}
-	disabledName := mcpserver.ToolName(disabledRef.Server, disabledRef.Tool)
-	liveName := mcpserver.ToolName(liveRef.Server, liveRef.Tool)
+	disabledRef := testMCPRef(testMCPServerName("a_b"), testRemoteToolName("c"))
+	liveRef := testMCPRef(testMCPServerName("a"), testRemoteToolName("b_c"))
+	disabledName := disabledRef.ModelName()
+	liveName := liveRef.ModelName()
 	if disabledName != liveName {
 		t.Fatalf("fixture names do not collide: %q != %q", disabledName, liveName)
 	}
 
-	resolver := &Resolver{mcpToolDisabled: func(ref mcpserver.ToolRef) bool { return ref == disabledRef }}
+	resolver := &Resolver{mcpToolDisabled: func(ref identitytool.Ref) bool { return ref == disabledRef }}
 	resolver.SetMCPTools([]toolcontract.Tool{mcpToolStub{
-		name: liveName, server: liveRef.Server.String(), remote: liveRef.Tool.String(),
+		name: liveName, server: liveRef.Server().String(), remote: liveRef.Remote().String(),
 	}})
 
 	got, err := resolver.mcpTools()

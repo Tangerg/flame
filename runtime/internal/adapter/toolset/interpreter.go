@@ -30,8 +30,8 @@ func NewInterpreter(plans planStateReader) Interpreter {
 
 // SafetyClass returns the call's side-effect class. Unknown tools fail closed
 // because an extension can execute arbitrary work even when its name suggests a read.
-func (Interpreter) SafetyClass(name string) tool.SafetyClass {
-	if descriptor, ok := descriptorFor(name); ok {
+func (Interpreter) SafetyClass(ref tool.Ref) tool.SafetyClass {
+	if descriptor, ok := descriptorFor(ref); ok {
 		return descriptor.safety
 	}
 	return tool.SafetyClassExec
@@ -41,17 +41,20 @@ func (Interpreter) SafetyClass(name string) tool.SafetyClass {
 // PreToolUse/PostToolUse pipeline. Delegation is orchestration: every child
 // tool is independently evaluated, while the parent call is represented by
 // child lifecycle events and cannot be replayed as an ordinary tool gate.
-func (Interpreter) UsesStandardPolicy(name string) bool {
-	descriptor, ok := descriptorFor(name)
+func (Interpreter) UsesStandardPolicy(ref tool.Ref) bool {
+	descriptor, ok := descriptorFor(ref)
 	return !ok || !descriptor.orchestration
 }
 
 // ApprovalSubject returns the stable identity used by remembered approval
 // rules. Tools without a finer-grained identity deliberately return an empty
 // subject, which means the rule covers the whole tool.
-func (Interpreter) ApprovalSubject(name string, arguments tool.Arguments) (string, error) {
+func (Interpreter) ApprovalSubject(ref tool.Ref, arguments tool.Arguments) (string, error) {
 	var field string
-	switch name {
+	if ref.Kind() != tool.BuiltInKind {
+		return "", nil
+	}
+	switch ref.Name() {
 	case tool.Shell:
 		field = "command"
 	case tool.Read, tool.Edit:
@@ -61,7 +64,7 @@ func (Interpreter) ApprovalSubject(name string, arguments tool.Arguments) (strin
 	}
 	subject, ok := arguments.StringField(field)
 	if !ok || strings.TrimSpace(subject) == "" {
-		return "", fmt.Errorf("toolset: tool %q requires non-empty string argument %q: %w", name, field, tool.ErrInvalidArguments)
+		return "", fmt.Errorf("toolset: tool %q requires non-empty string argument %q: %w", ref, field, tool.ErrInvalidArguments)
 	}
 	return subject, nil
 }
@@ -69,8 +72,8 @@ func (Interpreter) ApprovalSubject(name string, arguments tool.Arguments) (strin
 // ShellCommand returns the command text used by catastrophic-command policy.
 // Malformed arguments return an empty command and remain gated by the tool's
 // execution safety class.
-func (Interpreter) ShellCommand(name, rawArguments string) string {
-	if name != tool.Shell {
+func (Interpreter) ShellCommand(ref tool.Ref, rawArguments string) string {
+	if !ref.IsBuiltIn(tool.Shell) {
 		return ""
 	}
 	arguments, err := tool.ParseArguments(rawArguments)
@@ -86,10 +89,10 @@ func (Interpreter) ShellCommand(name, rawArguments string) string {
 // the published fact cannot drift from the state the tool actually wrote.
 func (i Interpreter) ProjectOutcome(
 	ctx context.Context,
-	sessionID, name string,
+	sessionID string, ref tool.Ref,
 	succeeded bool,
 ) (runs.ExecutionFact, error) {
-	descriptor, known := descriptorFor(name)
+	descriptor, known := descriptorFor(ref)
 	if !succeeded || !known || descriptor.outcome != planOutcomeProjection || i.plans == nil {
 		return nil, nil
 	}

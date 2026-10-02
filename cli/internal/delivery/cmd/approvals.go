@@ -3,6 +3,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"strings"
 	"text/tabwriter"
 
@@ -19,15 +20,14 @@ func newApprovalsCommand(provider runtimeProvider) *cobra.Command {
 		deleteSession string
 	)
 	list := &cobra.Command{
-		Use: "ls", Aliases: []string{"list"}, Short: "List approval rules visible from a session",
+		Use: "ls", Aliases: []string{"list"}, Short: "List global rules, or rules visible from a session",
 		Args: cobra.NoArgs, SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return listApprovalRules(cmd, provider, listSession, asJSON)
 		},
 	}
-	list.Flags().StringVarP(&listSession, "session", "s", "", "Session whose visible rules should be listed")
+	list.Flags().StringVarP(&listSession, "session", "s", "", "Include rules visible from this session")
 	list.Flags().BoolVar(&asJSON, "json", false, "Write approval rules as JSON")
-	requireFlag(list, "session")
 	command.AddCommand(list)
 
 	var yes bool
@@ -58,7 +58,7 @@ func newApprovalsCommand(provider runtimeProvider) *cobra.Command {
 
 func completeApprovalRuleIDs(provider runtimeProvider, sessionID *string) cobra.CompletionFunc {
 	return func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		if len(args) > 0 || strings.TrimSpace(*sessionID) == "" {
+		if len(args) > 0 {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		}
 		runtime, err := provider.Runtime(cmd)
@@ -72,7 +72,7 @@ func completeApprovalRuleIDs(provider runtimeProvider, sessionID *string) cobra.
 		items := make([]string, 0, len(rules))
 		needle := strings.ToLower(toComplete)
 		for _, rule := range rules {
-			label := rule.Tool + ":" + rule.Subject
+			label := rule.ModelName + ":" + conversation.ApprovalSubject(rule.Subject)
 			if needle != "" && !strings.HasPrefix(rule.ID, toComplete) && !strings.Contains(strings.ToLower(label), needle) {
 				continue
 			}
@@ -92,37 +92,18 @@ func listApprovalRules(cmd *cobra.Command, provider runtimeProvider, sessionID s
 		return err
 	}
 	if asJSON {
-		return render.WriteJSONLine(cmd.OutOrStdout(), struct {
-			Rules []approvalRuleJSON `json:"rules"`
-		}{Rules: encodeApprovalRules(rules)})
+		if rules == nil {
+			rules = []protocol.ApprovalRule{}
+		}
+		return render.WriteJSONLine(cmd.OutOrStdout(), protocol.ListApprovalRulesResult{Rules: rules})
 	}
 	writer := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
 	for _, rule := range rules {
-		if _, err := fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\n", rule.ID, rule.Scope, rule.Decision, rule.Tool, displaySubject(rule.Subject), displaySubject(rule.Dir)); err != nil {
+		if _, err := fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\t%s\tstale=%t\n", rule.ID, rule.Scope, rule.Decision, rule.ModelName, conversation.ToolSource(rule.Tool), conversation.ApprovalSubject(rule.Subject), displaySubject(rule.Dir), rule.Stale); err != nil {
 			return err
 		}
 	}
 	return writer.Flush()
-}
-
-type approvalRuleJSON struct {
-	ID       string `json:"id"`
-	Scope    string `json:"scope"`
-	Tool     string `json:"tool"`
-	Subject  string `json:"subject,omitzero"`
-	Dir      string `json:"dir,omitzero"`
-	Decision string `json:"decision"`
-}
-
-func encodeApprovalRules(rules []protocol.ApprovalRule) []approvalRuleJSON {
-	encoded := make([]approvalRuleJSON, 0, len(rules))
-	for _, rule := range rules {
-		encoded = append(encoded, approvalRuleJSON{
-			ID: rule.ID, Scope: string(rule.Scope), Tool: rule.Tool, Subject: rule.Subject,
-			Dir: rule.Dir, Decision: string(rule.Decision),
-		})
-	}
-	return encoded
 }
 
 func displaySubject(value string) string {

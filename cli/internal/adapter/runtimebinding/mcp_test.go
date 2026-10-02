@@ -81,12 +81,7 @@ func (m *mcpBindingStub) UpdateMCPServer(_ context.Context, request protocol.Upd
 	if request.HandshakeTimeout != nil {
 		server.HandshakeTimeout = *request.HandshakeTimeout
 	}
-	if request.DisabledTools != nil {
-		server.DisabledTools = append([]string(nil), (*request.DisabledTools)...)
-	}
-	if request.AutoApproveTools != nil {
-		server.AutoApproveTools = append([]string(nil), (*request.AutoApproveTools)...)
-	}
+
 	return &server, nil
 }
 
@@ -187,8 +182,7 @@ func wireMCPServerFromCandidate(candidate protocol.MCPServerCandidate) protocol.
 	return protocol.MCPServer{
 		Name: candidate.Name, Description: candidate.Description,
 		Connection: wireMCPConnection(candidate.Connection), HandshakeTimeout: candidate.HandshakeTimeout,
-		DisabledTools:    append([]string(nil), candidate.DisabledTools...),
-		AutoApproveTools: append([]string(nil), candidate.AutoApproveTools...), Status: state,
+		Status: state,
 	}
 }
 
@@ -429,16 +423,6 @@ func TestMCPAdapterRejectsWritesOutsideRuntimeWireContract(t *testing.T) {
 			field: "name",
 		},
 		{
-			name: "candidate tool name",
-			invoke: func(runtime *Connection) error {
-				_, err := runtime.TestServer(t.Context(), mcp.Candidate{
-					Name: "docs", Connection: validConnection, DisabledTools: []string{"invalid tool"},
-				})
-				return err
-			},
-			field: "disabledTools[0]",
-		},
-		{
 			name: "update server name",
 			invoke: func(runtime *Connection) error {
 				description := "updated"
@@ -524,4 +508,11 @@ func TestMCPToolsRejectAForeignServer(t *testing.T) {
 	if values, err := runtime.Tools(t.Context(), "docs"); values != nil || !errors.Is(err, conversation.ErrIncompatibleRuntime) || !strings.Contains(err.Error(), "other") {
 		t.Fatalf("Tools = (%v, %v), want no values and a server contract violation", values, err)
 	}
+}
+
+func (m *mcpBindingStub) GetMCPToolExposure(_ context.Context, r protocol.MCPServerRequest, _ flameruntime.CallOptions) (*protocol.MCPToolExposure, error) {
+	return &protocol.MCPToolExposure{Server: r.Server, DisabledTools: []string{}}, nil
+}
+func (m *mcpBindingStub) SetMCPToolExposure(context.Context, protocol.SetMCPToolExposureRequest, flameruntime.CommandOptions) error {
+	return nil
 }

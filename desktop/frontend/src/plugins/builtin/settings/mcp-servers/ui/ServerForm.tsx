@@ -251,12 +251,7 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
       {server && (
         <div {...stylex.props(vocab.column, gap.s1_5)}>
           <span {...stylex.props(ss.label, typeStep.uiMd)}>{t("mcp.tools.manage")}</span>
-          <ToolControls
-            server={server.name}
-            disabledTools={draft.disabledTools}
-            autoApproveTools={draft.autoApproveTools}
-            onChange={(next) => setEdit((current) => current.withToolSelection(next))}
-          />
+          <ToolControls server={server.name} />
         </div>
       )}
 

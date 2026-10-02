@@ -1,14 +1,11 @@
+import type { ApprovalRuleSummary } from "./approvalPolicyQueries";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { queryClient } from "@/lib/queryClient";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import { installAgentRuntimeGateway } from "../adapters/agentRuntimeGateway";
 import { configureAgentRuntimeGateway, type AgentRuntimeGateway } from "./ports/runtimeGateway";
-import { forgetRules, setApprovalMode } from "./approvalPolicy";
-import {
-  APPROVAL_MODE_KEY,
-  APPROVAL_RULES_KEY,
-  type ApprovalRuleSummary,
-} from "./approvalPolicyQueries";
+import { forgetRules, setApprovalMode, allowMCPTool } from "./approvalPolicy";
+import { APPROVAL_MODE_KEY, APPROVAL_RULES_KEY } from "./approvalPolicyQueries";
 import type { ApprovalMode } from "../domain/hitl";
 import { rejected } from "@/test/rejected";
 
@@ -28,6 +25,24 @@ afterEach(() => {
 });
 
 describe("approval policy", () => {
+  it("sets a global MCP rule through approval and invalidates every rule view", async () => {
+    const setRule = vi.fn().mockResolvedValue(undefined);
+    runtimeClient = () => ({ approval: { setRule } }) as unknown as FlameClient;
+    uninstall = installAgentRuntimeGateway(getRuntimeClient).dispose;
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
+    const request = {
+      tool: { type: "mcp" as const, server: "docs", name: "read" },
+      scope: "global" as const,
+      subject: { type: "all" as const },
+      decision: "allow" as const,
+    };
+
+    await allowMCPTool("docs", "read");
+
+    expect(setRule).toHaveBeenCalledWith(request);
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: [APPROVAL_RULES_KEY] });
+  });
+
   it("serializes mode changes and commits each authoritative response", async () => {
     const first = Promise.withResolvers<ApprovalMode>();
     const second = Promise.withResolvers<ApprovalMode>();
@@ -154,7 +169,10 @@ function rule(id: string): ApprovalRuleSummary {
   return {
     id,
     scope: "global",
-    tool: "shell",
+    subject: { type: "all" },
+    tool: { type: "builtIn", name: "shell" },
+    modelName: "shell",
+    stale: false,
     decision: "allow",
   };
 }

@@ -1,17 +1,16 @@
 package protocol
 
-// ApprovalRule is one persisted fine-grained approval rule. The
-// rule auto-resolves a gated tool call when the call's scope matches, the tool
-// matches, and the call's per-tool subject (a shell command, an edited file's
-// path) matches the Subject glob — so a rule reads "allow `npm run *` in this
-// project", not the blunt whole-tool grant.
+// ApprovalRule is a standing decision bound to one tool source, scope, and
+// explicitly typed subject matcher.
 type ApprovalRule struct {
-	ID       string               `json:"id"`
-	Scope    ApprovalRuleScope    `json:"scope"`
-	Tool     string               `json:"tool"`              // tool name, e.g. "shell"
-	Subject  string               `json:"subject,omitempty"` // command / path glob; "" = any arguments
-	Dir      string               `json:"dir,omitempty"`     // project-scope directory (display only; omitted otherwise)
-	Decision ApprovalRuleDecision `json:"decision"`
+	ModelName string               `json:"modelName"`
+	Stale     bool                 `json:"stale"`
+	ID        string               `json:"id"`
+	Scope     ApprovalRuleScope    `json:"scope"`
+	Tool      ToolRef              `json:"tool"`
+	Subject   ApprovalSubject      `json:"subject"`
+	Dir       string               `json:"dir,omitempty"` // project-scope directory (display only; omitted otherwise)
+	Decision  ApprovalRuleDecision `json:"decision"`
 }
 
 // ApprovalRuleScope is how far a remembered tool decision reaches.
@@ -36,7 +35,7 @@ const (
 // ListApprovalRulesRequest — approval.listRules body. SessionID anchors which
 // session + project rules are visible (global rules always are).
 type ListApprovalRulesRequest struct {
-	SessionID string `json:"sessionId"`
+	SessionID string `json:"sessionId,omitempty"`
 }
 
 // ListApprovalRulesResult — the approval.listRules reply.
@@ -73,3 +72,44 @@ type SetApprovalModeRequest struct {
 type ApprovalModeResult struct {
 	Mode ApprovalMode `json:"mode"`
 }
+
+// SetApprovalRuleRequest records a standing decision against the current source
+// authority. The server resolves the fingerprint; clients cannot supply one.
+type SetApprovalRuleRequest struct {
+	SessionID string               `json:"sessionId,omitempty"`
+	Scope     ApprovalRuleScope    `json:"scope"`
+	Tool      ToolRef              `json:"tool"`
+	Subject   ApprovalSubject      `json:"subject"`
+	Decision  ApprovalRuleDecision `json:"decision"`
+}
+
+type ToolRefType string
+
+const (
+	ToolRefBuiltIn ToolRefType = "builtIn"
+	ToolRefMCP     ToolRefType = "mcp"
+	ToolRefA2A     ToolRefType = "a2a"
+)
+
+// ToolRef is a source-qualified closed union. Name is exact source vocabulary;
+// modelName belongs to the read projection, never the authority key.
+type ToolRef struct {
+	Type     ToolRefType `json:"type"`
+	Name     string      `json:"name,omitempty"`
+	Endpoint string      `json:"endpoint,omitempty"`
+	Server   string      `json:"server,omitempty"`
+}
+
+// ApprovalSubject separates literal commands and paths from authored glob patterns.
+type ApprovalSubject struct {
+	Type  ApprovalSubjectType `json:"type"`
+	Value string              `json:"value,omitempty"`
+}
+
+type ApprovalSubjectType string
+
+const (
+	ApprovalSubjectAll   ApprovalSubjectType = "all"
+	ApprovalSubjectExact ApprovalSubjectType = "exact"
+	ApprovalSubjectGlob  ApprovalSubjectType = "glob"
+)

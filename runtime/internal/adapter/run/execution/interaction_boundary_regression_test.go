@@ -35,7 +35,7 @@ func TestSemanticRefusalCrossesRealInterpreterAndTreeCommitter(t *testing.T) {
 				t.Fatal(err)
 			}
 			cfg := InteractionExecutorConfig{
-				ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+				ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.BuiltInTool(t, "shell")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 				ToolInterpreter: toolset.NewInterpreter(nil), ToolAuthorizer: allowInteractionTools{},
 			}
 			switch source {

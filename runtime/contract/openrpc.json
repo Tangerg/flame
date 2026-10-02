@@ -2,7 +2,7 @@
   "openrpc": "1.3.2",
   "info": {
     "title": "Flame Runtime Protocol",
-    "version": "2026-09-28",
+    "version": "2026-10-02",
     "description": "Generated from the Contract Registry. Shapes live in schema.json; this document is the method surface."
   },
   "methods": [
@@ -3287,6 +3287,147 @@
       }
     },
     {
+      "name": "mcp.tools.exposure",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "server",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,31}$"
+          }
+        },
+        {
+          "name": "_meta",
+          "schema": {
+            "$ref": "schema.json#/$defs/RequestMeta"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "schema.json#/$defs/MCPToolExposure"
+        }
+      },
+      "errors": [
+        {
+          "code": -32006,
+          "message": "capability_not_negotiated"
+        }
+      ],
+      "x-flame-kind": "unary",
+      "x-flame-operation": "query",
+      "x-flame-idempotency": "none",
+      "x-flame-replayCursor": "none",
+      "x-flame-pagination": "none",
+      "x-flame-features": [
+        "mcp"
+      ],
+      "x-flame-capabilityRules": [
+        {
+          "requires": [
+            "mcp"
+          ]
+        }
+      ],
+      "x-flame-requestFrame": {
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/MCPServerRequest"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "_meta": {
+                "$ref": "schema.json#/$defs/RequestMeta"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "mcp.tools.setExposure",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "server",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9._-]{0,31}$"
+          }
+        },
+        {
+          "name": "name",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.-]{1,128}$"
+          }
+        },
+        {
+          "name": "disabled",
+          "required": true,
+          "schema": {
+            "type": "boolean"
+          }
+        },
+        {
+          "name": "_meta",
+          "schema": {
+            "$ref": "schema.json#/$defs/RequestMeta"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "object"
+        }
+      },
+      "errors": [
+        {
+          "code": -32006,
+          "message": "capability_not_negotiated"
+        }
+      ],
+      "x-flame-kind": "unary",
+      "x-flame-operation": "command",
+      "x-flame-idempotency": "replayResponse",
+      "x-flame-replayCursor": "none",
+      "x-flame-pagination": "none",
+      "x-flame-features": [
+        "mcp"
+      ],
+      "x-flame-capabilityRules": [
+        {
+          "requires": [
+            "mcp"
+          ]
+        }
+      ],
+      "x-flame-requestFrame": {
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/SetMCPToolExposureRequest"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "_meta": {
+                "$ref": "schema.json#/$defs/RequestMeta"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "mcp.servers.list",
       "paramStructure": "by-name",
       "params": [
@@ -3381,30 +3522,6 @@
           }
         },
         {
-          "name": "disabledTools",
-          "schema": {
-            "type": "array",
-            "maxItems": 2048,
-            "uniqueItems": true,
-            "items": {
-              "type": "string",
-              "pattern": "^[A-Za-z0-9_.-]{1,128}$"
-            }
-          }
-        },
-        {
-          "name": "autoApproveTools",
-          "schema": {
-            "type": "array",
-            "maxItems": 2048,
-            "uniqueItems": true,
-            "items": {
-              "type": "string",
-              "pattern": "^[A-Za-z0-9_.-]{1,128}$"
-            }
-          }
-        },
-        {
           "name": "_meta",
           "schema": {
             "$ref": "schema.json#/$defs/RequestMeta"
@@ -3493,30 +3610,6 @@
           "name": "handshakeTimeout",
           "schema": {
             "$ref": "schema.json#/$defs/MCPHandshakeTimeout"
-          }
-        },
-        {
-          "name": "disabledTools",
-          "schema": {
-            "type": "array",
-            "maxItems": 2048,
-            "uniqueItems": true,
-            "items": {
-              "type": "string",
-              "pattern": "^[A-Za-z0-9_.-]{1,128}$"
-            }
-          }
-        },
-        {
-          "name": "autoApproveTools",
-          "schema": {
-            "type": "array",
-            "maxItems": 2048,
-            "uniqueItems": true,
-            "items": {
-              "type": "string",
-              "pattern": "^[A-Za-z0-9_.-]{1,128}$"
-            }
           }
         },
         {
@@ -3678,30 +3771,6 @@
           "required": true,
           "schema": {
             "$ref": "schema.json#/$defs/MCPHandshakeTimeout"
-          }
-        },
-        {
-          "name": "disabledTools",
-          "schema": {
-            "type": "array",
-            "maxItems": 2048,
-            "uniqueItems": true,
-            "items": {
-              "type": "string",
-              "pattern": "^[A-Za-z0-9_.-]{1,128}$"
-            }
-          }
-        },
-        {
-          "name": "autoApproveTools",
-          "schema": {
-            "type": "array",
-            "maxItems": 2048,
-            "uniqueItems": true,
-            "items": {
-              "type": "string",
-              "pattern": "^[A-Za-z0-9_.-]{1,128}$"
-            }
           }
         },
         {
@@ -4139,6 +4208,81 @@
       }
     },
     {
+      "name": "approval.setRule",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "sessionId",
+          "schema": {
+            "type": "string",
+            "maxLength": 256,
+            "pattern": "^[^\\p{C}\\p{Z}]*$"
+          }
+        },
+        {
+          "name": "scope",
+          "required": true,
+          "schema": {
+            "$ref": "schema.json#/$defs/ApprovalRuleScope"
+          }
+        },
+        {
+          "name": "tool",
+          "required": true,
+          "schema": {
+            "$ref": "schema.json#/$defs/ToolRef"
+          }
+        },
+        {
+          "name": "subject",
+          "required": true,
+          "schema": {
+            "$ref": "schema.json#/$defs/ApprovalSubject"
+          }
+        },
+        {
+          "name": "decision",
+          "required": true,
+          "schema": {
+            "$ref": "schema.json#/$defs/ApprovalRuleDecision"
+          }
+        },
+        {
+          "name": "_meta",
+          "schema": {
+            "$ref": "schema.json#/$defs/RequestMeta"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "type": "object"
+        }
+      },
+      "x-flame-kind": "unary",
+      "x-flame-operation": "command",
+      "x-flame-idempotency": "replayResponse",
+      "x-flame-replayCursor": "none",
+      "x-flame-pagination": "none",
+      "x-flame-requestFrame": {
+        "unevaluatedProperties": false,
+        "allOf": [
+          {
+            "$ref": "schema.json#/$defs/SetApprovalRuleRequest"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "_meta": {
+                "$ref": "schema.json#/$defs/RequestMeta"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "approval.getMode",
       "paramStructure": "by-name",
       "params": [
@@ -4229,10 +4373,8 @@
       "params": [
         {
           "name": "sessionId",
-          "required": true,
           "schema": {
             "type": "string",
-            "minLength": 1,
             "maxLength": 256,
             "pattern": "^[^\\p{C}\\p{Z}]*$"
           }

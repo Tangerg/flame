@@ -209,10 +209,14 @@ func (i *interactionSession) pendingInterruptions(
 	return interruptions, nil
 }
 
-func (i *interactionSession) unknownEffectIDs(ctx context.Context) ([]agent.EffectID, bool) {
-	inspection, readable := i.inspectTree(ctx)
-	if !readable {
-		return nil, false
+func (i *interactionSession) unknownEffectIDs(ctx context.Context) ([]agent.EffectID, error) {
+	root := i.state.processHandle()
+	if root == nil {
+		return nil, runs.ErrExecutorNotLive
+	}
+	inspection, err := i.engine.InspectTree(ctx, root.Relation().RootID())
+	if err != nil {
+		return nil, err
 	}
 	ids := make([]agent.EffectID, 0)
 	for _, member := range inspection.Processes {
@@ -231,7 +235,7 @@ func (i *interactionSession) unknownEffectIDs(ctx context.Context) ([]agent.Effe
 		return strings.Compare(left.String(), right.String())
 	})
 	ids = slices.Compact(ids)
-	return ids, true
+	return ids, nil
 }
 
 // stagedTree returns the frozen cut this Interaction published its waiting

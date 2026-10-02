@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 	toolcontract "github.com/Tangerg/scope/core/tool"
-
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	scopemcp "github.com/Tangerg/scope/mcp"
 )
 
@@ -15,7 +15,8 @@ const rejectedRemoteToolPlaceholder = "invalid_remote_tool"
 
 // sourceTools lists one MCP source's model-facing tools. Isolated per source so
 // a single server's tools/list failure stays its own.
-func sourceTools(ctx context.Context, server mcpserver.ServerName, session *sdkmcp.ClientSession) ([]toolcontract.Tool, error) {
+func sourceTools(ctx context.Context, descriptor ServerConfig, session *sdkmcp.ClientSession) ([]toolcontract.Tool, error) {
+	server := descriptor.Name
 	source := scopemcp.ToolSource{Name: server.String(), Session: session}
 	var remoteNameErr error
 	tools, discoverErr := scopemcp.DiscoverTools(ctx, []scopemcp.ToolSource{source}, scopemcp.ToolDiscoveryConfig{
@@ -30,7 +31,8 @@ func sourceTools(ctx context.Context, server mcpserver.ServerName, session *sdkm
 				// enter either live catalog.
 				return rejectedRemoteToolPlaceholder
 			}
-			return mcpserver.ToolName(server, remoteName)
+			ref, _ := domaintool.MCP(server, remoteName)
+			return ref.ModelName()
 		},
 		ConcurrencyPolicy: scopemcp.AnnotatedReadOnlyConcurrencyPolicy,
 	})
@@ -42,6 +44,9 @@ func sourceTools(ctx context.Context, server mcpserver.ServerName, session *sdkm
 	}
 	if err := validateSourceToolMaterial(server, tools); err != nil {
 		return nil, err
+	}
+	for index, executable := range tools {
+		tools[index] = sourceTool{Tool: executable, fingerprint: descriptor.SourceFingerprint}
 	}
 	return tools, nil
 }
@@ -58,12 +63,12 @@ func validateSourceToolMaterial(server mcpserver.ServerName, tools []toolcontrac
 		if !found {
 			return fmt.Errorf("mcp: tool from server %q has no MCP identity", server)
 		}
-		if ref.Server != server {
-			return fmt.Errorf("mcp: tool source %q does not match server %q", ref.Server, server)
+		if ref.Server() != server {
+			return fmt.Errorf("mcp: tool source %q does not match server %q", ref.Server(), server)
 		}
 		binding, err := toolcontract.Bind(tool)
 		if err != nil {
-			return fmt.Errorf("mcp: admit tool %q from server %q: %w", ref.Tool, server, err)
+			return fmt.Errorf("mcp: admit tool %q from server %q: %w", ref.Remote(), server, err)
 		}
 		definition := binding.Contract().Definition()
 		if err := mcpserver.ValidateRemoteToolDescription(definition.Description); err != nil {
@@ -72,3 +77,12 @@ func validateSourceToolMaterial(server mcpserver.ServerName, tools []toolcontrac
 	}
 	return nil
 }
+
+// sourceTool retains the authority of the connection that owns this executable.
+type sourceTool struct {
+	toolcontract.Tool
+	fingerprint string
+}
+
+func (t sourceTool) Unwrap() toolcontract.Tool { return t.Tool }
+func (t sourceTool) SourceFingerprint() string { return t.fingerprint }

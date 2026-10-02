@@ -452,12 +452,7 @@ func ownedSessionCount(c *Connections) int {
 	return len(c.sessions)
 }
 
-func TestDialQuarantinesCrossServerPublicToolNameCollision(t *testing.T) {
-	var diagnostics bytes.Buffer
-	previousLogger := slog.Default()
-	slog.SetDefault(slog.New(slog.NewTextHandler(&diagnostics, nil)))
-	t.Cleanup(func() { slog.SetDefault(previousLogger) })
-
+func TestDialAdmitsCrossServerPublicToolNameCollision(t *testing.T) {
 	remote := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "test-server", Version: "v1"}, nil)
 	addRemoteTool(t, remote, "read")
 	httpServer := httptest.NewServer(sdkmcp.NewStreamableHTTPHandler(
@@ -478,17 +473,13 @@ func TestDialQuarantinesCrossServerPublicToolNameCollision(t *testing.T) {
 			t.Errorf("Shutdown: %v", err)
 		}
 	})
-	if names := toolNames(initial); !slices.Equal(names, []string{"a_b_read"}) {
-		t.Fatalf("initial tools = %v, want only the first server's tool", names)
+	if names := toolNames(initial); !slices.Equal(names, []string{"a_b_read", "a_b_read"}) {
+		t.Fatalf("initial tools = %v, want both servers' tools", names)
 	}
 	statuses := c.Statuses()
 	if len(statuses) != 2 || statuses[0].State != mcpserver.ConnectionConnected ||
-		statuses[1].State != mcpserver.ConnectionFailed {
-		t.Fatalf("statuses = %+v, want connected then failed", statuses)
-	}
-	if output := diagnostics.String(); !strings.Contains(output, "server.name=a_b") ||
-		!strings.Contains(output, toolcontract.ErrDuplicateTool.Error()) || !strings.Contains(output, "a_b_read") {
-		t.Fatalf("startup catalog failure lost its server or cause: %s", output)
+		statuses[1].State != mcpserver.ConnectionConnected {
+		t.Fatalf("statuses = %+v, want both connected", statuses)
 	}
 }
 
@@ -536,7 +527,7 @@ func TestDialReportsStartupFailureAndKeepsHealthyServers(t *testing.T) {
 	}
 }
 
-func TestConfigureRejectsCrossServerPublicToolNameCollision(t *testing.T) {
+func TestConfigureAdmitsCrossServerPublicToolNameCollision(t *testing.T) {
 	firstRemote := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "first", Version: "v1"}, nil)
 	addRemoteTool(t, firstRemote, "c")
 	firstHTTP := httptest.NewServer(sdkmcp.NewStreamableHTTPHandler(
@@ -551,11 +542,11 @@ func TestConfigureRejectsCrossServerPublicToolNameCollision(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Dial: %v", err)
 	}
-	t.Cleanup(func() {
+	defer func() {
 		if shutdownErr := c.Shutdown(context.WithoutCancel(t.Context())); shutdownErr != nil {
 			t.Errorf("Shutdown: %v", shutdownErr)
 		}
-	})
+	}()
 	if names := toolNames(initial); !slices.Equal(names, []string{"a_b_c"}) {
 		t.Fatalf("initial tools = %v, want [a_b_c]", names)
 	}
@@ -569,17 +560,17 @@ func TestConfigureRejectsCrossServerPublicToolNameCollision(t *testing.T) {
 	t.Cleanup(secondHTTP.Close)
 
 	err = c.Configure(t.Context(), ServerConfig{Name: testMCPServerName("a"), Transport: TransportHTTP, Endpoint: secondHTTP.URL})
-	if !errors.Is(err, toolcontract.ErrDuplicateTool) {
+	if err != nil {
 		t.Fatalf("Configure collision error = %v", err)
 	}
 	statuses := c.Statuses()
 	if len(statuses) != 2 || statuses[0].State != mcpserver.ConnectionConnected ||
-		statuses[1].State != mcpserver.ConnectionFailed {
-		t.Fatalf("statuses = %+v, want original connected and candidate failed", statuses)
+		statuses[1].State != mcpserver.ConnectionConnected {
+		t.Fatalf("statuses = %+v, want both connected", statuses)
 	}
 }
 
-func TestReconnectQuarantinesNewCrossServerPublicToolNameCollision(t *testing.T) {
+func TestReconnectAdmitsNewCrossServerPublicToolNameCollision(t *testing.T) {
 	firstRemote := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "first", Version: "v1"}, nil)
 	addRemoteTool(t, firstRemote, "c")
 	firstHTTP := httptest.NewServer(sdkmcp.NewStreamableHTTPHandler(
@@ -616,18 +607,18 @@ func TestReconnectQuarantinesNewCrossServerPublicToolNameCollision(t *testing.T)
 	c.SetToolSink(func(catalog []toolcontract.Tool) { publications <- toolNames(catalog) })
 	addRemoteTool(t, secondRemote, "b_c")
 	err = c.Reconnect(t.Context(), testMCPServerName("a"))
-	if !errors.Is(err, toolcontract.ErrDuplicateTool) {
+	if err != nil {
 		t.Fatalf("Reconnect collision error = %v", err)
 	}
-	for phase := range 2 {
-		if names := <-publications; !slices.Equal(names, []string{"a_b_c"}) {
-			t.Fatalf("publication %d = %v, want only unaffected server", phase, names)
+	for phase, want := range [][]string{{"a_b_c"}, {"a_b_c", "a_b_c", "a_safe"}} {
+		if names := <-publications; !slices.Equal(names, want) {
+			t.Fatalf("publication %d = %v, want %v", phase, names, want)
 		}
 	}
 	statuses := c.Statuses()
 	if len(statuses) != 2 || statuses[0].State != mcpserver.ConnectionConnected ||
-		statuses[1].State != mcpserver.ConnectionFailed {
-		t.Fatalf("statuses = %+v, want unaffected server connected and reconnected server failed", statuses)
+		statuses[1].State != mcpserver.ConnectionConnected {
+		t.Fatalf("statuses = %+v, want both connected", statuses)
 	}
 }
 

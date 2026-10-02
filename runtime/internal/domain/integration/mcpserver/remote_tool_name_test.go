@@ -38,25 +38,3 @@ func TestRemoteToolName(t *testing.T) {
 		t.Fatal("zero RemoteToolName validated")
 	}
 }
-
-func TestServerToolPolicyRejectsContradictoryDecision(t *testing.T) {
-	tool := testRemoteToolName("read")
-	if _, err := NewServerToolPolicy([]RemoteToolName{tool}, []RemoteToolName{tool}); !errors.Is(err, ErrInvalidServerToolPolicy) {
-		t.Fatalf("NewServerToolPolicy error = %v, want ErrInvalidServerToolPolicy", err)
-	}
-}
-
-func TestServerToolPolicyCanonicalizesRules(t *testing.T) {
-	policy := testServerToolPolicy([]string{"write", "delete"}, []string{"read"})
-	rules := policy.Rules()
-	want := []string{"delete", "read", "write"}
-	for i, rule := range rules {
-		if rule.Tool.String() != want[i] {
-			t.Fatalf("rules[%d] = %q, want %q", i, rule.Tool, want[i])
-		}
-	}
-	rules[0] = ToolPolicyRule{}
-	if policy.Rules()[0].Tool.String() != "delete" {
-		t.Fatal("Rules exposed mutable aggregate storage")
-	}
-}

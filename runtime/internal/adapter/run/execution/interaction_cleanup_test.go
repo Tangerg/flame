@@ -3,6 +3,8 @@ package execution
 import (
 	"context"
 	"errors"
+	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -70,7 +72,7 @@ func TestInteractionFailedDiscardRemainsOwnedUntilShutdown(t *testing.T) {
 			t.Error("restored waiting tree called the model")
 			return nil, errors.New("unexpected model call")
 		}), InteractionExecutorConfig{
-			ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{newQuestionCheckpointTool(t)}}},
+			ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "ask")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{newQuestionCheckpointTool(t)}}},
 			ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 		})
 		start := interactionTestStart()
@@ -99,8 +101,7 @@ func TestInteractionFailedDiscardRemainsOwnedUntilShutdown(t *testing.T) {
 		}
 		durability := &blockingCheckpointDurability{interactionSession: session, entered: entered, proceed: proceed}
 		session.engine, err = agent.NewEngine(agent.EngineConfig{
-			DeploymentResolver: session.state.deployments,
-			TreeCommitter:      durability,
+			TreeCommitter: durability,
 		})
 		if err != nil {
 			t.Fatal(err)

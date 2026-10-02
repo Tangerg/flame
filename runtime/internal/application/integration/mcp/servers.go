@@ -7,13 +7,11 @@ import (
 	"fmt"
 	"maps"
 	"slices"
-	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/httporigin"
 )
-
-const reconcileTimeout = 30 * time.Second
 
 // errClosed reports that a post-commit reconcile / background task could not be
 // launched because the component is shutting down.
@@ -97,9 +95,7 @@ func (c *Coordinator) commitServer(write *mutationScope, srv mcpserver.Server) (
 	if !srv.Enabled {
 		c.cancelDial(srv.Name)
 	}
-	reconcileCtx, cancel := context.WithTimeout(write.ownerCtx, reconcileTimeout)
-	defer cancel()
-	reconcileErr := c.applyRegistryChange(reconcileCtx, srv)
+	reconcileErr := c.applyRegistryChange(srv)
 	// Make the committed descriptor and its first live state one ordered fact.
 	// Enabled servers enter connecting here; their detached dial suppresses its
 	// own duplicate connecting event and only publishes the status port's terminal
@@ -164,17 +160,13 @@ func (c *Coordinator) DeleteServer(ctx context.Context, name mcpserver.ServerNam
 		return err
 	}
 	c.cancelDial(name)
-	reconcileCtx, cancel := context.WithTimeout(write.ownerCtx, reconcileTimeout)
-	defer cancel()
-	// Shrink the live set before publishing the new policy: dropping tools can't
-	// expose a hidden one, but publishing first would leave the about-to-be-dropped
-	// tools briefly live under the wrong policy.
+	// Detachment retires live executables; exposure still closes if it fails.
 	projectionErr := c.connectionLifecycle.Detach(name)
-	policyErr := c.refreshToolPolicy(reconcileCtx)
+	c.exposure.removeServer(name)
 	event := c.prepareStatus(ServerStatus{Name: name})
 	write.unlock()
 	c.publishStatus(event)
-	return errors.Join(projectionErr, policyErr)
+	return projectionErr
 }
 
 // mutationScope owns one registry mutation's request lifetime, detached repair
@@ -235,29 +227,19 @@ func (m *mutationScope) close() {
 	m.finish = nil
 }
 
-// applyRegistryChange reflects a persisted registry entry into the policy
-// snapshot and, when disabling, the live tool set — all under the caller's
-// mutation lock. Publication order keeps disabled tools from becoming momentarily
-// visible:
-//   - enabling publishes policy here; the live (re)dial is NOT done here — the
-//     caller dispatches it detached, after releasing the lock, because a network
-//     handshake must never hold the control-plane lock (see commitServer);
-//   - disabling detaches the live projection before publishing policy; physical
-//     session retirement remains owned by the live connection lifecycle.
-//
-// Either reversal would leave a window where a disabled tool is live under the
-// wrong policy. The caller has already mutated the registry, so
-// refreshToolPolicy reads the new policy inputs.
-func (c *Coordinator) applyRegistryChange(ctx context.Context, srv mcpserver.Server) error {
-	if srv.Enabled {
-		return c.refreshToolPolicy(ctx)
+// Publish the committed enablement even when the live adapter fails to detach.
+// The exposure gate must not depend on a second registry read after the write.
+func (c *Coordinator) applyRegistryChange(srv mcpserver.Server) error {
+	var err error
+	if !srv.Enabled {
+		err = c.connectionLifecycle.Detach(srv.Name)
 	}
-	projectionErr := c.connectionLifecycle.Detach(srv.Name)
-	return errors.Join(projectionErr, c.refreshToolPolicy(ctx))
+	c.exposure.setServer(srv)
+	return err
 }
 
 // redialServer dispatches a detached live (re)dial for an enabled server whose
-// registry change already committed and whose policy already published under the
+// registry change already committed and whose exposure already published under the
 // mutation lock. The dial runs OUTSIDE that lock (dispatchConnection's task
 // blocks on it until the caller's deferred release fires, then dials), so one slow
 // endpoint cannot freeze the whole MCP control plane. It reuses the same live
@@ -334,7 +316,6 @@ func serverCandidate(input ServerInput, current *mcpserver.Server) (mcpserver.Se
 		Env:              connection.Env,
 		Dir:              connection.Dir,
 		HandshakeTimeout: input.HandshakeTimeout,
-		ToolPolicy:       input.ToolPolicy,
 	}
 	if err := srv.Validate(); err != nil {
 		return mcpserver.Server{}, fmt.Errorf("%w: %w", ErrInvalidServerConfiguration, err)
@@ -366,21 +347,6 @@ func applyServerPatch(current mcpserver.Server, patch ServerPatch) (mcpserver.Se
 	}
 	if patch.HandshakeTimeout != nil {
 		updated.HandshakeTimeout = *patch.HandshakeTimeout
-	}
-	if patch.DisabledTools != nil || patch.AutoApproveTools != nil {
-		disabled := updated.ToolPolicy.DisabledTools()
-		autoApproved := updated.ToolPolicy.AutoApprovedTools()
-		if patch.DisabledTools != nil {
-			disabled = *patch.DisabledTools
-		}
-		if patch.AutoApproveTools != nil {
-			autoApproved = *patch.AutoApproveTools
-		}
-		policy, err := mcpserver.NewServerToolPolicy(disabled, autoApproved)
-		if err != nil {
-			return mcpserver.Server{}, fmt.Errorf("%w: %w", ErrInvalidServerConfiguration, err)
-		}
-		updated.ToolPolicy = policy
 	}
 	if err := updated.Validate(); err != nil {
 		return mcpserver.Server{}, fmt.Errorf("%w: %w", ErrInvalidServerConfiguration, err)
@@ -557,9 +523,15 @@ func resolveEnvironment(
 	}
 }
 
+type ToolView struct {
+	mcpserver.AdvertisedTool
+	ModelName string
+	Conflicts []tool.Ref
+}
+
 // Tools lists tools advertised by the connected MCP servers (scoped to server
 // when non-empty) for tool discovery, ordered by server then tool name.
-func (c *Coordinator) Tools(_ context.Context, server *mcpserver.ServerName) ([]mcpserver.AdvertisedTool, error) {
+func (c *Coordinator) Tools(_ context.Context, server *mcpserver.ServerName) ([]ToolView, error) {
 	if server != nil {
 		if err := server.Validate(); err != nil {
 			return nil, fmt.Errorf("mcp: tool catalog server: %w", err)
@@ -575,17 +547,17 @@ func (c *Coordinator) Tools(_ context.Context, server *mcpserver.ServerName) ([]
 			cmp.Compare(first.Name.String(), second.Name.String()),
 		)
 	})
-	return tools, nil
-}
-
-// refreshToolPolicy atomically publishes the policy derived from the
-// just-mutated registry for the next tool resolution and approval decision.
-func (c *Coordinator) refreshToolPolicy(ctx context.Context) error {
-	servers, err := c.registry.List(ctx)
+	conflicts, err := c.toolDiagnostics.ToolNameConflicts()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	policy := mcpserver.NewToolPolicy(servers)
-	c.policy.Replace(policy)
-	return nil
+	views := make([]ToolView, 0, len(tools))
+	for _, advertised := range tools {
+		ref, err := tool.MCP(advertised.Server, advertised.Name)
+		if err != nil {
+			return nil, err
+		}
+		views = append(views, ToolView{AdvertisedTool: advertised, ModelName: ref.ModelName(), Conflicts: conflicts[ref]})
+	}
+	return views, nil
 }

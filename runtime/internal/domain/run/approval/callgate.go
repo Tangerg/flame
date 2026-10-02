@@ -91,9 +91,9 @@ func (t ToolCallInput) Plan() ToolCallPlan {
 }
 
 // ResolvePromptShortcuts applies non-HITL prompt short-circuits: remembered
-// rules first, then an explicit auto-approve grant. It is a no-op unless the
+// from remembered rules. It is a no-op unless the
 // plan is [GatePrompt].
-func (t ToolCallPlan) ResolvePromptShortcuts(standing StandingDecision, autoApproved bool) ToolCallPlan {
+func (t ToolCallPlan) ResolvePromptShortcuts(standing StandingDecision) ToolCallPlan {
 	if t.Action != GatePrompt {
 		return t
 	}
@@ -105,9 +105,6 @@ func (t ToolCallPlan) ResolvePromptShortcuts(standing StandingDecision, autoAppr
 		}
 		t.Action = GatePass
 		return t
-	}
-	if autoApproved {
-		t.Action = GatePass
 	}
 	return t
 }

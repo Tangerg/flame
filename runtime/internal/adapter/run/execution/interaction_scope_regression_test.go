@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"iter"
 	"runtime"
 	"slices"
@@ -76,7 +77,7 @@ func TestCanceledToolRetainsEvidenceAfterRootAwait(t *testing.T) {
 		t.Fatal(err)
 	}
 	model := &observationScriptModel{responses: []*chat.Response{interactionToolResponse(chat.ToolCall{ID: "external", Name: "block", Arguments: `{}`}, 1, 1)}}
-	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{ToolResolver: staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}}, ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{}})
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "block")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}}, ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{}})
 	events := runInteractionHarness(t.Context(), t, executor, interactionTestStart(), func() {
 		<-entered
 		session := executor.sessions.snapshot()[0]
@@ -149,7 +150,6 @@ func TestModelResponseBudgetPreservesExternalBoundary(t *testing.T) {
 			}
 			session.deployment = replacement
 			session.state.deployments.root = replacement
-			session.state.deployments.byRef[replacement.DeploymentRef()] = replacement
 			sequence, err := observeTestInteraction(t, executor, t.Context(), ref)
 			if err != nil {
 				t.Fatal(err)
@@ -445,7 +445,7 @@ func TestCancellationPreservesSettledPrefixAndDoesNotStartTail(t *testing.T) {
 		{ID: "second", Name: "ordered", Arguments: `{"step":2}`},
 		{ID: "third", Name: "ordered", Arguments: `{"step":3}`},
 	}, 1, 1)}}
-	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{MaxConcurrentToolCalls: new(1), ToolResolver: staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}}, ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{}})
+	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{MaxConcurrentToolCalls: new(1), ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "ordered")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}}, ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{}})
 	events := runInteractionHarness(t.Context(), t, executor, interactionTestStart(), func() {
 		<-entered
 		session := executor.sessions.snapshot()[0]
@@ -529,7 +529,7 @@ func TestRootAndDelegateCompleteLongExecution(t *testing.T) {
 		}
 		return interactionUsageTextResponse("finished", 1_000_000, 1_000), nil
 	})
-	executor = newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{Pricing: fixedInteractionPricing(100), ToolResolver: staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}}, ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{}})
+	executor = newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{Pricing: fixedInteractionPricing(100), ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "tick")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}}, ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{}})
 	coordinator := scopeTestCoordinator(t, executor)
 	started, err := coordinator.Start(t.Context(), runs.StartCommand{SessionID: "session_1", Capabilities: run.Capabilities{ChildRuns: true}, Input: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "long root"}}})
 	if err != nil {

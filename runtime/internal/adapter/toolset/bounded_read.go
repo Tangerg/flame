@@ -5,12 +5,11 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/Tangerg/scope/tools/fs"
-
-	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
-	"github.com/Tangerg/flame/runtime/internal/dependency"
 )
 
 const (
@@ -76,7 +75,7 @@ func (r runtimeReadExecutor) Read(ctx context.Context, input fs.ReadInput) (fs.R
 			return fs.ReadOutput{}, fmt.Errorf("%w: %w", errRuntimeReadFileTooLarge, err)
 		case errors.Is(err, fs.ErrLineTooLarge):
 			return fs.ReadOutput{}, fmt.Errorf(
-				"toolset: read %s: line %d exceeds the 1 MiB limit", input.Path, fs.ReadLineNumber(err),
+				"toolset: read %s: line %d exceeds the 1 MiB limit", input.Path, fs.LineNumber(err),
 			)
 		default:
 			return fs.ReadOutput{}, err

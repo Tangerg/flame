@@ -77,7 +77,7 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		A2AAgents:       cfg.A2AAgents,
 		Plan:            deps.plan,
 		Interrupt:       runinput.Require,
-		MCPToolDisabled: deps.mcp.policy.ToolDisabled,
+		MCPToolDisabled: deps.mcp.exposure.ToolDisabled,
 		SkillProposals:  deps.skillProposals,
 		// Opt-in per-command OS isolation for the shell tools (off by default).
 		SandboxShell:         cfg.SandboxShell,

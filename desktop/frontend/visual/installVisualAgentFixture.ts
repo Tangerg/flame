@@ -159,6 +159,7 @@ function visualAgentRuntimeGateway(snapshot: AgentSessionSnapshot): AgentRuntime
     isRunGone: () => false,
     isReplayLost: () => false,
     setApprovalMode: async (mode) => mode,
+    allowMCPTool: async () => undefined,
     forgetApprovalRule: async () => undefined,
   };
 }

@@ -2,8 +2,10 @@ package delivery
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -63,7 +65,7 @@ func (s *Handler) ForgetApprovalRule(ctx context.Context, in protocol.ForgetAppr
 // presentApprovalRule maps a domain rule to its protocol shape. The project
 // directory is surfaced only for project-scoped rules (the UI shows where they
 // apply); session/global rules carry no dir.
-func presentApprovalRule(r approval.Rule) (protocol.ApprovalRule, error) {
+func presentApprovalRule(r approvals.RuleView) (protocol.ApprovalRule, error) {
 	scope, ok := presentApprovalScope(r.Scope)
 	if !ok {
 		return protocol.ApprovalRule{}, fmt.Errorf("approval.listRules: unsupported scope %q", r.Scope)
@@ -73,10 +75,10 @@ func presentApprovalRule(r approval.Rule) (protocol.ApprovalRule, error) {
 		return protocol.ApprovalRule{}, fmt.Errorf("approval.listRules: unsupported decision %q", r.Decision)
 	}
 	wire := protocol.ApprovalRule{
-		ID:       r.ID,
-		Scope:    scope,
-		Tool:     r.Tool,
-		Subject:  r.Subject,
+		ID:    r.ID,
+		Scope: scope,
+		Tool:  presentToolRef(r.Tool), ModelName: r.Tool.ModelName(), Stale: r.Stale,
+		Subject:  protocol.ApprovalSubject{Type: protocol.ApprovalSubjectType(r.Subject.Type), Value: r.Subject.Value},
 		Decision: decision,
 	}
 	if r.Scope == approval.ScopeProject {
@@ -152,4 +154,20 @@ func approvalModeFromWire(m protocol.ApprovalMode) (approval.Mode, bool) {
 		return approval.ModeYolo, true
 	}
 	return "", false
+}
+
+func (s *Handler) SetApprovalRule(ctx context.Context, in protocol.SetApprovalRuleRequest) error {
+	ref, err := toolRefFromWire(in.Tool)
+	if err != nil {
+		return NewFailure(protocol.ErrInvalidParams, err.Error())
+	}
+	scope, decision := approval.Scope(in.Scope), approval.Decision(in.Decision)
+	if !scope.Valid() || !decision.Valid() {
+		return NewFailure(protocol.ErrInvalidParams, "invalid approval rule")
+	}
+	err = s.approvals.SetRule(ctx, ref, scope, in.SessionID, approval.Subject{Type: approval.SubjectType(in.Subject.Type), Value: in.Subject.Value}, decision)
+	if errors.Is(err, approval.ErrInvalidRule) {
+		return InvalidParameters(err)
+	}
+	return wireSessionErr(err)
 }

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"iter"
 	"log/slog"
 	"slices"
@@ -46,7 +48,7 @@ func TestInteractionExecutorProjectsAuthoritativeModelToolLifecycleAndAccounting
 	}}
 	hooks := &recordingInteractionHooks{}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{echo}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "echo")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{echo}}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolPresenter: testInteractionToolPresenter{},
 		ToolAuthorizer: allowInteractionTools{}, ToolHooks: hooks,
 		Pricing: fixedInteractionPricing(0.25),
@@ -125,7 +127,7 @@ func TestInteractionExecutorCalibratesNextModelContextFromProviderUsage(t *testi
 		interactionUsageTextResponse("done", 11, 3),
 	}}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{echo}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "echo")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{echo}}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 		ModelContextCompactor: compactor, ModelContextState: emptyInteractionModelContextState{},
 	})
@@ -157,7 +159,7 @@ func TestInteractionExecutorDoesNotInventCalibrationWhenProviderUsageIsMissing(t
 	}}
 	model.responses[0].Metadata.Usage = nil
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{echo}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "echo")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{echo}}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 		ModelContextCompactor: compactor, ModelContextState: emptyInteractionModelContextState{},
 	})
@@ -301,7 +303,7 @@ func TestInteractionExecutorCancellationStopsCooperativeInflightTool(t *testing.
 		interactionToolResponse(chat.ToolCall{ID: "provider_call", Name: "block", Arguments: `{}`}, 1, 1),
 	}}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "block")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 		ToolInterpreter: testInteractionToolInterpreter{},
 		ToolAuthorizer:  allowInteractionTools{},
 	})
@@ -526,7 +528,7 @@ func TestInteractionExecutorBindsResolvedRunScopeToManifestAndToolCalls(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	resolver := &scopeRecordingInteractionTools{manifest: toolset.Manifest{
+	resolver := &scopeRecordingInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "scope")}, manifest: toolset.Manifest{
 		Visible: []toolcontract.Tool{executable},
 	}}
 	model := &observationScriptModel{responses: []*chat.Response{
@@ -638,14 +640,18 @@ func TestInteractionExecutorCommitsDeferredAdvertisementThroughAgentFramework(t 
 	if err != nil {
 		t.Fatal(err)
 	}
-	search, err := toolset.NewDiscovery([]toolcontract.Tool{hidden})
+	identifiedHidden, err := toolset.WithIdentity(hidden, testsupport.A2ATool(t, "hidden_lookup"), testsupport.ToolFingerprint(testsupport.A2ATool(t, "hidden_lookup")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	search, err := toolset.NewDiscovery([]toolcontract.Tool{identifiedHidden})
 	if err != nil {
 		t.Fatal(err)
 	}
 	model := &manifestScriptModel{}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver: staticInteractionTools{manifest: toolset.Manifest{
-			Visible: []toolcontract.Tool{search}, Deferred: []toolcontract.Tool{hidden},
+		ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.BuiltInTool(t, "search_tools")}, manifest: toolset.Manifest{
+			Visible: []toolcontract.Tool{search}, Deferred: []toolcontract.Tool{identifiedHidden},
 		}},
 		ToolInterpreter: testInteractionToolInterpreter{},
 		ToolAuthorizer:  allowInteractionTools{},
@@ -678,7 +684,7 @@ func TestInteractionExecutorKeepsRefetchableProjectionAndPostHookObservational(t
 	hooks := &failingAfterInteractionHooks{}
 	interpreter := &failingOutcomeInteractionInterpreter{}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver: staticInteractionTools{manifest: toolset.Manifest{
+		ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "observe")}, manifest: toolset.Manifest{
 			Visible: []toolcontract.Tool{executable},
 		}},
 		ToolInterpreter: interpreter,
@@ -749,7 +755,7 @@ func TestInteractionExecutorDoesNotCallToolWhenToolStartCommitFails(t *testing.T
 		interactionUsageTextResponse("recovered", 1, 1),
 	}}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "echo")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 		ToolInterpreter: testInteractionToolInterpreter{},
 		ToolAuthorizer:  allowInteractionTools{},
 	})
@@ -787,7 +793,7 @@ func TestInteractionExecutorStopsWhenPreparationFailureCannotCommit(t *testing.T
 		interactionUsageTextResponse("must not run", 1, 1),
 	}}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "echo")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 		ToolInterpreter: testInteractionToolInterpreter{},
 		ToolAuthorizer:  allowInteractionTools{},
 		ToolHooks:       failingPreparationHooks{},
@@ -940,7 +946,7 @@ func TestInteractionExecutorReconcilesToolResultCommitFailureAsUnknown(t *testin
 		interactionToolResponse(chat.ToolCall{ID: "provider_call", Name: "echo", Arguments: `{}`}, 1, 1),
 	}}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "echo")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 		ToolInterpreter: testInteractionToolInterpreter{},
 		ToolAuthorizer:  allowInteractionTools{},
 	})
@@ -993,7 +999,7 @@ func TestInteractionExecutorPreservesConcurrentToolAttributionWhenCompletionIsOu
 		interactionUsageTextResponse("done", 1, 1),
 	}}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:           staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolResolver:           staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "parallel_echo")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 		ToolInterpreter:        immutableToolInterpreter{},
 		ToolAuthorizer:         allowInteractionTools{},
 		MaxConcurrentToolCalls: intPointer(2),
@@ -1060,7 +1066,7 @@ func TestInteractionExecutorKeepsPublicationUnknownWhenResultWriteFails(t *testi
 		}, 1, 1),
 	}}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver: staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{
+		ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "parallel_write")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{
 			concurrentInteractionTool{Tool: inner},
 		}}},
 		ToolInterpreter:        immutableToolInterpreter{},
@@ -1119,7 +1125,7 @@ func TestInteractionExecutorKeepsPublicationUnknownWhenDeniedSiblingProjectionFa
 		}, 1, 1),
 	}}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver: staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{
+		ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "denied_write"), testsupport.A2ATool(t, "external_write")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{
 			concurrentInteractionTool{Tool: deniedInner},
 			concurrentInteractionTool{Tool: externalInner},
 		}}},
@@ -1205,7 +1211,7 @@ func TestInteractionExecutorCommitsAutomaticDenialWithoutCallingTool(t *testing.
 		interactionUsageTextResponse("done", 1, 1),
 	}}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "write")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 		ToolInterpreter: testInteractionToolInterpreter{},
 		ToolAuthorizer:  denyingInteractionTools{reason: "blocked by automatic policy"},
 	})
@@ -1236,7 +1242,7 @@ func TestInteractionExecutorTerminatesWhenAutomaticDenialCommitFails(t *testing.
 		interactionUsageTextResponse("must not run", 1, 1),
 	}}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "write")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 		ToolInterpreter: testInteractionToolInterpreter{},
 		ToolAuthorizer:  denyingInteractionTools{reason: "blocked by automatic policy"},
 	})
@@ -1271,7 +1277,7 @@ func TestInteractionExecutorAllowsRepeatedPolling(t *testing.T) {
 	}
 	model := &pollingScriptModel{}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "lookup")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 		ToolInterpreter: testInteractionToolInterpreter{},
 		ToolAuthorizer:  allowInteractionTools{},
 	})
@@ -1299,7 +1305,7 @@ func TestInteractionExecutorPreservesToolResultOffload(t *testing.T) {
 		interactionUsageTextResponse("done", 1, 1),
 	}}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "large")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 		ToolInterpreter: testInteractionToolInterpreter{},
 		ToolAuthorizer:  allowInteractionTools{},
 		ToolResultStore: store,
@@ -1322,23 +1328,27 @@ func TestInteractionExecutorPreservesToolResultOffload(t *testing.T) {
 	}
 }
 
-type staticInteractionTools struct{ manifest toolset.Manifest }
+type staticInteractionTools struct {
+	manifest   toolset.Manifest
+	identities []domaintool.Ref
+}
 
 var _ InteractionToolResolver = (*toolset.Resolver)(nil)
 
 func (s staticInteractionTools) Manifest(context.Context, domaintool.Group) (toolset.Manifest, error) {
-	return s.manifest, nil
+	return identifyTestManifest(s.manifest, s.identities...)
 }
 
 type scopeRecordingInteractionTools struct {
-	manifest toolset.Manifest
-	scope    runs.ExecutionScope
-	ok       bool
+	identities []domaintool.Ref
+	manifest   toolset.Manifest
+	scope      runs.ExecutionScope
+	ok         bool
 }
 
 func (s *scopeRecordingInteractionTools) Manifest(ctx context.Context, _ domaintool.Group) (toolset.Manifest, error) {
 	s.scope, s.ok = executionctx.Scope(ctx)
-	return s.manifest, nil
+	return identifyTestManifest(s.manifest, s.identities...)
 }
 
 type concurrentInteractionTool struct{ toolcontract.Tool }
@@ -1393,19 +1403,19 @@ func (s selectiveDenyInteractionTools) ResolveToolApproval(
 
 type testInteractionToolInterpreter struct{}
 
-func (testInteractionToolInterpreter) SafetyClass(string) domaintool.SafetyClass {
+func (testInteractionToolInterpreter) SafetyClass(domaintool.Ref) domaintool.SafetyClass {
 	return domaintool.SafetyClassSafe
 }
 
-func (testInteractionToolInterpreter) UsesStandardPolicy(string) bool { return true }
+func (testInteractionToolInterpreter) UsesStandardPolicy(domaintool.Ref) bool { return true }
 
-func (testInteractionToolInterpreter) ApprovalSubject(string, domaintool.Arguments) (string, error) {
+func (testInteractionToolInterpreter) ApprovalSubject(domaintool.Ref, domaintool.Arguments) (string, error) {
 	return "", nil
 }
 
-func (testInteractionToolInterpreter) ShellCommand(string, string) string { return "" }
+func (testInteractionToolInterpreter) ShellCommand(domaintool.Ref, string) string { return "" }
 
-func (testInteractionToolInterpreter) ProjectOutcome(context.Context, string, string, bool) (runs.ExecutionFact, error) {
+func (testInteractionToolInterpreter) ProjectOutcome(context.Context, string, domaintool.Ref, bool) (runs.ExecutionFact, error) {
 	return nil, nil
 }
 
@@ -1415,7 +1425,7 @@ type failingOutcomeInteractionInterpreter struct {
 	deadline []bool
 }
 
-func (f *failingOutcomeInteractionInterpreter) ProjectOutcome(ctx context.Context, _, _ string, _ bool) (runs.ExecutionFact, error) {
+func (f *failingOutcomeInteractionInterpreter) ProjectOutcome(ctx context.Context, _ string, _ domaintool.Ref, _ bool) (runs.ExecutionFact, error) {
 	_, bounded := ctx.Deadline()
 	f.mu.Lock()
 	f.deadline = append(f.deadline, bounded)
@@ -1431,11 +1441,11 @@ func (f *failingOutcomeInteractionInterpreter) boundedProjections() []bool {
 
 type testInteractionToolPresenter struct{}
 
-func (testInteractionToolPresenter) Activity(string, domaintool.Arguments) string {
+func (testInteractionToolPresenter) Activity(domaintool.Ref, domaintool.Arguments) string {
 	return "Echoing value"
 }
 
-func (testInteractionToolPresenter) Present(_ string, _ domaintool.Arguments, result domaintool.Result) (domaintool.Result, string) {
+func (testInteractionToolPresenter) Present(_ domaintool.Ref, _ domaintool.Arguments, result domaintool.Result) (domaintool.Result, string) {
 	return result, "presented"
 }
 
@@ -1688,4 +1698,34 @@ func (m cancelableObservationModel) Stream(ctx context.Context, _ *chat.Request)
 		<-ctx.Done()
 		yield(nil, ctx.Err())
 	}
+}
+
+func identifyTestManifest(manifest toolset.Manifest, identities ...domaintool.Ref) (toolset.Manifest, error) {
+	manifest = manifest.Clone()
+	for _, group := range [][]toolcontract.Tool{manifest.Visible, manifest.Deferred} {
+		for index, executable := range group {
+			if _, err := toolcontract.Bind(executable); err != nil {
+				return toolset.Manifest{}, err
+			}
+			if _, err := toolset.Identify(executable); err == nil {
+				continue
+			}
+			var ref domaintool.Ref
+			for _, candidate := range identities {
+				if candidate.ModelName() == executable.Definition().Name {
+					ref = candidate
+					break
+				}
+			}
+			if err := ref.Validate(); err != nil {
+				return toolset.Manifest{}, fmt.Errorf("test manifest has no explicit identity for %s: %w", executable.Definition().Name, err)
+			}
+			identified, err := toolset.WithIdentity(executable, ref, testsupport.ToolFingerprint(ref))
+			if err != nil {
+				return toolset.Manifest{}, err
+			}
+			group[index] = identified
+		}
+	}
+	return manifest, nil
 }

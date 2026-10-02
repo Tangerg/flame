@@ -8,15 +8,13 @@ import (
 	"sync"
 	"sync/atomic"
 
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/keylock"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 	oteltool "github.com/Tangerg/scope/otel/tool"
 )
 
@@ -64,7 +62,7 @@ type Resolver struct {
 
 	// mcpToolDisabled reads the current domain policy per resolution so registry
 	// changes and live-tool reconnects remain independent hot swaps.
-	mcpToolDisabled func(mcpserver.ToolRef) bool
+	mcpToolDisabled func(domaintool.Ref) bool
 }
 
 type audience uint8
@@ -122,7 +120,7 @@ type resolverDeps struct {
 	CodeIntel         *codeintel.Analyzer // backs post-mutation diagnostics
 	ReadTracker       *readTracker        // backs the read-before-patch and stale-read guards
 	// MCPToolDisabled reports whether an identified MCP tool is hidden.
-	MCPToolDisabled func(mcpserver.ToolRef) bool
+	MCPToolDisabled func(domaintool.Ref) bool
 }
 
 // newResolver builds the Runtime-scoped Tool resolver from its
@@ -318,8 +316,8 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group) (_ manif
 	if err != nil {
 		return manifestBuilder{}, err
 	}
-	tools.deferTools(mcpTools...)
-	tools.deferTools(r.a2a...)
+	tools.deferred = append(tools.deferred, mcpTools...)
+	tools.deferred = append(tools.deferred, r.a2a...)
 	tools.deferTools(r.lsp...)
 	tools.direct(r.shell...)
 	// Skill tools are working-directory scoped (project skills live under the
@@ -357,6 +355,9 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group) (_ manif
 	// search_tools is the sole model-facing entry to every capability withheld
 	// from the initial manifest. The tools themselves remain in the same Run
 	// registry, so promotion changes visibility rather than execution authority.
+	if err := tools.excludeCollisions(ctx); err != nil {
+		return manifestBuilder{}, err
+	}
 	search, err := NewDiscovery(tools.deferred)
 	if err != nil {
 		return manifestBuilder{}, fmt.Errorf("toolset: resolve search_tools: %w", err)

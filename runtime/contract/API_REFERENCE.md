@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-09-28` · 86 methods
+Protocol `2026-10-02` · 89 methods
 
 ## Methods
 
@@ -53,6 +53,8 @@ Protocol `2026-09-28` · 86 methods
 | `skills.proposals.approve` | command | unary | replayResponse | none | none | — | `skills` | `workspace_unavailable`, `revision_conflict`, `capability_not_negotiated` |
 | `skills.proposals.reject` | command | unary | replayResponse | none | none | — | `skills` | `workspace_unavailable`, `revision_conflict`, `capability_not_negotiated` |
 | `agentDocs.list` | query | unary | none | none | none | — | — | `workspace_unavailable`, `prompt_source_too_large` |
+| `mcp.tools.exposure` | query | unary | none | none | none | — | `mcp` | `capability_not_negotiated` |
+| `mcp.tools.setExposure` | command | unary | replayResponse | none | none | — | `mcp` | `capability_not_negotiated` |
 | `mcp.servers.list` | query | unary | none | none | none | — | `mcp` | `capability_not_negotiated` |
 | `mcp.servers.create` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_already_exists`, `capability_not_negotiated` |
 | `mcp.servers.update` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_not_found`, `capability_not_negotiated` |
@@ -64,6 +66,7 @@ Protocol `2026-09-28` · 86 methods
 | `mcp.authorizationAttempts.get` | query | unary | none | none | none | — | `mcp` | `mcp_authorization_attempt_not_found`, `capability_not_negotiated` |
 | `hooks.list` | query | unary | none | none | none | — | — | `workspace_unavailable` |
 | `hooks.setTrust` | command | unary | replayResponse | none | none | — | — | `workspace_unavailable` |
+| `approval.setRule` | command | unary | replayResponse | none | none | — | — | — |
 | `approval.getMode` | query | unary | none | none | none | — | — | — |
 | `approval.setMode` | command | unary | replayResponse | none | none | — | — | — |
 | `approval.listRules` | query | unary | none | none | none | — | — | — |
@@ -353,6 +356,22 @@ publish one namespaced pattern branch without weakening first-party tags.
 | `succeeded` | — | — |
 | `failed` | `error` | — |
 | `canceled` | — | — |
+
+### `ToolRef`
+
+| tag | required | optional |
+| --- | --- | --- |
+| `builtIn` | `name` | — |
+| `mcp` | `server`, `name` | — |
+| `a2a` | `endpoint` | — |
+
+### `ApprovalSubject`
+
+| tag | required | optional |
+| --- | --- | --- |
+| `all` | — | — |
+| `exact` | `value` | — |
+| `glob` | `value` | — |
 
 ### `Interrupt`
 
@@ -827,29 +846,34 @@ TypeScript validator from this single registry projection.
 | `HookInfo` | `timeoutMillis` | `nonNegative` |
 | `HookInfo` | `timeoutMillis` | `maximum(300000)` |
 | `SetHookTrustRequest` | `projectRoot` | `nonEmpty` |
+| `ToolRef` | `server` | `pattern("^[a-z0-9][a-z0-9._-]{0,31}$")` |
+| `ToolRef` | `name` | `pattern("^[A-Za-z0-9_.-]{1,128}$")` |
+| `ToolRef` | `endpoint` | `pattern("^[A-Za-z0-9_-]{1,64}$")` |
+| `SetApprovalRuleRequest` | `sessionId` | `identity` |
+| `SetApprovalRuleRequest` | `sessionId` | `maxLength(256)` |
 | `ApprovalRule` | `id` | `nonEmpty` |
 | `ApprovalRule` | `id` | `identity` |
 | `ApprovalRule` | `id` | `maxLength(256)` |
-| `ApprovalRule` | `tool` | `pattern("\\S")` |
-| `ListApprovalRulesRequest` | `sessionId` | `nonEmpty` |
+| `ApprovalRule` | `modelName` | `pattern("^[A-Za-z0-9_-]{1,64}$")` |
 | `ListApprovalRulesRequest` | `sessionId` | `identity` |
 | `ListApprovalRulesRequest` | `sessionId` | `maxLength(256)` |
 | `ListApprovalRulesResult` | `rules` | `maxItems(2048)` |
 | `ForgetApprovalRuleRequest` | `id` | `nonEmpty` |
+| `MCPToolExposure` | `server` | `pattern("^[a-z0-9][a-z0-9._-]{0,31}$")` |
+| `MCPToolExposure` | `disabledTools` | `maxItems(2048)` |
+| `MCPToolExposure` | `disabledTools` | `uniqueItems` |
+| `MCPToolExposure` | `disabledTools` | `patternItems("^[A-Za-z0-9_.-]{1,128}$")` |
+| `SetMCPToolExposureRequest` | `server` | `pattern("^[a-z0-9][a-z0-9._-]{0,31}$")` |
+| `SetMCPToolExposureRequest` | `name` | `pattern("^[A-Za-z0-9_.-]{1,128}$")` |
 | `MCPServerState` | `toolCount` | `nonNegative` |
 | `MCPServerState` | `toolCount` | `maximum(2048)` |
 | `MCPServerRequest` | `server` | `pattern("^[a-z0-9][a-z0-9._-]{0,31}$")` |
 | `CreateMCPAuthorizationAttemptRequest` | `server` | `pattern("^[a-z0-9][a-z0-9._-]{0,31}$")` |
 | `MCPListToolsRequest` | `server` | `pattern("^[a-z0-9][a-z0-9._-]{0,31}$")` |
 | `MCPServer` | `name` | `pattern("^[a-z0-9][a-z0-9._-]{0,31}$")` |
-| `MCPServer` | `disabledTools` | `maxItems(2048)` |
-| `MCPServer` | `disabledTools` | `uniqueItems` |
-| `MCPServer` | `disabledTools` | `patternItems("^[A-Za-z0-9_.-]{1,128}$")` |
-| `MCPServer` | `autoApproveTools` | `maxItems(2048)` |
-| `MCPServer` | `autoApproveTools` | `uniqueItems` |
-| `MCPServer` | `autoApproveTools` | `patternItems("^[A-Za-z0-9_.-]{1,128}$")` |
 | `MCPTool` | `server` | `pattern("^[a-z0-9][a-z0-9._-]{0,31}$")` |
 | `MCPTool` | `name` | `pattern("^[A-Za-z0-9_.-]{1,128}$")` |
+| `MCPTool` | `modelName` | `pattern("^[A-Za-z0-9_-]{1,64}$")` |
 | `MCPAuthorizationAttemptRequest` | `attemptId` | `pattern("^mcpauth_[A-Z2-7]{26,64}$")` |
 | `MCPAuthorizationAttempt` | `id` | `pattern("^mcpauth_[A-Z2-7]{26,64}$")` |
 | `MCPAuthorizationAttempt` | `server` | `pattern("^[a-z0-9][a-z0-9._-]{0,31}$")` |
@@ -863,19 +887,7 @@ TypeScript validator from this single registry projection.
 | `MCPHeadersChange` | `value` | `nonEmptyProperties` |
 | `MCPEnvironmentChange` | `value` | `nonEmptyProperties` |
 | `MCPServerCandidate` | `name` | `pattern("^[a-z0-9][a-z0-9._-]{0,31}$")` |
-| `MCPServerCandidate` | `disabledTools` | `maxItems(2048)` |
-| `MCPServerCandidate` | `disabledTools` | `uniqueItems` |
-| `MCPServerCandidate` | `disabledTools` | `patternItems("^[A-Za-z0-9_.-]{1,128}$")` |
-| `MCPServerCandidate` | `autoApproveTools` | `maxItems(2048)` |
-| `MCPServerCandidate` | `autoApproveTools` | `uniqueItems` |
-| `MCPServerCandidate` | `autoApproveTools` | `patternItems("^[A-Za-z0-9_.-]{1,128}$")` |
 | `UpdateMCPServerRequest` | `server` | `pattern("^[a-z0-9][a-z0-9._-]{0,31}$")` |
-| `UpdateMCPServerRequest` | `disabledTools` | `maxItems(2048)` |
-| `UpdateMCPServerRequest` | `disabledTools` | `uniqueItems` |
-| `UpdateMCPServerRequest` | `disabledTools` | `patternItems("^[A-Za-z0-9_.-]{1,128}$")` |
-| `UpdateMCPServerRequest` | `autoApproveTools` | `maxItems(2048)` |
-| `UpdateMCPServerRequest` | `autoApproveTools` | `uniqueItems` |
-| `UpdateMCPServerRequest` | `autoApproveTools` | `patternItems("^[A-Za-z0-9_.-]{1,128}$")` |
 | `Provider` | `id` | `nonEmpty` |
 | `Provider` | `id` | `identity` |
 | `Provider` | `id` | `maxLength(64)` |
@@ -1115,6 +1127,8 @@ available. Refusal is `capability_not_negotiated` — never a silent downgrade.
 | `skills.proposals.list` | always | `skills` |
 | `skills.proposals.approve` | always | `skills` |
 | `skills.proposals.reject` | always | `skills` |
+| `mcp.tools.exposure` | always | `mcp` |
+| `mcp.tools.setExposure` | always | `mcp` |
 | `mcp.servers.list` | always | `mcp` |
 | `mcp.servers.create` | always | `mcp` |
 | `mcp.servers.update` | always | `mcp` |

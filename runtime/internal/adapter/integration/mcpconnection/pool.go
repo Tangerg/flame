@@ -9,11 +9,10 @@ import (
 	"maps"
 	"slices"
 
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 // Pool owns the live MCP connections and implements the application ports that
@@ -122,8 +121,9 @@ func configFromServer(server mcpserver.Server) (mcp.ServerConfig, error) {
 		return mcp.ServerConfig{}, err
 	}
 	cfg := mcp.ServerConfig{
-		Name:      server.Name,
-		Transport: transport,
+		SourceFingerprint: server.AuthorityFingerprint(),
+		Name:              server.Name,
+		Transport:         transport,
 	}
 	if timeout, bounded := server.HandshakeTimeout.Duration(); bounded {
 		cfg.HandshakeTimeout = &timeout

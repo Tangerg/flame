@@ -3,6 +3,7 @@ package approvals_test
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"sync"
 	"testing"
 
@@ -20,16 +21,16 @@ func TestServiceRememberDecide(t *testing.T) {
 	ctx := context.Background()
 	svc := newPolicy(t)
 	if err := svc.Remember(ctx, approval.RememberRequest{
-		Scope: approval.ScopeSession, SessionID: "s1", Tool: "shell", Subject: "npm run build", Decision: approval.Allow,
+		Scope: approval.ScopeSession, SessionID: "s1", Tool: testsupport.BuiltInTool(t, "shell"), Subject: approval.InvocationSubject("npm run build"), Decision: approval.Allow, SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell")),
 	}); err != nil {
 		t.Fatalf("remember: %v", err)
 	}
 
-	if d, ok, err := svc.Decide(ctx, approval.Query{SessionID: "s1", Tool: "shell", Subject: "npm run build"}); err != nil || !ok || d != approval.Allow {
+	if d, ok, err := svc.Decide(ctx, approval.Query{SessionID: "s1", Tool: testsupport.BuiltInTool(t, "shell"), Subject: "npm run build", SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell"))}); err != nil || !ok || d != approval.Allow {
 		t.Fatalf("matching call = (%v,%v,%v), want (allow,true,nil)", d, ok, err)
 	}
 	// A different command isn't covered by the remembered one.
-	if _, ok, err := svc.Decide(ctx, approval.Query{SessionID: "s1", Tool: "shell", Subject: "rm -rf /"}); err != nil || ok {
+	if _, ok, err := svc.Decide(ctx, approval.Query{SessionID: "s1", Tool: testsupport.BuiltInTool(t, "shell"), Subject: "rm -rf /", SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell"))}); err != nil || ok {
 		if err != nil {
 			t.Fatalf("decide different command: %v", err)
 		}
@@ -43,12 +44,12 @@ func TestServiceScopeVisibilityAndForget(t *testing.T) {
 	ctx := context.Background()
 	svc := newPolicy(t)
 	if err := svc.Remember(ctx, approval.RememberRequest{
-		Scope: approval.ScopeProject, ProjectDir: "/proj/a", Tool: "write", Subject: "x", Decision: approval.Allow,
+		Scope: approval.ScopeProject, ProjectDir: "/proj/a", Tool: testsupport.BuiltInTool(t, "edit"), Subject: approval.InvocationSubject("x"), Decision: approval.Allow, SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "edit")),
 	}); err != nil {
 		t.Fatalf("remember: %v", err)
 	}
 
-	q := approval.Query{SessionID: "s1", ProjectDir: "/proj/a", Tool: "write", Subject: "x"}
+	q := approval.Query{SessionID: "s1", ProjectDir: "/proj/a", Tool: testsupport.BuiltInTool(t, "edit"), Subject: "x", SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "edit"))}
 	if _, ok, err := svc.Decide(ctx, q); err != nil || !ok {
 		if err != nil {
 			t.Fatalf("decide project rule: %v", err)
@@ -88,8 +89,8 @@ func TestRememberRejectsUnkeyable(t *testing.T) {
 	ctx := context.Background()
 	svc := newPolicy(t)
 	err := svc.Remember(ctx, approval.RememberRequest{
-		Scope: approval.ScopeProject, ProjectDir: "", Tool: "shell",
-		Subject: "go test", Decision: approval.Allow,
+		Scope: approval.ScopeProject, ProjectDir: "", Tool: testsupport.BuiltInTool(t, "shell"),
+		Subject: approval.InvocationSubject("go test"), Decision: approval.Allow, SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell")),
 	})
 	if !errors.Is(err, approval.ErrInvalidRule) {
 		t.Fatalf("unkeyable rule error = %v, want ErrInvalidRule", err)
@@ -105,7 +106,7 @@ func TestRememberRejectsUnkeyable(t *testing.T) {
 func newPolicy(t *testing.T) *approvals.RuntimePolicy {
 	t.Helper()
 	store := newMemoryRuleStore()
-	policy, err := approvals.NewRuntimePolicy(approval.ModeSafe, store, store, nil)
+	policy, err := approvals.NewRuntimePolicy(approval.ModeSafe, store, store, testsupport.ToolAuthorities{}, nil)
 	if err != nil {
 		t.Fatalf("new policy: %v", err)
 	}

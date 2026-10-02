@@ -67,3 +67,7 @@ export async function authorizeMCPServer(name: string, signal?: AbortSignal): Pr
 export function useTestMCPServer(): (input: MCPServerInput) => Promise<MCPServerTestOutcome> {
   return useCallback((input) => MCPServerMutationOwner.current().test(input), []);
 }
+
+export function setMCPToolExposure(server: string, name: string, disabled: boolean): Promise<void> {
+  return MCPServerMutationOwner.current().setToolExposure(server, name, disabled);
+}

@@ -989,7 +989,7 @@ func TestApprovalRuleCommandsInspectAndForget(t *testing.T) {
 		t.Fatal(jsonErr)
 	}
 	var rules struct {
-		Rules []approvalRuleJSON `json:"rules"`
+		Rules []protocol.ApprovalRule `json:"rules"`
 	}
 	if err := json.Unmarshal([]byte(jsonOut), &rules); err != nil || len(rules.Rules) != 1 || rules.Rules[0].ID != ruleID || rules.Rules[0].Decision != "allow" {
 		t.Fatalf("approval JSON = %+v, %v", rules, err)
@@ -1124,5 +1124,18 @@ func TestCompletionWritesOnlyCobraDirective(t *testing.T) {
 	want := "Completion ended with directive: ShellCompDirectiveNoFileComp\n"
 	if errb != want {
 		t.Fatalf("completion stderr = %q, want %q", errb, want)
+	}
+}
+
+func TestApprovalListDefaultsToGlobalRules(t *testing.T) {
+	backend := runtimefixture.New()
+	ref := protocol.ToolRef{Type: protocol.ToolRefBuiltIn, Name: "shell"}
+	backend.ToolModelNames = map[protocol.ToolRef]string{ref: "shell"}
+	if err := backend.SetApprovalRule(t.Context(), protocol.SetApprovalRuleRequest{Subject: protocol.ApprovalSubject{Type: protocol.ApprovalSubjectAll}, Tool: ref, Scope: protocol.ApprovalRuleScopeGlobal, Decision: protocol.ApprovalRuleDecisionDeny}); err != nil {
+		t.Fatal(err)
+	}
+	out, _, err := executeCommand(t, backend, "", "approvals", "ls")
+	if err != nil || !strings.Contains(out, "global") || !strings.Contains(out, "deny") || !strings.Contains(out, "builtIn/shell") {
+		t.Fatalf("global rules = %q, %v", out, err)
 	}
 }

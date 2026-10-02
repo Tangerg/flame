@@ -68,24 +68,24 @@ func TestToolCallInputPlan_ModePlanDenyBeatsHookAsk(t *testing.T) {
 	}
 }
 
-func TestToolCallPlanResolvePromptShortcuts_RememberedRuleBeforeAutoApprove(t *testing.T) {
+func TestToolCallPlanResolvePromptShortcuts_OnlyStandingDecisions(t *testing.T) {
 	plan := ToolCallInput{
 		Mode:         ModeSafe,
 		SafetyClass:  tool.SafetyClassExec,
 		FileMutation: tool.FileMutationNone,
 	}.Plan()
-	got := plan.ResolvePromptShortcuts(StandingDecision{Matched: true, Decision: Deny}, true)
+	got := plan.ResolvePromptShortcuts(StandingDecision{Matched: true, Decision: Deny})
 	if got.Action != GateDeny || got.Denial != DenialRememberedRule {
 		t.Fatalf("remembered deny + auto approve = %+v, want deny", got)
 	}
 
-	got = plan.ResolvePromptShortcuts(StandingDecision{Matched: true, Decision: Allow}, false)
+	got = plan.ResolvePromptShortcuts(StandingDecision{Matched: true, Decision: Allow})
 	if got.Action != GatePass {
 		t.Fatalf("remembered allow = %+v, want pass", got)
 	}
 
-	got = plan.ResolvePromptShortcuts(StandingDecision{}, true)
-	if got.Action != GatePass {
-		t.Fatalf("auto approve = %+v, want pass", got)
+	got = plan.ResolvePromptShortcuts(StandingDecision{})
+	if got.Action != GatePrompt {
+		t.Fatalf("no standing decision = %+v, want prompt", got)
 	}
 }

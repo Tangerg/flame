@@ -6,11 +6,10 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	oteltool "github.com/Tangerg/scope/otel/tool"
-
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
 // NewDiagnosticRegistry returns the explicitly direct-invocable diagnostic
@@ -51,9 +50,13 @@ func (r DiagnosticRegistry) List(context.Context) (_ []tool.Tool, err error) {
 	interpreter := Interpreter{}
 	out := make([]tool.Tool, 0, len(manifest.Visible))
 	for _, definition := range registry.Definitions() {
+		ref, err := tool.BuiltIn(definition.Name)
+		if err != nil {
+			return nil, err
+		}
 		out = append(out, tool.Tool{
 			ToolDefinition: definition,
-			SafetyClass:    interpreter.SafetyClass(definition.Name),
+			SafetyClass:    interpreter.SafetyClass(ref),
 		})
 	}
 	return out, nil

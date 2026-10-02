@@ -33,10 +33,7 @@ func DecodePrompt(raw []byte) (runs.Interrupt, error) {
 	if err != nil {
 		return runs.Interrupt{}, fmt.Errorf("run input codec: decode interrupt: %w", err)
 	}
-	interrupt, err := wire.interrupt()
-	if err != nil {
-		return runs.Interrupt{}, err
-	}
+	interrupt := wire.interrupt()
 	if err := interrupt.Validate(); err != nil {
 		return runs.Interrupt{}, err
 	}
@@ -87,13 +84,15 @@ type interruptWire struct {
 }
 
 type approvalPromptWire struct {
-	CallID       string           `json:"callId,omitempty"`
-	ToolName     string           `json:"toolName"`
-	Arguments    string           `json:"arguments"`
-	SafetyClass  tool.SafetyClass `json:"safetyClass"`
-	Risk         tool.RiskLevel   `json:"risk,omitempty"`
-	Reason       string           `json:"reason,omitempty"`
-	Rememberable bool             `json:"rememberable,omitzero"`
+	Tool              tool.Ref         `json:"tool"`
+	SourceFingerprint string           `json:"sourceFingerprint,omitempty"`
+	CallID            string           `json:"callId"`
+	ToolName          string           `json:"toolName"`
+	Arguments         string           `json:"arguments"`
+	SafetyClass       tool.SafetyClass `json:"safetyClass"`
+	Risk              tool.RiskLevel   `json:"risk"`
+	Reason            string           `json:"reason,omitempty"`
+	Rememberable      bool             `json:"rememberable,omitzero"`
 }
 
 type questionPromptWire struct {
@@ -119,7 +118,7 @@ func promptWireFrom(interrupt runs.Interrupt) interruptWire {
 	result := interruptWire{Kind: interrupt.Kind}
 	if prompt := interrupt.Approval; prompt != nil {
 		result.Approval = &approvalPromptWire{
-			CallID: prompt.CallID, ToolName: prompt.ToolName, Arguments: prompt.Arguments,
+			Tool: prompt.Tool, SourceFingerprint: prompt.SourceFingerprint, CallID: prompt.CallID, ToolName: prompt.ToolName, Arguments: prompt.Arguments,
 			SafetyClass: prompt.SafetyClass, Risk: prompt.Risk, Reason: prompt.Reason, Rememberable: prompt.Rememberable,
 		}
 	}
@@ -132,20 +131,11 @@ func promptWireFrom(interrupt runs.Interrupt) interruptWire {
 	return result
 }
 
-func (i interruptWire) interrupt() (runs.Interrupt, error) {
-	if !i.Kind.Valid() {
-		return runs.Interrupt{}, fmt.Errorf("run input codec: unknown interrupt kind %q", i.Kind)
-	}
+func (i interruptWire) interrupt() runs.Interrupt {
 	result := runs.Interrupt{Kind: i.Kind}
 	if prompt := i.Approval; prompt != nil {
-		if !prompt.SafetyClass.Valid() {
-			return runs.Interrupt{}, fmt.Errorf("run input codec: unknown safety class %q", prompt.SafetyClass)
-		}
-		if prompt.Risk != "" && !prompt.Risk.Valid() {
-			return runs.Interrupt{}, fmt.Errorf("run input codec: unknown risk level %q", prompt.Risk)
-		}
 		result.Approval = &runs.ApprovalPrompt{
-			CallID: prompt.CallID, ToolName: prompt.ToolName, Arguments: prompt.Arguments,
+			Tool: prompt.Tool, SourceFingerprint: prompt.SourceFingerprint, CallID: prompt.CallID, ToolName: prompt.ToolName, Arguments: prompt.Arguments,
 			SafetyClass: prompt.SafetyClass, Risk: prompt.Risk, Reason: prompt.Reason, Rememberable: prompt.Rememberable,
 		}
 	}
@@ -155,7 +145,7 @@ func (i interruptWire) interrupt() (runs.Interrupt, error) {
 			Fields: questionFieldSpecsFrom(i.Question.Fields),
 		}
 	}
-	return result, nil
+	return result
 }
 
 func questionFieldWiresFrom(specs []runs.QuestionFieldSpec) []questionFieldSpecWire {

@@ -11,6 +11,7 @@ import (
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
 // fakeMCPPorts implements the four narrow MCP projections consumed by the
@@ -22,6 +23,7 @@ type fakeMCPPorts struct {
 	reconnectName string
 	authorizeName string
 	probeErr      error
+	conflicts     map[tool.Ref][]tool.Ref
 }
 
 func (f *fakeMCPPorts) Statuses() []mcpserver.ConnectionStatus { return slices.Clone(f.statuses) }
@@ -65,6 +67,7 @@ func fakeMCPPortsConfig(ports *fakeMCPPorts) mcpapp.Config {
 		Registry:            &mcpRegistryFake{servers: servers},
 		StatusReader:        ports,
 		ToolCatalog:         ports,
+		ToolDiagnostics:     ports,
 		ConnectionControl:   ports,
 		ConnectionLifecycle: ports,
 	}
@@ -72,10 +75,11 @@ func fakeMCPPortsConfig(ports *fakeMCPPorts) mcpapp.Config {
 
 // mcpRegistryFake is the integration registry the MCP config handlers drive.
 type mcpRegistryFake struct {
-	mu      sync.Mutex
-	servers map[mcpserver.ServerName]mcpserver.Server
-	getErr  error
-	saved   []mcpserver.Server
+	mu       sync.Mutex
+	servers  map[mcpserver.ServerName]mcpserver.Server
+	getErr   error
+	saved    []mcpserver.Server
+	exposure map[tool.Ref]bool
 }
 
 func (m *mcpRegistryFake) List(context.Context) ([]mcpserver.Server, error) {
@@ -133,6 +137,9 @@ func handlerWithMCP(t testing.TB, cfg mcpapp.Config) *Handler {
 	if cfg.StatusReader == nil {
 		cfg.StatusReader = ports
 	}
+	if cfg.ToolDiagnostics == nil {
+		cfg.ToolDiagnostics = ports
+	}
 	if cfg.ToolCatalog == nil {
 		cfg.ToolCatalog = ports
 	}
@@ -142,9 +149,8 @@ func handlerWithMCP(t testing.TB, cfg mcpapp.Config) *Handler {
 	if cfg.ConnectionLifecycle == nil {
 		cfg.ConnectionLifecycle = ports
 	}
-	if cfg.Policy == nil {
-		policy := mcpserver.NewToolPolicy(nil)
-		cfg.Policy = mcpapp.NewToolPolicyState(policy)
+	if cfg.Exposure == nil {
+		cfg.Exposure = mcpapp.NewExposureState(nil, nil)
 	}
 	mcpInvalidations := &testNotification[invalidation.Notice]{}
 	cfg.Invalidations = mcpInvalidations.Publish
@@ -164,3 +170,28 @@ func handlerWithMCP(t testing.TB, cfg mcpapp.Config) *Handler {
 	s.observeInvalidations(mcpInvalidations.Observe)
 	return s
 }
+
+func (m *mcpRegistryFake) ListExposure(context.Context) ([]tool.Ref, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var refs []tool.Ref
+	for ref := range m.exposure {
+		refs = append(refs, ref)
+	}
+	return refs, nil
+}
+func (m *mcpRegistryFake) SetToolExposure(_ context.Context, ref tool.Ref, disabled bool) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.exposure == nil {
+		m.exposure = make(map[tool.Ref]bool)
+	}
+	if disabled {
+		m.exposure[ref] = true
+	} else {
+		delete(m.exposure, ref)
+	}
+	return nil
+}
+
+func (f *fakeMCPPorts) ToolNameConflicts() (map[tool.Ref][]tool.Ref, error) { return f.conflicts, nil }

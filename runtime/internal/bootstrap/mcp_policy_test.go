@@ -6,12 +6,14 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
 type mcpServerListStub struct {
-	servers []mcpserver.Server
-	err     error
-	calls   int
+	servers  []mcpserver.Server
+	disabled []tool.Ref
+	err      error
+	calls    int
 }
 
 func (m *mcpServerListStub) List(context.Context) ([]mcpserver.Server, error) {
@@ -21,9 +23,9 @@ func (m *mcpServerListStub) List(context.Context) ([]mcpserver.Server, error) {
 
 func TestBuildMCPEnvironmentUsesOneRegistrySnapshot(t *testing.T) {
 	registry := &mcpServerListStub{servers: []mcpserver.Server{
-		{Name: testMCPServerName("files"), Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-files", ToolPolicy: testServerToolPolicy([]string{"write"}, []string{"read"})},
-		{Name: testMCPServerName("off"), Enabled: false, Transport: mcpserver.TransportStdio, Command: "mcp-off", ToolPolicy: testServerToolPolicy([]string{"hidden"}, nil)},
-	}}
+		{Name: testMCPServerName("files"), Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-files"},
+		{Name: testMCPServerName("off"), Enabled: false, Transport: mcpserver.TransportStdio, Command: "mcp-off"},
+	}, disabled: []tool.Ref{testMCPRef("files", "write")}}
 
 	env, err := buildMCPEnvironment(context.Background(), registry)
 	if err != nil {
@@ -35,12 +37,12 @@ func TestBuildMCPEnvironmentUsesOneRegistrySnapshot(t *testing.T) {
 	if len(env.servers) != 1 || env.servers[0].Name.String() != "files" {
 		t.Fatalf("servers = %+v, want enabled files server", env.servers)
 	}
-	if !env.policy.ToolDisabled(mcpserver.ToolRef{Server: testMCPServerName("files"), Tool: testRemoteToolName("write")}) ||
-		!env.policy.ToolDisabled(mcpserver.ToolRef{Server: testMCPServerName("off"), Tool: testRemoteToolName("hidden")}) {
+	if !env.exposure.ToolDisabled(testMCPRef("files", "write")) ||
+		!env.exposure.ToolDisabled(testMCPRef("off", "hidden")) {
 		t.Fatalf("disabled policy does not match registry snapshot")
 	}
-	if !env.policy.ToolAutoApproved(mcpserver.ToolRef{Server: testMCPServerName("files"), Tool: testRemoteToolName("read")}) {
-		t.Fatal("files_read must be auto-approved")
+	if env.exposure.ToolDisabled(testMCPRef("files", "read")) {
+		t.Fatal("files_read must remain exposed")
 	}
 }
 
@@ -55,4 +57,15 @@ func TestBuildMCPEnvironmentReturnsRegistryError(t *testing.T) {
 	if registry.calls != 1 {
 		t.Fatalf("registry List calls = %d, want 1", registry.calls)
 	}
+}
+
+func (m *mcpServerListStub) ListExposure(context.Context) ([]tool.Ref, error) {
+	return m.disabled, m.err
+}
+func testMCPRef(server, remote string) tool.Ref {
+	ref, err := tool.MCP(testMCPServerName(server), testRemoteToolName(remote))
+	if err != nil {
+		panic(err)
+	}
+	return ref
 }

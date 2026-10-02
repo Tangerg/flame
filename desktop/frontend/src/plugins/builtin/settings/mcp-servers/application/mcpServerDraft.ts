@@ -66,8 +66,6 @@ export interface MCPServerFields {
   authorization: RetainedValue;
   headers: RetainedValue;
   timeoutSec: string;
-  disabledTools: string[];
-  autoApproveTools: string[];
 }
 
 export class MCPServerEdit {
@@ -90,8 +88,6 @@ export class MCPServerEdit {
         authorization: RetainedValue.preserved(),
         headers: RetainedValue.preserved(),
         timeoutSec: server ? String(mcpHandshakeTimeoutSeconds(server.handshakeTimeout) ?? "") : "",
-        disabledTools: server?.disabledTools ?? [],
-        autoApproveTools: server?.autoApproveTools ?? [],
       },
       server,
     );
@@ -99,10 +95,6 @@ export class MCPServerEdit {
 
   with<K extends keyof MCPServerFields>(key: K, value: MCPServerFields[K]): MCPServerEdit {
     return new MCPServerEdit({ ...this.fields, [key]: value }, this.stored);
-  }
-
-  withToolSelection(selection: Pick<MCPServerFields, "disabledTools" | "autoApproveTools">) {
-    return new MCPServerEdit({ ...this.fields, ...selection }, this.stored);
   }
 
   get isValid(): boolean {
@@ -159,8 +151,6 @@ export class MCPServerEdit {
       enabled: this.stored?.enabled ?? true,
       description: f.description.trim() || undefined,
       handshakeTimeout,
-      disabledTools: f.disabledTools.length ? f.disabledTools : undefined,
-      autoApproveTools: f.autoApproveTools.length ? f.autoApproveTools : undefined,
     };
     if (f.transport === "stdio") {
       return {

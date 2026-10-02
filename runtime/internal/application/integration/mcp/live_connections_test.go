@@ -11,6 +11,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
 func TestServersAndToolsUsePorts(t *testing.T) {
@@ -105,27 +106,6 @@ func TestServerStatusRejectsInvalidRequestedIdentity(t *testing.T) {
 	c := testCoordinator(t, Config{StatusReader: &fakePorts{}})
 	if status, err := c.ServerStatus(t.Context(), mcpserver.ServerName{}); err == nil || status != (ServerStatus{}) {
 		t.Fatalf("ServerStatus = (%+v, %v), want zero/error", status, err)
-	}
-}
-
-func TestFailedRegistryReadCannotReplaceToolPolicy(t *testing.T) {
-	server := mcpserver.Server{
-		Name: testMCPServerName("files"), Enabled: true,
-		Transport: mcpserver.TransportStdio, Command: "mcp-files",
-	}
-	policy := NewToolPolicyState(mcpserver.NewToolPolicy([]mcpserver.Server{server}))
-	ref := mcpserver.ToolRef{Server: server.Name, Tool: testRemoteToolName("read")}
-	listErr := errors.New("registry unavailable")
-	c := testCoordinator(t, Config{Registry: &testRegistry{listErr: listErr}, Policy: policy})
-
-	if policy.ToolDisabled(ref) {
-		t.Fatal("initial policy unexpectedly disabled configured server")
-	}
-	if err := c.refreshToolPolicy(t.Context()); !errors.Is(err, listErr) {
-		t.Fatalf("refreshToolPolicy = %v, want the registry failure", err)
-	}
-	if policy.ToolDisabled(ref) {
-		t.Fatal("failed refresh replaced the last valid tool policy")
 	}
 }
 
@@ -226,6 +206,7 @@ func TestConnectionValidationUsesDurableRegistry(t *testing.T) {
 		Registry:            registry,
 		StatusReader:        ports,
 		ToolCatalog:         ports,
+		ToolDiagnostics:     ports,
 		ConnectionControl:   ports,
 		ConnectionLifecycle: ports,
 	})
@@ -256,6 +237,7 @@ func TestConnectionRejectsDurablyDisabledServer(t *testing.T) {
 		Registry:            registry,
 		StatusReader:        ports,
 		ToolCatalog:         ports,
+		ToolDiagnostics:     ports,
 		ConnectionControl:   ports,
 		ConnectionLifecycle: ports,
 	})
@@ -284,6 +266,7 @@ func TestStatusCallbackMayReenterMutationWithoutDeadlock(t *testing.T) {
 		Registry:            registry,
 		StatusReader:        ports,
 		ToolCatalog:         ports,
+		ToolDiagnostics:     ports,
 		ConnectionControl:   ports,
 		ConnectionLifecycle: ports,
 	}
@@ -454,8 +437,7 @@ func TestServerCommandsOwnInputsAfterReturning(t *testing.T) {
 		}
 		description := "original description"
 		connection := stdioServerInput(name, "original").Connection
-		disabled := []mcpserver.RemoteToolName{testRemoteToolName("read")}
-		patch := ServerPatch{Description: &description, Connection: &connection, DisabledTools: &disabled}
+		patch := ServerPatch{Description: &description, Connection: &connection}
 		registry := &testRegistry{
 			servers: map[mcpserver.ServerName]mcpserver.Server{name: current},
 		}
@@ -466,14 +448,12 @@ func TestServerCommandsOwnInputsAfterReturning(t *testing.T) {
 		description = "caller-changed"
 		connection.Args[0] = "caller-changed"
 		connection.Environment.Value["TOKEN"] = "caller-changed"
-		disabled[0] = testRemoteToolName("changed")
 		stored, found, err := registry.Get(t.Context(), name)
 		if err != nil || !found {
 			t.Fatalf("stored server = (%+v, %t, %v)", stored, found, err)
 		}
 		if stored.Description != "original description" || stored.Args[0] != "original" ||
-			stored.Env["TOKEN"] != "original" ||
-			!slices.Equal(stored.ToolPolicy.DisabledTools(), []mcpserver.RemoteToolName{testRemoteToolName("read")}) {
+			stored.Env["TOKEN"] != "original" {
 			t.Fatalf("updated server changed after the caller reused its input: %+v", stored)
 		}
 	})
@@ -659,6 +639,7 @@ func (b *blockingPorts) Reconnect(ctx context.Context, _ mcpserver.ServerName) e
 func configWithPorts(ports interface {
 	StatusReader
 	ToolCatalog
+	ToolDiagnostics
 	ConnectionControl
 	ConnectionLifecycle
 },
@@ -674,6 +655,7 @@ func configWithPorts(ports interface {
 		Registry:            registry,
 		StatusReader:        ports,
 		ToolCatalog:         ports,
+		ToolDiagnostics:     ports,
 		ConnectionControl:   ports,
 		ConnectionLifecycle: ports,
 	}
@@ -702,6 +684,7 @@ func awaitAuthorizationAttempt(t *testing.T, c *Coordinator, id AuthorizationAtt
 // write after its durable commit.
 type testRegistry struct {
 	mu              sync.Mutex
+	exposure        map[tool.Ref]bool
 	servers         map[mcpserver.ServerName]mcpserver.Server
 	listed          []mcpserver.Server
 	listErr         error
@@ -794,3 +777,35 @@ func TestProbeClassifiesFailuresAndPreservesCancellation(t *testing.T) {
 		}
 	})
 }
+
+func testMCPRef(server mcpserver.ServerName, remote mcpserver.RemoteToolName) tool.Ref {
+	ref, err := tool.MCP(server, remote)
+	if err != nil {
+		panic(err)
+	}
+	return ref
+}
+func (t *testRegistry) ListExposure(context.Context) ([]tool.Ref, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	var refs []tool.Ref
+	for ref := range t.exposure {
+		refs = append(refs, ref)
+	}
+	return refs, t.listErr
+}
+func (t *testRegistry) SetToolExposure(_ context.Context, ref tool.Ref, disabled bool) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.exposure == nil {
+		t.exposure = make(map[tool.Ref]bool)
+	}
+	if disabled {
+		t.exposure[ref] = true
+	} else {
+		delete(t.exposure, ref)
+	}
+	return nil
+}
+
+func (*fakePorts) ToolNameConflicts() (map[tool.Ref][]tool.Ref, error) { return nil, nil }

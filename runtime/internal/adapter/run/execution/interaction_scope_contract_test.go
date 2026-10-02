@@ -5,6 +5,8 @@ import (
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
+	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"reflect"
 	"strings"
 	"sync/atomic"
@@ -104,8 +106,12 @@ func (*scopeDefinitionTool) Call(context.Context, toolcontract.Invocation) (chat
 func TestObservedToolPreservesBoundDefinition(t *testing.T) {
 	executable := &scopeDefinitionTool{definition: scopeOutputTool{}.Definition()}
 	want := executable.Definition()
+	manifest, err := identifyTestManifest(toolset.Manifest{Visible: []toolcontract.Tool{executable}}, testsupport.A2ATool(t, "inspect"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	visible, _, err := wrapInteractionTools(
-		toolset.Manifest{Visible: []toolcontract.Tool{executable}}, nil,
+		manifest, nil,
 		InteractionExecutorConfig{ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{}},
 		toolResultOffloadPolicy{}, runs.RootExecutionStart{},
 	)
@@ -147,7 +153,7 @@ func TestInteractionManifestUsesScopeAdmission(t *testing.T) {
 					return nil, nil
 				}),
 				InteractionExecutorConfig{
-					ToolResolver:    staticInteractionTools{manifest: test.manifest},
+					ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "inspect")}, manifest: test.manifest},
 					ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 				},
 			)
@@ -188,7 +194,7 @@ func TestToolOffloadPreservesScopeOutputContract(t *testing.T) {
 				return interactionToolResponse(chat.ToolCall{ID: "inspect", Name: "inspect", Arguments: `{}`}, 1, 1), nil
 			})
 			executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-				ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{scopeOutputTool{output: test.output}}}},
+				ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "inspect")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{scopeOutputTool{output: test.output}}}},
 				ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 				ToolResultStore:   store,
 				ToolResultOffload: ToolResultOffloadPolicyValues{Threshold: intPointer(100), ReaderName: testToolResultReaderName},

@@ -23,17 +23,12 @@ func mcpServerInputFromCandidate(in protocol.MCPServerCandidate) (mcpapp.ServerI
 	if err != nil {
 		return mcpapp.ServerInput{}, err
 	}
-	policy, err := mcpToolPolicyFromWire(in.DisabledTools, in.AutoApproveTools)
-	if err != nil {
-		return mcpapp.ServerInput{}, err
-	}
 	return mcpapp.ServerInput{
 		Name:             name,
 		Enabled:          in.Enabled,
 		Description:      in.Description,
 		Connection:       connection,
 		HandshakeTimeout: timeout,
-		ToolPolicy:       policy,
 	}, nil
 }
 
@@ -50,20 +45,6 @@ func mcpServerPatchFromRequest(in protocol.UpdateMCPServerRequest) (mcpapp.Serve
 		Enabled:     in.Enabled,
 		Description: in.Description,
 	}
-	if in.DisabledTools != nil {
-		disabled, err := parseRemoteToolNames(*in.DisabledTools)
-		if err != nil {
-			return mcpapp.ServerPatch{}, err
-		}
-		patch.DisabledTools = &disabled
-	}
-	if in.AutoApproveTools != nil {
-		autoApproved, err := parseRemoteToolNames(*in.AutoApproveTools)
-		if err != nil {
-			return mcpapp.ServerPatch{}, err
-		}
-		patch.AutoApproveTools = &autoApproved
-	}
 	if in.Connection != nil {
 		connection, err := mcpConnectionInputFromWire(*in.Connection)
 		if err != nil {
@@ -79,34 +60,6 @@ func mcpServerPatchFromRequest(in protocol.UpdateMCPServerRequest) (mcpapp.Serve
 		patch.HandshakeTimeout = &timeout
 	}
 	return patch, nil
-}
-
-func mcpToolPolicyFromWire(disabledRaw, autoApprovedRaw []string) (mcpserver.ServerToolPolicy, error) {
-	disabled, err := parseRemoteToolNames(disabledRaw)
-	if err != nil {
-		return mcpserver.ServerToolPolicy{}, err
-	}
-	autoApproved, err := parseRemoteToolNames(autoApprovedRaw)
-	if err != nil {
-		return mcpserver.ServerToolPolicy{}, err
-	}
-	policy, err := mcpserver.NewServerToolPolicy(disabled, autoApproved)
-	if err != nil {
-		return mcpserver.ServerToolPolicy{}, NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
-	}
-	return policy, nil
-}
-
-func parseRemoteToolNames(raw []string) ([]mcpserver.RemoteToolName, error) {
-	names := make([]mcpserver.RemoteToolName, len(raw))
-	for i, value := range raw {
-		name, err := mcpserver.ParseRemoteToolName(value)
-		if err != nil {
-			return nil, NewFailure(errors.Join(protocol.ErrInvalidParams, err), fmt.Sprintf("remote tool at index %d: %v", i, err))
-		}
-		names[i] = name
-	}
-	return names, nil
 }
 
 func mcpHandshakeTimeoutFromWire(in protocol.MCPHandshakeTimeout) (mcpserver.HandshakeTimeout, error) {

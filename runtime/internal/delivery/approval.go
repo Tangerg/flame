@@ -10,10 +10,17 @@ const (
 	ApprovalGetMode    Name = "approval.getMode"
 	ApprovalSetMode    Name = "approval.setMode"
 	ApprovalListRules  Name = "approval.listRules"
+	ApprovalSetRule    Name = "approval.setRule"
 	ApprovalForgetRule Name = "approval.forgetRule"
 )
 
 func registerApproval(registry *Registry) {
+	registry.commandAck(MethodMeta{Name: ApprovalSetRule}, func(service interface {
+		SetApprovalRule(context.Context, protocol.SetApprovalRuleRequest) error
+	}, ctx context.Context, request protocol.SetApprovalRuleRequest) error {
+		return service.SetApprovalRule(ctx, request)
+	})
+
 	registry.query(MethodMeta{Name: ApprovalGetMode},
 		func(service interface {
 			GetApprovalMode(context.Context) (*protocol.ApprovalModeResult, error)

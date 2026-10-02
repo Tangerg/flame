@@ -17,6 +17,7 @@ export interface MCPServerGateway {
   update(name: string, input: MCPServerInput): Promise<MCPServerSettings>;
   delete(name: string): Promise<void>;
   setEnabled(name: string, enabled: boolean): Promise<MCPServerSettings>;
+  setToolExposure(server: string, name: string, disabled: boolean): Promise<void>;
   reconnect(name: string): Promise<void>;
   createAuthorizationAttempt(name: string, signal?: AbortSignal): Promise<MCPAuthorizationAttempt>;
   getAuthorizationAttempt(id: string, signal?: AbortSignal): Promise<MCPAuthorizationAttempt>;

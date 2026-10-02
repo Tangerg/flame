@@ -2,14 +2,15 @@ package execution
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/optional"
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 )
 
 // InteractionToolResolver builds the exact Tool manifest for one staged root.
@@ -25,19 +26,19 @@ type InteractionToolResolver interface {
 // Tool identities. Toolset satisfies this port without importing Agent Framework. An
 // implementation must be safe for concurrent calls from one Tool batch.
 type InteractionToolInterpreter interface {
-	SafetyClass(name string) tool.SafetyClass
-	UsesStandardPolicy(name string) bool
-	ApprovalSubject(name string, arguments tool.Arguments) (string, error)
-	ShellCommand(name, arguments string) string
-	ProjectOutcome(ctx context.Context, sessionID, name string, succeeded bool) (runs.ExecutionFact, error)
+	SafetyClass(ref tool.Ref) tool.SafetyClass
+	UsesStandardPolicy(ref tool.Ref) bool
+	ApprovalSubject(ref tool.Ref, arguments tool.Arguments) (string, error)
+	ShellCommand(ref tool.Ref, arguments string) string
+	ProjectOutcome(ctx context.Context, sessionID string, ref tool.Ref, succeeded bool) (runs.ExecutionFact, error)
 }
 
 // InteractionToolPresenter owns client-facing activity and result projection.
 // Its implementation remains in Toolset; Agent Framework sees only ordinary Tools. An
 // implementation must be safe for concurrent calls from one Tool batch.
 type InteractionToolPresenter interface {
-	Activity(name string, arguments tool.Arguments) string
-	Present(name string, arguments tool.Arguments, result tool.Result) (tool.Result, string)
+	Activity(ref tool.Ref, arguments tool.Arguments) string
+	Present(ref tool.Ref, arguments tool.Arguments, result tool.Result) (tool.Result, string)
 }
 
 // ToolAuthorizationRequest is the complete pre-call policy input. The
@@ -47,16 +48,16 @@ type ToolAuthorizationRequest struct {
 	// WorkspaceCWD is the Session's project directory, which is the scope key a
 	// remembered approval is stored under. An isolated Run executes elsewhere;
 	// a rule keyed by that scratch copy would never match the project again.
-	WorkspaceCWD    string
-	CallID          string
-	ToolName        string
-	Arguments       tool.Arguments
-	SafetyClass     tool.SafetyClass
-	ApprovalSubject string
-	FileMutation    tool.FileMutationScope
-	ShellCommand    string
-	AutoApproved    bool
-	RequireApproval bool
+	WorkspaceCWD      string
+	CallID            string
+	Tool              tool.Ref
+	SourceFingerprint string
+	ToolName          string
+	Arguments         tool.Arguments
+	SafetyClass       tool.SafetyClass
+	FileMutation      tool.FileMutationScope
+	ShellCommand      string
+	RequireApproval   bool
 }
 
 // ToolAuthorizationDecision is one definite pre-call decision: the call is
@@ -90,6 +91,20 @@ func AskToolApproval(prompt runs.ApprovalPrompt) (ToolAuthorizationDecision, err
 		return ToolAuthorizationDecision{}, fmt.Errorf("execution: invalid Tool approval plan: %w", err)
 	}
 	return ToolAuthorizationDecision{approval: &prompt}, nil
+}
+
+func validateToolApprovalPrompt(request ToolAuthorizationRequest, prompt runs.ApprovalPrompt) error {
+	if err := validateToolAuthorizationRequest(request); err != nil {
+		return err
+	}
+	if err := (runs.Interrupt{Kind: interrupt.Approval, Approval: &prompt}).Validate(); err != nil {
+		return err
+	}
+	if prompt.CallID != request.CallID || prompt.Tool != request.Tool || prompt.SourceFingerprint != request.SourceFingerprint ||
+		prompt.ToolName != request.ToolName || prompt.Arguments != request.Arguments.Canonical() || prompt.SafetyClass != request.SafetyClass {
+		return errors.New("execution: Tool approval prompt differs from its invocation")
+	}
+	return nil
 }
 
 // Denied reports the refusal and the reason shown to the model.

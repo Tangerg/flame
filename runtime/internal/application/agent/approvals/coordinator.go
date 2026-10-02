@@ -7,6 +7,7 @@ import (
 	"errors"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
@@ -21,8 +22,9 @@ type SessionLookup interface {
 type Policy interface {
 	DefaultMode(ctx context.Context) (approval.Mode, error)
 	SetDefaultMode(ctx context.Context, mode approval.Mode) error
-	Rules(ctx context.Context, sessionID, projectDir string) ([]approval.Rule, error)
+	Rules(ctx context.Context, sessionID, projectDir string) ([]RuleView, error)
 	Forget(ctx context.Context, id string) error
+	SetRule(context.Context, tool.Ref, approval.Scope, string, string, approval.Subject, approval.Decision) error
 }
 
 // Coordinator drives the tool-permission stance + approval-rule use cases.
@@ -50,7 +52,7 @@ func (c *Coordinator) SetDefaultMode(ctx context.Context, mode approval.Mode) er
 
 // ListRules returns the rules visible from a session. Unknown sessions degrade to
 // session/global lookup; storage failures are real errors.
-func (c *Coordinator) ListRules(ctx context.Context, sessionID string) ([]approval.Rule, error) {
+func (c *Coordinator) ListRules(ctx context.Context, sessionID string) ([]RuleView, error) {
 	cwd := ""
 	if sessionID != "" {
 		switch sess, err := c.sessions.Get(ctx, sessionID); {
@@ -66,4 +68,16 @@ func (c *Coordinator) ListRules(ctx context.Context, sessionID string) ([]approv
 // ForgetRule removes one persisted approval rule by id.
 func (c *Coordinator) ForgetRule(ctx context.Context, id string) error {
 	return c.policy.Forget(ctx, id)
+}
+
+func (c *Coordinator) SetRule(ctx context.Context, ref tool.Ref, scope approval.Scope, sessionID string, subject approval.Subject, decision approval.Decision) error {
+	cwd := ""
+	if scope != approval.ScopeGlobal {
+		sess, err := c.sessions.Get(ctx, sessionID)
+		if err != nil {
+			return err
+		}
+		cwd = sess.Workspace().Path()
+	}
+	return c.policy.SetRule(ctx, ref, scope, sessionID, cwd, subject, decision)
 }

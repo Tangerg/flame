@@ -40,7 +40,7 @@ func (s *ConversationStore) Write(ctx context.Context, sessionID string, message
 		return err
 	}
 	outcome, err := s.messages.Write(ctx, id, messages...)
-	if validateErr := outcome.Validate(len(messages), err); validateErr != nil {
+	if validateErr := outcome.ValidateFor(len(messages), err); validateErr != nil {
 		return validateErr
 	}
 	return err

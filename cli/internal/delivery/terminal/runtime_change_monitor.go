@@ -358,7 +358,7 @@ func (r runtimeChangeMonitor) supportedTopics() []protocol.RuntimeTopic {
 	if r.resources.skills {
 		candidates = append(candidates, protocol.TopicSkillsChanged)
 	}
-	if r.resources.mcp {
+	if r.resources.mcp || r.resources.approvals {
 		candidates = append(candidates, protocol.TopicMCPChanged)
 	}
 	if r.resources.schedules {

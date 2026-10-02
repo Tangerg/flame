@@ -289,33 +289,28 @@ func (s SkillProposalRef) ValidateWire() error {
 	)
 }
 
+func (m MCPServerRequest) ValidateWire() error {
+	return collectWireViolations("MCPServerRequest",
+		requiredTextPattern("server", m.Server, "^[a-z0-9][a-z0-9._-]{0,31}$"),
+	)
+}
+
+func (s SetMCPToolExposureRequest) ValidateWire() error {
+	return collectWireViolations("SetMCPToolExposureRequest",
+		requiredTextPattern("server", s.Server, "^[a-z0-9][a-z0-9._-]{0,31}$"),
+		requiredTextPattern("name", s.Name, "^[A-Za-z0-9_.-]{1,128}$"),
+	)
+}
+
 func (m MCPServerCandidate) ValidateWire() error {
 	return collectWireViolations("MCPServerCandidate",
 		requiredTextPattern("name", m.Name, "^[a-z0-9][a-z0-9._-]{0,31}$"),
-		maxItems("disabledTools", m.DisabledTools, 2048),
-		uniqueItems("disabledTools", m.DisabledTools),
-		textPatternItems("disabledTools", m.DisabledTools, "^[A-Za-z0-9_.-]{1,128}$"),
-		maxItems("autoApproveTools", m.AutoApproveTools, 2048),
-		uniqueItems("autoApproveTools", m.AutoApproveTools),
-		textPatternItems("autoApproveTools", m.AutoApproveTools, "^[A-Za-z0-9_.-]{1,128}$"),
 	)
 }
 
 func (u UpdateMCPServerRequest) ValidateWire() error {
 	return collectWireViolations("UpdateMCPServerRequest",
 		requiredTextPattern("server", u.Server, "^[a-z0-9][a-z0-9._-]{0,31}$"),
-		optionalMaxItems("disabledTools", u.DisabledTools, 2048),
-		optionalUniqueItems("disabledTools", u.DisabledTools),
-		optionalTextPatternItems("disabledTools", u.DisabledTools, "^[A-Za-z0-9_.-]{1,128}$"),
-		optionalMaxItems("autoApproveTools", u.AutoApproveTools, 2048),
-		optionalUniqueItems("autoApproveTools", u.AutoApproveTools),
-		optionalTextPatternItems("autoApproveTools", u.AutoApproveTools, "^[A-Za-z0-9_.-]{1,128}$"),
-	)
-}
-
-func (m MCPServerRequest) ValidateWire() error {
-	return collectWireViolations("MCPServerRequest",
-		requiredTextPattern("server", m.Server, "^[a-z0-9][a-z0-9._-]{0,31}$"),
 	)
 }
 
@@ -343,6 +338,18 @@ func (s SetHookTrustRequest) ValidateWire() error {
 	)
 }
 
+func (s SetApprovalRuleRequest) ValidateWire() error {
+	return collectWireViolations("SetApprovalRuleRequest",
+		identity("sessionId", s.SessionID),
+		maxLength("sessionId", s.SessionID, 256),
+		closedEnum("scope", string(s.Scope), []string{"session", "project", "global"}, false),
+		closedEnum("decision", string(s.Decision), []string{"allow", "deny"}, false),
+		forbiddenWhen(wireFieldEquals(s, "scope", "global"), "sessionId", s),
+		requiredWhen(wireFieldEquals(s, "scope", "session"), "sessionId", s),
+		requiredWhen(wireFieldEquals(s, "scope", "project"), "sessionId", s),
+	)
+}
+
 func (s SetApprovalModeRequest) ValidateWire() error {
 	return collectWireViolations("SetApprovalModeRequest",
 		closedEnum("mode", string(s.Mode), []string{"safe", "balanced", "yolo"}, false),
@@ -351,7 +358,6 @@ func (s SetApprovalModeRequest) ValidateWire() error {
 
 func (l ListApprovalRulesRequest) ValidateWire() error {
 	return collectWireViolations("ListApprovalRulesRequest",
-		requiredText("sessionId", l.SessionID),
 		identity("sessionId", l.SessionID),
 		maxLength("sessionId", l.SessionID, 256),
 	)
@@ -1195,6 +1201,34 @@ func (m MCPAuthorizationAttemptStatus) ValidateWire() error {
 	)
 }
 
+func (t ToolRef) ValidateWire() error {
+	return collectWireViolations("ToolRef",
+		optionalTextPattern("server", t.Server, "^[a-z0-9][a-z0-9._-]{0,31}$"),
+		optionalTextPattern("name", t.Name, "^[A-Za-z0-9_.-]{1,128}$"),
+		optionalTextPattern("endpoint", t.Endpoint, "^[A-Za-z0-9_-]{1,64}$"),
+		closedEnum("type", string(t.Type), []string{"builtIn", "mcp", "a2a"}, false),
+		requiredWhen(wireFieldEquals(t, "type", "builtIn"), "name", t),
+		forbiddenWhen(wireFieldEquals(t, "type", "builtIn"), "server", t),
+		forbiddenWhen(wireFieldEquals(t, "type", "builtIn"), "endpoint", t),
+		allowedValuesWhen(wireFieldEquals(t, "type", "builtIn"), "name", t, []string{"apply_patch", "ask_user", "create_goal", "create_schedule", "delete_schedule", "delegate_task", "edit", "enter_plan_mode", "exit_plan_mode", "get_goal", "glob", "grep", "http_request", "list_schedules", "list_skills", "load_skill", "lsp", "propose_skill", "read", "read_shell_output", "read_skill_resource", "read_tool_result", "report_goal_outcome", "search_memory", "search_tools", "set_plan", "shell", "stop_shell", "web_fetch", "web_search"}),
+		requiredWhen(wireFieldEquals(t, "type", "mcp"), "server", t),
+		requiredWhen(wireFieldEquals(t, "type", "mcp"), "name", t),
+		forbiddenWhen(wireFieldEquals(t, "type", "mcp"), "endpoint", t),
+		requiredWhen(wireFieldEquals(t, "type", "a2a"), "endpoint", t),
+		forbiddenWhen(wireFieldEquals(t, "type", "a2a"), "name", t),
+		forbiddenWhen(wireFieldEquals(t, "type", "a2a"), "server", t),
+	)
+}
+
+func (a ApprovalSubject) ValidateWire() error {
+	return collectWireViolations("ApprovalSubject",
+		closedEnum("type", string(a.Type), []string{"all", "exact", "glob"}, false),
+		forbiddenWhen(wireFieldEquals(a, "type", "all"), "value", a),
+		requiredWhen(wireFieldEquals(a, "type", "exact"), "value", a),
+		requiredWhen(wireFieldEquals(a, "type", "glob"), "value", a),
+	)
+}
+
 func (i Interrupt) ValidateWire() error {
 	return collectWireViolations("Interrupt",
 		requiredText("itemId", i.ItemID),
@@ -1808,7 +1842,7 @@ func (a ApprovalRule) ValidateWire() error {
 		requiredText("id", a.ID),
 		identity("id", a.ID),
 		maxLength("id", a.ID, 256),
-		requiredTextPattern("tool", a.Tool, "\\S"),
+		requiredTextPattern("modelName", a.ModelName, "^[A-Za-z0-9_-]{1,64}$"),
 		closedEnum("scope", string(a.Scope), []string{"session", "project", "global"}, false),
 		closedEnum("decision", string(a.Decision), []string{"allow", "deny"}, false),
 		requiredWhen(wireFieldEquals(a, "scope", "project"), "dir", a),
@@ -2430,15 +2464,18 @@ func (l ListApprovalRulesResult) ValidateWire() error {
 	)
 }
 
-func (m MCPServer) ValidateWire() error {
-	return collectWireViolations("MCPServer",
-		requiredTextPattern("name", m.Name, "^[a-z0-9][a-z0-9._-]{0,31}$"),
+func (m MCPToolExposure) ValidateWire() error {
+	return collectWireViolations("MCPToolExposure",
+		requiredTextPattern("server", m.Server, "^[a-z0-9][a-z0-9._-]{0,31}$"),
 		maxItems("disabledTools", m.DisabledTools, 2048),
 		uniqueItems("disabledTools", m.DisabledTools),
 		textPatternItems("disabledTools", m.DisabledTools, "^[A-Za-z0-9_.-]{1,128}$"),
-		maxItems("autoApproveTools", m.AutoApproveTools, 2048),
-		uniqueItems("autoApproveTools", m.AutoApproveTools),
-		textPatternItems("autoApproveTools", m.AutoApproveTools, "^[A-Za-z0-9_.-]{1,128}$"),
+	)
+}
+
+func (m MCPServer) ValidateWire() error {
+	return collectWireViolations("MCPServer",
+		requiredTextPattern("name", m.Name, "^[a-z0-9][a-z0-9._-]{0,31}$"),
 	)
 }
 
@@ -2446,6 +2483,7 @@ func (m MCPTool) ValidateWire() error {
 	return collectWireViolations("MCPTool",
 		requiredTextPattern("server", m.Server, "^[a-z0-9][a-z0-9._-]{0,31}$"),
 		requiredTextPattern("name", m.Name, "^[A-Za-z0-9_.-]{1,128}$"),
+		requiredTextPattern("modelName", m.ModelName, "^[A-Za-z0-9_-]{1,64}$"),
 	)
 }
 

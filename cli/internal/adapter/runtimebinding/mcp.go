@@ -5,14 +5,16 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
-
-	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
 )
 
 // Calls borrow requests until return and transfer ownership of their results.
 type mcpBinding interface {
+	GetMCPToolExposure(context.Context, protocol.MCPServerRequest, flameruntime.CallOptions) (*protocol.MCPToolExposure, error)
+	SetMCPToolExposure(context.Context, protocol.SetMCPToolExposureRequest, flameruntime.CommandOptions) error
+
 	ListMCPServers(context.Context, flameruntime.CallOptions) (*protocol.Page[protocol.MCPServer], error)
 	CreateMCPServer(context.Context, protocol.MCPServerCandidate, flameruntime.CommandOptions) (*protocol.MCPServer, error)
 	UpdateMCPServer(context.Context, protocol.UpdateMCPServerRequest, flameruntime.CommandOptions) (*protocol.MCPServer, error)
@@ -80,7 +82,6 @@ func (r *Connection) UpdateServer(ctx context.Context, update mcp.ServerUpdate) 
 	options := r.commandOptions()
 	request := protocol.UpdateMCPServerRequest{
 		Server: update.Server, Enabled: update.Enabled, Description: update.Description,
-		DisabledTools: update.DisabledTools, AutoApproveTools: update.AutoApproveTools,
 	}
 	if update.HandshakeTimeout != nil {
 		timeout := projectMCPHandshakeTimeout(*update.HandshakeTimeout)
@@ -213,7 +214,6 @@ func projectMCPCandidate(candidate mcp.Candidate) (protocol.MCPServerCandidate, 
 	projected := protocol.MCPServerCandidate{
 		Name: candidate.Name, Enabled: candidate.Enabled, Description: candidate.Description,
 		Connection: projectMCPConnectionInput(candidate.Connection), HandshakeTimeout: projectMCPHandshakeTimeout(candidate.HandshakeTimeout),
-		DisabledTools: candidate.DisabledTools, AutoApproveTools: candidate.AutoApproveTools,
 	}
 	if err := protocol.ValidateWireTree(projected); err != nil {
 		return protocol.MCPServerCandidate{}, fmt.Errorf("MCP candidate %s violates runtime wire contract: %w", candidate.Name, err)
@@ -296,4 +296,25 @@ func clonePointer[T any](value *T) *T {
 		return nil
 	}
 	return new(*value)
+}
+
+func (r *Connection) ToolExposure(ctx context.Context, server string) (protocol.MCPToolExposure, error) {
+	request := protocol.MCPServerRequest{Server: server}
+	if err := request.ValidateWire(); err != nil {
+		return protocol.MCPToolExposure{}, err
+	}
+	result, err := r.mcp.GetMCPToolExposure(ctx, request, r.callOptions())
+	if err != nil {
+		return protocol.MCPToolExposure{}, classifyError(err)
+	}
+	if result == nil || result.Server != server {
+		return protocol.MCPToolExposure{}, runtimeContractViolation("MCP tool exposure did not identify the requested server")
+	}
+	return *result, nil
+}
+func (r *Connection) SetToolExposure(ctx context.Context, request protocol.SetMCPToolExposureRequest) error {
+	if err := request.ValidateWire(); err != nil {
+		return err
+	}
+	return classifyError(r.mcp.SetMCPToolExposure(ctx, request, r.commandOptions()))
 }

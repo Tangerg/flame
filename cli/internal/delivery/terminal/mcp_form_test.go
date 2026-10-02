@@ -101,16 +101,6 @@ func TestMCPFormFlowClearsEverySecretProjection(t *testing.T) {
 	}
 }
 
-func TestMCPToolNameValidationRejectsDuplicates(t *testing.T) {
-	t.Parallel()
-	if err := validateMCPToolNames("read, write, read"); err == nil {
-		t.Fatal("duplicate tool names were accepted")
-	}
-	if err := validateMCPToolNames("read, write"); err != nil {
-		t.Fatalf("unique tool names were rejected: %v", err)
-	}
-}
-
 func TestParseMCPTimeoutDistinguishesUnboundedFromPositiveDeadline(t *testing.T) {
 	unbounded, err := parseMCPTimeout("")
 	if err != nil || unbounded.IsBounded() {

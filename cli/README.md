@@ -162,3 +162,16 @@ Read [`../AGENTS.md`](../AGENTS.md), [`../DEVELOPMENT.md`](../DEVELOPMENT.md), a
 - Use `/Users/tangerg/Desktop/grok-build` as visual evidence for terminal hierarchy, density, streaming stability, and interaction feedback. Preserve Flame vocabulary and Oolong ownership; do not copy its internal architecture.
 - Test user-visible one-shot and terminal flows. Use in-memory root-command tests for routing, deterministic render snapshots at fixed dimensions for visual regressions, and a real PTY only when terminal escape sequences, resize, focus, input decoding, or restoration are the contract.
 - `internal/adapter/runtimebinding` is the single external translation boundary. Its `Connection` owns binding lifecycle, negotiation, the immutable capability `Profile`, and DTO translation but no product state machine; only the composition root may fan it out into consumer-owned ports. Keep production packages under the explicit `domain`, `application`, `adapter`, or `delivery` ring unless a cross-ring mechanism has proven peer consumers.
+
+Tool policies use Runtime's source references. `/mcp-tool <server> <tool>
+<enable|disable|allow|deny>` changes exposure or creates a global standing rule.
+`/rules` shows source identity, explicit subject match type, and stale authority; `/rule-delete` forgets a
+specific rule. Connection forms contain connection configuration only. Setting
+an allow or deny replaces the existing decision for the same scope, source, and
+subject type and value; distinct matching patterns of equal specificity still favor deny.
+Approval changes do not wait for MCP connection or authorization operations.
+`flame approvals ls` lists global rules; `--session` adds that session's visible
+rules. `/mcp-tools` includes disabled tools across configured servers, and tool
+listings explain name collisions that exclude connected tools from the model.
+Runtime and clients must use the same protocol revision, and obsolete Runtime
+approval databases require a fresh data directory rather than data migration.

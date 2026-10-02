@@ -3,6 +3,8 @@ package approvals
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"slices"
 	"testing"
 
@@ -116,7 +118,7 @@ func TestRuntimePolicyRejectsInvalidQueryBeforeRuleStore(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := policy.Decide(t.Context(), approval.Query{Tool: " shell"}); !errors.Is(err, approval.ErrInvalidQuery) {
+	if _, _, err := policy.Decide(t.Context(), approval.Query{Tool: tool.Ref{}, SourceFingerprint: testsupport.ToolFingerprint(tool.Ref{})}); !errors.Is(err, approval.ErrInvalidQuery) {
 		t.Fatalf("Decide error = %v, want ErrInvalidQuery", err)
 	}
 	if calls != 0 {
@@ -162,7 +164,7 @@ func TestRuntimePolicyProtectsVisibleRuleRelations(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			query := approval.Query{SessionID: "s1", ProjectDir: "/repo", Tool: "shell"}
+			query := approval.Query{SessionID: "s1", ProjectDir: "/repo", Tool: testsupport.BuiltInTool(t, "shell"), SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell"))}
 			if _, _, err := policy.Decide(t.Context(), query); !errors.Is(err, approval.ErrInvalidRule) {
 				t.Fatalf("Decide error = %v, want ErrInvalidRule", err)
 			}
@@ -183,20 +185,20 @@ func TestRuntimePolicyIsolatesVisibleRuleStorage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rules[0] = approval.Rule{}
+	rules[0] = RuleView{}
 
 	got, err := policy.Rules(t.Context(), "s1", "/repo")
 	if err != nil {
 		t.Fatalf("Rules after caller mutation: %v", err)
 	}
-	if len(got) != 1 || got[0] != rule {
+	if len(got) != 1 || got[0].Rule != rule {
 		t.Fatalf("Rules after caller mutation = %+v, want %+v", got, rule)
 	}
 }
 
 func mustRuntimePolicyRule(t *testing.T, scope approval.Scope, scopeKey string, decision approval.Decision) approval.Rule {
 	t.Helper()
-	rule, err := approval.NewRule(scope, scopeKey, "shell", "", decision)
+	rule, err := approval.NewRule(scope, scopeKey, testsupport.BuiltInTool(t, "shell"), testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell")), approval.Subject{Type: approval.SubjectAll}, decision)
 	if err != nil {
 		t.Fatalf("NewRule: %v", err)
 	}
@@ -218,7 +220,7 @@ func TestCommittedApprovalMutationsPublishInvalidations(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := policy.Remember(t.Context(), approval.RememberRequest{
-		Scope: approval.ScopeGlobal, Tool: "shell", Subject: "go test", Decision: approval.Allow,
+		Scope: approval.ScopeGlobal, Tool: testsupport.BuiltInTool(t, "shell"), Subject: approval.InvocationSubject("go test"), Decision: approval.Allow, SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell")),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -248,7 +250,7 @@ func TestFailedApprovalMutationDoesNotPublishInvalidation(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := policy.Remember(t.Context(), approval.RememberRequest{
-		Scope: approval.ScopeGlobal, Tool: "shell", Subject: "go test", Decision: approval.Allow,
+		Scope: approval.ScopeGlobal, Tool: testsupport.BuiltInTool(t, "shell"), Subject: approval.InvocationSubject("go test"), Decision: approval.Allow, SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell")),
 	}); !errors.Is(err, wantErr) {
 		t.Fatalf("Remember error = %v, want %v", err, wantErr)
 	}
@@ -276,7 +278,7 @@ func newTestRuntimePolicy(mode approval.Mode, rules RuleStore, modes ModeStore, 
 	if modes == nil {
 		modes = &memoryModeStore{states: make(map[string]approval.SessionMode)}
 	}
-	return NewRuntimePolicy(mode, rules, modes, publish)
+	return NewRuntimePolicy(mode, rules, modes, testsupport.ToolAuthorities{}, publish)
 }
 
 func TestNewPolicyRequiresDurableStores(t *testing.T) {
@@ -288,7 +290,7 @@ func TestNewPolicyRequiresDurableStores(t *testing.T) {
 	}{
 		{nil, modes}, {ruleStoreStub{}, nil}, {ruleStoreStub{}, typedNil},
 	} {
-		if policy, err := NewRuntimePolicy(approval.ModeBalanced, test.rules, test.modes, nil); err == nil || policy != nil {
+		if policy, err := NewRuntimePolicy(approval.ModeBalanced, test.rules, test.modes, testsupport.ToolAuthorities{}, nil); err == nil || policy != nil {
 			t.Fatalf("NewRuntimePolicy = (%v, %v), want required storage error", policy, err)
 		}
 	}

@@ -2879,7 +2879,13 @@ for await (const line of lines) {
 
     const rules = await client.approval.listRules(asSessionId(session.id));
     expect(rules.rules).toEqual([
-      expect.objectContaining({ scope: "session", tool: "shell", decision: "allow" }),
+      expect.objectContaining({
+        scope: "session",
+        tool: { type: "builtIn", name: "shell" },
+        modelName: "shell",
+        stale: false,
+        decision: "allow",
+      }),
     ]);
     const rememberedRule = rules.rules[0];
     if (!rememberedRule) throw new Error("approval decision was not remembered");
@@ -3545,7 +3551,6 @@ for await (const line of lines) {
 
     const server = "http-e2e-stdio";
     const candidate = {
-      autoApproveTools: ["ping"],
       connection: { type: "stdio" as const, command: process.execPath, args: [mcpFixturePath] },
       description: "Live MCP E2E fixture",
       enabled: true,
@@ -3562,12 +3567,39 @@ for await (const line of lines) {
     );
     const connectEvents = connectSubscription.events[Symbol.asyncIterator]();
     await expect(client.mcp.create(candidate)).resolves.toMatchObject({ name: server });
+
     for (let phase = 0; phase < 2; phase++) {
       await expect(nextRuntimeEvent(connectEvents, "mcp.changed")).resolves.toMatchObject({
         type: "mcp.changed",
         serverIds: [server],
       });
     }
+
+    await client.approval.setRule({
+      tool: { type: "mcp", server, name: "ping" },
+      scope: "global",
+      subject: { type: "all" },
+      decision: "allow",
+    });
+    await expect(client.approval.listRules()).resolves.toMatchObject({
+      rules: expect.arrayContaining([
+        expect.objectContaining({
+          tool: { type: "mcp", server, name: "ping" },
+          modelName: `${server}_ping`,
+          scope: "global",
+          subject: { type: "all" },
+          decision: "allow",
+          stale: false,
+        }),
+      ]),
+    });
+    await client.mcp.setToolExposure({ server, name: "ping", disabled: true });
+    await expect(client.mcp.toolExposure(server)).resolves.toEqual({
+      server,
+      disabledTools: ["ping"],
+    });
+    await client.mcp.setToolExposure({ server, name: "ping", disabled: false });
+    await expect(client.mcp.toolExposure(server)).resolves.toEqual({ server, disabledTools: [] });
 
     let connected = (await client.mcp.list()).data.find((entry) => entry.name === server);
     for (let attempt = 0; attempt < 100 && connected?.status.type !== "connected"; attempt++) {
@@ -4706,7 +4738,6 @@ for await (const line of lines) {
     providerGate = gate;
     try {
       await client.mcp.create({
-        autoApproveTools: ["ping"],
         connection: {
           type: "stdio",
           command: process.execPath,
@@ -4718,6 +4749,12 @@ for await (const line of lines) {
         name: server,
       });
       serverCreated = true;
+      await client.approval.setRule({
+        tool: { type: "mcp", server, name: "ping" },
+        scope: "global",
+        subject: { type: "all" },
+        decision: "allow",
+      });
       let connected = (await client.mcp.list()).data.find((entry) => entry.name === server);
       for (let attempt = 0; attempt < 100 && connected?.status.type !== "connected"; attempt++) {
         await new Promise((resolve) => setTimeout(resolve, 25));

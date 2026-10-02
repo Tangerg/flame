@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/optional"
 	"slices"
 	"strings"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 )
 
 // InterruptFunc is the consumer-owned capability a tool uses to park the
@@ -30,15 +30,16 @@ func InterruptUnavailable(context.Context, string, Interrupt) (interrupt.Resolut
 // continuation (including one restored after restart) can resume without
 // running the hook or policy decision a second time.
 type ApprovalPrompt struct {
-	CallID      string
-	ToolName    string
-	Arguments   string
-	SafetyClass tool.SafetyClass
-	Risk        tool.RiskLevel
-	Reason      string
-	// Rememberable distinguishes ordinary policy approvals from one-off
-	// confirmations requested by lifecycle hooks. It must persist with the
-	// prompt so a resumed execution cannot accidentally create a standing rule.
+	Tool              tool.Ref
+	SourceFingerprint string
+	CallID            string
+	ToolName          string
+	Arguments         string
+	SafetyClass       tool.SafetyClass
+	Risk              tool.RiskLevel
+	Reason            string
+	// Rememberable persists whether the response may create a standing rule;
+	// restoration must not make a one-off decision eligible for reuse.
 	Rememberable bool
 }
 
@@ -124,6 +125,12 @@ func (i Interrupt) Validate() error {
 }
 
 func (a ApprovalPrompt) validate() error {
+	if err := a.Tool.ValidateFingerprint(a.SourceFingerprint); err != nil {
+		return err
+	}
+	if a.Tool.ModelName() != a.ToolName {
+		return errors.New("runs: approval tool name differs from its reference")
+	}
 	if err := runtimeidentity.ValidateEffect(a.CallID); err != nil {
 		return fmt.Errorf("runs: approval: %w", err)
 	}

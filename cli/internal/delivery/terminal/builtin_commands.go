@@ -117,6 +117,7 @@ func builtinCommands() []localCommand {
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "skill-reject", Title: "reject an exact pending Skill proposal", Arguments: extensions.RequiredArguments}, Available: availableWithSkills, Run: func(a *app, identity string) error { return a.PrepareSkillProposalDecision(identity, false) }},
 		),
 		commandGroup(commandCategoryConnections,
+			localCommand{Descriptor: extensions.CommandDescriptor{Name: "mcp-tool", Title: "set one MCP tool's exposure or standing decision", Arguments: extensions.RequiredArguments}, Available: availableWithMCP, Run: func(a *app, args string) error { return a.ConfigureMCPTool(args) }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "mcp", Title: "inspect configured MCP servers and live state"}, Available: availableWithMCP, Run: func(a *app, _ string) error { a.ShowMCPServers(); return nil }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "mcp-tools", Title: "inspect MCP tools, optionally for one server", Arguments: extensions.OptionalArguments}, Available: availableWithMCP, Run: func(a *app, server string) error { a.ShowMCPTools(server); return nil }},
 			localCommand{Descriptor: extensions.CommandDescriptor{Name: "mcp-create", Title: "configure a new MCP server"}, Available: availableWithMCP, Run: func(a *app, _ string) error { return a.OpenMCPCreateForm() }},

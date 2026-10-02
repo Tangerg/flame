@@ -32,19 +32,7 @@ const mcpColumns = `name, transport, enabled, description, url, authorization, h
 	        command, args, env, dir, timeout`
 
 func (m *MCPServerStore) List(ctx context.Context) ([]mcpserver.Server, error) {
-	var servers []mcpserver.Server
-	err := RunInTx(ctx, m.db, func(ctx context.Context) error {
-		var err error
-		servers, err = m.listServers(ctx)
-		if err != nil {
-			return err
-		}
-		return m.loadToolPolicies(ctx, servers)
-	})
-	if err != nil {
-		return nil, err
-	}
-	return servers, nil
+	return m.listServers(ctx)
 }
 
 func (m *MCPServerStore) listServers(ctx context.Context) ([]mcpserver.Server, error) {
@@ -88,9 +76,8 @@ func (m *MCPServerStore) Get(ctx context.Context, name mcpserver.ServerName) (mc
 		if err != nil {
 			return err
 		}
-		srv.ToolPolicy, err = m.loadToolPolicy(ctx, name)
-		found = err == nil
-		return err
+		found = true
+		return nil
 	})
 	if err != nil {
 		return mcpserver.Server{}, false, err
@@ -136,24 +123,7 @@ func (m *MCPServerStore) Save(ctx context.Context, srv mcpserver.Server) error {
 		); err != nil {
 			return fmt.Errorf("sqlite: save mcp server: %w", err)
 		}
-		if _, err := conn(txCtx, m.db).ExecContext(
-			txCtx,
-			`DELETE FROM mcp_server_tool_policies WHERE server_name = ?`,
-			srv.Name.String(),
-		); err != nil {
-			return fmt.Errorf("sqlite: clear mcp server %q tool policy: %w", srv.Name, err)
-		}
-		for _, rule := range srv.ToolPolicy.Rules() {
-			if _, err := conn(txCtx, m.db).ExecContext(
-				txCtx,
-				`INSERT INTO mcp_server_tool_policies (server_name, tool_name, decision) VALUES (?, ?, ?)`,
-				srv.Name.String(),
-				rule.Tool.String(),
-				string(rule.Decision),
-			); err != nil {
-				return fmt.Errorf("sqlite: save mcp server %q tool %q policy: %w", srv.Name, rule.Tool, err)
-			}
-		}
+
 		return nil
 	})
 }
@@ -207,96 +177,6 @@ func scanMCPServer(scan func(...any) error) (mcpserver.Server, error) {
 		return mcpserver.Server{}, fmt.Errorf("sqlite: validate mcp server %q: %w", srv.Name, err)
 	}
 	return srv, nil
-}
-
-func (m *MCPServerStore) loadToolPolicy(ctx context.Context, server mcpserver.ServerName) (mcpserver.ServerToolPolicy, error) {
-	rows, err := conn(ctx, m.db).QueryContext(
-		ctx,
-		`SELECT tool_name, decision FROM mcp_server_tool_policies WHERE server_name = ? ORDER BY tool_name`,
-		server.String(),
-	)
-	if err != nil {
-		return mcpserver.ServerToolPolicy{}, fmt.Errorf("sqlite: list mcp server %q tool policy: %w", server, err)
-	}
-	defer func() { _ = rows.Close() }()
-	var rules []mcpserver.ToolPolicyRule
-	for rows.Next() {
-		rule, scanErr := scanMCPToolPolicyRule(rows, server)
-		if scanErr != nil {
-			return mcpserver.ServerToolPolicy{}, scanErr
-		}
-		rules = append(rules, rule)
-	}
-	if err := rows.Err(); err != nil {
-		return mcpserver.ServerToolPolicy{}, fmt.Errorf("sqlite: list mcp server %q tool policy: %w", server, err)
-	}
-	policy, err := mcpserver.RestoreServerToolPolicy(rules)
-	if err != nil {
-		return mcpserver.ServerToolPolicy{}, fmt.Errorf("sqlite: restore mcp server %q tool policy: %w", server, err)
-	}
-	return policy, nil
-}
-
-func (m *MCPServerStore) loadToolPolicies(ctx context.Context, servers []mcpserver.Server) error {
-	if len(servers) == 0 {
-		return nil
-	}
-	rows, err := conn(ctx, m.db).QueryContext(
-		ctx,
-		`SELECT server_name, tool_name, decision FROM mcp_server_tool_policies ORDER BY server_name, tool_name`,
-	)
-	if err != nil {
-		return fmt.Errorf("sqlite: list mcp server tool policies: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-	indexes := make(map[mcpserver.ServerName]int, len(servers))
-	rules := make(map[mcpserver.ServerName][]mcpserver.ToolPolicyRule, len(servers))
-	for i := range servers {
-		indexes[servers[i].Name] = i
-	}
-	for rows.Next() {
-		var rawServer, rawTool string
-		var decision mcpserver.ToolPolicyDecision
-		if err := rows.Scan(&rawServer, &rawTool, &decision); err != nil {
-			return fmt.Errorf("sqlite: scan mcp server tool policy: %w", err)
-		}
-		server, err := mcpserver.ParseServerName(rawServer)
-		if err != nil {
-			return fmt.Errorf("sqlite: decode MCP server tool-policy owner: %w", err)
-		}
-		tool, err := mcpserver.ParseRemoteToolName(rawTool)
-		if err != nil {
-			return fmt.Errorf("sqlite: decode MCP server %q remote tool identity: %w", server, err)
-		}
-		if _, ok := indexes[server]; !ok {
-			return fmt.Errorf("sqlite: MCP tool policy references unloaded server %q", server)
-		}
-		rules[server] = append(rules[server], mcpserver.ToolPolicyRule{Tool: tool, Decision: decision})
-	}
-	if err := rows.Err(); err != nil {
-		return fmt.Errorf("sqlite: list mcp server tool policies: %w", err)
-	}
-	for server, index := range indexes {
-		policy, err := mcpserver.RestoreServerToolPolicy(rules[server])
-		if err != nil {
-			return fmt.Errorf("sqlite: restore mcp server %q tool policy: %w", server, err)
-		}
-		servers[index].ToolPolicy = policy
-	}
-	return nil
-}
-
-func scanMCPToolPolicyRule(row scanRow, server mcpserver.ServerName) (mcpserver.ToolPolicyRule, error) {
-	var rawTool string
-	var decision mcpserver.ToolPolicyDecision
-	if err := row.Scan(&rawTool, &decision); err != nil {
-		return mcpserver.ToolPolicyRule{}, fmt.Errorf("sqlite: scan mcp server %q tool policy: %w", server, err)
-	}
-	tool, err := mcpserver.ParseRemoteToolName(rawTool)
-	if err != nil {
-		return mcpserver.ToolPolicyRule{}, fmt.Errorf("sqlite: decode MCP server %q remote tool identity: %w", server, err)
-	}
-	return mcpserver.ToolPolicyRule{Tool: tool, Decision: decision}, nil
 }
 
 func mcpJSONFieldError(server mcpserver.ServerName, field string, err error) error {

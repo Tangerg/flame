@@ -622,12 +622,15 @@ func registerHookValues(s *Shapes) {
 }
 
 func registerApprovalValues(s *Shapes) {
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.ToolRef](), Constraints: append(append(mcpServerIdentity("server"), mcpRemoteToolIdentity("name")...), FieldConstraint{Field: "endpoint", Kind: ConstraintPattern, Value: `^[A-Za-z0-9_-]{1,64}$`})})
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.SetApprovalRuleRequest](), Constraints: resourceIdentity("sessionId")})
+
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.ApprovalRule](),
 		Constraints: append(requiredResourceIdentity("id"),
-			FieldConstraint{Field: "tool", Kind: ConstraintPattern, Value: `\S`}),
+			FieldConstraint{Field: "modelName", Kind: ConstraintPattern, Value: `^[A-Za-z0-9_-]{1,64}$`}),
 	})
-	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.ListApprovalRulesRequest](), Constraints: requiredResourceIdentity("sessionId")})
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.ListApprovalRulesRequest](), Constraints: resourceIdentity("sessionId")})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.ListApprovalRulesResult](),
 		Constraints: []FieldConstraint{{
@@ -638,6 +641,9 @@ func registerApprovalValues(s *Shapes) {
 }
 
 func registerMCPValues(s *Shapes) {
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.MCPToolExposure](), Constraints: append(mcpServerIdentity("server"), mcpRemoteToolItems("disabledTools")...)})
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.SetMCPToolExposureRequest](), Constraints: append(mcpServerIdentity("server"), mcpRemoteToolIdentity("name")...)})
+
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.MCPServerState](),
 		Constraints: []FieldConstraint{
@@ -649,13 +655,12 @@ func registerMCPValues(s *Shapes) {
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.CreateMCPAuthorizationAttemptRequest](), Constraints: mcpServerIdentity("server")})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.MCPListToolsRequest](), Constraints: mcpServerIdentity("server")})
 	s.valueConstraint(FieldConstraintSpec{
-		GoType: typeOf[protocol.MCPServer](),
-		Constraints: append(append(mcpServerIdentity("name"), mcpRemoteToolItems("disabledTools")...),
-			mcpRemoteToolItems("autoApproveTools")...),
+		GoType:      typeOf[protocol.MCPServer](),
+		Constraints: mcpServerIdentity("name"),
 	})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType:      typeOf[protocol.MCPTool](),
-		Constraints: append(mcpServerIdentity("server"), mcpRemoteToolIdentity("name")...),
+		Constraints: append(append(mcpServerIdentity("server"), mcpRemoteToolIdentity("name")...), FieldConstraint{Field: "modelName", Kind: ConstraintPattern, Value: `^[A-Za-z0-9_-]{1,64}$`}),
 	})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.MCPAuthorizationAttemptRequest](),
@@ -692,14 +697,12 @@ func registerMCPValues(s *Shapes) {
 		},
 	})
 	s.valueConstraint(FieldConstraintSpec{
-		GoType: typeOf[protocol.MCPServerCandidate](),
-		Constraints: append(append(mcpServerIdentity("name"), mcpRemoteToolItems("disabledTools")...),
-			mcpRemoteToolItems("autoApproveTools")...),
+		GoType:      typeOf[protocol.MCPServerCandidate](),
+		Constraints: mcpServerIdentity("name"),
 	})
 	s.valueConstraint(FieldConstraintSpec{
-		GoType: typeOf[protocol.UpdateMCPServerRequest](),
-		Constraints: append(append(mcpServerIdentity("server"), mcpRemoteToolItems("disabledTools")...),
-			mcpRemoteToolItems("autoApproveTools")...),
+		GoType:      typeOf[protocol.UpdateMCPServerRequest](),
+		Constraints: mcpServerIdentity("server"),
 	})
 }
 

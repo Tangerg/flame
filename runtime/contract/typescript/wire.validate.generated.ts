@@ -38,6 +38,8 @@ export type WireTypeName =
   | "ApprovalRule"
   | "ApprovalRuleDecision"
   | "ApprovalRuleScope"
+  | "ApprovalSubject"
+  | "ApprovalSubjectType"
   | "ArtifactItem"
   | "ArtifactOutcome"
   | "ArtifactOutcomeType"
@@ -166,6 +168,7 @@ export type WireTypeName =
   | "MCPServerStateType"
   | "MCPTestResult"
   | "MCPTool"
+  | "MCPToolExposure"
   | "MCPTransport"
   | "ManagedSkill"
   | "MessagePhase"
@@ -265,7 +268,9 @@ export type WireTypeName =
   | "SessionTrajectory"
   | "SessionUsageRequest"
   | "SetApprovalModeRequest"
+  | "SetApprovalRuleRequest"
   | "SetHookTrustRequest"
+  | "SetMCPToolExposureRequest"
   | "Skill"
   | "SkillDetail"
   | "SkillDetailRequest"
@@ -292,6 +297,8 @@ export type WireTypeName =
   | "ToolAttempt"
   | "ToolAttemptState"
   | "ToolInvocation"
+  | "ToolRef"
+  | "ToolRefType"
   | "ToolSpec"
   | "TrajectoryEntry"
   | "TrajectoryEntryType"
@@ -429,10 +436,12 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       decision: ref(() => CHECKS.ApprovalRuleDecision),
       dir: text(),
       id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      modelName: allOf([text(), pattern("^[A-Za-z0-9_-]{1,64}$")]),
       scope: ref(() => CHECKS.ApprovalRuleScope),
-      subject: text(),
-      tool: allOf([text(), pattern("\\S")]),
-    }, ["decision", "id", "scope", "tool"]),
+      stale: flag(),
+      subject: ref(() => CHECKS.ApprovalSubject),
+      tool: ref(() => CHECKS.ToolRef),
+    }, ["decision", "id", "modelName", "scope", "stale", "subject", "tool"]),
     ifThen(
       fields({
         scope: literal("project"),
@@ -458,6 +467,25 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ]),
   ApprovalRuleDecision: enumOf(["allow", "deny"]),
   ApprovalRuleScope: enumOf(["session", "project", "global"]),
+  ApprovalSubject: allOf([
+    object({
+      type: ref(() => CHECKS.ApprovalSubjectType),
+      value: text(),
+    }, []),
+    oneOf([
+      fields({
+        type: literal("all"),
+        value: absent(),
+      }, ["type"]),
+      fields({
+        type: literal("exact"),
+      }, ["type", "value"]),
+      fields({
+        type: literal("glob"),
+      }, ["type", "value"]),
+    ]),
+  ]),
+  ApprovalSubjectType: enumOf(["all", "exact", "glob"]),
   ArtifactItem: allOf([
     object({
       approvalDecision: ref(() => CHECKS.ApprovalDecision),
@@ -1660,8 +1688,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ItemStatus: enumOf(["running", "completed", "incomplete"]),
   ItemType: enumOf(["userMessage", "agentMessage", "reasoning", "question", "toolCall", "compaction"]),
   ListApprovalRulesRequest: object({
-    sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-  }, ["sessionId"]),
+    sessionId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+  }, []),
   ListApprovalRulesResult: object({
     rules: allOf([array(ref(() => CHECKS.ApprovalRule)), maxItems(2048)]),
   }, ["rules"]),
@@ -1919,19 +1947,15 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, []),
   MCPSecretChangeType: enumOf(["set", "clear"]),
   MCPServer: object({
-    autoApproveTools: allOf([array(allOf([text(), pattern("^[A-Za-z0-9_.-]{1,128}$")])), maxItems(2048), uniqueItems()]),
     connection: ref(() => CHECKS.MCPConnection),
     description: text(),
-    disabledTools: allOf([array(allOf([text(), pattern("^[A-Za-z0-9_.-]{1,128}$")])), maxItems(2048), uniqueItems()]),
     handshakeTimeout: ref(() => CHECKS.MCPHandshakeTimeout),
     name: allOf([text(), pattern("^[a-z0-9][a-z0-9._-]{0,31}$")]),
     status: ref(() => CHECKS.MCPServerState),
   }, ["connection", "handshakeTimeout", "name", "status"]),
   MCPServerCandidate: object({
-    autoApproveTools: allOf([array(allOf([text(), pattern("^[A-Za-z0-9_.-]{1,128}$")])), maxItems(2048), uniqueItems()]),
     connection: ref(() => CHECKS.MCPConnectionInput),
     description: text(),
-    disabledTools: allOf([array(allOf([text(), pattern("^[A-Za-z0-9_.-]{1,128}$")])), maxItems(2048), uniqueItems()]),
     enabled: flag(),
     handshakeTimeout: ref(() => CHECKS.MCPHandshakeTimeout),
     name: allOf([text(), pattern("^[a-z0-9][a-z0-9._-]{0,31}$")]),
@@ -1983,9 +2007,15 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   MCPTool: object({
     description: text(),
     inputSchema: record(anything()),
+    modelName: allOf([text(), pattern("^[A-Za-z0-9_-]{1,64}$")]),
     name: allOf([text(), pattern("^[A-Za-z0-9_.-]{1,128}$")]),
+    nameConflicts: array(ref(() => CHECKS.ToolRef)),
     server: allOf([text(), pattern("^[a-z0-9][a-z0-9._-]{0,31}$")]),
-  }, ["name", "server"]),
+  }, ["modelName", "name", "nameConflicts", "server"]),
+  MCPToolExposure: object({
+    disabledTools: allOf([array(allOf([text(), pattern("^[A-Za-z0-9_.-]{1,128}$")])), maxItems(2048), uniqueItems()]),
+    server: allOf([text(), pattern("^[a-z0-9][a-z0-9._-]{0,31}$")]),
+  }, ["disabledTools", "server"]),
   MCPTransport: enumOf(["stdio", "streamableHttp"]),
   ManagedSkill: object({
     description: text(),
@@ -3292,10 +3322,44 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   SetApprovalModeRequest: object({
     mode: ref(() => CHECKS.ApprovalMode),
   }, ["mode"]),
+  SetApprovalRuleRequest: allOf([
+    object({
+      decision: ref(() => CHECKS.ApprovalRuleDecision),
+      scope: ref(() => CHECKS.ApprovalRuleScope),
+      sessionId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      subject: ref(() => CHECKS.ApprovalSubject),
+      tool: ref(() => CHECKS.ToolRef),
+    }, ["decision", "scope", "subject", "tool"]),
+    ifThen(
+      fields({
+        scope: literal("global"),
+      }, ["scope"]),
+      fields({
+        sessionId: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({
+        scope: literal("session"),
+      }, ["scope"]),
+      fields({}, ["sessionId"]),
+    ),
+    ifThen(
+      fields({
+        scope: literal("project"),
+      }, ["scope"]),
+      fields({}, ["sessionId"]),
+    ),
+  ]),
   SetHookTrustRequest: object({
     projectRoot: allOf([text(), minLength(1)]),
     trusted: flag(),
   }, ["projectRoot", "trusted"]),
+  SetMCPToolExposureRequest: object({
+    disabled: flag(),
+    name: allOf([text(), pattern("^[A-Za-z0-9_.-]{1,128}$")]),
+    server: allOf([text(), pattern("^[a-z0-9][a-z0-9._-]{0,31}$")]),
+  }, ["disabled", "name", "server"]),
   Skill: object({
     description: text(),
     name: allOf([text(), pattern("\\S")]),
@@ -3586,6 +3650,32 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     name: allOf([text(), pattern("\\S")]),
     result: anything(),
   }, ["arguments", "name"]),
+  ToolRef: allOf([
+    object({
+      endpoint: allOf([text(), pattern("^[A-Za-z0-9_-]{1,64}$")]),
+      name: allOf([text(), pattern("^[A-Za-z0-9_.-]{1,128}$")]),
+      server: allOf([text(), pattern("^[a-z0-9][a-z0-9._-]{0,31}$")]),
+      type: ref(() => CHECKS.ToolRefType),
+    }, []),
+    oneOf([
+      fields({
+        endpoint: absent(),
+        name: enumOf(["apply_patch", "ask_user", "create_goal", "create_schedule", "delete_schedule", "delegate_task", "edit", "enter_plan_mode", "exit_plan_mode", "get_goal", "glob", "grep", "http_request", "list_schedules", "list_skills", "load_skill", "lsp", "propose_skill", "read", "read_shell_output", "read_skill_resource", "read_tool_result", "report_goal_outcome", "search_memory", "search_tools", "set_plan", "shell", "stop_shell", "web_fetch", "web_search"]),
+        server: absent(),
+        type: literal("builtIn"),
+      }, ["name", "type"]),
+      fields({
+        endpoint: absent(),
+        type: literal("mcp"),
+      }, ["name", "server", "type"]),
+      fields({
+        name: absent(),
+        server: absent(),
+        type: literal("a2a"),
+      }, ["endpoint", "type"]),
+    ]),
+  ]),
+  ToolRefType: enumOf(["builtIn", "mcp", "a2a"]),
   ToolSpec: object({
     description: text(),
     name: text(),
@@ -3632,10 +3722,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["objective", "sessionId"]),
   UpdateMCPServerRequest: object({
-    autoApproveTools: allOf([array(allOf([text(), pattern("^[A-Za-z0-9_.-]{1,128}$")])), maxItems(2048), uniqueItems()]),
     connection: ref(() => CHECKS.MCPConnectionInput),
     description: text(),
-    disabledTools: allOf([array(allOf([text(), pattern("^[A-Za-z0-9_.-]{1,128}$")])), maxItems(2048), uniqueItems()]),
     enabled: flag(),
     handshakeTimeout: ref(() => CHECKS.MCPHandshakeTimeout),
     server: allOf([text(), pattern("^[a-z0-9][a-z0-9._-]{0,31}$")]),
@@ -3863,6 +3951,8 @@ const METHOD_PARAMS: Record<WireMethodName, WireCheck> = {
   "skills.proposals.approve": ref(() => CHECKS.SkillProposalRef),
   "skills.proposals.reject": ref(() => CHECKS.SkillProposalRef),
   "agentDocs.list": ref(() => CHECKS.WorkspaceQuery),
+  "mcp.tools.exposure": ref(() => CHECKS.MCPServerRequest),
+  "mcp.tools.setExposure": ref(() => CHECKS.SetMCPToolExposureRequest),
   "mcp.servers.list": object({}, []),
   "mcp.servers.create": ref(() => CHECKS.MCPServerCandidate),
   "mcp.servers.update": ref(() => CHECKS.UpdateMCPServerRequest),
@@ -3874,6 +3964,7 @@ const METHOD_PARAMS: Record<WireMethodName, WireCheck> = {
   "mcp.authorizationAttempts.get": ref(() => CHECKS.MCPAuthorizationAttemptRequest),
   "hooks.list": ref(() => CHECKS.ListHooksRequest),
   "hooks.setTrust": ref(() => CHECKS.SetHookTrustRequest),
+  "approval.setRule": ref(() => CHECKS.SetApprovalRuleRequest),
   "approval.getMode": object({}, []),
   "approval.setMode": ref(() => CHECKS.SetApprovalModeRequest),
   "approval.listRules": ref(() => CHECKS.ListApprovalRulesRequest),
@@ -3959,6 +4050,8 @@ const METHOD_RESULTS: Record<WireMethodName, WireCheck> = {
   "skills.proposals.approve": object({}, []),
   "skills.proposals.reject": object({}, []),
   "agentDocs.list": ref(() => CHECKS.PageOfAgentDoc),
+  "mcp.tools.exposure": ref(() => CHECKS.MCPToolExposure),
+  "mcp.tools.setExposure": object({}, []),
   "mcp.servers.list": ref(() => CHECKS.PageOfMCPServer),
   "mcp.servers.create": ref(() => CHECKS.MCPServer),
   "mcp.servers.update": ref(() => CHECKS.MCPServer),
@@ -3970,6 +4063,7 @@ const METHOD_RESULTS: Record<WireMethodName, WireCheck> = {
   "mcp.authorizationAttempts.get": ref(() => CHECKS.MCPAuthorizationAttempt),
   "hooks.list": ref(() => CHECKS.HooksListResult),
   "hooks.setTrust": object({}, []),
+  "approval.setRule": object({}, []),
   "approval.getMode": ref(() => CHECKS.ApprovalModeResult),
   "approval.setMode": ref(() => CHECKS.ApprovalModeResult),
   "approval.listRules": ref(() => CHECKS.ListApprovalRulesResult),

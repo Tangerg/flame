@@ -31,6 +31,8 @@ var wireEnums = map[reflect.Type][]string{
 	reflect.TypeFor[protocol.ApprovalDecision]():                  {string(protocol.ApprovalApprove), string(protocol.ApprovalDeny)},
 	reflect.TypeFor[protocol.ApprovalMode]():                      {string(protocol.ApprovalModeSafe), string(protocol.ApprovalModeBalanced), string(protocol.ApprovalModeYolo)},
 	reflect.TypeFor[protocol.ApprovalRisk]():                      {string(protocol.ApprovalRiskLow), string(protocol.ApprovalRiskMedium), string(protocol.ApprovalRiskHigh)},
+	reflect.TypeFor[protocol.ToolRefType]():                       {string(protocol.ToolRefBuiltIn), string(protocol.ToolRefMCP), string(protocol.ToolRefA2A)},
+	reflect.TypeFor[protocol.ApprovalSubjectType]():               {string(protocol.ApprovalSubjectAll), string(protocol.ApprovalSubjectExact), string(protocol.ApprovalSubjectGlob)},
 	reflect.TypeFor[protocol.ApprovalRuleDecision]():              {string(protocol.ApprovalRuleDecisionAllow), string(protocol.ApprovalRuleDecisionDeny)},
 	reflect.TypeFor[protocol.ApprovalRuleScope]():                 {string(protocol.ApprovalRuleScopeSession), string(protocol.ApprovalRuleScopeProject), string(protocol.ApprovalRuleScopeGlobal)},
 	reflect.TypeFor[protocol.ArtifactOutcomeType]():               {string(protocol.ArtifactOutcomeCompleted), string(protocol.ArtifactOutcomeTimedOut), string(protocol.ArtifactOutcomeFailed), string(protocol.ArtifactOutcomeCanceled), string(protocol.ArtifactOutcomeLost)},

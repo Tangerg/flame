@@ -24,12 +24,12 @@ export interface MCPServerSettings {
   envMasked?: Record<string, string>;
   dir?: string;
   handshakeTimeout: MCPHandshakeTimeout;
-  disabledTools?: string[];
-  autoApproveTools?: string[];
   toolCount?: number;
 }
 
 export interface MCPToolSummary {
+  modelName: string;
+  nameConflicts: string[];
   name: string;
   description: string;
 }
@@ -59,4 +59,9 @@ export function mcpServerIcon(name: string): string {
 export const useMCPServers = createDataQuery<MCPServerSettings[]>(MCP_SERVERS_KEY);
 export const useMCPTools = createParameterizedDataQuery<McpToolsQuery, MCPToolSummary[]>(
   MCP_TOOLS_KEY,
+);
+
+export const MCP_EXPOSURE_KEY = "mcp-tool-exposure";
+export const useMCPToolExposure = createParameterizedDataQuery<McpToolsQuery, string[]>(
+  MCP_EXPOSURE_KEY,
 );

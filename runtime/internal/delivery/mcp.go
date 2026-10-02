@@ -12,6 +12,8 @@ const (
 	MCPServersUpdate               Name = "mcp.servers.update"
 	MCPServersDelete               Name = "mcp.servers.delete"
 	MCPServersTest                 Name = "mcp.servers.test"
+	MCPToolsExposure               Name = "mcp.tools.exposure"
+	MCPToolsSetExposure            Name = "mcp.tools.setExposure"
 	MCPToolsList                   Name = "mcp.tools.list"
 	MCPServersReconnect            Name = "mcp.servers.reconnect"
 	MCPAuthorizationAttemptsCreate Name = "mcp.authorizationAttempts.create"
@@ -19,6 +21,17 @@ const (
 )
 
 func registerMCP(registry *Registry) {
+	registry.query(MethodMeta{Name: MCPToolsExposure, CapabilityRules: requires(protocol.FeatureMCP)}, func(service interface {
+		GetMCPToolExposure(context.Context, protocol.MCPServerRequest) (*protocol.MCPToolExposure, error)
+	}, ctx context.Context, request protocol.MCPServerRequest) (*protocol.MCPToolExposure, error) {
+		return service.GetMCPToolExposure(ctx, request)
+	})
+	registry.commandAck(MethodMeta{Name: MCPToolsSetExposure, CapabilityRules: requires(protocol.FeatureMCP)}, func(service interface {
+		SetMCPToolExposure(context.Context, protocol.SetMCPToolExposureRequest) error
+	}, ctx context.Context, request protocol.SetMCPToolExposureRequest) error {
+		return service.SetMCPToolExposure(ctx, request)
+	})
+
 	registry.query(MethodMeta{
 		Name:            MCPServersList,
 		CapabilityRules: requires(protocol.FeatureMCP),

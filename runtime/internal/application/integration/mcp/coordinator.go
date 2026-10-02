@@ -1,5 +1,5 @@
 // Package mcp coordinates durable server configuration, live connections, and
-// the tool policy consumed by run.
+// the tool exposure consumed by run.
 package mcp
 
 import (
@@ -10,6 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/taskgroup"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
 // StatusReader transfers a live status snapshot for configured MCP servers.
@@ -21,6 +22,10 @@ type StatusReader interface {
 // catalog snapshot. Implementations read admitted state without remote calls.
 type ToolCatalog interface {
 	Tools(server *mcpserver.ServerName) ([]mcpserver.AdvertisedTool, error)
+}
+
+type ToolDiagnostics interface {
+	ToolNameConflicts() (map[tool.Ref][]tool.Ref, error)
 }
 
 // ConnectionControl reconnects and authorizes configured servers.
@@ -48,22 +53,25 @@ type Registry interface {
 	Get(ctx context.Context, name mcpserver.ServerName) (mcpserver.Server, bool, error)
 	Save(ctx context.Context, server mcpserver.Server) error
 	Remove(ctx context.Context, name mcpserver.ServerName) error
+	ListExposure(ctx context.Context) ([]tool.Ref, error)
+	SetToolExposure(ctx context.Context, ref tool.Ref, disabled bool) error
 }
 
 // Coordinator owns durable server configuration, live connections, and the
-// atomically published tool policy. Commands borrow input until they return;
+// atomically published tool exposure. Commands borrow input until they return;
 // constructing a server acquires the data retained by persistence or a live dial.
 type Coordinator struct {
-	// mutationMu linearizes durable registry -> policy/live reconciliation and
+	// mutationMu linearizes durable registry -> exposure/live reconciliation and
 	// the short pre/post boundaries of asynchronous connection operations.
 	// Network and interactive OAuth waits never hold it; ConnectionControl owns
 	// per-server latest-operation-wins sequencing.
 	registry              Registry
 	statusReader          StatusReader
 	toolCatalog           ToolCatalog
+	toolDiagnostics       ToolDiagnostics
 	connectionControl     ConnectionControl
 	connectionLifecycle   ConnectionLifecycle
-	policy                *ToolPolicyState
+	exposure              *ExposureState
 	mutationMu            sync.Mutex
 	dialMu                sync.Mutex
 	dials                 map[mcpserver.ServerName]*activeDial
@@ -84,26 +92,28 @@ type Config struct {
 	Registry            Registry
 	StatusReader        StatusReader
 	ToolCatalog         ToolCatalog
+	ToolDiagnostics     ToolDiagnostics
 	ConnectionControl   ConnectionControl
 	ConnectionLifecycle ConnectionLifecycle
-	Policy              *ToolPolicyState
+	Exposure            *ExposureState
 	// Invalidations publishes post-commit registry and live-connection changes.
 	Invalidations invalidation.Publish
 }
 
 // New constructs the complete durable configuration and live-connection use cases.
 func New(cfg Config) (*Coordinator, error) {
-	if cfg.Registry == nil || cfg.StatusReader == nil || cfg.ToolCatalog == nil ||
-		cfg.ConnectionControl == nil || cfg.ConnectionLifecycle == nil || cfg.Policy == nil {
-		return nil, errors.New("mcp: registry, live connections, tool catalog, and policy are required")
+	if cfg.Registry == nil || cfg.StatusReader == nil || cfg.ToolCatalog == nil || cfg.ToolDiagnostics == nil ||
+		cfg.ConnectionControl == nil || cfg.ConnectionLifecycle == nil || cfg.Exposure == nil || cfg.Exposure.snapshot.Load() == nil {
+		return nil, errors.New("mcp: registry, live connections, tool catalog, and exposure are required")
 	}
 	coordinator := &Coordinator{
 		registry:              cfg.Registry,
 		statusReader:          cfg.StatusReader,
 		toolCatalog:           cfg.ToolCatalog,
+		toolDiagnostics:       cfg.ToolDiagnostics,
 		connectionControl:     cfg.ConnectionControl,
 		connectionLifecycle:   cfg.ConnectionLifecycle,
-		policy:                cfg.Policy,
+		exposure:              cfg.Exposure,
 		dials:                 make(map[mcpserver.ServerName]*activeDial),
 		statusOverrides:       make(map[mcpserver.ServerName]ServerStatus),
 		authorizationAttempts: newAuthorizationAttemptStore(),

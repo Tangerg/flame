@@ -18,6 +18,7 @@ import {
   APPROVAL_MODE_KEY,
   APPROVAL_RULES_KEY,
   type ApprovalRulesQuery,
+  type ApprovalRuleSummary,
 } from "../application/approvalPolicyQueries";
 import {
   AGENT_SESSIONS_KEY,
@@ -81,7 +82,21 @@ export function registerAgentDataProviders(
     key: APPROVAL_RULES_KEY,
     fetcher: async (params, signal) => {
       const query = requiredParams<ApprovalRulesQuery>(APPROVAL_RULES_KEY, params);
-      return (await runtimeClient().approval.listRules(asSessionId(query.sessionId), signal)).rules;
+      return (
+        await runtimeClient().approval.listRules(
+          query.sessionId ? asSessionId(query.sessionId) : undefined,
+          signal,
+        )
+      ).rules.map((rule): ApprovalRuleSummary => ({
+        id: rule.id,
+        scope: rule.scope,
+        tool: { ...rule.tool },
+        modelName: rule.modelName,
+        stale: rule.stale,
+        subject: rule.subject,
+        dir: rule.dir,
+        decision: rule.decision,
+      }));
     },
   });
 }

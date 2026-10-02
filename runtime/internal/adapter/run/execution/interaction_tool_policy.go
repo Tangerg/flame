@@ -1,7 +1,6 @@
 package execution
 
 import (
-	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -22,20 +21,31 @@ import (
 type InteractionApprovalPolicy interface {
 	Mode(ctx context.Context, sessionID string) (approval.Mode, error)
 	Decide(ctx context.Context, query approval.Query) (approval.Decision, bool, error)
+	// ErrSourceAuthorityChanged declines persistence without changing the one-shot answer.
 	Remember(ctx context.Context, request approval.RememberRequest) error
 }
 
 // ToolAuthorizer evaluates Runtime approval policy independently of Agent Framework.
 // It returns a durable product prompt when a person is required; the executor
 // ACL alone maps that prompt to an Interaction wait and response Signal.
-type ToolAuthorizer struct{ policy InteractionApprovalPolicy }
+type ToolAuthorizer struct {
+	policy   InteractionApprovalPolicy
+	subjects approvalSubjectInterpreter
+}
+
+type approvalSubjectInterpreter interface {
+	ApprovalSubject(tool.Ref, tool.Arguments) (string, error)
+}
 
 // NewToolAuthorizer binds the product approval policy.
-func NewToolAuthorizer(policy InteractionApprovalPolicy) (*ToolAuthorizer, error) {
-	if policy == nil || dependency.Missing(policy) {
+func NewToolAuthorizer(policy InteractionApprovalPolicy, subjects approvalSubjectInterpreter) (*ToolAuthorizer, error) {
+	if dependency.Missing(policy) {
 		return nil, errors.New("execution: Tool approval policy is required")
 	}
-	return &ToolAuthorizer{policy: policy}, nil
+	if dependency.Missing(subjects) {
+		return nil, errors.New("execution: Tool approval subject interpreter is required")
+	}
+	return &ToolAuthorizer{policy: policy, subjects: subjects}, nil
 }
 
 func (t *ToolAuthorizer) AuthorizeTool(
@@ -57,18 +67,21 @@ func (t *ToolAuthorizer) AuthorizeTool(
 		ShellCommand:    request.ShellCommand,
 	}).Plan()
 	if plan.Action == approval.GatePrompt {
+		subject, err := t.subjects.ApprovalSubject(request.Tool, request.Arguments)
+		if err != nil {
+			return ToolAuthorizationDecision{}, fmt.Errorf("execution: derive Tool approval subject: %w", err)
+		}
 		decision, matched, err := t.policy.Decide(ctx, approval.Query{
 			SessionID:  request.SessionID,
 			ProjectDir: request.WorkspaceCWD,
-			Tool:       request.ToolName,
-			Subject:    request.ApprovalSubject,
+			Tool:       request.Tool, SourceFingerprint: request.SourceFingerprint,
+			Subject: subject,
 		})
 		if err != nil {
 			return ToolAuthorizationDecision{}, fmt.Errorf("execution: evaluate remembered Tool approval: %w", err)
 		}
 		plan = plan.ResolvePromptShortcuts(
 			approval.StandingDecision{Decision: decision, Matched: matched},
-			request.AutoApproved,
 		)
 	}
 	switch plan.Action {
@@ -78,7 +91,8 @@ func (t *ToolAuthorizer) AuthorizeTool(
 		return DenyTool(approvalDenialMessage(plan.Denial, request.ToolName)), nil
 	case approval.GatePrompt:
 		prompt := runs.ApprovalPrompt{
-			CallID:       request.CallID,
+			CallID: request.CallID,
+			Tool:   request.Tool, SourceFingerprint: request.SourceFingerprint,
 			ToolName:     request.ToolName,
 			Arguments:    request.Arguments.Canonical(),
 			SafetyClass:  plan.SafetyClass,
@@ -98,35 +112,35 @@ func (t *ToolAuthorizer) ResolveToolApproval(
 	prompt runs.ApprovalPrompt,
 	resolution interrupt.Resolution,
 ) (ToolAuthorizationDecision, error) {
-	if err := validateToolAuthorizationRequest(request); err != nil {
+	if err := validateToolApprovalPrompt(request, prompt); err != nil {
 		return ToolAuthorizationDecision{}, err
 	}
-	if err := (runs.Interrupt{Kind: interrupt.Approval, Approval: &prompt}).Validate(); err != nil {
-		return ToolAuthorizationDecision{}, err
-	}
-	if prompt.CallID != request.CallID || prompt.ToolName != request.ToolName ||
-		prompt.Arguments != request.Arguments.Canonical() || prompt.SafetyClass != request.SafetyClass {
-		return ToolAuthorizationDecision{}, errors.New("execution: Tool approval response differs from its invocation")
+	arguments := request.Arguments
+	if resolution.Approved && resolution.Arguments != "" {
+		var err error
+		arguments, err = tool.ParseArguments(resolution.Arguments)
+		if err != nil {
+			return ToolAuthorizationDecision{}, fmt.Errorf("execution: parse approved Tool arguments: %w", err)
+		}
 	}
 	if prompt.Rememberable && resolution.RememberScope != "" {
+		subject, err := t.subjects.ApprovalSubject(request.Tool, arguments)
+		if err != nil {
+			return ToolAuthorizationDecision{}, fmt.Errorf("execution: derive remembered Tool approval subject: %w", err)
+		}
 		if err := t.policy.Remember(ctx, approval.RememberRequest{
 			Scope:      resolution.RememberScope,
 			SessionID:  request.SessionID,
 			ProjectDir: request.WorkspaceCWD,
-			Tool:       request.ToolName,
-			Subject:    request.ApprovalSubject,
-			Decision:   approval.DecisionOf(resolution.Approved),
-		}); err != nil {
+			Tool:       request.Tool, SourceFingerprint: request.SourceFingerprint,
+			Subject:  approval.InvocationSubject(subject),
+			Decision: approval.DecisionOf(resolution.Approved),
+		}); err != nil && !errors.Is(err, approval.ErrSourceAuthorityChanged) {
 			return ToolAuthorizationDecision{}, fmt.Errorf("execution: remember Tool approval: %w", err)
 		}
 	}
 	if !resolution.Approved {
 		return DenyTool(denialReason(resolution.Reason)), nil
-	}
-	effective := cmp.Or(resolution.Arguments, request.Arguments.Canonical())
-	arguments, err := tool.ParseArguments(effective)
-	if err != nil {
-		return ToolAuthorizationDecision{}, fmt.Errorf("execution: parse approved Tool arguments: %w", err)
 	}
 	if arguments.Canonical() == request.Arguments.Canonical() {
 		return AllowTool(), nil
@@ -135,6 +149,12 @@ func (t *ToolAuthorizer) ResolveToolApproval(
 }
 
 func validateToolAuthorizationRequest(request ToolAuthorizationRequest) error {
+	if err := request.Tool.ValidateFingerprint(request.SourceFingerprint); err != nil {
+		return err
+	}
+	if request.Tool.ModelName() != request.ToolName {
+		return errors.New("execution: tool name differs from its reference")
+	}
 	if err := validateToolAuthorizationText("SessionID", request.SessionID); err != nil {
 		return err
 	}

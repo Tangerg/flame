@@ -272,6 +272,17 @@ Root and delegated Interactions, ordinary Tools, and lifetime child/process coun
 
 ## Scope execution settlement
 
+Runtime uses the released Scope v0.41.0 modules. Static Tool and Delegate
+bindings belong to Scope Deployments through `Definition.ChildDeployments`;
+Scope owns their identity, start, and restoration. Provider construction uses
+Scope's `Chat`, `Messages`, `ChatCompletions`, or `Responses` entrypoint for the
+selected API.
+
+This upgrade changes Scope's Deployment and execution-tree snapshot schemas.
+Complete or cancel waiting executions with their owning build before upgrading.
+Older checkpoints are rejected under the existing build-identity and strict
+snapshot rules. Completed product history requires no migration.
+
 Scope alone propagates root, subtree, and owner cancellation to execution contexts. Runtime submits cancellation intent and projects Scope’s immutable termination; a late cancellation or owner deadline cannot replace an already settled failure. Provider diagnostics enrich only the model-failure stop acknowledged by Scope.
 
 A validated complete model response and its reported usage publish under the release-owned lifetime, including the Delta barrier. Execution cancellation cannot discard that observed response or rewrite Scope's terminal outcome. Failed streams cross the same barrier and commit their validated text and visible reasoning as `incomplete` transcript Items tied to the failed model invocation. Preview loss cannot truncate this retained prefix. Partial Tool calls, opaque reasoning state, and incomplete responses never enter canonical model continuation. Both completion and failure close the preview boundary before terminal publication.
@@ -418,16 +429,71 @@ Stored JSON uses the standard library's single-pass strict decoder. Columns requ
 
 `GOWORK=off go test ./internal/adapter/persistence -run '^$' -bench BenchmarkSessionMaterialSnapshot -benchmem` measures coherent SQLite material reads and application validation at increasing history sizes. It excludes protocol encoding and client rendering; evaluate those separately before changing snapshot completeness or the subscription fence.
 
+## Scope v0.41 integration
+
+The v0.41 upgrade is separate from the tool identity and approval policy changes.
+It uses static `ChildDeployments`, the released provider constructors and transport,
+and Scope error categories. Workspace and waiting-tree validation errors mark a
+probe as nonresumable only when their cause is `ErrExecutorStateLost`. Storage,
+cancellation, and other unexpected probe errors propagate to recovery instead of
+being persisted as irreversible state loss. Malformed or incompatible checkpoints
+and missing execution trees still explicitly report that they cannot be resumed.
+
 ## Scope provider transport
 
 Runtime consumes the released Scope modules pinned in `go.mod`. Provider `Call` and `Stream` use Scope's canonical streaming transport; complete calls aggregate that same validated stream. Runtime does not retain a unary provider fallback. MCP sessions use `github.com/Tangerg/go-sdk`, the same SDK as Scope MCP, so structured results preserve large integers, decimal values, and explicit empty objects through transport and Tool publication.
 
 Provider-reported token usage, durable conversation history, and model/Tool/execution telemetry are Scope contracts rather than Runtime restatements: `chat.Usage` survives whole to the protocol, the message store implements `history.Store`, and Scope's OpenTelemetry middleware instruments the provider, Tool, and execution-tree boundaries.
 
-MCP identity follows Scope's capability chain through Tool decorators for discovery, disabled-tool policy, and automatic approval. Invalid MCP identity declarations now reject the catalog instead of silently hiding entries or grouping them as built-ins. Persisted settings and public protocol shapes require no migration.
+MCP identity follows Scope's capability chain through Tool decorators for discovery, exposure, and approval queries. Invalid MCP identity declarations reject the catalog instead of silently hiding entries or grouping them as built-ins.
 
 `mcp.tools.list` returns the admitted connection catalog used for execution and connected Tool counts. Remote changes become visible after reconnect admits the replacement; listing no longer queries a separate live catalog. Invalid JSON Schemas, including unresolved references and oversized documents, now fail connection or probe admission through Scope rather than failing the next Run. Diagnostic and MCP schema projections preserve exact numeric literals and retain their existing protocol shape.
 
 ## Complete AGENTS guidance
 
 Run guidance includes the complete discovered AGENTS.md cascade in source order, with provenance markers. The rendered cascade, including its heading and separators, must fit the 32 KiB guidance budget. An over-budget cascade fails preparation with `prompt_source_too_large`; Runtime does not silently remove ancestor instructions to retain only the most specific files. Shorten the authored documents before retrying. Discovery describes the current documents; it does not prove that a previous Run loaded them.
+
+## Tool authority
+
+Tool identity is a closed built-in, MCP source/tool, or A2A endpoint reference.
+Model names remain presentation labels. Runtime excludes remote name collisions
+before model discovery and reserves every built-in name, including unavailable tools.
+Cross-server collisions never reject a connection: all competing remote identities
+are excluded symmetrically. `mcp.tools.list` reports their model names and conflicting
+source references, which CLI and Desktop display alongside the connected catalog.
+Scope v0.41.0 rejects a whole MCP source when names collide within that source,
+before returning any executables. Preserving its unrelated tools requires an
+upstream discovery API that can exclude collisions; Flame does not replace
+Scope discovery or assign temporary names to work around it.
+Standing allow and deny decisions live only in approval rules and retain the
+source authority fingerprint. Endpoint changes make existing rules stale;
+credential rotation does not. MCP exposure is configured separately through
+`mcp.tools.setExposure`; `approval.setRule` owns remembered decisions.
+A rule is keyed by scope, scope key, source reference, subject type, and subject value. Remembering the
+same key replaces both its decision and source fingerprint. Equally specific
+distinct patterns still resolve to deny when they conflict.
+
+Every pending Tool approval retains its source reference and authority fingerprint,
+including one-off decisions that cannot be remembered. Restoration validates this
+identity together with the call ID, model-visible name, and effective arguments;
+missing identity is rejected rather than reconstructed from a label.
+
+Remembering an approval derives an exact subject from the confirmed command or path,
+including literal `*`, `?`, brackets, and backslashes. Tools without a finer subject
+use an explicit `all` matcher. `approval.setRule` accepts a required typed subject:
+`{type: "all"}`, `{type: "exact", value: "..."}`, or `{type: "glob", value: "..."}`.
+Only an explicitly authored `glob` uses Go `path.Match` (`*` does not cross `/`).
+Exact subjects outrank globs within the same scope. An
+edited command or path cannot grant permission to the original command or path.
+The frozen Scope input contract validates approved arguments before a rule is
+saved; invalid edits produce a failed Tool result without saving a grant. Denials
+remain bound to the original invocation. Standing rules never replay argument edits.
+If the source changes while approval is pending, the explicit one-shot answer still
+applies to that frozen invocation, but no rule is saved for the obsolete source.
+Other persistence failures remain errors.
+
+This contract intentionally breaks the former approval schema and protocol.
+Use a fresh Runtime data directory when upgrading from an approval schema
+without source identity or explicit subject types. Startup rejects those schemas
+without modifying their data. There is no
+legacy rule conversion. Update Runtime and every client together.

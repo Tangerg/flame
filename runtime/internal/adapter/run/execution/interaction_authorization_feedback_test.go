@@ -3,6 +3,7 @@ package execution
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"reflect"
 	"testing"
 
@@ -60,7 +61,7 @@ func TestInteractionPolicyRefusalPublishesItsExactReasonBeforeModelContinuation(
 				hooks.decision = DenyToolHook(reason)
 			}
 			executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-				ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+				ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "write")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 				ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: policy, ToolHooks: hooks,
 			})
 			events := runInteractionHarnessWithCommit(t, executor, interactionTestStart(), func(fact runs.ExecutionFact) error {
@@ -120,7 +121,7 @@ func TestInteractionAuthorizationErrorsDoNotPublishNestedOutcomes(t *testing.T) 
 				return interactionToolResponse(chat.ToolCall{ID: "unresolved", Name: "write", Arguments: `{}`}, 1, 1), nil
 			})
 			executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-				ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+				ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "write")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 				ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: policy, ToolHooks: hooks,
 			})
 			events := runInteractionHarnessWithCommit(t, executor, interactionTestStart(), func(fact runs.ExecutionFact) error {

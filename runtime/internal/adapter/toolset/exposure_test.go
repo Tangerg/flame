@@ -2,12 +2,12 @@ package toolset
 
 import (
 	"context"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"testing"
-
-	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 func newTestCodeIntel(t *testing.T) *codeintel.Analyzer {
@@ -59,6 +59,17 @@ func TestResolverInitialManifestSeparatesDirectAndDeferredCapabilities(t *testin
 		)
 		if err != nil {
 			t.Fatalf("build %s: %v", name, err)
+		}
+		if name == "remote_agent" {
+			ref, err := domaintool.A2A(name)
+			if err != nil {
+				t.Fatal(err)
+			}
+			identified, err := WithIdentity(candidate, ref, testsupport.ToolFingerprint(ref))
+			if err != nil {
+				t.Fatal(err)
+			}
+			return identified
 		}
 		return candidate
 	}

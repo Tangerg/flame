@@ -14,8 +14,6 @@
     "type": "bounded",
     "seconds": 30
   },
-  "disabledTools": ["delete_file"],
-  "autoApproveTools": ["read_file"],
   "status": {
     "type": "connected",
     "toolCount": 8

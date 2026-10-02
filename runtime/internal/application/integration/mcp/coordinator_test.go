@@ -15,6 +15,9 @@ func testCoordinator(t testing.TB, cfg Config) *Coordinator {
 	if cfg.StatusReader == nil {
 		cfg.StatusReader = ports
 	}
+	if cfg.ToolDiagnostics == nil {
+		cfg.ToolDiagnostics = ports
+	}
 	if cfg.ToolCatalog == nil {
 		cfg.ToolCatalog = ports
 	}
@@ -24,8 +27,8 @@ func testCoordinator(t testing.TB, cfg Config) *Coordinator {
 	if cfg.ConnectionLifecycle == nil {
 		cfg.ConnectionLifecycle = ports
 	}
-	if cfg.Policy == nil {
-		cfg.Policy = NewToolPolicyState(mcpserver.ToolPolicy{})
+	if cfg.Exposure == nil {
+		cfg.Exposure = NewExposureState(nil, nil)
 	}
 	coordinator, err := New(cfg)
 	if err != nil {
@@ -38,17 +41,19 @@ func testCoordinator(t testing.TB, cfg Config) *Coordinator {
 func TestNewRequiresCompleteDependencies(t *testing.T) {
 	t.Parallel()
 	for name, omit := range map[string]func(*Config){
-		"registry":             func(cfg *Config) { cfg.Registry = nil },
-		"status reader":        func(cfg *Config) { cfg.StatusReader = nil },
-		"tool catalog":         func(cfg *Config) { cfg.ToolCatalog = nil },
-		"connection control":   func(cfg *Config) { cfg.ConnectionControl = nil },
-		"connection lifecycle": func(cfg *Config) { cfg.ConnectionLifecycle = nil },
-		"policy":               func(cfg *Config) { cfg.Policy = nil },
+		"registry":               func(cfg *Config) { cfg.Registry = nil },
+		"status reader":          func(cfg *Config) { cfg.StatusReader = nil },
+		"tool diagnostics":       func(cfg *Config) { cfg.ToolDiagnostics = nil },
+		"tool catalog":           func(cfg *Config) { cfg.ToolCatalog = nil },
+		"connection control":     func(cfg *Config) { cfg.ConnectionControl = nil },
+		"connection lifecycle":   func(cfg *Config) { cfg.ConnectionLifecycle = nil },
+		"exposure":               func(cfg *Config) { cfg.Exposure = nil },
+		"uninitialized exposure": func(cfg *Config) { cfg.Exposure = &ExposureState{} },
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			cfg := configWithPorts(&fakePorts{})
-			cfg.Policy = NewToolPolicyState(mcpserver.ToolPolicy{})
+			cfg.Exposure = NewExposureState(nil, nil)
 			omit(&cfg)
 			if coordinator, err := New(cfg); err == nil || coordinator != nil {
 				t.Fatalf("New without %s = (%v, %v), want nil/error", name, coordinator, err)

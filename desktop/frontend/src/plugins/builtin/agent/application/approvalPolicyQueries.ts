@@ -2,14 +2,19 @@ import { createDataQuery, createParameterizedDataQuery } from "@/plugins/sdk";
 import type { ApprovalMode, RememberScope } from "../domain/hitl";
 
 export interface ApprovalRulesQuery {
-  sessionId: string;
+  sessionId?: string;
 }
 
 export interface ApprovalRuleSummary {
   id: string;
   scope: RememberScope;
-  tool: string;
-  subject?: string;
+  tool:
+    | { type: "builtIn"; name: string }
+    | { type: "mcp"; server: string; name: string }
+    | { type: "a2a"; endpoint: string };
+  modelName: string;
+  stale: boolean;
+  subject: { type: "all" } | { type: "exact" | "glob"; value: string };
   dir?: string;
   decision: "allow" | "deny";
 }

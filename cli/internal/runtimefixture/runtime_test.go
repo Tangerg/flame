@@ -438,7 +438,7 @@ func TestProjectApprovalRulesFollowTheResolvedProjectRoot(t *testing.T) {
 	runtime.sessions["ses_demo_2"].meta.Workspace.ProjectRoot = "/tmp/demo"
 	runtime.rules = []storedRule{{view: protocol.ApprovalRule{
 		ID: "rule_project", Scope: protocol.ApprovalRuleScopeProject, Dir: "/tmp/demo",
-		Tool: "shell", Subject: "go test ./...", Decision: protocol.ApprovalRuleDecisionAllow,
+		Tool: protocol.ToolRef{Type: protocol.ToolRefBuiltIn, Name: "shell"}, ModelName: "shell", Subject: protocol.ApprovalSubject{Type: protocol.ApprovalSubjectExact, Value: "go test ./..."}, Decision: protocol.ApprovalRuleDecisionAllow,
 	}}}
 	runtime.mu.Unlock()
 
@@ -886,7 +886,7 @@ func TestRememberedRulesRemoveOnlyMatchedApprovalsFromThePendingSet(t *testing.T
 	runtime := New()
 	runtime.Instant = true
 	runtime.rules = []storedRule{{view: protocol.ApprovalRule{
-		ID: "rule_1", Scope: protocol.ApprovalRuleScopeGlobal, Tool: "shell", Subject: "go test ./...", Decision: protocol.ApprovalRuleDecisionAllow,
+		ID: "rule_1", Scope: protocol.ApprovalRuleScopeGlobal, Tool: protocol.ToolRef{Type: protocol.ToolRefBuiltIn, Name: "shell"}, ModelName: "shell", Subject: protocol.ApprovalSubject{Type: protocol.ApprovalSubjectExact, Value: "go test ./..."}, Decision: protocol.ApprovalRuleDecisionAllow,
 	}}}
 	var continuedWith []conversation.InterruptAnswer
 	runtime.Script = func(string) Script {

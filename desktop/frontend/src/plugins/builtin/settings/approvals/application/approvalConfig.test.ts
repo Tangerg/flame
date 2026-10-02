@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ApprovalRuleSummary } from "@/plugins/builtin/agent/public/approvalPolicy";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { forgetApprovalRules } from "./approvalConfig";
 
 const { forgetRules } = vi.hoisted(() => ({ forgetRules: vi.fn() }));
@@ -32,7 +32,10 @@ function rule(id: string): ApprovalRuleSummary {
   return {
     id,
     scope: "global",
-    tool: "shell",
+    subject: { type: "all" },
+    tool: { type: "builtIn", name: "shell" },
+    modelName: "shell",
+    stale: false,
     decision: "allow",
   };
 }

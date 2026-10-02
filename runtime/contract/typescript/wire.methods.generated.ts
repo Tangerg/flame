@@ -67,6 +67,7 @@ import type {
   MCPServerCandidate,
   MCPServerRequest,
   MCPTestResult,
+  MCPToolExposure,
   PageOfAgentDoc,
   PageOfFileEntry,
   PageOfMCPServer,
@@ -104,7 +105,9 @@ import type {
   SessionSnapshot,
   SessionUsageRequest,
   SetApprovalModeRequest,
+  SetApprovalRuleRequest,
   SetHookTrustRequest,
+  SetMCPToolExposureRequest,
   SkillDetail,
   SkillDetailRequest,
   SkillDiscovery,
@@ -200,6 +203,8 @@ const METHOD_NAMES = [
   "skills.proposals.approve",
   "skills.proposals.reject",
   "agentDocs.list",
+  "mcp.tools.exposure",
+  "mcp.tools.setExposure",
   "mcp.servers.list",
   "mcp.servers.create",
   "mcp.servers.update",
@@ -211,6 +216,7 @@ const METHOD_NAMES = [
   "mcp.authorizationAttempts.get",
   "hooks.list",
   "hooks.setTrust",
+  "approval.setRule",
   "approval.getMode",
   "approval.setMode",
   "approval.listRules",
@@ -304,6 +310,7 @@ const VALUE_METHOD_NAMES = [
   "skills.library.list",
   "skills.proposals.list",
   "agentDocs.list",
+  "mcp.tools.exposure",
   "mcp.servers.list",
   "mcp.servers.create",
   "mcp.servers.update",
@@ -658,6 +665,20 @@ export const WIRE_METHOD_POLICY = {
     replayCursor: "none",
     pagination: "none",
   },
+  "mcp.tools.exposure": {
+    operation: "query",
+    response: "unary",
+    idempotency: "none",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "mcp.tools.setExposure": {
+    operation: "command",
+    response: "unary",
+    idempotency: "replayResponse",
+    replayCursor: "none",
+    pagination: "none",
+  },
   "mcp.servers.list": {
     operation: "query",
     response: "unary",
@@ -729,6 +750,13 @@ export const WIRE_METHOD_POLICY = {
     pagination: "none",
   },
   "hooks.setTrust": {
+    operation: "command",
+    response: "unary",
+    idempotency: "replayResponse",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "approval.setRule": {
     operation: "command",
     response: "unary",
     idempotency: "replayResponse",
@@ -1089,6 +1117,12 @@ export const WIRE_CAPABILITY_POLICY: {
   "skills.proposals.reject": [
     { requires: ["skills"] },
   ],
+  "mcp.tools.exposure": [
+    { requires: ["mcp"] },
+  ],
+  "mcp.tools.setExposure": [
+    { requires: ["mcp"] },
+  ],
   "mcp.servers.list": [
     { requires: ["mcp"] },
   ],
@@ -1210,6 +1244,8 @@ export interface WireShapes {
   "skills.proposals.approve": { params: SkillProposalRef };
   "skills.proposals.reject": { params: SkillProposalRef };
   "agentDocs.list": { params: WorkspaceQuery; result: PageOfAgentDoc };
+  "mcp.tools.exposure": { params: MCPServerRequest; result: MCPToolExposure };
+  "mcp.tools.setExposure": { params: SetMCPToolExposureRequest };
   "mcp.servers.list": { params: Record<string, never>; result: PageOfMCPServer };
   "mcp.servers.create": { params: MCPServerCandidate; result: MCPServer };
   "mcp.servers.update": { params: UpdateMCPServerRequest; result: MCPServer };
@@ -1221,6 +1257,7 @@ export interface WireShapes {
   "mcp.authorizationAttempts.get": { params: MCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
   "hooks.list": { params: ListHooksRequest; result: HooksListResult };
   "hooks.setTrust": { params: SetHookTrustRequest };
+  "approval.setRule": { params: SetApprovalRuleRequest };
   "approval.getMode": { params: Record<string, never>; result: ApprovalModeResult };
   "approval.setMode": { params: SetApprovalModeRequest; result: ApprovalModeResult };
   "approval.listRules": { params: ListApprovalRulesRequest; result: ListApprovalRulesResult };

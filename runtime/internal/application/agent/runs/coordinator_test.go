@@ -2637,7 +2637,7 @@ func TestCoordinatorPersistsExactApprovalCallIdentityInTreeBarrier(t *testing.T)
 			MemberID: root.MemberID, RequestID: "request_approval",
 			Interrupt: Interrupt{Kind: interrupt.Approval, Approval: &ApprovalPrompt{
 				CallID: "call_approval", ToolName: "shell", Arguments: `{"command":"pwd"}`,
-				SafetyClass: tool.SafetyClassExec, Risk: tool.RiskMedium,
+				SafetyClass: tool.SafetyClassExec, Risk: tool.RiskMedium, Tool: testsupport.BuiltInTool(t, "shell"), SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell")),
 			}},
 		}})},
 	}}

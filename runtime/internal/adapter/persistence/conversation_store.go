@@ -5,11 +5,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/scope/core/chat"
-	"github.com/Tangerg/scope/core/history"
-
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
+	"github.com/Tangerg/scope/core/chat"
+	"github.com/Tangerg/scope/core/history"
 )
 
 // conversationMessages is Scope's conversation history plus the retention
@@ -44,7 +43,7 @@ func (c *ConversationStore) Read(ctx context.Context, sessionID string) ([]chat.
 
 func (c *ConversationStore) Write(ctx context.Context, sessionID string, messages ...chat.Message) error {
 	outcome, err := c.messages.Write(ctx, history.ConversationID(sessionID), messages...)
-	if validateErr := outcome.Validate(len(messages), err); validateErr != nil {
+	if validateErr := outcome.ValidateFor(len(messages), err); validateErr != nil {
 		return errors.Join(err, fmt.Errorf("persistence: conversation write outcome: %w", validateErr))
 	}
 	if err == nil {

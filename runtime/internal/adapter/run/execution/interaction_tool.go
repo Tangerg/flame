@@ -16,24 +16,25 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
-	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 type observedInteractionTool struct {
-	inner         toolcontract.Tool
-	binding       toolcontract.Binding
-	session       *interactionSession
-	interpreter   InteractionToolInterpreter
-	presenter     InteractionToolPresenter
-	authorizer    InteractionToolAuthorizer
-	hooks         InteractionToolHooks
-	offloader     toolResultOffloader
-	offloadPolicy toolResultOffloadPolicy
-	start         runs.RootExecutionStart
-	concurrent    interaction.ConcurrentTool
+	ref               tool.Ref
+	sourceFingerprint string
+	inner             toolcontract.Tool
+	binding           toolcontract.Binding
+	session           *interactionSession
+	interpreter       InteractionToolInterpreter
+	presenter         InteractionToolPresenter
+	authorizer        InteractionToolAuthorizer
+	hooks             InteractionToolHooks
+	offloader         toolResultOffloader
+	offloadPolicy     toolResultOffloadPolicy
+	start             runs.RootExecutionStart
+	concurrent        interaction.ConcurrentTool
 }
 
 func (o *observedInteractionTool) Definition() corechat.ToolDefinition {
@@ -94,7 +95,7 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 		CallID: callID, ModelCallSequence: invocation.ModelCallSequence(),
 		ToolCallIndex: invocation.ToolCallIndex(), SourceCallID: call.ID, ToolName: call.Name,
 		Arguments: rawArguments, Activity: o.activity(call.Name, arguments),
-		SafetyClass: o.interpreter.SafetyClass(call.Name),
+		SafetyClass: o.interpreter.SafetyClass(o.ref),
 	}
 	if err := o.session.commitFact(ctx, member, start); err != nil {
 		return corechat.ToolOutput{}, o.projectionFailure(fmt.Errorf("execution: commit Tool call start: %w", err))
@@ -154,7 +155,7 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 	}
 	if present {
 		if o.presenter != nil {
-			parsed, metadata.OutputText = o.presenter.Present(call.Name, arguments, parsed)
+			parsed, metadata.OutputText = o.presenter.Present(o.ref, arguments, parsed)
 		}
 		metadata.Result = &parsed
 	}
@@ -186,6 +187,15 @@ func (o *observedInteractionTool) invoke(
 	call corechat.ToolCall,
 	arguments tool.Arguments,
 ) (corechat.ToolOutput, error) {
+	bound, err := o.prepareInvocation(call, arguments)
+	if err != nil {
+		return corechat.ToolOutput{}, err
+	}
+	return o.binding.Call(ctx, bound)
+}
+
+// Approval persistence and execution share the frozen Scope input contract.
+func (o *observedInteractionTool) prepareInvocation(call corechat.ToolCall, arguments tool.Arguments) (toolcontract.Invocation, error) {
 	bound, err := o.binding.Contract().Prepare(call)
 	if err != nil {
 		cause := fmt.Errorf("execution: prepare Tool %q invocation: %w", call.Name, err)
@@ -194,16 +204,16 @@ func (o *observedInteractionTool) invoke(
 			Output: corechat.NewTextToolOutput("invalid effective arguments: " + executorDiagnostic(cause)),
 		})
 		if failureErr != nil {
-			return corechat.ToolOutput{}, failureErr
+			return toolcontract.Invocation{}, failureErr
 		}
-		return corechat.ToolOutput{}, failure
+		return toolcontract.Invocation{}, failure
 	}
-	if o.interpreter.UsesStandardPolicy(call.Name) {
+	if o.interpreter.UsesStandardPolicy(o.ref) {
 		if _, err := o.approvalSubject(call.Name, arguments); err != nil {
-			return corechat.ToolOutput{}, err
+			return toolcontract.Invocation{}, err
 		}
 	}
-	return o.binding.Call(ctx, bound)
+	return bound, nil
 }
 
 // projectionFailure refuses to produce a Tool result the Host could not record.
@@ -244,7 +254,7 @@ func (o *observedInteractionTool) projectToolOutcome(
 	name string,
 	succeeded bool,
 ) {
-	projected, err := o.interpreter.ProjectOutcome(ctx, o.start.SessionID, name, succeeded)
+	projected, err := o.interpreter.ProjectOutcome(ctx, o.start.SessionID, o.ref, succeeded)
 	if err != nil {
 		slog.ErrorContext(ctx, "execution: project tool outcome failed",
 			"session.id", o.start.SessionID, "tool.name", name, "error", err,
@@ -316,7 +326,7 @@ func (o *observedInteractionTool) prepare(
 		}
 		forceApproval = decision.RequiresApproval()
 	}
-	if !o.interpreter.UsesStandardPolicy(name) {
+	if !o.interpreter.UsesStandardPolicy(o.ref) {
 		if forceApproval {
 			return arguments, true, "a lifecycle hook requires approval, but approval is unavailable", nil
 		}
@@ -343,7 +353,7 @@ func (o *observedInteractionTool) prepare(
 }
 
 func (o *observedInteractionTool) approvalSubject(name string, arguments tool.Arguments) (string, error) {
-	subject, err := o.interpreter.ApprovalSubject(name, arguments)
+	subject, err := o.interpreter.ApprovalSubject(o.ref, arguments)
 	if err != nil {
 		cause := fmt.Errorf("execution: derive Tool %q approval subject: %w", name, err)
 		if errors.Is(err, tool.ErrInvalidArguments) {
@@ -367,28 +377,15 @@ func (o *observedInteractionTool) authorizationRequest(
 	arguments tool.Arguments,
 	requireApproval bool,
 ) (ToolAuthorizationRequest, error) {
-	subject, err := o.approvalSubject(name, arguments)
-	if err != nil {
+	if _, err := o.approvalSubject(name, arguments); err != nil {
 		return ToolAuthorizationRequest{}, err
-	}
-	autoApproved := false
-	if o.session.mcpToolAutoApproved != nil {
-		ref, found, err := mcp.IdentifyTool(o.inner)
-		if err != nil {
-			return ToolAuthorizationRequest{}, interaction.HostFailure(fmt.Errorf("execution: resolve MCP Tool identity: %w", err))
-		}
-		if found {
-			autoApproved = o.session.mcpToolAutoApproved(ref.Server.String(), ref.Tool.String())
-		}
 	}
 	return ToolAuthorizationRequest{
 		SessionID: o.start.SessionID, WorkspaceCWD: o.start.WorkspaceCWD,
-		CallID: callID, ToolName: name, Arguments: arguments,
-		SafetyClass:     o.interpreter.SafetyClass(name),
-		ApprovalSubject: subject,
+		CallID: callID, Tool: o.ref, SourceFingerprint: o.sourceFingerprint, ToolName: name, Arguments: arguments,
+		SafetyClass:     o.interpreter.SafetyClass(o.ref),
 		FileMutation:    fileMutationScope(o.inner, arguments, o.start.CWD),
-		ShellCommand:    o.interpreter.ShellCommand(name, arguments.Canonical()),
-		AutoApproved:    autoApproved,
+		ShellCommand:    o.interpreter.ShellCommand(o.ref, arguments.Canonical()),
 		RequireApproval: requireApproval,
 	}, nil
 }
@@ -401,16 +398,9 @@ func (o *observedInteractionTool) requestToolApproval(
 	if !slices.Contains(o.start.InterruptKinds, interrupt.Approval) {
 		return request.Arguments, true, "approval input is unavailable for this Run", nil
 	}
-	if prompt.CallID == "" {
-		prompt.CallID = request.CallID
-	}
 	pending := runs.Interrupt{Kind: interrupt.Approval, Approval: &prompt}
-	if err := pending.Validate(); err != nil {
+	if err := validateToolApprovalPrompt(request, prompt); err != nil {
 		return tool.Arguments{}, false, "", fmt.Errorf("execution: invalid Tool approval prompt: %w", err)
-	}
-	if prompt.CallID != request.CallID || prompt.ToolName != request.ToolName ||
-		prompt.Arguments != request.Arguments.Canonical() || prompt.SafetyClass != request.SafetyClass {
-		return tool.Arguments{}, false, "", errors.New("execution: Tool approval prompt differs from its invocation")
 	}
 	resolution, err := runinput.Require(
 		ctx,
@@ -460,6 +450,24 @@ func (o *observedInteractionTool) resolveToolApproval(
 	prompt runs.ApprovalPrompt,
 	resolution interrupt.Resolution,
 ) (tool.Arguments, bool, string, error) {
+	if err := validateToolApprovalPrompt(request, prompt); err != nil {
+		return tool.Arguments{}, false, "", err
+	}
+	if resolution.Approved {
+		arguments := request.Arguments
+		if resolution.Arguments != "" {
+			var err error
+			arguments, err = tool.ParseArguments(resolution.Arguments)
+			if err != nil {
+				return tool.Arguments{}, false, "", fmt.Errorf("execution: parse approved Tool arguments: %w", err)
+			}
+		}
+		if _, err := o.prepareInvocation(corechat.ToolCall{
+			ID: request.CallID, Name: request.ToolName, Arguments: arguments.Canonical(),
+		}, arguments); err != nil {
+			return arguments, false, "", err
+		}
+	}
 	decision, err := o.authorizer.ResolveToolApproval(ctx, request, prompt, resolution)
 	if err != nil {
 		return tool.Arguments{}, false, "", interaction.HostFailure(fmt.Errorf("execution: resolve Tool %q approval: %w", request.ToolName, err))
@@ -474,7 +482,7 @@ func (o *observedInteractionTool) resolveToolApproval(
 
 func (o *observedInteractionTool) activity(name string, arguments tool.Arguments) string {
 	if o.presenter != nil {
-		if activity := o.presenter.Activity(name, arguments); activity != "" && activity == strings.TrimSpace(activity) {
+		if activity := o.presenter.Activity(o.ref, arguments); activity != "" && activity == strings.TrimSpace(activity) {
 			return activity
 		}
 	}
@@ -577,17 +585,25 @@ func wrapInteractionTools(
 				return nil, fmt.Errorf("execution: bind Interaction Tool[%d]: %w", index, bindErr)
 			}
 			name := binding.Contract().Definition().Name
-			if class := config.ToolInterpreter.SafetyClass(name); !class.Valid() {
+			ref, err := toolset.Identify(executable)
+			if err != nil {
+				return nil, err
+			}
+			fingerprint, err := toolset.SourceFingerprint(executable, ref)
+			if err != nil {
+				return nil, err
+			}
+			if class := config.ToolInterpreter.SafetyClass(ref); !class.Valid() {
 				return nil, fmt.Errorf("execution: Interaction Tool %q has invalid safety class %q", name, class)
 			}
 			observed := &observedInteractionTool{
-				inner: executable, binding: binding, session: session, interpreter: config.ToolInterpreter,
+				ref: ref, sourceFingerprint: fingerprint, inner: executable, binding: binding, session: session, interpreter: config.ToolInterpreter,
 				presenter: config.ToolPresenter, authorizer: config.ToolAuthorizer,
 				hooks: config.ToolHooks, offloader: config.ToolResultStore,
 				offloadPolicy: offloadPolicy,
 				start:         start,
 			}
-			if config.ToolHooks == nil && !config.ToolInterpreter.UsesStandardPolicy(name) &&
+			if config.ToolHooks == nil && !config.ToolInterpreter.UsesStandardPolicy(ref) &&
 				!slices.Contains(start.InterruptKinds, interrupt.Approval) {
 				concurrent, _, err := toolcontract.Capability[interaction.ConcurrentTool](executable)
 				if err != nil {

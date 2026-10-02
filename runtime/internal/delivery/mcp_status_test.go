@@ -10,6 +10,7 @@ import (
 
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -182,5 +183,28 @@ func TestMCPProbeReturnsSanitizedActions(t *testing.T) {
 				t.Fatal(err)
 			}
 		})
+	}
+}
+
+func TestMCPToolListIncludesNameConflictDiagnostics(t *testing.T) {
+	ref, err := tool.MCP(testMCPServerName("a_b"), testRemoteToolName("c"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	other, err := tool.MCP(testMCPServerName("a"), testRemoteToolName("b_c"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ports := &fakeMCPPorts{
+		tools:     []mcpserver.AdvertisedTool{{Server: testMCPServerName("a_b"), Name: testRemoteToolName("c"), Definition: chat.ToolDefinition{Name: "a_b_c", InputSchema: []byte(`{"type":"object"}`)}}},
+		conflicts: map[tool.Ref][]tool.Ref{ref: {other}},
+	}
+	handler := handlerWithMCP(t, fakeMCPPortsConfig(ports))
+	result, err := handler.ListMCPTools(t.Context(), protocol.MCPListToolsRequest{Server: "a_b"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Data) != 1 || result.Data[0].ModelName != "a_b_c" || len(result.Data[0].NameConflicts) != 1 || result.Data[0].NameConflicts[0] != presentToolRef(other) {
+		t.Fatalf("tool diagnostics = %+v", result.Data)
 	}
 }

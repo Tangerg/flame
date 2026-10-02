@@ -56,7 +56,6 @@ type ServerInput struct {
 	Description      string
 	Connection       ConnectionInput
 	HandshakeTimeout mcpserver.HandshakeTimeout
-	ToolPolicy       mcpserver.ServerToolPolicy
 }
 
 // ServerPatch is an update command. nil preserves the current value; a
@@ -66,14 +65,11 @@ type ServerPatch struct {
 	Description      *string
 	Connection       *ConnectionInput
 	HandshakeTimeout *mcpserver.HandshakeTimeout
-	DisabledTools    *[]mcpserver.RemoteToolName
-	AutoApproveTools *[]mcpserver.RemoteToolName
 }
 
 // Empty reports whether the update carries no mutation.
 func (s ServerPatch) Empty() bool {
-	return s.Enabled == nil && s.Description == nil && s.Connection == nil &&
-		s.HandshakeTimeout == nil && s.DisabledTools == nil && s.AutoApproveTools == nil
+	return s.Enabled == nil && s.Description == nil && s.Connection == nil && s.HandshakeTimeout == nil
 }
 
 // Connection is the safe application read model for a connection. Raw
@@ -96,7 +92,6 @@ type Server struct {
 	Description      string
 	Connection       Connection
 	HandshakeTimeout mcpserver.HandshakeTimeout
-	ToolPolicy       mcpserver.ServerToolPolicy
 	State            ServerState
 }
 
@@ -167,7 +162,6 @@ func serverView(server mcpserver.Server, status *ServerStatus) Server {
 		Description:      server.Description,
 		Connection:       connectionView(server),
 		HandshakeTimeout: server.HandshakeTimeout,
-		ToolPolicy:       server.ToolPolicy,
 		State:            ServerState{Type: ServerDisconnected},
 	}
 	if !server.Enabled {

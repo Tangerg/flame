@@ -1,3 +1,4 @@
+import type { ApprovalRuleSummary } from "@/plugins/builtin/agent/public/approvalPolicy";
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { Badge, DataView, IconButton, TextButton, vocab } from "@/ui";
@@ -5,7 +6,6 @@ import type { Tone } from "@/lib/tone";
 import {
   forgetApprovalRule,
   forgetApprovalRules,
-  type ApprovalRuleSummary,
   useApprovalRuleConfigs,
 } from "../application/approvalConfig";
 import { useActiveSessionId } from "@/plugins/builtin/agent/public/session";
@@ -95,18 +95,30 @@ export function RulesRow() {
                 <span
                   {...stylex.props(vocab.fill, vocab.truncate, r.tool, typeStep.uiMd, face.mono)}
                 >
-                  {rule.tool}
-                  {rule.subject ? (
-                    <span {...stylex.props(vocab.muted)}> · {rule.subject}</span>
-                  ) : null}
+                  {rule.modelName}
+                  <span {...stylex.props(vocab.muted)}>
+                    {" "}
+                    ·{" "}
+                    {rule.tool.type === "mcp"
+                      ? `MCP / ${rule.tool.server} / ${rule.tool.name}`
+                      : rule.tool.type === "a2a"
+                        ? `A2A / ${rule.tool.endpoint}`
+                        : t("approvals.builtIn")}
+                  </span>
+                  <span {...stylex.props(vocab.muted)}>
+                    {" · "}
+                    {t(`approvals.subject.${rule.subject.type}`)}
+                    {rule.subject.type !== "all" ? `: ${rule.subject.value}` : null}
+                  </span>
                   {rule.dir ? <span {...stylex.props(vocab.faint)}> — {rule.dir}</span> : null}
                 </span>
+                {rule.stale ? <Badge tone="warning">{t("approvals.stale")}</Badge> : null}
                 <IconButton
                   icon="x"
                   size="xs"
                   quiet
                   className={stylex.props(vocab.hold).className}
-                  aria-label={t("approvals.forget", { tool: rule.tool })}
+                  aria-label={t("approvals.forget", { tool: rule.modelName })}
                   aria-busy={busy}
                   pending={busy}
                   onClick={() => run(() => forgetApprovalRule(rule.id))}

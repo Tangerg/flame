@@ -2,7 +2,6 @@ package execution
 
 import (
 	"context"
-	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"iter"
@@ -10,8 +9,6 @@ import (
 	"slices"
 	"strings"
 	"time"
-
-	"github.com/google/uuid"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
@@ -29,6 +26,7 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	otelagent "github.com/Tangerg/scope/otel/agent"
+	"github.com/google/uuid"
 )
 
 const (
@@ -68,7 +66,6 @@ type InteractionExecutorConfig struct {
 	ToolPresenter             InteractionToolPresenter
 	ToolAuthorizer            InteractionToolAuthorizer
 	ToolHooks                 InteractionToolHooks
-	MCPToolAutoApproved       func(server, tool string) bool
 	Maintenance               RunMaintenance
 	ModelContextCompactor     ModelContextCompactor
 	ModelContextState         InteractionModelContextState
@@ -283,16 +280,14 @@ func (i *InteractionExecutor) assembleInteraction(
 		return nil, fmt.Errorf("execution: observe Interaction tree commits: %w", err)
 	}
 	engine, err := agent.NewEngine(agent.EngineConfig{
-		TreeCommitter:                            committer,
-		DeploymentResolver:                       deployments,
-		ProcessAdmitter:                          agent.ProcessAdmitterFunc(session.admitProcess),
-		ProcessInitializationOutcomeAcknowledger: agent.ProcessInitializationOutcomeAcknowledgerFunc(session.acknowledgeProcessInitializationOutcome),
+		TreeCommitter:                     committer,
+		ProcessAdmitter:                   agent.ProcessAdmitterFunc(session.admitProcess),
+		ProcessInitializationAcknowledger: agent.ProcessInitializationAcknowledgerFunc(session.acknowledgeProcessInitializationOutcome),
 		EventListeners: []agent.EventListener{
 			agent.EventListenerFunc(session.observeFrameworkEvent), telemetry,
 		},
 		DeltaListeners:      []agent.DeltaListener{agent.DeltaListenerFunc(session.projectDelta)},
 		DeltaBufferCapacity: i.policy.deltaBufferCapacity,
-		Limits:              agent.DefaultLimits(),
 		TreeLimits:          deployments.treeLimits,
 	})
 	if err != nil {
@@ -303,49 +298,82 @@ func (i *InteractionExecutor) assembleInteraction(
 }
 
 // The Deployment's configuration digest names what makes two executions
-// interchangeable, so only deployment-shaping values enter it. Per-run state —
-// cwd, limits, the working context — deliberately does not: a digest that moved
-// with the conversation would declare every checkpoint incompatible.
+// interchangeable. The mutable model history stays outside this identity;
+// static Tool and Delegate bindings enter it through Scope's ChildDeployments.
 func (i *InteractionExecutor) interactionConfiguration(
 	session *interactionSession,
-	manifest toolset.Manifest,
 	group domaintool.Group,
 	depth uint32,
-	delegate agent.DeploymentRef,
 	instructions []corechat.Message,
 ) ([]byte, error) {
-	configuration, err := json.Marshal(struct {
-		Identity               string                     `json:"identity"`
-		Provider               string                     `json:"provider"`
-		Model                  string                     `json:"model"`
-		Streaming              bool                       `json:"streaming"`
-		MaxConcurrentToolCalls int                        `json:"maxConcurrentToolCalls"`
-		ToolResultOffload      *toolResultOffloadIdentity `json:"toolResultOffload,omitzero"`
-		InteractiveApproval    bool                       `json:"interactiveApproval"`
-		ContextCompaction      bool                       `json:"contextCompaction"`
-		VisibleTools           []corechat.ToolDefinition  `json:"visibleTools,omitempty"`
-		DeferredTools          []corechat.ToolDefinition  `json:"deferredTools,omitempty"`
-		Group                  domaintool.Group           `json:"group"`
-		Depth                  uint32                     `json:"depth"`
-		Delegate               string                     `json:"delegate,omitempty"`
-		DelegateOptions        corechat.Options           `json:"delegateOptions"`
-		Instructions           []corechat.Message         `json:"instructions,omitempty"`
+	configuration, err := agent.EncodePayload(struct {
+		Identity               string             `json:"identity"`
+		Provider               string             `json:"provider"`
+		Model                  string             `json:"model"`
+		Streaming              bool               `json:"streaming"`
+		MaxConcurrentToolCalls int                `json:"maxConcurrentToolCalls"`
+		ContextCompaction      bool               `json:"contextCompaction"`
+		Group                  domaintool.Group   `json:"group"`
+		Depth                  uint32             `json:"depth"`
+		DelegateOptions        corechat.Options   `json:"delegateOptions"`
+		Instructions           []corechat.Message `json:"instructions,omitempty"`
 	}{
 		Identity: i.configurationIdentity.String(),
 		Provider: session.accounting.providerName(), Model: session.accounting.modelName(),
 		Streaming:              i.config.StreamModelResponses,
 		MaxConcurrentToolCalls: i.policy.maxConcurrentToolCalls,
-		ToolResultOffload:      i.policy.toolResultOffload.identity(),
-		InteractiveApproval:    i.config.ToolAuthorizer != nil,
 		ContextCompaction:      i.config.ModelContextCompactor != nil,
-		VisibleTools:           toolDefinitions(manifest.Visible), DeferredTools: toolDefinitions(manifest.Deferred),
-		Group: group, Depth: depth, Delegate: delegate.String(),
+		Group:                  group, Depth: depth,
 		Instructions: cloneChatMessages(instructions), DelegateOptions: delegatedExecutionOptions(session.start),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("execution: encode Interaction configuration identity: %w", err)
 	}
-	return configuration, nil
+	return configuration.JSON(), nil
+}
+
+func (i *InteractionExecutor) interactionToolConfiguration(manifest toolset.Manifest) ([]byte, error) {
+	visible, err := toolIdentities(manifest.Visible)
+	if err != nil {
+		return nil, err
+	}
+	deferred, err := toolIdentities(manifest.Deferred)
+	if err != nil {
+		return nil, err
+	}
+	configuration, err := agent.EncodePayload(struct {
+		Identity          string                      `json:"identity"`
+		ToolResultOffload *toolResultOffloadIdentity  `json:"toolResultOffload,omitzero"`
+		ToolHooks         bool                        `json:"toolHooks"`
+		VisibleTools      []toolConfigurationIdentity `json:"visibleTools,omitempty"`
+		DeferredTools     []toolConfigurationIdentity `json:"deferredTools,omitempty"`
+	}{i.configurationIdentity.String(), i.policy.toolResultOffload.identity(), i.config.ToolHooks != nil, visible, deferred})
+	if err != nil {
+		return nil, fmt.Errorf("execution: encode Interaction Tool configuration identity: %w", err)
+	}
+	return configuration.JSON(), nil
+}
+
+type toolConfigurationIdentity struct {
+	Definition        corechat.ToolDefinition `json:"definition"`
+	Reference         string                  `json:"reference"`
+	SourceFingerprint string                  `json:"sourceFingerprint,omitempty"`
+}
+
+func toolIdentities(tools []toolcontract.Tool) ([]toolConfigurationIdentity, error) {
+	identities := make([]toolConfigurationIdentity, 0, len(tools))
+	for _, executable := range tools {
+		ref, err := toolset.Identify(executable)
+		if err != nil {
+			return nil, err
+		}
+		fingerprint, err := toolset.SourceFingerprint(executable, ref)
+		if err != nil {
+			return nil, err
+		}
+		identities = append(identities, toolConfigurationIdentity{Definition: executable.Definition(), Reference: ref.String(), SourceFingerprint: fingerprint})
+	}
+	return identities, nil
 }
 
 // BeginShutdown rejects new assembly and publication. AwaitShutdown joins
@@ -381,14 +409,6 @@ func (i *InteractionExecutor) AwaitShutdown(ctx context.Context) error {
 		i.sessions.remove(session)
 	}
 	return errors.Join(failures...)
-}
-
-func toolDefinitions(tools []toolcontract.Tool) []corechat.ToolDefinition {
-	definitions := make([]corechat.ToolDefinition, len(tools))
-	for index, executable := range tools {
-		definitions[index] = executable.Definition()
-	}
-	return definitions
 }
 
 // Observe attaches the single Application Run pump before Process start.
@@ -577,16 +597,7 @@ func (i *InteractionExecutor) restoreWaitingTree(
 		!isInteractionWaitingBoundary(processSnapshots[0].Status()) {
 		return fmt.Errorf("%w: Interaction restore requires a product waiting boundary", runs.ErrExecutorStateLost)
 	}
-	start := runs.RootExecutionStart{
-		SessionID: continuation.SessionID,
-		CWD:       continuation.Checkpoint.Scope.CWD, WorkspaceCWD: continuation.Checkpoint.Scope.WorkspaceCWD,
-		Isolated: continuation.Checkpoint.Scope.Isolated, GoalIncarnationID: continuation.Checkpoint.Scope.GoalIncarnationID,
-		ModelSelection:           continuation.Checkpoint.ModelSelection,
-		InterruptKinds:           continuation.Capabilities.InterruptKinds,
-		ChildRunAdmissionEnabled: continuation.ChildRunAdmissionEnabled,
-		WorkingContext:           cloneChatMessages(checkpoint.instructions),
-		Options:                  new(checkpoint.options.Clone()),
-	}
+	start := checkpoint.restoredStart(continuation)
 	session, err := i.assembleInteraction(ctx, ref, start)
 	if err != nil {
 		return err
@@ -597,7 +608,7 @@ func (i *InteractionExecutor) restoreWaitingTree(
 		}
 	}()
 	if err := session.validateWaitingTree(ctx, continuation, checkpoint); err != nil {
-		return fmt.Errorf("%w: validate waiting tree: %w", runs.ErrExecutorStateLost, err)
+		return fmt.Errorf("execution: validate waiting tree: %w", err)
 	}
 	process, err := session.engine.RestoreTree(
 		runExecutionContext(session.lifetime.execution, session.scope, session.start),
@@ -605,15 +616,15 @@ func (i *InteractionExecutor) restoreWaitingTree(
 		checkpoint.tree,
 	)
 	if err != nil {
-		return fmt.Errorf("%w: restore exact Interaction tree: %w", runs.ErrExecutorStateLost, err)
+		return fmt.Errorf("execution: restore exact Interaction tree: %w", err)
 	}
 	session.state.setProcess(process)
 	if initializeRestoredContinuationErr := session.initializeRestoredContinuation(process, continuation, checkpoint, boundary); initializeRestoredContinuationErr != nil {
 		return initializeRestoredContinuationErr
 	}
-	unknown, readable := session.unknownEffectIDs(ctx)
-	if !readable {
-		return fmt.Errorf("%w: restored Interaction tree cannot be inspected", runs.ErrExecutorStateLost)
+	unknown, err := session.unknownEffectIDs(ctx)
+	if err != nil {
+		return fmt.Errorf("execution: inspect restored Interaction tree: %w", err)
 	}
 	if len(unknown) > 0 {
 		return fmt.Errorf("%w: restored Interaction has unresolved effects", runs.ErrExecutorStateLost)
@@ -641,7 +652,13 @@ func (i *InteractionExecutor) validateRestoreScope(scope runs.ExecutionScope) er
 			return fmt.Errorf("%w: restore workspace path is empty", runs.ErrExecutorStateLost)
 		}
 		info, err := os.Stat(path)
-		if err != nil || !info.IsDir() {
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				return fmt.Errorf("%w: restore workspace %q: %w", runs.ErrExecutorStateLost, path, err)
+			}
+			return fmt.Errorf("execution: inspect restore workspace %q: %w", path, err)
+		}
+		if !info.IsDir() {
 			return fmt.Errorf("%w: restore workspace %q is unavailable", runs.ErrExecutorStateLost, path)
 		}
 	}

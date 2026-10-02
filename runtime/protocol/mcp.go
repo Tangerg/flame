@@ -34,8 +34,6 @@ type MCPServer struct {
 	Description      string              `json:"description,omitempty"`
 	Connection       MCPConnection       `json:"connection"`
 	HandshakeTimeout MCPHandshakeTimeout `json:"handshakeTimeout"`
-	DisabledTools    []string            `json:"disabledTools,omitempty"`
-	AutoApproveTools []string            `json:"autoApproveTools,omitempty"`
 	Status           MCPServerState      `json:"status"`
 }
 
@@ -153,8 +151,6 @@ type MCPServerCandidate struct {
 	Description      string              `json:"description,omitempty"`
 	Connection       MCPConnectionInput  `json:"connection"`
 	HandshakeTimeout MCPHandshakeTimeout `json:"handshakeTimeout"`
-	DisabledTools    []string            `json:"disabledTools,omitempty"`
-	AutoApproveTools []string            `json:"autoApproveTools,omitempty"`
 }
 
 // UpdateMCPServerRequest saves configuration; enabled servers then connect in
@@ -167,17 +163,18 @@ type UpdateMCPServerRequest struct {
 	Description      *string              `json:"description,omitzero"`
 	Connection       *MCPConnectionInput  `json:"connection,omitzero"`
 	HandshakeTimeout *MCPHandshakeTimeout `json:"handshakeTimeout,omitzero"`
-	DisabledTools    *[]string            `json:"disabledTools,omitzero"`
-	AutoApproveTools *[]string            `json:"autoApproveTools,omitzero"`
 }
 
 // MCPTool is one tool exposed by an MCP server. Tool list results are ordered by
 // Server ascending and then Name ascending.
 type MCPTool struct {
-	Server      string         `json:"server"`
-	Name        string         `json:"name"`
-	Description string         `json:"description,omitempty"`
-	InputSchema map[string]any `json:"inputSchema,omitempty"`
+	ModelName string `json:"modelName"`
+	// NameConflicts lists identities that exclude this tool from current model manifests.
+	NameConflicts []ToolRef      `json:"nameConflicts"`
+	Server        string         `json:"server"`
+	Name          string         `json:"name"`
+	Description   string         `json:"description,omitempty"`
+	InputSchema   map[string]any `json:"inputSchema,omitempty"`
 }
 
 // MCPTestResult is the semantic result of mcp.servers.test.
@@ -212,4 +209,15 @@ type MCPAuthorizationAttempt struct {
 	Status     MCPAuthorizationAttemptStatus `json:"status"`
 	CreatedAt  time.Time                     `json:"createdAt,omitzero"`
 	FinishedAt *time.Time                    `json:"finishedAt,omitzero"`
+}
+
+// MCPToolExposure is the user-owned set hidden from model manifests.
+type MCPToolExposure struct {
+	Server        string   `json:"server"`
+	DisabledTools []string `json:"disabledTools"`
+}
+type SetMCPToolExposureRequest struct {
+	Server   string `json:"server"`
+	Name     string `json:"name"`
+	Disabled bool   `json:"disabled"`
 }

@@ -18,8 +18,7 @@ import (
 type interactionDeploymentSet struct {
 	manifests         []toolset.Manifest
 	root              agent.Deployment
-	byRef             map[agent.DeploymentRef]agent.Deployment
-	delegatesByParent map[agent.DeploymentRef]map[string]agent.DeploymentRef
+	delegatesByParent map[agent.DeploymentRef]map[string]agent.Deployment
 	managedChildren   map[agent.DeploymentRef]struct{}
 	toolChildren      map[agent.DeploymentRef]struct{}
 	treeLimits        agent.TreeLimits
@@ -34,19 +33,6 @@ func (i *interactionDeploymentSet) close() error {
 		err = errors.Join(err, manifest.Close())
 	}
 	return err
-}
-
-func (i *interactionDeploymentSet) Resolve(
-	reference agent.DeploymentRef,
-) (agent.Deployment, error) {
-	if i == nil {
-		return agent.Deployment{}, agent.ErrInvalidDeploymentRef
-	}
-	deployment, found := i.byRef[reference]
-	if !found {
-		return agent.Deployment{}, agent.ErrInvalidDeploymentRef
-	}
-	return deployment, nil
 }
 
 func (i *interactionDeploymentSet) managedChild(reference agent.DeploymentRef) bool {
@@ -67,7 +53,7 @@ func (i *interactionDeploymentSet) delegateTarget(
 	name string,
 ) (agent.Deployment, bool) {
 	target, found := i.delegatesByParent[parent][name]
-	return i.byRef[target], found
+	return target, found
 }
 
 func (i *InteractionExecutor) buildInteractionDeployments(
@@ -123,9 +109,8 @@ func (i *InteractionExecutor) newInteractionDeploymentBuilder(
 		instructions: instructions, rootManifest: rootManifest,
 		deployments: &interactionDeploymentSet{
 			manifests:         []toolset.Manifest{rootManifest},
-			byRef:             make(map[agent.DeploymentRef]agent.Deployment),
 			toolChildren:      make(map[agent.DeploymentRef]struct{}),
-			delegatesByParent: make(map[agent.DeploymentRef]map[string]agent.DeploymentRef),
+			delegatesByParent: make(map[agent.DeploymentRef]map[string]agent.Deployment),
 			managedChildren:   make(map[agent.DeploymentRef]struct{}),
 			treeLimits:        agent.TreeLimits{MaxDepth: 2, MaxActiveChildren: uint32(i.policy.maxConcurrentToolCalls)},
 		},
@@ -157,13 +142,12 @@ func (i *interactionDeploymentBuilder) build() (*interactionDeploymentSet, error
 		if err != nil {
 			return nil, err
 		}
-		i.deployments.byRef[deployment.DeploymentRef()] = deployment
 		if depth > 0 {
 			i.deployments.managedChildren[deployment.DeploymentRef()] = struct{}{}
 		}
 		if next.Valid() {
-			i.deployments.delegatesByParent[deployment.DeploymentRef()] = map[string]agent.DeploymentRef{
-				domaintool.DelegateTask: next.DeploymentRef(),
+			i.deployments.delegatesByParent[deployment.DeploymentRef()] = map[string]agent.Deployment{
+				domaintool.DelegateTask: next,
 			}
 		}
 		next = deployment
@@ -196,11 +180,15 @@ func (i *interactionDeploymentBuilder) buildAtDepth(depth int, next agent.Deploy
 	// the zero ToolSet, which is how the absence is spelled.
 	var tools interaction.ToolSet
 	if len(visible)+len(deferred) > 0 {
+		configuration, err := i.executor.interactionToolConfiguration(manifest)
+		if err != nil {
+			return agent.Deployment{}, err
+		}
 		tools, err = interaction.NewToolSet(interaction.ToolSetConfig{
 			Name: definitionName + ".tools", Description: definitionDescription,
 			Tools: visible, DeferredTools: deferred,
 			ImplementationDigest: agent.ComputeDigest([]byte(i.executor.implementationIdentity.String())),
-			ConfigurationDigest:  agent.ComputeDigest([]byte(i.executor.configurationIdentity.String())),
+			ConfigurationDigest:  agent.ComputeDigest(configuration),
 		})
 		if err != nil {
 			return agent.Deployment{}, fmt.Errorf("execution: build Interaction Tool set at depth %d: %w", depth, err)
@@ -215,10 +203,7 @@ func (i *interactionDeploymentBuilder) buildAtDepth(depth int, next agent.Deploy
 	if tools.Configured() {
 		definitionConfig.Tools = tools
 		definitionConfig.MaxConcurrentToolCalls = i.executor.policy.maxConcurrentToolCalls
-		// A Tool call is a child Process, so the Engine has to be able to resolve
-		// the Deployment it runs in through this same resolver.
 		toolDeployment := tools.Deployment()
-		i.deployments.byRef[toolDeployment.DeploymentRef()] = toolDeployment
 		i.deployments.managedChildren[toolDeployment.DeploymentRef()] = struct{}{}
 		i.deployments.toolChildren[toolDeployment.DeploymentRef()] = struct{}{}
 	}
@@ -251,12 +236,8 @@ func (i *interactionDeploymentBuilder) buildAtDepth(depth int, next agent.Deploy
 	if err != nil {
 		return agent.Deployment{}, err
 	}
-	var delegateRef agent.DeploymentRef
-	if next.Valid() {
-		delegateRef = next.DeploymentRef()
-	}
 	configuration, err := i.executor.interactionConfiguration(
-		i.session, manifest, group, uint32(depth), delegateRef,
+		i.session, group, uint32(depth),
 		i.instructions,
 	)
 	if err != nil {

@@ -7,8 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/scope/core/chat"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	runsapp "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
@@ -25,6 +23,7 @@ import (
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	sqlite "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 const bootstrapCheckpointBuildID = testsupport.BuildID
@@ -847,7 +846,7 @@ func TestApplyRestoreClearsSessionOwnedProjections(t *testing.T) {
 	before := replaceFixturePlan(t, ctx, ss.plan, "ses_A", []plan.Step{{Description: "stale", Status: plan.StatusPending}})
 	seedGoal(t, ss, "ses_A")
 	sessionRule := testAllowRule(t, approval.ScopeSession, "ses_A", "shell")
-	projectRule := testAllowRule(t, approval.ScopeProject, "/repo", "write")
+	projectRule := testAllowRule(t, approval.ScopeProject, "/repo", "edit")
 	globalRule := testAllowRule(t, approval.ScopeGlobal, "", "read")
 	for _, rule := range []approval.Rule{sessionRule, projectRule, globalRule} {
 		if err := ss.approvals.Put(ctx, rule); err != nil {
@@ -906,7 +905,7 @@ func TestApplyRestoreClearsSessionOwnedProjections(t *testing.T) {
 
 func testAllowRule(t *testing.T, scope approval.Scope, scopeKey, toolName string) approval.Rule {
 	t.Helper()
-	rule, err := approval.NewRule(scope, scopeKey, toolName, "", approval.Allow)
+	rule, err := approval.NewRule(scope, scopeKey, testsupport.BuiltInTool(t, toolName), testsupport.ToolFingerprint(testsupport.BuiltInTool(t, toolName)), approval.Subject{Type: approval.SubjectAll}, approval.Allow)
 	if err != nil {
 		t.Fatalf("new approval rule: %v", err)
 	}

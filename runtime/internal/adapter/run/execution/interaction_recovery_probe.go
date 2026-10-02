@@ -10,11 +10,9 @@ import (
 	agent "github.com/Tangerg/scope/agent"
 )
 
-// unresumable refuses one probe and says why. A refusal recovers the whole
-// waiting tree as lost, which the user sees as a parked Run disappearing, and
-// the eleven conditions that produce it are not equally expected: a checkpoint
-// from another build is routine after an upgrade, while state this build wrote
-// and cannot read is a defect. That distinction exists nowhere but here.
+// A refused probe recovers the whole waiting tree as lost. Preserve the reason
+// to distinguish expected upgrade incompatibility from state this build wrote
+// but cannot restore.
 func unresumable(
 	ctx context.Context,
 	continuation runs.WaitingContinuation,
@@ -56,7 +54,10 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 		return unresumable(ctx, continuation, "isolated workspace does not survive executor loss", nil)
 	}
 	if err := i.validateRestoreScope(checkpoint.Scope); err != nil {
-		return unresumable(ctx, continuation, "restore workspace is unavailable", err)
+		if errors.Is(err, runs.ErrExecutorStateLost) {
+			return unresumable(ctx, continuation, "restore workspace is unavailable", err)
+		}
+		return false, err
 	}
 	state, err := decodeExecutorCheckpoint(checkpoint)
 	if err != nil {
@@ -82,17 +83,7 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 		!isInteractionWaitingBoundary(snapshots[0].Status()) {
 		return unresumable(ctx, continuation, "checkpoint tree is not at a waiting boundary", nil)
 	}
-	start := runs.RootExecutionStart{
-		SessionID:                checkpoint.Scope.SessionID,
-		CWD:                      checkpoint.Scope.CWD,
-		WorkspaceCWD:             checkpoint.Scope.WorkspaceCWD,
-		Isolated:                 checkpoint.Scope.Isolated,
-		GoalIncarnationID:        checkpoint.Scope.GoalIncarnationID,
-		ModelSelection:           checkpoint.ModelSelection,
-		InterruptKinds:           continuation.Capabilities.InterruptKinds,
-		ChildRunAdmissionEnabled: continuation.ChildRunAdmissionEnabled,
-		WorkingContext:           cloneChatMessages(state.instructions),
-	}
+	start := state.restoredStart(continuation)
 	ref := runs.ExecutorRef{SessionID: start.SessionID, ExecutorID: continuation.ExecutorID}
 	assembled, err := i.assembleInteraction(ctx, ref, start)
 	if err != nil {
@@ -105,7 +96,10 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 		}
 	}()
 	if err := assembled.validateWaitingTree(ctx, continuation, state); err != nil {
-		return unresumable(ctx, continuation, "waiting tree validation failed", err)
+		if errors.Is(err, runs.ErrExecutorStateLost) {
+			return unresumable(ctx, continuation, "waiting tree validation failed", err)
+		}
+		return false, err
 	}
 
 	return true, nil

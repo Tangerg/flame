@@ -104,6 +104,25 @@ A human-input barrier first proves an externally addressed wait, then uses Scope
 
 Delegates adapt only Runtime's task input to Scope Interaction. Their executions, checkpoints, and outputs remain Scope-owned. The parent receives the complete `interaction.Output`, preserving reasoning, refusal, media, metadata, and direct Tool results. Runtime commits each model response and its accounting before returning it to Scope; that single boundary owns assistant transcript content. Process termination closes the Segment without a second message projection or confirmation handshake. There is no Runtime reply envelope or in-memory reply cache.
 
+Each Scope Deployment owns its static Tool and Delegate bindings through
+`Definition.ChildDeployments`. The delegated-input adapter preserves those
+bindings, and Scope includes them in Deployment identity and resolves them for
+start and restoration. Runtime retains only the lookup needed to attribute
+Delegate calls and Tool children to product Runs; it installs no separate
+DeploymentResolver or child-binding digest. Tree capacity uses Scope's
+`TreeLimits`, while cumulative work uses its unlimited default `Budget`.
+
+Tool manifests, deferred visibility, hook presence, and result-offload policy enter the
+Tool Deployment's configuration digest. Scope carries that exact child binding
+into its parent's identity. Deployment configurations use Scope's canonical
+Payload encoding, so JSON object order is immaterial and numeric literals remain
+exact. Recovery probing and live restoration reconstruct
+the same checkpoint-owned instructions and generation options before Scope
+validates the tree; probing never acquires a writer or changes the durable head.
+Only confirmed incompatible state is classified as lost. Canceled validation,
+inconclusive workspace inspection, writer activation failures, and unavailable
+live inspection preserve their errors so recovery cannot discard a valid waiting Run.
+
 A Delegate retains its admitted child across a human-input barrier. Each continuation opens fresh Segments, so the executor observation reopens the parent Tool attempt before forwarding child results. Application reuses the durable Tool Item identity; continuation does not admit another child or repeat its completed work.
 
 The Delegate's Scope Descriptor is the sole input admission contract during registration, start, and restoration. Its generated schema measures summary length in characters and preserves instruction formatting. Runtime does not impose a second byte limit or trim rule after Scope accepts that input.
@@ -326,3 +345,16 @@ Keep related behavior in responsibility-named files inside one package. Split a 
 ## Verification
 
 Tests protect observable protocol and binding behavior, Domain invariants, Application transaction ordering, strict persistence, recovery, execution lifecycle, and dependency direction. The primary lifecycle matrix covers Goal, Plan, steer, HITL, interruption and resume, compaction, long context, long execution, provider failure, restart, and recovery through one Runtime. Architecture tests prevent outer dependencies from leaking inward and keep public SDKs at their adapters; they do not freeze private filenames, fields, function inventories, or exact package counts. Multi-client, multi-server, and race scenarios need evidence that Runtime owns that concurrency.
+
+Tool references belong to `domain/run/tool`. Concrete sources attach references
+and authority fingerprints to executables; Scope's capability traversal retains
+them through decorators. Execution freezes these facts in its tool deployment
+configuration and binds restored approval prompts to the exact reference, model
+name, arguments, and authority. Built-in interpretation dispatches only on
+built-in references. MCP configuration owns endpoint authority, MCP exposure
+owns visibility, and approval policy alone owns standing allow/deny decisions.
+A source change makes rules stale by comparison with current authority; removal
+also cascades its persisted MCP rules and exposure rows.
+Exposure snapshots advance from acknowledged registry writes under the MCP
+mutation lock. No post-commit registry read can leave a disabled or deleted
+source exposed; a live-detachment failure still closes that exposure gate.

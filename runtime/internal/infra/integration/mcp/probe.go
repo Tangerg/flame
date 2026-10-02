@@ -50,7 +50,7 @@ func probe(ctx context.Context, cfg ServerConfig) (err error) {
 			err = errors.Join(err, closeErr)
 		}
 	}()
-	if _, err := sourceTools(ctx, cfg.Name, session); err != nil {
+	if _, err := sourceTools(ctx, cfg, session); err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		return err
 	}

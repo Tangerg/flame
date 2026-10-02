@@ -2,6 +2,7 @@ package approvals
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -10,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
 // NewRuntimePolicy constructs permission policy over durable session modes and
@@ -19,6 +21,7 @@ func NewRuntimePolicy(
 	mode approval.Mode,
 	store RuleStore,
 	modeStore ModeStore,
+	authorities SourceAuthorities,
 	invalidations invalidation.Publish,
 ) (*RuntimePolicy, error) {
 	if !mode.ValidDefault() {
@@ -28,13 +31,13 @@ func NewRuntimePolicy(
 		name  string
 		value any
 	}{
-		{"rule store", store}, {"session mode store", modeStore},
+		{"source authorities", authorities}, {"rule store", store}, {"session mode store", modeStore},
 	} {
 		if dependency.Missing(required.value) {
 			return nil, fmt.Errorf("approvals: %s is required", required.name)
 		}
 	}
-	p := &RuntimePolicy{store: store, modeStore: modeStore, invalidations: invalidations}
+	p := &RuntimePolicy{authorities: authorities, store: store, modeStore: modeStore, invalidations: invalidations}
 	p.mode.Store(&defaultModeState{mode: mode})
 	return p, nil
 }
@@ -58,6 +61,7 @@ type ModeStore interface {
 type RuntimePolicy struct {
 	mode          atomic.Pointer[defaultModeState]
 	modeMu        sync.Mutex
+	authorities   SourceAuthorities
 	modeStore     ModeStore
 	store         RuleStore
 	invalidations invalidation.Publish
@@ -171,6 +175,13 @@ func (r *RuntimePolicy) Decide(ctx context.Context, q approval.Query) (approval.
 	if err := q.Validate(); err != nil {
 		return "", false, err
 	}
+	current, found, err := r.authorities.Fingerprint(ctx, q.Tool)
+	if err != nil {
+		return "", false, err
+	}
+	if !found || current != q.SourceFingerprint {
+		return "", false, nil
+	}
 	candidates, err := r.visibleRules(ctx, q.SessionID, q.ProjectDir)
 	if err != nil {
 		return "", false, err
@@ -187,6 +198,13 @@ func (r *RuntimePolicy) Remember(ctx context.Context, req approval.RememberReque
 	if err != nil {
 		return err
 	}
+	current, found, err := r.authorities.Fingerprint(ctx, req.Tool)
+	if err != nil {
+		return err
+	}
+	if !found || current != req.SourceFingerprint {
+		return approval.ErrSourceAuthorityChanged
+	}
 	if err := r.store.Put(ctx, rule); err != nil {
 		return err
 	}
@@ -194,8 +212,43 @@ func (r *RuntimePolicy) Remember(ctx context.Context, req approval.RememberReque
 	return nil
 }
 
-func (r *RuntimePolicy) Rules(ctx context.Context, sessionID, projectDir string) ([]approval.Rule, error) {
-	return r.visibleRules(ctx, sessionID, projectDir)
+type SourceAuthorities interface {
+	Fingerprint(context.Context, tool.Ref) (string, bool, error)
+}
+type RuleView struct {
+	approval.Rule
+	Stale bool
+}
+
+func (r *RuntimePolicy) Rules(ctx context.Context, sessionID, projectDir string) ([]RuleView, error) {
+	rules, err := r.visibleRules(ctx, sessionID, projectDir)
+	if err != nil {
+		return nil, err
+	}
+	view := make([]RuleView, 0, len(rules))
+	for _, rule := range rules {
+		current, found, err := r.authorities.Fingerprint(ctx, rule.Tool)
+		if err != nil {
+			return nil, err
+		}
+		view = append(view, RuleView{Rule: rule, Stale: !found || current != rule.SourceFingerprint})
+	}
+	return view, err
+}
+
+func (r *RuntimePolicy) SetRule(ctx context.Context, ref tool.Ref, scope approval.Scope, sessionID, projectDir string, subject approval.Subject, decision approval.Decision) error {
+	fingerprint, found, err := r.authorities.Fingerprint(ctx, ref)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return fmt.Errorf("%w: tool source is missing", approval.ErrInvalidRule)
+	}
+	err = r.Remember(ctx, approval.RememberRequest{Scope: scope, SessionID: sessionID, ProjectDir: projectDir, Tool: ref, SourceFingerprint: fingerprint, Subject: subject, Decision: decision})
+	if errors.Is(err, approval.ErrSourceAuthorityChanged) {
+		return fmt.Errorf("%w: %w", approval.ErrInvalidRule, err)
+	}
+	return err
 }
 
 func (r *RuntimePolicy) visibleRules(ctx context.Context, sessionID, projectDir string) ([]approval.Rule, error) {

@@ -3,7 +3,12 @@ import { createPublicationSlot } from "@/lib/publicationSlot";
 import { queryClient, repairCachedProjection } from "@/lib/queryClient";
 import { RetirableTaskCohort } from "@/lib/taskQueue";
 import type { MCPServerInput } from "./mcpServerInput";
-import { MCP_SERVERS_KEY, MCP_TOOLS_KEY, type MCPServerSettings } from "./mcpServerQueries";
+import {
+  MCP_SERVERS_KEY,
+  MCP_TOOLS_KEY,
+  MCP_EXPOSURE_KEY,
+  type MCPServerSettings,
+} from "./mcpServerQueries";
 import type { MCPServerGateway, MCPServerTestOutcome } from "./ports/mcpServerGateway";
 
 const AUTHORIZATION_ATTEMPT_POLL_MS = 500;
@@ -52,6 +57,13 @@ class MCPServerMutationGeneration {
     });
   }
 
+  setToolExposure(server: string, name: string, disabled: boolean): Promise<void> {
+    return this.#run(server, {
+      execute: () => this.#gateway.setToolExposure(server, name, disabled),
+      commit: () => undefined,
+    });
+  }
+
   reconnect(name: string): Promise<void> {
     const admitted = this.#reconnects.get(name);
     if (admitted) return admitted;
@@ -85,7 +97,7 @@ class MCPServerMutationGeneration {
         this.#gateway.getAuthorizationAttempt(attempt.id, signal),
       );
     }
-    await repairCachedProjection(this.#cohort, [MCP_SERVERS_KEY, MCP_TOOLS_KEY]);
+    await repairCachedProjection(this.#cohort, [MCP_SERVERS_KEY, MCP_TOOLS_KEY, MCP_EXPOSURE_KEY]);
     this.#cohort.assertCurrent();
     if (attempt.status === "failed") throw new Error(attempt.error);
   }
@@ -101,7 +113,11 @@ class MCPServerMutationGeneration {
     return this.#cohort.runSerial(identity, async () => {
       const value = await this.#cohort.run(mutation.execute);
       mutation.commit(value);
-      await repairCachedProjection(this.#cohort, [MCP_SERVERS_KEY, MCP_TOOLS_KEY]);
+      await repairCachedProjection(this.#cohort, [
+        MCP_SERVERS_KEY,
+        MCP_TOOLS_KEY,
+        MCP_EXPOSURE_KEY,
+      ]);
       this.#cohort.assertCurrent();
       return value;
     });
@@ -159,6 +175,10 @@ export class MCPServerMutationOwner {
 
   delete(name: string): Promise<void> {
     return this.#generation.delete(name);
+  }
+
+  setToolExposure(server: string, name: string, disabled: boolean): Promise<void> {
+    return this.#generation.setToolExposure(server, name, disabled);
   }
 
   reconnect(name: string): Promise<void> {

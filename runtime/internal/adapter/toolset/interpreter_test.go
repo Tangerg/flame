@@ -3,6 +3,7 @@ package toolset
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"testing"
 	"time"
 
@@ -14,22 +15,23 @@ import (
 func TestSemanticsSafetyClassFailsClosed(t *testing.T) {
 	interpreter := Interpreter{}
 	for _, test := range []struct {
-		name string
+		ref  tool.Ref
 		want tool.SafetyClass
 	}{
-		{name: tool.DelegateTask, want: tool.SafetyClassSafe},
-		{name: tool.ListSchedules, want: tool.SafetyClassSafe},
-		{name: tool.CreateSchedule, want: tool.SafetyClassWrite},
-		{name: tool.ApplyPatch, want: tool.SafetyClassWrite},
-		{name: tool.Shell, want: tool.SafetyClassExec},
-		{name: tool.ReadShellOutput, want: tool.SafetyClassSafe},
-		{name: tool.StopShell, want: tool.SafetyClassExec},
-		{name: tool.WebFetch, want: tool.SafetyClassNetwork},
-		{name: tool.HTTPRequest, want: tool.SafetyClassNetwork},
-		{name: "unknown_tool", want: tool.SafetyClassExec},
+		{ref: testsupport.BuiltInTool(t, tool.DelegateTask), want: tool.SafetyClassSafe},
+		{ref: testsupport.BuiltInTool(t, tool.ListSchedules), want: tool.SafetyClassSafe},
+		{ref: testsupport.BuiltInTool(t, tool.CreateSchedule), want: tool.SafetyClassWrite},
+		{ref: testsupport.BuiltInTool(t, tool.ApplyPatch), want: tool.SafetyClassWrite},
+		{ref: testsupport.BuiltInTool(t, tool.Shell), want: tool.SafetyClassExec},
+		{ref: testsupport.BuiltInTool(t, tool.ReadShellOutput), want: tool.SafetyClassSafe},
+		{ref: testsupport.BuiltInTool(t, tool.StopShell), want: tool.SafetyClassExec},
+		{ref: testsupport.BuiltInTool(t, tool.WebFetch), want: tool.SafetyClassNetwork},
+		{ref: testsupport.BuiltInTool(t, tool.HTTPRequest), want: tool.SafetyClassNetwork},
+		{ref: tool.Ref{}, want: tool.SafetyClassExec},
+		{ref: testsupport.A2ATool(t, "shell"), want: tool.SafetyClassExec},
 	} {
-		if got := interpreter.SafetyClass(test.name); got != test.want {
-			t.Errorf("SafetyClass(%q) = %q, want %q", test.name, got, test.want)
+		if got := interpreter.SafetyClass(test.ref); got != test.want {
+			t.Errorf("SafetyClass(%q) = %q, want %q", test.ref, got, test.want)
 		}
 	}
 }
@@ -53,7 +55,7 @@ func TestSemanticsApprovalSubject(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ParseArguments(%q): %v", test.arguments, err)
 		}
-		got, err := interpreter.ApprovalSubject(test.name, arguments)
+		got, err := interpreter.ApprovalSubject(testsupport.BuiltInTool(t, test.name), arguments)
 		if test.wantError {
 			if !errors.Is(err, tool.ErrInvalidArguments) {
 				t.Errorf("ApprovalSubject(%q) error = %v, want invalid arguments", test.name, err)
@@ -68,22 +70,22 @@ func TestSemanticsApprovalSubject(t *testing.T) {
 
 func TestSemanticsShellCommand(t *testing.T) {
 	interpreter := Interpreter{}
-	if got := interpreter.ShellCommand(tool.Shell, `{"command":"rm -rf /"}`); got != "rm -rf /" {
+	if got := interpreter.ShellCommand(testsupport.BuiltInTool(t, tool.Shell), `{"command":"rm -rf /"}`); got != "rm -rf /" {
 		t.Fatalf("ShellCommand = %q, want command", got)
 	}
-	if got := interpreter.ShellCommand(tool.ApplyPatch, `{"command":"rm -rf /"}`); got != "" {
+	if got := interpreter.ShellCommand(testsupport.BuiltInTool(t, tool.ApplyPatch), `{"command":"rm -rf /"}`); got != "" {
 		t.Fatalf("non-shell command = %q, want empty", got)
 	}
 }
 
 func TestSemanticsDelegationUsesChildLifecyclePolicy(t *testing.T) {
 	interpreter := Interpreter{}
-	if interpreter.UsesStandardPolicy(tool.DelegateTask) {
+	if interpreter.UsesStandardPolicy(testsupport.BuiltInTool(t, tool.DelegateTask)) {
 		t.Fatal("delegation entered ordinary tool-call policy")
 	}
-	for _, name := range []string{tool.Read, "extension_tool"} {
-		if !interpreter.UsesStandardPolicy(name) {
-			t.Errorf("ordinary tool %q bypassed standard policy", name)
+	for _, ref := range []tool.Ref{testsupport.BuiltInTool(t, tool.Read), testsupport.A2ATool(t, "extension_tool")} {
+		if !interpreter.UsesStandardPolicy(ref) {
+			t.Errorf("ordinary tool %q bypassed standard policy", ref)
 		}
 	}
 }
@@ -101,7 +103,7 @@ func TestSemanticsProjectsSuccessfulPlanReplacement(t *testing.T) {
 		t.Fatal(err)
 	}
 	interpreter := NewInterpreter(fixedPlanState{state: current})
-	event, err := interpreter.ProjectOutcome(t.Context(), "session_1", tool.SetPlan, true)
+	event, err := interpreter.ProjectOutcome(t.Context(), "session_1", testsupport.BuiltInTool(t, tool.SetPlan), true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +118,7 @@ func TestSemanticsProjectsSuccessfulPlanReplacement(t *testing.T) {
 		{name: tool.SetPlan},
 		{name: tool.Read, succeeded: true},
 	} {
-		event, err := interpreter.ProjectOutcome(t.Context(), "session_1", test.name, test.succeeded)
+		event, err := interpreter.ProjectOutcome(t.Context(), "session_1", testsupport.BuiltInTool(t, test.name), test.succeeded)
 		if err != nil || event != nil {
 			t.Errorf("ProjectOutcome(%q, %t) = (%#v, %v), want no event", test.name, test.succeeded, event, err)
 		}

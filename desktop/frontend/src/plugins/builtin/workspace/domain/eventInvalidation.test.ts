@@ -19,6 +19,8 @@ describe("workspaceInvalidations", () => {
     expect(workspaceInvalidations({ type: "mcp.changed", sequence: 3 })).toEqual([
       "mcpServers",
       "mcpTools",
+      "mcpExposure",
+      "approvalRules",
     ]);
     expect(workspaceInvalidations({ type: "schedules.changed", sequence: 4 })).toEqual([
       "schedules",

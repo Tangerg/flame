@@ -1,14 +1,14 @@
+import type { ApprovalRuleSummary } from "@/plugins/builtin/agent/public/approvalPolicy";
 import {
   APPROVAL_MODES,
   forgetRule,
   forgetRules,
   type ApprovalMode,
-  type ApprovalRuleSummary,
   useApprovalMode,
   useApprovalRules,
 } from "@/plugins/builtin/agent/public/approvalPolicy";
 
-export type { ApprovalMode, ApprovalRuleSummary };
+export type { ApprovalMode };
 export { APPROVAL_MODES };
 
 export function useApprovalModeConfig() {
@@ -16,7 +16,7 @@ export function useApprovalModeConfig() {
 }
 
 export function useApprovalRuleConfigs(sessionId: string | undefined) {
-  return useApprovalRules(sessionId ? { sessionId } : undefined);
+  return useApprovalRules({ sessionId });
 }
 
 export async function forgetApprovalRule(id: string): Promise<void> {

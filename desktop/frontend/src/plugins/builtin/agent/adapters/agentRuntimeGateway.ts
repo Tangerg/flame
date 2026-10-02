@@ -120,6 +120,15 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
     return (await this.runtimeClient().approval.setMode(mode)).mode;
   }
 
+  async allowMCPTool(server: string, name: string) {
+    await this.runtimeClient().approval.setRule({
+      tool: { type: "mcp", server, name },
+      scope: "global",
+      subject: { type: "all" },
+      decision: "allow",
+    });
+  }
+
   async forgetApprovalRule(id: string) {
     await this.runtimeClient().approval.forgetRule(id);
   }

@@ -51,6 +51,10 @@ func (d *delegatedInteractionDefinition) Descriptor() agent.Descriptor {
 	return d.descriptor
 }
 
+func (d *delegatedInteractionDefinition) ChildDeployments() []agent.Deployment {
+	return d.inner.ChildDeployments()
+}
+
 func (d *delegatedInteractionDefinition) Start(input agent.Payload) (agent.Execution, error) {
 	if err := d.descriptor.ValidateInput(input); err != nil {
 		return nil, err

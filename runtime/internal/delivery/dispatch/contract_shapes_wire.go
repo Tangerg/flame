@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -26,6 +27,8 @@ func buildShapes() *Shapes {
 	registerItemUnions(s)
 	registerProviderUnions(s)
 	registerMCPUnions(s)
+	registerToolRefUnion(s)
+	registerApprovalSubjectUnion(s)
 	registerInterruptUnions(s)
 	registerEventUnions(s)
 	registerArtifactUnions(s)
@@ -1094,4 +1097,25 @@ func registerTrajectoryObservationConstraints(s *Shapes) {
 			{When: []delivery.FieldCondition{{Field: "state", Operator: delivery.OperatorEquals, Value: string(protocol.ToolAttemptIncomplete)}}, Required: []string{"settledAt"}},
 		},
 	})
+}
+
+func registerToolRefUnion(s *Shapes) {
+	s.union(UnionSpec{GoType: typeOf[protocol.ToolRef](), Discriminator: "type", Variants: []VariantSpec{
+		{Tag: string(protocol.ToolRefBuiltIn), Required: []string{"name"}, AllowedValues: []AllowedValueSet{{Field: "name", Values: tool.BuiltInNames()}}},
+		{Tag: string(protocol.ToolRefMCP), Required: []string{"server", "name"}},
+		{Tag: string(protocol.ToolRefA2A), Required: []string{"endpoint"}},
+	}})
+	s.constraint(ObjectConstraintSpec{GoType: typeOf[protocol.SetApprovalRuleRequest](), Rules: []ConditionalRule{
+		{When: []delivery.FieldCondition{{Field: "scope", Operator: delivery.OperatorEquals, Value: "global"}}, Forbidden: []string{"sessionId"}},
+		{When: []delivery.FieldCondition{{Field: "scope", Operator: delivery.OperatorEquals, Value: "session"}}, Required: []string{"sessionId"}},
+		{When: []delivery.FieldCondition{{Field: "scope", Operator: delivery.OperatorEquals, Value: "project"}}, Required: []string{"sessionId"}},
+	}})
+}
+
+func registerApprovalSubjectUnion(s *Shapes) {
+	s.union(UnionSpec{GoType: typeOf[protocol.ApprovalSubject](), Discriminator: "type", Variants: []VariantSpec{
+		{Tag: string(protocol.ApprovalSubjectAll)},
+		{Tag: string(protocol.ApprovalSubjectExact), Required: []string{"value"}},
+		{Tag: string(protocol.ApprovalSubjectGlob), Required: []string{"value"}},
+	}})
 }

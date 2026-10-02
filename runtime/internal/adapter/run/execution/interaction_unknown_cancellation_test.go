@@ -3,6 +3,8 @@ package execution
 import (
 	"context"
 	"errors"
+	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -75,7 +77,7 @@ func TestUnknownEffectsRespectScopeCancellationOrderAndDrainSiblings(t *testing.
 				defer releaseCommit()
 				executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
 					ExecutionTrees: store,
-					ToolResolver: staticInteractionTools{manifest: toolset.Manifest{
+					ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "parallel")}, manifest: toolset.Manifest{
 						Visible: []toolcontract.Tool{concurrentInteractionTool{Tool: inner}},
 					}},
 					ToolInterpreter: immutableToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
@@ -107,9 +109,9 @@ func TestUnknownEffectsRespectScopeCancellationOrderAndDrainSiblings(t *testing.
 					t.Fatal(err)
 				}
 				synctest.Wait()
-				ids, readable := session.unknownEffectIDs(t.Context())
-				if !readable || len(ids) != 1 {
-					t.Fatalf("acknowledged unknown Effects = %v, readable=%t", ids, readable)
+				ids, err := session.unknownEffectIDs(t.Context())
+				if err != nil || len(ids) != 1 {
+					t.Fatalf("acknowledged unknown Effects = %v, error=%v", ids, err)
 				}
 				store.armed.Store(true)
 				releaseSettle()

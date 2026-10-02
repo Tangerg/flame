@@ -5,12 +5,10 @@ import (
 	"errors"
 	"fmt"
 
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/go-sdk/auth"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
-
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 // planAttempt claims a known, open server and detaches its live session under
@@ -186,7 +184,7 @@ func (c *Connections) dialAndSwap(attempt *connectionAttempt, cfg ServerConfig, 
 	var verifiedTools []toolcontract.Tool
 	if err == nil {
 		// Prove the session is usable before publishing it as connected.
-		verifiedTools, err = sourceTools(attempt.ctx, cfg.Name, session)
+		verifiedTools, err = sourceTools(attempt.ctx, cfg, session)
 	}
 
 	c.mu.Lock()
@@ -204,16 +202,6 @@ func (c *Connections) dialAndSwap(attempt *connectionAttempt, cfg ServerConfig, 
 			return errors.Join(ErrConnectionsClosed, err, closeErr)
 		}
 		return errors.Join(errConnectionSuperseded, err, closeErr)
-	}
-	// The public-tool-name collision check must be atomic with the commit. A
-	// concurrently-dialing sibling still has session==nil until its own commit, so
-	// it is invisible to any check taken before this lock: two servers whose
-	// sanitized names collapse to one could each pass a separate pre-check and then
-	// both commit a duplicate — which breaks the next Run's tool-registry build.
-	// Validating here, under the same c.mu that serializes every commit, makes the
-	// second arrival see the first's committed session and fail closed.
-	if err == nil {
-		err = validateToolCatalog(c.servers, attempt.target, cfg.Name, verifiedTools)
 	}
 	if err != nil {
 		state := dialStatus(err)

@@ -3,6 +3,8 @@ package execution
 import (
 	"context"
 	"errors"
+	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
@@ -35,7 +37,7 @@ func TestInteractionExecutorClosesToolAdvertisementAfterReturn(t *testing.T) {
 		interactionTextResponse("done"),
 	}}
 	executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-		ToolResolver: staticInteractionTools{manifest: toolset.Manifest{
+		ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "capture"), testsupport.A2ATool(t, "hidden")}, manifest: toolset.Manifest{
 			Visible: []toolcontract.Tool{capture}, Deferred: []toolcontract.Tool{hidden},
 		}},
 		ToolInterpreter: testInteractionToolInterpreter{},

@@ -8,13 +8,11 @@ import (
 // TestPreconditionFlagsAreRequired covers the constraint, not the call that
 // declares it. A revision is an optimistic-concurrency precondition: losing it
 // turns a compare-and-set update into an unconditional one, which is exactly
-// the lost update the revision exists to prevent. The approvals scope is what
-// keeps a listing from crossing sessions.
+// the lost update the revision exists to prevent.
 func TestPreconditionFlagsAreRequired(t *testing.T) {
 	for name, invocation := range map[string][]string{
 		"sessions update": {"sessions", "update", "ses_demo_1", "--title", "renamed"},
 		"sessions rename": {"sessions", "rename", "ses_demo_1", "renamed"},
-		"approvals list":  {"approvals", "list"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, _, err := executeCommand(t, nil, "", invocation...)

@@ -23,8 +23,6 @@ describe("mcpServerDraft", () => {
       authorization: RetainedValue.preserved().cleared(false),
       headers: RetainedValue.preserved().cleared(false),
       timeoutSec: "30",
-      disabledTools: ["danger"],
-      autoApproveTools: ["status"],
     }).toInput();
 
     expect(input).toMatchObject({
@@ -37,8 +35,6 @@ describe("mcpServerDraft", () => {
       env: { TOKEN: "a=b", EMPTY_KEY: "" },
       dir: "/repo",
       handshakeTimeout: { type: "bounded", seconds: 30 },
-      disabledTools: ["danger"],
-      autoApproveTools: ["status"],
     });
   });
 
@@ -55,8 +51,6 @@ describe("mcpServerDraft", () => {
       authorization: RetainedValue.preserved().cleared(false),
       headers: RetainedValue.preserved().cleared(false),
       timeoutSec: "",
-      disabledTools: [],
-      autoApproveTools: [],
     }).toInput();
 
     expect(Object.keys(input.env ?? {}).sort()).toEqual(["KEEP", "__proto__", "constructor"]);
@@ -90,8 +84,6 @@ describe("mcpServerDraft", () => {
         authorization: RetainedValue.preserved().edited("   "),
         headers: RetainedValue.preserved().edited("X-Trace=abc=123\nBare\n"),
         timeoutSec: "",
-        disabledTools: [],
-        autoApproveTools: [],
       },
       server,
     ).toInput();
@@ -105,8 +97,6 @@ describe("mcpServerDraft", () => {
     });
     expect(input.authorization).toBeUndefined();
     expect(input.handshakeTimeout).toEqual({ type: "unbounded" });
-    expect(input.disabledTools).toBeUndefined();
-    expect(input.autoApproveTools).toBeUndefined();
   });
 
   it("initializes editable text fields from an existing server", () => {
@@ -124,8 +114,6 @@ describe("mcpServerDraft", () => {
       envMasked: { A: "********", B: "********" },
       headersMasked: { "X-Env": "********" },
       handshakeTimeout: { type: "bounded", seconds: 15 },
-      disabledTools: ["delete"],
-      autoApproveTools: ["read"],
     });
 
     expect(draft.fields).toMatchObject({
@@ -137,8 +125,6 @@ describe("mcpServerDraft", () => {
       headers: { disposition: "preserve" },
       timeoutSec: "15",
       authorization: { disposition: "preserve" },
-      disabledTools: ["delete"],
-      autoApproveTools: ["read"],
     });
   });
 

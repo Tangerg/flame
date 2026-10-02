@@ -5,10 +5,12 @@ import (
 	json "encoding/json/v2"
 	"fmt"
 	"reflect"
+	"strings"
 	"sync/atomic"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
+	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -24,7 +26,7 @@ func TestProtocolCompletesDirectToolResults(t *testing.T) {
 			home := t.TempDir()
 			t.Setenv("FLAME_HOME", home)
 			var calls, executions atomic.Int32
-			want := []chat.ToolResult{{ID: "answer_once", Name: "direct_answer", Output: chat.NewTextToolOutput("exact answer")}}
+			want := []chat.ToolResult{{ID: "answer_once", Name: "fixture_answer", Output: chat.NewTextToolOutput("exact answer")}}
 			model := delegateRestartModel{chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
 				if len(request.Tools) == 0 {
 					return completedTextResponse("title"), nil
@@ -55,10 +57,10 @@ func TestProtocolCompletesDirectToolResults(t *testing.T) {
 					}
 					return completedTextResponse("root completed"), nil
 				}
-				call := chat.ToolCall{ID: "discover", Name: "search_tools", Arguments: `{"query":"select:direct_answer"}`}
+				call := chat.ToolCall{ID: "discover", Name: "search_tools", Arguments: `{"query":"select:fixture_answer"}`}
 				for _, definition := range request.Tools {
-					if definition.Name == "direct_answer" {
-						call = chat.ToolCall{ID: "answer_once", Name: "direct_answer", Arguments: `{}`}
+					if definition.Name == "fixture_answer" {
+						call = chat.ToolCall{ID: "answer_once", Name: "fixture_answer", Arguments: `{}`}
 					}
 				}
 				if delegated && sequence == 1 {
@@ -73,7 +75,7 @@ func TestProtocolCompletesDirectToolResults(t *testing.T) {
 			}
 			cfg := protocolRuntimeConfig(t, stores, model)
 			cfg.ApprovalMode = approval.ModeYolo
-			answer, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: "direct_answer", Description: "Return the answer."}, func(context.Context, struct{}) (string, error) {
+			answer, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: "fixture_answer", Description: "Return the answer."}, func(context.Context, struct{}) (string, error) {
 				executions.Add(1)
 				return "exact answer", nil
 			})
@@ -85,7 +87,7 @@ func TestProtocolCompletesDirectToolResults(t *testing.T) {
 				if err != nil {
 					return toolEnvironment{}, err
 				}
-				deps.mcp.policy.Replace(mcpserver.NewToolPolicy([]mcpserver.Server{{Name: source, Enabled: true}}))
+				deps.mcp.exposure = mcpapp.NewExposureState([]mcpserver.Server{{Name: source, Enabled: true}}, nil)
 				environment, err := buildToolEnvironment(ctx, deps)
 				if err == nil {
 					environment.tools.Resolver.SetMCPTools([]toolcontract.Tool{directAnswerTool{answer}})
@@ -142,7 +144,7 @@ func TestProtocolCompletesDirectToolResults(t *testing.T) {
 						t.Fatal("direct completion synthesized an assistant answer")
 					}
 					for _, part := range message.Parts {
-						if part.ToolResult != nil && part.ToolResult.Name == "direct_answer" {
+						if part.ToolResult != nil && part.ToolResult.Name == "fixture_answer" {
 							results = append(results, part.ToolResult.Clone())
 						}
 					}
@@ -159,3 +161,7 @@ type directAnswerTool struct{ toolcontract.Tool }
 
 func (directAnswerTool) ReturnsDirectResult() bool         { return true }
 func (directAnswerTool) MCPToolIdentity() (string, string) { return "fixture", "answer" }
+
+func (directAnswerTool) SourceFingerprint() string {
+	return strings.Repeat("a", 64)
+}

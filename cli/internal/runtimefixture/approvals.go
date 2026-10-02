@@ -15,18 +15,22 @@ func (r *Runtime) ListApprovalRules(ctx context.Context, sessionID string) ([]pr
 	if err := context.Cause(ctx); err != nil {
 		return nil, err
 	}
-	if err := protocol.ValidateSessionID(sessionID); err != nil {
+	if err := (protocol.ListApprovalRulesRequest{SessionID: sessionID}).ValidateWire(); err != nil {
 		return nil, fmt.Errorf("list approval rules: %w", err)
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	session := r.sessions[sessionID]
-	if session == nil {
-		return nil, fmt.Errorf("%w: %s", conversation.ErrSessionNotFound, sessionID)
+	projectDir := ""
+	if sessionID != "" {
+		session := r.sessions[sessionID]
+		if session == nil {
+			return nil, fmt.Errorf("%w: %s", conversation.ErrSessionNotFound, sessionID)
+		}
+		projectDir = session.meta.Workspace.ProjectRoot
 	}
 	out := make([]protocol.ApprovalRule, 0, len(r.rules))
 	for _, stored := range r.rules {
-		if ruleApplies(stored, sessionID, session.meta.Workspace.ProjectRoot) {
+		if ruleApplies(stored, sessionID, projectDir) {
 			out = append(out, stored.view)
 		}
 	}
@@ -60,13 +64,13 @@ func (r *Runtime) rememberApprovalLocked(run *runState, approval conversation.Ap
 	scope := approvalRuleScope(answer.Remember)
 	for _, stored := range r.rules {
 		rule := stored.view
-		if rule.Tool == tool && rule.Subject == subject && rule.Scope == scope && ruleApplies(stored, run.sessionID, session.meta.Workspace.ProjectRoot) {
+		if rule.Tool == (protocol.ToolRef{Type: protocol.ToolRefBuiltIn, Name: tool}) && rule.Subject == (protocol.ApprovalSubject{Type: protocol.ApprovalSubjectExact, Value: subject}) && rule.Scope == scope && ruleApplies(stored, run.sessionID, session.meta.Workspace.ProjectRoot) {
 			return
 		}
 	}
 	rule := protocol.ApprovalRule{
 		ID: r.identities.next(ruleIdentity), Scope: scope,
-		Tool: tool, Subject: subject, Decision: approvalRuleDecision(answer.Decision),
+		Tool: protocol.ToolRef{Type: protocol.ToolRefBuiltIn, Name: tool}, ModelName: tool, Subject: protocol.ApprovalSubject{Type: protocol.ApprovalSubjectExact, Value: subject}, Decision: approvalRuleDecision(answer.Decision),
 	}
 	stored := storedRule{view: rule}
 	switch answer.Remember {
@@ -105,7 +109,7 @@ func (r *Runtime) rememberedAnswerLocked(run *runState, approval conversation.Ap
 	tool, subject := approvalRuleParts(approval)
 	for _, stored := range slices.Backward(r.rules) {
 		rule := stored.view
-		if rule.Tool == tool && rule.Subject == subject && ruleApplies(stored, run.sessionID, workspace) {
+		if rule.Tool == (protocol.ToolRef{Type: protocol.ToolRefBuiltIn, Name: tool}) && rule.Subject == (protocol.ApprovalSubject{Type: protocol.ApprovalSubjectExact, Value: subject}) && ruleApplies(stored, run.sessionID, workspace) {
 			return conversation.ApprovalAnswer{Decision: approvalDecision(rule.Decision), Remember: rememberScope(rule.Scope)}, true
 		}
 	}
@@ -194,4 +198,37 @@ func approvalRuleParts(approval conversation.Approval) (tool, subject string) {
 		subject = approval.Tool.Summary
 	}
 	return tool, strings.TrimSpace(subject)
+}
+
+func (r *Runtime) SetApprovalRule(ctx context.Context, request protocol.SetApprovalRuleRequest) error {
+	if err := context.Cause(ctx); err != nil {
+		return err
+	}
+	if err := protocol.ValidateWireTree(request); err != nil {
+		return err
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	name, found := r.ToolModelNames[request.Tool]
+	if !found {
+		return fmt.Errorf("fixture: tool source has no configured model name: %v", request.Tool)
+	}
+	projectDir := ""
+	if request.Scope == protocol.ApprovalRuleScopeProject {
+		session := r.sessions[request.SessionID]
+		if session == nil {
+			return conversation.ErrSessionNotFound
+		}
+		projectDir = session.meta.Workspace.ProjectRoot
+	}
+	for i := range r.rules {
+		stored := &r.rules[i]
+		if stored.view.Tool == request.Tool && stored.view.Scope == request.Scope && stored.view.Subject == request.Subject && stored.view.Dir == projectDir && stored.sessionID == request.SessionID {
+			stored.view.Decision = request.Decision
+			stored.view.ModelName = name
+			return nil
+		}
+	}
+	r.rules = append(r.rules, storedRule{view: protocol.ApprovalRule{ID: r.identities.next(ruleIdentity), Tool: request.Tool, ModelName: name, Scope: request.Scope, Dir: projectDir, Subject: request.Subject, Decision: request.Decision}, sessionID: request.SessionID})
+	return nil
 }

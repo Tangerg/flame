@@ -282,9 +282,10 @@ func buildAssemblyCore(
 		Registry:            cfg.Stores.MCPServers,
 		StatusReader:        execution.tools.mcp,
 		ToolCatalog:         execution.tools.mcp,
+		ToolDiagnostics:     execution.tools.tools.Resolver,
 		ConnectionControl:   execution.tools.mcp,
 		ConnectionLifecycle: execution.tools.mcp,
-		Policy:              policy.mcp.policy,
+		Exposure:            policy.mcp.exposure,
 		Invalidations:       policy.invalidations.Publish,
 	})
 	if err != nil {

@@ -3,10 +3,15 @@
     {
       "id": "rule_01",
       "scope": "project",
-      "tool": "shell",
-      "subject": "npm run *",
+      "tool": {
+        "type": "builtIn",
+        "name": "shell"
+      },
+      "subject": { "type": "glob", "value": "npm run *" },
       "dir": "/Users/alex/proj",
-      "decision": "allow"
+      "decision": "allow",
+      "modelName": "shell",
+      "stale": false
     }
   ]
 }

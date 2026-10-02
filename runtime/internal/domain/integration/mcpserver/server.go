@@ -1,6 +1,6 @@
 // Package mcpserver models user-defined MCP server connections. It owns server
 // identity, transport configuration, enablement, credential-bearing fields,
-// and per-tool policy; connection lifecycle and persistence are outside this
+// and source authority; connection lifecycle and persistence are outside this
 // package.
 package mcpserver
 
@@ -68,14 +68,10 @@ type Server struct {
 	// HandshakeTimeout bounds connection establishment for both transports. The
 	// value object distinguishes an unbounded handshake from a bounded duration.
 	HandshakeTimeout HandshakeTimeout
-
-	// ToolPolicy owns the exact remote identities hidden from the model or
-	// allowed to skip HITL. A tool cannot carry contradictory decisions.
-	ToolPolicy ServerToolPolicy
 }
 
 // Clone returns an owned server snapshot across persistence and live-connection
-// boundaries. ToolPolicy is already immutable and owns its rule relation.
+// boundaries.
 func (s Server) Clone() Server {
 	s.Headers = maps.Clone(s.Headers)
 	s.Args = slices.Clone(s.Args)
@@ -93,7 +89,7 @@ func (s Server) Format(state fmt.State, _ rune) {
 	}
 	_, _ = fmt.Fprintf(
 		state,
-		"Server{Name:%q, Transport:%q, Enabled:%t, Description:%q, URL:%s, Authorization:%s, Headers:%s, Command:%q, Args:%q, Env:%s, Dir:%q, HandshakeTimeout:%s, ToolPolicyRules:%d}",
+		"Server{Name:%q, Transport:%q, Enabled:%t, Description:%q, URL:%s, Authorization:%s, Headers:%s, Command:%q, Args:%q, Env:%s, Dir:%q, HandshakeTimeout:%s}",
 		s.Name,
 		s.Transport,
 		s.Enabled,
@@ -106,7 +102,6 @@ func (s Server) Format(state fmt.State, _ rune) {
 		SecretPresence(len(s.Env) > 0),
 		s.Dir,
 		timeout,
-		len(s.ToolPolicy.Rules()),
 	)
 }
 

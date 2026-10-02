@@ -21,7 +21,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
 	agentmemoryapp "github.com/Tangerg/flame/runtime/internal/application/workspace/agentmemory"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
@@ -50,6 +49,7 @@ func buildPolicyComposition(ctx context.Context, cfg Config) (policyComposition,
 		cfg.ApprovalMode,
 		cfg.Stores.ApprovalRules,
 		cfg.Stores.PermissionModes,
+		toolset.NewAuthorities(cfg.Stores.MCPServers, cfg.A2AAgents),
 		invalidations.Publish,
 	)
 	if err != nil {
@@ -275,7 +275,8 @@ func buildExecutionComposition(
 	if err != nil {
 		return executionComposition{}, fmt.Errorf("runtime: build transient Session state: %w", err)
 	}
-	toolAuthorizer, err := executionadapter.NewToolAuthorizer(policy.approvals)
+	toolInterpreter := toolset.NewInterpreter(policy.plans)
+	toolAuthorizer, err := executionadapter.NewToolAuthorizer(policy.approvals, toolInterpreter)
 	if err != nil {
 		return executionComposition{}, fmt.Errorf("runtime: Tool authorizer: %w", err)
 	}
@@ -302,26 +303,15 @@ func buildExecutionComposition(
 		ConfigurationIdentity:  interactionDeploymentConfigurationIdentity,
 		StreamModelResponses:   true,
 		MaxConcurrentToolCalls: &maxConcurrentToolCalls,
-		ToolInterpreter:        toolset.NewInterpreter(policy.plans),
+		ToolInterpreter:        toolInterpreter,
 		ToolPresenter:          toolset.Presenter{},
 		ToolAuthorizer:         toolAuthorizer,
 		ToolHooks:              workingContexts,
-		MCPToolAutoApproved: func(server, toolName string) bool {
-			name, err := mcpserver.ParseServerName(server)
-			if err != nil {
-				return false
-			}
-			remoteName, err := mcpserver.ParseRemoteToolName(toolName)
-			if err != nil {
-				return false
-			}
-			return policy.mcp.policy.ToolAutoApproved(mcpserver.ToolRef{Server: name, Tool: remoteName})
-		},
-		Maintenance:           runMaintenance,
-		ModelContextCompactor: modelContextCompactor,
-		ModelContextState:     workingContexts,
-		LifecycleHooks:        workingContexts,
-		Pricing:               cfg.Pricing,
+		Maintenance:            runMaintenance,
+		ModelContextCompactor:  modelContextCompactor,
+		ModelContextState:      workingContexts,
+		LifecycleHooks:         workingContexts,
+		Pricing:                cfg.Pricing,
 	}
 	if toolRuntime.tools.Resolver != nil {
 		interactionConfig.ToolResolver = toolRuntime.tools.Resolver

@@ -19,7 +19,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/exactint"
-
 	_ "modernc.org/sqlite" // registers the "sqlite" driver
 )
 
@@ -385,8 +384,8 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			model     TEXT NOT NULL DEFAULT ''
 		)`,
 		// MCP-server registry (mcp.servers.create/update). One row per server
-		// name; args and the map columns (env/headers) are JSON; per-tool policy is
-		// normalized in mcp_server_tool_policies. A nullable positive handshake timeout
+		// name; args and the map columns (env/headers) are JSON. Tool exposure and
+		// approval rules are separate relations. A nullable positive handshake timeout
 		// is nanoseconds (NULL means unbounded). transport is
 		// "stdio" | "streamableHttp".
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS mcp_servers (
@@ -407,32 +406,22 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			dir                TEXT    NOT NULL DEFAULT '',
 			timeout            INTEGER CHECK (timeout IS NULL OR timeout > 0)
 		)`, mcpserver.MaximumServerNameCharacters),
-		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS mcp_server_tool_policies (
-			server_name TEXT NOT NULL REFERENCES mcp_servers(name) ON DELETE CASCADE,
-			tool_name   TEXT NOT NULL CHECK (
-				length(tool_name) BETWEEN 1 AND %d AND
-				tool_name NOT GLOB '*[^A-Za-z0-9_.-]*'
-			),
-			decision    TEXT NOT NULL CHECK (decision IN ('%s', '%s')),
-			PRIMARY KEY (server_name, tool_name)
-		)`,
-			mcpserver.MaximumRemoteToolNameCharacters,
-			mcpserver.ToolDisabled,
-			mcpserver.ToolAutoApproved,
-		),
-		fmt.Sprintf(`CREATE TRIGGER IF NOT EXISTS limit_mcp_server_tool_policy_insert
-			BEFORE INSERT ON mcp_server_tool_policies
-			WHEN (SELECT count(*) FROM mcp_server_tool_policies WHERE server_name = NEW.server_name) >= %d
-			BEGIN
-				SELECT RAISE(ABORT, 'MCP server tool policy limit exceeded');
-			END`, mcpserver.MaxRemoteToolsPerServer),
-		fmt.Sprintf(`CREATE TRIGGER IF NOT EXISTS limit_mcp_server_tool_policy_move
-			BEFORE UPDATE OF server_name ON mcp_server_tool_policies
-			WHEN OLD.server_name <> NEW.server_name AND
-			     (SELECT count(*) FROM mcp_server_tool_policies WHERE server_name = NEW.server_name) >= %d
-			BEGIN
-				SELECT RAISE(ABORT, 'MCP server tool policy limit exceeded');
-			END`, mcpserver.MaxRemoteToolsPerServer),
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS mcp_tool_exposure (
+            server_name TEXT NOT NULL REFERENCES mcp_servers(name) ON DELETE CASCADE,
+            tool_name TEXT NOT NULL CHECK (
+                length(tool_name) BETWEEN 1 AND %d AND
+                tool_name NOT GLOB '*[^A-Za-z0-9_.-]*'
+            ),
+            PRIMARY KEY (server_name, tool_name)
+        )`, mcpserver.MaximumRemoteToolNameCharacters),
+		fmt.Sprintf(`CREATE TRIGGER IF NOT EXISTS limit_mcp_tool_exposure_insert
+            BEFORE INSERT ON mcp_tool_exposure
+            WHEN NOT EXISTS (
+                SELECT 1 FROM mcp_tool_exposure WHERE server_name = NEW.server_name AND tool_name = NEW.tool_name
+            ) AND (SELECT count(*) FROM mcp_tool_exposure WHERE server_name = NEW.server_name) >= %d
+            BEGIN
+                SELECT RAISE(ABORT, 'MCP tool exposure limit exceeded');
+            END`, mcpserver.MaxRemoteToolsPerServer),
 		// OAuth owns an opaque, versioned payload in the MCP connection layer;
 		// SQLite only enforces lifecycle and origin binding. The FK cascade removes
 		// credentials with their server. A transport or endpoint change invalidates
@@ -527,17 +516,10 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		`CREATE INDEX IF NOT EXISTS idx_goal_runs_session
 			ON goal_runs(session_id, incarnation_id)`,
 		// Persistent fine-grained approval rules. id is
-		// deterministic over (scope, scope_key, tool, subject) so re-remembering
-		// the same rule upserts the decision; scope_key is the session id /
+		// deterministic over (scope, scope_key, tool reference, subject, decision);
+		// re-remembering refreshes the source authority; scope_key is the session id /
 		// project dir / '' for global.
-		`CREATE TABLE IF NOT EXISTS approval_rules (
-			id         TEXT    PRIMARY KEY,
-			scope      TEXT    NOT NULL,
-			scope_key  TEXT    NOT NULL DEFAULT '',
-			tool       TEXT    NOT NULL,
-			subject    TEXT    NOT NULL DEFAULT '',
-			decision   TEXT    NOT NULL
-		)`,
+		approvalRulesSchema,
 		`CREATE INDEX IF NOT EXISTS idx_approval_rules_scope
 			ON approval_rules(scope, scope_key)`,
 		// Projects whose .flame/hooks.json is trusted to run. A cloned repo's
@@ -752,6 +734,13 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		if _, err := tx.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("sqlite: install current schema: %w", err)
 		}
+	}
+	approvalSchema, err := tx.QueryContext(ctx, `SELECT tool_ref, source_fingerprint, mcp_server, subject_type FROM approval_rules LIMIT 0`)
+	if err != nil {
+		return fmt.Errorf("sqlite: incompatible approval schema; open a fresh data directory: %w", err)
+	}
+	if err := approvalSchema.Close(); err != nil {
+		return fmt.Errorf("sqlite: inspect approval schema: %w", err)
 	}
 	rows, err := tx.QueryContext(ctx, `SELECT sequence, commit_id, commit_digest FROM execution_trees LIMIT 0`)
 	if err != nil {

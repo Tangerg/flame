@@ -188,8 +188,6 @@ type Candidate struct {
 	Description      string
 	Connection       ConnectionInput
 	HandshakeTimeout HandshakeTimeout
-	DisabledTools    []string
-	AutoApproveTools []string
 }
 
 func (c Candidate) Validate() error {
@@ -205,13 +203,11 @@ func (c Candidate) Validate() error {
 	if err := c.Connection.validateCandidateSecrets(); err != nil {
 		return fmt.Errorf("MCP candidate %s: %w", c.Name, err)
 	}
-	return validateToolPolicy(c.DisabledTools, c.AutoApproveTools)
+	return nil
 }
 
 func (c Candidate) Clone() Candidate {
 	c.Connection = c.Connection.Clone()
-	c.DisabledTools = slices.Clone(c.DisabledTools)
-	c.AutoApproveTools = slices.Clone(c.AutoApproveTools)
 	return c
 }
 
@@ -229,12 +225,7 @@ func (c Candidate) ValidateResult(result protocol.MCPServer) error {
 	if !c.HandshakeTimeout.Matches(result.HandshakeTimeout) {
 		problems = append(problems, fmt.Errorf("runtime did not confirm handshake timeout %s", c.HandshakeTimeout))
 	}
-	if !equalToolNameSet(result.DisabledTools, c.DisabledTools) {
-		problems = append(problems, fmt.Errorf("runtime returned disabled tools %v, want %v", result.DisabledTools, c.DisabledTools))
-	}
-	if !equalToolNameSet(result.AutoApproveTools, c.AutoApproveTools) {
-		problems = append(problems, fmt.Errorf("runtime returned auto-approved tools %v, want %v", result.AutoApproveTools, c.AutoApproveTools))
-	}
+
 	problems = append(problems, validateEnabledResult(c.Enabled, result.Status))
 	problems = append(problems, c.Connection.validateCreateResult(result.Connection))
 	if err := errors.Join(problems...); err != nil {
@@ -249,8 +240,6 @@ type ServerUpdate struct {
 	Description      *string
 	Connection       *ConnectionInput
 	HandshakeTimeout *HandshakeTimeout
-	DisabledTools    *[]string
-	AutoApproveTools *[]string
 }
 
 func (s ServerUpdate) Validate() error {
@@ -270,27 +259,12 @@ func (s ServerUpdate) Validate() error {
 			return fmt.Errorf("MCP update %s: %w", s.Server, err)
 		}
 	}
-	if s.DisabledTools != nil {
-		if err := validateUniqueStrings("disabled MCP tools", *s.DisabledTools); err != nil {
-			return err
-		}
-	}
-	if s.AutoApproveTools != nil {
-		if err := validateUniqueStrings("auto-approved MCP tools", *s.AutoApproveTools); err != nil {
-			return err
-		}
-	}
-	if s.DisabledTools != nil && s.AutoApproveTools != nil {
-		if err := validateToolPolicy(*s.DisabledTools, *s.AutoApproveTools); err != nil {
-			return err
-		}
-	}
+
 	return nil
 }
 
 func (s ServerUpdate) HasChanges() bool {
-	return s.Enabled != nil || s.Description != nil || s.Connection != nil || s.HandshakeTimeout != nil ||
-		s.DisabledTools != nil || s.AutoApproveTools != nil
+	return s.Enabled != nil || s.Description != nil || s.Connection != nil || s.HandshakeTimeout != nil
 }
 
 func (s ServerUpdate) ValidateResult(result protocol.MCPServer) error {
@@ -310,12 +284,7 @@ func (s ServerUpdate) ValidateResult(result protocol.MCPServer) error {
 	if s.HandshakeTimeout != nil && !s.HandshakeTimeout.Matches(result.HandshakeTimeout) {
 		problems = append(problems, fmt.Errorf("runtime did not confirm handshake timeout %s", *s.HandshakeTimeout))
 	}
-	if s.DisabledTools != nil && !equalToolNameSet(result.DisabledTools, *s.DisabledTools) {
-		problems = append(problems, fmt.Errorf("runtime returned disabled tools %v, want %v", result.DisabledTools, *s.DisabledTools))
-	}
-	if s.AutoApproveTools != nil && !equalToolNameSet(result.AutoApproveTools, *s.AutoApproveTools) {
-		problems = append(problems, fmt.Errorf("runtime returned auto-approved tools %v, want %v", result.AutoApproveTools, *s.AutoApproveTools))
-	}
+
 	if s.Connection != nil {
 		problems = append(problems, s.Connection.validateUpdateResult(result.Connection))
 	}
@@ -510,51 +479,4 @@ func validateStringMap(label string, values map[string]string) error {
 		}
 	}
 	return nil
-}
-
-func validateUniqueStrings(label string, values []string) error {
-	seen := make(map[string]struct{}, len(values))
-	for _, value := range values {
-		if strings.TrimSpace(value) == "" {
-			return fmt.Errorf("%s contains an empty value", label)
-		}
-		if _, duplicate := seen[value]; duplicate {
-			return fmt.Errorf("%s repeats %q", label, value)
-		}
-		seen[value] = struct{}{}
-	}
-	return nil
-}
-
-// validateToolPolicy checks the two-list command projection as one relation:
-// one remote tool may have at most one policy decision. Input order is not
-// semantic; Runtime owns the canonical sorted projection returned by reads.
-func validateToolPolicy(disabled, autoApproved []string) error {
-	if err := validateUniqueStrings("disabled MCP tools", disabled); err != nil {
-		return err
-	}
-	if err := validateUniqueStrings("auto-approved MCP tools", autoApproved); err != nil {
-		return err
-	}
-	disabledSet := make(map[string]struct{}, len(disabled))
-	for _, tool := range disabled {
-		disabledSet[tool] = struct{}{}
-	}
-	for _, tool := range autoApproved {
-		if _, contradictory := disabledSet[tool]; contradictory {
-			return fmt.Errorf("MCP tool %q is both disabled and auto-approved", tool)
-		}
-	}
-	return nil
-}
-
-func equalToolNameSet(left, right []string) bool {
-	if len(left) != len(right) {
-		return false
-	}
-	left = slices.Clone(left)
-	right = slices.Clone(right)
-	slices.Sort(left)
-	slices.Sort(right)
-	return slices.Equal(left, right)
 }

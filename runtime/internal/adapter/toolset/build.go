@@ -6,15 +6,14 @@ import (
 	"fmt"
 	"path/filepath"
 
-	scopea2a "github.com/Tangerg/scope/a2a"
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/exec"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/sandbox"
+	scopea2a "github.com/Tangerg/scope/a2a"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 // This file is the tool-assembly entry point. It is the SOLE place that
@@ -56,7 +55,7 @@ type BuildConfig struct {
 
 	// MCPToolDisabled reports whether an identified MCP tool is hidden. The
 	// runtime updates the underlying policy after every registry change.
-	MCPToolDisabled func(mcpserver.ToolRef) bool
+	MCPToolDisabled func(tool.Ref) bool
 
 	// SandboxShell opts the shell tools into per-command OS isolation: each
 	// command runs in an in-place jail rooted at its own cwd (workspace-write
@@ -209,12 +208,24 @@ func Build(ctx context.Context, config BuildConfig) (_ Built, err error) {
 		return Built{}, err
 	}
 
+	a2aExecutables := a2aTools.Tools()
+	for index, executable := range a2aExecutables {
+		ref, err := tool.A2A(config.A2AAgents[index].Name)
+		if err != nil {
+			return Built{}, err
+		}
+		a2aExecutables[index], err = WithIdentity(executable, ref, config.A2AAgents[index].AuthorityFingerprint())
+		if err != nil {
+			return Built{}, err
+		}
+	}
+
 	resolver, err := newResolver(resolverDeps{
 		SkillUsage:        config.SkillUsage,
 		DefaultCWD:        config.DefaultCWD,
 		SkillsUserDir:     config.SkillsUserDir,
 		Online:            online,
-		A2A:               a2aTools.Tools(),
+		A2A:               a2aExecutables,
 		LSP:               lspTools,
 		Shell:             shellTools,
 		AskUser:           askUserTool,

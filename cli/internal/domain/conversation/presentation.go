@@ -376,3 +376,24 @@ func (o Outcome) Explanation() string {
 	}
 	return strings.TrimSpace(o.Detail)
 }
+
+// ToolSource labels a structured source without interpreting model-visible names.
+func ToolSource(ref protocol.ToolRef) string {
+	switch ref.Type {
+	case protocol.ToolRefBuiltIn:
+		return "builtIn/" + ref.Name
+	case protocol.ToolRefMCP:
+		return "mcp/" + ref.Server + "/" + ref.Name
+	case protocol.ToolRefA2A:
+		return "a2a/" + ref.Endpoint
+	default:
+		return "unknown/" + string(ref.Type)
+	}
+}
+
+func ApprovalSubject(subject protocol.ApprovalSubject) string {
+	if subject.Type == protocol.ApprovalSubjectAll {
+		return "all"
+	}
+	return string(subject.Type) + ":" + subject.Value
+}

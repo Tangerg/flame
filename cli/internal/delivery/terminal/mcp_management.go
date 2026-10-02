@@ -84,12 +84,7 @@ func mcpServerDetail(server protocol.MCPServer) string {
 	if server.HandshakeTimeout.Type == protocol.MCPHandshakeBounded {
 		lines = append(lines, fmt.Sprintf("handshake timeout  %ds", *server.HandshakeTimeout.Seconds))
 	}
-	if len(server.DisabledTools) > 0 {
-		lines = append(lines, "disabled     "+strings.Join(server.DisabledTools, ", "))
-	}
-	if len(server.AutoApproveTools) > 0 {
-		lines = append(lines, "auto-approve "+strings.Join(server.AutoApproveTools, ", "))
-	}
+
 	if server.Status.Error != nil {
 		lines = append(lines, "problem      "+failure.String(server.Status.Error))
 	}
@@ -140,7 +135,31 @@ func (a *app) mcpToolsReaderQuery(server string) runtimeReaderQuery {
 			if err != nil {
 				return readerDocument{}, err
 			}
-			return mcpToolsDocument(server, tools)
+			document, err := mcpToolsDocument(server, tools)
+			if err != nil {
+				return readerDocument{}, err
+			}
+			servers := []string{server}
+			if server == "" {
+				configured, err := a.mcp.Servers(ctx)
+				if err != nil {
+					return readerDocument{}, err
+				}
+				servers = nil
+				for _, source := range configured {
+					servers = append(servers, source.Name)
+				}
+			}
+			for _, name := range servers {
+				exposure, err := a.mcp.ToolExposure(ctx, name)
+				if err != nil {
+					return readerDocument{}, err
+				}
+				if len(exposure.DisabledTools) > 0 {
+					document.Sections = append(document.Sections, ToolSection{Title: "Disabled tools · " + name, Style: toolSectionParagraph, Text: strings.Join(exposure.DisabledTools, ", ")})
+				}
+			}
+			return document, nil
 		},
 	}
 }
@@ -157,6 +176,13 @@ func mcpToolsDocument(server string, tools []protocol.MCPTool) (readerDocument, 
 	for _, tool := range tools {
 		title := tool.Server + "/" + tool.Name
 		sections = append(sections, ToolSection{Title: title, Style: toolSectionParagraph, Text: tool.Description})
+		if len(tool.NameConflicts) > 0 {
+			sources := make([]string, 0, len(tool.NameConflicts))
+			for _, ref := range tool.NameConflicts {
+				sources = append(sources, conversation.ToolSource(ref))
+			}
+			sections = append(sections, ToolSection{Title: "Excluded from model tools", Style: toolSectionParagraph, Text: tool.ModelName + " conflicts with " + strings.Join(sources, ", ")})
+		}
 		if tool.InputSchema != nil {
 			schema, err := json.Marshal(tool.InputSchema, jsontext.WithIndent("  "), json.Deterministic(true))
 			if err != nil {
@@ -460,4 +486,32 @@ func mcpAuthorizationDocument(attempt protocol.MCPAuthorizationAttempt) readerDo
 		detail = string(attempt.Status.Type)
 	}
 	return paragraphDocument("MCP authorization", detail, lines)
+}
+
+func (a *app) ConfigureMCPTool(arguments string) error {
+	if a.mcp == nil {
+		return errors.New("this runtime composition has no MCP service")
+	}
+	parts := strings.Fields(arguments)
+	if len(parts) != 3 {
+		return errors.New("usage: /mcp-tool <server> <tool> <enable|disable|allow|deny>")
+	}
+	server, name, action := parts[0], parts[1], parts[2]
+	switch action {
+	case "enable", "disable":
+		request := protocol.SetMCPToolExposureRequest{Server: server, Name: name, Disabled: action == "disable"}
+		if err := protocol.ValidateWireTree(request); err != nil {
+			return err
+		}
+		a.runMCPAck("setting tool exposure "+server+"/"+name, func(ctx context.Context) error { return a.mcp.SetToolExposure(ctx, request) })
+	case "allow", "deny":
+		request := protocol.SetApprovalRuleRequest{Subject: protocol.ApprovalSubject{Type: protocol.ApprovalSubjectAll}, Tool: protocol.ToolRef{Type: protocol.ToolRefMCP, Server: server, Name: name}, Scope: protocol.ApprovalRuleScopeGlobal, Decision: protocol.ApprovalRuleDecision(action)}
+		if err := protocol.ValidateWireTree(request); err != nil {
+			return err
+		}
+		return a.setApprovalRule(request)
+	default:
+		return errors.New("tool action must be enable, disable, allow, or deny")
+	}
+	return nil
 }

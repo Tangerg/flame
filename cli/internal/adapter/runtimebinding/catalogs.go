@@ -17,6 +17,7 @@ type modelCatalogBinding interface {
 }
 
 type approvalBinding interface {
+	SetApprovalRule(context.Context, protocol.SetApprovalRuleRequest, flameruntime.CommandOptions) error
 	GetApprovalMode(context.Context, flameruntime.CallOptions) (*protocol.ApprovalModeResult, error)
 	SetApprovalMode(context.Context, protocol.SetApprovalModeRequest, flameruntime.CommandOptions) (*protocol.ApprovalModeResult, error)
 	ListApprovalRules(context.Context, protocol.ListApprovalRulesRequest, flameruntime.CallOptions) (*protocol.ListApprovalRulesResult, error)
@@ -124,10 +125,11 @@ func (r *Connection) SetApprovalMode(ctx context.Context, mode protocol.Approval
 }
 
 func (r *Connection) ListApprovalRules(ctx context.Context, sessionID string) ([]protocol.ApprovalRule, error) {
-	if err := protocol.ValidateSessionID(sessionID); err != nil {
+	request := protocol.ListApprovalRulesRequest{SessionID: sessionID}
+	if err := request.ValidateWire(); err != nil {
 		return nil, fmt.Errorf("list approval rules: %w", err)
 	}
-	result, err := r.approvals.ListApprovalRules(ctx, protocol.ListApprovalRulesRequest{SessionID: sessionID}, r.callOptions())
+	result, err := r.approvals.ListApprovalRules(ctx, request, r.callOptions())
 	if err != nil {
 		return nil, classifyError(err)
 	}
@@ -151,4 +153,11 @@ func (r *Connection) DeleteApprovalRule(ctx context.Context, id string) error {
 	}
 	options := r.commandOptions()
 	return classifyError(r.approvals.ForgetApprovalRule(ctx, protocol.ForgetApprovalRuleRequest{ID: id}, options))
+}
+
+func (r *Connection) SetApprovalRule(ctx context.Context, request protocol.SetApprovalRuleRequest) error {
+	if err := protocol.ValidateWireTree(request); err != nil {
+		return err
+	}
+	return classifyError(r.approvals.SetApprovalRule(ctx, request, r.commandOptions()))
 }

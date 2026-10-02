@@ -7,14 +7,12 @@ import (
 	"log/slog"
 	"slices"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
-
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
 // tracer emits the MCP dial / reconnect spans the lower layers don't (per-call
@@ -106,10 +104,7 @@ func Dial(
 			continue
 		}
 		c.ownSessionLocked(session, cleanupSession)
-		srcTools, terr := sourceTools(ctx, srv.Name, session)
-		if terr == nil {
-			terr = validateToolCatalog(c.servers, nil, srv.Name, srcTools)
-		}
+		srcTools, terr := sourceTools(ctx, srv, session)
 		if terr != nil {
 			// A session that cannot produce a valid tool catalog is unusable.
 			// Preserve a close failure in diagnostics as well as the primary cause;

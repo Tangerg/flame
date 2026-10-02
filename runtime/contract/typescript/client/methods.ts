@@ -1,3 +1,8 @@
+import type {
+  MCPToolExposure,
+  SetMCPToolExposureRequest,
+  SetApprovalRuleRequest,
+} from "../wire.generated";
 import type { RpcClient } from "./client";
 import type { MutationPromise } from "./mutation";
 import { createWireCallPath, type MethodsOptions, type WireCall } from "./wireCallPath";
@@ -264,6 +269,8 @@ export interface Methods {
     delete: (server: string) => MutationPromise<void>;
     test: (params: MCPServerCandidate, signal?: AbortSignal) => Promise<MCPTestResult>;
     listTools: (server?: string, signal?: AbortSignal) => Promise<Page<MCPTool>>;
+    toolExposure: (server: string, signal?: AbortSignal) => Promise<MCPToolExposure>;
+    setToolExposure: (params: SetMCPToolExposureRequest) => MutationPromise<void>;
     reconnect: (server: string) => MutationPromise<void>;
     authorizationAttempts: {
       create: (server: string, signal?: AbortSignal) => MutationPromise<MCPAuthorizationAttempt>;
@@ -319,7 +326,8 @@ export interface Methods {
   approval: {
     getMode: (signal?: AbortSignal) => Promise<ApprovalModeResult>;
     setMode: (mode: ApprovalMode) => MutationPromise<ApprovalModeResult>;
-    listRules: (sessionId: SessionId, signal?: AbortSignal) => Promise<ListApprovalRulesResult>;
+    listRules: (sessionId?: SessionId, signal?: AbortSignal) => Promise<ListApprovalRulesResult>;
+    setRule: (params: SetApprovalRuleRequest) => MutationPromise<void>;
     forgetRule: (id: string) => MutationPromise<void>;
   };
   schedules: {
@@ -521,6 +529,8 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       delete: (server) => call("mcp.servers.delete", { server }),
       test: (params, signal) => call("mcp.servers.test", params, { signal }),
       listTools: (server, signal) => call("mcp.tools.list", server ? { server } : {}, { signal }),
+      toolExposure: (server, signal) => call("mcp.tools.exposure", { server }, { signal }),
+      setToolExposure: (params) => call("mcp.tools.setExposure", params),
       reconnect: (server) => call("mcp.servers.reconnect", { server }),
       authorizationAttempts: {
         create: (server, signal) =>
@@ -571,6 +581,7 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       getMode: (signal) => call("approval.getMode", {}, { signal }),
       setMode: (mode) => call("approval.setMode", { mode }),
       listRules: (sessionId, signal) => call("approval.listRules", { sessionId }, { signal }),
+      setRule: (params) => call("approval.setRule", params),
       forgetRule: (id) => call("approval.forgetRule", { id }),
     },
     schedules: {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/optional"
 	"maps"
 	"net/http"
 	"net/url"
@@ -15,13 +14,13 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Tangerg/go-sdk/auth"
-	sdkmcp "github.com/Tangerg/go-sdk/mcp"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/httporigin"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/httpresponse"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/procgroup"
+	"github.com/Tangerg/flame/runtime/internal/optional"
+	"github.com/Tangerg/go-sdk/auth"
+	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 )
 
 // Transport is the wire mode of an MCP server connection. The zero value is
@@ -57,6 +56,7 @@ func (t Transport) String() string {
 // protocol package exposes transports and sessions, while the runtime owns how
 // persisted descriptors become live sessions.
 type ServerConfig struct {
+	SourceFingerprint string
 	// Name identifies the server for tool namespacing and status reporting.
 	// Required.
 	Name mcpserver.ServerName

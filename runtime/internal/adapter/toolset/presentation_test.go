@@ -3,6 +3,7 @@ package toolset
 import (
 	jsonv1 "encoding/json"
 	json "encoding/json/v2"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"reflect"
 	"strings"
 	"testing"
@@ -15,29 +16,29 @@ func TestPresenterActivity(t *testing.T) {
 	presenter := Presenter{}
 	tests := []struct {
 		name      string
-		toolName  string
+		ref       tool.Ref
 		arguments string
 		want      string
 	}{
-		{name: "web search", toolName: tool.WebSearch, arguments: `{}`, want: "Searching the web"},
-		{name: "shell description", toolName: tool.Shell, arguments: `{"command":"go test ./...","description":"Run server tests"}`, want: "Run server tests"},
-		{name: "shell invalid description", toolName: tool.Shell, arguments: `{"description":" Run server tests"}`, want: "Running command"},
-		{name: "delegation summary", toolName: tool.DelegateTask, arguments: `{"summary":"Review tool contracts"}`, want: "Delegating: Review tool contracts"},
-		{name: "long delegation summary", toolName: tool.DelegateTask, arguments: `{"summary":"` + strings.Repeat("a", 81) + `"}`, want: "Delegating to a sub-agent"},
-		{name: "enter Plan mode", toolName: tool.EnterPlanMode, arguments: `{}`, want: "Entering Plan mode"},
-		{name: "set Plan", toolName: tool.SetPlan, arguments: `{}`, want: "Updating the Plan"},
-		{name: "exit Plan mode", toolName: tool.ExitPlanMode, arguments: `{}`, want: "Requesting Plan approval"},
-		{name: "create Goal", toolName: tool.CreateGoal, arguments: `{"objective":"finish the work"}`, want: "Starting an autonomous Goal"},
-		{name: "create titled schedule", toolName: tool.CreateSchedule, arguments: `{"title":"Daily review"}`, want: "Creating schedule: Daily review"},
-		{name: "create untitled schedule", toolName: tool.CreateSchedule, arguments: `{}`, want: "Creating a schedule"},
-		{name: "load Skill", toolName: tool.LoadSkill, arguments: `{"name":"go-review"}`, want: "Loading Skill: go-review"},
-		{name: "propose named Skill", toolName: tool.ProposeSkill, arguments: `{"name":"review-go-api"}`, want: "Proposing Skill: review-go-api"},
-		{name: "propose unnamed Skill", toolName: tool.ProposeSkill, arguments: `{}`, want: "Proposing a Skill"},
-		{name: "LSP references", toolName: tool.LSP, arguments: `{"operation":"references"}`, want: "Finding symbol references"},
-		{name: "unknown LSP operation", toolName: tool.LSP, arguments: `{"operation":"rename"}`, want: "Querying the language server"},
-		{name: "HTTP default method", toolName: tool.HTTPRequest, arguments: `{"url":"https://example.com"}`, want: "Sending GET request"},
-		{name: "HTTP explicit method", toolName: tool.HTTPRequest, arguments: `{"url":"https://example.com","method":"POST"}`, want: "Sending POST request"},
-		{name: "unknown tool", toolName: "external_tool", arguments: `{}`, want: ""},
+		{name: "web search", ref: testsupport.BuiltInTool(t, tool.WebSearch), arguments: `{}`, want: "Searching the web"},
+		{name: "shell description", ref: testsupport.BuiltInTool(t, tool.Shell), arguments: `{"command":"go test ./...","description":"Run server tests"}`, want: "Run server tests"},
+		{name: "shell invalid description", ref: testsupport.BuiltInTool(t, tool.Shell), arguments: `{"description":" Run server tests"}`, want: "Running command"},
+		{name: "delegation summary", ref: testsupport.BuiltInTool(t, tool.DelegateTask), arguments: `{"summary":"Review tool contracts"}`, want: "Delegating: Review tool contracts"},
+		{name: "long delegation summary", ref: testsupport.BuiltInTool(t, tool.DelegateTask), arguments: `{"summary":"` + strings.Repeat("a", 81) + `"}`, want: "Delegating to a sub-agent"},
+		{name: "enter Plan mode", ref: testsupport.BuiltInTool(t, tool.EnterPlanMode), arguments: `{}`, want: "Entering Plan mode"},
+		{name: "set Plan", ref: testsupport.BuiltInTool(t, tool.SetPlan), arguments: `{}`, want: "Updating the Plan"},
+		{name: "exit Plan mode", ref: testsupport.BuiltInTool(t, tool.ExitPlanMode), arguments: `{}`, want: "Requesting Plan approval"},
+		{name: "create Goal", ref: testsupport.BuiltInTool(t, tool.CreateGoal), arguments: `{"objective":"finish the work"}`, want: "Starting an autonomous Goal"},
+		{name: "create titled schedule", ref: testsupport.BuiltInTool(t, tool.CreateSchedule), arguments: `{"title":"Daily review"}`, want: "Creating schedule: Daily review"},
+		{name: "create untitled schedule", ref: testsupport.BuiltInTool(t, tool.CreateSchedule), arguments: `{}`, want: "Creating a schedule"},
+		{name: "load Skill", ref: testsupport.BuiltInTool(t, tool.LoadSkill), arguments: `{"name":"go-review"}`, want: "Loading Skill: go-review"},
+		{name: "propose named Skill", ref: testsupport.BuiltInTool(t, tool.ProposeSkill), arguments: `{"name":"review-go-api"}`, want: "Proposing Skill: review-go-api"},
+		{name: "propose unnamed Skill", ref: testsupport.BuiltInTool(t, tool.ProposeSkill), arguments: `{}`, want: "Proposing a Skill"},
+		{name: "LSP references", ref: testsupport.BuiltInTool(t, tool.LSP), arguments: `{"operation":"references"}`, want: "Finding symbol references"},
+		{name: "unknown LSP operation", ref: testsupport.BuiltInTool(t, tool.LSP), arguments: `{"operation":"rename"}`, want: "Querying the language server"},
+		{name: "HTTP default method", ref: testsupport.BuiltInTool(t, tool.HTTPRequest), arguments: `{"url":"https://example.com"}`, want: "Sending GET request"},
+		{name: "HTTP explicit method", ref: testsupport.BuiltInTool(t, tool.HTTPRequest), arguments: `{"url":"https://example.com","method":"POST"}`, want: "Sending POST request"},
+		{name: "unknown tool", ref: tool.Ref{}, arguments: `{}`, want: ""},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -45,7 +46,7 @@ func TestPresenterActivity(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got := presenter.Activity(test.toolName, arguments); got != test.want {
+			if got := presenter.Activity(test.ref, arguments); got != test.want {
 				t.Fatalf("activity = %q, want %q", got, test.want)
 			}
 		})
@@ -53,9 +54,7 @@ func TestPresenterActivity(t *testing.T) {
 }
 
 func TestPresenterCommandResult(t *testing.T) {
-	presented, outputText := Presenter{}.Present(
-		tool.Shell,
-		tool.Arguments{},
+	presented, outputText := Presenter{}.Present(testsupport.BuiltInTool(t, tool.Shell), tool.Arguments{},
 		mustToolResult(t, map[string]any{"stdout": content.New([]byte("out\nerr")), "exit_code": 0}),
 	)
 	want := map[string]any{"output": "out\nerr", "exitCode": jsonv1.Number("0")}
@@ -68,9 +67,7 @@ func TestPresenterCommandResult(t *testing.T) {
 }
 
 func TestPresenterApplyPatchResult(t *testing.T) {
-	presented, _ := Presenter{}.Present(
-		tool.ApplyPatch,
-		tool.Arguments{},
+	presented, _ := Presenter{}.Present(testsupport.BuiltInTool(t, tool.ApplyPatch), tool.Arguments{},
 		mustToolResult(t, map[string]any{"files": []any{
 			map[string]any{"path": "new.go", "created": true},
 			map[string]any{"path": "next.go", "moved_from": "old.go"},
@@ -86,9 +83,7 @@ func TestPresenterApplyPatchResult(t *testing.T) {
 }
 
 func TestPresenterSearchResult(t *testing.T) {
-	presented, _ := Presenter{}.Present(
-		tool.Grep,
-		tool.Arguments{},
+	presented, _ := Presenter{}.Present(testsupport.BuiltInTool(t, tool.Grep), tool.Arguments{},
 		mustToolResult(t, map[string]any{"matches": []any{
 			map[string]any{"path": "main.go", "line": 7, "text": "func main()"},
 		}}),
@@ -102,9 +97,7 @@ func TestPresenterSearchResult(t *testing.T) {
 }
 
 func TestPresenterWebSearchResult(t *testing.T) {
-	presented, _ := Presenter{}.Present(
-		tool.WebSearch,
-		tool.Arguments{},
+	presented, _ := Presenter{}.Present(testsupport.BuiltInTool(t, tool.WebSearch), tool.Arguments{},
 		mustToolResult(t, map[string]any{"results": []any{
 			map[string]any{"title": "Example", "url": "https://example.com", "favicon_url": "https://example.com/icon.png"},
 		}}),
@@ -142,7 +135,7 @@ func TestPublishedResultContractsDecodePresenterOutput(t *testing.T) {
 			if !ok {
 				t.Fatalf("no published result contract for %q", test.name)
 			}
-			presented, _ := Presenter{}.Present(test.name, tool.Arguments{}, mustToolResult(t, test.result))
+			presented, _ := Presenter{}.Present(testsupport.BuiltInTool(t, test.name), tool.Arguments{}, mustToolResult(t, test.result))
 			encoded, err := json.Marshal(presented)
 			if err != nil {
 				t.Fatal(err)
@@ -164,7 +157,7 @@ func TestPublishedResultContractsDecodePresenterOutput(t *testing.T) {
 
 func TestPresenterKeepsUnknownToolResult(t *testing.T) {
 	original := mustToolResult(t, map[string]any{"custom": true})
-	presented, outputText := Presenter{}.Present("external_tool", tool.Arguments{}, original)
+	presented, outputText := Presenter{}.Present(testsupport.A2ATool(t, "external_tool"), tool.Arguments{}, original)
 	if !reflect.DeepEqual(presented.Any(), original.Any()) || outputText != "" {
 		t.Fatalf("unknown presentation = %#v, %q", presented.Any(), outputText)
 	}

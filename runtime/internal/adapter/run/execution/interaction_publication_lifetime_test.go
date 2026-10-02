@@ -3,6 +3,8 @@ package execution
 import (
 	"context"
 	"errors"
+	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -25,7 +27,7 @@ func TestExecutionWaitsForSlowDurableReceipts(t *testing.T) {
 			interactionTextResponse("done"),
 		}}
 		executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{
-			ToolResolver:    staticInteractionTools{manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
+			ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "echo")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}},
 			ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 		})
 		ref, err := executor.StageRoot(t.Context(), interactionTestStart())

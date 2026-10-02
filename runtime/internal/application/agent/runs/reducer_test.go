@@ -872,7 +872,7 @@ func TestReducerCarriesLaterPausedCallIdentityAcrossSequentialResumes(t *testing
 	firstPark := mustReduce(t, first, SegmentInterrupted{Interrupts: []Interrupt{{
 		Kind: interrupt.Approval,
 		Approval: &ApprovalPrompt{
-			CallID: "call-1", ToolName: "approval", Arguments: `{"path":"a"}`, SafetyClass: "write", Risk: "medium",
+			CallID: "call-1", ToolName: "approval", Arguments: `{"path":"a"}`, SafetyClass: "write", Risk: "medium", Tool: testsupport.A2ATool(t, "approval"), SourceFingerprint: testsupport.ToolFingerprint(testsupport.A2ATool(t, "approval")),
 		},
 	}}})
 	firstCommit := firstPark[0].Commit
@@ -922,7 +922,7 @@ func TestReducerCarriesLaterPausedCallIdentityAcrossSequentialResumes(t *testing
 	secondPark := mustReduce(t, resumed, SegmentInterrupted{Interrupts: []Interrupt{{
 		Kind: interrupt.Approval,
 		Approval: &ApprovalPrompt{
-			CallID: "call-2", ToolName: "approval", Arguments: `{"path":"b"}`, SafetyClass: "write", Risk: "medium",
+			CallID: "call-2", ToolName: "approval", Arguments: `{"path":"b"}`, SafetyClass: "write", Risk: "medium", Tool: testsupport.A2ATool(t, "approval"), SourceFingerprint: testsupport.ToolFingerprint(testsupport.A2ATool(t, "approval")),
 		},
 	}}})
 	secondInterrupted := secondPark[len(secondPark)-1].Event.(SegmentFinished)
@@ -1160,7 +1160,7 @@ func TestReducerProjectsParkAsOneAtomicWriteSetBeforeFirstInterruptEvent(t *test
 	reducer := newReducer(testReducerConfig())
 	batch := mustReduceBatch(t, reducer, SegmentInterrupted{Interrupts: []Interrupt{
 		{Kind: interrupt.Approval, Approval: &ApprovalPrompt{
-			CallID: "call_approval", ToolName: "shell", Arguments: `{}`, SafetyClass: "exec", Risk: "high",
+			CallID: "call_approval", ToolName: "shell", Arguments: `{}`, SafetyClass: "exec", Risk: "high", Tool: testsupport.BuiltInTool(t, "shell"), SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell")),
 		}},
 		{Kind: interrupt.Question, Question: &QuestionPrompt{
 			ToolName: "ask_user", Arguments: `{"questions":[{"question":"Continue?"}]}`,
@@ -1206,7 +1206,7 @@ func TestReducerPublishesOneStartForToolThatBecomesAnApproval(t *testing.T) {
 		Kind: interrupt.Approval,
 		Approval: &ApprovalPrompt{
 			CallID: "call_1", ToolName: "shell", Arguments: `{}`,
-			SafetyClass: tool.SafetyClassExec, Risk: "high",
+			SafetyClass: tool.SafetyClassExec, Risk: "high", Tool: testsupport.BuiltInTool(t, "shell"), SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell")),
 		},
 	}}})
 
@@ -1768,7 +1768,7 @@ func TestReducerReportsFrozenRunCapabilitiesOnEverySegment(t *testing.T) {
 
 	batch := mustReduceBatch(t, reducer, SegmentInterrupted{Interrupts: []Interrupt{
 		{Kind: interrupt.Approval, Approval: &ApprovalPrompt{
-			CallID: "call_approval", ToolName: "shell", Arguments: `{}`, SafetyClass: "exec", Risk: "high",
+			CallID: "call_approval", ToolName: "shell", Arguments: `{}`, SafetyClass: "exec", Risk: "high", Tool: testsupport.BuiltInTool(t, "shell"), SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell")),
 		}},
 	}})
 	if batch.parkCommit.Run == nil {

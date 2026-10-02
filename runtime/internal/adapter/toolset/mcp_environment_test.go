@@ -296,3 +296,72 @@ func mustMCPToolEnvironment(t *testing.T, servers []mcpserver.Server) (toolset.B
 	})
 	return built, pool
 }
+
+func TestMCPNameCollisionsAfterDialAndReconnect(t *testing.T) {
+	serve := func(name string, tools ...string) (*sdkmcp.Server, string) {
+		t.Helper()
+		remote := sdkmcp.NewServer(&sdkmcp.Implementation{Name: name, Version: "v1"}, nil)
+		for _, name := range tools {
+			executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: name}, func(context.Context, struct{}) (string, error) { return "ok", nil })
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := scopemcp.Register(remote, executable); err != nil {
+				t.Fatal(err)
+			}
+		}
+		server := httptest.NewServer(sdkmcp.NewStreamableHTTPHandler(func(*http.Request) *sdkmcp.Server { return remote }, nil))
+		t.Cleanup(server.Close)
+		return remote, server.URL
+	}
+	_, firstURL := serve("first", "c", "healthy")
+	second, secondURL := serve("second", "b_c", "healthy")
+	for _, reversed := range []bool{false, true} {
+		servers := []mcpserver.Server{
+			{Name: testMCPServerName("a_b"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: firstURL},
+			{Name: testMCPServerName("a"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: secondURL},
+		}
+		if reversed {
+			servers[0], servers[1] = servers[1], servers[0]
+		}
+		built, pool := mustMCPToolEnvironment(t, servers)
+		verify := func(collision bool) {
+			t.Helper()
+			for _, status := range pool.Statuses() {
+				if status.State != mcpserver.ConnectionConnected {
+					t.Fatalf("server disconnected: %+v", status)
+				}
+			}
+			catalog := resolvedRootTools(t, built.Resolver)
+			names := make(map[string]bool)
+			for _, executable := range catalog {
+				names[executable.Definition().Name] = true
+			}
+			if names["a_b_c"] == collision || !names["a_b_healthy"] || !names["a_healthy"] {
+				t.Fatalf("manifest tools = %v", names)
+			}
+			if _, err := toolcontract.NewRegistry(catalog...); err != nil {
+				t.Fatal(err)
+			}
+			conflicts, err := built.Resolver.ToolNameConflicts()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if collision && len(conflicts) != 2 || !collision && len(conflicts) != 0 {
+				t.Fatalf("conflicts = %v", conflicts)
+			}
+		}
+		verify(true)
+		if err := pool.Reconnect(t.Context(), testMCPServerName("a")); err != nil {
+			t.Fatal(err)
+		}
+		verify(true)
+		if reversed {
+			second.RemoveTools("b_c")
+			if err := pool.Reconnect(t.Context(), testMCPServerName("a")); err != nil {
+				t.Fatal(err)
+			}
+			verify(false)
+		}
+	}
+}

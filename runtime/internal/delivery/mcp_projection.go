@@ -14,14 +14,11 @@ func presentMCPServer(server mcpapp.Server) (protocol.MCPServer, error) {
 	if err != nil {
 		return protocol.MCPServer{}, err
 	}
-	disabledTools, autoApproveTools := presentMCPToolPolicy(server.ToolPolicy)
 	return protocol.MCPServer{
 		Name:             server.Name.String(),
 		Description:      server.Description,
 		Connection:       connection,
 		HandshakeTimeout: presentMCPHandshakeTimeout(server.HandshakeTimeout),
-		DisabledTools:    disabledTools,
-		AutoApproveTools: autoApproveTools,
 		Status:           presentMCPServerState(server.State),
 	}, nil
 }
@@ -107,29 +104,23 @@ func presentMCPAuthorizationAttempt(attempt mcpapp.AuthorizationAttempt) protoco
 	}
 }
 
-func presentMCPTool(tool mcpserver.AdvertisedTool) (protocol.MCPTool, error) {
+func presentMCPTool(tool mcpapp.ToolView) (protocol.MCPTool, error) {
 	schema, err := presentToolSchema(tool.Definition)
 	if err != nil {
 		return protocol.MCPTool{}, err
 	}
-	return protocol.MCPTool{
-		Server:      tool.Server.String(),
-		Name:        tool.Name.String(),
-		Description: tool.Definition.Description,
-		InputSchema: schema,
-	}, nil
-}
-
-func presentMCPToolPolicy(policy mcpserver.ServerToolPolicy) (disabled, autoApproved []string) {
-	for _, rule := range policy.Rules() {
-		switch rule.Decision {
-		case mcpserver.ToolDisabled:
-			disabled = append(disabled, rule.Tool.String())
-		case mcpserver.ToolAutoApproved:
-			autoApproved = append(autoApproved, rule.Tool.String())
-		}
+	conflicts := make([]protocol.ToolRef, 0, len(tool.Conflicts))
+	for _, ref := range tool.Conflicts {
+		conflicts = append(conflicts, presentToolRef(ref))
 	}
-	return disabled, autoApproved
+	return protocol.MCPTool{
+		ModelName:     tool.ModelName,
+		NameConflicts: conflicts,
+		Server:        tool.Server.String(),
+		Name:          tool.Name.String(),
+		Description:   tool.Definition.Description,
+		InputSchema:   schema,
+	}, nil
 }
 
 func presentMCPTransport(transport mcpserver.Transport) (protocol.MCPTransport, bool) {

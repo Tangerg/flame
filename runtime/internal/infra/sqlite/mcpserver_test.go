@@ -36,7 +36,6 @@ func TestMCPServerStoreRoundTrip(t *testing.T) {
 			Env:              map[string]string{"TOKEN": "secret"},
 			Dir:              "/repo",
 			HandshakeTimeout: boundedTimeout,
-			ToolPolicy:       testServerToolPolicy([]string{"remove"}, []string{"read"}),
 		},
 		{
 			Name:          testMCPServerName("remote"),
@@ -82,9 +81,9 @@ func TestMCPServerStoreRoundTrip(t *testing.T) {
 	}
 
 	files := servers[0]
-	files.ToolPolicy = testServerToolPolicy(nil, []string{"stat"})
+	files.Description = "updated description"
 	if err := store.Save(t.Context(), files); err != nil {
-		t.Fatalf("replace files policy: %v", err)
+		t.Fatalf("replace files description: %v", err)
 	}
 	replaced, found, err := store.Get(t.Context(), files.Name)
 	if err != nil || !found || !equalMCPServer(replaced, files) {
@@ -117,7 +116,7 @@ func TestMCPServerSchemaRejectsNonCanonicalIdentity(t *testing.T) {
 	}
 }
 
-func TestMCPServerToolPolicySchemaRejectsInvalidIdentityAndDecision(t *testing.T) {
+func TestMCPServerExposureSchemaRejectsInvalidIdentityAndSource(t *testing.T) {
 	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -136,24 +135,22 @@ func TestMCPServerToolPolicySchemaRejectsInvalidIdentityAndDecision(t *testing.T
 	for _, toolName := range invalidNames {
 		if _, err := db.ExecContext(
 			t.Context(),
-			`INSERT INTO mcp_server_tool_policies (server_name, tool_name, decision) VALUES (?, ?, ?)`,
+			`INSERT INTO mcp_tool_exposure (server_name, tool_name) VALUES (?, ?)`,
 			server.String(),
 			toolName,
-			string(mcpserver.ToolDisabled),
 		); err == nil {
 			t.Errorf("fresh schema accepted invalid remote tool identity %q", toolName)
 		}
 	}
 	if _, err := db.ExecContext(
 		t.Context(),
-		`INSERT INTO mcp_server_tool_policies (server_name, tool_name, decision) VALUES (?, 'read', 'maybe')`,
-		server.String(),
+		`INSERT INTO mcp_tool_exposure (server_name, tool_name) VALUES ('missing', 'read')`,
 	); err == nil {
-		t.Error("fresh schema accepted unknown MCP tool-policy decision")
+		t.Error("fresh schema accepted an unknown MCP source")
 	}
 }
 
-func TestMCPServerToolPolicySchemaEnforcesCardinality(t *testing.T) {
+func TestMCPServerExposureSchemaEnforcesCardinality(t *testing.T) {
 	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -174,19 +171,17 @@ func TestMCPServerToolPolicySchemaEnforcesCardinality(t *testing.T) {
 			UNION ALL
 			SELECT value + 1 FROM sequence WHERE value < ?
 		)
-		INSERT INTO mcp_server_tool_policies (server_name, tool_name, decision)
-		SELECT ?, 'tool_' || value, ? FROM sequence`,
+		INSERT INTO mcp_tool_exposure (server_name, tool_name)
+		SELECT ?, 'tool_' || value FROM sequence`,
 		mcpserver.MaxRemoteToolsPerServer,
 		server.String(),
-		string(mcpserver.ToolDisabled),
 	); err != nil {
 		t.Fatalf("insert maximum tool policy: %v", err)
 	}
 	if _, err := db.ExecContext(
 		t.Context(),
-		`INSERT INTO mcp_server_tool_policies (server_name, tool_name, decision) VALUES (?, 'overflow', ?)`,
+		`INSERT INTO mcp_tool_exposure (server_name, tool_name) VALUES (?, 'overflow')`,
 		server.String(),
-		string(mcpserver.ToolDisabled),
 	); err == nil {
 		t.Error("fresh schema accepted more than the MCP tool-policy cardinality limit")
 	}
@@ -196,8 +191,7 @@ func equalMCPServer(a, b mcpserver.Server) bool {
 	return a.Name == b.Name && a.Transport == b.Transport && a.Enabled == b.Enabled &&
 		a.Description == b.Description && a.URL == b.URL && a.Authorization == b.Authorization &&
 		maps.Equal(a.Headers, b.Headers) && a.Command == b.Command && slices.Equal(a.Args, b.Args) &&
-		maps.Equal(a.Env, b.Env) && a.Dir == b.Dir && a.HandshakeTimeout == b.HandshakeTimeout &&
-		slices.Equal(a.ToolPolicy.Rules(), b.ToolPolicy.Rules())
+		maps.Equal(a.Env, b.Env) && a.Dir == b.Dir && a.HandshakeTimeout == b.HandshakeTimeout
 }
 
 func TestMCPServerStoreRejectsMalformedJSONFields(t *testing.T) {
@@ -254,8 +248,7 @@ func TestMCPServerStorePreservesConfigurationWhenEncodingFails(t *testing.T) {
 	original := mcpserver.Server{
 		Name: testMCPServerName("files"), Transport: mcpserver.TransportStdio,
 		Command: "mcp-files", Args: []string{"--root", "/repo"},
-		Env:        map[string]string{"MODE": "local"},
-		ToolPolicy: testServerToolPolicy([]string{"remove"}, nil),
+		Env: map[string]string{"MODE": "local"},
 	}
 	if err := store.Save(t.Context(), original); err != nil {
 		t.Fatal(err)
@@ -263,7 +256,6 @@ func TestMCPServerStorePreservesConfigurationWhenEncodingFails(t *testing.T) {
 	for _, field := range []string{"args", "env"} {
 		t.Run(field, func(t *testing.T) {
 			invalid := original.Clone()
-			invalid.ToolPolicy = testServerToolPolicy(nil, []string{"remove"})
 			if field == "args" {
 				invalid.Args = []string{"\xff"}
 			} else {
@@ -274,7 +266,7 @@ func TestMCPServerStorePreservesConfigurationWhenEncodingFails(t *testing.T) {
 			}
 			got, found, err := store.Get(t.Context(), original.Name)
 			if err != nil || !found || !equalMCPServer(got, original) {
-				t.Fatalf("failed save changed server or policy: found=%v err=%v", found, err)
+				t.Fatalf("failed save changed server configuration: found=%v err=%v", found, err)
 			}
 		})
 	}
@@ -291,11 +283,11 @@ func TestMCPServerStoreReadsOneConfigurationDuringConcurrentSave(t *testing.T) {
 			store := sqlite.NewMCPServerStore(db)
 			initial := mcpserver.Server{
 				Name: testMCPServerName("files"), Transport: mcpserver.TransportStdio,
-				Command: "first", ToolPolicy: testServerToolPolicy([]string{"first"}, nil),
+				Command: "first", Args: []string{"first"},
 			}
 			replacement := initial.Clone()
 			replacement.Command = "second"
-			replacement.ToolPolicy = testServerToolPolicy([]string{"second"}, nil)
+			replacement.Args = []string{"second"}
 			if err := store.Save(t.Context(), initial); err != nil {
 				t.Fatal(err)
 			}
@@ -340,7 +332,7 @@ func TestMCPServerStoreReadsOneConfigurationDuringConcurrentSave(t *testing.T) {
 				}
 				server := servers[0]
 				if !equalMCPServer(server, initial) && !equalMCPServer(server, replacement) {
-					t.Fatalf("read combined one command with another command's authorization policy")
+					t.Fatalf("read combined one command with another command's arguments")
 				}
 			}
 		})

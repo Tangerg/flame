@@ -4,17 +4,15 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
-	"slices"
 	"strconv"
 	"strings"
 
+	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/keymap"
 	"github.com/Tangerg/oolong/core/layout"
-
-	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
 )
 
 type mcpFormMode uint8
@@ -42,8 +40,6 @@ type mcpFormDraft struct {
 	environment       string
 	directory         string
 	timeoutSeconds    string
-	disabledTools     string
-	autoApproveTools  string
 }
 
 func newMCPFormDraft(mode mcpFormMode, server protocol.MCPServer) mcpFormDraft {
@@ -71,8 +67,6 @@ func newMCPFormDraft(mode mcpFormMode, server protocol.MCPServer) mcpFormDraft {
 	if server.HandshakeTimeout.Type == protocol.MCPHandshakeBounded {
 		draft.timeoutSeconds = strconv.Itoa(*server.HandshakeTimeout.Seconds)
 	}
-	draft.disabledTools = strings.Join(server.DisabledTools, ", ")
-	draft.autoApproveTools = strings.Join(server.AutoApproveTools, ", ")
 	return draft
 }
 
@@ -91,8 +85,7 @@ func (m mcpFormDraft) candidate() (mcp.Candidate, error) {
 	candidate := mcp.Candidate{
 		Name: strings.TrimSpace(m.name), Enabled: m.enabled,
 		Description: strings.TrimSpace(m.description), Connection: connection,
-		HandshakeTimeout: timeout, DisabledTools: parseMCPToolNames(m.disabledTools),
-		AutoApproveTools: parseMCPToolNames(m.autoApproveTools),
+		HandshakeTimeout: timeout,
 	}
 	return candidate, candidate.Validate()
 }
@@ -116,14 +109,6 @@ func (m mcpFormDraft) update(original protocol.MCPServer) (mcp.ServerUpdate, boo
 	}
 	if !timeout.Matches(original.HandshakeTimeout) {
 		update.HandshakeTimeout = &timeout
-	}
-	disabledTools := parseMCPToolNames(m.disabledTools)
-	if !slices.Equal(disabledTools, original.DisabledTools) {
-		update.DisabledTools = &disabledTools
-	}
-	autoApproveTools := parseMCPToolNames(m.autoApproveTools)
-	if !slices.Equal(autoApproveTools, original.AutoApproveTools) {
-		update.AutoApproveTools = &autoApproveTools
 	}
 	if m.replaceConnection {
 		connection, err := m.connection()
@@ -357,8 +342,6 @@ func (a *app) mcpFormFields(flow *mcpFormFlow) ([]headless.Field, []*headless.Te
 			_, err := parseMCPTimeout(value)
 			return err
 		})
-		textField("Disabled tools", "comma-separated remote names", &draft.disabledTools, validateMCPToolNames)
-		textField("Auto-approved tools", "comma-separated remote names", &draft.autoApproveTools, validateMCPToolNames)
 	}
 	return fields, secretFields
 }
@@ -468,26 +451,4 @@ func parseMCPTimeout(value string) (mcp.HandshakeTimeout, error) {
 		return mcp.HandshakeTimeout{}, errors.New("handshake timeout must be a positive integer")
 	}
 	return mcp.NewHandshakeTimeout(seconds)
-}
-
-func parseMCPToolNames(value string) []string {
-	fields := strings.Split(value, ",")
-	names := make([]string, 0, len(fields))
-	for _, field := range fields {
-		if name := strings.TrimSpace(field); name != "" {
-			names = append(names, name)
-		}
-	}
-	return names
-}
-
-func validateMCPToolNames(value string) error {
-	seen := make(map[string]struct{})
-	for _, name := range parseMCPToolNames(value) {
-		if _, duplicate := seen[name]; duplicate {
-			return fmt.Errorf("tool %q is duplicated", name)
-		}
-		seen[name] = struct{}{}
-	}
-	return nil
 }

@@ -92,8 +92,8 @@ func (a *approvalBindingRecorder) ListApprovalRules(_ context.Context, request p
 		return a.listResult, nil
 	}
 	return &protocol.ListApprovalRulesResult{Rules: []protocol.ApprovalRule{{
-		ID: "rule_1", Scope: protocol.ApprovalRuleScopeProject, Tool: "shell",
-		Subject: "go test *", Dir: "/workspace", Decision: protocol.ApprovalRuleDecisionAllow,
+		ID: "rule_1", Scope: protocol.ApprovalRuleScopeProject, Tool: protocol.ToolRef{Type: protocol.ToolRefBuiltIn, Name: "shell"}, ModelName: "shell",
+		Subject: protocol.ApprovalSubject{Type: protocol.ApprovalSubjectGlob, Value: "go test *"}, Dir: "/workspace", Decision: protocol.ApprovalRuleDecisionAllow,
 	}}}, nil
 }
 
@@ -225,7 +225,7 @@ func TestApprovalCatalogRejectsNonExactSessionIdentityBeforeRuntimeBoundary(t *t
 		t.Fatal(err)
 	}
 	if len(rules) != 1 || rules[0].ID != "rule_1" || rules[0].Scope != protocol.ApprovalRuleScopeProject ||
-		rules[0].Subject != "go test *" || rules[0].Dir != "/workspace" || rules[0].Decision != protocol.ApprovalRuleDecisionAllow {
+		rules[0].Subject != (protocol.ApprovalSubject{Type: protocol.ApprovalSubjectGlob, Value: "go test *"}) || rules[0].Dir != "/workspace" || rules[0].Decision != protocol.ApprovalRuleDecisionAllow {
 		t.Fatalf("approval rules = %+v", rules)
 	}
 	if recorder.listRequest.SessionID != "session_1" {
@@ -251,12 +251,16 @@ func TestApprovalCatalogRejectsNonExactSessionIdentityBeforeRuntimeBoundary(t *t
 
 func TestApprovalCatalogRejectsDuplicateRules(t *testing.T) {
 	t.Parallel()
-	valid := protocol.ApprovalRule{
-		ID: "rule_1", Scope: protocol.ApprovalRuleScopeGlobal, Tool: "shell",
+	valid := protocol.ApprovalRule{Subject: protocol.ApprovalSubject{Type: protocol.ApprovalSubjectAll},
+		ID: "rule_1", Scope: protocol.ApprovalRuleScopeGlobal, Tool: protocol.ToolRef{Type: protocol.ToolRefBuiltIn, Name: "shell"}, ModelName: "shell",
 		Decision: protocol.ApprovalRuleDecisionAllow,
 	}
 	stub := &approvalBindingRecorder{listResult: &protocol.ListApprovalRulesResult{Rules: []protocol.ApprovalRule{valid, valid}}}
 	runtime := &Connection{approvals: stub, meta: requestMeta("test")}
 	_, err := runtime.ListApprovalRules(t.Context(), "ses_1")
 	requireRuntimeContractViolation(t, err)
+}
+
+func (*approvalBindingRecorder) SetApprovalRule(context.Context, protocol.SetApprovalRuleRequest, flameruntime.CommandOptions) error {
+	return nil
 }

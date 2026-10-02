@@ -238,11 +238,8 @@ func approvalRulesDocument(rules []protocol.ApprovalRule) readerDocument {
 	}
 	lines := make([]string, 0, len(rules))
 	for _, rule := range rules {
-		subject := rule.Subject
-		if subject == "" {
-			subject = "*"
-		}
-		lines = append(lines, fmt.Sprintf("%s  %s  %s  %s:%s", rule.ID, rule.Scope, rule.Decision, rule.Tool, subject))
+		subject := conversation.ApprovalSubject(rule.Subject)
+		lines = append(lines, fmt.Sprintf("%s  %s  %s  %s:%s  %s  stale=%t", rule.ID, rule.Scope, rule.Decision, rule.ModelName, subject, conversation.ToolSource(rule.Tool), rule.Stale))
 	}
 	return paragraphDocument("Approval rules", fmt.Sprintf("%d remembered", len(rules)), lines)
 }
@@ -267,13 +264,10 @@ func (a *app) PrepareDeleteApprovalRule(identity string) error {
 				a.message("load approval rule failed: " + err.Error())
 				return
 			}
-			subject := rule.Subject
-			if subject == "" {
-				subject = "*"
-			}
+			subject := conversation.ApprovalSubject(rule.Subject)
 			a.confirmAction(
 				"Forget approval rule",
-				"Forget "+rule.ID+" ("+rule.Tool+":"+subject+")?",
+				"Forget "+rule.ID+" ("+rule.ModelName+":"+subject+")?",
 				"Forget permanently",
 				func() { a.deleteApprovalRule(sessionID, rule.ID) },
 			)
@@ -364,4 +358,24 @@ func approvalModeDetail(mode protocol.ApprovalMode) string {
 	default:
 		return ""
 	}
+}
+
+func (a *app) setApprovalRule(request protocol.SetApprovalRuleRequest) error {
+	label := "remembering global " + string(request.Decision) + " for " + conversation.ToolSource(request.Tool)
+	a.status.note(label)
+	if !a.runAdmissionMutation(approvalRuleOperation, false,
+		func(ctx context.Context) (struct{}, error) {
+			return struct{}{}, a.runtime.SetApprovalRule(ctx, request)
+		},
+		func(_ struct{}, err error) {
+			if err != nil {
+				a.message(label + " failed: " + err.Error())
+				return
+			}
+			a.message(label + " accepted")
+		},
+	) {
+		return errors.New("another approval operation is running")
+	}
+	return nil
 }

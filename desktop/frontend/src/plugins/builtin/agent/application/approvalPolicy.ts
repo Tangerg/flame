@@ -1,5 +1,5 @@
-import { APPROVAL_MODE_KEY, APPROVAL_RULES_KEY } from "./approvalPolicyQueries";
 import type { ApprovalRuleSummary } from "./approvalPolicyQueries";
+import { APPROVAL_MODE_KEY, APPROVAL_RULES_KEY } from "./approvalPolicyQueries";
 import type { ApprovalMode } from "../domain/hitl";
 import { queryClient } from "@/lib/queryClient";
 import { agentRuntime } from "./ports/runtimeGateway";
@@ -61,4 +61,18 @@ async function repairProjection(owner: AgentCommandOwner, queryKey: string): Pro
   } catch (error) {
     if (!owner.isCurrent()) throw error;
   }
+}
+
+export function allowMCPTool(server: string, name: string): Promise<void> {
+  const owner = agentCommandOwner();
+  const runtime = agentRuntime();
+  return owner.serializeApprovalRules(async () => {
+    try {
+      await owner.settle(runtime.allowMCPTool(server, name));
+      owner.assertCurrent();
+    } finally {
+      if (owner.isCurrent()) await repairProjection(owner, APPROVAL_RULES_KEY);
+    }
+    owner.assertCurrent();
+  });
 }

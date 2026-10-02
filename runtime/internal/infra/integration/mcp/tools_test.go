@@ -10,9 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	sdkmcp "github.com/Tangerg/go-sdk/mcp"
-
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/jsonschema"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -26,6 +25,18 @@ type toolDecorator struct{ toolcontract.Tool }
 
 func (t toolDecorator) Unwrap() toolcontract.Tool { return t.Tool }
 
+func TestSourceToolsDoesNotPublishPartialCatalogAfterScopeRejection(t *testing.T) {
+	session := toolCatalogSession(t,
+		&sdkmcp.Tool{Name: "read.file", InputSchema: jsontext.Value(`{"type":"object"}`)},
+		&sdkmcp.Tool{Name: "read_file", InputSchema: jsontext.Value(`{"type":"object"}`)},
+		&sdkmcp.Tool{Name: "other", InputSchema: jsontext.Value(`{"type":"object"}`)},
+	)
+	tools, err := sourceTools(t.Context(), ServerConfig{Name: testMCPServerName("catalog")}, session)
+	if err == nil || len(tools) != 0 {
+		t.Fatalf("Scope discovery rejection published a partial catalog: %v, %v", tools, err)
+	}
+}
+
 func TestSourceToolsCompilesSchemasBeforePublishing(t *testing.T) {
 	for _, schema := range []string{
 		`{"type":"object","properties":{"value":{"type":"unknown"}}}`,
@@ -34,7 +45,7 @@ func TestSourceToolsCompilesSchemasBeforePublishing(t *testing.T) {
 	} {
 		t.Run(schema, func(t *testing.T) {
 			session := toolCatalogSession(t, &sdkmcp.Tool{Name: "read", InputSchema: jsontext.Value(schema)})
-			tools, err := sourceTools(t.Context(), testMCPServerName("catalog"), session)
+			tools, err := sourceTools(t.Context(), ServerConfig{Name: testMCPServerName("catalog")}, session)
 			if len(tools) != 0 || !errors.Is(err, toolcontract.ErrInvalidTool) || !errors.Is(err, jsonschema.ErrInvalid) {
 				t.Fatalf("sourceTools = %v, %v; want Scope schema admission failure", tools, err)
 			}
@@ -73,7 +84,7 @@ func TestSourceToolsEnablesOnlyAnnotatedReadOnlyConcurrencyPolicy(t *testing.T) 
 	}
 	t.Cleanup(func() { _ = clientSession.Close() })
 
-	wrapped, err := sourceTools(t.Context(), testMCPServerName("catalog"), clientSession)
+	wrapped, err := sourceTools(t.Context(), ServerConfig{Name: testMCPServerName("catalog")}, clientSession)
 	if err != nil {
 		t.Fatalf("sourceTools: %v", err)
 	}
@@ -84,12 +95,12 @@ func TestSourceToolsEnablesOnlyAnnotatedReadOnlyConcurrencyPolicy(t *testing.T) 
 	got := make(map[string]bool, len(wrapped))
 	for _, tool := range wrapped {
 		ref, found, err := IdentifyTool(toolDecorator{Tool: toolDecorator{Tool: tool}})
-		if err != nil || !found || ref.Server.String() != "catalog" ||
-			(ref.Tool.String() != "lookup" && ref.Tool.String() != "mutate") {
+		if err != nil || !found || ref.Server().String() != "catalog" ||
+			(ref.Remote().String() != "lookup" && ref.Remote().String() != "mutate") {
 			t.Fatalf("decorated Scope Tool identity = %+v, %t, %v", ref, found, err)
 		}
-		keyer, ok := tool.(concurrencyPolicy)
-		if !ok {
+		keyer, ok, err := toolcontract.Capability[concurrencyPolicy](tool)
+		if err != nil || !ok {
 			t.Fatalf("tool %q does not expose concurrency policy", tool.Definition().Name)
 		}
 		binding, err := toolcontract.Bind(tool)
@@ -120,7 +131,7 @@ func TestRemoteToolCatalogRejectsUnboundedMaterial(t *testing.T) {
 			Description: strings.Repeat("x", mcpserver.MaxRemoteToolDescriptionBytes+1),
 			InputSchema: jsontext.Value(`{"type":"object"}`),
 		})
-		if _, err := sourceTools(t.Context(), testMCPServerName("catalog"), session); err == nil {
+		if _, err := sourceTools(t.Context(), ServerConfig{Name: testMCPServerName("catalog")}, session); err == nil {
 			t.Fatal("sourceTools accepted a description larger than 64 KiB")
 		}
 	})
@@ -131,7 +142,7 @@ func TestRemoteToolCatalogRejectsUnboundedMaterial(t *testing.T) {
 			InputSchema: jsontext.Value(`{"type":"object","description":"` +
 				strings.Repeat("x", (1<<20)+1) + `"}`),
 		})
-		if _, err := sourceTools(t.Context(), testMCPServerName("catalog"), session); err == nil {
+		if _, err := sourceTools(t.Context(), ServerConfig{Name: testMCPServerName("catalog")}, session); err == nil {
 			t.Fatal("sourceTools accepted a schema larger than Scope's 1 MiB bound")
 		}
 	})
@@ -190,7 +201,7 @@ func TestSourceToolsPreservesStructuredResultThroughTransport(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer session.Close()
-			tools, err := sourceTools(t.Context(), testMCPServerName("catalog"), session)
+			tools, err := sourceTools(t.Context(), ServerConfig{Name: testMCPServerName("catalog")}, session)
 			if err != nil {
 				t.Fatal(err)
 			}

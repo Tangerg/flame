@@ -182,3 +182,26 @@ func wireMCPError(err error) error {
 	}
 	return err
 }
+
+func (s *Handler) GetMCPToolExposure(ctx context.Context, in protocol.MCPServerRequest) (*protocol.MCPToolExposure, error) {
+	server, err := parseMCPServerName(in.Server)
+	if err != nil {
+		return nil, err
+	}
+	refs, err := s.mcp.ToolExposure(ctx, server)
+	if err != nil {
+		return nil, wireMCPError(err)
+	}
+	out := &protocol.MCPToolExposure{Server: in.Server, DisabledTools: make([]string, 0, len(refs))}
+	for _, ref := range refs {
+		out.DisabledTools = append(out.DisabledTools, ref.Remote().String())
+	}
+	return out, nil
+}
+func (s *Handler) SetMCPToolExposure(ctx context.Context, in protocol.SetMCPToolExposureRequest) error {
+	ref, err := toolRefFromWire(protocol.ToolRef{Type: protocol.ToolRefMCP, Server: in.Server, Name: in.Name})
+	if err != nil {
+		return NewFailure(protocol.ErrInvalidParams, err.Error())
+	}
+	return wireMCPError(s.mcp.SetToolExposure(ctx, ref, in.Disabled))
+}

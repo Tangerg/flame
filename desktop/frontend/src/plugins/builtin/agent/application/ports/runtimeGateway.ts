@@ -54,6 +54,7 @@ export interface AgentRuntimeGateway {
   isRunGone(error: unknown): boolean;
   isReplayLost(error: unknown): boolean;
   setApprovalMode(mode: ApprovalMode): Promise<ApprovalMode>;
+  allowMCPTool(server: string, name: string): Promise<void>;
   forgetApprovalRule(id: string): Promise<void>;
 }
 

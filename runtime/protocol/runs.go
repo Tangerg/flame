@@ -450,10 +450,10 @@ const (
 // RememberScope is the standing-decision directive on an approval response.
 // When present, the Runtime persists the approve/deny decision as
 // a fine-grained rule so matching future calls skip the prompt. The rule is
-// keyed by tool NAME + the call's per-tool subject (a shell command, an edited
-// file's path) at the chosen Scope (session / project / global). editedArgs
-// stays one-shot regardless: a remembered rule matches by subject, never by a
-// one-off arg rewrite.
+// keyed by source-qualified tool reference and the subject (a shell command or
+// file path) derived from the confirmed arguments at the chosen scope. An
+// approved edit changes that subject; a denial retains the original subject.
+// Edited arguments are never replayed by a standing rule.
 type RememberScope struct {
 	Scope RememberScopeKind `json:"scope"` // see RememberScopeKind
 }
