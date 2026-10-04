@@ -6,6 +6,7 @@ type MCPServerStatus =
   "disabled" | "disconnected" | "connecting" | "connected" | "failed" | "needsAuth";
 
 export interface MCPServerSettings {
+  installationId?: string;
   id: string;
   name: string;
   desc: string;

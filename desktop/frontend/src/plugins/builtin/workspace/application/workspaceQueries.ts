@@ -20,7 +20,8 @@ export interface WorkspaceFileChange {
 export interface WorkspaceSkill {
   name: string;
   description: string;
-  scope: "project" | "user";
+  scope: "project" | "user" | "installation";
+  installation?: { installationId: string; digest: string };
 }
 
 export interface WorkspaceSkillDiscovery {

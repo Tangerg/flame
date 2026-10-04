@@ -72,7 +72,10 @@ func (c *concurrentToolExecutor) Observe(
 func (c *concurrentToolExecutor) Release(context.Context, ExecutorRef) error { return nil }
 
 func toolStringResult(value string) *tool.Result {
-	result := tool.StringResult(value)
+	result, err := tool.NewResult(value)
+	if err != nil {
+		panic(err)
+	}
 	return &result
 }
 

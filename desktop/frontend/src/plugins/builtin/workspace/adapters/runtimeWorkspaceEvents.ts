@@ -11,6 +11,7 @@ import type { WorkspaceEventLike, WorkspaceWatchScope } from "../domain/eventInv
 const SUBSCRIBED_TOPICS: readonly RuntimeTopic[] = [
   "files.changed",
   "skills.changed",
+  "plugins.changed",
   "mcp.changed",
   "schedules.changed",
   "sessions.changed",

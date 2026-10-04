@@ -10,6 +10,8 @@ export function mcpServerSettings(server: MCPServer): MCPServerSettings {
   const connection = server.connection;
   const status = server.status;
   return {
+    installationId:
+      server.origin.type === "installation" ? server.origin.installationId : undefined,
     id: server.name,
     name: server.name,
     desc: server.description ?? "",

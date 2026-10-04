@@ -414,7 +414,10 @@ func TestTranscriptStoreKeepsOffloadRelationshipsImmutableAndOneToOne(t *testing
 	t.Cleanup(func() { _ = db.Close() })
 	store := sqlite.NewTranscriptStore(db)
 	now := time.Now().UTC()
-	preview := tool.StringResult("preview")
+	preview, err := tool.NewResult("preview")
+	if err != nil {
+		t.Fatal(err)
+	}
 	original := testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID: "ses_a", RunID: "run_1", ID: "item_1", OccurredAt: now,
 		FinishedAt: now, Status: transcript.ItemCompleted,
@@ -428,7 +431,10 @@ func TestTranscriptStoreKeepsOffloadRelationshipsImmutableAndOneToOne(t *testing
 	}
 
 	changedSnapshot := original.Snapshot()
-	otherPreview := tool.StringResult("other preview")
+	otherPreview, err := tool.NewResult("other preview")
+	if err != nil {
+		t.Fatal(err)
+	}
 	changedSnapshot.Tool = &transcript.ToolInvocation{
 		Name: "shell", Result: &otherPreview, Offload: &resultoffload.Ref{ID: "OTHER234"},
 	}

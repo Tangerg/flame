@@ -84,6 +84,7 @@ export function registerWorkspaceDataProviders(
           name: s.name,
           description: s.description ?? "",
           scope: s.scope,
+          installation: s.installation,
         })),
         diagnostics: catalog.diagnostics,
       };

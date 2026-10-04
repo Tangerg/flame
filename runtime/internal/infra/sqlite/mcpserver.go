@@ -12,8 +12,7 @@ import (
 )
 
 // MCPServerStore persists MCP server entries in SQLite. One row per server
-// name; Save atomically replaces one complete entry and its normalized tool
-// policy relation. Args and the map columns (env / headers) are JSON-encoded;
+// name; Save atomically replaces one complete entry. Args and the map columns (env / headers) are JSON-encoded;
 // a bounded handshake timeout is stored as positive nanoseconds and NULL means
 // unbounded. The DB must have been opened
 // via [Open] so the mcp_servers table exists.
@@ -32,10 +31,6 @@ const mcpColumns = `name, transport, enabled, description, url, authorization, h
 	        command, args, env, dir, timeout`
 
 func (m *MCPServerStore) List(ctx context.Context) ([]mcpserver.Server, error) {
-	return m.listServers(ctx)
-}
-
-func (m *MCPServerStore) listServers(ctx context.Context) ([]mcpserver.Server, error) {
 	rows, err := conn(ctx, m.db).QueryContext(ctx,
 		`SELECT `+mcpColumns+` FROM mcp_servers`)
 	if err != nil {
@@ -61,28 +56,16 @@ func (m *MCPServerStore) listServers(ctx context.Context) ([]mcpserver.Server, e
 }
 
 func (m *MCPServerStore) Get(ctx context.Context, name mcpserver.ServerName) (mcpserver.Server, bool, error) {
-	var srv mcpserver.Server
-	found := false
-	// Connection settings and authorization rules describe one saved server.
-	// Both reads must observe the same revision while Save replaces that value.
-	err := RunInTx(ctx, m.db, func(ctx context.Context) error {
-		row := conn(ctx, m.db).QueryRowContext(ctx,
-			`SELECT `+mcpColumns+` FROM mcp_servers WHERE name = ?`, name.String())
-		var err error
-		srv, err = scanMCPServer(row.Scan)
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		found = true
-		return nil
-	})
+	row := conn(ctx, m.db).QueryRowContext(ctx,
+		`SELECT `+mcpColumns+` FROM mcp_servers WHERE name = ?`, name.String())
+	srv, err := scanMCPServer(row.Scan)
+	if errors.Is(err, sql.ErrNoRows) {
+		return mcpserver.Server{}, false, nil
+	}
 	if err != nil {
 		return mcpserver.Server{}, false, err
 	}
-	return srv, found, nil
+	return srv, true, nil
 }
 
 func (m *MCPServerStore) Save(ctx context.Context, srv mcpserver.Server) error {
@@ -124,7 +107,8 @@ func (m *MCPServerStore) Save(ctx context.Context, srv mcpserver.Server) error {
 			return fmt.Errorf("sqlite: save mcp server: %w", err)
 		}
 
-		return nil
+		_, err := conn(txCtx, m.db).ExecContext(txCtx, `INSERT INTO mcp_sources(name,user_name) VALUES(?,?) ON CONFLICT(name) DO NOTHING`, srv.Name.String(), srv.Name.String())
+		return err
 	})
 }
 

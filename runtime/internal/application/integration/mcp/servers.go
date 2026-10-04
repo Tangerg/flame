@@ -35,6 +35,8 @@ var ErrServerAlreadyExists = errors.New("mcp: MCP server already exists")
 // server whose durable enablement gate is closed.
 var ErrServerDisabled = errors.New("mcp: MCP server is disabled")
 
+var ErrOwnedByInstallation = errors.New("mcp: server is owned by installation")
+
 // ErrAuthorizationAttemptNotFound reports an unknown or expired interactive
 // authorization attempt.
 var ErrAuthorizationAttemptNotFound = errors.New("mcp: MCP authorization attempt not found")
@@ -46,12 +48,15 @@ var ErrAuthorizationUnsupported = errors.New("mcp: MCP authorization requires st
 // CreateServer creates one durable resource and projects it into the live MCP
 // pool. A duplicate name is a conflict, never an implicit update.
 func (c *Coordinator) CreateServer(ctx context.Context, input ServerInput) (Server, error) {
+	if input.Name.Installation() != "" {
+		return Server{}, ErrOwnedByInstallation
+	}
 	write, err := c.beginMutation(ctx)
 	if err != nil {
 		return Server{}, err
 	}
 	defer write.close()
-	if _, found, getErr := c.registry.Get(write.requestCtx, input.Name); getErr != nil {
+	if _, found, getErr := c.registry.Definition(write.requestCtx, input.Name); getErr != nil {
 		return Server{}, getErr
 	} else if found {
 		return Server{}, ErrServerAlreadyExists
@@ -66,6 +71,9 @@ func (c *Coordinator) CreateServer(ctx context.Context, input ServerInput) (Serv
 // UpdateServer applies an explicit partial update to an existing resource.
 // The mutation lock keeps the read/patch/save sequence atomic inside the runtime.
 func (c *Coordinator) UpdateServer(ctx context.Context, name mcpserver.ServerName, patch ServerPatch) (Server, error) {
+	if name.Installation() != "" {
+		return Server{}, ErrOwnedByInstallation
+	}
 	if patch.Empty() {
 		return Server{}, fmt.Errorf("%w: update contains no changes", ErrInvalidServerConfiguration)
 	}
@@ -74,7 +82,7 @@ func (c *Coordinator) UpdateServer(ctx context.Context, name mcpserver.ServerNam
 		return Server{}, err
 	}
 	defer write.close()
-	current, found, err := c.registry.Get(write.requestCtx, name)
+	current, found, err := c.registry.Definition(write.requestCtx, name)
 	if err != nil {
 		return Server{}, err
 	}
@@ -103,14 +111,9 @@ func (c *Coordinator) commitServer(write *mutationScope, srv mcpserver.Server) (
 	// so a stale live entry cannot resurrect the previous connection.
 	status := ServerStatus{Name: srv.Name}
 	shouldRedial := srv.Enabled && reconcileErr == nil
-	if shouldRedial {
-		status.Known = true
-		status.State = mcpserver.ConnectionConnecting
-	}
-	event := c.prepareStatus(status)
-	write.unlock()
 	var redialErr error
 	var startDial chan struct{}
+	var operation *activeDial
 	if shouldRedial {
 		startDial = make(chan struct{})
 		// Admit the dial before invoking the event sink. A sink may synchronously
@@ -118,15 +121,15 @@ func (c *Coordinator) commitServer(write *mutationScope, srv mcpserver.Server) (
 		// than having this older dispatch happen after the callback returns. The
 		// gate prevents the admitted task from settling before that callback gets
 		// its chance to supersede it.
-		redialErr = c.redialServer(write.ownerCtx, srv, startDial)
-		if redialErr != nil {
-			// Admission can race component shutdown. Reuse this mutation's reserved
-			// queue position for the truthful disconnected projection instead of
-			// publishing a connecting state that no task can ever settle.
-			event.status = ServerStatus{Name: srv.Name}
+		operation, redialErr = c.redialServer(write.ownerCtx, srv.Name, startDial)
+		if redialErr == nil {
+			status.Known = true
+			status.State = mcpserver.ConnectionConnecting
 		}
 	}
-	c.publishStatus(event)
+	event := c.prepareStatus(status, operation)
+	write.unlock()
+	c.statusQueue.publish(event)
 	if startDial != nil {
 		close(startDial)
 	}
@@ -138,20 +141,23 @@ func (c *Coordinator) commitServer(write *mutationScope, srv mcpserver.Server) (
 	}
 	status, ok := c.statusesByName()[srv.Name]
 	if ok {
-		return serverView(srv, &status), nil
+		return serverView(srv, &status)
 	}
-	return serverView(srv, nil), nil
+	return serverView(srv, nil)
 }
 
 // DeleteServer deletes a server from the registry and drops it from the live
 // connections.
 func (c *Coordinator) DeleteServer(ctx context.Context, name mcpserver.ServerName) error {
+	if name.Installation() != "" {
+		return ErrOwnedByInstallation
+	}
 	write, err := c.beginMutation(ctx)
 	if err != nil {
 		return err
 	}
 	defer write.close()
-	if _, found, err := c.registry.Get(write.requestCtx, name); err != nil {
+	if _, found, err := c.registry.Definition(write.requestCtx, name); err != nil {
 		return err
 	} else if !found {
 		return ErrUnknownServer
@@ -163,9 +169,9 @@ func (c *Coordinator) DeleteServer(ctx context.Context, name mcpserver.ServerNam
 	// Detachment retires live executables; exposure still closes if it fails.
 	projectionErr := c.connectionLifecycle.Detach(name)
 	c.exposure.removeServer(name)
-	event := c.prepareStatus(ServerStatus{Name: name})
+	event := c.prepareStatus(ServerStatus{Name: name}, nil)
 	write.unlock()
-	c.publishStatus(event)
+	c.statusQueue.publish(event)
 	return projectionErr
 }
 
@@ -244,13 +250,13 @@ func (c *Coordinator) applyRegistryChange(srv mcpserver.Server) error {
 // blocks on it until the caller's deferred release fires, then dials), so one slow
 // endpoint cannot freeze the whole MCP control plane. It reuses the same live
 // collaborator the synchronous path used ([connectionLifecycle.Configure] with the
-// just-committed descriptor); a concurrent reconfigure supersedes a stale dial
+// source identity); the connection boundary reads the current owner before dialing.
+// A concurrent reconfigure supersedes a stale dial
 // through per-server generation. A dial failure does not fail the originating
 // call; status surfaces it and it remains reconnectable.
-func (c *Coordinator) redialServer(ctx context.Context, srv mcpserver.Server, start <-chan struct{}) error {
-	srv = srv.Clone()
-	return c.dispatchConnection(ctx, srv.Name, func(dialCtx context.Context) error {
-		return c.connectionLifecycle.Configure(dialCtx, srv)
+func (c *Coordinator) redialServer(ctx context.Context, name mcpserver.ServerName, start <-chan struct{}) (*activeDial, error) {
+	return c.dispatchConnection(ctx, name, func(dialCtx context.Context) error {
+		return c.connectionLifecycle.Configure(dialCtx, name)
 	}, false, start, nil)
 }
 
@@ -261,6 +267,9 @@ func (c *Coordinator) redialServer(ctx context.Context, srv mcpserver.Server, st
 // tools-list failure as a sanitized outcome; invalid candidates and registry failures
 // are returned as errors.
 func (c *Coordinator) TestServer(ctx context.Context, input ServerInput) (TestResult, error) {
+	if input.Name.Installation() != "" {
+		return "", ErrOwnedByInstallation
+	}
 	if err := ctx.Err(); err != nil {
 		return "", err
 	}
@@ -287,7 +296,7 @@ func (c *Coordinator) TestServer(ctx context.Context, input ServerInput) (TestRe
 func (c *Coordinator) validatedServer(ctx context.Context, input ServerInput) (mcpserver.Server, error) {
 	var current *mcpserver.Server
 	if input.Name.Validate() == nil {
-		stored, found, err := c.registry.Get(ctx, input.Name)
+		stored, found, err := c.registry.Definition(ctx, input.Name)
 		if err != nil {
 			return mcpserver.Server{}, err
 		}

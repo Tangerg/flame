@@ -37,6 +37,10 @@ func validateProcessConfiguration(command string, args []string, environment map
 	if strings.ContainsRune(dir, 0) {
 		return errors.New("dir contains NUL")
 	}
+	return ValidateEnvironment(environment)
+}
+
+func ValidateEnvironment(environment map[string]string) error {
 	for key, value := range environment {
 		if key == "" || strings.ContainsAny(key, "=\x00") {
 			return fmt.Errorf("env key %q is invalid", key)

@@ -101,6 +101,33 @@ func TestServerConfigValidate(t *testing.T) {
 
 func durationPointer(value time.Duration) *time.Duration { return &value }
 
+func TestSameConnectionIncludesCredentialsAndExcludesHandshakePolicy(t *testing.T) {
+	stdio := ServerConfig{Name: testMCPServerName("local"), Transport: TransportStdio, Command: "server", Env: []string{"TOKEN=first"}}
+	rotated := stdio.Clone()
+	rotated.Env[0] = "TOKEN=second"
+	if stdio.SameConnection(rotated) {
+		t.Fatal("rotated process credentials retained the old connection binding")
+	}
+	inherited := stdio.Clone()
+	inherited.Env = nil
+	empty := inherited.Clone()
+	empty.Env = []string{}
+	if inherited.SameConnection(empty) {
+		t.Fatal("inherited and explicitly empty process environments share a binding")
+	}
+	changedLimit := stdio.Clone()
+	changedLimit.HandshakeTimeout = durationPointer(time.Minute)
+	if !stdio.SameConnection(changedLimit) {
+		t.Fatal("future handshake policy invalidated a connected executable")
+	}
+	http := ServerConfig{Name: testMCPServerName("remote"), Transport: TransportHTTP, Endpoint: "https://mcp.example/tools"}
+	refreshed := http.Clone()
+	refreshed.OAuthHandler = oauthHandlerStub{}
+	if !http.SameConnection(refreshed) {
+		t.Fatal("live OAuth credentials became a competing connection descriptor")
+	}
+}
+
 func TestDialValidatesBeforeDialing(t *testing.T) {
 	_, _, err := dial(context.Background(), t.Context(), nil,
 		ServerConfig{Name: testMCPServerName("x"), Transport: TransportHTTP})

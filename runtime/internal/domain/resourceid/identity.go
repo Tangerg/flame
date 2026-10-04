@@ -5,6 +5,8 @@ package resourceid
 
 import (
 	"fmt"
+	"regexp"
+	"strings"
 
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
@@ -94,3 +96,48 @@ func ParseSchedule(text string) (ScheduleID, error) {
 
 func (i ScheduleID) String() string  { return i.text }
 func (i ScheduleID) Validate() error { return requireConstructed("schedule", i.text) }
+
+var installationIDExpression = regexp.MustCompile(nonzeroUUIDPattern())
+
+func InstallationIDPattern() string { return installationIDExpression.String() }
+
+// Enumerating the first nonzero digit keeps the public pattern compatible with
+// both RE2 and JavaScript while rejecting the nil UUID at the same boundary.
+func nonzeroUUIDPattern() string {
+	alternatives := make([]string, 0, 32)
+	for first := range 32 {
+		var pattern strings.Builder
+		digit := 0
+		for _, size := range []int{8, 4, 4, 4, 12} {
+			if digit > 0 {
+				pattern.WriteByte('-')
+			}
+			for range size {
+				switch {
+				case digit < first:
+					pattern.WriteByte('0')
+				case digit == first:
+					pattern.WriteString("[1-9a-f]")
+				default:
+					pattern.WriteString("[0-9a-f]")
+				}
+				digit++
+			}
+		}
+		alternatives = append(alternatives, pattern.String())
+	}
+	return "^(?:" + strings.Join(alternatives, "|") + ")$"
+}
+
+// InstallationID is the canonical UUID allocated to an installation, including
+// its source-qualified tools and any persisted executable dependencies.
+type InstallationID struct{ value }
+
+func ParseInstallation(text string) (InstallationID, error) {
+	if !installationIDExpression.MatchString(text) {
+		return InstallationID{}, fmt.Errorf("installation identity must be a canonical nonzero UUID")
+	}
+	return InstallationID{value: value{text: text}}, nil
+}
+func (i InstallationID) String() string  { return i.text }
+func (i InstallationID) Validate() error { return requireConstructed("installation", i.text) }

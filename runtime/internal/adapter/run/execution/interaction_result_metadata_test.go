@@ -20,7 +20,10 @@ func TestPendingToolMetadataPreservesProjectionAndRejectsForeignOwnership(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	preview := tool.StringResult("read offload ABCD")
+	preview, err := tool.NewResult("read offload ABCD")
+	if err != nil {
+		t.Fatal(err)
+	}
 	want := toolResultMetadata{
 		MemberID:  processID.String(),
 		Start:     runs.ToolCallStarted{CallID: identity.String(), SourceCallID: "provider_reused", ModelCallSequence: 2, ToolCallIndex: 1, ToolName: "write", Arguments: `{"path":"edited"}`},

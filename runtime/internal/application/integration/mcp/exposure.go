@@ -73,7 +73,7 @@ func (s *ExposureState) setToolDisabled(ref tool.Ref, disabled bool) {
 }
 
 func (c *Coordinator) ToolExposure(ctx context.Context, server mcpserver.ServerName) ([]tool.Ref, error) {
-	if _, found, err := c.registry.Get(ctx, server); err != nil {
+	if _, found, err := c.registry.Definition(ctx, server); err != nil {
 		return nil, err
 	} else if !found {
 		return nil, ErrUnknownServer
@@ -100,7 +100,7 @@ func (c *Coordinator) SetToolExposure(ctx context.Context, ref tool.Ref, disable
 		return err
 	}
 	defer write.close()
-	if _, found, err := c.registry.Get(write.requestCtx, ref.Server()); err != nil {
+	if _, found, err := c.registry.Definition(write.requestCtx, ref.Server()); err != nil {
 		return err
 	} else if !found {
 		return ErrUnknownServer

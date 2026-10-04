@@ -145,7 +145,7 @@ func TestToolEnvironmentRejectsDuplicateMCPNames(t *testing.T) {
 	_, _, err := mcpconnection.Open(context.Background(), t.Context(), []mcpserver.Server{
 		{Name: testMCPServerName("dup"), Transport: mcpserver.TransportStreamableHTTP, URL: "http://example.invalid/"},
 		{Name: testMCPServerName("dup"), Transport: mcpserver.TransportStreamableHTTP, URL: "http://other.invalid/"},
-	}, nil)
+	}, nil, testSourceRegistry(nil))
 	if err == nil {
 		t.Fatal("expected duplicate-name error, got nil")
 	}
@@ -157,7 +157,7 @@ func TestToolEnvironmentRejectsDuplicateMCPNames(t *testing.T) {
 func TestToolEnvironmentRejectsBadMCPEndpoint(t *testing.T) {
 	_, _, err := mcpconnection.Open(context.Background(), t.Context(), []mcpserver.Server{
 		{Name: testMCPServerName("bad"), Transport: mcpserver.TransportStreamableHTTP}, // empty URL fails validation
-	}, nil)
+	}, nil, testSourceRegistry(nil))
 	if err == nil {
 		t.Fatal("expected validation error, got nil")
 	}
@@ -212,7 +212,7 @@ func TestToolEnvironmentRejectsEmptyStdioCommand(t *testing.T) {
 	_, _, err := mcpconnection.Open(context.Background(), t.Context(), []mcpserver.Server{{
 		Name:      testMCPServerName("bad"),
 		Transport: mcpserver.TransportStdio,
-	}}, nil)
+	}}, nil, testSourceRegistry(nil))
 	if err == nil {
 		t.Fatal("expected validation error, got nil")
 	}
@@ -274,7 +274,7 @@ func TestToolEnvironmentReconnectsMCP(t *testing.T) {
 
 func mustMCPToolEnvironment(t *testing.T, servers []mcpserver.Server) (toolset.Built, *mcpconnection.Pool) {
 	t.Helper()
-	pool, mcpTools, err := mcpconnection.Open(t.Context(), t.Context(), servers, nil)
+	pool, mcpTools, err := mcpconnection.Open(t.Context(), t.Context(), servers, nil, testSourceRegistry(servers))
 	if err != nil {
 		t.Fatalf("Open MCP pool: %v", err)
 	}
@@ -364,4 +364,24 @@ func TestMCPNameCollisionsAfterDialAndReconnect(t *testing.T) {
 			verify(false)
 		}
 	}
+}
+
+type testSourceRegistry []mcpserver.Server
+
+func (r testSourceRegistry) Get(_ context.Context, name mcpserver.ServerName) (mcpserver.Server, bool, error) {
+	for _, server := range r {
+		if server.Name == name {
+			server.Enabled = true
+			return server, true, nil
+		}
+	}
+	return mcpserver.Server{}, false, nil
+}
+
+func (r testSourceRegistry) Connection(ctx context.Context, name mcpserver.ServerName) (mcpserver.Server, error) {
+	server, found, err := r.Get(ctx, name)
+	if err == nil && !found {
+		err = mcpserver.ErrUnknownServer
+	}
+	return server, err
 }

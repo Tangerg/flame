@@ -1,5 +1,6 @@
 import {
   definePlugin as defineContractPlugin,
+  asyncDisposeSymbol,
   type AnyPlugin,
   type Awaitable,
   type PluginContext as ContractContext,
@@ -7,6 +8,7 @@ import {
   type ProvidedServices,
   type Provisions,
   type Requirements,
+  type LifetimeContext,
 } from "dougong";
 import type { Contribution } from "./contracts";
 import { notifyFrom } from "./notifications";
@@ -21,15 +23,19 @@ type ExtensionContribution<T> = Pick<ContractContribution<T>, "dispose" | "updat
 
 export type PluginContext<Requires extends Requirements = Requirements> = Omit<
   ContractContext<Requires>,
-  "contribute"
+  "contribute" | "lifetime"
 > &
   AmbientShell & {
+    lifetime(label: string): ContributionLifetime;
     contribute<T>(
       point: ExtensionPoint<T>,
       item: T,
       opts?: ExtensionContributionOptions,
     ): ExtensionContribution<T>;
   };
+
+export type ContributionLifetime = Omit<LifetimeContext, "contribute" | "lifetime"> &
+  Pick<PluginContext, "contribute" | "lifetime">;
 
 export interface PluginSpec<
   Requires extends Requirements = Requirements,
@@ -65,7 +71,7 @@ function domainKey<T>(
   return point.normalizeKey ? point.normalizeKey(key) : key;
 }
 
-function createContribute(ctx: ContractContext<Requirements>, name: string) {
+function createContribute(ctx: Pick<LifetimeContext, "contribute">, name: string) {
   return <T>(
     point: ExtensionPoint<T>,
     item: T,
@@ -86,6 +92,22 @@ function createContribute(ctx: ContractContext<Requirements>, name: string) {
   };
 }
 
+function bindLifetime(scope: LifetimeContext, name: string): ContributionLifetime {
+  return Object.freeze({
+    get signal() {
+      return scope.signal;
+    },
+    cleanup: (dispose) => scope.cleanup(dispose),
+    spawn: (task) => scope.spawn(task),
+    on: (token, listener) => scope.on(token, listener),
+    emit: (token, ...payload) => scope.emit(token, ...payload),
+    contribute: createContribute(scope, name),
+    lifetime: (label: string) => bindLifetime(scope.lifetime(label), name),
+    dispose: () => scope.dispose(),
+    [asyncDisposeSymbol]: () => scope[asyncDisposeSymbol](),
+  } satisfies ContributionLifetime);
+}
+
 function bindContext<Requires extends Requirements>(
   ctx: ContractContext<Requires>,
   name: string,
@@ -93,6 +115,7 @@ function bindContext<Requires extends Requirements>(
   const wrapped = {
     ...ctx,
     contribute: createContribute(ctx as ContractContext<Requirements>, name),
+    lifetime: (label: string) => bindLifetime(ctx.lifetime(label), name),
     notify: (message: string, level: NotificationLevel = "info") =>
       notifyFrom(name, message, level),
     storage: createStorage(name),

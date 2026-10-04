@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"sync"
 
+	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
@@ -25,9 +26,9 @@ func (c *Coordinator) ReconnectServer(ctx context.Context, name mcpserver.Server
 
 // startConnection validates the server exists, then runs dial on the
 // component task group — detached from the caller's cancellation but keeping
-// its request values and canceled + joined by
-// Close. It enters the application mutation order only for the pre/post registry
-// checks and status publication; the dial itself runs outside that global
+// its request values and canceled + joined by BeginShutdown/AwaitShutdown.
+// It enters the application mutation order only for the pre/post registry checks
+// and status publication; the dial itself runs outside that global
 // critical section. The connection command's per-server generation makes a
 // concurrent configure/remove supersede stale dial completion, while unrelated
 // servers can connect in parallel. The task's context scopes both registry reads
@@ -38,14 +39,15 @@ func (c *Coordinator) startConnection(ctx context.Context, name mcpserver.Server
 	if _, err := c.connectionTarget(ctx, name); err != nil {
 		return err
 	}
-	return c.dispatchConnection(ctx, name, dial, true, nil, nil)
+	_, err := c.dispatchConnection(ctx, name, dial, true, nil, nil)
+	return err
 }
 
 func (c *Coordinator) connectionTarget(ctx context.Context, name mcpserver.ServerName) (mcpserver.Server, error) {
 	if ctx == nil {
 		return mcpserver.Server{}, errors.New("mcp: connection context is required")
 	}
-	srv, ok, err := c.registry.Get(ctx, name)
+	srv, ok, err := c.registry.Definition(ctx, name)
 	if err != nil {
 		return mcpserver.Server{}, fmt.Errorf("mcp: read MCP server %q: %w", name, err)
 	}
@@ -85,10 +87,10 @@ func (c *Coordinator) dispatchConnection(
 	publishConnecting bool,
 	start <-chan struct{},
 	completed func(connectionOutcome),
-) error {
+) (*activeDial, error) {
 	ownerCtx, releaseOwner, ok := c.tasks.Attach(ctx)
 	if !ok {
-		return errClosed
+		return nil, errClosed
 	}
 	dialCtx, operation := c.replaceDial(ownerCtx, name)
 	command := connectionDispatch{
@@ -106,9 +108,9 @@ func (c *Coordinator) dispatchConnection(
 		operation.cancel()
 		c.clearDial(name, operation)
 		releaseOwner()
-		return errClosed
+		return nil, errClosed
 	}
-	return nil
+	return operation, nil
 }
 
 type connectionDispatch struct {
@@ -140,7 +142,7 @@ func (command *connectionDispatch) run(ctx context.Context) {
 	if !current {
 		return
 	}
-	command.coordinator.publishStatus(connecting)
+	command.coordinator.statusQueue.publish(connecting)
 
 	// Interactive OAuth may wait minutes for a human. The connection command
 	// owns per-server generation and cancellation, so no application-wide
@@ -168,7 +170,7 @@ func (command *connectionDispatch) run(ctx context.Context) {
 	if !current {
 		return
 	}
-	command.coordinator.publishStatus(settled)
+	command.coordinator.statusQueue.publish(settled)
 	if connectionErr != nil || status.State != mcpserver.ConnectionConnected {
 		command.outcome = connectionFailed
 		return
@@ -192,7 +194,7 @@ func (command *connectionDispatch) prepareConnecting(ctx context.Context) (*stat
 	coordinator := command.coordinator
 	coordinator.mutationMu.Lock()
 	defer coordinator.mutationMu.Unlock()
-	srv, ok, err := coordinator.registry.Get(ctx, command.name)
+	srv, ok, err := coordinator.registry.Definition(ctx, command.name)
 	if err != nil {
 		return nil, false, fmt.Errorf(
 			"mcp: read MCP server %q before connection: %w",
@@ -210,7 +212,7 @@ func (command *connectionDispatch) prepareConnecting(ctx context.Context) (*stat
 		Name:  command.name,
 		Known: true,
 		State: mcpserver.ConnectionConnecting,
-	}), true, nil
+	}, command.operation), true, nil
 }
 
 func (command *connectionDispatch) prepareSettled(
@@ -220,7 +222,7 @@ func (command *connectionDispatch) prepareSettled(
 	coordinator := command.coordinator
 	coordinator.mutationMu.Lock()
 	defer coordinator.mutationMu.Unlock()
-	srv, ok, err := coordinator.registry.Get(ctx, command.name)
+	srv, ok, err := coordinator.registry.Definition(ctx, command.name)
 	if err != nil {
 		return nil, false, fmt.Errorf(
 			"mcp: read MCP server %q after connection: %w",
@@ -231,7 +233,7 @@ func (command *connectionDispatch) prepareSettled(
 	if !ok || !srv.Enabled || !coordinator.currentDial(command.name, command.operation) {
 		return nil, false, nil
 	}
-	return coordinator.prepareStatus(status), true, nil
+	return coordinator.prepareStatus(status, command.operation), true, nil
 }
 
 func (command *connectionDispatch) fail(ctx context.Context, err error) {
@@ -253,42 +255,47 @@ func (command *connectionDispatch) fail(ctx context.Context, err error) {
 func (c *Coordinator) replaceDial(ctx context.Context, name mcpserver.ServerName) (context.Context, *activeDial) {
 	dialCtx, cancel := context.WithCancel(ctx)
 	dial := &activeDial{cancel: cancel}
-	c.dialMu.Lock()
+	c.connectionMu.Lock()
 	if previous := c.dials[name]; previous != nil {
 		previous.cancel()
 	}
 	c.dials[name] = dial
-	c.dialMu.Unlock()
+	c.connectionMu.Unlock()
 	return dialCtx, dial
 }
 
 func (c *Coordinator) cancelDial(name mcpserver.ServerName) {
-	c.dialMu.Lock()
+	c.connectionMu.Lock()
 	if dial := c.dials[name]; dial != nil {
 		dial.cancel()
 		delete(c.dials, name)
 	}
-	c.dialMu.Unlock()
+	c.connectionMu.Unlock()
 }
 
 func (c *Coordinator) clearDial(name mcpserver.ServerName, dial *activeDial) {
-	c.dialMu.Lock()
+	c.connectionMu.Lock()
+	retiredConnecting := false
 	if c.dials[name] == dial {
+		retiredConnecting = dial.connecting
 		delete(c.dials, name)
 	}
-	c.dialMu.Unlock()
+	c.connectionMu.Unlock()
+	if retiredConnecting {
+		c.invalidations.Notify(invalidation.ForMCP(name.String()))
+	}
 }
 
 func (c *Coordinator) currentDial(name mcpserver.ServerName, dial *activeDial) bool {
-	c.dialMu.Lock()
-	defer c.dialMu.Unlock()
+	c.connectionMu.Lock()
+	defer c.connectionMu.Unlock()
 	return c.dials[name] == dial
 }
 
 type statusEvent struct {
-	status ServerStatus
-	next   *statusEvent
-	ready  bool
+	name  mcpserver.ServerName
+	next  *statusEvent
+	ready bool
 }
 
 type statusQueue struct {
@@ -296,25 +303,15 @@ type statusQueue struct {
 	head     *statusEvent
 	tail     *statusEvent
 	draining bool
-	sink     func(ServerStatus)
+	sink     func(mcpserver.ServerName)
 }
 
-func newStatusQueue(sink func(ServerStatus)) *statusQueue {
+func newStatusQueue(sink func(mcpserver.ServerName)) *statusQueue {
 	return &statusQueue{sink: sink}
 }
 
-// prepareStatus is called while mutationMu is held. Queue registration captures
-// that exact mutation order before callback publication becomes lock-free.
-func (c *Coordinator) prepareStatus(status ServerStatus) *statusEvent {
-	return c.statusQueue.prepare(status)
-}
-
-func (c *Coordinator) publishStatus(event *statusEvent) {
-	c.statusQueue.publish(event)
-}
-
-func (s *statusQueue) prepare(status ServerStatus) *statusEvent {
-	event := &statusEvent{status: status}
+func (s *statusQueue) prepare(name mcpserver.ServerName) *statusEvent {
+	event := &statusEvent{name: name}
 	if s == nil || s.sink == nil {
 		return event
 	}
@@ -356,6 +353,6 @@ func (s *statusQueue) publish(event *statusEvent) {
 			s.tail = nil
 		}
 		s.mu.Unlock()
-		s.sink(event.status)
+		s.sink(event.name)
 	}
 }

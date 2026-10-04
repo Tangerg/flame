@@ -58,18 +58,21 @@ describe("runtime MCP data providers", () => {
         {
           name: "git",
           description: "Branches, commits",
+          origin: { type: "user" },
           connection: { type: "stdio", command: "mcp-git" },
           handshakeTimeout: { type: "unbounded" },
           status: { type: "connected", toolCount: 2 },
         },
         {
           name: "flaky",
+          origin: { type: "user" },
           connection: { type: "stdio", command: "mcp-flaky" },
           handshakeTimeout: { type: "unbounded" },
           status: { type: "failed", error: { type: "mcp_dial_failed" } },
         },
         {
           name: "cloud",
+          origin: { type: "user" },
           connection: { type: "streamableHttp", url: "https://mcp.example/rpc" },
           handshakeTimeout: { type: "unbounded" },
           status: { type: "needsAuth", error: { type: "mcp_authorization_required" } },

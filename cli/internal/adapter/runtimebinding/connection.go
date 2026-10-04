@@ -96,6 +96,7 @@ type runtimeBinding interface {
 	goalBinding
 	skillBinding
 	mcpBinding
+	pluginBinding
 	scheduleBinding
 	agentMemoryBinding
 	diagnosticToolBinding
@@ -122,6 +123,7 @@ type Connection struct {
 	modelConfig      modelConfigBinding
 	goals            goalBinding
 	skills           skillBinding
+	plugins          pluginBinding
 	mcp              mcpBinding
 	schedules        scheduleBinding
 	agentMemory      agentMemoryBinding
@@ -181,6 +183,7 @@ func openConnection(ctx context.Context, cfg Config, endpoint string) (*Connecti
 		modelConfig:      binding,
 		goals:            binding,
 		skills:           binding,
+		plugins:          binding,
 		mcp:              binding,
 		schedules:        binding,
 		agentMemory:      binding,

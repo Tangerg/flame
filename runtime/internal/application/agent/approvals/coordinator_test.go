@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -35,7 +34,11 @@ func (a *approvalStore) Rules(_ context.Context, sessionID, projectDir string) (
 	a.ruleScopes = append(a.ruleScopes, approvalRuleScope{sessionID: sessionID, projectDir: projectDir})
 	var view []RuleView
 	for _, rule := range a.rules {
-		view = append(view, RuleView{Rule: rule})
+		entry := RuleView{ID: rule.ID, Scope: rule.Scope, Tool: rule.Tool, Subject: rule.Subject, Decision: rule.Decision}
+		if rule.Scope == approval.ScopeProject {
+			entry.ProjectDir = rule.ScopeKey
+		}
+		view = append(view, entry)
 	}
 	return view, nil
 }
@@ -136,6 +139,6 @@ func TestForgetRuleUsesDeletionPort(t *testing.T) {
 	}
 }
 
-func (*approvalStore) SetRule(context.Context, tool.Ref, approval.Scope, string, string, approval.Subject, approval.Decision) error {
+func (*approvalStore) SetRule(context.Context, RuleChange, string) error {
 	return nil
 }

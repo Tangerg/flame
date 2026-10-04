@@ -51,9 +51,9 @@ func (f *fakeMCPPorts) Authorize(_ context.Context, name mcpserver.ServerName) e
 	return nil
 }
 
-func (f *fakeMCPPorts) Probe(context.Context, mcpserver.Server) error   { return f.probeErr }
-func (*fakeMCPPorts) Configure(context.Context, mcpserver.Server) error { return nil }
-func (*fakeMCPPorts) Detach(mcpserver.ServerName) error                 { return nil }
+func (f *fakeMCPPorts) Probe(context.Context, mcpserver.Server) error       { return f.probeErr }
+func (*fakeMCPPorts) Configure(context.Context, mcpserver.ServerName) error { return nil }
+func (*fakeMCPPorts) Detach(mcpserver.ServerName) error                     { return nil }
 
 func fakeMCPPortsConfig(ports *fakeMCPPorts) mcpapp.Config {
 	servers := make(map[mcpserver.ServerName]mcpserver.Server, len(ports.statuses))
@@ -82,20 +82,20 @@ type mcpRegistryFake struct {
 	exposure map[tool.Ref]bool
 }
 
-func (m *mcpRegistryFake) List(context.Context) ([]mcpserver.Server, error) {
+func (m *mcpRegistryFake) Catalog(context.Context) ([]mcpapp.Source, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	out := make([]mcpserver.Server, 0, len(m.servers))
+	out := make([]mcpapp.Source, 0, len(m.servers))
 	for _, srv := range m.servers {
-		out = append(out, srv.Clone())
+		out = append(out, mcpapp.Source{Server: srv.Clone(), Availability: mcpapp.SourceAvailable})
 	}
-	slices.SortFunc(out, func(a, b mcpserver.Server) int {
-		return cmp.Compare(a.Name.String(), b.Name.String())
+	slices.SortFunc(out, func(a, b mcpapp.Source) int {
+		return cmp.Compare(a.Server.Name.String(), b.Server.Name.String())
 	})
 	return out, nil
 }
 
-func (m *mcpRegistryFake) Get(_ context.Context, name mcpserver.ServerName) (mcpserver.Server, bool, error) {
+func (m *mcpRegistryFake) Definition(_ context.Context, name mcpserver.ServerName) (mcpserver.Server, bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.getErr != nil {

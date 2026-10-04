@@ -1,6 +1,7 @@
 package promptsource
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -146,7 +147,7 @@ func (r *runtimeSkillSource) document(ctx context.Context, name string) (*sdk.Sk
 	if err := skillSourceContextError(ctx, "load"); err != nil {
 		return nil, nil, err
 	}
-	skill, err := parseSkillDocument(name, content)
+	skill, err := LoadSkillDocument(ctx, name, content)
 	return skill, content, err
 }
 
@@ -216,18 +217,29 @@ func readSkillDocument(ctx context.Context, name string, source *openedSkillDocu
 	return content, nil
 }
 
-func parseSkillDocument(name string, content []byte) (*sdk.Skill, error) {
+// Scope owns format parsing and directory-name binding. The finite filesystem
+// exposes only these verified bytes, so parsing never reopens their pathname.
+func LoadSkillDocument(ctx context.Context, name string, content []byte) (*sdk.Skill, error) {
 	if !utf8.Valid(content) {
 		return nil, fmt.Errorf("%w %q: document is not UTF-8", sdk.ErrInvalidSkill, name)
 	}
-	skill, err := sdk.Parse(content)
+	repository, err := sdk.NewRepository(skillDocumentFS{name: name, content: content}, sdk.RepositoryConfig{MaxSkillBytes: domainskills.MaxAuthoredSkillDocumentBytes})
 	if err != nil {
-		return nil, fmt.Errorf("%w %q: %w", sdk.ErrInvalidSkill, name, err)
+		return nil, err
 	}
-	if skill.Name != name {
-		return nil, fmt.Errorf("%w %q: %w", sdk.ErrInvalidSkill, name, sdk.ErrNameMismatch)
+	return repository.Load(ctx, name)
+}
+
+type skillDocumentFS struct {
+	name    string
+	content []byte
+}
+
+func (f skillDocumentFS) Open(name string) (fs.File, error) {
+	if name != f.name+"/"+sdk.SkillFile {
+		return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
 	}
-	return skill, nil
+	return &skillResourceBytes{Reader: bytes.NewReader(f.content), name: sdk.SkillFile}, nil
 }
 
 func (r *runtimeSkillSource) OpenResource(ctx context.Context, name, resource string) (fs.File, error) {

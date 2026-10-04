@@ -1,3 +1,4 @@
+import { asyncDisposeSymbol } from "dougong";
 import { createHost, type AnyPlugin, type Host } from "dougong";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { defineExtensionPoint } from "./contracts";
@@ -71,6 +72,23 @@ describe("kernel contribution reads", () => {
 
     expect(index.entries(THEME).map((e) => e.key)).toEqual(["dark"]);
     expect(index.entries(THEME)[0]?.plugin).toBe("test.contributor");
+  });
+
+  it("lets the same Host lifetime retire a package's nested contributions", async () => {
+    let owned: import("./definePlugin").ContributionLifetime | undefined;
+    const index = await start([
+      definePlugin({
+        name: "test.package",
+        setup(ctx) {
+          owned = ctx.lifetime("release");
+          owned.lifetime("view").contribute(THEME, { id: "package-theme", label: "Package" });
+        },
+      }),
+    ]);
+    expect(index.entries(THEME).map((entry) => entry.key)).toEqual(["package-theme"]);
+    await owned![asyncDisposeSymbol]();
+    expect(owned!.signal.aborted).toBe(true);
+    expect(index.entries(THEME)).toEqual([]);
   });
 
   it("sorts by the item's own order ahead of the contribute-time hint", async () => {

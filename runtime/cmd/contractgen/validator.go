@@ -213,7 +213,8 @@ func constraintCheck(
 		dispatch.ConstraintPrefixItems, dispatch.ConstraintPatternItems:
 		return itemConstraintCheck(shape, selector, leaf, constraint)
 	case dispatch.ConstraintNonEmptyProperties, dispatch.ConstraintMaxPropertyNameLength,
-		dispatch.ConstraintIdentityPropertyNames:
+		dispatch.ConstraintIdentityPropertyNames, dispatch.ConstraintPatternPropertyNames,
+		dispatch.ConstraintPatternPropertyValues:
 		return propertyConstraintCheck(shape, selector, constraint)
 	default:
 		return unsupportedConstraintCheck(shape, constraint)
@@ -436,6 +437,10 @@ func propertyConstraintCheck(
 		return fmt.Sprintf("maxPropertyNameLength(%s, %s, %d)", field, ref, constraint.Limit)
 	case dispatch.ConstraintIdentityPropertyNames:
 		return fmt.Sprintf("identityPropertyNames(%s, %s)", field, ref)
+	case dispatch.ConstraintPatternPropertyNames:
+		return fmt.Sprintf("patternPropertyNames(%s, %s, %s)", field, ref, strconv.Quote(constraint.Value))
+	case dispatch.ConstraintPatternPropertyValues:
+		return fmt.Sprintf("patternPropertyValues(%s, %s, %s)", field, ref, strconv.Quote(constraint.Value))
 	default:
 		return unsupportedConstraintCheck(shape, constraint)
 	}

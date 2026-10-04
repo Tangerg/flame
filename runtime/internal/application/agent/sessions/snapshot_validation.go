@@ -93,7 +93,10 @@ func (s Snapshot) NormalizeForRestore() (Snapshot, error) {
 			continue
 		}
 		blob := byItem[item.ID()]
-		preview := tool.StringResult(blob.Preview)
+		preview, err := tool.NewResult(blob.Preview)
+		if err != nil {
+			return Snapshot{}, fmt.Errorf("sessions: normalize item %q preview: %w", item.ID(), err)
+		}
 		itemSnapshot.Tool.Result = &preview
 		itemSnapshot.Tool.Offload = &toolresult.Ref{ID: blob.ID}
 		restored, err := transcript.RestoreItem(itemSnapshot)

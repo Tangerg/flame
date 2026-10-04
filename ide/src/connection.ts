@@ -11,6 +11,8 @@ import {
   PROTOCOL_VERSION,
   type DiscoverResponse,
   type RequestMeta,
+  type PluginInstallation,
+  type PluginRemoval,
 } from "@flame/runtime-contract/wire";
 import {
   type MutationCommand,
@@ -21,8 +23,28 @@ import { CommandStorage } from "./commandStore";
 
 export type Command = Extract<
   MutationCommand,
-  { method: "sessions.create" | "runs.start" | "runs.resume" | "runs.cancel" }
+  {
+    method:
+      | "sessions.create"
+      | "runs.start"
+      | "runs.resume"
+      | "runs.cancel"
+      | "plugins.install"
+      | "plugins.stage"
+      | "plugins.select"
+      | "plugins.approve"
+      | "plugins.configure"
+      | "plugins.setEnablement"
+      | "plugins.revoke"
+      | "plugins.uninstall";
+  }
 >;
+
+export interface CommandResult {
+  sessionId?: string;
+  runId?: string;
+  pluginResult?: PluginInstallation | PluginRemoval;
+}
 
 const REQUEST_META: RequestMeta = {
   protocolVersion: PROTOCOL_VERSION,
@@ -104,7 +126,7 @@ export class Connection {
     return this.#journal.list();
   }
 
-  async execute(command: Command): Promise<{ sessionId?: string; runId?: string }> {
+  async execute(command: Command): Promise<CommandResult> {
     this.signal.throwIfAborted();
     if (this.#executing) throw new Error("a Runtime command is already in progress");
     if (this.#pending)
@@ -112,7 +134,7 @@ export class Connection {
     return this.#executePending(this.#journal.prepare(command));
   }
 
-  async retry(id: string): Promise<{ sessionId?: string; runId?: string }> {
+  async retry(id: string): Promise<CommandResult> {
     this.signal.throwIfAborted();
     if (this.#executing) throw new Error("a Runtime command is already in progress");
     const pending = this.#journal.read(id);
@@ -120,9 +142,7 @@ export class Connection {
     return this.#executePending(pending);
   }
 
-  async #executePending(
-    pending: PreparedMutation,
-  ): Promise<{ sessionId?: string; runId?: string }> {
+  async #executePending(pending: PreparedMutation): Promise<CommandResult> {
     this.#pending = pending;
     this.#executing = true;
     try {
@@ -135,7 +155,7 @@ export class Connection {
     }
   }
 
-  async #invoke(command: PreparedMutation): Promise<{ sessionId?: string; runId?: string }> {
+  async #invoke(command: PreparedMutation): Promise<CommandResult> {
     switch (command.method) {
       case "sessions.create": {
         const session = await this.client.sessions.create(command.params, this.signal);
@@ -158,6 +178,22 @@ export class Connection {
         );
         return { runId: result.run.id };
       }
+      case "plugins.install":
+        return { pluginResult: await this.client.plugins.install(command.params) };
+      case "plugins.stage":
+        return { pluginResult: await this.client.plugins.stage(command.params) };
+      case "plugins.select":
+        return { pluginResult: await this.client.plugins.select(command.params) };
+      case "plugins.approve":
+        return { pluginResult: await this.client.plugins.approve(command.params) };
+      case "plugins.configure":
+        return { pluginResult: await this.client.plugins.configure(command.params) };
+      case "plugins.setEnablement":
+        return { pluginResult: await this.client.plugins.setEnablement(command.params) };
+      case "plugins.revoke":
+        return { pluginResult: await this.client.plugins.revoke(command.params.installationId) };
+      case "plugins.uninstall":
+        return { pluginResult: await this.client.plugins.uninstall(command.params.installationId) };
       default:
         throw new Error("IDE does not expose this prepared Runtime command");
     }

@@ -1576,9 +1576,9 @@ func forbidExternalImports(t *testing.T, dir string, banned []string) {
 		}
 		for _, imp := range f.Imports {
 			ip := strings.Trim(imp.Path.Value, `"`)
-			// net/url is a deterministic syntax/value parser, not a network
+			// net/url and net/netip are deterministic syntax/value parsers, not network
 			// capability. All packages capable of network I/O remain excluded.
-			if ip == "net/url" {
+			if ip == "net/url" || ip == "net/netip" {
 				continue
 			}
 			for _, bad := range banned {
@@ -1914,7 +1914,7 @@ func layerOf(rel string) string {
 		return ringTestSupport
 	}
 	switch rel {
-	case "internal/dependency", "internal/exactint", "internal/exactjson", "internal/identity", "internal/optional":
+	case "internal/dependency", "internal/exactint", "internal/exactjson", "internal/fingerprint", "internal/identity", "internal/optional":
 		return ringValue
 	case "internal/cancelread", "internal/capture", "internal/completion", "internal/httporigin", "internal/idempotency", "internal/keylock":
 		return ringMechanism

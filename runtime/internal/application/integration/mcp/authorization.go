@@ -2,11 +2,11 @@ package mcp
 
 import (
 	"context"
-	"github.com/Tangerg/flame/runtime/internal/optional"
 	"sync"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 )
 
 const (
@@ -61,7 +61,7 @@ func (c *Coordinator) CreateAuthorizationAttempt(ctx context.Context, server mcp
 		return AuthorizationAttempt{}, ErrAuthorizationUnsupported
 	}
 	attempt := c.authorizationAttempts.create(server)
-	err = c.dispatchConnection(ctx, server, func(ctx context.Context) error {
+	_, err = c.dispatchConnection(ctx, server, func(ctx context.Context) error {
 		return c.connectionControl.Authorize(ctx, server)
 	}, true, nil, func(outcome connectionOutcome) {
 		c.authorizationAttempts.settle(attempt.ID, authorizationAttemptStatus(outcome))

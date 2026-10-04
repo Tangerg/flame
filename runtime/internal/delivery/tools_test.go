@@ -28,7 +28,7 @@ func (t *toolRegistryFake) Invoke(_ context.Context, in workspaceapp.DiagnosticT
 	t.invokedCWD = in.CWD
 	t.invokedName = in.Name
 	t.invokedPayload = in.Arguments
-	return tool.StringResult("ok"), nil
+	return tool.NewResult("ok")
 }
 
 func TestListToolsMapsRegisteredToolsToWire(t *testing.T) {

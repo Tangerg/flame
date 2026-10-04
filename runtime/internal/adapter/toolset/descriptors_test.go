@@ -3,6 +3,7 @@ package toolset
 import (
 	"context"
 	json "encoding/json/v2"
+	"errors"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"path/filepath"
 	"slices"
@@ -230,7 +231,11 @@ func TestDescriptorCatalogMatchesBuiltInTools(t *testing.T) {
 
 	declared := make(map[string]bool)
 	var unreachable []string
-	for name, descriptor := range descriptors() {
+	catalog, err := descriptors()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, descriptor := range catalog {
 		if declared[name] {
 			t.Errorf("built-in identity %q is declared more than once", name)
 		}
@@ -295,5 +300,30 @@ func TestEveryBuiltInHasBehavior(t *testing.T) {
 		if descriptor, ok := descriptorFor(ref); !ok || !descriptor.safety.Valid() {
 			t.Errorf("built-in %s has no valid behavior: %+v", name, descriptor)
 		}
+	}
+}
+
+func TestMissingBuiltInBehaviorRejectsConstructionAndPublication(t *testing.T) {
+	descriptor := builtInDescriptors[tool.Read]
+	delete(builtInDescriptors, tool.Read)
+	t.Cleanup(func() { builtInDescriptors[tool.Read] = descriptor })
+	if _, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(), DefaultCWD: t.TempDir(), UserHome: t.TempDir()}); err == nil || !strings.Contains(err.Error(), tool.Read) {
+		t.Fatalf("build with missing behavior = %v", err)
+	}
+	if contracts, err := PresentationContracts(); err == nil || contracts != nil {
+		t.Fatalf("publication with missing behavior = %v, %v", contracts, err)
+	}
+}
+
+func TestBehaviorProjectionCannotDeclareABuiltInIdentity(t *testing.T) {
+	const foreign = "foreign_builtin"
+	builtInDescriptors[foreign] = builtInDescriptors[tool.Shell]
+	t.Cleanup(func() { delete(builtInDescriptors, foreign) })
+	if _, err := tool.BuiltIn(foreign); err == nil {
+		t.Fatal("behavior projection admitted a built-in identity")
+	}
+	contracts, err := PresentationContracts()
+	if !errors.Is(err, tool.ErrInvalidRef) || contracts != nil {
+		t.Fatalf("unowned behavior projection was published: %v, %v", contracts, err)
 	}
 }

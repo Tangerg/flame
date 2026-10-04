@@ -43,30 +43,23 @@ func ProjectSkillDir(workspaceRoot string) string {
 // Building a source resolves its physical confinement root and wraps it with
 // Scope's directory repository, so it remains cheap enough to call per tool
 // resolution.
-func OverlaySkillSource(workspaceRoot, userDir string, decorateUser func(sdk.ResourceSource) sdk.ResourceSource) (sdk.ResourceSource, error) {
-	layers, err := openRuntimeSkillLayers(workspaceRoot, userDir)
+func OverlaySkillSource(ctx context.Context, workspaceRoot, userDir string, packages PackageSkills, decorateUser func(sdk.ResourceSource) sdk.ResourceSource) (sdk.ResourceSource, []InstallationDependency, error) {
+	layers, err := openRuntimeSkillLayers(ctx, workspaceRoot, userDir, packages)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return layers.overlay(decorateUser), nil
+	dependencies, err := layers.dependencies(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	return layers.overlay(decorateUser), dependencies, nil
 }
 
 func (l runtimeSkillLayers) overlay(decorateUser func(sdk.ResourceSource) sdk.ResourceSource) sdk.ResourceSource {
-	sources := make([]sdk.ResourceSource, 0, 2)
-	if l.project != nil {
-		sources = append(sources, l.project)
-	}
-	if l.user != nil {
-		var user sdk.ResourceSource = l.user
-		if decorateUser != nil {
-			user = decorateUser(user)
-		}
-		sources = append(sources, user)
-	}
-	if len(sources) == 0 {
+	if l.project == nil && l.user == nil && len(l.packages) == 0 {
 		return nil
 	}
-	return &runtimeSkillOverlay{ResourceSource: sdk.Overlay(sources...), layers: l}
+	return &runtimeSkillOverlay{layers: l, decorateUser: decorateUser}
 }
 
 // ListSkills enumerates the skills visible from the selected workspace layered
@@ -74,19 +67,19 @@ func (l runtimeSkillLayers) overlay(decorateUser func(sdk.ResourceSource) sdk.Re
 // OverlaySkillSource gives the model). A missing directory contributes nothing
 // rather than erroring. Malformed selected documents produce diagnostics;
 // unrelated I/O failures still fail the query.
-func ListSkills(ctx context.Context, workspaceRoot, userDir string) (workspaceapp.SkillDiscovery, error) {
-	layers, err := openRuntimeSkillLayers(workspaceRoot, userDir)
+func ListSkills(ctx context.Context, workspaceRoot, userDir string, packages PackageSkills) (workspaceapp.SkillDiscovery, error) {
+	layers, err := openRuntimeSkillLayers(ctx, workspaceRoot, userDir, packages)
 	if err != nil {
 		return workspaceapp.SkillDiscovery{}, err
 	}
 	return layers.list(ctx)
 }
 
-// The SDK owns name precedence. This projection adds partial discovery without
-// advertising a lower-precedence bundle when the selected document is broken.
+// Discovery and execution use the same precedence-resolved source, including
+// when a broken higher-precedence document hides an otherwise valid copy.
 type runtimeSkillOverlay struct {
-	sdk.ResourceSource
-	layers runtimeSkillLayers
+	layers       runtimeSkillLayers
+	decorateUser func(sdk.ResourceSource) sdk.ResourceSource
 }
 
 func (s *runtimeSkillOverlay) List(ctx context.Context) ([]sdk.Summary, error) {
@@ -101,52 +94,47 @@ func (s *runtimeSkillOverlay) List(ctx context.Context) ([]sdk.Summary, error) {
 	return summaries, nil
 }
 
-type inspectedSkillSource struct {
-	*runtimeSkillSource
-	scope  domainskills.Scope
-	detail *workspaceapp.SkillDetail
-}
-
-// Capture provenance from the source actually chosen by SDK Load, using the
-// same bounded and version-checked document read as model execution.
-func (s *inspectedSkillSource) Load(ctx context.Context, name string) (*sdk.Skill, error) {
-	skill, content, err := s.document(ctx, name)
-	if err != nil {
-		return nil, err
-	}
-	digest := sha256.Sum256(content)
-	s.detail = &workspaceapp.SkillDetail{
-		SkillSummary: workspaceapp.SkillSummary{Name: skill.Name, Description: skill.Description, Scope: s.scope},
-		Path:         filepath.Join(s.root, name, sdk.SkillFile), Revision: fmt.Sprintf("%x", digest), Instructions: skill.Instructions,
-	}
-	return skill, nil
-}
-
 func (l runtimeSkillLayers) get(ctx context.Context, name string) (workspaceapp.SkillDetail, error) {
-	var sources []sdk.ResourceSource
-	var inspected []*inspectedSkillSource
-	for _, layer := range []struct {
-		source *runtimeSkillSource
-		scope  domainskills.Scope
-	}{
-		{l.project, domainskills.ScopeProject}, {l.user, domainskills.ScopeUser},
-	} {
-		if layer.source == nil {
-			continue
-		}
-		source := &inspectedSkillSource{runtimeSkillSource: layer.source, scope: layer.scope}
-		sources = append(sources, source)
-		inspected = append(inspected, source)
-	}
-	if _, err := sdk.Overlay(sources...).Load(ctx, name); err != nil {
+	selected, err := l.modelSource(ctx, name, nil)
+	if err != nil {
 		return workspaceapp.SkillDetail{}, err
 	}
-	for _, source := range inspected {
-		if source.detail != nil {
-			return *source.detail, nil
+	for _, layer := range []struct {
+		source *runtimeSkillSource
+		origin workspaceapp.SkillSource
+	}{
+		{l.project, workspaceapp.ProjectSkillSource()}, {l.user, workspaceapp.UserSkillSource()},
+	} {
+		if layer.source == nil || layer.source != selected {
+			continue
 		}
+		skill, content, err := layer.source.document(ctx, name)
+		if err != nil {
+			return workspaceapp.SkillDetail{}, err
+		}
+		digest := sha256.Sum256(content)
+		return workspaceapp.SkillDetail{
+			SkillSummary: workspaceapp.SkillSummary{Name: skill.Name, Description: skill.Description, Source: layer.origin},
+			Path:         filepath.Join(layer.source.root, name, sdk.SkillFile), Revision: fmt.Sprintf("%x", digest), Instructions: skill.Instructions,
+		}, nil
 	}
-	return workspaceapp.SkillDetail{}, fmt.Errorf("runtime skill source: resolver returned no document")
+	packageSource, err := l.packageSource(name)
+	if err != nil {
+		return workspaceapp.SkillDetail{}, err
+	}
+	origin, err := workspaceapp.InstallationSkillSource(packageSource.bundle.Dependency.InstallationID, packageSource.bundle.Dependency.Digest)
+	if err != nil {
+		return workspaceapp.SkillDetail{}, err
+	}
+	skill, content, err := packageSource.document(ctx, name)
+	if err != nil {
+		return workspaceapp.SkillDetail{}, err
+	}
+	digest := sha256.Sum256(content)
+	return workspaceapp.SkillDetail{
+		SkillSummary: workspaceapp.SkillSummary{Name: skill.Name, Description: skill.Description, Source: origin},
+		Path:         filepath.Join(packageSource.bundle.Root, name, sdk.SkillFile), Revision: fmt.Sprintf("%x", digest), Instructions: skill.Instructions,
+	}, nil
 }
 
 func (l runtimeSkillLayers) list(ctx context.Context) (workspaceapp.SkillDiscovery, error) {
@@ -163,40 +151,50 @@ func (l runtimeSkillLayers) list(ctx context.Context) (workspaceapp.SkillDiscove
 			names[name] = struct{}{}
 		}
 	}
+	for _, source := range l.packages {
+		for _, name := range source.bundle.Names {
+			names[name] = struct{}{}
+		}
+	}
 	out := workspaceapp.SkillDiscovery{Skills: []workspaceapp.SkillSummary{}, Diagnostics: []workspaceapp.SkillDiagnostic{}}
-	counts := make(map[domainskills.Scope]int)
 	for _, name := range slices.Sorted(maps.Keys(names)) {
 		detail, err := l.get(ctx, name)
 		if context.Cause(ctx) != nil {
 			return workspaceapp.SkillDiscovery{}, context.Cause(ctx)
 		}
 		switch {
+		case errors.Is(err, errPackageSkillConflict):
+			out.Diagnostics = append(out.Diagnostics, workspaceapp.SkillDiagnostic{Name: name, Detail: "Multiple installations supply this Skill; disable a package copy or provide an explicit project/user override."})
+			continue
 		case errors.Is(err, sdk.ErrInvalidSkill):
 			out.Diagnostics = append(out.Diagnostics, workspaceapp.SkillDiagnostic{Name: name, Detail: "Invalid SKILL.md; repair the selected bundle's frontmatter and name."})
 			continue
 		case errors.Is(err, domainskills.ErrDocumentTooLarge):
 			out.Diagnostics = append(out.Diagnostics, workspaceapp.SkillDiagnostic{Name: name, Detail: "SKILL.md exceeds the 1 MiB document limit; move supporting material into resource files."})
 			continue
+		case errors.Is(err, workspaceapp.ErrSkillUnavailable):
+			out.Diagnostics = append(out.Diagnostics, workspaceapp.SkillDiagnostic{Name: name, Detail: "Installed Skill unavailable; verify its selected release and current installation approval."})
+			continue
 		case errors.Is(err, sdk.ErrSkillNotFound):
 			continue
 		case err != nil:
 			return workspaceapp.SkillDiscovery{}, err
 		}
-		counts[detail.Scope]++
-		if counts[detail.Scope] > domainskills.MaxSkillsPerSource {
-			return workspaceapp.SkillDiscovery{}, fmt.Errorf("%w: selected source exceeds %d Skills", domainskills.ErrLibraryCapacity, domainskills.MaxSkillsPerSource)
+		if _, _, installed := detail.Source.Installation(); !installed && slices.ContainsFunc(l.packages, func(source packageSkillSource) bool { return slices.Contains(source.bundle.Names, name) }) {
+			out.Diagnostics = append(out.Diagnostics, workspaceapp.SkillDiagnostic{Name: name, Detail: "An explicit project/user Skill overrides the installed package copy."})
 		}
 		out.Skills = append(out.Skills, detail.SkillSummary)
 	}
-	return out, nil
+	return out, out.Validate()
 }
 
 type runtimeSkillLayers struct {
-	project *runtimeSkillSource
-	user    *runtimeSkillSource
+	packages []packageSkillSource
+	project  *runtimeSkillSource
+	user     *runtimeSkillSource
 }
 
-func openRuntimeSkillLayers(workspaceRoot, userDir string) (runtimeSkillLayers, error) {
+func openRuntimeSkillLayers(ctx context.Context, workspaceRoot, userDir string, packages PackageSkills) (runtimeSkillLayers, error) {
 	project, err := openRuntimeSkillSource(ProjectSkillDir(workspaceRoot), workspaceRoot)
 	if err != nil {
 		return runtimeSkillLayers{}, err
@@ -205,7 +203,17 @@ func openRuntimeSkillLayers(workspaceRoot, userDir string) (runtimeSkillLayers, 
 	if err != nil {
 		return runtimeSkillLayers{}, err
 	}
-	return runtimeSkillLayers{project: project, user: user}, nil
+	layers := runtimeSkillLayers{project: project, user: user}
+	if packages != nil {
+		bundles, err := packages.SkillBundles(ctx)
+		if err != nil {
+			return layers, err
+		}
+		for _, bundle := range bundles {
+			layers.packages = append(layers.packages, packageSkillSource{bundle: bundle, authority: packages})
+		}
+	}
+	return layers, nil
 }
 
 func openRuntimeSkillSource(root, boundary string) (*runtimeSkillSource, error) {

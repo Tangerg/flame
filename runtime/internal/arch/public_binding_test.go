@@ -99,6 +99,7 @@ var _ = flameruntime.Open
 var _ *flameruntime.Runtime
 var _ = localruntime.ReadToken
 var _ protocol.RunEvent
+var _ = protocol.DecodeRequest
 
 func consume(ctx context.Context, runtime *flameruntime.Runtime) error {
 	if _, err := runtime.Discover(ctx, flameruntime.CallOptions{}); err != nil {

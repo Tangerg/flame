@@ -118,15 +118,6 @@ type Result struct {
 	raw string
 }
 
-// StringResult returns the infallible result value for text output.
-func StringResult(value string) Result {
-	encoded, err := json.Marshal(value, canonicalJSON)
-	if err != nil {
-		panic(fmt.Sprintf("tool: encode string result: %v", err))
-	}
-	return Result{raw: string(encoded)}
-}
-
 // NewResult snapshots and validates an arbitrary JSON-compatible value.
 func NewResult(value any) (Result, error) {
 	encoded, err := json.Marshal(value, canonicalJSON)
@@ -163,6 +154,9 @@ func (r Result) Any() any {
 
 // String returns the contained string and whether this result is textual.
 func (r Result) String() (string, bool) {
+	if r.Canonical()[0] != '"' {
+		return "", false
+	}
 	var value string
 	if err := json.Unmarshal([]byte(r.Canonical()), &value); err != nil {
 		return "", false

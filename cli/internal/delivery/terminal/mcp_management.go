@@ -57,6 +57,9 @@ func mcpServersDocument(servers []protocol.MCPServer) readerDocument {
 
 func mcpServerDetail(server protocol.MCPServer) string {
 	lines := []string{}
+	if server.Origin.Type == protocol.MCPOriginInstallation {
+		lines = append(lines, "installation  "+server.Origin.InstallationID, "configuration  managed through flame plugins")
+	}
 	if server.Description != "" {
 		lines = append(lines, "description  "+server.Description)
 	}
@@ -240,6 +243,10 @@ func (a *app) EditMCPServer(serverName string) error {
 			}
 			if !a.session.context.current(presentation) {
 				a.message("MCP server loaded after the active session changed; reopen the editor to continue")
+				return
+			}
+			if server.Origin.Type == protocol.MCPOriginInstallation {
+				a.message("MCP connection configuration is owned by installation " + server.Origin.InstallationID + "; use flame plugins configure")
 				return
 			}
 			a.openMCPServerForm(mcpFormUpdate, server)

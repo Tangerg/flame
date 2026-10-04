@@ -12,7 +12,7 @@ import (
 // mcpServerList is the boot-time snapshot view of the MCP registry: building the
 // exposure and dial descriptors come from the same initial registry view.
 type mcpServerList interface {
-	List(ctx context.Context) ([]mcpserver.Server, error)
+	Catalog(ctx context.Context) ([]mcpapp.Source, error)
 	ListExposure(ctx context.Context) ([]tool.Ref, error)
 }
 
@@ -24,9 +24,13 @@ type mcpEnvironment struct {
 }
 
 func buildMCPEnvironment(ctx context.Context, registry mcpServerList) (mcpEnvironment, error) {
-	servers, err := registry.List(ctx)
+	sources, err := registry.Catalog(ctx)
 	if err != nil {
 		return mcpEnvironment{}, fmt.Errorf("bootstrap: load mcp registry: %w", err)
+	}
+	servers := make([]mcpserver.Server, 0, len(sources))
+	for _, source := range sources {
+		servers = append(servers, source.Server)
 	}
 	disabled, err := registry.ListExposure(ctx)
 	if err != nil {

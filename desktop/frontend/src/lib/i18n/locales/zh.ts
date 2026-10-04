@@ -1230,4 +1230,22 @@ export const zh: Record<string, string> = {
   "file.change.renamed": "重命名自 {{path}}",
   "file.change.below": "包含工作树改动",
   "file.unsupported.sub": "Flame 以文本方式显示工作区文件，请用对应的应用打开它。",
+
+  "packages.loading": "正在加载…",
+
+  "packages.trust":
+    "批准发布版本意味着信任其代码。本地程序以你的操作系统权限运行。请先检查来源、摘要、输入和请求权限。",
+  "packages.source": "Runtime 上的插件目录或 ZIP 绝对路径",
+  "packages.install": "安装",
+  "packages.empty": "尚未安装 Runtime 插件",
+  "packages.approve": "信任版本和权限",
+  "packages.configure": "配置输入",
+  "packages.disable": "禁用",
+  "packages.enable": "启用",
+  "packages.stage": "暂存更新",
+  "packages.select": "选择暂存版本",
+  "packages.revoke": "撤销信任",
+  "packages.uninstall": "卸载",
+  "packages.input": "JSON 输入或 Runtime 来源路径",
+  "packages.save": "保存",
 };

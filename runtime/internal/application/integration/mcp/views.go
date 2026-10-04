@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"fmt"
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/application/integration/secrets"
@@ -156,7 +157,7 @@ func maskedValues(values map[string]string) map[string]string {
 	return masked
 }
 
-func serverView(server mcpserver.Server, status *ServerStatus) Server {
+func serverView(server mcpserver.Server, status *ServerStatus) (Server, error) {
 	view := Server{
 		Name:             server.Name,
 		Description:      server.Description,
@@ -166,10 +167,10 @@ func serverView(server mcpserver.Server, status *ServerStatus) Server {
 	}
 	if !server.Enabled {
 		view.State.Type = ServerDisabled
-		return view
+		return view, nil
 	}
 	if status == nil || !status.Known {
-		return view
+		return view, nil
 	}
 	switch status.State {
 	case mcpserver.ConnectionConnecting:
@@ -182,9 +183,9 @@ func serverView(server mcpserver.Server, status *ServerStatus) Server {
 	case mcpserver.ConnectionNeedsAuth:
 		view.State.Type = ServerNeedsAuth
 	default:
-		panic("mcp: unknown MCP connection state")
+		return Server{}, fmt.Errorf("mcp: project connection state %q", status.State)
 	}
-	return view
+	return view, nil
 }
 
 func statusView(status mcpserver.ConnectionStatus) ServerStatus {

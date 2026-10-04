@@ -116,3 +116,7 @@ func translateCheckpointStorageError(err error) error {
 		return err
 	}
 }
+
+func (e *ExecutorCheckpointStore) PendingCheckpointPayloads(ctx context.Context) ([][]byte, error) {
+	return e.storage.PendingCheckpointPayloads(ctx)
+}

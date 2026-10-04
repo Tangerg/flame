@@ -1357,4 +1357,22 @@ export const es: Record<string, string> = {
   "file.change.del": "Eliminado en el árbol de trabajo",
   "file.change.renamed": "Renombrado desde {{path}}",
   "file.change.below": "Contiene cambios del árbol de trabajo",
+
+  "packages.loading": "Cargando…",
+
+  "packages.trust":
+    "Aprobar una versión implica confiar en su código. Los ejecutables locales usan tus permisos del sistema. Revisa origen, resumen, entradas y permisos solicitados.",
+  "packages.source": "Ruta absoluta del directorio o ZIP en el Runtime",
+  "packages.install": "Instalar",
+  "packages.empty": "No hay paquetes Runtime instalados",
+  "packages.approve": "Confiar en versión y permisos",
+  "packages.configure": "Configurar entradas",
+  "packages.disable": "Desactivar",
+  "packages.enable": "Activar",
+  "packages.stage": "Preparar actualización",
+  "packages.select": "Seleccionar versión preparada",
+  "packages.revoke": "Revocar confianza",
+  "packages.uninstall": "Desinstalar",
+  "packages.input": "Entrada JSON o ruta de origen del Runtime",
+  "packages.save": "Guardar",
 };

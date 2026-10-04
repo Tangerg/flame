@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"slices"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	oteltool "github.com/Tangerg/scope/otel/tool"
@@ -17,16 +18,17 @@ import (
 // names. The slices never overlap. Its caller owns Close after all Tool calls
 // have drained; copied manifests share the same resource lifetime.
 type Manifest struct {
-	Visible  []toolcontract.Tool
-	Deferred []toolcontract.Tool
-	close    func() error
+	Installations []promptsource.InstallationDependency
+	Visible       []toolcontract.Tool
+	Deferred      []toolcontract.Tool
+	close         func() error
 }
 
 // Clone isolates the slices while retaining the same executable capabilities
 // and resource lifetime. It does not grant an independent Close obligation.
 func (m Manifest) Clone() Manifest {
 	return Manifest{
-		Visible:  slices.Clone(m.Visible),
+		Installations: slices.Clone(m.Installations), Visible: slices.Clone(m.Visible),
 		Deferred: slices.Clone(m.Deferred),
 		close:    m.close,
 	}
@@ -46,10 +48,11 @@ func (m Manifest) Close() error {
 // executable but are loaded through search_tools. Unavailable tools are simply
 // never added; there is no synthetic visibility state for them.
 type manifestBuilder struct {
-	visible  []toolcontract.Tool
-	deferred []toolcontract.Tool
-	close    func() error
-	err      error
+	installations []promptsource.InstallationDependency
+	visible       []toolcontract.Tool
+	deferred      []toolcontract.Tool
+	close         func() error
+	err           error
 }
 
 func (m *manifestBuilder) direct(tools ...toolcontract.Tool) {
@@ -84,7 +87,7 @@ func (m manifestBuilder) manifest(telemetry oteltool.Middleware) (Manifest, erro
 	if err != nil {
 		return Manifest{}, err
 	}
-	return Manifest{Visible: visible, Deferred: deferred, close: m.close}, nil
+	return Manifest{Installations: slices.Clone(m.installations), Visible: visible, Deferred: deferred, close: m.close}, nil
 }
 
 func instrumentTools(telemetry oteltool.Middleware, tools []toolcontract.Tool) ([]toolcontract.Tool, error) {

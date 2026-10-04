@@ -131,17 +131,15 @@ in `application/extensions` and Oolong presentation contributions in terminal.
 ## Verify
 
 ```sh
-GOWORK=off go test ./...
-GOWORK=off go vet ./...
-GOWORK=off go build ./...
+go test ./...
+go vet ./...
+go build ./...
 ```
 
 Use real Runtime scenarios for changed product flows and real PTY tests only when terminal behavior is the contract.
-When validating coordinated, unpublished Runtime and CLI changes, use the repository's
-`go.work` (`go test ./...`, `go vet ./...`, `go build ./...` from `cli`). The standalone
-`GOWORK=off` gate requires publishing the matching Runtime modules and updating their
-versions; a local checkout does not make new public Runtime APIs available to a
-previously published dependency.
+These commands use the repository's `go.work` and validate coordinated Runtime and CLI
+changes without publishing modules. Before an independent CLI module release, run the
+same checks with `GOWORK=off` against the matching published Runtime versions.
 
 ## Module instructions
 
@@ -175,3 +173,22 @@ rules. `/mcp-tools` includes disabled tools across configured servers, and tool
 listings explain name collisions that exclude connected tools from the model.
 Runtime and clients must use the same protocol revision, and obsolete Runtime
 approval databases require a fresh data directory rather than data migration.
+
+## Runtime plugin commands
+
+`flame plugins list` inspects admitted releases, grants, Skill provenance and diagnostics.
+`install`, `stage`, `select`, `approve`, `configure`, `enable`, `revoke`, and `uninstall`
+accept their exact Runtime JSON request through `--request`. Source paths refer to the
+Runtime machine. Each mutation prints its command identity to stderr; retain it and use
+`--command-id` with the original request to recover an uncertain acknowledgement.
+Configuration requests include the selected release's `digest` as well as `installationId`.
+Runtime rejects a stale digest without applying inputs or component enablement changes;
+do not replace the digest in an unresolved request with a newly selected release.
+Authored JSON uses Runtime's strict request decoder. Explicit typed nulls cannot become
+false enablement, empty grants, or component changes; use the declared clear variant.
+Include required fields explicitly, including `enabled: false` and `grants: []`.
+Invalid requests and replay identities are rejected before the CLI opens Runtime.
+
+Action invocation, Runtime query actions and HTML resource delivery are unavailable in
+this slice. Installed MCP tools use Runtime's existing Run/Interrupt path; the CLI does
+not maintain a separate approval or effect state machine.

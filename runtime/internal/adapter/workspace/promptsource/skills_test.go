@@ -1,10 +1,13 @@
 package promptsource
 
 import (
+	"context"
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,7 +24,7 @@ func TestDiscoveryAndDetailShareExecutionSource(t *testing.T) {
 	project := ProjectSkillDir(workspace)
 	writeRuntimeSkill(t, user, "shared", "user instructions")
 	writeRuntimeSkill(t, project, "shared", "project instructions")
-	catalog := NewSkills(user)
+	catalog := NewSkills(user, nil)
 	detail, err := catalog.Get(t.Context(), workspace, "shared")
 	if err != nil {
 		t.Fatal(err)
@@ -34,10 +37,10 @@ func TestDiscoveryAndDetailShareExecutionSource(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if detail.Scope != domainskills.ScopeProject || detail.Path != physicalPath || detail.Revision != fmt.Sprintf("%x", sha256.Sum256(content)) {
+	if detail.Source.Scope() != domainskills.ScopeProject || detail.Path != physicalPath || detail.Revision != fmt.Sprintf("%x", sha256.Sum256(content)) {
 		t.Fatalf("detail source = %+v", detail)
 	}
-	source, err := OverlaySkillSource(workspace, user, nil)
+	source, _, err := OverlaySkillSource(t.Context(), workspace, user, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,11 +64,11 @@ func TestPartialSkillDiscoveryDoesNotExposeShadowedUserBundle(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(project, "broken", sdk.SkillFile), []byte("malformed document"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	found, err := ListSkills(t.Context(), workspace, user)
+	found, err := ListSkills(t.Context(), workspace, user, nil)
 	if err != nil || len(found.Skills) != 1 || found.Skills[0].Name != "working" || len(found.Diagnostics) != 1 || found.Diagnostics[0].Name != "broken" {
 		t.Fatalf("partial discovery = %+v, %v", found, err)
 	}
-	source, err := OverlaySkillSource(workspace, user, nil)
+	source, _, err := OverlaySkillSource(t.Context(), workspace, user, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +79,7 @@ func TestPartialSkillDiscoveryDoesNotExposeShadowedUserBundle(t *testing.T) {
 	if _, err := source.Load(t.Context(), "broken"); !errors.Is(err, sdk.ErrInvalidSkill) {
 		t.Fatalf("model loaded broken or shadowed bundle: %v", err)
 	}
-	if _, err := NewSkills(user).Get(t.Context(), workspace, "broken"); !errors.Is(err, workspaceapp.ErrSkillUnavailable) {
+	if _, err := NewSkills(user, nil).Get(t.Context(), workspace, "broken"); !errors.Is(err, workspaceapp.ErrSkillUnavailable) {
 		t.Fatalf("detail loaded broken or shadowed bundle: %v", err)
 	}
 }
@@ -97,7 +100,7 @@ func TestRuntimeSkillSourceRejectsOversizedDocument(t *testing.T) {
 	root := t.TempDir()
 	writeRuntimeSkill(t, root, "oversized", strings.Repeat("x", domainskills.MaxAuthoredSkillDocumentBytes))
 
-	source, err := OverlaySkillSource("", root, nil)
+	source, _, err := OverlaySkillSource(t.Context(), "", root, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +120,7 @@ func TestMergedRuntimeSkillSourcePreservesBundleOwnership(t *testing.T) {
 	projectRoot := ProjectSkillDir(workspace)
 	writeRuntimeSkill(t, projectRoot, "project", "project instructions")
 	writeRuntimeSkill(t, userRoot, "shared", "user instructions")
-	source, err := OverlaySkillSource(workspace, userRoot, nil)
+	source, _, err := OverlaySkillSource(t.Context(), workspace, userRoot, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -176,7 +179,7 @@ func TestRuntimeSkillSourceRejectsOverCapacityDirectory(t *testing.T) {
 		writeRuntimeSkill(t, root, fmt.Sprintf("skill-%03d", index), "instructions")
 	}
 
-	if _, err := ListSkills(t.Context(), workspace, ""); !errors.Is(err, domainskills.ErrLibraryCapacity) {
+	if _, err := ListSkills(t.Context(), workspace, "", nil); !errors.Is(err, domainskills.ErrLibraryCapacity) {
 		t.Fatalf("ListSkills error = %v, want ErrLibraryCapacity beyond %d entries", err, domainskills.MaxSkillsPerSource)
 	}
 }
@@ -190,7 +193,7 @@ func TestRuntimeSkillSourceCapacityCountsOnlyValidSkills(t *testing.T) {
 		}
 	}
 
-	listed, err := ListSkills(t.Context(), workspace, "")
+	listed, err := ListSkills(t.Context(), workspace, "", nil)
 	if err != nil {
 		t.Fatalf("ListSkills rejected invalid candidates below the raw entry limit: %v", err)
 	}
@@ -211,7 +214,7 @@ func TestRuntimeSkillSourceRejectsRawDirectoryFlood(t *testing.T) {
 		}
 	}
 
-	if _, err := ListSkills(t.Context(), workspace, ""); !errors.Is(err, domainskills.ErrLibraryCapacity) {
+	if _, err := ListSkills(t.Context(), workspace, "", nil); !errors.Is(err, domainskills.ErrLibraryCapacity) {
 		t.Fatalf("ListSkills raw-directory error = %v, want ErrLibraryCapacity", err)
 	}
 }
@@ -227,10 +230,10 @@ func TestRuntimeSkillSourcesRejectEscapingProjectRoot(t *testing.T) {
 		t.Skipf("symlinks unavailable: %v", err)
 	}
 
-	if _, err := ListSkills(t.Context(), workspace, ""); !errors.Is(err, workspaceapp.ErrPathOutsideRoot) {
+	if _, err := ListSkills(t.Context(), workspace, "", nil); !errors.Is(err, workspaceapp.ErrPathOutsideRoot) {
 		t.Fatalf("ListSkills error = %v, want ErrPathOutsideRoot", err)
 	}
-	if _, err := OverlaySkillSource(workspace, "", nil); !errors.Is(err, workspaceapp.ErrPathOutsideRoot) {
+	if _, _, err := OverlaySkillSource(t.Context(), workspace, "", nil, nil); !errors.Is(err, workspaceapp.ErrPathOutsideRoot) {
 		t.Fatalf("OverlaySkillSource error = %v, want ErrPathOutsideRoot", err)
 	}
 }
@@ -246,11 +249,11 @@ func TestRuntimeSkillSourcesAllowInWorkspaceAlias(t *testing.T) {
 		t.Skipf("symlinks unavailable: %v", err)
 	}
 
-	listed, err := ListSkills(t.Context(), workspace, "")
+	listed, err := ListSkills(t.Context(), workspace, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(listed.Skills) != 1 || listed.Skills[0].Name != "inside" || listed.Skills[0].Scope != domainskills.ScopeProject {
+	if len(listed.Skills) != 1 || listed.Skills[0].Name != "inside" || listed.Skills[0].Source.Scope() != domainskills.ScopeProject {
 		t.Fatalf("ListSkills = %+v, want the confined project Skill", listed)
 	}
 }
@@ -287,10 +290,10 @@ func TestRuntimeSkillSourcesRejectBrokenExistingRoots(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			workspace, user := test.build(t)
-			if _, err := ListSkills(t.Context(), workspace, user); err == nil {
+			if _, err := ListSkills(t.Context(), workspace, user, nil); err == nil {
 				t.Fatal("ListSkills silently treated a broken source as absent")
 			}
-			if _, err := OverlaySkillSource(workspace, user, nil); err == nil {
+			if _, _, err := OverlaySkillSource(t.Context(), workspace, user, nil, nil); err == nil {
 				t.Fatal("OverlaySkillSource silently treated a broken source as absent")
 			}
 		})
@@ -312,7 +315,7 @@ func TestRuntimeSkillSourceRejectsOversizedResource(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	source, err := OverlaySkillSource("", root, nil)
+	source, _, err := OverlaySkillSource(t.Context(), "", root, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -333,7 +336,7 @@ func TestRuntimeSkillSourceRejectsResourceGrowthAfterOpen(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	source, err := OverlaySkillSource("", root, nil)
+	source, _, err := OverlaySkillSource(t.Context(), "", root, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -356,5 +359,75 @@ func TestRuntimeSkillSourceRejectsResourceGrowthAfterOpen(t *testing.T) {
 	closeErr := file.Close()
 	if !errors.Is(errors.Join(readErr, closeErr), domainskills.ErrResourceTooLarge) {
 		t.Fatalf("grown resource error = %v, want ErrResourceTooLarge", errors.Join(readErr, closeErr))
+	}
+}
+
+type packageSkillFixtures []PackageSkillBundle
+
+func (p packageSkillFixtures) SkillBundles(context.Context) ([]PackageSkillBundle, error) {
+	return p, nil
+}
+func (p packageSkillFixtures) ReadSkillResource(_ context.Context, dependency InstallationDependency, name, resource string) ([]byte, error) {
+	for _, bundle := range p {
+		if bundle.Dependency == dependency {
+			return os.ReadFile(filepath.Join(bundle.Root, name, resource))
+		}
+	}
+	return nil, fs.ErrNotExist
+}
+
+func TestInstallationSkillCapacityIsPerSelectedSource(t *testing.T) {
+	var fixtures packageSkillFixtures
+	for _, prefix := range []string{"first", "second"} {
+		bundle := PackageSkillBundle{Root: t.TempDir(), Dependency: InstallationDependency{InstallationID: uuid.NewString(), Digest: strings.Repeat("1", 64)}}
+		for index := range 129 {
+			name := fmt.Sprintf("%s-%03d", prefix, index)
+			writeRuntimeSkill(t, bundle.Root, name, "Read the results.")
+			bundle.Names = append(bundle.Names, name)
+		}
+		fixtures = append(fixtures, bundle)
+	}
+	catalog, err := ListSkills(t.Context(), t.TempDir(), t.TempDir(), fixtures)
+	if err != nil || len(catalog.Skills) != 258 {
+		t.Fatalf("independent installation capacity: %d, %v", len(catalog.Skills), err)
+	}
+	for _, summary := range catalog.Skills {
+		if _, _, found := summary.Source.Installation(); !found {
+			t.Fatal("installation Skill lost its selected source")
+		}
+	}
+}
+
+func TestPackageSkillConflictCanOnlyBeResolvedByAnExplicitSource(t *testing.T) {
+	var fixtures packageSkillFixtures
+	for range 2 {
+		bundle := PackageSkillBundle{Root: t.TempDir(), Names: []string{"review"}, Dependency: InstallationDependency{InstallationID: uuid.NewString(), Digest: strings.Repeat("1", 64)}}
+		writeRuntimeSkill(t, bundle.Root, "review", "Inspect this package.")
+		fixtures = append(fixtures, bundle)
+	}
+	workspace := t.TempDir()
+	for _, overridden := range []bool{false, true} {
+		if overridden {
+			writeRuntimeSkill(t, ProjectSkillDir(workspace), "review", "Inspect the project.")
+		}
+		catalog, err := ListSkills(t.Context(), workspace, "", fixtures)
+		if err != nil || len(catalog.Diagnostics) != 1 {
+			t.Fatalf("discovery = %+v, %v", catalog, err)
+		}
+		source, dependencies, err := OverlaySkillSource(t.Context(), workspace, "", fixtures, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(dependencies) != 0 {
+			t.Fatal("a conflicted or overridden package entered the frozen dependencies")
+		}
+		skill, err := source.Load(t.Context(), "review")
+		if !overridden {
+			if len(catalog.Skills) != 0 || !strings.Contains(catalog.Diagnostics[0].Detail, "Multiple installations") || !errors.Is(err, workspaceapp.ErrSkillUnavailable) {
+				t.Fatalf("conflicted Skill = %+v, %+v, %v", catalog, skill, err)
+			}
+		} else if len(catalog.Skills) != 1 || !strings.Contains(catalog.Diagnostics[0].Detail, "overrides") || err != nil || skill.Instructions != "Inspect the project." {
+			t.Fatalf("explicit override = %+v, %+v, %v", catalog, skill, err)
+		}
 	}
 }

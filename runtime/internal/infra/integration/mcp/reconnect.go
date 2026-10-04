@@ -7,75 +7,17 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/go-sdk/auth"
-	sdkmcp "github.com/Tangerg/go-sdk/mcp"
-	toolcontract "github.com/Tangerg/scope/core/tool"
 )
-
-// planAttempt claims a known, open server and detaches its live session under
-// one hold of the lock: the session to close, the configuration to dial, and the
-// attempt that owns the outcome. plan decides what to dial and may refuse, and
-// every way out releases the lock, so no caller unlocks by hand on a rejection.
-func (c *Connections) planAttempt(
-	ctx context.Context,
-	name mcpserver.ServerName,
-	plan func(*server) (ServerConfig, error),
-) (*sdkmcp.ClientSession, ServerConfig, *connectionAttempt, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.closed {
-		return nil, ServerConfig{}, nil, ErrConnectionsClosed
-	}
-	configuredServer := c.find(name)
-	if configuredServer == nil {
-		return nil, ServerConfig{}, nil, fmt.Errorf("%w: %q", mcpserver.ErrUnknownServer, name)
-	}
-	cfg, err := plan(configuredServer)
-	if err != nil {
-		return nil, ServerConfig{}, nil, err
-	}
-	detachedSession := configuredServer.session
-	configuredServer.session = nil
-	configuredServer.tools = nil
-	configuredServer.state = mcpserver.ConnectionConnecting
-	return detachedSession, cfg, c.beginAttempt(ctx, configuredServer), nil
-}
-
-func (c *Connections) Reconnect(ctx context.Context, name mcpserver.ServerName) error {
-	detachedSession, cfg, attempt, err := c.planAttempt(ctx, name, func(configuredServer *server) (ServerConfig, error) {
-		reused := configuredServer.config
-		reused.OAuthHandler = configuredServer.oauth // reuse this session's sign-in (nil for non-OAuth)
-		return reused, nil
-	})
-	if err != nil {
-		return err
-	}
-	defer c.finishAttempt(attempt)
-
-	// Publish the connecting state before closing/dialing: no new Run may keep
-	// resolving wrappers backed by the session we are about to close.
-	c.publishTools()
-
-	closeErr := c.closeSession(ctx, detachedSession)
-	return errors.Join(closeErr, c.dialAndSwap(attempt, cfg, false))
-}
 
 // Configure adds a new server or re-dials an existing one with the given
 // config, then refreshes the model-facing tool set so the model immediately
 // sees the (re)connected server. It is the runtime-mutable counterpart to the
-// boot-time [Dial]: mcp.servers.create/update and re-enabling a server route here.
-// Serialized with [Reconnect]: both dial and swap a session.
+// boot-time [Dial]: create, update, enable and reconnect obtain the current
+// owner configuration before entering this connection attempt.
 func (c *Connections) Configure(ctx context.Context, cfg ServerConfig) error {
 	cfg = cfg.Clone()
 	if err := cfg.Validate(); err != nil {
 		return fmt.Errorf("mcp: invalid server %q: %w", cfg.Name, err)
-	}
-	restored := cfg.OAuthHandler
-	if cfg.Transport == TransportHTTP && restored == nil && cfg.Authorization == "" {
-		var err error
-		restored, err = restoreOAuthHandler(ctx, c.lifetime, c.oauthSessions, cfg.oauthTarget())
-		if err != nil {
-			return err
-		}
 	}
 	c.mu.Lock()
 	if c.closed {
@@ -89,7 +31,7 @@ func (c *Connections) Configure(ctx context.Context, cfg ServerConfig) error {
 	}
 	oauth := reusableOAuth(configuredServer.config, cfg, configuredServer.oauth)
 	if oauth == nil {
-		oauth = restored
+		oauth = cfg.OAuthHandler
 	}
 	configuredServer.oauth = oauth
 	detachedSession := configuredServer.session
@@ -105,7 +47,27 @@ func (c *Connections) Configure(ctx context.Context, cfg ServerConfig) error {
 
 	c.publishTools()
 
-	closeErr := c.closeSession(ctx, detachedSession)
+	closeErr := c.closeSession(attempt.ctx, detachedSession)
+	if cfg.Transport == TransportHTTP && oauth == nil && cfg.Authorization == "" {
+		var err error
+		oauth, err = restoreOAuthHandler(attempt.ctx, c.lifetime, c.oauthSessions, cfg.oauthTarget())
+		if err != nil {
+			c.failAttempt(attempt)
+			return errors.Join(closeErr, err)
+		}
+		c.mu.Lock()
+		if c.closed || !c.currentAttempt(attempt) {
+			closed := c.closed
+			c.mu.Unlock()
+			if closed {
+				return errors.Join(closeErr, ErrConnectionsClosed)
+			}
+			return errors.Join(closeErr, errConnectionSuperseded)
+		}
+		configuredServer.oauth = oauth
+		c.mu.Unlock()
+		cfg.OAuthHandler = oauth
+	}
 	return errors.Join(closeErr, c.dialAndSwap(attempt, cfg, false))
 }
 
@@ -128,25 +90,47 @@ func reusableOAuth(current, candidate ServerConfig, handler auth.OAuthHandler) a
 // handler and its refreshing token source are persisted when a session store
 // is configured. Blocks until the user completes the browser flow or
 // [oauthFlowTimeout] elapses. Returns
-// [mcpserver.ErrUnknownServer] for an unconfigured name. Serialized with the other dials.
-func (c *Connections) Authorize(ctx context.Context, name mcpserver.ServerName) (err error) {
-	detachedSession, cfg, attempt, err := c.planAttempt(ctx, name, func(configuredServer *server) (ServerConfig, error) {
-		if configuredServer.config.Transport != TransportHTTP {
-			return ServerConfig{}, errors.New("mcp: OAuth applies to HTTP servers only")
-		}
-		if configuredServer.config.Authorization != "" {
-			return ServerConfig{}, errors.New("mcp: clear static Authorization before starting OAuth")
-		}
-		return configuredServer.config, nil
-	})
-	if err != nil {
+// [mcpserver.ErrUnknownServer] for an unconfigured name. A newer operation for
+// the same server supersedes this attempt.
+func (c *Connections) Authorize(ctx context.Context, input ServerConfig) (err error) {
+	input = input.Clone()
+	if err := input.Validate(); err != nil {
 		return err
 	}
+	if input.OAuthHandler != nil {
+		return errors.New("mcp: explicit authorization cannot supply an OAuth handler")
+	}
+	c.mu.Lock()
+	if c.closed {
+		c.mu.Unlock()
+		return ErrConnectionsClosed
+	}
+	configuredServer := c.find(input.Name)
+	if configuredServer == nil {
+		c.mu.Unlock()
+		return fmt.Errorf("%w: %q", mcpserver.ErrUnknownServer, input.Name)
+	}
+	if input.Transport != TransportHTTP {
+		c.mu.Unlock()
+		return errors.New("mcp: OAuth applies to HTTP servers only")
+	}
+	if input.Authorization != "" {
+		c.mu.Unlock()
+		return errors.New("mcp: clear static authorization before starting OAuth")
+	}
+	detachedSession := configuredServer.session
+	configuredServer.config = input.Clone()
+	configuredServer.oauth = nil
+	configuredServer.session, configuredServer.tools = nil, nil
+	configuredServer.state = mcpserver.ConnectionConnecting
+	attempt := c.beginAttempt(ctx, configuredServer)
+	cfg := input
+	c.mu.Unlock()
 	defer c.finishAttempt(attempt)
 
 	c.publishTools()
 
-	closeErr := c.closeSession(ctx, detachedSession)
+	closeErr := c.closeSession(attempt.ctx, detachedSession)
 
 	// Bound the human-in-the-loop flow here; clear the per-server handshake
 	// timeout so it can't abort the browser wait mid-sign-in.
@@ -172,7 +156,7 @@ func (c *Connections) Authorize(ctx context.Context, name mcpserver.ServerName) 
 }
 
 // dialAndSwap dials cfg, proves the session with a tools/list, then publishes it
-// on the configured server under the lock — the shared tail of [Connections.Reconnect] /
+// on the configured server under the lock — the shared tail of
 // [Connections.Configure] / [Connections.Authorize]. The per-server attempt
 // registration rejects a stale completion after a newer
 // configure/remove/reconnect. c.mu is not held while dialing. keepHandler stores
@@ -181,7 +165,7 @@ func (c *Connections) Authorize(ctx context.Context, name mcpserver.ServerName) 
 // reuse an existing one and pass false).
 func (c *Connections) dialAndSwap(attempt *connectionAttempt, cfg ServerConfig, keepHandler bool) error {
 	session, cleanupSession, err := dial(attempt.ctx, c.lifetime, c.client, cfg)
-	var verifiedTools []toolcontract.Tool
+	var verifiedTools []Executable
 	if err == nil {
 		// Prove the session is usable before publishing it as connected.
 		verifiedTools, err = sourceTools(attempt.ctx, cfg, session)

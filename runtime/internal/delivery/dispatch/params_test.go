@@ -3,12 +3,12 @@ package dispatch
 import (
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
+	"errors"
 	"reflect"
 	"slices"
 	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -20,9 +20,6 @@ func decodeForTest[Parameters any](request *transport.Request) (Parameters, *tra
 		return zero, errorToRPC(failure)
 	}
 	parameters := decoded.(Parameters)
-	if err := protocol.ValidateWireTree(parameters); err != nil {
-		return zero, errorToRPC(delivery.InvalidParameters(err))
-	}
 	return parameters, nil
 }
 
@@ -106,7 +103,8 @@ func TestDecodeParamsReportsTypedMapNullsInKeyOrder(t *testing.T) {
 		jsontext.Value(`{"type":"set","value":{"zulu":null,"alpha":null}}`),
 		&got,
 	)
-	if err == nil || err.Error() != "params.value.alpha must be omitted instead of null" {
+	constraint, ok := errors.AsType[*protocol.ConstraintError](err)
+	if !errors.Is(err, protocol.ErrInvalidParams) || !ok || !slices.Equal(constraint.Fields, []protocol.FieldError{{Field: `value["alpha"]`, Detail: "must not be null"}}) {
 		t.Fatalf("decodeParams() error = %v", err)
 	}
 }
@@ -139,15 +137,16 @@ func TestDecodeParamsRejectsExplicitNullsAcrossTypedContainers(t *testing.T) {
 		raw  string
 		want string
 	}{
-		{name: "pointer field", raw: `{"text":null}`, want: "params.text"},
-		{name: "slice element", raw: `{"values":[null]}`, want: "params.values[0]"},
-		{name: "map value", raw: `{"lookup":{"key":null}}`, want: "params.lookup.key"},
+		{name: "pointer field", raw: `{"text":null}`, want: "text"},
+		{name: "slice element", raw: `{"values":[null]}`, want: "values[0]"},
+		{name: "map value", raw: `{"lookup":{"key":null}}`, want: `lookup["key"]`},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			var got nullTraversalFixture
 			err := decodeParams(jsontext.Value(test.raw), &got)
-			if err == nil || err.Error() != test.want+" must be omitted instead of null" {
+			constraint, ok := errors.AsType[*protocol.ConstraintError](err)
+			if !errors.Is(err, protocol.ErrInvalidParams) || !ok || !slices.Equal(constraint.Fields, []protocol.FieldError{{Field: test.want, Detail: "must not be null"}}) {
 				t.Fatalf("decodeParams error = %v, want null rejection at %s", err, test.want)
 			}
 		})

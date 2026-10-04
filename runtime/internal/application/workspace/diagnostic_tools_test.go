@@ -32,7 +32,7 @@ func (t *toolRegistryRecorder) Invoke(_ context.Context, root, name string, argu
 	t.root = root
 	t.name = name
 	t.arguments = arguments
-	return tool.StringResult("ok"), nil
+	return tool.NewResult("ok")
 }
 
 func (*toolRegistryRecorder) List(context.Context) ([]tool.Tool, error) { return nil, nil }

@@ -29,7 +29,21 @@ type MCPListToolsRequest struct {
 // list results are ordered by Name ascending. Status includes "disabled", so
 // configuration enablement and live lifecycle can never contradict one another
 // on the wire.
+type MCPOriginType string
+
+const (
+	MCPOriginUser         MCPOriginType = "user"
+	MCPOriginInstallation MCPOriginType = "installation"
+)
+
+type MCPOrigin struct {
+	Type           MCPOriginType `json:"type"`
+	InstallationID string        `json:"installationId,omitempty"`
+	LocalName      string        `json:"localName,omitempty"`
+}
+
 type MCPServer struct {
+	Origin           MCPOrigin           `json:"origin"`
 	Name             string              `json:"name"`
 	Description      string              `json:"description,omitempty"`
 	Connection       MCPConnection       `json:"connection"`

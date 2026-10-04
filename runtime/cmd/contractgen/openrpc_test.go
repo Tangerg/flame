@@ -12,7 +12,7 @@ func TestOpenRPCPublishesAckNullableAndNotificationResults(t *testing.T) {
 	t.Parallel()
 
 	registry, shapes := delivery.Contract(), dispatch.WireShapes()
-	document := newOpenRPC(registry, shapes, walkWireTypes(registry, shapes))
+	document := newOpenRPC(registry, shapes, testWalkWireTypes(t, registry, shapes))
 
 	ack := openRPCMethod(t, document, "sessions.delete")
 	if ack.Result == nil || ack.Result.Schema == nil || ack.Result.Schema.Type != schemaTypeObject {
@@ -44,7 +44,7 @@ func TestOpenRPCPublishesAckNullableAndNotificationResults(t *testing.T) {
 func TestOpenRPCRequestFramesAreStrictAndPublishUniversalMetadata(t *testing.T) {
 	t.Parallel()
 
-	document := newOpenRPC(delivery.Contract(), dispatch.WireShapes(), walkWireTypes(delivery.Contract(), dispatch.WireShapes()))
+	document := newOpenRPC(delivery.Contract(), dispatch.WireShapes(), testWalkWireTypes(t, delivery.Contract(), dispatch.WireShapes()))
 	for _, method := range document.Methods {
 		if method.RequestFrame == nil || method.RequestFrame.UnevaluatedProps == nil || *method.RequestFrame.UnevaluatedProps {
 			t.Errorf("%s request frame does not reject unknown top-level params", method.Name)
@@ -53,16 +53,7 @@ func TestOpenRPCRequestFramesAreStrictAndPublishUniversalMetadata(t *testing.T) 
 		if meta.Required || meta.Schema == nil || !strings.HasSuffix(meta.Schema.Ref, "/RequestMeta") {
 			t.Errorf("%s _meta param = %#v, want optional RequestMeta", method.Name, meta)
 		}
-		foundMeta := false
-		for _, branch := range method.RequestFrame.AllOf {
-			if branch == nil || branch.Properties == nil {
-				continue
-			}
-			_, foundMeta = branch.Properties[requestMetaField]
-			if foundMeta {
-				break
-			}
-		}
+		_, foundMeta := method.RequestFrame.Properties[requestMetaField]
 		if !foundMeta {
 			t.Errorf("%s request frame does not allow %s", method.Name, requestMetaField)
 		}
@@ -72,7 +63,7 @@ func TestOpenRPCRequestFramesAreStrictAndPublishUniversalMetadata(t *testing.T) 
 func TestOpenRPCPublishesRunReplayCursorPolicy(t *testing.T) {
 	t.Parallel()
 
-	document := newOpenRPC(delivery.Contract(), dispatch.WireShapes(), walkWireTypes(delivery.Contract(), dispatch.WireShapes()))
+	document := newOpenRPC(delivery.Contract(), dispatch.WireShapes(), testWalkWireTypes(t, delivery.Contract(), dispatch.WireShapes()))
 	for _, test := range []struct {
 		method string
 		want   string
@@ -90,7 +81,7 @@ func TestOpenRPCPublishesRunReplayCursorPolicy(t *testing.T) {
 func TestOpenRPCParamsPreserveRequestFieldConstraints(t *testing.T) {
 	t.Parallel()
 
-	document := newOpenRPC(delivery.Contract(), dispatch.WireShapes(), walkWireTypes(delivery.Contract(), dispatch.WireShapes()))
+	document := newOpenRPC(delivery.Contract(), dispatch.WireShapes(), testWalkWireTypes(t, delivery.Contract(), dispatch.WireShapes()))
 	for _, test := range []struct {
 		method    string
 		param     string

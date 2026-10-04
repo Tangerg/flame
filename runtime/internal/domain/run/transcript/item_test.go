@@ -48,7 +48,10 @@ func TestToolApprovalDecisionIsImmutableAndSurvivesSettlement(t *testing.T) {
 	if _, resolveToolApprovalErr := resolved.ResolveToolApproval(approval.Deny); resolveToolApprovalErr == nil {
 		t.Fatal("ResolveToolApproval accepted a second decision")
 	}
-	result := tool.StringResult("ok")
+	result, err := tool.NewResult("ok")
+	if err != nil {
+		t.Fatal(err)
+	}
 	completed, err := resolved.CompleteToolCall(
 		transcript.ToolInvocation{Name: "shell", Result: &result},
 		resolved.OccurredAt(),
@@ -216,7 +219,10 @@ func TestItemForkReidentifiesTerminalHistoryAndRemapsOffload(t *testing.T) {
 	if _, forkErr := running.Fork("session-child", "run-child", "item-child", nil); forkErr == nil {
 		t.Fatal("Fork accepted a running Item")
 	}
-	preview := tool.StringResult("preview")
+	preview, err := tool.NewResult("preview")
+	if err != nil {
+		t.Fatal(err)
+	}
 	completed, err := running.CompleteToolCall(transcript.ToolInvocation{
 		Name: "read_large", Result: &preview, Offload: &toolresult.Ref{ID: "SOURCE23"},
 	}, running.OccurredAt(), running.OccurredAt().Add(time.Second))
@@ -264,7 +270,10 @@ func TestToolCallSettlementIsTerminalAndPreservesIdentity(t *testing.T) {
 
 	finishedAt := running.OccurredAt().Add(time.Second)
 	executionStartedAt := running.OccurredAt().Add(250 * time.Millisecond)
-	result := tool.StringResult("contents")
+	result, err := tool.NewResult("contents")
+	if err != nil {
+		t.Fatal(err)
+	}
 	settlement := transcript.ToolInvocation{Name: "read_file", Arguments: arguments, Result: &result}
 	completed, err := running.CompleteToolCall(settlement, executionStartedAt, finishedAt)
 	if err != nil {

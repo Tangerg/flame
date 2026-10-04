@@ -10,3 +10,4 @@ export function editAppearance(): AppearanceEdit {
 }
 
 export { UI_DENSITY_MODES, type UiDensity } from "../kit/appearance";
+export { retainThemeSelection } from "../application/themeScheme";

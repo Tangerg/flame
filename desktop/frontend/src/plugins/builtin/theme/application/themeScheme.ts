@@ -6,7 +6,14 @@ import { appearancePreferencePort } from "./ports/appearancePreference";
 
 export function resolveThemeScheme(themeId: string): Scheme {
   if (themeId === "system") return systemAppearance().scheme();
-  return lookupExtensionByKey(COLOR_THEME, themeId)?.scheme ?? "dark";
+  return lookupExtensionByKey(COLOR_THEME, themeId)?.scheme ?? systemAppearance().scheme();
+}
+
+export function retainThemeSelection(available: readonly string[], sourcePrefix: string): void {
+  const preference = appearancePreferencePort();
+  const current = preference.read().theme;
+  if (current.startsWith(sourcePrefix) && !available.includes(current))
+    preference.edit().setTheme("system");
 }
 
 export function isLightTheme(themeId: string): boolean {

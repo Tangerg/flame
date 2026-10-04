@@ -16,7 +16,8 @@ const (
 	// RuntimeSkillsChanged — the discovered skill set changed.
 	RuntimeSkillsChanged RuntimeEventType = "skills.changed"
 	// RuntimeMCPChanged — an MCP server's registration or connection changed.
-	RuntimeMCPChanged RuntimeEventType = "mcp.changed"
+	RuntimeMCPChanged     RuntimeEventType = "mcp.changed"
+	RuntimePluginsChanged RuntimeEventType = "plugins.changed"
 	// RuntimeSchedulesChanged — a schedule was created, edited, deleted or fired.
 	RuntimeSchedulesChanged RuntimeEventType = "schedules.changed"
 	// RuntimeSessionsChanged — a session was created, renamed, deleted or its
@@ -55,6 +56,7 @@ const (
 	TopicFilesChanged       = RuntimeTopic(RuntimeFilesChanged)
 	TopicSkillsChanged      = RuntimeTopic(RuntimeSkillsChanged)
 	TopicMCPChanged         = RuntimeTopic(RuntimeMCPChanged)
+	TopicPluginsChanged     = RuntimeTopic(RuntimePluginsChanged)
 	TopicSchedulesChanged   = RuntimeTopic(RuntimeSchedulesChanged)
 	TopicSessionsChanged    = RuntimeTopic(RuntimeSessionsChanged)
 	TopicRunsChanged        = RuntimeTopic(RuntimeRunsChanged)
@@ -73,7 +75,7 @@ const (
 // the protocol vocabulary for another.
 func RuntimeTopics() []RuntimeTopic {
 	return []RuntimeTopic{
-		TopicFilesChanged, TopicSkillsChanged, TopicMCPChanged, TopicSchedulesChanged,
+		TopicFilesChanged, TopicSkillsChanged, TopicMCPChanged, TopicPluginsChanged, TopicSchedulesChanged,
 		TopicSessionsChanged, TopicRunsChanged, TopicPlanChanged, TopicGoalsChanged,
 		TopicInterruptsChanged, TopicHooksChanged,
 		TopicModelsChanged, TopicApprovalsChanged, TopicAgentMemoryChanged,

@@ -714,7 +714,10 @@ func TestApplyForkBranchesAndSeeds(t *testing.T) {
 		Kind: transcript.UserMessage, OccurredAt: forkedAt,
 		Content: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}},
 	})
-	preview := tool.StringResult("bounded preview")
+	preview, err := tool.NewResult("bounded preview")
+	if err != nil {
+		t.Fatal(err)
+	}
 	forkedToolItem := testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID: childState.ID(), RunID: forkedRun.ID(), ID: "item_child_tool",
 		Kind: transcript.ToolCall, Status: transcript.ItemCompleted, OccurredAt: forkedAt,

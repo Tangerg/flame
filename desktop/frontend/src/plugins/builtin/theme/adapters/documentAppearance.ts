@@ -24,6 +24,7 @@ import { depthStep } from "../kit/tokens";
 import { visualStyleMotionTokens } from "../visualStyles/tokens";
 import { resolveThemeScheme } from "../application/themeScheme";
 import { subscribeSystemScheme } from "./systemAppearance";
+import { rememberThemePaint } from "./themePaint";
 
 type UiEffectStore<T extends AppearancePreference> = Pick<StoreApi<T>, "getState" | "subscribe">;
 
@@ -95,6 +96,9 @@ function applyColorTheme(theme: ColorThemeId, accent: string, contrast: number):
   );
 
   publishScheme(scheme);
+  const background = resolved("--color-bg");
+  root.style.backgroundColor = background;
+  if (spec) rememberThemePaint(theme, scheme, background);
 }
 
 function applyVisualStyle(id: VisualStyleId): void {

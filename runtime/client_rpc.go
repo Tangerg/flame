@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"reflect"
 
+	"github.com/Tangerg/flame/runtime/internal/contractshape"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
@@ -181,7 +182,7 @@ func decodeRemoteResponse(encoded []byte, id transport.ID, resultType reflect.Ty
 			return delivery.Result{}, invalidRemote("invalid operation error envelope")
 		}
 		var problem protocol.ProblemData
-		if err := transport.DecodeValue(rpcError.Data, &problem, "error.data"); err != nil {
+		if err := contractshape.DecodeValue(rpcError.Data, &problem, "error.data"); err != nil {
 			return delivery.Result{}, invalidRemote("invalid operation problem")
 		}
 		code, known := dispatch.ProblemCodes()[problem.Type]
@@ -203,11 +204,8 @@ func decodeRemoteResponse(encoded []byte, id transport.ID, resultType reflect.Ty
 
 func decodeRemoteValue(encoded []byte, valueType reflect.Type) (any, error) {
 	value := reflect.New(valueType)
-	if err := transport.DecodeValue(encoded, value.Interface(), "result"); err != nil {
+	if err := contractshape.DecodeValue(encoded, value.Interface(), "result"); err != nil {
 		return nil, invalidRemote("invalid typed response")
-	}
-	if err := transport.ValidateRequiredFields(encoded, valueType, "result"); err != nil {
-		return nil, invalidRemote("response omits a required field")
 	}
 	decoded := value.Elem().Interface()
 	if err := protocol.ValidateWireTree(decoded); err != nil {
@@ -246,7 +244,7 @@ func decodeTransportError(response *http.Response, mediaType string, limit int) 
 		Detail    string `json:"detail"`
 		RequestID string `json:"requestId,omitempty"`
 	}
-	if err := transport.DecodeValue(encoded, &problem, "problem"); err == nil && problem.Status == response.StatusCode {
+	if err := contractshape.DecodeValue(encoded, &problem, "problem"); err == nil && problem.Status == response.StatusCode {
 		failure.Type = problem.Type
 	}
 	return failure

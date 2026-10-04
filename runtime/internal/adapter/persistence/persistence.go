@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	sqlitestore "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/localruntime"
@@ -43,6 +44,8 @@ type Bundle struct {
 	Feedback            *sqlitestore.FeedbackStore
 	Providers           *sqlitestore.ProviderStore
 	MCPServers          *sqlitestore.MCPServerStore
+	Installations       *sqlitestore.InstallationStore
+	PluginReleases      *sqlitestore.ReleaseStore
 	ChatHistory         *sqlitestore.MessageStore
 	Trajectory          *TrajectoryReader
 	ModelInvocations    *sqlitestore.ModelInvocationStore
@@ -184,6 +187,8 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 		Feedback:            sqlitestore.NewFeedbackStore(db),
 		Providers:           sqlitestore.NewProviderStore(db),
 		MCPServers:          sqlitestore.NewMCPServerStore(db),
+		Installations:       sqlitestore.NewInstallationStore(db),
+		PluginReleases:      sqlitestore.NewReleaseStore(db),
 		ChatHistory:         sqlitestore.NewMessageStore(db),
 		Trajectory:          &TrajectoryReader{store: sqlitestore.NewTrajectoryStore(db)},
 		ModelInvocations:    sqlitestore.NewModelInvocationStore(db),
@@ -224,4 +229,10 @@ func (b *Bundle) Close() error {
 		}
 	})
 	return b.closeErr
+}
+
+func (b *Bundle) MCPAuthorization(registry interface {
+	Get(context.Context, mcpserver.ServerName) (mcpserver.Server, bool, error)
+}) *sqlitestore.MCPAuthorizationStore {
+	return sqlitestore.NewMCPAuthorizationStore(b.db, registry)
 }

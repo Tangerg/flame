@@ -112,7 +112,11 @@ func TestPresenterWebSearchResult(t *testing.T) {
 
 func TestPublishedResultContractsDecodePresenterOutput(t *testing.T) {
 	contracts := make(map[string]PresentationContract)
-	for _, contract := range PresentationContracts() {
+	published, err := PresentationContracts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, contract := range published {
 		if _, exists := contracts[contract.ToolName]; exists {
 			t.Fatalf("duplicate result contract for %q", contract.ToolName)
 		}

@@ -152,7 +152,10 @@ func TestSessionExportImportCarriesOffloadedToolResultsAcrossDatabases(t *testin
 	}
 	preview := "offloaded preview " + id.String()
 	ref := &resultoffload.Ref{ID: id}
-	previewValue := tool.StringResult(preview)
+	previewValue, err := tool.NewResult(preview)
+	if err != nil {
+		t.Fatal(err)
+	}
 	item := testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID: ses.ID(), RunID: "run_offload", ID: "item_offload",
 		OccurredAt: time.Unix(2, 0).UTC(), FinishedAt: time.Unix(3, 0).UTC(),

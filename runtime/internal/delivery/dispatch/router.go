@@ -83,7 +83,7 @@ func (r *Router) Dispatch(ctx context.Context, message transport.Message) Result
 func decodeParameters(raw []byte, parameterType reflect.Type) (any, *delivery.Failure) {
 	target := reflect.New(parameterType)
 	if err := decodeParams(raw, target.Interface()); err != nil {
-		return nil, delivery.NewFailure(protocol.ErrInvalidParams, err.Error())
+		return nil, delivery.ProjectError(err)
 	}
 	return target.Elem().Interface(), nil
 }

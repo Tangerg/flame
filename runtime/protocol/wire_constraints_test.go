@@ -25,6 +25,32 @@ func agentMemoryWireItemID(digit byte) string {
 	)
 }
 
+func TestPluginThemeColorsRejectInvalidNamesAndValues(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		colors map[string]string
+		field  string
+	}{
+		{"valid palette", map[string]string{"background": "#102030", "foreground": "#ABCDEF", "accent": "#102030", "muted": "#102030", "border": "#102030"}, ""},
+		{"unknown token", map[string]string{"unexpected": "#102030"}, `colors["unexpected"]`},
+		{"css expression", map[string]string{"background": "url(https://example.invalid/image)"}, `colors["background"]`},
+		{"short hex", map[string]string{"accent": "#abc"}, `colors["accent"]`},
+		{"empty color", map[string]string{"border": ""}, `colors["border"]`},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			theme := PluginTheme{ID: "sample", Title: "Sample", Scheme: PluginThemeDark, Colors: test.colors}
+			err := ValidateWireTree(theme)
+			if test.field == "" {
+				if err != nil {
+					t.Fatal(err)
+				}
+				return
+			}
+			assertConstraintField(t, err, "PluginTheme", test.field)
+		})
+	}
+}
+
 func TestRuntimeEventWireConstraints(t *testing.T) {
 	t.Parallel()
 
@@ -1168,6 +1194,37 @@ func TestValidateWireTreeComposesNestedConstraints(t *testing.T) {
 		"PendingInterruptSet",
 		"interrupts[0].runId",
 	)
+}
+
+func TestValidateWireTreeComposesTypedMapConstraints(t *testing.T) {
+	request := ConfigurePluginRequest{
+		InstallationID: "00000000-0000-4000-8000-000000000001",
+		Digest:         strings.Repeat("1", 64),
+		ValueChanges: map[string]PluginValueChange{
+			"zulu":      {Type: PluginValueClear, Value: new("replacement")},
+			"alpha.key": {Type: PluginValueSet},
+		},
+	}
+	constraint, ok := errors.AsType[*ConstraintError](ValidateWireTree(request))
+	if !ok || constraint.Shape != "ConfigurePluginRequest" || len(constraint.Fields) != 2 || constraint.Fields[0].Field != `valueChanges["alpha.key"].value` || constraint.Fields[1].Field != `valueChanges["zulu"].value` {
+		t.Fatalf("typed map constraints lost their ordered addresses: %+v", constraint)
+	}
+	request.ValueChanges = map[string]PluginValueChange{
+		"empty": {Type: PluginValueSet, Value: new("")},
+		"clear": {Type: PluginValueClear},
+	}
+	if err := ValidateWireTree(request); err != nil {
+		t.Fatalf("valid typed map changes rejected: %v", err)
+	}
+}
+
+func TestValidateWireTreeLeavesOpaqueMapValuesUninterpreted(t *testing.T) {
+	request := InvokeToolRequest{Name: "tool", Arguments: map[string]any{
+		"providerData": PluginValueChange{Type: PluginValueSet},
+	}}
+	if err := ValidateWireTree(request); err != nil {
+		t.Fatalf("opaque tool arguments were interpreted as first-party DTOs: %v", err)
+	}
 }
 
 func TestContentBlocksRequireSemanticTextAndImageMediaType(t *testing.T) {

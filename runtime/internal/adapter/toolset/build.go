@@ -8,6 +8,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
+	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/exec"
@@ -31,6 +32,7 @@ type BuildConfig struct {
 	Lifetime      context.Context
 	DefaultCWD    string
 	UserHome      string
+	PackageSkills promptsource.PackageSkills
 	SkillsUserDir string
 	Online        OnlineConfig
 	LSPServers    []codeintel.ServerSpec
@@ -108,6 +110,9 @@ func Build(ctx context.Context, config BuildConfig) (_ Built, err error) {
 	}
 	if !filepath.IsAbs(config.UserHome) {
 		return Built{}, errors.New("toolset: user home must be absolute")
+	}
+	if _, err := descriptors(); err != nil {
+		return Built{}, err
 	}
 	online, err := buildOnline(config.Online)
 	if err != nil {
@@ -221,9 +226,9 @@ func Build(ctx context.Context, config BuildConfig) (_ Built, err error) {
 	}
 
 	resolver, err := newResolver(resolverDeps{
-		SkillUsage:        config.SkillUsage,
-		DefaultCWD:        config.DefaultCWD,
-		SkillsUserDir:     config.SkillsUserDir,
+		SkillUsage:    config.SkillUsage,
+		DefaultCWD:    config.DefaultCWD,
+		SkillsUserDir: config.SkillsUserDir, PackageSkills: config.PackageSkills,
 		Online:            online,
 		A2A:               a2aExecutables,
 		LSP:               lspTools,

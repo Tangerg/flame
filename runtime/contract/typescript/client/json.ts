@@ -39,3 +39,18 @@ export function parseWireJSON(text: string): unknown {
   // after the visitor checks occurrences that JSON.parse would discard.
   return JSON.parse(text) as unknown;
 }
+
+// Reviewed inputs must refuse integer literals JavaScript would silently round.
+export function parseReviewedJSON(text: string): unknown {
+  visit(text, {
+    onLiteralValue(value: unknown) {
+      if (
+        typeof value === "number" &&
+        (!Number.isFinite(value) || (Number.isInteger(value) && !Number.isSafeInteger(value)))
+      ) {
+        throw new SyntaxError("number exceeds the exact client range; use a string identifier");
+      }
+    },
+  });
+  return parseWireJSON(text);
+}

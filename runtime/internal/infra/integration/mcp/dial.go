@@ -8,7 +8,6 @@ import (
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	toolcontract "github.com/Tangerg/scope/core/tool"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -33,12 +32,16 @@ func Dial(
 	lifetime context.Context,
 	servers []ServerConfig,
 	oauthSessions OAuthSessionStore,
-) (*Connections, []toolcontract.Tool, error) {
+	configuration func(context.Context, mcpserver.ServerName) (ServerConfig, error),
+) (*Connections, []Executable, error) {
 	if ctx == nil {
 		return nil, nil, errors.New("mcp: startup context is required")
 	}
 	if lifetime == nil {
 		return nil, nil, errors.New("mcp: lifetime is required")
+	}
+	if configuration == nil {
+		return nil, nil, errors.New("mcp: connection configuration source is required")
 	}
 	// Always carry a client, even with zero servers: the registry starts empty
 	// and the common path is a 0-server boot followed by a runtime Configure,
@@ -66,13 +69,6 @@ func Dial(
 		if verr := srv.Validate(); verr != nil {
 			return nil, nil, fmt.Errorf("mcp: invalid server %q: %w", srv.Name, verr)
 		}
-		if srv.Transport == TransportHTTP && srv.OAuthHandler == nil && srv.Authorization == "" {
-			handler, err := restoreOAuthHandler(ctx, lifetime, oauthSessions, srv.oauthTarget())
-			if err != nil {
-				return nil, nil, err
-			}
-			srv.OAuthHandler = handler
-		}
 	}
 
 	// One client identity for every server — none of flame's connections need
@@ -85,11 +81,32 @@ func Dial(
 		trace.WithAttributes(attribute.Int("mcp.server.count", len(servers))))
 	defer span.End()
 
-	var tools []toolcontract.Tool
+	var tools []Executable
 	failures := 0
 	for _, srv := range servers {
 		configuredServer := &server{config: srv, oauth: srv.OAuthHandler}
 		configuredServer.config.OAuthHandler = nil
+		current, err := configuration(ctx, srv.Name)
+		if err == nil && current.Name != srv.Name {
+			err = errors.New("mcp: connection configuration source changed identity")
+		}
+		if err == nil {
+			err = current.Validate()
+		}
+		if err == nil && current.Transport == TransportHTTP && current.OAuthHandler == nil && current.Authorization == "" {
+			current.OAuthHandler, err = restoreOAuthHandler(ctx, lifetime, oauthSessions, current.oauthTarget())
+		}
+		if err != nil {
+			slog.ErrorContext(ctx, "mcp: startup admission failed", "server.name", srv.Name.String(), "error", err)
+			configuredServer.state = mcpserver.ConnectionFailed
+			failures++
+			c.servers = append(c.servers, configuredServer)
+			continue
+		}
+		srv = current.Clone()
+		configuredServer.config = srv.Clone()
+		configuredServer.config.OAuthHandler = nil
+		configuredServer.oauth = srv.OAuthHandler
 		session, cleanupSession, derr := dial(ctx, lifetime, client, srv)
 		if derr != nil {
 			slog.ErrorContext(ctx, "mcp: startup connection failed",

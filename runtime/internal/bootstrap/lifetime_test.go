@@ -7,10 +7,13 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/application/taskgroup"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/teardown"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func TestInstanceShutdownOwnsReverseOrderAndIsIdempotentAcrossCopies(t *testing.T) {
@@ -244,6 +247,96 @@ func TestInstanceShutdownBoundsNonCooperativeToolCloserWithoutConcurrentRetry(t 
 	if got := calls.Load(); got != 1 {
 		t.Fatalf("retry launched a second closer = %d, want 1", got)
 	}
+}
+
+type componentInvocation struct {
+	tasks    taskgroup.Group
+	started  chan struct{}
+	canceled chan struct{}
+	release  chan struct{}
+}
+
+func (c *componentInvocation) Discover(context.Context) (*protocol.DiscoverResponse, error) {
+	return &protocol.DiscoverResponse{Capabilities: protocol.ServerCapabilities{Features: map[string]protocol.FeatureCapability{
+		protocol.FeaturePlugins: {Enabled: true},
+	}}}, nil
+}
+
+func (c *componentInvocation) RevokePlugin(ctx context.Context, _ protocol.PluginRequest) (*protocol.PluginInstallation, error) {
+	ownerCtx, release, ok := c.tasks.Attach(ctx)
+	if !ok {
+		return nil, context.Canceled
+	}
+	defer release()
+	close(c.started)
+	<-ownerCtx.Done()
+	close(c.canceled)
+	<-c.release
+	return nil, ownerCtx.Err()
+}
+
+func (c *componentInvocation) BeginShutdown()                          { c.tasks.Cancel() }
+func (c *componentInvocation) AwaitShutdown(ctx context.Context) error { return c.tasks.Wait(ctx) }
+
+func TestInstanceShutdownCancelsComponentsBeforeJoiningDelivery(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		lifetime, stopRuntime := context.WithCancel(t.Context())
+		defer stopRuntime()
+		component := &componentInvocation{
+			started: make(chan struct{}), canceled: make(chan struct{}),
+			release: make(chan struct{}),
+		}
+		endpoint, err := delivery.NewEndpoint(component, delivery.EndpointConfig{Lifetime: lifetime})
+		if err != nil {
+			t.Fatal(err)
+		}
+		resourceClosed := false
+		host := Instance{lifetime: &runtimeLifetime{
+			context: lifetime, stopRuntime: stopRuntime, delivery: endpoint,
+			shutdownWait: defaultShutdownWaitPolicy(), mcpCoordinator: component,
+			hostResources: terminalClosers([]func() error{func() error {
+				resourceClosed = true
+				return nil
+			}}),
+		}}
+		invoked := make(chan delivery.Result, 1)
+		go func() {
+			invoked <- endpoint.Invoke(t.Context(), delivery.PluginsRevoke, protocol.PluginRequest{InstallationID: "11111111-1111-1111-1111-111111111111"}, delivery.Options{})
+		}()
+		synctest.Wait()
+		select {
+		case <-component.started:
+		default:
+			t.Fatal("component invocation was not admitted")
+		}
+		closed := make(chan error, 1)
+		go func() { closed <- host.Close() }()
+		synctest.Wait()
+		select {
+		case <-component.canceled:
+		default:
+			component.BeginShutdown()
+			close(component.release)
+			synctest.Wait()
+			t.Fatal("shutdown waited on delivery before canceling its component work")
+		}
+		if resourceClosed {
+			close(component.release)
+			synctest.Wait()
+			t.Fatal("shutdown closed dependencies before the accepted invocation returned")
+		}
+		close(component.release)
+		synctest.Wait()
+		if err := <-closed; err != nil {
+			t.Fatalf("Close: %v", err)
+		}
+		if result := <-invoked; !errors.Is(result.Failure, context.Canceled) {
+			t.Fatalf("retired invocation = %+v, want cancellation", result)
+		}
+		if !resourceClosed {
+			t.Fatal("shutdown did not advance after the invocation returned")
+		}
+	})
 }
 
 type closerFunc func() error

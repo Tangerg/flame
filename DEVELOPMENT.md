@@ -38,7 +38,18 @@ An optional provider capability remains separate from the ordinary chat contract
 
 ## Verification
 
-Run checks from the owning module. For standalone module behavior, disable the workspace:
+Application development uses the repository's `go.work`. Run checks from each owning
+module with the workspace enabled:
+
+```sh
+go test ./...
+go vet ./...
+go build ./...
+```
+
+Coordinated changes use the participating modules' local sources; publishing a Runtime
+module is not a prerequisite for workspace verification. For an independent module
+release, disable the workspace and verify the published dependency graph:
 
 ```sh
 cd runtime
@@ -69,3 +80,12 @@ Use focused tests for owner invariants and deterministic failure ordering, then 
 `runtime/config/config.yaml` may be loaded through production configuration for an explicitly requested bounded live DeepSeek check. Use the production bootstrap and public binding or protocol, cover both success and provider-error paths, and never print or copy its credential. A scheduled build-cache cleanup is not a product failure; rebuild and continue without investigating it.
 
 Commits and tests are the progress record. Do not add temporary audit reports, completed-plan documents, capability ledgers, or generated inventories to the repository.
+
+## Pre-release data policy
+
+Breaking pre-release storage changes replace the schema and all in-scope consumers in
+one batch. Runtime refuses an incompatible data directory; opening it does not convert
+installation declarations, tool policy, OAuth grants or waiting checkpoints. Use a fresh
+data directory and retain the old directory separately. Do not add compatibility readers,
+dual persistence, implicit migration or fallback decoding to make old state appear valid.
+Completed historical content remains readable when its current owner can decode it.

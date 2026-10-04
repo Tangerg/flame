@@ -14,12 +14,20 @@ func presentMCPServer(server mcpapp.Server) (protocol.MCPServer, error) {
 	if err != nil {
 		return protocol.MCPServer{}, err
 	}
+	status, err := presentMCPServerState(server.State)
+	if err != nil {
+		return protocol.MCPServer{}, err
+	}
+	origin := protocol.MCPOrigin{Type: protocol.MCPOriginUser}
+	if server.Name.Installation() != "" {
+		origin = protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: server.Name.Installation(), LocalName: server.Name.Local()}
+	}
 	return protocol.MCPServer{
-		Name:             server.Name.String(),
+		Origin: origin, Name: server.Name.String(),
 		Description:      server.Description,
 		Connection:       connection,
 		HandshakeTimeout: presentMCPHandshakeTimeout(server.HandshakeTimeout),
-		Status:           presentMCPServerState(server.State),
+		Status:           status,
 	}, nil
 }
 
@@ -49,7 +57,7 @@ func presentMCPConnection(connection mcpapp.Connection) (protocol.MCPConnection,
 	}, nil
 }
 
-func presentMCPServerState(state mcpapp.ServerState) protocol.MCPServerState {
+func presentMCPServerState(state mcpapp.ServerState) (protocol.MCPServerState, error) {
 	out := protocol.MCPServerState{ToolCount: state.ToolCount}
 	switch state.Type {
 	case mcpapp.ServerDisabled:
@@ -67,9 +75,9 @@ func presentMCPServerState(state mcpapp.ServerState) protocol.MCPServerState {
 		out.Type = protocol.MCPServerNeedsAuth
 		out.Error = mcpStatusProblem(mcpserver.ConnectionNeedsAuth)
 	default:
-		panic("delivery: unknown MCP server state")
+		return protocol.MCPServerState{}, fmt.Errorf("mcp: project server state %q", state.Type)
 	}
-	return out
+	return out, nil
 }
 
 func mcpStatusProblem(state mcpserver.ConnectionState) *protocol.ProblemData {
@@ -83,7 +91,7 @@ func mcpStatusProblem(state mcpserver.ConnectionState) *protocol.ProblemData {
 	}
 }
 
-func presentMCPAuthorizationAttempt(attempt mcpapp.AuthorizationAttempt) protocol.MCPAuthorizationAttempt {
+func presentMCPAuthorizationAttempt(attempt mcpapp.AuthorizationAttempt) (protocol.MCPAuthorizationAttempt, error) {
 	status := protocol.MCPAuthorizationAttemptStatus{}
 	switch attempt.Status {
 	case mcpapp.AuthorizationAttemptPending:
@@ -96,12 +104,12 @@ func presentMCPAuthorizationAttempt(attempt mcpapp.AuthorizationAttempt) protoco
 	case mcpapp.AuthorizationAttemptCanceled:
 		status.Type = protocol.MCPAuthorizationAttemptCanceled
 	default:
-		panic("delivery: unknown MCP authorization attempt status")
+		return protocol.MCPAuthorizationAttempt{}, fmt.Errorf("mcp: project authorization attempt status %q", attempt.Status)
 	}
 	return protocol.MCPAuthorizationAttempt{
 		ID: attempt.ID.String(), Server: attempt.Server.String(), Status: status,
 		CreatedAt: attempt.CreatedAt, FinishedAt: attempt.FinishedAt,
-	}
+	}, nil
 }
 
 func presentMCPTool(tool mcpapp.ToolView) (protocol.MCPTool, error) {
@@ -111,7 +119,11 @@ func presentMCPTool(tool mcpapp.ToolView) (protocol.MCPTool, error) {
 	}
 	conflicts := make([]protocol.ToolRef, 0, len(tool.Conflicts))
 	for _, ref := range tool.Conflicts {
-		conflicts = append(conflicts, presentToolRef(ref))
+		wire, err := presentToolRef(ref)
+		if err != nil {
+			return protocol.MCPTool{}, err
+		}
+		conflicts = append(conflicts, wire)
 	}
 	return protocol.MCPTool{
 		ModelName:     tool.ModelName,

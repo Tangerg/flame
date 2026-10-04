@@ -57,7 +57,7 @@ import {
 import { createGoalPlugin } from "@/plugins/builtin/chat/goal";
 import narrativeRails from "@/plugins/builtin/chat/narrative-rails";
 import planProgress from "@/plugins/builtin/chat/plan-progress";
-import pluginsPane from "@/plugins/builtin/settings/plugins-pane";
+import { createPluginsPane } from "@/plugins/builtin/settings/plugins-pane";
 import { createProvidersPlugin } from "@/plugins/builtin/providers";
 import contextUsage from "@/plugins/builtin/chat/context-usage";
 import shortcuts from "@/plugins/builtin/command/shortcuts";
@@ -177,7 +177,7 @@ export function createBuiltinPlugins(
     approvalsPane,
     personalization,
     connectionSettings,
-    pluginsPane,
+    createPluginsPane(runtimeClient),
     createProvidersPlugin(runtimeClient),
     createUsagePlugin(runtimeClient),
     createMCPServersPlugin(runtimeClient),

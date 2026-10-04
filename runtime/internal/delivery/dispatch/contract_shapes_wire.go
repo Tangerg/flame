@@ -27,6 +27,7 @@ func buildShapes() *Shapes {
 	registerItemUnions(s)
 	registerProviderUnions(s)
 	registerMCPUnions(s)
+	registerPluginUnions(s)
 	registerToolRefUnion(s)
 	registerApprovalSubjectUnion(s)
 	registerInterruptUnions(s)
@@ -51,6 +52,7 @@ func registerProviderUnions(s *Shapes) {
 }
 
 func registerMCPUnions(s *Shapes) {
+	s.union(UnionSpec{GoType: typeOf[protocol.MCPOrigin](), Discriminator: "type", Variants: []VariantSpec{{Tag: "user"}, {Tag: "installation", Required: []string{"installationId", "localName"}}}})
 	s.union(UnionSpec{
 		GoType:        typeOf[protocol.MCPHandshakeTimeout](),
 		Discriminator: "type",
@@ -401,6 +403,7 @@ func registerEventUnions(s *Shapes) {
 		Variants: []VariantSpec{
 			{Tag: string(protocol.RuntimeFilesChanged), Required: []string{"sequence", "paths"}, Optional: []string{"watchId", "workspace"}},
 			{Tag: string(protocol.RuntimeSkillsChanged), Required: []string{"sequence"}, Optional: []string{"names"}},
+			{Tag: string(protocol.RuntimePluginsChanged), Required: []string{"sequence"}},
 			{Tag: string(protocol.RuntimeMCPChanged), Required: []string{"sequence"}, Optional: []string{"serverIds"}},
 			{Tag: string(protocol.RuntimeSchedulesChanged), Required: []string{"sequence"}, Optional: []string{"scheduleIds"}},
 			{Tag: string(protocol.RuntimeSessionsChanged), Required: []string{"sequence"}, Optional: []string{"sessionIds"}},
@@ -1118,4 +1121,8 @@ func registerApprovalSubjectUnion(s *Shapes) {
 		{Tag: string(protocol.ApprovalSubjectExact), Required: []string{"value"}},
 		{Tag: string(protocol.ApprovalSubjectGlob), Required: []string{"value"}},
 	}})
+}
+
+func registerPluginUnions(s *Shapes) {
+	s.union(UnionSpec{GoType: typeOf[protocol.PluginValueChange](), Discriminator: "type", Variants: []VariantSpec{{Tag: string(protocol.PluginValueSet), Required: []string{"value"}}, {Tag: string(protocol.PluginValueClear)}}})
 }

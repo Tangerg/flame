@@ -184,7 +184,11 @@ type invariantEntry struct {
 	Boundaries []string `json:"boundaries"`
 }
 
-func build(walked *schemaSet) manifest {
+func build(walked *schemaSet) (manifest, error) {
+	presentations, err := toolResultPresentations(walked)
+	if err != nil {
+		return manifest{}, err
+	}
 	registry := delivery.Contract()
 	shapes := dispatch.WireShapes()
 	return manifest{
@@ -199,13 +203,13 @@ func build(walked *schemaSet) manifest {
 		RunEventPolicy:      runEvents(shapes),
 		RuntimeTopics:       topics(shapes),
 		CarriedShapes:       carriedShapes(shapes, walked),
-		ResultPresentations: toolResultPresentations(walked),
+		ResultPresentations: presentations,
 		Unions:              unions(shapes),
 		Constraints:         constraints(shapes),
 		ValueConstraints:    valueConstraints(shapes),
 		SystemInvariants:    systemInvariants(),
 		CanonicalSamples:    canonicalSamples(),
-	}
+	}, nil
 }
 
 func httpEndpoints(walked *schemaSet) []httpEndpointEntry {
@@ -353,8 +357,11 @@ func carriedShapes(shapes *dispatch.Shapes, walked *schemaSet) []carriedEntry {
 	return out
 }
 
-func toolResultPresentations(walked *schemaSet) []toolResultPresentationEntry {
-	contracts := toolset.PresentationContracts()
+func toolResultPresentations(walked *schemaSet) ([]toolResultPresentationEntry, error) {
+	contracts, err := toolset.PresentationContracts()
+	if err != nil {
+		return nil, err
+	}
 	out := make([]toolResultPresentationEntry, 0, len(contracts))
 	for _, contract := range contracts {
 		out = append(out, toolResultPresentationEntry{
@@ -362,7 +369,7 @@ func toolResultPresentations(walked *schemaSet) []toolResultPresentationEntry {
 			Schema:   external(walked.walk(contract.ResultType)),
 		})
 	}
-	return out
+	return out, nil
 }
 
 func unions(shapes *dispatch.Shapes) []unionEntry {

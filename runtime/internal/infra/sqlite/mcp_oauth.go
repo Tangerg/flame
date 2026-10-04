@@ -10,9 +10,21 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/httporigin"
 )
 
+type authorizationRegistry interface {
+	Get(context.Context, mcpserver.ServerName) (mcpserver.Server, bool, error)
+}
+type MCPAuthorizationStore struct {
+	db       *sql.DB
+	registry authorizationRegistry
+}
+
+func NewMCPAuthorizationStore(db *sql.DB, registry authorizationRegistry) *MCPAuthorizationStore {
+	return &MCPAuthorizationStore{db: db, registry: registry}
+}
+
 // An authorization attempt owns one grant even before it has tokens. Replacing
 // that grant revokes every refresh and rejection callback from the old handler.
-func (m *MCPServerStore) BeginOAuthSession(ctx context.Context, target mcpserver.OAuthTarget) (string, error) {
+func (m *MCPAuthorizationStore) BeginOAuthSession(ctx context.Context, target mcpserver.OAuthTarget) (string, error) {
 	var binding string
 	err := RunInTx(ctx, m.db, func(ctx context.Context) error {
 		origin, err := m.oauthTargetOrigin(ctx, target)
@@ -20,11 +32,11 @@ func (m *MCPServerStore) BeginOAuthSession(ctx context.Context, target mcpserver
 			return err
 		}
 		return conn(ctx, m.db).QueryRowContext(ctx,
-			`INSERT INTO mcp_oauth_sessions(server_name, origin, binding, payload)
-			 VALUES (?, ?, lower(hex(randomblob(16))), x'')
+			`INSERT INTO mcp_oauth_sessions(server_name, origin, target_fingerprint, binding, payload)
+			 VALUES (?, ?, ?, lower(hex(randomblob(16))), x'')
 			 ON CONFLICT(server_name) DO UPDATE SET
-			   origin = excluded.origin, binding = excluded.binding, payload = excluded.payload
-			 RETURNING binding`, target.Server.String(), origin).Scan(&binding)
+			   origin = excluded.origin, target_fingerprint = excluded.target_fingerprint, binding = excluded.binding, payload = excluded.payload
+			 RETURNING binding`, target.Server.String(), origin, target.Fingerprint()).Scan(&binding)
 	})
 	if err != nil {
 		return "", fmt.Errorf("sqlite: begin mcp oauth session: %w", err)
@@ -32,7 +44,7 @@ func (m *MCPServerStore) BeginOAuthSession(ctx context.Context, target mcpserver
 	return binding, nil
 }
 
-func (m *MCPServerStore) LoadOAuthSession(ctx context.Context, target mcpserver.OAuthTarget) ([]byte, string, bool, error) {
+func (m *MCPAuthorizationStore) LoadOAuthSession(ctx context.Context, target mcpserver.OAuthTarget) ([]byte, string, bool, error) {
 	var payload []byte
 	var binding string
 	found := false
@@ -43,8 +55,8 @@ func (m *MCPServerStore) LoadOAuthSession(ctx context.Context, target mcpserver.
 		}
 		err = conn(ctx, m.db).QueryRowContext(ctx,
 			`SELECT payload, binding FROM mcp_oauth_sessions
-			 WHERE server_name = ? AND origin = ? AND length(payload) > 0`,
-			target.Server.String(), origin).Scan(&payload, &binding)
+			 WHERE server_name = ? AND origin = ? AND target_fingerprint = ? AND length(payload) > 0`,
+			target.Server.String(), origin, target.Fingerprint()).Scan(&payload, &binding)
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil
 		}
@@ -63,8 +75,8 @@ func (m *MCPServerStore) LoadOAuthSession(ctx context.Context, target mcpserver.
 	return payload, binding, found, nil
 }
 
-func (m *MCPServerStore) oauthTargetOrigin(ctx context.Context, target mcpserver.OAuthTarget) (string, error) {
-	current, found, err := m.Get(ctx, target.Server)
+func (m *MCPAuthorizationStore) oauthTargetOrigin(ctx context.Context, target mcpserver.OAuthTarget) (string, error) {
+	current, found, err := m.registry.Get(ctx, target.Server)
 	if err != nil {
 		return "", err
 	}
@@ -78,24 +90,42 @@ func (m *MCPServerStore) oauthTargetOrigin(ctx context.Context, target mcpserver
 	return origin.String(), nil
 }
 
-func (m *MCPServerStore) SaveOAuthSession(ctx context.Context, server mcpserver.ServerName, origin, binding string, payload []byte) error {
+func (m *MCPAuthorizationStore) SaveOAuthSession(ctx context.Context, server mcpserver.ServerName, origin, binding string, payload []byte) error {
 	if binding == "" {
 		return mcpserver.ErrOAuthSessionSuperseded
 	}
 	if origin == "" || len(payload) == 0 {
 		return errors.New("sqlite: mcp oauth session requires origin and payload")
 	}
-	result, err := conn(ctx, m.db).ExecContext(ctx,
-		`UPDATE mcp_oauth_sessions SET payload = ?
-		 WHERE server_name = ? AND origin = ? AND binding = ?`,
-		payload, server.String(), origin, binding)
+	var result sql.Result
+	err := RunInTx(ctx, m.db, func(ctx context.Context) error {
+		current, found, err := m.registry.Get(ctx, server)
+		if err != nil {
+			return err
+		}
+		if !found || !current.Enabled || current.Transport != mcpserver.TransportStreamableHTTP || current.Authorization != "" {
+			return mcpserver.ErrOAuthSessionSuperseded
+		}
+		currentOrigin, err := httporigin.Parse(current.URL)
+		if err != nil || currentOrigin.String() != origin {
+			return mcpserver.ErrOAuthSessionSuperseded
+		}
+		result, err = conn(ctx, m.db).ExecContext(ctx,
+			`UPDATE mcp_oauth_sessions SET payload = ?
+		 WHERE server_name = ? AND origin = ? AND binding = ? AND target_fingerprint = ?`,
+			payload, server.String(), origin, binding, (mcpserver.OAuthTarget{Authority: current.ReleaseAuthority, Server: current.Name, URL: current.URL, Headers: current.Headers}).Fingerprint())
+		if err != nil {
+			return err
+		}
+		return oauthGrantApplied(result)
+	})
 	if err != nil {
 		return fmt.Errorf("sqlite: save mcp oauth session: %w", err)
 	}
-	return oauthGrantApplied(result)
+	return nil
 }
 
-func (m *MCPServerStore) RemoveOAuthSession(ctx context.Context, server mcpserver.ServerName, binding string) error {
+func (m *MCPAuthorizationStore) RemoveOAuthSession(ctx context.Context, server mcpserver.ServerName, binding string) error {
 	if binding == "" {
 		return mcpserver.ErrOAuthSessionSuperseded
 	}

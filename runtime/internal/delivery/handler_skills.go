@@ -19,11 +19,11 @@ func (s *Handler) ListDiscoveredSkills(ctx context.Context, in protocol.Workspac
 	}
 	out := make([]protocol.Skill, 0, len(found.Skills))
 	for _, skill := range found.Skills {
-		scope, ok := presentSkillScope(skill.Scope)
-		if !ok {
-			return nil, fmt.Errorf("skills.discovered.list: unsupported skill scope %q", skill.Scope)
+		value, err := presentSkillSummary(skill)
+		if err != nil {
+			return nil, err
 		}
-		out = append(out, protocol.Skill{Name: skill.Name, Description: skill.Description, Scope: scope})
+		out = append(out, value)
 	}
 	diagnostics := make([]protocol.SkillDiagnostic, 0, len(found.Diagnostics))
 	for _, diagnostic := range found.Diagnostics {
@@ -37,11 +37,11 @@ func (s *Handler) GetDiscoveredSkill(ctx context.Context, in protocol.SkillDetai
 	if err != nil {
 		return nil, mapSkillError(err)
 	}
-	scope, ok := presentSkillScope(detail.Scope)
-	if !ok {
-		return nil, fmt.Errorf("skills.discovered.get: unsupported skill scope %q", detail.Scope)
+	value, err := presentSkillSummary(detail.SkillSummary)
+	if err != nil {
+		return nil, err
 	}
-	return &protocol.SkillDetail{Skill: protocol.Skill{Name: detail.Name, Description: detail.Description, Scope: scope}, Path: detail.Path, Revision: detail.Revision, Instructions: detail.Instructions}, nil
+	return &protocol.SkillDetail{Skill: value, Path: detail.Path, Revision: detail.Revision, Instructions: detail.Instructions}, nil
 }
 
 // ListManagedSkills returns the user self-authored Skill library — active then
@@ -214,4 +214,15 @@ func mapSkillProposalErr(err error) error {
 	default:
 		return wireWorkspaceError(err)
 	}
+}
+
+func presentSkillSummary(summary workspace.SkillSummary) (protocol.Skill, error) {
+	if id, digest, found := summary.Source.Installation(); found {
+		return protocol.Skill{Name: summary.Name, Description: summary.Description, Scope: protocol.SkillScopeInstallation, Installation: &protocol.SkillInstallation{InstallationID: id, Digest: digest}}, nil
+	}
+	scope, ok := presentSkillScope(summary.Source.Scope())
+	if !ok {
+		return protocol.Skill{}, fmt.Errorf("delivery: unsupported Skill scope %q", summary.Source.Scope())
+	}
+	return protocol.Skill{Name: summary.Name, Description: summary.Description, Scope: scope}, nil
 }

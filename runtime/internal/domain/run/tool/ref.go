@@ -21,7 +21,9 @@ const (
 )
 
 var ErrInvalidRef = errors.New("tool: invalid reference")
-var modelNamePattern = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`)
+var modelNameExpression = regexp.MustCompile(fmt.Sprintf(`^[A-Za-z0-9_-]{1,%d}$`, MaximumModelNameBytes))
+
+func ModelNamePattern() string { return modelNameExpression.String() }
 
 // Ref identifies a source, never a lossy model-facing label. The zero value is invalid.
 type Ref struct {
@@ -55,7 +57,7 @@ func MCP(server mcpserver.ServerName, remote mcpserver.RemoteToolName) (Ref, err
 }
 
 func A2A(endpoint string) (Ref, error) {
-	if !modelNamePattern.MatchString(endpoint) {
+	if !modelNameExpression.MatchString(endpoint) {
 		return Ref{}, fmt.Errorf("%w: invalid A2A endpoint name", ErrInvalidRef)
 	}
 	return Ref{kind: A2AKind, name: endpoint}, nil
@@ -77,7 +79,7 @@ func (r Ref) ModelName() string {
 	if r.kind != MCPKind {
 		return r.name
 	}
-	raw := r.server.String() + "_" + r.remote.String()
+	raw := r.server.Local() + "_" + r.remote.String()
 	result := make([]byte, 0, min(len(raw), MaximumModelNameBytes))
 	for i := 0; i < len(raw) && i < MaximumModelNameBytes; i++ {
 		c := raw[i]
@@ -109,7 +111,7 @@ func ParseRef(text string) (Ref, error) {
 	}
 	name, err := url.PathUnescape(parts[1])
 	if err != nil {
-		return r, ErrInvalidRef
+		return r, fmt.Errorf("%w: source name: %w", ErrInvalidRef, err)
 	}
 	switch RefKind(parts[0]) {
 	case BuiltInKind:
@@ -128,15 +130,15 @@ func ParseRef(text string) (Ref, error) {
 		}
 		server, e := mcpserver.ParseServerName(name)
 		if e != nil {
-			return r, e
+			return r, fmt.Errorf("%w: server: %w", ErrInvalidRef, e)
 		}
 		remoteText, e := url.PathUnescape(parts[2])
 		if e != nil {
-			return r, e
+			return r, fmt.Errorf("%w: tool name: %w", ErrInvalidRef, e)
 		}
 		remote, e := mcpserver.ParseRemoteToolName(remoteText)
 		if e != nil {
-			return r, e
+			return r, fmt.Errorf("%w: tool name: %w", ErrInvalidRef, e)
 		}
 		r, err = MCP(server, remote)
 	default:

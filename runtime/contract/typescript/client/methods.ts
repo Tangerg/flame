@@ -1,4 +1,12 @@
 import type {
+  PluginInstallation,
+  PluginRemoval,
+  InstallPluginRequest,
+  StagePluginRequest,
+  PluginReleaseRequest,
+  ApprovePluginRequest,
+  ConfigurePluginRequest,
+  SetPluginEnablementRequest,
   MCPToolExposure,
   SetMCPToolExposureRequest,
   SetApprovalRuleRequest,
@@ -277,6 +285,17 @@ export interface Methods {
       get: (attemptId: string, signal?: AbortSignal) => Promise<MCPAuthorizationAttempt>;
     };
   };
+  plugins: {
+    list: (signal?: AbortSignal) => Promise<Page<PluginInstallation>>;
+    install: (params: InstallPluginRequest) => MutationPromise<PluginInstallation>;
+    stage: (params: StagePluginRequest) => MutationPromise<PluginInstallation>;
+    select: (params: PluginReleaseRequest) => MutationPromise<PluginInstallation>;
+    approve: (params: ApprovePluginRequest) => MutationPromise<PluginInstallation>;
+    configure: (params: ConfigurePluginRequest) => MutationPromise<PluginInstallation>;
+    setEnablement: (params: SetPluginEnablementRequest) => MutationPromise<PluginInstallation>;
+    revoke: (installationId: string) => MutationPromise<PluginInstallation>;
+    uninstall: (installationId: string) => MutationPromise<PluginRemoval>;
+  };
   providers: {
     list: (signal?: AbortSignal) => Promise<Page<Provider>>;
     update: (params: UpdateProviderRequest) => MutationPromise<Provider>;
@@ -538,6 +557,17 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
         get: (attemptId, signal) =>
           call("mcp.authorizationAttempts.get", { attemptId }, { signal }),
       },
+    },
+    plugins: {
+      list: (signal) => call("plugins.list", {}, { signal }),
+      install: (params) => call("plugins.install", params),
+      stage: (params) => call("plugins.stage", params),
+      select: (params) => call("plugins.select", params),
+      approve: (params) => call("plugins.approve", params),
+      configure: (params) => call("plugins.configure", params),
+      setEnablement: (params) => call("plugins.setEnablement", params),
+      revoke: (installationId) => call("plugins.revoke", { installationId }),
+      uninstall: (installationId) => call("plugins.uninstall", { installationId }),
     },
     providers: {
       list: (signal) => call("providers.list", {}, { signal }),

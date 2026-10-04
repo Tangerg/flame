@@ -72,6 +72,9 @@ export function useT(): typeof t {
   return t;
 }
 
-export function addLocaleBundle(locale: string, dict: Record<string, string>): void {
-  i18next.addResourceBundle(locale, "translation", dict, true, true);
+export function mountLocaleBundle(locale: string, dict: Record<string, string>): () => void {
+  if (i18next.hasResourceBundle(locale, "translation"))
+    throw new Error(`locale "${locale}" already has a dictionary`);
+  i18next.addResourceBundle(locale, "translation", dict);
+  return () => i18next.removeResourceBundle(locale, "translation");
 }

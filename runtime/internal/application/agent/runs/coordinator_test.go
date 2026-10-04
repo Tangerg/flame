@@ -191,7 +191,10 @@ func (a *acknowledgedNativeChildExecutor) Observe(
 		}) {
 			return
 		}
-		result := tool.StringResult(`{"reply":"done"}`)
+		result, err := tool.NewResult(`{"reply":"done"}`)
+		if err != nil {
+			panic(err)
+		}
 		if !yield(ExecutorEvent{
 			Member: a.rootMember,
 			Payload: testDelegatePublication(a.childMember.SpawnCallID, ToolCallFinished{

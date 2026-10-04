@@ -11,6 +11,22 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
+func TestMCPErrorProjectionPreservesInstallationOwnershipCause(t *testing.T) {
+	cause := errors.New("installation source cannot be mutated here")
+	err := wireMCPError(errors.Join(mcpapp.ErrOwnedByInstallation, cause))
+	if !errors.Is(err, protocol.ErrMCPOwnedByInstallation) || !errors.Is(err, mcpapp.ErrOwnedByInstallation) || !errors.Is(err, cause) {
+		t.Fatalf("projected error = %v, want protocol category and owner causes", err)
+	}
+}
+
+func TestMCPToolExposureRejectsInvalidIdentityWithCause(t *testing.T) {
+	handler := handlerWithMCP(t, mcpapp.Config{})
+	err := handler.SetMCPToolExposure(t.Context(), protocol.SetMCPToolExposureRequest{Server: "Invalid!", Name: "read"})
+	if !errors.Is(err, protocol.ErrInvalidParams) || !errors.Is(err, mcpserver.ErrInvalidServerName) {
+		t.Fatalf("invalid tool exposure = %v, want invalid params and identity cause", err)
+	}
+}
+
 func TestUpdateMCPServerPreservesStoredHTTPSecretsAtSameOrigin(t *testing.T) {
 	name := testMCPServerName("linear")
 	registry := &mcpRegistryFake{servers: map[mcpserver.ServerName]mcpserver.Server{

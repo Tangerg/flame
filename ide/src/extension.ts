@@ -10,6 +10,7 @@ import type {
   Session,
   SessionSnapshot,
 } from "@flame/runtime-contract/wire";
+import { parseReviewedJSON } from "@flame/runtime-contract/client/json";
 import { Connection, type Command } from "./connection";
 import { inputFromEditor, type EditorSnapshot } from "./editorContext";
 import { observeRun } from "./observation";
@@ -81,6 +82,54 @@ class Workbench implements vscode.TreeDataProvider<Session> {
     this.#register("reviewChanges", () => this.#reviewChanges());
     this.#register("openRuntimeFile", () => this.#openRuntimeFile());
     this.#register("compareContext", () => this.#compareContext());
+    this.#register("listPlugins", () => this.#listPlugins());
+    this.#register("managePlugin", () => this.#managePlugin());
+  }
+
+  async #showPluginResult(value: unknown): Promise<void> {
+    const uri = this.#documents.create("plugin-result.json", JSON.stringify(value, null, 2));
+    await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(uri), {
+      preview: true,
+    });
+  }
+
+  async #listPlugins(): Promise<void> {
+    const connection = this.#connected();
+    const result = await connection.client.plugins.list(connection.signal);
+    if (this.#connection !== connection) return;
+    await this.#showPluginResult(result);
+  }
+
+  async #managePlugin(): Promise<void> {
+    const connection = this.#connected();
+    const operation = await vscode.window.showQuickPick(
+      [
+        "install",
+        "stage",
+        "select",
+        "approve",
+        "configure",
+        "setEnablement",
+        "revoke",
+        "uninstall",
+      ] as const,
+      {
+        title: "Manage Runtime Plugin",
+        placeHolder: "Paths belong to the Runtime; executable packages run with its OS permissions",
+      },
+    );
+    if (!operation || this.#connection !== connection) return;
+    const input = await vscode.window.showInputBox({
+      title: `plugins.${operation}`,
+      prompt:
+        "Exact Runtime request as JSON. Approval and configuration require the inspected release digest.",
+      ignoreFocusOut: true,
+    });
+    if (!input || this.#connection !== connection) return;
+    // The shared prepared journal validates this externally authored closed command.
+    const command = { method: `plugins.${operation}`, params: parseReviewedJSON(input) } as Command;
+    const result = await connection.execute(command);
+    if (this.#connection === connection) await this.#showPluginResult(result.pluginResult ?? {});
   }
 
   getTreeItem(session: Session): vscode.TreeItem {

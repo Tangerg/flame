@@ -10,7 +10,7 @@ const testAuthorizationAttemptID = "mcpauth_AAAAAAAAAAAAAAAAAAAAAAAAAA"
 
 func TestAuthorizationAttemptIdentityRoundTrip(t *testing.T) {
 	generated := newAuthorizationAttemptID()
-	if !regexp.MustCompile(AuthorizationAttemptIDPattern).MatchString(generated.String()) {
+	if !regexp.MustCompile(AuthorizationAttemptIDPattern()).MatchString(generated.String()) {
 		t.Fatalf("public pattern rejects generated identity %q", generated.String())
 	}
 	parsed, err := ParseAuthorizationAttemptID(generated.String())
@@ -20,7 +20,7 @@ func TestAuthorizationAttemptIdentityRoundTrip(t *testing.T) {
 }
 
 func TestAuthorizationAttemptIdentityRejectsNonCanonicalMaterial(t *testing.T) {
-	pattern := regexp.MustCompile(AuthorizationAttemptIDPattern)
+	pattern := regexp.MustCompile(AuthorizationAttemptIDPattern())
 	tests := []struct {
 		name string
 		text string

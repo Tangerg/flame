@@ -21,15 +21,15 @@ func (*liveSet) Probe(context.Context, mcpserver.Server) error {
 	return nil
 }
 
-func (l *liveSet) Configure(ctx context.Context, cfg mcpserver.Server) error {
+func (l *liveSet) Configure(ctx context.Context, name mcpserver.ServerName) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
 	l.mu.Lock()
-	l.servers[cfg.Name] = true
+	l.servers[name] = true
 	l.mu.Unlock()
 	if l.configured != nil {
-		l.configured <- cfg.Name.String()
+		l.configured <- name.String()
 	}
 	return nil
 }

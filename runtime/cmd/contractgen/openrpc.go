@@ -12,9 +12,9 @@ import (
 )
 
 // The OpenRPC document is the method surface: what a client may call, what it
-// passes, what comes back, and which errors are in scope. Shapes are NOT copied
-// into it — every schema is a reference into schema.json, so there is one home for
-// a wire type and a client tool reads the same bytes the validator does.
+// passes, what comes back, and which errors are in scope. Result references point
+// into schema.json; request components close the same generated type graph at the
+// receiving boundary without closing reusable result shapes.
 
 // openrpcVersion is the spec revision this document conforms to.
 const openrpcVersion = "1.3.2"
@@ -29,6 +29,11 @@ type openrpcDocument struct {
 	Info          openrpcInfo           `json:"info"`
 	Methods       []openrpcMethod       `json:"methods"`
 	Notifications []openrpcNotification `json:"x-flame-notifications"`
+	Components    openrpcComponents     `json:"components"`
+}
+
+type openrpcComponents struct {
+	Schemas map[string]*schema `json:"schemas"`
 }
 
 type openrpcNotification struct {
@@ -92,6 +97,7 @@ type openrpcError struct {
 
 func newOpenRPC(registry *delivery.Registry, shapes *dispatch.Shapes, set *schemaSet) openrpcDocument {
 	codes := problemCodes(registry)
+	requests := requestSchemas{set: set, definitions: make(map[string]*schema)}
 	document := openrpcDocument{
 		OpenRPC: openrpcVersion,
 		Info: openrpcInfo{
@@ -100,8 +106,9 @@ func newOpenRPC(registry *delivery.Registry, shapes *dispatch.Shapes, set *schem
 			Description: "Generated from the Contract Registry. Shapes live in schema.json; this document is the method surface.",
 		},
 	}
+	document.Components.Schemas = requests.definitions
 	for _, meta := range registry.Metas() {
-		document.Methods = append(document.Methods, openrpcMethodFor(meta, set, codes))
+		document.Methods = append(document.Methods, openrpcMethodFor(meta, &requests, codes))
 	}
 	for _, notification := range shapes.Notifications() {
 		document.Notifications = append(document.Notifications, openrpcNotification{
@@ -112,7 +119,8 @@ func newOpenRPC(registry *delivery.Registry, shapes *dispatch.Shapes, set *schem
 	return document
 }
 
-func openrpcMethodFor(meta delivery.MethodMeta, set *schemaSet, codes map[string]int) openrpcMethod {
+func openrpcMethodFor(meta delivery.MethodMeta, requests *requestSchemas, codes map[string]int) openrpcMethod {
+	set := requests.set
 	requestFrame := set.walk(meta.Params)
 	method := openrpcMethod{
 		Name:           meta.Name.String(),
@@ -125,18 +133,18 @@ func openrpcMethodFor(meta delivery.MethodMeta, set *schemaSet, codes map[string
 		Pagination:     meta.Pagination.String(),
 		Features:       meta.Features(),
 		Capabilities:   capabilityRowsFor(meta),
-		RequestFrame:   strictRequestFrame(set, requestFrame),
+		RequestFrame:   requests.frame(requestFrame),
 	}
 	for _, field := range contractshape.Fields(meta.Params) {
 		method.Params = append(method.Params, openrpcParam{
 			Name:     field.Name,
 			Required: !field.Optional,
-			Schema:   external(requestPropertySchema(set, requestFrame, meta.Params, field.Name)),
+			Schema:   requests.project(requestPropertySchema(set, requestFrame, meta.Params, field.Name)),
 		})
 	}
 	method.Params = append(method.Params, openrpcParam{
 		Name:   requestMetaField,
-		Schema: external(set.walk(reflect.TypeFor[protocol.RequestMeta]())),
+		Schema: requests.project(set.walk(reflect.TypeFor[protocol.RequestMeta]())),
 	})
 	result := &schema{Type: schemaTypeObject}
 	if meta.Result != nil {
@@ -161,23 +169,83 @@ func openrpcMethodFor(meta delivery.MethodMeta, set *schemaSet, codes map[string
 
 const requestMetaField = "_meta"
 
-// strictRequestFrame publishes the actual object dispatch accepts: the method's
-// typed business params plus the universal optional _meta member, with no other
-// top-level names. Shared schema definitions stay open because the same DTO may
-// be a server result and clients must tolerate result growth; request strictness
-// is contextual, so it belongs on this request-only OpenRPC projection.
-func strictRequestFrame(set *schemaSet, business *schema) *schema {
-	return &schema{
-		AllOf: []*schema{
-			external(business),
-			{
-				Type: schemaTypeObject,
-				Properties: map[string]any{
-					requestMetaField: external(set.walk(reflect.TypeFor[protocol.RequestMeta]())),
-				},
-			},
-		},
-		UnevaluatedProps: new(false),
+type requestSchemas struct {
+	set         *schemaSet
+	definitions map[string]*schema
+}
+
+func (r *requestSchemas) frame(business *schema) *schema {
+	body := business
+	if business.Ref != "" {
+		name, _ := strings.CutPrefix(business.Ref, refPrefix)
+		body = r.set.defs[name]
+	}
+	frame := r.closure(body)
+	frame.AllOf = []*schema{external(business)}
+	if frame.Properties == nil {
+		frame.Properties = make(map[string]any)
+	}
+	frame.Properties[requestMetaField] = r.project(r.set.walk(reflect.TypeFor[protocol.RequestMeta]()))
+	return frame
+}
+
+func (r *requestSchemas) project(node *schema) *schema {
+	if node.Ref != "" {
+		name, _ := strings.CutPrefix(node.Ref, refPrefix)
+		body := r.set.defs[name]
+		if body == nil {
+			panic("contractgen: request references an undefined shape " + name)
+		}
+		if body.Type != schemaTypeObject {
+			return external(node)
+		}
+		if _, defined := r.definitions[name]; !defined {
+			// Reserve the component before walking its recursive references.
+			r.definitions[name] = nil
+			projection := r.closure(body)
+			projection.AllOf = []*schema{external(node)}
+			r.definitions[name] = projection
+		}
+		return &schema{Ref: "#/components/schemas/" + name}
+	}
+	if node.Type != schemaTypeObject && node.Type != schemaTypeArray {
+		return external(node)
+	}
+	projection := r.closure(node)
+	projection.AllOf = []*schema{external(node)}
+	return projection
+}
+
+// closure projects only request structure. Value and cross-field constraints
+// remain references to the reusable schema rather than a second published copy.
+func (r *requestSchemas) closure(node *schema) *schema {
+	if node.Ref != "" {
+		name, _ := strings.CutPrefix(node.Ref, refPrefix)
+		if body := r.set.defs[name]; body != nil && body.Type == schemaTypeObject {
+			return r.project(node)
+		}
+		return &schema{}
+	}
+	switch node.Type {
+	case schemaTypeArray:
+		return &schema{Items: r.closure(node.Items)}
+	case schemaTypeObject:
+		out := &schema{Properties: make(map[string]any, len(node.Properties))}
+		for name, property := range node.Properties {
+			if child, ok := property.(*schema); ok {
+				out.Properties[name] = r.closure(child)
+			} else {
+				out.Properties[name] = property
+			}
+		}
+		if child, ok := node.AdditionalProps.(*schema); ok {
+			out.AdditionalProps = r.closure(child)
+		} else if node.AdditionalProps == nil {
+			out.UnevaluatedProps = new(false)
+		}
+		return out
+	default:
+		return &schema{}
 	}
 }
 
@@ -231,6 +299,7 @@ func external(node *schema) *schema {
 		out.Ref = bundleRef + out.Ref
 	}
 	out.Items = external(node.Items)
+	out.PropertyNames = external(node.PropertyNames)
 	out.If = external(node.If)
 	out.Then = external(node.Then)
 	out.OneOf = externalAll(node.OneOf)

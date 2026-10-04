@@ -16,6 +16,150 @@ function read(path: string): unknown {
 const ajv = new Ajv2020({ strict: false, allErrors: true });
 const bundle = read(join(CONTRACT, "schema.json")) as { $defs: Record<string, unknown> };
 ajv.addSchema(bundle, "schema.json");
+const openrpc = read(join(CONTRACT, "openrpc.json")) as {
+  methods: { name: string; params: { name: string }[] }[];
+};
+ajv.addSchema(openrpc, "openrpc.json");
+
+function requestSchema(method: string, param?: string) {
+  const index = openrpc.methods.findIndex((entry) => entry.name === method);
+  const entry = openrpc.methods[index];
+  if (entry === undefined) throw new Error(`OpenRPC defines no ${method}`);
+  const fragment =
+    param === undefined
+      ? `methods/${index}/x-flame-requestFrame`
+      : `methods/${index}/params/${entry.params.findIndex((parameter) => parameter.name === param)}/schema`;
+  const validate = ajv.getSchema(`openrpc.json#/${fragment}`);
+  if (!validate) throw new Error(`OpenRPC defines no ${method}.${param ?? "params"} schema`);
+  return validate;
+}
+
+const pluginListIndex = openrpc.methods.findIndex((method) => method.name === "plugins.list");
+const pluginThemeSchemas = [
+  { reference: "schema.json#/$defs/PluginTheme", project: (theme: unknown) => theme },
+  {
+    reference: `openrpc.json#/methods/${pluginListIndex}/result/schema`,
+    project: (theme: unknown) => ({
+      data: [
+        {
+          id: "940ac827-b431-455b-af4b-e3a170bcfda0",
+          source: "/sample",
+          enabled: false,
+          availability: [],
+          grants: [],
+          values: {},
+          disabledServers: [],
+          disabledSkills: [],
+          selected: {
+            digest: "1".repeat(64),
+            name: "sample",
+            requests: [],
+            servers: [],
+            inputs: [],
+            themes: [theme],
+            skills: [],
+            diagnostics: [],
+          },
+        },
+      ],
+    }),
+  },
+];
+
+describe.each(pluginThemeSchemas)("plugin theme schema $reference", ({ reference, project }) => {
+  const validate = ajv.getSchema(reference);
+  if (!validate) throw new Error(`Published contract defines no ${reference}`);
+  const theme = { id: "sample", title: "Sample", scheme: "dark" };
+
+  it("accepts every declared portable color", () => {
+    expect(
+      validate(
+        project({
+          ...theme,
+          colors: {
+            background: "#102030",
+            foreground: "#ABCDEF",
+            accent: "#102030",
+            muted: "#102030",
+            border: "#102030",
+          },
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it.each([
+    { unexpected: "#102030" },
+    { background: "url(https://example.invalid/image)" },
+    { accent: "#abc" },
+    { border: "" },
+  ])("refuses invalid portable colors: %j", (colors) => {
+    expect(validate(project({ ...theme, colors }))).toBe(false);
+  });
+});
+
+describe("the published OpenRPC request schemas", () => {
+  const target = {
+    installationId: "940ac827-b431-455b-af4b-e3a170bcfda0",
+    digest: "1".repeat(64),
+  };
+
+  it("compiles every whole request and by-name parameter", () => {
+    for (const method of openrpc.methods) {
+      expect(() => requestSchema(method.name)).not.toThrow();
+      for (const param of method.params) {
+        expect(() => requestSchema(method.name, param.name)).not.toThrow();
+      }
+    }
+  });
+
+  it("rejects unknown nested members in frames and by-name parameters", () => {
+    const grants = [{ capability: "tools.invoke", targets: [], unexpected: true }];
+    expect(requestSchema("plugins.approve")({ ...target, grants })).toBe(false);
+    expect(requestSchema("plugins.approve", "grants")(grants)).toBe(false);
+    const valueChanges = { token: { type: "set", value: "", unexpected: true } };
+    expect(
+      requestSchema("plugins.configure")({
+        ...target,
+        disabledServers: [],
+        disabledSkills: [],
+        valueChanges,
+      }),
+    ).toBe(false);
+    expect(requestSchema("plugins.configure", "valueChanges")(valueChanges)).toBe(false);
+  });
+
+  it("applies request strictness to universal metadata", () => {
+    const _meta = { clientInfo: { name: "editor", version: "1", unexpected: true } };
+    expect(requestSchema("plugins.list")({ _meta })).toBe(false);
+    expect(requestSchema("plugins.list", "_meta")(_meta)).toBe(false);
+    expect(requestSchema("plugins.list")({ _meta: { unexpected: true } })).toBe(false);
+  });
+
+  it("accepts declared maps, metadata, and opaque tool arguments", () => {
+    expect(
+      requestSchema("plugins.configure")({
+        ...target,
+        disabledServers: [],
+        disabledSkills: [],
+        valueChanges: { token: { type: "set", value: "" }, obsolete: { type: "clear" } },
+        _meta: { clientInfo: { name: "editor", version: "1" } },
+      }),
+    ).toBe(true);
+    expect(
+      requestSchema("tools.invoke")({
+        name: "inspect",
+        arguments: { type: "unrelated", nested: { unexpected: null } },
+      }),
+    ).toBe(true);
+    expect(
+      ajv.getSchema("schema.json#/$defs/PluginValueChange")?.({
+        type: "clear",
+        futureField: true,
+      }),
+    ).toBe(true);
+  });
+});
 
 describe("the published JSON Schema bundle", () => {
   it("compiles", () => {

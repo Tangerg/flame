@@ -1234,4 +1234,22 @@ export const zhTW: Record<string, string> = {
   "file.change.del": "工作樹中已刪除",
   "file.change.renamed": "重新命名自 {{path}}",
   "file.change.below": "包含工作樹變更",
+
+  "packages.loading": "正在載入…",
+
+  "packages.trust":
+    "核准版本表示信任其程式碼。本機程式以你的作業系統權限執行。請先檢查來源、摘要、輸入和要求權限。",
+  "packages.source": "Runtime 上的外掛目錄或 ZIP 絕對路徑",
+  "packages.install": "安裝",
+  "packages.empty": "尚未安裝 Runtime 外掛",
+  "packages.approve": "信任版本和權限",
+  "packages.configure": "設定輸入",
+  "packages.disable": "停用",
+  "packages.enable": "啟用",
+  "packages.stage": "暫存更新",
+  "packages.select": "選擇暫存版本",
+  "packages.revoke": "撤銷信任",
+  "packages.uninstall": "解除安裝",
+  "packages.input": "JSON 輸入或 Runtime 來源路徑",
+  "packages.save": "儲存",
 };

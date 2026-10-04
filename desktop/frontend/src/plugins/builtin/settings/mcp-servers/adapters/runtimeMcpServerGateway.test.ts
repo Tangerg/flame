@@ -61,6 +61,7 @@ describe("runtimeMcpServerGateway", () => {
   ])("sends a %s candidate the Runtime would accept", async (_transport, input) => {
     const create = vi.fn().mockResolvedValue({
       name: input.name,
+      origin: { type: "user" },
       connection:
         input.transport === "stdio"
           ? { type: "stdio", command: "tool-server", args: [] }
@@ -80,6 +81,7 @@ describe("runtimeMcpServerGateway", () => {
     const create = vi.fn().mockResolvedValue({
       name: "local-tools",
       description: "Local tools",
+      origin: { type: "user" },
       connection: { type: "stdio", command: "tool-server", args: ["--stdio"] },
       handshakeTimeout: { type: "bounded", seconds: 15 },
       status: { type: "connected", toolCount: 3 },
@@ -113,6 +115,7 @@ describe("runtimeMcpServerGateway", () => {
   it("returns the stored server after an enablement change", async () => {
     const update = vi.fn().mockResolvedValue({
       name: "cloud",
+      origin: { type: "user" },
       connection: { type: "streamableHttp", url: "https://example.test/mcp" },
       handshakeTimeout: { type: "unbounded" },
       status: { type: "disabled" },
@@ -240,6 +243,7 @@ describe("runtimeMcpServerGateway", () => {
 function runtimeServer(overrides: Record<string, unknown> = {}) {
   return {
     name: "cloud",
+    origin: { type: "user" },
     connection: { type: "streamableHttp" as const, url: "https://example.test/mcp" },
     handshakeTimeout: { type: "unbounded" as const },
     status: { type: "disconnected" as const },

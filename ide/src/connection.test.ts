@@ -87,6 +87,50 @@ describe("IDE connection lifetime and replay", () => {
     expect(server.requests).toEqual([]);
   });
 
+  it("replays a prepared plugin removal with its original reviewed identity after reconnect", async () => {
+    let recover = false;
+    const server = await fixture((_request, response, message) => {
+      if (message.method !== "plugins.uninstall") return false;
+      if (!recover) {
+        response.writeHead(503);
+        response.end("acknowledgement lost");
+        return true;
+      }
+      response.writeHead(200, { "Content-Type": "application/json" });
+      response.end(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          id: message.id,
+          result: { availability: [] },
+        }),
+      );
+      return true;
+    });
+    const first = await Connection.open(server.endpoint, undefined, server.directory);
+    const params = { installationId: "12345678-1234-1234-1234-123456789abc" };
+    await expect(first.execute({ method: "plugins.uninstall", params })).rejects.toThrow(
+      /acknowledgement|503/,
+    );
+    const saved = first.pendingCommands()[0]!;
+    params.installationId = "12345678-1234-1234-1234-123456789def";
+    await first.close();
+    recover = true;
+    const successor = await Connection.open(server.endpoint, undefined, server.directory);
+    disposers.push(() => successor.close());
+    await expect(successor.retry(saved.idempotencyKey)).resolves.toMatchObject({
+      pluginResult: { availability: [] },
+    });
+    for (const request of server.requests.filter(
+      ({ message }) => message.method === "plugins.uninstall",
+    )) {
+      expect(request.key).toBe(saved.idempotencyKey);
+      expect(request.message.params).toMatchObject({
+        installationId: "12345678-1234-1234-1234-123456789abc",
+      });
+    }
+    expect(successor.pendingCommands()).toEqual([]);
+  });
+
   it("rejects malformed command parameters before saving or dispatching them", async () => {
     const server = await fixture();
     const connection = await Connection.open(server.endpoint, undefined, server.directory);

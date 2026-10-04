@@ -2,10 +2,12 @@
 // Exercise the real CORS boundary from the supported standalone Desktop dev origin.
 import { execFile, spawn } from "node:child_process";
 import {
+  chmod,
   lstat,
   mkdir,
   mkdtemp,
   readFile,
+  readdir,
   realpath,
   rm,
   symlink,
@@ -29,7 +31,11 @@ import { asRunId, asSegmentId, asSessionId } from "@flame/runtime-contract/clien
 import { errorType } from "@flame/runtime-contract/client/types";
 import { createSidecarClient } from "@flame/runtime-contract/client/sidecar";
 import { createHttpTransport } from "@flame/runtime-contract/client/transports/http";
-import { isWireStreamingMethodName, type WireMethodName } from "@flame/runtime-contract/methods";
+import {
+  isWireStreamingMethodName,
+  wireMethodRequiresIdempotency,
+  type WireMethodName,
+} from "@flame/runtime-contract/methods";
 import {
   PROTOCOL_VERSION,
   type RequestMeta,
@@ -996,8 +1002,54 @@ for await (const line of lines) {
         provider?.close((error) => (error ? reject(error) : resolve())),
       );
     }
-    if (environmentRoot) await rm(environmentRoot, { recursive: true, force: true });
+    if (environmentRoot) {
+      const entries = await readdir(environmentRoot, { recursive: true, withFileTypes: true });
+      await Promise.all(
+        entries
+          .filter((entry) => entry.isDirectory())
+          .map((entry) => chmod(join(entry.parentPath, entry.name), 0o700)),
+      );
+      await rm(environmentRoot, { recursive: true, force: true });
+    }
   }, 10_000);
+
+  it("admits the shipped portable package through the shared client and revokes its reads", async () => {
+    if (!client) throw new Error("runtime client was not initialized");
+    await expect(client.plugins.install({ source: "relative/package" })).rejects.toSatisfy(
+      (error: unknown) => error instanceof RpcError && errorType(error.data) === "invalid_params",
+    );
+    const installed = await client.plugins.install({
+      source: resolve(runtimeDirectory, "../examples/plugins/trajectory"),
+    });
+    const target = { installationId: installed.id, digest: installed.selected.digest };
+    try {
+      expect(installed.enabled).toBe(false);
+      expect(installed.selected.diagnostics).toEqual([]);
+      expect(installed.selected.themes).toHaveLength(1);
+      expect(installed.selected.skills).toHaveLength(1);
+      await expect(
+        client.plugins.setEnablement({ installationId: installed.id, enabled: true }),
+      ).rejects.toMatchObject({ code: -32042 });
+      await client.plugins.approve({ ...target, grants: installed.selected.requests });
+      await client.plugins.setEnablement({ installationId: installed.id, enabled: true });
+      const skills = await client.workspace({ path: root }).skills.listDiscovered();
+      expect(skills.skills).toContainEqual(
+        expect.objectContaining({
+          name: "inspect-history",
+          scope: "installation",
+          installation: expect.objectContaining({
+            installationId: installed.id,
+            digest: target.digest,
+          }),
+        }),
+      );
+      await client.plugins.revoke(installed.id);
+      const revokedSkills = await client.workspace({ path: root }).skills.listDiscovered();
+      expect(revokedSkills.skills.some((skill) => skill.name === "inspect-history")).toBe(false);
+    } finally {
+      await client.plugins.uninstall(installed.id);
+    }
+  });
 
   it("joins a CLI-owned run from independent views without canceling it when a view closes", async () => {
     const observer = createSharedClient();
@@ -4142,9 +4194,6 @@ for await (const line of lines) {
         text: "HTTP feedback marker",
       }),
     ).resolves.toBeUndefined();
-    await expect(client.feedback.create({})).rejects.toSatisfy(
-      (error: unknown) => error instanceof RpcError && errorType(error.data) === "invalid_params",
-    );
 
     const summary = await client.usage.summary({ sinceDays: 30 });
     expect(summary).toMatchObject({
@@ -4165,9 +4214,26 @@ for await (const line of lines) {
     expect(summary.total.outputTokens).toBeGreaterThan(0);
     expect(summary.sessions).toBeGreaterThan(0);
     expect(summary.runs).toBeGreaterThan(0);
-    await expect(client.usage.summary({ sinceDays: -1 })).rejects.toSatisfy(
-      (error: unknown) => error instanceof RpcError && errorType(error.data) === "invalid_params",
-    );
+    for (const { method, params } of [
+      { method: "feedback.create", params: {} },
+      { method: "usage.summary", params: { sinceDays: -1 } },
+    ] satisfies Array<{ method: WireMethodName; params: unknown }>) {
+      const response = await isolatedFetch(`${baseUrl}/v2/rpc`, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          ...(wireMethodRequiresIdempotency(method)
+            ? { "Idempotency-Key": crypto.randomUUID() }
+            : {}),
+        },
+        body: JSON.stringify({ jsonrpc: "2.0", id: method, method, params }),
+      });
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toMatchObject({
+        error: { data: { type: "invalid_params" } },
+      });
+    }
   }, 30_000);
 
   it("consumes workspace files and hook trust through bound APIs", async () => {

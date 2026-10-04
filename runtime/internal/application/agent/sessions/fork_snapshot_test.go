@@ -34,7 +34,10 @@ func TestCopyForkSnapshotRemapsTheCompleteVisibleRunTree(t *testing.T) {
 		Capabilities: root.Capabilities(), CreatedAt: at.Add(time.Millisecond),
 		FinishedAt: at.Add(time.Second), UpdatedAt: at.Add(time.Second), MessageMark: 1,
 	})
-	preview := tool.StringResult("delegated preview")
+	preview, err := tool.NewResult("delegated preview")
+	if err != nil {
+		t.Fatal(err)
+	}
 	duration := time.Second
 	spawningItem := testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID: "ses_parent", RunID: "run_root", ID: "item_spawn",

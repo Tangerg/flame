@@ -17,6 +17,14 @@ The proposal is deliberately separate from Flame's current architecture baseline
 
 ---
 
+## Implementation reference
+
+The first platform phase uses the production namespace `io.github.tangerg.flame`.
+References to `org.example.flame` below remain illustrative proposal examples.
+[Runtime's plugin documentation](../runtime/README.md#portable-plugins) owns the
+implemented behavior and migration requirements; generated contracts own exact API shapes.
+First-party capability extraction remains a separate phase.
+
 ## Contents
 
 - [1. Decision summary](#1-decision-summary)
@@ -1473,6 +1481,10 @@ These are bounded release decisions. They do not reopen the ownership model or r
 A deferred capability is unavailable, not a placeholder implementation returning success. Its reconsideration must start from the real consumer and acceptance evidence.
 
 ### 21.3 Recommended implementation slices
+
+The current working implementation stops at Slice A/B. Earlier action/view prototypes
+have been withdrawn with their public API, client entrypoints and bridge. Their contracts
+must be established after the carrier spike rather than retained as compatibility surfaces.
 
 **Slice 0: tool identity and policy ownership.** Implement [`tool-identity-and-policy-ownership.md`](tool-identity-and-policy-ownership.md) and pass its acceptance tests. It is a breaking repair of the current product, valuable without plugins, and a prerequisite for every later slice.
 

@@ -3,11 +3,13 @@ package bootstrap
 import (
 	"context"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
+	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
@@ -30,6 +32,8 @@ type toolEnvironment struct {
 // process-owned tool runtime. Keeping the contract as one value lets construction
 // transfer every acquisition to runtimeLifetime even when construction fails.
 type toolEnvironmentDependencies struct {
+	packageSkills     promptsource.PackageSkills
+	registry          *plugins.Registry
 	lifetime          context.Context
 	config            Config
 	approvalPolicy    *approvals.RuntimePolicy
@@ -51,7 +55,7 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		ctx,
 		deps.lifetime,
 		deps.mcp.servers,
-		cfg.Stores.MCPServers,
+		cfg.Stores.MCPAuthorization(deps.registry), deps.registry,
 	)
 	if err != nil {
 		return toolEnvironment{}, fmt.Errorf("runtime: open MCP connections: %w", err)
@@ -67,10 +71,10 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		})},
 	}
 	buildConfig := toolset.BuildConfig{
-		Lifetime:        deps.lifetime,
-		DefaultCWD:      cfg.DefaultWorkspacePath,
-		UserHome:        cfg.UserHome,
-		SkillsUserDir:   cfg.SkillsUserDir,
+		Lifetime:      deps.lifetime,
+		DefaultCWD:    cfg.DefaultWorkspacePath,
+		UserHome:      cfg.UserHome,
+		SkillsUserDir: cfg.SkillsUserDir, PackageSkills: deps.packageSkills,
 		Online:          cfg.Online,
 		LSPServers:      cfg.LSPServers,
 		MCPTools:        mcpTools,

@@ -114,3 +114,15 @@ Offline tests exercise real localhost HTTP negotiation/replay, multiple command
 record owners, saved source provenance and observation retirement. Packaging
 validates the VSIX manifest and bundled artifact. Interactive VS Code behavior
 requires opening the extension in an Extension Development Host.
+
+## Runtime plugins
+
+Configuration JSON requires the inspected release's `digest` alongside `installationId`.
+Stale requests are refused by Runtime; replay preserves their original release binding.
+
+The command palette provides **Inspect Runtime Plugins** and **Manage Runtime Plugin**.
+Management uses exact Runtime request JSON and the existing
+prepared-command journal. Source paths belong to the connected Runtime. Results open as
+JSON documents. Plugin action invocation and HTML hosting are unavailable in this slice;
+installed tools use the existing Runtime execution and approval path. See
+[the Runtime contract](../runtime/README.md#portable-plugins).

@@ -3,11 +3,13 @@ package workspace
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
+	"github.com/google/uuid"
 )
 
 func TestNewSkillsRequiresCompleteDiscoveryCurationAndReview(t *testing.T) {
@@ -52,7 +54,7 @@ func newSkills(t *testing.T, scope *Scope, catalog SkillCatalog, curator SkillCu
 
 func TestListUsesCatalogPort(t *testing.T) {
 	catalog := &fakeSkillCatalog{
-		skills: []SkillSummary{{Name: "lint", Description: "check code", Scope: skills.ScopeProject}},
+		skills: []SkillSummary{{Name: "lint", Description: "check code", Source: ProjectSkillSource()}},
 	}
 	c := newSkills(t, newScope(t, "", "", testPaths{}), catalog, nil, &fakeSkillProposals{}, nil, nil)
 
@@ -70,8 +72,8 @@ func TestListUsesCatalogPort(t *testing.T) {
 
 func TestListOwnsVisibleSkillOrder(t *testing.T) {
 	catalog := &fakeSkillCatalog{skills: []SkillSummary{
-		{Name: "zeta", Description: "Check the final result.", Scope: skills.ScopeUser},
-		{Name: "alpha", Description: "Inspect the project first.", Scope: skills.ScopeProject},
+		{Name: "zeta", Description: "Check the final result.", Source: UserSkillSource()},
+		{Name: "alpha", Description: "Inspect the project first.", Source: ProjectSkillSource()},
 	}}
 	c := newSkills(t, newScope(t, "", "", testPaths{}), catalog, nil, &fakeSkillProposals{}, nil, nil)
 
@@ -94,8 +96,8 @@ func TestListOwnsVisibleSkillOrder(t *testing.T) {
 
 func TestListRejectsShadowedSkillLeak(t *testing.T) {
 	catalog := &fakeSkillCatalog{skills: []SkillSummary{
-		{Name: "review", Description: "Review the project changes.", Scope: skills.ScopeProject},
-		{Name: "review", Description: "Review the user changes.", Scope: skills.ScopeUser},
+		{Name: "review", Description: "Review the project changes.", Source: ProjectSkillSource()},
+		{Name: "review", Description: "Review the user changes.", Source: UserSkillSource()},
 	}}
 	c := newSkills(t, newScope(t, "", "", testPaths{}), catalog, nil, &fakeSkillProposals{}, nil, nil)
 
@@ -106,7 +108,7 @@ func TestListRejectsShadowedSkillLeak(t *testing.T) {
 
 func TestListRejectsInvalidOrUnboundedCatalog(t *testing.T) {
 	for name, found := range map[string][]SkillSummary{
-		"invalid row": {{Name: "review", Description: "Review the project changes.", Scope: skills.Scope("unknown")}},
+		"invalid row": {{Name: "review", Description: "Review the project changes.", Source: SkillSource{}}},
 		"capacity":    make([]SkillSummary, 2*skills.MaxSkillsPerSource+1),
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -115,6 +117,43 @@ func TestListRejectsInvalidOrUnboundedCatalog(t *testing.T) {
 				t.Fatal("List error = nil, want rejected catalog")
 			}
 		})
+	}
+}
+
+func TestListCapacityBelongsToEachSelectedSource(t *testing.T) {
+	var found []SkillSummary
+	for index := range 4 {
+		source, err := InstallationSkillSource(uuid.NewString(), fmt.Sprintf("%064x", index+1))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for number := range skills.MaxSkillsPerSource {
+			found = append(found, SkillSummary{Name: fmt.Sprintf("source-%d-skill-%03d", index, number), Description: "Inspect the results.", Source: source})
+		}
+	}
+	catalog := &fakeSkillCatalog{skills: found}
+	c := newSkills(t, newScope(t, "", "", testPaths{}), catalog, nil, &fakeSkillProposals{}, nil, nil)
+	if got, err := c.List(t.Context(), "/repo"); err != nil || len(got.Skills) != len(found) {
+		t.Fatalf("independent installation capacity = %d, %v", len(got.Skills), err)
+	}
+	catalog.skills = append(found[:skills.MaxSkillsPerSource], SkillSummary{Name: "overflow", Description: "Inspect the results.", Source: found[0].Source})
+	if _, err := c.List(t.Context(), "/repo"); !errors.Is(err, skills.ErrLibraryCapacity) {
+		t.Fatalf("oversized source error = %v, want ErrLibraryCapacity", err)
+	}
+}
+
+func TestListPreservesAnOverrideDiagnosticForAVisibleSkill(t *testing.T) {
+	catalog := &fakeSkillCatalog{
+		skills:      []SkillSummary{{Name: "review", Description: "Inspect the project.", Source: ProjectSkillSource()}},
+		diagnostics: []SkillDiagnostic{{Name: "review", Detail: "An explicit project/user Skill overrides the installed package copy."}},
+	}
+	c := newSkills(t, newScope(t, "", "", testPaths{}), catalog, nil, &fakeSkillProposals{}, nil, nil)
+	if got, err := c.List(t.Context(), "/repo"); err != nil || len(got.Skills) != 1 || len(got.Diagnostics) != 1 {
+		t.Fatalf("visible override = %+v, %v", got, err)
+	}
+	catalog.diagnostics = append(catalog.diagnostics, catalog.diagnostics[0])
+	if _, err := c.List(t.Context(), "/repo"); err == nil {
+		t.Fatal("accepted duplicate diagnostics for the same Skill")
 	}
 }
 
@@ -203,9 +242,10 @@ func TestSkillMutationsPublishOnlyCommittedFilesystemFacts(t *testing.T) {
 }
 
 type fakeSkillCatalog struct {
-	cwd    string
-	skills []SkillSummary
-	err    error
+	cwd         string
+	skills      []SkillSummary
+	diagnostics []SkillDiagnostic
+	err         error
 }
 
 type fakeSkillCurator struct {
@@ -239,7 +279,7 @@ func (testPaths) ResolveExistingInRoot(_, path string) (string, error) {
 
 func (f *fakeSkillCatalog) List(_ context.Context, cwd string) (SkillDiscovery, error) {
 	f.cwd = cwd
-	return SkillDiscovery{Skills: slices.Clone(f.skills)}, f.err
+	return SkillDiscovery{Skills: slices.Clone(f.skills), Diagnostics: slices.Clone(f.diagnostics)}, f.err
 }
 
 func TestManagedSkillsOwnLifecycleAndNameOrder(t *testing.T) {

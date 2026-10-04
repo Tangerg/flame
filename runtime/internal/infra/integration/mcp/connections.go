@@ -5,8 +5,6 @@ import (
 	"errors"
 	"sync"
 
-	toolcontract "github.com/Tangerg/scope/core/tool"
-
 	"github.com/Tangerg/go-sdk/auth"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 
@@ -21,7 +19,7 @@ import (
 type server struct {
 	config  ServerConfig
 	session *sdkmcp.ClientSession // nil when not connected
-	tools   []toolcontract.Tool   // last tool set proved on this session
+	tools   []Executable          // last tool set proved on this session
 	state   mcpserver.ConnectionState
 
 	// oauth is either a restored durable OAuth handler or the handler obtained by
@@ -57,8 +55,8 @@ type Connections struct {
 	mu       sync.Mutex
 	servers  []*server
 	client   *sdkmcp.Client
-	onTools  func([]toolcontract.Tool) // tool sink; nil until SetToolSink; guarded by mu
-	closed   bool                      // terminal admission state set by Shutdown
+	onTools  func([]Executable) // tool sink; nil until SetToolSink; guarded by mu
+	closed   bool               // terminal admission state set by Shutdown
 	shutdown *shutdownAttempt
 	sessions map[*sdkmcp.ClientSession]*ownedSession
 	// retirements retain asynchronous close attempts and their diagnostics until
@@ -84,7 +82,7 @@ type Connections struct {
 // SetToolSink registers the callback connection mutations invoke with the
 // rebuilt model-facing MCP tool set (the engine wires it to its resolver's
 // hot-swap).
-func (c *Connections) SetToolSink(sink func([]toolcontract.Tool)) {
+func (c *Connections) SetToolSink(sink func([]Executable)) {
 	c.mu.Lock()
 	c.onTools = sink
 	c.mu.Unlock()

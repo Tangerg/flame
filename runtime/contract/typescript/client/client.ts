@@ -1,4 +1,5 @@
 import { errorMessage, RpcError, RpcProtocolError, RpcTransportError } from "./errors";
+import { checkRequest } from "./request";
 import {
   MAXIMUM_RUN_EVENT_ID_CHARACTERS,
   PROBLEM_CODES,
@@ -236,18 +237,6 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
     console.warn("[rpc] dropping unexpected server-initiated Request", msg);
   }
 
-  function paramsWithMeta<P>(
-    params: P | undefined,
-    meta: RequestMeta | null | undefined = options.requestMeta?.(),
-  ): unknown {
-    if (!meta) return params;
-    if (params === undefined) return { _meta: meta };
-    if (params !== null && typeof params === "object" && !Array.isArray(params)) {
-      return Object.assign({}, params, { _meta: meta });
-    }
-    return params;
-  }
-
   async function call<M extends WireMethodName>(
     method: M,
     params: WireParams<M>,
@@ -282,16 +271,16 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
         }
       }
     }
+    const requestMeta =
+      callOptions.requestMeta === undefined ? options.requestMeta?.() : callOptions.requestMeta;
+    checkRequest(method, params, requestMeta);
     const id = (++lastRequestId).toString();
     callOptions.onRequestRpcId?.(id);
     const req: TransportRequest = {
       jsonrpc: JSONRPC_VERSION,
       id,
       method,
-      ...(() => {
-        const withMeta = paramsWithMeta(params, callOptions.requestMeta);
-        return withMeta !== undefined ? { params: withMeta } : {};
-      })(),
+      params: requestMeta ? { ...params, _meta: requestMeta } : params,
     };
 
     return new Promise<WireResult<M>>((resolve, reject) => {

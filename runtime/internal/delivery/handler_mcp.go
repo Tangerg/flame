@@ -151,7 +151,10 @@ func (s *Handler) CreateMCPAuthorizationAttempt(ctx context.Context, server stri
 	if err != nil {
 		return nil, wireMCPError(err)
 	}
-	out := presentMCPAuthorizationAttempt(attempt)
+	out, err := presentMCPAuthorizationAttempt(attempt)
+	if err != nil {
+		return nil, err
+	}
 	return &out, nil
 }
 
@@ -161,12 +164,17 @@ func (s *Handler) GetMCPAuthorizationAttempt(ctx context.Context, attemptID stri
 	if err != nil {
 		return nil, wireMCPError(err)
 	}
-	out := presentMCPAuthorizationAttempt(attempt)
+	out, err := presentMCPAuthorizationAttempt(attempt)
+	if err != nil {
+		return nil, err
+	}
 	return &out, nil
 }
 
 func wireMCPError(err error) error {
 	switch {
+	case errors.Is(err, mcpapp.ErrOwnedByInstallation):
+		return NewFailure(errors.Join(protocol.ErrMCPOwnedByInstallation, err), protocol.ErrMCPOwnedByInstallation.Error())
 	case errors.Is(err, mcpapp.ErrUnknownServer):
 		return NewFailure(errors.Join(protocol.ErrMCPServerNotFound, err), err.Error())
 	case errors.Is(err, mcpapp.ErrServerAlreadyExists):
@@ -201,7 +209,7 @@ func (s *Handler) GetMCPToolExposure(ctx context.Context, in protocol.MCPServerR
 func (s *Handler) SetMCPToolExposure(ctx context.Context, in protocol.SetMCPToolExposureRequest) error {
 	ref, err := toolRefFromWire(protocol.ToolRef{Type: protocol.ToolRefMCP, Server: in.Server, Name: in.Name})
 	if err != nil {
-		return NewFailure(protocol.ErrInvalidParams, err.Error())
+		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	}
 	return wireMCPError(s.mcp.SetToolExposure(ctx, ref, in.Disabled))
 }

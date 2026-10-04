@@ -15,7 +15,7 @@ import (
 func TestEveryPageInstantiationInheritsTheContinuationBound(t *testing.T) {
 	t.Parallel()
 
-	set := walkWireTypes(delivery.Contract(), dispatch.WireShapes())
+	set := testWalkWireTypes(t, delivery.Contract(), dispatch.WireShapes())
 	pageFamily := genericBaseOf(reflect.TypeFor[protocol.Page[protocol.Session]]())
 	continuationFields := contractshape.Fields(reflect.TypeFor[protocol.PageContinuation]())
 	if len(continuationFields) != 1 {
@@ -41,10 +41,14 @@ func TestEveryPageInstantiationInheritsTheContinuationBound(t *testing.T) {
 
 func TestManifestPublishesToolsetPresentationContracts(t *testing.T) {
 	registry, shapes := delivery.Contract(), dispatch.WireShapes()
-	generated := build(walkWireTypes(registry, shapes))
+	generated := testBuild(t, testWalkWireTypes(t, registry, shapes))
 
 	want := make(map[string]string)
-	for _, contract := range toolset.PresentationContracts() {
+	contracts, err := toolset.PresentationContracts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, contract := range contracts {
 		want[contract.ToolName] = "schema.json#/$defs/" + defName(contract.ResultType)
 	}
 	got := make(map[string]string)
@@ -67,7 +71,7 @@ func TestManifestPublishesToolsetPresentationContracts(t *testing.T) {
 func TestGeneratedMethodErrorsIncludeStaticCapabilityRefusals(t *testing.T) {
 	t.Parallel()
 
-	manifest := build(newSchemaSet(dispatch.WireShapes()))
+	manifest := testBuild(t, newSchemaSet(dispatch.WireShapes()))
 	for _, methodName := range []string{"runs.list", "items.list"} {
 		index := slices.IndexFunc(manifest.Methods, func(method methodEntry) bool {
 			return method.Name == methodName
@@ -103,7 +107,7 @@ func TestGeneratedMethodErrorsIncludeStaticCapabilityRefusals(t *testing.T) {
 func TestGeneratedMethodsPublishDerivedPagination(t *testing.T) {
 	t.Parallel()
 
-	manifest := build(newSchemaSet(dispatch.WireShapes()))
+	manifest := testBuild(t, newSchemaSet(dispatch.WireShapes()))
 	for _, test := range []struct {
 		method string
 		want   string
@@ -127,7 +131,7 @@ func TestGeneratedMethodsPublishDerivedPagination(t *testing.T) {
 func TestGeneratedMethodsPublishRunReplayCursorPolicy(t *testing.T) {
 	t.Parallel()
 
-	manifest := build(newSchemaSet(dispatch.WireShapes()))
+	manifest := testBuild(t, newSchemaSet(dispatch.WireShapes()))
 	for _, test := range []struct {
 		method string
 		want   string
@@ -152,7 +156,7 @@ func TestGeneratedMethodsPublishRunReplayCursorPolicy(t *testing.T) {
 func TestGeneratedMethodsPublishMaterializedQueryFacts(t *testing.T) {
 	t.Parallel()
 
-	manifest := build(newSchemaSet(dispatch.WireShapes()))
+	manifest := testBuild(t, newSchemaSet(dispatch.WireShapes()))
 	index := slices.IndexFunc(manifest.Methods, func(method methodEntry) bool {
 		return method.Name == "sessions.snapshot"
 	})
@@ -168,7 +172,7 @@ func TestGeneratedMethodsPublishMaterializedQueryFacts(t *testing.T) {
 func TestManifestPublishesImplementedHTTPEndpoints(t *testing.T) {
 	t.Parallel()
 
-	generated := build(walkWireTypes(delivery.Contract(), dispatch.WireShapes()))
+	generated := testBuild(t, testWalkWireTypes(t, delivery.Contract(), dispatch.WireShapes()))
 	want := map[string]struct {
 		method   string
 		path     string

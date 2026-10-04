@@ -13,24 +13,27 @@ import (
 
 // Skills lists project Skills layered over one configured user
 // directory.
-type Skills struct{ userDir string }
+type Skills struct {
+	userDir  string
+	packages PackageSkills
+}
 
 // NewSkills returns the workspace Skill-discovery adapter.
-func NewSkills(userDir string) Skills {
-	return Skills{userDir: userDir}
+func NewSkills(userDir string, packages PackageSkills) Skills {
+	return Skills{userDir: userDir, packages: packages}
 }
 
 var _ workspaceapp.SkillCatalog = Skills{}
 
 func (w Skills) List(ctx context.Context, cwd string) (workspaceapp.SkillDiscovery, error) {
-	return ListSkills(ctx, cwd, w.userDir)
+	return ListSkills(ctx, cwd, w.userDir, w.packages)
 }
 
 func (w Skills) Get(ctx context.Context, cwd, name string) (workspaceapp.SkillDetail, error) {
 	if err := domainskills.ValidateName(name); err != nil {
 		return workspaceapp.SkillDetail{}, err
 	}
-	layers, err := openRuntimeSkillLayers(cwd, w.userDir)
+	layers, err := openRuntimeSkillLayers(ctx, cwd, w.userDir, w.packages)
 	if err != nil {
 		return workspaceapp.SkillDetail{}, err
 	}

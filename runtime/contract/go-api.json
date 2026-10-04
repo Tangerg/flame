@@ -55,6 +55,10 @@
               "signature": "func(ctx context.Context, request protocol.AgentMemoryAddRequest, options CommandOptions) (*protocol.AgentMemoryItem, error)"
             },
             {
+              "name": "ApprovePlugin",
+              "signature": "func(ctx context.Context, request protocol.ApprovePluginRequest, options CommandOptions) (*protocol.PluginInstallation, error)"
+            },
+            {
               "name": "ApproveSkillProposal",
               "signature": "func(ctx context.Context, request protocol.SkillProposalRef, options CommandOptions) error"
             },
@@ -73,6 +77,10 @@
             {
               "name": "Close",
               "signature": "func() error"
+            },
+            {
+              "name": "ConfigurePlugin",
+              "signature": "func(ctx context.Context, request protocol.ConfigurePluginRequest, options CommandOptions) (*protocol.PluginInstallation, error)"
             },
             {
               "name": "CreateFeedback",
@@ -195,6 +203,10 @@
               "signature": "func(ctx context.Context, request protocol.ImportSessionRequest, options CommandOptions) (*protocol.ImportSessionResponse, error)"
             },
             {
+              "name": "InstallPlugin",
+              "signature": "func(ctx context.Context, request protocol.InstallPluginRequest, options CommandOptions) (*protocol.PluginInstallation, error)"
+            },
+            {
               "name": "InvokeTool",
               "signature": "func(ctx context.Context, request protocol.InvokeToolRequest, options CommandOptions) (any, error)"
             },
@@ -245,6 +257,10 @@
             {
               "name": "ListModels",
               "signature": "func(ctx context.Context, request protocol.ListModelsRequest, options CallOptions) (*protocol.Page[protocol.Model], error)"
+            },
+            {
+              "name": "ListPlugins",
+              "signature": "func(ctx context.Context, options CallOptions) (*protocol.Page[protocol.PluginInstallation], error)"
             },
             {
               "name": "ListProviders",
@@ -319,6 +335,10 @@
               "signature": "func(ctx context.Context, request protocol.AgentMemoryReviewRequest, options CommandOptions) error"
             },
             {
+              "name": "RevokePlugin",
+              "signature": "func(ctx context.Context, request protocol.PluginRequest, options CommandOptions) (*protocol.PluginInstallation, error)"
+            },
+            {
               "name": "RollbackSession",
               "signature": "func(ctx context.Context, request protocol.RollbackSessionRequest, options CommandOptions) (*protocol.RollbackSessionResponse, error)"
             },
@@ -329,6 +349,10 @@
             {
               "name": "SearchWorkspaceFiles",
               "signature": "func(ctx context.Context, request protocol.GrepRequest, options CallOptions) (*protocol.GrepResult, error)"
+            },
+            {
+              "name": "SelectPlugin",
+              "signature": "func(ctx context.Context, request protocol.PluginReleaseRequest, options CommandOptions) (*protocol.PluginInstallation, error)"
             },
             {
               "name": "SetApprovalMode",
@@ -351,8 +375,16 @@
               "signature": "func(ctx context.Context, request protocol.SetMCPToolExposureRequest, options CommandOptions) error"
             },
             {
+              "name": "SetPluginEnablement",
+              "signature": "func(ctx context.Context, request protocol.SetPluginEnablementRequest, options CommandOptions) (*protocol.PluginInstallation, error)"
+            },
+            {
               "name": "SetUtilityRole",
               "signature": "func(ctx context.Context, request protocol.UtilityRole, options CommandOptions) (*protocol.UtilityRole, error)"
+            },
+            {
+              "name": "StagePlugin",
+              "signature": "func(ctx context.Context, request protocol.StagePluginRequest, options CommandOptions) (*protocol.PluginInstallation, error)"
             },
             {
               "name": "StartGoal",
@@ -385,6 +417,10 @@
             {
               "name": "TestProvider",
               "signature": "func(ctx context.Context, request protocol.TestProviderRequest, options CallOptions) (*protocol.ProviderTestResult, error)"
+            },
+            {
+              "name": "UninstallPlugin",
+              "signature": "func(ctx context.Context, request protocol.PluginRequest, options CommandOptions) (*protocol.PluginRemoval, error)"
             },
             {
               "name": "UpdateAgentMemory",
@@ -515,6 +551,10 @@
               "signature": "func(ctx context.Context, request protocol.AgentMemoryAddRequest, options CommandOptions) (*protocol.AgentMemoryItem, error)"
             },
             {
+              "name": "ApprovePlugin",
+              "signature": "func(ctx context.Context, request protocol.ApprovePluginRequest, options CommandOptions) (*protocol.PluginInstallation, error)"
+            },
+            {
               "name": "ApproveSkillProposal",
               "signature": "func(ctx context.Context, request protocol.SkillProposalRef, options CommandOptions) error"
             },
@@ -533,6 +573,10 @@
             {
               "name": "Close",
               "signature": "func() error"
+            },
+            {
+              "name": "ConfigurePlugin",
+              "signature": "func(ctx context.Context, request protocol.ConfigurePluginRequest, options CommandOptions) (*protocol.PluginInstallation, error)"
             },
             {
               "name": "CreateFeedback",
@@ -655,6 +699,10 @@
               "signature": "func(ctx context.Context, request protocol.ImportSessionRequest, options CommandOptions) (*protocol.ImportSessionResponse, error)"
             },
             {
+              "name": "InstallPlugin",
+              "signature": "func(ctx context.Context, request protocol.InstallPluginRequest, options CommandOptions) (*protocol.PluginInstallation, error)"
+            },
+            {
               "name": "InvokeTool",
               "signature": "func(ctx context.Context, request protocol.InvokeToolRequest, options CommandOptions) (any, error)"
             },
@@ -705,6 +753,10 @@
             {
               "name": "ListModels",
               "signature": "func(ctx context.Context, request protocol.ListModelsRequest, options CallOptions) (*protocol.Page[protocol.Model], error)"
+            },
+            {
+              "name": "ListPlugins",
+              "signature": "func(ctx context.Context, options CallOptions) (*protocol.Page[protocol.PluginInstallation], error)"
             },
             {
               "name": "ListProviders",
@@ -779,6 +831,10 @@
               "signature": "func(ctx context.Context, request protocol.AgentMemoryReviewRequest, options CommandOptions) error"
             },
             {
+              "name": "RevokePlugin",
+              "signature": "func(ctx context.Context, request protocol.PluginRequest, options CommandOptions) (*protocol.PluginInstallation, error)"
+            },
+            {
               "name": "RollbackSession",
               "signature": "func(ctx context.Context, request protocol.RollbackSessionRequest, options CommandOptions) (*protocol.RollbackSessionResponse, error)"
             },
@@ -789,6 +845,10 @@
             {
               "name": "SearchWorkspaceFiles",
               "signature": "func(ctx context.Context, request protocol.GrepRequest, options CallOptions) (*protocol.GrepResult, error)"
+            },
+            {
+              "name": "SelectPlugin",
+              "signature": "func(ctx context.Context, request protocol.PluginReleaseRequest, options CommandOptions) (*protocol.PluginInstallation, error)"
             },
             {
               "name": "SetApprovalMode",
@@ -811,8 +871,16 @@
               "signature": "func(ctx context.Context, request protocol.SetMCPToolExposureRequest, options CommandOptions) error"
             },
             {
+              "name": "SetPluginEnablement",
+              "signature": "func(ctx context.Context, request protocol.SetPluginEnablementRequest, options CommandOptions) (*protocol.PluginInstallation, error)"
+            },
+            {
               "name": "SetUtilityRole",
               "signature": "func(ctx context.Context, request protocol.UtilityRole, options CommandOptions) (*protocol.UtilityRole, error)"
+            },
+            {
+              "name": "StagePlugin",
+              "signature": "func(ctx context.Context, request protocol.StagePluginRequest, options CommandOptions) (*protocol.PluginInstallation, error)"
             },
             {
               "name": "StartGoal",
@@ -845,6 +913,10 @@
             {
               "name": "TestProvider",
               "signature": "func(ctx context.Context, request protocol.TestProviderRequest, options CallOptions) (*protocol.ProviderTestResult, error)"
+            },
+            {
+              "name": "UninstallPlugin",
+              "signature": "func(ctx context.Context, request protocol.PluginRequest, options CommandOptions) (*protocol.PluginRemoval, error)"
             },
             {
               "name": "UpdateAgentMemory",
@@ -1365,6 +1437,11 @@
           "value": "\"plan\""
         },
         {
+          "name": "FeaturePlugins",
+          "type": "untyped string",
+          "value": "\"plugins\""
+        },
+        {
           "name": "FeatureReasoning",
           "type": "untyped string",
           "value": "\"reasoning\""
@@ -1670,6 +1747,16 @@
           "value": "\"unbounded\""
         },
         {
+          "name": "MCPOriginInstallation",
+          "type": "MCPOriginType",
+          "value": "\"installation\""
+        },
+        {
+          "name": "MCPOriginUser",
+          "type": "MCPOriginType",
+          "value": "\"user\""
+        },
+        {
           "name": "MCPSecretClear",
           "type": "MCPSecretChangeType",
           "value": "\"clear\""
@@ -1875,6 +1962,26 @@
           "value": "\"pending\""
         },
         {
+          "name": "PluginThemeDark",
+          "type": "PluginThemeScheme",
+          "value": "\"dark\""
+        },
+        {
+          "name": "PluginThemeLight",
+          "type": "PluginThemeScheme",
+          "value": "\"light\""
+        },
+        {
+          "name": "PluginValueClear",
+          "type": "PluginValueChangeType",
+          "value": "\"clear\""
+        },
+        {
+          "name": "PluginValueSet",
+          "type": "PluginValueChangeType",
+          "value": "\"set\""
+        },
+        {
           "name": "ProblemAgentStuck",
           "type": "untyped string",
           "value": "\"agent_stuck\""
@@ -1967,7 +2074,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-02\""
+          "value": "\"2026-10-02.1\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -2160,6 +2267,11 @@
           "value": "\"plan.changed\""
         },
         {
+          "name": "RuntimePluginsChanged",
+          "type": "RuntimeEventType",
+          "value": "\"plugins.changed\""
+        },
+        {
           "name": "RuntimeResync",
           "type": "RuntimeEventType",
           "value": "\"resync\""
@@ -2288,6 +2400,11 @@
           "name": "SkillProposalOriginRequested",
           "type": "SkillProposalOrigin",
           "value": "\"requested\""
+        },
+        {
+          "name": "SkillScopeInstallation",
+          "type": "SkillScope",
+          "value": "\"installation\""
         },
         {
           "name": "SkillScopeProject",
@@ -2420,6 +2537,11 @@
           "value": "\"plan.changed\""
         },
         {
+          "name": "TopicPluginsChanged",
+          "type": "RuntimeTopic",
+          "value": "\"plugins.changed\""
+        },
+        {
           "name": "TopicRunsChanged",
           "type": "RuntimeTopic",
           "value": "\"runs.changed\""
@@ -2527,6 +2649,10 @@
           "type": "error"
         },
         {
+          "name": "ErrMCPOwnedByInstallation",
+          "type": "error"
+        },
+        {
           "name": "ErrMCPServerAlreadyExists",
           "type": "error"
         },
@@ -2544,6 +2670,26 @@
         },
         {
           "name": "ErrPathOutsideRoot",
+          "type": "error"
+        },
+        {
+          "name": "ErrPluginInUse",
+          "type": "error"
+        },
+        {
+          "name": "ErrPluginNotFound",
+          "type": "error"
+        },
+        {
+          "name": "ErrPluginStale",
+          "type": "error"
+        },
+        {
+          "name": "ErrPluginUnapproved",
+          "type": "error"
+        },
+        {
+          "name": "ErrPluginUnavailable",
           "type": "error"
         },
         {
@@ -2624,6 +2770,10 @@
         }
       ],
       "functions": [
+        {
+          "name": "DecodeRequest",
+          "signature": "func(encoded []byte, target any) error"
+        },
         {
           "name": "FeatureKeys",
           "signature": "func() []string"
@@ -3071,6 +3221,33 @@
           "name": "ApprovalSubjectType",
           "kind": "defined",
           "underlying": "string"
+        },
+        {
+          "name": "ApprovePluginRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "InstallationID",
+              "type": "string",
+              "tag": "json:\"installationId\""
+            },
+            {
+              "name": "Digest",
+              "type": "string",
+              "tag": "json:\"digest\""
+            },
+            {
+              "name": "Grants",
+              "type": "[]PluginRequestGrant",
+              "tag": "json:\"grants\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
         },
         {
           "name": "ArtifactItem",
@@ -3565,6 +3742,43 @@
               "name": "Version",
               "type": "string",
               "tag": "json:\"version\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "ConfigurePluginRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "InstallationID",
+              "type": "string",
+              "tag": "json:\"installationId\""
+            },
+            {
+              "name": "Digest",
+              "type": "string",
+              "tag": "json:\"digest\""
+            },
+            {
+              "name": "ValueChanges",
+              "type": "map[string]PluginValueChange",
+              "tag": "json:\"valueChanges\""
+            },
+            {
+              "name": "DisabledServers",
+              "type": "[]string",
+              "tag": "json:\"disabledServers\""
+            },
+            {
+              "name": "DisabledSkills",
+              "type": "[]string",
+              "tag": "json:\"disabledSkills\""
             }
           ],
           "methods": [
@@ -4875,6 +5089,23 @@
           ]
         },
         {
+          "name": "InstallPluginRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Source",
+              "type": "string",
+              "tag": "json:\"source\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
           "name": "Interrupt",
           "kind": "struct",
           "fields": [
@@ -5828,6 +6059,38 @@
           ]
         },
         {
+          "name": "MCPOrigin",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Type",
+              "type": "MCPOriginType",
+              "tag": "json:\"type\""
+            },
+            {
+              "name": "InstallationID",
+              "type": "string",
+              "tag": "json:\"installationId,omitempty\""
+            },
+            {
+              "name": "LocalName",
+              "type": "string",
+              "tag": "json:\"localName,omitempty\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "MCPOriginType",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
           "name": "MCPSecretChangeType",
           "kind": "defined",
           "underlying": "string"
@@ -5836,6 +6099,11 @@
           "name": "MCPServer",
           "kind": "struct",
           "fields": [
+            {
+              "name": "Origin",
+              "type": "MCPOrigin",
+              "tag": "json:\"origin\""
+            },
             {
               "name": "Name",
               "type": "string",
@@ -6548,6 +6816,367 @@
               "signature": "func() error"
             }
           ]
+        },
+        {
+          "name": "PluginDiagnostic",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Component",
+              "type": "string",
+              "tag": "json:\"component\""
+            },
+            {
+              "name": "Code",
+              "type": "string",
+              "tag": "json:\"code\""
+            }
+          ]
+        },
+        {
+          "name": "PluginInput",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Secret",
+              "type": "bool",
+              "tag": "json:\"secret\""
+            },
+            {
+              "name": "Required",
+              "type": "bool",
+              "tag": "json:\"required\""
+            },
+            {
+              "name": "Server",
+              "type": "string",
+              "tag": "json:\"server\""
+            },
+            {
+              "name": "Target",
+              "type": "string",
+              "tag": "json:\"target\""
+            },
+            {
+              "name": "Key",
+              "type": "string",
+              "tag": "json:\"key,omitempty\""
+            }
+          ]
+        },
+        {
+          "name": "PluginInstallation",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Availability",
+              "type": "[]PluginDiagnostic",
+              "tag": "json:\"availability\""
+            },
+            {
+              "name": "Grants",
+              "type": "[]PluginRequestGrant",
+              "tag": "json:\"grants\""
+            },
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Source",
+              "type": "string",
+              "tag": "json:\"source\""
+            },
+            {
+              "name": "Selected",
+              "type": "PluginRelease",
+              "tag": "json:\"selected\""
+            },
+            {
+              "name": "Staged",
+              "type": "*PluginRelease",
+              "tag": "json:\"staged,omitzero\""
+            },
+            {
+              "name": "Enabled",
+              "type": "bool",
+              "tag": "json:\"enabled\""
+            },
+            {
+              "name": "ApprovedDigest",
+              "type": "string",
+              "tag": "json:\"approvedDigest,omitempty\""
+            },
+            {
+              "name": "Values",
+              "type": "map[string]string",
+              "tag": "json:\"values\""
+            },
+            {
+              "name": "DisabledServers",
+              "type": "[]string",
+              "tag": "json:\"disabledServers\""
+            },
+            {
+              "name": "DisabledSkills",
+              "type": "[]string",
+              "tag": "json:\"disabledSkills\""
+            }
+          ]
+        },
+        {
+          "name": "PluginRelease",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Requests",
+              "type": "[]PluginRequestGrant",
+              "tag": "json:\"requests\""
+            },
+            {
+              "name": "Digest",
+              "type": "string",
+              "tag": "json:\"digest\""
+            },
+            {
+              "name": "Name",
+              "type": "string",
+              "tag": "json:\"name\""
+            },
+            {
+              "name": "Version",
+              "type": "string",
+              "tag": "json:\"version,omitempty\""
+            },
+            {
+              "name": "Description",
+              "type": "string",
+              "tag": "json:\"description,omitempty\""
+            },
+            {
+              "name": "Servers",
+              "type": "[]PluginServerDeclaration",
+              "tag": "json:\"servers\""
+            },
+            {
+              "name": "Inputs",
+              "type": "[]PluginInput",
+              "tag": "json:\"inputs\""
+            },
+            {
+              "name": "Themes",
+              "type": "[]PluginTheme",
+              "tag": "json:\"themes\""
+            },
+            {
+              "name": "Skills",
+              "type": "[]PluginSkill",
+              "tag": "json:\"skills\""
+            },
+            {
+              "name": "Diagnostics",
+              "type": "[]PluginDiagnostic",
+              "tag": "json:\"diagnostics\""
+            }
+          ]
+        },
+        {
+          "name": "PluginReleaseRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "InstallationID",
+              "type": "string",
+              "tag": "json:\"installationId\""
+            },
+            {
+              "name": "Digest",
+              "type": "string",
+              "tag": "json:\"digest\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "PluginRemoval",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Availability",
+              "type": "[]PluginDiagnostic",
+              "tag": "json:\"availability\""
+            }
+          ]
+        },
+        {
+          "name": "PluginRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "InstallationID",
+              "type": "string",
+              "tag": "json:\"installationId\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "PluginRequestGrant",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Capability",
+              "type": "string",
+              "tag": "json:\"capability\""
+            },
+            {
+              "name": "Targets",
+              "type": "[]string",
+              "tag": "json:\"targets\""
+            }
+          ]
+        },
+        {
+          "name": "PluginServerDeclaration",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Name",
+              "type": "string",
+              "tag": "json:\"name\""
+            },
+            {
+              "name": "Type",
+              "type": "string",
+              "tag": "json:\"type\""
+            },
+            {
+              "name": "Command",
+              "type": "string",
+              "tag": "json:\"command,omitempty\""
+            },
+            {
+              "name": "Args",
+              "type": "[]string",
+              "tag": "json:\"args,omitempty\""
+            },
+            {
+              "name": "Env",
+              "type": "map[string]string",
+              "tag": "json:\"env,omitempty\""
+            },
+            {
+              "name": "CWD",
+              "type": "string",
+              "tag": "json:\"cwd,omitempty\""
+            },
+            {
+              "name": "URL",
+              "type": "string",
+              "tag": "json:\"url,omitempty\""
+            },
+            {
+              "name": "Headers",
+              "type": "map[string]string",
+              "tag": "json:\"headers,omitempty\""
+            }
+          ]
+        },
+        {
+          "name": "PluginSkill",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Name",
+              "type": "string",
+              "tag": "json:\"name\""
+            },
+            {
+              "name": "Description",
+              "type": "string",
+              "tag": "json:\"description\""
+            }
+          ]
+        },
+        {
+          "name": "PluginTheme",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Title",
+              "type": "string",
+              "tag": "json:\"title\""
+            },
+            {
+              "name": "Scheme",
+              "type": "PluginThemeScheme",
+              "tag": "json:\"scheme\""
+            },
+            {
+              "name": "Colors",
+              "type": "map[string]string",
+              "tag": "json:\"colors\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "PluginThemeScheme",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "PluginValueChange",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Type",
+              "type": "PluginValueChangeType",
+              "tag": "json:\"type\""
+            },
+            {
+              "name": "Value",
+              "type": "*string",
+              "tag": "json:\"value,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "PluginValueChangeType",
+          "kind": "defined",
+          "underlying": "string"
         },
         {
           "name": "ProblemData",
@@ -8088,9 +8717,36 @@
           ]
         },
         {
+          "name": "SetPluginEnablementRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "InstallationID",
+              "type": "string",
+              "tag": "json:\"installationId\""
+            },
+            {
+              "name": "Enabled",
+              "type": "bool",
+              "tag": "json:\"enabled\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
           "name": "Skill",
           "kind": "struct",
           "fields": [
+            {
+              "name": "Installation",
+              "type": "*SkillInstallation",
+              "tag": "json:\"installation,omitzero\""
+            },
             {
               "name": "Name",
               "type": "string",
@@ -8202,6 +8858,22 @@
               "name": "Diagnostics",
               "type": "[]SkillDiagnostic",
               "tag": "json:\"diagnostics\""
+            }
+          ]
+        },
+        {
+          "name": "SkillInstallation",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "InstallationID",
+              "type": "string",
+              "tag": "json:\"installationId\""
+            },
+            {
+              "name": "Digest",
+              "type": "string",
+              "tag": "json:\"digest\""
             }
           ]
         },
@@ -8320,6 +8992,28 @@
           "name": "SkillScope",
           "kind": "defined",
           "underlying": "string"
+        },
+        {
+          "name": "StagePluginRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "InstallationID",
+              "type": "string",
+              "tag": "json:\"installationId\""
+            },
+            {
+              "name": "Source",
+              "type": "string",
+              "tag": "json:\"source\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
         },
         {
           "name": "StartGoalRequest",

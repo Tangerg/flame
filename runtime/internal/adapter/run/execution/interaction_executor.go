@@ -8,6 +8,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
@@ -49,6 +50,7 @@ type InteractionChatResolver interface {
 // executable Interaction adapter or behavior-affecting dispatcher configuration
 // changes, so Agent Framework Deployment references remain honest.
 type InteractionExecutorConfig struct {
+	InstallationCheckpoints InstallationCheckpoints
 	// Lifetime is the process-owned root for every Interaction staged by this
 	// executor. Request contexts may bound staging and commands, but accepted
 	// execution must outlive the request that created it.
@@ -81,6 +83,7 @@ type InteractionExecutorConfig struct {
 // root owns an independent Engine and exactly one Interaction Process; the
 // Application owns durable Run state and consumes only [runs.ExecutorEvent].
 type InteractionExecutor struct {
+	installationAdmission  sync.RWMutex
 	lifetime               context.Context
 	config                 InteractionExecutorConfig
 	policy                 interactionExecutionPolicy
@@ -204,6 +207,8 @@ func (i *InteractionExecutor) StageRoot(
 	ctx context.Context,
 	start runs.RootExecutionStart,
 ) (_ runs.ExecutorRef, err error) {
+	i.installationAdmission.RLock()
+	defer i.installationAdmission.RUnlock()
 	finishAssembly, err := i.sessions.beginAssembly()
 	if err != nil {
 		return runs.ExecutorRef{}, err
@@ -342,12 +347,13 @@ func (i *InteractionExecutor) interactionToolConfiguration(manifest toolset.Mani
 		return nil, err
 	}
 	configuration, err := agent.EncodePayload(struct {
-		Identity          string                      `json:"identity"`
-		ToolResultOffload *toolResultOffloadIdentity  `json:"toolResultOffload,omitzero"`
-		ToolHooks         bool                        `json:"toolHooks"`
-		VisibleTools      []toolConfigurationIdentity `json:"visibleTools,omitempty"`
-		DeferredTools     []toolConfigurationIdentity `json:"deferredTools,omitempty"`
-	}{i.configurationIdentity.String(), i.policy.toolResultOffload.identity(), i.config.ToolHooks != nil, visible, deferred})
+		Installations     []installationDependencyWire `json:"installations"`
+		Identity          string                       `json:"identity"`
+		ToolResultOffload *toolResultOffloadIdentity   `json:"toolResultOffload,omitzero"`
+		ToolHooks         bool                         `json:"toolHooks"`
+		VisibleTools      []toolConfigurationIdentity  `json:"visibleTools,omitempty"`
+		DeferredTools     []toolConfigurationIdentity  `json:"deferredTools,omitempty"`
+	}{installationDependencies(manifest.Installations), i.configurationIdentity.String(), i.policy.toolResultOffload.identity(), i.config.ToolHooks != nil, visible, deferred})
 	if err != nil {
 		return nil, fmt.Errorf("execution: encode Interaction Tool configuration identity: %w", err)
 	}
@@ -565,6 +571,8 @@ func (i *InteractionExecutor) restoreWaitingTree(
 	continuation runs.WaitingContinuation,
 	boundary interactionBoundary,
 ) (err error) {
+	i.installationAdmission.RLock()
+	defer i.installationAdmission.RUnlock()
 	finishAssembly, err := i.sessions.beginAssembly()
 	if err != nil {
 		return err

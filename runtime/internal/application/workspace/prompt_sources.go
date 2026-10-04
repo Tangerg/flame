@@ -6,6 +6,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 )
 
@@ -155,12 +157,37 @@ func validateAuthoredPromptString(document string) error {
 	return nil
 }
 
-// SkillSummary is one skill visible to a workspace, including the source layer
-// selected by prompt-source precedence.
+// SkillSource retains the single source selected by prompt resolution.
+type SkillSource struct {
+	scope          skills.Scope
+	installationID string
+	digest         string
+}
+
+func ProjectSkillSource() SkillSource { return SkillSource{scope: skills.ScopeProject} }
+func UserSkillSource() SkillSource    { return SkillSource{scope: skills.ScopeUser} }
+func InstallationSkillSource(id, digest string) (SkillSource, error) {
+	_, err := resourceid.ParseInstallation(id)
+	if err != nil || !plugin.ValidDigest(digest) {
+		return SkillSource{}, errors.New("workspace: invalid installation Skill source")
+	}
+	return SkillSource{installationID: id, digest: digest}, nil
+}
+func (s SkillSource) Scope() skills.Scope { return s.scope }
+func (s SkillSource) Installation() (id, digest string, found bool) {
+	return s.installationID, s.digest, s.installationID != ""
+}
+func (s SkillSource) Validate() error {
+	if s.installationID != "" {
+		return nil
+	}
+	return s.scope.Validate()
+}
+
 type SkillSummary struct {
 	Name        string
 	Description string
-	Scope       skills.Scope
+	Source      SkillSource
 }
 
 // SkillDiscovery keeps malformed local bundles distinct from an empty catalog.

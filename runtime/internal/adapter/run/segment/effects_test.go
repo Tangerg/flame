@@ -183,9 +183,12 @@ func TestCommitEventBindsOffloadedResultWithTranscriptItem(t *testing.T) {
 	stores := &fakeStores{transcript: new(fakeTranscript), toolResults: toolResults}
 	effects := testEffects(stores, Config{State: new(fakeRunState), Tx: new(fakeTx).run})
 	ref := &toolresult.Ref{ID: "BLOB234"}
-	preview := tool.StringResult("preview")
+	preview, err := tool.NewResult("preview")
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	err := effects.CommitEvent(t.Context(), runs.EventCommit{
+	err = effects.CommitEvent(t.Context(), runs.EventCommit{
 		RunID: "run_1", SessionID: "ses_1", SegmentID: "segment_1", CommitID: testCommitID("run_commit_event_1"),
 		Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 			SessionID: "ses_1", RunID: "run_1", ID: "item_1",
@@ -217,9 +220,12 @@ func TestCommitEventDiscardsStagedOffloadAfterCommitFailure(t *testing.T) {
 		},
 	})
 	ref := &toolresult.Ref{ID: "BLOB234"}
-	preview := tool.StringResult("preview")
+	preview, err := tool.NewResult("preview")
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	err := effects.CommitEvent(t.Context(), runs.EventCommit{
+	err = effects.CommitEvent(t.Context(), runs.EventCommit{
 		RunID: "run_1", SessionID: "ses_1", SegmentID: "segment_1", CommitID: testCommitID("run_commit_event_1"),
 		Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 			SessionID: "ses_1", RunID: "run_1", ID: "item_1",

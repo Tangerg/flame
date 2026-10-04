@@ -19,7 +19,24 @@ All Runtime operations enter one delivery endpoint. The Go binding avoids JSON a
 
 RPC parameters and `_meta` use exact, case-sensitive schema field names. Unknown members, duplicate members, invalid Unicode, trailing JSON values, and explicit `null` in typed fields are rejected. Omit optional fields; use the declared change variants to clear configuration. Opaque tool arguments may contain `null`. Clients must not rely on case folding or replacement of malformed text.
 
-## Protocol 2026-09-28
+Go consumers accepting authored JSON use `protocol.DecodeRequest(encoded, &request)`
+before invoking either binding. It shares the transport's strict decoding and generated
+value validation, preserves opaque numeric evidence, and leaves the target unchanged on
+failure. Required JSON fields must be present even when their value is false or an empty
+collection. Ordinary JSON decoding can erase omissions and explicit nulls before the
+binding observes them.
+
+The shared TypeScript client validates request parameters through the generated method
+contract before reserving a mutation identity or sending a request. Authored-value
+consumers use `checkRequest` from `@flame/runtime-contract/client/request` for the same
+validation and typed result. Typed request objects reject unknown members at every
+depth; declared maps and opaque tool arguments keep their own keys. Shared result
+shapes continue to accept additional fields. Request metadata is validated before
+publishing the request identity or calling the transport. OpenRPC derives closed
+request components, including `_meta`, from the same wire graph used by the
+generated client checks; its result references retain the reusable schema shapes.
+
+## Protocol 2026-10-02.1
 
 Rebuild and deploy Runtime, CLI, Desktop/Web, IDE, and generated contract
 consumers together. The timeline requires `sessions.trajectory`, and evaluation
@@ -48,6 +65,157 @@ and replay guard; an older dispatched or ambiguous command whose attachment byte
 are unavailable remains unresolved and is never reconstructed from the current
 path. A queued command that has never been dispatched can still prepare its input.
 
+## Portable plugins
+
+Runtime owns plugin installations under its data directory. `plugin.json` uses Agent
+Plugins 1.0, and Flame's extension namespace is `io.github.tangerg.flame` with
+`apiVersion: 1`. The complete operation schemas and error categories are generated in
+[the API reference](contract/API_REFERENCE.md). `plugins` is an advertised capability.
+
+Install from an absolute directory or ZIP path on the Runtime machine. Admission copies
+regular files into a bounded, SHA-256-addressed release; it does not execute package code.
+The immutable release catalog owns the declaration accepted at first admission. Repeated
+installation and cold loading use that declaration; integrity validation does not reinterpret
+package contributions. Publish different package bytes to request a new admission.
+Relative source paths, absent or malformed mandatory manifests and unsafe or malformed archives
+return `invalid_params` without creating an installation. Filesystem and storage failures
+retain their own causes; component diagnostics continue to preserve valid siblings.
+An installation starts disabled and unapproved. Approve the exact digest and a subset of
+its requested grants, configure declared inputs, then enable it. Package roots are
+read-only. Admission and cold loading scan an entire release once. Startup, configuration,
+reconnect and OAuth read the current source owner before creating a connection and
+revalidate its package bytes; retained connection snapshots cannot initiate a new dial.
+Ordinary tool dispatch reads admitted declarations and
+current installation authority. Resource and Skill reads verify their selected file
+against the admitted content index through a confined directory capability. `${PLUGIN_DATA}` is a private per-installation directory
+retained through updates and uninstall. Releases and retained data are not garbage-collected automatically.
+
+Staging never switches running code. An already selected digest cannot be staged
+again. Selecting a distinct staged release requires execution to be quiescent and
+clears trust, grants, inputs and component disablement. Configuration commands require
+the exact selected `digest` alongside `installationId`; a release switch rejects an
+older configuration as `plugin_stale` before changing inputs or component enablement.
+An omitted digest is invalid. Rebuild clients together; old unbound commands are not
+upgraded or replayed against the latest release. Runtime derives quiescence
+from owned executable manifests and pending execution
+checkpoints. Installation admission reads only their declared dependency bindings;
+the recovery owner validates the rest of each continuation. Missing or invalid bindings
+refuse admission. Revoke and disable withdraw dispatch authority immediately; an already
+started effect can still finish or remain uncertain. Tool wrappers recheck current source
+authority and their exact realized connection configuration before dispatch. Rotating
+credentials rejects old executables even before asynchronous reconciliation starts.
+Permission fingerprints bind admitted code and each source's
+canonical grants; credential rotation and sibling enablement do not erase standing rules.
+The rule-list projection observes each referenced MCP source once per request; tool
+decisions and dispatch still read the current owner independently.
+Permission fingerprints read desired source definitions independently of executable
+availability. Missing or changed package bytes cannot hide standing rules; dispatch
+still refuses those bytes through its separate admission guarantee.
+Rule inspection returns display fields and computed staleness; durable authority
+fingerprints and storage scope keys remain with the policy owner.
+OAuth grants are bound separately to complete requesting configuration and invalidated on
+that source's withdrawal or configuration change. Cold restart preserves exact dependency
+checks and command replay identities. Installation commands commit desired state before connection realization;
+`availability` reports component and post-commit realization failures. Uninstall durably
+removes admission before asynchronous connection retirement, returns cleanup diagnostics,
+and leaves all retirement work in the existing Connections shutdown ownership graph.
+Post-commit package preparation, reconciliation, and projection survive request
+cancellation and follow the Runtime's cancellation root. The delivery endpoint
+joins these calls before closing their dependencies; shutdown does not undo the
+committed installation state.
+Connection attempts own credential restoration as well as dialing. Reconfiguration
+withdraws the old session and tool snapshot before restoration; restoration failure
+settles the source as failed. Supersession cancels obsolete work; shutdown cancels
+and joins every admitted attempt.
+Canceling a wait for session retirement leaves unreported close failures with Connections
+until shutdown consumes them.
+OAuth target fingerprints encode the owner's exact fields and header bytes through the
+shared framed hash, independently of JSON serialization. Credentials recorded with the
+former JSON hash require a new OAuth authorization; no dual fingerprint reader is retained.
+
+Portable `mcp.json` admits stdio and Streamable HTTP through the existing MCP registry,
+connection supervisor, deferred tools, exposure, approval and OAuth owners. Installation
+sources are `installation/<uuid>/<local-server>` and include typed wire provenance.
+Their connection configuration is changed through installation operations. User MCP CRUD
+refuses these sources. Invalid server declarations are diagnosed independently.
+Typed declarations reject explicit `null`, including nested arguments, environment values
+and theme colors, instead of converting it to an implicit default. Invalid contribution
+lists receive their own diagnostic and do not withdraw independent contributions.
+Catalog reads retain durable source membership when a release or backend directory is
+unavailable, project enabled unavailable sources as failed without stale tool counts,
+and preserve independent healthy sources. Desired descriptor projections never admit
+connections or dispatch. Temporary execution unavailability does not remove standing
+tool exposure choices. Exposure inspection and edits read durable source definitions;
+reconnect and authorization reach the connection owner's fresh integrity check, so a
+repaired release can recover without replacing its installation.
+Stdio is an explicitly trusted executable with the Runtime user's OS access, not an OS sandbox.
+Only PATH, the reserved package paths, declared environment values and configured inputs
+are inherited. HTTP authorization and secret headers use declared host inputs or the
+existing OAuth owner. Inputs marked secret are masked in inspection. Credentials must
+not be embedded in portable files or UI assets.
+Package entries, relative commands, working directories and resource reads share one
+portable path contract; Windows reserved names and ambiguous path segments are rejected
+before filesystem preparation on every host.
+Reserved device stems include superscript digit aliases from the
+[Win32 naming rules](https://learn.microsoft.com/en-us/windows/win32/fileio/naming-a-file).
+
+Package Skills join the existing resolver. Explicit project Skills override user Skills,
+which override package Skills. Conflicting package names are excluded rather than chosen
+by installation order. Discovery, loads and frozen Run dependencies use the same source
+resolution. Discovery diagnoses explicit project/user overrides and counts capacity per
+selected source. Revoked or disabled package Skills become unavailable.
+Discovery distinguishes package name conflicts from unavailable release bytes or
+withdrawn authority. An override diagnostic can accompany its available project
+or user Skill; independent installations do not share one Skill capacity budget.
+Admission, discovery, detail and model loading share Scope's format and directory-name
+binding. Parsing consumes exactly the verified bytes and preserves the directory's
+spelling when frontmatter names are equivalent under the format's Unicode rule.
+
+Configuration changes use `valueChanges: { "input-id": { "type": "set", "value": "..." } }`
+or an explicit `{ "type": "clear" }`. An optional empty value remains a configured
+environment variable or header; clearing removes its binding. Secret inspection masks
+configured presence, including empty values. Unmentioned inputs are preserved. Disabled server
+and Skill lists are complete replacements. Required inputs cannot be cleared while their
+backend is enabled. Each environment or header binding belongs either to static package
+configuration or to one declared host input. Inputs cannot replace static values; HTTP
+header binding identity is case-insensitive. Portable environment bindings also reject
+case variants that would compete on Windows. Invalid inputs are diagnosed independently.
+
+Themes must declare `scheme: "light"` or `"dark"` and use only the bounded color vocabulary.
+The generated Go, JSON Schema, and TypeScript response checks project the domain's
+color names and six-digit hexadecimal grammar before colors reach client rendering.
+The appearance owner retains a rendered projection for first paint. Runtime scheme
+selection reads the registered theme or system appearance, never the paint cache.
+Removing an installation withdraws its selected theme preference. Themes use the existing
+Dougong Host and child lifetimes; client connection replacement retires the predecessor
+before publishing its successor.
+
+The current implementation is Slice A/B of the design. Action forms, Runtime projection
+queries, HTML resources, graphical views and their bridge are unavailable. They have no
+public protocol or client entrypoint. Unsupported contribution kinds produce diagnostics
+without withdrawing independent themes, Skills or MCP declarations. Slice C's contract
+requires the browser and Wails carrier spike; Slice D requires concrete consumers and
+shared execution/Interrupt ownership before introducing another invocation path.
+
+The [trajectory example](../examples/plugins/trajectory/plugin.json) exercises a theme
+and a Skill through existing Runtime tools. Package limits are 128 MiB total copied bytes,
+16 MiB per file, 4096 entries, 256 Skills and 128 installations. Skill documents and
+resources obey the existing 1 MiB Skill limits.
+
+This is a breaking protocol/storage change. Rebuild all clients and generated contracts
+together. Installation records reference immutable declarations by digest. Source relations use
+foreign keys for exposure, OAuth and approval policy; installation records do not store
+server identities or duplicate declarations. Pre-release storage compatibility follows
+[the repository data policy](../DEVELOPMENT.md#pre-release-data-policy). Old
+waiting checkpoints without explicit tool/installation dependencies are refused by the
+existing recovery policy. Completed historical Tool content remains generic and readable.
+Publishing the new Runtime module and advancing CLI's released dependency is required
+before an independent CLI release; workspace checks alone do not prove that release.
+Installation Skill declarations expose names and descriptions. The package adapter
+derives their fixed portable paths; release records and protocol declarations no
+longer store another editable path beside the Skill identity. Rebuild generated
+contract consumers and use a fresh pre-release data directory for this storage change.
+
 ## Open an in-process Runtime
 
 ```go
@@ -73,6 +241,8 @@ Hosts must close each Runtime they open. Protocol errors support `errors.Is` aga
 Repeated `Close` calls join or resume an incomplete shutdown. Once terminal
 resource teardown finishes, every call returns its retained diagnostic without
 repeating cleanup; a later call cannot turn a failed close into apparent success.
+Shutdown cancels accepted calls and component-owned work before joining delivery.
+Dependencies close only after their calls and components have returned.
 
 ## Attach without owning the Runtime
 
@@ -415,7 +585,7 @@ Inspection distinguishes invalid names (`invalid_params`), absent skills (`skill
 
 ## MCP OAuth credentials
 
-MCP OAuth credentials belong to one persisted authorization grant. Starting an explicit sign-in replaces that grant; token refresh and credential rejection can update or remove only their own grant. Changes to transport, enablement, endpoint, static authorization, or extra HTTP headers invalidate the grant, while descriptive metadata and Tool policy changes preserve it. Grant creation and restoration verify the current exact connection configuration. A superseded callback fails explicitly and cannot overwrite or delete replacement credentials. Existing saved OAuth payloads receive a binding when the database opens; their token representation is unchanged.
+MCP OAuth credentials belong to one persisted authorization grant. Starting an explicit sign-in replaces that grant; token refresh and credential rejection can update or remove only their own grant. Changes to transport, enablement, endpoint, static authorization, or extra HTTP headers invalidate the grant, while descriptive metadata and Tool policy changes preserve it. Grant creation and restoration verify the current exact connection configuration. A superseded callback fails explicitly and cannot overwrite or delete replacement credentials. Pre-release databases without the current grant and target bindings require a fresh data directory; saved credentials are not converted during opening.
 
 ## Integration probes
 
@@ -442,6 +612,14 @@ and missing execution trees still explicitly report that they cannot be resumed.
 ## Scope provider transport
 
 Runtime consumes the released Scope modules pinned in `go.mod`. Provider `Call` and `Stream` use Scope's canonical streaming transport; complete calls aggregate that same validated stream. Runtime does not retain a unary provider fallback. MCP sessions use `github.com/Tangerg/go-sdk`, the same SDK as Scope MCP, so structured results preserve large integers, decimal values, and explicit empty objects through transport and Tool publication.
+
+An MCP dial owns its temporary connecting phase for exactly its admitted lifetime.
+Completion, failed registry reads, supersession, and shutdown retire that phase;
+the connection pool supplies terminal status. The operation advances its phase
+before notification publication. Queued notifications carry only source identity
+and cannot revive a retired attempt or obscure a newer connection.
+Unmapped connection or authorization states fail their read or projection with
+an internal error; they never fabricate a server failure or panic during delivery.
 
 Provider-reported token usage, durable conversation history, and model/Tool/execution telemetry are Scope contracts rather than Runtime restatements: `chat.Usage` survives whole to the protocol, the message store implements `history.Store`, and Scope's OpenTelemetry middleware instruments the provider, Tool, and execution-tree boundaries.
 

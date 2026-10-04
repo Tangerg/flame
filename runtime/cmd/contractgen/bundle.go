@@ -8,8 +8,8 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// bundle is the JSON Schema document: every wire type the protocol can carry, in
-// one place, so no other artifact has to hold a second copy of a shape.
+// bundle publishes the reusable wire graph. OpenRPC derives closed request
+// projections from this graph; results retain its open object definitions.
 type bundle struct {
 	Schema  string             `json:"$schema"`
 	Title   string             `json:"title"`
@@ -18,15 +18,19 @@ type bundle struct {
 }
 
 // It carries no `$id`: without one, a relative `$ref` resolves against the file
-// it appears in, which is what lets openrpc.json point at `schema.json#/$defs/X`
-// instead of duplicating the definitions.
+// it appears in, which is what lets OpenRPC result and enum references point at
+// `schema.json#/$defs/X`.
 const schemaDialect = "https://json-schema.org/draft/2020-12/schema"
 
 // walkWireTypes walks every type a client can send or receive: each method's
 // params, its result, and — for a streaming method — its events. Downstream
 // notification params are registered separately because they are not callable
 // methods, but are equally part of the wire surface.
-func walkWireTypes(registry *delivery.Registry, shapes *dispatch.Shapes) *schemaSet {
+func walkWireTypes(registry *delivery.Registry, shapes *dispatch.Shapes) (*schemaSet, error) {
+	contracts, err := toolset.PresentationContracts()
+	if err != nil {
+		return nil, err
+	}
 	set := newSchemaSet(shapes)
 	httpContract := runtimehttp.Contract()
 	for _, enum := range httpContract.Enums {
@@ -37,7 +41,7 @@ func walkWireTypes(registry *delivery.Registry, shapes *dispatch.Shapes) *schema
 			set.walk(endpoint.ResponseType)
 		}
 	}
-	for _, contract := range toolset.PresentationContracts() {
+	for _, contract := range contracts {
 		for enumType, values := range contract.EnumValues {
 			set.registerEnum(enumType, values)
 		}
@@ -71,7 +75,7 @@ func walkWireTypes(registry *delivery.Registry, shapes *dispatch.Shapes) *schema
 	for _, carried := range shapes.Carried() {
 		set.walk(carried.GoType)
 	}
-	return set
+	return set, nil
 }
 
 func newBundle(set *schemaSet) bundle {

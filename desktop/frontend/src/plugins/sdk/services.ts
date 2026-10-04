@@ -11,10 +11,6 @@ export interface ConfigService {
   onChange(key: string, fn: (value: ConfigValue | undefined) => void): Disposable;
 }
 
-export interface I18nService {
-  addBundle(locale: string, dict: Record<string, string>): void;
-}
-
 export interface WindowService {
   setTitle(text: string): void;
   setBadge(n?: number): void;
@@ -31,7 +27,6 @@ export interface CommandsService {
 }
 
 export const CONFIG = service<ConfigService>("flame.shell.config");
-export const I18N = service<I18nService>("flame.shell.i18n");
 export const WINDOW = service<WindowService>("flame.shell.window");
 export const WORKSPACE = service<WorkspaceService>("flame.shell.workspace");
 export const COMMANDS = service<CommandsService>("flame.shell.commands");

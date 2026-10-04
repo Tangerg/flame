@@ -76,6 +76,14 @@
       {
         "command": "flame.compareContext",
         "title": "Flame: Compare Submitted Buffer with Editor"
+      },
+      {
+        "command": "flame.listPlugins",
+        "title": "Flame: Inspect Runtime Plugins"
+      },
+      {
+        "command": "flame.managePlugin",
+        "title": "Flame: Manage Runtime Plugin"
       }
     ],
     "menus": {

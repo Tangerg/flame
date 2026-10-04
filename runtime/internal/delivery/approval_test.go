@@ -40,7 +40,11 @@ func (a *approvalPolicyFake) Rules(_ context.Context, sessionID, _ string) ([]ap
 	a.rulesForSession = sessionID
 	var view []approvals.RuleView
 	for _, rule := range a.rules {
-		view = append(view, approvals.RuleView{Rule: rule})
+		entry := approvals.RuleView{ID: rule.ID, Scope: rule.Scope, Tool: rule.Tool, Subject: rule.Subject, Decision: rule.Decision}
+		if rule.Scope == approval.ScopeProject {
+			entry.ProjectDir = rule.ScopeKey
+		}
+		view = append(view, entry)
 	}
 	return view, nil
 }
@@ -160,7 +164,7 @@ func TestForgetApprovalRuleMapsToWire(t *testing.T) {
 	}
 }
 
-func (a *approvalPolicyFake) SetRule(context.Context, tool.Ref, approval.Scope, string, string, approval.Subject, approval.Decision) error {
+func (a *approvalPolicyFake) SetRule(context.Context, approvals.RuleChange, string) error {
 	return a.setRuleErr
 }
 

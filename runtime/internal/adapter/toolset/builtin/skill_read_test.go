@@ -89,7 +89,7 @@ func TestSkillLoadReportsUsageFailureAndRecovers(t *testing.T) {
 	if storageErr == nil {
 		t.Fatal("invalid usage file did not fail recording")
 	}
-	tools, err := BuildReaders(t.TempDir(), userDir, recorder)
+	tools, _, err := BuildReaders(t.Context(), t.TempDir(), userDir, recorder, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,7 +148,7 @@ func TestBuildReadersMergesProjectOverUser(t *testing.T) {
 	writeSkill(t, user, "shared", "USER copy")
 	writeSkill(t, user, "user-only", "user only")
 
-	tools, err := BuildReaders(cwd, user, nil)
+	tools, _, err := BuildReaders(t.Context(), cwd, user, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,7 +183,7 @@ func TestBuildReadersMergesProjectOverUser(t *testing.T) {
 // neither the project nor the user Skills directory exists — no empty Skill
 // tool cluttering the model's tool list.
 func TestBuildReadersAbsentWhenNoDirs(t *testing.T) {
-	tools, err := BuildReaders(t.TempDir(), filepath.Join(t.TempDir(), "missing"), nil)
+	tools, _, err := BuildReaders(t.Context(), t.TempDir(), filepath.Join(t.TempDir(), "missing"), nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

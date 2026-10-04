@@ -74,15 +74,17 @@ func presentApprovalRule(r approvals.RuleView) (protocol.ApprovalRule, error) {
 	if !ok {
 		return protocol.ApprovalRule{}, fmt.Errorf("approval.listRules: unsupported decision %q", r.Decision)
 	}
+	ref, err := presentToolRef(r.Tool)
+	if err != nil {
+		return protocol.ApprovalRule{}, err
+	}
 	wire := protocol.ApprovalRule{
 		ID:    r.ID,
 		Scope: scope,
-		Tool:  presentToolRef(r.Tool), ModelName: r.Tool.ModelName(), Stale: r.Stale,
+		Tool:  ref, ModelName: r.Tool.ModelName(), Stale: r.Stale,
+		Dir:      r.ProjectDir,
 		Subject:  protocol.ApprovalSubject{Type: protocol.ApprovalSubjectType(r.Subject.Type), Value: r.Subject.Value},
 		Decision: decision,
-	}
-	if r.Scope == approval.ScopeProject {
-		wire.Dir = r.ScopeKey
 	}
 	return wire, nil
 }
@@ -165,7 +167,7 @@ func (s *Handler) SetApprovalRule(ctx context.Context, in protocol.SetApprovalRu
 	if !scope.Valid() || !decision.Valid() {
 		return NewFailure(protocol.ErrInvalidParams, "invalid approval rule")
 	}
-	err = s.approvals.SetRule(ctx, ref, scope, in.SessionID, approval.Subject{Type: approval.SubjectType(in.Subject.Type), Value: in.Subject.Value}, decision)
+	err = s.approvals.SetRule(ctx, approvals.RuleChange{Tool: ref, Scope: scope, SessionID: in.SessionID, Subject: approval.Subject{Type: approval.SubjectType(in.Subject.Type), Value: in.Subject.Value}, Decision: decision})
 	if errors.Is(err, approval.ErrInvalidRule) {
 		return InvalidParameters(err)
 	}

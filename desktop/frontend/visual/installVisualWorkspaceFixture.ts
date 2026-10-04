@@ -16,7 +16,7 @@ import connectionSettings from "@/plugins/builtin/settings/connection-settings";
 import { createHooksPlugin } from "@/plugins/builtin/settings/hooks";
 import { createMCPServersPlugin } from "@/plugins/builtin/settings/mcp-servers";
 import personalizationSettings from "@/plugins/builtin/settings/personalization";
-import pluginsSettings from "@/plugins/builtin/settings/plugins-pane";
+import { createPluginsPane } from "@/plugins/builtin/settings/plugins-pane";
 import { createUsagePlugin } from "@/plugins/builtin/settings/usage";
 import { configureUsageGateway } from "@/plugins/builtin/settings/usage/application/ports/usageGateway";
 import {
@@ -647,7 +647,7 @@ export async function installVisualWorkspaceFixture(
     createHooksPlugin(runtimeClient),
     createMCPServersPlugin(runtimeClient),
     personalizationSettings,
-    pluginsSettings,
+    createPluginsPane(runtimeClient),
     createUsagePlugin(runtimeClient),
     visualNotifier,
     visualShortcuts,

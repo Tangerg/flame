@@ -1339,13 +1339,15 @@ func (b *blockedResumeRuntime) ResumeRun(ctx context.Context, input conversation
 }
 
 func (s *snapshotCountingRuntime) GetSession(ctx context.Context, id string) (conversation.SessionSnapshot, error) {
-	s.reads.Add(1)
-	if s.readSignal != nil {
-		select {
-		case s.readSignal <- struct{}{}:
-		default:
+	defer func() {
+		s.reads.Add(1)
+		if s.readSignal != nil {
+			select {
+			case s.readSignal <- struct{}{}:
+			default:
+			}
 		}
-	}
+	}()
 	for remaining := s.failures.Load(); remaining > 0; remaining = s.failures.Load() {
 		if s.failures.CompareAndSwap(remaining, remaining-1) {
 			return conversation.SessionSnapshot{}, s.failure

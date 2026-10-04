@@ -21,11 +21,14 @@ func TestMCPAuthorizationAttemptWire(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse test authorization attempt identity: %v", err)
 	}
-	got := presentMCPAuthorizationAttempt(mcpapp.AuthorizationAttempt{
+	got, err := presentMCPAuthorizationAttempt(mcpapp.AuthorizationAttempt{
 		ID: attemptID, Server: testMCPServerName("github"),
 		Status:    mcpapp.AuthorizationAttemptFailed,
 		CreatedAt: finishedAt.Add(-time.Minute), FinishedAt: &finishedAt,
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if got.Status.Type != protocol.MCPAuthorizationAttemptFailed || got.Status.Error == nil ||
 		got.Status.Error.Type != protocol.ProblemMCPAuthorizationFailed || got.Status.Error.Detail != "" ||
 		got.FinishedAt == nil {
@@ -83,10 +86,21 @@ func TestMCPServerStateWire(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := presentMCPServerState(tt.state).Type; got != tt.want {
-				t.Fatalf("presentMCPServerState(%v) = %q, want %q", tt.state.Type, got, tt.want)
+			got, err := presentMCPServerState(tt.state)
+			if err != nil || got.Type != tt.want {
+				t.Fatalf("presentMCPServerState(%v) = (%+v, %v), want %q", tt.state.Type, got, err, tt.want)
 			}
 		})
+	}
+}
+
+func TestMCPAuthorizationWireRejectsUnknownAttemptStatus(t *testing.T) {
+	attempt, err := presentMCPAuthorizationAttempt(mcpapp.AuthorizationAttempt{Status: "unmapped"})
+	if err == nil || attempt.Status.Type != "" {
+		t.Fatalf("authorization attempt = (%+v, %v), want zero/error", attempt, err)
+	}
+	if failure := ProjectError(err); failure.Problem().Type != protocol.ProblemInternalError {
+		t.Fatalf("unknown attempt status reported as a business verdict: %+v", failure.Problem())
 	}
 }
 
@@ -94,16 +108,17 @@ func TestMCPServerStateWire(t *testing.T) {
 // not a state a server can be in. Answering with a failed server and an invented
 // problem type shipped that defect as a verdict a user could read and act on.
 func TestMCPServerWireRejectsUnknownDomainState(t *testing.T) {
-	defer func() {
-		if recover() == nil {
-			t.Fatal("presentMCPServer(unknown state) answered with a projection instead of panicking")
-		}
-	}()
-	_, _ = presentMCPServer(mcpapp.Server{
+	server, err := presentMCPServer(mcpapp.Server{
 		Name:       testMCPServerName("broken"),
 		Connection: mcpapp.Connection{Transport: mcpserver.TransportStdio, Command: "broken"},
 		State:      mcpapp.ServerState{Type: mcpapp.ServerStateType("invalid")},
 	})
+	if err == nil || server.Status.Type != "" {
+		t.Fatalf("presentMCPServer(unknown state) = (%+v, %v), want zero/error", server, err)
+	}
+	if failure := ProjectError(err); failure.Problem().Type != protocol.ProblemInternalError {
+		t.Fatalf("unknown state reported as a business verdict: %+v", failure.Problem())
+	}
 }
 
 func TestReconnectMCPServer(t *testing.T) {
@@ -204,7 +219,11 @@ func TestMCPToolListIncludesNameConflictDiagnostics(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Data) != 1 || result.Data[0].ModelName != "a_b_c" || len(result.Data[0].NameConflicts) != 1 || result.Data[0].NameConflicts[0] != presentToolRef(other) {
+	wire, err := presentToolRef(other)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Data) != 1 || result.Data[0].ModelName != "a_b_c" || len(result.Data[0].NameConflicts) != 1 || result.Data[0].NameConflicts[0] != wire {
 		t.Fatalf("tool diagnostics = %+v", result.Data)
 	}
 }

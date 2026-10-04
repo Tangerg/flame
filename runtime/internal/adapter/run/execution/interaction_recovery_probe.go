@@ -37,6 +37,8 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 	ctx context.Context,
 	continuation runs.WaitingContinuation,
 ) (resumable bool, err error) {
+	i.installationAdmission.RLock()
+	defer i.installationAdmission.RUnlock()
 	finishAssembly, err := i.sessions.beginAssembly()
 	if err != nil {
 		return false, err

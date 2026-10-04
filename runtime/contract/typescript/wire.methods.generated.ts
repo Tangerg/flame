@@ -15,8 +15,10 @@ import type {
   AgentMemoryReviewRequest,
   AgentMemoryUpdateRequest,
   ApprovalModeResult,
+  ApprovePluginRequest,
   CancelRunRequest,
   CancelRunResponse,
+  ConfigurePluginRequest,
   CreateMCPAuthorizationAttemptRequest,
   CreateScheduleRequest,
   CreateSessionRequest,
@@ -47,6 +49,7 @@ import type {
   HooksListResult,
   ImportSessionRequest,
   ImportSessionResponse,
+  InstallPluginRequest,
   InvokeToolRequest,
   ListApprovalRulesRequest,
   ListApprovalRulesResult,
@@ -76,6 +79,7 @@ import type {
   PageOfModel,
   PageOfModelInvocation,
   PageOfPendingInterruptSet,
+  PageOfPluginInstallation,
   PageOfProvider,
   PageOfRunRef,
   PageOfSchedule,
@@ -87,6 +91,10 @@ import type {
   PageOfWorkspaceSummary,
   PageQuery,
   Plan,
+  PluginInstallation,
+  PluginReleaseRequest,
+  PluginRemoval,
+  PluginRequest,
   Provider,
   ProviderTestResult,
   ReadFileRequest,
@@ -108,11 +116,13 @@ import type {
   SetApprovalRuleRequest,
   SetHookTrustRequest,
   SetMCPToolExposureRequest,
+  SetPluginEnablementRequest,
   SkillDetail,
   SkillDetailRequest,
   SkillDiscovery,
   SkillNameRequest,
   SkillProposalRef,
+  StagePluginRequest,
   StartGoalRequest,
   StartRunRequest,
   StartRunResponse,
@@ -145,6 +155,7 @@ const FEATURES = [
   "agentMemory",
   "skills",
   "mcp",
+  "plugins",
   "schedules",
   "git",
   "checkpoints",
@@ -214,6 +225,15 @@ const METHOD_NAMES = [
   "mcp.servers.reconnect",
   "mcp.authorizationAttempts.create",
   "mcp.authorizationAttempts.get",
+  "plugins.list",
+  "plugins.install",
+  "plugins.stage",
+  "plugins.select",
+  "plugins.approve",
+  "plugins.configure",
+  "plugins.setEnablement",
+  "plugins.revoke",
+  "plugins.uninstall",
   "hooks.list",
   "hooks.setTrust",
   "approval.setRule",
@@ -318,6 +338,15 @@ const VALUE_METHOD_NAMES = [
   "mcp.tools.list",
   "mcp.authorizationAttempts.create",
   "mcp.authorizationAttempts.get",
+  "plugins.list",
+  "plugins.install",
+  "plugins.stage",
+  "plugins.select",
+  "plugins.approve",
+  "plugins.configure",
+  "plugins.setEnablement",
+  "plugins.revoke",
+  "plugins.uninstall",
   "hooks.list",
   "approval.getMode",
   "approval.setMode",
@@ -742,6 +771,69 @@ export const WIRE_METHOD_POLICY = {
     replayCursor: "none",
     pagination: "none",
   },
+  "plugins.list": {
+    operation: "query",
+    response: "unary",
+    idempotency: "none",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "plugins.install": {
+    operation: "command",
+    response: "unary",
+    idempotency: "replayResponse",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "plugins.stage": {
+    operation: "command",
+    response: "unary",
+    idempotency: "replayResponse",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "plugins.select": {
+    operation: "command",
+    response: "unary",
+    idempotency: "replayResponse",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "plugins.approve": {
+    operation: "command",
+    response: "unary",
+    idempotency: "replayResponse",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "plugins.configure": {
+    operation: "command",
+    response: "unary",
+    idempotency: "replayResponse",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "plugins.setEnablement": {
+    operation: "command",
+    response: "unary",
+    idempotency: "replayResponse",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "plugins.revoke": {
+    operation: "command",
+    response: "unary",
+    idempotency: "replayResponse",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "plugins.uninstall": {
+    operation: "command",
+    response: "unary",
+    idempotency: "replayResponse",
+    replayCursor: "none",
+    pagination: "none",
+  },
   "hooks.list": {
     operation: "query",
     response: "unary",
@@ -1150,6 +1242,33 @@ export const WIRE_CAPABILITY_POLICY: {
   "mcp.authorizationAttempts.get": [
     { requires: ["mcp"] },
   ],
+  "plugins.list": [
+    { requires: ["plugins"] },
+  ],
+  "plugins.install": [
+    { requires: ["plugins"] },
+  ],
+  "plugins.stage": [
+    { requires: ["plugins"] },
+  ],
+  "plugins.select": [
+    { requires: ["plugins"] },
+  ],
+  "plugins.approve": [
+    { requires: ["plugins"] },
+  ],
+  "plugins.configure": [
+    { requires: ["plugins"] },
+  ],
+  "plugins.setEnablement": [
+    { requires: ["plugins"] },
+  ],
+  "plugins.revoke": [
+    { requires: ["plugins"] },
+  ],
+  "plugins.uninstall": [
+    { requires: ["plugins"] },
+  ],
   "schedules.list": [
     { requires: ["schedules"] },
   ],
@@ -1255,6 +1374,15 @@ export interface WireShapes {
   "mcp.servers.reconnect": { params: MCPServerRequest };
   "mcp.authorizationAttempts.create": { params: CreateMCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
   "mcp.authorizationAttempts.get": { params: MCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
+  "plugins.list": { params: Record<string, never>; result: PageOfPluginInstallation };
+  "plugins.install": { params: InstallPluginRequest; result: PluginInstallation };
+  "plugins.stage": { params: StagePluginRequest; result: PluginInstallation };
+  "plugins.select": { params: PluginReleaseRequest; result: PluginInstallation };
+  "plugins.approve": { params: ApprovePluginRequest; result: PluginInstallation };
+  "plugins.configure": { params: ConfigurePluginRequest; result: PluginInstallation };
+  "plugins.setEnablement": { params: SetPluginEnablementRequest; result: PluginInstallation };
+  "plugins.revoke": { params: PluginRequest; result: PluginInstallation };
+  "plugins.uninstall": { params: PluginRequest; result: PluginRemoval };
   "hooks.list": { params: ListHooksRequest; result: HooksListResult };
   "hooks.setTrust": { params: SetHookTrustRequest };
   "approval.setRule": { params: SetApprovalRuleRequest };

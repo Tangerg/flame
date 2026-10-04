@@ -3,12 +3,12 @@ package dispatch
 import (
 	"encoding/json/jsontext"
 
-	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
+	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 func decodeParams(raw jsontext.Value, dst any) error {
 	if len(raw) == 0 {
-		return nil
+		raw = jsontext.Value(`{}`)
 	}
-	return transport.DecodeValue(raw, dst, "params")
+	return protocol.DecodeRequest(raw, dst)
 }

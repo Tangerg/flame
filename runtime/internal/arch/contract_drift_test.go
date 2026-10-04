@@ -401,9 +401,16 @@ func TestGeneratedSchemasResolve(t *testing.T) {
 		t.Fatal("schema.json defines no types")
 	}
 
-	// Inside the bundle a reference is document-local; from the method document it
-	// carries the bundle's file name, because the shapes have exactly one home.
+	var openrpc struct {
+		Components struct {
+			Schemas map[string]jsontext.Value `json:"schemas"`
+		} `json:"components"`
+	}
+	if err := json.Unmarshal(readArtifact(t, dir, "openrpc.json"), &openrpc); err != nil {
+		t.Fatalf("decode OpenRPC request components: %v", err)
+	}
 	referenced := make(map[string]bool)
+	requestReferenced := make(map[string]bool)
 	for _, document := range []struct {
 		name   string
 		prefix string
@@ -421,6 +428,14 @@ func TestGeneratedSchemasResolve(t *testing.T) {
 			t.Errorf("%s references no shapes at all", document.name)
 		}
 		for _, ref := range refs {
+			if target, local := strings.CutPrefix(ref, "#/components/schemas/"); local && document.name == "openrpc.json" {
+				if _, defined := openrpc.Components.Schemas[target]; !defined {
+					t.Errorf("OpenRPC references undefined request component %q", target)
+				} else {
+					requestReferenced[target] = true
+				}
+				continue
+			}
 			target, ok := strings.CutPrefix(ref, document.prefix)
 			if !ok {
 				t.Errorf("%s references %q, which does not point into the shape bundle", document.name, ref)
@@ -431,6 +446,18 @@ func TestGeneratedSchemasResolve(t *testing.T) {
 				continue
 			}
 			referenced[target] = true
+		}
+	}
+	for name, encoded := range openrpc.Components.Schemas {
+		if !requestReferenced[name] {
+			t.Errorf("OpenRPC defines request component %q and nothing references it", name)
+		}
+		var component any
+		if err := json.Unmarshal(encoded, &component); err != nil {
+			t.Fatalf("decode request component %q: %v", name, err)
+		}
+		if !slices.Contains(collectRefs(component), "schema.json#/$defs/"+name) {
+			t.Errorf("request component %q does not refine its reusable wire definition", name)
 		}
 	}
 
@@ -817,6 +844,10 @@ func expectedCompiledConstraint(
 		return compiledConstraintExpectation{"maxLength", "maxPropertyNameLength"}
 	case dispatch.ConstraintIdentityPropertyNames:
 		return compiledConstraintExpectation{"pattern", "identityPropertyNames"}
+	case dispatch.ConstraintPatternPropertyNames:
+		return compiledConstraintExpectation{"pattern", "patternPropertyNames"}
+	case dispatch.ConstraintPatternPropertyValues:
+		return compiledConstraintExpectation{"pattern", "patternPropertyValues"}
 	case dispatch.ConstraintPrefix:
 		field := leaf()
 		switch {
@@ -918,7 +949,10 @@ func statesCheck(entry, path, keyword string, constraint dispatch.FieldConstrain
 	call := keyword + "("
 	if constraint.Limit > 0 {
 		call += strconv.FormatInt(constraint.Limit, 10) + ")"
-	} else if constraint.Kind == dispatch.ConstraintPattern || constraint.Kind == dispatch.ConstraintPatternItems {
+	} else if constraint.Kind == dispatch.ConstraintPattern ||
+		constraint.Kind == dispatch.ConstraintPatternItems ||
+		constraint.Kind == dispatch.ConstraintPatternPropertyNames ||
+		constraint.Kind == dispatch.ConstraintPatternPropertyValues {
 		call += strconv.Quote(constraint.Value) + ")"
 	} else if constraint.Value != "" {
 		call += strconv.Quote("^"+regexp.QuoteMeta(constraint.Value)) + ")"
@@ -1049,8 +1083,16 @@ func mapStatesPropertyConstraint(node map[string]any, property, keyword string, 
 			return false
 		}
 	}
-	if constraint.Kind == dispatch.ConstraintMaxPropertyNameLength || constraint.Kind == dispatch.ConstraintIdentityPropertyNames {
+	if constraint.Kind == dispatch.ConstraintMaxPropertyNameLength ||
+		constraint.Kind == dispatch.ConstraintIdentityPropertyNames ||
+		constraint.Kind == dispatch.ConstraintPatternPropertyNames {
 		constrained, hasProperty = constrained["propertyNames"].(map[string]any)
+		if !hasProperty {
+			return false
+		}
+	}
+	if constraint.Kind == dispatch.ConstraintPatternPropertyValues {
+		constrained, hasProperty = constrained["additionalProperties"].(map[string]any)
 		if !hasProperty {
 			return false
 		}
@@ -1084,7 +1126,10 @@ func schemaNodeStatesConstraint(node any, keyword string, constraint dispatch.Fi
 }
 
 func constraintValueMatches(value any, constraint dispatch.FieldConstraint) bool {
-	if constraint.Kind == dispatch.ConstraintPattern || constraint.Kind == dispatch.ConstraintPatternItems {
+	if constraint.Kind == dispatch.ConstraintPattern ||
+		constraint.Kind == dispatch.ConstraintPatternItems ||
+		constraint.Kind == dispatch.ConstraintPatternPropertyNames ||
+		constraint.Kind == dispatch.ConstraintPatternPropertyValues {
 		text, isText := value.(string)
 		return isText && text == constraint.Value
 	}

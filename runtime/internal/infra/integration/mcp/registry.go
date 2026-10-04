@@ -9,7 +9,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
-	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 // Statuses returns one cached entry per server attached to the live projection
@@ -33,7 +32,7 @@ func (c *Connections) Statuses() []mcpserver.ConnectionStatus {
 // this read performs no remote discovery.
 func (c *Connections) Tools(serverName *mcpserver.ServerName) ([]mcpserver.AdvertisedTool, error) {
 	c.mu.Lock()
-	var catalog []toolcontract.Tool
+	var catalog []Executable
 	for _, configuredServer := range c.servers {
 		if configuredServer.session != nil && (serverName == nil || configuredServer.name() == *serverName) {
 			catalog = append(catalog, configuredServer.tools...)
@@ -66,40 +65,25 @@ func (c *Connections) Detach(name mcpserver.ServerName) error {
 		c.mu.Unlock()
 		return ErrConnectionsClosed
 	}
-	var detachedSession *sdkmcp.ClientSession
-	if index := slices.IndexFunc(c.servers, func(configuredServer *server) bool { return configuredServer.name() == name }); index >= 0 {
+	if index := slices.IndexFunc(c.servers, func(s *server) bool { return s.name() == name }); index >= 0 {
 		target := c.servers[index]
-		detachedSession = target.session
-		if target.attempt != nil {
-			target.attempt.cancel()
+		dial := target.attempt
+		if dial != nil {
+			dial.cancel()
 			target.attempt = nil
 		}
-		// slices.Delete clears the vacated pointer, so the long-lived backing
-		// array cannot retain the removed session and its verified tool wrappers.
+		closeAttempt := c.beginSessionCloseLocked(target.session)
+		if closeAttempt != nil {
+			if c.retirements == nil {
+				c.retirements = map[*sessionCloseAttempt]struct{}{}
+			}
+			c.retirements[closeAttempt] = struct{}{}
+		}
 		c.servers = slices.Delete(c.servers, index, index+1)
 	}
 	c.mu.Unlock()
-
-	// Shrink the model-facing catalog before a potentially-blocking session
-	// close. The publication lock keeps this ordered with every dial.
 	c.publishTools()
-	c.retireSession(detachedSession)
 	return nil
-}
-
-func (c *Connections) retireSession(session *sdkmcp.ClientSession) {
-	if session == nil {
-		return
-	}
-	c.mu.Lock()
-	attempt := c.beginSessionCloseLocked(session)
-	if attempt != nil {
-		if c.retirements == nil {
-			c.retirements = make(map[*sessionCloseAttempt]struct{})
-		}
-		c.retirements[attempt] = struct{}{}
-	}
-	c.mu.Unlock()
 }
 
 // publishTools rebuilds the model-facing catalog from each connected server's
@@ -111,7 +95,7 @@ func (c *Connections) publishTools() {
 	defer c.publishMu.Unlock()
 
 	c.mu.Lock()
-	var catalog []toolcontract.Tool
+	var catalog []Executable
 	for _, configuredServer := range c.servers {
 		if configuredServer.session != nil {
 			catalog = append(catalog, configuredServer.tools...)
@@ -230,6 +214,18 @@ func (c *Connections) closeSession(ctx context.Context, session *sdkmcp.ClientSe
 	case <-attempt.done:
 		return attempt.err
 	case <-ctx.Done():
+		c.mu.Lock()
+		select {
+		case <-attempt.done:
+			c.mu.Unlock()
+			return attempt.err
+		default:
+			if c.retirements == nil {
+				c.retirements = make(map[*sessionCloseAttempt]struct{})
+			}
+			c.retirements[attempt] = struct{}{}
+		}
+		c.mu.Unlock()
 		return ctx.Err()
 	}
 }

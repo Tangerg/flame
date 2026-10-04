@@ -119,7 +119,7 @@ func TestReachableEnumOnlyResponseReceivesGoValidator(t *testing.T) {
 	t.Parallel()
 
 	registry, shapes := delivery.Contract(), dispatch.WireShapes()
-	generated := newValidators(registry, shapes, walkWireTypes(registry, shapes))
+	generated := newValidators(registry, shapes, testWalkWireTypes(t, registry, shapes))
 	if !strings.Contains(generated, "func (w WorkspaceInfo) ValidateWire() error") {
 		t.Fatal("WorkspaceInfo enum constraint was omitted from the Go validator")
 	}

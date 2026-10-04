@@ -89,36 +89,12 @@ func (s *Skills) List(ctx context.Context, cwd string) (SkillDiscovery, error) {
 	if err != nil {
 		return SkillDiscovery{}, err
 	}
-	found := catalog.Skills
-	if len(found) > 2*skills.MaxSkillsPerSource {
-		return SkillDiscovery{}, fmt.Errorf("%w: discovered catalog contains %d Skills", skills.ErrLibraryCapacity, len(found))
+	if err := catalog.Validate(); err != nil {
+		return SkillDiscovery{}, err
 	}
-	for index, entry := range found {
-		if err := validateSkillSummary(entry); err != nil {
-			return SkillDiscovery{}, fmt.Errorf("workspace: discovered Skill %d is invalid: %w", index+1, err)
-		}
-	}
-	slices.SortFunc(found, func(first, second SkillSummary) int {
+	slices.SortFunc(catalog.Skills, func(first, second SkillSummary) int {
 		return cmp.Compare(first.Name, second.Name)
 	})
-	for index := 1; index < len(found); index++ {
-		if found[index].Name == found[index-1].Name {
-			return SkillDiscovery{}, fmt.Errorf("workspace: discovered Skill catalog repeats visible name %q", found[index].Name)
-		}
-	}
-	if len(catalog.Diagnostics) > 2*skills.MaxSkillDirectoryEntries {
-		return SkillDiscovery{}, fmt.Errorf("%w: too many discovery diagnostics", skills.ErrLibraryCapacity)
-	}
-	seen := make(map[string]bool, len(found))
-	for _, entry := range found {
-		seen[entry.Name] = true
-	}
-	for _, diagnostic := range catalog.Diagnostics {
-		if strings.TrimSpace(diagnostic.Name) == "" || strings.TrimSpace(diagnostic.Detail) == "" || len(diagnostic.Detail) > 512 || !utf8.ValidString(diagnostic.Detail) || seen[diagnostic.Name] {
-			return SkillDiscovery{}, fmt.Errorf("workspace: invalid or repeated Skill diagnostic %q", diagnostic.Name)
-		}
-		seen[diagnostic.Name] = true
-	}
 	slices.SortFunc(catalog.Diagnostics, func(a, b SkillDiagnostic) int { return cmp.Compare(a.Name, b.Name) })
 	return catalog, nil
 }
@@ -257,7 +233,7 @@ func (s *Skills) Proposals(ctx context.Context, cwd string) ([]skills.ProposalRe
 }
 
 func validateSkillSummary(summary SkillSummary) error {
-	if err := summary.Scope.Validate(); err != nil {
+	if err := summary.Source.Validate(); err != nil {
 		return err
 	}
 	return (skills.Entry{

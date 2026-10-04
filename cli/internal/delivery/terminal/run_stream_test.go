@@ -472,17 +472,6 @@ func TestInvalidAcceptedStartReceiptCancelsAndSettlesTheExactMutation(t *testing
 		cancellations[0].Reason != "runtime returned an invalid start receipt" {
 		t.Fatalf("malformed receipt cleanup = starts %+v, cancellations %+v", starts, cancellations)
 	}
-	reopened, err := openTestWorkbench(stateDirectory)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if pending := reopened.PendingRuns(starts[0].SessionID); len(pending) != 0 {
-		t.Fatalf("canceled malformed start remains durable: %+v", pending)
-	}
-	history := reopened.History()
-	if len(history) != 1 || !history[0].Equal(starts[0].Message) {
-		t.Fatalf("canceled accepted start history = %+v", history)
-	}
 	snapshot, err := base.GetSession(t.Context(), starts[0].SessionID)
 	if err != nil {
 		t.Fatal(err)
@@ -494,6 +483,17 @@ func TestInvalidAcceptedStartReceiptCancelsAndSettlesTheExactMutation(t *testing
 	host.Shows(t, "canceled")
 	host.Hides(t, "start segment stream: user item identity is empty")
 	stop()
+	reopened, err := openTestWorkbench(stateDirectory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pending := reopened.PendingRuns(starts[0].SessionID); len(pending) != 0 {
+		t.Fatalf("canceled malformed start remains durable: %+v", pending)
+	}
+	history := reopened.History()
+	if len(history) != 1 || !history[0].Equal(starts[0].Message) {
+		t.Fatalf("canceled accepted start history = %+v", history)
+	}
 }
 
 func TestInvalidAcceptedStartReceiptSettlesTheMemoryOnlyQueue(t *testing.T) {

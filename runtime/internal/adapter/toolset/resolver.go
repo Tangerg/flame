@@ -11,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/builtin"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
+	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/keylock"
@@ -35,6 +36,7 @@ import (
 type Resolver struct {
 	telemetry     oteltool.Middleware
 	defaultCWD    string
+	packageSkills promptsource.PackageSkills
 	skillsUserDir string                     // user-scope skills dir; merged under each Run's project skills
 	skillUsage    builtin.SkillUsageRecorder // records skill loads for the idle-lifecycle curator; nil → off
 	online        []toolcontract.Tool        // working-directory-independent network tools
@@ -101,6 +103,7 @@ type staticSpec struct {
 // A2A, and code-intelligence capabilities are also built once and held.
 type resolverDeps struct {
 	DefaultCWD        string
+	PackageSkills     promptsource.PackageSkills
 	SkillsUserDir     string
 	SkillUsage        builtin.SkillUsageRecorder
 	Online            []toolcontract.Tool // network tools (web/httpreq)
@@ -141,12 +144,12 @@ func newResolver(d resolverDeps) (*Resolver, error) {
 	resolver := &Resolver{
 		telemetry:     telemetry,
 		defaultCWD:    d.DefaultCWD,
-		skillsUserDir: d.SkillsUserDir,
-		skillUsage:    d.SkillUsage,
-		online:        slices.Clone(d.Online),
-		a2a:           slices.Clone(d.A2A),
-		lsp:           slices.Clone(d.LSP),
-		shell:         slices.Clone(d.Shell),
+		skillsUserDir: d.SkillsUserDir, packageSkills: d.PackageSkills,
+		skillUsage: d.SkillUsage,
+		online:     slices.Clone(d.Online),
+		a2a:        slices.Clone(d.A2A),
+		lsp:        slices.Clone(d.LSP),
+		shell:      slices.Clone(d.Shell),
 		staticSpecs: []staticSpec{
 			{tool: d.AskUser, audience: audienceBoth, placement: interactionTail},
 			{tool: d.EnterPlan, audience: audienceRoot, placement: interactionTail},
@@ -323,7 +326,7 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group) (_ manif
 	// Skill tools are working-directory scoped (project skills live under the
 	// Run's cwd), so they are built per resolution like filesystem tools and are
 	// available to both root and delegated groups. No tools when no skills exist.
-	skillTools, err := builtin.BuildReaders(cwd, r.skillsUserDir, r.skillUsage)
+	skillTools, dependencies, err := builtin.BuildReaders(ctx, cwd, r.skillsUserDir, r.skillUsage, r.packageSkills)
 	if err != nil {
 		return manifestBuilder{}, fmt.Errorf("toolset: resolve skill tools: %w", err)
 	}
@@ -332,6 +335,7 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group) (_ manif
 	for index, skillTool := range skillTools {
 		skillTools[index] = withDefiniteOutcome(skillTool)
 	}
+	tools.installations = dependencies
 	tools.deferTools(skillTools...)
 	// Built-once, session-keyed helpers (plan/result/memory/transcript search)
 	// are projected from the resolver's group and placement policy.

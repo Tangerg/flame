@@ -15,6 +15,7 @@ import (
 type HandlerConfig struct {
 	Sessions          sessionUseCases
 	MCP               mcpUseCases
+	Plugins           pluginUseCases
 	Approvals         approvalUseCases
 	Models            modelUseCases
 	Tools             toolUseCases
@@ -65,6 +66,7 @@ type Handler struct {
 
 	sessions          sessionUseCases
 	mcp               mcpUseCases
+	plugins           pluginUseCases
 	approvals         approvalUseCases
 	models            modelUseCases
 	tools             toolUseCases
@@ -103,6 +105,7 @@ type Handler struct {
 // shape both capability discovery and delivery gates. Construction derives it
 // once; handlers do not rediscover availability by attempting a call.
 type featureAvailability struct {
+	plugins   bool
 	git       bool
 	isolation bool
 }
@@ -188,6 +191,7 @@ type contractFacts struct {
 func deriveContractFacts(cfg HandlerConfig) (contractFacts, error) {
 	facts := contractFacts{
 		features: featureAvailability{
+			plugins:   capabilityAvailable(cfg.Plugins),
 			git:       cfg.GitAvailable,
 			isolation: cfg.IsolationAvailable,
 		},
@@ -218,6 +222,7 @@ func newHandler(cfg HandlerConfig, facts contractFacts) *Handler {
 	return &Handler{
 		sessions:                 cfg.Sessions,
 		mcp:                      cfg.MCP,
+		plugins:                  cfg.Plugins,
 		approvals:                cfg.Approvals,
 		models:                   cfg.Models,
 		tools:                    cfg.Tools,
@@ -329,6 +334,7 @@ func capabilitiesFor(
 		Features: advertisedFeatures(map[string]bool{
 			protocol.FeatureReasoning: true,
 			protocol.FeatureMCP:       true,
+			protocol.FeaturePlugins:   features.plugins,
 			protocol.FeatureSkills:    true,
 			protocol.FeatureGit:       features.git,
 			protocol.FeatureFileWatch: true,

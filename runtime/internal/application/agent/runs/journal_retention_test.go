@@ -15,7 +15,10 @@ import (
 func TestRetentionChargeTracksEveryVariableReplayPayload(t *testing.T) {
 	const growth = 32 << 10
 	largeText := strings.Repeat("x", growth)
-	largeResult := tool.StringResult(largeText)
+	largeResult, err := tool.NewResult(largeText)
+	if err != nil {
+		t.Fatal(err)
+	}
 	canceled := run.OutcomeCanceled
 
 	tests := []struct {

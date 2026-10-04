@@ -27,6 +27,7 @@ export type WorkspaceInvalidationTarget =
 type WorkspaceEventType =
   | "files.changed"
   | "skills.changed"
+  | "plugins.changed"
   | "mcp.changed"
   | "schedules.changed"
   | "sessions.changed"
@@ -148,6 +149,8 @@ export function workspaceInvalidations(ev: WorkspaceEventLike): WorkspaceInvalid
       return ["filesChanged", "diff", "fileList", "fileRead", "hooks", "skills"];
     case "skills.changed":
       return ["skills", "managedSkills", "skillProposals"];
+    case "plugins.changed":
+      return ["skills", "mcpServers", "mcpTools", "mcpExposure", "approvalRules"];
     case "mcp.changed":
       return ["mcpServers", "mcpTools", "mcpExposure", "approvalRules"];
     case "schedules.changed":

@@ -183,3 +183,32 @@ cancels an open directory selection and fences late native picker results.
 Browser image export uses a download of validated inline image bytes. Native image
 save, window geometry, notifications, and shell actions stay inside the platform
 boundary. Protocol clients contain no Wails import or UI state.
+
+## Portable Runtime plugins
+
+Settings → Plugins manages Runtime-owned installations, exact-digest trust, declared input
+changes, enablement and staged updates. MCP configuration from an installation is read-only
+in the MCP pane. The existing exposure, OAuth and approval controls remain authoritative.
+Approval and configuration editors retain the exact release opened for review. Catalog
+refreshes cannot retarget their draft to newly selected code; Runtime rejects stale drafts.
+Editors use the generated request contract instead of maintaining local grant and input
+schemas. Configuration JSON cannot override the installation or digest opened for review.
+External themes contribute through the existing Dougong Host and child lifetimes;
+connection replacement retires the predecessor before publishing new contributions.
+Plugin actions, HTML views and bridges are unavailable until the design's carrier spike
+and subsequent slices establish their contracts. Runtime-owned MCP tools continue through
+the existing execution and approval path. See [Runtime's plugin contract](../runtime/README.md#portable-plugins).
+
+Package themes declare a light/dark scheme. The appearance owner persists a rendered
+projection solely for first paint, keyed by the selected preference. Live scheme decisions
+use registered contributions or system appearance. A complete Runtime catalog withdraws
+removed package preferences while preserving them across temporary disconnects. Package
+reads share the query-cache fetch path; mutation responses do not maintain a second catalog.
+
+Language contributions own lazy dictionary activation through their Host lifetime.
+Startup and explicit selection share that activation; teardown joins pending loads and
+withdraws installed dictionaries. Registration refuses an existing dictionary instead of
+merging or replacing another source's text. The SDK exposes no independent dictionary writer.
+Explicit selection advances the locale preference immediately; lazy activation cannot
+replace a newer choice. Until activation succeeds, the existing English fallback remains
+available, and selection failures are displayed in the appearance pane.

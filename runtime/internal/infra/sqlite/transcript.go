@@ -225,7 +225,10 @@ func materializeTranscriptItem(
 		return transcript.Item{}, fmt.Errorf("sqlite: history item %q references missing tool result %q", itemID, id)
 	}
 	snapshot.Tool.Offload = &toolresult.Ref{ID: id}
-	body := tool.StringResult(offloaded.String)
+	body, err := tool.NewResult(offloaded.String)
+	if err != nil {
+		return transcript.Item{}, fmt.Errorf("sqlite: decode history item %q offloaded text: %w", itemID, err)
+	}
 	snapshot.Tool.Result = &body
 	item, err := transcript.RestoreItem(snapshot)
 	if err != nil {

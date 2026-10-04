@@ -2,6 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="frame-src 'none'" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
     <title>Flame</title>
     <!-- First-paint theme class sync.
@@ -9,8 +10,7 @@
          Zustand store uses (`flame.appearance`) and toggles `theme-{scheme}` on
          <html> BEFORE any CSS parses, preventing a flash of the wrong scheme.
          "system" (the default) + a missing value follow prefers-color-scheme;
-         "light"/"dark" are explicit; custom theme ids default to dark until
-         the JS-side `applyTheme()` corrects the class. -->
+         "light"/"dark" are explicit; other ids use their last rendered projection. -->
     <script>
       (function () {
         // No matchMedia reads as light — the same answer the theme context's
@@ -24,6 +24,16 @@
           var id = state?.theme;
           if (id === "light") scheme = "light";
           else if (id && id !== "system") scheme = "dark"; // "dark" + custom ids
+          var paintRaw = localStorage.getItem("flame.theme-paint");
+          var paint = paintRaw ? JSON.parse(paintRaw) : null;
+          if (
+            id !== "system" &&
+            paint?.theme === id &&
+            ["light", "dark"].includes(paint.scheme) &&
+            /^#[0-9a-fA-F]{6}$/.test(paint.background)
+          ) {
+            scheme = paint.scheme;
+          } else paint = null;
           // "system" / missing → keep the prefers-color-scheme default above.
         } catch (_) {
           /* localStorage blocked, malformed JSON — keep the system default */
@@ -39,6 +49,7 @@
         // token, so a dark cold boot painted one grey and repainted another a
         // moment later. `check-bootstrap` fails on any such drift now.
         root.style.backgroundColor = scheme === "light" ? "#ffffff" : "#1f1f1f";
+        if (paint) root.style.backgroundColor = paint.background;
       })();
     </script>
     <!-- Focus-ring modality. One file, because the visual harness has its own entry and

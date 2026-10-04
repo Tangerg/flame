@@ -25,6 +25,9 @@ const (
 type Server struct {
 	// Name identifies the server and namespaces its tools. Required, unique.
 	Name ServerName
+	// ReleaseAuthority binds installation tools to admitted code and grants.
+	// User-configured servers have no package authority.
+	ReleaseAuthority string
 
 	// Transport is [TransportStdio] or [TransportStreamableHTTP]. Required.
 	Transport Transport
@@ -122,6 +125,12 @@ func (s Server) Validate() error {
 	if err := s.Name.Validate(); err != nil {
 		return err
 	}
+	if s.Name.Installation() == "" && s.ReleaseAuthority != "" {
+		return fmt.Errorf("mcpserver: user source cannot carry release authority")
+	}
+	if s.Name.Installation() != "" && s.ReleaseAuthority == "" {
+		return fmt.Errorf("mcpserver: installation source requires release authority")
+	}
 	if err := s.HandshakeTimeout.Validate(); err != nil {
 		return fmt.Errorf("mcpserver %q: %w", s.Name, err)
 	}
@@ -142,7 +151,7 @@ func (s Server) Validate() error {
 		if s.Dir != "" {
 			return fmt.Errorf("mcpserver %q: Dir applies to stdio transport only", s.Name)
 		}
-		if err := validateHTTPConfiguration(s.Authorization, s.Headers); err != nil {
+		if err := ValidateHTTPHeaders(s.Authorization, s.Headers); err != nil {
 			return fmt.Errorf("mcpserver %q: %w", s.Name, err)
 		}
 	case TransportStdio:

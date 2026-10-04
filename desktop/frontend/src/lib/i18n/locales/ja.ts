@@ -1286,4 +1286,22 @@ export const ja: Record<string, string> = {
   "file.change.del": "作業ツリーで削除",
   "file.change.renamed": "{{path}} から名前を変更",
   "file.change.below": "作業ツリーの変更を含む",
+
+  "packages.loading": "読み込み中…",
+
+  "packages.trust":
+    "リリースの承認はコードを信頼することを意味します。ローカル実行は OS の権限を使用します。ソース、ダイジェスト、入力、権限を確認してください。",
+  "packages.source": "Runtime 上のパッケージディレクトリまたは ZIP の絶対パス",
+  "packages.install": "インストール",
+  "packages.empty": "Runtime パッケージはありません",
+  "packages.approve": "リリースと権限を信頼",
+  "packages.configure": "入力を設定",
+  "packages.disable": "無効化",
+  "packages.enable": "有効化",
+  "packages.stage": "更新をステージ",
+  "packages.select": "ステージ済みリリースを選択",
+  "packages.revoke": "信頼を取り消す",
+  "packages.uninstall": "アンインストール",
+  "packages.input": "JSON 入力または Runtime のソースパス",
+  "packages.save": "保存",
 };

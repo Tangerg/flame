@@ -26,6 +26,8 @@ func (s *Handler) observeInvalidations(observe func(func(invalidation.Notice))) 
 
 func runtimeEventFor(notice invalidation.Notice) (protocol.RuntimeEvent, bool) {
 	switch notice.Resource {
+	case invalidation.Plugins:
+		return protocol.RuntimeEvent{Type: protocol.RuntimePluginsChanged}, true
 	case invalidation.Resync:
 		return protocol.RuntimeEvent{Type: protocol.RuntimeResync, Topics: protocol.RuntimeTopics()}, true
 	case invalidation.Sessions:

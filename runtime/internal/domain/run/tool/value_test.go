@@ -94,7 +94,10 @@ func TestCanonicalValuesOwnEquality(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	textResult := StringResult("null")
+	textResult, err := NewResult("null")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !(Result{}).Equal(nullResult) || (Result{}).Equal(textResult) {
 		t.Fatalf("Result equality = null:%t text:%t", (Result{}).Equal(nullResult), (Result{}).Equal(textResult))
 	}
@@ -148,7 +151,10 @@ func TestResultOwnsValuesAndDistinguishesText(t *testing.T) {
 		t.Fatal("object result reported itself as text")
 	}
 
-	text := StringResult("done")
+	text, err := NewResult("done")
+	if err != nil {
+		t.Fatal(err)
+	}
 	if got, ok := text.String(); !ok || got != "done" {
 		t.Fatalf("text result = (%q, %v), want done/true", got, ok)
 	}
@@ -166,6 +172,11 @@ func TestResultZeroValueIsPresentNull(t *testing.T) {
 	parsed, err := ParseResult([]byte("null"))
 	if err != nil || parsed.Any() != nil {
 		t.Fatalf("parsed null = (%#v, %v), want present null", parsed.Any(), err)
+	}
+	for _, result := range []Result{{}, parsed} {
+		if value, textual := result.String(); textual {
+			t.Fatalf("null became a textual result: %q", value)
+		}
 	}
 }
 

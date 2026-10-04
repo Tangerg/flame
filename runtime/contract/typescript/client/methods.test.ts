@@ -261,11 +261,11 @@ describe("methods factory", () => {
   });
 
   it("forwards the complete generated schedule update contract", async () => {
-    const call = vi.fn().mockResolvedValue({ id: "schedule_1", revision: 3 });
+    const call = vi.fn().mockResolvedValue({ id: "sch_1", revision: 3 });
     const methods = createMethods({ call } as unknown as RpcClient);
 
     await methods.schedules.update({
-      id: "schedule_1",
+      id: "sch_1",
       expectedRevision: 2,
       title: "Use the Runtime default",
       workspaceMode: "default",
@@ -274,7 +274,7 @@ describe("methods factory", () => {
     expect(call).toHaveBeenCalledWith(
       "schedules.update",
       {
-        id: "schedule_1",
+        id: "sch_1",
         expectedRevision: 2,
         title: "Use the Runtime default",
         workspaceMode: "default",
@@ -532,11 +532,11 @@ describe("methods factory", () => {
     const client = { call } as unknown as RpcClient;
     const methods = createMethods(client);
 
-    const attempt = methods.schedules.runNow("schedule_1");
+    const attempt = methods.schedules.runNow("sch_1");
     await expect(attempt).resolves.toMatchObject({
       runId: "run_1",
     });
-    await expect(methods.schedules.runNow("schedule_1")).resolves.toMatchObject({
+    await expect(methods.schedules.runNow("sch_1")).resolves.toMatchObject({
       runId: "run_2",
     });
 
@@ -576,7 +576,7 @@ describe("methods factory", () => {
       mutationJournal: persistentJournal,
     });
 
-    const retired = methods.schedules.runNow("schedule_1");
+    const retired = methods.schedules.runNow("sch_1");
     await expect(retired).rejects.toBeInstanceOf(MutationJournalOwnershipError);
     expect(call).toHaveBeenCalledOnce();
     expect(call.mock.calls[0]?.[2]?.idempotencyNamespace).toBe("idp_runtime_store_a");
@@ -584,7 +584,7 @@ describe("methods factory", () => {
     await expect(retired.retry()).rejects.toBeInstanceOf(MutationJournalOwnershipError);
     expect(call).toHaveBeenCalledOnce();
 
-    const replacement = methods.schedules.runNow("schedule_1");
+    const replacement = methods.schedules.runNow("sch_1");
     await expect(replacement).resolves.toMatchObject({ runId: "run_2" });
     expect(call).toHaveBeenCalledTimes(2);
     expect(call.mock.calls[1]?.[2]?.idempotencyKey).not.toBe(retired.idempotencyKey);
@@ -622,7 +622,7 @@ describe("methods factory", () => {
       mutationJournal: persistentJournal,
     });
 
-    const pending = methods.schedules.runNow("schedule_1");
+    const pending = methods.schedules.runNow("sch_1");
     await expect(pending).rejects.toBeInstanceOf(MutationJournalScopeUnavailableError);
     expect(call).toHaveBeenCalledOnce();
     const originalKey = pending.idempotencyKey;
@@ -670,7 +670,7 @@ describe("methods factory", () => {
       mutationJournal: firstJournal,
     });
 
-    const first = firstMethods.schedules.runNow("schedule_1");
+    const first = firstMethods.schedules.runNow("sch_1");
     await vi.waitFor(() => expect(firstCall).toHaveBeenCalledOnce());
     const firstRequest = firstCall.mock.calls[0];
     expect(firstRequest).toBeDefined();
@@ -688,7 +688,7 @@ describe("methods factory", () => {
     const restartedMethods = createMethods({ call: replayCall } as unknown as RpcClient, {
       mutationJournal: restartedJournal,
     });
-    await expect(restartedMethods.schedules.runNow("schedule_1")).resolves.toMatchObject({
+    await expect(restartedMethods.schedules.runNow("sch_1")).resolves.toMatchObject({
       runId: "run_1",
     });
 
@@ -725,7 +725,7 @@ describe("methods factory", () => {
     const retiredMethods = createMethods({ call: retiredCall } as unknown as RpcClient, {
       mutationJournal: retiredJournal,
     });
-    const retired = retiredMethods.schedules.runNow("schedule_1");
+    const retired = retiredMethods.schedules.runNow("sch_1");
     await vi.waitFor(() => expect(retiredCall).toHaveBeenCalledOnce());
 
     let settleReplacement!: (value: { sessionId: string; runId: string }) => void;
@@ -740,7 +740,7 @@ describe("methods factory", () => {
     const replacementMethods = createMethods({ call: replacementCall } as unknown as RpcClient, {
       mutationJournal: replacementJournal,
     });
-    const replay = replacementMethods.schedules.runNow("schedule_1");
+    const replay = replacementMethods.schedules.runNow("sch_1");
     await vi.waitFor(() => expect(replacementCall).toHaveBeenCalledOnce());
 
     const retiredKey = retiredCall.mock.calls[0]?.[2]?.idempotencyKey;
@@ -780,7 +780,7 @@ describe("methods factory", () => {
       mutationJournal: persistentJournal,
     });
 
-    const failed = methods.schedules.runNow("schedule_1");
+    const failed = methods.schedules.runNow("sch_1");
     await expect(failed).rejects.toThrow("not persisted");
     expect(call).not.toHaveBeenCalled();
 
@@ -850,8 +850,8 @@ describe("methods factory", () => {
       .mockResolvedValueOnce({ sessionId: "ses_2", runId: "run_2" });
     const methods = createMethods({ call } as unknown as RpcClient);
 
-    const first = methods.schedules.runNow("schedule_1");
-    const second = methods.schedules.runNow("schedule_1");
+    const first = methods.schedules.runNow("sch_1");
+    const second = methods.schedules.runNow("sch_1");
     await Promise.all([first, second]);
 
     expect(first.idempotencyKey).toBeTruthy();

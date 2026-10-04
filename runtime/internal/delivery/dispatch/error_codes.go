@@ -42,4 +42,10 @@ const (
 	codeCheckpointConflict              = -32037
 	codePromptSourceTooLarge            = -32038
 	codeExportTooLarge                  = -32039
+	codePluginNotFound                  = -32040
+	codePluginInUse                     = -32041
+	codePluginUnapproved                = -32042
+	codePluginStale                     = -32043
+	codeMCPOwnedByInstallation          = -32044
+	codePluginUnavailable               = -32045
 )

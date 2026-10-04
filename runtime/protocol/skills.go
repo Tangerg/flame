@@ -4,17 +4,24 @@ package protocol
 type SkillScope string
 
 const (
-	SkillScopeProject SkillScope = "project"
-	SkillScopeUser    SkillScope = "user"
+	SkillScopeProject      SkillScope = "project"
+	SkillScopeUser         SkillScope = "user"
+	SkillScopeInstallation SkillScope = "installation"
 )
 
 // Skill is one entry in skills.discovered.list. List results contain one entry
 // per Name, with project scope winning over user scope on collisions, and are
 // ordered by Name ascending.
+type SkillInstallation struct {
+	InstallationID string `json:"installationId"`
+	Digest         string `json:"digest"`
+}
+
 type Skill struct {
-	Name        string     `json:"name"`
-	Description string     `json:"description,omitempty"`
-	Scope       SkillScope `json:"scope"`
+	Installation *SkillInstallation `json:"installation,omitzero"`
+	Name         string             `json:"name"`
+	Description  string             `json:"description,omitempty"`
+	Scope        SkillScope         `json:"scope"`
 }
 
 // SkillLifecycle is a managed skill's curator state (skills.library.list):

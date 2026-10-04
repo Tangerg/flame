@@ -39,22 +39,37 @@ type ConnectionControl interface {
 	Authorize(ctx context.Context, name mcpserver.ServerName) error
 }
 
-// ConnectionLifecycle borrows server descriptors during each synchronous call.
-// Implementations acquire their own copy before retaining a live configuration.
+// Probe borrows an unsaved candidate. Configure obtains the current configuration
+// from its source owner; the caller cannot advance it through a detached snapshot.
 type ConnectionLifecycle interface {
 	Probe(ctx context.Context, server mcpserver.Server) error
-	Configure(ctx context.Context, server mcpserver.Server) error
+	Configure(ctx context.Context, name mcpserver.ServerName) error
 	Detach(name mcpserver.ServerName) error
 }
 
-// Registry transfers List and Get results and borrows Save input for the call.
+// Registry supplies durable definitions independently of executable admission.
 type Registry interface {
-	List(ctx context.Context) ([]mcpserver.Server, error)
-	Get(ctx context.Context, name mcpserver.ServerName) (mcpserver.Server, bool, error)
+	Catalog(ctx context.Context) ([]Source, error)
+	Definition(ctx context.Context, name mcpserver.ServerName) (mcpserver.Server, bool, error)
 	Save(ctx context.Context, server mcpserver.Server) error
 	Remove(ctx context.Context, name mcpserver.ServerName) error
 	ListExposure(ctx context.Context) ([]tool.Ref, error)
 	SetToolExposure(ctx context.Context, ref tool.Ref, disabled bool) error
+}
+
+type SourceAvailability string
+
+const (
+	SourceAvailable          SourceAvailability = "available"
+	SourceUnavailableRelease SourceAvailability = "unavailableRelease"
+	SourceUnavailableBackend SourceAvailability = "unavailableBackend"
+)
+
+// Source separates durable registry membership from executable admission.
+// An unavailable installation still supplies its desired configuration.
+type Source struct {
+	Server       mcpserver.Server
+	Availability SourceAvailability
 }
 
 // Coordinator owns durable server configuration, live connections, and the
@@ -73,11 +88,10 @@ type Coordinator struct {
 	connectionLifecycle   ConnectionLifecycle
 	exposure              *ExposureState
 	mutationMu            sync.Mutex
-	dialMu                sync.Mutex
+	connectionMu          sync.Mutex
 	dials                 map[mcpserver.ServerName]*activeDial
 	statusQueue           *statusQueue
-	statusMu              sync.RWMutex
-	statusOverrides       map[mcpserver.ServerName]ServerStatus
+	statusTombstones      map[mcpserver.ServerName]struct{}
 	authorizationAttempts *authorizationAttemptStore
 	invalidations         invalidation.Publish
 
@@ -115,18 +129,21 @@ func New(cfg Config) (*Coordinator, error) {
 		connectionLifecycle:   cfg.ConnectionLifecycle,
 		exposure:              cfg.Exposure,
 		dials:                 make(map[mcpserver.ServerName]*activeDial),
-		statusOverrides:       make(map[mcpserver.ServerName]ServerStatus),
+		statusTombstones:      make(map[mcpserver.ServerName]struct{}),
 		authorizationAttempts: newAuthorizationAttemptStore(),
 		invalidations:         cfg.Invalidations,
 	}
-	coordinator.statusQueue = newStatusQueue(coordinator.acceptStatus)
+	coordinator.statusQueue = newStatusQueue(func(name mcpserver.ServerName) {
+		coordinator.invalidations.Notify(invalidation.ForMCP(name.String()))
+	})
 	return coordinator, nil
 }
 
-// activeDial is the cancellation handle for one server's current connection
-// attempt.
+// activeDial owns the current connection attempt's cancellation and temporary
+// connecting phase. Both are guarded by connectionMu and end with the attempt.
 type activeDial struct {
-	cancel context.CancelFunc
+	cancel     context.CancelFunc
+	connecting bool
 }
 
 // BeginShutdown cancels this component's post-commit reconcile work.

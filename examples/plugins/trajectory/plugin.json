@@ -1,0 +1,27 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "flame.trajectory-example",
+  "version": "1.0.0",
+  "description": "A bounded theme and Skill for inspecting Session history through the existing Runtime tools.",
+  "extensions": {
+    "io.github.tangerg.flame": {
+      "apiVersion": 1,
+      "contributes": {
+        "themes": [
+          {
+            "id": "graphite",
+            "title": "Graphite example",
+            "scheme": "dark",
+            "colors": {
+              "background": "#181a1e",
+              "foreground": "#eef0f4",
+              "accent": "#91baff",
+              "muted": "#a3a8b2",
+              "border": "#373b43"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

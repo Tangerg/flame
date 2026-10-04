@@ -40,6 +40,20 @@ func (ToolAuthorities) Fingerprint(_ context.Context, ref tool.Ref) (string, boo
 	return ToolFingerprint(ref), true, nil
 }
 
+func (a ToolAuthorities) Fingerprints(ctx context.Context, refs []tool.Ref) (map[tool.Ref]string, error) {
+	result := make(map[tool.Ref]string, len(refs))
+	for _, ref := range refs {
+		fingerprint, found, err := a.Fingerprint(ctx, ref)
+		if err != nil {
+			return nil, err
+		}
+		if found {
+			result[ref] = fingerprint
+		}
+	}
+	return result, nil
+}
+
 const (
 	BuildID                       = "sha256:1111111111111111111111111111111111111111111111111111111111111111"
 	AlternateBuildID              = "sha256:2222222222222222222222222222222222222222222222222222222222222222"

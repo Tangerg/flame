@@ -4,7 +4,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { contributeLayout, definePlugin } from "@/plugins/sdk";
 import { COMPOSER_KEY_BINDING, SLASH_COMMAND } from "@/plugins/sdk/kernelPoints";
-import { addLocaleBundle, setLocale } from "@/lib/i18n";
+import { mountLocaleBundle, setLocale } from "@/lib/i18n";
 import { WORKSPACE_LIST_FILES_KEY } from "@/plugins/builtin/workspace/public/queries";
 import { Composer } from "./Composer";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
@@ -177,7 +177,7 @@ describe("composer", () => {
   });
 
   it("refreshes the placeholder when the locale changes", async () => {
-    addLocaleBundle("placeholder-test", {
+    const unmount = mountLocaleBundle("placeholder-test", {
       "composer.input.label": "Prompt",
       "composer.placeholder": "Localized placeholder",
     });
@@ -192,6 +192,7 @@ describe("composer", () => {
       const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
       expect(textarea.placeholder).toBe("Localized placeholder");
     });
+    unmount();
   });
 
   describe("slash suggestions own the keys while open", () => {

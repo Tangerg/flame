@@ -1316,4 +1316,22 @@ export const en: Record<string, string> = {
   "file.change.del": "Deleted in the working tree",
   "file.change.renamed": "Renamed from {{path}}",
   "file.change.below": "Contains working-tree changes",
+
+  "packages.loading": "Loading…",
+
+  "packages.trust":
+    "Approving a release trusts its code. Local executables run with your OS permissions. Review its source, digest, inputs and requested grants before approval.",
+  "packages.source": "Absolute package directory or ZIP path on the Runtime",
+  "packages.install": "Install",
+  "packages.empty": "No Runtime packages installed",
+  "packages.approve": "Trust release and grants",
+  "packages.configure": "Configure inputs",
+  "packages.disable": "Disable",
+  "packages.enable": "Enable",
+  "packages.stage": "Stage update",
+  "packages.select": "Select staged release",
+  "packages.revoke": "Revoke trust",
+  "packages.uninstall": "Uninstall",
+  "packages.input": "JSON input or Runtime source path",
+  "packages.save": "Save",
 };

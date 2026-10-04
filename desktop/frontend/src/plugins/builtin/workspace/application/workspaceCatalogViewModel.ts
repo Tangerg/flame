@@ -11,7 +11,7 @@ export interface WorkspaceSkillRowViewModel {
   id: string;
   name: string;
   description: string;
-  scope: "project" | "user";
+  scope: WorkspaceSkill["scope"];
 }
 
 function catalog<Row>(rows: Row[], enabled = true): WorkspaceCatalogViewModel<Row> {

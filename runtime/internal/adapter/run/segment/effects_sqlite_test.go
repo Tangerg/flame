@@ -561,7 +561,10 @@ func TestCommitEventAtomicallyRecordsCanonicalToolBatch(t *testing.T) {
 	terminals := make([]runs.ToolInvocationCommit, 0, 2)
 	for index, start := range starts {
 		name := []string{"first", "second"}[index]
-		result := tool.StringResult(name + "-result")
+		result, err := tool.NewResult(name + "-result")
+		if err != nil {
+			t.Fatal(err)
+		}
 		items = append(items, testsupport.MustRestoreItem(testsupport.ItemInput{
 			SessionID: "ses_tools", RunID: "run_tools", ID: start.ItemID,
 			OccurredAt: startedAt, FinishedAt: finishedAt,

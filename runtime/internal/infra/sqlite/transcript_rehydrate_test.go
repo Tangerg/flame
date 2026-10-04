@@ -24,7 +24,10 @@ func openTranscriptAndBlobs(t *testing.T) (*sqlite.TranscriptStore, *sqlite.Tool
 }
 
 func toolItem(sessionID, id, result string, ref *resultoffload.Ref) transcript.Item {
-	value := tool.StringResult(result)
+	value, err := tool.NewResult(result)
+	if err != nil {
+		panic(err)
+	}
 	at := time.Unix(1, 0).UTC()
 	executionDuration := 500 * time.Millisecond
 	return testsupport.MustRestoreItem(testsupport.ItemInput{

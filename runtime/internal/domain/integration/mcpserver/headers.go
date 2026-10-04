@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func validateHTTPConfiguration(authorization string, headers map[string]string) error {
+func ValidateHTTPHeaders(authorization string, headers map[string]string) error {
 	if authorization != "" {
 		if strings.TrimSpace(authorization) == "" || strings.TrimSpace(authorization) != authorization ||
 			!validHeaderValue(authorization) {
@@ -15,7 +15,7 @@ func validateHTTPConfiguration(authorization string, headers map[string]string) 
 	}
 	seen := make(map[string]string, len(headers))
 	for name, value := range headers {
-		if !validHeaderName(name) {
+		if !ValidHeaderName(name) {
 			return fmt.Errorf("headers name %q is invalid", name)
 		}
 		canonical := strings.ToLower(name)
@@ -33,7 +33,7 @@ func validateHTTPConfiguration(authorization string, headers map[string]string) 
 	return nil
 }
 
-func validHeaderName(name string) bool {
+func ValidHeaderName(name string) bool {
 	if name == "" {
 		return false
 	}

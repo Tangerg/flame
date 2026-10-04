@@ -486,8 +486,8 @@ func (f fakeSkillCatalog) List(context.Context, string) (workspaceapp.SkillDisco
 func TestListDiscoveredSkills(t *testing.T) {
 	dir := t.TempDir()
 	s := newWorkspaceHandlerWithConfig(dir, workspaceTestConfig{Skills: fakeSkillCatalog{skills: []workspaceapp.SkillSummary{
-		{Name: "pdf", Description: "PDF tools", Scope: "project"},
-		{Name: "web", Description: "web tools", Scope: "user"},
+		{Name: "pdf", Description: "PDF tools", Source: workspaceapp.ProjectSkillSource()},
+		{Name: "web", Description: "web tools", Source: workspaceapp.UserSkillSource()},
 	}}})
 	got, err := s.ListDiscoveredSkills(context.Background(), protocol.WorkspaceQuery{})
 	if err != nil {

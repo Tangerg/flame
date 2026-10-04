@@ -42,6 +42,25 @@ func TestServersAndToolsUsePorts(t *testing.T) {
 	}
 }
 
+func TestServersRejectUnmappedConnectionState(t *testing.T) {
+	ports := &fakePorts{statuses: []mcpserver.ConnectionStatus{{
+		Name: testMCPServerName("broken"), State: mcpserver.ConnectionState("unmapped"),
+	}}}
+	coordinator := testCoordinator(t, configWithPorts(ports))
+	servers, err := coordinator.Servers(t.Context())
+	if err == nil || servers != nil {
+		t.Fatalf("Servers = (%+v, %v), want nil/error", servers, err)
+	}
+}
+
+func TestInstallationReconciliationPreservesIdentityFailure(t *testing.T) {
+	coordinator := testCoordinator(t, Config{})
+	err := coordinator.ReconcileInstallation(t.Context(), []mcpserver.ServerName{{}})
+	if !errors.Is(err, ErrInvalidServerConfiguration) || !errors.Is(err, mcpserver.ErrInvalidServerName) {
+		t.Fatalf("reconcile invalid identity = %v, want configuration category and identity cause", err)
+	}
+}
+
 func TestServersDoNotExposeStoredMutableValues(t *testing.T) {
 	name := testMCPServerName("files")
 	server := mcpserver.Server{
@@ -59,6 +78,41 @@ func TestServersDoNotExposeStoredMutableValues(t *testing.T) {
 	servers[0].Connection.Args[0] = "changed"
 	if server.Args[0] != "--root" {
 		t.Fatal("returned server changed stored arguments")
+	}
+}
+
+func TestUnavailableSourcesRemainVisibleWithoutAdvertisingTools(t *testing.T) {
+	registry := &testRegistry{servers: make(map[mcpserver.ServerName]mcpserver.Server), unavailable: make(map[mcpserver.ServerName]SourceAvailability)}
+	ports := &fakePorts{}
+	for _, state := range []struct {
+		name         string
+		enabled      bool
+		availability SourceAvailability
+		want         ServerStateType
+	}{
+		{"release", true, SourceUnavailableRelease, ServerFailed},
+		{"backend", true, SourceUnavailableBackend, ServerFailed},
+		{"disabled", false, SourceUnavailableRelease, ServerDisabled},
+		{"healthy", true, SourceAvailable, ServerConnected},
+	} {
+		t.Run(state.name, func(t *testing.T) {
+			name := testMCPServerName(state.name)
+			registry.servers[name] = mcpserver.Server{Name: name, Enabled: state.enabled, Transport: mcpserver.TransportStdio, Command: "fixture"}
+			registry.unavailable[name] = state.availability
+			ports.statuses = append(ports.statuses, mcpserver.ConnectionStatus{Name: name, State: mcpserver.ConnectionConnected, ToolCount: 9})
+			coordinator := testCoordinator(t, Config{Registry: registry, StatusReader: ports})
+			found, err := coordinator.Servers(t.Context())
+			if err != nil {
+				t.Fatal(err)
+			}
+			index := slices.IndexFunc(found, func(server Server) bool { return server.Name == name })
+			if index < 0 || found[index].State.Type != state.want {
+				t.Fatalf("source read model = %+v, want %s", found, state.want)
+			}
+			if state.availability != SourceAvailable && found[index].State.ToolCount != nil {
+				t.Fatal("unavailable source advertised its previous tool count")
+			}
+		})
 	}
 }
 
@@ -526,8 +580,8 @@ func TestCreateServerSeparatesDurableAndLiveConnectionOwnership(t *testing.T) {
 	if stored.Args[0] != "--root" || stored.Env["TOKEN"] != "original" {
 		t.Fatalf("caller changed durable server: %+v", stored)
 	}
-	if ports.configure.Args[0] != "--root" || ports.configure.Env["TOKEN"] != "original" {
-		t.Fatalf("caller changed live configuration: %+v", ports.configure)
+	if ports.configureName != stored.Name {
+		t.Fatalf("live connection target = %q, want %q", ports.configureName, stored.Name)
 	}
 }
 
@@ -548,8 +602,9 @@ type fakePorts struct {
 	probe         mcpserver.Server
 	probeErr      error
 	onProbe       func()
-	configure     mcpserver.Server
+	configureName mcpserver.ServerName
 	configureDone chan struct{}
+	configureErr  error
 	removeName    string
 	removeErr     error
 }
@@ -607,12 +662,12 @@ func (f *fakePorts) Probe(_ context.Context, cfg mcpserver.Server) error {
 	return f.probeErr
 }
 
-func (f *fakePorts) Configure(_ context.Context, cfg mcpserver.Server) error {
-	f.configure = cfg.Clone()
+func (f *fakePorts) Configure(_ context.Context, name mcpserver.ServerName) error {
+	f.configureName = name
 	if f.configureDone != nil {
 		close(f.configureDone)
 	}
-	return nil
+	return f.configureErr
 }
 
 func (f *fakePorts) Detach(name mcpserver.ServerName) error {
@@ -687,6 +742,7 @@ type testRegistry struct {
 	exposure        map[tool.Ref]bool
 	servers         map[mcpserver.ServerName]mcpserver.Server
 	listed          []mcpserver.Server
+	unavailable     map[mcpserver.ServerName]SourceAvailability
 	listErr         error
 	saveCommitted   chan struct{}
 	releaseSave     chan struct{}
@@ -694,27 +750,39 @@ type testRegistry struct {
 	releaseRemove   chan struct{}
 }
 
-func (t *testRegistry) List(context.Context) ([]mcpserver.Server, error) {
+func (t *testRegistry) Catalog(context.Context) ([]Source, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.listErr != nil {
 		return nil, t.listErr
 	}
 	if t.listed != nil {
-		servers := make([]mcpserver.Server, len(t.listed))
+		servers := make([]Source, len(t.listed))
 		for index, server := range t.listed {
-			servers[index] = server.Clone()
+			servers[index] = t.source(server)
 		}
 		return servers, nil
 	}
-	servers := make([]mcpserver.Server, 0, len(t.servers))
+	servers := make([]Source, 0, len(t.servers))
 	for _, server := range t.servers {
-		servers = append(servers, server.Clone())
+		servers = append(servers, t.source(server))
 	}
-	slices.SortFunc(servers, func(a, b mcpserver.Server) int {
-		return cmp.Compare(b.Name.String(), a.Name.String())
+	slices.SortFunc(servers, func(a, b Source) int {
+		return cmp.Compare(b.Server.Name.String(), a.Server.Name.String())
 	})
 	return servers, nil
+}
+
+func (t *testRegistry) source(server mcpserver.Server) Source {
+	availability := SourceAvailable
+	if value, found := t.unavailable[server.Name]; found {
+		availability = value
+	}
+	return Source{Server: server.Clone(), Availability: availability}
+}
+
+func (t *testRegistry) Definition(ctx context.Context, name mcpserver.ServerName) (mcpserver.Server, bool, error) {
+	return t.Get(ctx, name)
 }
 
 func (t *testRegistry) Get(_ context.Context, name mcpserver.ServerName) (mcpserver.Server, bool, error) {

@@ -7,7 +7,10 @@ import (
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -42,6 +45,7 @@ func registerValueConstraints(s *Shapes) {
 	registerHookValues(s)
 	registerApprovalValues(s)
 	registerMCPValues(s)
+	registerPluginValues(s)
 	registerProviderValues(s)
 	registerModelValues(s)
 	registerToolValues(s)
@@ -622,13 +626,13 @@ func registerHookValues(s *Shapes) {
 }
 
 func registerApprovalValues(s *Shapes) {
-	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.ToolRef](), Constraints: append(append(mcpServerIdentity("server"), mcpRemoteToolIdentity("name")...), FieldConstraint{Field: "endpoint", Kind: ConstraintPattern, Value: `^[A-Za-z0-9_-]{1,64}$`})})
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.ToolRef](), Constraints: append(append(mcpServerIdentity("server"), mcpRemoteToolIdentity("name")...), FieldConstraint{Field: "endpoint", Kind: ConstraintPattern, Value: tool.ModelNamePattern()})})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.SetApprovalRuleRequest](), Constraints: resourceIdentity("sessionId")})
 
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.ApprovalRule](),
 		Constraints: append(requiredResourceIdentity("id"),
-			FieldConstraint{Field: "modelName", Kind: ConstraintPattern, Value: `^[A-Za-z0-9_-]{1,64}$`}),
+			FieldConstraint{Field: "modelName", Kind: ConstraintPattern, Value: tool.ModelNamePattern()}),
 	})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.ListApprovalRulesRequest](), Constraints: resourceIdentity("sessionId")})
 	s.valueConstraint(FieldConstraintSpec{
@@ -660,18 +664,18 @@ func registerMCPValues(s *Shapes) {
 	})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType:      typeOf[protocol.MCPTool](),
-		Constraints: append(append(mcpServerIdentity("server"), mcpRemoteToolIdentity("name")...), FieldConstraint{Field: "modelName", Kind: ConstraintPattern, Value: `^[A-Za-z0-9_-]{1,64}$`}),
+		Constraints: append(append(mcpServerIdentity("server"), mcpRemoteToolIdentity("name")...), FieldConstraint{Field: "modelName", Kind: ConstraintPattern, Value: tool.ModelNamePattern()}),
 	})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.MCPAuthorizationAttemptRequest](),
 		Constraints: []FieldConstraint{{
-			Field: "attemptId", Kind: ConstraintPattern, Value: mcpapp.AuthorizationAttemptIDPattern,
+			Field: "attemptId", Kind: ConstraintPattern, Value: mcpapp.AuthorizationAttemptIDPattern(),
 		}},
 	})
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.MCPAuthorizationAttempt](),
 		Constraints: append([]FieldConstraint{
-			{Field: "id", Kind: ConstraintPattern, Value: mcpapp.AuthorizationAttemptIDPattern},
+			{Field: "id", Kind: ConstraintPattern, Value: mcpapp.AuthorizationAttemptIDPattern()},
 		}, mcpServerIdentity("server")...),
 	})
 	nonEmpty[protocol.MCPConnection](s, "url", "command")
@@ -707,7 +711,7 @@ func registerMCPValues(s *Shapes) {
 }
 
 func mcpServerIdentity(field string) []FieldConstraint {
-	return []FieldConstraint{{Field: field, Kind: ConstraintPattern, Value: mcpserver.ServerNamePattern}}
+	return []FieldConstraint{{Field: field, Kind: ConstraintPattern, Value: mcpserver.ServerIdentityPattern()}}
 }
 
 func mcpRemoteToolIdentity(field string) []FieldConstraint {
@@ -1048,4 +1052,28 @@ func registerTrajectoryValues(s *Shapes) {
 		s.valueConstraint(FieldConstraintSpec{GoType: owner, Constraints: constraints})
 	}
 	nonNegative[protocol.ModelInvocationUsage](s, "inputTokens", "outputTokens", "cacheReadTokens", "cacheWriteTokens", "reasoningTokens")
+}
+
+func registerPluginValues(s *Shapes) {
+	s.valueConstraint(FieldConstraintSpec{
+		GoType: typeOf[protocol.PluginTheme](),
+		Constraints: []FieldConstraint{
+			{Field: "colors", Kind: ConstraintPatternPropertyNames, Value: plugin.ThemeColorNamePattern()},
+			{Field: "colors", Kind: ConstraintPatternPropertyValues, Value: plugin.ThemeColorPattern()},
+		},
+	})
+	for _, shape := range []reflect.Type{typeOf[protocol.StagePluginRequest](), typeOf[protocol.PluginRequest](), typeOf[protocol.PluginReleaseRequest](), typeOf[protocol.SetPluginEnablementRequest](), typeOf[protocol.ConfigurePluginRequest](), typeOf[protocol.ApprovePluginRequest]()} {
+		constraints := []FieldConstraint{{Field: "installationId", Kind: ConstraintPattern, Value: resourceid.InstallationIDPattern()}}
+		switch shape {
+		case typeOf[protocol.PluginReleaseRequest](), typeOf[protocol.ApprovePluginRequest](), typeOf[protocol.ConfigurePluginRequest]():
+			constraints = append(constraints, FieldConstraint{Field: "digest", Kind: ConstraintPattern, Value: plugin.DigestPattern})
+		}
+		switch shape {
+		case typeOf[protocol.StagePluginRequest]():
+			constraints = append(constraints, FieldConstraint{Field: "source", Kind: ConstraintNonEmpty}, FieldConstraint{Field: "source", Kind: ConstraintMaxLength, Limit: 4096})
+		}
+		s.valueConstraint(FieldConstraintSpec{GoType: shape, Constraints: constraints})
+	}
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.InstallPluginRequest](), Constraints: []FieldConstraint{{Field: "source", Kind: ConstraintNonEmpty}, {Field: "source", Kind: ConstraintMaxLength, Limit: 4096}}})
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginValueChange](), Constraints: []FieldConstraint{{Field: "value", Kind: ConstraintMaxLength, Limit: 8192}}})
 }

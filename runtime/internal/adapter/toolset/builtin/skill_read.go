@@ -30,7 +30,7 @@ type SkillUsageRecorder interface {
 //
 // Rebuilt per resolution because the project directory depends on the Run's
 // working directory.
-func BuildReaders(cwd, userDir string, recorder SkillUsageRecorder) ([]toolcontract.Tool, error) {
+func BuildReaders(ctx context.Context, cwd, userDir string, recorder SkillUsageRecorder, packages promptsource.PackageSkills) ([]toolcontract.Tool, []promptsource.InstallationDependency, error) {
 	var decorateUser func(skillspec.ResourceSource) skillspec.ResourceSource
 	if recorder != nil {
 		// Wrap only the user source: the curator governs the user library, and
@@ -41,18 +41,18 @@ func BuildReaders(cwd, userDir string, recorder SkillUsageRecorder) ([]toolcontr
 			return recordingSource{ResourceSource: user, recorder: recorder}
 		}
 	}
-	source, err := promptsource.OverlaySkillSource(cwd, userDir, decorateUser)
+	source, dependencies, err := promptsource.OverlaySkillSource(ctx, cwd, userDir, packages, decorateUser)
 	if err != nil {
-		return nil, fmt.Errorf("skill: build source: %w", err)
+		return nil, nil, fmt.Errorf("skill: build source: %w", err)
 	}
 	if source == nil {
-		return nil, nil
+		return nil, nil, nil
 	}
 	tools, err := skillstool.NewTools(source, skillstool.Config{})
 	if err != nil {
-		return nil, fmt.Errorf("skill: build tools: %w", err)
+		return nil, nil, fmt.Errorf("skill: build tools: %w", err)
 	}
-	return tools, nil
+	return tools, dependencies, nil
 }
 
 // recordingSource records successful user-library Skill loads. A usage-write

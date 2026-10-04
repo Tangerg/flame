@@ -1270,4 +1270,22 @@ export const ko: Record<string, string> = {
   "file.change.del": "작업 트리에서 삭제됨",
   "file.change.renamed": "{{path}}에서 이름 변경됨",
   "file.change.below": "작업 트리 변경 사항 포함",
+
+  "packages.loading": "불러오는 중…",
+
+  "packages.trust":
+    "릴리스 승인은 코드를 신뢰한다는 뜻입니다. 로컬 실행 파일은 OS 권한으로 실행됩니다. 소스, 다이제스트, 입력 및 요청 권한을 확인하세요.",
+  "packages.source": "Runtime의 패키지 디렉터리 또는 ZIP 절대 경로",
+  "packages.install": "설치",
+  "packages.empty": "설치된 Runtime 패키지가 없습니다",
+  "packages.approve": "릴리스 및 권한 신뢰",
+  "packages.configure": "입력 구성",
+  "packages.disable": "비활성화",
+  "packages.enable": "활성화",
+  "packages.stage": "업데이트 준비",
+  "packages.select": "준비된 릴리스 선택",
+  "packages.revoke": "신뢰 취소",
+  "packages.uninstall": "제거",
+  "packages.input": "JSON 입력 또는 Runtime 소스 경로",
+  "packages.save": "저장",
 };

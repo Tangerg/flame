@@ -301,6 +301,8 @@ The gate includes typechecking, lint, formatting, tests, dead-code checks,
 architecture, content and visual rules, and a production bundle. The HTTP e2e
 suite builds an isolated Runtime and uses local fake providers; it requires the
 repository's Go toolchain and no live provider credentials.
+It runs in a separate Vitest project after the frontend checks so native process
+and local server deadlines do not compete with the DOM worker pool.
 
 Layer, context, and cycle checks share one compiler-resolved dependency graph.
 Every TypeScript source must be loaded, every local import must resolve, and

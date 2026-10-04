@@ -1,5 +1,6 @@
 import type { RpcCallOptions, RpcClient } from "./client";
 import { RpcError } from "./errors";
+import { checkRequest } from "./request";
 import { createMutationPromise, type MutationPromise } from "./mutation";
 import type { MutationJournal } from "./mutationJournal";
 import { unnegotiated } from "./preflight";
@@ -127,6 +128,7 @@ export function createWireCallPath(client: RpcClient, options: MethodsOptions): 
     const preferredJournalKey = journalKey ?? crypto.randomUUID();
     let reservation: ReturnType<MutationJournal["reserve"]>;
     try {
+      checkRequest(method, preparedParams);
       reservation =
         requestedKey !== undefined
           ? undefined

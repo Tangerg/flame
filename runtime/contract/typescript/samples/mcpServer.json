@@ -1,4 +1,5 @@
 {
+  "origin": {"type": "user"},
   "name": "filesystem",
   "description": "Local filesystem access",
   "connection": {

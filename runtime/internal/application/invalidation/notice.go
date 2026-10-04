@@ -21,7 +21,8 @@ const (
 	// Resync means a different Runtime process committed to the shared durable
 	// store. The observer cannot recover the original use-case scope from
 	// SQLite's commit counter, so every subscribed read model must be re-read.
-	Resync Resource = "resync"
+	Resync  Resource = "resync"
+	Plugins Resource = "plugins"
 	// Sessions — a session was created, renamed, deleted, or its lifecycle moved.
 	Sessions Resource = "sessions"
 	// Runs — a run's lifecycle position changed (started, parked, resumed, ended).
@@ -50,7 +51,7 @@ const (
 
 // Valid reports whether r belongs to the invalidation vocabulary.
 func (r Resource) Valid() bool {
-	return r == Resync || r == Sessions || r == Runs || r == Interrupts ||
+	return r == Plugins || r == Resync || r == Sessions || r == Runs || r == Interrupts ||
 		r == Goals || r == PlanState || r == Schedules ||
 		r == Hooks || r == Skills || r == MCP || r == Models ||
 		r == Approvals || r == AgentMemory

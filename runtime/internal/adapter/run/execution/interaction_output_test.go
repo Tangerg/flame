@@ -3,8 +3,11 @@ package execution
 import (
 	"bytes"
 	"context"
+	"errors"
 	"sync/atomic"
 	"testing"
+
+	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 
 	agent "github.com/Tangerg/scope/agent"
 	"github.com/Tangerg/scope/agent/strategy/interaction"
@@ -12,6 +15,13 @@ import (
 	"github.com/Tangerg/scope/core/media"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
+
+func TestToolResultRejectsUnrepresentableTextWithoutPanicking(t *testing.T) {
+	_, observed, err := runtimeToolResult(chat.NewTextToolOutput(string([]byte{'o', 'k', 0xff})))
+	if !observed || !errors.Is(err, domaintool.ErrInvalidResult) {
+		t.Fatalf("unrepresentable observed text = %t, %v", observed, err)
+	}
+}
 
 func TestDelegatedOutputSurvivesColdRestoreWithoutReplyCache(t *testing.T) {
 	image, err := media.NewBytes("image/png", []byte("image payload"))

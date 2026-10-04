@@ -36,7 +36,7 @@ const (
 )
 
 func (s ServerConfig) oauthTarget() mcpserver.OAuthTarget {
-	return mcpserver.OAuthTarget{Server: s.Name, URL: s.Endpoint, Headers: maps.Clone(s.Headers)}
+	return mcpserver.OAuthTarget{Authority: s.ReleaseAuthority, Server: s.Name, URL: s.Endpoint, Headers: maps.Clone(s.Headers)}
 }
 
 // Valid reports whether transport names one supported MCP connection mode.
@@ -57,6 +57,7 @@ func (t Transport) String() string {
 // persisted descriptors become live sessions.
 type ServerConfig struct {
 	SourceFingerprint string
+	ReleaseAuthority  string
 	// Name identifies the server for tool namespacing and status reporting.
 	// Required.
 	Name mcpserver.ServerName
@@ -130,6 +131,25 @@ func (s ServerConfig) Clone() ServerConfig {
 	s.Headers = maps.Clone(s.Headers)
 	s.HandshakeTimeout = optional.Clone(s.HandshakeTimeout)
 	return s
+}
+
+// SameConnection compares the configuration realized by an executable. OAuth
+// refresh belongs to the credential store; handshake limits govern a future
+// attempt. Neither changes the configuration of an already connected session.
+func (s ServerConfig) SameConnection(other ServerConfig) bool {
+	if s.Name != other.Name || s.Transport != other.Transport ||
+		s.SourceFingerprint != other.SourceFingerprint || s.ReleaseAuthority != other.ReleaseAuthority {
+		return false
+	}
+	switch s.Transport {
+	case TransportHTTP:
+		return s.Endpoint == other.Endpoint && s.Authorization == other.Authorization && maps.Equal(s.Headers, other.Headers)
+	case TransportStdio:
+		return s.Command == other.Command && s.Dir == other.Dir && slices.Equal(s.Args, other.Args) &&
+			(s.Env == nil) == (other.Env == nil) && slices.Equal(s.Env, other.Env)
+	default:
+		return false
+	}
 }
 
 // Validate reports whether exactly one transport is fully specified and the

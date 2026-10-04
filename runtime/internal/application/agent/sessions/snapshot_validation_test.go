@@ -76,7 +76,10 @@ func TestSnapshotPortableSnapshotOwnsCollections(t *testing.T) {
 func portableSnapshotWithCollections() Snapshot {
 	snapshot := portableSnapshotWithMessage()
 	at := time.Unix(2, 0).UTC()
-	result := tool.StringResult("full body")
+	result, err := tool.NewResult("full body")
+	if err != nil {
+		panic(err)
+	}
 	snapshot.Items = append(snapshot.Items, testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID: "ses_1", RunID: "run_1", ID: "item_tool", Kind: transcript.ToolCall,
 		Status: transcript.ItemCompleted, OccurredAt: at, FinishedAt: at,
@@ -151,7 +154,10 @@ func TestSnapshotValidateToolResultsRejectsBrokenRelationships(t *testing.T) {
 		{
 			name: "unrelated result",
 			mutate: func(snapshot *Snapshot) {
-				result := tool.StringResult("neither preview nor body")
+				result, err := tool.NewResult("neither preview nor body")
+				if err != nil {
+					t.Fatal(err)
+				}
 				mutateSnapshotItem(snapshot, func(item *transcript.ItemSnapshot) { item.Tool.Result = &result })
 			},
 			want: "matches neither",
@@ -190,7 +196,10 @@ func mutateSnapshotItem(snapshot *Snapshot, mutate func(*transcript.ItemSnapshot
 
 func offloadedSnapshot(result string) Snapshot {
 	ref := &toolresult.Ref{ID: "BLOB234"}
-	value := tool.StringResult(result)
+	value, err := tool.NewResult(result)
+	if err != nil {
+		panic(err)
+	}
 	return Snapshot{
 		Session: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1"}),
 		Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{

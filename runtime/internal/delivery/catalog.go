@@ -28,6 +28,7 @@ func buildContract() *Registry {
 	registerSkills(registry)
 	registerAgentDocs(registry)
 	registerMCP(registry)
+	registerPlugins(registry)
 	registerHooks(registry)
 	registerApproval(registry)
 	registerSchedules(registry)

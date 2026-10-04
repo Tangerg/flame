@@ -157,12 +157,8 @@ func TestMCPServerExposureSchemaEnforcesCardinality(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	server := testMCPServerName("files")
-	if _, err := db.ExecContext(
-		t.Context(),
-		`INSERT INTO mcp_servers (name, transport, command) VALUES (?, 'stdio', 'mcp-server')`,
-		server.String(),
-	); err != nil {
-		t.Fatalf("insert server: %v", err)
+	if err := sqlite.NewMCPServerStore(db).Save(t.Context(), mcpserver.Server{Name: server, Transport: mcpserver.TransportStdio, Command: "mcp-server"}); err != nil {
+		t.Fatal(err)
 	}
 	if _, err := db.ExecContext(
 		t.Context(),

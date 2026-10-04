@@ -174,7 +174,6 @@ describe("createFlameClient", () => {
         protocolVersion: PROTOCOL_VERSION,
         clientInfo: { name: "test", version: "0" },
         clientCapabilities: {
-          events: [],
           features: {},
           interruptTypes: ["approval"],
         },

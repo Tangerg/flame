@@ -120,20 +120,24 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
               {t(signingIn ? "mcp.signingIn" : "mcp.signIn")}
             </PillButton>
           )}
-          <Switch
-            checked={server.enabled}
-            onCheckedChange={(value) => void onToggle(value)}
-            ariaLabel={t("mcp.enable.aria", { server: server.name })}
-          />
-          <IconButton
-            icon="edit"
-            size="sm"
-            active={editing}
-            title={t("mcp.edit", { server: server.name })}
-            aria-expanded={editing}
-            aria-controls={panelId}
-            onClick={() => setEditing((value) => !value)}
-          />
+          {!server.installationId && (
+            <>
+              <Switch
+                checked={server.enabled}
+                onCheckedChange={(value) => void onToggle(value)}
+                ariaLabel={t("mcp.enable.aria", { server: server.name })}
+              />
+              <IconButton
+                icon="edit"
+                size="sm"
+                active={editing}
+                title={t("mcp.edit", { server: server.name })}
+                aria-expanded={editing}
+                aria-controls={panelId}
+                onClick={() => setEditing((value) => !value)}
+              />
+            </>
+          )}
         </div>
       </div>
 

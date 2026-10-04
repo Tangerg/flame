@@ -1,6 +1,7 @@
 package toolset
 
 import (
+	"context"
 	"errors"
 	"path/filepath"
 	"slices"
@@ -12,6 +13,41 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
+
+func TestAuthorityReadSharesOneSourceObservationAndRefreshesNextRequest(t *testing.T) {
+	server := mcpserver.Server{Name: testMCPServerName("files"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: "https://first.example/mcp"}
+	changed := server.Clone()
+	changed.URL = "https://second.example/mcp"
+	registry := &authorityReadSequence{states: []mcpserver.Server{server, changed}}
+	authorities := NewAuthorities(registry.Get, nil)
+	first := testMCPRef(server.Name, testRemoteToolName("first"))
+	second := testMCPRef(server.Name, testRemoteToolName("second"))
+	refs := []tool.Ref{first, second}
+	observed, err := authorities.Fingerprints(t.Context(), refs)
+	if err != nil || observed[first] != server.AuthorityFingerprint() || observed[second] != observed[first] {
+		t.Fatalf("same-source rule projection disagreed: %v", err)
+	}
+	refreshed, err := authorities.Fingerprints(t.Context(), refs)
+	if err != nil || refreshed[first] != changed.AuthorityFingerprint() || refreshed[second] != refreshed[first] {
+		t.Fatalf("next rule projection retained superseded authority: %v", err)
+	}
+	if _, _, err := authorities.Fingerprint(t.Context(), tool.Ref{}); err == nil {
+		t.Fatal("singular dispatch admitted an unconstructed source")
+	}
+	if _, err := authorities.Fingerprints(t.Context(), []tool.Ref{first, {}}); err == nil {
+		t.Fatal("rule projection admitted an unconstructed source")
+	}
+}
+
+type authorityReadSequence struct{ states []mcpserver.Server }
+
+func (r *authorityReadSequence) Get(context.Context, mcpserver.ServerName) (mcpserver.Server, bool, error) {
+	server := r.states[0].Clone()
+	if len(r.states) > 1 {
+		r.states = r.states[1:]
+	}
+	return server, true, nil
+}
 
 func TestAuthorityFingerprintsTrackEndpointsAndExcludeCredentials(t *testing.T) {
 	server := mcpserver.Server{Transport: mcpserver.TransportStdio, Command: "server", Args: []string{"--stdio"}, Dir: "/workspace"}
@@ -57,11 +93,11 @@ func TestStandingRulesFollowCurrentSourceAuthority(t *testing.T) {
 	}
 	ref := testMCPRef(server.Name, testRemoteToolName("read"))
 	store := sqlite.NewApprovalRuleStore(db)
-	policy, err := approvals.NewRuntimePolicy(approval.ModeSafe, store, sqlite.NewPermissionModeStore(db), NewAuthorities(registry, nil), nil)
+	policy, err := approvals.NewRuntimePolicy(approval.ModeSafe, store, sqlite.NewPermissionModeStore(db), NewAuthorities(registry.Get, nil), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := policy.SetRule(t.Context(), ref, approval.ScopeGlobal, "", "", approval.Subject{Type: approval.SubjectAll}, approval.Allow); err != nil {
+	if err := policy.SetRule(t.Context(), approvals.RuleChange{Tool: ref, Scope: approval.ScopeGlobal, Subject: approval.Subject{Type: approval.SubjectAll}, Decision: approval.Allow}, ""); err != nil {
 		t.Fatal(err)
 	}
 	original := server.AuthorityFingerprint()
@@ -92,7 +128,7 @@ func TestStandingRulesFollowCurrentSourceAuthority(t *testing.T) {
 	if err := policy.Remember(t.Context(), approval.RememberRequest{Subject: approval.Subject{Type: approval.SubjectAll}, Tool: ref, SourceFingerprint: original, Scope: approval.ScopeGlobal, Decision: approval.Allow}); !errors.Is(err, approval.ErrSourceAuthorityChanged) {
 		t.Fatalf("obsolete connection remember error = %v", err)
 	}
-	if err := policy.SetRule(t.Context(), ref, approval.ScopeGlobal, "", "", approval.Subject{Type: approval.SubjectAll}, approval.Allow); err != nil {
+	if err := policy.SetRule(t.Context(), approvals.RuleChange{Tool: ref, Scope: approval.ScopeGlobal, Subject: approval.Subject{Type: approval.SubjectAll}, Decision: approval.Allow}, ""); err != nil {
 		t.Fatal(err)
 	}
 	check(server.AuthorityFingerprint(), true, false)
@@ -125,7 +161,7 @@ func TestA2ARulesBecomeStaleWhenCardAuthorityChanges(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := policy.SetRule(t.Context(), ref, approval.ScopeGlobal, "", "", approval.Subject{Type: approval.SubjectAll}, approval.Allow); err != nil {
+	if err := policy.SetRule(t.Context(), approvals.RuleChange{Tool: ref, Scope: approval.ScopeGlobal, Subject: approval.Subject{Type: approval.SubjectAll}, Decision: approval.Allow}, ""); err != nil {
 		t.Fatal(err)
 	}
 	agent.CardURL = "https://two.example/card"

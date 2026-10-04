@@ -1,0 +1,99 @@
+package pluginpackage
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io/fs"
+	"path/filepath"
+	"slices"
+	"strings"
+
+	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
+	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	domainskills "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
+	sdk "github.com/Tangerg/scope/skills"
+)
+
+type skillInstallations interface {
+	List(context.Context) ([]*plugin.Installation, error)
+	Get(context.Context, string) (*plugin.Installation, error)
+}
+type Skills struct {
+	releases      *Releases
+	installations skillInstallations
+}
+
+func NewSkills(releases *Releases, installations skillInstallations) *Skills {
+	return &Skills{releases: releases, installations: installations}
+}
+func (s *Skills) SkillBundles(ctx context.Context) ([]promptsource.PackageSkillBundle, error) {
+	installations, err := s.installations.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var bundles []promptsource.PackageSkillBundle
+	for _, installation := range installations {
+		record := installation.Snapshot()
+		if !installation.Active() {
+			continue
+		}
+		var names []string
+		for _, skill := range record.Selected.Skills {
+			if installation.SkillEnabled(skill.Name) {
+				names = append(names, skill.Name)
+			}
+		}
+		if len(names) == 0 {
+			continue
+		}
+		root, err := s.releases.Root(record.Selected.Digest)
+		if err != nil {
+			return nil, err
+		}
+		bundles = append(bundles, promptsource.PackageSkillBundle{Root: filepath.Join(root, "skills"), Names: names, Dependency: promptsource.InstallationDependency{InstallationID: record.ID, Digest: record.Selected.Digest}})
+	}
+	return bundles, nil
+}
+
+func (s *Skills) ReadSkillResource(ctx context.Context, dependency promptsource.InstallationDependency, name, resource string) ([]byte, error) {
+	if err := sdk.ValidateName(name); err != nil {
+		return nil, fmt.Errorf("%w: Skill name: %w", plugin.ErrInvalid, err)
+	}
+	if !fs.ValidPath(resource) || strings.ContainsRune(resource, '\\') {
+		return nil, fmt.Errorf("%w: Skill resource identity", plugin.ErrInvalid)
+	}
+	installation, err := s.installations.Get(ctx, dependency.InstallationID)
+	if err != nil {
+		if errors.Is(err, plugin.ErrNotFound) {
+			return nil, errors.Join(workspaceapp.ErrSkillUnavailable, err)
+		}
+		return nil, err
+	}
+	r := installation.Snapshot()
+	if r.Selected.Digest != dependency.Digest {
+		return nil, errors.Join(workspaceapp.ErrSkillUnavailable, plugin.ErrStale)
+	}
+	if !installation.SkillEnabled(name) || !slices.ContainsFunc(r.Selected.Skills, func(skill plugin.Skill) bool { return skill.Name == name }) {
+		return nil, errors.Join(workspaceapp.ErrSkillUnavailable, plugin.ErrUnapproved)
+	}
+	limit := int64(domainskills.MaxSkillResourceBytes)
+	if resource == sdk.SkillFile {
+		limit = domainskills.MaxAuthoredSkillDocumentBytes
+	}
+	content, err := s.releases.readResource(ctx, installation, "skills/"+name+"/"+resource, limit)
+	if context.Cause(ctx) != nil {
+		return nil, context.Cause(ctx)
+	}
+	if errors.Is(err, errResourceLimit) {
+		if resource == sdk.SkillFile {
+			return nil, domainskills.ErrDocumentTooLarge
+		}
+		return nil, domainskills.ErrResourceTooLarge
+	}
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", workspaceapp.ErrSkillUnavailable, err)
+	}
+	return content, nil
+}

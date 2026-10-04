@@ -7,6 +7,7 @@ import (
 	"time"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
 	ownershipadapter "github.com/Tangerg/flame/runtime/internal/adapter/ownership"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/recovery"
@@ -22,6 +23,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/automation/schedules"
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/application/taskgroup"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
@@ -57,7 +59,7 @@ func assemble(ctx context.Context, cfg Config, lifetime *runtimeLifetime, buildT
 	if err != nil {
 		return nil, err
 	}
-	workspaceServices, err := buildWorkspaceComposition(cfg, policy.invalidations.Publish)
+	workspaceServices, err := buildWorkspaceComposition(cfg, policy.invalidations.Publish, pluginpackage.NewSkills(policy.packages, cfg.Stores.Installations))
 	if err != nil {
 		return nil, err
 	}
@@ -279,7 +281,7 @@ func buildAssemblyCore(
 	}
 
 	mcpCoordinator, err := mcpapp.New(mcpapp.Config{
-		Registry:            cfg.Stores.MCPServers,
+		Registry:            policy.registry,
 		StatusReader:        execution.tools.mcp,
 		ToolCatalog:         execution.tools.mcp,
 		ToolDiagnostics:     execution.tools.tools.Resolver,
@@ -292,6 +294,10 @@ func buildAssemblyCore(
 		return nil, fmt.Errorf("runtime: construct MCP coordinator: %w", err)
 	}
 	lifetime.mcpCoordinator = mcpCoordinator
+	pluginCoordinator, err := plugins.New(lifetime.context, cfg.Stores.Installations, policy.packages, mcpCoordinator, execution.executor, policy.invalidations.Publish)
+	if err != nil {
+		return nil, err
+	}
 
 	// Goal mode: the autonomous-execution loop driver over the run coordinator.
 	goalDriver, err := goals.NewDriver(
@@ -415,6 +421,7 @@ func buildAssemblyCore(
 			delivery: delivery.HandlerConfig{
 				Sessions:               sessionCoordinator,
 				MCP:                    mcpCoordinator,
+				Plugins:                pluginCoordinator,
 				Approvals:              approvalCoordinator,
 				Models:                 modelCoordinator,
 				Tools:                  toolCoordinator,

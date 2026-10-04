@@ -130,9 +130,9 @@ const checksEntryPoint = `
  * Paths are rooted at the type's own name, so a report reads
  * ` + "`RunEvent.event.outcome.type`" + `.
  */
-export function validateWire(type: WireTypeName, value: unknown): WireViolation[] {
+export function validateWire(type: WireTypeName, value: unknown, boundary?: "request"): WireViolation[] {
   const out: WireViolation[] = [];
-  CHECKS[type](value, type, out);
+  CHECKS[type](value, type, out, boundary);
   return distinctViolations(out);
 }
 `
@@ -150,7 +150,7 @@ func (c *checkEmitter) methodParams(registry *delivery.Registry) string {
 /** Validate the request parameters carried by one registered method. */
 export function validateMethodParams(method: WireMethodName, value: unknown): WireViolation[] {
   const out: WireViolation[] = [];
-  METHOD_PARAMS[method](value, ` + "`${method}.params`" + `, out);
+  METHOD_PARAMS[method](value, ` + "`${method}.params`" + `, out, "request");
   return distinctViolations(out);
 }
 `)

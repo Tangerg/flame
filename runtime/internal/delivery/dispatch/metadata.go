@@ -3,6 +3,7 @@ package dispatch
 import (
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
+	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -26,7 +27,7 @@ func extractRequestMeta(request *transport.Request) (protocol.RequestMeta, *tran
 	}
 	var metadata protocol.RequestMeta
 	if err := decodeParams(encoded, &metadata); err != nil {
-		return protocol.RequestMeta{}, invalidParams(requestMetaField + ": " + err.Error())
+		return protocol.RequestMeta{}, errorToRPC(fmt.Errorf("%s: %w", requestMetaField, err))
 	}
 	delete(parameters, requestMetaField)
 	if len(parameters) == 0 {

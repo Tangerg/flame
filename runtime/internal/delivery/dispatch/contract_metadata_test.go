@@ -193,6 +193,8 @@ func TestShapeMetadataKeepsSupportedValidatorTargets(t *testing.T) {
 		{Field: "comparableItems", Kind: ConstraintUniqueItems},
 		{Field: "mapItems", Kind: ConstraintUniqueItems},
 		{Field: "requiredMinimum", Kind: ConstraintMinimum, Limit: 1},
+		{Field: "namedMap", Kind: ConstraintPatternPropertyNames, Value: `^color$`},
+		{Field: "namedMap", Kind: ConstraintPatternPropertyValues, Value: `^#[0-9a-f]{6}$`},
 	} {
 		err := (FieldConstraintSpec{
 			GoType:      reflect.TypeFor[constraintProjectionFixture](),
@@ -242,6 +244,8 @@ func TestShapeMetadataRejectsUnassignableValidatorTargets(t *testing.T) {
 				{Kind: ConstraintNonEmptyProperties},
 				{Kind: ConstraintMaxPropertyNameLength, Limit: 16},
 				{Kind: ConstraintIdentityPropertyNames},
+				{Kind: ConstraintPatternPropertyNames, Value: `^color$`},
+				{Kind: ConstraintPatternPropertyValues, Value: `^#[0-9a-f]{6}$`},
 			},
 			want: "builtin string keys",
 		},

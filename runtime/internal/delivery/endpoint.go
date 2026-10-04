@@ -130,6 +130,7 @@ func (e *Endpoint) Invoke(ctx context.Context, name Name, parameters any, option
 		return failed(ProjectError(err))
 	}
 
+	ctx = context.WithValue(ctx, commandKeyContext{}, options.IdempotencyKey)
 	ctx = WithRequestMeta(ctx, options.RequestMeta)
 	ctx = withAfterEventID(ctx, options.AfterEventID)
 	// Capability admission belongs to this request, not to the operation's stored
@@ -322,3 +323,5 @@ func restoreEventType[Event any](events iter.Seq2[any, error]) iter.Seq2[Event, 
 		}
 	}
 }
+
+type commandKeyContext struct{}

@@ -36,7 +36,7 @@ func TestProjectSkillsWithEmptyUserLibrary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	useCases, err := workspaceapp.NewSkills(scope, promptsource.NewSkills(userRoot), store, libraries, observations, nil)
+	useCases, err := workspaceapp.NewSkills(scope, promptsource.NewSkills(userRoot, nil), store, libraries, observations, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +55,7 @@ func TestProjectSkillsWithEmptyUserLibrary(t *testing.T) {
 		t.Fatal(err)
 	}
 	visible, err := useCases.List(t.Context(), projectRoot)
-	if err != nil || len(visible.Skills) != 1 || visible.Skills[0].Name != ref.Name || visible.Skills[0].Scope != domainskills.ScopeProject {
+	if err != nil || len(visible.Skills) != 1 || visible.Skills[0].Name != ref.Name || visible.Skills[0].Source.Scope() != domainskills.ScopeProject {
 		t.Fatalf("List = (%+v, %v), want approved project skill", visible, err)
 	}
 }

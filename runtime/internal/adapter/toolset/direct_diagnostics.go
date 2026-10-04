@@ -154,5 +154,5 @@ func directResult(output chat.ToolOutput) (tool.Result, error) {
 	if result, err := tool.ParseResult([]byte(text)); err == nil {
 		return result, nil
 	}
-	return tool.StringResult(text), nil
+	return tool.NewResult(text)
 }

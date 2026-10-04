@@ -555,7 +555,10 @@ func seedOffloadedToolResult(t *testing.T, rt *stubRuntime, sessionID string) {
 		t.Fatalf("stage tool result: %v", err)
 	}
 	preview := "offloaded preview " + id.String()
-	previewValue := tool.StringResult(preview)
+	previewValue, err := tool.NewResult(preview)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := rt.hist.AppendItem(ctx, testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID: sessionID, RunID: "run_done", ID: "item_offload",
 		Kind: transcript.ToolCall, Status: transcript.ItemCompleted,

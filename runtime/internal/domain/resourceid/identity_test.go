@@ -1,6 +1,7 @@
 package resourceid
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 
@@ -35,5 +36,24 @@ func TestOperationalIdentitiesAreExactBoundedAndDistinct(t *testing.T) {
 	}
 	if err := (SessionID{}).Validate(); err == nil {
 		t.Fatal("zero Session identity is valid")
+	}
+}
+
+func TestInstallationIdentityHasOneNonzeroWireGrammar(t *testing.T) {
+	pattern := regexp.MustCompile(InstallationIDPattern())
+	for _, test := range []struct {
+		text  string
+		valid bool
+	}{
+		{"12345678-1234-1234-1234-123456789abc", true},
+		{"00000000-0000-0000-0000-000000000001", true},
+		{"00000000-0000-0000-0000-000000000000", false},
+		{"12345678-1234-1234-1234-123456789ABC", false},
+		{"12345678123412341234123456789abc", false},
+	} {
+		_, err := ParseInstallation(test.text)
+		if (err == nil) != test.valid || pattern.MatchString(test.text) != test.valid {
+			t.Fatalf("installation grammar disagrees for %q: %v", test.text, err)
+		}
 	}
 }

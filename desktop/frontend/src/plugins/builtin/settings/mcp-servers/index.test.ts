@@ -72,6 +72,7 @@ describe("MCP servers plugin Runtime generation wiring", () => {
 function runtimeServer(overrides: Record<string, unknown> = {}) {
   return {
     name: "cloud",
+    origin: { type: "user" },
     connection: { type: "streamableHttp" as const, url: "https://example.test/mcp" },
     handshakeTimeout: { type: "unbounded" as const },
     status: { type: "disconnected" as const },

@@ -1,11 +1,27 @@
 package tool
 
 import (
+	"errors"
+	"net/url"
 	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
+
+func TestParseRefPreservesIdentityFailureCategoryAndCause(t *testing.T) {
+	for _, text := range []string{"builtIn:%", "mcp:files:%"} {
+		_, err := ParseRef(text)
+		var escapeError url.EscapeError
+		if !errors.Is(err, ErrInvalidRef) || !errors.As(err, &escapeError) {
+			t.Errorf("ParseRef(%q) = %v, want reference category and escape cause", text, err)
+		}
+	}
+	_, err := ParseRef("mcp:Invalid:read")
+	if !errors.Is(err, ErrInvalidRef) || !errors.Is(err, mcpserver.ErrInvalidServerName) {
+		t.Fatalf("invalid server reference = %v, want reference and server categories", err)
+	}
+}
 
 func TestRefPreservesSourceAcrossModelNameCollisions(t *testing.T) {
 	mcp := func(server, remote string) Ref {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
@@ -16,9 +17,13 @@ type mcpServerListStub struct {
 	calls    int
 }
 
-func (m *mcpServerListStub) List(context.Context) ([]mcpserver.Server, error) {
+func (m *mcpServerListStub) Catalog(context.Context) ([]mcpapp.Source, error) {
 	m.calls++
-	return m.servers, m.err
+	out := make([]mcpapp.Source, 0, len(m.servers))
+	for _, server := range m.servers {
+		out = append(out, mcpapp.Source{Server: server, Availability: mcpapp.SourceAvailable})
+	}
+	return out, m.err
 }
 
 func TestBuildMCPEnvironmentUsesOneRegistrySnapshot(t *testing.T) {
@@ -32,7 +37,7 @@ func TestBuildMCPEnvironmentUsesOneRegistrySnapshot(t *testing.T) {
 		t.Fatalf("buildMCPEnvironment: %v", err)
 	}
 	if registry.calls != 1 {
-		t.Fatalf("registry List calls = %d, want 1", registry.calls)
+		t.Fatalf("registry Catalog calls = %d, want 1", registry.calls)
 	}
 	if len(env.servers) != 1 || env.servers[0].Name.String() != "files" {
 		t.Fatalf("servers = %+v, want enabled files server", env.servers)
@@ -55,7 +60,7 @@ func TestBuildMCPEnvironmentReturnsRegistryError(t *testing.T) {
 		t.Fatalf("error = %v, want %v", err, want)
 	}
 	if registry.calls != 1 {
-		t.Fatalf("registry List calls = %d, want 1", registry.calls)
+		t.Fatalf("registry Catalog calls = %d, want 1", registry.calls)
 	}
 }
 

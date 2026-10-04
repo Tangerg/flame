@@ -28,15 +28,18 @@ func toolRefFromWire(ref protocol.ToolRef) (tool.Ref, error) {
 		return tool.Ref{}, fmt.Errorf("delivery: invalid tool source %q", ref.Type)
 	}
 }
-func presentToolRef(ref tool.Ref) protocol.ToolRef {
+func presentToolRef(ref tool.Ref) (protocol.ToolRef, error) {
+	if err := ref.Validate(); err != nil {
+		return protocol.ToolRef{}, fmt.Errorf("delivery: project tool reference: %w", err)
+	}
 	switch ref.Kind() {
 	case tool.BuiltInKind:
-		return protocol.ToolRef{Type: protocol.ToolRefBuiltIn, Name: ref.Name()}
+		return protocol.ToolRef{Type: protocol.ToolRefBuiltIn, Name: ref.Name()}, nil
 	case tool.A2AKind:
-		return protocol.ToolRef{Type: protocol.ToolRefA2A, Endpoint: ref.Name()}
+		return protocol.ToolRef{Type: protocol.ToolRefA2A, Endpoint: ref.Name()}, nil
 	case tool.MCPKind:
-		return protocol.ToolRef{Type: protocol.ToolRefMCP, Name: ref.Remote().String(), Server: ref.Server().String()}
+		return protocol.ToolRef{Type: protocol.ToolRefMCP, Name: ref.Remote().String(), Server: ref.Server().String()}, nil
 	default:
-		panic("delivery: invalid admitted tool reference")
+		return protocol.ToolRef{}, fmt.Errorf("delivery: unsupported tool source %q", ref.Kind())
 	}
 }

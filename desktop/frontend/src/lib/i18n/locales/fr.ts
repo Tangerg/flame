@@ -1365,4 +1365,22 @@ export const fr: Record<string, string> = {
   "file.change.del": "Supprimé dans l'arbre de travail",
   "file.change.renamed": "Renommé depuis {{path}}",
   "file.change.below": "Contient des modifications de l'arbre de travail",
+
+  "packages.loading": "Chargement…",
+
+  "packages.trust":
+    "Approuver une version revient à faire confiance à son code. Les exécutables locaux utilisent vos permissions système. Vérifiez source, empreinte, entrées et permissions.",
+  "packages.source": "Chemin absolu du dossier ou ZIP sur le Runtime",
+  "packages.install": "Installer",
+  "packages.empty": "Aucun paquet Runtime installé",
+  "packages.approve": "Approuver version et permissions",
+  "packages.configure": "Configurer les entrées",
+  "packages.disable": "Désactiver",
+  "packages.enable": "Activer",
+  "packages.stage": "Préparer la mise à jour",
+  "packages.select": "Sélectionner la version préparée",
+  "packages.revoke": "Révoquer la confiance",
+  "packages.uninstall": "Désinstaller",
+  "packages.input": "Entrée JSON ou chemin source du Runtime",
+  "packages.save": "Enregistrer",
 };

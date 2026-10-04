@@ -24,7 +24,7 @@ func TestSkillDetailDistinguishesInvalidMissingAndUnavailableResources(t *testin
 	if err := os.WriteFile(filepath.Join(directory, "SKILL.md"), []byte("---\nname: secret-token\ndescription: [\n---\nbroken"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	h := newWorkspaceHandlerWithConfig(root, workspaceTestConfig{Skills: promptsource.NewSkills(user)})
+	h := newWorkspaceHandlerWithConfig(root, workspaceTestConfig{Skills: promptsource.NewSkills(user, nil)})
 	for _, tt := range []struct {
 		name        string
 		want, cause error

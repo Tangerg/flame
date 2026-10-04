@@ -138,6 +138,14 @@ func runShutdown(
 		if lifetime.stopRuntime != nil {
 			lifetime.stopRuntime()
 		}
+		// An accepted invocation can await component-owned post-commit work.
+		// Broadcast component cancellation before joining delivery to avoid
+		// making that work wait for the shutdown that is waiting for it.
+		for _, component := range components {
+			if component != nil {
+				component.BeginShutdown()
+			}
+		}
 	}
 	if lifetime.delivery != nil {
 		if err := lifetime.delivery.AwaitShutdown(ownerCtx); err != nil {
@@ -151,14 +159,6 @@ func runShutdown(
 			return
 		}
 	}
-	if begin {
-		for _, component := range components {
-			if component != nil {
-				component.BeginShutdown()
-			}
-		}
-	}
-
 	var errs []error
 	for _, component := range components {
 		if component != nil {

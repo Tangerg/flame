@@ -68,7 +68,10 @@ func TestResultPublicationTransactionReceiptsAndSegmentFence(t *testing.T) {
 				},
 			})
 			modelResult := chat.ToolResult{ID: "provider_call", Name: "unavailable", IsError: true, Output: chat.NewTextToolOutput("exact rejection\n" + strings.Repeat("界", 900))}
-			presentation := tool.StringResult("UI summary")
+			presentation, err := tool.NewResult("UI summary")
+			if err != nil {
+				t.Fatal(err)
+			}
 			commit := runs.EventCommit{
 				RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID, CommitID: testCommitID("run_commit_result_first"),
 				ResultPublication: &runs.ResultPublication{ID: "effect_result_first", Digest: "sha256:" + strings.Repeat("a", 64)},
@@ -195,7 +198,10 @@ func TestTerminalConversationPreservesSparseResultsAcrossRestart(t *testing.T) {
 				Content: []chat.ToolContent{{Kind: chat.PartText, Text: "external write acknowledged", Metadata: metadata.Map{"evidence": json.RawMessage(`{"etag":"ack-1","rank":9007199254740993}`)}}, {Kind: chat.PartText, Text: "second exact block"}},
 				Details: json.RawMessage(`{"written":true,"bytes":42}`),
 			}}
-			preview := tool.StringResult("UI preview is intentionally different")
+			preview, err := tool.NewResult("UI preview is intentionally different")
+			if err != nil {
+				t.Fatal(err)
+			}
 			partial := runs.EventCommit{
 				RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID, CommitID: testCommitID("run_commit_sparse"),
 				ResultPublication: &runs.ResultPublication{ID: "publication_sparse", Digest: "sha256:" + strings.Repeat("a", 64)}, ToolResults: []chat.ToolResult{exact},

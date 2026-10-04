@@ -365,7 +365,10 @@ func TestToolInvocationEqualityUsesCanonicalValues(t *testing.T) {
 }
 
 func TestApprovalValidateRequiresAPendingRiskClassifiedTool(t *testing.T) {
-	result := tool.StringResult("already ran")
+	result, err := tool.NewResult("already ran")
+	if err != nil {
+		t.Fatal(err)
+	}
 	tests := []struct {
 		name     string
 		approval transcript.Approval

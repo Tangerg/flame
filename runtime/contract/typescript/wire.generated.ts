@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-02";
+export const PROTOCOL_VERSION = "2026-10-02.1";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 28;
@@ -93,11 +93,17 @@ export const PROBLEM_CODES = {
   "invalid_request": -32600,
   "item_not_found": -32004,
   "mcp_authorization_attempt_not_found": -32032,
+  "mcp_owned_by_installation": -32044,
   "mcp_server_already_exists": -32030,
   "mcp_server_disabled": -32031,
   "mcp_server_not_found": -32029,
   "method_not_found": -32601,
   "path_outside_root": -32013,
+  "plugin_in_use": -32041,
+  "plugin_not_found": -32040,
+  "plugin_stale": -32043,
+  "plugin_unapproved": -32042,
+  "plugin_unavailable": -32045,
   "prompt_source_too_large": -32038,
   "provider_error": -32001,
   "replay_cursor_invalid": -32027,
@@ -229,6 +235,12 @@ export type ApprovalSubject =
 
 export type ApprovalSubjectType = "all" | "exact" | "glob";
 
+export interface ApprovePluginRequest {
+  digest: string;
+  grants: PluginRequestGrant[];
+  installationId: string;
+}
+
 export type ArtifactItem =
   | { type: "userMessage"; content: ContentBlock[]; createdAt: string; id: string; runId: string; status: "completed" }
   | { type: "agentMessage"; content: ContentBlock[]; createdAt: string; id: string; phase: MessagePhase; runId: string; status: "completed" | "incomplete" }
@@ -329,6 +341,14 @@ export interface ClientInfo {
 export interface CommandResult {
   exitCode?: number;
   output: string;
+}
+
+export interface ConfigurePluginRequest {
+  digest: string;
+  disabledServers: string[];
+  disabledSkills: string[];
+  installationId: string;
+  valueChanges: Record<string, PluginValueChange>;
 }
 
 export type ContentBlock =
@@ -634,6 +654,10 @@ export interface ImportSessionResponse {
   session: Session;
 }
 
+export interface InstallPluginRequest {
+  source: string;
+}
+
 export type Interrupt =
   | { type: "approval"; itemId: string; payload: { reason?: string; rememberable?: boolean; risk?: ApprovalRisk; tool: ToolInvocation }; runId: string }
   | { type: "question"; itemId: string; payload: { question: Question }; runId: string };
@@ -828,6 +852,12 @@ export interface MCPListToolsRequest {
   server?: string;
 }
 
+export type MCPOrigin =
+  | { type: "user" }
+  | { type: "installation"; installationId: string; localName: string };
+
+export type MCPOriginType = "user" | "installation";
+
 export type MCPSecretChangeType = "set" | "clear";
 
 export interface MCPServer {
@@ -835,6 +865,7 @@ export interface MCPServer {
   description?: string;
   handshakeTimeout: MCPHandshakeTimeout;
   name: string;
+  origin: MCPOrigin;
   status: MCPServerState;
 }
 
@@ -972,6 +1003,8 @@ export type PageOfModelInvocation = Page<ModelInvocation>;
 
 export type PageOfPendingInterruptSet = Page<PendingInterruptSet>;
 
+export type PageOfPluginInstallation = Page<PluginInstallation>;
+
 export type PageOfProvider = Page<Provider>;
 
 export type PageOfRunRef = Page<RunRef>;
@@ -1025,6 +1058,96 @@ export interface PlanStep {
   status: PlanStatus;
 }
 
+export interface PluginDiagnostic {
+  code: string;
+  component: string;
+}
+
+export interface PluginInput {
+  id: string;
+  key?: string;
+  required: boolean;
+  secret: boolean;
+  server: string;
+  target: string;
+}
+
+export interface PluginInstallation {
+  approvedDigest?: string;
+  availability: PluginDiagnostic[];
+  disabledServers: string[];
+  disabledSkills: string[];
+  enabled: boolean;
+  grants: PluginRequestGrant[];
+  id: string;
+  selected: PluginRelease;
+  source: string;
+  staged?: PluginRelease;
+  values: Record<string, string>;
+}
+
+export interface PluginRelease {
+  description?: string;
+  diagnostics: PluginDiagnostic[];
+  digest: string;
+  inputs: PluginInput[];
+  name: string;
+  requests: PluginRequestGrant[];
+  servers: PluginServerDeclaration[];
+  skills: PluginSkill[];
+  themes: PluginTheme[];
+  version?: string;
+}
+
+export interface PluginReleaseRequest {
+  digest: string;
+  installationId: string;
+}
+
+export interface PluginRemoval {
+  availability: PluginDiagnostic[];
+}
+
+export interface PluginRequest {
+  installationId: string;
+}
+
+export interface PluginRequestGrant {
+  capability: string;
+  targets: string[];
+}
+
+export interface PluginServerDeclaration {
+  args?: string[];
+  command?: string;
+  cwd?: string;
+  env?: Record<string, string>;
+  headers?: Record<string, string>;
+  name: string;
+  type: string;
+  url?: string;
+}
+
+export interface PluginSkill {
+  description: string;
+  name: string;
+}
+
+export interface PluginTheme {
+  colors: Record<string, string>;
+  id: string;
+  scheme: PluginThemeScheme;
+  title: string;
+}
+
+export type PluginThemeScheme = "dark" | "light";
+
+export type PluginValueChange =
+  | { type: "set"; value: string }
+  | { type: "clear" };
+
+export type PluginValueChangeType = "set" | "clear";
+
 export type ProblemData =
   | { type: "agent_stuck"; detail?: string; docUrl?: string }
   | { type: "capability_not_negotiated"; detail?: string; docUrl?: string; requiredCapabilities: CapabilityRequirement[] }
@@ -1047,11 +1170,17 @@ export type ProblemData =
   | { type: "mcp_authorization_failed" }
   | { type: "mcp_authorization_required" }
   | { type: "mcp_dial_failed" }
+  | { type: "mcp_owned_by_installation"; detail?: string; docUrl?: string }
   | { type: "mcp_server_already_exists"; detail?: string; docUrl?: string }
   | { type: "mcp_server_disabled"; detail?: string; docUrl?: string }
   | { type: "mcp_server_not_found"; detail?: string; docUrl?: string }
   | { type: "method_not_found"; detail?: string; docUrl?: string }
   | { type: "path_outside_root"; detail?: string; docUrl?: string }
+  | { type: "plugin_in_use"; detail?: string; docUrl?: string }
+  | { type: "plugin_not_found"; detail?: string; docUrl?: string }
+  | { type: "plugin_stale"; detail?: string; docUrl?: string }
+  | { type: "plugin_unapproved"; detail?: string; docUrl?: string }
+  | { type: "plugin_unavailable"; detail?: string; docUrl?: string }
   | { type: "prompt_source_too_large"; detail?: string; docUrl?: string }
   | { type: "provider_error"; detail?: string; docUrl?: string }
   | { type: "provider_not_configured" }
@@ -1278,6 +1407,7 @@ export interface RunSummary {
 export type RuntimeEvent =
   | { type: "files.changed"; paths: string[]; sequence: number; watchId?: string; workspace?: WorkspaceRef }
   | { type: "skills.changed"; names?: string[]; sequence: number }
+  | { type: "plugins.changed"; sequence: number }
   | { type: "mcp.changed"; sequence: number; serverIds?: string[] }
   | { type: "schedules.changed"; scheduleIds?: string[]; sequence: number }
   | { type: "sessions.changed"; sequence: number; sessionIds?: string[] }
@@ -1295,7 +1425,7 @@ export interface RuntimeEventNotification {
   event: RuntimeEvent;
 }
 
-export type RuntimeEventType = "files.changed" | "skills.changed" | "mcp.changed" | "schedules.changed" | "sessions.changed" | "runs.changed" | "plan.changed" | "goals.changed" | "interrupts.changed" | "hooks.changed" | "models.changed" | "approvals.changed" | "agentMemory.changed" | "resync";
+export type RuntimeEventType = "files.changed" | "skills.changed" | "mcp.changed" | "plugins.changed" | "schedules.changed" | "sessions.changed" | "runs.changed" | "plan.changed" | "goals.changed" | "interrupts.changed" | "hooks.changed" | "models.changed" | "approvals.changed" | "agentMemory.changed" | "resync";
 
 export interface RuntimeInfo {
   endpoints: RuntimeInfoEndpoints;
@@ -1333,7 +1463,7 @@ export interface RuntimeSubscribeRequest {
 export interface RuntimeSubscribeResponse {
 }
 
-export type RuntimeTopic = "files.changed" | "skills.changed" | "mcp.changed" | "schedules.changed" | "sessions.changed" | "runs.changed" | "plan.changed" | "goals.changed" | "interrupts.changed" | "hooks.changed" | "models.changed" | "approvals.changed" | "agentMemory.changed";
+export type RuntimeTopic = "files.changed" | "skills.changed" | "mcp.changed" | "plugins.changed" | "schedules.changed" | "sessions.changed" | "runs.changed" | "plan.changed" | "goals.changed" | "interrupts.changed" | "hooks.changed" | "models.changed" | "approvals.changed" | "agentMemory.changed";
 
 export type SafetyClass = "safe" | "write" | "exec" | "network";
 
@@ -1469,14 +1599,21 @@ export interface SetMCPToolExposureRequest {
   server: string;
 }
 
+export interface SetPluginEnablementRequest {
+  enabled: boolean;
+  installationId: string;
+}
+
 export interface Skill {
   description?: string;
+  installation?: SkillInstallation;
   name: string;
   scope: SkillScope;
 }
 
 export interface SkillDetail {
   description?: string;
+  installation?: SkillInstallation;
   instructions: string;
   name: string;
   path: string;
@@ -1497,6 +1634,11 @@ export interface SkillDiagnostic {
 export interface SkillDiscovery {
   diagnostics: SkillDiagnostic[];
   skills: Skill[];
+}
+
+export interface SkillInstallation {
+  digest: string;
+  installationId: string;
 }
 
 export type SkillLifecycle = "active" | "archived";
@@ -1525,7 +1667,12 @@ export interface SkillProposalRef {
   workspace: WorkspaceRef;
 }
 
-export type SkillScope = "project" | "user";
+export type SkillScope = "project" | "user" | "installation";
+
+export interface StagePluginRequest {
+  installationId: string;
+  source: string;
+}
 
 export interface StartGoalRequest {
   model?: string;
@@ -1823,6 +1970,7 @@ export const WIRE_ENUMS = {
   LivenessState: ["ok"],
   MCPAuthorizationAttemptStatusType: ["pending", "succeeded", "failed", "canceled"],
   MCPHandshakeTimeoutType: ["unbounded", "bounded"],
+  MCPOriginType: ["user", "installation"],
   MCPSecretChangeType: ["set", "clear"],
   MCPServerStateType: ["disabled", "disconnected", "connecting", "connected", "failed", "needsAuth"],
   MCPTransport: ["stdio", "streamableHttp"],
@@ -1830,6 +1978,8 @@ export const WIRE_ENUMS = {
   Modality: ["text", "image", "audio", "video", "pdf"],
   ModelInvocationState: ["started", "completed", "failed", "unknown"],
   PlanStatus: ["pending", "in_progress", "completed"],
+  PluginThemeScheme: ["dark", "light"],
+  PluginValueChangeType: ["set", "clear"],
   ProviderConfigChangeType: ["set", "clear"],
   ProviderCredentialRequirement: ["apiKeyRequired", "apiKeyOptional"],
   ProviderKeySource: ["stored", "env"],
@@ -1840,15 +1990,15 @@ export const WIRE_ENUMS = {
   RunProtocolFeature: ["subagents"],
   RunReplayScope: ["runtimeInstanceRootSegment"],
   RunStatus: ["running", "waiting", "finished"],
-  RuntimeEventType: ["files.changed", "skills.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed", "resync"],
-  RuntimeTopic: ["files.changed", "skills.changed", "mcp.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed"],
+  RuntimeEventType: ["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed", "resync"],
+  RuntimeTopic: ["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed"],
   SafetyClass: ["safe", "write", "exec", "network"],
   ScheduleWorkspaceMode: ["default"],
   SegmentOutcomeType: ["interrupt", "suspended", "completed", "timedOut", "failed", "canceled", "lost"],
   SessionStatus: ["running", "waiting", "idle"],
   SkillLifecycle: ["active", "archived"],
   SkillProposalOrigin: ["requested", "mined"],
-  SkillScope: ["project", "user"],
+  SkillScope: ["project", "user", "installation"],
   StreamEventType: ["segment.started", "segment.progress", "segment.finished", "item.started", "item.delta", "item.completed", "plan.updated"],
   SuppressibleRunEventType: ["segment.progress", "item.delta"],
   ToolAttemptState: ["started", "completed", "incomplete"],

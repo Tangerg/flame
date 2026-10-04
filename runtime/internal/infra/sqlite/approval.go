@@ -105,13 +105,13 @@ const approvalRulesSchema = `CREATE TABLE IF NOT EXISTS approval_rules (
  scope_key TEXT NOT NULL DEFAULT '',
  tool_ref TEXT NOT NULL,
  source_fingerprint TEXT NOT NULL,
- mcp_server TEXT REFERENCES mcp_servers(name) ON DELETE CASCADE,
+ mcp_server TEXT REFERENCES mcp_sources(name) ON DELETE CASCADE,
  subject_type TEXT NOT NULL CHECK (subject_type IN ('all','exact','glob')),
  subject TEXT NOT NULL,
  decision TEXT NOT NULL CHECK (decision IN ('allow','deny')),
  CHECK ((subject_type = 'all' AND subject = '') OR (subject_type <> 'all' AND subject <> '')),
  CHECK ((mcp_server IS NULL AND tool_ref NOT LIKE 'mcp:%') OR
-        (mcp_server IS NOT NULL AND substr(tool_ref,1,length(mcp_server)+5) = 'mcp:' || mcp_server || ':'))
+        (mcp_server IS NOT NULL AND substr(tool_ref,1,length(replace(mcp_server,'/','%2F'))+5) = 'mcp:' || replace(mcp_server,'/','%2F') || ':'))
 )`
 const putApprovalRuleSQL = `INSERT INTO approval_rules
  (id,scope,scope_key,tool_ref,source_fingerprint,mcp_server,subject_type,subject,decision)

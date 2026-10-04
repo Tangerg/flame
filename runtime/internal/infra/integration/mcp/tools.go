@@ -15,7 +15,7 @@ const rejectedRemoteToolPlaceholder = "invalid_remote_tool"
 
 // sourceTools lists one MCP source's model-facing tools. Isolated per source so
 // a single server's tools/list failure stays its own.
-func sourceTools(ctx context.Context, descriptor ServerConfig, session *sdkmcp.ClientSession) ([]toolcontract.Tool, error) {
+func sourceTools(ctx context.Context, descriptor ServerConfig, session *sdkmcp.ClientSession) ([]Executable, error) {
 	server := descriptor.Name
 	source := scopemcp.ToolSource{Name: server.String(), Session: session}
 	var remoteNameErr error
@@ -45,10 +45,13 @@ func sourceTools(ctx context.Context, descriptor ServerConfig, session *sdkmcp.C
 	if err := validateSourceToolMaterial(server, tools); err != nil {
 		return nil, err
 	}
+	config := descriptor.Clone()
+	config.OAuthHandler = nil
+	result := make([]Executable, len(tools))
 	for index, executable := range tools {
-		tools[index] = sourceTool{Tool: executable, fingerprint: descriptor.SourceFingerprint}
+		result[index] = Executable{Tool: executable, config: config}
 	}
-	return tools, nil
+	return result, nil
 }
 
 func validateSourceToolMaterial(server mcpserver.ServerName, tools []toolcontract.Tool) error {
@@ -78,11 +81,13 @@ func validateSourceToolMaterial(server mcpserver.ServerName, tools []toolcontrac
 	return nil
 }
 
-// sourceTool retains the authority of the connection that owns this executable.
-type sourceTool struct {
+// Executable retains the configuration realized by this executable. It cannot
+// advance registry configuration or the connection's live OAuth credentials.
+type Executable struct {
 	toolcontract.Tool
-	fingerprint string
+	config ServerConfig
 }
 
-func (t sourceTool) Unwrap() toolcontract.Tool { return t.Tool }
-func (t sourceTool) SourceFingerprint() string { return t.fingerprint }
+func (t Executable) Unwrap() toolcontract.Tool  { return t.Tool }
+func (t Executable) SourceFingerprint() string  { return t.config.SourceFingerprint }
+func (t Executable) SourceConfig() ServerConfig { return t.config.Clone() }

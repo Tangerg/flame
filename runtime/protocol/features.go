@@ -22,6 +22,7 @@ const (
 	FeatureAgentMemory   = "agentMemory"
 	FeatureSkills        = "skills"
 	FeatureMCP           = "mcp"
+	FeaturePlugins       = "plugins"
 	FeatureSchedules     = "schedules"
 	FeatureGit           = "git"
 	FeatureCheckpoints   = "checkpoints"
@@ -71,6 +72,7 @@ var features = mustFeatures([]Feature{
 	{Key: FeatureAgentMemory},
 	{Key: FeatureSkills},
 	{Key: FeatureMCP},
+	{Key: FeaturePlugins},
 	{Key: FeatureSchedules},
 	{Key: FeatureGit},
 	{Key: FeatureCheckpoints},

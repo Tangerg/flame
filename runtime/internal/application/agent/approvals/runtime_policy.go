@@ -214,10 +214,16 @@ func (r *RuntimePolicy) Remember(ctx context.Context, req approval.RememberReque
 
 type SourceAuthorities interface {
 	Fingerprint(context.Context, tool.Ref) (string, bool, error)
+	Fingerprints(context.Context, []tool.Ref) (map[tool.Ref]string, error)
 }
 type RuleView struct {
-	approval.Rule
-	Stale bool
+	ID         string
+	Scope      approval.Scope
+	ProjectDir string
+	Tool       tool.Ref
+	Subject    approval.Subject
+	Decision   approval.Decision
+	Stale      bool
 }
 
 func (r *RuntimePolicy) Rules(ctx context.Context, sessionID, projectDir string) ([]RuleView, error) {
@@ -225,26 +231,38 @@ func (r *RuntimePolicy) Rules(ctx context.Context, sessionID, projectDir string)
 	if err != nil {
 		return nil, err
 	}
+	refs := make([]tool.Ref, 0, len(rules))
+	for _, rule := range rules {
+		refs = append(refs, rule.Tool)
+	}
+	current, err := r.authorities.Fingerprints(ctx, refs)
+	if err != nil {
+		return nil, err
+	}
 	view := make([]RuleView, 0, len(rules))
 	for _, rule := range rules {
-		current, found, err := r.authorities.Fingerprint(ctx, rule.Tool)
-		if err != nil {
-			return nil, err
+		fingerprint, found := current[rule.Tool]
+		entry := RuleView{
+			ID: rule.ID, Scope: rule.Scope, Tool: rule.Tool, Subject: rule.Subject, Decision: rule.Decision,
+			Stale: !found || fingerprint != rule.SourceFingerprint,
 		}
-		view = append(view, RuleView{Rule: rule, Stale: !found || current != rule.SourceFingerprint})
+		if rule.Scope == approval.ScopeProject {
+			entry.ProjectDir = rule.ScopeKey
+		}
+		view = append(view, entry)
 	}
-	return view, err
+	return view, nil
 }
 
-func (r *RuntimePolicy) SetRule(ctx context.Context, ref tool.Ref, scope approval.Scope, sessionID, projectDir string, subject approval.Subject, decision approval.Decision) error {
-	fingerprint, found, err := r.authorities.Fingerprint(ctx, ref)
+func (r *RuntimePolicy) SetRule(ctx context.Context, change RuleChange, projectDir string) error {
+	fingerprint, found, err := r.authorities.Fingerprint(ctx, change.Tool)
 	if err != nil {
 		return err
 	}
 	if !found {
 		return fmt.Errorf("%w: tool source is missing", approval.ErrInvalidRule)
 	}
-	err = r.Remember(ctx, approval.RememberRequest{Scope: scope, SessionID: sessionID, ProjectDir: projectDir, Tool: ref, SourceFingerprint: fingerprint, Subject: subject, Decision: decision})
+	err = r.Remember(ctx, approval.RememberRequest{Scope: change.Scope, SessionID: change.SessionID, ProjectDir: projectDir, Tool: change.Tool, SourceFingerprint: fingerprint, Subject: change.Subject, Decision: change.Decision})
 	if errors.Is(err, approval.ErrSourceAuthorityChanged) {
 		return fmt.Errorf("%w: %w", approval.ErrInvalidRule, err)
 	}

@@ -227,3 +227,12 @@ var (
 	ErrIdempotencyInProgress    = errors.New("idempotency_in_progress")
 	ErrIdempotencyStoreMismatch = errors.New("idempotency_store_mismatch")
 )
+
+var (
+	ErrPluginUnavailable      = errors.New("plugin_unavailable")
+	ErrPluginNotFound         = errors.New("plugin_not_found")
+	ErrPluginInUse            = errors.New("plugin_in_use")
+	ErrPluginUnapproved       = errors.New("plugin_unapproved")
+	ErrPluginStale            = errors.New("plugin_stale")
+	ErrMCPOwnedByInstallation = errors.New("mcp_owned_by_installation")
+)

@@ -4,10 +4,8 @@ import (
 	"cmp"
 	"context"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/optional"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
@@ -15,48 +13,63 @@ import (
 // status snapshot. The registry determines membership; the live pool is only a
 // projection and therefore cannot make a configured or disabled server vanish.
 func (c *Coordinator) Servers(ctx context.Context) ([]Server, error) {
-	servers, err := c.registry.List(ctx)
+	sources, err := c.registry.Catalog(ctx)
 	if err != nil {
 		return nil, err
 	}
-	slices.SortFunc(servers, func(first, second mcpserver.Server) int {
-		return cmp.Compare(first.Name.String(), second.Name.String())
+	slices.SortFunc(sources, func(first, second Source) int {
+		return cmp.Compare(first.Server.Name.String(), second.Server.Name.String())
 	})
 	statuses := c.statusesByName()
-	out := make([]Server, 0, len(servers))
-	for _, server := range servers {
+	out := make([]Server, 0, len(sources))
+	for _, source := range sources {
+		server := source.Server
 		status, ok := statuses[server.Name]
+		var live *ServerStatus
 		if ok {
-			out = append(out, serverView(server, &status))
-		} else {
-			out = append(out, serverView(server, nil))
+			live = &status
 		}
+		view, err := serverView(server, live)
+		if err != nil {
+			return nil, err
+		}
+		switch source.Availability {
+		case SourceAvailable:
+		case SourceUnavailableRelease, SourceUnavailableBackend:
+			if server.Enabled {
+				view.State = ServerState{Type: ServerFailed}
+			}
+		default:
+			return nil, fmt.Errorf("mcp: unknown source availability %q", source.Availability)
+		}
+		out = append(out, view)
 	}
 	return out, nil
 }
 
 func (c *Coordinator) statusesByName() map[mcpserver.ServerName]ServerStatus {
 	statuses := c.liveStatusesByName()
-	c.statusMu.Lock()
-	defer c.statusMu.Unlock()
-	for name, status := range c.statusOverrides {
-		if !status.Known {
-			if _, staleLiveEntry := statuses[name]; !staleLiveEntry {
-				// The live port has caught up with disable/delete. Absence already
-				// projects as unknown, so the tombstone has finished its handoff.
-				delete(c.statusOverrides, name)
-				continue
-			}
+	c.connectionMu.Lock()
+	defer c.connectionMu.Unlock()
+	for name := range c.statusTombstones {
+		if _, staleLiveEntry := statuses[name]; !staleLiveEntry {
+			// Absence completes the disable/delete handoff to the live port.
+			delete(c.statusTombstones, name)
+			continue
 		}
-		statuses[name] = cloneServerStatus(status)
+		statuses[name] = ServerStatus{Name: name}
+	}
+	for name, dial := range c.dials {
+		if dial.connecting {
+			statuses[name] = ServerStatus{Name: name, Known: true, State: mcpserver.ConnectionConnecting}
+		}
 	}
 	return statuses
 }
 
-// liveStatusesByName reads the status-port projection without the application's
-// transition overlay. Connection settlement must use this source: reading the
-// public model there would merely observe the synthetic connecting state that
-// the same operation published before dialing.
+// liveStatusesByName reads the status-port projection without the
+// application's pending dials. Settlement reads this source instead of the
+// connecting phase of the same operation.
 func (c *Coordinator) liveStatusesByName() map[mcpserver.ServerName]ServerStatus {
 	statuses := make(map[mcpserver.ServerName]ServerStatus)
 	for _, status := range c.statusReader.Statuses() {
@@ -87,27 +100,23 @@ func (c *Coordinator) ServerStatus(_ context.Context, name mcpserver.ServerName)
 	return ServerStatus{Name: name}, nil
 }
 
-// acceptStatus makes a transition readable before publishing its invalidation.
-// The live status port remains the cold-start source; this overlay owns only
-// transitions admitted by this Coordinator, including the synthetic connecting
-// state that precedes the connection call.
-func (c *Coordinator) acceptStatus(status ServerStatus) {
-	c.statusMu.Lock()
-	if status.Known && status.State != mcpserver.ConnectionConnecting {
-		// Terminal connection states already come from the live status port. Drop
-		// the temporary connecting overlay instead of copying that terminal fact
-		// into a second long-lived source that could hide later passive changes.
-		delete(c.statusOverrides, status.Name)
-	} else {
-		// Unknown is a tombstone that masks a stale live snapshot after
-		// disable/delete; connecting is the application-owned pre-dial transition.
-		c.statusOverrides[status.Name] = cloneServerStatus(status)
+// prepareStatus advances the identified operation while mutationMu is held.
+// Notifications carry only source identity: a delayed consumer cannot advance
+// connection facts after their operation has retired.
+func (c *Coordinator) prepareStatus(status ServerStatus, operation *activeDial) *statusEvent {
+	c.connectionMu.Lock()
+	if operation != nil {
+		if c.dials[status.Name] != operation {
+			c.connectionMu.Unlock()
+			return nil
+		}
+		operation.connecting = status.Known && status.State == mcpserver.ConnectionConnecting
 	}
-	c.statusMu.Unlock()
-	c.invalidations.Notify(invalidation.ForMCP(status.Name.String()))
-}
-
-func cloneServerStatus(status ServerStatus) ServerStatus {
-	status.ToolCount = optional.Clone(status.ToolCount)
-	return status
+	if status.Known {
+		delete(c.statusTombstones, status.Name)
+	} else {
+		c.statusTombstones[status.Name] = struct{}{}
+	}
+	c.connectionMu.Unlock()
+	return c.statusQueue.prepare(status.Name)
 }

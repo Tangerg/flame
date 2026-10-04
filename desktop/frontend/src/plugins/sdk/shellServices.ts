@@ -1,15 +1,12 @@
 import { definePlugin } from "dougong";
-import { addLocaleBundle } from "@/lib/i18n";
 import { getConfig, hasConfig, setConfig, useConfigStore } from "./config";
 import { executeCommand } from "./selectors/commands";
 import {
   COMMANDS,
   CONFIG,
-  I18N,
   WINDOW,
   type CommandsService,
   type ConfigService,
-  type I18nService,
   type WindowService,
 } from "./services";
 import { useWindowStore } from "./windowStore";
@@ -19,10 +16,6 @@ const config: ConfigService = {
   set: (key, value) => setConfig(key, value),
   has: (key) => hasConfig(key),
   onChange: (key, fn) => useConfigStore.getState().subscribe(key, fn),
-};
-
-const i18n: I18nService = {
-  addBundle: (locale, dict) => addLocaleBundle(locale, dict),
 };
 
 const window: WindowService = {
@@ -39,9 +32,8 @@ export const shellServices = definePlugin({
   name: "flame.kernel.shell",
   provides: {
     config: CONFIG,
-    i18n: I18N,
     window: WINDOW,
     commands: COMMANDS,
   },
-  setup: () => ({ config, i18n, window, commands }),
+  setup: () => ({ config, window, commands }),
 });

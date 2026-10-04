@@ -69,6 +69,11 @@ func (s *invalidRequestService) ListItems(context.Context, protocol.ListItemsReq
 	return &protocol.ListItemsResponse{}, nil
 }
 
+func (s *invalidRequestService) ConfigurePlugin(context.Context, protocol.ConfigurePluginRequest) (*protocol.PluginInstallation, error) {
+	s.calls++
+	return &protocol.PluginInstallation{}, nil
+}
+
 func mustNewEndpoint(t *testing.T, target any, config EndpointConfig) *Endpoint {
 	t.Helper()
 	if config.Lifetime == nil {
@@ -246,6 +251,24 @@ func TestEndpointRejectsInvalidRequestsBeforeHandlerAdmission(t *testing.T) {
 		{name: "archive skill name", method: SkillsLibraryArchive, parameters: protocol.SkillNameRequest{}},
 		{name: "restore skill name", method: SkillsLibraryRestore, parameters: protocol.SkillNameRequest{}},
 		{name: "delete session id", method: SessionsDelete, parameters: protocol.DeleteSessionRequest{}},
+		{
+			name:   "plugin input set without value",
+			method: PluginsConfigure,
+			parameters: protocol.ConfigurePluginRequest{
+				InstallationID: "00000000-0000-4000-8000-000000000001",
+				Digest:         strings.Repeat("1", 64),
+				ValueChanges:   map[string]protocol.PluginValueChange{"credential": {Type: protocol.PluginValueSet}},
+			},
+		},
+		{
+			name:   "plugin input clear carrying value",
+			method: PluginsConfigure,
+			parameters: protocol.ConfigurePluginRequest{
+				InstallationID: "00000000-0000-4000-8000-000000000001",
+				Digest:         strings.Repeat("1", 64),
+				ValueChanges:   map[string]protocol.PluginValueChange{"credential": {Type: protocol.PluginValueClear, Value: new("replacement")}},
+			},
+		},
 		{
 			name:   "item session scope id",
 			method: ItemsList,

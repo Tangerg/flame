@@ -5,6 +5,7 @@ package mcpconnection
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -15,11 +16,11 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
-// Pool owns the live MCP connections and implements the application ports that
-// operate on it. The domain is intentionally passed through as Server values;
-// conversion into process, environment, and transport details happens here.
+// Pool owns connection lifetime. Every new connection obtains its configuration
+// from the source owner; retained configurations describe only existing sessions.
 type Pool struct {
-	inner *mcp.Connections
+	registry sourceRegistry
+	inner    *mcp.Connections
 }
 
 var (
@@ -36,17 +37,22 @@ func Open(
 	ctx context.Context,
 	lifetime context.Context,
 	servers []mcpserver.Server,
-	oauthSessions mcp.OAuthSessionStore,
+	oauthSessions mcp.OAuthSessionStore, registry sourceRegistry,
 ) (*Pool, []toolcontract.Tool, error) {
+	if registry == nil {
+		return nil, nil, errors.New("mcp connection: source registry is required")
+	}
 	configs, err := configsFromServers(servers)
 	if err != nil {
 		return nil, nil, err
 	}
-	inner, toolset, err := mcp.Dial(ctx, lifetime, configs, oauthSessions)
+	pool := &Pool{registry: registry}
+	inner, toolset, err := mcp.Dial(ctx, lifetime, configs, oauthSessions, pool.connectionConfig)
 	if err != nil {
 		return nil, nil, err
 	}
-	return &Pool{inner: inner}, toolset, nil
+	pool.inner = inner
+	return pool, pool.authorizedTools(toolset), nil
 }
 
 func (p *Pool) Statuses() []mcpserver.ConnectionStatus {
@@ -59,11 +65,19 @@ func (p *Pool) Tools(server *mcpserver.ServerName) ([]mcpserver.AdvertisedTool, 
 }
 
 func (p *Pool) Reconnect(ctx context.Context, name mcpserver.ServerName) error {
-	return p.inner.Reconnect(ctx, name)
+	config, err := p.connectionConfig(ctx, name)
+	if err != nil {
+		return err
+	}
+	return p.inner.Configure(ctx, config)
 }
 
 func (p *Pool) Authorize(ctx context.Context, name mcpserver.ServerName) error {
-	return p.inner.Authorize(ctx, name)
+	config, err := p.connectionConfig(ctx, name)
+	if err != nil {
+		return err
+	}
+	return p.inner.Authorize(ctx, config)
 }
 
 func (p *Pool) Probe(ctx context.Context, server mcpserver.Server) error {
@@ -74,12 +88,20 @@ func (p *Pool) Probe(ctx context.Context, server mcpserver.Server) error {
 	return p.inner.Probe(ctx, cfg)
 }
 
-func (p *Pool) Configure(ctx context.Context, server mcpserver.Server) error {
-	cfg, err := configFromServer(server)
+func (p *Pool) Configure(ctx context.Context, name mcpserver.ServerName) error {
+	cfg, err := p.connectionConfig(ctx, name)
 	if err != nil {
 		return err
 	}
 	return p.inner.Configure(ctx, cfg)
+}
+
+func (p *Pool) connectionConfig(ctx context.Context, name mcpserver.ServerName) (mcp.ServerConfig, error) {
+	server, err := p.registry.Connection(ctx, name)
+	if err != nil {
+		return mcp.ServerConfig{}, err
+	}
+	return configFromServer(server)
 }
 
 func (p *Pool) Detach(name mcpserver.ServerName) error {
@@ -89,7 +111,7 @@ func (p *Pool) Detach(name mcpserver.ServerName) error {
 // SetToolSink wires live connection changes to the resolver's atomically
 // replaceable MCP tool catalog.
 func (p *Pool) SetToolSink(sink func([]toolcontract.Tool)) {
-	p.inner.SetToolSink(sink)
+	p.inner.SetToolSink(func(catalog []mcp.Executable) { sink(p.authorizedTools(catalog)) })
 }
 
 // Shutdown releases every live connection under the caller's shutdown budget.
@@ -122,6 +144,7 @@ func configFromServer(server mcpserver.Server) (mcp.ServerConfig, error) {
 	}
 	cfg := mcp.ServerConfig{
 		SourceFingerprint: server.AuthorityFingerprint(),
+		ReleaseAuthority:  server.ReleaseAuthority,
 		Name:              server.Name,
 		Transport:         transport,
 	}

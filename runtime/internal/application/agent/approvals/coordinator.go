@@ -24,7 +24,7 @@ type Policy interface {
 	SetDefaultMode(ctx context.Context, mode approval.Mode) error
 	Rules(ctx context.Context, sessionID, projectDir string) ([]RuleView, error)
 	Forget(ctx context.Context, id string) error
-	SetRule(context.Context, tool.Ref, approval.Scope, string, string, approval.Subject, approval.Decision) error
+	SetRule(context.Context, RuleChange, string) error
 }
 
 // Coordinator drives the tool-permission stance + approval-rule use cases.
@@ -70,14 +70,22 @@ func (c *Coordinator) ForgetRule(ctx context.Context, id string) error {
 	return c.policy.Forget(ctx, id)
 }
 
-func (c *Coordinator) SetRule(ctx context.Context, ref tool.Ref, scope approval.Scope, sessionID string, subject approval.Subject, decision approval.Decision) error {
+type RuleChange struct {
+	Tool      tool.Ref
+	Scope     approval.Scope
+	SessionID string
+	Subject   approval.Subject
+	Decision  approval.Decision
+}
+
+func (c *Coordinator) SetRule(ctx context.Context, change RuleChange) error {
 	cwd := ""
-	if scope != approval.ScopeGlobal {
-		sess, err := c.sessions.Get(ctx, sessionID)
+	if change.Scope != approval.ScopeGlobal {
+		sess, err := c.sessions.Get(ctx, change.SessionID)
 		if err != nil {
 			return err
 		}
 		cwd = sess.Workspace().Path()
 	}
-	return c.policy.SetRule(ctx, ref, scope, sessionID, cwd, subject, decision)
+	return c.policy.SetRule(ctx, change, cwd)
 }

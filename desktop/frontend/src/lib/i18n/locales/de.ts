@@ -1337,4 +1337,22 @@ export const de: Record<string, string> = {
   "file.change.del": "Im Arbeitsbaum gelöscht",
   "file.change.renamed": "Umbenannt von {{path}}",
   "file.change.below": "Enthält Änderungen im Arbeitsbaum",
+
+  "packages.loading": "Laden…",
+
+  "packages.trust":
+    "Mit der Freigabe vertrauen Sie dem Code. Lokale Programme laufen mit Ihren Betriebssystemrechten. Prüfen Sie Quelle, Prüfsumme, Eingaben und Berechtigungen.",
+  "packages.source": "Absoluter Paketordner oder ZIP-Pfad auf dem Runtime",
+  "packages.install": "Installieren",
+  "packages.empty": "Keine Runtime-Pakete installiert",
+  "packages.approve": "Version und Rechte freigeben",
+  "packages.configure": "Eingaben konfigurieren",
+  "packages.disable": "Deaktivieren",
+  "packages.enable": "Aktivieren",
+  "packages.stage": "Update vorbereiten",
+  "packages.select": "Vorbereitete Version wählen",
+  "packages.revoke": "Vertrauen widerrufen",
+  "packages.uninstall": "Deinstallieren",
+  "packages.input": "JSON-Eingabe oder Runtime-Quellpfad",
+  "packages.save": "Speichern",
 };

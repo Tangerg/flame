@@ -309,37 +309,22 @@ func (o *observedInteractionTool) prepare(
 	if resumed {
 		return o.resumePreparedTool(ctx, callID, name, continued)
 	}
-	forceApproval := false
-	if o.hooks != nil {
-		decision, beforeToolUseErr := o.hooks.BeforeToolUse(ctx, InteractionToolHookInput{
-			SessionID: o.start.SessionID, CWD: o.start.CWD, WorkspaceCWD: o.start.WorkspaceCWD,
-			ToolName: name, Arguments: arguments,
-		})
-		if beforeToolUseErr != nil {
-			return tool.Arguments{}, false, "", interaction.HostFailure(fmt.Errorf("execution: run pre-Tool hook: %w", beforeToolUseErr))
-		}
-		if rewritten, ok := decision.EffectiveArguments(); ok {
-			arguments = rewritten
-		}
-		if reason, denied := decision.Denied(); denied {
-			return arguments, true, reason, nil
-		}
-		forceApproval = decision.RequiresApproval()
-	}
-	if !o.interpreter.UsesStandardPolicy(o.ref) {
-		if forceApproval {
-			return arguments, true, "a lifecycle hook requires approval, but approval is unavailable", nil
-		}
-		return arguments, false, "", nil
-	}
-	request, err := o.authorizationRequest(callID, name, arguments, forceApproval)
+	request, decision, err := (toolAdmission{
+		binding: o.binding, executable: o.inner, ref: o.ref, fingerprint: o.sourceFingerprint,
+		interpreter: o.interpreter, authorizer: o.authorizer, hooks: o.hooks,
+		input: InteractionToolHookInput{SessionID: o.start.SessionID, CWD: o.start.CWD, WorkspaceCWD: o.start.WorkspaceCWD, ToolName: name, Arguments: arguments},
+	}).prepare(ctx, callID)
 	if err != nil {
-		return arguments, false, "", err
+		if errors.Is(err, tool.ErrInvalidArguments) {
+			failure, failureErr := toolcontract.NewFailure(toolcontract.FailureConfig{Kind: toolcontract.FailureKindFailed, Cause: err, Output: corechat.NewTextToolOutput("invalid effective arguments: " + executorDiagnostic(err))})
+			if failureErr != nil {
+				return tool.Arguments{}, false, "", interaction.HostFailure(failureErr)
+			}
+			return request.Arguments, false, "", failure
+		}
+		return tool.Arguments{}, false, "", interaction.HostFailure(err)
 	}
-	decision, err := o.authorizer.AuthorizeTool(ctx, request)
-	if err != nil {
-		return tool.Arguments{}, false, "", interaction.HostFailure(fmt.Errorf("execution: authorize Tool %q: %w", name, err))
-	}
+	arguments = request.Arguments
 	if rewritten, ok := decision.EffectiveArguments(); ok {
 		arguments = rewritten
 	}
@@ -538,7 +523,8 @@ func runtimeToolResult(output corechat.ToolOutput) (tool.Result, bool, error) {
 		if parsed, err := tool.ParseResult([]byte(text)); err == nil {
 			return parsed, true, nil
 		}
-		return tool.StringResult(text), true, nil
+		result, err := tool.NewResult(text)
+		return result, true, err
 	}
 	encoded, err := json.Marshal(output)
 	if err != nil {

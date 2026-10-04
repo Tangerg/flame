@@ -117,6 +117,12 @@ func validateWireValue(value reflect.Value, path string, visiting map[wirePointe
 				visiting,
 			)...)
 		}
+	case reflect.Map:
+		keys := value.MapKeys()
+		slices.SortFunc(keys, func(left, right reflect.Value) int { return strings.Compare(left.String(), right.String()) })
+		for _, key := range keys {
+			fields = append(fields, validateWireValue(value.MapIndex(key), contractshape.MapPath(path, key.String()), visiting)...)
+		}
 	}
 	return fields
 }
@@ -432,7 +438,7 @@ func optionalTextPatternItems[Identity ~string](field string, values *[]Identity
 
 func maxPropertyNameLength[Value any](field string, values map[string]Value, maximum int) FieldError {
 	for _, key := range slices.Sorted(maps.Keys(values)) {
-		if violation := maxLength(fmt.Sprintf("%s[%q]", field, key), key, maximum); violation.Field != "" {
+		if violation := maxLength(contractshape.MapPath(field, key), key, maximum); violation.Field != "" {
 			return violation
 		}
 	}
@@ -441,7 +447,25 @@ func maxPropertyNameLength[Value any](field string, values map[string]Value, max
 
 func identityPropertyNames[Value any](field string, values map[string]Value) FieldError {
 	for _, key := range slices.Sorted(maps.Keys(values)) {
-		if violation := identity(fmt.Sprintf("%s[%q]", field, key), key); violation.Field != "" {
+		if violation := identity(contractshape.MapPath(field, key), key); violation.Field != "" {
+			return violation
+		}
+	}
+	return FieldError{}
+}
+
+func patternPropertyNames[Value any](field string, values map[string]Value, pattern string) FieldError {
+	for _, key := range slices.Sorted(maps.Keys(values)) {
+		if violation := requiredTextPattern(contractshape.MapPath(field, key), key, pattern); violation.Field != "" {
+			return violation
+		}
+	}
+	return FieldError{}
+}
+
+func patternPropertyValues[Value ~string](field string, values map[string]Value, pattern string) FieldError {
+	for _, key := range slices.Sorted(maps.Keys(values)) {
+		if violation := requiredTextPattern(contractshape.MapPath(field, key), string(values[key]), pattern); violation.Field != "" {
 			return violation
 		}
 	}

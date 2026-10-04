@@ -52,8 +52,14 @@ func run(dir, validatorDir, tsDir string) error {
 	// Built once: every artifact must describe the same registry snapshot, and a
 	// second build would let them disagree if anything about it were not pure.
 	registry, shapes := delivery.Contract(), dispatch.WireShapes()
-	walked := walkWireTypes(registry, shapes)
-	built := build(walked)
+	walked, err := walkWireTypes(registry, shapes)
+	if err != nil {
+		return err
+	}
+	built, err := build(walked)
+	if err != nil {
+		return err
+	}
 	// Generated validators are exported protocol methods, so they must exist on
 	// disk before public-Go-API discovery loads that package. Loading first made a
 	// shape gain require two generator runs: the first wrote ValidateWire, while

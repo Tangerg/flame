@@ -27,8 +27,8 @@ import (
 // What it deliberately does NOT emit on SHARED DEFINITIONS is
 // `additionalProperties: false`. A result may grow optional fields and an older
 // client must keep accepting it. Requests are different: dispatch strictly
-// decodes their DTOs, so OpenRPC closes each contextual x-flame-requestFrame with
-// `unevaluatedProperties: false` while leaving the reusable result shapes open.
+// decodes their DTOs, so OpenRPC closes typed objects throughout each request
+// projection while leaving maps, opaque values and reusable result shapes open.
 //
 // Nor does it widen a required field to accept null. A nil Go slice or map DOES
 // marshal to null, so a mechanical reading would publish `T[] | null` on most list
@@ -37,8 +37,8 @@ import (
 // client as defensive code, forever. The validator rejects it instead, which is
 // where a broken frame should surface.
 
-// refPrefix is where a definition lives inside the bundle. Other artifacts point
-// at the same bundle rather than carrying a second copy of the shapes.
+// refPrefix is where a reusable definition lives inside the bundle. Request
+// projections rewrite object references to their closed receiving context.
 const refPrefix = "#/$defs/"
 
 type schemaType string
@@ -572,6 +572,10 @@ func applyValueConstraints(node *schema, constraints []dispatch.FieldConstraint)
 			propertyNames(node).MaxLength = new(int(constraint.Limit))
 		case dispatch.ConstraintIdentityPropertyNames:
 			addPattern(propertyNames(node), dispatch.IdentityPattern)
+		case dispatch.ConstraintPatternPropertyNames:
+			addPattern(propertyNames(node), constraint.Value)
+		case dispatch.ConstraintPatternPropertyValues:
+			addPattern(node.AdditionalProps.(*schema), constraint.Value)
 		case dispatch.ConstraintPrefix:
 			addPattern(node, "^"+regexp.QuoteMeta(constraint.Value))
 		case dispatch.ConstraintPrefixItems:

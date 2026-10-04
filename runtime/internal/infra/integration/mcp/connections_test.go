@@ -30,6 +30,15 @@ type catalogTool string
 
 type oauthHandlerStub struct{}
 
+type oauthLoadStore struct {
+	memoryOAuthStore
+	load func(context.Context, mcpserver.OAuthTarget) ([]byte, string, bool, error)
+}
+
+func (s *oauthLoadStore) LoadOAuthSession(ctx context.Context, target mcpserver.OAuthTarget) ([]byte, string, bool, error) {
+	return s.load(ctx, target)
+}
+
 func (oauthHandlerStub) TokenSource(context.Context) (oauth2.TokenSource, error) { return nil, nil }
 func (oauthHandlerStub) Authorize(context.Context, *http.Request, *http.Response) error {
 	return nil
@@ -90,8 +99,7 @@ func TestConnectionsRejectMutationsAfterShutdown(t *testing.T) {
 	cfg := ServerConfig{Name: testMCPServerName("closed"), Transport: TransportHTTP, Endpoint: "https://example.invalid"}
 	for name, call := range map[string]func() error{
 		"configure": func() error { return c.Configure(context.Background(), cfg) },
-		"reconnect": func() error { return c.Reconnect(context.Background(), cfg.Name) },
-		"authorize": func() error { return c.Authorize(context.Background(), cfg.Name) },
+		"authorize": func() error { return c.Authorize(context.Background(), cfg) },
 	} {
 		t.Run(name, func(t *testing.T) {
 			if err := call(); !errors.Is(err, ErrConnectionsClosed) {
@@ -113,11 +121,14 @@ func TestConnectionsRejectMutationsAfterShutdown(t *testing.T) {
 
 func TestDialRequiresStartupAndProcessLifetimes(t *testing.T) {
 	var missingContext context.Context
-	if connections, _, err := Dial(missingContext, t.Context(), nil, nil); err == nil || connections != nil {
+	if connections, _, err := testDial(missingContext, t.Context(), nil, nil); err == nil || connections != nil {
 		t.Fatalf("Dial without startup context = (%v, %v), want nil connections and non-nil error", connections, err)
 	}
-	if connections, _, err := Dial(t.Context(), nil, nil, nil); err == nil || connections != nil {
+	if connections, _, err := testDial(t.Context(), nil, nil, nil); err == nil || connections != nil {
 		t.Fatalf("Dial without process lifetime = (%v, %v), want nil connections and non-nil error", connections, err)
+	}
+	if connections, _, err := Dial(t.Context(), t.Context(), nil, nil, nil); err == nil || connections != nil {
+		t.Fatalf("Dial without configuration source = (%v, %v), want nil connections and non-nil error", connections, err)
 	}
 }
 
@@ -188,6 +199,9 @@ func TestConnectionsShutdownReportsSettledAsyncRetirementDiagnosticOnce(t *testi
 	session := new(sdkmcp.ClientSession)
 	c := &Connections{
 		lifetime: t.Context(),
+		servers: []*server{{
+			config: ServerConfig{Name: testMCPServerName("retired")}, session: session,
+		}},
 		sessions: map[*sdkmcp.ClientSession]*ownedSession{
 			session: {
 				closeFn: sync.OnceValue(func() error {
@@ -198,7 +212,9 @@ func TestConnectionsShutdownReportsSettledAsyncRetirementDiagnosticOnce(t *testi
 		},
 	}
 
-	c.retireSession(session)
+	if err := c.Detach(testMCPServerName("retired")); err != nil {
+		t.Fatalf("Detach: %v", err)
+	}
 	c.mu.Lock()
 	var closeAttempt *sessionCloseAttempt
 	for candidate := range c.retirements {
@@ -272,16 +288,16 @@ func TestPublishToolsUsesVerifiedSnapshotsInServerOrder(t *testing.T) {
 		{
 			config:  ServerConfig{Name: testMCPServerName("alpha")},
 			session: new(sdkmcp.ClientSession),
-			tools:   []toolcontract.Tool{catalogTool("alpha_read"), catalogTool("alpha_list")},
+			tools:   []Executable{{Tool: catalogTool("alpha_read")}, {Tool: catalogTool("alpha_list")}},
 		},
 		{
 			config:  ServerConfig{Name: testMCPServerName("beta")},
 			session: new(sdkmcp.ClientSession),
-			tools:   []toolcontract.Tool{catalogTool("beta_read")},
+			tools:   []Executable{{Tool: catalogTool("beta_read")}},
 		},
 	}}
 	var got []string
-	c.SetToolSink(func(catalog []toolcontract.Tool) {
+	c.SetToolSink(func(catalog []Executable) {
 		got = make([]string, 0, len(catalog))
 		for _, tool := range catalog {
 			got = append(got, tool.Definition().Name)
@@ -297,15 +313,15 @@ func TestPublishToolsUsesVerifiedSnapshotsInServerOrder(t *testing.T) {
 
 func TestDetachPublishesRemainingSnapshot(t *testing.T) {
 	c := &Connections{lifetime: t.Context(), servers: []*server{
-		{config: ServerConfig{Name: testMCPServerName("remove")}, tools: []toolcontract.Tool{catalogTool("remove_read")}},
+		{config: ServerConfig{Name: testMCPServerName("remove")}, tools: []Executable{{Tool: catalogTool("remove_read")}}},
 		{
 			config:  ServerConfig{Name: testMCPServerName("keep")},
 			session: new(sdkmcp.ClientSession),
-			tools:   []toolcontract.Tool{catalogTool("keep_read")},
+			tools:   []Executable{{Tool: catalogTool("keep_read")}},
 		},
 	}}
 	published := make(chan []string, 1)
-	c.SetToolSink(func(catalog []toolcontract.Tool) {
+	c.SetToolSink(func(catalog []Executable) {
 		names := make([]string, 0, len(catalog))
 		for _, tool := range catalog {
 			names = append(names, tool.Definition().Name)
@@ -330,7 +346,7 @@ func TestReconnectPublishesRemovalBeforeVerifiedReplacement(t *testing.T) {
 	t.Cleanup(httpServer.Close)
 
 	config := ServerConfig{Name: testMCPServerName("remote"), Transport: TransportHTTP, Endpoint: httpServer.URL}
-	c, initial, err := Dial(t.Context(), t.Context(), []ServerConfig{config}, nil)
+	c, initial, err := testDial(t.Context(), t.Context(), []ServerConfig{config}, nil)
 	if err != nil {
 		t.Fatalf("Dial: %v", err)
 	}
@@ -344,7 +360,7 @@ func TestReconnectPublishesRemovalBeforeVerifiedReplacement(t *testing.T) {
 	}
 
 	publications := make(chan []string, 2)
-	c.SetToolSink(func(catalog []toolcontract.Tool) { publications <- toolNames(catalog) })
+	c.SetToolSink(func(catalog []Executable) { publications <- toolNames(catalog) })
 	addRemoteTool(t, remote, "second")
 	listed, err := c.Tools(&config.Name)
 	if err != nil || len(listed) != 1 || listed[0].Name.String() != "first" {
@@ -358,7 +374,7 @@ func TestReconnectPublishesRemovalBeforeVerifiedReplacement(t *testing.T) {
 	if err != nil || len(listed) != 1 || listed[0].Definition.Validate() != nil || initial[0].Definition().Validate() != nil {
 		t.Fatalf("catalog projection changed the admitted definition: %+v, %v", listed, err)
 	}
-	if err := c.Reconnect(t.Context(), config.Name); err != nil {
+	if err := c.Configure(t.Context(), config); err != nil {
 		t.Fatalf("Reconnect: %v", err)
 	}
 	if connecting := <-publications; len(connecting) != 0 {
@@ -375,6 +391,225 @@ func TestReconnectPublishesRemovalBeforeVerifiedReplacement(t *testing.T) {
 	}
 }
 
+func TestConfigureOAuthRestoreFailureWithdrawsPreviousConnection(t *testing.T) {
+	loadErr := errors.New("credential storage unavailable")
+	closeErr := errors.New("old session close failed")
+	var closed atomic.Int32
+	session := new(sdkmcp.ClientSession)
+	config := ServerConfig{
+		Name: testMCPServerName("remote"), Transport: TransportHTTP, Endpoint: "https://example.invalid/mcp",
+	}
+	c := &Connections{
+		lifetime: t.Context(), client: newClient(),
+		oauthSessions: &oauthLoadStore{load: func(context.Context, mcpserver.OAuthTarget) ([]byte, string, bool, error) {
+			return nil, "", false, loadErr
+		}},
+		servers: []*server{{
+			config: config, session: session, tools: []Executable{{Tool: catalogTool("remote_read")}},
+			state: mcpserver.ConnectionConnected,
+		}},
+		sessions: map[*sdkmcp.ClientSession]*ownedSession{session: {closeFn: func() error {
+			closed.Add(1)
+			return closeErr
+		}}},
+	}
+	var publications [][]string
+	c.SetToolSink(func(catalog []Executable) { publications = append(publications, toolNames(catalog)) })
+	config.Endpoint = "https://example.invalid/replacement"
+	if err := c.Configure(t.Context(), config); !errors.Is(err, loadErr) || !errors.Is(err, closeErr) {
+		t.Errorf("Configure = %v, want credential and retirement errors", err)
+	}
+	if statuses := c.Statuses(); len(statuses) != 1 || statuses[0].State != mcpserver.ConnectionFailed || statuses[0].ToolCount != 0 {
+		t.Errorf("statuses = %+v, want one failed source without tools", statuses)
+	}
+	if len(publications) != 1 || len(publications[0]) != 0 {
+		t.Errorf("publications = %v, want the old tools withdrawn", publications)
+	}
+	if closed.Load() != 1 || ownedSessionCount(c) != 0 {
+		t.Errorf("old session retirement = %d closes, %d owned sessions", closed.Load(), ownedSessionCount(c))
+	}
+	if err := c.Shutdown(t.Context()); err != nil {
+		t.Errorf("Shutdown: %v", err)
+	}
+}
+
+func TestShutdownCancelsAndJoinsOAuthRestore(t *testing.T) {
+	started := make(chan struct{})
+	canceled := make(chan struct{})
+	release := make(chan struct{})
+	var releaseOnce sync.Once
+	finishLoad := func() { releaseOnce.Do(func() { close(release) }) }
+	t.Cleanup(finishLoad)
+	c := &Connections{
+		lifetime: t.Context(), client: newClient(),
+		oauthSessions: &oauthLoadStore{load: func(ctx context.Context, _ mcpserver.OAuthTarget) ([]byte, string, bool, error) {
+			close(started)
+			<-ctx.Done()
+			close(canceled)
+			<-release
+			return nil, "", false, ctx.Err()
+		}},
+	}
+	configureDone := make(chan error, 1)
+	configureCtx, cancelConfigure := context.WithCancel(t.Context())
+	defer cancelConfigure()
+	go func() {
+		configureDone <- c.Configure(configureCtx, ServerConfig{
+			Name: testMCPServerName("remote"), Transport: TransportHTTP, Endpoint: "https://example.invalid/mcp",
+		})
+	}()
+	<-started
+	shutdownCtx, cancelShutdown := context.WithCancel(t.Context())
+	defer cancelShutdown()
+	shutdownDone := make(chan error, 1)
+	go func() { shutdownDone <- c.Shutdown(shutdownCtx) }()
+	select {
+	case <-canceled:
+		cancelShutdown()
+		if err := <-shutdownDone; !errors.Is(err, context.Canceled) {
+			t.Errorf("Shutdown during restoration = %v, want canceled wait", err)
+		}
+	case err := <-shutdownDone:
+		t.Errorf("Shutdown returned %v before canceling and joining OAuth restoration", err)
+		cancelConfigure()
+		<-canceled
+	}
+	cancelConfigure()
+	finishLoad()
+	if err := c.Shutdown(t.Context()); err != nil {
+		t.Errorf("Shutdown after restoration: %v", err)
+	}
+	if err := <-configureDone; !errors.Is(err, context.Canceled) {
+		t.Errorf("Configure = %v, want cancellation", err)
+	}
+}
+
+func TestSupersededOAuthRestoreCannotReplaceCurrentConnection(t *testing.T) {
+	remote := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "test-server", Version: "v1"}, nil)
+	addRemoteTool(t, remote, "read")
+	httpServer := httptest.NewServer(sdkmcp.NewStreamableHTTPHandler(
+		func(*http.Request) *sdkmcp.Server { return remote }, nil,
+	))
+	t.Cleanup(httpServer.Close)
+	started := make(chan struct{})
+	release := make(chan struct{})
+	var releaseOnce sync.Once
+	finishLoad := func() { releaseOnce.Do(func() { close(release) }) }
+	t.Cleanup(finishLoad)
+	c, _, err := testDial(t.Context(), t.Context(), nil, &oauthLoadStore{
+		load: func(context.Context, mcpserver.OAuthTarget) ([]byte, string, bool, error) {
+			close(started)
+			<-release
+			return nil, "", false, nil
+		},
+	})
+	if err != nil {
+		t.Fatalf("Dial: %v", err)
+	}
+	t.Cleanup(func() {
+		finishLoad()
+		if err := c.Shutdown(context.WithoutCancel(t.Context())); err != nil {
+			t.Errorf("Shutdown: %v", err)
+		}
+	})
+	config := ServerConfig{Name: testMCPServerName("remote"), Transport: TransportHTTP, Endpoint: httpServer.URL}
+	previousDone := make(chan error, 1)
+	go func() { previousDone <- c.Configure(t.Context(), config) }()
+	<-started
+	config.Authorization = "Bearer replacement"
+	if err := c.Configure(t.Context(), config); err != nil {
+		t.Fatalf("replacement Configure: %v", err)
+	}
+	finishLoad()
+	if err := <-previousDone; !errors.Is(err, errConnectionSuperseded) {
+		t.Errorf("previous Configure = %v, want superseded operation", err)
+	}
+	if statuses := c.Statuses(); len(statuses) != 1 || statuses[0].State != mcpserver.ConnectionConnected || statuses[0].ToolCount != 1 {
+		t.Errorf("statuses = %+v, want the verified replacement connection", statuses)
+	}
+	tools, err := c.Tools(&config.Name)
+	if err != nil || len(tools) != 1 || tools[0].Name.String() != "read" {
+		t.Errorf("replacement tools = %+v, %v", tools, err)
+	}
+}
+
+func TestCanceledSessionCloseRetainsFailureForShutdown(t *testing.T) {
+	closeErr := errors.New("session close failed after cancellation")
+	release := make(chan struct{})
+	var releaseOnce sync.Once
+	finishClose := func() { releaseOnce.Do(func() { close(release) }) }
+	t.Cleanup(finishClose)
+	session := new(sdkmcp.ClientSession)
+	c := &Connections{
+		lifetime: t.Context(), client: newClient(),
+		sessions: map[*sdkmcp.ClientSession]*ownedSession{session: {closeFn: func() error {
+			<-release
+			return closeErr
+		}}},
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	if err := c.closeSession(ctx, session); !errors.Is(err, context.Canceled) {
+		t.Fatalf("closeSession = %v, want canceled wait", err)
+	}
+	c.mu.Lock()
+	closeAttempt := c.sessions[session].close
+	c.mu.Unlock()
+	finishClose()
+	<-closeAttempt.done
+	if err := c.Shutdown(t.Context()); !errors.Is(err, closeErr) {
+		t.Errorf("Shutdown = %v, want unreported retirement error", err)
+	}
+	if err := c.Shutdown(t.Context()); err != nil {
+		t.Errorf("settled Shutdown = %v, want no-op", err)
+	}
+}
+
+func TestDetachCancelsAuthorizationDuringSessionRetirement(t *testing.T) {
+	started := make(chan struct{})
+	release := make(chan struct{})
+	var releaseOnce sync.Once
+	finishClose := func() { releaseOnce.Do(func() { close(release) }) }
+	t.Cleanup(finishClose)
+	session := new(sdkmcp.ClientSession)
+	config := ServerConfig{
+		Name: testMCPServerName("remote"), Transport: TransportHTTP, Endpoint: "https://example.invalid/mcp",
+	}
+	c := &Connections{
+		lifetime: t.Context(), client: newClient(),
+		servers: []*server{{config: config, session: session, state: mcpserver.ConnectionConnected}},
+		sessions: map[*sdkmcp.ClientSession]*ownedSession{session: {closeFn: func() error {
+			close(started)
+			<-release
+			return nil
+		}}},
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	authorizationDone := make(chan error, 1)
+	go func() { authorizationDone <- c.Authorize(ctx, config) }()
+	<-started
+	if err := c.Detach(config.Name); err != nil {
+		t.Fatalf("Detach: %v", err)
+	}
+	guard, cancelGuard := context.WithTimeout(t.Context(), time.Second)
+	defer cancelGuard()
+	select {
+	case err := <-authorizationDone:
+		if !errors.Is(err, context.Canceled) {
+			t.Errorf("Authorize = %v, want canceled attempt", err)
+		}
+	case <-guard.Done():
+		t.Error("detached authorization still waits for session retirement")
+		cancel()
+		<-authorizationDone
+	}
+	finishClose()
+	if err := c.Shutdown(t.Context()); err != nil {
+		t.Errorf("Shutdown: %v", err)
+	}
+}
+
 func TestConfiguredSessionOutlivesRequestScope(t *testing.T) {
 	remote := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "test-server", Version: "v1"}, nil)
 	addRemoteTool(t, remote, "read")
@@ -384,7 +619,7 @@ func TestConfiguredSessionOutlivesRequestScope(t *testing.T) {
 	))
 	t.Cleanup(httpServer.Close)
 
-	connections, _, err := Dial(t.Context(), t.Context(), nil, nil)
+	connections, _, err := testDial(t.Context(), t.Context(), nil, nil)
 	if err != nil {
 		t.Fatalf("Dial: %v", err)
 	}
@@ -422,14 +657,14 @@ func TestSessionLedgerOwnsReplacementUntilClose(t *testing.T) {
 	t.Cleanup(httpServer.Close)
 
 	config := ServerConfig{Name: testMCPServerName("ledger"), Transport: TransportHTTP, Endpoint: httpServer.URL}
-	c, _, err := Dial(t.Context(), t.Context(), []ServerConfig{config}, nil)
+	c, _, err := testDial(t.Context(), t.Context(), []ServerConfig{config}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got := ownedSessionCount(c); got != 1 {
 		t.Fatalf("owned sessions after Dial = %d, want 1", got)
 	}
-	if err := c.Reconnect(t.Context(), config.Name); err != nil {
+	if err := c.Configure(t.Context(), config); err != nil {
 		t.Fatal(err)
 	}
 	if got := ownedSessionCount(c); got != 1 {
@@ -461,7 +696,7 @@ func TestDialAdmitsCrossServerPublicToolNameCollision(t *testing.T) {
 	))
 	t.Cleanup(httpServer.Close)
 
-	c, initial, err := Dial(t.Context(), t.Context(), []ServerConfig{
+	c, initial, err := testDial(t.Context(), t.Context(), []ServerConfig{
 		{Name: testMCPServerName("a.b"), Transport: TransportHTTP, Endpoint: httpServer.URL},
 		{Name: testMCPServerName("a_b"), Transport: TransportHTTP, Endpoint: httpServer.URL},
 	}, nil)
@@ -484,46 +719,64 @@ func TestDialAdmitsCrossServerPublicToolNameCollision(t *testing.T) {
 }
 
 func TestDialReportsStartupFailureAndKeepsHealthyServers(t *testing.T) {
-	var diagnostics bytes.Buffer
-	previousLogger := slog.Default()
-	slog.SetDefault(slog.New(slog.NewTextHandler(&diagnostics, nil)))
-	t.Cleanup(func() { slog.SetDefault(previousLogger) })
+	for _, failure := range []string{"admission", "connection"} {
+		t.Run(failure, func(t *testing.T) {
+			var diagnostics bytes.Buffer
+			previousLogger := slog.Default()
+			slog.SetDefault(slog.New(slog.NewTextHandler(&diagnostics, nil)))
+			t.Cleanup(func() { slog.SetDefault(previousLogger) })
 
-	remote := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "healthy", Version: "v1"}, nil)
-	addRemoteTool(t, remote, "read")
-	httpServer := httptest.NewServer(sdkmcp.NewStreamableHTTPHandler(
-		func(*http.Request) *sdkmcp.Server { return remote }, nil,
-	))
-	t.Cleanup(httpServer.Close)
-	missingCommand := filepath.Join(t.TempDir(), "missing-mcp-server")
-	connections, initial, err := Dial(t.Context(), t.Context(), []ServerConfig{
-		{Name: testMCPServerName("missing"), Transport: TransportStdio, Command: missingCommand},
-		{Name: testMCPServerName("healthy"), Transport: TransportHTTP, Endpoint: httpServer.URL},
-	}, nil)
-	if err != nil {
-		t.Fatalf("Dial: %v", err)
-	}
-	t.Cleanup(func() {
-		if err := connections.Shutdown(context.WithoutCancel(t.Context())); err != nil {
-			t.Errorf("Shutdown: %v", err)
-		}
-	})
-	if names := toolNames(initial); !slices.Equal(names, []string{"healthy_read"}) {
-		t.Fatalf("initial tools = %v, want healthy server's tool", names)
-	}
-	statuses := connections.Statuses()
-	if len(statuses) != 2 || statuses[0].State != mcpserver.ConnectionFailed ||
-		statuses[1].State != mcpserver.ConnectionConnected {
-		t.Fatalf("statuses = %+v, want failed then connected", statuses)
-	}
-	if output := diagnostics.String(); !strings.Contains(output, "server.name=missing") ||
-		!strings.Contains(output, missingCommand) {
-		t.Fatalf("startup connection failure lost its server or cause: %s", output)
-	}
-	name := testMCPServerName("healthy")
-	tools, err := connections.Tools(&name)
-	if err != nil || len(tools) != 1 || tools[0].Name.String() != "read" {
-		t.Fatalf("healthy server tools after startup failure = %+v, %v", tools, err)
+			remote := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "healthy", Version: "v1"}, nil)
+			addRemoteTool(t, remote, "read")
+			httpServer := httptest.NewServer(sdkmcp.NewStreamableHTTPHandler(
+				func(*http.Request) *sdkmcp.Server { return remote }, nil,
+			))
+			t.Cleanup(httpServer.Close)
+			missingCommand := filepath.Join(t.TempDir(), "missing-mcp-server")
+			configs := []ServerConfig{
+				{Name: testMCPServerName("missing"), Transport: TransportStdio, Command: missingCommand},
+				{Name: testMCPServerName("healthy"), Transport: TransportHTTP, Endpoint: httpServer.URL},
+			}
+			connections, initial, err := Dial(t.Context(), t.Context(), configs, nil, func(_ context.Context, name mcpserver.ServerName) (ServerConfig, error) {
+				if name == configs[0].Name && failure == "admission" {
+					return ServerConfig{}, errors.New("release rejected before connection")
+				}
+				for _, config := range configs {
+					if config.Name == name {
+						return config.Clone(), nil
+					}
+				}
+				return ServerConfig{}, mcpserver.ErrUnknownServer
+			})
+			if err != nil {
+				t.Fatalf("Dial: %v", err)
+			}
+			t.Cleanup(func() {
+				if err := connections.Shutdown(context.WithoutCancel(t.Context())); err != nil {
+					t.Errorf("Shutdown: %v", err)
+				}
+			})
+			if names := toolNames(initial); !slices.Equal(names, []string{"healthy_read"}) {
+				t.Fatalf("initial tools = %v, want healthy server's tool", names)
+			}
+			statuses := connections.Statuses()
+			if len(statuses) != 2 || statuses[0].State != mcpserver.ConnectionFailed ||
+				statuses[1].State != mcpserver.ConnectionConnected {
+				t.Fatalf("statuses = %+v, want failed then connected", statuses)
+			}
+			cause := missingCommand
+			if failure == "admission" {
+				cause = "release rejected before connection"
+			}
+			if output := diagnostics.String(); !strings.Contains(output, "server.name=missing") || !strings.Contains(output, cause) {
+				t.Fatalf("startup failure lost its server or cause: %s", output)
+			}
+			name := testMCPServerName("healthy")
+			tools, err := connections.Tools(&name)
+			if err != nil || len(tools) != 1 || tools[0].Name.String() != "read" {
+				t.Fatalf("healthy server tools after startup failure = %+v, %v", tools, err)
+			}
+		})
 	}
 }
 
@@ -536,7 +789,7 @@ func TestConfigureAdmitsCrossServerPublicToolNameCollision(t *testing.T) {
 	))
 	t.Cleanup(firstHTTP.Close)
 
-	c, initial, err := Dial(t.Context(), t.Context(), []ServerConfig{{
+	c, initial, err := testDial(t.Context(), t.Context(), []ServerConfig{{
 		Name: testMCPServerName("a_b"), Transport: TransportHTTP, Endpoint: firstHTTP.URL,
 	}}, nil)
 	if err != nil {
@@ -587,7 +840,7 @@ func TestReconnectAdmitsNewCrossServerPublicToolNameCollision(t *testing.T) {
 	))
 	t.Cleanup(secondHTTP.Close)
 
-	c, initial, err := Dial(t.Context(), t.Context(), []ServerConfig{
+	c, initial, err := testDial(t.Context(), t.Context(), []ServerConfig{
 		{Name: testMCPServerName("a_b"), Transport: TransportHTTP, Endpoint: firstHTTP.URL},
 		{Name: testMCPServerName("a"), Transport: TransportHTTP, Endpoint: secondHTTP.URL},
 	}, nil)
@@ -604,9 +857,9 @@ func TestReconnectAdmitsNewCrossServerPublicToolNameCollision(t *testing.T) {
 	}
 
 	publications := make(chan []string, 2)
-	c.SetToolSink(func(catalog []toolcontract.Tool) { publications <- toolNames(catalog) })
+	c.SetToolSink(func(catalog []Executable) { publications <- toolNames(catalog) })
 	addRemoteTool(t, secondRemote, "b_c")
-	err = c.Reconnect(t.Context(), testMCPServerName("a"))
+	err = c.Configure(t.Context(), ServerConfig{Name: testMCPServerName("a"), Transport: TransportHTTP, Endpoint: secondHTTP.URL})
 	if err != nil {
 		t.Fatalf("Reconnect collision error = %v", err)
 	}
@@ -635,7 +888,7 @@ func addRemoteTool(t *testing.T, server *sdkmcp.Server, name string) {
 	}
 }
 
-func toolNames(catalog []toolcontract.Tool) []string {
+func toolNames(catalog []Executable) []string {
 	names := make([]string, 0, len(catalog))
 	for _, tool := range catalog {
 		names = append(names, tool.Definition().Name)
@@ -643,11 +896,7 @@ func toolNames(catalog []toolcontract.Tool) []string {
 	return names
 }
 
-// TestPlanAttemptDetachesTheSessionItHandsBack pins the step both Reconnect and
-// Authorize depend on: the caller is given the live session to close, and the
-// server must no longer point at it. Leaving it attached would close a session
-// the server still resolves tools through.
-func TestPlanAttemptDetachesTheSessionItHandsBack(t *testing.T) {
+func TestCanceledAuthorizationWithdrawsThePreviousSession(t *testing.T) {
 	remote := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "test-server", Version: "v1"}, nil)
 	addRemoteTool(t, remote, "first")
 	httpServer := httptest.NewServer(sdkmcp.NewStreamableHTTPHandler(
@@ -657,7 +906,7 @@ func TestPlanAttemptDetachesTheSessionItHandsBack(t *testing.T) {
 	t.Cleanup(httpServer.Close)
 
 	config := ServerConfig{Name: testMCPServerName("detach"), Transport: TransportHTTP, Endpoint: httpServer.URL}
-	c, _, err := Dial(t.Context(), t.Context(), []ServerConfig{config}, nil)
+	c, _, err := testDial(t.Context(), t.Context(), []ServerConfig{config}, nil)
 	if err != nil {
 		t.Fatalf("Dial: %v", err)
 	}
@@ -667,31 +916,31 @@ func TestPlanAttemptDetachesTheSessionItHandsBack(t *testing.T) {
 		}
 	})
 
-	detached, _, attempt, err := c.planAttempt(t.Context(), config.Name, func(s *server) (ServerConfig, error) {
-		return s.config, nil
-	})
-	if err != nil {
-		t.Fatalf("planAttempt: %v", err)
+	publications := make(chan []string, 1)
+	c.SetToolSink(func(catalog []Executable) { publications <- toolNames(catalog) })
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	if err := c.Authorize(ctx, config); !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled authorization = %v, want cancellation", err)
 	}
-	defer c.finishAttempt(attempt)
-	if detached == nil {
-		t.Fatal("planAttempt returned no session to close")
+	if names := <-publications; len(names) != 0 {
+		t.Fatalf("authorization kept the previous catalog: %v", names)
 	}
+	if tools, err := c.Tools(&config.Name); err != nil || len(tools) != 0 {
+		t.Fatalf("tools after failed authorization = %v, %v", tools, err)
+	}
+	if statuses := c.Statuses(); len(statuses) != 1 || statuses[0].State != mcpserver.ConnectionFailed {
+		t.Fatalf("status after failed authorization = %+v", statuses)
+	}
+}
 
-	c.mu.Lock()
-	live := c.find(config.Name)
-	stillAttached, tools, state := live.session, live.tools, live.state
-	c.mu.Unlock()
-	if stillAttached != nil {
-		t.Fatal("the server still points at the session the caller was told to close")
-	}
-	if tools != nil {
-		t.Fatalf("the server kept %d tools proved on a detached session", len(tools))
-	}
-	if state != mcpserver.ConnectionConnecting {
-		t.Fatalf("state after detaching = %v, want connecting", state)
-	}
-	if err := c.closeSession(t.Context(), detached); err != nil {
-		t.Errorf("closeSession: %v", err)
-	}
+func testDial(ctx, lifetime context.Context, servers []ServerConfig, oauthSessions OAuthSessionStore) (*Connections, []Executable, error) {
+	return Dial(ctx, lifetime, servers, oauthSessions, func(_ context.Context, name mcpserver.ServerName) (ServerConfig, error) {
+		for _, config := range servers {
+			if config.Name == name {
+				return config.Clone(), nil
+			}
+		}
+		return ServerConfig{}, mcpserver.ErrUnknownServer
+	})
 }

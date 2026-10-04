@@ -17,6 +17,7 @@ func TestMCPServerStoreFencesOAuthCallbacksByGrant(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	store := sqlite.NewMCPServerStore(db)
+	authorization := sqlite.NewMCPAuthorizationStore(db, store)
 	server := mcpserver.Server{
 		Name: testMCPServerName("remote"), Transport: mcpserver.TransportStreamableHTTP,
 		Enabled: true, URL: "https://mcp.example.test/tools",
@@ -26,36 +27,36 @@ func TestMCPServerStoreFencesOAuthCallbacksByGrant(t *testing.T) {
 		t.Fatal(err)
 	}
 	origin := "https://mcp.example.test:443"
-	oldBinding, err := store.BeginOAuthSession(t.Context(), target)
+	oldBinding, err := authorization.BeginOAuthSession(t.Context(), target)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, found, err := store.LoadOAuthSession(t.Context(), target); err != nil || found {
+	if _, _, found, err := authorization.LoadOAuthSession(t.Context(), target); err != nil || found {
 		t.Fatalf("uncompleted authorization = found %v, err %v", found, err)
 	}
-	if err := store.SaveOAuthSession(t.Context(), server.Name, origin, oldBinding, []byte("old tokens")); err != nil {
+	if err := authorization.SaveOAuthSession(t.Context(), server.Name, origin, oldBinding, []byte("old tokens")); err != nil {
 		t.Fatal(err)
 	}
-	newBinding, err := store.BeginOAuthSession(t.Context(), target)
+	newBinding, err := authorization.BeginOAuthSession(t.Context(), target)
 	if err != nil || newBinding == "" || newBinding == oldBinding {
 		t.Fatalf("new authorization binding = %q, err %v", newBinding, err)
 	}
 	payload := []byte("current tokens")
-	if err := store.SaveOAuthSession(t.Context(), server.Name, origin, newBinding, payload); err != nil {
+	if err := authorization.SaveOAuthSession(t.Context(), server.Name, origin, newBinding, payload); err != nil {
 		t.Fatal(err)
 	}
 	for _, stale := range []string{oldBinding, ""} {
-		if err := store.SaveOAuthSession(t.Context(), server.Name, origin, stale, []byte("late old refresh")); !errors.Is(err, mcpserver.ErrOAuthSessionSuperseded) {
+		if err := authorization.SaveOAuthSession(t.Context(), server.Name, origin, stale, []byte("late old refresh")); !errors.Is(err, mcpserver.ErrOAuthSessionSuperseded) {
 			t.Fatalf("stale refresh error = %v", err)
 		}
-		if err := store.RemoveOAuthSession(t.Context(), server.Name, stale); !errors.Is(err, mcpserver.ErrOAuthSessionSuperseded) {
+		if err := authorization.RemoveOAuthSession(t.Context(), server.Name, stale); !errors.Is(err, mcpserver.ErrOAuthSessionSuperseded) {
 			t.Fatalf("stale rejection error = %v", err)
 		}
 	}
-	if err := store.SaveOAuthSession(t.Context(), server.Name, "https://other.example:443", newBinding, payload); !errors.Is(err, mcpserver.ErrOAuthSessionSuperseded) {
+	if err := authorization.SaveOAuthSession(t.Context(), server.Name, "https://other.example:443", newBinding, payload); !errors.Is(err, mcpserver.ErrOAuthSessionSuperseded) {
 		t.Fatalf("cross-origin refresh error = %v", err)
 	}
-	got, binding, found, err := store.LoadOAuthSession(t.Context(), target)
+	got, binding, found, err := authorization.LoadOAuthSession(t.Context(), target)
 	if err != nil || !found || binding != newBinding || !bytes.Equal(got, payload) {
 		t.Fatalf("current credentials changed after stale callbacks: found=%v err=%v", found, err)
 	}
@@ -63,13 +64,13 @@ func TestMCPServerStoreFencesOAuthCallbacksByGrant(t *testing.T) {
 	if err := store.Save(t.Context(), server); err != nil {
 		t.Fatal(err)
 	}
-	if _, binding, found, err := store.LoadOAuthSession(t.Context(), target); err != nil || !found || binding != newBinding {
+	if _, binding, found, err := authorization.LoadOAuthSession(t.Context(), target); err != nil || !found || binding != newBinding {
 		t.Fatalf("metadata edit revoked authorization: found=%v err=%v", found, err)
 	}
-	if err := store.RemoveOAuthSession(t.Context(), server.Name, newBinding); err != nil {
+	if err := authorization.RemoveOAuthSession(t.Context(), server.Name, newBinding); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, found, err := store.LoadOAuthSession(t.Context(), target); err != nil || found {
+	if _, _, found, err := authorization.LoadOAuthSession(t.Context(), target); err != nil || found {
 		t.Fatalf("removed credentials found=%v err=%v", found, err)
 	}
 }
@@ -96,6 +97,7 @@ func TestMCPServerStoreRevokesOAuthOnConfigurationChange(t *testing.T) {
 			}
 			t.Cleanup(func() { _ = db.Close() })
 			store := sqlite.NewMCPServerStore(db)
+			authorization := sqlite.NewMCPAuthorizationStore(db, store)
 			initial := mcpserver.Server{
 				Name: testMCPServerName("remote"), Transport: mcpserver.TransportStreamableHTTP,
 				Enabled: true, URL: "https://mcp.example.test/tools",
@@ -104,7 +106,7 @@ func TestMCPServerStoreRevokesOAuthOnConfigurationChange(t *testing.T) {
 			if err := store.Save(t.Context(), initial); err != nil {
 				t.Fatal(err)
 			}
-			binding, err := store.BeginOAuthSession(t.Context(), target)
+			binding, err := authorization.BeginOAuthSession(t.Context(), target)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -113,73 +115,53 @@ func TestMCPServerStoreRevokesOAuthOnConfigurationChange(t *testing.T) {
 			if err := store.Save(t.Context(), changed); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := store.BeginOAuthSession(t.Context(), target); !errors.Is(err, mcpserver.ErrOAuthSessionSuperseded) {
+			if _, err := authorization.BeginOAuthSession(t.Context(), target); !errors.Is(err, mcpserver.ErrOAuthSessionSuperseded) {
 				t.Fatalf("obsolete configuration obtained grant: %v", err)
 			}
-			if _, _, _, err := store.LoadOAuthSession(t.Context(), target); !errors.Is(err, mcpserver.ErrOAuthSessionSuperseded) {
+			if _, _, _, err := authorization.LoadOAuthSession(t.Context(), target); !errors.Is(err, mcpserver.ErrOAuthSessionSuperseded) {
 				t.Fatalf("obsolete configuration loaded credentials: %v", err)
 			}
 			if err := store.Save(t.Context(), initial); err != nil {
 				t.Fatal(err)
 			}
-			if err := store.SaveOAuthSession(t.Context(), initial.Name, "https://mcp.example.test:443", binding, []byte("late old tokens")); !errors.Is(err, mcpserver.ErrOAuthSessionSuperseded) {
+			if err := authorization.SaveOAuthSession(t.Context(), initial.Name, "https://mcp.example.test:443", binding, []byte("late old tokens")); !errors.Is(err, mcpserver.ErrOAuthSessionSuperseded) {
 				t.Fatalf("old grant resurrected after restoring configuration: %v", err)
 			}
 			if err := store.Remove(t.Context(), initial.Name); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := store.BeginOAuthSession(t.Context(), target); !errors.Is(err, mcpserver.ErrOAuthSessionSuperseded) {
+			if _, err := authorization.BeginOAuthSession(t.Context(), target); !errors.Is(err, mcpserver.ErrOAuthSessionSuperseded) {
 				t.Fatalf("deleted server obtained grant: %v", err)
 			}
 			if err := store.Save(t.Context(), initial); err != nil {
 				t.Fatal(err)
 			}
-			newBinding, err := store.BeginOAuthSession(t.Context(), target)
+			newBinding, err := authorization.BeginOAuthSession(t.Context(), target)
 			if err != nil || newBinding == binding {
 				t.Fatalf("recreated server grant = %q, err %v", newBinding, err)
 			}
-			if err := store.RemoveOAuthSession(t.Context(), initial.Name, binding); !errors.Is(err, mcpserver.ErrOAuthSessionSuperseded) {
+			if err := authorization.RemoveOAuthSession(t.Context(), initial.Name, binding); !errors.Is(err, mcpserver.ErrOAuthSessionSuperseded) {
 				t.Fatalf("old rejection removed the recreated server's grant: %v", err)
 			}
 		})
 	}
 }
 
-func TestMCPServerStoreMigratesExistingOAuthCredentials(t *testing.T) {
+func TestMCPAuthorizationRefusesUnboundLegacyCredentials(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "flame.db")
 	db, err := sqlite.Open(t.Context(), path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = db.Close() })
-	store := sqlite.NewMCPServerStore(db)
-	server := mcpserver.Server{
-		Name: testMCPServerName("remote"), Transport: mcpserver.TransportStreamableHTTP,
-		Enabled: true, URL: "https://mcp.example.test/tools",
-	}
-	if err := store.Save(t.Context(), server); err != nil {
+	if _, err = db.ExecContext(t.Context(), `ALTER TABLE mcp_oauth_sessions DROP COLUMN target_fingerprint`); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.ExecContext(t.Context(), `ALTER TABLE mcp_oauth_sessions DROP COLUMN binding`); err != nil {
-		t.Fatal(err)
-	}
-	payload := []byte("existing tokens")
-	if _, err := db.ExecContext(t.Context(),
-		`INSERT INTO mcp_oauth_sessions(server_name, origin, payload) VALUES (?, ?, ?)`,
-		server.Name.String(), "https://mcp.example.test:443", payload); err != nil {
-		t.Fatal(err)
-	}
-	if err := db.Close(); err != nil {
+	if err = db.Close(); err != nil {
 		t.Fatal(err)
 	}
 	reopened, err := sqlite.Open(t.Context(), path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = reopened.Close() })
-	target := mcpserver.OAuthTarget{Server: server.Name, URL: server.URL}
-	got, binding, found, err := sqlite.NewMCPServerStore(reopened).LoadOAuthSession(t.Context(), target)
-	if err != nil || !found || binding == "" || !bytes.Equal(got, payload) {
-		t.Fatalf("migrated credentials: found=%v bound=%v err=%v", found, binding != "", err)
+	if err == nil {
+		_ = reopened.Close()
+		t.Fatal("opened credentials without an authority binding")
 	}
 }

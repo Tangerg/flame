@@ -1,5 +1,5 @@
 export interface LocaleSpec {
-  load?: () => Promise<Record<string, string>>;
+  activate(): Promise<void>;
   id: string;
   label: string;
   order?: number;

@@ -76,6 +76,10 @@ but not shared lifecycle or I/O mechanisms. Product runtime packages cannot
 depend on generators or test support. Counterexamples exercise these rules, including
 module-root imports and new packages, instead of freezing a file inventory.
 
+Deterministic string fingerprints share one length-framed SHA-256 encoding.
+Permission and approval owners select and order their own fields; release-tree,
+file-content, and embedding-space hashes retain their distinct byte contracts.
+
 ## Execution boundary
 
 Scope's Agent Framework is the only process, strategy, child-tree, tool-loop, and checkpoint execution engine. Runtime does not copy its scheduler or interpret private framework state.

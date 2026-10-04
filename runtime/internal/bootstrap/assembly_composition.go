@@ -3,6 +3,9 @@ package bootstrap
 import (
 	"context"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
+	"path/filepath"
 	"time"
 
 	adapterhooks "github.com/Tangerg/flame/runtime/internal/adapter/integration/hooks"
@@ -33,6 +36,8 @@ const interactionDeploymentConfigurationIdentity = "flame.runtime.interaction.v1
 // policyComposition contains the application policies that share the same
 // process-local invalidation vocabulary. It owns no background task or closer.
 type policyComposition struct {
+	packages      *pluginpackage.Releases
+	registry      *plugins.Registry
 	invalidations notificationRelay[invalidation.Notice]
 	approvals     *approvals.RuntimePolicy
 	goals         goals.Store
@@ -45,17 +50,25 @@ type policyComposition struct {
 
 func buildPolicyComposition(ctx context.Context, cfg Config) (policyComposition, error) {
 	invalidations := newNotificationRelay[invalidation.Notice]()
+	packages, err := pluginpackage.New(filepath.Join(cfg.Stores.DataDirectory, "plugins", "releases"), cfg.Stores.PluginReleases)
+	if err != nil {
+		return policyComposition{}, err
+	}
+	registry, err := plugins.NewRegistry(cfg.Stores.MCPServers, cfg.Stores.Installations, packages)
+	if err != nil {
+		return policyComposition{}, err
+	}
 	approvalPolicy, err := approvals.NewRuntimePolicy(
 		cfg.ApprovalMode,
 		cfg.Stores.ApprovalRules,
 		cfg.Stores.PermissionModes,
-		toolset.NewAuthorities(cfg.Stores.MCPServers, cfg.A2AAgents),
+		toolset.NewAuthorities(registry.Definition, cfg.A2AAgents),
 		invalidations.Publish,
 	)
 	if err != nil {
 		return policyComposition{}, fmt.Errorf("runtime: approval policy: %w", err)
 	}
-	mcpSettings, err := buildMCPEnvironment(ctx, cfg.Stores.MCPServers)
+	mcpSettings, err := buildMCPEnvironment(ctx, registry)
 	if err != nil {
 		return policyComposition{}, err
 	}
@@ -85,14 +98,14 @@ func buildPolicyComposition(ctx context.Context, cfg Config) (policyComposition,
 		return policyComposition{}, err
 	}
 	return policyComposition{
-		invalidations: invalidations,
-		approvals:     approvalPolicy,
-		goals:         goalStore,
-		goalReader:    goalReader,
-		goalReporter:  goalReporter,
-		plans:         plans,
-		mcp:           mcpSettings,
-		schedules:     scheduleCoordinator,
+		invalidations: invalidations, packages: packages, registry: registry,
+		approvals:    approvalPolicy,
+		goals:        goalStore,
+		goalReader:   goalReader,
+		goalReporter: goalReporter,
+		plans:        plans,
+		mcp:          mcpSettings,
+		schedules:    scheduleCoordinator,
 	}, nil
 }
 
@@ -114,6 +127,7 @@ type workspaceComposition struct {
 func buildWorkspaceComposition(
 	cfg Config,
 	publish invalidation.Publish,
+	packageSkills promptsource.PackageSkills,
 ) (workspaceComposition, error) {
 	scope, err := workspace.NewScope(cfg.DefaultWorkspacePath, cfg.UserHome, workspaceadapter.Resolver{})
 	if err != nil {
@@ -149,7 +163,7 @@ func buildWorkspaceComposition(
 	}
 	workspaceSkills, err := workspace.NewSkills(
 		scope,
-		promptsource.NewSkills(cfg.SkillsUserDir),
+		promptsource.NewSkills(cfg.SkillsUserDir, packageSkills),
 		skillStore,
 		skillLibraries,
 		authoredWatch,
@@ -240,6 +254,7 @@ func buildExecutionComposition(
 		}))
 	}
 	toolRuntime, err := buildTools(ctx, toolEnvironmentDependencies{
+		registry: policy.registry, packageSkills: pluginpackage.NewSkills(policy.packages, cfg.Stores.Installations),
 		lifetime:          lifetime.context,
 		config:            cfg,
 		approvalPolicy:    policy.approvals,
@@ -295,23 +310,24 @@ func buildExecutionComposition(
 	}
 	maxConcurrentToolCalls := 8
 	interactionConfig := executionadapter.InteractionExecutorConfig{
-		Lifetime:               lifetime.context,
-		ExecutionTrees:         cfg.Stores.ExecutorCheckpoints,
-		BuildID:                cfg.BuildID,
-		ChatResolver:           cfg.ChatResolver,
-		ImplementationIdentity: cfg.BuildID,
-		ConfigurationIdentity:  interactionDeploymentConfigurationIdentity,
-		StreamModelResponses:   true,
-		MaxConcurrentToolCalls: &maxConcurrentToolCalls,
-		ToolInterpreter:        toolInterpreter,
-		ToolPresenter:          toolset.Presenter{},
-		ToolAuthorizer:         toolAuthorizer,
-		ToolHooks:              workingContexts,
-		Maintenance:            runMaintenance,
-		ModelContextCompactor:  modelContextCompactor,
-		ModelContextState:      workingContexts,
-		LifecycleHooks:         workingContexts,
-		Pricing:                cfg.Pricing,
+		Lifetime:                lifetime.context,
+		ExecutionTrees:          cfg.Stores.ExecutorCheckpoints,
+		InstallationCheckpoints: cfg.Stores.ExecutorCheckpoints,
+		BuildID:                 cfg.BuildID,
+		ChatResolver:            cfg.ChatResolver,
+		ImplementationIdentity:  cfg.BuildID,
+		ConfigurationIdentity:   interactionDeploymentConfigurationIdentity,
+		StreamModelResponses:    true,
+		MaxConcurrentToolCalls:  &maxConcurrentToolCalls,
+		ToolInterpreter:         toolInterpreter,
+		ToolPresenter:           toolset.Presenter{},
+		ToolAuthorizer:          toolAuthorizer,
+		ToolHooks:               workingContexts,
+		Maintenance:             runMaintenance,
+		ModelContextCompactor:   modelContextCompactor,
+		ModelContextState:       workingContexts,
+		LifecycleHooks:          workingContexts,
+		Pricing:                 cfg.Pricing,
 	}
 	if toolRuntime.tools.Resolver != nil {
 		interactionConfig.ToolResolver = toolRuntime.tools.Resolver

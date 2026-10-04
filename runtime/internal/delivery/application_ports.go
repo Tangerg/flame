@@ -59,7 +59,7 @@ type mcpUseCases interface {
 }
 
 type approvalUseCases interface {
-	SetRule(context.Context, toolsvc.Ref, approval.Scope, string, approval.Subject, approval.Decision) error
+	SetRule(context.Context, approvals.RuleChange) error
 	ForgetRule(ctx context.Context, id string) error
 	ListRules(ctx context.Context, sessionID string) ([]approvals.RuleView, error)
 	DefaultMode(ctx context.Context) (approval.Mode, error)

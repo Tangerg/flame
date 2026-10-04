@@ -13,7 +13,7 @@ export {
   useContributions,
   useInstalledPlugins,
 } from "./kernel";
-export { COMMANDS, CONFIG, I18N, WINDOW, WORKSPACE } from "./services";
+export { COMMANDS, CONFIG, WINDOW, WORKSPACE } from "./services";
 export {
   toolResultShape,
   type ToolResultShape,
@@ -26,7 +26,6 @@ export type {
   AmbientShell,
   CommandsService,
   ConfigService,
-  I18nService,
   WindowService,
   WorkspaceService,
 } from "./services";

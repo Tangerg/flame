@@ -1,14 +1,12 @@
 package approval
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 )
 
 type ruleSet []Rule
@@ -211,9 +209,5 @@ func (r RememberRequest) Rule() (Rule, error) {
 // stableID makes re-remembering the same rule an upsert and supplies a durable
 // handle for forgetting it later.
 func (r Rule) stableID() string {
-	h := sha256.New()
-	for _, part := range []string{string(r.Scope), r.ScopeKey, r.Tool.String(), string(r.Subject.Type), r.Subject.Value} {
-		h.Write([]byte(strconv.Itoa(len(part)) + ":" + part))
-	}
-	return "rule_" + hex.EncodeToString(h.Sum(nil))
+	return "rule_" + fingerprint.Strings(string(r.Scope), r.ScopeKey, r.Tool.String(), string(r.Subject.Type), r.Subject.Value)
 }

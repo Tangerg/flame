@@ -407,7 +407,7 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			timeout            INTEGER CHECK (timeout IS NULL OR timeout > 0)
 		)`, mcpserver.MaximumServerNameCharacters),
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS mcp_tool_exposure (
-            server_name TEXT NOT NULL REFERENCES mcp_servers(name) ON DELETE CASCADE,
+            server_name TEXT NOT NULL REFERENCES mcp_sources(name) ON DELETE CASCADE,
             tool_name TEXT NOT NULL CHECK (
                 length(tool_name) BETWEEN 1 AND %d AND
                 tool_name NOT GLOB '*[^A-Za-z0-9_.-]*'
@@ -423,15 +423,38 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
                 SELECT RAISE(ABORT, 'MCP tool exposure limit exceeded');
             END`, mcpserver.MaxRemoteToolsPerServer),
 		// OAuth owns an opaque, versioned payload in the MCP connection layer;
-		// SQLite only enforces lifecycle and origin binding. The FK cascade removes
-		// credentials with their server. A transport or endpoint change invalidates
+		// SQLite enforces lifecycle, origin and release binding. Removing a source
+		// removes its credentials. A transport or endpoint change invalidates
 		// the old credential before that server can reconnect elsewhere.
+		`CREATE TABLE IF NOT EXISTS plugin_releases (
+            digest TEXT PRIMARY KEY,
+            declaration TEXT NOT NULL CHECK(json_valid(declaration) AND json_type(declaration)='object')
+        )`,
+		`CREATE TRIGGER IF NOT EXISTS immutable_plugin_release BEFORE UPDATE ON plugin_releases
+            BEGIN SELECT RAISE(ABORT,'admitted release is immutable'); END`,
+		`CREATE TABLE IF NOT EXISTS plugin_installations (
+            id TEXT PRIMARY KEY,
+            source TEXT NOT NULL,
+            selected_digest TEXT NOT NULL REFERENCES plugin_releases(digest),
+            staged_digest TEXT REFERENCES plugin_releases(digest),
+            state TEXT NOT NULL CHECK(json_valid(state) AND json_type(state)='object')
+        )`,
+		`CREATE TABLE IF NOT EXISTS mcp_sources (
+            name TEXT PRIMARY KEY,
+            user_name TEXT REFERENCES mcp_servers(name) ON DELETE CASCADE,
+            installation_id TEXT REFERENCES plugin_installations(id) ON DELETE CASCADE,
+            CHECK ((user_name IS NOT NULL AND installation_id IS NULL AND name=user_name) OR
+                   (user_name IS NULL AND installation_id IS NOT NULL AND
+                    substr(name,1,length(installation_id)+14)='installation/' || installation_id || '/'))
+        )`,
 		`CREATE TABLE IF NOT EXISTS mcp_oauth_sessions (
-			server_name TEXT PRIMARY KEY REFERENCES mcp_servers(name) ON DELETE CASCADE,
+			server_name TEXT PRIMARY KEY REFERENCES mcp_sources(name) ON DELETE CASCADE,
 			origin      TEXT NOT NULL,
+			target_fingerprint TEXT NOT NULL,
 			` + oauthBindingColumn + `,
 			payload     BLOB NOT NULL
 		)`,
+
 		`DROP TRIGGER IF EXISTS invalidate_mcp_oauth_session`,
 		`CREATE TRIGGER invalidate_mcp_oauth_session
 			AFTER UPDATE OF transport, enabled, url, authorization, headers ON mcp_servers
@@ -725,6 +748,7 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			updated_at INTEGER NOT NULL DEFAULT 0
 		)`,
 	}
+
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("sqlite: begin schema installation: %w", err)
@@ -772,19 +796,28 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			return fmt.Errorf("sqlite: index result publication context: %w", err)
 		}
 	}
-	var oauthBindingColumnCount int
-	if err := tx.QueryRowContext(ctx,
-		"SELECT count(*) FROM pragma_table_info('mcp_oauth_sessions') WHERE name = 'binding'",
-	).Scan(&oauthBindingColumnCount); err != nil {
-		return fmt.Errorf("sqlite: inspect mcp oauth binding schema: %w", err)
+	for _, table := range []string{"approval_rules", "mcp_tool_exposure", "mcp_oauth_sessions"} {
+		var sourceOwner int
+		if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM pragma_foreign_key_list(?) WHERE "table" = 'mcp_sources' AND on_delete = 'CASCADE'`, table).Scan(&sourceOwner); err != nil {
+			return fmt.Errorf("sqlite: inspect MCP ownership schema: %w", err)
+		}
+		if sourceOwner != 1 {
+			return errors.New("sqlite: incompatible MCP ownership schema; open a fresh data directory")
+		}
 	}
-	if oauthBindingColumnCount == 0 {
-		if _, err := tx.ExecContext(ctx, "ALTER TABLE mcp_oauth_sessions ADD COLUMN "+oauthBindingColumn); err != nil {
-			return fmt.Errorf("sqlite: add mcp oauth binding: %w", err)
-		}
-		if _, err := tx.ExecContext(ctx, "UPDATE mcp_oauth_sessions SET binding = lower(hex(randomblob(16)))"); err != nil {
-			return fmt.Errorf("sqlite: bind existing mcp oauth credentials: %w", err)
-		}
+	installationSchema, err := tx.QueryContext(ctx, "SELECT source,selected_digest,staged_digest,state FROM plugin_installations LIMIT 0")
+	if err != nil {
+		return fmt.Errorf("sqlite: incompatible installation schema; open a fresh data directory: %w", err)
+	}
+	if err := installationSchema.Close(); err != nil {
+		return err
+	}
+	oauthSchema, err := tx.QueryContext(ctx, "SELECT target_fingerprint, binding FROM mcp_oauth_sessions LIMIT 0")
+	if err != nil {
+		return fmt.Errorf("sqlite: incompatible MCP authorization schema; open a fresh data directory: %w", err)
+	}
+	if err := oauthSchema.Close(); err != nil {
+		return err
 	}
 	// The feedback ledger has no reader inside Runtime, so an index on its
 	// timestamp only charged every insert for a query nobody makes; the pending

@@ -11,9 +11,9 @@
 // Two deliberate silences, both of them agreement with the published schema rather
 // than an opinion of this file:
 //
-//   - An unknown property is not a violation. The runtime's decoder ignores unknown
-//     fields, so the bundle carries no `additionalProperties: false`; refusing them
-//     here would reject frames the runtime accepts.
+//   - Shared result shapes accept unknown properties so optional result growth
+//     does not break readers. Request validation closes typed objects because
+//     Runtime rejects unknown request members. Maps and opaque values stay open.
 //   - `format` and `contentEncoding` are annotations, not assertions — the default
 //     reading of both keywords. A malformed timestamp is caught where it is decoded.
 
@@ -36,6 +36,7 @@ export type WireCheck = (
   value: unknown,
   path: string,
   out: WireViolation[],
+  boundary?: "request",
 ) => void;
 
 /**
@@ -67,12 +68,18 @@ export function object(
   required: readonly string[],
 ): WireCheck {
   const stated = fields(properties, required);
-  return (value, path, out) => {
+  return (value, path, out, boundary) => {
     if (!isObject(value)) {
       out.push({ path, detail: "expected an object" });
       return;
     }
-    stated(value, path, out);
+    if (boundary === "request") {
+      for (const name of Object.keys(value)) {
+        if (!Object.hasOwn(properties, name))
+          out.push({ path: `${path}.${name}`, detail: "must not be present" });
+      }
+    }
+    stated(value, path, out, boundary);
   };
 }
 
@@ -86,14 +93,14 @@ export function fields(
   properties: Record<string, WireCheck>,
   required: readonly string[],
 ): WireCheck {
-  return (value, path, out) => {
+  return (value, path, out, boundary) => {
     if (!isObject(value)) return;
     for (const name of required) {
       if (value[name] === undefined)
         out.push({ path: `${path}.${name}`, detail: "is required" });
     }
     for (const [name, check] of Object.entries(properties)) {
-      if (value[name] !== undefined) check(value[name], `${path}.${name}`, out);
+      if (value[name] !== undefined) check(value[name], `${path}.${name}`, out, boundary);
     }
   };
 }
@@ -296,40 +303,40 @@ export function anything(): WireCheck {
 
 /** A nullable result: JSON null or the declared non-null shape. */
 export function nullable(value: WireCheck): WireCheck {
-  return (candidate, path, out) => {
-    if (candidate !== null) value(candidate, path, out);
+  return (candidate, path, out, boundary) => {
+    if (candidate !== null) value(candidate, path, out, boundary);
   };
 }
 
 export function array(items: WireCheck): WireCheck {
-  return (value, path, out) => {
+  return (value, path, out, boundary) => {
     if (!Array.isArray(value)) {
       out.push({ path, detail: "expected an array" });
       return;
     }
-    value.forEach((element, index) => items(element, `${path}[${index}]`, out));
+    value.forEach((element, index) => items(element, `${path}[${index}]`, out, boundary));
   };
 }
 
 /** `additionalProperties`: a map keyed by any string. */
 export function record(values: WireCheck): WireCheck {
-  return (value, path, out) => {
+  return (value, path, out, boundary) => {
     if (!isObject(value)) {
       out.push({ path, detail: "expected an object" });
       return;
     }
     for (const [key, member] of Object.entries(value)) {
-      values(member, `${path}.${key}`, out);
+      values(member, `${path}[${JSON.stringify(key)}]`, out, boundary);
     }
   };
 }
 
 /** `propertyNames`: validate every own key of an object as a string value. */
 export function propertyNames(check: WireCheck): WireCheck {
-  return (value, path, out) => {
+  return (value, path, out, boundary) => {
     if (!isObject(value)) return;
     for (const key of Object.keys(value))
-      check(key, `${path}[${JSON.stringify(key)}]`, out);
+      check(key, `${path}[${JSON.stringify(key)}]`, out, boundary);
   };
 }
 
@@ -340,7 +347,7 @@ export function propertyNames(check: WireCheck): WireCheck {
  * of a cycle is built second.
  */
 export function ref(resolve: () => WireCheck): WireCheck {
-  return (value, path, out) => resolve()(value, path, out);
+  return (value, path, out, boundary) => resolve()(value, path, out, boundary);
 }
 
 /**
@@ -352,13 +359,13 @@ export function ref(resolve: () => WireCheck): WireCheck {
  * union's exclusivity rather than in the frame, and says so.
  */
 export function oneOf(branches: readonly WireCheck[]): WireCheck {
-  return (value, path, out) => {
+  return (value, path, out, boundary) => {
     let matched = 0;
     let nearest: WireViolation[] | undefined;
     let nearestMissesDiscriminator = true;
     for (const branch of branches) {
       const missed: WireViolation[] = [];
-      branch(value, path, missed);
+      branch(value, path, missed, boundary);
       if (missed.length === 0) {
         matched++;
         continue;
@@ -395,11 +402,11 @@ export function oneOf(branches: readonly WireCheck[]): WireCheck {
 
 /** `anyOf`: one or more alternatives may apply. */
 export function anyOf(branches: readonly WireCheck[]): WireCheck {
-  return (value, path, out) => {
+  return (value, path, out, boundary) => {
     let nearest: WireViolation[] | undefined;
     for (const branch of branches) {
       const missed: WireViolation[] = [];
-      branch(value, path, missed);
+      branch(value, path, missed, boundary);
       if (missed.length === 0) return;
       if (nearest === undefined || missed.length < nearest.length)
         nearest = missed;
@@ -410,8 +417,8 @@ export function anyOf(branches: readonly WireCheck[]): WireCheck {
 }
 
 export function allOf(members: readonly WireCheck[]): WireCheck {
-  return (value, path, out) => {
-    for (const member of members) member(value, path, out);
+  return (value, path, out, boundary) => {
+    for (const member of members) member(value, path, out, boundary);
   };
 }
 
@@ -420,10 +427,10 @@ export function ifThen(
   condition: WireCheck,
   consequence: WireCheck,
 ): WireCheck {
-  return (value, path, out) => {
+  return (value, path, out, boundary) => {
     const unmet: WireViolation[] = [];
-    condition(value, path, unmet);
-    if (unmet.length === 0) consequence(value, path, out);
+    condition(value, path, unmet, boundary);
+    if (unmet.length === 0) consequence(value, path, out, boundary);
   };
 }
 
