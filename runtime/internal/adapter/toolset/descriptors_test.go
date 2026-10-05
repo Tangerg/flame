@@ -125,7 +125,6 @@ func assertBuiltInToolContract(t *testing.T, candidate toolcontract.Tool) {
 func TestRootResolverIncludesConfiguredConditionalTools(t *testing.T) {
 	policy := testApprovalPolicy(t)
 	built, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(),
-		DefaultCWD:   t.TempDir(),
 		UserHome:     t.TempDir(),
 		PlanMode:     policy,
 		Plan:         rolePlanStore{},
@@ -143,6 +142,7 @@ func TestRootResolverIncludesConfiguredConditionalTools(t *testing.T) {
 
 	goalRunContext := executionctx.WithScope(t.Context(), runs.ExecutionScope{
 		SessionID: "session-goal", GoalIncarnationID: "incarnation-1",
+		CWD: t.TempDir(), WorkspaceCWD: t.TempDir(),
 	})
 	manifest, err := built.Resolver.Manifest(goalRunContext, tool.GroupRoot)
 	if err != nil {
@@ -175,7 +175,6 @@ func TestRootResolverIncludesConfiguredConditionalTools(t *testing.T) {
 func TestDescriptorCatalogMatchesBuiltInTools(t *testing.T) {
 	policy := testApprovalPolicy(t)
 	built, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(),
-		DefaultCWD:        t.TempDir(),
 		UserHome:          t.TempDir(),
 		SkillsUserDir:     t.TempDir(), // backs skill
 		PlanMode:          policy,
@@ -203,6 +202,7 @@ func TestDescriptorCatalogMatchesBuiltInTools(t *testing.T) {
 
 	goalRunContext := executionctx.WithScope(t.Context(), runs.ExecutionScope{
 		SessionID: "session-goal", GoalIncarnationID: "incarnation-1",
+		CWD: t.TempDir(), WorkspaceCWD: t.TempDir(),
 	})
 	manifest, err := built.Resolver.Manifest(goalRunContext, tool.GroupRoot)
 	if err != nil {

@@ -11,14 +11,14 @@ import (
 // resolveRootManifest builds one exact root visibility snapshot.
 func resolveRootManifest(t *testing.T, mcpTools []toolcontract.Tool) Manifest {
 	t.Helper()
-	built, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(), DefaultCWD: t.TempDir(), UserHome: t.TempDir()})
+	built, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(), UserHome: t.TempDir()})
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
 	closeBuiltToolset(t, built)
 	built.Resolver.SetMCPTools(mcpTools)
 
-	manifest, err := built.Resolver.Manifest(t.Context(), domaintool.GroupRoot)
+	manifest, err := built.Resolver.Manifest(attachedRun(t), domaintool.GroupRoot)
 	if err != nil {
 		t.Fatalf("Manifest: %v", err)
 	}

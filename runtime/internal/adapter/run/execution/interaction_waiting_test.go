@@ -411,7 +411,7 @@ func TestInteractionExecutorCancellationStopsApprovedForegroundShell(t *testing.
 			t.Errorf("KillAll: %v", err)
 		}
 	})
-	shellTools, err := builtin.BuildShell(shells, workspace)
+	shellTools, err := builtin.BuildShell(shells)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -25,12 +25,12 @@ func newTestCodeIntel(t *testing.T) *codeintel.Analyzer {
 // guards can always name. edit carries that path as an argument; apply_patch
 // declares it from the patch text and batches several at once.
 func TestResolverRegistersTheMutationVocabulary(t *testing.T) {
-	built, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(), DefaultCWD: t.TempDir(), UserHome: t.TempDir()})
+	built, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(), UserHome: t.TempDir()})
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
 	closeBuiltToolset(t, built)
-	manifest, err := built.Resolver.Manifest(t.Context(), domaintool.GroupRoot)
+	manifest, err := built.Resolver.Manifest(attachedRun(t), domaintool.GroupRoot)
 	if err != nil {
 		t.Fatalf("Manifest: %v", err)
 	}
@@ -75,15 +75,14 @@ func TestResolverInitialManifestSeparatesDirectAndDeferredCapabilities(t *testin
 	}
 	analyzer := newTestCodeIntel(t)
 	resolver, err := newResolver(resolverDeps{
-		DefaultCWD: t.TempDir(),
-		Online:     []toolcontract.Tool{named(string(domaintool.WebFetch))},
-		A2A:        []toolcontract.Tool{named("remote_agent")},
-		LSP:        []toolcontract.Tool{named(string(domaintool.LSP))},
-		Shell:      []toolcontract.Tool{named(string(domaintool.Shell))},
-		AskUser:    named(string(domaintool.AskUser)),
-		EnterPlan:  named(string(domaintool.EnterPlanMode)),
-		ExitPlan:   named(string(domaintool.ExitPlanMode)),
-		Plan:       named(string(domaintool.SetPlan)),
+		Online:    []toolcontract.Tool{named(string(domaintool.WebFetch))},
+		A2A:       []toolcontract.Tool{named("remote_agent")},
+		LSP:       []toolcontract.Tool{named(string(domaintool.LSP))},
+		Shell:     []toolcontract.Tool{named(string(domaintool.Shell))},
+		AskUser:   named(string(domaintool.AskUser)),
+		EnterPlan: named(string(domaintool.EnterPlanMode)),
+		ExitPlan:  named(string(domaintool.ExitPlanMode)),
+		Plan:      named(string(domaintool.SetPlan)),
 		ScheduleTools: []toolcontract.Tool{
 			named(string(domaintool.ListSchedules)), named(string(domaintool.CreateSchedule)), named(string(domaintool.DeleteSchedule)),
 		},
@@ -100,7 +99,7 @@ func TestResolverInitialManifestSeparatesDirectAndDeferredCapabilities(t *testin
 	resolver.SetMCPTools([]toolcontract.Tool{
 		mcpToolStub{name: "linear_create_issue", server: "linear", remote: "create_issue"},
 	})
-	manifest, err := resolver.Manifest(t.Context(), domaintool.GroupRoot)
+	manifest, err := resolver.Manifest(attachedRun(t), domaintool.GroupRoot)
 	if err != nil {
 		t.Fatalf("Manifest: %v", err)
 	}
@@ -139,7 +138,7 @@ func manifestTools(manifest Manifest) []toolcontract.Tool {
 }
 
 func TestBuildRequiresExplicitProcessPaths(t *testing.T) {
-	validPaths := BuildConfig{Lifetime: t.Context(), DefaultCWD: t.TempDir(), UserHome: t.TempDir()}
+	validPaths := BuildConfig{Lifetime: t.Context(), UserHome: t.TempDir()}
 	var missingContext context.Context
 	if _, err := Build(missingContext, validPaths); err == nil {
 		t.Fatal("Build accepted a nil startup context")
@@ -148,16 +147,10 @@ func TestBuildRequiresExplicitProcessPaths(t *testing.T) {
 	if _, err := Build(t.Context(), validPaths); err == nil {
 		t.Fatal("Build accepted a nil process lifetime")
 	}
-	if _, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(), UserHome: t.TempDir()}); err == nil {
-		t.Fatal("Build accepted an empty default CWD")
-	}
-	if _, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(), DefaultCWD: t.TempDir()}); err == nil {
+	if _, err := Build(t.Context(), BuildConfig{Lifetime: t.Context()}); err == nil {
 		t.Fatal("Build accepted an empty user home")
 	}
-	if _, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(), DefaultCWD: "relative", UserHome: t.TempDir()}); err == nil {
-		t.Fatal("Build accepted a relative default CWD")
-	}
-	if _, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(), DefaultCWD: t.TempDir(), UserHome: "relative"}); err == nil {
+	if _, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(), UserHome: "relative"}); err == nil {
 		t.Fatal("Build accepted a relative user home")
 	}
 }

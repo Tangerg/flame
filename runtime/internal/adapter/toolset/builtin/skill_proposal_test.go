@@ -28,7 +28,7 @@ func (r *recordingSubmitter) SubmitProposal(_ context.Context, cwd string, propo
 
 func TestProposalSchemaRejectsInvalidDomainValuesBeforeSubmission(t *testing.T) {
 	submitter := &recordingSubmitter{}
-	candidate, err := NewProposal(submitter, "/fallback")
+	candidate, err := NewProposal(submitter)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +54,7 @@ func TestProposalSchemaRejectsInvalidDomainValuesBeforeSubmission(t *testing.T) 
 }
 
 func TestNewNilSubmitterOmitsTool(t *testing.T) {
-	candidate, err := NewProposal(nil, "/fallback")
+	candidate, err := NewProposal(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +64,7 @@ func TestNewNilSubmitterOmitsTool(t *testing.T) {
 }
 
 func TestDefinitionUsesOnePreciseProposalVocabulary(t *testing.T) {
-	candidate, err := NewProposal(&recordingSubmitter{}, "/fallback")
+	candidate, err := NewProposal(&recordingSubmitter{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func TestDefinitionUsesOnePreciseProposalVocabulary(t *testing.T) {
 
 func TestCallStampsHostScopeAndReturnsPendingReference(t *testing.T) {
 	submitter := &recordingSubmitter{}
-	candidate, err := NewProposal(submitter, "/fallback")
+	candidate, err := NewProposal(submitter)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +120,7 @@ func TestCallStampsHostScopeAndReturnsPendingReference(t *testing.T) {
 }
 
 func TestCallRequiresSessionAndValidScope(t *testing.T) {
-	candidate, err := NewProposal(&recordingSubmitter{}, "/fallback")
+	candidate, err := NewProposal(&recordingSubmitter{})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -17,8 +17,10 @@ import (
 
 	scopemcp "github.com/Tangerg/scope/mcp"
 
+	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
@@ -32,7 +34,7 @@ const runAsMCPServerEnv = "FLAME_TEST_RUN_AS_MCP_SERVER"
 
 func resolvedRootTools(t *testing.T, resolver *toolset.Resolver) []toolcontract.Tool {
 	t.Helper()
-	manifest, err := resolver.Manifest(t.Context(), domaintool.GroupRoot)
+	manifest, err := resolver.Manifest(attachedRun(t), domaintool.GroupRoot)
 	if err != nil {
 		t.Fatalf("root manifest: %v", err)
 	}
@@ -282,7 +284,7 @@ func mustMCPToolEnvironment(t *testing.T, servers []mcpserver.Server) (toolset.B
 		t.Fatalf("Open MCP pool: %v", err)
 	}
 	built, err := toolset.Build(t.Context(), toolset.BuildConfig{Lifetime: t.Context(),
-		DefaultCWD: t.TempDir(), UserHome: t.TempDir(), MCPTools: mcpTools,
+		UserHome: t.TempDir(), MCPTools: mcpTools,
 	})
 	if err != nil {
 		_ = pool.Shutdown(context.WithoutCancel(t.Context()))
@@ -387,4 +389,13 @@ func (r testSourceRegistry) Connection(ctx context.Context, name mcpserver.ID) (
 		err = mcpserver.ErrUnknownServer
 	}
 	return server, err
+}
+
+// attachedRun is the Run scope every Tool resolution executes under.
+func attachedRun(t *testing.T) context.Context {
+	t.Helper()
+	workspace := t.TempDir()
+	return executionctx.WithScope(t.Context(), runs.ExecutionScope{
+		SessionID: "session-test", CWD: workspace, WorkspaceCWD: workspace,
+	})
 }

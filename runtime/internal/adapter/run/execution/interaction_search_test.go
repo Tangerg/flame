@@ -21,7 +21,7 @@ func TestInteractionSearchFailureCommitsFeedbackAndAllowsCorrection(t *testing.T
 		t.Fatal(err)
 	}
 	built, err := toolset.Build(t.Context(), toolset.BuildConfig{
-		Lifetime: t.Context(), DefaultCWD: root, UserHome: t.TempDir(),
+		Lifetime: t.Context(), UserHome: t.TempDir(),
 	})
 	if err != nil {
 		t.Fatal(err)

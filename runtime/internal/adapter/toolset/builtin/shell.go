@@ -101,15 +101,14 @@ func (s shellIDArgs) validate() error {
 }
 
 type commandTools struct {
-	shells     *exec.Shells
-	defaultCWD string
+	shells *exec.Shells
 }
 
-func BuildShell(shells *exec.Shells, defaultCWD string) ([]toolcontract.Tool, error) {
+func BuildShell(shells *exec.Shells) ([]toolcontract.Tool, error) {
 	if shells == nil {
 		return nil, errors.New("shell: shells is nil")
 	}
-	t := &commandTools{shells: shells, defaultCWD: defaultCWD}
+	t := &commandTools{shells: shells}
 
 	shellTool, err := toolcontract.NewFunc[shellArgs, string](
 		toolcontract.FuncConfig{
@@ -161,7 +160,11 @@ func (c *commandTools) run(ctx context.Context, a shellArgs) (string, error) {
 		return "", toolfailure.Definite(err)
 	}
 
-	id, err := c.shells.Launch(ctx, executionctx.SessionID(ctx), executionctx.CWD(ctx, c.defaultCWD), a.Command, timeout, executionctx.Isolated(ctx))
+	cwd, attached := executionctx.CWD(ctx)
+	if !attached {
+		return "", errors.New("shell: no attached Run workspace")
+	}
+	id, err := c.shells.Launch(ctx, executionctx.SessionID(ctx), cwd, a.Command, timeout, executionctx.Isolated(ctx))
 	if err != nil {
 		return "", err
 	}

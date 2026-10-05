@@ -35,7 +35,6 @@ import (
 // per-session engine.
 type Resolver struct {
 	telemetry     oteltool.Middleware
-	defaultCWD    string
 	packageSkills promptsource.PackageSkills
 	skillsUserDir string                     // user-scope skills dir; merged under each Run's project skills
 	skillUsage    builtin.SkillUsageRecorder // records skill loads for the idle-lifecycle curator; nil → off
@@ -102,7 +101,6 @@ type staticSpec struct {
 // shell and LSP tools are built once but read the Run's cwd per call. Online,
 // A2A, and code-intelligence capabilities are also built once and held.
 type resolverDeps struct {
-	DefaultCWD        string
 	PackageSkills     promptsource.PackageSkills
 	SkillsUserDir     string
 	SkillUsage        builtin.SkillUsageRecorder
@@ -143,7 +141,6 @@ func newResolver(d resolverDeps) (*Resolver, error) {
 	}
 	resolver := &Resolver{
 		telemetry:     telemetry,
-		defaultCWD:    d.DefaultCWD,
 		skillsUserDir: d.SkillsUserDir, packageSkills: d.PackageSkills,
 		skillUsage: d.SkillUsage,
 		online:     slices.Clone(d.Online),
@@ -283,12 +280,6 @@ func (r *Resolver) ForgetWorkspace(root string) {
 	r.readTracker.forgetWorkspace(root)
 }
 
-// cwdFor reads the per-Run working directory, falling back to the
-// engine default.
-func (r *Resolver) cwdFor(ctx context.Context) string {
-	return executionctx.CWD(ctx, r.defaultCWD)
-}
-
 func (r *Resolver) toolsForCWD(cwd string) (cwdTools, error) {
 	return openCWDTools(cwd, r.codeIntel, r.readTracker, r.pathLocker)
 }
@@ -309,7 +300,10 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group) (_ manif
 	if !group.Valid() {
 		return manifestBuilder{}, fmt.Errorf("toolset: unsupported Tool group %q", group)
 	}
-	cwd := r.cwdFor(ctx)
+	cwd, attached := executionctx.CWD(ctx)
+	if !attached {
+		return manifestBuilder{}, errors.New("toolset: resolve Tools without an attached Run workspace")
+	}
 	localTools, err := r.toolsForCWD(cwd)
 	if err != nil {
 		return manifestBuilder{}, err

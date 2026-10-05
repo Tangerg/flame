@@ -1,7 +1,6 @@
 package builtin
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -13,7 +12,7 @@ import (
 // lspTool returns the combined `lsp` tool from a fresh Build.
 func lspTool(t *testing.T, ci *codeintel.Analyzer) toolcontract.Tool {
 	t.Helper()
-	tools, err := BuildLSP(ci, t.TempDir())
+	tools, err := BuildLSP(ci)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +59,7 @@ func TestLSPPositionPreservesPresence(t *testing.T) {
 func TestLSPToolUnsupportedFile(t *testing.T) {
 	ci := newTestAnalyzer(t)
 
-	out, err := callTextTool(context.Background(), lspTool(t, ci), `{"operation":"hover","path":"notes.txt","line":1,"character":1}`)
+	out, err := callTextTool(attachedRun(t), lspTool(t, ci), `{"operation":"hover","path":"notes.txt","line":1,"character":1}`)
 	if err != nil {
 		t.Fatalf("unsupported file should not error: %v", err)
 	}
@@ -80,20 +79,20 @@ func TestLSPToolValidation(t *testing.T) {
 	// The operation enum is rejected by the argument schema, one layer above the
 	// handler: execution adapter's own invoke settles a Prepare failure as a definite
 	// failure, which this helper does not model.
-	_, err := callTextTool(context.Background(), lsp, `{"operation":"bogus"}`)
+	_, err := callTextTool(attachedRun(t), lsp, `{"operation":"bogus"}`)
 	if err == nil {
 		t.Error("unknown operation must error")
 	}
-	_, err = callTextTool(context.Background(), lsp, `{"operation":"definition"}`)
+	_, err = callTextTool(attachedRun(t), lsp, `{"operation":"definition"}`)
 	requireDefiniteFailure(t, err, "definition without path")
-	_, err = callTextTool(context.Background(), lsp, `{"operation":"definition","path":"notes.txt"}`)
+	_, err = callTextTool(attachedRun(t), lsp, `{"operation":"definition","path":"notes.txt"}`)
 	requireDefiniteFailure(t, err, "position operation without line and character")
-	_, err = callTextTool(context.Background(), lsp, `{"operation":"definition","path":"notes.txt","line":1}`)
+	_, err = callTextTool(attachedRun(t), lsp, `{"operation":"definition","path":"notes.txt","line":1}`)
 	requireDefiniteFailure(t, err, "position operation with an incomplete coordinate")
-	_, err = callTextTool(context.Background(), lsp, `{"operation":"workspace_symbols"}`)
+	_, err = callTextTool(attachedRun(t), lsp, `{"operation":"workspace_symbols"}`)
 	requireDefiniteFailure(t, err, "workspace_symbols without query")
 	for _, op := range []string{"implementation", "incoming_calls", "outgoing_calls"} {
-		out, err := callTextTool(context.Background(), lsp, `{"operation":"`+op+`","path":"notes.txt","line":1,"character":1}`)
+		out, err := callTextTool(attachedRun(t), lsp, `{"operation":"`+op+`","path":"notes.txt","line":1,"character":1}`)
 		if err != nil {
 			t.Errorf("%s should not error on unsupported file: %v", op, err)
 		}
@@ -101,10 +100,10 @@ func TestLSPToolValidation(t *testing.T) {
 			t.Errorf("%s output = %q, want a no-server message", op, out)
 		}
 	}
-	if out, err := callTextTool(context.Background(), lsp, `{"operation":"diagnostics","path":"notes.txt"}`); err != nil || !strings.Contains(out, "No language server") {
+	if out, err := callTextTool(attachedRun(t), lsp, `{"operation":"diagnostics","path":"notes.txt"}`); err != nil || !strings.Contains(out, "No language server") {
 		t.Errorf("diagnostics = (%q, %v), want a no-server message", out, err)
 	}
-	if _, err := callTextTool(context.Background(), lsp, `{"operation":"diagnostics","file_path":"notes.txt"}`); err == nil {
+	if _, err := callTextTool(attachedRun(t), lsp, `{"operation":"diagnostics","file_path":"notes.txt"}`); err == nil {
 		t.Error("obsolete file_path field must be rejected")
 	}
 	for _, arguments := range []string{
@@ -116,7 +115,7 @@ func TestLSPToolValidation(t *testing.T) {
 		`{"operation":"workspace_symbols","query":"Thing","path":"notes.txt"}`,
 		`{"operation":"workspace_symbols","query":"Thing","line":0,"character":0}`,
 	} {
-		if _, err := callTextTool(context.Background(), lsp, arguments); err == nil {
+		if _, err := callTextTool(attachedRun(t), lsp, arguments); err == nil {
 			t.Errorf("lsp accepted fields ignored by the selected operation: %s", arguments)
 		}
 	}

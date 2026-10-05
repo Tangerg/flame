@@ -30,7 +30,6 @@ type BuildConfig struct {
 	// Lifetime is the process-owned root for local capability resources that
 	// outlive the startup call and individual Tool invocations.
 	Lifetime      context.Context
-	DefaultCWD    string
 	UserHome      string
 	PackageSkills promptsource.PackageSkills
 	SkillsUserDir string
@@ -99,12 +98,6 @@ func Build(ctx context.Context, config BuildConfig) (_ Built, err error) {
 	if config.Lifetime == nil {
 		return Built{}, errors.New("toolset: lifetime is required")
 	}
-	if config.DefaultCWD == "" {
-		return Built{}, errors.New("toolset: default CWD is required")
-	}
-	if !filepath.IsAbs(config.DefaultCWD) {
-		return Built{}, errors.New("toolset: default CWD must be absolute")
-	}
 	if config.UserHome == "" {
 		return Built{}, errors.New("toolset: user home is required")
 	}
@@ -123,7 +116,7 @@ func Build(ctx context.Context, config BuildConfig) (_ Built, err error) {
 	if err != nil {
 		return Built{}, fmt.Errorf("toolset: build code intelligence: %w", err)
 	}
-	lspTools, err := builtin.BuildLSP(codeIntel, config.DefaultCWD)
+	lspTools, err := builtin.BuildLSP(codeIntel)
 	if err != nil {
 		return Built{}, fmt.Errorf("toolset: build lsp tools: %w", err)
 	}
@@ -139,7 +132,7 @@ func Build(ctx context.Context, config BuildConfig) (_ Built, err error) {
 		return Built{}, fmt.Errorf("toolset: enable shell sandbox: %w", confErr)
 	}
 	shells := exec.NewShells(confiner, config.SandboxShell)
-	shellTools, err := builtin.BuildShell(shells, config.DefaultCWD)
+	shellTools, err := builtin.BuildShell(shells)
 	if err != nil {
 		return Built{}, fmt.Errorf("toolset: build shell tools: %w", err)
 	}
@@ -200,7 +193,7 @@ func Build(ctx context.Context, config BuildConfig) (_ Built, err error) {
 	if err != nil {
 		return Built{}, fmt.Errorf("toolset: build report_goal_outcome: %w", err)
 	}
-	proposeSkillTool, err := builtin.NewProposal(config.SkillProposals, config.DefaultCWD)
+	proposeSkillTool, err := builtin.NewProposal(config.SkillProposals)
 	if err != nil {
 		return Built{}, fmt.Errorf("toolset: build propose_skill: %w", err)
 	}
@@ -224,7 +217,6 @@ func Build(ctx context.Context, config BuildConfig) (_ Built, err error) {
 
 	resolver, err := newResolver(resolverDeps{
 		SkillUsage:    config.SkillUsage,
-		DefaultCWD:    config.DefaultCWD,
 		SkillsUserDir: config.SkillsUserDir, PackageSkills: config.PackageSkills,
 		Online:            online,
 		A2A:               a2aExecutables,

@@ -70,9 +70,9 @@ func (a *agentMemorySearcher) run(ctx context.Context, req agentMemorySearchRequ
 	if err != nil {
 		return "", toolfailure.Definite(fmt.Errorf("search_memory: %w", err))
 	}
-	cwd := strings.TrimSpace(executionctx.WorkspaceCWD(ctx, ""))
-	if cwd == "" {
-		return "No project is associated with this session, so there is no project memory to search.", nil
+	cwd, attached := executionctx.WorkspaceCWD(ctx)
+	if !attached {
+		return "", errors.New("search_memory: no attached Run workspace")
 	}
 	items, err := a.search.Search(ctx, filepath.Clean(cwd), query, limit)
 	if err != nil {

@@ -45,14 +45,14 @@ func TestRejectedCallsDoNotCostTheRun(t *testing.T) {
 		t.Fatal(err)
 	}
 	built, err := Build(t.Context(), BuildConfig{
-		Lifetime: t.Context(), DefaultCWD: root, UserHome: t.TempDir(),
+		Lifetime: t.Context(), UserHome: t.TempDir(),
 		SkillsUserDir: t.TempDir(),
 	})
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
 	closeBuiltToolset(t, built)
-	manifest, err := built.Resolver.Manifest(t.Context(), domaintool.GroupRoot)
+	manifest, err := built.Resolver.Manifest(attachedRun(t), domaintool.GroupRoot)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -18,13 +18,13 @@ func TestResolverExcludesCollidingRemoteIdentities(t *testing.T) {
 		{"remote pair", []toolcontract.Tool{mcpToolStub{name: "a_b_c", server: "a_b", remote: "c"}, mcpToolStub{name: "a_b_c", server: "a", remote: "b_c"}}, "a_b_c"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			built, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(), DefaultCWD: t.TempDir(), UserHome: t.TempDir()})
+			built, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(), UserHome: t.TempDir()})
 			if err != nil {
 				t.Fatal(err)
 			}
 			closeBuiltToolset(t, built)
 			built.Resolver.SetMCPTools(append(test.tools, mcpToolStub{name: "other_read", server: "other", remote: "read"}))
-			manifest, err := built.Resolver.Manifest(t.Context(), domaintool.GroupRoot)
+			manifest, err := built.Resolver.Manifest(attachedRun(t), domaintool.GroupRoot)
 			if err != nil {
 				t.Fatalf("collision prevented manifest construction: %v", err)
 			}

@@ -62,22 +62,23 @@ func ModelSelection(ctx context.Context) (modelref.Selection, bool) {
 	return selection, ok
 }
 
-// CWD returns the execution workspace, falling back when the Run is
-// unattached. Every cwd-dependent adapter reads this single host seam.
-func CWD(ctx context.Context, fallback string) string {
+// CWD is the execution workspace of the attached Run. Every cwd-dependent
+// adapter reads this single host seam; a tool executing without a Run scope is
+// a composition defect, so there is no default workspace to fall back to.
+func CWD(ctx context.Context) (string, bool) {
 	if scope, ok := Scope(ctx); ok && scope.CWD != "" {
-		return scope.CWD
+		return scope.CWD, true
 	}
-	return fallback
+	return "", false
 }
 
-// WorkspaceCWD returns the persistent session workspace, falling back when the
-// Run is unattached. Unlike [CWD], it never points at an isolated scratch copy.
-func WorkspaceCWD(ctx context.Context, fallback string) string {
+// WorkspaceCWD is the attached Run's persistent session workspace. Unlike
+// [CWD], it never points at an isolated scratch copy.
+func WorkspaceCWD(ctx context.Context) (string, bool) {
 	if scope, ok := Scope(ctx); ok && scope.WorkspaceCWD != "" {
-		return scope.WorkspaceCWD
+		return scope.WorkspaceCWD, true
 	}
-	return fallback
+	return "", false
 }
 
 // Isolated reports whether the running Run is in an isolated session

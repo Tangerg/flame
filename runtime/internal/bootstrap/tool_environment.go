@@ -72,7 +72,6 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 	}
 	buildConfig := toolset.BuildConfig{
 		Lifetime:      deps.lifetime,
-		DefaultCWD:    cfg.DefaultWorkspacePath,
 		UserHome:      cfg.UserHome,
 		SkillsUserDir: cfg.SkillsUserDir, PackageSkills: deps.packageSkills,
 		Online:          cfg.Online,

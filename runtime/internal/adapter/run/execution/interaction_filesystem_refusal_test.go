@@ -35,7 +35,7 @@ func TestFilesystemGuardsPublishRefusalWithoutPostExecutionHooks(t *testing.T) {
 			if err := os.WriteFile(path, []byte("original\n"), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			built, err := toolset.Build(t.Context(), toolset.BuildConfig{Lifetime: t.Context(), DefaultCWD: root, UserHome: t.TempDir()})
+			built, err := toolset.Build(t.Context(), toolset.BuildConfig{Lifetime: t.Context(), UserHome: t.TempDir()})
 			if err != nil {
 				t.Fatal(err)
 			}

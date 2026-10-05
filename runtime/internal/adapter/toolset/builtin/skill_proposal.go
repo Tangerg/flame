@@ -50,18 +50,17 @@ type SkillProposalSubmitter interface {
 }
 
 type proposer struct {
-	proposals            SkillProposalSubmitter
-	defaultWorkspacePath string
+	proposals SkillProposalSubmitter
 }
 
 // NewProposal builds propose_skill. A nil submitter omits the capability.
-func NewProposal(proposals SkillProposalSubmitter, defaultWorkspacePath string) (toolcontract.Tool, error) {
+func NewProposal(proposals SkillProposalSubmitter) (toolcontract.Tool, error) {
 	if dependency.Missing(proposals) {
 		return nil, nil
 	}
 	return toolcontract.NewFunc[proposalArgs, proposalResult](
 		toolcontract.FuncConfig{Name: string(tool.ProposeSkill), Description: proposalDescription},
-		(&proposer{proposals: proposals, defaultWorkspacePath: defaultWorkspacePath}).run,
+		(&proposer{proposals: proposals}).run,
 	)
 }
 
@@ -73,9 +72,9 @@ func (p *proposer) run(ctx context.Context, input proposalArgs) (proposalResult,
 	if err := resourceid.ValidateSession(sessionID); err != nil {
 		return proposalResult{}, fmt.Errorf("propose_skill: active %w", err)
 	}
-	cwd := strings.TrimSpace(executionctx.WorkspaceCWD(ctx, p.defaultWorkspacePath))
-	if cwd == "" {
-		return proposalResult{}, errors.New("propose_skill: no active workspace")
+	cwd, attached := executionctx.WorkspaceCWD(ctx)
+	if !attached {
+		return proposalResult{}, errors.New("propose_skill: no attached Run workspace")
 	}
 	if err := input.Scope.Validate(); err != nil {
 		return proposalResult{}, toolfailure.Definite(fmt.Errorf("propose_skill: scope must be project or user: %w", err))

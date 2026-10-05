@@ -40,10 +40,9 @@ func (roleGoalStub) Report(context.Context, goals.ReportCommand) (goals.ReportRe
 func TestPlanModeToolsAreRootOnly(t *testing.T) {
 	policy := testApprovalPolicy(t)
 	built, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(),
-		DefaultCWD: t.TempDir(),
-		UserHome:   t.TempDir(),
-		PlanMode:   policy,
-		Plan:       rolePlanStore{},
+		UserHome: t.TempDir(),
+		PlanMode: policy,
+		Plan:     rolePlanStore{},
 		Interrupt: func(context.Context, string, runs.Interrupt) (interrupt.Resolution, error) {
 			return interrupt.Resolution{}, nil
 		},
@@ -56,7 +55,7 @@ func TestPlanModeToolsAreRootOnly(t *testing.T) {
 			_ = close()
 		}
 	})
-	delegated, err := built.Resolver.Manifest(t.Context(), domaintool.GroupDelegated)
+	delegated, err := built.Resolver.Manifest(attachedRun(t), domaintool.GroupDelegated)
 	if err != nil {
 		t.Fatalf("Manifest(delegated): %v", err)
 	}
@@ -76,7 +75,7 @@ func TestPlanModeToolsAreRootOnly(t *testing.T) {
 		t.Fatalf("delegated tools = %v; Plan control belongs only to the root Agent", names)
 	}
 
-	root, err := built.Resolver.Manifest(t.Context(), domaintool.GroupRoot)
+	root, err := built.Resolver.Manifest(attachedRun(t), domaintool.GroupRoot)
 	if err != nil {
 		t.Fatalf("Manifest(root): %v", err)
 	}
@@ -100,7 +99,7 @@ func TestPlanModeToolsAreRootOnly(t *testing.T) {
 
 func TestGoalToolsAreRootOnlyAndOutcomeRequiresGoalRunProvenance(t *testing.T) {
 	built, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(),
-		DefaultCWD: t.TempDir(), UserHome: t.TempDir(),
+		UserHome: t.TempDir(),
 		// Deliberately inactive: manifest membership must remain tied to the Run's
 		// frozen incarnation even when mutable Goal state pauses for HITL.
 		GoalReader:   roleGoalStub{},
@@ -120,6 +119,7 @@ func TestGoalToolsAreRootOnlyAndOutcomeRequiresGoalRunProvenance(t *testing.T) {
 	built.Resolver.UseCreateGoalTool(create)
 	goalRunContext := executionctx.WithScope(t.Context(), runs.ExecutionScope{
 		SessionID: "session-goal", GoalIncarnationID: "incarnation-1",
+		CWD: t.TempDir(), WorkspaceCWD: t.TempDir(),
 	})
 
 	for _, tc := range []struct {
@@ -133,7 +133,7 @@ func TestGoalToolsAreRootOnlyAndOutcomeRequiresGoalRunProvenance(t *testing.T) {
 			want: map[string]bool{"create_goal": true, "get_goal": true, "report_goal_outcome": true},
 		},
 		{
-			name: "ordinary root", ctx: t.Context(), group: domaintool.GroupRoot,
+			name: "ordinary root", ctx: attachedRun(t), group: domaintool.GroupRoot,
 			want: map[string]bool{"create_goal": true, "get_goal": true},
 		},
 		{name: "goal-owned delegate", ctx: goalRunContext, group: domaintool.GroupDelegated, want: map[string]bool{}},
@@ -160,7 +160,6 @@ func TestGoalToolsAreRootOnlyAndOutcomeRequiresGoalRunProvenance(t *testing.T) {
 
 func TestProposeSkillIsRootOnlyAndDeferred(t *testing.T) {
 	built, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(),
-		DefaultCWD:     t.TempDir(),
 		UserHome:       t.TempDir(),
 		SkillProposals: allWiredSkillProposals{},
 	})
@@ -176,7 +175,7 @@ func TestProposeSkillIsRootOnlyAndDeferred(t *testing.T) {
 		{group: domaintool.GroupRoot, want: true},
 		{group: domaintool.GroupDelegated, want: false},
 	} {
-		manifest, err := built.Resolver.Manifest(t.Context(), tc.group)
+		manifest, err := built.Resolver.Manifest(attachedRun(t), tc.group)
 		if err != nil {
 			t.Fatalf("Manifest(%s): %v", tc.group, err)
 		}
@@ -197,14 +196,14 @@ func TestProposeSkillIsRootOnlyAndDeferred(t *testing.T) {
 }
 
 func TestResolverAcceptsOnlyCanonicalGroups(t *testing.T) {
-	built, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(), DefaultCWD: t.TempDir(), UserHome: t.TempDir()})
+	built, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(), UserHome: t.TempDir()})
 	if err != nil {
 		t.Fatalf("Build: %v", err)
 	}
 	closeBuiltToolset(t, built)
 
 	for _, group := range []domaintool.Group{domaintool.GroupRoot, domaintool.GroupDelegated} {
-		manifest, err := built.Resolver.Manifest(t.Context(), group)
+		manifest, err := built.Resolver.Manifest(attachedRun(t), group)
 		if err != nil {
 			t.Errorf("Manifest(%q): %v", group, err)
 		}
@@ -213,7 +212,7 @@ func TestResolverAcceptsOnlyCanonicalGroups(t *testing.T) {
 		}
 	}
 	for _, obsolete := range []domaintool.Group{"coding", "subtask"} {
-		if _, err := built.Resolver.Manifest(t.Context(), obsolete); err == nil {
+		if _, err := built.Resolver.Manifest(attachedRun(t), obsolete); err == nil {
 			t.Errorf("Manifest accepted obsolete group %q", obsolete)
 		}
 	}

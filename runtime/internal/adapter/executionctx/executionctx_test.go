@@ -25,11 +25,11 @@ func TestScopeAccessorsShareOneImmutableTurnValue(t *testing.T) {
 	if got := SessionID(ctx); got != want.SessionID {
 		t.Fatalf("SessionID = %q, want %q", got, want.SessionID)
 	}
-	if got := CWD(ctx, "/fallback"); got != want.CWD {
-		t.Fatalf("CWD = %q, want %q", got, want.CWD)
+	if got, ok := CWD(ctx); !ok || got != want.CWD {
+		t.Fatalf("CWD = (%q, %v), want %q", got, ok, want.CWD)
 	}
-	if got := WorkspaceCWD(ctx, "/fallback"); got != want.WorkspaceCWD {
-		t.Fatalf("WorkspaceCWD = %q, want %q", got, want.WorkspaceCWD)
+	if got, ok := WorkspaceCWD(ctx); !ok || got != want.WorkspaceCWD {
+		t.Fatalf("WorkspaceCWD = (%q, %v), want %q", got, ok, want.WorkspaceCWD)
 	}
 	if !Isolated(ctx) {
 		t.Fatal("Isolated = false, want true")
@@ -39,16 +39,16 @@ func TestScopeAccessorsShareOneImmutableTurnValue(t *testing.T) {
 	}
 }
 
-func TestMissingScopeUsesHostFallbacks(t *testing.T) {
+func TestMissingScopeReportsNoWorkspace(t *testing.T) {
 	ctx := context.Background()
 	if _, ok := Scope(ctx); ok {
 		t.Fatal("Scope unexpectedly found a scope")
 	}
-	if got := CWD(ctx, "/fallback"); got != "/fallback" {
-		t.Fatalf("CWD = %q, want fallback", got)
+	if got, ok := CWD(ctx); ok {
+		t.Fatalf("CWD = %q without a Run scope", got)
 	}
-	if got := WorkspaceCWD(ctx, "/fallback"); got != "/fallback" {
-		t.Fatalf("WorkspaceCWD = %q, want fallback", got)
+	if got, ok := WorkspaceCWD(ctx); ok {
+		t.Fatalf("WorkspaceCWD = %q without a Run scope", got)
 	}
 	if SessionID(ctx) != "" || Isolated(ctx) {
 		t.Fatal("missing scope produced session or isolation")

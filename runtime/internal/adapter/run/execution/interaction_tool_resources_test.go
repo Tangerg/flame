@@ -46,7 +46,7 @@ func TestInteractionReleasesScopedFilesystemTools(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(root, "note.txt"), []byte("note"), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			built, err := toolset.Build(t.Context(), toolset.BuildConfig{Lifetime: t.Context(), DefaultCWD: root, UserHome: t.TempDir()})
+			built, err := toolset.Build(t.Context(), toolset.BuildConfig{Lifetime: t.Context(), UserHome: t.TempDir()})
 			if err != nil {
 				t.Fatal(err)
 			}

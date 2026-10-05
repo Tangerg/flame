@@ -25,11 +25,11 @@ import (
 // shell). Positions are 1-based at the tool boundary (what a human/LLM reads
 // off a file); the analyzer converts to the LSP 0-based wire form and folds an
 // unsupported file type into a plain reply.
-func BuildLSP(ci *codeintel.Analyzer, defaultCWD string) ([]toolcontract.Tool, error) {
+func BuildLSP(ci *codeintel.Analyzer) ([]toolcontract.Tool, error) {
 	if ci == nil {
 		return nil, errors.New("lsp: analyzer is nil")
 	}
-	lsp, err := newQuery(ci, defaultCWD)
+	lsp, err := newQuery(ci)
 	if err != nil {
 		return nil, err
 	}
@@ -139,12 +139,11 @@ const lspDesc = "Query the language server (LSP) about code at a position or acr
 	"diagnostics returns the current compile errors and warnings for one file."
 
 type lspRunner struct {
-	analyzer   *codeintel.Analyzer
-	defaultCWD string
+	analyzer *codeintel.Analyzer
 }
 
-func newQuery(ci *codeintel.Analyzer, defaultCWD string) (toolcontract.Tool, error) {
-	t := &lspRunner{analyzer: ci, defaultCWD: defaultCWD}
+func newQuery(ci *codeintel.Analyzer) (toolcontract.Tool, error) {
+	t := &lspRunner{analyzer: ci}
 	return toolcontract.NewFunc[lspInput, string](
 		toolcontract.FuncConfig{Name: string(tool.LSP), Description: lspDesc},
 		t.query,
@@ -156,7 +155,10 @@ func (l *lspRunner) query(ctx context.Context, in lspInput) (string, error) {
 	if err != nil {
 		return "", toolfailure.Definite(err)
 	}
-	root := executionctx.CWD(ctx, l.defaultCWD)
+	root, attached := executionctx.CWD(ctx)
+	if !attached {
+		return "", errors.New("lsp: no attached Run workspace")
+	}
 	switch query.operation {
 	case LSPDefinition:
 		return l.analyzer.Definition(ctx, root, query.path, query.position.line, query.position.character)
