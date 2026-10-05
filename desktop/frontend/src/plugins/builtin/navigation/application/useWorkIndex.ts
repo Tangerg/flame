@@ -3,14 +3,17 @@ import { useWorkspaceProjects } from "@/plugins/builtin/workspace/public/queries
 import {
   useActiveSessionWorkspace,
   useActiveSessionId,
-  useVisibleAgentSessions,
+  useAgentSessions,
 } from "@/plugins/builtin/agent/public/session";
+import type { AgentSessionSummary } from "@/plugins/builtin/agent/public/session";
 import type { WorkIndex } from "../domain/workIndex";
 import { buildWorkIndex } from "./buildWorkIndex";
 
+const EMPTY_SESSIONS: AgentSessionSummary[] = [];
+
 export function useWorkIndex(): WorkIndex {
   const projects = useWorkspaceProjects();
-  const sessions = useVisibleAgentSessions();
+  const { data: sessions = EMPTY_SESSIONS } = useAgentSessions();
   const activeSessionId = useActiveSessionId();
   const workspace = useActiveSessionWorkspace();
   const activeCwd = workspace.status === "ready" ? workspace.cwd : undefined;

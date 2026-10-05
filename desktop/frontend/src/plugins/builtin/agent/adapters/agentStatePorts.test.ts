@@ -8,8 +8,6 @@ beforeEach(() => {
   useAgentSessionStore.setState({
     openSessionIds: [],
     lastSessionId: "",
-    draftSessionIds: new Set<string>(),
-    freshDraftSessionIds: new Set<string>(),
   });
 });
 

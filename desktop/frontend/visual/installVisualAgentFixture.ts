@@ -144,7 +144,10 @@ function visualAgentRuntimeGateway(
   session: AgentSessionSummary,
 ): AgentRuntimeGateway {
   return {
-    createSession: async () => ({ id: VISUAL_SESSION_ID }),
+    createSession: async ({ cwd }) => ({
+      ...session,
+      workspace: { ...session.workspace, path: cwd },
+    }),
     deleteSession: async () => undefined,
     updateSession: async ({ expectedRevision, title, favorite, cwd }) => ({
       ...session,
@@ -294,7 +297,6 @@ export async function installVisualAgentFixture(
   useAgentSessionStore.setState({
     openSessionIds: projectless ? [] : [VISUAL_SESSION_ID],
     lastSessionId: projectless ? "" : VISUAL_SESSION_ID,
-    draftSessionIds: new Set(),
   });
   navigator().go({ session: projectless ? "" : VISUAL_SESSION_ID });
   queryClient.setQueryDefaults([AGENT_SESSIONS_KEY], { staleTime: Infinity });

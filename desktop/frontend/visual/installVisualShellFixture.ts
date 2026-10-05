@@ -178,7 +178,6 @@ export async function installVisualShellFixture(
   useAgentSessionStore.setState({
     openSessionIds: state === "populated" ? [ACTIVE_SESSION_ID] : [],
     lastSessionId: "",
-    draftSessionIds: new Set(),
   });
   navigator().go({ session: state === "populated" ? ACTIVE_SESSION_ID : "" });
   useAppearanceStore.setState({ theme, visualStyle: "flame" });

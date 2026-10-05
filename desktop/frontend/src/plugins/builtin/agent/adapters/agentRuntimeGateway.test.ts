@@ -33,12 +33,26 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+function createdSession(id: string) {
+  return {
+    id: asSessionId(id),
+    revision: 1,
+    title: "",
+    status: "idle" as const,
+    provider: "openai",
+    model: "gpt-5",
+    workspace: { ref: { path: "/repo" }, availability: "available" as const },
+    createdAt: "2026-08-20T00:00:00Z",
+    updatedAt: "2026-08-20T00:00:00Z",
+  };
+}
+
 describe("agentRuntimeGateway", () => {
   it("does not hand a retained create promise to a replacement adapter generation", async () => {
     const transportFailure = new RpcTransportError("retired response was lost");
     const retiredRetry = vi.fn(
       () =>
-        Object.assign(Promise.resolve({ id: asSessionId("ses_retired") }), {
+        Object.assign(Promise.resolve(createdSession("ses_retired")), {
           idempotencyKey: "retired-create",
           retry: vi.fn(),
         }) as MutationPromise<{ id: ReturnType<typeof asSessionId> }>,
@@ -59,7 +73,7 @@ describe("agentRuntimeGateway", () => {
 
     const successorCreate = vi.fn(
       () =>
-        Object.assign(Promise.resolve({ id: asSessionId("ses_successor") }), {
+        Object.assign(Promise.resolve(createdSession("ses_successor")), {
           idempotencyKey: "successor-create",
           retry: vi.fn(),
         }) as MutationPromise<{ id: ReturnType<typeof asSessionId> }>,
@@ -67,8 +81,9 @@ describe("agentRuntimeGateway", () => {
     runtimeClient = () => ({ sessions: { create: successorCreate } }) as unknown as FlameClient;
     uninstall = installAgentRuntimeGateway(getRuntimeClient);
 
-    await expect(agentRuntime().createSession({ cwd: "/repo" })).resolves.toEqual({
+    await expect(agentRuntime().createSession({ cwd: "/repo" })).resolves.toMatchObject({
       id: "ses_successor",
+      workspace: { path: "/repo" },
     });
     expect(successorCreate).toHaveBeenCalledOnce();
     expect(retiredRetry).not.toHaveBeenCalled();
@@ -112,7 +127,7 @@ describe("agentRuntimeGateway", () => {
           keys.push(key);
           signals.push(attempt.signal!);
           executions += 1;
-          if (executions === 2) return { id: asSessionId("ses_replayed") };
+          if (executions === 2) return createdSession("ses_replayed");
           await new Promise<void>((_resolve, reject) => {
             attempt.signal?.addEventListener(
               "abort",
@@ -134,7 +149,7 @@ describe("agentRuntimeGateway", () => {
     expect(executions).toBe(1);
     await vi.advanceTimersByTimeAsync(MUTATION_ATTEMPT_TIMEOUT_MS);
 
-    await expect(creating).resolves.toEqual({ id: "ses_replayed" });
+    await expect(creating).resolves.toMatchObject({ id: "ses_replayed" });
     expect(create).toHaveBeenCalledOnce();
     expect(keys).toEqual(["logical-create", "logical-create"]);
     expect(signals).toHaveLength(2);

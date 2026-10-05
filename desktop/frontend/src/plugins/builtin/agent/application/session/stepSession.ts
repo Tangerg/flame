@@ -1,7 +1,6 @@
 import type { AgentSessionSummary } from "./sessionQueries";
 import { AGENT_SESSIONS_KEY } from "./sessionQueries";
 import { queryClient } from "@/lib/queryClient";
-import { agentSessionState } from "../ports/sessionState";
 import { selectAgentSession, getActiveSessionId } from "./activeSession";
 
 export type SessionStep = 1 | -1;
@@ -19,10 +18,7 @@ export function stepAgentSession(
 }
 
 export function stepActiveAgentSession(step: SessionStep): void {
-  const state = agentSessionState();
-  const sessions = (
-    queryClient.getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY]) ?? []
-  ).filter((session) => !state.isDraftSession(session.id));
+  const sessions = queryClient.getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY]) ?? [];
   const next = stepAgentSession(sessions, getActiveSessionId(), step);
   if (next !== undefined && next !== getActiveSessionId()) selectAgentSession(next);
 }

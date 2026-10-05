@@ -49,18 +49,10 @@ function parkedDriver(): { driver: AgentDriver; start: ReturnType<typeof vi.fn> 
 beforeEach(async () => {
   await loadPluginsForTest();
   navigator().go({ session: SID });
-  useAgentSessionStore.setState({
-    draftSessionIds: new Set([SID]),
-    freshDraftSessionIds: new Set([SID]),
-  });
 });
 afterEach(async () => {
   useAgentStore.getState().dropSession(SID);
   useAgentStore.getState().dropSession(SID_B);
-  useAgentSessionStore.setState({
-    draftSessionIds: new Set(),
-    freshDraftSessionIds: new Set(),
-  });
 
   vi.restoreAllMocks();
 });
@@ -95,10 +87,6 @@ describe("useAgentSession driver lifecycle", () => {
     const second = parkedDriver().driver;
     const firstFactory = vi.fn(() => first);
     const secondFactory = vi.fn(() => second);
-    useAgentSessionStore.setState({
-      draftSessionIds: new Set([SID, SID_B]),
-      freshDraftSessionIds: new Set([SID, SID_B]),
-    });
 
     type HookProps = {
       makeDriver: () => AgentDriver;
@@ -582,10 +570,6 @@ describe("useAgentSession durable recovery", () => {
 
   beforeEach(() => {
     navigator().go({ session: RID });
-    useAgentSessionStore.setState({
-      draftSessionIds: new Set(),
-      freshDraftSessionIds: new Set(),
-    });
   });
   afterEach(() => {
     useAgentStore.getState().dropSession(RID);
@@ -658,64 +642,6 @@ describe("useAgentSession durable recovery", () => {
       .find((b) => b.kind === "approval" && b.itemId === "item_appr");
     expect(approval).toMatchObject({ status: "requires-action", runId: "run_int" });
     expect(selectCurrentRootRun(view)).toBeNull();
-  });
-
-  it("rehydrates a persisted empty draft without publishing it as an ordinary Session", async () => {
-    useAgentSessionStore.setState({
-      draftSessionIds: new Set([RID]),
-      freshDraftSessionIds: new Set(),
-    });
-    const { readSnapshot } = stubClient();
-    const { driver } = parkedDriver();
-
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, vi.fn()));
-
-    await waitFor(() => expect(readSnapshot).toHaveBeenCalledOnce());
-    expect(useAgentSessionStore.getState().draftSessionIds.has(RID)).toBe(true);
-  });
-
-  it("graduates a persisted draft when durable recovery finds conversation history", async () => {
-    useAgentSessionStore.setState({
-      draftSessionIds: new Set([RID]),
-      freshDraftSessionIds: new Set(),
-    });
-    stubClient(
-      {},
-      {
-        runs: [
-          {
-            id: "run_used_draft",
-            sessionId: RID,
-            status: "finished",
-            outcome: { type: "completed" },
-            createdAt: "2026-08-12T00:00:00Z",
-            finishedAt: "2026-08-12T00:00:01Z",
-            metrics: { steps: 1, activeDurationMillis: 1 },
-            protocolProfile: { interruptTypes: [], requiredFeatures: [] },
-            provider: "openai",
-            model: "gpt-5",
-          },
-        ],
-        items: [
-          {
-            id: "item_used_draft",
-            runId: "run_used_draft",
-            status: "completed",
-            createdAt: "2026-08-12T00:00:00Z",
-            type: "userMessage",
-            content: [{ type: "text", text: "used elsewhere" }],
-          },
-        ],
-      },
-    );
-    const { driver } = parkedDriver();
-
-    renderHook(() => useAgentSession(getRuntimeClient, () => driver, RID, vi.fn()));
-
-    await waitFor(() =>
-      expect(useAgentStore.getState().sessions[RID]?.view.messages).toHaveLength(1),
-    );
-    expect(useAgentSessionStore.getState().draftSessionIds.has(RID)).toBe(false);
   });
 
   it("reattaches to a still-running root run via runs.subscribe", async () => {

@@ -2,7 +2,7 @@ import { queryClient } from "@/lib/queryClient";
 import { useCallback } from "react";
 import {
   AGENT_SESSIONS_KEY,
-  invalidateAgentSessions,
+  commitCreatedAgentSession,
   type AgentSessionSummary,
 } from "./sessionQueries";
 import { agentRuntime, type AgentRuntimeGateway } from "../ports/runtimeGateway";
@@ -13,7 +13,7 @@ import { agentCommandOwner, type AgentCommandOwner } from "../agentCommandOwner"
 
 export interface CreateSessionOptions {
   cwd: string;
-  reuseFreshDraft?: boolean;
+  reuseEmptySession?: boolean;
 }
 
 async function createAndOpen({
@@ -26,11 +26,10 @@ async function createAndOpen({
   runtime: AgentRuntimeGateway;
   state: AgentSessionStatePort;
 }): Promise<string> {
-  const session = await runtime.createSession({ cwd });
+  const session = await owner.settle(runtime.createSession({ cwd }));
   owner.assertCurrent();
-  state.markDraftSession(session.id);
+  commitCreatedAgentSession(session);
   state.selectSession(session.id);
-  void invalidateAgentSessions();
   return session.id;
 }
 
@@ -38,16 +37,16 @@ function joinKey(opts: CreateSessionOptions): string {
   return `cwd:${opts.cwd}`;
 }
 
-function alreadyOnAFreshSession(
+function alreadyOnAnEmptySession(
   opts: CreateSessionOptions,
   state: AgentSessionStatePort,
   view: AgentSessionViewPort,
 ): string | null {
-  if (!opts.reuseFreshDraft) return null;
+  if (!opts.reuseEmptySession) return null;
   const sessionId = state.getActiveSessionId();
-  if (!sessionId || !state.isDraftSession(sessionId)) return null;
-  const messages = view.getSession(sessionId)?.view.messages ?? [];
-  return messages.length === 0 ? sessionId : null;
+  if (!sessionId) return null;
+  const loaded = view.getSession(sessionId)?.view;
+  return loaded && loaded.messages.length === 0 ? sessionId : null;
 }
 
 function doCreate(opts: CreateSessionOptions): Promise<string | null> {
@@ -57,7 +56,7 @@ function doCreate(opts: CreateSessionOptions): Promise<string | null> {
   const state = agentSessionState();
   const view = agentSessionView();
   const key = joinKey(opts);
-  const fresh = alreadyOnAFreshSession(opts, state, view);
+  const fresh = alreadyOnAnEmptySession(opts, state, view);
   if (fresh) return Promise.resolve(fresh);
   return owner
     .runSessionCreate(key, () => createAndOpen({ owner, runtime, state, ...opts }))
@@ -73,7 +72,7 @@ export function createSession(): Promise<string | null> {
   const sessions = queryClient.getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY]);
   const cwd = sessions?.find((session) => session.id === sessionId)?.workspace.path;
   if (!cwd || cwd.trim() === "") return Promise.resolve(null);
-  return doCreate({ cwd, reuseFreshDraft: true });
+  return doCreate({ cwd, reuseEmptySession: true });
 }
 
 export function useCreateSession(): (opts: CreateSessionOptions) => Promise<string | null> {

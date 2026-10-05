@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  closeOpenSession,
-  openSession,
-  pruneDraftSessions,
-  reconcileOpenSessions,
-} from "./sessionSelectionModel";
+import { closeOpenSession, openSession, reconcileOpenSessions } from "./sessionSelectionModel";
 
 describe("sessionSelectionModel", () => {
   it("holds a session open, and only once", () => {
@@ -28,22 +23,20 @@ describe("sessionSelectionModel", () => {
     });
   });
 
-  it("reconciles persisted open sessions against backend sessions and fresh local creates", () => {
+  it("reconciles persisted open sessions against the Runtime's sessions", () => {
     expect(
       reconcileOpenSessions(
         {
           activeSessionId: "s1",
-          provisionalSessionIds: new Set(["s3"]),
           openSessionIds: ["s1", "s2", "s3"],
         },
-        ["s1"],
+        ["s1", "s3"],
       ),
     ).toEqual({ activeSessionId: "s1", openSessionIds: ["s1", "s3"] });
     expect(
       reconcileOpenSessions(
         {
           activeSessionId: "s1",
-          provisionalSessionIds: new Set<string>(),
           openSessionIds: ["s1", "s2", "s3"],
         },
         ["s2", "s3"],
@@ -56,7 +49,6 @@ describe("sessionSelectionModel", () => {
       reconcileOpenSessions(
         {
           activeSessionId: "s1",
-          provisionalSessionIds: new Set<string>(),
           openSessionIds: ["s1", "s2"],
         },
         ["s1", "s2"],
@@ -69,7 +61,6 @@ describe("sessionSelectionModel", () => {
       reconcileOpenSessions(
         {
           activeSessionId: "deep-link",
-          provisionalSessionIds: new Set<string>(),
           openSessionIds: ["stale"],
         },
         ["deep-link"],
@@ -77,25 +68,15 @@ describe("sessionSelectionModel", () => {
     ).toEqual({ activeSessionId: "deep-link", openSessionIds: ["deep-link"] });
   });
 
-  it("does not treat persisted draft ownership as authoritative membership", () => {
+  it("closes an open session the Runtime no longer lists", () => {
     expect(
       reconcileOpenSessions(
         {
-          activeSessionId: "draft-deleted-remotely",
-          provisionalSessionIds: new Set<string>(),
-          openSessionIds: ["draft-deleted-remotely"],
+          activeSessionId: "deleted-remotely",
+          openSessionIds: ["deleted-remotely"],
         },
         [],
       ),
     ).toEqual({ activeSessionId: "", openSessionIds: [] });
-  });
-
-  it("prunes draft ownership for closed sessions", () => {
-    expect(
-      pruneDraftSessions({
-        draftSessionIds: new Set(["live", "closed"]),
-        openSessionIds: ["live"],
-      }),
-    ).toEqual(new Set(["live"]));
   });
 });

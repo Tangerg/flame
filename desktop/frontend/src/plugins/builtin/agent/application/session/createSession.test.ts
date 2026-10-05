@@ -7,6 +7,7 @@ import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import type { FlameClient, Methods } from "@flame/runtime-contract/client";
 import { asSessionId } from "@flame/runtime-contract/client";
 import { useAgentSessionStore } from "@/plugins/builtin/agent/adapters/agentSessionStore";
+import { useAgentStore } from "@/plugins/builtin/agent/adapters/agentStore";
 import { installAgentRuntimeGateway } from "@/plugins/builtin/agent/adapters/agentRuntimeGateway";
 import { createSession, type CreateSessionOptions, useCreateSession } from "./createSession";
 import { AGENT_SESSIONS_KEY, type AgentSessionSummary } from "./sessionQueries";
@@ -31,18 +32,19 @@ afterEach(() => {
   useAgentSessionStore.setState({
     openSessionIds: [],
     lastSessionId: "",
-    draftSessionIds: new Set<string>(),
-    freshDraftSessionIds: new Set<string>(),
   });
 });
 
-const fakeSession = (id: string) => ({
+const fakeSession = (id: string, path = "/tmp/proj") => ({
   id: asSessionId(id),
-  title: "New session",
+  revision: 1,
+  title: "",
   status: "idle" as const,
+  provider: "openai",
   model: "gpt-4o",
-  createdAt: "",
-  updatedAt: "",
+  workspace: { ref: { path }, availability: "available" as const },
+  createdAt: "2026-08-20T00:00:00Z",
+  updatedAt: "2026-08-20T00:00:00Z",
 });
 
 function summary(id: string, cwd: string): AgentSessionSummary {
@@ -59,9 +61,10 @@ function summary(id: string, cwd: string): AgentSessionSummary {
 }
 
 describe("useCreateSession", () => {
-  it("creates a hidden draft in the chosen exact directory and opens it", async () => {
+  it("creates a Session in the chosen exact directory, opens it and lists what the Runtime created", async () => {
     const create = vi.fn().mockResolvedValue(fakeSession("new-cwd"));
     stubCreate(create);
+    queryClient.setQueryData([AGENT_SESSIONS_KEY], [summary("existing", "/tmp/proj")]);
     const { result } = renderHook(() => useCreateSession(), { wrapper });
 
     const id = await result.current({ cwd: "/tmp/proj" });
@@ -71,10 +74,13 @@ describe("useCreateSession", () => {
       { workspace: { path: "/tmp/proj" } },
       expect.any(AbortSignal),
     );
-    const state = useAgentSessionStore.getState();
     expect(navigator().get().session).toBe("new-cwd");
-    expect(state.openSessionIds).toContain("new-cwd");
-    expect(state.draftSessionIds.has("new-cwd")).toBe(true);
+    expect(useAgentSessionStore.getState().openSessionIds).toContain("new-cwd");
+    expect(
+      queryClient
+        .getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY])
+        ?.map((session) => session.id),
+    ).toEqual(["new-cwd", "existing"]);
   });
 
   it("never delegates an empty working directory to the Runtime default", async () => {
@@ -88,23 +94,7 @@ describe("useCreateSession", () => {
     expect(navigator().get().session).toBe("");
   });
 
-  it("reuses the active fresh draft only when New proves the same project destination", async () => {
-    const create = vi.fn().mockResolvedValue(fakeSession("new-project"));
-    stubCreate(create);
-    const { result } = renderHook(() => useCreateSession(), { wrapper });
-    const destination = {
-      cwd: "/tmp/current-project",
-      reuseFreshDraft: true,
-    } satisfies CreateSessionOptions;
-
-    const first = await result.current(destination);
-    const again = await result.current(destination);
-
-    expect(again).toBe(first);
-    expect(create).toHaveBeenCalledTimes(1);
-  });
-
-  it("does not reuse an ordinary message-less Session or an explicit project selection", async () => {
+  it("reuses the active Session only while its loaded view holds no messages", async () => {
     const create = vi
       .fn()
       .mockResolvedValueOnce(fakeSession("new-1"))
@@ -112,16 +102,21 @@ describe("useCreateSession", () => {
       .mockResolvedValueOnce(fakeSession("new-3"));
     stubCreate(create);
     const { result } = renderHook(() => useCreateSession(), { wrapper });
+    const destination = {
+      cwd: "/tmp/current-project",
+      reuseEmptySession: true,
+    } satisfies CreateSessionOptions;
 
-    await result.current({ cwd: "/tmp/current", reuseFreshDraft: true });
-    useAgentSessionStore.setState({
-      draftSessionIds: new Set<string>(),
-      freshDraftSessionIds: new Set<string>(),
-    });
-    await result.current({ cwd: "/tmp/current", reuseFreshDraft: true });
-    useAgentSessionStore.getState().markDraft("new-2");
-    await result.current({ cwd: "/tmp/other" });
+    const first = await result.current(destination);
+    const unloaded = await result.current(destination);
+    useAgentStore.getState().ensureSession(unloaded!);
+    const reused = await result.current(destination);
+    const explicit = await result.current({ cwd: "/tmp/other" });
 
+    expect(first).toBe("new-1");
+    expect(unloaded).toBe("new-2");
+    expect(reused).toBe("new-2");
+    expect(explicit).toBe("new-3");
     expect(create).toHaveBeenCalledTimes(3);
   });
 

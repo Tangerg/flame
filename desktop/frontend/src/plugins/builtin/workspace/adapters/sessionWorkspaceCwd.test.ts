@@ -51,7 +51,7 @@ describe("active session workspace resolution", () => {
     expect(getSession).not.toHaveBeenCalled();
   });
 
-  it("reads a draft session which is not present in the list projection", async () => {
+  it("reads a Session that is not present in the list projection", async () => {
     getActiveSessionId.mockReturnValue("ses_draft");
     queryClient.setQueryData([AGENT_SESSIONS_KEY], []);
     getSession.mockResolvedValue({ workspace: { ref: { path: "/draft/repo" } } });

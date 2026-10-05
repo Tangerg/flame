@@ -7,8 +7,6 @@ beforeEach(() => {
   useAgentSessionStore.setState({
     openSessionIds: [],
     lastSessionId: "",
-    draftSessionIds: new Set(),
-    freshDraftSessionIds: new Set(),
   });
 });
 
@@ -67,7 +65,6 @@ describe("the round trip", () => {
     store().holdOpen("s1");
     store().holdOpen("s2");
     store().rememberSession("s2");
-    store().markDraft("s2");
 
     const key = useAgentSessionStore.persist.getOptions().name!;
     const payload = localStorage.getItem(key) ?? "null";
@@ -77,8 +74,6 @@ describe("the round trip", () => {
     useAgentSessionStore.setState({
       openSessionIds: [],
       lastSessionId: "",
-      draftSessionIds: new Set(),
-      freshDraftSessionIds: new Set(),
     });
     localStorage.setItem(key, payload);
     await useAgentSessionStore.persist.rehydrate();
@@ -86,52 +81,5 @@ describe("the round trip", () => {
     const partialize = useAgentSessionStore.persist.getOptions().partialize!;
     const readBack = JSON.parse(JSON.stringify(partialize(store() as never)));
     expect(readBack).toEqual(written);
-  });
-});
-
-describe("drafts", () => {
-  it("marks and graduates a draft", () => {
-    store().markDraft("s1");
-    expect(store().draftSessionIds.has("s1")).toBe(true);
-    expect(store().freshDraftSessionIds.has("s1")).toBe(true);
-
-    store().graduateDraft("s1");
-    expect(store().draftSessionIds.has("s1")).toBe(false);
-    expect(store().freshDraftSessionIds.has("s1")).toBe(false);
-  });
-
-  it("restores draft ownership without restoring the in-process freshness proof", async () => {
-    localStorage.setItem(
-      useAgentSessionStore.persist.getOptions().name!,
-      JSON.stringify({
-        state: {
-          openSessionIds: ["s1"],
-          lastSessionId: "s1",
-          draftSessionIds: ["s1"],
-        },
-        version: useAgentSessionStore.persist.getOptions().version,
-      }),
-    );
-
-    await useAgentSessionStore.persist.rehydrate();
-
-    expect(store().draftSessionIds).toEqual(new Set(["s1"]));
-    expect(store().freshDraftSessionIds).toEqual(new Set());
-  });
-
-  it("graduating a session that isn't a draft changes nothing", () => {
-    const before = store().draftSessionIds;
-    store().graduateDraft("s1");
-    expect(store().draftSessionIds).toBe(before);
-  });
-
-  it("prunes draft refs when a session stops being open", () => {
-    store().holdOpen("s1");
-    store().markDraft("s1");
-
-    store().release("s1");
-
-    expect(store().draftSessionIds.has("s1")).toBe(false);
-    expect(store().freshDraftSessionIds.has("s1")).toBe(false);
   });
 });

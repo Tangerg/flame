@@ -88,7 +88,6 @@ describe("Runtime target authoring ownership", () => {
   it("preserves each target's drafts and file context when Session IDs coincide", () => {
     const targets = installTargets("roundtrip");
     selectAgentSession("shared");
-    refs().markDraft("shared");
     composer().setValue("draft on A");
     composer().addImages([{ mime: "image/png", data: "image-on-A" }]);
     composer().addPaste("paste on A");
@@ -109,7 +108,6 @@ describe("Runtime target authoring ownership", () => {
       settings: "connection",
     });
     expect(refs().openSessionIds).toEqual([]);
-    expect(refs().draftSessionIds).toEqual(new Set());
     expect(composer().composer.draft).toMatchObject({ value: "", images: [], pastes: [] });
     expect(dock().fileViewer).toBeNull();
     expect(targets.deleteSession).not.toHaveBeenCalled();
@@ -126,8 +124,6 @@ describe("Runtime target authoring ownership", () => {
 
     expect(targets.deleteSession).not.toHaveBeenCalled();
     expect(refs().openSessionIds).toEqual(["shared"]);
-    expect(refs().draftSessionIds).toEqual(new Set(["shared"]));
-    expect(refs().freshDraftSessionIds).toEqual(new Set(["shared"]));
     selectAgentSession("shared");
     expect(composer().composer.draft).toMatchObject({
       value: "draft on A",
@@ -148,7 +144,6 @@ describe("Runtime target authoring ownership", () => {
   it("keeps authoring and image work for replacement at the same endpoint", async () => {
     const targets = installTargets("same-endpoint");
     selectAgentSession("shared");
-    refs().markDraft("shared");
     composer().setValue("retained during token refresh or process restart");
     const reading = deferred<Awaited<ReturnType<typeof imageInput.fileToInputImage>>>();
     vi.spyOn(imageInput, "fileToInputImage").mockReturnValue(reading.promise);
@@ -160,7 +155,6 @@ describe("Runtime target authoring ownership", () => {
     await vi.waitFor(() => expect(composer().composer.draft.images).toHaveLength(1));
 
     expect(getActiveSessionId()).toBe("shared");
-    expect(refs().draftSessionIds).toEqual(new Set(["shared"]));
     expect(composer().composer.draft.value).toBe(
       "retained during token refresh or process restart",
     );
@@ -186,7 +180,7 @@ describe("Runtime target authoring ownership", () => {
     expect(composer().composer.draft.images).toEqual([]);
   });
 
-  it("does not delete a successor draft when the router delivers target cleanup later", () => {
+  it("does not delete a successor Session's authoring when the router delivers target cleanup later", () => {
     const memory = createMemoryNavigator();
     const pending: (() => void)[] = [];
     const delayed: Navigator = {
@@ -203,14 +197,12 @@ describe("Runtime target authoring ownership", () => {
 
     targets.replace(targets.targetB);
     refs().holdOpen("shared");
-    refs().markDraft("shared");
     memory.go({ settings: "connection" });
     expect(getActiveSessionId()).toBe("shared");
     for (const navigate of pending.splice(0)) navigate();
 
     expect(getActiveSessionId()).toBe("");
     expect(targets.deleteSession).not.toHaveBeenCalled();
-    expect(refs().draftSessionIds.has("shared")).toBe(true);
     selectAgentSession("shared");
     composer().setValue("important unsent input");
     composer().addPaste("unsent source text");
@@ -242,7 +234,6 @@ describe("Runtime target authoring ownership", () => {
     const unscopedDock = localStorage.getItem(useContextDockStore.persist.getOptions().name!)!;
     targets.replace(targets.targetB);
     selectAgentSession("shared");
-    refs().markDraft("shared");
     composer().setValue("cold draft on B");
     openWorkspaceFile("src/B.ts", 2);
     localStorage.setItem("flame.agent-session", unscopedAgent);
@@ -268,8 +259,6 @@ describe("Runtime target authoring ownership", () => {
     workspace.useContextDockStore.getState().activateSessionScope("shared");
 
     expect(agent.useAgentSessionStore.getState().openSessionIds).toEqual(["shared"]);
-    expect(agent.useAgentSessionStore.getState().draftSessionIds).toEqual(new Set(["shared"]));
-    expect(agent.useAgentSessionStore.getState().freshDraftSessionIds).toEqual(new Set());
     expect(input.useComposerStore.getState().composer.draft.value).toBe("cold draft on B");
     expect(workspace.useContextDockStore.getState().fileViewer).toEqual({
       path: "src/B.ts",

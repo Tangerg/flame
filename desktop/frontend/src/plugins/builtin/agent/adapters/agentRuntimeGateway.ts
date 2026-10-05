@@ -27,7 +27,7 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
       JSON.stringify(["sessions.create", input.cwd]),
       (signal) => client.sessions.create({ workspace: { path: input.cwd } }, signal),
     );
-    return { id: session.id };
+    return toAgentSessionSummary(session);
   }
 
   async deleteSession(sessionId: string) {

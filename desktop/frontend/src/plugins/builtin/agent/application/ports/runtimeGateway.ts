@@ -30,7 +30,7 @@ export interface AgentSessionUsage {
 }
 
 export interface AgentRuntimeGateway {
-  createSession(input: { cwd: string }): Promise<{ id: string }>;
+  createSession(input: { cwd: string }): Promise<AgentSessionSummary>;
   deleteSession(sessionId: string): Promise<void>;
   updateSession(input: {
     sessionId: string;

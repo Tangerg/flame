@@ -11,10 +11,7 @@ export {
   useActiveSessionId,
   type AgentOpenSessions,
 } from "../application/session/activeSession";
-export {
-  useReconcilePersistedAgentSessions,
-  useVisibleAgentSessions,
-} from "../application/session/sessionList";
+export { useReconcilePersistedAgentSessions } from "../application/session/sessionList";
 export {
   AGENT_SESSIONS_KEY,
   invalidateAgentSessions,

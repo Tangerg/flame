@@ -83,10 +83,7 @@ export function useAgentSession(
       onIdle: () => projectionSynchronization?.liveStreamSettled(),
     });
 
-    const recoverExistingSession = !useAgentSessionStore
-      .getState()
-      .freshDraftSessionIds.has(sessionId);
-    let guardInitialInteraction = recoverExistingSession;
+    let guardInitialInteraction = true;
     projectionSynchronization = createSessionProjectionSynchronization({
       isLiveStreamActive: runPump.isActive,
       synchronize: (signal) => {
@@ -105,17 +102,11 @@ export function useAgentSession(
           },
           pump: runPump.pump,
           onConnectionLost: reportConnectionLoss,
-        }).then((authoritativeView) => {
-          const state = useAgentSessionStore.getState();
-          if (state.draftSessionIds.has(sessionId) && authoritativeView?.messages.length) {
-            state.graduateDraft(sessionId);
-          }
-          return authoritativeView !== null;
-        });
+        }).then((authoritativeView) => authoritativeView !== null);
       },
     });
 
-    if (recoverExistingSession) void projectionSynchronization.request();
+    void projectionSynchronization.request();
 
     const runOpening = createRunOpeningController({
       sessionId,
@@ -142,7 +133,6 @@ export function useAgentSession(
         (signal) => driver.start(wireInput, options, signal),
         (result) => {
           store().reconcileMessageIdentity(sessionId, optimistic.localId, result.userItemId);
-          useAgentSessionStore.getState().graduateDraft(sessionId);
         },
         () => store().dropMessage(sessionId, optimistic.localId),
       );

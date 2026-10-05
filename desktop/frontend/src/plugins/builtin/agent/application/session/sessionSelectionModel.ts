@@ -20,10 +20,10 @@ export function closeOpenSession(state: AgentOpenSessions, sessionId: string): A
 }
 
 export function reconcileOpenSessions(
-  state: AgentOpenSessions & { provisionalSessionIds: Set<string> },
+  state: AgentOpenSessions,
   liveIds: string[],
 ): AgentOpenSessions | null {
-  const known = new Set([...liveIds, ...state.provisionalSessionIds]);
+  const known = new Set(liveIds);
   const retainedOpenSessionIds = state.openSessionIds.filter((id) => known.has(id));
   const activeAlive = state.activeSessionId === "" || known.has(state.activeSessionId);
   const openSessionIds =
@@ -38,13 +38,4 @@ export function reconcileOpenSessions(
     openSessionIds,
     activeSessionId: activeAlive ? state.activeSessionId : (openSessionIds.at(-1) ?? ""),
   };
-}
-
-export function pruneDraftSessions(state: {
-  openSessionIds: string[];
-  draftSessionIds: Set<string>;
-}): Set<string> | null {
-  const live = new Set(state.openSessionIds);
-  const draftSessionIds = new Set([...state.draftSessionIds].filter((id) => live.has(id)));
-  return draftSessionIds.size === state.draftSessionIds.size ? null : draftSessionIds;
 }

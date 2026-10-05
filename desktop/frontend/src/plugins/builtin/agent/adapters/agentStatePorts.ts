@@ -99,15 +99,12 @@ export function installAgentStatePorts(): () => void {
       deletedSessionListeners.add(listener);
       return () => deletedSessionListeners.delete(listener);
     },
-    useDraftSessionIds: () => useAgentSessionStore((state) => state.draftSessionIds),
-    isDraftSession: (id) => useAgentSessionStore.getState().draftSessionIds.has(id),
     reconcileSessions: (liveIds) => {
       const store = useAgentSessionStore.getState();
       const next = reconcileOpenSessions(
         {
           activeSessionId: activeSessionId(),
           openSessionIds: store.openSessionIds,
-          provisionalSessionIds: store.freshDraftSessionIds,
         },
         liveIds,
       );
@@ -125,7 +122,6 @@ export function installAgentStatePorts(): () => void {
       if (lastSessionId === "") return;
       goToSession(lastSessionId);
     },
-    markDraftSession: (id) => useAgentSessionStore.getState().markDraft(id),
   });
 
   const disposeViewState = configureAgentSessionViewPort({

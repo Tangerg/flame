@@ -28,6 +28,17 @@ export function invalidateAgentSessions(): Promise<void> {
   return queryClient.invalidateQueries({ queryKey: [AGENT_SESSIONS_KEY] });
 }
 
+// A created Session joins the projection with the revalidation that cancels
+// older reads, so a list read issued before the create cannot drop it.
+export function commitCreatedAgentSession(created: AgentSessionSummary): void {
+  queryClient.setQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY], (sessions) =>
+    sessions && !sessions.some((session) => session.id === created.id)
+      ? [created, ...sessions]
+      : sessions,
+  );
+  void invalidateAgentSessions();
+}
+
 // A queued summary write runs after the same Session's earlier writes have
 // been committed to this projection, so it states the revision the Runtime
 // last returned. The commit and the revalidation that cancels older reads are

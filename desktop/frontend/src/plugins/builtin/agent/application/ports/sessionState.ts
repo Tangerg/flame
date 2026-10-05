@@ -14,11 +14,8 @@ export interface AgentSessionStatePort {
   closeSession(id: string): void;
   deleteSession(id: string): void;
   subscribeDeletedSession(listener: (id: string) => void): () => void;
-  useDraftSessionIds(): Set<string>;
-  isDraftSession(id: string): boolean;
   reconcileSessions(liveIds: string[]): void;
   restoreLastSession(): void;
-  markDraftSession(id: string): void;
 }
 
 const port = createSingletonPort<AgentSessionStatePort>(
