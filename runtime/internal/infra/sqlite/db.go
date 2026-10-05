@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"unicode"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -237,7 +238,6 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			modelInvocationLatencyColumn(),
 			modelInvocationUsageColumn(),
 		),
-		`DROP INDEX IF EXISTS idx_model_invocations_run`,
 		`CREATE INDEX IF NOT EXISTS idx_model_invocations_trajectory
 			ON model_invocations(run_id, started_at DESC, call_id DESC)`,
 		fmt.Sprintf(`CREATE INDEX IF NOT EXISTS idx_model_invocations_open
@@ -278,7 +278,6 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			ON tool_invocations(run_id, segment_id)`,
 		fmt.Sprintf(`CREATE INDEX IF NOT EXISTS idx_tool_invocations_open
 			ON tool_invocations(state) WHERE state = '%s'`, toolInvocationStarted.databaseValue()),
-		`DROP TRIGGER IF EXISTS prune_terminal_run_invocations`,
 		fmt.Sprintf(`CREATE TRIGGER IF NOT EXISTS require_settled_model_invocations
 			BEFORE UPDATE OF state ON runs
 			WHEN OLD.state != '%[1]s' AND NEW.state = '%[1]s'
@@ -764,13 +763,7 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		return fmt.Errorf("sqlite: begin schema installation: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
-	if err := requireCheckpointDependencies(ctx, tx); err != nil {
-		return err
-	}
-	if err := requireCurrentShapes(ctx, tx); err != nil {
-		return err
-	}
-	if err := requireCurrentDefinitions(ctx, tx); err != nil {
+	if err := requireCurrentSchema(ctx, tx, stmts); err != nil {
 		return err
 	}
 	for _, stmt := range stmts {
@@ -778,166 +771,8 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			return fmt.Errorf("sqlite: install current schema: %w", err)
 		}
 	}
-	approvalSchema, err := tx.QueryContext(ctx, `SELECT tool_kind, tool_name, mcp_source, source_fingerprint, subject_type FROM approval_rules LIMIT 0`)
-	if err != nil {
-		return fmt.Errorf("sqlite: incompatible approval schema; open a fresh data directory: %w", err)
-	}
-	if err := approvalSchema.Close(); err != nil {
-		return fmt.Errorf("sqlite: inspect approval schema: %w", err)
-	}
-	rows, err := tx.QueryContext(ctx, `SELECT sequence, commit_id, commit_digest FROM execution_trees LIMIT 0`)
-	if err != nil {
-		return fmt.Errorf("sqlite: incompatible execution tree schema; open a fresh data directory: %w", err)
-	}
-	if err := rows.Close(); err != nil {
-		return fmt.Errorf("sqlite: inspect execution tree schema: %w", err)
-	}
-
-	for _, column := range []struct{ name, definition string }{
-		{"source_message_seq", resultPublicationSourceColumn},
-		{"model_results", resultPublicationResultsColumn},
-	} {
-		var present int
-		if err := tx.QueryRowContext(ctx, "SELECT count(*) FROM pragma_table_info('result_publications') WHERE name = ?", column.name).Scan(&present); err != nil {
-			return fmt.Errorf("sqlite: inspect result publication schema: %w", err)
-		}
-		if present == 0 {
-			if _, err := tx.ExecContext(ctx, "ALTER TABLE result_publications ADD COLUMN "+column.definition); err != nil {
-				return fmt.Errorf("sqlite: add exact result publication evidence: %w", err)
-			}
-		}
-	}
-	for _, stmt := range []string{
-		`CREATE INDEX IF NOT EXISTS idx_result_publications_run_context ON result_publications(session_id, run_id, source_message_seq)`,
-		`CREATE INDEX IF NOT EXISTS idx_result_publications_source_message ON result_publications(source_message_seq) WHERE source_message_seq IS NOT NULL`,
-	} {
-		if _, err := tx.ExecContext(ctx, stmt); err != nil {
-			return fmt.Errorf("sqlite: index result publication context: %w", err)
-		}
-	}
-	for _, table := range []string{"approval_rules", "mcp_servers", "mcp_tool_exposure", "mcp_oauth_sessions"} {
-		var sourceOwner int
-		if err := tx.QueryRowContext(ctx, `SELECT count(DISTINCT id) FROM pragma_foreign_key_list(?) WHERE "table" = 'mcp_sources' AND on_delete = 'CASCADE'`, table).Scan(&sourceOwner); err != nil {
-			return fmt.Errorf("sqlite: inspect MCP ownership schema: %w", err)
-		}
-		if sourceOwner != 1 {
-			return errors.New("sqlite: incompatible MCP ownership schema; open a fresh data directory")
-		}
-	}
-	// The feedback ledger has no reader inside Runtime, so an index on its
-	// timestamp only charged every insert for a query nobody makes; the pending
-	// rollback log took its observation time from SQLite, a second clock in a
-	// second unit that nothing in the Runtime could control or order reliably.
-	for _, retired := range []string{
-		"DROP INDEX IF EXISTS idx_feedback_entries_created",
-	} {
-		if _, err := tx.ExecContext(ctx, retired); err != nil {
-			return fmt.Errorf("sqlite: retire obsolete schema: %w", err)
-		}
-	}
-	var pendingMutationCreatedAt int
-	if err := tx.QueryRowContext(ctx,
-		"SELECT count(*) FROM pragma_table_info('pending_workspace_mutations') WHERE name = 'created_at'",
-	).Scan(&pendingMutationCreatedAt); err != nil {
-		return fmt.Errorf("sqlite: inspect pending workspace mutation schema: %w", err)
-	}
-	if pendingMutationCreatedAt == 1 {
-		if _, err := tx.ExecContext(ctx,
-			"ALTER TABLE pending_workspace_mutations DROP COLUMN created_at",
-		); err != nil {
-			return fmt.Errorf("sqlite: drop pending workspace mutation clock: %w", err)
-		}
-	}
-	var usageColumn int
-	if err := tx.QueryRowContext(ctx, "SELECT count(*) FROM pragma_table_info('model_invocations') WHERE name = 'usage'").Scan(&usageColumn); err != nil {
-		return fmt.Errorf("sqlite: inspect model invocation schema: %w", err)
-	}
-	if usageColumn == 0 {
-		if _, err := tx.ExecContext(ctx,
-			"ALTER TABLE model_invocations ADD COLUMN "+modelInvocationUsageColumn(),
-		); err != nil {
-			return fmt.Errorf("sqlite: add model invocation usage: %w", err)
-		}
-	}
-	var latencyColumn int
-	if err := tx.QueryRowContext(ctx, "SELECT count(*) FROM pragma_table_info('model_invocations') WHERE name = 'first_output_latency_millis'").Scan(&latencyColumn); err != nil {
-		return fmt.Errorf("sqlite: inspect model invocation latency schema: %w", err)
-	}
-	if latencyColumn == 0 {
-		if _, err := tx.ExecContext(ctx,
-			"ALTER TABLE model_invocations ADD COLUMN "+modelInvocationLatencyColumn(),
-		); err != nil {
-			return fmt.Errorf("sqlite: add model invocation latency: %w", err)
-		}
-	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("sqlite: commit schema installation: %w", err)
-	}
-	return nil
-}
-
-// Current statements would only partly apply to a directory whose tables
-// predate their current shape, so such a directory is refused before any of
-// them runs: MCP identity became relational, installation state left a JSON
-// column for relational rows and then became one closed state bound to the
-// selected release, and OAuth credentials became bound to their target
-// fingerprint alone.
-func requireCurrentShapes(ctx context.Context, tx *sql.Tx) error {
-	for _, current := range []struct {
-		table, column, owner string
-		present              bool
-	}{
-		{"mcp_sources", "origin", "MCP ownership", true},
-		{"mcp_servers", "source_id", "MCP ownership", true},
-		{"mcp_tool_exposure", "source_id", "MCP ownership", true},
-		{"mcp_oauth_sessions", "target_fingerprint", "MCP authorization", true},
-		{"mcp_oauth_sessions", "endpoint_origin", "MCP authorization", false},
-		{"approval_rules", "tool_kind", "approval", true},
-		{"plugin_installations", "admission_state", "installation", true},
-	} {
-		var exists, present int
-		if err := tx.QueryRowContext(ctx,
-			`SELECT count(*), (SELECT count(*) FROM pragma_table_info(?) WHERE name = ?)
-			   FROM sqlite_master WHERE type = 'table' AND name = ?`,
-			current.table, current.column, current.table,
-		).Scan(&exists, &present); err != nil {
-			return fmt.Errorf("sqlite: inspect %s schema: %w", current.owner, err)
-		}
-		if exists == 1 && (present == 1) != current.present {
-			return fmt.Errorf("sqlite: incompatible %s schema; open a fresh data directory", current.owner)
-		}
-	}
-	return nil
-}
-
-// Tables whose current shape differs from an earlier one only in constraints
-// are compared by their complete definition, which column inspection cannot
-// see: a directory created under weaker constraints may hold rows the current
-// ones refuse.
-func strictDefinitions() map[string]string {
-	return map[string]string{
-		"plugin_releases":                   pluginReleasesSchema(),
-		"plugin_release_servers":            pluginReleaseServersSchema(),
-		"mcp_oauth_sessions":                mcpOAuthSessionsSchema(),
-		"approval_rules":                    approvalRulesSchema(),
-		"executor_checkpoint_installations": executorCheckpointInstallationsSchema(),
-	}
-}
-
-func requireCurrentDefinitions(ctx context.Context, tx *sql.Tx) error {
-	definitions := strictDefinitions()
-	for _, table := range slices.Sorted(maps.Keys(definitions)) {
-		var stored string
-		err := tx.QueryRowContext(ctx, `SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?`, table).Scan(&stored)
-		if errors.Is(err, sql.ErrNoRows) {
-			continue
-		}
-		if err != nil {
-			return fmt.Errorf("sqlite: inspect %s schema: %w", table, err)
-		}
-		if stored != strings.Replace(definitions[table], "CREATE TABLE IF NOT EXISTS ", "CREATE TABLE ", 1) {
-			return fmt.Errorf("sqlite: incompatible %s schema; open a fresh data directory", table)
-		}
 	}
 	return nil
 }
@@ -1004,29 +839,62 @@ func executorCheckpointInstallationsSchema() string {
 		)`, installationIDCheck("installation_id"), digestCheck("digest"))
 }
 
-// A pending checkpoint written before the dependency projection existed has
-// no determinable installation dependencies; its directory is refused rather
-// than read as depending on nothing.
-func requireCheckpointDependencies(ctx context.Context, tx *sql.Tx) error {
-	var checkpoints, dependencies int
-	if err := tx.QueryRowContext(ctx,
-		`SELECT count(*) FILTER (WHERE name = 'executor_checkpoints'), count(*) FILTER (WHERE name = 'executor_checkpoint_installations')
-		   FROM sqlite_master WHERE type = 'table'`,
-	).Scan(&checkpoints, &dependencies); err != nil {
-		return fmt.Errorf("sqlite: inspect executor checkpoint schema: %w", err)
+// requireCurrentSchema admits a data directory that is empty or exactly
+// current: every table, index and trigger the current statements define, with
+// their definitions, and nothing else. The statements would only partly apply
+// to any other directory, so it is refused before one of them runs; there is
+// no migration path, and a former shape is never repaired in place.
+func requireCurrentSchema(ctx context.Context, tx *sql.Tx, stmts []string) error {
+	rows, err := tx.QueryContext(ctx,
+		`SELECT name, sql FROM sqlite_master WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite\_%' ESCAPE '\'`)
+	if err != nil {
+		return fmt.Errorf("sqlite: inspect schema: %w", err)
 	}
-	if checkpoints == 0 || dependencies == 1 {
+	stored := map[string]string{}
+	for rows.Next() {
+		var name, definition string
+		if err := rows.Scan(&name, &definition); err != nil {
+			_ = rows.Close()
+			return fmt.Errorf("sqlite: inspect schema: %w", err)
+		}
+		stored[name] = definition
+	}
+	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
+		return fmt.Errorf("sqlite: inspect schema: %w", err)
+	}
+	if len(stored) == 0 {
 		return nil
 	}
-	var pending bool
-	if err := tx.QueryRowContext(ctx,
-		`SELECT EXISTS (SELECT 1 FROM executor_checkpoints WHERE EXISTS (
-			SELECT 1 FROM runs WHERE runs.session_id = executor_checkpoints.session_id AND runs.state <> 'terminal'))`,
-	).Scan(&pending); err != nil {
-		return fmt.Errorf("sqlite: inspect pending executor checkpoints: %w", err)
+	for _, stmt := range stmts {
+		if !strings.HasPrefix(stmt, "CREATE ") {
+			continue
+		}
+		name, definition, err := schemaObject(stmt)
+		if err != nil {
+			return err
+		}
+		if stored[name] != definition {
+			return fmt.Errorf("sqlite: incompatible %s schema; open a fresh data directory", name)
+		}
+		delete(stored, name)
 	}
-	if pending {
-		return errors.New("sqlite: incompatible executor checkpoint schema; open a fresh data directory")
+	for _, name := range slices.Sorted(maps.Keys(stored)) {
+		return fmt.Errorf("sqlite: incompatible schema object %s; open a fresh data directory", name)
 	}
 	return nil
+}
+
+// schemaObject names the object a current statement creates and the definition
+// SQLite records for it, which omits the IF NOT EXISTS clause.
+func schemaObject(stmt string) (name, definition string, err error) {
+	const clause = " IF NOT EXISTS "
+	before, after, found := strings.Cut(stmt, clause)
+	if !found {
+		return "", "", fmt.Errorf("sqlite: schema statement lacks %q: %.40s", strings.TrimSpace(clause), stmt)
+	}
+	end := strings.IndexFunc(after, func(r rune) bool { return unicode.IsSpace(r) || r == '(' })
+	if end <= 0 {
+		return "", "", fmt.Errorf("sqlite: schema statement names no object: %.40s", stmt)
+	}
+	return after[:end], before + " " + after, nil
 }

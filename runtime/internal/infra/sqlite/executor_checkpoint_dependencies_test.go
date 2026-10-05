@@ -101,14 +101,10 @@ func TestCheckpointStoreRejectsNonCanonicalDependencies(t *testing.T) {
 	}
 }
 
-func TestPendingCheckpointWithoutDependencyProjectionRefusesTheDirectory(t *testing.T) {
-	for _, test := range []struct {
-		state   string
-		refused bool
-	}{
-		{state: "waiting", refused: true},
-		{state: "terminal"},
-	} {
+// A directory without the dependency projection predates it; whatever its
+// checkpoints hold, it is refused rather than completed in place.
+func TestCheckpointDirectoryWithoutDependencyProjectionIsRefused(t *testing.T) {
+	for _, test := range []struct{ state string }{{state: "waiting"}, {state: "terminal"}} {
 		t.Run(test.state, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "flame.db")
 			db, err := sqlite.Open(t.Context(), path)
@@ -130,8 +126,8 @@ func TestPendingCheckpointWithoutDependencyProjectionRefusesTheDirectory(t *test
 			if reopened != nil {
 				_ = reopened.Close()
 			}
-			if test.refused != (err != nil) {
-				t.Fatalf("reopen with %s checkpoint = %v, want refused=%v", test.state, err, test.refused)
+			if err == nil {
+				t.Fatalf("reopen with a %s checkpoint and no dependency projection was accepted", test.state)
 			}
 		})
 	}

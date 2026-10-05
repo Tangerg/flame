@@ -35,7 +35,7 @@ func TestOpenRejectsObsoleteApprovalSchemaWithoutChangingData(t *testing.T) {
 				opened.Close()
 				t.Fatal("obsolete authorization schema was accepted")
 			}
-			if !strings.Contains(err.Error(), "incompatible approval schema") {
+			if !strings.Contains(err.Error(), "open a fresh data directory") {
 				t.Fatalf("unexpected error: %v", err)
 			}
 			raw, err = sql.Open("sqlite", path)
@@ -78,7 +78,7 @@ func TestOpenRejectsStringEncodedMCPIdentityWithoutChangingData(t *testing.T) {
 		opened.Close()
 		t.Fatal("string-encoded MCP identity schema was accepted")
 	}
-	if !strings.Contains(err.Error(), "incompatible MCP ownership schema") {
+	if !strings.Contains(err.Error(), "open a fresh data directory") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	raw, err = sql.Open("sqlite", path)

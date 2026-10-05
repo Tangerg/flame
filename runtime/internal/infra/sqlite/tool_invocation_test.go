@@ -77,11 +77,6 @@ func TestToolInvocationJournalAllowsOneLogicalCallAcrossContinuationSegments(t *
 			t.Fatalf("complete %s: %v", segmentID, err)
 		}
 	}
-	if _, err := db.ExecContext(t.Context(), `CREATE TRIGGER prune_terminal_run_invocations
-		AFTER UPDATE OF state ON runs WHEN NEW.state = 'terminal'
-		BEGIN DELETE FROM tool_invocations WHERE run_id = NEW.run_id; END`); err != nil {
-		t.Fatal(err)
-	}
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}

@@ -341,13 +341,12 @@ records do not store server identities or declarations. Installation state is re
 the installation row holds its source, selected and staged digests and its closed
 `admission_state` (`CHECK`ed to `unapproved`, `approved` or `enabled`; a staged digest
 differs from the selected one), and child tables hold input values and disabled
-components, each removed with its installation by cascade. A data directory whose MCP
-tables still key servers by a joined name, whose installations keep JSON state or separate
-enablement and approval flags, or whose OAuth sessions keep
-an endpoint-origin column is refused at open without modification. Pre-release storage compatibility follows
-[the repository data policy](../DEVELOPMENT.md#pre-release-data-policy). A data
-directory holding a pending execution checkpoint written before the relational
-dependency projection is refused at open; use a fresh data directory. Continuation
+components, each removed with its installation by cascade. Open admits a data directory
+that is empty or holds exactly the current tables, indexes and triggers; any other
+directory, such as one with former MCP, installation, OAuth or checkpoint shapes, is
+refused without modification, and no former shape is repaired in place. Pre-release
+storage compatibility follows
+[the repository data policy](../DEVELOPMENT.md#pre-release-data-policy). Continuation
 payloads no longer carry dependency bindings. Completed historical Tool content remains generic and readable.
 Publishing the new Runtime module and advancing CLI's released dependency is required
 before an independent CLI release; workspace checks alone do not prove that release.

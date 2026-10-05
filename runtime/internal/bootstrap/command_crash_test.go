@@ -39,15 +39,17 @@ func (s commandCrashStore) Complete(ctx context.Context, record idempotency.Reco
 	return err
 }
 
+// commandCrashExecutor records business effects in a database of its own, so
+// the Runtime's directory keeps exactly its current schema.
 type commandCrashExecutor struct {
-	db    *sql.DB
-	phase string
+	effects *sql.DB
+	phase   string
 }
 
 func (s commandCrashExecutor) SteerRun(ctx context.Context, _ protocol.SteerRunRequest) (*protocol.SteerRunResponse, error) {
 	// The unconstrained fixture records every execution, so replay cannot hide a
 	// duplicate behind a business uniqueness check. It is not a Run simulator.
-	if _, err := s.db.ExecContext(ctx, `INSERT INTO command_crash_effects (item_id) VALUES ('item_crash')`); err != nil {
+	if _, err := s.effects.ExecContext(ctx, `INSERT INTO command_crash_effects (item_id) VALUES ('item_crash')`); err != nil {
 		return nil, err
 	}
 	if s.phase == "business" {
@@ -56,13 +58,13 @@ func (s commandCrashExecutor) SteerRun(ctx context.Context, _ protocol.SteerRunR
 	return &protocol.SteerRunResponse{UserItemID: "item_crash"}, nil
 }
 
-func crashCommand(t *testing.T, db *sql.DB, phase string) (*protocol.SteerRunResponse, error) {
+func crashCommand(t *testing.T, db, effects *sql.DB, phase string) (*protocol.SteerRunResponse, error) {
 	t.Helper()
 	namespace, err := sqlite.IdempotencyNamespace(t.Context(), db)
 	if err != nil {
 		t.Fatal(err)
 	}
-	endpoint, err := delivery.NewEndpoint(commandCrashExecutor{db: db, phase: phase}, delivery.EndpointConfig{
+	endpoint, err := delivery.NewEndpoint(commandCrashExecutor{effects: effects, phase: phase}, delivery.EndpointConfig{
 		Lifetime: t.Context(), IdempotencyNamespace: namespace.String(),
 		IdempotencyStore: commandCrashStore{Store: sqlite.NewIdempotencyStore(db), phase: phase},
 	})
@@ -85,10 +87,11 @@ func TestCommandCrashHelper(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.ExecContext(t.Context(), `CREATE TABLE command_crash_effects (item_id TEXT NOT NULL)`); err != nil {
+	effects := openCommandEffects(t, os.Getenv("FLAME_TEST_COMMAND_EFFECTS"))
+	if _, err := effects.ExecContext(t.Context(), `CREATE TABLE command_crash_effects (item_id TEXT NOT NULL)`); err != nil {
 		t.Fatal(err)
 	}
-	_, err = crashCommand(t, db, phase)
+	_, err = crashCommand(t, db, effects, phase)
 	t.Fatalf("crash point %s was not reached: %v", phase, err)
 }
 
@@ -96,10 +99,11 @@ func TestCommandReceiptSurvivesAbruptProcessExit(t *testing.T) {
 	for _, phase := range []string{"claim", "business", "receipt"} {
 		t.Run(phase, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "flame.db")
+			effectsPath := filepath.Join(t.TempDir(), "effects.db")
 			ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 			defer cancel()
 			command := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestCommandCrashHelper$")
-			command.Env = append(os.Environ(), "FLAME_TEST_COMMAND_CRASH="+phase, "FLAME_TEST_COMMAND_DB="+path)
+			command.Env = append(os.Environ(), "FLAME_TEST_COMMAND_CRASH="+phase, "FLAME_TEST_COMMAND_DB="+path, "FLAME_TEST_COMMAND_EFFECTS="+effectsPath)
 			output, err := command.CombinedOutput()
 			var exit *exec.ExitError
 			if !errors.As(err, &exit) || exit.ExitCode() != commandCrashExit {
@@ -110,8 +114,9 @@ func TestCommandReceiptSurvivesAbruptProcessExit(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { _ = db.Close() })
+			effects := openCommandEffects(t, effectsPath)
 			for range 2 {
-				response, err := crashCommand(t, db, "")
+				response, err := crashCommand(t, db, effects, "")
 				if phase == "receipt" {
 					if err != nil || response == nil || response.UserItemID != "item_crash" {
 						t.Fatalf("durable receipt lost its identity: %+v, %v", response, err)
@@ -120,17 +125,27 @@ func TestCommandReceiptSurvivesAbruptProcessExit(t *testing.T) {
 					t.Fatalf("unresolved claim became a known outcome: %+v, %v", response, err)
 				}
 			}
-			var effects int
-			if err := db.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM command_crash_effects`).Scan(&effects); err != nil {
+			var executions int
+			if err := effects.QueryRowContext(t.Context(), `SELECT COUNT(*) FROM command_crash_effects`).Scan(&executions); err != nil {
 				t.Fatal(err)
 			}
 			want := 1
 			if phase == "claim" {
 				want = 0
 			}
-			if effects != want {
-				t.Fatalf("business executions = %d, want %d", effects, want)
+			if executions != want {
+				t.Fatalf("business executions = %d, want %d", executions, want)
 			}
 		})
 	}
+}
+
+func openCommandEffects(t *testing.T, path string) *sql.DB {
+	t.Helper()
+	effects, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = effects.Close() })
+	return effects
 }

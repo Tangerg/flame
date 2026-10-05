@@ -38,7 +38,7 @@ func TestOpenPreservesLiteralDatabasePath(t *testing.T) {
 			if err != nil || !os.SameFile(wantInfo, actualInfo) {
 				t.Fatalf("database path = %q, want physical file %q: %v", actual, path, err)
 			}
-			if _, err := db.ExecContext(ctx, "CREATE TABLE path_roundtrip (value TEXT); INSERT INTO path_roundtrip VALUES ('retained')"); err != nil {
+			if _, err := db.ExecContext(ctx, "INSERT INTO trusted_projects VALUES ('retained')"); err != nil {
 				t.Fatal(err)
 			}
 			if err := db.Close(); err != nil {
@@ -50,7 +50,7 @@ func TestOpenPreservesLiteralDatabasePath(t *testing.T) {
 			}
 			t.Cleanup(func() { _ = reopened.Close() })
 			var value string
-			if err := reopened.QueryRowContext(ctx, "SELECT value FROM path_roundtrip").Scan(&value); err != nil || value != "retained" {
+			if err := reopened.QueryRowContext(ctx, "SELECT project_root FROM trusted_projects").Scan(&value); err != nil || value != "retained" {
 				t.Fatalf("reopened value = %q: %v", value, err)
 			}
 		})

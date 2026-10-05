@@ -101,51 +101,6 @@ func TestRunCannotEraseAnUnsettledModelAttempt(t *testing.T) {
 	}
 }
 
-func TestModelInvocationUsageAdoptsExistingDatabaseWithoutInventingHistory(t *testing.T) {
-	ctx := t.Context()
-	path := filepath.Join(t.TempDir(), "existing.sqlite")
-	db, err := sqlite.Open(ctx, path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = db.Close() }()
-	draft := runDraft("run_existing", "ses_existing")
-	if err := sqlite.NewRunStore(db).Admit(ctx, draft); err != nil {
-		t.Fatal(err)
-	}
-	calls := sqlite.NewModelInvocationStore(db)
-	if err := calls.StartModelInvocation(ctx, draft.SessionID, draft.RunID, draft.SegmentID, "call_old", draft.CreatedAt); err != nil {
-		t.Fatal(err)
-	}
-	if err := calls.CompleteModelInvocation(ctx, draft.SessionID, draft.RunID, draft.SegmentID, "call_old", draft.CreatedAt, draft.CreatedAt, nil, nil); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := db.ExecContext(ctx, "ALTER TABLE model_invocations DROP COLUMN first_output_latency_millis"); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := db.ExecContext(ctx, "ALTER TABLE model_invocations DROP COLUMN usage"); err != nil {
-		t.Fatal(err)
-	}
-	if err := db.Close(); err != nil {
-		t.Fatal(err)
-	}
-	db, err = sqlite.Open(ctx, path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	calls = sqlite.NewModelInvocationStore(db)
-	rows, err := calls.PageModelInvocations(ctx, draft.RunID, 0, "", 10)
-	if err != nil || len(rows) != 1 || rows[0].Usage != nil || rows[0].FirstOutputLatencyMillis != nil || rows[0].State != "completed" {
-		t.Fatalf("historical attempt = %+v, %v", rows, err)
-	}
-	if err := calls.StartModelInvocation(ctx, draft.SessionID, draft.RunID, draft.SegmentID, "call_new", draft.CreatedAt); err != nil {
-		t.Fatal(err)
-	}
-	if err := calls.CompleteModelInvocation(ctx, draft.SessionID, draft.RunID, draft.SegmentID, "call_new", draft.CreatedAt, draft.CreatedAt, nil, &chat.Usage{InputTokens: 3}); err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestFailedModelInvocationRetainsMeasuredLatencyWithoutUsage(t *testing.T) {
 	db, err := sqlite.Open(t.Context(), ":memory:")
 	if err != nil {
