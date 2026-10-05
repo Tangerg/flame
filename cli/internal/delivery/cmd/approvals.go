@@ -1,9 +1,9 @@
 package cmd
 
 import (
-	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"strings"
 	"text/tabwriter"

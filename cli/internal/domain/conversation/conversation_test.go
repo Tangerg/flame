@@ -372,22 +372,6 @@ func TestConversationStartingWindow(t *testing.T) {
 	}
 }
 
-func TestConversationSettlesRunningItemsWithOutOfBandCancellation(t *testing.T) {
-	projection := New()
-	apply(t, projection, RunEvent{EventID: "start", RunID: "run_1", SegmentID: "seg_1", Event: SegmentStarted{Run: runningRun("seg_1")}})
-	apply(t, projection, RunEvent{EventID: "tool", RunID: "run_1", SegmentID: "seg_1", Event: BlockStarted{Block: Block{
-		ID: "tool_1", RunID: "run_1", Status: BlockStatusRunning, Kind: BlockTool,
-		Tool: &ToolCall{Kind: ToolShell, Name: "shell", Status: ToolRunning},
-	}}})
-	if err := projection.SettleRun(testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusFinished, Outcome: Outcome{Status: protocol.OutcomeCanceled}})); err != nil {
-		t.Fatal(err)
-	}
-	block := projection.Blocks()[0]
-	if block.Status != BlockStatusIncomplete || block.Tool.Status != ToolCanceled {
-		t.Fatalf("settled block = %+v", block)
-	}
-}
-
 func TestConversationReconcilesAttachThenReadOverlap(t *testing.T) {
 	projection := New()
 	snapshot := attachedReconciliationSnapshot(t)

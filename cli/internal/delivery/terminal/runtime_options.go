@@ -1,10 +1,10 @@
 package terminal
 
 import (
-	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
 	"slices"
 	"strings"
 

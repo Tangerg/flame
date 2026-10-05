@@ -194,52 +194,6 @@ func (c *Conversation) CancelStarting() error {
 	return nil
 }
 
-// SettleRun applies the authoritative result of an out-of-band control such as
-// runs.cancel, whose response is durable even when no segment stream is open.
-func (c *Conversation) SettleRun(run Run) error {
-	if err := run.Validate(); err != nil {
-		return err
-	}
-	if run.Status != protocol.RunStatusFinished {
-		return errors.New("cannot settle conversation from an unfinished run")
-	}
-	if !run.Lineage.IsRoot() {
-		return errors.New("cannot settle conversation from a child-run control result")
-	}
-	if c.runID != "" && c.runID != run.ID {
-		return fmt.Errorf("%w: settled run %s does not match %s", ErrInvalidTransition, run.ID, c.runID)
-	}
-	if c.runID == run.ID {
-		if err := validateUsageProgress(c.usage, run.Usage); err != nil {
-			return fmt.Errorf("%w: settled run: %w", ErrInvalidTransition, err)
-		}
-	}
-	toolStatus := ToolError
-	if run.Outcome.Status == protocol.OutcomeCanceled {
-		toolStatus = ToolCanceled
-	}
-	c.settleOpenBlocks(toolStatus)
-	for memberID, member := range c.runs {
-		if member.Lineage.RootRunID() != run.ID || member.Status == protocol.RunStatusFinished {
-			continue
-		}
-		member.Status = protocol.RunStatusFinished
-		member.ActiveSegmentID = ""
-		member.Outcome = run.Outcome.Clone()
-		c.runs[memberID] = member
-	}
-	c.rememberRun(run)
-	c.runID = run.ID
-	c.segmentID = ""
-	c.phase = Idle
-	c.interactions = nil
-	c.reconciling = false
-	c.coldTail = false
-	c.outcome = run.Outcome.Clone()
-	c.usage = run.Usage.Clone()
-	return nil
-}
-
 func (c *Conversation) ClearPresentation() {
 	c.blocks = nil
 	c.plan = nil
@@ -331,20 +285,6 @@ func (c *Conversation) hasOpenBlocksForRun(runID string) bool {
 		}
 	}
 	return false
-}
-
-func (c *Conversation) settleOpenBlocks(toolStatus ToolStatus) {
-	for index := range c.blocks {
-		block := &c.blocks[index]
-		if block.Status != BlockStatusRunning {
-			continue
-		}
-		if block.Kind == BlockTool && block.Tool != nil {
-			block.Tool.Status = toolStatus
-		}
-		block.Status = BlockStatusIncomplete
-		delete(c.textStreams, blockIdentity(block.RunID, block.ID))
-	}
 }
 
 func (c *Conversation) settleOpenBlocksForRun(runID string, toolStatus ToolStatus) {

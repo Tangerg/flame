@@ -246,21 +246,21 @@ func (a *app) requestRuntimeCancellation(target conversation.CancelRun, policy c
 	a.execution.pendingCancel = &pending
 	dispatcher := a.loop.Dispatcher()
 	a.operations.Go(cancelRunOperation, true, func(ownerCtx context.Context, lease operationLease) {
-		settled, err := a.cancelRootRun(ownerCtx, target, pending.replay)
+		err := a.cancelRootRun(ownerCtx, target, pending.replay)
 		_ = post(ownerCtx, dispatcher, func() {
-			a.handleRuntimeCancellation(lease, pending, settled, err)
+			a.handleRuntimeCancellation(lease, pending, err)
 		})
 	})
 }
 
 // cancelRootRun makes cancellation idempotent at the terminal boundary. A run
 // may finish between the user's gesture and the control request; in that case
-// the durable run projection is the successful settlement of the same intent.
+// the authoritative snapshot that follows is the settlement of the same intent.
 func (a *app) cancelRootRun(
 	ctx context.Context,
 	target conversation.CancelRun,
 	replayGuard replay.Guard,
-) (conversation.Run, error) {
+) error {
 	result, err := mutation.ConfirmAdmitted(
 		ctx, runtimeRecoveryBackoff, commandReplayAdmission(replayGuard, a.runtimeProfile),
 		func(ctx context.Context) (conversation.RunCancellation, error) {
@@ -271,30 +271,19 @@ func (a *app) cancelRootRun(
 	)
 	if err == nil {
 		if validateTargetErr := result.ValidateTarget(target.RunID); validateTargetErr != nil {
-			return conversation.Run{}, fmt.Errorf("cancel run: %w", validateTargetErr)
+			return fmt.Errorf("cancel run: %w", validateTargetErr)
 		}
-		return result.Root, nil
+		return nil
 	}
-	if !errors.Is(err, conversation.ErrRunFinished) {
-		return conversation.Run{}, err
+	if errors.Is(err, conversation.ErrRunFinished) {
+		return nil
 	}
-	settled, readErr := a.runtime.GetRun(ctx, target.RunID)
-	if readErr != nil {
-		return conversation.Run{}, fmt.Errorf("read run after cancellation race: %w", readErr)
-	}
-	if validateErr := settled.Validate(); validateErr != nil {
-		return conversation.Run{}, fmt.Errorf("validate run after cancellation race: %w", validateErr)
-	}
-	if settled.ID != target.RunID || !settled.Lineage.IsRoot() || settled.Status != protocol.RunStatusFinished {
-		return conversation.Run{}, fmt.Errorf("cancellation race returned non-terminal root run %s", settled.ID)
-	}
-	return settled, nil
+	return err
 }
 
 func (a *app) handleRuntimeCancellation(
 	lease operationLease,
 	pending pendingCancellation,
-	settled conversation.Run,
 	err error,
 ) {
 	if !a.operations.Current(lease) || a.closed {
@@ -330,29 +319,14 @@ func (a *app) handleRuntimeCancellation(
 		a.refreshInvalidatedSession(true)
 		return
 	}
-	if pending.policy == recoverCanceledOpening {
-		a.status.note("canceled")
-		a.prompt.SetBusy(false)
-		a.syncAnimation()
-		a.session.invalidated = true
-		a.refreshInvalidatedSession(true)
-		return
-	}
-	if err := a.execution.conversation.SettleRun(settled); err != nil {
-		a.fail(err)
-		return
-	}
-	a.execution.projectionFailed = false
-	a.transcript.settleLive(settled.Outcome)
-	a.settleCurrentRunStatus()
-	a.header.SetUsage(settled.Usage)
+	// The receipt names only the root Run. Its children and open tool calls
+	// settle in the Runtime with their own outcomes, so the authoritative
+	// snapshot, not the root's outcome, replaces the projection.
+	a.status.note("canceled")
 	a.prompt.SetBusy(false)
 	a.syncAnimation()
-	if a.session.invalidated {
-		a.refreshInvalidatedSession(true)
-		return
-	}
-	a.drainQueue()
+	a.session.invalidated = true
+	a.refreshInvalidatedSession(true)
 }
 
 func (a *app) openingCommandForRun(runID string) replay.CommandID {
