@@ -130,6 +130,7 @@ type refusingFirstCommandRuntime struct {
 	mu      sync.Mutex
 	refused replay.CommandID
 	inputs  []prompt.StartRun
+	refusal error
 }
 
 type invalidAcceptedStartRuntime struct {
@@ -205,9 +206,19 @@ func (r *refusingFirstCommandRuntime) StartRun(ctx context.Context, input prompt
 	refused := r.refused
 	r.mu.Unlock()
 	if input.CommandID == refused {
-		return conversation.SegmentStream{}, fmt.Errorf("runtime refused start: %w", conversation.ErrSessionHasActiveRun)
+		refusal := r.refusal
+		if refusal == nil {
+			refusal = conversation.ErrSessionHasActiveRun
+		}
+		return conversation.SegmentStream{}, fmt.Errorf("runtime refused start: %w", refusal)
 	}
 	return r.Runtime.StartRun(ctx, input)
+}
+
+func (r *refusingFirstCommandRuntime) attempts() int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return len(r.inputs)
 }
 
 func (r *refusingFirstCommandRuntime) refusedCommand() prompt.StartRun {
@@ -436,6 +447,40 @@ func TestDefinitivelyRefusedStartReturnsToTheDurableQueueWithANewIdentity(t *tes
 	if refused.CommandID == "" || len(pending) != 1 || pending[0].Command.CommandID == refused.CommandID ||
 		pending[0].Command.Message.Text != "preserve a refused start" {
 		t.Fatalf("requeued command = %+v, refused command = %+v", pending, refused)
+	}
+
+	stop()
+}
+
+// A plugin that changed while the Runtime prepared the run refuses it
+// definitely. The prompt returns to the queue under a new identity for the
+// user to send again; the terminal never retries it on its own.
+func TestPluginChangedStartWaitsForTheUserToRetry(t *testing.T) {
+	base := runtimefixture.New()
+	base.Instant = true
+	runtime := &refusingFirstCommandRuntime{Runtime: base, refusal: conversation.ErrPluginChanged}
+	stateDirectory := t.TempDir()
+	host, stop := runUIFromConfig(t, Config{Runtime: runtime, Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(stateDirectory)})
+	host.Shows(t, "Ask flame")
+	host.Type("start during a plugin update")
+	host.Press(input.Enter)
+	host.Shows(t, conversation.ErrPluginChanged.Error())
+	host.Shows(t, "1 queued")
+
+	awaitState(t, "the refused start to return to the durable FIFO", func() bool {
+		refused := runtime.refusedCommand()
+		if refused.SessionID == "" {
+			return false
+		}
+		store, err := openTestWorkbench(stateDirectory)
+		if err != nil {
+			return false
+		}
+		pending := store.PendingRuns(refused.SessionID)
+		return len(pending) == 1 && pending[0].State == workbench.PendingRunQueued && pending[0].Command.CommandID != refused.CommandID
+	})
+	if attempts := runtime.attempts(); attempts != 1 {
+		t.Fatalf("start attempts = %d, want the single user-initiated attempt", attempts)
 	}
 
 	stop()

@@ -120,6 +120,22 @@ func TestClassifyErrorExposesCommandReplaySemantics(t *testing.T) {
 	}
 }
 
+// A start refused because a plugin changed during preparation is a definite
+// refusal the user may retry, not an unknown outcome to replay.
+func TestClassifyErrorMarksPluginChangeAsADefiniteRetryableRefusal(t *testing.T) {
+	problem := protocol.ProblemData{Type: protocol.ErrPluginChanged.Error(), Detail: "a plugin installation changed while the run was being prepared; nothing was started"}
+	err := classifyError(runtimeProblemError{cause: protocol.ErrPluginChanged, data: problem})
+	if !errors.Is(err, conversation.ErrPluginChanged) || !errors.Is(err, protocol.ErrPluginChanged) {
+		t.Fatalf("classified = %v, want plugin-changed identity", err)
+	}
+	if mutation.OutcomeUnknown(err) || retry.IsReconnectable(err) {
+		t.Fatalf("plugin change was classified for automatic replay: %v", err)
+	}
+	if !strings.Contains(err.Error(), "nothing was started") {
+		t.Fatalf("refusal lost its explanation: %v", err)
+	}
+}
+
 func TestClassifyErrorProjectsUnmappedRuntimeProblem(t *testing.T) {
 	t.Parallel()
 

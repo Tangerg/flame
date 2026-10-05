@@ -1,6 +1,6 @@
 {
   "id": "mcpauth_AAAAAAAAAAAAAAAAAAAAAAAAAA",
-  "server": "github",
+  "server": {"origin": {"type": "user"}, "name": "github"},
   "status": {
     "type": "failed",
     "error": {

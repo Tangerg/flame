@@ -89,7 +89,7 @@ type Connection struct {
 // Server is the unified application read model: durable configuration and
 // the current connection lifecycle are projected together.
 type Server struct {
-	Name             mcpserver.ServerName
+	ID               mcpserver.ID
 	Description      string
 	Connection       Connection
 	HandshakeTimeout mcpserver.HandshakeTimeout
@@ -98,9 +98,11 @@ type Server struct {
 
 // ServerState is the application's complete server lifecycle. Disabled is
 // represented explicitly rather than as an absent or contradictory status.
+// Failure names the category exactly when Type is failed.
 type ServerState struct {
 	Type      ServerStateType
 	ToolCount *int
+	Failure   mcpserver.ConnectionFailure
 }
 
 type ServerStateType string
@@ -117,9 +119,10 @@ const (
 // ServerStatus is the application status notification read model. Known is
 // false after a removed server's final invalidation.
 type ServerStatus struct {
-	Name      mcpserver.ServerName
+	Server    mcpserver.ID
 	Known     bool
 	State     mcpserver.ConnectionState
+	Failure   mcpserver.ConnectionFailure
 	ToolCount *int
 }
 
@@ -159,7 +162,7 @@ func maskedValues(values map[string]string) map[string]string {
 
 func serverView(server mcpserver.Server, status *ServerStatus) (Server, error) {
 	view := Server{
-		Name:             server.Name,
+		ID:               server.ID(),
 		Description:      server.Description,
 		Connection:       connectionView(server),
 		HandshakeTimeout: server.HandshakeTimeout,
@@ -179,7 +182,7 @@ func serverView(server mcpserver.Server, status *ServerStatus) (Server, error) {
 		view.State.Type = ServerConnected
 		view.State.ToolCount = status.ToolCount
 	case mcpserver.ConnectionFailed:
-		view.State.Type = ServerFailed
+		view.State = ServerState{Type: ServerFailed, Failure: status.Failure}
 	case mcpserver.ConnectionNeedsAuth:
 		view.State.Type = ServerNeedsAuth
 	default:
@@ -189,7 +192,7 @@ func serverView(server mcpserver.Server, status *ServerStatus) (Server, error) {
 }
 
 func statusView(status mcpserver.ConnectionStatus) ServerStatus {
-	view := ServerStatus{Name: status.Name, Known: true, State: status.State}
+	view := ServerStatus{Server: status.Server, Known: true, State: status.State, Failure: status.Failure}
 	if status.State == mcpserver.ConnectionConnected {
 		count := status.ToolCount
 		view.ToolCount = &count

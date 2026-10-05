@@ -146,7 +146,7 @@ type lspRunner struct {
 func newQuery(ci *codeintel.Analyzer, defaultCWD string) (toolcontract.Tool, error) {
 	t := &lspRunner{analyzer: ci, defaultCWD: defaultCWD}
 	return toolcontract.NewFunc[lspInput, string](
-		toolcontract.FuncConfig{Name: tool.LSP, Description: lspDesc},
+		toolcontract.FuncConfig{Name: string(tool.LSP), Description: lspDesc},
 		t.query,
 	)
 }

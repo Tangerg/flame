@@ -50,18 +50,7 @@ func (s *Handler) ResumeRun(ctx context.Context, in protocol.ResumeRunRequest) (
 		return nil, nil, questionAnswerParamsError(in.Responses, answerError)
 	}
 	if err != nil {
-		switch {
-		case errors.Is(err, runs.ErrInterruptNotOpen):
-			return nil, nil, protocol.ErrInterruptNotOpen
-		case errors.Is(err, runs.ErrInvalidInterruptResponse):
-			return nil, nil, NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
-		case errors.Is(err, runs.ErrSessionBusy):
-			return nil, nil, protocol.ErrSessionBusy
-		case errors.Is(err, runs.ErrRunNotFound):
-			return nil, nil, protocol.ErrRunNotFound
-		default:
-			return nil, nil, err
-		}
+		return nil, nil, wireRunResumeErr(err)
 	}
 	response := &protocol.ResumeRunResponse{
 		RunID: result.RunID, SegmentID: result.SegmentID,
@@ -70,6 +59,23 @@ func (s *Handler) ResumeRun(ctx context.Context, in protocol.ResumeRunRequest) (
 		response.UserItemID = &result.UserItemID
 	}
 	return response, mapRunEvents(result.Events), nil
+}
+
+func wireRunResumeErr(err error) error {
+	switch {
+	case errors.Is(err, runs.ErrInterruptNotOpen):
+		return protocol.ErrInterruptNotOpen
+	case errors.Is(err, runs.ErrInvalidInterruptResponse):
+		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+	case errors.Is(err, runs.ErrSessionBusy):
+		return protocol.ErrSessionBusy
+	case errors.Is(err, runs.ErrRunNotFound):
+		return protocol.ErrRunNotFound
+	case errors.Is(err, runs.ErrInstallationChanged):
+		return pluginChanged(err)
+	default:
+		return err
+	}
 }
 
 // decodeResumeResponses maps transport DTOs into the application-owned

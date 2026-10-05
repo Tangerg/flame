@@ -9,6 +9,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -23,7 +25,7 @@ import (
 
 type observedInteractionTool struct {
 	ref               tool.Ref
-	sourceFingerprint string
+	sourceFingerprint fingerprint.Digest
 	inner             toolcontract.Tool
 	binding           toolcontract.Binding
 	session           *interactionSession

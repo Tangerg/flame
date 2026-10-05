@@ -271,7 +271,7 @@ type Event struct {
 	Workspace   string
 	Paths       []string
 	Names       []string
-	ServerIDs   []string
+	Servers     []protocol.MCPServerID
 	ScheduleIDs []string
 	SessionIDs  []string
 	RunIDs      []string

@@ -1,7 +1,6 @@
 package delivery
 
 import (
-	"cmp"
 	"context"
 	"slices"
 	"sync"
@@ -28,9 +27,9 @@ type fakeMCPPorts struct {
 
 func (f *fakeMCPPorts) Statuses() []mcpserver.ConnectionStatus { return slices.Clone(f.statuses) }
 
-func (f *fakeMCPPorts) Tools(server *mcpserver.ServerName) ([]mcpserver.AdvertisedTool, error) {
+func (f *fakeMCPPorts) MCPTools(server *mcpserver.ID) ([]mcpserver.AdvertisedTool, map[tool.Ref][]tool.Ref, error) {
 	if server == nil {
-		return slices.Clone(f.tools), nil
+		return slices.Clone(f.tools), f.conflicts, nil
 	}
 	var out []mcpserver.AdvertisedTool
 	for _, t := range f.tools {
@@ -38,36 +37,41 @@ func (f *fakeMCPPorts) Tools(server *mcpserver.ServerName) ([]mcpserver.Advertis
 			out = append(out, t)
 		}
 	}
-	return out, nil
+	return out, f.conflicts, nil
 }
 
-func (f *fakeMCPPorts) Reconnect(_ context.Context, name mcpserver.ServerName) error {
-	f.reconnectName = name.String()
+func (f *fakeMCPPorts) Reconnect(_ context.Context, name mcpserver.ID) error {
+	f.reconnectName = name.Name().String()
 	return nil
 }
 
-func (f *fakeMCPPorts) Authorize(_ context.Context, name mcpserver.ServerName) error {
-	f.authorizeName = name.String()
+func (f *fakeMCPPorts) Authorize(_ context.Context, name mcpserver.ID) error {
+	f.authorizeName = name.Name().String()
 	return nil
 }
 
-func (f *fakeMCPPorts) Probe(context.Context, mcpserver.Server) error       { return f.probeErr }
-func (*fakeMCPPorts) Configure(context.Context, mcpserver.ServerName) error { return nil }
-func (*fakeMCPPorts) Detach(mcpserver.ServerName) error                     { return nil }
+func (f *fakeMCPPorts) Probe(context.Context, mcpserver.Server) error { return f.probeErr }
+func (*fakeMCPPorts) Configure(context.Context, mcpserver.ID) error   { return nil }
+func (*fakeMCPPorts) Detach(mcpserver.ID) error                       { return nil }
+func (*fakeMCPPorts) Refuse(context.Context, mcpserver.ID, mcpserver.ConnectionFailure) error {
+	return nil
+}
 
 func fakeMCPPortsConfig(ports *fakeMCPPorts) mcpapp.Config {
-	servers := make(map[mcpserver.ServerName]mcpserver.Server, len(ports.statuses))
+	servers := make(map[mcpserver.ID]mcpserver.Server, len(ports.statuses))
 	for _, status := range ports.statuses {
-		servers[status.Name] = mcpserver.Server{
-			Name: status.Name, Enabled: true,
-			Transport: mcpserver.TransportStdio, Command: "mcp-" + status.Name.String(),
+		servers[status.Server] = mcpserver.Server{
+			Source: mcpserver.UserSource(),
+			Name:   status.Server.Name(), Enabled: true,
+			Transport: mcpserver.TransportStdio, Command: "mcp-" + status.Server.Name().String(),
 		}
 	}
+	registry := &mcpRegistryFake{servers: servers}
 	return mcpapp.Config{
-		Registry:            &mcpRegistryFake{servers: servers},
+		Registry:            registry,
+		Store:               registry,
 		StatusReader:        ports,
 		ToolCatalog:         ports,
-		ToolDiagnostics:     ports,
 		ConnectionControl:   ports,
 		ConnectionLifecycle: ports,
 	}
@@ -76,7 +80,7 @@ func fakeMCPPortsConfig(ports *fakeMCPPorts) mcpapp.Config {
 // mcpRegistryFake is the integration registry the MCP config handlers drive.
 type mcpRegistryFake struct {
 	mu       sync.Mutex
-	servers  map[mcpserver.ServerName]mcpserver.Server
+	servers  map[mcpserver.ID]mcpserver.Server
 	getErr   error
 	saved    []mcpserver.Server
 	exposure map[tool.Ref]bool
@@ -90,12 +94,12 @@ func (m *mcpRegistryFake) Catalog(context.Context) ([]mcpapp.Source, error) {
 		out = append(out, mcpapp.Source{Server: srv.Clone(), Availability: mcpapp.SourceAvailable})
 	}
 	slices.SortFunc(out, func(a, b mcpapp.Source) int {
-		return cmp.Compare(a.Server.Name.String(), b.Server.Name.String())
+		return a.Server.ID().Compare(b.Server.ID())
 	})
 	return out, nil
 }
 
-func (m *mcpRegistryFake) Definition(_ context.Context, name mcpserver.ServerName) (mcpserver.Server, bool, error) {
+func (m *mcpRegistryFake) Definition(_ context.Context, name mcpserver.ID) (mcpserver.Server, bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.getErr != nil {
@@ -109,16 +113,20 @@ func (m *mcpRegistryFake) Save(_ context.Context, srv mcpserver.Server) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.servers == nil {
-		m.servers = make(map[mcpserver.ServerName]mcpserver.Server)
+		m.servers = make(map[mcpserver.ID]mcpserver.Server)
 	}
-	m.servers[srv.Name] = srv.Clone()
+	m.servers[srv.ID()] = srv.Clone()
 	m.saved = append(m.saved, srv.Clone())
 	return nil
 }
 
 func (m *mcpRegistryFake) Remove(_ context.Context, name mcpserver.ServerName) error {
+	id, err := mcpserver.NewID(mcpserver.UserOrigin(), name)
+	if err != nil {
+		return err
+	}
 	m.mu.Lock()
-	delete(m.servers, name)
+	delete(m.servers, id)
 	m.mu.Unlock()
 	return nil
 }
@@ -134,11 +142,11 @@ func handlerWithMCP(t testing.TB, cfg mcpapp.Config) *Handler {
 	if cfg.Registry == nil {
 		cfg.Registry = &mcpRegistryFake{}
 	}
+	if cfg.Store == nil {
+		cfg.Store = cfg.Registry.(*mcpRegistryFake)
+	}
 	if cfg.StatusReader == nil {
 		cfg.StatusReader = ports
-	}
-	if cfg.ToolDiagnostics == nil {
-		cfg.ToolDiagnostics = ports
 	}
 	if cfg.ToolCatalog == nil {
 		cfg.ToolCatalog = ports
@@ -193,5 +201,3 @@ func (m *mcpRegistryFake) SetToolExposure(_ context.Context, ref tool.Ref, disab
 	}
 	return nil
 }
-
-func (f *fakeMCPPorts) ToolNameConflicts() (map[tool.Ref][]tool.Ref, error) { return f.conflicts, nil }

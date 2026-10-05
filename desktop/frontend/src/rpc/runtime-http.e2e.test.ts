@@ -1023,14 +1023,14 @@ for await (const line of lines) {
     });
     const target = { installationId: installed.id, digest: installed.selected.digest };
     try {
-      expect(installed.enabled).toBe(false);
+      expect(installed.state).toBe("unapproved");
       expect(installed.selected.diagnostics).toEqual([]);
       expect(installed.selected.themes).toHaveLength(1);
       expect(installed.selected.skills).toHaveLength(1);
       await expect(
         client.plugins.setEnablement({ installationId: installed.id, enabled: true }),
       ).rejects.toMatchObject({ code: -32042 });
-      await client.plugins.approve({ ...target, grants: installed.selected.requests });
+      await client.plugins.approve(target);
       await client.plugins.setEnablement({ installationId: installed.id, enabled: true });
       const skills = await client.workspace({ path: root }).skills.listDiscovered();
       expect(skills.skills).toContainEqual(
@@ -2023,6 +2023,7 @@ for await (const line of lines) {
       }
     };
     const server = "http-e2e-replay-cutpoint";
+    const serverId = { origin: { type: "user" as const }, name: server };
     const streamController = new AbortController();
     const subscription = await client.runtimeEvents.subscribe(
       { topics: ["mcp.changed", "skills.changed"] },
@@ -2041,40 +2042,40 @@ for await (const line of lines) {
             name: server,
           }),
         ),
-      ).resolves.toMatchObject({ name: server, status: { type: "disabled" } });
+      ).resolves.toMatchObject({ id: serverId, status: { type: "disabled" } });
       await expect(nextRuntimeEvent(events, "mcp.changed")).resolves.toMatchObject({
         type: "mcp.changed",
-        serverIds: [server],
+        servers: [serverId],
       });
-      expect((await client.mcp.list()).data.filter((entry) => entry.name === server)).toHaveLength(
-        1,
-      );
+      expect(
+        (await client.mcp.list()).data.filter((entry) => entry.id.name === server),
+      ).toHaveLength(1);
 
       await expect(
         callAfterCommitLoss("mcp.servers.update", (faultClient) =>
           faultClient.mcp.update({
-            server,
+            server: serverId,
             description: "MCP replay cutpoint updated",
           }),
         ),
       ).resolves.toMatchObject({
-        name: server,
+        id: serverId,
         description: "MCP replay cutpoint updated",
         status: { type: "disabled" },
       });
       await expect(nextRuntimeEvent(events, "mcp.changed")).resolves.toMatchObject({
         type: "mcp.changed",
-        serverIds: [server],
+        servers: [serverId],
       });
 
       await callAfterCommitLoss("mcp.servers.delete", (faultClient) =>
-        faultClient.mcp.delete(server),
+        faultClient.mcp.delete(serverId),
       );
       await expect(nextRuntimeEvent(events, "mcp.changed")).resolves.toMatchObject({
         type: "mcp.changed",
-        serverIds: [server],
+        servers: [serverId],
       });
-      expect((await client.mcp.list()).data.some((entry) => entry.name === server)).toBe(false);
+      expect((await client.mcp.list()).data.some((entry) => entry.id.name === server)).toBe(false);
 
       await callAfterCommitLoss("skills.library.archive", (faultClient) =>
         faultClient.skills.archive(managedSkillName),
@@ -2101,7 +2102,7 @@ for await (const line of lines) {
         data: [expect.objectContaining({ name: managedSkillName, lifecycle: "active" })],
       });
     } finally {
-      await client.mcp.delete(server).catch(() => undefined);
+      await client.mcp.delete(serverId).catch(() => undefined);
       const managed = (await client.skills.listLibrary()).data.find(
         (skill) => skill.name === managedSkillName,
       );
@@ -2194,7 +2195,7 @@ for await (const line of lines) {
     await expect(client.models.list(providerId)).resolves.toMatchObject({
       data: [expect.objectContaining({ id: "e2e-model", provider: providerId })],
     });
-    await expect(client.providers.test(providerId)).resolves.toEqual({ ok: true });
+    await expect(client.providers.test(providerId)).resolves.toEqual({ outcome: "reachable" });
 
     const updated = await client.providers.update({
       provider: providerId,
@@ -2205,7 +2206,7 @@ for await (const line of lines) {
       credential: { masked: "al****ga", source: "stored" },
     });
     expect(updated.credential?.masked).not.toContain("alpha-credential-omega");
-    await expect(client.providers.test(providerId)).resolves.toEqual({ ok: true });
+    await expect(client.providers.test(providerId)).resolves.toEqual({ outcome: "reachable" });
 
     await expect(
       client.models.setUtilityRole({ provider: providerId, model: "e2e-model" }),
@@ -3556,6 +3557,7 @@ for await (const line of lines) {
     );
     const runtimeEvents = subscription.events[Symbol.asyncIterator]();
     const server = "http-e2e-disabled";
+    const serverId = { origin: { type: "user" as const }, name: server };
 
     const created = await client.mcp.create({
       connection: { type: "stdio", command: "runtime-http-e2e-mcp" },
@@ -3564,33 +3566,33 @@ for await (const line of lines) {
       handshakeTimeout: { type: "unbounded" },
       name: server,
     });
-    expect(created).toMatchObject({ name: server, status: { type: "disabled" } });
+    expect(created).toMatchObject({ id: serverId, status: { type: "disabled" } });
     await expect(nextRuntimeEvent(runtimeEvents, "mcp.changed")).resolves.toMatchObject({
       type: "mcp.changed",
-      serverIds: [server],
+      servers: [serverId],
     });
     await expect(client.mcp.list()).resolves.toMatchObject({
-      data: [expect.objectContaining({ name: server, status: { type: "disabled" } })],
+      data: [expect.objectContaining({ id: serverId, status: { type: "disabled" } })],
     });
 
     const updated = await client.mcp.update({
-      server,
+      server: serverId,
       description: "Updated disabled MCP E2E fixture",
     });
     expect(updated).toMatchObject({
-      name: server,
+      id: serverId,
       description: "Updated disabled MCP E2E fixture",
       status: { type: "disabled" },
     });
     await expect(nextRuntimeEvent(runtimeEvents, "mcp.changed")).resolves.toMatchObject({
       type: "mcp.changed",
-      serverIds: [server],
+      servers: [serverId],
     });
 
-    await client.mcp.delete(server);
+    await client.mcp.delete(serverId);
     await expect(nextRuntimeEvent(runtimeEvents, "mcp.changed")).resolves.toMatchObject({
       type: "mcp.changed",
-      serverIds: [server],
+      servers: [serverId],
     });
     await expect(client.mcp.list()).resolves.toMatchObject({ data: [] });
 
@@ -3602,6 +3604,7 @@ for await (const line of lines) {
     if (!client) throw new Error("runtime client was not initialized");
 
     const server = "http-e2e-stdio";
+    const serverId = { origin: { type: "user" as const }, name: server };
     const candidate = {
       connection: { type: "stdio" as const, command: process.execPath, args: [mcpFixturePath] },
       description: "Live MCP E2E fixture",
@@ -3610,7 +3613,7 @@ for await (const line of lines) {
       name: server,
     };
 
-    await expect(client.mcp.test(candidate)).resolves.toEqual({ ok: true });
+    await expect(client.mcp.test(candidate)).resolves.toEqual({ outcome: "reachable" });
 
     const connectController = new AbortController();
     const connectSubscription = await client.runtimeEvents.subscribe(
@@ -3618,17 +3621,17 @@ for await (const line of lines) {
       connectController.signal,
     );
     const connectEvents = connectSubscription.events[Symbol.asyncIterator]();
-    await expect(client.mcp.create(candidate)).resolves.toMatchObject({ name: server });
+    await expect(client.mcp.create(candidate)).resolves.toMatchObject({ id: serverId });
 
     for (let phase = 0; phase < 2; phase++) {
       await expect(nextRuntimeEvent(connectEvents, "mcp.changed")).resolves.toMatchObject({
         type: "mcp.changed",
-        serverIds: [server],
+        servers: [serverId],
       });
     }
 
     await client.approval.setRule({
-      tool: { type: "mcp", server, name: "ping" },
+      tool: { type: "mcp", server: serverId, name: "ping" },
       scope: "global",
       subject: { type: "all" },
       decision: "allow",
@@ -3636,7 +3639,7 @@ for await (const line of lines) {
     await expect(client.approval.listRules()).resolves.toMatchObject({
       rules: expect.arrayContaining([
         expect.objectContaining({
-          tool: { type: "mcp", server, name: "ping" },
+          tool: { type: "mcp", server: serverId, name: "ping" },
           modelName: `${server}_ping`,
           scope: "global",
           subject: { type: "all" },
@@ -3645,36 +3648,39 @@ for await (const line of lines) {
         }),
       ]),
     });
-    await client.mcp.setToolExposure({ server, name: "ping", disabled: true });
-    await expect(client.mcp.toolExposure(server)).resolves.toEqual({
-      server,
+    await client.mcp.setToolExposure({ server: serverId, name: "ping", disabled: true });
+    await expect(client.mcp.toolExposure(serverId)).resolves.toEqual({
+      server: serverId,
       disabledTools: ["ping"],
     });
-    await client.mcp.setToolExposure({ server, name: "ping", disabled: false });
-    await expect(client.mcp.toolExposure(server)).resolves.toEqual({ server, disabledTools: [] });
+    await client.mcp.setToolExposure({ server: serverId, name: "ping", disabled: false });
+    await expect(client.mcp.toolExposure(serverId)).resolves.toEqual({
+      server: serverId,
+      disabledTools: [],
+    });
 
-    let connected = (await client.mcp.list()).data.find((entry) => entry.name === server);
+    let connected = (await client.mcp.list()).data.find((entry) => entry.id.name === server);
     for (let attempt = 0; attempt < 100 && connected?.status.type !== "connected"; attempt++) {
       await new Promise((resolve) => setTimeout(resolve, 25));
-      connected = (await client.mcp.list()).data.find((entry) => entry.name === server);
+      connected = (await client.mcp.list()).data.find((entry) => entry.id.name === server);
     }
     expect(connected).toMatchObject({
-      name: server,
+      id: serverId,
       status: { type: "connected", toolCount: 1 },
     });
     const allTools = await client.mcp.listTools();
     expect(allTools).toMatchObject({
       data: [
         {
-          server,
+          server: serverId,
           name: "ping",
           description: "Returns pong for Runtime HTTP E2E.",
           inputSchema: { type: "object", properties: {}, additionalProperties: false },
         },
       ],
     });
-    await expect(client.mcp.listTools(server)).resolves.toMatchObject({
-      data: [expect.objectContaining({ server, name: "ping" })],
+    await expect(client.mcp.listTools(serverId)).resolves.toMatchObject({
+      data: [expect.objectContaining({ server: serverId, name: "ping" })],
     });
 
     const runSession = await client.sessions.create({
@@ -3710,7 +3716,7 @@ for await (const line of lines) {
       ]),
     });
 
-    await expect(client.mcp.authorizationAttempts.create(server)).rejects.toSatisfy(
+    await expect(client.mcp.authorizationAttempts.create(serverId)).rejects.toSatisfy(
       (error: unknown) => error instanceof RpcError && errorType(error.data) === "invalid_params",
     );
     await expect(
@@ -3730,23 +3736,23 @@ for await (const line of lines) {
       reconnectController.signal,
     );
     const reconnectEvents = reconnectSubscription.events[Symbol.asyncIterator]();
-    await client.mcp.reconnect(server);
+    await client.mcp.reconnect(serverId);
     for (let phase = 0; phase < 2; phase++) {
       await expect(nextRuntimeEvent(reconnectEvents, "mcp.changed")).resolves.toMatchObject({
         type: "mcp.changed",
-        serverIds: [server],
+        servers: [serverId],
       });
     }
-    await expect(client.mcp.listTools(server)).resolves.toMatchObject({
-      data: [expect.objectContaining({ server, name: "ping" })],
+    await expect(client.mcp.listTools(serverId)).resolves.toMatchObject({
+      data: [expect.objectContaining({ server: serverId, name: "ping" })],
     });
 
-    await client.mcp.delete(server);
+    await client.mcp.delete(serverId);
     await expect(nextRuntimeEvent(reconnectEvents, "mcp.changed")).resolves.toMatchObject({
       type: "mcp.changed",
-      serverIds: [server],
+      servers: [serverId],
     });
-    await expect(client.mcp.listTools(server)).resolves.toMatchObject({ data: [] });
+    await expect(client.mcp.listTools(serverId)).resolves.toMatchObject({ data: [] });
 
     reconnectController.abort();
     await reconnectEvents.return?.();
@@ -4798,6 +4804,7 @@ for await (const line of lines) {
     if (!client) throw new Error("runtime client was not initialized");
 
     const server = "http-e2e-kill";
+    const serverId = { origin: { type: "user" as const }, name: server };
     const toolCallMarker = join(environmentRoot, "sigkill-tool-call-arrived");
     const gate = createProviderGate("E2E_FORCE_KILL_TOOL", 1);
     let serverCreated = false;
@@ -4816,15 +4823,15 @@ for await (const line of lines) {
       });
       serverCreated = true;
       await client.approval.setRule({
-        tool: { type: "mcp", server, name: "ping" },
+        tool: { type: "mcp", server: serverId, name: "ping" },
         scope: "global",
         subject: { type: "all" },
         decision: "allow",
       });
-      let connected = (await client.mcp.list()).data.find((entry) => entry.name === server);
+      let connected = (await client.mcp.list()).data.find((entry) => entry.id.name === server);
       for (let attempt = 0; attempt < 100 && connected?.status.type !== "connected"; attempt++) {
         await new Promise((resolve) => setTimeout(resolve, 25));
-        connected = (await client.mcp.list()).data.find((entry) => entry.name === server);
+        connected = (await client.mcp.list()).data.find((entry) => entry.id.name === server);
       }
       expect(connected).toMatchObject({ status: { type: "connected", toolCount: 1 } });
 
@@ -4905,7 +4912,7 @@ for await (const line of lines) {
     } finally {
       gate.release.resolve();
       providerGate = undefined;
-      if (serverCreated && client) await client.mcp.delete(server).catch(() => undefined);
+      if (serverCreated && client) await client.mcp.delete(serverId).catch(() => undefined);
     }
   }, 30_000);
 });

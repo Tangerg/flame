@@ -5,16 +5,8 @@
     <meta http-equiv="Content-Security-Policy" content="frame-src 'none'" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
     <title>Flame</title>
-    <!-- First-paint theme class sync.
-         Reads the persisted theme id from the same localStorage key the
-         Zustand store uses (`flame.appearance`) and toggles `theme-{scheme}` on
-         <html> BEFORE any CSS parses, preventing a flash of the wrong scheme.
-         "system" (the default) + a missing value follow prefers-color-scheme;
-         "light"/"dark" are explicit; other ids use their last rendered projection. -->
     <script>
       (function () {
-        // No matchMedia reads as light — the same answer the theme context's
-        // system-appearance adapter and a display without dark mode give.
         var systemDark =
           !!window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
         var scheme = systemDark ? "dark" : "light";
@@ -22,8 +14,6 @@
           var raw = localStorage.getItem("flame.appearance");
           var state = raw ? JSON.parse(raw)?.state : null;
           var id = state?.theme;
-          if (id === "light") scheme = "light";
-          else if (id && id !== "system") scheme = "dark"; // "dark" + custom ids
           var paintRaw = localStorage.getItem("flame.theme-paint");
           var paint = paintRaw ? JSON.parse(paintRaw) : null;
           if (
@@ -34,30 +24,15 @@
           ) {
             scheme = paint.scheme;
           } else paint = null;
-          // "system" / missing → keep the prefers-color-scheme default above.
-        } catch (_) {
-          /* localStorage blocked, malformed JSON — keep the system default */
-        }
+        } catch (_) {}
         var root = document.documentElement;
         root.dataset.visualStyle = state?.visualStyle || "flame";
         root.classList.add("theme-" + scheme);
-        // Paint the canvas colour on <html> BEFORE the CSS bundle parses, so a
-        // cold boot opens straight into the app surface instead of flashing white.
-        // These two literals ARE `--color-bg` per scheme (globals.css); they can't
-        // be read from the token, because the whole point is to paint before the
-        // stylesheet exists. The dark one had drifted to #121212 against a #101010
-        // token, so a dark cold boot painted one grey and repainted another a
-        // moment later. `check-bootstrap` fails on any such drift now.
         root.style.backgroundColor = scheme === "light" ? "#ffffff" : "#1f1f1f";
         if (paint) root.style.backgroundColor = paint.background;
       })();
     </script>
-    <!-- Focus-ring modality. One file, because the visual harness has its own entry and
-         needs the identical behaviour — see public/focus-modality.js. -->
     <script src="/focus-modality.js"></script>
-    <!-- The one bundled face left: sans comes from the platform now, so only the code face
-         is a download. Preloaded because it is on the very first frame — without this the
-         window paints once in the fallback mono and reflows. -->
     <link
       rel="preload"
       href="/fonts/jetbrains-mono.woff2"

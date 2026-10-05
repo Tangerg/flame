@@ -6,10 +6,10 @@ import (
 
 // AuthorityFingerprint excludes credentials and connection lifecycle settings:
 // a token rotation does not grant authority to a different endpoint.
-func (s Server) AuthorityFingerprint() string {
+func (s Server) AuthorityFingerprint() fingerprint.Digest {
 	fields := []string{string(s.Transport)}
-	if s.ReleaseAuthority != "" {
-		fields = append(fields, s.ReleaseAuthority)
+	if _, authority, found := s.Source.Release(); found {
+		fields = append(fields, authority.String())
 	}
 	if s.Transport == TransportStreamableHTTP {
 		fields = append(fields, s.URL)

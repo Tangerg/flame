@@ -906,7 +906,7 @@ func TestApplyRestoreClearsSessionOwnedProjections(t *testing.T) {
 	}
 }
 
-func testAllowRule(t *testing.T, scope approval.Scope, scopeKey, toolName string) approval.Rule {
+func testAllowRule(t *testing.T, scope approval.Scope, scopeKey string, toolName tool.BuiltInName) approval.Rule {
 	t.Helper()
 	rule, err := approval.NewRule(scope, scopeKey, testsupport.BuiltInTool(t, toolName), testsupport.ToolFingerprint(testsupport.BuiltInTool(t, toolName)), approval.Subject{Type: approval.SubjectAll}, approval.Allow)
 	if err != nil {

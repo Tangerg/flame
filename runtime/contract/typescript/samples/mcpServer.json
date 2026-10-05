@@ -1,6 +1,5 @@
 {
-  "origin": {"type": "user"},
-  "name": "filesystem",
+  "id": {"origin": {"type": "user"}, "name": "filesystem"},
   "description": "Local filesystem access",
   "connection": {
     "type": "stdio",

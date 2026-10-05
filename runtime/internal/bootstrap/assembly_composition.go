@@ -54,7 +54,7 @@ func buildPolicyComposition(ctx context.Context, cfg Config) (policyComposition,
 	if err != nil {
 		return policyComposition{}, err
 	}
-	registry, err := plugins.NewRegistry(cfg.Stores.MCPServers, cfg.Stores.Installations, packages)
+	registry, err := plugins.NewRegistry(cfg.Stores.MCPServers, cfg.Stores.Installations, cfg.Stores.PluginReleases, packages)
 	if err != nil {
 		return policyComposition{}, err
 	}
@@ -68,7 +68,7 @@ func buildPolicyComposition(ctx context.Context, cfg Config) (policyComposition,
 	if err != nil {
 		return policyComposition{}, fmt.Errorf("runtime: approval policy: %w", err)
 	}
-	mcpSettings, err := buildMCPEnvironment(ctx, registry)
+	mcpSettings, err := buildMCPEnvironment(ctx, registry, cfg.Stores.MCPServers)
 	if err != nil {
 		return policyComposition{}, err
 	}
@@ -337,7 +337,7 @@ func buildExecutionComposition(
 		interactionConfig.ToolResultStore = cfg.Stores.ToolResults
 		interactionConfig.ToolResultOffload = executionadapter.ToolResultOffloadPolicyValues{
 			Threshold:  &toolResultThreshold,
-			ReaderName: tool.ReadToolResult,
+			ReaderName: string(tool.ReadToolResult),
 		}
 	}
 	interactionExecutor, err := executionadapter.NewInteractionExecutor(interactionConfig)

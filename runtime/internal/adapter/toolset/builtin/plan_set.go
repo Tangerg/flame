@@ -46,7 +46,7 @@ func newSet(plans planReplacer) (toolcontract.Tool, error) {
 		return nil, nil
 	}
 	return toolcontract.NewFunc[setArgs, string](
-		toolcontract.FuncConfig{Name: tool.SetPlan, Description: setDescription},
+		toolcontract.FuncConfig{Name: string(tool.SetPlan), Description: setDescription},
 		(&setter{plans: plans}).set,
 	)
 }

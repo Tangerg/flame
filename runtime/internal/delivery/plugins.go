@@ -39,8 +39,8 @@ func registerPlugins(r *Registry) {
 		return s.SelectPlugin(ctx, in)
 	})
 	r.command(MethodMeta{Name: PluginsApprove, CapabilityRules: requires(protocol.FeaturePlugins)}, func(s interface {
-		ApprovePlugin(context.Context, protocol.ApprovePluginRequest) (*protocol.PluginInstallation, error)
-	}, ctx context.Context, in protocol.ApprovePluginRequest) (*protocol.PluginInstallation, error) {
+		ApprovePlugin(context.Context, protocol.PluginReleaseRequest) (*protocol.PluginInstallation, error)
+	}, ctx context.Context, in protocol.PluginReleaseRequest) (*protocol.PluginInstallation, error) {
 		return s.ApprovePlugin(ctx, in)
 	})
 	r.command(MethodMeta{Name: PluginsConfigure, CapabilityRules: requires(protocol.FeaturePlugins)}, func(s interface {
@@ -58,9 +58,9 @@ func registerPlugins(r *Registry) {
 	}, ctx context.Context, in protocol.PluginRequest) (*protocol.PluginInstallation, error) {
 		return s.RevokePlugin(ctx, in)
 	})
-	r.command(MethodMeta{Name: PluginsUninstall, CapabilityRules: requires(protocol.FeaturePlugins)}, func(s interface {
-		UninstallPlugin(context.Context, protocol.PluginRequest) (*protocol.PluginRemoval, error)
-	}, ctx context.Context, in protocol.PluginRequest) (*protocol.PluginRemoval, error) {
+	r.commandAck(MethodMeta{Name: PluginsUninstall, CapabilityRules: requires(protocol.FeaturePlugins)}, func(s interface {
+		UninstallPlugin(context.Context, protocol.PluginRequest) error
+	}, ctx context.Context, in protocol.PluginRequest) error {
 		return s.UninstallPlugin(ctx, in)
 	})
 }

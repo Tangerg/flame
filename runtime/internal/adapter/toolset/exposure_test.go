@@ -40,7 +40,7 @@ func TestResolverRegistersTheMutationVocabulary(t *testing.T) {
 		}
 	})
 	names := definitionNames(manifestTools(manifest))
-	if !names[domaintool.Edit] || !names[domaintool.ApplyPatch] {
+	if !names[string(domaintool.Edit)] || !names[string(domaintool.ApplyPatch)] {
 		t.Fatalf("mutation vocabulary = %v, want edit and apply_patch", names)
 	}
 	// write stays out: apply_patch already creates and deletes files, so a third
@@ -76,21 +76,21 @@ func TestResolverInitialManifestSeparatesDirectAndDeferredCapabilities(t *testin
 	analyzer := newTestCodeIntel(t)
 	resolver, err := newResolver(resolverDeps{
 		DefaultCWD: t.TempDir(),
-		Online:     []toolcontract.Tool{named(domaintool.WebFetch)},
+		Online:     []toolcontract.Tool{named(string(domaintool.WebFetch))},
 		A2A:        []toolcontract.Tool{named("remote_agent")},
-		LSP:        []toolcontract.Tool{named(domaintool.LSP)},
-		Shell:      []toolcontract.Tool{named(domaintool.Shell)},
-		AskUser:    named(domaintool.AskUser),
-		EnterPlan:  named(domaintool.EnterPlanMode),
-		ExitPlan:   named(domaintool.ExitPlanMode),
-		Plan:       named(domaintool.SetPlan),
+		LSP:        []toolcontract.Tool{named(string(domaintool.LSP))},
+		Shell:      []toolcontract.Tool{named(string(domaintool.Shell))},
+		AskUser:    named(string(domaintool.AskUser)),
+		EnterPlan:  named(string(domaintool.EnterPlanMode)),
+		ExitPlan:   named(string(domaintool.ExitPlanMode)),
+		Plan:       named(string(domaintool.SetPlan)),
 		ScheduleTools: []toolcontract.Tool{
-			named(domaintool.ListSchedules), named(domaintool.CreateSchedule), named(domaintool.DeleteSchedule),
+			named(string(domaintool.ListSchedules)), named(string(domaintool.CreateSchedule)), named(string(domaintool.DeleteSchedule)),
 		},
-		ToolResult:        named(domaintool.ReadToolResult),
-		AgentMemorySearch: named(domaintool.SearchMemory),
-		GoalGet:           named(domaintool.GetGoal),
-		ProposeSkill:      named(domaintool.ProposeSkill),
+		ToolResult:        named(string(domaintool.ReadToolResult)),
+		AgentMemorySearch: named(string(domaintool.SearchMemory)),
+		GoalGet:           named(string(domaintool.GetGoal)),
+		ProposeSkill:      named(string(domaintool.ProposeSkill)),
 		CodeIntel:         analyzer,
 		ReadTracker:       newReadTracker(),
 	})
@@ -112,9 +112,9 @@ func TestResolverInitialManifestSeparatesDirectAndDeferredCapabilities(t *testin
 	registered := definitionNames(manifestTools(manifest))
 	advertised := definitionNames(manifest.Visible)
 	for _, name := range []string{
-		domaintool.Read, domaintool.Glob, domaintool.Grep, domaintool.ApplyPatch, domaintool.Shell, domaintool.AskUser,
-		domaintool.EnterPlanMode, domaintool.ExitPlanMode, domaintool.SetPlan, domaintool.ReadToolResult,
-		domaintool.GetGoal, domaintool.SearchTools,
+		string(domaintool.Read), string(domaintool.Glob), string(domaintool.Grep), string(domaintool.ApplyPatch), string(domaintool.Shell), string(domaintool.AskUser),
+		string(domaintool.EnterPlanMode), string(domaintool.ExitPlanMode), string(domaintool.SetPlan), string(domaintool.ReadToolResult),
+		string(domaintool.GetGoal), string(domaintool.SearchTools),
 	} {
 		if !advertised[name] {
 			t.Errorf("direct tool %q missing from initial manifest: %v", name, advertised)

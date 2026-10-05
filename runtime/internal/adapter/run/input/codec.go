@@ -9,6 +9,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	agent "github.com/Tangerg/scope/agent"
 )
 
@@ -84,15 +85,15 @@ type interruptWire struct {
 }
 
 type approvalPromptWire struct {
-	Tool              tool.Ref         `json:"tool"`
-	SourceFingerprint string           `json:"sourceFingerprint,omitempty"`
-	CallID            string           `json:"callId"`
-	ToolName          string           `json:"toolName"`
-	Arguments         string           `json:"arguments"`
-	SafetyClass       tool.SafetyClass `json:"safetyClass"`
-	Risk              tool.RiskLevel   `json:"risk"`
-	Reason            string           `json:"reason,omitempty"`
-	Rememberable      bool             `json:"rememberable,omitzero"`
+	Tool              tool.Ref           `json:"tool"`
+	SourceFingerprint fingerprint.Digest `json:"sourceFingerprint,omitzero"`
+	CallID            string             `json:"callId"`
+	ToolName          string             `json:"toolName"`
+	Arguments         string             `json:"arguments"`
+	SafetyClass       tool.SafetyClass   `json:"safetyClass"`
+	Risk              tool.RiskLevel     `json:"risk"`
+	Reason            string             `json:"reason,omitempty"`
+	Rememberable      bool               `json:"rememberable,omitzero"`
 }
 
 type questionPromptWire struct {

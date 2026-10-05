@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
 	"errors"
 	"fmt"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
@@ -99,7 +100,11 @@ func listApprovalRules(cmd *cobra.Command, provider runtimeProvider, sessionID s
 	}
 	writer := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
 	for _, rule := range rules {
-		if _, err := fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\t%s\tstale=%t\n", rule.ID, rule.Scope, rule.Decision, rule.ModelName, conversation.ToolSource(rule.Tool), conversation.ApprovalSubject(rule.Subject), displaySubject(rule.Dir), rule.Stale); err != nil {
+		source, err := mcp.ToolLabel(rule.Tool)
+		if err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintf(writer, "%s\t%s\t%s\t%s\t%s\t%s\t%s\tstale=%t\n", rule.ID, rule.Scope, rule.Decision, rule.ModelName, source, conversation.ApprovalSubject(rule.Subject), displaySubject(rule.Dir), rule.Stale); err != nil {
 			return err
 		}
 	}

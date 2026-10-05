@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"reflect"
 	"slices"
 	"strings"
 	"sync"
@@ -15,7 +16,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
-	"github.com/Tangerg/flame/cli/internal/domain/failure"
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/core/input"
@@ -52,9 +52,9 @@ type blockingMCPReconnectService struct {
 	canceled chan struct{}
 }
 
-func (b *blockingMCPReconnectService) ReconnectServer(ctx context.Context, server string) error {
+func (b *blockingMCPReconnectService) ReconnectServer(ctx context.Context, server protocol.MCPServerID) error {
 	select {
-	case b.started <- server:
+	case b.started <- mcp.ServerLabel(server):
 	default:
 	}
 	select {
@@ -94,7 +94,7 @@ func newMCPServiceStub() *mcpServiceStub {
 	timeout := protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeBounded, Seconds: new(15)}
 	return &mcpServiceStub{
 		servers: []protocol.MCPServer{{
-			Name: "docs", Description: "Documentation", HandshakeTimeout: timeout,
+			ID: mcp.UserServer("docs"), Description: "Documentation", HandshakeTimeout: timeout,
 			Connection: protocol.MCPConnection{Type: protocol.MCPTransportStreamableHTTP, URL: "https://mcp.example/tools", AuthorizationMasked: "Bearer ****"},
 			Status:     protocol.MCPServerState{Type: protocol.MCPServerConnected, ToolCount: &count},
 		}},
@@ -121,7 +121,7 @@ func (m *mcpServiceStub) CreateServer(_ context.Context, candidate mcp.Candidate
 	}
 	m.created <- candidate.Clone()
 	server := protocol.MCPServer{
-		Name: candidate.Name, Description: candidate.Description, HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},
+		ID: mcp.UserServer(candidate.Name), Description: candidate.Description, HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},
 		Connection: protocol.MCPConnection{Type: candidate.Connection.Transport, URL: candidate.Connection.URL, Command: candidate.Connection.Command, Args: candidate.Connection.Args, Dir: candidate.Connection.Directory},
 		Status:     protocol.MCPServerState{Type: protocol.MCPServerDisconnected},
 	}
@@ -143,7 +143,7 @@ func (m *mcpServiceStub) UpdateServer(_ context.Context, update mcp.ServerUpdate
 	defer m.mu.Unlock()
 	for index := range m.servers {
 		server := &m.servers[index]
-		if server.Name != update.Server {
+		if server.ID != update.Server {
 			continue
 		}
 		if update.Enabled != nil {
@@ -158,12 +158,12 @@ func (m *mcpServiceStub) UpdateServer(_ context.Context, update mcp.ServerUpdate
 	return protocol.MCPServer{}, errors.New("server not found")
 }
 
-func (m *mcpServiceStub) DeleteServer(_ context.Context, name string) error {
-	m.deleted <- name
+func (m *mcpServiceStub) DeleteServer(_ context.Context, id protocol.MCPServerID) error {
+	m.deleted <- mcp.ServerLabel(id)
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for index := range m.servers {
-		if m.servers[index].Name == name {
+		if m.servers[index].ID == id {
 			m.servers = append(m.servers[:index], m.servers[index+1:]...)
 			return nil
 		}
@@ -171,27 +171,27 @@ func (m *mcpServiceStub) DeleteServer(_ context.Context, name string) error {
 	return errors.New("server not found")
 }
 
-func (m *mcpServiceStub) TestServer(_ context.Context, candidate mcp.Candidate) (protocol.MCPTestResult, error) {
+func (m *mcpServiceStub) TestServer(_ context.Context, candidate mcp.Candidate) (protocol.MCPTestOutcome, error) {
 	if err := candidate.Validate(); err != nil {
-		return protocol.MCPTestResult{}, err
+		return "", err
 	}
 	m.probed <- candidate.Clone()
-	return protocol.MCPTestResult{OK: true}, nil
+	return protocol.MCPTestReachable, nil
 }
 
-func (*mcpServiceStub) Tools(_ context.Context, server string) ([]protocol.MCPTool, error) {
-	if server != "" && server != "docs" {
+func (*mcpServiceStub) Tools(_ context.Context, server *protocol.MCPServerID) ([]protocol.MCPTool, error) {
+	if server != nil && *server != mcp.UserServer("docs") {
 		return nil, errors.New("server not found")
 	}
-	return []protocol.MCPTool{{Server: "docs", Name: "search", Description: "Search docs", InputSchema: map[string]any{"type": "object"}}}, nil
+	return []protocol.MCPTool{{Server: mcp.UserServer("docs"), Name: "search", Description: "Search docs", InputSchema: map[string]any{"type": "object"}}}, nil
 }
 
-func (m *mcpServiceStub) ReconnectServer(_ context.Context, server string) error {
-	m.reconnected <- server
+func (m *mcpServiceStub) ReconnectServer(_ context.Context, server protocol.MCPServerID) error {
+	m.reconnected <- mcp.ServerLabel(server)
 	return nil
 }
 
-func (m *mcpServiceStub) StartAuthorization(_ context.Context, server string) (protocol.MCPAuthorizationAttempt, error) {
+func (m *mcpServiceStub) StartAuthorization(_ context.Context, server protocol.MCPServerID) (protocol.MCPAuthorizationAttempt, error) {
 	return protocol.MCPAuthorizationAttempt{
 		ID: terminalMCPAuthorizationAttemptID, Server: server,
 		Status: protocol.MCPAuthorizationAttemptStatus{Type: protocol.MCPAuthorizationAttemptPending}, CreatedAt: m.now,
@@ -207,7 +207,7 @@ func (m *mcpServiceStub) GetAuthorization(context.Context, mcp.AuthorizationRefe
 	}
 	finished := m.now.Add(time.Second)
 	return protocol.MCPAuthorizationAttempt{
-		ID: terminalMCPAuthorizationAttemptID, Server: "docs",
+		ID: terminalMCPAuthorizationAttemptID, Server: mcp.UserServer("docs"),
 		Status:    protocol.MCPAuthorizationAttemptStatus{Type: protocol.MCPAuthorizationAttemptSucceeded},
 		CreatedAt: m.now, FinishedAt: &finished,
 	}, nil
@@ -222,7 +222,7 @@ func TestMCPAuthorizationObserverRecoversTransientReadsAndStopsOnAuthoritativeAb
 		service: service, pollInterval: time.Nanosecond,
 		recovery: testBackoff(t, time.Nanosecond, time.Nanosecond),
 	}
-	initial, err := service.StartAuthorization(t.Context(), "docs")
+	initial, err := service.StartAuthorization(t.Context(), mcp.UserServer("docs"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -381,7 +381,7 @@ func TestMCPToolsDocumentFormatsRuntimeSchema(t *testing.T) {
 		{name: "object", schema: map[string]any{"type": "object"}, want: "{\n  \"type\": \"object\"\n}"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			document, err := mcpToolsDocument("docs", []protocol.MCPTool{{Server: "docs", Name: "search", InputSchema: test.schema}})
+			document, err := mcpToolsDocument(new(mcp.UserServer("docs")), []protocol.MCPTool{{Server: mcp.UserServer("docs"), Name: "search", InputSchema: test.schema}})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -390,8 +390,8 @@ func TestMCPToolsDocumentFormatsRuntimeSchema(t *testing.T) {
 			}
 		})
 	}
-	malformed := protocol.MCPTool{Server: "docs", Name: "search", InputSchema: map[string]any{"invalid": func() {}}}
-	if document, err := mcpToolsDocument("docs", []protocol.MCPTool{malformed}); err == nil || len(document.Sections) != 0 {
+	malformed := protocol.MCPTool{Server: mcp.UserServer("docs"), Name: "search", InputSchema: map[string]any{"invalid": func() {}}}
+	if document, err := mcpToolsDocument(new(mcp.UserServer("docs")), []protocol.MCPTool{malformed}); err == nil || len(document.Sections) != 0 {
 		t.Fatalf("malformed schema document = (%+v, %v), want no partial document", document, err)
 	}
 }
@@ -513,7 +513,7 @@ func TestMCPProbeValidatesAnUnpersistedCandidateAcrossResize(t *testing.T) {
 		t.Fatalf("probed MCP candidate = %+v", probed)
 	}
 	servers, err := service.Servers(t.Context())
-	if err != nil || len(servers) != 1 || servers[0].Name != "docs" {
+	if err != nil || len(servers) != 1 || servers[0].ID != mcp.UserServer("docs") {
 		t.Fatalf("MCP probe persisted candidate: servers=(%+v, %v)", servers, err)
 	}
 	stop()
@@ -585,7 +585,7 @@ func TestMCPChangedRefetchesTheOpenServerReader(t *testing.T) {
 	service.mu.Lock()
 	service.servers[0].Description = "Updated documentation server"
 	service.mu.Unlock()
-	source.events <- changefeed.Event{Type: protocol.RuntimeMCPChanged, Sequence: 1, ServerIDs: []string{"docs"}}
+	source.events <- changefeed.Event{Type: protocol.RuntimeMCPChanged, Sequence: 1, Servers: []protocol.MCPServerID{mcp.UserServer("docs")}}
 	awaitSignal(t, source.applied, "mcp.changed delivery")
 	host.Shows(t, "Updated documentation server")
 	stop()
@@ -602,12 +602,14 @@ func cloneMCPServer(server protocol.MCPServer) protocol.MCPServer {
 	if server.Status.ToolCount != nil {
 		server.Status.ToolCount = new(*server.Status.ToolCount)
 	}
-	server.Status.Error = failure.Clone(server.Status.Error)
+	if server.Status.Error != nil {
+		server.Status.Error = new(*server.Status.Error)
+	}
 	return server
 }
 
-func (m *mcpServiceStub) ToolExposure(_ context.Context, server string) (protocol.MCPToolExposure, error) {
-	return protocol.MCPToolExposure{Server: server, DisabledTools: slices.Clone(m.disabled[server])}, nil
+func (m *mcpServiceStub) ToolExposure(_ context.Context, server protocol.MCPServerID) (protocol.MCPToolExposure, error) {
+	return protocol.MCPToolExposure{Server: server, DisabledTools: slices.Clone(m.disabled[mcp.ServerLabel(server)])}, nil
 }
 func (m *mcpServiceStub) SetToolExposure(_ context.Context, request protocol.SetMCPToolExposureRequest) error {
 	m.exposure <- request
@@ -617,13 +619,13 @@ func (m *mcpServiceStub) SetToolExposure(_ context.Context, request protocol.Set
 func TestMCPToolCommandsUseSeparateExposureAndApprovalOwners(t *testing.T) {
 	service := newMCPServiceStub()
 	runtime := runtimefixture.New()
-	runtime.ToolModelNames = map[protocol.ToolRef]string{{Type: protocol.ToolRefMCP, Server: "docs", Name: "read"}: "docs_read"}
+	runtime.ToolModelNames = map[string]string{"mcp/docs/read": "docs_read"}
 	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtime, MCP: service})
 	defer stop()
 	host.Shows(t, "Ask flame")
 	host.Type("/mcp-tool docs read disable")
 	host.Press(input.Enter)
-	want := protocol.SetMCPToolExposureRequest{Server: "docs", Name: "read", Disabled: true}
+	want := protocol.SetMCPToolExposureRequest{Server: mcp.UserServer("docs"), Name: "read", Disabled: true}
 	if got := awaitValue(t, service.exposure, "tool exposure"); got != want {
 		t.Fatalf("exposure = %+v, want %+v", got, want)
 	}
@@ -641,7 +643,7 @@ func TestMCPToolCommandsUseSeparateExposureAndApprovalOwners(t *testing.T) {
 		t.Fatalf("rules = %+v, want the latest standing decision", rules)
 	}
 	for _, rule := range rules {
-		if rule.Tool != (protocol.ToolRef{Type: protocol.ToolRefMCP, Server: "docs", Name: "read"}) || rule.Scope != protocol.ApprovalRuleScopeGlobal || rule.Subject != (protocol.ApprovalSubject{Type: protocol.ApprovalSubjectAll}) {
+		if !reflect.DeepEqual(rule.Tool, protocol.ToolRef{Type: protocol.ToolRefMCP, Server: new(mcp.UserServer("docs")), Name: "read"}) || rule.Scope != protocol.ApprovalRuleScopeGlobal || rule.Subject != (protocol.ApprovalSubject{Type: protocol.ApprovalSubjectAll}) {
 			t.Fatalf("rule lost source identity or whole-tool scope: %+v", rule)
 		}
 	}
@@ -656,7 +658,7 @@ func TestMCPApprovalMutationDoesNotWaitForReconnect(t *testing.T) {
 	service := &blockingMCPReconnectService{mcpServiceStub: newMCPServiceStub(), started: make(chan string, 1), release: make(chan struct{}), canceled: make(chan struct{}, 1)}
 	defer close(service.release)
 	backend := runtimefixture.New()
-	backend.ToolModelNames = map[protocol.ToolRef]string{{Type: protocol.ToolRefMCP, Server: "docs", Name: "read"}: "docs_read"}
+	backend.ToolModelNames = map[string]string{"mcp/docs/read": "docs_read"}
 	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: backend, MCP: service})
 	defer stop()
 	host.Shows(t, "Ask flame")
@@ -676,7 +678,7 @@ func TestUnscopedMCPToolsIncludesDisabledTools(t *testing.T) {
 	service := newMCPServiceStub()
 	service.disabled = map[string][]string{"docs": {"read"}}
 	app := &app{mcp: service}
-	document, err := app.mcpToolsReaderQuery("").read(t.Context())
+	document, err := app.mcpToolsReaderQuery(nil).read(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -686,4 +688,37 @@ func TestUnscopedMCPToolsIncludesDisabledTools(t *testing.T) {
 		}
 	}
 	t.Fatalf("disabled tools missing from %+v", document)
+}
+
+func TestMCPServerDetailNamesEachStatusCategory(t *testing.T) {
+	id := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginUser}, Name: "docs"}
+	for problem, test := range map[protocol.MCPStatusProblemType]struct {
+		state protocol.MCPServerStateType
+		want  string
+	}{
+		protocol.MCPStatusAuthorizationRequired: {protocol.MCPServerNeedsAuth, "authorization is required"},
+		protocol.MCPStatusDialFailed:            {protocol.MCPServerFailed, "connection failed"},
+		protocol.MCPStatusToolDiscoveryFailed:   {protocol.MCPServerFailed, "valid tool list"},
+		protocol.MCPStatusConfigurationFailed:   {protocol.MCPServerFailed, "stored credentials"},
+		protocol.MCPStatusReleaseUnavailable:    {protocol.MCPServerFailed, "release cannot be verified"},
+		protocol.MCPStatusBackendUnavailable:    {protocol.MCPServerFailed, "backend cannot be prepared"},
+		protocol.MCPStatusAuthorizationFailed:   {protocol.MCPServerFailed, "sign-in did not complete"},
+	} {
+		server := protocol.MCPServer{ID: id, Status: protocol.MCPServerState{Type: test.state, Error: &protocol.MCPStatusProblem{Type: problem}}}
+		if detail, err := mcpServerDetail(server); err != nil || !strings.Contains(detail, test.want) || strings.Contains(detail, string(problem)) {
+			t.Errorf("%s rendered as %q, %v", problem, detail, err)
+		}
+	}
+}
+
+func TestMCPServerDetailRefusesAnUnknownStatusCategory(t *testing.T) {
+	id := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginUser}, Name: "docs"}
+	state := protocol.MCPServerState{Type: protocol.MCPServerFailed, Error: &protocol.MCPStatusProblem{Type: "internal_error"}}
+	detail, err := mcpServerDetail(protocol.MCPServer{ID: id, Status: state})
+	if err == nil || !strings.Contains(err.Error(), "contract violation") {
+		t.Fatalf("detail = %q, %v; want a contract violation", detail, err)
+	}
+	if _, err := mcpServersDocument([]protocol.MCPServer{{ID: id, Status: state}}); err == nil {
+		t.Fatal("the server listing rendered a contract violation")
+	}
 }

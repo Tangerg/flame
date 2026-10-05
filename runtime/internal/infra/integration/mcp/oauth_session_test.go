@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"net/http"
 	"strings"
 	"sync"
@@ -15,18 +16,19 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 )
 
 func TestSupersededOAuthHandlersCannotChangeReplacementCredentials(t *testing.T) {
 	for _, operation := range []string{"refresh", "refresh rejected", "server rejected"} {
 		t.Run(operation, func(t *testing.T) {
-			target := mcpserver.OAuthTarget{Server: testMCPServerName("remote"), URL: "https://mcp.example/tools"}
+			target := mcpserver.OAuthTarget{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), URL: "https://mcp.example/tools"}
 			store := &memoryOAuthStore{}
 			binding, err := store.BeginOAuthSession(t.Context(), target)
 			if err != nil {
 				t.Fatal(err)
 			}
-			old := &oauthSession{store: store, server: target.Server, origin: store.origin, binding: binding}
+			old := &oauthSession{store: store, server: target.ID(), binding: binding}
 			initial := &oauth2.Token{AccessToken: "initial", Expiry: time.Now().Add(time.Hour)}
 			cfg, _ := oauthSessionFixture(t, initial)
 			if err := old.save(t.Context(), cfg, initial); err != nil {
@@ -37,7 +39,7 @@ func TestSupersededOAuthHandlersCannotChangeReplacementCredentials(t *testing.T)
 			if err != nil {
 				t.Fatal(err)
 			}
-			replacement := &oauthSession{store: store, server: target.Server, origin: store.origin, binding: replacementBinding}
+			replacement := &oauthSession{store: store, server: target.ID(), binding: replacementBinding}
 			if err := replacement.save(t.Context(), cfg, &oauth2.Token{AccessToken: "replacement"}); err != nil {
 				t.Fatal(err)
 			}
@@ -72,7 +74,7 @@ func TestSupersededOAuthHandlersCannotChangeReplacementCredentials(t *testing.T)
 
 type memoryOAuthStore struct {
 	mu      sync.Mutex
-	origin  string
+	target  fingerprint.Digest
 	payload []byte
 	binding string
 	removed int
@@ -85,28 +87,20 @@ func (m *memoryOAuthStore) BeginOAuthSession(ctx context.Context, target mcpserv
 	if err := ctx.Err(); err != nil {
 		return "", err
 	}
-	origin, err := oauthOrigin(target.URL)
-	if err != nil {
-		return "", err
-	}
-	m.origin, m.binding, m.payload = origin, rand.Text(), nil
+	m.target, m.binding, m.payload = target.Fingerprint(), rand.Text(), nil
 	return m.binding, nil
 }
 
 func (m *memoryOAuthStore) LoadOAuthSession(_ context.Context, target mcpserver.OAuthTarget) ([]byte, string, bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	origin, err := oauthOrigin(target.URL)
-	if err != nil {
-		return nil, "", false, err
-	}
-	if m.origin != origin || len(m.payload) == 0 {
+	if m.target != target.Fingerprint() || len(m.payload) == 0 {
 		return nil, "", false, nil
 	}
 	return append([]byte(nil), m.payload...), m.binding, true, nil
 }
 
-func (m *memoryOAuthStore) SaveOAuthSession(ctx context.Context, _ mcpserver.ServerName, origin, binding string, payload []byte) error {
+func (m *memoryOAuthStore) SaveOAuthSession(ctx context.Context, _ mcpserver.ID, binding string, payload []byte) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if err := ctx.Err(); err != nil {
@@ -115,15 +109,14 @@ func (m *memoryOAuthStore) SaveOAuthSession(ctx context.Context, _ mcpserver.Ser
 	if m.saveErr != nil {
 		return m.saveErr
 	}
-	if binding != m.binding || origin != m.origin {
+	if binding != m.binding {
 		return mcpserver.ErrOAuthSessionSuperseded
 	}
-	m.origin = origin
 	m.payload = append([]byte(nil), payload...)
 	return nil
 }
 
-func (m *memoryOAuthStore) RemoveOAuthSession(_ context.Context, _ mcpserver.ServerName, binding string) error {
+func (m *memoryOAuthStore) RemoveOAuthSession(_ context.Context, _ mcpserver.ID, binding string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if binding != m.binding {
@@ -237,15 +230,15 @@ func TestInvalidatingTokenSourceDeletesRejectedRefresh(t *testing.T) {
 	store := &memoryOAuthStore{payload: []byte("saved")}
 	source := invalidateRejectedTokens(tokenSourceFunc(func() (*oauth2.Token, error) {
 		return nil, &oauth2.RetrieveError{ErrorCode: "invalid_grant"}
-	}), t.Context(), &oauthSession{store: store, server: testMCPServerName("remote"), binding: store.binding})
+	}), t.Context(), &oauthSession{store: store, server: testsupport.UserMCPServer("remote"), binding: store.binding})
 
-	if token, err := source.Token(); token != nil || dialStatus(err) != "needsAuth" {
+	if token, err := source.Token(); token != nil || !errors.Is(err, mcpserver.ErrAuthorizationRequired) {
 		t.Fatalf("Token = %+v, %v, want needsAuth", token, err)
 	}
 	if store.removed != 1 || len(store.payload) != 0 {
 		t.Fatalf("rejected refresh was not removed: %+v", store)
 	}
-	if _, err := source.Token(); dialStatus(err) != "needsAuth" || store.removed != 1 {
+	if _, err := source.Token(); !errors.Is(err, mcpserver.ErrAuthorizationRequired) || store.removed != 1 {
 		t.Fatalf("repeated Token = %v, removed=%d", err, store.removed)
 	}
 }
@@ -253,11 +246,10 @@ func TestInvalidatingTokenSourceDeletesRejectedRefresh(t *testing.T) {
 func TestRestoreOAuthHandlerRejectsCredentialWithoutInteractiveFlow(t *testing.T) {
 	token := &oauth2.Token{AccessToken: "access", RefreshToken: "refresh", Expiry: time.Now().Add(time.Hour)}
 	_, payload := oauthSessionFixture(t, token)
-	store := &memoryOAuthStore{origin: "https://mcp.example:443", payload: payload}
+	target := mcpserver.OAuthTarget{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), URL: "https://MCP.example/tools"}
+	store := &memoryOAuthStore{target: target.Fingerprint(), payload: payload}
 
-	handler, err := restoreOAuthHandler(t.Context(), t.Context(), store, mcpserver.OAuthTarget{
-		Server: testMCPServerName("remote"), URL: "https://MCP.example/tools",
-	})
+	handler, err := restoreOAuthHandler(t.Context(), t.Context(), store, target)
 	if err != nil {
 		t.Fatalf("restoreOAuthHandler: %v", err)
 	}
@@ -288,7 +280,7 @@ func TestRestoreOAuthHandlerRejectsCredentialWithoutInteractiveFlow(t *testing.T
 func TestRestoreOAuthHandlerDoesNotDrainRejectedResponse(t *testing.T) {
 	store := &memoryOAuthStore{payload: []byte("saved")}
 	body := &observedResponseBody{}
-	handler := &restoredOAuthHandler{session: &oauthSession{store: store, server: testMCPServerName("remote"), binding: store.binding}}
+	handler := &restoredOAuthHandler{session: &oauthSession{store: store, server: testsupport.UserMCPServer("remote"), binding: store.binding}}
 
 	err := handler.Authorize(t.Context(), nil, &http.Response{Body: body})
 	if !errors.Is(err, errStoredOAuthRejected) {
@@ -303,14 +295,10 @@ func TestRestoreOAuthHandlerDoesNotDrainRejectedResponse(t *testing.T) {
 }
 
 func TestRestoreOAuthHandlerRejectsMalformedPayload(t *testing.T) {
-	store := &memoryOAuthStore{
-		origin:  "https://mcp.example:443",
-		payload: []byte(`{"version":1,"unknown":true}`),
-	}
+	target := mcpserver.OAuthTarget{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), URL: "https://mcp.example/tools"}
+	store := &memoryOAuthStore{target: target.Fingerprint(), payload: []byte(`{"version":1,"unknown":true}`)}
 	var handler auth.OAuthHandler
-	handler, err := restoreOAuthHandler(t.Context(), t.Context(), store, mcpserver.OAuthTarget{
-		Server: testMCPServerName("remote"), URL: "https://mcp.example/tools",
-	})
+	handler, err := restoreOAuthHandler(t.Context(), t.Context(), store, target)
 	if handler != nil || err == nil || !strings.Contains(err.Error(), "unknown object member name") {
 		t.Fatalf("restore malformed = handler %v, err %v", handler, err)
 	}

@@ -58,29 +58,6 @@ type contextSource struct {
 
 type contextSources []contextSource
 
-// replaceableSessionState reports the isolated state kind carried by this
-// message. Goal and Plan must never share a message with each other or with
-// frozen deployment instructions because each can change mid-Interaction.
-func (c contextSources) replaceableSessionState() (contextSourceKind, bool, error) {
-	if err := c.validate(); err != nil {
-		return "", false, err
-	}
-	var stateKind contextSourceKind
-	for _, source := range c {
-		if source.Kind == contextSourceSessionGoal || source.Kind == contextSourceSessionPlan {
-			stateKind = source.Kind
-			break
-		}
-	}
-	if stateKind == "" {
-		return "", false, nil
-	}
-	if len(c) != 1 || c[0].Kind != stateKind {
-		return "", false, errors.New("execution: replaceable Session state must be an isolated source")
-	}
-	return stateKind, true, nil
-}
-
 func (c contextSources) validate() error {
 	if len(c) == 0 {
 		return errors.New("execution: empty context source set")
@@ -153,6 +130,17 @@ func (p promptComposition) sources() contextSources {
 		sources = append(sources, section.sources...)
 	}
 	return sources
+}
+
+// runtimeContextMessage renders the composition as a User message framed as
+// one kind of Runtime-authored context. Per-call state is sent after the
+// conversation, where a System message would be hoisted ahead of it.
+func (p promptComposition) runtimeContextMessage(kind RuntimeContextKind) (corechat.Message, error) {
+	message := corechat.NewUserMessage(corechat.NewTextPart(FrameRuntimeContext(kind, p.render())))
+	if err := p.sources().attach(&message.Metadata, string(kind)+" message"); err != nil {
+		return corechat.Message{}, err
+	}
+	return message, nil
 }
 
 func (p promptComposition) systemMessage() (corechat.Message, error) {

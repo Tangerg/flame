@@ -1,14 +1,16 @@
+import { mcpServerLabel } from "@/lib/toolSource";
+import type { MCPServerID } from "@flame/runtime-contract/wire";
 import { createDataQuery, createParameterizedDataQuery } from "@/plugins/sdk";
 import type { MCPHandshakeTimeout } from "./mcpHandshakeTimeout";
+
+export type { MCPServerID };
 
 export type MCPTransport = "stdio" | "streamableHttp";
 type MCPServerStatus =
   "disabled" | "disconnected" | "connecting" | "connected" | "failed" | "needsAuth";
 
 export interface MCPServerSettings {
-  installationId?: string;
-  id: string;
-  name: string;
+  id: MCPServerID;
   desc: string;
   tools: number;
   status: MCPServerStatus;
@@ -36,7 +38,15 @@ export interface MCPToolSummary {
 }
 
 export interface McpToolsQuery {
-  server: string;
+  server: MCPServerID;
+}
+
+export function userMCPServer(name: string): MCPServerID {
+  return { origin: { type: "user" }, name };
+}
+
+export function sameMCPServer(left: MCPServerID, right: MCPServerID): boolean {
+  return mcpServerLabel(left) === mcpServerLabel(right);
 }
 
 export const MCP_SERVERS_KEY = "mcp-servers";

@@ -5,7 +5,6 @@ import (
 	json "encoding/json/v2"
 	"fmt"
 	"reflect"
-	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -14,6 +13,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
 	chathistory "github.com/Tangerg/scope/core/history"
@@ -87,7 +89,7 @@ func TestProtocolCompletesDirectToolResults(t *testing.T) {
 				if err != nil {
 					return toolEnvironment{}, err
 				}
-				deps.mcp.exposure = mcpapp.NewExposureState([]mcpserver.Server{{Name: source, Enabled: true}}, nil)
+				deps.mcp.exposure = mcpapp.NewExposureState([]mcpserver.Server{{Source: mcpserver.UserSource(), Name: source, Enabled: true}}, nil)
 				environment, err := buildToolEnvironment(ctx, deps)
 				if err == nil {
 					environment.tools.Resolver.SetMCPTools([]toolcontract.Tool{directAnswerTool{answer}})
@@ -162,6 +164,11 @@ type directAnswerTool struct{ toolcontract.Tool }
 func (directAnswerTool) ReturnsDirectResult() bool         { return true }
 func (directAnswerTool) MCPToolIdentity() (string, string) { return "fixture", "answer" }
 
-func (directAnswerTool) SourceFingerprint() string {
-	return strings.Repeat("a", 64)
+func (directAnswerTool) SourceFingerprint() fingerprint.Digest {
+	return testsupport.Digest("fixture authority")
+}
+
+func (directAnswerTool) SourceConfig() mcp.ServerConfig {
+	name, _ := mcpserver.ParseServerName("fixture")
+	return mcp.ServerConfig{Source: mcpserver.UserSource(), Name: name}
 }

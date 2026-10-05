@@ -44,10 +44,7 @@ func TestManifestPublishesToolsetPresentationContracts(t *testing.T) {
 	generated := testBuild(t, testWalkWireTypes(t, registry, shapes))
 
 	want := make(map[string]string)
-	contracts, err := toolset.PresentationContracts()
-	if err != nil {
-		t.Fatal(err)
-	}
+	contracts := toolset.PresentationContracts()
 	for _, contract := range contracts {
 		want[contract.ToolName] = "schema.json#/$defs/" + defName(contract.ResultType)
 	}

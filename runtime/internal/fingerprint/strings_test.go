@@ -3,7 +3,7 @@ package fingerprint
 import "testing"
 
 func TestStringsPreservesThePersistedFraming(t *testing.T) {
-	if got := Strings("a", "bc"); got != "5310a58788781ab25d5ad7c3f85035824b4eb7bdfa394e0ac2186271472b5492" {
+	if got := Strings("a", "bc").String(); got != "5310a58788781ab25d5ad7c3f85035824b4eb7bdfa394e0ac2186271472b5492" {
 		t.Fatalf("fingerprint = %s", got)
 	}
 	for _, pair := range [][2][]string{

@@ -213,15 +213,24 @@ func (r *Resolver) createGoalTool() toolcontract.Tool {
 }
 
 // mcpTools returns the current MCP tool set (nil before the first store) minus
-// any tools the configured servers disable. The disabled set is read here, not
-// at SetMCPTools, so it stays correct regardless of which hot-swap fired last
-// (a reconnect that swaps tools vs. a configure that swaps the disabled set).
+// any tools the configured servers disable.
 func (r *Resolver) mcpTools() ([]toolcontract.Tool, error) {
+	return r.exposedMCPTools(r.mcpSnapshot())
+}
+
+func (r *Resolver) mcpSnapshot() []toolcontract.Tool {
 	p := r.mcp.Load()
 	if p == nil {
-		return nil, nil
+		return nil
 	}
-	values := *p
+	return *p
+}
+
+// exposedMCPTools filters one snapshot by exposure. The disabled set is read
+// here, not at SetMCPTools, so it stays correct regardless of which hot-swap
+// fired last (a reconnect that swaps tools vs. a configure that swaps the
+// disabled set).
+func (r *Resolver) exposedMCPTools(values []toolcontract.Tool) ([]toolcontract.Tool, error) {
 	var out []toolcontract.Tool
 	for i, tool := range values {
 		ref, found, err := mcp.IdentifyTool(tool)
@@ -368,6 +377,7 @@ func (r *Resolver) resolve(ctx context.Context, group domaintool.Group) (_ manif
 	}
 	if search != nil {
 		tools.direct(search)
+		tools.discovery = search
 	}
 	return tools, nil
 }

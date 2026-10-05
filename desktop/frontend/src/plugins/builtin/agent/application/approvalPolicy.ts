@@ -1,3 +1,4 @@
+import type { MCPServerID } from "@flame/runtime-contract/wire";
 import type { ApprovalRuleSummary } from "./approvalPolicyQueries";
 import { APPROVAL_MODE_KEY, APPROVAL_RULES_KEY } from "./approvalPolicyQueries";
 import type { ApprovalMode } from "../domain/hitl";
@@ -63,7 +64,7 @@ async function repairProjection(owner: AgentCommandOwner, queryKey: string): Pro
   }
 }
 
-export function allowMCPTool(server: string, name: string): Promise<void> {
+export function allowMCPTool(server: MCPServerID, name: string): Promise<void> {
   const owner = agentCommandOwner();
   const runtime = agentRuntime();
   return owner.serializeApprovalRules(async () => {

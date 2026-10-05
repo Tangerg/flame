@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -61,9 +62,12 @@ func (e ExecutionScope) Validate() error {
 // ExecutorCheckpoint is one root-owned durable continuation aggregate. Payload
 // contains the complete executor tree and is opaque outside its executor
 // implementation; the host owns only the aggregate identity and metadata needed
-// to decide whether and how the continuation may be restored.
+// to decide whether and how the continuation may be restored. Installations is
+// the executor's canonical dependency projection; it is stored beside the
+// payload so installation admission never interprets continuation state.
 type ExecutorCheckpoint struct {
 	ToolResultIDs  []toolresult.ID
+	Installations  []plugin.Dependency
 	RootMemberID   string
 	Payload        []byte
 	BuildID        string
@@ -91,6 +95,7 @@ type ExecutorCheckpointExpectation struct {
 // Clone returns an ownership-independent checkpoint value.
 func (e ExecutorCheckpoint) Clone() ExecutorCheckpoint {
 	e.ToolResultIDs = slices.Clone(e.ToolResultIDs)
+	e.Installations = slices.Clone(e.Installations)
 	e.Payload = append([]byte(nil), e.Payload...)
 	e.Capabilities = e.Capabilities.Clone()
 	e.Usage.Models = append([]accounting.ModelUsage(nil), e.Usage.Models...)
@@ -101,6 +106,9 @@ func (e ExecutorCheckpoint) Clone() ExecutorCheckpoint {
 // executor payload.
 func (e ExecutorCheckpoint) Validate() error {
 	if err := toolresult.ValidateReferences(e.ToolResultIDs); err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidExecutorCheckpoint, err)
+	}
+	if err := plugin.ValidateDependencies(e.Installations); err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidExecutorCheckpoint, err)
 	}
 	if err := runtimeidentity.ValidateMember(e.RootMemberID); err != nil {

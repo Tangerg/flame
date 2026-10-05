@@ -1,14 +1,15 @@
 import { defineColorThemePlugin } from "../kit/defineColorThemePlugin";
+import { SCHEME_BASE } from "../kit/palette";
 
 const c = {
   accent: "#3574f0",
 
-  canvas: "#1f1f1f",
+  canvas: SCHEME_BASE.dark.background,
   surface1: "#2b2b2b",
   sunken: "#181818",
 
   inkBright: "#ffffff",
-  ink: "#e3e5e9",
+  ink: SCHEME_BASE.dark.foreground,
   inkSoft: "#c6c9cf",
   inkMuted: "#aaaeb5",
   inkFaint: "#9da1a7",

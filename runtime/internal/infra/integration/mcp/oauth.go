@@ -18,7 +18,7 @@ import (
 )
 
 // OAuth for remote (HTTP) MCP servers. A server that
-// needs OAuth surfaces as needsAuth (a 401 on dial maps there via dialStatus),
+// needs OAuth surfaces as needsAuth (a 401 on dial maps there via failedStatus),
 // which is the cue to sign in. [Connections.Authorize] then runs the
 // authorization-code flow: open the system browser to the authorization URL,
 // catch the redirect on a loopback callback server, exchange the code — all
@@ -155,10 +155,6 @@ func newOAuthHandler(
 	if lifetime == nil {
 		return nil, errors.New("mcp oauth: lifetime is required")
 	}
-	origin, err := oauthOrigin(target.URL)
-	if err != nil {
-		return nil, err
-	}
 	config := &auth.AuthorizationCodeHandlerConfig{
 		DynamicClientRegistrationConfig: &auth.DynamicClientRegistrationConfig{
 			Metadata: &oauthex.ClientRegistrationMetadata{
@@ -176,9 +172,9 @@ func newOAuthHandler(
 	if store != nil {
 		binding, err := store.BeginOAuthSession(ctx, target)
 		if err != nil {
-			return nil, fmt.Errorf("mcp oauth: begin session for %q: %w", target.Server, err)
+			return nil, fmt.Errorf("mcp oauth: begin session for %q: %w", target.ID(), err)
 		}
-		session := &oauthSession{store: store, server: target.Server, origin: origin, binding: binding}
+		session := &oauthSession{store: store, server: target.ID(), binding: binding}
 		config.NewTokenSource = func(tokenCtx context.Context, cfg *oauth2.Config, token *oauth2.Token) (oauth2.TokenSource, error) {
 			if err := session.save(ctx, cfg, token); err != nil {
 				return nil, err

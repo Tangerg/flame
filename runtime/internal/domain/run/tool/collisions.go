@@ -18,7 +18,7 @@ func NameConflicts(refs []Ref) map[Ref][]Ref {
 	}
 	conflicts := make(map[Ref][]Ref)
 	for name, candidates := range byName {
-		if reserved, err := BuiltIn(name); err == nil && !slices.Contains(candidates, reserved) {
+		if reserved, err := BuiltIn(BuiltInName(name)); err == nil && !slices.Contains(candidates, reserved) {
 			candidates = append(candidates, reserved)
 		}
 		slices.SortFunc(candidates, func(a, b Ref) int { return strings.Compare(a.String(), b.String()) })

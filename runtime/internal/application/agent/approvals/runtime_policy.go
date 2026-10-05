@@ -2,7 +2,6 @@ package approvals
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -12,6 +11,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 )
 
 // NewRuntimePolicy constructs permission policy over durable session modes and
@@ -205,6 +205,10 @@ func (r *RuntimePolicy) Remember(ctx context.Context, req approval.RememberReque
 	if !found || current != req.SourceFingerprint {
 		return approval.ErrSourceAuthorityChanged
 	}
+	return r.put(ctx, rule)
+}
+
+func (r *RuntimePolicy) put(ctx context.Context, rule approval.Rule) error {
 	if err := r.store.Put(ctx, rule); err != nil {
 		return err
 	}
@@ -213,8 +217,8 @@ func (r *RuntimePolicy) Remember(ctx context.Context, req approval.RememberReque
 }
 
 type SourceAuthorities interface {
-	Fingerprint(context.Context, tool.Ref) (string, bool, error)
-	Fingerprints(context.Context, []tool.Ref) (map[tool.Ref]string, error)
+	Fingerprint(context.Context, tool.Ref) (fingerprint.Digest, bool, error)
+	Fingerprints(context.Context, []tool.Ref) (map[tool.Ref]fingerprint.Digest, error)
 }
 type RuleView struct {
 	ID         string
@@ -241,10 +245,10 @@ func (r *RuntimePolicy) Rules(ctx context.Context, sessionID, projectDir string)
 	}
 	view := make([]RuleView, 0, len(rules))
 	for _, rule := range rules {
-		fingerprint, found := current[rule.Tool]
+		authority, found := current[rule.Tool]
 		entry := RuleView{
 			ID: rule.ID, Scope: rule.Scope, Tool: rule.Tool, Subject: rule.Subject, Decision: rule.Decision,
-			Stale: !found || fingerprint != rule.SourceFingerprint,
+			Stale: !found || authority != rule.SourceFingerprint,
 		}
 		if rule.Scope == approval.ScopeProject {
 			entry.ProjectDir = rule.ScopeKey
@@ -255,18 +259,20 @@ func (r *RuntimePolicy) Rules(ctx context.Context, sessionID, projectDir string)
 }
 
 func (r *RuntimePolicy) SetRule(ctx context.Context, change RuleChange, projectDir string) error {
-	fingerprint, found, err := r.authorities.Fingerprint(ctx, change.Tool)
+	authority, found, err := r.authorities.Fingerprint(ctx, change.Tool)
 	if err != nil {
 		return err
 	}
 	if !found {
 		return fmt.Errorf("%w: tool source is missing", approval.ErrInvalidRule)
 	}
-	err = r.Remember(ctx, approval.RememberRequest{Scope: change.Scope, SessionID: change.SessionID, ProjectDir: projectDir, Tool: change.Tool, SourceFingerprint: fingerprint, Subject: change.Subject, Decision: change.Decision})
-	if errors.Is(err, approval.ErrSourceAuthorityChanged) {
-		return fmt.Errorf("%w: %w", approval.ErrInvalidRule, err)
+	// The authority was read here, so the rule binds it without the
+	// frozen-versus-current comparison Remember makes for an execution.
+	rule, err := approval.RememberRequest{Scope: change.Scope, SessionID: change.SessionID, ProjectDir: projectDir, Tool: change.Tool, SourceFingerprint: authority, Subject: change.Subject, Decision: change.Decision}.Rule()
+	if err != nil {
+		return err
 	}
-	return err
+	return r.put(ctx, rule)
 }
 
 func (r *RuntimePolicy) visibleRules(ctx context.Context, sessionID, projectDir string) ([]approval.Rule, error) {

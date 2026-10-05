@@ -78,7 +78,7 @@ func NewAskUser(interrupt runs.InterruptFunc) (toolcontract.Tool, error) {
 	t := &asker{interrupt: interrupt}
 	return toolcontract.NewFunc[askUserArgs, string](
 		toolcontract.FuncConfig{
-			Name:        tool.AskUser,
+			Name:        string(tool.AskUser),
 			Description: "Ask the user one to four questions and wait for their answers. Use this only when progress requires a decision, clarification, or information only the user can provide, not for routine progress updates. Give two to four `options` for a multiple-choice question and put the recommended option first; the user may still provide a custom answer. Omit `options` for free text, and set `multi_select` only when options are present and more than one may apply.",
 		},
 		t.ask,
@@ -94,7 +94,7 @@ func (a *asker) ask(ctx context.Context, args askUserArgs) (string, error) {
 		return "", err
 	}
 	in := runs.QuestionPrompt{
-		ToolName:  tool.AskUser,
+		ToolName:  string(tool.AskUser),
 		Arguments: arguments,
 		Fields:    args.toFields(),
 	}
@@ -105,7 +105,7 @@ func (a *asker) ask(ctx context.Context, args askUserArgs) (string, error) {
 	// First pass interrupts (bubbles up, parks); resume returns the human's
 	// structured answers at this same call site.
 	res, err := a.interrupt(ctx,
-		interrupt.Key(string(interrupt.Question), tool.AskUser, arguments),
+		interrupt.Key(string(interrupt.Question), string(tool.AskUser), arguments),
 		pending,
 	)
 	if err != nil {

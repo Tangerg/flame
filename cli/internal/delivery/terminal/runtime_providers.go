@@ -73,19 +73,19 @@ func (a *app) TestConfiguredProvider(providerID string) error {
 	}
 	a.status.note("testing provider " + providerID)
 	started := a.runApplicationOperation(modelConfigOperation, false,
-		func(ctx context.Context) (models.TestResult, error) {
+		func(ctx context.Context) (runtimeprotocol.ProviderTestOutcome, error) {
 			return a.modelConfig.TestProvider(ctx, providerID)
 		},
-		func(result models.TestResult, err error) {
-			if err != nil {
-				a.message("provider test failed: " + err.Error())
-				return
+		func(outcome runtimeprotocol.ProviderTestOutcome, err error) {
+			if err == nil {
+				var message string
+				message, err = providerProbeMessage(providerID, outcome)
+				if err == nil {
+					a.message(message)
+					return
+				}
 			}
-			if result.OK {
-				a.message("provider " + providerID + " is reachable")
-				return
-			}
-			a.message("provider " + providerID + " failed: " + probeFailureMessage(result.Problem))
+			a.message("provider test failed: " + err.Error())
 		},
 	)
 	if !started {

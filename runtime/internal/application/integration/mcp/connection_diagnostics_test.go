@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"log/slog"
 	"strings"
 	"testing"
@@ -27,10 +28,10 @@ func TestReconnectFailureRemainsVisibleAfterRequestSpanEnds(t *testing.T) {
 	})
 	requestCtx, span := provider.Tracer("mcp-test").Start(t.Context(), "reconnect-request")
 	defer span.End()
-	name := testMCPServerName("files")
+	name := testsupport.UserMCPServer("files")
 	dialErr := errors.New("endpoint unavailable after request returned")
 	ports := &delayedFailingConnection{
-		fakePorts: fakePorts{statuses: []mcpserver.ConnectionStatus{{Name: name, State: mcpserver.ConnectionFailed}}},
+		fakePorts: fakePorts{statuses: []mcpserver.ConnectionStatus{{Server: name, State: mcpserver.ConnectionFailed}}},
 		release:   make(chan struct{}), err: dialErr,
 	}
 	states := make(chan mcpserver.ConnectionState, 2)
@@ -67,7 +68,7 @@ type delayedFailingConnection struct {
 	err     error
 }
 
-func (p *delayedFailingConnection) Reconnect(ctx context.Context, _ mcpserver.ServerName) error {
+func (p *delayedFailingConnection) Reconnect(ctx context.Context, _ mcpserver.ID) error {
 	select {
 	case <-p.release:
 		return p.err

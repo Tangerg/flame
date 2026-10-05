@@ -6,6 +6,7 @@ import { z } from "zod";
 import type {
   PluginDiagnostic,
   PluginInstallation,
+  PluginRealization,
   PluginReleaseRequest,
   PluginRequest,
 } from "@flame/runtime-contract/wire";
@@ -14,7 +15,7 @@ import { DataView, PillButton, SystemMessage, TextEditorDialog, TextField, vocab
 import { space } from "@/styles/tokens.stylex";
 import { SettingsGroup, useAsyncFeedback } from "../../kit";
 import { settingStyles as ss } from "../../kit/settingStyles";
-import { packageOperations, usePackages } from "../application/packages";
+import { packageOperations, usePackageRealization, usePackages } from "../application/packages";
 
 const styles = stylex.create({
   row: { padding: space.s4, display: "flex", flexDirection: "column", gap: space.s3 },
@@ -22,17 +23,20 @@ const styles = stylex.create({
 });
 
 type PackageEdit =
-  | { type: "approve" | "configure"; target: PluginReleaseRequest; value: string }
+  | { type: "configure"; target: PluginReleaseRequest; value: string }
   | { type: "stage"; target: PluginRequest; value: string };
+
+const EDIT_LABEL: Record<PackageEdit["type"], string> = {
+  configure: "packages.configure",
+  stage: "packages.stage",
+};
 
 export function PackageManager() {
   const t = useT();
   const catalog = usePackages();
+  const realization = usePackageRealization((state) => state.failure);
   const [source, setSource] = useState("");
-  const [diagnostics, setDiagnostics] = useState<{
-    signal: AbortSignal;
-    items: PluginDiagnostic[];
-  }>();
+  const [installed, setInstalled] = useState<{ signal: AbortSignal; name: string }>();
   const operations = packageOperations.peek();
   const { feedback, run } = useAsyncFeedback(operations?.signal);
   const busy = feedback.state === "busy";
@@ -40,9 +44,9 @@ export function PackageManager() {
   const install = () => {
     if (!operations) return;
     return run(async () => {
-      const installed = await operations.install({ source });
+      const installation = await operations.install({ source });
       if (operations.signal.aborted) return { ok: true };
-      setDiagnostics({ signal: operations.signal, items: installed.availability });
+      setInstalled({ signal: operations.signal, name: installation.selected.name });
       setSource("");
       await catalog.refetch();
       return { ok: true };
@@ -63,12 +67,17 @@ export function PackageManager() {
           {t("packages.install")}
         </PillButton>
         {error && <SystemMessage variant="warning">{error}</SystemMessage>}
-        {diagnostics?.signal === operations?.signal &&
-          diagnostics?.items.map((diagnostic) => (
-            <SystemMessage key={`${diagnostic.component}:${diagnostic.code}`} variant="warning">
-              {diagnostic.component}: {diagnostic.code}
-            </SystemMessage>
-          ))}
+        {installed && installed.signal === operations?.signal && (
+          <SystemMessage>{t("packages.installed", { name: installed.name })}</SystemMessage>
+        )}
+        {realization && (
+          <SystemMessage
+            variant="warning"
+            action={{ label: t("common.retry"), onClick: realization.retry }}
+          >
+            {t("packages.realizationFailed", { reason: realization.reason })}
+          </SystemMessage>
+        )}
       </div>
       <DataView
         items={catalog.data ?? []}
@@ -86,7 +95,6 @@ export function PackageManager() {
                   installation={installation}
                   operations={operations}
                   refresh={catalog.refetch}
-                  onAvailability={(items) => setDiagnostics({ signal: operations.signal, items })}
                 />
               ))}
           </>
@@ -99,12 +107,10 @@ function PackageRow({
   installation,
   operations,
   refresh,
-  onAvailability,
 }: {
   installation: PluginInstallation;
   operations: ReturnType<typeof packageOperations.get>;
   refresh: () => Promise<unknown>;
-  onAvailability: (items: PluginDiagnostic[]) => void;
 }) {
   const t = useT();
   const [edit, setEdit] = useState<PackageEdit>();
@@ -112,59 +118,57 @@ function PackageRow({
   const busy = feedback.state === "busy";
   const error = feedback.state === "error" ? feedback.reason : "";
   const request = { installationId: installation.id, digest: installation.selected.digest };
-  const run = (operation: () => Promise<{ availability: PluginDiagnostic[] } | undefined>) =>
+  const enabled = installation.state === "enabled";
+  const enablementLabel = enabled ? "packages.disable" : "packages.enable";
+  const run = (label: string, operation: () => Promise<unknown>) =>
     runFeedback(async () => {
-      const result = await operation();
+      await operation();
       if (operations.signal.aborted) return { ok: true };
-      if (result) onAvailability(result.availability);
       setEdit(undefined);
       await refresh();
       return { ok: true };
-    }, t("packages.configure"));
-  const save = () =>
-    run(async () => {
-      if (edit?.type === "approve") {
-        return operations.approve(
-          checkRequest("plugins.approve", {
-            ...edit.target,
-            grants: parseReviewedJSON(edit.value),
-          }),
-        );
-      } else if (edit?.type === "configure") {
+    }, label);
+  const save = () => {
+    if (!edit) return;
+    return run(t(EDIT_LABEL[edit.type]), async () => {
+      if (edit.type === "configure") {
         const changes = z.record(z.string(), z.unknown()).parse(parseReviewedJSON(edit.value));
         for (const field of Object.keys(edit.target)) {
           if (Object.hasOwn(changes, field))
-            throw new Error(`${field} belongs to the reviewed release`);
+            throw new Error(t("packages.reviewedField", { field }));
         }
         return operations.configure(
           checkRequest("plugins.configure", { ...edit.target, ...changes }),
         );
-      } else if (edit?.type === "stage") {
-        return operations.stage({ ...edit.target, source: edit.value });
       }
+      return operations.stage({ ...edit.target, source: edit.value });
     });
+  };
   return (
     <div {...stylex.props(styles.row)}>
       <div {...stylex.props(ss.label, vocab.truncate)} title={installation.selected.name}>
-        {installation.selected.name} · {installation.selected.version}
+        {installation.selected.version
+          ? `${installation.selected.name} · ${installation.selected.version}`
+          : installation.selected.name}
       </div>
       <div {...stylex.props(vocab.muted, vocab.truncate)} title={request.digest}>
         {request.digest}
       </div>
+      <div {...stylex.props(vocab.muted)}>{t(`packages.state.${installation.state}`)}</div>
       <div {...stylex.props(ss.lineWrap)}>
-        <PillButton
-          size="sm"
-          pending={busy}
-          onClick={() => {
-            setEdit({
-              type: "approve",
-              target: request,
-              value: JSON.stringify(installation.selected.requests, null, 2),
-            });
-          }}
-        >
-          {t("packages.approve")}
-        </PillButton>
+        {installation.state === "unapproved" && (
+          <PillButton
+            size="sm"
+            pending={busy}
+            onClick={() =>
+              void run(t("packages.approve"), () =>
+                operations.approve(checkRequest("plugins.approve", request)),
+              )
+            }
+          >
+            {t("packages.approve")}
+          </PillButton>
+        )}
         <PillButton
           size="sm"
           pending={busy}
@@ -173,11 +177,7 @@ function PackageRow({
               type: "configure",
               target: request,
               value: JSON.stringify(
-                {
-                  valueChanges: {},
-                  disabledServers: installation.disabledServers,
-                  disabledSkills: installation.disabledSkills,
-                },
+                { valueChanges: {}, serverChanges: {}, skillChanges: {} },
                 null,
                 2,
               ),
@@ -190,15 +190,15 @@ function PackageRow({
           size="sm"
           pending={busy}
           onClick={() =>
-            void run(() =>
+            void run(t(enablementLabel), () =>
               operations.setEnablement({
                 installationId: installation.id,
-                enabled: !installation.enabled,
+                enabled: !enabled,
               }),
             )
           }
         >
-          {t(installation.enabled ? "packages.disable" : "packages.enable")}
+          {t(enablementLabel)}
         </PillButton>
         <PillButton
           size="sm"
@@ -218,7 +218,7 @@ function PackageRow({
             size="sm"
             pending={busy}
             onClick={() =>
-              void run(() =>
+              void run(t("packages.select"), () =>
                 operations.select({
                   installationId: installation.id,
                   digest: installation.staged!.digest,
@@ -232,14 +232,16 @@ function PackageRow({
         <PillButton
           size="sm"
           pending={busy}
-          onClick={() => void run(() => operations.revoke(installation.id))}
+          onClick={() => void run(t("packages.revoke"), () => operations.revoke(installation.id))}
         >
           {t("packages.revoke")}
         </PillButton>
         <PillButton
           size="sm"
           pending={busy}
-          onClick={() => void run(() => operations.uninstall(installation.id))}
+          onClick={() =>
+            void run(t("packages.uninstall"), () => operations.uninstall(installation.id))
+          }
         >
           {t("packages.uninstall")}
         </PillButton>
@@ -250,25 +252,37 @@ function PackageRow({
             servers: installation.selected.servers,
             inputs: installation.selected.inputs,
             skills: installation.selected.skills,
-            diagnostics: [...installation.selected.diagnostics, ...installation.availability],
+            inputStates: installation.inputStates,
+            disabledServers: installation.disabledServers,
+            disabledSkills: installation.disabledSkills,
           },
           null,
           2,
         )}
       </pre>
+      {realizationMessages(t, installation.realization).map((message) => (
+        <SystemMessage key={message} variant="warning">
+          {message}
+        </SystemMessage>
+      ))}
+      {installation.selected.diagnostics.map((diagnostic, index) => {
+        const message = describeDiagnostic(t, diagnostic);
+        return (
+          <SystemMessage
+            key={`${index}:${diagnostic.code}:${diagnostic.component.type}`}
+            variant="warning"
+          >
+            {message}
+          </SystemMessage>
+        );
+      })}
       {error && <SystemMessage variant="warning">{error}</SystemMessage>}
       <TextEditorDialog
         open={edit !== undefined}
         onOpenChange={(open) => {
           if (!open) setEdit(undefined);
         }}
-        title={t(
-          edit?.type === "approve"
-            ? "packages.approve"
-            : edit?.type === "stage"
-              ? "packages.stage"
-              : "packages.configure",
-        )}
+        title={edit ? t(EDIT_LABEL[edit.type]) : ""}
         closeLabel={t("common.close")}
         label={t("packages.input")}
         value={edit?.value ?? ""}
@@ -281,5 +295,21 @@ function PackageRow({
         font="mono"
       />
     </div>
+  );
+}
+
+type Translate = ReturnType<typeof useT>;
+
+function describeDiagnostic(t: Translate, diagnostic: PluginDiagnostic): string {
+  const { component } = diagnostic;
+  const name = "name" in component ? component.name : "";
+  const label = t(`packages.component.${component.type}`, { name });
+  return t(`packages.diagnostic.${diagnostic.code}`, { component: label });
+}
+
+function realizationMessages(t: Translate, realization: PluginRealization): string[] {
+  if (realization.type === "releaseUnavailable") return [t("packages.releaseUnavailable")];
+  return (realization.unavailableBackends ?? []).map((name) =>
+    t("packages.backendUnavailable", { name }),
   );
 }

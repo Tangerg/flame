@@ -9,10 +9,13 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
-// mcpServerList is the boot-time snapshot view of the MCP registry: building the
-// exposure and dial descriptors come from the same initial registry view.
-type mcpServerList interface {
+// mcpCatalog is the boot-time snapshot view of the MCP registry: the exposure
+// and dial descriptors come from the same initial registry view.
+type mcpCatalog interface {
 	Catalog(ctx context.Context) ([]mcpapp.Source, error)
+}
+
+type mcpExposure interface {
 	ListExposure(ctx context.Context) ([]tool.Ref, error)
 }
 
@@ -23,7 +26,7 @@ type mcpEnvironment struct {
 	servers  []mcpserver.Server
 }
 
-func buildMCPEnvironment(ctx context.Context, registry mcpServerList) (mcpEnvironment, error) {
+func buildMCPEnvironment(ctx context.Context, registry mcpCatalog, exposure mcpExposure) (mcpEnvironment, error) {
 	sources, err := registry.Catalog(ctx)
 	if err != nil {
 		return mcpEnvironment{}, fmt.Errorf("bootstrap: load mcp registry: %w", err)
@@ -32,7 +35,7 @@ func buildMCPEnvironment(ctx context.Context, registry mcpServerList) (mcpEnviro
 	for _, source := range sources {
 		servers = append(servers, source.Server)
 	}
-	disabled, err := registry.ListExposure(ctx)
+	disabled, err := exposure.ListExposure(ctx)
 	if err != nil {
 		return mcpEnvironment{}, err
 	}

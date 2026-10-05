@@ -1,9 +1,12 @@
 package runtimefixture
 
 import (
+	"reflect"
+
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
 	"slices"
 	"strings"
 
@@ -207,9 +210,13 @@ func (r *Runtime) SetApprovalRule(ctx context.Context, request protocol.SetAppro
 	if err := protocol.ValidateWireTree(request); err != nil {
 		return err
 	}
+	source, err := mcp.ToolLabel(request.Tool)
+	if err != nil {
+		return err
+	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	name, found := r.ToolModelNames[request.Tool]
+	name, found := r.ToolModelNames[source]
 	if !found {
 		return fmt.Errorf("fixture: tool source has no configured model name: %v", request.Tool)
 	}
@@ -223,7 +230,7 @@ func (r *Runtime) SetApprovalRule(ctx context.Context, request protocol.SetAppro
 	}
 	for i := range r.rules {
 		stored := &r.rules[i]
-		if stored.view.Tool == request.Tool && stored.view.Scope == request.Scope && stored.view.Subject == request.Subject && stored.view.Dir == projectDir && stored.sessionID == request.SessionID {
+		if reflect.DeepEqual(stored.view.Tool, request.Tool) && stored.view.Scope == request.Scope && stored.view.Subject == request.Subject && stored.view.Dir == projectDir && stored.sessionID == request.SessionID {
 			stored.view.Decision = request.Decision
 			stored.view.ModelName = name
 			return nil

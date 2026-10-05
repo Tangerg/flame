@@ -102,11 +102,17 @@ func wireRunStartErr(err error) error {
 		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	case errors.Is(err, runs.ErrSessionBusy):
 		return protocol.ErrSessionBusy
+	case errors.Is(err, runs.ErrInstallationChanged):
+		return pluginChanged(err)
 	case errors.Is(err, session.ErrNotFound):
 		return protocol.ErrSessionNotFound
 	default:
 		return err
 	}
+}
+
+func pluginChanged(err error) error {
+	return NewFailure(errors.Join(protocol.ErrPluginChanged, err), "a plugin installation changed while the run was being prepared; nothing was started")
 }
 
 func generationOptionsFromWire(in *protocol.GenerationParams) *corechat.Options {

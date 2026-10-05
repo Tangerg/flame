@@ -52,7 +52,7 @@ func (a *app) setRuntimeReader(mode runtimeReaderMode) {
 	a.dialogs.runtimeReader = mode
 	a.dialogs.runtimeSelection = runtimeReaderSelection{}
 	if mode != runtimeReaderMCPTools {
-		a.dialogs.mcpToolServer = ""
+		a.dialogs.mcpToolServer = nil
 	}
 	if mode != runtimeReaderMCPAuthorization {
 		a.dialogs.mcpAuthorizationID = ""

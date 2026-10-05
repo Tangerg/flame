@@ -42,7 +42,7 @@ func TestConnectionInputsKeepTransportAndSecretScopesClosed(t *testing.T) {
 func TestAuthorizationAttemptRejectsReversedTimestamps(t *testing.T) {
 	now := time.Now()
 	attempt := protocol.MCPAuthorizationAttempt{
-		ID: "mcpauth_AAAAAAAAAAAAAAAAAAAAAAAAAA", Server: "docs",
+		ID: "mcpauth_AAAAAAAAAAAAAAAAAAAAAAAAAA", Server: UserServer("docs"),
 		Status: protocol.MCPAuthorizationAttemptStatus{Type: protocol.MCPAuthorizationAttemptPending}, CreatedAt: now,
 	}
 	if err := ValidateAuthorizationAttempt(attempt); err != nil {
@@ -56,11 +56,11 @@ func TestAuthorizationAttemptRejectsReversedTimestamps(t *testing.T) {
 }
 
 func TestServerUpdateRequiresAnExplicitChange(t *testing.T) {
-	if err := (ServerUpdate{Server: "docs"}).Validate(); err == nil {
+	if err := (ServerUpdate{Server: UserServer("docs")}).Validate(); err == nil {
 		t.Fatal("empty MCP update was accepted")
 	}
 	description := "Documentation tools"
-	if err := (ServerUpdate{Server: "docs", Description: &description}).Validate(); err != nil {
+	if err := (ServerUpdate{Server: UserServer("docs"), Description: &description}).Validate(); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -78,7 +78,7 @@ func TestMCPMutationResultsMustFulfillTheCommand(t *testing.T) {
 		},
 	}
 	valid := protocol.MCPServer{
-		Name: candidate.Name, Description: candidate.Description, HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeBounded, Seconds: new(15)},
+		ID: UserServer(candidate.Name), Description: candidate.Description, HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeBounded, Seconds: new(15)},
 		Connection: protocol.MCPConnection{
 			Type: protocol.MCPTransportStreamableHTTP, URL: candidate.Connection.URL,
 			AuthorizationMasked: "****", HeadersMasked: map[string]string{"X-Key": "****"},
@@ -115,7 +115,7 @@ func TestMCPMutationResultsMustFulfillTheCommand(t *testing.T) {
 	description, enabled := "Updated", false
 	updatedTimeout := mustHandshakeTimeout(t, 30)
 	update := ServerUpdate{
-		Server: candidate.Name, Enabled: &enabled, Description: &description,
+		Server: UserServer(candidate.Name), Enabled: &enabled, Description: &description,
 		HandshakeTimeout: &updatedTimeout,
 	}
 	updated := valid
@@ -133,7 +133,7 @@ func TestMCPMutationResultsMustFulfillTheCommand(t *testing.T) {
 	clearAuthorization := AuthorizationChange{Kind: protocol.MCPSecretClear}
 	clearHeaders := HeadersChange{Kind: protocol.MCPSecretClear}
 	connectionUpdate := ServerUpdate{
-		Server: candidate.Name,
+		Server: UserServer(candidate.Name),
 		Connection: &ConnectionInput{
 			Transport: protocol.MCPTransportStreamableHTTP, URL: candidate.Connection.URL,
 			Authorization: &clearAuthorization, Headers: &clearHeaders,
@@ -161,7 +161,7 @@ func TestMCPMutationResultsMustFulfillTheCommand(t *testing.T) {
 	}
 	stdioResult := protocol.MCPServer{
 		HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},
-		Name:             stdioCandidate.Name,
+		ID:               UserServer(stdioCandidate.Name),
 		Connection: protocol.MCPConnection{
 			Type: protocol.MCPTransportStdio, Command: "mcp-server", Args: []string{"--stdio"},
 			EnvMasked: map[string]string{"TOKEN": "****"}, Dir: "/workspace",
@@ -195,5 +195,27 @@ func TestHandshakeTimeoutRejectsNumericDisableSentinel(t *testing.T) {
 	}
 	if err := (HandshakeTimeout{}).Validate(); err != nil {
 		t.Fatalf("explicit unbounded zero value rejected: %v", err)
+	}
+}
+
+func TestServerReferenceReadsBothOriginsAndRejectsMalformedText(t *testing.T) {
+	installed := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: "eeb329cd-c7ce-40c9-bd90-6821fef06d30"}, Name: "files"}
+	for text, want := range map[string]protocol.MCPServerID{
+		"files":   UserServer("files"),
+		" files ": UserServer("files"),
+		"eeb329cd-c7ce-40c9-bd90-6821fef06d30/files": installed,
+	} {
+		got, err := ParseServerReference(text)
+		if err != nil || got != want {
+			t.Errorf("ParseServerReference(%q) = %+v, %v", text, got, err)
+		}
+		if parsed, err := ParseServerReference(ServerLabel(want)); err != nil || parsed != want {
+			t.Errorf("label of %+v does not read back: %+v, %v", want, parsed, err)
+		}
+	}
+	for _, text := range []string{"", "Files", "installation/eeb329cd-c7ce-40c9-bd90-6821fef06d30/files", "not-a-uuid/files", "eeb329cd-c7ce-40c9-bd90-6821fef06d30/"} {
+		if _, err := ParseServerReference(text); err == nil {
+			t.Errorf("ParseServerReference(%q) accepted malformed text", text)
+		}
 	}
 }

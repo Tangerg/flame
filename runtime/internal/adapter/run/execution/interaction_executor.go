@@ -8,7 +8,6 @@ import (
 	"os"
 	"slices"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
@@ -83,7 +82,7 @@ type InteractionExecutorConfig struct {
 // root owns an independent Engine and exactly one Interaction Process; the
 // Application owns durable Run state and consumes only [runs.ExecutorEvent].
 type InteractionExecutor struct {
-	installationAdmission  sync.RWMutex
+	installations          *installationAdmission
 	lifetime               context.Context
 	config                 InteractionExecutorConfig
 	policy                 interactionExecutionPolicy
@@ -158,6 +157,7 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 		implementationIdentity: implementationIdentity,
 		configurationIdentity:  configurationIdentity,
 		sessions:               newInteractionSessions(),
+		installations:          newInstallationAdmission(),
 	}, nil
 }
 
@@ -207,13 +207,13 @@ func (i *InteractionExecutor) StageRoot(
 	ctx context.Context,
 	start runs.RootExecutionStart,
 ) (_ runs.ExecutorRef, err error) {
-	i.installationAdmission.RLock()
-	defer i.installationAdmission.RUnlock()
 	finishAssembly, err := i.sessions.beginAssembly()
 	if err != nil {
 		return runs.ExecutorRef{}, err
 	}
 	defer finishAssembly()
+	assembly, abandon := i.installations.begin()
+	defer abandon()
 	start = start.Clone()
 	if err := resourceid.ValidateSession(start.SessionID); err != nil {
 		return runs.ExecutorRef{}, fmt.Errorf("execution: Interaction: %w", err)
@@ -238,7 +238,9 @@ func (i *InteractionExecutor) StageRoot(
 		return runs.ExecutorRef{}, fmt.Errorf("execution: encode Interaction input: %w", err)
 	}
 	session.input = input
-	if err := i.sessions.register(session); err != nil {
+	if err := i.installations.publish(ctx, assembly, session.installationDependencies(), func() error {
+		return i.sessions.register(session)
+	}); err != nil {
 		return runs.ExecutorRef{}, err
 	}
 	return ref, nil
@@ -377,7 +379,7 @@ func toolIdentities(tools []toolcontract.Tool) ([]toolConfigurationIdentity, err
 		if err != nil {
 			return nil, err
 		}
-		identities = append(identities, toolConfigurationIdentity{Definition: executable.Definition(), Reference: ref.String(), SourceFingerprint: fingerprint})
+		identities = append(identities, toolConfigurationIdentity{Definition: executable.Definition(), Reference: ref.String(), SourceFingerprint: fingerprint.String()})
 	}
 	return identities, nil
 }
@@ -571,13 +573,13 @@ func (i *InteractionExecutor) restoreWaitingTree(
 	continuation runs.WaitingContinuation,
 	boundary interactionBoundary,
 ) (err error) {
-	i.installationAdmission.RLock()
-	defer i.installationAdmission.RUnlock()
 	finishAssembly, err := i.sessions.beginAssembly()
 	if err != nil {
 		return err
 	}
 	defer finishAssembly()
+	assembly, abandon := i.installations.begin()
+	defer abandon()
 	if err := i.validateRestoreScope(continuation.Checkpoint.Scope); err != nil {
 		return err
 	}
@@ -644,7 +646,9 @@ func (i *InteractionExecutor) restoreWaitingTree(
 		}
 		return fmt.Errorf("%w: restored Interaction tree has no pending input", runs.ErrExecutorStateLost)
 	}
-	if err := i.sessions.register(session); err != nil {
+	if err := i.installations.publish(ctx, assembly, session.installationDependencies(), func() error {
+		return i.sessions.register(session)
+	}); err != nil {
 		return err
 	}
 	session.startWorkers()

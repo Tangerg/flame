@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -20,18 +19,14 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
+// installationDependencyWire binds installation releases into a Deployment's
+// configuration identity.
 type installationDependencyWire struct {
 	InstallationID string `json:"installationId"`
 	Digest         string `json:"digest"`
 }
 
-type interactionCheckpointDependenciesWire struct {
-	Installations []installationDependencyWire `json:"installations"`
-	ToolBindings  []toolConfigurationIdentity  `json:"toolBindings"`
-}
-
 type interactionCheckpointPayloadWire struct {
-	interactionCheckpointDependenciesWire
 	Options             corechat.Options                    `json:"options"`
 	ToolMetadata        []toolResultMetadata                `json:"tool_metadata,omitempty"`
 	Tree                jsontext.Value                      `json:"tree"`
@@ -79,8 +74,6 @@ type interactionContentBlockWire struct {
 }
 
 type interactionCheckpointState struct {
-	installations       []installationDependencyWire
-	toolBindings        []toolConfigurationIdentity
 	options             corechat.Options
 	toolMetadata        map[string]toolResultMetadata
 	tree                agent.TreeSnapshot
@@ -125,6 +118,7 @@ func (i *interactionSession) executorCheckpoint(
 	}
 	checkpoint := runs.ExecutorCheckpoint{
 		ToolResultIDs: checkpointToolResultIDs(decoded),
+		Installations: i.installationDependencies(),
 		RootMemberID:  tree.RootID().String(), Payload: payload,
 		BuildID: i.buildID.String(), Scope: i.scope,
 		ModelSelection: i.start.ModelSelection,
@@ -150,14 +144,12 @@ func encodeInteractionCheckpointPayload(
 	pendingContinuation *pendingInteractionContinuation,
 	toolMetadata []toolResultMetadata,
 	options corechat.Options,
-	toolBindings []toolConfigurationIdentity, installations []installationDependencyWire,
 ) ([]byte, error) {
 	if !tree.Valid() {
 		return nil, errors.New("execution: encode invalid Interaction tree checkpoint")
 	}
 	wire := interactionCheckpointPayloadWire{
-		interactionCheckpointDependenciesWire: interactionCheckpointDependenciesWire{ToolBindings: toolBindings, Installations: installations},
-		ToolMetadata:                          toolMetadata, Options: options.Clone(),
+		ToolMetadata: toolMetadata, Options: options.Clone(),
 		Tree:         tree.JSON(),
 		Instructions: cloneChatMessages(instructions),
 	}
@@ -402,7 +394,7 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 	return interactionCheckpointState{
 		tree: tree, callsByProcess: callsByProcess, carriedCallCount: carriedCallCount,
 		contextByProcess: contextByProcess, instructions: instructions, options: wire.Options.Clone(), pendingSteers: pendingSteers,
-		pendingContinuation: pendingContinuation, toolMetadata: metadata, toolBindings: wire.ToolBindings, installations: wire.Installations,
+		pendingContinuation: pendingContinuation, toolMetadata: metadata,
 	}, nil
 }
 
@@ -411,28 +403,7 @@ func decodeInteractionCheckpointWire(payload []byte) (interactionCheckpointPaylo
 	if err := json.Unmarshal(payload, &wire, json.RejectUnknownMembers(true)); err != nil {
 		return interactionCheckpointPayloadWire{}, fmt.Errorf("execution: decode Interaction checkpoint: %w", err)
 	}
-	if err := wire.interactionCheckpointDependenciesWire.Validate(); err != nil {
-		return interactionCheckpointPayloadWire{}, err
-	}
 	return wire, nil
-}
-
-func (wire interactionCheckpointDependenciesWire) Validate() error {
-	if wire.Installations == nil || wire.ToolBindings == nil {
-		return errors.New("execution: checkpoint lacks dependency bindings")
-	}
-	for _, binding := range wire.ToolBindings {
-		if _, err := parseToolBinding(binding); err != nil {
-			return fmt.Errorf("execution: checkpoint tool binding: %w", err)
-		}
-	}
-	for _, dependency := range wire.Installations {
-		_, err := resourceid.ParseInstallation(dependency.InstallationID)
-		if err != nil || !plugin.ValidDigest(dependency.Digest) {
-			return errors.New("execution: invalid checkpoint installation binding")
-		}
-	}
-	return nil
 }
 
 func decodeInteractionCheckpointTree(

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { DataView, gap, Icon, PillButton, vocab } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { useMCPServers } from "../application/mcpServerQueries";
+import { mcpServerLabel } from "@/lib/toolSource";
 import { JsonImport } from "./JsonImport";
 import { ServerForm } from "./ServerForm";
 import { ServerRow } from "./ServerRow";
@@ -48,7 +49,7 @@ export function McpServersPane() {
         {(rows) => (
           <div {...stylex.props(vocab.column, gap.s2)}>
             {rows.map((s) => (
-              <ServerRow key={s.name} server={s} />
+              <ServerRow key={mcpServerLabel(s.id)} server={s} />
             ))}
           </div>
         )}

@@ -282,9 +282,9 @@ func buildAssemblyCore(
 
 	mcpCoordinator, err := mcpapp.New(mcpapp.Config{
 		Registry:            policy.registry,
+		Store:               cfg.Stores.MCPServers,
 		StatusReader:        execution.tools.mcp,
-		ToolCatalog:         execution.tools.mcp,
-		ToolDiagnostics:     execution.tools.tools.Resolver,
+		ToolCatalog:         execution.tools.tools.Resolver,
 		ConnectionControl:   execution.tools.mcp,
 		ConnectionLifecycle: execution.tools.mcp,
 		Exposure:            policy.mcp.exposure,
@@ -294,9 +294,12 @@ func buildAssemblyCore(
 		return nil, fmt.Errorf("runtime: construct MCP coordinator: %w", err)
 	}
 	lifetime.mcpCoordinator = mcpCoordinator
-	pluginCoordinator, err := plugins.New(lifetime.context, cfg.Stores.Installations, policy.packages, mcpCoordinator, execution.executor, policy.invalidations.Publish)
+	pluginCoordinator, err := plugins.New(lifetime.context, cfg.Stores.Installations, cfg.Stores.PluginReleases, policy.packages, mcpCoordinator, execution.executor, policy.invalidations.Publish)
 	if err != nil {
 		return nil, err
+	}
+	if err := pluginCoordinator.Reclaim(ctx); err != nil {
+		return nil, fmt.Errorf("runtime: %w", err)
 	}
 
 	// Goal mode: the autonomous-execution loop driver over the run coordinator.

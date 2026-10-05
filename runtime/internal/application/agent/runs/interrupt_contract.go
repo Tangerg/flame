@@ -10,6 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/optional"
 )
@@ -31,7 +32,7 @@ func InterruptUnavailable(context.Context, string, Interrupt) (interrupt.Resolut
 // running the hook or policy decision a second time.
 type ApprovalPrompt struct {
 	Tool              tool.Ref
-	SourceFingerprint string
+	SourceFingerprint fingerprint.Digest
 	CallID            string
 	ToolName          string
 	Arguments         string

@@ -1218,3 +1218,70 @@ func TestDurableProtectedTailSpanningEphemeralProtectsTheSameHistory(t *testing.
 			spanning, withoutEphemeral)
 	}
 }
+
+func TestModelContextCompactionCountsTrailerWithoutReturningIt(t *testing.T) {
+	modelInfo, found := catalog.Default.Lookup("openai", "gpt-5.4-mini")
+	if !found {
+		t.Fatal("catalog omitted openai/gpt-5.4-mini")
+	}
+	selection, err := modelref.New("openai", "gpt-5.4-mini")
+	if err != nil {
+		t.Fatal(err)
+	}
+	large := strings.Repeat("x", 190_000)
+	history := []chat.Message{
+		chat.NewUserMessage(chat.NewTextPart("q1" + large)),
+		chat.NewAssistantMessage(chat.NewTextPart("a1" + large)),
+		chat.NewUserMessage(chat.NewTextPart("q2" + large)),
+		chat.NewAssistantMessage(chat.NewTextPart("a2" + large)),
+	}
+	instructions := []chat.Message{chat.NewSystemMessage("frozen instructions")}
+	estimate, err := estimateModelContextTokens(append(cloneMessages(instructions), history...), nil, chat.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	hardInput := int(modelInfo.Limits.MaxInputTokens)
+	if estimate >= hardInput {
+		t.Fatalf("fixture estimate = %d, want below %d", estimate, hardInput)
+	}
+	const marker = "per-request trailer"
+	trailer := []chat.Message{chat.NewUserMessage(chat.NewTextPart(
+		marker + strings.Repeat("y", (hardInput-estimate)*2*asciiBytesPerEstimatedToken),
+	))}
+	compact := func(sessionID string, trailer []chat.Message) (executionadapter.ModelContextCompactionResult, *compactionTestStore) {
+		t.Helper()
+		store := newCompactionTestStore()
+		if err := store.Write(t.Context(), sessionID, history...); err != nil {
+			t.Fatal(err)
+		}
+		client, err := chatclient.New(newTextStubModel("TRAILER SUMMARY"), chatclient.Config{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		request, err := executionadapter.NewDurableModelContextCompaction(executionadapter.ModelContextCompactionInput{
+			SessionID: sessionID, Selection: selection,
+			Instructions: instructions, Candidate: history, Trailer: trailer,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		result, err := mustNewCompactor(t, store, constClient(client), nil, CompactionPolicyValues{}).CompactModelContext(t.Context(), request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return result, store
+	}
+
+	if result, store := compact("session:without-trailer", nil); result.Changed() || store.rewrites != 0 {
+		t.Fatalf("history below the limit compacted: changed=%t rewrites=%d", result.Changed(), store.rewrites)
+	}
+	result, store := compact("session:with-trailer", trailer)
+	if !result.Summarized() || store.rewrites != 1 {
+		t.Fatalf("trailer did not count toward the limit: summarized=%t rewrites=%d", result.Summarized(), store.rewrites)
+	}
+	for index, message := range result.Messages() {
+		if strings.Contains(message.Text(), marker) {
+			t.Fatalf("compacted message %d contains the trailer", index)
+		}
+	}
+}

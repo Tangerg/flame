@@ -262,8 +262,8 @@ func TestTestProviderUsesConfiguredProvider(t *testing.T) {
 	if err != nil {
 		t.Fatalf("test provider: %v", err)
 	}
-	if got.OK || got.Error == nil || got.Error.Type != "provider_test_failed" || got.Error.Detail != "" {
-		t.Fatalf("test result = %+v, want the provider_test_failed symbol and no prose", got)
+	if got.Outcome != protocol.ProviderTestFailed {
+		t.Fatalf("test result = %+v, want the failed outcome", got)
 	}
 	if len(rt.probed) != 1 || rt.probed[0].ID() != "anthropic" {
 		t.Fatalf("probed = %+v, want anthropic", rt.probed)
@@ -273,19 +273,19 @@ func TestTestProviderUsesConfiguredProvider(t *testing.T) {
 func TestProviderProbeReturnsSanitizedActions(t *testing.T) {
 	for _, tt := range []struct {
 		cause error
-		kind  string
+		want  protocol.ProviderTestOutcome
 	}{
-		{errors.Join(models.ErrProviderCredentialsRejected, errors.New("secret-token")), protocol.ProblemInvalidAPIKey},
-		{errors.Join(context.DeadlineExceeded, errors.New("secret-token")), protocol.ProblemTimeout},
-		{errors.New("HTTP 401 secret-token"), protocol.ProblemProviderTestFailed},
+		{errors.Join(models.ErrProviderCredentialsRejected, errors.New("secret-token")), protocol.ProviderTestInvalidCredentials},
+		{errors.Join(context.DeadlineExceeded, errors.New("secret-token")), protocol.ProviderTestTimedOut},
+		{errors.New("HTTP 401 secret-token"), protocol.ProviderTestFailed},
 	} {
-		t.Run(tt.kind, func(t *testing.T) {
+		t.Run(string(tt.want), func(t *testing.T) {
 			rt := &providerFake{entries: map[string]provider.Provider{"anthropic": testsupport.MustProvider("anthropic", "secret-key", "")}, probeErr: tt.cause}
 			result, err := handlerWithProviders(rt).TestProvider(t.Context(), "anthropic")
 			if err != nil {
 				t.Fatal(err)
 			}
-			if result.OK || result.Error == nil || result.Error.Type != tt.kind || result.Error.Detail != "" {
+			if result.Outcome != tt.want {
 				t.Fatalf("result = %+v", result)
 			}
 			if err := protocol.ValidateWireTree(*result); err != nil {

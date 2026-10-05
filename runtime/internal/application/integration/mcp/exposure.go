@@ -12,7 +12,7 @@ import (
 )
 
 type exposureSnapshot struct {
-	enabled  map[mcpserver.ServerName]bool
+	enabled  map[mcpserver.ID]bool
 	disabled map[tool.Ref]bool
 }
 
@@ -24,9 +24,9 @@ type ExposureState struct {
 
 func NewExposureState(servers []mcpserver.Server, disabled []tool.Ref) *ExposureState {
 	state := &ExposureState{}
-	snapshot := &exposureSnapshot{enabled: make(map[mcpserver.ServerName]bool), disabled: make(map[tool.Ref]bool)}
+	snapshot := &exposureSnapshot{enabled: make(map[mcpserver.ID]bool), disabled: make(map[tool.Ref]bool)}
 	for _, server := range servers {
-		snapshot.enabled[server.Name] = server.Enabled
+		snapshot.enabled[server.ID()] = server.Enabled
 	}
 	for _, ref := range disabled {
 		snapshot.disabled[ref] = true
@@ -36,7 +36,8 @@ func NewExposureState(servers []mcpserver.Server, disabled []tool.Ref) *Exposure
 }
 func (s *ExposureState) ToolDisabled(ref tool.Ref) bool {
 	snapshot := s.snapshot.Load()
-	return snapshot == nil || !snapshot.enabled[ref.Server()] || snapshot.disabled[ref]
+	server, _, ok := ref.MCP()
+	return snapshot == nil || !ok || !snapshot.enabled[server] || snapshot.disabled[ref]
 }
 
 // The coordinator serializes these projection updates with durable writes.
@@ -47,15 +48,15 @@ func (s *ExposureState) next() *exposureSnapshot {
 
 func (s *ExposureState) setServer(server mcpserver.Server) {
 	next := s.next()
-	next.enabled[server.Name] = server.Enabled
+	next.enabled[server.ID()] = server.Enabled
 	s.snapshot.Store(next)
 }
 
-func (s *ExposureState) removeServer(server mcpserver.ServerName) {
+func (s *ExposureState) removeServer(server mcpserver.ID) {
 	next := s.next()
 	delete(next.enabled, server)
 	for ref := range next.disabled {
-		if ref.Server() == server {
+		if source, _, _ := ref.MCP(); source == server {
 			delete(next.disabled, ref)
 		}
 	}
@@ -72,19 +73,19 @@ func (s *ExposureState) setToolDisabled(ref tool.Ref, disabled bool) {
 	s.snapshot.Store(next)
 }
 
-func (c *Coordinator) ToolExposure(ctx context.Context, server mcpserver.ServerName) ([]tool.Ref, error) {
+func (c *Coordinator) ToolExposure(ctx context.Context, server mcpserver.ID) ([]tool.Ref, error) {
 	if _, found, err := c.registry.Definition(ctx, server); err != nil {
 		return nil, err
 	} else if !found {
 		return nil, ErrUnknownServer
 	}
-	refs, err := c.registry.ListExposure(ctx)
+	refs, err := c.store.ListExposure(ctx)
 	if err != nil {
 		return nil, err
 	}
 	var selected []tool.Ref
 	for _, ref := range refs {
-		if ref.Server() == server {
+		if source, _, _ := ref.MCP(); source == server {
 			selected = append(selected, ref)
 		}
 	}
@@ -92,7 +93,8 @@ func (c *Coordinator) ToolExposure(ctx context.Context, server mcpserver.ServerN
 }
 
 func (c *Coordinator) SetToolExposure(ctx context.Context, ref tool.Ref, disabled bool) error {
-	if ref.Kind() != tool.MCPKind {
+	server, _, ok := ref.MCP()
+	if !ok {
 		return fmt.Errorf("%w: exposure requires an MCP reference", ErrInvalidServerConfiguration)
 	}
 	write, err := c.beginMutation(ctx)
@@ -100,12 +102,12 @@ func (c *Coordinator) SetToolExposure(ctx context.Context, ref tool.Ref, disable
 		return err
 	}
 	defer write.close()
-	if _, found, err := c.registry.Definition(write.requestCtx, ref.Server()); err != nil {
+	if _, found, err := c.registry.Definition(write.requestCtx, server); err != nil {
 		return err
 	} else if !found {
 		return ErrUnknownServer
 	}
-	if err := c.registry.SetToolExposure(write.requestCtx, ref, disabled); err != nil {
+	if err := c.store.SetToolExposure(write.requestCtx, ref, disabled); err != nil {
 		return err
 	}
 	c.exposure.setToolDisabled(ref, disabled)

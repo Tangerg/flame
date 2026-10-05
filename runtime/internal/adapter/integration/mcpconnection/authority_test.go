@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json/jsontext"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -39,11 +40,7 @@ func TestRetainedToolRejectsChangedCredentialsBeforeReconciliation(t *testing.T)
 				handler.ServeHTTP(response, request)
 			}))
 			t.Cleanup(transport.Close)
-			name, err := mcpserver.InstallationServer("eeb329cd-c7ce-40c9-bd90-6821fef06d30", "remote")
-			if err != nil {
-				t.Fatal(err)
-			}
-			server := mcpserver.Server{Name: name, Enabled: true, ReleaseAuthority: "approved-release", Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL, Authorization: "Bearer first"}
+			server := mcpserver.Server{Source: testInstallationSource(t), Name: testsupport.ServerName("remote"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL, Authorization: "Bearer first"}
 			if credential == "header" {
 				server.Headers = map[string]string{"X-API-Key": "first"}
 			}
@@ -97,7 +94,7 @@ func TestRetainedToolRejectsChangedCredentialsBeforeReconciliation(t *testing.T)
 			}
 			var replacement []toolcontract.Tool
 			pool.SetToolSink(func(tools []toolcontract.Tool) { replacement = tools })
-			if err := pool.Configure(t.Context(), server.Name); err != nil {
+			if err := pool.Configure(t.Context(), server.ID()); err != nil {
 				t.Fatal(err)
 			}
 			if len(replacement) != 1 {
@@ -125,11 +122,18 @@ func TestRetainedToolRejectsChangedCredentialsBeforeReconciliation(t *testing.T)
 }
 
 type mutableSourceRegistry struct {
-	mu     sync.Mutex
-	server mcpserver.Server
+	mu      sync.Mutex
+	server  mcpserver.Server
+	refusal error
 }
 
-func (r *mutableSourceRegistry) Get(context.Context, mcpserver.ServerName) (mcpserver.Server, bool, error) {
+func (r *mutableSourceRegistry) refuse(err error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.refusal = err
+}
+
+func (r *mutableSourceRegistry) Dispatchable(context.Context, mcpserver.ID) (mcpserver.Server, bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.server.Clone(), true, nil
@@ -139,6 +143,68 @@ func (r *mutableSourceRegistry) set(server mcpserver.Server) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.server = server.Clone()
+}
+
+// A Run's frozen executable outlives a refusal and a later reconnect with the
+// same configuration. Its session is closed by then, so dispatch rechecks the
+// connection like any revocable authority and refuses definitely instead of
+// surfacing a transport failure from the retired session.
+func TestFrozenExecutableAfterReconnectIsRejected(t *testing.T) {
+	var calls atomic.Int32
+	remote := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "connection-owner"}, nil)
+	remote.AddTool(&sdkmcp.Tool{Name: "read", InputSchema: jsontext.Value(`{"type":"object"}`)}, func(context.Context, *sdkmcp.CallToolRequest) (*sdkmcp.CallToolResult, error) {
+		calls.Add(1)
+		return &sdkmcp.CallToolResult{}, nil
+	})
+	transport := httptest.NewServer(sdkmcp.NewStreamableHTTPHandler(func(*http.Request) *sdkmcp.Server { return remote }, nil))
+	t.Cleanup(transport.Close)
+	server := mcpserver.Server{Source: testInstallationSource(t), Name: testsupport.ServerName("remote"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}
+	registry := &mutableSourceRegistry{server: server.Clone()}
+	pool, initial, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = pool.Shutdown(context.WithoutCancel(t.Context())) })
+	if len(initial) != 1 {
+		t.Fatalf("initial tools = %d, want 1", len(initial))
+	}
+	invoke := func(executable toolcontract.Tool) error {
+		binding, err := toolcontract.Bind(executable)
+		if err != nil {
+			return err
+		}
+		invocation, err := binding.Contract().Prepare(chat.ToolCall{ID: "read", Name: binding.Contract().Definition().Name, Arguments: `{}`})
+		if err != nil {
+			return err
+		}
+		_, err = binding.Call(t.Context(), invocation)
+		return err
+	}
+	var replacement []toolcontract.Tool
+	pool.SetToolSink(func(tools []toolcontract.Tool) { replacement = tools })
+	if err := pool.Refuse(t.Context(), server.ID(), mcpserver.FailureConfiguration); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.Reconnect(t.Context(), server.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if len(replacement) != 1 {
+		t.Fatalf("replacement tools = %d, want 1", len(replacement))
+	}
+	err = invoke(initial[0])
+	var failure *toolcontract.Failure
+	if !errors.As(err, &failure) || failure.Kind() != toolcontract.FailureKindRejected {
+		t.Fatalf("frozen executable outcome = %v, want a definite rejection", err)
+	}
+	if text, _ := failure.Output().Text(); !strings.Contains(text, "source connection is no longer current") {
+		t.Fatalf("rejection output = %q", text)
+	}
+	if calls.Load() != 0 {
+		t.Fatal("frozen executable reached the remote server")
+	}
+	if err := invoke(replacement[0]); err != nil || calls.Load() != 1 {
+		t.Fatalf("current executable = %v, calls = %d", err, calls.Load())
+	}
 }
 
 func TestReconnectUsesCurrentOwnerConfiguration(t *testing.T) {
@@ -154,11 +220,7 @@ func TestReconnectUsesCurrentOwnerConfiguration(t *testing.T) {
 	}
 	var oldCalls, currentCalls atomic.Int32
 	oldRemote, currentRemote := openRemote(&oldCalls), openRemote(&currentCalls)
-	name, err := mcpserver.InstallationServer("eeb329cd-c7ce-40c9-bd90-6821fef06d30", "remote")
-	if err != nil {
-		t.Fatal(err)
-	}
-	server := mcpserver.Server{Name: name, Enabled: true, ReleaseAuthority: "approved-release", Transport: mcpserver.TransportStreamableHTTP, URL: oldRemote.URL}
+	server := mcpserver.Server{Source: testInstallationSource(t), Name: testsupport.ServerName("remote"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: oldRemote.URL}
 	registry := &mutableSourceRegistry{server: server.Clone()}
 	pool, _, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry)
 	if err != nil {
@@ -169,7 +231,7 @@ func TestReconnectUsesCurrentOwnerConfiguration(t *testing.T) {
 	registry.set(server)
 	var replacement []toolcontract.Tool
 	pool.SetToolSink(func(tools []toolcontract.Tool) { replacement = tools })
-	if err := pool.Reconnect(t.Context(), name); err != nil {
+	if err := pool.Reconnect(t.Context(), server.ID()); err != nil {
 		t.Fatal(err)
 	}
 	if len(replacement) != 1 {
@@ -191,8 +253,14 @@ func TestReconnectUsesCurrentOwnerConfiguration(t *testing.T) {
 	}
 }
 
-func (r *mutableSourceRegistry) Connection(ctx context.Context, name mcpserver.ServerName) (mcpserver.Server, error) {
-	server, _, err := r.Get(ctx, name)
+func (r *mutableSourceRegistry) Connection(ctx context.Context, name mcpserver.ID) (mcpserver.Server, error) {
+	r.mu.Lock()
+	refusal := r.refusal
+	r.mu.Unlock()
+	if refusal != nil {
+		return mcpserver.Server{}, refusal
+	}
+	server, _, err := r.Dispatchable(ctx, name)
 	return server, err
 }
 
@@ -200,11 +268,7 @@ func TestAuthorizationUsesCurrentOwnerCredentials(t *testing.T) {
 	remote := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "oauth-owner"}, nil)
 	transport := httptest.NewServer(sdkmcp.NewStreamableHTTPHandler(func(*http.Request) *sdkmcp.Server { return remote }, nil))
 	t.Cleanup(transport.Close)
-	name, err := mcpserver.ParseServerName("remote")
-	if err != nil {
-		t.Fatal(err)
-	}
-	server := mcpserver.Server{Name: name, Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}
+	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}
 	registry := &mutableSourceRegistry{server: server.Clone()}
 	pool, _, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry)
 	if err != nil {
@@ -220,7 +284,7 @@ func TestAuthorizationUsesCurrentOwnerCredentials(t *testing.T) {
 	// Cancellation prevents a regressed OAuth path from opening the system browser.
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if err := pool.Authorize(ctx, name); err == nil || !strings.Contains(err.Error(), "static authorization") {
+	if err := pool.Authorize(ctx, server.ID()); err == nil || !strings.Contains(err.Error(), "static authorization") {
 		t.Fatalf("authorization ignored the owner's static credentials: %v", err)
 	}
 }

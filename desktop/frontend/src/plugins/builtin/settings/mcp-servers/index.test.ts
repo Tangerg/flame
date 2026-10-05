@@ -8,7 +8,11 @@ import {
 import { definePlugin } from "@/plugins/sdk";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
 import { setMCPServerEnabled } from "./application/mcpServerConfig";
-import { MCP_SERVERS_KEY, type MCPServerSettings } from "./application/mcpServerQueries";
+import {
+  MCP_SERVERS_KEY,
+  type MCPServerSettings,
+  userMCPServer,
+} from "./application/mcpServerQueries";
 import { createMCPServersPlugin } from "./index";
 import { rejected } from "@/test/rejected";
 
@@ -47,7 +51,7 @@ describe("MCP servers plugin Runtime generation wiring", () => {
     );
     queryClient.setQueryData([MCP_SERVERS_KEY], [server()]);
 
-    const command = rejected(setMCPServerEnabled("cloud", false));
+    const command = rejected(setMCPServerEnabled(userMCPServer("cloud"), false));
     await vi.waitFor(() => expect(update).toHaveBeenCalledOnce());
 
     const successorUpdate = vi
@@ -63,16 +67,20 @@ describe("MCP servers plugin Runtime generation wiring", () => {
     retired.resolve(runtimeServer({ status: { type: "disabled" } }));
     await Promise.resolve();
     expect(queryClient.getQueryData([MCP_SERVERS_KEY])).toEqual([server()]);
-    await expect(setMCPServerEnabled("cloud", false)).resolves.toMatchObject({ enabled: false });
-    expect(successorUpdate).toHaveBeenCalledExactlyOnceWith({ server: "cloud", enabled: false });
+    await expect(setMCPServerEnabled(userMCPServer("cloud"), false)).resolves.toMatchObject({
+      enabled: false,
+    });
+    expect(successorUpdate).toHaveBeenCalledExactlyOnceWith({
+      server: userMCPServer("cloud"),
+      enabled: false,
+    });
     expect(update).toHaveBeenCalledOnce();
   });
 });
 
 function runtimeServer(overrides: Record<string, unknown> = {}) {
   return {
-    name: "cloud",
-    origin: { type: "user" },
+    id: { origin: { type: "user" }, name: "cloud" },
     connection: { type: "streamableHttp" as const, url: "https://example.test/mcp" },
     handshakeTimeout: { type: "unbounded" as const },
     status: { type: "disconnected" as const },
@@ -82,8 +90,7 @@ function runtimeServer(overrides: Record<string, unknown> = {}) {
 
 function server(overrides: Partial<MCPServerSettings> = {}): MCPServerSettings {
   return {
-    id: "cloud",
-    name: "cloud",
+    id: userMCPServer("cloud"),
     desc: "",
     tools: 0,
     status: "disconnected",

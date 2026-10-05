@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
+	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/internal/config"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
@@ -291,7 +292,7 @@ func (g *goalAndPlanLongContextModel) Call(
 		})
 		return toolCallResponse(chat.ToolCall{
 			ID:        "call_goal_set_current_plan",
-			Name:      tool.SetPlan,
+			Name:      string(tool.SetPlan),
 			Arguments: `{"steps":[{"description":"` + currentPlanText + `","status":"in_progress"}]}`,
 		}, modelContextPressurePayload), nil
 	case call <= modelCallsBeforeMidRunCompaction:
@@ -303,7 +304,7 @@ func (g *goalAndPlanLongContextModel) Call(
 			})
 		}
 		return toolCallResponse(chat.ToolCall{
-			ID: fmt.Sprintf("call_active_goal_%02d", call), Name: tool.GetGoal, Arguments: `{}`,
+			ID: fmt.Sprintf("call_active_goal_%02d", call), Name: string(tool.GetGoal), Arguments: `{}`,
 		}, modelContextPressurePayload), nil
 	case call == modelCallsBeforeMidRunCompaction+1:
 		g.recordCheck(func(checks *goalAndPlanStateChecks) {
@@ -313,7 +314,7 @@ func (g *goalAndPlanLongContextModel) Call(
 				requestContainsText(request, currentPlanText)
 		})
 		return toolCallResponse(chat.ToolCall{
-			ID: "call_report_compacted_goal", Name: tool.ReportGoalOutcome, Arguments: `{"outcome":"completed"}`,
+			ID: "call_report_compacted_goal", Name: string(tool.ReportGoalOutcome), Arguments: `{"outcome":"completed"}`,
 		}), nil
 	default:
 		g.recordCheck(func(checks *goalAndPlanStateChecks) {
@@ -379,7 +380,7 @@ func (p *planChangingLongContextModel) Call(
 		}
 		return toolCallResponse(chat.ToolCall{
 			ID:        "call_set_current_plan",
-			Name:      tool.SetPlan,
+			Name:      string(tool.SetPlan),
 			Arguments: `{"steps":[{"description":"` + currentPlanText + `","status":"in_progress"}]}`,
 		}, modelContextPressurePayload), nil
 	case p.mainCalls <= modelCallsBeforeMidRunCompaction:
@@ -388,7 +389,7 @@ func (p *planChangingLongContextModel) Call(
 			return nil, fmt.Errorf("second model call did not replace the opening Plan snapshot")
 		}
 		return toolCallResponse(chat.ToolCall{
-			ID: fmt.Sprintf("call_goal_after_plan_%02d", p.mainCalls), Name: tool.GetGoal, Arguments: `{}`,
+			ID: fmt.Sprintf("call_goal_after_plan_%02d", p.mainCalls), Name: string(tool.GetGoal), Arguments: `{}`,
 		}, modelContextPressurePayload), nil
 	default:
 		p.staleSeen = requestContainsText(request, stalePlanText)
@@ -436,4 +437,105 @@ func toolCallResponse(call chat.ToolCall, text ...string) *chat.Response {
 	return &chat.Response{Output: &chat.Output{
 		Message: &message, FinishReason: chat.FinishReasonToolCalls,
 	}}
+}
+
+// A Plan change mid-Run must not rewrite any message a provider has already
+// cached: current Session state rides only each call's tail, after the
+// conversation, and the context before that tail only ever grows.
+func TestPlanChangeKeepsEveryEarlierMessageACachePrefix(t *testing.T) {
+	model := &prefixRecordingPlanModel{}
+	stores, api, ctx, home := newSessionStateE2ERuntime(t, model)
+	sessionID := createSessionWithInitialPlan(t, stores, api, ctx, home, "Plan change and the cache prefix")
+	_, sequence, err := api.StartRun(ctx, protocol.StartRunRequest{
+		SessionID: sessionID,
+		Input:     []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Replace the Plan once."}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitForRunEvents(t, collectRunEvents(sequence), "Plan-changing Run")
+	requests := model.Requests()
+	if len(requests) != 2 {
+		t.Fatalf("main model calls = %d, want 2", len(requests))
+	}
+	for call, request := range requests {
+		for index, message := range request.Messages {
+			if index > 0 && message.Role == chat.RoleSystem {
+				t.Fatalf("call %d message %d is a System message the provider would hoist ahead of the conversation", call+1, index)
+			}
+		}
+	}
+	first, firstTail := splitRuntimeTail(requests[0].Messages)
+	second, secondTail := splitRuntimeTail(requests[1].Messages)
+	if !messagesContainText(firstTail, stalePlanText) || messagesContainText(first, stalePlanText) {
+		t.Fatal("the opening Plan is not confined to the first call's tail")
+	}
+	if !messagesContainText(secondTail, currentPlanText) || messagesContainText(second, currentPlanText) || messagesContainText(requests[1].Messages, stalePlanText) {
+		t.Fatal("the replaced Plan is not confined to the second call's tail")
+	}
+	if len(second) <= len(first) {
+		t.Fatalf("second call context has %d messages, want more than the first call's %d", len(second), len(first))
+	}
+	for index := range first {
+		if first[index].Text() != second[index].Text() || first[index].Role != second[index].Role {
+			t.Fatalf("message %d changed between calls; the cached prefix was rewritten", index)
+		}
+	}
+}
+
+// splitRuntimeTail separates the trailing Runtime-authored state and catalog
+// messages from the conversation they follow.
+func splitRuntimeTail(messages []chat.Message) (context, tail []chat.Message) {
+	end := len(messages)
+	for end > 0 {
+		text := messages[end-1].Text()
+		if !strings.HasPrefix(text, executionadapter.RuntimeContextOpening(executionadapter.RuntimeContextSessionGoal)) &&
+			!strings.HasPrefix(text, executionadapter.RuntimeContextOpening(executionadapter.RuntimeContextSessionPlan)) &&
+			!strings.HasPrefix(text, executionadapter.RuntimeContextOpening(executionadapter.RuntimeContextDeferredTools)) {
+			break
+		}
+		end--
+	}
+	return messages[:end], messages[end:]
+}
+
+func messagesContainText(messages []chat.Message, text string) bool {
+	for _, message := range messages {
+		if strings.Contains(message.Text(), text) {
+			return true
+		}
+	}
+	return false
+}
+
+type prefixRecordingPlanModel struct {
+	mu       sync.Mutex
+	requests []*chat.Request
+}
+
+func (p *prefixRecordingPlanModel) Call(_ context.Context, request *chat.Request) (*chat.Response, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if isCompactionRequest(request) {
+		return nil, fmt.Errorf("unexpected compaction request")
+	}
+	p.requests = append(p.requests, request.Clone())
+	if len(p.requests) == 1 {
+		return toolCallResponse(chat.ToolCall{
+			ID:        "call_replace_plan",
+			Name:      string(tool.SetPlan),
+			Arguments: `{"steps":[{"description":"` + currentPlanText + `","status":"in_progress"}]}`,
+		}), nil
+	}
+	return completedTextResponse("Plan replaced."), nil
+}
+
+func (p *prefixRecordingPlanModel) Stream(ctx context.Context, request *chat.Request) iter.Seq2[*chat.ResponseDelta, error] {
+	return testsupport.StreamResponse(p.Call(ctx, request))
+}
+
+func (p *prefixRecordingPlanModel) Requests() []*chat.Request {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return append([]*chat.Request(nil), p.requests...)
 }

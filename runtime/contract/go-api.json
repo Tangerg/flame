@@ -56,7 +56,7 @@
             },
             {
               "name": "ApprovePlugin",
-              "signature": "func(ctx context.Context, request protocol.ApprovePluginRequest, options CommandOptions) (*protocol.PluginInstallation, error)"
+              "signature": "func(ctx context.Context, request protocol.PluginReleaseRequest, options CommandOptions) (*protocol.PluginInstallation, error)"
             },
             {
               "name": "ApproveSkillProposal",
@@ -420,7 +420,7 @@
             },
             {
               "name": "UninstallPlugin",
-              "signature": "func(ctx context.Context, request protocol.PluginRequest, options CommandOptions) (*protocol.PluginRemoval, error)"
+              "signature": "func(ctx context.Context, request protocol.PluginRequest, options CommandOptions) error"
             },
             {
               "name": "UpdateAgentMemory",
@@ -552,7 +552,7 @@
             },
             {
               "name": "ApprovePlugin",
-              "signature": "func(ctx context.Context, request protocol.ApprovePluginRequest, options CommandOptions) (*protocol.PluginInstallation, error)"
+              "signature": "func(ctx context.Context, request protocol.PluginReleaseRequest, options CommandOptions) (*protocol.PluginInstallation, error)"
             },
             {
               "name": "ApproveSkillProposal",
@@ -916,7 +916,7 @@
             },
             {
               "name": "UninstallPlugin",
-              "signature": "func(ctx context.Context, request protocol.PluginRequest, options CommandOptions) (*protocol.PluginRemoval, error)"
+              "signature": "func(ctx context.Context, request protocol.PluginRequest, options CommandOptions) error"
             },
             {
               "name": "UpdateAgentMemory",
@@ -1797,6 +1797,61 @@
           "value": "\"needsAuth\""
         },
         {
+          "name": "MCPStatusAuthorizationFailed",
+          "type": "MCPStatusProblemType",
+          "value": "\"mcp_authorization_failed\""
+        },
+        {
+          "name": "MCPStatusAuthorizationRequired",
+          "type": "MCPStatusProblemType",
+          "value": "\"mcp_authorization_required\""
+        },
+        {
+          "name": "MCPStatusBackendUnavailable",
+          "type": "MCPStatusProblemType",
+          "value": "\"mcp_backend_unavailable\""
+        },
+        {
+          "name": "MCPStatusConfigurationFailed",
+          "type": "MCPStatusProblemType",
+          "value": "\"mcp_configuration_failed\""
+        },
+        {
+          "name": "MCPStatusDialFailed",
+          "type": "MCPStatusProblemType",
+          "value": "\"mcp_dial_failed\""
+        },
+        {
+          "name": "MCPStatusReleaseUnavailable",
+          "type": "MCPStatusProblemType",
+          "value": "\"mcp_release_unavailable\""
+        },
+        {
+          "name": "MCPStatusToolDiscoveryFailed",
+          "type": "MCPStatusProblemType",
+          "value": "\"mcp_tool_discovery_failed\""
+        },
+        {
+          "name": "MCPTestAuthorizationRequired",
+          "type": "MCPTestOutcome",
+          "value": "\"authorizationRequired\""
+        },
+        {
+          "name": "MCPTestFailed",
+          "type": "MCPTestOutcome",
+          "value": "\"failed\""
+        },
+        {
+          "name": "MCPTestReachable",
+          "type": "MCPTestOutcome",
+          "value": "\"reachable\""
+        },
+        {
+          "name": "MCPTestTimedOut",
+          "type": "MCPTestOutcome",
+          "value": "\"timedOut\""
+        },
+        {
           "name": "MCPTransportStdio",
           "type": "MCPTransport",
           "value": "\"stdio\""
@@ -1962,6 +2017,151 @@
           "value": "\"pending\""
         },
         {
+          "name": "PluginComponentContribution",
+          "type": "PluginComponentType",
+          "value": "\"contribution\""
+        },
+        {
+          "name": "PluginComponentDisable",
+          "type": "PluginComponentChange",
+          "value": "\"disable\""
+        },
+        {
+          "name": "PluginComponentEnable",
+          "type": "PluginComponentChange",
+          "value": "\"enable\""
+        },
+        {
+          "name": "PluginComponentExtensionField",
+          "type": "PluginComponentType",
+          "value": "\"extensionField\""
+        },
+        {
+          "name": "PluginComponentFlameExtension",
+          "type": "PluginComponentType",
+          "value": "\"flameExtension\""
+        },
+        {
+          "name": "PluginComponentMCP",
+          "type": "PluginComponentType",
+          "value": "\"mcp\""
+        },
+        {
+          "name": "PluginComponentMCPServer",
+          "type": "PluginComponentType",
+          "value": "\"mcpServer\""
+        },
+        {
+          "name": "PluginComponentManifestField",
+          "type": "PluginComponentType",
+          "value": "\"manifestField\""
+        },
+        {
+          "name": "PluginComponentSkill",
+          "type": "PluginComponentType",
+          "value": "\"skill\""
+        },
+        {
+          "name": "PluginComponentSkills",
+          "type": "PluginComponentType",
+          "value": "\"skills\""
+        },
+        {
+          "name": "PluginDiagnosticComponentLimit",
+          "type": "PluginDiagnosticCode",
+          "value": "\"componentLimit\""
+        },
+        {
+          "name": "PluginDiagnosticInvalidDeclaration",
+          "type": "PluginDiagnosticCode",
+          "value": "\"invalidDeclaration\""
+        },
+        {
+          "name": "PluginDiagnosticInvalidDependencies",
+          "type": "PluginDiagnosticCode",
+          "value": "\"invalidDependencies\""
+        },
+        {
+          "name": "PluginDiagnosticUnavailableComponent",
+          "type": "PluginDiagnosticCode",
+          "value": "\"unavailableComponent\""
+        },
+        {
+          "name": "PluginDiagnosticUnknownField",
+          "type": "PluginDiagnosticCode",
+          "value": "\"unknownField\""
+        },
+        {
+          "name": "PluginDiagnosticUnsupportedContribution",
+          "type": "PluginDiagnosticCode",
+          "value": "\"unsupportedContribution\""
+        },
+        {
+          "name": "PluginInputAuthorization",
+          "type": "PluginInputTarget",
+          "value": "\"authorization\""
+        },
+        {
+          "name": "PluginInputConfigured",
+          "type": "PluginInputStateType",
+          "value": "\"configured\""
+        },
+        {
+          "name": "PluginInputEnvironment",
+          "type": "PluginInputTarget",
+          "value": "\"env\""
+        },
+        {
+          "name": "PluginInputHeader",
+          "type": "PluginInputTarget",
+          "value": "\"header\""
+        },
+        {
+          "name": "PluginInputUnset",
+          "type": "PluginInputStateType",
+          "value": "\"unset\""
+        },
+        {
+          "name": "PluginInputValue",
+          "type": "PluginInputStateType",
+          "value": "\"value\""
+        },
+        {
+          "name": "PluginInstallationApproved",
+          "type": "PluginInstallationState",
+          "value": "\"approved\""
+        },
+        {
+          "name": "PluginInstallationEnabled",
+          "type": "PluginInstallationState",
+          "value": "\"enabled\""
+        },
+        {
+          "name": "PluginInstallationUnapproved",
+          "type": "PluginInstallationState",
+          "value": "\"unapproved\""
+        },
+        {
+          "name": "PluginPresentationAdmitted",
+          "type": "PluginPresentation",
+          "value": "\"admitted\""
+        },
+        {
+          "name": "PluginPresentationWithheld",
+          "type": "PluginPresentation",
+          "value": "\"withheld\""
+        },
+        {
+          "name": "PluginRealizationAvailable",
+          "type": "PluginRealizationType",
+          "value": "\"available\""
+        },
+        {
+          "name": "PluginRealizationReleaseUnavailable",
+          "type": "PluginRealizationType",
+          "value": "\"releaseUnavailable\""
+        },
+        {
           "name": "PluginThemeDark",
           "type": "PluginThemeScheme",
           "value": "\"dark\""
@@ -2012,34 +2212,9 @@
           "value": "\"invalid_request\""
         },
         {
-          "name": "ProblemMCPAuthorizationFailed",
-          "type": "untyped string",
-          "value": "\"mcp_authorization_failed\""
-        },
-        {
-          "name": "ProblemMCPAuthorizationRequired",
-          "type": "untyped string",
-          "value": "\"mcp_authorization_required\""
-        },
-        {
-          "name": "ProblemMCPDialFailed",
-          "type": "untyped string",
-          "value": "\"mcp_dial_failed\""
-        },
-        {
-          "name": "ProblemProviderNotConfigured",
-          "type": "untyped string",
-          "value": "\"provider_not_configured\""
-        },
-        {
           "name": "ProblemProviderRejected",
           "type": "untyped string",
           "value": "\"provider_rejected\""
-        },
-        {
-          "name": "ProblemProviderTestFailed",
-          "type": "untyped string",
-          "value": "\"provider_test_failed\""
         },
         {
           "name": "ProblemProviderUnavailable",
@@ -2105,6 +2280,31 @@
           "name": "ProviderKeySourceStored",
           "type": "ProviderKeySource",
           "value": "\"stored\""
+        },
+        {
+          "name": "ProviderTestFailed",
+          "type": "ProviderTestOutcome",
+          "value": "\"failed\""
+        },
+        {
+          "name": "ProviderTestInvalidCredentials",
+          "type": "ProviderTestOutcome",
+          "value": "\"invalidCredentials\""
+        },
+        {
+          "name": "ProviderTestNotConfigured",
+          "type": "ProviderTestOutcome",
+          "value": "\"notConfigured\""
+        },
+        {
+          "name": "ProviderTestReachable",
+          "type": "ProviderTestOutcome",
+          "value": "\"reachable\""
+        },
+        {
+          "name": "ProviderTestTimedOut",
+          "type": "ProviderTestOutcome",
+          "value": "\"timedOut\""
         },
         {
           "name": "QuestionFieldChoice",
@@ -2673,6 +2873,10 @@
           "type": "error"
         },
         {
+          "name": "ErrPluginChanged",
+          "type": "error"
+        },
+        {
           "name": "ErrPluginInUse",
           "type": "error"
         },
@@ -3223,33 +3427,6 @@
           "underlying": "string"
         },
         {
-          "name": "ApprovePluginRequest",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "InstallationID",
-              "type": "string",
-              "tag": "json:\"installationId\""
-            },
-            {
-              "name": "Digest",
-              "type": "string",
-              "tag": "json:\"digest\""
-            },
-            {
-              "name": "Grants",
-              "type": "[]PluginRequestGrant",
-              "tag": "json:\"grants\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
           "name": "ArtifactItem",
           "kind": "struct",
           "fields": [
@@ -3771,14 +3948,14 @@
               "tag": "json:\"valueChanges\""
             },
             {
-              "name": "DisabledServers",
-              "type": "[]string",
-              "tag": "json:\"disabledServers\""
+              "name": "ServerChanges",
+              "type": "map[string]PluginComponentChange",
+              "tag": "json:\"serverChanges\""
             },
             {
-              "name": "DisabledSkills",
-              "type": "[]string",
-              "tag": "json:\"disabledSkills\""
+              "name": "SkillChanges",
+              "type": "map[string]PluginComponentChange",
+              "tag": "json:\"skillChanges\""
             }
           ],
           "methods": [
@@ -3855,14 +4032,8 @@
           "fields": [
             {
               "name": "Server",
-              "type": "string",
+              "type": "MCPServerID",
               "tag": "json:\"server\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
             }
           ]
         },
@@ -5757,7 +5928,7 @@
             },
             {
               "name": "Server",
-              "type": "string",
+              "type": "MCPServerID",
               "tag": "json:\"server\""
             },
             {
@@ -5828,7 +5999,7 @@
             },
             {
               "name": "Error",
-              "type": "*ProblemData",
+              "type": "*MCPStatusProblem",
               "tag": "json:\"error,omitzero\""
             }
           ],
@@ -6047,14 +6218,8 @@
           "fields": [
             {
               "name": "Server",
-              "type": "string",
-              "tag": "json:\"server,omitempty\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
+              "type": "*MCPServerID",
+              "tag": "json:\"server,omitzero\""
             }
           ]
         },
@@ -6071,11 +6236,6 @@
               "name": "InstallationID",
               "type": "string",
               "tag": "json:\"installationId,omitempty\""
-            },
-            {
-              "name": "LocalName",
-              "type": "string",
-              "tag": "json:\"localName,omitempty\""
             }
           ],
           "methods": [
@@ -6100,14 +6260,9 @@
           "kind": "struct",
           "fields": [
             {
-              "name": "Origin",
-              "type": "MCPOrigin",
-              "tag": "json:\"origin\""
-            },
-            {
-              "name": "Name",
-              "type": "string",
-              "tag": "json:\"name\""
+              "name": "ID",
+              "type": "MCPServerID",
+              "tag": "json:\"id\""
             },
             {
               "name": "Description",
@@ -6128,12 +6283,6 @@
               "name": "Status",
               "type": "MCPServerState",
               "tag": "json:\"status\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
             }
           ]
         },
@@ -6175,19 +6324,35 @@
           ]
         },
         {
-          "name": "MCPServerRequest",
+          "name": "MCPServerID",
           "kind": "struct",
           "fields": [
             {
-              "name": "Server",
+              "name": "Origin",
+              "type": "MCPOrigin",
+              "tag": "json:\"origin\""
+            },
+            {
+              "name": "Name",
               "type": "string",
-              "tag": "json:\"server\""
+              "tag": "json:\"name\""
             }
           ],
           "methods": [
             {
               "name": "ValidateWire",
               "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "MCPServerRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Server",
+              "type": "MCPServerID",
+              "tag": "json:\"server\""
             }
           ]
         },
@@ -6207,7 +6372,7 @@
             },
             {
               "name": "Error",
-              "type": "*ProblemData",
+              "type": "*MCPStatusProblem",
               "tag": "json:\"error,omitzero\""
             }
           ],
@@ -6224,18 +6389,46 @@
           "underlying": "string"
         },
         {
+          "name": "MCPStatusProblem",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Type",
+              "type": "MCPStatusProblemType",
+              "tag": "json:\"type\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "MCPStatusProblemType",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "MCPTestOutcome",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
           "name": "MCPTestResult",
           "kind": "struct",
           "fields": [
             {
-              "name": "OK",
-              "type": "bool",
-              "tag": "json:\"ok\""
-            },
+              "name": "Outcome",
+              "type": "MCPTestOutcome",
+              "tag": "json:\"outcome\""
+            }
+          ],
+          "methods": [
             {
-              "name": "Error",
-              "type": "*ProblemData",
-              "tag": "json:\"error,omitzero\""
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },
@@ -6255,7 +6448,7 @@
             },
             {
               "name": "Server",
-              "type": "string",
+              "type": "MCPServerID",
               "tag": "json:\"server\""
             },
             {
@@ -6287,7 +6480,7 @@
           "fields": [
             {
               "name": "Server",
-              "type": "string",
+              "type": "MCPServerID",
               "tag": "json:\"server\""
             },
             {
@@ -6818,20 +7011,63 @@
           ]
         },
         {
+          "name": "PluginComponent",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Type",
+              "type": "PluginComponentType",
+              "tag": "json:\"type\""
+            },
+            {
+              "name": "Name",
+              "type": "*string",
+              "tag": "json:\"name,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "PluginComponentChange",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "PluginComponentType",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
           "name": "PluginDiagnostic",
           "kind": "struct",
           "fields": [
             {
               "name": "Component",
-              "type": "string",
+              "type": "PluginComponent",
               "tag": "json:\"component\""
             },
             {
               "name": "Code",
-              "type": "string",
+              "type": "PluginDiagnosticCode",
               "tag": "json:\"code\""
             }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
           ]
+        },
+        {
+          "name": "PluginDiagnosticCode",
+          "kind": "defined",
+          "underlying": "string"
         },
         {
           "name": "PluginInput",
@@ -6859,7 +7095,7 @@
             },
             {
               "name": "Target",
-              "type": "string",
+              "type": "PluginInputTarget",
               "tag": "json:\"target\""
             },
             {
@@ -6867,21 +7103,59 @@
               "type": "string",
               "tag": "json:\"key,omitempty\""
             }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
           ]
+        },
+        {
+          "name": "PluginInputState",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Type",
+              "type": "PluginInputStateType",
+              "tag": "json:\"type\""
+            },
+            {
+              "name": "Value",
+              "type": "*string",
+              "tag": "json:\"value,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "PluginInputStateType",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "PluginInputTarget",
+          "kind": "defined",
+          "underlying": "string"
         },
         {
           "name": "PluginInstallation",
           "kind": "struct",
           "fields": [
             {
-              "name": "Availability",
-              "type": "[]PluginDiagnostic",
-              "tag": "json:\"availability\""
+              "name": "Realization",
+              "type": "PluginRealization",
+              "tag": "json:\"realization\""
             },
             {
-              "name": "Grants",
-              "type": "[]PluginRequestGrant",
-              "tag": "json:\"grants\""
+              "name": "Presentation",
+              "type": "PluginPresentation",
+              "tag": "json:\"presentation\""
             },
             {
               "name": "ID",
@@ -6904,19 +7178,14 @@
               "tag": "json:\"staged,omitzero\""
             },
             {
-              "name": "Enabled",
-              "type": "bool",
-              "tag": "json:\"enabled\""
+              "name": "State",
+              "type": "PluginInstallationState",
+              "tag": "json:\"state\""
             },
             {
-              "name": "ApprovedDigest",
-              "type": "string",
-              "tag": "json:\"approvedDigest,omitempty\""
-            },
-            {
-              "name": "Values",
-              "type": "map[string]string",
-              "tag": "json:\"values\""
+              "name": "InputStates",
+              "type": "map[string]PluginInputState",
+              "tag": "json:\"inputStates\""
             },
             {
               "name": "DisabledServers",
@@ -6928,17 +7197,55 @@
               "type": "[]string",
               "tag": "json:\"disabledSkills\""
             }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
           ]
+        },
+        {
+          "name": "PluginInstallationState",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "PluginPresentation",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "PluginRealization",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Type",
+              "type": "PluginRealizationType",
+              "tag": "json:\"type\""
+            },
+            {
+              "name": "UnavailableBackends",
+              "type": "[]string",
+              "tag": "json:\"unavailableBackends,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "PluginRealizationType",
+          "kind": "defined",
+          "underlying": "string"
         },
         {
           "name": "PluginRelease",
           "kind": "struct",
           "fields": [
-            {
-              "name": "Requests",
-              "type": "[]PluginRequestGrant",
-              "tag": "json:\"requests\""
-            },
             {
               "name": "Digest",
               "type": "string",
@@ -7009,17 +7316,6 @@
           ]
         },
         {
-          "name": "PluginRemoval",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Availability",
-              "type": "[]PluginDiagnostic",
-              "tag": "json:\"availability\""
-            }
-          ]
-        },
-        {
           "name": "PluginRequest",
           "kind": "struct",
           "fields": [
@@ -7037,22 +7333,6 @@
           ]
         },
         {
-          "name": "PluginRequestGrant",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Capability",
-              "type": "string",
-              "tag": "json:\"capability\""
-            },
-            {
-              "name": "Targets",
-              "type": "[]string",
-              "tag": "json:\"targets\""
-            }
-          ]
-        },
-        {
           "name": "PluginServerDeclaration",
           "kind": "struct",
           "fields": [
@@ -7063,7 +7343,7 @@
             },
             {
               "name": "Type",
-              "type": "string",
+              "type": "MCPTransport",
               "tag": "json:\"type\""
             },
             {
@@ -7082,9 +7362,9 @@
               "tag": "json:\"env,omitempty\""
             },
             {
-              "name": "CWD",
+              "name": "Dir",
               "type": "string",
-              "tag": "json:\"cwd,omitempty\""
+              "tag": "json:\"dir,omitempty\""
             },
             {
               "name": "URL",
@@ -7095,6 +7375,12 @@
               "name": "Headers",
               "type": "map[string]string",
               "tag": "json:\"headers,omitempty\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },
@@ -7135,8 +7421,45 @@
             },
             {
               "name": "Colors",
-              "type": "map[string]string",
+              "type": "PluginThemeColors",
               "tag": "json:\"colors\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "PluginThemeColors",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Background",
+              "type": "string",
+              "tag": "json:\"background,omitempty\""
+            },
+            {
+              "name": "Foreground",
+              "type": "string",
+              "tag": "json:\"foreground,omitempty\""
+            },
+            {
+              "name": "Accent",
+              "type": "string",
+              "tag": "json:\"accent,omitempty\""
+            },
+            {
+              "name": "Muted",
+              "type": "string",
+              "tag": "json:\"muted,omitempty\""
+            },
+            {
+              "name": "Border",
+              "type": "string",
+              "tag": "json:\"border,omitempty\""
             }
           ],
           "methods": [
@@ -7351,18 +7674,24 @@
           "underlying": "string"
         },
         {
+          "name": "ProviderTestOutcome",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
           "name": "ProviderTestResult",
           "kind": "struct",
           "fields": [
             {
-              "name": "OK",
-              "type": "bool",
-              "tag": "json:\"ok\""
-            },
+              "name": "Outcome",
+              "type": "ProviderTestOutcome",
+              "tag": "json:\"outcome\""
+            }
+          ],
+          "methods": [
             {
-              "name": "Error",
-              "type": "*ProblemData",
-              "tag": "json:\"error,omitzero\""
+              "name": "ValidateWire",
+              "signature": "func() error"
             }
           ]
         },
@@ -8045,9 +8374,9 @@
               "tag": "json:\"names,omitempty\""
             },
             {
-              "name": "ServerIDs",
-              "type": "[]string",
-              "tag": "json:\"serverIds,omitempty\""
+              "name": "Servers",
+              "type": "[]MCPServerID",
+              "tag": "json:\"servers,omitempty\""
             },
             {
               "name": "ScheduleIDs",
@@ -8695,7 +9024,7 @@
           "fields": [
             {
               "name": "Server",
-              "type": "string",
+              "type": "MCPServerID",
               "tag": "json:\"server\""
             },
             {
@@ -9463,8 +9792,8 @@
             },
             {
               "name": "Server",
-              "type": "string",
-              "tag": "json:\"server,omitempty\""
+              "type": "*MCPServerID",
+              "tag": "json:\"server,omitzero\""
             }
           ],
           "methods": [
@@ -9612,7 +9941,7 @@
           "fields": [
             {
               "name": "Server",
-              "type": "string",
+              "type": "MCPServerID",
               "tag": "json:\"server\""
             },
             {
@@ -9634,12 +9963,6 @@
               "name": "HandshakeTimeout",
               "type": "*MCPHandshakeTimeout",
               "tag": "json:\"handshakeTimeout,omitzero\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
             }
           ]
         },

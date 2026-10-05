@@ -1,5 +1,5 @@
 import type { MCPServerInput } from "../mcpServerInput";
-import type { MCPServerSettings } from "../mcpServerQueries";
+import type { MCPServerID, MCPServerSettings } from "../mcpServerQueries";
 
 export interface MCPServerTestOutcome {
   ok: boolean;
@@ -14,12 +14,15 @@ export type MCPAuthorizationAttempt =
 
 export interface MCPServerGateway {
   create(input: MCPServerInput): Promise<MCPServerSettings>;
-  update(name: string, input: MCPServerInput): Promise<MCPServerSettings>;
-  delete(name: string): Promise<void>;
-  setEnabled(name: string, enabled: boolean): Promise<MCPServerSettings>;
-  setToolExposure(server: string, name: string, disabled: boolean): Promise<void>;
-  reconnect(name: string): Promise<void>;
-  createAuthorizationAttempt(name: string, signal?: AbortSignal): Promise<MCPAuthorizationAttempt>;
+  update(server: MCPServerID, input: MCPServerInput): Promise<MCPServerSettings>;
+  delete(server: MCPServerID): Promise<void>;
+  setEnabled(server: MCPServerID, enabled: boolean): Promise<MCPServerSettings>;
+  setToolExposure(server: MCPServerID, name: string, disabled: boolean): Promise<void>;
+  reconnect(server: MCPServerID): Promise<void>;
+  createAuthorizationAttempt(
+    server: MCPServerID,
+    signal?: AbortSignal,
+  ): Promise<MCPAuthorizationAttempt>;
   getAuthorizationAttempt(id: string, signal?: AbortSignal): Promise<MCPAuthorizationAttempt>;
   test(input: MCPServerInput): Promise<MCPServerTestOutcome>;
 }

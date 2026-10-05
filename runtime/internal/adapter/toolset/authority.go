@@ -13,73 +13,76 @@ import (
 // Authorities projects permission fingerprints from current source owners.
 // Connection dispatch separately checks the configuration its executable realized.
 type Authorities struct {
-	definition func(context.Context, mcpserver.ServerName) (mcpserver.Server, bool, error)
-	a2a        map[string]string
+	definition func(context.Context, mcpserver.ID) (mcpserver.Server, bool, error)
+	a2a        map[string]fingerprint.Digest
 }
 
-func NewAuthorities(definition func(context.Context, mcpserver.ServerName) (mcpserver.Server, bool, error), agents []A2AAgentConfig) *Authorities {
-	a := &Authorities{definition: definition, a2a: make(map[string]string)}
+func NewAuthorities(definition func(context.Context, mcpserver.ID) (mcpserver.Server, bool, error), agents []A2AAgentConfig) *Authorities {
+	a := &Authorities{definition: definition, a2a: make(map[string]fingerprint.Digest)}
 	for _, agent := range agents {
 		a.a2a[agent.Name] = agent.AuthorityFingerprint()
 	}
 	return a
 }
-func (a *Authorities) Fingerprint(ctx context.Context, ref tool.Ref) (string, bool, error) {
+func (a *Authorities) Fingerprint(ctx context.Context, ref tool.Ref) (fingerprint.Digest, bool, error) {
 	if err := ref.Validate(); err != nil {
-		return "", false, err
+		return fingerprint.Digest{}, false, err
 	}
 	switch ref.Kind() {
 	case tool.BuiltInKind:
-		return "", true, nil
+		return fingerprint.Digest{}, true, nil
 	case tool.MCPKind:
 		if a.definition == nil {
-			return "", false, fmt.Errorf("toolset: MCP definition lookup is required")
+			return fingerprint.Digest{}, false, fmt.Errorf("toolset: MCP definition lookup is required")
 		}
-		server, found, err := a.definition(ctx, ref.Server())
+		id, _, _ := ref.MCP()
+		server, found, err := a.definition(ctx, id)
 		if err != nil || !found {
-			return "", found, err
+			return fingerprint.Digest{}, found, err
 		}
 		return server.AuthorityFingerprint(), true, nil
 	case tool.A2AKind:
-		fingerprint, found := a.a2a[ref.Name()]
-		return fingerprint, found, nil
+		endpoint, _ := ref.A2A()
+		authority, found := a.a2a[endpoint]
+		return authority, found, nil
 	default:
-		return "", false, fmt.Errorf("toolset: unsupported source")
+		return fingerprint.Digest{}, false, fmt.Errorf("toolset: unsupported source")
 	}
 }
 
 // Fingerprints projects each MCP source once within this read. The result has
 // no authority to admit dispatch and is never retained across requests.
-func (a *Authorities) Fingerprints(ctx context.Context, refs []tool.Ref) (map[tool.Ref]string, error) {
+func (a *Authorities) Fingerprints(ctx context.Context, refs []tool.Ref) (map[tool.Ref]fingerprint.Digest, error) {
 	type observedSource struct {
-		fingerprint string
-		found       bool
+		authority fingerprint.Digest
+		found     bool
 	}
-	sources := make(map[mcpserver.ServerName]observedSource)
-	result := make(map[tool.Ref]string, len(refs))
+	sources := make(map[mcpserver.ID]observedSource)
+	result := make(map[tool.Ref]fingerprint.Digest, len(refs))
 	for _, ref := range refs {
-		if ref.Kind() == tool.MCPKind {
-			if observed, found := sources[ref.Server()]; found {
+		server, _, isMCP := ref.MCP()
+		if isMCP {
+			if observed, found := sources[server]; found {
 				if observed.found {
-					result[ref] = observed.fingerprint
+					result[ref] = observed.authority
 				}
 				continue
 			}
 		}
-		fingerprint, found, err := a.Fingerprint(ctx, ref)
+		authority, found, err := a.Fingerprint(ctx, ref)
 		if err != nil {
 			return nil, err
 		}
-		if ref.Kind() == tool.MCPKind {
-			sources[ref.Server()] = observedSource{fingerprint: fingerprint, found: found}
+		if isMCP {
+			sources[server] = observedSource{authority: authority, found: found}
 		}
 		if found {
-			result[ref] = fingerprint
+			result[ref] = authority
 		}
 	}
 	return result, nil
 }
-func (a A2AAgentConfig) AuthorityFingerprint() string {
+func (a A2AAgentConfig) AuthorityFingerprint() fingerprint.Digest {
 	origins := slices.Clone(a.AllowedRPCOrigins)
 	slices.Sort(origins)
 	origins = slices.Compact(origins)

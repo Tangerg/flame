@@ -64,7 +64,7 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
     reset();
     try {
       const input = buildInput();
-      if (server) await update(server.name, input);
+      if (server) await update(server.id, input);
       else await create(input);
       onDone();
     } catch (err) {
@@ -81,7 +81,7 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
     if (!server) return;
     setSaving(true);
     try {
-      await remove(server.name);
+      await remove(server.id);
       onDone();
     } catch (err) {
       if (wasGenerationRetired(err)) return;
@@ -251,7 +251,7 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
       {server && (
         <div {...stylex.props(vocab.column, gap.s1_5)}>
           <span {...stylex.props(ss.label, typeStep.uiMd)}>{t("mcp.tools.manage")}</span>
-          <ToolControls server={server.name} />
+          <ToolControls server={server.id} />
         </div>
       )}
 

@@ -77,7 +77,7 @@ export class MCPServerEdit {
   static of(server?: MCPServerSettings): MCPServerEdit {
     return new MCPServerEdit(
       {
-        name: server?.name ?? "",
+        name: server?.id.name ?? "",
         transport: server?.type ?? "stdio",
         description: server?.description ?? "",
         command: server?.command ?? "",

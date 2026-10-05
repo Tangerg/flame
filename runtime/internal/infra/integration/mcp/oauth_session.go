@@ -16,17 +16,17 @@ import (
 	"golang.org/x/oauth2"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/flame/runtime/internal/httporigin"
 )
 
-// OAuthSessionStore fences credential writes by their authorization grant.
-// Begin and Load verify the current credential configuration; Save and Remove
-// must refuse a superseded binding without changing its replacement.
+// OAuthSessionStore binds each credential to the target that requested it and
+// fences credential writes by their authorization grant. Load finds only a
+// credential of the same target; Save and Remove must refuse a superseded
+// binding without changing its replacement.
 type OAuthSessionStore interface {
 	BeginOAuthSession(ctx context.Context, target mcpserver.OAuthTarget) (binding string, err error)
 	LoadOAuthSession(ctx context.Context, target mcpserver.OAuthTarget) (payload []byte, binding string, found bool, err error)
-	SaveOAuthSession(ctx context.Context, server mcpserver.ServerName, origin, binding string, payload []byte) error
-	RemoveOAuthSession(ctx context.Context, server mcpserver.ServerName, binding string) error
+	SaveOAuthSession(ctx context.Context, server mcpserver.ID, binding string, payload []byte) error
+	RemoveOAuthSession(ctx context.Context, server mcpserver.ID, binding string) error
 }
 
 const oauthSessionVersion = 1
@@ -54,14 +54,6 @@ type storedOAuthToken struct {
 	TokenType    string    `json:"tokenType,omitempty"`
 	RefreshToken string    `json:"refreshToken,omitempty"`
 	Expiry       time.Time `json:"expiry,omitzero"`
-}
-
-func oauthOrigin(endpoint string) (string, error) {
-	origin, err := httporigin.Parse(endpoint)
-	if err != nil {
-		return "", fmt.Errorf("mcp oauth: invalid endpoint origin: %w", err)
-	}
-	return origin.String(), nil
 }
 
 func encodeOAuthSession(cfg *oauth2.Config, token *oauth2.Token) ([]byte, error) {
@@ -163,8 +155,7 @@ func validateStoredOAuthURL(field, raw string) error {
 
 type oauthSession struct {
 	store   OAuthSessionStore
-	server  mcpserver.ServerName
-	origin  string
+	server  mcpserver.ID
 	binding string
 }
 
@@ -173,7 +164,7 @@ func (s *oauthSession) save(ctx context.Context, cfg *oauth2.Config, token *oaut
 	if err != nil {
 		return err
 	}
-	if err := s.store.SaveOAuthSession(ctx, s.server, s.origin, s.binding, payload); err != nil {
+	if err := s.store.SaveOAuthSession(ctx, s.server, s.binding, payload); err != nil {
 		return fmt.Errorf("mcp oauth: persist session for %q: %w", s.server, err)
 	}
 	return nil
@@ -316,25 +307,21 @@ func restoreOAuthHandler(
 	if lifetime == nil {
 		return nil, errors.New("mcp oauth: lifetime is required")
 	}
-	origin, err := oauthOrigin(target.URL)
-	if err != nil {
-		return nil, err
-	}
 	payload, binding, found, err := store.LoadOAuthSession(ctx, target)
 	if err != nil {
-		return nil, fmt.Errorf("mcp oauth: load session for %q: %w", target.Server, err)
+		return nil, fmt.Errorf("mcp oauth: load session for %q: %w", target.ID(), err)
 	}
 	if !found {
 		return nil, nil
 	}
 	cfg, token, err := decodeOAuthSession(payload)
 	if err != nil {
-		return nil, fmt.Errorf("mcp oauth: restore session for %q: %w", target.Server, err)
+		return nil, fmt.Errorf("mcp oauth: restore session for %q: %w", target.ID(), err)
 	}
-	session := &oauthSession{store: store, server: target.Server, origin: origin, binding: binding}
+	session := &oauthSession{store: store, server: target.ID(), binding: binding}
 	if token.RefreshToken == "" && !token.Valid() {
 		if err := session.remove(ctx); err != nil {
-			return nil, fmt.Errorf("mcp oauth: remove expired session for %q: %w", target.Server, err)
+			return nil, fmt.Errorf("mcp oauth: remove expired session for %q: %w", target.ID(), err)
 		}
 		return nil, nil
 	}

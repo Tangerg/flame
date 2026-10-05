@@ -2,18 +2,13 @@ import { asyncDisposeSymbol } from "dougong";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import type { PluginInstallation } from "@flame/runtime-contract/wire";
 import type { ContributionLifetime } from "@/plugins/sdk/definePlugin";
-import { COLOR_THEME, DATA_PROVIDER } from "@/plugins/sdk/kernelPoints";
+import { DATA_PROVIDER } from "@/plugins/sdk/kernelPoints";
 import { queryClient } from "@/lib/queryClient";
-import { retainThemeSelection } from "@/plugins/builtin/theme/public/appearance";
-import { packageOperations, PACKAGES_KEY } from "./application/packages";
-
-const themeTokens = new Map([
-  ["background", "color-bg"],
-  ["foreground", "color-text"],
-  ["accent", "color-accent"],
-  ["muted", "color-text-muted"],
-  ["border", "color-border"],
-]);
+import {
+  contributePaletteTheme,
+  retainThemeSelection,
+} from "@/plugins/builtin/theme/public/appearance";
+import { packageOperations, PACKAGES_KEY, usePackageRealization } from "./application/packages";
 
 const packageThemePrefix = "package:";
 
@@ -32,15 +27,12 @@ export function registerPackageContributions(
   scope.contribute(DATA_PROVIDER, { key: PACKAGES_KEY, fetcher });
   const resources = new Map<string, { signature: string; lifetime: ContributionLifetime }>();
   const reconcile = async (installations: PluginInstallation[]) => {
-    const allThemes = installations.flatMap((item) =>
-      item.selected.themes.map((theme) => packageThemeId(item.id, theme.id)),
-    );
-    retainThemeSelection(allThemes, packageThemePrefix);
-    const admitted = installations.filter(
-      (item) =>
-        item.enabled &&
-        item.approvedDigest === item.selected.digest &&
-        !item.availability.some((diagnostic) => diagnostic.component === "release"),
+    const admitted = installations.filter((item) => item.presentation === "admitted");
+    retainThemeSelection(
+      admitted.flatMap((item) =>
+        item.selected.themes.map((theme) => packageThemeId(item.id, theme.id)),
+      ),
+      packageThemePrefix,
     );
     const ids = new Set(admitted.map((item) => item.id));
     for (const [id, resource] of resources) {
@@ -63,43 +55,55 @@ export function registerPackageContributions(
       const lifetime = scope.lifetime(installation.id);
       resources.set(installation.id, { signature, lifetime });
       for (const theme of release.themes) {
-        const tokens: Record<string, string> = {};
-        for (const [key, value] of Object.entries(theme.colors)) {
-          const token = themeTokens.get(key);
-          if (token) tokens[token] = value;
-        }
-        lifetime.contribute(COLOR_THEME, {
+        const { background, foreground, accent, muted, border } = theme.colors;
+        contributePaletteTheme(lifetime, {
           id: packageThemeId(installation.id, theme.id),
           label: `${release.name} · ${theme.title}`,
           scheme: theme.scheme,
-          tokens,
+          palette: { background, foreground, accent, muted, border },
         });
       }
     }
   };
-  scope.spawn(async (signal) => {
-    const refresh = async () => {
-      await queryClient.invalidateQueries({ queryKey: [PACKAGES_KEY], refetchType: "none" });
-      const rows = await queryClient.fetchQuery({
-        queryKey: [PACKAGES_KEY],
-        queryFn: ({ signal: querySignal }) => fetcher(undefined, querySignal),
-      });
-      if (signal.aborted) return;
-      await reconcile(rows);
-    };
-    try {
-      const subscription = await client.runtimeEvents.subscribe(
-        { topics: ["plugins.changed"] },
-        signal,
-      );
-      await refresh();
-      for await (const _event of subscription.events) {
+  let failure: { reason: string; retry(): void } | null = null;
+  const withdrawFailure = () => {
+    if (failure && usePackageRealization.getState().failure === failure)
+      usePackageRealization.setState({ failure: null });
+    failure = null;
+  };
+  scope.cleanup(withdrawFailure);
+  const realize = () => {
+    withdrawFailure();
+    scope.spawn(async (signal) => {
+      const refresh = async () => {
+        await queryClient.invalidateQueries({ queryKey: [PACKAGES_KEY], refetchType: "none" });
+        const rows = await queryClient.fetchQuery({
+          queryKey: [PACKAGES_KEY],
+          queryFn: ({ signal: querySignal }) => fetcher(undefined, querySignal),
+        });
+        if (signal.aborted) return;
+        await reconcile(rows);
+      };
+      try {
+        const subscription = await client.runtimeEvents.subscribe(
+          { topics: ["plugins.changed"] },
+          signal,
+        );
         await refresh();
+        for await (const _event of subscription.events) {
+          await refresh();
+        }
+      } catch (error) {
+        for (const resource of resources.values()) await resource.lifetime[asyncDisposeSymbol]();
+        resources.clear();
+        if (signal.aborted) return;
+        failure = {
+          reason: error instanceof Error ? error.message : String(error),
+          retry: realize,
+        };
+        usePackageRealization.setState({ failure });
       }
-    } catch (error) {
-      for (const resource of resources.values()) await resource.lifetime[asyncDisposeSymbol]();
-      resources.clear();
-      if (!signal.aborted) throw error;
-    }
-  });
+    });
+  };
+  realize();
 }

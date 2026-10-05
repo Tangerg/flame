@@ -1,6 +1,12 @@
-import { describeProblem, rpcErrorText } from "@/lib/rpcErrors";
+import { rpcErrorText } from "@/lib/rpcErrors";
+import { t } from "@/lib/i18n";
 import type { FlameClient, Provider, ProviderConfigChange } from "@flame/runtime-contract/client";
-import type { ProviderGateway, ProviderSettingChange } from "../application/ports/providerGateway";
+import type { ProviderTestResult } from "@flame/runtime-contract/wire";
+import type {
+  ProviderGateway,
+  ProviderSettingChange,
+  ProviderTestOutcome,
+} from "../application/ports/providerGateway";
 import { ProviderConfiguration } from "../application/providerModels";
 import { ProviderMutationOwner } from "../application/providerMutationOwner";
 
@@ -23,16 +29,31 @@ function runtimeProviderGateway(client: FlameClient): ProviderGateway {
       return { provider: saved.provider, model: saved.model };
     },
     async testProvider(provider) {
-      const result = await client.providers.test(provider);
-      return {
-        ok: result.ok,
-        error: result.ok ? undefined : describeProblem(result.error),
-      };
+      return testOutcome(await client.providers.test(provider));
     },
     errorMessage(error) {
       return rpcErrorText(error);
     },
   };
+}
+
+function testOutcome(result: ProviderTestResult): ProviderTestOutcome {
+  switch (result.outcome) {
+    case "reachable":
+      return { ok: true };
+    case "notConfigured":
+      return { ok: false, error: t("providers.testOutcome.notConfigured") };
+    case "invalidCredentials":
+      return { ok: false, error: t("rpcError.invalid_api_key") };
+    case "timedOut":
+      return { ok: false, error: t("rpcError.timeout") };
+    case "failed":
+      return { ok: false, error: t("providers.testOutcome.failed") };
+    default:
+      throw new Error(
+        `runtime contract violation: provider test outcome ${String((result as { outcome: unknown }).outcome)}`,
+      );
+  }
 }
 
 function providerConfiguration(provider: Provider): ProviderConfiguration {

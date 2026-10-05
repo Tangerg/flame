@@ -9,23 +9,24 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
-func TestDialStatus(t *testing.T) {
+func TestFailedStatus(t *testing.T) {
 	cases := []struct {
-		name string
-		err  error
-		want mcpserver.ConnectionState
+		name        string
+		err         error
+		wantState   mcpserver.ConnectionState
+		wantFailure mcpserver.ConnectionFailure
 	}{
-		{"typed auth rejection", errors.Join(mcpserver.ErrAuthorizationRequired, errors.New("connect rejected")), mcpserver.ConnectionNeedsAuth},
-		{"wrapped auth rejection", errors.Join(errors.New("dial failed"), errors.Join(mcpserver.ErrAuthorizationRequired, errors.New("connect rejected"))), mcpserver.ConnectionNeedsAuth},
-		{"401 text is not a type", errors.New("connect: server returned HTTP 401"), mcpserver.ConnectionFailed},
-		{"generic failure", errors.New("dial tcp: connection refused"), mcpserver.ConnectionFailed},
-		{"403 is not needsAuth", errors.New("HTTP 403 Forbidden"), mcpserver.ConnectionFailed},
-		{"nil", nil, mcpserver.ConnectionFailed},
+		{"typed auth rejection", errors.Join(mcpserver.ErrAuthorizationRequired, errors.New("connect rejected")), mcpserver.ConnectionNeedsAuth, ""},
+		{"wrapped auth rejection", errors.Join(errors.New("dial failed"), errors.Join(mcpserver.ErrAuthorizationRequired, errors.New("connect rejected"))), mcpserver.ConnectionNeedsAuth, ""},
+		{"401 text is not a type", errors.New("connect: server returned HTTP 401"), mcpserver.ConnectionFailed, mcpserver.FailureConnection},
+		{"generic failure", errors.New("dial tcp: connection refused"), mcpserver.ConnectionFailed, mcpserver.FailureConnection},
+		{"403 is not needsAuth", errors.New("HTTP 403 Forbidden"), mcpserver.ConnectionFailed, mcpserver.FailureConnection},
+		{"nil", nil, mcpserver.ConnectionFailed, mcpserver.FailureConnection},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := dialStatus(tc.err); got != tc.want {
-				t.Errorf("dialStatus(%v) = %q, want %q", tc.err, got, tc.want)
+			if state, failure := failedStatus(tc.err, mcpserver.FailureConnection); state != tc.wantState || failure != tc.wantFailure {
+				t.Errorf("failedStatus(%v) = %q, %q, want %q, %q", tc.err, state, failure, tc.wantState, tc.wantFailure)
 			}
 		})
 	}
@@ -50,7 +51,7 @@ func TestHTTPTransportClassifiesObservedUnauthorizedStatus(t *testing.T) {
 	}
 
 	dialErr := classifyHTTPDialError(client, errors.New("SDK discarded response status"))
-	if got := dialStatus(dialErr); got != mcpserver.ConnectionNeedsAuth {
+	if got, _ := failedStatus(dialErr, mcpserver.FailureConnection); got != mcpserver.ConnectionNeedsAuth {
 		t.Fatalf("dial status = %q, want needsAuth", got)
 	}
 }

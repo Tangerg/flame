@@ -33,12 +33,12 @@ func unresumable(
 // unknown-effect state returns false; assembly/probe I/O failures remain errors
 // so startup never mutates facts after an inconclusive read. It deliberately
 // validates deployment state and product bindings without acquiring a writer.
+// It takes no installation admission: it publishes nothing, and its pending
+// checkpoint already holds its installation dependencies.
 func (i *InteractionExecutor) CanResumeWaitingExecution(
 	ctx context.Context,
 	continuation runs.WaitingContinuation,
 ) (resumable bool, err error) {
-	i.installationAdmission.RLock()
-	defer i.installationAdmission.RUnlock()
 	finishAssembly, err := i.sessions.beginAssembly()
 	if err != nil {
 		return false, err

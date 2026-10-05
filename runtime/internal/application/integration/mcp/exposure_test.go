@@ -7,6 +7,8 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestUnavailableInstallationRetainsExposureChoices(t *testing.T) {
@@ -14,13 +16,18 @@ func TestUnavailableInstallationRetainsExposureChoices(t *testing.T) {
 }
 
 func testUnavailableInstallationRetainsExposureChoices(t *testing.T) {
-	name, err := mcpserver.InstallationServer("8ad9abf5-3a7d-4d0b-bef9-6ef92c20e746", "files")
+	installation, err := resourceid.ParseInstallation("8ad9abf5-3a7d-4d0b-bef9-6ef92c20e746")
 	if err != nil {
 		t.Fatal(err)
 	}
-	server := mcpserver.Server{Name: name, Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-files", ReleaseAuthority: "authority"}
-	ref := testMCPRef(name, testRemoteToolName("read"))
-	registry := &testRegistry{servers: map[mcpserver.ServerName]mcpserver.Server{name: server}}
+	source, err := mcpserver.InstallationSource(installation, testsupport.Digest("release"), testsupport.Digest("authority"), testsupport.Digest("recipient"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := mcpserver.Server{Source: source, Name: testsupport.ServerName("files"), Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-files"}
+	name := server.ID()
+	ref := testMCPRef(name, testsupport.RemoteToolName("read"))
+	registry := &testRegistry{servers: map[mcpserver.ID]mcpserver.Server{name: server}}
 	exposure := NewExposureState([]mcpserver.Server{server}, nil)
 	live := &fakePorts{configureErr: plugin.ErrUnavailable}
 	c := testCoordinator(t, Config{Registry: registry, Exposure: exposure, ConnectionLifecycle: live})
@@ -28,7 +35,7 @@ func testUnavailableInstallationRetainsExposureChoices(t *testing.T) {
 	if err := c.SetToolExposure(t.Context(), ref, true); err != nil {
 		t.Fatal(err)
 	}
-	if err := c.ReconcileInstallation(t.Context(), []mcpserver.ServerName{name}); err != nil {
+	if err := c.ReconcileInstallation(t.Context(), []mcpserver.ID{name}); err != nil {
 		t.Fatal(err)
 	}
 	synctest.Wait()
@@ -49,8 +56,8 @@ func testUnavailableInstallationRetainsExposureChoices(t *testing.T) {
 		t.Fatal(err)
 	}
 	live.configureErr = nil
-	live.configureName = mcpserver.ServerName{}
-	if err := c.ReconcileInstallation(t.Context(), []mcpserver.ServerName{name}); err != nil {
+	live.configureName = mcpserver.ID{}
+	if err := c.ReconcileInstallation(t.Context(), []mcpserver.ID{name}); err != nil {
 		t.Fatal(err)
 	}
 	synctest.Wait()
@@ -66,16 +73,16 @@ func TestCommittedSourceRemovalRevokesExposureWithoutRegistryRereads(t *testing.
 			name = "delete"
 		}
 		t.Run(name, func(t *testing.T) {
-			server := mcpserver.Server{Name: testMCPServerName("files"), Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-files"}
-			ref := testMCPRef(server.Name, testRemoteToolName("read"))
-			registry := &testRegistry{servers: map[mcpserver.ServerName]mcpserver.Server{server.Name: server}, listErr: errors.New("catalog read unavailable")}
+			server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("files"), Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-files"}
+			ref := testMCPRef(server.ID(), testsupport.RemoteToolName("read"))
+			registry := &testRegistry{servers: map[mcpserver.ID]mcpserver.Server{server.ID(): server}, listErr: errors.New("catalog read unavailable")}
 			exposure := NewExposureState([]mcpserver.Server{server}, nil)
 			c := testCoordinator(t, Config{Registry: registry, Exposure: exposure})
 			var err error
 			if remove {
-				err = c.DeleteServer(t.Context(), server.Name)
+				err = c.DeleteServer(t.Context(), server.ID())
 			} else {
-				_, err = c.UpdateServer(t.Context(), server.Name, ServerPatch{Enabled: new(false)})
+				_, err = c.UpdateServer(t.Context(), server.ID(), ServerPatch{Enabled: new(false)})
 			}
 			if !exposure.ToolDisabled(ref) {
 				t.Error("committed source removal left tools exposed")
@@ -88,13 +95,13 @@ func TestCommittedSourceRemovalRevokesExposureWithoutRegistryRereads(t *testing.
 }
 
 func TestExposureRemovalSurvivesLiveDetachFailure(t *testing.T) {
-	server := mcpserver.Server{Name: testMCPServerName("files"), Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-files"}
-	ref := testMCPRef(server.Name, testRemoteToolName("read"))
+	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("files"), Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-files"}
+	ref := testMCPRef(server.ID(), testsupport.RemoteToolName("read"))
 	exposure := NewExposureState([]mcpserver.Server{server}, nil)
-	registry := &testRegistry{servers: map[mcpserver.ServerName]mcpserver.Server{server.Name: server}, listErr: errors.New("catalog read unavailable")}
+	registry := &testRegistry{servers: map[mcpserver.ID]mcpserver.Server{server.ID(): server}, listErr: errors.New("catalog read unavailable")}
 	detachErr := errors.New("detach failed")
 	c := testCoordinator(t, Config{Registry: registry, Exposure: exposure, ConnectionLifecycle: &fakePorts{removeErr: detachErr}})
-	if err := c.DeleteServer(t.Context(), server.Name); !errors.Is(err, detachErr) {
+	if err := c.DeleteServer(t.Context(), server.ID()); !errors.Is(err, detachErr) {
 		t.Fatalf("lost detach failure: %v", err)
 	}
 	if !exposure.ToolDisabled(ref) {
@@ -103,17 +110,18 @@ func TestExposureRemovalSurvivesLiveDetachFailure(t *testing.T) {
 }
 
 func TestExposureRetainsToolChoicesUntilSourceDeletion(t *testing.T) {
-	server := mcpserver.Server{Name: testMCPServerName("files"), Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-files"}
-	ref := testMCPRef(server.Name, testRemoteToolName("read"))
-	other := testMCPRef(testMCPServerName("other"), testRemoteToolName("read"))
-	exposure := NewExposureState([]mcpserver.Server{server, {Name: other.Server(), Enabled: true}}, nil)
-	registry := &testRegistry{servers: map[mcpserver.ServerName]mcpserver.Server{server.Name: server}, listErr: errors.New("catalog read unavailable")}
+	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("files"), Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-files"}
+	ref := testMCPRef(server.ID(), testsupport.RemoteToolName("read"))
+	other := testMCPRef(testsupport.UserMCPServer("other"), testsupport.RemoteToolName("read"))
+	otherServer, _, _ := other.MCP()
+	exposure := NewExposureState([]mcpserver.Server{server, {Source: mcpserver.UserSource(), Name: otherServer.Name(), Enabled: true}}, nil)
+	registry := &testRegistry{servers: map[mcpserver.ID]mcpserver.Server{server.ID(): server}, listErr: errors.New("catalog read unavailable")}
 	c := testCoordinator(t, Config{Registry: registry, Exposure: exposure})
 	if err := c.SetToolExposure(t.Context(), ref, true); err != nil {
 		t.Fatal(err)
 	}
 	for _, enabled := range []bool{false, true} {
-		if _, err := c.UpdateServer(t.Context(), server.Name, ServerPatch{Enabled: new(enabled)}); err != nil {
+		if _, err := c.UpdateServer(t.Context(), server.ID(), ServerPatch{Enabled: new(enabled)}); err != nil {
 			t.Fatal(err)
 		}
 		if !exposure.ToolDisabled(ref) {
@@ -123,7 +131,7 @@ func TestExposureRetainsToolChoicesUntilSourceDeletion(t *testing.T) {
 			t.Fatal("source enablement hid an unrelated source")
 		}
 	}
-	if err := c.DeleteServer(t.Context(), server.Name); err != nil {
+	if err := c.DeleteServer(t.Context(), server.ID()); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := c.CreateServer(t.Context(), input(server)); err != nil {

@@ -30,14 +30,15 @@ describe("approval policy", () => {
     runtimeClient = () => ({ approval: { setRule } }) as unknown as FlameClient;
     uninstall = installAgentRuntimeGateway(getRuntimeClient).dispose;
     const invalidate = vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
+    const docs = { origin: { type: "user" as const }, name: "docs" };
     const request = {
-      tool: { type: "mcp" as const, server: "docs", name: "read" },
+      tool: { type: "mcp" as const, server: docs, name: "read" },
       scope: "global" as const,
       subject: { type: "all" as const },
       decision: "allow" as const,
     };
 
-    await allowMCPTool("docs", "read");
+    await allowMCPTool(docs, "read");
 
     expect(setRule).toHaveBeenCalledWith(request);
     expect(invalidate).toHaveBeenCalledWith({ queryKey: [APPROVAL_RULES_KEY] });

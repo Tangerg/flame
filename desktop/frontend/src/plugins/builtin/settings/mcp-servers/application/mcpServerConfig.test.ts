@@ -1,14 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { queryClient } from "@/lib/queryClient";
-import { MCP_SERVERS_KEY, type MCPServerSettings } from "./mcpServerQueries";
+import { MCP_SERVERS_KEY, type MCPServerSettings, userMCPServer } from "./mcpServerQueries";
 import { createMCPServer, deleteMCPServer, setMCPServerEnabled } from "./mcpServerConfig";
 import type { MCPServerGateway } from "./ports/mcpServerGateway";
 import { MCPServerMutationOwner } from "./mcpServerMutationOwner";
 
 function server(overrides: Partial<MCPServerSettings> = {}): MCPServerSettings {
   return {
-    id: "cloud",
-    name: "cloud",
+    id: userMCPServer("cloud"),
     desc: "",
     tools: 0,
     status: "disconnected",
@@ -38,8 +37,7 @@ describe("MCP server configuration", () => {
   it("commits a created server into the owned collection", async () => {
     queryClient.setQueryData([MCP_SERVERS_KEY], [server()]);
     const created = server({
-      id: "local",
-      name: "local",
+      id: userMCPServer("local"),
       type: "stdio",
       command: "tool-server",
       url: undefined,
@@ -73,13 +71,15 @@ describe("MCP server configuration", () => {
       .mockReturnValueOnce(second.promise);
     installGateway({ setEnabled } as unknown as MCPServerGateway);
 
-    const disabled = setMCPServerEnabled("cloud", false);
-    const enabled = setMCPServerEnabled("cloud", true);
+    const disabled = setMCPServerEnabled(userMCPServer("cloud"), false);
+    const enabled = setMCPServerEnabled(userMCPServer("cloud"), true);
     await vi.waitFor(() => expect(setEnabled).toHaveBeenCalledTimes(1));
 
     first.resolve(server({ status: "disabled", enabled: false }));
     await expect(disabled).resolves.toMatchObject({ enabled: false });
-    await vi.waitFor(() => expect(setEnabled).toHaveBeenNthCalledWith(2, "cloud", true));
+    await vi.waitFor(() =>
+      expect(setEnabled).toHaveBeenNthCalledWith(2, userMCPServer("cloud"), true),
+    );
 
     second.resolve(server({ status: "connected", enabled: true, tools: 2, toolCount: 2 }));
     await expect(enabled).resolves.toMatchObject({ status: "connected", enabled: true });
@@ -100,15 +100,15 @@ describe("MCP server configuration", () => {
       delete: remove,
     } as unknown as MCPServerGateway);
 
-    const disabled = setMCPServerEnabled("cloud", false);
-    const deleted = deleteMCPServer("cloud");
+    const disabled = setMCPServerEnabled(userMCPServer("cloud"), false);
+    const deleted = deleteMCPServer(userMCPServer("cloud"));
     await Promise.resolve();
     expect(remove).not.toHaveBeenCalled();
 
     first.resolve(server({ status: "disabled", enabled: false }));
     await disabled;
     await deleted;
-    expect(remove).toHaveBeenCalledWith("cloud");
+    expect(remove).toHaveBeenCalledWith(userMCPServer("cloud"));
     expect(queryClient.getQueryData([MCP_SERVERS_KEY])).toEqual([]);
   });
 
@@ -120,12 +120,12 @@ describe("MCP server configuration", () => {
       .mockResolvedValueOnce(server({ status: "connected" }));
     installGateway({ setEnabled } as unknown as MCPServerGateway);
 
-    const rejected = setMCPServerEnabled("cloud", false);
-    const accepted = setMCPServerEnabled("cloud", true);
+    const rejected = setMCPServerEnabled(userMCPServer("cloud"), false);
+    const accepted = setMCPServerEnabled(userMCPServer("cloud"), true);
     first.reject(new Error("not saved"));
 
     await expect(rejected).rejects.toThrow("not saved");
     await expect(accepted).resolves.toMatchObject({ status: "connected" });
-    expect(setEnabled).toHaveBeenNthCalledWith(2, "cloud", true);
+    expect(setEnabled).toHaveBeenNthCalledWith(2, userMCPServer("cloud"), true);
   });
 });

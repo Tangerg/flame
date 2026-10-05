@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/scope/core/chat"
 )
 
@@ -30,7 +31,7 @@ func (l LiveStateSnapshot) empty() bool {
 // LiveStateSnapshotter disables the reminder.
 type LiveStateSnapshotter func(ctx context.Context, sessionID string) LiveStateSnapshot
 
-// liveStateReminder renders snap as a system-reminder message to append after a
+// liveStateReminder renders snap as a Runtime context message to append after a
 // compaction summary, or reports false when there is nothing retained to carry
 // over. The tool names it points at (read_shell_output / stop_shell) are the
 // stable names of the tools that own that state.
@@ -39,7 +40,7 @@ func liveStateReminder(snap LiveStateSnapshot) (chat.Message, bool) {
 		return chat.Message{}, false
 	}
 	var b strings.Builder
-	b.WriteString("<system-reminder>\nThe earlier conversation was summarized to save context. These shell handles were still retained at compaction time. Commands may be running or finished with unread output:\n")
+	b.WriteString("The earlier conversation was summarized to save context. These shell handles were still retained at compaction time. Commands may be running or finished with unread output:\n")
 	if len(snap.Shells) > 0 {
 		b.WriteString("\nBackground shells (read their output with read_shell_output, stop them with stop_shell):")
 		for _, sh := range snap.Shells {
@@ -47,6 +48,5 @@ func liveStateReminder(snap LiveStateSnapshot) (chat.Message, bool) {
 		}
 		b.WriteByte('\n')
 	}
-	b.WriteString("</system-reminder>")
-	return chat.NewSystemMessage(b.String()), true
+	return chat.NewSystemMessage(executionadapter.FrameRuntimeContext(executionadapter.RuntimeContextRetainedShells, strings.TrimSuffix(b.String(), "\n"))), true
 }

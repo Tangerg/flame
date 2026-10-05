@@ -152,7 +152,7 @@ type RuntimeEvent struct {
 	// skills.changed
 	Names []string `json:"names,omitempty"`
 	// mcp.changed
-	ServerIDs []string `json:"serverIds,omitempty"`
+	Servers []MCPServerID `json:"servers,omitempty"`
 	// schedules.changed
 	ScheduleIDs []string `json:"scheduleIds,omitempty"`
 	// sessions.changed / runs.changed / plan.changed / goals.changed /

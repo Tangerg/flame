@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"iter"
 	"strings"
@@ -118,9 +119,20 @@ func TestRuntimeCompactsDuringOneLongRunBeforeTheNextMainModelCall(t *testing.T)
 			modelCallsBeforeMidRunCompaction,
 		)
 	}
+	catalogs := model.Catalogs()
+	for index, catalog := range catalogs {
+		if catalog == "" || catalog != catalogs[0] {
+			t.Fatalf("main call %d deferred catalog = %q, want the same frozen catalog before and after compaction", index+1, catalog)
+		}
+	}
 	history, err := stores.ChatHistory.Read(ctx, chathistory.ConversationID(session.ID))
 	if err != nil {
 		t.Fatal(err)
+	}
+	for index := range history {
+		if strings.Contains(history[index].Text(), poDeferredCatalogMarker) {
+			t.Fatalf("durable history message %d stores the per-request deferred catalog", index)
+		}
 	}
 	if len(history) >= 1+2*modelCallsBeforeMidRunCompaction ||
 		!strings.HasPrefix(history[0].Text(), "[Earlier conversation summary]") ||
@@ -135,14 +147,20 @@ type longContextModel struct {
 	summaryCalls       int
 	compactedMainCalls int
 	summaryAtMainCalls []int
+	catalogs           []string
 }
 
 func (l *longContextModel) Call(_ context.Context, request *chat.Request) (*chat.Response, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if isCompactionRequest(request) {
+		for index := range request.Messages {
+			if strings.Contains(request.Messages[index].Text(), poDeferredCatalogMarker) {
+				return nil, errors.New("compaction input folded the per-request deferred catalog")
+			}
+		}
 		transcript := request.Messages[len(request.Messages)-1].Text()
-		for _, fact := range []string{"call_goal_01", tool.GetGoal, "arguments={}", "error=false"} {
+		for _, fact := range []string{"call_goal_01", string(tool.GetGoal), "arguments={}", "error=false"} {
 			if !strings.Contains(transcript, fact) {
 				return nil, fmt.Errorf("compaction input lost tool execution fact %q", fact)
 			}
@@ -152,12 +170,17 @@ func (l *longContextModel) Call(_ context.Context, request *chat.Request) (*chat
 		return completedTextResponse(longContextCompactionSummary), nil
 	}
 	l.mainCalls++
+	catalog, err := deferredCatalogOf(request)
+	if err != nil {
+		return nil, err
+	}
+	l.catalogs = append(l.catalogs, catalog)
 	if l.mainCalls <= modelCallsBeforeMidRunCompaction {
-		if !hasToolDefinition(request.Tools, tool.GetGoal) {
+		if !hasToolDefinition(request.Tools, string(tool.GetGoal)) {
 			return nil, fmt.Errorf("main model request does not expose %s", tool.GetGoal)
 		}
 		call := chat.ToolCall{
-			ID: fmt.Sprintf("call_goal_%02d", l.mainCalls), Name: tool.GetGoal, Arguments: `{}`,
+			ID: fmt.Sprintf("call_goal_%02d", l.mainCalls), Name: string(tool.GetGoal), Arguments: `{}`,
 		}
 		message := chat.NewAssistantMessage(
 			chat.NewTextPart(modelContextPressurePayload),
@@ -197,6 +220,12 @@ func (l *longContextModel) Snapshot() (
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	return l.mainCalls, l.summaryCalls, l.compactedMainCalls, append([]int(nil), l.summaryAtMainCalls...)
+}
+
+func (l *longContextModel) Catalogs() []string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return append([]string(nil), l.catalogs...)
 }
 
 func isCompactionRequest(request *chat.Request) bool {

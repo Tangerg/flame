@@ -84,6 +84,7 @@ func classifyError(err error) error {
 		{protocol.ErrReplayUnavailable, conversation.ErrReplayUnavailable},
 		{protocol.ErrSessionHasActiveRun, conversation.ErrSessionHasActiveRun},
 		{protocol.ErrSessionBusy, conversation.ErrSessionBusy},
+		{protocol.ErrPluginChanged, conversation.ErrPluginChanged},
 		{protocol.ErrRevisionConflict, conversation.ErrRevisionConflict},
 		{protocol.ErrIdempotencyInProgress, conversation.ErrCommandInProgress},
 		{protocol.ErrIdempotencyConflict, conversation.ErrCommandConflict},

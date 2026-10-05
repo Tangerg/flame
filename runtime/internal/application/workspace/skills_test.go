@@ -8,8 +8,9 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
-	"github.com/google/uuid"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestNewSkillsRequiresCompleteDiscoveryCurationAndReview(t *testing.T) {
@@ -123,7 +124,7 @@ func TestListRejectsInvalidOrUnboundedCatalog(t *testing.T) {
 func TestListCapacityBelongsToEachSelectedSource(t *testing.T) {
 	var found []SkillSummary
 	for index := range 4 {
-		source, err := InstallationSkillSource(uuid.NewString(), fmt.Sprintf("%064x", index+1))
+		source, err := InstallationSkillSource(plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest(fmt.Sprint(index))})
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
-	"github.com/google/uuid"
 	"io"
 	"io/fs"
 	"os"
@@ -13,9 +12,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
 	sdk "github.com/Tangerg/scope/skills"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 )
 
@@ -367,7 +369,7 @@ type packageSkillFixtures []PackageSkillBundle
 func (p packageSkillFixtures) SkillBundles(context.Context) ([]PackageSkillBundle, error) {
 	return p, nil
 }
-func (p packageSkillFixtures) ReadSkillResource(_ context.Context, dependency InstallationDependency, name, resource string) ([]byte, error) {
+func (p packageSkillFixtures) ReadSkillResource(_ context.Context, dependency plugin.Dependency, name, resource string) ([]byte, error) {
 	for _, bundle := range p {
 		if bundle.Dependency == dependency {
 			return os.ReadFile(filepath.Join(bundle.Root, name, resource))
@@ -379,7 +381,7 @@ func (p packageSkillFixtures) ReadSkillResource(_ context.Context, dependency In
 func TestInstallationSkillCapacityIsPerSelectedSource(t *testing.T) {
 	var fixtures packageSkillFixtures
 	for _, prefix := range []string{"first", "second"} {
-		bundle := PackageSkillBundle{Root: t.TempDir(), Dependency: InstallationDependency{InstallationID: uuid.NewString(), Digest: strings.Repeat("1", 64)}}
+		bundle := PackageSkillBundle{Root: t.TempDir(), Dependency: plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1")}}
 		for index := range 129 {
 			name := fmt.Sprintf("%s-%03d", prefix, index)
 			writeRuntimeSkill(t, bundle.Root, name, "Read the results.")
@@ -392,7 +394,7 @@ func TestInstallationSkillCapacityIsPerSelectedSource(t *testing.T) {
 		t.Fatalf("independent installation capacity: %d, %v", len(catalog.Skills), err)
 	}
 	for _, summary := range catalog.Skills {
-		if _, _, found := summary.Source.Installation(); !found {
+		if _, found := summary.Source.Installation(); !found {
 			t.Fatal("installation Skill lost its selected source")
 		}
 	}
@@ -401,7 +403,7 @@ func TestInstallationSkillCapacityIsPerSelectedSource(t *testing.T) {
 func TestPackageSkillConflictCanOnlyBeResolvedByAnExplicitSource(t *testing.T) {
 	var fixtures packageSkillFixtures
 	for range 2 {
-		bundle := PackageSkillBundle{Root: t.TempDir(), Names: []string{"review"}, Dependency: InstallationDependency{InstallationID: uuid.NewString(), Digest: strings.Repeat("1", 64)}}
+		bundle := PackageSkillBundle{Root: t.TempDir(), Names: []string{"review"}, Dependency: plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1")}}
 		writeRuntimeSkill(t, bundle.Root, "review", "Inspect this package.")
 		fixtures = append(fixtures, bundle)
 	}

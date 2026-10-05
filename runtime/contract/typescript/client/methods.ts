@@ -1,12 +1,11 @@
 import type {
   PluginInstallation,
-  PluginRemoval,
   InstallPluginRequest,
   StagePluginRequest,
   PluginReleaseRequest,
-  ApprovePluginRequest,
   ConfigurePluginRequest,
   SetPluginEnablementRequest,
+  MCPServerID,
   MCPToolExposure,
   SetMCPToolExposureRequest,
   SetApprovalRuleRequest,
@@ -274,14 +273,17 @@ export interface Methods {
     list: (signal?: AbortSignal) => Promise<Page<MCPServer>>;
     create: (params: MCPServerCandidate) => MutationPromise<MCPServer>;
     update: (params: UpdateMCPServerRequest) => MutationPromise<MCPServer>;
-    delete: (server: string) => MutationPromise<void>;
+    delete: (server: MCPServerID) => MutationPromise<void>;
     test: (params: MCPServerCandidate, signal?: AbortSignal) => Promise<MCPTestResult>;
-    listTools: (server?: string, signal?: AbortSignal) => Promise<Page<MCPTool>>;
-    toolExposure: (server: string, signal?: AbortSignal) => Promise<MCPToolExposure>;
+    listTools: (server?: MCPServerID, signal?: AbortSignal) => Promise<Page<MCPTool>>;
+    toolExposure: (server: MCPServerID, signal?: AbortSignal) => Promise<MCPToolExposure>;
     setToolExposure: (params: SetMCPToolExposureRequest) => MutationPromise<void>;
-    reconnect: (server: string) => MutationPromise<void>;
+    reconnect: (server: MCPServerID) => MutationPromise<void>;
     authorizationAttempts: {
-      create: (server: string, signal?: AbortSignal) => MutationPromise<MCPAuthorizationAttempt>;
+      create: (
+        server: MCPServerID,
+        signal?: AbortSignal,
+      ) => MutationPromise<MCPAuthorizationAttempt>;
       get: (attemptId: string, signal?: AbortSignal) => Promise<MCPAuthorizationAttempt>;
     };
   };
@@ -290,11 +292,11 @@ export interface Methods {
     install: (params: InstallPluginRequest) => MutationPromise<PluginInstallation>;
     stage: (params: StagePluginRequest) => MutationPromise<PluginInstallation>;
     select: (params: PluginReleaseRequest) => MutationPromise<PluginInstallation>;
-    approve: (params: ApprovePluginRequest) => MutationPromise<PluginInstallation>;
+    approve: (params: PluginReleaseRequest) => MutationPromise<PluginInstallation>;
     configure: (params: ConfigurePluginRequest) => MutationPromise<PluginInstallation>;
     setEnablement: (params: SetPluginEnablementRequest) => MutationPromise<PluginInstallation>;
     revoke: (installationId: string) => MutationPromise<PluginInstallation>;
-    uninstall: (installationId: string) => MutationPromise<PluginRemoval>;
+    uninstall: (installationId: string) => MutationPromise<void>;
   };
   providers: {
     list: (signal?: AbortSignal) => Promise<Page<Provider>>;

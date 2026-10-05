@@ -43,7 +43,7 @@ func TestNewUsesCanonicalName(t *testing.T) {
 	if err != nil || tool == nil {
 		t.Fatalf("New = (%v, %v), want a tool", tool, err)
 	}
-	if got := tool.Definition().Name; got != domaintool.ReadToolResult {
+	if got := tool.Definition().Name; got != string(domaintool.ReadToolResult) {
 		t.Fatalf("tool name = %q, want %q", got, domaintool.ReadToolResult)
 	}
 }

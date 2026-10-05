@@ -11,9 +11,38 @@ import type {
   SessionSnapshot,
 } from "@flame/runtime-contract/wire";
 import { parseReviewedJSON } from "@flame/runtime-contract/client/json";
-import { Connection, type Command } from "./connection";
+import { checkRequest } from "@flame/runtime-contract/client/request";
+import { commandFailureMessage, Connection, type Command } from "./connection";
 import { inputFromEditor, type EditorSnapshot } from "./editorContext";
 import { observeRun } from "./observation";
+
+type PluginCommand = Extract<Command, { method: `plugins.${string}` }>;
+
+const PLUGIN_METHODS = [
+  "plugins.install",
+  "plugins.stage",
+  "plugins.select",
+  "plugins.approve",
+  "plugins.configure",
+  "plugins.setEnablement",
+  "plugins.revoke",
+  "plugins.uninstall",
+] as const satisfies readonly PluginCommand["method"][];
+
+const pluginMethodsAreComplete: Exclude<
+  PluginCommand["method"],
+  (typeof PLUGIN_METHODS)[number]
+> extends never
+  ? true
+  : never = true;
+void pluginMethodsAreComplete;
+
+function assertPluginCommand(command: {
+  method: PluginCommand["method"];
+  params: unknown;
+}): asserts command is PluginCommand {
+  checkRequest(command.method, command.params);
+}
 
 class ReadonlyDocuments implements vscode.TextDocumentContentProvider {
   readonly #contents = new Map<string, string>();
@@ -102,34 +131,27 @@ class Workbench implements vscode.TreeDataProvider<Session> {
 
   async #managePlugin(): Promise<void> {
     const connection = this.#connected();
-    const operation = await vscode.window.showQuickPick(
-      [
-        "install",
-        "stage",
-        "select",
-        "approve",
-        "configure",
-        "setEnablement",
-        "revoke",
-        "uninstall",
-      ] as const,
+    const picked = await vscode.window.showQuickPick(
+      PLUGIN_METHODS.map((method) => ({ label: method, method })),
       {
         title: "Manage Runtime Plugin",
         placeHolder: "Paths belong to the Runtime; executable packages run with its OS permissions",
       },
     );
-    if (!operation || this.#connection !== connection) return;
+    if (!picked || this.#connection !== connection) return;
     const input = await vscode.window.showInputBox({
-      title: `plugins.${operation}`,
+      title: picked.method,
       prompt:
         "Exact Runtime request as JSON. Approval and configuration require the inspected release digest.",
       ignoreFocusOut: true,
     });
     if (!input || this.#connection !== connection) return;
-    // The shared prepared journal validates this externally authored closed command.
-    const command = { method: `plugins.${operation}`, params: parseReviewedJSON(input) } as Command;
+    const command = { method: picked.method, params: parseReviewedJSON(input) };
+    assertPluginCommand(command);
     const result = await connection.execute(command);
-    if (this.#connection === connection) await this.#showPluginResult(result.pluginResult ?? {});
+    if (this.#connection !== connection) return;
+    if (result.pluginResult) await this.#showPluginResult(result.pluginResult);
+    else void vscode.window.showInformationMessage(`${command.method} completed`);
   }
 
   getTreeItem(session: Session): vscode.TreeItem {
@@ -165,9 +187,7 @@ class Workbench implements vscode.TreeDataProvider<Session> {
             await run(session);
           } catch (error) {
             if (!this.#closed)
-              await vscode.window.showErrorMessage(
-                `Flame: ${error instanceof Error ? error.message : String(error)}`,
-              );
+              await vscode.window.showErrorMessage(`Flame: ${commandFailureMessage(error)}`);
           }
         }),
       ),

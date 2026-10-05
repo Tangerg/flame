@@ -79,8 +79,8 @@ func providerConfigChange[T any](change *protocol.ProviderConfigChange, parse fu
 }
 
 // TestProvider returns an inline verdict for a supported, configured provider.
-// The application owns eligibility and probing; Delivery selects the protocol
-// failure envelope.
+// The application owns eligibility and probing; Delivery projects its closed
+// outcome.
 func (s *Handler) TestProvider(ctx context.Context, providerID string) (*protocol.ProviderTestResult, error) {
 	outcome, err := s.models.TestProvider(ctx, providerID)
 	if err != nil {
@@ -88,19 +88,15 @@ func (s *Handler) TestProvider(ctx context.Context, providerID string) (*protoco
 	}
 	switch outcome {
 	case modelapp.ProviderTestSucceeded:
-		return &protocol.ProviderTestResult{OK: true}, nil
+		return &protocol.ProviderTestResult{Outcome: protocol.ProviderTestReachable}, nil
 	case modelapp.ProviderTestNotConfigured:
-		return &protocol.ProviderTestResult{OK: false, Error: &protocol.ProblemData{
-			Type: protocol.ProblemProviderNotConfigured,
-		}}, nil
+		return &protocol.ProviderTestResult{Outcome: protocol.ProviderTestNotConfigured}, nil
 	case modelapp.ProviderTestInvalidCredentials:
-		return &protocol.ProviderTestResult{Error: &protocol.ProblemData{Type: protocol.ProblemInvalidAPIKey}}, nil
+		return &protocol.ProviderTestResult{Outcome: protocol.ProviderTestInvalidCredentials}, nil
 	case modelapp.ProviderTestTimedOut:
-		return &protocol.ProviderTestResult{Error: &protocol.ProblemData{Type: protocol.ProblemTimeout}}, nil
+		return &protocol.ProviderTestResult{Outcome: protocol.ProviderTestTimedOut}, nil
 	case modelapp.ProviderTestFailed:
-		return &protocol.ProviderTestResult{OK: false, Error: &protocol.ProblemData{
-			Type: protocol.ProblemProviderTestFailed,
-		}}, nil
+		return &protocol.ProviderTestResult{Outcome: protocol.ProviderTestFailed}, nil
 	default:
 		return nil, fmt.Errorf("delivery: unknown provider test outcome %q", outcome)
 	}

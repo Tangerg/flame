@@ -11,11 +11,14 @@ import (
 func toolRefFromWire(ref protocol.ToolRef) (tool.Ref, error) {
 	switch ref.Type {
 	case protocol.ToolRefBuiltIn:
-		return tool.BuiltIn(ref.Name)
+		return tool.BuiltIn(tool.BuiltInName(ref.Name))
 	case protocol.ToolRefA2A:
 		return tool.A2A(ref.Endpoint)
 	case protocol.ToolRefMCP:
-		server, err := mcpserver.ParseServerName(ref.Server)
+		if ref.Server == nil {
+			return tool.Ref{}, fmt.Errorf("delivery: MCP tool source requires a server")
+		}
+		server, err := mcpServerIDFromWire(*ref.Server)
 		if err != nil {
 			return tool.Ref{}, err
 		}
@@ -28,17 +31,22 @@ func toolRefFromWire(ref protocol.ToolRef) (tool.Ref, error) {
 		return tool.Ref{}, fmt.Errorf("delivery: invalid tool source %q", ref.Type)
 	}
 }
+
 func presentToolRef(ref tool.Ref) (protocol.ToolRef, error) {
 	if err := ref.Validate(); err != nil {
 		return protocol.ToolRef{}, fmt.Errorf("delivery: project tool reference: %w", err)
 	}
 	switch ref.Kind() {
 	case tool.BuiltInKind:
-		return protocol.ToolRef{Type: protocol.ToolRefBuiltIn, Name: ref.Name()}, nil
+		name, _ := ref.BuiltIn()
+		return protocol.ToolRef{Type: protocol.ToolRefBuiltIn, Name: string(name)}, nil
 	case tool.A2AKind:
-		return protocol.ToolRef{Type: protocol.ToolRefA2A, Endpoint: ref.Name()}, nil
+		endpoint, _ := ref.A2A()
+		return protocol.ToolRef{Type: protocol.ToolRefA2A, Endpoint: endpoint}, nil
 	case tool.MCPKind:
-		return protocol.ToolRef{Type: protocol.ToolRefMCP, Name: ref.Remote().String(), Server: ref.Server().String()}, nil
+		server, remote, _ := ref.MCP()
+		id := presentMCPServerID(server)
+		return protocol.ToolRef{Type: protocol.ToolRefMCP, Name: remote.String(), Server: &id}, nil
 	default:
 		return protocol.ToolRef{}, fmt.Errorf("delivery: unsupported tool source %q", ref.Kind())
 	}

@@ -45,7 +45,8 @@ func TestMCPServersProjectsConfig(t *testing.T) {
 		t.Fatalf("len = %d, want 1", len(got))
 	}
 	want := mcpserver.Server{
-		Name:          testMCPServerName("fs"),
+		Source:        mcpserver.UserSource(),
+		Name:          testsupport.ServerName("fs"),
 		Transport:     mcpserver.TransportStreamableHTTP,
 		Enabled:       true,
 		URL:           "https://mcp.example",

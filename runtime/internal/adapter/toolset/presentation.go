@@ -30,23 +30,19 @@ type PresentationContract struct {
 
 // PresentationContracts returns the concrete result contracts from the same
 // descriptors Presenter executes. Callers receive fresh slices and maps.
-func PresentationContracts() ([]PresentationContract, error) {
-	catalog, err := descriptors()
-	if err != nil {
-		return nil, err
-	}
+func PresentationContracts() []PresentationContract {
 	var contracts []PresentationContract
-	for name, descriptor := range catalog {
+	for name, descriptor := range descriptors() {
 		if descriptor.result.project == nil {
 			continue
 		}
-		contract := PresentationContract{ToolName: name, ResultType: descriptor.result.resultType}
+		contract := PresentationContract{ToolName: string(name), ResultType: descriptor.result.resultType}
 		if descriptor.result.enums != nil {
 			contract.EnumValues = descriptor.result.enums()
 		}
 		contracts = append(contracts, contract)
 	}
-	return contracts, nil
+	return contracts
 }
 
 // Activity returns concise progress text for a known concrete tool.

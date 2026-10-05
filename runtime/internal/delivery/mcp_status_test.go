@@ -3,6 +3,7 @@ package delivery
 import (
 	"context"
 	"errors"
+	"reflect"
 	"testing"
 	"time"
 
@@ -22,7 +23,7 @@ func TestMCPAuthorizationAttemptWire(t *testing.T) {
 		t.Fatalf("parse test authorization attempt identity: %v", err)
 	}
 	got, err := presentMCPAuthorizationAttempt(mcpapp.AuthorizationAttempt{
-		ID: attemptID, Server: testMCPServerName("github"),
+		ID: attemptID, Server: testsupport.UserMCPServer("github"),
 		Status:    mcpapp.AuthorizationAttemptFailed,
 		CreatedAt: finishedAt.Add(-time.Minute), FinishedAt: &finishedAt,
 	})
@@ -30,7 +31,7 @@ func TestMCPAuthorizationAttemptWire(t *testing.T) {
 		t.Fatal(err)
 	}
 	if got.Status.Type != protocol.MCPAuthorizationAttemptFailed || got.Status.Error == nil ||
-		got.Status.Error.Type != protocol.ProblemMCPAuthorizationFailed || got.Status.Error.Detail != "" ||
+		got.Status.Error.Type != protocol.MCPStatusAuthorizationFailed ||
 		got.FinishedAt == nil {
 		t.Fatalf("authorization attempt = %+v", got)
 	}
@@ -42,11 +43,11 @@ func TestMCPAuthorizationAttemptWire(t *testing.T) {
 func TestListMCPServers(t *testing.T) {
 	s := handlerWithMCP(t, fakeMCPPortsConfig(&fakeMCPPorts{
 		statuses: []mcpserver.ConnectionStatus{
-			{Name: testMCPServerName("fs"), State: mcpserver.ConnectionConnected, ToolCount: 2},
-			{Name: testMCPServerName("down"), State: mcpserver.ConnectionFailed},
+			{Server: testsupport.UserMCPServer("fs"), State: mcpserver.ConnectionConnected, ToolCount: 2},
+			{Server: testsupport.UserMCPServer("down"), State: mcpserver.ConnectionFailed, Failure: mcpserver.FailureConnection},
 		},
 		tools: []mcpserver.AdvertisedTool{
-			{Server: testMCPServerName("fs"), Name: testRemoteToolName("read")}, {Server: testMCPServerName("fs"), Name: testRemoteToolName("write"), Definition: chat.ToolDefinition{Name: "fs_write", InputSchema: []byte(`{"type":"object"}`)}},
+			{Server: testsupport.UserMCPServer("fs"), Name: testsupport.RemoteToolName("read")}, {Server: testsupport.UserMCPServer("fs"), Name: testsupport.RemoteToolName("write"), Definition: chat.ToolDefinition{Name: "fs_write", InputSchema: []byte(`{"type":"object"}`)}},
 		},
 	}))
 	page, err := s.ListMCPServers(context.Background())
@@ -58,7 +59,7 @@ func TestListMCPServers(t *testing.T) {
 	}
 	byName := make(map[string]protocol.MCPServer, len(page.Data))
 	for _, server := range page.Data {
-		byName[server.Name] = server
+		byName[server.ID.Name] = server
 	}
 	fs := byName["fs"]
 	if fs.Status.Type != protocol.MCPServerConnected || fs.Status.ToolCount == nil || *fs.Status.ToolCount != 2 || fs.Status.Error != nil {
@@ -66,7 +67,7 @@ func TestListMCPServers(t *testing.T) {
 	}
 	down := byName["down"]
 	if down.Status.Type != protocol.MCPServerFailed || down.Status.ToolCount != nil || down.Status.Error == nil ||
-		down.Status.Error.Type != protocol.ProblemMCPDialFailed || down.Status.Error.Detail != "" {
+		down.Status.Error.Type != protocol.MCPStatusDialFailed {
 		t.Fatalf("down = %+v, want failed + the dial-failed symbol and no prose", down)
 	}
 }
@@ -81,7 +82,7 @@ func TestMCPServerStateWire(t *testing.T) {
 		{"disconnected", mcpapp.ServerState{Type: mcpapp.ServerDisconnected}, protocol.MCPServerDisconnected},
 		{"connecting", mcpapp.ServerState{Type: mcpapp.ServerConnecting}, protocol.MCPServerConnecting},
 		{"connected", mcpapp.ServerState{Type: mcpapp.ServerConnected}, protocol.MCPServerConnected},
-		{"failed", mcpapp.ServerState{Type: mcpapp.ServerFailed}, protocol.MCPServerFailed},
+		{"failed", mcpapp.ServerState{Type: mcpapp.ServerFailed, Failure: mcpserver.FailureConnection}, protocol.MCPServerFailed},
 		{"needs auth", mcpapp.ServerState{Type: mcpapp.ServerNeedsAuth}, protocol.MCPServerNeedsAuth},
 	}
 	for _, tt := range tests {
@@ -91,6 +92,28 @@ func TestMCPServerStateWire(t *testing.T) {
 				t.Fatalf("presentMCPServerState(%v) = (%+v, %v), want %q", tt.state.Type, got, err, tt.want)
 			}
 		})
+	}
+}
+
+func TestMCPServerFailureCategoryReachesTheWire(t *testing.T) {
+	for failure, want := range map[mcpserver.ConnectionFailure]protocol.MCPStatusProblemType{
+		mcpserver.FailureUnavailableRelease: protocol.MCPStatusReleaseUnavailable,
+		mcpserver.FailureUnavailableBackend: protocol.MCPStatusBackendUnavailable,
+		mcpserver.FailureConfiguration:      protocol.MCPStatusConfigurationFailed,
+		mcpserver.FailureConnection:         protocol.MCPStatusDialFailed,
+		mcpserver.FailureToolDiscovery:      protocol.MCPStatusToolDiscoveryFailed,
+		mcpserver.FailureAuthorization:      protocol.MCPStatusAuthorizationFailed,
+	} {
+		got, err := presentMCPServerState(mcpapp.ServerState{Type: mcpapp.ServerFailed, Failure: failure})
+		if err != nil || got.Type != protocol.MCPServerFailed || got.Error == nil || got.Error.Type != want {
+			t.Fatalf("failure %q = (%+v, %v), want %s without prose", failure, got, err, want)
+		}
+		if err := protocol.ValidateWireTree(got); err != nil {
+			t.Fatalf("failure %q violates the wire contract: %v", failure, err)
+		}
+	}
+	if got, err := presentMCPServerState(mcpapp.ServerState{Type: mcpapp.ServerFailed}); err == nil {
+		t.Fatalf("failed state without a category was projected as %+v", got)
 	}
 }
 
@@ -109,7 +132,7 @@ func TestMCPAuthorizationWireRejectsUnknownAttemptStatus(t *testing.T) {
 // problem type shipped that defect as a verdict a user could read and act on.
 func TestMCPServerWireRejectsUnknownDomainState(t *testing.T) {
 	server, err := presentMCPServer(mcpapp.Server{
-		Name:       testMCPServerName("broken"),
+		ID:         testsupport.UserMCPServer("broken"),
 		Connection: mcpapp.Connection{Transport: mcpserver.TransportStdio, Command: "broken"},
 		State:      mcpapp.ServerState{Type: mcpapp.ServerStateType("invalid")},
 	})
@@ -123,14 +146,14 @@ func TestMCPServerWireRejectsUnknownDomainState(t *testing.T) {
 
 func TestReconnectMCPServer(t *testing.T) {
 	s := handlerWithMCP(t, fakeMCPPortsConfig(&fakeMCPPorts{
-		statuses: []mcpserver.ConnectionStatus{{Name: testMCPServerName("fs"), State: mcpserver.ConnectionConnected, ToolCount: 1}},
-		tools:    []mcpserver.AdvertisedTool{{Server: testMCPServerName("fs"), Name: testRemoteToolName("read")}},
+		statuses: []mcpserver.ConnectionStatus{{Server: testsupport.UserMCPServer("fs"), State: mcpserver.ConnectionConnected, ToolCount: 1}},
+		tools:    []mcpserver.AdvertisedTool{{Server: testsupport.UserMCPServer("fs"), Name: testsupport.RemoteToolName("read")}},
 	}))
 	defer s.beginShutdown()
 	events, unsub := s.workspaceHub.subscribe()
 	defer unsub()
 
-	if err := s.ReconnectMCPServer(context.Background(), "fs"); err != nil {
+	if err := s.ReconnectMCPServer(context.Background(), wireUserServer("fs")); err != nil {
 		t.Fatalf("reconnect: %v", err)
 	}
 	// Both transitions are the same signal now: "this server moved, read it again".
@@ -138,36 +161,36 @@ func TestReconnectMCPServer(t *testing.T) {
 	// answer to what mcp.servers already knows.
 	for _, phase := range []string{"connecting", "settled"} {
 		event := <-events
-		if event.Type != protocol.RuntimeMCPChanged || len(event.ServerIDs) != 1 || event.ServerIDs[0] != "fs" {
+		if event.Type != protocol.RuntimeMCPChanged || len(event.Servers) != 1 || event.Servers[0] != wireUserServer("fs") {
 			t.Fatalf("%s event = %+v, want the fs change signal", phase, event)
 		}
 	}
 
-	if err := s.ReconnectMCPServer(context.Background(), "ghost"); !errors.Is(err, protocol.ErrMCPServerNotFound) {
+	if err := s.ReconnectMCPServer(context.Background(), wireUserServer("ghost")); !errors.Is(err, protocol.ErrMCPServerNotFound) {
 		t.Fatalf("reconnect unknown = %v, want ErrMCPServerNotFound", err)
 	}
 }
 
 func TestListMCPTools(t *testing.T) {
 	s := handlerWithMCP(t, fakeMCPPortsConfig(&fakeMCPPorts{tools: []mcpserver.AdvertisedTool{
-		{Server: testMCPServerName("fs"), Name: testRemoteToolName("read"), Definition: chat.ToolDefinition{Name: "fs_read", Description: "read a file", InputSchema: []byte(`{"type":"object"}`)}},
-		{Server: testMCPServerName("fs"), Name: testRemoteToolName("write"), Definition: chat.ToolDefinition{Name: "fs_write", InputSchema: []byte(`{"type":"object"}`)}},
-		{Server: testMCPServerName("git"), Name: testRemoteToolName("log"), Definition: chat.ToolDefinition{Name: "git_log", InputSchema: []byte(`{"type":"object"}`)}},
+		{Server: testsupport.UserMCPServer("fs"), Name: testsupport.RemoteToolName("read"), Definition: chat.ToolDefinition{Name: "fs_read", Description: "read a file", InputSchema: []byte(`{"type":"object"}`)}},
+		{Server: testsupport.UserMCPServer("fs"), Name: testsupport.RemoteToolName("write"), Definition: chat.ToolDefinition{Name: "fs_write", InputSchema: []byte(`{"type":"object"}`)}},
+		{Server: testsupport.UserMCPServer("git"), Name: testsupport.RemoteToolName("log"), Definition: chat.ToolDefinition{Name: "git_log", InputSchema: []byte(`{"type":"object"}`)}},
 	}}))
 
 	all, err := s.ListMCPTools(context.Background(), protocol.MCPListToolsRequest{})
 	if err != nil {
 		t.Fatalf("listTools: %v", err)
 	}
-	if len(all.Data) != 3 || all.Data[0].Server != "fs" || all.Data[0].Name != "read" || all.Data[0].InputSchema["type"] != "object" {
+	if len(all.Data) != 3 || all.Data[0].Server != wireUserServer("fs") || all.Data[0].Name != "read" || all.Data[0].InputSchema["type"] != "object" {
 		t.Fatalf("all = %+v, want 3 with fs/read carrying its schema", all.Data)
 	}
 
-	scoped, err := s.ListMCPTools(context.Background(), protocol.MCPListToolsRequest{Server: "git"})
+	scoped, err := s.ListMCPTools(context.Background(), protocol.MCPListToolsRequest{Server: new(wireUserServer("git"))})
 	if err != nil {
 		t.Fatalf("listTools(git): %v", err)
 	}
-	if len(scoped.Data) != 1 || scoped.Data[0].Server != "git" {
+	if len(scoped.Data) != 1 || scoped.Data[0].Server != wireUserServer("git") {
 		t.Fatalf("scoped = %+v, want only git tools", scoped.Data)
 	}
 }
@@ -175,13 +198,13 @@ func TestListMCPTools(t *testing.T) {
 func TestMCPProbeReturnsSanitizedActions(t *testing.T) {
 	for _, tt := range []struct {
 		cause error
-		kind  string
+		want  protocol.MCPTestOutcome
 	}{
-		{errors.Join(mcpserver.ErrAuthorizationRequired, errors.New("secret-token")), protocol.ProblemMCPAuthorizationRequired},
-		{errors.Join(context.DeadlineExceeded, errors.New("secret-token")), protocol.ProblemTimeout},
-		{errors.New("HTTP 401 secret-token"), protocol.ProblemMCPDialFailed},
+		{errors.Join(mcpserver.ErrAuthorizationRequired, errors.New("secret-token")), protocol.MCPTestAuthorizationRequired},
+		{errors.Join(context.DeadlineExceeded, errors.New("secret-token")), protocol.MCPTestTimedOut},
+		{errors.New("HTTP 401 secret-token"), protocol.MCPTestFailed},
 	} {
-		t.Run(tt.kind, func(t *testing.T) {
+		t.Run(string(tt.want), func(t *testing.T) {
 			h := handlerWithMCP(t, fakeMCPPortsConfig(&fakeMCPPorts{probeErr: tt.cause}))
 			result, err := h.TestMCPServer(t.Context(), protocol.MCPServerCandidate{
 				Name: "probe", Enabled: true,
@@ -191,7 +214,7 @@ func TestMCPProbeReturnsSanitizedActions(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if result.OK || result.Error == nil || result.Error.Type != tt.kind || result.Error.Detail != "" {
+			if result.Outcome != tt.want {
 				t.Fatalf("result = %+v", result)
 			}
 			if err := protocol.ValidateWireTree(*result); err != nil {
@@ -202,20 +225,20 @@ func TestMCPProbeReturnsSanitizedActions(t *testing.T) {
 }
 
 func TestMCPToolListIncludesNameConflictDiagnostics(t *testing.T) {
-	ref, err := tool.MCP(testMCPServerName("a_b"), testRemoteToolName("c"))
+	ref, err := tool.MCP(testsupport.UserMCPServer("a_b"), testsupport.RemoteToolName("c"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	other, err := tool.MCP(testMCPServerName("a"), testRemoteToolName("b_c"))
+	other, err := tool.MCP(testsupport.UserMCPServer("a"), testsupport.RemoteToolName("b_c"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	ports := &fakeMCPPorts{
-		tools:     []mcpserver.AdvertisedTool{{Server: testMCPServerName("a_b"), Name: testRemoteToolName("c"), Definition: chat.ToolDefinition{Name: "a_b_c", InputSchema: []byte(`{"type":"object"}`)}}},
+		tools:     []mcpserver.AdvertisedTool{{Server: testsupport.UserMCPServer("a_b"), Name: testsupport.RemoteToolName("c"), Definition: chat.ToolDefinition{Name: "a_b_c", InputSchema: []byte(`{"type":"object"}`)}}},
 		conflicts: map[tool.Ref][]tool.Ref{ref: {other}},
 	}
 	handler := handlerWithMCP(t, fakeMCPPortsConfig(ports))
-	result, err := handler.ListMCPTools(t.Context(), protocol.MCPListToolsRequest{Server: "a_b"})
+	result, err := handler.ListMCPTools(t.Context(), protocol.MCPListToolsRequest{Server: new(wireUserServer("a_b"))})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -223,7 +246,7 @@ func TestMCPToolListIncludesNameConflictDiagnostics(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Data) != 1 || result.Data[0].ModelName != "a_b_c" || len(result.Data[0].NameConflicts) != 1 || result.Data[0].NameConflicts[0] != wire {
+	if len(result.Data) != 1 || result.Data[0].ModelName != "a_b_c" || len(result.Data[0].NameConflicts) != 1 || !reflect.DeepEqual(result.Data[0].NameConflicts[0], wire) {
 		t.Fatalf("tool diagnostics = %+v", result.Data)
 	}
 }

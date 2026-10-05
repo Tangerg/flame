@@ -66,7 +66,7 @@ func registerMCP(registry *Registry) {
 		Errors:          []string{protocol.ErrMCPServerNotFound.Error()},
 		CapabilityRules: requires(protocol.FeatureMCP),
 	}, func(service interface {
-		DeleteMCPServer(context.Context, string) error
+		DeleteMCPServer(context.Context, protocol.MCPServerID) error
 	}, ctx context.Context, request protocol.MCPServerRequest) error {
 		return service.DeleteMCPServer(ctx, request.Server)
 	})
@@ -95,7 +95,7 @@ func registerMCP(registry *Registry) {
 		Errors:          []string{protocol.ErrMCPServerNotFound.Error(), protocol.ErrMCPServerDisabled.Error()},
 		CapabilityRules: requires(protocol.FeatureMCP),
 	}, func(service interface {
-		ReconnectMCPServer(context.Context, string) error
+		ReconnectMCPServer(context.Context, protocol.MCPServerID) error
 	}, ctx context.Context, request protocol.MCPServerRequest) error {
 		return service.ReconnectMCPServer(ctx, request.Server)
 	})
@@ -105,7 +105,7 @@ func registerMCP(registry *Registry) {
 		Errors:          []string{protocol.ErrMCPServerNotFound.Error(), protocol.ErrMCPServerDisabled.Error()},
 		CapabilityRules: requires(protocol.FeatureMCP),
 	}, func(service interface {
-		CreateMCPAuthorizationAttempt(context.Context, string) (*protocol.MCPAuthorizationAttempt, error)
+		CreateMCPAuthorizationAttempt(context.Context, protocol.MCPServerID) (*protocol.MCPAuthorizationAttempt, error)
 	}, ctx context.Context, request protocol.CreateMCPAuthorizationAttemptRequest) (*protocol.MCPAuthorizationAttempt, error) {
 		return service.CreateMCPAuthorizationAttempt(ctx, request.Server)
 	})

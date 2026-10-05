@@ -1,6 +1,6 @@
-import { describeProblem } from "@/lib/rpcErrors";
 import type { MCPServer } from "@flame/runtime-contract/client";
 import { mcpServerIcon, type MCPServerSettings } from "../application/mcpServerQueries";
+import { mcpStatusText } from "./mcpStatusText";
 import {
   boundedMCPHandshakeTimeout,
   UNBOUNDED_MCP_HANDSHAKE,
@@ -10,15 +10,12 @@ export function mcpServerSettings(server: MCPServer): MCPServerSettings {
   const connection = server.connection;
   const status = server.status;
   return {
-    installationId:
-      server.origin.type === "installation" ? server.origin.installationId : undefined,
-    id: server.name,
-    name: server.name,
+    id: server.id,
     desc: server.description ?? "",
     tools: status.type === "connected" ? status.toolCount : 0,
     status: status.type,
-    errorDetail: "error" in status ? describeProblem(status.error) : undefined,
-    icon: mcpServerIcon(server.name),
+    errorDetail: statusProblem(server),
+    icon: mcpServerIcon(server.id.name),
     type: connection.type,
     enabled: status.type !== "disabled",
     description: server.description,
@@ -36,4 +33,11 @@ export function mcpServerSettings(server: MCPServer): MCPServerSettings {
         : UNBOUNDED_MCP_HANDSHAKE,
     toolCount: status.type === "connected" ? status.toolCount : undefined,
   };
+}
+
+function statusProblem(server: MCPServer): string | undefined {
+  const status = server.status;
+  return status.type === "failed" || status.type === "needsAuth"
+    ? mcpStatusText(status.error.type)
+    : undefined;
 }

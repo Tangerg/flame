@@ -1,3 +1,4 @@
+import type { MCPServerID } from "@flame/runtime-contract/wire";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import {
   asRunId,
@@ -120,7 +121,7 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
     return (await this.runtimeClient().approval.setMode(mode)).mode;
   }
 
-  async allowMCPTool(server: string, name: string) {
+  async allowMCPTool(server: MCPServerID, name: string) {
     await this.runtimeClient().approval.setRule({
       tool: { type: "mcp", server, name },
       scope: "global",

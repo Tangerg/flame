@@ -9,7 +9,7 @@ const target = {
   installationId: "940ac827-b431-455b-af4b-e3a170bcfda0",
   digest: "1".repeat(64),
 };
-const configuration = { ...target, disabledServers: [], disabledSkills: [], valueChanges: {} };
+const configuration = { ...target, serverChanges: {}, skillChanges: {}, valueChanges: {} };
 
 describe("generated request validation", () => {
   it("refuses invalid requests before request identity publication or transport send", async () => {
@@ -80,13 +80,21 @@ describe("generated request validation", () => {
 
   it("refuses unknown members in request arrays and empty requests", () => {
     expect(
-      validateMethodParams("plugins.approve", {
-        ...target,
-        grants: [{ capability: "tools.invoke", targets: [], unexpected: true }],
+      validateMethodParams("plugins.configure", {
+        ...configuration,
+        serverChanges: { backend: "disable" },
+        skillChanges: { review: "toggle" },
       }),
     ).toEqual([
-      { path: "plugins.approve.params.grants[0].unexpected", detail: "must not be present" },
+      { path: 'plugins.configure.params.skillChanges["review"]', detail: expect.any(String) },
     ]);
+    expect(
+      validateMethodParams("runs.resume", {
+        runId: "run_1",
+        responses: [],
+        input: [{ type: "text", text: "continue", unexpected: true }],
+      }),
+    ).toEqual([{ path: "runs.resume.params.input[0].unexpected", detail: "must not be present" }]);
     expect(validateMethodParams("plugins.list", { unexpected: true })).toEqual([
       { path: "plugins.list.params.unexpected", detail: "must not be present" },
     ]);

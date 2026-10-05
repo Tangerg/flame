@@ -21,7 +21,7 @@ func TestServerValidateRejectsUnsafeProcessConfiguration(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			server := Server{Name: testMCPServerName("local"), Transport: TransportStdio, Command: "mcp-server"}
+			server := Server{Source: UserSource(), Name: testMCPServerName("local"), Transport: TransportStdio, Command: "mcp-server"}
 			test.mutate(&server)
 			err := server.Validate()
 			if err == nil || !strings.Contains(err.Error(), test.want) {

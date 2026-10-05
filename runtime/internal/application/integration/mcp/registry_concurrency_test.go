@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"sync"
 	"testing"
 	"time"
@@ -13,7 +14,7 @@ import (
 // liveSet is the registry-command projection the mutation tests observe.
 type liveSet struct {
 	mu         sync.Mutex
-	servers    map[mcpserver.ServerName]bool
+	servers    map[mcpserver.ID]bool
 	configured chan string
 }
 
@@ -21,7 +22,7 @@ func (*liveSet) Probe(context.Context, mcpserver.Server) error {
 	return nil
 }
 
-func (l *liveSet) Configure(ctx context.Context, name mcpserver.ServerName) error {
+func (l *liveSet) Configure(ctx context.Context, name mcpserver.ID) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -34,7 +35,11 @@ func (l *liveSet) Configure(ctx context.Context, name mcpserver.ServerName) erro
 	return nil
 }
 
-func (l *liveSet) Detach(name mcpserver.ServerName) error {
+func (l *liveSet) Refuse(_ context.Context, name mcpserver.ID, _ mcpserver.ConnectionFailure) error {
+	return l.Detach(name)
+}
+
+func (l *liveSet) Detach(name mcpserver.ID) error {
 	l.mu.Lock()
 	delete(l.servers, name)
 	l.mu.Unlock()
@@ -46,16 +51,16 @@ func (l *liveSet) Detach(name mcpserver.ServerName) error {
 // implementation, owns reconnect/remove ordering.
 type blockingProjection struct {
 	liveSet
-	name             mcpserver.ServerName
+	name             mcpserver.ID
 	reconnectStarted chan struct{}
 	releaseReconnect chan struct{}
 }
 
 func (b *blockingProjection) Statuses() []mcpserver.ConnectionStatus {
-	return []mcpserver.ConnectionStatus{{Name: b.name}}
+	return []mcpserver.ConnectionStatus{{Server: b.name}}
 }
 
-func (b *blockingProjection) Reconnect(ctx context.Context, name mcpserver.ServerName) error {
+func (b *blockingProjection) Reconnect(ctx context.Context, name mcpserver.ID) error {
 	close(b.reconnectStarted)
 	select {
 	case <-b.releaseReconnect:
@@ -71,20 +76,20 @@ func (b *blockingProjection) Reconnect(ctx context.Context, name mcpserver.Serve
 	return nil
 }
 
-func (b *blockingProjection) Authorize(ctx context.Context, name mcpserver.ServerName) error {
+func (b *blockingProjection) Authorize(ctx context.Context, name mcpserver.ID) error {
 	return b.Reconnect(ctx, name)
 }
 
 func TestRegistryMutationIsLinearizedThroughLiveApply(t *testing.T) {
 	registry := &testRegistry{
-		servers:       map[mcpserver.ServerName]mcpserver.Server{},
+		servers:       map[mcpserver.ID]mcpserver.Server{},
 		saveCommitted: make(chan struct{}),
 		releaseSave:   make(chan struct{}),
 	}
-	live := &liveSet{servers: map[mcpserver.ServerName]bool{}}
+	live := &liveSet{servers: map[mcpserver.ID]bool{}}
 	policy := NewExposureState(nil, nil)
 	c := testCoordinator(t, Config{Registry: registry, ConnectionLifecycle: live, Exposure: policy})
-	server := mcpserver.Server{Name: testMCPServerName("files"), Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-files"}
+	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("files"), Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-files"}
 
 	configured := make(chan error, 1)
 	go func() {
@@ -97,7 +102,7 @@ func TestRegistryMutationIsLinearizedThroughLiveApply(t *testing.T) {
 		t.Fatal("configure released the mutation order before applying its live projection")
 	}
 	removed := make(chan error, 1)
-	go func() { removed <- c.DeleteServer(context.Background(), server.Name) }()
+	go func() { removed <- c.DeleteServer(context.Background(), server.ID()) }()
 	close(registry.releaseSave)
 	if err := <-configured; err != nil {
 		t.Fatalf("CreateServer: %v", err)
@@ -106,11 +111,11 @@ func TestRegistryMutationIsLinearizedThroughLiveApply(t *testing.T) {
 		t.Fatalf("DeleteServer: %v", err)
 	}
 
-	if _, ok, err := registry.Get(context.Background(), server.Name); err != nil || ok {
+	if _, ok, err := registry.Get(context.Background(), server.ID()); err != nil || ok {
 		t.Fatalf("registry final state: present=%v err=%v", ok, err)
 	}
 	live.mu.Lock()
-	livePresent := live.servers[server.Name]
+	livePresent := live.servers[server.ID()]
 	live.mu.Unlock()
 	if livePresent {
 		t.Fatal("removed registry entry survived in the live MCP set")
@@ -119,14 +124,14 @@ func TestRegistryMutationIsLinearizedThroughLiveApply(t *testing.T) {
 
 func TestPostCommitReconciliationOutlivesRequestCancellation(t *testing.T) {
 	registry := &testRegistry{
-		servers:       map[mcpserver.ServerName]mcpserver.Server{},
+		servers:       map[mcpserver.ID]mcpserver.Server{},
 		saveCommitted: make(chan struct{}),
 		releaseSave:   make(chan struct{}),
 	}
-	live := &liveSet{servers: map[mcpserver.ServerName]bool{}, configured: make(chan string, 1)}
+	live := &liveSet{servers: map[mcpserver.ID]bool{}, configured: make(chan string, 1)}
 	policy := NewExposureState(nil, nil)
 	c := testCoordinator(t, Config{Registry: registry, ConnectionLifecycle: live, Exposure: policy})
-	server := mcpserver.Server{Name: testMCPServerName("files"), Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-files"}
+	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("files"), Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-files"}
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() {
@@ -141,11 +146,11 @@ func TestPostCommitReconciliationOutlivesRequestCancellation(t *testing.T) {
 		t.Fatalf("CreateServer after durable commit: %v", err)
 	}
 	if got := <-live.configured; got != server.Name.String() {
-		t.Fatalf("reconciled server = %q, want %q", got, server.Name)
+		t.Fatalf("reconciled server = %q, want %q", got, server.ID())
 	}
 	requireCoordinatorShutdown(t, c)
 	live.mu.Lock()
-	livePresent := live.servers[server.Name]
+	livePresent := live.servers[server.ID()]
 	live.mu.Unlock()
 	if !livePresent {
 		t.Fatal("request cancellation abandoned post-commit live reconciliation")
@@ -177,11 +182,11 @@ func input(server mcpserver.Server) ServerInput {
 }
 
 func TestRemoveDoesNotWaitForInteractiveConnection(t *testing.T) {
-	name := testMCPServerName("files")
-	server := mcpserver.Server{Name: name, Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-files"}
-	registry := &testRegistry{servers: map[mcpserver.ServerName]mcpserver.Server{name: server}}
+	name := testsupport.UserMCPServer("files")
+	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: name.Name(), Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-files"}
+	registry := &testRegistry{servers: map[mcpserver.ID]mcpserver.Server{name: server}}
 	live := &blockingProjection{
-		liveSet:          liveSet{servers: map[mcpserver.ServerName]bool{name: true}},
+		liveSet:          liveSet{servers: map[mcpserver.ID]bool{name: true}},
 		name:             name,
 		reconnectStarted: make(chan struct{}),
 		releaseReconnect: make(chan struct{}),
@@ -228,15 +233,15 @@ func TestRemoveDoesNotWaitForInteractiveConnection(t *testing.T) {
 }
 
 func TestQueuedReconnectCannotReviveRemovedServer(t *testing.T) {
-	name := testMCPServerName("files")
-	server := mcpserver.Server{Name: name, Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-files"}
+	name := testsupport.UserMCPServer("files")
+	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: name.Name(), Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-files"}
 	registry := &testRegistry{
-		servers:         map[mcpserver.ServerName]mcpserver.Server{name: server},
+		servers:         map[mcpserver.ID]mcpserver.Server{name: server},
 		removeCommitted: make(chan struct{}),
 		releaseRemove:   make(chan struct{}),
 	}
 	live := &blockingProjection{
-		liveSet:          liveSet{servers: map[mcpserver.ServerName]bool{name: true}},
+		liveSet:          liveSet{servers: map[mcpserver.ID]bool{name: true}},
 		name:             name,
 		reconnectStarted: make(chan struct{}),
 		releaseReconnect: make(chan struct{}),

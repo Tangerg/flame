@@ -25,17 +25,17 @@ func TestShellArgumentRejectionFailsTheCallNotTheRun(t *testing.T) {
 	}{
 		{
 			name:      "background flags contradict",
-			tool:      tool.Shell,
+			tool:      string(tool.Shell),
 			arguments: `{"command":"true","description":"Run tests","run_in_background":true,"auto_background_after_seconds":5}`,
 		},
 		{
 			name:      "description missing",
-			tool:      tool.Shell,
+			tool:      string(tool.Shell),
 			arguments: `{"command":"true","description":"   "}`,
 		},
 		{
 			name:      "timeout without wait",
-			tool:      tool.ReadShellOutput,
+			tool:      string(tool.ReadShellOutput),
 			arguments: `{"shell_id":"shell_1","timeout_millis":10}`,
 		},
 	} {

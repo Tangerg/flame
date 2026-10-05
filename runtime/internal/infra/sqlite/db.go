@@ -10,13 +10,18 @@ package sqlite
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
 	"errors"
 	"fmt"
+	"maps"
 	"net/url"
 	"path/filepath"
+	"slices"
+	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/exactint"
 	_ "modernc.org/sqlite" // registers the "sqlite" driver
@@ -383,17 +388,58 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			provider  TEXT NOT NULL DEFAULT '',
 			model     TEXT NOT NULL DEFAULT ''
 		)`,
-		// MCP-server registry (mcp.servers.create/update). One row per server
-		// name; args and the map columns (env/headers) are JSON. Tool exposure and
-		// approval rules are separate relations. A nullable positive handshake timeout
-		// is nanoseconds (NULL means unbounded). transport is
-		// "stdio" | "streamableHttp".
+		pluginReleasesSchema(),
+		`CREATE TRIGGER IF NOT EXISTS immutable_plugin_release BEFORE UPDATE ON plugin_releases
+            BEGIN SELECT RAISE(ABORT,'admitted release is immutable'); END`,
+		pluginReleaseServersSchema(),
+		`CREATE TRIGGER IF NOT EXISTS immutable_plugin_release_server BEFORE UPDATE ON plugin_release_servers
+            BEGIN SELECT RAISE(ABORT,'admitted release is immutable'); END`,
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS plugin_installations (
+            id TEXT PRIMARY KEY,
+            source TEXT NOT NULL CHECK (length(source) BETWEEN 1 AND 4096),
+            selected_digest TEXT NOT NULL REFERENCES plugin_releases(digest),
+            staged_digest TEXT REFERENCES plugin_releases(digest) CHECK (staged_digest IS NOT selected_digest),
+            admission_state TEXT NOT NULL CHECK (admission_state IN ('%s', '%s', '%s'))
+        )`, plugin.Unapproved, plugin.Approved, plugin.Enabled),
+		// Installation state is relational: each configured input value and
+		// disabled component is one row owned by its installation.
+		`CREATE TABLE IF NOT EXISTS plugin_installation_values (
+            installation_id TEXT NOT NULL REFERENCES plugin_installations(id) ON DELETE CASCADE,
+            input_id TEXT NOT NULL CHECK (length(input_id) > 0),
+            value TEXT NOT NULL,
+            PRIMARY KEY (installation_id, input_id)
+        )`,
+		`CREATE TABLE IF NOT EXISTS plugin_installation_disabled (
+            installation_id TEXT NOT NULL REFERENCES plugin_installations(id) ON DELETE CASCADE,
+            kind TEXT NOT NULL CHECK (kind IN ('server', 'skill')),
+            name TEXT NOT NULL CHECK (length(name) > 0),
+            PRIMARY KEY (installation_id, kind, name)
+        )`,
+		// One row per MCP server identity: its origin and the name that origin
+		// chose. Every relation about a server references this row, so removing
+		// a user server or uninstalling a package removes its descriptor,
+		// exposure, credentials and standing approvals together.
+		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS mcp_sources (
+            id              INTEGER PRIMARY KEY,
+            origin          TEXT NOT NULL CHECK (origin IN ('%[2]s', '%[3]s')),
+            installation_id TEXT REFERENCES plugin_installations(id) ON DELETE CASCADE,
+            name            TEXT NOT NULL CHECK (%[1]s),
+            CHECK ((origin = '%[2]s') = (installation_id IS NULL)),
+            UNIQUE (id, origin)
+        )`, serverNameCheck("name"), mcpserver.OriginUser, mcpserver.OriginInstallation),
+		fmt.Sprintf(`CREATE UNIQUE INDEX IF NOT EXISTS idx_mcp_sources_user
+            ON mcp_sources(name) WHERE origin = '%s'`, mcpserver.OriginUser),
+		fmt.Sprintf(`CREATE UNIQUE INDEX IF NOT EXISTS idx_mcp_sources_installation
+            ON mcp_sources(installation_id, name) WHERE origin = '%s'`, mcpserver.OriginInstallation),
+		// The user's MCP registry (mcp.servers.create/update): one descriptor per
+		// user-origin source; the composite reference makes an installation
+		// source unable to carry a user descriptor. Args and the map columns
+		// (env/headers) are JSON. A nullable positive handshake timeout is
+		// nanoseconds (NULL means unbounded). transport is "stdio" |
+		// "streamableHttp".
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS mcp_servers (
-			name               TEXT    PRIMARY KEY CHECK (
-				length(name) BETWEEN 1 AND %d AND
-				name NOT GLOB '*[^a-z0-9._-]*' AND
-				substr(name, 1, 1) GLOB '[a-z0-9]'
-			),
+			source_id          INTEGER PRIMARY KEY,
+			origin             TEXT    NOT NULL DEFAULT '%[1]s' CHECK (origin = '%[1]s'),
 			transport          TEXT    NOT NULL,
 			enabled            INTEGER NOT NULL DEFAULT 1,
 			description        TEXT    NOT NULL DEFAULT '',
@@ -404,65 +450,26 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			args               TEXT    NOT NULL DEFAULT '',
 			env                TEXT    NOT NULL DEFAULT '',
 			dir                TEXT    NOT NULL DEFAULT '',
-			timeout            INTEGER CHECK (timeout IS NULL OR timeout > 0)
-		)`, mcpserver.MaximumServerNameCharacters),
+			timeout            INTEGER CHECK (timeout IS NULL OR timeout > 0),
+			FOREIGN KEY (source_id, origin) REFERENCES mcp_sources(id, origin) ON DELETE CASCADE
+		)`, mcpserver.OriginUser),
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS mcp_tool_exposure (
-            server_name TEXT NOT NULL REFERENCES mcp_sources(name) ON DELETE CASCADE,
+            source_id INTEGER NOT NULL REFERENCES mcp_sources(id) ON DELETE CASCADE,
             tool_name TEXT NOT NULL CHECK (
                 length(tool_name) BETWEEN 1 AND %d AND
                 tool_name NOT GLOB '*[^A-Za-z0-9_.-]*'
             ),
-            PRIMARY KEY (server_name, tool_name)
+            PRIMARY KEY (source_id, tool_name)
         )`, mcpserver.MaximumRemoteToolNameCharacters),
 		fmt.Sprintf(`CREATE TRIGGER IF NOT EXISTS limit_mcp_tool_exposure_insert
             BEFORE INSERT ON mcp_tool_exposure
             WHEN NOT EXISTS (
-                SELECT 1 FROM mcp_tool_exposure WHERE server_name = NEW.server_name AND tool_name = NEW.tool_name
-            ) AND (SELECT count(*) FROM mcp_tool_exposure WHERE server_name = NEW.server_name) >= %d
+                SELECT 1 FROM mcp_tool_exposure WHERE source_id = NEW.source_id AND tool_name = NEW.tool_name
+            ) AND (SELECT count(*) FROM mcp_tool_exposure WHERE source_id = NEW.source_id) >= %d
             BEGIN
                 SELECT RAISE(ABORT, 'MCP tool exposure limit exceeded');
             END`, mcpserver.MaxRemoteToolsPerServer),
-		// OAuth owns an opaque, versioned payload in the MCP connection layer;
-		// SQLite enforces lifecycle, origin and release binding. Removing a source
-		// removes its credentials. A transport or endpoint change invalidates
-		// the old credential before that server can reconnect elsewhere.
-		`CREATE TABLE IF NOT EXISTS plugin_releases (
-            digest TEXT PRIMARY KEY,
-            declaration TEXT NOT NULL CHECK(json_valid(declaration) AND json_type(declaration)='object')
-        )`,
-		`CREATE TRIGGER IF NOT EXISTS immutable_plugin_release BEFORE UPDATE ON plugin_releases
-            BEGIN SELECT RAISE(ABORT,'admitted release is immutable'); END`,
-		`CREATE TABLE IF NOT EXISTS plugin_installations (
-            id TEXT PRIMARY KEY,
-            source TEXT NOT NULL,
-            selected_digest TEXT NOT NULL REFERENCES plugin_releases(digest),
-            staged_digest TEXT REFERENCES plugin_releases(digest),
-            state TEXT NOT NULL CHECK(json_valid(state) AND json_type(state)='object')
-        )`,
-		`CREATE TABLE IF NOT EXISTS mcp_sources (
-            name TEXT PRIMARY KEY,
-            user_name TEXT REFERENCES mcp_servers(name) ON DELETE CASCADE,
-            installation_id TEXT REFERENCES plugin_installations(id) ON DELETE CASCADE,
-            CHECK ((user_name IS NOT NULL AND installation_id IS NULL AND name=user_name) OR
-                   (user_name IS NULL AND installation_id IS NOT NULL AND
-                    substr(name,1,length(installation_id)+14)='installation/' || installation_id || '/'))
-        )`,
-		`CREATE TABLE IF NOT EXISTS mcp_oauth_sessions (
-			server_name TEXT PRIMARY KEY REFERENCES mcp_sources(name) ON DELETE CASCADE,
-			origin      TEXT NOT NULL,
-			target_fingerprint TEXT NOT NULL,
-			` + oauthBindingColumn + `,
-			payload     BLOB NOT NULL
-		)`,
-
-		`DROP TRIGGER IF EXISTS invalidate_mcp_oauth_session`,
-		`CREATE TRIGGER invalidate_mcp_oauth_session
-			AFTER UPDATE OF transport, enabled, url, authorization, headers ON mcp_servers
-			WHEN OLD.transport <> NEW.transport OR OLD.url <> NEW.url OR
-			     OLD.enabled <> NEW.enabled OR OLD.authorization <> NEW.authorization OR OLD.headers <> NEW.headers
-			BEGIN
-				DELETE FROM mcp_oauth_sessions WHERE server_name = NEW.name;
-			END`,
+		mcpOAuthSessionsSchema(),
 		`CREATE TABLE IF NOT EXISTS messages (
 			seq             INTEGER PRIMARY KEY AUTOINCREMENT,
 			conversation_id TEXT    NOT NULL,
@@ -538,11 +545,11 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_goal_runs_session
 			ON goal_runs(session_id, incarnation_id)`,
-		// Persistent fine-grained approval rules. id is
-		// deterministic over (scope, scope_key, tool reference, subject, decision);
-		// re-remembering refreshes the source authority; scope_key is the session id /
-		// project dir / '' for global.
-		approvalRulesSchema,
+		// Persistent fine-grained approval rules. id is deterministic over
+		// (scope, scope_key, tool reference, subject); re-remembering replaces the
+		// decision and refreshes the source authority; scope_key is the session id
+		// / project dir / '' for global.
+		approvalRulesSchema(),
 		`CREATE INDEX IF NOT EXISTS idx_approval_rules_scope
 			ON approval_rules(scope, scope_key)`,
 		// Projects whose .flame/hooks.json is trusted to run. A cloned repo's
@@ -657,6 +664,9 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			result_id TEXT NOT NULL REFERENCES tool_result_blobs(id) ON DELETE RESTRICT,
 			PRIMARY KEY(root_member_id, result_id)
 		)`,
+		executorCheckpointInstallationsSchema(),
+		`CREATE INDEX IF NOT EXISTS idx_executor_checkpoint_installations_installation
+			ON executor_checkpoint_installations(installation_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_tool_result_blobs_session
 			ON tool_result_blobs(session_id)`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_tool_result_blobs_item
@@ -754,12 +764,21 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		return fmt.Errorf("sqlite: begin schema installation: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
+	if err := requireCheckpointDependencies(ctx, tx); err != nil {
+		return err
+	}
+	if err := requireCurrentShapes(ctx, tx); err != nil {
+		return err
+	}
+	if err := requireCurrentDefinitions(ctx, tx); err != nil {
+		return err
+	}
 	for _, stmt := range stmts {
 		if _, err := tx.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("sqlite: install current schema: %w", err)
 		}
 	}
-	approvalSchema, err := tx.QueryContext(ctx, `SELECT tool_ref, source_fingerprint, mcp_server, subject_type FROM approval_rules LIMIT 0`)
+	approvalSchema, err := tx.QueryContext(ctx, `SELECT tool_kind, tool_name, mcp_source, source_fingerprint, subject_type FROM approval_rules LIMIT 0`)
 	if err != nil {
 		return fmt.Errorf("sqlite: incompatible approval schema; open a fresh data directory: %w", err)
 	}
@@ -796,28 +815,14 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			return fmt.Errorf("sqlite: index result publication context: %w", err)
 		}
 	}
-	for _, table := range []string{"approval_rules", "mcp_tool_exposure", "mcp_oauth_sessions"} {
+	for _, table := range []string{"approval_rules", "mcp_servers", "mcp_tool_exposure", "mcp_oauth_sessions"} {
 		var sourceOwner int
-		if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM pragma_foreign_key_list(?) WHERE "table" = 'mcp_sources' AND on_delete = 'CASCADE'`, table).Scan(&sourceOwner); err != nil {
+		if err := tx.QueryRowContext(ctx, `SELECT count(DISTINCT id) FROM pragma_foreign_key_list(?) WHERE "table" = 'mcp_sources' AND on_delete = 'CASCADE'`, table).Scan(&sourceOwner); err != nil {
 			return fmt.Errorf("sqlite: inspect MCP ownership schema: %w", err)
 		}
 		if sourceOwner != 1 {
 			return errors.New("sqlite: incompatible MCP ownership schema; open a fresh data directory")
 		}
-	}
-	installationSchema, err := tx.QueryContext(ctx, "SELECT source,selected_digest,staged_digest,state FROM plugin_installations LIMIT 0")
-	if err != nil {
-		return fmt.Errorf("sqlite: incompatible installation schema; open a fresh data directory: %w", err)
-	}
-	if err := installationSchema.Close(); err != nil {
-		return err
-	}
-	oauthSchema, err := tx.QueryContext(ctx, "SELECT target_fingerprint, binding FROM mcp_oauth_sessions LIMIT 0")
-	if err != nil {
-		return fmt.Errorf("sqlite: incompatible MCP authorization schema; open a fresh data directory: %w", err)
-	}
-	if err := oauthSchema.Close(); err != nil {
-		return err
 	}
 	// The feedback ledger has no reader inside Runtime, so an index on its
 	// timestamp only charged every insert for a query nobody makes; the pending
@@ -867,6 +872,161 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 	}
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("sqlite: commit schema installation: %w", err)
+	}
+	return nil
+}
+
+// Current statements would only partly apply to a directory whose tables
+// predate their current shape, so such a directory is refused before any of
+// them runs: MCP identity became relational, installation state left a JSON
+// column for relational rows and then became one closed state bound to the
+// selected release, and OAuth credentials became bound to their target
+// fingerprint alone.
+func requireCurrentShapes(ctx context.Context, tx *sql.Tx) error {
+	for _, current := range []struct {
+		table, column, owner string
+		present              bool
+	}{
+		{"mcp_sources", "origin", "MCP ownership", true},
+		{"mcp_servers", "source_id", "MCP ownership", true},
+		{"mcp_tool_exposure", "source_id", "MCP ownership", true},
+		{"mcp_oauth_sessions", "target_fingerprint", "MCP authorization", true},
+		{"mcp_oauth_sessions", "endpoint_origin", "MCP authorization", false},
+		{"approval_rules", "tool_kind", "approval", true},
+		{"plugin_installations", "admission_state", "installation", true},
+	} {
+		var exists, present int
+		if err := tx.QueryRowContext(ctx,
+			`SELECT count(*), (SELECT count(*) FROM pragma_table_info(?) WHERE name = ?)
+			   FROM sqlite_master WHERE type = 'table' AND name = ?`,
+			current.table, current.column, current.table,
+		).Scan(&exists, &present); err != nil {
+			return fmt.Errorf("sqlite: inspect %s schema: %w", current.owner, err)
+		}
+		if exists == 1 && (present == 1) != current.present {
+			return fmt.Errorf("sqlite: incompatible %s schema; open a fresh data directory", current.owner)
+		}
+	}
+	return nil
+}
+
+// Tables whose current shape differs from an earlier one only in constraints
+// are compared by their complete definition, which column inspection cannot
+// see: a directory created under weaker constraints may hold rows the current
+// ones refuse.
+func strictDefinitions() map[string]string {
+	return map[string]string{
+		"plugin_releases":                   pluginReleasesSchema(),
+		"plugin_release_servers":            pluginReleaseServersSchema(),
+		"mcp_oauth_sessions":                mcpOAuthSessionsSchema(),
+		"approval_rules":                    approvalRulesSchema(),
+		"executor_checkpoint_installations": executorCheckpointInstallationsSchema(),
+	}
+}
+
+func requireCurrentDefinitions(ctx context.Context, tx *sql.Tx) error {
+	definitions := strictDefinitions()
+	for _, table := range slices.Sorted(maps.Keys(definitions)) {
+		var stored string
+		err := tx.QueryRowContext(ctx, `SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?`, table).Scan(&stored)
+		if errors.Is(err, sql.ErrNoRows) {
+			continue
+		}
+		if err != nil {
+			return fmt.Errorf("sqlite: inspect %s schema: %w", table, err)
+		}
+		if stored != strings.Replace(definitions[table], "CREATE TABLE IF NOT EXISTS ", "CREATE TABLE ", 1) {
+			return fmt.Errorf("sqlite: incompatible %s schema; open a fresh data directory", table)
+		}
+	}
+	return nil
+}
+
+// Every stored digest is one canonical SHA-256 spelling, and every stored
+// installation identity one canonical nonzero UUID, so the database refuses
+// what the domain could never decode.
+func digestCheck(column string) string {
+	return fmt.Sprintf("length(%[1]s) = %[2]d AND %[1]s NOT GLOB '*[^0-9a-f]*'", column, 2*sha256.Size)
+}
+
+func installationIDCheck(column string) string {
+	var glob strings.Builder
+	for index, size := range []int{8, 4, 4, 4, 12} {
+		if index > 0 {
+			glob.WriteByte('-')
+		}
+		glob.WriteString(strings.Repeat("[0-9a-f]", size))
+	}
+	return fmt.Sprintf("%[1]s GLOB '%[2]s' AND %[1]s <> '00000000-0000-0000-0000-000000000000'", column, glob.String())
+}
+
+func serverNameCheck(column string) string {
+	return fmt.Sprintf("length(%[1]s) BETWEEN 1 AND %[2]d AND %[1]s NOT GLOB '*[^a-z0-9._-]*' AND substr(%[1]s, 1, 1) GLOB '[a-z0-9]'", column, mcpserver.MaximumServerNameCharacters)
+}
+
+func pluginReleasesSchema() string {
+	return fmt.Sprintf(`CREATE TABLE IF NOT EXISTS plugin_releases (
+            digest TEXT PRIMARY KEY CHECK (%s),
+            declaration TEXT NOT NULL CHECK(json_valid(declaration) AND json_type(declaration)='object')
+        )`, digestCheck("digest"))
+}
+
+// Server membership of a release is relational and written with the release,
+// so installation sources are derived from rows and never from the encoding
+// of the stored declaration.
+func pluginReleaseServersSchema() string {
+	return fmt.Sprintf(`CREATE TABLE IF NOT EXISTS plugin_release_servers (
+            digest TEXT NOT NULL REFERENCES plugin_releases(digest) ON DELETE CASCADE,
+            name TEXT NOT NULL CHECK (%s),
+            PRIMARY KEY (digest, name)
+        )`, serverNameCheck("name"))
+}
+
+// OAuth owns an opaque, versioned payload in the MCP connection layer. A
+// credential is bound to the fingerprint of the OAuth target that requested
+// it, so a changed endpoint, header, release or grant simply stops matching;
+// removing a source removes its credentials.
+func mcpOAuthSessionsSchema() string {
+	return fmt.Sprintf(`CREATE TABLE IF NOT EXISTS mcp_oauth_sessions (
+			source_id   INTEGER PRIMARY KEY REFERENCES mcp_sources(id) ON DELETE CASCADE,
+			target_fingerprint TEXT NOT NULL CHECK (%s),
+			%s,
+			payload     BLOB NOT NULL
+		)`, digestCheck("target_fingerprint"), oauthBindingColumn)
+}
+
+func executorCheckpointInstallationsSchema() string {
+	return fmt.Sprintf(`CREATE TABLE IF NOT EXISTS executor_checkpoint_installations (
+			root_member_id TEXT NOT NULL REFERENCES executor_checkpoints(root_member_id) ON DELETE CASCADE,
+			installation_id TEXT NOT NULL CHECK (%s),
+			digest TEXT NOT NULL CHECK (%s),
+			PRIMARY KEY(root_member_id, installation_id, digest)
+		)`, installationIDCheck("installation_id"), digestCheck("digest"))
+}
+
+// A pending checkpoint written before the dependency projection existed has
+// no determinable installation dependencies; its directory is refused rather
+// than read as depending on nothing.
+func requireCheckpointDependencies(ctx context.Context, tx *sql.Tx) error {
+	var checkpoints, dependencies int
+	if err := tx.QueryRowContext(ctx,
+		`SELECT count(*) FILTER (WHERE name = 'executor_checkpoints'), count(*) FILTER (WHERE name = 'executor_checkpoint_installations')
+		   FROM sqlite_master WHERE type = 'table'`,
+	).Scan(&checkpoints, &dependencies); err != nil {
+		return fmt.Errorf("sqlite: inspect executor checkpoint schema: %w", err)
+	}
+	if checkpoints == 0 || dependencies == 1 {
+		return nil
+	}
+	var pending bool
+	if err := tx.QueryRowContext(ctx,
+		`SELECT EXISTS (SELECT 1 FROM executor_checkpoints WHERE EXISTS (
+			SELECT 1 FROM runs WHERE runs.session_id = executor_checkpoints.session_id AND runs.state <> 'terminal'))`,
+	).Scan(&pending); err != nil {
+		return fmt.Errorf("sqlite: inspect pending executor checkpoints: %w", err)
+	}
+	if pending {
+		return errors.New("sqlite: incompatible executor checkpoint schema; open a fresh data directory")
 	}
 	return nil
 }

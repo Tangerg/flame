@@ -1,6 +1,7 @@
 package mcp
 
 import (
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"slices"
 	"testing"
 
@@ -9,12 +10,12 @@ import (
 
 func TestStatusQueuePublishesPreparedOrderAndRemainsReusable(t *testing.T) {
 	var published []string
-	queue := newStatusQueue(func(name mcpserver.ServerName) {
+	queue := newStatusQueue(func(name mcpserver.ID) {
 		published = append(published, name.String())
 	})
-	first := queue.prepare(testMCPServerName("first"))
-	second := queue.prepare(testMCPServerName("second"))
-	third := queue.prepare(testMCPServerName("third"))
+	first := queue.prepare(testsupport.UserMCPServer("first"))
+	second := queue.prepare(testsupport.UserMCPServer("second"))
+	third := queue.prepare(testsupport.UserMCPServer("third"))
 
 	queue.publish(second)
 	queue.publish(third)
@@ -25,7 +26,7 @@ func TestStatusQueuePublishesPreparedOrderAndRemainsReusable(t *testing.T) {
 	if !slices.Equal(published, []string{"first", "second", "third"}) {
 		t.Fatalf("published status order = %v", published)
 	}
-	queue.publish(queue.prepare(testMCPServerName("fourth")))
+	queue.publish(queue.prepare(testsupport.UserMCPServer("fourth")))
 	if !slices.Equal(published, []string{"first", "second", "third", "fourth"}) {
 		t.Fatalf("reused queue publication = %v, want each notification once in order", published)
 	}

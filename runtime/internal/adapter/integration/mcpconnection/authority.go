@@ -10,18 +10,23 @@ import (
 )
 
 type sourceRegistry interface {
-	Get(context.Context, mcpserver.ServerName) (mcpserver.Server, bool, error)
-	Connection(context.Context, mcpserver.ServerName) (mcpserver.Server, error)
+	Dispatchable(context.Context, mcpserver.ID) (mcpserver.Server, bool, error)
+	Connection(context.Context, mcpserver.ID) (mcpserver.Server, error)
 }
+
+// authorizedTool rechecks revocable authority at dispatch (draft §7.5): the
+// source must still be admitted, with the same connection configuration, and
+// the session that admitted this executable must still be live.
 type authorizedTool struct {
 	toolcontract.Tool
 	registry sourceRegistry
+	source   mcp.Executable
 	config   mcp.ServerConfig
 }
 
 func (t authorizedTool) Unwrap() toolcontract.Tool { return t.Tool }
 func (t authorizedTool) Call(ctx context.Context, invocation toolcontract.Invocation) (chat.ToolOutput, error) {
-	current, found, err := t.registry.Get(ctx, t.config.Name)
+	current, found, err := t.registry.Dispatchable(ctx, t.config.ID())
 	if err != nil {
 		failure, failureErr := toolcontract.NewFailure(toolcontract.FailureConfig{Kind: toolcontract.FailureKindFailed, Cause: err, Output: chat.NewTextToolOutput("current source authority could not be verified")})
 		if failureErr != nil {
@@ -30,11 +35,7 @@ func (t authorizedTool) Call(ctx context.Context, invocation toolcontract.Invoca
 		return chat.ToolOutput{}, failure
 	}
 	if !found || !current.Enabled {
-		failure, err := toolcontract.NewFailure(toolcontract.FailureConfig{Kind: toolcontract.FailureKindRejected, Output: chat.NewTextToolOutput("source authority is no longer admitted")})
-		if err != nil {
-			return chat.ToolOutput{}, err
-		}
-		return chat.ToolOutput{}, failure
+		return chat.ToolOutput{}, rejected("source authority is no longer admitted")
 	}
 	config, err := configFromServer(current)
 	if err != nil {
@@ -45,18 +46,28 @@ func (t authorizedTool) Call(ctx context.Context, invocation toolcontract.Invoca
 		return chat.ToolOutput{}, failure
 	}
 	if !t.config.SameConnection(config) {
-		failure, err := toolcontract.NewFailure(toolcontract.FailureConfig{Kind: toolcontract.FailureKindRejected, Output: chat.NewTextToolOutput("source configuration is no longer current")})
-		if err != nil {
-			return chat.ToolOutput{}, err
-		}
-		return chat.ToolOutput{}, failure
+		return chat.ToolOutput{}, rejected("source configuration is no longer current")
+	}
+	if !t.source.Current() {
+		return chat.ToolOutput{}, rejected("source connection is no longer current")
 	}
 	return t.Tool.Call(ctx, invocation)
 }
+
+// rejected is the definite refusal of a call whose admitted authority or
+// connection was withdrawn; nothing reached the remote server.
+func rejected(reason string) error {
+	failure, err := toolcontract.NewFailure(toolcontract.FailureConfig{Kind: toolcontract.FailureKindRejected, Output: chat.NewTextToolOutput(reason)})
+	if err != nil {
+		return err
+	}
+	return failure
+}
+
 func (p *Pool) authorizedTools(catalog []mcp.Executable) []toolcontract.Tool {
 	result := make([]toolcontract.Tool, 0, len(catalog))
 	for _, executable := range catalog {
-		result = append(result, authorizedTool{Tool: executable, registry: p.registry, config: executable.SourceConfig()})
+		result = append(result, authorizedTool{Tool: executable, registry: p.registry, source: executable, config: executable.SourceConfig()})
 	}
 	return result
 }

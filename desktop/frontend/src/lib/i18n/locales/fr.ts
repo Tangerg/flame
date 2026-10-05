@@ -901,6 +901,10 @@ export const fr: Record<string, string> = {
   "mcp.error.toggle": "Impossible de modifier le serveur.",
   "mcp.error.signIn": "Échec de la connexion.",
   "mcp.error.test": "Échec du test",
+  "mcp.testOutcome.timedOut":
+    "Le serveur n'a pas répondu à temps — vérifiez la commande ou l'URL et réessayez.",
+  "mcp.testOutcome.failed":
+    "Le serveur ne s’est pas connecté ou n’a pas fourni de liste d’outils valide. Vérifiez ses réglages et réessayez.",
   "workspace.view.title.file": "Fichiers",
   "settings.theme.system": "Système",
   "runError.action.retryIn": "Réessayer dans {{seconds}} s",
@@ -1058,15 +1062,23 @@ export const fr: Record<string, string> = {
     "Quelque chose a cassé dans le runtime — réessaie, et regarde les diagnostics si ça persiste.",
   "rpcError.run_lost":
     "Le processus de ce run a disparu — il s'est terminé avant qu'un résultat soit enregistré. Relance-le.",
-  "rpcError.mcp_authorization_required":
+  "mcpStatus.mcp_authorization_required":
     "Ce serveur demande une connexion avant de pouvoir servir.",
-  "rpcError.mcp_authorization_failed": "La connexion n'a pas abouti. Réessaie.",
+  "mcpStatus.mcp_authorization_failed": "La connexion n'a pas abouti. Réessaie.",
   "rpcError.mcp_authorization_attempt_not_found":
     "Cette tentative de connexion a expiré. Recommence.",
-  "rpcError.mcp_dial_failed":
+  "mcpStatus.mcp_tool_discovery_failed":
+    "Connecté, mais ce serveur n'a pas renvoyé de liste d'outils utilisable. Vérifiez le serveur et réessayez.",
+  "mcpStatus.mcp_configuration_failed":
+    "La configuration ou les identifiants enregistrés de ce serveur n'ont pas pu être utilisés. Vérifiez ses réglages et réessayez.",
+  "mcpStatus.mcp_release_unavailable":
+    "Le plugin qui fournit ce serveur a échoué à la vérification. Réinstallez ou mettez à jour le plugin.",
+  "mcpStatus.mcp_backend_unavailable":
+    "Le plugin est intact, mais le backend de ce serveur n'a pas pu être préparé. Réessayez ou réinstallez le plugin.",
+  "mcpStatus.mcp_dial_failed":
     "Impossible de joindre ce serveur — vérifie la commande ou l'URL et réessaie.",
-  "rpcError.provider_not_configured": "Terminez d'abord la configuration du fournisseur.",
-  "rpcError.provider_test_failed":
+  "providers.testOutcome.notConfigured": "Terminez d'abord la configuration du fournisseur.",
+  "providers.testOutcome.failed":
     "Le fournisseur était injoignable, ou il a refusé la requête de test.",
   "rpcError.skill_not_found": "Cette compétence n'est plus dans la bibliothèque.",
   "rpcError.skill_unavailable":
@@ -1080,6 +1092,8 @@ export const fr: Record<string, string> = {
   "rpcError.unsupported_mime": "Ce type de fichier n'est pas pris en charge ici.",
   "rpcError.interrupt_not_open": "Cette demande n'attend plus de réponse.",
   "rpcError.idempotency_conflict": "La même requête a déjà été envoyée avec un contenu différent.",
+  "rpcError.plugin_changed":
+    "Un plugin a changé pendant la préparation de l'exécution. Rien n'a été lancé : renvoyez pour réessayer.",
   "session.error.create": "Impossible de créer la session.",
   "session.directory.title": "Nouvelle session",
   "session.directory.description":
@@ -1369,12 +1383,15 @@ export const fr: Record<string, string> = {
   "packages.loading": "Chargement…",
 
   "packages.trust":
-    "Approuver une version revient à faire confiance à son code. Les exécutables locaux utilisent vos permissions système. Vérifiez source, empreinte, entrées et permissions.",
+    "Approuver une version revient à faire confiance à ce code précis. Les exécutables locaux utilisent vos permissions système. Vérifiez source, empreinte et entrées. Sélectionner une autre version exige une nouvelle approbation.",
   "packages.source": "Chemin absolu du dossier ou ZIP sur le Runtime",
   "packages.install": "Installer",
   "packages.empty": "Aucun paquet Runtime installé",
-  "packages.approve": "Approuver version et permissions",
+  "packages.approve": "Approuver cette version",
   "packages.configure": "Configurer les entrées",
+  "packages.state.unapproved": "Non approuvée : vérifiez cette version avant de l'activer.",
+  "packages.state.approved": "Approuvée, non activée.",
+  "packages.state.enabled": "Activée.",
   "packages.disable": "Désactiver",
   "packages.enable": "Activer",
   "packages.stage": "Préparer la mise à jour",
@@ -1383,4 +1400,30 @@ export const fr: Record<string, string> = {
   "packages.uninstall": "Désinstaller",
   "packages.input": "Entrée JSON ou chemin source du Runtime",
   "packages.save": "Enregistrer",
+  "packages.installed": "{{name}} est installé. Vérifiez sa version ci-dessous avant de l'activer.",
+  "packages.releaseUnavailable":
+    "Les fichiers de cette version ont échoué à la vérification ; ses composants sont indisponibles.",
+  "packages.backendUnavailable":
+    "Le serveur « {{name}} » ne peut pas démarrer : son backend n'a pas pu être préparé.",
+  "packages.component.manifestField": "Le champ de manifeste « {{name}} »",
+  "packages.component.flameExtension": "L'extension Flame",
+  "packages.component.extensionField": "Le champ d'extension « {{name}} »",
+  "packages.component.contribution": "La contribution « {{name}} »",
+  "packages.component.mcp": "La configuration MCP",
+  "packages.component.mcpServer": "Le serveur MCP « {{name}} »",
+  "packages.component.skills": "Le dossier des compétences",
+  "packages.component.skill": "La compétence « {{name}} »",
+  "packages.diagnostic.unknownField": "{{component}} n'est pas reconnu et a été ignoré.",
+  "packages.diagnostic.invalidDeclaration": "{{component}} est invalide et a été désactivé.",
+  "packages.diagnostic.unsupportedContribution":
+    "{{component}} n'est pas pris en charge et a été ignoré.",
+  "packages.diagnostic.componentLimit": "{{component}} dépasse sa limite et a été désactivé.",
+  "packages.diagnostic.invalidDependencies":
+    "{{component}} dépend de déclarations manquantes ou invalides et a été désactivé.",
+  "packages.diagnostic.unavailableComponent":
+    "{{component}} n'a pas pu être lu et a été désactivé.",
+  "packages.realizationFailed":
+    "Impossible de charger les thèmes des paquets dans cette fenêtre : {{reason}}",
+  "packages.reviewedField":
+    "« {{field}} » appartient à la version examinée et ne peut pas être modifié ici.",
 };

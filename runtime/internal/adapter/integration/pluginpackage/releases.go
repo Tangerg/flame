@@ -3,22 +3,21 @@
 package pluginpackage
 
 import (
-	"archive/zip"
 	"context"
 	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
-	"golang.org/x/text/unicode/norm"
 	"io"
 	"io/fs"
 	"os"
-	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 
+	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 )
 
 const MaxPackageBytes int64 = 128 << 20
@@ -28,24 +27,24 @@ const MaxManifestBytes int64 = 4 << 20
 var errResourceLimit = errors.New("pluginpackage: resource limit exceeded")
 
 const MaxFiles = 4096
-const maxVerifiedReleases = 2 * plugin.MaxInstallations
 
 type releaseCatalog interface {
-	Get(context.Context, string) (plugin.Release, error)
+	Get(context.Context, fingerprint.Digest) (plugin.Release, error)
 	Admit(context.Context, plugin.Release) error
+	Digests(context.Context) ([]fingerprint.Digest, error)
+	Remove(context.Context, fingerprint.Digest) error
 }
-type releaseIntegrity struct {
-	files      map[string][sha256.Size]byte
-	directory  fs.FileInfo
-	verifiedAt uint64
-}
+
 type Releases struct {
-	directory        string
-	catalog          releaseCatalog
-	publishMu        sync.Mutex
-	loadMu           sync.Mutex
+	directory string
+	catalog   releaseCatalog
+	// publishMu serializes publication and reclamation of release directories.
+	publishMu sync.Mutex
+	// mu guards the integrity cache and the verifications in flight. It is
+	// never held across filesystem I/O.
 	mu               sync.Mutex
-	verified         map[string]releaseIntegrity
+	verified         map[fingerprint.Digest]releaseIntegrity
+	verifying        map[fingerprint.Digest]*verification
 	nextVerification uint64
 }
 
@@ -57,354 +56,211 @@ func New(directory string, catalog releaseCatalog) (*Releases, error) {
 		return nil, errors.New("pluginpackage: release directory must be absolute")
 	}
 	absolute := filepath.Clean(directory)
-	var err error
-	if err = os.MkdirAll(absolute, 0700); err != nil {
-		return nil, err
+	if err := os.MkdirAll(absolute, 0700); err != nil {
+		return nil, fmt.Errorf("pluginpackage: create release directory: %w", err)
 	}
 	resolved, err := filepath.EvalSymlinks(absolute)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("pluginpackage: resolve release directory: %w", err)
 	}
-	return &Releases{directory: resolved, catalog: catalog, verified: map[string]releaseIntegrity{}}, nil
+	return &Releases{
+		directory: resolved,
+		catalog:   catalog,
+		verified:  map[fingerprint.Digest]releaseIntegrity{},
+		verifying: map[fingerprint.Digest]*verification{},
+	}, nil
 }
 
-// The cache retains only byte integrity, never another interpretation of an
-// admitted declaration. Cold eviction rechecks the package's content identity.
-func (r *Releases) remember(digest string, integrity releaseIntegrity) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	if _, exists := r.verified[digest]; !exists && len(r.verified) == maxVerifiedReleases {
-		var oldest string
-		for key, value := range r.verified {
-			if oldest == "" || value.verifiedAt < r.verified[oldest].verifiedAt {
-				oldest = key
-			}
-		}
-		delete(r.verified, oldest)
+func (r *Releases) Root(digest fingerprint.Digest) (string, error) {
+	if err := digest.Validate(); err != nil {
+		return "", errors.Join(plugin.ErrInvalid, err)
 	}
-	r.nextVerification++
-	integrity.verifiedAt = r.nextVerification
-	r.verified[digest] = integrity
+	return filepath.Join(r.directory, digest.String()), nil
 }
-func (r *Releases) Root(digest string) (string, error) {
-	if !plugin.ValidDigest(digest) {
-		return "", plugin.ErrInvalid
-	}
-	return filepath.Join(r.directory, digest), nil
+
+// Candidate is one package admitted as an immutable release that is not yet
+// published: its bytes are sealed in private staging and its declaration is
+// interpreted. Publishing it names it in the catalog; discarding it removes
+// staging that was never published.
+type Candidate struct {
+	releases *Releases
+	staged   *staging
+	release  plugin.Release
+	contents treeContents
 }
-func (r *Releases) Materialize(ctx context.Context, source string) (release plugin.Release, err error) {
+
+func (c *Candidate) Release() plugin.Release { return c.release }
+
+func (c *Candidate) Publish(ctx context.Context) (plugin.Release, error) {
+	return c.releases.publish(ctx, c.staged, c.release, c.contents)
+}
+
+func (c *Candidate) Discard() error { return c.staged.discard() }
+
+// Materialize admits one package as a candidate release: the bytes are copied
+// into private staging within the package limits, sealed read-only, digested
+// and interpreted once per digest. Publication is left to the installation
+// change that references the release, so nothing is published outside the
+// admission point that also reclaims releases.
+func (r *Releases) Materialize(ctx context.Context, source string) (_ plugins.Candidate, err error) {
 	if !filepath.IsAbs(source) {
-		return release, fmt.Errorf("%w: source must be an absolute Runtime path", plugin.ErrInvalid)
+		return nil, fmt.Errorf("%w: source must be an absolute Runtime path", plugin.ErrInvalid)
 	}
-	staging, err := os.MkdirTemp(r.directory, ".stage-")
+	staged, err := newStaging(r.directory)
 	if err != nil {
-		return release, err
+		return nil, err
 	}
 	defer func() {
-		if _, exists := os.Lstat(staging); errors.Is(exists, fs.ErrNotExist) {
-			return
+		if err != nil {
+			err = errors.Join(err, staged.discard())
 		}
-		restoreErr := filepath.WalkDir(staging, func(name string, entry fs.DirEntry, walkErr error) error {
-			if walkErr != nil {
-				return walkErr
-			}
-			if entry.IsDir() {
-				return os.Chmod(name, 0700)
-			}
-			return nil
-		})
-		err = errors.Join(err, restoreErr, os.RemoveAll(staging))
 	}()
-	target, err := os.OpenRoot(staging)
+	if err := staged.extract(ctx, source); err != nil {
+		return nil, err
+	}
+	if err := staged.seal(); err != nil {
+		return nil, err
+	}
+	digest, contents, err := treeDigest(ctx, staged.root)
 	if err != nil {
-		return release, err
+		return nil, err
 	}
-	defer func() { err = errors.Join(err, target.Close()) }()
-	var copied int64
-	seen := map[string]string{}
-	entries := map[string]bool{}
-	admit := func(name string, isDir bool) error {
-		if !plugin.ValidResourcePath(name) {
-			return fmt.Errorf("%w: invalid package entry", plugin.ErrInvalid)
-		}
-		if entries[name] {
-			return fmt.Errorf("%w: duplicate package entry", plugin.ErrInvalid)
-		}
-		entries[name] = true
-		for segment := name; segment != "."; segment = path.Dir(segment) {
-			key := strings.ToLower(norm.NFC.String(segment))
-			if prior, found := seen[key]; found && prior != segment {
-				return fmt.Errorf("%w: ambiguous package destination", plugin.ErrInvalid)
-			}
-			seen[key] = segment
-		}
-		if len(seen) > MaxFiles {
-			return fmt.Errorf("%w: entry limit exceeded", plugin.ErrInvalid)
-		}
-		if isDir {
-			return target.MkdirAll(name, 0700)
-		}
-		return nil
-	}
-	write := func(name string, mode fs.FileMode, input io.Reader) error {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		if mode&fs.ModeType != 0 {
-			return fmt.Errorf("%w: invalid package entry mode", plugin.ErrInvalid)
-		}
-		if err := admit(name, false); err != nil {
-			return err
-		}
-		if err := target.MkdirAll(path.Dir(name), 0700); err != nil {
-			return err
-		}
-		f, err := target.OpenFile(name, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600|mode.Perm()&0111)
-		if err != nil {
-			return err
-		}
-		limit := min(MaxFileBytes, MaxPackageBytes-copied)
-		n, copyErr := io.Copy(f, io.LimitReader(input, limit+1))
-		closeErr := f.Close()
-		copied += n
-		if n > limit {
-			return errors.Join(fmt.Errorf("%w: byte limit exceeded", plugin.ErrInvalid), copyErr, closeErr)
-		}
-		return errors.Join(copyErr, closeErr)
-	}
-	info, err := os.Stat(source)
+	release, err := r.admission(ctx, staged.root, digest)
 	if err != nil {
-		return release, err
+		return nil, err
 	}
-	if info.IsDir() {
-		input, err := os.OpenRoot(source)
-		if err != nil {
-			return release, err
-		}
-		defer func() { err = errors.Join(err, input.Close()) }()
-		err = fs.WalkDir(input.FS(), ".", func(name string, entry fs.DirEntry, walkErr error) error {
-			if walkErr != nil {
-				return walkErr
-			}
-			if err := ctx.Err(); err != nil {
-				return err
-			}
-			if entry.IsDir() {
-				if name == "." {
-					return nil
-				}
-				return admit(name, true)
-			}
-			info, err := entry.Info()
-			if err != nil {
-				return err
-			}
-			if !info.Mode().IsRegular() {
-				return fmt.Errorf("%w: package must contain only directories and regular files", plugin.ErrInvalid)
-			}
-			f, err := input.Open(name)
-			if err != nil {
-				return err
-			}
-			writeErr := write(name, info.Mode(), f)
-			return errors.Join(writeErr, f.Close())
-		})
-	} else {
-		if info.Size() > MaxPackageBytes {
-			return release, fmt.Errorf("%w: archive byte limit exceeded", plugin.ErrInvalid)
-		}
-		archive, openErr := zip.OpenReader(source)
-		if openErr != nil {
-			if errors.Is(openErr, zip.ErrFormat) {
-				return release, errors.Join(plugin.ErrInvalid, openErr)
-			}
-			return release, openErr
-		}
-		for _, entry := range archive.File {
-			if entry.FileInfo().IsDir() {
-				if entry.Mode()&fs.ModeType != fs.ModeDir {
-					err = fmt.Errorf("%w: invalid directory mode", plugin.ErrInvalid)
-					break
-				}
-				err = admit(strings.TrimSuffix(entry.Name, "/"), true)
-				if err != nil {
-					break
-				}
-				continue
-			}
-			f, openErr := entry.Open()
-			if openErr != nil {
-				err = openErr
-				break
-			}
-			err = errors.Join(write(entry.Name, entry.Mode(), f), f.Close())
-			if err != nil {
-				break
-			}
-		}
-		err = errors.Join(err, archive.Close())
-		if errors.Is(err, zip.ErrFormat) || errors.Is(err, zip.ErrChecksum) || errors.Is(err, zip.ErrAlgorithm) {
-			err = errors.Join(plugin.ErrInvalid, err)
-		}
-	}
-	if err != nil {
-		return release, err
-	}
-	digest, files, err := treeDigest(ctx, target)
-	if err != nil {
-		return release, err
-	}
-	release, err = r.catalog.Get(ctx, digest)
+	return &Candidate{releases: r, staged: staged, release: release, contents: contents}, nil
+}
+
+// admission returns the catalog's interpretation of a digest it has already
+// admitted, so equal bytes are never reinterpreted; only a new digest is parsed.
+func (r *Releases) admission(ctx context.Context, root *os.Root, digest fingerprint.Digest) (plugin.Release, error) {
+	release, err := r.catalog.Get(ctx, digest)
 	if errors.Is(err, plugin.ErrNotFound) {
-		release, err = parse(ctx, target, digest)
+		return parse(ctx, root, digest)
 	}
+	return release, err
+}
+
+// publish makes sealed staging the release directory for its digest, or
+// verifies the directory an earlier admission already published, and admits
+// the release to the catalog. publishMu serializes the existence check, the
+// rename and reclamation, so a directory is never removed while published.
+func (r *Releases) publish(ctx context.Context, staged *staging, release plugin.Release, contents treeContents) (plugin.Release, error) {
+	digest := release.Digest()
+	destination, err := r.Root(digest)
 	if err != nil {
-		return release, err
+		return plugin.Release{}, err
 	}
-	destination, _ := r.Root(digest)
-	// Publication alone serializes the existence check and immutable rename.
-	// Independent admissions may copy bytes concurrently, but share one release.
 	r.publishMu.Lock()
 	defer r.publishMu.Unlock()
-	if err = ctx.Err(); err != nil {
-		return release, err
+	if err := ctx.Err(); err != nil {
+		return plugin.Release{}, err
 	}
-	if _, err = os.Stat(destination); err == nil {
-		root, _, inspectErr := r.inspectRoot(ctx, digest)
-		if inspectErr != nil {
-			return release, inspectErr
+	if _, err := os.Stat(destination); err == nil {
+		if _, err := r.verify(ctx, digest); err != nil {
+			return plugin.Release{}, err
 		}
-		if err = root.Close(); err != nil {
-			return release, err
-		}
-		if err = r.catalog.Admit(ctx, release); err != nil {
-			return release, err
-		}
-		return r.catalog.Get(ctx, digest)
 	} else if !errors.Is(err, fs.ErrNotExist) {
-		return release, err
-	}
-	if err = fs.WalkDir(target.FS(), ".", func(name string, entry fs.DirEntry, err error) error {
+		return plugin.Release{}, err
+	} else {
+		if err := os.Rename(staged.path, destination); err != nil {
+			return plugin.Release{}, err
+		}
+		info, err := staged.root.Stat(".")
 		if err != nil {
-			return err
+			return plugin.Release{}, err
 		}
-		mode := fs.FileMode(0400)
-		if entry.IsDir() {
-			mode = 0500
-		} else {
-			info, e := entry.Info()
-			if e != nil {
-				return e
-			}
-			mode |= info.Mode().Perm() & 0111
-		}
-		return target.Chmod(name, mode)
-	}); err != nil {
-		return release, err
+		r.remember(digest, releaseIntegrity{treeContents: contents, directory: info})
 	}
-	if err = os.Rename(staging, destination); err != nil {
-		return release, err
+	if err := r.catalog.Admit(ctx, release); err != nil {
+		return plugin.Release{}, err
 	}
-	if err = r.catalog.Admit(ctx, release); err != nil {
-		return release, err
-	}
-	info, err = target.Stat(".")
-	if err != nil {
-		return release, err
-	}
-	r.remember(digest, releaseIntegrity{files: files, directory: info})
 	return r.catalog.Get(ctx, digest)
 }
 
-func (r *Releases) integrity(ctx context.Context, digest string) (releaseIntegrity, error) {
-	if err := ctx.Err(); err != nil {
-		return releaseIntegrity{}, err
-	}
-	r.mu.Lock()
-	integrity, found := r.verified[digest]
-	r.mu.Unlock()
-	if found {
-		return integrity, nil
-	}
-	r.loadMu.Lock()
-	defer r.loadMu.Unlock()
-	r.mu.Lock()
-	integrity, found = r.verified[digest]
-	r.mu.Unlock()
-	if found {
-		return integrity, nil
-	}
-	root, integrity, err := r.inspectRoot(ctx, digest)
+// Reclaim removes every admitted release and release directory outside
+// retained. The directory goes first: a release whose directory could not be
+// removed stays in the catalog and is retried by the next reclamation, and a
+// directory without a catalog row is still found by its digest name. Staging
+// and entries that do not name a digest are not releases and are left alone.
+// The directory is read in bounded batches, so garbage of any size is
+// reclaimed without materializing the whole listing.
+func (r *Releases) Reclaim(ctx context.Context, retained []fingerprint.Digest) error {
+	r.publishMu.Lock()
+	defer r.publishMu.Unlock()
+	admitted, err := r.catalog.Digests(ctx)
 	if err != nil {
-		return releaseIntegrity{}, errors.Join(plugin.ErrUnavailable, err)
+		return fmt.Errorf("pluginpackage: list admitted releases: %w", err)
 	}
-	if err := root.Close(); err != nil {
-		return releaseIntegrity{}, err
-	}
-	return integrity, nil
-}
-func (r *Releases) verifiedRoot(ctx context.Context, digest string) (*os.Root, releaseIntegrity, error) {
-	integrity, err := r.integrity(ctx, digest)
+	directory, err := os.Open(r.directory)
 	if err != nil {
-		return nil, releaseIntegrity{}, err
+		return fmt.Errorf("pluginpackage: open release directories: %w", err)
 	}
-	dir, err := r.Root(digest)
-	if err != nil {
-		return nil, releaseIntegrity{}, err
+	defer directory.Close()
+	var failures error
+	reclaim := func(digest fingerprint.Digest) error {
+		if slices.Contains(retained, digest) {
+			return nil
+		}
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		dir, err := r.Root(digest)
+		if err != nil {
+			return err
+		}
+		r.forget(digest)
+		if err := removeSealed(dir); err != nil {
+			failures = errors.Join(failures, fmt.Errorf("pluginpackage: remove release %s directory: %w", digest, err))
+			return nil
+		}
+		if slices.Contains(admitted, digest) {
+			if err := r.catalog.Remove(ctx, digest); err != nil {
+				failures = errors.Join(failures, fmt.Errorf("pluginpackage: remove release %s: %w", digest, err))
+			}
+		}
+		return nil
 	}
-	entry, err := os.Lstat(dir)
-	if err != nil || !entry.IsDir() || !os.SameFile(entry, integrity.directory) {
-		return nil, releaseIntegrity{}, errors.Join(plugin.ErrUnavailable, err)
+	published := make(map[fingerprint.Digest]struct{})
+	for {
+		entries, readErr := directory.ReadDir(reclaimBatch)
+		for _, entry := range entries {
+			digest, err := fingerprint.ParseDigest(entry.Name())
+			if err != nil {
+				continue
+			}
+			published[digest] = struct{}{}
+			if err := reclaim(digest); err != nil {
+				return errors.Join(failures, err)
+			}
+		}
+		if errors.Is(readErr, io.EOF) {
+			break
+		}
+		if readErr != nil {
+			return errors.Join(failures, fmt.Errorf("pluginpackage: list release directories: %w", readErr))
+		}
 	}
-	root, err := os.OpenRoot(dir)
-	if err != nil {
-		return nil, releaseIntegrity{}, errors.Join(plugin.ErrUnavailable, err)
+	for _, digest := range admitted {
+		if _, seen := published[digest]; seen {
+			continue
+		}
+		if err := reclaim(digest); err != nil {
+			return errors.Join(failures, err)
+		}
 	}
-	info, err := root.Stat(".")
-	if err != nil || !os.SameFile(info, integrity.directory) {
-		return nil, releaseIntegrity{}, errors.Join(plugin.ErrUnavailable, err, root.Close())
-	}
-	return root, integrity, nil
+	return failures
 }
 
-// inspectRoot keeps the verified directory capability alive for its consumer.
-// Reopening its pathname after validation could select a replacement directory.
-func (r *Releases) inspectRoot(ctx context.Context, digest string) (*os.Root, releaseIntegrity, error) {
-	dir, err := r.Root(digest)
-	if err != nil {
-		return nil, releaseIntegrity{}, err
-	}
-	resolved, err := filepath.EvalSymlinks(dir)
-	if err != nil {
-		return nil, releaseIntegrity{}, err
-	}
-	if resolved != dir {
-		return nil, releaseIntegrity{}, plugin.ErrInvalid
-	}
-	root, err := os.OpenRoot(dir)
-	if err != nil {
-		return nil, releaseIntegrity{}, err
-	}
-	actual, files, err := treeDigest(ctx, root)
-	if err != nil {
-		return nil, releaseIntegrity{}, errors.Join(err, root.Close())
-	}
-	if actual != digest {
-		return nil, releaseIntegrity{}, errors.Join(errors.New("pluginpackage: release integrity mismatch"), root.Close())
-	}
-	info, err := root.Stat(".")
-	if err != nil {
-		return nil, releaseIntegrity{}, errors.Join(err, root.Close())
-	}
-	integrity := releaseIntegrity{files: files, directory: info}
-	r.remember(digest, integrity)
-	return root, integrity, nil
-}
+// reclaimBatch bounds one directory read during reclamation.
+const reclaimBatch = 256
+
 func (r *Releases) readResource(ctx context.Context, installation *plugin.Installation, name string, limit int64) ([]byte, error) {
 	if !plugin.ValidResourcePath(name) {
 		return nil, fmt.Errorf("%w: invalid resource path", plugin.ErrInvalid)
 	}
-	root, integrity, err := r.verifiedRoot(ctx, installation.Snapshot().Selected.Digest)
+	root, integrity, err := r.verifiedRoot(ctx, installation.Selected())
 	if err != nil {
 		return nil, err
 	}
@@ -420,64 +276,7 @@ func (r *Releases) readResource(ctx context.Context, installation *plugin.Instal
 	}
 	return content, errors.Join(err, root.Close())
 }
-func treeDigest(ctx context.Context, root *os.Root) (string, map[string][sha256.Size]byte, error) {
-	h := sha256.New()
-	files := map[string][sha256.Size]byte{}
-	var total int64
-	var count int
-	err := fs.WalkDir(root.FS(), ".", func(name string, entry fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if err = ctx.Err(); err != nil {
-			return err
-		}
-		if name == "." {
-			return nil
-		}
-		count++
-		if count > MaxFiles {
-			return errors.New("pluginpackage: entry limit exceeded")
-		}
-		if entry.IsDir() {
-			if !plugin.ValidResourcePath(name) {
-				return plugin.ErrInvalid
-			}
-			fmt.Fprintf(h, "%d:%s:dir:", len(name), name)
-			return nil
-		}
-		info, err := entry.Info()
-		if err != nil {
-			return err
-		}
-		if !plugin.ValidResourcePath(name) || !info.Mode().IsRegular() {
-			return errors.New("pluginpackage: invalid release entry")
-		}
-		total += info.Size()
-		if count > MaxFiles || total > MaxPackageBytes || info.Size() > MaxFileBytes {
-			return errors.New("pluginpackage: release limit exceeded")
-		}
-		fmt.Fprintf(h, "%d:%s:%o:%d:", len(name), name, info.Mode().Perm()&0111, info.Size())
-		f, err := root.Open(name)
-		if err != nil {
-			return err
-		}
-		fileHash := sha256.New()
-		n, err := io.Copy(io.MultiWriter(h, fileHash), io.LimitReader(f, MaxFileBytes+1))
-		err = errors.Join(err, f.Close())
-		if n != info.Size() {
-			return errors.Join(errors.New("pluginpackage: release changed during inspection"), err)
-		}
-		if err == nil {
-			files[name] = [sha256.Size]byte(fileHash.Sum(nil))
-		}
-		return err
-	})
-	if err != nil {
-		return "", nil, err
-	}
-	return hex.EncodeToString(h.Sum(nil)), files, nil
-}
+
 func read(ctx context.Context, root *os.Root, name string, limit int64) (body []byte, err error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err

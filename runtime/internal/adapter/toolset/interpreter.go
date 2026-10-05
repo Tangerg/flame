@@ -51,10 +51,11 @@ func (Interpreter) UsesStandardPolicy(ref tool.Ref) bool {
 // subject, which means the rule covers the whole tool.
 func (Interpreter) ApprovalSubject(ref tool.Ref, arguments tool.Arguments) (string, error) {
 	var field string
-	if ref.Kind() != tool.BuiltInKind {
+	name, ok := ref.BuiltIn()
+	if !ok {
 		return "", nil
 	}
-	switch ref.Name() {
+	switch name {
 	case tool.Shell:
 		field = "command"
 	case tool.Read, tool.Edit:

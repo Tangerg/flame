@@ -19,7 +19,7 @@ import (
 func (c *Connections) Probe(ctx context.Context, cfg ServerConfig) error {
 	if cfg.OAuthHandler == nil && c != nil {
 		c.mu.Lock()
-		if configuredServer := c.find(cfg.Name); configuredServer != nil {
+		if configuredServer := c.find(cfg.ID()); configuredServer != nil {
 			cfg.OAuthHandler = reusableOAuth(configuredServer.config, cfg, configuredServer.oauth)
 		}
 		c.mu.Unlock()
@@ -35,7 +35,7 @@ func probe(ctx context.Context, cfg ServerConfig) (err error) {
 		return validateErr
 	}
 	ctx, span := tracer.Start(ctx, "mcp.probe",
-		trace.WithAttributes(attribute.String("mcp.server.name", cfg.Name.String())))
+		trace.WithAttributes(attribute.String("mcp.server.name", cfg.ID().String())))
 	defer span.End()
 
 	client := sdkmcp.NewClient(&sdkmcp.Implementation{Name: "runtime-probe", Version: "v0.1.0"}, nil)
@@ -50,7 +50,7 @@ func probe(ctx context.Context, cfg ServerConfig) (err error) {
 			err = errors.Join(err, closeErr)
 		}
 	}()
-	if _, err := sourceTools(ctx, cfg, session); err != nil {
+	if _, err := sourceTools(ctx, nil, cfg, session); err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		return err
 	}

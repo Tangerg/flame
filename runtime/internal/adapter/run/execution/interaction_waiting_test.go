@@ -192,7 +192,7 @@ func TestInteractionExecutorRestoresRuntimeAskUserTool(t *testing.T) {
 	arguments := `{"questions":[{"question":"Which value?"}]}`
 	model := &observationScriptModel{responses: []*chat.Response{
 		interactionToolResponse(chat.ToolCall{
-			ID: "ask_user_call", Name: domaintool.AskUser, Arguments: arguments,
+			ID: "ask_user_call", Name: string(domaintool.AskUser), Arguments: arguments,
 		}, 1, 1),
 		interactionUsageTextResponse("continued after the answer", 1, 1),
 	}}
@@ -213,7 +213,7 @@ func TestInteractionExecutorRestoresRuntimeAskUserTool(t *testing.T) {
 	starts := payloadsOf[runs.ToolCallStarted](beforeAnswer)
 	interruptions := barrier.Interruptions()
 	if len(interruptions) != 1 || interruptions[0].Interrupt.Question == nil ||
-		interruptions[0].Interrupt.Question.ToolName != domaintool.AskUser ||
+		interruptions[0].Interrupt.Question.ToolName != string(domaintool.AskUser) ||
 		len(starts) != 1 {
 		t.Fatalf("ask_user interruption = %#v", interruptions)
 	}
@@ -416,7 +416,7 @@ func TestInteractionExecutorCancellationStopsApprovedForegroundShell(t *testing.
 	}
 	model := &observationScriptModel{responses: []*chat.Response{
 		interactionToolResponse(chat.ToolCall{
-			ID: "shell_call", Name: domaintool.Shell,
+			ID: "shell_call", Name: string(domaintool.Shell),
 			Arguments: `{"command":"sleep 30","description":"Wait until canceled"}`,
 		}, 1, 1),
 	}}

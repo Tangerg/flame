@@ -24,6 +24,7 @@ var rpcCodeSpecs = mustRPCCodeSpecs([]rpcCodeSpec{
 	{protocol.ErrRunNotFound.Error(), codeRunNotFound},
 	{protocol.ErrItemNotFound.Error(), codeItemNotFound},
 	{protocol.ErrPluginUnavailable.Error(), codePluginUnavailable},
+	{protocol.ErrPluginChanged.Error(), codePluginChanged},
 	{protocol.ErrPluginNotFound.Error(), codePluginNotFound},
 	{protocol.ErrPluginInUse.Error(), codePluginInUse},
 	{protocol.ErrPluginUnapproved.Error(), codePluginUnapproved},

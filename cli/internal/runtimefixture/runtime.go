@@ -34,8 +34,9 @@ type SubscriptionFault struct {
 // stable Runs, per-resume Segments, opaque event IDs, authoritative cold reads,
 // and complete interrupt sets independently from any delivery transport.
 type Runtime struct {
-	// ToolModelNames supplies explicit catalog labels for approval command tests.
-	ToolModelNames map[protocol.ToolRef]string
+	// ToolModelNames supplies explicit catalog labels for approval command tests,
+	// keyed by conversation.ToolSource because a reference holds a pointer.
+	ToolModelNames map[string]string
 	Instant        bool
 	Script         func(authoredPrompt string) Script
 	Faults         []SubscriptionFault

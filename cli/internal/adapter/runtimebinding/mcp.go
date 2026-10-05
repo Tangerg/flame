@@ -3,7 +3,6 @@ package runtimebinding
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
 	flameruntime "github.com/Tangerg/flame/runtime"
@@ -34,21 +33,6 @@ func (r *Connection) Servers(ctx context.Context) ([]protocol.MCPServer, error) 
 	values, err := requireCompletePage("list MCP servers", page)
 	if err != nil {
 		return nil, err
-	}
-	for index, server := range values {
-		if index == 0 {
-			continue
-		}
-		previous := values[index-1]
-		if server.Name == previous.Name {
-			return nil, runtimeContractViolation("list MCP servers repeats %q", server.Name)
-		}
-		if server.Name < previous.Name {
-			return nil, runtimeContractViolation(
-				"list MCP servers returned server %q out of catalog order after %q",
-				server.Name, previous.Name,
-			)
-		}
 	}
 	return values, nil
 }
@@ -92,7 +76,7 @@ func (r *Connection) UpdateServer(ctx context.Context, update mcp.ServerUpdate) 
 		request.Connection = &connection
 	}
 	if err := protocol.ValidateWireTree(request); err != nil {
-		return protocol.MCPServer{}, fmt.Errorf("MCP update %s violates runtime wire contract: %w", update.Server, err)
+		return protocol.MCPServer{}, fmt.Errorf("MCP update %s violates runtime wire contract: %w", mcp.ServerLabel(update.Server), err)
 	}
 	result, err := r.mcp.UpdateMCPServer(ctx, request, options)
 	if err != nil {
@@ -107,51 +91,52 @@ func (r *Connection) UpdateServer(ctx context.Context, update mcp.ServerUpdate) 
 	return *result, nil
 }
 
-func (r *Connection) DeleteServer(ctx context.Context, server string) error {
+func (r *Connection) DeleteServer(ctx context.Context, server protocol.MCPServerID) error {
 	return r.mutateMCPServer(ctx, "delete MCP server", server, r.mcp.DeleteMCPServer)
 }
 
-func (r *Connection) ReconnectServer(ctx context.Context, server string) error {
+func (r *Connection) ReconnectServer(ctx context.Context, server protocol.MCPServerID) error {
 	return r.mutateMCPServer(ctx, "reconnect MCP server", server, r.mcp.ReconnectMCPServer)
 }
 
 func (r *Connection) mutateMCPServer(
 	ctx context.Context,
-	operation, server string,
+	operation string,
+	server protocol.MCPServerID,
 	mutate func(context.Context, protocol.MCPServerRequest, flameruntime.CommandOptions) error,
 ) error {
-	request := protocol.MCPServerRequest{Server: strings.TrimSpace(server)}
-	if err := request.ValidateWire(); err != nil {
+	request := protocol.MCPServerRequest{Server: server}
+	if err := protocol.ValidateWireTree(request); err != nil {
 		return fmt.Errorf("%s: %w", operation, err)
 	}
 	options := r.commandOptions()
 	return classifyError(mutate(ctx, request, options))
 }
 
-func (r *Connection) TestServer(ctx context.Context, candidate mcp.Candidate) (protocol.MCPTestResult, error) {
+func (r *Connection) TestServer(ctx context.Context, candidate mcp.Candidate) (protocol.MCPTestOutcome, error) {
 	if err := candidate.Validate(); err != nil {
-		return protocol.MCPTestResult{}, err
+		return "", err
 	}
 	request, err := projectMCPCandidate(candidate)
 	if err != nil {
-		return protocol.MCPTestResult{}, err
+		return "", err
 	}
 	result, err := r.mcp.TestMCPServer(ctx, request, r.callOptions())
 	if err != nil {
-		return protocol.MCPTestResult{}, classifyError(err)
+		return "", classifyError(err)
 	}
 	if result == nil {
-		return protocol.MCPTestResult{}, runtimeContractViolation("test MCP server returned nil")
+		return "", runtimeContractViolation("test MCP server returned nil")
 	}
-	if result.OK == (result.Error != nil) {
-		return protocol.MCPTestResult{}, runtimeContractViolation("test MCP server returned contradictory success and error states")
+	if err := protocol.ValidateWireTree(*result); err != nil {
+		return "", runtimeContractViolation("test MCP server returned an invalid result: %v", err)
 	}
-	return *result, nil
+	return result.Outcome, nil
 }
 
-func (r *Connection) Tools(ctx context.Context, server string) ([]protocol.MCPTool, error) {
-	request := protocol.MCPListToolsRequest{Server: strings.TrimSpace(server)}
-	if err := request.ValidateWire(); err != nil {
+func (r *Connection) Tools(ctx context.Context, server *protocol.MCPServerID) ([]protocol.MCPTool, error) {
+	request := protocol.MCPListToolsRequest{Server: server}
+	if err := protocol.ValidateWireTree(request); err != nil {
 		return nil, fmt.Errorf("list MCP tools: %w", err)
 	}
 	page, err := r.mcp.ListMCPTools(ctx, request, r.callOptions())
@@ -162,33 +147,17 @@ func (r *Connection) Tools(ctx context.Context, server string) ([]protocol.MCPTo
 	if err != nil {
 		return nil, err
 	}
-	for index, tool := range values {
-		if request.Server != "" && tool.Server != request.Server {
-			return nil, runtimeContractViolation("list MCP tools for %q returned a tool from %q", request.Server, tool.Server)
-		}
-		if index == 0 {
-			continue
-		}
-		previous, current := values[index-1], tool
-		if current.Server == previous.Server && current.Name == previous.Name {
-			return nil, runtimeContractViolation("list MCP tools repeats %s/%s", tool.Server, tool.Name)
-		}
-		if current.Server < previous.Server || current.Server == previous.Server && current.Name < previous.Name {
-			return nil, runtimeContractViolation(
-				"list MCP tools returned tool %s/%s out of catalog order after %s/%s",
-				current.Server,
-				current.Name,
-				previous.Server,
-				previous.Name,
-			)
+	for _, tool := range values {
+		if server != nil && tool.Server != *server {
+			return nil, runtimeContractViolation("list MCP tools for %q returned a tool from %q", mcp.ServerLabel(*server), mcp.ServerLabel(tool.Server))
 		}
 	}
 	return values, nil
 }
 
-func (r *Connection) StartAuthorization(ctx context.Context, server string) (protocol.MCPAuthorizationAttempt, error) {
-	request := protocol.CreateMCPAuthorizationAttemptRequest{Server: strings.TrimSpace(server)}
-	if err := request.ValidateWire(); err != nil {
+func (r *Connection) StartAuthorization(ctx context.Context, server protocol.MCPServerID) (protocol.MCPAuthorizationAttempt, error) {
+	request := protocol.CreateMCPAuthorizationAttemptRequest{Server: server}
+	if err := protocol.ValidateWireTree(request); err != nil {
 		return protocol.MCPAuthorizationAttempt{}, fmt.Errorf("start MCP authorization: %w", err)
 	}
 	options := r.commandOptions()
@@ -254,7 +223,7 @@ func projectMCPConnectionInput(connection mcp.ConnectionInput) protocol.MCPConne
 
 type mcpAuthorizationIdentity struct {
 	attemptID string
-	server    string
+	server    protocol.MCPServerID
 }
 
 func projectMCPAuthorizationResult(
@@ -284,8 +253,8 @@ func projectMCPAuthorizationResult(
 		return protocol.MCPAuthorizationAttempt{}, runtimeContractViolation(
 			"%s returned server %q for %q",
 			operation,
-			attempt.Server,
-			expected.server,
+			mcp.ServerLabel(attempt.Server),
+			mcp.ServerLabel(expected.server),
 		)
 	}
 	return attempt, nil
@@ -298,9 +267,9 @@ func clonePointer[T any](value *T) *T {
 	return new(*value)
 }
 
-func (r *Connection) ToolExposure(ctx context.Context, server string) (protocol.MCPToolExposure, error) {
+func (r *Connection) ToolExposure(ctx context.Context, server protocol.MCPServerID) (protocol.MCPToolExposure, error) {
 	request := protocol.MCPServerRequest{Server: server}
-	if err := request.ValidateWire(); err != nil {
+	if err := protocol.ValidateWireTree(request); err != nil {
 		return protocol.MCPToolExposure{}, err
 	}
 	result, err := r.mcp.GetMCPToolExposure(ctx, request, r.callOptions())
@@ -313,7 +282,7 @@ func (r *Connection) ToolExposure(ctx context.Context, server string) (protocol.
 	return *result, nil
 }
 func (r *Connection) SetToolExposure(ctx context.Context, request protocol.SetMCPToolExposureRequest) error {
-	if err := request.ValidateWire(); err != nil {
+	if err := protocol.ValidateWireTree(request); err != nil {
 		return err
 	}
 	return classifyError(r.mcp.SetMCPToolExposure(ctx, request, r.commandOptions()))

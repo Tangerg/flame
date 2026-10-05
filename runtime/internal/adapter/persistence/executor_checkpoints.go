@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
@@ -52,6 +54,7 @@ func (e *ExecutorCheckpointStore) SaveCheckpoint(ctx context.Context, checkpoint
 	}
 	err := e.storage.SaveCheckpoint(ctx, sqlite.ExecutorCheckpointRecord{
 		ToolResultIDs: slices.Clone(checkpoint.ToolResultIDs),
+		Installations: slices.Clone(checkpoint.Installations),
 		RootMemberID:  checkpoint.RootMemberID,
 		Payload:       append([]byte(nil), checkpoint.Payload...),
 		BuildID:       checkpoint.BuildID,
@@ -76,6 +79,7 @@ func (e *ExecutorCheckpointStore) LoadCheckpoint(ctx context.Context, rootMember
 	}
 	checkpoint := runs.ExecutorCheckpoint{
 		ToolResultIDs: slices.Clone(record.ToolResultIDs),
+		Installations: slices.Clone(record.Installations),
 		RootMemberID:  record.RootMemberID,
 		Payload:       append([]byte(nil), record.Payload...),
 		BuildID:       record.BuildID,
@@ -117,6 +121,6 @@ func translateCheckpointStorageError(err error) error {
 	}
 }
 
-func (e *ExecutorCheckpointStore) PendingCheckpointPayloads(ctx context.Context) ([][]byte, error) {
-	return e.storage.PendingCheckpointPayloads(ctx)
+func (e *ExecutorCheckpointStore) PendingCheckpointDependencies(ctx context.Context) ([]plugin.Dependency, error) {
+	return e.storage.PendingCheckpointDependencies(ctx)
 }

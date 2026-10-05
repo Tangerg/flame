@@ -189,20 +189,45 @@ boundary. Protocol clients contain no Wails import or UI state.
 Settings → Plugins manages Runtime-owned installations, exact-digest trust, declared input
 changes, enablement and staged updates. MCP configuration from an installation is read-only
 in the MCP pane. The existing exposure, OAuth and approval controls remain authoritative.
-Approval and configuration editors retain the exact release opened for review. Catalog
-refreshes cannot retarget their draft to newly selected code; Runtime rejects stale drafts.
-Editors use the generated request contract instead of maintaining local grant and input
-schemas. Configuration JSON cannot override the installation or digest opened for review.
+MCP settings key every server by Runtime's structured `MCPServerID` (origin plus name), so a
+user server and an installation server with the same name keep separate rows, tool
+exposure and standing approval.
+Each row shows Runtime's closed installation `state` (`unapproved`, `approved`, `enabled`).
+Approval names the exact selected digest: after a staged release is selected the row is
+`unapproved` again and offers approval of the new digest before it can be enabled.
+The configuration editor retains the exact release opened for review. Catalog refreshes
+cannot retarget its draft to newly selected code; Runtime rejects stale drafts. It uses the
+generated request contract and submits deltas (`valueChanges`, `serverChanges`,
+`skillChanges`) that name only what changed; it cannot override the installation or digest
+opened for review. Header and authorization inputs are always secret.
+Each row renders Runtime's observed `realization` (release unavailable, or the declared
+servers whose backend cannot be realized) and the release's typed admission diagnostics as
+localized text built from component and code; nothing parses diagnostic text. Input state
+arrives as `unset`, `configured` or `value`: a configured secret is shown as configured and
+its text never reaches the client. Package themes load exactly while Runtime reports the
+installation's `presentation` as `admitted`; the client never derives it from enablement,
+approval or `realization`.
+An MCP server's failed status names its category (connection, tool discovery,
+configuration, authorization, unavailable release or backend) through localized problem types.
+The status, authorization attempt and connection test projections accept only the categories
+their state allows and reject anything else as a Runtime contract violation.
 External themes contribute through the existing Dougong Host and child lifetimes;
 connection replacement retires the predecessor before publishing new contributions.
 Plugin actions, HTML views and bridges are unavailable until the design's carrier spike
 and subsequent slices establish their contracts. Runtime-owned MCP tools continue through
 the existing execution and approval path. See [Runtime's plugin contract](../runtime/README.md#portable-plugins).
 
-Package themes declare a light/dark scheme. The appearance owner persists a rendered
-projection solely for first paint, keyed by the selected preference. Live scheme decisions
-use registered contributions or system appearance. A complete Runtime catalog withdraws
-removed package preferences while preserving them across temporary disconnects. Package
+Package themes declare a light/dark scheme. Their portable colors pass through the same
+palette derivation as the custom theme, so every package theme publishes a complete token
+set. A theme that declares an accent owns it while selected; otherwise the user's accent
+applies. A failed theme realization stays local to the window: Settings → Plugins shows it
+with a retry and never writes it back to Runtime installation state. The appearance owner
+persists a rendered projection solely for first paint, keyed by the selected preference.
+Without a matching projection, first paint and live scheme decisions both follow system
+appearance until a registered contribution states the scheme. A complete Runtime catalog withdraws
+a selected package theme Runtime no longer admits, while preserving it across temporary
+disconnects; the withdrawal resets the selection to system appearance, which clears the
+first-paint projection, so a later cold boot does not paint the withheld theme. Package
 reads share the query-cache fetch path; mutation responses do not maintain a second catalog.
 
 Language contributions own lazy dictionary activation through their Host lifetime.

@@ -5,10 +5,13 @@ import (
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -37,6 +40,10 @@ func (m mcpTool) Call(context.Context, toolcontract.Invocation) (chat.ToolOutput
 }
 
 func (m mcpTool) MCPToolIdentity() (string, string) { return m.server, m.remote }
+
+func (m mcpTool) SourceConfig() mcp.ServerConfig {
+	return mcp.ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName(m.server)}
+}
 
 func catalog() []toolcontract.Tool {
 	return []toolcontract.Tool{
@@ -158,16 +165,49 @@ func TestDeferredToolNames(t *testing.T) {
 	}
 }
 
-func TestDescriptionListsCatalogButNotSchemas(t *testing.T) {
-	tool := newSearch(t, catalog())
-	desc := tool.Definition().Description
+func TestDescriptionIsIndependentOfCatalog(t *testing.T) {
+	small := newSearch(t, catalog()[:1]).Definition()
+	full := newSearch(t, catalog()).Definition()
+	if small.Description != full.Description || string(small.InputSchema) != string(full.InputSchema) {
+		t.Fatalf("search_tools declaration depends on the deferred catalog:\n%s\n---\n%s", small.Description, full.Description)
+	}
 	for _, name := range []string{"linear_create_issue", "slack_send_message", "github_open_pr"} {
-		if !strings.Contains(desc, name) {
-			t.Fatalf("description missing %q:\n%s", name, desc)
+		if strings.Contains(full.Description, name) {
+			t.Fatalf("description names deferred Tool %q:\n%s", name, full.Description)
 		}
 	}
-	if strings.Contains(desc, "input_schema") || strings.Contains(desc, `"type":"object"`) {
-		t.Fatalf("description leaked schemas (defeats deferral):\n%s", desc)
+}
+
+func TestCatalogListsSelectableNamesInStableOrderWithoutSchemas(t *testing.T) {
+	tools := catalog()
+	reversed := make([]toolcontract.Tool, len(tools))
+	for index, tool := range tools {
+		reversed[len(tools)-1-index] = tool
+	}
+	search := newSearch(t, tools)
+	rendered := search.Catalog()
+	if rendered != newSearch(t, reversed).Catalog() {
+		t.Fatalf("catalog depends on input order:\n%s", rendered)
+	}
+	position := -1
+	for _, name := range []string{"github_open_pr", "linear_create_issue", "linear_list_issues", "slack_send_message"} {
+		next := strings.Index(rendered, name)
+		if next <= position {
+			t.Fatalf("catalog does not list %q in source-then-name order:\n%s", name, rendered)
+		}
+		position = next
+	}
+	for _, name := range search.DeferredToolNames() {
+		if !strings.Contains(call(t, search, "select:"+name), name) {
+			t.Fatalf("catalog name %q is not selectable", name)
+		}
+	}
+	if strings.Contains(rendered, "input_schema") || strings.Contains(rendered, `"type":"object"`) {
+		t.Fatalf("catalog leaked schemas (defeats deferral):\n%s", rendered)
+	}
+	var empty *toolset.Discovery
+	if empty.Catalog() != "" {
+		t.Fatal("an empty deferred set rendered a catalog")
 	}
 }
 

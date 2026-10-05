@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"os"
 	"os/exec"
 	"strconv"
@@ -14,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 )
 
@@ -40,7 +42,8 @@ func TestStdioSessionCleanupKillsDescendants(t *testing.T) {
 	client := sdkmcp.NewClient(&sdkmcp.Implementation{Name: "process-owner-test", Version: "v1"}, nil)
 	timeout := 2 * time.Second
 	session, cleanup, err := dial(t.Context(), t.Context(), client, ServerConfig{
-		Name:      testMCPServerName("process-owner-test"),
+		Source:    mcpserver.UserSource(),
+		Name:      testsupport.ServerName("process-owner-test"),
 		Transport: TransportStdio,
 		Command:   os.Args[0],
 		Env: withStdioProcessEnv(os.Environ(), map[string]string{

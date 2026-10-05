@@ -59,9 +59,9 @@ func ValidateVisibleRules(rules []Rule, sessionID, projectDir string) error {
 }
 
 // NewRule constructs one durable rule and derives its deterministic identity.
-func NewRule(scope Scope, scopeKey string, ref tool.Ref, fingerprint string, subject Subject, decision Decision) (Rule, error) {
+func NewRule(scope Scope, scopeKey string, ref tool.Ref, source fingerprint.Digest, subject Subject, decision Decision) (Rule, error) {
 	rule := Rule{
-		Scope: scope, ScopeKey: scopeKey, Tool: ref, SourceFingerprint: fingerprint,
+		Scope: scope, ScopeKey: scopeKey, Tool: ref, SourceFingerprint: source,
 		Subject: subject, Decision: decision,
 	}
 	rule.ID = rule.stableID()
@@ -209,5 +209,5 @@ func (r RememberRequest) Rule() (Rule, error) {
 // stableID makes re-remembering the same rule an upsert and supplies a durable
 // handle for forgetting it later.
 func (r Rule) stableID() string {
-	return "rule_" + fingerprint.Strings(string(r.Scope), r.ScopeKey, r.Tool.String(), string(r.Subject.Type), r.Subject.Value)
+	return "rule_" + fingerprint.Strings(string(r.Scope), r.ScopeKey, r.Tool.String(), string(r.Subject.Type), r.Subject.Value).String()
 }

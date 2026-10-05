@@ -6,6 +6,7 @@ export interface ColorThemeSpec {
   scheme: Scheme;
   icon?: string;
   order?: number;
+  accent?: string;
   tokens?: Record<string, string>;
 }
 

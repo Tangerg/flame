@@ -12,13 +12,13 @@ import (
 
 // ProblemChannel names where a first-party ProblemData type may ride. RPC
 // problems have a numeric JSON-RPC code; execution problems ride run/item/tool
-// outcomes; inline-status problems ride a successful query result.
+// outcomes. MCP connection status is not a ProblemData carrier: its closed
+// vocabulary is protocol.MCPStatusProblemType.
 type ProblemChannel string
 
 const (
-	ProblemChannelRPC          ProblemChannel = "rpc"
-	ProblemChannelExecution    ProblemChannel = "execution"
-	ProblemChannelInlineStatus ProblemChannel = "inlineStatus"
+	ProblemChannelRPC       ProblemChannel = "rpc"
+	ProblemChannelExecution ProblemChannel = "execution"
 )
 
 // ProblemContract is the single first-party error catalog. Required and Optional
@@ -48,7 +48,7 @@ func ProblemContracts() []ProblemContract {
 // ProblemTypesFor returns the stable symbolic vocabulary of one carrier.
 func ProblemTypesFor(channel ProblemChannel) []string {
 	switch channel {
-	case ProblemChannelRPC, ProblemChannelExecution, ProblemChannelInlineStatus:
+	case ProblemChannelRPC, ProblemChannelExecution:
 	default:
 		panic(fmt.Sprintf("dispatch: unknown problem channel %q", channel))
 	}
@@ -91,15 +91,6 @@ func mustProblemContracts() []ProblemContract {
 		protocol.ProblemToolCanceled,
 		protocol.ProblemChildRunCanceled,
 	)
-	add(ProblemChannelInlineStatus,
-		protocol.ProblemInvalidAPIKey,
-		protocol.ProblemTimeout,
-		protocol.ProblemMCPAuthorizationRequired,
-		protocol.ProblemMCPAuthorizationFailed,
-		protocol.ProblemMCPDialFailed,
-		protocol.ProblemProviderNotConfigured,
-		protocol.ProblemProviderTestFailed,
-	)
 
 	common := []string{"detail", "docUrl"}
 	out := make([]ProblemContract, 0, len(byType))
@@ -116,13 +107,6 @@ func mustProblemContracts() []ProblemContract {
 			contract.Required = []string{"retryAfterSeconds"}
 		case protocol.ProblemRateLimited, protocol.ProblemTimeout, protocol.ProblemProviderUnavailable:
 			contract.Optional = append(contract.Optional, "retryAfterSeconds")
-		case protocol.ProblemMCPAuthorizationRequired,
-			protocol.ProblemMCPAuthorizationFailed,
-			protocol.ProblemMCPDialFailed,
-			protocol.ProblemProviderNotConfigured,
-			protocol.ProblemProviderTestFailed:
-			// Inline status is a localization key, not server-authored UI copy.
-			contract.Optional = nil
 		}
 		out = append(out, *contract)
 	}
@@ -149,7 +133,7 @@ func (p ProblemContract) validate() error {
 			return fmt.Errorf("problem type %q repeats channel %q", p.Type, channel)
 		}
 		switch channel {
-		case ProblemChannelRPC, ProblemChannelExecution, ProblemChannelInlineStatus:
+		case ProblemChannelRPC, ProblemChannelExecution:
 		default:
 			return fmt.Errorf("problem type %q has unknown channel %q", p.Type, channel)
 		}

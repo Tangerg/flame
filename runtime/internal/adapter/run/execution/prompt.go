@@ -107,9 +107,9 @@ func (w *WorkingContextComposer) composeSystemMessage(
 }
 
 // CurrentSessionState returns the complete model-facing snapshot of durable
-// Session state that can change during one Interaction. Goal precedes Plan in a
-// canonical order; each is an isolated message so the reducer can replace the
-// old snapshot without changing frozen deployment instructions.
+// Session state that can change during one Interaction, Goal before Plan. The
+// reducer sends it as part of each call's tail, so it always reflects the
+// current values and never occupies a position in the cached prefix.
 func (w *WorkingContextComposer) CurrentSessionState(
 	ctx context.Context,
 	sessionID string,
@@ -128,7 +128,7 @@ func (w *WorkingContextComposer) CurrentSessionState(
 					"\n\nThis snapshot is current for this model call. Use get_goal for full usage and reason details.",
 				contextSourceSessionGoal.source(sessionID),
 			)
-			message, err := prompt.systemMessage()
+			message, err := prompt.runtimeContextMessage(RuntimeContextSessionGoal)
 			if err != nil {
 				return nil, err
 			}
@@ -167,7 +167,7 @@ func (w *WorkingContextComposer) currentSessionPlan(
 		"## Current Plan\n\n"+planpresentation.Render(steps),
 		contextSourceSessionPlan.source(sessionID),
 	)
-	message, err := prompt.systemMessage()
+	message, err := prompt.runtimeContextMessage(RuntimeContextSessionPlan)
 	if err != nil {
 		return corechat.Message{}, false, err
 	}

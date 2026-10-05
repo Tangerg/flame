@@ -71,6 +71,7 @@ func MCPServers(configuredServers []config.MCPServer) ([]mcpserversvc.Server, er
 			return nil, fmt.Errorf("config: MCP server %q: %w", server.Name, err)
 		}
 		candidate := mcpserversvc.Server{
+			Source:        mcpserversvc.UserSource(),
 			Name:          name,
 			Transport:     transport,
 			Enabled:       true,

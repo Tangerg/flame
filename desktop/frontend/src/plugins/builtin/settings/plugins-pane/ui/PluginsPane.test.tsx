@@ -1,7 +1,7 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { DATA_PROVIDER } from "@/plugins/sdk/kernelPoints";
-import { packageOperations, PACKAGES_KEY } from "../application/packages";
+import { packageOperations, PACKAGES_KEY, usePackageRealization } from "../application/packages";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { PluginInstallation } from "@flame/runtime-contract/wire";
 import type { Host } from "dougong";
@@ -22,6 +22,7 @@ afterEach(async () => {
   cleanup();
   queryClient.clear();
   usePluginErrorStore.getState().clearAll();
+  usePackageRealization.setState({ failure: null });
   if (!host) return;
   const owned = host;
   host = undefined;
@@ -32,18 +33,17 @@ function reviewedInstallation(): PluginInstallation {
   return {
     id: "940ac827-b431-455b-af4b-e3a170bcfda0",
     source: "/package",
-    enabled: false,
-    grants: [],
-    values: {},
+    state: "unapproved",
+    inputStates: {},
     disabledServers: [],
     disabledSkills: [],
-    availability: [],
+    realization: { type: "available", unavailableBackends: [] },
+    presentation: "withheld",
     selected: {
       digest: "1".repeat(64),
       name: "Reviewed package",
       servers: [],
       inputs: [],
-      requests: [],
       skills: [],
       themes: [],
       diagnostics: [],
@@ -52,95 +52,129 @@ function reviewedInstallation(): PluginInstallation {
 }
 
 describe("PluginsPane installation facts", () => {
-  it.each(["Approve", "Configure"])(
-    "binds %s to the release opened for review",
-    async (operation) => {
-      const reviewedDigest = "1".repeat(64);
-      const replacementDigest = "2".repeat(64);
-      let installation = reviewedInstallation();
-      const submit = vi.fn(async () => ({ availability: [] }));
-      host = await startKernel([
-        definePlugin({
-          name: "test.package-review",
-          setup(ctx) {
-            ctx.contribute(DATA_PROVIDER, {
-              key: PACKAGES_KEY,
-              fetcher: async () => [installation],
-            });
-            ctx.cleanup(
-              packageOperations.configure({
-                signal: ctx.signal,
-                approve: submit,
-                configure: submit,
-              } as unknown as ReturnType<typeof packageOperations.get>),
-            );
-          },
-        }),
-      ]);
-      render(
-        <QueryClientProvider client={queryClient}>
-          <PluginsPane />
-        </QueryClientProvider>,
-      );
-      fireEvent.click(
-        await screen.findByRole("button", {
-          name: operation === "Approve" ? "Trust release and grants" : "Configure inputs",
-        }),
-      );
-      installation = {
-        ...installation,
-        selected: { ...installation.selected, digest: replacementDigest },
-      };
-      await act(async () => {
-        await queryClient.invalidateQueries({ queryKey: [PACKAGES_KEY] });
-      });
-      expect(screen.getByText(replacementDigest)).toBeTruthy();
-      fireEvent.click(screen.getByRole("button", { name: "Save" }));
-      await waitFor(() =>
-        expect(submit).toHaveBeenCalledWith({
-          installationId: installation.id,
-          digest: reviewedDigest,
-          ...(operation === "Approve"
-            ? { grants: [] }
-            : { valueChanges: {}, disabledServers: [], disabledSkills: [] }),
-        }),
-      );
-    },
-  );
+  it("asks for approval of a selected release before it can run", async () => {
+    let installation: PluginInstallation = {
+      ...reviewedInstallation(),
+      state: "enabled",
+    };
+    const approve = vi.fn(async () => reviewedInstallation());
+    host = await startKernel([
+      definePlugin({
+        name: "test.package-approval",
+        setup(ctx) {
+          ctx.contribute(DATA_PROVIDER, {
+            key: PACKAGES_KEY,
+            fetcher: async () => [installation],
+          });
+          ctx.cleanup(
+            packageOperations.configure({
+              signal: ctx.signal,
+              approve,
+            } as unknown as ReturnType<typeof packageOperations.get>),
+          );
+        },
+      }),
+    ]);
+    render(
+      <QueryClientProvider client={queryClient}>
+        <PluginsPane />
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByText("Enabled.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Trust this release" })).toBeNull();
+    const selectedDigest = "2".repeat(64);
+    installation = {
+      ...installation,
+      state: "unapproved",
+      selected: { ...installation.selected, digest: selectedDigest },
+    };
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: [PACKAGES_KEY] });
+    });
+    expect(
+      await screen.findByText("Not approved: review this release before enabling it."),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Trust this release" }));
+    await waitFor(() =>
+      expect(approve).toHaveBeenCalledWith({
+        installationId: installation.id,
+        digest: selectedDigest,
+      }),
+    );
+  });
+
+  it.each(["Configure"])("binds %s to the release opened for review", async () => {
+    const reviewedDigest = "1".repeat(64);
+    const replacementDigest = "2".repeat(64);
+    let installation = reviewedInstallation();
+    const submit = vi.fn(async () => reviewedInstallation());
+    host = await startKernel([
+      definePlugin({
+        name: "test.package-review",
+        setup(ctx) {
+          ctx.contribute(DATA_PROVIDER, {
+            key: PACKAGES_KEY,
+            fetcher: async () => [installation],
+          });
+          ctx.cleanup(
+            packageOperations.configure({
+              signal: ctx.signal,
+              configure: submit,
+            } as unknown as ReturnType<typeof packageOperations.get>),
+          );
+        },
+      }),
+    ]);
+    render(
+      <QueryClientProvider client={queryClient}>
+        <PluginsPane />
+      </QueryClientProvider>,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Configure inputs" }));
+    installation = {
+      ...installation,
+      selected: { ...installation.selected, digest: replacementDigest },
+    };
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: [PACKAGES_KEY] });
+    });
+    expect(screen.getByText(replacementDigest)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(submit).toHaveBeenCalledWith({
+        installationId: installation.id,
+        digest: reviewedDigest,
+        valueChanges: {},
+        serverChanges: {},
+        skillChanges: {},
+      }),
+    );
+  });
 
   it.each([
-    {
-      name: "overlong input",
-      changes: {
-        valueChanges: { token: { type: "set", value: "x".repeat(8193) } },
-        disabledServers: [],
-        disabledSkills: [],
-      },
-      error: "expected at most 8192 character(s)",
-    },
     {
       name: "replacement digest",
       changes: {
         valueChanges: {},
-        disabledServers: [],
-        disabledSkills: [],
+        serverChanges: {},
+        skillChanges: {},
         digest: "2".repeat(64),
       },
-      error: "digest belongs to the reviewed release",
+      error: "“digest” belongs to the reviewed release",
     },
     {
       name: "replacement installation",
       changes: {
         valueChanges: {},
-        disabledServers: [],
-        disabledSkills: [],
+        serverChanges: {},
+        skillChanges: {},
         installationId: "d8bd51f0-0fc9-4acd-a7c4-1e962c9306e0",
       },
-      error: "installationId belongs to the reviewed release",
+      error: "“installationId” belongs to the reviewed release",
     },
   ])("rejects $name without submitting or losing the draft", async ({ changes, error }) => {
     const installation = reviewedInstallation();
-    const submit = vi.fn(async () => ({ availability: [] }));
+    const submit = vi.fn(async () => reviewedInstallation());
     host = await startKernel([
       definePlugin({
         name: "test.package-input",
@@ -207,40 +241,90 @@ describe("PluginsPane installation facts", () => {
     view.unmount();
   });
 
-  it("retains removal diagnostics after the removed row leaves the catalog", async () => {
-    let installations: PluginInstallation[] = [
-      {
-        id: "940ac827-b431-455b-af4b-e3a170bcfda0",
-        source: "/package",
-        enabled: false,
-        grants: [],
-        values: {},
-        disabledServers: [],
-        disabledSkills: [],
-        availability: [],
-        selected: {
-          digest: "1".repeat(64),
-          name: "Removed package",
-          servers: [],
-          inputs: [],
-          requests: [],
-          skills: [],
-          themes: [],
-          diagnostics: [],
-        },
+  it("renders observed realization and typed diagnostics without secret text", async () => {
+    const installation: PluginInstallation = {
+      ...reviewedInstallation(),
+      realization: { type: "available", unavailableBackends: ["backend"] },
+      inputStates: { token: { type: "configured" }, region: { type: "value", value: "eu-west" } },
+      selected: {
+        ...reviewedInstallation().selected,
+        diagnostics: [
+          { component: { type: "skill", name: "broken" }, code: "invalidDeclaration" },
+          { component: { type: "mcp" }, code: "unavailableComponent" },
+        ],
       },
-    ];
+    };
     host = await startKernel([
       definePlugin({
-        name: "test.package-removal",
+        name: "test.package-realization",
         setup(ctx) {
-          ctx.contribute(DATA_PROVIDER, { key: PACKAGES_KEY, fetcher: async () => installations });
+          ctx.contribute(DATA_PROVIDER, { key: PACKAGES_KEY, fetcher: async () => [installation] });
+          ctx.cleanup(
+            packageOperations.configure({ signal: ctx.signal } as unknown as ReturnType<
+              typeof packageOperations.get
+            >),
+          );
+        },
+      }),
+    ]);
+    render(
+      <QueryClientProvider client={queryClient}>
+        <PluginsPane />
+      </QueryClientProvider>,
+    );
+    expect(
+      await screen.findByText("Server “backend” can't start: its backend couldn't be prepared."),
+    ).toBeTruthy();
+    expect(screen.getByText("Skill “broken” is invalid and was disabled.")).toBeTruthy();
+    expect(
+      screen.getByText("The MCP configuration couldn't be read and was disabled."),
+    ).toBeTruthy();
+    expect(screen.getByText(/"configured"/)).toBeTruthy();
+    expect(screen.getByText(/eu-west/)).toBeTruthy();
+  });
+
+  it("reports an unavailable release instead of backend conditions", async () => {
+    const installation: PluginInstallation = {
+      ...reviewedInstallation(),
+      realization: { type: "releaseUnavailable" },
+    };
+    host = await startKernel([
+      definePlugin({
+        name: "test.package-release",
+        setup(ctx) {
+          ctx.contribute(DATA_PROVIDER, { key: PACKAGES_KEY, fetcher: async () => [installation] });
+          ctx.cleanup(
+            packageOperations.configure({ signal: ctx.signal } as unknown as ReturnType<
+              typeof packageOperations.get
+            >),
+          );
+        },
+      }),
+    ]);
+    render(
+      <QueryClientProvider client={queryClient}>
+        <PluginsPane />
+      </QueryClientProvider>,
+    );
+    expect(
+      await screen.findByText(
+        "This release's files failed verification, so its components are unavailable.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("labels a failed row operation with the operation that ran", async () => {
+    const installation = reviewedInstallation();
+    host = await startKernel([
+      definePlugin({
+        name: "test.package-revoke",
+        setup(ctx) {
+          ctx.contribute(DATA_PROVIDER, { key: PACKAGES_KEY, fetcher: async () => [installation] });
           ctx.cleanup(
             packageOperations.configure({
               signal: ctx.signal,
-              uninstall: async () => {
-                installations = [];
-                return { availability: [{ component: "mcp", code: "reconciliation_failed" }] };
+              revoke: async () => {
+                throw { code: "refused" };
               },
             } as unknown as ReturnType<typeof packageOperations.get>),
           );
@@ -252,8 +336,22 @@ describe("PluginsPane installation facts", () => {
         <PluginsPane />
       </QueryClientProvider>,
     );
-    fireEvent.click(await screen.findByRole("button", { name: "Uninstall" }));
-    await waitFor(() => expect(screen.queryByText(/Removed package/)).toBeNull());
-    expect(screen.getByText("mcp: reconciliation_failed")).toBeTruthy();
+    fireEvent.click(await screen.findByRole("button", { name: "Revoke trust" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("Revoke trust");
+  });
+
+  it("shows this window's package realization failure with a local retry", async () => {
+    host = await startKernel([example]);
+    const retry = vi.fn();
+    usePackageRealization.setState({ failure: { reason: "stream closed", retry } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <PluginsPane />
+      </QueryClientProvider>,
+    );
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("stream closed");
+    fireEvent.click(within(alert).getByRole("button", { name: "Retry" }));
+    expect(retry).toHaveBeenCalledOnce();
   });
 });

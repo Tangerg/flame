@@ -849,6 +849,10 @@ export const ja: Record<string, string> = {
   "mcp.error.toggle": "サーバーを変更できませんでした。",
   "mcp.error.signIn": "サインインに失敗しました。",
   "mcp.error.test": "テストに失敗しました",
+  "mcp.testOutcome.timedOut":
+    "サーバーが時間内に応答しませんでした。コマンドまたは URL を確認して再試行してください。",
+  "mcp.testOutcome.failed":
+    "サーバーに接続できないか、有効なツール一覧が返されませんでした。設定を確認して再試行してください。",
   "workspace.view.title.file": "ファイル",
   "settings.theme.system": "システム",
   "runError.action.retryIn": "{{seconds}} 秒後に再試行",
@@ -1003,14 +1007,22 @@ export const ja: Record<string, string> = {
     "ランタイム内部でエラーが発生しました — 再試行し、繰り返す場合は診断を確認してください。",
   "rpcError.run_lost":
     "この実行のプロセスが失われました — 結果が保存される前に終了しました。もう一度実行してください。",
-  "rpcError.mcp_authorization_required": "このサーバーは使う前にサインインが必要です。",
-  "rpcError.mcp_authorization_failed": "サインインが完了しませんでした。もう一度お試しください。",
+  "mcpStatus.mcp_authorization_required": "このサーバーは使う前にサインインが必要です。",
+  "mcpStatus.mcp_authorization_failed": "サインインが完了しませんでした。もう一度お試しください。",
   "rpcError.mcp_authorization_attempt_not_found":
     "このサインイン試行は期限切れです。もう一度開始してください。",
-  "rpcError.mcp_dial_failed":
+  "mcpStatus.mcp_tool_discovery_failed":
+    "接続しましたが、このサーバーは使用可能なツール一覧を返しませんでした。サーバーを確認して再試行してください。",
+  "mcpStatus.mcp_configuration_failed":
+    "このサーバーの設定または保存済みの認証情報を使用できません。設定を確認して再試行してください。",
+  "mcpStatus.mcp_release_unavailable":
+    "このサーバーを提供するプラグインが検証に失敗しました。プラグインを再インストールまたは更新してください。",
+  "mcpStatus.mcp_backend_unavailable":
+    "プラグインは正常ですが、このサーバーのバックエンドを準備できませんでした。再試行するか、プラグインを再インストールしてください。",
+  "mcpStatus.mcp_dial_failed":
     "このサーバーに接続できません — コマンドか URL を確認して再試行してください。",
-  "rpcError.provider_not_configured": "先にプロバイダーの設定を完了してください。",
-  "rpcError.provider_test_failed":
+  "providers.testOutcome.notConfigured": "先にプロバイダーの設定を完了してください。",
+  "providers.testOutcome.failed":
     "プロバイダーに接続できないか、テストリクエストが拒否されました。",
   "rpcError.skill_not_found": "そのスキルはライブラリにありません。",
   "rpcError.skill_unavailable":
@@ -1024,6 +1036,8 @@ export const ja: Record<string, string> = {
   "rpcError.unsupported_mime": "ここではこのファイル形式に対応していません。",
   "rpcError.interrupt_not_open": "その要求はもう回答を待っていません。",
   "rpcError.idempotency_conflict": "同じ要求が別の内容で既に送信されています。",
+  "rpcError.plugin_changed":
+    "実行の準備中にプラグインが変更されました。何も開始されていません。再送信して再試行してください。",
   "session.error.create": "セッションを作成できませんでした。",
   "session.directory.title": "新しいセッション",
   "session.directory.description":
@@ -1290,12 +1304,15 @@ export const ja: Record<string, string> = {
   "packages.loading": "読み込み中…",
 
   "packages.trust":
-    "リリースの承認はコードを信頼することを意味します。ローカル実行は OS の権限を使用します。ソース、ダイジェスト、入力、権限を確認してください。",
+    "リリースの承認はその正確なコードを信頼することを意味します。ローカル実行は OS の権限を使用します。ソース、ダイジェスト、入力を確認してください。別のリリースを選択すると再承認が必要です。",
   "packages.source": "Runtime 上のパッケージディレクトリまたは ZIP の絶対パス",
   "packages.install": "インストール",
   "packages.empty": "Runtime パッケージはありません",
-  "packages.approve": "リリースと権限を信頼",
+  "packages.approve": "このリリースを信頼",
   "packages.configure": "入力を設定",
+  "packages.state.unapproved": "未承認：有効にする前にこのリリースを確認してください。",
+  "packages.state.approved": "承認済み、無効。",
+  "packages.state.enabled": "有効。",
   "packages.disable": "無効化",
   "packages.enable": "有効化",
   "packages.stage": "更新をステージ",
@@ -1304,4 +1321,31 @@ export const ja: Record<string, string> = {
   "packages.uninstall": "アンインストール",
   "packages.input": "JSON 入力または Runtime のソースパス",
   "packages.save": "保存",
+  "packages.installed":
+    "{{name}} をインストールしました。有効にする前に、下のリリースを確認してください。",
+  "packages.releaseUnavailable":
+    "このリリースのファイルが検証に失敗したため、コンポーネントを利用できません。",
+  "packages.backendUnavailable":
+    "サーバー「{{name}}」を起動できません：バックエンドを準備できませんでした。",
+  "packages.component.manifestField": "マニフェストのフィールド「{{name}}」",
+  "packages.component.flameExtension": "Flame 拡張",
+  "packages.component.extensionField": "拡張フィールド「{{name}}」",
+  "packages.component.contribution": "コントリビューション「{{name}}」",
+  "packages.component.mcp": "MCP 設定",
+  "packages.component.mcpServer": "MCP サーバー「{{name}}」",
+  "packages.component.skills": "スキルディレクトリ",
+  "packages.component.skill": "スキル「{{name}}」",
+  "packages.diagnostic.unknownField": "{{component}}は認識されないため無視されました。",
+  "packages.diagnostic.invalidDeclaration": "{{component}}は無効なため無効化されました。",
+  "packages.diagnostic.unsupportedContribution":
+    "{{component}}はサポートされていないため無視されました。",
+  "packages.diagnostic.componentLimit": "{{component}}は上限を超えたため無効化されました。",
+  "packages.diagnostic.invalidDependencies":
+    "{{component}}は存在しないか無効な宣言に依存しているため無効化されました。",
+  "packages.diagnostic.unavailableComponent":
+    "{{component}}を読み込めなかったため無効化されました。",
+  "packages.realizationFailed":
+    "このウィンドウでパッケージテーマを読み込めませんでした: {{reason}}",
+  "packages.reviewedField":
+    "「{{field}}」はレビュー済みのリリースに属するため、ここでは変更できません。",
 };

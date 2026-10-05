@@ -20,16 +20,20 @@ import (
 // symbolic names the runtime protocol uses for the same conditions. Commands
 // branch on these; nothing branches on error text.
 var (
-	ErrSessionNotFound      = errors.New("session not found")
-	ErrRunNotFound          = errors.New("run not found")
-	ErrInterruptNotOpen     = errors.New("interrupt not open")
-	ErrStaleSegment         = errors.New("stale segment")
-	ErrRunWaiting           = errors.New("run is waiting")
-	ErrRunFinished          = errors.New("run is finished")
-	ErrReplayCursorInvalid  = errors.New("event replay cursor is invalid")
-	ErrReplayUnavailable    = errors.New("event replay unavailable")
-	ErrSessionHasActiveRun  = errors.New("session has an active run")
-	ErrSessionBusy          = errors.New("session is busy")
+	ErrSessionNotFound     = errors.New("session not found")
+	ErrRunNotFound         = errors.New("run not found")
+	ErrInterruptNotOpen    = errors.New("interrupt not open")
+	ErrStaleSegment        = errors.New("stale segment")
+	ErrRunWaiting          = errors.New("run is waiting")
+	ErrRunFinished         = errors.New("run is finished")
+	ErrReplayCursorInvalid = errors.New("event replay cursor is invalid")
+	ErrReplayUnavailable   = errors.New("event replay unavailable")
+	ErrSessionHasActiveRun = errors.New("session has an active run")
+	ErrSessionBusy         = errors.New("session is busy")
+	// ErrPluginChanged refuses a start or resume whose plugin installation
+	// changed while the Runtime prepared it. Nothing started; the user may
+	// send the same prompt again.
+	ErrPluginChanged        = errors.New("plugin changed while the run was being prepared")
 	ErrRevisionConflict     = errors.New("revision conflict")
 	ErrEventConflict        = errors.New("event identity conflict")
 	ErrCommandInProgress    = errors.New("command is still committing")
@@ -375,20 +379,6 @@ func (o Outcome) Explanation() string {
 		return failure.String(o.Problem)
 	}
 	return strings.TrimSpace(o.Detail)
-}
-
-// ToolSource labels a structured source without interpreting model-visible names.
-func ToolSource(ref protocol.ToolRef) string {
-	switch ref.Type {
-	case protocol.ToolRefBuiltIn:
-		return "builtIn/" + ref.Name
-	case protocol.ToolRefMCP:
-		return "mcp/" + ref.Server + "/" + ref.Name
-	case protocol.ToolRefA2A:
-		return "a2a/" + ref.Endpoint
-	default:
-		return "unknown/" + string(ref.Type)
-	}
 }
 
 func ApprovalSubject(subject protocol.ApprovalSubject) string {

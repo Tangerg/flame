@@ -85,7 +85,7 @@ type runtimeSearchTools struct {
 func newRuntimeSearchTools(root string) runtimeSearchTools {
 	glob := mustRuntimeSearchFunc(
 		toolcontract.FuncConfig{
-			Name: tool.Glob,
+			Name: string(tool.Glob),
 			Description: "List files from the finite, ignore-aware workspace catalog using a doublestar pattern. " +
 				"Use grep to search file contents.",
 		},
@@ -96,7 +96,7 @@ func newRuntimeSearchTools(root string) runtimeSearchTools {
 	)
 	grep := mustRuntimeSearchFunc(
 		toolcontract.FuncConfig{
-			Name: tool.Grep,
+			Name: string(tool.Grep),
 			Description: "Search the finite, ignore-aware workspace text corpus with a Go/RE2 line regular expression. " +
 				"Use glob to choose files and read to inspect surrounding lines.",
 		},

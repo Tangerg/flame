@@ -627,7 +627,7 @@ func requireRuntimeCatalogs(t *testing.T, runtime *Connection, sessionID, worksp
 	if servers, serversErr := runtime.Servers(t.Context()); serversErr != nil {
 		t.Fatalf("MCP servers = (%+v, %v)", servers, serversErr)
 	}
-	if tools, toolsErr := runtime.Tools(t.Context(), ""); toolsErr != nil {
+	if tools, toolsErr := runtime.Tools(t.Context(), nil); toolsErr != nil {
 		t.Fatalf("MCP tools = (%+v, %v)", tools, toolsErr)
 	}
 	requireMCPMutationLifecycle(t, runtime)
@@ -676,7 +676,7 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 	if err != nil {
 		t.Fatalf("list MCP servers after result reuse: %v", err)
 	}
-	index := slices.IndexFunc(servers, func(server protocol.MCPServer) bool { return server.Name == candidate.Name })
+	index := slices.IndexFunc(servers, func(server protocol.MCPServer) bool { return server.ID == mcp.UserServer(candidate.Name) })
 	if index < 0 {
 		t.Fatal("created MCP server disappeared after result reuse")
 	}
@@ -697,17 +697,17 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 		},
 		{
 			name: "disabled server", want: protocol.ErrMCPServerDisabled,
-			invoke: func() error { return runtime.ReconnectServer(t.Context(), candidate.Name) },
+			invoke: func() error { return runtime.ReconnectServer(t.Context(), mcp.UserServer(candidate.Name)) },
 		},
 		{
 			name: "missing server", want: protocol.ErrMCPServerNotFound,
-			invoke: func() error { return runtime.DeleteServer(t.Context(), "missing-mcp-server") },
+			invoke: func() error { return runtime.DeleteServer(t.Context(), mcp.UserServer("missing-mcp-server")) },
 		},
 		{
 			name: "missing authorization", want: protocol.ErrMCPAuthorizationAttemptNotFound,
 			invoke: func() error {
 				_, err := runtime.GetAuthorization(t.Context(), mcp.AuthorizationReference{
-					ID: adapterMCPAuthorizationAttemptID, Server: candidate.Name,
+					ID: adapterMCPAuthorizationAttemptID, Server: mcp.UserServer(candidate.Name),
 				})
 				return err
 			},
@@ -746,7 +746,7 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 		t.Fatalf("NewHandshakeTimeout: %v", err)
 	}
 	update := mcp.ServerUpdate{
-		Server: candidate.Name, Description: &description, HandshakeTimeout: &updatedTimeout,
+		Server: mcp.UserServer(candidate.Name), Description: &description, HandshakeTimeout: &updatedTimeout,
 		Connection: &mcp.ConnectionInput{
 			Transport: protocol.MCPTransportStreamableHTTP, URL: candidate.Connection.URL,
 			Authorization: &clearAuthorization, Headers: &clearHeaders,
@@ -770,7 +770,7 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 		stored.HandshakeTimeout.Seconds == nil || *stored.HandshakeTimeout.Seconds != *updated.HandshakeTimeout.Seconds {
 		t.Fatalf("caller update reuse changed the Runtime MCP server: %+v", stored)
 	}
-	if err := runtime.DeleteServer(t.Context(), candidate.Name); err != nil {
+	if err := runtime.DeleteServer(t.Context(), mcp.UserServer(candidate.Name)); err != nil {
 		t.Fatalf("Delete MCP server: %v", err)
 	}
 }

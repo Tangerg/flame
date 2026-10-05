@@ -3,214 +3,222 @@ package pluginpackage
 import (
 	"context"
 	"errors"
+	"fmt"
 	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
+	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 )
-
-func (r *Releases) installationRecord(ctx context.Context, installation *plugin.Installation) (plugin.Record, error) {
-	record := installation.Snapshot()
-	release, err := r.catalog.Get(ctx, record.Selected.Digest)
-	if err != nil {
-		return plugin.Record{}, err
-	}
-	record.Selected = release
-	return record, nil
-}
 
 // Catalog and dispatch projections never repair the filesystem as a read effect.
 // Data preparation belongs to installation changes and connection activation.
-func (r *Releases) Prepare(ctx context.Context, installation *plugin.Installation) ([]plugin.Diagnostic, error) {
+// Its outcome is not retained here: a backend that could not be prepared stays
+// unrealizable, and [Releases.Realize] observes that from the filesystem.
+func (r *Releases) Prepare(ctx context.Context, installation *plugin.Installation, release plugin.Release) error {
 	if !installation.Active() {
-		return nil, nil
+		return nil
 	}
-	record, err := r.installationRecord(ctx, installation)
+	root, _, err := r.verifiedRoot(ctx, release.Digest())
 	if err != nil {
-		return nil, err
-	}
-	root, _, err := r.verifiedRoot(ctx, record.Selected.Digest)
-	if err != nil {
-		return nil, err
+		return fmt.Errorf("pluginpackage: prepare release %s: %w", release.Digest(), err)
 	}
 	if err := root.Close(); err != nil {
-		return nil, err
+		return fmt.Errorf("pluginpackage: close release %s: %w", release.Digest(), err)
 	}
-	var diagnostics []plugin.Diagnostic
-	for _, server := range record.Selected.Servers {
+	var failures error
+	for _, server := range release.Declaration().Servers {
 		if err := ctx.Err(); err != nil {
-			return diagnostics, err
+			return errors.Join(failures, err)
 		}
-		if !installation.ServerEnabled(server.Name) || server.Type != plugin.Stdio {
+		if !installation.ServerEnabled(server.Name) || server.Transport != mcpserver.TransportStdio {
 			continue
 		}
-		if err := r.prepareBackend(record.ID, server); err != nil {
-			diagnostics = append(diagnostics, plugin.Diagnostic{Component: "mcp:" + server.Name, Code: "preparation_failed"})
+		if err := r.prepareBackend(installation.ID(), server); err != nil {
+			failures = errors.Join(failures, fmt.Errorf("pluginpackage: prepare server %q backend: %w", server.Name, err))
 		}
 	}
-	return diagnostics, nil
+	return failures
 }
 
-func (r *Releases) Connection(ctx context.Context, installation *plugin.Installation, local string) (mcpserver.Server, error) {
-	if !installation.ServerEnabled(local) {
-		return mcpserver.Server{}, plugin.ErrUnapproved
+// Server realizes one declared server only as far as reach requires. Siblings
+// are never inspected: a call or a connection pays for its own target alone.
+// Enablement is reported, not enforced; refusing a disabled server belongs to
+// the registry's caller, and a disabled server is never prepared or realized.
+func (r *Releases) Server(ctx context.Context, installation *plugin.Installation, release plugin.Release, local mcpserver.ServerName, reach plugins.Reach) (mcpserver.Server, bool, error) {
+	declaration := release.Declaration()
+	index := slices.IndexFunc(declaration.Servers, func(server plugin.Server) bool { return server.Name == local })
+	if index < 0 {
+		return mcpserver.Server{}, false, nil
 	}
-	record, err := r.installationRecord(ctx, installation)
+	declared := declaration.Servers[index]
+	dir, err := r.Root(release.Digest())
 	if err != nil {
-		return mcpserver.Server{}, err
+		return mcpserver.Server{}, false, fmt.Errorf("pluginpackage: release directory: %w", err)
 	}
-	root, _, err := r.inspectRoot(ctx, record.Selected.Digest)
+	data := r.dataRoot(installation.ID())
+	server, err := descriptorServer(installation, release, declaration, declared, dir, data)
+	if err != nil || reach == plugins.Declared || !server.Enabled {
+		return server, err == nil, err
+	}
+	var root *os.Root
+	switch reach {
+	case plugins.Dispatchable:
+		root, _, err = r.verifiedRoot(ctx, release.Digest())
+	case plugins.Launchable:
+		root, err = r.currentRoot(ctx, release.Digest())
+	default:
+		return mcpserver.Server{}, false, fmt.Errorf("pluginpackage: unknown server reach %d", reach)
+	}
 	if err != nil {
-		r.mu.Lock()
-		delete(r.verified, record.Selected.Digest)
-		r.mu.Unlock()
-		return mcpserver.Server{}, errors.Join(plugin.ErrUnavailable, err)
+		if cause := context.Cause(ctx); cause != nil {
+			return mcpserver.Server{}, false, cause
+		}
+		return mcpserver.Server{}, false, fmt.Errorf("%w: verify release %s: %w", plugin.ErrUnavailable, release.Digest(), err)
 	}
 	if err := root.Close(); err != nil {
-		return mcpserver.Server{}, err
+		return mcpserver.Server{}, false, fmt.Errorf("pluginpackage: close release %s: %w", release.Digest(), err)
 	}
-	for _, server := range record.Selected.Servers {
-		if server.Name != local {
-			continue
+	if reach == plugins.Launchable && declared.Transport == mcpserver.TransportStdio {
+		if err := r.prepareBackend(installation.ID(), declared); err != nil {
+			return mcpserver.Server{}, false, fmt.Errorf("%w: prepare server %q backend: %w", plugin.ErrUnavailable, declared.Name, err)
 		}
-		if server.Type == plugin.Stdio {
-			if err := r.prepareBackend(record.ID, server); err != nil {
-				return mcpserver.Server{}, errors.Join(plugin.ErrUnavailable, err)
-			}
-		}
-		return realizeServer(installation, record, server, root.Name(), r.dataRoot(record.ID))
 	}
-	return mcpserver.Server{}, plugin.ErrNotFound
+	if err := realizeBackend(server, declared, dir, data); err != nil {
+		return mcpserver.Server{}, false, fmt.Errorf("%w: server %q backend: %w", plugin.ErrUnavailable, declared.Name, err)
+	}
+	return server, true, nil
 }
-func (r *Releases) prepareBackend(id string, server plugin.Server) (err error) {
+func (r *Releases) prepareBackend(id resourceid.InstallationID, server plugin.Server) (err error) {
 	host, err := os.OpenRoot(filepath.Dir(r.directory))
 	if err != nil {
-		return err
+		return fmt.Errorf("pluginpackage: open plugin host directory: %w", err)
 	}
 	defer func() { err = errors.Join(err, host.Close()) }()
 	if err := host.Mkdir("data", 0700); err != nil && !errors.Is(err, os.ErrExist) {
-		return err
+		return fmt.Errorf("pluginpackage: create data namespace: %w", err)
 	}
 	info, err := host.Lstat("data")
 	if err != nil {
-		return err
+		return fmt.Errorf("pluginpackage: inspect data namespace: %w", err)
 	}
 	if !info.IsDir() {
 		return errors.New("pluginpackage: data namespace is not a directory")
 	}
 	namespace, err := host.OpenRoot("data")
 	if err != nil {
-		return err
+		return fmt.Errorf("pluginpackage: open data namespace: %w", err)
 	}
 	defer func() { err = errors.Join(err, namespace.Close()) }()
-	if err := namespace.Mkdir(id, 0700); err != nil && !errors.Is(err, os.ErrExist) {
-		return err
+	if err := namespace.Mkdir(id.String(), 0700); err != nil && !errors.Is(err, os.ErrExist) {
+		return fmt.Errorf("pluginpackage: create installation data directory: %w", err)
 	}
 	data := r.dataRoot(id)
 	if err := unchangedDataRoot(data); err != nil {
 		return err
 	}
-	if !strings.HasPrefix(server.CWD, "${PLUGIN_DATA}/") {
+	if !strings.HasPrefix(server.Dir, "${PLUGIN_DATA}/") {
 		return nil
 	}
-	root, err := namespace.OpenRoot(id)
+	root, err := namespace.OpenRoot(id.String())
 	if err != nil {
-		return err
+		return fmt.Errorf("pluginpackage: open installation data directory: %w", err)
 	}
-	err = root.MkdirAll(strings.TrimPrefix(server.CWD, "${PLUGIN_DATA}/"), 0700)
-	return errors.Join(err, root.Close())
+	if err := root.MkdirAll(strings.TrimPrefix(server.Dir, "${PLUGIN_DATA}/"), 0700); err != nil {
+		return errors.Join(fmt.Errorf("pluginpackage: create server working directory: %w", err), root.Close())
+	}
+	return root.Close()
 }
 
-// Descriptors projects admitted declarations without granting execution authority.
-// Catalog membership survives an unavailable release or backend directory.
-func (r *Releases) Descriptors(ctx context.Context, installation *plugin.Installation) ([]mcpserver.Server, error) {
-	record, err := r.installationRecord(ctx, installation)
+// Realize observes the selected release once: whether its bytes verify, and for
+// each declared server its descriptor and whether its backend can be realized
+// now. Each server is realized on its own, so one that cannot be described or
+// realized is reported unavailable without withholding its siblings. Catalog
+// membership survives an unavailable release or backend directory, and the
+// observation never grants execution authority.
+func (r *Releases) Realize(ctx context.Context, installation *plugin.Installation, release plugin.Release) (plugins.Realization, error) {
+	dir, err := r.Root(release.Digest())
 	if err != nil {
-		return nil, err
+		return plugins.Realization{}, fmt.Errorf("pluginpackage: release directory: %w", err)
 	}
-	dir, err := r.Root(record.Selected.Digest)
-	if err != nil {
-		return nil, err
+	root, _, verifyErr := r.verifiedRoot(ctx, release.Digest())
+	if cause := context.Cause(ctx); cause != nil {
+		return plugins.Realization{}, cause
 	}
-	data := r.dataRoot(record.ID)
-	servers := make([]mcpserver.Server, 0, len(record.Selected.Servers))
-	for _, declared := range record.Selected.Servers {
-		server, err := descriptorServer(installation, record, declared, dir, data)
-		if err != nil {
-			return nil, err
+	result := plugins.Realization{Release: plugins.ReleaseUnavailable}
+	if verifyErr == nil {
+		if err := root.Close(); err != nil {
+			return plugins.Realization{}, fmt.Errorf("pluginpackage: close release %s: %w", release.Digest(), err)
 		}
-		servers = append(servers, server)
+		result.Release = plugins.ReleaseAvailable
 	}
-	return servers, nil
-}
-
-func (r *Releases) Servers(ctx context.Context, installation *plugin.Installation) (plugins.Backends, error) {
-	record, err := r.installationRecord(ctx, installation)
-	if err != nil {
-		return plugins.Backends{}, err
-	}
-	root, _, err := r.verifiedRoot(ctx, record.Selected.Digest)
-	if err != nil {
-		if ctx.Err() != nil {
-			return plugins.Backends{}, ctx.Err()
-		}
-		return plugins.Backends{}, errors.Join(plugin.ErrUnavailable, err)
-	}
-	if err := root.Close(); err != nil {
-		return plugins.Backends{}, err
-	}
-	dir, err := r.Root(record.Selected.Digest)
-	if err != nil {
-		return plugins.Backends{}, err
-	}
-	data := r.dataRoot(record.ID)
-	result := plugins.Backends{}
-	for _, declared := range record.Selected.Servers {
+	data := r.dataRoot(installation.ID())
+	declaration := release.Declaration()
+	for _, declared := range declaration.Servers {
 		if err := ctx.Err(); err != nil {
-			return plugins.Backends{}, err
+			return plugins.Realization{}, err
 		}
-		server, err := realizeServer(installation, record, declared, dir, data)
-		if err != nil {
-			result.Availability = append(result.Availability, plugin.Diagnostic{Component: "mcp:" + declared.Name, Code: "unavailable_backend"})
-			continue
+		server, describeErr := descriptorServer(installation, release, declaration, declared, dir, data)
+		if describeErr != nil {
+			if server, err = declaredServer(installation, release, declaration, declared); err != nil {
+				return plugins.Realization{}, err
+			}
 		}
-		result.Servers = append(result.Servers, server)
+		availability := mcpapp.SourceUnavailableRelease
+		if result.Release == plugins.ReleaseAvailable {
+			availability = mcpapp.SourceAvailable
+			if describeErr != nil || realizeBackend(server, declared, dir, data) != nil {
+				availability = mcpapp.SourceUnavailableBackend
+			}
+		}
+		result.Sources = append(result.Sources, mcpapp.Source{Server: server, Availability: availability})
 	}
 	return result, nil
 }
 
-func (r *Releases) dataRoot(id string) string {
-	return filepath.Join(filepath.Dir(r.directory), "data", id)
+// declaredServer is the registry identity of a server whose descriptor cannot
+// be realized: enough to list it as unavailable, never enough to connect.
+func declaredServer(installation *plugin.Installation, release plugin.Release, declaration plugin.Declaration, declared plugin.Server) (mcpserver.Server, error) {
+	source, err := installation.ServerSource(release, declared.Name)
+	if err != nil {
+		return mcpserver.Server{}, err
+	}
+	return mcpserver.Server{Source: source, Name: declared.Name, Transport: declared.Transport, Enabled: installation.ServerEnabled(declared.Name), Description: declaration.Description}, nil
+}
+
+func (r *Releases) dataRoot(id resourceid.InstallationID) string {
+	return filepath.Join(filepath.Dir(r.directory), "data", id.String())
 }
 
 func unchangedDataRoot(data string) error {
 	resolved, err := filepath.EvalSymlinks(data)
 	if err != nil {
-		return err
+		return fmt.Errorf("pluginpackage: resolve installation data directory: %w", err)
 	}
 	if resolved != data {
 		return errors.New("pluginpackage: data authority changed")
 	}
 	root, err := os.OpenRoot(data)
 	if err != nil {
-		return err
+		return fmt.Errorf("pluginpackage: open installation data directory: %w", err)
 	}
 	return root.Close()
 }
 
-func descriptorServer(installation *plugin.Installation, record plugin.Record, declared plugin.Server, dir, data string) (mcpserver.Server, error) {
-	name, err := mcpserver.InstallationServer(record.ID, declared.Name)
+func descriptorServer(installation *plugin.Installation, release plugin.Release, declaration plugin.Declaration, declared plugin.Server, dir, data string) (mcpserver.Server, error) {
+	source, err := installation.ServerSource(release, declared.Name)
 	if err != nil {
 		return mcpserver.Server{}, err
 	}
-	server := mcpserver.Server{Name: name, Enabled: installation.ServerEnabled(declared.Name), ReleaseAuthority: installation.ServerAuthority(declared.Name), Description: record.Selected.Description}
-	switch declared.Type {
-	case plugin.Stdio:
-		server.Transport = mcpserver.TransportStdio
+	server := mcpserver.Server{Source: source, Name: declared.Name, Transport: declared.Transport, Enabled: installation.ServerEnabled(declared.Name), Description: declaration.Description}
+	switch declared.Transport {
+	case mcpserver.TransportStdio:
 		server.Command = declared.Command
 		if strings.HasPrefix(server.Command, "./") {
 			server.Command = filepath.Join(dir, server.Command[2:])
@@ -223,21 +231,19 @@ func descriptorServer(installation *plugin.Installation, record plugin.Record, d
 			server.Env[key] = expand(value, dir, data)
 		}
 		server.Dir = dir
-		if declared.CWD != "" {
-			server.Dir = expand(declared.CWD, dir, data)
+		if declared.Dir != "" {
+			server.Dir = expand(declared.Dir, dir, data)
 			if strings.HasPrefix(server.Dir, "./") {
 				server.Dir = filepath.Join(dir, server.Dir[2:])
 			}
 		}
-	case plugin.StreamableHTTP:
-		server.Transport = mcpserver.TransportStreamableHTTP
+	case mcpserver.TransportStreamableHTTP:
 		server.URL = declared.URL
 		server.Headers = maps.Clone(declared.Headers)
-	default:
-		return mcpserver.Server{}, plugin.ErrInvalid
 	}
-	for _, input := range record.Selected.Inputs {
-		value, configured := record.Values[input.ID]
+	values := installation.Snapshot().Values
+	for _, input := range declaration.Inputs {
+		value, configured := values[input.ID]
 		if input.Server != declared.Name || !configured {
 			continue
 		}
@@ -265,36 +271,42 @@ func descriptorServer(installation *plugin.Installation, record plugin.Record, d
 			server.Env["PATH"] = os.Getenv("PATH")
 		}
 	}
-	return server, server.Validate()
+	if err := server.Validate(); err != nil {
+		return mcpserver.Server{}, fmt.Errorf("pluginpackage: realize server %q: %w", declared.Name, err)
+	}
+	return server, nil
 }
 
-func realizeServer(installation *plugin.Installation, record plugin.Record, declared plugin.Server, dir, data string) (mcpserver.Server, error) {
-	server, err := descriptorServer(installation, record, declared, dir, data)
-	if err != nil {
-		return mcpserver.Server{}, err
-	}
+// realizeBackend checks that an enabled stdio descriptor's working directory
+// exists inside its boundary now; other descriptors need no backend.
+func realizeBackend(server mcpserver.Server, declared plugin.Server, dir, data string) error {
 	if !server.Enabled || server.Transport != mcpserver.TransportStdio {
-		return server, nil
+		return nil
 	}
 	if err := unchangedDataRoot(data); err != nil {
-		return mcpserver.Server{}, err
+		return err
 	}
 	boundary := dir
-	if strings.HasPrefix(declared.CWD, "${PLUGIN_DATA}") {
+	if strings.HasPrefix(declared.Dir, "${PLUGIN_DATA}") {
 		boundary = data
 	}
 	relative, err := filepath.Rel(boundary, server.Dir)
-	if err != nil || !filepath.IsLocal(relative) {
-		return mcpserver.Server{}, errors.Join(plugin.ErrInvalid, err)
+	if err != nil {
+		return fmt.Errorf("%w: server %q working directory: %w", plugin.ErrInvalid, declared.Name, err)
+	}
+	if !filepath.IsLocal(relative) {
+		return fmt.Errorf("%w: server %q working directory escapes its boundary", plugin.ErrInvalid, declared.Name)
 	}
 	authority, err := os.OpenRoot(boundary)
 	if err != nil {
-		return mcpserver.Server{}, err
+		return fmt.Errorf("%w: open server %q boundary: %w", plugin.ErrUnavailable, declared.Name, err)
 	}
 	info, statErr := authority.Stat(relative)
-	closeErr := authority.Close()
-	if statErr != nil || !info.IsDir() || closeErr != nil {
-		return mcpserver.Server{}, errors.Join(plugin.ErrUnavailable, statErr, closeErr)
+	if err := errors.Join(statErr, authority.Close()); err != nil {
+		return fmt.Errorf("%w: server %q working directory: %w", plugin.ErrUnavailable, declared.Name, err)
 	}
-	return server, nil
+	if !info.IsDir() {
+		return fmt.Errorf("%w: server %q working directory is not a directory", plugin.ErrUnavailable, declared.Name)
+	}
+	return nil
 }

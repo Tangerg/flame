@@ -95,14 +95,14 @@ func TestInteractionReleasesScopedFilesystemTools(t *testing.T) {
 			}
 			for _, captured := range resolver.captured {
 				for _, executable := range captured.manifest.Visible {
-					if executable.Definition().Name != domaintool.Read {
+					if executable.Definition().Name != string(domaintool.Read) {
 						continue
 					}
 					binding, err := toolcontract.Bind(executable)
 					if err != nil {
 						t.Fatal(err)
 					}
-					invocation, err := binding.Contract().Prepare(chat.ToolCall{ID: "read", Name: domaintool.Read, Arguments: `{"path":"note.txt"}`})
+					invocation, err := binding.Contract().Prepare(chat.ToolCall{ID: "read", Name: string(domaintool.Read), Arguments: `{"path":"note.txt"}`})
 					if err != nil {
 						t.Fatal(err)
 					}

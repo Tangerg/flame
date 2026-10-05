@@ -15,7 +15,6 @@ import type {
   AgentMemoryReviewRequest,
   AgentMemoryUpdateRequest,
   ApprovalModeResult,
-  ApprovePluginRequest,
   CancelRunRequest,
   CancelRunResponse,
   ConfigurePluginRequest,
@@ -93,7 +92,6 @@ import type {
   Plan,
   PluginInstallation,
   PluginReleaseRequest,
-  PluginRemoval,
   PluginRequest,
   Provider,
   ProviderTestResult,
@@ -346,7 +344,6 @@ const VALUE_METHOD_NAMES = [
   "plugins.configure",
   "plugins.setEnablement",
   "plugins.revoke",
-  "plugins.uninstall",
   "hooks.list",
   "approval.getMode",
   "approval.setMode",
@@ -1378,11 +1375,11 @@ export interface WireShapes {
   "plugins.install": { params: InstallPluginRequest; result: PluginInstallation };
   "plugins.stage": { params: StagePluginRequest; result: PluginInstallation };
   "plugins.select": { params: PluginReleaseRequest; result: PluginInstallation };
-  "plugins.approve": { params: ApprovePluginRequest; result: PluginInstallation };
+  "plugins.approve": { params: PluginReleaseRequest; result: PluginInstallation };
   "plugins.configure": { params: ConfigurePluginRequest; result: PluginInstallation };
   "plugins.setEnablement": { params: SetPluginEnablementRequest; result: PluginInstallation };
   "plugins.revoke": { params: PluginRequest; result: PluginInstallation };
-  "plugins.uninstall": { params: PluginRequest; result: PluginRemoval };
+  "plugins.uninstall": { params: PluginRequest };
   "hooks.list": { params: ListHooksRequest; result: HooksListResult };
   "hooks.setTrust": { params: SetHookTrustRequest };
   "approval.setRule": { params: SetApprovalRuleRequest };

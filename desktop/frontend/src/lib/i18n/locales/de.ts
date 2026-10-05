@@ -878,6 +878,10 @@ export const de: Record<string, string> = {
   "mcp.error.toggle": "Server konnte nicht geändert werden.",
   "mcp.error.signIn": "Anmeldung fehlgeschlagen.",
   "mcp.error.test": "Test fehlgeschlagen",
+  "mcp.testOutcome.timedOut":
+    "Der Server hat nicht rechtzeitig geantwortet – prüfe Befehl oder URL und versuche es erneut.",
+  "mcp.testOutcome.failed":
+    "Der Server hat keine Verbindung hergestellt oder keine gültige Werkzeugliste geliefert. Prüfe die Einstellungen und versuche es erneut.",
   "workspace.view.title.file": "Dateien",
   "settings.theme.system": "System",
   "runError.action.retryIn": "Erneut versuchen in {{seconds}} s",
@@ -1036,16 +1040,24 @@ export const de: Record<string, string> = {
     "In der Runtime ist etwas schiefgelaufen — versuche es erneut und sieh in die Diagnose, falls es bleibt.",
   "rpcError.run_lost":
     "Der Prozess dieses Runs ist weg — er endete, bevor ein Ergebnis gespeichert wurde. Starte ihn neu.",
-  "rpcError.mcp_authorization_required":
+  "mcpStatus.mcp_authorization_required":
     "Dieser Server verlangt eine Anmeldung, bevor er nutzbar ist.",
-  "rpcError.mcp_authorization_failed":
+  "mcpStatus.mcp_authorization_failed":
     "Die Anmeldung wurde nicht abgeschlossen. Versuche es erneut.",
   "rpcError.mcp_authorization_attempt_not_found":
     "Dieser Anmeldeversuch ist abgelaufen. Starte ihn erneut.",
-  "rpcError.mcp_dial_failed":
+  "mcpStatus.mcp_tool_discovery_failed":
+    "Verbunden, aber dieser Server hat keine verwendbare Werkzeugliste geliefert. Prüfe den Server und versuche es erneut.",
+  "mcpStatus.mcp_configuration_failed":
+    "Die Konfiguration oder die gespeicherten Anmeldedaten dieses Servers konnten nicht verwendet werden. Prüfe die Einstellungen und versuche es erneut.",
+  "mcpStatus.mcp_release_unavailable":
+    "Das Plugin, das diesen Server bereitstellt, hat die Überprüfung nicht bestanden. Installiere oder aktualisiere das Plugin neu.",
+  "mcpStatus.mcp_backend_unavailable":
+    "Das Plugin ist intakt, aber das Backend dieses Servers konnte nicht vorbereitet werden. Versuche es erneut oder installiere das Plugin neu.",
+  "mcpStatus.mcp_dial_failed":
     "Dieser Server ist nicht erreichbar — prüfe Befehl oder URL und versuche es erneut.",
-  "rpcError.provider_not_configured": "Schließe zuerst die Provider-Konfiguration ab.",
-  "rpcError.provider_test_failed":
+  "providers.testOutcome.notConfigured": "Schließe zuerst die Provider-Konfiguration ab.",
+  "providers.testOutcome.failed":
     "Der Anbieter war nicht erreichbar oder hat die Testanfrage abgelehnt.",
   "rpcError.skill_not_found": "Dieser Skill ist nicht mehr in der Bibliothek.",
   "rpcError.skill_unavailable":
@@ -1060,6 +1072,8 @@ export const de: Record<string, string> = {
   "rpcError.unsupported_mime": "Dieser Dateityp wird hier nicht unterstützt.",
   "rpcError.interrupt_not_open": "Diese Anfrage wartet nicht mehr auf eine Antwort.",
   "rpcError.idempotency_conflict": "Dieselbe Anfrage wurde bereits mit anderem Inhalt gestellt.",
+  "rpcError.plugin_changed":
+    "Ein Plugin hat sich geändert, während der Lauf vorbereitet wurde. Es wurde nichts gestartet – erneut senden, um es noch einmal zu versuchen.",
   "session.error.create": "Sitzung konnte nicht erstellt werden.",
   "session.directory.title": "Neue Sitzung",
   "session.directory.description":
@@ -1341,12 +1355,15 @@ export const de: Record<string, string> = {
   "packages.loading": "Laden…",
 
   "packages.trust":
-    "Mit der Freigabe vertrauen Sie dem Code. Lokale Programme laufen mit Ihren Betriebssystemrechten. Prüfen Sie Quelle, Prüfsumme, Eingaben und Berechtigungen.",
+    "Mit der Freigabe vertrauen Sie genau diesem Code. Lokale Programme laufen mit Ihren Betriebssystemrechten. Prüfen Sie Quelle, Prüfsumme und Eingaben. Eine andere Version erfordert eine neue Freigabe.",
   "packages.source": "Absoluter Paketordner oder ZIP-Pfad auf dem Runtime",
   "packages.install": "Installieren",
   "packages.empty": "Keine Runtime-Pakete installiert",
-  "packages.approve": "Version und Rechte freigeben",
+  "packages.approve": "Diese Version freigeben",
   "packages.configure": "Eingaben konfigurieren",
+  "packages.state.unapproved": "Nicht freigegeben: Prüfen Sie diese Version vor dem Aktivieren.",
+  "packages.state.approved": "Freigegeben, nicht aktiviert.",
+  "packages.state.enabled": "Aktiviert.",
   "packages.disable": "Deaktivieren",
   "packages.enable": "Aktivieren",
   "packages.stage": "Update vorbereiten",
@@ -1355,4 +1372,32 @@ export const de: Record<string, string> = {
   "packages.uninstall": "Deinstallieren",
   "packages.input": "JSON-Eingabe oder Runtime-Quellpfad",
   "packages.save": "Speichern",
+  "packages.installed":
+    "{{name}} wurde installiert. Prüfe das Release unten, bevor du es aktivierst.",
+  "packages.releaseUnavailable":
+    "Die Dateien dieses Releases haben die Überprüfung nicht bestanden, daher sind seine Komponenten nicht verfügbar.",
+  "packages.backendUnavailable":
+    "Server „{{name}}“ kann nicht starten: Sein Backend konnte nicht vorbereitet werden.",
+  "packages.component.manifestField": "Manifestfeld „{{name}}“",
+  "packages.component.flameExtension": "Die Flame-Erweiterung",
+  "packages.component.extensionField": "Erweiterungsfeld „{{name}}“",
+  "packages.component.contribution": "Beitrag „{{name}}“",
+  "packages.component.mcp": "Die MCP-Konfiguration",
+  "packages.component.mcpServer": "MCP-Server „{{name}}“",
+  "packages.component.skills": "Das Skills-Verzeichnis",
+  "packages.component.skill": "Skill „{{name}}“",
+  "packages.diagnostic.unknownField": "{{component}} wird nicht erkannt und wurde ignoriert.",
+  "packages.diagnostic.invalidDeclaration": "{{component}} ist ungültig und wurde deaktiviert.",
+  "packages.diagnostic.unsupportedContribution":
+    "{{component}} wird nicht unterstützt und wurde ignoriert.",
+  "packages.diagnostic.componentLimit":
+    "{{component}} überschreitet sein Limit und wurde deaktiviert.",
+  "packages.diagnostic.invalidDependencies":
+    "{{component}} hängt von fehlenden oder ungültigen Deklarationen ab und wurde deaktiviert.",
+  "packages.diagnostic.unavailableComponent":
+    "{{component}} konnte nicht gelesen werden und wurde deaktiviert.",
+  "packages.realizationFailed":
+    "Paket-Themes konnten in diesem Fenster nicht geladen werden: {{reason}}",
+  "packages.reviewedField":
+    "„{{field}}“ gehört zum geprüften Release und kann hier nicht geändert werden.",
 };

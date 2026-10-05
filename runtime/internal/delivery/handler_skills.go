@@ -217,8 +217,8 @@ func mapSkillProposalErr(err error) error {
 }
 
 func presentSkillSummary(summary workspace.SkillSummary) (protocol.Skill, error) {
-	if id, digest, found := summary.Source.Installation(); found {
-		return protocol.Skill{Name: summary.Name, Description: summary.Description, Scope: protocol.SkillScopeInstallation, Installation: &protocol.SkillInstallation{InstallationID: id, Digest: digest}}, nil
+	if release, found := summary.Source.Installation(); found {
+		return protocol.Skill{Name: summary.Name, Description: summary.Description, Scope: protocol.SkillScopeInstallation, Installation: &protocol.SkillInstallation{InstallationID: release.InstallationID.String(), Digest: release.Digest.String()}}, nil
 	}
 	scope, ok := presentSkillScope(summary.Source.Scope())
 	if !ok {

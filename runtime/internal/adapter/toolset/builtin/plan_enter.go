@@ -27,7 +27,7 @@ func newEnter(modes planEnterPolicy) (toolcontract.Tool, error) {
 		return nil, nil
 	}
 	return toolcontract.NewFunc[enterArgs, string](
-		toolcontract.FuncConfig{Name: tool.EnterPlanMode, Description: enterDescription},
+		toolcontract.FuncConfig{Name: string(tool.EnterPlanMode), Description: enterDescription},
 		(&enterer{modes: modes}).enter,
 	)
 }

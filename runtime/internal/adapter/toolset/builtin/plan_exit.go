@@ -44,7 +44,7 @@ func newExit(modes planExitPolicy, plan planStateReader, interrupt runs.Interrup
 		interrupt = runs.InterruptUnavailable
 	}
 	return toolcontract.NewFunc[exitArgs, string](
-		toolcontract.FuncConfig{Name: tool.ExitPlanMode, Description: exitDescription},
+		toolcontract.FuncConfig{Name: string(tool.ExitPlanMode), Description: exitDescription},
 		(&exiter{modes: modes, plan: plan, interrupt: interrupt}).exit,
 	)
 }
@@ -77,7 +77,7 @@ func (e *exiter) exit(ctx context.Context, _ exitArgs) (string, error) {
 	pending := runs.Interrupt{
 		Kind: interrupt.Question,
 		Question: &runs.QuestionPrompt{
-			ToolName:  tool.ExitPlanMode,
+			ToolName:  string(tool.ExitPlanMode),
 			Arguments: arguments,
 			Fields: []runs.QuestionFieldSpec{{
 				Prompt: planpresentation.Render(steps),
@@ -94,7 +94,7 @@ func (e *exiter) exit(ctx context.Context, _ exitArgs) (string, error) {
 	}
 	resolution, err := e.interrupt(
 		ctx,
-		interrupt.Key(string(interrupt.Question), tool.ExitPlanMode, arguments),
+		interrupt.Key(string(interrupt.Question), string(tool.ExitPlanMode), arguments),
 		pending,
 	)
 	if err != nil {

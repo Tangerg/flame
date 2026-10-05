@@ -1,5 +1,4 @@
 import { errorDetail, errorType, isErrorType, RpcError } from "@flame/runtime-contract/client";
-import type { ProblemData } from "@flame/runtime-contract/client";
 import { t } from "./i18n";
 
 export const MAPPED_TYPES: readonly string[] = [
@@ -28,11 +27,6 @@ export const MAPPED_TYPES: readonly string[] = [
   "idempotency_in_progress",
   "internal_error",
   "run_lost",
-  "mcp_authorization_required",
-  "mcp_authorization_failed",
-  "mcp_dial_failed",
-  "provider_not_configured",
-  "provider_test_failed",
   "mcp_authorization_attempt_not_found",
   "skill_not_found",
   "skill_unavailable",
@@ -45,6 +39,7 @@ export const MAPPED_TYPES: readonly string[] = [
   "unsupported_mime",
   "interrupt_not_open",
   "idempotency_conflict",
+  "plugin_changed",
 ];
 
 export function describeActiveRunRefusal(problem: {
@@ -64,11 +59,6 @@ export function describeErrorType(type: string | undefined): string | undefined 
 export function describeRpcError(err: unknown): string | undefined {
   if (!(err instanceof RpcError)) return undefined;
   return describeErrorType(errorType(err.data));
-}
-
-export function describeProblem(problem: ProblemData | undefined): string | undefined {
-  if (!problem) return undefined;
-  return errorDetail(problem) || describeErrorType(problem.type) || problem.type || undefined;
 }
 
 export function rpcErrorText(err: unknown): string | undefined {

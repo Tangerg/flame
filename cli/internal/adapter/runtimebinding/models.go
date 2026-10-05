@@ -9,7 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 
 	"github.com/Tangerg/flame/cli/internal/application/integration/models"
-	"github.com/Tangerg/flame/cli/internal/domain/failure"
 )
 
 type modelConfigBinding interface {
@@ -206,22 +205,21 @@ func validateProviderUpdate(update models.UpdateProvider, result models.Provider
 	return errors.Join(problems...)
 }
 
-func (r *Connection) TestProvider(ctx context.Context, providerID string) (models.TestResult, error) {
+func (r *Connection) TestProvider(ctx context.Context, providerID string) (protocol.ProviderTestOutcome, error) {
 	if err := protocol.ValidateProviderIdentity(providerID); err != nil {
-		return models.TestResult{}, fmt.Errorf("test provider: %w", err)
+		return "", fmt.Errorf("test provider: %w", err)
 	}
 	result, err := r.modelConfig.TestProvider(ctx, protocol.TestProviderRequest{Provider: providerID}, r.callOptions())
 	if err != nil {
-		return models.TestResult{}, classifyError(err)
+		return "", classifyError(err)
 	}
 	if result == nil {
-		return models.TestResult{}, runtimeContractViolation("test provider returned nil")
+		return "", runtimeContractViolation("test provider returned nil")
 	}
-	projected := models.TestResult{OK: result.OK, Problem: failure.Clone(result.Error)}
-	if err := projected.Validate(); err != nil {
-		return models.TestResult{}, runtimeContractViolation("test provider returned an invalid result: %v", err)
+	if err := protocol.ValidateWireTree(*result); err != nil {
+		return "", runtimeContractViolation("test provider returned an invalid result: %v", err)
 	}
-	return projected, nil
+	return result.Outcome, nil
 }
 
 func projectProvider(value protocol.Provider) (models.Provider, error) {

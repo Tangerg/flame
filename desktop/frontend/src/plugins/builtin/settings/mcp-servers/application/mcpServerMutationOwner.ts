@@ -7,8 +7,12 @@ import {
   MCP_SERVERS_KEY,
   MCP_TOOLS_KEY,
   MCP_EXPOSURE_KEY,
+  sameMCPServer,
+  userMCPServer,
+  type MCPServerID,
   type MCPServerSettings,
 } from "./mcpServerQueries";
+import { mcpServerLabel } from "@/lib/toolSource";
 import type { MCPServerGateway, MCPServerTestOutcome } from "./ports/mcpServerGateway";
 
 const AUTHORIZATION_ATTEMPT_POLL_MS = 500;
@@ -30,52 +34,53 @@ class MCPServerMutationGeneration {
   }
 
   create(input: MCPServerInput): Promise<MCPServerSettings> {
-    return this.#run(input.name, {
+    return this.#run(userMCPServer(input.name), {
       execute: () => this.#gateway.create(input),
       commit: commitMCPServerSaved,
     });
   }
 
-  update(name: string, input: MCPServerInput): Promise<MCPServerSettings> {
-    return this.#run(name, {
-      execute: () => this.#gateway.update(name, input),
+  update(server: MCPServerID, input: MCPServerInput): Promise<MCPServerSettings> {
+    return this.#run(server, {
+      execute: () => this.#gateway.update(server, input),
       commit: commitMCPServerSaved,
     });
   }
 
-  setEnabled(name: string, enabled: boolean): Promise<MCPServerSettings> {
-    return this.#run(name, {
-      execute: () => this.#gateway.setEnabled(name, enabled),
+  setEnabled(server: MCPServerID, enabled: boolean): Promise<MCPServerSettings> {
+    return this.#run(server, {
+      execute: () => this.#gateway.setEnabled(server, enabled),
       commit: commitMCPServerSaved,
     });
   }
 
-  delete(name: string): Promise<void> {
-    return this.#run(name, {
-      execute: () => this.#gateway.delete(name),
-      commit: () => removeMCPServer(name),
+  delete(server: MCPServerID): Promise<void> {
+    return this.#run(server, {
+      execute: () => this.#gateway.delete(server),
+      commit: () => removeMCPServer(server),
     });
   }
 
-  setToolExposure(server: string, name: string, disabled: boolean): Promise<void> {
+  setToolExposure(server: MCPServerID, name: string, disabled: boolean): Promise<void> {
     return this.#run(server, {
       execute: () => this.#gateway.setToolExposure(server, name, disabled),
       commit: () => undefined,
     });
   }
 
-  reconnect(name: string): Promise<void> {
-    const admitted = this.#reconnects.get(name);
+  reconnect(server: MCPServerID): Promise<void> {
+    const key = mcpServerLabel(server);
+    const admitted = this.#reconnects.get(key);
     if (admitted) return admitted;
 
-    const reconnect = this.#run(name, {
-      execute: () => this.#gateway.reconnect(name),
+    const reconnect = this.#run(server, {
+      execute: () => this.#gateway.reconnect(server),
       commit: () => undefined,
     });
-    this.#reconnects.set(name, reconnect);
+    this.#reconnects.set(key, reconnect);
     void reconnect.then(
-      () => this.#forgetReconnect(name, reconnect),
-      () => this.#forgetReconnect(name, reconnect),
+      () => this.#forgetReconnect(key, reconnect),
+      () => this.#forgetReconnect(key, reconnect),
     );
     return reconnect;
   }
@@ -84,12 +89,12 @@ class MCPServerMutationGeneration {
     return this.#cohort.run(() => this.#gateway.test(input));
   }
 
-  async authorize(name: string, callerSignal?: AbortSignal): Promise<void> {
+  async authorize(server: MCPServerID, callerSignal?: AbortSignal): Promise<void> {
     const signal = callerSignal
       ? AbortSignal.any([callerSignal, this.#lifetime.signal])
       : this.#lifetime.signal;
     let attempt = await this.#cohort.run(() =>
-      this.#gateway.createAuthorizationAttempt(name, signal),
+      this.#gateway.createAuthorizationAttempt(server, signal),
     );
     while (attempt.status === "pending") {
       await this.#cohort.settle(authorizationPollDelay(signal));
@@ -109,8 +114,8 @@ class MCPServerMutationGeneration {
     this.#reconnects.clear();
   }
 
-  #run<T>(identity: string, mutation: MCPServerMutation<T>): Promise<T> {
-    return this.#cohort.runSerial(identity, async () => {
+  #run<T>(server: MCPServerID, mutation: MCPServerMutation<T>): Promise<T> {
+    return this.#cohort.runSerial(mcpServerLabel(server), async () => {
       const value = await this.#cohort.run(mutation.execute);
       mutation.commit(value);
       await repairCachedProjection(this.#cohort, [
@@ -123,8 +128,8 @@ class MCPServerMutationGeneration {
     });
   }
 
-  #forgetReconnect(name: string, reconnect: Promise<void>): void {
-    if (this.#reconnects.get(name) === reconnect) this.#reconnects.delete(name);
+  #forgetReconnect(key: string, reconnect: Promise<void>): void {
+    if (this.#reconnects.get(key) === reconnect) this.#reconnects.delete(key);
   }
 }
 
@@ -165,32 +170,32 @@ export class MCPServerMutationOwner {
     return this.#generation.create(input);
   }
 
-  update(name: string, input: MCPServerInput): Promise<MCPServerSettings> {
-    return this.#generation.update(name, input);
+  update(server: MCPServerID, input: MCPServerInput): Promise<MCPServerSettings> {
+    return this.#generation.update(server, input);
   }
 
-  setEnabled(name: string, enabled: boolean): Promise<MCPServerSettings> {
-    return this.#generation.setEnabled(name, enabled);
+  setEnabled(server: MCPServerID, enabled: boolean): Promise<MCPServerSettings> {
+    return this.#generation.setEnabled(server, enabled);
   }
 
-  delete(name: string): Promise<void> {
-    return this.#generation.delete(name);
+  delete(server: MCPServerID): Promise<void> {
+    return this.#generation.delete(server);
   }
 
-  setToolExposure(server: string, name: string, disabled: boolean): Promise<void> {
+  setToolExposure(server: MCPServerID, name: string, disabled: boolean): Promise<void> {
     return this.#generation.setToolExposure(server, name, disabled);
   }
 
-  reconnect(name: string): Promise<void> {
-    return this.#generation.reconnect(name);
+  reconnect(server: MCPServerID): Promise<void> {
+    return this.#generation.reconnect(server);
   }
 
   test(input: MCPServerInput): Promise<MCPServerTestOutcome> {
     return this.#generation.test(input);
   }
 
-  authorize(name: string, signal?: AbortSignal): Promise<void> {
-    return this.#generation.authorize(name, signal);
+  authorize(server: MCPServerID, signal?: AbortSignal): Promise<void> {
+    return this.#generation.authorize(server, signal);
   }
 
   replaceRuntimeGeneration(createGateway: () => MCPServerGateway): void {
@@ -221,15 +226,15 @@ const mcpServerMutationPublication = createPublicationSlot<MCPServerMutationOwne
 function commitMCPServerSaved(saved: MCPServerSettings): void {
   queryClient.setQueryData<MCPServerSettings[]>([MCP_SERVERS_KEY], (current) => {
     if (!current) return current;
-    const index = current.findIndex((server) => server.id === saved.id);
+    const index = current.findIndex((server) => sameMCPServer(server.id, saved.id));
     if (index < 0) return [...current, saved];
-    return current.map((server) => (server.id === saved.id ? saved : server));
+    return current.map((server) => (sameMCPServer(server.id, saved.id) ? saved : server));
   });
 }
 
-function removeMCPServer(name: string): void {
+function removeMCPServer(removed: MCPServerID): void {
   queryClient.setQueryData<MCPServerSettings[]>([MCP_SERVERS_KEY], (current) =>
-    current?.filter((server) => server.id !== name),
+    current?.filter((server) => !sameMCPServer(server.id, removed)),
   );
 }
 

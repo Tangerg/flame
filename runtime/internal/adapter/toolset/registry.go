@@ -50,7 +50,7 @@ func (r DiagnosticRegistry) List(context.Context) (_ []tool.Tool, err error) {
 	interpreter := Interpreter{}
 	out := make([]tool.Tool, 0, len(manifest.Visible))
 	for _, definition := range registry.Definitions() {
-		ref, err := tool.BuiltIn(definition.Name)
+		ref, err := tool.BuiltIn(tool.BuiltInName(definition.Name))
 		if err != nil {
 			return nil, err
 		}

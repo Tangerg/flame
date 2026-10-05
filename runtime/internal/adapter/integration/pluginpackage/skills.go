@@ -12,13 +12,14 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 	sdk "github.com/Tangerg/scope/skills"
 )
 
 type skillInstallations interface {
 	List(context.Context) ([]*plugin.Installation, error)
-	Get(context.Context, string) (*plugin.Installation, error)
+	Get(context.Context, resourceid.InstallationID) (*plugin.Installation, error)
 }
 type Skills struct {
 	releases      *Releases
@@ -35,12 +36,15 @@ func (s *Skills) SkillBundles(ctx context.Context) ([]promptsource.PackageSkillB
 	}
 	var bundles []promptsource.PackageSkillBundle
 	for _, installation := range installations {
-		record := installation.Snapshot()
 		if !installation.Active() {
 			continue
 		}
+		release, err := s.releases.catalog.Get(ctx, installation.Selected())
+		if err != nil {
+			return nil, fmt.Errorf("pluginpackage: read release %s: %w", installation.Selected(), err)
+		}
 		var names []string
-		for _, skill := range record.Selected.Skills {
+		for _, skill := range release.Declaration().Skills {
 			if installation.SkillEnabled(skill.Name) {
 				names = append(names, skill.Name)
 			}
@@ -48,16 +52,16 @@ func (s *Skills) SkillBundles(ctx context.Context) ([]promptsource.PackageSkillB
 		if len(names) == 0 {
 			continue
 		}
-		root, err := s.releases.Root(record.Selected.Digest)
+		root, err := s.releases.Root(release.Digest())
 		if err != nil {
 			return nil, err
 		}
-		bundles = append(bundles, promptsource.PackageSkillBundle{Root: filepath.Join(root, "skills"), Names: names, Dependency: promptsource.InstallationDependency{InstallationID: record.ID, Digest: record.Selected.Digest}})
+		bundles = append(bundles, promptsource.PackageSkillBundle{Root: filepath.Join(root, "skills"), Names: names, Dependency: plugin.Dependency{InstallationID: installation.ID(), Digest: release.Digest()}})
 	}
 	return bundles, nil
 }
 
-func (s *Skills) ReadSkillResource(ctx context.Context, dependency promptsource.InstallationDependency, name, resource string) ([]byte, error) {
+func (s *Skills) ReadSkillResource(ctx context.Context, dependency plugin.Dependency, name, resource string) ([]byte, error) {
 	if err := sdk.ValidateName(name); err != nil {
 		return nil, fmt.Errorf("%w: Skill name: %w", plugin.ErrInvalid, err)
 	}
@@ -71,11 +75,14 @@ func (s *Skills) ReadSkillResource(ctx context.Context, dependency promptsource.
 		}
 		return nil, err
 	}
-	r := installation.Snapshot()
-	if r.Selected.Digest != dependency.Digest {
+	if installation.Selected() != dependency.Digest {
 		return nil, errors.Join(workspaceapp.ErrSkillUnavailable, plugin.ErrStale)
 	}
-	if !installation.SkillEnabled(name) || !slices.ContainsFunc(r.Selected.Skills, func(skill plugin.Skill) bool { return skill.Name == name }) {
+	release, err := s.releases.catalog.Get(ctx, dependency.Digest)
+	if err != nil {
+		return nil, fmt.Errorf("pluginpackage: read release %s: %w", dependency.Digest, err)
+	}
+	if !installation.SkillEnabled(name) || !slices.ContainsFunc(release.Declaration().Skills, func(skill plugin.Skill) bool { return skill.Name == name }) {
 		return nil, errors.Join(workspaceapp.ErrSkillUnavailable, plugin.ErrUnapproved)
 	}
 	limit := int64(domainskills.MaxSkillResourceBytes)

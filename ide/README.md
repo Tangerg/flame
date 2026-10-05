@@ -118,11 +118,15 @@ requires opening the extension in an Extension Development Host.
 ## Runtime plugins
 
 Configuration JSON requires the inspected release's `digest` alongside `installationId`.
+It is a delta: `valueChanges`, `serverChanges` and `skillChanges` (each `enable` or
+`disable`) name only what changes and may be empty. Approval names exactly that digest;
+selecting another release returns the installation to `state: "unapproved"`.
 Stale requests are refused by Runtime; replay preserves their original release binding.
 
 The command palette provides **Inspect Runtime Plugins** and **Manage Runtime Plugin**.
 Management uses exact Runtime request JSON and the existing
-prepared-command journal. Source paths belong to the connected Runtime. Results open as
-JSON documents. Plugin action invocation and HTML hosting are unavailable in this slice;
+prepared-command journal. Source paths belong to the connected Runtime. Installation
+results open as JSON documents; uninstall is an acknowledgement and reports completion only.
+Secret inputs, including every header and authorization input, appear as `configured` without their text. Plugin action invocation and HTML hosting are unavailable in this slice;
 installed tools use the existing Runtime execution and approval path. See
 [the Runtime contract](../runtime/README.md#portable-plugins).

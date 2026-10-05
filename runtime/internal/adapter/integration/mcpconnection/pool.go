@@ -25,7 +25,6 @@ type Pool struct {
 
 var (
 	_ mcpapp.StatusReader        = (*Pool)(nil)
-	_ mcpapp.ToolCatalog         = (*Pool)(nil)
 	_ mcpapp.ConnectionControl   = (*Pool)(nil)
 	_ mcpapp.ConnectionLifecycle = (*Pool)(nil)
 )
@@ -59,21 +58,16 @@ func (p *Pool) Statuses() []mcpserver.ConnectionStatus {
 	return p.inner.Statuses()
 }
 
-func (p *Pool) Tools(server *mcpserver.ServerName) ([]mcpserver.AdvertisedTool, error) {
-	items, err := p.inner.Tools(server)
-	return items, err
-}
-
-func (p *Pool) Reconnect(ctx context.Context, name mcpserver.ServerName) error {
-	config, err := p.connectionConfig(ctx, name)
+func (p *Pool) Reconnect(ctx context.Context, name mcpserver.ID) error {
+	config, err := p.admittedConfig(ctx, name)
 	if err != nil {
 		return err
 	}
 	return p.inner.Configure(ctx, config)
 }
 
-func (p *Pool) Authorize(ctx context.Context, name mcpserver.ServerName) error {
-	config, err := p.connectionConfig(ctx, name)
+func (p *Pool) Authorize(ctx context.Context, name mcpserver.ID) error {
+	config, err := p.admittedConfig(ctx, name)
 	if err != nil {
 		return err
 	}
@@ -88,15 +82,33 @@ func (p *Pool) Probe(ctx context.Context, server mcpserver.Server) error {
 	return p.inner.Probe(ctx, cfg)
 }
 
-func (p *Pool) Configure(ctx context.Context, name mcpserver.ServerName) error {
-	cfg, err := p.connectionConfig(ctx, name)
+func (p *Pool) Configure(ctx context.Context, name mcpserver.ID) error {
+	cfg, err := p.admittedConfig(ctx, name)
 	if err != nil {
 		return err
 	}
 	return p.inner.Configure(ctx, cfg)
 }
 
-func (p *Pool) connectionConfig(ctx context.Context, name mcpserver.ServerName) (mcp.ServerConfig, error) {
+// admittedConfig obtains the configuration a new connection must use. When the
+// source refuses, the refusal becomes the live state: a removed or disabled
+// source is detached, any other refusal settles as a configuration failure,
+// and in both cases the previous session stops serving tools.
+func (p *Pool) admittedConfig(ctx context.Context, name mcpserver.ID) (mcp.ServerConfig, error) {
+	cfg, err := p.connectionConfig(ctx, name)
+	if err == nil {
+		return cfg, nil
+	}
+	if cause := context.Cause(ctx); cause != nil {
+		return mcp.ServerConfig{}, errors.Join(err, cause)
+	}
+	if errors.Is(err, mcpapp.ErrUnknownServer) || errors.Is(err, mcpapp.ErrServerDisabled) {
+		return mcp.ServerConfig{}, errors.Join(err, p.inner.Detach(name))
+	}
+	return mcp.ServerConfig{}, errors.Join(err, p.inner.Refuse(ctx, name, mcpserver.FailureConfiguration))
+}
+
+func (p *Pool) connectionConfig(ctx context.Context, name mcpserver.ID) (mcp.ServerConfig, error) {
 	server, err := p.registry.Connection(ctx, name)
 	if err != nil {
 		return mcp.ServerConfig{}, err
@@ -104,7 +116,11 @@ func (p *Pool) connectionConfig(ctx context.Context, name mcpserver.ServerName) 
 	return configFromServer(server)
 }
 
-func (p *Pool) Detach(name mcpserver.ServerName) error {
+func (p *Pool) Refuse(ctx context.Context, name mcpserver.ID, failure mcpserver.ConnectionFailure) error {
+	return p.inner.Refuse(ctx, name, failure)
+}
+
+func (p *Pool) Detach(name mcpserver.ID) error {
 	return p.inner.Detach(name)
 }
 
@@ -127,7 +143,7 @@ func configsFromServers(servers []mcpserver.Server) ([]mcp.ServerConfig, error) 
 	for i, server := range servers {
 		cfg, err := configFromServer(server)
 		if err != nil {
-			return nil, fmt.Errorf("mcp connection: map server %q: %w", server.Name, err)
+			return nil, fmt.Errorf("mcp connection: map server %q: %w", server.ID(), err)
 		}
 		out[i] = cfg
 	}
@@ -144,7 +160,7 @@ func configFromServer(server mcpserver.Server) (mcp.ServerConfig, error) {
 	}
 	cfg := mcp.ServerConfig{
 		SourceFingerprint: server.AuthorityFingerprint(),
-		ReleaseAuthority:  server.ReleaseAuthority,
+		Source:            server.Source,
 		Name:              server.Name,
 		Transport:         transport,
 	}

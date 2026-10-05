@@ -147,7 +147,7 @@ func (i *interactionDeploymentBuilder) build() (*interactionDeploymentSet, error
 		}
 		if next.Valid() {
 			i.deployments.delegatesByParent[deployment.DeploymentRef()] = map[string]agent.Deployment{
-				domaintool.DelegateTask: next,
+				string(domaintool.DelegateTask): next,
 			}
 		}
 		next = deployment
@@ -217,16 +217,18 @@ func (i *interactionDeploymentBuilder) buildAtDepth(depth int, next agent.Deploy
 		i.session,
 		i.start,
 		i.instructions,
+		deferredCatalogMessage(manifest),
 		i.counter,
 	)
 	// The Dispatcher takes exactly one model capability. Streaming is requested
 	// by configuration but offered only by a provider that has it, so a
 	// non-streaming provider answers complete responses without a second switch.
 	dispatcherConfig := interaction.DispatcherConfig{ModelContextReducer: contextReducer}
-	if i.executor.config.StreamModelResponses && i.model.Streams() {
-		dispatcherConfig.Streamer = i.model
+	model := i.model
+	if i.executor.config.StreamModelResponses && model.Streams() {
+		dispatcherConfig.Streamer = model
 	} else {
-		dispatcherConfig.Model = i.model
+		dispatcherConfig.Model = model
 	}
 	dispatcher, err := interaction.NewDispatcher(definition, dispatcherConfig)
 	if err != nil {
@@ -255,6 +257,21 @@ func (i *interactionDeploymentBuilder) buildAtDepth(depth int, next agent.Deploy
 	return deployment, nil
 }
 
+// deferredCatalogMessage projects a layer's frozen deferred Tool catalog as
+// the last message of each of its model requests. It is a User message because
+// providers hoist System messages into the instruction block, which precedes
+// the conversation in the cache prefix; the Runtime context framing marks it
+// as Runtime context rather than user input.
+func deferredCatalogMessage(manifest toolset.Manifest) []corechat.Message {
+	catalog := manifest.DeferredCatalog()
+	if catalog == "" {
+		return nil
+	}
+	return []corechat.Message{corechat.NewUserMessage(corechat.NewTextPart(
+		FrameRuntimeContext(RuntimeContextDeferredTools, catalog),
+	))}
+}
+
 func (i *interactionDeploymentBuilder) layerIdentity(
 	depth int,
 ) (domaintool.Group, toolset.Manifest, string, string) {
@@ -275,7 +292,7 @@ func (i *interactionDeploymentBuilder) delegateLayer(
 		return nil, nil
 	}
 	delegate, err := interaction.NewDelegate(interaction.DelegateConfig{
-		Name: domaintool.DelegateTask, Description: delegateDescription,
+		Name: string(domaintool.DelegateTask), Description: delegateDescription,
 		Deployment: next,
 	})
 	if err != nil {
@@ -328,12 +345,8 @@ func interactionInstructionContext(messages []corechat.Message) ([]corechat.Mess
 		if !found {
 			break
 		}
-		_, sessionState, err := provenance.replaceableSessionState()
-		if err != nil {
+		if err := provenance.validate(); err != nil {
 			return nil, fmt.Errorf("execution: Interaction instruction[%d] provenance: %w", index, err)
-		}
-		if sessionState {
-			break
 		}
 		instructions = append(instructions, messages[index].Clone())
 	}

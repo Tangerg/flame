@@ -41,7 +41,7 @@ func openDirectTools(root string) (_ Manifest, err error) {
 // This adapter owns path identity and domain-error translation; LocalExecutor
 // independently enforces the filesystem capability.
 func normalizeDirectArguments(root, name string, invocation toolcontract.Invocation) (string, error) {
-	switch name {
+	switch tool.BuiltInName(name) {
 	case tool.Read:
 		request, err := decodeToolArguments[fs.ReadRequest](invocation)
 		if err != nil {

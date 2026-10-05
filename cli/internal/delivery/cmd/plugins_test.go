@@ -26,15 +26,30 @@ func (f *pluginCommandFixture) InstallPlugin(_ context.Context, in protocol.Inst
 }
 func (f *pluginCommandFixture) SetPluginEnablement(_ context.Context, in protocol.SetPluginEnablementRequest, _ replay.CommandID) (*protocol.PluginInstallation, error) {
 	f.calls++
-	return &protocol.PluginInstallation{ID: in.InstallationID, Enabled: in.Enabled}, nil
+	state := protocol.PluginInstallationApproved
+	if in.Enabled {
+		state = protocol.PluginInstallationEnabled
+	}
+	return &protocol.PluginInstallation{ID: in.InstallationID, State: state}, nil
 }
-func (f *pluginCommandFixture) ApprovePlugin(_ context.Context, in protocol.ApprovePluginRequest, _ replay.CommandID) (*protocol.PluginInstallation, error) {
+func (f *pluginCommandFixture) ApprovePlugin(_ context.Context, in protocol.PluginReleaseRequest, _ replay.CommandID) (*protocol.PluginInstallation, error) {
 	f.calls++
-	return &protocol.PluginInstallation{ID: in.InstallationID, Grants: in.Grants}, nil
+	return &protocol.PluginInstallation{ID: in.InstallationID, State: protocol.PluginInstallationApproved}, nil
 }
 func (f *pluginCommandFixture) ConfigurePlugin(_ context.Context, in protocol.ConfigurePluginRequest, _ replay.CommandID) (*protocol.PluginInstallation, error) {
 	f.calls++
-	return &protocol.PluginInstallation{ID: in.InstallationID, DisabledServers: in.DisabledServers, DisabledSkills: in.DisabledSkills}, nil
+	var disabledServers, disabledSkills []string
+	for name, change := range in.ServerChanges {
+		if change == protocol.PluginComponentDisable {
+			disabledServers = append(disabledServers, name)
+		}
+	}
+	for name, change := range in.SkillChanges {
+		if change == protocol.PluginComponentDisable {
+			disabledSkills = append(disabledSkills, name)
+		}
+	}
+	return &protocol.PluginInstallation{ID: in.InstallationID, DisabledServers: disabledServers, DisabledSkills: disabledSkills}, nil
 }
 
 func TestPluginCommandsPreserveAuthoredChangePresence(t *testing.T) {
@@ -43,18 +58,18 @@ func TestPluginCommandsPreserveAuthoredChangePresence(t *testing.T) {
 	for _, test := range []struct {
 		name, command, request string
 	}{
-		{"request", "enable", `null`},
-		{"enablement", "enable", `{"installationId":"` + id + `","enabled":null}`},
-		{"missing enablement", "enable", `{"installationId":"` + id + `"}`},
-		{"grants", "approve", `{"installationId":"` + id + `","digest":"` + digest + `","grants":null}`},
-		{"missing grants", "approve", `{"installationId":"` + id + `","digest":"` + digest + `"}`},
-		{"targets", "approve", `{"installationId":"` + id + `","digest":"` + digest + `","grants":[{"capability":"tools.invoke","targets":[null]}]}`},
-		{"inputs", "configure", `{"installationId":"` + id + `","digest":"` + digest + `","valueChanges":null,"disabledServers":[],"disabledSkills":[]}`},
-		{"disablement", "configure", `{"installationId":"` + id + `","digest":"` + digest + `","valueChanges":{},"disabledServers":null,"disabledSkills":[]}`},
-		{"clear", "configure", `{"installationId":"` + id + `","digest":"` + digest + `","valueChanges":{"credential":{"type":"clear","value":null}},"disabledServers":[],"disabledSkills":[]}`},
-		{"set without value", "configure", `{"installationId":"` + id + `","digest":"` + digest + `","valueChanges":{"credential":{"type":"set"}},"disabledServers":[],"disabledSkills":[]}`},
-		{"clear with value", "configure", `{"installationId":"` + id + `","digest":"` + digest + `","valueChanges":{"credential":{"type":"clear","value":"replacement"}},"disabledServers":[],"disabledSkills":[]}`},
-		{"unknown change", "configure", `{"installationId":"` + id + `","digest":"` + digest + `","valueChanges":{"credential":{"type":"replace","value":"replacement"}},"disabledServers":[],"disabledSkills":[]}`},
+		{"request", "set-enablement", `null`},
+		{"enablement", "set-enablement", `{"installationId":"` + id + `","enabled":null}`},
+		{"missing enablement", "set-enablement", `{"installationId":"` + id + `"}`},
+		{"grants", "approve", `{"installationId":"` + id + `","digest":"` + digest + `","grants":[]}`},
+		{"missing digest", "approve", `{"installationId":"` + id + `"}`},
+		{"inputs", "configure", `{"installationId":"` + id + `","digest":"` + digest + `","valueChanges":null,"serverChanges":{},"skillChanges":{}}`},
+		{"server changes", "configure", `{"installationId":"` + id + `","digest":"` + digest + `","valueChanges":{},"serverChanges":null,"skillChanges":{}}`},
+		{"wholesale disablement", "configure", `{"installationId":"` + id + `","digest":"` + digest + `","valueChanges":{},"disabledServers":[],"disabledSkills":[]}`},
+		{"clear", "configure", `{"installationId":"` + id + `","digest":"` + digest + `","valueChanges":{"credential":{"type":"clear","value":null}},"serverChanges":{},"skillChanges":{}}`},
+		{"set without value", "configure", `{"installationId":"` + id + `","digest":"` + digest + `","valueChanges":{"credential":{"type":"set"}},"serverChanges":{},"skillChanges":{}}`},
+		{"clear with value", "configure", `{"installationId":"` + id + `","digest":"` + digest + `","valueChanges":{"credential":{"type":"clear","value":"replacement"}},"serverChanges":{},"skillChanges":{}}`},
+		{"unknown change", "configure", `{"installationId":"` + id + `","digest":"` + digest + `","valueChanges":{"credential":{"type":"replace","value":"replacement"}},"serverChanges":{},"skillChanges":{}}`},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			fixture := &pluginCommandFixture{Runtime: runtimefixture.New()}
@@ -68,9 +83,18 @@ func TestPluginCommandsPreserveAuthoredChangePresence(t *testing.T) {
 
 func TestPluginCommandPreservesExplicitFalseEnablement(t *testing.T) {
 	fixture := &pluginCommandFixture{Runtime: runtimefixture.New()}
-	out, _, err := executeCommand(t, fixture, "", "plugins", "enable", "--request", `{"installationId":"12345678-1234-1234-1234-123456789abc","enabled":false}`)
-	if err != nil || fixture.calls != 1 || !strings.Contains(out, `"enabled":false`) {
+	out, _, err := executeCommand(t, fixture, "", "plugins", "set-enablement", "--request", `{"installationId":"12345678-1234-1234-1234-123456789abc","enabled":false}`)
+	if err != nil || fixture.calls != 1 || !strings.Contains(out, `"state":"approved"`) {
 		t.Fatalf("explicit disablement = %s, calls=%d, error=%v", out, fixture.calls, err)
+	}
+}
+
+func TestPluginConfigureSendsComponentDeltas(t *testing.T) {
+	fixture := &pluginCommandFixture{Runtime: runtimefixture.New()}
+	request := `{"installationId":"12345678-1234-1234-1234-123456789abc","digest":"` + strings.Repeat("1", 64) + `","valueChanges":{},"serverChanges":{"backend":"disable"},"skillChanges":{"review":"enable"}}`
+	out, _, err := executeCommand(t, fixture, "", "plugins", "configure", "--request", request)
+	if err != nil || fixture.calls != 1 || !strings.Contains(out, `"disabledServers":["backend"]`) {
+		t.Fatalf("component delta = %s, calls=%d, error=%v", out, fixture.calls, err)
 	}
 }
 
@@ -106,5 +130,19 @@ func TestPluginCommandPreservesReviewedRequestAndReplayIdentity(t *testing.T) {
 	_, _, err = executeCommand(t, fixture, "", "plugins", "install", "--command-id", key, "--request", strings.TrimSuffix(body, "}")+`,"unknown":true}`)
 	if err == nil || fixture.calls != 1 {
 		t.Fatal("unknown command member reached Runtime")
+	}
+}
+
+func (f *pluginCommandFixture) UninstallPlugin(_ context.Context, _ protocol.PluginRequest, id replay.CommandID) error {
+	f.calls++
+	f.command = id
+	return nil
+}
+
+func TestPluginUninstallIsAnAcknowledgementWithoutResult(t *testing.T) {
+	fixture := &pluginCommandFixture{Runtime: runtimefixture.New()}
+	out, stderr, err := executeCommand(t, fixture, "", "plugins", "uninstall", "--request", `{"installationId":"12345678-1234-1234-1234-123456789abc"}`)
+	if err != nil || fixture.calls != 1 || out != "" || !strings.Contains(stderr, string(fixture.command)) {
+		t.Fatalf("uninstall = %q %q, calls=%d, error=%v", out, stderr, fixture.calls, err)
 	}
 }

@@ -9,7 +9,12 @@ import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import * as stylex from "@stylexjs/stylex";
 import { Button, DataView, EmptyState, Switch, vocab } from "@/ui";
 import { useT } from "@/lib/i18n";
-import { useMCPTools, useMCPToolExposure } from "../application/mcpServerQueries";
+import {
+  sameMCPServer,
+  useMCPTools,
+  useMCPToolExposure,
+  type MCPServerID,
+} from "../application/mcpServerQueries";
 import {
   color,
   motion,
@@ -22,7 +27,7 @@ import {
 import { settingStyles as ss } from "../../kit/settingStyles";
 
 interface Props {
-  server: string;
+  server: MCPServerID;
 }
 
 const tc = stylex.create({
@@ -70,7 +75,7 @@ export function ToolControls({ server }: Props) {
     rules.data?.filter(
       (rule) =>
         rule.tool.type === "mcp" &&
-        rule.tool.server === server &&
+        sameMCPServer(rule.tool.server, server) &&
         rule.scope === "global" &&
         rule.subject.type === "all",
     ) ?? [];

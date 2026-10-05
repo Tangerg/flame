@@ -18,6 +18,7 @@ import (
 	"errors"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 )
 
 var (
@@ -114,7 +115,7 @@ type Rule struct {
 	Scope             Scope  // session | project | global
 	ScopeKey          string // session id | project dir | "" for global
 	Tool              tool.Ref
-	SourceFingerprint string
+	SourceFingerprint fingerprint.Digest
 	Subject           Subject
 	Decision          Decision // allow | deny
 }
@@ -126,7 +127,7 @@ type Query struct {
 	SessionID         string
 	ProjectDir        string
 	Tool              tool.Ref
-	SourceFingerprint string
+	SourceFingerprint fingerprint.Digest
 	Subject           string
 }
 
@@ -137,7 +138,7 @@ type RememberRequest struct {
 	SessionID         string
 	ProjectDir        string
 	Tool              tool.Ref
-	SourceFingerprint string
+	SourceFingerprint fingerprint.Digest
 	Subject           Subject
 	Decision          Decision
 }

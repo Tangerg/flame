@@ -3,6 +3,7 @@ package delivery
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"math"
 	"testing"
 
@@ -21,17 +22,17 @@ func TestMCPErrorProjectionPreservesInstallationOwnershipCause(t *testing.T) {
 
 func TestMCPToolExposureRejectsInvalidIdentityWithCause(t *testing.T) {
 	handler := handlerWithMCP(t, mcpapp.Config{})
-	err := handler.SetMCPToolExposure(t.Context(), protocol.SetMCPToolExposureRequest{Server: "Invalid!", Name: "read"})
+	err := handler.SetMCPToolExposure(t.Context(), protocol.SetMCPToolExposureRequest{Server: wireUserServer("Invalid!"), Name: "read"})
 	if !errors.Is(err, protocol.ErrInvalidParams) || !errors.Is(err, mcpserver.ErrInvalidServerName) {
 		t.Fatalf("invalid tool exposure = %v, want invalid params and identity cause", err)
 	}
 }
 
 func TestUpdateMCPServerPreservesStoredHTTPSecretsAtSameOrigin(t *testing.T) {
-	name := testMCPServerName("linear")
-	registry := &mcpRegistryFake{servers: map[mcpserver.ServerName]mcpserver.Server{
+	name := testsupport.UserMCPServer("linear")
+	registry := &mcpRegistryFake{servers: map[mcpserver.ID]mcpserver.Server{
 		name: {
-			Name: name, Enabled: true, Transport: mcpserver.TransportStreamableHTTP,
+			Source: mcpserver.UserSource(), Name: name.Name(), Enabled: true, Transport: mcpserver.TransportStreamableHTTP,
 			URL: "https://mcp.linear.app/mcp", Authorization: "Bearer stored-token",
 			Headers: map[string]string{"X-API-Key": "stored-key"},
 		},
@@ -42,7 +43,7 @@ func TestUpdateMCPServerPreservesStoredHTTPSecretsAtSameOrigin(t *testing.T) {
 		URL:  "https://mcp.linear.app/other-path",
 	}
 	got, err := s.UpdateMCPServer(context.Background(), protocol.UpdateMCPServerRequest{
-		Server: "linear", Connection: &connection,
+		Server: wireUserServer("linear"), Connection: &connection,
 	})
 	if err != nil {
 		t.Fatalf("update: %v", err)
@@ -65,10 +66,10 @@ func TestUpdateMCPServerPreservesStoredHTTPSecretsAtSameOrigin(t *testing.T) {
 }
 
 func TestUpdateMCPServerRequiresExplicitAuthorizationDispositionAcrossOrigins(t *testing.T) {
-	name := testMCPServerName("linear")
-	registry := &mcpRegistryFake{servers: map[mcpserver.ServerName]mcpserver.Server{
+	name := testsupport.UserMCPServer("linear")
+	registry := &mcpRegistryFake{servers: map[mcpserver.ID]mcpserver.Server{
 		name: {
-			Name: name, Enabled: true, Transport: mcpserver.TransportStreamableHTTP,
+			Source: mcpserver.UserSource(), Name: name.Name(), Enabled: true, Transport: mcpserver.TransportStreamableHTTP,
 			URL: "https://mcp.linear.app/mcp", Authorization: "Bearer stored-token",
 		},
 	}}
@@ -78,7 +79,7 @@ func TestUpdateMCPServerRequiresExplicitAuthorizationDispositionAcrossOrigins(t 
 		URL:  "https://other.example/mcp",
 	}
 	_, err := s.UpdateMCPServer(t.Context(), protocol.UpdateMCPServerRequest{
-		Server: "linear", Connection: &connection,
+		Server: wireUserServer("linear"), Connection: &connection,
 	})
 	if !errors.Is(err, protocol.ErrInvalidParams) {
 		t.Fatalf("update across origins = %v, want ErrInvalidParams", err)
@@ -89,7 +90,7 @@ func TestUpdateMCPServerRequiresExplicitAuthorizationDispositionAcrossOrigins(t 
 
 	connection.Authorization = &protocol.MCPAuthorizationChange{Type: protocol.MCPSecretClear}
 	got, err := s.UpdateMCPServer(t.Context(), protocol.UpdateMCPServerRequest{
-		Server: "linear", Connection: &connection,
+		Server: wireUserServer("linear"), Connection: &connection,
 	})
 	if err != nil {
 		t.Fatalf("explicit clear: %v", err)
@@ -101,10 +102,10 @@ func TestUpdateMCPServerRequiresExplicitAuthorizationDispositionAcrossOrigins(t 
 }
 
 func TestUpdateMCPServerRequiresExplicitHeadersDispositionAcrossOrigins(t *testing.T) {
-	name := testMCPServerName("cloud")
-	registry := &mcpRegistryFake{servers: map[mcpserver.ServerName]mcpserver.Server{
+	name := testsupport.UserMCPServer("cloud")
+	registry := &mcpRegistryFake{servers: map[mcpserver.ID]mcpserver.Server{
 		name: {
-			Name: name, Enabled: true, Transport: mcpserver.TransportStreamableHTTP,
+			Source: mcpserver.UserSource(), Name: name.Name(), Enabled: true, Transport: mcpserver.TransportStreamableHTTP,
 			URL: "https://old.example/mcp", Headers: map[string]string{"X-API-Key": "stored-key"},
 		},
 	}}
@@ -114,7 +115,7 @@ func TestUpdateMCPServerRequiresExplicitHeadersDispositionAcrossOrigins(t *testi
 		URL:  "https://new.example/mcp",
 	}
 	_, err := s.UpdateMCPServer(t.Context(), protocol.UpdateMCPServerRequest{
-		Server: "cloud", Connection: &connection,
+		Server: wireUserServer("cloud"), Connection: &connection,
 	})
 	if !errors.Is(err, protocol.ErrInvalidParams) {
 		t.Fatalf("update across origins = %v, want ErrInvalidParams", err)
@@ -122,7 +123,7 @@ func TestUpdateMCPServerRequiresExplicitHeadersDispositionAcrossOrigins(t *testi
 
 	connection.Headers = &protocol.MCPHeadersChange{Type: protocol.MCPSecretClear}
 	got, err := s.UpdateMCPServer(t.Context(), protocol.UpdateMCPServerRequest{
-		Server: "cloud", Connection: &connection,
+		Server: wireUserServer("cloud"), Connection: &connection,
 	})
 	if err != nil {
 		t.Fatalf("explicit headers clear: %v", err)
@@ -134,10 +135,10 @@ func TestUpdateMCPServerRequiresExplicitHeadersDispositionAcrossOrigins(t *testi
 }
 
 func TestUpdateMCPServerProtectsStoredEnvironmentAcrossProcessTargets(t *testing.T) {
-	name := testMCPServerName("fs")
-	registry := &mcpRegistryFake{servers: map[mcpserver.ServerName]mcpserver.Server{
+	name := testsupport.UserMCPServer("fs")
+	registry := &mcpRegistryFake{servers: map[mcpserver.ID]mcpserver.Server{
 		name: {
-			Name: name, Enabled: true, Transport: mcpserver.TransportStdio,
+			Source: mcpserver.UserSource(), Name: name.Name(), Enabled: true, Transport: mcpserver.TransportStdio,
 			Command: "node", Args: []string{"server.js"}, Dir: "/repo",
 			Env: map[string]string{"API_KEY": "stored-key"},
 		},
@@ -147,7 +148,7 @@ func TestUpdateMCPServerProtectsStoredEnvironmentAcrossProcessTargets(t *testing
 		Type: protocol.MCPTransportStdio, Command: "node", Args: []string{"server.js"}, Dir: "/repo",
 	}
 	got, err := s.UpdateMCPServer(t.Context(), protocol.UpdateMCPServerRequest{
-		Server: "fs", Connection: &connection,
+		Server: wireUserServer("fs"), Connection: &connection,
 	})
 	if err != nil {
 		t.Fatalf("same target update: %v", err)
@@ -161,7 +162,7 @@ func TestUpdateMCPServerProtectsStoredEnvironmentAcrossProcessTargets(t *testing
 
 	connection.Args = []string{"other.js"}
 	_, err = s.UpdateMCPServer(t.Context(), protocol.UpdateMCPServerRequest{
-		Server: "fs", Connection: &connection,
+		Server: wireUserServer("fs"), Connection: &connection,
 	})
 	if !errors.Is(err, protocol.ErrInvalidParams) {
 		t.Fatalf("changed target update = %v, want ErrInvalidParams", err)
@@ -169,7 +170,7 @@ func TestUpdateMCPServerProtectsStoredEnvironmentAcrossProcessTargets(t *testing
 
 	connection.Env = &protocol.MCPEnvironmentChange{Type: protocol.MCPSecretClear}
 	got, err = s.UpdateMCPServer(t.Context(), protocol.UpdateMCPServerRequest{
-		Server: "fs", Connection: &connection,
+		Server: wireUserServer("fs"), Connection: &connection,
 	})
 	if err != nil {
 		t.Fatalf("explicit environment clear: %v", err)
@@ -182,7 +183,7 @@ func TestUpdateMCPServerProtectsStoredEnvironmentAcrossProcessTargets(t *testing
 
 func TestCreateMCPServerPropagatesExistenceLookupError(t *testing.T) {
 	lookupErr := errors.New("registry unavailable")
-	registry := &mcpRegistryFake{servers: map[mcpserver.ServerName]mcpserver.Server{}, getErr: lookupErr}
+	registry := &mcpRegistryFake{servers: map[mcpserver.ID]mcpserver.Server{}, getErr: lookupErr}
 	s := handlerWithMCP(t, mcpapp.Config{Registry: registry})
 
 	_, err := s.CreateMCPServer(context.Background(), protocol.MCPServerCandidate{

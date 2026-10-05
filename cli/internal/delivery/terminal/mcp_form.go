@@ -50,7 +50,7 @@ func newMCPFormDraft(mode mcpFormMode, server protocol.MCPServer) mcpFormDraft {
 	if mode != mcpFormUpdate {
 		return draft
 	}
-	draft.name = server.Name
+	draft.name = server.ID.Name
 	if server.Status.Type == protocol.MCPServerDisabled {
 		draft.enabled = false
 	}
@@ -98,7 +98,7 @@ func (m mcpFormDraft) update(original protocol.MCPServer) (mcp.ServerUpdate, boo
 	if err != nil {
 		return mcp.ServerUpdate{}, false, err
 	}
-	update := mcp.ServerUpdate{Server: original.Name}
+	update := mcp.ServerUpdate{Server: original.ID}
 	enabled := m.enabled
 	if enabled != (original.Status.Type != protocol.MCPServerDisabled) {
 		update.Enabled = &enabled
@@ -210,7 +210,7 @@ func (a *app) showMCPFormStep(flow *mcpFormFlow) {
 	case mcpFormProbe:
 		title = "Test MCP candidate"
 	case mcpFormUpdate:
-		title = "Configure MCP server · " + flow.server.Name
+		title = "Configure MCP server · " + mcp.ServerLabel(flow.server.ID)
 	}
 	step, total, label := flow.progress()
 	title += fmt.Sprintf(" · %d/%d", step, total)

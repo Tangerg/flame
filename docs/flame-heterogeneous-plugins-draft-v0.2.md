@@ -76,7 +76,7 @@ The central constraint is **one behavior, one semantic owner**, not **one behavi
 | Product state | Keep Session, Run, Segment, Item, Goal, Plan, Interrupt, and recovery in Runtime. | A plugin requests transitions; it does not publish authoritative replacements. |
 | Installation versus activation | Model desired configuration, backend activation, and client realization separately. | A failed Desktop view does not disable working tools for CLI. |
 | Updates | Stage releases and refuse unsafe activation while dependencies remain in use. | Initial support does not promise arbitrary live code replacement. |
-| Security | Separate provenance, requested capabilities, actual grants, and enforceable isolation. | A valid package, signature, or tool annotation never grants authority by itself. |
+| Security | Separate provenance, approval of an exact release digest, and enforceable isolation; defer capability requests and grants until a host-brokered operation consumes them. | A valid package, signature, or tool annotation never grants authority by itself. |
 | Compatibility | Keep portable format, plugin API, UI bridge, and core protocol versions distinct. | Support is explicit; no guessing from client names or package version strings. |
 | Delivery scope | Repair tool identity and policy ownership first, then admit external packages through existing owners. | Existing first-party tools are not moved behind a process boundary to demonstrate the platform; Memory and scheduling are not extraction targets. |
 
@@ -118,7 +118,7 @@ The development rules prohibit ownerless forwarding packages, copied framework i
 | MCP tools reach the model as `<server>_<tool>`, sanitized and truncated to 64 bytes. Different `ToolRef` pairs can collapse to one name. | The model-visible name is a lossy projection and cannot serve as a policy identity. |
 | Built-in safety descriptors and remembered approval rules (`approval_rules.tool`) are keyed by that model-visible name. Remembered rules have no binding to the server that produced the tool. | A replaced or newly installed server whose projected name matches inherits standing approval. The policy identity must be repaired before third-party tools exist. |
 | A call may skip its prompt through either a remembered rule or the MCP server's `AutoApproveTools`. `ResolvePromptShortcuts` merges the two by precedence. | Two owners advance the same fact. The precedence rule is the symptom; repair the ownership instead of extending it to plugin grants. |
-| MCP tools already enter the Run's deferred set behind `search_tools`. | Plugin tools reuse deferred exposure; activation does not rewrite the base declaration prefix that provider prompt caches depend on. |
+| MCP tools already enter the Run's deferred set behind `search_tools`. | Plugin tools reuse deferred exposure; activation does not rewrite the tool declaration block that opens the provider prompt-cache prefix. |
 
 The first three facts are documented by the graphical architecture and IDE contract. The remaining facts are supported by the capability model, tool adapters, MCP registry, approval gate, and execution implementations in the pinned baseline. [F7] [F8] [F9] [F10] [F11] [F12] [F29] [F30] [F33] [F34] [F35] [F36] [F37] [S1] [S2] [S3] [S4]
 
@@ -153,7 +153,8 @@ A versioned specification is evidence of a protocol contract, not evidence that 
 | Contribution | A declared tool, action, view, renderer, setting, or other accepted capability. |
 | Activation | A process-local realization of a selected release's backend contributions and resources. |
 | Realization | A particular client's loaded view or other local presentation contribution. |
-| Grant | Host-issued authorization for a principal, capability, target scope, and relevant release or target binding. |
+| Approval | The user's admission of one exact release digest of an installation. Selecting any other digest withdraws it, so changed code always needs renewed review. |
+| Grant | Host-issued authorization for a principal, host-brokered operation, and target scope. Deferred with capability requests (Section 21.2); no current contribution consumes one. |
 | Tool | A model-facing executable capability admitted through the existing Scope contract. |
 | Action | A human-facing intent bound to an existing product operation or tool; not a duplicate business implementation. |
 | View | A presentation contribution with placement, scope, rendering requirements, and a resource origin. |
@@ -172,7 +173,7 @@ A versioned specification is evidence of a protocol contract, not evidence that 
 | Tool identity | The tool's source: built-in definition, MCP server identity plus remote name, or A2A agent | Model-visible name, search results, UI labels |
 | Standing approval decisions | Approval policy owner, keyed by tool identity | Approval prompts, settings views |
 | Tool exposure decisions (disabled tools) | Tool exposure owner, keyed by tool identity | Run manifests, discovery results |
-| Plugin grants and revocation | Runtime authorization owner | Redacted grant summaries; client prompts |
+| Installation approval and revocation | Runtime installation use case, bound to the selected release digest | Installation `state` in reads; client prompts |
 | Backend resource lifetime | Its activation/resource owner, constructed by Bootstrap | Health and readiness projections |
 | Effective tool definitions | Existing tool admission/registry boundary | Model declarations, generated descriptors, UI catalogs |
 | Run's accepted tool authority and exposure | Existing Runtime/Scope execution owners | Search results and client displays |
@@ -210,8 +211,8 @@ These changes build on Section 3.4 and are needed only once installations exist.
 | MCP server identity | `mcp_servers.name` primary key; `MCPServerRequest.server` and `MCPListToolsRequest.server` are bare names; the MCP variant of the tool reference holds a bare name | Origin-qualified identity `(origin, name)` in storage, on the wire, and in the tool reference | Table rebuild assigning existing rows the user origin; foreign keys from exposure, approval rules, and OAuth sessions follow; Runtime catalog, generated TypeScript client, Desktop MCP settings, CLI | B |
 | `MCPServer` read model | No origin | Reports origin; descriptor not writable for installation origin | Desktop MCP settings, CLI | B |
 | MCP mutations | Any server name is writable | Refuse installation-origin records with a stable ownership category | Protocol error catalog, clients | B |
-| Authority fingerprint for installation-origin servers | Not applicable | Release digest plus granted capability set | Approval rules become stale when a release changes them | B |
-| OAuth session invalidation | Trigger on transport, enablement, URL, authorization, and headers changes | Also on installation release or descriptor changes, bound to origin-qualified identity | Storage trigger, connection layer | B |
+| Authority fingerprint for installation-origin servers | Not applicable | Release digest plus the server's name | Approval rules become stale on every release change | B |
+| OAuth session invalidation | Trigger on transport, enablement, URL, authorization, and headers changes | No invalidation step: each credential is bound to the fingerprint of the OAuth target that requested it (origin-qualified identity and credential recipient) and stops matching when either changes; it is removed with its source by cascade. A credential follows its recipient: a user server's endpoint and headers, an installation HTTP server's declared transport, URL and static headers, or an installation stdio server's release digest and name. Static secret inputs follow the same rule | Storage trigger removed, connection layer | B |
 | Run admitted tool contract and waiting checkpoint | Bound to BuildID and exact execution state; no tool-source or release binding | Also record each callable tool's reference and installation release | Execution checkpoint encoding; restore refuses a mismatched release | Release switching |
 
 ## 4. Architecture and execution boundaries
@@ -284,7 +285,7 @@ Use one stable reverse-domain namespace controlled by the project. The examples 
 
 Client-specific manifest values belong under `extensions`; client-specific packaged files belong under the matching top-level directory. Other clients may ignore that namespace. A package may therefore expose portable tools elsewhere while its Flame pages remain unavailable. [A3]
 
-The proposed namespace contains only Flame-owned declarations: UI requirements, view contributions, references to already-defined tool or product operations, setting schemas, and capability requests. It must not duplicate the portable package name, version, Skill paths, or MCP launch configuration.
+The proposed namespace contains only Flame-owned declarations: UI requirements, view contributions, references to already-defined tool or product operations, and setting schemas. Capability requests are deferred until a contribution consumes a host-brokered operation (Section 21.2); a package that declares one receives a diagnostic for an unsupported Flame field. It must not duplicate the portable package name, version, Skill paths, or MCP launch configuration.
 
 ### 5.3 Loading pipeline and failure boundaries
 
@@ -351,12 +352,6 @@ acme.review-board/
   "extensions": {
     "org.example.flame": {
       "apiVersion": 1,
-      "requests": [
-        {
-          "capability": "tools.invoke",
-          "targets": ["reviews/list_reviews", "reviews/update_review"]
-        }
-      ],
       "contributes": {
         "actions": [
           {
@@ -416,7 +411,7 @@ acme.review-board/
 }
 ```
 
-The Flame fields are proposed, not standardized. Requested capabilities are not grants. Tool inputs and outputs are defined by the MCP tool descriptor, not copied into the action declaration. A fallback action is a visible user alternative; the host must not automatically execute a mutating fallback when a renderer fails. In this example, opening the page may invoke only the admitted read action for its initial data; update requires a separate authorized user intent.
+The Flame fields are proposed, not standardized. Approving the release admits its exact bytes; it does not pre-approve any tool call. Tool inputs and outputs are defined by the MCP tool descriptor, not copied into the action declaration. A fallback action is a visible user alternative; the host must not automatically execute a mutating fallback when a renderer fails. In this example, opening the page may invoke only the admitted read action for its initial data; update requires a separate authorized user intent.
 
 ## 6. Installation, releases, and activation
 
@@ -433,7 +428,7 @@ An activation owns runtime resources, pending initialization, and cleanup. It is
 | Source selection | Explicit source and target Runtime, no accidental client-local execution | No install record is advanced. |
 | Materialization | Bounded download/extraction into staging; no autorun | Remove owned staging data where safe; preserve diagnostics. |
 | Validation | Portable rules, supported namespace, platform compatibility | Reject or isolate components as specified. |
-| Trust review | Show source, integrity, requested access, executable targets, UI network access | Valid but unapproved package remains inactive. |
+| Trust review | Show source, integrity, executable targets, endpoints, UI network access | Valid but unapproved package remains inactive. Approval names the exact digest. |
 | Release admission | Bind exact bytes/digest and validated metadata to the installation | No competing editable copy of package configuration. |
 | Activation | Construct required backend resources and publish admitted contributions | Failure is recorded for the exact activation, not as successful enablement. |
 | Client realization | Load compatible presentation resources | Local presentation failure does not rewrite installation state. |
@@ -445,6 +440,8 @@ Only the installation owner advances the admitted release pointer. A UI progress
 Avoid a single boolean or a Cartesian-product status enum spanning package, backend, and every connected client. Maintain the few independently meaningful facts and derive diagnostics from them.
 
 An installation can be desired-enabled while one MCP component requires authentication. A release can be staged while the old release remains active. A client can be unable to render a view while backend tools are healthy. These are not inconsistencies requiring a winner-selection rule.
+
+Runtime alone decides whether an installation's declarative presentation contributions are admitted now (active installation and available release) and publishes that decision with every installation read. Clients present exactly the admitted contributions and never rebuild activation from desired enablement, approval, or realization.
 
 Each client owns its own realization state for its own views. A failed load is shown and retried locally, and it never writes back to installation or activation state. A second client's success or failure does not alter it. [R3]
 
@@ -491,8 +488,10 @@ A global catalog is a derived view of accepted contributions, not a new service 
 | Workspace or Session view | Graphical client and optional IDE host | Descriptor is serializable; layout remains host-owned. |
 | Result renderer | Transcript/tool-result presentation | Cannot alter the stored tool outcome or execute on historical view without authorization. |
 | Settings contribution | Plugin configuration UI | Submits validated changes to the configuration owner. |
-| Theme/locale resource | Existing appearance/localization owner | Host-rendered data; not an arbitrary stylesheet or script privilege. |
+| Theme resource | Existing appearance owner | Host-rendered bounded token data; not an arbitrary stylesheet or script privilege. Shown only while Runtime reports the installation's presentation as admitted. |
 | Skill source | Existing Skill catalog and loader | Exact package provenance; established scope/conflict policy. |
+
+Themes are the admitted declarative presentation contribution. Package locales are deferred (Section 21.2) until a concrete package needs localization; the existing localization owner is not extended for them speculatively.
 
 General service replacement, arbitrary layout takeover, executable third-party request transforms, and plugin-defined Run event kinds are not initial external contribution kinds. Trusted built-ins can continue using existing internal extension points without those points becoming public.
 
@@ -524,7 +523,7 @@ A capability revoked during a Run is not restored by the frozen snapshot. Freeze
 
 Model visibility, programmatic callability, enabled state, and UI support are independent. Initial implementations should reuse the exposure controls already present in Scope/Flame; add a new dimension only for an actual consumer.
 
-Plugin tools join the Run's deferred set exactly as MCP tools do today. Activating or retiring a plugin therefore changes future discovery, not the base declaration prefix of later Runs, which provider prompt caches depend on. Each Run's admitted tool contract already records which definitions it may call. A plugin does not need a parallel log of catalog changes. [F12] [R1] [R4]
+Plugin tools join the Run's deferred set exactly as MCP tools do today. Activating or retiring a plugin therefore changes future discovery, not the tool declaration block of later Runs, which opens the prefix provider prompt caches depend on. The discovery tool's declaration is static; the Run's frozen deferred catalog reaches the model as a Runtime-owned message that ends each model request, after the conversation, and is projected from the deferred set per request rather than stored in history, checkpoints, or the transcript. Each Run's admitted tool contract already records which definitions it may call. A plugin does not need a parallel log of catalog changes. [F12] [R1] [R4]
 
 A loader/search tool can expose previously admitted definitions at a safe model boundary. It cannot authorize new capabilities. A tool that asks the user or changes the execution tree may require model-only or specially controlled invocation. Do not assume arbitrary nested use is valid merely because a tool is registered.
 
@@ -986,13 +985,15 @@ The threat model includes malicious package authors, compromised updates, hostil
 | Policy plugin fails or disappears | Admission | Required checks fail closed; do not treat absence as permission. |
 | Backend process ignores cancellation | Resource lifetime | Preserve ownership, enforce supported stop policy, and report uncertain effects. |
 
-### 14.2 Capability requests and grants
+### 14.2 Release approval, requests and grants
 
-The package may request named capabilities and target scopes. Runtime decides what to grant after considering source trust, user intent, product policy, execution environment, and available enforcement.
+Installation trust is one closed state bound to the selected release: unapproved, approved, or enabled. The user approves an exact digest, and selecting any other digest returns the installation to unapproved, so changed code is never launched or dispatched without renewed review. Revocation withdraws dispatch authority immediately; it does not erase standing tool approvals of the same code.
 
-A grant should bind at least its principal, capability, target scope, relevant origin or resource identity, and revocation state. Release changes that expand privileges or change a sensitive target require renewed admission. Do not require a fresh prompt for every unchanged harmless UI reload, but never let a new release inherit broader privileges solely through the same name.
+Package capability requests and host grants are deferred (Section 21.2). With actions and views withdrawn, no contribution consumes a host-brokered operation, so a request would have no enforcement point and a grant would only pretend to restrict a trusted executable. A manifest that still declares requests receives a diagnostic and nothing is admitted from it.
 
-Keep grants with the existing authorization owner. A model tool call's standing approval is owned by the approval policy owner, keyed by tool reference (Section 3.4). A package's requested capabilities never pre-populate standing approval. Installation-specific facts belong to the installation. They do not establish a second permission store with its own allow/deny rules, and they are not combined with approval rules through a precedence rule. The final effective decision is made once at the appropriate authority boundary.
+When a contribution that consumes host-brokered operations returns, a grant should bind at least its principal, operation, target scope, relevant origin or resource identity, and revocation state, and never let a new release inherit broader privileges through the same name.
+
+A model tool call's standing approval is owned by the approval policy owner, keyed by tool reference (Section 3.4) and bound to the release digest and server name of an installation tool. Release approval never pre-populates standing approval. Installation-specific facts belong to the installation. They do not establish a second permission store with its own allow/deny rules, and they are not combined with approval rules through a precedence rule.
 
 Capabilities should describe operations rather than implementation details. A bounded Session read is different from all-history export. Workspace file read is different from arbitrary OS read. Network access to one authenticated service is different from arbitrary outbound HTTP. A plugin-private store is different from the Runtime database.
 
@@ -1002,7 +1003,7 @@ Do not place credentials in portable package fields, UI assets, model context, t
 
 The secret owner binds credentials to the authenticated service/issuer and installation use. A plugin may request an authenticated operation without receiving the underlying secret. Some local tools genuinely need an environment credential; that release of secret material must be explicit, scoped, and visible as part of the trusted-process model.
 
-A changed endpoint, issuer, executable, or privileged dependency can invalidate the earlier trust decision. Credential inheritance must be based on unchanged authorized authority, not textual package identity. Redaction must cover stdout/stderr capture, traces, errors, snapshots, and unresolved continuation material.
+Package bytes are public content: static headers and environment values in a package are never treated as secrets, and header or authorization inputs are always secret. A credential follows its recipient. For an HTTP server the recipient is the declared endpoint (transport, URL, and static headers, excluding configured input values); its secret inputs and OAuth credential survive a release that keeps that declaration. For a stdio server the recipient is the executable (release digest and server declaration); its secret inputs are dropped by every release change and must be entered again. Credential inheritance is never based on textual package identity. Redaction must cover stdout/stderr capture, traces, errors, snapshots, and unresolved continuation material.
 
 ### 14.4 Native execution policy
 
@@ -1045,7 +1046,7 @@ Keep the current Runtime/compiled-client protocol policy unless deliberately cha
 
 ### 15.2 Safe update sequence
 
-Stage and validate the new release without altering the running one. Compare API requirements, executable targets, data compatibility, resource identity, and grants. New sensitive authority requires explicit admission.
+Stage and validate the new release without altering the running one. Compare API requirements, executable targets, endpoints, data compatibility, and resource identity. Selecting it returns the installation to unapproved: the new digest requires explicit admission before it runs.
 
 For the initial implementation, refuse a release switch when active or waiting executions depend on the old implementation unless the affected capability has a proven safe replacement contract. The user can complete or explicitly cancel that work. A catalog or view-only update still needs generation fencing and current permission checks.
 
@@ -1053,7 +1054,7 @@ For the initial implementation, refuse a release switch when active or waiting e
 
 After dependencies are quiescent, retire the old activation, confirm required cleanup, activate the candidate, and publish the selected release according to one installation transaction policy. Exact ordering of durable selection and activation intent must be recoverable: a crash may leave an explicitly pending activation, not two independently active “current” releases.
 
-Initial policy: after a quiescent installation selects the candidate release, candidate activation failure leaves that selected release inactive with explicit diagnostics. The previous release may remain as an available artifact for an explicit rollback, but it is not silently reactivated. Rollback requires valid code, compatible data, current grants, and a new admitted installation operation. Different consumers must not infer different active versions.
+Initial policy: after a quiescent installation selects the candidate release, candidate activation failure leaves that selected release inactive with explicit diagnostics. The previous release may remain as an available artifact for an explicit rollback, but it is not silently reactivated. Rollback requires valid code, compatible data, renewed approval of that digest, and a new admitted installation operation. Different consumers must not infer different active versions.
 
 The initial recommendation is conservative: stage first, require quiescence, and expose failed activation rather than promising seamless live rollback. Automatic fallback activation and multi-version active backend coexistence are deferred. Reinstalling old code does not undo external initialization effects.
 
@@ -1088,7 +1089,7 @@ Deleting files must use only paths owned by that installation. An untrusted pack
 | State | Recommended location/owner | Restore rule |
 | --- | --- | --- |
 | Installation and admitted release | Runtime installation persistence | Read the official record, then realize resources. |
-| Grants | Existing authorization persistence | Revalidate current scope and revocation. |
+| Installation approval state | Runtime installation persistence, bound to the selected digest | Read the closed state; a release change has already withdrawn approval. |
 | Session/Run/Plan/Goal/Interrupt | Existing Runtime persistence | Use current restore semantics, not plugin reconstruction. |
 | Plugin business data | Designated plugin backend/private store | Follow that plugin's versioned data contract. |
 | Client view state | Client-local feature storage | Resolve current contribution/authority before restoration. |
@@ -1222,7 +1223,7 @@ The table below is a proposed boundary selection, not an exhaustive capability i
 | Jina/Tavily tools | Remain built-in; optional result renderer only | Shared tool policy, grants, credentials, outcome recording | Extraction only on a demonstrated deployment need, with the same contracts and failure certainty through MCP |
 | General HTTP tool | Optional integration capability | Host network/credential policy and effect interpretation | No broader targets or unsafe replay introduced |
 | A2A integrations | External-agent connection and tool presentation | Scope A2A contract and Flame external-effect interpretation | No claim that remote jobs are local Scope children |
-| Themes/locales | Declarative resource package | Existing graphical appearance/localization owner | Safe tokens, deterministic conflict handling, cleanup |
+| Themes | Declarative resource package | Existing graphical appearance owner | Safe tokens, deterministic conflict handling, cleanup; package locales deferred (Section 21.2) |
 | Tool previews/file renderers | Optional presentation contribution | Stored result/file authority | Safe generic fallback and revoked-renderer behavior |
 | Timeline/Usage/diagnostic views | Read-only view/action package | Runtime trajectory, invocation and accounting records | Queries remain shared, bounded, and source-attributed |
 | Enhanced Diff UI and exports | View and format renderer | Runtime mutation, checkpoint, import and restore semantics | Export does not acquire unsafe restore authority |
@@ -1357,8 +1358,8 @@ The scenarios below are proposed tests, not executed results. Prioritize actual 
 | P10 | Update with private plugin data | Data retained; no implicit migration execution. |
 | P-O01 | User MCP update targets an installation-origin record | Refused with the installation-ownership category; record unchanged. |
 | P-O02 | Installation release with one invalid MCP server | Siblings activate; Runtime restart is unaffected. |
-| P-O03 | Release changes its digest or granted capabilities | Standing approvals for its tools become stale through the fingerprint. |
-| P-O04 | Plugin activation mid-Session | Base declaration prefix of later Runs unchanged; tools reachable through deferred discovery. |
+| P-O03 | Release changes its digest | Standing approvals for its tools become stale through the fingerprint, and the installation returns to unapproved. |
+| P-O04 | Plugin activation mid-Session | Tool declaration block of later Runs byte-identical; tools reachable through deferred discovery and listed in the later Run's trailing catalog message. |
 | P-O05 | Release switch while a waiting Run's checkpoint binds the old release | Switch refused from execution records, without a separate counter. |
 | P-O06 | User server and installation server named `reviews` project the same tool name | Both are excluded with a diagnostic naming both identities. |
 | I01 | Duplicate contribution identity | Registration batch rejected without shadowing. |
@@ -1477,6 +1478,8 @@ These are bounded release decisions. They do not reopen the ownership model or r
 | Native client-local plugin execution | A capability cannot run at the Runtime environment | Explicit execution location and client-specific authority. |
 | WASM/embedded JS runtime | Measured distribution or enforceable-isolation need | Reuse mature runtime; do not add a second agent framework. |
 | General UI slot takeover | Proven custom-product requirement | Protect trusted chrome, approvals, and recovery controls. |
+| Package locale contributions | A concrete package that needs localization | Host-owned dictionary activation and lifetime; a package never replaces or merges another source's text. |
+| Package capability requests and host grants | A contribution that consumes host-brokered operations (Slice C) | Requests are not grants; each grant has an enforcement point at the broker boundary and is never a second tool-approval store. |
 
 A deferred capability is unavailable, not a placeholder implementation returning success. Its reconsideration must start from the real consumer and acceptance evidence.
 
@@ -1488,7 +1491,7 @@ must be established after the carrier spike rather than retained as compatibilit
 
 **Slice 0: tool identity and policy ownership.** Implement [`tool-identity-and-policy-ownership.md`](tool-identity-and-policy-ownership.md) and pass its acceptance tests. It is a breaking repair of the current product, valuable without plugins, and a prerequisite for every later slice.
 
-**Slice A: package admission and declarative resources.** Establish portable loading, provenance, release/data separation, installation inspection, and one safe theme/locale contribution. Verify malformed packages, narrow failure boundaries, permission display, and cleanup.
+**Slice A: package admission and declarative resources.** Establish portable loading, provenance, release/data separation, installation inspection, and themes as the one admitted declarative presentation contribution, whose presentation Runtime decides and publishes per installation. Package locales are deferred (Section 21.2). Verify malformed packages, narrow failure boundaries, permission display, and cleanup.
 
 **Slice B: one external Agent Plugins package.** Land the Slice B rows of Section 3.5. Admit a package with Skills and `mcp.json` through installation-origin registry records, declared secret inputs, provenance-aware Skill sources, and deferred exposure (Sections 9.8 and 19.2). No first-party tool is extracted. Verify P-O01 through P-O04 and P-O06.
 

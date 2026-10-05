@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/httporigin"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/httpresponse"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/procgroup"
@@ -36,7 +37,7 @@ const (
 )
 
 func (s ServerConfig) oauthTarget() mcpserver.OAuthTarget {
-	return mcpserver.OAuthTarget{Authority: s.ReleaseAuthority, Server: s.Name, URL: s.Endpoint, Headers: maps.Clone(s.Headers)}
+	return mcpserver.OAuthTarget{Source: s.Source, Name: s.Name, URL: s.Endpoint, Headers: maps.Clone(s.Headers)}
 }
 
 // Valid reports whether transport names one supported MCP connection mode.
@@ -56,10 +57,13 @@ func (t Transport) String() string {
 // protocol package exposes transports and sessions, while the runtime owns how
 // persisted descriptors become live sessions.
 type ServerConfig struct {
-	SourceFingerprint string
-	ReleaseAuthority  string
-	// Name identifies the server for tool namespacing and status reporting.
-	// Required.
+	// SourceFingerprint is the authority this connection realizes; tool
+	// policy compares it with the registry's current authority.
+	SourceFingerprint fingerprint.Digest
+	// Source owns the record and, for an installation, names the release
+	// this connection realizes. Required.
+	Source mcpserver.Source
+	// Name namespaces the server's tools. Required.
 	Name mcpserver.ServerName
 
 	// Transport picks the connection mode. Required.
@@ -96,6 +100,8 @@ type ServerConfig struct {
 	OAuthHandler auth.OAuthHandler
 }
 
+func (s ServerConfig) ID() mcpserver.ID { return s.Source.ID(s.Name) }
+
 // Format keeps the credential-bearing fields behind a redaction boundary for
 // every fmt verb, as mcpserver.Server does for the same fields upstream. This
 // is the connection adapter the domain type's comment defers the raw values to,
@@ -107,9 +113,9 @@ func (s ServerConfig) Format(state fmt.State, _ rune) {
 	}
 	_, _ = fmt.Fprintf(
 		state,
-		"ServerConfig{Name:%q, Transport:%q, Endpoint:%s, Command:%q, Args:%q, Env:%s, Dir:%q, "+
+		"ServerConfig{ID:%q, Transport:%q, Endpoint:%s, Command:%q, Args:%q, Env:%s, Dir:%q, "+
 			"Authorization:%s, Headers:%s, HandshakeTimeout:%s, OAuthHandler:%s}",
-		s.Name,
+		s.ID(),
 		s.Transport,
 		mcpserver.SecretPresence(s.Endpoint != ""),
 		s.Command,
@@ -137,8 +143,8 @@ func (s ServerConfig) Clone() ServerConfig {
 // refresh belongs to the credential store; handshake limits govern a future
 // attempt. Neither changes the configuration of an already connected session.
 func (s ServerConfig) SameConnection(other ServerConfig) bool {
-	if s.Name != other.Name || s.Transport != other.Transport ||
-		s.SourceFingerprint != other.SourceFingerprint || s.ReleaseAuthority != other.ReleaseAuthority {
+	if s.Source != other.Source || s.Name != other.Name || s.Transport != other.Transport ||
+		s.SourceFingerprint != other.SourceFingerprint {
 		return false
 	}
 	switch s.Transport {
@@ -159,45 +165,45 @@ func (s ServerConfig) Validate() error {
 		return fmt.Errorf("mcp: server name: %w", err)
 	}
 	if s.HandshakeTimeout != nil && *s.HandshakeTimeout <= 0 {
-		return fmt.Errorf("mcp server %q: HandshakeTimeout must be positive when present", s.Name)
+		return fmt.Errorf("mcp server %q: HandshakeTimeout must be positive when present", s.ID())
 	}
 	switch s.Transport {
 	case TransportHTTP:
 		if s.Endpoint == "" {
-			return fmt.Errorf("mcp server %q: Endpoint is required for HTTP transport", s.Name)
+			return fmt.Errorf("mcp server %q: Endpoint is required for HTTP transport", s.ID())
 		}
 		if _, err := httporigin.Parse(s.Endpoint); err != nil {
-			return fmt.Errorf("mcp server %q: invalid Endpoint: %w", s.Name, err)
+			return fmt.Errorf("mcp server %q: invalid Endpoint: %w", s.ID(), err)
 		}
 		if s.Command != "" {
-			return fmt.Errorf("mcp server %q: Command must be empty for HTTP transport", s.Name)
+			return fmt.Errorf("mcp server %q: Command must be empty for HTTP transport", s.ID())
 		}
 		for name := range s.Headers {
 			if strings.EqualFold(name, "Authorization") {
-				return fmt.Errorf("mcp server %q: Headers must not duplicate Authorization", s.Name)
+				return fmt.Errorf("mcp server %q: Headers must not duplicate Authorization", s.ID())
 			}
 		}
 		if s.OAuthHandler != nil && s.Authorization != "" {
-			return fmt.Errorf("mcp server %q: OAuth and static Authorization are mutually exclusive", s.Name)
+			return fmt.Errorf("mcp server %q: OAuth and static Authorization are mutually exclusive", s.ID())
 		}
 	case TransportStdio:
 		if s.Command == "" {
-			return fmt.Errorf("mcp server %q: Command is required for stdio transport", s.Name)
+			return fmt.Errorf("mcp server %q: Command is required for stdio transport", s.ID())
 		}
 		if s.Endpoint != "" {
-			return fmt.Errorf("mcp server %q: Endpoint must be empty for stdio transport", s.Name)
+			return fmt.Errorf("mcp server %q: Endpoint must be empty for stdio transport", s.ID())
 		}
 		if s.Authorization != "" {
-			return fmt.Errorf("mcp server %q: Authorization applies to HTTP transport only", s.Name)
+			return fmt.Errorf("mcp server %q: Authorization applies to HTTP transport only", s.ID())
 		}
 		if len(s.Headers) > 0 {
-			return fmt.Errorf("mcp server %q: Headers apply to HTTP transport only", s.Name)
+			return fmt.Errorf("mcp server %q: Headers apply to HTTP transport only", s.ID())
 		}
 		if s.OAuthHandler != nil {
-			return fmt.Errorf("mcp server %q: OAuth applies to HTTP transport only", s.Name)
+			return fmt.Errorf("mcp server %q: OAuth applies to HTTP transport only", s.ID())
 		}
 	default:
-		return fmt.Errorf("mcp server %q: unknown transport %q", s.Name, s.Transport)
+		return fmt.Errorf("mcp server %q: unknown transport %q", s.ID(), s.Transport)
 	}
 	return nil
 }
@@ -226,7 +232,7 @@ func dial(
 		case TransportHTTP:
 			httpClient, err := endpointHTTPClient(cfg.Endpoint, cfg.Authorization, cfg.Headers)
 			if err != nil {
-				return nil, fmt.Errorf("mcp server %q: build HTTP client: %w", cfg.Name, err)
+				return nil, fmt.Errorf("mcp server %q: build HTTP client: %w", cfg.ID(), err)
 			}
 			transport := &sdkmcp.StreamableClientTransport{
 				Endpoint:     cfg.Endpoint,

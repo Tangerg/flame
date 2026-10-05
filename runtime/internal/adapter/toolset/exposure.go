@@ -6,8 +6,12 @@ import (
 	"log/slog"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	oteltool "github.com/Tangerg/scope/otel/tool"
 )
@@ -17,10 +21,14 @@ import (
 // authority but remain hidden until the discovery Tool advertises their exact
 // names. The slices never overlap. Its caller owns Close after all Tool calls
 // have drained; copied manifests share the same resource lifetime.
+// Installations is the canonical set of installation releases the surface
+// depends on, from both package Skills and installation MCP tools; it is the
+// only representation installation admission consults.
 type Manifest struct {
-	Installations []promptsource.InstallationDependency
+	Installations []plugin.Dependency
 	Visible       []toolcontract.Tool
 	Deferred      []toolcontract.Tool
+	discovery     *Discovery
 	close         func() error
 }
 
@@ -29,9 +37,17 @@ type Manifest struct {
 func (m Manifest) Clone() Manifest {
 	return Manifest{
 		Installations: slices.Clone(m.Installations), Visible: slices.Clone(m.Visible),
-		Deferred: slices.Clone(m.Deferred),
-		close:    m.close,
+		Deferred:  slices.Clone(m.Deferred),
+		discovery: m.discovery,
+		close:     m.close,
 	}
+}
+
+// DeferredCatalog renders the frozen deferred set for the model, or "" when
+// nothing is deferred. The Run's Discovery is its only owner; callers project
+// the text into each model request rather than storing it.
+func (m Manifest) DeferredCatalog() string {
+	return m.discovery.Catalog()
 }
 
 // Close releases the manifest's filesystem authority once. It is safe to call
@@ -48,9 +64,10 @@ func (m Manifest) Close() error {
 // executable but are loaded through search_tools. Unavailable tools are simply
 // never added; there is no synthetic visibility state for them.
 type manifestBuilder struct {
-	installations []promptsource.InstallationDependency
+	installations []plugin.Dependency
 	visible       []toolcontract.Tool
 	deferred      []toolcontract.Tool
+	discovery     *Discovery
 	close         func() error
 	err           error
 }
@@ -87,7 +104,17 @@ func (m manifestBuilder) manifest(telemetry oteltool.Middleware) (Manifest, erro
 	if err != nil {
 		return Manifest{}, err
 	}
-	return Manifest{Installations: slices.Clone(m.installations), Visible: visible, Deferred: deferred, close: m.close}, nil
+	installations := slices.Clone(m.installations)
+	for _, executable := range append(slices.Clone(m.visible), m.deferred...) {
+		dependency, found, err := releaseDependency(executable)
+		if err != nil {
+			return Manifest{}, err
+		}
+		if found {
+			installations = append(installations, dependency)
+		}
+	}
+	return Manifest{Installations: plugin.CompactDependencies(installations), Visible: visible, Deferred: deferred, discovery: m.discovery, close: m.close}, nil
 }
 
 func instrumentTools(telemetry oteltool.Middleware, tools []toolcontract.Tool) ([]toolcontract.Tool, error) {
@@ -103,12 +130,12 @@ func instrumentTools(telemetry oteltool.Middleware, tools []toolcontract.Tool) (
 }
 
 func (m *manifestBuilder) builtIn(executable toolcontract.Tool) toolcontract.Tool {
-	ref, err := tool.BuiltIn(executable.Definition().Name)
+	ref, err := tool.BuiltIn(tool.BuiltInName(executable.Definition().Name))
 	if err != nil {
 		m.err = err
 		return executable
 	}
-	identified, err := WithIdentity(executable, ref, "")
+	identified, err := WithIdentity(executable, ref, fingerprint.Digest{})
 	if err != nil {
 		m.err = err
 		return executable
@@ -142,20 +169,37 @@ func (m *manifestBuilder) excludeCollisions(ctx context.Context) error {
 	return nil
 }
 
-// ToolNameConflicts projects the same exclusion rule used by each frozen manifest
-// over the current remote catalog, including exposure changes and A2A sources.
-func (r *Resolver) ToolNameConflicts() (map[tool.Ref][]tool.Ref, error) {
-	mcpTools, err := r.mcpTools()
+// MCPTools projects the live MCP catalog from the single snapshot each Run
+// manifest freezes: every advertised tool, exposure-disabled ones included so
+// a client can enable them again, scoped to server when non-nil, and the
+// name conflicts the manifest exclusion rule derives from the exposed tools
+// and A2A sources. One atomic load supplies both, so the read model can never
+// pair one catalog's tools with another catalog's conflicts.
+func (r *Resolver) MCPTools(server *mcpserver.ID) ([]mcpserver.AdvertisedTool, map[tool.Ref][]tool.Ref, error) {
+	snapshot := r.mcpSnapshot()
+	exposed, err := r.exposedMCPTools(snapshot)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	refs := make([]tool.Ref, 0, len(mcpTools)+len(r.a2a))
-	for _, executable := range append(slices.Clone(mcpTools), r.a2a...) {
+	refs := make([]tool.Ref, 0, len(exposed)+len(r.a2a))
+	for _, executable := range append(slices.Clone(exposed), r.a2a...) {
 		ref, err := Identify(executable)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		refs = append(refs, ref)
 	}
-	return tool.NameConflicts(refs), nil
+	advertised := make([]mcpserver.AdvertisedTool, 0, len(snapshot))
+	for _, executable := range snapshot {
+		ref, _, err := mcp.IdentifyTool(executable)
+		if err != nil {
+			return nil, nil, err
+		}
+		source, remote, _ := ref.MCP()
+		if server != nil && source != *server {
+			continue
+		}
+		advertised = append(advertised, mcpserver.AdvertisedTool{Server: source, Name: remote, Definition: executable.Definition()})
+	}
+	return advertised, tool.NameConflicts(refs), nil
 }

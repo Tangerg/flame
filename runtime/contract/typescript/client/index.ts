@@ -76,6 +76,8 @@ export type {
   MCPToolExposure,
   SetMCPToolExposureRequest,
   MCPServer,
+  MCPServerID,
+  MCPOrigin,
   MCPHandshakeTimeout,
   MCPAuthorizationAttempt,
   MCPConnectionInput,

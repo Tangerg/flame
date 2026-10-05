@@ -58,7 +58,7 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
 
   const onToggle = async (enabled: boolean) => {
     try {
-      await setEnabled(server.name, enabled);
+      await setEnabled(server.id, enabled);
     } catch (err) {
       if (wasGenerationRetired(err)) return;
       notifyError(err instanceof Error ? err.message : t("mcp.error.toggle"), { source: "mcp" });
@@ -71,7 +71,7 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
     authorizationController.current = controller;
     setSigningIn(true);
     try {
-      await authorize(server.name, controller.signal);
+      await authorize(server.id, controller.signal);
     } catch (err) {
       if (controller.signal.aborted || wasGenerationRetired(err)) return;
       notifyError(err instanceof Error ? err.message : t("mcp.error.signIn"), { source: "mcp" });
@@ -91,8 +91,8 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
       <div {...stylex.props(sr.head)}>
         <StatusDot tone={tone} />
         <div {...stylex.props(vocab.line, vocab.min)}>
-          <span {...stylex.props(vocab.truncate, ss.label, typeStep.uiMd)} title={server.name}>
-            {server.name}
+          <span {...stylex.props(vocab.truncate, ss.label, typeStep.uiMd)} title={server.id.name}>
+            {server.id.name}
           </span>
           <TransportBadge transport={server.type} />
           {server.status === "failed" && server.errorDetail && (
@@ -120,18 +120,18 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
               {t(signingIn ? "mcp.signingIn" : "mcp.signIn")}
             </PillButton>
           )}
-          {!server.installationId && (
+          {server.id.origin.type === "user" && (
             <>
               <Switch
                 checked={server.enabled}
                 onCheckedChange={(value) => void onToggle(value)}
-                ariaLabel={t("mcp.enable.aria", { server: server.name })}
+                ariaLabel={t("mcp.enable.aria", { server: server.id.name })}
               />
               <IconButton
                 icon="edit"
                 size="sm"
                 active={editing}
-                title={t("mcp.edit", { server: server.name })}
+                title={t("mcp.edit", { server: server.id.name })}
                 aria-expanded={editing}
                 aria-controls={panelId}
                 onClick={() => setEditing((value) => !value)}

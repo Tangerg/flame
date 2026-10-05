@@ -51,6 +51,11 @@ var (
 	// replaced — steering it would inject into work the user never saw, and
 	// subscribing to it would fold a stream the client believes is a different one.
 	ErrStaleSegment = errors.New("runs: run is executing a different segment")
+	// ErrInstallationChanged reports that a plugin installation the execution
+	// depends on changed while the execution was being assembled. Nothing was
+	// started or claimed; a new attempt assembles against the committed
+	// installation. The caller decides whether to retry.
+	ErrInstallationChanged = errors.New("runs: installation changed during run assembly")
 	// ErrInterruptNotOpen reports that a resume target has no open interrupt.
 	ErrInterruptNotOpen = errors.New("runs: interrupt not open")
 	// ErrInvalidInterruptResponse reports a response set that does not exactly

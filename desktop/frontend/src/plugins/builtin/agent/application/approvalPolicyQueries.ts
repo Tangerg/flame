@@ -1,3 +1,4 @@
+import type { ApprovalSubject, ToolRef } from "@flame/runtime-contract/wire";
 import { createDataQuery, createParameterizedDataQuery } from "@/plugins/sdk";
 import type { ApprovalMode, RememberScope } from "../domain/hitl";
 
@@ -8,13 +9,10 @@ export interface ApprovalRulesQuery {
 export interface ApprovalRuleSummary {
   id: string;
   scope: RememberScope;
-  tool:
-    | { type: "builtIn"; name: string }
-    | { type: "mcp"; server: string; name: string }
-    | { type: "a2a"; endpoint: string };
+  tool: ToolRef;
   modelName: string;
   stale: boolean;
-  subject: { type: "all" } | { type: "exact" | "glob"; value: string };
+  subject: ApprovalSubject;
   dir?: string;
   decision: "allow" | "deny";
 }

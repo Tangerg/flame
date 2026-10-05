@@ -5,6 +5,9 @@ interface AppearancePreferencePort {
   use<T>(select: (preference: AppearancePreference) => T): T;
   read(): AppearancePreference;
   edit(): AppearanceEdit;
+  subscribe(
+    listener: (next: AppearancePreference, previous: AppearancePreference) => void,
+  ): () => void;
 }
 
 const port = createSingletonPort<AppearancePreferencePort>(

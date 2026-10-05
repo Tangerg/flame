@@ -12,11 +12,11 @@ type pluginBinding interface {
 	InstallPlugin(context.Context, protocol.InstallPluginRequest, flameruntime.CommandOptions) (*protocol.PluginInstallation, error)
 	StagePlugin(context.Context, protocol.StagePluginRequest, flameruntime.CommandOptions) (*protocol.PluginInstallation, error)
 	SelectPlugin(context.Context, protocol.PluginReleaseRequest, flameruntime.CommandOptions) (*protocol.PluginInstallation, error)
-	ApprovePlugin(context.Context, protocol.ApprovePluginRequest, flameruntime.CommandOptions) (*protocol.PluginInstallation, error)
+	ApprovePlugin(context.Context, protocol.PluginReleaseRequest, flameruntime.CommandOptions) (*protocol.PluginInstallation, error)
 	ConfigurePlugin(context.Context, protocol.ConfigurePluginRequest, flameruntime.CommandOptions) (*protocol.PluginInstallation, error)
 	SetPluginEnablement(context.Context, protocol.SetPluginEnablementRequest, flameruntime.CommandOptions) (*protocol.PluginInstallation, error)
 	RevokePlugin(context.Context, protocol.PluginRequest, flameruntime.CommandOptions) (*protocol.PluginInstallation, error)
-	UninstallPlugin(context.Context, protocol.PluginRequest, flameruntime.CommandOptions) (*protocol.PluginRemoval, error)
+	UninstallPlugin(context.Context, protocol.PluginRequest, flameruntime.CommandOptions) error
 }
 
 func (r *Connection) ListPlugins(ctx context.Context) (*protocol.Page[protocol.PluginInstallation], error) {
@@ -48,7 +48,7 @@ func (r *Connection) SelectPlugin(ctx context.Context, request protocol.PluginRe
 	value, err := r.plugins.SelectPlugin(ctx, request, options)
 	return value, classifyError(err)
 }
-func (r *Connection) ApprovePlugin(ctx context.Context, request protocol.ApprovePluginRequest, commandID replay.CommandID) (*protocol.PluginInstallation, error) {
+func (r *Connection) ApprovePlugin(ctx context.Context, request protocol.PluginReleaseRequest, commandID replay.CommandID) (*protocol.PluginInstallation, error) {
 	options, err := r.commandOptionsFor(commandID)
 	if err != nil {
 		return nil, err
@@ -80,11 +80,10 @@ func (r *Connection) RevokePlugin(ctx context.Context, request protocol.PluginRe
 	value, err := r.plugins.RevokePlugin(ctx, request, options)
 	return value, classifyError(err)
 }
-func (r *Connection) UninstallPlugin(ctx context.Context, request protocol.PluginRequest, commandID replay.CommandID) (*protocol.PluginRemoval, error) {
+func (r *Connection) UninstallPlugin(ctx context.Context, request protocol.PluginRequest, commandID replay.CommandID) error {
 	options, err := r.commandOptionsFor(commandID)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	value, err := r.plugins.UninstallPlugin(ctx, request, options)
-	return value, classifyError(err)
+	return classifyError(r.plugins.UninstallPlugin(ctx, request, options))
 }

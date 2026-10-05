@@ -58,7 +58,7 @@ func NewAgentMemorySearch(search AgentMemorySearch) (toolcontract.Tool, error) {
 
 func agentMemorySearchDefinition() toolcontract.FuncConfig {
 	return toolcontract.FuncConfig{
-		Name: tool.SearchMemory,
+		Name: string(tool.SearchMemory),
 		Description: "Search curated long-term memory for the current project, including durable decisions, " +
 			"conventions, and user preferences from earlier work. Use it when needed context is not already in " +
 			"the prompt. Use grep for source code.",

@@ -20,7 +20,11 @@ type interactionModelContextReducer struct {
 	session      *interactionSession
 	start        runs.RootExecutionStart
 	instructions []corechat.Message
-	counter      ModelContextInputTokenCounter
+	// catalog is the layer's frozen deferred Tool catalog. With the current
+	// Session state it forms each call's tail, which the model boundary appends
+	// after reduction: measured with the request, never compacted or returned.
+	catalog []corechat.Message
+	counter ModelContextInputTokenCounter
 }
 
 func newInteractionModelContextReducer(
@@ -29,6 +33,7 @@ func newInteractionModelContextReducer(
 	session *interactionSession,
 	start runs.RootExecutionStart,
 	instructions []corechat.Message,
+	catalog []corechat.Message,
 	counter ModelContextInputTokenCounter,
 ) *interactionModelContextReducer {
 	return &interactionModelContextReducer{
@@ -37,6 +42,7 @@ func newInteractionModelContextReducer(
 		session:      session,
 		start:        start,
 		instructions: cloneChatMessages(instructions),
+		catalog:      cloneChatMessages(catalog),
 		counter:      counter,
 	}
 }
@@ -92,6 +98,10 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 	if err != nil {
 		return nil, err
 	}
+	tail, err := i.tail(ctx)
+	if err != nil {
+		return nil, err
+	}
 	if i.compactor == nil {
 		effective, err := appendPendingContinuation(
 			request.Messages, pendingContinuation, hasPendingContinuation,
@@ -104,24 +114,18 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 		if err := validation.Validate(); err != nil {
 			return nil, fmt.Errorf("execution: reduced model context: %w", err)
 		}
+		if err := i.session.tails.prepare(invocation, tail); err != nil {
+			return nil, err
+		}
 		return effective, nil
 	}
-	candidate, err := withoutReplaceableSessionState(request.Messages[len(i.instructions):])
-	if err != nil {
-		return nil, err
-	}
-	candidate, err = appendPendingContinuation(candidate, pendingContinuation, hasPendingContinuation)
+	candidate, err := appendPendingContinuation(
+		request.Messages[len(i.instructions):], pendingContinuation, hasPendingContinuation,
+	)
 	if err != nil {
 		return nil, err
 	}
 	fixedContext := cloneChatMessages(i.instructions)
-	if i.state != nil {
-		currentState, stateErr := i.state.CurrentSessionState(ctx, i.start.SessionID)
-		if stateErr != nil {
-			return nil, stateErr
-		}
-		fixedContext = append(fixedContext, currentState...)
-	}
 	preCompact := func(ctx context.Context) (bool, error) {
 		if i.session.lifecycleHooks == nil {
 			return true, nil
@@ -139,6 +143,7 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 		Selection:    i.start.ModelSelection,
 		Instructions: fixedContext,
 		Candidate:    candidate,
+		Trailer:      tail,
 		Tools:        request.Tools,
 		Options:      request.Options,
 		Calibration:  calibration,
@@ -195,6 +200,10 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 	if err := i.session.accounting.prepareModelContext(invocation, result.EstimatedTokens()); err != nil {
 		return nil, err
 	}
+	if err := i.session.tails.prepare(invocation, tail); err != nil {
+		i.session.accounting.discardPreparedModelContext(invocation)
+		return nil, err
+	}
 	if result.Summarized() {
 		if compaction.Durable() {
 			i.session.state.markDurableContextCompacted()
@@ -212,48 +221,20 @@ func (i *interactionModelContextReducer) ReduceModelContext(
 	return effective, nil
 }
 
-// withoutReplaceableSessionState removes prior per-call Goal and Plan snapshots
-// from the mutable Strategy context. The reducer re-reads and reattaches the
-// current durable values above, so a Tool call or external replacement cannot
-// leave an opening snapshot masquerading as current state.
-func withoutReplaceableSessionState(messages []corechat.Message) ([]corechat.Message, error) {
-	candidate := messages
-	goalSeen := false
-	planSeen := false
-	for len(candidate) > 0 && candidate[0].Role == corechat.RoleSystem {
-		provenance, found, err := candidate[0].Metadata.Decode[contextSources](
-			contextProvenanceMetadataKey,
-		)
+// tail composes this call's Runtime-authored tail: the current Session state,
+// read now from its owners, then the frozen deferred catalog. Neither is part
+// of the context Scope adopts, so a Plan or Goal change never rewrites an
+// earlier message of the cached prefix.
+func (i *interactionModelContextReducer) tail(ctx context.Context) ([]corechat.Message, error) {
+	var tail []corechat.Message
+	if i.state != nil {
+		state, err := i.state.CurrentSessionState(ctx, i.start.SessionID)
 		if err != nil {
-			return nil, fmt.Errorf("execution: decode mutable model-context provenance: %w", err)
+			return nil, err
 		}
-		if !found {
-			break
-		}
-		stateKind, replaceable, err := provenance.replaceableSessionState()
-		if err != nil {
-			return nil, fmt.Errorf("execution: mutable model-context provenance: %w", err)
-		}
-		if !replaceable {
-			return nil, errors.New("execution: mutable model context starts with frozen provenance")
-		}
-		switch stateKind {
-		case contextSourceSessionGoal:
-			if goalSeen || planSeen {
-				return nil, errors.New("execution: mutable Session state is not canonical Goal-then-Plan")
-			}
-			goalSeen = true
-		case contextSourceSessionPlan:
-			if planSeen {
-				return nil, errors.New("execution: mutable Session state repeats the Plan")
-			}
-			planSeen = true
-		default:
-			return nil, errors.New("execution: mutable Session state has an unknown source")
-		}
-		candidate = candidate[1:]
+		tail = append(tail, state...)
 	}
-	return candidate, nil
+	return append(tail, cloneChatMessages(i.catalog)...), nil
 }
 
 func trailingUserMessageCount(messages []corechat.Message) int {

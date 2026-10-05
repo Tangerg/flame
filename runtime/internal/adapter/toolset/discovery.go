@@ -34,6 +34,12 @@ const (
 	discoveryMaxLimit     = 20
 )
 
+// discoveryDescription is static because the tool declarations open the
+// provider prompt-cache prefix. The Run's deferred catalog changes whenever an
+// integration or plugin does, so it travels in a per-request message instead.
+const discoveryDescription = "Load deferred built-in or integration tools on demand. The deferred tools available in this run are listed in the conversation. " +
+	"Search by capability (query=\"...\") or load exact tools (query=\"select:name1,name2\"); matches become directly callable on your next step."
+
 // selectPrefix switches search_tools from keyword search to exact selection:
 // query "select:a,b,c" loads those tools by name, no scoring.
 const discoverySelectPrefix = "select:"
@@ -69,7 +75,7 @@ func WithToolAdvertiser(ctx context.Context, advertiser ToolAdvertiser) context.
 }
 
 // Discovery is the search_tools meta-tool over a fixed set of withheld tools. It is
-// built per Run from the resolver's complete deferred set, so its advertised
+// built per Run from the resolver's complete deferred set, so its rendered
 // catalog and promotable definitions never drift.
 type Discovery struct {
 	entries []discoverableTool // in stable source-then-name order
@@ -92,10 +98,10 @@ func NewDiscovery(withheld []toolcontract.Tool) (*Discovery, error) {
 			return nil, fmt.Errorf("discovery: resolve Tool identity: %w", err)
 		}
 		source := "built-in"
-		if ref.Kind() == tool.MCPKind {
-			source = ref.Server().String()
-		} else if ref.Kind() == tool.A2AKind {
-			source = "a2a:" + ref.Name()
+		if server, _, ok := ref.MCP(); ok {
+			source = server.String()
+		} else if endpoint, ok := ref.A2A(); ok {
+			source = "a2a:" + endpoint
 		}
 		def := executable.Definition()
 		e := discoverableTool{
@@ -109,7 +115,7 @@ func NewDiscovery(withheld []toolcontract.Tool) (*Discovery, error) {
 		t.byName[def.Name] = e
 	}
 	// Stable order: source, then name — drives the round-robin rotation and the
-	// catalog listed in the description.
+	// rendered catalog.
 	slices.SortFunc(t.entries, func(a, b discoverableTool) int {
 		if a.source != b.source {
 			return strings.Compare(a.source, b.source)
@@ -118,8 +124,8 @@ func NewDiscovery(withheld []toolcontract.Tool) (*Discovery, error) {
 	})
 	inner, err := toolcontract.NewFunc(
 		toolcontract.FuncConfig{
-			Name:        tool.SearchTools,
-			Description: t.buildDescription(),
+			Name:        string(tool.SearchTools),
+			Description: discoveryDescription,
 		},
 		t.search,
 	)
@@ -149,21 +155,22 @@ func (d *Discovery) Definition() chat.ToolDefinition {
 
 func (d *Discovery) Unwrap() toolcontract.Tool { return d.inner }
 
-// The definition is frozen for the Run, while Scope may subsequently advertise
-// any catalog entry. Describe the initial catalog without claiming its current
-// visibility, which only the execution strategy owns.
-func (d *Discovery) buildDescription() string {
+// Catalog renders the Run's deferred catalog for a per-request model context
+// message. It lists the exact names select: accepts, grouped in the stable
+// source-then-name order, and no schemas, so loading still goes through
+// search_tools. Scope may already have advertised some entries; only the
+// execution strategy owns that visibility, so the catalog does not claim it.
+func (d *Discovery) Catalog() string {
+	if d == nil {
+		return ""
+	}
 	var b strings.Builder
-	fmt.Fprintf(&b, "Load additional built-in or integration tools on demand. %d tool(s) are available but omitted from the initial tool list to keep it focused. ",
-		len(d.entries))
-	b.WriteString("Search by capability (query=\"...\") or load exact tools (query=\"select:name1,name2\"); matches become directly callable on your next step.\n\nInitially deferred catalog:")
+	b.WriteString("Deferred tools for this run. Until loaded they are not in your tool list; load them with search_tools before calling them, either by capability (query=\"...\") or by exact name (query=\"select:name1,name2\").")
 	lastSource := ""
-	first := true
-	for _, e := range d.entries {
-		if first || e.source != lastSource {
-			first = false
+	for index, e := range d.entries {
+		if index == 0 || e.source != lastSource {
 			lastSource = e.source
-			fmt.Fprintf(&b, "\n  [%s] ", e.source)
+			fmt.Fprintf(&b, "\n[%s] ", e.source)
 			b.WriteString(e.definition.Name)
 			continue
 		}

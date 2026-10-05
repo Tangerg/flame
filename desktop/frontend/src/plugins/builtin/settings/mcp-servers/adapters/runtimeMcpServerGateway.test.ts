@@ -8,9 +8,14 @@ import {
   setMCPServerEnabled,
   setMCPToolExposure,
 } from "../application/mcpServerConfig";
-import { MCP_SERVERS_KEY, type MCPServerSettings } from "../application/mcpServerQueries";
+import {
+  MCP_SERVERS_KEY,
+  type MCPServerSettings,
+  userMCPServer,
+} from "../application/mcpServerQueries";
 import { validateWire } from "@flame/runtime-contract/validate";
 import { installMCPServerGateway } from "./runtimeMcpServerGateway";
+import { MCPServerMutationOwner } from "../application/mcpServerMutationOwner";
 import { rejected } from "@/test/rejected";
 
 let uninstall: (() => void) | undefined;
@@ -24,15 +29,56 @@ afterEach(() => {
 });
 
 describe("runtimeMcpServerGateway", () => {
+  it.each([
+    ["reachable", { ok: true }],
+    [
+      "authorizationRequired",
+      { ok: false, error: "This server needs you to sign in before it can be used." },
+    ],
+    [
+      "timedOut",
+      {
+        ok: false,
+        error: "The server didn't respond in time — check the command or URL and retry.",
+      },
+    ],
+    [
+      "failed",
+      {
+        ok: false,
+        error:
+          "The server did not connect or did not offer a valid tool list. Check its settings and retry.",
+      },
+    ],
+  ])("renders the closed %s test outcome locally", async (outcome, expected) => {
+    const test = vi.fn().mockResolvedValue({ outcome });
+    uninstall = installMCPServerGateway(
+      () => ({ mcp: { test } }) as unknown as FlameClient,
+    ).dispose;
+    await expect(
+      MCPServerMutationOwner.current().test({
+        name: "probe",
+        transport: "stdio",
+        enabled: true,
+        handshakeTimeout: { type: "unbounded" },
+        command: "tool-server",
+      }),
+    ).resolves.toEqual(expected);
+  });
+
   it("changes exposure through its own operation without updating the server", async () => {
     const setToolExposure = vi.fn().mockResolvedValue(undefined);
     const update = vi.fn();
     const client = { mcp: { setToolExposure, update } } as unknown as FlameClient;
     uninstall = installMCPServerGateway(() => client).dispose;
 
-    await setMCPToolExposure("docs", "read", true);
+    await setMCPToolExposure(userMCPServer("docs"), "read", true);
 
-    expect(setToolExposure).toHaveBeenCalledWith({ server: "docs", name: "read", disabled: true });
+    expect(setToolExposure).toHaveBeenCalledWith({
+      server: userMCPServer("docs"),
+      name: "read",
+      disabled: true,
+    });
     expect(update).not.toHaveBeenCalled();
   });
 
@@ -60,8 +106,7 @@ describe("runtimeMcpServerGateway", () => {
     ],
   ])("sends a %s candidate the Runtime would accept", async (_transport, input) => {
     const create = vi.fn().mockResolvedValue({
-      name: input.name,
-      origin: { type: "user" },
+      id: { origin: { type: "user" }, name: input.name },
       connection:
         input.transport === "stdio"
           ? { type: "stdio", command: "tool-server", args: [] }
@@ -79,9 +124,8 @@ describe("runtimeMcpServerGateway", () => {
 
   it("maps the complete server returned by create", async () => {
     const create = vi.fn().mockResolvedValue({
-      name: "local-tools",
+      id: { origin: { type: "user" }, name: "local-tools" },
       description: "Local tools",
-      origin: { type: "user" },
       connection: { type: "stdio", command: "tool-server", args: ["--stdio"] },
       handshakeTimeout: { type: "bounded", seconds: 15 },
       status: { type: "connected", toolCount: 3 },
@@ -99,8 +143,7 @@ describe("runtimeMcpServerGateway", () => {
         args: ["--stdio"],
       }),
     ).resolves.toMatchObject({
-      id: "local-tools",
-      name: "local-tools",
+      id: userMCPServer("local-tools"),
       desc: "Local tools",
       tools: 3,
       status: "connected",
@@ -114,8 +157,7 @@ describe("runtimeMcpServerGateway", () => {
 
   it("returns the stored server after an enablement change", async () => {
     const update = vi.fn().mockResolvedValue({
-      name: "cloud",
-      origin: { type: "user" },
+      id: { origin: { type: "user" }, name: "cloud" },
       connection: { type: "streamableHttp", url: "https://example.test/mcp" },
       handshakeTimeout: { type: "unbounded" },
       status: { type: "disabled" },
@@ -123,13 +165,13 @@ describe("runtimeMcpServerGateway", () => {
     const runtimeClient = () => ({ mcp: { update } }) as unknown as FlameClient;
     uninstall = installMCPServerGateway(() => runtimeClient()).dispose;
 
-    await expect(setMCPServerEnabled("cloud", false)).resolves.toMatchObject({
-      name: "cloud",
+    await expect(setMCPServerEnabled(userMCPServer("cloud"), false)).resolves.toMatchObject({
+      id: userMCPServer("cloud"),
       status: "disabled",
       enabled: false,
       type: "streamableHttp",
     });
-    expect(update).toHaveBeenCalledWith({ server: "cloud", enabled: false });
+    expect(update).toHaveBeenCalledWith({ server: userMCPServer("cloud"), enabled: false });
   });
 
   it("retires in-flight and queued server commands before installing a successor", async () => {
@@ -142,8 +184,8 @@ describe("runtimeMcpServerGateway", () => {
     const retiredInstallation = installMCPServerGateway(() => runtimeClient());
     queryClient.setQueryData([MCP_SERVERS_KEY], [server()]);
 
-    const inFlight = setMCPServerEnabled("cloud", false);
-    const queued = setMCPServerEnabled("cloud", true);
+    const inFlight = setMCPServerEnabled(userMCPServer("cloud"), false);
+    const queued = setMCPServerEnabled(userMCPServer("cloud"), true);
     const inFlightSettlement = rejected(inFlight);
     const queuedSettlement = rejected(queued);
     await vi.waitFor(() => expect(updateRetired).toHaveBeenCalledOnce());
@@ -180,7 +222,7 @@ describe("runtimeMcpServerGateway", () => {
         mcp: { authorizationAttempts: { create: createRetired } },
       }) as unknown as FlameClient;
     const retiredInstallation = installMCPServerGateway(() => runtimeClient());
-    const authorization = rejected(authorizeMCPServer("github"));
+    const authorization = rejected(authorizeMCPServer(userMCPServer("github")));
     await vi.waitFor(() => expect(createRetired).toHaveBeenCalledOnce());
 
     const getSuccessor = vi.fn().mockResolvedValue({
@@ -210,9 +252,9 @@ describe("runtimeMcpServerGateway", () => {
     const reconnectSuccessor = vi.fn().mockResolvedValue(undefined);
     runtimeClient = () => ({ mcp: { reconnect: reconnectSuccessor } }) as unknown as FlameClient;
 
-    await reconnectMCPServer("cloud");
+    await reconnectMCPServer(userMCPServer("cloud"));
 
-    expect(reconnectRetired).toHaveBeenCalledWith("cloud");
+    expect(reconnectRetired).toHaveBeenCalledWith(userMCPServer("cloud"));
     expect(reconnectSuccessor).not.toHaveBeenCalled();
   });
 
@@ -221,7 +263,7 @@ describe("runtimeMcpServerGateway", () => {
     const reconnectRetired = vi.fn(() => retired.promise);
     let runtimeClient = () => ({ mcp: { reconnect: reconnectRetired } }) as unknown as FlameClient;
     const retiredInstallation = installMCPServerGateway(() => runtimeClient());
-    const reconnect = rejected(reconnectMCPServer("cloud"));
+    const reconnect = rejected(reconnectMCPServer(userMCPServer("cloud")));
     await vi.waitFor(() => expect(reconnectRetired).toHaveBeenCalledOnce());
 
     const reconnectSuccessor = vi.fn().mockResolvedValue(undefined);
@@ -242,8 +284,7 @@ describe("runtimeMcpServerGateway", () => {
 
 function runtimeServer(overrides: Record<string, unknown> = {}) {
   return {
-    name: "cloud",
-    origin: { type: "user" },
+    id: { origin: { type: "user" }, name: "cloud" },
     connection: { type: "streamableHttp" as const, url: "https://example.test/mcp" },
     handshakeTimeout: { type: "unbounded" as const },
     status: { type: "disconnected" as const },
@@ -253,8 +294,7 @@ function runtimeServer(overrides: Record<string, unknown> = {}) {
 
 function server(overrides: Partial<MCPServerSettings> = {}): MCPServerSettings {
   return {
-    id: "cloud",
-    name: "cloud",
+    id: userMCPServer("cloud"),
     desc: "",
     tools: 0,
     status: "disconnected",

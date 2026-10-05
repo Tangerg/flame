@@ -32,7 +32,7 @@ func Dial(
 	lifetime context.Context,
 	servers []ServerConfig,
 	oauthSessions OAuthSessionStore,
-	configuration func(context.Context, mcpserver.ServerName) (ServerConfig, error),
+	configuration func(context.Context, mcpserver.ID) (ServerConfig, error),
 ) (*Connections, []Executable, error) {
 	if ctx == nil {
 		return nil, nil, errors.New("mcp: startup context is required")
@@ -59,15 +59,15 @@ func Dial(
 	// Validate config before dialing: duplicate names collide tool prefixes and
 	// a malformed entry can never work — operator mistakes that should fail
 	// loudly at boot, not degrade to a "failed" row.
-	seen := make(map[mcpserver.ServerName]struct{}, len(servers))
+	seen := make(map[mcpserver.ID]struct{}, len(servers))
 	for index := range servers {
 		srv := &servers[index]
-		if _, dup := seen[srv.Name]; dup {
-			return nil, nil, fmt.Errorf("mcp: duplicate server name %q", srv.Name)
+		if _, dup := seen[srv.ID()]; dup {
+			return nil, nil, fmt.Errorf("mcp: duplicate server name %q", srv.ID())
 		}
-		seen[srv.Name] = struct{}{}
+		seen[srv.ID()] = struct{}{}
 		if verr := srv.Validate(); verr != nil {
-			return nil, nil, fmt.Errorf("mcp: invalid server %q: %w", srv.Name, verr)
+			return nil, nil, fmt.Errorf("mcp: invalid server %q: %w", srv.ID(), verr)
 		}
 	}
 
@@ -84,10 +84,10 @@ func Dial(
 	var tools []Executable
 	failures := 0
 	for _, srv := range servers {
-		configuredServer := &server{config: srv, oauth: srv.OAuthHandler}
+		configuredServer := &server{id: srv.ID(), config: srv, oauth: srv.OAuthHandler}
 		configuredServer.config.OAuthHandler = nil
-		current, err := configuration(ctx, srv.Name)
-		if err == nil && current.Name != srv.Name {
+		current, err := configuration(ctx, srv.ID())
+		if err == nil && current.ID() != srv.ID() {
 			err = errors.New("mcp: connection configuration source changed identity")
 		}
 		if err == nil {
@@ -97,8 +97,8 @@ func Dial(
 			current.OAuthHandler, err = restoreOAuthHandler(ctx, lifetime, oauthSessions, current.oauthTarget())
 		}
 		if err != nil {
-			slog.ErrorContext(ctx, "mcp: startup admission failed", "server.name", srv.Name.String(), "error", err)
-			configuredServer.state = mcpserver.ConnectionFailed
+			slog.ErrorContext(ctx, "mcp: startup admission failed", "server.name", srv.ID().String(), "error", err)
+			configuredServer.settle(nil, nil, mcpserver.ConnectionFailed, mcpserver.FailureConfiguration)
 			failures++
 			c.servers = append(c.servers, configuredServer)
 			continue
@@ -110,10 +110,11 @@ func Dial(
 		session, cleanupSession, derr := dial(ctx, lifetime, client, srv)
 		if derr != nil {
 			slog.ErrorContext(ctx, "mcp: startup connection failed",
-				"server.name", srv.Name.String(), "error", derr,
+				"server.name", srv.ID().String(), "error", derr,
 			)
-			configuredServer.state = dialStatus(derr)
-			if configuredServer.state == mcpserver.ConnectionNeedsAuth {
+			state, failure := failedStatus(derr, mcpserver.FailureConnection)
+			configuredServer.settle(nil, nil, state, failure)
+			if state == mcpserver.ConnectionNeedsAuth {
 				configuredServer.oauth = nil
 			}
 			failures++
@@ -121,22 +122,23 @@ func Dial(
 			continue
 		}
 		c.ownSessionLocked(session, cleanupSession)
-		srcTools, terr := sourceTools(ctx, srv, session)
+		srcTools, terr := sourceTools(ctx, c, srv, session)
 		if terr != nil {
 			// A session that cannot produce a valid tool catalog is unusable.
 			// Preserve a close failure in diagnostics as well as the primary cause;
 			// boot deliberately degrades this one server to failed rather than
 			// aborting every independent MCP connection.
-			failure := errors.Join(terr, c.closeSession(ctx, session))
+			cause := errors.Join(terr, c.closeSession(ctx, session))
 			slog.ErrorContext(ctx, "mcp: startup tool discovery failed",
-				"server.name", srv.Name.String(), "error", failure,
+				"server.name", srv.ID().String(), "error", cause,
 			)
-			configuredServer.state = mcpserver.ConnectionFailed
+			state, failure := failedStatus(terr, mcpserver.FailureToolDiscovery)
+			configuredServer.settle(nil, nil, state, failure)
 			failures++
 			c.servers = append(c.servers, configuredServer)
 			continue
 		}
-		configuredServer.session, configuredServer.tools, configuredServer.state = session, srcTools, mcpserver.ConnectionConnected
+		configuredServer.settle(session, srcTools, mcpserver.ConnectionConnected, "")
 		tools = append(tools, srcTools...)
 		c.servers = append(c.servers, configuredServer)
 	}

@@ -7,7 +7,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 )
 
@@ -159,26 +158,26 @@ func validateAuthoredPromptString(document string) error {
 
 // SkillSource retains the single source selected by prompt resolution.
 type SkillSource struct {
-	scope          skills.Scope
-	installationID string
-	digest         string
+	scope      skills.Scope
+	dependency plugin.Dependency
 }
 
 func ProjectSkillSource() SkillSource { return SkillSource{scope: skills.ScopeProject} }
 func UserSkillSource() SkillSource    { return SkillSource{scope: skills.ScopeUser} }
-func InstallationSkillSource(id, digest string) (SkillSource, error) {
-	_, err := resourceid.ParseInstallation(id)
-	if err != nil || !plugin.ValidDigest(digest) {
-		return SkillSource{}, errors.New("workspace: invalid installation Skill source")
+
+// InstallationSkillSource names the exact release whose bundle supplied a Skill.
+func InstallationSkillSource(release plugin.Dependency) (SkillSource, error) {
+	if err := release.Validate(); err != nil {
+		return SkillSource{}, fmt.Errorf("workspace: installation Skill source: %w", err)
 	}
-	return SkillSource{installationID: id, digest: digest}, nil
+	return SkillSource{dependency: release}, nil
 }
 func (s SkillSource) Scope() skills.Scope { return s.scope }
-func (s SkillSource) Installation() (id, digest string, found bool) {
-	return s.installationID, s.digest, s.installationID != ""
+func (s SkillSource) Installation() (plugin.Dependency, bool) {
+	return s.dependency, s.dependency.InstallationID.Validate() == nil
 }
 func (s SkillSource) Validate() error {
-	if s.installationID != "" {
+	if _, found := s.Installation(); found {
 		return nil
 	}
 	return s.scope.Validate()

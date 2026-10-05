@@ -45,9 +45,12 @@ func TestResolverExcludesCollidingRemoteIdentities(t *testing.T) {
 			if test.name == "available built-in" && !definitionNames(manifestTools(manifest))[test.collision] {
 				t.Fatal("collision removed the built-in")
 			}
-			conflicts, err := built.Resolver.ToolNameConflicts()
+			advertised, conflicts, err := built.Resolver.MCPTools(nil)
 			if err != nil {
 				t.Fatal(err)
+			}
+			if len(advertised) != len(test.tools)+1 {
+				t.Fatalf("catalog advertised %d tools, want every live tool", len(advertised))
 			}
 			for _, executable := range test.tools {
 				ref, err := Identify(executable)

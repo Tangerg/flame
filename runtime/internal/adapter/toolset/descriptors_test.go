@@ -3,7 +3,6 @@ package toolset
 import (
 	"context"
 	json "encoding/json/v2"
-	"errors"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"path/filepath"
 	"slices"
@@ -227,15 +226,12 @@ func TestDescriptorCatalogMatchesBuiltInTools(t *testing.T) {
 	}
 	// Agent Framework advertises delegate_task from the Interaction Definition rather than
 	// the ordinary Tool manifest.
-	existing[tool.DelegateTask] = true
+	existing[string(tool.DelegateTask)] = true
 
 	declared := make(map[string]bool)
 	var unreachable []string
-	catalog, err := descriptors()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for name, descriptor := range catalog {
+	for builtIn, descriptor := range descriptors() {
+		name := string(builtIn)
 		if declared[name] {
 			t.Errorf("built-in identity %q is declared more than once", name)
 		}
@@ -291,39 +287,18 @@ func testApprovalPolicy(t *testing.T) *approvals.RuntimePolicy {
 	return policy
 }
 
-func TestEveryBuiltInHasBehavior(t *testing.T) {
+// The descriptor table is keyed by the domain's closed built-in set and must
+// cover exactly that set. This test is the only place the two are compared;
+// construction does not repeat the comparison.
+func TestDescriptorsCoverExactlyTheBuiltInSet(t *testing.T) {
 	for _, name := range tool.BuiltInNames() {
-		ref, err := tool.BuiltIn(name)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if descriptor, ok := descriptorFor(ref); !ok || !descriptor.safety.Valid() {
+		if descriptor, ok := builtInDescriptors[name]; !ok || !descriptor.safety.Valid() {
 			t.Errorf("built-in %s has no valid behavior: %+v", name, descriptor)
 		}
 	}
-}
-
-func TestMissingBuiltInBehaviorRejectsConstructionAndPublication(t *testing.T) {
-	descriptor := builtInDescriptors[tool.Read]
-	delete(builtInDescriptors, tool.Read)
-	t.Cleanup(func() { builtInDescriptors[tool.Read] = descriptor })
-	if _, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(), DefaultCWD: t.TempDir(), UserHome: t.TempDir()}); err == nil || !strings.Contains(err.Error(), tool.Read) {
-		t.Fatalf("build with missing behavior = %v", err)
-	}
-	if contracts, err := PresentationContracts(); err == nil || contracts != nil {
-		t.Fatalf("publication with missing behavior = %v, %v", contracts, err)
-	}
-}
-
-func TestBehaviorProjectionCannotDeclareABuiltInIdentity(t *testing.T) {
-	const foreign = "foreign_builtin"
-	builtInDescriptors[foreign] = builtInDescriptors[tool.Shell]
-	t.Cleanup(func() { delete(builtInDescriptors, foreign) })
-	if _, err := tool.BuiltIn(foreign); err == nil {
-		t.Fatal("behavior projection admitted a built-in identity")
-	}
-	contracts, err := PresentationContracts()
-	if !errors.Is(err, tool.ErrInvalidRef) || contracts != nil {
-		t.Fatalf("unowned behavior projection was published: %v, %v", contracts, err)
+	for name := range builtInDescriptors {
+		if !slices.Contains(tool.BuiltInNames(), name) {
+			t.Errorf("behavior descriptor %q names no built-in", name)
+		}
 	}
 }

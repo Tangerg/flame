@@ -48,15 +48,16 @@ var ErrAuthorizationUnsupported = errors.New("mcp: MCP authorization requires st
 // CreateServer creates one durable resource and projects it into the live MCP
 // pool. A duplicate name is a conflict, never an implicit update.
 func (c *Coordinator) CreateServer(ctx context.Context, input ServerInput) (Server, error) {
-	if input.Name.Installation() != "" {
-		return Server{}, ErrOwnedByInstallation
+	id, err := userServer(input.Name)
+	if err != nil {
+		return Server{}, err
 	}
 	write, err := c.beginMutation(ctx)
 	if err != nil {
 		return Server{}, err
 	}
 	defer write.close()
-	if _, found, getErr := c.registry.Definition(write.requestCtx, input.Name); getErr != nil {
+	if _, found, getErr := c.registry.Definition(write.requestCtx, id); getErr != nil {
 		return Server{}, getErr
 	} else if found {
 		return Server{}, ErrServerAlreadyExists
@@ -70,8 +71,8 @@ func (c *Coordinator) CreateServer(ctx context.Context, input ServerInput) (Serv
 
 // UpdateServer applies an explicit partial update to an existing resource.
 // The mutation lock keeps the read/patch/save sequence atomic inside the runtime.
-func (c *Coordinator) UpdateServer(ctx context.Context, name mcpserver.ServerName, patch ServerPatch) (Server, error) {
-	if name.Installation() != "" {
+func (c *Coordinator) UpdateServer(ctx context.Context, name mcpserver.ID, patch ServerPatch) (Server, error) {
+	if name.Origin().Kind() != mcpserver.OriginUser {
 		return Server{}, ErrOwnedByInstallation
 	}
 	if patch.Empty() {
@@ -97,11 +98,11 @@ func (c *Coordinator) UpdateServer(ctx context.Context, name mcpserver.ServerNam
 }
 
 func (c *Coordinator) commitServer(write *mutationScope, srv mcpserver.Server) (Server, error) {
-	if err := c.registry.Save(write.requestCtx, srv); err != nil {
+	if err := c.store.Save(write.requestCtx, srv); err != nil {
 		return Server{}, err
 	}
 	if !srv.Enabled {
-		c.cancelDial(srv.Name)
+		c.cancelDial(srv.ID())
 	}
 	reconcileErr := c.applyRegistryChange(srv)
 	// Make the committed descriptor and its first live state one ordered fact.
@@ -109,7 +110,7 @@ func (c *Coordinator) commitServer(write *mutationScope, srv mcpserver.Server) (
 	// own duplicate connecting event and only publishes the status port's terminal
 	// projection. Disabled or unreconciled servers install an unknown tombstone
 	// so a stale live entry cannot resurrect the previous connection.
-	status := ServerStatus{Name: srv.Name}
+	status := ServerStatus{Server: srv.ID()}
 	shouldRedial := srv.Enabled && reconcileErr == nil
 	var redialErr error
 	var startDial chan struct{}
@@ -121,7 +122,7 @@ func (c *Coordinator) commitServer(write *mutationScope, srv mcpserver.Server) (
 		// than having this older dispatch happen after the callback returns. The
 		// gate prevents the admitted task from settling before that callback gets
 		// its chance to supersede it.
-		operation, redialErr = c.redialServer(write.ownerCtx, srv.Name, startDial)
+		operation, redialErr = c.redialServer(write.ownerCtx, srv.ID(), startDial)
 		if redialErr == nil {
 			status.Known = true
 			status.State = mcpserver.ConnectionConnecting
@@ -139,7 +140,7 @@ func (c *Coordinator) commitServer(write *mutationScope, srv mcpserver.Server) (
 	if redialErr != nil {
 		return Server{}, redialErr
 	}
-	status, ok := c.statusesByName()[srv.Name]
+	status, ok := c.statusesByName()[srv.ID()]
 	if ok {
 		return serverView(srv, &status)
 	}
@@ -148,8 +149,8 @@ func (c *Coordinator) commitServer(write *mutationScope, srv mcpserver.Server) (
 
 // DeleteServer deletes a server from the registry and drops it from the live
 // connections.
-func (c *Coordinator) DeleteServer(ctx context.Context, name mcpserver.ServerName) error {
-	if name.Installation() != "" {
+func (c *Coordinator) DeleteServer(ctx context.Context, name mcpserver.ID) error {
+	if name.Origin().Kind() != mcpserver.OriginUser {
 		return ErrOwnedByInstallation
 	}
 	write, err := c.beginMutation(ctx)
@@ -162,14 +163,14 @@ func (c *Coordinator) DeleteServer(ctx context.Context, name mcpserver.ServerNam
 	} else if !found {
 		return ErrUnknownServer
 	}
-	if err := c.registry.Remove(write.requestCtx, name); err != nil {
+	if err := c.store.Remove(write.requestCtx, name.Name()); err != nil {
 		return err
 	}
 	c.cancelDial(name)
 	// Detachment retires live executables; exposure still closes if it fails.
 	projectionErr := c.connectionLifecycle.Detach(name)
 	c.exposure.removeServer(name)
-	event := c.prepareStatus(ServerStatus{Name: name}, nil)
+	event := c.prepareStatus(ServerStatus{Server: name}, nil)
 	write.unlock()
 	c.statusQueue.publish(event)
 	return projectionErr
@@ -238,7 +239,7 @@ func (m *mutationScope) close() {
 func (c *Coordinator) applyRegistryChange(srv mcpserver.Server) error {
 	var err error
 	if !srv.Enabled {
-		err = c.connectionLifecycle.Detach(srv.Name)
+		err = c.connectionLifecycle.Detach(srv.ID())
 	}
 	c.exposure.setServer(srv)
 	return err
@@ -254,7 +255,7 @@ func (c *Coordinator) applyRegistryChange(srv mcpserver.Server) error {
 // A concurrent reconfigure supersedes a stale dial
 // through per-server generation. A dial failure does not fail the originating
 // call; status surfaces it and it remains reconnectable.
-func (c *Coordinator) redialServer(ctx context.Context, name mcpserver.ServerName, start <-chan struct{}) (*activeDial, error) {
+func (c *Coordinator) redialServer(ctx context.Context, name mcpserver.ID, start <-chan struct{}) (*activeDial, error) {
 	return c.dispatchConnection(ctx, name, func(dialCtx context.Context) error {
 		return c.connectionLifecycle.Configure(dialCtx, name)
 	}, false, start, nil)
@@ -267,9 +268,6 @@ func (c *Coordinator) redialServer(ctx context.Context, name mcpserver.ServerNam
 // tools-list failure as a sanitized outcome; invalid candidates and registry failures
 // are returned as errors.
 func (c *Coordinator) TestServer(ctx context.Context, input ServerInput) (TestResult, error) {
-	if input.Name.Installation() != "" {
-		return "", ErrOwnedByInstallation
-	}
 	if err := ctx.Err(); err != nil {
 		return "", err
 	}
@@ -295,8 +293,8 @@ func (c *Coordinator) TestServer(ctx context.Context, input ServerInput) (TestRe
 
 func (c *Coordinator) validatedServer(ctx context.Context, input ServerInput) (mcpserver.Server, error) {
 	var current *mcpserver.Server
-	if input.Name.Validate() == nil {
-		stored, found, err := c.registry.Definition(ctx, input.Name)
+	if id, err := userServer(input.Name); err == nil {
+		stored, found, err := c.registry.Definition(ctx, id)
 		if err != nil {
 			return mcpserver.Server{}, err
 		}
@@ -307,12 +305,23 @@ func (c *Coordinator) validatedServer(ctx context.Context, input ServerInput) (m
 	return serverCandidate(input, current)
 }
 
+// Create and test address the user's registry; an installation's records
+// arrive only through its own admission.
+func userServer(name mcpserver.ServerName) (mcpserver.ID, error) {
+	id, err := mcpserver.NewID(mcpserver.UserOrigin(), name)
+	if err != nil {
+		return mcpserver.ID{}, fmt.Errorf("%w: %w", ErrInvalidServerConfiguration, err)
+	}
+	return id, nil
+}
+
 func serverCandidate(input ServerInput, current *mcpserver.Server) (mcpserver.Server, error) {
 	connection, err := resolveConnection(input.Connection, current)
 	if err != nil {
 		return mcpserver.Server{}, err
 	}
 	srv := mcpserver.Server{
+		Source:           mcpserver.UserSource(),
 		Name:             input.Name,
 		Transport:        connection.Transport,
 		Enabled:          input.Enabled,
@@ -540,26 +549,22 @@ type ToolView struct {
 
 // Tools lists tools advertised by the connected MCP servers (scoped to server
 // when non-empty) for tool discovery, ordered by server then tool name.
-func (c *Coordinator) Tools(_ context.Context, server *mcpserver.ServerName) ([]ToolView, error) {
+func (c *Coordinator) Tools(_ context.Context, server *mcpserver.ID) ([]ToolView, error) {
 	if server != nil {
 		if err := server.Validate(); err != nil {
 			return nil, fmt.Errorf("mcp: tool catalog server: %w", err)
 		}
 	}
-	tools, err := c.toolCatalog.Tools(server)
+	tools, conflicts, err := c.toolCatalog.MCPTools(server)
 	if err != nil {
 		return nil, err
 	}
 	slices.SortFunc(tools, func(first, second mcpserver.AdvertisedTool) int {
 		return cmp.Or(
-			cmp.Compare(first.Server.String(), second.Server.String()),
+			first.Server.Compare(second.Server),
 			cmp.Compare(first.Name.String(), second.Name.String()),
 		)
 	})
-	conflicts, err := c.toolDiagnostics.ToolNameConflicts()
-	if err != nil {
-		return nil, err
-	}
 	views := make([]ToolView, 0, len(tools))
 	for _, advertised := range tools {
 		ref, err := tool.MCP(advertised.Server, advertised.Name)

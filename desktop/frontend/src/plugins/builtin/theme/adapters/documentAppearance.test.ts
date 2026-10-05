@@ -109,6 +109,36 @@ describe("a theme's own neutrals are what paints", () => {
   });
 });
 
+describe("accent ownership", () => {
+  const painted = () => document.documentElement.style.getPropertyValue("--color-accent");
+
+  it("gives a declared accent to the theme while it is selected, and the preference otherwise", async () => {
+    await contributeForTest((ctx) => {
+      ctx.contribute(COLOR_THEME, {
+        id: "declared",
+        label: "Declared",
+        scheme: "light",
+        accent: "#b4004e",
+        tokens: { "color-accent": "#b4004e" },
+      });
+      ctx.contribute(COLOR_THEME, {
+        id: "undeclared",
+        label: "Undeclared",
+        scheme: "dark",
+        tokens: { "color-accent": "#3574f0" },
+      });
+    });
+
+    useAppearanceStore.setState({ theme: "declared", accent: "#1ed760" });
+    expect(painted()).toBe("#b4004e");
+    useAppearanceStore.setState({ accent: "#7f52ff" });
+    expect(painted()).toBe("#b4004e");
+
+    useAppearanceStore.setState({ theme: "undeclared" });
+    expect(painted()).toBe("#7f52ff");
+  });
+});
+
 describe("applyTheme — theme-as-plugin contract", () => {
   it("writes spec.tokens to :root.style when the active theme is registered", async () => {
     await contributeForTest((ctx) => {
@@ -351,5 +381,26 @@ describe("code size", () => {
 
     useAppearanceStore.setState({ codeFontSize: null });
     expect(read("--fs-code")).toBe(followed);
+  });
+});
+
+describe("the first-paint record mirrors what renders", () => {
+  it("is written for a registered theme and cleared once that theme stops rendering", async () => {
+    let unregister: (() => void) | undefined;
+    await contributeForTest((ctx) => {
+      const theme = ctx.contribute(COLOR_THEME, {
+        id: "package:a:sea",
+        label: "Sea",
+        scheme: "light",
+        tokens: { "color-bg": "#f4f8fb" },
+      });
+      unregister = () => theme.dispose();
+    }, "test.package-theme");
+    useAppearanceStore.setState({ theme: "package:a:sea" });
+    expect(localStorage.getItem("flame.theme-paint")).toContain("package:a:sea");
+
+    unregister?.();
+    useAppearanceStore.setState({ theme: "package:a:sea", accent: "#123456" });
+    expect(localStorage.getItem("flame.theme-paint")).toBeNull();
   });
 });

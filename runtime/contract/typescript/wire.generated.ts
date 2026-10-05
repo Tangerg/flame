@@ -99,6 +99,7 @@ export const PROBLEM_CODES = {
   "mcp_server_not_found": -32029,
   "method_not_found": -32601,
   "path_outside_root": -32013,
+  "plugin_changed": -32046,
   "plugin_in_use": -32041,
   "plugin_not_found": -32040,
   "plugin_stale": -32043,
@@ -235,12 +236,6 @@ export type ApprovalSubject =
 
 export type ApprovalSubjectType = "all" | "exact" | "glob";
 
-export interface ApprovePluginRequest {
-  digest: string;
-  grants: PluginRequestGrant[];
-  installationId: string;
-}
-
 export type ArtifactItem =
   | { type: "userMessage"; content: ContentBlock[]; createdAt: string; id: string; runId: string; status: "completed" }
   | { type: "agentMessage"; content: ContentBlock[]; createdAt: string; id: string; phase: MessagePhase; runId: string; status: "completed" | "incomplete" }
@@ -345,9 +340,9 @@ export interface CommandResult {
 
 export interface ConfigurePluginRequest {
   digest: string;
-  disabledServers: string[];
-  disabledSkills: string[];
   installationId: string;
+  serverChanges: Record<string, PluginComponentChange>;
+  skillChanges: Record<string, PluginComponentChange>;
   valueChanges: Record<string, PluginValueChange>;
 }
 
@@ -358,7 +353,7 @@ export type ContentBlock =
 export type ContentBlockType = "text" | "image";
 
 export interface CreateMCPAuthorizationAttemptRequest {
-  server: string;
+  server: MCPServerID;
 }
 
 export interface CreateScheduleRequest {
@@ -802,7 +797,7 @@ export interface MCPAuthorizationAttempt {
   createdAt: string;
   finishedAt?: string;
   id: string;
-  server: string;
+  server: MCPServerID;
   status: MCPAuthorizationAttemptStatus;
 }
 
@@ -817,7 +812,7 @@ export interface MCPAuthorizationAttemptRequest {
 export type MCPAuthorizationAttemptStatus =
   | { type: "pending" }
   | { type: "succeeded" }
-  | { type: "failed"; error: ProblemData }
+  | { type: "failed"; error: { type: "mcp_authorization_failed" } }
   | { type: "canceled" };
 
 export type MCPAuthorizationAttemptStatusType = "pending" | "succeeded" | "failed" | "canceled";
@@ -849,12 +844,12 @@ export type MCPHeadersChange =
   | { type: "clear" };
 
 export interface MCPListToolsRequest {
-  server?: string;
+  server?: MCPServerID;
 }
 
 export type MCPOrigin =
   | { type: "user" }
-  | { type: "installation"; installationId: string; localName: string };
+  | { type: "installation"; installationId: string };
 
 export type MCPOriginType = "user" | "installation";
 
@@ -864,8 +859,7 @@ export interface MCPServer {
   connection: MCPConnection;
   description?: string;
   handshakeTimeout: MCPHandshakeTimeout;
-  name: string;
-  origin: MCPOrigin;
+  id: MCPServerID;
   status: MCPServerState;
 }
 
@@ -877,8 +871,13 @@ export interface MCPServerCandidate {
   name: string;
 }
 
+export interface MCPServerID {
+  name: string;
+  origin: MCPOrigin;
+}
+
 export interface MCPServerRequest {
-  server: string;
+  server: MCPServerID;
 }
 
 export type MCPServerState =
@@ -886,14 +885,21 @@ export type MCPServerState =
   | { type: "disconnected" }
   | { type: "connecting" }
   | { type: "connected"; toolCount: number }
-  | { type: "failed"; error: ProblemData }
-  | { type: "needsAuth"; error: ProblemData };
+  | { type: "failed"; error: { type: "mcp_release_unavailable" | "mcp_backend_unavailable" | "mcp_configuration_failed" | "mcp_dial_failed" | "mcp_tool_discovery_failed" | "mcp_authorization_failed" } }
+  | { type: "needsAuth"; error: { type: "mcp_authorization_required" } };
 
 export type MCPServerStateType = "disabled" | "disconnected" | "connecting" | "connected" | "failed" | "needsAuth";
 
+export interface MCPStatusProblem {
+  type: MCPStatusProblemType;
+}
+
+export type MCPStatusProblemType = "mcp_authorization_required" | "mcp_authorization_failed" | "mcp_dial_failed" | "mcp_tool_discovery_failed" | "mcp_configuration_failed" | "mcp_release_unavailable" | "mcp_backend_unavailable";
+
+export type MCPTestOutcome = "reachable" | "authorizationRequired" | "timedOut" | "failed";
+
 export interface MCPTestResult {
-  error?: ProblemData;
-  ok: boolean;
+  outcome: MCPTestOutcome;
 }
 
 export interface MCPTool {
@@ -902,12 +908,12 @@ export interface MCPTool {
   modelName: string;
   name: string;
   nameConflicts: ToolRef[];
-  server: string;
+  server: MCPServerID;
 }
 
 export interface MCPToolExposure {
   disabledTools: string[];
-  server: string;
+  server: MCPServerID;
 }
 
 export type MCPTransport = "stdio" | "streamableHttp";
@@ -1058,10 +1064,26 @@ export interface PlanStep {
   status: PlanStatus;
 }
 
+export type PluginComponent =
+  | { type: "manifestField"; name: string }
+  | { type: "flameExtension" }
+  | { type: "extensionField"; name: string }
+  | { type: "contribution"; name: string }
+  | { type: "mcp" }
+  | { type: "mcpServer"; name: string }
+  | { type: "skills" }
+  | { type: "skill"; name: string };
+
+export type PluginComponentChange = "enable" | "disable";
+
+export type PluginComponentType = "manifestField" | "flameExtension" | "extensionField" | "contribution" | "mcp" | "mcpServer" | "skills" | "skill";
+
 export interface PluginDiagnostic {
-  code: string;
-  component: string;
+  code: PluginDiagnosticCode;
+  component: PluginComponent;
 }
+
+export type PluginDiagnosticCode = "unknownField" | "invalidDeclaration" | "unsupportedContribution" | "componentLimit" | "invalidDependencies" | "unavailableComponent";
 
 export interface PluginInput {
   id: string;
@@ -1069,22 +1091,40 @@ export interface PluginInput {
   required: boolean;
   secret: boolean;
   server: string;
-  target: string;
+  target: PluginInputTarget;
 }
 
+export type PluginInputState =
+  | { type: "unset" }
+  | { type: "configured" }
+  | { type: "value"; value: string };
+
+export type PluginInputStateType = "unset" | "configured" | "value";
+
+export type PluginInputTarget = "env" | "header" | "authorization";
+
 export interface PluginInstallation {
-  approvedDigest?: string;
-  availability: PluginDiagnostic[];
   disabledServers: string[];
   disabledSkills: string[];
-  enabled: boolean;
-  grants: PluginRequestGrant[];
   id: string;
+  inputStates: Record<string, PluginInputState>;
+  presentation: PluginPresentation;
+  realization: PluginRealization;
   selected: PluginRelease;
   source: string;
   staged?: PluginRelease;
-  values: Record<string, string>;
+  state: PluginInstallationState;
 }
+
+export type PluginInstallationState = "unapproved" | "approved" | "enabled";
+
+export type PluginPresentation = "admitted" | "withheld";
+
+export type PluginRealization =
+  | { type: "available"; unavailableBackends?: string[] }
+  | { type: "releaseUnavailable" };
+
+export type PluginRealizationType = "available" | "releaseUnavailable";
 
 export interface PluginRelease {
   description?: string;
@@ -1092,7 +1132,6 @@ export interface PluginRelease {
   digest: string;
   inputs: PluginInput[];
   name: string;
-  requests: PluginRequestGrant[];
   servers: PluginServerDeclaration[];
   skills: PluginSkill[];
   themes: PluginTheme[];
@@ -1104,29 +1143,13 @@ export interface PluginReleaseRequest {
   installationId: string;
 }
 
-export interface PluginRemoval {
-  availability: PluginDiagnostic[];
-}
-
 export interface PluginRequest {
   installationId: string;
 }
 
-export interface PluginRequestGrant {
-  capability: string;
-  targets: string[];
-}
-
-export interface PluginServerDeclaration {
-  args?: string[];
-  command?: string;
-  cwd?: string;
-  env?: Record<string, string>;
-  headers?: Record<string, string>;
-  name: string;
-  type: string;
-  url?: string;
-}
+export type PluginServerDeclaration =
+  | { type: "stdio"; args?: string[]; command: string; dir?: string; env?: Record<string, string>; name: string }
+  | { type: "streamableHttp"; headers?: Record<string, string>; name: string; url: string };
 
 export interface PluginSkill {
   description: string;
@@ -1134,10 +1157,18 @@ export interface PluginSkill {
 }
 
 export interface PluginTheme {
-  colors: Record<string, string>;
+  colors: PluginThemeColors;
   id: string;
   scheme: PluginThemeScheme;
   title: string;
+}
+
+export interface PluginThemeColors {
+  accent?: string;
+  background?: string;
+  border?: string;
+  foreground?: string;
+  muted?: string;
 }
 
 export type PluginThemeScheme = "dark" | "light";
@@ -1167,15 +1198,13 @@ export type ProblemData =
   | { type: "invalid_request"; detail?: string; docUrl?: string }
   | { type: "item_not_found"; detail?: string; docUrl?: string }
   | { type: "mcp_authorization_attempt_not_found"; detail?: string; docUrl?: string }
-  | { type: "mcp_authorization_failed" }
-  | { type: "mcp_authorization_required" }
-  | { type: "mcp_dial_failed" }
   | { type: "mcp_owned_by_installation"; detail?: string; docUrl?: string }
   | { type: "mcp_server_already_exists"; detail?: string; docUrl?: string }
   | { type: "mcp_server_disabled"; detail?: string; docUrl?: string }
   | { type: "mcp_server_not_found"; detail?: string; docUrl?: string }
   | { type: "method_not_found"; detail?: string; docUrl?: string }
   | { type: "path_outside_root"; detail?: string; docUrl?: string }
+  | { type: "plugin_changed"; detail?: string; docUrl?: string }
   | { type: "plugin_in_use"; detail?: string; docUrl?: string }
   | { type: "plugin_not_found"; detail?: string; docUrl?: string }
   | { type: "plugin_stale"; detail?: string; docUrl?: string }
@@ -1183,9 +1212,7 @@ export type ProblemData =
   | { type: "plugin_unavailable"; detail?: string; docUrl?: string }
   | { type: "prompt_source_too_large"; detail?: string; docUrl?: string }
   | { type: "provider_error"; detail?: string; docUrl?: string }
-  | { type: "provider_not_configured" }
   | { type: "provider_rejected"; detail?: string; docUrl?: string }
-  | { type: "provider_test_failed" }
   | { type: "provider_unavailable"; detail?: string; docUrl?: string; retryAfterSeconds?: number }
   | { type: "rate_limited"; detail?: string; docUrl?: string; retryAfterSeconds?: number }
   | { type: "replay_cursor_invalid"; detail?: string; docUrl?: string }
@@ -1237,9 +1264,10 @@ export type ProviderCredentialRequirement = "apiKeyRequired" | "apiKeyOptional";
 
 export type ProviderKeySource = "stored" | "env";
 
+export type ProviderTestOutcome = "reachable" | "notConfigured" | "invalidCredentials" | "timedOut" | "failed";
+
 export interface ProviderTestResult {
-  error?: ProblemData;
-  ok: boolean;
+  outcome: ProviderTestOutcome;
 }
 
 export interface Question {
@@ -1408,7 +1436,7 @@ export type RuntimeEvent =
   | { type: "files.changed"; paths: string[]; sequence: number; watchId?: string; workspace?: WorkspaceRef }
   | { type: "skills.changed"; names?: string[]; sequence: number }
   | { type: "plugins.changed"; sequence: number }
-  | { type: "mcp.changed"; sequence: number; serverIds?: string[] }
+  | { type: "mcp.changed"; sequence: number; servers?: MCPServerID[] }
   | { type: "schedules.changed"; scheduleIds?: string[]; sequence: number }
   | { type: "sessions.changed"; sequence: number; sessionIds?: string[] }
   | { type: "runs.changed"; runIds?: string[]; sequence: number; sessionIds?: string[] }
@@ -1596,7 +1624,7 @@ export interface SetHookTrustRequest {
 export interface SetMCPToolExposureRequest {
   disabled: boolean;
   name: string;
-  server: string;
+  server: MCPServerID;
 }
 
 export interface SetPluginEnablementRequest {
@@ -1766,7 +1794,7 @@ export interface ToolInvocation {
 
 export type ToolRef =
   | { type: "builtIn"; name: "apply_patch" | "ask_user" | "create_goal" | "create_schedule" | "delete_schedule" | "delegate_task" | "edit" | "enter_plan_mode" | "exit_plan_mode" | "get_goal" | "glob" | "grep" | "http_request" | "list_schedules" | "list_skills" | "load_skill" | "lsp" | "propose_skill" | "read" | "read_shell_output" | "read_skill_resource" | "read_tool_result" | "report_goal_outcome" | "search_memory" | "search_tools" | "set_plan" | "shell" | "stop_shell" | "web_fetch" | "web_search" }
-  | { type: "mcp"; name: string; server: string }
+  | { type: "mcp"; name: string; server: MCPServerID }
   | { type: "a2a"; endpoint: string };
 
 export type ToolRefType = "builtIn" | "mcp" | "a2a";
@@ -1805,7 +1833,7 @@ export interface UpdateMCPServerRequest {
   description?: string;
   enabled?: boolean;
   handshakeTimeout?: MCPHandshakeTimeout;
-  server: string;
+  server: MCPServerID;
 }
 
 export interface UpdateProviderRequest {
@@ -1973,16 +2001,27 @@ export const WIRE_ENUMS = {
   MCPOriginType: ["user", "installation"],
   MCPSecretChangeType: ["set", "clear"],
   MCPServerStateType: ["disabled", "disconnected", "connecting", "connected", "failed", "needsAuth"],
+  MCPStatusProblemType: ["mcp_authorization_required", "mcp_authorization_failed", "mcp_dial_failed", "mcp_tool_discovery_failed", "mcp_configuration_failed", "mcp_release_unavailable", "mcp_backend_unavailable"],
+  MCPTestOutcome: ["reachable", "authorizationRequired", "timedOut", "failed"],
   MCPTransport: ["stdio", "streamableHttp"],
   MessagePhase: ["commentary", "finalAnswer"],
   Modality: ["text", "image", "audio", "video", "pdf"],
   ModelInvocationState: ["started", "completed", "failed", "unknown"],
   PlanStatus: ["pending", "in_progress", "completed"],
+  PluginComponentChange: ["enable", "disable"],
+  PluginComponentType: ["manifestField", "flameExtension", "extensionField", "contribution", "mcp", "mcpServer", "skills", "skill"],
+  PluginDiagnosticCode: ["unknownField", "invalidDeclaration", "unsupportedContribution", "componentLimit", "invalidDependencies", "unavailableComponent"],
+  PluginInputStateType: ["unset", "configured", "value"],
+  PluginInputTarget: ["env", "header", "authorization"],
+  PluginInstallationState: ["unapproved", "approved", "enabled"],
+  PluginPresentation: ["admitted", "withheld"],
+  PluginRealizationType: ["available", "releaseUnavailable"],
   PluginThemeScheme: ["dark", "light"],
   PluginValueChangeType: ["set", "clear"],
   ProviderConfigChangeType: ["set", "clear"],
   ProviderCredentialRequirement: ["apiKeyRequired", "apiKeyOptional"],
   ProviderKeySource: ["stored", "env"],
+  ProviderTestOutcome: ["reachable", "notConfigured", "invalidCredentials", "timedOut", "failed"],
   QuestionFieldType: ["text", "choice"],
   RememberScopeKind: ["session", "project", "global"],
   RestoreType: ["history", "files", "both"],

@@ -1,5 +1,5 @@
 import { useCallback, useSyncExternalStore } from "react";
-import { type MCPServerSettings } from "./mcpServerQueries";
+import { type MCPServerID, type MCPServerSettings } from "./mcpServerQueries";
 import type { MCPServerInput } from "./mcpServerInput";
 import type { MCPServerTestOutcome } from "./ports/mcpServerGateway";
 import { MCPServerMutationOwner } from "./mcpServerMutationOwner";
@@ -21,53 +21,66 @@ export function createMCPServer(input: MCPServerInput): Promise<MCPServerSetting
   return MCPServerMutationOwner.current().create(input);
 }
 
-function updateMCPServer(name: string, input: MCPServerInput): Promise<MCPServerSettings> {
-  return MCPServerMutationOwner.current().update(name, input);
+function updateMCPServer(server: MCPServerID, input: MCPServerInput): Promise<MCPServerSettings> {
+  return MCPServerMutationOwner.current().update(server, input);
 }
 
-export function setMCPServerEnabled(name: string, enabled: boolean): Promise<MCPServerSettings> {
-  return MCPServerMutationOwner.current().setEnabled(name, enabled);
+export function setMCPServerEnabled(
+  server: MCPServerID,
+  enabled: boolean,
+): Promise<MCPServerSettings> {
+  return MCPServerMutationOwner.current().setEnabled(server, enabled);
 }
 
-export function deleteMCPServer(name: string): Promise<void> {
-  return MCPServerMutationOwner.current().delete(name);
+export function deleteMCPServer(server: MCPServerID): Promise<void> {
+  return MCPServerMutationOwner.current().delete(server);
 }
 
-export function reconnectMCPServer(name: string): Promise<void> {
-  return MCPServerMutationOwner.current().reconnect(name);
+export function reconnectMCPServer(server: MCPServerID): Promise<void> {
+  return MCPServerMutationOwner.current().reconnect(server);
 }
 
 export function useCreateMCPServer(): (input: MCPServerInput) => Promise<void> {
   return useCallback((input) => createMCPServer(input).then(() => undefined), []);
 }
 
-export function useUpdateMCPServer(): (name: string, input: MCPServerInput) => Promise<void> {
-  return useCallback((name, input) => updateMCPServer(name, input).then(() => undefined), []);
+export function useUpdateMCPServer(): (
+  server: MCPServerID,
+  input: MCPServerInput,
+) => Promise<void> {
+  return useCallback((server, input) => updateMCPServer(server, input).then(() => undefined), []);
 }
 
-export function useDeleteMCPServer(): (name: string) => Promise<void> {
-  return useCallback((name) => deleteMCPServer(name), []);
+export function useDeleteMCPServer(): (server: MCPServerID) => Promise<void> {
+  return useCallback((server) => deleteMCPServer(server), []);
 }
 
-export function useSetMCPServerEnabled(): (name: string, enabled: boolean) => Promise<void> {
+export function useSetMCPServerEnabled(): (server: MCPServerID, enabled: boolean) => Promise<void> {
   return useCallback(
-    (name, enabled) => setMCPServerEnabled(name, enabled).then(() => undefined),
+    (server, enabled) => setMCPServerEnabled(server, enabled).then(() => undefined),
     [],
   );
 }
 
-export function useAuthorizeMCPServer(): (name: string, signal?: AbortSignal) => Promise<void> {
-  return useCallback((name, signal) => authorizeMCPServer(name, signal), []);
+export function useAuthorizeMCPServer(): (
+  server: MCPServerID,
+  signal?: AbortSignal,
+) => Promise<void> {
+  return useCallback((server, signal) => authorizeMCPServer(server, signal), []);
 }
 
-export async function authorizeMCPServer(name: string, signal?: AbortSignal): Promise<void> {
-  await MCPServerMutationOwner.current().authorize(name, signal);
+export async function authorizeMCPServer(server: MCPServerID, signal?: AbortSignal): Promise<void> {
+  await MCPServerMutationOwner.current().authorize(server, signal);
 }
 
 export function useTestMCPServer(): (input: MCPServerInput) => Promise<MCPServerTestOutcome> {
   return useCallback((input) => MCPServerMutationOwner.current().test(input), []);
 }
 
-export function setMCPToolExposure(server: string, name: string, disabled: boolean): Promise<void> {
+export function setMCPToolExposure(
+  server: MCPServerID,
+  name: string,
+  disabled: boolean,
+): Promise<void> {
   return MCPServerMutationOwner.current().setToolExposure(server, name, disabled);
 }

@@ -24,7 +24,7 @@ import { depthStep } from "../kit/tokens";
 import { visualStyleMotionTokens } from "../visualStyles/tokens";
 import { resolveThemeScheme } from "../application/themeScheme";
 import { subscribeSystemScheme } from "./systemAppearance";
-import { rememberThemePaint } from "./themePaint";
+import { forgetThemePaint, rememberThemePaint } from "./themePaint";
 
 type UiEffectStore<T extends AppearancePreference> = Pick<StoreApi<T>, "getState" | "subscribe">;
 
@@ -48,7 +48,7 @@ function replaceTokens(previous: string[], tokens: Record<string, string>): stri
 let appliedColorTokens: string[] = [];
 let appliedStyleTokens: string[] = [];
 
-function applyColorTheme(theme: ColorThemeId, accent: string, contrast: number): void {
+function applyColorTheme(theme: ColorThemeId, preferredAccent: string, contrast: number): void {
   const root = document.documentElement;
   const scheme = resolveThemeScheme(theme);
   const spec = lookupExtensionByKey(COLOR_THEME, theme === "system" ? scheme : theme);
@@ -56,7 +56,8 @@ function applyColorTheme(theme: ColorThemeId, accent: string, contrast: number):
   root.classList.remove("theme-light", "theme-dark");
   root.classList.add(`theme-${scheme}`);
 
-  const liveAccent = scheme === "light" ? lightAccent(accent) : accent;
+  const liveAccent =
+    spec?.accent ?? (scheme === "light" ? lightAccent(preferredAccent) : preferredAccent);
   appliedColorTokens = replaceTokens(appliedColorTokens, {
     ...spec?.tokens,
   });
@@ -98,7 +99,8 @@ function applyColorTheme(theme: ColorThemeId, accent: string, contrast: number):
   publishScheme(scheme);
   const background = resolved("--color-bg");
   root.style.backgroundColor = background;
-  if (spec) rememberThemePaint(theme, scheme, background);
+  if (spec && theme !== "system") rememberThemePaint(theme, scheme, background);
+  else forgetThemePaint();
 }
 
 function applyVisualStyle(id: VisualStyleId): void {

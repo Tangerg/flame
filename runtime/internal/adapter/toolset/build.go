@@ -111,9 +111,6 @@ func Build(ctx context.Context, config BuildConfig) (_ Built, err error) {
 	if !filepath.IsAbs(config.UserHome) {
 		return Built{}, errors.New("toolset: user home must be absolute")
 	}
-	if _, err := descriptors(); err != nil {
-		return Built{}, err
-	}
 	online, err := buildOnline(config.Online)
 	if err != nil {
 		return Built{}, err

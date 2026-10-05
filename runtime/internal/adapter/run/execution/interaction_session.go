@@ -36,6 +36,7 @@ type interactionSession struct {
 	state               interactionState
 	childProjection     interactionChildProjection
 	accounting          interactionAccounting
+	tails               requestTails
 	unknownPollInterval time.Duration
 	statePollInterval   time.Duration
 	maintenance         RunMaintenance
@@ -129,6 +130,7 @@ func newInteractionSession(
 			start.ModelSelection,
 			config.Pricing,
 		),
+		tails:               newRequestTails(),
 		unknownPollInterval: policy.unknownEffectPollInterval,
 		statePollInterval:   policy.statePollInterval,
 		maintenance:         config.Maintenance,

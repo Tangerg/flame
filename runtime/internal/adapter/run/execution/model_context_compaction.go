@@ -90,6 +90,7 @@ type ModelContextCompaction struct {
 	selection     modelref.Selection
 	instructions  []corechat.Message
 	candidate     []corechat.Message
+	trailer       []corechat.Message
 	tools         []corechat.ToolDefinition
 	options       corechat.Options
 	calibration   ModelContextTokenCalibration
@@ -106,10 +107,14 @@ type ModelContextCompactionInput struct {
 	Selection    modelref.Selection
 	Instructions []corechat.Message
 	Candidate    []corechat.Message
-	Tools        []corechat.ToolDefinition
-	Options      corechat.Options
-	Calibration  ModelContextTokenCalibration
-	Counter      ModelContextInputTokenCounter
+	// Trailer is Runtime context the model boundary appends after the reduced
+	// messages of this one call. It counts toward the budget but is never
+	// folded, returned, or adopted into the Interaction context.
+	Trailer     []corechat.Message
+	Tools       []corechat.ToolDefinition
+	Options     corechat.Options
+	Calibration ModelContextTokenCalibration
+	Counter     ModelContextInputTokenCounter
 	// ProtectedTail is how many trailing Candidate messages must survive verbatim.
 	// It is counted against Candidate, not against whatever the compactor ends up
 	// folding: a durable compaction folds the Session's stored history and
@@ -194,6 +199,16 @@ func newModelContextCompaction(
 			)
 		}
 	}
+	for index := range input.Trailer {
+		if err := input.Trailer[index].Validate(); err != nil {
+			return ModelContextCompaction{}, fmt.Errorf(
+				"%w: trailer message %d: %w",
+				errInvalidModelContextCompaction,
+				index,
+				err,
+			)
+		}
+	}
 	for index := range input.Tools {
 		if err := input.Tools[index].Validate(); err != nil {
 			return ModelContextCompaction{}, fmt.Errorf(
@@ -237,6 +252,7 @@ func newModelContextCompaction(
 		selection:     input.Selection,
 		instructions:  cloneChatMessages(input.Instructions),
 		candidate:     cloneChatMessages(input.Candidate),
+		trailer:       cloneChatMessages(input.Trailer),
 		tools:         frozenTools,
 		options:       input.Options.Clone(),
 		calibration:   input.Calibration,
@@ -333,6 +349,11 @@ func normalizedModelContextMessages(messages []corechat.Message, owner string) (
 		normalized = append(normalized, modelContextMessage{message: message, sourceEnd: index + 1})
 	}
 	return normalized, nil
+}
+
+// Trailer returns the per-call messages measured after every candidate.
+func (m ModelContextCompaction) Trailer() []corechat.Message {
+	return cloneChatMessages(m.trailer)
 }
 
 // Tools returns the exact model-visible Tool manifest for budget estimation.

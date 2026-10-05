@@ -14,7 +14,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	sqlitestore "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/localruntime"
@@ -231,8 +230,6 @@ func (b *Bundle) Close() error {
 	return b.closeErr
 }
 
-func (b *Bundle) MCPAuthorization(registry interface {
-	Get(context.Context, mcpserver.ServerName) (mcpserver.Server, bool, error)
-}) *sqlitestore.MCPAuthorizationStore {
-	return sqlitestore.NewMCPAuthorizationStore(b.db, registry)
+func (b *Bundle) MCPAuthorization() *sqlitestore.MCPAuthorizationStore {
+	return sqlitestore.NewMCPAuthorizationStore(b.db)
 }

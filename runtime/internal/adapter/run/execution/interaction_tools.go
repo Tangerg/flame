@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
@@ -51,7 +53,7 @@ type ToolAuthorizationRequest struct {
 	WorkspaceCWD      string
 	CallID            string
 	Tool              tool.Ref
-	SourceFingerprint string
+	SourceFingerprint fingerprint.Digest
 	ToolName          string
 	Arguments         tool.Arguments
 	SafetyClass       tool.SafetyClass

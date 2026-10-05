@@ -27,10 +27,7 @@ const schemaDialect = "https://json-schema.org/draft/2020-12/schema"
 // notification params are registered separately because they are not callable
 // methods, but are equally part of the wire surface.
 func walkWireTypes(registry *delivery.Registry, shapes *dispatch.Shapes) (*schemaSet, error) {
-	contracts, err := toolset.PresentationContracts()
-	if err != nil {
-		return nil, err
-	}
+	contracts := toolset.PresentationContracts()
 	set := newSchemaSet(shapes)
 	httpContract := runtimehttp.Contract()
 	for _, enum := range httpContract.Enums {

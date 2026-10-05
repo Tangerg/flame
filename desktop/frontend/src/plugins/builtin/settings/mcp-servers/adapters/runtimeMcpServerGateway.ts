@@ -1,5 +1,4 @@
 import { t } from "@/lib/i18n";
-import { describeProblem } from "@/lib/rpcErrors";
 import type {
   MCPServerCandidate,
   MCPHandshakeTimeout as WireMCPHandshakeTimeout,
@@ -9,11 +8,14 @@ import type {
   MCPEnvironmentChange,
   MCPHeadersChange,
   FlameClient,
+  MCPServerID,
   UpdateMCPServerRequest,
 } from "@flame/runtime-contract/client";
+import type { MCPTestResult } from "@flame/runtime-contract/wire";
 import type { MCPServerInput } from "../application/mcpServerInput";
 import type { MCPHandshakeTimeout } from "../application/mcpHandshakeTimeout";
 import { mcpServerSettings } from "./runtimeMcpServerProjection";
+import { mcpStatusText } from "./mcpStatusText";
 import {
   type MCPAuthorizationAttempt as AuthorizationAttempt,
   type MCPServerGateway,
@@ -67,9 +69,9 @@ function candidate(input: MCPServerInput): MCPServerCandidate {
   };
 }
 
-function updateRequest(name: string, input: MCPServerInput): UpdateMCPServerRequest {
+function updateRequest(server: MCPServerID, input: MCPServerInput): UpdateMCPServerRequest {
   return {
-    server: name,
+    server,
     description: input.description ?? "",
     connection: connectionInput(input),
     handshakeTimeout: wireHandshakeTimeout(input.handshakeTimeout),
@@ -92,8 +94,21 @@ function authorizationAttempt(attempt: MCPAuthorizationAttempt): AuthorizationAt
       return {
         id: attempt.id,
         status: "failed",
-        error: describeProblem(attempt.status.error) ?? t("mcp.error.signIn"),
+        error: mcpStatusText(attempt.status.error.type),
       };
+  }
+}
+
+function testOutcome(result: MCPTestResult): { ok: boolean; error?: string } {
+  switch (result.outcome) {
+    case "reachable":
+      return { ok: true };
+    case "authorizationRequired":
+      return { ok: false, error: mcpStatusText("mcp_authorization_required") };
+    case "timedOut":
+      return { ok: false, error: t("mcp.testOutcome.timedOut") };
+    case "failed":
+      return { ok: false, error: t("mcp.testOutcome.failed") };
   }
 }
 
@@ -103,25 +118,25 @@ function runtimeMCPServerGateway(client: FlameClient): MCPServerGateway {
       const saved = await client.mcp.create(candidate(input));
       return mcpServerSettings(saved);
     },
-    async update(name, input) {
-      const saved = await client.mcp.update(updateRequest(name, input));
+    async update(server, input) {
+      const saved = await client.mcp.update(updateRequest(server, input));
       return mcpServerSettings(saved);
     },
-    async delete(name) {
-      await client.mcp.delete(name);
+    async delete(server) {
+      await client.mcp.delete(server);
     },
-    async setEnabled(name, enabled) {
-      const saved = await client.mcp.update({ server: name, enabled });
+    async setEnabled(server, enabled) {
+      const saved = await client.mcp.update({ server, enabled });
       return mcpServerSettings(saved);
     },
     async setToolExposure(server, name, disabled) {
       await client.mcp.setToolExposure({ server, name, disabled });
     },
-    async reconnect(name) {
-      await client.mcp.reconnect(name);
+    async reconnect(server) {
+      await client.mcp.reconnect(server);
     },
-    async createAuthorizationAttempt(name, signal) {
-      const attempt = await client.mcp.authorizationAttempts.create(name, signal);
+    async createAuthorizationAttempt(server, signal) {
+      const attempt = await client.mcp.authorizationAttempts.create(server, signal);
       return authorizationAttempt(attempt);
     },
     async getAuthorizationAttempt(id, signal) {
@@ -130,10 +145,7 @@ function runtimeMCPServerGateway(client: FlameClient): MCPServerGateway {
     },
     async test(input) {
       const result = await client.mcp.test(candidate(input));
-      return {
-        ok: result.ok,
-        error: result.ok ? undefined : (describeProblem(result.error) ?? t("mcp.error.test")),
-      };
+      return testOutcome(result);
     },
   };
 }

@@ -53,18 +53,18 @@ func TestProblemCatalogPublishesExactChannelSemantics(t *testing.T) {
 		t.Fatalf("execution problems omit %q: %v", protocol.ProblemChildRunCanceled, execution)
 	}
 
-	inline := ProblemTypesFor(ProblemChannelInlineStatus)
-	for _, kind := range []string{protocol.ProblemInvalidAPIKey, protocol.ProblemTimeout} {
-		if !slices.Contains(inline, kind) || !slices.Contains(execution, kind) {
-			t.Fatalf("shared probe/execution problem %q is not declared on both channels", kind)
-		}
-	}
+	// MCP connection status has its own closed vocabulary; none of it is a
+	// ProblemData type, so a status category can never be raised as an error.
 	for _, contract := range ProblemContracts() {
-		if !slices.Equal(contract.Channels, []ProblemChannel{ProblemChannelInlineStatus}) {
-			continue
-		}
-		if len(contract.Required) != 0 || len(contract.Optional) != 0 {
-			t.Fatalf("inline problem %q carries UI or structured fields: %+v", contract.Type, contract)
+		for _, status := range []protocol.MCPStatusProblemType{
+			protocol.MCPStatusAuthorizationRequired, protocol.MCPStatusAuthorizationFailed,
+			protocol.MCPStatusDialFailed, protocol.MCPStatusToolDiscoveryFailed,
+			protocol.MCPStatusConfigurationFailed, protocol.MCPStatusReleaseUnavailable,
+			protocol.MCPStatusBackendUnavailable,
+		} {
+			if contract.Type == string(status) {
+				t.Fatalf("MCP status category %q is also a ProblemData type", status)
+			}
 		}
 	}
 }

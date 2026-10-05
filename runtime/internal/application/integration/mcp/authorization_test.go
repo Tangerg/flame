@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -13,10 +14,10 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
-func TestAuthorizationReadFailureRetiresConnectingStatus(t *testing.T) {
-	name := testMCPServerName("github")
+func TestAuthorizationReadFailureSettlesAsConfigurationFailure(t *testing.T) {
+	name := testsupport.UserMCPServer("github")
 	ports := &fakePorts{
-		statuses:         []mcpserver.ConnectionStatus{{Name: name, State: mcpserver.ConnectionConnected}},
+		statuses:         []mcpserver.ConnectionStatus{{Server: name, State: mcpserver.ConnectionConnected}},
 		authorizeStarted: make(chan string, 1),
 		releaseAuthorize: make(chan struct{}),
 	}
@@ -41,10 +42,10 @@ func TestAuthorizationReadFailureRetiresConnectingStatus(t *testing.T) {
 	if settled.Status != AuthorizationAttemptFailed {
 		t.Fatalf("authorization attempt = %s, want failed", settled.Status)
 	}
-	if status := testServerStatus(c, name); status.State != mcpserver.ConnectionConnected {
-		t.Fatalf("retired authorization status = %+v, want live connected state", status)
+	if status := testServerStatus(c, name); status.State != mcpserver.ConnectionFailed || status.Failure != mcpserver.FailureConfiguration {
+		t.Fatalf("unverifiable source status = %+v, want configuration failure", status)
 	}
-	for _, want := range []mcpserver.ConnectionState{mcpserver.ConnectionConnecting, mcpserver.ConnectionConnected} {
+	for _, want := range []mcpserver.ConnectionState{mcpserver.ConnectionConnecting, mcpserver.ConnectionFailed} {
 		select {
 		case got := <-states:
 			if got != want {
@@ -57,9 +58,9 @@ func TestAuthorizationReadFailureRetiresConnectingStatus(t *testing.T) {
 }
 
 func TestAuthorizationShutdownRetiresConnectingStatus(t *testing.T) {
-	name := testMCPServerName("github")
+	name := testsupport.UserMCPServer("github")
 	ports := &fakePorts{
-		statuses:         []mcpserver.ConnectionStatus{{Name: name, State: mcpserver.ConnectionConnected}},
+		statuses:         []mcpserver.ConnectionStatus{{Server: name, State: mcpserver.ConnectionConnected}},
 		authorizeStarted: make(chan string, 1),
 		releaseAuthorize: make(chan struct{}),
 	}
@@ -80,9 +81,9 @@ func TestAuthorizationShutdownRetiresConnectingStatus(t *testing.T) {
 }
 
 func TestQueuedConnectingNotificationCannotReviveRetiredAuthorization(t *testing.T) {
-	name := testMCPServerName("github")
+	name := testsupport.UserMCPServer("github")
 	ports := &fakePorts{
-		statuses:         []mcpserver.ConnectionStatus{{Name: name, State: mcpserver.ConnectionConnected}},
+		statuses:         []mcpserver.ConnectionStatus{{Server: name, State: mcpserver.ConnectionConnected}},
 		authorizeStarted: make(chan string, 1),
 		releaseAuthorize: make(chan struct{}),
 	}
@@ -127,15 +128,15 @@ func TestQueuedConnectingNotificationCannotReviveRetiredAuthorization(t *testing
 	}
 	release()
 	requireCoordinatorShutdown(t, c)
-	if status := testServerStatus(c, name); status.State != mcpserver.ConnectionConnected {
+	if status := testServerStatus(c, name); status.State != mcpserver.ConnectionFailed || status.Failure != mcpserver.FailureConfiguration {
 		t.Fatalf("queued notification revived a retired dial: %+v", status)
 	}
 }
 
 func TestQueuedRegistryNotificationCannotHideCompletedConnection(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		name := testMCPServerName("github")
-		ports := &fakePorts{statuses: []mcpserver.ConnectionStatus{{Name: name, State: mcpserver.ConnectionConnected}}}
+		name := testsupport.UserMCPServer("github")
+		ports := &fakePorts{statuses: []mcpserver.ConnectionStatus{{Server: name, State: mcpserver.ConnectionConnected}}}
 		cfg := configWithPorts(ports)
 		firstNotice := make(chan struct{})
 		releaseNotice := make(chan struct{})
@@ -179,7 +180,7 @@ type failingConnectionRead struct {
 	failed atomic.Bool
 }
 
-func (r *failingConnectionRead) Definition(ctx context.Context, name mcpserver.ServerName) (mcpserver.Server, bool, error) {
+func (r *failingConnectionRead) Definition(ctx context.Context, name mcpserver.ID) (mcpserver.Server, bool, error) {
 	if r.failed.Load() {
 		return mcpserver.Server{}, false, errors.New("registry read failed")
 	}
@@ -188,13 +189,13 @@ func (r *failingConnectionRead) Definition(ctx context.Context, name mcpserver.S
 
 func TestAuthorizationAttemptReportsFailureWithoutDiscardingResult(t *testing.T) {
 	ports := &fakePorts{
-		statuses:     []mcpserver.ConnectionStatus{{Name: testMCPServerName("github")}},
+		statuses:     []mcpserver.ConnectionStatus{{Server: testsupport.UserMCPServer("github")}},
 		authorizeErr: errors.New("oauth exchange exposed a secret-bearing response"),
 	}
 	c := testCoordinator(t, configWithPorts(ports))
 	defer requireCoordinatorShutdown(t, c)
 
-	created, err := c.CreateAuthorizationAttempt(context.Background(), testMCPServerName("github"))
+	created, err := c.CreateAuthorizationAttempt(context.Background(), testsupport.UserMCPServer("github"))
 	if err != nil {
 		t.Fatalf("CreateAuthorizationAttempt: %v", err)
 	}
@@ -207,19 +208,19 @@ func TestAuthorizationAttemptReportsFailureWithoutDiscardingResult(t *testing.T)
 func TestAuthorizationAttemptIsCanceledWhenSuperseded(t *testing.T) {
 	authorizeStarted := make(chan string, 1)
 	ports := &fakePorts{
-		statuses:         []mcpserver.ConnectionStatus{{Name: testMCPServerName("github"), State: mcpserver.ConnectionConnected}},
+		statuses:         []mcpserver.ConnectionStatus{{Server: testsupport.UserMCPServer("github"), State: mcpserver.ConnectionConnected}},
 		authorizeStarted: authorizeStarted,
 		releaseAuthorize: make(chan struct{}),
 	}
 	c := testCoordinator(t, configWithPorts(ports))
 	defer requireCoordinatorShutdown(t, c)
 
-	created, err := c.CreateAuthorizationAttempt(context.Background(), testMCPServerName("github"))
+	created, err := c.CreateAuthorizationAttempt(context.Background(), testsupport.UserMCPServer("github"))
 	if err != nil {
 		t.Fatalf("CreateAuthorizationAttempt: %v", err)
 	}
 	<-authorizeStarted
-	if err := c.ReconnectServer(context.Background(), testMCPServerName("github")); err != nil {
+	if err := c.ReconnectServer(context.Background(), testsupport.UserMCPServer("github")); err != nil {
 		t.Fatalf("ReconnectServer: %v", err)
 	}
 	settled := awaitAuthorizationAttempt(t, c, created.ID)
@@ -229,9 +230,9 @@ func TestAuthorizationAttemptIsCanceledWhenSuperseded(t *testing.T) {
 }
 
 func TestAuthorizationAttemptIsCanceledWhenSupersededDuringRegistryRead(t *testing.T) {
-	name := testMCPServerName("github")
+	name := testsupport.UserMCPServer("github")
 	ports := &fakePorts{
-		statuses:         []mcpserver.ConnectionStatus{{Name: name, State: mcpserver.ConnectionConnected}},
+		statuses:         []mcpserver.ConnectionStatus{{Server: name, State: mcpserver.ConnectionConnected}},
 		authorizeStarted: make(chan string, 1),
 		releaseAuthorize: make(chan struct{}),
 	}
@@ -274,7 +275,7 @@ type cancelableRegistryRead struct {
 	started chan struct{}
 }
 
-func (r *cancelableRegistryRead) Definition(ctx context.Context, name mcpserver.ServerName) (mcpserver.Server, bool, error) {
+func (r *cancelableRegistryRead) Definition(ctx context.Context, name mcpserver.ID) (mcpserver.Server, bool, error) {
 	select {
 	case <-r.block:
 		close(r.started)
@@ -297,7 +298,7 @@ func TestAuthorizationAttemptStoreRetainsOnlyTerminalResults(t *testing.T) {
 		time.Minute,
 	)
 
-	pending := store.create(testMCPServerName("github"))
+	pending := store.create(testsupport.UserMCPServer("github"))
 	now = now.Add(2 * time.Minute)
 	if _, ok := store.get(pending.ID); !ok {
 		t.Fatal("pending attempt expired")
@@ -324,11 +325,11 @@ func TestAuthorizationAttemptRejectsUnknownID(t *testing.T) {
 }
 
 func TestAuthorizationAttemptRejectsNonHTTPServerBeforeDispatch(t *testing.T) {
-	name := testMCPServerName("filesystem")
-	ports := &fakePorts{statuses: []mcpserver.ConnectionStatus{{Name: name}}}
-	registry := &testRegistry{servers: map[mcpserver.ServerName]mcpserver.Server{
+	name := testsupport.UserMCPServer("filesystem")
+	ports := &fakePorts{statuses: []mcpserver.ConnectionStatus{{Server: name}}}
+	registry := &testRegistry{servers: map[mcpserver.ID]mcpserver.Server{
 		name: {
-			Name: name, Enabled: true,
+			Source: mcpserver.UserSource(), Name: name.Name(), Enabled: true,
 			Transport: mcpserver.TransportStdio, Command: "mcp-filesystem",
 		},
 	}}

@@ -1,7 +1,6 @@
 package toolset
 
 import (
-	"fmt"
 	"iter"
 	"reflect"
 
@@ -21,8 +20,9 @@ type resultProjectionContract struct {
 	enums      func() map[reflect.Type][]string
 }
 
-// Built-in membership belongs to the domain. This catalog supplies policy and
-// client presentation; tool constructors own model descriptions and schemas.
+// Built-in membership belongs to the domain; this catalog is keyed by it and a
+// test holds it to exactly the domain's set. It supplies policy and client
+// presentation; tool constructors own model descriptions and schemas.
 type builtInDescriptor struct {
 	safety        tool.SafetyClass
 	activityText  string
@@ -32,7 +32,7 @@ type builtInDescriptor struct {
 	outcome       outcomeProjection
 }
 
-var builtInDescriptors = map[string]builtInDescriptor{
+var builtInDescriptors = map[tool.BuiltInName]builtInDescriptor{
 	tool.Read:              builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Reading file"},
 	tool.Glob:              builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Finding files", result: searchResultContract()},
 	tool.Grep:              builtInDescriptor{safety: tool.SafetyClassSafe, activityText: "Searching", result: searchResultContract()},
@@ -65,30 +65,20 @@ var builtInDescriptors = map[string]builtInDescriptor{
 	tool.HTTPRequest:       builtInDescriptor{safety: tool.SafetyClassNetwork, activity: httpActivity},
 }
 
-func descriptors() (iter.Seq2[string, builtInDescriptor], error) {
-	names := tool.BuiltInNames()
-	for name := range builtInDescriptors {
-		if _, err := tool.BuiltIn(name); err != nil {
-			return nil, fmt.Errorf("toolset: behavior descriptor: %w", err)
-		}
-	}
-	for _, name := range names {
-		if _, found := builtInDescriptors[name]; !found {
-			return nil, fmt.Errorf("toolset: built-in %q has no behavior descriptor", name)
-		}
-	}
-	return func(yield func(string, builtInDescriptor) bool) {
-		for _, name := range names {
+func descriptors() iter.Seq2[tool.BuiltInName, builtInDescriptor] {
+	return func(yield func(tool.BuiltInName, builtInDescriptor) bool) {
+		for _, name := range tool.BuiltInNames() {
 			if !yield(name, builtInDescriptors[name]) {
 				return
 			}
 		}
-	}, nil
+	}
 }
 func descriptorFor(ref tool.Ref) (builtInDescriptor, bool) {
-	if ref.Kind() != tool.BuiltInKind {
+	name, ok := ref.BuiltIn()
+	if !ok {
 		return builtInDescriptor{}, false
 	}
-	descriptor, found := builtInDescriptors[ref.Name()]
+	descriptor, found := builtInDescriptors[name]
 	return descriptor, found
 }

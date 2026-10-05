@@ -1,19 +1,7 @@
 package delivery
 
-import "github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+import "github.com/Tangerg/flame/runtime/protocol"
 
-func testMCPServerName(raw string) mcpserver.ServerName {
-	name, err := mcpserver.ParseServerName(raw)
-	if err != nil {
-		panic(err)
-	}
-	return name
-}
-
-func testRemoteToolName(raw string) mcpserver.RemoteToolName {
-	name, err := mcpserver.ParseRemoteToolName(raw)
-	if err != nil {
-		panic(err)
-	}
-	return name
+func wireUserServer(name string) protocol.MCPServerID {
+	return protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginUser}, Name: name}
 }

@@ -211,13 +211,61 @@ func (c Candidate) Clone() Candidate {
 	return c
 }
 
+// UserServer is the identity every CLI-authored candidate receives: the user's
+// registry owns it under the authored name.
+func UserServer(name string) protocol.MCPServerID {
+	return protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginUser}, Name: name}
+}
+
+// ParseServerReference reads the terminal's server argument: a user server by
+// name, or an installation server as "<installation>/<name>". The text is
+// command syntax only; every Runtime call carries the structured identity.
+func ParseServerReference(text string) (protocol.MCPServerID, error) {
+	text = strings.TrimSpace(text)
+	id := UserServer(text)
+	if installation, name, found := strings.Cut(text, "/"); found {
+		id = protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installation}, Name: name}
+	}
+	if err := protocol.ValidateWireTree(id); err != nil {
+		return protocol.MCPServerID{}, fmt.Errorf("MCP server %q: %w", text, err)
+	}
+	return id, nil
+}
+
+// ServerLabel renders an identity in the syntax ParseServerReference reads.
+func ServerLabel(id protocol.MCPServerID) string {
+	if id.Origin.Type == protocol.MCPOriginInstallation {
+		return id.Origin.InstallationID + "/" + id.Name
+	}
+	return id.Name
+}
+
+// ToolLabel names a tool by its source, rendering an MCP server in the form
+// ServerLabel reads back. The wire contract, validated at the binding, makes
+// every other shape a contract violation rather than text to pass through.
+func ToolLabel(ref protocol.ToolRef) (string, error) {
+	switch ref.Type {
+	case protocol.ToolRefBuiltIn:
+		return "builtIn/" + ref.Name, nil
+	case protocol.ToolRefMCP:
+		if ref.Server == nil {
+			return "", fmt.Errorf("runtime contract violation: MCP tool %q has no server", ref.Name)
+		}
+		return "mcp/" + ServerLabel(*ref.Server) + "/" + ref.Name, nil
+	case protocol.ToolRefA2A:
+		return "a2a/" + ref.Endpoint, nil
+	default:
+		return "", fmt.Errorf("runtime contract violation: unknown tool source %q", ref.Type)
+	}
+}
+
 func (c Candidate) ValidateResult(result protocol.MCPServer) error {
 	if err := c.Validate(); err != nil {
 		return err
 	}
 	var problems []error
-	if result.Name != c.Name {
-		problems = append(problems, fmt.Errorf("runtime returned server %q, want %q", result.Name, c.Name))
+	if result.ID != UserServer(c.Name) {
+		problems = append(problems, fmt.Errorf("runtime returned server %q, want %q", ServerLabel(result.ID), c.Name))
 	}
 	if result.Description != c.Description {
 		problems = append(problems, fmt.Errorf("runtime returned description %q, want %q", result.Description, c.Description))
@@ -235,7 +283,7 @@ func (c Candidate) ValidateResult(result protocol.MCPServer) error {
 }
 
 type ServerUpdate struct {
-	Server           string
+	Server           protocol.MCPServerID
 	Enabled          *bool
 	Description      *string
 	Connection       *ConnectionInput
@@ -243,20 +291,20 @@ type ServerUpdate struct {
 }
 
 func (s ServerUpdate) Validate() error {
-	if strings.TrimSpace(s.Server) == "" {
-		return errors.New("MCP update server is empty")
+	if err := protocol.ValidateWireTree(s.Server); err != nil {
+		return fmt.Errorf("MCP update server: %w", err)
 	}
 	if !s.HasChanges() {
 		return errors.New("MCP update has no changes")
 	}
 	if s.Connection != nil {
 		if err := s.Connection.Validate(); err != nil {
-			return fmt.Errorf("MCP update %s: %w", s.Server, err)
+			return fmt.Errorf("MCP update %s: %w", ServerLabel(s.Server), err)
 		}
 	}
 	if s.HandshakeTimeout != nil {
 		if err := s.HandshakeTimeout.Validate(); err != nil {
-			return fmt.Errorf("MCP update %s: %w", s.Server, err)
+			return fmt.Errorf("MCP update %s: %w", ServerLabel(s.Server), err)
 		}
 	}
 
@@ -272,8 +320,8 @@ func (s ServerUpdate) ValidateResult(result protocol.MCPServer) error {
 		return err
 	}
 	var problems []error
-	if result.Name != s.Server {
-		problems = append(problems, fmt.Errorf("runtime returned server %q, want %q", result.Name, s.Server))
+	if result.ID != s.Server {
+		problems = append(problems, fmt.Errorf("runtime returned server %q, want %q", ServerLabel(result.ID), ServerLabel(s.Server)))
 	}
 	if s.Enabled != nil {
 		problems = append(problems, validateEnabledResult(*s.Enabled, result.Status))
@@ -289,7 +337,7 @@ func (s ServerUpdate) ValidateResult(result protocol.MCPServer) error {
 		problems = append(problems, s.Connection.validateUpdateResult(result.Connection))
 	}
 	if err := errors.Join(problems...); err != nil {
-		return fmt.Errorf("MCP update %s: %w", s.Server, err)
+		return fmt.Errorf("MCP update %s: %w", ServerLabel(s.Server), err)
 	}
 	return nil
 }
@@ -422,7 +470,7 @@ func validateMaskedMap[T interface {
 // can reject a response that silently crosses authorization ownership.
 type AuthorizationReference struct {
 	ID     string
-	Server string
+	Server protocol.MCPServerID
 }
 
 func (a AuthorizationReference) Validate() error {
@@ -430,7 +478,7 @@ func (a AuthorizationReference) Validate() error {
 	if err := (protocol.MCPAuthorizationAttemptRequest{AttemptID: a.ID}).ValidateWire(); err != nil {
 		problems = append(problems, err)
 	}
-	if err := (protocol.MCPServerRequest{Server: a.Server}).ValidateWire(); err != nil {
+	if err := protocol.ValidateWireTree(protocol.MCPServerRequest{Server: a.Server}); err != nil {
 		problems = append(problems, err)
 	}
 	if err := errors.Join(problems...); err != nil {

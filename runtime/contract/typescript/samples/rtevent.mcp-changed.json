@@ -1,5 +1,8 @@
 {
   "type": "mcp.changed",
   "sequence": 14,
-  "serverIds": ["filesystem"]
+  "servers": [
+    {"origin": {"type": "user"}, "name": "filesystem"},
+    {"origin": {"type": "installation", "installationId": "eeb329cd-c7ce-40c9-bd90-6821fef06d30"}, "name": "reviews"}
+  ]
 }

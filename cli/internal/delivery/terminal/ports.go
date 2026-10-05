@@ -63,22 +63,22 @@ type ModelConfiguration interface {
 	SetRole(context.Context, models.Role) (models.Role, error)
 	Providers(context.Context) ([]models.Provider, error)
 	UpdateProvider(context.Context, models.UpdateProvider) (models.Provider, error)
-	TestProvider(context.Context, string) (models.TestResult, error)
+	TestProvider(context.Context, string) (protocol.ProviderTestOutcome, error)
 }
 
 // MCPManagement borrows synchronous inputs and transfers owned Runtime
 // observations to readers and editors. Retaining inputs requires a snapshot.
 type MCPManagement interface {
-	ToolExposure(context.Context, string) (protocol.MCPToolExposure, error)
+	ToolExposure(context.Context, protocol.MCPServerID) (protocol.MCPToolExposure, error)
 	SetToolExposure(context.Context, protocol.SetMCPToolExposureRequest) error
 	Servers(context.Context) ([]protocol.MCPServer, error)
 	CreateServer(context.Context, mcp.Candidate) (protocol.MCPServer, error)
 	UpdateServer(context.Context, mcp.ServerUpdate) (protocol.MCPServer, error)
-	DeleteServer(context.Context, string) error
-	TestServer(context.Context, mcp.Candidate) (protocol.MCPTestResult, error)
-	Tools(context.Context, string) ([]protocol.MCPTool, error)
-	ReconnectServer(context.Context, string) error
-	StartAuthorization(context.Context, string) (protocol.MCPAuthorizationAttempt, error)
+	DeleteServer(context.Context, protocol.MCPServerID) error
+	TestServer(context.Context, mcp.Candidate) (protocol.MCPTestOutcome, error)
+	Tools(context.Context, *protocol.MCPServerID) ([]protocol.MCPTool, error)
+	ReconnectServer(context.Context, protocol.MCPServerID) error
+	StartAuthorization(context.Context, protocol.MCPServerID) (protocol.MCPAuthorizationAttempt, error)
 	GetAuthorization(context.Context, mcp.AuthorizationReference) (protocol.MCPAuthorizationAttempt, error)
 }
 

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	chat "github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -16,7 +18,7 @@ type toolAdmission struct {
 	binding     toolcontract.Binding
 	executable  toolcontract.Tool
 	ref         tool.Ref
-	fingerprint string
+	fingerprint fingerprint.Digest
 	interpreter InteractionToolInterpreter
 	authorizer  InteractionToolAuthorizer
 	hooks       InteractionToolHooks

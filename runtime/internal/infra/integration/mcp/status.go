@@ -11,12 +11,12 @@ import (
 // new registry instead of reviving sessions behind the component owner's back.
 var ErrConnectionsClosed = errors.New("mcp: connections closed")
 
-// dialStatus maps a dial error to the connection status: an
+// failedStatus maps a failed step to the connection status: an
 // auth-distinguishable failure becomes "needsAuth" (so the client can prompt
-// for credentials), otherwise "failed".
-func dialStatus(err error) mcpserver.ConnectionState {
+// for credentials), otherwise "failed" in the category of the step that failed.
+func failedStatus(err error, step mcpserver.ConnectionFailure) (mcpserver.ConnectionState, mcpserver.ConnectionFailure) {
 	if errors.Is(err, mcpserver.ErrAuthorizationRequired) {
-		return mcpserver.ConnectionNeedsAuth
+		return mcpserver.ConnectionNeedsAuth, ""
 	}
-	return mcpserver.ConnectionFailed
+	return mcpserver.ConnectionFailed, step
 }

@@ -6,5 +6,6 @@ export function installAppearancePreferencePort(): () => void {
     use: (select) => useAppearanceStore(select),
     read: () => useAppearanceStore.getState(),
     edit: () => useAppearanceStore.getState(),
+    subscribe: (listener) => useAppearanceStore.subscribe(listener),
   });
 }

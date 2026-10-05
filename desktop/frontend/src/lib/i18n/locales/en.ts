@@ -444,6 +444,10 @@ export const en: Record<string, string> = {
   "mcp.error.toggle": "Couldn't change the server.",
   "mcp.error.signIn": "Sign-in failed.",
   "mcp.error.test": "Test failed",
+  "mcp.testOutcome.timedOut":
+    "The server didn't respond in time — check the command or URL and retry.",
+  "mcp.testOutcome.failed":
+    "The server did not connect or did not offer a valid tool list. Check its settings and retry.",
   "plugins.hero":
     "Every plugin this build loads. One that fails keeps its place with the error it raised, so a broken contribution is visible rather than simply missing.",
   "plugins.errorDetail.show": "Show error detail",
@@ -1023,12 +1027,20 @@ export const en: Record<string, string> = {
     "Something broke inside the runtime — retry, and check diagnostics if it keeps happening.",
   "rpcError.run_lost":
     "The run's process is gone — it ended before a result was saved. Start it again.",
-  "rpcError.mcp_authorization_required": "This server needs you to sign in before it can be used.",
-  "rpcError.mcp_authorization_failed": "Sign-in didn't complete. Try again.",
+  "mcpStatus.mcp_authorization_required": "This server needs you to sign in before it can be used.",
+  "mcpStatus.mcp_authorization_failed": "Sign-in didn't complete. Try again.",
   "rpcError.mcp_authorization_attempt_not_found": "This sign-in attempt expired. Start again.",
-  "rpcError.mcp_dial_failed": "Couldn't reach this server — check the command or URL and retry.",
-  "rpcError.provider_not_configured": "Finish configuring the provider first.",
-  "rpcError.provider_test_failed":
+  "mcpStatus.mcp_tool_discovery_failed":
+    "Connected, but this server didn't return a usable tool list. Check the server and retry.",
+  "mcpStatus.mcp_configuration_failed":
+    "This server's configuration or saved credentials couldn't be used. Review its settings and retry.",
+  "mcpStatus.mcp_release_unavailable":
+    "The plugin that provides this server failed verification. Reinstall or update the plugin.",
+  "mcpStatus.mcp_backend_unavailable":
+    "The plugin is intact, but this server's backend couldn't be prepared. Retry or reinstall the plugin.",
+  "mcpStatus.mcp_dial_failed": "Couldn't reach this server — check the command or URL and retry.",
+  "providers.testOutcome.notConfigured": "Finish configuring the provider first.",
+  "providers.testOutcome.failed":
     "The provider couldn't be reached, or it rejected the test request.",
   "rpcError.skill_not_found": "That skill is no longer in the library.",
   "rpcError.skill_unavailable":
@@ -1042,6 +1054,8 @@ export const en: Record<string, string> = {
   "rpcError.unsupported_mime": "That file type isn't supported here.",
   "rpcError.interrupt_not_open": "That request is no longer waiting for an answer.",
   "rpcError.idempotency_conflict": "The same request was already made with different contents.",
+  "rpcError.plugin_changed":
+    "A plugin changed while the run was being prepared. Nothing was started — send again to retry.",
   "session.error.create": "Couldn't create the session.",
   "session.directory.title": "New session",
   "session.directory.description":
@@ -1320,12 +1334,15 @@ export const en: Record<string, string> = {
   "packages.loading": "Loading…",
 
   "packages.trust":
-    "Approving a release trusts its code. Local executables run with your OS permissions. Review its source, digest, inputs and requested grants before approval.",
+    "Approving a release trusts its exact code. Local executables run with your OS permissions. Review its source, digest and inputs before approval. Selecting another release requires a new approval.",
   "packages.source": "Absolute package directory or ZIP path on the Runtime",
   "packages.install": "Install",
   "packages.empty": "No Runtime packages installed",
-  "packages.approve": "Trust release and grants",
+  "packages.approve": "Trust this release",
   "packages.configure": "Configure inputs",
+  "packages.state.unapproved": "Not approved: review this release before enabling it.",
+  "packages.state.approved": "Approved, not enabled.",
+  "packages.state.enabled": "Enabled.",
   "packages.disable": "Disable",
   "packages.enable": "Enable",
   "packages.stage": "Stage update",
@@ -1334,4 +1351,26 @@ export const en: Record<string, string> = {
   "packages.uninstall": "Uninstall",
   "packages.input": "JSON input or Runtime source path",
   "packages.save": "Save",
+  "packages.installed": "Installed {{name}}. Review its release below before enabling it.",
+  "packages.releaseUnavailable":
+    "This release's files failed verification, so its components are unavailable.",
+  "packages.backendUnavailable": "Server “{{name}}” can't start: its backend couldn't be prepared.",
+  "packages.component.manifestField": "Manifest field “{{name}}”",
+  "packages.component.flameExtension": "The Flame extension",
+  "packages.component.extensionField": "Extension field “{{name}}”",
+  "packages.component.contribution": "Contribution “{{name}}”",
+  "packages.component.mcp": "The MCP configuration",
+  "packages.component.mcpServer": "MCP server “{{name}}”",
+  "packages.component.skills": "The skills directory",
+  "packages.component.skill": "Skill “{{name}}”",
+  "packages.diagnostic.unknownField": "{{component}} isn't recognized and was ignored.",
+  "packages.diagnostic.invalidDeclaration": "{{component}} is invalid and was disabled.",
+  "packages.diagnostic.unsupportedContribution": "{{component}} isn't supported and was ignored.",
+  "packages.diagnostic.componentLimit": "{{component}} exceeds its limit and was disabled.",
+  "packages.diagnostic.invalidDependencies":
+    "{{component}} depends on missing or invalid declarations and was disabled.",
+  "packages.diagnostic.unavailableComponent": "{{component}} couldn't be read and was disabled.",
+  "packages.realizationFailed": "Package themes could not load in this window: {{reason}}",
+  "packages.reviewedField":
+    "“{{field}}” belongs to the reviewed release and can’t be changed here.",
 };

@@ -131,7 +131,7 @@ func NewCreate(starter GoalStarter) (toolcontract.Tool, error) {
 		return nil, nil
 	}
 	return toolcontract.NewFunc[createArgs, goalResult](
-		toolcontract.FuncConfig{Name: tool.CreateGoal, Description: createDescription},
+		toolcontract.FuncConfig{Name: string(tool.CreateGoal), Description: createDescription},
 		(&creator{goals: starter}).create,
 	)
 }
@@ -142,7 +142,7 @@ func NewGet(reader GoalReader) (toolcontract.Tool, error) {
 		return nil, nil
 	}
 	return toolcontract.NewFunc[getArgs, goalResult](
-		toolcontract.FuncConfig{Name: tool.GetGoal, Description: getDescription},
+		toolcontract.FuncConfig{Name: string(tool.GetGoal), Description: getDescription},
 		(&getter{goals: reader}).get,
 	)
 }
@@ -153,7 +153,7 @@ func NewReport(reporter GoalOutcomeReporter) (toolcontract.Tool, error) {
 		return nil, nil
 	}
 	return toolcontract.NewFunc[reportArgs, string](
-		toolcontract.FuncConfig{Name: tool.ReportGoalOutcome, Description: reportDescription},
+		toolcontract.FuncConfig{Name: string(tool.ReportGoalOutcome), Description: reportDescription},
 		(&outcomeReporter{goals: reporter}).report,
 	)
 }

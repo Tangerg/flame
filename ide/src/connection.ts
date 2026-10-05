@@ -5,6 +5,7 @@ import {
   createPreparedMutationJournal,
   createSidecarClient,
   asRunId,
+  isErrorType,
   type FlameClient,
 } from "@flame/runtime-contract/client";
 import {
@@ -12,7 +13,6 @@ import {
   type DiscoverResponse,
   type RequestMeta,
   type PluginInstallation,
-  type PluginRemoval,
 } from "@flame/runtime-contract/wire";
 import {
   type MutationCommand,
@@ -43,7 +43,7 @@ export type Command = Extract<
 export interface CommandResult {
   sessionId?: string;
   runId?: string;
-  pluginResult?: PluginInstallation | PluginRemoval;
+  pluginResult?: PluginInstallation;
 }
 
 const REQUEST_META: RequestMeta = {
@@ -55,6 +55,12 @@ const REQUEST_META: RequestMeta = {
     excludedEphemeralEvents: ["segment.progress", "item.delta"],
   },
 };
+
+export function commandFailureMessage(error: unknown): string {
+  if (isErrorType(error, "plugin_changed"))
+    return "A plugin changed while the run was being prepared. Nothing was started; send it again to retry.";
+  return error instanceof Error ? error.message : String(error);
+}
 
 export class Connection {
   readonly client: FlameClient;
@@ -193,7 +199,8 @@ export class Connection {
       case "plugins.revoke":
         return { pluginResult: await this.client.plugins.revoke(command.params.installationId) };
       case "plugins.uninstall":
-        return { pluginResult: await this.client.plugins.uninstall(command.params.installationId) };
+        await this.client.plugins.uninstall(command.params.installationId);
+        return {};
       default:
         throw new Error("IDE does not expose this prepared Runtime command");
     }

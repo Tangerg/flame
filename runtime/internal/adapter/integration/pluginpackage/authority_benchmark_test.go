@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
@@ -15,7 +17,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
-	"github.com/google/uuid"
 )
 
 func BenchmarkInstalledSourceRuleList(b *testing.B) {
@@ -49,25 +50,25 @@ func BenchmarkInstalledSourceRuleList(b *testing.B) {
 			return err
 		})
 	})
-	release, err := releases.Materialize(b.Context(), source)
+	release, err := publishPackage(b.Context(), releases, source)
 	if err != nil {
 		b.Fatal(err)
 	}
-	installation, err := plugin.New(uuid.NewString(), source, release)
+	installation, err := plugin.New(testsupport.InstallationID(b), source, release)
 	if err != nil {
 		b.Fatal(err)
 	}
-	if err := installation.Approve(release.Digest, nil); err != nil {
+	if err := installation.Approve(release); err != nil {
 		b.Fatal(err)
 	}
-	if err := installation.Enable(true); err != nil {
+	if err := installation.Enable(release); err != nil {
 		b.Fatal(err)
 	}
 	installations := sqlite.NewInstallationStore(db)
 	if err := installations.Save(b.Context(), installation); err != nil {
 		b.Fatal(err)
 	}
-	registry, err := plugins.NewRegistry(sqlite.NewMCPServerStore(db), installations, releases)
+	registry, err := plugins.NewRegistry(sqlite.NewMCPServerStore(db), installations, releases.catalog, releases)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -76,7 +77,7 @@ func BenchmarkInstalledSourceRuleList(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	server, err := mcpserver.InstallationServer(installation.Snapshot().ID, "remote")
+	server, err := installation.ServerID(testsupport.ServerName("remote"))
 	if err != nil {
 		b.Fatal(err)
 	}

@@ -9,7 +9,6 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
-	"github.com/Tangerg/flame/cli/internal/domain/failure"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -64,7 +63,7 @@ func (m *mcpBindingStub) UpdateMCPServer(_ context.Context, request protocol.Upd
 		return m.updateResult, nil
 	}
 	server := wireMCPServer()
-	server.Name = request.Server
+	server.ID = request.Server
 	if request.Enabled != nil {
 		if *request.Enabled {
 			server.Status = protocol.MCPServerState{Type: protocol.MCPServerDisconnected}
@@ -86,35 +85,35 @@ func (m *mcpBindingStub) UpdateMCPServer(_ context.Context, request protocol.Upd
 }
 
 func (m *mcpBindingStub) DeleteMCPServer(_ context.Context, request protocol.MCPServerRequest, options flameruntime.CommandOptions) error {
-	m.assertCommand("delete:"+request.Server, options)
+	m.assertCommand("delete:"+mcp.ServerLabel(request.Server), options)
 	return nil
 }
 
 func (m *mcpBindingStub) TestMCPServer(_ context.Context, request protocol.MCPServerCandidate, options flameruntime.CallOptions) (*protocol.MCPTestResult, error) {
 	m.assertMeta(options.RequestMeta)
 	m.actions = append(m.actions, "test:"+request.Name)
-	return &protocol.MCPTestResult{Error: &protocol.ProblemData{Type: protocol.ProblemMCPDialFailed}}, nil
+	return &protocol.MCPTestResult{Outcome: protocol.MCPTestFailed}, nil
 }
 
 func (m *mcpBindingStub) ListMCPTools(_ context.Context, request protocol.MCPListToolsRequest, options flameruntime.CallOptions) (*protocol.Page[protocol.MCPTool], error) {
 	m.assertMeta(options.RequestMeta)
-	m.actions = append(m.actions, "tools:"+request.Server)
+	m.actions = append(m.actions, "tools:"+serverFilterLabel(request.Server))
 	if m.tools != nil {
 		return protocol.NewPage(m.tools), nil
 	}
 	return protocol.NewPage([]protocol.MCPTool{{
-		Server: "docs", Name: "search", Description: "Search docs",
+		Server: mcp.UserServer("docs"), Name: "search", Description: "Search docs",
 		InputSchema: map[string]any{"type": "object"},
 	}}), nil
 }
 
 func (m *mcpBindingStub) ReconnectMCPServer(_ context.Context, request protocol.MCPServerRequest, options flameruntime.CommandOptions) error {
-	m.assertCommand("reconnect:"+request.Server, options)
+	m.assertCommand("reconnect:"+mcp.ServerLabel(request.Server), options)
 	return nil
 }
 
 func (m *mcpBindingStub) CreateMCPAuthorizationAttempt(_ context.Context, request protocol.CreateMCPAuthorizationAttemptRequest, options flameruntime.CommandOptions) (*protocol.MCPAuthorizationAttempt, error) {
-	m.assertCommand("authorize:"+request.Server, options)
+	m.assertCommand("authorize:"+mcp.ServerLabel(request.Server), options)
 	if m.authStart != nil {
 		attempt := *m.authStart
 		attempt.Server = request.Server
@@ -135,13 +134,13 @@ func (m *mcpBindingStub) GetMCPAuthorizationAttempt(_ context.Context, request p
 	}
 	if m.authGet != nil {
 		attempt := *m.authGet
-		attempt.Status.Error = failure.Clone(attempt.Status.Error)
+		attempt.Status.Error = clonePointer(attempt.Status.Error)
 		attempt.FinishedAt = clonePointer(attempt.FinishedAt)
 		return &attempt, nil
 	}
 	finished := m.now.Add(time.Second)
 	return &protocol.MCPAuthorizationAttempt{
-		ID: request.AttemptID, Server: "docs", Status: protocol.MCPAuthorizationAttemptStatus{Type: protocol.MCPAuthorizationAttemptSucceeded},
+		ID: request.AttemptID, Server: mcp.UserServer("docs"), Status: protocol.MCPAuthorizationAttemptStatus{Type: protocol.MCPAuthorizationAttemptSucceeded},
 		CreatedAt: m.now, FinishedAt: &finished,
 	}, nil
 }
@@ -165,7 +164,7 @@ func (m *mcpBindingStub) assertCommand(action string, options flameruntime.Comma
 func wireMCPServer() protocol.MCPServer {
 	count := 1
 	return protocol.MCPServer{
-		Name: "docs", Description: "Documentation", HandshakeTimeout: boundedWireHandshakeTimeout(15),
+		ID: mcp.UserServer("docs"), Description: "Documentation", HandshakeTimeout: boundedWireHandshakeTimeout(15),
 		Connection: protocol.MCPConnection{
 			Type: protocol.MCPTransportStreamableHTTP, URL: "https://mcp.example/tools",
 			AuthorizationMasked: "Bearer ****", HeadersMasked: map[string]string{"X-Key": "****"},
@@ -180,7 +179,7 @@ func wireMCPServerFromCandidate(candidate protocol.MCPServerCandidate) protocol.
 		state.Type = protocol.MCPServerDisabled
 	}
 	return protocol.MCPServer{
-		Name: candidate.Name, Description: candidate.Description,
+		ID: mcp.UserServer(candidate.Name), Description: candidate.Description,
 		Connection: wireMCPConnection(candidate.Connection), HandshakeTimeout: candidate.HandshakeTimeout,
 		Status: state,
 	}
@@ -233,28 +232,28 @@ func TestMCPAdapterProjectsEveryServerToolAndAuthorizationOperation(t *testing.T
 	}
 	description := "Updated docs"
 	enabled := false
-	update := mcp.ServerUpdate{Server: "docs", Enabled: &enabled, Description: &description}
+	update := mcp.ServerUpdate{Server: mcp.UserServer("docs"), Enabled: &enabled, Description: &description}
 	if _, updateServerErr := runtime.UpdateServer(t.Context(), update); updateServerErr != nil {
 		t.Fatal(updateServerErr)
 	}
 	if stub.updatedEnabled == nil || *stub.updatedEnabled || stub.updatedDescription == nil || *stub.updatedDescription != description {
 		t.Fatal("updated request did not include the authored enablement and description")
 	}
-	if deleteServerErr := runtime.DeleteServer(t.Context(), "docs"); deleteServerErr != nil {
+	if deleteServerErr := runtime.DeleteServer(t.Context(), mcp.UserServer("docs")); deleteServerErr != nil {
 		t.Fatal(deleteServerErr)
 	}
 	tested, err := runtime.TestServer(t.Context(), candidate)
-	if err != nil || tested.OK || tested.Error == nil || tested.Error.Type != "mcp_dial_failed" {
+	if err != nil || tested != protocol.MCPTestFailed {
 		t.Fatalf("TestServer = (%+v, %v)", tested, err)
 	}
-	tools, err := runtime.Tools(t.Context(), "docs")
+	tools, err := runtime.Tools(t.Context(), new(mcp.UserServer("docs")))
 	if err != nil || len(tools) != 1 || tools[0].InputSchema["type"] != "object" {
 		t.Fatalf("Tools = (%+v, %v)", tools, err)
 	}
-	if reconnectServerErr := runtime.ReconnectServer(t.Context(), "docs"); reconnectServerErr != nil {
+	if reconnectServerErr := runtime.ReconnectServer(t.Context(), mcp.UserServer("docs")); reconnectServerErr != nil {
 		t.Fatal(reconnectServerErr)
 	}
-	attempt, err := runtime.StartAuthorization(t.Context(), "docs")
+	attempt, err := runtime.StartAuthorization(t.Context(), mcp.UserServer("docs"))
 	if err != nil || attempt.Status.Type != protocol.MCPAuthorizationAttemptPending || attempt.ID != adapterMCPAuthorizationAttemptID {
 		t.Fatalf("StartAuthorization = (%+v, %v)", attempt, err)
 	}
@@ -267,48 +266,16 @@ func TestMCPAdapterProjectsEveryServerToolAndAuthorizationOperation(t *testing.T
 	}
 }
 
-func TestMCPAdapterRejectsUnorderedOrDuplicateServerCatalog(t *testing.T) {
-	t.Parallel()
-	for _, names := range [][2]string{{"zeta", "alpha"}, {"docs", "docs"}} {
-		t.Run(strings.Join(names[:], "/"), func(t *testing.T) {
-			first, second := wireMCPServer(), wireMCPServer()
-			first.Name, second.Name = names[0], names[1]
-			stub := &mcpBindingStub{t: t, servers: []protocol.MCPServer{first, second}}
-			runtime := &Connection{mcp: stub, meta: requestMeta("test")}
-			if values, err := runtime.Servers(t.Context()); values != nil || !errors.Is(err, conversation.ErrIncompatibleRuntime) {
-				t.Fatalf("Servers = (%v, %v), want complete ordered-catalog rejection", values, err)
-			}
-		})
-	}
-}
-
-func TestMCPAdapterRejectsUnorderedOrDuplicateToolCatalog(t *testing.T) {
-	t.Parallel()
-	for _, rows := range [][]protocol.MCPTool{
-		{{Server: "zeta", Name: "alpha"}, {Server: "alpha", Name: "zeta"}},
-		{{Server: "docs", Name: "zeta"}, {Server: "docs", Name: "alpha"}},
-		{{Server: "docs", Name: "search"}, {Server: "docs", Name: "search"}},
-	} {
-		t.Run(rows[0].Server+"/"+rows[0].Name+"-"+rows[1].Server+"/"+rows[1].Name, func(t *testing.T) {
-			stub := &mcpBindingStub{t: t, tools: rows}
-			runtime := &Connection{mcp: stub, meta: requestMeta("test")}
-			if values, err := runtime.Tools(t.Context(), ""); values != nil || !errors.Is(err, conversation.ErrIncompatibleRuntime) {
-				t.Fatalf("Tools = (%v, %v), want complete ordered-catalog rejection", values, err)
-			}
-		})
-	}
-}
-
 func TestMCPAuthorizationAdapterPreservesAbsenceAndEnforcesReferenceIdentity(t *testing.T) {
 	stub := &mcpBindingStub{t: t, now: time.Unix(100, 0), authErr: protocol.ErrMCPAuthorizationAttemptNotFound}
 	runtime := &Connection{mcp: stub, meta: requestMeta("test")}
-	if _, err := runtime.GetAuthorization(t.Context(), mcp.AuthorizationReference{ID: "auth_1", Server: "docs"}); err == nil || !strings.Contains(err.Error(), "attemptId") {
+	if _, err := runtime.GetAuthorization(t.Context(), mcp.AuthorizationReference{ID: "auth_1", Server: mcp.UserServer("docs")}); err == nil || !strings.Contains(err.Error(), "attemptId") {
 		t.Fatalf("non-canonical authorization reference = %v, want attemptId error", err)
 	}
 	if len(stub.actions) != 0 {
 		t.Fatalf("invalid authorization reference reached Runtime: %v", stub.actions)
 	}
-	reference := mcp.AuthorizationReference{ID: adapterMCPAuthorizationAttemptID, Server: "docs"}
+	reference := mcp.AuthorizationReference{ID: adapterMCPAuthorizationAttemptID, Server: mcp.UserServer("docs")}
 	if _, err := runtime.GetAuthorization(t.Context(), reference); !errors.Is(err, protocol.ErrMCPAuthorizationAttemptNotFound) {
 		t.Fatalf("missing authorization = %v, want ErrMCPAuthorizationAttemptNotFound", err)
 	}
@@ -316,7 +283,7 @@ func TestMCPAuthorizationAdapterPreservesAbsenceAndEnforcesReferenceIdentity(t *
 	finished := stub.now.Add(time.Second)
 	stub.authErr = nil
 	stub.authGet = &protocol.MCPAuthorizationAttempt{
-		ID: adapterOtherMCPAuthorizationAttemptID, Server: "docs",
+		ID: adapterOtherMCPAuthorizationAttemptID, Server: mcp.UserServer("docs"),
 		Status:    protocol.MCPAuthorizationAttemptStatus{Type: protocol.MCPAuthorizationAttemptSucceeded},
 		CreatedAt: stub.now, FinishedAt: &finished,
 	}
@@ -324,7 +291,7 @@ func TestMCPAuthorizationAdapterPreservesAbsenceAndEnforcesReferenceIdentity(t *
 		t.Fatalf("mismatched authorization identity = %v, want ErrIncompatibleRuntime", err)
 	}
 	stub.authGet.ID = reference.ID
-	stub.authGet.Server = "other"
+	stub.authGet.Server = mcp.UserServer("other")
 	if _, err := runtime.GetAuthorization(t.Context(), reference); !errors.Is(err, conversation.ErrIncompatibleRuntime) {
 		t.Fatalf("mismatched authorization server = %v, want ErrIncompatibleRuntime", err)
 	}
@@ -335,7 +302,7 @@ func TestMCPAuthorizationAdapterPreservesAbsenceAndEnforcesReferenceIdentity(t *
 		Status:    protocol.MCPAuthorizationAttemptStatus{Type: protocol.MCPAuthorizationAttemptPending},
 		CreatedAt: stub.now,
 	}
-	if _, err := runtime.StartAuthorization(t.Context(), "docs"); err == nil || !strings.Contains(err.Error(), "without an id") {
+	if _, err := runtime.StartAuthorization(t.Context(), mcp.UserServer("docs")); err == nil || !strings.Contains(err.Error(), "without an id") {
 		t.Fatalf("unidentified authorization attempt = %v, want a missing identity", err)
 	}
 }
@@ -355,11 +322,11 @@ func TestMCPAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 	}
 	createResult := wireMCPServerFromCandidate(projectedCandidate)
 	wrongIdentity := createResult
-	wrongIdentity.Name = "other"
+	wrongIdentity.ID = mcp.UserServer("other")
 	createResult.Description = "ignored"
 	description := "Updated"
 	enabled := false
-	update := mcp.ServerUpdate{Server: candidate.Name, Enabled: &enabled, Description: &description}
+	update := mcp.ServerUpdate{Server: mcp.UserServer(candidate.Name), Enabled: &enabled, Description: &description}
 	updateResult := wireMCPServer()
 	updateResult.Status = protocol.MCPServerState{Type: protocol.MCPServerDisabled}
 	updateResult.Description = "ignored"
@@ -426,7 +393,7 @@ func TestMCPAdapterRejectsWritesOutsideRuntimeWireContract(t *testing.T) {
 			name: "update server name",
 			invoke: func(runtime *Connection) error {
 				description := "updated"
-				_, err := runtime.UpdateServer(t.Context(), mcp.ServerUpdate{Server: "Docs", Description: &description})
+				_, err := runtime.UpdateServer(t.Context(), mcp.ServerUpdate{Server: mcp.UserServer("Docs"), Description: &description})
 				return err
 			},
 			field: "server",
@@ -457,26 +424,26 @@ func TestMCPAdapterRejectsInvalidServerIdentityBeforeDispatch(t *testing.T) {
 		{
 			name: "delete",
 			invoke: func(runtime *Connection) error {
-				return runtime.DeleteServer(t.Context(), "Docs")
+				return runtime.DeleteServer(t.Context(), mcp.UserServer("Docs"))
 			},
 		},
 		{
 			name: "reconnect",
 			invoke: func(runtime *Connection) error {
-				return runtime.ReconnectServer(t.Context(), "Docs")
+				return runtime.ReconnectServer(t.Context(), mcp.UserServer("Docs"))
 			},
 		},
 		{
 			name: "list tools",
 			invoke: func(runtime *Connection) error {
-				_, err := runtime.Tools(t.Context(), "Docs")
+				_, err := runtime.Tools(t.Context(), new(mcp.UserServer("Docs")))
 				return err
 			},
 		},
 		{
 			name: "start authorization",
 			invoke: func(runtime *Connection) error {
-				_, err := runtime.StartAuthorization(t.Context(), "Docs")
+				_, err := runtime.StartAuthorization(t.Context(), mcp.UserServer("Docs"))
 				return err
 			},
 		},
@@ -504,8 +471,8 @@ func TestMCPToolsRejectAForeignServer(t *testing.T) {
 	t.Parallel()
 	stub := &mcpBindingStub{t: t}
 	runtime := &Connection{mcp: stub, meta: requestMeta("test")}
-	stub.tools = []protocol.MCPTool{{Server: "other", Name: "read"}}
-	if values, err := runtime.Tools(t.Context(), "docs"); values != nil || !errors.Is(err, conversation.ErrIncompatibleRuntime) || !strings.Contains(err.Error(), "other") {
+	stub.tools = []protocol.MCPTool{{Server: mcp.UserServer("other"), Name: "read"}}
+	if values, err := runtime.Tools(t.Context(), new(mcp.UserServer("docs"))); values != nil || !errors.Is(err, conversation.ErrIncompatibleRuntime) || !strings.Contains(err.Error(), "other") {
 		t.Fatalf("Tools = (%v, %v), want no values and a server contract violation", values, err)
 	}
 }
@@ -515,4 +482,11 @@ func (m *mcpBindingStub) GetMCPToolExposure(_ context.Context, r protocol.MCPSer
 }
 func (m *mcpBindingStub) SetMCPToolExposure(context.Context, protocol.SetMCPToolExposureRequest, flameruntime.CommandOptions) error {
 	return nil
+}
+
+func serverFilterLabel(server *protocol.MCPServerID) string {
+	if server == nil {
+		return ""
+	}
+	return mcp.ServerLabel(*server)
 }

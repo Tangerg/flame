@@ -2,10 +2,14 @@ package execution
 
 import (
 	"context"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -16,8 +20,13 @@ type identifiedPolicyTool struct {
 }
 
 func (i identifiedPolicyTool) MCPToolIdentity() (string, string) { return i.server, i.remote }
-func (i identifiedPolicyTool) SourceFingerprint() string {
+func (i identifiedPolicyTool) SourceFingerprint() fingerprint.Digest {
 	return testsupport.ToolFingerprint(tool.Ref{})
+}
+
+func (i identifiedPolicyTool) SourceConfig() mcp.ServerConfig {
+	name, _ := mcpserver.ParseServerName(i.server)
+	return mcp.ServerConfig{Source: mcpserver.UserSource(), Name: name}
 }
 
 type decoratedPolicyTool struct{ toolcontract.Tool }
@@ -44,7 +53,7 @@ func TestMCPApprovalUsesScopeCapabilityIdentity(t *testing.T) {
 		if err != nil || request.Tool != ref || request.SourceFingerprint != fingerprint {
 			t.Fatalf("request = %+v, %v", request, err)
 		}
-		if request.Tool.Server().String() != "source" || request.Tool.Remote().String() != "original" {
+		if server, remote, _ := request.Tool.MCP(); server != testsupport.UserMCPServer("source") || remote.String() != "original" {
 			t.Fatalf("identity = %v", request.Tool)
 		}
 	}

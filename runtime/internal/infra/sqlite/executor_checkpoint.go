@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -38,6 +39,7 @@ type ExecutorScopeRecord struct {
 // application/agent/runs and are validated again by the consuming adapter.
 type ExecutorCheckpointRecord struct {
 	ToolResultIDs  []toolresult.ID
+	Installations  []plugin.Dependency
 	RootMemberID   string
 	Payload        []byte
 	BuildID        string
@@ -49,6 +51,9 @@ type ExecutorCheckpointRecord struct {
 
 func (e ExecutorCheckpointRecord) validate() error {
 	if err := toolresult.ValidateReferences(e.ToolResultIDs); err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidExecutorCheckpointRecord, err)
+	}
+	if err := plugin.ValidateDependencies(e.Installations); err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalidExecutorCheckpointRecord, err)
 	}
 	if err := runtimeidentity.ValidateMember(e.RootMemberID); err != nil {
@@ -179,7 +184,7 @@ func (e *ExecutorCheckpointStore) SaveCheckpoint(ctx context.Context, checkpoint
 			if err != nil {
 				return fmt.Errorf("sqlite: insert executor checkpoint %q: %w", checkpoint.RootMemberID, err)
 			}
-			return e.replaceToolResultReferences(ctx, checkpoint)
+			return e.replaceReferences(ctx, checkpoint)
 		}
 		if err != nil {
 			return fmt.Errorf("sqlite: inspect executor checkpoint %q before save: %w", checkpoint.RootMemberID, err)
@@ -245,7 +250,7 @@ func (e *ExecutorCheckpointStore) SaveCheckpoint(ctx context.Context, checkpoint
 		if written != 1 {
 			return fmt.Errorf("sqlite: advance executor checkpoint %q affected %d rows", checkpoint.RootMemberID, written)
 		}
-		return e.replaceToolResultReferences(ctx, checkpoint)
+		return e.replaceReferences(ctx, checkpoint)
 	})
 }
 
@@ -310,6 +315,10 @@ func (e *ExecutorCheckpointStore) loadCheckpoint(ctx context.Context, rootMember
 	checkpoint.BuildID = buildID
 	checkpoint.Usage = usage
 	checkpoint.ToolResultIDs, err = e.toolResultReferences(ctx, rootMemberID)
+	if err != nil {
+		return ExecutorCheckpointRecord{}, err
+	}
+	checkpoint.Installations, err = e.installationDependencies(ctx, rootMemberID)
 	if err != nil {
 		return ExecutorCheckpointRecord{}, err
 	}

@@ -13,6 +13,7 @@ import (
 	sdk "github.com/Tangerg/scope/skills"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 )
 
@@ -43,7 +44,7 @@ func ProjectSkillDir(workspaceRoot string) string {
 // Building a source resolves its physical confinement root and wraps it with
 // Scope's directory repository, so it remains cheap enough to call per tool
 // resolution.
-func OverlaySkillSource(ctx context.Context, workspaceRoot, userDir string, packages PackageSkills, decorateUser func(sdk.ResourceSource) sdk.ResourceSource) (sdk.ResourceSource, []InstallationDependency, error) {
+func OverlaySkillSource(ctx context.Context, workspaceRoot, userDir string, packages PackageSkills, decorateUser func(sdk.ResourceSource) sdk.ResourceSource) (sdk.ResourceSource, []plugin.Dependency, error) {
 	layers, err := openRuntimeSkillLayers(ctx, workspaceRoot, userDir, packages)
 	if err != nil {
 		return nil, nil, err
@@ -122,7 +123,7 @@ func (l runtimeSkillLayers) get(ctx context.Context, name string) (workspaceapp.
 	if err != nil {
 		return workspaceapp.SkillDetail{}, err
 	}
-	origin, err := workspaceapp.InstallationSkillSource(packageSource.bundle.Dependency.InstallationID, packageSource.bundle.Dependency.Digest)
+	origin, err := workspaceapp.InstallationSkillSource(packageSource.bundle.Dependency)
 	if err != nil {
 		return workspaceapp.SkillDetail{}, err
 	}
@@ -180,7 +181,7 @@ func (l runtimeSkillLayers) list(ctx context.Context) (workspaceapp.SkillDiscove
 		case err != nil:
 			return workspaceapp.SkillDiscovery{}, err
 		}
-		if _, _, installed := detail.Source.Installation(); !installed && slices.ContainsFunc(l.packages, func(source packageSkillSource) bool { return slices.Contains(source.bundle.Names, name) }) {
+		if _, installed := detail.Source.Installation(); !installed && slices.ContainsFunc(l.packages, func(source packageSkillSource) bool { return slices.Contains(source.bundle.Names, name) }) {
 			out.Diagnostics = append(out.Diagnostics, workspaceapp.SkillDiagnostic{Name: name, Detail: "An explicit project/user Skill overrides the installed package copy."})
 		}
 		out.Skills = append(out.Skills, detail.SkillSummary)

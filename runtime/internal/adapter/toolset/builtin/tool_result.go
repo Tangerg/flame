@@ -67,7 +67,7 @@ func NewToolResultReader(store ToolResultStore) (toolcontract.Tool, error) {
 		return nil, nil
 	}
 	return toolcontract.NewFunc[toolResultReadArgs, string](
-		toolcontract.FuncConfig{Name: tool.ReadToolResult, Description: toolResultDescription},
+		toolcontract.FuncConfig{Name: string(tool.ReadToolResult), Description: toolResultDescription},
 		(&toolResultReader{store: store}).read,
 	)
 }

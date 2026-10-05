@@ -18,8 +18,8 @@ func (r *binding) StagePlugin(ctx context.Context, request protocol.StagePluginR
 func (r *binding) SelectPlugin(ctx context.Context, request protocol.PluginReleaseRequest, options CommandOptions) (*protocol.PluginInstallation, error) {
 	return r.invoke[protocol.PluginReleaseRequest, *protocol.PluginInstallation](ctx, delivery.PluginsSelect, request, commandOptions(options))
 }
-func (r *binding) ApprovePlugin(ctx context.Context, request protocol.ApprovePluginRequest, options CommandOptions) (*protocol.PluginInstallation, error) {
-	return r.invoke[protocol.ApprovePluginRequest, *protocol.PluginInstallation](ctx, delivery.PluginsApprove, request, commandOptions(options))
+func (r *binding) ApprovePlugin(ctx context.Context, request protocol.PluginReleaseRequest, options CommandOptions) (*protocol.PluginInstallation, error) {
+	return r.invoke[protocol.PluginReleaseRequest, *protocol.PluginInstallation](ctx, delivery.PluginsApprove, request, commandOptions(options))
 }
 func (r *binding) ConfigurePlugin(ctx context.Context, request protocol.ConfigurePluginRequest, options CommandOptions) (*protocol.PluginInstallation, error) {
 	return r.invoke[protocol.ConfigurePluginRequest, *protocol.PluginInstallation](ctx, delivery.PluginsConfigure, request, commandOptions(options))
@@ -30,6 +30,6 @@ func (r *binding) SetPluginEnablement(ctx context.Context, request protocol.SetP
 func (r *binding) RevokePlugin(ctx context.Context, request protocol.PluginRequest, options CommandOptions) (*protocol.PluginInstallation, error) {
 	return r.invoke[protocol.PluginRequest, *protocol.PluginInstallation](ctx, delivery.PluginsRevoke, request, commandOptions(options))
 }
-func (r *binding) UninstallPlugin(ctx context.Context, request protocol.PluginRequest, options CommandOptions) (*protocol.PluginRemoval, error) {
-	return r.invoke[protocol.PluginRequest, *protocol.PluginRemoval](ctx, delivery.PluginsUninstall, request, commandOptions(options))
+func (r *binding) UninstallPlugin(ctx context.Context, request protocol.PluginRequest, options CommandOptions) error {
+	return r.invokeAck(ctx, delivery.PluginsUninstall, request, commandOptions(options))
 }

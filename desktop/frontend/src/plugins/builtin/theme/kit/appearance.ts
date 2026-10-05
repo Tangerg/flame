@@ -7,7 +7,7 @@ export const DEFAULT_UI_DENSITY: UiDensity = "comfortable";
 
 export const DEFAULT_CONTRAST = 25;
 
-export interface CustomTheme {
+interface CustomTheme {
   bg: string;
   fg: string;
 }

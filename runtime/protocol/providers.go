@@ -81,8 +81,20 @@ type UpdateProviderRequest struct {
 	APIKey   *ProviderConfigChange `json:"apiKey,omitzero"`
 }
 
+// ProviderTestOutcome is the closed verdict of providers.test. A probe carries
+// no server-authored prose, so clients render each outcome locally and treat
+// any other value as a contract violation.
+type ProviderTestOutcome string
+
+const (
+	ProviderTestReachable          ProviderTestOutcome = "reachable"
+	ProviderTestNotConfigured      ProviderTestOutcome = "notConfigured"
+	ProviderTestInvalidCredentials ProviderTestOutcome = "invalidCredentials"
+	ProviderTestTimedOut           ProviderTestOutcome = "timedOut"
+	ProviderTestFailed             ProviderTestOutcome = "failed"
+)
+
 // ProviderTestResult — providers.test result.
 type ProviderTestResult struct {
-	OK    bool         `json:"ok"`
-	Error *ProblemData `json:"error,omitzero"`
+	Outcome ProviderTestOutcome `json:"outcome"`
 }

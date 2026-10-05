@@ -3,9 +3,12 @@ package toolset
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	identitytool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -26,6 +29,11 @@ func (mcpToolStub) Call(context.Context, toolcontract.Invocation) (chat.ToolOutp
 
 func (m mcpToolStub) MCPToolIdentity() (string, string) { return m.server, m.remote }
 
+// A stub's server is a user server; installation tools override the source.
+func (m mcpToolStub) SourceConfig() mcp.ServerConfig {
+	return mcp.ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName(m.server)}
+}
+
 func TestResolverMCPToolsReadsCurrentPolicy(t *testing.T) {
 	disabled := map[identitytool.Ref]bool{}
 	resolver := &Resolver{mcpToolDisabled: func(ref identitytool.Ref) bool { return disabled[ref] }}
@@ -42,7 +50,7 @@ func TestResolverMCPToolsReadsCurrentPolicy(t *testing.T) {
 		{name: "no disabled tools", disabled: map[identitytool.Ref]bool{}, want: []string{"files_read", "files_write"}},
 		{
 			name:     "policy update hides tool",
-			disabled: map[identitytool.Ref]bool{testMCPRef(testMCPServerName("files"), testRemoteToolName("write")): true},
+			disabled: map[identitytool.Ref]bool{testMCPRef(testsupport.ServerName("files"), testsupport.RemoteToolName("write")): true},
 			want:     []string{"files_read"},
 		},
 		{name: "later policy restores tool", disabled: map[identitytool.Ref]bool{}, want: []string{"files_read", "files_write"}},
@@ -76,8 +84,8 @@ func wrappedMCPTool(inner toolcontract.Tool) toolcontract.Tool {
 }
 
 func TestResolverMCPPolicyUsesSourceIdentityNotModelName(t *testing.T) {
-	disabledRef := testMCPRef(testMCPServerName("a_b"), testRemoteToolName("c"))
-	liveRef := testMCPRef(testMCPServerName("a"), testRemoteToolName("b_c"))
+	disabledRef := testMCPRef(testsupport.ServerName("a_b"), testsupport.RemoteToolName("c"))
+	liveRef := testMCPRef(testsupport.ServerName("a"), testsupport.RemoteToolName("b_c"))
 	disabledName := disabledRef.ModelName()
 	liveName := liveRef.ModelName()
 	if disabledName != liveName {
@@ -86,7 +94,7 @@ func TestResolverMCPPolicyUsesSourceIdentityNotModelName(t *testing.T) {
 
 	resolver := &Resolver{mcpToolDisabled: func(ref identitytool.Ref) bool { return ref == disabledRef }}
 	resolver.SetMCPTools([]toolcontract.Tool{mcpToolStub{
-		name: liveName, server: liveRef.Server().String(), remote: liveRef.Remote().String(),
+		name: liveName, server: "a", remote: "b_c",
 	}})
 
 	got, err := resolver.mcpTools()

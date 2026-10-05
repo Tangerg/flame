@@ -2,13 +2,13 @@ package runtimebinding
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/application/integration/models"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
-	"github.com/Tangerg/flame/cli/internal/domain/failure"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -319,10 +319,10 @@ func TestProjectProviderPreservesConfiguredOptionalCredentialState(t *testing.T)
 }
 
 func (*modelConfigBindingStub) TestProvider(_ context.Context, request protocol.TestProviderRequest, _ flameruntime.CallOptions) (*protocol.ProviderTestResult, error) {
-	return &protocol.ProviderTestResult{OK: false, Error: &protocol.ProblemData{
-		Type: protocol.ProblemProviderUnavailable, Detail: request.Provider,
-		DocURL: "https://docs.example/providers", RetryAfterSeconds: 3,
-	}}, nil
+	if request.Provider == "deepseek" {
+		return &protocol.ProviderTestResult{Outcome: protocol.ProviderTestTimedOut}, nil
+	}
+	return &protocol.ProviderTestResult{Outcome: "provider_test_failed"}, nil
 }
 
 func TestModelConfigurationAdapterPreservesRoleAndSecretMutationSemantics(t *testing.T) {
@@ -389,8 +389,11 @@ func TestModelConfigurationAdapterPreservesRoleAndSecretMutationSemantics(t *tes
 		t.Fatal(updateProviderErr)
 	}
 	tested, err := runtime.TestProvider(t.Context(), "deepseek")
-	if err != nil || tested.OK || tested.Problem == nil || failure.String(tested.Problem) != "provider_unavailable: deepseek · retry after 3s · docs https://docs.example/providers" {
+	if err != nil || tested != protocol.ProviderTestTimedOut {
 		t.Fatalf("TestProvider = (%+v, %v)", tested, err)
+	}
+	if outcome, err := runtime.TestProvider(t.Context(), "openai"); !errors.Is(err, conversation.ErrIncompatibleRuntime) {
+		t.Fatalf("TestProvider accepted an outcome outside the closed set: (%q, %v)", outcome, err)
 	}
 	if _, err := runtime.TestProvider(t.Context(), " deepseek"); err == nil {
 		t.Fatal("TestProvider normalized a provider identity")

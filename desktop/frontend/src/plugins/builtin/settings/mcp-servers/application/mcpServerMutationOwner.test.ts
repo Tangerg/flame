@@ -2,7 +2,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { queryClient } from "@/lib/queryClient";
 import { MCPServerMutationOwner } from "./mcpServerMutationOwner";
 import type { MCPServerGateway } from "./ports/mcpServerGateway";
-import { MCP_SERVERS_KEY, MCP_TOOLS_KEY, type MCPServerSettings } from "./mcpServerQueries";
+import {
+  MCP_SERVERS_KEY,
+  MCP_TOOLS_KEY,
+  type MCPServerSettings,
+  userMCPServer,
+  type MCPServerID,
+} from "./mcpServerQueries";
 import { rejected } from "@/test/rejected";
 
 let owner: MCPServerMutationOwner | undefined;
@@ -41,8 +47,8 @@ describe("MCPServerMutationOwner", () => {
     owner = MCPServerMutationOwner.install(gateway);
     queryClient.setQueryData([MCP_SERVERS_KEY], [server()]);
 
-    const inFlight = owner.setEnabled("cloud", false);
-    const queued = owner.setEnabled("cloud", true);
+    const inFlight = owner.setEnabled(userMCPServer("cloud"), false);
+    const queued = owner.setEnabled(userMCPServer("cloud"), true);
     const inFlightSettlement = rejected(inFlight);
     const queuedSettlement = rejected(queued);
     await vi.waitFor(() => expect(setEnabled).toHaveBeenCalledOnce());
@@ -60,7 +66,7 @@ describe("MCPServerMutationOwner", () => {
     await Promise.resolve();
     expect(queryClient.getQueryData([MCP_SERVERS_KEY])).toEqual([server()]);
 
-    await expect(owner.setEnabled("cloud", true)).resolves.toMatchObject({
+    await expect(owner.setEnabled(userMCPServer("cloud"), true)).resolves.toMatchObject({
       status: "connected",
     });
     expect(setEnabled).toHaveBeenCalledTimes(2);
@@ -68,15 +74,15 @@ describe("MCPServerMutationOwner", () => {
 
   it("does not globally serialize unrelated MCP server resources", async () => {
     const first = Promise.withResolvers<MCPServerSettings>();
-    const setEnabled = vi.fn((name: string) =>
-      name === "cloud" ? first.promise : Promise.resolve(server({ id: name, name })),
+    const setEnabled = vi.fn((id: MCPServerID) =>
+      id.name === "cloud" ? first.promise : Promise.resolve(server({ id })),
     );
     owner = MCPServerMutationOwner.install({ setEnabled } as unknown as MCPServerGateway);
 
-    const blocked = owner.setEnabled("cloud", false);
-    const independent = owner.setEnabled("local", true);
+    const blocked = owner.setEnabled(userMCPServer("cloud"), false);
+    const independent = owner.setEnabled(userMCPServer("local"), true);
     await vi.waitFor(() => expect(setEnabled).toHaveBeenCalledTimes(2));
-    await expect(independent).resolves.toMatchObject({ id: "local" });
+    await expect(independent).resolves.toMatchObject({ id: userMCPServer("local") });
     first.resolve(server({ status: "disabled", enabled: false }));
     await expect(blocked).resolves.toMatchObject({ enabled: false });
   });
@@ -89,7 +95,7 @@ describe("MCPServerMutationOwner", () => {
     queryClient.setQueryData([MCP_SERVERS_KEY], [server()]);
     vi.spyOn(queryClient, "invalidateQueries").mockRejectedValue(new Error("read unavailable"));
 
-    await expect(owner.setEnabled("cloud", true)).resolves.toEqual(saved);
+    await expect(owner.setEnabled(userMCPServer("cloud"), true)).resolves.toEqual(saved);
     expect(queryClient.getQueryData([MCP_SERVERS_KEY])).toEqual([saved]);
   });
 
@@ -102,9 +108,9 @@ describe("MCPServerMutationOwner", () => {
       setEnabled,
     } as unknown as MCPServerGateway);
 
-    const first = owner.reconnect("cloud");
-    const duplicate = owner.reconnect("cloud");
-    const settings = owner.setEnabled("cloud", false);
+    const first = owner.reconnect(userMCPServer("cloud"));
+    const duplicate = owner.reconnect(userMCPServer("cloud"));
+    const settings = owner.setEnabled(userMCPServer("cloud"), false);
     await vi.waitFor(() => expect(reconnect).toHaveBeenCalledOnce());
     expect(setEnabled).not.toHaveBeenCalled();
 
@@ -124,7 +130,7 @@ describe("MCPServerMutationOwner", () => {
     } as unknown as MCPServerGateway;
     owner = MCPServerMutationOwner.install(gateway);
 
-    const authorization = rejected(owner.authorize("github"));
+    const authorization = rejected(owner.authorize(userMCPServer("github")));
     await vi.waitFor(() => expect(vi.getTimerCount()).toBe(1));
     owner.replaceRuntimeGeneration(() => gateway);
 
@@ -138,8 +144,7 @@ describe("MCPServerMutationOwner", () => {
 
 function server(overrides: Partial<MCPServerSettings> = {}): MCPServerSettings {
   return {
-    id: "cloud",
-    name: "cloud",
+    id: userMCPServer("cloud"),
     desc: "",
     tools: 0,
     status: "disconnected",

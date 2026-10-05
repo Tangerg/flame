@@ -1,6 +1,7 @@
 package terminal
 
 import (
+	"github.com/Tangerg/flame/cli/internal/application/integration/mcp"
 	"context"
 	"errors"
 	"fmt"
@@ -227,21 +228,25 @@ func (a *app) approvalRulesReaderQuery() runtimeReaderQuery {
 			if err != nil {
 				return readerDocument{}, err
 			}
-			return approvalRulesDocument(rules), nil
+			return approvalRulesDocument(rules)
 		},
 	}
 }
 
-func approvalRulesDocument(rules []protocol.ApprovalRule) readerDocument {
+func approvalRulesDocument(rules []protocol.ApprovalRule) (readerDocument, error) {
 	if len(rules) == 0 {
-		return paragraphDocument("Approval rules", "none remembered", []string{"No remembered approval rules."})
+		return paragraphDocument("Approval rules", "none remembered", []string{"No remembered approval rules."}), nil
 	}
 	lines := make([]string, 0, len(rules))
 	for _, rule := range rules {
 		subject := conversation.ApprovalSubject(rule.Subject)
-		lines = append(lines, fmt.Sprintf("%s  %s  %s  %s:%s  %s  stale=%t", rule.ID, rule.Scope, rule.Decision, rule.ModelName, subject, conversation.ToolSource(rule.Tool), rule.Stale))
+		source, err := mcp.ToolLabel(rule.Tool)
+		if err != nil {
+			return readerDocument{}, err
+		}
+		lines = append(lines, fmt.Sprintf("%s  %s  %s  %s:%s  %s  stale=%t", rule.ID, rule.Scope, rule.Decision, rule.ModelName, subject, source, rule.Stale))
 	}
-	return paragraphDocument("Approval rules", fmt.Sprintf("%d remembered", len(rules)), lines)
+	return paragraphDocument("Approval rules", fmt.Sprintf("%d remembered", len(rules)), lines), nil
 }
 
 func (a *app) PrepareDeleteApprovalRule(identity string) error {
@@ -310,8 +315,13 @@ func (a *app) deleteApprovalRule(sessionID, id string) {
 			}
 			a.status.note("approval rule forgotten · " + deleted.id)
 			if a.session.current.ID == sessionID {
+				document, err := approvalRulesDocument(deleted.rules)
+				if err != nil {
+					a.message("forget approval rule: " + err.Error())
+					return
+				}
 				a.setRuntimeReader(runtimeReaderApprovalRules)
-				a.openReaderDocument(approvalRulesDocument(deleted.rules))
+				a.openReaderDocument(document)
 			}
 		},
 	) {
@@ -361,7 +371,11 @@ func approvalModeDetail(mode protocol.ApprovalMode) string {
 }
 
 func (a *app) setApprovalRule(request protocol.SetApprovalRuleRequest) error {
-	label := "remembering global " + string(request.Decision) + " for " + conversation.ToolSource(request.Tool)
+	source, err := mcp.ToolLabel(request.Tool)
+	if err != nil {
+		return err
+	}
+	label := "remembering global " + string(request.Decision) + " for " + source
 	a.status.note(label)
 	if !a.runAdmissionMutation(approvalRuleOperation, false,
 		func(ctx context.Context) (struct{}, error) {

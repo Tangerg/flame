@@ -3,13 +3,13 @@ package execution
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -38,19 +38,7 @@ func (p *identityApprovalPolicy) Remember(_ context.Context, request approval.Re
 func TestRestoredToolApprovalRejectsIdentityAndAuthorityDrift(t *testing.T) {
 	ref := func(serverName, remoteName string) tool.Ref {
 		t.Helper()
-		server, err := mcpserver.ParseServerName(serverName)
-		if err != nil {
-			t.Fatal(err)
-		}
-		remote, err := mcpserver.ParseRemoteToolName(remoteName)
-		if err != nil {
-			t.Fatal(err)
-		}
-		r, err := tool.MCP(server, remote)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return r
+		return testsupport.MCPTool(testsupport.UserMCPServer(serverName), remoteName)
 	}
 	original := ref("a_b", "c")
 	args, err := tool.ParseArguments(`{}`)
@@ -95,8 +83,11 @@ func TestRestoredToolApprovalRejectsIdentityAndAuthorityDrift(t *testing.T) {
 		mutate func(*ToolAuthorizationRequest)
 	}{
 		{"same label, different source", func(r *ToolAuthorizationRequest) { r.Tool = ref("a", "b_c") }},
+		{"same name, different origin", func(r *ToolAuthorizationRequest) {
+			r.Tool = testsupport.MCPTool(testsupport.InstallationMCPServer(testsupport.InstallationID(t), "a_b"), "c")
+		}},
 		{"different authority", func(r *ToolAuthorizationRequest) {
-			r.SourceFingerprint = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+			r.SourceFingerprint = testsupport.Digest("different authority")
 		}},
 		{"different name", func(r *ToolAuthorizationRequest) { r.ToolName = "replacement" }},
 	} {

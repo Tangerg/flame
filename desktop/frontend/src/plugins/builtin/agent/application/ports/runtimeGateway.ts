@@ -1,3 +1,4 @@
+import type { MCPServerID } from "@flame/runtime-contract/wire";
 import { createSingletonPort } from "@/lib/ports/singletonPort";
 import type { AgentItem, AgentPendingInterruptSet, AgentRunFact } from "@/plugins/sdk";
 import type { ApprovalMode } from "../../domain/hitl";
@@ -54,7 +55,7 @@ export interface AgentRuntimeGateway {
   isRunGone(error: unknown): boolean;
   isReplayLost(error: unknown): boolean;
   setApprovalMode(mode: ApprovalMode): Promise<ApprovalMode>;
-  allowMCPTool(server: string, name: string): Promise<void>;
+  allowMCPTool(server: MCPServerID, name: string): Promise<void>;
   forgetApprovalRule(id: string): Promise<void>;
 }
 

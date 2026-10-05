@@ -56,23 +56,20 @@ describe("runtime MCP data providers", () => {
     respondSuccess(transport, request.id, {
       data: [
         {
-          name: "git",
+          id: { origin: { type: "user" }, name: "git" },
           description: "Branches, commits",
-          origin: { type: "user" },
           connection: { type: "stdio", command: "mcp-git" },
           handshakeTimeout: { type: "unbounded" },
           status: { type: "connected", toolCount: 2 },
         },
         {
-          name: "flaky",
-          origin: { type: "user" },
+          id: { origin: { type: "user" }, name: "flaky" },
           connection: { type: "stdio", command: "mcp-flaky" },
           handshakeTimeout: { type: "unbounded" },
           status: { type: "failed", error: { type: "mcp_dial_failed" } },
         },
         {
-          name: "cloud",
-          origin: { type: "user" },
+          id: { origin: { type: "user" }, name: "cloud" },
           connection: { type: "streamableHttp", url: "https://mcp.example/rpc" },
           handshakeTimeout: { type: "unbounded" },
           status: { type: "needsAuth", error: { type: "mcp_authorization_required" } },
@@ -82,7 +79,7 @@ describe("runtime MCP data providers", () => {
 
     await expect(pending).resolves.toMatchObject([
       {
-        id: "git",
+        id: { origin: { type: "user" }, name: "git" },
         desc: "Branches, commits",
         tools: 2,
         status: "connected",
@@ -93,14 +90,14 @@ describe("runtime MCP data providers", () => {
         toolCount: 2,
       },
       {
-        id: "flaky",
+        id: { origin: { type: "user" }, name: "flaky" },
         tools: 0,
         status: "failed",
         errorDetail: "Couldn't reach this server — check the command or URL and retry.",
         enabled: true,
       },
       {
-        id: "cloud",
+        id: { origin: { type: "user" }, name: "cloud" },
         tools: 0,
         status: "needsAuth",
         errorDetail: "This server needs you to sign in before it can be used.",
@@ -110,6 +107,31 @@ describe("runtime MCP data providers", () => {
     ]);
   });
 
+  it.each([
+    { type: "failed", error: { type: "internal_error" } },
+    { type: "failed", error: { type: "mcp_authorization_required" } },
+    { type: "needsAuth", error: { type: "mcp_dial_failed" } },
+  ])("refuses an inline problem outside the server state's categories: %o", async (status) => {
+    const transport = createMemoryTransport();
+    const client = testClient(transport);
+    const fetcher = await provider<MCPServerSettings[]>(() => client, "mcp-servers");
+
+    const pending = fetcher();
+    const request = await waitForRequest(transport, "mcp.servers.list");
+    respondSuccess(transport, request.id, {
+      data: [
+        {
+          id: { origin: { type: "user" }, name: "flaky" },
+          connection: { type: "stdio", command: "mcp-flaky" },
+          handshakeTimeout: { type: "unbounded" },
+          status,
+        },
+      ],
+    });
+
+    await expect(pending).rejects.toThrow("invalid mcp.servers.list result");
+  });
+
   it("requires an explicit server and maps tool descriptions", async () => {
     const transport = createMemoryTransport();
     const client = testClient(transport);
@@ -117,18 +139,32 @@ describe("runtime MCP data providers", () => {
     const fetcher = await provider<MCPToolSummary[]>(runtimeClient, "mcp-tools");
 
     await expect(fetcher()).rejects.toThrow('Data provider "mcp-tools" requires parameters');
-    const pending = fetcher({ server: "git" });
+    const git = { origin: { type: "user" as const }, name: "git" };
+    const pending = fetcher({ server: git });
     const request = await waitForRequest(transport, "mcp.tools.list");
-    expect(request.params).toEqual({ server: "git" });
+    expect(request.params).toEqual({ server: git });
     respondSuccess(transport, request.id, {
       data: [
-        { server: "git", name: "status", modelName: "git_status", nameConflicts: [] },
+        { server: git, name: "status", modelName: "git_status", nameConflicts: [] },
         {
-          server: "git",
+          server: git,
           name: "log",
           description: "Read history",
           modelName: "git_log",
-          nameConflicts: [{ type: "mcp", server: "git.log", name: "query" }],
+          nameConflicts: [
+            { type: "mcp", server: { origin: { type: "user" }, name: "git.log" }, name: "query" },
+            {
+              type: "mcp",
+              server: {
+                origin: {
+                  type: "installation",
+                  installationId: "eeb329cd-c7ce-40c9-bd90-6821fef06d30",
+                },
+                name: "git",
+              },
+              name: "log",
+            },
+          ],
         },
       ],
     });
@@ -139,7 +175,7 @@ describe("runtime MCP data providers", () => {
         name: "log",
         description: "Read history",
         modelName: "git_log",
-        nameConflicts: ["mcp/git.log/query"],
+        nameConflicts: ["mcp/git.log/query", "mcp/eeb329cd-c7ce-40c9-bd90-6821fef06d30/git/log"],
       },
     ]);
   });

@@ -125,7 +125,7 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 		}
 	}
 	installed := must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-release").(*protocol.PluginInstallation)
-	if installed.Enabled || installed.ApprovedDigest != "" || len(installed.Selected.Skills) != 1 {
+	if installed.State != protocol.PluginInstallationUnapproved || len(installed.Selected.Skills) != 1 {
 		t.Fatalf("unexpected admission: %+v", installed)
 	}
 	replayed := must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-release").(*protocol.PluginInstallation)
@@ -146,13 +146,13 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 	if denied.Failure == nil || !errors.Is(denied.Failure, protocol.ErrPluginUnapproved) {
 		t.Fatalf("unapproved enable: %v", denied.Failure)
 	}
-	must(delivery.PluginsApprove, protocol.ApprovePluginRequest{InstallationID: installed.ID, Digest: release.Digest, Grants: installed.Selected.Requests}, "approve-release")
+	must(delivery.PluginsApprove, protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: release.Digest}, "approve-release")
 	must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable-release")
-	name := "installation/" + installed.ID + "/reviews"
+	name := protocol.MCPServerID{Origin: protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installed.ID}, Name: "reviews"}
 	deadline := time.NewTimer(5 * time.Second)
 	defer deadline.Stop()
 	for {
-		tools := must(delivery.MCPToolsList, protocol.MCPListToolsRequest{Server: name}, "").(*protocol.Page[protocol.MCPTool])
+		tools := must(delivery.MCPToolsList, protocol.MCPListToolsRequest{Server: &name}, "").(*protocol.Page[protocol.MCPTool])
 		if len(tools.Data) > 0 {
 			break
 		}
@@ -214,6 +214,10 @@ func TestPluginReleaseUsesExistingMCPPolicySkillsAndReplay(t *testing.T) {
 	}
 
 	must(delivery.PluginsRevoke, protocol.PluginRequest{InstallationID: installed.ID}, "revoke-release")
+	removal := invoke(delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}, "uninstall-while-waiting")
+	if removal.Failure == nil || !errors.Is(removal.Failure, protocol.ErrPluginInUse) {
+		t.Fatalf("waiting dependency removal: %v", removal.Failure)
+	}
 
 	discovered = must(delivery.SkillsDiscoveredList, protocol.WorkspaceQuery{Workspace: protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}}, "").(*protocol.SkillDiscovery)
 	if len(discovered.Skills) != 0 {

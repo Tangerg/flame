@@ -112,10 +112,7 @@ func TestPresenterWebSearchResult(t *testing.T) {
 
 func TestPublishedResultContractsDecodePresenterOutput(t *testing.T) {
 	contracts := make(map[string]PresentationContract)
-	published, err := PresentationContracts()
-	if err != nil {
-		t.Fatal(err)
-	}
+	published := PresentationContracts()
 	for _, contract := range published {
 		if _, exists := contracts[contract.ToolName]; exists {
 			t.Fatalf("duplicate result contract for %q", contract.ToolName)
@@ -124,7 +121,7 @@ func TestPublishedResultContractsDecodePresenterOutput(t *testing.T) {
 	}
 
 	tests := []struct {
-		name   string
+		name   tool.BuiltInName
 		result map[string]any
 	}{
 		{name: tool.Shell, result: map[string]any{"stdout": content.New([]byte("ok")), "exit_code": 0}},
@@ -134,8 +131,8 @@ func TestPublishedResultContractsDecodePresenterOutput(t *testing.T) {
 		{name: tool.ApplyPatch, result: map[string]any{"files": []any{map[string]any{"path": "main.go"}}}},
 	}
 	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			contract, ok := contracts[test.name]
+		t.Run(string(test.name), func(t *testing.T) {
+			contract, ok := contracts[string(test.name)]
 			if !ok {
 				t.Fatalf("no published result contract for %q", test.name)
 			}
@@ -154,7 +151,7 @@ func TestPublishedResultContractsDecodePresenterOutput(t *testing.T) {
 	}
 
 	wantStatuses := []string{"added", "deleted", "modified", "moved"}
-	if got := contracts[tool.ApplyPatch].EnumValues[reflect.TypeFor[ChangeStatus]()]; !reflect.DeepEqual(got, wantStatuses) {
+	if got := contracts[string(tool.ApplyPatch)].EnumValues[reflect.TypeFor[ChangeStatus]()]; !reflect.DeepEqual(got, wantStatuses) {
 		t.Fatalf("published patch statuses = %v, want %v", got, wantStatuses)
 	}
 }

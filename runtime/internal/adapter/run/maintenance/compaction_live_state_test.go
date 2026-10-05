@@ -2,6 +2,7 @@ package maintenance
 
 import (
 	"context"
+	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"strings"
 	"testing"
 
@@ -18,7 +19,7 @@ func TestLiveStateReminderRendersRetainedShells(t *testing.T) {
 		t.Fatal("non-empty snapshot should render a reminder")
 	}
 	body := msg.Text()
-	for _, want := range []string{"<system-reminder>", "bg_1", "npm run dev", "read_shell_output"} {
+	for _, want := range []string{executionadapter.RuntimeContextOpening(executionadapter.RuntimeContextRetainedShells), "bg_1", "npm run dev", "read_shell_output"} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("reminder missing %q:\n%s", want, body)
 		}
@@ -74,7 +75,7 @@ func TestCompactorPreservesUnreadCompletedShell(t *testing.T) {
 		t.Fatalf("after[0] should be the summary, got %q", after[0].Text())
 	}
 	reminder := after[1].Text()
-	if !strings.Contains(reminder, "<system-reminder>") || !strings.Contains(reminder, id) {
+	if !strings.Contains(reminder, executionadapter.RuntimeContextOpening(executionadapter.RuntimeContextRetainedShells)) || !strings.Contains(reminder, id) {
 		t.Fatalf("after[1] should be the live-state reminder, got %q", reminder)
 	}
 	output, dropped := sh.Read()
@@ -110,7 +111,7 @@ func TestCompactorSkipsReminderWhenNoLiveState(t *testing.T) {
 		t.Fatalf("empty live-state should leave summary + latest turn = 2, got %d", len(after))
 	}
 	for _, m := range after {
-		if strings.Contains(m.Text(), "<system-reminder>") {
+		if strings.Contains(m.Text(), executionadapter.RuntimeContextOpening(executionadapter.RuntimeContextRetainedShells)) {
 			t.Fatalf("no reminder should be injected for an empty snapshot: %q", m.Text())
 		}
 	}

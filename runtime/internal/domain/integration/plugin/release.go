@@ -8,338 +8,477 @@ import (
 	"regexp"
 	"slices"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 )
 
 var namePattern = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$`)
 var themeColor = regexp.MustCompile(`^#[0-9a-fA-F]{6}$`)
-var themeColorName = regexp.MustCompile(`^(?:background|foreground|accent|muted|border)$`)
 
-func ThemeColorPattern() string     { return themeColor.String() }
-func ThemeColorNamePattern() string { return themeColorName.String() }
+func ThemeColorPattern() string { return themeColor.String() }
 
 func ValidName(name string) bool {
 	return len(name) <= 64 && namePattern.MatchString(name) && !strings.Contains(name, "--") && !strings.Contains(name, "..")
 }
 
 const ContributionIDPattern = `^[a-z][a-z0-9._-]{0,63}$`
-const DigestPattern = `^[0-9a-f]{64}$`
 
 const (
 	MaxServers     = 64
 	MaxInputs      = 64
 	MaxThemes      = 32
-	MaxRequests    = 16
 	MaxDiagnostics = 1024
 )
 
 var idPattern = regexp.MustCompile(ContributionIDPattern)
 
-func (r Release) Validate() error {
-	if !ValidDigest(r.Digest) {
-		return fmt.Errorf("%w: release digest", ErrInvalid)
-	}
-	if !ValidName(r.Name) {
-		return fmt.Errorf("%w: package name", ErrInvalid)
-	}
-	for _, limit := range []struct {
-		component      string
-		count, maximum int
-	}{
-		{"server", len(r.Servers), MaxServers}, {"input", len(r.Inputs), MaxInputs}, {"theme", len(r.Themes), MaxThemes}, {"skill", len(r.Skills), skills.MaxSkillsPerSource}, {"diagnostic", len(r.Diagnostics), MaxDiagnostics},
-	} {
-		if limit.count > limit.maximum {
-			return fmt.Errorf("%w: %s capacity", ErrInvalid, limit.component)
-		}
-	}
-	names := map[string]bool{}
-	for _, s := range r.Servers {
-		if err := s.Validate(); err != nil {
-			return fmt.Errorf("server %q: %w", s.Name, err)
-		}
-		if names[s.Name] {
-			return fmt.Errorf("%w: duplicate server %q", ErrInvalid, s.Name)
-		}
-		names[s.Name] = true
-	}
-	if err := validateRequests(r.Requests); err != nil {
-		return fmt.Errorf("capability requests: %w", err)
-	}
-	for _, request := range r.Requests {
-		for _, target := range request.Targets {
-			server, _, _ := strings.Cut(target, "/")
-			if !names[server] {
-				return fmt.Errorf("%w: capability target references unknown server %q", ErrInvalid, server)
-			}
-		}
-	}
-	ids := map[string]bool{}
-	bindings := map[string]bool{}
-	for _, input := range r.Inputs {
-		if !idPattern.MatchString(input.ID) || ids[input.ID] {
-			return fmt.Errorf("%w: input identity %q", ErrInvalid, input.ID)
-		}
-		ids[input.ID] = true
-		index := slices.IndexFunc(r.Servers, func(server Server) bool { return server.Name == input.Server })
-		if index < 0 {
-			return fmt.Errorf("%w: input %q references an unknown server", ErrInvalid, input.ID)
-		}
-		server := r.Servers[index]
-		key := input.Key
-		switch input.Target {
-		case Environment:
-			if err := mcpserver.ValidateEnvironment(map[string]string{key: ""}); err != nil {
-				return fmt.Errorf("%w: input %q: %w", ErrInvalid, input.ID, err)
-			}
-			if server.Type != Stdio || !environmentKey.MatchString(key) || strings.EqualFold(key, "PLUGIN_ROOT") || strings.EqualFold(key, "PLUGIN_DATA") {
-				return fmt.Errorf("%w: input %q environment binding", ErrInvalid, input.ID)
-			}
-			key = strings.ToUpper(key)
-			for static := range server.Env {
-				if strings.EqualFold(static, key) {
-					return fmt.Errorf("%w: input %q duplicates static environment configuration", ErrInvalid, input.ID)
-				}
-			}
-		case Header:
-			key = strings.ToLower(key)
-			if server.Type != StreamableHTTP || (len(input.Key) > 128 || !mcpserver.ValidHeaderName(input.Key)) || key == "authorization" {
-				return fmt.Errorf("%w: input %q header binding", ErrInvalid, input.ID)
-			}
-			if (strings.Contains(key, "token") || strings.Contains(key, "key")) && !input.Secret {
-				return fmt.Errorf("%w: input %q credential classification", ErrInvalid, input.ID)
-			}
-			for static := range server.Headers {
-				if strings.EqualFold(static, key) {
-					return fmt.Errorf("%w: input %q duplicates static header configuration", ErrInvalid, input.ID)
-				}
-			}
-		case Authorization:
-			if server.Type != StreamableHTTP || key != "" || !input.Secret {
-				return fmt.Errorf("%w: input %q authorization binding", ErrInvalid, input.ID)
-			}
-		default:
-			return fmt.Errorf("%w: input %q target", ErrInvalid, input.ID)
-		}
-		binding := input.Server + "/" + string(input.Target) + "/" + key
-		if bindings[binding] {
-			return fmt.Errorf("%w: input %q duplicates a configuration binding", ErrInvalid, input.ID)
-		}
-		bindings[binding] = true
-	}
-	themes := map[string]bool{}
-	for _, theme := range r.Themes {
-		if !idPattern.MatchString(theme.ID) || themes[theme.ID] {
-			return fmt.Errorf("%w: theme identity %q", ErrInvalid, theme.ID)
-		}
-		themes[theme.ID] = true
-		if theme.Title == "" || len(theme.Title) > 128 {
-			return fmt.Errorf("%w: theme %q title", ErrInvalid, theme.ID)
-		}
-		if theme.Scheme != Dark && theme.Scheme != Light {
-			return fmt.Errorf("%w: theme %q scheme", ErrInvalid, theme.ID)
-		}
-		if len(theme.Colors) > 32 {
-			return fmt.Errorf("%w: theme %q color capacity", ErrInvalid, theme.ID)
-		}
-		for _, key := range slices.Sorted(maps.Keys(theme.Colors)) {
-			if !themeColorName.MatchString(key) || !themeColor.MatchString(theme.Colors[key]) {
-				return fmt.Errorf("%w: theme %q color %q", ErrInvalid, theme.ID, key)
-			}
-		}
-	}
-	names = map[string]bool{}
-	for _, skill := range r.Skills {
-		if err := skills.ValidateName(skill.Name); err != nil {
-			return fmt.Errorf("%w: skill identity: %w", ErrInvalid, err)
-		}
-		if names[skill.Name] {
-			return fmt.Errorf("%w: duplicate skill %q", ErrInvalid, skill.Name)
-		}
-		names[skill.Name] = true
-	}
-	return nil
+// Server is a package-declared MCP server in the MCP registry's transport
+// vocabulary. Command and Dir keep the package-relative spelling; the package
+// adapter resolves them against the release directory at realization.
+type Server struct {
+	Name      mcpserver.ServerName
+	Transport mcpserver.Transport
+	Command   string
+	Args      []string
+	Env       map[string]string
+	Dir       string
+	URL       string
+	Headers   map[string]string
 }
-func validateRequests(requests []RequestGrant) error {
-	if len(requests) > MaxRequests {
-		return fmt.Errorf("%w: capability capacity", ErrInvalid)
-	}
-	caps := map[Capability]bool{}
-	for _, r := range requests {
-		if caps[r.Capability] {
-			return fmt.Errorf("%w: duplicate capability %q", ErrInvalid, r.Capability)
-		}
-		if len(r.Targets) == 0 || len(r.Targets) > 128 {
-			return fmt.Errorf("%w: capability %q target capacity", ErrInvalid, r.Capability)
-		}
-		caps[r.Capability] = true
-		targets := map[string]bool{}
-		for _, t := range r.Targets {
-			if targets[t] {
-				return fmt.Errorf("%w: duplicate capability target %q", ErrInvalid, t)
-			}
-			targets[t] = true
-			switch r.Capability {
-			case InvokeTools:
-				parts := strings.Split(t, "/")
-				if len(parts) != 2 {
-					return fmt.Errorf("%w: tool target %q must name a server and tool", ErrInvalid, t)
-				}
-				if _, err := mcpserver.ParseServerName(parts[0]); err != nil {
-					return fmt.Errorf("%w: tool target server: %w", ErrInvalid, err)
-				}
-				if _, err := mcpserver.ParseRemoteToolName(parts[1]); err != nil {
-					return fmt.Errorf("%w: tool target name: %w", ErrInvalid, err)
-				}
-			default:
-				return fmt.Errorf("%w: unknown capability %q", ErrInvalid, r.Capability)
-			}
+
+// Input is a value the user supplies for one server. Secrecy is declared, but
+// a header or authorization input is admitted only as a secret: anything sent
+// to an endpoint as a header is treated as a credential.
+type Input struct {
+	ID       string
+	Secret   bool
+	Required bool
+	Server   mcpserver.ServerName
+	Target   InputTarget
+	Key      string
+}
+
+type Theme struct {
+	ID     string
+	Title  string
+	Scheme ThemeScheme
+	Colors ThemeColors
+}
+
+// ThemeColors names the closed set of colors a theme may override. An empty
+// color is not overridden.
+type ThemeColors struct {
+	Background string
+	Foreground string
+	Accent     string
+	Muted      string
+	Border     string
+}
+
+func (c ThemeColors) validate() error {
+	for name, value := range map[string]string{"background": c.Background, "foreground": c.Foreground, "accent": c.Accent, "muted": c.Muted, "border": c.Border} {
+		if value != "" && !themeColor.MatchString(value) {
+			return fmt.Errorf("color %q", name)
 		}
 	}
 	return nil
 }
-func validateGrants(requests, grants []RequestGrant) error {
-	if err := validateRequests(grants); err != nil {
+
+type Skill struct {
+	Name        string
+	Description string
+}
+
+// Declaration is the plain data a package declares. It carries no trust of its
+// own: only [NewRelease] or a [Builder] admits it into a [Release].
+type Declaration struct {
+	Name        string
+	Version     string
+	Description string
+	Servers     []Server
+	Inputs      []Input
+	Themes      []Theme
+	Skills      []Skill
+	Diagnostics []Diagnostic
+}
+
+func (d Declaration) clone() Declaration {
+	d.Servers = slices.Clone(d.Servers)
+	for index := range d.Servers {
+		d.Servers[index] = d.Servers[index].clone()
+	}
+	d.Inputs = slices.Clone(d.Inputs)
+	d.Themes = slices.Clone(d.Themes)
+	d.Skills = slices.Clone(d.Skills)
+	d.Diagnostics = slices.Clone(d.Diagnostics)
+	return d
+}
+
+func (s Server) clone() Server {
+	s.Args = slices.Clone(s.Args)
+	s.Env = maps.Clone(s.Env)
+	s.Headers = maps.Clone(s.Headers)
+	return s
+}
+
+// Release is an admitted, immutable declaration of exact package bytes. It is
+// validated once on construction; persistence, installations and projections
+// trust it afterwards and read it only through copies.
+type Release struct {
+	digest      fingerprint.Digest
+	declaration Declaration
+}
+
+// NewRelease admits a complete declaration, each member exactly once.
+func NewRelease(digest fingerprint.Digest, declaration Declaration) (Release, error) {
+	builder, err := NewBuilder(declaration.Name, declaration.Version, declaration.Description)
+	if err != nil {
+		return Release{}, err
+	}
+	for _, server := range declaration.Servers {
+		if err := builder.AdmitServer(server); err != nil {
+			return Release{}, err
+		}
+	}
+	for _, input := range declaration.Inputs {
+		if err := builder.AdmitInput(input); err != nil {
+			return Release{}, err
+		}
+	}
+	for _, theme := range declaration.Themes {
+		if err := builder.AdmitTheme(theme); err != nil {
+			return Release{}, err
+		}
+	}
+	for _, skill := range declaration.Skills {
+		if err := builder.AdmitSkill(skill); err != nil {
+			return Release{}, err
+		}
+	}
+	for _, diagnostic := range declaration.Diagnostics {
+		builder.Report(diagnostic)
+	}
+	return builder.Release(digest)
+}
+
+func (r Release) Digest() fingerprint.Digest { return r.digest }
+func (r Release) Name() string               { return r.declaration.Name }
+
+// Declaration returns an owned copy; no reader can advance the release.
+func (r Release) Declaration() Declaration { return r.declaration.clone() }
+
+func (r Release) server(name mcpserver.ServerName) (Server, bool) {
+	index := slices.IndexFunc(r.declaration.Servers, func(server Server) bool { return server.Name == name })
+	if index < 0 {
+		return Server{}, false
+	}
+	return r.declaration.Servers[index], true
+}
+
+func (r Release) input(id string) (Input, bool) {
+	index := slices.IndexFunc(r.declaration.Inputs, func(input Input) bool { return input.ID == id })
+	if index < 0 {
+		return Input{}, false
+	}
+	return r.declaration.Inputs[index], true
+}
+
+// recipient names who receives a credential configured for a server. For an
+// endpoint it is the declared transport, URL and static headers: a credential
+// keeps reaching the same service while they are unchanged, whatever else the
+// release changes. For a process it is the executable itself, which only the
+// exact release bytes and the server's name within them identify. Static
+// secret inputs and OAuth grants both follow this one rule.
+func (r Release) recipient(name mcpserver.ServerName) (fingerprint.Digest, bool) {
+	server, found := r.server(name)
+	if !found {
+		return fingerprint.Digest{}, false
+	}
+	fields := []string{string(server.Transport)}
+	switch server.Transport {
+	case mcpserver.TransportStreamableHTTP:
+		fields = append(fields, server.URL)
+		for _, key := range slices.Sorted(maps.Keys(server.Headers)) {
+			fields = append(fields, key, server.Headers[key])
+		}
+	default:
+		fields = append(fields, r.digest.String(), name.String())
+	}
+	return fingerprint.Strings(fields...), true
+}
+
+func (r Release) declaresSkill(name string) bool {
+	return slices.ContainsFunc(r.declaration.Skills, func(skill Skill) bool { return skill.Name == name })
+}
+
+// Builder admits a declaration one contribution at a time. Each contribution is
+// validated once against what was already admitted, so a package adapter can
+// isolate an invalid member without revalidating the members before it.
+type Builder struct {
+	declaration Declaration
+	bindings    map[string]bool
+}
+
+func NewBuilder(name, version, description string) (*Builder, error) {
+	if !ValidName(name) {
+		return nil, fmt.Errorf("%w: package name", ErrInvalid)
+	}
+	return &Builder{declaration: Declaration{Name: name, Version: version, Description: description}, bindings: map[string]bool{}}, nil
+}
+
+// Report records an admission finding. Findings are validated with the
+// release, because a finding never decides whether a member is admitted.
+func (b *Builder) Report(diagnostic Diagnostic) {
+	b.declaration.Diagnostics = append(b.declaration.Diagnostics, diagnostic)
+}
+
+func (b *Builder) AdmitServer(server Server) error {
+	if len(b.declaration.Servers) >= MaxServers {
+		return refuse(DiagnosticComponentLimit, "server capacity")
+	}
+	if _, found := b.release().server(server.Name); found {
+		return refuse(DiagnosticInvalidDeclaration, "duplicate server %q", server.Name.String())
+	}
+	if err := server.validate(); err != nil {
+		return &Refusal{Code: DiagnosticInvalidDeclaration, cause: fmt.Errorf("server %q: %w", server.Name.String(), err)}
+	}
+	b.declaration.Servers = append(b.declaration.Servers, server.clone())
+	return nil
+}
+
+func (b *Builder) AdmitInput(input Input) error {
+	if len(b.declaration.Inputs) >= MaxInputs {
+		return refuse(DiagnosticComponentLimit, "input capacity")
+	}
+	release := b.release()
+	if _, found := release.input(input.ID); found || !idPattern.MatchString(input.ID) {
+		return refuse(DiagnosticInvalidDeclaration, "input identity %q", input.ID)
+	}
+	server, found := release.server(input.Server)
+	if !found {
+		return refuse(DiagnosticInvalidDependencies, "input %q references an unknown server", input.ID)
+	}
+	binding, err := input.binding(server)
+	if err != nil {
 		return err
 	}
-	for _, g := range grants {
-		index := slices.IndexFunc(requests, func(r RequestGrant) bool { return r.Capability == g.Capability })
-		if index < 0 {
-			return fmt.Errorf("%w: capability %q was not requested", ErrInvalid, g.Capability)
-		}
-		for _, target := range g.Targets {
-			if !slices.Contains(requests[index].Targets, target) {
-				return fmt.Errorf("%w: capability target %q was not requested", ErrInvalid, target)
-			}
-		}
+	if b.bindings[binding] {
+		return refuse(DiagnosticInvalidDeclaration, "input %q duplicates a configuration binding", input.ID)
 	}
+	b.bindings[binding] = true
+	b.declaration.Inputs = append(b.declaration.Inputs, input)
 	return nil
 }
 
-func (r Release) Clone() Release {
-	r.Servers = slices.Clone(r.Servers)
-	for index := range r.Servers {
-		s := &r.Servers[index]
-		s.Args = slices.Clone(s.Args)
-		s.Env = maps.Clone(s.Env)
-		s.Headers = maps.Clone(s.Headers)
+func (b *Builder) AdmitTheme(theme Theme) error {
+	if len(b.declaration.Themes) >= MaxThemes {
+		return refuse(DiagnosticComponentLimit, "theme capacity")
 	}
-	r.Requests = slices.Clone(r.Requests)
-	for index := range r.Requests {
-		r.Requests[index].Targets = slices.Clone(r.Requests[index].Targets)
+	duplicate := slices.ContainsFunc(b.declaration.Themes, func(existing Theme) bool { return existing.ID == theme.ID })
+	if duplicate || !idPattern.MatchString(theme.ID) {
+		return refuse(DiagnosticInvalidDeclaration, "theme identity %q", theme.ID)
 	}
-	r.Inputs = slices.Clone(r.Inputs)
-	r.Themes = slices.Clone(r.Themes)
-	for index := range r.Themes {
-		r.Themes[index].Colors = maps.Clone(r.Themes[index].Colors)
+	if theme.Title == "" || len(theme.Title) > 128 {
+		return refuse(DiagnosticInvalidDeclaration, "theme %q title", theme.ID)
 	}
-	r.Skills = slices.Clone(r.Skills)
-	r.Diagnostics = slices.Clone(r.Diagnostics)
-	return r
+	if theme.Scheme != Dark && theme.Scheme != Light {
+		return refuse(DiagnosticInvalidDeclaration, "theme %q scheme", theme.ID)
+	}
+	if err := theme.Colors.validate(); err != nil {
+		return refuse(DiagnosticInvalidDeclaration, "theme %q %v", theme.ID, err)
+	}
+	b.declaration.Themes = append(b.declaration.Themes, theme)
+	return nil
 }
 
-var environmentKey = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]{0,127}$`)
+func (b *Builder) AdmitSkill(skill Skill) error {
+	if len(b.declaration.Skills) >= skills.MaxSkillsPerSource {
+		return refuse(DiagnosticComponentLimit, "skill capacity")
+	}
+	if err := skills.ValidateName(skill.Name); err != nil {
+		return &Refusal{Code: DiagnosticInvalidDeclaration, cause: fmt.Errorf("%w: skill identity: %w", ErrInvalid, err)}
+	}
+	if b.release().declaresSkill(skill.Name) {
+		return refuse(DiagnosticInvalidDeclaration, "duplicate skill %q", skill.Name)
+	}
+	b.declaration.Skills = append(b.declaration.Skills, skill)
+	return nil
+}
 
-func (s Server) Validate() error {
-	name, err := mcpserver.ParseServerName(s.Name)
-	if err != nil {
+// Release binds the admitted declaration to the digest of its exact bytes.
+func (b *Builder) Release(digest fingerprint.Digest) (Release, error) {
+	if err := digest.Validate(); err != nil {
+		return Release{}, fmt.Errorf("%w: release digest: %w", ErrInvalid, err)
+	}
+	if len(b.declaration.Diagnostics) > MaxDiagnostics {
+		return Release{}, fmt.Errorf("%w: diagnostic capacity", ErrInvalid)
+	}
+	for index, diagnostic := range b.declaration.Diagnostics {
+		if err := diagnostic.Validate(); err != nil {
+			return Release{}, fmt.Errorf("diagnostic %d: %w", index, err)
+		}
+	}
+	return Release{digest: digest, declaration: b.declaration.clone()}, nil
+}
+
+func (b *Builder) release() Release { return Release{declaration: b.declaration} }
+
+// binding names the configuration slot an input fills on its server, in the
+// canonical case of the target, so two spellings cannot fill one slot.
+func (i Input) binding(server Server) (string, error) {
+	key := i.Key
+	switch i.Target {
+	case Environment:
+		if server.Transport != mcpserver.TransportStdio {
+			return "", refuse(DiagnosticInvalidDependencies, "input %q binds an environment variable of a non-stdio server", i.ID)
+		}
+		if err := validatePackageEnvironment(map[string]string{key: ""}); err != nil {
+			return "", &Refusal{Code: DiagnosticInvalidDeclaration, cause: fmt.Errorf("input %q: %w", i.ID, err)}
+		}
+		key = strings.ToUpper(key)
+		for static := range server.Env {
+			if strings.EqualFold(static, key) {
+				return "", refuse(DiagnosticInvalidDependencies, "input %q duplicates static environment configuration", i.ID)
+			}
+		}
+	case Header:
+		if server.Transport != mcpserver.TransportStreamableHTTP {
+			return "", refuse(DiagnosticInvalidDependencies, "input %q binds a header of a non-HTTP server", i.ID)
+		}
+		if err := mcpserver.ValidateHTTPHeaders("", map[string]string{key: ""}); err != nil {
+			return "", refuse(DiagnosticInvalidDeclaration, "input %q header: %v", i.ID, err)
+		}
+		if !i.Secret {
+			return "", refuse(DiagnosticInvalidDeclaration, "input %q header must be a secret", i.ID)
+		}
+		key = strings.ToLower(key)
+		for static := range server.Headers {
+			if strings.EqualFold(static, key) {
+				return "", refuse(DiagnosticInvalidDependencies, "input %q duplicates static header configuration", i.ID)
+			}
+		}
+	case Authorization:
+		if server.Transport != mcpserver.TransportStreamableHTTP {
+			return "", refuse(DiagnosticInvalidDependencies, "input %q binds authorization of a non-HTTP server", i.ID)
+		}
+		if key != "" || !i.Secret {
+			return "", refuse(DiagnosticInvalidDeclaration, "input %q authorization must be an unkeyed secret", i.ID)
+		}
+	default:
+		return "", refuse(DiagnosticInvalidDeclaration, "input %q target", i.ID)
+	}
+	return i.Server.String() + "/" + string(i.Target) + "/" + key, nil
+}
+
+// validate checks the connection rules the MCP registry owns, then the few
+// rules that exist only because the declaration comes from a portable package.
+func (s Server) validate() error {
+	if err := s.Name.Validate(); err != nil {
 		return fmt.Errorf("%w: local server identity: %w", ErrInvalid, err)
 	}
-	if name.Installation() != "" {
-		return fmt.Errorf("%w: local server identity", ErrInvalid)
-	}
-	for _, limit := range []struct {
-		field          string
-		count, maximum int
-	}{
-		{"args", len(s.Args), 128}, {"env", len(s.Env), 128}, {"headers", len(s.Headers), 128},
-		{"command", len(s.Command), 1024}, {"cwd", len(s.CWD), 1024}, {"url", len(s.URL), 8192},
-	} {
-		if limit.count > limit.maximum {
-			return fmt.Errorf("%w: server %s capacity", ErrInvalid, limit.field)
-		}
-	}
-	var transport mcpserver.Transport
-	switch s.Type {
-	case Stdio:
-		transport = mcpserver.TransportStdio
-	case StreamableHTTP:
-		transport = mcpserver.TransportStreamableHTTP
-	default:
-		return fmt.Errorf("%w: package server transport %q", ErrInvalid, s.Type)
-	}
-	connection := mcpserver.Server{Name: name, Transport: transport, Command: s.Command, Args: s.Args, Env: s.Env, Dir: s.CWD, URL: s.URL, Headers: s.Headers}
-	if err := connection.Validate(); err != nil {
+	connection := mcpserver.Server{Name: s.Name, Transport: s.Transport, Command: s.Command, Args: s.Args, Env: s.Env, Dir: s.Dir, URL: s.URL, Headers: s.Headers}
+	if err := connection.ValidateConnection(); err != nil {
 		return fmt.Errorf("%w: %w", ErrInvalid, err)
 	}
-	for index, value := range s.Args {
-		if len(value) > 8192 || !utf8.ValidString(value) {
-			return fmt.Errorf("%w: server argument %d", ErrInvalid, index)
+	switch s.Transport {
+	case mcpserver.TransportStdio:
+		if err := validatePackageEnvironment(s.Env); err != nil {
+			return err
 		}
+		if err := validatePackageCommand(s.Command); err != nil {
+			return err
+		}
+		return validatePackageDirectory(s.Dir)
+	default:
+		return validatePackageEndpoint(s.URL)
 	}
-	environmentKeys := map[string]bool{}
-	for key, value := range s.Env {
-		if !environmentKey.MatchString(key) || strings.EqualFold(key, "PLUGIN_ROOT") || strings.EqualFold(key, "PLUGIN_DATA") {
-			return fmt.Errorf("%w: package environment key %q", ErrInvalid, key)
+}
+
+// validatePackageEnvironment reserves the variables only the Runtime binds and
+// refuses names that collide on case-insensitive platforms.
+func validatePackageEnvironment(environment map[string]string) error {
+	if err := mcpserver.ValidateEnvironment(environment); err != nil {
+		return fmt.Errorf("%w: package environment: %w", ErrInvalid, err)
+	}
+	canonical := map[string]bool{}
+	for key := range environment {
+		upper := strings.ToUpper(key)
+		if upper == "PLUGIN_ROOT" || upper == "PLUGIN_DATA" {
+			return fmt.Errorf("%w: package environment key %q is reserved", ErrInvalid, key)
 		}
-		if len(value) > 8192 || !utf8.ValidString(value) {
-			return fmt.Errorf("%w: package environment value for %q", ErrInvalid, key)
-		}
-		canonical := strings.ToUpper(key)
-		if environmentKeys[canonical] {
+		if canonical[upper] {
 			return fmt.Errorf("%w: ambiguous portable environment key %q", ErrInvalid, key)
 		}
-		environmentKeys[canonical] = true
-	}
-	for key, value := range s.Headers {
-		canonical := strings.ToLower(key)
-		if len(key) > 128 || strings.Contains(canonical, "token") || strings.Contains(canonical, "key") {
-			return fmt.Errorf("%w: static header %q requires a declared credential input", ErrInvalid, key)
-		}
-		if len(value) > 8192 || !utf8.ValidString(value) {
-			return fmt.Errorf("%w: static header value for %q", ErrInvalid, key)
-		}
-	}
-	switch s.Type {
-	case Stdio:
-		if !utf8.ValidString(s.Command) {
-			return fmt.Errorf("%w: command encoding", ErrInvalid)
-		}
-		if strings.HasPrefix(s.Command, "./") {
-			if !ValidResourcePath(s.Command[2:]) {
-				return fmt.Errorf("%w: package command path", ErrInvalid)
-			}
-		} else if strings.ContainsAny(s.Command, "/\\ \t\r\n$") {
-			return fmt.Errorf("%w: bare command name", ErrInvalid)
-		}
-		if s.CWD == "" || s.CWD == "${PLUGIN_ROOT}" || s.CWD == "${PLUGIN_DATA}" {
-			return nil
-		}
-		var relative string
-		switch {
-		case strings.HasPrefix(s.CWD, "./"):
-			relative = s.CWD[2:]
-		case strings.HasPrefix(s.CWD, "${PLUGIN_ROOT}/"):
-			relative = strings.TrimPrefix(s.CWD, "${PLUGIN_ROOT}/")
-		case strings.HasPrefix(s.CWD, "${PLUGIN_DATA}/"):
-			relative = strings.TrimPrefix(s.CWD, "${PLUGIN_DATA}/")
-		default:
-			return fmt.Errorf("%w: package working directory", ErrInvalid)
-		}
-		if !ValidResourcePath(relative) {
-			return fmt.Errorf("%w: package working directory path", ErrInvalid)
-		}
-	case StreamableHTTP:
-		u, err := url.Parse(s.URL)
-		if err != nil || u.User != nil || u.Fragment != "" || u.Host == "" || !slices.Contains([]string{"http", "https"}, u.Scheme) {
-			return fmt.Errorf("%w: package server URL", ErrInvalid)
-		}
-		ip, ipErr := netip.ParseAddr(u.Hostname())
-		if u.Scheme != "https" && u.Hostname() != "localhost" && (ipErr != nil || !ip.IsLoopback()) {
-			return fmt.Errorf("%w: package server requires HTTPS outside loopback", ErrInvalid)
-		}
+		canonical[upper] = true
 	}
 	return nil
+}
+
+// validatePackageCommand admits a file inside the package or a bare command
+// name resolved from PATH; a package cannot name a host path.
+func validatePackageCommand(command string) error {
+	if strings.HasPrefix(command, "./") {
+		if !ValidResourcePath(command[2:]) {
+			return fmt.Errorf("%w: package command path", ErrInvalid)
+		}
+		return nil
+	}
+	if strings.ContainsAny(command, "/\\ \t\r\n$") {
+		return fmt.Errorf("%w: bare command name", ErrInvalid)
+	}
+	return nil
+}
+
+// validatePackageDirectory admits only the package root, its data directory,
+// or a resource path beneath either.
+func validatePackageDirectory(dir string) error {
+	if dir == "" || dir == "${PLUGIN_ROOT}" || dir == "${PLUGIN_DATA}" {
+		return nil
+	}
+	var relative string
+	switch {
+	case strings.HasPrefix(dir, "./"):
+		relative = dir[2:]
+	case strings.HasPrefix(dir, "${PLUGIN_ROOT}/"):
+		relative = strings.TrimPrefix(dir, "${PLUGIN_ROOT}/")
+	case strings.HasPrefix(dir, "${PLUGIN_DATA}/"):
+		relative = strings.TrimPrefix(dir, "${PLUGIN_DATA}/")
+	default:
+		return fmt.Errorf("%w: package working directory", ErrInvalid)
+	}
+	if !ValidResourcePath(relative) {
+		return fmt.Errorf("%w: package working directory path", ErrInvalid)
+	}
+	return nil
+}
+
+// validatePackageEndpoint refuses URL user information, which is structurally
+// a credential, and plaintext transport beyond the local machine. Package
+// bytes are public content: other static values, such as headers, are never
+// treated as secrets, and a credential reaches a server only through an input.
+func validatePackageEndpoint(raw string) error {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return fmt.Errorf("%w: package server URL: %w", ErrInvalid, err)
+	}
+	if u.User != nil || u.Fragment != "" {
+		return fmt.Errorf("%w: package server URL carries credentials or a fragment", ErrInvalid)
+	}
+	if u.Host == "" || (u.Scheme != "http" && u.Scheme != "https") {
+		return fmt.Errorf("%w: package server URL must be an absolute HTTP(S) endpoint", ErrInvalid)
+	}
+	if u.Scheme != "https" && !loopbackHost(u.Hostname()) {
+		return fmt.Errorf("%w: package server requires HTTPS outside loopback", ErrInvalid)
+	}
+	return nil
+}
+
+func loopbackHost(host string) bool {
+	if host == "localhost" {
+		return true
+	}
+	ip, err := netip.ParseAddr(host)
+	return err == nil && ip.IsLoopback()
 }

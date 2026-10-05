@@ -37,6 +37,7 @@ func registerRuns(registry *Registry) {
 			protocol.ErrPromptSourceTooLarge.Error(),
 			protocol.ErrUnsupportedMime.Error(),
 			protocol.ErrCapabilityNotNeg.Error(),
+			protocol.ErrPluginChanged.Error(),
 		},
 	}, func(service interface {
 		StartRun(context.Context, protocol.StartRunRequest) (*protocol.StartRunResponse, iter.Seq2[protocol.RunEvent, error], error)
@@ -51,6 +52,7 @@ func registerRuns(registry *Registry) {
 			protocol.ErrRunNotFound.Error(),
 			protocol.ErrInterruptNotOpen.Error(),
 			protocol.ErrCapabilityNotNeg.Error(),
+			protocol.ErrPluginChanged.Error(),
 		},
 	}, func(service interface {
 		ResumeRun(context.Context, protocol.ResumeRunRequest) (*protocol.ResumeRunResponse, iter.Seq2[protocol.RunEvent, error], error)

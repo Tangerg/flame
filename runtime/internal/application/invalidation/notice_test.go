@@ -3,13 +3,17 @@ package invalidation
 import (
 	"slices"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestNoticeConstructorsOwnCallerIdentifiers(t *testing.T) {
 	sessionIDs := []string{"session"}
 	runIDs := []string{"run"}
 	scheduleIDs := []string{"schedule"}
-	serverIDs := []string{"server"}
+	server := testsupport.UserMCPServer("server")
+	serverIDs := []mcpserver.ID{server}
 
 	inSession := InSession(Runs, sessionIDs[0], runIDs...)
 	inSessions := InSessions(Sessions, sessionIDs...)
@@ -18,12 +22,12 @@ func TestNoticeConstructorsOwnCallerIdentifiers(t *testing.T) {
 	runIDs[0] = "changed"
 	sessionIDs[0] = "changed"
 	scheduleIDs[0] = "changed"
-	serverIDs[0] = "changed"
+	serverIDs[0] = testsupport.UserMCPServer("changed")
 
 	if !slices.Equal(inSession.RunIDs, []string{"run"}) ||
 		!slices.Equal(inSessions.SessionIDs, []string{"session"}) ||
 		!slices.Equal(schedules.ScheduleIDs, []string{"schedule"}) ||
-		!slices.Equal(servers.ServerIDs, []string{"server"}) {
+		!slices.Equal(servers.Servers, []mcpserver.ID{server}) {
 		t.Fatalf("constructed notices observed caller mutation: %+v %+v %+v %+v", inSession, inSessions, schedules, servers)
 	}
 }

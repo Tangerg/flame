@@ -18,7 +18,7 @@ import (
 // the component task group with connecting → settled status published for the
 // status observers, so the initiating request does not abort it while shutdown
 // still can.
-func (c *Coordinator) ReconnectServer(ctx context.Context, name mcpserver.ServerName) error {
+func (c *Coordinator) ReconnectServer(ctx context.Context, name mcpserver.ID) error {
 	return c.startConnection(ctx, name, func(ctx context.Context) error {
 		return c.connectionControl.Reconnect(ctx, name)
 	})
@@ -35,7 +35,7 @@ func (c *Coordinator) ReconnectServer(ctx context.Context, name mcpserver.Server
 // and dial.
 // Returns [ErrUnknownServer] or [ErrServerDisabled] when
 // durable state refuses the command, or [errClosed] during shutdown.
-func (c *Coordinator) startConnection(ctx context.Context, name mcpserver.ServerName, dial func(context.Context) error) error {
+func (c *Coordinator) startConnection(ctx context.Context, name mcpserver.ID, dial func(context.Context) error) error {
 	if _, err := c.connectionTarget(ctx, name); err != nil {
 		return err
 	}
@@ -43,7 +43,7 @@ func (c *Coordinator) startConnection(ctx context.Context, name mcpserver.Server
 	return err
 }
 
-func (c *Coordinator) connectionTarget(ctx context.Context, name mcpserver.ServerName) (mcpserver.Server, error) {
+func (c *Coordinator) connectionTarget(ctx context.Context, name mcpserver.ID) (mcpserver.Server, error) {
 	if ctx == nil {
 		return mcpserver.Server{}, errors.New("mcp: connection context is required")
 	}
@@ -82,7 +82,7 @@ const (
 // group is shutting down.
 func (c *Coordinator) dispatchConnection(
 	ctx context.Context,
-	name mcpserver.ServerName,
+	name mcpserver.ID,
 	connect func(context.Context) error,
 	publishConnecting bool,
 	start <-chan struct{},
@@ -115,7 +115,7 @@ func (c *Coordinator) dispatchConnection(
 
 type connectionDispatch struct {
 	coordinator       *Coordinator
-	name              mcpserver.ServerName
+	name              mcpserver.ID
 	connect           func(context.Context) error
 	publishConnecting bool
 	start             <-chan struct{}
@@ -209,9 +209,9 @@ func (command *connectionDispatch) prepareConnecting(ctx context.Context) (*stat
 		return nil, true, nil
 	}
 	return coordinator.prepareStatus(ServerStatus{
-		Name:  command.name,
-		Known: true,
-		State: mcpserver.ConnectionConnecting,
+		Server: command.name,
+		Known:  true,
+		State:  mcpserver.ConnectionConnecting,
 	}, command.operation), true, nil
 }
 
@@ -236,6 +236,11 @@ func (command *connectionDispatch) prepareSettled(
 	return coordinator.prepareStatus(status, command.operation), true, nil
 }
 
+// fail records a dispatch that could not establish whether its source still
+// admits a connection. The cause stays in the log because it can carry paths or
+// credentials; the refusal reaches status readers as a configuration failure
+// and withdraws the session, because an unverifiable source must not keep
+// serving tools.
 func (command *connectionDispatch) fail(ctx context.Context, err error) {
 	// Registry reads share the dial's cancellation and must not turn a
 	// superseded authorization attempt into a failed one.
@@ -246,13 +251,29 @@ func (command *connectionDispatch) fail(ctx context.Context, err error) {
 		"server.name", command.name.String(), "error", err,
 	)
 	command.outcome = connectionFailed
+	coordinator := command.coordinator
+	coordinator.mutationMu.Lock()
+	var event *statusEvent
+	if coordinator.currentDial(command.name, command.operation) {
+		if refuseErr := coordinator.connectionLifecycle.Refuse(ctx, command.name, mcpserver.FailureConfiguration); refuseErr != nil {
+			slog.ErrorContext(ctx, "mcp: connection refusal was not recorded",
+				"server.name", command.name.String(), "error", refuseErr,
+			)
+		}
+		status, statusErr := coordinator.liveStatus(command.name)
+		if statusErr == nil {
+			event = coordinator.prepareStatus(status, command.operation)
+		}
+	}
+	coordinator.mutationMu.Unlock()
+	coordinator.statusQueue.publish(event)
 }
 
 // replaceDial gives each server exactly one current connection operation.
 // A registry mutation, reconnect, or authorization attempt supersedes the previous dial by
 // canceling its context; connection commands must honor ctx while dialing and
 // reject a stale completion through their per-server generation check.
-func (c *Coordinator) replaceDial(ctx context.Context, name mcpserver.ServerName) (context.Context, *activeDial) {
+func (c *Coordinator) replaceDial(ctx context.Context, name mcpserver.ID) (context.Context, *activeDial) {
 	dialCtx, cancel := context.WithCancel(ctx)
 	dial := &activeDial{cancel: cancel}
 	c.connectionMu.Lock()
@@ -264,7 +285,7 @@ func (c *Coordinator) replaceDial(ctx context.Context, name mcpserver.ServerName
 	return dialCtx, dial
 }
 
-func (c *Coordinator) cancelDial(name mcpserver.ServerName) {
+func (c *Coordinator) cancelDial(name mcpserver.ID) {
 	c.connectionMu.Lock()
 	if dial := c.dials[name]; dial != nil {
 		dial.cancel()
@@ -273,7 +294,7 @@ func (c *Coordinator) cancelDial(name mcpserver.ServerName) {
 	c.connectionMu.Unlock()
 }
 
-func (c *Coordinator) clearDial(name mcpserver.ServerName, dial *activeDial) {
+func (c *Coordinator) clearDial(name mcpserver.ID, dial *activeDial) {
 	c.connectionMu.Lock()
 	retiredConnecting := false
 	if c.dials[name] == dial {
@@ -282,18 +303,18 @@ func (c *Coordinator) clearDial(name mcpserver.ServerName, dial *activeDial) {
 	}
 	c.connectionMu.Unlock()
 	if retiredConnecting {
-		c.invalidations.Notify(invalidation.ForMCP(name.String()))
+		c.invalidations.Notify(invalidation.ForMCP(name))
 	}
 }
 
-func (c *Coordinator) currentDial(name mcpserver.ServerName, dial *activeDial) bool {
+func (c *Coordinator) currentDial(name mcpserver.ID, dial *activeDial) bool {
 	c.connectionMu.Lock()
 	defer c.connectionMu.Unlock()
 	return c.dials[name] == dial
 }
 
 type statusEvent struct {
-	name  mcpserver.ServerName
+	name  mcpserver.ID
 	next  *statusEvent
 	ready bool
 }
@@ -303,14 +324,14 @@ type statusQueue struct {
 	head     *statusEvent
 	tail     *statusEvent
 	draining bool
-	sink     func(mcpserver.ServerName)
+	sink     func(mcpserver.ID)
 }
 
-func newStatusQueue(sink func(mcpserver.ServerName)) *statusQueue {
+func newStatusQueue(sink func(mcpserver.ID)) *statusQueue {
 	return &statusQueue{sink: sink}
 }
 
-func (s *statusQueue) prepare(name mcpserver.ServerName) *statusEvent {
+func (s *statusQueue) prepare(name mcpserver.ID) *statusEvent {
 	event := &statusEvent{name: name}
 	if s == nil || s.sink == nil {
 		return event

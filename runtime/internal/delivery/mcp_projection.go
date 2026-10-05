@@ -18,17 +18,32 @@ func presentMCPServer(server mcpapp.Server) (protocol.MCPServer, error) {
 	if err != nil {
 		return protocol.MCPServer{}, err
 	}
-	origin := protocol.MCPOrigin{Type: protocol.MCPOriginUser}
-	if server.Name.Installation() != "" {
-		origin = protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: server.Name.Installation(), LocalName: server.Name.Local()}
-	}
 	return protocol.MCPServer{
-		Origin: origin, Name: server.Name.String(),
+		ID:               presentMCPServerID(server.ID),
 		Description:      server.Description,
 		Connection:       connection,
 		HandshakeTimeout: presentMCPHandshakeTimeout(server.HandshakeTimeout),
 		Status:           status,
 	}, nil
+}
+
+func presentMCPServerID(id mcpserver.ID) protocol.MCPServerID {
+	origin := protocol.MCPOrigin{Type: protocol.MCPOriginUser}
+	if installation, found := id.Origin().Installation(); found {
+		origin = protocol.MCPOrigin{Type: protocol.MCPOriginInstallation, InstallationID: installation.String()}
+	}
+	return protocol.MCPServerID{Origin: origin, Name: id.Name().String()}
+}
+
+func presentMCPServerIDs(ids []mcpserver.ID) []protocol.MCPServerID {
+	if len(ids) == 0 {
+		return nil
+	}
+	result := make([]protocol.MCPServerID, 0, len(ids))
+	for _, id := range ids {
+		result = append(result, presentMCPServerID(id))
+	}
+	return result
 }
 
 func presentMCPHandshakeTimeout(timeout mcpserver.HandshakeTimeout) protocol.MCPHandshakeTimeout {
@@ -69,25 +84,37 @@ func presentMCPServerState(state mcpapp.ServerState) (protocol.MCPServerState, e
 	case mcpapp.ServerConnected:
 		out.Type = protocol.MCPServerConnected
 	case mcpapp.ServerFailed:
+		problem, err := mcpFailureProblem(state.Failure)
+		if err != nil {
+			return protocol.MCPServerState{}, err
+		}
 		out.Type = protocol.MCPServerFailed
-		out.Error = mcpStatusProblem(mcpserver.ConnectionFailed)
+		out.Error = &protocol.MCPStatusProblem{Type: problem}
 	case mcpapp.ServerNeedsAuth:
 		out.Type = protocol.MCPServerNeedsAuth
-		out.Error = mcpStatusProblem(mcpserver.ConnectionNeedsAuth)
+		out.Error = &protocol.MCPStatusProblem{Type: protocol.MCPStatusAuthorizationRequired}
 	default:
 		return protocol.MCPServerState{}, fmt.Errorf("mcp: project server state %q", state.Type)
 	}
 	return out, nil
 }
 
-func mcpStatusProblem(state mcpserver.ConnectionState) *protocol.ProblemData {
-	switch state {
-	case mcpserver.ConnectionNeedsAuth:
-		return &protocol.ProblemData{Type: protocol.ProblemMCPAuthorizationRequired}
-	case mcpserver.ConnectionFailed:
-		return &protocol.ProblemData{Type: protocol.ProblemMCPDialFailed}
+func mcpFailureProblem(failure mcpserver.ConnectionFailure) (protocol.MCPStatusProblemType, error) {
+	switch failure {
+	case mcpserver.FailureUnavailableRelease:
+		return protocol.MCPStatusReleaseUnavailable, nil
+	case mcpserver.FailureUnavailableBackend:
+		return protocol.MCPStatusBackendUnavailable, nil
+	case mcpserver.FailureConfiguration:
+		return protocol.MCPStatusConfigurationFailed, nil
+	case mcpserver.FailureConnection:
+		return protocol.MCPStatusDialFailed, nil
+	case mcpserver.FailureToolDiscovery:
+		return protocol.MCPStatusToolDiscoveryFailed, nil
+	case mcpserver.FailureAuthorization:
+		return protocol.MCPStatusAuthorizationFailed, nil
 	default:
-		return nil
+		return "", fmt.Errorf("mcp: project connection failure %q", failure)
 	}
 }
 
@@ -100,14 +127,14 @@ func presentMCPAuthorizationAttempt(attempt mcpapp.AuthorizationAttempt) (protoc
 		status.Type = protocol.MCPAuthorizationAttemptSucceeded
 	case mcpapp.AuthorizationAttemptFailed:
 		status.Type = protocol.MCPAuthorizationAttemptFailed
-		status.Error = &protocol.ProblemData{Type: protocol.ProblemMCPAuthorizationFailed}
+		status.Error = &protocol.MCPStatusProblem{Type: protocol.MCPStatusAuthorizationFailed}
 	case mcpapp.AuthorizationAttemptCanceled:
 		status.Type = protocol.MCPAuthorizationAttemptCanceled
 	default:
 		return protocol.MCPAuthorizationAttempt{}, fmt.Errorf("mcp: project authorization attempt status %q", attempt.Status)
 	}
 	return protocol.MCPAuthorizationAttempt{
-		ID: attempt.ID.String(), Server: attempt.Server.String(), Status: status,
+		ID: attempt.ID.String(), Server: presentMCPServerID(attempt.Server), Status: status,
 		CreatedAt: attempt.CreatedAt, FinishedAt: attempt.FinishedAt,
 	}, nil
 }
@@ -128,7 +155,7 @@ func presentMCPTool(tool mcpapp.ToolView) (protocol.MCPTool, error) {
 	return protocol.MCPTool{
 		ModelName:     tool.ModelName,
 		NameConflicts: conflicts,
-		Server:        tool.Server.String(),
+		Server:        presentMCPServerID(tool.Server),
 		Name:          tool.Name.String(),
 		Description:   tool.Definition.Description,
 		InputSchema:   schema,

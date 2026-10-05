@@ -52,7 +52,10 @@ func registerProviderUnions(s *Shapes) {
 }
 
 func registerMCPUnions(s *Shapes) {
-	s.union(UnionSpec{GoType: typeOf[protocol.MCPOrigin](), Discriminator: "type", Variants: []VariantSpec{{Tag: "user"}, {Tag: "installation", Required: []string{"installationId", "localName"}}}})
+	s.union(UnionSpec{GoType: typeOf[protocol.MCPOrigin](), Discriminator: "type", Variants: []VariantSpec{
+		{Tag: string(protocol.MCPOriginUser)},
+		{Tag: string(protocol.MCPOriginInstallation), Required: []string{"installationId"}},
+	}})
 	s.union(UnionSpec{
 		GoType:        typeOf[protocol.MCPHandshakeTimeout](),
 		Discriminator: "type",
@@ -109,8 +112,15 @@ func registerMCPUnions(s *Shapes) {
 			{Tag: string(protocol.MCPServerDisconnected)},
 			{Tag: string(protocol.MCPServerConnecting)},
 			{Tag: string(protocol.MCPServerConnected), Required: []string{"toolCount"}},
-			{Tag: string(protocol.MCPServerFailed), Required: []string{"error"}},
-			{Tag: string(protocol.MCPServerNeedsAuth), Required: []string{"error"}},
+			{Tag: string(protocol.MCPServerFailed), Required: []string{"error"}, AllowedValues: allowedMCPStatusProblems(
+				protocol.MCPStatusReleaseUnavailable,
+				protocol.MCPStatusBackendUnavailable,
+				protocol.MCPStatusConfigurationFailed,
+				protocol.MCPStatusDialFailed,
+				protocol.MCPStatusToolDiscoveryFailed,
+				protocol.MCPStatusAuthorizationFailed,
+			)},
+			{Tag: string(protocol.MCPServerNeedsAuth), Required: []string{"error"}, AllowedValues: allowedMCPStatusProblems(protocol.MCPStatusAuthorizationRequired)},
 		},
 	})
 	s.union(UnionSpec{
@@ -119,7 +129,7 @@ func registerMCPUnions(s *Shapes) {
 		Variants: []VariantSpec{
 			{Tag: string(protocol.MCPAuthorizationAttemptPending)},
 			{Tag: string(protocol.MCPAuthorizationAttemptSucceeded)},
-			{Tag: string(protocol.MCPAuthorizationAttemptFailed), Required: []string{"error"}},
+			{Tag: string(protocol.MCPAuthorizationAttemptFailed), Required: []string{"error"}, AllowedValues: allowedMCPStatusProblems(protocol.MCPStatusAuthorizationFailed)},
 			{Tag: string(protocol.MCPAuthorizationAttemptCanceled)},
 		},
 	})
@@ -186,6 +196,14 @@ func allowedArtifactProblemTypes(field string, kinds ...protocol.ArtifactProblem
 		values[index] = string(kind)
 	}
 	return []AllowedValueSet{{Field: field, Values: values}}
+}
+
+func allowedMCPStatusProblems(kinds ...protocol.MCPStatusProblemType) []AllowedValueSet {
+	values := make([]string, len(kinds))
+	for index, kind := range kinds {
+		values[index] = string(kind)
+	}
+	return []AllowedValueSet{{Field: "error.type", Values: values}}
 }
 
 func allowedGoalReasonCodes(codes ...protocol.GoalReasonCode) []AllowedValueSet {
@@ -404,7 +422,7 @@ func registerEventUnions(s *Shapes) {
 			{Tag: string(protocol.RuntimeFilesChanged), Required: []string{"sequence", "paths"}, Optional: []string{"watchId", "workspace"}},
 			{Tag: string(protocol.RuntimeSkillsChanged), Required: []string{"sequence"}, Optional: []string{"names"}},
 			{Tag: string(protocol.RuntimePluginsChanged), Required: []string{"sequence"}},
-			{Tag: string(protocol.RuntimeMCPChanged), Required: []string{"sequence"}, Optional: []string{"serverIds"}},
+			{Tag: string(protocol.RuntimeMCPChanged), Required: []string{"sequence"}, Optional: []string{"servers"}},
 			{Tag: string(protocol.RuntimeSchedulesChanged), Required: []string{"sequence"}, Optional: []string{"scheduleIds"}},
 			{Tag: string(protocol.RuntimeSessionsChanged), Required: []string{"sequence"}, Optional: []string{"sessionIds"}},
 			{Tag: string(protocol.RuntimeRunsChanged), Required: []string{"sequence"}, Optional: []string{"runIds", "sessionIds"}},
@@ -1102,9 +1120,17 @@ func registerTrajectoryObservationConstraints(s *Shapes) {
 	})
 }
 
+func builtInNames() []string {
+	names := make([]string, 0, len(tool.BuiltInNames()))
+	for _, name := range tool.BuiltInNames() {
+		names = append(names, string(name))
+	}
+	return names
+}
+
 func registerToolRefUnion(s *Shapes) {
 	s.union(UnionSpec{GoType: typeOf[protocol.ToolRef](), Discriminator: "type", Variants: []VariantSpec{
-		{Tag: string(protocol.ToolRefBuiltIn), Required: []string{"name"}, AllowedValues: []AllowedValueSet{{Field: "name", Values: tool.BuiltInNames()}}},
+		{Tag: string(protocol.ToolRefBuiltIn), Required: []string{"name"}, AllowedValues: []AllowedValueSet{{Field: "name", Values: builtInNames()}}},
 		{Tag: string(protocol.ToolRefMCP), Required: []string{"server", "name"}},
 		{Tag: string(protocol.ToolRefA2A), Required: []string{"endpoint"}},
 	}})
@@ -1125,4 +1151,32 @@ func registerApprovalSubjectUnion(s *Shapes) {
 
 func registerPluginUnions(s *Shapes) {
 	s.union(UnionSpec{GoType: typeOf[protocol.PluginValueChange](), Discriminator: "type", Variants: []VariantSpec{{Tag: string(protocol.PluginValueSet), Required: []string{"value"}}, {Tag: string(protocol.PluginValueClear)}}})
+	s.union(UnionSpec{GoType: typeOf[protocol.PluginRealization](), Discriminator: "type", Variants: []VariantSpec{
+		{Tag: string(protocol.PluginRealizationAvailable), Optional: []string{"unavailableBackends"}},
+		{Tag: string(protocol.PluginRealizationReleaseUnavailable)},
+	}})
+	s.union(UnionSpec{GoType: typeOf[protocol.PluginServerDeclaration](), Discriminator: "type", Variants: []VariantSpec{
+		{Tag: string(protocol.MCPTransportStdio), Required: []string{"name", "command"}, Optional: []string{"args", "env", "dir"}},
+		{Tag: string(protocol.MCPTransportStreamableHTTP), Required: []string{"name", "url"}, Optional: []string{"headers"}},
+	}})
+	s.constraint(ObjectConstraintSpec{GoType: typeOf[protocol.PluginInput](), Rules: []ConditionalRule{
+		{When: []delivery.FieldCondition{{Field: "target", Operator: delivery.OperatorEquals, Value: string(protocol.PluginInputEnvironment)}}, Required: []string{"key"}},
+		{When: []delivery.FieldCondition{{Field: "target", Operator: delivery.OperatorEquals, Value: string(protocol.PluginInputHeader)}}, Required: []string{"key"}},
+		{When: []delivery.FieldCondition{{Field: "target", Operator: delivery.OperatorEquals, Value: string(protocol.PluginInputAuthorization)}}, Forbidden: []string{"key"}},
+	}})
+	s.union(UnionSpec{GoType: typeOf[protocol.PluginInputState](), Discriminator: "type", Variants: []VariantSpec{
+		{Tag: string(protocol.PluginInputUnset)},
+		{Tag: string(protocol.PluginInputConfigured)},
+		{Tag: string(protocol.PluginInputValue), Required: []string{"value"}},
+	}})
+	s.union(UnionSpec{GoType: typeOf[protocol.PluginComponent](), Discriminator: "type", Variants: []VariantSpec{
+		{Tag: string(protocol.PluginComponentManifestField), Required: []string{"name"}},
+		{Tag: string(protocol.PluginComponentFlameExtension)},
+		{Tag: string(protocol.PluginComponentExtensionField), Required: []string{"name"}},
+		{Tag: string(protocol.PluginComponentContribution), Required: []string{"name"}},
+		{Tag: string(protocol.PluginComponentMCP)},
+		{Tag: string(protocol.PluginComponentMCPServer), Required: []string{"name"}},
+		{Tag: string(protocol.PluginComponentSkills)},
+		{Tag: string(protocol.PluginComponentSkill), Required: []string{"name"}},
+	}})
 }

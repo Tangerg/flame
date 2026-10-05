@@ -91,7 +91,7 @@ type dialogState struct {
 	workspaceReader     workspaceReaderMode
 	runtimeReader       runtimeReaderMode
 	runtimeSelection    runtimeReaderSelection
-	mcpToolServer       string
+	mcpToolServer       *protocol.MCPServerID
 	mcpAuthorizationID  string
 	queueDialog         *headless.Dialog
 	searchQuery         string

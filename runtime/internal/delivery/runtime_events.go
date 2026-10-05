@@ -60,7 +60,7 @@ func runtimeEventFor(notice invalidation.Notice) (protocol.RuntimeEvent, bool) {
 		return protocol.RuntimeEvent{Type: protocol.RuntimeSkillsChanged}, true
 	case invalidation.MCP:
 		return protocol.RuntimeEvent{
-			Type: protocol.RuntimeMCPChanged, ServerIDs: notice.ServerIDs,
+			Type: protocol.RuntimeMCPChanged, Servers: presentMCPServerIDs(notice.Servers),
 		}, true
 	case invalidation.Models:
 		return protocol.RuntimeEvent{Type: protocol.RuntimeModelsChanged}, true

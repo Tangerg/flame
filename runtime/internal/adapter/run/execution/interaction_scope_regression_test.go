@@ -140,7 +140,7 @@ func TestModelResponseBudgetPreservesExternalBoundary(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			dispatcher, err := interaction.NewDispatcher(definition, interaction.DispatcherConfig{Streamer: observed, MaxResponseBytes: test.limit, ModelContextReducer: newInteractionModelContextReducer(nil, nil, session, session.start, nil, nil)})
+			dispatcher, err := interaction.NewDispatcher(definition, interaction.DispatcherConfig{Streamer: observed, MaxResponseBytes: test.limit, ModelContextReducer: newInteractionModelContextReducer(nil, nil, session, session.start, nil, nil, nil)})
 			if err != nil {
 				t.Fatal(err)
 			}

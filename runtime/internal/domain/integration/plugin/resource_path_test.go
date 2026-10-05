@@ -11,8 +11,8 @@ func TestPortableDeviceAliasesCannotBecomeResourcesOrDataDirectories(t *testing.
 			if ValidResourcePath("nested/" + name) {
 				t.Error("portable resource path admitted a device alias")
 			}
-			server := Server{Name: "local", Type: Stdio, Command: "fixture", CWD: "${PLUGIN_DATA}/nested/" + name}
-			if err := server.Validate(); !errors.Is(err, ErrInvalid) {
+			server := Server{Name: serverName("local"), Transport: stdio, Command: "fixture", Dir: "${PLUGIN_DATA}/nested/" + name}
+			if _, err := NewRelease(testDigest("1"), Declaration{Name: "local", Servers: []Server{server}}); !errors.Is(err, ErrInvalid) {
 				t.Fatalf("device working directory error = %v", err)
 			}
 		})

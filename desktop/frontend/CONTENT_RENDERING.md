@@ -439,8 +439,6 @@ type ProblemData =
   | { type: "mcp_authorization_failed" }
   | { type: "mcp_authorization_required" }
   | { type: "mcp_dial_failed" }
-  | { type: "provider_not_configured" }
-  | { type: "provider_test_failed" }
   // ── 带可选退避秒数 ──
   | { type: "provider_unavailable" | "rate_limited" | "timeout";
       detail?: string; docUrl?: string; retryAfterSeconds?: number }
@@ -1824,7 +1822,9 @@ interface Provider {
   embeddingCapable?: boolean;
   defaultEmbeddingModel?: string;
 }
-interface ProviderTestResult { ok: boolean; error?: ProblemData }   // inline 判决，不是失败的调用
+interface ProviderTestResult {   // inline 判决，不是失败的调用；闭合集合，未知值是契约违例
+  outcome: "reachable" | "notConfigured" | "invalidCredentials" | "timedOut" | "failed";
+}
 ```
 
 ### 9.4 文件与 diff（G Context Dock）

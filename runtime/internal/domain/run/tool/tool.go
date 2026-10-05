@@ -4,6 +4,7 @@ package tool
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"unicode/utf8"
 
 	"github.com/Tangerg/scope/core/chat"
@@ -27,41 +28,55 @@ const (
 // Valid reports whether g names one supported Tool surface.
 func (g Group) Valid() bool { return g == GroupRoot || g == GroupDelegated }
 
-// Runtime-owned model-facing tool identities. Names are domain vocabulary:
-// constructors, policy, presentation, execution, and recovery all refer to
-// this single authority instead of keeping caller-local copies.
+// BuiltInName is one member of the closed set of Runtime built-in tools.
+// Names are domain vocabulary: constructors, policy, presentation, execution,
+// and recovery all refer to this single authority instead of keeping
+// caller-local copies, and every consumer that keys behavior by a built-in
+// keys it by this type.
+type BuiltInName string
+
 const (
-	ApplyPatch        = "apply_patch"
-	AskUser           = "ask_user"
-	CreateGoal        = "create_goal"
-	CreateSchedule    = "create_schedule"
-	DeleteSchedule    = "delete_schedule"
-	DelegateTask      = "delegate_task"
-	Edit              = "edit"
-	EnterPlanMode     = "enter_plan_mode"
-	ExitPlanMode      = "exit_plan_mode"
-	GetGoal           = "get_goal"
-	Glob              = "glob"
-	Grep              = "grep"
-	HTTPRequest       = "http_request"
-	ListSchedules     = "list_schedules"
-	ListSkills        = "list_skills"
-	LoadSkill         = "load_skill"
-	LSP               = "lsp"
-	ProposeSkill      = "propose_skill"
-	Read              = "read"
-	ReadShellOutput   = "read_shell_output"
-	ReadSkillResource = "read_skill_resource"
-	ReadToolResult    = "read_tool_result"
-	ReportGoalOutcome = "report_goal_outcome"
-	SearchMemory      = "search_memory"
-	SearchTools       = "search_tools"
-	SetPlan           = "set_plan"
-	Shell             = "shell"
-	StopShell         = "stop_shell"
-	WebFetch          = "web_fetch"
-	WebSearch         = "web_search"
+	ApplyPatch        BuiltInName = "apply_patch"
+	AskUser           BuiltInName = "ask_user"
+	CreateGoal        BuiltInName = "create_goal"
+	CreateSchedule    BuiltInName = "create_schedule"
+	DeleteSchedule    BuiltInName = "delete_schedule"
+	DelegateTask      BuiltInName = "delegate_task"
+	Edit              BuiltInName = "edit"
+	EnterPlanMode     BuiltInName = "enter_plan_mode"
+	ExitPlanMode      BuiltInName = "exit_plan_mode"
+	GetGoal           BuiltInName = "get_goal"
+	Glob              BuiltInName = "glob"
+	Grep              BuiltInName = "grep"
+	HTTPRequest       BuiltInName = "http_request"
+	ListSchedules     BuiltInName = "list_schedules"
+	ListSkills        BuiltInName = "list_skills"
+	LoadSkill         BuiltInName = "load_skill"
+	LSP               BuiltInName = "lsp"
+	ProposeSkill      BuiltInName = "propose_skill"
+	Read              BuiltInName = "read"
+	ReadShellOutput   BuiltInName = "read_shell_output"
+	ReadSkillResource BuiltInName = "read_skill_resource"
+	ReadToolResult    BuiltInName = "read_tool_result"
+	ReportGoalOutcome BuiltInName = "report_goal_outcome"
+	SearchMemory      BuiltInName = "search_memory"
+	SearchTools       BuiltInName = "search_tools"
+	SetPlan           BuiltInName = "set_plan"
+	Shell             BuiltInName = "shell"
+	StopShell         BuiltInName = "stop_shell"
+	WebFetch          BuiltInName = "web_fetch"
+	WebSearch         BuiltInName = "web_search"
 )
+
+// builtInNames is the set's only enumeration.
+var builtInNames = []BuiltInName{
+	ApplyPatch, AskUser, CreateGoal, CreateSchedule, DeleteSchedule, DelegateTask, Edit,
+	EnterPlanMode, ExitPlanMode, GetGoal, Glob, Grep, HTTPRequest, ListSchedules, ListSkills,
+	LoadSkill, LSP, ProposeSkill, Read, ReadShellOutput, ReadSkillResource, ReadToolResult,
+	ReportGoalOutcome, SearchMemory, SearchTools, SetPlan, Shell, StopShell, WebFetch, WebSearch,
+}
+
+func BuiltInNames() []BuiltInName { return slices.Clone(builtInNames) }
 
 // Tool projects a Scope definition with the Runtime-owned safety class.
 type Tool struct {

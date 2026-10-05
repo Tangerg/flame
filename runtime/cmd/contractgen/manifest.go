@@ -2,9 +2,11 @@ package main
 
 import (
 	"cmp"
+	"reflect"
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
+	"github.com/Tangerg/flame/runtime/internal/contractcatalog"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
@@ -273,10 +275,19 @@ func errors(registry *delivery.Registry) errorRegistry {
 		// They are listed so a client's copy table can be checked
 		// for completeness against the runtime rather than against a doc.
 		RunTypes: dispatch.ProblemTypesFor(dispatch.ProblemChannelExecution),
-		// Inline-status problems ride a query's own result instead of failing the
-		// call, and deliberately carry no detail — the copy is the client's.
-		Inline: dispatch.ProblemTypesFor(dispatch.ProblemChannelInlineStatus),
+		// MCP status problems ride a query's own result instead of failing the
+		// call and carry no detail; their closed vocabulary is its enum owner.
+		Inline: mcpStatusProblemTypes(),
 	}
+}
+
+func mcpStatusProblemTypes() []string {
+	values, ok := contractcatalog.EnumValues(reflect.TypeFor[protocol.MCPStatusProblemType]())
+	if !ok {
+		panic("contractgen: MCPStatusProblemType has no registered wire values")
+	}
+	slices.Sort(values)
+	return values
 }
 
 func capabilities(registry *delivery.Registry) []capabilityEntry {
@@ -358,10 +369,7 @@ func carriedShapes(shapes *dispatch.Shapes, walked *schemaSet) []carriedEntry {
 }
 
 func toolResultPresentations(walked *schemaSet) ([]toolResultPresentationEntry, error) {
-	contracts, err := toolset.PresentationContracts()
-	if err != nil {
-		return nil, err
-	}
+	contracts := toolset.PresentationContracts()
 	out := make([]toolResultPresentationEntry, 0, len(contracts))
 	for _, contract := range contracts {
 		out = append(out, toolResultPresentationEntry{

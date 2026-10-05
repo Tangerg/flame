@@ -80,7 +80,7 @@ func BuildSchedules(coordinator ScheduleManagement) ([]toolcontract.Tool, error)
 	t := &scheduleManagementTools{coordinator: coordinator}
 	list, err := toolcontract.NewFunc[listScheduleArgs, scheduleListResponse](
 		toolcontract.FuncConfig{
-			Name:        tool.ListSchedules,
+			Name:        string(tool.ListSchedules),
 			Description: "List recurring Agent Run schedules and their ids, instructions, cron expressions, model choices, and next-run state. Use this before deleting or replacing a schedule when its exact id is unknown.",
 		},
 		t.list,
@@ -90,7 +90,7 @@ func BuildSchedules(coordinator ScheduleManagement) ([]toolcontract.Tool, error)
 	}
 	create, err := toolcontract.NewFunc[createScheduleArgs, scheduleResponse](
 		toolcontract.FuncConfig{
-			Name: tool.CreateSchedule,
+			Name: string(tool.CreateSchedule),
 			Description: "Create an enabled recurring schedule that starts a new Agent Run from self-contained instructions at each five-field cron occurrence. " +
 				"Use only when the user explicitly asks for recurring automated work; do not use for the current request, a one-off future action, or an autonomous Goal.",
 		},
@@ -101,7 +101,7 @@ func BuildSchedules(coordinator ScheduleManagement) ([]toolcontract.Tool, error)
 	}
 	deleteSchedule, err := toolcontract.NewFunc[deleteScheduleArgs, scheduleDeleteResponse](
 		toolcontract.FuncConfig{
-			Name:        tool.DeleteSchedule,
+			Name:        string(tool.DeleteSchedule),
 			Description: "Permanently delete one recurring Agent Run schedule by its exact schedule_id. Use list_schedules first when the id is uncertain. To change a schedule, delete it and create the replacement explicitly.",
 		},
 		t.delete,

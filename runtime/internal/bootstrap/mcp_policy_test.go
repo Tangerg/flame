@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"testing"
 
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
@@ -28,11 +29,11 @@ func (m *mcpServerListStub) Catalog(context.Context) ([]mcpapp.Source, error) {
 
 func TestBuildMCPEnvironmentUsesOneRegistrySnapshot(t *testing.T) {
 	registry := &mcpServerListStub{servers: []mcpserver.Server{
-		{Name: testMCPServerName("files"), Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-files"},
-		{Name: testMCPServerName("off"), Enabled: false, Transport: mcpserver.TransportStdio, Command: "mcp-off"},
+		{Source: mcpserver.UserSource(), Name: testsupport.ServerName("files"), Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-files"},
+		{Source: mcpserver.UserSource(), Name: testsupport.ServerName("off"), Enabled: false, Transport: mcpserver.TransportStdio, Command: "mcp-off"},
 	}, disabled: []tool.Ref{testMCPRef("files", "write")}}
 
-	env, err := buildMCPEnvironment(context.Background(), registry)
+	env, err := buildMCPEnvironment(context.Background(), registry, registry)
 	if err != nil {
 		t.Fatalf("buildMCPEnvironment: %v", err)
 	}
@@ -55,7 +56,7 @@ func TestBuildMCPEnvironmentReturnsRegistryError(t *testing.T) {
 	want := errors.New("registry unavailable")
 	registry := &mcpServerListStub{err: want}
 
-	_, err := buildMCPEnvironment(context.Background(), registry)
+	_, err := buildMCPEnvironment(context.Background(), registry, registry)
 	if !errors.Is(err, want) {
 		t.Fatalf("error = %v, want %v", err, want)
 	}
@@ -68,7 +69,11 @@ func (m *mcpServerListStub) ListExposure(context.Context) ([]tool.Ref, error) {
 	return m.disabled, m.err
 }
 func testMCPRef(server, remote string) tool.Ref {
-	ref, err := tool.MCP(testMCPServerName(server), testRemoteToolName(remote))
+	id, err := mcpserver.NewID(mcpserver.UserOrigin(), testsupport.ServerName(server))
+	if err != nil {
+		panic(err)
+	}
+	ref, err := tool.MCP(id, testsupport.RemoteToolName(remote))
 	if err != nil {
 		panic(err)
 	}

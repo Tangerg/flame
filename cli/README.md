@@ -161,7 +161,11 @@ Read [`../AGENTS.md`](../AGENTS.md), [`../DEVELOPMENT.md`](../DEVELOPMENT.md), a
 - Test user-visible one-shot and terminal flows. Use in-memory root-command tests for routing, deterministic render snapshots at fixed dimensions for visual regressions, and a real PTY only when terminal escape sequences, resize, focus, input decoding, or restoration are the contract.
 - `internal/adapter/runtimebinding` is the single external translation boundary. Its `Connection` owns binding lifecycle, negotiation, the immutable capability `Profile`, and DTO translation but no product state machine; only the composition root may fan it out into consumer-owned ports. Keep production packages under the explicit `domain`, `application`, `adapter`, or `delivery` ring unless a cross-ring mechanism has proven peer consumers.
 
-Tool policies use Runtime's source references. `/mcp-tool <server> <tool>
+Tool policies use Runtime's source references. MCP commands address a server as
+`<name>` for a user server or `<installation-id>/<name>` for an installation server; the
+CLI parses that argument once into Runtime's structured `MCPServerID` and renders server
+identities back in the same form; a tool source reads `builtIn/<name>`, `a2a/<endpoint>`
+or `mcp/<server>/<tool>` with the server in that form. `/mcp-tool <server> <tool>
 <enable|disable|allow|deny>` changes exposure or creates a global standing rule.
 `/rules` shows source identity, explicit subject match type, and stale authority; `/rule-delete` forgets a
 specific rule. Connection forms contain connection configuration only. Setting
@@ -171,22 +175,34 @@ Approval changes do not wait for MCP connection or authorization operations.
 `flame approvals ls` lists global rules; `--session` adds that session's visible
 rules. `/mcp-tools` includes disabled tools across configured servers, and tool
 listings explain name collisions that exclude connected tools from the model.
-Runtime and clients must use the same protocol revision, and obsolete Runtime
+A server's inline status problem is rendered from its closed category; a category
+outside the one its state allows is reported as a Runtime contract violation rather
+than printed as raw text. Runtime and clients must use the same protocol revision, and obsolete Runtime
 approval databases require a fresh data directory rather than data migration.
 
 ## Runtime plugin commands
 
-`flame plugins list` inspects admitted releases, grants, Skill provenance and diagnostics.
-`install`, `stage`, `select`, `approve`, `configure`, `enable`, `revoke`, and `uninstall`
+`flame plugins list` inspects admitted releases, each installation's closed `state`
+(`unapproved`, `approved` or `enabled`), Skill provenance, typed admission diagnostics, the
+realization Runtime observes now (release availability and unavailable backends) and each
+declared input's state. A configured secret input, including every header and
+authorization input, reports `configured` and never carries its text.
+`approve` takes `installationId` and the exact selected `digest`. Selecting another release
+returns the installation to `unapproved`; approve and enable it again to run the new code.
+`install`, `stage`, `select`, `approve`, `configure`, `set-enablement`, `revoke`, and `uninstall`
 accept their exact Runtime JSON request through `--request`. Source paths refer to the
-Runtime machine. Each mutation prints its command identity to stderr; retain it and use
+Runtime machine. Each mutation prints its command identity to stderr and the resulting installation as
+JSON; `uninstall` is an acknowledgement and prints nothing on success. Retain the identity and use
 `--command-id` with the original request to recover an uncertain acknowledgement.
-Configuration requests include the selected release's `digest` as well as `installationId`.
+Configuration requests include the selected release's `digest` as well as `installationId`,
+and are deltas: `valueChanges` sets or clears named inputs, and `serverChanges` and
+`skillChanges` map component names to `enable` or `disable`. Unnamed inputs and components
+keep their current value or enablement.
 Runtime rejects a stale digest without applying inputs or component enablement changes;
 do not replace the digest in an unresolved request with a newly selected release.
 Authored JSON uses Runtime's strict request decoder. Explicit typed nulls cannot become
-false enablement, empty grants, or component changes; use the declared clear variant.
-Include required fields explicitly, including `enabled: false` and `grants: []`.
+false enablement or empty change maps; use the declared clear variant. Include required
+fields explicitly, including `enabled: false` and empty `serverChanges: {}`.
 Invalid requests and replay identities are rejected before the CLI opens Runtime.
 
 Action invocation, Runtime query actions and HTML resource delivery are unavailable in

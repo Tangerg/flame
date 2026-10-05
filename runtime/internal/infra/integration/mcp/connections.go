@@ -17,10 +17,12 @@ import (
 // latest-operation-wins semantics without serializing unrelated servers or
 // waiting OAuth flows.
 type server struct {
-	config  ServerConfig
+	id      mcpserver.ID
+	config  ServerConfig          // zero while the source has refused every connection
 	session *sdkmcp.ClientSession // nil when not connected
 	tools   []Executable          // last tool set proved on this session
 	state   mcpserver.ConnectionState
+	failure mcpserver.ConnectionFailure // set exactly while state is failed
 
 	// oauth is either a restored durable OAuth handler or the handler obtained by
 	// a successful [Connections.Authorize]. nil until a saved session exists or
@@ -30,7 +32,19 @@ type server struct {
 	attempt *connectionAttempt
 }
 
-func (s *server) name() mcpserver.ServerName { return s.config.Name }
+func (s *server) name() mcpserver.ID { return s.id }
+
+// settle is the only writer of the live outcome, so the session, tool set,
+// state and failure category always describe the same attempt.
+func (s *server) settle(session *sdkmcp.ClientSession, tools []Executable, state mcpserver.ConnectionState, failure mcpserver.ConnectionFailure) {
+	if state != mcpserver.ConnectionConnected {
+		session, tools = nil, nil
+	}
+	if state != mcpserver.ConnectionFailed {
+		failure = ""
+	}
+	s.session, s.tools, s.state, s.failure = session, tools, state, failure
+}
 
 type shutdownAttempt struct {
 	done chan struct{}
@@ -47,16 +61,20 @@ type ownedSession struct {
 	close   *sessionCloseAttempt
 }
 
-// Connections owns the live MCP server sessions + reconnect. The optional tool
-// sink is invoked with the rebuilt model-facing tool set after a reconnect, so
-// the engine can hot-swap the live set into its resolver.
+// Connections owns the live MCP server sessions + reconnect. The tool sink
+// receives the rebuilt model-facing tool set inside the same critical section
+// that changes a server's live outcome, so no reader can observe a settled
+// status whose tools the sink has not received, or the reverse.
 type Connections struct {
 	lifetime context.Context
 	mu       sync.Mutex
 	servers  []*server
 	client   *sdkmcp.Client
-	onTools  func([]Executable) // tool sink; nil until SetToolSink; guarded by mu
-	closed   bool               // terminal admission state set by Shutdown
+	// onTools is the tool sink; nil until SetToolSink; guarded by mu. It runs
+	// while mu is held, so it must be an in-memory publication that never
+	// blocks or calls back into Connections.
+	onTools  func([]Executable)
+	closed   bool // terminal admission state set by Shutdown
 	shutdown *shutdownAttempt
 	sessions map[*sdkmcp.ClientSession]*ownedSession
 	// retirements retain asynchronous close attempts and their diagnostics until
@@ -68,12 +86,6 @@ type Connections struct {
 	// persistence; callers that enable OAuth supply it.
 	oauthSessions OAuthSessionStore
 
-	// publishMu serializes snapshot+sink publication. Mutations themselves run
-	// concurrently per server; taking this lock before snapshotting guarantees a
-	// delayed publisher can only publish the latest state, never overwrite a
-	// newer catalog with an older snapshot.
-	publishMu sync.Mutex
-
 	// attempts joins every in-flight dial/OAuth operation during Shutdown. Add is
 	// performed under mu before closed can be set, so no Add races the Wait.
 	attempts sync.WaitGroup
@@ -81,7 +93,8 @@ type Connections struct {
 
 // SetToolSink registers the callback connection mutations invoke with the
 // rebuilt model-facing MCP tool set (the engine wires it to its resolver's
-// hot-swap).
+// atomic hot-swap). The sink runs while the connection lock is held, so it must
+// publish in memory without blocking or calling back into Connections.
 func (c *Connections) SetToolSink(sink func([]Executable)) {
 	c.mu.Lock()
 	c.onTools = sink
@@ -95,13 +108,24 @@ func newClient() *sdkmcp.Client {
 }
 
 // find returns the server with the given name, or nil. Caller holds mu.
-func (c *Connections) find(name mcpserver.ServerName) *server {
+func (c *Connections) find(name mcpserver.ID) *server {
 	for _, configuredServer := range c.servers {
 		if configuredServer.name() == name {
 			return configuredServer
 		}
 	}
 	return nil
+}
+
+// current reports whether session is still the live connection of name.
+func (c *Connections) current(name mcpserver.ID, session *sdkmcp.ClientSession) bool {
+	if session == nil {
+		return false
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	configuredServer := c.find(name)
+	return configuredServer != nil && configuredServer.session == session
 }
 
 func (c *Connections) ownSessionLocked(session *sdkmcp.ClientSession, cleanup sessionCleanup) {

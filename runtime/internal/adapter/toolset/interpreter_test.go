@@ -39,7 +39,7 @@ func TestSemanticsSafetyClassFailsClosed(t *testing.T) {
 func TestSemanticsApprovalSubject(t *testing.T) {
 	interpreter := Interpreter{}
 	for _, test := range []struct {
-		name      string
+		name      tool.BuiltInName
 		arguments string
 		want      string
 		wantError bool
@@ -112,7 +112,7 @@ func TestSemanticsProjectsSuccessfulPlanReplacement(t *testing.T) {
 		t.Fatalf("projected event = %#v, want PlanUpdated %#v", event, want)
 	}
 	for _, test := range []struct {
-		name      string
+		name      tool.BuiltInName
 		succeeded bool
 	}{
 		{name: tool.SetPlan},

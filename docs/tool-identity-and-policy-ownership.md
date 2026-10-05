@@ -15,7 +15,7 @@ The defects below were found by reading the baseline code and schema. None has b
 | --- | --- | --- |
 | Which tool a call targets | The tool's source, expressed as one typed tool reference | Model-visible name, transcript item name, UI label |
 | Model-visible tool name | Derived from the tool reference by one projection function | Provider declarations, search results |
-| Built-in tool behavior (safety class, presentation, outcome) | Built-in descriptor catalog, keyed by built-in reference | Interpreter and presenter results |
+| Built-in tool behavior (safety class, presentation, outcome) | Built-in descriptor catalog, keyed by the domain-owned `tool.BuiltInName` set; a test, not startup, holds it to exactly that set | Interpreter and presenter results |
 | Standing approval decision | Approval policy (`application/agent/approvals`), keyed by tool reference, subject, and scope, and bound to the source's authority fingerprint | Approval settings views, CLI listings, MCP settings toggles |
 | Source authority fingerprint | The tool's source owner: the MCP registry for MCP servers, configuration for A2A agents | Fingerprint stored with a rule at the time it is remembered |
 | MCP tool exposure (disabled tools) | MCP application use case, in a relation separate from the server record | Run manifests, discovery results |
@@ -107,7 +107,7 @@ The approval policy is the sole owner of standing decisions. A rule key is `(sco
 
 ### 3.5 Out of scope
 
-- **Origin-qualified MCP server identity.** It is needed only when a second writer of server records exists, which is the plugin installation. `Ref`'s MCP variant holds `mcpserver.ServerName` now. The plugin work changes that one type when it lands. Trigger: a second source of MCP server records is approved.
+- **Origin-qualified MCP server identity.** It was deferred until a second writer of server records existed. Plugin installations are that writer: `Ref`'s MCP variant now holds `mcpserver.ID`, an origin plus a local name, and the plugin work owns that identity.
 - **Exposure for built-in and A2A tools.** No consumer exists.
 - **Rewriting historical transcript items, artifacts, or trajectory exports.** They keep the names they recorded.
 

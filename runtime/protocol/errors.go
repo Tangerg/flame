@@ -131,7 +131,7 @@ const (
 	// (run outcome:error, RPC error, tool error); the full error rides the span,
 	// never the wire.
 	ProblemInternalError = "internal_error"
-	// Execution failures; invalid_api_key and timeout also classify inline probes.
+	// Execution failures.
 	ProblemRunLost             = "run_lost"             // Runtime instance exited before the run reached a durable terminal
 	ProblemAgentStuck          = "agent_stuck"          // the loop's no-forward-progress guard tripped
 	ProblemRateLimited         = "rate_limited"         // provider 429 / quota — retryable
@@ -144,14 +144,6 @@ const (
 	ProblemToolFailed       = "tool_failed"        // tool execution returned an error
 	ProblemToolCanceled     = "tool_canceled"      // cancellation of the owning Run stopped an in-flight tool
 	ProblemChildRunCanceled = "child_run_canceled" // delegated Run was canceled by Run identity
-	// Inline status (MCPServer.status.error, ProviderTestResult.error) — a connection or
-	// probe verdict that rides its own query result instead of failing the call,
-	// so the pane renders it beside the thing it describes.
-	ProblemMCPAuthorizationRequired = "mcp_authorization_required" // an MCP server requires valid authorization
-	ProblemMCPAuthorizationFailed   = "mcp_authorization_failed"   // an interactive MCP sign-in did not complete successfully
-	ProblemMCPDialFailed            = "mcp_dial_failed"            // the MCP connection, or a test of it, did not succeed
-	ProblemProviderNotConfigured    = "provider_not_configured"    // the provider's authentication or endpoint policy is unsatisfied
-	ProblemProviderTestFailed       = "provider_test_failed"       // the provider was unreachable or rejected the probe
 )
 
 // Stable sentinels classify operation failures by client-visible problem type.
@@ -235,4 +227,10 @@ var (
 	ErrPluginUnapproved       = errors.New("plugin_unapproved")
 	ErrPluginStale            = errors.New("plugin_stale")
 	ErrMCPOwnedByInstallation = errors.New("mcp_owned_by_installation")
+	// ErrPluginChanged: runs.start or runs.resume assembled its execution while
+	// a plugin installation it depends on changed. Nothing was started and no
+	// interrupt was consumed; the same request against the committed
+	// installation can succeed. Retrying is the person's choice, never an
+	// automatic loop.
+	ErrPluginChanged = errors.New("plugin_changed")
 )

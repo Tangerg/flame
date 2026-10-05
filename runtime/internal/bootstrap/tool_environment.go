@@ -55,7 +55,7 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		ctx,
 		deps.lifetime,
 		deps.mcp.servers,
-		cfg.Stores.MCPAuthorization(deps.registry), deps.registry,
+		cfg.Stores.MCPAuthorization(), deps.registry,
 	)
 	if err != nil {
 		return toolEnvironment{}, fmt.Errorf("runtime: open MCP connections: %w", err)

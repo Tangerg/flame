@@ -9,6 +9,7 @@ import (
 
 func TestServerValidateRejectsForgedBoundedHandshakeTimeout(t *testing.T) {
 	srv := Server{
+		Source:           UserSource(),
 		Name:             testMCPServerName("linear"),
 		Transport:        TransportStreamableHTTP,
 		URL:              "https://mcp.linear.app/mcp",
@@ -44,7 +45,7 @@ func TestServerValidateRejectsCrossTransportState(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			server := Server{
-				Name: testMCPServerName("cloud"), Transport: TransportStreamableHTTP, URL: "https://example.com/mcp",
+				Source: UserSource(), Name: testMCPServerName("cloud"), Transport: TransportStreamableHTTP, URL: "https://example.com/mcp",
 			}
 			test.mutate(&server)
 			if err := server.Validate(); err == nil {
@@ -56,6 +57,7 @@ func TestServerValidateRejectsCrossTransportState(t *testing.T) {
 
 func TestServerFormattingRedactsCredentials(t *testing.T) {
 	server := Server{
+		Source:        UserSource(),
 		Name:          testMCPServerName("private"),
 		Transport:     TransportStreamableHTTP,
 		URL:           "https://url-user:url-secret@example.com/mcp",

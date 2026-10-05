@@ -1,3 +1,4 @@
+import { toolSourceLabel } from "@/lib/toolSource";
 import type { ApprovalRuleSummary } from "@/plugins/builtin/agent/public/approvalPolicy";
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
@@ -99,11 +100,9 @@ export function RulesRow() {
                   <span {...stylex.props(vocab.muted)}>
                     {" "}
                     ·{" "}
-                    {rule.tool.type === "mcp"
-                      ? `MCP / ${rule.tool.server} / ${rule.tool.name}`
-                      : rule.tool.type === "a2a"
-                        ? `A2A / ${rule.tool.endpoint}`
-                        : t("approvals.builtIn")}
+                    {rule.tool.type === "builtIn"
+                      ? t("approvals.builtIn")
+                      : toolSourceLabel(rule.tool)}
                   </span>
                   <span {...stylex.props(vocab.muted)}>
                     {" · "}

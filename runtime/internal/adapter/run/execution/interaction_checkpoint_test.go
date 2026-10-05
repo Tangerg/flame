@@ -311,7 +311,7 @@ func TestCheckpointDecodeErrorsNameTheirSectionExactlyOnce(t *testing.T) {
 		})
 	}
 
-	_, err := decodeInteractionCheckpointPayload([]byte(`{"toolBindings":[],"installations":[],"tree":{}}`))
+	_, err := decodeInteractionCheckpointPayload([]byte(`{"tree":{}}`))
 	if err == nil {
 		t.Fatal("empty checkpoint tree decoded")
 	}

@@ -4,31 +4,7 @@ import (
 	"time"
 )
 
-// MCPServerRequest identifies a configured MCP server by its stable name.
-type MCPServerRequest struct {
-	Server string `json:"server"`
-}
-
-// CreateMCPAuthorizationAttemptRequest starts one interactive OAuth flow for a
-// configured server.
-type CreateMCPAuthorizationAttemptRequest struct {
-	Server string `json:"server"`
-}
-
-// MCPAuthorizationAttemptRequest identifies one interactive OAuth flow.
-type MCPAuthorizationAttemptRequest struct {
-	AttemptID string `json:"attemptId"`
-}
-
-// MCPListToolsRequest — mcp.tools.list body.
-type MCPListToolsRequest struct {
-	Server string `json:"server,omitempty"`
-}
-
-// MCPServer is the single safe read model for one configured MCP server. Server
-// list results are ordered by Name ascending. Status includes "disabled", so
-// configuration enablement and live lifecycle can never contradict one another
-// on the wire.
+// MCPOriginType names the owner of an MCP server record.
 type MCPOriginType string
 
 const (
@@ -36,15 +12,50 @@ const (
 	MCPOriginInstallation MCPOriginType = "installation"
 )
 
+// MCPOrigin is a closed union naming the only owner that may change a server
+// record. Only installation carries installationId.
 type MCPOrigin struct {
 	Type           MCPOriginType `json:"type"`
 	InstallationID string        `json:"installationId,omitempty"`
-	LocalName      string        `json:"localName,omitempty"`
 }
 
+// MCPServerID is the one representation of an MCP server's identity on the
+// wire: its owner and the name that owner chose. Names are unique only within
+// an origin, so a name is never an identity on its own.
+type MCPServerID struct {
+	Origin MCPOrigin `json:"origin"`
+	Name   string    `json:"name"`
+}
+
+// MCPServerRequest identifies one configured MCP server.
+type MCPServerRequest struct {
+	Server MCPServerID `json:"server"`
+}
+
+// CreateMCPAuthorizationAttemptRequest starts one interactive OAuth flow for a
+// configured server.
+type CreateMCPAuthorizationAttemptRequest struct {
+	Server MCPServerID `json:"server"`
+}
+
+// MCPAuthorizationAttemptRequest identifies one interactive OAuth flow.
+type MCPAuthorizationAttemptRequest struct {
+	AttemptID string `json:"attemptId"`
+}
+
+// MCPListToolsRequest — mcp.tools.list body. An absent server lists every
+// connected server's tools.
+type MCPListToolsRequest struct {
+	Server *MCPServerID `json:"server,omitzero"`
+}
+
+// MCPServer is the single safe read model for one configured MCP server. Server
+// list results list user servers first, then installation servers by
+// installation, each ordered by name. Status includes "disabled", so
+// configuration enablement and live lifecycle can never contradict one another
+// on the wire.
 type MCPServer struct {
-	Origin           MCPOrigin           `json:"origin"`
-	Name             string              `json:"name"`
+	ID               MCPServerID         `json:"id"`
 	Description      string              `json:"description,omitempty"`
 	Connection       MCPConnection       `json:"connection"`
 	HandshakeTimeout MCPHandshakeTimeout `json:"handshakeTimeout"`
@@ -82,12 +93,35 @@ const (
 )
 
 // MCPServerState is a closed union. toolCount belongs only to connected;
-// error belongs only to failed and needsAuth.
+// error belongs only to failed, which carries a connection failure category,
+// and needsAuth, which carries mcp_authorization_required.
 type MCPServerState struct {
 	Type      MCPServerStateType `json:"type"`
 	ToolCount *int               `json:"toolCount,omitzero"`
-	Error     *ProblemData       `json:"error,omitzero"`
+	Error     *MCPStatusProblem  `json:"error,omitzero"`
 }
+
+// MCPStatusProblem is the inline problem an MCP status carries: its closed
+// category and nothing else. The category is a localization key, not
+// server-authored copy; the cause stays in Runtime traces because it can
+// carry paths, endpoints or credentials. Each status narrows which categories
+// it may carry.
+type MCPStatusProblem struct {
+	Type MCPStatusProblemType `json:"type"`
+}
+
+// MCPStatusProblemType is the inline-status problem vocabulary.
+type MCPStatusProblemType string
+
+const (
+	MCPStatusAuthorizationRequired MCPStatusProblemType = "mcp_authorization_required" // the server requires valid authorization
+	MCPStatusAuthorizationFailed   MCPStatusProblemType = "mcp_authorization_failed"   // an interactive sign-in did not complete successfully
+	MCPStatusDialFailed            MCPStatusProblemType = "mcp_dial_failed"            // the transport, process or handshake did not succeed
+	MCPStatusToolDiscoveryFailed   MCPStatusProblemType = "mcp_tool_discovery_failed"  // a session connected but did not produce a valid tool catalog
+	MCPStatusConfigurationFailed   MCPStatusProblemType = "mcp_configuration_failed"   // the configuration or stored credentials could not be used
+	MCPStatusReleaseUnavailable    MCPStatusProblemType = "mcp_release_unavailable"    // the owning plugin release cannot be verified
+	MCPStatusBackendUnavailable    MCPStatusProblemType = "mcp_backend_unavailable"    // the release is intact but this server's backend cannot be realized
+)
 
 // MCPTransport is the protocol's closed MCP transport vocabulary.
 type MCPTransport string
@@ -170,9 +204,10 @@ type MCPServerCandidate struct {
 // UpdateMCPServerRequest saves configuration; enabled servers then connect in
 // the background. Saving does not prove connection readiness. Omitted members preserve
 // their current value; present empty strings, collections, and zeroes clear it.
-// Name is immutable and addressed by Server.
+// The identity is immutable and addressed by Server; installation servers
+// refuse the update with an ownership error.
 type UpdateMCPServerRequest struct {
-	Server           string               `json:"server"`
+	Server           MCPServerID          `json:"server"`
 	Enabled          *bool                `json:"enabled,omitzero"`
 	Description      *string              `json:"description,omitzero"`
 	Connection       *MCPConnectionInput  `json:"connection,omitzero"`
@@ -185,16 +220,27 @@ type MCPTool struct {
 	ModelName string `json:"modelName"`
 	// NameConflicts lists identities that exclude this tool from current model manifests.
 	NameConflicts []ToolRef      `json:"nameConflicts"`
-	Server        string         `json:"server"`
+	Server        MCPServerID    `json:"server"`
 	Name          string         `json:"name"`
 	Description   string         `json:"description,omitempty"`
 	InputSchema   map[string]any `json:"inputSchema,omitempty"`
 }
 
+// MCPTestOutcome is the closed verdict of mcp.servers.test. A probe carries no
+// server-authored prose, so clients render each outcome locally and treat any
+// other value as a contract violation.
+type MCPTestOutcome string
+
+const (
+	MCPTestReachable             MCPTestOutcome = "reachable"
+	MCPTestAuthorizationRequired MCPTestOutcome = "authorizationRequired"
+	MCPTestTimedOut              MCPTestOutcome = "timedOut"
+	MCPTestFailed                MCPTestOutcome = "failed"
+)
+
 // MCPTestResult is the semantic result of mcp.servers.test.
 type MCPTestResult struct {
-	OK    bool         `json:"ok"`
-	Error *ProblemData `json:"error,omitzero"`
+	Outcome MCPTestOutcome `json:"outcome"`
 }
 
 // MCPAuthorizationAttemptStatusType is the complete lifecycle of one
@@ -209,17 +255,18 @@ const (
 )
 
 // MCPAuthorizationAttemptStatus is a closed union. Only failed carries an
-// error; the full provider/OAuth error remains private telemetry.
+// error, always mcp_authorization_failed; the full provider/OAuth error
+// remains private telemetry.
 type MCPAuthorizationAttemptStatus struct {
 	Type  MCPAuthorizationAttemptStatusType `json:"type"`
-	Error *ProblemData                      `json:"error,omitzero"`
+	Error *MCPStatusProblem                 `json:"error,omitzero"`
 }
 
 // MCPAuthorizationAttempt is the observable asynchronous result of interactive
 // authorization. Pending has no finishedAt; every terminal status has one.
 type MCPAuthorizationAttempt struct {
 	ID         string                        `json:"id"`
-	Server     string                        `json:"server"`
+	Server     MCPServerID                   `json:"server"`
 	Status     MCPAuthorizationAttemptStatus `json:"status"`
 	CreatedAt  time.Time                     `json:"createdAt,omitzero"`
 	FinishedAt *time.Time                    `json:"finishedAt,omitzero"`
@@ -227,11 +274,11 @@ type MCPAuthorizationAttempt struct {
 
 // MCPToolExposure is the user-owned set hidden from model manifests.
 type MCPToolExposure struct {
-	Server        string   `json:"server"`
-	DisabledTools []string `json:"disabledTools"`
+	Server        MCPServerID `json:"server"`
+	DisabledTools []string    `json:"disabledTools"`
 }
 type SetMCPToolExposureRequest struct {
-	Server   string `json:"server"`
-	Name     string `json:"name"`
-	Disabled bool   `json:"disabled"`
+	Server   MCPServerID `json:"server"`
+	Name     string      `json:"name"`
+	Disabled bool        `json:"disabled"`
 }

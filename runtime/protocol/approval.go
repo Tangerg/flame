@@ -91,13 +91,15 @@ const (
 	ToolRefA2A     ToolRefType = "a2a"
 )
 
-// ToolRef is a source-qualified closed union. Name is exact source vocabulary;
-// modelName belongs to the read projection, never the authority key.
+// ToolRef is a source-qualified closed union. builtIn carries name; mcp
+// carries server and the remote tool name; a2a carries endpoint. Name is exact
+// source vocabulary; modelName belongs to the read projection, never the
+// authority key.
 type ToolRef struct {
-	Type     ToolRefType `json:"type"`
-	Name     string      `json:"name,omitempty"`
-	Endpoint string      `json:"endpoint,omitempty"`
-	Server   string      `json:"server,omitempty"`
+	Type     ToolRefType  `json:"type"`
+	Name     string       `json:"name,omitempty"`
+	Endpoint string       `json:"endpoint,omitempty"`
+	Server   *MCPServerID `json:"server,omitzero"`
 }
 
 // ApprovalSubject separates literal commands and paths from authored glob patterns.

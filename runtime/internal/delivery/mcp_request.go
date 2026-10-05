@@ -7,6 +7,7 @@ import (
 
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -38,6 +39,37 @@ func parseMCPServerName(raw string) (mcpserver.ServerName, error) {
 		return mcpserver.ServerName{}, NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	}
 	return name, nil
+}
+
+// mcpServerIDFromWire is the only translation of a wire server identity.
+func mcpServerIDFromWire(in protocol.MCPServerID) (mcpserver.ID, error) {
+	var origin mcpserver.Origin
+	switch in.Origin.Type {
+	case protocol.MCPOriginUser:
+		if in.Origin.InstallationID != "" {
+			return mcpserver.ID{}, NewFailure(protocol.ErrInvalidParams, "user MCP origin carries no installation")
+		}
+		origin = mcpserver.UserOrigin()
+	case protocol.MCPOriginInstallation:
+		installation, err := resourceid.ParseInstallation(in.Origin.InstallationID)
+		if err != nil {
+			return mcpserver.ID{}, NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+		}
+		if origin, err = mcpserver.InstallationOrigin(installation); err != nil {
+			return mcpserver.ID{}, NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+		}
+	default:
+		return mcpserver.ID{}, NewFailure(protocol.ErrInvalidParams, fmt.Sprintf("unknown MCP origin %q", in.Origin.Type))
+	}
+	name, err := parseMCPServerName(in.Name)
+	if err != nil {
+		return mcpserver.ID{}, err
+	}
+	id, err := mcpserver.NewID(origin, name)
+	if err != nil {
+		return mcpserver.ID{}, NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
+	}
+	return id, nil
 }
 
 func mcpServerPatchFromRequest(in protocol.UpdateMCPServerRequest) (mcpapp.ServerPatch, error) {

@@ -3,9 +3,12 @@ package toolset
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"path/filepath"
 	"slices"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -15,13 +18,13 @@ import (
 )
 
 func TestAuthorityReadSharesOneSourceObservationAndRefreshesNextRequest(t *testing.T) {
-	server := mcpserver.Server{Name: testMCPServerName("files"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: "https://first.example/mcp"}
+	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("files"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: "https://first.example/mcp"}
 	changed := server.Clone()
 	changed.URL = "https://second.example/mcp"
 	registry := &authorityReadSequence{states: []mcpserver.Server{server, changed}}
 	authorities := NewAuthorities(registry.Get, nil)
-	first := testMCPRef(server.Name, testRemoteToolName("first"))
-	second := testMCPRef(server.Name, testRemoteToolName("second"))
+	first := testMCPRef(server.Name, testsupport.RemoteToolName("first"))
+	second := testMCPRef(server.Name, testsupport.RemoteToolName("second"))
 	refs := []tool.Ref{first, second}
 	observed, err := authorities.Fingerprints(t.Context(), refs)
 	if err != nil || observed[first] != server.AuthorityFingerprint() || observed[second] != observed[first] {
@@ -41,7 +44,7 @@ func TestAuthorityReadSharesOneSourceObservationAndRefreshesNextRequest(t *testi
 
 type authorityReadSequence struct{ states []mcpserver.Server }
 
-func (r *authorityReadSequence) Get(context.Context, mcpserver.ServerName) (mcpserver.Server, bool, error) {
+func (r *authorityReadSequence) Get(context.Context, mcpserver.ID) (mcpserver.Server, bool, error) {
 	server := r.states[0].Clone()
 	if len(r.states) > 1 {
 		r.states = r.states[1:]
@@ -87,13 +90,13 @@ func TestStandingRulesFollowCurrentSourceAuthority(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	registry := sqlite.NewMCPServerStore(db)
-	server := mcpserver.Server{Name: testMCPServerName("files"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: "https://one.example/mcp", Authorization: "Bearer first"}
+	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("files"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: "https://one.example/mcp", Authorization: "Bearer first"}
 	if err := registry.Save(t.Context(), server); err != nil {
 		t.Fatal(err)
 	}
-	ref := testMCPRef(server.Name, testRemoteToolName("read"))
+	ref := testMCPRef(server.Name, testsupport.RemoteToolName("read"))
 	store := sqlite.NewApprovalRuleStore(db)
-	policy, err := approvals.NewRuntimePolicy(approval.ModeSafe, store, sqlite.NewPermissionModeStore(db), NewAuthorities(registry.Get, nil), nil)
+	policy, err := approvals.NewRuntimePolicy(approval.ModeSafe, store, sqlite.NewPermissionModeStore(db), NewAuthorities(userDefinitions(registry), nil), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +104,7 @@ func TestStandingRulesFollowCurrentSourceAuthority(t *testing.T) {
 		t.Fatal(err)
 	}
 	original := server.AuthorityFingerprint()
-	check := func(fingerprint string, wantMatch, wantStale bool) {
+	check := func(fingerprint fingerprint.Digest, wantMatch, wantStale bool) {
 		t.Helper()
 		decision, matched, err := policy.Decide(t.Context(), approval.Query{Tool: ref, SourceFingerprint: fingerprint})
 		if err != nil || matched != wantMatch || (matched && decision != approval.Allow) {
@@ -175,5 +178,16 @@ func TestA2ARulesBecomeStaleWhenCardAuthorityChanges(t *testing.T) {
 	}
 	if _, matched, err := policy.Decide(t.Context(), approval.Query{Tool: ref, SourceFingerprint: agent.AuthorityFingerprint()}); err != nil || matched {
 		t.Fatalf("new card matched old grant: %v, %v", matched, err)
+	}
+}
+
+// userDefinitions reads only the user registry, which is every source these
+// tests create.
+func userDefinitions(registry *sqlite.MCPServerStore) func(context.Context, mcpserver.ID) (mcpserver.Server, bool, error) {
+	return func(ctx context.Context, id mcpserver.ID) (mcpserver.Server, bool, error) {
+		if id.Origin().Kind() != mcpserver.OriginUser {
+			return mcpserver.Server{}, false, nil
+		}
+		return registry.Get(ctx, id.Name())
 	}
 }

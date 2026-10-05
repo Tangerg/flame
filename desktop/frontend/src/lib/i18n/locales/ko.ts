@@ -845,6 +845,10 @@ export const ko: Record<string, string> = {
   "mcp.error.toggle": "서버를 변경할 수 없습니다.",
   "mcp.error.signIn": "로그인에 실패했습니다.",
   "mcp.error.test": "테스트 실패",
+  "mcp.testOutcome.timedOut":
+    "서버가 제때 응답하지 않았습니다. 명령 또는 URL을 확인하고 다시 시도하세요.",
+  "mcp.testOutcome.failed":
+    "서버에 연결하지 못했거나 유효한 도구 목록을 받지 못했습니다. 설정을 확인한 뒤 다시 시도하세요.",
   "workspace.view.title.file": "파일",
   "settings.theme.system": "시스템",
   "runError.action.retryIn": "{{seconds}}초 후 재시도",
@@ -990,14 +994,22 @@ export const ko: Record<string, string> = {
     "런타임 내부에서 오류가 발생했습니다 — 다시 시도하고, 계속되면 진단을 확인하세요.",
   "rpcError.run_lost":
     "이 실행의 프로세스가 사라졌습니다 — 결과가 저장되기 전에 종료됐습니다. 다시 실행하세요.",
-  "rpcError.mcp_authorization_required": "이 서버는 사용하기 전에 로그인이 필요합니다.",
-  "rpcError.mcp_authorization_failed": "로그인이 완료되지 않았습니다. 다시 시도하세요.",
+  "mcpStatus.mcp_authorization_required": "이 서버는 사용하기 전에 로그인이 필요합니다.",
+  "mcpStatus.mcp_authorization_failed": "로그인이 완료되지 않았습니다. 다시 시도하세요.",
   "rpcError.mcp_authorization_attempt_not_found":
     "이 로그인 시도는 만료되었습니다. 다시 시작하세요.",
-  "rpcError.mcp_dial_failed":
+  "mcpStatus.mcp_tool_discovery_failed":
+    "연결되었지만 이 서버가 사용 가능한 도구 목록을 반환하지 않았습니다. 서버를 확인하고 다시 시도하세요.",
+  "mcpStatus.mcp_configuration_failed":
+    "이 서버의 구성 또는 저장된 자격 증명을 사용할 수 없습니다. 설정을 확인하고 다시 시도하세요.",
+  "mcpStatus.mcp_release_unavailable":
+    "이 서버를 제공하는 플러그인이 검증에 실패했습니다. 플러그인을 다시 설치하거나 업데이트하세요.",
+  "mcpStatus.mcp_backend_unavailable":
+    "플러그인은 정상이지만 이 서버의 백엔드를 준비하지 못했습니다. 다시 시도하거나 플러그인을 다시 설치하세요.",
+  "mcpStatus.mcp_dial_failed":
     "이 서버에 연결할 수 없습니다 — 명령이나 URL을 확인하고 다시 시도하세요.",
-  "rpcError.provider_not_configured": "먼저 제공자 구성을 완료하세요.",
-  "rpcError.provider_test_failed": "제공자에 연결할 수 없거나 테스트 요청이 거부됐습니다.",
+  "providers.testOutcome.notConfigured": "먼저 제공자 구성을 완료하세요.",
+  "providers.testOutcome.failed": "제공자에 연결할 수 없거나 테스트 요청이 거부됐습니다.",
   "rpcError.skill_not_found": "해당 스킬이 라이브러리에 없습니다.",
   "rpcError.skill_unavailable": "해당 스킬의 문서를 읽을 수 없습니다. 연결된 파일을 확인하세요.",
   "rpcError.revision_conflict": "다른 변경이 먼저 반영되었습니다. 새로 고친 뒤 다시 시도하세요.",
@@ -1009,6 +1021,8 @@ export const ko: Record<string, string> = {
   "rpcError.unsupported_mime": "여기서는 지원하지 않는 파일 형식입니다.",
   "rpcError.interrupt_not_open": "해당 요청은 더 이상 답변을 기다리지 않습니다.",
   "rpcError.idempotency_conflict": "같은 요청이 다른 내용으로 이미 전송되었습니다.",
+  "rpcError.plugin_changed":
+    "실행을 준비하는 동안 플러그인이 변경되었습니다. 아무것도 시작되지 않았습니다. 다시 보내 재시도하세요.",
   "session.error.create": "세션을 만들 수 없습니다.",
   "session.directory.title": "새 세션",
   "session.directory.description":
@@ -1274,12 +1288,15 @@ export const ko: Record<string, string> = {
   "packages.loading": "불러오는 중…",
 
   "packages.trust":
-    "릴리스 승인은 코드를 신뢰한다는 뜻입니다. 로컬 실행 파일은 OS 권한으로 실행됩니다. 소스, 다이제스트, 입력 및 요청 권한을 확인하세요.",
+    "릴리스 승인은 해당 코드를 정확히 신뢰한다는 뜻입니다. 로컬 실행 파일은 OS 권한으로 실행됩니다. 소스, 다이제스트 및 입력을 확인하세요. 다른 릴리스를 선택하면 다시 승인해야 합니다.",
   "packages.source": "Runtime의 패키지 디렉터리 또는 ZIP 절대 경로",
   "packages.install": "설치",
   "packages.empty": "설치된 Runtime 패키지가 없습니다",
-  "packages.approve": "릴리스 및 권한 신뢰",
+  "packages.approve": "이 릴리스 신뢰",
   "packages.configure": "입력 구성",
+  "packages.state.unapproved": "승인되지 않음: 활성화하기 전에 이 릴리스를 검토하세요.",
+  "packages.state.approved": "승인됨, 비활성화됨.",
+  "packages.state.enabled": "활성화됨.",
   "packages.disable": "비활성화",
   "packages.enable": "활성화",
   "packages.stage": "업데이트 준비",
@@ -1288,4 +1305,29 @@ export const ko: Record<string, string> = {
   "packages.uninstall": "제거",
   "packages.input": "JSON 입력 또는 Runtime 소스 경로",
   "packages.save": "저장",
+  "packages.installed":
+    "{{name}}을(를) 설치했습니다. 활성화하기 전에 아래에서 릴리스를 검토하세요.",
+  "packages.releaseUnavailable":
+    "이 릴리스의 파일이 검증에 실패하여 구성 요소를 사용할 수 없습니다.",
+  "packages.backendUnavailable":
+    "서버 “{{name}}”을(를) 시작할 수 없습니다: 백엔드를 준비하지 못했습니다.",
+  "packages.component.manifestField": "매니페스트 필드 “{{name}}”",
+  "packages.component.flameExtension": "Flame 확장",
+  "packages.component.extensionField": "확장 필드 “{{name}}”",
+  "packages.component.contribution": "기여 항목 “{{name}}”",
+  "packages.component.mcp": "MCP 구성",
+  "packages.component.mcpServer": "MCP 서버 “{{name}}”",
+  "packages.component.skills": "스킬 디렉터리",
+  "packages.component.skill": "스킬 “{{name}}”",
+  "packages.diagnostic.unknownField": "{{component}}은(는) 인식되지 않아 무시되었습니다.",
+  "packages.diagnostic.invalidDeclaration": "{{component}}은(는) 유효하지 않아 비활성화되었습니다.",
+  "packages.diagnostic.unsupportedContribution":
+    "{{component}}은(는) 지원되지 않아 무시되었습니다.",
+  "packages.diagnostic.componentLimit": "{{component}}은(는) 한도를 초과하여 비활성화되었습니다.",
+  "packages.diagnostic.invalidDependencies":
+    "{{component}}은(는) 없거나 유효하지 않은 선언에 의존하여 비활성화되었습니다.",
+  "packages.diagnostic.unavailableComponent":
+    "{{component}}을(를) 읽을 수 없어 비활성화되었습니다.",
+  "packages.realizationFailed": "이 창에서 패키지 테마를 불러오지 못했습니다: {{reason}}",
+  "packages.reviewedField": "“{{field}}”은(는) 검토한 릴리스에 속하므로 여기서 변경할 수 없습니다.",
 };

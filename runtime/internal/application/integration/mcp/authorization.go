@@ -37,7 +37,7 @@ func (a AuthorizationAttemptStatus) Valid() bool {
 // stable status.
 type AuthorizationAttempt struct {
 	ID         AuthorizationAttemptID
-	Server     mcpserver.ServerName
+	Server     mcpserver.ID
 	Status     AuthorizationAttemptStatus
 	CreatedAt  time.Time
 	FinishedAt *time.Time
@@ -52,7 +52,7 @@ func (c *Coordinator) AuthorizationAttemptRetention() time.Duration {
 // CreateAuthorizationAttempt validates a configured server and starts one
 // component-owned interactive OAuth flow. A newer operation for the same server
 // cancels this attempt; operations for other servers remain independent.
-func (c *Coordinator) CreateAuthorizationAttempt(ctx context.Context, server mcpserver.ServerName) (AuthorizationAttempt, error) {
+func (c *Coordinator) CreateAuthorizationAttempt(ctx context.Context, server mcpserver.ID) (AuthorizationAttempt, error) {
 	target, err := c.connectionTarget(ctx, server)
 	if err != nil {
 		return AuthorizationAttempt{}, err
@@ -129,7 +129,7 @@ func newAuthorizationAttemptStoreWith(
 	}
 }
 
-func (a *authorizationAttemptStore) create(server mcpserver.ServerName) AuthorizationAttempt {
+func (a *authorizationAttemptStore) create(server mcpserver.ID) AuthorizationAttempt {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.purgeExpiredLocked()

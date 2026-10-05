@@ -25,6 +25,24 @@ type observedInteractionModel struct {
 	session  *interactionSession
 }
 
+// request attaches the tail the reducer prepared for this invocation. Scope's
+// WorkingContext adopts whatever the context reducer returns, so a per-request
+// projection is attached here, after the Dispatcher has fixed the messages it
+// will keep; appending at the tail keeps every earlier message a reusable
+// cache prefix.
+func (o *observedInteractionModel) request(invocation interaction.ModelInvocation, request *corechat.Request) (*corechat.Request, error) {
+	tail, err := o.session.tails.take(invocation)
+	if err != nil {
+		return nil, err
+	}
+	if len(tail) == 0 {
+		return request, nil
+	}
+	sent := request.Clone()
+	sent.Messages = append(sent.Messages, tail...)
+	return sent, nil
+}
+
 func (o *observedInteractionModel) Call(
 	ctx context.Context,
 	request *corechat.Request,
@@ -34,7 +52,12 @@ func (o *observedInteractionModel) Call(
 		return nil, err
 	}
 	defer o.session.accounting.discardPreparedModelContext(invocation)
-	response, err := o.model.Call(ctx, request)
+	defer o.session.tails.discard(invocation)
+	sent, err := o.request(invocation, request)
+	if err != nil {
+		return nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, err)
+	}
+	response, err := o.model.Call(ctx, sent)
 	if err != nil {
 		return response, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, err)
 	}
@@ -61,8 +84,14 @@ func (o *observedInteractionModel) Stream(
 			return
 		}
 		defer o.session.accounting.discardPreparedModelContext(invocation)
+		defer o.session.tails.discard(invocation)
+		sent, err := o.request(invocation, request)
+		if err != nil {
+			yield(nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil, err))
+			return
+		}
 		dispatchedAt := time.Now()
-		sequence := o.streamer.Stream(ctx, request)
+		sequence := o.streamer.Stream(ctx, sent)
 		if sequence == nil {
 			yield(nil, o.finishFailedCall(ctx, invocation, callID, runs.ModelObservation{}, nil,
 				errors.New("execution: model streamer returned a nil sequence")))

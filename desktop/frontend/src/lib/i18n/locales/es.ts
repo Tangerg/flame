@@ -897,6 +897,10 @@ export const es: Record<string, string> = {
   "mcp.error.toggle": "No se pudo modificar el servidor.",
   "mcp.error.signIn": "Error al iniciar sesión.",
   "mcp.error.test": "La prueba falló",
+  "mcp.testOutcome.timedOut":
+    "El servidor no respondió a tiempo: revisa el comando o la URL y vuelve a intentarlo.",
+  "mcp.testOutcome.failed":
+    "El servidor no se conectó o no ofreció una lista de herramientas válida. Revisa su configuración y vuelve a intentarlo.",
   "workspace.view.title.file": "Archivos",
   "settings.theme.system": "Sistema",
   "runError.action.retryIn": "Reintentar en {{seconds}} s",
@@ -1050,15 +1054,23 @@ export const es: Record<string, string> = {
     "Algo falló dentro del runtime — reintenta y revisa los diagnósticos si se repite.",
   "rpcError.run_lost":
     "El proceso de esta ejecución desapareció — terminó antes de guardar un resultado. Vuelve a lanzarla.",
-  "rpcError.mcp_authorization_required":
+  "mcpStatus.mcp_authorization_required":
     "Este servidor requiere que inicies sesión antes de usarlo.",
-  "rpcError.mcp_authorization_failed": "No se completó el inicio de sesión. Inténtalo de nuevo.",
+  "mcpStatus.mcp_authorization_failed": "No se completó el inicio de sesión. Inténtalo de nuevo.",
   "rpcError.mcp_authorization_attempt_not_found":
     "Este intento de inicio de sesión caducó. Inicia uno nuevo.",
-  "rpcError.mcp_dial_failed":
+  "mcpStatus.mcp_tool_discovery_failed":
+    "Conectado, pero este servidor no devolvió una lista de herramientas utilizable. Revisa el servidor y vuelve a intentarlo.",
+  "mcpStatus.mcp_configuration_failed":
+    "No se pudo usar la configuración ni las credenciales guardadas de este servidor. Revisa sus ajustes y vuelve a intentarlo.",
+  "mcpStatus.mcp_release_unavailable":
+    "El plugin que proporciona este servidor no superó la verificación. Reinstala o actualiza el plugin.",
+  "mcpStatus.mcp_backend_unavailable":
+    "El plugin está intacto, pero no se pudo preparar el backend de este servidor. Vuelve a intentarlo o reinstala el plugin.",
+  "mcpStatus.mcp_dial_failed":
     "No se pudo conectar con este servidor — revisa el comando o la URL y reinténtalo.",
-  "rpcError.provider_not_configured": "Completa primero la configuración del proveedor.",
-  "rpcError.provider_test_failed":
+  "providers.testOutcome.notConfigured": "Completa primero la configuración del proveedor.",
+  "providers.testOutcome.failed":
     "No se pudo contactar al proveedor, o rechazó la petición de prueba.",
   "rpcError.skill_not_found": "Esa habilidad ya no está en la biblioteca.",
   "rpcError.skill_unavailable":
@@ -1072,6 +1084,8 @@ export const es: Record<string, string> = {
   "rpcError.unsupported_mime": "Ese tipo de archivo no se admite aquí.",
   "rpcError.interrupt_not_open": "Esa solicitud ya no espera respuesta.",
   "rpcError.idempotency_conflict": "La misma solicitud ya se envió con un contenido distinto.",
+  "rpcError.plugin_changed":
+    "Un plugin cambió mientras se preparaba la ejecución. No se inició nada; vuelve a enviar para reintentarlo.",
   "session.error.create": "No se pudo crear la sesión.",
   "session.directory.title": "Nueva sesión",
   "session.directory.description":
@@ -1361,12 +1375,15 @@ export const es: Record<string, string> = {
   "packages.loading": "Cargando…",
 
   "packages.trust":
-    "Aprobar una versión implica confiar en su código. Los ejecutables locales usan tus permisos del sistema. Revisa origen, resumen, entradas y permisos solicitados.",
+    "Aprobar una versión implica confiar exactamente en su código. Los ejecutables locales usan tus permisos del sistema. Revisa origen, resumen y entradas. Seleccionar otra versión requiere una nueva aprobación.",
   "packages.source": "Ruta absoluta del directorio o ZIP en el Runtime",
   "packages.install": "Instalar",
   "packages.empty": "No hay paquetes Runtime instalados",
-  "packages.approve": "Confiar en versión y permisos",
+  "packages.approve": "Confiar en esta versión",
   "packages.configure": "Configurar entradas",
+  "packages.state.unapproved": "Sin aprobar: revisa esta versión antes de activarla.",
+  "packages.state.approved": "Aprobada, no activada.",
+  "packages.state.enabled": "Activada.",
   "packages.disable": "Desactivar",
   "packages.enable": "Activar",
   "packages.stage": "Preparar actualización",
@@ -1375,4 +1392,28 @@ export const es: Record<string, string> = {
   "packages.uninstall": "Desinstalar",
   "packages.input": "Entrada JSON o ruta de origen del Runtime",
   "packages.save": "Guardar",
+  "packages.installed": "Se instaló {{name}}. Revisa su versión abajo antes de activarlo.",
+  "packages.releaseUnavailable":
+    "Los archivos de esta versión no superaron la verificación, así que sus componentes no están disponibles.",
+  "packages.backendUnavailable":
+    "El servidor «{{name}}» no puede iniciarse: no se pudo preparar su backend.",
+  "packages.component.manifestField": "El campo de manifiesto «{{name}}»",
+  "packages.component.flameExtension": "La extensión de Flame",
+  "packages.component.extensionField": "El campo de extensión «{{name}}»",
+  "packages.component.contribution": "La contribución «{{name}}»",
+  "packages.component.mcp": "La configuración MCP",
+  "packages.component.mcpServer": "El servidor MCP «{{name}}»",
+  "packages.component.skills": "El directorio de habilidades",
+  "packages.component.skill": "La habilidad «{{name}}»",
+  "packages.diagnostic.unknownField": "{{component}} no se reconoce y se ignoró.",
+  "packages.diagnostic.invalidDeclaration": "{{component}} no es válido y se desactivó.",
+  "packages.diagnostic.unsupportedContribution": "{{component}} no es compatible y se ignoró.",
+  "packages.diagnostic.componentLimit": "{{component}} supera su límite y se desactivó.",
+  "packages.diagnostic.invalidDependencies":
+    "{{component}} depende de declaraciones ausentes o no válidas y se desactivó.",
+  "packages.diagnostic.unavailableComponent": "{{component}} no se pudo leer y se desactivó.",
+  "packages.realizationFailed":
+    "No se pudieron cargar los temas de paquetes en esta ventana: {{reason}}",
+  "packages.reviewedField":
+    "«{{field}}» pertenece a la versión revisada y no se puede cambiar aquí.",
 };

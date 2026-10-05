@@ -48,4 +48,5 @@ const (
 	codePluginStale                     = -32043
 	codeMCPOwnedByInstallation          = -32044
 	codePluginUnavailable               = -32045
+	codePluginChanged                   = -32046
 )

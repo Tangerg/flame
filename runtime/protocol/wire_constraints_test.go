@@ -1,6 +1,7 @@
 package protocol
 
 import (
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	"math"
@@ -25,17 +26,16 @@ func agentMemoryWireItemID(digit byte) string {
 	)
 }
 
-func TestPluginThemeColorsRejectInvalidNamesAndValues(t *testing.T) {
+func TestPluginThemeColorsRejectNonHexValues(t *testing.T) {
 	for _, test := range []struct {
 		name   string
-		colors map[string]string
+		colors PluginThemeColors
 		field  string
 	}{
-		{"valid palette", map[string]string{"background": "#102030", "foreground": "#ABCDEF", "accent": "#102030", "muted": "#102030", "border": "#102030"}, ""},
-		{"unknown token", map[string]string{"unexpected": "#102030"}, `colors["unexpected"]`},
-		{"css expression", map[string]string{"background": "url(https://example.invalid/image)"}, `colors["background"]`},
-		{"short hex", map[string]string{"accent": "#abc"}, `colors["accent"]`},
-		{"empty color", map[string]string{"border": ""}, `colors["border"]`},
+		{"valid palette", PluginThemeColors{Background: "#102030", Foreground: "#ABCDEF", Accent: "#102030", Muted: "#102030", Border: "#102030"}, ""},
+		{"partial palette", PluginThemeColors{Accent: "#102030"}, ""},
+		{"css expression", PluginThemeColors{Background: "url(https://example.invalid/image)"}, "colors.background"},
+		{"short hex", PluginThemeColors{Accent: "#abc"}, "colors.accent"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			theme := PluginTheme{ID: "sample", Title: "Sample", Scheme: PluginThemeDark, Colors: test.colors}
@@ -47,6 +47,33 @@ func TestPluginThemeColorsRejectInvalidNamesAndValues(t *testing.T) {
 				return
 			}
 			assertConstraintField(t, err, "PluginTheme", test.field)
+		})
+	}
+}
+
+func TestMCPServerStateNarrowsItsProblemToTheState(t *testing.T) {
+	toolCount := 1
+	for _, test := range []struct {
+		name  string
+		state MCPServerState
+		field string
+	}{
+		{"connected carries a tool count", MCPServerState{Type: MCPServerConnected, ToolCount: &toolCount}, ""},
+		{"needsAuth carries the authorization requirement", MCPServerState{Type: MCPServerNeedsAuth, Error: &MCPStatusProblem{Type: MCPStatusAuthorizationRequired}}, ""},
+		{"failed carries a connection failure", MCPServerState{Type: MCPServerFailed, Error: &MCPStatusProblem{Type: MCPStatusDialFailed}}, ""},
+		{"needsAuth cannot carry a dial failure", MCPServerState{Type: MCPServerNeedsAuth, Error: &MCPStatusProblem{Type: MCPStatusDialFailed}}, "error.type"},
+		{"failed cannot carry the authorization requirement", MCPServerState{Type: MCPServerFailed, Error: &MCPStatusProblem{Type: MCPStatusAuthorizationRequired}}, "error.type"},
+		{"connected carries no problem", MCPServerState{Type: MCPServerConnected, ToolCount: &toolCount, Error: &MCPStatusProblem{Type: MCPStatusDialFailed}}, "error"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			err := ValidateWireTree(test.state)
+			if test.field == "" {
+				if err != nil {
+					t.Fatal(err)
+				}
+				return
+			}
+			assertConstraintField(t, err, "MCPServerState", test.field)
 		})
 	}
 }
@@ -840,6 +867,10 @@ func TestMCPWireUnionsAcceptEveryLegalBranch(t *testing.T) {
 	)
 }
 
+func testUserServer(name string) MCPServerID {
+	return MCPServerID{Origin: MCPOrigin{Type: MCPOriginUser}, Name: name}
+}
+
 func TestMCPAuthorizationAttemptIdentityUsesCanonicalWireGrammar(t *testing.T) {
 	request := MCPAuthorizationAttemptRequest{AttemptID: testsupport.MCPAuthorizationAttemptID}
 	if err := request.ValidateWire(); err != nil {
@@ -849,69 +880,104 @@ func TestMCPAuthorizationAttemptIdentityUsesCanonicalWireGrammar(t *testing.T) {
 	assertConstraintField(t, request.ValidateWire(), "MCPAuthorizationAttemptRequest", "attemptId")
 
 	attempt := MCPAuthorizationAttempt{
-		ID: testsupport.MCPAuthorizationAttemptID, Server: "github", CreatedAt: time.Unix(1, 0).UTC(),
+		ID: testsupport.MCPAuthorizationAttemptID, Server: testUserServer("github"), CreatedAt: time.Unix(1, 0).UTC(),
+		Status: MCPAuthorizationAttemptStatus{Type: MCPAuthorizationAttemptPending},
 	}
-	if err := attempt.ValidateWire(); err != nil {
+	if err := ValidateWireTree(attempt); err != nil {
 		t.Fatalf("canonical response identity: %v", err)
 	}
 	attempt.ID = "mcpauth_missing"
 	assertConstraintField(t, attempt.ValidateWire(), "MCPAuthorizationAttempt", "id")
 	attempt.ID = testsupport.MCPAuthorizationAttemptID
-	attempt.Server = "GitHub"
-	assertConstraintField(t, attempt.ValidateWire(), "MCPAuthorizationAttempt", "server")
-	attempt.Server, attempt.CreatedAt = "github", time.Time{}
+	attempt.Server = testUserServer("GitHub")
+	assertConstraintField(t, ValidateWireTree(attempt), "MCPAuthorizationAttempt", "server.name")
+	attempt.Server, attempt.CreatedAt = testUserServer("github"), time.Time{}
 	assertConstraintField(t, attempt.ValidateWire(), "MCPAuthorizationAttempt", "createdAt")
 }
 
 func TestMCPServerIdentityUsesCanonicalWireGrammar(t *testing.T) {
-	maximum := strings.Repeat("a", mcpserver.MaximumServerNameCharacters)
-	valid := []WireValidator{
+	maximum := testUserServer(strings.Repeat("a", mcpserver.MaximumServerNameCharacters))
+	installed := MCPServerID{Origin: MCPOrigin{Type: MCPOriginInstallation, InstallationID: "eeb329cd-c7ce-40c9-bd90-6821fef06d30"}, Name: "files"}
+	valid := []any{
 		MCPServerRequest{Server: maximum},
+		MCPServerRequest{Server: installed},
 		CreateMCPAuthorizationAttemptRequest{Server: maximum},
-		MCPListToolsRequest{Server: maximum},
-		MCPServerCandidate{Name: maximum},
+		MCPListToolsRequest{Server: &installed},
+		MCPServerCandidate{Name: maximum.Name, Connection: MCPConnectionInput{Type: MCPTransportStdio, Command: "files"}, HandshakeTimeout: MCPHandshakeTimeout{Type: MCPHandshakeUnbounded}},
 		UpdateMCPServerRequest{Server: maximum},
-		MCPServer{Name: maximum},
+		MCPServer{ID: installed, Connection: MCPConnection{Type: MCPTransportStdio, Command: "files"}, HandshakeTimeout: MCPHandshakeTimeout{Type: MCPHandshakeUnbounded}, Status: MCPServerState{Type: MCPServerDisabled}},
 		MCPTool{Server: maximum, Name: "read", ModelName: "source_read"},
 	}
 	for _, value := range valid {
-		if err := value.ValidateWire(); err != nil {
-			t.Errorf("ValidateWire rejected canonical %T identity: %v", value, err)
+		if err := ValidateWireTree(value); err != nil {
+			t.Errorf("ValidateWireTree rejected canonical %T identity: %v", value, err)
 		}
 	}
-	if err := (MCPListToolsRequest{}).ValidateWire(); err != nil {
+	if err := ValidateWireTree(MCPListToolsRequest{}); err != nil {
 		t.Fatalf("optional all-server filter rejected omission: %v", err)
 	}
 
-	invalid := strings.Repeat("a", mcpserver.MaximumServerNameCharacters+1)
+	invalid := testUserServer(strings.Repeat("a", mcpserver.MaximumServerNameCharacters+1))
+	spaced := testUserServer("with space")
 	tests := []struct {
 		shape string
 		field string
 		err   error
 	}{
-		{"MCPServerRequest", "server", (MCPServerRequest{Server: invalid}).ValidateWire()},
-		{"CreateMCPAuthorizationAttemptRequest", "server", (CreateMCPAuthorizationAttemptRequest{Server: "GitHub"}).ValidateWire()},
-		{"MCPListToolsRequest", "server", (MCPListToolsRequest{Server: "with space"}).ValidateWire()},
+		{"MCPServerRequest", "server.name", ValidateWireTree(MCPServerRequest{Server: invalid})},
+		{"CreateMCPAuthorizationAttemptRequest", "server.name", ValidateWireTree(CreateMCPAuthorizationAttemptRequest{Server: testUserServer("GitHub")})},
+		{"MCPListToolsRequest", "server.name", ValidateWireTree(MCPListToolsRequest{Server: &spaced})},
 		{"MCPServerCandidate", "name", (MCPServerCandidate{Name: "server/name"}).ValidateWire()},
-		{"UpdateMCPServerRequest", "server", (UpdateMCPServerRequest{Server: invalid}).ValidateWire()},
-		{"MCPServer", "name", (MCPServer{Name: "UPPER"}).ValidateWire()},
-		{"MCPTool", "server", (MCPTool{Server: " server"}).ValidateWire()},
+		{"UpdateMCPServerRequest", "server.name", ValidateWireTree(UpdateMCPServerRequest{Server: invalid})},
+		{"MCPServer", "id.name", ValidateWireTree(MCPServer{ID: testUserServer("UPPER")})},
+		{"MCPTool", "server.name", ValidateWireTree(MCPTool{Server: testUserServer(" server")})},
+		{"MCPServerRequest", "server.origin.installationId", ValidateWireTree(MCPServerRequest{Server: MCPServerID{Origin: MCPOrigin{Type: MCPOriginInstallation}, Name: "files"}})},
+		{"MCPServerRequest", "server.origin.installationId", ValidateWireTree(MCPServerRequest{Server: MCPServerID{Origin: MCPOrigin{Type: MCPOriginUser, InstallationID: installed.Origin.InstallationID}, Name: "files"}})},
+		{"MCPServerRequest", "server.origin.installationId", ValidateWireTree(MCPServerRequest{Server: MCPServerID{Origin: MCPOrigin{Type: MCPOriginInstallation, InstallationID: "installation/x"}, Name: "files"}})},
+		{"MCPServerRequest", "server.origin.type", ValidateWireTree(MCPServerRequest{Server: MCPServerID{Origin: MCPOrigin{Type: "plugin"}, Name: "files"}})},
 	}
 	for _, test := range tests {
 		assertConstraintField(t, test.err, test.shape, test.field)
 	}
 }
 
+// The structured identity is the only spelling: a joined string does not
+// decode, and both origins survive an encode/decode round trip unchanged.
+func TestMCPServerIdentityRoundTripsStructurally(t *testing.T) {
+	for _, id := range []MCPServerID{
+		testUserServer("files"),
+		{Origin: MCPOrigin{Type: MCPOriginInstallation, InstallationID: "eeb329cd-c7ce-40c9-bd90-6821fef06d30"}, Name: "files"},
+	} {
+		ref := ToolRef{Type: ToolRefMCP, Server: &id, Name: "read"}
+		encoded, err := json.Marshal(ref)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var decoded ToolRef
+		if err := json.Unmarshal(encoded, &decoded); err != nil {
+			t.Fatal(err)
+		}
+		if decoded.Server == nil || *decoded.Server != id || decoded.Name != "read" || ValidateWireTree(decoded) != nil {
+			t.Fatalf("round trip %s = %+v", encoded, decoded)
+		}
+	}
+	var joined ToolRef
+	if err := json.Unmarshal([]byte(`{"type":"mcp","server":"installation/eeb329cd-c7ce-40c9-bd90-6821fef06d30/files","name":"read"}`), &joined); err == nil {
+		t.Fatal("decoded a joined server string as an identity")
+	}
+}
+
 func TestMCPRemoteToolIdentityUsesCanonicalWireGrammar(t *testing.T) {
+	files := testUserServer("files")
 	maximum := strings.Repeat("a", mcpserver.MaximumRemoteToolNameCharacters)
 	valid := []WireValidator{
-		MCPToolExposure{Server: "files", DisabledTools: []string{maximum}},
-		SetMCPToolExposureRequest{Server: "files", Name: maximum, Disabled: true},
-		MCPTool{Server: "files", Name: maximum, ModelName: "files_read"},
+		MCPToolExposure{Server: files, DisabledTools: []string{maximum}},
+		SetMCPToolExposureRequest{Server: files, Name: maximum, Disabled: true},
+		MCPTool{Server: files, Name: maximum, ModelName: "files_read"},
 	}
 	for _, value := range valid {
-		if err := value.ValidateWire(); err != nil {
-			t.Errorf("ValidateWire rejected canonical %T remote tool identity: %v", value, err)
+		if err := ValidateWireTree(value); err != nil {
+			t.Errorf("ValidateWireTree rejected canonical %T remote tool identity: %v", value, err)
 		}
 	}
 
@@ -921,11 +987,11 @@ func TestMCPRemoteToolIdentityUsesCanonicalWireGrammar(t *testing.T) {
 		field string
 		err   error
 	}{
-		{"MCPToolExposure", "disabledTools[0]", (MCPToolExposure{Server: "files", DisabledTools: []string{"with space"}}).ValidateWire()},
-		{"SetMCPToolExposureRequest", "name", (SetMCPToolExposureRequest{Server: "files", Name: "tool/name"}).ValidateWire()},
-		{"MCPToolExposure", "disabledTools[0]", (MCPToolExposure{Server: "files", DisabledTools: []string{"工具"}}).ValidateWire()},
-		{"MCPToolExposure", "disabledTools[0]", (MCPToolExposure{Server: "files", DisabledTools: []string{overlongTool}}).ValidateWire()},
-		{"MCPTool", "name", (MCPTool{Server: "files", Name: overlongTool}).ValidateWire()},
+		{"MCPToolExposure", "disabledTools[0]", (MCPToolExposure{Server: files, DisabledTools: []string{"with space"}}).ValidateWire()},
+		{"SetMCPToolExposureRequest", "name", (SetMCPToolExposureRequest{Server: files, Name: "tool/name"}).ValidateWire()},
+		{"MCPToolExposure", "disabledTools[0]", (MCPToolExposure{Server: files, DisabledTools: []string{"工具"}}).ValidateWire()},
+		{"MCPToolExposure", "disabledTools[0]", (MCPToolExposure{Server: files, DisabledTools: []string{overlongTool}}).ValidateWire()},
+		{"MCPTool", "name", (MCPTool{Server: files, Name: overlongTool}).ValidateWire()},
 	}
 	for _, test := range tests {
 		assertConstraintField(t, test.err, test.shape, test.field)
@@ -937,14 +1003,15 @@ func TestMCPRemoteToolIdentityUsesCanonicalWireGrammar(t *testing.T) {
 	}
 	assertConstraintField(
 		t,
-		(MCPToolExposure{Server: "files", DisabledTools: tooMany}).ValidateWire(),
+		(MCPToolExposure{Server: files, DisabledTools: tooMany}).ValidateWire(),
 		"MCPToolExposure",
 		"disabledTools",
 	)
 }
 
 func TestSetApprovalRuleBindsSourceAndScope(t *testing.T) {
-	global := SetApprovalRuleRequest{Subject: ApprovalSubject{Type: ApprovalSubjectAll}, Tool: ToolRef{Type: ToolRefMCP, Server: "files", Name: "read"}, Scope: ApprovalRuleScopeGlobal, Decision: ApprovalRuleDecisionAllow}
+	files := testUserServer("files")
+	global := SetApprovalRuleRequest{Subject: ApprovalSubject{Type: ApprovalSubjectAll}, Tool: ToolRef{Type: ToolRefMCP, Server: &files, Name: "read"}, Scope: ApprovalRuleScopeGlobal, Decision: ApprovalRuleDecisionAllow}
 	for _, scope := range []ApprovalRuleScope{ApprovalRuleScopeGlobal, ApprovalRuleScopeSession, ApprovalRuleScopeProject} {
 		request := global
 		request.Scope = scope
@@ -959,7 +1026,8 @@ func TestSetApprovalRuleBindsSourceAndScope(t *testing.T) {
 		func(r *SetApprovalRuleRequest) { r.SessionID = "ses_1" },
 		func(r *SetApprovalRuleRequest) { r.Scope = ApprovalRuleScopeSession },
 		func(r *SetApprovalRuleRequest) { r.Scope = ApprovalRuleScopeProject },
-		func(r *SetApprovalRuleRequest) { r.Tool.Server = "" },
+		func(r *SetApprovalRuleRequest) { r.Tool.Server = nil },
+		func(r *SetApprovalRuleRequest) { r.Tool = ToolRef{Type: ToolRefBuiltIn, Name: "shell", Server: &files} },
 		func(r *SetApprovalRuleRequest) { r.Tool.Endpoint = "extra" },
 		func(r *SetApprovalRuleRequest) { r.Tool = ToolRef{Type: ToolRefBuiltIn, Name: "unknown"} },
 	} {
@@ -1007,11 +1075,6 @@ func TestProblemDataWireUnion(t *testing.T) {
 		field   string
 	}{
 		{name: "ordinary first party problem", problem: ProblemData{Type: ProblemRunLost}},
-		{
-			name:    "inline status carries no server authored copy",
-			problem: ProblemData{Type: ProblemMCPDialFailed, Detail: "connection failed"},
-			field:   "detail",
-		},
 		{
 			name: "capability problem carries its gaps",
 			problem: ProblemData{
@@ -2364,8 +2427,8 @@ func TestWorkspaceChangeMetadataMatchesItsStatusAndRepresentation(t *testing.T) 
 func TestOptionalMCPUpdateConstraintsPreserveAndValidatePresentValues(t *testing.T) {
 	t.Parallel()
 
-	request := UpdateMCPServerRequest{Server: "files"}
-	if err := request.ValidateWire(); err != nil {
+	request := UpdateMCPServerRequest{Server: testUserServer("files")}
+	if err := ValidateWireTree(request); err != nil {
 		t.Fatalf("ValidateWire rejected an omission-only patch: %v", err)
 	}
 
@@ -2374,7 +2437,7 @@ func TestOptionalMCPUpdateConstraintsPreserveAndValidatePresentValues(t *testing
 	assertConstraintField(t, timeout.ValidateWire(), "MCPHandshakeTimeout", "seconds")
 
 	repeated := []string{"read", "read"}
-	assertConstraintField(t, (MCPToolExposure{Server: "files", DisabledTools: repeated}).ValidateWire(), "MCPToolExposure", "disabledTools")
+	assertConstraintField(t, (MCPToolExposure{Server: testUserServer("files"), DisabledTools: repeated}).ValidateWire(), "MCPToolExposure", "disabledTools")
 }
 
 func assertConstraintField(t *testing.T, err error, shape, field string) {

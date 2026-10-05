@@ -2,11 +2,14 @@ package sqlite_test
 
 import (
 	"context"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"path/filepath"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
@@ -68,7 +71,7 @@ func TestApprovalRuleStore_VisibleScopes(t *testing.T) {
 func TestApprovalRuleStoreReplacesDecisionAndAuthority(t *testing.T) {
 	ctx := t.Context()
 	store := newApprovalStore(t)
-	rule, err := approval.NewRule(approval.ScopeGlobal, "", testsupport.A2ATool(t, "remote"), "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", approval.Subject{Type: approval.SubjectAll}, approval.Deny)
+	rule, err := approval.NewRule(approval.ScopeGlobal, "", testsupport.A2ATool(t, "remote"), testsupport.Digest("first authority"), approval.Subject{Type: approval.SubjectAll}, approval.Deny)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +79,7 @@ func TestApprovalRuleStoreReplacesDecisionAndAuthority(t *testing.T) {
 	for _, decision := range []approval.Decision{approval.Deny, approval.Allow, approval.Deny} {
 		fingerprint := rule.SourceFingerprint
 		if decision == approval.Allow {
-			fingerprint = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+			fingerprint = testsupport.Digest("second authority")
 		}
 		next, err := approval.NewRule(rule.Scope, rule.ScopeKey, rule.Tool, fingerprint, rule.Subject, decision)
 		if err != nil {
@@ -123,7 +126,7 @@ func TestApprovalSubjectTypesSurviveRestart(t *testing.T) {
 		if subject.Type == approval.SubjectExact {
 			decision = approval.Allow
 		}
-		rule, err := approval.NewRule(approval.ScopeGlobal, "", ref, "", subject, decision)
+		rule, err := approval.NewRule(approval.ScopeGlobal, "", ref, fingerprint.Digest{}, subject, decision)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -191,7 +194,7 @@ func TestApprovalRuleStore_DeleteSessionPreservesBroaderScopes(t *testing.T) {
 func TestApprovalRuleStore_VisibleEnforcesRequestedBound(t *testing.T) {
 	ctx := t.Context()
 	store := newApprovalStore(t)
-	for _, toolName := range []string{"read", "shell"} {
+	for _, toolName := range []tool.BuiltInName{tool.Read, tool.Shell} {
 		if err := store.Put(ctx, newApprovalRule(t, approval.ScopeGlobal, "", toolName, "", approval.Allow)); err != nil {
 			t.Fatal(err)
 		}
@@ -207,7 +210,7 @@ func TestApprovalRuleStore_VisibleEnforcesRequestedBound(t *testing.T) {
 	}
 }
 
-func newApprovalRule(t *testing.T, scope approval.Scope, scopeKey, toolName, subject string, decision approval.Decision) approval.Rule {
+func newApprovalRule(t *testing.T, scope approval.Scope, scopeKey string, toolName tool.BuiltInName, subject string, decision approval.Decision) approval.Rule {
 	t.Helper()
 	rule, err := approval.NewRule(scope, scopeKey, testsupport.BuiltInTool(t, toolName), testsupport.ToolFingerprint(testsupport.BuiltInTool(t, toolName)), approval.InvocationSubject(subject), decision)
 	if err != nil {

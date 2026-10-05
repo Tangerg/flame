@@ -11,8 +11,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
-// MCPServerStore persists MCP server entries in SQLite. One row per server
-// name; Save atomically replaces one complete entry. Args and the map columns (env / headers) are JSON-encoded;
+// MCPServerStore persists the user's MCP server entries in SQLite. One
+// descriptor per user-origin source; Save atomically replaces one complete entry. Args and the map columns (env / headers) are JSON-encoded;
 // a bounded handshake timeout is stored as positive nanoseconds and NULL means
 // unbounded. The DB must have been opened
 // via [Open] so the mcp_servers table exists.
@@ -27,12 +27,13 @@ func NewMCPServerStore(db *sql.DB) *MCPServerStore {
 
 // mcpColumns is the column list shared by List and Get so the two reads and
 // scanMCPServer stay in lockstep.
-const mcpColumns = `name, transport, enabled, description, url, authorization, headers,
-	        command, args, env, dir, timeout`
+const mcpColumns = `s.name, m.transport, m.enabled, m.description, m.url, m.authorization, m.headers,
+	        m.command, m.args, m.env, m.dir, m.timeout
+	   FROM mcp_servers m JOIN mcp_sources s ON s.id = m.source_id`
 
 func (m *MCPServerStore) List(ctx context.Context) ([]mcpserver.Server, error) {
 	rows, err := conn(ctx, m.db).QueryContext(ctx,
-		`SELECT `+mcpColumns+` FROM mcp_servers`)
+		`SELECT `+mcpColumns)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list mcp servers: %w", err)
 	}
@@ -57,7 +58,7 @@ func (m *MCPServerStore) List(ctx context.Context) ([]mcpserver.Server, error) {
 
 func (m *MCPServerStore) Get(ctx context.Context, name mcpserver.ServerName) (mcpserver.Server, bool, error) {
 	row := conn(ctx, m.db).QueryRowContext(ctx,
-		`SELECT `+mcpColumns+` FROM mcp_servers WHERE name = ?`, name.String())
+		`SELECT `+mcpColumns+` WHERE s.origin = ? AND s.name = ?`, string(mcpserver.OriginUser), name.String())
 	srv, err := scanMCPServer(row.Scan)
 	if errors.Is(err, sql.ErrNoRows) {
 		return mcpserver.Server{}, false, nil
@@ -88,32 +89,42 @@ func (m *MCPServerStore) Save(ctx context.Context, srv mcpserver.Server) error {
 	if timeout, bounded := srv.HandshakeTimeout.Duration(); bounded {
 		timeoutNS = int64(timeout)
 	}
+	if srv.Source.Origin().Kind() != mcpserver.OriginUser {
+		return fmt.Errorf("sqlite: save mcp server %q: only user servers have stored descriptors", srv.ID())
+	}
 	return RunInTx(ctx, m.db, func(txCtx context.Context) error {
 		if _, err := conn(txCtx, m.db).ExecContext(txCtx,
+			`INSERT INTO mcp_sources(origin, name) VALUES (?, ?)
+			 ON CONFLICT(name) WHERE origin = '`+string(mcpserver.OriginUser)+`' DO NOTHING`,
+			string(mcpserver.OriginUser), srv.Name.String(),
+		); err != nil {
+			return fmt.Errorf("sqlite: save mcp server source: %w", err)
+		}
+		if _, err := conn(txCtx, m.db).ExecContext(txCtx,
 			`INSERT INTO mcp_servers
-			   (name, transport, enabled, description, url, authorization, headers,
+			   (source_id, transport, enabled, description, url, authorization, headers,
 			    command, args, env, dir, timeout)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-			 ON CONFLICT(name) DO UPDATE SET
+			 VALUES ((SELECT id FROM mcp_sources WHERE origin = ? AND name = ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			 ON CONFLICT(source_id) DO UPDATE SET
 			    transport = excluded.transport, enabled = excluded.enabled,
 			    description = excluded.description, url = excluded.url,
 			    authorization = excluded.authorization, headers = excluded.headers,
 			    command = excluded.command, args = excluded.args, env = excluded.env,
 			    dir = excluded.dir, timeout = excluded.timeout`,
-			srv.Name.String(), string(srv.Transport), srv.Enabled, srv.Description, srv.URL, srv.Authorization,
+			string(mcpserver.OriginUser), srv.Name.String(), string(srv.Transport), srv.Enabled, srv.Description, srv.URL, srv.Authorization,
 			headers, srv.Command, args,
 			env, srv.Dir, timeoutNS,
 		); err != nil {
 			return fmt.Errorf("sqlite: save mcp server: %w", err)
 		}
-
-		_, err := conn(txCtx, m.db).ExecContext(txCtx, `INSERT INTO mcp_sources(name,user_name) VALUES(?,?) ON CONFLICT(name) DO NOTHING`, srv.Name.String(), srv.Name.String())
-		return err
+		return nil
 	})
 }
 
+// Remove deletes the source row; its descriptor, exposure, credentials and
+// standing approvals follow by cascade.
 func (m *MCPServerStore) Remove(ctx context.Context, name mcpserver.ServerName) error {
-	if _, err := conn(ctx, m.db).ExecContext(ctx, `DELETE FROM mcp_servers WHERE name = ?`, name.String()); err != nil {
+	if _, err := conn(ctx, m.db).ExecContext(ctx, `DELETE FROM mcp_sources WHERE origin = ? AND name = ?`, string(mcpserver.OriginUser), name.String()); err != nil {
 		return fmt.Errorf("sqlite: remove mcp server: %w", err)
 	}
 	return nil
@@ -140,6 +151,7 @@ func scanMCPServer(scan func(...any) error) (mcpserver.Server, error) {
 	if err != nil {
 		return mcpserver.Server{}, fmt.Errorf("sqlite: decode MCP server identity: %w", err)
 	}
+	srv.Source = mcpserver.UserSource()
 	srv.Name = parsedName
 	srv.Transport = mcpserver.Transport(transport)
 	if srv.Headers, err = decodeStringMap(headers); err != nil {

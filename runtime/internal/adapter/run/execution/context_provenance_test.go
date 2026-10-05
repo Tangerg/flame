@@ -113,7 +113,7 @@ func TestWorkingContextAttributesHookAndRecalledMemoryInPlace(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(messages) != 3 {
-		t.Fatalf("messages=%d, want system + recall + user", len(messages))
+		t.Fatalf("messages=%d, want system + user + recall", len(messages))
 	}
 	for index, message := range messages {
 		if err := message.Validate(); err != nil {
@@ -125,20 +125,25 @@ func TestWorkingContextAttributesHookAndRecalledMemoryInPlace(t *testing.T) {
 	if len(system) != 1 || system[0].Kind != contextSourceBasePrompt {
 		t.Fatalf("system provenance=%+v", system)
 	}
-	recalled := decodeContextProvenance(t, messages[1].Metadata)
-	if len(recalled) != 1 || recalled[0].Kind != contextSourceRecalledMemory ||
-		recalled[0].Reference != recalledMemoryID.String() ||
-		recalled[0].Purpose != contextPurposeData {
-		t.Fatalf("recall provenance=%+v", recalled)
-	}
-	hook := decodeContextProvenance(t, messages[2].Parts[0].Metadata)
+	hook := decodeContextProvenance(t, messages[1].Parts[0].Metadata)
 	if len(hook) != 2 ||
 		hook[0].Reference != string(domainhooks.SessionStart) ||
 		hook[1].Reference != string(domainhooks.UserPromptSubmit) {
 		t.Fatalf("hook provenance=%+v", hook)
 	}
-	if len(messages[2].Parts) != 2 || messages[2].Parts[1].Text != "question" {
-		t.Fatalf("hook injection changed user part ordering: %+v", messages[2].Parts)
+	if len(messages[1].Parts) != 2 || messages[1].Parts[1].Text != "question" {
+		t.Fatalf("hook injection changed user part ordering: %+v", messages[1].Parts)
+	}
+	// Recall follows the prompt it was retrieved for, so it never precedes the
+	// conversation in the cached prefix.
+	if messages[2].Role != corechat.RoleUser {
+		t.Fatalf("recall role = %s, want a User message after the prompt", messages[2].Role)
+	}
+	recalled := decodeContextProvenance(t, messages[2].Metadata)
+	if len(recalled) != 1 || recalled[0].Kind != contextSourceRecalledMemory ||
+		recalled[0].Reference != recalledMemoryID.String() ||
+		recalled[0].Purpose != contextPurposeData {
+		t.Fatalf("recall provenance=%+v", recalled)
 	}
 }
 

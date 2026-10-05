@@ -19,15 +19,15 @@ const (
 	TransportStreamableHTTP Transport = "streamableHttp"
 )
 
-// Server is one registry entry: an MCP server descriptor plus its enablement
-// and per-tool gating. Name is the primary key and the prefix that namespaces
-// the server's tools ("<name>_<tool>") across servers.
+// Server is one registry entry: an MCP server descriptor plus its enablement.
+// Its [ID] is the registry key; the local Name also namespaces the server's
+// tools ("<name>_<tool>") in the model-facing projection.
 type Server struct {
-	// Name identifies the server and namespaces its tools. Required, unique.
+	// Source is the record's owner and, for an installation, the release it
+	// realizes. Required.
+	Source Source
+	// Name is unique within Source's origin. Required.
 	Name ServerName
-	// ReleaseAuthority binds installation tools to admitted code and grants.
-	// User-configured servers have no package authority.
-	ReleaseAuthority string
 
 	// Transport is [TransportStdio] or [TransportStreamableHTTP]. Required.
 	Transport Transport
@@ -73,6 +73,8 @@ type Server struct {
 	HandshakeTimeout HandshakeTimeout
 }
 
+func (s Server) ID() ID { return s.Source.ID(s.Name) }
+
 // Clone returns an owned server snapshot across persistence and live-connection
 // boundaries.
 func (s Server) Clone() Server {
@@ -92,8 +94,8 @@ func (s Server) Format(state fmt.State, _ rune) {
 	}
 	_, _ = fmt.Fprintf(
 		state,
-		"Server{Name:%q, Transport:%q, Enabled:%t, Description:%q, URL:%s, Authorization:%s, Headers:%s, Command:%q, Args:%q, Env:%s, Dir:%q, HandshakeTimeout:%s}",
-		s.Name,
+		"Server{ID:%q, Transport:%q, Enabled:%t, Description:%q, URL:%s, Authorization:%s, Headers:%s, Command:%q, Args:%q, Env:%s, Dir:%q, HandshakeTimeout:%s}",
+		s.ID(),
 		s.Transport,
 		s.Enabled,
 		s.Description,
@@ -122,56 +124,59 @@ func SecretPresence(present bool) string {
 // chosen transport's required field is set and the other transport's fields
 // are blank before connection-specific state is attached.
 func (s Server) Validate() error {
+	if err := s.Source.Validate(); err != nil {
+		return err
+	}
 	if err := s.Name.Validate(); err != nil {
 		return err
 	}
-	if s.Name.Installation() == "" && s.ReleaseAuthority != "" {
-		return fmt.Errorf("mcpserver: user source cannot carry release authority")
-	}
-	if s.Name.Installation() != "" && s.ReleaseAuthority == "" {
-		return fmt.Errorf("mcpserver: installation source requires release authority")
-	}
+	return s.ValidateConnection()
+}
+
+// ValidateConnection checks the descriptor alone, for an owner that admits a
+// declaration before the record it will become has an identity.
+func (s Server) ValidateConnection() error {
 	if err := s.HandshakeTimeout.Validate(); err != nil {
-		return fmt.Errorf("mcpserver %q: %w", s.Name, err)
+		return fmt.Errorf("mcpserver %q: %w", s.ID(), err)
 	}
 	switch s.Transport {
 	case TransportStreamableHTTP:
 		if s.URL == "" {
-			return fmt.Errorf("mcpserver %q: URL is required for streamableHttp transport", s.Name)
+			return fmt.Errorf("mcpserver %q: URL is required for streamableHttp transport", s.ID())
 		}
 		if s.Command != "" {
-			return fmt.Errorf("mcpserver %q: Command must be empty for streamableHttp transport", s.Name)
+			return fmt.Errorf("mcpserver %q: Command must be empty for streamableHttp transport", s.ID())
 		}
 		if len(s.Args) > 0 {
-			return fmt.Errorf("mcpserver %q: Args apply to stdio transport only", s.Name)
+			return fmt.Errorf("mcpserver %q: Args apply to stdio transport only", s.ID())
 		}
 		if len(s.Env) > 0 {
-			return fmt.Errorf("mcpserver %q: Env applies to stdio transport only", s.Name)
+			return fmt.Errorf("mcpserver %q: Env applies to stdio transport only", s.ID())
 		}
 		if s.Dir != "" {
-			return fmt.Errorf("mcpserver %q: Dir applies to stdio transport only", s.Name)
+			return fmt.Errorf("mcpserver %q: Dir applies to stdio transport only", s.ID())
 		}
 		if err := ValidateHTTPHeaders(s.Authorization, s.Headers); err != nil {
-			return fmt.Errorf("mcpserver %q: %w", s.Name, err)
+			return fmt.Errorf("mcpserver %q: %w", s.ID(), err)
 		}
 	case TransportStdio:
 		if s.Command == "" {
-			return fmt.Errorf("mcpserver %q: Command is required for stdio transport", s.Name)
+			return fmt.Errorf("mcpserver %q: Command is required for stdio transport", s.ID())
 		}
 		if s.URL != "" {
-			return fmt.Errorf("mcpserver %q: URL must be empty for stdio transport", s.Name)
+			return fmt.Errorf("mcpserver %q: URL must be empty for stdio transport", s.ID())
 		}
 		if s.Authorization != "" {
-			return fmt.Errorf("mcpserver %q: Authorization applies to http transport only", s.Name)
+			return fmt.Errorf("mcpserver %q: Authorization applies to http transport only", s.ID())
 		}
 		if len(s.Headers) > 0 {
-			return fmt.Errorf("mcpserver %q: Headers apply to http transport only", s.Name)
+			return fmt.Errorf("mcpserver %q: Headers apply to http transport only", s.ID())
 		}
 		if err := validateProcessConfiguration(s.Command, s.Args, s.Env, s.Dir); err != nil {
-			return fmt.Errorf("mcpserver %q: %w", s.Name, err)
+			return fmt.Errorf("mcpserver %q: %w", s.ID(), err)
 		}
 	default:
-		return fmt.Errorf("mcpserver %q: unknown transport %q (want %q or %q)", s.Name, s.Transport, TransportStdio, TransportStreamableHTTP)
+		return fmt.Errorf("mcpserver %q: unknown transport %q (want %q or %q)", s.ID(), s.Transport, TransportStdio, TransportStreamableHTTP)
 	}
 	return nil
 }

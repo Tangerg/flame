@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { MCPServerSettings } from "./mcpServerQueries";
+import { type MCPServerSettings, userMCPServer } from "./mcpServerQueries";
 import { MCPServerEdit, RetainedValue, type MCPServerFields } from "./mcpServerDraft";
 
 function editWith(fields: Partial<MCPServerFields>, server?: MCPServerSettings): MCPServerEdit {
@@ -59,8 +59,7 @@ describe("mcpServerDraft", () => {
 
   it("keeps blank http authorization omitted and parses extra headers", () => {
     const server: MCPServerSettings = {
-      id: "cloud",
-      name: "cloud",
+      id: userMCPServer("cloud"),
       desc: "",
       tools: 0,
       status: "disabled",
@@ -101,8 +100,7 @@ describe("mcpServerDraft", () => {
 
   it("initializes editable text fields from an existing server", () => {
     const draft = MCPServerEdit.of({
-      id: "fs",
-      name: "fs",
+      id: userMCPServer("fs"),
       desc: "",
       tools: 0,
       status: "connected",
@@ -130,8 +128,7 @@ describe("mcpServerDraft", () => {
 
   it("requires an explicit credential decision when the HTTP origin changes", () => {
     const server: MCPServerSettings = {
-      id: "cloud",
-      name: "cloud",
+      id: userMCPServer("cloud"),
       desc: "",
       tools: 0,
       status: "disconnected",
@@ -155,8 +152,7 @@ describe("mcpServerDraft", () => {
 
   it("requires explicit dispositions for stored headers when the HTTP origin changes", () => {
     const server: MCPServerSettings = {
-      id: "cloud",
-      name: "cloud",
+      id: userMCPServer("cloud"),
       desc: "",
       tools: 0,
       status: "disconnected",
@@ -180,8 +176,7 @@ describe("mcpServerDraft", () => {
 
   it("preserves stored environment only for an unchanged stdio process target", () => {
     const server: MCPServerSettings = {
-      id: "fs",
-      name: "fs",
+      id: userMCPServer("fs"),
       desc: "",
       tools: 0,
       status: "disconnected",

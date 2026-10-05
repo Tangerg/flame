@@ -6,6 +6,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	scopemcp "github.com/Tangerg/scope/mcp"
@@ -14,10 +15,12 @@ import (
 const rejectedRemoteToolPlaceholder = "invalid_remote_tool"
 
 // sourceTools lists one MCP source's model-facing tools. Isolated per source so
-// a single server's tools/list failure stays its own.
-func sourceTools(ctx context.Context, descriptor ServerConfig, session *sdkmcp.ClientSession) ([]Executable, error) {
-	server := descriptor.Name
-	source := scopemcp.ToolSource{Name: server.String(), Session: session}
+// a single server's tools/list failure stays its own. owner is the connection
+// registry that will hold session; nil for a throwaway probe, whose
+// executables are never current.
+func sourceTools(ctx context.Context, owner *Connections, descriptor ServerConfig, session *sdkmcp.ClientSession) ([]Executable, error) {
+	server := descriptor.ID()
+	source := scopemcp.ToolSource{Name: descriptor.Name.String(), Session: session}
 	var remoteNameErr error
 	tools, discoverErr := scopemcp.DiscoverTools(ctx, []scopemcp.ToolSource{source}, scopemcp.ToolDiscoveryConfig{
 		PublicName: func(_ string, toolName string) string {
@@ -42,19 +45,19 @@ func sourceTools(ctx context.Context, descriptor ServerConfig, session *sdkmcp.C
 	if discoverErr != nil {
 		return nil, discoverErr
 	}
-	if err := validateSourceToolMaterial(server, tools); err != nil {
-		return nil, err
-	}
 	config := descriptor.Clone()
 	config.OAuthHandler = nil
 	result := make([]Executable, len(tools))
 	for index, executable := range tools {
-		result[index] = Executable{Tool: executable, config: config}
+		result[index] = Executable{Tool: executable, config: config, owner: owner, session: session}
+	}
+	if err := validateSourceToolMaterial(server, result); err != nil {
+		return nil, err
 	}
 	return result, nil
 }
 
-func validateSourceToolMaterial(server mcpserver.ServerName, tools []toolcontract.Tool) error {
+func validateSourceToolMaterial(server mcpserver.ID, tools []Executable) error {
 	if err := mcpserver.ValidateRemoteToolCount(len(tools)); err != nil {
 		return fmt.Errorf("mcp: validate tools from server %q: %w", server, err)
 	}
@@ -66,12 +69,10 @@ func validateSourceToolMaterial(server mcpserver.ServerName, tools []toolcontrac
 		if !found {
 			return fmt.Errorf("mcp: tool from server %q has no MCP identity", server)
 		}
-		if ref.Server() != server {
-			return fmt.Errorf("mcp: tool source %q does not match server %q", ref.Server(), server)
-		}
+		_, remote, _ := ref.MCP()
 		binding, err := toolcontract.Bind(tool)
 		if err != nil {
-			return fmt.Errorf("mcp: admit tool %q from server %q: %w", ref.Remote(), server, err)
+			return fmt.Errorf("mcp: admit tool %q from server %q: %w", remote, server, err)
 		}
 		definition := binding.Contract().Definition()
 		if err := mcpserver.ValidateRemoteToolDescription(definition.Description); err != nil {
@@ -81,13 +82,24 @@ func validateSourceToolMaterial(server mcpserver.ServerName, tools []toolcontrac
 	return nil
 }
 
-// Executable retains the configuration realized by this executable. It cannot
-// advance registry configuration or the connection's live OAuth credentials.
+// Executable retains the configuration and the session that admitted it. It
+// cannot advance registry configuration or the connection's live OAuth
+// credentials.
 type Executable struct {
 	toolcontract.Tool
-	config ServerConfig
+	config  ServerConfig
+	owner   *Connections
+	session *sdkmcp.ClientSession
 }
 
-func (t Executable) Unwrap() toolcontract.Tool  { return t.Tool }
-func (t Executable) SourceFingerprint() string  { return t.config.SourceFingerprint }
-func (t Executable) SourceConfig() ServerConfig { return t.config.Clone() }
+// Current reports whether the session that admitted this executable is still
+// its source's live connection. A frozen Run manifest outlives reconnects and
+// refusals; once its session is replaced or withdrawn, dispatching through it
+// would reach a closed transport instead of the current source.
+func (t Executable) Current() bool {
+	return t.owner != nil && t.owner.current(t.config.ID(), t.session)
+}
+
+func (t Executable) Unwrap() toolcontract.Tool             { return t.Tool }
+func (t Executable) SourceFingerprint() fingerprint.Digest { return t.config.SourceFingerprint }
+func (t Executable) SourceConfig() ServerConfig            { return t.config.Clone() }

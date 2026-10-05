@@ -1,11 +1,17 @@
 package mcpconnection
 
-import "github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+import (
+	"testing"
 
-func testMCPServerName(raw string) mcpserver.ServerName {
-	name, err := mcpserver.ParseServerName(raw)
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+)
+
+func testInstallationSource(t *testing.T) mcpserver.Source {
+	t.Helper()
+	source, err := mcpserver.InstallationSource(testsupport.InstallationID(t), testsupport.Digest("release"), testsupport.Digest("approved authority"), testsupport.Digest("recipient"))
 	if err != nil {
-		panic(err)
+		t.Fatal(err)
 	}
-	return name
+	return source
 }

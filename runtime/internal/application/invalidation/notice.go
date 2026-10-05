@@ -11,7 +11,11 @@
 // allowed to do.
 package invalidation
 
-import "slices"
+import (
+	"slices"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+)
 
 // Resource is what moved. It is a closed set projected exhaustively at the
 // publication boundary.
@@ -72,7 +76,7 @@ type Notice struct {
 	SessionIDs  []string
 	RunIDs      []string
 	ScheduleIDs []string
-	ServerIDs   []string
+	Servers     []mcpserver.ID
 }
 
 // Clone returns an owned notice snapshot for publication boundaries.
@@ -80,7 +84,7 @@ func (n Notice) Clone() Notice {
 	n.SessionIDs = slices.Clone(n.SessionIDs)
 	n.RunIDs = slices.Clone(n.RunIDs)
 	n.ScheduleIDs = slices.Clone(n.ScheduleIDs)
-	n.ServerIDs = slices.Clone(n.ServerIDs)
+	n.Servers = slices.Clone(n.Servers)
 	return n
 }
 
@@ -102,8 +106,8 @@ func ForSchedules(ids ...string) Notice {
 }
 
 // ForMCP is the notice for MCP registry and live-connection changes.
-func ForMCP(ids ...string) Notice {
-	return Notice{Resource: MCP, ServerIDs: slices.Clone(ids)}
+func ForMCP(servers ...mcpserver.ID) Notice {
+	return Notice{Resource: MCP, Servers: slices.Clone(servers)}
 }
 
 func sessionIDs(id string) []string {

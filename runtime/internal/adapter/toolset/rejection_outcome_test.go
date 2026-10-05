@@ -15,22 +15,22 @@ import (
 // A tool missing from this table fails the guard rather than being skipped: the
 // question it answers has to be asked of every tool the Runtime exposes.
 var rejectedArguments = map[string]string{
-	domaintool.ApplyPatch:        `{"patch":"this is not a unified diff"}`,
-	domaintool.Edit:              `{"path":"seed.txt","old_string":"absent from the file","new_string":"x"}`,
-	domaintool.Glob:              `{"pattern":"["}`,
-	domaintool.Grep:              `{"pattern":"("}`,
-	domaintool.LSP:               `{"operation":"definition"}`,
-	domaintool.Read:              `{"path":"no/such/file.txt"}`,
-	domaintool.ReadShellOutput:   `{"shell_id":"shell_x","timeout_millis":10}`,
-	domaintool.SearchTools:       `{"query":"   "}`,
-	domaintool.Shell:             `{"command":"true","description":"Probe","run_in_background":true,"auto_background_after_seconds":5}`,
-	domaintool.StopShell:         `{"shell_id":"shell_missing"}`,
-	domaintool.ListSkills:        `{}`,
-	domaintool.LoadSkill:         `{"name":"no-such-skill"}`,
-	domaintool.ReadSkillResource: `{"name":"no-such-skill","path":"no/such/resource.md"}`,
+	string(domaintool.ApplyPatch):        `{"patch":"this is not a unified diff"}`,
+	string(domaintool.Edit):              `{"path":"seed.txt","old_string":"absent from the file","new_string":"x"}`,
+	string(domaintool.Glob):              `{"pattern":"["}`,
+	string(domaintool.Grep):              `{"pattern":"("}`,
+	string(domaintool.LSP):               `{"operation":"definition"}`,
+	string(domaintool.Read):              `{"path":"no/such/file.txt"}`,
+	string(domaintool.ReadShellOutput):   `{"shell_id":"shell_x","timeout_millis":10}`,
+	string(domaintool.SearchTools):       `{"query":"   "}`,
+	string(domaintool.Shell):             `{"command":"true","description":"Probe","run_in_background":true,"auto_background_after_seconds":5}`,
+	string(domaintool.StopShell):         `{"shell_id":"shell_missing"}`,
+	string(domaintool.ListSkills):        `{}`,
+	string(domaintool.LoadSkill):         `{"name":"no-such-skill"}`,
+	string(domaintool.ReadSkillResource): `{"name":"no-such-skill","path":"no/such/resource.md"}`,
 	// ask_user's refusals are all schema-level, and execution adapter's own invoke
 	// settles a Prepare failure as a definite failure — a layer above this one.
-	domaintool.AskUser: "",
+	string(domaintool.AskUser): "",
 }
 
 // The Host reads an unclassified Tool error as an operation whose durable

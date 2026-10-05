@@ -9,24 +9,28 @@ import (
 )
 
 func (m *MCPServerStore) ListExposure(ctx context.Context) ([]tool.Ref, error) {
-	rows, err := conn(ctx, m.db).QueryContext(ctx, `SELECT server_name, tool_name FROM mcp_tool_exposure ORDER BY server_name, tool_name`)
+	rows, err := conn(ctx, m.db).QueryContext(ctx,
+		`SELECT s.origin, s.installation_id, s.name, e.tool_name
+		   FROM mcp_tool_exposure e JOIN mcp_sources s ON s.id = e.source_id
+		  ORDER BY s.origin <> 'user', s.installation_id, s.name, e.tool_name`)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("sqlite: list mcp tool exposure: %w", err)
 	}
 	defer rows.Close()
 	var out []tool.Ref
 	for rows.Next() {
-		var source, name string
-		if err := rows.Scan(&source, &name); err != nil {
-			return nil, err
+		var source storedMCPSource
+		var name string
+		if err := rows.Scan(&source.origin, &source.installation, &source.name, &name); err != nil {
+			return nil, fmt.Errorf("sqlite: scan mcp tool exposure: %w", err)
 		}
-		server, err := mcpserver.ParseServerName(source)
+		server, err := source.id()
 		if err != nil {
 			return nil, err
 		}
 		remote, err := mcpserver.ParseRemoteToolName(name)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("sqlite: decode mcp tool exposure: %w", err)
 		}
 		ref, err := tool.MCP(server, remote)
 		if err != nil {
@@ -36,14 +40,19 @@ func (m *MCPServerStore) ListExposure(ctx context.Context) ([]tool.Ref, error) {
 	}
 	return out, rows.Err()
 }
+
 func (m *MCPServerStore) SetToolExposure(ctx context.Context, ref tool.Ref, disabled bool) error {
-	if ref.Kind() != tool.MCPKind {
+	server, remote, ok := ref.MCP()
+	if !ok {
 		return fmt.Errorf("sqlite: exposure requires an MCP reference")
 	}
-	statement := `DELETE FROM mcp_tool_exposure WHERE server_name = ? AND tool_name = ?`
+	statement := `DELETE FROM mcp_tool_exposure WHERE source_id = ` + mcpSourceIDQuery + ` AND tool_name = ?`
 	if disabled {
-		statement = `INSERT INTO mcp_tool_exposure (server_name, tool_name) VALUES (?, ?) ON CONFLICT DO NOTHING`
+		statement = `INSERT INTO mcp_tool_exposure (source_id, tool_name) VALUES (` + mcpSourceIDQuery + `, ?) ON CONFLICT DO NOTHING`
 	}
-	_, err := conn(ctx, m.db).ExecContext(ctx, statement, ref.Server().String(), ref.Remote().String())
-	return err
+	args := append(mcpSourceArgs(server), remote.String())
+	if _, err := conn(ctx, m.db).ExecContext(ctx, statement, args...); err != nil {
+		return fmt.Errorf("sqlite: set mcp tool exposure: %w", err)
+	}
+	return nil
 }

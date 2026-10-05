@@ -19,47 +19,19 @@ func (c *Connections) Statuses() []mcpserver.ConnectionStatus {
 	out := make([]mcpserver.ConnectionStatus, 0, len(c.servers))
 	for _, configuredServer := range c.servers {
 		out = append(out, mcpserver.ConnectionStatus{
-			Name:      configuredServer.name(),
+			Server:    configuredServer.name(),
 			State:     configuredServer.state,
+			Failure:   configuredServer.failure,
 			ToolCount: len(configuredServer.tools),
 		})
 	}
 	return out
 }
 
-// Tools projects the same admitted Scope snapshot used by execution and status.
-// Remote changes take effect when reconnect admits a replacement catalog, so
-// this read performs no remote discovery.
-func (c *Connections) Tools(serverName *mcpserver.ServerName) ([]mcpserver.AdvertisedTool, error) {
-	c.mu.Lock()
-	var catalog []Executable
-	for _, configuredServer := range c.servers {
-		if configuredServer.session != nil && (serverName == nil || configuredServer.name() == *serverName) {
-			catalog = append(catalog, configuredServer.tools...)
-		}
-	}
-	c.mu.Unlock()
-
-	out := make([]mcpserver.AdvertisedTool, 0, len(catalog))
-	for _, executable := range catalog {
-		ref, found, err := IdentifyTool(executable)
-		if err != nil {
-			return nil, err
-		}
-		if !found {
-			return nil, errors.New("mcp: admitted tool has no MCP identity")
-		}
-		out = append(out, mcpserver.AdvertisedTool{
-			Server: ref.Server(), Name: ref.Remote(), Definition: executable.Definition(),
-		})
-	}
-	return out, nil
-}
-
 // Detach removes a server from the live projection and starts retiring its
 // session. Session teardown remains owned by Connections and is joined by
 // Shutdown; it never delays the application control-plane mutation.
-func (c *Connections) Detach(name mcpserver.ServerName) error {
+func (c *Connections) Detach(name mcpserver.ID) error {
 	c.mu.Lock()
 	if c.closed {
 		c.mu.Unlock()
@@ -80,33 +52,29 @@ func (c *Connections) Detach(name mcpserver.ServerName) error {
 			c.retirements[closeAttempt] = struct{}{}
 		}
 		c.servers = slices.Delete(c.servers, index, index+1)
+		c.publishToolsLocked()
 	}
 	c.mu.Unlock()
-	c.publishTools()
 	return nil
 }
 
-// publishTools rebuilds the model-facing catalog from each connected server's
-// last verified tool snapshot. Network I/O happens only while establishing that
-// server's session; publication itself is deterministic and cannot turn caller
-// cancellation or another server's independent failure into a false catalog.
-func (c *Connections) publishTools() {
-	c.publishMu.Lock()
-	defer c.publishMu.Unlock()
-
-	c.mu.Lock()
+// publishToolsLocked rebuilds the model-facing catalog from each connected
+// server's last verified tool snapshot and hands it to the sink. The caller
+// holds mu and has just changed a live outcome, so the sink observes exactly
+// the state Statuses reports. Network I/O happens only while establishing a
+// session; publication is deterministic and cannot turn caller cancellation or
+// another server's independent failure into a false catalog.
+func (c *Connections) publishToolsLocked() {
+	if c.onTools == nil {
+		return
+	}
 	var catalog []Executable
 	for _, configuredServer := range c.servers {
 		if configuredServer.session != nil {
 			catalog = append(catalog, configuredServer.tools...)
 		}
 	}
-	sink := c.onTools
-	c.mu.Unlock()
-
-	if sink != nil {
-		sink(catalog)
-	}
+	c.onTools(catalog)
 }
 
 // Shutdown rejects new operations, joins all admitted dials, and closes every
@@ -127,6 +95,7 @@ func (c *Connections) Shutdown(ctx context.Context) error {
 			}
 		}
 		c.servers = nil
+		c.publishToolsLocked()
 	}
 	attempt := c.shutdown
 	if attempt != nil {

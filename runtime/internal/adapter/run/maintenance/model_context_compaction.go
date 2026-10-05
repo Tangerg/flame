@@ -84,7 +84,7 @@ func (c *Compactor) CompactModelContext(
 	budget := newModelContextBudget(
 		trigger,
 		request.Instructions(),
-		ephemeral,
+		slices.Concat(ephemeral, request.Trailer()),
 		request.Tools(),
 		options,
 		request.TokenEstimateAdjustment(),

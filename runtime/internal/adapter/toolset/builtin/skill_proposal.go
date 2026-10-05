@@ -60,7 +60,7 @@ func NewProposal(proposals SkillProposalSubmitter, defaultWorkspacePath string) 
 		return nil, nil
 	}
 	return toolcontract.NewFunc[proposalArgs, proposalResult](
-		toolcontract.FuncConfig{Name: tool.ProposeSkill, Description: proposalDescription},
+		toolcontract.FuncConfig{Name: string(tool.ProposeSkill), Description: proposalDescription},
 		(&proposer{proposals: proposals, defaultWorkspacePath: defaultWorkspacePath}).run,
 	)
 }

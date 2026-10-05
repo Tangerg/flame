@@ -2,9 +2,11 @@ package input
 
 import (
 	json "encoding/json/v2"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"strings"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -84,7 +86,7 @@ func TestDecodePromptDiscriminatesAndRejectsGuesses(t *testing.T) {
 
 func TestApprovalPromptRequiresIdentityRegardlessOfRememberability(t *testing.T) {
 	for _, rememberable := range []bool{false, true} {
-		for _, fingerprint := range []string{"", strings.Repeat("a", 64)} {
+		for _, fingerprint := range []fingerprint.Digest{{}, testsupport.Digest("source")} {
 			prompt := runs.Interrupt{
 				Kind: interrupt.Approval,
 				Approval: &runs.ApprovalPrompt{

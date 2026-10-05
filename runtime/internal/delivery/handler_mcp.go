@@ -50,7 +50,7 @@ func (s *Handler) CreateMCPServer(ctx context.Context, in protocol.MCPServerCand
 // UpdateMCPServer applies an explicit partial update and returns the resulting
 // unified resource.
 func (s *Handler) UpdateMCPServer(ctx context.Context, in protocol.UpdateMCPServerRequest) (*protocol.MCPServer, error) {
-	name, err := parseMCPServerName(in.Server)
+	name, err := mcpServerIDFromWire(in.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -70,8 +70,8 @@ func (s *Handler) UpdateMCPServer(ctx context.Context, in protocol.UpdateMCPServ
 }
 
 // DeleteMCPServer deletes one configured server and its live projection.
-func (s *Handler) DeleteMCPServer(ctx context.Context, server string) error {
-	name, err := parseMCPServerName(server)
+func (s *Handler) DeleteMCPServer(ctx context.Context, server protocol.MCPServerID) error {
+	name, err := mcpServerIDFromWire(server)
 	if err != nil {
 		return err
 	}
@@ -88,28 +88,26 @@ func (s *Handler) TestMCPServer(ctx context.Context, in protocol.MCPServerCandid
 	if err != nil {
 		return nil, wireMCPError(err)
 	}
-	var kind string
 	switch result {
 	case mcpapp.TestSucceeded:
-		return &protocol.MCPTestResult{OK: true}, nil
+		return &protocol.MCPTestResult{Outcome: protocol.MCPTestReachable}, nil
 	case mcpapp.TestAuthorizationRequired:
-		kind = protocol.ProblemMCPAuthorizationRequired
+		return &protocol.MCPTestResult{Outcome: protocol.MCPTestAuthorizationRequired}, nil
 	case mcpapp.TestTimedOut:
-		kind = protocol.ProblemTimeout
+		return &protocol.MCPTestResult{Outcome: protocol.MCPTestTimedOut}, nil
 	case mcpapp.TestFailed:
-		kind = protocol.ProblemMCPDialFailed
+		return &protocol.MCPTestResult{Outcome: protocol.MCPTestFailed}, nil
 	default:
 		return nil, fmt.Errorf("delivery: unknown MCP test outcome %q", result)
 	}
-	return &protocol.MCPTestResult{Error: &protocol.ProblemData{Type: kind}}, nil
 }
 
 // ListMCPTools lists tools advertised by connected MCP servers in server/name
 // order, optionally narrowed to one server.
 func (s *Handler) ListMCPTools(ctx context.Context, in protocol.MCPListToolsRequest) (*protocol.Page[protocol.MCPTool], error) {
-	var name *mcpserver.ServerName
-	if in.Server != "" {
-		parsed, err := parseMCPServerName(in.Server)
+	var name *mcpserver.ID
+	if in.Server != nil {
+		parsed, err := mcpServerIDFromWire(*in.Server)
 		if err != nil {
 			return nil, err
 		}
@@ -132,8 +130,8 @@ func (s *Handler) ListMCPTools(ctx context.Context, in protocol.MCPListToolsRequ
 
 // ReconnectMCPServer starts a new live dial. Its state transitions invalidate
 // the server resource through runtime.event.
-func (s *Handler) ReconnectMCPServer(ctx context.Context, server string) error {
-	name, err := parseMCPServerName(server)
+func (s *Handler) ReconnectMCPServer(ctx context.Context, server protocol.MCPServerID) error {
+	name, err := mcpServerIDFromWire(server)
 	if err != nil {
 		return err
 	}
@@ -142,8 +140,8 @@ func (s *Handler) ReconnectMCPServer(ctx context.Context, server string) error {
 
 // CreateMCPAuthorizationAttempt starts interactive OAuth and returns its
 // observable asynchronous resource immediately.
-func (s *Handler) CreateMCPAuthorizationAttempt(ctx context.Context, server string) (*protocol.MCPAuthorizationAttempt, error) {
-	name, err := parseMCPServerName(server)
+func (s *Handler) CreateMCPAuthorizationAttempt(ctx context.Context, server protocol.MCPServerID) (*protocol.MCPAuthorizationAttempt, error) {
+	name, err := mcpServerIDFromWire(server)
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +190,7 @@ func wireMCPError(err error) error {
 }
 
 func (s *Handler) GetMCPToolExposure(ctx context.Context, in protocol.MCPServerRequest) (*protocol.MCPToolExposure, error) {
-	server, err := parseMCPServerName(in.Server)
+	server, err := mcpServerIDFromWire(in.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -200,14 +198,15 @@ func (s *Handler) GetMCPToolExposure(ctx context.Context, in protocol.MCPServerR
 	if err != nil {
 		return nil, wireMCPError(err)
 	}
-	out := &protocol.MCPToolExposure{Server: in.Server, DisabledTools: make([]string, 0, len(refs))}
+	out := &protocol.MCPToolExposure{Server: presentMCPServerID(server), DisabledTools: make([]string, 0, len(refs))}
 	for _, ref := range refs {
-		out.DisabledTools = append(out.DisabledTools, ref.Remote().String())
+		_, remote, _ := ref.MCP()
+		out.DisabledTools = append(out.DisabledTools, remote.String())
 	}
 	return out, nil
 }
 func (s *Handler) SetMCPToolExposure(ctx context.Context, in protocol.SetMCPToolExposureRequest) error {
-	ref, err := toolRefFromWire(protocol.ToolRef{Type: protocol.ToolRefMCP, Server: in.Server, Name: in.Name})
+	ref, err := toolRefFromWire(protocol.ToolRef{Type: protocol.ToolRefMCP, Server: &in.Server, Name: in.Name})
 	if err != nil {
 		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	}

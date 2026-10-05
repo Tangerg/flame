@@ -6,11 +6,14 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/jsonschema"
@@ -31,7 +34,7 @@ func TestSourceToolsDoesNotPublishPartialCatalogAfterScopeRejection(t *testing.T
 		&sdkmcp.Tool{Name: "read_file", InputSchema: jsontext.Value(`{"type":"object"}`)},
 		&sdkmcp.Tool{Name: "other", InputSchema: jsontext.Value(`{"type":"object"}`)},
 	)
-	tools, err := sourceTools(t.Context(), ServerConfig{Name: testMCPServerName("catalog")}, session)
+	tools, err := sourceTools(t.Context(), nil, ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("catalog")}, session)
 	if err == nil || len(tools) != 0 {
 		t.Fatalf("Scope discovery rejection published a partial catalog: %v, %v", tools, err)
 	}
@@ -45,7 +48,7 @@ func TestSourceToolsCompilesSchemasBeforePublishing(t *testing.T) {
 	} {
 		t.Run(schema, func(t *testing.T) {
 			session := toolCatalogSession(t, &sdkmcp.Tool{Name: "read", InputSchema: jsontext.Value(schema)})
-			tools, err := sourceTools(t.Context(), ServerConfig{Name: testMCPServerName("catalog")}, session)
+			tools, err := sourceTools(t.Context(), nil, ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("catalog")}, session)
 			if len(tools) != 0 || !errors.Is(err, toolcontract.ErrInvalidTool) || !errors.Is(err, jsonschema.ErrInvalid) {
 				t.Fatalf("sourceTools = %v, %v; want Scope schema admission failure", tools, err)
 			}
@@ -84,7 +87,7 @@ func TestSourceToolsEnablesOnlyAnnotatedReadOnlyConcurrencyPolicy(t *testing.T) 
 	}
 	t.Cleanup(func() { _ = clientSession.Close() })
 
-	wrapped, err := sourceTools(t.Context(), ServerConfig{Name: testMCPServerName("catalog")}, clientSession)
+	wrapped, err := sourceTools(t.Context(), nil, ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("catalog")}, clientSession)
 	if err != nil {
 		t.Fatalf("sourceTools: %v", err)
 	}
@@ -95,8 +98,9 @@ func TestSourceToolsEnablesOnlyAnnotatedReadOnlyConcurrencyPolicy(t *testing.T) 
 	got := make(map[string]bool, len(wrapped))
 	for _, tool := range wrapped {
 		ref, found, err := IdentifyTool(toolDecorator{Tool: toolDecorator{Tool: tool}})
-		if err != nil || !found || ref.Server().String() != "catalog" ||
-			(ref.Remote().String() != "lookup" && ref.Remote().String() != "mutate") {
+		server, remote, isMCP := ref.MCP()
+		if err != nil || !found || !isMCP || server != testsupport.UserMCPServer("catalog") ||
+			(remote.String() != "lookup" && remote.String() != "mutate") {
 			t.Fatalf("decorated Scope Tool identity = %+v, %t, %v", ref, found, err)
 		}
 		keyer, ok, err := toolcontract.Capability[concurrencyPolicy](tool)
@@ -131,7 +135,7 @@ func TestRemoteToolCatalogRejectsUnboundedMaterial(t *testing.T) {
 			Description: strings.Repeat("x", mcpserver.MaxRemoteToolDescriptionBytes+1),
 			InputSchema: jsontext.Value(`{"type":"object"}`),
 		})
-		if _, err := sourceTools(t.Context(), ServerConfig{Name: testMCPServerName("catalog")}, session); err == nil {
+		if _, err := sourceTools(t.Context(), nil, ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("catalog")}, session); err == nil {
 			t.Fatal("sourceTools accepted a description larger than 64 KiB")
 		}
 	})
@@ -142,17 +146,17 @@ func TestRemoteToolCatalogRejectsUnboundedMaterial(t *testing.T) {
 			InputSchema: jsontext.Value(`{"type":"object","description":"` +
 				strings.Repeat("x", (1<<20)+1) + `"}`),
 		})
-		if _, err := sourceTools(t.Context(), ServerConfig{Name: testMCPServerName("catalog")}, session); err == nil {
+		if _, err := sourceTools(t.Context(), nil, ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("catalog")}, session); err == nil {
 			t.Fatal("sourceTools accepted a schema larger than Scope's 1 MiB bound")
 		}
 	})
 
 	t.Run("tool count", func(t *testing.T) {
-		candidate := make([]toolcontract.Tool, mcpserver.MaxRemoteToolsPerServer+1)
+		candidate := make([]Executable, mcpserver.MaxRemoteToolsPerServer+1)
 		for index := range candidate {
-			candidate[index] = catalogTool(fmt.Sprintf("catalog_tool_%04d", index))
+			candidate[index] = Executable{Tool: catalogTool(fmt.Sprintf("catalog_tool_%04d", index))}
 		}
-		if err := validateSourceToolMaterial(testMCPServerName("catalog"), candidate); err == nil {
+		if err := validateSourceToolMaterial(testsupport.UserMCPServer("catalog"), candidate); err == nil {
 			t.Fatal("source catalog accepted more than 2,048 remote tools")
 		}
 	})
@@ -201,7 +205,7 @@ func TestSourceToolsPreservesStructuredResultThroughTransport(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer session.Close()
-			tools, err := sourceTools(t.Context(), ServerConfig{Name: testMCPServerName("catalog")}, session)
+			tools, err := sourceTools(t.Context(), nil, ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("catalog")}, session)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -233,5 +237,33 @@ func TestSourceToolsPreservesStructuredResultThroughTransport(t *testing.T) {
 				t.Fatalf("structured result = %s, want %s", output.Details, payload)
 			}
 		})
+	}
+}
+
+// Equal local names under different origins are different servers; the tool
+// reference takes its server from the connection, never from Scope's label.
+func TestSourceToolsCarryTheRealizedServerIdentity(t *testing.T) {
+	installation, err := resourceid.ParseInstallation("eeb329cd-c7ce-40c9-bd90-6821fef06d30")
+	if err != nil {
+		t.Fatal(err)
+	}
+	source, err := mcpserver.InstallationSource(installation, fingerprint.Strings("release"), fingerprint.Strings("authority"), fingerprint.Strings("recipient"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, config := range []ServerConfig{
+		{Source: mcpserver.UserSource(), Name: testsupport.ServerName("catalog")},
+		{Source: source, Name: testsupport.ServerName("catalog")},
+	} {
+		session := toolCatalogSession(t, &sdkmcp.Tool{Name: "lookup", InputSchema: jsontext.Value(`{"type":"object"}`)})
+		tools, err := sourceTools(t.Context(), nil, config, session)
+		if err != nil || len(tools) != 1 {
+			t.Fatalf("sourceTools = %d, %v", len(tools), err)
+		}
+		ref, _, err := IdentifyTool(tools[0])
+		server, _, _ := ref.MCP()
+		if err != nil || server != config.ID() || ref.ModelName() != "catalog_lookup" {
+			t.Fatalf("tool identity = %v, %v; want server %v", ref, err, config.ID())
+		}
 	}
 }

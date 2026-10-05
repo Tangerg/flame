@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import discovery from "@flame/runtime-contract/samples/method.discover.resp.json";
 import { HTTP_ENDPOINTS, PROTOCOL_VERSION } from "@flame/runtime-contract/wire";
-import { Connection, type Command } from "./connection";
+import { commandFailureMessage, Connection, type Command } from "./connection";
 import { createPreparedMutationJournal } from "@flame/runtime-contract/client";
 import { CommandStorage } from "./commandStore";
 
@@ -101,7 +101,7 @@ describe("IDE connection lifetime and replay", () => {
         JSON.stringify({
           jsonrpc: "2.0",
           id: message.id,
-          result: { availability: [] },
+          result: {},
         }),
       );
       return true;
@@ -117,9 +117,7 @@ describe("IDE connection lifetime and replay", () => {
     recover = true;
     const successor = await Connection.open(server.endpoint, undefined, server.directory);
     disposers.push(() => successor.close());
-    await expect(successor.retry(saved.idempotencyKey)).resolves.toMatchObject({
-      pluginResult: { availability: [] },
-    });
+    await expect(successor.retry(saved.idempotencyKey)).resolves.toEqual({});
     for (const request of server.requests.filter(
       ({ message }) => message.method === "plugins.uninstall",
     )) {
@@ -129,6 +127,47 @@ describe("IDE connection lifetime and replay", () => {
       });
     }
     expect(successor.pendingCommands()).toEqual([]);
+  });
+
+  it("leaves a start refused by a plugin change to the user without saving it for replay", async () => {
+    const server = await fixture((_request, response, message) => {
+      if (message.method !== "runs.start") return false;
+      response.writeHead(200, { "Content-Type": "application/json" });
+      response.end(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          id: message.id,
+          error: {
+            code: -32046,
+            message: "plugin_changed",
+            data: {
+              type: "plugin_changed",
+              detail:
+                "a plugin installation changed while the run was being prepared; nothing was started",
+            },
+          },
+        }),
+      );
+      return true;
+    });
+    const connection = await Connection.open(server.endpoint, undefined, server.directory);
+    disposers.push(() => connection.close());
+    const failure = await connection
+      .execute({
+        method: "runs.start",
+        params: { sessionId: "ses_1", input: [{ type: "text", text: "during plugin update" }] },
+      })
+      .then(
+        () => undefined,
+        (error: unknown) => error,
+      );
+    expect(commandFailureMessage(failure)).toBe(
+      "A plugin changed while the run was being prepared. Nothing was started; send it again to retry.",
+    );
+    expect(connection.pendingCommands()).toEqual([]);
+    expect(server.requests.filter(({ message }) => message.method === "runs.start")).toHaveLength(
+      1,
+    );
   });
 
   it("rejects malformed command parameters before saving or dispatching them", async () => {

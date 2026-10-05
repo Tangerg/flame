@@ -300,11 +300,11 @@ func (m *modelConfigServiceStub) UpdateProvider(_ context.Context, update models
 	return m.providers[0], nil
 }
 
-func (*modelConfigServiceStub) TestProvider(_ context.Context, providerID string) (models.TestResult, error) {
+func (*modelConfigServiceStub) TestProvider(_ context.Context, providerID string) (protocol.ProviderTestOutcome, error) {
 	if providerID == "deepseek" {
-		return models.TestResult{OK: true}, nil
+		return protocol.ProviderTestReachable, nil
 	}
-	return models.TestResult{}, errors.New("unknown provider")
+	return "", errors.New("unknown provider")
 }
 
 func TestProviderConfigurationMasksSecretsAndPreservesExplicitChanges(t *testing.T) {

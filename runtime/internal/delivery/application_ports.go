@@ -44,18 +44,18 @@ type sessionUseCases interface {
 }
 
 type mcpUseCases interface {
-	ToolExposure(context.Context, mcpserver.ServerName) ([]toolsvc.Ref, error)
+	ToolExposure(context.Context, mcpserver.ID) ([]toolsvc.Ref, error)
 	SetToolExposure(context.Context, toolsvc.Ref, bool) error
-	CreateAuthorizationAttempt(ctx context.Context, name mcpserver.ServerName) (mcpapp.AuthorizationAttempt, error)
+	CreateAuthorizationAttempt(ctx context.Context, name mcpserver.ID) (mcpapp.AuthorizationAttempt, error)
 	CreateServer(ctx context.Context, input mcpapp.ServerInput) (mcpapp.Server, error)
-	DeleteServer(ctx context.Context, name mcpserver.ServerName) error
+	DeleteServer(ctx context.Context, name mcpserver.ID) error
 	AuthorizationAttempt(ctx context.Context, id string) (mcpapp.AuthorizationAttempt, error)
 	AuthorizationAttemptRetention() time.Duration
 	Servers(ctx context.Context) ([]mcpapp.Server, error)
-	Tools(ctx context.Context, server *mcpserver.ServerName) ([]mcpapp.ToolView, error)
-	ReconnectServer(ctx context.Context, name mcpserver.ServerName) error
+	Tools(ctx context.Context, server *mcpserver.ID) ([]mcpapp.ToolView, error)
+	ReconnectServer(ctx context.Context, name mcpserver.ID) error
 	TestServer(ctx context.Context, input mcpapp.ServerInput) (mcpapp.TestResult, error)
-	UpdateServer(ctx context.Context, name mcpserver.ServerName, patch mcpapp.ServerPatch) (mcpapp.Server, error)
+	UpdateServer(ctx context.Context, name mcpserver.ID, patch mcpapp.ServerPatch) (mcpapp.Server, error)
 }
 
 type approvalUseCases interface {

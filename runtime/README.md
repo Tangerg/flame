@@ -74,38 +74,111 @@ Plugins 1.0, and Flame's extension namespace is `io.github.tangerg.flame` with
 
 Install from an absolute directory or ZIP path on the Runtime machine. Admission copies
 regular files into a bounded, SHA-256-addressed release; it does not execute package code.
-The immutable release catalog owns the declaration accepted at first admission. Repeated
-installation and cold loading use that declaration; integrity validation does not reinterpret
-package contributions. Publish different package bytes to request a new admission.
+The immutable release catalog owns the declaration accepted at first admission and is the
+only owner of release content: an installation names its selected and staged releases by
+digest and every reader takes the declaration from the catalog. A release is admitted once
+by its constructor, which validates each contribution exactly once (package admission
+isolates an invalid contribution against the ones admitted before it); persistence,
+installations and projections trust the admitted value. Repeated installation and cold
+loading use that declaration; integrity validation does not reinterpret package
+contributions. Publish different package bytes to request a new admission.
+The package adapter translates the portable `mcp.json` spelling (`streamable-http`, `cwd`)
+once into the MCP registry vocabulary (`streamableHttp`, `dir`) that releases and
+`PluginServerDeclaration` use; connection rules belong to the MCP server owner, and a
+release adds only the rules that exist because the declaration comes from a portable
+package (the reserved `PLUGIN_ROOT`/`PLUGIN_DATA` variables, case-ambiguous environment
+names, package-relative commands and working directories, no user information in endpoint
+URLs, HTTPS outside loopback). Package bytes are public content: static headers and
+environment values are never treated as secrets, so a credential reaches a server only
+through a declared input. Header and `authorization` inputs are admitted only as secrets;
+an environment input uses its declared `secret` flag.
+The Flame extension namespace supports `apiVersion`, `inputs` and `contributes`. Any other
+member, including capability `requests`, which this API version does not support, is reported as an `unknownField`
+diagnostic on its `extensionField` and ignored; it is never admitted or enforced.
 Relative source paths, absent or malformed mandatory manifests and unsafe or malformed archives
 return `invalid_params` without creating an installation. Filesystem and storage failures
 retain their own causes; component diagnostics continue to preserve valid siblings.
-An installation starts disabled and unapproved. Approve the exact digest and a subset of
-its requested grants, configure declared inputs, then enable it. Package roots are
-read-only. Admission and cold loading scan an entire release once. Startup, configuration,
-reconnect and OAuth read the current source owner before creating a connection and
-revalidate its package bytes; retained connection snapshots cannot initiate a new dial.
-Ordinary tool dispatch reads admitted declarations and
-current installation authority. Resource and Skill reads verify their selected file
+Release diagnostics are typed admission findings: a closed `code` (`unknownField`,
+`invalidDeclaration`, `unsupportedContribution`, `componentLimit`, `invalidDependencies`,
+`unavailableComponent`) plus a closed `component` reference (`manifestField`,
+`extensionField`, `contribution`, `mcpServer` and `skill` carry the authored `name`;
+`flameExtension`, `mcp` and `skills` carry none). They describe what admission isolated,
+travel with the immutable declaration, and never decide availability.
+An installation has one closed `state`: `unapproved`, `approved` or `enabled`. It starts
+`unapproved`. Approve the exact selected digest, configure declared inputs, then enable it;
+disable returns it to `approved`, revoke to `unapproved`. Approval always names the
+selected release. Package roots are
+read-only. Admission seals the staged tree before digesting it, and admission and cold
+loading scan an entire release once; concurrent cold loads of one digest share that scan
+while other digests load independently. Startup, configuration, reconnect and OAuth read
+the current source owner before creating a connection and revalidate its package bytes:
+the cached scan is reused only while every entry of the release keeps the change stamp
+(inode, size, mode, modification and inode-change time) recorded when its bytes were
+digested, and any added, removed or changed entry or a replaced directory sends the release
+through a fresh full scan that withdraws the cache for tampered bytes and restores it for
+a repaired directory. A launch accepts only a scan that began after it observed a change,
+and rechecks the stamps of the proof it receives, so a scan that read bytes before they
+changed can never vouch for them. An entry whose inode-change time is not strictly older
+than the scan that stamped it is unsettled (the racy-index rule): a proof holding one is
+not reused, and the next launch rescans. Proofs are cached within a 32 MiB budget derived
+from measured per-entry size; a proof that would exceed it is not cached, and a proof an
+in-flight caller holds is never evicted. Platforms without an inode-change time rescan on
+every connection. Retained connection snapshots cannot initiate a new dial.
+The registry resolves one server through one origin dispatch, realizing an installation
+server only as far as the read requires (desired definition, dispatch authority, or launch)
+and never its siblings. Ordinary tool dispatch reads admitted declarations and
+current installation authority for the called server alone. Resource and Skill reads verify their selected file
 against the admitted content index through a confined directory capability. `${PLUGIN_DATA}` is a private per-installation directory
-retained through updates and uninstall. Releases and retained data are not garbage-collected automatically.
+retained through updates and uninstall and is never collected automatically. A release
+is retained while an installation selects or stages it or a live session or pending
+checkpoint depends on it; every other release, its catalog row and its directory, is
+reclaimed at the admission point when a change commits and at startup. A release whose
+removal fails stays admitted and is retried by the next reclamation.
 
 Staging never switches running code. An already selected digest cannot be staged
-again. Selecting a distinct staged release requires execution to be quiescent and
-clears trust, grants, inputs and component disablement. Configuration commands require
+again. Selecting a distinct staged release requires execution to be quiescent. It is one
+installation transition that always returns the installation to `unapproved`: changed
+code is never launched or dispatched until its exact digest is approved and enabled again.
+It retains what the candidate declares unchanged: input values whose input keeps its
+server, target, key and secrecy, and disabled servers and Skills that are still declared.
+A secret input and an OAuth credential follow one rule: a credential follows its
+recipient. For a Streamable HTTP server the recipient is the endpoint (transport, URL and
+static headers, excluding configured input values), so its secrets and OAuth credential
+survive a release that keeps that declaration and stop applying when it changes. For a
+stdio server the recipient is the executable (release digest and server name), so its
+secret inputs are dropped by every release change and must be entered again. Configuration commands require
 the exact selected `digest` alongside `installationId`; a release switch rejects an
 older configuration as `plugin_stale` before changing inputs or component enablement.
 An omitted digest is invalid. Rebuild clients together; old unbound commands are not
 upgraded or replayed against the latest release. Runtime derives quiescence
-from owned executable manifests and pending execution
-checkpoints. Installation admission reads only their declared dependency bindings;
-the recovery owner validates the rest of each continuation. Missing or invalid bindings
-refuse admission. Revoke and disable withdraw dispatch authority immediately; an already
+from one execution-owned dependency projection: the canonical installation ID and
+release digest set of every owned executable manifest, covering package Skills and
+installation MCP tools, and the same set stored relationally with each pending
+execution checkpoint in the checkpoint's own transaction. Installation admission
+queries only that projection by installation and never decodes a continuation, so
+an unrelated or unreadable checkpoint cannot block another installation's change.
+Installation changes, including the capacity check of a new install, and the
+publication of an assembled execution share one short serialization point. Run
+assembly, model resolution and package reads happen outside it, so a pending change
+never waits for, or holds back, an assembling Run. The live MCP tool catalog is a
+projection of committed installation state, not a second copy that catches up: the same
+critical section that commits a change cancels the affected sources' in-flight connection
+attempts and detaches them, in memory and without waiting for I/O, so no Run assembled
+after the commit can freeze the superseded release's tools. Launching or dialing the
+committed release happens afterwards, outside the lock. An assembly that a quiescent
+change to one of its dependencies overtook is refused as `plugin_changed` on
+`runs.start` and `runs.resume`: nothing was started and no interrupt was consumed, so the
+person may send the same request again. Clients present it as retryable and never retry
+it on their own. Revoke and disable withdraw dispatch authority immediately; an already
 started effect can still finish or remain uncertain. Tool wrappers recheck current source
-authority and their exact realized connection configuration before dispatch. Rotating
-credentials rejects old executables even before asynchronous reconciliation starts.
-Permission fingerprints bind admitted code and each source's
-canonical grants; credential rotation and sibling enablement do not erase standing rules.
+authority, their exact realized connection configuration and the currency of the session
+that admitted them before dispatch (draft §7.5). Rotating credentials rejects old
+executables even before asynchronous reconciliation starts, and a frozen executable whose
+session was refused or replaced by a reconnect is rejected as "source connection is no
+longer current" instead of failing on the closed transport.
+Permission fingerprints bind the admitted code of one server (`release digest + server
+name`), so every release change makes standing rules for its tools stale; credential
+rotation, approval, revocation and sibling enablement do not erase them.
 The rule-list projection observes each referenced MCP source once per request; tool
 decisions and dispatch still read the current owner independently.
 Permission fingerprints read desired source definitions independently of executable
@@ -113,19 +186,52 @@ availability. Missing or changed package bytes cannot hide standing rules; dispa
 still refuses those bytes through its separate admission guarantee.
 Rule inspection returns display fields and computed staleness; durable authority
 fingerprints and storage scope keys remain with the policy owner.
-OAuth grants are bound separately to complete requesting configuration and invalidated on
-that source's withdrawal or configuration change. Cold restart preserves exact dependency
-checks and command replay identities. Installation commands commit desired state before connection realization;
-`availability` reports component and post-commit realization failures. Uninstall durably
-removes admission before asynchronous connection retirement, returns cleanup diagnostics,
-and leaves all retirement work in the existing Connections shutdown ownership graph.
+OAuth credentials are bound to the fingerprint of the OAuth target that requested them:
+its MCP identity and credential recipient (for a user server its endpoint and headers; for
+an installation server the recipient above). A recipient change makes them stop matching
+without any invalidation step; they are removed with their MCP source.
+Cold restart preserves exact dependency
+checks and command replay identities. Installation commands commit desired state before connection realization.
+Every installation read and command result carries `realization`, observed from its live
+owners on each read and never stored: `{type: "releaseUnavailable"}` when the selected
+release bytes fail verification, otherwise `{type: "available", unavailableBackends?}`
+naming declared servers whose backend directory cannot be realized now. A backend whose
+preparation failed therefore stays visible in every later `plugins.list` until repaired,
+not only in the command that attempted it. Each connection's own outcome is the MCP
+supervisor's status (below). Every installation read and command result also carries
+`presentation`, the Runtime's closed decision whether the selected release's declarative
+presentation contributions (themes) are shown now: `admitted` exactly when the
+installation is active and its release is available, otherwise `withheld`. Clients
+present admitted themes only and never rebuild that decision from `state` or
+`realization`. Uninstall requires
+the same quiescence as a release switch and returns `plugin_in_use` while an active or
+waiting execution depends on the installation; revoke remains available to withdraw its
+authority while in use. Uninstall is an acknowledgement without a result: it durably removes
+admission before asynchronous connection retirement, and leaves all retirement work in the
+existing Connections shutdown ownership graph.
 Post-commit package preparation, reconciliation, and projection survive request
-cancellation and follow the Runtime's cancellation root. The delivery endpoint
+cancellation and follow the Runtime's cancellation root. A reconciliation that cannot
+start settles each still-enabled source as `mcp_configuration_failed` at the connection
+status owner; a removed source stays absent. The delivery endpoint
 joins these calls before closing their dependencies; shutdown does not undo the
-committed installation state.
+committed installation state. When shutdown preempts the post-commit realization read,
+the command reports that cause even though its durable change stands.
 Connection attempts own credential restoration as well as dialing. Reconfiguration
 withdraws the old session and tool snapshot before restoration; restoration failure
-settles the source as failed. Supersession cancels obsolete work; shutdown cancels
+settles the source as failed. A failed MCP server status names its closed failure
+category as an inline problem type without prose: `mcp_release_unavailable`,
+`mcp_backend_unavailable`, `mcp_configuration_failed` (the source refused the connection
+or stored credentials could not be restored), `mcp_dial_failed` (transport, process or
+handshake), `mcp_tool_discovery_failed` and `mcp_authorization_failed`. The connection
+owner records the category at the failed transition, including startup admission; the
+cause itself stays in traces and logs because it can carry paths, endpoints or
+credentials. A connection to a disabled server, or to any server of a disabled
+installation, is refused with the MCP `ErrServerDisabled` category. A refusal is a live
+transition, not only a command error: when configuration, reconnect or authorization
+cannot obtain an admitted configuration, a removed or disabled source is detached and any
+other refusal settles as `mcp_configuration_failed`, and either way the previous session
+stops serving tools. A connection dispatch that cannot read its source owner settles the
+same way, so the failure reaches status readers instead of only the log. Supersession cancels obsolete work; shutdown cancels
 and joins every admitted attempt.
 Canceling a wait for session retirement leaves unreported close failures with Connections
 until shutdown consumes them.
@@ -134,8 +240,19 @@ shared framed hash, independently of JSON serialization. Credentials recorded wi
 former JSON hash require a new OAuth authorization; no dual fingerprint reader is retained.
 
 Portable `mcp.json` admits stdio and Streamable HTTP through the existing MCP registry,
-connection supervisor, deferred tools, exposure, approval and OAuth owners. Installation
-sources are `installation/<uuid>/<local-server>` and include typed wire provenance.
+connection supervisor, deferred tools, exposure, approval and OAuth owners.
+An MCP server's identity is its origin plus the name that origin chose:
+`mcpserver.ID{Origin: User | Installation(id), Name}`. Names are unique only within an
+origin, so a user server and an installation server may share one. The same structured
+identity is the storage key (an `mcp_sources` row with `origin`, `installation_id` and
+`name`), the source half of every MCP `tool.Ref`, and the single wire shape
+`MCPServerID{origin: {type, installationId?}, name}` used by `MCPServer.id`, every
+server-addressed request, `ToolRef.server`, tool listings, exposure, OAuth attempts and
+`mcp.changed` events. No component joins the parts into one string or parses one back.
+An installation record's `Source` also binds the admitted release digest, the tool
+authority of that code and the recipient its credentials follow, so none of them can be
+claimed by a user record or omitted from an installation record. Model-visible tool names still project from the local name
+alone; equal projections from different origins are excluded symmetrically.
 Their connection configuration is changed through installation operations. User MCP CRUD
 refuses these sources. Invalid server declarations are diagnosed independently.
 Typed declarations reject explicit `null`, including nested arguments, environment values
@@ -146,13 +263,12 @@ unavailable, project enabled unavailable sources as failed without stale tool co
 and preserve independent healthy sources. Desired descriptor projections never admit
 connections or dispatch. Temporary execution unavailability does not remove standing
 tool exposure choices. Exposure inspection and edits read durable source definitions;
-reconnect and authorization reach the connection owner's fresh integrity check, so a
+reconnect and authorization reach the connection owner's launch integrity check, so a
 repaired release can recover without replacing its installation.
 Stdio is an explicitly trusted executable with the Runtime user's OS access, not an OS sandbox.
 Only PATH, the reserved package paths, declared environment values and configured inputs
 are inherited. HTTP authorization and secret headers use declared host inputs or the
-existing OAuth owner. Inputs marked secret are masked in inspection. Credentials must
-not be embedded in portable files or UI assets.
+existing OAuth owner. Credentials must not be embedded in portable files or UI assets.
 Package entries, relative commands, working directories and resource reads share one
 portable path contract; Windows reserved names and ambiguous path segments are rejected
 before filesystem preparation on every host.
@@ -173,9 +289,13 @@ spelling when frontmatter names are equivalent under the format's Unicode rule.
 
 Configuration changes use `valueChanges: { "input-id": { "type": "set", "value": "..." } }`
 or an explicit `{ "type": "clear" }`. An optional empty value remains a configured
-environment variable or header; clearing removes its binding. Secret inspection masks
-configured presence, including empty values. Unmentioned inputs are preserved. Disabled server
-and Skill lists are complete replacements. Required inputs cannot be cleared while their
+environment variable or header; clearing removes its binding. Inspection reports
+`inputStates` for every declared input of the selected release: `{type: "unset"}`,
+`{type: "value", value}` for a configured non-secret input, or `{type: "configured"}` for a
+configured secret, including an empty one. Secret text is never copied into any
+projection. Configuration is a delta: `serverChanges` and `skillChanges` map a declared
+component name to `enable` or `disable`, and inputs and components a request does not
+name keep their value or enablement. Required inputs cannot be cleared while their
 backend is enabled. Each environment or header binding belongs either to static package
 configuration or to one declared host input. Inputs cannot replace static values; HTTP
 header binding identity is case-insensitive. Portable environment bindings also reject
@@ -186,7 +306,8 @@ The generated Go, JSON Schema, and TypeScript response checks project the domain
 color names and six-digit hexadecimal grammar before colors reach client rendering.
 The appearance owner retains a rendered projection for first paint. Runtime scheme
 selection reads the registered theme or system appearance, never the paint cache.
-Removing an installation withdraws its selected theme preference. Themes use the existing
+Removing, disabling or losing the release of an installation withdraws its selected theme
+preference and the first-paint projection with it. Themes use the existing
 Dougong Host and child lifetimes; client connection replacement retires the predecessor
 before publishing its successor.
 
@@ -203,12 +324,27 @@ and a Skill through existing Runtime tools. Package limits are 128 MiB total cop
 resources obey the existing 1 MiB Skill limits.
 
 This is a breaking protocol/storage change. Rebuild all clients and generated contracts
-together. Installation records reference immutable declarations by digest. Source relations use
-foreign keys for exposure, OAuth and approval policy; installation records do not store
-server identities or duplicate declarations. Pre-release storage compatibility follows
-[the repository data policy](../DEVELOPMENT.md#pre-release-data-policy). Old
-waiting checkpoints without explicit tool/installation dependencies are refused by the
-existing recovery policy. Completed historical Tool content remains generic and readable.
+together. Installation records reference immutable declarations by digest. Installation
+IDs and release digests are typed values (`resourceid.InstallationID`,
+`fingerprint.Digest`) parsed once at the delivery and storage boundaries; the 64-digit
+lowercase SHA-256 spelling has one owner, shared by release digests and source authority
+fingerprints. `mcp_sources` holds one row per server identity; the user descriptor
+(`mcp_servers`), exposure, OAuth sessions and approval rules reference it by a cascading
+foreign key, so deleting a user server or uninstalling a package removes every relation
+about its servers. Approval rules store the tool kind, the source-local tool name and the
+MCP source reference as columns rather than an encoded reference string; installation
+records do not store server identities or declarations. Installation state is relational:
+the installation row holds its source, selected and staged digests and its closed
+`admission_state` (`CHECK`ed to `unapproved`, `approved` or `enabled`; a staged digest
+differs from the selected one), and child tables hold input values and disabled
+components, each removed with its installation by cascade. A data directory whose MCP
+tables still key servers by a joined name, whose installations keep JSON state or separate
+enablement and approval flags, or whose OAuth sessions keep
+an endpoint-origin column is refused at open without modification. Pre-release storage compatibility follows
+[the repository data policy](../DEVELOPMENT.md#pre-release-data-policy). A data
+directory holding a pending execution checkpoint written before the relational
+dependency projection is refused at open; use a fresh data directory. Continuation
+payloads no longer carry dependency bindings. Completed historical Tool content remains generic and readable.
 Publishing the new Runtime module and advancing CLI's released dependency is required
 before an independent CLI release; workspace checks alone do not prove that release.
 Installation Skill declarations expose names and descriptions. The package adapter
@@ -585,13 +721,13 @@ Inspection distinguishes invalid names (`invalid_params`), absent skills (`skill
 
 ## MCP OAuth credentials
 
-MCP OAuth credentials belong to one persisted authorization grant. Starting an explicit sign-in replaces that grant; token refresh and credential rejection can update or remove only their own grant. Changes to transport, enablement, endpoint, static authorization, or extra HTTP headers invalidate the grant, while descriptive metadata and Tool policy changes preserve it. Grant creation and restoration verify the current exact connection configuration. A superseded callback fails explicitly and cannot overwrite or delete replacement credentials. Pre-release databases without the current grant and target bindings require a fresh data directory; saved credentials are not converted during opening.
+MCP OAuth credentials belong to one persisted authorization grant per MCP source, bound to the fingerprint of the OAuth target that requested it. Starting an explicit sign-in replaces that grant; token refresh and credential rejection can update or remove only their own grant. A changed credential recipient (a user server's endpoint or headers; an installation server's endpoint declaration, or for stdio its release) yields a different target, so an earlier credential simply never matches it; there is no trigger or write-time deletion. Descriptive metadata and Tool policy changes preserve the target. Removing the source removes its credentials by cascade. A superseded callback fails explicitly and cannot overwrite or delete replacement credentials. Pre-release databases without the current grant and target bindings require a fresh data directory; saved credentials are not converted during opening.
 
 ## Integration probes
 
 `models.list` treats endpoint discovery as authoritative, including an empty catalog. The endpoint adapter validates every advertised identity and collapses repeated identical model IDs; the public page contains each ID once in ascending order. Endpoint failures and malformed identities return a sanitized `provider_error`, rather than `invalid_params` or a successful fallback catalog. A duplicate returned by a custom model-lister implementation violates its unique-identity port contract; tests injecting such a result do not describe raw HTTP discovery. Local registry and catalog defects remain internal failures; cancellation preserves its context identity for Go callers. Bundled metadata may enrich a discovered model but cannot change its provider/model identity.
 
-Provider and MCP probes return sanitized inline verdicts. Provider authentication rejection uses `invalid_api_key`; MCP authentication rejection uses `mcp_authorization_required`; an internal probe deadline uses `timeout`. Unknown integration failures retain `provider_test_failed` or `mcp_dial_failed`. Caller cancellation remains a call error. Clients branch on these problem types, never on raw integration error strings.
+Provider and MCP probes return a closed `outcome` without server-authored prose. `providers.test` reports `reachable`, `notConfigured`, `invalidCredentials`, `timedOut` or `failed`; `mcp.servers.test` reports `reachable`, `authorizationRequired`, `timedOut` or `failed`. Unknown integration failures are `failed`. Caller cancellation remains a call error. Clients render each outcome locally and reject any other value as a Runtime contract violation; they never branch on raw integration error strings.
 
 ## Stored JSON integrity and snapshot cost
 
@@ -625,7 +761,7 @@ Provider-reported token usage, durable conversation history, and model/Tool/exec
 
 MCP identity follows Scope's capability chain through Tool decorators for discovery, exposure, and approval queries. Invalid MCP identity declarations reject the catalog instead of silently hiding entries or grouping them as built-ins.
 
-`mcp.tools.list` returns the admitted connection catalog used for execution and connected Tool counts. Remote changes become visible after reconnect admits the replacement; listing no longer queries a separate live catalog. Invalid JSON Schemas, including unresolved references and oversized documents, now fail connection or probe admission through Scope rather than failing the next Run. Diagnostic and MCP schema projections preserve exact numeric literals and retain their existing protocol shape.
+`mcp.tools.list` reads the resolver's live MCP snapshot, the one each Run manifest freezes, and derives tool name conflicts from that same snapshot. Connections hand every changed tool set to the resolver inside the critical section that settles the connection, so connected Tool counts and the listing describe one state. Remote changes become visible after reconnect admits the replacement; listing no longer queries a separate live catalog. Invalid JSON Schemas, including unresolved references and oversized documents, now fail connection or probe admission through Scope rather than failing the next Run. Diagnostic and MCP schema projections preserve exact numeric literals and retain their existing protocol shape.
 
 ## Complete AGENTS guidance
 
@@ -634,7 +770,10 @@ Run guidance includes the complete discovered AGENTS.md cascade in source order,
 ## Tool authority
 
 Tool identity is a closed built-in, MCP source/tool, or A2A endpoint reference.
-Model names remain presentation labels. Runtime excludes remote name collisions
+Model names remain presentation labels. The closed set of built-in names is owned by the
+tool domain (`tool.BuiltInName`); the built-in behavior catalog is keyed by that type and a
+test holds it to exactly that set, so startup performs no comparison between them.
+Runtime excludes remote name collisions
 before model discovery and reserves every built-in name, including unavailable tools.
 Cross-server collisions never reject a connection: all competing remote identities
 are excluded symmetrically. `mcp.tools.list` reports their model names and conflicting
@@ -647,7 +786,9 @@ Standing allow and deny decisions live only in approval rules and retain the
 source authority fingerprint. Endpoint changes make existing rules stale;
 credential rotation does not. MCP exposure is configured separately through
 `mcp.tools.setExposure`; `approval.setRule` owns remembered decisions.
-A rule is keyed by scope, scope key, source reference, subject type, and subject value. Remembering the
+A rule is keyed by scope, scope key, source reference, subject type, and subject value. A
+source reference is a closed union: built-in name, A2A endpoint, or MCP server identity
+plus remote tool name; each variant's data is reachable only through that variant. Remembering the
 same key replaces both its decision and source fingerprint. Equally specific
 distinct patterns still resolve to deny when they conflict.
 
@@ -675,3 +816,42 @@ Use a fresh Runtime data directory when upgrading from an approval schema
 without source identity or explicit subject types. Startup rejects those schemas
 without modifying their data. There is no
 legacy rule conversion. Update Runtime and every client together.
+
+## Cache prefix and the request tail
+
+A model request is ordered so that everything a provider may have cached stays byte-stable:
+tool declarations, then the single System message of stable instructions (base prompt,
+pinned memory, agent documents), then the conversation. Nothing that changes during a
+Session precedes the conversation. Memory recalled for a prompt is a User message framed
+as `<flame-context kind="recalled-memory">` that follows that prompt, so a new recall
+never rewrites an earlier message; it belongs to the Root Run's opening context and is not
+inherited by delegated layers. The current Goal and Plan are not part of the context Scope
+adopts: the context reducer reads them from their owners for every call and composes them,
+with the deferred catalog below, into that call's tail (`session-goal`, `session-plan`,
+`deferred-tools`). The reducer measures that tail in the compaction budget and hands the
+same messages to the model boundary for exactly that invocation, which appends them after
+the conversation. A Goal or Plan change therefore alters only the tail of the next call.
+Waiting checkpoints written by an earlier build carry the former context shape and are
+not resumed, under the existing build-identity rule.
+
+## Deferred tool catalog
+
+A Run's tool declarations open the provider prompt-cache prefix, so they do not depend on
+which tools are deferred. Built-in, Skill, MCP (user and installation origin) and A2A
+tools withheld from the initial manifest form the Run's frozen deferred set, which the
+Run's `search_tools` owns. Its declaration is static text; plugin activation, MCP
+reconnects and catalog changes reach later Runs only through that set.
+
+Each model request of a layer with deferred tools ends with one Runtime-owned User
+message framed as `<flame-context kind="deferred-tools">`, the single framing Runtime
+uses for the context it authors (recalled memory and retained shells use the same frame
+with their own kind). It lists the deferred model names, the exact
+names `select:` accepts, grouped by source in source-then-name order, without
+descriptions or schemas. It is a User message because providers hoist System messages
+into the instruction block ahead of the conversation. The message is a per-request
+projection appended at the model boundary after Scope fixes the context it adopts, so it
+never enters the Interaction context, checkpoints, durable conversation history,
+compaction input or the transcript. Compaction budgets count it. Restoring a waiting Run
+rebuilds the same deferred set, which the deployment configuration digest already binds,
+so the catalog is the same projection after restore or compaction. A layer with no
+deferred tools has neither `search_tools` nor the catalog message.

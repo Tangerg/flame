@@ -7,18 +7,19 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+
 	sdk "github.com/Tangerg/scope/skills"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
-	"github.com/google/uuid"
 )
 
 func TestSkillResourceReadPreservesFormatOwnerFailure(t *testing.T) {
 	releases, store, _ := testReleaseStore(t)
-	content, err := NewSkills(releases, store).ReadSkillResource(t.Context(), promptsource.InstallationDependency{}, "Invalid", "SKILL.md")
+	content, err := NewSkills(releases, store).ReadSkillResource(t.Context(), plugin.Dependency{}, "Invalid", "SKILL.md")
 	if len(content) != 0 || !errors.Is(err, plugin.ErrInvalid) || !errors.Is(err, sdk.ErrNameInvalid) {
 		t.Fatalf("invalid Skill name = (%q, %v), want no content and format owner cause", content, err)
 	}
@@ -42,18 +43,18 @@ func TestSkillAdmissionAndReadsShareDirectoryNameBinding(t *testing.T) {
 					t.Fatal(err)
 				}
 			} else {
-				release, err := releases.Materialize(t.Context(), source)
-				if err != nil || len(release.Skills) != 1 || release.Skills[0].Name != name {
+				release, err := publishPackage(t.Context(), releases, source)
+				if err != nil || len(release.Declaration().Skills) != 1 || release.Declaration().Skills[0].Name != name {
 					t.Fatalf("Skill admission = %+v, %v", release, err)
 				}
-				installation, err := plugin.New(uuid.NewString(), source, release)
+				installation, err := plugin.New(testsupport.InstallationID(t), source, release)
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := installation.Approve(release.Digest, nil); err != nil {
+				if err := installation.Approve(release); err != nil {
 					t.Fatal(err)
 				}
-				if err := installation.Enable(true); err != nil {
+				if err := installation.Enable(release); err != nil {
 					t.Fatal(err)
 				}
 				if err := store.Save(t.Context(), installation); err != nil {
@@ -90,18 +91,18 @@ func TestSkillDiscoveryDistinguishesUnavailablePackagesFromNameConflicts(t *test
 			for _, name := range []string{"broken", "working"} {
 				document := "---\nname: " + name + "\ndescription: Inspect the results\n---\nRead carefully.\n"
 				source := writePackage(t, map[string]string{"plugin.json": portableManifest, "skills/" + name + "/SKILL.md": document})
-				release, err := releases.Materialize(t.Context(), source)
+				release, err := publishPackage(t.Context(), releases, source)
 				if err != nil {
 					t.Fatal(err)
 				}
-				installation, err := plugin.New(uuid.NewString(), source, release)
+				installation, err := plugin.New(testsupport.InstallationID(t), source, release)
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := installation.Approve(release.Digest, nil); err != nil {
+				if err := installation.Approve(release); err != nil {
 					t.Fatal(err)
 				}
-				if err := installation.Enable(true); err != nil {
+				if err := installation.Enable(release); err != nil {
 					t.Fatal(err)
 				}
 				if err := store.Save(t.Context(), installation); err != nil {
@@ -111,7 +112,7 @@ func TestSkillDiscoveryDistinguishesUnavailablePackagesFromNameConflicts(t *test
 					broken = release
 				}
 			}
-			root, err := releases.Root(broken.Digest)
+			root, err := releases.Root(broken.Digest())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -159,18 +160,18 @@ func TestSkillReadsVerifyConsumedBytesAndEnforceResourceLimit(t *testing.T) {
 		"skills/review/SKILL.md":      document,
 		"skills/review/reference.txt": strings.Repeat("x", domainskills.MaxSkillResourceBytes+1),
 	})
-	release, err := releases.Materialize(t.Context(), source)
+	release, err := publishPackage(t.Context(), releases, source)
 	if err != nil {
 		t.Fatal(err)
 	}
-	installation, err := plugin.New(uuid.NewString(), source, release)
+	installation, err := plugin.New(testsupport.InstallationID(t), source, release)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := installation.Approve(release.Digest, nil); err != nil {
+	if err := installation.Approve(release); err != nil {
 		t.Fatal(err)
 	}
-	if err := installation.Enable(true); err != nil {
+	if err := installation.Enable(release); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.Save(t.Context(), installation); err != nil {
@@ -189,7 +190,7 @@ func TestSkillReadsVerifyConsumedBytesAndEnforceResourceLimit(t *testing.T) {
 	if content, err := skills.ReadSkillResource(t.Context(), dependency, "review", "reference.txt"); !errors.Is(err, domainskills.ErrResourceTooLarge) || len(content) != 0 {
 		t.Fatalf("oversized resource = %d bytes, %v", len(content), err)
 	}
-	root, err := releases.Root(release.Digest)
+	root, err := releases.Root(release.Digest())
 	if err != nil {
 		t.Fatal(err)
 	}

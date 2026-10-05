@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -69,23 +71,23 @@ func TestServerConfigValidate(t *testing.T) {
 		cfg  ServerConfig
 		ok   bool
 	}{
-		{"http ok", ServerConfig{Name: testMCPServerName("x"), Transport: TransportHTTP, Endpoint: "https://e/"}, true},
-		{"http relative endpoint", ServerConfig{Name: testMCPServerName("x"), Transport: TransportHTTP, Endpoint: "/mcp"}, false},
-		{"http non-http endpoint", ServerConfig{Name: testMCPServerName("x"), Transport: TransportHTTP, Endpoint: "file:///tmp/mcp"}, false},
-		{"stdio ok", ServerConfig{Name: testMCPServerName("x"), Transport: TransportStdio, Command: "npx"}, true},
-		{"zero handshake timeout", ServerConfig{Name: testMCPServerName("x"), Transport: TransportStdio, Command: "npx", HandshakeTimeout: durationPointer(0)}, false},
+		{"http ok", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportHTTP, Endpoint: "https://e/"}, true},
+		{"http relative endpoint", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportHTTP, Endpoint: "/mcp"}, false},
+		{"http non-http endpoint", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportHTTP, Endpoint: "file:///tmp/mcp"}, false},
+		{"stdio ok", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportStdio, Command: "npx"}, true},
+		{"zero handshake timeout", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportStdio, Command: "npx", HandshakeTimeout: durationPointer(0)}, false},
 		{"missing name", ServerConfig{Transport: TransportHTTP, Endpoint: "https://e/"}, false},
-		{"zero transport", ServerConfig{Name: testMCPServerName("x"), Endpoint: "https://e/"}, false},
-		{"http without endpoint", ServerConfig{Name: testMCPServerName("x"), Transport: TransportHTTP}, false},
-		{"http with command", ServerConfig{Name: testMCPServerName("x"), Transport: TransportHTTP, Endpoint: "https://e/", Command: "npx"}, false},
-		{"stdio without command", ServerConfig{Name: testMCPServerName("x"), Transport: TransportStdio}, false},
-		{"stdio with endpoint", ServerConfig{Name: testMCPServerName("x"), Transport: TransportStdio, Command: "npx", Endpoint: "https://e/"}, false},
-		{"http auth fields ok", ServerConfig{Name: testMCPServerName("x"), Transport: TransportHTTP, Endpoint: "https://e", Authorization: "Bearer t", Headers: map[string]string{"X-API-Key": "k"}}, true},
-		{"http authorization header duplicate", ServerConfig{Name: testMCPServerName("x"), Transport: TransportHTTP, Endpoint: "https://e", Headers: map[string]string{"authorization": "Bearer t"}}, false},
-		{"http oauth with static authorization", ServerConfig{Name: testMCPServerName("x"), Transport: TransportHTTP, Endpoint: "https://e", Authorization: "Bearer t", OAuthHandler: oauthHandlerStub{}}, false},
-		{"http oauth with authorization header", ServerConfig{Name: testMCPServerName("x"), Transport: TransportHTTP, Endpoint: "https://e", Headers: map[string]string{"authorization": "Bearer t"}, OAuthHandler: oauthHandlerStub{}}, false},
-		{"stdio with auth", ServerConfig{Name: testMCPServerName("x"), Transport: TransportStdio, Command: "echo", Authorization: "Bearer t"}, false},
-		{"stdio with headers", ServerConfig{Name: testMCPServerName("x"), Transport: TransportStdio, Command: "echo", Headers: map[string]string{"X-API-Key": "k"}}, false},
+		{"zero transport", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Endpoint: "https://e/"}, false},
+		{"http without endpoint", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportHTTP}, false},
+		{"http with command", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportHTTP, Endpoint: "https://e/", Command: "npx"}, false},
+		{"stdio without command", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportStdio}, false},
+		{"stdio with endpoint", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportStdio, Command: "npx", Endpoint: "https://e/"}, false},
+		{"http auth fields ok", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportHTTP, Endpoint: "https://e", Authorization: "Bearer t", Headers: map[string]string{"X-API-Key": "k"}}, true},
+		{"http authorization header duplicate", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportHTTP, Endpoint: "https://e", Headers: map[string]string{"authorization": "Bearer t"}}, false},
+		{"http oauth with static authorization", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportHTTP, Endpoint: "https://e", Authorization: "Bearer t", OAuthHandler: oauthHandlerStub{}}, false},
+		{"http oauth with authorization header", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportHTTP, Endpoint: "https://e", Headers: map[string]string{"authorization": "Bearer t"}, OAuthHandler: oauthHandlerStub{}}, false},
+		{"stdio with auth", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportStdio, Command: "echo", Authorization: "Bearer t"}, false},
+		{"stdio with headers", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportStdio, Command: "echo", Headers: map[string]string{"X-API-Key": "k"}}, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -102,7 +104,7 @@ func TestServerConfigValidate(t *testing.T) {
 func durationPointer(value time.Duration) *time.Duration { return &value }
 
 func TestSameConnectionIncludesCredentialsAndExcludesHandshakePolicy(t *testing.T) {
-	stdio := ServerConfig{Name: testMCPServerName("local"), Transport: TransportStdio, Command: "server", Env: []string{"TOKEN=first"}}
+	stdio := ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("local"), Transport: TransportStdio, Command: "server", Env: []string{"TOKEN=first"}}
 	rotated := stdio.Clone()
 	rotated.Env[0] = "TOKEN=second"
 	if stdio.SameConnection(rotated) {
@@ -120,7 +122,7 @@ func TestSameConnectionIncludesCredentialsAndExcludesHandshakePolicy(t *testing.
 	if !stdio.SameConnection(changedLimit) {
 		t.Fatal("future handshake policy invalidated a connected executable")
 	}
-	http := ServerConfig{Name: testMCPServerName("remote"), Transport: TransportHTTP, Endpoint: "https://mcp.example/tools"}
+	http := ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Transport: TransportHTTP, Endpoint: "https://mcp.example/tools"}
 	refreshed := http.Clone()
 	refreshed.OAuthHandler = oauthHandlerStub{}
 	if !http.SameConnection(refreshed) {
@@ -130,14 +132,14 @@ func TestSameConnectionIncludesCredentialsAndExcludesHandshakePolicy(t *testing.
 
 func TestDialValidatesBeforeDialing(t *testing.T) {
 	_, _, err := dial(context.Background(), t.Context(), nil,
-		ServerConfig{Name: testMCPServerName("x"), Transport: TransportHTTP})
+		ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportHTTP})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Endpoint is required")
 }
 
 func TestDialNilClient(t *testing.T) {
 	_, _, err := dial(context.Background(), t.Context(), nil,
-		ServerConfig{Name: testMCPServerName("x"), Transport: TransportHTTP, Endpoint: "https://e/"})
+		ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportHTTP, Endpoint: "https://e/"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "client must not be nil")
 }
@@ -150,7 +152,8 @@ func TestDialConnectionFailureSettlesAbsentLifetimeCleanup(t *testing.T) {
 
 	client := sdkmcp.NewClient(&sdkmcp.Implementation{Name: "failure-test", Version: "v1"}, nil)
 	_, cleanup, err := dial(t.Context(), t.Context(), client, ServerConfig{
-		Name: testMCPServerName("x"), Transport: TransportHTTP, Endpoint: server.URL,
+		Source: mcpserver.UserSource(),
+		Name:   testsupport.ServerName("x"), Transport: TransportHTTP, Endpoint: server.URL,
 	})
 	require.Error(t, err)
 	assert.Nil(t, cleanup)
@@ -291,7 +294,8 @@ func TestHeaderRoundTripperRejectsUnboundTarget(t *testing.T) {
 // one.
 func TestServerConfigFormattingRedactsCredentials(t *testing.T) {
 	config := ServerConfig{
-		Name:          testMCPServerName("private"),
+		Source:        mcpserver.UserSource(),
+		Name:          testsupport.ServerName("private"),
 		Transport:     TransportHTTP,
 		Endpoint:      "https://url-user:url-secret@example.com/mcp",
 		Authorization: "Bearer authorization-secret",

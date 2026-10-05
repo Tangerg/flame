@@ -44,16 +44,15 @@ const pluginThemeSchemas = [
         {
           id: "940ac827-b431-455b-af4b-e3a170bcfda0",
           source: "/sample",
-          enabled: false,
-          availability: [],
-          grants: [],
-          values: {},
+          state: "unapproved",
+          realization: { type: "available" },
+          presentation: "withheld",
+          inputStates: {},
           disabledServers: [],
           disabledSkills: [],
           selected: {
             digest: "1".repeat(64),
             name: "sample",
-            requests: [],
             servers: [],
             inputs: [],
             themes: [theme],
@@ -89,7 +88,6 @@ describe.each(pluginThemeSchemas)("plugin theme schema $reference", ({ reference
   });
 
   it.each([
-    { unexpected: "#102030" },
     { background: "url(https://example.invalid/image)" },
     { accent: "#abc" },
     { border: "" },
@@ -114,15 +112,15 @@ describe("the published OpenRPC request schemas", () => {
   });
 
   it("rejects unknown nested members in frames and by-name parameters", () => {
-    const grants = [{ capability: "tools.invoke", targets: [], unexpected: true }];
-    expect(requestSchema("plugins.approve")({ ...target, grants })).toBe(false);
-    expect(requestSchema("plugins.approve", "grants")(grants)).toBe(false);
+    expect(requestSchema("plugins.approve")({ ...target, unexpected: true })).toBe(false);
+    const serverChanges = { backend: "toggle" };
+    expect(requestSchema("plugins.configure", "serverChanges")(serverChanges)).toBe(false);
     const valueChanges = { token: { type: "set", value: "", unexpected: true } };
     expect(
       requestSchema("plugins.configure")({
         ...target,
-        disabledServers: [],
-        disabledSkills: [],
+        serverChanges: {},
+        skillChanges: {},
         valueChanges,
       }),
     ).toBe(false);
@@ -140,8 +138,8 @@ describe("the published OpenRPC request schemas", () => {
     expect(
       requestSchema("plugins.configure")({
         ...target,
-        disabledServers: [],
-        disabledSkills: [],
+        serverChanges: {},
+        skillChanges: {},
         valueChanges: { token: { type: "set", value: "" }, obsolete: { type: "clear" } },
         _meta: { clientInfo: { name: "editor", version: "1" } },
       }),

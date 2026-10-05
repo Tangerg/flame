@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { userMCPServer } from "./mcpServerQueries";
 import { authorizeMCPServer } from "./mcpServerConfig";
 import { type MCPAuthorizationAttempt, type MCPServerGateway } from "./ports/mcpServerGateway";
 import { MCPServerMutationOwner } from "./mcpServerMutationOwner";
@@ -40,7 +41,7 @@ describe("MCP authorization attempts", () => {
       getAuthorizationAttempt,
     } as MCPServerGateway);
 
-    const authorization = authorizeMCPServer("github");
+    const authorization = authorizeMCPServer(userMCPServer("github"));
     await vi.advanceTimersByTimeAsync(1_000);
     await authorization;
 
@@ -67,7 +68,7 @@ describe("MCP authorization attempts", () => {
       getAuthorizationAttempt: vi.fn(),
     } as MCPServerGateway);
 
-    await expect(authorizeMCPServer("github")).rejects.toThrow(
+    await expect(authorizeMCPServer(userMCPServer("github"))).rejects.toThrow(
       "Sign-in didn't complete. Try again.",
     );
   });

@@ -23,7 +23,7 @@ func TestServerValidateRejectsAmbiguousOrInvalidHTTPHeaders(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			server := Server{
-				Name: testMCPServerName("remote"), Transport: TransportStreamableHTTP, URL: "https://example.com/mcp",
+				Source: UserSource(), Name: testMCPServerName("remote"), Transport: TransportStreamableHTTP, URL: "https://example.com/mcp",
 			}
 			test.mutate(&server)
 			err := server.Validate()

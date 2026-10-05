@@ -13,6 +13,7 @@ import (
 	skillstool "github.com/Tangerg/scope/tools/skills"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 )
 
 // SkillUsageRecorder records that a skill was loaded, feeding the idle-lifecycle
@@ -30,7 +31,7 @@ type SkillUsageRecorder interface {
 //
 // Rebuilt per resolution because the project directory depends on the Run's
 // working directory.
-func BuildReaders(ctx context.Context, cwd, userDir string, recorder SkillUsageRecorder, packages promptsource.PackageSkills) ([]toolcontract.Tool, []promptsource.InstallationDependency, error) {
+func BuildReaders(ctx context.Context, cwd, userDir string, recorder SkillUsageRecorder, packages promptsource.PackageSkills) ([]toolcontract.Tool, []plugin.Dependency, error) {
 	var decorateUser func(skillspec.ResourceSource) skillspec.ResourceSource
 	if recorder != nil {
 		// Wrap only the user source: the curator governs the user library, and

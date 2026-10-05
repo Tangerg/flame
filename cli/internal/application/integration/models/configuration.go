@@ -301,15 +301,3 @@ func (u UpdateProvider) Validate() error {
 	}
 	return nil
 }
-
-type TestResult struct {
-	OK      bool
-	Problem *runtimeprotocol.ProblemData
-}
-
-func (t TestResult) Validate() error {
-	if t.OK == (t.Problem != nil) {
-		return errors.New("provider test result must contain exactly one success or problem state")
-	}
-	return nil
-}

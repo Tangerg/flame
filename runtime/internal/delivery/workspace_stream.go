@@ -342,8 +342,8 @@ func clearEmptyRuntimeScopes(event *protocol.RuntimeEvent) {
 	if len(event.Names) == 0 {
 		event.Names = nil
 	}
-	if len(event.ServerIDs) == 0 {
-		event.ServerIDs = nil
+	if len(event.Servers) == 0 {
+		event.Servers = nil
 	}
 	if len(event.ScheduleIDs) == 0 {
 		event.ScheduleIDs = nil
@@ -455,7 +455,7 @@ func cloneRuntimeEvent(event protocol.RuntimeEvent) protocol.RuntimeEvent {
 	event.Workspace = optional.Clone(event.Workspace)
 	event.Paths = slices.Clone(event.Paths)
 	event.Names = slices.Clone(event.Names)
-	event.ServerIDs = slices.Clone(event.ServerIDs)
+	event.Servers = slices.Clone(event.Servers)
 	event.ScheduleIDs = slices.Clone(event.ScheduleIDs)
 	event.SessionIDs = slices.Clone(event.SessionIDs)
 	event.RunIDs = slices.Clone(event.RunIDs)

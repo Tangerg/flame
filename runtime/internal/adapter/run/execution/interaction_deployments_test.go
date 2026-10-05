@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/json/jsontext"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"strings"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	agent "github.com/Tangerg/scope/agent"
@@ -16,7 +17,7 @@ import (
 )
 
 func TestInteractionToolDeploymentBindsItsFrozenManifest(t *testing.T) {
-	binding := func(t *testing.T, description, schema, fingerprint string, deferred bool) (agent.DeploymentRef, agent.DeploymentRef) {
+	binding := func(t *testing.T, description, schema string, fingerprint fingerprint.Digest, deferred bool) (agent.DeploymentRef, agent.DeploymentRef) {
 		t.Helper()
 		executable := &scopeDefinitionTool{definition: chat.ToolDefinition{
 			Name: "echo", Description: description, InputSchema: []byte(schema),
@@ -55,26 +56,26 @@ func TestInteractionToolDeploymentBindsItsFrozenManifest(t *testing.T) {
 	}
 
 	const schema = `{"type":"object","properties":{"revision":{"type":"integer","const":9007199254740992}}}`
-	fingerprint := strings.Repeat("a", 64)
-	root, child := binding(t, "Return a fixed response.", schema, fingerprint, false)
+	authority := testsupport.Digest("first authority")
+	root, child := binding(t, "Return a fixed response.", schema, authority, false)
 	for _, test := range []struct {
 		name        string
 		description string
 		schema      string
-		fingerprint string
+		fingerprint fingerprint.Digest
 		deferred    bool
 		changed     bool
 	}{
 		{name: "same manifest", description: "Return a fixed response.", schema: schema},
-		{name: "changed authority", description: "Return a fixed response.", schema: schema, fingerprint: strings.Repeat("b", 64), changed: true},
+		{name: "changed authority", description: "Return a fixed response.", schema: schema, fingerprint: testsupport.Digest("second authority"), changed: true},
 		{name: "changed contract", description: "Return the configured response.", schema: schema, changed: true},
 		{name: "deferred authority", description: "Return a fixed response.", schema: schema, deferred: true, changed: true},
 		{name: "reordered schema", description: "Return a fixed response.", schema: `{"properties":{"revision":{"const":9007199254740992,"type":"integer"}},"type":"object"}`},
 		{name: "changed exact schema number", description: "Return a fixed response.", schema: `{"type":"object","properties":{"revision":{"type":"integer","const":9007199254740993}}}`, changed: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			currentFingerprint := fingerprint
-			if test.fingerprint != "" {
+			currentFingerprint := authority
+			if !test.fingerprint.IsZero() {
 				currentFingerprint = test.fingerprint
 			}
 			candidateRoot, candidateChild := binding(t, test.description, test.schema, currentFingerprint, test.deferred)

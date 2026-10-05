@@ -14,35 +14,37 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
+	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	sdk "github.com/Tangerg/scope/skills"
 )
 
 const ManifestSchema = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"
 const MCPSchema = "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json"
 
-func parse(ctx context.Context, root *os.Root, digest string) (plugin.Release, error) {
-	release := plugin.Release{Digest: digest}
+func parse(ctx context.Context, root *os.Root, digest fingerprint.Digest) (plugin.Release, error) {
 	body, err := read(ctx, root, "plugin.json", MaxManifestBytes)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) || errors.Is(err, errResourceLimit) {
-			return release, errors.Join(plugin.ErrInvalid, err)
+			return plugin.Release{}, fmt.Errorf("%w: manifest: %w", plugin.ErrInvalid, err)
 		}
-		return release, err
+		return plugin.Release{}, fmt.Errorf("pluginpackage: read manifest: %w", err)
 	}
 	var envelope map[string]jsontext.Value
 	if err = json.Unmarshal(body, &envelope); err != nil {
-		return release, fmt.Errorf("%w: manifest object: %w", plugin.ErrInvalid, err)
+		return plugin.Release{}, fmt.Errorf("%w: manifest object: %w", plugin.ErrInvalid, err)
 	}
 	if envelope == nil {
-		return release, fmt.Errorf("%w: manifest must be a JSON object", plugin.ErrInvalid)
+		return plugin.Release{}, fmt.Errorf("%w: manifest must be a JSON object", plugin.ErrInvalid)
 	}
+	var unknown []plugin.Diagnostic
 	known := []string{"$schema", "name", "version", "description", "author", "homepage", "repository", "license", "keywords", "extensions"}
 	for _, key := range slices.Sorted(maps.Keys(envelope)) {
 		raw := envelope[key]
 		if !slices.Contains(known, key) {
-			release.Diagnostics = append(release.Diagnostics, plugin.Diagnostic{Component: "manifest", Code: "unknown_field:" + key})
+			unknown = append(unknown, plugin.Diagnostic{Component: plugin.Component{Kind: plugin.ComponentManifestField, Name: key}, Code: plugin.DiagnosticUnknownField})
 			continue
 		}
 		if key == "extensions" {
@@ -51,119 +53,156 @@ func parse(ctx context.Context, root *os.Root, digest string) (plugin.Release, e
 		if key == "keywords" {
 			var v []string
 			if err = decodeDeclaration(raw, &v); err != nil {
-				return release, fmt.Errorf("%w: manifest keywords: %w", plugin.ErrInvalid, err)
+				return plugin.Release{}, fmt.Errorf("%w: manifest keywords: %w", plugin.ErrInvalid, err)
 			}
 			if v == nil {
-				return release, fmt.Errorf("%w: invalid keywords", plugin.ErrInvalid)
+				return plugin.Release{}, fmt.Errorf("%w: invalid keywords", plugin.ErrInvalid)
 			}
 			continue
 		}
 		if key == "author" {
 			var v map[string]jsontext.Value
 			if err = json.Unmarshal(raw, &v); err != nil {
-				return release, fmt.Errorf("%w: manifest author: %w", plugin.ErrInvalid, err)
+				return plugin.Release{}, fmt.Errorf("%w: manifest author: %w", plugin.ErrInvalid, err)
 			}
 			if v == nil {
-				return release, fmt.Errorf("%w: invalid author", plugin.ErrInvalid)
+				return plugin.Release{}, fmt.Errorf("%w: invalid author", plugin.ErrInvalid)
 			}
 			for field, value := range v {
 				var text string
 				if !slices.Contains([]string{"name", "email", "url"}, field) || string(value) == "null" {
-					return release, fmt.Errorf("%w: invalid author field %q", plugin.ErrInvalid, field)
+					return plugin.Release{}, fmt.Errorf("%w: invalid author field %q", plugin.ErrInvalid, field)
 				}
 				if err := json.Unmarshal(value, &text); err != nil {
-					return release, fmt.Errorf("%w: author field %q: %w", plugin.ErrInvalid, field, err)
+					return plugin.Release{}, fmt.Errorf("%w: author field %q: %w", plugin.ErrInvalid, field, err)
 				}
 			}
 			continue
 		}
 		var text string
 		if string(raw) == "null" {
-			return release, fmt.Errorf("%w: invalid manifest field %q", plugin.ErrInvalid, key)
+			return plugin.Release{}, fmt.Errorf("%w: invalid manifest field %q", plugin.ErrInvalid, key)
 		}
 		if err := json.Unmarshal(raw, &text); err != nil {
-			return release, fmt.Errorf("%w: manifest field %q: %w", plugin.ErrInvalid, key, err)
+			return plugin.Release{}, fmt.Errorf("%w: manifest field %q: %w", plugin.ErrInvalid, key, err)
 		}
 	}
-	var schema string
+	var schema, name, version, description string
 	_ = json.Unmarshal(envelope["$schema"], &schema)
-	_ = json.Unmarshal(envelope["name"], &release.Name)
-	_ = json.Unmarshal(envelope["version"], &release.Version)
-	_ = json.Unmarshal(envelope["description"], &release.Description)
-	if schema != ManifestSchema || !plugin.ValidName(release.Name) {
-		return release, fmt.Errorf("%w: unsupported or invalid manifest", plugin.ErrInvalid)
+	_ = json.Unmarshal(envelope["name"], &name)
+	_ = json.Unmarshal(envelope["version"], &version)
+	_ = json.Unmarshal(envelope["description"], &description)
+	if schema != ManifestSchema {
+		return plugin.Release{}, fmt.Errorf("%w: unsupported manifest schema %q", plugin.ErrInvalid, schema)
 	}
-	if err = parseMCP(ctx, root, &release); err != nil {
-		return release, err
+	release, err := plugin.NewBuilder(name, version, description)
+	if err != nil {
+		return plugin.Release{}, fmt.Errorf("manifest: %w", err)
+	}
+	for _, diagnostic := range unknown {
+		release.Report(diagnostic)
+	}
+	if err = parseMCP(ctx, root, release); err != nil {
+		return plugin.Release{}, err
 	}
 	if raw, found := envelope["extensions"]; found {
-		var namespaces map[string]jsontext.Value
-		if err = json.Unmarshal(raw, &namespaces); err != nil || namespaces == nil {
-			release.Diagnostics = append(release.Diagnostics, plugin.Diagnostic{Component: "manifest", Code: "ignored_extensions"})
-		} else if raw, found := namespaces[plugin.Namespace]; found {
-			var wire wireExtension
-			err = json.Unmarshal(raw, &wire, json.RejectUnknownMembers(true))
-			if err != nil || wire.APIVersion != plugin.APIVersion {
-				release.Diagnostics = append(release.Diagnostics, plugin.Diagnostic{Component: "extension", Code: "invalid_extension"})
-			} else {
-				admitContributions(wire.Requests, plugin.MaxRequests, &release, "request", func(r *plugin.Release, w wireRequestGrant) { r.Requests = append(r.Requests, w.domain()) })
-				admitContributions(wire.Inputs, plugin.MaxInputs, &release, "input", func(r *plugin.Release, w wireInput) { r.Inputs = append(r.Inputs, w.domain()) })
-				var contributes map[string]jsontext.Value
-				if len(wire.Contributes) > 0 {
-					if err := json.Unmarshal(wire.Contributes, &contributes); err != nil || contributes == nil {
-						release.Diagnostics = append(release.Diagnostics, plugin.Diagnostic{Component: "contributes", Code: "invalid_declaration"})
-					}
-				}
-				for _, component := range slices.Sorted(maps.Keys(contributes)) {
-					raw := contributes[component]
-					if component != "themes" {
-						release.Diagnostics = append(release.Diagnostics, plugin.Diagnostic{Component: component, Code: "unsupported_contribution"})
-						continue
-					}
-					admitContributions(raw, plugin.MaxThemes, &release, "theme", func(r *plugin.Release, w wireTheme) { r.Themes = append(r.Themes, w.domain()) })
-				}
-			}
+		parseExtensions(raw, release)
+	}
+	if err = parseSkills(ctx, root, release); err != nil {
+		return plugin.Release{}, err
+	}
+	return release.Release(digest)
+}
+
+func parseExtensions(raw jsontext.Value, release *plugin.Builder) {
+	var namespaces map[string]jsontext.Value
+	if err := json.Unmarshal(raw, &namespaces); err != nil || namespaces == nil {
+		report(release, plugin.Component{Kind: plugin.ComponentManifestField, Name: "extensions"}, plugin.DiagnosticInvalidDeclaration)
+		return
+	}
+	raw, found := namespaces[plugin.Namespace]
+	if !found {
+		return
+	}
+	var members map[string]jsontext.Value
+	var apiVersion int
+	if err := json.Unmarshal(raw, &members); err != nil || members == nil || json.Unmarshal(members["apiVersion"], &apiVersion) != nil || apiVersion != plugin.APIVersion {
+		report(release, plugin.Component{Kind: plugin.ComponentFlameExtension}, plugin.DiagnosticInvalidDeclaration)
+		return
+	}
+	for _, field := range slices.Sorted(maps.Keys(members)) {
+		if !slices.Contains(extensionFields, field) {
+			report(release, plugin.Component{Kind: plugin.ComponentExtensionField, Name: field}, plugin.DiagnosticUnknownField)
 		}
 	}
-	if err = parseSkills(ctx, root, &release); err != nil {
-		return release, err
+	admitContributions(members["inputs"], release, plugin.Component{Kind: plugin.ComponentExtensionField, Name: "inputs"}, func(w wireInput) error { return release.AdmitInput(w.domain()) })
+	var contributes map[string]jsontext.Value
+	if raw := members["contributes"]; len(raw) > 0 {
+		if err := json.Unmarshal(raw, &contributes); err != nil || contributes == nil {
+			report(release, plugin.Component{Kind: plugin.ComponentExtensionField, Name: "contributes"}, plugin.DiagnosticInvalidDeclaration)
+		}
 	}
-	return release, nil
+	for _, component := range slices.Sorted(maps.Keys(contributes)) {
+		if component != "themes" {
+			report(release, plugin.Component{Kind: plugin.ComponentContribution, Name: component}, plugin.DiagnosticUnsupportedContribution)
+			continue
+		}
+		admitContributions(contributes[component], release, plugin.Component{Kind: plugin.ComponentContribution, Name: component}, func(w wireTheme) error {
+			theme, err := w.domain()
+			if err != nil {
+				return err
+			}
+			return release.AdmitTheme(theme)
+		})
+	}
 }
-func admitContributions[T any](raw jsontext.Value, limit int, release *plugin.Release, component string, appendValue func(*plugin.Release, T)) {
+
+func report(release *plugin.Builder, component plugin.Component, code plugin.DiagnosticCode) {
+	release.Report(plugin.Diagnostic{Component: component, Code: code})
+}
+
+// admitContributions isolates each invalid member of one component. A member
+// that decodes is validated once, against the members admitted before it.
+func admitContributions[T any](raw jsontext.Value, release *plugin.Builder, component plugin.Component, admit func(T) error) {
 	if len(raw) == 0 {
 		return
 	}
 	var values []jsontext.Value
 	if err := json.Unmarshal(raw, &values); err != nil || values == nil {
-		release.Diagnostics = append(release.Diagnostics, plugin.Diagnostic{Component: component, Code: "invalid_declaration"})
-		return
-	}
-	if len(values) > limit {
-		release.Diagnostics = append(release.Diagnostics, plugin.Diagnostic{Component: component, Code: "component_limit"})
+		report(release, component, plugin.DiagnosticInvalidDeclaration)
 		return
 	}
 	for _, raw := range values {
-		admitContribution(raw, release, component, appendValue)
+		var wire T
+		if err := decodeDeclaration(raw, &wire); err != nil {
+			report(release, component, plugin.DiagnosticInvalidDeclaration)
+			continue
+		}
+		code, admitted := admission(admit(wire))
+		if admitted {
+			continue
+		}
+		report(release, component, code)
+		if code == plugin.DiagnosticComponentLimit {
+			return
+		}
 	}
 }
 
-func admitContribution[T any](raw jsontext.Value, release *plugin.Release, component string, appendValue func(*plugin.Release, T)) {
-	var wire T
-	if err := decodeDeclaration(raw, &wire); err != nil {
-		release.Diagnostics = append(release.Diagnostics, plugin.Diagnostic{Component: component, Code: "invalid_declaration"})
-		return
+// admission names the diagnostic for a builder's refusal. Capacity belongs to
+// the builder alone: the first member it refuses for capacity ends the
+// component, so the remaining members are reported once rather than each.
+func admission(err error) (plugin.DiagnosticCode, bool) {
+	if err == nil {
+		return "", true
 	}
-	candidate := release.Clone()
-	appendValue(&candidate, wire)
-	if err := candidate.Validate(); err != nil {
-		release.Diagnostics = append(release.Diagnostics, plugin.Diagnostic{Component: component, Code: "invalid_dependencies"})
-		return
+	if refusal, ok := errors.AsType[*plugin.Refusal](err); ok {
+		return refusal.Code, false
 	}
-	*release = candidate
+	return plugin.DiagnosticInvalidDeclaration, false
 }
 
-func parseMCP(ctx context.Context, root *os.Root, release *plugin.Release) error {
+func parseMCP(ctx context.Context, root *os.Root, release *plugin.Builder) error {
 	body, err := read(ctx, root, "mcp.json", MaxManifestBytes)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil
@@ -172,99 +211,127 @@ func parseMCP(ctx context.Context, root *os.Root, release *plugin.Release) error
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
-		release.Diagnostics = append(release.Diagnostics, plugin.Diagnostic{Component: "mcp", Code: "unavailable_component"})
+		report(release, plugin.Component{Kind: plugin.ComponentMCP}, plugin.DiagnosticUnavailableComponent)
 		return nil
 	}
 	var envelope struct {
 		Schema  string                    `json:"$schema"`
 		Servers map[string]jsontext.Value `json:"mcpServers"`
 	}
-	if err = json.Unmarshal(body, &envelope, json.RejectUnknownMembers(true)); err != nil || envelope.Schema != MCPSchema || envelope.Servers == nil || len(envelope.Servers) > plugin.MaxServers {
-		release.Diagnostics = append(release.Diagnostics, plugin.Diagnostic{Component: "mcp", Code: "invalid_envelope"})
+	decodeErr := json.Unmarshal(body, &envelope, json.RejectUnknownMembers(true))
+	supported := decodeErr == nil && envelope.Schema == MCPSchema && envelope.Servers != nil
+	if !supported {
+		report(release, plugin.Component{Kind: plugin.ComponentMCP}, plugin.DiagnosticInvalidDeclaration)
 		return nil
 	}
-	names := make([]string, 0, len(envelope.Servers))
-	for name := range envelope.Servers {
-		names = append(names, name)
-	}
-	slices.Sort(names)
-	for _, name := range names {
-		var wire struct {
-			Type    string            `json:"type"`
-			Command string            `json:"command,omitempty"`
-			Args    []string          `json:"args,omitempty"`
-			Env     map[string]string `json:"env,omitempty"`
-			CWD     string            `json:"cwd,omitempty"`
-			URL     string            `json:"url,omitempty"`
-			Headers map[string]string `json:"headers,omitempty"`
+	for _, name := range slices.Sorted(maps.Keys(envelope.Servers)) {
+		server, err := portableServer(name, envelope.Servers[name])
+		if err == nil {
+			err = inspectServerFiles(root, server)
 		}
-		err = decodeDeclaration(envelope.Servers[name], &wire)
-		var members map[string]jsontext.Value
-		if decodeErr := json.Unmarshal(envelope.Servers[name], &members); decodeErr != nil || members == nil {
-			err = plugin.ErrInvalid
+		if err == nil {
+			err = release.AdmitServer(server)
 		}
-		allowed := []string{"type", "command", "args", "env", "cwd"}
-		if wire.Type == string(plugin.StreamableHTTP) {
-			allowed = []string{"type", "url", "headers"}
-		}
-		for key := range members {
-			if !slices.Contains(allowed, key) {
-				err = plugin.ErrInvalid
-			}
-		}
-		server := plugin.Server{Name: name, Type: plugin.Transport(wire.Type), Command: wire.Command, Args: wire.Args, Env: wire.Env, CWD: wire.CWD, URL: wire.URL, Headers: wire.Headers}
-		if err != nil || validateServer(root, server) != nil {
-			release.Diagnostics = append(release.Diagnostics, plugin.Diagnostic{Component: "mcp:" + name, Code: "invalid_server"})
-			continue
-		}
-		release.Servers = append(release.Servers, server)
-	}
-	return nil
-}
-func validateServer(root *os.Root, s plugin.Server) error {
-	if err := s.Validate(); err != nil {
-		return err
-	}
-	if strings.HasPrefix(s.Command, "./") {
-		f, err := root.Open(s.Command[2:])
-		if err != nil {
-			return err
-		}
-		info, err := f.Stat()
-		err = errors.Join(err, f.Close())
-		if err != nil {
-			return err
-		}
-		if !info.Mode().IsRegular() {
-			return plugin.ErrInvalid
-		}
-	}
-	if s.CWD != "" && !strings.HasPrefix(s.CWD, "${PLUGIN_DATA}") {
-		relative := strings.TrimPrefix(strings.TrimPrefix(s.CWD, "${PLUGIN_ROOT}"), "./")
-		relative = strings.TrimPrefix(relative, "/")
-		if relative == "" {
-			relative = "."
-		}
-		info, err := root.Stat(relative)
-		if err != nil || !info.IsDir() {
-			return errors.Join(plugin.ErrInvalid, err)
+		code, admitted := admission(err)
+		switch {
+		case admitted:
+		case code == plugin.DiagnosticComponentLimit:
+			report(release, plugin.Component{Kind: plugin.ComponentMCP}, code)
+			return nil
+		default:
+			report(release, plugin.Component{Kind: plugin.ComponentMCPServer, Name: name}, code)
 		}
 	}
 	return nil
 }
 
-func parseSkills(ctx context.Context, root *os.Root, release *plugin.Release) error {
+// portableServer is the only translation from the portable mcp.json spelling
+// into the MCP registry vocabulary the release declares.
+func portableServer(name string, raw jsontext.Value) (plugin.Server, error) {
+	var wire struct {
+		Type    string            `json:"type"`
+		Command string            `json:"command,omitempty"`
+		Args    []string          `json:"args,omitempty"`
+		Env     map[string]string `json:"env,omitempty"`
+		CWD     string            `json:"cwd,omitempty"`
+		URL     string            `json:"url,omitempty"`
+		Headers map[string]string `json:"headers,omitempty"`
+	}
+	if err := decodeDeclaration(raw, &wire); err != nil {
+		return plugin.Server{}, fmt.Errorf("%w: server declaration: %w", plugin.ErrInvalid, err)
+	}
+	var members map[string]jsontext.Value
+	if err := json.Unmarshal(raw, &members); err != nil || members == nil {
+		return plugin.Server{}, fmt.Errorf("%w: server declaration must be an object", plugin.ErrInvalid)
+	}
+	local, err := mcpserver.ParseServerName(name)
+	if err != nil {
+		return plugin.Server{}, fmt.Errorf("%w: server name: %w", plugin.ErrInvalid, err)
+	}
+	server := plugin.Server{Name: local}
+	var allowed []string
+	switch wire.Type {
+	case "stdio":
+		server.Transport = mcpserver.TransportStdio
+		server.Command, server.Args, server.Env, server.Dir = wire.Command, wire.Args, wire.Env, wire.CWD
+		allowed = []string{"type", "command", "args", "env", "cwd"}
+	case "streamable-http":
+		server.Transport = mcpserver.TransportStreamableHTTP
+		server.URL, server.Headers = wire.URL, wire.Headers
+		allowed = []string{"type", "url", "headers"}
+	default:
+		return plugin.Server{}, fmt.Errorf("%w: package server transport %q", plugin.ErrInvalid, wire.Type)
+	}
+	for key := range members {
+		if !slices.Contains(allowed, key) {
+			return plugin.Server{}, fmt.Errorf("%w: server member %q does not apply to %s", plugin.ErrInvalid, key, wire.Type)
+		}
+	}
+	return server, nil
+}
+
+// inspectServerFiles requires a package-relative command and working
+// directory to exist in the exact bytes being admitted.
+func inspectServerFiles(root *os.Root, s plugin.Server) error {
+	if strings.HasPrefix(s.Command, "./") {
+		f, err := root.Open(s.Command[2:])
+		if err != nil {
+			return fmt.Errorf("pluginpackage: open server command: %w", err)
+		}
+		info, err := f.Stat()
+		err = errors.Join(err, f.Close())
+		if err != nil {
+			return fmt.Errorf("pluginpackage: inspect server command: %w", err)
+		}
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("%w: server command is not a regular file", plugin.ErrInvalid)
+		}
+	}
+	if s.Dir != "" && !strings.HasPrefix(s.Dir, "${PLUGIN_DATA}") {
+		relative := strings.TrimPrefix(strings.TrimPrefix(s.Dir, "${PLUGIN_ROOT}"), "./")
+		relative = strings.TrimPrefix(relative, "/")
+		if relative == "" {
+			relative = "."
+		}
+		info, err := root.Stat(relative)
+		if err != nil {
+			return fmt.Errorf("%w: server working directory: %w", plugin.ErrInvalid, err)
+		}
+		if !info.IsDir() {
+			return fmt.Errorf("%w: server working directory is not a directory", plugin.ErrInvalid)
+		}
+	}
+	return nil
+}
+
+func parseSkills(ctx context.Context, root *os.Root, release *plugin.Builder) error {
 	dir, err := fs.ReadDir(root.FS(), "skills")
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil
 	}
 	if err != nil {
-		release.Diagnostics = append(release.Diagnostics, plugin.Diagnostic{Component: "skills", Code: "invalid_component"})
+		report(release, plugin.Component{Kind: plugin.ComponentSkills}, plugin.DiagnosticUnavailableComponent)
 		return ctx.Err()
-	}
-	if len(dir) > domainskills.MaxSkillsPerSource {
-		release.Diagnostics = append(release.Diagnostics, plugin.Diagnostic{Component: "skills", Code: "source_limit"})
-		return nil
 	}
 	for _, entry := range dir {
 		if !entry.IsDir() {
@@ -278,7 +345,7 @@ func parseSkills(ctx context.Context, root *os.Root, release *plugin.Release) er
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}
-			release.Diagnostics = append(release.Diagnostics, plugin.Diagnostic{Component: "skill:" + entry.Name(), Code: "invalid_skill"})
+			report(release, plugin.Component{Kind: plugin.ComponentSkill, Name: entry.Name()}, plugin.DiagnosticUnavailableComponent)
 			continue
 		}
 		skill, err := promptsource.LoadSkillDocument(ctx, entry.Name(), content)
@@ -286,10 +353,18 @@ func parseSkills(ctx context.Context, root *os.Root, release *plugin.Release) er
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}
-			release.Diagnostics = append(release.Diagnostics, plugin.Diagnostic{Component: "skill:" + entry.Name(), Code: "invalid_skill"})
+			report(release, plugin.Component{Kind: plugin.ComponentSkill, Name: entry.Name()}, plugin.DiagnosticInvalidDeclaration)
 			continue
 		}
-		release.Skills = append(release.Skills, plugin.Skill{Name: skill.Name, Description: skill.Description})
+		code, admitted := admission(release.AdmitSkill(plugin.Skill{Name: skill.Name, Description: skill.Description}))
+		switch {
+		case admitted:
+		case code == plugin.DiagnosticComponentLimit:
+			report(release, plugin.Component{Kind: plugin.ComponentSkills}, code)
+			return nil
+		default:
+			report(release, plugin.Component{Kind: plugin.ComponentSkill, Name: entry.Name()}, code)
+		}
 	}
 	return nil
 }

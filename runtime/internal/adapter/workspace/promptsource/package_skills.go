@@ -4,27 +4,25 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	domainskills "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 	"io/fs"
 	"slices"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	domainskills "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	sdk "github.com/Tangerg/scope/skills"
 )
 
-type InstallationDependency struct {
-	InstallationID string
-	Digest         string
-}
 type PackageSkillBundle struct {
 	Root       string
-	Dependency InstallationDependency
+	Dependency plugin.Dependency
 	Names      []string
 }
 type PackageSkills interface {
 	SkillBundles(context.Context) ([]PackageSkillBundle, error)
-	ReadSkillResource(context.Context, InstallationDependency, string, string) ([]byte, error)
+	ReadSkillResource(context.Context, plugin.Dependency, string, string) ([]byte, error)
 }
 type packageSkillSource struct {
 	bundle    PackageSkillBundle
@@ -93,18 +91,17 @@ func (s *runtimeSkillOverlay) OpenResource(ctx context.Context, name, resource s
 	}
 	return source.OpenResource(ctx, name, resource)
 }
-func (l runtimeSkillLayers) dependencies(ctx context.Context) ([]InstallationDependency, error) {
+func (l runtimeSkillLayers) dependencies(ctx context.Context) ([]plugin.Dependency, error) {
 	catalog, err := l.list(ctx)
 	if err != nil {
 		return nil, err
 	}
-	var result []InstallationDependency
+	var result []plugin.Dependency
 	for _, skill := range catalog.Skills {
-		id, digest, found := skill.Source.Installation()
+		dependency, found := skill.Source.Installation()
 		if !found {
 			continue
 		}
-		dependency := InstallationDependency{InstallationID: id, Digest: digest}
 		if !slices.Contains(result, dependency) {
 			result = append(result, dependency)
 		}

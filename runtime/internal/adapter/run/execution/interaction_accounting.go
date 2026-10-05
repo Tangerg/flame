@@ -262,30 +262,8 @@ func (i *interactionSession) interactionCheckpointPayload(
 	slices.SortFunc(metadata, func(left, right toolResultMetadata) int {
 		return strings.Compare(left.Start.CallID, right.Start.CallID)
 	})
-	deployments := i.state.deployments
 	i.state.mu.Unlock()
 	i.accounting.mu.Unlock()
-	bindings := []toolConfigurationIdentity{}
-	installations := []installationDependencyWire{}
-	if deployments != nil {
-		for _, manifest := range deployments.manifests {
-			for _, dependency := range installationDependencies(manifest.Installations) {
-				if !slices.Contains(installations, dependency) {
-					installations = append(installations, dependency)
-				}
-			}
-			visible, err := toolIdentities(manifest.Visible)
-			if err != nil {
-				return nil, err
-			}
-			deferred, err := toolIdentities(manifest.Deferred)
-			if err != nil {
-				return nil, err
-			}
-			bindings = append(bindings, visible...)
-			bindings = append(bindings, deferred...)
-		}
-	}
 
 	instructions, err := interactionInstructionContext(i.start.WorkingContext)
 	if err != nil {
@@ -301,7 +279,6 @@ func (i *interactionSession) interactionCheckpointPayload(
 		pendingContinuation,
 		metadata,
 		executionOptions(i.start.ModelSelection, i.start.Options),
-		bindings, installations,
 	)
 }
 

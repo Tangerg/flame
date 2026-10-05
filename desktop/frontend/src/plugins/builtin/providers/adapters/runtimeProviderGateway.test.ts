@@ -16,6 +16,7 @@ import {
   type ProviderConfigurationSnapshot,
 } from "../application/providerModels";
 import { installProviderGateway } from "./runtimeProviderGateway";
+import { ProviderMutationOwner } from "../application/providerMutationOwner";
 import { rejected } from "@/test/rejected";
 
 let uninstall: (() => void) | undefined;
@@ -29,6 +30,42 @@ afterEach(() => {
 });
 
 describe("runtimeProviderGateway", () => {
+  it.each([
+    ["reachable", { ok: true }],
+    ["notConfigured", { ok: false, error: "Finish configuring the provider first." }],
+    [
+      "invalidCredentials",
+      { ok: false, error: "The provider rejected the API key — check it in provider settings." },
+    ],
+    [
+      "timedOut",
+      {
+        ok: false,
+        error: "The request to the model provider timed out — check your connection and retry.",
+      },
+    ],
+    [
+      "failed",
+      { ok: false, error: "The provider couldn't be reached, or it rejected the test request." },
+    ],
+  ])("renders the closed %s test outcome locally", async (outcome, expected) => {
+    const test = vi.fn().mockResolvedValue({ outcome });
+    uninstall = installProviderGateway(
+      () => ({ providers: { test } }) as unknown as FlameClient,
+    ).dispose;
+    await expect(ProviderMutationOwner.current().testProvider("openai")).resolves.toEqual(expected);
+  });
+
+  it("rejects a test outcome outside the closed set as a contract violation", async () => {
+    const test = vi.fn().mockResolvedValue({ outcome: "provider_test_failed" });
+    uninstall = installProviderGateway(
+      () => ({ providers: { test } }) as unknown as FlameClient,
+    ).dispose;
+    await expect(ProviderMutationOwner.current().testProvider("openai")).rejects.toThrow(
+      "runtime contract violation",
+    );
+  });
+
   it("maps the authoritative provider returned by Runtime", async () => {
     const update = vi.fn().mockResolvedValue({
       id: "openai-compatible",

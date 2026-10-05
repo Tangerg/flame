@@ -1,4 +1,4 @@
-import type { ToolRef } from "@flame/runtime-contract/wire";
+import { toolSourceLabel } from "@/lib/toolSource";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import { emptyListIfUngated } from "@/lib/rpcErrors";
 import type { Contributor, DataProviderSpec } from "@/plugins/sdk";
@@ -40,7 +40,7 @@ export function registerMCPDataProviders(ctx: Contributor, runtimeClient: () => 
         name: tool.name,
         description: tool.description ?? "",
         modelName: tool.modelName,
-        nameConflicts: tool.nameConflicts.map(toolSource),
+        nameConflicts: tool.nameConflicts.map(toolSourceLabel),
       })),
   });
   contribute({
@@ -48,15 +48,4 @@ export function registerMCPDataProviders(ctx: Contributor, runtimeClient: () => 
     fetcher: async (params, signal) =>
       (await runtimeClient().mcp.toolExposure(requiredQuery(params).server, signal)).disabledTools,
   });
-}
-
-function toolSource(ref: ToolRef): string {
-  switch (ref.type) {
-    case "builtIn":
-      return `builtIn/${ref.name}`;
-    case "mcp":
-      return `mcp/${ref.server}/${ref.name}`;
-    case "a2a":
-      return `a2a/${ref.endpoint}`;
-  }
 }

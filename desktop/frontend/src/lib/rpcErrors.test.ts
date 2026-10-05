@@ -2,13 +2,7 @@ import { describe, expect, it } from "vitest";
 import { validateWire } from "@flame/runtime-contract/validate";
 import { RpcError, RpcTransportError, RPC_METHOD_NOT_FOUND } from "@flame/runtime-contract/client";
 import { en } from "./i18n/locales/en";
-import {
-  MAPPED_TYPES,
-  describeErrorType,
-  describeProblem,
-  isUnsupportedMethod,
-  rpcErrorText,
-} from "./rpcErrors";
+import { MAPPED_TYPES, describeErrorType, isUnsupportedMethod, rpcErrorText } from "./rpcErrors";
 
 function isWireProblemType(type: string): boolean {
   return !validateWire("ProblemData", { type }).some(
@@ -66,15 +60,6 @@ describe("the protocol error copy table", () => {
     expect(describeErrorType(undefined)).toBeUndefined();
     expect(describeErrorType("replay_unavailable")).toBeUndefined();
     expect(describeErrorType("not_a_symbol")).toBeUndefined();
-  });
-
-  it("prefers a problem's own detail over the table, and the symbol over nothing", () => {
-    expect(describeProblem({ type: "session_busy", detail: "this occurrence" })).toBe(
-      "this occurrence",
-    );
-    expect(describeProblem({ type: "session_busy" })).toBe(describeErrorType("session_busy"));
-    expect(describeProblem({ type: "replay_unavailable" })).toBe("replay_unavailable");
-    expect(describeProblem(undefined)).toBeUndefined();
   });
 
   it("does not confuse an HTTP routing failure with an unsupported RPC method", () => {

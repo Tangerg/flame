@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"maps"
-	"regexp"
 	"slices"
 	"strings"
 	"unicode/utf8"
@@ -27,255 +26,343 @@ var (
 	ErrUnavailable = errors.New("plugin: release is unavailable")
 )
 
-type Diagnostic struct {
-	Component string
-	Code      string
-}
-type Server struct {
-	Name    string
-	Type    Transport
-	Command string
-	Args    []string
-	Env     map[string]string
-	CWD     string
-	URL     string
-	Headers map[string]string
-}
-type Input struct {
-	ID       string
-	Secret   bool
-	Required bool
-	Server   string
-	Target   InputTarget
-	Key      string
-}
-type RequestGrant struct {
-	Capability Capability
-	Targets    []string
+// State is the closed trust state of an installation. Approval always names
+// the selected release: selecting other bytes returns to [Unapproved], so
+// changed code is never run without a renewed review.
+type State string
+
+const (
+	Unapproved State = "unapproved"
+	Approved   State = "approved"
+	Enabled    State = "enabled"
+)
+
+func (s State) validate() error {
+	switch s {
+	case Unapproved, Approved, Enabled:
+		return nil
+	default:
+		return fmt.Errorf("%w: installation state %q", ErrInvalid, s)
+	}
 }
 
-type Theme struct {
-	ID     string
-	Title  string
-	Scheme ThemeScheme
-	Colors map[string]string
-}
-type Skill struct {
-	Name        string
-	Description string
-}
-type Release struct {
-	Requests    []RequestGrant
-	Digest      string
-	Name        string
-	Version     string
-	Description string
-	Servers     []Server
-	Inputs      []Input
-	Themes      []Theme
-	Skills      []Skill
-	Diagnostics []Diagnostic
-}
-
+// Record is the persisted projection of an installation. It names releases
+// by digest only: the admitted release catalog alone owns their content.
 type Record struct {
-	Grants          []RequestGrant
-	ID              string
+	ID              resourceid.InstallationID
 	Source          string
-	Selected        Release
-	Staged          *Release
-	Enabled         bool
-	ApprovedDigest  string
+	Selected        fingerprint.Digest
+	Staged          *fingerprint.Digest
+	State           State
 	Values          map[string]string
-	DisabledServers []string
+	DisabledServers []mcpserver.ServerName
 	DisabledSkills  []string
 }
 
+// ValueChange is one closed change to a configured input: set it to a value,
+// or clear it. The zero value is neither and is refused.
+type ValueChange struct {
+	kind  valueChangeKind
+	value string
+}
+
+type valueChangeKind uint8
+
+const (
+	setValue valueChangeKind = iota + 1
+	clearValue
+)
+
+func SetValue(value string) ValueChange { return ValueChange{kind: setValue, value: value} }
+func ClearValue() ValueChange           { return ValueChange{kind: clearValue} }
+
+// ComponentChange enables or disables one declared component.
+type ComponentChange string
+
+const (
+	EnableComponent  ComponentChange = "enable"
+	DisableComponent ComponentChange = "disable"
+)
+
+// Configuration is a delta: members it does not name keep their current
+// value or enablement, so a client never has to echo state it cannot read,
+// such as a configured secret.
 type Configuration struct {
-	Digest          string
-	Values          map[string]*string
-	DisabledServers []string
-	DisabledSkills  []string
+	Values  map[string]ValueChange
+	Servers map[mcpserver.ServerName]ComponentChange
+	Skills  map[string]ComponentChange
 }
 
-// Installation alone advances selection, trust, and configuration. Persistence
-// records and connection descriptors are snapshots, never independent writers.
+// Installation alone advances selection, trust, and configuration. A
+// transition that depends on release content is handed the release read from
+// the admitted catalog and refuses any release other than the one it names.
+// Facts checked against a release when written stay valid, because a release
+// never changes under its digest; Restore therefore checks only the facts
+// that do not depend on release content.
 type Installation struct{ record Record }
 
-func New(id, source string, release Release) (*Installation, error) {
-	return Restore(Record{ID: id, Source: source, Selected: release, Values: map[string]string{}})
+func New(id resourceid.InstallationID, source string, release Release) (*Installation, error) {
+	return Restore(Record{ID: id, Source: source, Selected: release.Digest(), State: Unapproved, Values: map[string]string{}})
 }
+
 func Restore(r Record) (*Installation, error) {
-	_, err := resourceid.ParseInstallation(r.ID)
-	if err != nil {
+	if err := r.ID.Validate(); err != nil {
 		return nil, fmt.Errorf("%w: installation identity: %w", ErrInvalid, err)
 	}
 	if r.Source == "" || len(r.Source) > 4096 || !utf8.ValidString(r.Source) {
 		return nil, fmt.Errorf("%w: installation source", ErrInvalid)
 	}
 	if err := r.Selected.Validate(); err != nil {
-		return nil, fmt.Errorf("selected release: %w", err)
+		return nil, fmt.Errorf("%w: selected release: %w", ErrInvalid, err)
 	}
 	if r.Staged != nil {
 		if err := r.Staged.Validate(); err != nil {
-			return nil, fmt.Errorf("staged release: %w", err)
+			return nil, fmt.Errorf("%w: staged release: %w", ErrInvalid, err)
 		}
-		if r.Staged.Name != r.Selected.Name {
-			return nil, fmt.Errorf("%w: staged package identity", ErrInvalid)
-		}
-		if r.Staged.Digest == r.Selected.Digest {
+		if *r.Staged == r.Selected {
 			return nil, fmt.Errorf("%w: staged release is already selected", ErrStale)
 		}
 	}
-	if r.ApprovedDigest != "" && r.ApprovedDigest != r.Selected.Digest {
-		return nil, ErrStale
-	}
-	if r.Enabled && r.ApprovedDigest != r.Selected.Digest {
-		return nil, ErrUnapproved
-	}
-	i := &Installation{record: clone(r)}
-	if err := validateGrants(r.Selected.Requests, r.Grants); err != nil {
-		return nil, fmt.Errorf("installation grants: %w", err)
-	}
-	if r.ApprovedDigest == "" && len(r.Grants) > 0 {
-		return nil, fmt.Errorf("%w: unapproved installation has grants", ErrInvalid)
-	}
-	i.record.Grants = canonicalGrants(r.Grants)
-	if err := i.Configure(Configuration{Digest: r.Selected.Digest, DisabledServers: r.DisabledServers, DisabledSkills: r.DisabledSkills}); err != nil {
+	if err := r.State.validate(); err != nil {
 		return nil, err
 	}
+	for key, value := range r.Values {
+		if err := validateValueText(key, value); err != nil {
+			return nil, err
+		}
+	}
+	for _, name := range r.DisabledServers {
+		if err := name.Validate(); err != nil {
+			return nil, fmt.Errorf("%w: disabled server: %w", ErrInvalid, err)
+		}
+	}
+	if duplicateNames(r.DisabledServers) || duplicateNames(r.DisabledSkills) {
+		return nil, fmt.Errorf("%w: duplicate disabled component", ErrInvalid)
+	}
+	i := &Installation{record: clone(r)}
+	if i.record.Values == nil {
+		i.record.Values = map[string]string{}
+	}
+	sortServers(i.record.DisabledServers)
+	slices.Sort(i.record.DisabledSkills)
 	return i, nil
 }
 
-var digestExpression = regexp.MustCompile(DigestPattern)
-
-func ValidDigest(s string) bool { return digestExpression.MatchString(s) }
 func clone(r Record) Record {
-	r.Selected = r.Selected.Clone()
 	if r.Staged != nil {
-		v := r.Staged.Clone()
-		r.Staged = &v
+		staged := *r.Staged
+		r.Staged = &staged
 	}
 	r.Values = maps.Clone(r.Values)
 	r.DisabledServers = slices.Clone(r.DisabledServers)
 	r.DisabledSkills = slices.Clone(r.DisabledSkills)
-	r.Grants = slices.Clone(r.Grants)
-	for index := range r.Grants {
-		r.Grants[index].Targets = slices.Clone(r.Grants[index].Targets)
-	}
 	return r
 }
 
-func (i *Installation) Snapshot() Record { return clone(i.record) }
-func (i *Installation) Stage(r Release) error {
-	if err := r.Validate(); err != nil {
-		return fmt.Errorf("staged release: %w", err)
+func (i *Installation) Snapshot() Record              { return clone(i.record) }
+func (i *Installation) ID() resourceid.InstallationID { return i.record.ID }
+func (i *Installation) Selected() fingerprint.Digest  { return i.record.Selected }
+func (i *Installation) State() State                  { return i.record.State }
+func (i *Installation) Staged() (fingerprint.Digest, bool) {
+	if i.record.Staged == nil {
+		return fingerprint.Digest{}, false
 	}
-	if r.Name != i.record.Selected.Name {
-		return fmt.Errorf("%w: staged package identity", ErrInvalid)
+	return *i.record.Staged, true
+}
+
+func (i *Installation) bound(release Release) error {
+	if release.Digest() != i.record.Selected {
+		return fmt.Errorf("%w: release %s is not selected %s", ErrStale, release.Digest(), i.record.Selected)
 	}
-	if r.Digest == i.record.Selected.Digest {
-		return fmt.Errorf("%w: release is already selected", ErrStale)
-	}
-	rCopy := clone(Record{Selected: r}).Selected
-	i.record.Staged = &rCopy
 	return nil
 }
-func (i *Installation) Select(digest string) error {
-	if i.record.Staged == nil || i.record.Staged.Digest != digest {
-		return ErrStale
-	}
-	i.record.Selected = *i.record.Staged
-	i.record.Staged = nil
-	i.record.Enabled = false
-	i.record.ApprovedDigest = ""
-	i.record.Grants = nil
-	i.record.Values = map[string]string{}
-	i.record.DisabledServers = nil
-	i.record.DisabledSkills = nil
-	return nil
-}
-func (i *Installation) Approve(digest string, grants []RequestGrant) error {
-	if digest != i.record.Selected.Digest {
-		return ErrStale
-	}
-	if err := validateGrants(i.record.Selected.Requests, grants); err != nil {
-		return fmt.Errorf("approval grants: %w", err)
-	}
-	i.record.Grants = canonicalGrants(grants)
-	i.record.ApprovedDigest = digest
-	return nil
-}
-func (i *Installation) Enable(enabled bool) error {
-	if enabled {
-		if i.record.ApprovedDigest != i.record.Selected.Digest {
-			return ErrUnapproved
-		}
-		if err := i.requiredValues(i.record.Values, i.record.DisabledServers); err != nil {
-			return err
-		}
-	}
-	i.record.Enabled = enabled
-	return nil
-}
-func (i *Installation) Revoke() {
-	i.record.Enabled = false
-	i.record.ApprovedDigest = ""
-	i.record.Grants = nil
-}
-func (i *Installation) Configure(configuration Configuration) error {
-	if configuration.Digest != i.record.Selected.Digest {
-		return ErrStale
-	}
-	values := maps.Clone(i.record.Values)
-	if values == nil {
-		values = map[string]string{}
-	}
-	for key, value := range configuration.Values {
-		if !slices.ContainsFunc(i.record.Selected.Inputs, func(input Input) bool { return input.ID == key }) {
-			return fmt.Errorf("%w: unknown input %q", ErrInvalid, key)
-		}
-		if value == nil {
-			delete(values, key)
-		} else {
-			values[key] = *value
-		}
-	}
-	if err := i.validateValues(values); err != nil {
+
+// Stage records a candidate of the same package without touching the
+// selected release, its configuration, or its trust.
+func (i *Installation) Stage(selected, candidate Release) error {
+	if err := i.bound(selected); err != nil {
 		return err
 	}
-	for _, name := range configuration.DisabledServers {
-		if !slices.ContainsFunc(i.record.Selected.Servers, func(s Server) bool { return s.Name == name }) {
-			return fmt.Errorf("%w: unknown disabled server %q", ErrInvalid, name)
+	if candidate.Name() != selected.Name() {
+		return fmt.Errorf("%w: staged package identity", ErrInvalid)
+	}
+	if candidate.Digest() == i.record.Selected {
+		return fmt.Errorf("%w: release is already selected", ErrStale)
+	}
+	digest := candidate.Digest()
+	i.record.Staged = &digest
+	return nil
+}
+
+// Select replaces the selected release with the staged one. The approval
+// named the previous bytes, so the installation returns to [Unapproved].
+// Configuration survives only where its meaning is unchanged: a value keeps
+// its input declaration, a secret additionally keeps its recipient, and a
+// disabled component is still declared.
+func (i *Installation) Select(selected, staged Release) error {
+	if err := i.bound(selected); err != nil {
+		return err
+	}
+	if i.record.Staged == nil || *i.record.Staged != staged.Digest() {
+		return fmt.Errorf("%w: release %s is not staged", ErrStale, staged.Digest())
+	}
+	next := Record{ID: i.record.ID, Source: i.record.Source, Selected: staged.Digest(), State: Unapproved, Values: map[string]string{}}
+	for id, value := range i.record.Values {
+		if retainsInput(selected, staged, id) {
+			next.Values[id] = value
 		}
 	}
-	for _, name := range configuration.DisabledSkills {
-		if !slices.ContainsFunc(i.record.Selected.Skills, func(s Skill) bool { return s.Name == name }) {
-			return fmt.Errorf("%w: unknown disabled skill %q", ErrInvalid, name)
+	for _, name := range i.record.DisabledServers {
+		if _, found := staged.server(name); found {
+			next.DisabledServers = append(next.DisabledServers, name)
 		}
 	}
-	if i.record.Enabled {
-		if err := i.requiredValues(values, configuration.DisabledServers); err != nil {
+	for _, name := range i.record.DisabledSkills {
+		if staged.declaresSkill(name) {
+			next.DisabledSkills = append(next.DisabledSkills, name)
+		}
+	}
+	i.record = next
+	return nil
+}
+
+// retainsInput keeps a value only for an input the candidate binds to the
+// same slot with the same secrecy; whether it is required may change. A secret
+// additionally requires the same recipient, so a credential never follows a
+// changed endpoint or executable.
+func retainsInput(selected, staged Release, id string) bool {
+	before, declared := selected.input(id)
+	after, redeclared := staged.input(id)
+	before.Required, after.Required = false, false
+	if !declared || !redeclared || before != after {
+		return false
+	}
+	if !after.Secret {
+		return true
+	}
+	previous, _ := selected.recipient(before.Server)
+	current, _ := staged.recipient(after.Server)
+	return previous == current
+}
+
+// Approve admits the exact selected release. Approving an approved or enabled
+// installation changes nothing.
+func (i *Installation) Approve(release Release) error {
+	if err := i.bound(release); err != nil {
+		return err
+	}
+	if i.record.State == Unapproved {
+		i.record.State = Approved
+	}
+	return nil
+}
+
+func (i *Installation) Enable(release Release) error {
+	if err := i.bound(release); err != nil {
+		return err
+	}
+	if i.record.State == Unapproved {
+		return fmt.Errorf("%w: enable release %s", ErrUnapproved, i.record.Selected)
+	}
+	if err := requiredValues(release, i.record.Values, i.record.DisabledServers); err != nil {
+		return err
+	}
+	i.record.State = Enabled
+	return nil
+}
+
+// Disable withdraws enablement and keeps the approval of the selected release.
+func (i *Installation) Disable() {
+	if i.record.State == Enabled {
+		i.record.State = Approved
+	}
+}
+
+func (i *Installation) Revoke() { i.record.State = Unapproved }
+
+func (i *Installation) Configure(release Release, configuration Configuration) error {
+	if err := i.bound(release); err != nil {
+		return err
+	}
+	values := maps.Clone(i.record.Values)
+	for key, change := range configuration.Values {
+		if _, declared := release.input(key); !declared {
+			return fmt.Errorf("%w: unknown input %q", ErrInvalid, key)
+		}
+		switch change.kind {
+		case setValue:
+			values[key] = change.value
+		case clearValue:
+			delete(values, key)
+		default:
+			return fmt.Errorf("%w: input %q change", ErrInvalid, key)
+		}
+	}
+	if err := validateValues(release, values); err != nil {
+		return err
+	}
+	servers, err := applyComponentChanges(i.record.DisabledServers, configuration.Servers, func(name mcpserver.ServerName) bool {
+		_, declared := release.server(name)
+		return declared
+	}, mcpserver.ServerName.String)
+	if err != nil {
+		return fmt.Errorf("server enablement: %w", err)
+	}
+	skills, err := applyComponentChanges(i.record.DisabledSkills, configuration.Skills, release.declaresSkill, func(name string) string { return name })
+	if err != nil {
+		return fmt.Errorf("skill enablement: %w", err)
+	}
+	if i.record.State == Enabled {
+		if err := requiredValues(release, values, servers); err != nil {
 			return err
 		}
 	}
-	if duplicateNames(configuration.DisabledServers) || duplicateNames(configuration.DisabledSkills) {
-		return fmt.Errorf("%w: duplicate disabled component", ErrInvalid)
-	}
-	i.record.Values = maps.Clone(values)
-	i.record.DisabledServers = slices.Clone(configuration.DisabledServers)
-	slices.Sort(i.record.DisabledServers)
-	i.record.DisabledSkills = slices.Clone(configuration.DisabledSkills)
-	slices.Sort(i.record.DisabledSkills)
+	i.record.Values = values
+	i.record.DisabledServers = servers
+	i.record.DisabledSkills = skills
 	return nil
 }
-func (i *Installation) validateValues(values map[string]string) error {
-	for key, value := range values {
-		if len(value) > 8192 || !utf8.ValidString(value) || strings.ContainsRune(value, 0) || !slices.ContainsFunc(i.record.Selected.Inputs, func(input Input) bool { return input.ID == key }) {
-			return fmt.Errorf("%w: input %q", ErrInvalid, key)
+
+// applyComponentChanges returns the sorted disabled set after changes, each
+// naming a component the release declares.
+func applyComponentChanges[N comparable](disabled []N, changes map[N]ComponentChange, declared func(N) bool, text func(N) string) ([]N, error) {
+	result := slices.Clone(disabled)
+	for name, change := range changes {
+		if !declared(name) {
+			return nil, fmt.Errorf("%w: unknown component %q", ErrInvalid, text(name))
+		}
+		result = slices.DeleteFunc(result, func(existing N) bool { return existing == name })
+		switch change {
+		case EnableComponent:
+		case DisableComponent:
+			result = append(result, name)
+		default:
+			return nil, fmt.Errorf("%w: component %q change %q", ErrInvalid, text(name), change)
 		}
 	}
-	for _, input := range i.record.Selected.Inputs {
-		value := values[input.ID]
+	slices.SortFunc(result, func(a, b N) int { return strings.Compare(text(a), text(b)) })
+	return result, nil
+}
+
+func validateValueText(key, value string) error {
+	if len(value) > 8192 {
+		return fmt.Errorf("%w: input %q length", ErrInvalid, key)
+	}
+	if !utf8.ValidString(value) || strings.ContainsRune(value, 0) {
+		return fmt.Errorf("%w: input %q encoding", ErrInvalid, key)
+	}
+	return nil
+}
+
+func validateValues(release Release, values map[string]string) error {
+	for key, value := range values {
+		input, declared := release.input(key)
+		if !declared {
+			return fmt.Errorf("%w: unknown input %q", ErrInvalid, key)
+		}
+		if err := validateValueText(key, value); err != nil {
+			return err
+		}
 		var err error
 		switch input.Target {
 		case Header:
@@ -290,8 +377,8 @@ func (i *Installation) validateValues(values map[string]string) error {
 	return nil
 }
 
-func (i *Installation) requiredValues(values map[string]string, disabled []string) error {
-	for _, input := range i.record.Selected.Inputs {
+func requiredValues(release Release, values map[string]string, disabled []mcpserver.ServerName) error {
+	for _, input := range release.declaration.Inputs {
 		if input.Required && !slices.Contains(disabled, input.Server) && values[input.ID] == "" {
 			return fmt.Errorf("%w: required input %q", ErrInvalid, input.ID)
 		}
@@ -299,27 +386,59 @@ func (i *Installation) requiredValues(values map[string]string, disabled []strin
 	return nil
 }
 
-// ServerAuthority binds tool policy to admitted code and that source's grants.
-// Credentials and availability affect connection realization, not permission.
-func (i *Installation) ServerAuthority(server string) string {
-	var targets []string
-	for _, grant := range i.record.Grants {
-		if grant.Capability == InvokeTools {
-			for _, target := range grant.Targets {
-				if strings.HasPrefix(target, server+"/") {
-					targets = append(targets, target)
-				}
-			}
-		}
+// ServerAuthority binds tool policy to the admitted code of one server: the
+// selected release digest and the server's name in it. Any release change
+// makes standing approvals for its tools stale; credentials and availability
+// affect connection realization, not permission.
+func (i *Installation) ServerAuthority(server mcpserver.ServerName) fingerprint.Digest {
+	return fingerprint.Strings(i.record.Selected.String(), server.String())
+}
+
+// ServerID names one declared server of this installation in the MCP registry.
+func (i *Installation) ServerID(server mcpserver.ServerName) (mcpserver.ID, error) {
+	origin, err := mcpserver.InstallationOrigin(i.record.ID)
+	if err != nil {
+		return mcpserver.ID{}, fmt.Errorf("plugin: installation %s origin: %w", i.record.ID, err)
 	}
-	return fingerprint.Strings(append([]string{i.record.Selected.Digest, i.record.ApprovedDigest}, targets...)...)
+	id, err := mcpserver.NewID(origin, server)
+	if err != nil {
+		return mcpserver.ID{}, fmt.Errorf("plugin: installation %s server %q identity: %w", i.record.ID, server, err)
+	}
+	return id, nil
 }
 
-func (i *Installation) Active() bool {
-	return i.record.Enabled && i.record.ApprovedDigest == i.record.Selected.Digest
+// ServerIDs names every server the selected release declares.
+func (i *Installation) ServerIDs(release Release) ([]mcpserver.ID, error) {
+	if err := i.bound(release); err != nil {
+		return nil, err
+	}
+	result := make([]mcpserver.ID, 0, len(release.declaration.Servers))
+	for _, server := range release.declaration.Servers {
+		id, err := i.ServerID(server.Name)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, id)
+	}
+	return result, nil
 }
 
-func (i *Installation) ServerEnabled(name string) bool {
+// ServerSource binds a declared server's registry record to the selected
+// release, its tool authority, and the recipient its credentials follow.
+func (i *Installation) ServerSource(release Release, server mcpserver.ServerName) (mcpserver.Source, error) {
+	if err := i.bound(release); err != nil {
+		return mcpserver.Source{}, err
+	}
+	recipient, found := release.recipient(server)
+	if !found {
+		return mcpserver.Source{}, fmt.Errorf("%w: release %s does not declare server %q", ErrInvalid, release.Digest(), server)
+	}
+	return mcpserver.InstallationSource(i.record.ID, i.record.Selected, i.ServerAuthority(server), recipient)
+}
+
+func (i *Installation) Active() bool { return i.record.State == Enabled }
+
+func (i *Installation) ServerEnabled(name mcpserver.ServerName) bool {
 	return i.Active() && !slices.Contains(i.record.DisabledServers, name)
 }
 
@@ -327,17 +446,36 @@ func (i *Installation) SkillEnabled(name string) bool {
 	return i.Active() && !slices.Contains(i.record.DisabledSkills, name)
 }
 
-// RetainsServerCredentials decides whether an existing grant survives this
-// transition. Returning to an old configuration must not revive its callbacks.
-func (i *Installation) RetainsServerCredentials(previous *Installation, name string) bool {
-	if i.record.ID != previous.record.ID || i.ServerAuthority(name) != previous.ServerAuthority(name) || previous.ServerEnabled(name) && !i.ServerEnabled(name) {
-		return false
+// ChangedServers identifies connection facts advanced by the transition from
+// previous, whose selected release is before, to this installation, whose
+// selected release is after. Staging does not invalidate a live connection.
+func (i *Installation) ChangedServers(previous *Installation, before, after Release) ([]mcpserver.ServerName, error) {
+	if err := previous.bound(before); err != nil {
+		return nil, err
 	}
-	return i.sameInputValues(previous, name)
+	if err := i.bound(after); err != nil {
+		return nil, err
+	}
+	var declared, changed []mcpserver.ServerName
+	for _, release := range []Release{before, after} {
+		for _, server := range release.declaration.Servers {
+			if !slices.Contains(declared, server.Name) {
+				declared = append(declared, server.Name)
+			}
+		}
+	}
+	for _, name := range declared {
+		if before.Digest() != after.Digest() ||
+			i.ServerEnabled(name) != previous.ServerEnabled(name) ||
+			!i.sameInputValues(previous, after, name) {
+			changed = append(changed, name)
+		}
+	}
+	return changed, nil
 }
 
-func (i *Installation) sameInputValues(previous *Installation, name string) bool {
-	for _, input := range i.record.Selected.Inputs {
+func (i *Installation) sameInputValues(previous *Installation, release Release, name mcpserver.ServerName) bool {
+	for _, input := range release.declaration.Inputs {
 		if input.Server != name {
 			continue
 		}
@@ -350,42 +488,12 @@ func (i *Installation) sameInputValues(previous *Installation, name string) bool
 	return true
 }
 
-// ChangedServers identifies connection facts advanced by this transition.
-// Staging and unrelated source grants do not invalidate a live connection.
-func (i *Installation) ChangedServers(previous *Installation) []string {
-	var names, changed []string
-	for _, release := range []Release{previous.record.Selected, i.record.Selected} {
-		for _, server := range release.Servers {
-			if !slices.Contains(names, server.Name) {
-				names = append(names, server.Name)
-			}
-		}
-	}
-	for _, name := range names {
-		if i.record.Selected.Digest != previous.record.Selected.Digest ||
-			i.ServerAuthority(name) != previous.ServerAuthority(name) ||
-			i.ServerEnabled(name) != previous.ServerEnabled(name) {
-			changed = append(changed, name)
-			continue
-		}
-		if !i.sameInputValues(previous, name) {
-			changed = append(changed, name)
-		}
-	}
-	return changed
+func sortServers(names []mcpserver.ServerName) {
+	slices.SortFunc(names, func(a, b mcpserver.ServerName) int { return strings.Compare(a.String(), b.String()) })
 }
 
-func canonicalGrants(grants []RequestGrant) []RequestGrant {
-	result := clone(Record{Grants: grants}).Grants
-	for index := range result {
-		slices.Sort(result[index].Targets)
-	}
-	slices.SortFunc(result, func(a, b RequestGrant) int { return strings.Compare(string(a.Capability), string(b.Capability)) })
-	return result
-}
-
-func duplicateNames(values []string) bool {
-	seen := map[string]bool{}
+func duplicateNames[N comparable](values []N) bool {
+	seen := map[N]bool{}
 	for _, value := range values {
 		if seen[value] {
 			return true

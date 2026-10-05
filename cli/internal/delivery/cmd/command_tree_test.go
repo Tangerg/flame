@@ -1130,7 +1130,7 @@ func TestCompletionWritesOnlyCobraDirective(t *testing.T) {
 func TestApprovalListDefaultsToGlobalRules(t *testing.T) {
 	backend := runtimefixture.New()
 	ref := protocol.ToolRef{Type: protocol.ToolRefBuiltIn, Name: "shell"}
-	backend.ToolModelNames = map[protocol.ToolRef]string{ref: "shell"}
+	backend.ToolModelNames = map[string]string{"builtIn/shell": "shell"}
 	if err := backend.SetApprovalRule(t.Context(), protocol.SetApprovalRuleRequest{Subject: protocol.ApprovalSubject{Type: protocol.ApprovalSubjectAll}, Tool: ref, Scope: protocol.ApprovalRuleScopeGlobal, Decision: protocol.ApprovalRuleDecisionDeny}); err != nil {
 		t.Fatal(err)
 	}
