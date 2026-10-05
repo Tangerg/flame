@@ -87,7 +87,7 @@ func New(lifetime context.Context, store Store, catalog Catalog, packages Packag
 
 // Inspection projects an installation beside the catalog releases it names.
 type Inspection struct {
-	Record       plugin.Record
+	View         plugin.View
 	Selected     plugin.Release
 	Staged       *plugin.Release
 	Realization  Realization
@@ -151,12 +151,15 @@ func (c *Coordinator) List(ctx context.Context) ([]Inspection, error) {
 }
 
 func (c *Coordinator) inspect(ctx context.Context, installation *plugin.Installation) (Inspection, error) {
-	record := installation.Snapshot()
-	selected, err := c.catalog.Get(ctx, record.Selected)
+	selected, err := c.catalog.Get(ctx, installation.Selected())
 	if err != nil {
-		return Inspection{}, fmt.Errorf("plugins: read release %s: %w", record.Selected, err)
+		return Inspection{}, fmt.Errorf("plugins: read release %s: %w", installation.Selected(), err)
 	}
-	inspection := Inspection{Record: record, Selected: selected}
+	view, err := installation.View(selected)
+	if err != nil {
+		return Inspection{}, err
+	}
+	inspection := Inspection{View: view, Selected: selected}
 	if digest, staged := installation.Staged(); staged {
 		release, err := c.catalog.Get(ctx, digest)
 		if err != nil {
@@ -165,7 +168,7 @@ func (c *Coordinator) inspect(ctx context.Context, installation *plugin.Installa
 		inspection.Staged = &release
 	}
 	if inspection.Realization, err = c.packages.Realize(ctx, installation, selected); err != nil {
-		return Inspection{}, fmt.Errorf("plugins: observe installation %s: %w", record.ID, err)
+		return Inspection{}, fmt.Errorf("plugins: observe installation %s: %w", installation.ID(), err)
 	}
 	inspection.Presentation = PresentationWithheld
 	if installation.Active() && inspection.Realization.Release == ReleaseAvailable {

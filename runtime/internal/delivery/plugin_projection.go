@@ -96,7 +96,7 @@ func presentPluginRelease(release plugin.Release) (protocol.PluginRelease, error
 	return result, nil
 }
 func presentInstallation(inspection plugins.Inspection) (*protocol.PluginInstallation, error) {
-	record := inspection.Record
+	view := inspection.View
 	realization, err := presentPluginRealization(inspection.Realization)
 	if err != nil {
 		return nil, err
@@ -105,19 +105,23 @@ func presentInstallation(inspection plugins.Inspection) (*protocol.PluginInstall
 	if err != nil {
 		return nil, err
 	}
-	state, err := presentPluginInstallationState(record.State)
+	state, err := presentPluginInstallationState(view.State)
 	if err != nil {
 		return nil, err
 	}
-	disabledServers := make([]string, 0, len(record.DisabledServers))
-	for _, name := range record.DisabledServers {
+	inputStates, err := presentPluginInputStates(view.Inputs)
+	if err != nil {
+		return nil, err
+	}
+	disabledServers := make([]string, 0, len(view.DisabledServers))
+	for _, name := range view.DisabledServers {
 		disabledServers = append(disabledServers, name.String())
 	}
 	selected, err := presentPluginRelease(inspection.Selected)
 	if err != nil {
 		return nil, err
 	}
-	result := &protocol.PluginInstallation{Realization: realization, Presentation: presentation, ID: record.ID.String(), Source: record.Source, Selected: selected, State: state, InputStates: presentPluginInputStates(record, inspection.Selected), DisabledServers: disabledServers, DisabledSkills: slices.Clone(record.DisabledSkills)}
+	result := &protocol.PluginInstallation{Realization: realization, Presentation: presentation, ID: view.ID.String(), Source: view.Source, Selected: selected, State: state, InputStates: inputStates, DisabledServers: disabledServers, DisabledSkills: slices.Clone(view.DisabledSkills)}
 	if inspection.Staged != nil {
 		staged, err := presentPluginRelease(*inspection.Staged)
 		if err != nil {
@@ -128,24 +132,22 @@ func presentInstallation(inspection plugins.Inspection) (*protocol.PluginInstall
 	return result, nil
 }
 
-// presentPluginInputStates is the only projection of configured input values.
-// A secret's text is not copied into the result at all, so no later encoder,
-// log or client cache can carry it.
-func presentPluginInputStates(record plugin.Record, selected plugin.Release) map[string]protocol.PluginInputState {
-	inputs := selected.Declaration().Inputs
+func presentPluginInputStates(inputs map[string]plugin.InputState) (map[string]protocol.PluginInputState, error) {
 	states := make(map[string]protocol.PluginInputState, len(inputs))
-	for _, input := range inputs {
-		value, configured := record.Values[input.ID]
-		switch {
-		case !configured:
-			states[input.ID] = protocol.PluginInputState{Type: protocol.PluginInputUnset}
-		case input.Secret:
-			states[input.ID] = protocol.PluginInputState{Type: protocol.PluginInputConfigured}
+	for id, input := range inputs {
+		switch input.Presence() {
+		case plugin.InputUnset:
+			states[id] = protocol.PluginInputState{Type: protocol.PluginInputUnset}
+		case plugin.InputConfigured:
+			states[id] = protocol.PluginInputState{Type: protocol.PluginInputConfigured}
+		case plugin.InputValue:
+			value, _ := input.Value()
+			states[id] = protocol.PluginInputState{Type: protocol.PluginInputValue, Value: new(value)}
 		default:
-			states[input.ID] = protocol.PluginInputState{Type: protocol.PluginInputValue, Value: new(value)}
+			return nil, fmt.Errorf("plugin: project input presence %q", input.Presence())
 		}
 	}
-	return states
+	return states, nil
 }
 
 func presentPluginRealization(realization plugins.Realization) (protocol.PluginRealization, error) {

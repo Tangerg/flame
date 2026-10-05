@@ -11,7 +11,6 @@ import (
 	"os"
 	"path"
 	"slices"
-	"strings"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -293,8 +292,8 @@ func portableServer(name string, raw jsontext.Value) (plugin.Server, error) {
 // inspectServerFiles requires a package-relative command and working
 // directory to exist in the exact bytes being admitted.
 func inspectServerFiles(root *os.Root, s plugin.Server) error {
-	if strings.HasPrefix(s.Command, "./") {
-		f, err := root.Open(s.Command[2:])
+	if packaged, found := s.PackagedCommand(); found {
+		f, err := root.Open(packaged)
 		if err != nil {
 			return fmt.Errorf("pluginpackage: open server command: %w", err)
 		}
@@ -307,12 +306,12 @@ func inspectServerFiles(root *os.Root, s plugin.Server) error {
 			return fmt.Errorf("%w: server command is not a regular file", plugin.ErrInvalid)
 		}
 	}
-	if s.Dir != "" && !strings.HasPrefix(s.Dir, "${PLUGIN_DATA}") {
-		relative := strings.TrimPrefix(strings.TrimPrefix(s.Dir, "${PLUGIN_ROOT}"), "./")
-		relative = strings.TrimPrefix(relative, "/")
-		if relative == "" {
-			relative = "."
-		}
+	workingDirectory, err := s.WorkingDirectory()
+	if err != nil {
+		return err
+	}
+	if workingDirectory.Base() == plugin.ReleaseBase {
+		_, relative := locate(workingDirectory, "", "")
 		info, err := root.Stat(relative)
 		if err != nil {
 			return fmt.Errorf("%w: server working directory: %w", plugin.ErrInvalid, err)

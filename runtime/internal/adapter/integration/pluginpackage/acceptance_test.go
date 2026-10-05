@@ -72,7 +72,7 @@ func TestReleaseUpdateRetainsPluginDataWithoutImplicitMigration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	id := installed.Record.ID
+	id := installed.View.ID
 	if _, err := coordinator.Approve(t.Context(), id, installed.Selected.Digest()); err != nil {
 		t.Fatal(err)
 	}
@@ -96,8 +96,8 @@ func TestReleaseUpdateRetainsPluginDataWithoutImplicitMigration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if selected.Selected.Digest() == installed.Selected.Digest() || selected.Record.State != plugin.Unapproved {
-		t.Fatalf("update did not return the installation on the new release to review: %+v", selected.Record)
+	if selected.Selected.Digest() == installed.Selected.Digest() || selected.View.State != plugin.Unapproved {
+		t.Fatalf("update did not return the installation on the new release to review: %+v", selected.View)
 	}
 	if after := snapshotTree(t, data); !reflect.DeepEqual(after, before) {
 		t.Fatalf("release update changed private plugin data: before %v, after %v", before, after)

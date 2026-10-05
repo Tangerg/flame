@@ -190,6 +190,20 @@ func TestSkillReadsVerifyConsumedBytesAndEnforceResourceLimit(t *testing.T) {
 	if content, err := skills.ReadSkillResource(t.Context(), dependency, "review", "reference.txt"); !errors.Is(err, domainskills.ErrResourceTooLarge) || len(content) != 0 {
 		t.Fatalf("oversized resource = %d bytes, %v", len(content), err)
 	}
+	setSkill := func(change plugin.ComponentChange) {
+		t.Helper()
+		if err := installation.Configure(release, plugin.Configuration{Skills: map[string]plugin.ComponentChange{"review": change}}); err != nil {
+			t.Fatal(err)
+		}
+		if err := store.Save(t.Context(), installation); err != nil {
+			t.Fatal(err)
+		}
+	}
+	setSkill(plugin.DisableComponent)
+	if content, err := skills.ReadSkillResource(t.Context(), dependency, "review", "SKILL.md"); !errors.Is(err, workspaceapp.ErrSkillUnavailable) || errors.Is(err, plugin.ErrUnapproved) || len(content) != 0 {
+		t.Fatalf("disabled skill of an approved release = %q, %v; want unavailable, not unapproved", content, err)
+	}
+	setSkill(plugin.EnableComponent)
 	root, err := releases.Root(release.Digest())
 	if err != nil {
 		t.Fatal(err)

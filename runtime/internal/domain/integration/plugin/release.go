@@ -387,10 +387,11 @@ func (s Server) validate() error {
 		if err := validatePackageEnvironment(s.Env); err != nil {
 			return err
 		}
-		if err := validatePackageCommand(s.Command); err != nil {
+		if err := validatePackageCommand(s); err != nil {
 			return err
 		}
-		return validatePackageDirectory(s.Dir)
+		_, err := parseWorkingDirectory(s.Dir)
+		return err
 	default:
 		return validatePackageEndpoint(s.URL)
 	}
@@ -405,7 +406,7 @@ func validatePackageEnvironment(environment map[string]string) error {
 	canonical := map[string]bool{}
 	for key := range environment {
 		upper := strings.ToUpper(key)
-		if upper == "PLUGIN_ROOT" || upper == "PLUGIN_DATA" {
+		if upper == RootVariable || upper == DataVariable {
 			return fmt.Errorf("%w: package environment key %q is reserved", ErrInvalid, key)
 		}
 		if canonical[upper] {
@@ -418,38 +419,15 @@ func validatePackageEnvironment(environment map[string]string) error {
 
 // validatePackageCommand admits a file inside the package or a bare command
 // name resolved from PATH; a package cannot name a host path.
-func validatePackageCommand(command string) error {
-	if strings.HasPrefix(command, "./") {
-		if !ValidResourcePath(command[2:]) {
+func validatePackageCommand(s Server) error {
+	if packaged, found := s.PackagedCommand(); found {
+		if !ValidResourcePath(packaged) {
 			return fmt.Errorf("%w: package command path", ErrInvalid)
 		}
 		return nil
 	}
-	if strings.ContainsAny(command, "/\\ \t\r\n$") {
+	if strings.ContainsAny(s.Command, "/\\ \t\r\n$") {
 		return fmt.Errorf("%w: bare command name", ErrInvalid)
-	}
-	return nil
-}
-
-// validatePackageDirectory admits only the package root, its data directory,
-// or a resource path beneath either.
-func validatePackageDirectory(dir string) error {
-	if dir == "" || dir == "${PLUGIN_ROOT}" || dir == "${PLUGIN_DATA}" {
-		return nil
-	}
-	var relative string
-	switch {
-	case strings.HasPrefix(dir, "./"):
-		relative = dir[2:]
-	case strings.HasPrefix(dir, "${PLUGIN_ROOT}/"):
-		relative = strings.TrimPrefix(dir, "${PLUGIN_ROOT}/")
-	case strings.HasPrefix(dir, "${PLUGIN_DATA}/"):
-		relative = strings.TrimPrefix(dir, "${PLUGIN_DATA}/")
-	default:
-		return fmt.Errorf("%w: package working directory", ErrInvalid)
-	}
-	if !ValidResourcePath(relative) {
-		return fmt.Errorf("%w: package working directory path", ErrInvalid)
 	}
 	return nil
 }

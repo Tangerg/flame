@@ -43,11 +43,9 @@ func (s *Skills) SkillBundles(ctx context.Context) ([]promptsource.PackageSkillB
 		if err != nil {
 			return nil, fmt.Errorf("pluginpackage: read release %s: %w", installation.Selected(), err)
 		}
-		var names []string
-		for _, skill := range release.Declaration().Skills {
-			if installation.SkillEnabled(skill.Name) {
-				names = append(names, skill.Name)
-			}
+		names, err := installation.EnabledSkills(release)
+		if err != nil {
+			return nil, err
 		}
 		if len(names) == 0 {
 			continue
@@ -56,7 +54,7 @@ func (s *Skills) SkillBundles(ctx context.Context) ([]promptsource.PackageSkillB
 		if err != nil {
 			return nil, err
 		}
-		bundles = append(bundles, promptsource.PackageSkillBundle{Root: filepath.Join(root, "skills"), Names: names, Dependency: plugin.Dependency{InstallationID: installation.ID(), Digest: release.Digest()}})
+		bundles = append(bundles, promptsource.PackageSkillBundle{Root: filepath.Join(root, "skills"), Names: names, Dependency: installation.Dependency()})
 	}
 	return bundles, nil
 }
@@ -75,15 +73,19 @@ func (s *Skills) ReadSkillResource(ctx context.Context, dependency plugin.Depend
 		}
 		return nil, err
 	}
-	if installation.Selected() != dependency.Digest {
+	if installation.Dependency() != dependency {
 		return nil, errors.Join(workspaceapp.ErrSkillUnavailable, plugin.ErrStale)
 	}
 	release, err := s.releases.catalog.Get(ctx, dependency.Digest)
 	if err != nil {
 		return nil, fmt.Errorf("pluginpackage: read release %s: %w", dependency.Digest, err)
 	}
-	if !installation.SkillEnabled(name) || !slices.ContainsFunc(release.Declaration().Skills, func(skill plugin.Skill) bool { return skill.Name == name }) {
-		return nil, errors.Join(workspaceapp.ErrSkillUnavailable, plugin.ErrUnapproved)
+	enabled, err := installation.EnabledSkills(release)
+	if err != nil {
+		return nil, err
+	}
+	if !slices.Contains(enabled, name) {
+		return nil, workspaceapp.ErrSkillUnavailable
 	}
 	limit := int64(domainskills.MaxSkillResourceBytes)
 	if resource == sdk.SkillFile {

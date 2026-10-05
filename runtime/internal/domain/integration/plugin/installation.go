@@ -442,8 +442,116 @@ func (i *Installation) ServerEnabled(name mcpserver.ServerName) bool {
 	return i.Active() && !slices.Contains(i.record.DisabledServers, name)
 }
 
-func (i *Installation) SkillEnabled(name string) bool {
-	return i.Active() && !slices.Contains(i.record.DisabledSkills, name)
+// InputPresence is what a reader may learn about one declared input.
+type InputPresence string
+
+const (
+	InputUnset      InputPresence = "unset"
+	InputConfigured InputPresence = "configured"
+	InputValue      InputPresence = "value"
+)
+
+// InputState is one input as a view discloses it. Only the installation
+// constructs it, so a state that carries a secret's text cannot exist.
+type InputState struct {
+	presence InputPresence
+	value    string
+}
+
+func (s InputState) Presence() InputPresence { return s.presence }
+
+// Value is the configured text of an input whose presence is [InputValue].
+func (s InputState) Value() (string, bool) { return s.value, s.presence == InputValue }
+
+// View is what any reader outside persistence may see of an installation. A
+// configured secret discloses only that it is configured: its text is never
+// copied into a view, so no encoder, log or client cache can carry it.
+type View struct {
+	ID              resourceid.InstallationID
+	Source          string
+	State           State
+	Inputs          map[string]InputState
+	DisabledServers []mcpserver.ServerName
+	DisabledSkills  []string
+}
+
+func (i *Installation) View(release Release) (View, error) {
+	if err := i.bound(release); err != nil {
+		return View{}, err
+	}
+	inputs := make(map[string]InputState, len(release.declaration.Inputs))
+	for _, input := range release.declaration.Inputs {
+		value, configured := i.record.Values[input.ID]
+		switch {
+		case !configured:
+			inputs[input.ID] = InputState{presence: InputUnset}
+		case input.Secret:
+			inputs[input.ID] = InputState{presence: InputConfigured}
+		default:
+			inputs[input.ID] = InputState{presence: InputValue, value: value}
+		}
+	}
+	return View{
+		ID:              i.record.ID,
+		Source:          i.record.Source,
+		State:           i.record.State,
+		Inputs:          inputs,
+		DisabledServers: slices.Clone(i.record.DisabledServers),
+		DisabledSkills:  slices.Clone(i.record.DisabledSkills),
+	}, nil
+}
+
+// Dependency names the release an execution admits from this installation now.
+func (i *Installation) Dependency() Dependency {
+	return Dependency{InstallationID: i.record.ID, Digest: i.record.Selected}
+}
+
+// EnabledSkills names the skills of the selected release an execution may load
+// now: none unless the installation is enabled, and never one the user disabled.
+func (i *Installation) EnabledSkills(release Release) ([]string, error) {
+	if err := i.bound(release); err != nil {
+		return nil, err
+	}
+	if !i.Active() {
+		return nil, nil
+	}
+	var names []string
+	for _, skill := range release.declaration.Skills {
+		if !slices.Contains(i.record.DisabledSkills, skill.Name) {
+			names = append(names, skill.Name)
+		}
+	}
+	return names, nil
+}
+
+// ServerInputs is where the configured values of one server's inputs go when
+// its descriptor is realized.
+type ServerInputs struct {
+	Env           map[string]string
+	Headers       map[string]string
+	Authorization string
+}
+
+func (i *Installation) ServerInputs(release Release, server mcpserver.ServerName) (ServerInputs, error) {
+	if err := i.bound(release); err != nil {
+		return ServerInputs{}, err
+	}
+	result := ServerInputs{Env: map[string]string{}, Headers: map[string]string{}}
+	for _, input := range release.declaration.Inputs {
+		value, configured := i.record.Values[input.ID]
+		if input.Server != server || !configured {
+			continue
+		}
+		switch input.Target {
+		case Environment:
+			result.Env[input.Key] = value
+		case Header:
+			result.Headers[input.Key] = value
+		case Authorization:
+			result.Authorization = value
+		}
+	}
+	return result, nil
 }
 
 // ChangedServers identifies connection facts advanced by the transition from

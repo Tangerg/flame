@@ -467,3 +467,51 @@ func testInstallationID(t *testing.T) resourceid.InstallationID {
 	}
 	return id
 }
+
+func TestEnabledSkillsAreDeclaredUndisabledAndActive(t *testing.T) {
+	release := testRelease(t, "1", Declaration{Name: "review", Skills: []Skill{{Name: "audit", Description: "a"}, {Name: "explain", Description: "e"}}})
+	installation := approvedInstallation(t, release, nil)
+	if names, err := installation.EnabledSkills(release); err != nil || names != nil {
+		t.Fatalf("approved installation skills = %v, %v; want none", names, err)
+	}
+	if err := installation.Enable(release); err != nil {
+		t.Fatal(err)
+	}
+	if err := installation.Configure(release, Configuration{Skills: map[string]ComponentChange{"audit": DisableComponent}}); err != nil {
+		t.Fatal(err)
+	}
+	if names, err := installation.EnabledSkills(release); err != nil || !reflect.DeepEqual(names, []string{"explain"}) {
+		t.Fatalf("enabled skills = %v, %v; want [explain]", names, err)
+	}
+	other := testRelease(t, "2", Declaration{Name: "review", Skills: []Skill{{Name: "audit", Description: "a"}}})
+	if _, err := installation.EnabledSkills(other); !errors.Is(err, ErrStale) {
+		t.Fatalf("skills of an unselected release = %v", err)
+	}
+}
+
+func TestServerInputsBindConfiguredValuesOfOneServer(t *testing.T) {
+	endpoint := Server{Name: serverName("api"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.com/mcp"}
+	process := Server{Name: serverName("local"), Transport: stdio, Command: "review"}
+	release := testRelease(t, "1", Declaration{Name: "review", Servers: []Server{endpoint, process}, Inputs: []Input{
+		{ID: "token", Server: endpoint.Name, Target: Authorization, Secret: true},
+		{ID: "tenant", Server: endpoint.Name, Target: Header, Key: "X-Tenant", Secret: true},
+		{ID: "region", Server: endpoint.Name, Target: Header, Key: "X-Region", Secret: true},
+		{ID: "key", Server: process.Name, Target: Environment, Key: "API_KEY", Secret: true},
+	}})
+	installation := approvedInstallation(t, release, map[string]string{"token": "Bearer t", "tenant": "acme", "key": "k"})
+	inputs, err := installation.ServerInputs(release, endpoint.Name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := ServerInputs{Env: map[string]string{}, Headers: map[string]string{"X-Tenant": "acme"}, Authorization: "Bearer t"}
+	if !reflect.DeepEqual(inputs, want) {
+		t.Fatalf("endpoint inputs = %+v, want %+v", inputs, want)
+	}
+	if inputs, err = installation.ServerInputs(release, process.Name); err != nil || inputs.Env["API_KEY"] != "k" || len(inputs.Headers) != 0 {
+		t.Fatalf("process inputs = %+v, %v", inputs, err)
+	}
+	other := testRelease(t, "2", Declaration{Name: "review", Servers: []Server{endpoint}})
+	if _, err := installation.ServerInputs(other, endpoint.Name); !errors.Is(err, ErrStale) {
+		t.Fatalf("inputs of an unselected release = %v", err)
+	}
+}

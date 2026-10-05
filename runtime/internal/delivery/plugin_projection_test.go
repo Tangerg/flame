@@ -34,8 +34,8 @@ func TestSecretInputProjectionCarriesStateNeverText(t *testing.T) {
 		{"secret": credential, "header": credential, "region": "eu"},
 		{"secret": "", "header": "", "region": ""},
 	} {
-		record := plugin.Record{ID: testsupport.InstallationID(t), State: plugin.Enabled, Values: values, Selected: release.Digest()}
-		projected, err := presentInstallation(plugins.Inspection{Record: record, Selected: release, Realization: plugins.Realization{Release: plugins.ReleaseAvailable}, Presentation: plugins.PresentationAdmitted})
+		view := installationView(t, plugin.Record{ID: testsupport.InstallationID(t), Source: "/package", State: plugin.Enabled, Values: values, Selected: release.Digest()}, release)
+		projected, err := presentInstallation(plugins.Inspection{View: view, Selected: release, Realization: plugins.Realization{Release: plugins.ReleaseAvailable}, Presentation: plugins.PresentationAdmitted})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -68,7 +68,7 @@ func TestPluginRealizationProjectionIsAClosedUnion(t *testing.T) {
 		t.Fatal(err)
 	}
 	release := testsupport.Release(t, "1", plugin.Declaration{Name: "package"})
-	record := plugin.Record{ID: testsupport.InstallationID(t), State: plugin.Unapproved, Selected: release.Digest()}
+	view := installationView(t, plugin.Record{ID: testsupport.InstallationID(t), Source: "/package", State: plugin.Unapproved, Selected: release.Digest()}, release)
 	for _, test := range []struct {
 		realization plugins.Realization
 		want        protocol.PluginRealization
@@ -77,7 +77,7 @@ func TestPluginRealizationProjectionIsAClosedUnion(t *testing.T) {
 		{plugins.Realization{Release: plugins.ReleaseAvailable, Sources: []mcpapp.Source{{Server: mcpserver.Server{Name: backend}, Availability: mcpapp.SourceUnavailableBackend}}}, protocol.PluginRealization{Type: protocol.PluginRealizationAvailable, UnavailableBackends: []string{"backend"}}},
 		{plugins.Realization{Release: plugins.ReleaseUnavailable}, protocol.PluginRealization{Type: protocol.PluginRealizationReleaseUnavailable}},
 	} {
-		projected, err := presentInstallation(plugins.Inspection{Record: record, Selected: release, Realization: test.realization, Presentation: plugins.PresentationWithheld})
+		projected, err := presentInstallation(plugins.Inspection{View: view, Selected: release, Realization: test.realization, Presentation: plugins.PresentationWithheld})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -88,12 +88,25 @@ func TestPluginRealizationProjectionIsAClosedUnion(t *testing.T) {
 			t.Fatalf("realization violates the wire contract: %v", err)
 		}
 	}
-	if _, err := presentInstallation(plugins.Inspection{Record: record, Selected: release, Presentation: plugins.PresentationWithheld}); err == nil {
+	if _, err := presentInstallation(plugins.Inspection{View: view, Selected: release, Presentation: plugins.PresentationWithheld}); err == nil {
 		t.Fatal("an unobserved realization was projected")
 	}
-	if _, err := presentInstallation(plugins.Inspection{Record: record, Selected: release, Realization: plugins.Realization{Release: plugins.ReleaseAvailable}}); err == nil {
+	if _, err := presentInstallation(plugins.Inspection{View: view, Selected: release, Realization: plugins.Realization{Release: plugins.ReleaseAvailable}}); err == nil {
 		t.Fatal("an undecided presentation was projected")
 	}
+}
+
+func installationView(t *testing.T, record plugin.Record, release plugin.Release) plugin.View {
+	t.Helper()
+	installation, err := plugin.Restore(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	view, err := installation.View(release)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return view
 }
 
 func TestPluginDiagnosticsAreTypedEndToEnd(t *testing.T) {

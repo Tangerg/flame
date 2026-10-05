@@ -12,7 +12,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strings"
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
@@ -309,7 +308,4 @@ func read(ctx context.Context, root *os.Root, name string, limit int64) (body []
 		return nil, errResourceLimit
 	}
 	return body, ctx.Err()
-}
-func expand(value, root, data string) string {
-	return strings.NewReplacer("${PLUGIN_ROOT}", root, "${PLUGIN_DATA}", data).Replace(value)
 }

@@ -181,7 +181,7 @@ func TestCommittedInstallationLeavesConnectionOutcomeToItsSupervisor(t *testing.
 		t.Fatal(err)
 	}
 	result, err := c.Enable(t.Context(), id)
-	if err != nil || result.Record.State != plugin.Enabled {
+	if err != nil || result.View.State != plugin.Enabled {
 		t.Fatalf("committed result was reported as failed command: %+v, %v", result, err)
 	}
 	if !reflect.DeepEqual(result.Realization, Realization{Release: ReleaseAvailable}) {
@@ -221,7 +221,7 @@ func TestListingReportsUnavailableReleaseWithoutLosingTheInstallation(t *testing
 	if err != nil || len(inspections) != 1 {
 		t.Fatalf("unavailable listing = %+v, %v", inspections, err)
 	}
-	if inspections[0].Record.ID != id || !reflect.DeepEqual(inspections[0].Realization, Realization{Release: ReleaseUnavailable}) {
+	if inspections[0].View.ID != id || !reflect.DeepEqual(inspections[0].Realization, Realization{Release: ReleaseUnavailable}) {
 		t.Fatalf("unavailable listing lost the installation or its realization: %+v", inspections[0])
 	}
 }
@@ -331,7 +331,7 @@ func TestFailedPreparationIsObservedByTheChangeAndEveryLaterListing(t *testing.T
 		t.Fatal(err)
 	}
 	result, err := c.Enable(t.Context(), id)
-	if err != nil || result.Record.State != plugin.Enabled || !reconciled || !slices.Equal(result.Realization.UnavailableBackends(), []mcpserver.ServerName{backend}) {
+	if err != nil || result.View.State != plugin.Enabled || !reconciled || !slices.Equal(result.Realization.UnavailableBackends(), []mcpserver.ServerName{backend}) {
 		t.Fatalf("committed change realization = %+v, %v", result, err)
 	}
 	for range 2 {
@@ -558,7 +558,7 @@ func TestInstallDecidesCapacityAtTheAdmissionSerializationPoint(t *testing.T) {
 		t.Fatal(err)
 	}
 	installed, err := c.Install(t.Context(), "/package")
-	if err != nil || installed.Record.ID.Validate() != nil {
+	if err != nil || installed.View.ID.Validate() != nil {
 		t.Fatalf("install = %+v, %v", installed, err)
 	}
 }

@@ -123,14 +123,18 @@ func (r *Releases) prepareBackend(id resourceid.InstallationID, server plugin.Se
 	if err := unchangedDataRoot(data); err != nil {
 		return err
 	}
-	if !strings.HasPrefix(server.Dir, "${PLUGIN_DATA}/") {
+	workingDirectory, err := server.WorkingDirectory()
+	if err != nil {
+		return err
+	}
+	if workingDirectory.Base() != plugin.DataBase || workingDirectory.Path() == "" {
 		return nil
 	}
 	root, err := namespace.OpenRoot(id.String())
 	if err != nil {
 		return fmt.Errorf("pluginpackage: open installation data directory: %w", err)
 	}
-	if err := root.MkdirAll(strings.TrimPrefix(server.Dir, "${PLUGIN_DATA}/"), 0700); err != nil {
+	if err := root.MkdirAll(filepath.FromSlash(workingDirectory.Path()), 0700); err != nil {
 		return errors.Join(fmt.Errorf("pluginpackage: create server working directory: %w", err), root.Close())
 	}
 	return root.Close()
@@ -212,52 +216,44 @@ func unchangedDataRoot(data string) error {
 }
 
 func descriptorServer(installation *plugin.Installation, release plugin.Release, declaration plugin.Declaration, declared plugin.Server, dir, data string) (mcpserver.Server, error) {
-	source, err := installation.ServerSource(release, declared.Name)
+	server, err := declaredServer(installation, release, declaration, declared)
 	if err != nil {
 		return mcpserver.Server{}, err
 	}
-	server := mcpserver.Server{Source: source, Name: declared.Name, Transport: declared.Transport, Enabled: installation.ServerEnabled(declared.Name), Description: declaration.Description}
+	inputs, err := installation.ServerInputs(release, declared.Name)
+	if err != nil {
+		return mcpserver.Server{}, err
+	}
 	switch declared.Transport {
 	case mcpserver.TransportStdio:
 		server.Command = declared.Command
-		if strings.HasPrefix(server.Command, "./") {
-			server.Command = filepath.Join(dir, server.Command[2:])
+		if packaged, found := declared.PackagedCommand(); found {
+			server.Command = filepath.Join(dir, filepath.FromSlash(packaged))
 		}
 		for _, arg := range declared.Args {
-			server.Args = append(server.Args, expand(arg, dir, data))
+			server.Args = append(server.Args, plugin.ExpandPlaceholders(arg, dir, data))
 		}
-		server.Env = map[string]string{"PLUGIN_ROOT": dir, "PLUGIN_DATA": data}
+		server.Env = map[string]string{plugin.RootVariable: dir, plugin.DataVariable: data}
 		for key, value := range declared.Env {
-			server.Env[key] = expand(value, dir, data)
+			server.Env[key] = plugin.ExpandPlaceholders(value, dir, data)
 		}
-		server.Dir = dir
-		if declared.Dir != "" {
-			server.Dir = expand(declared.Dir, dir, data)
-			if strings.HasPrefix(server.Dir, "./") {
-				server.Dir = filepath.Join(dir, server.Dir[2:])
-			}
+		workingDirectory, err := declared.WorkingDirectory()
+		if err != nil {
+			return mcpserver.Server{}, err
 		}
+		boundary, relative := locate(workingDirectory, dir, data)
+		server.Dir = filepath.Join(boundary, relative)
 	case mcpserver.TransportStreamableHTTP:
 		server.URL = declared.URL
 		server.Headers = maps.Clone(declared.Headers)
 	}
-	values := installation.Snapshot().Values
-	for _, input := range declaration.Inputs {
-		value, configured := values[input.ID]
-		if input.Server != declared.Name || !configured {
-			continue
-		}
-		switch input.Target {
-		case plugin.Environment:
-			server.Env[input.Key] = value
-		case plugin.Header:
-			if server.Headers == nil {
-				server.Headers = map[string]string{}
-			}
-			server.Headers[input.Key] = value
-		case plugin.Authorization:
-			server.Authorization = value
-		}
+	if len(inputs.Headers) > 0 && server.Headers == nil {
+		server.Headers = map[string]string{}
+	}
+	maps.Copy(server.Headers, inputs.Headers)
+	maps.Copy(server.Env, inputs.Env)
+	if inputs.Authorization != "" {
+		server.Authorization = inputs.Authorization
 	}
 	if server.Transport == mcpserver.TransportStdio {
 		inheritPath := true
@@ -286,17 +282,11 @@ func realizeBackend(server mcpserver.Server, declared plugin.Server, dir, data s
 	if err := unchangedDataRoot(data); err != nil {
 		return err
 	}
-	boundary := dir
-	if strings.HasPrefix(declared.Dir, "${PLUGIN_DATA}") {
-		boundary = data
-	}
-	relative, err := filepath.Rel(boundary, server.Dir)
+	workingDirectory, err := declared.WorkingDirectory()
 	if err != nil {
-		return fmt.Errorf("%w: server %q working directory: %w", plugin.ErrInvalid, declared.Name, err)
+		return err
 	}
-	if !filepath.IsLocal(relative) {
-		return fmt.Errorf("%w: server %q working directory escapes its boundary", plugin.ErrInvalid, declared.Name)
-	}
+	boundary, relative := locate(workingDirectory, dir, data)
 	authority, err := os.OpenRoot(boundary)
 	if err != nil {
 		return fmt.Errorf("%w: open server %q boundary: %w", plugin.ErrUnavailable, declared.Name, err)
@@ -309,4 +299,17 @@ func realizeBackend(server mcpserver.Server, declared plugin.Server, dir, data s
 		return fmt.Errorf("%w: server %q working directory is not a directory", plugin.ErrUnavailable, declared.Name)
 	}
 	return nil
+}
+
+// locate resolves a working directory to the boundary it is confined to and
+// its path beneath that boundary.
+func locate(workingDirectory plugin.WorkingDirectory, dir, data string) (boundary, relative string) {
+	boundary = dir
+	if workingDirectory.Base() == plugin.DataBase {
+		boundary = data
+	}
+	if workingDirectory.Path() == "" {
+		return boundary, "."
+	}
+	return boundary, filepath.FromSlash(workingDirectory.Path())
 }
