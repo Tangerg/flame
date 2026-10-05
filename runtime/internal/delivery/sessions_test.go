@@ -2,7 +2,9 @@ package delivery
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"os"
 	"testing"
 	"time"
@@ -156,7 +158,7 @@ func TestDeleteSession_Cascade(t *testing.T) {
 	if err := hist.AppendItem(ctx, testsupport.MustRestoreItem(testsupport.ItemInput{SessionID: id, RunID: "run_1", ID: "item_1", OccurredAt: now})); err != nil {
 		t.Fatalf("seed item: %v", err)
 	}
-	if err := ints.Open(ctx, serverPending("run_1", id, "", "", nil, now)); err != nil {
+	if err := openSeededPending(ctx, t, db, ints, serverPending("run_1", id, "", "", nil, now)); err != nil {
 		t.Fatalf("seed interrupt: %v", err)
 	}
 	history := map[string][]chat.Message{id: {chat.NewUserMessage(chat.NewTextPart("hi"))}}
@@ -222,7 +224,7 @@ func TestDeleteSession_CancelsParkedTurn(t *testing.T) {
 	ints := persistence.NewInterruptStore(sqlite.NewInterruptStore(db))
 	created, _ := insertSessionFixture(ctx, svc, "parked", "/w")
 	id := created.ID()
-	if err := ints.Open(ctx, serverPending(
+	if err := openSeededPending(ctx, t, db, ints, serverPending(
 		"run_parked",
 		id,
 		"exec_parked",
@@ -289,4 +291,10 @@ func TestForkSession(t *testing.T) {
 	if _, err := s.ForkSession(ctx, protocol.ForkSessionRequest{SessionID: "nope"}); !errors.Is(err, protocol.ErrSessionNotFound) {
 		t.Errorf("unknown parent err = %v, want ErrSessionNotFound", err)
 	}
+}
+
+func openSeededPending(ctx context.Context, t *testing.T, db *sql.DB, ints *persistence.InterruptStore, pending runs.Pending) error {
+	t.Helper()
+	seedPendingRuns(t, db, pending)
+	return ints.Open(ctx, pending)
 }

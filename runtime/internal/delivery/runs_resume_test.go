@@ -45,7 +45,7 @@ func TestResumeRun_KeepsInterruptOpenWhenStartFails(t *testing.T) {
 		}},
 		time.Unix(1, 0).UTC(),
 	)
-	if err := rt.interrupts.Open(ctx, pending); err != nil {
+	if err := rt.openPending(ctx, t, pending); err != nil {
 		t.Fatalf("seed interrupt: %v", err)
 	}
 
@@ -100,7 +100,7 @@ func TestResumeRunRejectsMissingAndUnknownItemCoverage(t *testing.T) {
 		}},
 		time.Unix(1, 0).UTC(),
 	)
-	if err := rt.interrupts.Open(ctx, pending); err != nil {
+	if err := rt.openPending(ctx, t, pending); err != nil {
 		t.Fatalf("seed interrupt: %v", err)
 	}
 

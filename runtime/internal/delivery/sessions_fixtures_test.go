@@ -3,6 +3,7 @@ package delivery
 import (
 	"context"
 	"crypto/rand"
+	"database/sql"
 	"errors"
 	"fmt"
 	"iter"
@@ -198,6 +199,7 @@ type stubRuntime struct {
 	toolResults        *sqlite.ToolResultStore
 	plan               *sqlite.PlanStore                   // exported, restored, and dropped with the Session
 	interrupts         *persistence.InterruptStore         // open-interrupt registry (rollback clears dropped)
+	db                 *sql.DB                             // seeds the Runs a test hand-off reads its facts from
 	muts               *persistence.WorkspaceMutationStore // recoverable file-rollback log
 	execution          executionRuntime
 	admissions         *ownership.Gate
@@ -447,6 +449,22 @@ func handlerWithTools(useCases toolUseCases) *Handler {
 
 func (s stubRuntime) Transcript() *sqlite.TranscriptStore     { return s.hist }
 func (s stubRuntime) Interrupts() *persistence.InterruptStore { return s.interrupts }
+
+// openPending opens a test hand-off after giving it the Runs that own its facts.
+func (s *stubRuntime) openPending(ctx context.Context, t *testing.T, pending runs.Pending) error {
+	t.Helper()
+	seedPendingRuns(t, s.db, pending)
+	return s.interrupts.Open(ctx, pending)
+}
+
+func seedPendingRuns(t *testing.T, db *sql.DB, pending runs.Pending) {
+	t.Helper()
+	members := make([]testsupport.ParkedMember, len(pending.Continuations))
+	for index, continuation := range pending.Continuations {
+		members[index] = testsupport.ParkedMember{RunID: continuation.RunID, Lineage: continuation.Lineage}
+	}
+	testsupport.SeedParkedRuns(t, db, pending.SessionID, pending.RootRunID, pending.GoalIncarnationID, pending.Capabilities, members)
+}
 
 // MessageCount and TruncateMessages operate on the in-memory history map,
 // mirroring the engine's conversation-history store closely enough for
@@ -836,13 +854,13 @@ func (s stubLifecycleStores) deleteSession(ctx context.Context, sessionID string
 	if err := s.rt.hist.DeleteSession(ctx, sessionID); err != nil {
 		return err
 	}
+	if err := s.deleteInterrupts(ctx, sessionID); err != nil {
+		return err
+	}
 	if err := s.rt.runs.DeleteForSession(ctx, sessionID); err != nil {
 		return err
 	}
 	if err := s.rt.TruncateMessages(ctx, sessionID, 0); err != nil {
-		return err
-	}
-	if err := s.deleteInterrupts(ctx, sessionID); err != nil {
 		return err
 	}
 	if s.rt.toolResults != nil {
@@ -1395,7 +1413,7 @@ func newSessionHandler(t *testing.T) (*Handler, *sqlite.SessionStore, *stubRunti
 	svc := sqlite.NewSessionStore(db)
 	// Interrupts is always wired in production (runtime composition root), and
 	// the wire status now reads it (liveStatus), so give the stub a real store.
-	runtime := &stubRuntime{sess: svc, model: "default-model", interrupts: persistence.NewInterruptStore(sqlite.NewInterruptStore(db))}
+	runtime := &stubRuntime{sess: svc, model: "default-model", interrupts: persistence.NewInterruptStore(sqlite.NewInterruptStore(db)), db: db}
 	return newTestHandler(runtime), svc, runtime
 }
 

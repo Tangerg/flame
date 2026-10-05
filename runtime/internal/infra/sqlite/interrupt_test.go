@@ -2,6 +2,7 @@ package sqlite_test
 
 import (
 	"context"
+	"database/sql"
 	json "encoding/json/v2"
 	"errors"
 	"path/filepath"
@@ -18,14 +19,26 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
-func newInterruptStore(t *testing.T) *persistence.InterruptStore {
+// seededInterruptStore opens each hand-off after writing the Runs it names.
+type seededInterruptStore struct {
+	*persistence.InterruptStore
+	db *sql.DB
+	t  *testing.T
+}
+
+func (s seededInterruptStore) Open(ctx context.Context, pending runs.Pending) error {
+	seedParkedRuns(s.t, s.db, pending)
+	return s.InterruptStore.Open(ctx, pending)
+}
+
+func newInterruptStore(t *testing.T) seededInterruptStore {
 	t.Helper()
 	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	return persistence.NewInterruptStore(sqlite.NewInterruptStore(db))
+	return seededInterruptStore{InterruptStore: persistence.NewInterruptStore(sqlite.NewInterruptStore(db)), db: db, t: t}
 }
 
 func TestInterruptStore_OpenGetListDelete(t *testing.T) {
@@ -352,6 +365,7 @@ func TestInterruptStoreRejectsUnknownExecutorTopologyFields(t *testing.T) {
 		}},
 		CreatedAt: time.Unix(2, 0).UTC(),
 	}
+	seedParkedRuns(t, database, pending)
 	if err := store.Open(t.Context(), pending); err != nil {
 		t.Fatalf("Open interrupt: %v", err)
 	}

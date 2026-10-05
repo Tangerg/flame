@@ -1535,51 +1535,6 @@ func TestRecoveryRejectsCrossSessionPendingWithoutCommit(t *testing.T) {
 	}
 }
 
-// TestRecoveryRejectsContinuationFactDriftWithoutProbingCheckpoint proves
-// parked_continuation_matches_run_facts at boot recovery: contradictory facts
-// fail before an executor probe or durable repair can turn them into history.
-func TestRecoveryRejectsContinuationFactDriftWithoutProbingCheckpoint(t *testing.T) {
-	tests := []struct {
-		name   string
-		mutate func(*rundomain.Run, *Pending)
-	}{
-		{
-			name: "frozen run capabilities",
-			mutate: func(run *rundomain.Run, _ *Pending) {
-				snapshot := run.Snapshot()
-				snapshot.Capabilities.ChildRuns = true
-				*run = testsupport.MustRestoreRun(snapshot)
-			},
-		},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			run, pending, item := coherentRecoveryPark(t)
-			test.mutate(&run, &pending)
-			store := &recoveryStoreStub{
-				runs:        []rundomain.Run{run},
-				pending:     []Pending{pending},
-				transcripts: map[string][]transcript.Item{run.SessionID(): {item}},
-			}
-			checkpointCalls := 0
-			recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(func(context.Context, WaitingContinuation) (bool, error) {
-				checkpointCalls++
-				return true, nil
-			}))
-			if err != nil {
-				t.Fatalf("NewRecovery: %v", err)
-			}
-
-			if _, err := recovery.Reconcile(t.Context()); err == nil {
-				t.Fatal("Reconcile accepted a continuation fact that differs from Run admission")
-			}
-			if store.commits != 0 || checkpointCalls != 0 {
-				t.Fatalf("recovery mutated or probed after fact drift: commits=%d checkpointCalls=%d", store.commits, checkpointCalls)
-			}
-		})
-	}
-}
-
 // TestRecoveryRejectsChildProtocolDriftWithoutProbingCheckpoint proves
 // parked_continuation_matches_run_facts for root-owned policy: every child Run
 // is parked under the root admission, even though Continuation does not repeat

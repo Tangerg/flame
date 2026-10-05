@@ -91,6 +91,16 @@ func TestCommitOpeningResumePreservesAnswerClaimOnRollback(t *testing.T) {
 	state := sqlite.NewRunStore(db)
 	ctx := context.Background()
 	createdAt := time.Now().UTC()
+	stalePending := singleRunPending(
+		t,
+		"run_stale", "ses_1", "member_stale", "request_stale", "item_stale", time.Now().UTC(),
+	)
+	// The stale hand-off names a Run that has since ended, so the Session's
+	// active root is another Run.
+	seedPending(t, db, stalePending)
+	if _, err := db.ExecContext(ctx, `UPDATE runs SET state = 'terminal' WHERE run_id = 'run_stale'`); err != nil {
+		t.Fatalf("end stale Run: %v", err)
+	}
 	if admitErr := state.Admit(ctx, testsupport.RunDraft(run.Draft{RunID: "run_actual", SessionID: "ses_1", SegmentID: "seg_open", CreatedAt: createdAt})); admitErr != nil {
 		t.Fatalf("admit: %v", admitErr)
 	}
@@ -99,10 +109,6 @@ func TestCommitOpeningResumePreservesAnswerClaimOnRollback(t *testing.T) {
 	); suspendErr != nil {
 		t.Fatalf("suspend: %v", suspendErr)
 	}
-	stalePending := singleRunPending(
-		t,
-		"run_stale", "ses_1", "member_stale", "request_stale", "item_stale", time.Now().UTC(),
-	)
 	if openErr := ints.Open(ctx, stalePending); openErr != nil {
 		t.Fatalf("seed interrupt: %v", openErr)
 	}
@@ -153,6 +159,7 @@ func TestCommitOpeningResumeCommitsWholeWriteSet(t *testing.T) {
 		t,
 		"run_1", "ses_1", "member_1", "request_1", "item_question", time.Now().UTC(),
 	)
+	seedPending(t, db, pending)
 	if openErr := ints.Open(ctx, pending); openErr != nil {
 		t.Fatalf("seed interrupt: %v", openErr)
 	}
@@ -712,6 +719,7 @@ func newOpeningResumeFixture(t *testing.T, suspendRoot bool) openingResumeFixtur
 		},
 		CreatedAt: createdAt.Add(time.Second),
 	}
+	seedPending(t, database, pending)
 	if err := interruptStore.Open(ctx, pending); err != nil {
 		t.Fatalf("put pending: %v", err)
 	}
@@ -1247,9 +1255,6 @@ func TestClaimResumeAtomicallyRecordsAnswerAndInvalidatesCheckpoint(t *testing.T
 		t,
 		"run_claim", "session_claim", "member_claim", "request_claim", "item_claim", createdAt.Add(time.Second),
 	)
-	if openErr := interruptStore.Open(ctx, pending); openErr != nil {
-		t.Fatalf("open interrupt: %v", openErr)
-	}
 	questionItem, err := transcript.NewQuestion(transcript.ItemIdentity{
 		SessionID:  pending.SessionID,
 		RunID:      pending.Interrupts[0].RunID,
@@ -1293,6 +1298,9 @@ func TestClaimResumeAtomicallyRecordsAnswerAndInvalidatesCheckpoint(t *testing.T
 		ctx, waitingRoot, "segment_claim", runtimeidentity.CommitID{},
 	); suspendErr != nil {
 		t.Fatalf("persist claim root park: %v", suspendErr)
+	}
+	if openErr := interruptStore.Open(ctx, pending); openErr != nil {
+		t.Fatalf("open interrupt: %v", openErr)
 	}
 	effects := mustNewEffects(Config{
 		Interrupts:          interruptStore,
@@ -1384,6 +1392,7 @@ func TestClaimResumeAtomicallyRecordsAnswerAndInvalidatesCheckpoint(t *testing.T
 	next.Bindings[0].InterruptItemID = "item_next"
 	next.Bindings[0].RequestID = "request_next"
 	next.CreatedAt = claimedAt.Add(time.Second)
+	seedPending(t, db, next)
 	if err := interruptStore.Open(ctx, next); err != nil {
 		t.Fatalf("advance to next quiescent barrier: %v", err)
 	}
@@ -1435,9 +1444,6 @@ func TestClaimResumeAtomicallyPersistsToolApprovalDecision(t *testing.T) {
 	checkpoints := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
 	transcriptStore := sqlite.NewTranscriptStore(db)
 	runStore := sqlite.NewRunStore(db)
-	if openErr := interrupts.Open(ctx, pending); openErr != nil {
-		t.Fatalf("open interrupt: %v", openErr)
-	}
 	toolItem, err := transcript.NewToolCall(transcript.ItemIdentity{
 		SessionID: pending.SessionID, RunID: pending.RootRunID,
 		ItemID: pending.Interrupts[0].ItemID, OccurredAt: pending.Interrupts[0].ItemOccurredAt,
@@ -1476,6 +1482,9 @@ func TestClaimResumeAtomicallyPersistsToolApprovalDecision(t *testing.T) {
 		ctx, waitingRoot, "segment_approval_claim", runtimeidentity.CommitID{},
 	); suspendErr != nil {
 		t.Fatalf("persist Run park: %v", suspendErr)
+	}
+	if openErr := interrupts.Open(ctx, pending); openErr != nil {
+		t.Fatalf("open interrupt: %v", openErr)
 	}
 	answer := runs.InterruptAnswer{
 		InterruptItemID: pending.Bindings[0].InterruptItemID,
@@ -1656,9 +1665,6 @@ func newResumeClaimSQLiteFixture(t *testing.T, suffix string) resumeClaimSQLiteF
 		"item_claim_"+suffix,
 		createdAt.Add(time.Second),
 	)
-	if openErr := interrupts.Open(ctx, pending); openErr != nil {
-		t.Fatalf("open interrupt: %v", openErr)
-	}
 	questionItem, err := transcript.NewQuestion(transcript.ItemIdentity{
 		SessionID:  pending.SessionID,
 		RunID:      pending.Interrupts[0].RunID,
@@ -1704,6 +1710,9 @@ func newResumeClaimSQLiteFixture(t *testing.T, suffix string) resumeClaimSQLiteF
 		ctx, waitingRoot, "segment_claim_"+suffix, runtimeidentity.CommitID{},
 	); err != nil {
 		t.Fatalf("persist claim root park: %v", err)
+	}
+	if openErr := interrupts.Open(ctx, pending); openErr != nil {
+		t.Fatalf("open interrupt: %v", openErr)
 	}
 	answers := []runs.InterruptAnswer{{
 		InterruptItemID: pending.Bindings[0].InterruptItemID,
@@ -1777,7 +1786,9 @@ func TestCommitTerminalOwnsExecutorCheckpointDeletion(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			fixture := newTerminalCheckpointFixture(t, test.checkpointDeleteFail, test.childCleanupFail)
-			finished := finishedRunRecord("run_terminal", "ses_terminal", run.OutcomeCompleted)
+			finished := runPointer(mutatedRun(*finishedRunRecord("run_terminal", "ses_terminal", run.OutcomeCompleted), func(snapshot *run.Snapshot) {
+				snapshot.Capabilities = terminalFixtureCapabilities
+			}))
 			resolved := mustResolveMessageMark(t, *finished, 0)
 			finished = &resolved
 			err := fixture.effects.CommitEvent(fixture.ctx, runs.EventCommit{
@@ -1805,6 +1816,9 @@ type terminalCheckpointFixture struct {
 	effects      *Effects
 }
 
+// terminalFixtureCapabilities admits the question hand-off the fixture parks.
+var terminalFixtureCapabilities = run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}}
+
 func newTerminalCheckpointFixture(
 	t *testing.T,
 	failCheckpointDeletion bool,
@@ -1822,6 +1836,7 @@ func newTerminalCheckpointFixture(
 	if err := runStore.Admit(ctx, run.Draft{
 		RunID: "run_terminal", SessionID: "ses_terminal", SegmentID: "seg_terminal",
 		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
+		Capabilities: terminalFixtureCapabilities,
 	}); err != nil {
 		t.Fatalf("admit: %v", err)
 	}
@@ -2462,6 +2477,7 @@ func newWaitingCancellationSQLiteFixtureAt(
 		t.Fatalf("pending fixture: %v", validateErr)
 	}
 	interruptStore := persistence.NewInterruptStore(sqlite.NewInterruptStore(db))
+	seedPending(t, db, pending)
 	if openErr := interruptStore.Open(ctx, pending); openErr != nil {
 		t.Fatalf("seed Pending: %v", openErr)
 	}
@@ -3191,4 +3207,14 @@ func mustConversationStore(t *testing.T, messages *sqlite.MessageStore) *persist
 		t.Fatalf("conversation store: %v", err)
 	}
 	return store
+}
+
+// seedPending gives a test hand-off the Runs that own its facts.
+func seedPending(t *testing.T, db *sql.DB, pending runs.Pending) {
+	t.Helper()
+	members := make([]testsupport.ParkedMember, len(pending.Continuations))
+	for index, continuation := range pending.Continuations {
+		members[index] = testsupport.ParkedMember{RunID: continuation.RunID, Lineage: continuation.Lineage}
+	}
+	testsupport.SeedParkedRuns(t, db, pending.SessionID, pending.RootRunID, pending.GoalIncarnationID, pending.Capabilities, members)
 }

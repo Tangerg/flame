@@ -64,6 +64,13 @@ func suspendRun(ctx context.Context, store *sqlite.RunStore, state run.Run, segm
 // Run started is rejected as an incomplete boundary.
 var runCreatedAt = time.Unix(1, 0).UTC()
 
+// parkableDraft admits a Run with the capabilities its approval hand-off needs.
+func parkableDraft(runID, sessionID string) run.Draft {
+	draft := runDraft(runID, sessionID)
+	draft.Capabilities = capabilitiesForInterrupts(approvalInterrupts())
+	return draft
+}
+
 func runDraft(runID, sessionID string) run.Draft {
 	return run.Draft{
 		RunID: runID, SessionID: sessionID, SegmentID: "seg_open",
@@ -198,7 +205,7 @@ func TestParkCommitsInterruptAndSuspendAtomically(t *testing.T) {
 	runStore, ints := sqlite.NewRunStore(db), persistence.NewInterruptStore(sqlite.NewInterruptStore(db))
 	ctx := context.Background()
 
-	if err := runStore.Admit(ctx, runDraft("run_1", "ses_A")); err != nil {
+	if err := runStore.Admit(ctx, parkableDraft("run_1", "ses_A")); err != nil {
 		t.Fatalf("admit: %v", err)
 	}
 
@@ -215,7 +222,7 @@ func TestParkCommitsInterruptAndSuspendAtomically(t *testing.T) {
 		)); err != nil {
 			return err
 		}
-		return suspendRun(ctx, runStore, parkedRun("run_1", "ses_A"), "seg_open")
+		return suspendRun(ctx, runStore, parkedRunFromDraft(parkableDraft("run_1", "ses_A")), "seg_open")
 	}
 
 	// A park commit that fails after both writes leaves NEITHER: no interrupt, and
@@ -815,7 +822,10 @@ func TestPageRunsReturnsEveryLifecyclePosition(t *testing.T) {
 
 	for _, draft := range []run.Draft{
 		{RunID: "run_live", SessionID: "ses_A", SegmentID: "seg_open", CreatedAt: time.Unix(0, 20)},
-		{RunID: "run_parked", SessionID: "ses_B", SegmentID: "seg_open", CreatedAt: time.Unix(0, 10)},
+		{
+			RunID: "run_parked", SessionID: "ses_B", SegmentID: "seg_open", CreatedAt: time.Unix(0, 10),
+			Capabilities: capabilitiesForInterrupts(approvalInterrupts()),
+		},
 		{RunID: "run_done", SessionID: "ses_C", SegmentID: "seg_open", CreatedAt: time.Unix(0, 30)},
 	} {
 		draft = testsupport.RunDraft(draft)
@@ -825,6 +835,7 @@ func TestPageRunsReturnsEveryLifecyclePosition(t *testing.T) {
 	}
 	parked := parkedRunFromDraft(run.Draft{
 		RunID: "run_parked", SessionID: "ses_B", SegmentID: "seg_open", CreatedAt: time.Unix(0, 10),
+		Capabilities: capabilitiesForInterrupts(approvalInterrupts()),
 	})
 	if err := ints.Open(ctx, pendingForRun(
 		parked.ID(),

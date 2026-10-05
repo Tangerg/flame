@@ -57,7 +57,7 @@ func (p parkedRunTerminalization) build() (TerminalPlan, rundomain.Run, error) {
 		return TerminalPlan{}, rundomain.Run{}, err
 	}
 	rootRun := terminalRuns[len(terminalRuns)-1].State()
-	if rootRun.ID() != p.rootRunID || rootRun.GoalIncarnationID() != p.pending.GoalIncarnationID {
+	if rootRun.ID() != p.rootRunID {
 		return TerminalPlan{}, rundomain.Run{}, fmt.Errorf(
 			"sessions: terminalize parked Run tree %q: root admission differs from Pending",
 			p.rootRunID,
@@ -108,12 +108,6 @@ func (p parkedRunTerminalization) indexRuns() (
 			p.rootRunID,
 		)
 	}
-	if !p.pending.Capabilities.Equal(rootAdmission.Capabilities()) {
-		return nil, rundomain.Run{}, fmt.Errorf(
-			"sessions: terminalize parked Run tree %q: Pending run capabilities differ from root Run admission",
-			p.rootRunID,
-		)
-	}
 	pendingRunIDs := make(map[string]struct{}, len(p.pending.Continuations))
 	for _, continuation := range p.pending.Continuations {
 		pendingRunIDs[continuation.RunID] = struct{}{}
@@ -148,7 +142,7 @@ func (p parkedRunTerminalization) terminalRuns(
 				continuation.RunID,
 			)
 		}
-		if !waitingRunMatchesContinuation(run, continuation, p.sessionID, rootAdmission.Capabilities()) {
+		if !waitingParkedRun(run, p.sessionID, rootAdmission.Capabilities()) {
 			return nil, fmt.Errorf(
 				"sessions: terminalize parked Run tree %q: Run %q differs from its continuation",
 				p.rootRunID,
@@ -185,15 +179,13 @@ func (p parkedRunTerminalization) terminalRuns(
 	return terminalRuns, nil
 }
 
-func waitingRunMatchesContinuation(
+func waitingParkedRun(
 	run rundomain.Run,
-	continuation runs.Continuation,
 	sessionID string,
 	capabilities rundomain.Capabilities,
 ) bool {
 	return run.SessionID() == sessionID &&
 		run.State() == rundomain.Waiting &&
-		run.Lineage() == continuation.Lineage &&
 		run.Capabilities().Equal(capabilities)
 }
 

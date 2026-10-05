@@ -37,6 +37,7 @@ func rollbackHarness(t *testing.T) (*Handler, *stubRuntime) {
 		interrupts:  persistence.NewInterruptStore(sqlite.NewInterruptStore(db)),
 		muts:        persistence.NewWorkspaceMutationStore(sqlite.NewWorkspaceMutationStore(db)),
 		plan:        sqlite.NewPlanStore(db),
+		db:          db,
 	}
 	return newTestHandler(rt), rt
 }
@@ -128,7 +129,7 @@ func TestRollbackSession_CancelsDroppedParkedRun(t *testing.T) {
 	putRun(t, rt, sess.ID(), "run_1", 100, 2)
 	putRun(t, rt, sess.ID(), "run_2", 200, 4)
 	putUserItem(t, rt, sess.ID(), "run_2", "item_u2", "second prompt")
-	if err := rt.interrupts.Open(ctx, serverPending(
+	if err := rt.openPending(ctx, t, serverPending(
 		"run_2",
 		sess.ID(),
 		"exec_parked",

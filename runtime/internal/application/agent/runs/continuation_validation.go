@@ -105,12 +105,6 @@ func validatePendingRunTree(pending Pending, values []rundomain.Run) error {
 	if root.SessionID() != pending.SessionID || root.State() != rundomain.Waiting {
 		return fmt.Errorf("runs: validate parked Run tree %q: root Run scope or state differs from Pending", pending.RootRunID)
 	}
-	if root.GoalIncarnationID() != pending.GoalIncarnationID {
-		return fmt.Errorf("runs: validate parked Run tree %q: root Run goal incarnation differs from Pending", pending.RootRunID)
-	}
-	if !root.Capabilities().Equal(pending.Capabilities) {
-		return fmt.Errorf("runs: validate parked Run tree %q: root Run run capabilities differ from Pending", pending.RootRunID)
-	}
 	if len(active) != len(pending.Continuations) {
 		return fmt.Errorf(
 			"runs: validate parked Run tree %q: %d continuations do not cover %d active Runs",
@@ -128,9 +122,6 @@ func validatePendingRunTree(pending Pending, values []rundomain.Run) error {
 				continuation.RunID,
 			)
 		}
-		if err := validateContinuationRunFacts(pending.RootRunID, value, continuation); err != nil {
-			return err
-		}
 		if !value.Capabilities().Equal(root.Capabilities()) {
 			return fmt.Errorf(
 				"runs: validate parked Run tree %q: Run %q run capabilities differ from root admission",
@@ -140,33 +131,4 @@ func validatePendingRunTree(pending Pending, values []rundomain.Run) error {
 		}
 	}
 	return nil
-}
-
-// validateContinuationRunFacts proves that a durable continuation hands off
-// run. Admission, accounting and creation are read from the Run itself, so the
-// continuation carries none of them to disagree with.
-// Lifecycle callers separately validate state, tree coverage, Pending ownership,
-// and root-owned capability and Goal facts that do not live on each continuation.
-func validateContinuationRunFacts(
-	rootRunID string,
-	value rundomain.Run,
-	continuation Continuation,
-) error {
-	switch {
-	case value.ID() != continuation.RunID:
-		return fmt.Errorf(
-			"runs: validate Run tree %q: Run %q differs from continuation owner %q",
-			rootRunID,
-			value.ID(),
-			continuation.RunID,
-		)
-	case value.Lineage() != continuation.Lineage:
-		return fmt.Errorf(
-			"runs: validate Run tree %q: Run %q lineage differs from its continuation",
-			rootRunID,
-			value.ID(),
-		)
-	default:
-		return nil
-	}
 }

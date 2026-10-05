@@ -25,7 +25,7 @@ func TestWaitingRunReadRejectsACorruptPendingSet(t *testing.T) {
 	runStore, interrupts := sqlite.NewRunStore(db), persistence.NewInterruptStore(sqlite.NewInterruptStore(db))
 	ctx := context.Background()
 
-	if err := runStore.Admit(ctx, runDraft("run_1", "ses_A")); err != nil {
+	if err := runStore.Admit(ctx, parkableDraft("run_1", "ses_A")); err != nil {
 		t.Fatalf("admit: %v", err)
 	}
 	park := func(ctx context.Context) error {
@@ -34,7 +34,7 @@ func TestWaitingRunReadRejectsACorruptPendingSet(t *testing.T) {
 		)); err != nil {
 			return err
 		}
-		return suspendRun(ctx, runStore, parkedRun("run_1", "ses_A"), "seg_open")
+		return suspendRun(ctx, runStore, parkedRunFromDraft(parkableDraft("run_1", "ses_A")), "seg_open")
 	}
 	if err := sqlite.RunInTx(ctx, db, park); err != nil {
 		t.Fatalf("park commit: %v", err)

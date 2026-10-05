@@ -243,7 +243,6 @@ func TestGoalSchemaUsesSemanticIncarnationColumns(t *testing.T) {
 	}{
 		{table: "goals", current: "incarnation_id", obsolete: "lease_id"},
 		{table: "runs", current: "goal_incarnation_id", obsolete: "goal_lease_id"},
-		{table: "interrupts", current: "goal_incarnation_id", obsolete: "goal_lease_id"},
 	} {
 		columns := columnsOf(test.table)
 		if !slices.Contains(columns, test.current) {

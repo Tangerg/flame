@@ -74,18 +74,19 @@ func TestRunInTx_AtomicAcrossStores(t *testing.T) {
 		t.Errorf("committed messages = %d, want 1", n)
 	}
 
+	pendingSet := pendingForRun(
+		"run_1",
+		"s2",
+		"member_1",
+		[]transcript.Interrupt{{
+			ItemID:   "item_1",
+			Kind:     interrupt.Question,
+			Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}},
+		}},
+		time.Unix(2, 0).UTC(),
+	)
+	seedParkedRuns(t, db, pendingSet)
 	if runInTxErr := sqlite.RunInTx(ctx, db, func(ctx context.Context) error {
-		pendingSet := pendingForRun(
-			"run_1",
-			"s2",
-			"member_1",
-			[]transcript.Interrupt{{
-				ItemID:   "item_1",
-				Kind:     interrupt.Question,
-				Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}},
-			}},
-			time.Unix(2, 0).UTC(),
-		)
 		if openErr := ints.Open(ctx, pendingSet); openErr != nil {
 			return openErr
 		}

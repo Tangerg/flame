@@ -317,7 +317,6 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			root_run_id        TEXT    PRIMARY KEY,
 			session_id         TEXT    NOT NULL,
 			executor_id        TEXT    NOT NULL,
-			goal_incarnation_id      TEXT    NOT NULL DEFAULT '',
 			-- Derived from the root Continuation and checked again on decode. It
 			-- exists as a relational key so two pending sets cannot claim the same
 			-- executor snapshot even though the complete hand-off stays one JSON
@@ -326,7 +325,6 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			payload            TEXT    NOT NULL,
 			continuations      TEXT    NOT NULL,
 			interrupt_bindings TEXT   NOT NULL,
-			capabilities       TEXT    NOT NULL DEFAULT '',
 			created_at         INTEGER NOT NULL,
 			state              TEXT    NOT NULL DEFAULT '%[1]s',
 			answers            TEXT    NOT NULL DEFAULT '',
