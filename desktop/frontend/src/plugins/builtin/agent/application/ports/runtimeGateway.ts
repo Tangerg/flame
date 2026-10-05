@@ -4,6 +4,7 @@ import type { AgentItem, AgentPendingInterruptSet, AgentRunFact } from "@/plugin
 import type { ApprovalMode } from "../../domain/hitl";
 import type { AgentInput } from "../../domain/input";
 import type { AgentPlan } from "@/plugins/sdk/types/agentSessionView";
+import type { AgentSessionSummary } from "../session/sessionQueries";
 
 export type RestoreType = "history" | "files" | "both";
 
@@ -37,7 +38,7 @@ export interface AgentRuntimeGateway {
     title?: string;
     favorite?: boolean;
     cwd?: string;
-  }): Promise<{ revision: number }>;
+  }): Promise<AgentSessionSummary>;
   forkSession(input: { sessionId: string; fromRunId?: string }): Promise<{ id: string }>;
   loadSessionSnapshot(
     sessionId: string,

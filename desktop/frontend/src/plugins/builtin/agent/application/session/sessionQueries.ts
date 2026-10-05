@@ -1,5 +1,6 @@
 import { createDataQuery } from "@/plugins/sdk";
 import { queryClient } from "@/lib/queryClient";
+import type { AgentCommandOwner } from "../agentCommandOwner";
 
 interface AgentSessionWorkspace {
   path: string;
@@ -27,22 +28,29 @@ export function invalidateAgentSessions(): Promise<void> {
   return queryClient.invalidateQueries({ queryKey: [AGENT_SESSIONS_KEY] });
 }
 
-export function recoverAgentSessionSummaryField(
-  previous: AgentSessionSummary[] | undefined,
+// A queued summary write runs after the same Session's earlier writes have
+// been committed to this projection, so it states the revision the Runtime
+// last returned. The commit and the revalidation that cancels older reads are
+// adjacent, so a read issued before the write cannot restore its predecessor.
+export function writeAgentSessionSummary(
+  owner: AgentCommandOwner,
   sessionId: string,
-  field: "title" | "favorite",
-  optimisticValue: string | boolean,
-): void {
-  const prior = previous?.find((session) => session.id === sessionId);
-  if (prior) {
-    queryClient.setQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY], (current) =>
-      current?.map((session) => {
-        if (session.id !== sessionId || session[field] !== optimisticValue) return session;
-        return { ...session, [field]: prior[field] };
-      }),
+  renderedRevision: number,
+  write: (expectedRevision: number) => Promise<AgentSessionSummary>,
+): Promise<AgentSessionSummary> {
+  return owner.serializeSessionSummary(sessionId, async () => {
+    owner.assertCurrent();
+    const current = queryClient
+      .getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY])
+      ?.find((session) => session.id === sessionId);
+    const saved = await owner.settle(write(current?.revision ?? renderedRevision));
+    owner.assertCurrent();
+    queryClient.setQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY], (sessions) =>
+      sessions?.map((session) => (session.id === saved.id ? saved : session)),
     );
-  }
-  void invalidateAgentSessions();
+    void invalidateAgentSessions();
+    return saved;
+  });
 }
 
 export function subscribeAgentSessionProjection<T>(

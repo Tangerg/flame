@@ -45,14 +45,8 @@ function runtimeScheduleGateway(client: FlameClient): ScheduleGateway {
         }),
       );
     },
-    async setEnabled(schedule, enabled) {
-      return scheduleConfig(
-        await client.schedules.update({
-          id: schedule.id,
-          expectedRevision: schedule.revision,
-          enabled,
-        }),
-      );
+    async setEnabled(id, expectedRevision, enabled) {
+      return scheduleConfig(await client.schedules.update({ id, expectedRevision, enabled }));
     },
     async remove(id) {
       await client.schedules.delete(id);

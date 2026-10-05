@@ -3,11 +3,6 @@ import { createPublicationSlot } from "@/lib/publicationSlot";
 import { RetirableTaskCohort } from "@/lib/taskQueue";
 import { tupleKey } from "@/lib/tupleKey";
 
-interface SessionSummaryMutation {
-  pending: Promise<unknown> | null;
-  revision: number;
-}
-
 export interface SessionRollbackLease {
   isCurrent(): boolean;
   release(): void;
@@ -22,7 +17,6 @@ export class AgentCommandOwner {
   readonly #creates = new Map<string, Promise<unknown>>();
   readonly #forks = new Map<string, Promise<unknown>>();
   readonly #rollbackSessions = new Set<string>();
-  readonly #sessionSummaries = new Map<string, SessionSummaryMutation>();
   readonly #effects = new Set<AgentCommandEffect>();
   readonly #retiredError = new GenerationRetiredError("agent_command_owner");
   readonly #cohort = new RetirableTaskCohort(this.#retiredError);
@@ -81,33 +75,9 @@ export class AgentCommandOwner {
     };
   }
 
-  settleSessionSummary<T extends { revision: number }>(
-    sessionId: string,
-    expectedRevision: number,
-    execute: (revision: number) => Promise<T>,
-  ): Promise<T> {
+  serializeSessionSummary<T>(sessionId: string, execute: () => Promise<T>): Promise<T> {
     this.assertCurrent();
-    const summary = this.#sessionSummaries.get(sessionId) ?? {
-      pending: null,
-      revision: expectedRevision,
-    };
-    this.#sessionSummaries.set(sessionId, summary);
-
-    const result = this.#cohort.runSerial(tupleKey("session-summary", sessionId), async () => {
-      this.assertCurrent();
-      const value = await this.settle(execute(Math.max(expectedRevision, summary.revision)));
-      this.assertCurrent();
-      summary.revision = value.revision;
-      return value;
-    });
-    summary.pending = result;
-    const release = () => {
-      if (this.#sessionSummaries.get(sessionId)?.pending === result) {
-        this.#sessionSummaries.delete(sessionId);
-      }
-    };
-    void result.then(release, release);
-    return result;
+    return this.#cohort.runSerial(tupleKey("session-summary", sessionId), execute);
   }
 
   serializeApprovalMode<T>(execute: () => Promise<T>): Promise<T> {
@@ -167,7 +137,6 @@ export class AgentCommandOwner {
     this.#creates.clear();
     this.#forks.clear();
     this.#rollbackSessions.clear();
-    this.#sessionSummaries.clear();
     for (const effect of [...this.#effects]) effect.rollback();
   }
 }

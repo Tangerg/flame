@@ -143,9 +143,20 @@ describe("agentRuntimeGateway", () => {
     expect(signals[1]?.aborted).toBe(false);
   });
 
-  it("forwards the caller snapshot revision without a get-before-write", async () => {
+  it("forwards the caller snapshot revision and returns the summary the Runtime saved", async () => {
     const get = vi.fn();
-    const update = vi.fn().mockResolvedValue({ revision: 12 });
+    const update = vi.fn().mockResolvedValue({
+      id: "ses_1",
+      revision: 12,
+      title: "saved title",
+      status: "idle",
+      provider: "openai",
+      model: "gpt-5",
+      workspace: { ref: { path: "/repo" }, availability: "available" },
+      favorite: true,
+      createdAt: "2026-08-12T00:00:00Z",
+      updatedAt: "2026-08-13T00:00:00Z",
+    });
     runtimeClient = () => ({ sessions: { get, update } }) as unknown as FlameClient;
     uninstall = installAgentRuntimeGateway(getRuntimeClient);
 
@@ -155,7 +166,17 @@ describe("agentRuntimeGateway", () => {
         expectedRevision: 11,
         favorite: true,
       }),
-    ).resolves.toEqual({ revision: 12 });
+    ).resolves.toEqual({
+      id: "ses_1",
+      revision: 12,
+      title: "saved title",
+      status: "idle",
+      provider: "openai",
+      model: "gpt-5",
+      workspace: { path: "/repo", availability: "available" },
+      favorite: true,
+      time: "2026-08-13T00:00:00Z",
+    });
 
     expect(update).toHaveBeenCalledWith({
       sessionId: asSessionId("ses_1"),

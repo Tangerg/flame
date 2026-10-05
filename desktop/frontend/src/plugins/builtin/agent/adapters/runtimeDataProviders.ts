@@ -1,11 +1,6 @@
 import type { Contributor } from "@/plugins/sdk";
 import { DATA_PROVIDER } from "@/plugins/sdk/kernelPoints";
-import {
-  asRunId,
-  asSessionId,
-  type FlameClient,
-  type Session,
-} from "@flame/runtime-contract/client";
+import { asRunId, asSessionId, type FlameClient } from "@flame/runtime-contract/client";
 import {
   TRAJECTORY_KEY,
   TRAJECTORY_RUN_KEY,
@@ -20,10 +15,8 @@ import {
   type ApprovalRulesQuery,
   type ApprovalRuleSummary,
 } from "../application/approvalPolicyQueries";
-import {
-  AGENT_SESSIONS_KEY,
-  type AgentSessionSummary,
-} from "../application/session/sessionQueries";
+import { AGENT_SESSIONS_KEY } from "../application/session/sessionQueries";
+import { toAgentSessionSummary } from "./runtimeSessionSummary";
 
 function requiredParams<P>(key: string, params: unknown): P {
   if (params === undefined) throw new Error(`Data provider "${key}" requires parameters`);
@@ -99,22 +92,4 @@ export function registerAgentDataProviders(
       }));
     },
   });
-}
-
-function toAgentSessionSummary(session: Session): AgentSessionSummary {
-  return {
-    id: session.id,
-    revision: session.revision,
-    title: session.title,
-    status: session.status,
-    provider: session.provider,
-    model: session.model,
-    ...(session.reasoningEffort ? { reasoningEffort: session.reasoningEffort } : {}),
-    workspace: {
-      path: session.workspace.ref.path,
-      availability: session.workspace.availability,
-    },
-    ...(session.favorite !== undefined ? { favorite: session.favorite } : {}),
-    time: session.updatedAt || session.createdAt,
-  };
 }

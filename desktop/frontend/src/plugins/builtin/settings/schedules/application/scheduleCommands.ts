@@ -15,7 +15,7 @@ export interface ScheduleUpdateInput extends ScheduleConfigInput {
 export interface ScheduleGateway {
   create(input: ScheduleConfigInput): Promise<ScheduleConfig>;
   update(input: ScheduleUpdateInput): Promise<ScheduleConfig>;
-  setEnabled(schedule: ScheduleConfig, enabled: boolean): Promise<ScheduleConfig>;
+  setEnabled(id: string, expectedRevision: number, enabled: boolean): Promise<ScheduleConfig>;
   remove(id: string): Promise<void>;
   runNow(id: string): Promise<ScheduledRunIdentity>;
 }
@@ -24,32 +24,30 @@ class ScheduleMutationGeneration {
   readonly #gateway: ScheduleGateway;
   readonly #retiredError = new GenerationRetiredError("schedule_mutation_generation");
   readonly #cohort = new RetirableTaskCohort(this.#retiredError);
-  readonly #accepted = new Map<string, ScheduleConfig>();
 
   constructor(gateway: ScheduleGateway) {
     this.#gateway = gateway;
   }
 
   create(input: ScheduleConfigInput): Promise<ScheduleConfig> {
-    return this.#executeMutation(
-      () => this.#gateway.create(input),
-      (saved) => this.#commitSaved(saved),
-    );
+    return this.#executeMutation(() => this.#gateway.create(input), commitScheduleSaved);
   }
 
   update(input: ScheduleUpdateInput): Promise<ScheduleConfig> {
-    return this.#run(
-      input.id,
-      () => this.#gateway.update(input),
-      (saved) => this.#commitSaved(saved),
-    );
+    return this.#run(input.id, () => this.#gateway.update(input), commitScheduleSaved);
   }
 
   setEnabled(schedule: ScheduleConfig, enabled: boolean): Promise<ScheduleConfig> {
     return this.#run(
       schedule.id,
-      () => this.#gateway.setEnabled(this.#latest(schedule.id, schedule), enabled),
-      (saved) => this.#commitSaved(saved),
+      () => {
+        // A queued toggle runs after the same schedule's earlier writes have
+        // been committed to the read projection, so it states the revision
+        // the Runtime last returned rather than the one its caller rendered.
+        const current = cachedSchedule(schedule.id) ?? schedule;
+        return this.#gateway.setEnabled(current.id, current.revision, enabled);
+      },
+      commitScheduleSaved,
     );
   }
 
@@ -57,10 +55,7 @@ class ScheduleMutationGeneration {
     return this.#run(
       id,
       () => this.#gateway.remove(id),
-      () => {
-        this.#accepted.delete(id);
-        removeSchedule(id);
-      },
+      () => removeSchedule(id),
     );
   }
 
@@ -75,7 +70,6 @@ class ScheduleMutationGeneration {
 
   retire(): void {
     this.#cohort.retire();
-    this.#accepted.clear();
   }
 
   #run<T>(
@@ -110,23 +104,6 @@ class ScheduleMutationGeneration {
     this.#cohort.assertCurrent();
     afterRepair?.(value);
     return value;
-  }
-
-  #commitSaved(saved: ScheduleConfig): void {
-    this.#accepted.set(saved.id, saved);
-    commitScheduleSaved(saved);
-  }
-
-  #latest(identity: string, fallback: ScheduleConfig): ScheduleConfig {
-    const cached = queryClient
-      .getQueryData<ScheduleConfig[]>([SCHEDULES_KEY])
-      ?.find((schedule) => schedule.id === identity);
-    const candidates = [fallback, cached, this.#accepted.get(identity)].filter(
-      (candidate): candidate is ScheduleConfig => candidate !== undefined,
-    );
-    return candidates.reduce((latest, candidate) =>
-      candidate.revision > latest.revision ? candidate : latest,
-    );
   }
 }
 
@@ -212,6 +189,12 @@ export async function deleteSchedule(id: string): Promise<void> {
 
 export async function runScheduleNow(id: string): Promise<ScheduledRunIdentity> {
   return ScheduleMutationOwner.current().runNow(id);
+}
+
+function cachedSchedule(id: string): ScheduleConfig | undefined {
+  return queryClient
+    .getQueryData<ScheduleConfig[]>([SCHEDULES_KEY])
+    ?.find((schedule) => schedule.id === id);
 }
 
 function commitScheduleSaved(saved: ScheduleConfig): void {

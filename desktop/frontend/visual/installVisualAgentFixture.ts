@@ -138,11 +138,20 @@ function visualSession(state: VisualAgentState): AgentSessionSummary {
   };
 }
 
-function visualAgentRuntimeGateway(snapshot: AgentSessionSnapshot): AgentRuntimeGateway {
+function visualAgentRuntimeGateway(
+  snapshot: AgentSessionSnapshot,
+  session: AgentSessionSummary,
+): AgentRuntimeGateway {
   return {
     createSession: async () => ({ id: VISUAL_SESSION_ID }),
     deleteSession: async () => undefined,
-    updateSession: async ({ expectedRevision }) => ({ revision: expectedRevision + 1 }),
+    updateSession: async ({ expectedRevision, title, favorite, cwd }) => ({
+      ...session,
+      revision: expectedRevision + 1,
+      ...(title !== undefined ? { title } : {}),
+      ...(favorite !== undefined ? { favorite } : {}),
+      ...(cwd !== undefined ? { workspace: { ...session.workspace, path: cwd } } : {}),
+    }),
     forkSession: async () => ({ id: `${VISUAL_SESSION_ID}_fork` }),
     loadSessionSnapshot: async () => ({
       snapshot,
@@ -279,7 +288,7 @@ export async function installVisualAgentFixture(
   installVisualRuntimeServiceStatusPort(state === "runtime-down" ? "unavailable" : "ready");
   installAgentStatePorts();
   installWorkspaceNavigationPort(() => "https://visual.flame.test");
-  configureAgentRuntimeGateway(visualAgentRuntimeGateway(snapshot));
+  configureAgentRuntimeGateway(visualAgentRuntimeGateway(snapshot, visualSession(state)));
 
   useAgentSessionStore.setState({
     openSessionIds: projectless ? [] : [VISUAL_SESSION_ID],

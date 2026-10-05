@@ -58,7 +58,7 @@ describe("schedule commands", () => {
     expect(queryClient.getQueryData([SCHEDULES_KEY])).toEqual([updated]);
   });
 
-  it("serializes same-schedule intents and rebases them on the accepted revision", async () => {
+  it("serializes same-schedule toggles and states the revision the Runtime last returned", async () => {
     const current = {
       id: "sch_1",
       title: "Review",
@@ -73,8 +73,8 @@ describe("schedule commands", () => {
     const setEnabled = vi
       .fn()
       .mockImplementationOnce(() => first.promise)
-      .mockImplementationOnce((schedule, enabled) =>
-        Promise.resolve({ ...schedule, enabled, revision: schedule.revision + 1 }),
+      .mockImplementationOnce((_id: string, revision: number, enabled: boolean) =>
+        Promise.resolve({ ...disabled, enabled, revision: revision + 1 }),
       );
     owner = ScheduleMutationOwner.install({ setEnabled } as unknown as ScheduleGateway);
     vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
@@ -90,7 +90,13 @@ describe("schedule commands", () => {
     await expect(enable).resolves.toMatchObject({ enabled: true, revision: 9 });
 
     expect(callsBeforeFirstSettlement).toBe(1);
-    expect(setEnabled.mock.calls[1]).toEqual([disabled, true]);
+    expect(setEnabled.mock.calls).toEqual([
+      ["sch_1", 7, false],
+      ["sch_1", 8, true],
+    ]);
+    expect(queryClient.getQueryData([SCHEDULES_KEY])).toEqual([
+      { ...disabled, enabled: true, revision: 9 },
+    ]);
   });
 
   it("keeps a draft's revision when a newer schedule has been read", async () => {

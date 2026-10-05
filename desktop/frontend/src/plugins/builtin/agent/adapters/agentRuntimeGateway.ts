@@ -12,6 +12,7 @@ import type { AgentRuntimeGateway } from "../application/ports/runtimeGateway";
 import { agentInputToContentBlocks, contentBlocksToAgentInput } from "./wireInput";
 import { runtimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
 import { runtimeSessionMaterial } from "./runtimeSessionMaterial";
+import { toAgentSessionSummary } from "./runtimeSessionSummary";
 import { AgentCommandOwner } from "../application/agentCommandOwner";
 import { AgentSessionUsageOwner } from "../application/session/sessionUsage";
 
@@ -48,7 +49,7 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
       ...patch,
       ...(cwd ? { workspace: { path: cwd } } : {}),
     });
-    return { revision: updated.revision };
+    return toAgentSessionSummary(updated);
   }
 
   async forkSession(input: Parameters<AgentRuntimeGateway["forkSession"]>[0]) {

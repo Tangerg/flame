@@ -5,7 +5,7 @@ import { configureAgentRuntimeGateway, type AgentRuntimeGateway } from "../ports
 import { useToggleFavorite } from "./favoriteSession";
 import { useRenameSession } from "./renameSession";
 import { AGENT_SESSIONS_KEY, type AgentSessionSummary } from "./sessionQueries";
-import type { FlameClient } from "@flame/runtime-contract/client";
+import type { FlameClient, Session } from "@flame/runtime-contract/client";
 import { installAgentRuntimeGateway } from "../../adapters/agentRuntimeGateway";
 
 let runtimeClient: () => FlameClient = () => {
@@ -35,7 +35,7 @@ afterEach(() => {
   queryClient.removeQueries({ queryKey: [AGENT_SESSIONS_KEY] });
 });
 
-describe("optimistic Session summary mutations", () => {
+describe("Session summary mutations", () => {
   it.each([
     {
       name: "rename",
@@ -64,11 +64,11 @@ describe("optimistic Session summary mutations", () => {
     expect(invalidate).toHaveBeenCalledWith({ queryKey: [AGENT_SESSIONS_KEY] });
   });
 
-  it("serializes local conditional writes and carries the committed revision", async () => {
+  it("serializes conditional writes and projects only what the Runtime saved", async () => {
     queryClient.setQueryData([AGENT_SESSIONS_KEY], [session()]);
     vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
-    const rename = Promise.withResolvers<{ revision: number }>();
-    const favorite = Promise.withResolvers<{ revision: number }>();
+    const rename = Promise.withResolvers<AgentSessionSummary>();
+    const favorite = Promise.withResolvers<AgentSessionSummary>();
     const updateSession = vi
       .fn()
       .mockImplementationOnce(() => rename.promise)
@@ -91,30 +91,32 @@ describe("optimistic Session summary mutations", () => {
       expectedRevision: 3,
       title: "after",
     });
+    expect(queryClient.getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY])).toEqual([
+      session(),
+    ]);
 
-    rename.resolve({ revision: 4 });
+    rename.resolve({ ...session(), title: "after (normalized)", revision: 4 });
     await vi.waitFor(() => expect(updateSession).toHaveBeenCalledTimes(2));
     expect(updateSession).toHaveBeenNthCalledWith(2, {
       sessionId: "ses_deleted",
       expectedRevision: 4,
       favorite: true,
     });
-    favorite.resolve({ revision: 5 });
+    const saved = { ...session(), title: "after (normalized)", favorite: true, revision: 5 };
+    favorite.resolve(saved);
     await act(async () => Promise.all([renaming, favoriting]));
 
-    expect(queryClient.getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY])).toEqual([
-      { ...session(), title: "after", favorite: true, revision: 5 },
-    ]);
+    expect(queryClient.getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY])).toEqual([saved]);
   });
 
-  it("rolls back only its own field after a preceding local write commits", async () => {
+  it("leaves the saved summary in place when a following write is refused", async () => {
     queryClient.setQueryData([AGENT_SESSIONS_KEY], [session()]);
     vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
     vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const rename = Promise.withResolvers<{ revision: number }>();
+    const renamed = { ...session(), title: "after", revision: 4 };
     const updateSession = vi
       .fn()
-      .mockImplementationOnce(() => rename.promise)
+      .mockResolvedValueOnce(renamed)
       .mockRejectedValueOnce(new Error("remote writer won"));
     restoreRuntime = configureAgentRuntimeGateway({
       updateSession,
@@ -124,18 +126,17 @@ describe("optimistic Session summary mutations", () => {
 
     const renaming = renameHook.result.current("ses_deleted", 3, "after");
     const favoriting = favoriteHook.result.current("ses_deleted", 3, true);
-    rename.resolve({ revision: 4 });
     await act(async () => Promise.all([renaming, favoriting]));
 
     expect(queryClient.getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY])).toEqual([
-      { ...session(), title: "after", favorite: undefined, revision: 4 },
+      renamed,
     ]);
   });
 
-  it("retires old optimistic effects and starts the successor queue independently", async () => {
+  it("drops a retired generation's late result and starts the successor queue independently", async () => {
     queryClient.setQueryData([AGENT_SESSIONS_KEY], [session()]);
     vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue();
-    const retiredUpdate = Promise.withResolvers<{ revision: number }>();
+    const retiredUpdate = Promise.withResolvers<AgentSessionSummary>();
     const retiredUpdateCall = vi.fn(() => retiredUpdate.promise);
     restoreRuntime = configureAgentRuntimeGateway({
       updateSession: retiredUpdateCall,
@@ -144,24 +145,17 @@ describe("optimistic Session summary mutations", () => {
     const favoriteHook = renderHook(() => useToggleFavorite());
 
     const renaming = renameHook.result.current("ses_deleted", 3, "retired title");
-    await vi.waitFor(() =>
-      expect(
-        queryClient.getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY])?.[0]?.title,
-      ).toBe("retired title"),
-    );
     await vi.waitFor(() => expect(retiredUpdateCall).toHaveBeenCalledTimes(1));
 
-    const successorUpdate = vi.fn().mockResolvedValue({ revision: 4 });
+    const successorUpdate = vi
+      .fn()
+      .mockResolvedValue(runtimeSession({ favorite: true, revision: 4 }));
     runtimeClient = () => ({ sessions: { update: successorUpdate } }) as unknown as FlameClient;
     const disposeSuccessor = installAgentRuntimeGateway(getRuntimeClient);
     try {
-      expect(
-        queryClient.getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY])?.[0]?.title,
-      ).toBe("before");
-
       const favoriting = favoriteHook.result.current("ses_deleted", 3, true);
       await vi.waitFor(() => expect(successorUpdate).toHaveBeenCalledTimes(1));
-      retiredUpdate.resolve({ revision: 99 });
+      retiredUpdate.resolve({ ...session(), title: "retired title", revision: 99 });
       await act(async () => Promise.all([renaming, favoriting]));
 
       expect(queryClient.getQueryData<AgentSessionSummary[]>([AGENT_SESSIONS_KEY])).toEqual([
@@ -172,3 +166,22 @@ describe("optimistic Session summary mutations", () => {
     }
   });
 });
+
+function runtimeSession(change: { favorite?: boolean; revision: number }): Session {
+  const summary = session();
+  return {
+    id: summary.id,
+    revision: change.revision,
+    title: summary.title,
+    status: summary.status,
+    provider: summary.provider,
+    model: summary.model,
+    workspace: {
+      ref: { path: summary.workspace.path },
+      availability: summary.workspace.availability,
+    },
+    ...(change.favorite !== undefined ? { favorite: change.favorite } : {}),
+    createdAt: summary.time,
+    updatedAt: summary.time,
+  } as Session;
+}
