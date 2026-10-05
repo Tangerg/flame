@@ -116,22 +116,18 @@ func (g *GoalStore) RecordRun(ctx context.Context, record goal.RunRecord) error 
 		return fmt.Errorf("sqlite: record Goal Run: %w", err)
 	}
 	return RunInTx(ctx, g.db, func(ctx context.Context) error {
-		var costUSD any
-		if value, available := record.Cost.USD(); available {
-			costUSD = value
+		matches, err := g.terminalRunMatches(ctx, record)
+		if err != nil {
+			return err
+		}
+		if !matches {
+			return fmt.Errorf(
+				"%w: Run %q has no matching terminal accounting owner",
+				goal.ErrRunIdentityConflict, record.RunID,
+			)
 		}
 		res, err := conn(ctx, g.db).ExecContext(ctx,
-			`INSERT INTO goal_runs(run_id, session_id, incarnation_id, outcome, cost_usd, steps, completed_at)
-			 SELECT run_id, session_id, goal_incarnation_id, outcome, ?, steps, finished_at
-			   FROM runs
-			  WHERE run_id = ? AND session_id = ? AND state = ?
-			    AND goal_incarnation_id = ? AND outcome = ?
-			    AND steps = ? AND finished_at = ?
-			 ON CONFLICT(run_id) DO NOTHING`,
-			costUSD,
-			record.RunID, record.SessionID, runStateTerminal.databaseValue(),
-			record.IncarnationID, string(record.Outcome), record.Steps,
-			record.CompletedAt.UTC().UnixNano())
+			`INSERT INTO goal_runs(run_id) VALUES (?) ON CONFLICT(run_id) DO NOTHING`, record.RunID)
 		if err != nil {
 			return fmt.Errorf("sqlite: record Goal Run: %w", err)
 		}
@@ -140,7 +136,7 @@ func (g *GoalStore) RecordRun(ctx context.Context, record goal.RunRecord) error 
 			return err
 		}
 		if !inserted {
-			return g.validateExistingRun(ctx, record)
+			return nil
 		}
 
 		current, err := g.Get(ctx, record.SessionID)
@@ -171,48 +167,32 @@ func (g *GoalStore) RecordRun(ctx context.Context, record goal.RunRecord) error 
 	})
 }
 
-func (g *GoalStore) validateExistingRun(ctx context.Context, record goal.RunRecord) error {
-	var (
-		sessionID     string
-		incarnationID string
-		outcome       string
-		costUSD       sql.NullFloat64
-		steps         int
-		completedAt   int64
-	)
-	err := conn(ctx, g.db).QueryRowContext(ctx,
-		`SELECT session_id, incarnation_id, outcome, cost_usd, steps, completed_at
-		   FROM goal_runs
-		  WHERE run_id = ?`,
-		record.RunID,
-	).Scan(&sessionID, &incarnationID, &outcome, &costUSD, &steps, &completedAt)
+// terminalRunMatches reports whether the Run row is the terminal goal-owned
+// Run the record describes. The Run owns these facts; a repeated delivery is
+// the same charge exactly when they still match.
+func (g *GoalStore) terminalRunMatches(ctx context.Context, record goal.RunRecord) (bool, error) {
+	stored, err := scanRun(conn(ctx, g.db).QueryRowContext(ctx,
+		`SELECT `+runColumns+` FROM runs AS r `+runReadJoins+` WHERE r.run_id = ?`, record.RunID))
 	if errors.Is(err, sql.ErrNoRows) {
-		return fmt.Errorf(
-			"%w: Run %q has no matching terminal accounting owner",
-			goal.ErrRunIdentityConflict, record.RunID,
-		)
+		return false, nil
 	}
 	if err != nil {
-		return fmt.Errorf("sqlite: inspect existing Goal Run %q: %w", record.RunID, err)
+		return false, fmt.Errorf("sqlite: inspect Goal Run %q: %w", record.RunID, err)
 	}
-	var costPointer *float64
-	if costUSD.Valid {
-		costPointer = &costUSD.Float64
+	outcome, terminal := stored.Outcome()
+	if !terminal {
+		return false, nil
 	}
-	storedCost, err := accounting.CostFromOptional(costPointer)
+	cost, err := stored.Metrics().Cost()
 	if err != nil {
-		return fmt.Errorf("sqlite: decode existing Goal Run %q cost: %w", record.RunID, err)
+		return false, fmt.Errorf("sqlite: Goal Run %q cost: %w", record.RunID, err)
 	}
-	if sessionID == record.SessionID && incarnationID == record.IncarnationID &&
-		outcome == string(record.Outcome) && storedCost.Equal(record.Cost) &&
-		steps == record.Steps && completedAt == record.CompletedAt.UTC().UnixNano() {
-		return nil
-	}
-	return fmt.Errorf(
-		"%w: Run %q is already bound to a different accounting fact",
-		goal.ErrRunIdentityConflict,
-		record.RunID,
-	)
+	return stored.SessionID() == record.SessionID &&
+		stored.GoalIncarnationID() == record.IncarnationID &&
+		outcome == record.Outcome &&
+		stored.Metrics().Steps() == record.Steps &&
+		stored.FinishedAt().Equal(record.CompletedAt) &&
+		cost.Equal(record.Cost), nil
 }
 
 func rowsAffected(res sql.Result) (bool, error) {

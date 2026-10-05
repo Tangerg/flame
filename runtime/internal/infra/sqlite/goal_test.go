@@ -242,7 +242,6 @@ func TestGoalSchemaUsesSemanticIncarnationColumns(t *testing.T) {
 		obsolete string
 	}{
 		{table: "goals", current: "incarnation_id", obsolete: "lease_id"},
-		{table: "goal_runs", current: "incarnation_id", obsolete: "lease_id"},
 		{table: "runs", current: "goal_incarnation_id", obsolete: "goal_lease_id"},
 		{table: "interrupts", current: "goal_incarnation_id", obsolete: "goal_lease_id"},
 	} {

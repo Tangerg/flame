@@ -533,17 +533,11 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		// and cross-Run usage accounting commit as one fact. The Run foreign key
 		// keeps that technical tombstone through ordinary Goal replacement while
 		// pruning it when rollback or Session replacement removes the Run itself.
+		// The row names the Run only: the Run row owns its outcome, steps,
+		// completion and cost, and this ledger owns just that it was charged.
 		`CREATE TABLE IF NOT EXISTS goal_runs (
-				run_id       TEXT    PRIMARY KEY REFERENCES runs(run_id) ON DELETE CASCADE,
-				session_id   TEXT    NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-				incarnation_id     TEXT    NOT NULL,
-			outcome      TEXT    NOT NULL,
-			cost_usd     REAL,
-			steps        INTEGER NOT NULL,
-			completed_at INTEGER NOT NULL
+			run_id TEXT PRIMARY KEY REFERENCES runs(run_id) ON DELETE CASCADE
 		)`,
-		`CREATE INDEX IF NOT EXISTS idx_goal_runs_session
-			ON goal_runs(session_id, incarnation_id)`,
 		// Persistent fine-grained approval rules. id is deterministic over
 		// (scope, scope_key, tool reference, subject); re-remembering replaces the
 		// decision and refreshes the source authority; scope_key is the session id
