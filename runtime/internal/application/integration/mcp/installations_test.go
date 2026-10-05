@@ -113,3 +113,30 @@ func TestToolsPairTheCatalogWithItsOwnConflicts(t *testing.T) {
 		}
 	}
 }
+
+// failingDefinitions is a registry whose source owner cannot be read.
+type failingDefinitions struct{ *testRegistry }
+
+var errSourceUnreadable = errors.New("source owner unreadable")
+
+func (failingDefinitions) Definition(context.Context, mcpserver.ID) (mcpserver.Server, bool, error) {
+	return mcpserver.Server{}, false, errSourceUnreadable
+}
+
+// A reconciliation that cannot read a committed source refuses it, as a
+// dispatch does: withdrawal already retired its connection, and reading as
+// merely disconnected would hide that nothing will dial it.
+func TestUnreadableInstallationSourceIsRefusedAtConnectionStatus(t *testing.T) {
+	server := installationServer(t, "files")
+	live := &fakePorts{}
+	c := testCoordinator(t, Config{Registry: failingDefinitions{&testRegistry{}}, StatusReader: live, ConnectionLifecycle: live})
+	defer requireCoordinatorShutdown(t, c)
+
+	if err := c.ReconcileInstallation(t.Context(), []mcpserver.ID{server.ID()}); !errors.Is(err, errSourceUnreadable) {
+		t.Fatalf("reconcile an unreadable source = %v, want the read failure", err)
+	}
+	status, err := c.ServerStatus(t.Context(), server.ID())
+	if err != nil || !status.Known || status.State != mcpserver.ConnectionFailed || status.Failure != mcpserver.FailureConfiguration {
+		t.Fatalf("unreadable source status = %+v, %v; want failed configuration", status, err)
+	}
+}

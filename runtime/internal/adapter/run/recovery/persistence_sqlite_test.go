@@ -35,8 +35,8 @@ func newTestRecovery(
 func (alwaysResumable) CanResumeWaitingExecution(
 	context.Context,
 	runs.WaitingContinuation,
-) (bool, error) {
-	return true, nil
+) (runs.WaitingResumption, error) {
+	return runs.ResumableWaiting(), nil
 }
 
 type goalRunRecorderFunc func(context.Context, goal.RunRecord) error
@@ -365,8 +365,12 @@ type waitingExecutionResumabilityFunc func(context.Context, runs.WaitingContinua
 func (w waitingExecutionResumabilityFunc) CanResumeWaitingExecution(
 	ctx context.Context,
 	continuation runs.WaitingContinuation,
-) (bool, error) {
-	return w(ctx, continuation)
+) (runs.WaitingResumption, error) {
+	resumable, err := w(ctx, continuation)
+	if err != nil || resumable {
+		return runs.ResumableWaiting(), err
+	}
+	return runs.UnresumableWaiting(runs.LossWaitingStateUnavailable), nil
 }
 
 // TestRecoveryRepairsWholeDurableLifecycle proves

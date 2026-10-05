@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"runtime/debug"
 	"slices"
 
@@ -238,6 +239,11 @@ func (c *Connections) closeSessionAttempt(
 	attempt *sessionCloseAttempt,
 ) {
 	err := closeOwnedSession(owned)
+	if err != nil {
+		// A process that could not be stopped is a host resource leak. Shutdown
+		// still reports it, but the operator learns of it when it happens.
+		slog.ErrorContext(c.lifetime, "mcp: session retirement failed", "error", err)
+	}
 	c.mu.Lock()
 	if current := c.sessions[session]; current == owned && current.close == attempt {
 		// sdkmcp.ClientSession.Close is one-shot: its underlying transport

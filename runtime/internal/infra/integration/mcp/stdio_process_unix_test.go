@@ -32,6 +32,10 @@ func TestMain(m *testing.M) {
 	case "descendant":
 		runStdioProcessDescendant()
 		os.Exit(0)
+	case "nonzero-exit":
+		server := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "nonzero-exit-server", Version: "v1"}, nil)
+		_ = server.Run(context.Background(), &sdkmcp.StdioTransport{})
+		os.Exit(3)
 	default:
 		os.Exit(m.Run())
 	}
@@ -153,4 +157,42 @@ func withStdioProcessEnv(base []string, replacements map[string]string) []string
 		env = append(env, key+"="+value)
 	}
 	return env
+}
+
+// A server that exits nonzero once its input closes has still exited: its
+// retirement succeeded and is not a failure to keep for Shutdown.
+func TestStdioSessionThatExitsNonzeroRetiresCleanly(t *testing.T) {
+	client := sdkmcp.NewClient(&sdkmcp.Implementation{Name: "exit-status-test", Version: "v1"}, nil)
+	timeout := 2 * time.Second
+	session, cleanup, err := dial(t.Context(), t.Context(), client, ServerConfig{
+		Source:           mcpserver.UserSource(),
+		Name:             testsupport.ServerName("exit-status-test"),
+		Transport:        TransportStdio,
+		Command:          os.Args[0],
+		Env:              withStdioProcessEnv(os.Environ(), map[string]string{stdioProcessRoleEnv: "nonzero-exit"}),
+		HandshakeTimeout: &timeout,
+	})
+	if err != nil {
+		t.Fatalf("dial helper server: %v", err)
+	}
+	if err := retireSession(session, cleanup); err != nil {
+		t.Fatalf("retiring a server that exited nonzero = %v, want a clean retirement", err)
+	}
+
+	// The premise: the transport does report that exit status as an error.
+	raw, rawCleanup, err := dial(t.Context(), t.Context(), client, ServerConfig{
+		Source:           mcpserver.UserSource(),
+		Name:             testsupport.ServerName("exit-status-test"),
+		Transport:        TransportStdio,
+		Command:          os.Args[0],
+		Env:              withStdioProcessEnv(os.Environ(), map[string]string{stdioProcessRoleEnv: "nonzero-exit"}),
+		HandshakeTimeout: &timeout,
+	})
+	if err != nil {
+		t.Fatalf("dial helper server: %v", err)
+	}
+	defer func() { _ = rawCleanup() }()
+	if _, exited := errors.AsType[*exec.ExitError](raw.Close()); !exited {
+		t.Fatal("the transport did not report the nonzero exit status this retirement classifies")
+	}
 }

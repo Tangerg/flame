@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -333,8 +334,12 @@ type waitingExecutionResumabilityFunc func(context.Context, WaitingContinuation)
 func (w waitingExecutionResumabilityFunc) CanResumeWaitingExecution(
 	ctx context.Context,
 	continuation WaitingContinuation,
-) (bool, error) {
-	return w(ctx, continuation)
+) (WaitingResumption, error) {
+	resumable, err := w(ctx, continuation)
+	if err != nil || resumable {
+		return ResumableWaiting(), err
+	}
+	return UnresumableWaiting(LossWaitingStateUnavailable), nil
 }
 
 type selectiveRecoveryAdmissions struct {
@@ -1714,5 +1719,58 @@ func TestRecoveryRejectsMissingExactResultEvidenceBeforeMutation(t *testing.T) {
 	}
 	if store.commits != 0 {
 		t.Fatalf("legacy missing evidence mutated durable history: %d commits", store.commits)
+	}
+}
+
+type waitingVerdict WaitingResumption
+
+func (v waitingVerdict) CanResumeWaitingExecution(context.Context, WaitingContinuation) (WaitingResumption, error) {
+	return WaitingResumption(v), nil
+}
+
+// A lost Run carries the reason its waiting state could not continue, not a
+// generic restart message: that reason is what the person can act on.
+func TestRecoveredLossCarriesTheProbedReason(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		isolated bool
+		verdict  WaitingResumption
+		want     string
+	}{
+		{name: "another build", verdict: UnresumableWaiting(LossOtherBuild), want: "another Runtime build"},
+		{name: "configuration change", verdict: UnresumableWaiting(LossConfigurationChanged), want: "configuration changed"},
+		{name: "isolated workspace", isolated: true, verdict: ResumableWaiting(), want: "isolated workspace"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			run, pending, item := coherentRecoveryPark(t)
+			store := &recoveryStoreStub{
+				runs:         []rundomain.Run{run},
+				pending:      []Pending{pending},
+				transcripts:  map[string][]transcript.Item{run.SessionID(): {item}},
+				messageMarks: map[string]int{run.SessionID(): 5},
+			}
+			if test.isolated {
+				store.sessions = map[string]session.Session{
+					run.SessionID(): testsupport.MustRestoreSession(session.Snapshot{
+						ID: run.SessionID(), Workspace: testsupport.MustWorkspace("/workspace"), Isolated: true,
+					}),
+				}
+			}
+			recovery, err := newTestRecovery(store, waitingVerdict(test.verdict))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := recovery.Reconcile(t.Context()); err != nil {
+				t.Fatal(err)
+			}
+			lost := store.commit.LostRuns()
+			if len(lost) != 1 {
+				t.Fatalf("lost Runs = %d, want 1", len(lost))
+			}
+			failure := lost[0].State().Snapshot().Failure
+			if failure == nil || failure.Kind != rundomain.FailureLost || !strings.Contains(failure.Detail, test.want) {
+				t.Fatalf("lost Run failure = %+v, want a loss naming %q", failure, test.want)
+			}
+		})
 	}
 }

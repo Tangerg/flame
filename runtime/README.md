@@ -230,9 +230,13 @@ installation, is refused with the MCP `ErrServerDisabled` category. A refusal is
 transition, not only a command error: when configuration, reconnect or authorization
 cannot obtain an admitted configuration, a removed or disabled source is detached and any
 other refusal settles as `mcp_configuration_failed`, and either way the previous session
-stops serving tools. A connection dispatch that cannot read its source owner settles the
-same way, so the failure reaches status readers instead of only the log. Supersession cancels obsolete work; shutdown cancels
+stops serving tools. A connection dispatch or an installation reconciliation that cannot read its source owner
+settles the same way, so the failure reaches status readers instead of only the log. Supersession cancels obsolete work; shutdown cancels
 and joins every admitted attempt.
+A stdio server that reports an exit status after its input closes or it is signaled has
+exited, so its retirement succeeded whatever the status. Only a session that could not be
+stopped, or a process-group cleanup that failed, is a retirement failure; it is logged when
+it happens and still reported by Shutdown.
 Canceling a wait for session retirement leaves unreported close failures with Connections
 until shutdown consumes them.
 OAuth target fingerprints encode the owner's exact fields and header bytes through the
@@ -615,7 +619,7 @@ Scope owns the model-visible payload. Delegate results use `interaction.Output` 
 
 Rejected calls retain their original input as `argumentsText`; parsed `arguments` remains an empty object. Transcript storage, history artifacts, CLI, and Desktop preserve this distinction, including malformed JSON. Existing records need no schema migration; previously omitted results cannot be reconstructed from the database alone. Run aborts persist the first causal diagnostic instead of replacing it with a generic internal error.
 
-The Interaction snapshot shape changes with this contract. Waiting checkpoints from an older build must be completed before upgrade or discarded under the existing build-identity rule; no dual-schema reader is provided. Runtime uses a Scope engine backed by its SQLite TreeCommitter and restores only committed waiting checkpoints. It has no mid-run crash recovery: a restart with unfinished execution retains the existing `RunLost` policy. All Scope commits fence publication by Tree incarnation, commit sequence, and retained commit identity.
+The Interaction snapshot shape changes with this contract. Waiting checkpoints from an older build must be completed before upgrade or discarded under the existing build-identity rule; no dual-schema reader is provided. Runtime uses a Scope engine backed by its SQLite TreeCommitter and restores only committed waiting checkpoints. It has no mid-run crash recovery: a restart with unfinished execution retains the existing `RunLost` policy. A lost Run's failure detail names why it could not continue: a restart outside a waiting boundary, an isolated workspace, an unavailable workspace, waiting state written by another build, waiting state that cannot be restored, or a configuration change while it waited. The probe's finer reason and cause stay in the trace. All Scope commits fence publication by Tree incarnation, commit sequence, and retained commit identity.
 
 Waiting checkpoints declare the offloaded result IDs required by their continuation. SQLite saves these references atomically with the checkpoint, verifies Session ownership, and releases them when the checkpoint is replaced or consumed. Startup and failed-write cleanup delete only bodies held by neither a checkpoint nor an Item. Restoring an executor verifies that the declared references exactly match its pending result metadata; old checkpoints missing this ownership information are rejected under the existing recovery policy, without a compatibility reader.
 

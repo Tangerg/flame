@@ -16,7 +16,8 @@ import (
 //
 // An impossible partial application write is corruption and fails startup. A
 // missing or executor-incompatible checkpoint is an external-resource loss and
-// returns resumable=false so recovery can mark the whole tree run_lost.
+// returns an unresumable verdict naming it, so recovery marks the whole tree
+// run_lost with that reason.
 func validateRecoveryParkedTree(
 	ctx context.Context,
 	tree recoveryRunTree,
@@ -25,13 +26,13 @@ func validateRecoveryParkedTree(
 	items []transcript.Item,
 	store RecoveryStore,
 	resumability WaitingExecutionResumability,
-) (bool, error) {
+) (WaitingResumption, error) {
 	values := make([]run.Run, 0, len(tree.postorder))
 	for _, runID := range tree.postorder {
 		values = append(values, tree.runsByID[runID])
 	}
 	if err := pending.ValidateProjection(values, items); err != nil {
-		return false, fmt.Errorf("runs: validate recovery Run tree %q: %w", tree.root.ID(), err)
+		return WaitingResumption{}, fmt.Errorf("runs: validate recovery Run tree %q: %w", tree.root.ID(), err)
 	}
 
 	rootContinuation, _ := pending.RootContinuation()
@@ -39,7 +40,7 @@ func validateRecoveryParkedTree(
 	// never snapshotted. A host restart therefore destroys the world this tree
 	// was parked in even when its executor payload remains decodable.
 	if sess.Isolated() {
-		return false, nil
+		return UnresumableWaiting(LossIsolatedWorkspace), nil
 	}
 	expected := ExecutorCheckpointExpectation{
 		RootMemberID:      rootContinuation.MemberID,
@@ -53,33 +54,33 @@ func validateRecoveryParkedTree(
 	}
 	checkpoint, err := store.LoadExecutorCheckpoint(ctx, rootContinuation.MemberID)
 	if errors.Is(err, ErrExecutorCheckpointNotFound) || errors.Is(err, ErrInvalidExecutorCheckpoint) {
-		return false, nil
+		return UnresumableWaiting(LossWaitingStateUnavailable), nil
 	}
 	if err != nil {
-		return false, fmt.Errorf(
+		return WaitingResumption{}, fmt.Errorf(
 			"runs: load executor checkpoint %q for recovery: %w",
 			rootContinuation.MemberID,
 			err,
 		)
 	}
 	if validateForErr := checkpoint.ValidateFor(expected); validateForErr != nil {
-		return false, nil
+		return UnresumableWaiting(LossConfigurationChanged), nil
 	}
 	continuation, err := waitingContinuationFromPending(pending, checkpoint)
 	if err != nil {
-		return false, fmt.Errorf(
+		return WaitingResumption{}, fmt.Errorf(
 			"runs: build waiting continuation %q for recovery: %w",
 			rootContinuation.MemberID,
 			err,
 		)
 	}
-	resumable, err := resumability.CanResumeWaitingExecution(ctx, continuation)
+	resumption, err := resumability.CanResumeWaitingExecution(ctx, continuation)
 	if err != nil {
-		return false, fmt.Errorf(
+		return WaitingResumption{}, fmt.Errorf(
 			"runs: probe waiting execution %q resumability: %w",
 			rootContinuation.MemberID,
 			err,
 		)
 	}
-	return resumable, nil
+	return resumption, nil
 }

@@ -41,7 +41,8 @@ func TestInteractionWaitingRecoveryPreservesCancellation(t *testing.T) {
 				ctx, cancel = context.WithDeadline(t.Context(), time.Unix(1, 0))
 				defer cancel()
 			}
-			resumable, err := executor.CanResumeWaitingExecution(ctx, continuation)
+			resumption, err := executor.CanResumeWaitingExecution(ctx, continuation)
+			resumable := resumption.Resumable()
 			if resumable || !errors.Is(err, want) {
 				t.Errorf("canceled recovery probe = %t, %v, want %v", resumable, err, want)
 			}
@@ -49,7 +50,8 @@ func TestInteractionWaitingRecoveryPreservesCancellation(t *testing.T) {
 			if !errors.Is(err, want) || errors.Is(err, runs.ErrExecutorStateLost) {
 				t.Errorf("canceled recovery = %v, want %v without state loss", err, want)
 			}
-			resumable, err = executor.CanResumeWaitingExecution(t.Context(), continuation)
+			resumption, err = executor.CanResumeWaitingExecution(t.Context(), continuation)
+			resumable = resumption.Resumable()
 			if err != nil || !resumable {
 				t.Fatalf("recovery after canceled probe = %t, %v, want true", resumable, err)
 			}
@@ -77,7 +79,8 @@ func TestInteractionWaitingRecoveryPreservesActivationFailure(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("LoadExecutionTree before recovery = %t, %v", found, err)
 	}
-	resumable, err := executor.CanResumeWaitingExecution(t.Context(), continuation)
+	resumption, err := executor.CanResumeWaitingExecution(t.Context(), continuation)
+	resumable := resumption.Resumable()
 	if err != nil || !resumable {
 		t.Fatalf("read-only recovery probe = %t, %v, want true", resumable, err)
 	}

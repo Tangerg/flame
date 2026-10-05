@@ -3,6 +3,7 @@ package mcp
 import (
 	"context"
 	"errors"
+	"os/exec"
 	"sync"
 
 	"github.com/Tangerg/go-sdk/auth"
@@ -137,7 +138,20 @@ func (c *Connections) ownSessionLocked(session *sdkmcp.ClientSession, cleanup se
 	}
 	if c.sessions[session] == nil {
 		c.sessions[session] = &ownedSession{closeFn: func() error {
-			return errors.Join(session.Close(), cleanup())
+			return retireSession(session, cleanup)
 		}}
 	}
+}
+
+// retireSession closes session and then its process group. A stdio server
+// that reports an exit status has exited, which is what retirement must
+// achieve; a nonzero status after its input closed or it was signaled is how
+// many servers stop. Only a session that could not be stopped, or a process
+// group cleanup that failed, is a retirement failure.
+func retireSession(session *sdkmcp.ClientSession, cleanup sessionCleanup) error {
+	closeErr := session.Close()
+	if _, exited := errors.AsType[*exec.ExitError](closeErr); exited {
+		closeErr = nil
+	}
+	return errors.Join(closeErr, cleanup())
 }

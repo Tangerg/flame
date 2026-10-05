@@ -94,7 +94,8 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 		ref.ExecutorID,
 		run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}},
 	)
-	resumable, err := executor.CanResumeWaitingExecution(t.Context(), continuation)
+	resumption, err := executor.CanResumeWaitingExecution(t.Context(), continuation)
+	resumable := resumption.Resumable()
 	if err != nil || !resumable {
 		t.Fatalf("CanResumeWaitingExecution with generation options = %t, %v, want true", resumable, err)
 	}
@@ -763,7 +764,8 @@ func TestInteractionExecutorProbesWaitingCheckpointThroughExactRestorePath(t *te
 	if err != nil || !found {
 		t.Fatalf("LoadExecutionTree before probe = %t, %v", found, err)
 	}
-	resumable, err := executor.CanResumeWaitingExecution(t.Context(), continuation)
+	resumption, err := executor.CanResumeWaitingExecution(t.Context(), continuation)
+	resumable := resumption.Resumable()
 	if err != nil || !resumable {
 		t.Fatalf("CanResumeWaitingExecution = %t, %v, want true", resumable, err)
 	}
@@ -771,9 +773,10 @@ func TestInteractionExecutorProbesWaitingCheckpointThroughExactRestorePath(t *te
 	foreign := continuation
 	foreign.Members = append([]runs.WaitingMember(nil), continuation.Members...)
 	foreign.Members[0].MemberID = "interaction:foreign-member"
-	resumable, err = executor.CanResumeWaitingExecution(t.Context(), foreign)
-	if err != nil || resumable {
-		t.Fatalf("foreign CanResumeWaitingExecution = %t, %v, want false", resumable, err)
+	resumption, err = executor.CanResumeWaitingExecution(t.Context(), foreign)
+	resumable = resumption.Resumable()
+	if err != nil || resumable || resumption.Loss() != runs.LossWaitingStateUnavailable {
+		t.Fatalf("foreign CanResumeWaitingExecution = %+v, %v, want lost waiting state", resumption, err)
 	}
 	after, found, err := executor.config.ExecutionTrees.LoadExecutionTree(t.Context(), continuation.SessionID, checkpoint.RootMemberID)
 	if err != nil || !found || !head.SameCommit(after) {
@@ -1117,7 +1120,9 @@ func TestUnresumableWaitingExecutionReportsWhy(t *testing.T) {
 		}), InteractionExecutorConfig{})
 	continuation := rootInteractionWaitingContinuation(foreign, "exec_probe", run.Capabilities{})
 
-	resumable, err := executor.CanResumeWaitingExecution(t.Context(), continuation)
+	resumption, err := executor.CanResumeWaitingExecution(t.Context(), continuation)
+
+	resumable := resumption.Resumable()
 	if err != nil || resumable {
 		t.Fatalf("CanResumeWaitingExecution = %t, %v, want false with no error", resumable, err)
 	}

@@ -39,11 +39,12 @@ type RecoveryStore interface {
 }
 
 // WaitingExecutionResumability is the recovery use case's narrow executor
-// probe. The Application supplies the exact durable continuation; false, nil
-// means its opaque state is incompatible or indeterminate, while an error means
-// the probe itself was inconclusive and startup must stop without writes.
+// probe. The Application supplies the exact durable continuation; an
+// unresumable verdict names why its opaque state cannot continue, while an
+// error means the probe itself was inconclusive and startup must stop without
+// writes.
 type WaitingExecutionResumability interface {
-	CanResumeWaitingExecution(ctx context.Context, continuation WaitingContinuation) (bool, error)
+	CanResumeWaitingExecution(ctx context.Context, continuation WaitingContinuation) (WaitingResumption, error)
 }
 
 // RecoveryAdmissions provides the same per-Session writer boundary used by
@@ -545,12 +546,13 @@ func (r *recoveryPlanner) planTree(rootRunID string) error {
 		return err
 	}
 	open, hasInterrupt := r.pendingByRoot[rootRunID]
+	loss := LossRestart
 	if tree.root.State() == rundomain.Waiting && hasInterrupt {
 		sess, sessionErr := r.session(tree.root.SessionID())
 		if sessionErr != nil {
 			return sessionErr
 		}
-		resumable, sessionErr := validateRecoveryParkedTree(
+		resumption, sessionErr := validateRecoveryParkedTree(
 			r.ctx,
 			tree,
 			open,
@@ -562,10 +564,11 @@ func (r *recoveryPlanner) planTree(rootRunID string) error {
 		if sessionErr != nil {
 			return sessionErr
 		}
-		if resumable {
+		if resumption.Resumable() {
 			r.preserved[rootRunID] = struct{}{}
 			return nil
 		}
+		loss = resumption.Loss()
 	}
 	conversationSnapshot, err := r.conversation(tree.root.SessionID())
 	if err != nil {
@@ -580,7 +583,7 @@ func (r *recoveryPlanner) planTree(rootRunID string) error {
 		)
 	}
 	messageMark := conversationSnapshot.count + len(closure)
-	lostRuns, replacements, err := recoverLostTree(tree, items, messageMark, r.finishedAt)
+	lostRuns, replacements, err := recoverLostTree(tree, items, messageMark, r.finishedAt, loss)
 	if err != nil {
 		return err
 	}
@@ -718,7 +721,12 @@ func recoverLostTree(
 	items []transcript.Item,
 	messageMark int,
 	finishedAt time.Time,
+	loss Loss,
 ) ([]rundomain.Replacement, []transcript.Replacement, error) {
+	failure, err := loss.failure()
+	if err != nil {
+		return nil, nil, err
+	}
 	lostRuns := make([]rundomain.Replacement, 0, len(tree.postorder))
 	var replacements []transcript.Replacement
 	for _, runID := range tree.postorder {
@@ -742,9 +750,7 @@ func recoverLostTree(
 			replacements = append(replacements, itemReplacement)
 		}
 
-		lost, err := active.RecoverLost(rundomain.Failure{
-			Kind: rundomain.FailureLost, Detail: "run lost on restart",
-		}, finishedAt, messageMark)
+		lost, err := active.RecoverLost(failure, finishedAt, messageMark)
 		if err != nil {
 			return nil, nil, fmt.Errorf("runs: recover lost Run %q: %w", active.ID(), err)
 		}

@@ -49,14 +49,20 @@ func (c *Coordinator) ReconcileInstallation(ctx context.Context, servers []mcpse
 		// Read the current owner under the supervisor's sequencing lock. A
 		// delayed reconcile may never dispatch a superseded command snapshot.
 		server, found, err := c.registry.Definition(write.ownerCtx, id)
+		c.cancelDial(id)
 		if err != nil {
-			result = errors.Join(result, err)
-			c.cancelDial(id)
-			result = errors.Join(result, c.connectionLifecycle.Detach(id))
-			events = append(events, c.prepareStatus(ServerStatus{Server: id}, nil))
+			// An unverifiable source must not read as merely disconnected
+			// while nothing will dial it; like a dispatch that cannot read its
+			// source, the refusal reaches status readers.
+			result = errors.Join(result, err, c.connectionLifecycle.Refuse(write.ownerCtx, id, mcpserver.FailureConfiguration))
+			status, statusErr := c.liveStatus(id)
+			if statusErr != nil {
+				result = errors.Join(result, statusErr)
+				continue
+			}
+			events = append(events, c.prepareStatus(status, nil))
 			continue
 		}
-		c.cancelDial(id)
 		if !found || !server.Enabled {
 			result = errors.Join(result, c.connectionLifecycle.Detach(id))
 		}
