@@ -6,10 +6,12 @@ function model(
   id: string,
   reasoningLevels: readonly string[] = [],
   reasoningDefault?: string,
+  runtimeDefault = false,
 ) {
   return {
     provider,
     id,
+    default: runtimeDefault,
     reasoningLevelOrDefault(level?: string | null) {
       if (level && reasoningLevels.includes(level)) return level;
       if (reasoningDefault && reasoningLevels.includes(reasoningDefault)) return reasoningDefault;
@@ -21,7 +23,7 @@ function model(
 const models = [
   model("deepseek", "deepseek-chat"),
   model("deepseek", "deepseek-v4-pro", ["low", "high"], "high"),
-  model("openai", "gpt-5", ["low", "medium", "high"], "medium"),
+  model("openai", "gpt-5", ["low", "medium", "high"], "medium", true),
 ];
 
 describe("resolveComposerModelSelection", () => {
@@ -96,11 +98,28 @@ describe("resolveComposerModelSelection", () => {
     expect(resolveComposerModelSelection(models, { kind: "session" }, undefined)).toBeUndefined();
   });
 
-  it("uses the catalog default only when no durable Session supplies one", () => {
+  it("shows the Runtime default only when no durable Session supplies one", () => {
     expect(resolveComposerModelSelection(models, { kind: "session" }, null)).toEqual({
-      model: models[0],
-      reasoningEffort: undefined,
+      model: models[2],
+      reasoningEffort: "medium",
     });
+  });
+
+  it("never substitutes another model for a Session's selection the catalog omits", () => {
+    expect(
+      resolveComposerModelSelection(
+        models,
+        { kind: "session" },
+        { provider: "anthropic", model: "claude-retired" },
+      ),
+    ).toBeUndefined();
+  });
+
+  it("chooses nothing when the catalog does not carry the Runtime default", () => {
+    const withoutDefault = models.map((candidate) => ({ ...candidate, default: false }));
+    expect(
+      resolveComposerModelSelection(withoutDefault, { kind: "session" }, null),
+    ).toBeUndefined();
   });
 });
 

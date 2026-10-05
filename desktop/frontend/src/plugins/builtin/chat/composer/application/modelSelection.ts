@@ -3,6 +3,7 @@ import type { ComposerModelPreference } from "./ports/state";
 export interface ComposerModelOption {
   id: string;
   provider: string;
+  default: boolean;
   reasoningLevelOrDefault(level?: string | null): string | undefined;
 }
 
@@ -35,23 +36,26 @@ export function resolveComposerModelSelection<T extends ComposerModelOption>(
     }
   }
   if (activeSessionSelection === undefined) return undefined;
+  // An implicit selection is whatever the Runtime will run: the Session's own
+  // selection, or the Runtime default for the Session a send creates. A model
+  // an incomplete catalog omits is reported as unknown, never replaced.
   if (activeSessionSelection !== null) {
     const sessionModel = models.find(
       (candidate) =>
         candidate.provider === activeSessionSelection.provider &&
         candidate.id === activeSessionSelection.model,
     );
-    if (sessionModel) {
-      return {
-        model: sessionModel,
-        reasoningEffort:
-          activeSessionSelection.reasoningEffort ?? sessionModel.reasoningLevelOrDefault(),
-      };
-    }
+    return sessionModel
+      ? {
+          model: sessionModel,
+          reasoningEffort:
+            activeSessionSelection.reasoningEffort ?? sessionModel.reasoningLevelOrDefault(),
+        }
+      : undefined;
   }
-  const fallback = models[0];
-  return fallback
-    ? { model: fallback, reasoningEffort: fallback.reasoningLevelOrDefault() }
+  const runtimeDefault = models.find((candidate) => candidate.default);
+  return runtimeDefault
+    ? { model: runtimeDefault, reasoningEffort: runtimeDefault.reasoningLevelOrDefault() }
     : undefined;
 }
 

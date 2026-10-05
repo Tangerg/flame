@@ -44,6 +44,7 @@ export class SelectableModel {
   readonly tokenLimits?: SelectableModelTokenLimits;
   readonly knowledgeCutoff?: string;
   readonly deprecated: boolean;
+  readonly default: boolean;
   readonly reasoning: boolean;
   readonly reasoningLevels: readonly string[];
   readonly reasoningDefaultLevel?: string;
@@ -63,6 +64,7 @@ export class SelectableModel {
     };
     knowledgeCutoff?: string;
     deprecated?: boolean;
+    default?: boolean;
     reasoning?: boolean;
     reasoningLevels?: readonly string[];
     reasoningDefaultLevel?: string;
@@ -98,6 +100,7 @@ export class SelectableModel {
       : undefined;
     this.knowledgeCutoff = value.knowledgeCutoff;
     this.deprecated = value.deprecated ?? false;
+    this.default = value.default ?? false;
     this.reasoning = value.reasoning ?? false;
     this.reasoningLevels = Object.freeze([...reasoningLevels]);
     this.reasoningDefaultLevel = value.reasoningDefaultLevel;

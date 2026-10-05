@@ -429,8 +429,17 @@ func newTestHandler(rt testRuntime) *Handler {
 // handlerWithModels builds a Handler whose only wired coordinator is the models one
 // — enough for the providers / models handler tests.
 func handlerWithModels(cfg models.Config) *Handler {
-	return &Handler{models: newModelCoordinator(cfg)}
+	return &Handler{models: newModelCoordinator(cfg), sessions: defaultSelectionSessions{}}
 }
+
+// defaultSelectionSessions supplies only the default model selection a model
+// listing marks.
+type defaultSelectionSessions struct {
+	sessionUseCases
+	selection modelref.Selection
+}
+
+func (d defaultSelectionSessions) DefaultModelSelection() modelref.Selection { return d.selection }
 
 // handlerWithTools builds a Handler whose only wired coordinator is the tools one —
 // enough for the tools.* handler tests.

@@ -930,6 +930,7 @@ export type Modality = "text" | "image" | "audio" | "video" | "pdf";
 
 export interface Model {
   capabilities?: ModelCapabilities;
+  default?: boolean;
   deprecated?: boolean;
   displayName?: string;
   id: string;

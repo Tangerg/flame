@@ -6573,6 +6573,11 @@
               "tag": "json:\"deprecated,omitzero\""
             },
             {
+              "name": "Default",
+              "type": "bool",
+              "tag": "json:\"default,omitzero\""
+            },
+            {
               "name": "Capabilities",
               "type": "*ModelCapabilities",
               "tag": "json:\"capabilities,omitzero\""

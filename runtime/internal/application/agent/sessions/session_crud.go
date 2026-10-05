@@ -115,6 +115,12 @@ func (c *Coordinator) PrepareScheduled(
 	return c.prepareInitial(id, title, cwd, selection)
 }
 
+// DefaultModelSelection is the selection a Session created without one runs
+// on. Clients read it instead of choosing a stand-in model of their own.
+func (c *Coordinator) DefaultModelSelection() modelref.Selection {
+	return c.defaultModelSelection
+}
+
 func (c *Coordinator) prepareInitial(
 	id, title, cwd string,
 	selection modelref.Selection,

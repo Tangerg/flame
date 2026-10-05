@@ -37,6 +37,7 @@ export function registerProviderDataProviders(
             tokenLimits: m.tokenLimits,
             knowledgeCutoff: m.knowledgeCutoff,
             deprecated: m.deprecated,
+            default: m.default,
             reasoning: m.capabilities?.reasoning,
             reasoningLevels: m.capabilities?.reasoningLevels,
             reasoningDefaultLevel: m.capabilities?.reasoningDefaultLevel,

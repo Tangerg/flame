@@ -2106,6 +2106,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   Modality: enumOf(["text", "image", "audio", "video", "pdf"]),
   Model: object({
     capabilities: ref(() => CHECKS.ModelCapabilities),
+    default: flag(),
     deprecated: flag(),
     displayName: text(),
     id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),

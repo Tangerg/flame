@@ -5417,6 +5417,9 @@
         "capabilities": {
           "$ref": "#/$defs/ModelCapabilities"
         },
+        "default": {
+          "type": "boolean"
+        },
         "deprecated": {
           "type": "boolean"
         },

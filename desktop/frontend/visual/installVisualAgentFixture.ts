@@ -92,6 +92,7 @@ const VISUAL_MODELS: SelectableModel[] = [
     id: "gpt-5.6-sol",
     provider: "openai",
     label: "GPT-5.6 Sol",
+    default: true,
     inputModalities: ["text", "image", "pdf"],
     outputModalities: ["text"],
     tokenLimits: {

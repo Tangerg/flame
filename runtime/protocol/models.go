@@ -44,7 +44,10 @@ type Model struct {
 	// KnowledgeCutoff is the training cutoff (RFC3339 date), empty when unknown.
 	KnowledgeCutoff string `json:"knowledgeCutoff,omitempty"`
 	// Deprecated marks a model the provider has retired; clients hide or flag it.
-	Deprecated   bool               `json:"deprecated,omitzero"`
+	Deprecated bool `json:"deprecated,omitzero"`
+	// Default marks the model a Session created without a selection runs on,
+	// so a client shows that model instead of choosing a stand-in of its own.
+	Default      bool               `json:"default,omitzero"`
 	Capabilities *ModelCapabilities `json:"capabilities,omitzero"`
 	Pricing      *ModelPricing      `json:"pricing,omitzero"`
 }

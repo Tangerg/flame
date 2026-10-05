@@ -18,9 +18,12 @@ func (s *Handler) ListModels(ctx context.Context, in protocol.ListModelsRequest)
 	if err != nil {
 		return nil, mapModelError(err)
 	}
+	defaultSelection := s.sessions.DefaultModelSelection()
 	out := make([]protocol.Model, 0, len(models))
 	for _, model := range models {
-		out = append(out, presentModel(model))
+		presented := presentModel(model)
+		presented.Default = model.Provider() == defaultSelection.Provider() && model.ID() == defaultSelection.Model()
+		out = append(out, presented)
 	}
 	return protocol.NewPage(out), nil
 }

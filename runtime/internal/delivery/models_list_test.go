@@ -9,6 +9,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -205,5 +206,18 @@ func TestListModelsMapsUnsupportedProviderToInvalidParams(t *testing.T) {
 	}
 	if page != nil {
 		t.Fatalf("ListModels page = %+v, want nil", page)
+	}
+}
+
+func TestListModelsMarksOnlyTheRuntimeDefaultSelection(t *testing.T) {
+	selection, err := modelref.New("testprov", "m-beta")
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler := probeHandler(serverProviderMetadata("testprov", models.ProviderEndpointRequired, models.ProviderModelsEndpoint, models.NoEmbeddingCapability()), &stubLister{ids: []string{"m-alpha", "m-beta"}})
+	handler.sessions = defaultSelectionSessions{selection: selection}
+	got := listTestProviderModels(t, handler)
+	if len(got) != 2 || got[0].Default || !got[1].Default {
+		t.Fatalf("models = %+v, want only m-beta marked default", got)
 	}
 }

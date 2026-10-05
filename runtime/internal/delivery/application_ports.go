@@ -32,6 +32,7 @@ import (
 
 type sessionUseCases interface {
 	CreateView(ctx context.Context, title, cwd string) (sessions.View, error)
+	DefaultModelSelection() modelref.Selection
 	DeleteSession(ctx context.Context, sessionID string) error
 	ForkView(ctx context.Context, spec sessions.ForkSpec) (sessions.View, error)
 	ListViewPage(ctx context.Context, filter session.CatalogFilter, cursor string, limit pagination.RequestedLimit) (pagination.Page[sessions.View], error)
