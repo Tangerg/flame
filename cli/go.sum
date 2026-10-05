@@ -11,8 +11,6 @@ codeberg.org/go-latex/latex v0.3.0/go.mod h1:8ETijTpK2bFtwRAXLXe1RZJrYxnc5pibibZ
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/toml v1.6.0 h1:dRaEfpa2VI55EwlIW72hMRHdWouJeRF7TPYhI+AUQjk=
 github.com/BurntSushi/toml v1.6.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
-github.com/Tangerg/flame/runtime v0.0.0-20261002041107-3320d9254d8b h1:UP2UvJLPlpef3nh75TyWNKWdSGouDqvdQXMqMAmFJBM=
-github.com/Tangerg/flame/runtime v0.0.0-20261002041107-3320d9254d8b/go.mod h1:AwUe4V7z49ajSFI7vJRjie/2IZu50S/WX1XDbXyUrZc=
 github.com/Tangerg/flame/runtime v0.0.0-20261005101215-8821a8dc1197 h1:xuv2mcDFjwbuA4agGBG00F54k4edHhYlACweoryxMgU=
 github.com/Tangerg/flame/runtime v0.0.0-20261005101215-8821a8dc1197/go.mod h1:AwUe4V7z49ajSFI7vJRjie/2IZu50S/WX1XDbXyUrZc=
 github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260928062620-d1d16d98ad6e h1:yehhRmmh/Od4R9O4/ZfcvE8+8loWnnxteXO1aUqK7Uc=
