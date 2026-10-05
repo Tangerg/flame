@@ -331,7 +331,7 @@ func (c *Coordinator) waitingChildCancellationContinuation(
 	if err := validateCheckpointSessionScope(checkpoint, sess); err != nil {
 		return WaitingContinuation{}, err
 	}
-	return waitingContinuationFromPending(plan.pending, checkpoint)
+	return waitingContinuationFromPending(plan.pending, checkpoint, plan.treeRuns())
 }
 
 func (c *Coordinator) commitWaitingChildCancellation(
@@ -379,7 +379,7 @@ func (c *Coordinator) resumeAfterWaitingChildCancellation(
 	change WaitingSubtreeChange,
 	runAdmission *ownership.RunAdmission,
 ) (CancelResult, error) {
-	rootContinuation, ok := transformation.continuation.root()
+	root, ok := transformation.continuation.run(transformation.continuation.rootRunID)
 	if !ok {
 		return CancelResult{}, errors.New("runs: waiting child cancellation continuation has no root Run")
 	}
@@ -392,9 +392,9 @@ func (c *Coordinator) resumeAfterWaitingChildCancellation(
 		WorkspaceCWD:      sess.Workspace().Path(),
 		Isolated:          sess.Isolated(),
 		ExecutorID:        plan.executor.ExecutorID,
-		ModelSelection:    rootContinuation.ModelSelection,
+		ModelSelection:    root.ModelSelection(),
 		GoalIncarnationID: transformation.continuation.goalIncarnationID,
-		CreatedAt:         rootContinuation.RunCreatedAt,
+		CreatedAt:         root.CreatedAt(),
 		Continuation:      transformation.continuation,
 		admission:         runAdmission,
 		CommitOpening: func(commitCtx context.Context, opening OpeningCommit) error {
@@ -461,6 +461,7 @@ func (c *Coordinator) recoverCommittedWaitingCancellation(
 	continuation, err := waitingContinuationFromPending(
 		*transformation.remaining,
 		transformation.checkpoint,
+		plan.survivingRuns(),
 	)
 	if err != nil {
 		return c.failCommittedWaitingCancellationRecovery(recoveryCtx, plan, err)

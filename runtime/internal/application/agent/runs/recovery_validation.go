@@ -49,7 +49,7 @@ func validateRecoveryParkedTree(
 		WorkspaceCWD:      sess.Workspace().Path(),
 		Isolated:          false,
 		GoalIncarnationID: pending.GoalIncarnationID,
-		ModelSelection:    rootContinuation.ModelSelection,
+		ModelSelection:    tree.root.ModelSelection(),
 		Capabilities:      pending.Capabilities,
 	}
 	checkpoint, err := store.LoadExecutorCheckpoint(ctx, rootContinuation.MemberID)
@@ -66,7 +66,7 @@ func validateRecoveryParkedTree(
 	if validateForErr := checkpoint.ValidateFor(expected); validateForErr != nil {
 		return UnresumableWaiting(LossConfigurationChanged), nil
 	}
-	continuation, err := waitingContinuationFromPending(pending, checkpoint)
+	continuation, err := waitingContinuationFromPending(pending, checkpoint, values)
 	if err != nil {
 		return WaitingResumption{}, fmt.Errorf(
 			"runs: build waiting continuation %q for recovery: %w",

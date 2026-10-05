@@ -75,13 +75,6 @@ func TestMaterialSnapshotRejectsContradictoryPendingProjection(t *testing.T) {
 			want: "malformed question Item",
 		},
 		{
-			name: "continuation differs from Run",
-			mutate: func(snapshot *MaterialSnapshot) {
-				snapshot.Interrupts[0].Continuations[0].RunCreatedAt = snapshot.Interrupts[0].CreatedAt
-			},
-			want: "continuation creation times differ",
-		},
-		{
 			name: "waiting Run has no Pending owner",
 			mutate: func(snapshot *MaterialSnapshot) {
 				snapshot.Interrupts = nil
@@ -201,7 +194,6 @@ func validMaterialSnapshot() MaterialSnapshot {
 			}},
 			Continuations: []runs.Continuation{{
 				RunID: "run_root", MemberID: "member_root",
-				ModelSelection: selection, RunCreatedAt: createdAt,
 			}},
 			CreatedAt: createdAt.Add(time.Second),
 		}},

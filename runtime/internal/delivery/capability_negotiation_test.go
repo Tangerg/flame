@@ -6,7 +6,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"slices"
 	"testing"
@@ -182,7 +181,6 @@ func TestResumeRunRefusesACallerThatCannotFollowTheRun(t *testing.T) {
 		}},
 		time.Unix(1, 0).UTC(),
 	)
-	pending.Continuations[0].ModelSelection = testsupport.MustModelSelection("openai", "gpt")
 	pending.Capabilities = run.Capabilities{
 		InterruptKinds: []interrupt.Kind{interrupt.Approval, interrupt.Question},
 	}

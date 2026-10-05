@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
@@ -47,14 +46,10 @@ type Pending struct {
 // executor's parent/spawn topology remains inside its opaque checkpoint. Run
 // lineage is the product's independent tree fact.
 type Continuation struct {
-	RunID          string
-	MemberID       string
-	Lineage        run.Lineage
-	ModelSelection modelref.Selection
-	DrainedTools   []DrainedTool
-	RunCreatedAt   time.Time
-	Metrics        run.Metrics
-	ContextTokens  int64
+	RunID        string
+	MemberID     string
+	Lineage      run.Lineage
+	DrainedTools []DrainedTool
 }
 
 // InterruptBinding is the private correspondence between one published
@@ -525,20 +520,8 @@ func (c Continuation) validateRun() error {
 	if err := runtimeidentity.ValidateMember(c.MemberID); err != nil {
 		return err
 	}
-	if c.RunCreatedAt.IsZero() {
-		return errors.New("run creation time is required")
-	}
 	if err := c.Lineage.Validate(c.RunID); err != nil {
 		return fmt.Errorf("lineage: %w", err)
-	}
-	if err := c.ModelSelection.ValidateExact(); err != nil {
-		return err
-	}
-	if err := c.Metrics.Validate(); err != nil {
-		return fmt.Errorf("metrics: %w", err)
-	}
-	if c.ContextTokens < 0 {
-		return errors.New("context tokens must not be negative")
 	}
 	return nil
 }

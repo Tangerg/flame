@@ -101,8 +101,7 @@ func TestCommitOpeningResumePreservesAnswerClaimOnRollback(t *testing.T) {
 	}
 	stalePending := singleRunPending(
 		t,
-		"run_stale", "ses_1", "member_stale", "request_stale", "item_stale",
-		time.Now().UTC(), time.Now().UTC(),
+		"run_stale", "ses_1", "member_stale", "request_stale", "item_stale", time.Now().UTC(),
 	)
 	if openErr := ints.Open(ctx, stalePending); openErr != nil {
 		t.Fatalf("seed interrupt: %v", openErr)
@@ -152,8 +151,7 @@ func TestCommitOpeningResumeCommitsWholeWriteSet(t *testing.T) {
 	}
 	pending := singleRunPending(
 		t,
-		"run_1", "ses_1", "member_1", "request_1", "item_question",
-		created, time.Now().UTC(),
+		"run_1", "ses_1", "member_1", "request_1", "item_question", time.Now().UTC(),
 	)
 	if openErr := ints.Open(ctx, pending); openErr != nil {
 		t.Fatalf("seed interrupt: %v", openErr)
@@ -709,8 +707,8 @@ func newOpeningResumeFixture(t *testing.T, suspendRoot bool) openingResumeFixtur
 			InterruptItemID: "item_child", MemberID: "member_child", RequestID: "request_child",
 		}},
 		Continuations: []runs.Continuation{
-			{RunID: "run_child", MemberID: "member_child", Lineage: lineage, ModelSelection: testsupport.DefaultModelSelection(), RunCreatedAt: createdAt},
-			{RunID: "run_root", MemberID: "member_root", ModelSelection: testsupport.DefaultModelSelection(), RunCreatedAt: createdAt},
+			{RunID: "run_child", MemberID: "member_child", Lineage: lineage},
+			{RunID: "run_root", MemberID: "member_root"},
 		},
 		CreatedAt: createdAt.Add(time.Second),
 	}
@@ -1101,8 +1099,7 @@ func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
 	})
 	pending := singleRunPending(
 		t,
-		"run_1", "ses_1", rootMemberID, "request-member_1", "item_question",
-		createdAt, parkedAt,
+		"run_1", "ses_1", rootMemberID, "request-member_1", "item_question", parkedAt,
 	)
 	pending.Continuations[0].DrainedTools = []runs.DrainedTool{{
 		ItemID: "item_tool", ItemOccurredAt: toolStartedAt,
@@ -1131,7 +1128,7 @@ func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
 				State: runs.ToolInvocationIncomplete, StartedAt: toolStartedAt, FinishedAt: parkedAt,
 			}},
 			Run: runPointer(testsupport.MustRestoreRun(run.Snapshot{SessionID: "ses_1", ID: "run_1", State: run.Waiting,
-				ModelSelection: pending.Continuations[0].ModelSelection,
+				ModelSelection: testsupport.DefaultModelSelection(),
 				Capabilities:   pending.Capabilities,
 				CreatedAt:      createdAt, UpdatedAt: parkedAt, MessageMark: -1})),
 		}},
@@ -1202,12 +1199,11 @@ func TestCommitTreeBarrierRollsBackCheckpointWhenRunSuspendFails(t *testing.T) {
 	})
 	pending := singleRunPending(
 		t,
-		"run_missing", "ses_rollback", rootMemberID, "request-"+rootMemberID, "item_question",
-		createdAt, parkedAt,
+		"run_missing", "ses_rollback", rootMemberID, "request-"+rootMemberID, "item_question", parkedAt,
 	)
 	parkedRun := testsupport.MustRestoreRun(run.Snapshot{
 		ID: "run_missing", SessionID: "ses_rollback", State: run.Waiting,
-		ModelSelection: pending.Continuations[0].ModelSelection,
+		ModelSelection: testsupport.DefaultModelSelection(),
 		Capabilities:   pending.Capabilities,
 		CreatedAt:      createdAt,
 		UpdatedAt:      parkedAt,
@@ -1249,8 +1245,7 @@ func TestClaimResumeAtomicallyRecordsAnswerAndInvalidatesCheckpoint(t *testing.T
 	transcriptStore := sqlite.NewTranscriptStore(db)
 	pending := singleRunPending(
 		t,
-		"run_claim", "session_claim", "member_claim", "request_claim", "item_claim",
-		createdAt, createdAt.Add(time.Second),
+		"run_claim", "session_claim", "member_claim", "request_claim", "item_claim", createdAt.Add(time.Second),
 	)
 	if openErr := interruptStore.Open(ctx, pending); openErr != nil {
 		t.Fatalf("open interrupt: %v", openErr)
@@ -1273,7 +1268,7 @@ func TestClaimResumeAtomicallyRecordsAnswerAndInvalidatesCheckpoint(t *testing.T
 		Payload:        []byte(`{"opaque":"tree"}`),
 		BuildID:        checkpointBuildID,
 		Scope:          runs.ExecutionScope{SessionID: pending.SessionID},
-		ModelSelection: root.ModelSelection,
+		ModelSelection: testsupport.DefaultModelSelection(),
 	}
 	if saveCheckpointErr := checkpointStore.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {
 		t.Fatalf("save checkpoint: %v", saveCheckpointErr)
@@ -1281,8 +1276,8 @@ func TestClaimResumeAtomicallyRecordsAnswerAndInvalidatesCheckpoint(t *testing.T
 	runStore := sqlite.NewRunStore(db)
 	if admitErr := runStore.Admit(ctx, run.Draft{
 		RunID: pending.RootRunID, SessionID: pending.SessionID, SegmentID: "segment_claim",
-		ModelSelection: root.ModelSelection, GoalIncarnationID: pending.GoalIncarnationID,
-		Capabilities: pending.Capabilities, CreatedAt: root.RunCreatedAt,
+		ModelSelection: testsupport.DefaultModelSelection(), GoalIncarnationID: pending.GoalIncarnationID,
+		Capabilities: pending.Capabilities, CreatedAt: createdAt,
 	}); admitErr != nil {
 		t.Fatalf("admit claim root Run: %v", admitErr)
 	}
@@ -1416,7 +1411,7 @@ func TestClaimResumeAtomicallyPersistsToolApprovalDecision(t *testing.T) {
 	createdAt := time.Unix(20, 0).UTC()
 	pending := singleRunPending(
 		t, "run_approval_claim", "session_approval_claim", "member_approval_claim",
-		"request_approval_claim", "item_approval_claim", createdAt, createdAt.Add(time.Second),
+		"request_approval_claim", "item_approval_claim", createdAt.Add(time.Second),
 	)
 	arguments, err := tool.ArgumentsFromMap(map[string]any{
 		"command": "go test ./...", "description": "Run tests",
@@ -1457,15 +1452,15 @@ func TestClaimResumeAtomicallyPersistsToolApprovalDecision(t *testing.T) {
 	checkpoint := runs.ExecutorCheckpoint{
 		RootMemberID: root.MemberID, Payload: []byte(`{"opaque":"tree"}`),
 		BuildID: checkpointBuildID, Scope: runs.ExecutionScope{SessionID: pending.SessionID},
-		ModelSelection: root.ModelSelection,
+		ModelSelection: testsupport.DefaultModelSelection(),
 	}
 	if saveCheckpointErr := checkpoints.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {
 		t.Fatalf("save checkpoint: %v", saveCheckpointErr)
 	}
 	if admitErr := runStore.Admit(ctx, run.Draft{
 		RunID: pending.RootRunID, SessionID: pending.SessionID, SegmentID: "segment_approval_claim",
-		ModelSelection: root.ModelSelection,
-		Capabilities:   pending.Capabilities, CreatedAt: root.RunCreatedAt,
+		ModelSelection: testsupport.DefaultModelSelection(),
+		Capabilities:   pending.Capabilities, CreatedAt: createdAt,
 	}); admitErr != nil {
 		t.Fatalf("admit Run: %v", admitErr)
 	}
@@ -1659,7 +1654,6 @@ func newResumeClaimSQLiteFixture(t *testing.T, suffix string) resumeClaimSQLiteF
 		"member_claim_"+suffix,
 		"request_claim_"+suffix,
 		"item_claim_"+suffix,
-		createdAt,
 		createdAt.Add(time.Second),
 	)
 	if openErr := interrupts.Open(ctx, pending); openErr != nil {
@@ -1686,15 +1680,15 @@ func newResumeClaimSQLiteFixture(t *testing.T, suffix string) resumeClaimSQLiteF
 		Payload:        []byte(`{"opaque":"tree"}`),
 		BuildID:        checkpointBuildID,
 		Scope:          runs.ExecutionScope{SessionID: pending.SessionID},
-		ModelSelection: root.ModelSelection,
+		ModelSelection: testsupport.DefaultModelSelection(),
 	}
 	if saveCheckpointErr := checkpoints.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {
 		t.Fatalf("save checkpoint: %v", saveCheckpointErr)
 	}
 	if admitErr := runStore.Admit(ctx, run.Draft{
 		RunID: pending.RootRunID, SessionID: pending.SessionID, SegmentID: "segment_claim_" + suffix,
-		ModelSelection: root.ModelSelection, GoalIncarnationID: pending.GoalIncarnationID,
-		Capabilities: pending.Capabilities, CreatedAt: root.RunCreatedAt,
+		ModelSelection: testsupport.DefaultModelSelection(), GoalIncarnationID: pending.GoalIncarnationID,
+		Capabilities: pending.Capabilities, CreatedAt: createdAt,
 	}); admitErr != nil {
 		t.Fatalf("admit claim root Run: %v", admitErr)
 	}
@@ -1843,8 +1837,7 @@ func newTerminalCheckpointFixture(
 	interruptStore := persistence.NewInterruptStore(sqlite.NewInterruptStore(database))
 	pending := singleRunPending(
 		t,
-		"run_terminal", "ses_terminal", rootMemberID, "request_terminal", "item_terminal",
-		createdAt, createdAt.Add(time.Second),
+		"run_terminal", "ses_terminal", rootMemberID, "request_terminal", "item_terminal", createdAt.Add(time.Second),
 	)
 	if err := interruptStore.Open(ctx, pending); err != nil {
 		t.Fatalf("seed interrupt: %v", err)
@@ -2423,18 +2416,14 @@ func newWaitingCancellationSQLiteFixtureAt(
 	}
 	pendingContinuations := []runs.Continuation{
 		{
-			RunID:          grandchildRun.ID(),
-			MemberID:       "member_grandchild",
-			Lineage:        grandchildLineage,
-			ModelSelection: grandchildRun.ModelSelection(),
-			RunCreatedAt:   createdAt,
+			RunID:    grandchildRun.ID(),
+			MemberID: "member_grandchild",
+			Lineage:  grandchildLineage,
 		},
 		{
-			RunID:          childRun.ID(),
-			MemberID:       "member_child",
-			Lineage:        childLineage,
-			ModelSelection: childRun.ModelSelection(),
-			RunCreatedAt:   createdAt,
+			RunID:    childRun.ID(),
+			MemberID: "member_child",
+			Lineage:  childLineage,
 		},
 	}
 	if survivingBoundary {
@@ -2445,18 +2434,14 @@ func newWaitingCancellationSQLiteFixtureAt(
 			RequestID:       "request-member_sibling",
 		})
 		pendingContinuations = append(pendingContinuations, runs.Continuation{
-			RunID:          siblingRun.ID(),
-			MemberID:       "member_sibling",
-			Lineage:        siblingLineage,
-			ModelSelection: siblingRun.ModelSelection(),
-			RunCreatedAt:   createdAt,
+			RunID:    siblingRun.ID(),
+			MemberID: "member_sibling",
+			Lineage:  siblingLineage,
 		})
 	}
 	pendingContinuations = append(pendingContinuations, runs.Continuation{
-		RunID:          rootRun.ID(),
-		MemberID:       "member_root",
-		ModelSelection: rootRun.ModelSelection(),
-		RunCreatedAt:   createdAt,
+		RunID:    rootRun.ID(),
+		MemberID: "member_root",
 		DrainedTools: []runs.DrainedTool{{
 			ItemID: parentItem.ID(), ItemOccurredAt: parentItem.OccurredAt(),
 			CallID: "call_child", SourceCallID: "provider_child",

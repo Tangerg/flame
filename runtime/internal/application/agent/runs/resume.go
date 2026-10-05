@@ -58,16 +58,16 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 		return StartResult{}, validatePendingRunTreeErr
 	}
 
-	rootContinuation, ok := pending.RootContinuation()
+	root, ok := parkedRoot(pending.RootRunID, parkedRuns)
 	if !ok {
-		return StartResult{}, errors.New("runs: pending interrupt set has no root continuation")
+		return StartResult{}, errors.New("runs: pending interrupt set has no parked root Run")
 	}
 	if len(cmd.Input) > 0 {
 		message, err := MaterializeUserMessage(cmd.Input)
 		if err != nil {
 			return StartResult{}, err
 		}
-		if err := c.models.AdmitInput(rootContinuation.ModelSelection, []corechat.Message{message}); err != nil {
+		if err := c.models.AdmitInput(root.ModelSelection(), []corechat.Message{message}); err != nil {
 			return StartResult{}, fmt.Errorf("%w: %w", ErrUnsupportedMedia, err)
 		}
 	}
@@ -90,9 +90,13 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 	if validateClaimedResumeErr := validateClaimedResume(claimed, pending, answers, sess); validateClaimedResumeErr != nil {
 		return StartResult{}, validateClaimedResumeErr
 	}
+	members, err := waitingMembersFromPending(pending, parkedRuns)
+	if err != nil {
+		return StartResult{}, err
+	}
 	waiting, err := NewWaitingContinuation(WaitingContinuation{
 		SessionID: pending.SessionID, ExecutorID: pending.ExecutorID,
-		RootRunID: pending.RootRunID, Members: waitingMembersFromPending(pending),
+		RootRunID: pending.RootRunID, Members: members,
 		Checkpoint:               claimed.Checkpoint,
 		Capabilities:             pending.Capabilities,
 		ChildRunAdmissionEnabled: pending.Capabilities.ChildRuns,
@@ -116,9 +120,8 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 			Content: transcript.CloneContent(cmd.Input),
 		}
 	}
-	createdAt := rootContinuation.RunCreatedAt
 	pendingCopy := pending
-	continuation, err := treeContinuationFromPending(pendingCopy)
+	continuation, err := treeContinuationFromPending(pendingCopy, parkedRuns)
 	if err != nil {
 		return StartResult{}, fmt.Errorf("runs: prepare tree continuation: %w", err)
 	}
@@ -136,9 +139,9 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 		WorkspaceCWD:      sess.Workspace().Path(),
 		Isolated:          sess.Isolated(),
 		ExecutorID:        ref.ExecutorID,
-		ModelSelection:    rootContinuation.ModelSelection,
+		ModelSelection:    root.ModelSelection(),
 		GoalIncarnationID: pending.GoalIncarnationID,
-		CreatedAt:         createdAt,
+		CreatedAt:         root.CreatedAt(),
 		Input:             cmd.Input,
 		Continuation:      continuation,
 		admission:         &runAdmission,

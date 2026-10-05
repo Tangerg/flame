@@ -275,7 +275,7 @@ func TestOpeningCommitOwnsEveryOpeningEvent(t *testing.T) {
 	child := run.Draft{
 		RunID: "run_child", SessionID: "session", SegmentID: "segment_child",
 		SpawnedByItemID: "item_spawn", ParentRunID: root.RunID, RootRunID: root.RunID,
-		ModelSelection: root.ModelSelection, CreatedAt: createdAt,
+		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}
 	parentEvent := EventCommit{
 		RunID: root.RunID, SessionID: "session", SegmentID: root.SegmentID,
@@ -339,8 +339,7 @@ func TestCompositeCommitsRejectNestedTopLevelEventIdentity(t *testing.T) {
 	pending := testApprovalPending("member_root", createdAt)
 	waiting := runForPending(pending)
 	checkpoint := testExecutorCheckpoint()
-	root, _ := pending.RootContinuation()
-	checkpoint.ModelSelection = root.ModelSelection
+	checkpoint.ModelSelection = testsupport.DefaultModelSelection()
 	checkpoint.Capabilities = pending.Capabilities
 	_, err := NewTreeBarrierCommit(
 		testCommitID("run_commit_barrier_parent"),
@@ -361,8 +360,7 @@ func TestTreeBarrierCommitOwnsItsValidatedWriteSet(t *testing.T) {
 	pending := testApprovalPending("member_root", createdAt)
 	waiting := runForPending(pending)
 	checkpoint := testExecutorCheckpoint()
-	root, _ := pending.RootContinuation()
-	checkpoint.ModelSelection = root.ModelSelection
+	checkpoint.ModelSelection = testsupport.DefaultModelSelection()
 	checkpoint.Capabilities = pending.Capabilities
 	commits := []EventCommit{{
 		RunID: waiting.ID(), SessionID: waiting.SessionID(), SegmentID: "segment_root",

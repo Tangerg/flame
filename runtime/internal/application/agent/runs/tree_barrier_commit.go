@@ -105,10 +105,23 @@ func (t treeBarrierValidator) validateCheckpoint(rootContinuation Continuation) 
 			ErrInvalidExecutorCheckpoint,
 		)
 	}
-	if !checkpoint.ModelSelection.Equal(rootContinuation.ModelSelection) {
-		return fmt.Errorf("runs: tree barrier checkpoint model differs from root continuation: %w", ErrInvalidExecutorCheckpoint)
+	root, found := t.rootRun()
+	if !found {
+		return fmt.Errorf("runs: tree barrier has no root Run commit: %w", ErrInvalidExecutorCheckpoint)
+	}
+	if !checkpoint.ModelSelection.Equal(root.ModelSelection()) {
+		return fmt.Errorf("runs: tree barrier checkpoint model differs from the root Run: %w", ErrInvalidExecutorCheckpoint)
 	}
 	return nil
+}
+
+func (t treeBarrierValidator) rootRun() (run.Run, bool) {
+	for _, runCommit := range t.barrier.runs {
+		if runCommit.Run != nil && runCommit.RunID == t.barrier.pending.RootRunID {
+			return *runCommit.Run, true
+		}
+	}
+	return run.Run{}, false
 }
 
 func (t treeBarrierValidator) validateRuns() error {
@@ -145,10 +158,7 @@ func (t treeBarrierValidator) validateRun(index int, runCommit EventCommit) erro
 	if !exists {
 		return fmt.Errorf("runs: tree barrier Run[%d] has no continuation", index)
 	}
-	if runCommit.Run.Lineage() != continuation.Lineage ||
-		!runCommit.Run.ModelSelection().Equal(continuation.ModelSelection) ||
-		!runCommit.Run.CreatedAt().Equal(continuation.RunCreatedAt) ||
-		!runCommit.Run.Metrics().Equal(continuation.Metrics) {
+	if runCommit.Run.Lineage() != continuation.Lineage {
 		return fmt.Errorf("runs: tree barrier Run[%d] differs from its continuation", index)
 	}
 	if !runCommit.Run.Capabilities().Equal(pending.Capabilities) {

@@ -99,30 +99,42 @@ func (w WaitingSubtreeCancellationRequest) Validate() error {
 func waitingContinuationFromPending(
 	pending Pending,
 	checkpoint ExecutorCheckpoint,
+	parked []run.Run,
 ) (WaitingContinuation, error) {
 	if err := pending.Validate(); err != nil {
 		return WaitingContinuation{}, err
 	}
+	members, err := waitingMembersFromPending(pending, parked)
+	if err != nil {
+		return WaitingContinuation{}, err
+	}
 	return NewWaitingContinuation(WaitingContinuation{
 		SessionID: pending.SessionID, ExecutorID: pending.ExecutorID,
-		RootRunID: pending.RootRunID, Members: waitingMembersFromPending(pending), Checkpoint: checkpoint.Clone(),
+		RootRunID: pending.RootRunID, Members: members, Checkpoint: checkpoint.Clone(),
 		Capabilities:             pending.Capabilities,
 		ChildRunAdmissionEnabled: pending.Capabilities.ChildRuns,
 	})
 }
 
-func waitingMembersFromPending(pending Pending) []WaitingMember {
+// waitingMembersFromPending joins each hand-off with the parked Run it names;
+// the Run, not the hand-off, owns the member's admission and accounting.
+func waitingMembersFromPending(pending Pending, parked []run.Run) ([]WaitingMember, error) {
+	runs := parkedRunsByID(parked)
 	members := make([]WaitingMember, len(pending.Continuations))
 	for index, continuation := range pending.Continuations {
+		value, found := runs[continuation.RunID]
+		if !found {
+			return nil, fmt.Errorf("runs: waiting member Run %q is not parked", continuation.RunID)
+		}
 		members[index] = WaitingMember{
 			RunID: continuation.RunID, MemberID: continuation.MemberID,
 			ParentRunID:     continuation.Lineage.ParentRunID,
 			SpawnedByItemID: continuation.Lineage.SpawnedByItemID,
-			ModelSelection:  continuation.ModelSelection, Metrics: continuation.Metrics,
+			ModelSelection:  value.ModelSelection(), Metrics: value.Metrics(),
 			DrainedTools: continuation.DrainedTools,
 		}
 	}
-	return members
+	return members, nil
 }
 
 // Validate verifies one surviving product member without interpreting executor

@@ -410,11 +410,9 @@ func TestListInterruptsProjectsToWire(t *testing.T) {
 					Lineage: run.Lineage{
 						SpawnedByItemID: "item_spawn", ParentRunID: "run_waiting", RootRunID: "run_waiting",
 					},
-					ModelSelection: testsupport.DefaultModelSelection(), RunCreatedAt: created.Add(-time.Second),
 				},
 				{
 					RunID: "run_waiting", MemberID: "member_root",
-					ModelSelection: testsupport.DefaultModelSelection(), RunCreatedAt: created.Add(-2 * time.Second),
 				},
 			},
 			CreatedAt: created,

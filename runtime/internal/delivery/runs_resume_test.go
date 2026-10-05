@@ -3,7 +3,6 @@ package delivery
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"testing"
 	"time"
 
@@ -46,7 +45,6 @@ func TestResumeRun_KeepsInterruptOpenWhenStartFails(t *testing.T) {
 		}},
 		time.Unix(1, 0).UTC(),
 	)
-	pending.Continuations[0].ModelSelection = testsupport.MustModelSelection("openai", "gpt")
 	if err := rt.interrupts.Open(ctx, pending); err != nil {
 		t.Fatalf("seed interrupt: %v", err)
 	}

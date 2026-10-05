@@ -267,9 +267,16 @@ func (e *Effects) loadResumeCheckpoint(
 	); err != nil {
 		return runs.ExecutorCheckpoint{}, err
 	}
-	if !loaded.ModelSelection.Equal(prepared.root.ModelSelection) || loaded.Scope.GoalIncarnationID != pending.GoalIncarnationID {
+	root, found, err := e.runState.Run(ctx, pending.RootRunID)
+	if err != nil {
+		return runs.ExecutorCheckpoint{}, fmt.Errorf("segment: read claimed root Run: %w", err)
+	}
+	if !found {
+		return runs.ExecutorCheckpoint{}, fmt.Errorf("segment: claimed root Run %q is absent", pending.RootRunID)
+	}
+	if !loaded.ModelSelection.Equal(root.ModelSelection()) || loaded.Scope.GoalIncarnationID != pending.GoalIncarnationID {
 		return runs.ExecutorCheckpoint{}, fmt.Errorf(
-			"%w: claimed checkpoint policy differs from Pending", runs.ErrInvalidExecutorCheckpoint,
+			"%w: claimed checkpoint policy differs from the root Run and Pending", runs.ErrInvalidExecutorCheckpoint,
 		)
 	}
 	return loaded, nil

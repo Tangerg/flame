@@ -50,7 +50,7 @@ func installRunsegmentTraceCapture(t *testing.T) (*sdktrace.TracerProvider, *tra
 func singleRunPending(
 	t testing.TB,
 	runID, sessionID, memberID, requestID, itemID string,
-	runCreatedAt, barrierCreatedAt time.Time,
+	barrierCreatedAt time.Time,
 ) runs.Pending {
 	t.Helper()
 	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}}
@@ -73,10 +73,8 @@ func singleRunPending(
 			RequestID:       requestID,
 		}},
 		Continuations: []runs.Continuation{{
-			RunID:          runID,
-			MemberID:       memberID,
-			ModelSelection: testsupport.MustModelSelection("anthropic", "claude"),
-			RunCreatedAt:   runCreatedAt,
+			RunID:    runID,
+			MemberID: memberID,
 		}},
 		CreatedAt: barrierCreatedAt,
 	}
@@ -386,7 +384,7 @@ func TestChildRunStartReservationUsesAdapterOwnedCanonicalPayload(t *testing.T) 
 func TestCommitOpeningResumesAfterSeparateAnswerClaim(t *testing.T) {
 	now := time.Now().UTC()
 	ints := &fakeInterrupts{pending: singleRunPending(
-		t, "run_1", "ses_1", "member_1", "request_1", "item_1", now, now,
+		t, "run_1", "ses_1", "member_1", "request_1", "item_1", now,
 	), resumeClaimed: true}
 	stores := &fakeStores{interrupts: ints, transcript: &fakeTranscript{}}
 	runState := &fakeRunState{}
@@ -429,15 +427,12 @@ func TestCommitTreeBarrierRecordsPendingSetAndSuspends(t *testing.T) {
 	barrierCreatedAt := time.Unix(2, 0).UTC()
 	pending := singleRunPending(
 		t,
-		"run_1", "ses_1", "member_1", "request_1", "int_1",
-		runCreatedAt, barrierCreatedAt,
+		"run_1", "ses_1", "member_1", "request_1", "int_1", barrierCreatedAt,
 	)
 	pending.Continuations[0].DrainedTools = []runs.DrainedTool{{
 		ItemID: "tool_1", ItemOccurredAt: barrierCreatedAt,
 		CallID: "call_1", Name: "ask_user", Arguments: "{}",
 	}}
-	pending.Continuations[0].Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 2})
-
 	barrier := mustTreeBarrier(
 		t,
 		testCommitID("run_commit_barrier"),
@@ -448,7 +443,7 @@ func TestCommitTreeBarrierRecordsPendingSetAndSuspends(t *testing.T) {
 			SegmentID: "segment_1",
 			State:     runs.StateSuspend,
 			Run: runPointer(testsupport.MustRestoreRun(run.Snapshot{SessionID: "ses_1", ID: "run_1", State: run.Waiting,
-				ModelSelection: pending.Continuations[0].ModelSelection,
+				ModelSelection: testsupport.DefaultModelSelection(),
 
 				Metrics:      testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 2}),
 				Capabilities: pending.Capabilities,
@@ -472,7 +467,7 @@ func TestCommitTreeBarrierRecordsPendingSetAndSuspends(t *testing.T) {
 	got := stores.interrupts.pending
 	root, ok := got.RootContinuation()
 	if got.RootRunID != "run_1" || !ok || root.MemberID != "member_1" ||
-		root.ModelSelection.Provider() != "anthropic" || root.ModelSelection.Model() != "claude" {
+		testsupport.DefaultModelSelection().Provider() != "anthropic" || testsupport.DefaultModelSelection().Model() != "claude" {
 		t.Fatalf("pending = %+v", got)
 	}
 	if len(got.Interrupts) != 1 || got.Interrupts[0].ItemID != "int_1" || len(root.DrainedTools) != 1 {
@@ -491,7 +486,7 @@ func TestCommitTreeBarrierRecordsPendingSetAndSuspends(t *testing.T) {
 // so no partial pending set or Run transition is visible.
 func TestCommitTreeBarrierRejectsIncompleteContinuation(t *testing.T) {
 	createdAt := time.Unix(1, 0).UTC()
-	pending := singleRunPending(t, "run_1", "ses_1", "member_1", "request_1", "int_1", createdAt, createdAt.Add(time.Second))
+	pending := singleRunPending(t, "run_1", "ses_1", "member_1", "request_1", "int_1", createdAt.Add(time.Second))
 	pending.Continuations[0].MemberID = ""
 
 	_, err := runs.NewTreeBarrierCommit(
@@ -514,8 +509,7 @@ func TestCommitTreeBarrierRejectsMismatchedCheckpointBindingBeforeTransaction(t 
 	createdAt := time.Unix(1, 0).UTC()
 	pending := singleRunPending(
 		t,
-		"run_1", "ses_1", "member_1", "request_1", "int_1",
-		createdAt, createdAt.Add(time.Second),
+		"run_1", "ses_1", "member_1", "request_1", "int_1", createdAt.Add(time.Second),
 	)
 	mutations := []struct {
 		name     string
@@ -564,14 +558,6 @@ func TestCommitTreeBarrierRejectsRunContinuationFactDriftBeforeTransaction(t *te
 		mutate   func(*runs.Pending, *run.Run)
 	}{
 		{
-			name: "cumulative metrics", identity: "cumulative_metrics",
-			mutate: func(_ *runs.Pending, record *run.Run) {
-				snapshot := record.Snapshot()
-				snapshot.Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: snapshot.Metrics.Steps() + 1})
-				*record = testsupport.MustRestoreRun(snapshot)
-			},
-		},
-		{
 			name: "frozen model selection", identity: "frozen_model_selection",
 			mutate: func(_ *runs.Pending, record *run.Run) {
 				snapshot := record.Snapshot()
@@ -601,18 +587,16 @@ func TestCommitTreeBarrierRejectsRunContinuationFactDriftBeforeTransaction(t *te
 			createdAt := time.Unix(1, 0).UTC()
 			pending := singleRunPending(
 				t,
-				"run_1", "ses_1", "member_1", "request_1", "int_1",
-				createdAt, createdAt.Add(time.Second),
+				"run_1", "ses_1", "member_1", "request_1", "int_1", createdAt.Add(time.Second),
 			)
 			pending.GoalIncarnationID = "goal-lease"
-			pending.Continuations[0].Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 2})
 			run := testsupport.MustRestoreRun(run.Snapshot{SessionID: pending.SessionID,
 				ID:                pending.RootRunID,
-				ModelSelection:    pending.Continuations[0].ModelSelection,
+				ModelSelection:    testsupport.DefaultModelSelection(),
 				GoalIncarnationID: pending.GoalIncarnationID,
 				State:             run.Waiting,
 
-				Metrics:      pending.Continuations[0].Metrics,
+				Metrics:      testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 2}),
 				Capabilities: pending.Capabilities,
 				CreatedAt:    createdAt,
 				MessageMark:  run.UnknownMessageMark})

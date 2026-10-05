@@ -16,7 +16,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func newInterruptStore(t *testing.T) *persistence.InterruptStore {
@@ -51,10 +50,8 @@ func TestInterruptStore_OpenGetListDelete(t *testing.T) {
 			RequestID:       "request_1",
 		}},
 		Continuations: []runs.Continuation{{
-			RunID:          "run_1",
-			MemberID:       "member_1",
-			ModelSelection: testReasoningSelection(t, "anthropic", "claude-opus-4-8", "high"),
-			RunCreatedAt:   time.Unix(1, 0).UTC(),
+			RunID:    "run_1",
+			MemberID: "member_1",
 		}},
 		CreatedAt: time.Unix(5, 0).UTC(),
 	}
@@ -75,12 +72,6 @@ func TestInterruptStore_OpenGetListDelete(t *testing.T) {
 		got.Interrupts[0].ItemID != "item_question" || !got.Interrupts[0].ItemOccurredAt.Equal(time.Unix(2, 0).UTC()) ||
 		!got.CreatedAt.Equal(time.Unix(5, 0).UTC()) {
 		t.Fatalf("Get returned %+v", got)
-	}
-	// Per-run model selection round-trips (T1.4 — cross-restart rehydrate rebuilds
-	// the SAME model client instead of dropping to the default).
-	root, _ := got.RootContinuation()
-	if root.ModelSelection.Provider() != "anthropic" || root.ModelSelection.Model() != "claude-opus-4-8" || root.ModelSelection.ReasoningEffort() != "high" {
-		t.Fatalf("Get model selection = %q/%q/%q, want anthropic/claude-opus-4-8/high", root.ModelSelection.Provider(), root.ModelSelection.Model(), root.ModelSelection.ReasoningEffort())
 	}
 
 	if list, _ := store.List(ctx, "ses_a"); len(list) != 1 {
@@ -143,7 +134,7 @@ func TestInterruptStore_ConsumeIsAtomic(t *testing.T) {
 			ToolCallID:      "call_1",
 		}},
 		Continuations: []runs.Continuation{{
-			RunID: "run_1", MemberID: "member_1", ModelSelection: testsupport.DefaultModelSelection(), RunCreatedAt: time.Unix(1, 0).UTC(),
+			RunID: "run_1", MemberID: "member_1",
 		}},
 		CreatedAt: time.Unix(7, 0).UTC(),
 	}); openErr != nil {
@@ -187,7 +178,7 @@ func TestInterruptStoreRejectsForeignSessionMutation(t *testing.T) {
 			InterruptItemID: "item_question", MemberID: "member_root", RequestID: "request_root",
 		}},
 		Continuations: []runs.Continuation{{
-			RunID: "run_1", MemberID: "member_root", ModelSelection: testsupport.DefaultModelSelection(), RunCreatedAt: time.Unix(1, 0).UTC(),
+			RunID: "run_1", MemberID: "member_root",
 		}},
 		CreatedAt: time.Unix(2, 0).UTC(),
 	}
@@ -222,7 +213,7 @@ func TestInterruptStoreDeleteResumeClaimMatchesOnlyTheOwnedResumingRow(t *testin
 			InterruptItemID: "item_question", MemberID: "member_root", RequestID: "request_root",
 		}},
 		Continuations: []runs.Continuation{{
-			RunID: "run_claimed", MemberID: "member_root", ModelSelection: testsupport.DefaultModelSelection(), RunCreatedAt: time.Unix(1, 0).UTC(),
+			RunID: "run_claimed", MemberID: "member_root",
 		}},
 		CreatedAt: time.Unix(3, 0).UTC(),
 	}
@@ -293,11 +284,9 @@ func TestInterruptStoreRoundTripsAppLineageWithoutExecutorTopology(t *testing.T)
 		}},
 		Continuations: []runs.Continuation{
 			{
-				RunID:          "run_child",
-				MemberID:       "member_child",
-				Lineage:        lineage,
-				ModelSelection: testsupport.DefaultModelSelection(),
-				RunCreatedAt:   createdAt,
+				RunID:    "run_child",
+				MemberID: "member_child",
+				Lineage:  lineage,
 				DrainedTools: []runs.DrainedTool{{
 					ItemID: "item_open", ItemOccurredAt: createdAt.Add(time.Second),
 					CallID: "call_open", SourceCallID: "provider_open",
@@ -305,10 +294,8 @@ func TestInterruptStoreRoundTripsAppLineageWithoutExecutorTopology(t *testing.T)
 				}},
 			},
 			{
-				RunID:          "run_root",
-				MemberID:       "member_root",
-				ModelSelection: testsupport.DefaultModelSelection(),
-				RunCreatedAt:   createdAt,
+				RunID:    "run_root",
+				MemberID: "member_root",
 				DrainedTools: []runs.DrainedTool{{
 					ItemID: "item_spawn_child", ItemOccurredAt: createdAt, CallID: "call_child", SourceCallID: "provider_child",
 					Name: "delegate_task", Arguments: "{}",
@@ -361,7 +348,7 @@ func TestInterruptStoreRejectsUnknownExecutorTopologyFields(t *testing.T) {
 			InterruptItemID: "item_question", MemberID: "member_root", RequestID: "request_root",
 		}},
 		Continuations: []runs.Continuation{{
-			RunID: "run_root", MemberID: "member_root", ModelSelection: testsupport.DefaultModelSelection(), RunCreatedAt: time.Unix(1, 0).UTC(),
+			RunID: "run_root", MemberID: "member_root",
 		}},
 		CreatedAt: time.Unix(2, 0).UTC(),
 	}
@@ -417,7 +404,7 @@ func TestInterruptStoreExecutorRootHasOnePendingOwner(t *testing.T) {
 				RequestID:       "request_" + runID,
 			}},
 			Continuations: []runs.Continuation{{
-				RunID: runID, MemberID: "member_shared", ModelSelection: testsupport.DefaultModelSelection(), RunCreatedAt: time.Unix(1, 0).UTC(),
+				RunID: runID, MemberID: "member_shared",
 			}},
 			CreatedAt: time.Unix(2, 0).UTC(),
 		})

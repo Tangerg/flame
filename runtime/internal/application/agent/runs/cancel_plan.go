@@ -38,6 +38,24 @@ type cancellationPlan struct {
 	completePostorderIDs []string
 }
 
+// treeRuns is every Run of the planned tree: the surviving members and the
+// target subtree.
+func (p cancellationPlan) treeRuns() []rundomain.Run {
+	runs := p.survivingRuns()
+	for _, member := range p.targetSubtree {
+		runs = append(runs, member.run)
+	}
+	return runs
+}
+
+func (p cancellationPlan) survivingRuns() []rundomain.Run {
+	runs := make([]rundomain.Run, len(p.survivingTree))
+	for index, member := range p.survivingTree {
+		runs[index] = member.run
+	}
+	return runs
+}
+
 // cancellationPlanSource is the coherent read model used to build one
 // cancellation plan. It keeps repository facts and the process-local owner
 // together only inside this use case; neither representation is promoted to a

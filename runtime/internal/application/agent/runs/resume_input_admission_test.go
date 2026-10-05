@@ -60,10 +60,6 @@ func TestResumeRejectsModelInputBeforeConsumingWait(t *testing.T) {
 		}},
 		Input: []transcript.ContentBlock{{Kind: transcript.ImageContent, MediaType: "image/png", Bytes: image}},
 	}
-	root, ok := pending.RootContinuation()
-	if !ok {
-		t.Fatal("fixture has no root continuation")
-	}
 	for attempt := range 2 {
 		result, err := coordinator.Resume(t.Context(), command)
 		if !errors.Is(err, ErrUnsupportedMedia) || !errors.Is(err, refusal) {
@@ -72,7 +68,7 @@ func TestResumeRejectsModelInputBeforeConsumingWait(t *testing.T) {
 		if result.RunID != "" || claims != 0 || control.resumed || len(effects.openingSnapshot()) != 0 {
 			t.Fatal("rejected input advanced the waiting execution")
 		}
-		if admitter.calls != attempt+1 || admitter.selection != root.ModelSelection {
+		if admitter.calls != attempt+1 || admitter.selection != testsupport.DefaultModelSelection() {
 			t.Fatalf("resume did not admit against the retained root selection: %+v", admitter)
 		}
 		if !reflect.DeepEqual(sessions.pending["run_1"], pending) {

@@ -256,11 +256,11 @@ func (w waitingCancellationBuilder) validate() error {
 			ErrInvalidExecutorCheckpoint,
 		)
 	}
-	if !w.prepared.checkpoint.ModelSelection.Equal(rootContinuation.ModelSelection) {
+	if !w.prepared.checkpoint.ModelSelection.Equal(w.plan.root.run.ModelSelection()) {
 		return fmt.Errorf(
-			"runs: prepared waiting subtree checkpoint model %q does not match root continuation %q: %w",
+			"runs: prepared waiting subtree checkpoint model %q does not match the root Run %q: %w",
 			w.prepared.checkpoint.ModelSelection,
-			rootContinuation.ModelSelection,
+			w.plan.root.run.ModelSelection(),
 			ErrInvalidExecutorCheckpoint,
 		)
 	}
@@ -484,6 +484,7 @@ func (w waitingCancellationBuilder) treeContinuation(
 		goalIncarnationID: w.plan.pending.GoalIncarnationID,
 		interrupts:        slices.Clone(interrupts),
 		continuations:     slices.Clone(continuations),
+		runs:              parkedRunsByID(w.plan.survivingRuns()),
 		capabilities:      w.plan.pending.Capabilities,
 	}
 	if err := continuation.validate(); err != nil {

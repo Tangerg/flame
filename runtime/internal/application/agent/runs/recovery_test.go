@@ -296,7 +296,7 @@ func (r *recoveryStoreStub) LoadExecutorCheckpoint(
 				SessionID: pending.SessionID, CWD: sess.Workspace().Path(), WorkspaceCWD: sess.Workspace().Path(),
 				Isolated: sess.Isolated(), GoalIncarnationID: pending.GoalIncarnationID,
 			},
-			ModelSelection: root.ModelSelection,
+			ModelSelection: testsupport.DefaultModelSelection(),
 			Capabilities:   pending.Capabilities,
 		}, nil
 	}
@@ -627,16 +627,12 @@ func TestRecoveryOwnsPendingCatalogBeforeFiltering(t *testing.T) {
 }
 
 func TestRecoveryRejectsInvalidClaimedPendingBeforePlanning(t *testing.T) {
-	_, pending, _ := coherentRecoveryPark(t)
-	rootContinuation, ok := pending.RootContinuation()
-	if !ok {
-		t.Fatal("Pending fixture has no root continuation")
-	}
+	parked, pending, _ := coherentRecoveryPark(t)
 	pending.Interrupts[0].ItemID = ""
 	active := testsupport.MustRestoreRun(rundomain.Snapshot{
 		ID: pending.RootRunID, SessionID: pending.SessionID, State: rundomain.Running,
-		ActiveSegmentID: "segment_active", ModelSelection: rootContinuation.ModelSelection,
-		Capabilities: pending.Capabilities, CreatedAt: rootContinuation.RunCreatedAt,
+		ActiveSegmentID: "segment_active", ModelSelection: testsupport.DefaultModelSelection(),
+		Capabilities: pending.Capabilities, CreatedAt: parked.CreatedAt(),
 		MessageMark: rundomain.UnknownMessageMark,
 	})
 	store := &recoveryStoreStub{
@@ -1185,7 +1181,7 @@ func TestRecoveryPreservesOnlyCoherentInterruptedTree(t *testing.T) {
 			GoalIncarnationID: pending.GoalIncarnationID,
 		},
 		ModelSelection: run.ModelSelection(), Capabilities: pending.Capabilities,
-	})
+	}, []rundomain.Run{run})
 	if err != nil {
 		t.Fatalf("waitingContinuationFromPending: %v", err)
 	}
@@ -1372,7 +1368,7 @@ func TestRecoveryRejectsExecutorCheckpointOwnedByDifferentApplicationFacts(t *te
 					CWD:          "/workspace",
 					WorkspaceCWD: "/workspace",
 				},
-				ModelSelection: root.ModelSelection,
+				ModelSelection: testsupport.DefaultModelSelection(),
 				Capabilities:   pending.Capabilities.Clone(),
 			}
 			test.mutate(&checkpoint)
@@ -1548,16 +1544,6 @@ func TestRecoveryRejectsContinuationFactDriftWithoutProbingCheckpoint(t *testing
 		mutate func(*rundomain.Run, *Pending)
 	}{
 		{
-			name: "cumulative metrics",
-			mutate: func(_ *rundomain.Run, pending *Pending) {
-				metrics, err := rundomain.NewMetrics(nil, pending.Continuations[0].Metrics.Steps()+1, pending.Continuations[0].Metrics.ActiveDuration())
-				if err != nil {
-					panic(err)
-				}
-				pending.Continuations[0].Metrics = metrics
-			},
-		},
-		{
 			name: "frozen run capabilities",
 			mutate: func(run *rundomain.Run, _ *Pending) {
 				snapshot := run.Snapshot()
@@ -1624,8 +1610,7 @@ func TestRecoveryRejectsChildProtocolDriftWithoutProbingCheckpoint(t *testing.T)
 	pending.Continuations = []Continuation{
 		{
 			RunID: "run_child", MemberID: "member_child",
-			Lineage: lineage, ModelSelection: root.ModelSelection(),
-			RunCreatedAt: root.CreatedAt(),
+			Lineage: lineage,
 		},
 		rootContinuation,
 	}
@@ -1682,7 +1667,7 @@ func coherentRecoveryPark(t *testing.T) (rundomain.Run, Pending, transcript.Item
 			RequestID:       "request_root",
 		}},
 		Continuations: []Continuation{{
-			RunID: run.ID(), MemberID: "member_root", ModelSelection: selection, RunCreatedAt: createdAt,
+			RunID: run.ID(), MemberID: "member_root",
 		}},
 		CreatedAt: createdAt.Add(time.Second),
 	}

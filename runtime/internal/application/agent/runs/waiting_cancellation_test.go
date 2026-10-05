@@ -545,7 +545,7 @@ func TestCancelWaitingChildPassesDurableTreeToExecutorAfterRuntimeRestart(t *tes
 		continuation.ExecutorID != plan.pending.ExecutorID ||
 		continuation.Checkpoint.RootMemberID != rootContinuation.MemberID ||
 		continuation.Checkpoint.Scope.CWD != "/work" ||
-		continuation.Checkpoint.ModelSelection != rootContinuation.ModelSelection {
+		continuation.Checkpoint.ModelSelection != plan.root.run.ModelSelection() {
 		t.Fatalf("waiting subtree request = %+v, want durable root continuation", request)
 	}
 	if prepared.applied != 1 ||
@@ -940,9 +940,9 @@ func runACancellationPlan(
 			SessionID: pending.SessionID,
 
 			State:          run.Waiting,
-			CreatedAt:      continuation.RunCreatedAt,
+			CreatedAt:      createdAt,
 			UpdatedAt:      pending.CreatedAt,
-			ModelSelection: continuation.ModelSelection,
+			ModelSelection: testsupport.MustModelSelection("openai", "model"),
 			Capabilities:   pending.Capabilities,
 			MessageMark:    run.UnknownMessageMark, Lineage: run.Lineage{
 				SpawnedByItemID: continuation.Lineage.SpawnedByItemID,

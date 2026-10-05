@@ -111,7 +111,6 @@ func testRecoveryMarksClaimedResumeLost(t *testing.T, openingCommitted bool) {
 		}},
 		Continuations: []runs.Continuation{{
 			RunID: "run_claim", MemberID: "member_claim",
-			ModelSelection: testsupport.DefaultModelSelection(), RunCreatedAt: createdAt,
 		}},
 		CreatedAt: createdAt.Add(time.Second),
 	}
@@ -649,7 +648,6 @@ func TestRecoveryRejectsPartialParkWithoutMutatingIt(t *testing.T) {
 		}},
 		Continuations: []runs.Continuation{{
 			RunID: "run_partial", MemberID: "member_root",
-			ModelSelection: testsupport.DefaultModelSelection(), RunCreatedAt: createdAt,
 		}},
 		CreatedAt: createdAt.Add(time.Second),
 	}

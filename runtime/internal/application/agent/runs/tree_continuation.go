@@ -26,7 +26,33 @@ type treeContinuation struct {
 	interrupts          []transcript.Interrupt
 	approvalResolutions map[string]ToolApprovalResolution
 	continuations       []Continuation
-	capabilities        run.Capabilities
+	// runs are the parked Runs the continuations hand off, by ID. A resumed
+	// route reads its admission, accounting and creation from them; the
+	// continuation carries none of those facts.
+	runs         map[string]run.Run
+	capabilities run.Capabilities
+}
+
+func parkedRunsByID(parked []run.Run) map[string]run.Run {
+	byID := make(map[string]run.Run, len(parked))
+	for _, value := range parked {
+		byID[value.ID()] = value
+	}
+	return byID
+}
+
+func parkedRoot(rootRunID string, parked []run.Run) (run.Run, bool) {
+	for _, value := range parked {
+		if value.ID() == rootRunID {
+			return value, true
+		}
+	}
+	return run.Run{}, false
+}
+
+func (t *treeContinuation) run(runID string) (run.Run, bool) {
+	value, found := t.runs[runID]
+	return value, found
 }
 
 func (t *treeContinuation) bindToolApprovalResolutions(
@@ -66,7 +92,7 @@ func (t *treeContinuation) bindToolApprovalResolutions(
 	return nil
 }
 
-func treeContinuationFromPending(pending Pending) (*treeContinuation, error) {
+func treeContinuationFromPending(pending Pending, parked []run.Run) (*treeContinuation, error) {
 	if err := pending.Validate(); err != nil {
 		return nil, err
 	}
@@ -77,6 +103,7 @@ func treeContinuationFromPending(pending Pending) (*treeContinuation, error) {
 		goalIncarnationID: pending.GoalIncarnationID,
 		interrupts:        slices.Clone(pending.Interrupts),
 		continuations:     slices.Clone(pending.Continuations),
+		runs:              parkedRunsByID(parked),
 		capabilities:      pending.Capabilities,
 	}
 	if err := continuation.validate(); err != nil {
@@ -123,6 +150,9 @@ func (t *treeContinuation) validate() error {
 				owner,
 				member.RunID,
 			)
+		}
+		if _, parked := t.runs[member.RunID]; !parked {
+			return fmt.Errorf("runs: tree continuation Run %q is not a parked Run", member.RunID)
 		}
 		runIDs[member.RunID] = struct{}{}
 		memberOwners[member.MemberID] = member.RunID

@@ -153,12 +153,16 @@ func memberIDForRun(t *testing.T, pending runs.Pending, runID string) string {
 
 func waitingDelegateContinuation(barrier runs.TreeBarrierCommit) runs.WaitingContinuation {
 	pending := barrier.Pending()
+	parked := make(map[string]run.Run, len(pending.Continuations))
+	for _, commit := range barrier.Runs() {
+		parked[commit.RunID] = *commit.Run
+	}
 	members := make([]runs.WaitingMember, 0, len(pending.Continuations))
 	for _, member := range pending.Continuations {
 		members = append(members, runs.WaitingMember{
 			RunID: member.RunID, MemberID: member.MemberID,
 			ParentRunID: member.Lineage.ParentRunID, SpawnedByItemID: member.Lineage.SpawnedByItemID,
-			ModelSelection: member.ModelSelection, Metrics: member.Metrics,
+			ModelSelection: parked[member.RunID].ModelSelection(), Metrics: parked[member.RunID].Metrics(),
 			DrainedTools: slices.Clone(member.DrainedTools),
 		})
 	}

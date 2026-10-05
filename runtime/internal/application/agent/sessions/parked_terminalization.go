@@ -194,9 +194,6 @@ func waitingRunMatchesContinuation(
 	return run.SessionID() == sessionID &&
 		run.State() == rundomain.Waiting &&
 		run.Lineage() == continuation.Lineage &&
-		run.ModelSelection().Equal(continuation.ModelSelection) &&
-		run.CreatedAt().Equal(continuation.RunCreatedAt) &&
-		run.Metrics().Equal(continuation.Metrics) &&
 		run.Capabilities().Equal(capabilities)
 }
 

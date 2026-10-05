@@ -74,8 +74,8 @@ func (s segmentSpec) priorMetrics() run.Metrics {
 	if s.Continuation == nil {
 		return run.Metrics{}
 	}
-	root, _ := s.Continuation.root()
-	return root.Metrics
+	root, _ := s.Continuation.run(s.Continuation.rootRunID)
+	return root.Metrics()
 }
 
 func (s segmentSpec) effectiveCapabilities() run.Capabilities {

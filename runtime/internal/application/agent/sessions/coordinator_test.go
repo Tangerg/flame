@@ -209,7 +209,7 @@ func TestApplyRunCancelProjectsTerminalTranscript(t *testing.T) {
 					InterruptItemID: "item_1", MemberID: "member_1", RequestID: "request_1",
 				}},
 				Continuations: []runs.Continuation{{
-					RunID: "run_1", MemberID: "member_1", RunCreatedAt: createdAt, ModelSelection: selection,
+					RunID: "run_1", MemberID: "member_1",
 				}},
 				CreatedAt: createdAt.Add(time.Second),
 			},
@@ -284,8 +284,7 @@ func TestApplyRunCancelSettlesQuestionToolAndClosesModelContext(t *testing.T) {
 					InterruptItemID: "item_question", MemberID: "member_1", RequestID: "request_1",
 				}},
 				Continuations: []runs.Continuation{{
-					RunID: "run_1", MemberID: "member_1", RunCreatedAt: createdAt,
-					ModelSelection: selection,
+					RunID: "run_1", MemberID: "member_1",
 					DrainedTools: []runs.DrainedTool{{
 						ItemID: "item_tool", ItemOccurredAt: createdAt,
 						CallID: "tool:runtime:0", Name: "ask_user", Arguments: "{}",
@@ -378,11 +377,7 @@ func TestApplyRunLostProjectsTerminalTranscript(t *testing.T) {
 					ToolCallID: "call_1",
 				}},
 				Continuations: []runs.Continuation{{
-					RunID: "run_1", MemberID: "member_1", RunCreatedAt: createdAt,
-					ModelSelection: selection,
-					Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 4, Usage: &accounting.Usage{
-						Total: accounting.Totals{CostUSD: &costUSD},
-					}}),
+					RunID: "run_1", MemberID: "member_1",
 				}},
 				CreatedAt: createdAt.Add(time.Second),
 			},
@@ -480,9 +475,9 @@ func TestApplyRunLostTerminalizesWholeParkedTreeInPostorder(t *testing.T) {
 		Continuations: []runs.Continuation{
 			{
 				RunID: "run_child", MemberID: "member_child",
-				Lineage: childLineage, RunCreatedAt: createdAt, ModelSelection: selection,
+				Lineage: childLineage,
 			},
-			{RunID: "run_root", MemberID: "member_root", RunCreatedAt: createdAt, ModelSelection: selection},
+			{RunID: "run_root", MemberID: "member_root"},
 		},
 		CreatedAt: createdAt.Add(time.Second),
 	}
@@ -553,66 +548,5 @@ func TestApplyRunLostTerminalizesWholeParkedTreeInPostorder(t *testing.T) {
 	}
 	if items := applied.Items(); len(items) != 0 {
 		t.Fatalf("terminal Items = %+v, want complete Question prompt left unchanged", items)
-	}
-}
-
-// TestApplyRunLostRejectsContinuationFactDriftBeforeTerminalCommit proves
-// parked_continuation_matches_run_facts at online parked-tree termination: a
-// corrupt hand-off cannot be consumed or converted into a terminal history.
-func TestApplyRunLostRejectsContinuationFactDriftBeforeTerminalCommit(t *testing.T) {
-	createdAt := time.Date(2026, 7, 18, 2, 0, 0, 0, time.UTC)
-	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}}
-	pendingInterrupt := transcript.Interrupt{
-		ItemID: "item_question", ItemOccurredAt: createdAt, RunID: "run_root",
-		Kind: interrupt.Question, Question: question,
-	}
-	capabilities := run.Capabilities{
-		InterruptKinds: []interrupt.Kind{interrupt.Question},
-	}
-	pending := runs.Pending{
-		RootRunID: "run_root", SessionID: "ses_1", ExecutorID: "turn_1",
-		Capabilities: capabilities,
-		Interrupts:   []transcript.Interrupt{pendingInterrupt},
-		Bindings: []runs.InterruptBinding{{
-			InterruptItemID: pendingInterrupt.ItemID,
-			MemberID:        "member_root",
-			RequestID:       "request_root",
-		}},
-		Continuations: []runs.Continuation{{
-			RunID: "run_root", MemberID: "member_root", RunCreatedAt: createdAt,
-			ModelSelection: testsupport.DefaultModelSelection(), Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 2}),
-		}},
-		CreatedAt: createdAt.Add(time.Second),
-	}
-	var applied TerminalPlan
-	stores := coordinatorStores{
-		interrupts: &coordinatorInterrupts{pending: map[string]runs.Pending{"run_root": pending}},
-		snapshot: Snapshot{
-			Session: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1"}),
-			Runs: []run.Run{testsupport.MustRestoreRun(run.Snapshot{
-				ID: "run_root", SessionID: "ses_1", State: run.Waiting,
-				Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 1}), Capabilities: capabilities,
-				CreatedAt: createdAt, MessageMark: run.UnknownMessageMark,
-			})},
-			Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
-				ID: pendingInterrupt.ItemID, SessionID: "ses_1", RunID: "run_root",
-				Kind:     transcript.QuestionItem,
-				Question: question, OccurredAt: createdAt,
-			})},
-		},
-		terminal: &applied,
-	}
-
-	err := newCoordinator(stores, nil).ApplyRunLost(
-		t.Context(), "ses_1", "run_root", createdAt.Add(time.Minute),
-	)
-	if err == nil {
-		t.Fatal("ApplyRunLost accepted cumulative metrics that differ from the Run")
-	}
-	if len(applied.Runs()) != 0 {
-		t.Fatalf("contradictory continuation reached terminal commit: %+v", applied)
-	}
-	if _, found := stores.interrupts.pending[pending.RootRunID]; !found {
-		t.Fatal("failed validation consumed the open Pending set")
 	}
 }

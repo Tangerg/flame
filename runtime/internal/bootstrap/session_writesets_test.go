@@ -151,10 +151,8 @@ func bootstrapPending(
 			RequestID:       "request-" + memberID,
 		}},
 		Continuations: []runsapp.Continuation{{
-			RunID:          runID,
-			MemberID:       memberID,
-			ModelSelection: testsupport.DefaultModelSelection(),
-			RunCreatedAt:   runCreatedAt,
+			RunID:    runID,
+			MemberID: memberID,
 		}},
 		CreatedAt: barrierCreatedAt,
 	}

@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
@@ -52,14 +51,10 @@ type InterruptRecord struct {
 
 // ContinuationRecord is the stored continuation row for one Run.
 type ContinuationRecord struct {
-	RunID          string
-	MemberID       string
-	Lineage        run.Lineage
-	ModelSelection modelref.Selection
-	DrainedTools   []DrainedToolRecord
-	RunCreatedAt   time.Time
-	Metrics        run.Metrics
-	ContextTokens  int64
+	RunID        string
+	MemberID     string
+	Lineage      run.Lineage
+	DrainedTools []DrainedToolRecord
 }
 
 // InterruptBindingRecord is the stored item-to-input-request correspondence.
@@ -153,13 +148,7 @@ type continuationRow struct {
 	SpawnedByItemID string           `json:"spawnedByItemId,omitempty"`
 	ParentRunID     string           `json:"parentRunId,omitempty"`
 	RootRunID       string           `json:"rootRunId,omitempty"`
-	Provider        string           `json:"provider,omitempty"`
-	Model           string           `json:"model,omitempty"`
-	ReasoningEffort string           `json:"reasoningEffort,omitempty"`
 	DrainedTools    []drainedToolRow `json:"drainedTools,omitempty"`
-	RunCreatedAt    int64            `json:"runCreatedAt"`
-	ContextTokens   int64            `json:"contextTokens,omitzero"`
-	Accounting      runAccountingRow `json:"accounting"`
 }
 
 type interruptBindingRow struct {
@@ -634,13 +623,7 @@ func continuationRows(values []ContinuationRecord) []continuationRow {
 			SpawnedByItemID: value.Lineage.SpawnedByItemID,
 			ParentRunID:     value.Lineage.ParentRunID,
 			RootRunID:       value.Lineage.RootRunID,
-			Provider:        value.ModelSelection.Provider(),
-			Model:           value.ModelSelection.Model(),
-			ReasoningEffort: value.ModelSelection.ReasoningEffort(),
 			DrainedTools:    drainedToolRows(value.DrainedTools),
-			RunCreatedAt:    value.RunCreatedAt.UnixNano(),
-			ContextTokens:   value.ContextTokens,
-			Accounting:      runAccountingRowOf(value.Metrics),
 		}
 	}
 	return rows
@@ -649,14 +632,6 @@ func continuationRows(values []ContinuationRecord) []continuationRow {
 func continuationsFromRows(rows []continuationRow) ([]ContinuationRecord, error) {
 	values := make([]ContinuationRecord, len(rows))
 	for index, row := range rows {
-		selection, err := modelref.NewWithReasoningEffort(row.Provider, row.Model, row.ReasoningEffort)
-		if err != nil {
-			return nil, fmt.Errorf("continuation[%d] model selection: %w", index, err)
-		}
-		metrics, err := row.Accounting.values()
-		if err != nil {
-			return nil, fmt.Errorf("continuation[%d] accounting: %w", index, err)
-		}
 		values[index] = ContinuationRecord{
 			RunID:    row.RunID,
 			MemberID: row.MemberID,
@@ -665,11 +640,7 @@ func continuationsFromRows(rows []continuationRow) ([]ContinuationRecord, error)
 				ParentRunID:     row.ParentRunID,
 				RootRunID:       row.RootRunID,
 			},
-			ModelSelection: selection,
-			DrainedTools:   drainedToolsFromRows(row.DrainedTools),
-			RunCreatedAt:   time.Unix(0, row.RunCreatedAt).UTC(),
-			Metrics:        metrics,
-			ContextTokens:  row.ContextTokens,
+			DrainedTools: drainedToolsFromRows(row.DrainedTools),
 		}
 	}
 	return values, nil

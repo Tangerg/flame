@@ -24,7 +24,11 @@ import (
 
 func mustTreeContinuation(t *testing.T, pending Pending) *treeContinuation {
 	t.Helper()
-	continuation, err := treeContinuationFromPending(pending)
+	parked := make([]run.Run, 0, len(pending.Continuations))
+	for _, member := range pending.Continuations {
+		parked = append(parked, runForContinuation(pending, member))
+	}
+	continuation, err := treeContinuationFromPending(pending, parked)
 	if err != nil {
 		t.Fatalf("tree continuation: %v", err)
 	}
@@ -508,7 +512,7 @@ func (f *fakeEffects) ClaimResume(_ context.Context, claim ResumeClaimCommit) (C
 	checkpoint.Scope.CWD = "/work"
 	checkpoint.Scope.WorkspaceCWD = "/work"
 	checkpoint.Scope.GoalIncarnationID = pending.GoalIncarnationID
-	checkpoint.ModelSelection = root.ModelSelection
+	checkpoint.ModelSelection = testsupport.DefaultModelSelection()
 	claimed := ClaimedResume{
 		Pending: pending, Answers: claim.Answers(),
 		Checkpoint: checkpoint,
@@ -771,7 +775,6 @@ func TestResumedExecutorRouteRetainsGoalLeaseForTerminalAccounting(t *testing.T)
 	createdAt := time.Date(2026, 7, 30, 1, 2, 3, 0, time.UTC)
 	pending := testApprovalPending("member_root", createdAt)
 	pending.GoalIncarnationID = "goal-lease-1"
-	pending.Continuations[0].ModelSelection = testsupport.MustModelSelection("openai", "model")
 	continuation := mustTreeContinuation(t, pending)
 	spec := testSegment()
 	spec.Continuation = continuation
@@ -1278,8 +1281,6 @@ func resumedTreePending(createdAt time.Time) Pending {
 					ParentRunID:     "run_a",
 					RootRunID:       "run_1",
 				},
-				ModelSelection: testsupport.MustModelSelection("openai", "model"),
-				RunCreatedAt:   createdAt,
 			},
 			{
 				RunID:    "run_a",
@@ -1289,8 +1290,6 @@ func resumedTreePending(createdAt time.Time) Pending {
 					ParentRunID:     "run_1",
 					RootRunID:       "run_1",
 				},
-				ModelSelection: testsupport.MustModelSelection("openai", "model"),
-				RunCreatedAt:   createdAt,
 			},
 			{
 				RunID:    "run_b",
@@ -1300,14 +1299,10 @@ func resumedTreePending(createdAt time.Time) Pending {
 					ParentRunID:     "run_1",
 					RootRunID:       "run_1",
 				},
-				ModelSelection: testsupport.MustModelSelection("openai", "model"),
-				RunCreatedAt:   createdAt,
 			},
 			{
-				RunID:          "run_1",
-				MemberID:       "member_root",
-				ModelSelection: testsupport.MustModelSelection("openai", "model"),
-				RunCreatedAt:   createdAt,
+				RunID:    "run_1",
+				MemberID: "member_root",
 			},
 		},
 		CreatedAt: createdAt.Add(time.Second),

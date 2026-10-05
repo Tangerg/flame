@@ -267,9 +267,9 @@ func validateWaitingCancellationBoundary(c waitingSubtreeCancellationState) erro
 		return fmt.Errorf("runs: waiting cancellation checkpoint ownership: %w", err)
 	}
 	if c.Checkpoint.Scope.GoalIncarnationID != c.ExpectedPending.GoalIncarnationID ||
-		!c.Checkpoint.ModelSelection.Equal(rootContinuation.ModelSelection) {
+		!c.Checkpoint.ModelSelection.Equal(c.RootRun.ModelSelection()) {
 		return fmt.Errorf(
-			"runs: waiting cancellation checkpoint differs from root continuation: %w",
+			"runs: waiting cancellation checkpoint differs from the root Run: %w",
 			ErrInvalidExecutorCheckpoint,
 		)
 	}
@@ -363,12 +363,6 @@ func (w *waitingCancellationValidation) validateTerminalRuns() error {
 			return fmt.Errorf("runs: waiting cancellation Run[%d] Session mismatch", index)
 		case run.Lineage() != continuation.Lineage:
 			return fmt.Errorf("runs: waiting cancellation Run[%d] lineage mismatch", index)
-		case !run.ModelSelection().Equal(continuation.ModelSelection):
-			return fmt.Errorf("runs: waiting cancellation Run[%d] model mismatch", index)
-		case !run.Metrics().Equal(continuation.Metrics):
-			return fmt.Errorf("runs: waiting cancellation Run[%d] metrics mismatch", index)
-		case !run.CreatedAt().Equal(continuation.RunCreatedAt):
-			return fmt.Errorf("runs: waiting cancellation Run[%d] creation time mismatch", index)
 		case !run.Capabilities().Equal(c.ExpectedPending.Capabilities):
 			return fmt.Errorf("runs: waiting cancellation Run[%d] capabilities mismatch", index)
 		case run.GoalIncarnationID() != "":
@@ -585,28 +579,16 @@ func validateWaitingRunContinuation(run rundomain.Run, continuation Continuation
 		return errors.New("identity differs from continuation")
 	case run.Lineage() != continuation.Lineage:
 		return errors.New("lineage differs from continuation")
-	case !run.ModelSelection().Equal(continuation.ModelSelection):
-		return errors.New("model selection differs from continuation")
-	case !run.Metrics().Equal(continuation.Metrics):
-		return errors.New("metrics differ from continuation")
-	case !run.CreatedAt().Equal(continuation.RunCreatedAt):
-		return errors.New("creation time differs from continuation")
 	default:
 		return nil
 	}
 }
 
 func sameContinuationValue(left, right Continuation) bool {
-	if !left.Metrics.Equal(right.Metrics) {
-		return false
-	}
-	left.Metrics = rundomain.Metrics{}
-	right.Metrics = rundomain.Metrics{}
 	return reflect.DeepEqual(normalizeContinuationValue(left), normalizeContinuationValue(right))
 }
 
 func normalizeContinuationValue(value Continuation) Continuation {
-	value.RunCreatedAt = canonicalTime(value.RunCreatedAt)
 	value.DrainedTools = slices.Clone(value.DrainedTools)
 	for index := range value.DrainedTools {
 		value.DrainedTools[index].ItemOccurredAt = canonicalTime(value.DrainedTools[index].ItemOccurredAt)

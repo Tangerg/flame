@@ -165,10 +165,8 @@ func serverPending(
 		Bindings:     bindings,
 		Capabilities: capabilities.Normalized(),
 		Continuations: []runs.Continuation{{
-			RunID:          runID,
-			MemberID:       memberID,
-			ModelSelection: testsupport.DefaultModelSelection(),
-			RunCreatedAt:   createdAt,
+			RunID:    runID,
+			MemberID: memberID,
 		}},
 		CreatedAt: createdAt,
 	}

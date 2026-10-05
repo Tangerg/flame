@@ -807,7 +807,6 @@ func testPending(rootRunID, sessionID string, createdAt time.Time) runs.Pending 
 		}},
 		Continuations: []runs.Continuation{{
 			RunID: rootRunID, MemberID: memberID,
-			ModelSelection: testsupport.DefaultModelSelection(), RunCreatedAt: runCreatedAt,
 		}},
 		CreatedAt: createdAt,
 	}

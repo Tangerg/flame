@@ -13,7 +13,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -1260,59 +1259,6 @@ func TestResumeSettlesAfterOpeningWithoutWaitingForExecutorActivation(t *testing
 	requireCoordinatorShutdown(t, coordinator)
 }
 
-// TestResumeRejectsContinuationFactDriftBeforeExecutorPreparation proves
-// parked_continuation_matches_run_facts at segment opening: Pending cannot
-// supply a different accounting snapshot before the executor is prepared.
-func TestResumeRejectsContinuationFactDriftBeforeExecutorPreparation(t *testing.T) {
-	createdAt := time.Date(2026, 7, 30, 11, 0, 0, 0, time.UTC)
-	pending := testApprovalPending("member_root", createdAt)
-	sessions := &fakeRunSessions{
-		sess: testsupport.MustRestoreSession(session.Snapshot{ID: pending.SessionID, Workspace: testsupport.MustWorkspace("/work")}),
-		pending: map[string]Pending{
-			pending.RootRunID: pending,
-		},
-	}
-	control := &fakeExecutionPorts{prepared: ExecutorRef{
-		SessionID:  pending.SessionID,
-		ExecutorID: pending.ExecutorID,
-	}}
-	effects := &fakeEffects{}
-	coordinator := newUseCaseCoordinator(&fakeExecutor{}, control, sessions, effects)
-	contradictory := runForPending(pending)
-	snapshot := contradictory.Snapshot()
-	usage, reported := snapshot.Metrics.Usage()
-	var usageInput *accounting.Usage
-	if reported {
-		usageInput = &usage
-	}
-	snapshot.Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{
-		Usage: usageInput, Steps: snapshot.Metrics.Steps() + 1,
-		ActiveDuration: snapshot.Metrics.ActiveDuration(),
-	})
-	contradictory = testsupport.MustRestoreRun(snapshot)
-	coordinator.runs = &fakeRunProjection{runs: map[string]run.Run{
-		pending.RootRunID: contradictory,
-	}}
-
-	_, err := coordinator.Resume(t.Context(), ResumeCommand{
-		RunID:              pending.RootRunID,
-		CallerCapabilities: pending.Capabilities,
-		Responses: []ResumeResponse{{
-			ItemID: "item_1", Kind: interrupt.Approval,
-			Approval: &ApprovalResponse{Approved: true},
-		}},
-	})
-	if err == nil {
-		t.Fatal("Resume accepted cumulative metrics that differ from the durable Run")
-	}
-	if control.resumed || control.continuation.Checkpoint.RootMemberID != "" || len(effects.openings) != 0 {
-		t.Fatalf("contradictory continuation reached executor/effects: control=%+v openings=%d", control, len(effects.openings))
-	}
-	if _, found := sessions.pending[pending.RootRunID]; !found {
-		t.Fatal("failed validation consumed the open Pending set")
-	}
-}
-
 func TestResumeAndRootCancelShareOneApplicationAdmissionBoundary(t *testing.T) {
 	createdAt := time.Date(2026, 7, 30, 12, 0, 0, 0, time.UTC)
 	pending := testApprovalPending("member_1", createdAt)
@@ -1838,7 +1784,6 @@ func TestResumeRehydrateRestoresChildAdmissionBeforeAnyChildExists(t *testing.T)
 	createdAt := time.Date(2026, 7, 30, 12, 0, 0, 0, time.UTC)
 	pending := testApprovalPending("member_root", createdAt)
 	pending.Capabilities.ChildRuns = true
-	pending.Continuations[0].ModelSelection = testsupport.MustModelSelection("openai", "model")
 	sessions := &fakeRunSessions{
 		sess: testsupport.MustRestoreSession(session.Snapshot{ID: pending.SessionID, Workspace: testsupport.MustWorkspace("/work")}),
 		pending: map[string]Pending{
@@ -1944,10 +1889,8 @@ func testApprovalPending(memberID string, runCreatedAt time.Time) Pending {
 			ToolCallID:      "call_1",
 		}},
 		Continuations: []Continuation{{
-			RunID:          "run_1",
-			MemberID:       memberID,
-			ModelSelection: testsupport.DefaultModelSelection(),
-			RunCreatedAt:   runCreatedAt,
+			RunID:    "run_1",
+			MemberID: memberID,
 		}},
 		CreatedAt: runCreatedAt.Add(time.Second),
 	}
@@ -1969,12 +1912,11 @@ func runForContinuation(
 	return testsupport.MustRestoreRun(run.Snapshot{ID: continuation.RunID,
 		SessionID: pending.SessionID,
 
-		ModelSelection:    continuation.ModelSelection,
+		ModelSelection:    testsupport.DefaultModelSelection(),
 		GoalIncarnationID: goalIncarnationID,
 		State:             run.Waiting,
-		Metrics:           continuation.Metrics,
 		Capabilities:      pending.Capabilities,
-		CreatedAt:         continuation.RunCreatedAt,
+		CreatedAt:         pending.CreatedAt.Add(-time.Second),
 		MessageMark:       run.UnknownMessageMark, Lineage: run.Lineage{SpawnedByItemID: continuation.Lineage.SpawnedByItemID,
 			ParentRunID: continuation.Lineage.ParentRunID,
 			RootRunID:   continuation.Lineage.RootRunID}})

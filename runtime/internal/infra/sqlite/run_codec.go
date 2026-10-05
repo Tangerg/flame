@@ -35,37 +35,6 @@ type runModelRowUse struct {
 	CostUSD          *float64 `json:"costUsd,omitzero"`
 }
 
-// runAccountingRow is the parked Run's consumption, encoded as the
-// one value a continuation needs to pick the Run back up where it left off. It
-// reuses runUsageRow rather than spelling usage a second way, so the two carriers
-// of a Run's accounting agree by construction.
-type runAccountingRow struct {
-	Steps            int          `json:"steps,omitzero"`
-	ActiveDurationNs int64        `json:"activeDurationNs,omitzero"`
-	Usage            *runUsageRow `json:"usage,omitzero"`
-}
-
-func runAccountingRowOf(metrics rundomain.Metrics) runAccountingRow {
-	usage, reported := metrics.Usage()
-	var usageRef *accounting.Usage
-	if reported {
-		usageRef = &usage
-	}
-	return runAccountingRow{
-		Steps:            metrics.Steps(),
-		ActiveDurationNs: int64(metrics.ActiveDuration()),
-		Usage:            runUsageRowOf(usageRef),
-	}
-}
-
-func (r runAccountingRow) values() (rundomain.Metrics, error) {
-	metrics, err := rundomain.NewMetrics(r.Usage.usage(), r.Steps, time.Duration(r.ActiveDurationNs))
-	if err != nil {
-		return rundomain.Metrics{}, fmt.Errorf("metrics: %w", err)
-	}
-	return metrics, nil
-}
-
 // runCapabilitiesRow is the Run's frozen optional behavior. Interrupt kinds are
 // stored under their canonical names rather than ordinals, so inserting a kind
 // into the enum cannot silently re-label stored rows.

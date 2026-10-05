@@ -62,7 +62,7 @@ func TestChildOpeningAtomicallyCommitsRunAndParentSpawningItem(t *testing.T) {
 	child := run.Draft{
 		RunID: "run_child", SessionID: "session_1", SegmentID: "segment_child",
 		SpawnedByItemID: spawningItem.ID(), ParentRunID: root.RunID, RootRunID: root.RunID,
-		Capabilities: capabilities, ModelSelection: root.ModelSelection, CreatedAt: time.Unix(3, 0),
+		Capabilities: capabilities, ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: time.Unix(3, 0),
 	}
 	opening := mustAdmissionOpening(
 		t, testCommitID("run_commit_child_opening"), child,
@@ -169,7 +169,7 @@ func TestStartedChildOpeningReconcilesOnlyItsExactWriteSet(t *testing.T) {
 	child := run.Draft{
 		RunID: "run_child", SessionID: root.SessionID, SegmentID: "segment_child",
 		SpawnedByItemID: spawningItem.ID(), ParentRunID: root.RunID, RootRunID: root.RunID,
-		ModelSelection: root.ModelSelection, CreatedAt: startedAt,
+		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: startedAt,
 	}
 	reservation := runs.ChildRunStartReservation{
 		SessionID: root.SessionID, ExecutorID: "executor_1",

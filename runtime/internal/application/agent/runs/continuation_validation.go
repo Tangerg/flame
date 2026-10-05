@@ -142,8 +142,9 @@ func validatePendingRunTree(pending Pending, values []rundomain.Run) error {
 	return nil
 }
 
-// validateContinuationRunFacts proves that a durable continuation is a hand-off
-// of run, not a second author for immutable admission or cumulative accounting.
+// validateContinuationRunFacts proves that a durable continuation hands off
+// run. Admission, accounting and creation are read from the Run itself, so the
+// continuation carries none of them to disagree with.
 // Lifecycle callers separately validate state, tree coverage, Pending ownership,
 // and root-owned capability and Goal facts that do not live on each continuation.
 func validateContinuationRunFacts(
@@ -158,26 +159,6 @@ func validateContinuationRunFacts(
 			rootRunID,
 			value.ID(),
 			continuation.RunID,
-		)
-	case !value.ModelSelection().Equal(continuation.ModelSelection):
-		return fmt.Errorf(
-			"runs: validate Run tree %q: Run %q admission model %q differs from continuation model %q",
-			rootRunID,
-			value.ID(),
-			value.ModelSelection(),
-			continuation.ModelSelection,
-		)
-	case !value.Metrics().Equal(continuation.Metrics):
-		return fmt.Errorf(
-			"runs: validate Run tree %q: Run %q cumulative metrics differ from its continuation",
-			rootRunID,
-			value.ID(),
-		)
-	case !value.CreatedAt().Equal(continuation.RunCreatedAt):
-		return fmt.Errorf(
-			"runs: validate Run tree %q: Run %q and continuation creation times differ",
-			rootRunID,
-			value.ID(),
 		)
 	case value.Lineage() != continuation.Lineage:
 		return fmt.Errorf(

@@ -459,7 +459,6 @@ func (t treePublisher) reduceInterruptedRoute(
 			route.runID,
 		)
 	}
-	waitingRun := *batch.parkCommit.Run
 	projectedInterrupts := suspendedInterrupts(reduced.events)
 	if len(projectedInterrupts) != len(directInterruptions) {
 		return treeBarrierReduction{}, nil, Continuation{}, fmt.Errorf(
@@ -481,14 +480,10 @@ func (t treePublisher) reduceInterruptedRoute(
 		}
 	}
 	continuation := Continuation{
-		RunID:          route.runID,
-		MemberID:       route.member.MemberID,
-		Lineage:        route.lineage,
-		ModelSelection: route.modelSelection,
-		DrainedTools:   slices.Clone(route.reducer.drained),
-		RunCreatedAt:   waitingRun.CreatedAt(),
-		Metrics:        waitingRun.Metrics(),
-		ContextTokens:  waitingRun.ContextTokens(),
+		RunID:        route.runID,
+		MemberID:     route.member.MemberID,
+		Lineage:      route.lineage,
+		DrainedTools: slices.Clone(route.reducer.drained),
 	}
 	return treeBarrierReduction{route: route, batch: batch, interrupts: projectedInterrupts}, bindings, continuation, nil
 }

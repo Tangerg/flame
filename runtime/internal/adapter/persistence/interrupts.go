@@ -164,10 +164,7 @@ func interruptRecord(pending runs.Pending) sqlite.InterruptRecord {
 		}
 		continuations[index] = sqlite.ContinuationRecord{
 			RunID: continuation.RunID, MemberID: continuation.MemberID,
-			Lineage: continuation.Lineage, ModelSelection: continuation.ModelSelection,
-			DrainedTools: drained,
-			RunCreatedAt: continuation.RunCreatedAt,
-			Metrics:      continuation.Metrics, ContextTokens: continuation.ContextTokens,
+			Lineage: continuation.Lineage, DrainedTools: drained,
 		}
 	}
 	bindings := make([]sqlite.InterruptBindingRecord, len(pending.Bindings))
@@ -204,10 +201,7 @@ func pendingValue(record sqlite.InterruptRecord) runs.Pending {
 		}
 		continuations[index] = runs.Continuation{
 			RunID: continuation.RunID, MemberID: continuation.MemberID,
-			Lineage: continuation.Lineage, ModelSelection: continuation.ModelSelection,
-			DrainedTools: drained,
-			RunCreatedAt: continuation.RunCreatedAt,
-			Metrics:      continuation.Metrics, ContextTokens: continuation.ContextTokens,
+			Lineage: continuation.Lineage, DrainedTools: drained,
 		}
 	}
 	bindings := make([]runs.InterruptBinding, len(record.Bindings))

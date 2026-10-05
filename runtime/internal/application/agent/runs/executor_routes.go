@@ -170,6 +170,10 @@ func (r *resumedRouteBuilder) newRoute(continuationState Continuation) (*executo
 	if err := member.Validate(); err != nil {
 		return nil, fmt.Errorf("runs: resumed Run %q member: %w", continuationState.RunID, err)
 	}
+	parked, found := r.continuation.run(continuationState.RunID)
+	if !found {
+		return nil, fmt.Errorf("runs: resumed Run %q is not parked", continuationState.RunID)
+	}
 	route := &executorRoute{
 		member:         member,
 		memberBound:    continuationState.Lineage.IsRoot(),
@@ -177,7 +181,7 @@ func (r *resumedRouteBuilder) newRoute(continuationState Continuation) (*executo
 		segmentID:      segmentID,
 		rootRunID:      r.continuation.rootRunID,
 		lineage:        continuationState.Lineage,
-		modelSelection: continuationState.ModelSelection,
+		modelSelection: parked.ModelSelection(),
 		capabilities:   r.continuation.capabilities,
 	}
 	userInput := []transcript.ContentBlock(nil)
@@ -190,8 +194,8 @@ func (r *resumedRouteBuilder) newRoute(continuationState Continuation) (*executo
 		RunID: route.runID, SegmentID: route.segmentID, SessionID: r.spec.SessionID,
 		Lineage: route.lineage, WorkspaceCWD: r.spec.WorkspaceCWD, Isolated: r.spec.Isolated,
 		GoalIncarnationID: goalIncarnationID, ModelSelection: route.modelSelection,
-		CreatedAt: continuationState.RunCreatedAt, UserInput: userInput,
-		Metrics: continuationState.Metrics, ContextTokens: continuationState.ContextTokens,
+		CreatedAt: parked.CreatedAt(), UserInput: userInput,
+		Metrics: parked.Metrics(), ContextTokens: parked.ContextTokens(),
 		Capabilities: r.continuation.capabilities, Continuation: r.continuation,
 		Now:          r.now,
 		CancelReason: cancellationReason(r.cancelReason, route.runID),
