@@ -160,7 +160,7 @@ func TestProjectRejectsEveryMalformedEventVariantBeforePublication(t *testing.T)
 		SegmentFinished{},
 		ItemStarted{},
 		ItemCompleted{},
-		PlanSnapshot{SessionID: reducer.cfg.SessionID},
+		PlanSnapshot{SessionID: reducer.cfg.Opened.SessionID()},
 	} {
 		if _, err := reducer.project([]ProjectionEvent{event}); !errors.Is(err, errReducerInvariant) {
 			t.Fatalf("project %T error = %v, want reducer invariant violation", event, err)

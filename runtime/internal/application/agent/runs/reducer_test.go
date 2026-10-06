@@ -25,9 +25,20 @@ import (
 func testReducerConfig() reducerConfig {
 	now := time.Date(2026, 7, 13, 1, 2, 3, 0, time.UTC)
 	return reducerConfig{
-		RunID: "run_1", SegmentID: "seg_1", SessionID: "ses_1", WorkspaceCWD: "/work", ModelSelection: testsupport.MustModelSelection("anthropic", "claude"), CreatedAt: now,
-		Now: func() time.Time { return now },
+		Opened: testsupport.MustRestoreRun(run.Snapshot{
+			SessionID: "ses_1", ID: "run_1", ModelSelection: testsupport.MustModelSelection("anthropic", "claude"),
+			State: run.Running, ActiveSegmentID: "seg_1",
+			CreatedAt: now, UpdatedAt: now, MessageMark: run.UnknownMessageMark,
+		}),
+		WorkspaceCWD: "/work",
+		Now:          func() time.Time { return now },
 	}
+}
+
+func reopened(opened run.Run, change func(*run.Snapshot)) run.Run {
+	snapshot := opened.Snapshot()
+	change(&snapshot)
+	return testsupport.MustRestoreRun(snapshot)
 }
 
 func mustReducerCost(t *testing.T, usd float64) accounting.Cost {
@@ -41,7 +52,7 @@ func mustReducerCost(t *testing.T, usd float64) accounting.Cost {
 
 func TestReducerTerminalChargesTheGoalOfAGoalOwnedRun(t *testing.T) {
 	config := testReducerConfig()
-	config.GoalIncarnationID = "goal_lease"
+	config.Opened = reopened(config.Opened, func(s *run.Snapshot) { s.GoalIncarnationID = "goal_lease" })
 	reducer := newReducer(config)
 	mustReduce(t, reducer, ToolCallStarted{CallID: "call_1", ToolName: "inspect", Arguments: `{}`})
 	mustFinishTool(t, reducer, ToolCallFinished{CallID: "call_1", Result: testToolResult(t, "ok")})
@@ -494,11 +505,13 @@ func TestReducerSynthesizesUnsettledModelCallAsAtomicRunLost(t *testing.T) {
 
 func TestReducerTreatsExecutorAccountingAsCumulativeAcrossResume(t *testing.T) {
 	config := testReducerConfig()
-	config.Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{Usage: &accounting.Usage{Total: accounting.Totals{
-		InputTokens: 10,
-	}},
-		Steps:          2,
-		ActiveDuration: time.Second})
+	config.Opened = reopened(config.Opened, func(s *run.Snapshot) {
+		s.Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{Usage: &accounting.Usage{Total: accounting.Totals{
+			InputTokens: 10,
+		}},
+			Steps:          2,
+			ActiveDuration: time.Second})
+	})
 
 	reducer := newReducer(config)
 	mustReduce(t, reducer, UsageReported{
@@ -526,12 +539,14 @@ func TestReducerTreatsExecutorAccountingAsCumulativeAcrossResume(t *testing.T) {
 func TestReducerPreservesUsageWhenCumulativePricingBecomesUnavailable(t *testing.T) {
 	priced := 0.25
 	config := testReducerConfig()
-	config.Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{
-		Usage: &accounting.Usage{Total: accounting.Totals{
-			InputTokens: 10,
-			CostUSD:     &priced,
-		}},
-		Steps: 1,
+	config.Opened = reopened(config.Opened, func(s *run.Snapshot) {
+		s.Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{
+			Usage: &accounting.Usage{Total: accounting.Totals{
+				InputTokens: 10,
+				CostUSD:     &priced,
+			}},
+			Steps: 1,
+		})
 	})
 
 	reducer := newReducer(config)
@@ -562,7 +577,7 @@ func TestReducerPreservesUsageWhenCumulativePricingBecomesUnavailable(t *testing
 func TestReducerRejectsInconsistentOrRegressingAccounting(t *testing.T) {
 	t.Run("step regression", func(t *testing.T) {
 		config := testReducerConfig()
-		config.Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 2})
+		config.Opened = reopened(config.Opened, func(s *run.Snapshot) { s.Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 2}) })
 		_, err := newReducer(config).reduce(UsageReported{Steps: 1})
 		if !errors.Is(err, errExecutorContract) {
 			t.Fatalf("error = %v, want executor protocol violation", err)
@@ -571,8 +586,10 @@ func TestReducerRejectsInconsistentOrRegressingAccounting(t *testing.T) {
 
 	t.Run("usage regression", func(t *testing.T) {
 		config := testReducerConfig()
-		config.Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{Usage: &accounting.Usage{Total: accounting.Totals{InputTokens: 10}},
-			Steps: 1})
+		config.Opened = reopened(config.Opened, func(s *run.Snapshot) {
+			s.Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{Usage: &accounting.Usage{Total: accounting.Totals{InputTokens: 10}},
+				Steps: 1})
+		})
 
 		_, err := newReducer(config).reduce(UsageReported{
 			Tokens: accounting.Tokens{InputTokens: 9},
@@ -679,7 +696,7 @@ func TestReducerOpeningCreatesCanonicalRunAndUserItem(t *testing.T) {
 
 func TestReducerKeepsGoalControlInputOutOfTheTranscript(t *testing.T) {
 	config := testReducerConfig()
-	config.GoalIncarnationID = "goal_lease"
+	config.Opened = reopened(config.Opened, func(s *run.Snapshot) { s.GoalIncarnationID = "goal_lease" })
 	config.ModelOnlyInput = true
 	config.UserInput = []transcript.ContentBlock{{
 		Kind: transcript.TextContent,
@@ -884,7 +901,7 @@ func TestReducerCarriesLaterPausedCallIdentityAcrossSequentialResumes(t *testing
 	}
 
 	config := testReducerConfig()
-	config.SegmentID = "seg_2"
+	config.Opened = reopened(config.Opened, func(s *run.Snapshot) { s.ActiveSegmentID = "seg_2" })
 	config.Continuation = testTreeContinuationOf(Pending{
 		RootRunID: "run_1", SessionID: "ses_1",
 		Interrupts: OpenInterruptsOf(firstInterrupted.Interrupts),
@@ -937,7 +954,7 @@ func TestReducerResumeKeepsEditedApprovalIdentityBesideSameNameDrainedTool(t *te
 		Name: "shell", Arguments: testToolArguments(t, map[string]any{"command": "rm old"}),
 	}
 	config := testReducerConfig()
-	config.SegmentID = "seg_resumed"
+	config.Opened = reopened(config.Opened, func(s *run.Snapshot) { s.ActiveSegmentID = "seg_resumed" })
 	config.Continuation = testTreeContinuation(Pending{
 		RootRunID: "run_1", SessionID: "ses_1",
 		Interrupts: OpenInterruptsOf([]transcript.Interrupt{{
@@ -1276,8 +1293,8 @@ func TestReducerKeepsQuestionToolLifecycleOpenAcrossHITLResume(t *testing.T) {
 	}
 
 	config := testReducerConfig()
-	config.SegmentID = "seg_2"
-	resumeNow := config.CreatedAt.Add(time.Minute)
+	config.Opened = reopened(config.Opened, func(s *run.Snapshot) { s.ActiveSegmentID = "seg_2" })
+	resumeNow := config.Opened.CreatedAt().Add(time.Minute)
 	config.Now = func() time.Time { return resumeNow }
 	config.Continuation = testTreeContinuation(Pending{
 		RootRunID: "run_1", SessionID: "ses_1",
@@ -1726,7 +1743,7 @@ func TestReducerReportsFrozenRunCapabilitiesOnEverySegment(t *testing.T) {
 		InterruptKinds: []interrupt.Kind{interrupt.Approval},
 	}
 	config := testReducerConfig()
-	config.Capabilities = frozen
+	config.Opened = reopened(config.Opened, func(s *run.Snapshot) { s.Capabilities = frozen })
 	config.Continuation = testTreeContinuation(Pending{
 		RootRunID: "run_1", SessionID: "ses_1"})
 

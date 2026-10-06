@@ -48,8 +48,8 @@ func (o *openText) text() string { return o.content.String() }
 
 func (r *reducer) itemIdentity(id string, occurredAt time.Time) transcript.ItemIdentity {
 	return transcript.ItemIdentity{
-		SessionID:  r.cfg.SessionID,
-		RunID:      r.cfg.RunID,
+		SessionID:  r.cfg.Opened.SessionID(),
+		RunID:      r.cfg.Opened.ID(),
 		ItemID:     id,
 		OccurredAt: occurredAt,
 	}
@@ -517,7 +517,7 @@ func (r *reducer) toolEnd(e ToolCallFinished) ([]ProjectionEvent, []ToolInvocati
 	r.tools.remove(ref.callID)
 	var invocations []ToolInvocationCommit
 	if ref.modelCallSequence > 0 {
-		invocations = []ToolInvocationCommit{{CallID: ref.callID, ItemID: ref.id, SegmentID: r.cfg.SegmentID, State: ToolInvocationCompleted, StartedAt: ref.attemptStartedAt, FinishedAt: ref.finishedAt}}
+		invocations = []ToolInvocationCommit{{CallID: ref.callID, ItemID: ref.id, SegmentID: r.cfg.Opened.ActiveSegmentID(), State: ToolInvocationCompleted, StartedAt: ref.attemptStartedAt, FinishedAt: ref.finishedAt}}
 	}
 	return events, invocations, nil
 }
@@ -617,7 +617,7 @@ func (r *reducer) openUserMessage() ([]ProjectionEvent, error) {
 	if r.cfg.ModelOnlyInput {
 		return nil, nil
 	}
-	id, now := userMessageItemID(r.cfg.SegmentID), r.now()
+	id, now := userMessageItemID(r.cfg.Opened.ActiveSegmentID()), r.now()
 	item, err := transcript.NewUserMessage(r.itemIdentity(id, now), input)
 	if err != nil {
 		return nil, err
@@ -678,7 +678,7 @@ func (r *reducer) planSnapshot(e PlanUpdated) []ProjectionEvent {
 
 func (r *reducer) planState(state plan.State) PlanSnapshot {
 	return PlanSnapshot{
-		SessionID: r.cfg.SessionID, Steps: state.Steps(),
+		SessionID: r.cfg.Opened.SessionID(), Steps: state.Steps(),
 		Revision: state.Revision(), UpdatedAt: state.UpdatedAt(),
 	}
 }

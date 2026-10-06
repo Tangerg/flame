@@ -791,10 +791,10 @@ func TestResumedExecutorRouteRetainsGoalLeaseForTerminalAccounting(t *testing.T)
 	if err != nil {
 		t.Fatalf("resumedExecutorRoutes: %v", err)
 	}
-	if routes.root.reducer.cfg.GoalIncarnationID != facts.goalIncarnationID {
+	if routes.root.reducer.cfg.Opened.GoalIncarnationID() != facts.goalIncarnationID {
 		t.Fatalf(
 			"resumed reducer goal incarnation = %q, want %q",
-			routes.root.reducer.cfg.GoalIncarnationID,
+			routes.root.reducer.cfg.Opened.GoalIncarnationID(),
 			facts.goalIncarnationID,
 		)
 	}

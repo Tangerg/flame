@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -24,14 +23,15 @@ type executorRoute struct {
 	segmentID        string
 	rootRunID        string
 	lineage          rundomain.Lineage
-	modelSelection   modelref.Selection
-	capabilities     rundomain.Capabilities
 	reducer          *reducer
 	segmentStartedAt time.Time
 	segmentFinished  bool
 }
 
 type executorRoutes struct {
+	// admission is the fresh root's Draft; nil when the tree resumes. The root
+	// reducer's opened Run is admitted from this same value.
+	admission      *rundomain.Draft
 	rootBound      bool
 	root           *executorRoute
 	byMember       map[string]*executorRoute
@@ -53,25 +53,31 @@ func (c *Coordinator) openingRoutes(
 		spec.ConversationInput.Role != corechat.RoleUser || spec.ConversationInput.Validate() != nil) {
 		return nil, errors.New("runs: fresh root requires its exact composed conversation input")
 	}
-	rootReducer := newReducer(reducerConfig{
-		RunID: spec.RunID, SegmentID: spec.SegmentID, SessionID: spec.SessionID,
-		WorkspaceCWD: spec.WorkspaceCWD, Isolated: spec.Isolated,
+	admission := rundomain.Draft{
+		RunID:             spec.RunID,
+		SessionID:         spec.SessionID,
+		SegmentID:         spec.SegmentID,
 		ModelSelection:    spec.ModelSelection,
 		GoalIncarnationID: spec.GoalIncarnationID,
-		CreatedAt:         spec.CreatedAt, UserInput: spec.Input,
-		ConversationInput: spec.ConversationInput, ModelOnlyInput: spec.ModelOnlyInput,
-		Capabilities: spec.Capabilities,
-		Now:          c.publications.nowUTC, CancelReason: cancellationReason(cancelReason, spec.RunID),
-	})
+		Capabilities:      spec.Capabilities,
+		CreatedAt:         spec.CreatedAt,
+	}
+	opened, err := rundomain.Admit(admission)
+	if err != nil {
+		return nil, fmt.Errorf("runs: admit root: %w", err)
+	}
 	root := &executorRoute{
-		runID:          spec.RunID,
-		segmentID:      spec.SegmentID,
-		rootRunID:      spec.RunID,
-		modelSelection: spec.ModelSelection,
-		capabilities:   spec.Capabilities,
-		reducer:        rootReducer,
+		runID:     spec.RunID,
+		segmentID: spec.SegmentID,
+		rootRunID: spec.RunID,
+		reducer: newReducer(reducerConfig{
+			Opened: opened, WorkspaceCWD: spec.WorkspaceCWD, Isolated: spec.Isolated,
+			UserInput: spec.Input, ConversationInput: spec.ConversationInput, ModelOnlyInput: spec.ModelOnlyInput,
+			Now: c.publications.nowUTC, CancelReason: cancellationReason(cancelReason, spec.RunID),
+		}),
 	}
 	return &executorRoutes{
+		admission:      &admission,
 		root:           root,
 		byMember:       make(map[string]*executorRoute),
 		byRunID:        map[string]*executorRoute{root.runID: root},
@@ -93,6 +99,7 @@ func (c *Coordinator) resumedExecutorRoutes(
 		cancelReason: cancelReason,
 		newSegmentID: c.newSegmentID,
 		now:          c.publications.nowUTC,
+		resumedAt:    c.publications.nowUTC(),
 		routes: &executorRoutes{
 			rootBound: true,
 			byMember:  make(map[string]*executorRoute, len(continuation.continuations)),
@@ -135,8 +142,10 @@ type resumedRouteBuilder struct {
 	cancelReason func(string) string
 	newSegmentID func() string
 	now          func() time.Time
-	routes       *executorRoutes
-	segmentIDs   map[string]struct{}
+	// resumedAt is the one opening time every Run in the tree resumes at.
+	resumedAt  time.Time
+	routes     *executorRoutes
+	segmentIDs map[string]struct{}
 }
 
 func (r *resumedRouteBuilder) build() (*executorRoutes, error) {
@@ -173,33 +182,28 @@ func (r *resumedRouteBuilder) newRoute(continuationState Continuation) (*executo
 	if !found {
 		return nil, fmt.Errorf("runs: resumed Run %q is not parked", continuationState.RunID)
 	}
-	route := &executorRoute{
-		member:         member,
-		memberBound:    parked.Lineage().IsRoot(),
-		runID:          continuationState.RunID,
-		segmentID:      segmentID,
-		rootRunID:      r.continuation.rootRunID,
-		lineage:        parked.Lineage(),
-		modelSelection: parked.ModelSelection(),
-		capabilities:   r.continuation.capabilities(),
+	opened, err := parked.Resume(segmentID, r.resumedAt)
+	if err != nil {
+		return nil, fmt.Errorf("runs: resume Run %q: %w", continuationState.RunID, err)
 	}
 	userInput := []transcript.ContentBlock(nil)
-	goalIncarnationID := ""
 	if continuationState.RunID == r.continuation.rootRunID {
 		userInput = r.spec.Input
-		goalIncarnationID = r.continuation.goalIncarnationID()
 	}
-	route.reducer = newReducer(reducerConfig{
-		RunID: route.runID, SegmentID: route.segmentID, SessionID: r.spec.SessionID,
-		Lineage: route.lineage, WorkspaceCWD: r.spec.WorkspaceCWD, Isolated: r.spec.Isolated,
-		GoalIncarnationID: goalIncarnationID, ModelSelection: route.modelSelection,
-		CreatedAt: parked.CreatedAt(), UserInput: userInput,
-		Metrics: parked.Metrics(), ContextTokens: parked.ContextTokens(),
-		Capabilities: r.continuation.capabilities(), Continuation: r.continuation,
-		Now:          r.now,
-		CancelReason: cancellationReason(r.cancelReason, route.runID),
-	})
-	return route, nil
+	return &executorRoute{
+		member:      member,
+		memberBound: parked.Lineage().IsRoot(),
+		runID:       continuationState.RunID,
+		segmentID:   segmentID,
+		rootRunID:   r.continuation.rootRunID,
+		lineage:     parked.Lineage(),
+		reducer: newReducer(reducerConfig{
+			Opened: opened, WorkspaceCWD: r.spec.WorkspaceCWD, Isolated: r.spec.Isolated,
+			UserInput: userInput, Continuation: r.continuation,
+			Now:          r.now,
+			CancelReason: cancellationReason(r.cancelReason, continuationState.RunID),
+		}),
+	}, nil
 }
 
 func (r *resumedRouteBuilder) segmentIDFor(runID string) (string, error) {
@@ -630,12 +634,10 @@ func (c *Coordinator) prepareChildStart(
 		return nil, fmt.Errorf("runs: open child member %q lineage: %w", member.MemberID, validateErr)
 	}
 	child := &executorRoute{
-		runID:          childRunID,
-		segmentID:      childSegmentID,
-		rootRunID:      parent.rootRunID,
-		lineage:        lineage,
-		modelSelection: parent.modelSelection,
-		capabilities:   parent.capabilities,
+		runID:     childRunID,
+		segmentID: childSegmentID,
+		rootRunID: parent.rootRunID,
+		lineage:   lineage,
 	}
 	if bindExecutorMemberErr := owner.bindExecutorMember(child.runID, member.MemberID); bindExecutorMemberErr != nil {
 		return nil, bindExecutorMemberErr
@@ -683,26 +685,7 @@ func (c *Coordinator) finalizeChildOpening(
 	if child.reducer != nil {
 		return fmt.Errorf("runs: child member %q opening was already finalized", prepared.member.MemberID)
 	}
-	child.reducer = newReducer(reducerConfig{
-		RunID:          child.runID,
-		SegmentID:      child.segmentID,
-		SessionID:      spec.SessionID,
-		Lineage:        child.lineage,
-		WorkspaceCWD:   spec.WorkspaceCWD,
-		Isolated:       spec.Isolated,
-		ModelSelection: child.modelSelection,
-		CreatedAt:      startedAt,
-		Capabilities:   child.capabilities,
-		Now:            c.publications.nowUTC,
-		CancelReason:   cancellationReason(owner.CancelReasonFor, child.runID),
-	})
-	projected, err := child.reducer.open()
-	if err != nil {
-		return fmt.Errorf("runs: reduce child member %q opening: %w", prepared.member.MemberID, err)
-	}
-	if len(projected.events) == 0 || projected.parkCommit != nil {
-		return fmt.Errorf("runs: child member %q produced an invalid opening batch", prepared.member.MemberID)
-	}
+	parentRun := prepared.parent.reducer.cfg.Opened
 	admission := rundomain.Draft{
 		RunID:           child.runID,
 		SessionID:       spec.SessionID,
@@ -710,9 +693,27 @@ func (c *Coordinator) finalizeChildOpening(
 		ParentRunID:     child.lineage.ParentRunID,
 		RootRunID:       child.lineage.RootRunID,
 		SegmentID:       child.segmentID,
-		ModelSelection:  child.modelSelection,
-		Capabilities:    child.capabilities,
+		ModelSelection:  parentRun.ModelSelection(),
+		Capabilities:    parentRun.Capabilities(),
 		CreatedAt:       startedAt,
+	}
+	opened, err := rundomain.Admit(admission)
+	if err != nil {
+		return fmt.Errorf("runs: admit child member %q: %w", prepared.member.MemberID, err)
+	}
+	child.reducer = newReducer(reducerConfig{
+		Opened:       opened,
+		WorkspaceCWD: spec.WorkspaceCWD,
+		Isolated:     spec.Isolated,
+		Now:          c.publications.nowUTC,
+		CancelReason: cancellationReason(owner.CancelReasonFor, child.runID),
+	})
+	projected, err := child.reducer.open()
+	if err != nil {
+		return fmt.Errorf("runs: reduce child member %q opening: %w", prepared.member.MemberID, err)
+	}
+	if len(projected.events) == 0 || projected.parkCommit != nil {
+		return fmt.Errorf("runs: child member %q produced an invalid opening batch", prepared.member.MemberID)
 	}
 	events := []EventCommit{{
 		RunID:     prepared.parent.runID,

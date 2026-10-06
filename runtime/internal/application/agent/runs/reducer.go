@@ -8,7 +8,6 @@ import (
 	"slices"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -24,16 +23,13 @@ var (
 )
 
 type reducerConfig struct {
-	RunID             string
-	SegmentID         string
-	SessionID         string
-	Lineage           run.Lineage
-	WorkspaceCWD      string
-	Isolated          bool
-	GoalIncarnationID string
-	ModelSelection    modelref.Selection
-	CreatedAt         time.Time
-	UserInput         []transcript.ContentBlock
+	// Opened is the Run exactly as this Segment's opening admits or resumes it.
+	// Every record the reducer commits is a domain transition from it, so the
+	// Run's identity, provenance, and prior accrual have this one source.
+	Opened       run.Run
+	WorkspaceCWD string
+	Isolated     bool
+	UserInput    []transcript.ContentBlock
 	// ConversationInput is the exact composed model message for a fresh root.
 	// nil is reserved for continuation input, which has no composition layer.
 	ConversationInput *corechat.Message
@@ -41,20 +37,9 @@ type reducerConfig struct {
 	// still enters the durable provider conversation in open(), so hiding Runtime
 	// control material from the narrative cannot starve the model of instructions.
 	ModelOnlyInput bool
-	// Metrics is what the Run had already consumed before this segment opened —
-	// zero for a first segment, the parked Run's accrual for a continuation. Every
-	// Run record this reducer commits is the sum of this and the current segment,
-	// so a resumed Run reports the Run rather than its latest continuation.
-	Metrics run.Metrics
-	// ContextTokens is the latest authoritative prompt footprint brought into a
-	// resumed Segment. Zero means the Run has not observed one yet.
-	ContextTokens int64
-	// Capabilities is the Run's frozen optional behavior. Every record this reducer
-	// commits carries the admission value, including continuation records.
-	Capabilities run.Capabilities
-	Continuation *treeContinuation
-	Now          func() time.Time
-	CancelReason func() string
+	Continuation   *treeContinuation
+	Now            func() time.Time
+	CancelReason   func() string
 }
 
 // reducer is the per-segment state machine that turns executor events into the
@@ -70,7 +55,7 @@ type reducer struct {
 	step int
 	// usage is the latest authoritative cumulative Run accounting reported by
 	// the executor. Nil means this segment has not advanced the committed
-	// snapshot in cfg.Metrics.
+	// accrual the opened Run brought in.
 	usage           *accounting.Usage
 	contextTokens   int64
 	segmentDuration time.Duration
@@ -131,12 +116,12 @@ func newReducer(cfg reducerConfig) *reducer {
 	}
 	var resume *resumeBinding
 	if cfg.Continuation != nil {
-		resume = resumeBindingFrom(*cfg.Continuation, cfg.RunID)
+		resume = resumeBindingFrom(*cfg.Continuation, cfg.Opened.ID())
 	}
 	return &reducer{
-		cfg: cfg, resume: resume, itemIDs: newSegmentItemIdentities(cfg.SegmentID),
+		cfg: cfg, resume: resume, itemIDs: newSegmentItemIdentities(cfg.Opened.ActiveSegmentID()),
 		userInput: transcript.CloneContent(cfg.UserInput),
-		step:      cfg.Metrics.Steps(), contextTokens: cfg.ContextTokens,
+		step:      cfg.Opened.Metrics().Steps(), contextTokens: cfg.Opened.ContextTokens(),
 		modelCalls: make(map[string]time.Time), toolCallIDs: make(map[string]struct{}),
 		toolPositions: make(map[toolPosition]string), tools: newOpenTools(),
 	}
@@ -190,14 +175,7 @@ func (r *reducer) open() (reductionBatch, error) {
 	if r.resume != nil && r.resume.err != nil {
 		return reductionBatch{}, fmt.Errorf("%w: %w", errReducerInvariant, r.resume.err)
 	}
-	// The opening Run record goes through runRecord like every other one, so a
-	// resumed segment announces the Run's accrual rather than a fresh
-	// Run's zeros. Only the creation stamp differs: an opening may have to mint one.
-	opening, err := r.runRecord(run.Running)
-	if err != nil {
-		return reductionBatch{}, err
-	}
-	out := []ProjectionEvent{SegmentStarted{Run: opening}}
+	out := []ProjectionEvent{SegmentStarted{Run: r.cfg.Opened}}
 	userMessage, err := r.openUserMessage()
 	if err != nil {
 		return reductionBatch{}, err
@@ -207,7 +185,7 @@ func (r *reducer) open() (reductionBatch, error) {
 	if err != nil {
 		return reductionBatch{}, err
 	}
-	if r.cfg.Lineage.IsRoot() && r.cfg.ConversationInput != nil {
+	if r.cfg.Opened.Lineage().IsRoot() && r.cfg.ConversationInput != nil {
 		message := r.cfg.ConversationInput.Clone()
 		if message.Role != corechat.RoleUser || message.Validate() != nil {
 			return reductionBatch{}, fmt.Errorf("%w: opening conversation input is not a valid User message", errReducerInvariant)
@@ -273,7 +251,7 @@ func (r *reducer) reduceFact(ev ExecutionFact) (factReduction, error) {
 			return factReduction{}, fmt.Errorf("%w: applied steers: %w", errExecutorContract, err)
 		}
 		var messages []corechat.Message
-		if r.cfg.Lineage.IsRoot() {
+		if r.cfg.Opened.Lineage().IsRoot() {
 			messages = make([]corechat.Message, len(e.Messages))
 			for index, applied := range e.Messages {
 				message, err := MaterializeUserMessage(applied.Content)
@@ -318,7 +296,7 @@ func (r *reducer) startModelCall(started ModelCallStarted) (factReduction, error
 	return factReduction{
 		events: []ProjectionEvent{SegmentProgressed{Progress: Progress{Activity: "Calling model"}}},
 		modelInvocations: []ModelInvocationCommit{{
-			CallID: started.CallID, SegmentID: r.cfg.SegmentID,
+			CallID: started.CallID, SegmentID: r.cfg.Opened.ActiveSegmentID(),
 			State: ModelInvocationStarted, StartedAt: startedAt,
 		}},
 	}, nil
@@ -372,12 +350,12 @@ func (r *reducer) completeModelCall(completed ModelCallCompleted) (factReduction
 		events:               append(events, progressEvents...),
 		conversationMessages: conversationMessages,
 		modelInvocations: []ModelInvocationCommit{{
-			CallID: completed.CallID, SegmentID: r.cfg.SegmentID,
+			CallID: completed.CallID, SegmentID: r.cfg.Opened.ActiveSegmentID(),
 			State: ModelInvocationCompleted, StartedAt: startedAt, FinishedAt: finishedAt, Usage: completed.ReportedUsage,
 			FirstOutputLatencyMillis: completed.FirstOutputLatencyMillis,
 		}},
 		progress: &ProgressCommit{
-			SegmentID: r.cfg.SegmentID, Metrics: metrics,
+			SegmentID: r.cfg.Opened.ActiveSegmentID(), Metrics: metrics,
 			ContextTokens: r.contextTokens, UpdatedAt: finishedAt,
 		},
 	}, nil
@@ -408,7 +386,7 @@ func (r *reducer) failModelCall(failed ModelCallFailed) (factReduction, error) {
 	return factReduction{
 		events: append(events, SegmentProgressed{Progress: Progress{Activity: "Model call failed"}}),
 		modelInvocations: []ModelInvocationCommit{{
-			CallID: failed.CallID, SegmentID: r.cfg.SegmentID,
+			CallID: failed.CallID, SegmentID: r.cfg.Opened.ActiveSegmentID(),
 			State: ModelInvocationFailed, StartedAt: startedAt, FinishedAt: finishedAt,
 			FirstOutputLatencyMillis: failed.FirstOutputLatencyMillis,
 		}},
@@ -431,7 +409,7 @@ func (r *reducer) startToolCall(started ToolCallStarted) (factReduction, error) 
 	reduced := factReduction{events: events, items: []transcript.Item{running}}
 	if ref.modelCallSequence > 0 {
 		reduced.toolInvocations = []ToolInvocationCommit{{
-			CallID: ref.callID, ItemID: ref.id, SegmentID: r.cfg.SegmentID,
+			CallID: ref.callID, ItemID: ref.id, SegmentID: r.cfg.Opened.ActiveSegmentID(),
 			State: ToolInvocationStarted, StartedAt: ref.attemptStartedAt,
 		}}
 	}
@@ -469,7 +447,7 @@ func (r *reducer) endSegment(ended SegmentEnded) (factReduction, error) {
 	return factReduction{
 		events:           events,
 		modelInvocations: modelInvocations,
-		toolInvocations:  closedToolInvocationCommits(r.cfg.SegmentID, openTools),
+		toolInvocations:  closedToolInvocationCommits(r.cfg.Opened.ActiveSegmentID(), openTools),
 	}, nil
 }
 
@@ -486,7 +464,7 @@ func (r *reducer) closeLostModelCalls(outcome run.Outcome) ([]ModelInvocationCom
 			return nil, fmt.Errorf("%w: model call %q loss precedes its start", errExecutorContract, callID)
 		}
 		invocations = append(invocations, ModelInvocationCommit{
-			CallID: callID, SegmentID: r.cfg.SegmentID,
+			CallID: callID, SegmentID: r.cfg.Opened.ActiveSegmentID(),
 			State: ModelInvocationUnknown, StartedAt: startedAt, FinishedAt: finishedAt,
 		})
 	}
@@ -495,7 +473,7 @@ func (r *reducer) closeLostModelCalls(outcome run.Outcome) ([]ModelInvocationCom
 }
 
 func (r *reducer) rootConversationMessages(messages ...corechat.Message) []corechat.Message {
-	if !r.cfg.Lineage.IsRoot() {
+	if !r.cfg.Opened.Lineage().IsRoot() {
 		return nil
 	}
 	return appendClonedMessages(nil, messages...)
@@ -554,7 +532,7 @@ func (r *reducer) synthesizeTerminal() (reductionBatch, error) {
 				return reductionBatch{}, fmt.Errorf("%w: model call %q loss precedes its start", errReducerInvariant, callID)
 			}
 			modelInvocations = append(modelInvocations, ModelInvocationCommit{
-				CallID: callID, SegmentID: r.cfg.SegmentID,
+				CallID: callID, SegmentID: r.cfg.Opened.ActiveSegmentID(),
 				State: ModelInvocationUnknown, StartedAt: startedAt, FinishedAt: finishedAt,
 			})
 		}
@@ -580,7 +558,7 @@ func (r *reducer) synthesizeTerminal() (reductionBatch, error) {
 		&batch,
 		nil,
 		modelInvocations,
-		closedToolInvocationCommits(r.cfg.SegmentID, openTools),
+		closedToolInvocationCommits(r.cfg.Opened.ActiveSegmentID(), openTools),
 		nil,
 	); err != nil {
 		return reductionBatch{}, err
@@ -629,9 +607,8 @@ func (r *reducer) abort(cause error) {
 
 func (r *reducer) now() time.Time {
 	now := r.cfg.Now().UTC()
-	createdAt := r.cfg.CreatedAt.UTC()
-	if !createdAt.IsZero() && now.Before(createdAt) {
-		return createdAt
+	if opened := r.cfg.Opened.UpdatedAt(); now.Before(opened) {
+		return opened
 	}
 	return now
 }

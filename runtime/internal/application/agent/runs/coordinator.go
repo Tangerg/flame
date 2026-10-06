@@ -477,24 +477,13 @@ func (c *Coordinator) commitOpening(ctx context.Context, spec segmentSpec, route
 		return nil, fmt.Errorf("runs: order opening tree: %w", err)
 	}
 	commitID := newRunCommitID()
-	var admission *rundomain.Draft
 	var resume *rundomain.TreeResumeDraft
-	if spec.Continuation != nil {
+	if routes.admission == nil {
 		resume = &rundomain.TreeResumeDraft{
 			RootRunID: spec.RunID,
 			SessionID: spec.SessionID,
-			ResumedAt: c.publications.nowUTC(),
+			ResumedAt: routes.root.reducer.cfg.Opened.UpdatedAt(),
 			Runs:      make([]rundomain.ResumeDraft, 0, len(ordered)),
-		}
-	} else {
-		admission = &rundomain.Draft{
-			RunID:             spec.RunID,
-			SessionID:         spec.SessionID,
-			SegmentID:         spec.SegmentID,
-			ModelSelection:    spec.ModelSelection,
-			GoalIncarnationID: spec.GoalIncarnationID,
-			Capabilities:      spec.Capabilities,
-			CreatedAt:         spec.CreatedAt,
 		}
 	}
 	openings := make([]routeOpening, 0, len(ordered))
@@ -537,9 +526,9 @@ func (c *Coordinator) commitOpening(ctx context.Context, spec segmentSpec, route
 		commitOpening = spec.CommitOpening
 	}
 	var opening OpeningCommit
-	if admission != nil {
+	if routes.admission != nil {
 		opening, err = NewAdmissionOpeningCommit(
-			commitID, *admission, spec.InitialSession, spec.SessionReplacement,
+			commitID, *routes.admission, spec.InitialSession, spec.SessionReplacement,
 			spec.ScheduleFiring, spec.ManualScheduleRun, events,
 		)
 	} else {

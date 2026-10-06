@@ -45,7 +45,7 @@ type factReduction struct {
 
 func (r *reducer) newEventCommit() *EventCommit {
 	return &EventCommit{
-		RunID: r.cfg.RunID, SessionID: r.cfg.SessionID, SegmentID: r.cfg.SegmentID,
+		RunID: r.cfg.Opened.ID(), SessionID: r.cfg.Opened.SessionID(), SegmentID: r.cfg.Opened.ActiveSegmentID(),
 	}
 }
 

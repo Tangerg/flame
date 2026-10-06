@@ -49,7 +49,7 @@ func (r *reducer) interrupt(e SegmentInterrupted) (factReduction, error) {
 	return factReduction{
 		events:          append(projection.events, SegmentFinished{Run: waiting, Interrupts: pending}),
 		parkItems:       projection.items,
-		toolInvocations: closedToolInvocationCommits(r.cfg.SegmentID, open),
+		toolInvocations: closedToolInvocationCommits(r.cfg.Opened.ActiveSegmentID(), open),
 	}, nil
 }
 
@@ -179,7 +179,7 @@ func (r *reducer) suspend(duration time.Duration) (factReduction, error) {
 	return factReduction{
 		events:          append(out, SegmentFinished{Run: waiting}),
 		parkItems:       parkItems,
-		toolInvocations: closedToolInvocationCommits(r.cfg.SegmentID, open),
+		toolInvocations: closedToolInvocationCommits(r.cfg.Opened.ActiveSegmentID(), open),
 	}, nil
 }
 
@@ -360,7 +360,7 @@ func (r *reducer) questionInterrupt(in Interrupt) (transcript.Item, transcript.I
 	}
 	return item, transcript.Interrupt{
 		ItemID: id, ItemOccurredAt: item.OccurredAt(),
-		RunID: r.cfg.RunID, Kind: interrupt.Question, Question: &question,
+		RunID: r.cfg.Opened.ID(), Kind: interrupt.Question, Question: &question,
 	}, nil
 }
 

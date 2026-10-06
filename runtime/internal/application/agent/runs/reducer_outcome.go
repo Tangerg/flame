@@ -58,19 +58,8 @@ func (r *reducer) runRecord(state run.State) (run.Run, error) {
 	if err != nil {
 		return run.Run{}, err
 	}
-	updatedAt := r.now().UTC()
-	createdAt := r.cfg.CreatedAt.UTC()
-	if createdAt.IsZero() {
-		createdAt = updatedAt
-	}
-	current, err := run.Restore(run.Snapshot{
-		SessionID: r.cfg.SessionID, ID: r.cfg.RunID, Lineage: r.cfg.Lineage,
-		ModelSelection: r.cfg.ModelSelection, GoalIncarnationID: r.cfg.GoalIncarnationID,
-		State: run.Running, ActiveSegmentID: r.cfg.SegmentID,
-		Metrics: metrics, ContextTokens: r.contextTokens,
-		Capabilities: r.cfg.Capabilities,
-		CreatedAt:    createdAt, UpdatedAt: updatedAt, MessageMark: run.UnknownMessageMark,
-	})
+	updatedAt := r.now()
+	current, err := r.cfg.Opened.AdvanceProgress(metrics, r.contextTokens, updatedAt)
 	if err != nil {
 		return run.Run{}, fmt.Errorf("project Run: %w", err)
 	}
@@ -85,7 +74,7 @@ func (r *reducer) runRecord(state run.State) (run.Run, error) {
 // goes through here, which is what makes the sequence non-decreasing — the seed
 // is fixed for the segment and the segment's own figures only grow.
 func (r *reducer) metrics() (run.Metrics, error) {
-	usage, reported := r.cfg.Metrics.Usage()
+	usage, reported := r.cfg.Opened.Metrics().Usage()
 	if r.usage != nil {
 		usage, reported = r.usage.Clone(), true
 	}
@@ -93,7 +82,7 @@ func (r *reducer) metrics() (run.Metrics, error) {
 	if reported {
 		usageRef = &usage
 	}
-	activeDuration := r.cfg.Metrics.ActiveDuration()
+	activeDuration := r.cfg.Opened.Metrics().ActiveDuration()
 	if r.segmentDuration < 0 || (r.segmentDuration > 0 && activeDuration > time.Duration(math.MaxInt64)-r.segmentDuration) {
 		return run.Metrics{}, errors.New("segment active duration is invalid or overflows")
 	}
@@ -113,7 +102,7 @@ func (r *reducer) applyUsage(reported SegmentUsage) error {
 		return err
 	}
 	var previous *accounting.Usage
-	if value, reported := r.cfg.Metrics.Usage(); reported {
+	if value, reported := r.cfg.Opened.Metrics().Usage(); reported {
 		previous = &value
 	}
 	if r.usage != nil {

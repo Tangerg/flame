@@ -63,6 +63,10 @@ func runForContinuation(pending Pending, continuation Continuation) run.Run {
 	return runWithFacts(pending, continuation, fixtureFacts(pending))
 }
 
+// parkedRunCreatedAt precedes every fixture clock, so a fixture tree can always
+// resume at whatever time its coordinator reads.
+var parkedRunCreatedAt = time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+
 func runWithFacts(pending Pending, continuation Continuation, facts parkedFacts) run.Run {
 	goalIncarnationID := ""
 	if continuation.RunID == pending.RootRunID {
@@ -74,7 +78,7 @@ func runWithFacts(pending Pending, continuation Continuation, facts parkedFacts)
 		GoalIncarnationID: goalIncarnationID,
 		State:             run.Waiting,
 		Capabilities:      facts.capabilities,
-		CreatedAt:         pending.CreatedAt.Add(-time.Second),
+		CreatedAt:         parkedRunCreatedAt,
 		MessageMark:       run.UnknownMessageMark,
 		Lineage:           fixtureLineage(pending.RootRunID, continuation.RunID),
 	})
