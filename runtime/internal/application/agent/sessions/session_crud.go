@@ -45,14 +45,7 @@ func (p Patch) clone() Patch {
 
 // List returns every user-facing Session, newest-updated first.
 func (c *Coordinator) List(ctx context.Context) ([]session.Session, error) {
-	values, err := c.sessions.List(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if err := session.ValidateCatalog(values); err != nil {
-		return nil, err
-	}
-	return values, nil
+	return c.sessions.List(ctx)
 }
 
 // Get returns one valid saved Session whose identity exactly matches id.

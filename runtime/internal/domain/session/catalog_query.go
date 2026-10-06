@@ -160,10 +160,6 @@ type CatalogRead struct {
 	limit  int
 }
 
-// ErrInvalidCatalogPage reports store output that does not belong to the exact
-// bounded collection described by a CatalogRead.
-var ErrInvalidCatalogPage = errors.New("sessions: invalid catalog page")
-
 func NewCatalogRead(filter CatalogFilter, after *CatalogAnchor, limit int) (CatalogRead, error) {
 	if err := filter.Validate(); err != nil {
 		return CatalogRead{}, err
@@ -196,84 +192,4 @@ func (r CatalogRead) Limit() int            { return r.limit }
 
 func (r CatalogRead) After() (CatalogAnchor, bool) {
 	return optional.Present(r.after)
-}
-
-// ValidateCatalog checks one complete unfiltered Session catalog. Complete reads
-// have no overfetch ceiling, but they share the page contract's aggregate,
-// identity, and favorite/recency order invariants.
-func ValidateCatalog(values []Session) error {
-	read, err := NewCatalogRead(AllCatalogEntries(), nil, max(1, len(values)))
-	if err != nil {
-		return err
-	}
-	return read.ValidatePage(values)
-}
-
-// ValidatePage checks a store page before Application resolves live state or
-// mints a continuation from it. Store order is favorite first, then update time
-// and Session identity descending; every returned value must strictly follow
-// both the cursor anchor and its predecessor.
-func (r CatalogRead) ValidatePage(values []Session) error {
-	if err := r.Validate(); err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidCatalogPage, err)
-	}
-	if len(values) > r.limit {
-		return fmt.Errorf("%w: store returned %d rows, maximum %d", ErrInvalidCatalogPage, len(values), r.limit)
-	}
-	seen := make(map[string]struct{}, len(values))
-	for index, value := range values {
-		if value.ID() == "" {
-			return fmt.Errorf("%w: row %d was never constructed", ErrInvalidCatalogPage, index+1)
-		}
-		matches, err := r.filter.matches(value)
-		if err != nil {
-			return fmt.Errorf("%w: row %d search material: %w", ErrInvalidCatalogPage, index+1, err)
-		}
-		if !matches {
-			return fmt.Errorf("%w: Session %q does not match the catalog filter", ErrInvalidCatalogPage, value.ID())
-		}
-		if _, duplicate := seen[value.ID()]; duplicate {
-			return fmt.Errorf("%w: page repeats Session %q", ErrInvalidCatalogPage, value.ID())
-		}
-		seen[value.ID()] = struct{}{}
-		if r.after != nil && !value.followsCatalogPosition(r.after.favorite, r.after.updatedAt, r.after.id) {
-			return fmt.Errorf("%w: Session %q does not follow the cursor", ErrInvalidCatalogPage, value.ID())
-		}
-		if index > 0 {
-			previous := values[index-1]
-			if !value.followsCatalogPosition(previous.favorite, previous.updatedAt, previous.id) {
-				return fmt.Errorf("%w: Session %q is out of order after %q", ErrInvalidCatalogPage, value.ID(), previous.ID())
-			}
-		}
-	}
-	return nil
-}
-
-func (f CatalogFilter) matches(value Session) (bool, error) {
-	if workspace, present := f.WorkspacePath(); present && value.workspace.Path() != workspace {
-		return false, nil
-	}
-	search, present := f.Search()
-	if !present {
-		return true, nil
-	}
-	title, err := NormalizeCatalogText(value.title)
-	if err != nil {
-		return false, err
-	}
-	workspace, err := NormalizeCatalogText(value.workspace.Path())
-	if err != nil {
-		return false, err
-	}
-	return strings.Contains(title, search) || strings.Contains(workspace, search), nil
-}
-
-func (s Session) followsCatalogPosition(favorite bool, updatedAt time.Time, id string) bool {
-	if s.favorite != favorite {
-		return favorite && !s.favorite
-	}
-	if !s.updatedAt.Equal(updatedAt) {
-		return s.updatedAt.Before(updatedAt)
-	}
-	return s.id < id
 }
