@@ -137,12 +137,12 @@ func TestApplicationDoesNotOwnOperatingSystemIO(t *testing.T) {
 // The exceptions import the package for [encoding/json.Number] alone.
 // encoding/json/v2 decodes and encodes that type directly but declares no
 // replacement for it, and it is what keeps a tool argument the operator reviewed
-// from becoming something else through float64. Neither file uses the v1 codec.
+// from becoming something else through float64. Neither package uses the v1 codec.
 func TestCLIUsesOneJSONVocabulary(t *testing.T) {
 	root := moduleRoot(t)
 	exact := map[string]string{
-		"internal/exactjson/numbers.go":                    "names json.Number as the exact-number carrier",
-		"internal/adapter/runtimebinding/tool_material.go": "names json.Number to keep an exit code an integer",
+		"internal/exactjson":              "names json.Number as the exact-number carrier",
+		"internal/adapter/runtimebinding": "names json.Number to keep an exit code an integer",
 	}
 	found := make(map[string]bool, len(exact))
 	walkProduction(t, root, func(_, path string) {
@@ -155,11 +155,12 @@ func TestCLIUsesOneJSONVocabulary(t *testing.T) {
 				t.Fatal(err)
 			}
 			file = filepath.ToSlash(file)
-			if _, allowed := exact[file]; !allowed {
+			pkg := filepath.ToSlash(filepath.Dir(file))
+			if _, allowed := exact[pkg]; !allowed {
 				t.Errorf("%s imports encoding/json; the CLI decodes with encoding/json/v2", file)
 				continue
 			}
-			found[file] = true
+			found[pkg] = true
 			assertOnlyJSONNumberIsUsed(t, file, path)
 		}
 	})
