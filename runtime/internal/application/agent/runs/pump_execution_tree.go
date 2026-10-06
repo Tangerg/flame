@@ -66,7 +66,7 @@ func (s *segmentPump) commitExecutionTree(tree ExecutionTreeSettled) error {
 				projected.route.segmentFinished = true
 				s.owner.recordTerminalRun(*reduced.Commit.Run)
 				s.coordinator.publications.publishRunMoved(s.spec.SessionID, projected.route.runID)
-				if reduced.Commit.GoalRun != nil {
+				if reduced.Commit.ChargesGoal() {
 					s.coordinator.publications.publishGoalMoved(s.spec.SessionID)
 				}
 			}

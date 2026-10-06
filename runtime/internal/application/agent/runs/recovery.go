@@ -10,7 +10,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -71,7 +70,6 @@ type RecoveryCommitInput struct {
 	ConversationTransitions []RecoveryConversationTransition
 	ModelInvocations        []ModelInvocationRecovery
 	ToolInvocations         []ToolInvocationRecovery
-	GoalRuns                []goal.RunRecord
 	DeleteInterrupts        []InterruptOwner
 	// PreservedSessionIDs names waiting trees whose compatible checkpoint keeps
 	// them live. Together with lost-tree Sessions it owns the exact callback
@@ -287,8 +285,8 @@ func (r *Recovery) publishRecoveredReadModels(commit RecoveryCommit) {
 			scope.rootIDs = append(scope.rootIDs, owner.RootRunID)
 		}
 	}
-	for _, record := range commit.GoalRuns() {
-		if scope := changes[record.SessionID]; scope != nil {
+	for _, charged := range commit.GoalRuns() {
+		if scope := changes[charged.SessionID()]; scope != nil {
 			scope.goal = true
 		}
 	}
@@ -604,13 +602,6 @@ func (r *recoveryPlanner) planTree(rootRunID string) error {
 		r.commit.DeleteCheckpointSessionIDs,
 		tree.root.SessionID(),
 	)
-	if tree.root.GoalIncarnationID() != "" {
-		record, err := recoveredGoalRun(tree.root.ID(), lostRuns)
-		if err != nil {
-			return err
-		}
-		r.commit.GoalRuns = append(r.commit.GoalRuns, record)
-	}
 	r.reconciled += len(lostRuns)
 	return nil
 }
@@ -689,31 +680,6 @@ func (r *recoveryPlanner) conversation(sessionID string) (recoveryConversationSn
 	snapshot := recoveryConversationSnapshot{history: history, count: count}
 	r.conversations[sessionID] = snapshot
 	return snapshot, nil
-}
-
-func recoveredGoalRun(rootRunID string, lostRuns []rundomain.Replacement) (goal.RunRecord, error) {
-	if len(lostRuns) == 0 {
-		return goal.RunRecord{}, fmt.Errorf("runs: recovered tree %q has no terminal root", rootRunID)
-	}
-	lostRoot := lostRuns[len(lostRuns)-1].State()
-	outcome, terminal := lostRoot.Outcome()
-	if lostRoot.ID() != rootRunID || !terminal {
-		return goal.RunRecord{}, fmt.Errorf("runs: recovered tree %q has no terminal root", rootRunID)
-	}
-	record := goal.RunRecord{
-		SessionID:     lostRoot.SessionID(),
-		IncarnationID: lostRoot.GoalIncarnationID(),
-		RunID:         lostRoot.ID(),
-		Outcome:       outcome,
-		Steps:         lostRoot.Metrics().Steps(),
-		CompletedAt:   lostRoot.FinishedAt(),
-	}
-	cost, err := lostRoot.Metrics().Cost()
-	if err != nil {
-		return goal.RunRecord{}, fmt.Errorf("runs: recover Goal Run cost: %w", err)
-	}
-	record.Cost = cost
-	return record, nil
 }
 
 func recoverLostTree(

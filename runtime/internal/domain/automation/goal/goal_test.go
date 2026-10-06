@@ -3,7 +3,6 @@ package goal
 import (
 	"errors"
 	"fmt"
-	"math"
 	"strings"
 	"testing"
 	"time"
@@ -254,76 +253,26 @@ func TestTransitionRejectsInvalidReasonTimeAndState(t *testing.T) {
 	}
 }
 
-func TestRecordRunOwnsAccountingAndDerivedLifecycle(t *testing.T) {
+func TestRecordRunPausesAnActiveGoalAfterAnUnfinishedRun(t *testing.T) {
 	now := time.Unix(10, 0).UTC()
 	active := testGoalAt(t, run.Capabilities{}, now)
-	record := RunRecord{
-		SessionID: "ses_1", IncarnationID: "inc_1", RunID: "run_1",
-		Outcome: run.OutcomeCompleted, Cost: goalTestCost(t, 0.25), Steps: 2, CompletedAt: now.Add(time.Second),
-	}
-	blocked, err := active.RecordRun(record)
+	completed := goalTestRun(t, "run_1", "inc_1", run.OutcomeCompleted, new(0.25), 2, now.Add(time.Second))
+	unchanged, changed, err := active.RecordRun(completed)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if blocked.Status() != StatusActive || !blocked.Reason().IsNone() ||
-		blocked.Used() != (Usage{Runs: 1, Cost: goalTestCost(t, 0.25), Steps: 2}) || blocked.Revision() != 2 {
-		t.Fatalf("blocked = %+v", blocked.Snapshot())
+	if changed || unchanged.Revision() != active.Revision() || unchanged.Status() != StatusActive {
+		t.Fatalf("completed Run changed the Goal: changed=%t %+v", changed, unchanged.Snapshot())
 	}
 
-	failedGoal := testGoalAt(t, run.Capabilities{}, now)
-	record.Outcome, record.RunID = run.OutcomeFailed, "run_2"
-	paused, err := failedGoal.RecordRun(record)
+	failed := goalTestRun(t, "run_2", "inc_1", run.OutcomeCanceled, nil, 1, now.Add(time.Second))
+	paused, changed, err := active.RecordRun(failed)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if paused.Status() != StatusPaused || paused.Reason().Code() != ReasonRunNotCompleted || paused.Reason().Detail() != string(run.OutcomeFailed) {
+	if !changed || paused.Status() != StatusPaused || paused.Reason().Code() != ReasonRunNotCompleted ||
+		paused.Reason().Detail() != string(run.OutcomeCanceled) || paused.Revision() != active.Revision()+1 {
 		t.Fatalf("failed Run state = %+v", paused.Snapshot())
-	}
-}
-
-func TestRecordRunContinuesWithUnavailablePricing(t *testing.T) {
-	now := time.Unix(10, 0).UTC()
-	record := RunRecord{
-		SessionID: "ses_1", IncarnationID: "inc_1", RunID: "run_1",
-		Outcome: run.OutcomeCompleted, Steps: 2, CompletedAt: now.Add(time.Second),
-	}
-
-	active := testGoalAt(t, run.Capabilities{}, now)
-	blocked, err := active.RecordRun(record)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if blocked.Status() != StatusActive || !blocked.Reason().IsNone() ||
-		blocked.Used() != (Usage{Runs: 1, Steps: 2}) {
-		t.Fatalf("unpriced Run result = %+v", blocked.Snapshot())
-	}
-
-	active = testGoalAt(t, run.Capabilities{}, now)
-	record.RunID = "run_2"
-	record.Cost = goalTestCost(t, 0)
-	continued, err := active.RecordRun(record)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if continued.Status() != StatusActive || continued.Used() != (Usage{Runs: 1, Cost: goalTestCost(t, 0), Steps: 2}) {
-		t.Fatalf("priced-zero Run result = %+v", continued.Snapshot())
-	}
-
-	active = testGoalAt(t, run.Capabilities{}, now)
-	record.RunID, record.Cost = "run_3", goalTestCost(t, 0.25)
-	continued, err = active.RecordRun(record)
-	if err != nil {
-		t.Fatal(err)
-	}
-	record.RunID, record.Cost, record.CompletedAt = "run_4", accounting.Cost{}, now.Add(2*time.Second)
-	blocked, err = continued.RecordRun(record)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, priced := blocked.Used().Cost.USD(); blocked.Status() != StatusActive ||
-		!blocked.Reason().IsNone() || priced ||
-		blocked.Used().Runs != 2 || blocked.Used().Steps != 4 {
-		t.Fatalf("mixed-price Run result = %+v", blocked.Snapshot())
 	}
 }
 
@@ -334,38 +283,60 @@ func TestRecordRunPreservesPriorModelReport(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	accounted, err := blocked.RecordRun(RunRecord{
-		SessionID: "ses_1", IncarnationID: "inc_1", RunID: "run_1",
-		Outcome: run.OutcomeCompleted, Cost: goalTestCost(t, 0.25), Steps: 2, CompletedAt: now.Add(2 * time.Second),
-	})
+	failed := goalTestRun(t, "run_1", "inc_1", run.OutcomeCanceled, nil, 2, now.Add(2*time.Second))
+	accounted, changed, err := blocked.RecordRun(failed)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if accounted.Status() != StatusBlocked || accounted.Reason() != blocked.Reason() || accounted.Used().Runs != 1 {
+	if changed || accounted.Status() != StatusBlocked || accounted.Reason() != blocked.Reason() {
 		t.Fatalf("accounted = %+v", accounted.Snapshot())
 	}
 }
 
-func TestRecordRunRejectsForeignIdentityAndOverflow(t *testing.T) {
+func TestRecordRunRejectsAForeignOrUnfinishedRun(t *testing.T) {
 	now := time.Unix(10, 0).UTC()
 	active := testGoalAt(t, run.Capabilities{}, now)
-	record := RunRecord{
-		SessionID: "other", IncarnationID: "inc_1", RunID: "run_1",
-		Outcome: run.OutcomeCompleted, CompletedAt: now,
-	}
-	if _, err := active.RecordRun(record); !errors.Is(err, ErrRunIdentityConflict) {
+	foreign := goalTestRun(t, "run_1", "inc_other", run.OutcomeCompleted, nil, 0, now)
+	if _, _, err := active.RecordRun(foreign); !errors.Is(err, ErrRunIdentityConflict) {
 		t.Fatalf("foreign Run error = %v", err)
 	}
-
-	overflowSnapshot := active.Snapshot()
-	overflowSnapshot.Used.Runs = math.MaxInt
-	overflow, err := Restore(overflowSnapshot)
-	if err != nil {
-		t.Fatal(err)
+	if _, _, err := active.RecordRun(goalTestRunningRun(t, "inc_1", now)); err == nil {
+		t.Fatal("a Run that has not finished was applied to its Goal")
 	}
-	record.SessionID = "ses_1"
-	if _, err := overflow.RecordRun(record); !errors.Is(err, ErrInvalid) && err == nil {
-		t.Fatalf("overflow error = %v", err)
+}
+
+func TestUsageOfFoldsTheIncarnationsTerminalRuns(t *testing.T) {
+	now := time.Unix(10, 0).UTC()
+	priced := goalTestRun(t, "run_1", "inc_1", run.OutcomeCompleted, new(0.25), 2, now)
+	zero := goalTestRun(t, "run_2", "inc_1", run.OutcomeCanceled, new(0.0), 3, now)
+	unpriced := goalTestRun(t, "run_3", "inc_1", run.OutcomeCompleted, nil, 4, now)
+
+	if used, err := UsageOf("inc_1", nil); err != nil || used != (Usage{}) {
+		t.Fatalf("empty usage = %+v, %v", used, err)
+	}
+	used, err := UsageOf("inc_1", []run.Run{priced, zero})
+	if err != nil || used != (Usage{Runs: 2, Cost: goalTestCost(t, 0.25), Steps: 5}) {
+		t.Fatalf("priced usage = %+v, %v", used, err)
+	}
+	used, err = UsageOf("inc_1", []run.Run{priced, unpriced})
+	if _, available := used.Cost.USD(); err != nil || available || used.Runs != 2 || used.Steps != 6 {
+		t.Fatalf("mixed-price usage = %+v, %v", used, err)
+	}
+	if _, err := UsageOf("inc_other", []run.Run{priced}); !errors.Is(err, ErrRunIdentityConflict) {
+		t.Fatalf("foreign incarnation error = %v", err)
+	}
+	if _, err := UsageOf("inc_1", []run.Run{goalTestRunningRun(t, "inc_1", now)}); err == nil {
+		t.Fatal("usage folded a Run that has not finished")
+	}
+
+	many := make([]run.Run, 1000)
+	for index := range many {
+		many[index] = goalTestRun(t, fmt.Sprintf("run_%d", index), "inc_1", run.OutcomeCompleted, new(100.0), 10000, now)
+	}
+	used, err = UsageOf("inc_1", many)
+	cost, available := used.Cost.USD()
+	if err != nil || used.Runs != 1000 || used.Steps != 10000000 || !available || cost != 100000 {
+		t.Fatalf("large usage = %+v, %v", used, err)
 	}
 }
 
@@ -432,134 +403,38 @@ func testGoalFor(t *testing.T, sessionID, incarnationID string) Goal {
 	return value
 }
 
-// TestRunRecordDescribesItsTerminalRun pins the rule three write-sets used to
-// spell out for themselves: a Goal charge is exactly the terminal Run it names.
-// Every field is a fact the record copied, so changing any one of them means
-// the charge no longer describes the Run it is charged for.
-func TestRunRecordDescribesItsTerminalRun(t *testing.T) {
-	completed := run.OutcomeCompleted
-	usd := 1.25
-	metrics, err := run.NewMetrics(&accounting.Usage{Total: accounting.Totals{CostUSD: &usd}}, 3, time.Second)
+func goalTestRun(t *testing.T, runID, incarnationID string, outcome run.Outcome, costUSD *float64, steps int, finishedAt time.Time) run.Run {
+	t.Helper()
+	var usage *accounting.Usage
+	if costUSD != nil {
+		usage = &accounting.Usage{Total: accounting.Totals{CostUSD: costUSD}}
+	}
+	metrics, err := run.NewMetrics(usage, steps, time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
 	createdAt := time.Unix(1, 0).UTC()
-	finishedAt := time.Unix(2, 0).UTC()
-	selection, err := modelref.New("provider", "model")
-	if err != nil {
-		t.Fatal(err)
-	}
-	terminal, err := run.Restore(run.Snapshot{
-		SessionID: "session_1", ID: "run_1", ModelSelection: selection,
-		GoalIncarnationID: "incarnation_1", State: run.Completed, Outcome: &completed,
+	value, err := run.Restore(run.Snapshot{
+		SessionID: "ses_1", ID: runID, ModelSelection: testSelection(t),
+		GoalIncarnationID: incarnationID, State: run.State(outcome), Outcome: &outcome,
 		Metrics: metrics, CreatedAt: createdAt, FinishedAt: finishedAt, UpdatedAt: finishedAt,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	cost, err := terminal.Metrics().Cost()
-	if err != nil {
-		t.Fatal(err)
-	}
-	matching := RunRecord{
-		SessionID: "session_1", IncarnationID: "incarnation_1", RunID: "run_1",
-		Outcome: completed, Cost: cost, Steps: 3, CompletedAt: finishedAt,
-	}
-	if err := matching.Describes(terminal); err != nil {
-		t.Fatalf("a record copied from the Run does not describe it: %v", err)
-	}
+	return value
+}
 
-	otherCost, err := accounting.NewCost(2.50)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, test := range []struct {
-		name   string
-		differ func(*RunRecord)
-	}{
-		{name: "session", differ: func(r *RunRecord) { r.SessionID = "session_other" }},
-		{name: "incarnation", differ: func(r *RunRecord) { r.IncarnationID = "incarnation_other" }},
-		{name: "run", differ: func(r *RunRecord) { r.RunID = "run_other" }},
-		{name: "outcome", differ: func(r *RunRecord) { r.Outcome = run.OutcomeCanceled }},
-		{name: "cost", differ: func(r *RunRecord) { r.Cost = otherCost }},
-		{name: "steps", differ: func(r *RunRecord) { r.Steps = 4 }},
-		{name: "completion time", differ: func(r *RunRecord) { r.CompletedAt = finishedAt.Add(time.Second) }},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			record := matching
-			test.differ(&record)
-			if err := record.Describes(terminal); err == nil {
-				t.Fatalf("a record whose %s differs still describes the Run", test.name)
-			}
-		})
-	}
-
-	running, err := run.Restore(run.Snapshot{
-		SessionID: "session_1", ID: "run_1", ModelSelection: selection,
-		GoalIncarnationID: "incarnation_1", State: run.Running, ActiveSegmentID: "segment_1",
-		Metrics: metrics, CreatedAt: createdAt, UpdatedAt: createdAt,
-		MessageMark: run.UnknownMessageMark,
+func goalTestRunningRun(t *testing.T, incarnationID string, now time.Time) run.Run {
+	t.Helper()
+	createdAt := time.Unix(1, 0).UTC()
+	value, err := run.Restore(run.Snapshot{
+		SessionID: "ses_1", ID: "run_running", ModelSelection: testSelection(t),
+		GoalIncarnationID: incarnationID, State: run.Running, ActiveSegmentID: "segment_1",
+		CreatedAt: createdAt, UpdatedAt: now, MessageMark: run.UnknownMessageMark,
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := matching.Describes(running); err == nil {
-		t.Fatal("a charge described a Run that has not finished")
-	}
-
-	// Whether a charge belongs at all is the other half, and every writer that
-	// files one asks it before asking whether the charge matches.
-	if err := ValidateCharge(terminal, &matching); err != nil {
-		t.Fatalf("a Goal-owned Run with its own charge was refused: %v", err)
-	}
-	if err := ValidateCharge(terminal, nil); err == nil {
-		t.Fatal("a Goal-owned Run with no charge was accepted")
-	}
-	outsideSnapshot := terminal.Snapshot()
-	outsideSnapshot.GoalIncarnationID = ""
-	outside, err := run.Restore(outsideSnapshot)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := ValidateCharge(outside, nil); err != nil {
-		t.Fatalf("a Run outside every Goal was refused for carrying no charge: %v", err)
-	}
-	if err := ValidateCharge(outside, &matching); err == nil {
-		t.Fatal("a Run outside every Goal accepted a charge")
-	}
-}
-
-func TestGoalKeepsRunningWithLargeAccumulatedUsageAcrossRestore(t *testing.T) {
-	now := time.Unix(10, 0).UTC()
-	value := testGoalAt(t, run.Capabilities{}, now)
-	for index := range 1000 {
-		var err error
-		value, err = value.RecordRun(RunRecord{
-			SessionID: value.SessionID(), IncarnationID: value.IncarnationID(), RunID: fmt.Sprintf("run_%d", index),
-			Outcome: run.OutcomeCompleted, Cost: goalTestCost(t, 100), Steps: 10000,
-			CompletedAt: now.Add(time.Duration(index+1) * time.Second),
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		value, err = Restore(value.Snapshot())
-		if err != nil {
-			t.Fatal(err)
-		}
-		if value.Status() != StatusActive || !value.Reason().IsNone() {
-			t.Fatalf("stopped after %d Runs: %+v", index+1, value.Snapshot())
-		}
-	}
-	cost, available := value.Used().Cost.USD()
-	if value.Used().Runs != 1000 || value.Used().Steps != 10000000 || !available || cost != 100000 {
-		t.Fatalf("usage lost: %+v", value.Used())
-	}
-	paused, err := value.Pause(ReasonStoppedByUser, "", value.UpdatedAt())
-	if err != nil {
-		t.Fatal(err)
-	}
-	resumed, err := paused.Resume(paused.UpdatedAt())
-	if err != nil || resumed.Status() != StatusActive || resumed.Used() != value.Used() {
-		t.Fatalf("resume = %+v, %v", resumed.Snapshot(), err)
-	}
+	return value
 }

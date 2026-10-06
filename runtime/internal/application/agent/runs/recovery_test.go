@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
@@ -1089,12 +1088,7 @@ func TestRecoveryChargesLostGoalOwnedRootToItsAdmissionLease(t *testing.T) {
 	if len(goalRuns) != 1 {
 		t.Fatalf("Goal Runs = %+v, want one", goalRuns)
 	}
-	goalRun := goalRuns[0]
-	goalCost, goalCostAvailable := goalRun.Cost.USD()
-	if goalRun.SessionID != run.SessionID() || goalRun.IncarnationID != run.GoalIncarnationID() ||
-		goalRun.RunID != run.ID() || goalRun.Outcome != rundomain.OutcomeLost ||
-		!goalCostAvailable || goalCost != cost || goalRun.Steps != run.Metrics().Steps() ||
-		!goalRun.CompletedAt.Equal(finishedAt) {
+	if goalRun := goalRuns[0]; goalRun.ID() != run.ID() || goalRun.GoalIncarnationID() != run.GoalIncarnationID() {
 		t.Fatalf("Goal Run = %+v", goalRun)
 	}
 	wantNotices := []invalidation.Notice{
@@ -1107,29 +1101,6 @@ func TestRecoveryChargesLostGoalOwnedRootToItsAdmissionLease(t *testing.T) {
 		t.Fatalf("recovery notices = %+v, want %+v", notices, wantNotices)
 	}
 
-	missingCharge := invalidRecoveryCommit(store.commit, func(state *RecoveryCommitInput) {
-		state.GoalRuns = nil
-	})
-	if err := missingCharge.Validate(); err == nil {
-		t.Fatal("RecoveryCommit.Validate accepted a lost goal-owned Run without its charge")
-	}
-	for _, charge := range []struct {
-		name   string
-		break_ func(*goal.RunRecord)
-	}{
-		{name: "incarnation", break_: func(r *goal.RunRecord) { r.IncarnationID = "other-lease" }},
-		{name: "session", break_: func(r *goal.RunRecord) { r.SessionID = "session_other" }},
-		{name: "outcome", break_: func(r *goal.RunRecord) { r.Outcome = rundomain.OutcomeCanceled }},
-		{name: "steps", break_: func(r *goal.RunRecord) { r.Steps = run.Metrics().Steps() + 1 }},
-		{name: "completion time", break_: func(r *goal.RunRecord) { r.CompletedAt = finishedAt.Add(time.Second) }},
-	} {
-		mismatched := invalidRecoveryCommit(store.commit, func(state *RecoveryCommitInput) {
-			charge.break_(&state.GoalRuns[0])
-		})
-		if err := mismatched.Validate(); err == nil {
-			t.Errorf("RecoveryCommit.Validate accepted a Goal Run whose %s differs from its lost Run", charge.name)
-		}
-	}
 	foreignDeletion := invalidRecoveryCommit(store.commit, func(state *RecoveryCommitInput) {
 		state.DeleteInterrupts = append(state.DeleteInterrupts, InterruptOwner{
 			SessionID: "other-session", RootRunID: "run_foreign",

@@ -34,7 +34,7 @@ type memStore struct {
 	goals             map[string]goal.Goal
 	changed           chan struct{}
 	failSave          func(goal.Goal) error
-	runs              map[string]struct{}
+	charged           map[string]run.Run
 	afterContextCheck func() // test hook: called before the context-aware lock
 }
 
@@ -155,7 +155,7 @@ func (p *pauseCompletionRaceStore) Save(
 func newMemStore() *memStore {
 	return &memStore{
 		goals:   map[string]goal.Goal{},
-		runs:    map[string]struct{}{},
+		charged: map[string]run.Run{},
 		changed: make(chan struct{}),
 	}
 }
@@ -214,6 +214,10 @@ func (m *memStore) Save(ctx context.Context, replacement goal.Replacement) (bool
 	case !ok || cur.Version() != expected:
 		return false, nil
 	}
+	g, err := m.withUsageLocked(g)
+	if err != nil {
+		return false, err
+	}
 	m.goals[g.SessionID()] = g
 	m.notifyLocked()
 	return true, nil
@@ -263,28 +267,50 @@ func (m *memStore) List(ctx context.Context) ([]goal.Goal, error) {
 	return out, nil
 }
 
-// RecordRun models the terminal Run transaction: its idempotency identity and
-// the Goal aggregate mutation appear together before the drive sees the event.
-func (m *memStore) RecordRun(ctx context.Context, record goal.RunRecord) error {
+// RecordRun models the terminal Run transaction: the Run becomes part of its
+// Goal's usage, and the Goal applies it, before the drive sees the event.
+func (m *memStore) RecordRun(ctx context.Context, value run.Run) error {
 	if err := m.lock(ctx); err != nil {
 		return err
 	}
 	defer m.mu.Unlock()
-	if _, exists := m.runs[record.RunID]; exists {
+	if _, exists := m.charged[value.ID()]; exists {
 		return nil
 	}
-	m.runs[record.RunID] = struct{}{}
-	g, exists := m.goals[record.SessionID]
-	if !exists || g.IncarnationID() != record.IncarnationID {
+	m.charged[value.ID()] = value
+	g, exists := m.goals[value.SessionID()]
+	if !exists || g.IncarnationID() != value.GoalIncarnationID() {
 		return nil
 	}
-	replacement, err := g.RecordRun(record)
+	replacement, _, err := g.RecordRun(value)
+	if err != nil {
+		return err
+	}
+	replacement, err = m.withUsageLocked(replacement)
 	if err != nil {
 		return err
 	}
 	m.goals[replacement.SessionID()] = replacement
 	m.notifyLocked()
 	return nil
+}
+
+// withUsageLocked folds g's usage from its incarnation's charged Runs, as the
+// production store does on every read.
+func (m *memStore) withUsageLocked(g goal.Goal) (goal.Goal, error) {
+	var charged []run.Run
+	for _, value := range m.charged {
+		if value.SessionID() == g.SessionID() && value.GoalIncarnationID() == g.IncarnationID() {
+			charged = append(charged, value)
+		}
+	}
+	snapshot := g.Snapshot()
+	var err error
+	snapshot.Used, err = goal.UsageOf(g.IncarnationID(), charged)
+	if err != nil {
+		return goal.Goal{}, err
+	}
+	return goal.Restore(snapshot)
 }
 
 func (m *memStore) observe(id string) (goal.Goal, bool, <-chan struct{}) {
@@ -331,7 +357,7 @@ type fakeRuns struct {
 	startedRuns   int
 	cancels       map[string]chan struct{}
 	runDone       map[string]chan struct{}
-	runGoals      map[string]goal.RunRecord
+	runGoals      map[string]runs.StartCommand
 	canceled      int
 	commands      []runs.StartCommand
 }
@@ -443,15 +469,11 @@ func (f *fakeRuns) registerScriptedRun(
 	if f.cancels == nil {
 		f.cancels = map[string]chan struct{}{}
 		f.runDone = map[string]chan struct{}{}
-		f.runGoals = map[string]goal.RunRecord{}
+		f.runGoals = map[string]runs.StartCommand{}
 	}
 	f.cancels[runID] = cancelRequested
 	f.runDone[runID] = runFinished
-	f.runGoals[runID] = goal.RunRecord{
-		SessionID:     cmd.SessionID,
-		IncarnationID: cmd.GoalIncarnationID,
-		RunID:         runID,
-	}
+	f.runGoals[runID] = cmd
 	return cancelRequested, runFinished
 }
 
@@ -503,10 +525,7 @@ func (f *fakeRuns) emitScriptedRun(
 				Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: script.steps, Usage: &accounting.Usage{Total: accounting.Totals{CostUSD: &cost}}})})
 
 			if outcome != nil && cmd.GoalIncarnationID != "" {
-				if err := f.store.RecordRun(context.WithoutCancel(ctx), goal.RunRecord{
-					SessionID: cmd.SessionID, IncarnationID: cmd.GoalIncarnationID, RunID: runID,
-					Outcome: *outcome, Cost: accountedGoalCost(cost), Steps: script.steps, CompletedAt: time.Now(),
-				}); err != nil {
+				if err := f.store.RecordRun(context.WithoutCancel(ctx), goalOwnedRun(cmd, runID, *outcome, &cost, script.steps)); err != nil {
 					f.t.Errorf("record terminal Goal Run: %v", err)
 				}
 			}
@@ -553,7 +572,7 @@ func (f *fakeRuns) Cancel(_ context.Context, cmd runs.CancelCommand) (runs.Cance
 	f.mu.Lock()
 	cancel := f.cancels[cmd.RunID]
 	done := f.runDone[cmd.RunID]
-	record := f.runGoals[cmd.RunID]
+	started := f.runGoals[cmd.RunID]
 	if cancel != nil {
 		delete(f.cancels, cmd.RunID)
 		close(cancel)
@@ -564,10 +583,10 @@ func (f *fakeRuns) Cancel(_ context.Context, cmd runs.CancelCommand) (runs.Cance
 		return runs.CancelResult{}, runs.ErrRunNotFound
 	}
 	<-done
-	record.Outcome = run.OutcomeCanceled
-	record.CompletedAt = time.Now()
-	if err := f.store.RecordRun(context.Background(), record); err != nil {
-		return runs.CancelResult{}, err
+	if started.GoalIncarnationID != "" {
+		if err := f.store.RecordRun(context.Background(), goalOwnedRun(started, cmd.RunID, run.OutcomeCanceled, nil, 0)); err != nil {
+			return runs.CancelResult{}, err
+		}
 	}
 	outcome := run.OutcomeCanceled
 	return runs.CancelResult{Run: testsupport.MustRestoreRun(run.Snapshot{ID: cmd.RunID, State: run.Canceled, Outcome: &outcome})}, nil
@@ -604,10 +623,10 @@ func (t *terminalRaceRuns) Start(ctx context.Context, cmd runs.StartCommand) (ru
 }
 
 func (t *terminalRaceRuns) Cancel(context.Context, runs.CancelCommand) (runs.CancelResult, error) {
-	err := t.store.RecordRun(context.Background(), goal.RunRecord{
-		SessionID: t.session, IncarnationID: t.incarnation, RunID: "run_terminal_race",
-		Outcome: run.OutcomeCompleted, CompletedAt: time.Now(),
-	})
+	err := t.store.RecordRun(context.Background(), goalOwnedRun(
+		runs.StartCommand{SessionID: t.session, GoalIncarnationID: t.incarnation},
+		"run_terminal_race", run.OutcomeCompleted, nil, 0,
+	))
 	return runs.CancelResult{}, err
 }
 
@@ -1079,13 +1098,10 @@ func TestResumeKeepsOutstandingGoalRunInSameIncarnation(t *testing.T) {
 
 	// The parked Run resumes and terminalizes under the incarnation that admitted
 	// it. Failure must pause the Goal before the waiting drive admits another Run.
-	if err := store.RecordRun(t.Context(), goal.RunRecord{
-		SessionID:     "s1",
-		IncarnationID: g.IncarnationID(),
-		RunID:         "run_waiting",
-		Outcome:       run.OutcomeFailed,
-		CompletedAt:   time.Now().Add(time.Second),
-	}); err != nil {
+	if err := store.RecordRun(t.Context(), goalOwnedRun(
+		runs.StartCommand{SessionID: "s1", GoalIncarnationID: g.IncarnationID()},
+		"run_waiting", run.OutcomeFailed, nil, 0,
+	)); err != nil {
 		t.Fatalf("record resumed Run: %v", err)
 	}
 	close(releaseSession)
@@ -1160,13 +1176,10 @@ func TestResumeObservesOutstandingGoalRunTerminalReport(t *testing.T) {
 	if err != nil || result != goals.ReportApplied {
 		t.Fatalf("report outstanding Run outcome: result=%v err=%v", result, err)
 	}
-	if err := store.RecordRun(t.Context(), goal.RunRecord{
-		SessionID:     "s1",
-		IncarnationID: g.IncarnationID(),
-		RunID:         "run_waiting",
-		Outcome:       run.OutcomeFailed,
-		CompletedAt:   time.Now().Add(time.Second),
-	}); err != nil {
+	if err := store.RecordRun(t.Context(), goalOwnedRun(
+		runs.StartCommand{SessionID: "s1", GoalIncarnationID: g.IncarnationID()},
+		"run_waiting", run.OutcomeFailed, nil, 0,
+	)); err != nil {
 		t.Fatalf("record outstanding Run terminal: %v", err)
 	}
 	close(releaseSession)
@@ -2107,6 +2120,20 @@ func TestStopResumeRaceNeverWedgesActive(t *testing.T) {
 			t.Fatalf("Close: %v", err)
 		}
 	}
+}
+
+// goalOwnedRun is the terminal root Run a Goal-owned start produced; the Goal
+// folds its usage from it.
+func goalOwnedRun(cmd runs.StartCommand, runID string, outcome run.Outcome, costUSD *float64, steps int) run.Run {
+	finishedAt := time.Now().UTC()
+	return testsupport.MustRestoreRun(run.Snapshot{
+		SessionID: cmd.SessionID, ID: runID, GoalIncarnationID: cmd.GoalIncarnationID,
+		Outcome: &outcome,
+		Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{
+			Steps: steps, Usage: &accounting.Usage{Total: accounting.Totals{CostUSD: costUSD}},
+		}),
+		CreatedAt: finishedAt.Add(-time.Second), FinishedAt: finishedAt, UpdatedAt: finishedAt,
+	})
 }
 
 func accountedGoalCost(value float64) accounting.Cost {

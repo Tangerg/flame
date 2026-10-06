@@ -7,7 +7,6 @@ import (
 	"slices"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -32,7 +31,6 @@ func cloneRecoveryCommitInput(state RecoveryCommitInput) RecoveryCommitInput {
 	state.ConversationTransitions = cloneRecoveryConversationTransitions(state.ConversationTransitions)
 	state.ModelInvocations = slices.Clone(state.ModelInvocations)
 	state.ToolInvocations = slices.Clone(state.ToolInvocations)
-	state.GoalRuns = slices.Clone(state.GoalRuns)
 	state.DeleteInterrupts = slices.Clone(state.DeleteInterrupts)
 	state.PreservedSessionIDs = slices.Clone(state.PreservedSessionIDs)
 	state.DeleteCheckpointSessionIDs = slices.Clone(state.DeleteCheckpointSessionIDs)
@@ -74,8 +72,17 @@ func (r RecoveryCommit) ToolInvocations() []ToolInvocationRecovery {
 	return slices.Clone(r.state.ToolInvocations)
 }
 
-// GoalRuns returns terminal Goal accounting projections.
-func (r RecoveryCommit) GoalRuns() []goal.RunRecord { return slices.Clone(r.state.GoalRuns) }
+// GoalRuns returns the lost Goal-owned root Runs, which the recovery
+// transaction also applies to their Sessions' Goals.
+func (r RecoveryCommit) GoalRuns() []rundomain.Run {
+	var charged []rundomain.Run
+	for _, lost := range r.state.LostRuns {
+		if value := lost.State(); value.GoalIncarnationID() != "" {
+			charged = append(charged, value)
+		}
+	}
+	return charged
+}
 
 // DeleteInterrupts returns the lost root-owned Pending records to remove.
 func (r RecoveryCommit) DeleteInterrupts() []InterruptOwner {
@@ -190,9 +197,6 @@ func (r RecoveryCommit) Validate() error {
 		recoveredSessions,
 		replacedItems,
 	); err != nil {
-		return err
-	}
-	if err := validateRecoveryGoalRuns(state.GoalRuns, lostByID); err != nil {
 		return err
 	}
 	if err := validateRecoveryInterruptDeletions(state.DeleteInterrupts, lostByID); err != nil {
@@ -476,34 +480,6 @@ func validateRecoveryItemReplacement(replacement transcript.Replacement, finishe
 	}
 	if !reflect.DeepEqual(replacement.State().Snapshot(), want.Snapshot()) {
 		return fmt.Errorf("replacement rewrites facts other than recovery status for Item %q", expected.ID())
-	}
-	return nil
-}
-
-func validateRecoveryGoalRuns(records []goal.RunRecord, lostByID map[string]rundomain.Replacement) error {
-	expected := make(map[string]rundomain.Run)
-	for _, recovery := range lostByID {
-		run := recovery.State()
-		if run.Lineage().IsRoot() && run.GoalIncarnationID() != "" {
-			expected[run.ID()] = run
-		}
-	}
-	seen := make(map[string]struct{}, len(records))
-	for index, record := range records {
-		if _, duplicate := seen[record.RunID]; duplicate {
-			return fmt.Errorf("runs: recovery commit repeats Goal Run for Run %q", record.RunID)
-		}
-		seen[record.RunID] = struct{}{}
-		lost, found := expected[record.RunID]
-		if !found {
-			return fmt.Errorf("runs: recovery commit Goal Run names unowned Run %q", record.RunID)
-		}
-		if err := record.Describes(lost); err != nil {
-			return fmt.Errorf("runs: recovery commit Goal Run[%d]: %w", index, err)
-		}
-	}
-	if len(seen) != len(expected) {
-		return fmt.Errorf("runs: recovery commit has %d Goal Runs, want %d", len(seen), len(expected))
 	}
 	return nil
 }

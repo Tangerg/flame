@@ -1025,10 +1025,6 @@ func TestCommitEventRecordsGoalRunWithTerminalRun(t *testing.T) {
 		CommitID: testCommitID("run_commit_event_goal"),
 		Outcome:  run.OutcomeCompleted,
 		Run:      finished,
-		GoalRun: &goal.RunRecord{
-			SessionID: g.SessionID(), IncarnationID: g.IncarnationID(), RunID: draft.RunID,
-			Outcome: run.OutcomeCompleted, Cost: segmentTestCost(t, costUSD), Steps: 2, CompletedAt: finished.FinishedAt(),
-		},
 	}); commitEventErr != nil {
 		t.Fatalf("CommitEvent: %v", commitEventErr)
 	}

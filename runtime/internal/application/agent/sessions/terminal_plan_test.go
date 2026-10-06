@@ -41,12 +41,6 @@ func TestTerminalPlanOwnsProjectionAndDerivesGoalRun(t *testing.T) {
 	if plan.ConsumesClaimedResume() {
 		t.Fatal("ordinary terminal plan consumes a claimed Resume")
 	}
-	goalRun := plan.GoalRun()
-	if goalRun == nil || goalRun.SessionID != "ses_1" || goalRun.IncarnationID != "lease_1" ||
-		goalRun.RunID != "run_1" || goalRun.Outcome != run.OutcomeCanceled ||
-		!goalRun.CompletedAt.Equal(finishedAt) {
-		t.Fatalf("derived Goal Run = %+v", goalRun)
-	}
 
 	runs[0] = run.Replacement{}
 	items[0] = transcript.Item{}
@@ -57,17 +51,15 @@ func TestTerminalPlanOwnsProjectionAndDerivesGoalRun(t *testing.T) {
 	ownedRuns[0] = run.Replacement{}
 	ownedItems[0] = transcript.Item{}
 	ownedMessages[0].Parts[0].Text = "changed accessor"
-	goalRun.SessionID = "ses_changed"
 
 	gotRuns := plan.Runs()
 	gotItems := plan.Items()
 	gotMessages := plan.Messages()
-	gotGoalRun := plan.GoalRun()
 	if gotRuns[0].State().ID() != "run_1" || gotItems[0].ID() != "item_1" ||
-		gotMessages[0].Parts[0].Text != "closed" || gotGoalRun.SessionID != "ses_1" {
+		gotMessages[0].Parts[0].Text != "closed" {
 		t.Fatalf(
-			"terminal ownership = run:%q item:%q message:%q goal:%q",
-			gotRuns[0].State().ID(), gotItems[0].ID(), gotMessages[0].Parts[0].Text, gotGoalRun.SessionID,
+			"terminal ownership = run:%q item:%q message:%q",
+			gotRuns[0].State().ID(), gotItems[0].ID(), gotMessages[0].Parts[0].Text,
 		)
 	}
 	if err := plan.Validate(); err != nil {

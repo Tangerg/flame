@@ -485,16 +485,6 @@ func validateRouteCommit(route *executorRoute, sessionID string, commit *EventCo
 			return err
 		}
 	}
-	if commit.GoalRun != nil &&
-		(commit.GoalRun.RunID != route.runID || commit.GoalRun.SessionID != sessionID) {
-		return fmt.Errorf(
-			"%w: route %q carries a Goal Run for run %q in session %q",
-			errReducerInvariant,
-			route.runID,
-			commit.GoalRun.RunID,
-			commit.GoalRun.SessionID,
-		)
-	}
 	return nil
 }
 

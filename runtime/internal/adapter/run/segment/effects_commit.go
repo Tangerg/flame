@@ -687,8 +687,8 @@ func (e *Effects) applyCommit(ctx context.Context, commit runs.EventCommit) erro
 	if err := e.applyState(ctx, commit); err != nil {
 		return err
 	}
-	if commit.GoalRun != nil {
-		if err := e.goalRuns.RecordRun(ctx, *commit.GoalRun); err != nil {
+	if commit.ChargesGoal() {
+		if err := e.goalRuns.RecordRun(ctx, *commit.Run); err != nil {
 			return fmt.Errorf("segment: record Goal Run: %w", err)
 		}
 	}

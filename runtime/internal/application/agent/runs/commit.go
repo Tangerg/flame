@@ -6,7 +6,6 @@ import (
 	"slices"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
@@ -237,7 +236,6 @@ type EventCommit struct {
 	ToolInvocations  []ToolInvocationCommit
 	Progress         *ProgressCommit
 	Run              *run.Run
-	GoalRun          *goal.RunRecord
 	// ObsoleteCheckpointRootID identifies the executor checkpoint aggregate the
 	// root Run terminal makes obsolete. Child terminal commits leave it empty.
 	ObsoleteCheckpointRootID string
@@ -264,7 +262,6 @@ func (e EventCommit) clone() EventCommit {
 	e.ToolInvocations = slices.Clone(e.ToolInvocations)
 	e.Progress = optional.Clone(e.Progress)
 	e.Run = optional.Clone(e.Run)
-	e.GoalRun = optional.Clone(e.GoalRun)
 	return e
 }
 
@@ -458,7 +455,7 @@ func validateToolInvocationItem(invocation ToolInvocationCommit, item transcript
 func (e EventCommit) validateLifecycle() error {
 	switch e.State {
 	case StateUnchanged:
-		if e.Outcome != "" || e.Run != nil || e.GoalRun != nil || e.ObsoleteCheckpointRootID != "" {
+		if e.Outcome != "" || e.Run != nil || e.ObsoleteCheckpointRootID != "" {
 			return errors.New("runs: unchanged event commit carries lifecycle facts")
 		}
 		return nil
@@ -466,7 +463,7 @@ func (e EventCommit) validateLifecycle() error {
 		if e.Run == nil || e.Run.State() != run.Waiting {
 			return errors.New("runs: suspend event commit has no waiting Run")
 		}
-		if e.Outcome != "" || e.GoalRun != nil || e.ObsoleteCheckpointRootID != "" {
+		if e.Outcome != "" || e.ObsoleteCheckpointRootID != "" {
 			return errors.New("runs: suspend event commit carries terminal facts")
 		}
 	case StateTerminalize:
@@ -490,17 +487,13 @@ func (e EventCommit) validateLifecycle() error {
 	// A terminalize commit may still carry an unresolved conversation watermark:
 	// the reducer cannot know the final count, and the terminal transaction
 	// resolves it while committing. Every other terminal fact is the Run's own.
-	if e.State == StateSuspend {
-		return nil
-	}
-	return validateTerminalGoalRun(*e.Run, e.GoalRun)
+	return nil
 }
 
-func validateTerminalGoalRun(value run.Run, record *goal.RunRecord) error {
-	if err := goal.ValidateCharge(value, record); err != nil {
-		return fmt.Errorf("runs: terminal Goal Run: %w", err)
-	}
-	return nil
+// ChargesGoal reports whether this commit terminalizes a Goal-owned root Run,
+// whose transaction also applies that Run to the Session's Goal.
+func (e EventCommit) ChargesGoal() bool {
+	return e.State == StateTerminalize && e.Run != nil && e.Run.GoalIncarnationID() != ""
 }
 
 func (e EventCommit) isEmpty() bool {
@@ -511,7 +504,6 @@ func (e EventCommit) isEmpty() bool {
 		e.Progress == nil &&
 		e.Outcome == "" &&
 		e.Run == nil &&
-		e.GoalRun == nil &&
 		e.ObsoleteCheckpointRootID == "" &&
 		e.State == StateUnchanged
 }

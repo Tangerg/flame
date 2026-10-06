@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -40,7 +39,7 @@ func mustReducerCost(t *testing.T, usd float64) accounting.Cost {
 	return cost
 }
 
-func TestReducerTerminalIncludesGoalRunRecord(t *testing.T) {
+func TestReducerTerminalChargesTheGoalOfAGoalOwnedRun(t *testing.T) {
 	config := testReducerConfig()
 	config.GoalIncarnationID = "goal_lease"
 	reducer := newReducer(config)
@@ -51,8 +50,8 @@ func TestReducerTerminalIncludesGoalRunRecord(t *testing.T) {
 		usage:  &SegmentUsage{Cost: mustReducerCost(t, 0.75), Steps: 1},
 	})
 	commit := reductions[len(reductions)-1].Commit
-	if commit == nil || commit.GoalRun == nil {
-		t.Fatal("terminal commit did not carry Goal Run accounting")
+	if commit == nil || !commit.ChargesGoal() || commit.Run.GoalIncarnationID() != "goal_lease" {
+		t.Fatal("terminal commit of a Goal-owned Run does not charge its Goal")
 	}
 	if commit.CommitID.IsZero() {
 		t.Fatal("terminal commit did not carry an immutable write-set identity")
@@ -64,9 +63,8 @@ func TestReducerTerminalIncludesGoalRunRecord(t *testing.T) {
 	if combined.CommitID != commit.CommitID {
 		t.Fatalf("combined terminal identity = %q, want %q", combined.CommitID, commit.CommitID)
 	}
-	want := goal.RunRecord{SessionID: "ses_1", IncarnationID: "goal_lease", RunID: "run_1", Outcome: run.OutcomeCompleted, Cost: mustReducerCost(t, 0.75), Steps: 1, CompletedAt: config.Now()}
-	if got := *commit.GoalRun; got != want {
-		t.Fatalf("GoalRun = %+v", got)
+	if !combined.ChargesGoal() {
+		t.Fatal("combined terminal commit lost its Goal charge")
 	}
 }
 

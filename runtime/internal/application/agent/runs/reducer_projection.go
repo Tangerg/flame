@@ -5,7 +5,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/optional"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -272,11 +271,6 @@ func (r *reducer) projectOne(event ProjectionEvent) (reduction, error) {
 		commit.CommitID = newRunCommitID()
 		if outcome, terminal := e.Run.Outcome(); terminal {
 			commit.Outcome = outcome
-			goalRun, err := r.goalTurn(e.Run)
-			if err != nil {
-				return reduction{}, err
-			}
-			commit.GoalRun = goalRun
 		}
 	case ItemStarted, ItemChanged, SegmentProgressed, PlanSnapshot, SegmentStarted:
 		// These events have no standalone EventCommit. SegmentStarted carries a Run
@@ -292,25 +286,4 @@ func (r *reducer) projectOne(event ProjectionEvent) (reduction, error) {
 		eventCommit = commit
 	}
 	return reduction{Event: event, Commit: eventCommit, Nudge: nudge}, nil
-}
-
-func (r *reducer) goalTurn(run run.Run) (*goal.RunRecord, error) {
-	outcome, terminal := run.Outcome()
-	if r.cfg.GoalIncarnationID == "" || !terminal {
-		return nil, nil
-	}
-	record := &goal.RunRecord{
-		SessionID:     r.cfg.SessionID,
-		IncarnationID: r.cfg.GoalIncarnationID,
-		RunID:         r.cfg.RunID,
-		Outcome:       outcome,
-		CompletedAt:   run.FinishedAt(),
-	}
-	record.Steps = run.Metrics().Steps()
-	cost, err := run.Metrics().Cost()
-	if err != nil {
-		return nil, fmt.Errorf("runs: project Goal Run cost: %w", err)
-	}
-	record.Cost = cost
-	return record, nil
 }

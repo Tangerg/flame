@@ -39,9 +39,9 @@ func (alwaysResumable) CanResumeWaitingExecution(
 	return runs.ResumableWaiting(), nil
 }
 
-type goalRunRecorderFunc func(context.Context, goal.RunRecord) error
+type goalRunRecorderFunc func(context.Context, run.Run) error
 
-func (g goalRunRecorderFunc) RecordRun(ctx context.Context, value goal.RunRecord) error {
+func (g goalRunRecorderFunc) RecordRun(ctx context.Context, value run.Run) error {
 	return g(ctx, value)
 }
 
@@ -475,7 +475,7 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 		Interrupts: interruptStore,
 		Transcript: transcriptStore,
 		Messages:   mustConversationStore(t, messageStore),
-		GoalRuns: goalRunRecorderFunc(func(context.Context, goal.RunRecord) error {
+		GoalRuns: goalRunRecorderFunc(func(context.Context, run.Run) error {
 			return rollbackFailure
 		}),
 		ExecutorCheckpoints: checkpointStore,

@@ -1497,7 +1497,7 @@ func (inertSegmentSchedules) RecordRun(context.Context, schedule.RunRecord) erro
 
 type inertSegmentGoalRuns struct{}
 
-func (inertSegmentGoalRuns) RecordRun(context.Context, goal.RunRecord) error { return nil }
+func (inertSegmentGoalRuns) RecordRun(context.Context, run.Run) error { return nil }
 
 type inertSegmentToolResults struct{}
 

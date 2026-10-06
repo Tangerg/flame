@@ -17,7 +17,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
@@ -43,10 +42,10 @@ type ScheduleStore interface {
 	RecordRun(ctx context.Context, record schedule.RunRecord) error
 }
 
-// GoalRunRecorder records usage and outcome for a terminal goal-owned Run. It
+// GoalRunRecorder applies a terminal goal-owned Run to its Session's Goal. It
 // runs in the same transaction as terminalizing that Run.
 type GoalRunRecorder interface {
-	RecordRun(ctx context.Context, record goal.RunRecord) error
+	RecordRun(ctx context.Context, value run.Run) error
 }
 
 // InterruptStore is the run-segment lifecycle view of the interrupt registry.

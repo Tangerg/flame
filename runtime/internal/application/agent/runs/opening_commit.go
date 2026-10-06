@@ -173,7 +173,7 @@ func (o OpeningCommit) validateEvents() error {
 // later authoritative EventCommits, even when they name the same Segment.
 func validateOpeningProjection(commit EventCommit) error {
 	if commit.State != StateUnchanged || commit.Outcome != "" || commit.Run != nil ||
-		commit.GoalRun != nil || commit.ObsoleteCheckpointRootID != "" {
+		commit.ObsoleteCheckpointRootID != "" {
 		return errors.New("opening projection carries lifecycle facts")
 	}
 	if len(commit.ModelInvocations) != 0 || len(commit.ToolInvocations) != 0 || commit.Progress != nil {

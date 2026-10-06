@@ -516,21 +516,10 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			model      TEXT    NOT NULL DEFAULT '',
 			reasoning_effort TEXT NOT NULL DEFAULT '',
 			capabilities TEXT  NOT NULL DEFAULT '',
-			used       TEXT    NOT NULL,
 			incarnation_id   TEXT    NOT NULL CHECK (incarnation_id <> ''),
 			revision   INTEGER NOT NULL CHECK (revision > 0),
 			created_at INTEGER NOT NULL,
 			updated_at INTEGER NOT NULL
-		)`,
-		// One immutable row per terminal goal-owned Run. This is not a cache of
-		// Goal.Used: it is the idempotency identity that lets terminal Run state
-		// and cross-Run usage accounting commit as one fact. The Run foreign key
-		// keeps that technical tombstone through ordinary Goal replacement while
-		// pruning it when rollback or Session replacement removes the Run itself.
-		// The row names the Run only: the Run row owns its outcome, steps,
-		// completion and cost, and this ledger owns just that it was charged.
-		`CREATE TABLE IF NOT EXISTS goal_runs (
-			run_id TEXT PRIMARY KEY REFERENCES runs(run_id) ON DELETE CASCADE
 		)`,
 		// Persistent fine-grained approval rules. id is deterministic over
 		// (scope, scope_key, tool reference, subject); re-remembering replaces the

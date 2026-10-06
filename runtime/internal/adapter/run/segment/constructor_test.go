@@ -3,14 +3,15 @@ package segment
 import (
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+
 	"github.com/Tangerg/flame/runtime/internal/dependency"
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
+	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/scope/core/chat"
@@ -202,7 +203,7 @@ func (inertSchedules) RecordRun(context.Context, schedule.RunRecord) error { ret
 
 type inertGoalRuns struct{}
 
-func (inertGoalRuns) RecordRun(context.Context, goal.RunRecord) error { return nil }
+func (inertGoalRuns) RecordRun(context.Context, run.Run) error { return nil }
 
 type inertToolResults struct{}
 

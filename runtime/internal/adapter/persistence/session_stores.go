@@ -86,7 +86,7 @@ type childRunStartReservationCleaner interface {
 type goalStore interface {
 	Get(ctx context.Context, sessionID string) (goal.Current, error)
 	Clear(ctx context.Context, sessionID string) error
-	RecordRun(ctx context.Context, record goal.RunRecord) error
+	RecordRun(ctx context.Context, value rundomain.Run) error
 }
 
 // NewSessionStores returns the SQLite adapter for session snapshots and
@@ -469,7 +469,6 @@ func (s *SessionStores) ApplyTerminal(ctx context.Context, terminal sessions.Ter
 	items := terminal.Items()
 	messages := terminal.Messages()
 	runs := terminal.Runs()
-	goalRun := terminal.GoalRun()
 	return s.tx(ctx, func(ctx context.Context) error {
 		if err := s.appendTranscriptItems(ctx, items); err != nil {
 			return err
@@ -490,7 +489,7 @@ func (s *SessionStores) ApplyTerminal(ctx context.Context, terminal sessions.Ter
 		if err := s.terminalizeParkedRuns(ctx, runs); err != nil {
 			return err
 		}
-		return s.recordGoalTerminalRun(ctx, root.ID(), goalRun)
+		return s.recordGoalTerminalRun(ctx, root)
 	})
 }
 
@@ -561,12 +560,12 @@ func (s *SessionStores) terminalizeParkedRuns(ctx context.Context, runs []rundom
 	return nil
 }
 
-func (s *SessionStores) recordGoalTerminalRun(ctx context.Context, rootRunID string, record *goal.RunRecord) error {
-	if record == nil {
+func (s *SessionStores) recordGoalTerminalRun(ctx context.Context, root rundomain.Run) error {
+	if root.GoalIncarnationID() == "" {
 		return nil
 	}
-	if err := s.goals.RecordRun(ctx, *record); err != nil {
-		return fmt.Errorf("persistence: record Goal Run for Run %q: %w", rootRunID, err)
+	if err := s.goals.RecordRun(ctx, root); err != nil {
+		return fmt.Errorf("persistence: record Goal Run for Run %q: %w", root.ID(), err)
 	}
 	return nil
 }

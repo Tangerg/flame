@@ -2,7 +2,6 @@ package sqlite_test
 
 import (
 	"context"
-	"errors"
 	"math"
 	"path/filepath"
 	"slices"
@@ -23,37 +22,6 @@ func newGoalStore(t *testing.T) (*sqlite.GoalStore, *sqlite.SessionStore) {
 	t.Helper()
 	goals, sessions, _ := newGoalRunStores(t)
 	return goals, sessions
-}
-
-func TestGoalStoreRejectsUnknownAccountingFields(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-	store := sqlite.NewGoalStore(db)
-	const sessionID = "ses_accounting"
-	if err := sqlite.NewSessionStore(db).Insert(t.Context(), testsupport.MustRestoreSession(session.Snapshot{ID: sessionID})); err != nil {
-		t.Fatal(err)
-	}
-	value, err := goal.New(sessionID, "review", testsupport.MustModelSelection("openai", "gpt-test"), run.Capabilities{}, "incarnation_accounting", time.Now())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if applied, err := store.Save(t.Context(), goalReplacement(t, value, unwrittenVersion(t, sessionID))); err != nil || !applied {
-		t.Fatalf("save Goal: applied=%v err=%v", applied, err)
-	}
-	for _, encoded := range []string{`{"Runs":7,"steps":2}`, `{"runs":7,"steps":2,"future":true}`} {
-		if _, err := db.ExecContext(t.Context(), `UPDATE goals SET used = ? WHERE session_id = ?`, encoded, sessionID); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := store.Get(t.Context(), sessionID); err == nil {
-			t.Errorf("Get discarded unknown accounting in %s", encoded)
-		}
-		if _, err := store.List(t.Context()); err == nil {
-			t.Errorf("List discarded unknown accounting in %s", encoded)
-		}
-	}
 }
 
 func newGoalRunStores(t *testing.T) (*sqlite.GoalStore, *sqlite.SessionStore, *sqlite.RunStore) {
@@ -102,26 +70,36 @@ func goalRunCost(t *testing.T, usd float64) accounting.Cost {
 	return cost
 }
 
-func persistTerminalGoalRun(t *testing.T, store *sqlite.RunStore, record goal.RunRecord) {
+func persistTerminalGoalRun(
+	t *testing.T,
+	store *sqlite.RunStore,
+	sessionID, incarnationID, runID string,
+	outcome run.Outcome,
+	costUSD *float64,
+	steps int,
+	completedAt time.Time,
+) run.Run {
 	t.Helper()
-	outcome := record.Outcome
 	value := testsupport.MustRestoreRun(run.Snapshot{
-		SessionID: record.SessionID, ID: record.RunID,
-		GoalIncarnationID: record.IncarnationID,
+		SessionID: sessionID, ID: runID,
+		GoalIncarnationID: incarnationID,
 		Outcome:           &outcome,
 		Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{
-			Steps: record.Steps,
-			Usage: &accounting.Usage{Total: accounting.Totals{CostUSD: record.Cost.OptionalUSD()}},
+			Steps: steps,
+			Usage: &accounting.Usage{Total: accounting.Totals{CostUSD: costUSD}},
 		}),
-		CreatedAt: record.CompletedAt.Add(-time.Second), FinishedAt: record.CompletedAt,
-		UpdatedAt: record.CompletedAt, MessageMark: 0,
+		CreatedAt: completedAt.Add(-time.Second), FinishedAt: completedAt,
+		UpdatedAt: completedAt, MessageMark: 0,
 	})
 	if err := store.Restore(t.Context(), value); err != nil {
 		t.Fatalf("persist terminal Goal Run: %v", err)
 	}
+	return value
 }
 
-func TestGoalStoreRecordRunIsIdempotentAndRemainsActive(t *testing.T) {
+// TestGoalStoreFoldsUsageFromTheIncarnationsRuns proves Goal usage has no copy
+// of its own: it is the incarnation's terminal Runs, so it follows them.
+func TestGoalStoreFoldsUsageFromTheIncarnationsRuns(t *testing.T) {
 	store, sessions, runs := newGoalRunStores(t)
 	const sessionID = "ses_goal_run"
 	seedSession(t, sessions, sessionID)
@@ -133,78 +111,36 @@ func TestGoalStoreRecordRunIsIdempotentAndRemainsActive(t *testing.T) {
 	if applied, saveErr := store.Save(t.Context(), goalReplacement(t, g, unwrittenVersion(t, sessionID))); saveErr != nil || !applied {
 		t.Fatalf("Save = (%v, %v), want true, nil", applied, saveErr)
 	}
-	record := goal.RunRecord{
-		SessionID: sessionID, IncarnationID: g.IncarnationID(), RunID: "run_goal_run",
-		Outcome: run.OutcomeCompleted, Cost: goalRunCost(t, 0.25), Steps: 3, CompletedAt: now.Add(time.Minute),
-	}
-	if recordRunErr := store.RecordRun(t.Context(), record); !errors.Is(recordRunErr, goal.ErrRunIdentityConflict) {
-		t.Fatalf("ownerless RecordRun = %v, want ErrRunIdentityConflict", recordRunErr)
-	}
-	persistTerminalGoalRun(t, runs, record)
-	if recordRunErr := store.RecordRun(t.Context(), record); recordRunErr != nil {
-		t.Fatalf("RecordRun: %v", recordRunErr)
-	}
-	if recordRunErr := store.RecordRun(t.Context(), record); recordRunErr != nil {
-		t.Fatalf("repeat RecordRun: %v", recordRunErr)
-	}
-	conflict := record
-	conflict.IncarnationID = "another_lease"
-	if recordRunErr := store.RecordRun(t.Context(), conflict); !errors.Is(recordRunErr, goal.ErrRunIdentityConflict) {
-		t.Fatalf("conflicting RecordRun = %v, want ErrRunIdentityConflict", recordRunErr)
-	}
-	got, found, err := readGoal(t.Context(), store, sessionID)
-	if err != nil || !found {
-		t.Fatalf("Get = (%v, %v), want found", found, err)
-	}
-	if got.Used() != (goal.Usage{Runs: 1, Cost: goalRunCost(t, 0.25), Steps: 3}) || got.Status() != goal.StatusActive || !got.Reason().IsNone() {
-		t.Fatalf("goal after idempotent RecordRun = %+v", got)
-	}
-	if err := runs.Delete(t.Context(), record.SessionID, record.RunID); err != nil {
-		t.Fatalf("delete terminal Run: %v", err)
-	}
-	if recordRunErr := store.RecordRun(t.Context(), record); !errors.Is(recordRunErr, goal.ErrRunIdentityConflict) {
-		t.Fatalf("RecordRun after owner deletion = %v, want ErrRunIdentityConflict", recordRunErr)
-	}
-}
-
-func TestGoalStorePreservesUnavailableRunPricing(t *testing.T) {
-	store, sessions, runs := newGoalRunStores(t)
-	const sessionID = "ses_unpriced_goal_run"
-	seedSession(t, sessions, sessionID)
-	now := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
-	g, err := goal.New(
-		sessionID,
-		"finish safely",
-		testReasoningSelection(t, "private", "served-alias", ""),
-
-		run.Capabilities{},
-		"lease_unpriced_goal_run",
-		now,
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if applied, saveErr := store.Save(t.Context(), goalReplacement(t, g, unwrittenVersion(t, sessionID))); saveErr != nil || !applied {
-		t.Fatalf("Save = (%v, %v), want true, nil", applied, saveErr)
-	}
-	record := goal.RunRecord{
-		SessionID: sessionID, IncarnationID: g.IncarnationID(), RunID: "run_unpriced_goal_run",
-		Outcome: run.OutcomeCompleted, Steps: 2, CompletedAt: now.Add(time.Minute),
-	}
-	persistTerminalGoalRun(t, runs, record)
-	if err := store.RecordRun(t.Context(), record); err != nil {
+	completed := persistTerminalGoalRun(t, runs, sessionID, g.IncarnationID(), "run_goal_run", run.OutcomeCompleted, new(0.25), 3, now.Add(time.Minute))
+	persistTerminalGoalRun(t, runs, sessionID, "another_lease", "run_other_goal", run.OutcomeCompleted, new(1.0), 7, now.Add(time.Minute))
+	if err := store.RecordRun(t.Context(), completed); err != nil {
 		t.Fatalf("RecordRun: %v", err)
 	}
-	if err := store.RecordRun(t.Context(), record); err != nil {
-		t.Fatalf("repeat RecordRun: %v", err)
-	}
 	got, found, err := readGoal(t.Context(), store, sessionID)
 	if err != nil || !found {
 		t.Fatalf("Get = (%v, %v), want found", found, err)
 	}
-	if got.Status() != goal.StatusActive || !got.Reason().IsNone() ||
-		got.Used() != (goal.Usage{Runs: 1, Steps: 2}) {
-		t.Fatalf("Goal after unpriced Run = %+v", got.Snapshot())
+	if got.Used() != (goal.Usage{Runs: 1, Cost: goalRunCost(t, 0.25), Steps: 3}) || got.Status() != goal.StatusActive ||
+		!got.Reason().IsNone() || got.Revision() != g.Revision() {
+		t.Fatalf("goal after completed Run = %+v", got.Snapshot())
+	}
+
+	canceled := persistTerminalGoalRun(t, runs, sessionID, g.IncarnationID(), "run_canceled", run.OutcomeCanceled, nil, 2, now.Add(2*time.Minute))
+	if err := store.RecordRun(t.Context(), canceled); err != nil {
+		t.Fatalf("RecordRun(canceled): %v", err)
+	}
+	got, _, err = readGoal(t.Context(), store, sessionID)
+	if _, priced := got.Used().Cost.USD(); err != nil || got.Status() != goal.StatusPaused ||
+		got.Used().Runs != 2 || got.Used().Steps != 5 || priced {
+		t.Fatalf("goal after canceled Run = %+v, %v", got.Snapshot(), err)
+	}
+
+	if err := runs.Delete(t.Context(), sessionID, canceled.ID()); err != nil {
+		t.Fatalf("delete terminal Run: %v", err)
+	}
+	got, _, err = readGoal(t.Context(), store, sessionID)
+	if err != nil || got.Used() != (goal.Usage{Runs: 1, Cost: goalRunCost(t, 0.25), Steps: 3}) {
+		t.Fatalf("usage after Run deletion = %+v, %v", got.Used(), err)
 	}
 }
 
@@ -290,12 +226,6 @@ func TestGoalStore_RoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
-	snapshot := g.Snapshot()
-	snapshot.Used = goal.Usage{Runs: 1, Cost: goalRunCost(t, 0.4), Steps: 3}
-	g, err = goal.Restore(snapshot)
-	if err != nil {
-		t.Fatal(err)
-	}
 	if applied, saveErr := store.Save(ctx, goalReplacement(t, g, unwrittenVersion(t, sess))); saveErr != nil || !applied {
 		t.Fatalf("Save: applied=%v err=%v", applied, saveErr)
 	}
@@ -306,7 +236,7 @@ func TestGoalStore_RoundTrip(t *testing.T) {
 	}
 	used, gotSelection := got.Used(), got.ModelSelection()
 	if got.Objective() != "ship the feature" || got.Status() != goal.StatusActive ||
-		used.Runs != 1 || !used.Cost.Equal(goalRunCost(t, 0.4)) || used.Steps != 3 ||
+		used != (goal.Usage{}) ||
 		gotSelection.Provider() != "anthropic" || gotSelection.Model() != "claude" ||
 		gotSelection.ReasoningEffort() != "high" ||
 		!got.Capabilities().Equal(wantCapabilities) {
@@ -507,48 +437,18 @@ func TestGoalStoreRejectsMissingSession(t *testing.T) {
 }
 
 func TestGoalStoreCascadesWithSessionDeletion(t *testing.T) {
-	store, sessions, runs := newGoalRunStores(t)
+	store, sessions, _ := newGoalRunStores(t)
 	const sessionID = "s"
 	seedSession(t, sessions, sessionID)
 	g, _ := goal.New(sessionID, "obj", testReasoningSelection(t, "provider", "model", ""), run.Capabilities{}, "lease", time.Unix(0, 0))
 	if applied, err := store.Save(t.Context(), goalReplacement(t, g, unwrittenVersion(t, sessionID))); err != nil || !applied {
 		t.Fatalf("seed goal: applied=%v err=%v", applied, err)
 	}
-	record := goal.RunRecord{
-		SessionID: sessionID, IncarnationID: g.IncarnationID(), RunID: "run-reusable-after-delete",
-		Outcome: run.OutcomeCompleted, CompletedAt: time.Unix(1, 0),
-	}
-	persistTerminalGoalRun(t, runs, record)
-	if err := store.RecordRun(t.Context(), record); err != nil {
-		t.Fatalf("record old Goal Run: %v", err)
-	}
-
 	if err := sessions.Delete(t.Context(), sessionID); err != nil {
 		t.Fatalf("Delete(session): %v", err)
 	}
 	if _, ok, err := readGoal(t.Context(), store, sessionID); err != nil || ok {
 		t.Fatalf("goal after session delete = present=%v err=%v, want false/nil", ok, err)
-	}
-	if err := runs.DeleteForSession(t.Context(), sessionID); err != nil {
-		t.Fatalf("delete old Session Runs: %v", err)
-	}
-
-	// Reusing the same ids proves the old idempotency ledger row was owned by and
-	// cascaded with the deleted Session.
-	seedSession(t, sessions, sessionID)
-	recreated, _ := goal.New(sessionID, "new", testReasoningSelection(t, "provider", "model", ""), run.Capabilities{}, "lease-new", time.Unix(2, 0))
-	if applied, err := store.Save(t.Context(), goalReplacement(t, recreated, unwrittenVersion(t, sessionID))); err != nil || !applied {
-		t.Fatalf("seed recreated goal: applied=%v err=%v", applied, err)
-	}
-	record.IncarnationID = recreated.IncarnationID()
-	record.CompletedAt = time.Unix(3, 0)
-	persistTerminalGoalRun(t, runs, record)
-	if err := store.RecordRun(t.Context(), record); err != nil {
-		t.Fatalf("reuse terminal identity after session deletion: %v", err)
-	}
-	got, ok, err := readGoal(t.Context(), store, sessionID)
-	if err != nil || !ok || got.Used().Runs != 1 {
-		t.Fatalf("recreated goal accounting = %+v, present=%v err=%v", got.Used(), ok, err)
 	}
 }
 

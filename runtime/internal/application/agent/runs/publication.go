@@ -127,7 +127,7 @@ func (t treePublisher) commitIncrementalReduction(
 	for _, item := range commit.Items {
 		t.owner.recordChildCancellationItem(route.runID, item)
 	}
-	return commit.GoalRun != nil, nil
+	return commit.ChargesGoal(), nil
 }
 
 // publishAuthoritativeAtomically commits every durable projection derived from
@@ -219,7 +219,7 @@ func (t treePublisher) publishTerminalAtomically(
 		}
 	}
 	t.publications.publishRunMoved(t.rootSpec.SessionID, route.runID)
-	if combined.GoalRun != nil {
+	if combined.ChargesGoal() {
 		t.publications.publishGoalMoved(t.rootSpec.SessionID)
 	}
 	return reductionPublication{published: true, boundary: boundaryFinished}, nil
@@ -271,7 +271,6 @@ func combineTerminalEventCommit(batch reductionBatch) (EventCommit, error) {
 			combined.State = commit.State
 			combined.Outcome = commit.Outcome
 			combined.Run = commit.Run
-			combined.GoalRun = commit.GoalRun
 		}
 	}
 	if terminalCommits != 1 || combined.Run == nil {
@@ -525,7 +524,7 @@ func combineAuthoritativeCommit(route *executorRoute, sessionID string, batch re
 		if reduced.Commit == nil {
 			continue
 		}
-		if reduced.Commit.State != StateUnchanged || reduced.Commit.Run != nil || reduced.Commit.GoalRun != nil {
+		if reduced.Commit.State != StateUnchanged || reduced.Commit.Run != nil {
 			return EventCommit{}, fmt.Errorf(
 				"runs: authoritative fact event[%d] carries a lifecycle transition",
 				index,

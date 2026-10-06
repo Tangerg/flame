@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -44,7 +43,7 @@ type ConversationStore interface {
 }
 
 type GoalRunRecorder interface {
-	RecordRun(ctx context.Context, record goal.RunRecord) error
+	RecordRun(ctx context.Context, value run.Run) error
 }
 
 type ExecutorCheckpointStore interface {
@@ -355,12 +354,12 @@ func (p *Persistence) recoverLostRuns(ctx context.Context, commit runs.RecoveryC
 }
 
 func (p *Persistence) recordGoalRuns(ctx context.Context, commit runs.RecoveryCommit) error {
-	for _, record := range commit.GoalRuns() {
+	for _, charged := range commit.GoalRuns() {
 		if p.goalRuns == nil {
 			return errors.New("recovery: Goal Run store is unavailable for a Goal-owned lost Run")
 		}
-		if err := p.goalRuns.RecordRun(ctx, record); err != nil {
-			return fmt.Errorf("recovery: record Goal Run for Run %q: %w", record.RunID, err)
+		if err := p.goalRuns.RecordRun(ctx, charged); err != nil {
+			return fmt.Errorf("recovery: record Goal Run for Run %q: %w", charged.ID(), err)
 		}
 	}
 	return nil

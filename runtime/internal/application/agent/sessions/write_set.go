@@ -8,7 +8,6 @@ import (
 
 	"github.com/Tangerg/scope/core/chat"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
@@ -61,15 +60,11 @@ type TerminalPlan struct {
 	// by a failed Resume attempt. Ordinary parked termination consumes an open
 	// interrupt instead.
 	resumeClaimed bool
-	// GoalRun is present exactly when the root Run was admitted by an autonomous Goal.
-	// Keeping it in the same write-set makes every terminal path—not only the
-	// normal reducer path—charge the incarnation atomically with the Run transition.
-	goalRun *goal.RunRecord
 }
 
 // NewTerminalPlan owns the complete durable projection for an ordinary parked
-// Run termination. Goal accounting is derived from the root Run so callers
-// cannot supply a second version of the same terminal fact.
+// Run termination. A Goal-owned root Run is applied to its Goal by the same
+// transaction, read from the root Run itself.
 func NewTerminalPlan(
 	runs []rundomain.Replacement,
 	items []transcript.Item,
@@ -108,13 +103,6 @@ func newTerminalPlan(
 		checkpointRootID: checkpointRoot,
 		resumeClaimed:    resumeClaimed,
 	}
-	if root, ok := terminal.RootRun(); ok && root.GoalIncarnationID() != "" {
-		record, err := terminalGoalRun(root)
-		if err != nil {
-			return TerminalPlan{}, err
-		}
-		terminal.goalRun = &record
-	}
 	if err := terminal.Validate(); err != nil {
 		return TerminalPlan{}, err
 	}
@@ -144,15 +132,6 @@ func (t TerminalPlan) CheckpointRootID() string { return t.checkpointRootID.Stri
 
 // ConsumesClaimedResume reports whether the plan consumes a claimed Resume hand-off.
 func (t TerminalPlan) ConsumesClaimedResume() bool { return t.resumeClaimed }
-
-// GoalRun returns the root-derived Goal accounting record, when the Run was Goal-owned.
-func (t TerminalPlan) GoalRun() *goal.RunRecord {
-	if t.goalRun == nil {
-		return nil
-	}
-	record := *t.goalRun
-	return &record
-}
 
 // Validate proves that the parked-tree terminal write-set is complete,
 // canonical, owner-bound, and carries exactly the Goal accounting fact implied
@@ -215,25 +194,7 @@ func (t TerminalPlan) Validate() error {
 			return fmt.Errorf("sessions: terminal plan Message[%d]: %w", index, err)
 		}
 	}
-	return validateTerminalGoalRun(root, t.goalRun)
-}
-
-func terminalGoalRun(root rundomain.Run) (goal.RunRecord, error) {
-	outcome, _ := root.Outcome()
-	record := goal.RunRecord{
-		SessionID:     root.SessionID(),
-		IncarnationID: root.GoalIncarnationID(),
-		RunID:         root.ID(),
-		Outcome:       outcome,
-		Steps:         root.Metrics().Steps(),
-		CompletedAt:   root.FinishedAt(),
-	}
-	cost, err := root.Metrics().Cost()
-	if err != nil {
-		return goal.RunRecord{}, fmt.Errorf("sessions: terminal Goal Run cost: %w", err)
-	}
-	record.Cost = cost
-	return record, nil
+	return nil
 }
 
 func validateTerminalRunReplacement(replacement rundomain.Replacement) error {
@@ -256,11 +217,4 @@ func validateTerminalRunReplacement(replacement rundomain.Replacement) error {
 			return rundomain.Run{}, fmt.Errorf("terminal Run replacement has unsupported outcome %s", outcome)
 		}
 	})
-}
-
-func validateTerminalGoalRun(run rundomain.Run, record *goal.RunRecord) error {
-	if err := goal.ValidateCharge(run, record); err != nil {
-		return fmt.Errorf("sessions: terminal plan Goal Run: %w", err)
-	}
-	return nil
 }

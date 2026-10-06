@@ -4,15 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
-	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 )
 
-// Usage is the immutable accounting value accumulated across Goal-owned Runs.
+// Usage is the accounting accumulated across one Goal incarnation's terminal
+// Runs. Each Run owns its cost and steps, so Usage is only ever folded from
+// those Runs by [UsageOf]; nothing stores or advances it on its own.
 type Usage struct {
 	Runs  int
 	Cost  accounting.Cost
@@ -32,134 +31,61 @@ func (u Usage) validate() error {
 	return nil
 }
 
-func (u Usage) add(record RunRecord) (Usage, error) {
-	if err := u.validate(); err != nil {
+// UsageOf folds the terminal Runs of one Goal incarnation. Cost stays priced
+// only while every Run's cost is.
+func UsageOf(incarnationID string, runs []run.Run) (Usage, error) {
+	var used Usage
+	for _, value := range runs {
+		if value.GoalIncarnationID() != incarnationID {
+			return Usage{}, fmt.Errorf("%w: Run %q belongs to another Goal", ErrRunIdentityConflict, value.ID())
+		}
+		if _, terminal := value.Outcome(); !terminal {
+			return Usage{}, fmt.Errorf("goal: Run %q is not terminal", value.ID())
+		}
+		cost, err := value.Metrics().Cost()
+		if err != nil {
+			return Usage{}, fmt.Errorf("goal: Run %q cost: %w", value.ID(), err)
+		}
+		steps := value.Metrics().Steps()
+		if used.Runs == math.MaxInt || steps > math.MaxInt-used.Steps {
+			return Usage{}, errors.New("goal: usage counter overflow")
+		}
+		if used.Runs > 0 {
+			cost, err = used.Cost.Add(cost)
+			if err != nil {
+				return Usage{}, fmt.Errorf("goal: aggregate usage cost: %w", err)
+			}
+		}
+		used = Usage{Runs: used.Runs + 1, Cost: cost, Steps: used.Steps + steps}
+	}
+	if err := used.validate(); err != nil {
 		return Usage{}, err
 	}
-	if u.Runs == math.MaxInt || record.Steps > math.MaxInt-u.Steps {
-		return Usage{}, errors.New("goal: usage counter overflow")
-	}
-	next := Usage{
-		Runs:  u.Runs + 1,
-		Cost:  record.Cost,
-		Steps: u.Steps + record.Steps,
-	}
-	if u.Runs > 0 {
-		var err error
-		next.Cost, err = u.Cost.Add(record.Cost)
-		if err != nil {
-			return Usage{}, fmt.Errorf("goal: aggregate usage cost: %w", err)
-		}
-	}
-	if err := next.validate(); err != nil {
-		return Usage{}, err
-	}
-	return next, nil
+	return used, nil
 }
 
-type RunRecord struct {
-	SessionID     string
-	IncarnationID string
-	RunID         string
-	Outcome       run.Outcome
-	Cost          accounting.Cost
-	Steps         int
-	CompletedAt   time.Time
-}
-
-func (r RunRecord) Validate() error {
-	if err := validateSessionIdentity(r.SessionID); err != nil {
-		return fmt.Errorf("goal: Run: %w", err)
+// RecordRun applies a terminal Run of this Goal: an active Goal pauses after a
+// Run that did not complete. The boolean reports whether the Goal changed; the
+// Run itself is what the Goal's usage is folded from.
+func (g Goal) RecordRun(value run.Run) (Goal, bool, error) {
+	if value.SessionID() != g.sessionID || value.GoalIncarnationID() != g.incarnationID.String() {
+		return Goal{}, false, fmt.Errorf("%w: Run belongs to another Goal", ErrRunIdentityConflict)
 	}
-	if _, err := goalref.ParseIncarnation(r.IncarnationID); err != nil {
-		return fmt.Errorf("%w: Run: %v", ErrInvalid, err)
+	outcome, terminal := value.Outcome()
+	if !terminal {
+		return Goal{}, false, fmt.Errorf("goal: Run %q is not terminal", value.ID())
 	}
-	if err := resourceid.ValidateRun(r.RunID); err != nil {
-		return fmt.Errorf("%w: Run ID: %v", ErrInvalid, err)
+	if g.status != StatusActive || outcome == run.OutcomeCompleted {
+		return g, false, nil
 	}
-	if _, ok := run.ParseOutcome(string(r.Outcome)); !ok {
-		return fmt.Errorf("goal: Run has unknown outcome %q", r.Outcome)
-	}
-	if err := r.Cost.Validate(); err != nil {
-		return fmt.Errorf("goal: Run cost: %w", err)
-	}
-	if r.Steps < 0 {
-		return errors.New("goal: Run steps must not be negative")
-	}
-	if r.CompletedAt.IsZero() {
-		return errors.New("goal: Run completion time is required")
-	}
-	return nil
-}
-
-// Describes proves this accounting record is exactly the terminal Run it names.
-// Every writer of a Goal charge derives the record from the same Run — the live
-// commit, boot recovery, and a terminal plan write-set — so all of them have to
-// agree on what "exactly" means. It reports the defect as a phrase, leaving each
-// caller its own way of failing.
-func (r RunRecord) Describes(value run.Run) error {
-	if err := r.Validate(); err != nil {
-		return err
-	}
-	// A Run that has not finished has no outcome, and a validated record always
-	// names one, so the comparison below is what refuses it.
-	outcome, _ := value.Outcome()
-	cost, err := value.Metrics().Cost()
+	next, err := g.next(value.FinishedAt())
 	if err != nil {
-		return fmt.Errorf("cost: %w", err)
+		return Goal{}, false, err
 	}
-	if r.SessionID != value.SessionID() || r.IncarnationID != value.GoalIncarnationID() ||
-		r.RunID != value.ID() || r.Outcome != outcome || !r.Cost.Equal(cost) ||
-		r.Steps != value.Metrics().Steps() || !r.CompletedAt.Equal(value.FinishedAt()) {
-		return fmt.Errorf("differs from Run %q", value.ID())
-	}
-	return nil
-}
-
-// ValidateCharge proves the optional accounting record filed against value is
-// exactly the charge value implies: a Goal-owned Run carries one that describes
-// it, and a Run outside every Goal carries none. The same three writers that
-// share Describes also share this pairing, so it means one thing for all of
-// them. It reports the defect as a phrase, leaving each caller its own way of
-// failing.
-func ValidateCharge(value run.Run, record *RunRecord) error {
-	if value.GoalIncarnationID() == "" {
-		if record != nil {
-			return fmt.Errorf("Run %q is outside every Goal and carries a charge", value.ID())
-		}
-		return nil
-	}
-	if record == nil {
-		return fmt.Errorf("Goal-owned Run %q carries no charge", value.ID())
-	}
-	return record.Describes(value)
-}
-
-// RecordRun accumulates usage and pauses active Goals after unsuccessful Runs.
-func (g Goal) RecordRun(record RunRecord) (Goal, error) {
-	if err := record.Validate(); err != nil {
-		return Goal{}, err
-	}
-	if record.SessionID != g.sessionID || record.IncarnationID != g.incarnationID.String() {
-		return Goal{}, fmt.Errorf("%w: Run belongs to another Goal", ErrRunIdentityConflict)
-	}
-	next, err := g.next(record.CompletedAt)
+	next.status = StatusPaused
+	next.reason, err = newReason(StatusPaused, ReasonRunNotCompleted, string(outcome))
 	if err != nil {
-		return Goal{}, err
+		return Goal{}, false, err
 	}
-	next.used, err = g.used.add(record)
-	if err != nil {
-		return Goal{}, err
-	}
-	if g.status == StatusActive {
-		if record.Outcome != run.OutcomeCompleted {
-			next.status = StatusPaused
-			next.reason, err = newReason(StatusPaused, ReasonRunNotCompleted, string(record.Outcome))
-
-		}
-		if err != nil {
-			return Goal{}, err
-		}
-	}
-	return next, next.validate()
+	return next, true, next.validate()
 }

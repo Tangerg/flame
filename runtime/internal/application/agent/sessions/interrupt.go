@@ -191,7 +191,7 @@ func (c *Coordinator) terminalizePendingRun(
 		invalidation.InSession(invalidation.Interrupts, pending.SessionID, pending.RootRunID),
 		invalidation.InSession(invalidation.Sessions, pending.SessionID),
 	}
-	if plan.GoalRun() != nil {
+	if root, _ := plan.RootRun(); root.GoalIncarnationID() != "" {
 		notices = append(notices, invalidation.InSession(invalidation.Goals, pending.SessionID))
 	}
 	c.invalidations.Notify(notices...)
