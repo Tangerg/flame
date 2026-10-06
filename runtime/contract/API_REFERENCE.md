@@ -972,6 +972,7 @@ TypeScript validator from this single registry projection.
 | `UpdateProviderRequest` | `provider` | `identity` |
 | `UpdateProviderRequest` | `provider` | `maxLength(64)` |
 | `ProviderConfigChange` | `value` | `nonEmpty` |
+| `ProviderCredential` | `masked` | `nonEmpty` |
 | `TestProviderRequest` | `provider` | `nonEmpty` |
 | `TestProviderRequest` | `provider` | `identity` |
 | `TestProviderRequest` | `provider` | `maxLength(64)` |

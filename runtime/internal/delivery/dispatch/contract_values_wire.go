@@ -735,6 +735,7 @@ func registerProviderValues(s *Shapes) {
 			boundedIdentity("provider", protocol.MaximumProviderIdentityCharacters)...),
 	})
 	nonEmpty[protocol.ProviderConfigChange](s, "value")
+	nonEmpty[protocol.ProviderCredential](s, "masked")
 	s.valueConstraint(FieldConstraintSpec{
 		GoType: typeOf[protocol.TestProviderRequest](),
 		Constraints: append([]FieldConstraint{{Field: "provider", Kind: ConstraintNonEmpty}},

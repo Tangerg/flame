@@ -2608,6 +2608,13 @@ func (p Provider) ValidateWire() error {
 	)
 }
 
+func (p ProviderCredential) ValidateWire() error {
+	return collectWireViolations("ProviderCredential",
+		requiredText("masked", p.Masked),
+		closedEnum("source", string(p.Source), []string{"stored", "env"}, false),
+	)
+}
+
 func (m ModelPricing) ValidateWire() error {
 	return collectWireViolations("ModelPricing",
 		nonNegativeNumber("inputUsdPerMillionTokens", m.InputUSDPerMillionTokens),
@@ -2814,12 +2821,6 @@ func (p PluginInstallation) ValidateWire() error {
 func (p PluginTheme) ValidateWire() error {
 	return collectWireViolations("PluginTheme",
 		closedEnum("scheme", string(p.Scheme), []string{"dark", "light"}, false),
-	)
-}
-
-func (p ProviderCredential) ValidateWire() error {
-	return collectWireViolations("ProviderCredential",
-		closedEnum("source", string(p.Source), []string{"stored", "env"}, false),
 	)
 }
 

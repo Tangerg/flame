@@ -2932,7 +2932,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   ]),
   ProviderConfigChangeType: enumOf(["set", "clear"]),
   ProviderCredential: object({
-    masked: text(),
+    masked: allOf([text(), minLength(1)]),
     source: ref(() => CHECKS.ProviderKeySource),
   }, ["masked", "source"]),
   ProviderCredentialRequirement: enumOf(["apiKeyRequired", "apiKeyOptional"]),

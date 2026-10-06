@@ -8680,6 +8680,15 @@
       ]
     },
     {
+      "type": "ProviderCredential",
+      "rules": [
+        {
+          "field": "masked",
+          "constraint": "nonEmpty"
+        }
+      ]
+    },
+    {
       "type": "TestProviderRequest",
       "rules": [
         {

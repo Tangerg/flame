@@ -21,9 +21,6 @@ export class ProviderAuthentication {
   private constructor(readonly requirement: ProviderCredentialRequirement) {}
 
   static restore(requirement: ProviderCredentialRequirement): ProviderAuthentication {
-    if (requirement !== "apiKeyRequired" && requirement !== "apiKeyOptional") {
-      throw new Error("provider credential requirement is invalid");
-    }
     return new ProviderAuthentication(requirement);
   }
 
@@ -39,7 +36,6 @@ export class ProviderCredential {
   ) {}
 
   static configured(masked: string, source: ProviderCredentialSource): ProviderCredential {
-    if (masked.trim() === "") throw new Error("provider credential mask is empty");
     return new ProviderCredential(masked, source);
   }
 

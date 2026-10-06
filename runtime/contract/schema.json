@@ -7796,7 +7796,8 @@
       "type": "object",
       "properties": {
         "masked": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         },
         "source": {
           "$ref": "#/$defs/ProviderKeySource"
