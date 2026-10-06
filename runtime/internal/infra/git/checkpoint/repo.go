@@ -52,16 +52,6 @@ func (s *Store) ensureRepo(ctx context.Context, sessionID, cwd string) (string, 
 		}
 	}
 
-	sessionDir := s.sessionDir(sessionID)
-	// Repositories created before workspace-scoped checkpoint storage put HEAD
-	// directly in the Session directory. They carry no workspace identity and
-	// therefore cannot be restored safely. Retire that legacy representation
-	// before publishing the first scoped repository.
-	if repoExists(sessionDir) {
-		if err := os.RemoveAll(sessionDir); err != nil {
-			return "", fmt.Errorf("checkpoint: remove unscoped Session repository: %w", err)
-		}
-	}
 	parent := filepath.Dir(gitDir)
 	if err := os.MkdirAll(parent, 0o755); err != nil {
 		return "", fmt.Errorf("checkpoint: create repository parent: %w", err)
