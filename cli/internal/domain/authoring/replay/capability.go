@@ -43,8 +43,6 @@ func (c Capability) Validate() error {
 
 func (c Capability) Namespace() string { return c.namespace }
 
-func (c Capability) Retention() time.Duration { return c.retention }
-
 func (c Capability) Deadline(stagedAt time.Time) (time.Time, error) {
 	if err := c.Validate(); err != nil {
 		return time.Time{}, err

@@ -45,7 +45,7 @@ func TestNegotiatedReplayPolicyProjectsTheAdvertisedStoreAndClock(t *testing.T) 
 		t.Fatal(err)
 	}
 	if !policy.Available() || guard.Namespace() != capability.Namespace() ||
-		!guard.Until().Equal(now.Add(capability.Retention())) {
+		!guard.Until().Equal(now.Add(10*time.Minute)) {
 		t.Fatalf("advertised policy = %+v, guard %+v", policy, guard)
 	}
 }

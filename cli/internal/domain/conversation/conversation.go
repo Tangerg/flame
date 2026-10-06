@@ -249,7 +249,7 @@ func (c *Conversation) ClearPresentation() {
 
 func (c *Conversation) put(block Block, completed bool) error {
 	c.ensureStorage()
-	key := blockIdentity(block.RunID, block.ID)
+	key := BlockKey(block.RunID, block.ID)
 	if at, ok := c.index[key]; ok {
 		if !completed {
 			return fmt.Errorf("%w: block %s started twice", ErrInvalidTransition, block.ID)
@@ -314,7 +314,7 @@ func (c *Conversation) rebuildBlockIndex() {
 	c.index = make(map[string]int, len(c.blocks))
 	c.textStreams = make(map[string]StreamedText)
 	for i, block := range c.blocks {
-		key := blockIdentity(block.RunID, block.ID)
+		key := BlockKey(block.RunID, block.ID)
 		c.index[key] = i
 		if block.Status == BlockStatusRunning && (block.Kind == BlockAssistant || block.Kind == BlockReasoning) {
 			c.textStreams[key] = NewStreamedText(block.Text)
@@ -329,10 +329,6 @@ func (c *Conversation) hasOpenBlocksForRun(runID string) bool {
 		}
 	}
 	return false
-}
-
-func blockIdentity(runID, blockID string) string {
-	return (BlockIdentity{RunID: runID, BlockID: blockID}).Key()
 }
 
 func (c *Conversation) requireRunRunning(runID, action string) error {

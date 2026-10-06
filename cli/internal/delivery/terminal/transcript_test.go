@@ -596,10 +596,10 @@ func TestChildBlockCompletionLeavesTheRootsCollidingBlockLive(t *testing.T) {
 	}})
 	apply(childID, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})
 
-	if _, live := view.textStreams[transcriptBlockKey(childID, blockID)]; live {
+	if _, live := view.textStreams[conversation.BlockKey(childID, blockID)]; live {
 		t.Fatal("child text stream survived child completion")
 	}
-	if _, live := view.textStreams[transcriptBlockKey(rootID, blockID)]; !live {
+	if _, live := view.textStreams[conversation.BlockKey(rootID, blockID)]; !live {
 		t.Fatal("child completion settled the root text stream")
 	}
 	apply(rootID, conversation.BlockDelta{BlockID: blockID, Text: " continued"})
@@ -856,7 +856,7 @@ func TestCompletingALiveToolPreservesItsExpandedState(t *testing.T) {
 	view := testTranscriptView(t)
 	tool := appendTestTool(view, "tool", "running")
 	tracked := trackedTool{id: view.toolViews[0].id, block: tool}
-	view.tools[transcriptBlockKey("", "tool")] = liveTool{ids: []headless.BlockID{tracked.id}, blocks: []trackedTool{tracked}}
+	view.tools[conversation.BlockKey("", "tool")] = liveTool{ids: []headless.BlockID{tracked.id}, blocks: []trackedTool{tracked}}
 	tool.ToggleExpanded()
 
 	completed := conversation.ToolCall{Kind: conversation.ToolShell, Command: "echo tool", Output: "complete", Status: conversation.ToolOK}
@@ -1056,7 +1056,7 @@ func beginTestTool(view *transcriptView, call conversation.ToolCall) *toolBlock 
 	blockID := view.place(block, false)
 	tracked := trackedTool{id: blockID, block: block}
 	view.toolViews = append(view.toolViews, trackedToolView{id: blockID, block: block})
-	view.tools[transcriptBlockKey("", "tool")] = liveTool{ids: []headless.BlockID{blockID}, blocks: []trackedTool{tracked}}
+	view.tools[conversation.BlockKey("", "tool")] = liveTool{ids: []headless.BlockID{blockID}, blocks: []trackedTool{tracked}}
 	return block
 }
 

@@ -365,7 +365,7 @@ func (t *transcriptView) appendCompleted(block conversation.Block, registry *ext
 		isPendingQuestion = isPendingQuestion && !question.answered()
 		key := ""
 		if isPendingQuestion {
-			key = transcriptBlockKey(block.RunID, block.ID)
+			key = conversation.BlockKey(block.RunID, block.ID)
 			if _, exists := t.pendingQuestions[key]; exists {
 				return fmt.Errorf("terminal transcript: question block %s completed twice", block.ID)
 			}
@@ -384,7 +384,7 @@ func (t *transcriptView) appendCompleted(block conversation.Block, registry *ext
 }
 
 func (t *transcriptView) beginTool(block conversation.Block, registry *extensions.Registry) error {
-	key := transcriptBlockKey(block.RunID, block.ID)
+	key := conversation.BlockKey(block.RunID, block.ID)
 	if _, exists := t.tools[key]; exists {
 		return fmt.Errorf("terminal transcript: tool block %s started twice", block.ID)
 	}
@@ -615,10 +615,6 @@ func blockOffset(index int) headless.BlockID {
 		panic("terminal: negative transcript block offset")
 	}
 	return headless.BlockID(index) // #nosec G115 -- validated nonnegative and int cannot exceed uint64.
-}
-
-func transcriptBlockKey(runID, blockID string) string {
-	return (conversation.BlockIdentity{RunID: runID, BlockID: blockID}).Key()
 }
 
 func (t *transcriptView) lookFor(kind conversation.BlockKind) markdown.Look {

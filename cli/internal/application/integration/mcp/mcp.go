@@ -27,8 +27,6 @@ func NewHandshakeTimeout(seconds int) (HandshakeTimeout, error) {
 	return HandshakeTimeout{bounded: true, seconds: seconds}, nil
 }
 
-func (h HandshakeTimeout) IsBounded() bool { return h.bounded }
-
 func (h HandshakeTimeout) Seconds() (int, bool) {
 	if !h.bounded {
 		return 0, false

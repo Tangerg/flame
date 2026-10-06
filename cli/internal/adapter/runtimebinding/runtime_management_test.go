@@ -226,7 +226,7 @@ func TestProjectProviderPreservesConfiguredOptionalCredentialState(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !provider.Configured() || provider.RequiresAPIKey() {
+	if !provider.Configured() {
 		t.Fatal("optional credential provider lost its configured state")
 	}
 	if _, present := provider.Credential(); present {

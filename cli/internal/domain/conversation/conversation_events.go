@@ -75,13 +75,13 @@ func (c *Conversation) ignoreRecoveredOverlap(envelope RunEvent) (bool, error) {
 	if completed, ok := event.(BlockCompleted); ok && completed.Block.Kind == BlockQuestion {
 		// A resumed continuation re-completes each answered Question. A projection
 		// that already holds the answered Item, from a cold read, has nothing to fold.
-		if at, exists := c.index[blockIdentity(completed.Block.RunID, completed.Block.ID)]; exists &&
+		if at, exists := c.index[BlockKey(completed.Block.RunID, completed.Block.ID)]; exists &&
 			c.blocks[at].Status != BlockStatusRunning && c.blocks[at].Equal(completed.Block) {
 			return true, nil
 		}
 	}
 	if delta, ok := event.(BlockDelta); ok {
-		key := blockIdentity(envelope.RunID, delta.BlockID)
+		key := BlockKey(envelope.RunID, delta.BlockID)
 		if _, exists := c.index[key]; !exists && c.recovery != recoveryNone {
 			// Agent-message and reasoning starts are non-durable previews. A
 			// head attachment can therefore observe their later deltas without
@@ -95,7 +95,7 @@ func (c *Conversation) ignoreRecoveredOverlap(envelope RunEvent) (bool, error) {
 	}
 	switch item := event.(type) {
 	case BlockStarted:
-		at, exists := c.index[blockIdentity(item.Block.RunID, item.Block.ID)]
+		at, exists := c.index[BlockKey(item.Block.RunID, item.Block.ID)]
 		if !exists {
 			return false, nil
 		}
@@ -104,11 +104,11 @@ func (c *Conversation) ignoreRecoveredOverlap(envelope RunEvent) (bool, error) {
 		}
 		return true, nil
 	case BlockDelta:
-		key := blockIdentity(envelope.RunID, item.BlockID)
+		key := BlockKey(envelope.RunID, item.BlockID)
 		at, exists := c.index[key]
 		return !exists || c.blocks[at].Status != BlockStatusRunning, nil
 	case BlockCompleted:
-		key := blockIdentity(item.Block.RunID, item.Block.ID)
+		key := BlockKey(item.Block.RunID, item.Block.ID)
 		at, exists := c.index[key]
 		if !exists || c.blocks[at].Status == BlockStatusRunning || answersQuestion(c.blocks[at], item.Block) {
 			return false, nil
@@ -250,7 +250,7 @@ func (c *Conversation) applyBlockDelta(runID string, event BlockDelta) error {
 	if err := c.requireRunRunning(runID, "append a block delta"); err != nil {
 		return err
 	}
-	key := blockIdentity(runID, event.BlockID)
+	key := BlockKey(runID, event.BlockID)
 	at, ok := c.index[key]
 	if !ok {
 		return fmt.Errorf("%w: %s", ErrUnknownBlock, event.BlockID)
@@ -279,7 +279,7 @@ func (c *Conversation) applyToolArgumentsDelta(runID string, event ToolArguments
 	if err := c.requireRunRunning(runID, "append tool arguments"); err != nil {
 		return err
 	}
-	key := blockIdentity(runID, event.BlockID)
+	key := BlockKey(runID, event.BlockID)
 	at, exists := c.index[key]
 	if !exists {
 		return fmt.Errorf("%w: %s", ErrUnknownBlock, event.BlockID)
@@ -319,7 +319,7 @@ func (c *Conversation) applyBlockCompleted(runID string, event BlockCompleted) e
 	if err := c.requireRunRunning(runID, "complete a block"); err != nil {
 		return err
 	}
-	if at, exists := c.index[blockIdentity(event.Block.RunID, event.Block.ID)]; exists && answersQuestion(c.blocks[at], event.Block) {
+	if at, exists := c.index[BlockKey(event.Block.RunID, event.Block.ID)]; exists && answersQuestion(c.blocks[at], event.Block) {
 		c.blocks[at] = event.Block.Clone()
 		return nil
 	}
@@ -373,7 +373,7 @@ func (c *Conversation) applyInterrupted(runID string, event RunInterrupted) erro
 	}
 	for _, interrupt := range event.Interrupts {
 		itemID := InterruptItemID(interrupt)
-		at, exists := c.index[blockIdentity(runID, itemID)]
+		at, exists := c.index[BlockKey(runID, itemID)]
 		if !exists {
 			return fmt.Errorf("%w: interrupt references unknown item %s", ErrInvalidTransition, itemID)
 		}

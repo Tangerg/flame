@@ -145,7 +145,7 @@ func (t *Text) Close() error {
 }
 
 func (t *Text) begin(b conversation.Block) {
-	key := streamBlockKey(b.RunID, b.ID)
+	key := conversation.BlockKey(b.RunID, b.ID)
 	switch b.Kind {
 	case conversation.BlockAssistant:
 		t.blank()
@@ -164,7 +164,7 @@ func (t *Text) begin(b conversation.Block) {
 }
 
 func (t *Text) delta(runID string, d conversation.BlockDelta) {
-	key := streamBlockKey(runID, d.BlockID)
+	key := conversation.BlockKey(runID, d.BlockID)
 	if stream := t.streaming[key]; stream != nil {
 		if err := stream.text.Apply(d); err != nil {
 			t.err = fmt.Errorf("render text delta %s: %w", d.BlockID, err)
@@ -180,7 +180,7 @@ func (t *Text) delta(runID string, d conversation.BlockDelta) {
 }
 
 func (t *Text) finish(b conversation.Block) {
-	key := streamBlockKey(b.RunID, b.ID)
+	key := conversation.BlockKey(b.RunID, b.ID)
 	if _, duplicate := t.seen[key]; duplicate {
 		return
 	}
@@ -250,7 +250,7 @@ func (t *Text) Reconcile(snapshot conversation.SessionSnapshot) error {
 }
 
 func (t *Text) resume(block conversation.Block) {
-	key := streamBlockKey(block.RunID, block.ID)
+	key := conversation.BlockKey(block.RunID, block.ID)
 	if _, present := t.streaming[key]; present {
 		return
 	}
@@ -261,7 +261,7 @@ func (t *Text) resume(block conversation.Block) {
 }
 
 func (t *Text) showInterrupt(interrupt conversation.Interrupt) {
-	key := streamBlockKey(conversation.InterruptRunID(interrupt), conversation.InterruptItemID(interrupt))
+	key := conversation.BlockKey(conversation.InterruptRunID(interrupt), conversation.InterruptItemID(interrupt))
 	if _, duplicate := t.shown[key]; duplicate {
 		return
 	}
@@ -273,7 +273,7 @@ func (t *Text) completedText(block conversation.Block) string {
 	if block.Text != "" {
 		return block.Text
 	}
-	if pending := t.pending[streamBlockKey(block.RunID, block.ID)]; pending != nil {
+	if pending := t.pending[conversation.BlockKey(block.RunID, block.ID)]; pending != nil {
 		return pending.body.String()
 	}
 	return ""
@@ -292,7 +292,7 @@ func (t *Text) renderCompletedBlock(b conversation.Block, text string) {
 		t.tool(b)
 	case conversation.BlockQuestion:
 		if b.Question != nil {
-			t.shown[streamBlockKey(b.RunID, b.ID)] = struct{}{}
+			t.shown[conversation.BlockKey(b.RunID, b.ID)] = struct{}{}
 			t.interrupted(*b.Question)
 		}
 	case conversation.BlockNotice:
@@ -302,10 +302,6 @@ func (t *Text) renderCompletedBlock(b conversation.Block, text string) {
 		t.blank()
 		t.block("× ", text)
 	}
-}
-
-func streamBlockKey(runID, blockID string) string {
-	return (conversation.BlockIdentity{RunID: runID, BlockID: blockID}).Key()
 }
 
 func (t *Text) userBlock(block conversation.Block, text string) {

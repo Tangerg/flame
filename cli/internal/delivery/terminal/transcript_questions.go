@@ -17,7 +17,7 @@ type trackedQuestion struct {
 // pending question in place, so the transcript keeps its scroll, selection and
 // search.
 func (t *transcriptView) revealAnsweredQuestion(block conversation.Block) bool {
-	key := transcriptBlockKey(block.RunID, block.ID)
+	key := conversation.BlockKey(block.RunID, block.ID)
 	tracked, pending := t.pendingQuestions[key]
 	if !pending || block.Question == nil || !block.Question.Answered() {
 		return false
@@ -52,7 +52,7 @@ func (t *transcriptView) reconcilePendingQuestions(interrupts []conversation.Int
 		if !ok {
 			continue
 		}
-		key := transcriptBlockKey(question.RunID, question.ItemID)
+		key := conversation.BlockKey(question.RunID, question.ItemID)
 		if _, pending := t.pendingQuestions[key]; !pending {
 			return fmt.Errorf("terminal transcript: open question block %s has no pending presentation", question.ItemID)
 		}

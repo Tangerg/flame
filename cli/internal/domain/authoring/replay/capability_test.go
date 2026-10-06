@@ -13,7 +13,7 @@ func TestCapabilityOwnsStoreIdentityRetentionAndDeadline(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if capability.Namespace() != "runtime-a" || capability.Retention() != 10*time.Minute {
+	if capability.Namespace() != "runtime-a" {
 		t.Fatalf("capability = %+v", capability)
 	}
 	stagedAt := time.Date(2026, 8, 29, 1, 2, 3, 0, time.FixedZone("test", 8*60*60))

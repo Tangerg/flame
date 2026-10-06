@@ -103,7 +103,7 @@ func TestMCPFormFlowClearsEverySecretProjection(t *testing.T) {
 
 func TestParseMCPTimeoutDistinguishesUnboundedFromPositiveDeadline(t *testing.T) {
 	unbounded, err := parseMCPTimeout("")
-	if err != nil || unbounded.IsBounded() {
+	if _, bounded := unbounded.Seconds(); err != nil || bounded {
 		t.Fatalf("blank timeout = (%v, %v), want unbounded", unbounded, err)
 	}
 	bounded, err := parseMCPTimeout("15")

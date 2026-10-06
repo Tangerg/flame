@@ -238,10 +238,6 @@ func (p Provider) Configured() bool {
 	return credentialReady && endpointReady
 }
 
-func (p Provider) RequiresAPIKey() bool {
-	return p.credentialRequirement == runtimeprotocol.ProviderAPIKeyRequired
-}
-
 func (p Provider) RequiresBaseURL() bool { return p.requiresBaseURL }
 
 func (p Provider) EmbeddingCapable() bool { return p.embeddingCapable }

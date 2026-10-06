@@ -32,7 +32,7 @@ func (t *transcriptView) apply(runID string, event conversation.Event, registry 
 		}
 		t.sealToolGroup()
 	case conversation.BlockDelta:
-		key := transcriptBlockKey(runID, e.BlockID)
+		key := conversation.BlockKey(runID, e.BlockID)
 		if _, live := t.tools[key]; live {
 			return t.deltaTool(key, e)
 		}
@@ -84,7 +84,7 @@ func presentCustomSafely(presenter CustomEventPresenter, presentation BlockPrese
 }
 
 func (t *transcriptView) begin(block conversation.Block) error {
-	key := transcriptBlockKey(block.RunID, block.ID)
+	key := conversation.BlockKey(block.RunID, block.ID)
 	if _, exists := t.textStreams[key]; exists {
 		return fmt.Errorf("terminal transcript: text block %s started twice", block.ID)
 	}
@@ -148,7 +148,7 @@ func (t *transcriptView) deltaTool(key string, delta conversation.BlockDelta) er
 }
 
 func (t *transcriptView) complete(block conversation.Block, registry *extensions.Registry) error {
-	key := transcriptBlockKey(block.RunID, block.ID)
+	key := conversation.BlockKey(block.RunID, block.ID)
 	if _, live := t.textStreams[key]; live {
 		return t.completeStream(block)
 	}
@@ -162,7 +162,7 @@ func (t *transcriptView) complete(block conversation.Block, registry *extensions
 }
 
 func (t *transcriptView) completeStream(block conversation.Block) error {
-	key := transcriptBlockKey(block.RunID, block.ID)
+	key := conversation.BlockKey(block.RunID, block.ID)
 	live, ok := t.textStreams[key]
 	if !ok {
 		return fmt.Errorf("terminal transcript: completion for inactive text block %s", block.ID)
@@ -182,7 +182,7 @@ func (t *transcriptView) completeStream(block conversation.Block) error {
 }
 
 func (t *transcriptView) completeLiveTool(block conversation.Block) bool {
-	key := transcriptBlockKey(block.RunID, block.ID)
+	key := conversation.BlockKey(block.RunID, block.ID)
 	live, ok := t.tools[key]
 	if !ok {
 		return false

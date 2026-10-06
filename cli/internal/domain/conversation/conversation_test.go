@@ -537,9 +537,9 @@ func apply(t *testing.T, projection *Conversation, event RunEvent) {
 	}
 }
 
-func TestBlockIdentityKeyPreservesFieldBoundaries(t *testing.T) {
-	left := (BlockIdentity{RunID: "a", BlockID: "bc"}).Key()
-	right := (BlockIdentity{RunID: "ab", BlockID: "c"}).Key()
+func TestBlockKeyPreservesFieldBoundaries(t *testing.T) {
+	left := BlockKey("a", "bc")
+	right := BlockKey("ab", "c")
 	if left == right {
 		t.Fatal("different block identity fields produced the same terminal key")
 	}

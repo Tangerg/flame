@@ -218,7 +218,7 @@ func (s SessionSnapshot) validateTranscript() (snapshotTranscript, error) {
 		if err := block.validateLifecycle(block.Status != BlockStatusRunning); err != nil {
 			return snapshotTranscript{}, fmt.Errorf("session snapshot: transcript block %d: %w", i+1, err)
 		}
-		identity := blockIdentity(block.RunID, block.ID)
+		identity := BlockKey(block.RunID, block.ID)
 		if _, duplicate := indexed.byIdentity[identity]; duplicate {
 			return snapshotTranscript{}, fmt.Errorf("session snapshot: transcript repeats block %q in run %q", block.ID, block.RunID)
 		}
@@ -393,7 +393,7 @@ func (s SessionSnapshot) validateWaitingLifecycle(active Run, transcript snapsho
 		itemID := InterruptItemID(interrupt)
 		runID := InterruptRunID(interrupt)
 		run, runExists := runs.byID[runID]
-		block, exists := transcript.byIdentity[blockIdentity(runID, itemID)]
+		block, exists := transcript.byIdentity[BlockKey(runID, itemID)]
 		rootID := run.Lineage.RootRunID()
 		if run.Lineage.IsRoot() {
 			rootID = run.ID

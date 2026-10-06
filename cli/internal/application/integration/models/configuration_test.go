@@ -47,7 +47,7 @@ func TestProviderConfiguredStateIsNotCredentialPresence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !optionalProvider.Configured() || optionalProvider.RequiresAPIKey() {
+	if !optionalProvider.Configured() {
 		t.Fatal("optional API-key provider was not restored as configured")
 	}
 	if _, present := optionalProvider.Credential(); present {
