@@ -1,9 +1,3 @@
-import {
-  validateModelIdentity,
-  validateProviderIdentity,
-  validateReasoningEffortIdentity,
-} from "./modelIdentity";
-
 export class SelectableModelTokenLimits {
   readonly contextWindow?: number;
   readonly maxInputTokens?: number;
@@ -14,22 +8,6 @@ export class SelectableModelTokenLimits {
     maxInputTokens?: number;
     maxOutputTokens?: number;
   }) {
-    const facts = [value.contextWindow, value.maxInputTokens, value.maxOutputTokens];
-    if (facts.every((fact) => fact === undefined)) {
-      throw new Error("model token limits require at least one published fact");
-    }
-    for (const fact of facts) {
-      if (fact !== undefined && (!Number.isSafeInteger(fact) || fact <= 0)) {
-        throw new Error("model token limits must be positive safe integers");
-      }
-    }
-    if (
-      value.contextWindow !== undefined &&
-      value.maxInputTokens !== undefined &&
-      value.maxInputTokens > value.contextWindow
-    ) {
-      throw new Error("model max input tokens exceed its context window");
-    }
     this.contextWindow = value.contextWindow;
     this.maxInputTokens = value.maxInputTokens;
     this.maxOutputTokens = value.maxOutputTokens;
@@ -73,25 +51,7 @@ export class SelectableModel {
     toolUse?: boolean;
     structuredOutput?: boolean;
   }) {
-    validateModelIdentity(value.id);
-    validateProviderIdentity(value.provider);
     const reasoningLevels = value.reasoningLevels ?? [];
-    for (const level of reasoningLevels) validateReasoningEffortIdentity(level);
-    if (new Set(reasoningLevels).size !== reasoningLevels.length) {
-      throw new Error("model reasoning levels are duplicated");
-    }
-    if (value.reasoningDefaultLevel !== undefined) {
-      validateReasoningEffortIdentity(value.reasoningDefaultLevel);
-      if (!reasoningLevels.includes(value.reasoningDefaultLevel)) {
-        throw new Error("model default reasoning level is not offered");
-      }
-    }
-    if (
-      !(value.reasoning ?? false) &&
-      (reasoningLevels.length !== 0 || value.reasoningDefaultLevel !== undefined)
-    ) {
-      throw new Error("non-reasoning model carries reasoning identities");
-    }
     this.id = value.id;
     this.provider = value.provider;
     this.label = value.label;

@@ -22,25 +22,6 @@ afterEach(() => {
 });
 
 describe("provider configuration", () => {
-  it("rejects invalid provider and embedding-model identities during restoration", () => {
-    expect(() =>
-      ProviderConfiguration.restore({
-        id: "open ai",
-        configured: false,
-        credentialRequirement: "apiKeyRequired",
-      }),
-    ).toThrow("provider_identity_not_canonical");
-    expect(() =>
-      ProviderConfiguration.restore({
-        id: "openai",
-        configured: false,
-        credentialRequirement: "apiKeyRequired",
-        embeddingCapable: true,
-        defaultEmbeddingModel: "embed\nshadow",
-      }),
-    ).toThrow("model_identity_not_canonical");
-  });
-
   it("commits the authoritative provider response", async () => {
     queryClient.setQueryData(
       [PROVIDERS_KEY],

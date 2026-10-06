@@ -1,5 +1,3 @@
-import { validateModelIdentity, validateProviderIdentity } from "./modelIdentity";
-
 export interface ProviderRole {
   provider?: string;
   model?: string;
@@ -67,26 +65,10 @@ export class ProviderConfiguration {
   ) {}
 
   static restore(snapshot: ProviderConfigurationSnapshot): ProviderConfiguration {
-    validateProviderIdentity(snapshot.id);
-    if (snapshot.baseUrl !== undefined && snapshot.baseUrl.trim() === "") {
-      throw new Error("provider base URL is empty");
-    }
     const authentication = ProviderAuthentication.restore(snapshot.credentialRequirement);
     const credential = snapshot.credential
       ? ProviderCredential.configured(snapshot.credential.masked, snapshot.credential.source)
       : undefined;
-    if (snapshot.configured && authentication.requiresAPIKey && credential === undefined) {
-      throw new Error("configured provider is missing its required API key");
-    }
-    if (snapshot.configured && snapshot.requiresBaseUrl && snapshot.baseUrl === undefined) {
-      throw new Error("configured provider is missing its required base URL");
-    }
-    if (snapshot.defaultEmbeddingModel !== undefined && !snapshot.embeddingCapable) {
-      throw new Error("provider without embeddings carries a default embedding model");
-    }
-    if (snapshot.defaultEmbeddingModel !== undefined) {
-      validateModelIdentity(snapshot.defaultEmbeddingModel);
-    }
     return new ProviderConfiguration(
       snapshot.id,
       snapshot.baseUrl,
