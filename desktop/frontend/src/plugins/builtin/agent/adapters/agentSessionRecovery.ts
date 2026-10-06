@@ -1,5 +1,5 @@
 import type { FlameClient } from "@flame/runtime-contract/client";
-import { asRunId, asSegmentId, RpcConnectionError } from "@flame/runtime-contract/client";
+import { asRunId, asSegmentId } from "@flame/runtime-contract/client";
 import type { AgentRunView, AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
 import { refreshAgentSessionProjection } from "../application/session/refreshSessionProjection";
 import { agentRuntime } from "../application/ports/runtimeGateway";
@@ -16,17 +16,14 @@ interface AgentSessionRecoveryOptions {
   isFollowing: (runId: string, segmentId: string) => boolean;
   setAbortController: (controller: AbortController) => void;
   pump: (stream: RunStream, signal: AbortSignal) => Promise<void>;
-  onConnectionLost: () => void;
+  onSynchronizationFailed: (error: unknown) => void;
 }
 
 export function startAgentSessionRecovery(
   options: AgentSessionRecoveryOptions,
 ): Promise<AgentSessionView | null> {
   return recover(options).catch((error: unknown) => {
-    if (!options.signal.aborted && !options.isCancelled()) {
-      if (error instanceof RpcConnectionError) options.onConnectionLost();
-      else console.error("[agent] session recovery failed:", options.sessionId, error);
-    }
+    if (!options.signal.aborted && !options.isCancelled()) options.onSynchronizationFailed(error);
     return null;
   });
 }
@@ -52,11 +49,7 @@ async function recover(options: AgentSessionRecoveryOptions): Promise<AgentSessi
   }
   const root = runningRoots[0];
   if (root) {
-    void attachRootRun(options, root).catch((error: unknown) => {
-      if (!options.signal.aborted && !options.isCancelled()) {
-        console.error("[agent] recovered run stream failed:", options.sessionId, error);
-      }
-    });
+    void attachRootRun(options, root).catch(ignorePumpReportedFailure);
   }
   return view;
 }
@@ -94,16 +87,11 @@ async function attachRootRun(
           signal: options.signal,
         }).catch((readError: unknown) => {
           if (options.isCancelled() || controller.signal.aborted) return;
-          if (readError instanceof RpcConnectionError) options.onConnectionLost();
-          else throw readError;
+          options.onSynchronizationFailed(readError);
         });
         return;
       }
-      if (error instanceof RpcConnectionError) {
-        options.onConnectionLost();
-        return;
-      }
-      console.warn("[agent] run reattach failed:", options.sessionId, error);
+      options.onSynchronizationFailed(error);
       return;
     }
     if (options.isCancelled() || controller.signal.aborted) {
@@ -125,3 +113,5 @@ async function attachRootRun(
     options.signal.removeEventListener("abort", abort);
   }
 }
+
+function ignorePumpReportedFailure(): void {}

@@ -100,7 +100,7 @@ export function useAgentSession(
             abort = controller;
           },
           pump: runPump.pump,
-          onConnectionLost: reportConnectionLoss,
+          onSynchronizationFailed: reportSynchronizationFailure,
         }).then((authoritativeView) => authoritativeView !== null);
       },
     });

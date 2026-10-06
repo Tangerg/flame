@@ -18,6 +18,7 @@ import { useAgentSession } from "./useAgentSession";
 import { selectCurrentRootRun } from "../application/view/runTree";
 import { selectAwaitingInterrupts } from "../application/view/awaitingInterrupts";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
+import { useNotificationStore } from "@/plugins/sdk/notifications";
 
 let runtimeClient: () => FlameClient = () => {
   throw new Error("Runtime test client is not configured");
@@ -81,6 +82,23 @@ describe("useAgentSession driver lifecycle", () => {
     expect(useAgentSessionStore.getState().openSessionIds).toContain(SID);
     expect(useAgentSessionStore.getState().lastSessionId).toBe(SID);
     expect(useAgentStore.getState().sessions[SID]!.send).not.toBeNull();
+  });
+
+  it("tells the user when restoring the mounted session projection fails", async () => {
+    const { driver } = parkedDriver();
+    useNotificationStore.setState({ log: [] });
+    runtimeClient = () =>
+      ({
+        sessions: { snapshot: vi.fn().mockRejectedValue(new Error("snapshot rejected")) },
+      }) as unknown as FlameClient;
+
+    renderHook(() => useAgentSession(getRuntimeClient, () => driver, SID, vi.fn()));
+
+    await waitFor(() => {
+      expect(useNotificationStore.getState().log).toContainEqual(
+        expect.objectContaining({ level: "error", plugin: "session" }),
+      );
+    });
   });
 
   it("uses session identity as the lifecycle key and the latest factory at that boundary", () => {
