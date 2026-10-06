@@ -39,15 +39,26 @@ func segmentTestCost(t *testing.T, usd float64) accounting.Cost {
 
 const checkpointBuildID = testsupport.BuildID
 
+// mustResumeClaim claims pending with the Items it names, read from the
+// transcript the way Resume reads them before the claim.
 func mustResumeClaim(
 	t testing.TB,
+	items *sqlite.TranscriptStore,
 	commitID runtimeidentity.CommitID,
 	pending runs.Pending,
 	answers []runs.InterruptAnswer,
 	claimedAt time.Time,
 ) runs.ResumeClaimCommit {
 	t.Helper()
-	claim, err := runs.NewResumeClaimCommit(commitID, pending, answers, claimedAt)
+	itemsByID := make(map[string]transcript.Item)
+	for _, open := range pending.Interrupts {
+		item, found, err := items.Item(t.Context(), open.ItemID)
+		if err != nil || !found {
+			t.Fatalf("read interrupt Item %q: found=%v err=%v", open.ItemID, found, err)
+		}
+		itemsByID[open.ItemID] = item
+	}
+	claim, err := runs.NewResumeClaimCommit(commitID, pending, itemsByID, answers, claimedAt)
 	if err != nil {
 		t.Fatalf("prepare Resume claim: %v", err)
 	}
@@ -706,7 +717,7 @@ func newOpeningResumeFixture(t *testing.T, suspendRoot bool) openingResumeFixtur
 	}
 	pending := runs.Pending{
 		RootRunID: "run_root", SessionID: "session_1", ExecutorID: "turn_1",
-		Interrupts: childInterrupts,
+		Interrupts: runs.OpenInterruptsOf(childInterrupts),
 		Bindings: []runs.InterruptBinding{{
 			InterruptItemID: "item_child", MemberID: "member_child", RequestID: "request_child",
 		}},
@@ -714,8 +725,7 @@ func newOpeningResumeFixture(t *testing.T, suspendRoot bool) openingResumeFixtur
 			{RunID: "run_child", MemberID: "member_child"},
 			{RunID: "run_root", MemberID: "member_root"},
 		},
-		CreatedAt: createdAt.Add(time.Second),
-	}
+		CreatedAt: createdAt.Add(time.Second)}
 	seedPending(t, database, pending, run.Capabilities{
 		ChildRuns: true, InterruptKinds: []interrupt.Kind{interrupt.Question},
 	}, testsupport.ParkedMember{RunID: "run_child", Lineage: lineage})
@@ -1103,8 +1113,8 @@ func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
 		"run_1", "ses_1", rootMemberID, "request-member_1", "item_question", parkedAt,
 	)
 	pending.Continuations[0].DrainedTools = []runs.DrainedTool{{
-		ItemID: "item_tool", ItemOccurredAt: toolStartedAt,
-		CallID: "tool_ask", Name: "ask_user", Arguments: "{}",
+		ItemID: "item_tool",
+		CallID: "tool_ask",
 	}}
 	barrier := mustTreeBarrier(
 		t,
@@ -1246,15 +1256,7 @@ func TestClaimResumeAtomicallyRecordsAnswerAndInvalidatesCheckpoint(t *testing.T
 		t,
 		"run_claim", "session_claim", "member_claim", "request_claim", "item_claim", createdAt.Add(time.Second),
 	)
-	questionItem, err := transcript.NewQuestion(transcript.ItemIdentity{
-		SessionID:  pending.SessionID,
-		RunID:      pending.Interrupts[0].RunID,
-		ItemID:     pending.Interrupts[0].ItemID,
-		OccurredAt: pending.Interrupts[0].ItemOccurredAt,
-	}, *pending.Interrupts[0].Question)
-	if err != nil {
-		t.Fatalf("new question Item: %v", err)
-	}
+	questionItem := singleRunQuestionItem(t, pending)
 	if appendItemErr := transcriptStore.AppendItem(ctx, questionItem); appendItemErr != nil {
 		t.Fatalf("seed question Item: %v", appendItemErr)
 	}
@@ -1309,7 +1311,7 @@ func TestClaimResumeAtomicallyRecordsAnswerAndInvalidatesCheckpoint(t *testing.T
 		Resolution:      interrupt.Resolution{Approved: true, Answers: [][]string{{"continue"}}},
 	}}
 	claim := mustResumeClaim(
-		t, testCommitID("run_commit_resume_claim"), pending, answers, claimedAt,
+		t, transcriptStore, testCommitID("run_commit_resume_claim"), pending, answers, claimedAt,
 	)
 	replacements, err := claim.QuestionReplacements()
 	if err != nil {
@@ -1328,7 +1330,7 @@ func TestClaimResumeAtomicallyRecordsAnswerAndInvalidatesCheckpoint(t *testing.T
 	stale := pending
 	stale.ExecutorID = "turn_stale"
 	staleClaim := mustResumeClaim(
-		t, testCommitID("run_commit_stale_resume_claim"), stale, answers, claimedAt,
+		t, transcriptStore, testCommitID("run_commit_stale_resume_claim"), stale, answers, claimedAt,
 	)
 	if _, claimResumeErr := effects.ClaimResume(ctx, staleClaim); claimResumeErr == nil {
 		t.Fatal("ClaimResume accepted a stale waiting hand-off")
@@ -1378,7 +1380,6 @@ func TestClaimResumeAtomicallyRecordsAnswerAndInvalidatesCheckpoint(t *testing.T
 
 	next := pending
 	next.Interrupts[0].ItemID = "item_next"
-	next.Interrupts[0].ItemOccurredAt = claimedAt.Add(time.Second)
 	next.Bindings[0].InterruptItemID = "item_next"
 	next.Bindings[0].RequestID = "request_next"
 	next.CreatedAt = claimedAt.Add(time.Second)
@@ -1420,11 +1421,7 @@ func TestClaimResumeAtomicallyPersistsToolApprovalDecision(t *testing.T) {
 	}
 	invocation := transcript.ToolInvocation{Name: "shell", Arguments: arguments}
 	approvalCapabilities := run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval}}
-	pending.Interrupts[0].Kind = interrupt.Approval
-	pending.Interrupts[0].Question = nil
-	pending.Interrupts[0].Approval = &transcript.Approval{
-		Tool: invocation, Risk: tool.RiskHigh,
-	}
+	pending.Interrupts[0].Approval = &runs.ApprovalReview{Risk: tool.RiskHigh}
 	pending.Bindings[0].ToolCallID = "call_approval_claim"
 	if validateErr := pending.Validate(); validateErr != nil {
 		t.Fatalf("approval Pending: %v", validateErr)
@@ -1436,7 +1433,7 @@ func TestClaimResumeAtomicallyPersistsToolApprovalDecision(t *testing.T) {
 	runStore := sqlite.NewRunStore(db)
 	toolItem, err := transcript.NewToolCall(transcript.ItemIdentity{
 		SessionID: pending.SessionID, RunID: pending.RootRunID,
-		ItemID: pending.Interrupts[0].ItemID, OccurredAt: pending.Interrupts[0].ItemOccurredAt,
+		ItemID: pending.Interrupts[0].ItemID, OccurredAt: pending.CreatedAt,
 	}, invocation, tool.SafetyClassExec)
 	if err != nil {
 		t.Fatalf("new ToolCall: %v", err)
@@ -1482,6 +1479,7 @@ func TestClaimResumeAtomicallyPersistsToolApprovalDecision(t *testing.T) {
 	}
 	claim := mustResumeClaim(
 		t,
+		transcriptStore,
 		testCommitID("run_commit_approval_claim"),
 		pending,
 		[]runs.InterruptAnswer{answer},
@@ -1654,15 +1652,7 @@ func newResumeClaimSQLiteFixture(t *testing.T, suffix string) resumeClaimSQLiteF
 		"item_claim_"+suffix,
 		createdAt.Add(time.Second),
 	)
-	questionItem, err := transcript.NewQuestion(transcript.ItemIdentity{
-		SessionID:  pending.SessionID,
-		RunID:      pending.Interrupts[0].RunID,
-		ItemID:     pending.Interrupts[0].ItemID,
-		OccurredAt: pending.Interrupts[0].ItemOccurredAt,
-	}, *pending.Interrupts[0].Question)
-	if err != nil {
-		t.Fatalf("new question Item: %v", err)
-	}
+	questionItem := singleRunQuestionItem(t, pending)
 	if appendItemErr := transcriptStore.AppendItem(ctx, questionItem); appendItemErr != nil {
 		t.Fatalf("seed question Item: %v", appendItemErr)
 	}
@@ -1710,6 +1700,7 @@ func newResumeClaimSQLiteFixture(t *testing.T, suffix string) resumeClaimSQLiteF
 	}}
 	claim := mustResumeClaim(
 		t,
+		transcriptStore,
 		testCommitID("run_commit_resume_claim_"+suffix),
 		pending,
 		answers,
@@ -2439,20 +2430,18 @@ func newWaitingCancellationSQLiteFixtureAt(
 		RunID:    rootRun.ID(),
 		MemberID: "member_root",
 		DrainedTools: []runs.DrainedTool{{
-			ItemID: parentItem.ID(), ItemOccurredAt: parentItem.OccurredAt(),
+			ItemID: parentItem.ID(),
 			CallID: "call_child", SourceCallID: "provider_child",
-			Name: "delegate_task", Arguments: "{}",
 		}},
 	})
 	pending := runs.Pending{
 		RootRunID:     rootRun.ID(),
 		SessionID:     rootRun.SessionID(),
 		ExecutorID:    "turn_1",
-		Interrupts:    pendingInterrupts,
+		Interrupts:    runs.OpenInterruptsOf(pendingInterrupts),
 		Bindings:      pendingBindings,
 		Continuations: pendingContinuations,
-		CreatedAt:     finishedAt,
-	}
+		CreatedAt:     finishedAt}
 	if validateErr := pending.Validate(); validateErr != nil {
 		t.Fatalf("pending fixture: %v", validateErr)
 	}

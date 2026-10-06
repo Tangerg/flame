@@ -10,6 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
 func TestResumeClaimDerivesExactToolApprovalResolutions(t *testing.T) {
@@ -23,8 +24,15 @@ func TestResumeClaimDerivesExactToolApprovalResolutions(t *testing.T) {
 			Resolution:      interrupt.Resolution{Approved: index == 0},
 		}
 	}
+	items := fixtureItems(pending)
+	written := items["item_b"]
+	items["item_b"] = testsupport.MustRestoreItem(testsupport.ItemInput{
+		ID: written.ID(), SessionID: written.SessionID(), RunID: written.RunID(),
+		Kind: transcript.ToolCall, Status: transcript.ItemRunning, OccurredAt: written.OccurredAt(),
+		Tool: &transcript.ToolInvocation{Name: "write"},
+	})
 	claim, err := NewResumeClaimCommit(
-		testCommitID("run_commit_approval"), pending, answers, pending.CreatedAt.Add(time.Second),
+		testCommitID("run_commit_approval"), pending, items, answers, pending.CreatedAt.Add(time.Second),
 	)
 	if err != nil {
 		t.Fatalf("NewResumeClaimCommit: %v", err)
@@ -53,14 +61,15 @@ func TestResumeClaimDerivesExactToolApprovalResolutions(t *testing.T) {
 
 func TestResumeClaimOwnsPendingAndQuestionAnswers(t *testing.T) {
 	pending := validTreePending()
-	pending.Interrupts = []transcript.Interrupt{{
-		ItemID: "item_grandchild", ItemOccurredAt: pending.CreatedAt,
-		RunID: "run_grandchild", Kind: interrupt.Question,
+	pending.Interrupts = []OpenInterrupt{{ItemID: "item_grandchild"}}
+	items := map[string]transcript.Item{"item_grandchild": testsupport.MustRestoreItem(testsupport.ItemInput{
+		ID: "item_grandchild", SessionID: pending.SessionID, RunID: "run_grandchild",
+		Kind: transcript.QuestionItem, OccurredAt: pending.CreatedAt,
 		Question: &transcript.Question{Fields: []transcript.QuestionField{{
 			Prompt: "Continue?", Kind: transcript.QuestionChoice,
 			Options: []transcript.QuestionOption{{Label: "yes"}, {Label: "no"}},
 		}}},
-	}}
+	})}
 	pending.Bindings = []InterruptBinding{{
 		InterruptItemID: "item_grandchild", MemberID: "member_grandchild", RequestID: "request_grandchild",
 	}}
@@ -70,25 +79,23 @@ func TestResumeClaimOwnsPendingAndQuestionAnswers(t *testing.T) {
 	}}
 
 	claim, err := NewResumeClaimCommit(
-		testCommitID("run_commit_question"), pending, answers, pending.CreatedAt.Add(time.Second),
+		testCommitID("run_commit_question"), pending, items, answers, pending.CreatedAt.Add(time.Second),
 	)
 	if err != nil {
 		t.Fatalf("NewResumeClaimCommit: %v", err)
 	}
-	pending.Interrupts[0].Question.Fields[0].Options[0].Label = "changed input"
+	delete(items, "item_grandchild")
 	pending.Continuations[0].MemberID = "member_changed"
 	answers[0].Resolution.Answers[0][0] = "changed input"
 
 	ownedPending := claim.Pending()
 	ownedAnswers := claim.Answers()
-	ownedPending.Interrupts[0].Question.Fields[0].Options[0].Label = "changed accessor"
 	ownedPending.Continuations[0].MemberID = "member_changed_again"
 	ownedAnswers[0].Resolution.Answers[0][0] = "changed accessor"
 
 	gotPending := claim.Pending()
 	gotAnswers := claim.Answers()
-	if gotPending.Interrupts[0].Question.Fields[0].Options[0].Label != "yes" ||
-		gotPending.Continuations[0].MemberID != "member_grandchild" ||
+	if gotPending.Continuations[0].MemberID != "member_grandchild" ||
 		gotAnswers[0].Resolution.Answers[0][0] != "yes" {
 		t.Fatalf("Resume claim ownership = pending:%+v answers:%+v", gotPending, gotAnswers)
 	}
@@ -168,8 +175,8 @@ func TestPendingValidateRequiresOneCanonicalConnectedTree(t *testing.T) {
 			name: "approval Tool call is also drained",
 			mutate: func(p *Pending) {
 				p.Continuations[0].DrainedTools = []DrainedTool{{
-					ItemID: "item_drained", ItemOccurredAt: p.CreatedAt,
-					CallID: "call_grandchild", Name: "shell", Arguments: `{}`,
+					ItemID: "item_drained",
+					CallID: "call_grandchild",
 				}}
 			},
 			want: "approval Tool call \"call_grandchild\" is also drained",
@@ -180,22 +187,6 @@ func TestPendingValidateRequiresOneCanonicalConnectedTree(t *testing.T) {
 				p.Interrupts[0].ItemID += " "
 			},
 			want: "item identity contains whitespace or a non-printing character",
-		},
-		{
-			name: "interrupt item occurrence is missing",
-			mutate: func(p *Pending) {
-				p.Interrupts[0].ItemOccurredAt = time.Time{}
-			},
-			want: "item occurrence time is required",
-		},
-		{
-			name: "drained tool item occurrence is missing",
-			mutate: func(p *Pending) {
-				p.Continuations[0].DrainedTools = []DrainedTool{{
-					ItemID: "item_open", CallID: "call_open", Name: "shell", Arguments: "{}",
-				}}
-			},
-			want: "item occurrence time is required",
 		},
 	}
 	for _, test := range tests {
@@ -286,7 +277,7 @@ func validTreePending() Pending {
 		RootRunID:  "run_root",
 		SessionID:  "session_1",
 		ExecutorID: "turn_1",
-		Interrupts: []transcript.Interrupt{
+		Interrupts: OpenInterruptsOf([]transcript.Interrupt{
 			{
 				ItemID: "item_grandchild", ItemOccurredAt: createdAt,
 				RunID: "run_grandchild",
@@ -303,7 +294,7 @@ func validTreePending() Pending {
 					Tool: transcript.ToolInvocation{Name: "write"}, Risk: "medium",
 				},
 			},
-		},
+		}),
 		Bindings: []InterruptBinding{
 			{InterruptItemID: "item_grandchild", MemberID: "member_grandchild", RequestID: "request_grandchild", ToolCallID: "call_grandchild"},
 			{InterruptItemID: "item_b", MemberID: "member_b", RequestID: "request_b", ToolCallID: "call_b"},
@@ -326,6 +317,5 @@ func validTreePending() Pending {
 				MemberID: "member_root",
 			},
 		},
-		CreatedAt: createdAt,
-	}
+		CreatedAt: createdAt}
 }

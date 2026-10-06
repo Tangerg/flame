@@ -57,12 +57,12 @@ func singleRunPending(
 		RootRunID:  runID,
 		SessionID:  sessionID,
 		ExecutorID: "turn_" + runID,
-		Interrupts: []transcript.Interrupt{{
+		Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 			ItemID: itemID, ItemOccurredAt: barrierCreatedAt,
 			RunID:    runID,
 			Kind:     interrupt.Question,
 			Question: question,
-		}},
+		}}),
 		Bindings: []runs.InterruptBinding{{
 			InterruptItemID: itemID,
 			MemberID:        memberID,
@@ -72,8 +72,20 @@ func singleRunPending(
 			RunID:    runID,
 			MemberID: memberID,
 		}},
-		CreatedAt: barrierCreatedAt,
+		CreatedAt: barrierCreatedAt}
+}
+
+// singleRunQuestionItem is the Question Item singleRunPending's interrupt names.
+func singleRunQuestionItem(t testing.TB, pending runs.Pending) transcript.Item {
+	t.Helper()
+	item, err := transcript.NewQuestion(transcript.ItemIdentity{
+		SessionID: pending.SessionID, RunID: pending.RootRunID,
+		ItemID: pending.Interrupts[0].ItemID, OccurredAt: pending.CreatedAt,
+	}, transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}})
+	if err != nil {
+		t.Fatalf("new question Item: %v", err)
 	}
+	return item
 }
 
 func mustTreeBarrier(
@@ -426,8 +438,8 @@ func TestCommitTreeBarrierRecordsPendingSetAndSuspends(t *testing.T) {
 		"run_1", "ses_1", "member_1", "request_1", "int_1", barrierCreatedAt,
 	)
 	pending.Continuations[0].DrainedTools = []runs.DrainedTool{{
-		ItemID: "tool_1", ItemOccurredAt: barrierCreatedAt,
-		CallID: "call_1", Name: "ask_user", Arguments: "{}",
+		ItemID: "tool_1",
+		CallID: "call_1",
 	}}
 	barrier := mustTreeBarrier(
 		t,
@@ -447,11 +459,7 @@ func TestCommitTreeBarrierRecordsPendingSetAndSuspends(t *testing.T) {
 				UpdatedAt:    barrierCreatedAt,
 				MessageMark:  run.UnknownMessageMark})),
 
-			Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
-				SessionID: "ses_1", RunID: "run_1", ID: "int_1",
-				Kind:       transcript.QuestionItem,
-				OccurredAt: barrierCreatedAt, Question: pending.Interrupts[0].Question,
-			})},
+			Items: []transcript.Item{singleRunQuestionItem(t, pending)},
 		}},
 		testRootExecutorCheckpoint(),
 	)

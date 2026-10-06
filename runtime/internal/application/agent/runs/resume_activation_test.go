@@ -51,7 +51,7 @@ func TestResumeActivationFailureSettlesAcceptedToolApproval(t *testing.T) {
 			}
 			if len(settled) != 1 || settled[0].ID() != "item_1" ||
 				settled[0].Status() != transcript.ItemIncomplete || settled[0].ApprovalDecision() != decision ||
-				!settled[0].OccurredAt().Equal(pending.Interrupts[0].ItemOccurredAt) {
+				!settled[0].OccurredAt().Equal(fixtureItems(pending)["item_1"].OccurredAt()) {
 				t.Fatalf("accepted approval left unsettled after activation failure: %+v", settled)
 			}
 		})

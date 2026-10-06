@@ -104,15 +104,14 @@ func testRecoveryMarksClaimedResumeLost(t *testing.T, openingCommitted bool) {
 		t.Fatalf("Suspend: %v", suspendErr)
 	}
 	pending := runs.Pending{
-		RootRunID: "run_claim", SessionID: "session_claim", ExecutorID: "execution_claim", Interrupts: []transcript.Interrupt{request},
+		RootRunID: "run_claim", SessionID: "session_claim", ExecutorID: "execution_claim", Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{request}),
 		Bindings: []runs.InterruptBinding{{
 			InterruptItemID: request.ItemID, MemberID: "member_claim", RequestID: "request_claim",
 		}},
 		Continuations: []runs.Continuation{{
 			RunID: "run_claim", MemberID: "member_claim",
 		}},
-		CreatedAt: createdAt.Add(time.Second),
-	}
+		CreatedAt: createdAt.Add(time.Second)}
 	interruptStore := persistence.NewInterruptStore(sqlite.NewInterruptStore(db))
 	if openErr := interruptStore.Open(ctx, pending); openErr != nil {
 		t.Fatalf("Open Pending: %v", openErr)
@@ -637,15 +636,14 @@ func TestRecoveryRejectsPartialParkWithoutMutatingIt(t *testing.T) {
 	}
 	pending := runs.Pending{
 		RootRunID: "run_partial", SessionID: "session", ExecutorID: "turn_partial",
-		Interrupts: []transcript.Interrupt{pendingInterrupt},
+		Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{pendingInterrupt}),
 		Bindings: []runs.InterruptBinding{{
 			InterruptItemID: pendingInterrupt.ItemID, MemberID: "member_root", RequestID: "request_root",
 		}},
 		Continuations: []runs.Continuation{{
 			RunID: "run_partial", MemberID: "member_root",
 		}},
-		CreatedAt: createdAt.Add(time.Second),
-	}
+		CreatedAt: createdAt.Add(time.Second)}
 	if openErr := interruptStore.Open(ctx, pending); openErr != nil {
 		t.Fatalf("Open Pending: %v", openErr)
 	}

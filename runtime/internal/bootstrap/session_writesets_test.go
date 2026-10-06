@@ -135,12 +135,12 @@ func bootstrapPending(
 		RootRunID:  runID,
 		SessionID:  sessionID,
 		ExecutorID: "turn_" + runID,
-		Interrupts: []transcript.Interrupt{{
+		Interrupts: runsapp.OpenInterruptsOf([]transcript.Interrupt{{
 			ItemID: itemID, ItemOccurredAt: itemOccurredAt,
 			RunID:    runID,
 			Kind:     interrupt.Question,
 			Question: question,
-		}},
+		}}),
 		Bindings: []runsapp.InterruptBinding{{
 			InterruptItemID: itemID,
 			MemberID:        memberID,
@@ -150,8 +150,7 @@ func bootstrapPending(
 			RunID:    runID,
 			MemberID: memberID,
 		}},
-		CreatedAt: barrierCreatedAt,
-	}
+		CreatedAt: barrierCreatedAt}
 }
 
 // sessionStores keeps the real durable collaborators visible to this integration

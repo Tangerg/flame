@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
@@ -40,7 +39,7 @@ type InterruptRecord struct {
 	RootRunID     string
 	SessionID     string
 	ExecutorID    string
-	Interrupts    []transcript.Interrupt
+	Interrupts    []OpenInterruptRecord
 	Bindings      []InterruptBindingRecord
 	Continuations []ContinuationRecord
 	CreatedAt     time.Time
@@ -61,14 +60,25 @@ type InterruptBindingRecord struct {
 	ToolCallID      string
 }
 
+// OpenInterruptRecord is the stored open interrupt: the Item it names and, for
+// an approval, the policy's review. The Item owns everything else.
+type OpenInterruptRecord struct {
+	ItemID   string
+	Approval *ApprovalReviewRecord
+}
+
+// ApprovalReviewRecord is the stored approval policy review of one held call.
+type ApprovalReviewRecord struct {
+	Risk         tool.RiskLevel
+	Reason       string
+	Rememberable bool
+}
+
 // DrainedToolRecord is the stored identity of an open tool invocation.
 type DrainedToolRecord struct {
-	ItemID         string
-	ItemOccurredAt time.Time
-	CallID         string
-	SourceCallID   string
-	Name           string
-	Arguments      string
+	ItemID       string
+	CallID       string
+	SourceCallID string
 }
 
 func (i InterruptRecord) rootContinuation() (ContinuationRecord, bool) {
@@ -111,28 +121,20 @@ func (i InterruptRecord) validateStorageShape() error {
 }
 
 type drainedToolRow struct {
-	ItemID         string `json:"itemId"`
-	ItemOccurredAt int64  `json:"itemOccurredAt"`
-	CallID         string `json:"callId"`
-	SourceCallID   string `json:"sourceCallId,omitempty"`
-	Name           string `json:"name"`
-	Arguments      string `json:"arguments"`
+	ItemID       string `json:"itemId"`
+	CallID       string `json:"callId"`
+	SourceCallID string `json:"sourceCallId,omitempty"`
 }
 
 type interruptPayload struct {
-	ItemID         string           `json:"itemId"`
-	ItemOccurredAt int64            `json:"itemOccurredAt"`
-	RunID          string           `json:"runId"`
-	Kind           interrupt.Kind   `json:"kind"`
-	Approval       *approvalPayload `json:"approval,omitzero"`
-	Question       *questionPayload `json:"question,omitzero"`
+	ItemID   string           `json:"itemId"`
+	Approval *approvalPayload `json:"approval,omitzero"`
 }
 
 type approvalPayload struct {
-	Tool         toolInvocationPayload `json:"tool"`
-	Risk         string                `json:"risk,omitempty"`
-	Reason       string                `json:"reason,omitempty"`
-	Rememberable bool                  `json:"rememberable,omitzero"`
+	Risk         string `json:"risk"`
+	Reason       string `json:"reason,omitempty"`
+	Rememberable bool   `json:"rememberable,omitzero"`
 }
 
 type continuationRow struct {
@@ -162,11 +164,7 @@ func (i *InterruptStore) Open(ctx context.Context, p InterruptRecord) error {
 		return fmt.Errorf("sqlite: open interrupt: %w", err)
 	}
 	root, _ := p.rootContinuation()
-	interrupts, err := interruptPayloads(p.Interrupts)
-	if err != nil {
-		return fmt.Errorf("sqlite: encode interrupts: %w", err)
-	}
-	payload, err := encodeStoredJSON(interrupts)
+	payload, err := encodeStoredJSON(interruptPayloads(p.Interrupts))
 	if err != nil {
 		return fmt.Errorf("sqlite: encode interrupts: %w", err)
 	}
@@ -589,7 +587,7 @@ func scanPending(row scanRow) (InterruptRecord, error) {
 // decodeInterrupts reads the stored open-interrupt set. It is the one reader of
 // that encoding: the Run read joins the same column to prove a parked Run's set
 // is intact, and a second decoder there could disagree about the format.
-func decodeInterrupts(payload string) ([]transcript.Interrupt, error) {
+func decodeInterrupts(payload string) ([]OpenInterruptRecord, error) {
 	if payload == "" {
 		return nil, nil
 	}
@@ -603,11 +601,7 @@ func decodeInterrupts(payload string) ([]transcript.Interrupt, error) {
 func drainedToolRows(tools []DrainedToolRecord) []drainedToolRow {
 	rows := make([]drainedToolRow, len(tools))
 	for index, tool := range tools {
-		rows[index] = drainedToolRow{
-			ItemID: tool.ItemID, ItemOccurredAt: tool.ItemOccurredAt.UnixNano(),
-			CallID: tool.CallID, SourceCallID: tool.SourceCallID,
-			Name: tool.Name, Arguments: tool.Arguments,
-		}
+		rows[index] = drainedToolRow(tool)
 	}
 	return rows
 }
@@ -615,11 +609,7 @@ func drainedToolRows(tools []DrainedToolRecord) []drainedToolRow {
 func drainedToolsFromRows(rows []drainedToolRow) []DrainedToolRecord {
 	tools := make([]DrainedToolRecord, len(rows))
 	for index, row := range rows {
-		tools[index] = DrainedToolRecord{
-			ItemID: row.ItemID, ItemOccurredAt: time.Unix(0, row.ItemOccurredAt).UTC(),
-			CallID: row.CallID, SourceCallID: row.SourceCallID,
-			Name: row.Name, Arguments: row.Arguments,
-		}
+		tools[index] = DrainedToolRecord(row)
 	}
 	return tools
 }
@@ -648,74 +638,32 @@ func continuationsFromRows(rows []continuationRow) []ContinuationRecord {
 	return values
 }
 
-func interruptPayloads(values []transcript.Interrupt) ([]interruptPayload, error) {
+func interruptPayloads(values []OpenInterruptRecord) []interruptPayload {
 	rows := make([]interruptPayload, len(values))
 	for index, value := range values {
-		row := interruptPayload{
-			ItemID: value.ItemID, ItemOccurredAt: value.ItemOccurredAt.UnixNano(),
-			RunID: value.RunID, Kind: value.Kind,
+		rows[index] = interruptPayload{ItemID: value.ItemID}
+		if review := value.Approval; review != nil {
+			rows[index].Approval = &approvalPayload{
+				Risk: string(review.Risk), Reason: review.Reason, Rememberable: review.Rememberable,
+			}
 		}
-		switch value.Kind {
-		case interrupt.Approval:
-			if value.Approval == nil {
-				return nil, fmt.Errorf("interrupt[%d] approval payload is missing", index)
-			}
-			row.Approval = &approvalPayload{
-				Tool: encodeToolInvocationPayload(value.Approval.Tool),
-				Risk: string(value.Approval.Risk), Reason: value.Approval.Reason,
-				Rememberable: value.Approval.Rememberable,
-			}
-		case interrupt.Question:
-			if value.Question == nil {
-				return nil, fmt.Errorf("interrupt[%d] question payload is missing", index)
-			}
-			question, err := encodeQuestionPayload(*value.Question)
-			if err != nil {
-				return nil, fmt.Errorf("interrupt[%d]: %w", index, err)
-			}
-			row.Question = &question
-		default:
-			return nil, fmt.Errorf("interrupt[%d] has unknown kind %q", index, value.Kind)
-		}
-		rows[index] = row
 	}
-	return rows, nil
+	return rows
 }
 
-func interruptsFromPayloads(rows []interruptPayload) ([]transcript.Interrupt, error) {
-	values := make([]transcript.Interrupt, len(rows))
+func interruptsFromPayloads(rows []interruptPayload) ([]OpenInterruptRecord, error) {
+	values := make([]OpenInterruptRecord, len(rows))
 	for index, row := range rows {
-		if !row.Kind.Valid() {
-			return nil, fmt.Errorf("interrupt[%d] has unknown kind %q", index, row.Kind)
+		values[index] = OpenInterruptRecord{ItemID: row.ItemID}
+		if review := row.Approval; review != nil {
+			risk := tool.RiskLevel(review.Risk)
+			if !risk.Valid() {
+				return nil, fmt.Errorf("interrupt[%d] approval has unknown risk %q", index, review.Risk)
+			}
+			values[index].Approval = &ApprovalReviewRecord{
+				Risk: risk, Reason: review.Reason, Rememberable: review.Rememberable,
+			}
 		}
-		value := transcript.Interrupt{
-			ItemID: row.ItemID, ItemOccurredAt: time.Unix(0, row.ItemOccurredAt).UTC(),
-			RunID: row.RunID, Kind: row.Kind,
-		}
-		switch row.Kind {
-		case interrupt.Approval:
-			if row.Approval == nil || row.Question != nil {
-				return nil, fmt.Errorf("interrupt[%d] approval payload is invalid", index)
-			}
-			invocation, err := decodeToolInvocationPayload(row.Approval.Tool)
-			if err != nil {
-				return nil, fmt.Errorf("interrupt[%d] approval tool: %w", index, err)
-			}
-			value.Approval = &transcript.Approval{
-				Tool: invocation, Risk: tool.RiskLevel(row.Approval.Risk),
-				Reason: row.Approval.Reason, Rememberable: row.Approval.Rememberable,
-			}
-		case interrupt.Question:
-			if row.Question == nil || row.Approval != nil {
-				return nil, fmt.Errorf("interrupt[%d] question payload is invalid", index)
-			}
-			question, err := decodeQuestionPayload(*row.Question)
-			if err != nil {
-				return nil, fmt.Errorf("interrupt[%d]: %w", index, err)
-			}
-			value.Question = &question
-		}
-		values[index] = value
 	}
 	return values, nil
 }

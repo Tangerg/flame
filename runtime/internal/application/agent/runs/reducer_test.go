@@ -885,13 +885,12 @@ func TestReducerCarriesLaterPausedCallIdentityAcrossSequentialResumes(t *testing
 
 	config := testReducerConfig()
 	config.SegmentID = "seg_2"
-	config.Continuation = testTreeContinuation(Pending{
+	config.Continuation = testTreeContinuationOf(Pending{
 		RootRunID: "run_1", SessionID: "ses_1",
-		Interrupts: firstInterrupted.Interrupts,
+		Interrupts: OpenInterruptsOf(firstInterrupted.Interrupts),
 		Continuations: []Continuation{{
 			RunID: "run_1", DrainedTools: slices.Clone(first.drained),
-		}},
-	})
+		}}}, firstInterrupted.Interrupts)
 	request := firstInterrupted.Interrupts[0]
 	if err := config.Continuation.bindToolApprovalResolutions([]ToolApprovalResolution{{
 		Identity: transcript.ItemIdentity{
@@ -934,7 +933,6 @@ func TestReducerCarriesLaterPausedCallIdentityAcrossSequentialResumes(t *testing
 
 func TestReducerResumeKeepsEditedApprovalIdentityBesideSameNameDrainedTool(t *testing.T) {
 	approvalAt := time.Unix(1, 0).UTC()
-	siblingAt := time.Unix(2, 0).UTC()
 	reviewed := transcript.ToolInvocation{
 		Name: "shell", Arguments: testToolArguments(t, map[string]any{"command": "rm old"}),
 	}
@@ -942,19 +940,18 @@ func TestReducerResumeKeepsEditedApprovalIdentityBesideSameNameDrainedTool(t *te
 	config.SegmentID = "seg_resumed"
 	config.Continuation = testTreeContinuation(Pending{
 		RootRunID: "run_1", SessionID: "ses_1",
-		Interrupts: []transcript.Interrupt{{
+		Interrupts: OpenInterruptsOf([]transcript.Interrupt{{
 			ItemID: "item_approval", ItemOccurredAt: approvalAt,
 			RunID: "run_1", Kind: interrupt.Approval,
 			Approval: &transcript.Approval{Tool: reviewed},
-		}},
+		}}),
 		Continuations: []Continuation{{
 			RunID: "run_1",
 			DrainedTools: []DrainedTool{{
-				ItemID: "item_sibling", ItemOccurredAt: siblingAt,
-				CallID: "call_sibling", Name: "shell", Arguments: `{"command":"pwd"}`,
+				ItemID: "item_sibling",
+				CallID: "call_sibling",
 			}},
-		}},
-	})
+		}}})
 	config.Continuation.approvalResolutions = map[string]ToolApprovalResolution{
 		"item_approval": {
 			Identity: transcript.ItemIdentity{
@@ -1104,13 +1101,13 @@ func TestReducerResumeReusesInterruptedItems(t *testing.T) {
 		}),
 	}
 	config := testReducerConfig()
-	config.Continuation = testTreeContinuation(Pending{
+	interrupts := []transcript.Interrupt{
+		{ItemID: "item_approval", ItemOccurredAt: approvalAt, RunID: "run_1", Kind: interrupt.Approval, Approval: &transcript.Approval{Tool: reviewed, Risk: "medium"}},
+		{ItemID: "item_question", ItemOccurredAt: questionAt, RunID: "run_1", Kind: interrupt.Question, Question: question},
+	}
+	config.Continuation = testTreeContinuationOf(Pending{
 		RootRunID: "run_1", SessionID: "ses_1",
-		Interrupts: []transcript.Interrupt{
-			{ItemID: "item_approval", ItemOccurredAt: approvalAt, RunID: "run_1", Kind: interrupt.Approval, Approval: &transcript.Approval{Tool: reviewed, Risk: "medium"}},
-			{ItemID: "item_question", ItemOccurredAt: questionAt, RunID: "run_1", Kind: interrupt.Question, Question: question},
-		},
-	})
+		Interrupts: OpenInterruptsOf(interrupts)}, interrupts)
 	config.Continuation.approvalResolutions = map[string]ToolApprovalResolution{
 		"item_approval": {
 			Identity: transcript.ItemIdentity{
@@ -1284,11 +1281,10 @@ func TestReducerKeepsQuestionToolLifecycleOpenAcrossHITLResume(t *testing.T) {
 	config.Now = func() time.Time { return resumeNow }
 	config.Continuation = testTreeContinuation(Pending{
 		RootRunID: "run_1", SessionID: "ses_1",
-		Interrupts: finished.Interrupts,
+		Interrupts: OpenInterruptsOf(finished.Interrupts),
 		Continuations: []Continuation{{
 			RunID: "run_1", DrainedTools: slices.Clone(first.drained),
-		}},
-	})
+		}}})
 	resumed := newReducer(config)
 	mustOpen(t, resumed)
 	refired := mustReduce(t, resumed, ToolCallStarted{
@@ -1406,15 +1402,14 @@ func TestReducerResumesOnlyTheSameToolCall(t *testing.T) {
 			itemOccurredAt := time.Unix(1, 0).UTC()
 			config := testReducerConfig()
 			config.Continuation = testTreeContinuation(Pending{
-				RootRunID: "run_1", SessionID: "ses_1",
+				RootRunID: "run_1", SessionID: "ses_1", CreatedAt: itemOccurredAt.Add(time.Second),
 				Continuations: []Continuation{{
 					RunID: "run_1",
 					DrainedTools: []DrainedTool{{
-						ItemID: "item_original", ItemOccurredAt: itemOccurredAt,
-						CallID: "call_original", Name: "lookup", Arguments: `{"value":1}`,
+						ItemID: "item_original",
+						CallID: "call_original",
 					}},
-				}},
-			})
+				}}})
 			reducer := newReducer(config)
 			started := mustReduce(t, reducer, ToolCallStarted{
 				CallID: "call_new", ToolName: "lookup", Arguments: arguments,
@@ -1446,19 +1441,16 @@ func TestReducerTerminalizationClosesUnrestartedResumeTool(t *testing.T) {
 			name = "reported"
 		}
 		t.Run(name, func(t *testing.T) {
-			itemOccurredAt := time.Unix(1, 0).UTC()
 			config := testReducerConfig()
 			config.Continuation = testTreeContinuation(Pending{
 				RootRunID: "run_1", SessionID: "ses_1",
 				Continuations: []Continuation{{
 					RunID: "run_1",
 					DrainedTools: []DrainedTool{{
-						ItemID: "item_original", ItemOccurredAt: itemOccurredAt,
+						ItemID: "item_original",
 						CallID: "old_call", SourceCallID: "provider_original",
-						Name: "shell", Arguments: `{"command":"pwd"}`,
 					}},
-				}},
-			})
+				}}})
 			reducer := newReducer(config)
 			if _, err := reducer.open(); err != nil {
 				t.Fatalf("open resumed segment: %v", err)
@@ -1503,23 +1495,6 @@ func TestReducerTerminalizationClosesUnrestartedResumeTool(t *testing.T) {
 				t.Fatalf("unrestarted resume Tool conversation closure = %#v", closure)
 			}
 		})
-	}
-}
-
-func TestReducerRejectsMalformedDurableResumeArguments(t *testing.T) {
-	config := testReducerConfig()
-	config.Continuation = testTreeContinuation(Pending{
-		RootRunID: "run_1", SessionID: "ses_1",
-		Continuations: []Continuation{{
-			RunID: "run_1",
-			DrainedTools: []DrainedTool{{
-				ItemID: "item_broken", ItemOccurredAt: time.Unix(1, 0).UTC(), Name: "lookup", Arguments: "[]",
-			}},
-		}},
-	})
-	_, err := newReducer(config).open()
-	if !errors.Is(err, errReducerInvariant) || !errors.Is(err, tool.ErrInvalidArguments) {
-		t.Fatalf("open error = %v, want reducer invariant + invalid arguments", err)
 	}
 }
 
@@ -1654,7 +1629,7 @@ func TestReducerDrainsToolsInStartOrder(t *testing.T) {
 	if len(drained) != 3 {
 		t.Fatalf("drained tool count = %d, want 3", len(drained))
 	}
-	if got := []string{drained[0].Name, drained[1].Name, drained[2].Name}; !slices.Equal(got, []string{"first", "second", "third"}) {
+	if got := []string{drained[0].CallID, drained[1].CallID, drained[2].CallID}; !slices.Equal(got, []string{"call_z", "call_a", "call_m"}) {
 		t.Fatalf("drained tools = %v, want start order", got)
 	}
 	completed, err := reducer.drainTools()
@@ -1753,8 +1728,7 @@ func TestReducerReportsFrozenRunCapabilitiesOnEverySegment(t *testing.T) {
 	config := testReducerConfig()
 	config.Capabilities = frozen
 	config.Continuation = testTreeContinuation(Pending{
-		RootRunID: "run_1", SessionID: "ses_1",
-	})
+		RootRunID: "run_1", SessionID: "ses_1"})
 
 	reducer := newReducer(config)
 	opening := mustOpen(t, reducer)

@@ -248,8 +248,7 @@ func restoreManagedDelegateCall(
 		if drained.CallID != callID.String() {
 			continue
 		}
-		if drained.SourceCallID != child.ToolCall().ID || drained.Name != child.ToolCall().Name ||
-			drained.Arguments != arguments.Canonical() {
+		if drained.SourceCallID != child.ToolCall().ID {
 			return nil, fmt.Errorf("delegate child %s differs from its unfinished parent tool", child.ProcessID())
 		}
 		pending = true

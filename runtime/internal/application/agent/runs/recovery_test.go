@@ -1164,8 +1164,8 @@ func TestRecoveryPreservesQuestionToolWhileItsCheckpointIsResumable(t *testing.T
 		Tool:       &transcript.ToolInvocation{Name: "ask_user"},
 	})
 	pending.Continuations[0].DrainedTools = []DrainedTool{{
-		ItemID: toolItem.ID(), ItemOccurredAt: toolItem.OccurredAt(),
-		CallID: "tool:runtime:0", Name: "ask_user", Arguments: "{}",
+		ItemID: toolItem.ID(),
+		CallID: "tool:runtime:0",
 	}}
 	if err := pending.Validate(); err != nil {
 		t.Fatalf("Pending fixture: %v", err)
@@ -1345,9 +1345,8 @@ func TestRecoveryAtomicallyClosesLostQuestionToolContext(t *testing.T) {
 		Tool:       &transcript.ToolInvocation{Name: "ask_user"},
 	})
 	pending.Continuations[0].DrainedTools = []DrainedTool{{
-		ItemID: toolItem.ID(), ItemOccurredAt: toolItem.OccurredAt(),
+		ItemID: toolItem.ID(),
 		CallID: "tool:runtime:0", SourceCallID: "provider_call_open",
-		Name: "ask_user", Arguments: "{}",
 	}}
 	known := corechat.ToolResult{ID: "provider_written", Name: "write", Output: corechat.NewTextToolOutput("external write acknowledged before restart")}
 	conversation := []corechat.Message{
@@ -1541,7 +1540,7 @@ func coherentRecoveryPark(t *testing.T) (rundomain.Run, Pending, transcript.Item
 		RootRunID:  run.ID(),
 		SessionID:  run.SessionID(),
 		ExecutorID: "turn_root",
-		Interrupts: []transcript.Interrupt{interrupt},
+		Interrupts: OpenInterruptsOf([]transcript.Interrupt{interrupt}),
 		Bindings: []InterruptBinding{{
 			InterruptItemID: interrupt.ItemID,
 			MemberID:        "member_root",
@@ -1550,8 +1549,7 @@ func coherentRecoveryPark(t *testing.T) (rundomain.Run, Pending, transcript.Item
 		Continuations: []Continuation{{
 			RunID: run.ID(), MemberID: "member_root",
 		}},
-		CreatedAt: createdAt.Add(time.Second),
-	}
+		CreatedAt: createdAt.Add(time.Second)}
 	if err := pending.Validate(); err != nil {
 		t.Fatalf("Pending fixture: %v", err)
 	}

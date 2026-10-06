@@ -3,6 +3,7 @@ package runs
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -19,8 +20,11 @@ import (
 type ResumeClaimCommit struct {
 	// CommitID identifies the complete answer-claim transaction. The checkpoint
 	// returned by a successful claim remains a one-shot in-memory hand-off.
-	commitID  runtimeidentity.CommitID
-	expected  Pending
+	commitID runtimeidentity.CommitID
+	expected Pending
+	// items are the Items the hand-off names, read before the claim. They own
+	// what each answered interrupt asked.
+	items     map[string]transcript.Item
 	answers   []InterruptAnswer
 	claimedAt time.Time
 }
@@ -30,11 +34,12 @@ type ResumeClaimCommit struct {
 func NewResumeClaimCommit(
 	commitID runtimeidentity.CommitID,
 	expected Pending,
+	items map[string]transcript.Item,
 	answers []InterruptAnswer,
 	claimedAt time.Time,
 ) (ResumeClaimCommit, error) {
 	claim := ResumeClaimCommit{
-		commitID: commitID, expected: expected.Clone(),
+		commitID: commitID, expected: expected.Clone(), items: maps.Clone(items),
 		answers: cloneInterruptAnswers(answers), claimedAt: claimedAt,
 	}
 	if err := claim.Validate(); err != nil {
@@ -98,6 +103,10 @@ func (r ResumeClaimCommit) Validate() error {
 	if r.claimedAt.IsZero() {
 		return errors.New("runs: resume claim time is required")
 	}
+	interrupts, err := r.expected.ProjectInterrupts(r.items)
+	if err != nil {
+		return fmt.Errorf("runs: resume claim: %w", err)
+	}
 	if len(r.answers) != len(r.expected.Bindings) {
 		return fmt.Errorf(
 			"runs: resume claim has %d answers for %d boundaries",
@@ -110,7 +119,7 @@ func (r ResumeClaimCommit) Validate() error {
 			answer.RequestID != binding.RequestID {
 			return fmt.Errorf("runs: resume claim answer[%d] differs from its pending boundary", index)
 		}
-		if err := answer.validateResolution(r.expected.Interrupts[index]); err != nil {
+		if err := answer.validateResolution(interrupts[index]); err != nil {
 			return fmt.Errorf("runs: resume claim answer[%d]: %w", index, err)
 		}
 	}
@@ -142,6 +151,10 @@ func (r ResumeClaimCommit) ClaimedAt() time.Time { return r.claimedAt }
 // may therefore replace the invocation on the terminal Tool Item; Item and
 // provider call identities, rather than mutable arguments, preserve continuity.
 func (r ResumeClaimCommit) ToolApprovalResolutions() ([]ToolApprovalResolution, error) {
+	interrupts, err := r.expected.ProjectInterrupts(r.items)
+	if err != nil {
+		return nil, err
+	}
 	answersByItem := make(map[string]InterruptAnswer, len(r.answers))
 	bindingsByItem := make(map[string]InterruptBinding, len(r.expected.Bindings))
 	for _, answer := range r.answers {
@@ -150,28 +163,21 @@ func (r ResumeClaimCommit) ToolApprovalResolutions() ([]ToolApprovalResolution, 
 	for _, binding := range r.expected.Bindings {
 		bindingsByItem[binding.InterruptItemID] = binding
 	}
-	resolutions := make([]ToolApprovalResolution, 0, len(r.expected.Interrupts))
-	for _, request := range r.expected.Interrupts {
+	resolutions := make([]ToolApprovalResolution, 0, len(interrupts))
+	for _, request := range interrupts {
 		if request.Kind != interrupt.Approval {
 			continue
-		}
-		if request.Approval == nil {
-			return nil, fmt.Errorf("approval item %q has no prompt", request.ItemID)
 		}
 		answer, ok := answersByItem[request.ItemID]
 		if !ok {
 			return nil, fmt.Errorf("approval item %q has no answer", request.ItemID)
-		}
-		binding, ok := bindingsByItem[request.ItemID]
-		if !ok {
-			return nil, fmt.Errorf("approval item %q has no continuation binding", request.ItemID)
 		}
 		resolution := ToolApprovalResolution{
 			Identity: transcript.ItemIdentity{
 				SessionID: r.expected.SessionID, RunID: request.RunID,
 				ItemID: request.ItemID, OccurredAt: request.ItemOccurredAt,
 			},
-			CallID:     binding.ToolCallID,
+			CallID:     bindingsByItem[request.ItemID].ToolCallID,
 			Invocation: request.Approval.Tool,
 			Decision:   approval.DecisionOf(answer.Resolution.Approved),
 		}
@@ -184,8 +190,8 @@ func (r ResumeClaimCommit) ToolApprovalResolutions() ([]ToolApprovalResolution, 
 }
 
 // QuestionReplacements derives the transcript compare-and-swap write-set for
-// every accepted Question answer. It is computed by the Application from the
-// exact Pending snapshot and validated resolutions; the persistence port only
+// every accepted Question answer: each Question Item read before the claim is
+// replaced by itself carrying the accepted answers. The persistence port only
 // executes these replacements in the same transaction as the claim.
 func (r ResumeClaimCommit) QuestionReplacements() ([]transcript.Replacement, error) {
 	answersByItem := make(map[string]InterruptAnswer, len(r.answers))
@@ -193,33 +199,25 @@ func (r ResumeClaimCommit) QuestionReplacements() ([]transcript.Replacement, err
 		answersByItem[answer.InterruptItemID] = answer
 	}
 	replacements := make([]transcript.Replacement, 0, len(r.expected.Interrupts))
-	for _, request := range r.expected.Interrupts {
-		if request.Kind != interrupt.Question {
+	for _, open := range r.expected.Interrupts {
+		if open.Kind() != interrupt.Question {
 			continue
 		}
-		if request.Question == nil {
-			return nil, fmt.Errorf("question item %q has no prompt", request.ItemID)
-		}
-		answer, ok := answersByItem[request.ItemID]
+		answer, ok := answersByItem[open.ItemID]
 		if !ok {
-			return nil, fmt.Errorf("question item %q has no answer", request.ItemID)
+			return nil, fmt.Errorf("question item %q has no answer", open.ItemID)
 		}
-		expected, err := transcript.NewQuestion(transcript.ItemIdentity{
-			SessionID:  r.expected.SessionID,
-			RunID:      request.RunID,
-			ItemID:     request.ItemID,
-			OccurredAt: request.ItemOccurredAt,
-		}, *request.Question)
-		if err != nil {
-			return nil, fmt.Errorf("restore question item %q: %w", request.ItemID, err)
+		expected, found := r.items[open.ItemID]
+		if !found {
+			return nil, fmt.Errorf("question item %q was not read", open.ItemID)
 		}
 		replacement, err := expected.AnswerQuestion(answer.Resolution.Answers)
 		if err != nil {
-			return nil, fmt.Errorf("answer question item %q: %w", request.ItemID, err)
+			return nil, fmt.Errorf("answer question item %q: %w", open.ItemID, err)
 		}
 		itemReplacement, err := transcript.NewReplacement(expected, replacement)
 		if err != nil {
-			return nil, fmt.Errorf("prepare question item %q replacement: %w", request.ItemID, err)
+			return nil, fmt.Errorf("prepare question item %q replacement: %w", open.ItemID, err)
 		}
 		replacements = append(replacements, itemReplacement)
 	}

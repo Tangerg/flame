@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"iter"
+	"maps"
 	"runtime"
 	"slices"
 	"sync"
@@ -402,8 +403,10 @@ func newUseCaseCoordinator(exec ExecutionObserver, control *fakeExecutionPorts, 
 			ExecutorID: "turn_1", ModelSelection: defaultSelection, CreatedAt: freshCreatedAt,
 		}),
 	}}
+	items := &fakeItemProjection{items: map[string]transcript.Item{}}
 	if fake, ok := sessions.(*fakeRunSessions); ok {
 		for _, pending := range fake.pending {
+			maps.Copy(items.items, fixtureItems(pending))
 			facts, found := fake.facts[pending.RootRunID]
 			if !found {
 				facts = fixtureFacts(pending)
@@ -427,6 +430,7 @@ func newUseCaseCoordinator(exec ExecutionObserver, control *fakeExecutionPorts, 
 		Session:                            testSessionPorts(sessions),
 		Projection:                         testProjectionPorts(effects),
 		Runs:                               projection,
+		Items:                              items,
 		Now:                                func() time.Time { return time.Date(2026, 7, 13, 1, 2, 3, 0, time.UTC) },
 		NewRunID:                           func() string { return "run_new" },
 		NewSegmentID:                       func() string { return "seg_new" },
@@ -1160,8 +1164,7 @@ func TestResumeCommitsOpeningBeforeActivation(t *testing.T) {
 	sessions := &fakeRunSessions{
 		sess: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/work")}),
 		pending: map[string]Pending{
-			"run_1": testApprovalPending("member_1", createdAt),
-		},
+			"run_1": testApprovalPending("member_1", createdAt)},
 	}
 	control := &fakeExecutionPorts{prepared: ExecutorRef{SessionID: "ses_1", ExecutorID: "turn_1"}}
 	activatedAfterOpening := false
@@ -1196,8 +1199,7 @@ func TestResumeSettlesAfterOpeningWithoutWaitingForExecutorActivation(t *testing
 	sessions := &fakeRunSessions{
 		sess: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/work")}),
 		pending: map[string]Pending{
-			"run_1": testApprovalPending("member_1", createdAt),
-		},
+			"run_1": testApprovalPending("member_1", createdAt)},
 	}
 	activationStarted := make(chan struct{})
 	releaseActivation := make(chan struct{})
@@ -1276,8 +1278,7 @@ func TestResumeAndRootCancelShareOneApplicationAdmissionBoundary(t *testing.T) {
 	sessions := &fakeRunSessions{
 		sess: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/work")}),
 		pending: map[string]Pending{
-			"run_1": pending,
-		},
+			"run_1": pending},
 	}
 	control := &fakeExecutionPorts{
 		prepared: ExecutorRef{SessionID: "ses_1", ExecutorID: "turn_1"},
@@ -1357,8 +1358,7 @@ func TestResumeWithInputCommitsTheUserItemWithTheContinuation(t *testing.T) {
 		sessions := &fakeRunSessions{
 			sess: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/work")}),
 			pending: map[string]Pending{
-				"run_1": testApprovalPending("member_1", createdAt),
-			},
+				"run_1": testApprovalPending("member_1", createdAt)},
 		}
 		control := &fakeExecutionPorts{prepared: ExecutorRef{SessionID: "ses_1", ExecutorID: "turn_1"}}
 		return effects, control, newUseCaseCoordinator(&fakeExecutor{}, control, sessions, effects)
@@ -1428,8 +1428,7 @@ func TestResumeRecoversLostExecutorStateBeforeReturning(t *testing.T) {
 	sessions := &fakeRunSessions{
 		sess: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/work")}),
 		pending: map[string]Pending{
-			"run_1": testApprovalPending("member_1", time.Now().UTC()),
-		},
+			"run_1": testApprovalPending("member_1", time.Now().UTC())},
 		operations: &operations,
 	}
 	control := &fakeExecutionPorts{
@@ -1479,8 +1478,7 @@ func TestResumeOpeningFailureMarksClaimedRunLostBeforeReleasingTree(t *testing.T
 	sessions := &fakeRunSessions{
 		sess: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/work")}),
 		pending: map[string]Pending{
-			"run_1": testApprovalPending("member_1", time.Now().UTC()),
-		},
+			"run_1": testApprovalPending("member_1", time.Now().UTC())},
 		operations: &operations,
 	}
 	control := &fakeExecutionPorts{
@@ -1524,8 +1522,7 @@ func TestResumeOpeningFailureCompensatesTheResumingClaimBeforeReleasingTree(t *t
 	sessions := &claimedResumeSessions{fakeRunSessions: &fakeRunSessions{
 		sess: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/work")}),
 		pending: map[string]Pending{
-			"run_1": testApprovalPending("member_1", time.Now().UTC()),
-		},
+			"run_1": testApprovalPending("member_1", time.Now().UTC())},
 		operations: &operations,
 	}}
 	control := &fakeExecutionPorts{
@@ -1593,8 +1590,7 @@ func TestResumeRejectsClaimResultDriftBeforeStagingAndMarksRunLost(t *testing.T)
 			sessions := &fakeRunSessions{
 				sess: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/work")}),
 				pending: map[string]Pending{
-					"run_1": testApprovalPending("member_1", time.Now().UTC()),
-				},
+					"run_1": testApprovalPending("member_1", time.Now().UTC())},
 				operations: &operations,
 			}
 			control := &fakeExecutionPorts{
@@ -1637,8 +1633,7 @@ func TestResumeOpeningFailureKeepsTreeWhenRunLostCommitFails(t *testing.T) {
 	sessions := &fakeRunSessions{
 		sess: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/work")}),
 		pending: map[string]Pending{
-			"run_1": testApprovalPending("member_1", time.Now().UTC()),
-		},
+			"run_1": testApprovalPending("member_1", time.Now().UTC())},
 		lostErr:    lostErr,
 		operations: &operations,
 	}
@@ -1684,8 +1679,7 @@ func TestResumeOpeningFailureReportsReleaseAfterDurableRunLost(t *testing.T) {
 	sessions := &fakeRunSessions{
 		sess: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/work")}),
 		pending: map[string]Pending{
-			"run_1": testApprovalPending("member_1", time.Now().UTC()),
-		},
+			"run_1": testApprovalPending("member_1", time.Now().UTC())},
 		operations: &operations,
 	}
 	control := &fakeExecutionPorts{
@@ -1729,8 +1723,7 @@ func TestResumeRehydrateRestoresChildSourceProjection(t *testing.T) {
 	sessions := &fakeRunSessions{
 		sess: testsupport.MustRestoreSession(session.Snapshot{ID: pending.SessionID, Workspace: testsupport.MustWorkspace("/work")}),
 		pending: map[string]Pending{
-			pending.RootRunID: pending,
-		},
+			pending.RootRunID: pending},
 		facts: map[string]parkedFacts{pending.RootRunID: facts},
 	}
 	control := &fakeExecutionPorts{
@@ -1800,8 +1793,7 @@ func TestResumeRehydrateRestoresChildAdmissionBeforeAnyChildExists(t *testing.T)
 	sessions := &fakeRunSessions{
 		sess: testsupport.MustRestoreSession(session.Snapshot{ID: pending.SessionID, Workspace: testsupport.MustWorkspace("/work")}),
 		pending: map[string]Pending{
-			pending.RootRunID: pending,
-		},
+			pending.RootRunID: pending},
 		facts: map[string]parkedFacts{pending.RootRunID: facts},
 	}
 	control := &fakeExecutionPorts{
@@ -1841,8 +1833,7 @@ func TestResumeRefusesIsolatedRunAfterRuntimeRestart(t *testing.T) {
 	sessions := &fakeRunSessions{
 		sess: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/work"), Isolated: true}),
 		pending: map[string]Pending{
-			"run_1": testApprovalPending("member_1", time.Now().UTC()),
-		},
+			"run_1": testApprovalPending("member_1", time.Now().UTC())},
 		operations: &operations,
 	}
 	// The process that owned the sandbox copy is gone (Prepare reports the execution as
@@ -1892,7 +1883,7 @@ func testApprovalPending(memberID string, runCreatedAt time.Time) Pending {
 		RootRunID:  "run_1",
 		SessionID:  "ses_1",
 		ExecutorID: "turn_1",
-		Interrupts: interruptValues,
+		Interrupts: OpenInterruptsOf(interruptValues),
 		Bindings: []InterruptBinding{{
 			InterruptItemID: interruptItemID,
 			MemberID:        memberID,
@@ -1903,8 +1894,7 @@ func testApprovalPending(memberID string, runCreatedAt time.Time) Pending {
 			RunID:    "run_1",
 			MemberID: memberID,
 		}},
-		CreatedAt: runCreatedAt.Add(time.Second),
-	}
+		CreatedAt: runCreatedAt.Add(time.Second)}
 }
 
 func TestCancelParkedRunUsesApplicationAdmission(t *testing.T) {
@@ -1912,8 +1902,7 @@ func TestCancelParkedRunUsesApplicationAdmission(t *testing.T) {
 	pending := testApprovalPending("member_1", time.Now().UTC())
 	sessions := &fakeRunSessions{
 		pending: map[string]Pending{
-			"run_1": pending,
-		},
+			"run_1": pending},
 		operations: &operations,
 	}
 	control := &fakeExecutionPorts{operations: &operations}
@@ -2191,8 +2180,7 @@ func TestCancelParkedRunReportsExecutorReleaseFailureAfterDurableCommit(t *testi
 	cleanupErr := errors.New("executor release failed")
 	pending := testApprovalPending("member_1", time.Now().UTC())
 	sessions := &fakeRunSessions{pending: map[string]Pending{
-		"run_1": pending,
-	}}
+		"run_1": pending}}
 	control := &fakeExecutionPorts{releaseErr: cleanupErr}
 	c := mustNewCoordinator(Dependencies{
 		Releases: control, Session: testSessionPorts(sessions),
@@ -2464,8 +2452,7 @@ func TestCancelLetsCommittedInterruptOwnDurableFirstTeardown(t *testing.T) {
 func TestCancelTreatsAlreadyReleasedExecutorAsIdempotentSuccess(t *testing.T) {
 	pending := testApprovalPending("member_1", time.Now().UTC())
 	sessions := &fakeRunSessions{pending: map[string]Pending{
-		"run_1": pending,
-	}}
+		"run_1": pending}}
 	control := &fakeExecutionPorts{releaseErr: ErrExecutorNotLive}
 	c := mustNewCoordinator(Dependencies{
 		Releases: control, Session: testSessionPorts(sessions),

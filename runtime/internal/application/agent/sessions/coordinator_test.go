@@ -48,8 +48,7 @@ func TestClaimIdleSessionRejectsOpenInterrupt(t *testing.T) {
 	stores := coordinatorStores{
 		interrupts: &coordinatorInterrupts{
 			pending: map[string]runs.Pending{
-				"run_1": testPending("run_1", "ses_1", time.Unix(1, 0).UTC()),
-			},
+				"run_1": testPending("run_1", "ses_1", time.Unix(1, 0).UTC())},
 		},
 	}
 	claimer := &testClaimer{}
@@ -83,8 +82,7 @@ func TestClaimSessionMutationAllowsOpenInterrupt(t *testing.T) {
 	stores := coordinatorStores{
 		interrupts: &coordinatorInterrupts{
 			pending: map[string]runs.Pending{
-				"run_1": testPending("run_1", "ses_1", time.Unix(1, 0).UTC()),
-			},
+				"run_1": testPending("run_1", "ses_1", time.Unix(1, 0).UTC())},
 		},
 	}
 	claimer := &testClaimer{}
@@ -198,19 +196,17 @@ func TestApplyRunCancelProjectsTerminalTranscript(t *testing.T) {
 		interrupts: &coordinatorInterrupts{pending: map[string]runs.Pending{
 			"run_1": {
 				RootRunID: "run_1", SessionID: "ses_1", ExecutorID: "turn_1",
-				Interrupts: []transcript.Interrupt{{
+				Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 					ItemID: "item_1", ItemOccurredAt: createdAt,
 					RunID: "run_1", Kind: interrupt.Question, Question: question,
-				}},
+				}}),
 				Bindings: []runs.InterruptBinding{{
 					InterruptItemID: "item_1", MemberID: "member_1", RequestID: "request_1",
 				}},
 				Continuations: []runs.Continuation{{
 					RunID: "run_1", MemberID: "member_1",
 				}},
-				CreatedAt: createdAt.Add(time.Second),
-			},
-		}},
+				CreatedAt: createdAt.Add(time.Second)}}},
 		snapshot: Snapshot{
 			Session:  testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1"}),
 			Messages: []chat.Message{chat.NewUserMessage(chat.NewTextPart("hello")), chat.NewAssistantMessage(chat.NewTextPart("hi"))},
@@ -272,23 +268,21 @@ func TestApplyRunCancelSettlesQuestionToolAndClosesModelContext(t *testing.T) {
 		interrupts: &coordinatorInterrupts{pending: map[string]runs.Pending{
 			"run_1": {
 				RootRunID: "run_1", SessionID: "ses_1", ExecutorID: "turn_1",
-				Interrupts: []transcript.Interrupt{{
+				Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 					ItemID: "item_question", ItemOccurredAt: createdAt,
 					RunID: "run_1", Kind: interrupt.Question, Question: question,
-				}},
+				}}),
 				Bindings: []runs.InterruptBinding{{
 					InterruptItemID: "item_question", MemberID: "member_1", RequestID: "request_1",
 				}},
 				Continuations: []runs.Continuation{{
 					RunID: "run_1", MemberID: "member_1",
 					DrainedTools: []runs.DrainedTool{{
-						ItemID: "item_tool", ItemOccurredAt: createdAt,
-						CallID: "tool:runtime:0", Name: "ask_user", Arguments: "{}",
+						ItemID: "item_tool",
+						CallID: "tool:runtime:0",
 					}},
 				}},
-				CreatedAt: createdAt.Add(time.Second),
-			},
-		}},
+				CreatedAt: createdAt.Add(time.Second)}}},
 		snapshot: Snapshot{
 			Session: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1"}),
 			Messages: []chat.Message{
@@ -361,10 +355,10 @@ func TestApplyRunLostProjectsTerminalTranscript(t *testing.T) {
 		interrupts: &coordinatorInterrupts{pending: map[string]runs.Pending{
 			"run_1": {
 				RootRunID: "run_1", SessionID: "ses_1", ExecutorID: "turn_1",
-				Interrupts: []transcript.Interrupt{{
+				Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 					ItemID: "item_1", ItemOccurredAt: createdAt,
 					RunID: "run_1", Kind: interrupt.Approval, Approval: approval,
-				}},
+				}}),
 				Bindings: []runs.InterruptBinding{{
 					InterruptItemID: "item_1", MemberID: "member_1", RequestID: "request_1",
 					ToolCallID: "call_1",
@@ -372,9 +366,7 @@ func TestApplyRunLostProjectsTerminalTranscript(t *testing.T) {
 				Continuations: []runs.Continuation{{
 					RunID: "run_1", MemberID: "member_1",
 				}},
-				CreatedAt: createdAt.Add(time.Second),
-			},
-		}},
+				CreatedAt: createdAt.Add(time.Second)}}},
 		snapshot: Snapshot{
 			Session:  testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1"}),
 			Messages: []chat.Message{chat.NewUserMessage(chat.NewTextPart("hello"))},
@@ -450,10 +442,10 @@ func TestApplyRunLostTerminalizesWholeParkedTreeInPostorder(t *testing.T) {
 	}
 	pending := runs.Pending{
 		RootRunID: "run_root", SessionID: "ses_1", ExecutorID: "turn_1",
-		Interrupts: []transcript.Interrupt{{
+		Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 			ItemID: "item_question", ItemOccurredAt: createdAt,
 			RunID: "run_child", Kind: interrupt.Question, Question: question,
-		}},
+		}}),
 		Bindings: []runs.InterruptBinding{{
 			InterruptItemID: "item_question", MemberID: "member_child", RequestID: "request_child",
 		}},
@@ -463,8 +455,7 @@ func TestApplyRunLostTerminalizesWholeParkedTreeInPostorder(t *testing.T) {
 			},
 			{RunID: "run_root", MemberID: "member_root"},
 		},
-		CreatedAt: createdAt.Add(time.Second),
-	}
+		CreatedAt: createdAt.Add(time.Second)}
 	var applied TerminalPlan
 	stores := coordinatorStores{
 		interrupts: &coordinatorInterrupts{pending: map[string]runs.Pending{"run_root": pending}},

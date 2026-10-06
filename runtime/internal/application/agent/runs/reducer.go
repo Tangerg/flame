@@ -599,18 +599,16 @@ func (r *reducer) abandonUnconsumedResumeTools() ([]ProjectionEvent, error) {
 	remaining := r.resume.remainingDrainedTools()
 	events := make([]ProjectionEvent, 0, len(remaining))
 	for _, drained := range remaining {
-		arguments, err := parseToolArguments(drained.Arguments)
-		if err != nil {
-			return nil, fmt.Errorf("tool %q arguments: %w", drained.Name, err)
-		}
+		resumed := r.resume.callItems[drained.CallID]
 		ref := &openTool{
 			callID:           drained.CallID,
 			sourceCallID:     drained.SourceCallID,
 			id:               drained.ItemID,
-			occurredAt:       drained.ItemOccurredAt,
-			name:             drained.Name,
-			arguments:        arguments,
-			approvalDecision: r.resume.approvalDecision(drained.CallID),
+			occurredAt:       resumed.occurredAt,
+			name:             resumed.invocation.Name,
+			arguments:        resumed.invocation.Arguments,
+			argumentsText:    resumed.invocation.ArgumentsText,
+			approvalDecision: resumed.approvalDecision,
 		}
 		completed, err := r.abandonUnstartedToolItem(ref)
 		if err != nil {

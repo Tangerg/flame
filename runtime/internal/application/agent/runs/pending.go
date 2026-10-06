@@ -5,28 +5,27 @@ import (
 	"fmt"
 	"github.com/Tangerg/flame/runtime/internal/optional"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 // Pending is one complete Run-tree barrier awaiting human decisions. The set is
 // keyed by RootRunID and consumed all-or-nothing: individual member Runs do not
-// own separate resume claims. Interrupts is the published typed set;
-// Bindings connects each item to the executor request it answers;
+// own separate resume claims. Interrupts names the Items awaiting answers;
+// Bindings connects each Item to the executor request it answers;
 // Continuations is the durable state required to reopen every surviving Run
 // with a fresh Segment, including after host restart. The parked Runs own
-// their lineage, capabilities, and Goal incarnation; a Pending names the Runs
-// and never restates those facts.
+// their lineage, capabilities, and Goal incarnation, and the Items own what
+// was asked; a Pending names them and never restates those facts.
 type Pending struct {
 	RootRunID     string
 	SessionID     string
 	ExecutorID    string
-	Interrupts    []transcript.Interrupt
+	Interrupts    []OpenInterrupt
 	Bindings      []InterruptBinding
 	Continuations []Continuation
 	// CreatedAt orders open sets. It is the barrier commit time, not any one
@@ -70,7 +69,7 @@ type memberToolCallIdentity struct {
 
 type pendingBindingValidator struct {
 	pending          Pending
-	interruptsByItem map[string]transcript.Interrupt
+	interruptsByItem map[string]OpenInterrupt
 	boundItems       map[string]struct{}
 	boundRequests    map[memberRequestIdentity]struct{}
 	boundToolCalls   map[memberToolCallIdentity]struct{}
@@ -87,18 +86,41 @@ type InterruptAnswer struct {
 	Resolution      interrupt.Resolution
 }
 
-// DrainedTool records one tool item that was still open when its Run suspended.
-// The continuation re-binds the re-fired tool to this original item identity
-// instead of minting a duplicate.
+// OpenInterrupt is one Item a waiting tree awaits an answer for. The Item owns
+// the Run that raised it, its occurrence, and the Tool invocation or Question
+// asked; the hand-off owns only that the Item is open and, for an approval,
+// the policy's review.
+type OpenInterrupt struct {
+	ItemID string
+	// Approval is the policy's review when the Item is a ToolCall awaiting a
+	// verdict; nil when it is a Question Item awaiting answers.
+	Approval *ApprovalReview
+}
+
+// ApprovalReview is the approval policy's explanation of one held Tool call.
+type ApprovalReview struct {
+	Risk         tool.RiskLevel
+	Reason       string
+	Rememberable bool
+}
+
+// Kind is the answer the open Item awaits.
+func (o OpenInterrupt) Kind() interrupt.Kind {
+	if o.Approval != nil {
+		return interrupt.Approval
+	}
+	return interrupt.Question
+}
+
+// DrainedTool binds one Tool Item that was still open when its Run suspended
+// to the executor call that will re-fire it, so the continuation reuses the
+// original Item instead of minting a duplicate. The Item owns its occurrence
+// and invocation.
 type DrainedTool struct {
-	ItemID         string
-	ItemOccurredAt time.Time
-	CallID         string
+	ItemID string
+	CallID string
 	// SourceCallID is the provider ToolCall identity used by model-context results.
 	SourceCallID string
-	Name         string
-	// Arguments preserves the canonical invocation input across suspension.
-	Arguments string
 }
 
 // RootContinuation returns the root Run's hand-off. A valid Pending always has
@@ -116,7 +138,7 @@ func (p Pending) RootContinuation() (Continuation, bool) {
 func (p Pending) Clone() Pending {
 	p.Interrupts = slices.Clone(p.Interrupts)
 	for index := range p.Interrupts {
-		p.Interrupts[index] = clonePendingInterrupt(p.Interrupts[index])
+		p.Interrupts[index].Approval = optional.Clone(p.Interrupts[index].Approval)
 	}
 	p.Bindings = slices.Clone(p.Bindings)
 	p.Continuations = slices.Clone(p.Continuations)
@@ -127,25 +149,6 @@ func (p Pending) Clone() Pending {
 	return p
 }
 
-func clonePendingInterrupt(value transcript.Interrupt) transcript.Interrupt {
-	if value.Approval != nil {
-		approval := *value.Approval
-		approval.Tool.Result = optional.Clone(approval.Tool.Result)
-		approval.Tool.Offload = optional.Clone(approval.Tool.Offload)
-		value.Approval = &approval
-	}
-	if value.Question != nil {
-		question := *value.Question
-		question.Fields = slices.Clone(question.Fields)
-		for index := range question.Fields {
-			question.Fields[index].Options = slices.Clone(question.Fields[index].Options)
-		}
-		question.Answers = transcript.CloneAnswers(question.Answers)
-		value.Question = &question
-	}
-	return value
-}
-
 // Validate checks the complete tree hand-off. It deliberately validates both
 // directions of the item/input-request relation so accepting a response never
 // requires guessing which executor boundary it belongs to.
@@ -153,11 +156,10 @@ func (p Pending) Validate() error {
 	if err := p.validateEnvelope(); err != nil {
 		return err
 	}
-	runIDs, err := p.validateContinuations()
-	if err != nil {
+	if err := p.validateContinuations(); err != nil {
 		return err
 	}
-	interruptsByItem, err := p.validateInterrupts(runIDs)
+	interruptsByItem, err := p.validateInterrupts()
 	if err != nil {
 		return err
 	}
@@ -246,20 +248,20 @@ func (p Pending) validateEnvelope() error {
 	return nil
 }
 
-func (p Pending) validateContinuations() (map[string]struct{}, error) {
+func (p Pending) validateContinuations() error {
 	runIDs := make(map[string]struct{}, len(p.Continuations))
 	memberIDs := make(map[string]struct{}, len(p.Continuations))
 	rootCount := 0
 	for index, continuation := range p.Continuations {
 		if err := continuation.Validate(); err != nil {
-			return nil, fmt.Errorf("interrupts: continuation[%d]: %w", index, err)
+			return fmt.Errorf("interrupts: continuation[%d]: %w", index, err)
 		}
 		if _, duplicate := runIDs[continuation.RunID]; duplicate {
-			return nil, fmt.Errorf("interrupts: duplicate continuation run %q", continuation.RunID)
+			return fmt.Errorf("interrupts: duplicate continuation run %q", continuation.RunID)
 		}
 		runIDs[continuation.RunID] = struct{}{}
 		if _, duplicate := memberIDs[continuation.MemberID]; duplicate {
-			return nil, fmt.Errorf("interrupts: duplicate continuation member %q", continuation.MemberID)
+			return fmt.Errorf("interrupts: duplicate continuation member %q", continuation.MemberID)
 		}
 		memberIDs[continuation.MemberID] = struct{}{}
 		if continuation.RunID == p.RootRunID {
@@ -267,29 +269,36 @@ func (p Pending) validateContinuations() (map[string]struct{}, error) {
 		}
 	}
 	if rootCount != 1 {
-		return nil, fmt.Errorf("interrupts: pending set has %d root continuations", rootCount)
+		return fmt.Errorf("interrupts: pending set has %d root continuations", rootCount)
 	}
-	return runIDs, nil
+	return nil
 }
 
-func (p Pending) validateInterrupts(runIDs map[string]struct{}) (map[string]transcript.Interrupt, error) {
-	interruptsByItem := make(map[string]transcript.Interrupt, len(p.Interrupts))
-	for index, interrupt := range p.Interrupts {
-		if err := validateInterrupt(interrupt); err != nil {
+func (p Pending) validateInterrupts() (map[string]OpenInterrupt, error) {
+	interruptsByItem := make(map[string]OpenInterrupt, len(p.Interrupts))
+	for index, open := range p.Interrupts {
+		if err := open.validate(); err != nil {
 			return nil, fmt.Errorf("interrupts: interrupt[%d]: %w", index, err)
 		}
-		if _, exists := runIDs[interrupt.RunID]; !exists {
-			return nil, fmt.Errorf("interrupts: interrupt item %q names unknown run %q", interrupt.ItemID, interrupt.RunID)
+		if _, duplicate := interruptsByItem[open.ItemID]; duplicate {
+			return nil, fmt.Errorf("interrupts: duplicate interrupt item %q", open.ItemID)
 		}
-		if _, duplicate := interruptsByItem[interrupt.ItemID]; duplicate {
-			return nil, fmt.Errorf("interrupts: duplicate interrupt item %q", interrupt.ItemID)
-		}
-		interruptsByItem[interrupt.ItemID] = interrupt
+		interruptsByItem[open.ItemID] = open
 	}
 	return interruptsByItem, nil
 }
 
-func (p Pending) validateBindings(interruptsByItem map[string]transcript.Interrupt) error {
+func (o OpenInterrupt) validate() error {
+	if err := resourceid.ValidateItem(o.ItemID); err != nil {
+		return fmt.Errorf("pending interrupt: %w", err)
+	}
+	if o.Approval != nil && !o.Approval.Risk.Valid() {
+		return fmt.Errorf("approval has unknown risk %q", o.Approval.Risk)
+	}
+	return nil
+}
+
+func (p Pending) validateBindings(interruptsByItem map[string]OpenInterrupt) error {
 	validator := pendingBindingValidator{
 		pending:          p,
 		interruptsByItem: interruptsByItem,
@@ -316,11 +325,11 @@ func (v *pendingBindingValidator) validate(index int, binding InterruptBinding) 
 	if err := v.validateInterruptTool(index, binding, request); err != nil {
 		return err
 	}
-	continuation, err := v.continuation(index, binding, request)
+	continuation, err := v.continuation(index, binding)
 	if err != nil {
 		return err
 	}
-	if request.Kind == interrupt.Approval {
+	if request.Kind() == interrupt.Approval {
 		if err := validateApprovalToolState(binding, continuation); err != nil {
 			return err
 		}
@@ -344,17 +353,17 @@ func (b InterruptBinding) validateIdentities() error {
 func (v *pendingBindingValidator) interrupt(
 	index int,
 	binding InterruptBinding,
-) (transcript.Interrupt, error) {
+) (OpenInterrupt, error) {
 	request, exists := v.interruptsByItem[binding.InterruptItemID]
 	if !exists {
-		return transcript.Interrupt{}, fmt.Errorf(
+		return OpenInterrupt{}, fmt.Errorf(
 			"interrupts: input-request binding[%d] names unknown item %q",
 			index,
 			binding.InterruptItemID,
 		)
 	}
 	if v.pending.Interrupts[index].ItemID != binding.InterruptItemID {
-		return transcript.Interrupt{}, fmt.Errorf(
+		return OpenInterrupt{}, fmt.Errorf(
 			"interrupts: input-request binding[%d] names item %q, canonical interrupt order requires %q",
 			index,
 			binding.InterruptItemID,
@@ -367,9 +376,9 @@ func (v *pendingBindingValidator) interrupt(
 func (v *pendingBindingValidator) validateInterruptTool(
 	index int,
 	binding InterruptBinding,
-	request transcript.Interrupt,
+	request OpenInterrupt,
 ) error {
-	switch request.Kind {
+	switch request.Kind() {
 	case interrupt.Approval:
 		if err := runtimeidentity.ValidateEffect(binding.ToolCallID); err != nil {
 			return fmt.Errorf("interrupts: input-request binding[%d]: %w", index, err)
@@ -398,7 +407,6 @@ func (v *pendingBindingValidator) validateInterruptTool(
 func (v *pendingBindingValidator) continuation(
 	index int,
 	binding InterruptBinding,
-	request transcript.Interrupt,
 ) (Continuation, error) {
 	continuation, exists := continuationForMember(v.pending.Continuations, binding.MemberID)
 	if !exists {
@@ -406,14 +414,6 @@ func (v *pendingBindingValidator) continuation(
 			"interrupts: input-request binding[%d] names unknown member %q",
 			index,
 			binding.MemberID,
-		)
-	}
-	if continuation.RunID != request.RunID {
-		return Continuation{}, fmt.Errorf(
-			"interrupts: item %q belongs to run %q but its input request belongs to run %q",
-			request.ItemID,
-			request.RunID,
-			continuation.RunID,
 		)
 	}
 	return continuation, nil
@@ -485,63 +485,10 @@ func validateDrainedTools(tools []DrainedTool) error {
 }
 
 func (d DrainedTool) validate() error {
-	if err := validateToolIdentity(d.ItemID, d.CallID, d.Name, d.Arguments); err != nil {
+	if err := resourceid.ValidateItem(d.ItemID); err != nil {
 		return err
 	}
-	if d.ItemOccurredAt.IsZero() {
-		return errors.New("item occurrence time is required")
-	}
-	return nil
-}
-
-func validateToolIdentity(itemID, callID, name, arguments string) error {
-	if err := resourceid.ValidateItem(itemID); err != nil {
-		return err
-	}
-	if err := runtimeidentity.ValidateEffect(callID); err != nil {
-		return err
-	}
-	if strings.TrimSpace(name) == "" || name != strings.TrimSpace(name) {
-		return errors.New("name is required without surrounding whitespace")
-	}
-	if strings.TrimSpace(arguments) == "" {
-		return errors.New("arguments are required")
-	}
-	return nil
-}
-
-func validateInterrupt(request transcript.Interrupt) error {
-	if err := resourceid.ValidateItem(request.ItemID); err != nil {
-		return fmt.Errorf("pending interrupt: %w", err)
-	}
-	if request.ItemOccurredAt.IsZero() {
-		return errors.New("item occurrence time is required")
-	}
-	if err := resourceid.ValidateRun(request.RunID); err != nil {
-		return fmt.Errorf("pending interrupt: %w", err)
-	}
-	switch request.Kind {
-	case interrupt.Approval:
-		if request.Approval == nil || request.Question != nil {
-			return errors.New("approval interrupt requires only an approval payload")
-		}
-		if err := request.Approval.Validate(); err != nil {
-			return err
-		}
-	case interrupt.Question:
-		if request.Question == nil || request.Approval != nil {
-			return errors.New("question interrupt requires only a question payload")
-		}
-		if err := request.Question.Validate(); err != nil {
-			return err
-		}
-		if request.Question.Answered() {
-			return errors.New("open question interrupt already carries an accepted answer")
-		}
-	default:
-		return fmt.Errorf("unknown interrupt kind %q", request.Kind)
-	}
-	return nil
+	return runtimeidentity.ValidateEffect(d.CallID)
 }
 
 func continuationForMember(continuations []Continuation, memberID string) (Continuation, bool) {

@@ -29,9 +29,10 @@ func systemInvariants() []invariantEntry {
 		Boundaries: []string{"runsegment.event", "runs.recovery"},
 	}, {
 		Key: "parked_continuation_restates_no_run_fact",
-		Why: "A continuation names the parked Runs and nothing they own. Their model, " +
-			"accounting, lineage, creation time, Goal incarnation and capabilities are " +
-			"read from the Runs, so a resume or teardown cannot write a second version.",
+		Why: "A continuation names the parked Runs and the Items it awaits, and nothing " +
+			"they own. Run model, accounting, lineage, Goal incarnation and capabilities, " +
+			"and each Item's occurrence, Tool invocation and Question, are read from their " +
+			"owners, so a resume or teardown cannot write a second version.",
 		Boundaries: []string{
 			"runsegment.opening",
 			"runsegment.event",

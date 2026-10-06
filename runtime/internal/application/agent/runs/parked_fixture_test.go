@@ -6,6 +6,8 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
@@ -21,8 +23,8 @@ type parkedFacts struct {
 func fixtureFacts(pending Pending) parkedFacts {
 	var kinds []interrupt.Kind
 	for _, value := range pending.Interrupts {
-		if !slices.Contains(kinds, value.Kind) {
-			kinds = append(kinds, value.Kind)
+		if !slices.Contains(kinds, value.Kind()) {
+			kinds = append(kinds, value.Kind())
 		}
 	}
 	return parkedFacts{capabilities: run.Capabilities{
@@ -85,4 +87,70 @@ func parkedTree(pending Pending, facts parkedFacts) []run.Run {
 		parked = append(parked, runWithFacts(pending, continuation, facts))
 	}
 	return parked
+}
+
+// fixtureItems are the Items a fixture hand-off names, written the way its
+// fixtures describe them: an approval awaits a running shell ToolCall, a
+// Question asks "Continue?", and a drained Tool is a running Delegate call.
+// Each Item belongs to the Run whose member its binding or continuation names.
+func fixtureItems(pending Pending) map[string]transcript.Item {
+	items := make(map[string]transcript.Item)
+	occurredAt := pending.CreatedAt.Add(-time.Second)
+	for index, open := range pending.Interrupts {
+		runID := pending.RootRunID
+		if index < len(pending.Bindings) {
+			if continuation, found := continuationForMember(pending.Continuations, pending.Bindings[index].MemberID); found {
+				runID = continuation.RunID
+			}
+		}
+		input := testsupport.ItemInput{
+			ID: open.ItemID, SessionID: pending.SessionID, RunID: runID, OccurredAt: occurredAt,
+		}
+		if open.Approval != nil {
+			input.Kind, input.Status = transcript.ToolCall, transcript.ItemRunning
+			input.Tool = &transcript.ToolInvocation{Name: "shell"}
+		} else {
+			input.Kind = transcript.QuestionItem
+			input.Question = &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}}
+		}
+		items[open.ItemID] = testsupport.MustRestoreItem(input)
+	}
+	for _, continuation := range pending.Continuations {
+		for _, drained := range continuation.DrainedTools {
+			items[drained.ItemID] = testsupport.MustRestoreItem(testsupport.ItemInput{
+				ID: drained.ItemID, SessionID: pending.SessionID, RunID: continuation.RunID,
+				Kind: transcript.ToolCall, Status: transcript.ItemRunning, OccurredAt: occurredAt,
+				Tool: &transcript.ToolInvocation{Name: "delegate_task", Arguments: mustToolArguments(`{}`)},
+			})
+		}
+	}
+	return items
+}
+
+func mustToolArguments(text string) tool.Arguments {
+	arguments, err := tool.ParseArguments(text)
+	if err != nil {
+		panic(err)
+	}
+	return arguments
+}
+
+// testTreeContinuationOf is testTreeContinuation for a hand-off whose
+// interrupts a test describes in full: their Items are written from them.
+func testTreeContinuationOf(pending Pending, interrupts []transcript.Interrupt) *treeContinuation {
+	continuation := testTreeContinuation(pending)
+	for _, projected := range interrupts {
+		input := testsupport.ItemInput{
+			ID: projected.ItemID, SessionID: pending.SessionID, RunID: projected.RunID, OccurredAt: projected.ItemOccurredAt,
+		}
+		if projected.Approval != nil {
+			input.Kind, input.Status = transcript.ToolCall, transcript.ItemRunning
+			input.Tool = &projected.Approval.Tool
+		} else {
+			input.Kind, input.Question = transcript.QuestionItem, projected.Question
+		}
+		continuation.items[projected.ItemID] = testsupport.MustRestoreItem(input)
+	}
+	continuation.interrupts = slices.Clone(interrupts)
+	return continuation
 }

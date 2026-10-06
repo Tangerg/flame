@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"time"
 
@@ -195,15 +196,20 @@ func (w waitingCancellationBuilder) build() (waitingCancellationTransformation, 
 	if err != nil {
 		return waitingCancellationTransformation{}, err
 	}
-	interrupts, bindings, err := w.remainingInterruptions(canceledMembers, continuations)
+	kept, bindings, err := w.remainingInterruptions(canceledMembers, continuations)
 	if err != nil {
 		return waitingCancellationTransformation{}, err
+	}
+	interrupts := make([]transcript.Interrupt, len(kept))
+	open := make([]OpenInterrupt, len(kept))
+	for position, index := range kept {
+		interrupts[position], open[position] = w.plan.interrupts[index], w.plan.pending.Interrupts[index]
 	}
 	continuation, err := w.treeContinuation(interrupts, continuations)
 	if err != nil {
 		return waitingCancellationTransformation{}, err
 	}
-	remaining, err := w.remainingPending(interrupts, bindings, continuations)
+	remaining, err := w.remainingPending(open, bindings, continuations)
 	if err != nil {
 		return waitingCancellationTransformation{}, err
 	}
@@ -341,10 +347,6 @@ func (w waitingCancellationBuilder) settleWaitingItems(
 		clone := continuation
 		clone.DrainedTools = slices.Clone(continuation.DrainedTools)
 		if continuation.RunID == w.plan.target.run.Lineage().ParentRunID {
-			parentInvocation, present := parentItem.ToolInvocation()
-			if !present {
-				return nil, nil, fmt.Errorf("runs: spawning Item %q has no invocation", parentItem.ID())
-			}
 			var matches []DrainedTool
 			for _, tool := range clone.DrainedTools {
 				if tool.ItemID == parentItem.ID() {
@@ -356,14 +358,6 @@ func (w waitingCancellationBuilder) settleWaitingItems(
 					"runs: parent Run %q continuation has %d drained tools for spawning Item %q",
 					continuation.RunID,
 					len(matches),
-					parentItem.ID(),
-				)
-			}
-			tool := matches[0]
-			if tool.Name != parentInvocation.Name ||
-				tool.Arguments != parentInvocation.Arguments.Canonical() {
-				return nil, nil, fmt.Errorf(
-					"runs: spawning Item %q differs from its drained tool identity",
 					parentItem.ID(),
 				)
 			}
@@ -380,10 +374,12 @@ func (w waitingCancellationBuilder) settleWaitingItems(
 	return terminalItems, continuations, nil
 }
 
+// remainingInterruptions returns, in the surviving order, the index of every
+// kept interrupt in the expected Pending and its binding.
 func (w waitingCancellationBuilder) remainingInterruptions(
 	canceledMembers map[string]struct{},
 	continuations []Continuation,
-) ([]transcript.Interrupt, []InterruptBinding, error) {
+) ([]int, []InterruptBinding, error) {
 	oldBindingByKey := make(map[inputRequestKey]int, len(w.plan.pending.Bindings))
 	for index, binding := range w.plan.pending.Bindings {
 		oldBindingByKey[inputRequestIdentity(binding.MemberID, binding.RequestID)] = index
@@ -393,7 +389,7 @@ func (w waitingCancellationBuilder) remainingInterruptions(
 		survivingRunByMemberID[continuation.MemberID] = continuation.RunID
 	}
 	pendingInterruptions := w.prepared.pendingInterruptions
-	remainingInterrupts := make([]transcript.Interrupt, 0, len(pendingInterruptions))
+	remainingInterrupts := make([]int, 0, len(pendingInterruptions))
 	remainingBindings := make([]InterruptBinding, 0, len(pendingInterruptions))
 	keptBindings := make(map[int]struct{}, len(pendingInterruptions))
 	for _, boundary := range pendingInterruptions {
@@ -421,7 +417,7 @@ func (w waitingCancellationBuilder) remainingInterruptions(
 			)
 		}
 		binding := w.plan.pending.Bindings[index]
-		interrupt := w.plan.pending.Interrupts[index]
+		interrupt := w.plan.interrupts[index]
 		runID, survives := survivingRunByMemberID[binding.MemberID]
 		if !survives || interrupt.RunID != runID {
 			return nil, nil, fmt.Errorf(
@@ -439,7 +435,7 @@ func (w waitingCancellationBuilder) remainingInterruptions(
 			)
 		}
 		keptBindings[index] = struct{}{}
-		remainingInterrupts = append(remainingInterrupts, interrupt)
+		remainingInterrupts = append(remainingInterrupts, index)
 		remainingBindings = append(remainingBindings, binding)
 	}
 	for index, binding := range w.plan.pending.Bindings {
@@ -468,6 +464,7 @@ func (w waitingCancellationBuilder) treeContinuation(
 		interrupts:    slices.Clone(interrupts),
 		continuations: slices.Clone(continuations),
 		runs:          parkedRunsByID(w.plan.survivingRuns()),
+		items:         maps.Clone(w.plan.items),
 	}
 	if err := continuation.validate(); err != nil {
 		return nil, fmt.Errorf(
@@ -479,7 +476,7 @@ func (w waitingCancellationBuilder) treeContinuation(
 }
 
 func (w waitingCancellationBuilder) remainingPending(
-	interrupts []transcript.Interrupt,
+	interrupts []OpenInterrupt,
 	bindings []InterruptBinding,
 	continuations []Continuation,
 ) (*Pending, error) {

@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
@@ -14,85 +13,6 @@ func indexPendingItems(items []transcript.Item) map[string]transcript.Item {
 		indexed[item.ID()] = item
 	}
 	return indexed
-}
-
-func validatePendingInterruptItems(
-	rootRunID string,
-	sessionID string,
-	activeRuns map[string]run.Run,
-	open []transcript.Interrupt,
-	itemsByID map[string]transcript.Item,
-) (map[string]struct{}, error) {
-	seen := make(map[string]struct{}, len(open))
-	for _, request := range open {
-		if _, duplicate := seen[request.ItemID]; duplicate {
-			return nil, fmt.Errorf(
-				"runs: validate parked Run tree %q: duplicate interrupt Item %q",
-				rootRunID,
-				request.ItemID,
-			)
-		}
-		seen[request.ItemID] = struct{}{}
-		if _, active := activeRuns[request.RunID]; !active {
-			return nil, fmt.Errorf(
-				"runs: validate parked Run tree %q: interrupt Item %q belongs to non-active Run %q",
-				rootRunID,
-				request.ItemID,
-				request.RunID,
-			)
-		}
-		item, found := itemsByID[request.ItemID]
-		if !found ||
-			item.SessionID() != sessionID ||
-			item.RunID() != request.RunID ||
-			!item.OccurredAt().Equal(request.ItemOccurredAt) {
-			return nil, fmt.Errorf(
-				"runs: validate parked Run tree %q: interrupt Item %q is not the exact Item owned by Run %q",
-				rootRunID,
-				request.ItemID,
-				request.RunID,
-			)
-		}
-		switch request.Kind {
-		case interrupt.Approval:
-			invocation, present := item.ToolInvocation()
-			if request.Approval == nil ||
-				request.Question != nil ||
-				item.Kind() != transcript.ToolCall ||
-				item.Status() != transcript.ItemRunning ||
-				item.ApprovalDecision() != "" ||
-				!present ||
-				!invocation.Equal(request.Approval.Tool) {
-				return nil, fmt.Errorf(
-					"runs: validate parked Run tree %q: malformed approval Item %q",
-					rootRunID,
-					request.ItemID,
-				)
-			}
-		case interrupt.Question:
-			question, present := item.Question()
-			if request.Question == nil ||
-				request.Approval != nil ||
-				item.Kind() != transcript.QuestionItem ||
-				item.Status() != transcript.ItemCompleted ||
-				!present ||
-				!question.Equal(*request.Question) {
-				return nil, fmt.Errorf(
-					"runs: validate parked Run tree %q: malformed question Item %q",
-					rootRunID,
-					request.ItemID,
-				)
-			}
-		default:
-			return nil, fmt.Errorf(
-				"runs: validate parked Run tree %q: interrupt Item %q has unknown kind %q",
-				rootRunID,
-				request.ItemID,
-				request.Kind,
-			)
-		}
-	}
-	return seen, nil
 }
 
 func validatePendingRunningItems(
@@ -131,25 +51,8 @@ func validatePendingContinuationTools(
 		if err := claimPendingItem(rootRunID, continuation.RunID, drained.ItemID, "drained tool", claimedItems); err != nil {
 			return err
 		}
-		item, found := itemsByID[drained.ItemID]
-		invocation, hasInvocation := item.ToolInvocation()
-		_, hasFailure := item.Failure()
-		if !found ||
-			item.SessionID() != sessionID ||
-			item.RunID() != continuation.RunID ||
-			!item.OccurredAt().Equal(drained.ItemOccurredAt) ||
-			item.Kind() != transcript.ToolCall ||
-			item.Status() != transcript.ItemRunning ||
-			!hasInvocation ||
-			invocation.Name != drained.Name ||
-			invocation.Arguments.Canonical() != drained.Arguments ||
-			hasFailure {
-			return fmt.Errorf(
-				"runs: validate parked Run tree %q: malformed drained tool Item %q in Run %q",
-				rootRunID,
-				drained.ItemID,
-				continuation.RunID,
-			)
+		if _, _, err := drainedToolItem(itemsByID, sessionID, continuation.RunID, drained); err != nil {
+			return fmt.Errorf("runs: validate parked Run tree %q: %w", rootRunID, err)
 		}
 	}
 	return nil

@@ -183,7 +183,7 @@ func TestGetSessionSnapshotRejectsOwnerlessInterruptMaterial(t *testing.T) {
 	}), "seg_waiting", runtimeidentity.CommitID{}); err != nil {
 		t.Fatalf("suspend waiting Run: %v", err)
 	}
-	if err := rt.openPending(t.Context(), t, serverPending(
+	if err := rt.openPendingWithoutItems(t.Context(), t, serverPending(
 		"run_waiting", "ses_1", "exec_waiting", "member_waiting", nil, createdAt,
 	)); err != nil {
 		t.Fatalf("open interrupt: %v", err)

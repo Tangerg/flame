@@ -156,11 +156,7 @@ func interruptRecord(pending runs.Pending) sqlite.InterruptRecord {
 	for index, continuation := range pending.Continuations {
 		drained := make([]sqlite.DrainedToolRecord, len(continuation.DrainedTools))
 		for toolIndex, tool := range continuation.DrainedTools {
-			drained[toolIndex] = sqlite.DrainedToolRecord{
-				ItemID: tool.ItemID, ItemOccurredAt: tool.ItemOccurredAt,
-				CallID: tool.CallID, SourceCallID: tool.SourceCallID,
-				Name: tool.Name, Arguments: tool.Arguments,
-			}
+			drained[toolIndex] = sqlite.DrainedToolRecord(tool)
 		}
 		continuations[index] = sqlite.ContinuationRecord{
 			RunID: continuation.RunID, MemberID: continuation.MemberID,
@@ -176,10 +172,19 @@ func interruptRecord(pending runs.Pending) sqlite.InterruptRecord {
 			ToolCallID:      binding.ToolCallID,
 		}
 	}
+	interrupts := make([]sqlite.OpenInterruptRecord, len(pending.Interrupts))
+	for index, open := range pending.Interrupts {
+		interrupts[index] = sqlite.OpenInterruptRecord{ItemID: open.ItemID}
+		if review := open.Approval; review != nil {
+			interrupts[index].Approval = &sqlite.ApprovalReviewRecord{
+				Risk: review.Risk, Reason: review.Reason, Rememberable: review.Rememberable,
+			}
+		}
+	}
 	return sqlite.InterruptRecord{
 		RootRunID: pending.RootRunID, SessionID: pending.SessionID,
 		ExecutorID: pending.ExecutorID,
-		Interrupts: pending.Interrupts, Bindings: bindings,
+		Interrupts: interrupts, Bindings: bindings,
 		Continuations: continuations,
 		CreatedAt:     pending.CreatedAt,
 	}
@@ -193,11 +198,7 @@ func pendingValue(record sqlite.InterruptRecord) runs.Pending {
 			drained = make([]runs.DrainedTool, len(continuation.DrainedTools))
 		}
 		for toolIndex, tool := range continuation.DrainedTools {
-			drained[toolIndex] = runs.DrainedTool{
-				ItemID: tool.ItemID, ItemOccurredAt: tool.ItemOccurredAt,
-				CallID: tool.CallID, SourceCallID: tool.SourceCallID,
-				Name: tool.Name, Arguments: tool.Arguments,
-			}
+			drained[toolIndex] = runs.DrainedTool(tool)
 		}
 		continuations[index] = runs.Continuation{
 			RunID: continuation.RunID, MemberID: continuation.MemberID,
@@ -213,10 +214,19 @@ func pendingValue(record sqlite.InterruptRecord) runs.Pending {
 			ToolCallID:      binding.ToolCallID,
 		}
 	}
+	interrupts := make([]runs.OpenInterrupt, len(record.Interrupts))
+	for index, open := range record.Interrupts {
+		interrupts[index] = runs.OpenInterrupt{ItemID: open.ItemID}
+		if review := open.Approval; review != nil {
+			interrupts[index].Approval = &runs.ApprovalReview{
+				Risk: review.Risk, Reason: review.Reason, Rememberable: review.Rememberable,
+			}
+		}
+	}
 	return runs.Pending{
 		RootRunID: record.RootRunID, SessionID: record.SessionID,
 		ExecutorID: record.ExecutorID,
-		Interrupts: record.Interrupts, Bindings: bindings,
+		Interrupts: interrupts, Bindings: bindings,
 		Continuations: continuations,
 		CreatedAt:     record.CreatedAt,
 	}

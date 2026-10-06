@@ -530,8 +530,7 @@ func TestCoordinatorUpdateRejectsExecutionPolicyChangeWhileParked(t *testing.T) 
 			stores := &crudStores{
 				session: store,
 				interrupts: &coordinatorInterrupts{pending: map[string]runs.Pending{
-					"run_1": testPending("run_1", "ses_1", time.Unix(1, 0).UTC()),
-				}},
+					"run_1": testPending("run_1", "ses_1", time.Unix(1, 0).UTC())}},
 			}
 			coordinator := mustNewCoordinator(testDependencies(stores, Dependencies{
 				Paths:      testWorkspaceResolver{resolved: "/resolved/project"},

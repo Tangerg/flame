@@ -3,6 +3,7 @@ package runs
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
@@ -28,6 +29,9 @@ type treeContinuation struct {
 	// route reads its admission, accounting and creation from them; the
 	// continuation carries none of those facts.
 	runs map[string]run.Run
+	// items are the Items the hand-off names; they own each drained Tool's
+	// occurrence and invocation.
+	items map[string]transcript.Item
 }
 
 // goalIncarnationID is the parked root Run's Goal incarnation.
@@ -99,17 +103,23 @@ func (t *treeContinuation) bindToolApprovalResolutions(
 	return nil
 }
 
-func treeContinuationFromPending(pending Pending, parked []run.Run) (*treeContinuation, error) {
-	if err := pending.Validate(); err != nil {
+func treeContinuationFromPending(
+	pending Pending,
+	parked []run.Run,
+	itemsByID map[string]transcript.Item,
+) (*treeContinuation, error) {
+	interrupts, err := pending.ProjectInterrupts(itemsByID)
+	if err != nil {
 		return nil, err
 	}
 	continuation := &treeContinuation{
 		rootRunID:     pending.RootRunID,
 		sessionID:     pending.SessionID,
 		executorID:    pending.ExecutorID,
-		interrupts:    slices.Clone(pending.Interrupts),
+		interrupts:    interrupts,
 		continuations: slices.Clone(pending.Continuations),
 		runs:          parkedRunsByID(parked),
+		items:         maps.Clone(itemsByID),
 	}
 	if err := continuation.validate(); err != nil {
 		return nil, err

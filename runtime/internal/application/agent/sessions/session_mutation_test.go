@@ -430,8 +430,7 @@ func newMutationStores(fail string) *mutationStores {
 	s := &mutationStores{
 		fail: fail,
 		pending: map[string][]runs.Pending{
-			"ses_1": {testPending("run_1", "ses_1", time.Unix(1, 0).UTC())},
-		},
+			"ses_1": {testPending("run_1", "ses_1", time.Unix(1, 0).UTC())}},
 	}
 	s.ints = &mutationInterrupts{stores: s}
 	return s

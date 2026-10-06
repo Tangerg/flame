@@ -12,16 +12,16 @@ import (
 )
 
 func TestResolveResumeResponsesValidatesExactTypedCoverage(t *testing.T) {
-	approvalPending := Pending{Interrupts: []transcript.Interrupt{{
+	approvalPending := resolutionFixture{interrupts: ([]transcript.Interrupt{{
 		ItemID: "item_approval",
 		Kind:   interrupt.Approval,
 		Approval: &transcript.Approval{
 			Tool: transcript.ToolInvocation{Name: "shell"}, Risk: "medium", Rememberable: true,
 		},
-	}}, Bindings: []InterruptBinding{{
+	}}), bindings: []InterruptBinding{{
 		InterruptItemID: "item_approval", MemberID: "member_approval", RequestID: "request_approval", ToolCallID: "call_approval",
 	}}}
-	answers, err := resolveResumeResponses(approvalPending, []ResumeResponse{{
+	answers, err := resolveResumeResponses(approvalPending.interrupts, approvalPending.bindings, []ResumeResponse{{
 		ItemID: "item_approval",
 		Kind:   interrupt.Approval,
 		Approval: &ApprovalResponse{
@@ -38,7 +38,7 @@ func TestResolveResumeResponsesValidatesExactTypedCoverage(t *testing.T) {
 	if !resolution.Approved || resolution.Arguments != `{"command":"echo edited","description":"Print edited"}` || resolution.RememberScope != approval.ScopeSession {
 		t.Fatalf("approval resolution = %#v", resolution)
 	}
-	deniedAnswers, err := resolveResumeResponses(approvalPending, []ResumeResponse{{
+	deniedAnswers, err := resolveResumeResponses(approvalPending.interrupts, approvalPending.bindings, []ResumeResponse{{
 		ItemID: "item_approval",
 		Kind:   interrupt.Approval,
 		Approval: &ApprovalResponse{
@@ -53,17 +53,17 @@ func TestResolveResumeResponsesValidatesExactTypedCoverage(t *testing.T) {
 		t.Fatalf("denial resolution = %#v", denied)
 	}
 
-	questionPending := Pending{Interrupts: []transcript.Interrupt{{
+	questionPending := resolutionFixture{interrupts: ([]transcript.Interrupt{{
 		ItemID: "item_question",
 		Kind:   interrupt.Question,
 		Question: &transcript.Question{Fields: []transcript.QuestionField{{
 			Prompt: "Choose", Kind: transcript.QuestionChoice,
 			Options: []transcript.QuestionOption{{Label: "Go"}, {Label: "Stop"}},
 		}}},
-	}}, Bindings: []InterruptBinding{{
+	}}), bindings: []InterruptBinding{{
 		InterruptItemID: "item_question", MemberID: "member_question", RequestID: "request_question",
 	}}}
-	answers, err = resolveResumeResponses(questionPending, []ResumeResponse{{
+	answers, err = resolveResumeResponses(questionPending.interrupts, questionPending.bindings, []ResumeResponse{{
 		ItemID: "item_question",
 		Kind:   interrupt.Question,
 		Question: &QuestionResponse{
@@ -80,7 +80,7 @@ func TestResolveResumeResponsesValidatesExactTypedCoverage(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		pending   Pending
+		pending   resolutionFixture
 		responses []ResumeResponse
 		want      error
 	}{
@@ -99,22 +99,21 @@ func TestResolveResumeResponsesValidatesExactTypedCoverage(t *testing.T) {
 			ItemID: "item_question", Kind: interrupt.Question,
 			Question: &QuestionResponse{Answers: [][]string{{"Rust"}}},
 		}}, want: ErrInvalidInterruptResponse},
-		{name: "one-off approval cannot be remembered", pending: Pending{
-			Interrupts: []transcript.Interrupt{{
+		{name: "one-off approval cannot be remembered", pending: resolutionFixture{
+			interrupts: ([]transcript.Interrupt{{
 				ItemID: "item_one_off", Kind: interrupt.Approval,
 				Approval: &transcript.Approval{Tool: transcript.ToolInvocation{Name: "shell"}, Risk: "medium"},
-			}},
-			Bindings: []InterruptBinding{{
+			}}),
+			bindings: []InterruptBinding{{
 				InterruptItemID: "item_one_off", MemberID: "member_one_off", RequestID: "request_one_off", ToolCallID: "call_one_off",
-			}},
-		}, responses: []ResumeResponse{{
+			}}}, responses: []ResumeResponse{{
 			ItemID: "item_one_off", Kind: interrupt.Approval,
 			Approval: &ApprovalResponse{Approved: true, RememberScope: approval.ScopeSession},
 		}}, want: ErrInvalidInterruptResponse},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := resolveResumeResponses(test.pending, test.responses)
+			_, err := resolveResumeResponses(test.pending.interrupts, test.pending.bindings, test.responses)
 			if !errors.Is(err, test.want) {
 				t.Fatalf("error = %v, want %v", err, test.want)
 			}
@@ -123,8 +122,8 @@ func TestResolveResumeResponsesValidatesExactTypedCoverage(t *testing.T) {
 }
 
 func TestResolveResumeResponsesPreservesCompleteBarrierInCanonicalOrder(t *testing.T) {
-	pending := Pending{
-		Interrupts: []transcript.Interrupt{
+	pending := resolutionFixture{
+		interrupts: ([]transcript.Interrupt{
 			{
 				ItemID: "item_a",
 				Kind:   interrupt.Approval,
@@ -139,13 +138,12 @@ func TestResolveResumeResponsesPreservesCompleteBarrierInCanonicalOrder(t *testi
 					Tool: transcript.ToolInvocation{Name: "write"}, Risk: "medium",
 				},
 			},
-		},
-		Bindings: []InterruptBinding{
+		}),
+		bindings: []InterruptBinding{
 			{InterruptItemID: "item_a", MemberID: "member_a", RequestID: "request_a", ToolCallID: "call_a"},
 			{InterruptItemID: "item_b", MemberID: "member_b", RequestID: "request_b", ToolCallID: "call_b"},
-		},
-	}
-	answers, err := resolveResumeResponses(pending, []ResumeResponse{
+		}}
+	answers, err := resolveResumeResponses(pending.interrupts, pending.bindings, []ResumeResponse{
 		{
 			ItemID:   "item_b",
 			Kind:     interrupt.Approval,
@@ -290,4 +288,11 @@ func TestInterruptAnswerValidatesKindSpecificResolutionShape(t *testing.T) {
 			}
 		})
 	}
+}
+
+// resolutionFixture is an open interrupt set as resolveResumeResponses reads
+// it: interrupts projected from their Items, and their bindings.
+type resolutionFixture struct {
+	interrupts []transcript.Interrupt
+	bindings   []InterruptBinding
 }

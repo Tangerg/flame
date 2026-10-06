@@ -396,17 +396,13 @@ func (w *waitingCancellationValidation) validateTerminalRuns() error {
 func (w waitingCancellationValidation) validateTerminalItems() error {
 	c := w.commit
 	type expectedTool struct {
-		runID     string
-		name      string
-		arguments string
+		runID string
 	}
 	expectedByItemID := make(map[string]expectedTool)
-	for _, request := range c.ExpectedPending.Interrupts {
-		if _, terminal := w.terminalRunIDs[request.RunID]; terminal && request.Kind == interrupt.Approval {
-			expectedByItemID[request.ItemID] = expectedTool{
-				runID: request.RunID, name: request.Approval.Tool.Name,
-				arguments: request.Approval.Tool.Arguments.Canonical(),
-			}
+	for index, request := range c.ExpectedPending.Interrupts {
+		continuation, _ := continuationForMember(c.ExpectedPending.Continuations, c.ExpectedPending.Bindings[index].MemberID)
+		if _, terminal := w.terminalRunIDs[continuation.RunID]; terminal && request.Kind() == interrupt.Approval {
+			expectedByItemID[request.ItemID] = expectedTool{runID: continuation.RunID}
 		}
 	}
 	for _, continuation := range c.ExpectedPending.Continuations {
@@ -417,9 +413,7 @@ func (w waitingCancellationValidation) validateTerminalItems() error {
 			if _, duplicate := expectedByItemID[drained.ItemID]; duplicate {
 				return fmt.Errorf("runs: waiting cancellation Tool Item %q has multiple terminal roles", drained.ItemID)
 			}
-			expectedByItemID[drained.ItemID] = expectedTool{
-				runID: continuation.RunID, name: drained.Name, arguments: drained.Arguments,
-			}
+			expectedByItemID[drained.ItemID] = expectedTool{runID: continuation.RunID}
 		}
 	}
 	if len(c.TerminalItems) != len(expectedByItemID) {
@@ -438,8 +432,6 @@ func (w waitingCancellationValidation) validateTerminalItems() error {
 		}
 		seen[expectedItem.ID()] = struct{}{}
 		if err := validateTerminalItemReplacement(
-			expectedTool.name,
-			expectedTool.arguments,
 			replacement,
 			w.finishedAtByRunID[expectedTool.runID],
 		); err != nil {
@@ -450,17 +442,13 @@ func (w waitingCancellationValidation) validateTerminalItems() error {
 }
 
 func validateTerminalItemReplacement(
-	toolName string,
-	arguments string,
 	replacement transcript.Replacement,
 	finishedAt time.Time,
 ) error {
 	expectedItem := replacement.Expected()
 	replacementItem := replacement.State()
-	invocation, present := expectedItem.ToolInvocation()
-	if expectedItem.Kind() != transcript.ToolCall || !present ||
-		invocation.Name != toolName || invocation.Arguments.Canonical() != arguments {
-		return errors.New("tool Item differs from its pending identity")
+	if _, present := expectedItem.ToolInvocation(); expectedItem.Kind() != transcript.ToolCall || !present {
+		return errors.New("tool Item is not a ToolCall")
 	}
 	failure, failed := replacementItem.Failure()
 	if !failed || failure.Kind != tool.FailureExecution {
@@ -580,36 +568,14 @@ func sameContinuationValue(left, right Continuation) bool {
 
 func normalizeContinuationValue(value Continuation) Continuation {
 	value.DrainedTools = slices.Clone(value.DrainedTools)
-	for index := range value.DrainedTools {
-		value.DrainedTools[index].ItemOccurredAt = canonicalTime(value.DrainedTools[index].ItemOccurredAt)
-	}
 	if len(value.DrainedTools) == 0 {
 		value.DrainedTools = nil
 	}
 	return value
 }
 
-func sameInterruptValue(left, right transcript.Interrupt) bool {
-	return reflect.DeepEqual(normalizeInterruptValue(left), normalizeInterruptValue(right))
-}
-
-func normalizeInterruptValue(value transcript.Interrupt) transcript.Interrupt {
-	value.ItemOccurredAt = canonicalTime(value.ItemOccurredAt)
-	if value.Question == nil {
-		return value
-	}
-	question := *value.Question
-	question.Fields = slices.Clone(question.Fields)
-	for index := range question.Fields {
-		if len(question.Fields[index].Options) == 0 {
-			question.Fields[index].Options = nil
-		}
-	}
-	if len(question.Fields) == 0 {
-		question.Fields = nil
-	}
-	value.Question = &question
-	return value
+func sameInterruptValue(left, right OpenInterrupt) bool {
+	return reflect.DeepEqual(left, right)
 }
 
 func canonicalTime(value time.Time) time.Time {

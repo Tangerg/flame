@@ -25,7 +25,17 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 	if !found {
 		return StartResult{}, ErrInterruptNotOpen
 	}
-	answers, err := resolveResumeResponses(pending, cmd.Responses)
+	// The Items an open interrupt names cannot change while it is open: only
+	// the claim below answers them.
+	itemsByID, err := c.pendingItems(ctx, pending)
+	if err != nil {
+		return StartResult{}, err
+	}
+	interrupts, err := pending.ProjectInterrupts(itemsByID)
+	if err != nil {
+		return StartResult{}, fmt.Errorf("runs: project open interrupts: %w", err)
+	}
+	answers, err := resolveResumeResponses(interrupts, pending.Bindings, cmd.Responses)
 	if err != nil {
 		return StartResult{}, err
 	}
@@ -71,7 +81,7 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 		}
 	}
 
-	claim, err := NewResumeClaimCommit(newRunCommitID(), pending, answers, c.publications.nowUTC())
+	claim, err := NewResumeClaimCommit(newRunCommitID(), pending, itemsByID, answers, c.publications.nowUTC())
 	if err != nil {
 		return StartResult{}, fmt.Errorf("runs: prepare resume claim: %w", err)
 	}
@@ -110,7 +120,7 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 		}
 	}
 	pendingCopy := pending
-	continuation, err := treeContinuationFromPending(pendingCopy, parkedRuns)
+	continuation, err := treeContinuationFromPending(pendingCopy, parkedRuns, itemsByID)
 	if err != nil {
 		return StartResult{}, fmt.Errorf("runs: prepare tree continuation: %w", err)
 	}

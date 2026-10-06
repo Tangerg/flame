@@ -11,11 +11,13 @@ import (
 
 // resolveResumeResponses validates exact item coverage and the kind-specific
 // answer schema, then binds every decision to its exact executor input request.
-// Output follows the pending barrier's canonical order, independent of request
-// ordering, so every downstream layer observes one representation of the set.
-func resolveResumeResponses(pending Pending, responses []ResumeResponse) ([]InterruptAnswer, error) {
-	open := make(map[string]transcript.Interrupt, len(pending.Interrupts))
-	for _, interrupt := range pending.Interrupts {
+// interrupts are a hand-off's open interrupts projected from their Items, and
+// bindings its input-request bindings in the same order. Output follows that
+// canonical order, independent of request ordering, so every downstream layer
+// observes one representation of the set.
+func resolveResumeResponses(interrupts []transcript.Interrupt, bindings []InterruptBinding, responses []ResumeResponse) ([]InterruptAnswer, error) {
+	open := make(map[string]transcript.Interrupt, len(interrupts))
+	for _, interrupt := range interrupts {
 		if interrupt.ItemID == "" {
 			return nil, fmt.Errorf("%w: open interrupt has no item id", ErrInvalidInterruptResponse)
 		}
@@ -63,16 +65,16 @@ func resolveResumeResponses(pending Pending, responses []ResumeResponse) ([]Inte
 			ErrInvalidInterruptResponse, len(seen), len(open),
 		)
 	}
-	if len(pending.Bindings) != len(pending.Interrupts) {
+	if len(bindings) != len(interrupts) {
 		return nil, fmt.Errorf(
 			"%w: pending barrier has %d input-request bindings for %d items",
 			ErrInvalidInterruptResponse,
-			len(pending.Bindings),
-			len(pending.Interrupts),
+			len(bindings),
+			len(interrupts),
 		)
 	}
-	answers := make([]InterruptAnswer, len(pending.Bindings))
-	for index, binding := range pending.Bindings {
+	answers := make([]InterruptAnswer, len(bindings))
+	for index, binding := range bindings {
 		resolution, ok := resolutions[binding.InterruptItemID]
 		if !ok {
 			return nil, fmt.Errorf(

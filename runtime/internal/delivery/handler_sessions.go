@@ -117,12 +117,16 @@ func (s *Handler) GetSessionSnapshot(ctx context.Context, in protocol.GetSession
 		}
 		out.Runs = append(out.Runs, presentRun(record))
 	}
-	for _, pending := range snapshot.Interrupts {
+	sets, err := snapshot.InterruptSets()
+	if err != nil {
+		return nil, err
+	}
+	for _, set := range sets {
 		out.Interrupts = append(out.Interrupts, protocol.PendingInterruptSet{
-			RootRunID:  pending.RootRunID,
-			SessionID:  pending.SessionID,
-			Interrupts: presentInterrupts(pending.Interrupts),
-			CreatedAt:  pending.CreatedAt,
+			RootRunID:  set.Pending.RootRunID,
+			SessionID:  set.Pending.SessionID,
+			Interrupts: presentInterrupts(set.Interrupts),
+			CreatedAt:  set.Pending.CreatedAt,
 		})
 	}
 	plan := presentStoredPlan(in.SessionID, snapshot.Plan)

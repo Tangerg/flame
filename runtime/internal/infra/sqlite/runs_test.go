@@ -172,14 +172,13 @@ func pendingForRun(
 		RootRunID:  runID,
 		SessionID:  sessionID,
 		ExecutorID: "turn_" + runID,
-		Interrupts: copied,
+		Interrupts: runs.OpenInterruptsOf(copied),
 		Bindings:   bindings,
 		Continuations: []runs.Continuation{{
 			RunID:    runID,
 			MemberID: memberID,
 		}},
-		CreatedAt: createdAt,
-	}
+		CreatedAt: createdAt}
 }
 
 func capabilitiesForInterrupts(values []transcript.Interrupt) run.Capabilities {

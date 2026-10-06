@@ -43,6 +43,31 @@ func (c *Coordinator) MaterialSnapshot(ctx context.Context, sessionID string) (M
 	return snapshot, nil
 }
 
+// InterruptSet is one open waiting hand-off with its interrupts projected from
+// the Items they name.
+type InterruptSet struct {
+	Pending    runs.Pending
+	Interrupts []transcript.Interrupt
+}
+
+// InterruptSets projects every open hand-off's interrupts from the snapshot's
+// Items.
+func (m MaterialSnapshot) InterruptSets() ([]InterruptSet, error) {
+	itemsByID := make(map[string]transcript.Item, len(m.Items))
+	for _, item := range m.Items {
+		itemsByID[item.ID()] = item
+	}
+	sets := make([]InterruptSet, len(m.Interrupts))
+	for index, pending := range m.Interrupts {
+		interrupts, err := pending.ProjectInterrupts(itemsByID)
+		if err != nil {
+			return nil, fmt.Errorf("sessions: material snapshot interrupt %q: %w", pending.RootRunID, err)
+		}
+		sets[index] = InterruptSet{Pending: pending, Interrupts: interrupts}
+	}
+	return sets, nil
+}
+
 // Run returns the snapshot's Run with runID; an open interrupt set's root Run
 // is always present, and owns the set's capabilities.
 func (m MaterialSnapshot) Run(runID string) (run.Run, bool) {

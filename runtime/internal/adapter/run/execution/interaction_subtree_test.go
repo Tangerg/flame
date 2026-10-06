@@ -34,8 +34,7 @@ func TestInteractionExecutorAppliesColdWaitingDelegateCancellationWithoutDuplica
 	if err := fixture.executor.Release(t.Context(), ref); err != nil {
 		t.Fatal(err)
 	}
-	target := pending.Interrupts[0]
-	targetMemberID := memberIDForRun(t, pending, target.RunID)
+	targetMemberID := pending.Bindings[0].MemberID
 	continuation := waitingDelegateContinuation(barrier, fixture.workspace)
 	request, err := runs.NewWaitingSubtreeCancellationRequest(
 		continuation,

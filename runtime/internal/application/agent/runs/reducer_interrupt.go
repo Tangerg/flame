@@ -274,9 +274,7 @@ func drainedToolRefs(
 		_, activeApproval := matched[ref]
 		if !activeApproval {
 			drained = append(drained, DrainedTool{
-				ItemID: ref.id, ItemOccurredAt: ref.occurredAt,
-				CallID: ref.callID, SourceCallID: ref.sourceCallID,
-				Name: ref.name, Arguments: ref.arguments.Canonical(),
+				ItemID: ref.id, CallID: ref.callID, SourceCallID: ref.sourceCallID,
 			})
 		}
 	}

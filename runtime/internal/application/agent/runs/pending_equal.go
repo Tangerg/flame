@@ -20,9 +20,6 @@ func canonicalPending(pending Pending) Pending {
 	for index := range pending.Continuations {
 		pending.Continuations[index] = normalizeContinuationValue(pending.Continuations[index])
 	}
-	for index := range pending.Interrupts {
-		pending.Interrupts[index] = normalizeInterruptValue(pending.Interrupts[index])
-	}
 	pending.Interrupts = nilIfEmpty(pending.Interrupts)
 	pending.Bindings = nilIfEmpty(pending.Bindings)
 	pending.Continuations = nilIfEmpty(pending.Continuations)

@@ -3,6 +3,7 @@ package runs
 import (
 	"context"
 	"errors"
+	"maps"
 	"reflect"
 	"slices"
 	"strings"
@@ -234,7 +235,7 @@ func TestPrepareWaitingCancellationKeepsSurvivingExternalBoundary(t *testing.T) 
 	}
 	if transformation.remaining == nil ||
 		len(transformation.remaining.Interrupts) != 1 ||
-		transformation.remaining.Interrupts[0].RunID != "run_b" {
+		transformation.remaining.Bindings[0].MemberID != "member_b" {
 		t.Fatalf("remaining Pending = %+v, want only run_b boundary", transformation.remaining)
 	}
 	assertRetainedParentTool(t, transformation, "item_spawn_a", "call_run_a")
@@ -886,8 +887,7 @@ func waitingCancellationCoordinator(
 	sessions := &fakeRunSessions{
 		sess: testsupport.MustRestoreSession(session.Snapshot{ID: plan.pending.SessionID, Workspace: testsupport.MustWorkspace("/work")}),
 		pending: map[string]Pending{
-			plan.pending.RootRunID: plan.pending,
-		},
+			plan.pending.RootRunID: plan.pending},
 	}
 	coordinator := mustNewCoordinator(Dependencies{
 		Observations:                       executor,
@@ -954,9 +954,8 @@ func runACancellationPlan(
 				pending.Continuations[index].DrainedTools = append(
 					pending.Continuations[index].DrainedTools,
 					DrainedTool{
-						ItemID: "item_target_tool", ItemOccurredAt: createdAt,
+						ItemID: "item_target_tool",
 						CallID: "call_target_tool", SourceCallID: "provider_target_tool",
-						Name: "ask_user", Arguments: "{}",
 					},
 				)
 			}
@@ -965,9 +964,8 @@ func runACancellationPlan(
 		pending.Continuations[index].DrainedTools = append(
 			pending.Continuations[index].DrainedTools,
 			DrainedTool{
-				ItemID: target.Lineage().SpawnedByItemID, ItemOccurredAt: createdAt,
+				ItemID: target.Lineage().SpawnedByItemID,
 				CallID: callID, SourceCallID: "provider_" + targetRunID,
-				Name: "delegate_task", Arguments: "{}",
 			},
 		)
 	}
@@ -1006,46 +1004,31 @@ func runACancellationPlan(
 	for _, member := range plan.targetSubtree {
 		targetRunIDs[member.run.ID()] = struct{}{}
 	}
-	for _, pendingInterrupt := range pending.Interrupts {
-		if _, targeted := targetRunIDs[pendingInterrupt.RunID]; !targeted {
-			continue
+	items := fixtureItems(pending)
+	items[plan.spawningItem.ID()] = plan.spawningItem
+	interrupts, err := pending.ProjectInterrupts(items)
+	if err != nil {
+		t.Fatalf("project fixture interrupts: %v", err)
+	}
+	plan.items, plan.interrupts = items, interrupts
+	for _, projected := range interrupts {
+		if _, targeted := targetRunIDs[projected.RunID]; targeted {
+			plan.targetInterruptItems = append(plan.targetInterruptItems, items[projected.ItemID])
 		}
-		input := testsupport.ItemInput{
-			ID: pendingInterrupt.ItemID, SessionID: pending.SessionID,
-			RunID: pendingInterrupt.RunID, OccurredAt: createdAt,
-		}
-		switch pendingInterrupt.Kind {
-		case interrupt.Question:
-			input.Kind = transcript.QuestionItem
-			input.Status = transcript.ItemCompleted
-			input.Question = pendingInterrupt.Question
-		case interrupt.Approval:
-			input.Kind = transcript.ToolCall
-			input.Status = transcript.ItemRunning
-			input.Tool = &pendingInterrupt.Approval.Tool
-		default:
-			t.Fatalf("unsupported fixture interrupt kind %s", pendingInterrupt.Kind)
-		}
-		item := testsupport.MustRestoreItem(input)
-		plan.targetInterruptItems = append(plan.targetInterruptItems, item)
 	}
 	for _, continuation := range pending.Continuations {
 		if _, targeted := targetRunIDs[continuation.RunID]; !targeted {
 			continue
 		}
 		for _, drained := range continuation.DrainedTools {
-			plan.targetDrainedItems = append(plan.targetDrainedItems, testsupport.MustRestoreItem(testsupport.ItemInput{
-				ID: drained.ItemID, SessionID: pending.SessionID, RunID: continuation.RunID,
-				Status: transcript.ItemRunning, Kind: transcript.ToolCall, OccurredAt: drained.ItemOccurredAt,
-				Tool: &transcript.ToolInvocation{Name: drained.Name},
-			}))
+			plan.targetDrainedItems = append(plan.targetDrainedItems, items[drained.ItemID])
 		}
 	}
 	return plan
 }
 
 func waitingCancellationItems(plan cancellationPlan) map[string]transcript.Item {
-	items := make(map[string]transcript.Item, len(plan.targetInterruptItems)+len(plan.targetDrainedItems)+1)
+	items := maps.Clone(plan.items)
 	items[plan.spawningItem.ID()] = plan.spawningItem
 	for _, item := range plan.targetInterruptItems {
 		items[item.ID()] = item

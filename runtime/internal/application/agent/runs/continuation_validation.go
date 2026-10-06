@@ -30,15 +30,12 @@ func (p Pending) ValidateProjection(values []rundomain.Run, items []transcript.I
 		}
 	}
 	itemsByID := indexPendingItems(items)
-	interruptItems, err := validatePendingInterruptItems(
-		p.RootRunID,
-		p.SessionID,
-		active,
-		p.Interrupts,
-		itemsByID,
-	)
-	if err != nil {
-		return err
+	if _, err := p.ProjectInterrupts(itemsByID); err != nil {
+		return fmt.Errorf("runs: validate parked Run tree %q: %w", p.RootRunID, err)
+	}
+	interruptItems := make(map[string]struct{}, len(p.Interrupts))
+	for _, open := range p.Interrupts {
+		interruptItems[open.ItemID] = struct{}{}
 	}
 	drainedItems := make(map[string]struct{})
 	for _, continuation := range p.Continuations {
@@ -114,11 +111,11 @@ func validatePendingRunTree(pending Pending, values []rundomain.Run) error {
 			len(active),
 		)
 	}
-	for _, interrupt := range pending.Interrupts {
-		if !slices.Contains(root.Capabilities().InterruptKinds, interrupt.Kind) {
+	for _, open := range pending.Interrupts {
+		if !slices.Contains(root.Capabilities().InterruptKinds, open.Kind()) {
 			return fmt.Errorf(
 				"runs: validate parked Run tree %q: interrupt item %q has kind %s outside the root Run's capabilities",
-				pending.RootRunID, interrupt.ItemID, interrupt.Kind,
+				pending.RootRunID, open.ItemID, open.Kind(),
 			)
 		}
 	}

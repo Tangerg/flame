@@ -160,14 +160,13 @@ func serverPending(
 		RootRunID:  runID,
 		SessionID:  sessionID,
 		ExecutorID: executorID,
-		Interrupts: open,
+		Interrupts: runs.OpenInterruptsOf(open),
 		Bindings:   bindings,
 		Continuations: []runs.Continuation{{
 			RunID:    runID,
 			MemberID: memberID,
 		}},
-		CreatedAt: createdAt,
-	}
+		CreatedAt: createdAt}
 }
 
 // executionRuntime is the combined application-owned execution surface this
@@ -453,7 +452,7 @@ func (s *stubRuntime) openPending(ctx context.Context, t *testing.T, pending run
 	t.Helper()
 	capabilities := run.Capabilities{}
 	for _, request := range pending.Interrupts {
-		capabilities.InterruptKinds = append(capabilities.InterruptKinds, request.Kind)
+		capabilities.InterruptKinds = append(capabilities.InterruptKinds, request.Kind())
 	}
 	return s.openPendingWith(ctx, t, pending, capabilities.Normalized())
 }
@@ -467,7 +466,49 @@ func (s *stubRuntime) openPendingWith(ctx context.Context, t *testing.T, pending
 		members[index] = testsupport.ParkedMember{RunID: continuation.RunID}
 	}
 	testsupport.SeedParkedRuns(t, s.db, pending.SessionID, pending.RootRunID, "", capabilities, members)
+	s.seedInterruptItems(ctx, t, pending)
 	return s.interrupts.Open(ctx, pending)
+}
+
+// openPendingWithoutItems opens a test hand-off whose interrupt Items the
+// transcript never received.
+func (s *stubRuntime) openPendingWithoutItems(ctx context.Context, t *testing.T, pending runs.Pending) error {
+	t.Helper()
+	members := make([]testsupport.ParkedMember, len(pending.Continuations))
+	for index, continuation := range pending.Continuations {
+		members[index] = testsupport.ParkedMember{RunID: continuation.RunID}
+	}
+	testsupport.SeedParkedRuns(t, s.db, pending.SessionID, pending.RootRunID, "", run.Capabilities{}, members)
+	return s.interrupts.Open(ctx, pending)
+}
+
+// seedInterruptItems writes the Item each open interrupt names when the test
+// has not: a running shell ToolCall for an approval, and an unanswered
+// one-field Question otherwise. The Items own what the hand-off asks.
+func (s *stubRuntime) seedInterruptItems(ctx context.Context, t *testing.T, pending runs.Pending) {
+	t.Helper()
+	for index, open := range pending.Interrupts {
+		if _, found, err := s.hist.Item(ctx, open.ItemID); err != nil || found {
+			if err != nil {
+				t.Fatalf("read interrupt Item %q: %v", open.ItemID, err)
+			}
+			continue
+		}
+		input := testsupport.ItemInput{
+			ID: open.ItemID, SessionID: pending.SessionID, RunID: pending.Continuations[index].RunID,
+			OccurredAt: pending.CreatedAt,
+		}
+		if open.Approval != nil {
+			input.Kind, input.Status = transcript.ToolCall, transcript.ItemRunning
+			input.Tool = &transcript.ToolInvocation{Name: "shell"}
+		} else {
+			input.Kind = transcript.QuestionItem
+			input.Question = &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}}
+		}
+		if err := s.hist.AppendItem(ctx, testsupport.MustRestoreItem(input)); err != nil {
+			t.Fatalf("seed interrupt Item %q: %v", open.ItemID, err)
+		}
+	}
 }
 
 // MessageCount and TruncateMessages operate on the in-memory history map,
@@ -1138,6 +1179,10 @@ func (inertSessionTranscript) List(context.Context, string) ([]transcript.Item, 
 }
 
 type inertQueryStores struct{}
+
+func (inertQueryStores) Item(context.Context, string) (transcript.Item, bool, error) {
+	return transcript.Item{}, false, nil
+}
 
 func (inertQueryStores) PageSessionItems(context.Context, string, transcript.SequenceOrder, int64, int) ([]transcript.SequencedItem, error) {
 	return nil, nil

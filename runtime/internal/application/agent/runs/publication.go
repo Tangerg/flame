@@ -375,7 +375,7 @@ func (t treePublisher) reduceTreeBarrier(
 		if err != nil {
 			return treeBarrierProjection{}, err
 		}
-		projection.pending.Interrupts = append(projection.pending.Interrupts, reduction.interrupts...)
+		projection.pending.Interrupts = append(projection.pending.Interrupts, OpenInterruptsOf(reduction.interrupts)...)
 		projection.pending.Bindings = append(projection.pending.Bindings, bindings...)
 		projection.pending.Continuations = append(projection.pending.Continuations, continuation)
 		projection.reductions = append(projection.reductions, reduction)

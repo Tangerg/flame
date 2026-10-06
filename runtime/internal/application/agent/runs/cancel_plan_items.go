@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
@@ -16,12 +15,51 @@ func (c *Coordinator) loadWaitingCancellationItems(ctx context.Context, plan *ca
 	if err := c.loadWaitingCancellationSpawningItem(ctx, plan); err != nil {
 		return err
 	}
-	targetRunIDs := cancellationTargetRunIDs(plan.targetSubtree)
-	seenToolItems, err := c.loadWaitingCancellationInterruptItems(ctx, plan, targetRunIDs)
+	itemsByID, err := c.pendingItems(ctx, plan.pending)
 	if err != nil {
 		return err
 	}
-	return c.loadWaitingCancellationDrainedItems(ctx, plan, targetRunIDs, seenToolItems)
+	interrupts, err := plan.pending.ProjectInterrupts(itemsByID)
+	if err != nil {
+		return fmt.Errorf("runs: waiting cancellation: %w", err)
+	}
+	plan.items, plan.interrupts = itemsByID, interrupts
+	targetRunIDs := cancellationTargetRunIDs(plan.targetSubtree)
+	for _, request := range interrupts {
+		if _, targeted := targetRunIDs[request.RunID]; targeted {
+			plan.targetInterruptItems = append(plan.targetInterruptItems, itemsByID[request.ItemID])
+		}
+	}
+	for _, continuation := range plan.pending.Continuations {
+		if _, targeted := targetRunIDs[continuation.RunID]; !targeted {
+			continue
+		}
+		for _, drained := range continuation.DrainedTools {
+			item, _, err := drainedToolItem(itemsByID, plan.root.run.SessionID(), continuation.RunID, drained)
+			if err != nil {
+				return fmt.Errorf("runs: waiting cancellation: %w", err)
+			}
+			plan.targetDrainedItems = append(plan.targetDrainedItems, item)
+		}
+	}
+	return nil
+}
+
+// pendingItems reads every Item a hand-off names; those Items, not the
+// hand-off, own what each interrupt asked and each drained Tool invoked.
+func (c *Coordinator) pendingItems(ctx context.Context, pending Pending) (map[string]transcript.Item, error) {
+	itemsByID := make(map[string]transcript.Item)
+	for _, itemID := range pendingItemIDs(pending) {
+		item, found, err := c.items.Item(ctx, itemID)
+		if err != nil {
+			return nil, fmt.Errorf("runs: read waiting Item %q: %w", itemID, err)
+		}
+		if !found {
+			return nil, fmt.Errorf("runs: waiting Item %q is missing", itemID)
+		}
+		itemsByID[itemID] = item
+	}
+	return itemsByID, nil
 }
 
 func (c *Coordinator) loadWaitingCancellationSpawningItem(
@@ -57,161 +95,6 @@ func cancellationTargetRunIDs(subtree []cancellationRun) map[string]struct{} {
 		targetRunIDs[member.run.ID()] = struct{}{}
 	}
 	return targetRunIDs
-}
-
-func (c *Coordinator) loadWaitingCancellationInterruptItems(
-	ctx context.Context,
-	plan *cancellationPlan,
-	targetRunIDs map[string]struct{},
-) (map[string]struct{}, error) {
-	seenToolItems := make(map[string]struct{})
-	for _, request := range plan.pending.Interrupts {
-		if _, targeted := targetRunIDs[request.RunID]; !targeted {
-			continue
-		}
-		item, found, err := c.items.Item(ctx, request.ItemID)
-		if err != nil {
-			return nil, fmt.Errorf(
-				"runs: read waiting interrupt Item %q for Run %q: %w",
-				request.ItemID,
-				request.RunID,
-				err,
-			)
-		}
-		if !found {
-			return nil, fmt.Errorf(
-				"runs: waiting interrupt Item %q for Run %q is missing",
-				request.ItemID,
-				request.RunID,
-			)
-		}
-		if err := validateWaitingCancellationInterruptItem(*plan, request, item); err != nil {
-			return nil, err
-		}
-		plan.targetInterruptItems = append(plan.targetInterruptItems, item)
-		if item.Kind() == transcript.ToolCall {
-			seenToolItems[item.ID()] = struct{}{}
-		}
-	}
-	return seenToolItems, nil
-}
-
-func (c *Coordinator) loadWaitingCancellationDrainedItems(
-	ctx context.Context,
-	plan *cancellationPlan,
-	targetRunIDs map[string]struct{},
-	seenToolItems map[string]struct{},
-) error {
-	for _, continuation := range plan.pending.Continuations {
-		if _, targeted := targetRunIDs[continuation.RunID]; !targeted {
-			continue
-		}
-		for _, drained := range continuation.DrainedTools {
-			if _, duplicate := seenToolItems[drained.ItemID]; duplicate {
-				return fmt.Errorf(
-					"runs: waiting child cancellation Tool Item %q is both an interrupt and a drained tool",
-					drained.ItemID,
-				)
-			}
-			item, found, err := c.items.Item(ctx, drained.ItemID)
-			if err != nil {
-				return fmt.Errorf("runs: read waiting drained Tool Item %q: %w", drained.ItemID, err)
-			}
-			if !found {
-				return fmt.Errorf("runs: waiting drained Tool Item %q is missing", drained.ItemID)
-			}
-			if err := validateWaitingCancellationDrainedItem(*plan, continuation, drained, item); err != nil {
-				return err
-			}
-			seenToolItems[item.ID()] = struct{}{}
-			plan.targetDrainedItems = append(plan.targetDrainedItems, item)
-		}
-	}
-	return nil
-}
-
-func validateWaitingCancellationDrainedItem(
-	plan cancellationPlan,
-	continuation Continuation,
-	drained DrainedTool,
-	item transcript.Item,
-) error {
-	invocation, present := item.ToolInvocation()
-	if item.ID() != drained.ItemID || item.SessionID() != plan.root.run.SessionID() ||
-		item.RunID() != continuation.RunID || item.Kind() != transcript.ToolCall ||
-		item.Status() != transcript.ItemRunning || !present ||
-		invocation.Name != drained.Name || invocation.Arguments.Canonical() != drained.Arguments {
-		return fmt.Errorf(
-			"runs: waiting drained Tool Item %q differs from Run %q continuation",
-			drained.ItemID,
-			continuation.RunID,
-		)
-	}
-	if _, failed := item.Failure(); failed {
-		return fmt.Errorf("runs: waiting drained Tool Item %q already carries a failure", item.ID())
-	}
-	return nil
-}
-
-func validateWaitingCancellationInterruptItem(
-	plan cancellationPlan,
-	request transcript.Interrupt,
-	item transcript.Item,
-) error {
-	switch {
-	case item.ID() != request.ItemID:
-		return fmt.Errorf(
-			"runs: waiting interrupt for Run %q resolved Item %q, want %q",
-			request.RunID,
-			item.ID(),
-			request.ItemID,
-		)
-	case item.SessionID() != plan.root.run.SessionID():
-		return fmt.Errorf(
-			"runs: waiting interrupt Item %q belongs to Session %q, want %q",
-			item.ID(),
-			item.SessionID(),
-			plan.root.run.SessionID(),
-		)
-	case item.RunID() != request.RunID:
-		return fmt.Errorf(
-			"runs: waiting interrupt Item %q belongs to Run %q, want %q",
-			item.ID(),
-			item.RunID(),
-			request.RunID,
-		)
-	}
-	switch request.Kind {
-	case interrupt.Question:
-		question, present := item.Question()
-		if item.Kind() != transcript.QuestionItem || item.Status() != transcript.ItemCompleted ||
-			!present ||
-			request.Question == nil ||
-			!question.Equal(*request.Question) {
-			return fmt.Errorf(
-				"runs: waiting question Item %q differs from its interrupt",
-				item.ID(),
-			)
-		}
-	case interrupt.Approval:
-		invocation, present := item.ToolInvocation()
-		if item.Kind() != transcript.ToolCall || item.Status() != transcript.ItemRunning ||
-			!present ||
-			request.Approval == nil ||
-			!invocation.Equal(request.Approval.Tool) {
-			return fmt.Errorf(
-				"runs: waiting approval Item %q differs from its interrupt",
-				item.ID(),
-			)
-		}
-	default:
-		return fmt.Errorf(
-			"runs: waiting interrupt Item %q has unsupported kind %s",
-			item.ID(),
-			request.Kind,
-		)
-	}
-	return nil
 }
 
 func validateWaitingCancellationSpawningItem(plan cancellationPlan, item transcript.Item) error {

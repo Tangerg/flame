@@ -389,14 +389,14 @@ func TestListInterruptsProjectsToWire(t *testing.T) {
 	reader := &fakeInterruptReader{pending: []runs.Pending{
 		{
 			RootRunID: "run_waiting", SessionID: "ses_1", ExecutorID: "turn_1",
-			Interrupts: []transcript.Interrupt{{
+			Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 				ItemID: "item_1", ItemOccurredAt: created.Add(-time.Second),
 				RunID: "run_child", Kind: interrupt.Approval,
 				Approval: &transcript.Approval{
 					Tool: transcript.ToolInvocation{Name: "shell", Arguments: arguments},
 					Risk: tool.RiskHigh, Reason: "Runs commands in the workspace.", Rememberable: true,
 				},
-			}},
+			}}),
 			Bindings: []runs.InterruptBinding{{
 				InterruptItemID: "item_1", MemberID: "member_child",
 				RequestID: "request_1", ToolCallID: "call_1",
@@ -409,13 +409,18 @@ func TestListInterruptsProjectsToWire(t *testing.T) {
 					RunID: "run_waiting", MemberID: "member_root",
 				},
 			},
-			CreatedAt: created,
-		},
-	}}
+			CreatedAt: created}}}
 	root := testsupport.MustRestoreRun(run.Snapshot{ID: "run_waiting", SessionID: "ses_1", State: run.Waiting,
 		Capabilities: run.Capabilities{ChildRuns: true, InterruptKinds: []interrupt.Kind{interrupt.Approval}},
 	})
-	s := &Handler{queries: mustQueryCoordinator(sessions.QueryDependencies{Interrupts: reader, Runs: rootRunReader{root}})}
+	approvalItem := testsupport.MustRestoreItem(testsupport.ItemInput{
+		ID: "item_1", SessionID: "ses_1", RunID: "run_child",
+		Kind: transcript.ToolCall, Status: transcript.ItemRunning, OccurredAt: created.Add(-time.Second),
+		Tool: &transcript.ToolInvocation{Name: "shell", Arguments: arguments},
+	})
+	s := &Handler{queries: mustQueryCoordinator(sessions.QueryDependencies{
+		Interrupts: reader, Runs: rootRunReader{root}, Transcript: oneItemReader{item: approvalItem},
+	})}
 	ctx := withClientCapabilities(protocol.ClientCapabilities{
 		Features: map[string]protocol.FeaturePreference{
 			protocol.FeatureSubagents: {Enabled: true},
@@ -465,4 +470,14 @@ func (rootRunReader) RunsWithAncestors(context.Context, []string) ([]run.Run, er
 
 func (rootRunReader) PageRuns(context.Context, string, []run.Status, bool, int64, string, int) ([]run.Run, error) {
 	return nil, nil
+}
+
+// oneItemReader reads exactly one transcript Item: the one an interrupt names.
+type oneItemReader struct {
+	inertQueryStores
+	item transcript.Item
+}
+
+func (r oneItemReader) Item(_ context.Context, itemID string) (transcript.Item, bool, error) {
+	return r.item, itemID == r.item.ID(), nil
 }

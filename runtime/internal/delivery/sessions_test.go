@@ -4,10 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -295,6 +296,6 @@ func TestForkSession(t *testing.T) {
 
 func openSeededPending(ctx context.Context, t *testing.T, db *sql.DB, ints *persistence.InterruptStore, pending runs.Pending) error {
 	t.Helper()
-	runtime := stubRuntime{db: db, interrupts: ints}
+	runtime := stubRuntime{db: db, interrupts: ints, hist: sqlite.NewTranscriptStore(db)}
 	return runtime.openPending(ctx, t, pending)
 }

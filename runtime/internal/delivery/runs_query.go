@@ -108,15 +108,15 @@ func (s *Handler) ListInterrupts(ctx context.Context, in protocol.ListInterrupts
 		return nil, wireInterruptPageError(wirePageError(err))
 	}
 	out := make([]protocol.PendingInterruptSet, 0, len(page.Rows))
-	for _, pending := range page.Rows {
+	for _, set := range page.Rows {
 		presented := protocol.PendingInterruptSet{
-			RootRunID:  pending.RootRunID,
-			SessionID:  pending.SessionID,
-			Interrupts: presentInterrupts(pending.Interrupts),
-			CreatedAt:  pending.CreatedAt,
+			RootRunID:  set.Pending.RootRunID,
+			SessionID:  set.Pending.SessionID,
+			Interrupts: presentInterrupts(set.Interrupts),
+			CreatedAt:  set.Pending.CreatedAt,
 		}
 		if err := protocol.ValidateWireTree(presented); err != nil {
-			return nil, fmt.Errorf("present pending interrupt set %q: %w", pending.RootRunID, err)
+			return nil, fmt.Errorf("present pending interrupt set %q: %w", set.Pending.RootRunID, err)
 		}
 		out = append(out, presented)
 	}

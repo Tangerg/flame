@@ -48,10 +48,10 @@ func TestInterruptStore_OpenGetListDelete(t *testing.T) {
 		RootRunID:  "run_1",
 		SessionID:  "ses_a",
 		ExecutorID: "turn_1",
-		Interrupts: []transcript.Interrupt{{
+		Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 			ItemID: "item_question", ItemOccurredAt: time.Unix(2, 0).UTC(), RunID: "run_1", Kind: interrupt.Question,
 			Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Choose", Kind: transcript.QuestionText}}},
-		}},
+		}}),
 		Bindings: []runs.InterruptBinding{{
 			InterruptItemID: "item_question",
 			MemberID:        "member_1",
@@ -61,8 +61,7 @@ func TestInterruptStore_OpenGetListDelete(t *testing.T) {
 			RunID:    "run_1",
 			MemberID: "member_1",
 		}},
-		CreatedAt: time.Unix(5, 0).UTC(),
-	}
+		CreatedAt: time.Unix(5, 0).UTC()}
 	if err := store.Open(ctx, p); err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -77,7 +76,7 @@ func TestInterruptStore_OpenGetListDelete(t *testing.T) {
 		t.Fatalf("Get: ok=%v err=%v", ok, err)
 	}
 	if got.SessionID != "ses_a" || len(got.Interrupts) != 1 ||
-		got.Interrupts[0].ItemID != "item_question" || !got.Interrupts[0].ItemOccurredAt.Equal(time.Unix(2, 0).UTC()) ||
+		got.Interrupts[0].ItemID != "item_question" || got.Interrupts[0].Approval != nil ||
 		!got.CreatedAt.Equal(time.Unix(5, 0).UTC()) {
 		t.Fatalf("Get returned %+v", got)
 	}
@@ -125,13 +124,13 @@ func TestInterruptStore_ConsumeIsAtomic(t *testing.T) {
 		RootRunID:  "run_1",
 		SessionID:  "ses_a",
 		ExecutorID: "turn_1",
-		Interrupts: []transcript.Interrupt{{
+		Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 			ItemID: "item_approval", ItemOccurredAt: time.Unix(2, 0).UTC(), RunID: "run_1", Kind: interrupt.Approval,
 			Approval: &transcript.Approval{
 				Tool: transcript.ToolInvocation{Name: "shell", Arguments: arguments},
 				Risk: tool.RiskHigh, Reason: "executes tests", Rememberable: true,
 			},
-		}},
+		}}),
 		Bindings: []runs.InterruptBinding{{
 			InterruptItemID: "item_approval",
 			MemberID:        "member_1",
@@ -141,8 +140,7 @@ func TestInterruptStore_ConsumeIsAtomic(t *testing.T) {
 		Continuations: []runs.Continuation{{
 			RunID: "run_1", MemberID: "member_1",
 		}},
-		CreatedAt: time.Unix(7, 0).UTC(),
-	}); openErr != nil {
+		CreatedAt: time.Unix(7, 0).UTC()}); openErr != nil {
 		t.Fatalf("Open: %v", openErr)
 	}
 
@@ -155,8 +153,6 @@ func TestInterruptStore_ConsumeIsAtomic(t *testing.T) {
 	if root.MemberID != "member_1" || len(got.Interrupts) != 1 || got.Interrupts[0].ItemID != "item_approval" ||
 		got.Bindings[0].ToolCallID != "call_1" ||
 		got.Interrupts[0].Approval == nil || got.Interrupts[0].Approval.Risk != tool.RiskHigh ||
-		got.Interrupts[0].Approval.Tool.Name != "shell" ||
-		got.Interrupts[0].Approval.Tool.Arguments.Canonical() != arguments.Canonical() ||
 		got.Interrupts[0].Approval.Reason != "executes tests" || !got.Interrupts[0].Approval.Rememberable {
 		t.Fatalf("Consume returned %+v", got)
 	}
@@ -172,18 +168,17 @@ func TestInterruptStoreRejectsForeignSessionMutation(t *testing.T) {
 	store := newInterruptStore(t)
 	pending := runs.Pending{
 		RootRunID: "run_1", SessionID: "ses_a", ExecutorID: "turn_1",
-		Interrupts: []transcript.Interrupt{{
+		Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 			ItemID: "item_question", ItemOccurredAt: time.Unix(2, 0).UTC(), RunID: "run_1", Kind: interrupt.Question,
 			Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}},
-		}},
+		}}),
 		Bindings: []runs.InterruptBinding{{
 			InterruptItemID: "item_question", MemberID: "member_root", RequestID: "request_root",
 		}},
 		Continuations: []runs.Continuation{{
 			RunID: "run_1", MemberID: "member_root",
 		}},
-		CreatedAt: time.Unix(2, 0).UTC(),
-	}
+		CreatedAt: time.Unix(2, 0).UTC()}
 	if err := store.Open(t.Context(), pending); err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -203,19 +198,18 @@ func TestInterruptStoreDeleteResumeClaimMatchesOnlyTheOwnedResumingRow(t *testin
 	ctx := t.Context()
 	pending := runs.Pending{
 		RootRunID: "run_claimed", SessionID: "ses_a", ExecutorID: "turn_1",
-		Interrupts: []transcript.Interrupt{{
+		Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 			ItemID: "item_question", ItemOccurredAt: time.Unix(2, 0).UTC(),
 			RunID: "run_claimed", Kind: interrupt.Question,
 			Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}},
-		}},
+		}}),
 		Bindings: []runs.InterruptBinding{{
 			InterruptItemID: "item_question", MemberID: "member_root", RequestID: "request_root",
 		}},
 		Continuations: []runs.Continuation{{
 			RunID: "run_claimed", MemberID: "member_root",
 		}},
-		CreatedAt: time.Unix(3, 0).UTC(),
-	}
+		CreatedAt: time.Unix(3, 0).UTC()}
 	if err := store.Open(ctx, pending); err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -264,10 +258,10 @@ func TestInterruptStoreRoundTripsContinuationsWithoutExecutorTopology(t *testing
 		RootRunID:  "run_root",
 		SessionID:  "session_1",
 		ExecutorID: "turn_1",
-		Interrupts: []transcript.Interrupt{{
+		Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 			ItemID: "item_child", ItemOccurredAt: time.Unix(2, 0).UTC(), RunID: "run_child", Kind: interrupt.Question,
 			Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}},
-		}},
+		}}),
 		Bindings: []runs.InterruptBinding{{
 			InterruptItemID: "item_child",
 			MemberID:        "member_child",
@@ -278,22 +272,19 @@ func TestInterruptStoreRoundTripsContinuationsWithoutExecutorTopology(t *testing
 				RunID:    "run_child",
 				MemberID: "member_child",
 				DrainedTools: []runs.DrainedTool{{
-					ItemID: "item_open", ItemOccurredAt: createdAt.Add(time.Second),
+					ItemID: "item_open",
 					CallID: "call_open", SourceCallID: "provider_open",
-					Name: "shell", Arguments: "{}",
 				}},
 			},
 			{
 				RunID:    "run_root",
 				MemberID: "member_root",
 				DrainedTools: []runs.DrainedTool{{
-					ItemID: "item_spawn_child", ItemOccurredAt: createdAt, CallID: "call_child", SourceCallID: "provider_child",
-					Name: "delegate_task", Arguments: "{}",
+					ItemID: "item_spawn_child", CallID: "call_child", SourceCallID: "provider_child",
 				}},
 			},
 		},
-		CreatedAt: createdAt.Add(time.Second),
-	}
+		CreatedAt: createdAt.Add(time.Second)}
 	if err := store.Open(t.Context(), pending); err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -303,7 +294,7 @@ func TestInterruptStoreRoundTripsContinuationsWithoutExecutorTopology(t *testing
 	}
 	child := got.Continuations[0]
 	if child.RunID != "run_child" || child.MemberID != "member_child" || len(child.DrainedTools) != 1 ||
-		!child.DrainedTools[0].ItemOccurredAt.Equal(createdAt.Add(time.Second)) ||
+		child.DrainedTools[0].CallID != "call_open" ||
 		child.DrainedTools[0].SourceCallID != "provider_open" {
 		t.Fatalf("child continuation = %+v", child)
 	}
@@ -312,8 +303,7 @@ func TestInterruptStoreRoundTripsContinuationsWithoutExecutorTopology(t *testing
 		len(root.DrainedTools) != 1 ||
 		root.DrainedTools[0].ItemID != "item_spawn_child" ||
 		root.DrainedTools[0].CallID != "call_child" ||
-		root.DrainedTools[0].SourceCallID != "provider_child" ||
-		!root.DrainedTools[0].ItemOccurredAt.Equal(createdAt) {
+		root.DrainedTools[0].SourceCallID != "provider_child" {
 		t.Fatalf("root drained tools = %+v, want unfinished child call hand-off", root.DrainedTools)
 	}
 }
@@ -327,18 +317,17 @@ func TestInterruptStoreRejectsUnknownExecutorTopologyFields(t *testing.T) {
 	store := persistence.NewInterruptStore(sqlite.NewInterruptStore(database))
 	pending := runs.Pending{
 		RootRunID: "run_root", SessionID: "session_1", ExecutorID: "turn_1",
-		Interrupts: []transcript.Interrupt{{
+		Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 			ItemID: "item_question", ItemOccurredAt: time.Unix(2, 0).UTC(), RunID: "run_root", Kind: interrupt.Question,
 			Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}},
-		}},
+		}}),
 		Bindings: []runs.InterruptBinding{{
 			InterruptItemID: "item_question", MemberID: "member_root", RequestID: "request_root",
 		}},
 		Continuations: []runs.Continuation{{
 			RunID: "run_root", MemberID: "member_root",
 		}},
-		CreatedAt: time.Unix(2, 0).UTC(),
-	}
+		CreatedAt: time.Unix(2, 0).UTC()}
 	seedParkedRuns(t, database, pending)
 	if err := store.Open(t.Context(), pending); err != nil {
 		t.Fatalf("Open interrupt: %v", err)
@@ -379,10 +368,10 @@ func TestInterruptStoreExecutorRootHasOnePendingOwner(t *testing.T) {
 	for _, runID := range []string{"run_1", "run_2"} {
 		err := store.Open(ctx, runs.Pending{
 			RootRunID: runID, SessionID: "ses_" + runID, ExecutorID: "turn_" + runID,
-			Interrupts: []transcript.Interrupt{{
+			Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 				ItemID: "item_" + runID, ItemOccurredAt: time.Unix(2, 0).UTC(), RunID: runID,
 				Kind: interrupt.Question, Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "continue?", Kind: transcript.QuestionText}}},
-			}},
+			}}),
 			Bindings: []runs.InterruptBinding{{
 				InterruptItemID: "item_" + runID,
 				MemberID:        "member_shared",
@@ -391,8 +380,7 @@ func TestInterruptStoreExecutorRootHasOnePendingOwner(t *testing.T) {
 			Continuations: []runs.Continuation{{
 				RunID: runID, MemberID: "member_shared",
 			}},
-			CreatedAt: time.Unix(2, 0).UTC(),
-		})
+			CreatedAt: time.Unix(2, 0).UTC()})
 		if runID == "run_1" && err != nil {
 			t.Fatalf("first Open: %v", err)
 		}

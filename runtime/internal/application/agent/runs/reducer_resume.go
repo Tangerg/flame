@@ -15,9 +15,12 @@ type resumeBinding struct {
 	err       error
 }
 
+// resumableItem is an open Tool Item a resumed Segment re-binds. Its
+// occurrence and invocation are read from the Item itself.
 type resumableItem struct {
 	id               string
 	occurredAt       time.Time
+	invocation       transcript.ToolInvocation
 	approvalDecision approval.Decision
 }
 
@@ -27,7 +30,7 @@ func resumeBindingFrom(continuation treeContinuation, runID string) *resumeBindi
 		return &resumeBinding{err: err}
 	}
 	if member, found := continuation.forRun(runID); found {
-		if err := builder.addTools(member); err != nil {
+		if err := builder.addTools(continuation, member); err != nil {
 			return &resumeBinding{err: err}
 		}
 	}
@@ -49,10 +52,11 @@ func (r *resumeBindingBuilder) addItem(
 	callID string,
 	itemID string,
 	occurredAt time.Time,
+	invocation transcript.ToolInvocation,
 	decision approval.Decision,
 ) {
 	r.binding.callItems[callID] = resumableItem{
-		id: itemID, occurredAt: occurredAt, approvalDecision: decision,
+		id: itemID, occurredAt: occurredAt, invocation: invocation, approvalDecision: decision,
 	}
 }
 
@@ -71,14 +75,13 @@ func (r *resumeBindingBuilder) addInterrupts(interrupts []transcript.Interrupt, 
 				// Accepting the answer settles the verdict, while the Tool Item
 				// stays open until execution finishes or activation is abandoned.
 				r.binding.drained = append(r.binding.drained, DrainedTool{
-					ItemID: pending.ItemID, ItemOccurredAt: pending.ItemOccurredAt,
-					CallID: resolution.CallID, Name: pending.Approval.Tool.Name,
-					Arguments: pending.Approval.Tool.Arguments.Canonical(),
+					ItemID: pending.ItemID, CallID: resolution.CallID,
 				})
 				r.addItem(
 					resolution.CallID,
 					pending.ItemID,
 					pending.ItemOccurredAt,
+					pending.Approval.Tool,
 					resolution.Decision,
 				)
 			}
@@ -91,18 +94,14 @@ func (r *resumeBindingBuilder) addInterrupts(interrupts []transcript.Interrupt, 
 	return nil
 }
 
-func (r *resumeBindingBuilder) addTools(member Continuation) error {
+func (r *resumeBindingBuilder) addTools(continuation treeContinuation, member Continuation) error {
 	r.binding.drained = append(r.binding.drained, member.DrainedTools...)
 	for _, drained := range member.DrainedTools {
-		if _, err := parseToolArguments(drained.Arguments); err != nil {
-			return fmt.Errorf("resume drained tool %q arguments: %w", drained.Name, err)
+		item, invocation, err := drainedToolItem(continuation.items, continuation.sessionID, member.RunID, drained)
+		if err != nil {
+			return fmt.Errorf("resume: %w", err)
 		}
-		r.addItem(
-			drained.CallID,
-			drained.ItemID,
-			drained.ItemOccurredAt,
-			"",
-		)
+		r.addItem(drained.CallID, drained.ItemID, item.OccurredAt(), invocation, "")
 	}
 	return nil
 }
@@ -131,13 +130,6 @@ func (r *reducer) reuseOrCreateToolItem(callID string) (resumableItem, bool, err
 
 func (r *resumeBinding) consumeToolCall(callID string) {
 	delete(r.callItems, callID)
-}
-
-func (r *resumeBinding) approvalDecision(callID string) approval.Decision {
-	if r == nil {
-		return ""
-	}
-	return r.callItems[callID].approvalDecision
 }
 
 func (r *resumeBinding) remainingDrainedTools() []DrainedTool {

@@ -23,16 +23,20 @@ type cancellationRun struct {
 // durable pending state, and process-local executor bindings; none of those
 // outer representations belongs in the execution domain itself.
 type cancellationPlan struct {
-	root                 cancellationRun
-	target               cancellationRun
-	targetSubtree        []cancellationRun
-	survivingTree        []cancellationRun
-	treeState            rundomain.State
-	executor             ExecutorRef
-	pending              Pending
-	hasPending           bool
-	spawningItem         transcript.Item
-	hasSpawningItem      bool
+	root            cancellationRun
+	target          cancellationRun
+	targetSubtree   []cancellationRun
+	survivingTree   []cancellationRun
+	treeState       rundomain.State
+	executor        ExecutorRef
+	pending         Pending
+	hasPending      bool
+	spawningItem    transcript.Item
+	hasSpawningItem bool
+	// items are every Item the hand-off names, and interrupts its open
+	// interrupts projected from them.
+	items                map[string]transcript.Item
+	interrupts           []transcript.Interrupt
 	targetInterruptItems []transcript.Item
 	targetDrainedItems   []transcript.Item
 	completePostorderIDs []string

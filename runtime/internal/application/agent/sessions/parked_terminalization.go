@@ -202,18 +202,30 @@ func (p parkedRunTerminalization) terminalItems() ([]transcript.Item, error) {
 	return projection.items, nil
 }
 
+// parkedInterrupt is one open interrupt and the Run whose member it binds.
+type parkedInterrupt struct {
+	open  runs.OpenInterrupt
+	runID string
+}
+
 type parkedTerminalItemProjection struct {
 	owner         parkedRunTerminalization
-	interrupts    map[string]transcript.Interrupt
+	interrupts    map[string]parkedInterrupt
 	pendingRunIDs map[string]struct{}
 	drained       map[string]runs.DrainedTool
 	items         []transcript.Item
 }
 
 func newParkedTerminalItemProjection(owner parkedRunTerminalization) *parkedTerminalItemProjection {
-	interrupts := make(map[string]transcript.Interrupt, len(owner.pending.Interrupts))
-	for _, interruption := range owner.pending.Interrupts {
-		interrupts[interruption.ItemID] = interruption
+	runByMember := make(map[string]string, len(owner.pending.Continuations))
+	for _, continuation := range owner.pending.Continuations {
+		runByMember[continuation.MemberID] = continuation.RunID
+	}
+	interrupts := make(map[string]parkedInterrupt, len(owner.pending.Interrupts))
+	for index, interruption := range owner.pending.Interrupts {
+		interrupts[interruption.ItemID] = parkedInterrupt{
+			open: interruption, runID: runByMember[owner.pending.Bindings[index].MemberID],
+		}
 	}
 	pendingRunIDs := make(map[string]struct{}, len(owner.pending.Continuations))
 	drained := make(map[string]runs.DrainedTool)
@@ -266,18 +278,18 @@ func (projection *parkedTerminalItemProjection) projectDrained(
 
 func (projection *parkedTerminalItemProjection) projectInterrupt(
 	item transcript.Item,
-	request transcript.Interrupt,
+	request parkedInterrupt,
 ) error {
 	owner := projection.owner
-	if item.SessionID() != owner.sessionID || item.RunID() != request.RunID {
+	if item.SessionID() != owner.sessionID || item.RunID() != request.runID {
 		return fmt.Errorf(
 			"sessions: terminalize parked Run tree %q: interrupt Item %q is not owned by Run %q",
 			owner.rootRunID,
 			item.ID(),
-			request.RunID,
+			request.runID,
 		)
 	}
-	switch request.Kind {
+	switch request.open.Kind() {
 	case interrupt.Question:
 		if item.Kind() != transcript.QuestionItem || item.Status() != transcript.ItemCompleted {
 			return fmt.Errorf("sessions: parked question Item %q is not a complete prompt", item.ID())
@@ -293,7 +305,7 @@ func (projection *parkedTerminalItemProjection) projectInterrupt(
 		}
 		projection.items = append(projection.items, settled)
 	default:
-		return fmt.Errorf("sessions: parked interrupt Item %q has unknown kind %s", item.ID(), request.Kind)
+		return fmt.Errorf("sessions: parked interrupt Item %q has unknown kind %s", item.ID(), request.open.Kind())
 	}
 	delete(projection.interrupts, item.ID())
 	return nil
@@ -320,12 +332,10 @@ func (p parkedRunTerminalization) terminalDrainedItem(
 	item transcript.Item,
 	drained runs.DrainedTool,
 ) (transcript.Item, bool, error) {
-	invocation, present := item.ToolInvocation()
-	if item.SessionID() != p.sessionID || item.Kind() != transcript.ToolCall ||
-		!present || invocation.Name != drained.Name ||
-		invocation.Arguments.Canonical() != drained.Arguments {
+	if _, present := item.ToolInvocation(); item.SessionID() != p.sessionID ||
+		item.Kind() != transcript.ToolCall || !present {
 		return transcript.Item{}, false, fmt.Errorf(
-			"sessions: terminalize parked Run tree %q: drained Tool Item %q differs from its continuation",
+			"sessions: terminalize parked Run tree %q: drained Tool Item %q is not a ToolCall of this Session",
 			p.rootRunID,
 			item.ID(),
 		)

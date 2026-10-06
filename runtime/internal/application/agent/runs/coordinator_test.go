@@ -28,7 +28,7 @@ func mustTreeContinuation(t *testing.T, pending Pending) *treeContinuation {
 	for _, member := range pending.Continuations {
 		parked = append(parked, runForContinuation(pending, member))
 	}
-	continuation, err := treeContinuationFromPending(pending, parked)
+	continuation, err := treeContinuationFromPending(pending, parked, fixtureItems(pending))
 	if err != nil {
 		t.Fatalf("tree continuation: %v", err)
 	}
@@ -46,13 +46,23 @@ func firstSegmentItemID(t *testing.T, segmentID string) string {
 }
 
 func testTreeContinuation(pending Pending) *treeContinuation {
+	items := fixtureItems(pending)
+	interrupts := make([]transcript.Interrupt, len(pending.Interrupts))
+	for index, open := range pending.Interrupts {
+		projected, err := open.project(items[open.ItemID])
+		if err != nil {
+			panic(err)
+		}
+		interrupts[index] = projected
+	}
 	return &treeContinuation{
 		rootRunID:     pending.RootRunID,
 		sessionID:     pending.SessionID,
 		executorID:    pending.ExecutorID,
-		interrupts:    slices.Clone(pending.Interrupts),
+		interrupts:    interrupts,
 		continuations: slices.Clone(pending.Continuations),
 		runs:          parkedRunsByID(parkedTree(pending, fixtureFacts(pending))),
+		items:         items,
 	}
 }
 
@@ -769,7 +779,7 @@ func TestResumedExecutorRouteRetainsGoalLeaseForTerminalAccounting(t *testing.T)
 	pending := testApprovalPending("member_root", createdAt)
 	facts := fixtureFacts(pending)
 	facts.goalIncarnationID = "goal-lease-1"
-	continuation, err := treeContinuationFromPending(pending, parkedTree(pending, facts))
+	continuation, err := treeContinuationFromPending(pending, parkedTree(pending, facts), fixtureItems(pending))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1124,7 +1134,7 @@ func TestCoordinatorResumeCommitsBeforeActivation(t *testing.T) {
 	spec.SegmentID = "seg_2"
 	pending := testApprovalPending("member_root", spec.CreatedAt)
 	spec.Continuation = mustTreeContinuation(t, pending)
-	request := pending.Interrupts[0]
+	request := spec.Continuation.interrupts[0]
 	if err := spec.Continuation.bindToolApprovalResolutions([]ToolApprovalResolution{{
 		Identity: transcript.ItemIdentity{
 			SessionID: pending.SessionID, RunID: request.RunID,
@@ -1257,10 +1267,10 @@ func resumedTreePending(createdAt time.Time) Pending {
 		RootRunID:  "run_1",
 		SessionID:  "ses_1",
 		ExecutorID: "turn_1",
-		Interrupts: []transcript.Interrupt{
+		Interrupts: OpenInterruptsOf([]transcript.Interrupt{
 			question("item_grandchild", "run_grandchild"),
 			question("item_b", "run_b"),
-		},
+		}),
 		Bindings: []InterruptBinding{
 			{InterruptItemID: "item_grandchild", MemberID: "member_grandchild", RequestID: "request_grandchild"},
 			{InterruptItemID: "item_b", MemberID: "member_b", RequestID: "request_b"},
@@ -1283,8 +1293,7 @@ func resumedTreePending(createdAt time.Time) Pending {
 				MemberID: "member_root",
 			},
 		},
-		CreatedAt: createdAt.Add(time.Second),
-	}
+		CreatedAt: createdAt.Add(time.Second)}
 }
 
 func TestCoordinatorActivationFailureBecomesErrorTerminal(t *testing.T) {
@@ -2482,12 +2491,13 @@ func requirePendingInterruptOrder(
 		)
 	}
 	for index := range wantRunIDs {
-		if pending.Interrupts[index].RunID != wantRunIDs[index] ||
+		continuation, _ := continuationForMember(pending.Continuations, pending.Bindings[index].MemberID)
+		if continuation.RunID != wantRunIDs[index] ||
 			pending.Bindings[index].MemberID != wantMemberIDs[index] {
 			t.Fatalf(
 				"pending order[%d] = Run %q member %q, want Run %q member %q",
 				index,
-				pending.Interrupts[index].RunID,
+				continuation.RunID,
 				pending.Bindings[index].MemberID,
 				wantRunIDs[index],
 				wantMemberIDs[index],

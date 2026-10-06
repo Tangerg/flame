@@ -54,25 +54,16 @@ func TestMaterialSnapshotRejectsContradictoryPendingProjection(t *testing.T) {
 		want   string
 	}{
 		{
-			name: "interrupt occurrence differs from Item identity",
-			mutate: func(snapshot *MaterialSnapshot) {
-				snapshot.Interrupts[0].Interrupts[0].ItemOccurredAt = snapshot.Interrupts[0].CreatedAt
-			},
-			want: "is not the exact Item",
-		},
-		{
-			name: "question payload differs from Item",
+			name: "open question names an Item that asks nothing",
 			mutate: func(snapshot *MaterialSnapshot) {
 				current := snapshot.Items[0]
 				snapshot.Items[0] = testsupport.MustRestoreItem(testsupport.ItemInput{
 					ID: current.ID(), SessionID: current.SessionID(), RunID: current.RunID(),
-					Kind: transcript.QuestionItem, OccurredAt: current.OccurredAt(),
-					Question: &transcript.Question{
-						Fields: []transcript.QuestionField{{Prompt: "Different?", Kind: transcript.QuestionText}},
-					},
+					Kind: transcript.ToolCall, Status: transcript.ItemRunning, OccurredAt: current.OccurredAt(),
+					Tool: &transcript.ToolInvocation{Name: "shell"},
 				})
 			},
-			want: "malformed question Item",
+			want: "is not a Question awaiting answers",
 		},
 		{
 			name: "waiting Run has no Pending owner",
@@ -121,7 +112,7 @@ func TestMaterialSnapshotRejectsResolvedApprovalThatStillClaimsPendingOwnership(
 	})
 
 	err := snapshot.Validate()
-	if err == nil || !strings.Contains(err.Error(), "malformed approval Item") {
+	if err == nil || !strings.Contains(err.Error(), "is not a ToolCall awaiting a verdict") {
 		t.Fatalf("Validate() error = %v, want partially resolved approval rejected", err)
 	}
 }
@@ -184,18 +175,17 @@ func validMaterialSnapshot() MaterialSnapshot {
 		})},
 		Interrupts: []runs.Pending{{
 			RootRunID: "run_root", SessionID: "ses_1", ExecutorID: "executor_root",
-			Interrupts: []transcript.Interrupt{{
+			Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 				ItemID: "item_question", ItemOccurredAt: createdAt,
 				RunID: "run_root", Kind: interrupt.Question, Question: question,
-			}},
+			}}),
 			Bindings: []runs.InterruptBinding{{
 				InterruptItemID: "item_question", MemberID: "member_root", RequestID: "request_question",
 			}},
 			Continuations: []runs.Continuation{{
 				RunID: "run_root", MemberID: "member_root",
 			}},
-			CreatedAt: createdAt.Add(time.Second),
-		}},
+			CreatedAt: createdAt.Add(time.Second)}},
 	}
 }
 
@@ -218,10 +208,10 @@ func validApprovalMaterialSnapshot() MaterialSnapshot {
 		Kind: transcript.ToolCall, Status: transcript.ItemRunning,
 		OccurredAt: snapshot.Items[0].OccurredAt(), Tool: &invocation,
 	})
-	snapshot.Interrupts[0].Interrupts = []transcript.Interrupt{{
+	snapshot.Interrupts[0].Interrupts = runs.OpenInterruptsOf([]transcript.Interrupt{{
 		ItemID: "item_approval", ItemOccurredAt: snapshot.Items[0].OccurredAt(),
 		RunID: "run_root", Kind: interrupt.Approval, Approval: pendingApproval,
-	}}
+	}})
 	snapshot.Interrupts[0].Bindings = []runs.InterruptBinding{{
 		InterruptItemID: "item_approval", MemberID: "member_root",
 		RequestID: "request_approval", ToolCallID: "provider_call_1",
