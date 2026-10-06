@@ -29,7 +29,6 @@ type observerLifecycle struct {
 	exited    chan struct{}
 	closeOnce sync.Once
 	stateMu   sync.Mutex
-	closed    bool
 	reconcile func(acceptance) error
 	report    func(error)
 }
@@ -172,12 +171,22 @@ func (o *observerLifecycle) abort(cause error) error {
 	return cause
 }
 
+// closedLocked reports whether Close has begun. Close signals done under
+// stateMu, so a reconciliation that takes the lock afterwards always sees it.
+func (o *observerLifecycle) closedLocked() bool {
+	select {
+	case <-o.done:
+		return true
+	default:
+		return false
+	}
+}
+
 func (o *observerLifecycle) Close() error {
 	o.closeOnce.Do(func() {
 		o.stateMu.Lock()
-		o.closed = true
-		o.stateMu.Unlock()
 		close(o.done)
+		o.stateMu.Unlock()
 		<-o.exited
 		_ = o.fsw.Close()
 	})

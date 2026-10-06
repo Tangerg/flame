@@ -141,7 +141,7 @@ type childFileWatch struct {
 
 func (t *childFileWatch) reconcile(initial bool, accepted acceptance) error {
 	t.stateMu.Lock()
-	if t.closed {
+	if t.closedLocked() {
 		t.stateMu.Unlock()
 		return nil
 	}

@@ -188,7 +188,7 @@ func (a acceptance) matches(candidate target, physical string) bool {
 
 func (w *watch) reconcile(initial bool, accepted acceptance) error {
 	w.stateMu.Lock()
-	if w.closed {
+	if w.closedLocked() {
 		w.stateMu.Unlock()
 		return nil
 	}
