@@ -431,7 +431,7 @@ func (c *Conversation) RestoreSnapshot(snapshot SessionSnapshot) error {
 		if active.Status == runtimeprotocol.RunStatusWaiting {
 			next.interrupts = CloneInterrupts(snapshot.Interrupts)
 		} else {
-			next.coldTail = true
+			next.recovery = recoveryColdTail
 		}
 	} else if latest, ok := snapshot.LatestRun(); ok {
 		next.runID = latest.ID
@@ -462,7 +462,7 @@ func (c *Conversation) RestoreAttachedSnapshot(snapshot SessionSnapshot, stream 
 		return err
 	}
 	c.checkpoint = stream.HeadEventID
-	c.reconciling = true
+	c.recovery = recoveryOverlap
 	return nil
 }
 

@@ -33,8 +33,8 @@ func (c *Conversation) ApplyRunEvent(envelope RunEvent) (EventAcceptance, error)
 	}
 	if !ignored {
 		err = c.apply(envelope)
-		if err == nil {
-			c.reconciling = false
+		if err == nil && c.recovery == recoveryOverlap {
+			c.recovery = recoveryColdTail
 		}
 	}
 	if err != nil {
@@ -82,7 +82,7 @@ func (c *Conversation) ignoreRecoveredOverlap(envelope RunEvent) (bool, error) {
 	}
 	if delta, ok := event.(BlockDelta); ok {
 		key := blockIdentity(envelope.RunID, delta.BlockID)
-		if _, exists := c.index[key]; !exists && c.coldTail {
+		if _, exists := c.index[key]; !exists && c.recovery != recoveryNone {
 			// Agent-message and reasoning starts are non-durable previews. A
 			// head attachment can therefore observe their later deltas without
 			// either a replayable start or a cold Item. Their completed Item is
@@ -90,7 +90,7 @@ func (c *Conversation) ignoreRecoveredOverlap(envelope RunEvent) (bool, error) {
 			return true, nil
 		}
 	}
-	if !c.reconciling {
+	if c.recovery != recoveryOverlap {
 		return false, nil
 	}
 	switch item := event.(type) {
@@ -178,8 +178,7 @@ func (c *Conversation) apply(envelope RunEvent) error {
 }
 
 func (c *Conversation) applySegmentStarted(event SegmentStarted) error {
-	c.reconciling = false
-	c.coldTail = false
+	c.recovery = recoveryNone
 	run := event.Run
 	previous, exists := c.runs[run.ID]
 	if run.Lineage.IsRoot() {
@@ -395,8 +394,7 @@ func (c *Conversation) applyInterrupted(runID string, event RunInterrupted) erro
 	run.Usage = event.Usage.Clone()
 	run.ContextTokens = event.ContextTokens
 	c.runs[runID] = run
-	c.reconciling = false
-	c.coldTail = false
+	c.recovery = recoveryNone
 	c.interrupts = pending
 	return nil
 }
@@ -420,8 +418,7 @@ func (c *Conversation) applySuspended(runID string, event RunSuspended) error {
 	run.ContextTokens = event.ContextTokens
 	c.runs[runID] = run
 	if runID == c.runID {
-		c.reconciling = false
-		c.coldTail = false
+		c.recovery = recoveryNone
 	}
 	return nil
 }
@@ -454,8 +451,7 @@ func (c *Conversation) applyFinished(runID string, event RunFinished) error {
 	run.ContextTokens = event.ContextTokens
 	c.runs[runID] = run
 	if runID == c.runID {
-		c.reconciling = false
-		c.coldTail = false
+		c.recovery = recoveryNone
 		c.interrupts = nil
 	}
 	return nil

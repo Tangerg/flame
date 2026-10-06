@@ -48,8 +48,7 @@ type Conversation struct {
 	runOrder    []string
 	index       map[string]int
 	textStreams map[string]StreamedText
-	reconciling bool
-	coldTail    bool
+	recovery    tailRecovery
 	// restoredPlanRevision is the durable Plan watermark installed by the last
 	// cold snapshot. Plan persistence and stream publication are separate facts:
 	// an attached read can already contain a revision whose PlanChanged event is
@@ -58,6 +57,18 @@ type Conversation struct {
 	// reconciliation while preserving strict ordering for later revisions.
 	restoredPlanRevision uint64
 }
+
+// tailRecovery records how much of an active Segment's tail a restored
+// projection may already hold. A cold read can miss non-durable previews; an
+// attached read additionally overlaps the replay that follows it until the
+// first event folds.
+type tailRecovery uint8
+
+const (
+	recoveryNone tailRecovery = iota
+	recoveryColdTail
+	recoveryOverlap
+)
 
 type opening uint8
 
@@ -212,8 +223,7 @@ func (c *Conversation) Starting() error {
 	c.checkpoint = ""
 	c.seen = make(map[string]RunEvent)
 	c.interrupts = nil
-	c.reconciling = false
-	c.coldTail = false
+	c.recovery = recoveryNone
 	return nil
 }
 
@@ -222,8 +232,7 @@ func (c *Conversation) CancelStarting() error {
 		return fmt.Errorf("%w: conversation is not starting", ErrInvalidTransition)
 	}
 	c.opening = openingCanceled
-	c.reconciling = false
-	c.coldTail = false
+	c.recovery = recoveryNone
 	return nil
 }
 
