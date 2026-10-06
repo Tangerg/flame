@@ -4,7 +4,6 @@ import (
 	"sync"
 )
 
-// Record is the observable state of an active run segment.
 // Record names the live Segment that owns one executing Run. The durable Run
 // owns everything else about it.
 type Record struct {
