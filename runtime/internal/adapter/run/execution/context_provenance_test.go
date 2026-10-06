@@ -2,6 +2,7 @@ package execution
 
 import (
 	"context"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"os"
 	"path/filepath"
 	"slices"
@@ -31,9 +32,9 @@ func TestSystemPromptProvenanceMatchesVisibleComposition(t *testing.T) {
 		t.Fatal(canonicalErr)
 	}
 	pinnedMemoryID := testAgentMemoryItemID(t, '1')
-	memory := provenanceMemoryReader{items: []agentmemory.Item{{
+	memory := provenanceMemoryReader{items: []agentmemory.Item{testsupport.MustAgentMemoryItem(agentmemory.ItemSnapshot{
 		ID: pinnedMemoryID, Content: "remember this", Pinned: true,
-	}}}
+	})}}
 	composer := newTestWorkingContextComposer(t, WorkingContextConfig{
 		AgentMemory: memory,
 		Plan:        provenancePlanReader{},
@@ -97,7 +98,7 @@ func TestWorkingContextAttributesHookAndRecalledMemoryInPlace(t *testing.T) {
 	composer := newTestWorkingContextComposer(t, WorkingContextConfig{
 		Hooks: provenanceHookResolver{bound: apphooks.NewBound(hooks, apphooks.NewRunner(nil, nil))},
 		AgentMemorySearch: &fakeAgentMemorySearcher{
-			items: []agentmemory.Item{{ID: recalledMemoryID, Content: "recalled fact"}},
+			items: []agentmemory.Item{testsupport.MustAgentMemoryItem(agentmemory.ItemSnapshot{ID: recalledMemoryID, Content: "recalled fact"})},
 		},
 	})
 	messages, err := composer.ComposeWorkingContext(t.Context(), runs.WorkingContextInput{

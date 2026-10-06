@@ -136,8 +136,8 @@ func TestItemReviewPreservesProposalFacts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	proposal.Pinned = true
-	proposal.SessionID = "session"
+	proposal.pinned = true
+	proposal.sessionID = "session"
 	for _, test := range []struct {
 		decision ReviewDecision
 		status   Status
@@ -152,9 +152,9 @@ func TestItemReviewPreservesProposalFacts(t *testing.T) {
 				t.Fatal(err)
 			}
 			want := proposal
-			want.Status = test.status
-			want.UpdatedAt = reviewedAt.UTC()
-			if !reflect.DeepEqual(reviewed, want) || reviewed.Validate() != nil {
+			want.status = test.status
+			want.updatedAt = reviewedAt.UTC()
+			if !reflect.DeepEqual(reviewed, want) || reviewed.validate() != nil {
 				t.Fatalf("reviewed item = %+v, want %+v", reviewed, want)
 			}
 			if _, err := reviewed.Review(ReviewApprove, reviewedAt); !errors.Is(err, ErrNotPending) {
@@ -162,7 +162,7 @@ func TestItemReviewPreservesProposalFacts(t *testing.T) {
 			}
 		})
 	}
-	if proposal.Status != StatusPending || !proposal.UpdatedAt.Equal(createdAt) {
+	if proposal.status != StatusPending || !proposal.updatedAt.Equal(createdAt) {
 		t.Fatalf("review changed source proposal: %+v", proposal)
 	}
 	if _, err := proposal.Review(ReviewApprove, createdAt); err != nil {
@@ -198,32 +198,6 @@ func TestItemConstructionRejectsInvalidPartition(t *testing.T) {
 	}
 }
 
-func TestItemValidateForProtectsExactTarget(t *testing.T) {
-	now := time.Date(2026, time.September, 4, 8, 0, 0, 0, time.UTC)
-	item, err := NewUserItem(testItemID(t, '3'), ScopeProject, "/repo", "fact", now)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := item.ValidateFor(ScopeProject, "/repo"); err != nil {
-		t.Fatalf("ValidateFor exact target: %v", err)
-	}
-	for _, target := range []struct {
-		scope   Scope
-		project string
-	}{
-		{scope: ScopeProject, project: "/other"},
-		{scope: ScopeUser},
-		{scope: ScopeProject},
-	} {
-		if err := item.ValidateFor(target.scope, target.project); err == nil {
-			t.Fatalf("ValidateFor(%q, %q) accepted mismatched or invalid target", target.scope, target.project)
-		}
-	}
-	if err := (Item{}).ValidateFor(ScopeProject, "/repo"); err == nil {
-		t.Fatal("zero item was accepted for an exact target")
-	}
-}
-
 func TestItemActivateFromUserPreservesIdentityAndClearsProposalState(t *testing.T) {
 	createdAt := time.Date(2026, time.August, 20, 9, 0, 0, 0, time.UTC)
 	updatedAt := createdAt.Add(time.Hour)
@@ -231,22 +205,22 @@ func TestItemActivateFromUserPreservesIdentityAndClearsProposalState(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	proposal.Status = StatusRejected
-	proposal.Pinned = true
-	proposal.SessionID = "session"
-	proposal.EmbeddingSpace = "provider:model"
-	proposal.Embedding = []float32{1, 2}
+	proposal.status = StatusRejected
+	proposal.pinned = true
+	proposal.sessionID = "session"
+	proposal.embeddingSpace = "provider:model"
+	proposal.embedding = []float32{1, 2}
 	activated, err := proposal.ActivateFromUser("new fact", updatedAt)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if activated.ID != proposal.ID || !activated.CreatedAt.Equal(proposal.CreatedAt) {
+	if activated.id != proposal.id || !activated.createdAt.Equal(proposal.createdAt) {
 		t.Fatalf("activation changed stable identity: %+v", activated)
 	}
-	if activated.Content != "new fact" || activated.Origin != OriginUser || activated.Status != StatusActive {
+	if activated.content != "new fact" || activated.origin != OriginUser || activated.status != StatusActive {
 		t.Fatalf("activation did not adopt user authorship: %+v", activated)
 	}
-	if activated.Pinned || activated.SessionID != "" || activated.EmbeddingSpace != "" || activated.Embedding != nil {
+	if activated.pinned || activated.sessionID != "" || activated.embeddingSpace != "" || activated.embedding != nil {
 		t.Fatalf("activation retained proposal or derived state: %+v", activated)
 	}
 }
@@ -257,28 +231,28 @@ func TestItemEditProtectsVisibilityAndDerivedState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	item.EmbeddingSpace = "provider:model"
-	item.Embedding = []float32{1, 2}
+	item.embeddingSpace = "provider:model"
+	item.embedding = []float32{1, 2}
 	content := "new fact"
 	pinned := true
 	edited, changed, err := item.Edit(&content, &pinned, createdAt.Add(time.Hour))
 	if err != nil || !changed {
 		t.Fatalf("Edit = (%+v, %t, %v)", edited, changed, err)
 	}
-	if edited.Content != content || !edited.Pinned || !edited.UpdatedAt.Equal(createdAt.Add(time.Hour)) {
+	if edited.content != content || !edited.pinned || !edited.updatedAt.Equal(createdAt.Add(time.Hour)) {
 		t.Fatalf("edited item = %+v", edited)
 	}
-	if edited.EmbeddingSpace != "" || edited.Embedding != nil {
+	if edited.embeddingSpace != "" || edited.embedding != nil {
 		t.Fatalf("content edit retained derived embedding: %+v", edited)
 	}
 	if same, changed, err := edited.Edit(&content, &pinned, createdAt); err != nil || changed ||
-		same.ID != edited.ID || same.Content != edited.Content || same.Pinned != edited.Pinned ||
-		!same.UpdatedAt.Equal(edited.UpdatedAt) || !slices.Equal(same.Embedding, edited.Embedding) {
+		same.id != edited.id || same.content != edited.content || same.pinned != edited.pinned ||
+		!same.updatedAt.Equal(edited.updatedAt) || !slices.Equal(same.embedding, edited.embedding) {
 		t.Fatalf("no-op Edit = (%+v, %t, %v)", same, changed, err)
 	}
 	rejected := item
-	rejected.Origin = OriginAuto
-	rejected.Status = StatusRejected
+	rejected.origin = OriginAuto
+	rejected.status = StatusRejected
 	if _, _, err := rejected.Edit(&content, nil, createdAt.Add(time.Hour)); !errors.Is(err, ErrNotVisible) {
 		t.Fatalf("rejected Edit error = %v, want ErrNotVisible", err)
 	}
@@ -348,14 +322,14 @@ func TestItemConstructionBoundsContentForModelContext(t *testing.T) {
 }
 
 func TestEmbeddingUpdateBindsContentAndDefensivelyCopiesVector(t *testing.T) {
-	item := Item{ID: testItemID(t, 'e'), Content: "current content"}
+	item := Item{id: testItemID(t, 'e'), content: "current content"}
 	vector := []float32{1, 2}
 	update, err := NewEmbeddingUpdate(item, "provider:model", vector)
 	if err != nil {
 		t.Fatal(err)
 	}
 	vector[0] = 9
-	if update.ItemID != item.ID || update.ContentDigest != Digest(item.Content) || update.Space != "provider:model" || !slices.Equal(update.Vector, []float32{1, 2}) {
+	if update.ItemID != item.id || update.ContentDigest != Digest(item.content) || update.Space != "provider:model" || !slices.Equal(update.Vector, []float32{1, 2}) {
 		t.Fatalf("embedding update = %+v", update)
 	}
 	if err := update.Validate(); err != nil {

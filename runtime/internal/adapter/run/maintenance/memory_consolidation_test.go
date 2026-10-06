@@ -114,10 +114,10 @@ func TestMemoryConsolidatorAppendsDailyLedgerAndCuratesItems(t *testing.T) {
 	}
 	found := false
 	for _, item := range items {
-		if item.Status != agentmemory.StatusPending {
+		if item.Status() != agentmemory.StatusPending {
 			t.Fatalf("proposal not pending: %+v", item)
 		}
-		if strings.Contains(item.Content, "make test") {
+		if strings.Contains(item.Content(), "make test") {
 			found = true
 		}
 	}
@@ -185,7 +185,7 @@ func TestMemoryConsolidatorLeavesWatermarkOnCurationFailureThenRecovers(t *testi
 	}
 	state, _ = memory.State(t.Context(), "/repo")
 	items, _ := memory.List(t.Context(), agentmemory.ScopeProject, "/repo")
-	if state.Watermark != pending[0].Sequence || len(items) != 1 || items[0].Content != "durable fact" {
+	if state.Watermark != pending[0].Sequence || len(items) != 1 || items[0].Content() != "durable fact" {
 		t.Fatalf("recovered curation: state=%+v items=%+v", state, items)
 	}
 }

@@ -177,7 +177,7 @@ func (w *WorkingContextComposer) currentSessionPlan(
 // appendPinned appends the pinned items of src to dst.
 func appendPinned(dst, src []agentmemory.Item) []agentmemory.Item {
 	for _, item := range src {
-		if item.Pinned {
+		if item.Pinned() {
 			dst = append(dst, item)
 		}
 	}

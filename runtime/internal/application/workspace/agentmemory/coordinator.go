@@ -80,8 +80,8 @@ func (c *Coordinator) List(ctx context.Context, scope domain.Scope, cwd string) 
 }
 
 func compareManagementItems(a, b domain.Item) int {
-	if a.Status != b.Status {
-		if a.Status == domain.StatusPending {
+	if a.Status() != b.Status() {
+		if a.Status() == domain.StatusPending {
 			return -1
 		}
 		return 1
@@ -90,16 +90,16 @@ func compareManagementItems(a, b domain.Item) int {
 }
 
 func compareActiveItems(a, b domain.Item) int {
-	if a.Pinned != b.Pinned {
-		if a.Pinned {
+	if a.Pinned() != b.Pinned() {
+		if a.Pinned() {
 			return -1
 		}
 		return 1
 	}
-	if order := b.UpdatedAt.Compare(a.UpdatedAt); order != 0 {
+	if order := b.UpdatedAt().Compare(a.UpdatedAt()); order != 0 {
 		return order
 	}
-	return cmp.Compare(b.ID.String(), a.ID.String())
+	return cmp.Compare(b.ID().String(), a.ID().String())
 }
 
 // Review accepts or rejects an extracted proposal.

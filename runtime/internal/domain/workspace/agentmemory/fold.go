@@ -1,9 +1,6 @@
 package agentmemory
 
-import (
-	"errors"
-	"fmt"
-)
+import ()
 
 // FoldPlan is the decision [Fold] reaches for one curation pass: the curated
 // contents to add as new pending proposals, and the ids of stale pending
@@ -37,20 +34,7 @@ func Fold(existing []Item, contents []string) (FoldPlan, error) {
 	}
 	present := make(map[string]struct{}, len(existing))
 	for _, item := range existing {
-		if err := item.ID.Validate(); err != nil {
-			return FoldPlan{}, fmt.Errorf("agentmemory: invalid existing fold item identity: %w", err)
-		}
-		content, err := NormalizeContent(item.Content)
-		if err != nil {
-			return FoldPlan{}, fmt.Errorf("agentmemory: invalid existing fold item content: %w", err)
-		}
-		if content != item.Content {
-			return FoldPlan{}, errors.New("agentmemory: existing fold item content is not canonical")
-		}
-		if err := item.Status.Validate(); err != nil {
-			return FoldPlan{}, fmt.Errorf("agentmemory: invalid existing fold item status: %w", err)
-		}
-		present[Digest(item.Content)] = struct{}{}
+		present[Digest(item.content)] = struct{}{}
 	}
 
 	var plan FoldPlan
@@ -67,11 +51,11 @@ func Fold(existing []Item, contents []string) (FoldPlan, error) {
 	}
 
 	for _, item := range existing {
-		if item.Status != StatusPending {
+		if item.status != StatusPending {
 			continue // active is sticky, rejected is a tombstone
 		}
-		if _, keep := desired[Digest(item.Content)]; !keep {
-			plan.PruneIDs = append(plan.PruneIDs, item.ID)
+		if _, keep := desired[Digest(item.content)]; !keep {
+			plan.PruneIDs = append(plan.PruneIDs, item.id)
 		}
 	}
 	return plan, nil

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"log/slog"
 	"strings"
 	"testing"
@@ -19,7 +20,7 @@ func (f failingMemoryPartition) Items(_ context.Context, scope agentmemory.Scope
 	if scope == f.scope {
 		return nil, errors.New("memory storage unavailable")
 	}
-	return []agentmemory.Item{{Content: "healthy partition fact", Pinned: true}}, nil
+	return []agentmemory.Item{testsupport.MustAgentMemoryItem(agentmemory.ItemSnapshot{Content: "healthy partition fact", Pinned: true})}, nil
 }
 
 func TestPinnedMemoryFailurePreservesHealthyPartitionAndDiagnostics(t *testing.T) {

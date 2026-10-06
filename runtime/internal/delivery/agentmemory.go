@@ -131,29 +131,29 @@ func mapAgentMemoryErr(err error) error {
 }
 
 func presentAgentMemoryItem(item agentmemory.Item) (protocol.AgentMemoryItem, error) {
-	scope, err := presentAgentMemoryScope(item.Scope)
+	scope, err := presentAgentMemoryScope(item.Scope())
 	if err != nil {
 		return protocol.AgentMemoryItem{}, err
 	}
-	origin, err := presentAgentMemoryOrigin(item.Origin)
+	origin, err := presentAgentMemoryOrigin(item.Origin())
 	if err != nil {
 		return protocol.AgentMemoryItem{}, err
 	}
-	status, err := presentAgentMemoryStatus(item.Status)
+	status, err := presentAgentMemoryStatus(item.Status())
 	if err != nil {
 		return protocol.AgentMemoryItem{}, err
 	}
 	return protocol.AgentMemoryItem{
-		ID:        item.ID.String(),
+		ID:        item.ID().String(),
 		Scope:     scope,
-		Content:   item.Content,
+		Content:   item.Content(),
 		Origin:    origin,
 		Status:    status,
-		Pinned:    item.Pinned,
-		SessionID: item.SessionID,
-		Day:       item.Day,
-		CreatedAt: item.CreatedAt,
-		UpdatedAt: item.UpdatedAt,
+		Pinned:    item.Pinned(),
+		SessionID: item.SessionID(),
+		Day:       item.Day(),
+		CreatedAt: item.CreatedAt(),
+		UpdatedAt: item.UpdatedAt(),
 	}, nil
 }
 

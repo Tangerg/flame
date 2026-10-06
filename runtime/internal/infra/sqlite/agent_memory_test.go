@@ -119,7 +119,7 @@ func TestAgentMemoryReconcileAdvancesWatermarkAndItems(t *testing.T) {
 		t.Fatalf("listed = (%+v, %v)", listed, err)
 	}
 	for _, item := range listed {
-		if item.Status != agentmemory.StatusPending || item.Origin != agentmemory.OriginAuto {
+		if item.Status() != agentmemory.StatusPending || item.Origin() != agentmemory.OriginAuto {
 			t.Fatalf("proposal = %+v, want pending/auto", item)
 		}
 	}
@@ -150,7 +150,7 @@ func TestAgentMemoryReconcilePreservesUnchangedAndPrunesRemoved(t *testing.T) {
 	before, _ := store.List(t.Context(), agentmemory.ScopeProject, "/repo")
 	idByContent := make(map[string]agentmemory.ItemID, len(before))
 	for _, item := range before {
-		idByContent[item.Content] = item.ID
+		idByContent[item.Content()] = item.ID()
 	}
 
 	// Drop "two", keep "one", add "three" — all still pending proposals.
@@ -162,7 +162,7 @@ func TestAgentMemoryReconcilePreservesUnchangedAndPrunesRemoved(t *testing.T) {
 	after, _ := store.List(t.Context(), agentmemory.ScopeProject, "/repo")
 	got := make(map[string]agentmemory.ItemID, len(after))
 	for _, item := range after {
-		got[item.Content] = item.ID
+		got[item.Content()] = item.ID()
 	}
 	if _, retained := got["two"]; len(after) != 2 || retained {
 		t.Fatalf("prune failed: %+v", after)
@@ -189,31 +189,31 @@ func TestAgentMemoryReviewLifecycle(t *testing.T) {
 		t.Fatalf("proposals = %d, want 2", len(proposals))
 	}
 	approve, reject := proposals[0], proposals[1]
-	if err := store.Review(t.Context(), approve.ID, agentmemory.ReviewApprove, now); err != nil {
+	if err := store.Review(t.Context(), approve.ID(), agentmemory.ReviewApprove, now); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Review(t.Context(), reject.ID, agentmemory.ReviewReject, now); err != nil {
+	if err := store.Review(t.Context(), reject.ID(), agentmemory.ReviewReject, now); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Review(t.Context(), approve.ID, agentmemory.ReviewReject, now); !errors.Is(err, agentmemory.ErrNotPending) {
+	if err := store.Review(t.Context(), approve.ID(), agentmemory.ReviewReject, now); !errors.Is(err, agentmemory.ErrNotPending) {
 		t.Fatalf("second review = %v, want ErrNotPending", err)
 	}
 	rewritten := "rewritten tombstone"
 	pinned := true
-	if _, err := store.Update(t.Context(), reject.ID, &rewritten, &pinned, now.Add(time.Minute)); !errors.Is(err, agentmemory.ErrNotVisible) {
+	if _, err := store.Update(t.Context(), reject.ID(), &rewritten, &pinned, now.Add(time.Minute)); !errors.Is(err, agentmemory.ErrNotVisible) {
 		t.Fatalf("rejected update = %v, want ErrNotVisible", err)
 	}
-	if err := store.Delete(t.Context(), reject.ID); !errors.Is(err, agentmemory.ErrNotVisible) {
+	if err := store.Delete(t.Context(), reject.ID()); !errors.Is(err, agentmemory.ErrNotVisible) {
 		t.Fatalf("rejected delete = %v, want ErrNotVisible", err)
 	}
-	tombstone, found, err := store.Get(t.Context(), reject.ID)
-	if err != nil || !found || tombstone.Content == rewritten || tombstone.Pinned {
+	tombstone, found, err := store.Get(t.Context(), reject.ID())
+	if err != nil || !found || tombstone.Content() == rewritten || tombstone.Pinned() {
 		t.Fatalf("rejected update changed tombstone = (%+v, %t, %v)", tombstone, found, err)
 	}
 
 	// Only the approved item is injected; List hides the rejected tombstone.
 	active, _ := store.Items(t.Context(), agentmemory.ScopeProject, "/repo")
-	if len(active) != 1 || active[0].ID != approve.ID {
+	if len(active) != 1 || active[0].ID() != approve.ID() {
 		t.Fatalf("active = %+v, want just the approved item", active)
 	}
 	if listed, _ := store.List(t.Context(), agentmemory.ScopeProject, "/repo"); len(listed) != 1 {
@@ -232,7 +232,7 @@ func TestAgentMemoryReviewLifecycle(t *testing.T) {
 	listed, _ := store.List(t.Context(), agentmemory.ScopeProject, "/repo")
 	var contents []string
 	for _, item := range listed {
-		contents = append(contents, item.Content)
+		contents = append(contents, item.Content())
 	}
 	if slices.Contains(contents, "two") {
 		t.Fatalf("rejected fact was re-proposed: %+v", listed)
@@ -262,19 +262,19 @@ func TestAgentMemoryReviewPreservesPendingItemWhenClockRegresses(t *testing.T) {
 					t.Fatalf("proposals = (%+v, %v), want one pending item", items, err)
 				}
 				pinned := true
-				item, err := store.Update(t.Context(), items[0].ID, nil, &pinned, editedAt)
+				item, err := store.Update(t.Context(), items[0].ID(), nil, &pinned, editedAt)
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := store.Review(t.Context(), item.ID, decision, clock.now); err == nil {
+				if err := store.Review(t.Context(), item.ID(), decision, clock.now); err == nil {
 					t.Error("review accepted a time before the current item")
 				}
-				stored, found, err := store.Get(t.Context(), item.ID)
-				if err != nil || !found || stored.Status != agentmemory.StatusPending || !stored.Pinned ||
-					stored.Content != item.Content || !stored.CreatedAt.Equal(createdAt) || !stored.UpdatedAt.Equal(editedAt) {
+				stored, found, err := store.Get(t.Context(), item.ID())
+				if err != nil || !found || stored.Status() != agentmemory.StatusPending || !stored.Pinned() ||
+					stored.Content() != item.Content() || !stored.CreatedAt().Equal(createdAt) || !stored.UpdatedAt().Equal(editedAt) {
 					t.Fatalf("failed review changed pending item = (%+v, %t, %v)", stored, found, err)
 				}
-				if err := store.Review(t.Context(), item.ID, decision, editedAt); err != nil {
+				if err := store.Review(t.Context(), item.ID(), decision, editedAt); err != nil {
 					t.Fatalf("review after clock recovery: %v", err)
 				}
 			})
@@ -361,13 +361,13 @@ func TestAgentMemoryManagementOps(t *testing.T) {
 	now := time.Date(2026, 7, 19, 4, 0, 0, 0, time.UTC)
 
 	item, created, err := store.Add(t.Context(), agentmemory.ScopeProject, "/repo", "always run make lint", now)
-	if err != nil || !created || item.ID.Validate() != nil || item.Origin != agentmemory.OriginUser || item.Status != agentmemory.StatusActive {
+	if err != nil || !created || item.ID().Validate() != nil || item.Origin() != agentmemory.OriginUser || item.Status() != agentmemory.StatusActive {
 		t.Fatalf("add = (%+v, %t, %v)", item, created, err)
 	}
 	duplicate, duplicateCreated, err := store.Add(
 		t.Context(), agentmemory.ScopeProject, "/repo", "always run make lint", now.Add(time.Second),
 	)
-	if err != nil || duplicateCreated || duplicate.ID != item.ID {
+	if err != nil || duplicateCreated || duplicate.ID() != item.ID() {
 		t.Fatalf("duplicate add = (%+v, %t, %v), want original item without insertion", duplicate, duplicateCreated, err)
 	}
 	embedding, err := agentmemory.NewEmbeddingUpdate(item, "provider:model", []float32{1, 2, 3})
@@ -379,44 +379,47 @@ func TestAgentMemoryManagementOps(t *testing.T) {
 	}
 	content := "always run make lint before commit"
 	pinned := true
-	if _, updateErr := store.Update(t.Context(), item.ID, &content, &pinned, now); updateErr != nil {
+	if _, updateErr := store.Update(t.Context(), item.ID(), &content, &pinned, now); updateErr != nil {
 		t.Fatal(updateErr)
 	}
-	got, ok, err := store.Get(t.Context(), item.ID)
-	if err != nil || !ok || !got.Pinned || got.Content != "always run make lint before commit" {
+	got, ok, err := store.Get(t.Context(), item.ID())
+	if err != nil || !ok || !got.Pinned() || got.Content() != "always run make lint before commit" {
 		t.Fatalf("after edit = (%+v, %v, %v)", got, ok, err)
 	}
 	// Editing content clears the now-stale embedding.
 	forSearch, _ := store.SearchCorpus(t.Context(), "/repo")
-	if len(forSearch) != 1 || len(forSearch[0].Embedding) != 0 {
+	if len(forSearch) != 1 {
+		t.Fatalf("search corpus = %+v", forSearch)
+	}
+	if _, _, cached := forSearch[0].Embedding(); cached {
 		t.Fatalf("edit did not clear the stale embedding: %+v", forSearch)
 	}
 	// A combined review update is all-or-nothing: invalid content must not leave
 	// a requested pin behind.
 	unpinned := false
-	if _, updateErr := store.Update(t.Context(), item.ID, nil, &unpinned, now); updateErr != nil {
+	if _, updateErr := store.Update(t.Context(), item.ID(), nil, &unpinned, now); updateErr != nil {
 		t.Fatal(updateErr)
 	}
 	blank := "  "
-	if _, updateErr := store.Update(t.Context(), item.ID, &blank, &pinned, now.Add(time.Second)); updateErr == nil {
+	if _, updateErr := store.Update(t.Context(), item.ID(), &blank, &pinned, now.Add(time.Second)); updateErr == nil {
 		t.Fatal("Update accepted blank content")
 	}
-	unchanged, ok, err := store.Get(t.Context(), item.ID)
-	if err != nil || !ok || unchanged.Pinned {
+	unchanged, ok, err := store.Get(t.Context(), item.ID())
+	if err != nil || !ok || unchanged.Pinned() {
 		t.Fatalf("failed Update changed item = (%+v, %v, %v)", unchanged, ok, err)
 	}
 	oversized := strings.Repeat("界", agentmemory.MaxContentCharacters+1)
-	if _, updateErr := store.Update(t.Context(), item.ID, &oversized, &pinned, now.Add(2*time.Second)); updateErr == nil {
+	if _, updateErr := store.Update(t.Context(), item.ID(), &oversized, &pinned, now.Add(2*time.Second)); updateErr == nil {
 		t.Fatal("Update accepted oversized content")
 	}
-	unchanged, ok, err = store.Get(t.Context(), item.ID)
-	if err != nil || !ok || unchanged.Pinned {
+	unchanged, ok, err = store.Get(t.Context(), item.ID())
+	if err != nil || !ok || unchanged.Pinned() {
 		t.Fatalf("oversized Update changed item = (%+v, %v, %v)", unchanged, ok, err)
 	}
-	if err := store.Delete(t.Context(), item.ID); err != nil {
+	if err := store.Delete(t.Context(), item.ID()); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.Delete(t.Context(), item.ID); !errors.Is(err, agentmemory.ErrNotFound) {
+	if err := store.Delete(t.Context(), item.ID()); !errors.Is(err, agentmemory.ErrNotFound) {
 		t.Fatalf("second delete = %v, want ErrNotFound", err)
 	}
 }
@@ -471,12 +474,12 @@ func TestAgentMemoryReconcilePublishesOnlyAvailableTargetCapacity(t *testing.T) 
 		t.Fatalf("List = (%d items, %v)", len(items), err)
 	}
 	if !slices.ContainsFunc(items, func(item agentmemory.Item) bool {
-		return item.Content == "highest priority proposal" && item.Status == agentmemory.StatusPending
+		return item.Content() == "highest priority proposal" && item.Status() == agentmemory.StatusPending
 	}) {
 		t.Fatalf("capacity proposal is missing: %+v", items)
 	}
 	if slices.ContainsFunc(items, func(item agentmemory.Item) bool {
-		return item.Content == "lower priority proposal"
+		return item.Content() == "lower priority proposal"
 	}) {
 		t.Fatal("lower-priority proposal exceeded the target capacity")
 	}
@@ -543,14 +546,14 @@ func TestAgentMemoryExplicitAddRevivesRejectedProposal(t *testing.T) {
 	if err != nil || len(items) != 1 {
 		t.Fatalf("proposal list = (%+v, %v)", items, err)
 	}
-	if reviewErr := store.Review(t.Context(), items[0].ID, agentmemory.ReviewReject, now.Add(time.Second)); reviewErr != nil {
+	if reviewErr := store.Review(t.Context(), items[0].ID(), agentmemory.ReviewReject, now.Add(time.Second)); reviewErr != nil {
 		t.Fatal(reviewErr)
 	}
 	revived, created, err := store.Add(
 		t.Context(), agentmemory.ScopeProject, "/repo", "revive me", now.Add(2*time.Second),
 	)
-	if err != nil || !created || revived.ID != items[0].ID ||
-		revived.Origin != agentmemory.OriginUser || revived.Status != agentmemory.StatusActive {
+	if err != nil || !created || revived.ID() != items[0].ID() ||
+		revived.Origin() != agentmemory.OriginUser || revived.Status() != agentmemory.StatusActive {
 		t.Fatalf("revived Add = (%+v, created=%t, err=%v)", revived, created, err)
 	}
 }
@@ -621,7 +624,7 @@ func TestAgentMemoryEmbeddingBackfillRoundTrip(t *testing.T) {
 	// Only approved (active) items are embedded; approve the proposals first.
 	proposals, _ := store.List(t.Context(), agentmemory.ScopeProject, "/repo")
 	for _, item := range proposals {
-		if err := store.Review(t.Context(), item.ID, agentmemory.ReviewApprove, now); err != nil {
+		if err := store.Review(t.Context(), item.ID(), agentmemory.ReviewApprove, now); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -635,7 +638,7 @@ func TestAgentMemoryEmbeddingBackfillRoundTrip(t *testing.T) {
 	vectors := make(map[agentmemory.ItemID][]float32, len(forSearch))
 	for i, item := range forSearch {
 		vector := []float32{float32(i + 1), 0.5}
-		vectors[item.ID] = vector
+		vectors[item.ID()] = vector
 		update, updateErr := agentmemory.NewEmbeddingUpdate(item, "provider:model", vector)
 		if updateErr != nil {
 			t.Fatal(updateErr)
@@ -652,9 +655,10 @@ func TestAgentMemoryEmbeddingBackfillRoundTrip(t *testing.T) {
 		t.Fatalf("items for search = (%+v, %v)", forSearch, err)
 	}
 	for _, item := range forSearch {
-		want := vectors[item.ID]
-		if item.EmbeddingSpace != "provider:model" || len(item.Embedding) != len(want) || item.Embedding[0] != want[0] || item.Embedding[1] != want[1] {
-			t.Fatalf("embedding round-trip failed for %s: got %v want %v", item.ID, item.Embedding, want)
+		want := vectors[item.ID()]
+		space, vector, cached := item.Embedding()
+		if !cached || space != "provider:model" || !slices.Equal(vector, want) {
+			t.Fatalf("embedding round-trip failed for %s: got %s %v want %v", item.ID(), space, vector, want)
 		}
 	}
 }
@@ -681,12 +685,12 @@ func TestAgentMemorySearchCorpusIncludesUserAndExactProject(t *testing.T) {
 	}
 	got := make(map[agentmemory.ItemID]agentmemory.Scope, len(corpus))
 	for _, item := range corpus {
-		got[item.ID] = item.Scope
+		got[item.ID()] = item.Scope()
 	}
-	if len(got) != 2 || got[projectItem.ID] != agentmemory.ScopeProject || got[userItem.ID] != agentmemory.ScopeUser {
+	if len(got) != 2 || got[projectItem.ID()] != agentmemory.ScopeProject || got[userItem.ID()] != agentmemory.ScopeUser {
 		t.Fatalf("search corpus = %+v, want exact project + user items", corpus)
 	}
-	if _, leaked := got[otherItem.ID]; leaked {
+	if _, leaked := got[otherItem.ID()]; leaked {
 		t.Fatalf("other-project item leaked into search corpus: %+v", corpus)
 	}
 }
@@ -703,7 +707,7 @@ func TestAgentMemoryLateEmbeddingDoesNotOverwriteEditedContent(t *testing.T) {
 		t.Fatal(err)
 	}
 	content := "new content"
-	if _, updateErr := store.Update(t.Context(), item.ID, &content, nil, now.Add(time.Second)); updateErr != nil {
+	if _, updateErr := store.Update(t.Context(), item.ID(), &content, nil, now.Add(time.Second)); updateErr != nil {
 		t.Fatal(updateErr)
 	}
 	if setEmbeddingsErr := store.SetEmbeddings(t.Context(), []agentmemory.EmbeddingUpdate{late}); setEmbeddingsErr != nil {
@@ -713,7 +717,7 @@ func TestAgentMemoryLateEmbeddingDoesNotOverwriteEditedContent(t *testing.T) {
 	if err != nil || len(items) != 1 {
 		t.Fatalf("items for search = (%+v, %v)", items, err)
 	}
-	if items[0].Content != "new content" || items[0].EmbeddingSpace != "" || len(items[0].Embedding) != 0 {
+	if _, _, cached := items[0].Embedding(); items[0].Content() != "new content" || cached {
 		t.Fatalf("late embedding polluted edited item: %+v", items[0])
 	}
 }
@@ -778,7 +782,7 @@ func TestAgentMemoryConcurrentAddReportsOneCreation(t *testing.T) {
 				t.Errorf("Add: %v", err)
 				return
 			}
-			ids.Store(item.ID, struct{}{})
+			ids.Store(item.ID(), struct{}{})
 			if inserted {
 				created.Add(1)
 			}

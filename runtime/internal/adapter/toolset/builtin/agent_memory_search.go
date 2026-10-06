@@ -89,7 +89,7 @@ func (a agentMemorySearchResults) String() string {
 	}
 	var b strings.Builder
 	for i, item := range a {
-		content := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(item.Content), "- "))
+		content := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(item.Content()), "- "))
 		fmt.Fprintf(&b, "%d. %s\n", i+1, content)
 	}
 	return strings.TrimRight(b.String(), "\n")

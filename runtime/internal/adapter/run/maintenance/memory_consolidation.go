@@ -226,10 +226,10 @@ func (m *MemoryConsolidator) currentMemory(ctx context.Context, project string) 
 	}
 	var b strings.Builder
 	for _, item := range items {
-		if item.Origin != agentmemory.OriginAuto {
+		if item.Origin() != agentmemory.OriginAuto {
 			continue
 		}
-		lineBytes := len(item.Content) + 2
+		lineBytes := len(item.Content()) + 2
 		if b.Len() > 0 {
 			lineBytes++
 		}
@@ -240,7 +240,7 @@ func (m *MemoryConsolidator) currentMemory(ctx context.Context, project string) 
 			b.WriteByte('\n')
 		}
 		b.WriteString("- ")
-		b.WriteString(item.Content)
+		b.WriteString(item.Content())
 	}
 	return b.String(), nil
 }

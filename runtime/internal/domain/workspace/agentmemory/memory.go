@@ -253,23 +253,87 @@ func (r ReviewDecision) Result() (Status, error) {
 // into (or retrieved for) the model. Pinned items are always injected — the L1
 // core — and are never auto-pruned. SessionID/Day carry provenance.
 type Item struct {
-	ID        ItemID
-	Scope     Scope
-	Project   string // "" for ScopeUser
-	Content   string
-	Origin    Origin
-	Status    Status
-	Pinned    bool
-	SessionID string
-	Day       string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	id        ItemID
+	scope     Scope
+	project   string
+	content   string
+	origin    Origin
+	status    Status
+	pinned    bool
+	sessionID string
+	day       string
+	createdAt time.Time
+	updatedAt time.Time
 
-	// EmbeddingSpace and Embedding are a search-only cache pair. Space identifies
-	// the embedder that produced the vector; both fields are empty on ordinary
-	// reads and until semantic search has cached the current content.
+	// embeddingSpace and embedding are a search-only cache pair. Space identifies
+	// the embedder that produced the vector; both are empty on ordinary reads and
+	// until semantic search has cached the current content.
+	embeddingSpace string
+	embedding      []float32
+}
+
+// ItemSnapshot is the complete persistence representation of an Item.
+// RestoreItem validates every field; it is not a second mutation surface.
+type ItemSnapshot struct {
+	ID             ItemID
+	Scope          Scope
+	Project        string // "" for ScopeUser
+	Content        string
+	Origin         Origin
+	Status         Status
+	Pinned         bool
+	SessionID      string
+	Day            string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 	EmbeddingSpace string
 	Embedding      []float32
+}
+
+// RestoreItem reconstructs a persisted item.
+func RestoreItem(snapshot ItemSnapshot) (Item, error) {
+	item := Item{
+		id: snapshot.ID, scope: snapshot.Scope, project: snapshot.Project, content: snapshot.Content,
+		origin: snapshot.Origin, status: snapshot.Status, pinned: snapshot.Pinned,
+		sessionID: snapshot.SessionID, day: snapshot.Day,
+		createdAt: snapshot.CreatedAt.UTC(), updatedAt: snapshot.UpdatedAt.UTC(),
+		embeddingSpace: snapshot.EmbeddingSpace, embedding: slices.Clone(snapshot.Embedding),
+	}
+	if err := item.validate(); err != nil {
+		return Item{}, err
+	}
+	return item, nil
+}
+
+// Snapshot returns the complete persistence representation.
+func (i Item) Snapshot() ItemSnapshot {
+	return ItemSnapshot{
+		ID: i.id, Scope: i.scope, Project: i.project, Content: i.content,
+		Origin: i.origin, Status: i.status, Pinned: i.pinned, SessionID: i.sessionID, Day: i.day,
+		CreatedAt: i.createdAt, UpdatedAt: i.updatedAt,
+		EmbeddingSpace: i.embeddingSpace, Embedding: slices.Clone(i.embedding),
+	}
+}
+
+func (i Item) ID() ItemID           { return i.id }
+func (i Item) Scope() Scope         { return i.scope }
+func (i Item) Project() string      { return i.project }
+func (i Item) Content() string      { return i.content }
+func (i Item) Origin() Origin       { return i.origin }
+func (i Item) Status() Status       { return i.status }
+func (i Item) Pinned() bool         { return i.pinned }
+func (i Item) SessionID() string    { return i.sessionID }
+func (i Item) Day() string          { return i.day }
+func (i Item) CreatedAt() time.Time { return i.createdAt }
+func (i Item) UpdatedAt() time.Time { return i.updatedAt }
+
+// Embedding returns the cached vector and the space that produced it, when
+// semantic search has cached the current content.
+func (i Item) Embedding() (string, []float32, bool) {
+	if i.embeddingSpace == "" {
+		return "", nil, false
+	}
+	return i.embeddingSpace, slices.Clone(i.embedding), true
 }
 
 // EmbeddingUpdate conditionally caches one item's current-content vector.
@@ -289,34 +353,38 @@ func (e EmbeddingUpdate) Clone() EmbeddingUpdate {
 	return e
 }
 
-// Clone returns an ownership-isolated memory item.
-func (i Item) Clone() Item {
-	i.Embedding = slices.Clone(i.Embedding)
-	return i
-}
-
 // NewEmbeddingUpdate binds a vector to the exact item content and embedding
 // space that produced it.
 func NewEmbeddingUpdate(item Item, space string, vector []float32) (EmbeddingUpdate, error) {
-	if err := item.ID.Validate(); err != nil {
-		return EmbeddingUpdate{}, err
-	}
-	content, err := NormalizeContent(item.Content)
-	if err != nil {
-		return EmbeddingUpdate{}, fmt.Errorf("agentmemory: embedding item content: %w", err)
-	}
-	if content != item.Content {
-		return EmbeddingUpdate{}, errors.New("agentmemory: embedding item content is not canonical")
-	}
 	if err := validateEmbedding(space, vector); err != nil {
 		return EmbeddingUpdate{}, err
 	}
 	return EmbeddingUpdate{
-		ItemID:        item.ID,
-		ContentDigest: Digest(item.Content),
+		ItemID:        item.id,
+		ContentDigest: Digest(item.content),
 		Space:         space,
 		Vector:        slices.Clone(vector),
 	}, nil
+}
+
+// WithEmbedding caches a vector that NewEmbeddingUpdate bound to this item's
+// current content.
+func (i Item) WithEmbedding(update EmbeddingUpdate) (Item, error) {
+	if update.ItemID != i.id || update.ContentDigest != Digest(i.content) {
+		return Item{}, errors.New("agentmemory: embedding update belongs to other item content")
+	}
+	if err := validateEmbedding(update.Space, update.Vector); err != nil {
+		return Item{}, err
+	}
+	i.embeddingSpace, i.embedding = update.Space, slices.Clone(update.Vector)
+	return i, nil
+}
+
+// WithoutEmbedding drops a cached vector that does not serve the current
+// embedding space.
+func (i Item) WithoutEmbedding() Item {
+	i.embeddingSpace, i.embedding = "", nil
+	return i
 }
 
 // Validate protects a cache update received at a persistence boundary.
@@ -368,10 +436,7 @@ func NewUserItem(id ItemID, scope Scope, project, content string, now time.Time)
 // supplied user item owns the canonical content and new update timestamp; any
 // proposal provenance, pin, or derived embedding is deliberately discarded.
 func (i Item) ActivateFromUser(content string, now time.Time) (Item, error) {
-	if err := i.Validate(); err != nil {
-		return Item{}, fmt.Errorf("agentmemory: activate existing item: %w", err)
-	}
-	if i.Status == StatusActive {
+	if i.status == StatusActive {
 		return Item{}, errors.New("agentmemory: active item cannot be activated again")
 	}
 	content, err := NormalizeContent(content)
@@ -379,21 +444,18 @@ func (i Item) ActivateFromUser(content string, now time.Time) (Item, error) {
 		return Item{}, err
 	}
 	now = now.UTC()
-	if now.IsZero() || now.Before(i.UpdatedAt) {
+	if now.IsZero() || now.Before(i.updatedAt) {
 		return Item{}, errors.New("agentmemory: activation time precedes current item")
 	}
-	i.Content = content
-	i.Origin = OriginUser
-	i.Status = StatusActive
-	i.Pinned = false
-	i.SessionID = ""
-	i.Day = now.Format(time.DateOnly)
-	i.UpdatedAt = now
-	i.EmbeddingSpace = ""
-	i.Embedding = nil
-	if err := i.Validate(); err != nil {
-		return Item{}, fmt.Errorf("agentmemory: activate item: %w", err)
-	}
+	i.content = content
+	i.origin = OriginUser
+	i.status = StatusActive
+	i.pinned = false
+	i.sessionID = ""
+	i.day = now.Format(time.DateOnly)
+	i.updatedAt = now
+	i.embeddingSpace = ""
+	i.embedding = nil
 	return i, nil
 }
 
@@ -410,28 +472,25 @@ func (i Item) Edit(content *string, pinned *bool, now time.Time) (Item, bool, er
 		if err != nil {
 			return Item{}, false, err
 		}
-		if canonical != i.Content {
-			i.Content = canonical
-			i.EmbeddingSpace = ""
-			i.Embedding = nil
+		if canonical != i.content {
+			i.content = canonical
+			i.embeddingSpace = ""
+			i.embedding = nil
 			changed = true
 		}
 	}
-	if pinned != nil && i.Pinned != *pinned {
-		i.Pinned = *pinned
+	if pinned != nil && i.pinned != *pinned {
+		i.pinned = *pinned
 		changed = true
 	}
 	if !changed {
 		return i, false, nil
 	}
 	now = now.UTC()
-	if now.IsZero() || now.Before(i.UpdatedAt) {
+	if now.IsZero() || now.Before(i.updatedAt) {
 		return Item{}, false, errors.New("agentmemory: edit time precedes current item")
 	}
-	i.UpdatedAt = now
-	if err := i.Validate(); err != nil {
-		return Item{}, false, fmt.Errorf("agentmemory: edit item: %w", err)
-	}
+	i.updatedAt = now
 	return i, true, nil
 }
 
@@ -442,28 +501,22 @@ func (i Item) Review(decision ReviewDecision, now time.Time) (Item, error) {
 	if err != nil {
 		return Item{}, err
 	}
-	if err := i.Validate(); err != nil {
-		return Item{}, fmt.Errorf("agentmemory: review existing item: %w", err)
-	}
-	if i.Status != StatusPending {
-		return Item{}, fmt.Errorf("%w: item %q is %s", ErrNotPending, i.ID, i.Status)
+	if i.status != StatusPending {
+		return Item{}, fmt.Errorf("%w: item %q is %s", ErrNotPending, i.id, i.status)
 	}
 	now = now.UTC()
-	if now.IsZero() || now.Before(i.UpdatedAt) {
+	if now.IsZero() || now.Before(i.updatedAt) {
 		return Item{}, errors.New("agentmemory: review time precedes current item")
 	}
-	i.Status = status
-	i.UpdatedAt = now
+	i.status = status
+	i.updatedAt = now
 	return i, nil
 }
 
-// ValidateVisible protects operations exposed only for active and pending
-// memory. Rejected items are retained tombstones, not management targets.
+// ValidateVisible refuses a rejected tombstone: only active and pending memory
+// is a management target.
 func (i Item) ValidateVisible() error {
-	if err := i.Validate(); err != nil {
-		return err
-	}
-	if i.Status == StatusRejected {
+	if i.status == StatusRejected {
 		return ErrNotVisible
 	}
 	return nil
@@ -476,80 +529,57 @@ func newItem(id ItemID, scope Scope, project, content string, origin Origin, sta
 	}
 	now = now.UTC()
 	item := Item{
-		ID:        id,
-		Scope:     scope,
-		Project:   project,
-		Content:   content,
-		Origin:    origin,
-		Status:    status,
-		Day:       now.Format(time.DateOnly),
-		CreatedAt: now,
-		UpdatedAt: now,
+		id: id, scope: scope, project: project, content: content, origin: origin, status: status,
+		day: now.Format(time.DateOnly), createdAt: now, updatedAt: now,
 	}
-	if err := item.Validate(); err != nil {
+	if err := item.validate(); err != nil {
 		return Item{}, err
 	}
 	return item, nil
 }
 
-// Validate protects the identity, partition, provenance, lifecycle, and time
-// invariants of one durable memory item.
-func (i Item) Validate() error {
-	if err := i.ID.Validate(); err != nil {
+// validate protects the identity, partition, provenance, lifecycle, and time
+// invariants of one durable memory item. Construction and restore close on it;
+// transitions preserve it by touching only fields whose rules they enforce.
+func (i Item) validate() error {
+	if err := i.id.Validate(); err != nil {
 		return err
 	}
-	if i.SessionID != "" {
-		if err := resourceid.ValidateSession(i.SessionID); err != nil {
+	if i.sessionID != "" {
+		if err := resourceid.ValidateSession(i.sessionID); err != nil {
 			return fmt.Errorf("agentmemory: item provenance: %w", err)
 		}
 	}
-	if err := ValidateTarget(i.Scope, i.Project); err != nil {
+	if err := ValidateTarget(i.scope, i.project); err != nil {
 		return err
 	}
-	content, err := NormalizeContent(i.Content)
+	content, err := NormalizeContent(i.content)
 	if err != nil {
 		return err
 	}
-	if content != i.Content {
+	if content != i.content {
 		return errors.New("agentmemory: item content is not canonical")
 	}
-	if err := i.Origin.Validate(); err != nil {
+	if err := i.origin.Validate(); err != nil {
 		return err
 	}
-	if err := i.Status.Validate(); err != nil {
+	if err := i.status.Validate(); err != nil {
 		return err
 	}
-	if i.Origin == OriginUser && i.Status != StatusActive {
+	if i.origin == OriginUser && i.status != StatusActive {
 		return errors.New("agentmemory: user-authored item must be active")
 	}
-	if i.CreatedAt.IsZero() || i.UpdatedAt.IsZero() {
+	if i.createdAt.IsZero() || i.updatedAt.IsZero() {
 		return errors.New("agentmemory: item timestamps are required")
 	}
-	if i.UpdatedAt.Before(i.CreatedAt) {
+	if i.updatedAt.Before(i.createdAt) {
 		return errors.New("agentmemory: item update precedes creation")
 	}
-	if i.EmbeddingSpace == "" && len(i.Embedding) == 0 {
+	if i.embeddingSpace == "" && len(i.embedding) == 0 {
 		return nil
 	}
-	if err := validateEmbedding(i.EmbeddingSpace, i.Embedding); err != nil {
+	if err := validateEmbedding(i.embeddingSpace, i.embedding); err != nil {
 		return fmt.Errorf("agentmemory: item embedding: %w", err)
-	}
-	return nil
-}
-
-// ValidateFor protects a durable item read from one exact memory partition.
-func (i Item) ValidateFor(scope Scope, project string) error {
-	if err := ValidateTarget(scope, project); err != nil {
-		return err
-	}
-	if err := i.Validate(); err != nil {
-		return err
-	}
-	if i.Scope != scope || i.Project != project {
-		return fmt.Errorf(
-			"agentmemory: item %q belongs to %s target %q, not %s target %q",
-			i.ID, i.Scope, i.Project, scope, project,
-		)
 	}
 	return nil
 }

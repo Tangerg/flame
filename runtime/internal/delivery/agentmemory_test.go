@@ -3,6 +3,7 @@ package delivery
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"strings"
 	"testing"
 
@@ -77,12 +78,12 @@ func (r *recordingAgentMemory) Add(_ context.Context, scope agentmemory.Scope, c
 	if r.err != nil {
 		return agentmemory.Item{}, r.err
 	}
-	return agentmemory.Item{ID: serverAgentMemoryItemID('1'), Scope: scope, Content: content, Origin: agentmemory.OriginUser, Status: agentmemory.StatusActive}, nil
+	return testsupport.MustAgentMemoryItem(agentmemory.ItemSnapshot{ID: serverAgentMemoryItemID('1'), Scope: scope, Content: content, Origin: agentmemory.OriginUser, Status: agentmemory.StatusActive}), nil
 }
 
 func TestAgentMemoryListResolvesTargetAndMapsWire(t *testing.T) {
 	rec := &recordingAgentMemory{items: []agentmemory.Item{
-		{ID: serverAgentMemoryItemID('1'), Scope: agentmemory.ScopeProject, Content: "- fact", Origin: agentmemory.OriginAuto, Status: agentmemory.StatusPending},
+		testsupport.MustAgentMemoryItem(agentmemory.ItemSnapshot{ID: serverAgentMemoryItemID('1'), Scope: agentmemory.ScopeProject, Content: "- fact", Origin: agentmemory.OriginAuto, Status: agentmemory.StatusPending}),
 	}}
 	s := newTestHandler(&stubRuntime{})
 	s.agentMemory = rec
@@ -150,10 +151,10 @@ func TestAgentMemoryReviewMapsDecision(t *testing.T) {
 
 func TestAgentMemoryUpdateAndAdd(t *testing.T) {
 	itemID := serverAgentMemoryItemID('a')
-	rec := &recordingAgentMemory{getItem: agentmemory.Item{
+	rec := &recordingAgentMemory{getItem: testsupport.MustAgentMemoryItem(agentmemory.ItemSnapshot{
 		ID: itemID, Scope: agentmemory.ScopeProject, Content: "- edited", Origin: agentmemory.OriginUser,
 		Pinned: true, Status: agentmemory.StatusActive,
-	}}
+	})}
 	s := newTestHandler(&stubRuntime{})
 	s.agentMemory = rec
 

@@ -116,13 +116,13 @@ func (r *ReadModel) refreshEmbeddings(ctx context.Context, semantic semanticQuer
 	stale := make([]int, 0, len(items))
 	texts := make([]string, 0, len(items))
 	for index := range items {
-		if items[index].EmbeddingSpace == semantic.space && usableVector(items[index].Embedding, len(semantic.queryVector)) {
+		space, vector, cached := items[index].Embedding()
+		if cached && space == semantic.space && usableVector(vector, len(semantic.queryVector)) {
 			continue
 		}
-		items[index].EmbeddingSpace = ""
-		items[index].Embedding = nil
+		items[index] = items[index].WithoutEmbedding()
 		stale = append(stale, index)
-		texts = append(texts, items[index].Content)
+		texts = append(texts, items[index].Content())
 	}
 	if len(stale) == 0 {
 		return
@@ -140,8 +140,11 @@ func (r *ReadModel) refreshEmbeddings(ctx context.Context, semantic semanticQuer
 		return
 	}
 	for offset, index := range stale {
-		items[index].EmbeddingSpace = updates[offset].Space
-		items[index].Embedding = updates[offset].Vector
+		cached, err := items[index].WithEmbedding(updates[offset])
+		if err != nil {
+			return
+		}
+		items[index] = cached
 	}
 	// The cache is derived state: the current request already owns exact
 	// vectors, so a failed or losing conditional write must not turn a useful

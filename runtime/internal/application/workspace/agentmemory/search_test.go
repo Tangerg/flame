@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"log/slog"
-	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -37,11 +36,14 @@ func (f *fakeItemSource) SetEmbeddings(_ context.Context, updates []domain.Embed
 	}
 	for _, update := range updates {
 		for index := range f.items {
-			if f.items[index].ID != update.ItemID || domain.Digest(f.items[index].Content) != update.ContentDigest {
+			if f.items[index].ID() != update.ItemID || domain.Digest(f.items[index].Content()) != update.ContentDigest {
 				continue
 			}
-			f.items[index].EmbeddingSpace = update.Space
-			f.items[index].Embedding = slices.Clone(update.Vector)
+			cached, err := f.items[index].WithEmbedding(update)
+			if err != nil {
+				return err
+			}
+			f.items[index] = cached
 		}
 	}
 	return nil
@@ -117,33 +119,8 @@ func TestSearchKeywordOnlyWhenNoEmbedder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 1 || got[0].ID != testMemoryItemID('a') {
+	if len(got) != 1 || got[0].ID() != testMemoryItemID('a') {
 		t.Fatalf("keyword search = %+v, want just item a", got)
-	}
-}
-
-func TestReadModelOwnsReturnedItemEmbeddings(t *testing.T) {
-	item := readModelItem(t, '1', domain.ScopeProject, "/repo", "valid fact")
-	item.EmbeddingSpace, item.Embedding = "fake", []float32{1, 0}
-	store := &fakeItemSource{items: []domain.Item{item}}
-	reader := mustNewReadModel(t, store, nil)
-
-	listed, err := reader.Items(t.Context(), domain.ScopeProject, "/repo")
-	if err != nil {
-		t.Fatal(err)
-	}
-	listed[0].Embedding[0] = 9
-	if store.items[0].Embedding[0] != 1 {
-		t.Fatalf("store embedding changed through returned Item: %v", store.items[0].Embedding)
-	}
-
-	searched, err := reader.Search(t.Context(), "/repo", "valid fact", 1)
-	if err != nil {
-		t.Fatal(err)
-	}
-	searched[0].Embedding[0] = 8
-	if store.items[0].Embedding[0] != 1 {
-		t.Fatalf("store embedding changed through search result: %v", store.items[0].Embedding)
 	}
 }
 
@@ -155,7 +132,7 @@ func TestSearchDegradesWhenEmbedderFails(t *testing.T) {
 	if err != nil {
 		t.Fatalf("embed failure must not fail the search: %v", err)
 	}
-	if len(got) != 1 || got[0].ID != testMemoryItemID('a') {
+	if len(got) != 1 || got[0].ID() != testMemoryItemID('a') {
 		t.Fatalf("degraded search = %+v, want keyword hit a", got)
 	}
 }
@@ -163,9 +140,9 @@ func TestSearchDegradesWhenEmbedderFails(t *testing.T) {
 func TestSearchFusesVectorMatchWithoutKeywordOverlap(t *testing.T) {
 	// "b" shares no query terms but is the nearest vector — fusion must surface it.
 	a := readModelItem(t, 'a', domain.ScopeProject, "/repo", "- unrelated note about tabs")
-	a.EmbeddingSpace, a.Embedding = "fake", []float32{0, 1}
+	a = withEmbedding(t, a, "fake", []float32{0, 1})
 	b := readModelItem(t, 'b', domain.ScopeProject, "/repo", "- the build pipeline lives in ci")
-	b.EmbeddingSpace, b.Embedding = "fake", []float32{1, 0}
+	b = withEmbedding(t, b, "fake", []float32{1, 0})
 	store := &fakeItemSource{items: items(a, b)}
 	resolve := func(context.Context) (Embedder, error) {
 		return fakeEmbedder{vectors: map[string][]float32{"where is the pipeline": {1, 0}}}, nil
@@ -177,7 +154,7 @@ func TestSearchFusesVectorMatchWithoutKeywordOverlap(t *testing.T) {
 	}
 	found := false
 	for _, item := range got {
-		if item.ID == testMemoryItemID('b') {
+		if item.ID() == testMemoryItemID('b') {
 			found = true
 		}
 	}
@@ -192,9 +169,9 @@ func TestSearchDoesNotReuseCorpusVectorsFromAnotherEmbeddingSpace(t *testing.T) 
 	// is now the nearest item. Reusing the unlabelled cache silently returns the
 	// wrong memory instead of refreshing it or degrading to keyword ranking.
 	a := readModelItem(t, 'a', domain.ScopeProject, "/repo", "alpha memory")
-	a.EmbeddingSpace, a.Embedding = "provider:old-space", []float32{1, 0}
+	a = withEmbedding(t, a, "provider:old-space", []float32{1, 0})
 	b := readModelItem(t, 'b', domain.ScopeProject, "/repo", "beta memory")
-	b.EmbeddingSpace, b.Embedding = "provider:old-space", []float32{0, 1}
+	b = withEmbedding(t, b, "provider:old-space", []float32{0, 1})
 	store := &fakeItemSource{cacheErr: errors.New("cache write lost"), items: items(a, b)}
 	resolve := func(context.Context) (Embedder, error) {
 		return fakeEmbedder{
@@ -211,7 +188,7 @@ func TestSearchDoesNotReuseCorpusVectorsFromAnotherEmbeddingSpace(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 1 || got[0].ID != testMemoryItemID('b') {
+	if len(got) != 1 || got[0].ID() != testMemoryItemID('b') {
 		t.Fatalf("search after embedding-role change = %+v, want item b from the current vector space", got)
 	}
 	if len(store.updates) != 2 || store.updates[0].Space != "provider:new-space" {
@@ -232,16 +209,12 @@ func TestSearchIsolatesProviderVectorsAndReturnedItems(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 1 || got[0].ID != a.ID {
+	if len(got) != 1 || got[0].ID() != a.ID() {
 		t.Fatalf("search = %+v, want alpha", got)
 	}
 	vectors["alpha memory"][0] = 9
-	if got[0].Embedding[0] != 1 {
-		t.Fatal("provider reuse changed returned embedding")
-	}
-	got[0].Embedding[0] = 8
-	if store.items[0].Embedding[0] != 1 || store.updates[0].Vector[0] != 1 {
-		t.Fatal("caller reuse changed retained cache updates")
+	if _, vector, _ := got[0].Embedding(); vector[0] != 1 || store.updates[0].Vector[0] != 1 {
+		t.Fatal("provider reuse changed the cached embedding")
 	}
 }
 
@@ -314,7 +287,7 @@ func TestSearchDegradationReportsExternalFailures(t *testing.T) {
 			}
 			reader := mustNewReadModel(t, store, resolve)
 			got, err := reader.Search(t.Context(), "/repo", "make test", 1)
-			if err != nil || len(got) != 1 || got[0].ID != testMemoryItemID('a') {
+			if err != nil || len(got) != 1 || got[0].ID() != testMemoryItemID('a') {
 				t.Fatalf("degraded search = (%+v, %v), want keyword hit", got, err)
 			}
 			if output := diagnostics.String(); wantError == "" && output != "" || wantError != "" && !strings.Contains(output, wantError) {
@@ -322,4 +295,17 @@ func TestSearchDegradationReportsExternalFailures(t *testing.T) {
 			}
 		})
 	}
+}
+
+func withEmbedding(t *testing.T, item domain.Item, space string, vector []float32) domain.Item {
+	t.Helper()
+	update, err := domain.NewEmbeddingUpdate(item, space, vector)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cached, err := item.WithEmbedding(update)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return cached
 }

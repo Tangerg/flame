@@ -3,6 +3,7 @@ package agentmemory
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"slices"
 	"strings"
 	"testing"
@@ -40,7 +41,10 @@ func validMemoryItem(id domain.ItemID, scope domain.Scope, project, content stri
 	if err != nil {
 		panic(err)
 	}
-	item.Pinned = pinned
+	item, _, err = item.Edit(nil, &pinned, now)
+	if err != nil {
+		panic(err)
+	}
 	return item
 }
 
@@ -120,11 +124,11 @@ func TestListOwnsManagementOrder(t *testing.T) {
 		if status == domain.StatusActive {
 			origin = domain.OriginUser
 		}
-		return domain.Item{
+		return testsupport.MustAgentMemoryItem(domain.ItemSnapshot{
 			ID: testMemoryItemID(id), Scope: domain.ScopeProject, Project: "/repo",
 			Content: string(id), Origin: origin, Status: status, Pinned: pinned,
 			CreatedAt: updated, UpdatedAt: updatedAt,
-		}
+		})
 	}
 	store := &fakeStore{listed: []domain.Item{
 		item('6', domain.StatusActive, false, updated.Add(time.Hour)),
@@ -142,7 +146,7 @@ func TestListOwnsManagementOrder(t *testing.T) {
 	}
 	got := make([]string, 0, len(items))
 	for _, value := range items {
-		got = append(got, value.ID.String())
+		got = append(got, value.ID().String())
 	}
 	want := []string{
 		testMemoryItemID('0').String(),
@@ -155,7 +159,7 @@ func TestListOwnsManagementOrder(t *testing.T) {
 	if !slices.Equal(got, want) {
 		t.Fatalf("List order = %v, want %v", got, want)
 	}
-	if store.listed[0].ID != testMemoryItemID('6') {
+	if store.listed[0].ID() != testMemoryItemID('6') {
 		t.Fatal("List mutated persistence-owned rows")
 	}
 }
@@ -187,7 +191,7 @@ func TestUpdateAllowsCallerReuseAfterReturn(t *testing.T) {
 	if store.content == nil || *store.content != "original fact" || store.pinned == nil || !*store.pinned {
 		t.Fatalf("retained patch = content=%v pinned=%v", store.content, store.pinned)
 	}
-	if item.Content != "original fact" || !item.Pinned {
+	if item.Content() != "original fact" || !item.Pinned() {
 		t.Fatalf("acknowledged item = %+v, want original patch", item)
 	}
 }
@@ -314,9 +318,5 @@ func newCoordinator(t *testing.T, cfg Config) *Coordinator {
 }
 
 func cloneMemoryItems(items []domain.Item) []domain.Item {
-	owned := make([]domain.Item, len(items))
-	for index, item := range items {
-		owned[index] = item.Clone()
-	}
-	return owned
+	return slices.Clone(items)
 }

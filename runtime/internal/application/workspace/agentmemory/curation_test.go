@@ -141,7 +141,7 @@ func TestCurationNormalizesInputAndOrdersItems(t *testing.T) {
 	second := readModelItem(t, '2', domain.ScopeProject, "/repo", "second")
 	store.items = []domain.Item{first, second}
 	if items, err := curation.Items(t.Context(), domain.ScopeProject, "/repo"); err != nil ||
-		len(items) != 2 || items[0].ID != second.ID {
+		len(items) != 2 || items[0].ID() != second.ID() {
 		t.Fatalf("curation item order = (%+v, %v)", items, err)
 	}
 }

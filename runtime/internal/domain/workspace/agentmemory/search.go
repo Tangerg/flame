@@ -40,7 +40,7 @@ func keywordRanked(query string, items []Item, limit int) []Item {
 	}
 	ranked := make([]scored, 0, len(items))
 	for _, item := range items {
-		content := strings.ToLower(item.Content)
+		content := strings.ToLower(item.Content())
 		hits := 0
 		for _, term := range terms {
 			if strings.Contains(content, term) {
@@ -67,7 +67,7 @@ func topKByCosine(query []float32, items []Item, limit int) []Item {
 	}
 	ranked := make([]scored, 0, len(items))
 	for _, item := range items {
-		score := cosineSim(query, qn, item.Embedding)
+		score := cosineSim(query, qn, item.embedding)
 		if score <= 0 {
 			continue
 		}
@@ -94,8 +94,8 @@ func fuseByRank(keyword, vector []Item, topK int) []Item {
 	item := make(map[ItemID]Item)
 	for _, list := range [][]Item{keyword, vector} {
 		for rank, it := range list {
-			score[it.ID] += 1.0 / (rrfK + float64(rank+1))
-			item[it.ID] = it
+			score[it.ID()] += 1.0 / (rrfK + float64(rank+1))
+			item[it.ID()] = it
 		}
 	}
 	ids := make([]ItemID, 0, len(score))

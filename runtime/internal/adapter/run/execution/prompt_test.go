@@ -3,6 +3,7 @@ package execution
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"os"
 	"path/filepath"
 	"strings"
@@ -125,5 +126,5 @@ func (s stubAgentMemory) Items(_ context.Context, scope agentmemory.Scope, _ str
 		return nil, nil
 	}
 	// Pinned so it reaches the always-on core (the composer injects pinned only).
-	return []agentmemory.Item{{Content: s.content, Pinned: true, Status: agentmemory.StatusActive}}, nil
+	return []agentmemory.Item{testsupport.MustAgentMemoryItem(agentmemory.ItemSnapshot{Content: s.content, Pinned: true, Status: agentmemory.StatusActive})}, nil
 }
