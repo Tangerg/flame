@@ -71,8 +71,6 @@ describe("runtimeAgentMemoryGateway", () => {
     await expect(addAgentMemory({ scope: "user", content: item.content })).resolves.toMatchObject({
       id: MEMORY_ID,
       scope: "user",
-      sessionId: "",
-      day: "",
     });
     await expect(setAgentMemoryPinned(MEMORY_ID, true)).resolves.toBeUndefined();
     expect(update).toHaveBeenCalledWith({ id: MEMORY_ID, pinned: true });
@@ -151,8 +149,6 @@ function memoryItem(overrides: Record<string, unknown> = {}) {
 function memoryEntry(overrides: Partial<AgentMemoryEntry> = {}): AgentMemoryEntry {
   return {
     ...memoryItem(),
-    sessionId: "",
-    day: "",
     ...overrides,
   };
 }

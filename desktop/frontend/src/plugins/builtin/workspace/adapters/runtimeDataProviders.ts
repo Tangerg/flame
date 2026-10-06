@@ -7,6 +7,7 @@ import type {
 } from "@flame/runtime-contract/client";
 import { emptyListIfUngated } from "@/lib/rpcErrors";
 import { runtimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
+import { agentMemoryEntry } from "./runtimeAgentMemoryGateway";
 import {
   WORKSPACE_PROJECTS_KEY,
   WORKSPACE_FILES_CHANGED_KEY,
@@ -123,9 +124,9 @@ export function registerWorkspaceDataProviders(
           scope: p.scope,
           description: p.description,
           instructions: p.instructions,
-          origin: p.origin ?? "mined",
+          origin: p.origin,
           revises: p.revises === true,
-          sourceSession: p.sourceSession ?? "",
+          ...(p.sourceSession ? { sourceSession: p.sourceSession } : {}),
         }),
       );
     },
@@ -139,18 +140,7 @@ export function registerWorkspaceDataProviders(
         q.scope === "user"
           ? await runtimeClient().agentMemory.list({ scope: "user" }, signal)
           : await workspace(q.cwd, signal).then((resources) => resources.agentMemory.list(signal));
-      return result.items.map((m) => ({
-        id: m.id,
-        scope: m.scope,
-        content: m.content,
-        origin: m.origin,
-        status: m.status,
-        pinned: m.pinned,
-        sessionId: m.sessionId ?? "",
-        day: m.day ?? "",
-        createdAt: m.createdAt,
-        updatedAt: m.updatedAt,
-      }));
+      return result.items.map(agentMemoryEntry);
     },
   });
   ctx.contribute(DATA_PROVIDER, {

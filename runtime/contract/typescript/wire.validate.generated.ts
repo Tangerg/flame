@@ -3716,7 +3716,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     revision: allOf([text(), pattern("^[0-9a-f]{64}$")]),
     scope: ref(() => CHECKS.SkillScope),
     sourceSession: text(),
-  }, ["description", "instructions", "name", "revision", "scope"]),
+  }, ["description", "instructions", "name", "origin", "revision", "scope"]),
   SkillProposalOrigin: enumOf(["requested", "mined"]),
   SkillProposalRef: object({
     name: allOf([text(), pattern("\\S")]),

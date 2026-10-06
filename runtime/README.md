@@ -36,6 +36,13 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
+## Protocol 2026-10-07.2
+
+`SkillProposal.origin` is required. The Runtime records why it created every
+proposal, so a proposal without a valid origin is not listed and a client never
+supplies a default. Older proposal files written without an origin are not
+listed; resubmit them.
+
 ## Protocol 2026-10-07.1
 
 A Run tree's root alone carries the facts it owns for the whole tree: only a

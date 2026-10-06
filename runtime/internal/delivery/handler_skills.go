@@ -194,8 +194,6 @@ func proposalScopeDomain(scope protocol.SkillScope) (skills.Scope, bool) {
 
 func presentSkillProposalOrigin(origin skills.ProposalOrigin) (protocol.SkillProposalOrigin, bool) {
 	switch origin {
-	case "":
-		return "", true
 	case skills.ProposalOriginRequested:
 		return protocol.SkillProposalOriginRequested, true
 	case skills.ProposalOriginMined:

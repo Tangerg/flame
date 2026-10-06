@@ -197,7 +197,7 @@ func TestSkillMutationsPublishOnlyCommittedFilesystemFacts(t *testing.T) {
 	if restoreErr := c.Restore(context.Background(), "lint"); restoreErr != nil {
 		t.Fatal(restoreErr)
 	}
-	proposal := skills.Proposal{Scope: skills.ScopeProject, Name: "lint", Description: "Lint the current project before final verification.", Instructions: "Run the linter."}
+	proposal := skills.Proposal{Origin: skills.ProposalOriginRequested, Scope: skills.ScopeProject, Name: "lint", Description: "Lint the current project before final verification.", Instructions: "Run the linter."}
 	ref, err := c.SubmitProposal(context.Background(), "/repo", proposal)
 	if err != nil {
 		t.Fatal(err)

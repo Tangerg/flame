@@ -116,7 +116,7 @@ function SkillProposalRow({ proposal }: { proposal: SkillProposal }) {
           )}
           <div
             {...stylex.props(vs.origin, vocab.truncate, typeStep.uiSm)}
-            title={proposal.sourceSession || undefined}
+            title={proposal.sourceSession}
           >
             {t(`skillProposals.origin.${proposal.origin}`)}
           </div>

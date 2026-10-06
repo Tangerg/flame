@@ -40,7 +40,13 @@ func TestSweepIdleArchivesOnlyIdleAgentSkills(t *testing.T) {
 	root := t.TempDir()
 	store := newStore(t, root, skills.ScopeUser)
 	installActiveAgentSkill(t, store, "agent-skill")
-	installActive(t, store, "human-skill", "instructions") // no provenance → human-authored
+	humanSkill := "---\nname: human-skill\ndescription: A skill the user wrote directly into the library.\n---\n\ninstructions\n"
+	if err := os.MkdirAll(filepath.Join(root, "human-skill"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "human-skill", "SKILL.md"), []byte(humanSkill), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	// First sweep seeds FirstSeen for both; nothing is idle yet.
 	archived, _, err := store.SweepIdle(t.Context(), sweepBase, sweepArchive)

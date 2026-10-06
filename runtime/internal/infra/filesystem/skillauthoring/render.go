@@ -37,18 +37,12 @@ func renderProposal(proposal skills.Proposal) ([]byte, error) {
 }
 
 func proposalProvenance(proposal skills.Proposal) map[string]string {
-	metadata := make(map[string]string, 2)
-	if proposal.Origin != "" {
-		metadata[metadataOrigin] = string(proposal.Origin)
-	}
+	metadata := map[string]string{metadataOrigin: string(proposal.Origin)}
 	if proposal.SourceSession != "" {
 		metadata[metadataSourceSession] = proposal.SourceSession
 	}
 	if proposal.Revises {
 		metadata[metadataRevises] = metadataTrue
-	}
-	if len(metadata) == 0 {
-		return nil
 	}
 	return metadata
 }

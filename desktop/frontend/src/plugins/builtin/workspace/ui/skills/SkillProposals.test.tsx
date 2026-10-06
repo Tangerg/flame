@@ -38,7 +38,6 @@ it("keeps the review open after a conflict and requires an explicit decision on 
     instructions: "Original instructions",
     origin: "requested",
     revises: false,
-    sourceSession: "",
   };
   await loadPluginsForTest(
     definePlugin({

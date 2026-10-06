@@ -284,7 +284,7 @@ func (s *Store) ListProposals(ctx context.Context) ([]skills.ProposalReview, err
 			continue
 		}
 		origin := skills.ProposalOrigin(skill.Metadata[metadataOrigin])
-		if origin != "" && origin.Validate() != nil {
+		if origin.Validate() != nil {
 			continue
 		}
 		ref := skills.NewProposalRef(s.scope, skill.Name, content)

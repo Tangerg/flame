@@ -59,7 +59,7 @@ export interface SkillProposal {
   instructions: string;
   origin: "requested" | "mined";
   revises: boolean;
-  sourceSession: string;
+  sourceSession?: string;
 }
 
 export interface AgentMemoryQuery {
@@ -74,8 +74,7 @@ export interface AgentMemoryEntry {
   origin: "auto" | "user";
   status: "active" | "pending";
   pinned: boolean;
-  sessionId: string;
-  day: string;
+  sessionId?: string;
   createdAt: string;
   updatedAt: string;
 }

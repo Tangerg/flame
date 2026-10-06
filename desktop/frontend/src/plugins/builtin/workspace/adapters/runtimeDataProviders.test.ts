@@ -101,6 +101,7 @@ describe("workspace Runtime data providers", () => {
                 scope: "project",
                 description: "Verify changes",
                 instructions: "Run the checks.",
+                origin: "requested",
               },
             ],
           },
@@ -109,7 +110,16 @@ describe("workspace Runtime data providers", () => {
       { cwd: "/work/beta" },
     );
     expect(proposalRequests[0]?.params).toEqual({ workspace: { path: "/work/beta" } });
-    expect(proposals[0]).toMatchObject({ workspace: "/work/beta", name: "verify" });
+    expect(proposals[0]).toEqual({
+      workspace: "/work/beta",
+      name: "verify",
+      revision: "a12dd3a7fd3203a452eb34d91a9be20569d5e337a3384347068895c07f3e0c5a",
+      scope: "project",
+      description: "Verify changes",
+      instructions: "Run the checks.",
+      origin: "requested",
+      revises: false,
+    });
   });
 
   it("projects: maps WorkspaceSummary identity into workspace rows", async () => {

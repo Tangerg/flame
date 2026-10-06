@@ -3,7 +3,7 @@ import type { AgentMemoryItem, FlameClient } from "@flame/runtime-contract/clien
 import type { AgentMemoryEntry } from "../application/workspaceQueries";
 import { AgentMemoryMutationOwner } from "../application/agentMemoryMutationOwner";
 
-function memoryEntry(item: AgentMemoryItem): AgentMemoryEntry {
+export function agentMemoryEntry(item: AgentMemoryItem): AgentMemoryEntry {
   return {
     id: item.id,
     scope: item.scope,
@@ -11,8 +11,7 @@ function memoryEntry(item: AgentMemoryItem): AgentMemoryEntry {
     origin: item.origin,
     status: item.status,
     pinned: item.pinned,
-    sessionId: item.sessionId ?? "",
-    day: item.day ?? "",
+    ...(item.sessionId ? { sessionId: item.sessionId } : {}),
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
   };
@@ -24,20 +23,22 @@ function runtimeAgentMemoryGateway(client: FlameClient): AgentMemoryGateway {
       await client.agentMemory.review(id, decision);
     },
     async updateContent(id, content) {
-      return memoryEntry(await client.agentMemory.update({ id, content }));
+      return agentMemoryEntry(await client.agentMemory.update({ id, content }));
     },
     async setPinned(id, pinned) {
-      return memoryEntry(await client.agentMemory.update({ id, pinned }));
+      return agentMemoryEntry(await client.agentMemory.update({ id, pinned }));
     },
     async delete(id) {
       await client.agentMemory.delete(id);
     },
     async add(input) {
       if (input.scope === "user") {
-        return memoryEntry(await client.agentMemory.add({ scope: "user", content: input.content }));
+        return agentMemoryEntry(
+          await client.agentMemory.add({ scope: "user", content: input.content }),
+        );
       }
       const workspace = await client.workspaces.open(input.cwd ? { path: input.cwd } : undefined);
-      return memoryEntry(await workspace.agentMemory.add(input.content));
+      return agentMemoryEntry(await workspace.agentMemory.add(input.content));
     },
   };
 }

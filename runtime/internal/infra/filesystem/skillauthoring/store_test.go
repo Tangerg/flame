@@ -57,7 +57,8 @@ func TestStoreRequiresLibraryRootAndScope(t *testing.T) {
 func TestSubmitProposalThenApproveProposal(t *testing.T) {
 	root := t.TempDir()
 	store := newStore(t, root, skills.ScopeUser)
-	proposal := skills.Proposal{Scope: skills.ScopeUser,
+	proposal := skills.Proposal{
+		Origin: skills.ProposalOriginRequested, Scope: skills.ScopeUser,
 		Name:         "git-bisect-helper",
 		Description:  "Walk a git bisect to find a regression; use it when a test started failing.",
 		Instructions: "# Steps\n1. `git bisect start`\n2. mark good/bad\n",
@@ -116,7 +117,7 @@ func TestSubmitProposalThenApproveProposal(t *testing.T) {
 
 func approve(t *testing.T, store *skillauthoring.Store, name string) {
 	t.Helper()
-	d := skills.Proposal{Scope: skills.ScopeUser, Name: name, Description: "A description that is long enough to validate.", Instructions: "do the thing"}
+	d := skills.Proposal{Origin: skills.ProposalOriginRequested, Scope: skills.ScopeUser, Name: name, Description: "A description that is long enough to validate.", Instructions: "do the thing"}
 	ref, _, err := store.SubmitProposal(t.Context(), d)
 	if err != nil {
 		t.Fatal(err)
@@ -231,7 +232,7 @@ func TestApproveProposalMissingProposalErrors(t *testing.T) {
 func TestRejectProposal(t *testing.T) {
 	root := t.TempDir()
 	store := newStore(t, root, skills.ScopeUser)
-	proposal := skills.Proposal{Scope: skills.ScopeUser, Name: "throwaway", Description: "A description long enough to pass validation.", Instructions: "instructions"}
+	proposal := skills.Proposal{Origin: skills.ProposalOriginRequested, Scope: skills.ScopeUser, Name: "throwaway", Description: "A description long enough to pass validation.", Instructions: "instructions"}
 	ref, _, err := store.SubmitProposal(t.Context(), proposal)
 	if err != nil {
 		t.Fatal(err)
@@ -247,7 +248,7 @@ func TestRejectProposal(t *testing.T) {
 func TestSubmitProposalRejectsInvalid(t *testing.T) {
 	store := newStore(t, t.TempDir(), skills.ScopeUser)
 	// Invalid name (uppercase / spaces) is refused before anything is written.
-	if _, _, err := store.SubmitProposal(t.Context(), skills.Proposal{Scope: skills.ScopeUser, Name: "Bad Name", Description: "desc that is long enough", Instructions: "b"}); err == nil {
+	if _, _, err := store.SubmitProposal(t.Context(), skills.Proposal{Origin: skills.ProposalOriginRequested, Scope: skills.ScopeUser, Name: "Bad Name", Description: "desc that is long enough", Instructions: "b"}); err == nil {
 		t.Fatal("invalid skill name must be rejected")
 	}
 }
@@ -255,8 +256,8 @@ func TestSubmitProposalRejectsInvalid(t *testing.T) {
 func TestSameNameProposalSupersessionKeepsCurrentApprovedBytes(t *testing.T) {
 	root := t.TempDir()
 	store := newStore(t, root, skills.ScopeUser)
-	first := skills.Proposal{Scope: skills.ScopeUser, Name: "shared-name", Description: "The first independently approved skill version.", Instructions: "first instructions"}
-	second := skills.Proposal{Scope: skills.ScopeUser, Name: "shared-name", Description: "The second independently approved skill version.", Instructions: "second instructions"}
+	first := skills.Proposal{Origin: skills.ProposalOriginRequested, Scope: skills.ScopeUser, Name: "shared-name", Description: "The first independently approved skill version.", Instructions: "first instructions"}
+	second := skills.Proposal{Origin: skills.ProposalOriginRequested, Scope: skills.ScopeUser, Name: "shared-name", Description: "The second independently approved skill version.", Instructions: "second instructions"}
 
 	firstRef, _, err := store.SubmitProposal(t.Context(), first)
 	if err != nil {
@@ -290,7 +291,7 @@ func TestSameNameProposalSupersessionKeepsCurrentApprovedBytes(t *testing.T) {
 func TestApproveProposalRejectsChangedProposalWithoutTouchingActiveSet(t *testing.T) {
 	root := t.TempDir()
 	store := newStore(t, root, skills.ScopeUser)
-	proposal := skills.Proposal{Scope: skills.ScopeUser, Name: "immutable-proposal", Description: "Verify immutable proposal publication semantics.", Instructions: "approved instructions"}
+	proposal := skills.Proposal{Origin: skills.ProposalOriginRequested, Scope: skills.ScopeUser, Name: "immutable-proposal", Description: "Verify immutable proposal publication semantics.", Instructions: "approved instructions"}
 	ref, _, err := store.SubmitProposal(t.Context(), proposal)
 	if err != nil {
 		t.Fatalf("SubmitProposal: %v", err)
@@ -313,7 +314,7 @@ func TestApproveProposalRejectsChangedProposalWithoutTouchingActiveSet(t *testin
 
 func TestApproveProposalIsIdempotentForExactReplay(t *testing.T) {
 	store := newStore(t, t.TempDir(), skills.ScopeUser)
-	proposal := skills.Proposal{Scope: skills.ScopeUser, Name: "replay-safe", Description: "Make suspended proposal replay deterministic.", Instructions: "same instructions"}
+	proposal := skills.Proposal{Origin: skills.ProposalOriginRequested, Scope: skills.ScopeUser, Name: "replay-safe", Description: "Make suspended proposal replay deterministic.", Instructions: "same instructions"}
 	first, _, err := store.SubmitProposal(t.Context(), proposal)
 	if err != nil {
 		t.Fatalf("first SubmitProposal: %v", err)
@@ -343,7 +344,8 @@ func TestApproveProposalCannotExceedManagedLibraryCapacity(t *testing.T) {
 		writeActiveSkillFixture(t, root, fmt.Sprintf("skill-%03d", index))
 	}
 	proposal := skills.Proposal{
-		Scope: skills.ScopeUser, Name: "overflow",
+		Origin: skills.ProposalOriginRequested,
+		Scope:  skills.ScopeUser, Name: "overflow",
 		Description:  "A new Skill must not make the managed library unlistable.",
 		Instructions: "instructions",
 	}
@@ -394,7 +396,7 @@ func TestLifecycleConflictsPreserveBothStates(t *testing.T) {
 		t.Fatalf("Archive: %v", err)
 	}
 
-	proposal := skills.Proposal{Scope: skills.ScopeUser, Name: "conflict-safe", Description: "A different version must not replace the archive.", Instructions: "replacement"}
+	proposal := skills.Proposal{Origin: skills.ProposalOriginRequested, Scope: skills.ScopeUser, Name: "conflict-safe", Description: "A different version must not replace the archive.", Instructions: "replacement"}
 	ref, _, err := store.SubmitProposal(t.Context(), proposal)
 	if err != nil {
 		t.Fatalf("SubmitProposal: %v", err)
@@ -414,8 +416,8 @@ func TestConcurrentSubmissionsLeaveOneCurrentRevision(t *testing.T) {
 	root := t.TempDir()
 	stores := []*skillauthoring.Store{newStore(t, root, skills.ScopeUser), newStore(t, root, skills.ScopeUser)}
 	proposals := []skills.Proposal{
-		{Scope: skills.ScopeUser, Name: "ordered-publish", Description: "The first concurrently proposed skill revision.", Instructions: "first"},
-		{Scope: skills.ScopeUser, Name: "ordered-publish", Description: "The second concurrently proposed skill revision.", Instructions: "second"},
+		{Origin: skills.ProposalOriginRequested, Scope: skills.ScopeUser, Name: "ordered-publish", Description: "The first concurrently proposed skill revision.", Instructions: "first"},
+		{Origin: skills.ProposalOriginRequested, Scope: skills.ScopeUser, Name: "ordered-publish", Description: "The second concurrently proposed skill revision.", Instructions: "second"},
 	}
 	refs := make([]skills.ProposalRef, len(proposals))
 	errs := make([]error, len(proposals))
@@ -456,7 +458,8 @@ func TestApprovalCannotDeleteConcurrentNewerProposal(t *testing.T) {
 		reviewer := newStore(t, root, skills.ScopeUser)
 		writer := newStore(t, root, skills.ScopeUser)
 		old := skills.Proposal{
-			Scope: skills.ScopeUser, Name: "review-race",
+			Origin: skills.ProposalOriginRequested,
+			Scope:  skills.ScopeUser, Name: "review-race",
 			Description:  "The proposal revision already visible to the reviewer.",
 			Instructions: "old instructions",
 		}

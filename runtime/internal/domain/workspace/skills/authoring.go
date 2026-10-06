@@ -219,10 +219,8 @@ func (p Proposal) Validate() error {
 	if err := p.Scope.Validate(); err != nil {
 		return err
 	}
-	if p.Origin != "" {
-		if err := p.Origin.Validate(); err != nil {
-			return err
-		}
+	if err := p.Origin.Validate(); err != nil {
+		return err
 	}
 	if err := (skillspec.Frontmatter{Name: p.Name, Description: p.Description}).Validate(); err != nil {
 		return err

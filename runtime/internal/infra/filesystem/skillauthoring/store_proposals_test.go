@@ -16,7 +16,8 @@ import (
 // installActive approves a plain (non-revising) proposal so a named skill is active.
 func installActive(t *testing.T, store *skillauthoring.Store, name, instructions string) {
 	t.Helper()
-	ref, _, err := store.SubmitProposal(t.Context(), skills.Proposal{Scope: skills.ScopeUser,
+	ref, _, err := store.SubmitProposal(t.Context(), skills.Proposal{
+		Origin: skills.ProposalOriginRequested, Scope: skills.ScopeUser,
 		Name:         name,
 		Description:  "A skill with a description long enough to validate.",
 		Instructions: instructions,
@@ -57,17 +58,18 @@ func TestListProposalsReportsRefsAndProvenance(t *testing.T) {
 		Origin:        skills.ProposalOriginMined,
 		SourceSession: "ses_42",
 	}
-	authored := skills.Proposal{Scope: skills.ScopeUser,
+	requested := skills.Proposal{
+		Scope: skills.ScopeUser, Origin: skills.ProposalOriginRequested,
 		Name:         "manual-note",
-		Description:  "A proposal with no provenance, as a human proposal would carry.",
+		Description:  "A requested proposal without a source Session.",
 		Instructions: "do the thing",
 	}
 	minedRef, _, err := store.SubmitProposal(t.Context(), mined)
 	if err != nil {
 		t.Fatalf("SubmitProposal(mined): %v", err)
 	}
-	if _, _, submitProposalErr := store.SubmitProposal(t.Context(), authored); submitProposalErr != nil {
-		t.Fatalf("SubmitProposal(authored): %v", submitProposalErr)
+	if _, _, submitProposalErr := store.SubmitProposal(t.Context(), requested); submitProposalErr != nil {
+		t.Fatalf("SubmitProposal(requested): %v", submitProposalErr)
 	}
 
 	proposals, err := store.ListProposals(t.Context())
@@ -95,14 +97,15 @@ func TestListProposalsReportsRefsAndProvenance(t *testing.T) {
 	if got.SourceSession != "ses_42" {
 		t.Errorf("mined SourceSession = %q, want %q", got.SourceSession, "ses_42")
 	}
-	if authoredInfo := byName["manual-note"]; authoredInfo.Origin != "" || authoredInfo.SourceSession != "" {
-		t.Errorf("authored proposal carried provenance: %+v", authoredInfo)
+	if got := byName["manual-note"]; got.Origin != skills.ProposalOriginRequested || got.SourceSession != "" {
+		t.Errorf("requested proposal provenance = %+v", got)
 	}
 }
 
 func TestListProposalsExcludesApprovedProposal(t *testing.T) {
 	store := newStore(t, t.TempDir(), skills.ScopeUser)
-	ref, _, err := store.SubmitProposal(t.Context(), skills.Proposal{Scope: skills.ScopeUser,
+	ref, _, err := store.SubmitProposal(t.Context(), skills.Proposal{
+		Origin: skills.ProposalOriginRequested, Scope: skills.ScopeUser,
 		Name:         "approved",
 		Description:  "A proposal that will be approved out of the review queue.",
 		Instructions: "step one",
@@ -125,7 +128,8 @@ func TestListProposalsExcludesApprovedProposal(t *testing.T) {
 func TestSubmitProposalSupersedesPendingProposalWithSameName(t *testing.T) {
 	store := newStore(t, t.TempDir(), skills.ScopeUser)
 	first := skills.Proposal{
-		Scope: skills.ScopeUser, Name: "current-review",
+		Origin: skills.ProposalOriginRequested,
+		Scope:  skills.ScopeUser, Name: "current-review",
 		Description:  "The first version of one proposal awaiting review.",
 		Instructions: "first instructions",
 	}
@@ -157,7 +161,8 @@ func TestSubmitProposalBoundsDocumentAndPendingQueue(t *testing.T) {
 	t.Run("document", func(t *testing.T) {
 		store := newStore(t, t.TempDir(), skills.ScopeUser)
 		oversized := skills.Proposal{
-			Scope: skills.ScopeUser, Name: "oversized-proposal",
+			Origin: skills.ProposalOriginRequested,
+			Scope:  skills.ScopeUser, Name: "oversized-proposal",
 			Description:  "A proposal whose rendered document exceeds the authored resource envelope.",
 			Instructions: strings.Repeat("x", (1<<20)+1),
 		}
@@ -170,7 +175,8 @@ func TestSubmitProposalBoundsDocumentAndPendingQueue(t *testing.T) {
 		store := newStore(t, t.TempDir(), skills.ScopeUser)
 		for i := range 129 {
 			proposal := skills.Proposal{
-				Scope: skills.ScopeUser, Name: fmt.Sprintf("bounded-proposal-%03d", i),
+				Origin: skills.ProposalOriginRequested,
+				Scope:  skills.ScopeUser, Name: fmt.Sprintf("bounded-proposal-%03d", i),
 				Description:  "One proposal in the bounded human review queue.",
 				Instructions: "review these instructions",
 			}
@@ -227,7 +233,8 @@ func TestConcurrentStoresAdmitExactlyOneRemainingQueueSlot(t *testing.T) {
 	seed := newStore(t, root, skills.ScopeUser)
 	for i := range skills.MaxPendingProposalsPerScope - 1 {
 		_, _, err := seed.SubmitProposal(t.Context(), skills.Proposal{
-			Scope: skills.ScopeUser, Name: fmt.Sprintf("seed-proposal-%03d", i),
+			Origin: skills.ProposalOriginRequested,
+			Scope:  skills.ScopeUser, Name: fmt.Sprintf("seed-proposal-%03d", i),
 			Description:  "A proposal occupying one bounded review queue slot.",
 			Instructions: "review these instructions",
 		})
@@ -246,7 +253,8 @@ func TestConcurrentStoresAdmitExactlyOneRemainingQueueSlot(t *testing.T) {
 		wait.Go(func() {
 			<-start
 			_, _, errs[i] = stores[i].SubmitProposal(t.Context(), skills.Proposal{
-				Scope: skills.ScopeUser, Name: fmt.Sprintf("concurrent-proposal-%d", i),
+				Origin: skills.ProposalOriginRequested,
+				Scope:  skills.ScopeUser, Name: fmt.Sprintf("concurrent-proposal-%d", i),
 				Description:  "A concurrent proposal competing for the final queue slot.",
 				Instructions: "review these instructions",
 			})
@@ -325,7 +333,8 @@ func TestApproveProposalNewSkillStillConflictsWithActive(t *testing.T) {
 
 	// A non-revising proposal with the same name but different bytes must NOT
 	// overwrite the active skill.
-	ref, _, err := store.SubmitProposal(t.Context(), skills.Proposal{Scope: skills.ScopeUser,
+	ref, _, err := store.SubmitProposal(t.Context(), skills.Proposal{
+		Origin: skills.ProposalOriginRequested, Scope: skills.ScopeUser,
 		Name:         "dup",
 		Description:  "A skill with a description long enough to validate.",
 		Instructions: "colliding instructions",
@@ -335,5 +344,24 @@ func TestApproveProposalNewSkillStillConflictsWithActive(t *testing.T) {
 	}
 	if _, err := store.ApproveProposal(t.Context(), ref); err == nil {
 		t.Fatal("approving a non-revising same-name proposal should conflict, not overwrite")
+	}
+}
+
+func TestListProposalsOmitsProposalWithoutOrigin(t *testing.T) {
+	root := t.TempDir()
+	store := newStore(t, root, skills.ScopeUser)
+	unattributed := "---\nname: unattributed\ndescription: A proposal file the Runtime did not write.\n---\n\ndo the thing\n"
+	if err := os.MkdirAll(filepath.Join(root, proposalSubdir, "unattributed"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, proposalSubdir, "unattributed", "SKILL.md"), []byte(unattributed), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	proposals, err := store.ListProposals(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(proposals) != 0 {
+		t.Fatalf("proposal without origin listed: %+v", proposals)
 	}
 }

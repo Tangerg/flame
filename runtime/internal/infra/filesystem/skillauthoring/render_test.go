@@ -61,27 +61,6 @@ func TestRenderProposalEmitsRevisesMarker(t *testing.T) {
 	}
 }
 
-func TestRenderProposalOmitsEmptyProvenance(t *testing.T) {
-	content, err := renderProposal(skills.Proposal{Scope: skills.ScopeUser,
-		Name:         "no-provenance",
-		Description:  "A hand-authored proposal carries no provenance.",
-		Instructions: "do the thing",
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if strings.Contains(string(content), "metadata:") {
-		t.Fatalf("rendered an empty metadata block:\n%s", content)
-	}
-	skill, err := skillspec.Parse(content)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(skill.Metadata) != 0 {
-		t.Fatalf("expected no metadata, got %v", skill.Metadata)
-	}
-}
-
 func TestRenderProposalIsDeterministic(t *testing.T) {
 	proposal := skills.Proposal{Scope: skills.ScopeUser,
 		Name:          "stable",
@@ -105,7 +84,8 @@ func TestRenderProposalIsDeterministic(t *testing.T) {
 
 func TestRenderProposalBoundsCompleteDocument(t *testing.T) {
 	proposal := skills.Proposal{
-		Scope: skills.ScopeUser, Name: "rendered-envelope",
+		Origin: skills.ProposalOriginRequested,
+		Scope:  skills.ScopeUser, Name: "rendered-envelope",
 		Description:  "Frontmatter must count toward the complete authored document envelope.",
 		Instructions: strings.Repeat("x", skills.MaxAuthoredSkillDocumentBytes-1),
 	}

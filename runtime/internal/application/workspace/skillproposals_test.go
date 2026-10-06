@@ -56,9 +56,9 @@ func (f *fakeSkillProposals) RejectProposal(_ context.Context, projectRoot strin
 }
 
 func TestSkillProposalsResolveWorkspaceAndDelegate(t *testing.T) {
-	proposal := skills.Proposal{Scope: skills.ScopeProject, Name: "run-tests", Description: "Run the project tests when verification is requested.", Instructions: "Run the tests."}
+	proposal := skills.Proposal{Origin: skills.ProposalOriginRequested, Scope: skills.ScopeProject, Name: "run-tests", Description: "Run the project tests when verification is requested.", Instructions: "Run the tests."}
 	ref := skills.NewProposalRef(proposal.Scope, proposal.Name, []byte(proposal.Instructions))
-	fake := &fakeSkillProposals{list: []skills.ProposalReview{{Ref: ref, Description: proposal.Description, Instructions: proposal.Instructions}}}
+	fake := &fakeSkillProposals{list: []skills.ProposalReview{{Origin: skills.ProposalOriginRequested, Ref: ref, Description: proposal.Description, Instructions: proposal.Instructions}}}
 	c := newSkills(t, newScope(t, "", "", testPaths{}), &fakeSkillCatalog{}, nil, fake, nil, nil)
 
 	gotRef, err := c.SubmitProposal(t.Context(), "/repo", proposal)
@@ -144,7 +144,8 @@ func TestSkillProposalsRejectInvalidOrUnboundedCatalog(t *testing.T) {
 
 func TestSkillProposalMutationsValidateIdentity(t *testing.T) {
 	proposal := skills.Proposal{
-		Scope: skills.ScopeProject, Name: "review",
+		Origin: skills.ProposalOriginRequested,
+		Scope:  skills.ScopeProject, Name: "review",
 		Description: "Review the current project changes.", Instructions: "Inspect the diff.",
 	}
 	invalidProposal := proposal
@@ -189,7 +190,8 @@ func TestSkillProposalMutationsValidateIdentity(t *testing.T) {
 
 func validProposalReview(ref skills.ProposalRef) skills.ProposalReview {
 	return skills.ProposalReview{
-		Ref: ref, Description: "Review this reusable Skill workflow.",
+		Origin: skills.ProposalOriginRequested,
+		Ref:    ref, Description: "Review this reusable Skill workflow.",
 		Instructions: "Follow the reusable workflow.",
 	}
 }

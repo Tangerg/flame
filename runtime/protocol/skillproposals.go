@@ -18,7 +18,7 @@ type SkillProposal struct {
 	Scope         SkillScope          `json:"scope"`
 	Description   string              `json:"description"`
 	Instructions  string              `json:"instructions"`
-	Origin        SkillProposalOrigin `json:"origin,omitempty"`
+	Origin        SkillProposalOrigin `json:"origin"`
 	SourceSession string              `json:"sourceSession,omitempty"`
 	Revises       bool                `json:"revises,omitzero"`
 }

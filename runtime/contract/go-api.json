@@ -2249,7 +2249,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-07.1\""
+          "value": "\"2026-10-07.2\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -9255,7 +9255,7 @@
             {
               "name": "Origin",
               "type": "SkillProposalOrigin",
-              "tag": "json:\"origin,omitempty\""
+              "tag": "json:\"origin\""
             },
             {
               "name": "SourceSession",

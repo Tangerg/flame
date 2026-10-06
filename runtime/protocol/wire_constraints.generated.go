@@ -2555,7 +2555,7 @@ func (s SkillProposal) ValidateWire() error {
 		requiredTextPattern("description", s.Description, "\\S"),
 		requiredTextPattern("instructions", s.Instructions, "\\S"),
 		closedEnum("scope", string(s.Scope), []string{"project", "user", "installation"}, false),
-		closedEnum("origin", string(s.Origin), []string{"requested", "mined"}, true),
+		closedEnum("origin", string(s.Origin), []string{"requested", "mined"}, false),
 	)
 }
 

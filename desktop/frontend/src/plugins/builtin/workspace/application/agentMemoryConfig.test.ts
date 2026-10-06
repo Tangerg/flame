@@ -20,8 +20,6 @@ function memory(overrides: Partial<AgentMemoryEntry> = {}): AgentMemoryEntry {
     origin: "user",
     status: "active",
     pinned: false,
-    sessionId: "",
-    day: "",
     createdAt: "2026-08-12T12:00:00Z",
     updatedAt: "2026-08-12T12:00:00Z",
     ...overrides,

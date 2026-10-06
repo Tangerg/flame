@@ -42,6 +42,12 @@ func TestProposalValidatesMeaningAndSafety(t *testing.T) {
 		t.Fatalf("dangerous SafetyIssue() = %v, want ProposalDangerousInstruction", issue)
 	}
 
+	unattributed := safe
+	unattributed.Origin = ""
+	if err := unattributed.Validate(); err == nil {
+		t.Fatal("proposal without origin passed validation")
+	}
+
 	invalidRef := NewProposalRef(Scope("other"), "safe-skill", nil)
 	if err := invalidRef.Validate(); err == nil {
 		t.Fatal("invalid proposal scope passed validation")
@@ -76,6 +82,7 @@ func TestProposalReviewValidatesReferenceAndContent(t *testing.T) {
 	ref := NewProposalRef(ScopeProject, "review", []byte("proposal"))
 	valid := ProposalReview{
 		Ref: ref, Description: "Review the current project changes.",
+		Origin:       ProposalOriginRequested,
 		Instructions: "Inspect the diff and report actionable findings.",
 	}
 	if err := valid.Validate(); err != nil {
