@@ -226,9 +226,6 @@ func (c *QueryCoordinator) ListItemPage(ctx context.Context, scope ItemScope, or
 	if err != nil {
 		return ItemPage{}, err
 	}
-	if err := validateItemRows(sequenced, scope, order, fromSequence, size+1); err != nil {
-		return ItemPage{}, err
-	}
 	page, err := pagination.PageOf(sequenced, size, itemPageNamespace, filters,
 		func(entry transcript.SequencedItem) []string {
 			return []string{strconv.FormatInt(entry.Sequence, 10)}
@@ -245,127 +242,7 @@ func (c *QueryCoordinator) ListItemPage(ctx context.Context, scope ItemScope, or
 	if err != nil {
 		return ItemPage{}, err
 	}
-	if err := validateItemRunClosure(scope, items, runs); err != nil {
-		return ItemPage{}, err
-	}
 	return ItemPage{Items: items, NextCursor: page.NextCursor, Runs: runs}, nil
-}
-
-func validateItemRows(rows []transcript.SequencedItem, scope ItemScope, order transcript.SequenceOrder, anchor int64, maximum int) error {
-	if len(rows) > maximum {
-		return fmt.Errorf("sessions: transcript store returned %d rows, maximum %d", len(rows), maximum)
-	}
-	seenItems := make(map[string]struct{}, len(rows))
-	for index, entry := range rows {
-		if entry.Sequence <= 0 {
-			return fmt.Errorf("sessions: transcript store row %d has invalid sequence %d", index+1, entry.Sequence)
-		}
-		if err := scope.validateDirectItem(entry.Item); err != nil {
-			return err
-		}
-		if _, duplicate := seenItems[entry.Item.ID()]; duplicate {
-			return fmt.Errorf("sessions: transcript page repeats Item %q", entry.Item.ID())
-		}
-		seenItems[entry.Item.ID()] = struct{}{}
-		if anchor > 0 && !sequenceFollows(entry.Sequence, anchor, order) {
-			return fmt.Errorf("sessions: transcript Item %q does not follow the page cursor", entry.Item.ID())
-		}
-		if index > 0 && !sequenceFollows(entry.Sequence, rows[index-1].Sequence, order) {
-			return fmt.Errorf("sessions: transcript Item %q is out of order after %q", entry.Item.ID(), rows[index-1].Item.ID())
-		}
-	}
-	return nil
-}
-
-func (i ItemScope) validateDirectItem(item transcript.Item) error {
-	switch i.kind {
-	case sessionItemScope:
-		if item.SessionID() != i.subjectID {
-			return fmt.Errorf("sessions: transcript Item %q does not belong to Session %q", item.ID(), i.subjectID)
-		}
-	case runItemScope:
-		if !i.includeDescendants && item.RunID() != i.subjectID {
-			return fmt.Errorf("sessions: transcript Item %q does not belong to Run %q", item.ID(), i.subjectID)
-		}
-	default:
-		return errInvalidItemScope
-	}
-	return nil
-}
-
-func sequenceFollows(sequence, previous int64, order transcript.SequenceOrder) bool {
-	if order == transcript.NewestFirst {
-		return sequence < previous
-	}
-	return sequence > previous
-}
-
-func validateItemRunClosure(scope ItemScope, items []transcript.Item, values []run.Run) error {
-	runsByID := make(map[string]run.Run, len(values))
-	for index, value := range values {
-		if value.ID() == "" {
-			return fmt.Errorf("sessions: Item page Run[%d] was never constructed", index)
-		}
-		if _, duplicate := runsByID[value.ID()]; duplicate {
-			return fmt.Errorf("sessions: Item page repeats Run %q", value.ID())
-		}
-		runsByID[value.ID()] = value
-	}
-	if err := validateItemRunTrees(runsByID); err != nil {
-		return err
-	}
-
-	required := make(map[string]struct{}, len(values))
-	for _, item := range items {
-		owner, found := runsByID[item.RunID()]
-		if !found {
-			return fmt.Errorf("sessions: Item page omits Run %q referenced by Item %q", item.RunID(), item.ID())
-		}
-		if owner.SessionID() != item.SessionID() {
-			return fmt.Errorf("sessions: Item %q and Run %q belong to different Sessions", item.ID(), owner.ID())
-		}
-		inRequestedTree := scope.kind == sessionItemScope
-		current := owner
-		for {
-			if current.SessionID() != item.SessionID() {
-				return fmt.Errorf("sessions: Run %q crosses the Session boundary for Item %q", current.ID(), item.ID())
-			}
-			required[current.ID()] = struct{}{}
-			if current.ID() == scope.subjectID {
-				inRequestedTree = true
-			}
-			if current.Lineage().IsRoot() {
-				break
-			}
-			parentID := current.Lineage().ParentRunID
-			parent, exists := runsByID[parentID]
-			if !exists {
-				return fmt.Errorf("sessions: Item page omits parent Run %q of %q", parentID, current.ID())
-			}
-			current = parent
-		}
-		if !inRequestedTree {
-			return fmt.Errorf("sessions: Item %q belongs outside Run subtree %q", item.ID(), scope.subjectID)
-		}
-	}
-	if len(required) != len(runsByID) {
-		return errors.New("sessions: Item page contains a Run outside its referenced ancestor closure")
-	}
-	return nil
-}
-
-func validateItemRunTrees(values map[string]run.Run) error {
-	byRoot := make(map[string][]run.TreeMember)
-	for _, value := range values {
-		rootID := value.Lineage().TreeRootID(value.ID())
-		byRoot[rootID] = append(byRoot[rootID], run.TreeMember{RunID: value.ID(), Lineage: value.Lineage()})
-	}
-	for rootID, members := range byRoot {
-		if _, err := run.NewTree(rootID, members); err != nil {
-			return fmt.Errorf("sessions: Item page Run closure: %w", err)
-		}
-	}
-	return nil
 }
 
 // PlanState returns a session's optional Plan projection. An existing Session
@@ -536,9 +413,6 @@ func (c *QueryCoordinator) ListRunPage(ctx context.Context, filter RunPageFilter
 	if err != nil {
 		return pagination.Page[run.Run]{}, err
 	}
-	if err := validateRunPage(rows, filter, beforeCreatedAt, beforeID, size+1); err != nil {
-		return pagination.Page[run.Run]{}, err
-	}
 	return pagination.PageOf(rows, size, runPageNamespace, filters, func(run run.Run) []string {
 		return []string{strconv.FormatInt(run.CreatedAt().UnixNano(), 10), run.ID()}
 	})
@@ -556,35 +430,6 @@ func (f RunPageFilter) validate() error {
 		}
 	}
 	return nil
-}
-
-func validateRunPage(rows []run.Run, filter RunPageFilter, beforeCreatedAt int64, beforeID string, maximum int) error {
-	if len(rows) > maximum {
-		return fmt.Errorf("sessions: Run store returned %d rows, maximum %d", len(rows), maximum)
-	}
-	if err := validateRunCatalog(rows, filter.SessionID); err != nil {
-		return err
-	}
-	for index, value := range rows {
-		if len(filter.Statuses) > 0 && !slices.Contains(filter.Statuses, value.State().Status()) {
-			return fmt.Errorf("sessions: Run %q does not match the status filter", value.ID())
-		}
-		if !filter.IncludeDescendants && value.Lineage().IsChild() {
-			return fmt.Errorf("sessions: root Run page contains child %q", value.ID())
-		}
-		if beforeID != "" && !runFollowsPosition(value, beforeCreatedAt, beforeID) {
-			return fmt.Errorf("sessions: Run %q does not follow the page cursor", value.ID())
-		}
-		if index > 0 && !runFollowsPosition(value, rows[index-1].CreatedAt().UnixNano(), rows[index-1].ID()) {
-			return fmt.Errorf("sessions: Run %q is out of order after %q", value.ID(), rows[index-1].ID())
-		}
-	}
-	return nil
-}
-
-func runFollowsPosition(value run.Run, createdAt int64, id string) bool {
-	position := value.CreatedAt().UnixNano()
-	return position < createdAt || position == createdAt && value.ID() < id
 }
 
 // normalizeStatuses puts a status set in one canonical order and drops repeats, so
@@ -660,9 +505,6 @@ func (c *QueryCoordinator) ListPendingInterruptPage(ctx context.Context, session
 	if err != nil {
 		return pagination.Page[InterruptSet]{}, err
 	}
-	if err := validatePendingInterruptPage(rows, rootRunID, afterCreatedAt, afterID, size+1); err != nil {
-		return pagination.Page[InterruptSet]{}, err
-	}
 	page, err := pagination.PageOf(rows, size, interruptPageNamespace, filters, func(pending runs.Pending) []string {
 		return []string{strconv.FormatInt(pending.CreatedAt.UnixNano(), 10), pending.RootRunID}
 	})
@@ -709,32 +551,6 @@ func (c *QueryCoordinator) interruptSet(ctx context.Context, pending runs.Pendin
 		return InterruptSet{}, fmt.Errorf("sessions: pending set %q: %w", pending.RootRunID, err)
 	}
 	return InterruptSet{Pending: pending, Interrupts: interrupts}, nil
-}
-
-func validatePendingInterruptPage(rows []runs.Pending, rootRunID string, afterCreatedAt int64, afterID string, maximum int) error {
-	if len(rows) > maximum {
-		return fmt.Errorf("sessions: interrupt store returned %d rows, maximum %d", len(rows), maximum)
-	}
-	if err := validatePendingCatalog(rows); err != nil {
-		return err
-	}
-	for index, pending := range rows {
-		if rootRunID != "" && pending.RootRunID != rootRunID {
-			return fmt.Errorf("sessions: pending set %q does not match root Run filter %q", pending.RootRunID, rootRunID)
-		}
-		if afterID != "" && !pendingFollowsPosition(pending, afterCreatedAt, afterID) {
-			return fmt.Errorf("sessions: pending set %q does not follow the page cursor", pending.RootRunID)
-		}
-		if index > 0 && !pendingFollowsPosition(pending, rows[index-1].CreatedAt.UnixNano(), rows[index-1].RootRunID) {
-			return fmt.Errorf("sessions: pending set %q is out of order after %q", pending.RootRunID, rows[index-1].RootRunID)
-		}
-	}
-	return nil
-}
-
-func pendingFollowsPosition(pending runs.Pending, createdAt int64, rootRunID string) bool {
-	position := pending.CreatedAt.UnixNano()
-	return position > createdAt || position == createdAt && pending.RootRunID > rootRunID
 }
 
 // requireRoot refuses a run filter that names a child. An empty filter names no run

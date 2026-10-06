@@ -32,7 +32,7 @@ func (r RunExecutionBinding) executorRef() runs.ExecutorRef {
 // or admitted before a restart, is just as much "the Run this Session already has",
 // and the registry knows neither.
 func (c *Coordinator) ActiveRun(ctx context.Context, sessionID string) (rundomain.Run, bool, error) {
-	runs, err := listSessionRuns(ctx, c.runs, sessionID)
+	runs, err := c.runs.ListRuns(ctx, sessionID)
 	if err != nil {
 		return rundomain.Run{}, false, err
 	}
@@ -51,43 +51,11 @@ func (c *Coordinator) LookupOpenInterrupt(ctx context.Context, runID string) (ru
 }
 
 func (c *Coordinator) lookupOpenInterrupt(ctx context.Context, runID string) (runs.Pending, bool, error) {
-	pending, found, err := c.interrupts.Get(ctx, runID)
-	if err != nil || !found {
-		return runs.Pending{}, found, err
-	}
-	if err := pending.ValidateForRoot(runID); err != nil {
-		return runs.Pending{}, false, fmt.Errorf(
-			"sessions: interrupt store Get(%q) returned invalid Pending: %w",
-			runID,
-			err,
-		)
-	}
-	return pending, true, nil
+	return c.interrupts.Get(ctx, runID)
 }
 
 func (c *Coordinator) listOpenInterrupts(ctx context.Context, sessionID string) ([]runs.Pending, error) {
-	pending, err := c.interrupts.List(ctx, sessionID)
-	if err != nil {
-		return nil, err
-	}
-	if err := validatePendingCatalog(pending); err != nil {
-		return nil, err
-	}
-	return pending, nil
-}
-
-func validatePendingCatalog(values []runs.Pending) error {
-	seen := make(map[string]struct{}, len(values))
-	for index, pending := range values {
-		if err := pending.Validate(); err != nil {
-			return fmt.Errorf("sessions: interrupt store row %d is invalid: %w", index+1, err)
-		}
-		if _, duplicate := seen[pending.RootRunID]; duplicate {
-			return fmt.Errorf("sessions: interrupt store repeats pending set %q", pending.RootRunID)
-		}
-		seen[pending.RootRunID] = struct{}{}
-	}
-	return nil
+	return c.interrupts.List(ctx, sessionID)
 }
 
 // ApplyRunCancel commits the atomic durable abandon write-set. Executor

@@ -129,15 +129,6 @@ type fakeRuns struct {
 	limit           int
 }
 
-type rawRunPageReader struct {
-	*fakeRuns
-	page []run.Run
-}
-
-func (r *rawRunPageReader) PageRuns(context.Context, string, []run.Status, bool, int64, string, int) ([]run.Run, error) {
-	return r.page, nil
-}
-
 type rawAncestorRunReader struct {
 	*fakeRuns
 	ancestors []run.Run
@@ -415,98 +406,6 @@ func TestListItemPageBoundsTheQueryAndSeeksPastTheAnchor(t *testing.T) {
 	}
 	if len(last.Items) != 1 || last.NextCursor != "" {
 		t.Fatalf("last page = %+v, want the tail and no cursor", last)
-	}
-}
-
-func TestListItemPageRejectsBrokenTranscriptStoreOutput(t *testing.T) {
-	valid := sequencedItems(3)
-	otherSession := sequencedItemsFor("ses_other", "run_1", "other", 1)[0]
-	otherRun := sequencedItemsFor("ses_1", "run_2", "other-run", 1)[0]
-	cursor, err := pagination.Encode(itemPageNamespace, []string{"ses_1", "", "false", "oldest"}, []string{"1"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, test := range []struct {
-		name   string
-		scope  ItemScope
-		order  transcript.SequenceOrder
-		cursor string
-		rows   []transcript.SequencedItem
-	}{
-		{name: "invalid aggregate", scope: Items("ses_1"), order: transcript.OldestFirst, rows: []transcript.SequencedItem{{Sequence: 1}}},
-		{name: "invalid sequence", scope: Items("ses_1"), order: transcript.OldestFirst, rows: []transcript.SequencedItem{{Item: valid[0].Item}}},
-		{name: "duplicate Item", scope: Items("ses_1"), order: transcript.OldestFirst, rows: []transcript.SequencedItem{valid[0], {Sequence: 2, Item: valid[0].Item}}},
-		{name: "oldest-first order", scope: Items("ses_1"), order: transcript.OldestFirst, rows: []transcript.SequencedItem{valid[1], valid[0]}},
-		{name: "newest-first order", scope: Items("ses_1"), order: transcript.NewestFirst, rows: []transcript.SequencedItem{valid[0], valid[1]}},
-		{name: "cursor replay", scope: Items("ses_1"), order: transcript.OldestFirst, cursor: cursor, rows: valid[:1]},
-		{name: "Session scope", scope: Items("ses_1"), order: transcript.OldestFirst, rows: []transcript.SequencedItem{otherSession}},
-		{name: "Run scope", scope: RunItems("run_1"), order: transcript.OldestFirst, rows: []transcript.SequencedItem{otherRun}},
-		{name: "excess overfetch", scope: Items("ses_1"), order: transcript.OldestFirst, rows: valid},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			reader := &rawTranscriptPageReader{fakeTranscript: &fakeTranscript{}, page: test.rows}
-			coordinator := newQueryCoordinator(t, QueryDependencies{
-				Transcript: reader,
-				Runs:       &fakeRuns{history: []run.Run{queryRun("run_1")}},
-				Sessions:   &fakeSessions{},
-			})
-			if _, err := coordinator.ListItemPage(t.Context(), test.scope, test.order, test.cursor, explicitPageLimit(t, 1)); err == nil {
-				t.Fatal("ListItemPage accepted broken transcript store output")
-			}
-		})
-	}
-}
-
-func TestListItemPageRejectsBrokenRunAncestorClosure(t *testing.T) {
-	root := queryRun("run_root")
-	child := testsupport.MustRestoreRun(run.Snapshot{
-		ID: "run_child", SessionID: "ses_1",
-		Lineage: run.Lineage{SpawnedByItemID: "item_spawn", ParentRunID: root.ID(), RootRunID: root.ID()},
-	})
-	unrelated := queryRun("run_unrelated")
-	otherRoot := queryRunForSession("ses_other", root.ID())
-	otherChild := testsupport.MustRestoreRun(run.Snapshot{
-		ID: child.ID(), SessionID: "ses_other",
-		Lineage: run.Lineage{SpawnedByItemID: "item_spawn", ParentRunID: otherRoot.ID(), RootRunID: otherRoot.ID()},
-	})
-	cycleA := testsupport.MustRestoreRun(run.Snapshot{
-		ID: "run_cycle_a", SessionID: "ses_1",
-		Lineage: run.Lineage{SpawnedByItemID: "item_spawn_a", ParentRunID: "run_cycle_b", RootRunID: "run_cycle_root"},
-	})
-	cycleB := testsupport.MustRestoreRun(run.Snapshot{
-		ID: "run_cycle_b", SessionID: "ses_1",
-		Lineage: run.Lineage{SpawnedByItemID: "item_spawn_b", ParentRunID: "run_cycle_a", RootRunID: "run_cycle_root"},
-	})
-	item := sequencedItemsFor("ses_1", child.ID(), "item", 1)
-	cycleItem := sequencedItemsFor("ses_1", cycleA.ID(), "cycle", 1)
-	target := queryRun("run_target")
-	for _, test := range []struct {
-		name      string
-		scope     ItemScope
-		itemRows  []transcript.SequencedItem
-		ancestors []run.Run
-	}{
-		{name: "missing referenced Run", scope: Items("ses_1"), itemRows: item},
-		{name: "invalid Run", scope: Items("ses_1"), itemRows: item, ancestors: []run.Run{{}}},
-		{name: "duplicate Run", scope: Items("ses_1"), itemRows: item, ancestors: []run.Run{child, child, root}},
-		{name: "missing parent", scope: Items("ses_1"), itemRows: item, ancestors: []run.Run{child}},
-		{name: "extra Run", scope: Items("ses_1"), itemRows: item, ancestors: []run.Run{child, root, unrelated}},
-		{name: "cross-Session Run", scope: Items("ses_1"), itemRows: item, ancestors: []run.Run{otherChild, otherRoot}},
-		{name: "cyclic ancestry", scope: Items("ses_1"), itemRows: cycleItem, ancestors: []run.Run{cycleA, cycleB}},
-		{name: "outside requested subtree", scope: RunTreeItems(target.ID()), itemRows: item, ancestors: []run.Run{child, root}},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			transcriptReader := &rawTranscriptPageReader{fakeTranscript: &fakeTranscript{}, page: test.itemRows}
-			runReader := &rawAncestorRunReader{
-				fakeRuns: &fakeRuns{history: []run.Run{target}}, ancestors: test.ancestors,
-			}
-			coordinator := newQueryCoordinator(t, QueryDependencies{
-				Transcript: transcriptReader, Runs: runReader, Sessions: &fakeSessions{},
-			})
-			if _, err := coordinator.ListItemPage(t.Context(), test.scope, transcript.OldestFirst, "", pagination.DefaultLimit()); err == nil {
-				t.Fatal("ListItemPage accepted a broken Run ancestor closure")
-			}
-		})
 	}
 }
 
@@ -1039,77 +938,6 @@ func TestListRunPageWalksBackwardThroughHistory(t *testing.T) {
 	}
 	if len(second.Rows) != 1 || second.Rows[0].ID() != "run_1" || second.NextCursor != "" {
 		t.Fatalf("second page = %+v, want the tail and no cursor", second.Rows)
-	}
-}
-
-func TestListRunPageRejectsBrokenStoreOutput(t *testing.T) {
-	ordered := testSessionRunHistory("run_3", "run_2", "run_1")
-	createdAt := time.Unix(10, 0).UTC()
-	tieAscending := []run.Run{
-		testsupport.MustRestoreRun(run.Snapshot{ID: "run_a", SessionID: "ses_1", CreatedAt: createdAt}),
-		testsupport.MustRestoreRun(run.Snapshot{ID: "run_b", SessionID: "ses_1", CreatedAt: createdAt}),
-	}
-	for name, page := range map[string][]run.Run{
-		"invalid aggregate":     {{}},
-		"duplicate identity":    {ordered[0], ordered[0]},
-		"creation out of order": {ordered[1], ordered[0]},
-		"id tie out of order":   tieAscending,
-		"excess overfetch":      ordered,
-	} {
-		t.Run(name, func(t *testing.T) {
-			reader := &rawRunPageReader{fakeRuns: &fakeRuns{}, page: page}
-			coordinator := newQueryCoordinator(t, QueryDependencies{
-				Transcript: &fakeTranscript{}, Runs: reader, Sessions: &fakeSessions{},
-			})
-			if _, err := coordinator.ListRunPage(t.Context(), RunPageFilter{IncludeDescendants: true}, "", explicitPageLimit(t, 1)); err == nil {
-				t.Fatal("ListRunPage accepted broken store output")
-			}
-		})
-	}
-}
-
-func TestListRunPageRejectsRowsOutsideFilterOrCursor(t *testing.T) {
-	root := testsupport.MustRestoreRun(run.Snapshot{ID: "run_root", SessionID: "ses_other", CreatedAt: time.Unix(3, 0).UTC()})
-	waiting := testsupport.MustRestoreRun(run.Snapshot{ID: "run_waiting", SessionID: "ses_1", State: run.Waiting, CreatedAt: time.Unix(2, 0).UTC()})
-	child := testsupport.MustRestoreRun(run.Snapshot{
-		ID: "run_child", SessionID: "ses_1", CreatedAt: time.Unix(1, 0).UTC(),
-		Lineage: run.Lineage{SpawnedByItemID: "item_spawn", ParentRunID: "run_parent", RootRunID: "run_parent"},
-	})
-	for _, test := range []struct {
-		name   string
-		filter RunPageFilter
-		value  run.Run
-	}{
-		{name: "Session", filter: RunPageFilter{SessionID: "ses_1", IncludeDescendants: true}, value: root},
-		{name: "status", filter: RunPageFilter{Statuses: []run.Status{run.StatusRunning}, IncludeDescendants: true}, value: waiting},
-		{name: "descendant", filter: RunPageFilter{}, value: child},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			reader := &rawRunPageReader{fakeRuns: &fakeRuns{}, page: []run.Run{test.value}}
-			coordinator := newQueryCoordinator(t, QueryDependencies{
-				Transcript: &fakeTranscript{}, Runs: reader, Sessions: &fakeSessions{},
-			})
-			if _, err := coordinator.ListRunPage(t.Context(), test.filter, "", explicitPageLimit(t, 1)); err == nil {
-				t.Fatal("ListRunPage accepted a Run outside its filter")
-			}
-		})
-	}
-
-	reader := &rawRunPageReader{fakeRuns: &fakeRuns{}, page: []run.Run{root}}
-	coordinator := newQueryCoordinator(t, QueryDependencies{
-		Transcript: &fakeTranscript{}, Runs: reader, Sessions: &fakeSessions{},
-	})
-	cursor, err := pagination.Encode(runPageNamespace, []string{"", "", "true"}, []string{
-		strconv.FormatInt(root.CreatedAt().UnixNano(), 10), root.ID(),
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := coordinator.ListRunPage(t.Context(), RunPageFilter{IncludeDescendants: true}, cursor, explicitPageLimit(t, 1)); err == nil {
-		t.Fatal("ListRunPage accepted the cursor anchor again")
-	}
-	if _, err := coordinator.ListRunPage(t.Context(), RunPageFilter{Statuses: []run.Status{"other"}}, "", explicitPageLimit(t, 1)); err == nil {
-		t.Fatal("ListRunPage accepted an invalid status filter")
 	}
 }
 
