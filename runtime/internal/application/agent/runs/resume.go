@@ -25,9 +25,6 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 	if !found {
 		return StartResult{}, ErrInterruptNotOpen
 	}
-	if gap := pending.Capabilities.MissingFrom(cmd.CallerCapabilities); !gap.IsEmpty() {
-		return StartResult{}, &run.InsufficientCapabilitiesError{RunID: cmd.RunID, Missing: gap}
-	}
 	answers, err := resolveResumeResponses(pending, cmd.Responses)
 	if err != nil {
 		return StartResult{}, err
@@ -60,6 +57,9 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 	root, ok := parkedRoot(pending.RootRunID, parkedRuns)
 	if !ok {
 		return StartResult{}, errors.New("runs: pending interrupt set has no parked root Run")
+	}
+	if gap := root.Capabilities().MissingFrom(cmd.CallerCapabilities); !gap.IsEmpty() {
+		return StartResult{}, &run.InsufficientCapabilitiesError{RunID: cmd.RunID, Missing: gap}
 	}
 	if len(cmd.Input) > 0 {
 		message, err := MaterializeUserMessage(cmd.Input)
@@ -129,7 +129,7 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 		Isolated:          sess.Isolated(),
 		ExecutorID:        ref.ExecutorID,
 		ModelSelection:    root.ModelSelection(),
-		GoalIncarnationID: pending.GoalIncarnationID,
+		GoalIncarnationID: root.GoalIncarnationID(),
 		CreatedAt:         root.CreatedAt(),
 		Input:             cmd.Input,
 		Continuation:      continuation,
@@ -137,7 +137,7 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 		DetachActivation:  true,
 		BeginExecution: func(beginCtx context.Context) error {
 			return c.continuation.BeginContinuation(
-				beginCtx, ref, claimed.Answers, committedInput, pending.Capabilities.InterruptKinds,
+				beginCtx, ref, claimed.Answers, committedInput, root.Capabilities().InterruptKinds,
 			)
 		},
 	})

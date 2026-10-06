@@ -150,7 +150,7 @@ type waitingCancellationTransformation struct {
 	remaining      *Pending
 	continuation   *treeContinuation
 	checkpoint     ExecutorCheckpoint
-	root           rundomain.Run
+	parked         []rundomain.Run
 	targetRunID    string
 	canceledRunIDs []string
 }
@@ -213,7 +213,7 @@ func (w waitingCancellationBuilder) build() (waitingCancellationTransformation, 
 		remaining:      remaining,
 		continuation:   continuation,
 		checkpoint:     w.prepared.checkpoint.Clone(),
-		root:           w.plan.root.run,
+		parked:         w.plan.treeRuns(),
 		targetRunID:    w.plan.target.run.ID(),
 		canceledRunIDs: canceledRunIDs,
 	}, nil
@@ -462,14 +462,12 @@ func (w waitingCancellationBuilder) treeContinuation(
 	continuations []Continuation,
 ) (*treeContinuation, error) {
 	continuation := &treeContinuation{
-		rootRunID:         w.plan.pending.RootRunID,
-		sessionID:         w.plan.pending.SessionID,
-		executorID:        w.plan.pending.ExecutorID,
-		goalIncarnationID: w.plan.pending.GoalIncarnationID,
-		interrupts:        slices.Clone(interrupts),
-		continuations:     slices.Clone(continuations),
-		runs:              parkedRunsByID(w.plan.survivingRuns()),
-		capabilities:      w.plan.pending.Capabilities,
+		rootRunID:     w.plan.pending.RootRunID,
+		sessionID:     w.plan.pending.SessionID,
+		executorID:    w.plan.pending.ExecutorID,
+		interrupts:    slices.Clone(interrupts),
+		continuations: slices.Clone(continuations),
+		runs:          parkedRunsByID(w.plan.survivingRuns()),
 	}
 	if err := continuation.validate(); err != nil {
 		return nil, fmt.Errorf(
@@ -526,7 +524,7 @@ func (w waitingCancellationTransformation) durableCommit(
 		return WaitingSubtreeCancellationCommit{}, errors.New("runs: waiting cancellation has no reduced Pending")
 	}
 	return NewParkedSubtreeCancellationCommit(
-		commitID, w.targetRunID, w.root, expected, *w.remaining,
+		commitID, w.targetRunID, w.parked, expected, *w.remaining,
 		w.checkpoint, w.terminalRuns, w.terminalItems,
 	)
 }
@@ -538,7 +536,7 @@ func (w waitingCancellationTransformation) resumedDurableCommit(
 	openingEvents []EventCommit,
 ) (WaitingSubtreeCancellationCommit, error) {
 	return NewResumingSubtreeCancellationCommit(
-		commitID, w.targetRunID, w.root, expected, w.checkpoint,
+		commitID, w.targetRunID, w.parked, expected, w.checkpoint,
 		w.terminalRuns, w.terminalItems,
 		resume, openingEvents,
 	)

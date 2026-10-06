@@ -47,13 +47,12 @@ func firstSegmentItemID(t *testing.T, segmentID string) string {
 
 func testTreeContinuation(pending Pending) *treeContinuation {
 	return &treeContinuation{
-		rootRunID:         pending.RootRunID,
-		sessionID:         pending.SessionID,
-		executorID:        pending.ExecutorID,
-		goalIncarnationID: pending.GoalIncarnationID,
-		interrupts:        slices.Clone(pending.Interrupts),
-		continuations:     slices.Clone(pending.Continuations),
-		capabilities:      pending.Capabilities,
+		rootRunID:     pending.RootRunID,
+		sessionID:     pending.SessionID,
+		executorID:    pending.ExecutorID,
+		interrupts:    slices.Clone(pending.Interrupts),
+		continuations: slices.Clone(pending.Continuations),
+		runs:          parkedRunsByID(parkedTree(pending, fixtureFacts(pending))),
 	}
 }
 
@@ -768,21 +767,25 @@ func runForSegment(spec segmentSpec) run.Run {
 func TestResumedExecutorRouteRetainsGoalLeaseForTerminalAccounting(t *testing.T) {
 	createdAt := time.Date(2026, 7, 30, 1, 2, 3, 0, time.UTC)
 	pending := testApprovalPending("member_root", createdAt)
-	pending.GoalIncarnationID = "goal-lease-1"
-	continuation := mustTreeContinuation(t, pending)
+	facts := fixtureFacts(pending)
+	facts.goalIncarnationID = "goal-lease-1"
+	continuation, err := treeContinuationFromPending(pending, parkedTree(pending, facts))
+	if err != nil {
+		t.Fatal(err)
+	}
 	spec := testSegment()
 	spec.Continuation = continuation
-	spec.GoalIncarnationID = pending.GoalIncarnationID
+	spec.GoalIncarnationID = facts.goalIncarnationID
 
 	routes, err := testCoordinator(&fakeExecutor{}, &fakeEffects{}).resumedExecutorRoutes(spec, nil)
 	if err != nil {
 		t.Fatalf("resumedExecutorRoutes: %v", err)
 	}
-	if routes.root.reducer.cfg.GoalIncarnationID != pending.GoalIncarnationID {
+	if routes.root.reducer.cfg.GoalIncarnationID != facts.goalIncarnationID {
 		t.Fatalf(
 			"resumed reducer goal incarnation = %q, want %q",
 			routes.root.reducer.cfg.GoalIncarnationID,
-			pending.GoalIncarnationID,
+			facts.goalIncarnationID,
 		)
 	}
 }
@@ -1254,10 +1257,6 @@ func resumedTreePending(createdAt time.Time) Pending {
 		RootRunID:  "run_1",
 		SessionID:  "ses_1",
 		ExecutorID: "turn_1",
-		Capabilities: run.Capabilities{
-			ChildRuns:      true,
-			InterruptKinds: []interrupt.Kind{interrupt.Question},
-		},
 		Interrupts: []transcript.Interrupt{
 			question("item_grandchild", "run_grandchild"),
 			question("item_b", "run_b"),
@@ -1270,29 +1269,14 @@ func resumedTreePending(createdAt time.Time) Pending {
 			{
 				RunID:    "run_grandchild",
 				MemberID: "member_grandchild",
-				Lineage: run.Lineage{
-					SpawnedByItemID: "item_spawn_grandchild",
-					ParentRunID:     "run_a",
-					RootRunID:       "run_1",
-				},
 			},
 			{
 				RunID:    "run_a",
 				MemberID: "member_a",
-				Lineage: run.Lineage{
-					SpawnedByItemID: "item_spawn_a",
-					ParentRunID:     "run_1",
-					RootRunID:       "run_1",
-				},
 			},
 			{
 				RunID:    "run_b",
 				MemberID: "member_b",
-				Lineage: run.Lineage{
-					SpawnedByItemID: "item_spawn_b",
-					ParentRunID:     "run_1",
-					RootRunID:       "run_1",
-				},
 			},
 			{
 				RunID:    "run_1",

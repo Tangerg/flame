@@ -57,9 +57,6 @@ func singleRunPending(
 		RootRunID:  runID,
 		SessionID:  sessionID,
 		ExecutorID: "turn_" + runID,
-		Capabilities: run.Capabilities{
-			InterruptKinds: []interrupt.Kind{interrupt.Question},
-		},
 		Interrupts: []transcript.Interrupt{{
 			ItemID: itemID, ItemOccurredAt: barrierCreatedAt,
 			RunID:    runID,
@@ -445,7 +442,7 @@ func TestCommitTreeBarrierRecordsPendingSetAndSuspends(t *testing.T) {
 				ModelSelection: testsupport.DefaultModelSelection(),
 
 				Metrics:      testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 2}),
-				Capabilities: pending.Capabilities,
+				Capabilities: questionCapabilities(),
 				CreatedAt:    runCreatedAt,
 				UpdatedAt:    barrierCreatedAt,
 				MessageMark:  run.UnknownMessageMark})),
@@ -540,66 +537,34 @@ func TestCommitTreeBarrierRejectsMismatchedCheckpointBindingBeforeTransaction(t 
 	}
 }
 
-// TestCommitTreeBarrierRejectsRunContinuationFactDriftBeforeTransaction proves
-// parked_continuation_matches_run_facts at the segment-event boundary: the Run
-// projection and hand-off must be one fact before the transaction can start.
-func TestCommitTreeBarrierRejectsRunContinuationFactDriftBeforeTransaction(t *testing.T) {
-	tests := []struct {
-		name     string
-		identity string
-		mutate   func(*runs.Pending, *run.Run)
-	}{
-		{
-			name: "frozen run capabilities", identity: "frozen_run_capabilities",
-			mutate: func(_ *runs.Pending, record *run.Run) {
-				snapshot := record.Snapshot()
-				snapshot.Capabilities.ChildRuns = true
-				*record = testsupport.MustRestoreRun(snapshot)
-			},
-		},
-		{
-			name: "root goal incarnation", identity: "root_goal_incarnation",
-			mutate: func(_ *runs.Pending, record *run.Run) {
-				snapshot := record.Snapshot()
-				snapshot.GoalIncarnationID = "other-lease"
-				*record = testsupport.MustRestoreRun(snapshot)
-			},
-		},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			createdAt := time.Unix(1, 0).UTC()
-			pending := singleRunPending(
-				t,
-				"run_1", "ses_1", "member_1", "request_1", "int_1", createdAt.Add(time.Second),
-			)
-			pending.GoalIncarnationID = "goal-lease"
-			run := testsupport.MustRestoreRun(run.Snapshot{SessionID: pending.SessionID,
-				ID:                pending.RootRunID,
-				ModelSelection:    testsupport.DefaultModelSelection(),
-				GoalIncarnationID: pending.GoalIncarnationID,
-				State:             run.Waiting,
-
-				Metrics:      testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 2}),
-				Capabilities: pending.Capabilities,
-				CreatedAt:    createdAt,
-				MessageMark:  run.UnknownMessageMark})
-
-			test.mutate(&pending, &run)
-			checkpoint := testRootExecutorCheckpoint()
-			_, err := runs.NewTreeBarrierCommit(
-				testCommitID(runtimeidentity.CommitPrefix+"barrier_fact_"+test.identity),
-				pending,
-				[]runs.EventCommit{{
-					RunID: run.ID(), SessionID: run.SessionID(), SegmentID: "segment_1",
-					State: runs.StateSuspend, Run: &run,
-				}},
-				checkpoint,
-			)
-			if err == nil {
-				t.Fatal("NewTreeBarrierCommit accepted contradictory Run and continuation facts")
-			}
-		})
+// TestCommitTreeBarrierRejectsInterruptsItsRunCannotPark proves the hand-off
+// is checked against the Run that owns its contract: a barrier whose interrupt
+// kind the root Run never admitted is refused before the transaction starts.
+func TestCommitTreeBarrierRejectsInterruptsItsRunCannotPark(t *testing.T) {
+	createdAt := time.Unix(1, 0).UTC()
+	pending := singleRunPending(
+		t,
+		"run_1", "ses_1", "member_1", "request_1", "int_1", createdAt.Add(time.Second),
+	)
+	parked := testsupport.MustRestoreRun(run.Snapshot{SessionID: pending.SessionID,
+		ID:             pending.RootRunID,
+		ModelSelection: testsupport.DefaultModelSelection(),
+		State:          run.Waiting,
+		Metrics:        testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 2}),
+		Capabilities:   run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval}},
+		CreatedAt:      createdAt,
+		MessageMark:    run.UnknownMessageMark})
+	_, err := runs.NewTreeBarrierCommit(
+		testCommitID(runtimeidentity.CommitPrefix+"barrier_unadmitted_kind"),
+		pending,
+		[]runs.EventCommit{{
+			RunID: parked.ID(), SessionID: parked.SessionID(), SegmentID: "segment_1",
+			State: runs.StateSuspend, Run: &parked,
+		}},
+		testRootExecutorCheckpoint(),
+	)
+	if err == nil {
+		t.Fatal("NewTreeBarrierCommit parked a question its Run never admitted")
 	}
 }
 

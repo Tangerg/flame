@@ -669,7 +669,14 @@ func (c *QueryCoordinator) ListPendingInterruptPage(ctx context.Context, session
 		return pagination.Page[runs.Pending]{}, err
 	}
 	for _, pending := range page.Rows {
-		if gap := pending.Capabilities.MissingFrom(caller); !gap.IsEmpty() {
+		root, found, err := c.runs.Run(ctx, pending.RootRunID)
+		if err != nil {
+			return pagination.Page[runs.Pending]{}, err
+		}
+		if !found {
+			return pagination.Page[runs.Pending]{}, fmt.Errorf("sessions: pending set %q has no root Run", pending.RootRunID)
+		}
+		if gap := root.Capabilities().MissingFrom(caller); !gap.IsEmpty() {
 			return pagination.Page[runs.Pending]{}, &run.InsufficientCapabilitiesError{RunID: pending.RootRunID, Missing: gap}
 		}
 	}

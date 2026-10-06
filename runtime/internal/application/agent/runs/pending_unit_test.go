@@ -53,7 +53,6 @@ func TestResumeClaimDerivesExactToolApprovalResolutions(t *testing.T) {
 
 func TestResumeClaimOwnsPendingAndQuestionAnswers(t *testing.T) {
 	pending := validTreePending()
-	pending.Capabilities.InterruptKinds = []interrupt.Kind{interrupt.Question}
 	pending.Interrupts = []transcript.Interrupt{{
 		ItemID: "item_grandchild", ItemOccurredAt: pending.CreatedAt,
 		RunID: "run_grandchild", Kind: interrupt.Question,
@@ -78,21 +77,18 @@ func TestResumeClaimOwnsPendingAndQuestionAnswers(t *testing.T) {
 	}
 	pending.Interrupts[0].Question.Fields[0].Options[0].Label = "changed input"
 	pending.Continuations[0].MemberID = "member_changed"
-	pending.Capabilities.InterruptKinds[0] = interrupt.Approval
 	answers[0].Resolution.Answers[0][0] = "changed input"
 
 	ownedPending := claim.Pending()
 	ownedAnswers := claim.Answers()
 	ownedPending.Interrupts[0].Question.Fields[0].Options[0].Label = "changed accessor"
 	ownedPending.Continuations[0].MemberID = "member_changed_again"
-	ownedPending.Capabilities.InterruptKinds[0] = interrupt.Approval
 	ownedAnswers[0].Resolution.Answers[0][0] = "changed accessor"
 
 	gotPending := claim.Pending()
 	gotAnswers := claim.Answers()
 	if gotPending.Interrupts[0].Question.Fields[0].Options[0].Label != "yes" ||
 		gotPending.Continuations[0].MemberID != "member_grandchild" ||
-		gotPending.Capabilities.InterruptKinds[0] != interrupt.Question ||
 		gotAnswers[0].Resolution.Answers[0][0] != "yes" {
 		t.Fatalf("Resume claim ownership = pending:%+v answers:%+v", gotPending, gotAnswers)
 	}
@@ -113,26 +109,11 @@ func TestPendingValidateRequiresOneCanonicalConnectedTree(t *testing.T) {
 		want   string
 	}{
 		{
-			name: "non canonical continuation order",
-			mutate: func(p *Pending) {
-				p.Continuations[0], p.Continuations[1] = p.Continuations[1], p.Continuations[0]
-			},
-			want: "canonical postorder",
-		},
-		{
 			name: "duplicate opaque executor member binding",
 			mutate: func(p *Pending) {
 				p.Continuations[0].MemberID = p.Continuations[1].MemberID
 			},
 			want: "duplicate continuation member",
-		},
-		{
-			name: "disconnected Run",
-			mutate: func(p *Pending) {
-				p.Continuations[1].Lineage.ParentRunID = "run_b"
-				p.Continuations[2].Lineage.ParentRunID = "run_a"
-			},
-			want: "cycle",
 		},
 		{
 			name: "binding order differs from interrupt order",
@@ -229,6 +210,35 @@ func TestPendingValidateRequiresOneCanonicalConnectedTree(t *testing.T) {
 	}
 }
 
+// TestPendingRunTreeOwnsTopologyAndContract proves the checks a Pending cannot
+// make alone: its continuation order is its Runs' canonical postorder, and the
+// root Run admits every interrupt kind it parks on.
+func TestPendingRunTreeOwnsTopologyAndContract(t *testing.T) {
+	pending := validTreePending()
+	facts := fixtureFacts(pending)
+	if err := validatePendingRunTree(pending, parkedTree(pending, facts)); err != nil {
+		t.Fatalf("validatePendingRunTree canonical tree: %v", err)
+	}
+
+	reordered := validTreePending()
+	reordered.Continuations[0], reordered.Continuations[1] = reordered.Continuations[1], reordered.Continuations[0]
+	if err := validatePendingRunTree(reordered, parkedTree(reordered, facts)); err == nil || !strings.Contains(err.Error(), "canonical postorder") {
+		t.Fatalf("non canonical order error = %v", err)
+	}
+
+	unadmitted := facts
+	unadmitted.capabilities = run.Capabilities{ChildRuns: true, InterruptKinds: []interrupt.Kind{interrupt.Question}}
+	if err := validatePendingRunTree(pending, parkedTree(pending, unadmitted)); err == nil || !strings.Contains(err.Error(), "outside the root Run's capabilities") {
+		t.Fatalf("unadmitted interrupt kind error = %v", err)
+	}
+
+	solitary := facts
+	solitary.capabilities.ChildRuns = false
+	if err := validatePendingRunTree(pending, parkedTree(pending, solitary)); err == nil || !strings.Contains(err.Error(), "child-Run capability") {
+		t.Fatalf("child Runs without capability error = %v", err)
+	}
+}
+
 func TestPendingValidatesExactReadIdentities(t *testing.T) {
 	pending := validTreePending()
 	if err := pending.ValidateForRoot(pending.RootRunID); err != nil {
@@ -276,10 +286,6 @@ func validTreePending() Pending {
 		RootRunID:  "run_root",
 		SessionID:  "session_1",
 		ExecutorID: "turn_1",
-		Capabilities: run.Capabilities{
-			ChildRuns:      true,
-			InterruptKinds: []interrupt.Kind{interrupt.Approval},
-		},
 		Interrupts: []transcript.Interrupt{
 			{
 				ItemID: "item_grandchild", ItemOccurredAt: createdAt,
@@ -306,29 +312,14 @@ func validTreePending() Pending {
 			{
 				RunID:    "run_grandchild",
 				MemberID: "member_grandchild",
-				Lineage: run.Lineage{
-					SpawnedByItemID: "item_spawn_grandchild",
-					ParentRunID:     "run_a",
-					RootRunID:       "run_root",
-				},
 			},
 			{
 				RunID:    "run_a",
 				MemberID: "member_a",
-				Lineage: run.Lineage{
-					SpawnedByItemID: "item_spawn_a",
-					ParentRunID:     "run_root",
-					RootRunID:       "run_root",
-				},
 			},
 			{
 				RunID:    "run_b",
 				MemberID: "member_b",
-				Lineage: run.Lineage{
-					SpawnedByItemID: "item_spawn_b",
-					ParentRunID:     "run_root",
-					RootRunID:       "run_root",
-				},
 			},
 			{
 				RunID:    "run_root",

@@ -357,12 +357,10 @@ func (t treePublisher) reduceTreeBarrier(
 	}
 
 	projection := treeBarrierProjection{pending: Pending{
-		RootRunID:         routes.root.runID,
-		SessionID:         t.rootSpec.SessionID,
-		ExecutorID:        t.rootSpec.ExecutorID,
-		GoalIncarnationID: t.rootSpec.GoalIncarnationID,
-		Capabilities:      routes.root.capabilities,
-		CreatedAt:         boundaryAt,
+		RootRunID:  routes.root.runID,
+		SessionID:  t.rootSpec.SessionID,
+		ExecutorID: t.rootSpec.ExecutorID,
+		CreatedAt:  boundaryAt,
 	},
 		reductions: make([]treeBarrierReduction, 0, len(activeRoutes)),
 		commits:    make([]EventCommit, 0, len(activeRoutes)),
@@ -476,7 +474,6 @@ func (t treePublisher) reduceInterruptedRoute(
 	continuation := Continuation{
 		RunID:        route.runID,
 		MemberID:     route.member.MemberID,
-		Lineage:      route.lineage,
 		DrainedTools: slices.Clone(route.reducer.drained),
 	}
 	return treeBarrierReduction{route: route, batch: batch, interrupts: projectedInterrupts}, bindings, continuation, nil

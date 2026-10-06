@@ -43,6 +43,17 @@ func (c *Coordinator) MaterialSnapshot(ctx context.Context, sessionID string) (M
 	return snapshot, nil
 }
 
+// Run returns the snapshot's Run with runID; an open interrupt set's root Run
+// is always present, and owns the set's capabilities.
+func (m MaterialSnapshot) Run(runID string) (run.Run, bool) {
+	for _, value := range m.Runs {
+		if value.ID() == runID {
+			return value, true
+		}
+	}
+	return run.Run{}, false
+}
+
 // Validate checks the cross-projection identities a storage transaction must
 // preserve before the snapshot crosses the Application boundary.
 func (m MaterialSnapshot) Validate() error {

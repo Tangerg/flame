@@ -108,12 +108,14 @@ func (t treeBarrierValidator) validateRuns() error {
 			len(t.barrier.pending.Continuations),
 		)
 	}
+	parked := make([]run.Run, 0, len(t.barrier.runs))
 	for index, runCommit := range t.barrier.runs {
 		if err := t.validateRun(index, runCommit); err != nil {
 			return err
 		}
+		parked = append(parked, *runCommit.Run)
 	}
-	return nil
+	return validatePendingRunTree(t.barrier.pending, parked)
 }
 
 func (t treeBarrierValidator) validateRun(index int, runCommit EventCommit) error {
@@ -130,22 +132,8 @@ func (t treeBarrierValidator) validateRun(index int, runCommit EventCommit) erro
 	if runCommit.SessionID != pending.SessionID || runCommit.Run.SessionID() != pending.SessionID {
 		return fmt.Errorf("runs: tree barrier Run[%d] Session differs from Pending", index)
 	}
-	continuation, exists := t.continuations[runCommit.RunID]
-	if !exists {
+	if _, exists := t.continuations[runCommit.RunID]; !exists {
 		return fmt.Errorf("runs: tree barrier Run[%d] has no continuation", index)
-	}
-	if runCommit.Run.Lineage() != continuation.Lineage {
-		return fmt.Errorf("runs: tree barrier Run[%d] differs from its continuation", index)
-	}
-	if !runCommit.Run.Capabilities().Equal(pending.Capabilities) {
-		return fmt.Errorf("runs: tree barrier Run[%d] capabilities differ from Pending", index)
-	}
-	if runCommit.RunID == pending.RootRunID {
-		if runCommit.Run.GoalIncarnationID() != pending.GoalIncarnationID {
-			return errors.New("runs: tree barrier root Run goal incarnation differs from Pending")
-		}
-	} else if runCommit.Run.GoalIncarnationID() != "" {
-		return fmt.Errorf("runs: tree barrier child Run[%d] carries a root Goal incarnation", index)
 	}
 	if _, duplicate := t.seenRunIDs[runCommit.RunID]; duplicate {
 		return fmt.Errorf("runs: tree barrier repeats Run %q", runCommit.RunID)

@@ -169,12 +169,11 @@ func pendingForRun(
 		}
 	}
 	return runs.Pending{
-		RootRunID:    runID,
-		SessionID:    sessionID,
-		ExecutorID:   "turn_" + runID,
-		Interrupts:   copied,
-		Bindings:     bindings,
-		Capabilities: capabilitiesForInterrupts(copied),
+		RootRunID:  runID,
+		SessionID:  sessionID,
+		ExecutorID: "turn_" + runID,
+		Interrupts: copied,
+		Bindings:   bindings,
 		Continuations: []runs.Continuation{{
 			RunID:    runID,
 			MemberID: memberID,
@@ -1128,7 +1127,6 @@ func TestRunCapabilitiesAreImmutable(t *testing.T) {
 		approvalInterrupts(),
 		time.Unix(5, 0).UTC(),
 	)
-	pending.Capabilities = admitted
 	if err := interruptStore.Open(ctx, pending); err != nil {
 		t.Fatalf("open interrupt: %v", err)
 	}
@@ -1136,17 +1134,6 @@ func TestRunCapabilitiesAreImmutable(t *testing.T) {
 		t.Fatalf("suspend: %v", err)
 	}
 	assertRunCapabilities(t, store, "run_1", admitted, "after park")
-
-	// The Pending hand-off carries capabilities onward for the continuation: resume
-	// never reads a replacement from the request before reopening the segment.
-	pending, found, err := interruptStore.Get(ctx, "run_1")
-	if err != nil || !found {
-		t.Fatalf("get interrupt: %v (found=%v)", err, found)
-	}
-	if pending.Capabilities.ChildRuns != admitted.ChildRuns ||
-		!slices.Equal(pending.Capabilities.InterruptKinds, admitted.InterruptKinds) {
-		t.Fatalf("park hand-off capabilities = %v, want %v", pending.Capabilities, admitted)
-	}
 
 	if err := store.Resume(ctx, "ses_A", run.ResumeDraft{RunID: "run_1", SegmentID: "seg_next"}, time.Unix(6, 0).UTC()); err != nil {
 		t.Fatalf("resume: %v", err)

@@ -95,7 +95,11 @@ func (s *Handler) GetSessionSnapshot(ctx context.Context, in protocol.GetSession
 		return nil, err
 	}
 	for _, pending := range snapshot.Interrupts {
-		if gap := pending.Capabilities.MissingFrom(caller); !gap.IsEmpty() {
+		root, found := snapshot.Run(pending.RootRunID)
+		if !found {
+			return nil, fmt.Errorf("delivery: open interrupt set %q has no root Run in the snapshot", pending.RootRunID)
+		}
+		if gap := root.Capabilities().MissingFrom(caller); !gap.IsEmpty() {
 			return nil, capabilityGap(gap)
 		}
 	}

@@ -164,7 +164,7 @@ func interruptRecord(pending runs.Pending) sqlite.InterruptRecord {
 		}
 		continuations[index] = sqlite.ContinuationRecord{
 			RunID: continuation.RunID, MemberID: continuation.MemberID,
-			Lineage: continuation.Lineage, DrainedTools: drained,
+			DrainedTools: drained,
 		}
 	}
 	bindings := make([]sqlite.InterruptBindingRecord, len(pending.Bindings))
@@ -178,10 +178,10 @@ func interruptRecord(pending runs.Pending) sqlite.InterruptRecord {
 	}
 	return sqlite.InterruptRecord{
 		RootRunID: pending.RootRunID, SessionID: pending.SessionID,
-		ExecutorID: pending.ExecutorID, GoalIncarnationID: pending.GoalIncarnationID,
+		ExecutorID: pending.ExecutorID,
 		Interrupts: pending.Interrupts, Bindings: bindings,
-		Continuations: continuations, Capabilities: pending.Capabilities,
-		CreatedAt: pending.CreatedAt,
+		Continuations: continuations,
+		CreatedAt:     pending.CreatedAt,
 	}
 }
 
@@ -201,7 +201,7 @@ func pendingValue(record sqlite.InterruptRecord) runs.Pending {
 		}
 		continuations[index] = runs.Continuation{
 			RunID: continuation.RunID, MemberID: continuation.MemberID,
-			Lineage: continuation.Lineage, DrainedTools: drained,
+			DrainedTools: drained,
 		}
 	}
 	bindings := make([]runs.InterruptBinding, len(record.Bindings))
@@ -215,9 +215,9 @@ func pendingValue(record sqlite.InterruptRecord) runs.Pending {
 	}
 	return runs.Pending{
 		RootRunID: record.RootRunID, SessionID: record.SessionID,
-		ExecutorID: record.ExecutorID, GoalIncarnationID: record.GoalIncarnationID,
+		ExecutorID: record.ExecutorID,
 		Interrupts: record.Interrupts, Bindings: bindings,
-		Continuations: continuations, Capabilities: record.Capabilities,
-		CreatedAt: record.CreatedAt,
+		Continuations: continuations,
+		CreatedAt:     record.CreatedAt,
 	}
 }

@@ -168,7 +168,7 @@ func TestCommitWaitingSubtreeCancellationRejectsMismatchedCheckpointBindingWitho
 }
 
 // TestCommitWaitingSubtreeCancellationRejectsRunContinuationFactDriftWithoutMutation
-// proves parked_continuation_matches_run_facts at the waiting-subtree transaction:
+// proves parked_continuation_restates_no_run_fact at the waiting-subtree transaction:
 // a forged terminal projection cannot rewrite the canceled Run's admitted facts.
 func TestCommitWaitingSubtreeCancellationRejectsRunContinuationFactDriftWithoutMutation(t *testing.T) {
 	for name, mutate := range map[string]func(*waitingCancellationCommitDraft){
@@ -180,7 +180,8 @@ func TestCommitWaitingSubtreeCancellationRejectsRunContinuationFactDriftWithoutM
 			draft.terminalRuns[0] = testsupport.MustRunReplacement(replacement.Expected(), state)
 		},
 		"root run capabilities": func(draft *waitingCancellationCommitDraft) {
-			draft.rootRun = mutatedRun(draft.rootRun, func(snapshot *run.Snapshot) {
+			last := len(draft.parkedRuns) - 1
+			draft.parkedRuns[last] = mutatedRun(draft.parkedRuns[last], func(snapshot *run.Snapshot) {
 				snapshot.Capabilities.ChildRuns = false
 			})
 		},

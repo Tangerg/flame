@@ -295,6 +295,6 @@ func TestForkSession(t *testing.T) {
 
 func openSeededPending(ctx context.Context, t *testing.T, db *sql.DB, ints *persistence.InterruptStore, pending runs.Pending) error {
 	t.Helper()
-	seedPendingRuns(t, db, pending)
-	return ints.Open(ctx, pending)
+	runtime := stubRuntime{db: db, interrupts: ints}
+	return runtime.openPending(ctx, t, pending)
 }

@@ -176,19 +176,19 @@ func (r *resumedRouteBuilder) newRoute(continuationState Continuation) (*executo
 	}
 	route := &executorRoute{
 		member:         member,
-		memberBound:    continuationState.Lineage.IsRoot(),
+		memberBound:    parked.Lineage().IsRoot(),
 		runID:          continuationState.RunID,
 		segmentID:      segmentID,
 		rootRunID:      r.continuation.rootRunID,
-		lineage:        continuationState.Lineage,
+		lineage:        parked.Lineage(),
 		modelSelection: parked.ModelSelection(),
-		capabilities:   r.continuation.capabilities,
+		capabilities:   r.continuation.capabilities(),
 	}
 	userInput := []transcript.ContentBlock(nil)
 	goalIncarnationID := ""
 	if continuationState.RunID == r.continuation.rootRunID {
 		userInput = r.spec.Input
-		goalIncarnationID = r.spec.GoalIncarnationID
+		goalIncarnationID = r.continuation.goalIncarnationID()
 	}
 	route.reducer = newReducer(reducerConfig{
 		RunID: route.runID, SegmentID: route.segmentID, SessionID: r.spec.SessionID,
@@ -196,7 +196,7 @@ func (r *resumedRouteBuilder) newRoute(continuationState Continuation) (*executo
 		GoalIncarnationID: goalIncarnationID, ModelSelection: route.modelSelection,
 		CreatedAt: parked.CreatedAt(), UserInput: userInput,
 		Metrics: parked.Metrics(), ContextTokens: parked.ContextTokens(),
-		Capabilities: r.continuation.capabilities, Continuation: r.continuation,
+		Capabilities: r.continuation.capabilities(), Continuation: r.continuation,
 		Now:          r.now,
 		CancelReason: cancellationReason(r.cancelReason, route.runID),
 	})

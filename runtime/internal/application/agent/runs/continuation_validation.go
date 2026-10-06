@@ -2,6 +2,7 @@ package runs
 
 import (
 	"fmt"
+	"slices"
 
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -112,6 +113,37 @@ func validatePendingRunTree(pending Pending, values []rundomain.Run) error {
 			len(pending.Continuations),
 			len(active),
 		)
+	}
+	for _, interrupt := range pending.Interrupts {
+		if !slices.Contains(root.Capabilities().InterruptKinds, interrupt.Kind) {
+			return fmt.Errorf(
+				"runs: validate parked Run tree %q: interrupt item %q has kind %s outside the root Run's capabilities",
+				pending.RootRunID, interrupt.ItemID, interrupt.Kind,
+			)
+		}
+	}
+	if len(pending.Continuations) > 1 && !root.Capabilities().ChildRuns {
+		return fmt.Errorf("runs: validate parked Run tree %q: child Runs park under a root without child-Run capability", pending.RootRunID)
+	}
+	members := make([]rundomain.TreeMember, 0, len(pending.Continuations))
+	for _, continuation := range pending.Continuations {
+		if value, found := active[continuation.RunID]; found {
+			members = append(members, rundomain.TreeMember{RunID: value.ID(), Lineage: value.Lineage()})
+		}
+	}
+	if len(members) == len(pending.Continuations) {
+		tree, err := rundomain.NewTree(pending.RootRunID, members)
+		if err != nil {
+			return fmt.Errorf("runs: validate parked Run tree %q: %w", pending.RootRunID, err)
+		}
+		for index, runID := range tree.Postorder() {
+			if pending.Continuations[index].RunID != runID {
+				return fmt.Errorf(
+					"runs: validate parked Run tree %q: continuation[%d] is Run %q, canonical postorder requires %q",
+					pending.RootRunID, index, pending.Continuations[index].RunID, runID,
+				)
+			}
+		}
 	}
 	for _, continuation := range pending.Continuations {
 		value, found := active[continuation.RunID]

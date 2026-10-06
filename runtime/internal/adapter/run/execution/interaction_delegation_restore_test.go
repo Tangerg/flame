@@ -80,7 +80,7 @@ func TestInteractionExecutorRestoresWaitingDelegateChildWithoutReadmission(t *te
 		InterruptItemID: binding.InterruptItemID, MemberID: binding.MemberID,
 		RequestID:  binding.RequestID,
 		Resolution: interrupt.Resolution{Answers: [][]string{{"restored value"}}},
-	}}, nil, pending.Capabilities.InterruptKinds); err != nil {
+	}}, nil, continuation.Capabilities.InterruptKinds); err != nil {
 		t.Fatal(err)
 	}
 	var observed []runs.ExecutorEvent

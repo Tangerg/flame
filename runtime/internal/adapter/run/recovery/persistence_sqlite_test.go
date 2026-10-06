@@ -104,8 +104,7 @@ func testRecoveryMarksClaimedResumeLost(t *testing.T, openingCommitted bool) {
 		t.Fatalf("Suspend: %v", suspendErr)
 	}
 	pending := runs.Pending{
-		RootRunID: "run_claim", SessionID: "session_claim", ExecutorID: "execution_claim",
-		Capabilities: capabilities, Interrupts: []transcript.Interrupt{request},
+		RootRunID: "run_claim", SessionID: "session_claim", ExecutorID: "execution_claim", Interrupts: []transcript.Interrupt{request},
 		Bindings: []runs.InterruptBinding{{
 			InterruptItemID: request.ItemID, MemberID: "member_claim", RequestID: "request_claim",
 		}},
@@ -638,9 +637,6 @@ func TestRecoveryRejectsPartialParkWithoutMutatingIt(t *testing.T) {
 	}
 	pending := runs.Pending{
 		RootRunID: "run_partial", SessionID: "session", ExecutorID: "turn_partial",
-		Capabilities: run.Capabilities{
-			InterruptKinds: []interrupt.Kind{interrupt.Question},
-		},
 		Interrupts: []transcript.Interrupt{pendingInterrupt},
 		Bindings: []runs.InterruptBinding{{
 			InterruptItemID: pendingInterrupt.ItemID, MemberID: "member_root", RequestID: "request_root",

@@ -343,10 +343,15 @@ func queryRunForSession(sessionID, id string) run.Run {
 	return testsupport.MustRestoreRun(run.Snapshot{ID: id, SessionID: sessionID})
 }
 
+// approvalRootRun is the root Run whose contract an approval waiting set needs.
+func approvalRootRun(sessionID, id string) run.Run {
+	return testsupport.MustRestoreRun(run.Snapshot{ID: id, SessionID: sessionID, Capabilities: approvalCapabilities()})
+}
+
 func TestCoordinatorReadsDelegateToProjections(t *testing.T) {
 	ctx := context.Background()
 	tx := &fakeTranscript{items: sequencedItems(1)}
-	runStore := &fakeRuns{runs: []run.Run{queryRun("run_1")}}
+	runStore := &fakeRuns{runs: []run.Run{queryRun("run_1")}, history: []run.Run{approvalRootRun("ses_2", "run_1")}}
 	ints := &fakeInterrupts{pending: []runs.Pending{testPending("run_1", "ses_2", time.Unix(0, 1).UTC())}}
 	c := newQueryCoordinator(t, QueryDependencies{Transcript: tx, Interrupts: ints, Runs: runStore, Sessions: &fakeSessions{}})
 
@@ -794,7 +799,6 @@ func testPending(rootRunID, sessionID string, createdAt time.Time) runs.Pending 
 	memberID := "member_" + suffix
 	return runs.Pending{
 		RootRunID: rootRunID, SessionID: sessionID, ExecutorID: "turn_" + suffix,
-		Capabilities: approvalCapabilities(),
 		Interrupts: []transcript.Interrupt{{
 			ItemID: itemID, ItemOccurredAt: runCreatedAt, RunID: rootRunID, Kind: interrupt.Approval,
 			Approval: &transcript.Approval{
@@ -861,7 +865,7 @@ func TestListPendingInterruptPageValidatesCaller(t *testing.T) {
 	reader := &rawInterruptPageReader{fakeInterrupts: &fakeInterrupts{}, page: stored}
 	coordinator := newQueryCoordinator(t, QueryDependencies{
 		Transcript: &fakeTranscript{}, Interrupts: reader,
-		Runs: &fakeRuns{}, Sessions: &fakeSessions{},
+		Runs: &fakeRuns{history: []run.Run{approvalRootRun("ses_1", "run_1")}}, Sessions: &fakeSessions{},
 	})
 	invalidCaller := run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval, interrupt.Approval}}
 	if _, err := coordinator.ListPendingInterruptPage(t.Context(), "ses_1", "", invalidCaller, "", pagination.DefaultLimit()); err == nil {
@@ -887,7 +891,7 @@ func TestListPendingInterruptPageOwnsValidatedCallerCapabilities(t *testing.T) {
 	}
 	coordinator := newQueryCoordinator(t, QueryDependencies{
 		Transcript: &fakeTranscript{}, Interrupts: reader,
-		Runs: &fakeRuns{}, Sessions: &fakeSessions{},
+		Runs: &fakeRuns{history: []run.Run{approvalRootRun("ses_1", "run_1")}}, Sessions: &fakeSessions{},
 	})
 
 	page, err := coordinator.ListPendingInterruptPage(
@@ -909,12 +913,12 @@ func TestListPendingInterruptPageOwnsValidatedCallerCapabilities(t *testing.T) {
 func TestListPendingInterruptPageRefusesACallerThatCannotFollowTheRun(t *testing.T) {
 	ctx := context.Background()
 	waiting := testSessionPendingRuns("run_1")
-	waiting[0].Capabilities = run.Capabilities{
+	root := testsupport.MustRestoreRun(run.Snapshot{ID: "run_1", SessionID: "ses_1", Capabilities: run.Capabilities{
 		InterruptKinds: []interrupt.Kind{interrupt.Approval, interrupt.Question},
-	}
+	}})
 	c := newQueryCoordinator(t, QueryDependencies{
 		Transcript: &fakeTranscript{},
-		Runs:       &fakeRuns{history: []run.Run{queryRun("run_1")}},
+		Runs:       &fakeRuns{history: []run.Run{root}},
 		Interrupts: &fakeInterrupts{pending: waiting},
 		Sessions:   &fakeSessions{},
 	})

@@ -8,9 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
@@ -21,21 +19,16 @@ import (
 // own separate resume claims. Interrupts is the published typed set;
 // Bindings connects each item to the executor request it answers;
 // Continuations is the durable state required to reopen every surviving Run
-// with a fresh Segment, including after host restart.
+// with a fresh Segment, including after host restart. The parked Runs own
+// their lineage, capabilities, and Goal incarnation; a Pending names the Runs
+// and never restates those facts.
 type Pending struct {
-	RootRunID  string
-	SessionID  string
-	ExecutorID string
-	// GoalIncarnationID is the root Run's autonomous-goal incarnation. It is an
-	// Run continuation fact, not executor payload: a resumed Segment
-	// needs it to keep terminal usage accounting attached to the same Goal.
-	GoalIncarnationID string
-	Interrupts        []transcript.Interrupt
-	Bindings          []InterruptBinding
-	Continuations     []Continuation
-	// Capabilities is the Run's frozen optional behavior. A continuation refuses
-	// callers that lack it and reuses its admitted interrupt kinds.
-	Capabilities run.Capabilities
+	RootRunID     string
+	SessionID     string
+	ExecutorID    string
+	Interrupts    []transcript.Interrupt
+	Bindings      []InterruptBinding
+	Continuations []Continuation
 	// CreatedAt orders open sets. It is the barrier commit time, not any one
 	// input request's creation time.
 	CreatedAt time.Time
@@ -43,12 +36,11 @@ type Pending struct {
 
 // Continuation is the durable hand-off for one suspended Run. MemberID is the
 // opaque binding between that Run and its executor member; the
-// executor's parent/spawn topology remains inside its opaque checkpoint. Run
-// lineage is the product's independent tree fact.
+// executor's parent/spawn topology remains inside its opaque checkpoint. The
+// Run's own lineage is the product's tree fact.
 type Continuation struct {
 	RunID        string
 	MemberID     string
-	Lineage      run.Lineage
 	DrainedTools []DrainedTool
 }
 
@@ -132,7 +124,6 @@ func (p Pending) Clone() Pending {
 		continuation := &p.Continuations[index]
 		continuation.DrainedTools = slices.Clone(continuation.DrainedTools)
 	}
-	p.Capabilities = p.Capabilities.Clone()
 	return p
 }
 
@@ -161,9 +152,6 @@ func clonePendingInterrupt(value transcript.Interrupt) transcript.Interrupt {
 func (p Pending) Validate() error {
 	if err := p.validateEnvelope(); err != nil {
 		return err
-	}
-	if err := p.Capabilities.Validate(); err != nil {
-		return fmt.Errorf("interrupts: pending capabilities: %w", err)
 	}
 	runIDs, err := p.validateContinuations()
 	if err != nil {
@@ -238,9 +226,6 @@ func (p Pending) validateEnvelope() error {
 	if err := resourceid.ValidateSession(p.SessionID); err != nil {
 		return fmt.Errorf("interrupts: pending: %w", err)
 	}
-	if _, _, err := goalref.ParseOptionalIncarnation(p.GoalIncarnationID); err != nil {
-		return fmt.Errorf("interrupts: pending: %w", err)
-	}
 	if err := runtimeidentity.ValidateExecutor(p.ExecutorID); err != nil {
 		return fmt.Errorf("interrupts: pending: %w", err)
 	}
@@ -264,7 +249,6 @@ func (p Pending) validateEnvelope() error {
 func (p Pending) validateContinuations() (map[string]struct{}, error) {
 	runIDs := make(map[string]struct{}, len(p.Continuations))
 	memberIDs := make(map[string]struct{}, len(p.Continuations))
-	treeMembers := make([]run.TreeMember, 0, len(p.Continuations))
 	rootCount := 0
 	for index, continuation := range p.Continuations {
 		if err := continuation.Validate(); err != nil {
@@ -274,48 +258,16 @@ func (p Pending) validateContinuations() (map[string]struct{}, error) {
 			return nil, fmt.Errorf("interrupts: duplicate continuation run %q", continuation.RunID)
 		}
 		runIDs[continuation.RunID] = struct{}{}
-		treeMembers = append(treeMembers, run.TreeMember{
-			RunID:   continuation.RunID,
-			Lineage: continuation.Lineage,
-		})
 		if _, duplicate := memberIDs[continuation.MemberID]; duplicate {
 			return nil, fmt.Errorf("interrupts: duplicate continuation member %q", continuation.MemberID)
 		}
 		memberIDs[continuation.MemberID] = struct{}{}
 		if continuation.RunID == p.RootRunID {
 			rootCount++
-			if !continuation.Lineage.IsRoot() {
-				return nil, errors.New("interrupts: root continuation carries child lineage")
-			}
-		} else if continuation.Lineage.RootRunID != p.RootRunID {
-			return nil, fmt.Errorf(
-				"interrupts: child continuation %q names root run %q, want %q",
-				continuation.RunID,
-				continuation.Lineage.RootRunID,
-				p.RootRunID,
-			)
 		}
 	}
 	if rootCount != 1 {
 		return nil, fmt.Errorf("interrupts: pending set has %d root continuations", rootCount)
-	}
-	tree, err := run.NewTree(p.RootRunID, treeMembers)
-	if err != nil {
-		return nil, fmt.Errorf("interrupts: continuation tree: %w", err)
-	}
-	if len(p.Continuations) > 1 && !p.Capabilities.ChildRuns {
-		return nil, errors.New("interrupts: pending tree has child Runs but its capabilities forbid them")
-	}
-	canonicalRunIDs := tree.Postorder()
-	for index, continuation := range p.Continuations {
-		if continuation.RunID != canonicalRunIDs[index] {
-			return nil, fmt.Errorf(
-				"interrupts: continuation[%d] is run %q, canonical postorder requires %q",
-				index,
-				continuation.RunID,
-				canonicalRunIDs[index],
-			)
-		}
 	}
 	return runIDs, nil
 }
@@ -328,13 +280,6 @@ func (p Pending) validateInterrupts(runIDs map[string]struct{}) (map[string]tran
 		}
 		if _, exists := runIDs[interrupt.RunID]; !exists {
 			return nil, fmt.Errorf("interrupts: interrupt item %q names unknown run %q", interrupt.ItemID, interrupt.RunID)
-		}
-		if !slices.Contains(p.Capabilities.InterruptKinds, interrupt.Kind) {
-			return nil, fmt.Errorf(
-				"interrupts: interrupt item %q has kind %s outside the frozen capabilities",
-				interrupt.ItemID,
-				interrupt.Kind,
-			)
 		}
 		if _, duplicate := interruptsByItem[interrupt.ItemID]; duplicate {
 			return nil, fmt.Errorf("interrupts: duplicate interrupt item %q", interrupt.ItemID)
@@ -517,13 +462,7 @@ func (c Continuation) validateRun() error {
 	if err := resourceid.ValidateRun(c.RunID); err != nil {
 		return err
 	}
-	if err := runtimeidentity.ValidateMember(c.MemberID); err != nil {
-		return err
-	}
-	if err := c.Lineage.Validate(c.RunID); err != nil {
-		return fmt.Errorf("lineage: %w", err)
-	}
-	return nil
+	return runtimeidentity.ValidateMember(c.MemberID)
 }
 
 func validateDrainedTools(tools []DrainedTool) error {

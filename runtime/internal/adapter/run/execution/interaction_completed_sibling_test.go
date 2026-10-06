@@ -214,7 +214,7 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 	if err := executor.BeginContinuation(t.Context(), ref, []runs.InterruptAnswer{{
 		InterruptItemID: binding.InterruptItemID, MemberID: binding.MemberID,
 		RequestID: binding.RequestID, Resolution: interrupt.Resolution{Answers: [][]string{{"chosen"}}},
-	}}, nil, pending.Capabilities.InterruptKinds); err != nil {
+	}}, nil, []interrupt.Kind{interrupt.Question}); err != nil {
 		t.Fatal(err)
 	}
 	var observed []runs.ExecutorEvent

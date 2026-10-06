@@ -645,7 +645,7 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 	terminalRuns := commit.TerminalRuns()
 	terminalItems := commit.TerminalItems()
 	withOpening, err := NewResumingSubtreeCancellationCommit(
-		commit.CommitID(), commit.TargetRunID(), commit.RootRun(), expectedPending,
+		commit.CommitID(), commit.TargetRunID(), commit.ParkedRuns(), expectedPending,
 		checkpoint, terminalRuns, terminalItems, resume, openingEvents,
 	)
 	if err != nil {
@@ -696,7 +696,7 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 	nested := withOpening.OpeningEvents()
 	nested[0].CommitID = testCommitID("run_commit_waiting_cancel_nested")
 	if _, err := NewResumingSubtreeCancellationCommit(
-		commit.CommitID(), commit.TargetRunID(), commit.RootRun(), commit.ExpectedPending(),
+		commit.CommitID(), commit.TargetRunID(), commit.ParkedRuns(), commit.ExpectedPending(),
 		commit.Checkpoint(), commit.TerminalRuns(), commit.TerminalItems(), ownedResume, nested,
 	); err == nil {
 		t.Fatal("waiting cancellation accepted a nested top-level event identity")
@@ -706,7 +706,7 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 		SegmentID: rootSegmentID, UpdatedAt: openingItem.OccurredAt(), Metrics: run.Metrics{},
 	}
 	if _, err := NewResumingSubtreeCancellationCommit(
-		commit.CommitID(), commit.TargetRunID(), commit.RootRun(), commit.ExpectedPending(),
+		commit.CommitID(), commit.TargetRunID(), commit.ParkedRuns(), commit.ExpectedPending(),
 		commit.Checkpoint(), commit.TerminalRuns(), commit.TerminalItems(), ownedResume, observed,
 	); err == nil {
 		t.Fatal("waiting cancellation accepted an execution observation in an opening event")
@@ -936,12 +936,9 @@ func runACancellationPlan(
 			CreatedAt:      createdAt,
 			UpdatedAt:      pending.CreatedAt,
 			ModelSelection: testsupport.MustModelSelection("openai", "model"),
-			Capabilities:   pending.Capabilities,
-			MessageMark:    run.UnknownMessageMark, Lineage: run.Lineage{
-				SpawnedByItemID: continuation.Lineage.SpawnedByItemID,
-				ParentRunID:     continuation.Lineage.ParentRunID,
-				RootRunID:       continuation.Lineage.RootRunID,
-			},
+			Capabilities:   resumedTreeCapabilities(),
+			MessageMark:    run.UnknownMessageMark,
+			Lineage:        fixtureLineage(pending.RootRunID, continuation.RunID),
 		})
 
 		members[continuation.RunID] = continuation.MemberID

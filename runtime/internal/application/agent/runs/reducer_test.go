@@ -1753,7 +1753,7 @@ func TestReducerReportsFrozenRunCapabilitiesOnEverySegment(t *testing.T) {
 	config := testReducerConfig()
 	config.Capabilities = frozen
 	config.Continuation = testTreeContinuation(Pending{
-		RootRunID: "run_1", SessionID: "ses_1", Capabilities: frozen,
+		RootRunID: "run_1", SessionID: "ses_1",
 	})
 
 	reducer := newReducer(config)

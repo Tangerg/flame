@@ -3,8 +3,6 @@ package runs
 import (
 	"reflect"
 	"slices"
-
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
 // Equal reports whether two Pending values describe the same durable tree
@@ -19,7 +17,6 @@ func canonicalPending(pending Pending) Pending {
 	pending.Bindings = slices.Clone(pending.Bindings)
 	pending.Continuations = slices.Clone(pending.Continuations)
 	pending.CreatedAt = canonicalTime(pending.CreatedAt)
-	pending.Capabilities = canonicalPendingCapabilities(pending.Capabilities)
 	for index := range pending.Continuations {
 		pending.Continuations[index] = normalizeContinuationValue(pending.Continuations[index])
 	}
@@ -30,12 +27,6 @@ func canonicalPending(pending Pending) Pending {
 	pending.Bindings = nilIfEmpty(pending.Bindings)
 	pending.Continuations = nilIfEmpty(pending.Continuations)
 	return pending
-}
-
-func canonicalPendingCapabilities(capabilities run.Capabilities) run.Capabilities {
-	capabilities = capabilities.Normalized()
-	capabilities.InterruptKinds = nilIfEmpty(capabilities.InterruptKinds)
-	return capabilities
 }
 
 func nilIfEmpty[S ~[]E, E any](values S) S {

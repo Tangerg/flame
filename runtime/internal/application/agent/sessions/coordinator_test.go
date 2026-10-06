@@ -198,9 +198,6 @@ func TestApplyRunCancelProjectsTerminalTranscript(t *testing.T) {
 		interrupts: &coordinatorInterrupts{pending: map[string]runs.Pending{
 			"run_1": {
 				RootRunID: "run_1", SessionID: "ses_1", ExecutorID: "turn_1",
-				Capabilities: run.Capabilities{
-					InterruptKinds: []interrupt.Kind{interrupt.Question},
-				},
 				Interrupts: []transcript.Interrupt{{
 					ItemID: "item_1", ItemOccurredAt: createdAt,
 					RunID: "run_1", Kind: interrupt.Question, Question: question,
@@ -275,7 +272,6 @@ func TestApplyRunCancelSettlesQuestionToolAndClosesModelContext(t *testing.T) {
 		interrupts: &coordinatorInterrupts{pending: map[string]runs.Pending{
 			"run_1": {
 				RootRunID: "run_1", SessionID: "ses_1", ExecutorID: "turn_1",
-				Capabilities: run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}},
 				Interrupts: []transcript.Interrupt{{
 					ItemID: "item_question", ItemOccurredAt: createdAt,
 					RunID: "run_1", Kind: interrupt.Question, Question: question,
@@ -364,10 +360,7 @@ func TestApplyRunLostProjectsTerminalTranscript(t *testing.T) {
 	stores := coordinatorStores{
 		interrupts: &coordinatorInterrupts{pending: map[string]runs.Pending{
 			"run_1": {
-				RootRunID: "run_1", SessionID: "ses_1", ExecutorID: "turn_1", GoalIncarnationID: "lease_1",
-				Capabilities: run.Capabilities{
-					InterruptKinds: []interrupt.Kind{interrupt.Approval},
-				},
+				RootRunID: "run_1", SessionID: "ses_1", ExecutorID: "turn_1",
 				Interrupts: []transcript.Interrupt{{
 					ItemID: "item_1", ItemOccurredAt: createdAt,
 					RunID: "run_1", Kind: interrupt.Approval, Approval: approval,
@@ -452,11 +445,11 @@ func TestApplyRunLostTerminalizesWholeParkedTreeInPostorder(t *testing.T) {
 		SpawnedByItemID: "item_spawn", ParentRunID: "run_root", RootRunID: "run_root",
 	}
 	selection := testsupport.DefaultModelSelection()
+	capabilities := run.Capabilities{
+		ChildRuns: true, InterruptKinds: []interrupt.Kind{interrupt.Question},
+	}
 	pending := runs.Pending{
 		RootRunID: "run_root", SessionID: "ses_1", ExecutorID: "turn_1",
-		Capabilities: run.Capabilities{
-			ChildRuns: true, InterruptKinds: []interrupt.Kind{interrupt.Question},
-		},
 		Interrupts: []transcript.Interrupt{{
 			ItemID: "item_question", ItemOccurredAt: createdAt,
 			RunID: "run_child", Kind: interrupt.Question, Question: question,
@@ -467,7 +460,6 @@ func TestApplyRunLostTerminalizesWholeParkedTreeInPostorder(t *testing.T) {
 		Continuations: []runs.Continuation{
 			{
 				RunID: "run_child", MemberID: "member_child",
-				Lineage: childLineage,
 			},
 			{RunID: "run_root", MemberID: "member_root"},
 		},
@@ -483,13 +475,13 @@ func TestApplyRunLostTerminalizesWholeParkedTreeInPostorder(t *testing.T) {
 				testsupport.MustRestoreRun(run.Snapshot{
 					ID: "run_root", SessionID: "ses_1", State: run.Waiting,
 					ModelSelection: selection,
-					Capabilities:   pending.Capabilities,
+					Capabilities:   capabilities,
 					CreatedAt:      createdAt, MessageMark: run.UnknownMessageMark,
 				}),
 				testsupport.MustRestoreRun(run.Snapshot{
 					ID: "run_child", SessionID: "ses_1", State: run.Waiting,
 					ModelSelection: selection,
-					Capabilities:   pending.Capabilities,
+					Capabilities:   capabilities,
 					Lineage:        childLineage,
 					CreatedAt:      createdAt, MessageMark: run.UnknownMessageMark,
 				}),

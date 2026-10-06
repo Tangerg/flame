@@ -622,7 +622,7 @@ func TestRecoveryRejectsInvalidClaimedPendingBeforePlanning(t *testing.T) {
 	active := testsupport.MustRestoreRun(rundomain.Snapshot{
 		ID: pending.RootRunID, SessionID: pending.SessionID, State: rundomain.Running,
 		ActiveSegmentID: "segment_active", ModelSelection: testsupport.DefaultModelSelection(),
-		Capabilities: pending.Capabilities, CreatedAt: parked.CreatedAt(),
+		Capabilities: parked.Capabilities(), CreatedAt: parked.CreatedAt(),
 		MessageMark: rundomain.UnknownMessageMark,
 	})
 	store := &recoveryStoreStub{
@@ -1113,9 +1113,8 @@ func TestRecoveryChargesLostGoalOwnedRootToItsAdmissionLease(t *testing.T) {
 
 func TestRecoveryPreservesOnlyCoherentInterruptedTree(t *testing.T) {
 	run, pending, item := coherentRecoveryPark(t)
-	pending.GoalIncarnationID = "goal-lease-1"
 	snapshot := run.Snapshot()
-	snapshot.GoalIncarnationID = pending.GoalIncarnationID
+	snapshot.GoalIncarnationID = "goal-lease-1"
 	run = testsupport.MustRestoreRun(snapshot)
 	store := &recoveryStoreStub{
 		runs:         []rundomain.Run{run},
@@ -1468,7 +1467,7 @@ func TestRecoveryRejectsCrossSessionPendingWithoutCommit(t *testing.T) {
 }
 
 // TestRecoveryRejectsChildProtocolDriftWithoutProbingCheckpoint proves
-// parked_continuation_matches_run_facts for root-owned policy: every child Run
+// parked_continuation_restates_no_run_fact for root-owned policy: every child Run
 // is parked under the root admission, even though Continuation does not repeat
 // that policy as a second source of truth.
 func TestRecoveryRejectsChildProtocolDriftWithoutProbingCheckpoint(t *testing.T) {
@@ -1476,7 +1475,6 @@ func TestRecoveryRejectsChildProtocolDriftWithoutProbingCheckpoint(t *testing.T)
 	rootSnapshot := root.Snapshot()
 	rootSnapshot.Capabilities.ChildRuns = true
 	root = testsupport.MustRestoreRun(rootSnapshot)
-	pending.Capabilities.ChildRuns = true
 	lineage := rundomain.Lineage{
 		SpawnedByItemID: "item_spawn",
 		ParentRunID:     root.ID(),
@@ -1497,7 +1495,6 @@ func TestRecoveryRejectsChildProtocolDriftWithoutProbingCheckpoint(t *testing.T)
 	pending.Continuations = []Continuation{
 		{
 			RunID: "run_child", MemberID: "member_child",
-			Lineage: lineage,
 		},
 		rootContinuation,
 	}
@@ -1545,9 +1542,6 @@ func coherentRecoveryPark(t *testing.T) (rundomain.Run, Pending, transcript.Item
 		SessionID:  run.SessionID(),
 		ExecutorID: "turn_root",
 		Interrupts: []transcript.Interrupt{interrupt},
-		Capabilities: rundomain.Capabilities{
-			InterruptKinds: []interruptdomain.Kind{interruptdomain.Question},
-		},
 		Bindings: []InterruptBinding{{
 			InterruptItemID: interrupt.ItemID,
 			MemberID:        "member_root",

@@ -112,11 +112,15 @@ func waitingContinuationFromPending(
 	if err != nil {
 		return WaitingContinuation{}, err
 	}
+	root, found := parkedRunsByID(parked)[pending.RootRunID]
+	if !found {
+		return WaitingContinuation{}, fmt.Errorf("runs: waiting root Run %q is not parked", pending.RootRunID)
+	}
 	return NewWaitingContinuation(WaitingContinuation{
 		SessionID: pending.SessionID, ExecutorID: pending.ExecutorID,
 		RootRunID: pending.RootRunID, Members: members, Checkpoint: checkpoint.Clone(),
-		Capabilities:      pending.Capabilities,
-		GoalIncarnationID: pending.GoalIncarnationID,
+		Capabilities:      root.Capabilities(),
+		GoalIncarnationID: root.GoalIncarnationID(),
 		Workspace:         sess.Workspace().Path(),
 		Isolated:          sess.Isolated(),
 	})
@@ -134,8 +138,8 @@ func waitingMembersFromPending(pending Pending, parked []run.Run) ([]WaitingMemb
 		}
 		members[index] = WaitingMember{
 			RunID: continuation.RunID, MemberID: continuation.MemberID,
-			ParentRunID:     continuation.Lineage.ParentRunID,
-			SpawnedByItemID: continuation.Lineage.SpawnedByItemID,
+			ParentRunID:     value.Lineage().ParentRunID,
+			SpawnedByItemID: value.Lineage().SpawnedByItemID,
 			ModelSelection:  value.ModelSelection(), Metrics: value.Metrics(),
 			DrainedTools: continuation.DrainedTools,
 		}

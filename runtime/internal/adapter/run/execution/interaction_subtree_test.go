@@ -161,15 +161,16 @@ func waitingDelegateContinuation(barrier runs.TreeBarrierCommit, workspace strin
 	for _, member := range pending.Continuations {
 		members = append(members, runs.WaitingMember{
 			RunID: member.RunID, MemberID: member.MemberID,
-			ParentRunID: member.Lineage.ParentRunID, SpawnedByItemID: member.Lineage.SpawnedByItemID,
-			ModelSelection: parked[member.RunID].ModelSelection(), Metrics: parked[member.RunID].Metrics(),
+			ParentRunID:     parked[member.RunID].Lineage().ParentRunID,
+			SpawnedByItemID: parked[member.RunID].Lineage().SpawnedByItemID,
+			ModelSelection:  parked[member.RunID].ModelSelection(), Metrics: parked[member.RunID].Metrics(),
 			DrainedTools: slices.Clone(member.DrainedTools),
 		})
 	}
 	return runs.WaitingContinuation{
 		SessionID: pending.SessionID, ExecutorID: pending.ExecutorID,
 		RootRunID: pending.RootRunID, Members: members,
-		Checkpoint: barrier.Checkpoint(), Capabilities: pending.Capabilities,
-		GoalIncarnationID: pending.GoalIncarnationID, Workspace: workspace,
+		Checkpoint: barrier.Checkpoint(), Capabilities: parked[pending.RootRunID].Capabilities(),
+		GoalIncarnationID: parked[pending.RootRunID].GoalIncarnationID(), Workspace: workspace,
 	}
 }

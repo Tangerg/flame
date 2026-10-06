@@ -28,10 +28,10 @@ func systemInvariants() []invariantEntry {
 			"atomically; clients would observe only part of a barrier that can never move.",
 		Boundaries: []string{"runsegment.event", "runs.recovery"},
 	}, {
-		Key: "parked_continuation_matches_run_facts",
-		Why: "A continuation is a hand-off of the admitted Run, not a second author. " +
-			"If its model, cumulative accounting, lineage, creation time, goal " +
-			"lease or capabilities differ, resume or teardown would rewrite history.",
+		Key: "parked_continuation_restates_no_run_fact",
+		Why: "A continuation names the parked Runs and nothing they own. Their model, " +
+			"accounting, lineage, creation time, Goal incarnation and capabilities are " +
+			"read from the Runs, so a resume or teardown cannot write a second version.",
 		Boundaries: []string{
 			"runsegment.opening",
 			"runsegment.event",

@@ -33,13 +33,16 @@ type fakeRunSessions struct {
 	activeObserve  sync.Once
 	createdTitle   string
 	pending        map[string]Pending
-	canceledRunID  string
-	cancelReason   string
-	canceledAt     time.Time
-	lostRunID      string
-	lostAt         time.Time
-	lostErr        error
-	operations     *[]string
+	// facts are the parked Runs' own facts by root Run, when a test needs
+	// other than its fixture's.
+	facts         map[string]parkedFacts
+	canceledRunID string
+	cancelReason  string
+	canceledAt    time.Time
+	lostRunID     string
+	lostAt        time.Time
+	lostErr       error
+	operations    *[]string
 }
 
 // claimedResumeSessions models the durable visibility change made by
@@ -401,8 +404,12 @@ func newUseCaseCoordinator(exec ExecutionObserver, control *fakeExecutionPorts, 
 	}}
 	if fake, ok := sessions.(*fakeRunSessions); ok {
 		for _, pending := range fake.pending {
-			for _, continuation := range pending.Continuations {
-				projection.runs[continuation.RunID] = runForContinuation(pending, continuation)
+			facts, found := fake.facts[pending.RootRunID]
+			if !found {
+				facts = fixtureFacts(pending)
+			}
+			for _, parked := range parkedTree(pending, facts) {
+				projection.runs[parked.ID()] = parked
 			}
 		}
 	}
@@ -1717,13 +1724,14 @@ func TestResumeOpeningFailureReportsReleaseAfterDurableRunLost(t *testing.T) {
 func TestResumeRehydrateRestoresChildSourceProjection(t *testing.T) {
 	createdAt := time.Date(2026, 7, 30, 12, 0, 0, 0, time.UTC)
 	pending := resumedTreePending(createdAt)
-	pending.Capabilities.ChildRuns = true
-	pending.GoalIncarnationID = "goal-lease-1"
+	facts := fixtureFacts(pending)
+	facts.goalIncarnationID = "goal-lease-1"
 	sessions := &fakeRunSessions{
 		sess: testsupport.MustRestoreSession(session.Snapshot{ID: pending.SessionID, Workspace: testsupport.MustWorkspace("/work")}),
 		pending: map[string]Pending{
 			pending.RootRunID: pending,
 		},
+		facts: map[string]parkedFacts{pending.RootRunID: facts},
 	}
 	control := &fakeExecutionPorts{
 		prepareErr: ErrExecutorNotLive,
@@ -1741,7 +1749,7 @@ func TestResumeRehydrateRestoresChildSourceProjection(t *testing.T) {
 	}
 	result, err := c.Resume(t.Context(), ResumeCommand{
 		RunID:              pending.RootRunID,
-		CallerCapabilities: pending.Capabilities,
+		CallerCapabilities: facts.capabilities,
 		Responses: []ResumeResponse{
 			{
 				ItemID:   "item_grandchild",
@@ -1765,8 +1773,8 @@ func TestResumeRehydrateRestoresChildSourceProjection(t *testing.T) {
 	if control.continuation.Checkpoint.RootMemberID != "member_root" {
 		t.Fatalf("continuation member = %q, want member_root", control.continuation.Checkpoint.RootMemberID)
 	}
-	if control.continuation.GoalIncarnationID != pending.GoalIncarnationID {
-		t.Fatalf("continuation goal incarnation = %q, want %q", control.continuation.GoalIncarnationID, pending.GoalIncarnationID)
+	if control.continuation.GoalIncarnationID != facts.goalIncarnationID {
+		t.Fatalf("continuation goal incarnation = %q, want %q", control.continuation.GoalIncarnationID, facts.goalIncarnationID)
 	}
 	wantChildRuns := map[string]ChildRunBinding{
 		"member_grandchild": {MemberID: "member_grandchild", RunID: "run_grandchild", ParentRunID: "run_a"},
@@ -1787,12 +1795,14 @@ func TestResumeRehydrateRestoresChildSourceProjection(t *testing.T) {
 func TestResumeRehydrateRestoresChildAdmissionBeforeAnyChildExists(t *testing.T) {
 	createdAt := time.Date(2026, 7, 30, 12, 0, 0, 0, time.UTC)
 	pending := testApprovalPending("member_root", createdAt)
-	pending.Capabilities.ChildRuns = true
+	facts := fixtureFacts(pending)
+	facts.capabilities.ChildRuns = true
 	sessions := &fakeRunSessions{
 		sess: testsupport.MustRestoreSession(session.Snapshot{ID: pending.SessionID, Workspace: testsupport.MustWorkspace("/work")}),
 		pending: map[string]Pending{
 			pending.RootRunID: pending,
 		},
+		facts: map[string]parkedFacts{pending.RootRunID: facts},
 	}
 	control := &fakeExecutionPorts{
 		prepareErr: ErrExecutorNotLive,
@@ -1805,7 +1815,7 @@ func TestResumeRehydrateRestoresChildAdmissionBeforeAnyChildExists(t *testing.T)
 
 	result, err := c.Resume(t.Context(), ResumeCommand{
 		RunID:              pending.RootRunID,
-		CallerCapabilities: pending.Capabilities,
+		CallerCapabilities: facts.capabilities,
 		Responses: []ResumeResponse{{
 			ItemID: "item_1",
 			Kind:   interrupt.Approval,
@@ -1883,9 +1893,6 @@ func testApprovalPending(memberID string, runCreatedAt time.Time) Pending {
 		SessionID:  "ses_1",
 		ExecutorID: "turn_1",
 		Interrupts: interruptValues,
-		Capabilities: run.Capabilities{
-			InterruptKinds: []interrupt.Kind{interrupt.Approval},
-		},
 		Bindings: []InterruptBinding{{
 			InterruptItemID: interruptItemID,
 			MemberID:        memberID,
@@ -1898,33 +1905,6 @@ func testApprovalPending(memberID string, runCreatedAt time.Time) Pending {
 		}},
 		CreatedAt: runCreatedAt.Add(time.Second),
 	}
-}
-
-func runForPending(pending Pending) run.Run {
-	root, _ := pending.RootContinuation()
-	return runForContinuation(pending, root)
-}
-
-func runForContinuation(
-	pending Pending,
-	continuation Continuation,
-) run.Run {
-	goalIncarnationID := ""
-	if continuation.RunID == pending.RootRunID {
-		goalIncarnationID = pending.GoalIncarnationID
-	}
-	return testsupport.MustRestoreRun(run.Snapshot{ID: continuation.RunID,
-		SessionID: pending.SessionID,
-
-		ModelSelection:    testsupport.DefaultModelSelection(),
-		GoalIncarnationID: goalIncarnationID,
-		State:             run.Waiting,
-		Capabilities:      pending.Capabilities,
-		CreatedAt:         pending.CreatedAt.Add(-time.Second),
-		MessageMark:       run.UnknownMessageMark, Lineage: run.Lineage{SpawnedByItemID: continuation.Lineage.SpawnedByItemID,
-			ParentRunID: continuation.Lineage.ParentRunID,
-			RootRunID:   continuation.Lineage.RootRunID}})
-
 }
 
 func TestCancelParkedRunUsesApplicationAdmission(t *testing.T) {

@@ -391,7 +391,7 @@ func (c *Coordinator) resumeAfterWaitingChildCancellation(
 		Isolated:          sess.Isolated(),
 		ExecutorID:        plan.executor.ExecutorID,
 		ModelSelection:    root.ModelSelection(),
-		GoalIncarnationID: transformation.continuation.goalIncarnationID,
+		GoalIncarnationID: transformation.continuation.goalIncarnationID(),
 		CreatedAt:         root.CreatedAt(),
 		Continuation:      transformation.continuation,
 		admission:         runAdmission,

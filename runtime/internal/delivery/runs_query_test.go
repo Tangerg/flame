@@ -389,9 +389,6 @@ func TestListInterruptsProjectsToWire(t *testing.T) {
 	reader := &fakeInterruptReader{pending: []runs.Pending{
 		{
 			RootRunID: "run_waiting", SessionID: "ses_1", ExecutorID: "turn_1",
-			Capabilities: run.Capabilities{
-				ChildRuns: true, InterruptKinds: []interrupt.Kind{interrupt.Approval},
-			},
 			Interrupts: []transcript.Interrupt{{
 				ItemID: "item_1", ItemOccurredAt: created.Add(-time.Second),
 				RunID: "run_child", Kind: interrupt.Approval,
@@ -407,9 +404,6 @@ func TestListInterruptsProjectsToWire(t *testing.T) {
 			Continuations: []runs.Continuation{
 				{
 					RunID: "run_child", MemberID: "member_child",
-					Lineage: run.Lineage{
-						SpawnedByItemID: "item_spawn", ParentRunID: "run_waiting", RootRunID: "run_waiting",
-					},
 				},
 				{
 					RunID: "run_waiting", MemberID: "member_root",
@@ -418,7 +412,10 @@ func TestListInterruptsProjectsToWire(t *testing.T) {
 			CreatedAt: created,
 		},
 	}}
-	s := &Handler{queries: mustQueryCoordinator(sessions.QueryDependencies{Interrupts: reader})}
+	root := testsupport.MustRestoreRun(run.Snapshot{ID: "run_waiting", SessionID: "ses_1", State: run.Waiting,
+		Capabilities: run.Capabilities{ChildRuns: true, InterruptKinds: []interrupt.Kind{interrupt.Approval}},
+	})
+	s := &Handler{queries: mustQueryCoordinator(sessions.QueryDependencies{Interrupts: reader, Runs: rootRunReader{root}})}
 	ctx := withClientCapabilities(protocol.ClientCapabilities{
 		Features: map[string]protocol.FeaturePreference{
 			protocol.FeatureSubagents: {Enabled: true},
@@ -451,4 +448,21 @@ func TestListInterruptsProjectsToWire(t *testing.T) {
 	if interrupt.Payload.Risk != protocol.ApprovalRiskHigh || interrupt.Payload.Reason != "Runs commands in the workspace." {
 		t.Fatalf("wire interrupt risk/reason = %q/%q", interrupt.Payload.Risk, interrupt.Payload.Reason)
 	}
+}
+
+// rootRunReader reads exactly one Run: the root of the waiting set under test.
+type rootRunReader struct {
+	root run.Run
+}
+
+func (r rootRunReader) Run(_ context.Context, runID string) (run.Run, bool, error) {
+	return r.root, runID == r.root.ID(), nil
+}
+
+func (rootRunReader) RunsWithAncestors(context.Context, []string) ([]run.Run, error) {
+	return nil, nil
+}
+
+func (rootRunReader) PageRuns(context.Context, string, []run.Status, bool, int64, string, int) ([]run.Run, error) {
+	return nil, nil
 }

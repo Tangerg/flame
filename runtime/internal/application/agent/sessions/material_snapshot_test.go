@@ -184,7 +184,6 @@ func validMaterialSnapshot() MaterialSnapshot {
 		})},
 		Interrupts: []runs.Pending{{
 			RootRunID: "run_root", SessionID: "ses_1", ExecutorID: "executor_root",
-			Capabilities: capabilities,
 			Interrupts: []transcript.Interrupt{{
 				ItemID: "item_question", ItemOccurredAt: createdAt,
 				RunID: "run_root", Kind: interrupt.Question, Question: question,
@@ -219,7 +218,6 @@ func validApprovalMaterialSnapshot() MaterialSnapshot {
 		Kind: transcript.ToolCall, Status: transcript.ItemRunning,
 		OccurredAt: snapshot.Items[0].OccurredAt(), Tool: &invocation,
 	})
-	snapshot.Interrupts[0].Capabilities = capabilities
 	snapshot.Interrupts[0].Interrupts = []transcript.Interrupt{{
 		ItemID: "item_approval", ItemOccurredAt: snapshot.Items[0].OccurredAt(),
 		RunID: "run_root", Kind: interrupt.Approval, Approval: pendingApproval,

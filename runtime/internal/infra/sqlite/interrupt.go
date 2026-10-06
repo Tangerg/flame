@@ -6,12 +6,11 @@ import (
 	"encoding/json/jsontext"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -38,22 +37,19 @@ type InterruptStore struct {
 // waiting-tree hand-off. Application semantics belong to the persistence
 // adapter; this record only names the values required by the storage codec.
 type InterruptRecord struct {
-	RootRunID         string
-	SessionID         string
-	ExecutorID        string
-	GoalIncarnationID string
-	Interrupts        []transcript.Interrupt
-	Bindings          []InterruptBindingRecord
-	Continuations     []ContinuationRecord
-	Capabilities      run.Capabilities
-	CreatedAt         time.Time
+	RootRunID     string
+	SessionID     string
+	ExecutorID    string
+	Interrupts    []transcript.Interrupt
+	Bindings      []InterruptBindingRecord
+	Continuations []ContinuationRecord
+	CreatedAt     time.Time
 }
 
 // ContinuationRecord is the stored continuation row for one Run.
 type ContinuationRecord struct {
 	RunID        string
 	MemberID     string
-	Lineage      run.Lineage
 	DrainedTools []DrainedToolRecord
 }
 
@@ -89,9 +85,6 @@ func (i InterruptRecord) validateStorageShape() error {
 		return err
 	}
 	if err := resourceid.ValidateSession(i.SessionID); err != nil {
-		return err
-	}
-	if _, _, err := goalref.ParseOptionalIncarnation(i.GoalIncarnationID); err != nil {
 		return err
 	}
 	if err := runtimeidentity.ValidateExecutor(i.ExecutorID); err != nil {
@@ -186,7 +179,7 @@ func (i *InterruptStore) Open(ctx context.Context, p InterruptRecord) error {
 	if err != nil {
 		return fmt.Errorf("sqlite: encode interrupt bindings: %w", err)
 	}
-	if err := i.requireRunFacts(ctx, p); err != nil {
+	if err := i.requireTreeRuns(ctx, p); err != nil {
 		return err
 	}
 	result, err := conn(ctx, i.db).ExecContext(ctx,
@@ -236,76 +229,39 @@ func (i *InterruptStore) Open(ctx context.Context, p InterruptRecord) error {
 	return nil
 }
 
-// interruptColumns reads one hand-off beside the Run facts it depends on. The
-// root Run owns the Goal incarnation and capabilities and every member Run
-// owns its lineage; the hand-off stores none of them, so they are read from
-// runs rather than kept as a second copy to disagree with.
+// interruptColumns reads one hand-off. Its Runs own their lineage,
+// capabilities and Goal incarnation; the hand-off only names them.
 const interruptColumns = `root_run_id, session_id, executor_id,
-	(SELECT goal_incarnation_id FROM runs WHERE runs.run_id = interrupts.root_run_id AND runs.session_id = interrupts.session_id),
-	root_member_id, payload, continuations, interrupt_bindings,
-	(SELECT capabilities FROM runs WHERE runs.run_id = interrupts.root_run_id AND runs.session_id = interrupts.session_id),
-	` + treeLineagesColumn + `,
-	created_at`
+	root_member_id, payload, continuations, interrupt_bindings, created_at`
 
-// treeLineagesColumn maps every Run of the hand-off's tree to its lineage.
-const treeLineagesColumn = `(SELECT json_group_object(run_id, json_array(spawned_by_item_id, parent_run_id, root_run_id))
-	   FROM runs
-	  WHERE runs.session_id = interrupts.session_id
-	    AND (runs.run_id = interrupts.root_run_id OR runs.root_run_id = interrupts.root_run_id))`
-
-// requireRunFacts proves, in the hand-off's transaction, that the Run facts
-// the record carries are the Runs' own: the hand-off never stores them, so a
-// record naming other facts describes a tree that does not exist.
-func (i *InterruptStore) requireRunFacts(ctx context.Context, p InterruptRecord) error {
-	var goalIncarnationID, capabilities string
-	var lineages sql.NullString
+// requireTreeRuns proves, in the hand-off's transaction, that the Runs it names
+// are its root Run in this Session and that root's descendants.
+func (i *InterruptStore) requireTreeRuns(ctx context.Context, p InterruptRecord) error {
+	var members sql.NullString
 	err := conn(ctx, i.db).QueryRowContext(ctx,
-		`SELECT goal_incarnation_id, capabilities,
-		        (SELECT json_group_object(run_id, json_array(spawned_by_item_id, parent_run_id, root_run_id))
+		`SELECT (SELECT json_group_array(member.run_id)
 		           FROM runs AS member
 		          WHERE member.session_id = root.session_id
 		            AND (member.run_id = root.run_id OR member.root_run_id = root.run_id))
-		   FROM runs AS root WHERE root.run_id = ? AND root.session_id = ?`,
+		   FROM runs AS root WHERE root.run_id = ? AND root.session_id = ? AND root.root_run_id = ''`,
 		p.RootRunID, p.SessionID,
-	).Scan(&goalIncarnationID, &capabilities, &lineages)
+	).Scan(&members)
 	if errors.Is(err, sql.ErrNoRows) {
-		return fmt.Errorf("%w: Pending root Run %q is not a Run of Session %q", transcript.ErrIdentityConflict, p.RootRunID, p.SessionID)
+		return fmt.Errorf("%w: Pending root Run %q is not a root Run of Session %q", transcript.ErrIdentityConflict, p.RootRunID, p.SessionID)
 	}
 	if err != nil {
 		return fmt.Errorf("sqlite: inspect Pending root Run %q: %w", p.RootRunID, err)
 	}
-	stored, err := decodeRunCapabilities(capabilities)
-	if err != nil {
-		return err
-	}
-	if goalIncarnationID != p.GoalIncarnationID || !stored.Equal(p.Capabilities) {
-		return fmt.Errorf("%w: Pending root Run %q facts differ from the Run", transcript.ErrIdentityConflict, p.RootRunID)
-	}
-	byRun, err := decodeTreeLineages(lineages)
-	if err != nil {
-		return err
+	var runIDs []string
+	if err := decodeStoredJSON([]byte(members.String), &runIDs); err != nil {
+		return fmt.Errorf("sqlite: decode Pending tree Runs: %w", err)
 	}
 	for _, continuation := range p.Continuations {
-		if lineage, found := byRun[continuation.RunID]; !found || lineage != continuation.Lineage {
-			return fmt.Errorf("%w: Pending continuation %q lineage differs from its Run", transcript.ErrIdentityConflict, continuation.RunID)
+		if !slices.Contains(runIDs, continuation.RunID) {
+			return fmt.Errorf("%w: Pending continuation %q is not a Run of its tree", transcript.ErrIdentityConflict, continuation.RunID)
 		}
 	}
 	return nil
-}
-
-func decodeTreeLineages(encoded sql.NullString) (map[string]run.Lineage, error) {
-	if !encoded.Valid {
-		return nil, errors.New("sqlite: Pending tree has no Runs")
-	}
-	var rows map[string][3]string
-	if err := decodeStoredJSON([]byte(encoded.String), &rows); err != nil {
-		return nil, fmt.Errorf("sqlite: decode Pending tree lineages: %w", err)
-	}
-	lineages := make(map[string]run.Lineage, len(rows))
-	for runID, row := range rows {
-		lineages[runID] = run.Lineage{SpawnedByItemID: row[0], ParentRunID: row[1], RootRunID: row[2]}
-	}
-	return lineages, nil
 }
 
 func (i *InterruptStore) List(ctx context.Context, sessionID string) ([]InterruptRecord, error) {
@@ -583,22 +539,16 @@ func scanPending(row scanRow) (InterruptRecord, error) {
 		rootMemberID    string
 		continuations   string
 		encodedBindings string
-		goalIncarnation sql.NullString
-		capabilities    sql.NullString
-		lineages        sql.NullString
 		createdNs       int64
 	)
 	if err := row.Scan(
 		&p.RootRunID,
 		&p.SessionID,
 		&p.ExecutorID,
-		&goalIncarnation,
 		&rootMemberID,
 		&payload,
 		&continuations,
 		&encodedBindings,
-		&capabilities,
-		&lineages,
 		&createdNs,
 	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -614,25 +564,12 @@ func scanPending(row scanRow) (InterruptRecord, error) {
 	if decodeInterruptJSONErr := decodeStoredJSON([]byte(continuations), &continuationValues); decodeInterruptJSONErr != nil {
 		return InterruptRecord{}, fmt.Errorf("sqlite: decode interrupt continuations: %w", decodeInterruptJSONErr)
 	}
-	if !goalIncarnation.Valid || !capabilities.Valid {
-		return InterruptRecord{}, fmt.Errorf("sqlite: decode interrupt %q: its root Run is absent", p.RootRunID)
-	}
-	p.GoalIncarnationID = goalIncarnation.String
-	byRun, err := decodeTreeLineages(lineages)
-	if err != nil {
-		return InterruptRecord{}, err
-	}
-	if p.Continuations, err = continuationsFromRows(continuationValues, byRun); err != nil {
-		return InterruptRecord{}, fmt.Errorf("sqlite: decode interrupt continuations: %w", err)
-	}
+	p.Continuations = continuationsFromRows(continuationValues)
 	var bindingValues []interruptBindingRow
 	if decodeInterruptJSONErr := decodeStoredJSON([]byte(encodedBindings), &bindingValues); decodeInterruptJSONErr != nil {
 		return InterruptRecord{}, fmt.Errorf("sqlite: decode input-request bindings: %w", decodeInterruptJSONErr)
 	}
 	p.Bindings = interruptBindingsFromRows(bindingValues)
-	if p.Capabilities, err = decodeRunCapabilities(capabilities.String); err != nil {
-		return InterruptRecord{}, err
-	}
 	p.CreatedAt = time.Unix(0, createdNs).UTC()
 	if err := p.validateStorageShape(); err != nil {
 		return InterruptRecord{}, fmt.Errorf("sqlite: decode interrupt %q: %w", p.RootRunID, err)
@@ -699,21 +636,16 @@ func continuationRows(values []ContinuationRecord) []continuationRow {
 	return rows
 }
 
-func continuationsFromRows(rows []continuationRow, lineages map[string]run.Lineage) ([]ContinuationRecord, error) {
+func continuationsFromRows(rows []continuationRow) []ContinuationRecord {
 	values := make([]ContinuationRecord, len(rows))
 	for index, row := range rows {
-		lineage, found := lineages[row.RunID]
-		if !found {
-			return nil, fmt.Errorf("continuation[%d] Run %q is absent", index, row.RunID)
-		}
 		values[index] = ContinuationRecord{
 			RunID:        row.RunID,
 			MemberID:     row.MemberID,
-			Lineage:      lineage,
 			DrainedTools: drainedToolsFromRows(row.DrainedTools),
 		}
 	}
-	return values, nil
+	return values
 }
 
 func interruptPayloads(values []transcript.Interrupt) ([]interruptPayload, error) {

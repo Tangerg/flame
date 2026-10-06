@@ -135,9 +135,6 @@ func bootstrapPending(
 		RootRunID:  runID,
 		SessionID:  sessionID,
 		ExecutorID: "turn_" + runID,
-		Capabilities: run.Capabilities{
-			InterruptKinds: []interrupt.Kind{interrupt.Question},
-		},
 		Interrupts: []transcript.Interrupt{{
 			ItemID: itemID, ItemOccurredAt: itemOccurredAt,
 			RunID:    runID,
@@ -340,7 +337,6 @@ func parkWithGoalLease(
 		parkCreatedAt,
 		time.Unix(0, 0).UTC(),
 	)
-	pending.GoalIncarnationID = goalIncarnationID
 	if err := ints.Open(ctx, pending); err != nil {
 		t.Fatalf("open interrupt: %v", err)
 	}

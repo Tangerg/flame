@@ -9726,8 +9726,8 @@
       ]
     },
     {
-      "key": "parked_continuation_matches_run_facts",
-      "why": "A continuation is a hand-off of the admitted Run, not a second author. If its model, cumulative accounting, lineage, creation time, goal lease or capabilities differ, resume or teardown would rewrite history.",
+      "key": "parked_continuation_restates_no_run_fact",
+      "why": "A continuation names the parked Runs and nothing they own. Their model, accounting, lineage, creation time, Goal incarnation and capabilities are read from the Runs, so a resume or teardown cannot write a second version.",
       "boundaries": [
         "runsegment.opening",
         "runsegment.event",

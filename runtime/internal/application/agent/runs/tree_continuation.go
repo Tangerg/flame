@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
@@ -22,15 +21,23 @@ type treeContinuation struct {
 	rootRunID           string
 	sessionID           string
 	executorID          string
-	goalIncarnationID   string
 	interrupts          []transcript.Interrupt
 	approvalResolutions map[string]ToolApprovalResolution
 	continuations       []Continuation
 	// runs are the parked Runs the continuations hand off, by ID. A resumed
 	// route reads its admission, accounting and creation from them; the
 	// continuation carries none of those facts.
-	runs         map[string]run.Run
-	capabilities run.Capabilities
+	runs map[string]run.Run
+}
+
+// goalIncarnationID is the parked root Run's Goal incarnation.
+func (t *treeContinuation) goalIncarnationID() string {
+	return t.runs[t.rootRunID].GoalIncarnationID()
+}
+
+// capabilities is the parked root Run's frozen optional behavior.
+func (t *treeContinuation) capabilities() run.Capabilities {
+	return t.runs[t.rootRunID].Capabilities()
 }
 
 func parkedRunsByID(parked []run.Run) map[string]run.Run {
@@ -97,14 +104,12 @@ func treeContinuationFromPending(pending Pending, parked []run.Run) (*treeContin
 		return nil, err
 	}
 	continuation := &treeContinuation{
-		rootRunID:         pending.RootRunID,
-		sessionID:         pending.SessionID,
-		executorID:        pending.ExecutorID,
-		goalIncarnationID: pending.GoalIncarnationID,
-		interrupts:        slices.Clone(pending.Interrupts),
-		continuations:     slices.Clone(pending.Continuations),
-		runs:              parkedRunsByID(parked),
-		capabilities:      pending.Capabilities,
+		rootRunID:     pending.RootRunID,
+		sessionID:     pending.SessionID,
+		executorID:    pending.ExecutorID,
+		interrupts:    slices.Clone(pending.Interrupts),
+		continuations: slices.Clone(pending.Continuations),
+		runs:          parkedRunsByID(parked),
 	}
 	if err := continuation.validate(); err != nil {
 		return nil, err
@@ -122,8 +127,8 @@ func (t *treeContinuation) validate() error {
 	if err := resourceid.ValidateSession(t.sessionID); err != nil {
 		return fmt.Errorf("runs: tree continuation: %w", err)
 	}
-	if _, _, err := goalref.ParseOptionalIncarnation(t.goalIncarnationID); err != nil {
-		return fmt.Errorf("runs: tree continuation: %w", err)
+	if _, parked := t.runs[t.rootRunID]; !parked {
+		return errors.New("runs: tree continuation root Run is not parked")
 	}
 	if err := runtimeidentity.ValidateExecutor(t.executorID); err != nil {
 		return fmt.Errorf("runs: tree continuation: %w", err)
@@ -151,14 +156,15 @@ func (t *treeContinuation) validate() error {
 				member.RunID,
 			)
 		}
-		if _, parked := t.runs[member.RunID]; !parked {
+		parked, found := t.runs[member.RunID]
+		if !found {
 			return fmt.Errorf("runs: tree continuation Run %q is not a parked Run", member.RunID)
 		}
 		runIDs[member.RunID] = struct{}{}
 		memberOwners[member.MemberID] = member.RunID
 		members = append(members, run.TreeMember{
 			RunID:   member.RunID,
-			Lineage: member.Lineage,
+			Lineage: parked.Lineage(),
 		})
 	}
 	tree, err := run.NewTree(t.rootRunID, members)

@@ -97,7 +97,7 @@ func TestCommitOpeningResumePreservesAnswerClaimOnRollback(t *testing.T) {
 	)
 	// The stale hand-off names a Run that has since ended, so the Session's
 	// active root is another Run.
-	seedPending(t, db, stalePending)
+	seedPending(t, db, stalePending, questionCapabilities())
 	if _, err := db.ExecContext(ctx, `UPDATE runs SET state = 'terminal' WHERE run_id = 'run_stale'`); err != nil {
 		t.Fatalf("end stale Run: %v", err)
 	}
@@ -159,7 +159,7 @@ func TestCommitOpeningResumeCommitsWholeWriteSet(t *testing.T) {
 		t,
 		"run_1", "ses_1", "member_1", "request_1", "item_question", time.Now().UTC(),
 	)
-	seedPending(t, db, pending)
+	seedPending(t, db, pending, questionCapabilities())
 	if openErr := ints.Open(ctx, pending); openErr != nil {
 		t.Fatalf("seed interrupt: %v", openErr)
 	}
@@ -706,20 +706,19 @@ func newOpeningResumeFixture(t *testing.T, suspendRoot bool) openingResumeFixtur
 	}
 	pending := runs.Pending{
 		RootRunID: "run_root", SessionID: "session_1", ExecutorID: "turn_1",
-		Capabilities: run.Capabilities{
-			ChildRuns: true, InterruptKinds: []interrupt.Kind{interrupt.Question},
-		},
 		Interrupts: childInterrupts,
 		Bindings: []runs.InterruptBinding{{
 			InterruptItemID: "item_child", MemberID: "member_child", RequestID: "request_child",
 		}},
 		Continuations: []runs.Continuation{
-			{RunID: "run_child", MemberID: "member_child", Lineage: lineage},
+			{RunID: "run_child", MemberID: "member_child"},
 			{RunID: "run_root", MemberID: "member_root"},
 		},
 		CreatedAt: createdAt.Add(time.Second),
 	}
-	seedPending(t, database, pending)
+	seedPending(t, database, pending, run.Capabilities{
+		ChildRuns: true, InterruptKinds: []interrupt.Kind{interrupt.Question},
+	}, testsupport.ParkedMember{RunID: "run_child", Lineage: lineage})
 	if err := interruptStore.Open(ctx, pending); err != nil {
 		t.Fatalf("put pending: %v", err)
 	}
@@ -1131,7 +1130,7 @@ func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
 			}},
 			Run: runPointer(testsupport.MustRestoreRun(run.Snapshot{SessionID: "ses_1", ID: "run_1", State: run.Waiting,
 				ModelSelection: testsupport.DefaultModelSelection(),
-				Capabilities:   pending.Capabilities,
+				Capabilities:   questionCapabilities(),
 				CreatedAt:      createdAt, UpdatedAt: parkedAt, MessageMark: -1})),
 		}},
 		checkpoint,
@@ -1204,7 +1203,7 @@ func TestCommitTreeBarrierRollsBackCheckpointWhenRunSuspendFails(t *testing.T) {
 	parkedRun := testsupport.MustRestoreRun(run.Snapshot{
 		ID: "run_missing", SessionID: "ses_rollback", State: run.Waiting,
 		ModelSelection: testsupport.DefaultModelSelection(),
-		Capabilities:   pending.Capabilities,
+		Capabilities:   questionCapabilities(),
 		CreatedAt:      createdAt,
 		UpdatedAt:      parkedAt,
 		MessageMark:    run.UnknownMessageMark,
@@ -1272,8 +1271,8 @@ func TestClaimResumeAtomicallyRecordsAnswerAndInvalidatesCheckpoint(t *testing.T
 	runStore := sqlite.NewRunStore(db)
 	if admitErr := runStore.Admit(ctx, run.Draft{
 		RunID: pending.RootRunID, SessionID: pending.SessionID, SegmentID: "segment_claim",
-		ModelSelection: testsupport.DefaultModelSelection(), GoalIncarnationID: pending.GoalIncarnationID,
-		Capabilities: pending.Capabilities, CreatedAt: createdAt,
+		ModelSelection: testsupport.DefaultModelSelection(),
+		Capabilities:   questionCapabilities(), CreatedAt: createdAt,
 	}); admitErr != nil {
 		t.Fatalf("admit claim root Run: %v", admitErr)
 	}
@@ -1383,7 +1382,7 @@ func TestClaimResumeAtomicallyRecordsAnswerAndInvalidatesCheckpoint(t *testing.T
 	next.Bindings[0].InterruptItemID = "item_next"
 	next.Bindings[0].RequestID = "request_next"
 	next.CreatedAt = claimedAt.Add(time.Second)
-	seedPending(t, db, next)
+	seedPending(t, db, next, questionCapabilities())
 	if err := interruptStore.Open(ctx, next); err != nil {
 		t.Fatalf("advance to next quiescent barrier: %v", err)
 	}
@@ -1420,7 +1419,7 @@ func TestClaimResumeAtomicallyPersistsToolApprovalDecision(t *testing.T) {
 		t.Fatalf("tool arguments: %v", err)
 	}
 	invocation := transcript.ToolInvocation{Name: "shell", Arguments: arguments}
-	pending.Capabilities.InterruptKinds = []interrupt.Kind{interrupt.Approval}
+	approvalCapabilities := run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval}}
 	pending.Interrupts[0].Kind = interrupt.Approval
 	pending.Interrupts[0].Question = nil
 	pending.Interrupts[0].Approval = &transcript.Approval{
@@ -1456,7 +1455,7 @@ func TestClaimResumeAtomicallyPersistsToolApprovalDecision(t *testing.T) {
 	if admitErr := runStore.Admit(ctx, run.Draft{
 		RunID: pending.RootRunID, SessionID: pending.SessionID, SegmentID: "segment_approval_claim",
 		ModelSelection: testsupport.DefaultModelSelection(),
-		Capabilities:   pending.Capabilities, CreatedAt: createdAt,
+		Capabilities:   approvalCapabilities, CreatedAt: createdAt,
 	}); admitErr != nil {
 		t.Fatalf("admit Run: %v", admitErr)
 	}
@@ -1682,8 +1681,8 @@ func newResumeClaimSQLiteFixture(t *testing.T, suffix string) resumeClaimSQLiteF
 	}
 	if admitErr := runStore.Admit(ctx, run.Draft{
 		RunID: pending.RootRunID, SessionID: pending.SessionID, SegmentID: "segment_claim_" + suffix,
-		ModelSelection: testsupport.DefaultModelSelection(), GoalIncarnationID: pending.GoalIncarnationID,
-		Capabilities: pending.Capabilities, CreatedAt: createdAt,
+		ModelSelection: testsupport.DefaultModelSelection(),
+		Capabilities:   questionCapabilities(), CreatedAt: createdAt,
 	}); admitErr != nil {
 		t.Fatalf("admit claim root Run: %v", admitErr)
 	}
@@ -2126,7 +2125,7 @@ type waitingCancellationSQLiteFixture struct {
 type waitingCancellationCommitDraft struct {
 	commitID         runtimeidentity.CommitID
 	targetRunID      string
-	rootRun          run.Run
+	parkedRuns       []run.Run
 	expectedPending  runs.Pending
 	remainingPending *runs.Pending
 	checkpoint       runs.ExecutorCheckpoint
@@ -2140,7 +2139,7 @@ func waitingCancellationDraft(commit runs.WaitingSubtreeCancellationCommit) wait
 	draft := waitingCancellationCommitDraft{
 		commitID:        commit.CommitID(),
 		targetRunID:     commit.TargetRunID(),
-		rootRun:         commit.RootRun(),
+		parkedRuns:      commit.ParkedRuns(),
 		expectedPending: commit.ExpectedPending(),
 		checkpoint:      commit.Checkpoint(),
 		terminalRuns:    commit.TerminalRuns(),
@@ -2160,12 +2159,12 @@ func (d waitingCancellationCommitDraft) build() (runs.WaitingSubtreeCancellation
 	switch {
 	case d.remainingPending != nil && d.resume == nil:
 		return runs.NewParkedSubtreeCancellationCommit(
-			d.commitID, d.targetRunID, d.rootRun, d.expectedPending,
+			d.commitID, d.targetRunID, d.parkedRuns, d.expectedPending,
 			*d.remainingPending, d.checkpoint, d.terminalRuns, d.terminalItems,
 		)
 	case d.remainingPending == nil && d.resume != nil:
 		return runs.NewResumingSubtreeCancellationCommit(
-			d.commitID, d.targetRunID, d.rootRun, d.expectedPending,
+			d.commitID, d.targetRunID, d.parkedRuns, d.expectedPending,
 			d.checkpoint, d.terminalRuns, d.terminalItems, *d.resume, d.openingEvents,
 		)
 	default:
@@ -2418,12 +2417,10 @@ func newWaitingCancellationSQLiteFixtureAt(
 		{
 			RunID:    grandchildRun.ID(),
 			MemberID: "member_grandchild",
-			Lineage:  grandchildLineage,
 		},
 		{
 			RunID:    childRun.ID(),
 			MemberID: "member_child",
-			Lineage:  childLineage,
 		},
 	}
 	if survivingBoundary {
@@ -2436,7 +2433,6 @@ func newWaitingCancellationSQLiteFixtureAt(
 		pendingContinuations = append(pendingContinuations, runs.Continuation{
 			RunID:    siblingRun.ID(),
 			MemberID: "member_sibling",
-			Lineage:  siblingLineage,
 		})
 	}
 	pendingContinuations = append(pendingContinuations, runs.Continuation{
@@ -2452,7 +2448,6 @@ func newWaitingCancellationSQLiteFixtureAt(
 		RootRunID:     rootRun.ID(),
 		SessionID:     rootRun.SessionID(),
 		ExecutorID:    "turn_1",
-		Capabilities:  capabilities,
 		Interrupts:    pendingInterrupts,
 		Bindings:      pendingBindings,
 		Continuations: pendingContinuations,
@@ -2462,7 +2457,14 @@ func newWaitingCancellationSQLiteFixtureAt(
 		t.Fatalf("pending fixture: %v", validateErr)
 	}
 	interruptStore := persistence.NewInterruptStore(sqlite.NewInterruptStore(db))
-	seedPending(t, db, pending)
+	children := []testsupport.ParkedMember{
+		{RunID: grandchildRun.ID(), Lineage: grandchildLineage},
+		{RunID: childRun.ID(), Lineage: childLineage},
+	}
+	if survivingBoundary {
+		children = append(children, testsupport.ParkedMember{RunID: siblingRun.ID(), Lineage: siblingLineage})
+	}
+	seedPending(t, db, pending, capabilities, children...)
 	if openErr := interruptStore.Open(ctx, pending); openErr != nil {
 		t.Fatalf("seed Pending: %v", openErr)
 	}
@@ -2530,10 +2532,14 @@ func newWaitingCancellationSQLiteFixtureAt(
 			},
 		},
 	)
+	parkedRuns := []run.Run{grandchildRun, childRun}
+	if survivingBoundary {
+		parkedRuns = append(parkedRuns, siblingRun)
+	}
 	commit := mustWaitingCancellationCommit(t, waitingCancellationCommitDraft{
 		commitID:         testCommitID("run_commit_waiting_cancellation"),
 		targetRunID:      childRun.ID(),
-		rootRun:          rootRun,
+		parkedRuns:       append(parkedRuns, rootRun),
 		expectedPending:  pending,
 		remainingPending: remainingPending,
 		checkpoint:       replacementCheckpoint,
@@ -3179,12 +3185,15 @@ func mustConversationStore(t *testing.T, messages *sqlite.MessageStore) *persist
 	return store
 }
 
-// seedPending gives a test hand-off the Runs that own its facts.
-func seedPending(t *testing.T, db *sql.DB, pending runs.Pending) {
+// seedPending gives a test hand-off the Runs that own its facts: the root Run
+// with its capabilities, and each child member with its lineage.
+func seedPending(t *testing.T, db *sql.DB, pending runs.Pending, capabilities run.Capabilities, children ...testsupport.ParkedMember) {
 	t.Helper()
-	members := make([]testsupport.ParkedMember, len(pending.Continuations))
-	for index, continuation := range pending.Continuations {
-		members[index] = testsupport.ParkedMember{RunID: continuation.RunID, Lineage: continuation.Lineage}
-	}
-	testsupport.SeedParkedRuns(t, db, pending.SessionID, pending.RootRunID, pending.GoalIncarnationID, pending.Capabilities, members)
+	members := append([]testsupport.ParkedMember{{RunID: pending.RootRunID}}, children...)
+	testsupport.SeedParkedRuns(t, db, pending.SessionID, pending.RootRunID, "", capabilities, members)
+}
+
+// questionCapabilities is the Run contract singleRunPending's question needs.
+func questionCapabilities() run.Capabilities {
+	return run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}}
 }

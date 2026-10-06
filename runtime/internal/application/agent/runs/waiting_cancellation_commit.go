@@ -24,11 +24,13 @@ type WaitingSubtreeCancellationCommit struct {
 type waitingSubtreeCancellationState struct {
 	// CommitID identifies the complete cancellation transaction. A cancellation
 	// that resumes the surviving tree reuses its OpeningCommit identity.
-	CommitID         runtimeidentity.CommitID
-	RootRunID        string
-	TargetRunID      string
-	SessionID        string
-	RootRun          rundomain.Run
+	CommitID    runtimeidentity.CommitID
+	RootRunID   string
+	TargetRunID string
+	SessionID   string
+	// ParkedRuns is the complete waiting tree before the cancellation. Its Runs
+	// own the lineage, capabilities and Goal incarnation the Pending names.
+	ParkedRuns       []rundomain.Run
 	ExpectedPending  Pending
 	RemainingPending *Pending
 	Checkpoint       ExecutorCheckpoint
@@ -46,7 +48,7 @@ type waitingSubtreeCancellationState struct {
 func NewParkedSubtreeCancellationCommit(
 	commitID runtimeidentity.CommitID,
 	targetRunID string,
-	rootRun rundomain.Run,
+	parkedRuns []rundomain.Run,
 	expectedPending Pending,
 	remainingPending Pending,
 	checkpoint ExecutorCheckpoint,
@@ -56,7 +58,7 @@ func NewParkedSubtreeCancellationCommit(
 	return newWaitingSubtreeCancellationCommit(waitingSubtreeCancellationState{
 		CommitID: commitID, RootRunID: expectedPending.RootRunID,
 		TargetRunID: targetRunID, SessionID: expectedPending.SessionID,
-		RootRun: rootRun, ExpectedPending: expectedPending,
+		ParkedRuns: parkedRuns, ExpectedPending: expectedPending,
 		RemainingPending: &remainingPending, Checkpoint: checkpoint,
 		TerminalRuns: terminalRuns, TerminalItems: terminalItems,
 	})
@@ -67,7 +69,7 @@ func NewParkedSubtreeCancellationCommit(
 func NewResumingSubtreeCancellationCommit(
 	commitID runtimeidentity.CommitID,
 	targetRunID string,
-	rootRun rundomain.Run,
+	parkedRuns []rundomain.Run,
 	expectedPending Pending,
 	checkpoint ExecutorCheckpoint,
 	terminalRuns []rundomain.Replacement,
@@ -78,7 +80,7 @@ func NewResumingSubtreeCancellationCommit(
 	return newWaitingSubtreeCancellationCommit(waitingSubtreeCancellationState{
 		CommitID: commitID, RootRunID: expectedPending.RootRunID,
 		TargetRunID: targetRunID, SessionID: expectedPending.SessionID,
-		RootRun: rootRun, ExpectedPending: expectedPending,
+		ParkedRuns: parkedRuns, ExpectedPending: expectedPending,
 		Checkpoint: checkpoint, TerminalRuns: terminalRuns,
 		TerminalItems: terminalItems,
 		Resume:        &resume, OpeningEvents: openingEvents,
@@ -94,6 +96,7 @@ func newWaitingSubtreeCancellationCommit(
 		state.RemainingPending = &remaining
 	}
 	state.Checkpoint = state.Checkpoint.Clone()
+	state.ParkedRuns = slices.Clone(state.ParkedRuns)
 	state.TerminalRuns = slices.Clone(state.TerminalRuns)
 	state.TerminalItems = slices.Clone(state.TerminalItems)
 	if state.Resume != nil {
@@ -122,8 +125,25 @@ func (w WaitingSubtreeCancellationCommit) TargetRunID() string { return w.state.
 // SessionID returns the Session that owns the complete tree.
 func (w WaitingSubtreeCancellationCommit) SessionID() string { return w.state.SessionID }
 
+// ParkedRuns returns the complete waiting tree before the cancellation.
+func (w WaitingSubtreeCancellationCommit) ParkedRuns() []rundomain.Run {
+	return slices.Clone(w.state.ParkedRuns)
+}
+
 // RootRun returns the root Run snapshot before the disposition is applied.
-func (w WaitingSubtreeCancellationCommit) RootRun() rundomain.Run { return w.state.RootRun }
+func (w WaitingSubtreeCancellationCommit) RootRun() rundomain.Run {
+	root, _ := w.state.parkedRun(w.state.RootRunID)
+	return root
+}
+
+func (c waitingSubtreeCancellationState) parkedRun(runID string) (rundomain.Run, bool) {
+	for _, value := range c.ParkedRuns {
+		if value.ID() == runID {
+			return value, true
+		}
+	}
+	return rundomain.Run{}, false
+}
 
 // ExpectedPending returns an isolated copy of the waiting barrier being claimed.
 func (w WaitingSubtreeCancellationCommit) ExpectedPending() Pending {
@@ -243,25 +263,15 @@ func validateWaitingCancellationBoundary(c waitingSubtreeCancellationState) erro
 	if err := resourceid.ValidateSession(c.SessionID); err != nil {
 		return fmt.Errorf("runs: waiting cancellation: %w", err)
 	}
-	if c.RootRun.ID() != c.RootRunID || c.RootRun.SessionID() != c.SessionID ||
-		!c.RootRun.Lineage().IsRoot() || c.RootRun.State() != rundomain.Waiting {
-		return errors.New("runs: waiting cancellation root snapshot is invalid")
-	}
 	if err := c.ExpectedPending.ValidateForTree(c.SessionID, c.RootRunID); err != nil {
 		return fmt.Errorf("runs: waiting cancellation expected Pending: %w", err)
+	}
+	if err := validatePendingRunTree(c.ExpectedPending, c.ParkedRuns); err != nil {
+		return fmt.Errorf("runs: waiting cancellation: %w", err)
 	}
 	rootContinuation, found := c.ExpectedPending.RootContinuation()
 	if !found {
 		return errors.New("runs: waiting cancellation expected Pending has no root continuation")
-	}
-	if c.RootRun.GoalIncarnationID() != c.ExpectedPending.GoalIncarnationID {
-		return errors.New("runs: waiting cancellation root Run goal incarnation differs from Pending")
-	}
-	if !c.RootRun.Capabilities().Equal(c.ExpectedPending.Capabilities) {
-		return errors.New("runs: waiting cancellation root Run capabilities differ from Pending")
-	}
-	if err := validateWaitingRunContinuation(c.RootRun, rootContinuation); err != nil {
-		return fmt.Errorf("runs: waiting cancellation root Run: %w", err)
 	}
 	if err := c.Checkpoint.ValidateOwnership(rootContinuation.MemberID, c.SessionID); err != nil {
 		return fmt.Errorf("runs: waiting cancellation checkpoint ownership: %w", err)
@@ -301,7 +311,11 @@ func buildWaitingCancellationTopology(
 	members := make([]rundomain.TreeMember, 0, len(c.ExpectedPending.Continuations))
 	continuationByRunID := make(map[string]Continuation, len(c.ExpectedPending.Continuations))
 	for _, continuation := range c.ExpectedPending.Continuations {
-		members = append(members, rundomain.TreeMember{RunID: continuation.RunID, Lineage: continuation.Lineage})
+		parked, found := c.parkedRun(continuation.RunID)
+		if !found {
+			return waitingCancellationTopology{}, fmt.Errorf("runs: waiting cancellation continuation Run %q is not parked", continuation.RunID)
+		}
+		members = append(members, rundomain.TreeMember{RunID: continuation.RunID, Lineage: parked.Lineage()})
 		continuationByRunID[continuation.RunID] = continuation
 	}
 	tree, err := rundomain.NewTree(c.RootRunID, members)
@@ -348,18 +362,14 @@ func (w *waitingCancellationValidation) validateTerminalRuns() error {
 		expected := replacement.Expected()
 		run := replacement.State()
 		expectedRunID := w.canceledRunIDs[index]
-		continuation := w.continuationByRunID[expectedRunID]
+		parked, _ := c.parkedRun(expectedRunID)
 		switch {
 		case run.ID() != expectedRunID:
 			return fmt.Errorf("runs: waiting cancellation Run[%d] is %q, want %q", index, run.ID(), expectedRunID)
 		case run.SessionID() != c.SessionID:
 			return fmt.Errorf("runs: waiting cancellation Run[%d] Session mismatch", index)
-		case run.Lineage() != continuation.Lineage:
-			return fmt.Errorf("runs: waiting cancellation Run[%d] lineage mismatch", index)
-		case !run.Capabilities().Equal(c.ExpectedPending.Capabilities):
-			return fmt.Errorf("runs: waiting cancellation Run[%d] capabilities mismatch", index)
-		case run.GoalIncarnationID() != "":
-			return fmt.Errorf("runs: waiting cancellation child Run[%d] carries a root Goal incarnation", index)
+		case !expected.Equal(parked):
+			return fmt.Errorf("runs: waiting cancellation Run[%d] does not replace its parked Run", index)
 		case run.State() != rundomain.Canceled:
 			return fmt.Errorf("runs: waiting cancellation Run[%d] is not canceled", index)
 		}
@@ -517,9 +527,7 @@ func (w waitingCancellationValidation) validateReducedPendingAndCollectRunIDs() 
 		}
 	}
 	if c.RemainingPending.ExecutorID != c.ExpectedPending.ExecutorID ||
-		c.RemainingPending.GoalIncarnationID != c.ExpectedPending.GoalIncarnationID ||
-		!c.RemainingPending.CreatedAt.Equal(c.ExpectedPending.CreatedAt) ||
-		!c.RemainingPending.Capabilities.Equal(c.ExpectedPending.Capabilities) {
+		!c.RemainingPending.CreatedAt.Equal(c.ExpectedPending.CreatedAt) {
 		return nil, errors.New("runs: waiting cancellation changed immutable Pending facts")
 	}
 	runIDs := make([]string, 0, len(c.RemainingPending.Continuations))
@@ -564,17 +572,6 @@ func (w waitingCancellationValidation) validateOpeningEvents() error {
 		}
 	}
 	return nil
-}
-
-func validateWaitingRunContinuation(run rundomain.Run, continuation Continuation) error {
-	switch {
-	case run.ID() != continuation.RunID:
-		return errors.New("identity differs from continuation")
-	case run.Lineage() != continuation.Lineage:
-		return errors.New("lineage differs from continuation")
-	default:
-		return nil
-	}
 }
 
 func sameContinuationValue(left, right Continuation) bool {

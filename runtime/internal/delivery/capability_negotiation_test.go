@@ -3,13 +3,14 @@ package delivery
 import (
 	"context"
 	"errors"
+	"slices"
+	"testing"
+	"time"
+
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/protocol"
-	"slices"
-	"testing"
-	"time"
 )
 
 // withClientCapabilities builds the request context a client's `_meta` produces.
@@ -181,10 +182,9 @@ func TestResumeRunRefusesACallerThatCannotFollowTheRun(t *testing.T) {
 		}},
 		time.Unix(1, 0).UTC(),
 	)
-	pending.Capabilities = run.Capabilities{
+	if err := rt.openPendingWith(ctx, t, pending, run.Capabilities{
 		InterruptKinds: []interrupt.Kind{interrupt.Approval, interrupt.Question},
-	}
-	if err := rt.openPending(ctx, t, pending); err != nil {
+	}); err != nil {
 		t.Fatalf("seed interrupt: %v", err)
 	}
 

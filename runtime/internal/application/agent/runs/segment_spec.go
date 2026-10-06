@@ -82,5 +82,5 @@ func (s segmentSpec) effectiveCapabilities() run.Capabilities {
 	if s.Continuation == nil {
 		return s.Capabilities
 	}
-	return s.Continuation.capabilities
+	return s.Continuation.capabilities()
 }

@@ -146,9 +146,7 @@ func serverPending(
 		}
 	}
 	bindings := make([]runs.InterruptBinding, len(open))
-	capabilities := run.Capabilities{}
 	for index, request := range open {
-		capabilities.InterruptKinds = append(capabilities.InterruptKinds, request.Kind)
 		bindings[index] = runs.InterruptBinding{
 			InterruptItemID: request.ItemID,
 			MemberID:        memberID,
@@ -159,12 +157,11 @@ func serverPending(
 		}
 	}
 	return runs.Pending{
-		RootRunID:    runID,
-		SessionID:    sessionID,
-		ExecutorID:   executorID,
-		Interrupts:   open,
-		Bindings:     bindings,
-		Capabilities: capabilities.Normalized(),
+		RootRunID:  runID,
+		SessionID:  sessionID,
+		ExecutorID: executorID,
+		Interrupts: open,
+		Bindings:   bindings,
 		Continuations: []runs.Continuation{{
 			RunID:    runID,
 			MemberID: memberID,
@@ -450,20 +447,27 @@ func handlerWithTools(useCases toolUseCases) *Handler {
 func (s stubRuntime) Transcript() *sqlite.TranscriptStore     { return s.hist }
 func (s stubRuntime) Interrupts() *persistence.InterruptStore { return s.interrupts }
 
-// openPending opens a test hand-off after giving it the Runs that own its facts.
+// openPending opens a test hand-off after giving it the Runs that own its
+// facts; the root Run admits exactly the interrupt kinds the hand-off parks on.
 func (s *stubRuntime) openPending(ctx context.Context, t *testing.T, pending runs.Pending) error {
 	t.Helper()
-	seedPendingRuns(t, s.db, pending)
-	return s.interrupts.Open(ctx, pending)
+	capabilities := run.Capabilities{}
+	for _, request := range pending.Interrupts {
+		capabilities.InterruptKinds = append(capabilities.InterruptKinds, request.Kind)
+	}
+	return s.openPendingWith(ctx, t, pending, capabilities.Normalized())
 }
 
-func seedPendingRuns(t *testing.T, db *sql.DB, pending runs.Pending) {
+// openPendingWith opens a single-Run test hand-off whose root Run admitted
+// capabilities.
+func (s *stubRuntime) openPendingWith(ctx context.Context, t *testing.T, pending runs.Pending, capabilities run.Capabilities) error {
 	t.Helper()
 	members := make([]testsupport.ParkedMember, len(pending.Continuations))
 	for index, continuation := range pending.Continuations {
-		members[index] = testsupport.ParkedMember{RunID: continuation.RunID, Lineage: continuation.Lineage}
+		members[index] = testsupport.ParkedMember{RunID: continuation.RunID}
 	}
-	testsupport.SeedParkedRuns(t, db, pending.SessionID, pending.RootRunID, pending.GoalIncarnationID, pending.Capabilities, members)
+	testsupport.SeedParkedRuns(t, s.db, pending.SessionID, pending.RootRunID, "", capabilities, members)
+	return s.interrupts.Open(ctx, pending)
 }
 
 // MessageCount and TruncateMessages operate on the in-memory history map,
