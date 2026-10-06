@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"path"
 	"regexp"
 	"slices"
 	"strconv"
@@ -280,52 +279,7 @@ func (f *Files) Read(ctx context.Context, cwd string, input FileReadInput) (File
 }
 
 func (f *Files) readFile(ctx context.Context, root string, input FileReadPlan) (FileReadResult, error) {
-	result, err := f.files.Read(ctx, root, input)
-	if err != nil {
-		return FileReadResult{}, err
-	}
-	if err := validateFileReadResult(input, result); err != nil {
-		return FileReadResult{}, err
-	}
-	return result, nil
-}
-
-func validateFileReadResult(input FileReadPlan, result FileReadResult) error {
-	if len(result.Content) > input.MaxBytes {
-		return ErrFileReadTooLarge
-	}
-	if !utf8.ValidString(result.Content) || strings.ContainsRune(result.Content, 0) {
-		return ErrUnsupportedFile
-	}
-	if result.TotalLines <= 0 {
-		return errors.New("workspace: file reader returned a non-positive total line count")
-	}
-	expectedStart := 0
-	if input.StartLine > 0 {
-		expectedStart = input.StartLine - 1
-	}
-	if expectedStart >= result.TotalLines {
-		return ErrInvalidFileRange
-	}
-	maximumEnd := result.TotalLines
-	if input.EndLine > 0 {
-		maximumEnd = min(maximumEnd, input.EndLine)
-	}
-	if result.StartLine != expectedStart || result.EndLine < result.StartLine || result.EndLine > maximumEnd {
-		return errors.New("workspace: file reader returned an invalid line window")
-	}
-	served := result.EndLine - result.StartLine
-	contentLines := 0
-	if served > 0 {
-		contentLines = strings.Count(result.Content, "\n") + 1
-	}
-	if served == 0 && result.Content != "" || contentLines != served {
-		return errors.New("workspace: file reader returned content outside its line window")
-	}
-	if (result.StartLine > 0 || result.EndLine < result.TotalLines || result.OutputTruncated) && !result.Truncated {
-		return errors.New("workspace: file reader omitted content without a truncation marker")
-	}
-	return nil
+	return f.files.Read(ctx, root, input)
 }
 
 // Grep searches a workspace root or an existing subdirectory. A truncated
@@ -358,59 +312,7 @@ func (f *Files) Grep(ctx context.Context, cwd string, input GrepInput) (GrepResu
 	if err != nil {
 		return GrepResult{}, err
 	}
-	result, err := f.files.Grep(ctx, root, GrepPlan{Path: input.Path, Pattern: pattern, Limit: limit})
-	if err != nil {
-		return GrepResult{}, err
-	}
-	if err := validateGrepResult(pattern, limit, result); err != nil {
-		return GrepResult{}, err
-	}
-	return result, nil
-}
-
-func validateGrepResult(pattern *regexp.Regexp, limit int, result GrepResult) error {
-	if result.Total < 0 || result.Total < len(result.Matches) {
-		return errors.New("workspace: file search returned an invalid total")
-	}
-	if result.Total > 0 && len(result.Matches) == 0 {
-		return errors.New("workspace: file search omitted its entire bounded prefix")
-	}
-	if len(result.Matches) > limit {
-		return ErrGrepResultTooLarge
-	}
-	material := 0
-	for index, match := range result.Matches {
-		if match.Path == "" || match.Path == "." || !utf8.ValidString(match.Path) || strings.ContainsRune(match.Path, 0) ||
-			path.IsAbs(match.Path) || path.Clean(match.Path) != match.Path ||
-			match.Path == ".." || strings.HasPrefix(match.Path, "../") {
-			return ErrPathOutsideRoot
-		}
-		if match.LineNumber <= 0 {
-			return errors.New("workspace: file search returned an invalid line number")
-		}
-		if len(match.Text) > MaxGrepLineBytes {
-			return ErrGrepResultTooLarge
-		}
-		if !utf8.ValidString(match.Text) || strings.ContainsRune(match.Text, 0) {
-			return ErrUnsupportedFile
-		}
-		if pattern == nil || !pattern.MatchString(match.Text) {
-			return errors.New("workspace: file search returned a row that does not match its query")
-		}
-		if index > 0 {
-			previous := result.Matches[index-1]
-			if order := cmp.Compare(previous.Path, match.Path); order > 0 ||
-				order == 0 && previous.LineNumber >= match.LineNumber {
-				return errors.New("workspace: file search returned unstable or duplicate rows")
-			}
-		}
-		rowBytes := len(match.Path) + len(match.Text)
-		if rowBytes > MaxGrepResultBytes-material {
-			return ErrGrepResultTooLarge
-		}
-		material += rowBytes
-	}
-	return nil
+	return f.files.Grep(ctx, root, GrepPlan{Path: input.Path, Pattern: pattern, Limit: limit})
 }
 
 func previewLines(read FileReadResult) []FileLine {

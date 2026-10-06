@@ -27,7 +27,6 @@ var (
 	errReplaySequenceExhausted = errors.New("runs: replay sequence is exhausted")
 )
 
-
 // replayPosition is a point in one Run journal. It stays private because the
 // journal is the only authority that may mint, interpret, or compare one.
 type replayPosition struct {

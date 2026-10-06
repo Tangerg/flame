@@ -81,43 +81,6 @@ func TestFilesReadNormalizesBudgetBeforeCallingPort(t *testing.T) {
 	}
 }
 
-func TestFilesReadRejectsInvalidPortResults(t *testing.T) {
-	tests := []struct {
-		name   string
-		result FileReadResult
-		want   error
-	}{
-		{
-			name:   "oversized output",
-			result: FileReadResult{Content: strings.Repeat("x", DefaultFileReadBytes+1), TotalLines: 1, EndLine: 1},
-			want:   ErrFileReadTooLarge,
-		},
-		{
-			name:   "invalid text",
-			result: FileReadResult{Content: string([]byte{0xff}), TotalLines: 1, EndLine: 1},
-			want:   ErrUnsupportedFile,
-		},
-		{
-			name:   "unmarked omission",
-			result: FileReadResult{Content: "first", TotalLines: 2, EndLine: 1},
-		},
-		{
-			name:   "content outside window",
-			result: FileReadResult{Content: "first\nsecond", TotalLines: 2, EndLine: 1, Truncated: true},
-		},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			port := &fileReadPort{result: test.result}
-			files := newFiles(t, newScope(t, t.TempDir(), "", fileReadPaths{}), port)
-			_, err := files.Read(t.Context(), "", FileReadInput{Path: "file.txt"})
-			if err == nil || test.want != nil && !errors.Is(err, test.want) {
-				t.Fatalf("Read error = %v, want %v", err, test.want)
-			}
-		})
-	}
-}
-
 func TestFilesHeadRejectsByteTruncatedPortResult(t *testing.T) {
 	port := &fileReadPort{result: FileReadResult{
 		Content: "prefix", TotalLines: 2, EndLine: 1, Truncated: true, OutputTruncated: true,
@@ -167,46 +130,6 @@ func TestFilesGrepOwnsQueryLimitAndPortResultEnvelope(t *testing.T) {
 		}
 	})
 
-	t.Run("dishonest direct result", func(t *testing.T) {
-		port := &fileReadPort{grepResult: GrepResult{
-			Matches: []GrepMatch{
-				{Path: "a.go", LineNumber: 1, Text: "needle"},
-				{Path: "b.go", LineNumber: 1, Text: "needle"},
-			},
-			Total: 1,
-		}}
-		files := newFiles(t, newScope(t, t.TempDir(), "", fileReadPaths{}), port)
-
-		if _, err := files.Grep(t.Context(), "", GrepInput{Query: "needle", Limit: mustGrepResultLimit(t, 1)}); err == nil {
-			t.Fatal("Grep published a direct-port result beyond its match limit and total")
-		}
-	})
-
-	t.Run("oversized direct material", func(t *testing.T) {
-		line := "needle" + strings.Repeat("x", (1<<20)-len("needle"))
-		matches := make([]GrepMatch, 9)
-		for index := range matches {
-			matches[index] = GrepMatch{Path: "file.go", LineNumber: index + 1, Text: line}
-		}
-		port := &fileReadPort{grepResult: GrepResult{Matches: matches, Total: len(matches)}}
-		files := newFiles(t, newScope(t, t.TempDir(), "", fileReadPaths{}), port)
-
-		_, err := files.Grep(t.Context(), "", GrepInput{Query: "needle", Limit: mustGrepResultLimit(t, len(matches))})
-		if !errors.Is(err, ErrGrepResultTooLarge) {
-			t.Fatalf("Grep oversized direct result error = %v, want ErrGrepResultTooLarge", err)
-		}
-	})
-
-	t.Run("unsafe direct path", func(t *testing.T) {
-		port := &fileReadPort{grepResult: GrepResult{
-			Matches: []GrepMatch{{Path: "../secret", LineNumber: 1, Text: "needle"}}, Total: 1,
-		}}
-		files := newFiles(t, newScope(t, t.TempDir(), "", fileReadPaths{}), port)
-
-		if _, err := files.Grep(t.Context(), "", GrepInput{Query: "needle"}); err == nil {
-			t.Fatal("Grep published a direct-port path outside the workspace")
-		}
-	})
 }
 
 func mustHeadLineLimit(t *testing.T, lines int) HeadLineLimit {
