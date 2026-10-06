@@ -3,13 +3,11 @@ package sessions
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/feedback"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
 const (
@@ -77,32 +75,4 @@ func (e *TrajectoryExporter) Export(ctx context.Context, sessionID string) (Traj
 		return TrajectoryExport{}, err
 	}
 	return TrajectoryExport{Session: view, Evidence: evidence, CollectedAt: collectedAt}, nil
-}
-
-func (e TrajectoryEvidence) validateToolAttempts(runIDs map[string]struct{}) error {
-	type attemptIdentity struct{ callID, segmentID string }
-	seen := make(map[attemptIdentity]struct{}, len(e.ToolAttempts))
-	items := make(map[string]transcript.Item, len(e.Snapshot.Items))
-	for _, item := range e.Snapshot.Items {
-		items[item.ID()] = item
-	}
-	for _, recorded := range e.ToolAttempts {
-		if _, found := runIDs[recorded.RunID]; !found {
-			return fmt.Errorf("sessions: trajectory Tool attempt names unknown Run %q", recorded.RunID)
-		}
-		attempt := recorded.Invocation
-		if err := attempt.Validate(); err != nil {
-			return fmt.Errorf("sessions: trajectory Tool attempt: %w", err)
-		}
-		item, found := items[attempt.ItemID]
-		if !found || item.Kind() != transcript.ToolCall || item.RunID() != recorded.RunID {
-			return fmt.Errorf("sessions: trajectory Tool attempt %q has no matching Tool Item", attempt.CallID)
-		}
-		key := attemptIdentity{attempt.CallID, attempt.SegmentID}
-		if _, duplicate := seen[key]; duplicate {
-			return fmt.Errorf("sessions: duplicate trajectory Tool attempt %q in Segment %q", attempt.CallID, attempt.SegmentID)
-		}
-		seen[key] = struct{}{}
-	}
-	return nil
 }

@@ -50,16 +50,6 @@ type generatedTitleRaceStore struct {
 	candidate session.Session
 }
 
-type rawPointSessionStore struct {
-	*crudSessionStore
-	value session.Session
-}
-
-func (r *rawPointSessionStore) Get(_ context.Context, id string) (session.Session, error) {
-	r.getID = id
-	return r.value, nil
-}
-
 func (g *generatedTitleRaceStore) Save(
 	_ context.Context,
 	replacement session.Replacement,
@@ -524,15 +514,6 @@ type pagedSessionStore struct {
 
 	afterID string
 	limit   int
-}
-
-type rawPagedSessionStore struct {
-	*crudSessionStore
-	rows []session.Session
-}
-
-func (p *rawPagedSessionStore) ListPage(context.Context, session.CatalogRead) ([]session.Session, error) {
-	return p.rows, nil
 }
 
 func (p *pagedSessionStore) ListPage(_ context.Context, read session.CatalogRead) ([]session.Session, error) {

@@ -127,16 +127,3 @@ func TestCatalogAnchorAndReadRejectPrimitiveSentinelStates(t *testing.T) {
 		t.Fatalf("zero catalog read error = %v", err)
 	}
 }
-
-func mustCatalogSession(t *testing.T, id, title, workspace string, favorite bool, updatedAt time.Time) Session {
-	t.Helper()
-	value, err := Restore(Snapshot{
-		ID: id, Title: title, Workspace: *mustCatalogWorkspace(t, workspace),
-		Selection: mustModelSelection("provider", "model"), Favorite: favorite,
-		CreatedAt: updatedAt.Add(-time.Second), UpdatedAt: updatedAt, Revision: 1,
-	})
-	if err != nil {
-		t.Fatalf("Restore catalog Session: %v", err)
-	}
-	return value
-}
