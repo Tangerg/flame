@@ -199,17 +199,6 @@ func TestModelConfigurationRejectsPartialRoleProjection(t *testing.T) {
 	requireRuntimeContractViolation(t, err)
 }
 
-func TestModelConfigurationRejectsOutOfOrderProviderCatalog(t *testing.T) {
-	t.Parallel()
-	runtime := &Connection{modelConfig: &modelConfigBindingStub{providers: []protocol.Provider{
-		{ID: "zeta", Configured: true, CredentialRequirement: protocol.ProviderAPIKeyOptional},
-		{ID: "alpha", Configured: true, CredentialRequirement: protocol.ProviderAPIKeyOptional},
-	}}, meta: requestMeta("test")}
-
-	_, err := runtime.Providers(t.Context())
-	requireRuntimeContractViolation(t, err)
-}
-
 func TestProviderUpdateAcceptsClearWithEnvironmentFallback(t *testing.T) {
 	t.Parallel()
 	clear := models.ValueChange{Kind: protocol.ProviderConfigClear}

@@ -211,16 +211,6 @@ func TestSkillAdapterRejectsInvalidWireValues(t *testing.T) {
 				return err
 			},
 		}, {
-			name: "out-of-order discovered catalog",
-			stub: &invalidSkillBindingStub{discovered: &protocol.SkillDiscovery{Skills: []protocol.Skill{
-				{Name: "zeta", Scope: protocol.SkillScopeProject},
-				{Name: "alpha", Scope: protocol.SkillScopeUser},
-			}, Diagnostics: []protocol.SkillDiagnostic{}}},
-			read: func(runtime *Connection) error {
-				_, err := runtime.Discover(t.Context(), "/workspace")
-				return err
-			},
-		}, {
 			name: "repeated managed name",
 			stub: &invalidSkillBindingStub{managed: protocol.NewPage([]protocol.ManagedSkill{
 				{Name: "review", Lifecycle: protocol.SkillLifecycleActive},
@@ -231,30 +221,10 @@ func TestSkillAdapterRejectsInvalidWireValues(t *testing.T) {
 				return err
 			},
 		}, {
-			name: "out-of-order managed catalog",
-			stub: &invalidSkillBindingStub{managed: protocol.NewPage([]protocol.ManagedSkill{
-				{Name: "alpha", Lifecycle: protocol.SkillLifecycleArchived},
-				{Name: "zeta", Lifecycle: protocol.SkillLifecycleActive},
-			})},
-			read: func(runtime *Connection) error {
-				_, err := runtime.Managed(t.Context())
-				return err
-			},
-		}, {
 			name: "repeated proposal slot",
 			stub: &invalidSkillBindingStub{proposals: protocol.NewPage([]protocol.SkillProposal{
 				{Name: "review", Revision: skillRevision, Scope: protocol.SkillScopeProject, Description: "Review code", Instructions: "Inspect code."},
 				{Name: "review", Revision: otherSkillRevision, Scope: protocol.SkillScopeProject, Description: "Review again", Instructions: "Inspect code again."},
-			})},
-			read: func(runtime *Connection) error {
-				_, err := runtime.Proposals(t.Context(), "/workspace")
-				return err
-			},
-		}, {
-			name: "out-of-order proposal catalog",
-			stub: &invalidSkillBindingStub{proposals: protocol.NewPage([]protocol.SkillProposal{
-				{Name: "alpha", Revision: skillRevision, Scope: protocol.SkillScopeUser, Description: "User proposal", Instructions: "Review the user proposal."},
-				{Name: "zeta", Revision: otherSkillRevision, Scope: protocol.SkillScopeProject, Description: "Project proposal", Instructions: "Review the project proposal."},
 			})},
 			read: func(runtime *Connection) error {
 				_, err := runtime.Proposals(t.Context(), "/workspace")

@@ -40,15 +40,6 @@ func (r *Connection) Discover(ctx context.Context, workspacePath string) (protoc
 	}); err != nil {
 		return protocol.SkillDiscovery{}, err
 	}
-	for index := 1; index < len(found); index++ {
-		if found[index].Name < found[index-1].Name {
-			return protocol.SkillDiscovery{}, runtimeContractViolation(
-				"list discovered skills returned name %q out of catalog order after %q",
-				found[index].Name,
-				found[index-1].Name,
-			)
-		}
-	}
 	return *page, nil
 }
 
@@ -84,16 +75,6 @@ func (r *Connection) Managed(ctx context.Context) ([]protocol.ManagedSkill, erro
 	}); err != nil {
 		return nil, err
 	}
-	for index := 1; index < len(managed); index++ {
-		previous, current := managed[index-1], managed[index]
-		if current.Lifecycle < previous.Lifecycle || current.Lifecycle == previous.Lifecycle && current.Name < previous.Name {
-			return nil, runtimeContractViolation(
-				"list managed skills returned name %q out of catalog order after %q",
-				current.Name,
-				previous.Name,
-			)
-		}
-	}
 	return managed, nil
 }
 
@@ -124,16 +105,6 @@ func (r *Connection) Proposals(ctx context.Context, workspacePath string) ([]wor
 		}
 		seen[identity] = struct{}{}
 		projected = append(projected, proposal)
-	}
-	for index := 1; index < len(projected); index++ {
-		previous, current := projected[index-1], projected[index]
-		if current.Scope < previous.Scope || current.Scope == previous.Scope && current.Name < previous.Name {
-			return nil, runtimeContractViolation(
-				"list skill proposals returned %q out of catalog order after %q",
-				current.QualifiedName(),
-				previous.QualifiedName(),
-			)
-		}
 	}
 	return projected, nil
 }

@@ -284,59 +284,6 @@ func TestWorkspaceAdapterRejectsRepeatedRuntimeIdentity(t *testing.T) {
 	}
 }
 
-func TestWorkspaceAdapterRejectsCatalogOrderViolations(t *testing.T) {
-	t.Parallel()
-	active := time.Date(2026, 9, 4, 8, 0, 0, 0, time.UTC)
-	summary := func(path, name string, lastActive *time.Time) protocol.WorkspaceSummary {
-		return protocol.WorkspaceSummary{
-			Workspace: protocol.WorkspaceInfo{
-				Ref: protocol.WorkspaceRef{Path: path}, ProjectRoot: path,
-				Availability: protocol.WorkspaceAvailable,
-			},
-			Name: name, SessionCount: 1, LastActiveAt: lastActive,
-		}
-	}
-	older := active.Add(-time.Hour)
-	zero := time.Time{}
-	for _, test := range []struct {
-		name   string
-		values []protocol.WorkspaceSummary
-	}{
-		{
-			name:   "activity time is missing",
-			values: []protocol.WorkspaceSummary{summary("/workspace", "workspace", nil)},
-		},
-		{
-			name:   "activity time is zero",
-			values: []protocol.WorkspaceSummary{summary("/workspace", "workspace", &zero)},
-		},
-		{
-			name: "activity time ascends",
-			values: []protocol.WorkspaceSummary{
-				summary("/older", "older", &older),
-				summary("/newer", "newer", &active),
-			},
-		},
-		{
-			name: "equal-time path descends",
-			values: []protocol.WorkspaceSummary{
-				summary("/zeta", "zeta", &active),
-				summary("/alpha", "alpha", &active),
-			},
-		},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			runtime := &Connection{
-				workspaces: &workspaceBindingStub{known: protocol.NewPage(test.values)},
-				meta:       requestMeta("test"),
-			}
-			_, err := runtime.List(t.Context())
-			requireRuntimeContractViolation(t, err)
-		})
-	}
-}
-
 func TestWorkspaceAdapterRejectsRepeatedChangePath(t *testing.T) {
 	t.Parallel()
 	change := protocol.WorkspaceFileChange{Path: "main.go", Status: protocol.FileStatusModified}
@@ -352,24 +299,6 @@ func TestWorkspaceAdapterRejectsRepeatedChangePath(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), `list workspace changes repeats "main.go"`) {
 		t.Fatalf("Changes error = %v, want repeated path failure", err)
 	}
-}
-
-func TestWorkspaceAdapterRejectsChangeCatalogOutsideRuntimeOrder(t *testing.T) {
-	t.Parallel()
-	count := 1
-	runtime := &Connection{
-		workspaces: &workspaceBindingStub{changes: protocol.NewPage([]protocol.WorkspaceFileChange{
-			{Path: "zeta.go", Status: protocol.FileStatusModified, Added: &count, Removed: &count},
-			{Path: "alpha.go", Status: protocol.FileStatusAdded, Added: &count, Removed: &count},
-		})},
-		meta: requestMeta("test"),
-		profile: profileWithFeatures(t, map[string]protocol.FeatureCapability{
-			protocol.FeatureGit: {Enabled: true},
-		}),
-	}
-
-	_, err := runtime.Changes(t.Context(), "/workspace")
-	requireRuntimeContractViolation(t, err)
 }
 
 func TestWorkspaceAdapterRejectsGitReadsBeforeCallingBinding(t *testing.T) {

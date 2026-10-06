@@ -192,40 +192,6 @@ func TestScheduleAdapterConsumesEveryOperationAndPaginates(t *testing.T) {
 	}
 }
 
-func TestScheduleAdapterRejectsPagesOutsideRuntimeOrder(t *testing.T) {
-	t.Parallel()
-	created := time.Unix(10, 0).UTC()
-	for _, test := range []struct {
-		name   string
-		first  protocol.Schedule
-		second protocol.Schedule
-	}{
-		{
-			name:   "creation time ascends across pages",
-			first:  wireSchedule(created, "sch_old"),
-			second: wireSchedule(created.Add(time.Second), "sch_new"),
-		},
-		{
-			name:   "equal-time identity ascends across pages",
-			first:  wireSchedule(created, "sch_a"),
-			second: wireSchedule(created, "sch_b"),
-		},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			stub := &scheduleBindingStub{t: t, list: func(query protocol.PageQuery) *protocol.Page[protocol.Schedule] {
-				if query.Cursor == "" {
-					return protocol.NewPageWithCursor([]protocol.Schedule{test.first}, "next")
-				}
-				return protocol.NewPage([]protocol.Schedule{test.second})
-			}}
-			runtime := &Connection{schedules: stub, meta: requestMeta("test")}
-			_, err := runtime.Schedules(t.Context())
-			requireRuntimeContractViolation(t, err)
-		})
-	}
-}
-
 func TestScheduleAdapterProjectsWorkspaceChangeSemantics(t *testing.T) {
 	now := time.Date(2026, time.August, 12, 10, 0, 0, 0, time.UTC)
 	stub := &scheduleBindingStub{t: t, now: now, keys: make(map[string]struct{})}

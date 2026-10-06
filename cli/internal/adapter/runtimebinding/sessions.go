@@ -3,7 +3,6 @@ package runtimebinding
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
@@ -64,26 +63,6 @@ func projectSessionPage(page *protocol.Page[protocol.Session], query conversatio
 				query.Workspace, projected.ID, projected.Workspace.Path,
 			)
 		}
-		if query.Search != "" && !sessionMatchesSearch(projected, query.Search) {
-			return conversation.SessionPage{}, runtimeContractViolation(
-				"list sessions for search %q returned non-matching session %q",
-				query.Search,
-				projected.ID,
-			)
-		}
-		if len(result.Items) != 0 {
-			previous := result.Items[len(result.Items)-1]
-			misordered := projected.Favorite && !previous.Favorite
-			if projected.Favorite == previous.Favorite {
-				misordered = projected.UpdatedAt.After(previous.UpdatedAt) ||
-					(projected.UpdatedAt.Equal(previous.UpdatedAt) && projected.ID > previous.ID)
-			}
-			if misordered {
-				return conversation.SessionPage{}, runtimeContractViolation(
-					"list sessions returned session %q out of catalog order after %q", projected.ID, previous.ID,
-				)
-			}
-		}
 		result.Items = append(result.Items, projected)
 	}
 	if err := requireUniqueIdentities("list sessions", result.Items, func(value conversation.Session) string {
@@ -92,12 +71,6 @@ func projectSessionPage(page *protocol.Page[protocol.Session], query conversatio
 		return conversation.SessionPage{}, err
 	}
 	return result, nil
-}
-
-func sessionMatchesSearch(value conversation.Session, search string) bool {
-	search = strings.ToLower(search)
-	return strings.Contains(strings.ToLower(value.Title), search) ||
-		strings.Contains(strings.ToLower(value.Workspace.Path), search)
 }
 
 func projectSession(value protocol.Session) conversation.Session {

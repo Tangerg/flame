@@ -82,48 +82,6 @@ func TestSessionCatalogRejectsOversizedCursorsAtTheAdapterBoundary(t *testing.T)
 	requireRuntimeContractViolation(t, err)
 }
 
-func TestSessionCatalogRejectsPagesOutsideRuntimeOrder(t *testing.T) {
-	t.Parallel()
-	session := func(id string, updated time.Time, favorite bool) protocol.Session {
-		return protocol.Session{
-			ID: id, Status: protocol.SessionStatusIdle,
-			Provider: testSessionProvider, Model: testSessionModel,
-			Workspace: testProtocolWorkspace("/workspace", "/workspace", protocol.WorkspaceAvailable),
-			CreatedAt: testSessionTime, UpdatedAt: updated, Favorite: favorite, Revision: 1,
-		}
-	}
-	updated := testSessionTime.Add(time.Hour)
-	for _, test := range []struct {
-		name     string
-		sessions []protocol.Session
-	}{
-		{
-			name: "favorite follows ordinary",
-			sessions: []protocol.Session{
-				session("ses_ordinary", updated, false), session("ses_favorite", updated, true),
-			},
-		},
-		{
-			name: "update time ascends",
-			sessions: []protocol.Session{
-				session("ses_old", updated, false), session("ses_new", updated.Add(time.Second), false),
-			},
-		},
-		{
-			name: "equal-time identity ascends",
-			sessions: []protocol.Session{
-				session("ses_a", updated, false), session("ses_b", updated, false),
-			},
-		},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			_, err := projectSessionPage(protocol.NewPage(test.sessions), conversation.SessionQuery{}, conversation.DefaultPageRows)
-			requireRuntimeContractViolation(t, err)
-		})
-	}
-}
-
 func TestSessionCatalogRejectsPagesOutsideWorkspaceFilter(t *testing.T) {
 	t.Parallel()
 	runtime := &Connection{sessionCatalog: sessionCatalogStub{list: func(protocol.ListSessionsRequest) (*protocol.Page[protocol.Session], error) {
@@ -137,23 +95,6 @@ func TestSessionCatalogRejectsPagesOutsideWorkspaceFilter(t *testing.T) {
 
 	_, err := runtime.ListSessions(t.Context(), conversation.SessionQuery{
 		Workspace: "/workspace", PageSize: conversation.DefaultPageSize(),
-	})
-	requireRuntimeContractViolation(t, err)
-}
-
-func TestSessionCatalogRejectsPagesOutsideSearchFilter(t *testing.T) {
-	t.Parallel()
-	runtime := &Connection{sessionCatalog: sessionCatalogStub{list: func(protocol.ListSessionsRequest) (*protocol.Page[protocol.Session], error) {
-		return protocol.NewPage([]protocol.Session{{
-			ID: "ses_other", Title: "unrelated", Status: protocol.SessionStatusIdle,
-			Provider: testSessionProvider, Model: testSessionModel,
-			Workspace: testProtocolWorkspace("/other", "/other", protocol.WorkspaceAvailable),
-			CreatedAt: testSessionTime, UpdatedAt: testSessionTime, Revision: 1,
-		}}), nil
-	}}, meta: requestMeta("test")}
-
-	_, err := runtime.ListSessions(t.Context(), conversation.SessionQuery{
-		Search: "release", PageSize: conversation.DefaultPageSize(),
 	})
 	requireRuntimeContractViolation(t, err)
 }

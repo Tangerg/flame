@@ -64,22 +64,10 @@ func (r *Connection) List(ctx context.Context) ([]workspace.Summary, error) {
 	if err != nil {
 		return nil, err
 	}
-	for index, summary := range summaries {
+	for _, summary := range summaries {
 		if summary.LastActive == nil || summary.LastActive.IsZero() {
 			return nil, runtimeContractViolation(
 				"list workspaces returned workspace %q without an activity time", summary.Workspace.Path,
-			)
-		}
-		if index == 0 {
-			continue
-		}
-		previous := summaries[index-1]
-		if summary.LastActive.After(*previous.LastActive) ||
-			summary.LastActive.Equal(*previous.LastActive) && summary.Workspace.Path < previous.Workspace.Path {
-			return nil, runtimeContractViolation(
-				"list workspaces returned workspace %q out of catalog order after %q",
-				summary.Workspace.Path,
-				previous.Workspace.Path,
 			)
 		}
 	}
@@ -108,16 +96,6 @@ func (r *Connection) Changes(ctx context.Context, path string) ([]workspace.Chan
 	)
 	if err != nil {
 		return nil, err
-	}
-	for index := 1; index < len(changes); index++ {
-		previous, current := changes[index-1], changes[index]
-		if current.Path < previous.Path {
-			return nil, runtimeContractViolation(
-				"list workspace changes returned path %q out of catalog order after %q",
-				current.Path,
-				previous.Path,
-			)
-		}
 	}
 	return changes, nil
 }

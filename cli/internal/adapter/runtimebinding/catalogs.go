@@ -41,18 +41,11 @@ func (r *Connection) ListModels(ctx context.Context) ([]protocol.Model, error) {
 	var discoveryErrors []error
 	seenProviders := make(map[string]struct{}, len(providerValues))
 	seenModels := make(map[string]struct{})
-	for providerIndex, provider := range providerValues {
+	for _, provider := range providerValues {
 		if _, duplicate := seenProviders[provider.ID]; duplicate {
 			return nil, runtimeContractViolation("model catalog repeats provider %q", provider.ID)
 		}
 		seenProviders[provider.ID] = struct{}{}
-		if providerIndex > 0 && provider.ID < providerValues[providerIndex-1].ID {
-			return nil, runtimeContractViolation(
-				"model catalog returned provider %q out of catalog order after %q",
-				provider.ID,
-				providerValues[providerIndex-1].ID,
-			)
-		}
 		page, err := r.modelCatalog.ListModels(ctx, protocol.ListModelsRequest{Provider: provider.ID}, r.callOptions())
 		if err != nil {
 			err = classifyError(err)
@@ -70,7 +63,7 @@ func (r *Connection) ListModels(ctx context.Context) ([]protocol.Model, error) {
 		if err != nil {
 			return nil, err
 		}
-		for index, value := range values {
+		for _, value := range values {
 			if value.Provider != provider.ID {
 				return nil, runtimeContractViolation("models for provider %q returned model %q from %q", provider.ID, value.ID, value.Provider)
 			}
@@ -79,14 +72,6 @@ func (r *Connection) ListModels(ctx context.Context) ([]protocol.Model, error) {
 				return nil, runtimeContractViolation("models for provider %q repeats model %q", provider.ID, value.ID)
 			}
 			seenModels[identity] = struct{}{}
-			if index > 0 && value.ID < values[index-1].ID {
-				return nil, runtimeContractViolation(
-					"models for provider %q returned model %q out of catalog order after %q",
-					provider.ID,
-					value.ID,
-					values[index-1].ID,
-				)
-			}
 			models = append(models, value)
 		}
 	}

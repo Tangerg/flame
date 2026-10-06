@@ -115,16 +115,6 @@ func (r *Connection) Providers(ctx context.Context) ([]models.Provider, error) {
 	if err != nil {
 		return nil, err
 	}
-	for index := 1; index < len(providers); index++ {
-		previous, current := providers[index-1], providers[index]
-		if current.ID() < previous.ID() {
-			return nil, runtimeContractViolation(
-				"list providers returned provider %q out of catalog order after %q",
-				current.ID(),
-				previous.ID(),
-			)
-		}
-	}
 	return providers, nil
 }
 

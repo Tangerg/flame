@@ -60,10 +60,6 @@ func TestDiagnosticToolAdapterRejectsBrokenCatalogs(t *testing.T) {
 			{Name: "inspect", SafetyClass: protocol.SafetyClassSafe, Parameters: map[string]any{}},
 			{Name: "inspect", SafetyClass: protocol.SafetyClassSafe, Parameters: map[string]any{}},
 		}),
-		"out of order": protocol.NewPage([]protocol.ToolSpec{
-			{Name: "read", SafetyClass: protocol.SafetyClassSafe, Parameters: map[string]any{}},
-			{Name: "glob", SafetyClass: protocol.SafetyClassSafe, Parameters: map[string]any{}},
-		}),
 	} {
 		t.Run(name, func(t *testing.T) {
 			adapter := &DiagnosticTools{runtime: &Connection{
