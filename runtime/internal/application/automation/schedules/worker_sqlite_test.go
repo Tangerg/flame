@@ -30,9 +30,9 @@ func (s *sqliteScheduledStarter) StartScheduledRun(ctx context.Context, request 
 	if err := s.runs.Admit(ctx, run.Draft{RunID: request.RunID(), SessionID: request.SessionID(), SegmentID: "seg_test", ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: s.now}); err != nil {
 		return err
 	}
-	acceptance, err := schedule.NewAcceptance(request.OccurrenceID(), request.RunID())
-	if err != nil {
-		return err
+	acceptance, occurrenceBacked := request.Acceptance()
+	if !occurrenceBacked {
+		return errors.New("worker fired a manual request")
 	}
 	return s.store.Accept(ctx, acceptance)
 }

@@ -523,7 +523,7 @@ func (c *Coordinator) commitOpening(ctx context.Context, spec segmentSpec, route
 	if routes.admission != nil {
 		opening, err = NewAdmissionOpeningCommit(
 			commitID, *routes.admission, spec.InitialSession, spec.SessionReplacement,
-			spec.ScheduleFiring, spec.ManualScheduleRun, events,
+			spec.Schedule, events,
 		)
 	} else {
 		opening, err = NewResumeOpeningCommit(commitID, *resume, events)

@@ -115,9 +115,6 @@ func Fire(ctx context.Context, runStarter ScheduledRunStarter, request schedule.
 	if runStarter == nil {
 		return StartedRun{}, errors.New("schedules: scheduled run starter is nil")
 	}
-	if err := request.Validate(); err != nil {
-		return StartedRun{}, fmt.Errorf("schedules: invalid run request: %w", err)
-	}
 	ctx, span := workerTracer.Start(ctx, "schedule.fire",
 		trace.WithAttributes(attribute.String("schedule.id", request.ScheduleID())))
 	defer span.End()

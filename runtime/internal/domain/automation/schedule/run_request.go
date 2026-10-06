@@ -142,5 +142,14 @@ func (r RunRequest) ManualRecord() (RunRecord, bool) {
 	return optional.Present(r.manualRecord)
 }
 func (r RunRequest) OccurrenceID() string { return r.occurrenceID.String() }
-func (r RunRequest) SessionID() string    { return r.sessionID }
-func (r RunRequest) RunID() string        { return r.runID }
+
+// Acceptance returns the occurrence ownership proof an occurrence-backed
+// request commits with its Run opening; a manual request has none.
+func (r RunRequest) Acceptance() (Acceptance, bool) {
+	if r.manualRecord != nil {
+		return Acceptance{}, false
+	}
+	return Acceptance{occurrenceID: r.occurrenceID, runID: r.runID}, true
+}
+func (r RunRequest) SessionID() string { return r.sessionID }
+func (r RunRequest) RunID() string     { return r.runID }

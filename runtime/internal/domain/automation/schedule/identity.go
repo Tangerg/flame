@@ -84,13 +84,6 @@ func parseOccurrenceIdentity(text string) (occurrenceIdentity, error) {
 	return occurrenceIdentity{text: text, scheduleID: scheduleID, dueMillis: dueMillis}, nil
 }
 
-// ValidateOccurrenceID validates one deterministic durable firing identity
-// without manufacturing an Acceptance or another lifecycle value.
-func ValidateOccurrenceID(text string) error {
-	_, err := parseOccurrenceIdentity(text)
-	return err
-}
-
 func (i occurrenceIdentity) Validate() error {
 	_, err := parseOccurrenceIdentity(i.text)
 	return err

@@ -2,12 +2,12 @@ package schedule
 
 import (
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/exactint"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
@@ -186,7 +186,7 @@ func TestScheduleValidate(t *testing.T) {
 	}{
 		{"valid, default model", func(s Draft) Draft { return s }, nil},
 		{"valid, paired model", func(s Draft) Draft {
-			s.ModelSelection = testsupport.MustModelSelection("anthropic", "claude")
+			s.ModelSelection = mustModelSelection("anthropic", "claude")
 			return s
 		}, nil},
 		{"missing instructions", func(s Draft) Draft { s.Instructions = ""; return s }, ErrInstructionsRequired},
@@ -237,7 +237,7 @@ func TestScheduleApplyPatch(t *testing.T) {
 		t.Fatalf("patched schedule = %+v", got)
 	}
 
-	replacement := testsupport.MustModelSelection("anthropic", "claude")
+	replacement := mustModelSelection("anthropic", "claude")
 	got, err = sc.Edit(Patch{Selection: &replacement}, sc.Revision(), time.Unix(2, 0))
 	if err != nil || got.ModelSelection() != replacement {
 		t.Fatalf("selection patch = %+v, %v", got.ModelSelection(), err)
@@ -363,4 +363,12 @@ func TestNextRunRejectsUnreachableCron(t *testing.T) {
 	if _, err := NextRun("0 0 30 2 *", time.Date(2026, 9, 28, 0, 0, 0, 0, time.UTC)); !errors.Is(err, ErrInvalidCron) {
 		t.Fatalf("unreachable cron error = %v, want ErrInvalidCron", err)
 	}
+}
+
+func mustModelSelection(provider, model string) modelref.Selection {
+	selection, err := modelref.New(provider, model)
+	if err != nil {
+		panic(err)
+	}
+	return selection
 }

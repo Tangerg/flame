@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -84,8 +85,10 @@ func (c *Coordinator) Start(ctx context.Context, cmd StartCommand) (result Start
 	}
 
 	cmd = preparation.command
-	runID := cmd.RunID
-	if runID == "" {
+	var runID string
+	if cmd.Schedule != nil {
+		runID = cmd.Schedule.Request.RunID()
+	} else {
 		runID = c.newRunID()
 	}
 	segmentID := c.newSegmentID()
@@ -110,8 +113,7 @@ func (c *Coordinator) Start(ctx context.Context, cmd StartCommand) (result Start
 		GoalIncarnationID:  cmd.GoalIncarnationID,
 		InitialSession:     preparation.initialSession,
 		SessionReplacement: sessionReplacement,
-		ScheduleFiring:     cmd.ScheduleFiring,
-		ManualScheduleRun:  cmd.ManualScheduleRun,
+		Schedule:           scheduleRequest(cmd.Schedule),
 		CreatedAt:          createdAt,
 		OpeningUserText:    preparation.openingUserText,
 		Input:              cmd.Input,
@@ -262,10 +264,7 @@ func (c *Coordinator) resolveSessionSelection(
 			return session.Session{}, nil, modelref.Selection{}, err
 		}
 	}
-	sess, initial, err := c.resolveSession(
-		ctx, cmd.SessionID, cmd.NewSessionID, cmd.DefaultWorkspacePath,
-		cmd.NewSessionTitle, requested,
-	)
+	sess, initial, err := c.resolveSession(ctx, cmd.SessionID, cmd.Schedule, requested)
 	if err != nil {
 		return session.Session{}, nil, modelref.Selection{}, err
 	}
@@ -286,11 +285,15 @@ func (c *Coordinator) resolveSessionSelection(
 
 func (c *Coordinator) resolveSession(
 	ctx context.Context,
-	id, newID, defaultWorkspacePath, title string,
+	id string,
+	scheduled *ScheduledStart,
 	selection modelref.Selection,
 ) (session.Session, *session.Session, error) {
-	if newID != "" {
-		return c.sessionCreator.PrepareScheduled(ctx, newID, title, defaultWorkspacePath, selection)
+	if scheduled != nil {
+		return c.sessionCreator.PrepareScheduled(
+			ctx, scheduled.Request.SessionID(), scheduled.Request.Execution().Title(),
+			scheduled.WorkspacePath, selection,
+		)
 	}
 	sess, err := c.sessionReader.Get(ctx, id)
 	return sess, nil, err
@@ -351,4 +354,11 @@ func (c *Coordinator) executionCWD(ctx context.Context, sess session.Session) (c
 		return "", false, fmt.Errorf("%w: %w", ErrIsolationUnavailable, err)
 	}
 	return copyDir, true, nil
+}
+
+func scheduleRequest(scheduled *ScheduledStart) *schedule.RunRequest {
+	if scheduled == nil {
+		return nil
+	}
+	return &scheduled.Request
 }

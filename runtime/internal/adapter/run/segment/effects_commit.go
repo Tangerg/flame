@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
@@ -361,21 +360,17 @@ func (e *Effects) admitOpening(ctx context.Context, opening runs.OpeningCommit) 
 			return fmt.Errorf("segment: persist opening Session replacement: %w", err)
 		}
 	}
-	scheduleFiring := opening.ScheduleFiring()
-	manualScheduleRun, manual := opening.ManualScheduleRun()
-	if scheduleFiring == "" && !manual {
+	scheduled, present := opening.Schedule()
+	if !present {
 		return nil
 	}
-	if manual {
-		if err := e.schedules.RecordRun(ctx, manualScheduleRun); err != nil {
+	if record, manual := scheduled.ManualRecord(); manual {
+		if err := e.schedules.RecordRun(ctx, record); err != nil {
 			return fmt.Errorf("segment: record manual schedule Run: %w", err)
 		}
 		return nil
 	}
-	acceptance, err := schedule.NewAcceptance(scheduleFiring, admission.RunID)
-	if err != nil {
-		return fmt.Errorf("segment: form scheduled occurrence acceptance: %w", err)
-	}
+	acceptance, _ := scheduled.Acceptance()
 	if err := e.schedules.Accept(ctx, acceptance); err != nil {
 		return fmt.Errorf("segment: accept scheduled occurrence: %w", err)
 	}

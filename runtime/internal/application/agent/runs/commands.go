@@ -104,17 +104,12 @@ func invalidInputBlock(index int, field, detail string, cause error) error {
 
 // StartCommand is the complete input for starting a Run.
 type StartCommand struct {
-	// RunID and NewSessionID are set only by a durable schedule invocation.
-	// They make re-dispatch after a crash resume the same logical run/session.
-	RunID                string
-	NewSessionID         string
-	ScheduleFiring       string
-	ManualScheduleRun    *schedule.RunRecord
-	SessionID            string
-	DefaultWorkspacePath string
-	NewSessionTitle      string
-	ModelSelection       modelref.Selection
-	Options              *corechat.Options
+	// SessionID names the existing Session a start continues. A scheduled start
+	// names no Session: Schedule creates its own.
+	SessionID      string
+	Schedule       *ScheduledStart
+	ModelSelection modelref.Selection
+	Options        *corechat.Options
 	// Capabilities is the optional behavior enabled for this Run, already resolved
 	// by the caller against what this build can execute. The use case freezes it at
 	// admission rather than deriving or renegotiating it later.
@@ -126,8 +121,17 @@ type StartCommand struct {
 	GoalIncarnationID string
 }
 
+// ScheduledStart is a Schedule launch that opens its own Session. Request owns
+// the stable Session and Run identities, so re-dispatch after a crash resumes
+// the same logical Run, and the occurrence or manual record committed with the
+// opening.
+type ScheduledStart struct {
+	Request       schedule.RunRequest
+	WorkspacePath string
+}
+
 func (s StartCommand) clone() StartCommand {
-	s.ManualScheduleRun = optional.Clone(s.ManualScheduleRun)
+	s.Schedule = optional.Clone(s.Schedule)
 	if s.Options != nil {
 		options := s.Options.Clone()
 		s.Options = &options
@@ -138,54 +142,21 @@ func (s StartCommand) clone() StartCommand {
 }
 
 // ValidateSessionOrigin ensures the command names exactly one Session origin:
-// an existing Session, one durable schedule occurrence, or one aggregate-owned
-// manual Run fact. Keeping this at the command boundary prevents callers from
-// mixing schedule ownership with an unrelated Session, from carrying partial
-// retry identities, and from asking the Run to invent a Session.
+// an existing Session or one Schedule launch.
 func (s StartCommand) ValidateSessionOrigin() error {
-	if s.SessionID != "" {
+	if s.Schedule == nil {
+		if s.SessionID == "" {
+			return fmt.Errorf("%w: a start names an existing Session or a schedule origin", ErrInvalidScheduledStart)
+		}
 		if err := resourceid.ValidateSession(s.SessionID); err != nil {
 			return fmt.Errorf("%w: %v", ErrInvalidScheduledStart, err)
 		}
-	}
-	scheduled := s.RunID != "" || s.NewSessionID != "" || s.ScheduleFiring != ""
-	if !scheduled && s.ManualScheduleRun == nil && s.SessionID == "" {
-		return fmt.Errorf("%w: a start names an existing Session or a schedule origin", ErrInvalidScheduledStart)
-	}
-	if s.ManualScheduleRun != nil {
-		if err := s.ManualScheduleRun.Validate(); err != nil {
-			return fmt.Errorf("%w: %v", ErrInvalidScheduledStart, err)
-		}
-		if s.ScheduleFiring != "" || s.SessionID != "" {
-			return fmt.Errorf("%w: manual schedule run cannot carry occurrence or existing-session identity", ErrInvalidScheduledStart)
-		}
-		if s.RunID == "" || s.NewSessionID == "" {
-			return fmt.Errorf("%w: run ID and new session ID are required for a manual schedule run", ErrInvalidScheduledStart)
-		}
-		if err := resourceid.ValidateRun(s.RunID); err != nil {
-			return fmt.Errorf("%w: %v", ErrInvalidScheduledStart, err)
-		}
-		if err := resourceid.ValidateSession(s.NewSessionID); err != nil {
-			return fmt.Errorf("%w: %v", ErrInvalidScheduledStart, err)
-		}
 		return nil
-	}
-	if !scheduled {
-		return nil
-	}
-	if s.RunID == "" || s.NewSessionID == "" || s.ScheduleFiring == "" {
-		return fmt.Errorf("%w: run ID, new session ID, and schedule firing are required together", ErrInvalidScheduledStart)
 	}
 	if s.SessionID != "" {
 		return fmt.Errorf("%w: scheduled start cannot also select an existing session", ErrInvalidScheduledStart)
 	}
-	if err := resourceid.ValidateRun(s.RunID); err != nil {
-		return fmt.Errorf("%w: %v", ErrInvalidScheduledStart, err)
-	}
-	if err := resourceid.ValidateSession(s.NewSessionID); err != nil {
-		return fmt.Errorf("%w: %v", ErrInvalidScheduledStart, err)
-	}
-	if err := schedule.ValidateOccurrenceID(s.ScheduleFiring); err != nil {
+	if err := s.Schedule.Request.Validate(); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidScheduledStart, err)
 	}
 	return nil

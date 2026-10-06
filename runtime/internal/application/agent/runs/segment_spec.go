@@ -37,8 +37,7 @@ type segmentSpec struct {
 	GoalIncarnationID  string
 	InitialSession     *session.Session
 	SessionReplacement *session.Replacement
-	ScheduleFiring     string
-	ManualScheduleRun  *schedule.RunRecord
+	Schedule           *schedule.RunRequest
 	CreatedAt          time.Time
 	OpeningUserText    string
 	Input              []transcript.ContentBlock

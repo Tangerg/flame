@@ -735,9 +735,9 @@ func TestScheduledStartCarriesExactInitialSessionInOpening(t *testing.T) {
 	control := &fakeExecutionPorts{startRef: ExecutorRef{SessionID: "ses_1", ExecutorID: "turn_1"}}
 	coordinator := newUseCaseCoordinator(executor, control, sessions, effects)
 
+	request := testsupport.MustOccurrenceRunRequest("sch_test", time.UnixMilli(1000), "ses_1", "run_new")
 	result, err := coordinator.Start(t.Context(), StartCommand{
-		RunID: "run_new", NewSessionID: "ses_1", ScheduleFiring: "sch_test:1000",
-		NewSessionTitle: "Scheduled", DefaultWorkspacePath: "/work",
+		Schedule:       &ScheduledStart{Request: request, WorkspacePath: "/work"},
 		ModelSelection: testsupport.MustModelSelection("provider", "model"),
 		Input:          []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "scheduled work"}},
 	})
@@ -769,9 +769,9 @@ func TestScheduledSessionExistsOnlyWhenItsRunOpens(t *testing.T) {
 		stageErr: errors.New("executor staging failed"),
 	}
 	coordinator := newUseCaseCoordinator(&fakeExecutor{}, control, sessions, effects)
+	request := testsupport.MustOccurrenceRunRequest("sch_test", time.UnixMilli(1000), "ses_scheduled", "run_new")
 	command := StartCommand{
-		RunID: "run_new", NewSessionID: "ses_scheduled", ScheduleFiring: "sch_test:1000",
-		NewSessionTitle: "Scheduled", DefaultWorkspacePath: "/work",
+		Schedule:       &ScheduledStart{Request: request, WorkspacePath: "/work"},
 		ModelSelection: testsupport.MustModelSelection("provider", "model"),
 		Input:          []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}},
 	}
@@ -804,8 +804,7 @@ func TestStartRefusesACommandWithNoSessionOrigin(t *testing.T) {
 	coordinator := newUseCaseCoordinator(&fakeExecutor{}, control, new(fakeRunSessions), effects)
 
 	_, err := coordinator.Start(t.Context(), StartCommand{
-		DefaultWorkspacePath: "/work",
-		Input:                []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}},
+		Input: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}},
 	})
 	if !errors.Is(err, ErrInvalidScheduledStart) {
 		t.Fatalf("Start without a Session origin = %v, want ErrInvalidScheduledStart", err)
@@ -876,18 +875,18 @@ func TestManualScheduleStartCarriesRunFactInOpening(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new Schedule: %v", err)
 	}
-	record, err := scheduled.RecordRun(createdAt.Add(time.Second))
+	request, err := schedule.ManualRunRequest(scheduled, "ses_manual", "run_manual", createdAt.Add(time.Second))
 	if err != nil {
-		t.Fatalf("manual Run record: %v", err)
+		t.Fatalf("manual run request: %v", err)
 	}
+	record, _ := request.ManualRecord()
 	executor := &fakeExecutor{}
 	effects := &fakeEffects{}
 	control := &fakeExecutionPorts{startRef: ExecutorRef{SessionID: "ses_manual", ExecutorID: "turn_1"}}
 	coordinator := newUseCaseCoordinator(executor, control, new(fakeRunSessions), effects)
 
 	result, err := coordinator.Start(t.Context(), StartCommand{
-		RunID: "run_manual", NewSessionID: "ses_manual", ManualScheduleRun: &record,
-		NewSessionTitle: "Scheduled", DefaultWorkspacePath: "/work",
+		Schedule:       &ScheduledStart{Request: request, WorkspacePath: "/work"},
 		ModelSelection: testsupport.MustModelSelection("provider", "model"),
 		Input:          []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "scheduled work"}},
 	})
@@ -897,10 +896,12 @@ func TestManualScheduleStartCarriesRunFactInOpening(t *testing.T) {
 	consumeEvents(result.Events)
 	opening := effects.opening()
 	_, initialized := opening.InitialSession()
-	manualRun, manual := opening.ManualScheduleRun()
-	if !initialized || !manual ||
+	launched, present := opening.Schedule()
+	manualRun, manual := launched.ManualRecord()
+	_, accepted := launched.Acceptance()
+	if !initialized || !present || !manual || accepted ||
 		manualRun.ScheduleID() != scheduled.ID() ||
-		!manualRun.RanAt().Equal(record.RanAt()) || opening.ScheduleFiring() != "" {
+		!manualRun.RanAt().Equal(record.RanAt()) {
 		t.Fatalf("manual schedule opening = %+v", opening)
 	}
 }
@@ -1054,23 +1055,11 @@ func TestStartReleasesStagedExecutionWhenSessionReplacementPreparationFails(t *t
 	}
 }
 
-func TestStartRejectsPartialScheduleOwnershipBeforeSideEffects(t *testing.T) {
-	createdAt := time.Date(2026, 8, 31, 12, 0, 0, 0, time.UTC)
-	scheduled, err := schedule.New("sch_manual", schedule.Draft{Instructions: "review", Cron: "@daily"}, createdAt)
-	if err != nil {
-		t.Fatal(err)
-	}
-	manualRecord, err := scheduled.RecordRun(createdAt.Add(time.Second))
-	if err != nil {
-		t.Fatal(err)
-	}
+func TestStartRejectsAmbiguousSessionOriginBeforeSideEffects(t *testing.T) {
+	request := testsupport.MustOccurrenceRunRequest("sch_test", time.UnixMilli(1000), "ses_1", "run_1")
 	for _, command := range []StartCommand{
-		{RunID: "run_1"},
-		{NewSessionID: "ses_1"},
-		{ScheduleFiring: "sch_test:1000"},
-		{RunID: "run_1", NewSessionID: "ses_1", ScheduleFiring: "sch_test:1000", SessionID: "ses_existing"},
-		{ManualScheduleRun: &manualRecord},
-		{RunID: "run_manual", NewSessionID: "ses_manual", ScheduleFiring: "sch_test:1000", ManualScheduleRun: &manualRecord},
+		{Schedule: &ScheduledStart{}},
+		{Schedule: &ScheduledStart{Request: request, WorkspacePath: "/work"}, SessionID: "ses_existing"},
 	} {
 		t.Run("partial", func(t *testing.T) {
 			exec := &fakeExecutor{}

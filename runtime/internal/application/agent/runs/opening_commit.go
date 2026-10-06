@@ -20,8 +20,7 @@ type OpeningCommit struct {
 	resume             *run.TreeResumeDraft
 	initialSession     *session.Session
 	sessionReplacement *session.Replacement
-	scheduleFiring     string
-	manualScheduleRun  *schedule.RunRecord
+	schedule           *schedule.RunRequest
 	events             []EventCommit
 }
 
@@ -32,18 +31,14 @@ func NewAdmissionOpeningCommit(
 	admit run.Draft,
 	initialSession *session.Session,
 	sessionReplacement *session.Replacement,
-	scheduleFiring string,
-	manualScheduleRun *schedule.RunRecord,
+	scheduled *schedule.RunRequest,
 	events []EventCommit,
 ) (OpeningCommit, error) {
 	admit = cloneOpeningAdmission(admit)
-	opening := OpeningCommit{
-		commitID: commitID, admit: &admit,
-		scheduleFiring: scheduleFiring, events: cloneEventCommits(events),
-	}
+	opening := OpeningCommit{commitID: commitID, admit: &admit, events: cloneEventCommits(events)}
 	opening.initialSession = optional.Clone(initialSession)
 	opening.sessionReplacement = optional.Clone(sessionReplacement)
-	opening.manualScheduleRun = optional.Clone(manualScheduleRun)
+	opening.schedule = optional.Clone(scheduled)
 	if err := opening.Validate(); err != nil {
 		return OpeningCommit{}, err
 	}
@@ -99,7 +94,7 @@ func (o OpeningCommit) Validate() error {
 		if err := o.resume.Validate(); err != nil {
 			return fmt.Errorf("runs: opening resume: %w", err)
 		}
-		if o.initialSession != nil || o.sessionReplacement != nil || o.scheduleFiring != "" || o.manualScheduleRun != nil {
+		if o.initialSession != nil || o.sessionReplacement != nil || o.schedule != nil {
 			return errors.New("runs: resumed opening carries fresh-run facts")
 		}
 	}
@@ -111,7 +106,7 @@ func (o OpeningCommit) validateAdmission() error {
 		return fmt.Errorf("runs: opening admission: %w", err)
 	}
 	if o.admit.Lineage().IsChild() &&
-		(o.initialSession != nil || o.sessionReplacement != nil || o.scheduleFiring != "" || o.manualScheduleRun != nil) {
+		(o.initialSession != nil || o.sessionReplacement != nil || o.schedule != nil) {
 		return errors.New("runs: child opening carries root admission facts")
 	}
 	if o.initialSession != nil {
@@ -131,20 +126,12 @@ func (o OpeningCommit) validateAdmission() error {
 	if o.initialSession != nil && o.sessionReplacement != nil {
 		return errors.New("runs: opening cannot insert and replace the same Session")
 	}
-	if (o.scheduleFiring != "" || o.manualScheduleRun != nil) && o.initialSession == nil {
-		return errors.New("runs: schedule opening has no initial Session")
-	}
-	if o.scheduleFiring != "" {
-		if err := schedule.ValidateOccurrenceID(o.scheduleFiring); err != nil {
-			return fmt.Errorf("runs: opening schedule firing: %w", err)
+	if o.schedule != nil {
+		if o.initialSession == nil {
+			return errors.New("runs: schedule opening has no initial Session")
 		}
-	}
-	if o.manualScheduleRun != nil {
-		if err := o.manualScheduleRun.Validate(); err != nil {
-			return fmt.Errorf("runs: opening manual schedule Run: %w", err)
-		}
-		if o.scheduleFiring != "" {
-			return errors.New("runs: opening mixes scheduled occurrence and manual schedule Run")
+		if o.schedule.RunID() != o.admit.RunID || o.schedule.SessionID() != o.admit.SessionID {
+			return errors.New("runs: schedule opening differs from admitted Run")
 		}
 	}
 	return nil
@@ -245,12 +232,10 @@ func (o OpeningCommit) SessionReplacement() (session.Replacement, bool) {
 	return optional.Present(o.sessionReplacement)
 }
 
-// ScheduleFiring returns the occurrence accepted with a scheduled admission.
-func (o OpeningCommit) ScheduleFiring() string { return o.scheduleFiring }
-
-// ManualScheduleRun returns the manual Schedule execution recorded with an admission.
-func (o OpeningCommit) ManualScheduleRun() (schedule.RunRecord, bool) {
-	return optional.Present(o.manualScheduleRun)
+// Schedule returns the Schedule launch whose occurrence acceptance or manual
+// record commits with this admission.
+func (o OpeningCommit) Schedule() (schedule.RunRequest, bool) {
+	return optional.Present(o.schedule)
 }
 
 // Events returns isolated opening projections in their canonical order.

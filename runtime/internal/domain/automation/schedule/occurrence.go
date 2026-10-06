@@ -182,19 +182,6 @@ func (c Claim) Occurrence() Occurrence { return c.occurrence }
 // ExpectedRevision returns the exact Schedule revision this claim consumes.
 func (c Claim) ExpectedRevision() uint64 { return c.expectedRevision.Value() }
 
-// NewAcceptance creates an exact occurrence-to-Run ownership proof.
-func NewAcceptance(occurrenceID, runID string) (Acceptance, error) {
-	parsedOccurrenceID, err := parseOccurrenceIdentity(occurrenceID)
-	if err != nil {
-		return Acceptance{}, err
-	}
-	value := Acceptance{occurrenceID: parsedOccurrenceID, runID: runID}
-	if err := value.Validate(); err != nil {
-		return Acceptance{}, err
-	}
-	return value, nil
-}
-
 // Validate rejects partial occurrence ownership.
 func (a Acceptance) Validate() error {
 	if err := a.occurrenceID.Validate(); err != nil {

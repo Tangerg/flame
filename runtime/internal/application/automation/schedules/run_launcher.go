@@ -35,16 +35,9 @@ func (r RunLauncher) StartScheduledRun(ctx context.Context, request schedule.Run
 		workspacePath = r.defaultWorkspacePath
 	}
 	command := runs.StartCommand{
-		RunID:                request.RunID(),
-		NewSessionID:         request.SessionID(),
-		ScheduleFiring:       request.OccurrenceID(),
-		DefaultWorkspacePath: workspacePath,
-		NewSessionTitle:      execution.Title(),
-		ModelSelection:       execution.ModelSelection(),
-		Input:                []transcript.ContentBlock{{Kind: transcript.TextContent, Text: execution.Instructions()}},
-	}
-	if record, manual := request.ManualRecord(); manual {
-		command.ManualScheduleRun = &record
+		Schedule:       &runs.ScheduledStart{Request: request, WorkspacePath: workspacePath},
+		ModelSelection: execution.ModelSelection(),
+		Input:          []transcript.ContentBlock{{Kind: transcript.TextContent, Text: execution.Instructions()}},
 	}
 	startCtx, cancel := context.WithCancel(ctx)
 	_, err := r.runs.Start(startCtx, command)

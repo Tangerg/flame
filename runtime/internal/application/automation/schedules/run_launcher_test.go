@@ -18,7 +18,7 @@ type fakeRunStarter struct {
 func (f *fakeRunStarter) Start(ctx context.Context, cmd runs.StartCommand) (runs.StartResult, error) {
 	f.cmd = cmd
 	context.AfterFunc(ctx, func() { close(f.canceled) })
-	return runs.StartResult{SessionID: cmd.NewSessionID, RunID: cmd.RunID}, nil
+	return runs.StartResult{SessionID: cmd.Schedule.Request.SessionID(), RunID: cmd.Schedule.Request.RunID()}, nil
 }
 
 func TestRunLauncherUsesApplicationRunEntry(t *testing.T) {
@@ -36,18 +36,12 @@ func TestRunLauncherUsesApplicationRunEntry(t *testing.T) {
 	if err := launcher.StartScheduledRun(context.Background(), request); err != nil {
 		t.Fatalf("StartScheduledRun: %v", err)
 	}
-	if runStarter.cmd.DefaultWorkspacePath != "/default" || runStarter.cmd.NewSessionTitle != "" {
-		t.Fatalf("command defaults = %+v", runStarter.cmd)
-	}
-	if runStarter.cmd.NewSessionID != "ses_manual" || runStarter.cmd.RunID != "run_manual" || runStarter.cmd.ScheduleFiring != "" {
-		t.Fatalf("manual schedule identities = %+v", runStarter.cmd)
+	if runStarter.cmd.Schedule == nil || runStarter.cmd.Schedule.WorkspacePath != "/default" ||
+		runStarter.cmd.Schedule.Request != request || runStarter.cmd.SessionID != "" {
+		t.Fatalf("scheduled start = %+v", runStarter.cmd)
 	}
 	if len(runStarter.cmd.Input) != 1 || runStarter.cmd.Input[0].Text != "summarize" || runStarter.cmd.ModelSelection.Provider() != "p" || runStarter.cmd.ModelSelection.Model() != "m" {
 		t.Fatalf("command mapping = %+v", runStarter.cmd)
-	}
-	if runStarter.cmd.ManualScheduleRun == nil || runStarter.cmd.ManualScheduleRun.ScheduleID() != "sch_1" ||
-		!runStarter.cmd.ManualScheduleRun.RanAt().Equal(ranAt) {
-		t.Fatalf("manual schedule Run fact = %+v", runStarter.cmd.ManualScheduleRun)
 	}
 	<-runStarter.canceled
 }

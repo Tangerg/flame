@@ -76,9 +76,9 @@ func testClaim(scheduled schedule.Schedule, sessionID, runID string, firedAt tim
 }
 
 func testAcceptance(occurrence schedule.Occurrence) schedule.Acceptance {
-	value, err := schedule.NewAcceptance(occurrence.ID(), occurrence.RunID())
-	if err != nil {
-		panic(err)
+	value, occurrenceBacked := occurrence.RunRequest().Acceptance()
+	if !occurrenceBacked {
+		panic("occurrence request has no acceptance")
 	}
 	return value
 }

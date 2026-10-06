@@ -108,14 +108,13 @@ func mustAdmissionOpening(
 	admission run.Draft,
 	initialSession *session.Session,
 	sessionReplacement *session.Replacement,
-	scheduleFiring string,
-	manualScheduleRun *schedule.RunRecord,
+	scheduled *schedule.RunRequest,
 	events []runs.EventCommit,
 ) runs.OpeningCommit {
 	t.Helper()
 	opening, err := runs.NewAdmissionOpeningCommit(
 		commitID, admission, initialSession, sessionReplacement,
-		scheduleFiring, manualScheduleRun, events,
+		scheduled, events,
 	)
 	if err != nil {
 		t.Fatalf("NewAdmissionOpeningCommit: %v", err)
@@ -265,7 +264,7 @@ func TestCommitOpeningAdmitsAndProjectsInOneTransaction(t *testing.T) {
 
 	opening := mustAdmissionOpening(
 		t, testCommitID("run_commit_opening"), draft,
-		nil, nil, "", nil, []runs.EventCommit{{
+		nil, nil, nil, []runs.EventCommit{{
 			RunID:     "run_1",
 			SessionID: "ses_1",
 			SegmentID: "seg_open",

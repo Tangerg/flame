@@ -109,7 +109,7 @@ func NewStartedChildRun(
 		return StartedChildRun{}, err
 	}
 	opening, err := NewAdmissionOpeningCommit(
-		newRunCommitID(), reservation.draft(model, startedAt), nil, nil, "", nil, events,
+		newRunCommitID(), reservation.draft(model, startedAt), nil, nil, nil, events,
 	)
 	if err != nil {
 		return StartedChildRun{}, err

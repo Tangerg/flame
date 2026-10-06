@@ -239,7 +239,7 @@ func TestCommitOpeningReconcilesAmbiguousAdmission(t *testing.T) {
 	}}
 	opening := mustAdmissionOpening(
 		t, testCommitID("run_commit_ambiguous_opening"), draft,
-		nil, nil, "", nil, openingEvents,
+		nil, nil, nil, openingEvents,
 	)
 	commitCtx, cancelCommit := context.WithCancel(ctx)
 	t.Cleanup(cancelCommit)
@@ -278,7 +278,7 @@ func TestCommitOpeningReconcilesAmbiguousAdmission(t *testing.T) {
 	}
 	otherOpening := mustAdmissionOpening(
 		t, testCommitID("run_commit_other_opening"), draft,
-		nil, nil, "", nil, openingEvents,
+		nil, nil, nil, openingEvents,
 	)
 	if err := effects.CommitOpening(commitCtx, otherOpening); err == nil {
 		t.Fatal("different opening attempt reconciled against prior marker")
@@ -829,12 +829,12 @@ func TestCommitOpeningRollsBackScheduledSession(t *testing.T) {
 		ID: draft.SessionID, Title: "scheduled", Workspace: testsupport.MustWorkspace("/work"),
 		CreatedAt: created, UpdatedAt: created, Revision: 1,
 	})
+	// No firing is seeded: Accept fails after Insert and Admit, so the test
+	// exercises rollback rather than a preflight rejection.
+	missingFiring := testsupport.MustOccurrenceRunRequest("sch_missing", time.UnixMilli(1000), draft.SessionID, draft.RunID)
 	opening := mustAdmissionOpening(
 		t, testCommitID("run_commit_claimed_resume"), draft,
-		&scheduled, nil,
-		// No firing is seeded: Accept fails after Insert and Admit, so the
-		// test exercises rollback rather than a preflight rejection.
-		"sch_missing:1000", nil, nil,
+		&scheduled, nil, &missingFiring, nil,
 	)
 	err = effects.CommitOpening(ctx, opening)
 	if err == nil {
@@ -870,10 +870,11 @@ func TestCommitOpeningOwnsManualScheduleRunFact(t *testing.T) {
 	if err := schedules.Insert(ctx, scheduled); err != nil {
 		t.Fatalf("insert Schedule: %v", err)
 	}
-	record, err := scheduled.RecordRun(createdAt.Add(time.Second))
+	request, err := schedule.ManualRunRequest(scheduled, "ses_manual", "run_manual", createdAt.Add(time.Second))
 	if err != nil {
-		t.Fatalf("record manual Run: %v", err)
+		t.Fatalf("manual run request: %v", err)
 	}
+	record, _ := request.ManualRecord()
 
 	sessions := sqlite.NewSessionStore(db)
 	state := sqlite.NewRunStore(db)
@@ -893,7 +894,7 @@ func TestCommitOpeningOwnsManualScheduleRunFact(t *testing.T) {
 	}
 	opening := mustAdmissionOpening(
 		t, testCommitID("run_commit_manual_schedule"), manualDraft,
-		&manualSession, nil, "", &record, nil,
+		&manualSession, nil, &request, nil,
 	)
 	if err := effects.CommitOpening(ctx, opening); err != nil {
 		t.Fatalf("commit manual schedule opening: %v", err)
@@ -914,9 +915,9 @@ func TestCommitOpeningOwnsManualScheduleRunFact(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new missing Schedule: %v", err)
 	}
-	missingRecord, err := missing.RecordRun(createdAt.Add(time.Second))
+	missingRequest, err := schedule.ManualRunRequest(missing, "ses_manual_missing", "run_manual_missing", createdAt.Add(time.Second))
 	if err != nil {
-		t.Fatalf("missing Schedule Run record: %v", err)
+		t.Fatalf("missing Schedule run request: %v", err)
 	}
 	missingSession := testsupport.MustRestoreSession(session.Snapshot{
 		ID: "ses_manual_missing", Workspace: testsupport.MustWorkspace("/work"),
@@ -928,7 +929,7 @@ func TestCommitOpeningOwnsManualScheduleRunFact(t *testing.T) {
 	}
 	missingOpening := mustAdmissionOpening(
 		t, testCommitID("run_commit_manual_schedule_missing"), missingDraft,
-		&missingSession, nil, "", &missingRecord, nil,
+		&missingSession, nil, &missingRequest, nil,
 	)
 	err = effects.CommitOpening(ctx, missingOpening)
 	if !errors.Is(err, schedule.ErrNotFound) {
@@ -2572,7 +2573,7 @@ func TestCommitOpeningRefusesASecondOpenRun(t *testing.T) {
 	second := testsupport.RunDraft(run.Draft{RunID: "run_2", SessionID: "ses_1", SegmentID: "seg_open", CreatedAt: created})
 	opening := mustAdmissionOpening(
 		t, testCommitID("run_commit_busy_opening"), second,
-		nil, nil, "", nil, []runs.EventCommit{{
+		nil, nil, nil, []runs.EventCommit{{
 			RunID:     "run_2",
 			SessionID: "ses_1",
 			SegmentID: second.SegmentID,

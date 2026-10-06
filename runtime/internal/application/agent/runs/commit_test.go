@@ -193,7 +193,7 @@ func TestOpeningCommitValidatesItsLifecycleAction(t *testing.T) {
 		{name: "admission", build: func() error {
 			_, err := NewAdmissionOpeningCommit(
 				testCommitID("run_commit_invalid_admission"), invalidAdmission,
-				nil, nil, "", nil, nil,
+				nil, nil, nil, nil,
 			)
 			return err
 		}},
@@ -225,7 +225,7 @@ func TestOpeningCommitRejectsRootFactsOutsideARootAdmission(t *testing.T) {
 	}
 	if _, err := NewAdmissionOpeningCommit(
 		testCommitID("run_commit_child_with_session"), child,
-		&initialSession, nil, "", nil, nil,
+		&initialSession, nil, nil, nil,
 	); err == nil {
 		t.Fatal("OpeningCommit accepted root Session facts on a child admission")
 	}
@@ -234,15 +234,33 @@ func TestOpeningCommitRejectsRootFactsOutsideARootAdmission(t *testing.T) {
 		RunID: "run_scheduled", SessionID: "session_scheduled", SegmentID: "segment_scheduled",
 		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}
+	scheduled := testsupport.MustOccurrenceRunRequest("sch_test", time.UnixMilli(1000), root.SessionID, root.RunID)
 	if _, err := NewAdmissionOpeningCommit(
 		testCommitID("run_commit_schedule_without_session"), root,
-		nil, nil, "sch_test:1000", nil, nil,
+		nil, nil, &scheduled, nil,
 	); err == nil {
 		t.Fatal("OpeningCommit accepted a schedule admission without its initial Session")
 	}
+	scheduledSession := testsupport.MustRestoreSession(session.Snapshot{
+		ID: root.SessionID, Workspace: testsupport.MustWorkspace("/work"),
+		CreatedAt: createdAt, UpdatedAt: createdAt, Revision: 1,
+	})
+	if _, err := NewAdmissionOpeningCommit(
+		testCommitID("run_commit_schedule_session"), root,
+		&scheduledSession, nil, &scheduled, nil,
+	); err != nil {
+		t.Fatalf("schedule admission with its initial Session: %v", err)
+	}
+	foreign := testsupport.MustOccurrenceRunRequest("sch_test", time.UnixMilli(1000), root.SessionID, "run_other")
+	if _, err := NewAdmissionOpeningCommit(
+		testCommitID("run_commit_schedule_foreign_run"), root,
+		&scheduledSession, nil, &foreign, nil,
+	); err == nil {
+		t.Fatal("OpeningCommit accepted a schedule launch for another Run")
+	}
 	if _, err := NewAdmissionOpeningCommit(
 		testCommitID("run_commit_existing_session"), root,
-		nil, nil, "", nil, nil,
+		nil, nil, nil, nil,
 	); err != nil {
 		t.Fatalf("ordinary admission into an existing Session: %v", err)
 	}
@@ -265,7 +283,7 @@ func TestOpeningCommitOwnsEveryOpeningEvent(t *testing.T) {
 	}
 	if _, err := NewAdmissionOpeningCommit(
 		testCommitID("run_commit_foreign_event"), root,
-		nil, nil, "", nil, []EventCommit{foreign},
+		nil, nil, nil, []EventCommit{foreign},
 	); err == nil {
 		t.Fatal("root OpeningCommit accepted an event for another Run")
 	}
@@ -285,7 +303,7 @@ func TestOpeningCommitOwnsEveryOpeningEvent(t *testing.T) {
 	}
 	if _, err := NewAdmissionOpeningCommit(
 		testCommitID("run_commit_child_events"), child,
-		nil, nil, "", nil, []EventCommit{parentEvent, childEvent},
+		nil, nil, nil, []EventCommit{parentEvent, childEvent},
 	); err != nil {
 		t.Fatalf("child OpeningCommit rejected its parent/child projections: %v", err)
 	}
@@ -295,7 +313,7 @@ func TestOpeningCommitOwnsEveryOpeningEvent(t *testing.T) {
 	}
 	if _, err := NewAdmissionOpeningCommit(
 		testCommitID("run_commit_child_progress"), child,
-		nil, nil, "", nil, []EventCommit{parentEvent, withProgress},
+		nil, nil, nil, []EventCommit{parentEvent, withProgress},
 	); err == nil {
 		t.Fatal("child OpeningCommit accepted an execution observation")
 	}
@@ -325,7 +343,7 @@ func TestCompositeCommitsRejectNestedTopLevelEventIdentity(t *testing.T) {
 	}
 	if _, err := NewAdmissionOpeningCommit(
 		testCommitID("run_commit_opening_parent"), admission,
-		nil, nil, "", nil, []EventCommit{{
+		nil, nil, nil, []EventCommit{{
 			RunID: admission.RunID, SessionID: admission.SessionID, SegmentID: admission.SegmentID,
 			CommitID: testCommitID("run_commit_opening_nested"), Items: []transcript.Item{openingItem},
 		}},
@@ -420,7 +438,7 @@ func TestOpeningCommitOwnsItsValidatedWriteSet(t *testing.T) {
 
 	opening, err := NewAdmissionOpeningCommit(
 		testCommitID("run_commit_owned_opening"), admission,
-		&initialSession, nil, "", nil, events,
+		&initialSession, nil, nil, events,
 	)
 	if err != nil {
 		t.Fatalf("NewAdmissionOpeningCommit: %v", err)
