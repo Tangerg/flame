@@ -485,10 +485,8 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		// A session gets an explicit permission row only after entering Plan mode.
 		// The row retains the exact mode to restore on exit and follows the owning
 		// session through the database FK lifecycle.
-		`CREATE TABLE IF NOT EXISTS session_permission_modes (
-			session_id   TEXT    PRIMARY KEY REFERENCES sessions(id) ON DELETE CASCADE,
-			mode         TEXT NOT NULL,
-			restore_mode TEXT NOT NULL
+		`CREATE TABLE IF NOT EXISTS session_plan_modes (
+			session_id TEXT PRIMARY KEY REFERENCES sessions(id) ON DELETE CASCADE
 		)`,
 		// One row per terminal Run: the session's Plan as it stood when that Run
 		// ended. session_plans is a latest-value projection with no history, so without

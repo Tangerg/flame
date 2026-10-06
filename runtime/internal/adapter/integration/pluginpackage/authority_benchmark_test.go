@@ -73,7 +73,7 @@ func BenchmarkInstalledSourceRuleList(b *testing.B) {
 		b.Fatal(err)
 	}
 	rules := sqlite.NewApprovalRuleStore(db)
-	policy, err := approvals.NewRuntimePolicy(approval.ModeSafe, rules, sqlite.NewPermissionModeStore(db), toolset.NewAuthorities(registry.Definition, nil), nil)
+	policy, err := approvals.NewRuntimePolicy(approval.ModeSafe, rules, sqlite.NewPlanModeStore(db), toolset.NewAuthorities(registry.Definition, nil), nil)
 	if err != nil {
 		b.Fatal(err)
 	}

@@ -160,31 +160,6 @@ func TestSessionScopedApprovalIdentityIsExact(t *testing.T) {
 	}
 }
 
-func TestSessionModeValidation(t *testing.T) {
-	tests := []struct {
-		name  string
-		state approval.SessionMode
-		valid bool
-	}{
-		{name: "Plan restores safe", state: approval.SessionMode{Mode: approval.ModePlan, RestoreMode: approval.ModeSafe}, valid: true},
-		{name: "Plan restores balanced", state: approval.SessionMode{Mode: approval.ModePlan, RestoreMode: approval.ModeBalanced}, valid: true},
-		{name: "explicit yolo", state: approval.SessionMode{Mode: approval.ModeYolo}, valid: true},
-		{name: "Plan cannot restore Plan", state: approval.SessionMode{Mode: approval.ModePlan, RestoreMode: approval.ModePlan}},
-		{name: "unknown mode", state: approval.SessionMode{Mode: approval.Mode("invalid")}},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			err := test.state.Validate()
-			if test.valid && err != nil {
-				t.Fatalf("Validate: %v", err)
-			}
-			if !test.valid && !errors.Is(err, approval.ErrInvalidSessionMode) {
-				t.Fatalf("Validate error = %v, want ErrInvalidSessionMode", err)
-			}
-		})
-	}
-}
-
 func TestRuleValidationRejectsCorruptDurableValues(t *testing.T) {
 	valid := mustRule(t, approval.ScopeProject, "/repo", "shell", approval.Subject{Type: approval.SubjectGlob, Value: "npm run *"}, approval.Allow)
 	tests := []struct {

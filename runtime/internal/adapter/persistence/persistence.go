@@ -51,7 +51,7 @@ type Bundle struct {
 	ToolInvocations     *sqlitestore.ToolInvocationStore
 	ChildRunStarts      *sqlitestore.ChildRunStartReservationStore
 	Plan                *sqlitestore.PlanStore
-	PermissionModes     *sqlitestore.PermissionModeStore
+	PlanModes           *sqlitestore.PlanModeStore
 	Goals               *sqlitestore.GoalStore
 	ApprovalRules       *sqlitestore.ApprovalRuleStore
 	UtilityRole         *sqlitestore.UtilityRoleStore
@@ -194,7 +194,7 @@ func Open(ctx context.Context, config Config) (*Bundle, error) {
 		ToolInvocations:     sqlitestore.NewToolInvocationStore(db),
 		ChildRunStarts:      sqlitestore.NewChildRunStartReservationStore(db),
 		Plan:                sqlitestore.NewPlanStore(db),
-		PermissionModes:     sqlitestore.NewPermissionModeStore(db),
+		PlanModes:           sqlitestore.NewPlanModeStore(db),
 		Goals:               sqlitestore.NewGoalStore(db),
 		ApprovalRules:       sqlitestore.NewApprovalRuleStore(db),
 		UtilityRole:         sqlitestore.NewUtilityRoleStore(db),

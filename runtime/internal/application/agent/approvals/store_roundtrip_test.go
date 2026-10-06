@@ -117,27 +117,35 @@ func newPolicy(t *testing.T) *approvals.RuntimePolicy {
 // stays beside its only consumer rather than creating a production-shaped
 // package for one test fixture.
 type memoryRuleStore struct {
-	mu    sync.Mutex
-	rules map[string]approval.Rule
-	modes map[string]approval.SessionMode
+	mu       sync.Mutex
+	rules    map[string]approval.Rule
+	planning map[string]bool
 }
 
 func newMemoryRuleStore() *memoryRuleStore {
-	return &memoryRuleStore{rules: make(map[string]approval.Rule), modes: make(map[string]approval.SessionMode)}
+	return &memoryRuleStore{rules: make(map[string]approval.Rule), planning: map[string]bool{}}
 }
 
-func (m *memoryRuleStore) LookupMode(_ context.Context, sessionID string) (approval.SessionMode, bool, error) {
+func (m *memoryRuleStore) PlanModeActive(_ context.Context, sessionID string) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	mode, found := m.modes[sessionID]
-	return mode, found, nil
+	return m.planning[sessionID], nil
 }
 
-func (m *memoryRuleStore) PutMode(_ context.Context, sessionID string, mode approval.SessionMode) error {
+func (m *memoryRuleStore) StartPlanMode(_ context.Context, sessionID string) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.modes[sessionID] = mode
-	return nil
+	changed := !m.planning[sessionID]
+	m.planning[sessionID] = true
+	return changed, nil
+}
+
+func (m *memoryRuleStore) EndPlanMode(_ context.Context, sessionID string) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	changed := m.planning[sessionID]
+	delete(m.planning, sessionID)
+	return changed, nil
 }
 
 var _ approvals.RuleStore = (*memoryRuleStore)(nil)
@@ -174,7 +182,7 @@ func (m *memoryRuleStore) Delete(_ context.Context, id string) error {
 func (m *memoryRuleStore) DeleteSession(_ context.Context, sessionID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	delete(m.modes, sessionID)
+	delete(m.planning, sessionID)
 	for id, rule := range m.rules {
 		if rule.Scope == approval.ScopeSession && rule.ScopeKey == sessionID {
 			delete(m.rules, id)

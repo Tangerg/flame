@@ -16,22 +16,23 @@ import (
 )
 
 type modeStore struct {
-	states map[string]approval.SessionMode
+	planning map[string]bool
 }
 
-func (m *modeStore) LookupMode(_ context.Context, sessionID string) (approval.SessionMode, bool, error) {
-	state, found := m.states[sessionID]
-	return state, found, nil
+func (m *modeStore) PlanModeActive(_ context.Context, sessionID string) (bool, error) {
+	return m.planning[sessionID], nil
 }
 
-func (m *modeStore) PutMode(_ context.Context, sessionID string, state approval.SessionMode) error {
-	m.states[sessionID] = state
-	return nil
+func (m *modeStore) StartPlanMode(_ context.Context, sessionID string) (bool, error) {
+	changed := !m.planning[sessionID]
+	m.planning[sessionID] = true
+	return changed, nil
 }
 
-func (m *modeStore) DeleteSession(_ context.Context, sessionID string) error {
-	delete(m.states, sessionID)
-	return nil
+func (m *modeStore) EndPlanMode(_ context.Context, sessionID string) (bool, error) {
+	changed := m.planning[sessionID]
+	delete(m.planning, sessionID)
+	return changed, nil
 }
 
 type planReader struct{ steps []plandomain.Step }
@@ -54,7 +55,7 @@ func planContext(t *testing.T, sessionID string) context.Context {
 
 func balancedPlanPolicy(t *testing.T) *approvals.RuntimePolicy {
 	t.Helper()
-	policy, err := approvals.NewRuntimePolicy(approval.ModeBalanced, emptyPlanRules{}, &modeStore{states: make(map[string]approval.SessionMode)}, testsupport.ToolAuthorities{}, nil)
+	policy, err := approvals.NewRuntimePolicy(approval.ModeBalanced, emptyPlanRules{}, &modeStore{planning: map[string]bool{}}, testsupport.ToolAuthorities{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +148,7 @@ func TestRejectionKeepsPlanMode(t *testing.T) {
 	}
 }
 
-func TestApprovalRestoresModeCapturedOnEntry(t *testing.T) {
+func TestApprovalReturnsTheSessionToTheCurrentDefault(t *testing.T) {
 	const sessionID = "session-approve"
 	policy := balancedPlanPolicy(t)
 	if _, err := policy.EnterPlanMode(t.Context(), sessionID); err != nil {
@@ -167,11 +168,11 @@ func TestApprovalRestoresModeCapturedOnEntry(t *testing.T) {
 		t.Fatal(err)
 	}
 	result, err := callTextTool(planContext(t, sessionID), tool, `{}`)
-	if err != nil || !strings.Contains(result, "balanced was restored") {
+	if err != nil || !strings.Contains(result, "default permission mode yolo") {
 		t.Fatalf("Call = %q, %v", result, err)
 	}
-	if mode, _ := policy.Mode(t.Context(), sessionID); mode != approval.ModeBalanced {
-		t.Fatalf("mode = %v, want captured Balanced", mode)
+	if mode, _ := policy.Mode(t.Context(), sessionID); mode != approval.ModeYolo {
+		t.Fatalf("mode = %v, want the current default Yolo", mode)
 	}
 }
 

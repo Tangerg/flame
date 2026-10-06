@@ -25,8 +25,8 @@ const exitDescription = `Request approval for the current session Plan and exit 
 
 Call this only after set_plan contains the complete proposed Plan. This tool
 reads that stored Plan; it takes no Plan text or alternatives, so the approved
-value cannot differ from the stored session Plan. Approval restores the permission mode
-captured by enter_plan_mode. Rejection keeps the session in read-only Plan mode.`
+value cannot differ from the stored session Plan. Approval returns the session to the
+default permission mode. Rejection keeps the session in read-only Plan mode.`
 
 type exitArgs struct{}
 
@@ -110,7 +110,7 @@ func (e *exiter) exit(ctx context.Context, _ exitArgs) (string, error) {
 	if !changed {
 		return "", errors.New("exit_plan_mode: Plan mode ended before approval was applied")
 	}
-	return fmt.Sprintf("Plan approved. Plan mode exited and permission mode %s was restored. Execute the Plan.", modeName(restored)), nil
+	return fmt.Sprintf("Plan approved. Plan mode exited; the session follows the default permission mode %s. Execute the Plan.", modeName(restored)), nil
 }
 
 func selectedChoice(answers [][]string) string {

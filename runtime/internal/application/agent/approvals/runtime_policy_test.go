@@ -42,27 +42,35 @@ func TestPolicyRejectsInvalidDefaultMode(t *testing.T) {
 }
 
 type memoryModeStore struct {
-	states map[string]approval.SessionMode
+	planning map[string]bool
 }
 
-func (m *memoryModeStore) LookupMode(_ context.Context, sessionID string) (approval.SessionMode, bool, error) {
-	state, found := m.states[sessionID]
-	return state, found, nil
+func newMemoryModeStore() *memoryModeStore { return &memoryModeStore{planning: map[string]bool{}} }
+
+func (m *memoryModeStore) PlanModeActive(_ context.Context, sessionID string) (bool, error) {
+	return m.planning[sessionID], nil
 }
 
-func (m *memoryModeStore) PutMode(_ context.Context, sessionID string, state approval.SessionMode) error {
-	m.states[sessionID] = state
-	return nil
+func (m *memoryModeStore) StartPlanMode(_ context.Context, sessionID string) (bool, error) {
+	if m.planning[sessionID] {
+		return false, nil
+	}
+	m.planning[sessionID] = true
+	return true, nil
 }
 
-func (m *memoryModeStore) DeleteSession(_ context.Context, sessionID string) error {
-	delete(m.states, sessionID)
-	return nil
+func (m *memoryModeStore) EndPlanMode(_ context.Context, sessionID string) (bool, error) {
+	if !m.planning[sessionID] {
+		return false, nil
+	}
+	delete(m.planning, sessionID)
+	return true, nil
 }
 
-func TestPlanModeIsSessionScopedAndRestoresEntryMode(t *testing.T) {
-	modes := &memoryModeStore{states: make(map[string]approval.SessionMode)}
-	policy, err := newTestRuntimePolicy(approval.ModeBalanced, nil, modes, nil)
+// Plan mode is the only per-Session fact: leaving it returns the Session to
+// whatever the Runtime default is then, never to a copy taken on entry.
+func TestPlanModeIsSessionScopedAndLeavesTheSessionFollowingTheDefault(t *testing.T) {
+	policy, err := newTestRuntimePolicy(approval.ModeBalanced, nil, newMemoryModeStore(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,14 +90,17 @@ func TestPlanModeIsSessionScopedAndRestoresEntryMode(t *testing.T) {
 		t.Fatalf("second EnterPlanMode = %v, %v, want unchanged", changed, enterPlanModeErr)
 	}
 	restored, changed, err := policy.ExitPlanMode(t.Context(), "session-a")
-	if err != nil || !changed || restored != approval.ModeBalanced {
-		t.Fatalf("ExitPlanMode = %v, %v, %v", restored, changed, err)
+	if err != nil || !changed || restored != approval.ModeYolo {
+		t.Fatalf("ExitPlanMode = %v, %v, %v; want the current default Yolo", restored, changed, err)
 	}
-	if mode, _ := policy.Mode(t.Context(), "session-a"); mode != approval.ModeBalanced {
-		t.Fatalf("restored session-a mode = %v, want Balanced", mode)
+	if setDefaultModeErr := policy.SetDefaultMode(t.Context(), approval.ModeSafe); setDefaultModeErr != nil {
+		t.Fatal(setDefaultModeErr)
 	}
-	if mode, _ := policy.Mode(t.Context(), "session-b"); mode != approval.ModeYolo {
-		t.Fatalf("session-b mode = %v, want Yolo", mode)
+	if mode, _ := policy.Mode(t.Context(), "session-a"); mode != approval.ModeSafe {
+		t.Fatalf("session-a mode after a later default change = %v, want Safe", mode)
+	}
+	if _, changed, err := policy.ExitPlanMode(t.Context(), "session-a"); err != nil || changed {
+		t.Fatalf("ExitPlanMode outside Plan = %v, %v, want unchanged", changed, err)
 	}
 }
 
@@ -277,13 +288,13 @@ func newTestRuntimePolicy(mode approval.Mode, rules RuleStore, modes ModeStore, 
 		rules = ruleStoreStub{}
 	}
 	if modes == nil {
-		modes = &memoryModeStore{states: make(map[string]approval.SessionMode)}
+		modes = newMemoryModeStore()
 	}
 	return NewRuntimePolicy(mode, rules, modes, testsupport.ToolAuthorities{}, publish)
 }
 
 func TestNewPolicyRequiresDurableStores(t *testing.T) {
-	modes := &memoryModeStore{states: make(map[string]approval.SessionMode)}
+	modes := newMemoryModeStore()
 	var typedNil *memoryModeStore
 	for _, test := range []struct {
 		rules RuleStore

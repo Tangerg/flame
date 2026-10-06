@@ -8,7 +8,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chat"
@@ -99,7 +98,7 @@ func TestRuntimeRejectedToolSurvivesFollowingCallsAndHistoryReads(t *testing.T) 
 				t.Fatal(err)
 			}
 			if test.planMode {
-				if err := stores.PermissionModes.PutMode(ctx, session.ID, approval.SessionMode{Mode: approval.ModePlan, RestoreMode: approval.ModeBalanced}); err != nil {
+				if _, err := stores.PlanModes.StartPlanMode(ctx, session.ID); err != nil {
 					t.Fatal(err)
 				}
 			}

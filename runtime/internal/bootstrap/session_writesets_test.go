@@ -170,7 +170,7 @@ type sessionStores struct {
 	history     *runsapp.ConversationHistory
 	plan        *sqlite.PlanStore
 	approvals   *sqlite.ApprovalRuleStore
-	modes       *sqlite.PermissionModeStore
+	modes       *sqlite.PlanModeStore
 	toolResults *sqlite.ToolResultStore
 	childStarts *sqlite.ChildRunStartReservationStore
 	goals       *sqlite.GoalStore
@@ -212,7 +212,7 @@ func newWriteSetFixture(t *testing.T) (sessionStores, *sqlite.RunStore, *persist
 		history:     history,
 		plan:        plan,
 		approvals:   approvals,
-		modes:       sqlite.NewPermissionModeStore(db),
+		modes:       sqlite.NewPlanModeStore(db),
 		toolResults: sqlite.NewToolResultStore(db),
 		childStarts: sqlite.NewChildRunStartReservationStore(db),
 		goals:       sqlite.NewGoalStore(db),
@@ -220,7 +220,7 @@ func newWriteSetFixture(t *testing.T) (sessionStores, *sqlite.RunStore, *persist
 	sessionStores, err := persistence.NewSessionStores(persistence.SessionStoresConfig{
 		Sessions: ss.sessions, Transcript: ss.transcript, Interrupts: ss.interrupts,
 		Runs: ss.runs, ExecutorCheckpoints: ss.checkpoints, History: ss.history, Plan: ss.plan,
-		ApprovalRules: ss.approvals, PermissionModes: ss.modes, ToolResults: ss.toolResults,
+		ApprovalRules: ss.approvals, PlanModes: ss.modes, ToolResults: ss.toolResults,
 		ChildRunStarts: ss.childStarts, Goals: ss.goals,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
 			return sqlite.RunInTx(ctx, db, fn)
@@ -854,9 +854,7 @@ func TestApplyRestoreClearsSessionOwnedProjections(t *testing.T) {
 			t.Fatalf("seed approval %s: %v", rule.ID, err)
 		}
 	}
-	if err := ss.modes.PutMode(ctx, "ses_A", approval.SessionMode{
-		Mode: approval.ModePlan, RestoreMode: approval.ModeBalanced,
-	}); err != nil {
+	if _, err := ss.modes.StartPlanMode(ctx, "ses_A"); err != nil {
 		t.Fatalf("seed permission mode: %v", err)
 	}
 
@@ -899,8 +897,8 @@ func TestApplyRestoreClearsSessionOwnedProjections(t *testing.T) {
 	if ids[sessionRule.ID] || !ids[projectRule.ID] || !ids[globalRule.ID] || len(ids) != 2 {
 		t.Fatalf("approvals after restore = %v, want project+global only", ids)
 	}
-	if state, found, err := ss.modes.LookupMode(ctx, "ses_A"); err != nil || found {
-		t.Fatalf("permission mode after restore = %+v, found=%t, err=%v; want Runtime default", state, found, err)
+	if planning, err := ss.modes.PlanModeActive(ctx, "ses_A"); err != nil || planning {
+		t.Fatalf("restored Session kept Plan mode: planning=%v err=%v", planning, err)
 	}
 }
 

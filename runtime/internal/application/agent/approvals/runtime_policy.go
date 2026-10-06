@@ -3,7 +3,6 @@ package approvals
 import (
 	"context"
 	"fmt"
-	"sync"
 	"sync/atomic"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
@@ -50,8 +49,9 @@ func NewRuntimePolicy(
 // that, transactionally with everything else the delete removes, through its
 // own cleaner port.
 type ModeStore interface {
-	LookupMode(ctx context.Context, sessionID string) (state approval.SessionMode, found bool, err error)
-	PutMode(ctx context.Context, sessionID string, state approval.SessionMode) error
+	PlanModeActive(ctx context.Context, sessionID string) (bool, error)
+	StartPlanMode(ctx context.Context, sessionID string) (changed bool, err error)
+	EndPlanMode(ctx context.Context, sessionID string) (changed bool, err error)
 }
 
 // RuntimePolicy combines two policy facts consumed together at the tool-call
@@ -60,7 +60,6 @@ type ModeStore interface {
 // they are rare state changes whose read/replace pair must be one process fact.
 type RuntimePolicy struct {
 	mode          atomic.Pointer[defaultModeState]
-	modeMu        sync.Mutex
 	authorities   SourceAuthorities
 	modeStore     ModeStore
 	store         RuleStore
@@ -96,79 +95,45 @@ func (r *RuntimePolicy) SetDefaultMode(_ context.Context, mode approval.Mode) er
 }
 
 // Mode returns the effective mode for sessionID. An empty id reads the runtime
-// default; a session with no explicit row also inherits that default.
+// default; a Session outside Plan mode follows that default.
 func (r *RuntimePolicy) Mode(ctx context.Context, sessionID string) (approval.Mode, error) {
-	fallback, err := r.DefaultMode(ctx)
-	if err != nil {
-		return "", err
+	if sessionID != "" {
+		if err := resourceid.ValidateSession(sessionID); err != nil {
+			return "", fmt.Errorf("%w: %v", approval.ErrInvalidSessionMode, err)
+		}
+		planning, err := r.modeStore.PlanModeActive(ctx, sessionID)
+		if err != nil {
+			return "", err
+		}
+		if planning {
+			return approval.ModePlan, nil
+		}
 	}
-	if sessionID == "" {
-		return fallback, nil
-	}
-	if err := resourceid.ValidateSession(sessionID); err != nil {
-		return "", fmt.Errorf("%w: %v", approval.ErrInvalidSessionMode, err)
-	}
-	state, found, err := r.modeStore.LookupMode(ctx, sessionID)
-	if err != nil {
-		return "", err
-	}
-	if !found {
-		return fallback, nil
-	}
-	if err := state.Validate(); err != nil {
-		return "", err
-	}
-	return state.Mode, nil
+	return r.DefaultMode(ctx)
 }
 
-// EnterPlanMode narrows one session to read-only and records the permission mode
-// it must regain on exit. It returns changed=false when already active.
+// EnterPlanMode narrows one session to read-only. It returns changed=false
+// when already active.
 func (r *RuntimePolicy) EnterPlanMode(ctx context.Context, sessionID string) (changed bool, err error) {
 	if parseErr := resourceid.ValidateSession(sessionID); parseErr != nil {
 		return false, fmt.Errorf("%w: %v", approval.ErrInvalidSessionMode, parseErr)
 	}
-	r.modeMu.Lock()
-	defer r.modeMu.Unlock()
-
-	mode, err := r.Mode(ctx, sessionID)
-	if err != nil {
-		return false, err
-	}
-	if mode == approval.ModePlan {
-		return false, nil
-	}
-	state := approval.SessionMode{Mode: approval.ModePlan, RestoreMode: mode}
-	if err := r.modeStore.PutMode(ctx, sessionID, state); err != nil {
-		return false, err
-	}
-	return true, nil
+	return r.modeStore.StartPlanMode(ctx, sessionID)
 }
 
-// ExitPlanMode restores the exact mode captured by EnterPlanMode. It returns
-// changed=false when the session is not in Plan mode.
+// ExitPlanMode returns the session to the Runtime default, reporting the mode
+// it now follows. It returns changed=false when the session is not in Plan
+// mode.
 func (r *RuntimePolicy) ExitPlanMode(ctx context.Context, sessionID string) (restored approval.Mode, changed bool, err error) {
 	if parseErr := resourceid.ValidateSession(sessionID); parseErr != nil {
 		return "", false, fmt.Errorf("%w: %v", approval.ErrInvalidSessionMode, parseErr)
 	}
-	r.modeMu.Lock()
-	defer r.modeMu.Unlock()
-
-	state, found, err := r.modeStore.LookupMode(ctx, sessionID)
+	changed, err = r.modeStore.EndPlanMode(ctx, sessionID)
 	if err != nil {
 		return "", false, err
 	}
-	if !found || state.Mode != approval.ModePlan {
-		mode, modeErr := r.Mode(ctx, sessionID)
-		return mode, false, modeErr
-	}
-	if err := state.Validate(); err != nil {
-		return "", false, err
-	}
-	restored = state.RestoreMode
-	if err := r.modeStore.PutMode(ctx, sessionID, approval.SessionMode{Mode: restored}); err != nil {
-		return "", false, err
-	}
-	return restored, true, nil
+	restored, err = r.Mode(ctx, sessionID)
+	return restored, changed, err
 }
 
 func (r *RuntimePolicy) Decide(ctx context.Context, q approval.Query) (approval.Decision, bool, error) {

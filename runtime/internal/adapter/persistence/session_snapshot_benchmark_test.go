@@ -44,7 +44,7 @@ func BenchmarkSessionMaterialSnapshot(b *testing.B) {
 				Interrupts:          NewInterruptStore(sqlite.NewInterruptStore(db)),
 				ExecutorCheckpoints: NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db)),
 				Plan:                sqlite.NewPlanStore(db), ApprovalRules: sqlite.NewApprovalRuleStore(db),
-				PermissionModes: sqlite.NewPermissionModeStore(db), ToolResults: sqlite.NewToolResultStore(db),
+				PlanModes: sqlite.NewPlanModeStore(db), ToolResults: sqlite.NewToolResultStore(db),
 				ChildRunStarts: sqlite.NewChildRunStartReservationStore(db), Goals: sqlite.NewGoalStore(db), Tx: tx,
 			})
 			if err != nil {

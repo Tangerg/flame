@@ -14,7 +14,7 @@ const enterDescription = `Enter read-only Plan mode for the current session.
 
 Use this when the user asks you to investigate, design, or propose a Plan before
 making changes. It blocks write, command, and network tools only for this
-session and remembers the current permission mode for exit_plan_mode to restore.
+session; leaving Plan mode returns it to the default permission mode.
 It does not create or modify the Plan; use set_plan after entering. Entering
 requires no approval because it only reduces permissions.`
 

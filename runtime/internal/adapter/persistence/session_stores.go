@@ -30,7 +30,7 @@ type SessionStores struct {
 	history             *runsapp.ConversationHistory
 	plan                planProjection
 	approvalRules       sessionStateCleaner
-	permissionModes     sessionStateCleaner
+	planModes           sessionStateCleaner
 	toolResults         *sqlitestore.ToolResultStore
 	childRunStarts      childRunStartReservationCleaner
 	goals               goalStore
@@ -47,7 +47,7 @@ type SessionStoresConfig struct {
 	History             *runsapp.ConversationHistory
 	Plan                planProjection
 	ApprovalRules       sessionStateCleaner
-	PermissionModes     sessionStateCleaner
+	PlanModes           sessionStateCleaner
 	ToolResults         *sqlitestore.ToolResultStore
 	ChildRunStarts      childRunStartReservationCleaner
 	Goals               goalStore
@@ -106,7 +106,7 @@ func NewSessionStores(cfg SessionStoresConfig) (*SessionStores, error) {
 		{name: "conversation history", value: cfg.History},
 		{name: "Plan projection", value: cfg.Plan},
 		{name: "approval rule store", value: cfg.ApprovalRules},
-		{name: "permission mode store", value: cfg.PermissionModes},
+		{name: "permission mode store", value: cfg.PlanModes},
 		{name: "Tool result store", value: cfg.ToolResults},
 		{name: "child Run start reservation store", value: cfg.ChildRunStarts},
 		{name: "Goal store", value: cfg.Goals},
@@ -125,7 +125,7 @@ func NewSessionStores(cfg SessionStoresConfig) (*SessionStores, error) {
 		history:             cfg.History,
 		plan:                cfg.Plan,
 		approvalRules:       cfg.ApprovalRules,
-		permissionModes:     cfg.PermissionModes,
+		planModes:           cfg.PlanModes,
 		toolResults:         cfg.ToolResults,
 		childRunStarts:      cfg.ChildRunStarts,
 		goals:               cfg.Goals,
@@ -444,7 +444,7 @@ func (s *SessionStores) clearSessionOwnedStateExceptPlan(ctx context.Context, se
 	if err := s.approvalRules.DeleteSession(ctx, sessionID); err != nil {
 		return err
 	}
-	if err := s.permissionModes.DeleteSession(ctx, sessionID); err != nil {
+	if err := s.planModes.DeleteSession(ctx, sessionID); err != nil {
 		return err
 	}
 	if err := s.goals.Clear(ctx, sessionID); err != nil {

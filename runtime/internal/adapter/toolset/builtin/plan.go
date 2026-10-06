@@ -34,7 +34,7 @@ type planEnterPolicy interface {
 	EnterPlanMode(ctx context.Context, sessionID string) (changed bool, err error)
 }
 
-// planExitPolicy reads and restores one session's permission mode.
+// planExitPolicy reads one session's permission mode and ends its Plan mode.
 type planExitPolicy interface {
 	Mode(ctx context.Context, sessionID string) (approval.Mode, error)
 	ExitPlanMode(ctx context.Context, sessionID string) (restored approval.Mode, changed bool, err error)

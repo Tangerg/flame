@@ -124,7 +124,7 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 		History:             readerHistory,
 		Plan:                readerPlanStore,
 		ApprovalRules:       sqlite.NewApprovalRuleStore(readerDB),
-		PermissionModes:     sqlite.NewPermissionModeStore(readerDB),
+		PlanModes:           sqlite.NewPlanModeStore(readerDB),
 		ToolResults:         sqlite.NewToolResultStore(readerDB),
 		ChildRunStarts:      sqlite.NewChildRunStartReservationStore(readerDB),
 		Goals:               blockingGoal,
