@@ -472,7 +472,6 @@ func TestApplyRunLostTerminalizesWholeParkedTreeInPostorder(t *testing.T) {
 				testsupport.MustRestoreRun(run.Snapshot{
 					ID: "run_child", SessionID: "ses_1", State: run.Waiting,
 					ModelSelection: selection,
-					Capabilities:   capabilities,
 					Lineage:        childLineage,
 					CreatedAt:      createdAt, MessageMark: run.UnknownMessageMark,
 				}),
@@ -485,26 +484,6 @@ func TestApplyRunLostTerminalizesWholeParkedTreeInPostorder(t *testing.T) {
 		},
 		terminal: &applied,
 	}
-	corruptSnapshot := stores.snapshot
-	corruptSnapshot.Runs = append([]run.Run(nil), stores.snapshot.Runs...)
-	corrupt := corruptSnapshot.Runs[1].Snapshot()
-	corrupt.Capabilities = run.Capabilities{
-		InterruptKinds: []interrupt.Kind{interrupt.Question},
-	}
-	corruptSnapshot.Runs[1] = testsupport.MustRestoreRun(corrupt)
-	corruptApplied := TerminalPlan{}
-	corruptStores := coordinatorStores{
-		interrupts: &coordinatorInterrupts{pending: map[string]runs.Pending{"run_root": pending}},
-		snapshot:   corruptSnapshot,
-		terminal:   &corruptApplied,
-	}
-	if err := newCoordinator(corruptStores, nil).ApplyRunLost(t.Context(), "ses_1", "run_root", finishedAt); err == nil {
-		t.Fatal("ApplyRunLost accepted a child Run run capabilities that differs from root admission")
-	}
-	if len(corruptApplied.Runs()) != 0 {
-		t.Fatalf("child policy drift reached terminal commit: %+v", corruptApplied)
-	}
-
 	if err := newCoordinator(stores, nil).ApplyRunLost(t.Context(), "ses_1", "run_root", finishedAt); err != nil {
 		t.Fatalf("ApplyRunLost: %v", err)
 	}

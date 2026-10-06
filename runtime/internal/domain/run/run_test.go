@@ -40,6 +40,26 @@ func TestRestoreRejectsInvalidState(t *testing.T) {
 	}
 }
 
+func TestChildRunCarriesNoCapabilitiesOfItsOwn(t *testing.T) {
+	lineage := Lineage{SpawnedByItemID: "item_1", ParentRunID: "run_root", RootRunID: "run_root"}
+	capabilities := Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}}
+	draft := Draft{
+		RunID: "run_child", SessionID: "session_1", SegmentID: "segment_1",
+		SpawnedByItemID: lineage.SpawnedByItemID, ParentRunID: lineage.ParentRunID, RootRunID: lineage.RootRunID,
+		ModelSelection: mustRunSelection(t), CreatedAt: time.Unix(1, 0), Capabilities: capabilities,
+	}
+	if _, err := Admit(draft); err == nil {
+		t.Fatal("Admit accepted a child stating its root's capabilities")
+	}
+	if _, err := Restore(Snapshot{
+		SessionID: "session_1", ID: "run_child", Lineage: lineage, ModelSelection: mustRunSelection(t),
+		State: Waiting, Capabilities: capabilities, CreatedAt: time.Unix(1, 0), UpdatedAt: time.Unix(1, 0),
+		MessageMark: UnknownMessageMark,
+	}); err == nil {
+		t.Fatal("Restore accepted a child stating its root's capabilities")
+	}
+}
+
 func TestRunAdmissionRejectsNonCanonicalOrUnboundedResourceIdentity(t *testing.T) {
 	valid := Draft{
 		RunID: "run_1", SessionID: "session_1", SegmentID: "segment_1",

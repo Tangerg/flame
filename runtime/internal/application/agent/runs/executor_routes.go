@@ -694,7 +694,6 @@ func (c *Coordinator) finalizeChildOpening(
 		RootRunID:       child.lineage.RootRunID,
 		SegmentID:       child.segmentID,
 		ModelSelection:  parentRun.ModelSelection(),
-		Capabilities:    parentRun.Capabilities(),
 		CreatedAt:       startedAt,
 	}
 	opened, err := rundomain.Admit(admission)

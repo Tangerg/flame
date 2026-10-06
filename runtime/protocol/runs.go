@@ -77,10 +77,11 @@ type RunRef struct {
 	// It survives waiting, terminalization, and restart; absence means this Run
 	// has not produced an authoritative footprint yet.
 	ContextTokens int64 `json:"contextTokens,omitzero"`
-	// ProtocolProfile is the protocol contract this run was created under, and it
-	// is present in every status: a client that reconnects to a run has to know
-	// what the run may publish before it starts folding the stream.
-	ProtocolProfile RunProtocolProfile `json:"protocolProfile"`
+	// ProtocolProfile is the protocol contract a root run was created under, and
+	// it is present in every status: a client that reconnects to a run has to
+	// know what the run may publish before it starts folding the stream. A child
+	// has none of its own; it follows its root's.
+	ProtocolProfile *RunProtocolProfile `json:"protocolProfile,omitzero"`
 }
 
 // RunProtocolFeature is the closed set of negotiated features that may appear in

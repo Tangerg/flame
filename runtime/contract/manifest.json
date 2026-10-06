@@ -6049,6 +6049,17 @@
           "forbidden": [
             "activeSegmentId"
           ]
+        },
+        {
+          "when": [
+            {
+              "field": "spawnedByItemId",
+              "operator": "present"
+            }
+          ],
+          "forbidden": [
+            "protocolProfile"
+          ]
         }
       ]
     },

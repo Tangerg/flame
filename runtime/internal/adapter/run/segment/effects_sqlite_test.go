@@ -2264,7 +2264,6 @@ func newWaitingCancellationSQLiteFixtureAt(
 		[]transcript.Interrupt{grandchildQuestion},
 	)
 	grandchildRun = mutatedRun(grandchildRun, func(snapshot *run.Snapshot) {
-		snapshot.Capabilities = capabilities
 		snapshot.UpdatedAt = finishedAt
 	})
 	childQuestion := treeQuestion("item_child_question", "run_child")
@@ -2275,7 +2274,6 @@ func newWaitingCancellationSQLiteFixtureAt(
 		[]transcript.Interrupt{childQuestion},
 	)
 	childRun = mutatedRun(childRun, func(snapshot *run.Snapshot) {
-		snapshot.Capabilities = capabilities
 		snapshot.UpdatedAt = finishedAt
 	})
 	var siblingRun run.Run
@@ -2289,7 +2287,6 @@ func newWaitingCancellationSQLiteFixtureAt(
 			[]transcript.Interrupt{siblingQuestion},
 		)
 		siblingRun = mutatedRun(siblingRun, func(snapshot *run.Snapshot) {
-			snapshot.Capabilities = capabilities
 			snapshot.UpdatedAt = finishedAt
 		})
 	}

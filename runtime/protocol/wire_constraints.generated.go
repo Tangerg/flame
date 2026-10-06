@@ -2171,6 +2171,7 @@ func (r RunRef) ValidateWire() error {
 		requiredWhen(wireFieldEquals(r, "status", "running"), "activeSegmentId", r),
 		forbiddenWhen(wireFieldEquals(r, "status", "waiting"), "activeSegmentId", r),
 		forbiddenWhen(wireFieldEquals(r, "status", "finished"), "activeSegmentId", r),
+		forbiddenWhen(wireFieldPresent(r, "spawnedByItemId"), "protocolProfile", r),
 	)
 }
 

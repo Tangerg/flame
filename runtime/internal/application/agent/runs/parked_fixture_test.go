@@ -69,15 +69,17 @@ var parkedRunCreatedAt = time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 
 func runWithFacts(pending Pending, continuation Continuation, facts parkedFacts) run.Run {
 	goalIncarnationID := ""
+	capabilities := run.Capabilities{}
 	if continuation.RunID == pending.RootRunID {
 		goalIncarnationID = facts.goalIncarnationID
+		capabilities = facts.capabilities
 	}
 	return testsupport.MustRestoreRun(run.Snapshot{ID: continuation.RunID,
 		SessionID:         pending.SessionID,
 		ModelSelection:    testsupport.DefaultModelSelection(),
 		GoalIncarnationID: goalIncarnationID,
 		State:             run.Waiting,
-		Capabilities:      facts.capabilities,
+		Capabilities:      capabilities,
 		CreatedAt:         parkedRunCreatedAt,
 		MessageMark:       run.UnknownMessageMark,
 		Lineage:           fixtureLineage(pending.RootRunID, continuation.RunID),

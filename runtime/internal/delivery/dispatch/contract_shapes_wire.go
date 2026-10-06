@@ -977,6 +977,9 @@ func registerObjectConstraints(s *Shapes) {
 		}, {
 			When:      []delivery.FieldCondition{{Field: "status", Operator: delivery.OperatorEquals, Value: string(protocol.RunStatusFinished)}},
 			Forbidden: []string{"activeSegmentId"},
+		}, {
+			When:      []delivery.FieldCondition{{Field: "spawnedByItemId", Operator: delivery.OperatorPresent}},
+			Forbidden: []string{"protocolProfile"},
 		}},
 	})
 

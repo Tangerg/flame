@@ -48,13 +48,17 @@ func presentRunSummary(run rundomain.Run) protocol.RunSummary {
 }
 
 func presentRun(run rundomain.Run) protocol.RunRef {
-	return protocol.RunRef{
+	ref := protocol.RunRef{
 		RunSummary:      presentRunSummary(run),
 		ActiveSegmentID: run.ActiveSegmentID(),
 		Metrics:         presentMetrics(run.Metrics()),
 		ContextTokens:   run.ContextTokens(),
-		ProtocolProfile: presentRunProtocolProfile(run.Capabilities()),
 	}
+	if run.Lineage().IsRoot() {
+		profile := presentRunProtocolProfile(run.Capabilities())
+		ref.ProtocolProfile = &profile
+	}
+	return ref
 }
 
 func presentCancelResult(result runs.CancelResult) *protocol.CancelRunResponse {

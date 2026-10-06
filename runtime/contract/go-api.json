@@ -8175,8 +8175,8 @@
             },
             {
               "name": "ProtocolProfile",
-              "type": "RunProtocolProfile",
-              "tag": "json:\"protocolProfile\""
+              "type": "*RunProtocolProfile",
+              "tag": "json:\"protocolProfile,omitzero\""
             }
           ],
           "methods": [

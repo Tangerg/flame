@@ -103,7 +103,7 @@ func TestSessionExportImportPreservesUnresolvedEffectsAsHistory(t *testing.T) {
 	})
 	child := testsupport.MustRestoreRun(run.Snapshot{
 		SessionID: ses.ID(), ID: "run_child_source", Outcome: &childOutcome,
-		Capabilities: root.Capabilities(), UnresolvedEffects: []run.UnresolvedEffect{childEffect},
+		UnresolvedEffects: []run.UnresolvedEffect{childEffect},
 		Lineage: run.Lineage{SpawnedByItemID: "item_spawn_source", ParentRunID: root.ID(), RootRunID: root.ID()},
 	})
 	if err := sourceRuntime.runs.Restore(ctx, root); err != nil {

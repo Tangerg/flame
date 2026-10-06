@@ -410,7 +410,7 @@ func TestRecoveryRejectsIncoherentActiveTreeBeforePlanning(t *testing.T) {
 	})
 	child := testsupport.MustRestoreRun(rundomain.Snapshot{
 		ID: "run_child", SessionID: root.SessionID(), State: rundomain.Running,
-		ActiveSegmentID: "segment_child", Capabilities: capabilities, CreatedAt: createdAt,
+		ActiveSegmentID: "segment_child", CreatedAt: createdAt,
 		MessageMark: rundomain.UnknownMessageMark,
 		Lineage: rundomain.Lineage{
 			SpawnedByItemID: "item_spawn", ParentRunID: root.ID(), RootRunID: root.ID(),
@@ -420,9 +420,6 @@ func TestRecoveryRejectsIncoherentActiveTreeBeforePlanning(t *testing.T) {
 		"mixed lifecycle": func(snapshot *rundomain.Snapshot) {
 			snapshot.State = rundomain.Waiting
 			snapshot.ActiveSegmentID = ""
-		},
-		"capability drift": func(snapshot *rundomain.Snapshot) {
-			snapshot.Capabilities = rundomain.Capabilities{}
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -1469,56 +1466,6 @@ func TestRecoveryRejectsCrossSessionPendingWithoutCommit(t *testing.T) {
 // parked_continuation_restates_no_run_fact for root-owned policy: every child Run
 // is parked under the root admission, even though Continuation does not repeat
 // that policy as a second source of truth.
-func TestRecoveryRejectsChildProtocolDriftWithoutProbingCheckpoint(t *testing.T) {
-	root, pending, item := coherentRecoveryPark(t)
-	rootSnapshot := root.Snapshot()
-	rootSnapshot.Capabilities.ChildRuns = true
-	root = testsupport.MustRestoreRun(rootSnapshot)
-	lineage := rundomain.Lineage{
-		SpawnedByItemID: "item_spawn",
-		ParentRunID:     root.ID(),
-		RootRunID:       root.ID(),
-	}
-	child := testsupport.MustRestoreRun(rundomain.Snapshot{ID: "run_child", SessionID: root.SessionID(), State: rundomain.Waiting,
-
-		ModelSelection: root.ModelSelection(),
-		// This is a valid capabilities in isolation but contradicts the root admission.
-		Capabilities: rundomain.Capabilities{
-			InterruptKinds: []interruptdomain.Kind{interruptdomain.Question},
-		},
-		CreatedAt: root.CreatedAt(), MessageMark: rundomain.UnknownMessageMark, Lineage: rundomain.Lineage{SpawnedByItemID: lineage.SpawnedByItemID,
-			ParentRunID: lineage.ParentRunID,
-			RootRunID:   lineage.RootRunID}})
-
-	rootContinuation := pending.Continuations[0]
-	pending.Continuations = []Continuation{
-		{
-			RunID: "run_child", MemberID: "member_child",
-		},
-		rootContinuation,
-	}
-	store := &recoveryStoreStub{
-		runs:        []rundomain.Run{root, child},
-		pending:     []Pending{pending},
-		transcripts: map[string][]transcript.Item{root.SessionID(): {item}},
-	}
-	checkpointCalls := 0
-	recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(func(context.Context, WaitingContinuation) (bool, error) {
-		checkpointCalls++
-		return true, nil
-	}))
-	if err != nil {
-		t.Fatalf("NewRecovery: %v", err)
-	}
-
-	if _, err := recovery.Reconcile(t.Context()); err == nil {
-		t.Fatal("Reconcile accepted a child Run run capabilities that differs from root admission")
-	}
-	if store.commits != 0 || checkpointCalls != 0 {
-		t.Fatalf("recovery mutated or probed after child policy drift: commits=%d checkpointCalls=%d", store.commits, checkpointCalls)
-	}
-}
-
 func coherentRecoveryPark(t *testing.T) (rundomain.Run, Pending, transcript.Item) {
 	t.Helper()
 	createdAt := time.Date(2026, 8, 1, 2, 0, 0, 0, time.UTC)

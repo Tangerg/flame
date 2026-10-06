@@ -226,8 +226,7 @@ func scanRunRow(row scanRow, pendingPolicy pendingReadPolicy) (rundomain.Run, er
 		unresolvedEffects string
 
 		messageMark         int
-		ownCapabilities     string
-		rootCapabilities    sql.NullString
+		capabilities        string
 		durationNs          int64
 		createdAt           int64
 		finishedAt          int64
@@ -240,7 +239,7 @@ func scanRunRow(row scanRow, pendingPolicy pendingReadPolicy) (rundomain.Run, er
 		&coarse, &activeSegmentID, &outcome,
 		&provider, &model, &reasoningEffort, &goalIncarnationID, &detail,
 		&steps, &durationNs, &usage, &contextTokens, &problem, &unresolvedEffects,
-		&ownCapabilities, &rootCapabilities,
+		&capabilities,
 		&messageMark, &createdAt, &finishedAt, &updatedAt, &interruptsSuspended,
 	); err != nil {
 		return rundomain.Run{}, fmt.Errorf("scan run row: %w", err)
@@ -250,20 +249,6 @@ func scanRunRow(row scanRow, pendingPolicy pendingReadPolicy) (rundomain.Run, er
 		return rundomain.Run{}, fmt.Errorf("run %q: %w", id, err)
 	}
 	lineage := rundomain.Lineage{SpawnedByItemID: spawnedByItemID, ParentRunID: parentRunID, RootRunID: rootRunID}
-	capabilities := ownCapabilities
-	if lineage.IsChild() {
-		if ownCapabilities != "" {
-			return rundomain.Run{}, fmt.Errorf("child run %q stores capabilities of its own", id)
-		}
-		if !rootCapabilities.Valid {
-			return rundomain.Run{}, fmt.Errorf(
-				"child run %q references missing root %q",
-				id,
-				rootRunID,
-			)
-		}
-		capabilities = rootCapabilities.String
-	}
 	capabilitiesValue, err := decodeRunCapabilities(capabilities)
 	if err != nil {
 		return rundomain.Run{}, fmt.Errorf("run %q: %w", id, err)

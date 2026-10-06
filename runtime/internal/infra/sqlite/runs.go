@@ -70,7 +70,7 @@ func (r *RunStore) Admit(ctx context.Context, draft rundomain.Draft) error {
 		return fmt.Errorf("sqlite: admit run %q: %w", draft.RunID, err)
 	}
 	lineage := admitted.Lineage()
-	capabilities, err := encodeRunCapabilities(runCapabilitiesForStorage(admitted))
+	capabilities, err := encodeRunCapabilities(admitted.Capabilities())
 	if err != nil {
 		return fmt.Errorf("sqlite: admit run %q: %w", draft.RunID, err)
 	}
@@ -744,7 +744,7 @@ func (r *RunStore) Restore(ctx context.Context, value rundomain.Run) error {
 	if err != nil {
 		return fmt.Errorf("sqlite: restore run %q: %w", value.ID(), err)
 	}
-	capabilities, err := encodeRunCapabilities(runCapabilitiesForStorage(value))
+	capabilities, err := encodeRunCapabilities(value.Capabilities())
 	if err != nil {
 		return fmt.Errorf("sqlite: restore run %q: %w", value.ID(), err)
 	}
@@ -775,16 +775,6 @@ func (r *RunStore) Restore(ctx context.Context, value rundomain.Run) error {
 		return fmt.Errorf("sqlite: restore run %q: %w", value.ID(), err)
 	}
 	return nil
-}
-
-// runCapabilitiesForStorage keeps the root row as the single durable author.
-// Child aggregates inherit the materialized value in memory, but persisting a
-// second copy would let one Run tree carry contradictory capability sets.
-func runCapabilitiesForStorage(value rundomain.Run) rundomain.Capabilities {
-	if value.Lineage().IsChild() {
-		return rundomain.Capabilities{}
-	}
-	return value.Capabilities()
 }
 
 // runForTransition reads the aggregate that a write is about to advance. It

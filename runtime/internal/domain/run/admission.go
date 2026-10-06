@@ -36,9 +36,10 @@ type Draft struct {
 	// the Run and charge the exact incarnation in one transaction. Child Runs leave it
 	// empty because the root is the single Goal Run.
 	GoalIncarnationID string
-	// Capabilities is the optional behavior enabled for this Run. Admission is
-	// its only writer: no later transition mentions it, which is how "immutable for the
-	// Run's whole life" is kept by construction rather than by a check.
+	// Capabilities is the optional behavior enabled for a root Run's whole tree.
+	// Admission is its only writer: no later transition mentions it, which is how
+	// "immutable for the Run's whole life" is kept by construction rather than by
+	// a check. Child Runs leave it empty because they follow their root.
 	Capabilities Capabilities
 	CreatedAt    time.Time
 }
@@ -73,6 +74,9 @@ func (d Draft) Validate() error {
 	}
 	if lineage.IsChild() && d.GoalIncarnationID != "" {
 		return errors.New("run: child carries a root Goal incarnation")
+	}
+	if lineage.IsChild() && !d.Capabilities.IsEmpty() {
+		return errors.New("run: child carries capabilities its root owns")
 	}
 	return nil
 }

@@ -449,8 +449,8 @@ func TestRunAdmitSharesOneRootAdmissionAcrossTheTree(t *testing.T) {
 		}
 		if record.Lineage().ParentRunID != want.parentID ||
 			record.Lineage().RootRunID != "run_root" ||
-			record.Capabilities().ChildRuns != capabilities.ChildRuns {
-			t.Fatalf("run %s = %+v, want parent %s, root run_root, inherited capabilities", want.id, record, want.parentID)
+			!record.Capabilities().IsEmpty() {
+			t.Fatalf("run %s = %+v, want parent %s, root run_root, and no capabilities of its own", want.id, record, want.parentID)
 		}
 	}
 
@@ -977,11 +977,13 @@ func TestPageRunsSelectsRootsOrDescendants(t *testing.T) {
 	child = withRunSnapshot(child, func(snapshot *run.Snapshot) {
 		snapshot.CreatedAt = time.Unix(0, 20).UTC()
 		snapshot.Lineage = run.Lineage{SpawnedByItemID: "it_spawn", ParentRunID: root.ID(), RootRunID: root.ID()}
+		snapshot.Capabilities = run.Capabilities{}
 	})
 	grandchild := finishedRun("run_grandchild", "ses_A", run.OutcomeCompleted)
 	grandchild = withRunSnapshot(grandchild, func(snapshot *run.Snapshot) {
 		snapshot.CreatedAt = time.Unix(0, 30).UTC()
 		snapshot.Lineage = run.Lineage{SpawnedByItemID: "it_spawn_grandchild", ParentRunID: child.ID(), RootRunID: root.ID()}
+		snapshot.Capabilities = run.Capabilities{}
 	})
 	for _, record := range []run.Run{root, child, grandchild} {
 		if err := store.Restore(ctx, record); err != nil {
@@ -1034,14 +1036,17 @@ func TestPageRunTreeItemsUsesDurableParentEdges(t *testing.T) {
 	child := finishedRun("run_child", "ses_A", run.OutcomeCompleted)
 	child = withRunSnapshot(child, func(snapshot *run.Snapshot) {
 		snapshot.Lineage = run.Lineage{SpawnedByItemID: "item_spawn_child", ParentRunID: root.ID(), RootRunID: root.ID()}
+		snapshot.Capabilities = run.Capabilities{}
 	})
 	grandchild := finishedRun("run_grandchild", "ses_A", run.OutcomeCompleted)
 	grandchild = withRunSnapshot(grandchild, func(snapshot *run.Snapshot) {
 		snapshot.Lineage = run.Lineage{SpawnedByItemID: "item_spawn_grandchild", ParentRunID: child.ID(), RootRunID: root.ID()}
+		snapshot.Capabilities = run.Capabilities{}
 	})
 	sibling := finishedRun("run_sibling", "ses_A", run.OutcomeCompleted)
 	sibling = withRunSnapshot(sibling, func(snapshot *run.Snapshot) {
 		snapshot.Lineage = run.Lineage{SpawnedByItemID: "item_spawn_sibling", ParentRunID: root.ID(), RootRunID: root.ID()}
+		snapshot.Capabilities = run.Capabilities{}
 	})
 	for _, record := range []run.Run{root, child, grandchild, sibling} {
 		if err := store.Restore(ctx, record); err != nil {

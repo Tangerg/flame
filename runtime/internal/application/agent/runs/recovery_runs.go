@@ -73,13 +73,6 @@ func groupRecoveryRunTrees(active []rundomain.Run) (map[string]recoveryRunTree, 
 					root.State(),
 				)
 			}
-			if !run.Capabilities().Equal(root.Capabilities()) {
-				return nil, fmt.Errorf(
-					"runs: recovery Run %q capabilities differ from root Run %q admission",
-					run.ID(),
-					root.ID(),
-				)
-			}
 		}
 		trees[rootRunID] = recoveryRunTree{root: root, runsByID: runsByID, postorder: topology.Postorder()}
 	}

@@ -64,6 +64,7 @@ func TestValidateSnapshotRejectsInconsistentPortableState(t *testing.T) {
 			child := s.Runs[0].Snapshot()
 			child.ID = "run_3"
 			child.Lineage = run.Lineage{SpawnedByItemID: "item_3", ParentRunID: "run_2", RootRunID: "run_2"}
+			child.Capabilities = run.Capabilities{}
 			s.Runs = append(s.Runs, testsupport.MustRestoreRun(child))
 			s.Items = append(s.Items,
 				testsupport.MustRestoreItem(testsupport.ItemInput{
@@ -104,6 +105,7 @@ func appendRootedSnapshotRun(snapshot *Snapshot, runID, parentRunID, spawningIte
 	child := snapshot.Runs[0].Snapshot()
 	child.ID = runID
 	child.Lineage = run.Lineage{SpawnedByItemID: spawningItemID, ParentRunID: parentRunID, RootRunID: "run_1"}
+	child.Capabilities = run.Capabilities{}
 	snapshot.Runs = append(snapshot.Runs, testsupport.MustRestoreRun(child))
 }
 
@@ -121,10 +123,12 @@ func TestRestorePlanOrdersRunTreeParentsBeforeChildren(t *testing.T) {
 	childSnapshot := rootSnapshot
 	childSnapshot.ID = "run_child"
 	childSnapshot.Lineage = run.Lineage{SpawnedByItemID: "item_root_task", ParentRunID: "run_root", RootRunID: "run_root"}
+	childSnapshot.Capabilities = run.Capabilities{}
 	child := testsupport.MustRestoreRun(childSnapshot)
 	grandchildSnapshot := rootSnapshot
 	grandchildSnapshot.ID = "run_grandchild"
 	grandchildSnapshot.Lineage = run.Lineage{SpawnedByItemID: "item_child_task", ParentRunID: "run_child", RootRunID: "run_root"}
+	grandchildSnapshot.Capabilities = run.Capabilities{}
 	grandchild := testsupport.MustRestoreRun(grandchildSnapshot)
 	snapshot.Runs = []run.Run{grandchild, child, root}
 	snapshot.Items = []transcript.Item{

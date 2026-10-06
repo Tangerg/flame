@@ -928,6 +928,10 @@ func runACancellationPlan(
 	members := make(map[string]string, len(pending.Continuations))
 	for index := range pending.Continuations {
 		continuation := &pending.Continuations[index]
+		capabilities := run.Capabilities{}
+		if continuation.RunID == pending.RootRunID {
+			capabilities = resumedTreeCapabilities()
+		}
 		runsByID[continuation.RunID] = testsupport.MustRestoreRun(run.Snapshot{
 			ID:        continuation.RunID,
 			SessionID: pending.SessionID,
@@ -936,7 +940,7 @@ func runACancellationPlan(
 			CreatedAt:      createdAt,
 			UpdatedAt:      pending.CreatedAt,
 			ModelSelection: testsupport.MustModelSelection("openai", "model"),
-			Capabilities:   resumedTreeCapabilities(),
+			Capabilities:   capabilities,
 			MessageMark:    run.UnknownMessageMark,
 			Lineage:        fixtureLineage(pending.RootRunID, continuation.RunID),
 		})

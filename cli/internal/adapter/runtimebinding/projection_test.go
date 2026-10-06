@@ -445,7 +445,7 @@ func TestProjectChildRunPreservesLineage(t *testing.T) {
 		},
 		ActiveSegmentID: "seg_child",
 		ContextTokens:   32_768,
-		ProtocolProfile: protocol.RunProtocolProfile{
+		ProtocolProfile: &protocol.RunProtocolProfile{
 			RequiredFeatures: []protocol.RunProtocolFeature{protocol.RunProtocolFeatureSubagents},
 			InterruptTypes:   []protocol.InterruptType{protocol.InterruptApproval, protocol.InterruptQuestion},
 		},
@@ -515,7 +515,7 @@ func waitingApprovalColdRead() coldRead {
 				ID: "run_1", SessionID: "ses_1", Provider: testSessionProvider, Model: testSessionModel,
 				Status: protocol.RunStatusWaiting, CreatedAt: startedAt.Add(-time.Second),
 			},
-			ProtocolProfile: protocol.RunProtocolProfile{
+			ProtocolProfile: &protocol.RunProtocolProfile{
 				RequiredFeatures: []protocol.RunProtocolFeature{},
 				InterruptTypes:   []protocol.InterruptType{protocol.InterruptApproval},
 			},

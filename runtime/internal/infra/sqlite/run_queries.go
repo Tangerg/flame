@@ -16,16 +16,14 @@ const runColumns = `r.run_id, r.session_id, r.spawned_by_item_id, r.parent_run_i
 	r.state, r.active_segment_id, r.outcome,
 	r.provider, r.model, r.reasoning_effort, r.goal_incarnation_id, r.detail,
 	r.steps, r.active_duration_ns, r.usage, r.context_tokens, r.problem, r.unresolved_effects,
-	r.capabilities, tree_root.capabilities,
+	r.capabilities,
 	r.message_mark, r.created_at, r.finished_at, r.updated_at, i.payload`
 
-// runReadJoins materializes the root-owned capabilities and pending set for
-// every Run in the tree. scanRun filters the aggregate payload by source Run ID,
+// runReadJoins materializes the root-owned pending set for every Run in the
+// tree. scanRun filters the aggregate payload by source Run ID,
 // so a suspended sibling reads an empty direct-interrupt list rather than
 // claiming another Run's questions.
-const runReadJoins = `LEFT JOIN runs AS tree_root
-		   ON tree_root.run_id = r.root_run_id AND tree_root.session_id = r.session_id
-		 LEFT JOIN interrupts AS i
+const runReadJoins = `LEFT JOIN interrupts AS i
 		   ON i.root_run_id = CASE
 		        WHEN r.root_run_id = '' THEN r.run_id
 		        ELSE r.root_run_id

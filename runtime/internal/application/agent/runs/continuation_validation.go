@@ -151,13 +151,6 @@ func validatePendingRunTree(pending Pending, values []rundomain.Run) error {
 				continuation.RunID,
 			)
 		}
-		if !value.Capabilities().Equal(root.Capabilities()) {
-			return fmt.Errorf(
-				"runs: validate parked Run tree %q: Run %q run capabilities differ from root admission",
-				pending.RootRunID,
-				value.ID(),
-			)
-		}
 	}
 	return nil
 }

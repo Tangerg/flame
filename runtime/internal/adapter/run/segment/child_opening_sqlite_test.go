@@ -62,7 +62,7 @@ func TestChildOpeningAtomicallyCommitsRunAndParentSpawningItem(t *testing.T) {
 	child := run.Draft{
 		RunID: "run_child", SessionID: "session_1", SegmentID: "segment_child",
 		SpawnedByItemID: spawningItem.ID(), ParentRunID: root.RunID, RootRunID: root.RunID,
-		Capabilities: capabilities, ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: time.Unix(3, 0),
+		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: time.Unix(3, 0),
 	}
 	opening := mustAdmissionOpening(
 		t, testCommitID("run_commit_child_opening"), child,
@@ -84,8 +84,8 @@ func TestChildOpeningAtomicallyCommitsRunAndParentSpawningItem(t *testing.T) {
 		persistedChild.Lineage().RootRunID != root.RunID {
 		t.Fatalf("persisted child = %+v, want complete lineage", persistedChild)
 	}
-	if !persistedChild.Capabilities().Equal(capabilities) {
-		t.Fatalf("persisted child capabilities = %+v, want inherited %+v", persistedChild.Capabilities(), capabilities)
+	if !persistedChild.Capabilities().IsEmpty() {
+		t.Fatalf("persisted child capabilities = %+v, want none of its own", persistedChild.Capabilities())
 	}
 	items, err := transcriptStore.List(t.Context(), root.SessionID)
 	if err != nil {

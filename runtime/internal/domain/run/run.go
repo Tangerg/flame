@@ -221,6 +221,9 @@ func (r Run) validate() error {
 	if err := r.capabilities.Validate(); err != nil {
 		return err
 	}
+	if r.lineage.IsChild() && !r.capabilities.IsEmpty() {
+		return errors.New("run: child carries capabilities its root owns")
+	}
 	if r.state.IsTerminal() {
 		return r.validateTerminal()
 	}
@@ -463,8 +466,11 @@ func (r Run) Failure() (Failure, bool) {
 	}
 	return *optional.Clone(r.failure), true
 }
-func (r Run) Metrics() Metrics           { return r.metrics }
-func (r Run) ContextTokens() int64       { return r.contextTokens }
+func (r Run) Metrics() Metrics     { return r.metrics }
+func (r Run) ContextTokens() int64 { return r.contextTokens }
+
+// Capabilities is a root Run's frozen optional behavior. A child carries none:
+// it follows its root's.
 func (r Run) Capabilities() Capabilities { return r.capabilities.Clone() }
 func (r Run) CreatedAt() time.Time       { return r.createdAt }
 func (r Run) FinishedAt() time.Time      { return r.finishedAt }

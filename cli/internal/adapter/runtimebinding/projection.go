@@ -38,8 +38,11 @@ func projectRunLineage(value protocol.RunRef) (conversation.RunLineage, error) {
 	return conversation.NewChildRunLineage(value.ID, value.SpawnedByItemID, value.ParentRunID, value.RootRunID)
 }
 
-func projectRunProtocolProfile(profile protocol.RunProtocolProfile) *protocol.RunProtocolProfile {
-	projected := profile
+func projectRunProtocolProfile(profile *protocol.RunProtocolProfile) *protocol.RunProtocolProfile {
+	if profile == nil {
+		return nil
+	}
+	projected := *profile
 	projected.RequiredFeatures = slices.Clone(profile.RequiredFeatures)
 	projected.InterruptTypes = slices.Clone(profile.InterruptTypes)
 	return &projected

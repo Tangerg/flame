@@ -3110,7 +3110,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       spawnedByItemId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       status: ref(() => CHECKS.RunStatus),
-    }, ["createdAt", "id", "metrics", "model", "protocolProfile", "provider", "sessionId", "status"]),
+    }, ["createdAt", "id", "metrics", "model", "provider", "sessionId", "status"]),
     ifThen(
       fields({
         status: literal("finished"),
@@ -3167,6 +3167,12 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       }, ["status"]),
       fields({
         activeSegmentId: absent(),
+      }, []),
+    ),
+    ifThen(
+      fields({}, ["spawnedByItemId"]),
+      fields({
+        protocolProfile: absent(),
       }, []),
     ),
   ]),

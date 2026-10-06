@@ -531,8 +531,9 @@ describe("the generated wire checks", () => {
 
   it("keeps cancel root and child results closed and distinct", () => {
     const canceledRoot = { ...finishedRun, outcome: { type: "canceled" } };
+    const { protocolProfile: _profile, ...canceledRunFacts } = canceledRoot;
     const canceledChild = {
-      ...canceledRoot,
+      ...canceledRunFacts,
       id: "run_child",
       spawnedByItemId: "item_parent",
       parentRunId: "run_01",
@@ -593,8 +594,9 @@ describe("the generated wire checks", () => {
   });
 
   it("applies an embedded shape's rules to the shape embedding it", () => {
+    const { protocolProfile: _profile, ...childFacts } = finishedRun;
     const { parentRunId: _parent, ...rootChild } = {
-      ...finishedRun,
+      ...childFacts,
       spawnedByItemId: "item_03",
       parentRunId: "run_02",
       rootRunId: "run_02",

@@ -279,9 +279,9 @@ func TestPortableSnapshotDelegatesModelIdentityToRun(t *testing.T) {
 	}
 }
 
-// A child inherits rather than restating its root's capabilities, so the
-// restored Run must carry the root value rather than an empty set.
-func TestPortableSnapshotChildInheritsRootCapabilities(t *testing.T) {
+// A child follows its root's capabilities rather than restating them, so only
+// the restored root carries the set.
+func TestPortableSnapshotKeepsCapabilitiesOnTheRoot(t *testing.T) {
 	capabilities := run.Capabilities{
 		ChildRuns:      true,
 		InterruptKinds: []interrupt.Kind{interrupt.Approval},
@@ -320,9 +320,9 @@ func TestPortableSnapshotChildInheritsRootCapabilities(t *testing.T) {
 		t.Fatalf("CanonicalSnapshot: %v", err)
 	}
 	for _, run := range snapshot.Runs {
-		capabilities := run.Capabilities()
-		if !capabilities.ChildRuns || len(capabilities.InterruptKinds) != 1 {
-			t.Fatalf("run %q capabilities = %+v, want the root's", run.ID(), capabilities)
+		got := run.Capabilities()
+		if run.Lineage().IsRoot() && !got.Equal(capabilities) || run.Lineage().IsChild() && !got.IsEmpty() {
+			t.Fatalf("run %q capabilities = %+v", run.ID(), got)
 		}
 	}
 }

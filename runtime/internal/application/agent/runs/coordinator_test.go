@@ -1561,7 +1561,7 @@ func TestCoordinatorPublishesNativeChildOnlyAfterConclusiveStart(t *testing.T) {
 		t.Fatalf("openings = %#v, want one conclusive child admission", openings)
 	}
 	if child.RunID != "run_child" || child.SegmentID != "segment_child" ||
-		!child.Capabilities.ChildRuns || !child.CreatedAt.Equal(startedAt) {
+		!child.Capabilities.IsEmpty() || !child.CreatedAt.Equal(startedAt) {
 		t.Fatalf("child draft = %+v", child)
 	}
 	effects.mu.Lock()
@@ -1622,7 +1622,7 @@ func requireIndependentChildLifecycle(
 	started := lifecycle.started
 	if started.Run.Lineage() != lineage ||
 		started.Run.ActiveSegmentID() != childSegmentID ||
-		started.Run.Capabilities().String() != spec.Capabilities.String() {
+		!started.Run.Capabilities().IsEmpty() {
 		t.Fatalf("child opening Run = %+v, want independent inherited segment state", started.Run)
 	}
 	completed := lifecycle.completed

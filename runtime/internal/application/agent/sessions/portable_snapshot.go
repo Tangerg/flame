@@ -172,7 +172,7 @@ func (p PortableSnapshot) CanonicalSnapshot() (Snapshot, error) {
 			UnresolvedEffects: portable.UnresolvedEffects,
 			Metrics:           portable.Metrics,
 			ContextTokens:     portable.ContextTokens,
-			Capabilities:      capabilitySets[portable.rootID()],
+			Capabilities:      capabilitySets[portable.ID],
 			Detail:            portable.Detail,
 			CreatedAt:         portable.CreatedAt,
 			FinishedAt:        portable.FinishedAt,

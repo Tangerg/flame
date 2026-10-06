@@ -1388,7 +1388,7 @@ export interface RunRef {
   model: string;
   outcome?: RunOutcome;
   parentRunId?: string;
-  protocolProfile: RunProtocolProfile;
+  protocolProfile?: RunProtocolProfile;
   provider: string;
   reasoningEffort?: string;
   rootRunId?: string;
