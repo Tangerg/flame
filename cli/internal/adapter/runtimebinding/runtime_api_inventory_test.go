@@ -6,7 +6,6 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/Tangerg/flame/cli/internal/application/changefeed"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -57,14 +56,6 @@ func TestRuntimeAPIInventoryHasNoUnreviewedMethods(t *testing.T) {
 	slices.Sort(unreviewed)
 	if len(missing) > 0 || len(unreviewed) > 0 {
 		t.Fatalf("runtime API inventory drifted: removed=%v unreviewed=%v", missing, unreviewed)
-	}
-}
-
-func TestRuntimeTopicInventoryHasNoUnreviewedTopics(t *testing.T) {
-	t.Parallel()
-	protocolTopics, clientTopics := protocol.RuntimeTopics(), changefeed.Topics()
-	if !slices.Equal(protocolTopics, clientTopics) {
-		t.Fatalf("runtime topic inventory drifted: protocol=%v client=%v", protocolTopics, clientTopics)
 	}
 }
 

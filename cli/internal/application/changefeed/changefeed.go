@@ -14,26 +14,10 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// Topics returns the complete change vocabulary understood by this client.
-// Callers own the returned slice, so subscription policy cannot mutate the
-// package's inventory.
+// Topics returns the complete change vocabulary this client understands: the
+// protocol's, because the client decodes every topic its revision defines.
 func Topics() []protocol.RuntimeTopic {
-	return []protocol.RuntimeTopic{
-		protocol.TopicFilesChanged,
-		protocol.TopicSkillsChanged,
-		protocol.TopicMCPChanged,
-		protocol.TopicPluginsChanged,
-		protocol.TopicSchedulesChanged,
-		protocol.TopicSessionsChanged,
-		protocol.TopicRunsChanged,
-		protocol.TopicPlanChanged,
-		protocol.TopicGoalsChanged,
-		protocol.TopicInterruptsChanged,
-		protocol.TopicHooksChanged,
-		protocol.TopicModelsChanged,
-		protocol.TopicApprovalsChanged,
-		protocol.TopicAgentMemoryChanged,
-	}
+	return protocol.RuntimeTopics()
 }
 
 type Watch struct {
