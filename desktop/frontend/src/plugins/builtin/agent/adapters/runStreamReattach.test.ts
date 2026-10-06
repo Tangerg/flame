@@ -61,7 +61,6 @@ describe("run stream reattach", () => {
   });
 
   it("commits the snapshot supplied with the cold tail and returns its successor cursor", async () => {
-    useAgentStore.getState().setCommandError("ses_1", { code: "old" });
     const recoverProjection = vi.fn(async (_signal: AbortSignal) => {});
     const subscribe = vi.fn<FlameClient["runs"]["subscribe"]>(async () => {
       const stream = emptyStream();
@@ -84,7 +83,6 @@ describe("run stream reattach", () => {
     const signal = new AbortController().signal;
     const result = await reattach(position("cold"), signal);
     expect(result?.cursor).toBe("evt_new");
-    expect(useAgentStore.getState().sessions.ses_1!.view.commandError).toBeNull();
     expect(recoverProjection).not.toHaveBeenCalled();
     expect(subscribe).toHaveBeenCalledWith(
       { runId: RUN, segmentId: SEGMENT, snapshot: true },

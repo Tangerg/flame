@@ -17,7 +17,8 @@ import {
 
 function seed(commandError: AgentProblem | null, shared: Record<string, unknown>) {
   return {
-    view: { ...EMPTY_AGENT_SESSION_VIEW, commandError, shared },
+    view: { ...EMPTY_AGENT_SESSION_VIEW, shared },
+    problem: { commandError, dismissedRunId: null },
     viewEpoch: 0n,
     viewRevision: 0n,
     authoritativeRevision: 0n,

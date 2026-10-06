@@ -4,7 +4,8 @@ import type { AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
 import { foldTestEvent as reduce, runFinished, testRunEvent } from "./reducer.fixtures";
 import { reduceAgentEvent, reduceDurableItem } from "./reducer";
 import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
-import { selectCurrentRootRun, selectVisibleProblem } from "../view/runTree";
+import { selectCurrentRootRun } from "../view/runTree";
+import { EMPTY_PROBLEM_PRESENTATION, selectVisibleProblem } from "../view/problemPresentation";
 import { reconcileMessageIdentity } from "../view/viewMutations";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 import { selectAwaitingInterrupts } from "../view/awaitingInterrupts";
@@ -118,20 +119,20 @@ describe("reducer — run lifecycle", () => {
       s,
       runFinished({ type: "failed", error: { code: "provider_error", message: "boom" } }),
     );
-    expect(selectVisibleProblem(s)).toEqual({
+    expect(selectVisibleProblem(s, EMPTY_PROBLEM_PRESENTATION)).toEqual({
       message: "boom",
       code: "provider_error",
       retryAfterSeconds: undefined,
     });
     expect(selectCurrentRootRun(s)?.status).toBe("finished");
     s = reduce(s, runStarted("run_2", "ses_1"));
-    expect(selectVisibleProblem(s)).toBeNull();
+    expect(selectVisibleProblem(s, EMPTY_PROBLEM_PRESENTATION)).toBeNull();
   });
 
   it("segment.finished{failed} without a detail leaves the words to the banner", () => {
     let s = reduce(EMPTY_AGENT_SESSION_VIEW, runStarted("run_1", "ses_1"));
     s = reduce(s, runFinished({ type: "failed", error: { code: "internal_error" } }));
-    expect(selectVisibleProblem(s)).toEqual({
+    expect(selectVisibleProblem(s, EMPTY_PROBLEM_PRESENTATION)).toEqual({
       message: undefined,
       code: "internal_error",
       retryAfterSeconds: undefined,

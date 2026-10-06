@@ -9,6 +9,7 @@ import type {
 import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
 import { AgentViewRefreshOwner, useAgentStore } from "./agentStore";
 import { selectCurrentRootRun } from "../application/view/runTree";
+import { selectVisibleProblem } from "../application/view/problemPresentation";
 import { selectAwaitingInterrupts } from "../application/view/awaitingInterrupts";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 
@@ -553,12 +554,43 @@ describe("agentStore.setCommandError", () => {
       message: "session not found",
       code: "session_not_found",
     });
-    expect(view().commandError).toMatchObject({
+    expect(useAgentStore.getState().sessions[SID]!.problem.commandError).toMatchObject({
       message: "session not found",
       code: "session_not_found",
     });
     useAgentStore.getState().clearProblem(SID);
-    expect(view().commandError).toBeNull();
+    expect(useAgentStore.getState().sessions[SID]!.problem.commandError).toBeNull();
+  });
+});
+
+describe("agentStore problem presentation", () => {
+  it("keeps a dismissed Run problem dismissed across an authoritative refresh", () => {
+    const store = useAgentStore.getState();
+    store.ensureSession(SID);
+    store.applyRunEvents(
+      SID,
+      [
+        runStarted("run_1", SID),
+        runFinished({ type: "failed", error: { type: "agent_stuck", detail: "boom" } }),
+      ].map(fold),
+    );
+    const entry = () => useAgentStore.getState().sessions[SID]!;
+    expect(selectVisibleProblem(entry().view, entry().problem)).not.toBeNull();
+
+    store.clearProblem(SID);
+    const authoritative = entry().view;
+    const token = store.beginViewRefresh(SID, false)!;
+    expect(store.commitViewRefresh(SID, token, { ...authoritative })).toBe(true);
+
+    expect(selectVisibleProblem(entry().view, entry().problem)).toBeNull();
+  });
+
+  it("lets a started segment supersede a command failure", () => {
+    const store = useAgentStore.getState();
+    store.ensureSession(SID);
+    store.setCommandError(SID, { code: "session_busy" });
+    store.applyRunEvents(SID, [fold(runStarted("run_1", SID))]);
+    expect(useAgentStore.getState().sessions[SID]!.problem.commandError).toBeNull();
   });
 });
 

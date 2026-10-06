@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { AgentItem as Item, AgentStreamEvent as StreamEvent } from "@/plugins/sdk";
 import { foldTestEvent as reduce, runFinished } from "./reducer.fixtures";
 import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
-import { selectCurrentRootRun, selectVisibleProblem } from "../view/runTree";
+import { selectCurrentRootRun } from "../view/runTree";
+import { EMPTY_PROBLEM_PRESENTATION, selectVisibleProblem } from "../view/problemPresentation";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 
 function item(partial: Record<string, unknown>): Item {
@@ -51,7 +52,7 @@ describe("handler contract — run.*", () => {
     );
     s = reduce(s, started(item({ id: "a", type: "agentMessage", content: [] })));
     expect(s.runsById.r0?.metrics.usage.inputTokens).toBe(500);
-    expect(selectVisibleProblem(s)).not.toBeNull();
+    expect(selectVisibleProblem(s, EMPTY_PROBLEM_PRESENTATION)).not.toBeNull();
 
     const out = reduce(s, runStarted("r1", "s1"));
     expect(selectCurrentRootRun(out)).toMatchObject({
@@ -62,7 +63,7 @@ describe("handler contract — run.*", () => {
         usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 },
       },
     });
-    expect(selectVisibleProblem(out)).toBeNull();
+    expect(selectVisibleProblem(out, EMPTY_PROBLEM_PRESENTATION)).toBeNull();
     expect(out.messages).toBe(s.messages);
   });
 

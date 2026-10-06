@@ -148,8 +148,6 @@ export interface AgentSessionView {
   messages: Message[];
   toolCalls: Record<string, ToolCall>;
   runsById: Record<string, AgentRunView>;
-  commandError: AgentProblem | null;
-  dismissedProblemRunId: string | null;
   assistantTurnByRunId: Record<string, string>;
   pendingInterrupts: PendingInterruptGroup[];
   plan: AgentPlan | null;
@@ -160,8 +158,6 @@ export const EMPTY_AGENT_SESSION_VIEW: AgentSessionView = {
   messages: [],
   toolCalls: {},
   runsById: {},
-  commandError: null,
-  dismissedProblemRunId: null,
   assistantTurnByRunId: {},
   pendingInterrupts: [],
   plan: null,

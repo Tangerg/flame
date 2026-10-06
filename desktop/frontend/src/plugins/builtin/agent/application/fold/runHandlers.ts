@@ -129,7 +129,6 @@ export function onRunStarted(
   }
   return {
     ...dropRunPendingInterrupts(state, run.id),
-    commandError: null,
     runsById: {
       ...state.runsById,
       [run.id]: started,

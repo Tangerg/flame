@@ -1,6 +1,4 @@
-import type { AgentProblem, AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
-import { selectCurrentRootRun } from "./runTree";
-import { isAgentRunFailure } from "./runOutcome";
+import type { AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
 
 export function reconcileMessageIdentity(
   view: AgentSessionView,
@@ -82,23 +80,4 @@ export function dropMessage(view: AgentSessionView, id: string): AgentSessionVie
       Object.entries(view.assistantTurnByRunId).filter(([, messageId]) => messageId !== id),
     ),
   };
-}
-
-export function setCommandError(
-  view: AgentSessionView,
-  error: AgentProblem | null,
-): AgentSessionView {
-  if (view.commandError === error) return view;
-  return { ...view, commandError: error };
-}
-
-export function dismissVisibleProblem(view: AgentSessionView): AgentSessionView {
-  const run = selectCurrentRootRun(view);
-  const dismissedProblemRunId = isAgentRunFailure(run?.outcome)
-    ? run.id
-    : view.dismissedProblemRunId;
-  if (view.commandError === null && dismissedProblemRunId === view.dismissedProblemRunId) {
-    return view;
-  }
-  return { ...view, commandError: null, dismissedProblemRunId };
 }

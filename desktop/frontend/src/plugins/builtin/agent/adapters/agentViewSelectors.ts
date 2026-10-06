@@ -12,8 +12,11 @@ import {
   selectCurrentRootRun,
   selectRootNarrativeMessages,
   selectRunTree,
-  selectVisibleProblem,
 } from "../application/view/runTree";
+import {
+  EMPTY_PROBLEM_PRESENTATION,
+  selectVisibleProblem,
+} from "../application/view/problemPresentation";
 import type { AgentRunTreeNode } from "../application/view/runTree";
 import {
   buildTranscriptRows,
@@ -95,7 +98,13 @@ export function useRunTree(): AgentRunTreeNode[] {
 }
 
 export function useAgentProblem(): AgentProblem | null {
-  return useActiveAgentView(selectVisibleProblem);
+  const sessionId = navigator().use((location) => location.session);
+  return useAgentStore((state) => {
+    const entry = state.sessions[sessionId];
+    return entry
+      ? selectVisibleProblem(entry.view, entry.problem)
+      : selectVisibleProblem(EMPTY_AGENT_SESSION_VIEW, EMPTY_PROBLEM_PRESENTATION);
+  });
 }
 
 export function useAgentPlan(): AgentProjectionMaterial<AgentPlan> {

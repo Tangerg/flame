@@ -16,16 +16,23 @@ import { foldCancelRunResponse } from "@/plugins/builtin/agent/application/fold/
 import { foldRunSnapshot } from "@/plugins/builtin/agent/application/fold/runSnapshot";
 import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
 import {
-  dismissVisibleProblem,
   dropMessage,
   reconcileMessageIdentity,
-  setCommandError,
 } from "@/plugins/builtin/agent/application/view/viewMutations";
+import {
+  dismissVisibleProblem,
+  EMPTY_PROBLEM_PRESENTATION,
+  type ProblemPresentation,
+  withCommandError,
+} from "@/plugins/builtin/agent/application/view/problemPresentation";
 import { useAgentSessionStore } from "./agentSessionStore";
 import { runtimeAgentEvent, runtimeCancelResult, runtimeRunFact } from "./runtimeAgentFacts";
 
 interface SessionEntry {
   view: AgentSessionView;
+  // problem is presentation the user and local commands own; an authoritative
+  // refresh replaces view but never this.
+  problem: ProblemPresentation;
   viewEpoch: bigint;
   viewRevision: bigint;
   authoritativeRevision: bigint;
@@ -86,6 +93,7 @@ function advanceProjectionCounter(current: bigint): bigint {
 
 const emptyEntry = (viewEpoch: bigint): SessionEntry => ({
   view: EMPTY_AGENT_SESSION_VIEW,
+  problem: EMPTY_PROBLEM_PRESENTATION,
   viewEpoch,
   viewRevision: initialProjectionCounter,
   authoritativeRevision: initialProjectionCounter,
@@ -141,13 +149,21 @@ export const useAgentStore = create<AgentStore>((set) => ({
       const prev = state.sessions[sessionId];
       if (!prev) return state;
       let view = prev.view;
-      for (const event of events) view = reduceAgentEvent(view, runtimeAgentEvent(event));
+      let problem = prev.problem;
+      for (const event of events) {
+        const agentEvent = runtimeAgentEvent(event);
+        view = reduceAgentEvent(view, agentEvent);
+        // A started segment supersedes the command failure that preceded it.
+        if (agentEvent.event.type === "segment.started") problem = withCommandError(problem, null);
+      }
       applied = true;
-      if (view === prev.view) return state;
+      if (view === prev.view && problem === prev.problem) return state;
       return {
         sessions: patchSession(state.sessions, sessionId, {
           view,
-          viewRevision: advanceProjectionCounter(prev.viewRevision),
+          problem,
+          viewRevision:
+            view === prev.view ? prev.viewRevision : advanceProjectionCounter(prev.viewRevision),
         }),
       };
     });
@@ -268,6 +284,7 @@ export const useAgentStore = create<AgentStore>((set) => ({
         if (!entry) continue;
         sessions = patchSession(sessions, sessionId, {
           view: EMPTY_AGENT_SESSION_VIEW,
+          problem: EMPTY_PROBLEM_PRESENTATION,
           viewEpoch,
           viewRevision: advanceProjectionCounter(entry.viewRevision),
           authoritativeRevision: initialProjectionCounter,
@@ -309,13 +326,19 @@ export const useAgentStore = create<AgentStore>((set) => ({
     set((state) => patchSessionState(state, sessionId, { cancelRun: action })),
   clearProblem: (sessionId) =>
     set((state) => {
-      const sessions = patchView(state.sessions, sessionId, dismissVisibleProblem);
-      return sessions === state.sessions ? state : { sessions };
+      const entry = state.sessions[sessionId];
+      if (!entry) return state;
+      return patchSessionState(state, sessionId, {
+        problem: dismissVisibleProblem(entry.view, entry.problem),
+      });
     }),
   setCommandError: (sessionId, error) =>
     set((state) => {
-      const sessions = patchView(state.sessions, sessionId, (view) => setCommandError(view, error));
-      return sessions === state.sessions ? state : { sessions };
+      const entry = state.sessions[sessionId];
+      if (!entry) return state;
+      return patchSessionState(state, sessionId, {
+        problem: withCommandError(entry.problem, error),
+      });
     }),
 }));
 

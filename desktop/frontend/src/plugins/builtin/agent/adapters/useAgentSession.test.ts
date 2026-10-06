@@ -176,7 +176,7 @@ describe("useAgentSession run timing guards", () => {
     });
 
     await waitFor(() => {
-      expect(useAgentStore.getState().sessions[SID]!.view.commandError).toMatchObject({
+      expect(useAgentStore.getState().sessions[SID]!.problem.commandError).toMatchObject({
         message: "gone",
         code: "session_not_found",
       });
@@ -459,7 +459,7 @@ describe("useAgentSession run timing guards", () => {
     });
 
     await waitFor(() => {
-      expect(useAgentStore.getState().sessions[SID]!.view.commandError).toEqual({
+      expect(useAgentStore.getState().sessions[SID]!.problem.commandError).toEqual({
         code: "stale_segment",
         message: "run already moved",
       });
@@ -516,7 +516,7 @@ describe("useAgentSession run timing guards", () => {
         useAgentStore.getState().sessions[SID]!.view.runsById.run_remote_terminal,
       ).toMatchObject({ status: "finished", outcome: { type: "completed" } });
     });
-    expect(useAgentStore.getState().sessions[SID]!.view.commandError).toBeNull();
+    expect(useAgentStore.getState().sessions[SID]!.problem.commandError).toBeNull();
     expect(errorSpy).not.toHaveBeenCalled();
   });
 });

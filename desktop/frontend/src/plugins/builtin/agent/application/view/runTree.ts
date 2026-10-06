@@ -101,9 +101,3 @@ export function selectRunTree(view: AgentSessionView): AgentRunTreeNode[] {
 export function selectRunProblem(run: AgentRunView | null): AgentProblem | null {
   return isAgentRunFailure(run?.outcome) ? run.outcome.error : null;
 }
-
-export function selectVisibleProblem(view: AgentSessionView): AgentProblem | null {
-  if (view.commandError) return view.commandError;
-  const run = selectCurrentRootRun(view);
-  return run?.id === view.dismissedProblemRunId ? null : selectRunProblem(run);
-}

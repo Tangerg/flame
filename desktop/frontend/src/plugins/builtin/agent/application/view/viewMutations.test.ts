@@ -1,13 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { ContentBlock } from "@/plugins/sdk/types/contentBlock";
-import type { AgentProblem, AgentSessionView, Message } from "@/plugins/sdk/types/agentSessionView";
+import type { AgentSessionView, Message } from "@/plugins/sdk/types/agentSessionView";
 import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
-import {
-  dropMessage,
-  reconcileMessageIdentity,
-  reconcileSteerMessages,
-  setCommandError,
-} from "./viewMutations";
+import { dropMessage, reconcileMessageIdentity, reconcileSteerMessages } from "./viewMutations";
 
 const time = "2026-06-03T00:00:00Z";
 
@@ -108,15 +103,5 @@ describe("view mutations - messages", () => {
 
     expect(next.messages.map((m) => m.id)).toEqual(["m2"]);
     expect(dropMessage(original, "missing")).toBe(original);
-  });
-});
-
-describe("view mutations - run state", () => {
-  it("sets and clears a command error only when the value changes", () => {
-    const error: AgentProblem = { message: "boom", code: "provider_error" };
-    const original = view({ commandError: error });
-
-    expect(setCommandError(original, error)).toBe(original);
-    expect(setCommandError(original, null)).toMatchObject({ commandError: null });
   });
 });
