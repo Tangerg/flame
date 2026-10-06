@@ -125,6 +125,7 @@ export const zh: Record<string, string> = {
   "msgActions.regenerate": "重新生成回复",
   "msgActions.regenerateRestore": "重新生成，恢复文件",
   "msgActions.good": "回复不错",
+  "msgActions.feedbackFailed": "反馈未能保存",
   "msgActions.poor": "回复欠佳",
   "chatSearch.label": "在对话中搜索",
   "chatSearch.placeholder": "在对话中搜索…",

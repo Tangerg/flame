@@ -118,6 +118,7 @@ export const de: Record<string, string> = {
   "msgActions.regenerate": "Antwort neu generieren",
   "msgActions.regenerateRestore": "Neu generieren, Dateien wiederherstellen",
   "msgActions.good": "Gute Antwort",
+  "msgActions.feedbackFailed": "Feedback wurde nicht gespeichert",
   "msgActions.poor": "Schlechte Antwort",
   "chatSearch.label": "Im Chat suchen",
   "chatSearch.placeholder": "Im Chat suchen…",

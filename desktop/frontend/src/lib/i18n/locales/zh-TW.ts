@@ -119,6 +119,7 @@ export const zhTW: Record<string, string> = {
   "msgActions.regenerate": "重新產生回覆",
   "msgActions.regenerateRestore": "重新產生，還原檔案",
   "msgActions.good": "回覆不錯",
+  "msgActions.feedbackFailed": "意見回饋未能儲存",
   "msgActions.poor": "回覆欠佳",
   "chatSearch.label": "在對話中搜尋",
   "chatSearch.placeholder": "在對話中搜尋…",

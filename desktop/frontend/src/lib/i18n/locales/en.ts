@@ -130,6 +130,7 @@ export const en: Record<string, string> = {
   "msgActions.regenerate": "Regenerate response",
   "msgActions.regenerateRestore": "Regenerate, restore files",
   "msgActions.good": "Good response",
+  "msgActions.feedbackFailed": "Feedback was not saved",
   "msgActions.poor": "Poor response",
   "chatSearch.label": "Search in chat",
   "chatSearch.placeholder": "Search in chat…",

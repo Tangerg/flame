@@ -117,6 +117,7 @@ export const ja: Record<string, string> = {
   "msgActions.regenerate": "応答を再生成",
   "msgActions.regenerateRestore": "再生成、ファイルを復元",
   "msgActions.good": "良い応答",
+  "msgActions.feedbackFailed": "フィードバックを保存できませんでした",
   "msgActions.poor": "不十分な応答",
   "chatSearch.label": "チャット内を検索",
   "chatSearch.placeholder": "チャット内を検索…",

@@ -1,9 +1,11 @@
 import type { FlameClient } from "@flame/runtime-contract/client";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useT } from "@/lib/i18n";
+import { describeRpcError } from "@/lib/rpcErrors";
 import {
   contributeLayout,
   definePlugin,
+  notifyError,
   useCurrentMessage,
   useCurrentMessageSessionId,
 } from "@/plugins/sdk";
@@ -29,7 +31,8 @@ function RateableFeedbackButtons({ msg }: { msg: Message }) {
   const rate = (rating: MessageFeedbackRating): void => {
     if (feedback.rating === rating) return;
     void feedback.submit(rating).catch((error: unknown) => {
-      if (!wasGenerationRetired(error)) console.warn("[feedback] create failed:", error);
+      if (wasGenerationRetired(error)) return;
+      notifyError(describeRpcError(error) ?? t("msgActions.feedbackFailed"), { source: "session" });
     });
   };
 
