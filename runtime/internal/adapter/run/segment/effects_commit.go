@@ -165,9 +165,6 @@ func (e *Effects) ClaimResume(
 }
 
 func prepareResumeClaim(claim runs.ResumeClaimCommit) (preparedResumeClaim, error) {
-	if err := claim.Validate(); err != nil {
-		return preparedResumeClaim{}, fmt.Errorf("segment: invalid resume claim: %w", err)
-	}
 	pending := claim.Pending()
 	root, ok := pending.RootContinuation()
 	if !ok {
@@ -272,9 +269,6 @@ func (e *Effects) reconcileResumeClaim(
 // opening transcript projections land in that same transaction, so Start cannot
 // acknowledge a segment whose durable opening is missing.
 func (e *Effects) CommitOpening(ctx context.Context, opening runs.OpeningCommit) error {
-	if err := opening.Validate(); err != nil {
-		return fmt.Errorf("segment: invalid opening: %w", err)
-	}
 	err := e.runInTx(ctx, func(ctx context.Context) error {
 		return e.commitOpening(ctx, opening)
 	})
@@ -473,9 +467,6 @@ func (e *Effects) reconcileRunCommit(
 // order; persistence preserves that order while the transaction makes it
 // invisible until complete.
 func (e *Effects) CommitTreeBarrier(ctx context.Context, barrier runs.TreeBarrierCommit) error {
-	if err := barrier.Validate(); err != nil {
-		return fmt.Errorf("segment: invalid tree barrier: %w", err)
-	}
 	pending := barrier.Pending()
 	checkpoint := barrier.Checkpoint()
 	commits := barrier.Runs()

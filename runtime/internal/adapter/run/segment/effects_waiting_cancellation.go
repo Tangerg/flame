@@ -16,12 +16,6 @@ func (e *Effects) CommitWaitingSubtreeCancellation(
 	ctx context.Context,
 	commit runs.WaitingSubtreeCancellationCommit,
 ) (runs.WaitingSubtreeCancellationResult, error) {
-	if err := commit.Validate(); err != nil {
-		return runs.WaitingSubtreeCancellationResult{}, fmt.Errorf(
-			"segment: invalid waiting subtree cancellation: %w",
-			err,
-		)
-	}
 	var target, root run.Run
 	err := e.runInTx(ctx, func(ctx context.Context) error {
 		if err := e.claimWaitingCancellation(ctx, commit); err != nil {

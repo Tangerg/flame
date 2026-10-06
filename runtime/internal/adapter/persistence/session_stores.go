@@ -219,9 +219,6 @@ func (s *SessionStores) ReadSnapshot(ctx context.Context, sessionID string) (ses
 // ApplyFork persists the Domain-derived child Session and the complete visible
 // history/Plan boundary in one transaction.
 func (s *SessionStores) ApplyFork(ctx context.Context, fork sessions.ForkPlan) (session.Session, error) {
-	if err := fork.Validate(); err != nil {
-		return session.Session{}, fmt.Errorf("persistence: invalid fork plan: %w", err)
-	}
 	snapshot := fork.Snapshot()
 	child := fork.Child()
 	parentID := fork.ParentID()
@@ -258,9 +255,6 @@ func (s *SessionStores) ApplyFork(ctx context.Context, fork sessions.ForkPlan) (
 
 // ApplyRollback persists one resolved rollback plan atomically.
 func (s *SessionStores) ApplyRollback(ctx context.Context, rollback sessions.RollbackPlan) error {
-	if err := rollback.Validate(); err != nil {
-		return fmt.Errorf("persistence: invalid rollback plan: %w", err)
-	}
 	sessionID := rollback.SessionID()
 	dropRunIDs := rollback.DropRunIDs()
 	checkpointRootIDs := rollback.CheckpointRootIDs()
@@ -319,9 +313,6 @@ func (s *SessionStores) deleteRolledBackRuns(ctx context.Context, sessionID stri
 // ApplyRestore replaces every durable projection for a restored session in one
 // transaction.
 func (s *SessionStores) ApplyRestore(ctx context.Context, restore sessions.RestorePlan) error {
-	if err := restore.Validate(); err != nil {
-		return fmt.Errorf("persistence: invalid restore plan: %w", err)
-	}
 	sessionReplacement := restore.SessionReplacement()
 	snapshot := restore.Snapshot()
 	planReplacement := restore.PlanReplacement()
@@ -402,9 +393,6 @@ func (s *SessionStores) restoreToolResults(ctx context.Context, blobs []toolresu
 
 // ApplyDelete removes all durable state for the addressed session.
 func (s *SessionStores) ApplyDelete(ctx context.Context, deletion sessions.DeletePlan) error {
-	if err := deletion.Validate(); err != nil {
-		return fmt.Errorf("persistence: invalid delete plan: %w", err)
-	}
 	sessionID := deletion.SessionID()
 	return s.tx(ctx, func(ctx context.Context) error {
 		return s.deleteSession(ctx, sessionID)
@@ -462,9 +450,6 @@ func (s *SessionStores) clearSessionOwnedStateExceptPlan(ctx context.Context, se
 // ApplyTerminal persists the terminal record for an abandoned parked run and
 // clears its executor checkpoint atomically.
 func (s *SessionStores) ApplyTerminal(ctx context.Context, terminal sessions.TerminalPlan) error {
-	if err := terminal.Validate(); err != nil {
-		return fmt.Errorf("persistence: invalid terminal plan: %w", err)
-	}
 	root, _ := terminal.RootRun()
 	items := terminal.Items()
 	messages := terminal.Messages()

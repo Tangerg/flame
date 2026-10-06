@@ -58,9 +58,6 @@ func (c *ConversationCompactions) ListRuns(ctx context.Context, sessionID string
 }
 
 func (c *ConversationCompactions) ApplyCompaction(ctx context.Context, plan runsapp.ConversationCompactionPlan) error {
-	if err := plan.Validate(); err != nil {
-		return fmt.Errorf("persistence: conversation compaction: %w", err)
-	}
 	return c.tx(ctx, func(ctx context.Context) error { return c.applyCompaction(ctx, plan) })
 }
 
