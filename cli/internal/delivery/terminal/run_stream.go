@@ -106,7 +106,7 @@ func (a *app) startPreparedRun(input prompt.StartRun, prepared *workbench.Prepar
 	}
 	a.presentRunStart(status)
 	a.followOpening(func(ctx context.Context) (conversation.SegmentStream, error) {
-		if err := commandReplayAdmission(replayGuard, a.runtimeProfile)(); err != nil {
+		if err := mutation.FreshReplayAdmission(a.replayPolicy, replayGuard)(); err != nil {
 			return conversation.SegmentStream{}, err
 		}
 		opened, err := a.runtime.StartRun(ctx, input)
@@ -160,7 +160,11 @@ func (a *app) prepareRunStart(input *prompt.StartRun, prepared *workbench.Prepar
 		a.fail(err)
 		return replay.Guard{}, false
 	}
-	replayGuard := commandReplayGuard(a.runtimeProfile)
+	replayGuard, err := a.replayPolicy.NewGuard()
+	if err != nil {
+		a.fail(errors.Join(err, a.execution.conversation.CancelStarting()))
+		return replay.Guard{}, false
+	}
 	if err := a.workbench.MarkPendingRunDispatching(input.SessionID, input.CommandID, replayGuard, prepared); err != nil {
 		rollbackErr := a.execution.conversation.CancelStarting()
 		a.message("run start blocked: save dispatching run: " + err.Error())

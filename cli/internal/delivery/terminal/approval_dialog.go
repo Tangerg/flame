@@ -336,7 +336,13 @@ func (a *app) resumeInterrupts() {
 	}
 	commandID := mutation.NewCommandID()
 	command := conversation.ResumeRun{CommandID: commandID, RunID: runID, Answers: answers}
-	replayGuard := commandReplayGuard(a.runtimeProfile)
+	replayGuard, err := a.replayPolicy.NewGuard()
+	if err != nil {
+		failure := fmt.Errorf("resume blocked: %w", err)
+		review.ReportSubmissionFailure(failure)
+		a.fail(failure)
+		return
+	}
 	if a.workbench != nil {
 		pending := workbench.PendingResume{
 			Command: command.Clone(), Interrupts: review.Items(), Replay: replayGuard,
@@ -386,7 +392,7 @@ func (a *app) deliverInterruptResume(
 	a.status.active("resuming")
 	a.syncAnimation()
 	a.followOpening(func(ctx context.Context) (conversation.SegmentStream, error) {
-		if err := commandReplayAdmission(replayGuard, a.runtimeProfile)(); err != nil {
+		if err := mutation.FreshReplayAdmission(a.replayPolicy, replayGuard)(); err != nil {
 			return conversation.SegmentStream{}, &resumeRunCallError{err: err}
 		}
 		stream, err := a.runtime.ResumeRun(ctx, command)

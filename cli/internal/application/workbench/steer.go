@@ -150,9 +150,6 @@ func (s *Store) PendingSteer(sessionID string) (PendingSteer, bool) {
 // empty gap between them.
 func (s *Store) StagePendingSteer(pending PendingSteer, sourceDraft prompt.Message, input *PreparedInput) error {
 	pending = pending.clone()
-	if err := pending.Validate(); err != nil {
-		return err
-	}
 	blocks, digest, err := input.bind(s, pending.command.Message)
 	if err != nil {
 		return err

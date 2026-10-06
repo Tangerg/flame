@@ -65,9 +65,6 @@ func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 	if err := invocation.Start.Validate(); err != nil {
 		return err
 	}
-	if err := invocation.ReplayPolicy.Validate(); err != nil {
-		return fmt.Errorf("one-shot command replay policy: %w", err)
-	}
 	defer func() { runErr = errors.Join(runErr, invocation.Renderer.Close()) }()
 	observationCtx, releaseObservation := context.WithCancel(ctx)
 	defer releaseObservation()

@@ -36,15 +36,6 @@ func StageSteer(
 	if authoring == nil {
 		return workbench.PendingSteer{}, workbench.ErrUnavailable
 	}
-	if err := request.Validate(); err != nil {
-		return workbench.PendingSteer{}, err
-	}
-	if request.CommandID == "" {
-		return workbench.PendingSteer{}, errors.New("steer command id is empty")
-	}
-	if err := policy.Validate(); err != nil {
-		return workbench.PendingSteer{}, err
-	}
 	stagedAt := policy.Now()
 	guard, err := policy.NewGuardAt(stagedAt)
 	if err != nil {
@@ -81,9 +72,6 @@ func DeliverSteer(
 	result := SteerResult{Pending: pending, Outcome: mutation.Unknown}
 	if runtime == nil {
 		return result, errors.New("steer runtime is unavailable")
-	}
-	if err := pending.Validate(); err != nil {
-		return result, err
 	}
 	command, err := pending.ReplayCommand()
 	if err != nil {

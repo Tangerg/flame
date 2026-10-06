@@ -73,6 +73,7 @@ type app struct {
 	hooks            Hooks
 	feedback         Feedback
 	runtimeProfile   RuntimeProfile
+	replayPolicy     mutation.ReplayPolicy
 	artifacts        sessionartifact.Store
 	registry         *extensions.Registry
 	pluginHost       *extensions.Host
@@ -145,6 +146,7 @@ type appConfig struct {
 	hooks            Hooks
 	feedback         Feedback
 	runtimeProfile   RuntimeProfile
+	replayPolicy     mutation.ReplayPolicy
 	clientVersion    string
 	snapshot         conversation.SessionSnapshot
 	registry         *extensions.Registry
@@ -195,8 +197,8 @@ func newApp(loop *program.Runtime, cfg appConfig) *app {
 	transcript.SetEntrance(brand)
 	a := &app{
 		ctx: cfg.context, loop: loop, runtime: cfg.runtime, workspaces: cfg.workspaces,
-		runtimeProfile: cfg.runtimeProfile,
-		changes:        cfg.changes, transfers: cfg.transfers, usage: cfg.usage, modelConfig: cfg.modelConfig,
+		runtimeProfile: cfg.runtimeProfile, replayPolicy: cfg.replayPolicy,
+		changes: cfg.changes, transfers: cfg.transfers, usage: cfg.usage, modelConfig: cfg.modelConfig,
 		goals: cfg.goals, skills: cfg.skills, mcp: cfg.mcp, schedules: cfg.schedules,
 		agentMemory:      cfg.agentMemory,
 		diagnosticTools:  cfg.diagnosticTools,
@@ -376,7 +378,12 @@ func (a *app) Close(ctx context.Context) error {
 	} else if !a.detachOnExit {
 		target, cancelRuntime = a.activeCancellation()
 		openingCommandID = a.openingCommandForRun(target.RunID)
-		cancelReplay = commandReplayGuard(a.runtimeProfile)
+		var err error
+		cancelReplay, err = a.replayPolicy.NewGuard()
+		if err != nil {
+			closeErr = errors.Join(closeErr, err)
+			cancelRuntime = false
+		}
 	}
 	var (
 		pendingStart  workbench.PendingRun

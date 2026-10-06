@@ -1945,7 +1945,7 @@ func TestCancelRootRunConfirmsATimedOutAcknowledgement(t *testing.T) {
 	}
 	backend := &uncertainCancellationRuntime{Runtime: base, commitBeforeTimeout: true}
 	profile := steerReplayTestProfile(t, t.TempDir())
-	application := &app{runtime: backend, runtimeProfile: &profile}
+	application := &app{runtime: backend, runtimeProfile: &profile, replayPolicy: testReplayPolicy(t, &profile)}
 	commandID := replay.CommandID("cli_11111111111111111111111111111111")
 	if err := application.cancelRootRun(t.Context(), conversation.CancelRun{
 		CommandID: commandID, RunID: opened.RunID, Reason: "test",

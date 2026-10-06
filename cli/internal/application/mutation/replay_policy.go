@@ -34,13 +34,13 @@ func UnavailableReplayPolicy(now func() time.Time) (ReplayPolicy, error) {
 // newReplayPolicy admits a built policy through the rule the value already
 // carries, so a constructor cannot accept something Validate would refuse.
 func newReplayPolicy(policy ReplayPolicy) (ReplayPolicy, error) {
-	if err := policy.Validate(); err != nil {
+	if err := policy.validate(); err != nil {
 		return ReplayPolicy{}, err
 	}
 	return policy, nil
 }
 
-func (p ReplayPolicy) Validate() error {
+func (p ReplayPolicy) validate() error {
 	if p.now == nil {
 		return errors.New("command replay policy clock is nil")
 	}
@@ -66,9 +66,6 @@ func (p ReplayPolicy) NewGuard() (replay.Guard, error) {
 }
 
 func (p ReplayPolicy) NewGuardAt(stagedAt time.Time) (replay.Guard, error) {
-	if err := p.Validate(); err != nil {
-		return replay.Guard{}, err
-	}
 	if p.kind == policyUnavailable {
 		return replay.UnprotectedGuard(), nil
 	}
@@ -80,7 +77,7 @@ func (p ReplayPolicy) NewGuardAt(stagedAt time.Time) (replay.Guard, error) {
 }
 
 func (p ReplayPolicy) SameStore(guard replay.Guard) bool {
-	if p.Validate() != nil || guard.Validate() != nil {
+	if guard.Validate() != nil {
 		return false
 	}
 	return p.kind == policyAdvertised && guard.Protected() &&
@@ -95,7 +92,7 @@ func (p ReplayPolicy) Replayable(guard replay.Guard) bool {
 // boundary may make its first attempt. An unavailable Runtime can start one
 // unprotected identity, but can never prove that identity safe to replay.
 func (p ReplayPolicy) CanStart(guard replay.Guard) bool {
-	if p.Validate() != nil || guard.Validate() != nil {
+	if guard.Validate() != nil {
 		return false
 	}
 	if guard.Protected() {

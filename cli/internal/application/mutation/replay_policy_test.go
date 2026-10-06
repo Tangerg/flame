@@ -55,7 +55,7 @@ func TestPolicyRefusesEitherShapeWithoutAClock(t *testing.T) {
 	if _, err := UnavailableReplayPolicy(nil); err == nil {
 		t.Fatal("unavailable policy was built without a clock")
 	}
-	if err := (ReplayPolicy{}).Validate(); err == nil {
+	if err := (ReplayPolicy{}).validate(); err == nil {
 		t.Fatal("the zero policy was valid")
 	}
 }
@@ -67,7 +67,7 @@ func TestUnavailablePolicyIsExplicitAndOwnsOnlyUnprotectedGuards(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := policy.Validate(); err != nil {
+	if err := policy.validate(); err != nil {
 		t.Fatal(err)
 	}
 	guard, err := policy.NewGuard()
@@ -77,7 +77,7 @@ func TestUnavailablePolicyIsExplicitAndOwnsOnlyUnprotectedGuards(t *testing.T) {
 	if policy.Available() || guard.Protected() || !policy.CanStart(guard) || policy.SameStore(guard) || policy.Replayable(guard) {
 		t.Fatalf("unavailable policy projection = policy %+v, guard %+v", policy, guard)
 	}
-	if err := (ReplayPolicy{}).Validate(); err == nil {
+	if err := (ReplayPolicy{}).validate(); err == nil {
 		t.Fatal("zero ReplayPolicy was valid")
 	}
 }

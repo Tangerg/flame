@@ -19,7 +19,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/settings"
 	"github.com/Tangerg/flame/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/components/headless"
 	"github.com/Tangerg/oolong/core/program"
@@ -101,7 +100,7 @@ func Run(ctx context.Context, cfg Config) (runErr error) {
 	programConfig := program.Config{
 		Root: func(loop *program.Runtime) program.Component {
 			active = newApp(loop, appConfig{
-				context: ctx, runtime: cfg.Runtime, runtimeProfile: prepared.runtimeProfile,
+				context: ctx, runtime: cfg.Runtime, runtimeProfile: prepared.runtimeProfile, replayPolicy: prepared.replayPolicy,
 				workspaces: cfg.Workspaces, changes: cfg.Changes, transfers: cfg.Transfers,
 				usage: cfg.Usage, modelConfig: cfg.ModelConfig, goals: cfg.Goals, skills: cfg.Skills,
 				mcp: cfg.MCP, schedules: cfg.Schedules, agentMemory: cfg.AgentMemory,
@@ -168,6 +167,7 @@ func (terminalUnavailableError) TerminalUnavailable() {}
 type preparedSession struct {
 	opened         conversation.SessionSnapshot
 	runtimeProfile RuntimeProfile
+	replayPolicy   mutation.ReplayPolicy
 	attachments    *attachment.Resolver
 	keyBindings    keyBindings
 	settings       settings.Config
@@ -193,6 +193,10 @@ func prepareSession(ctx context.Context, cfg Config) (preparedSession, error) {
 	if err != nil {
 		return preparedSession{}, err
 	}
+	replayPolicy, err := mutation.PolicyFromProfile(profile, time.Now)
+	if err != nil {
+		return preparedSession{}, fmt.Errorf("session command replay policy: %w", err)
+	}
 	if cfg.OpenWorkbench == nil {
 		return preparedSession{}, errors.New("session: workbench factory is required")
 	}
@@ -203,11 +207,12 @@ func prepareSession(ctx context.Context, cfg Config) (preparedSession, error) {
 	if authoring == nil {
 		return preparedSession{}, errors.New("session: workbench factory returned no authoring store")
 	}
-	recovery, err := recoverSessionCommands(ctx, cfg.Runtime, authoring, profile)
+	recovery, err := recoverSessionCommands(ctx, cfg.Runtime, authoring, replayPolicy)
 	if err != nil {
 		return preparedSession{}, errors.Join(err, authoring.Close())
 	}
 	prepared, err := openPreparedSession(ctx, cfg, profile, configured, bindings, authoring)
+	prepared.replayPolicy = replayPolicy
 	if err != nil {
 		return preparedSession{}, errors.Join(err, authoring.Close())
 	}
@@ -243,16 +248,16 @@ func recoverSessionCommands(
 	ctx context.Context,
 	runtime Runtime,
 	authoring *workbench.Store,
-	profile RuntimeProfile,
+	replayPolicy mutation.ReplayPolicy,
 ) (sessionCommandRecovery, error) {
 	recovery := sessionCommandRecovery{}
 	if err := session.RecoverDeletions(
-		ctx, runtime, authoring, commandReplayPolicy(profile), runtimeRecoveryBackoff,
+		ctx, runtime, authoring, replayPolicy, runtimeRecoveryBackoff,
 	); err != nil {
 		return sessionCommandRecovery{}, fmt.Errorf("recover session deletions: %w", err)
 	}
 	receipts, err := runworkflow.RecoverSteers(
-		ctx, runtime, authoring, commandReplayPolicy(profile), runtimeRecoveryBackoff,
+		ctx, runtime, authoring, replayPolicy, runtimeRecoveryBackoff,
 	)
 	recovery.receipts = receipts
 	if err != nil {
@@ -262,7 +267,7 @@ func recoverSessionCommands(
 		recovery.steer = fmt.Errorf("recover steer commands: %w", err)
 	}
 	if err := session.RecoverRollbacks(
-		ctx, runtime, authoring, commandReplayPolicy(profile), runtimeRecoveryBackoff,
+		ctx, runtime, authoring, replayPolicy, runtimeRecoveryBackoff,
 	); err != nil {
 		return sessionCommandRecovery{}, fmt.Errorf("recover session rollbacks: %w", err)
 	}
@@ -322,54 +327,6 @@ func authoringDirectory(localDirectory, workspace string) string {
 		return localDirectory
 	}
 	return workspace
-}
-
-func commandReplayPolicy(profile RuntimeProfile) mutation.ReplayPolicy {
-	policy, err := mutation.PolicyFromProfile(profile, time.Now)
-	if err != nil {
-		return mutation.ReplayPolicy{}
-	}
-	return policy
-}
-
-func commandReplayGuard(profile RuntimeProfile) replay.Guard {
-	guard, err := commandReplayPolicy(profile).NewGuard()
-	if err != nil {
-		return replay.Guard{}
-	}
-	return guard
-}
-
-func commandReplaySafe(guard replay.Guard, profile RuntimeProfile) bool {
-	return commandReplaySafeAt(guard, profile, time.Now().UTC())
-}
-
-func commandReplaySafeAt(
-	guard replay.Guard,
-	profile RuntimeProfile,
-	now time.Time,
-) bool {
-	policy, err := mutation.PolicyFromProfile(profile, func() time.Time { return now })
-	if err != nil {
-		return false
-	}
-	return policy.Replayable(guard)
-}
-
-func commandReplayStoreMatches(
-	guard replay.Guard,
-	profile RuntimeProfile,
-) bool {
-	return commandReplayPolicy(profile).SameStore(guard)
-}
-
-func commandReplayAdmission(
-	guard replay.Guard,
-	profile RuntimeProfile,
-) mutation.Admission {
-	return mutation.FreshDynamicReplayAdmission(func() mutation.ReplayPolicy {
-		return commandReplayPolicy(profile)
-	}, guard)
 }
 
 func requireLoadedPlugin(results []extensions.LifecycleResult, id string) error {

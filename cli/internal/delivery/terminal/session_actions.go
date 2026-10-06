@@ -157,7 +157,7 @@ func (a *app) rollbackSession(preview rollbackPreview) {
 		func(ctx context.Context) (rollbackSettlement, error) {
 			result, err := session.Rollback(
 				ctx, a.runtime, a.workbench, preview.settlement,
-				commandReplayPolicy(a.runtimeProfile), runtimeRecoveryBackoff,
+				a.replayPolicy, runtimeRecoveryBackoff,
 			)
 			if result.Pending.CommandID == "" {
 				return rollbackSettlement{}, err

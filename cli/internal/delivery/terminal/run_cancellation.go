@@ -90,9 +90,11 @@ func (a *app) stageOpeningCancellation() (workbench.PendingRun, bool, error) {
 		// operation owner will discard its result without a Runtime mutation.
 		return workbench.PendingRun{}, false, nil
 	}
-	if _, err := a.workbench.MarkPendingRunCanceling(
-		a.session.current.ID, entry.CommandID, commandReplayGuard(a.runtimeProfile),
-	); err != nil {
+	cancelReplay, err := a.replayPolicy.NewGuard()
+	if err != nil {
+		return workbench.PendingRun{}, false, err
+	}
+	if _, err := a.workbench.MarkPendingRunCanceling(a.session.current.ID, entry.CommandID, cancelReplay); err != nil {
 		return workbench.PendingRun{}, false, err
 	}
 	pending, ok := pendingRunByCommandID(a.workbench.PendingRuns(a.session.current.ID), entry.CommandID)
@@ -106,7 +108,7 @@ func (a *app) reconcileCanceledStart(pending workbench.PendingRun) {
 	dispatcher := a.loop.Dispatcher()
 	a.operations.GoSession(pendingRunRecoveryOperation, false, func(ctx context.Context, lease operationLease) {
 		opened, err := openStartRunWithBackoff(
-			ctx, a.runtime, pending.Command, pending.Replay, a.runtimeProfile, runtimeRecoveryBackoff,
+			ctx, a.runtime, pending.Command, pending.Replay, a.replayPolicy, runtimeRecoveryBackoff,
 		)
 		if context.Cause(ctx) != nil {
 			return
@@ -153,11 +155,11 @@ func openStartRunWithBackoff(
 	runtime runworkflow.Lifecycle,
 	command prompt.StartRun,
 	replayGuard replay.Guard,
-	profile RuntimeProfile,
+	replayPolicy mutation.ReplayPolicy,
 	backoff retry.Backoff,
 ) (conversation.SegmentStream, error) {
 	return mutation.ConfirmAdmitted(
-		ctx, backoff, commandReplayAdmission(replayGuard, profile),
+		ctx, backoff, mutation.FreshReplayAdmission(replayPolicy, replayGuard),
 		func(ctx context.Context) (conversation.SegmentStream, error) {
 			return runtime.StartRun(ctx, command)
 		},
@@ -225,9 +227,16 @@ func (a *app) requestRuntimeCancellation(target conversation.CancelRun, policy c
 		commandID := mutation.NewCommandID()
 		target.CommandID = commandID
 	}
-	replayGuard := commandReplayGuard(a.runtimeProfile)
+	var replayGuard replay.Guard
 	if current := a.execution.pendingCancel; current != nil && current.request.CommandID == target.CommandID {
 		replayGuard = current.replay
+	} else {
+		guard, err := a.replayPolicy.NewGuard()
+		if err != nil {
+			a.message("could not cancel run: " + err.Error())
+			return
+		}
+		replayGuard = guard
 	}
 	pending := pendingCancellation{
 		request: target, openingCommandID: a.openingCommandForRun(target.RunID), policy: policy, replay: replayGuard,
@@ -262,7 +271,7 @@ func (a *app) cancelRootRun(
 	replayGuard replay.Guard,
 ) error {
 	result, err := mutation.ConfirmAdmitted(
-		ctx, runtimeRecoveryBackoff, commandReplayAdmission(replayGuard, a.runtimeProfile),
+		ctx, runtimeRecoveryBackoff, mutation.FreshReplayAdmission(a.replayPolicy, replayGuard),
 		func(ctx context.Context) (conversation.RunCancellation, error) {
 			attemptCtx, cancel := context.WithTimeout(ctx, runtimeControlTimeout)
 			defer cancel()
@@ -361,12 +370,16 @@ func (a *app) cancelRuntimeNow(
 	if target.CommandID == "" {
 		commandID := mutation.NewCommandID()
 		target.CommandID = commandID
-		replayGuard = commandReplayGuard(a.runtimeProfile)
+		guard, err := a.replayPolicy.NewGuard()
+		if err != nil {
+			return err
+		}
+		replayGuard = guard
 	}
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ownerCtx), runtimeControlTimeout)
 	defer cancel()
 	result, err := mutation.ConfirmAdmitted(
-		ctx, runtimeRecoveryBackoff, commandReplayAdmission(replayGuard, a.runtimeProfile),
+		ctx, runtimeRecoveryBackoff, mutation.FreshReplayAdmission(a.replayPolicy, replayGuard),
 		func(ctx context.Context) (conversation.RunCancellation, error) {
 			return a.runtime.CancelRun(ctx, target)
 		},
@@ -387,7 +400,7 @@ func (a *app) cancelOpeningRunNow(ownerCtx context.Context, pending workbench.Pe
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ownerCtx), runtimeControlTimeout)
 	defer cancel()
 	opened, err := openStartRunWithBackoff(
-		ctx, a.runtime, pending.Command, pending.Replay, a.runtimeProfile, runtimeRecoveryBackoff,
+		ctx, a.runtime, pending.Command, pending.Replay, a.replayPolicy, runtimeRecoveryBackoff,
 	)
 	opened, accepted := observedSegmentStream(opened, err)
 	if !accepted {

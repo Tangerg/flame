@@ -177,7 +177,7 @@ func (a *app) deleteSessionFromCenter(id string) {
 	started := a.runApplicationOperation(sessionCenterOperation, false,
 		func(ctx context.Context) (session.DeletionResult, error) {
 			return session.Delete(
-				ctx, a.runtime, a.workbench, id, commandReplayPolicy(a.runtimeProfile), runtimeRecoveryBackoff,
+				ctx, a.runtime, a.workbench, id, a.replayPolicy, runtimeRecoveryBackoff,
 			)
 		},
 		func(result session.DeletionResult, err error) {

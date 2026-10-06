@@ -1,7 +1,10 @@
 package terminal
 
 import (
+	"time"
+
 	"context"
+	"github.com/Tangerg/flame/cli/internal/application/mutation"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -87,11 +90,19 @@ func TestTerminalResumesAColdDelegatedApprovalThroughTheWorkbench(t *testing.T) 
 					t.Fatal(err)
 				}
 				stagedCommand = "cli_33333333333333333333333333333333"
+				policy, policyErr := mutation.PolicyFromProfile(&profile, time.Now)
+				if policyErr != nil {
+					t.Fatal(policyErr)
+				}
+				stagedReplay, guardErr := policy.NewGuard()
+				if guardErr != nil {
+					t.Fatal(guardErr)
+				}
 				pending := workbench.PendingResume{
 					Command: conversation.ResumeRun{CommandID: stagedCommand, RunID: root.ID, Answers: []conversation.InterruptAnswer{{
 						ItemID: conversation.InterruptItemID(snapshot.Interrupts[0]), Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove},
 					}}},
-					Interrupts: snapshot.Interrupts, Replay: commandReplayGuard(&profile),
+					Interrupts: snapshot.Interrupts, Replay: stagedReplay,
 				}
 				if err := store.StagePendingResume(session.ID, pending, nil); err != nil {
 					t.Fatal(err)

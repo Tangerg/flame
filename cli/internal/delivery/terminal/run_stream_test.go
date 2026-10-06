@@ -79,12 +79,11 @@ func (s *sessionReadRecordingRuntime) requestedSessionIDs() []string {
 type replayingStartRuntime struct {
 	*runtimefixture.Runtime
 
-	mu         sync.Mutex
-	attempts   int
-	inputs     []prompt.StartRun
-	stream     conversation.SegmentStream
-	failure    error
-	afterFirst func()
+	mu       sync.Mutex
+	attempts int
+	inputs   []prompt.StartRun
+	stream   conversation.SegmentStream
+	failure  error
 }
 
 type idempotentStartRuntime struct {
@@ -287,9 +286,6 @@ func (r *replayingStartRuntime) StartRun(ctx context.Context, input prompt.Start
 		r.mu.Lock()
 		r.stream = opened
 		r.mu.Unlock()
-		if r.afterFirst != nil {
-			r.afterFirst()
-		}
 		failure := r.failure
 		if failure == nil {
 			failure = conversation.ErrDisconnected
@@ -938,33 +934,38 @@ func TestCommandReplayGuaranteeExpiresAtItsDeadline(t *testing.T) {
 	profile := steerReplayTestProfile(t, "/workspace")
 	profile = profileWithReplay(t, profile, "idp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 10*time.Minute)
 	guard := protectedCommandReplayGuard(t, "idp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", deadline)
-	if commandReplaySafeAt(guard, &profile, deadline) {
+	policy, err := mutation.PolicyFromProfile(&profile, func() time.Time { return deadline })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if policy.Replayable(guard) {
 		t.Fatal("run command replay remained safe at its retention deadline")
 	}
 }
 
-func TestRecoveredStartStopsBeforeRetryingOutsideItsReplayStore(t *testing.T) {
+func TestRecoveredStartRefusesAGuardFromAnotherReplayStore(t *testing.T) {
 	base := runtimefixture.New()
 	profile := steerReplayTestProfile(t, "/tmp/flame-cli-test")
-	profile = profileWithReplay(t, profile, "idp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 10*time.Minute)
-	runtime := &replayingStartRuntime{Runtime: base}
-	runtime.afterFirst = func() {
-		profile = profileWithReplay(t, profile, "idp_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", 10*time.Minute)
+	profile = profileWithReplay(t, profile, "idp_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", 10*time.Minute)
+	policy, err := mutation.PolicyFromProfile(&profile, time.Now)
+	if err != nil {
+		t.Fatal(err)
 	}
+	runtime := &replayingStartRuntime{Runtime: base}
 	command := prompt.StartRun{
 		CommandID: "cli_cccccccccccccccccccccccccccccccc", SessionID: "ses_demo_1",
 		Message: prompt.Message{Text: "do not replay outside the owning store"}, Options: prompt.RunOptions{},
 	}
-	_, err := openStartRunWithBackoff(
+	_, err = openStartRunWithBackoff(
 		t.Context(), runtime, command,
 		protectedCommandReplayGuard(t, "idp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", time.Now().UTC().Add(time.Hour)),
-		&profile, runtimeRecoveryBackoff,
+		policy, runtimeRecoveryBackoff,
 	)
 	if !errors.Is(err, mutation.ErrReplayGuaranteeUnavailable) {
 		t.Fatalf("recovered start error = %v", err)
 	}
-	if attempts := runtime.startAttempts(); len(attempts) != 1 {
-		t.Fatalf("unowned start reached runtime %d times", len(attempts))
+	if attempts := runtime.startAttempts(); len(attempts) != 0 {
+		t.Fatalf("a start owned by another replay store reached runtime %d times", len(attempts))
 	}
 }
 
@@ -1081,4 +1082,13 @@ func TestActiveDurationClockExcludesHumanWaitBetweenSegments(t *testing.T) {
 	if got := clock.elapsed(resume.Add(time.Second)); got != 4*time.Second {
 		t.Fatalf("elapsed after overnight wait = %v, want 4s active time", got)
 	}
+}
+
+func testReplayPolicy(t *testing.T, profile RuntimeProfile) mutation.ReplayPolicy {
+	t.Helper()
+	policy, err := mutation.PolicyFromProfile(profile, time.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return policy
 }

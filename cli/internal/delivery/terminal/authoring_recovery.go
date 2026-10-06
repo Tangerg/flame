@@ -30,13 +30,13 @@ func (a *app) restorePendingRuns() {
 		}
 	}
 	if pending[0].State == workbench.PendingRunDispatching &&
-		!commandReplaySafe(pending[0].Replay, a.runtimeProfile) {
+		!a.replayPolicy.Replayable(pending[0].Replay) {
 		a.fail(errors.New("recover pending run: replay guarantee expired or belongs to another runtime"))
 		return
 	}
 	if pending[0].State == workbench.PendingRunCanceling &&
-		(!commandReplaySafe(pending[0].Replay, a.runtimeProfile) ||
-			!commandReplaySafe(pending[0].CancelReplay, a.runtimeProfile)) {
+		(!a.replayPolicy.Replayable(pending[0].Replay) ||
+			!a.replayPolicy.Replayable(pending[0].CancelReplay)) {
 		a.fail(errors.New("recover pending run cancellation: replay guarantee expired or belongs to another runtime"))
 		return
 	}
@@ -70,7 +70,7 @@ func (a *app) restorePendingResume() {
 		a.fail(fmt.Errorf("recover interrupt input: %w", err))
 		return
 	}
-	if !commandReplayStoreMatches(pending.Replay, a.runtimeProfile) {
+	if !a.replayPolicy.SameStore(pending.Replay) {
 		a.fail(errors.New("recover interrupt decisions: command belongs to another runtime"))
 		return
 	}
@@ -83,10 +83,13 @@ func (a *app) restorePendingResume() {
 		}
 		return
 	}
-	if !commandReplaySafe(pending.Replay, a.runtimeProfile) {
-		requeued, err := a.workbench.RequeuePendingResume(
-			a.session.current.ID, pending.Command.CommandID, commandReplayGuard(a.runtimeProfile),
-		)
+	if !a.replayPolicy.Replayable(pending.Replay) {
+		replayGuard, err := a.replayPolicy.NewGuard()
+		if err != nil {
+			a.fail(fmt.Errorf("recover interrupt decisions: replace expired command: %w", err))
+			return
+		}
+		requeued, err := a.workbench.RequeuePendingResume(a.session.current.ID, pending.Command.CommandID, replayGuard)
 		if err != nil {
 			a.fail(fmt.Errorf("recover interrupt decisions: replace expired command: %w", err))
 			return
@@ -150,7 +153,7 @@ func (a *app) reconcilePendingRun(pending workbench.PendingRun) {
 	dispatcher := a.loop.Dispatcher()
 	a.operations.GoSession(pendingRunRecoveryOperation, false, func(ctx context.Context, lease operationLease) {
 		opened, err := openStartRunWithBackoff(
-			ctx, a.runtime, command, pending.Replay, a.runtimeProfile, runtimeRecoveryBackoff,
+			ctx, a.runtime, command, pending.Replay, a.replayPolicy, runtimeRecoveryBackoff,
 		)
 		if context.Cause(ctx) != nil {
 			return

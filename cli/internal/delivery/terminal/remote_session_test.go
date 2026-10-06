@@ -356,7 +356,7 @@ func TestOpeningCancellationReplaysTheSamePayloadAfterCloseAndRestart(t *testing
 		t.Fatal(err)
 	}
 	profile := steerReplayTestProfile(t, "/tmp/flame-cli-test")
-	closing := &app{runtime: backend, runtimeProfile: &profile}
+	closing := &app{runtime: backend, runtimeProfile: &profile, replayPolicy: testReplayPolicy(t, &profile)}
 	if err := closing.cancelOpeningRunNow(t.Context(), pending); !errors.Is(err, replay.ErrCommandOutcomeUnknown) {
 		t.Fatalf("terminal-close cancellation = %v, want unknown acknowledgement", err)
 	}

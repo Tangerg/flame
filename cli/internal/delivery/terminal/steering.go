@@ -86,7 +86,7 @@ func (a *app) steerRun(instruction string) error {
 
 func (a *app) deliverPreparedSteer(request prompt.SteerRun, sourceDraft prompt.Message, input *workbench.PreparedInput) error {
 	pending, err := runworkflow.StageSteer(
-		a.workbench, a.session.current.ID, request, sourceDraft, commandReplayPolicy(a.runtimeProfile), input,
+		a.workbench, a.session.current.ID, request, sourceDraft, a.replayPolicy, input,
 	)
 	if err != nil {
 		a.reportWorkbenchIssue(workbenchSteerOutbox, fmt.Errorf("save steer command journal: %w", err))
@@ -99,7 +99,7 @@ func (a *app) deliverPreparedSteer(request prompt.SteerRun, sourceDraft prompt.M
 	started := a.runSessionSettlement(steerRunOperation, false,
 		func(ctx context.Context) (runworkflow.SteerResult, error) {
 			return runworkflow.DeliverSteer(
-				ctx, a.runtime, pending, commandReplayPolicy(a.runtimeProfile), runtimeRecoveryBackoff,
+				ctx, a.runtime, pending, a.replayPolicy, runtimeRecoveryBackoff,
 			)
 		},
 		func(result runworkflow.SteerResult, deliveryErr error) {

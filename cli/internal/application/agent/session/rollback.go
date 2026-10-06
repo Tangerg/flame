@@ -157,9 +157,6 @@ func Rollback(
 		return RollbackResult{}, validateCommitErr
 	}
 	commandID := mutation.NewCommandID()
-	if err := policy.Validate(); err != nil {
-		return RollbackResult{}, err
-	}
 	stagedAt := policy.Now()
 	replayGuard := replay.UnprotectedGuard()
 	if preview.request.RestoresFiles() {
