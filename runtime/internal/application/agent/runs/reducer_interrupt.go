@@ -206,7 +206,7 @@ func (r *reducer) approvalInterrupt(in Interrupt) (transcript.Item, transcript.I
 func (r *reducer) approvalItem(prompt ApprovalPrompt, ref *openTool) (transcript.Item, bool, error) {
 	arguments, err := parseToolArguments(prompt.Arguments)
 	if err != nil {
-		return transcript.Item{}, false, fmt.Errorf("approval tool %q arguments: %w", prompt.ToolName, err)
+		return transcript.Item{}, false, fmt.Errorf("approval tool %q arguments: %w", prompt.Tool.ModelName(), err)
 	}
 	var id string
 	var startedAt time.Time
@@ -224,7 +224,7 @@ func (r *reducer) approvalItem(prompt ApprovalPrompt, ref *openTool) (transcript
 	}
 	item, err := transcript.NewToolCall(
 		r.itemIdentity(id, startedAt),
-		*newToolInvocation(prompt.ToolName, arguments, nil),
+		*newToolInvocation(prompt.Tool.ModelName(), arguments, nil),
 		prompt.SafetyClass,
 	)
 	return item, publishStart, err

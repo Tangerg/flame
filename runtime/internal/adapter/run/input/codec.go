@@ -88,7 +88,6 @@ type approvalPromptWire struct {
 	Tool              tool.Ref           `json:"tool"`
 	SourceFingerprint fingerprint.Digest `json:"sourceFingerprint,omitzero"`
 	CallID            string             `json:"callId"`
-	ToolName          string             `json:"toolName"`
 	Arguments         string             `json:"arguments"`
 	SafetyClass       tool.SafetyClass   `json:"safetyClass"`
 	Risk              tool.RiskLevel     `json:"risk"`
@@ -119,7 +118,7 @@ func promptWireFrom(interrupt runs.Interrupt) interruptWire {
 	result := interruptWire{Kind: interrupt.Kind}
 	if prompt := interrupt.Approval; prompt != nil {
 		result.Approval = &approvalPromptWire{
-			Tool: prompt.Tool, SourceFingerprint: prompt.SourceFingerprint, CallID: prompt.CallID, ToolName: prompt.ToolName, Arguments: prompt.Arguments,
+			Tool: prompt.Tool, SourceFingerprint: prompt.SourceFingerprint, CallID: prompt.CallID, Arguments: prompt.Arguments,
 			SafetyClass: prompt.SafetyClass, Risk: prompt.Risk, Reason: prompt.Reason, Rememberable: prompt.Rememberable,
 		}
 	}
@@ -136,7 +135,7 @@ func (i interruptWire) interrupt() runs.Interrupt {
 	result := runs.Interrupt{Kind: i.Kind}
 	if prompt := i.Approval; prompt != nil {
 		result.Approval = &runs.ApprovalPrompt{
-			Tool: prompt.Tool, SourceFingerprint: prompt.SourceFingerprint, CallID: prompt.CallID, ToolName: prompt.ToolName, Arguments: prompt.Arguments,
+			Tool: prompt.Tool, SourceFingerprint: prompt.SourceFingerprint, CallID: prompt.CallID, Arguments: prompt.Arguments,
 			SafetyClass: prompt.SafetyClass, Risk: prompt.Risk, Reason: prompt.Reason, Rememberable: prompt.Rememberable,
 		}
 	}

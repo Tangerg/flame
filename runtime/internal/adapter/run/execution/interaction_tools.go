@@ -103,7 +103,7 @@ func validateToolApprovalPrompt(request ToolAuthorizationRequest, prompt runs.Ap
 		return err
 	}
 	if prompt.CallID != request.CallID || prompt.Tool != request.Tool || prompt.SourceFingerprint != request.SourceFingerprint ||
-		prompt.ToolName != request.ToolName || prompt.Arguments != request.Arguments.Canonical() || prompt.SafetyClass != request.SafetyClass {
+		prompt.Arguments != request.Arguments.Canonical() || prompt.SafetyClass != request.SafetyClass {
 		return errors.New("execution: Tool approval prompt differs from its invocation")
 	}
 	return nil

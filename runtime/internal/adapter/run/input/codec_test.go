@@ -49,7 +49,7 @@ func TestDecodePromptDiscriminatesAndRejectsGuesses(t *testing.T) {
 	approval := runs.Interrupt{
 		Kind: interrupt.Approval,
 		Approval: &runs.ApprovalPrompt{
-			CallID: "tool_approval_1", ToolName: "web_fetch", Arguments: `{"url":"https://example.com"}`,
+			CallID: "tool_approval_1", Arguments: `{"url":"https://example.com"}`,
 			SafetyClass: tool.SafetyClassNetwork, Risk: tool.RiskHigh, Tool: testsupport.BuiltInTool(t, "web_fetch"), SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "web_fetch")),
 		},
 	}
@@ -90,7 +90,7 @@ func TestApprovalPromptRequiresIdentityRegardlessOfRememberability(t *testing.T)
 			prompt := runs.Interrupt{
 				Kind: interrupt.Approval,
 				Approval: &runs.ApprovalPrompt{
-					CallID: "call_approval", ToolName: "shell", Arguments: `{}`,
+					CallID: "call_approval", Arguments: `{}`,
 					SafetyClass: tool.SafetyClassExec, Risk: tool.RiskHigh,
 					Rememberable: rememberable, SourceFingerprint: fingerprint,
 				},

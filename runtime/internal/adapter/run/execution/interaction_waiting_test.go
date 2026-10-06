@@ -659,7 +659,7 @@ func (p *promptingInteractionAuthorizer) AuthorizeTool(
 ) (ToolAuthorizationDecision, error) {
 	p.planned++
 	prompt := runs.ApprovalPrompt{
-		CallID: request.CallID, ToolName: request.ToolName, Arguments: request.Arguments.Canonical(),
+		CallID: request.CallID, Arguments: request.Arguments.Canonical(),
 		SafetyClass: request.SafetyClass, Risk: domaintool.RiskHigh,
 		Reason: "This Tool changes external state.", Rememberable: true, Tool: request.Tool, SourceFingerprint: request.SourceFingerprint,
 	}

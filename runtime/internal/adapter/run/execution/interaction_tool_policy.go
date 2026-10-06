@@ -93,7 +93,6 @@ func (t *ToolAuthorizer) AuthorizeTool(
 		prompt := runs.ApprovalPrompt{
 			CallID: request.CallID,
 			Tool:   request.Tool, SourceFingerprint: request.SourceFingerprint,
-			ToolName:     request.ToolName,
 			Arguments:    request.Arguments.Canonical(),
 			SafetyClass:  plan.SafetyClass,
 			Risk:         plan.Risk,

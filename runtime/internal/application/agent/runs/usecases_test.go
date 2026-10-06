@@ -2386,7 +2386,7 @@ func TestCancelLetsCommittedInterruptOwnDurableFirstTeardown(t *testing.T) {
 			Interrupt: Interrupt{
 				Kind: interrupt.Approval,
 				Approval: &ApprovalPrompt{
-					CallID: "call_1", ToolName: "shell", Arguments: `{"command":"pwd","description":"Print the working directory"}`,
+					CallID: "call_1", Arguments: `{"command":"pwd","description":"Print the working directory"}`,
 					SafetyClass: "write", Risk: "medium", Tool: testsupport.BuiltInTool(t, "shell"), SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell")),
 				},
 			},

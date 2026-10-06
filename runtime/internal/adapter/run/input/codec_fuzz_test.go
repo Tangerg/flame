@@ -9,7 +9,7 @@ import (
 )
 
 func FuzzContinuationCodec(f *testing.F) {
-	prompt, err := DecodePrompt([]byte(`{"kind":"approval","approval":{"tool":"builtIn:shell","callId":"tool_approval_1","toolName":"shell","arguments":"{}","safetyClass":"exec","risk":"high"}}`))
+	prompt, err := DecodePrompt([]byte(`{"kind":"approval","approval":{"tool":"builtIn:shell","callId":"tool_approval_1","arguments":"{}","safetyClass":"exec","risk":"high"}}`))
 	if err != nil {
 		f.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func FuzzContinuationCodec(f *testing.F) {
 
 func FuzzPromptCodec(f *testing.F) {
 	for _, seed := range [][]byte{
-		[]byte(`{"kind":"approval","approval":{"tool":"builtIn:shell","callId":"tool_approval_1","toolName":"shell","arguments":"{}","safetyClass":"exec","risk":"high"}}`),
+		[]byte(`{"kind":"approval","approval":{"tool":"builtIn:shell","callId":"tool_approval_1","arguments":"{}","safetyClass":"exec","risk":"high"}}`),
 		[]byte(`{"kind":"question","question":{"toolName":"ask_user","arguments":"{}","fields":[{"prompt":"Continue?","allowCustom":true}]}}`),
 		[]byte(`{"kind":"future"}`),
 		[]byte(`{}`),

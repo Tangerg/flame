@@ -29,12 +29,12 @@ func InterruptUnavailable(context.Context, string, Interrupt) (interrupt.Resolut
 // ApprovalPrompt is the complete durable plan for one gated tool call.
 // Arguments are the effective arguments after PreToolUse rewriting, so a
 // continuation (including one restored after restart) can resume without
-// running the hook or policy decision a second time.
+// running the hook or policy decision a second time. Tool names the gated call;
+// its model-visible name is Tool.ModelName.
 type ApprovalPrompt struct {
 	Tool              tool.Ref
 	SourceFingerprint fingerprint.Digest
 	CallID            string
-	ToolName          string
 	Arguments         string
 	SafetyClass       tool.SafetyClass
 	Risk              tool.RiskLevel
@@ -96,7 +96,7 @@ func (i Interrupt) Tool() (name, arguments string) {
 	switch i.Kind {
 	case interrupt.Approval:
 		if i.Approval != nil {
-			return i.Approval.ToolName, i.Approval.Arguments
+			return i.Approval.Tool.ModelName(), i.Approval.Arguments
 		}
 	case interrupt.Question:
 		if i.Question != nil {
@@ -129,14 +129,8 @@ func (a ApprovalPrompt) validate() error {
 	if err := a.Tool.ValidateFingerprint(a.SourceFingerprint); err != nil {
 		return err
 	}
-	if a.Tool.ModelName() != a.ToolName {
-		return errors.New("runs: approval tool name differs from its reference")
-	}
 	if err := runtimeidentity.ValidateEffect(a.CallID); err != nil {
 		return fmt.Errorf("runs: approval: %w", err)
-	}
-	if strings.TrimSpace(a.ToolName) == "" {
-		return errors.New("runs: approval tool name is required")
 	}
 	if err := validateArguments(a.Arguments); err != nil {
 		return fmt.Errorf("runs: approval arguments: %w", err)
