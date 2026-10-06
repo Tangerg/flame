@@ -495,7 +495,7 @@ func validateEntry(commandID replay.CommandID, sessionID string, message prompt.
 		return fmt.Errorf("prompt queue: %w", err)
 	}
 	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
-		return fmt.Errorf("%w: %v", ErrSessionIDRequired, err)
+		return fmt.Errorf("%w: %w", ErrSessionIDRequired, err)
 	}
 	if err := message.Validate(); err != nil {
 		return fmt.Errorf("prompt queue: %w", err)

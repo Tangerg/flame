@@ -361,7 +361,7 @@ func (c *Conversation) applyInterrupted(runID string, event RunInterrupted) erro
 	}
 	pending := append(CloneInterrupts(c.interrupts), CloneInterrupts(event.Interrupts)...)
 	if err := ValidateInterrupts(pending); err != nil {
-		return fmt.Errorf("%w: tree interrupt set: %v", ErrInvalidTransition, err)
+		return fmt.Errorf("%w: tree interrupt set: %w", ErrInvalidTransition, err)
 	}
 	run.Status = protocol.RunStatusWaiting
 	run.ActiveSegmentID = ""
@@ -384,7 +384,7 @@ func (c *Conversation) applySuspended(runID string, event RunSuspended) error {
 	}
 	if runID == c.runID {
 		if err := ValidateInterrupts(c.interrupts); err != nil {
-			return fmt.Errorf("%w: root run suspended without a valid tree interrupt: %v", ErrInvalidTransition, err)
+			return fmt.Errorf("%w: root run suspended without a valid tree interrupt: %w", ErrInvalidTransition, err)
 		}
 	}
 	run.Status = protocol.RunStatusWaiting

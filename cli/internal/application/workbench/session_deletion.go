@@ -239,6 +239,8 @@ func (s *Store) retireSessionStateLocked(sessionID string, pending PendingSessio
 	delete(s.pendingResumes, sessionID)
 	delete(s.pendingRollbacks, sessionID)
 	delete(s.pendingSteers, sessionID)
+	// Retirement is committed by the confirmed tombstone above. It stays until
+	// both cleanup writes succeed, so recovery retries a failure here.
 	if err := s.remove(s.sessionStateName(sessionID)); err != nil {
 		return nil
 	}
