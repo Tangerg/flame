@@ -59,40 +59,24 @@ func (o Outcome) String() string { return string(o) }
 // boundary rather than only when a recovery workflow begins.
 type Admission func() error
 
-// ReplayAdmission admits a durable command only while the currently connected
-// Runtime still owns the exact store and deadline recorded by its guard.
+// ReplayAdmission admits a durable command only while the connected Runtime
+// still owns the exact store and deadline recorded by its guard.
 func ReplayAdmission(policy ReplayPolicy, guard replay.Guard) Admission {
-	return DynamicReplayAdmission(func() ReplayPolicy { return policy }, guard)
-}
-
-// FreshReplayAdmission admits one never-attempted command even when the
-// Runtime does not advertise replay, then fences any uncertain retry.
-func FreshReplayAdmission(policy ReplayPolicy, guard replay.Guard) Admission {
-	return FreshDynamicReplayAdmission(func() ReplayPolicy { return policy }, guard)
-}
-
-// DynamicReplayAdmission re-reads the connected Runtime policy before every
-// attempt. Long-running interactive clients use it because reconnecting can
-// replace the Runtime store while one command acknowledgement is uncertain.
-func DynamicReplayAdmission(current func() ReplayPolicy, guard replay.Guard) Admission {
 	return func() error {
-		if current == nil || !current().Replayable(guard) {
+		if !policy.Replayable(guard) {
 			return ErrReplayGuaranteeUnavailable
 		}
 		return nil
 	}
 }
 
-// FreshDynamicReplayAdmission is the reconnect-aware form of
-// FreshReplayAdmission. The first successful admission consumes the command's
-// one unprotected attempt; all later calls require a current replay promise.
-func FreshDynamicReplayAdmission(current func() ReplayPolicy, guard replay.Guard) Admission {
+// FreshReplayAdmission admits one never-attempted command even when the
+// Runtime does not advertise replay, then fences any uncertain retry: the first
+// successful admission consumes the command's one unprotected attempt, and all
+// later calls require a current replay promise.
+func FreshReplayAdmission(policy ReplayPolicy, guard replay.Guard) Admission {
 	first := true
 	return func() error {
-		if current == nil {
-			return ErrReplayGuaranteeUnavailable
-		}
-		policy := current()
 		if first {
 			if !policy.CanStart(guard) {
 				return ErrReplayGuaranteeUnavailable
