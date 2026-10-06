@@ -478,12 +478,7 @@ func (c *Coordinator) commitOpening(ctx context.Context, spec segmentSpec, route
 	commitID := newRunCommitID()
 	var resume *rundomain.TreeResumeDraft
 	if routes.admission == nil {
-		resume = &rundomain.TreeResumeDraft{
-			RootRunID: spec.RunID,
-			SessionID: spec.SessionID,
-			ResumedAt: routes.root.reducer.cfg.Opened.UpdatedAt(),
-			Runs:      make([]rundomain.ResumeDraft, 0, len(ordered)),
-		}
+		resume = &rundomain.TreeResumeDraft{Runs: make([]rundomain.Replacement, 0, len(ordered))}
 	}
 	openings := make([]routeOpening, 0, len(ordered))
 	events := make([]EventCommit, 0, len(ordered))
@@ -510,10 +505,10 @@ func (c *Coordinator) commitOpening(ctx context.Context, spec segmentSpec, route
 			}
 		}
 		if resume != nil {
-			resume.Runs = append(resume.Runs, rundomain.ResumeDraft{
-				RunID:     route.runID,
-				SegmentID: route.segmentID,
-			})
+			if route.resumed == nil {
+				return nil, fmt.Errorf("runs: resumed tree route for Run %q has no resume", route.runID)
+			}
+			resume.Runs = append(resume.Runs, *route.resumed)
 		}
 		openings = append(openings, routeOpening{route: route, batch: projected})
 	}

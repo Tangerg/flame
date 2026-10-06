@@ -144,7 +144,7 @@ type ToolInvocationJournal interface {
 // The sqlite RunStore satisfies it.
 type RunWriter interface {
 	Admit(ctx context.Context, draft run.Draft) error
-	Resume(ctx context.Context, sessionID string, draft run.ResumeDraft, resumedAt time.Time) error
+	Resume(ctx context.Context, replacement run.Replacement) error
 	RequireActiveSegment(ctx context.Context, sessionID, runID, segmentID string) error
 	Suspend(ctx context.Context, run run.Run, segmentID string, commitID runtimeidentity.CommitID) error
 	Terminalize(ctx context.Context, replacement run.Replacement) error

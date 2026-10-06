@@ -116,12 +116,9 @@ func TestCommitOpeningResumePreservesAnswerClaimOnRollback(t *testing.T) {
 		State: state,
 		Tx:    func(ctx context.Context, fn func(context.Context) error) error { return sqlite.RunInTx(ctx, db, fn) },
 	})
-	resume := run.TreeResumeDraft{
-		RootRunID: "run_stale",
-		SessionID: "ses_1",
-		ResumedAt: time.Now().UTC(),
-		Runs:      []run.ResumeDraft{{RunID: "run_stale", SegmentID: "seg_next"}},
-	}
+	resume := testsupport.MustResumeRuns(
+		time.Now().UTC(), []run.Run{parkedRunRecord("run_stale", "ses_1", createdAt)}, []string{"seg_next"},
+	)
 	opening := mustResumeOpening(t, testCommitID("run_commit_stale_resume"), resume, nil)
 	err = effects.CommitOpening(ctx, opening)
 	if err == nil {
@@ -167,12 +164,11 @@ func TestCommitOpeningResumeCommitsWholeWriteSet(t *testing.T) {
 		State: state,
 		Tx:    func(ctx context.Context, fn func(context.Context) error) error { return sqlite.RunInTx(ctx, db, fn) },
 	})
-	resume := run.TreeResumeDraft{
-		RootRunID: "run_1",
-		SessionID: "ses_1",
-		ResumedAt: time.Now().UTC(),
-		Runs:      []run.ResumeDraft{{RunID: "run_1", SegmentID: "seg_next"}},
+	parked, found, err := state.Run(ctx, "run_1")
+	if err != nil || !found {
+		t.Fatalf("load parked Run: found=%t err=%v", found, err)
 	}
+	resume := testsupport.MustResumeRuns(time.Now().UTC(), []run.Run{parked}, []string{"seg_next"})
 	openingEvents := []runs.EventCommit{{
 		RunID:     "run_1",
 		SessionID: "ses_1",
@@ -415,9 +411,9 @@ func TestCommitEventRejectsTerminalFromReplacedSegment(t *testing.T) {
 	if suspendErr := store.Suspend(ctx, waiting, "seg_old", runtimeidentity.CommitID{}); suspendErr != nil {
 		t.Fatal(suspendErr)
 	}
-	if resumeErr := store.Resume(ctx, draft.SessionID, run.ResumeDraft{
-		RunID: draft.RunID, SegmentID: "seg_new",
-	}, resumedAt); resumeErr != nil {
+	if resumeErr := store.Resume(ctx, testsupport.MustRunReplacement(waiting, func(waiting run.Run) (run.Run, error) {
+		return waiting.Resume("seg_new", resumedAt)
+	})); resumeErr != nil {
 		t.Fatal(resumeErr)
 	}
 	staleTerminal, err := oldSegment.Terminate(run.Termination{
@@ -475,9 +471,9 @@ func TestCommitEventRejectsProjectionFromReplacedSegmentBeforeWritingAnything(t 
 	if suspendErr := store.Suspend(ctx, waiting, "seg_old", runtimeidentity.CommitID{}); suspendErr != nil {
 		t.Fatal(suspendErr)
 	}
-	if resumeErr := store.Resume(ctx, draft.SessionID, run.ResumeDraft{
-		RunID: draft.RunID, SegmentID: "seg_new",
-	}, startedAt.Add(2*time.Second)); resumeErr != nil {
+	if resumeErr := store.Resume(ctx, testsupport.MustRunReplacement(waiting, func(waiting run.Run) (run.Run, error) {
+		return waiting.Resume("seg_new", startedAt.Add(2*time.Second))
+	})); resumeErr != nil {
 		t.Fatal(resumeErr)
 	}
 	history := sqlite.NewTranscriptStore(db)
@@ -697,8 +693,8 @@ func newOpeningResumeFixture(t *testing.T, suspendRoot bool) openingResumeFixtur
 	if err := runStore.Suspend(ctx, childRun, "segment_child", runtimeidentity.CommitID{}); err != nil {
 		t.Fatalf("suspend child: %v", err)
 	}
+	rootRun := waitingTestSessionRun("run_root", run.Lineage{}, createdAt, nil)
 	if suspendRoot {
-		rootRun := waitingTestSessionRun("run_root", run.Lineage{}, createdAt, nil)
 		if err := runStore.Suspend(ctx, rootRun, "segment_root", runtimeidentity.CommitID{}); err != nil {
 			t.Fatalf("suspend root: %v", err)
 		}
@@ -729,13 +725,10 @@ func newOpeningResumeFixture(t *testing.T, suspendRoot bool) openingResumeFixtur
 	})
 	return openingResumeFixture{
 		ctx: ctx, database: database, interrupts: interruptStore, effects: effects,
-		resume: run.TreeResumeDraft{
-			RootRunID: "run_root", SessionID: "session_1", ResumedAt: time.Now().UTC(),
-			Runs: []run.ResumeDraft{
-				{RunID: "run_child", SegmentID: "segment_child_resumed"},
-				{RunID: "run_root", SegmentID: "segment_root_resumed"},
-			},
-		},
+		resume: testsupport.MustResumeRuns(
+			time.Now().UTC(), []run.Run{childRun, rootRun},
+			[]string{"segment_child_resumed", "segment_root_resumed"},
+		),
 	}
 }
 
@@ -2463,14 +2456,8 @@ func newWaitingCancellationSQLiteFixtureAt(
 		}
 		remainingPending = &reduced
 	} else {
-		resume = &run.TreeResumeDraft{
-			RootRunID: rootRun.ID(),
-			SessionID: rootRun.SessionID(),
-			ResumedAt: finishedAt,
-			Runs: []run.ResumeDraft{{
-				RunID: rootRun.ID(), SegmentID: "segment_root_resumed",
-			}},
-		}
+		resumed := testsupport.MustResumeRuns(finishedAt, []run.Run{rootRun}, []string{"segment_root_resumed"})
+		resume = &resumed
 	}
 	replacementCheckpoint := executorCheckpoint(t, rootMemberID, "opaque checkpoint after cancellation", runs.ExecutorCheckpoint{
 		BuildID:   testsupport.AlternateBuildID,

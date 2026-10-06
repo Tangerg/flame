@@ -163,15 +163,12 @@ func (e *Effects) persistWaitingCancellationDisposition(
 	if !resuming {
 		return errors.New("segment: waiting cancellation has no surviving disposition")
 	}
-	for _, draft := range resume.Runs {
-		if err := e.runState.Resume(ctx, resume.SessionID, draft, resume.ResumedAt); err != nil {
-			return fmt.Errorf("segment: resume surviving Run %q: %w", draft.RunID, err)
+	for _, replacement := range resume.Runs {
+		resumed := replacement.State()
+		if err := e.runState.Resume(ctx, replacement); err != nil {
+			return fmt.Errorf("segment: resume surviving Run %q: %w", resumed.ID(), err)
 		}
-		if draft.RunID == commit.RootRunID() {
-			resumed, err := root.Resume(draft.SegmentID, resume.ResumedAt)
-			if err != nil {
-				return fmt.Errorf("segment: project resumed root Run %q: %w", draft.RunID, err)
-			}
+		if resumed.ID() == commit.RootRunID() {
 			*root = resumed
 		}
 	}
@@ -204,12 +201,10 @@ func waitingCancellationRootSegmentID(commit runs.WaitingSubtreeCancellationComm
 	if !resuming {
 		return "", errors.New("segment: waiting cancellation has no surviving disposition")
 	}
-	for _, draft := range resume.Runs {
-		if draft.RunID == commit.RootRunID() {
-			return draft.SegmentID, nil
-		}
+	if resume.RootRunID() != commit.RootRunID() {
+		return "", errors.New("segment: waiting cancellation resume has no root Run")
 	}
-	return "", errors.New("segment: waiting cancellation resume has no root Run")
+	return resume.Runs[len(resume.Runs)-1].State().ActiveSegmentID(), nil
 }
 
 func (e *Effects) reconcileWaitingCancellation(

@@ -628,8 +628,8 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 	}
 	rootSegmentID := ""
 	for _, draft := range resume.Runs {
-		if draft.RunID == commit.RootRunID() {
-			rootSegmentID = draft.SegmentID
+		if draft.State().ID() == commit.RootRunID() {
+			rootSegmentID = draft.State().ActiveSegmentID()
 			break
 		}
 	}
@@ -660,12 +660,12 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 	wantPayload := string(checkpoint.Payload)
 	wantTerminalRunID := terminalRuns[0].State().ID()
 	wantTerminalItemID := terminalItems[0].State().ID()
-	wantResumeSegmentID := resume.Runs[0].SegmentID
+	wantResumeSegmentID := resume.Runs[0].State().ActiveSegmentID()
 	expectedPending.Bindings[0].MemberID = "member_changed"
 	checkpoint.Payload[0] = 'x'
 	terminalRuns[0] = run.Replacement{}
 	terminalItems[0] = transcript.Replacement{}
-	resume.Runs[0].SegmentID = "segment_changed"
+	resume.Runs[0] = run.Replacement{}
 	openingEvents[0].Items = nil
 
 	projectedPending := withOpening.ExpectedPending()
@@ -677,7 +677,7 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 	projectedItems := withOpening.TerminalItems()
 	projectedItems[0] = transcript.Replacement{}
 	projectedResume, _ := withOpening.Resume()
-	projectedResume.Runs[0].SegmentID = "segment_projected"
+	projectedResume.Runs[0] = run.Replacement{}
 	projectedOpening := withOpening.OpeningEvents()
 	projectedOpening[0].Items = nil
 
@@ -687,7 +687,7 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 		string(withOpening.Checkpoint().Payload) != wantPayload ||
 		withOpening.TerminalRuns()[0].State().ID() != wantTerminalRunID ||
 		withOpening.TerminalItems()[0].State().ID() != wantTerminalItemID ||
-		ownedResume.Runs[0].SegmentID != wantResumeSegmentID ||
+		ownedResume.Runs[0].State().ActiveSegmentID() != wantResumeSegmentID ||
 		len(ownedOpening[0].Items) != 1 {
 		t.Fatal("waiting cancellation write-set followed caller or accessor mutation")
 	}

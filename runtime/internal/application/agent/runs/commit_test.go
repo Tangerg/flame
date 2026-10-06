@@ -185,9 +185,7 @@ func TestOpeningCommitValidatesItsLifecycleAction(t *testing.T) {
 	invalidAdmission := run.Draft{
 		RunID: "run_1", SessionID: "session", ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
 	}
-	invalidResume := run.TreeResumeDraft{
-		RootRunID: "run_1", SessionID: "session", ResumedAt: createdAt,
-	}
+	invalidResume := run.TreeResumeDraft{}
 	for _, test := range []struct {
 		name  string
 		build func() error
@@ -302,10 +300,9 @@ func TestOpeningCommitOwnsEveryOpeningEvent(t *testing.T) {
 		t.Fatal("child OpeningCommit accepted an execution observation")
 	}
 
-	resume := run.TreeResumeDraft{
-		RootRunID: root.RunID, SessionID: "session", ResumedAt: createdAt,
-		Runs: []run.ResumeDraft{{RunID: root.RunID, SegmentID: "segment_resumed"}},
-	}
+	resume := testsupport.MustResumeRuns(
+		createdAt, []run.Run{testsupport.MustParkedRun(root.RunID, "session", createdAt)}, []string{"segment_resumed"},
+	)
 	wrongSegment := EventCommit{
 		RunID: root.RunID, SessionID: "session", SegmentID: "segment_stale",
 		Items: []transcript.Item{item(root.RunID, "item_resumed")},
@@ -453,21 +450,20 @@ func TestOpeningCommitOwnsItsValidatedWriteSet(t *testing.T) {
 		t.Fatalf("owned admission opening no longer validates: %v", err)
 	}
 
-	resume := run.TreeResumeDraft{
-		RootRunID: "run_root", SessionID: "session", ResumedAt: createdAt,
-		Runs: []run.ResumeDraft{{RunID: "run_root", SegmentID: "segment_resumed"}},
-	}
+	parkedRoot := testsupport.MustParkedRun("run_root", "session", createdAt)
+	resume := testsupport.MustResumeRuns(createdAt, []run.Run{parkedRoot}, []string{"segment_resumed"})
+	changed := testsupport.MustResumeRuns(createdAt, []run.Run{parkedRoot}, []string{"segment_changed"})
 	resumed, err := NewResumeOpeningCommit(
 		testCommitID("run_commit_owned_resume"), resume, nil,
 	)
 	if err != nil {
 		t.Fatalf("NewResumeOpeningCommit: %v", err)
 	}
-	resume.Runs[0].SegmentID = "segment_changed"
+	resume.Runs[0] = changed.Runs[0]
 	projectedResume, _ := resumed.Resume()
-	projectedResume.Runs[0].SegmentID = "segment_projected"
+	projectedResume.Runs[0] = changed.Runs[0]
 	ownedResume, ok := resumed.Resume()
-	if !ok || ownedResume.Runs[0].SegmentID != "segment_resumed" {
+	if !ok || ownedResume.Runs[0].State().ActiveSegmentID() != "segment_resumed" {
 		t.Fatalf("owned resume = %+v", ownedResume)
 	}
 	if err := resumed.Validate(); err != nil {

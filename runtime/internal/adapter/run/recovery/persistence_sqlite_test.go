@@ -123,9 +123,9 @@ func testRecoveryMarksClaimedResumeLost(t *testing.T, openingCommitted bool) {
 		t.Fatalf("open Pending after claim = found:%t err:%v", found, getErr)
 	}
 	if openingCommitted {
-		if resumeErr := runStore.Resume(ctx, waiting.SessionID(), run.ResumeDraft{
-			RunID: pending.RootRunID, SegmentID: "segment_claim_resumed",
-		}, createdAt.Add(3*time.Second)); resumeErr != nil {
+		if resumeErr := runStore.Resume(ctx, testsupport.MustRunReplacement(waiting, func(waiting run.Run) (run.Run, error) {
+			return waiting.Resume("segment_claim_resumed", createdAt.Add(3*time.Second))
+		})); resumeErr != nil {
 			t.Fatalf("commit continuation opening: %v", resumeErr)
 		}
 		opened, found, runErr := runStore.Run(ctx, pending.RootRunID)

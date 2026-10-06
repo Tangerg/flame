@@ -1143,7 +1143,7 @@ func TestCoordinatorResumeCommitsBeforeActivation(t *testing.T) {
 	opening := effects.opening()
 	resume, resumed := opening.Resume()
 	_, admitted := opening.Admission()
-	if !resumed || resume.RootRunID != "run_1" || admitted {
+	if !resumed || resume.RootRunID() != "run_1" || admitted {
 		t.Fatalf("opening = %+v, want resume run_1", opening)
 	}
 }
@@ -1188,14 +1188,18 @@ func TestCoordinatorResumesCompleteRunTreeInOneCanonicalOpening(t *testing.T) {
 	if !resumed {
 		t.Fatal("opening has no tree resume draft")
 	}
-	wantRuns := []run.ResumeDraft{
-		{RunID: "run_grandchild", SegmentID: "seg_grandchild"},
-		{RunID: "run_a", SegmentID: "seg_a"},
-		{RunID: "run_b", SegmentID: "seg_b"},
-		{RunID: "run_1", SegmentID: "seg_root_resumed"},
+	wantRuns := [][2]string{
+		{"run_grandchild", "seg_grandchild"},
+		{"run_a", "seg_a"},
+		{"run_b", "seg_b"},
+		{"run_1", "seg_root_resumed"},
 	}
-	if !slices.Equal(resume.Runs, wantRuns) {
-		t.Fatalf("tree resume Runs = %#v, want %#v", resume.Runs, wantRuns)
+	gotRuns := make([][2]string, len(resume.Runs))
+	for index, replacement := range resume.Runs {
+		gotRuns[index] = [2]string{replacement.State().ID(), replacement.State().ActiveSegmentID()}
+	}
+	if !slices.Equal(gotRuns, wantRuns) {
+		t.Fatalf("tree resume Runs = %v, want %v", gotRuns, wantRuns)
 	}
 
 	var started, finished []string

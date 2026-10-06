@@ -43,7 +43,7 @@ func TestToolInvocationJournalAllowsOneLogicalCallAcrossContinuationSegments(t *
 				t.Fatal(err)
 			}
 			startedAt = startedAt.Add(2 * time.Millisecond)
-			if err := runs.Resume(t.Context(), "session_1", run.ResumeDraft{RunID: "run_1", SegmentID: segmentID}, startedAt); err != nil {
+			if err := resumeParkedRun(t.Context(), runs, waiting, segmentID, startedAt); err != nil {
 				t.Fatal(err)
 			}
 		}

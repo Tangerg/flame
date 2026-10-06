@@ -202,12 +202,12 @@ func (o OpeningCommit) validateEventOwner(commit EventCommit) error {
 		}
 		return errors.New("event belongs to a Run outside the admission")
 	}
-	if commit.SessionID != o.resume.SessionID {
+	if commit.SessionID != o.resume.SessionID() {
 		return errors.New("event Session differs from resumed tree")
 	}
 	for _, resumed := range o.resume.Runs {
-		if commit.RunID == resumed.RunID {
-			if commit.SegmentID != resumed.SegmentID {
+		if commit.RunID == resumed.State().ID() {
+			if commit.SegmentID != resumed.State().ActiveSegmentID() {
 				return errors.New("resumed Run event belongs to another Segment")
 			}
 			return nil

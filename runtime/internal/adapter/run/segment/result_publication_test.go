@@ -143,7 +143,9 @@ func TestResultPublicationTransactionReceiptsAndSegmentFence(t *testing.T) {
 			if err := state.Suspend(ctx, waiting, draft.SegmentID, runtimeidentity.CommitID{}); err != nil {
 				t.Fatal(err)
 			}
-			if err := state.Resume(ctx, draft.SessionID, run.ResumeDraft{RunID: draft.RunID, SegmentID: "seg_next"}, started.Add(3*time.Second)); err != nil {
+			if err := state.Resume(ctx, testsupport.MustRunReplacement(waiting, func(waiting run.Run) (run.Run, error) {
+				return waiting.Resume("seg_next", started.Add(3*time.Second))
+			})); err != nil {
 				t.Fatal(err)
 			}
 			if found, err := state.ResultPublicationCommitted(ctx, draft.SessionID, draft.RunID, draft.SegmentID, commit.ResultPublication.ID, commit.ResultPublication.Digest); err == nil || found {

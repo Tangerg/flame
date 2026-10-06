@@ -145,3 +145,24 @@ func MustRunReplacement(expected run.Run, transition func(run.Run) (run.Run, err
 func DecidedRun(state run.Run) func(run.Run) (run.Run, error) {
 	return func(run.Run) (run.Run, error) { return state, nil }
 }
+
+// MustResumeRuns derives one tree resume from parked Runs given in postorder
+// (root last), reopening each into its paired Segment at resumedAt.
+func MustResumeRuns(resumedAt time.Time, parked []run.Run, segmentIDs []string) run.TreeResumeDraft {
+	if len(parked) != len(segmentIDs) {
+		panic("testsupport: every parked Run needs one Segment")
+	}
+	resume := run.TreeResumeDraft{Runs: make([]run.Replacement, len(parked))}
+	for index, waiting := range parked {
+		segmentID := segmentIDs[index]
+		resume.Runs[index] = MustRunReplacement(waiting, func(waiting run.Run) (run.Run, error) {
+			return waiting.Resume(segmentID, resumedAt)
+		})
+	}
+	return resume
+}
+
+// MustParkedRun restores a waiting Run of sessionID created at createdAt.
+func MustParkedRun(runID, sessionID string, createdAt time.Time) run.Run {
+	return MustRestoreRun(run.Snapshot{ID: runID, SessionID: sessionID, State: run.Waiting, CreatedAt: createdAt})
+}

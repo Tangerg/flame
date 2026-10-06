@@ -362,12 +362,9 @@ func TestCommitOpeningResumesAfterSeparateAnswerClaim(t *testing.T) {
 	runState := &fakeRunState{}
 	tx := &fakeTx{}
 	effects := testEffects(stores, Config{State: runState, Tx: tx.run})
-	resume := run.TreeResumeDraft{
-		RootRunID: "run_1",
-		SessionID: "ses_1",
-		ResumedAt: now,
-		Runs:      []run.ResumeDraft{{RunID: "run_1", SegmentID: "seg_next"}},
-	}
+	resume := testsupport.MustResumeRuns(
+		now, []run.Run{testsupport.MustParkedRun("run_1", "ses_1", now)}, []string{"seg_next"},
+	)
 
 	opening := mustResumeOpening(
 		t, testCommitID("run_commit_resume"), resume, []runs.EventCommit{{
@@ -851,8 +848,8 @@ func (f *fakeRunState) Admit(_ context.Context, draft run.Draft) error {
 	return nil
 }
 
-func (f *fakeRunState) Resume(_ context.Context, sessionID string, _ run.ResumeDraft, _ time.Time) error {
-	f.resumed = append(f.resumed, sessionID)
+func (f *fakeRunState) Resume(_ context.Context, replacement run.Replacement) error {
+	f.resumed = append(f.resumed, replacement.State().SessionID())
 	return nil
 }
 

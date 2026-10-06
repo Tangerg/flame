@@ -328,12 +328,11 @@ func openingCommitOwner(opening runs.OpeningCommit) (sessionID, runID, segmentID
 	if !found {
 		return "", "", "", errors.New("segment: opening has no owner")
 	}
-	for _, resumed := range resume.Runs {
-		if resumed.RunID == resume.RootRunID {
-			return resume.SessionID, resumed.RunID, resumed.SegmentID, nil
-		}
+	if err := resume.Validate(); err != nil {
+		return "", "", "", fmt.Errorf("segment: resumed opening: %w", err)
 	}
-	return "", "", "", errors.New("segment: resumed opening has no root Run")
+	root := resume.Runs[len(resume.Runs)-1].State()
+	return root.SessionID(), root.ID(), root.ActiveSegmentID(), nil
 }
 
 func (e *Effects) reconcileOpeningCommit(ctx context.Context, opening runs.OpeningCommit) (bool, error) {
@@ -708,12 +707,12 @@ func (e *Effects) resumeTree(ctx context.Context, resume run.TreeResumeDraft) er
 	if err := resume.Validate(); err != nil {
 		return fmt.Errorf("segment: invalid tree resume: %w", err)
 	}
-	if err := e.resumeClaims.RequireResumeClaim(ctx, resume.RootRunID); err != nil {
+	if err := e.resumeClaims.RequireResumeClaim(ctx, resume.RootRunID()); err != nil {
 		return fmt.Errorf("segment: require accepted answer claim: %w", err)
 	}
 	for _, run := range resume.Runs {
-		if err := e.runState.Resume(ctx, resume.SessionID, run, resume.ResumedAt); err != nil {
-			return fmt.Errorf("segment: resume Run %q state: %w", run.RunID, err)
+		if err := e.runState.Resume(ctx, run); err != nil {
+			return fmt.Errorf("segment: resume Run %q state: %w", run.State().ID(), err)
 		}
 	}
 	return nil

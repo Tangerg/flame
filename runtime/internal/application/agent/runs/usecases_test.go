@@ -1187,7 +1187,7 @@ func TestResumeCommitsOpeningBeforeActivation(t *testing.T) {
 	if !control.resumed || !activatedAfterOpening {
 		t.Fatalf("resumed=%v activatedAfterOpening=%v", control.resumed, activatedAfterOpening)
 	}
-	if resume, resumed := effects.opening().Resume(); !resumed || resume.RootRunID != "run_1" {
+	if resume, resumed := effects.opening().Resume(); !resumed || resume.RootRunID() != "run_1" {
 		t.Fatalf("opening = %+v, want resume run_1", effects.opening())
 	}
 }
@@ -1256,7 +1256,7 @@ func TestResumeSettlesAfterOpeningWithoutWaitingForExecutorActivation(t *testing
 	if outcome.err != nil || outcome.result.Events == nil {
 		t.Fatalf("Resume = result:%+v err:%v", outcome.result, outcome.err)
 	}
-	if resume, resumed := effects.opening().Resume(); !resumed || resume.RootRunID != "run_1" {
+	if resume, resumed := effects.opening().Resume(); !resumed || resume.RootRunID() != "run_1" {
 		t.Fatalf("opening = %+v, want durable resume run_1", effects.opening())
 	}
 	if control.resumed {

@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -73,16 +72,11 @@ func (f failingWaitingRunWriter) RecordWaitingRunCommit(
 	return f.RunStore.RecordWaitingRunCommit(ctx, sessionID, runID, commitID)
 }
 
-func (f failingWaitingRunWriter) Resume(
-	ctx context.Context,
-	sessionID string,
-	draft run.ResumeDraft,
-	resumedAt time.Time,
-) error {
+func (f failingWaitingRunWriter) Resume(ctx context.Context, replacement run.Replacement) error {
 	if f.resumeErr != nil {
 		return f.resumeErr
 	}
-	return f.RunStore.Resume(ctx, sessionID, draft, resumedAt)
+	return f.RunStore.Resume(ctx, replacement)
 }
 
 func (f failingWaitingRunWriter) Terminalize(
@@ -263,7 +257,7 @@ func TestCommitWaitingSubtreeCancellationRollsBackEveryPreCommitFailure(t *testi
 				draft.openingEvents = []runs.EventCommit{{
 					RunID:     fixture.rootRun.ID(),
 					SessionID: fixture.rootRun.SessionID(),
-					SegmentID: draft.resume.Runs[0].SegmentID,
+					SegmentID: draft.resume.Runs[0].State().ActiveSegmentID(),
 					Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 						ID:         "item_root_continuation",
 						SessionID:  fixture.rootRun.SessionID(),

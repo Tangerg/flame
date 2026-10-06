@@ -1358,12 +1358,7 @@ func (stubRunState) Run(context.Context, string) (run.Run, bool, error) {
 	return run.Run{}, false, nil
 }
 func (stubRunState) Admit(context.Context, run.Draft) error { return nil }
-func (stubRunState) Resume(
-	context.Context,
-	string,
-	run.ResumeDraft,
-	time.Time,
-) error {
+func (stubRunState) Resume(context.Context, run.Replacement) error {
 	return nil
 }
 

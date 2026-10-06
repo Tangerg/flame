@@ -17,13 +17,16 @@ import (
 // opening transaction commits; every installed route owns one independent
 // Segment reducer.
 type executorRoute struct {
-	member           ExecutorMember
-	memberBound      bool
-	runID            string
-	segmentID        string
-	rootRunID        string
-	lineage          rundomain.Lineage
-	reducer          *reducer
+	member      ExecutorMember
+	memberBound bool
+	runID       string
+	segmentID   string
+	rootRunID   string
+	lineage     rundomain.Lineage
+	reducer     *reducer
+	// resumed is the Replacement that reopens this parked Run; nil for a Run
+	// admitted by this tree's opening.
+	resumed          *rundomain.Replacement
 	segmentStartedAt time.Time
 	segmentFinished  bool
 }
@@ -182,7 +185,9 @@ func (r *resumedRouteBuilder) newRoute(continuationState Continuation) (*executo
 	if !found {
 		return nil, fmt.Errorf("runs: resumed Run %q is not parked", continuationState.RunID)
 	}
-	opened, err := parked.Resume(segmentID, r.resumedAt)
+	resumed, err := rundomain.Replace(parked, func(parked rundomain.Run) (rundomain.Run, error) {
+		return parked.Resume(segmentID, r.resumedAt)
+	})
 	if err != nil {
 		return nil, fmt.Errorf("runs: resume Run %q: %w", continuationState.RunID, err)
 	}
@@ -197,8 +202,9 @@ func (r *resumedRouteBuilder) newRoute(continuationState Continuation) (*executo
 		segmentID:   segmentID,
 		rootRunID:   r.continuation.rootRunID,
 		lineage:     parked.Lineage(),
+		resumed:     &resumed,
 		reducer: newReducer(reducerConfig{
-			Opened: opened, WorkspaceCWD: r.spec.WorkspaceCWD, Isolated: r.spec.Isolated,
+			Opened: resumed.State(), WorkspaceCWD: r.spec.WorkspaceCWD, Isolated: r.spec.Isolated,
 			UserInput: userInput, Continuation: r.continuation,
 			Now:          r.now,
 			CancelReason: cancellationReason(r.cancelReason, continuationState.RunID),

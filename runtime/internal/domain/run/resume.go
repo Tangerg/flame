@@ -3,39 +3,36 @@ package run
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 )
 
-// ResumeDraft is one parked Run whose fresh continuation Segment is opening.
-// It is always applied as part of a root-owned [TreeResumeDraft]; a descendant
-// cannot resume independently of the barrier that suspended the complete tree.
-type ResumeDraft struct {
-	RunID string
-	// SegmentID is the continuation's fresh segment, which replaces the one the
-	// park cleared — in the same transaction that moves the Run back to Running.
-	SegmentID string
-}
-
-// TreeResumeDraft is the complete durable identity set reopened after one
-// accepted answer claim. Runs is canonical postorder (descendants before
+// TreeResumeDraft is the complete set of parked Runs reopened after one
+// accepted answer claim, each as the Replacement that resumes it into its fresh
+// continuation Segment. Runs is canonical postorder (descendants before
 // ancestors, siblings by Run ID, root last), matching the already-claimed
-// Pending continuation set.
+// Pending continuation set. The root Run names the tree and its Session, and
+// every Run reopens at the root's resume time.
 type TreeResumeDraft struct {
-	RootRunID string
-	SessionID string
-	// ResumedAt is the single tree-opening timestamp used by every Run row.
-	// Recording it on the draft preserves the exact committed
-	// root snapshot instead of approximating a store-owned clock.
-	ResumedAt time.Time
-	Runs      []ResumeDraft
+	Runs []Replacement
 }
 
-// Validate checks the tree-resume identity frame. Topology and exact postorder
-// correspondence are checked while the owner creates the draft; persistence
-// additionally proves that its root has a durable answer claim before
-// reopening any Run.
+// RootRunID names the tree's root, the final resumed Run.
+func (t TreeResumeDraft) RootRunID() string {
+	if len(t.Runs) == 0 {
+		return ""
+	}
+	return t.Runs[len(t.Runs)-1].State().ID()
+}
+
+// SessionID names the Session that owns the resumed tree.
+func (t TreeResumeDraft) SessionID() string {
+	if len(t.Runs) == 0 {
+		return ""
+	}
+	return t.Runs[len(t.Runs)-1].State().SessionID()
+}
+
 // ValidateForTree verifies the draft and both identities that scope it. A
 // commit reasoning about one Session's root Run needs both, and asking for them
 // together is what stops one being checked while the other is assumed.
@@ -43,55 +40,58 @@ func (t TreeResumeDraft) ValidateForTree(expectedSessionID, expectedRootRunID st
 	if err := t.Validate(); err != nil {
 		return err
 	}
-	if t.SessionID != expectedSessionID {
+	if t.SessionID() != expectedSessionID {
 		return fmt.Errorf(
 			"run: tree resume Session %q does not match requested identity %q",
-			t.SessionID,
+			t.SessionID(),
 			expectedSessionID,
 		)
 	}
-	if t.RootRunID != expectedRootRunID {
+	if t.RootRunID() != expectedRootRunID {
 		return fmt.Errorf(
 			"run: tree resume root %q does not match requested identity %q",
-			t.RootRunID,
+			t.RootRunID(),
 			expectedRootRunID,
 		)
 	}
 	return nil
 }
 
+// Validate checks that every Run moves from Waiting to Running inside the
+// root's tree and Session at one resume time. Topology and exact postorder
+// correspondence are checked while the owner creates the draft; persistence
+// additionally proves that its root has a durable answer claim before
+// reopening any Run.
 func (t TreeResumeDraft) Validate() error {
-	if err := resourceid.ValidateRun(t.RootRunID); err != nil {
-		return fmt.Errorf("run: tree resume root %w", err)
-	}
-	if err := resourceid.ValidateSession(t.SessionID); err != nil {
-		return fmt.Errorf("run: tree resume %w", err)
-	}
-	switch {
-	case t.ResumedAt.IsZero():
-		return errors.New("run: tree resume time is required")
-	case len(t.Runs) == 0:
+	if len(t.Runs) == 0 {
 		return errors.New("run: tree resume has no Runs")
 	}
-	seen := make(map[string]struct{}, len(t.Runs))
-	for index, run := range t.Runs {
-		if err := resourceid.ValidateRun(run.RunID); err != nil {
-			return fmt.Errorf("run: tree resume Run[%d]: %w", index, err)
-		}
-		if err := resourceid.ValidateSegment(run.SegmentID); err != nil {
-			return fmt.Errorf("run: tree resume Run[%d]: %w", index, err)
-		}
-		if _, duplicate := seen[run.RunID]; duplicate {
-			return fmt.Errorf("run: tree resume repeats Run %q", run.RunID)
-		}
-		seen[run.RunID] = struct{}{}
+	root := t.Runs[len(t.Runs)-1].State()
+	if !root.Lineage().IsRoot() {
+		return fmt.Errorf("run: tree resume final Run %q is not a root", root.ID())
 	}
-	if t.Runs[len(t.Runs)-1].RunID != t.RootRunID {
-		return fmt.Errorf(
-			"run: tree resume root %q must be the final Run, got %q",
-			t.RootRunID,
-			t.Runs[len(t.Runs)-1].RunID,
-		)
+	seen := make(map[string]struct{}, len(t.Runs))
+	for index, replacement := range t.Runs {
+		if err := replacement.Validate(); err != nil {
+			return fmt.Errorf("run: tree resume Run[%d]: %w", index, err)
+		}
+		resumed := replacement.State()
+		if replacement.Expected().State() != Waiting || resumed.State() != Running {
+			return fmt.Errorf("run: tree resume Run %q does not move from waiting to running", resumed.ID())
+		}
+		if err := resourceid.ValidateSegment(resumed.ActiveSegmentID()); err != nil {
+			return fmt.Errorf("run: tree resume Run %q: %w", resumed.ID(), err)
+		}
+		if resumed.SessionID() != root.SessionID() || resumed.Lineage().TreeRootID(resumed.ID()) != root.ID() {
+			return fmt.Errorf("run: tree resume Run %q is outside root %q", resumed.ID(), root.ID())
+		}
+		if !resumed.UpdatedAt().Equal(root.UpdatedAt()) {
+			return fmt.Errorf("run: tree resume Run %q reopens at another time than its root", resumed.ID())
+		}
+		if _, duplicate := seen[resumed.ID()]; duplicate {
+			return fmt.Errorf("run: tree resume repeats Run %q", resumed.ID())
+		}
+		seen[resumed.ID()] = struct{}{}
 	}
 	return nil
 }

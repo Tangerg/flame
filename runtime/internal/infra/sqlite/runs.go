@@ -331,35 +331,35 @@ func (r *RunStore) Suspend(
 	})
 }
 
-// Resume continues the exact parked Run (Waiting → Running). Unlike cleanup
-// transitions it is strict: a missing/mismatched/already-running row means the
-// continuation opening does not own the durable Run and must roll back.
-func (r *RunStore) Resume(
-	ctx context.Context,
-	sessionID string,
-	draft rundomain.ResumeDraft,
-	resumedAt time.Time,
-) error {
+// Resume writes the exact parked Run's decided continuation (Waiting →
+// Running). Unlike cleanup transitions it is strict: a row that is no longer
+// the parked Run the replacement was derived from means the continuation
+// opening does not own the durable Run and must roll back.
+func (r *RunStore) Resume(ctx context.Context, replacement rundomain.Replacement) error {
+	if err := replacement.Validate(); err != nil {
+		return fmt.Errorf("sqlite: resume run: %w", err)
+	}
+	expected, next := replacement.Expected(), replacement.State()
+	if expected.State() != rundomain.Waiting || next.State() != rundomain.Running {
+		return fmt.Errorf("sqlite: resume run %q: replacement does not move from waiting to running", next.ID())
+	}
 	return RunInTx(ctx, r.db, func(ctx context.Context) error {
-		current, found, err := r.runForTransition(ctx, draft.RunID)
+		current, found, err := r.runForTransition(ctx, next.ID())
 		if err != nil {
 			return err
 		}
-		if !found || current.SessionID() != sessionID {
-			return errors.New("sqlite: resume run: active run not found")
-		}
-		next, err := current.Resume(draft.SegmentID, resumedAt)
-		if err != nil {
-			return fmt.Errorf("sqlite: resume run: %w", err)
+		if !found || !current.Equal(expected) {
+			return fmt.Errorf("sqlite: resume run: Run %q is not the parked Run the continuation resumes", next.ID())
 		}
 		// The accrual is untouched: a continuation inherits what the park committed,
 		// and the segment now opening has consumed nothing yet. What does move is the
 		// segment identity, which the park cleared and this one replaces.
 		res, err := conn(ctx, r.db).ExecContext(ctx,
 			`UPDATE runs SET state = ?, active_segment_id = ?, commit_segment_id = '', commit_id = '', updated_at = ?
-			 WHERE session_id = ? AND run_id = ? AND state = ?`,
-			coarseState(next.State()).databaseValue(), next.ActiveSegmentID(), next.UpdatedAt().UnixNano(),
-			sessionID, draft.RunID, coarseState(current.State()).databaseValue())
+			 WHERE session_id = ? AND run_id = ? AND state = ? AND updated_at = ?`,
+			coarseState(next.State()).databaseValue(), next.ActiveSegmentID(), next.UpdatedAt().UTC().UnixNano(),
+			next.SessionID(), next.ID(), coarseState(expected.State()).databaseValue(),
+			expected.UpdatedAt().UTC().UnixNano())
 		if err != nil {
 			return fmt.Errorf("sqlite: resume run: %w", err)
 		}

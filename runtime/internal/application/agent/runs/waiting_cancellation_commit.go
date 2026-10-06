@@ -492,7 +492,7 @@ func (w waitingCancellationValidation) validateDispositionAndCollectRunIDs() ([]
 	}
 	runIDs := make([]string, 0, len(w.commit.Resume.Runs))
 	for _, draft := range w.commit.Resume.Runs {
-		runIDs = append(runIDs, draft.RunID)
+		runIDs = append(runIDs, draft.State().ID())
 	}
 	return runIDs, nil
 }

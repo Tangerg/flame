@@ -55,6 +55,17 @@ func storedRunReplacement(
 	return testsupport.MustRunReplacement(expected, testsupport.DecidedRun(state))
 }
 
+// resumeParkedRun reopens the parked Run the store holds into segmentID.
+func resumeParkedRun(ctx context.Context, store *sqlite.RunStore, parked run.Run, segmentID string, at time.Time) error {
+	replacement, err := run.Replace(parked, func(parked run.Run) (run.Run, error) {
+		return parked.Resume(segmentID, at)
+	})
+	if err != nil {
+		return err
+	}
+	return store.Resume(ctx, replacement)
+}
+
 func suspendRun(ctx context.Context, store *sqlite.RunStore, state run.Run, segmentID string) error {
 	return store.Suspend(ctx, state, segmentID, runtimeidentity.CommitID{})
 }
@@ -237,7 +248,7 @@ func TestParkCommitsInterruptAndSuspendAtomically(t *testing.T) {
 		t.Fatalf("interrupt survived a rolled-back park: %+v", open)
 	}
 	// Still running (not waiting): a rolled-back Suspend left the state intact.
-	if err := runStore.Resume(ctx, "ses_A", run.ResumeDraft{RunID: "run_1", SegmentID: "seg_next"}, time.Now().UTC()); err == nil {
+	if err := resumeParkedRun(ctx, runStore, parkedRunFromDraft(parkableDraft("run_1", "ses_A")), "seg_next", time.Now().UTC()); err == nil {
 		t.Fatal("resume after rolled-back park must reject the still-running row")
 	}
 	if err := runStore.Admit(ctx, runDraft("run_x", "ses_A")); !errors.Is(err, run.ErrSessionBusy) {
@@ -524,7 +535,7 @@ func TestTerminalizeRequiresExactLiveRun(t *testing.T) {
 	unknownDraft := runDraft("run_unknown", "ses_unknown")
 	unknown := finishedRunFromDraft(unknownDraft, run.OutcomeCompleted)
 	if err := store.Terminalize(ctx, testsupport.MustRunReplacement(
-		admittedRunFromDraft(unknownDraft), testsupport.DecidedRun(unknown),)); err == nil {
+		admittedRunFromDraft(unknownDraft), testsupport.DecidedRun(unknown))); err == nil {
 		t.Fatal("terminalize unknown run must fail")
 	}
 	if err := store.Admit(ctx, runDraft("run_1", "ses_A")); err != nil {
@@ -533,7 +544,7 @@ func TestTerminalizeRequiresExactLiveRun(t *testing.T) {
 	otherDraft := runDraft("run_other", "ses_A")
 	other := finishedRunFromDraft(otherDraft, run.OutcomeCompleted)
 	if err := store.Terminalize(ctx, testsupport.MustRunReplacement(
-		admittedRunFromDraft(otherDraft), testsupport.DecidedRun(other),)); err == nil {
+		admittedRunFromDraft(otherDraft), testsupport.DecidedRun(other))); err == nil {
 		t.Fatal("terminalize mismatched run must fail")
 	}
 	expected, found, err := store.Run(ctx, "run_1")
@@ -660,12 +671,7 @@ func TestSuspendRequiresExactActiveSegment(t *testing.T) {
 	if err := suspendRun(ctx, store, staleWaiting, "seg_old"); err != nil {
 		t.Fatalf("Suspend old Segment: %v", err)
 	}
-	if err := store.Resume(
-		ctx,
-		draft.SessionID,
-		run.ResumeDraft{RunID: draft.RunID, SegmentID: "seg_new"},
-		runCreatedAt.Add(2*time.Second),
-	); err != nil {
+	if err := resumeParkedRun(ctx, store, staleWaiting, "seg_new", runCreatedAt.Add(2*time.Second)); err != nil {
 		t.Fatalf("Resume new Segment: %v", err)
 	}
 	if err := suspendRun(ctx, store, staleWaiting, "seg_old"); err == nil {
@@ -711,7 +717,7 @@ func TestSuspendResumeReusesOneSlot(t *testing.T) {
 		t.Fatalf("admit while suspended = %v, want ErrSessionBusy (row still non-terminal)", err)
 	}
 	// Resume: back to running, no second row admitted.
-	if err := store.Resume(ctx, "ses_A", run.ResumeDraft{RunID: "run_1", SegmentID: "seg_next"}, time.Unix(6, 0).UTC()); err != nil {
+	if err := resumeParkedRun(ctx, store, parkedRun("run_1", "ses_A"), "seg_next", time.Unix(6, 0).UTC()); err != nil {
 		t.Fatalf("resume: %v", err)
 	}
 	if err := store.Admit(ctx, runDraft("run_3", "ses_A")); !errors.Is(err, run.ErrSessionBusy) {
@@ -753,9 +759,7 @@ func TestEventCommitMarkerDoesNotCrossSuspendResumeGeneration(t *testing.T) {
 	if err != nil || matched {
 		t.Fatalf("suspended marker matched=%t err=%v, want false/nil", matched, err)
 	}
-	if resumeErr := store.Resume(
-		ctx, "ses_A", run.ResumeDraft{RunID: "run_1", SegmentID: "seg_next"}, time.Unix(6, 0).UTC(),
-	); resumeErr != nil {
+	if resumeErr := resumeParkedRun(ctx, store, parkedRun("run_1", "ses_A"), "seg_next", time.Unix(6, 0).UTC()); resumeErr != nil {
 		t.Fatalf("Resume: %v", resumeErr)
 	}
 	matched, err = store.RunCommitCommitted(
@@ -1137,7 +1141,7 @@ func TestRunCapabilitiesAreImmutable(t *testing.T) {
 	}
 	assertRunCapabilities(t, store, "run_1", admitted, "after park")
 
-	if err := store.Resume(ctx, "ses_A", run.ResumeDraft{RunID: "run_1", SegmentID: "seg_next"}, time.Unix(6, 0).UTC()); err != nil {
+	if err := resumeParkedRun(ctx, store, parked, "seg_next", time.Unix(6, 0).UTC()); err != nil {
 		t.Fatalf("resume: %v", err)
 	}
 	assertRunCapabilities(t, store, "run_1", admitted, "after resume")
