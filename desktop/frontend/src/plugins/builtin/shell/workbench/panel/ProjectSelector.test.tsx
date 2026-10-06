@@ -12,7 +12,6 @@ const mocks = vi.hoisted(() => ({
     activeSessionId: "",
     activeCwd: undefined as string | undefined,
     isLoading: false,
-    isError: false,
   },
   actions: {
     canCreateSession: true,

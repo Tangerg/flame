@@ -24,7 +24,6 @@ const model = vi.hoisted(() => ({
     activeSessionId: "",
     activeCwd: undefined,
     isLoading: false,
-    isError: false,
   },
 }));
 

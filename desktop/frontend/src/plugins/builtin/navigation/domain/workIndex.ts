@@ -31,7 +31,6 @@ export interface WorkIndex {
   activeSessionId: string;
   activeCwd: string | undefined;
   isLoading: boolean;
-  isError: boolean;
   error: unknown;
   retry: () => void;
 }
