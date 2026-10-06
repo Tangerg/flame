@@ -36,7 +36,13 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
-## Protocol 2026-10-02.1
+## Protocol 2026-10-07.1
+
+A Run tree's root alone carries the facts it owns for the whole tree: only a
+root `RunRef` has `protocolProfile`, and only a root `ArtifactRun` has
+`messageMark`; both are absent on children. Portable artifact Tool results are
+keyed by their owning Item. Older Runtimes and clients are refused by the exact
+protocol-version check, and older artifacts by their version.
 
 Rebuild and deploy Runtime, CLI, Desktop/Web, IDE, and generated contract
 consumers together. The timeline requires `sessions.trajectory`, and evaluation
