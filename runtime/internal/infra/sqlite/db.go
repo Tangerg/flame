@@ -143,10 +143,11 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		// which is how "frozen for the Run's whole life" is kept by construction
 		// rather than by a check that could be forgotten.
 		//
-		// message_mark is the conversation message count captured when the Run
-		// finished and atomically rebased by every later compaction — the per-run
+		// message_mark is the conversation message count captured when a root Run
+		// finished and atomically rebased by every later compaction — the per-tree
 		// rollback/fork watermark fork{fromRunId} truncates to. -1 is
-		// run.UnknownMessageMark: a Run that has not finished has no watermark yet.
+		// run.UnknownMessageMark: a Run that has not finished has no watermark yet,
+		// and a child never has one because its root ends the tree.
 		// commit_segment_id / commit_id are a technical receipt for the latest
 		// complete Application Run write-set: opening, event, waiting barrier,
 		// waiting-child cancellation, or terminal. An already-waiting command has
@@ -187,6 +188,7 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 				 parent_run_id != run_id AND root_run_id != run_id)
 			),
 			CHECK (root_run_id = '' OR goal_incarnation_id = ''),
+			CHECK (root_run_id = '' OR message_mark = -1),
 			CHECK (
 				(commit_segment_id = '' AND commit_id = '') OR
 				(commit_id != '' AND (

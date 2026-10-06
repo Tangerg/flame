@@ -29,22 +29,23 @@ func runIDs(ns []transcript.RunNode) []string {
 }
 
 // TestBoundaryAt audits the inclusive-keep split: a kept root keeps its own
-// child Runs (so the watermark is the last kept node's, not the root's), the
+// child Runs (and the watermark is the root's, which ends after them), the
 // drop set is everything from the next root on, drop-all keeps nothing, and a
 // non-root / unknown target errors. Input is given out of order to also
 // exercise the internal CreatedAt sort.
 func TestBoundaryAt(t *testing.T) {
-	// Wall-clock order: R1 @1 mark2 → S1 (child of R1) @2 mark4 → R2 @3 mark6
-	// → R3 @4 mark9. Deliberately shuffled to prove BoundaryAt sorts.
+	// Wall-clock order: R1 @1 mark4 → S1 (child of R1) @2 → R2 @3 mark6
+	// → R3 @4 mark9. A child holds no watermark: its root ends after it.
+	// Deliberately shuffled to prove BoundaryAt sorts.
 	nodes := []transcript.RunNode{
 		root("R3", 4, 9),
-		root("R1", 1, 2),
+		root("R1", 1, 4),
 		root("R2", 3, 6),
-		sub("S1", "item_r1", "R1", 2, 4),
+		sub("S1", "item_r1", "R1", 2, -1),
 	}
 	timeline := transcript.Timeline(nodes)
 
-	// Keep through R1 inclusive → keep R1+S1 (watermark 4, the last kept node),
+	// Keep through R1 inclusive → keep R1+S1 (watermark 4, R1's own),
 	// drop R2+R3, boundary at R2's time.
 	b, err := timeline.BoundaryAt("R1")
 	if err != nil {
@@ -89,17 +90,17 @@ func TestBoundaryAt(t *testing.T) {
 
 func TestPortableBoundaryAtKeepsOnlyCompleteRunTrees(t *testing.T) {
 	nodes := transcript.Timeline{
-		{ID: "run_1", CreatedAt: time.Unix(1, 0), MessageMark: 2, Terminal: true},
-		{ID: "run_1_child", SpawnedByItemID: "item_1", RootRunID: "run_1", CreatedAt: time.Unix(2, 0), MessageMark: 4, Terminal: true},
+		{ID: "run_1", CreatedAt: time.Unix(1, 0), MessageMark: 4, Terminal: true},
+		{ID: "run_1_child", SpawnedByItemID: "item_1", RootRunID: "run_1", CreatedAt: time.Unix(2, 0), MessageMark: -1, Terminal: true},
 		{ID: "run_2", CreatedAt: time.Unix(3, 0), MessageMark: -1},
-		{ID: "run_2_child", SpawnedByItemID: "item_2", RootRunID: "run_2", CreatedAt: time.Unix(4, 0), MessageMark: 5, Terminal: true},
+		{ID: "run_2_child", SpawnedByItemID: "item_2", RootRunID: "run_2", CreatedAt: time.Unix(4, 0), MessageMark: -1, Terminal: true},
 	}
 
 	boundary, err := nodes.PortableBoundaryAt("")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if boundary.KeepMessageMark != 4 || boundary.KeepRunID != "run_1_child" ||
+	if boundary.KeepMessageMark != 4 || boundary.KeepRunID != "run_1" ||
 		!slices.Equal(boundary.RunIDs, []string{"run_1", "run_1_child"}) {
 		t.Fatalf("portable boundary = %+v", boundary)
 	}
@@ -111,7 +112,7 @@ func TestPortableBoundaryAtKeepsOnlyCompleteRunTrees(t *testing.T) {
 	if err != nil {
 		t.Fatalf("complete-tree child = %v, want a portable boundary", err)
 	}
-	if child.KeepMessageMark != 4 || child.KeepRunID != "run_1_child" ||
+	if child.KeepMessageMark != 4 || child.KeepRunID != "run_1" ||
 		!slices.Equal(child.RunIDs, []string{"run_1", "run_1_child"}) {
 		t.Fatalf("complete-tree child boundary = %+v", child)
 	}

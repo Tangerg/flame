@@ -184,10 +184,9 @@ type ExportSessionResponse struct {
 // artifact it doesn't recognize; development builds do not migrate old
 // artifacts.
 //
-// Version 29 keeps an offloaded result's preview on its Item only; the tool
-// result carries the body. Imported process and effect identities never
-// authorize execution or recovery.
-const SessionArtifactVersion = 29
+// Version 30 carries a conversation watermark on root runs only. Imported
+// process and effect identities never authorize execution or recovery.
+const SessionArtifactVersion = 30
 
 // SessionArtifact is the portable, round-trippable form of a session: its
 // identity plus the full conversation — chat messages (the model's context),
@@ -261,7 +260,10 @@ type ArtifactRun struct {
 	CreatedAt       time.Time           `json:"createdAt,omitzero"`
 	FinishedAt      time.Time           `json:"finishedAt,omitzero"`
 	UpdatedAt       time.Time           `json:"updatedAt,omitzero"`
-	MessageMark     int                 `json:"messageMark"`
+	// MessageMark is the conversation length where a root run's tree ended,
+	// required on a root and absent on a child: a child ends inside its root's
+	// tree, which no boundary cuts before the root ends.
+	MessageMark *int `json:"messageMark,omitzero"`
 }
 
 // ArtifactOutcome is a non-interrupt terminal fact. Its string discriminator

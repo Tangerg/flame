@@ -1222,8 +1222,7 @@
           "pattern": "^[^\\p{C}\\p{Z}]*$"
         },
         "messageMark": {
-          "type": "integer",
-          "minimum": 0
+          "type": "integer"
         },
         "metrics": {
           "$ref": "#/$defs/RunMetrics"
@@ -1281,7 +1280,6 @@
         "createdAt",
         "finishedAt",
         "id",
-        "messageMark",
         "metrics",
         "model",
         "outcome",
@@ -1298,6 +1296,7 @@
           },
           "then": {
             "properties": {
+              "messageMark": false,
               "protocolProfile": false
             }
           }
@@ -9929,8 +9928,8 @@
         },
         "version": {
           "type": "integer",
-          "minimum": 29,
-          "maximum": 29
+          "minimum": 30,
+          "maximum": 30
         }
       },
       "required": [

@@ -426,8 +426,8 @@ func TestCancelParkedRunProducesPortableTerminalSnapshot(t *testing.T) {
 	if run.Outcome.Type != "canceled" || run.Outcome.Error != nil {
 		t.Fatalf("exported run = %+v, want a canceled terminal with no failure", run)
 	}
-	if run.MessageMark != 2 || run.Outcome.Detail != "user stopped" {
-		t.Fatalf("exported mark/detail = %d/%q, want 2/user stopped", run.MessageMark, run.Outcome.Detail)
+	if run.MessageMark == nil || *run.MessageMark != 2 || run.Outcome.Detail != "user stopped" {
+		t.Fatalf("exported mark/detail = %v/%q, want 2/user stopped", run.MessageMark, run.Outcome.Detail)
 	}
 	if got := exported.Artifact.Items[0].Status; got != "completed" {
 		t.Fatalf("question prompt status = %q, want completed", got)

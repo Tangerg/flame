@@ -694,12 +694,16 @@ func (r *RunStore) finish(
 		if n == 0 {
 			return fmt.Errorf("sqlite: %s run: state changed concurrently (was %s)", op, current.State())
 		}
-		// The Run's end is also a boundary of the session's Plan, and this CAS is
+		// A root Run's end is also a boundary of the session's Plan, and this CAS is
 		// the only place a Run can reach terminal — so the boundary is stamped here
-		// rather than by each caller that ends a Run, which is how "no terminal Run
-		// without a recorded boundary" holds by construction. Restore is deliberately
+		// rather than by each caller that ends a Run, which is how "no terminal root
+		// without a recorded boundary" holds by construction. A child ends inside its
+		// root's tree, which is never cut before the root ends. Restore is deliberately
 		// NOT a boundary: an imported Run finished in another runtime, and stamping the
 		// importing session's live list would invent a value that Run never had.
+		if value.Lineage().IsChild() {
+			return nil
+		}
 		return NewPlanStore(r.db).CaptureBoundary(ctx, value.SessionID(), value.ID())
 	})
 }

@@ -617,7 +617,6 @@ TypeScript validator from this single registry projection.
 | `ArtifactRun` | `model` | `maxLength(256)` |
 | `ArtifactRun` | `reasoningEffort` | `identity` |
 | `ArtifactRun` | `reasoningEffort` | `maxLength(32)` |
-| `ArtifactRun` | `messageMark` | `nonNegative` |
 | `ArtifactRun` | `contextTokens` | `nonNegative` |
 | `ArtifactItem` | `id` | `nonEmpty` |
 | `ArtifactItem` | `id` | `identity` |
@@ -633,8 +632,8 @@ TypeScript validator from this single registry projection.
 | `ArtifactToolResult` | `itemId` | `nonEmpty` |
 | `ArtifactToolResult` | `itemId` | `identity` |
 | `ArtifactToolResult` | `itemId` | `maxLength(256)` |
-| `SessionArtifact` | `version` | `minimum(29)` |
-| `SessionArtifact` | `version` | `maximum(29)` |
+| `SessionArtifact` | `version` | `minimum(30)` |
+| `SessionArtifact` | `version` | `maximum(30)` |
 | `ArtifactProblem` | `retryAfterSeconds` | `positive` |
 | `ArtifactProblem` | `retryAfterSeconds` | `maximum(9223372036)` |
 | `ContentBlock` | `text` | `pattern("\\S")` |

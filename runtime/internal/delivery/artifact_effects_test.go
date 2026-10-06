@@ -104,7 +104,7 @@ func TestSessionExportImportPreservesUnresolvedEffectsAsHistory(t *testing.T) {
 	child := testsupport.MustRestoreRun(run.Snapshot{
 		SessionID: ses.ID(), ID: "run_child_source", Outcome: &childOutcome,
 		UnresolvedEffects: []run.UnresolvedEffect{childEffect},
-		Lineage: run.Lineage{SpawnedByItemID: "item_spawn_source", ParentRunID: root.ID(), RootRunID: root.ID()},
+		Lineage:           run.Lineage{SpawnedByItemID: "item_spawn_source", ParentRunID: root.ID(), RootRunID: root.ID()},
 	})
 	if err := sourceRuntime.runs.Restore(ctx, root); err != nil {
 		t.Fatalf("seed root: %v", err)
@@ -190,7 +190,8 @@ func TestSessionImportRejectsInvalidUnresolvedEffects(t *testing.T) {
 				Runs: []protocol.ArtifactRun{{
 					ID: "run_source", SessionID: "ses_source", Provider: "test-provider", Model: "test-model",
 					ProtocolProfile: &protocol.RunProtocolProfile{}, CreatedAt: at, FinishedAt: at, UpdatedAt: at,
-					Outcome: protocol.ArtifactOutcome{Type: protocol.ArtifactOutcomeCanceled, UnresolvedEffects: effects},
+					MessageMark: new(int),
+					Outcome:     protocol.ArtifactOutcome{Type: protocol.ArtifactOutcomeCanceled, UnresolvedEffects: effects},
 				}},
 			}
 			if _, err := handler.ImportSession(t.Context(), protocol.ImportSessionRequest{Artifact: artifact}); !errors.Is(err, protocol.ErrInvalidParams) || !strings.Contains(strings.ToLower(err.Error()), "unresolved") {

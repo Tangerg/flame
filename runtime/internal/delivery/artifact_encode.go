@@ -88,7 +88,7 @@ func artifactRunFromPortable(run sessions.PortableRun) (protocol.ArtifactRun, er
 			UnresolvedEffects: presentUnresolvedEffects(run.UnresolvedEffects),
 		},
 		CreatedAt: run.CreatedAt, FinishedAt: run.FinishedAt,
-		UpdatedAt: run.UpdatedAt, MessageMark: run.MessageMark,
+		UpdatedAt: run.UpdatedAt, MessageMark: artifactMessageMark(run.MessageMark),
 	}, nil
 }
 
@@ -227,4 +227,11 @@ func artifactItemFromTranscript(item transcript.Item) (protocol.ArtifactItem, er
 		out.CreatedAt = item.OccurredAt()
 	}
 	return out, nil
+}
+
+func artifactMessageMark(mark int) *int {
+	if mark == run.UnknownMessageMark {
+		return nil
+	}
+	return &mark
 }

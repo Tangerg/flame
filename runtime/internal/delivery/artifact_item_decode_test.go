@@ -22,7 +22,7 @@ func validArtifact() protocol.SessionArtifact {
 		Runs: []protocol.ArtifactRun{{
 			ID: "run_1", SessionID: "ses_1", Provider: "test-provider", Model: "test-model",
 			CreatedAt: finished, FinishedAt: finished,
-			UpdatedAt: finished, MessageMark: 0,
+			UpdatedAt: finished, MessageMark: new(int),
 			Outcome: protocol.ArtifactOutcome{Type: "completed"},
 		}},
 		Items: []protocol.ArtifactItem{{

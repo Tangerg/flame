@@ -18,6 +18,8 @@ var ErrIdentityConflict = errors.New("run: identity conflict")
 
 // UnknownMessageMark is the watermark of a Run whose final conversation count
 // is not known yet. It cannot be confused with a real count, including zero.
+// The watermark is the conversation length where a whole Run tree ended, so
+// only its root carries one; a child keeps this value for its whole life.
 const UnknownMessageMark = -1
 
 // Run is one logical unit of agent work from admission through any waiting and
@@ -224,6 +226,9 @@ func (r Run) validate() error {
 	if r.lineage.IsChild() && !r.capabilities.IsEmpty() {
 		return errors.New("run: child carries capabilities its root owns")
 	}
+	if r.lineage.IsChild() && r.messageMark != UnknownMessageMark {
+		return errors.New("run: child carries the conversation watermark its root owns")
+	}
 	if r.state.IsTerminal() {
 		return r.validateTerminal()
 	}
@@ -422,6 +427,9 @@ func (r Run) finish(state State, termination Termination) (Run, error) {
 // count; conversation compaction uses it to rebase an already-final boundary
 // into the replacement history's coordinate space.
 func (r Run) WithMessageMark(messageMark int) (Run, error) {
+	if r.lineage.IsChild() {
+		return Run{}, errors.New("run: a child Run has no conversation watermark of its own")
+	}
 	if !r.state.IsTerminal() {
 		return Run{}, errors.New("run: only terminal Run can resolve message watermark")
 	}

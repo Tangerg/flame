@@ -84,10 +84,9 @@ func OpeningUserMessagesByRun(items []Item) map[string][]ContentBlock {
 
 // Boundary is the inclusive-keep split of a timeline at a run:
 //
-//   - KeepMessageMark: the watermark to keep — the MessageMark of the last kept run (the last
-//     node before the first root run after it), so the run and its child Runs are
-//     kept. -1 when that watermark is unknown (in-flight / pre-watermark), which
-//     the caller clamps.
+//   - KeepMessageMark: the watermark to keep — the MessageMark of the last kept
+//     tree's root, which ends after every child Run it spawned. -1 when that
+//     watermark is unknown (in-flight / pre-watermark), which the caller clamps.
 //   - KeepRunID: the run that watermark belongs to — the boundary's identity for
 //     the Session Plan recorded per run, which unlike the message log has
 //     no watermark of its own to seek to. It is deliberately the SAME node
@@ -244,9 +243,10 @@ func boundaryAtOrdered(nodes []RunNode, runID string, requireRoot bool) (Boundar
 		if nodes[k].IsRoot() {
 			// Keep through t[k-1] (runID + its child Runs); drop from the next
 			// root on.
+			kept := keptTreeRoot(nodes[:k])
 			return Boundary{
-				KeepMessageMark: nodes[k-1].MessageMark,
-				KeepRunID:       nodes[k-1].ID,
+				KeepMessageMark: kept.MessageMark,
+				KeepRunID:       kept.ID,
 				Dropped:         slices.Clone(nodes[k:]),
 				BoundaryTime:    nodes[k].CreatedAt,
 			}, nil
@@ -254,5 +254,17 @@ func boundaryAtOrdered(nodes []RunNode, runID string, requireRoot bool) (Boundar
 	}
 	// No root Run after runID — its tree is the latest, so
 	// there is nothing to drop / everything up to it is copied.
-	return Boundary{KeepMessageMark: nodes[len(nodes)-1].MessageMark, KeepRunID: nodes[len(nodes)-1].ID}, nil
+	kept := keptTreeRoot(nodes)
+	return Boundary{KeepMessageMark: kept.MessageMark, KeepRunID: kept.ID}, nil
+}
+
+// keptTreeRoot is the root of the last tree in nodes. The tree's root ends it,
+// so the root alone holds the conversation watermark and Plan the boundary keeps.
+func keptTreeRoot(nodes []RunNode) RunNode {
+	for index := len(nodes) - 1; index >= 0; index-- {
+		if nodes[index].IsRoot() {
+			return nodes[index]
+		}
+	}
+	return nodes[len(nodes)-1]
 }

@@ -113,6 +113,9 @@ func (p PortableRun) validateLineage() error {
 		if p.Capabilities == nil {
 			return fmt.Errorf("root run %q carries no capabilities", p.ID)
 		}
+		if p.MessageMark < 0 {
+			return fmt.Errorf("root run %q carries no conversation watermark", p.ID)
+		}
 		return nil
 	}
 	if p.Capabilities != nil {

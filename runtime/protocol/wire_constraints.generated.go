@@ -2213,12 +2213,12 @@ func (a ArtifactRun) ValidateWire() error {
 		maxLength("model", a.Model, 256),
 		identity("reasoningEffort", a.ReasoningEffort),
 		maxLength("reasoningEffort", a.ReasoningEffort, 32),
-		nonNegativeNumber("messageMark", a.MessageMark),
 		nonNegativeNumber("contextTokens", a.ContextTokens),
 		requiredWhen(true, "createdAt", a),
 		requiredWhen(true, "finishedAt", a),
 		requiredWhen(true, "updatedAt", a),
 		forbiddenWhen(wireFieldPresent(a, "spawnedByItemId"), "protocolProfile", a),
+		forbiddenWhen(wireFieldPresent(a, "spawnedByItemId"), "messageMark", a),
 		requiredWhen(wireFieldPresent(a, "spawnedByItemId"), "parentRunId", a),
 		requiredWhen(wireFieldPresent(a, "spawnedByItemId"), "rootRunId", a),
 		requiredWhen(wireFieldPresent(a, "parentRunId"), "spawnedByItemId", a),
@@ -2289,8 +2289,8 @@ func (s SessionTrajectory) ValidateWire() error {
 
 func (s SessionArtifact) ValidateWire() error {
 	return collectWireViolations("SessionArtifact",
-		minimumNumber("version", s.Version, 29),
-		maximumNumber("version", s.Version, 29),
+		minimumNumber("version", s.Version, 30),
+		maximumNumber("version", s.Version, 30),
 	)
 }
 

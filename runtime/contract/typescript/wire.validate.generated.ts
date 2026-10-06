@@ -789,7 +789,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       createdAt: text(),
       finishedAt: text(),
       id: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-      messageMark: allOf([integer(), minimum(0)]),
+      messageMark: integer(),
       metrics: ref(() => CHECKS.RunMetrics),
       model: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       outcome: ref(() => CHECKS.ArtifactOutcome),
@@ -801,10 +801,11 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       spawnedByItemId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       updatedAt: text(),
-    }, ["createdAt", "finishedAt", "id", "messageMark", "metrics", "model", "outcome", "provider", "sessionId", "updatedAt"]),
+    }, ["createdAt", "finishedAt", "id", "metrics", "model", "outcome", "provider", "sessionId", "updatedAt"]),
     ifThen(
       fields({}, ["spawnedByItemId"]),
       fields({
+        messageMark: absent(),
         protocolProfile: absent(),
       }, []),
     ),
@@ -3599,7 +3600,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     runs: array(ref(() => CHECKS.ArtifactRun)),
     session: ref(() => CHECKS.ArtifactSession),
     toolResults: array(ref(() => CHECKS.ArtifactToolResult)),
-    version: allOf([integer(), minimum(29), maximum(29)]),
+    version: allOf([integer(), minimum(30), maximum(30)]),
   }, ["items", "messages", "runs", "session", "toolResults", "version"]),
   SessionSnapshot: object({
     goal: ref(() => CHECKS.Goal),

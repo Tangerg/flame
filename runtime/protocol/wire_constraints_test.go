@@ -2177,9 +2177,6 @@ func TestSessionArtifactBoundsAreWireConstraints(t *testing.T) {
 		field string
 		value WireValidator
 	}{
-		{shape: "ArtifactRun", field: "messageMark", value: ArtifactRun{
-			ID: "run_1", SessionID: "ses_1", Provider: "provider", Model: "model", MessageMark: -1,
-		}},
 		{shape: "RunMetrics", field: "steps", value: RunMetrics{Steps: -1}},
 		{shape: "RunMetrics", field: "activeDurationMillis", value: RunMetrics{ActiveDurationMillis: -1}},
 		{shape: "RunMetrics", field: "activeDurationMillis", value: RunMetrics{ActiveDurationMillis: tooLongDuration}},

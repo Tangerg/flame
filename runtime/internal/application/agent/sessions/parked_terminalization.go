@@ -146,12 +146,12 @@ func (p parkedRunTerminalization) terminalRuns(
 			terminal, err = run.RecoverLost(rundomain.Failure{
 				Kind:   rundomain.FailureLost,
 				Detail: "the parked Run tree's executor checkpoint could not be restored",
-			}, p.finishedAt, messageMark)
+			}, p.finishedAt, run.Lineage().MessageMark(messageMark))
 		} else {
 			terminal, err = run.CancelWaiting(
 				p.detail,
 				p.finishedAt,
-				messageMark,
+				run.Lineage().MessageMark(messageMark),
 			)
 		}
 		if err != nil {

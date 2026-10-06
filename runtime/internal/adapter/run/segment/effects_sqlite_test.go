@@ -2436,11 +2436,11 @@ func newWaitingCancellationSQLiteFixtureAt(
 	if saveCheckpointErr := checkpointStore.SaveCheckpoint(ctx, originalCheckpoint); saveCheckpointErr != nil {
 		t.Fatalf("seed executor checkpoint: %v", saveCheckpointErr)
 	}
-	terminalChild, err := childRun.CancelWaiting("stop delegated branch", finishedAt, 0)
+	terminalChild, err := childRun.CancelWaiting("stop delegated branch", finishedAt, run.UnknownMessageMark)
 	if err != nil {
 		t.Fatalf("cancel child fixture: %v", err)
 	}
-	terminalGrandchild, err := grandchildRun.CancelWaiting("stop delegated branch", finishedAt, 0)
+	terminalGrandchild, err := grandchildRun.CancelWaiting("stop delegated branch", finishedAt, run.UnknownMessageMark)
 	if err != nil {
 		t.Fatalf("cancel grandchild fixture: %v", err)
 	}

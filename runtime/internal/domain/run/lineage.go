@@ -88,3 +88,12 @@ func (l Lineage) TreeRootID(runID string) string {
 	}
 	return l.RootRunID
 }
+
+// MessageMark is the conversation watermark a Run on this lineage records when
+// its tree ends at treeMark: the root records it, and a child records none.
+func (l Lineage) MessageMark(treeMark int) int {
+	if l.IsChild() {
+		return UnknownMessageMark
+	}
+	return treeMark
+}

@@ -35,8 +35,8 @@ import (
 // is that the document this build writes is the version the contract named. Bumping
 // it is a breaking act, so it should cost a deliberate edit here.
 func TestArtifactVersionMatchesCurrentContractBaseline(t *testing.T) {
-	if protocol.SessionArtifactVersion != 29 {
-		t.Fatalf("SessionArtifactVersion = %d; current Runtime contract requires artifact v29",
+	if protocol.SessionArtifactVersion != 30 {
+		t.Fatalf("SessionArtifactVersion = %d; current Runtime contract requires artifact v30",
 			protocol.SessionArtifactVersion)
 	}
 }
@@ -172,7 +172,7 @@ func TestImportRefusesAChildWhoseRootProfileDisallowsChildren(t *testing.T) {
 				ID: "run_root", SessionID: "ses_tree", ProtocolProfile: &profile,
 				Provider: "test-provider", Model: "test-model",
 				Outcome:   protocol.ArtifactOutcome{Type: protocol.ArtifactOutcomeCompleted},
-				CreatedAt: at, FinishedAt: at, UpdatedAt: at,
+				CreatedAt: at, FinishedAt: at, UpdatedAt: at, MessageMark: new(int),
 			},
 			{
 				ID: "run_child", SessionID: "ses_tree",

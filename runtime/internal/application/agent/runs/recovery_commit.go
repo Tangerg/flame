@@ -414,7 +414,7 @@ func validateRecoveryConversationTransition(
 	}
 	messageMark := transition.ExpectedCount + len(transition.Messages)
 	for _, member := range members {
-		if lostByID[member.RunID].State().MessageMark() != messageMark {
+		if lostByID[member.RunID].State().MessageMark() != member.Lineage.MessageMark(messageMark) {
 			return fmt.Errorf(
 				"runs: recovery commit lost Run %q message mark differs from its conversation transition",
 				member.RunID,

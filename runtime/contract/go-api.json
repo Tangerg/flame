@@ -2559,7 +2559,7 @@
         {
           "name": "SessionArtifactVersion",
           "type": "untyped int",
-          "value": "29"
+          "value": "30"
         },
         {
           "name": "SessionStatusIdle",
@@ -3688,8 +3688,8 @@
             },
             {
               "name": "MessageMark",
-              "type": "int",
-              "tag": "json:\"messageMark\""
+              "type": "*int",
+              "tag": "json:\"messageMark,omitzero\""
             }
           ],
           "methods": [

@@ -113,7 +113,8 @@ func MustRestoreRun(snapshot run.Snapshot) run.Run {
 				snapshot.Failure = &run.Failure{Kind: run.FailureLost}
 			}
 		}
-	} else {
+	}
+	if !snapshot.State.IsTerminal() || snapshot.Lineage.IsChild() {
 		snapshot.MessageMark = run.UnknownMessageMark
 	}
 	if snapshot.UpdatedAt.IsZero() {

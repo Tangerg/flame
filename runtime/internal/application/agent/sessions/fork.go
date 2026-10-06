@@ -47,7 +47,7 @@ func ResolveForkBoundary(msgs []chat.Message, runs []run.Run, fromRunID string) 
 		}
 	}
 	for _, run := range runs {
-		if run.State().IsTerminal() && (run.MessageMark() < 0 || run.MessageMark() > len(msgs)) {
+		if run.State().IsTerminal() && run.Lineage().IsRoot() && (run.MessageMark() < 0 || run.MessageMark() > len(msgs)) {
 			return ForkBoundary{}, fmt.Errorf("sessions: terminal run %q has invalid message watermark %d", run.ID(), run.MessageMark())
 		}
 	}

@@ -222,7 +222,6 @@ func registerArtifactValues(s *Shapes) {
 				{Field: "model", Kind: ConstraintNonEmpty},
 			}...),
 			append(modelSelectionIdentities(),
-				FieldConstraint{Field: "messageMark", Kind: ConstraintNonNegative},
 				FieldConstraint{Field: "contextTokens", Kind: ConstraintNonNegative},
 			)...),
 	})

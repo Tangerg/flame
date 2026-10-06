@@ -195,7 +195,7 @@ func portableRunFromArtifact(path string, artifact protocol.ArtifactRun) (sessio
 		Capabilities:      capabilities,
 		Detail:            artifact.Outcome.Detail,
 		CreatedAt:         artifact.CreatedAt, FinishedAt: artifact.FinishedAt,
-		UpdatedAt: artifact.UpdatedAt, MessageMark: artifact.MessageMark,
+		UpdatedAt: artifact.UpdatedAt, MessageMark: portableMessageMark(artifact.MessageMark),
 	}, nil
 }
 
@@ -542,4 +542,11 @@ func portableToolFailureFromArtifact(path string, artifact *protocol.ArtifactPro
 	return &tool.Failure{
 		Kind: kind, Detail: artifact.Detail, DocURL: artifact.DocURL,
 	}, nil
+}
+
+func portableMessageMark(mark *int) int {
+	if mark == nil {
+		return run.UnknownMessageMark
+	}
+	return *mark
 }

@@ -312,6 +312,7 @@ func TestPortableSnapshotKeepsCapabilitiesOnTheRoot(t *testing.T) {
 				SessionID: "ses_1", ID: "run_child", Outcome: run.OutcomeCompleted,
 				SpawnedByItemID: "item_1", ParentRunID: "run_root", RootRunID: "run_root",
 				Selection: selection, CreatedAt: at, FinishedAt: at, UpdatedAt: at,
+				MessageMark: run.UnknownMessageMark,
 			},
 		},
 	}
