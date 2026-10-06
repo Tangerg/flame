@@ -2,8 +2,6 @@ package persistence
 
 import (
 	"context"
-	json "encoding/json/v2"
-	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
@@ -80,30 +78,8 @@ func (i *InterruptStore) Consume(ctx context.Context, sessionID, rootRunID strin
 	return pending, true, nil
 }
 
-func (i *InterruptStore) ClaimResume(
-	ctx context.Context,
-	sessionID, rootRunID string,
-	answers []runs.InterruptAnswer,
-	claimedAt time.Time,
-) (runs.Pending, bool, error) {
-	rows := make([]resumeAnswerRow, len(answers))
-	for index, answer := range answers {
-		rows[index] = resumeAnswerRow{
-			InterruptItemID: answer.InterruptItemID,
-			MemberID:        answer.MemberID,
-			RequestID:       answer.RequestID,
-			Approved:        answer.Resolution.Approved,
-			Arguments:       answer.Resolution.Arguments,
-			Answers:         answer.Resolution.Answers,
-			Reason:          answer.Resolution.Reason,
-			RememberScope:   string(answer.Resolution.RememberScope),
-		}
-	}
-	encoded, err := json.Marshal(rows)
-	if err != nil {
-		return runs.Pending{}, false, err
-	}
-	record, found, err := i.storage.ClaimResume(ctx, sessionID, rootRunID, encoded, claimedAt)
+func (i *InterruptStore) ClaimResume(ctx context.Context, sessionID, rootRunID string) (runs.Pending, bool, error) {
+	record, found, err := i.storage.ClaimResume(ctx, sessionID, rootRunID)
 	if err != nil || !found {
 		return runs.Pending{}, found, err
 	}
@@ -116,17 +92,6 @@ func (i *InterruptStore) ClaimResume(
 
 func (i *InterruptStore) RequireResumeClaim(ctx context.Context, sessionID, rootRunID string) error {
 	return i.storage.RequireResumeClaim(ctx, sessionID, rootRunID)
-}
-
-type resumeAnswerRow struct {
-	InterruptItemID string     `json:"interruptItemId"`
-	MemberID        string     `json:"memberId"`
-	RequestID       string     `json:"requestId"`
-	Approved        bool       `json:"approved"`
-	Arguments       string     `json:"arguments,omitempty"`
-	Answers         [][]string `json:"answers,omitempty"`
-	Reason          string     `json:"reason,omitempty"`
-	RememberScope   string     `json:"rememberScope,omitempty"`
 }
 
 func (i *InterruptStore) Delete(ctx context.Context, sessionID, rootRunID string) error {

@@ -220,16 +220,10 @@ func TestInterruptStoreDeleteResumeClaimMatchesOnlyTheOwnedResumingRow(t *testin
 		t.Fatalf("open barrier after rejected claim deletion = found:%t err:%v", found, err)
 	}
 
-	answers := []runs.InterruptAnswer{{
-		InterruptItemID: "item_question", MemberID: "member_root", RequestID: "request_root",
-		Resolution: interrupt.Resolution{Answers: [][]string{{"yes"}}},
-	}}
 	claimed, found, err := store.ClaimResume(
 		ctx,
 		pending.SessionID,
 		pending.RootRunID,
-		answers,
-		time.Unix(4, 0).UTC(),
 	)
 	if err != nil || !found || claimed.RootRunID != pending.RootRunID {
 		t.Fatalf("ClaimResume = found:%t claimed:%+v err:%v", found, claimed, err)

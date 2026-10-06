@@ -1,10 +1,8 @@
 package runs
 
 import (
-	"errors"
 	"fmt"
 	"maps"
-	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
@@ -24,9 +22,8 @@ type ResumeClaimCommit struct {
 	expected Pending
 	// items are the Items the hand-off names, read before the claim. They own
 	// what each answered interrupt asked.
-	items     map[string]transcript.Item
-	answers   []InterruptAnswer
-	claimedAt time.Time
+	items   map[string]transcript.Item
+	answers []InterruptAnswer
 }
 
 // NewResumeClaimCommit binds one validated answer set to the exact waiting
@@ -36,11 +33,10 @@ func NewResumeClaimCommit(
 	expected Pending,
 	items map[string]transcript.Item,
 	answers []InterruptAnswer,
-	claimedAt time.Time,
 ) (ResumeClaimCommit, error) {
 	claim := ResumeClaimCommit{
 		commitID: commitID, expected: expected.Clone(), items: maps.Clone(items),
-		answers: cloneInterruptAnswers(answers), claimedAt: claimedAt,
+		answers: cloneInterruptAnswers(answers),
 	}
 	if err := claim.Validate(); err != nil {
 		return ResumeClaimCommit{}, err
@@ -81,9 +77,6 @@ func (r ResumeClaimCommit) Validate() error {
 	if err := r.expected.Validate(); err != nil {
 		return fmt.Errorf("runs: resume claim Pending: %w", err)
 	}
-	if r.claimedAt.IsZero() {
-		return errors.New("runs: resume claim time is required")
-	}
 	interrupts, err := r.expected.ProjectInterrupts(r.items)
 	if err != nil {
 		return fmt.Errorf("runs: resume claim: %w", err)
@@ -118,9 +111,6 @@ func (r ResumeClaimCommit) Pending() Pending { return r.expected.Clone() }
 
 // Answers returns the isolated executor-bound answer set in canonical Pending order.
 func (r ResumeClaimCommit) Answers() []InterruptAnswer { return cloneInterruptAnswers(r.answers) }
-
-// ClaimedAt returns the answer linearization time.
-func (r ResumeClaimCommit) ClaimedAt() time.Time { return r.claimedAt }
 
 // ItemReplacements derives the transcript compare-and-swap write-set the claim
 // settles: each Question Item read before the claim carries its accepted

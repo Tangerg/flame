@@ -116,12 +116,8 @@ func testRecoveryMarksClaimedResumeLost(t *testing.T, openingCommitted bool) {
 	if openErr := interruptStore.Open(ctx, pending); openErr != nil {
 		t.Fatalf("Open Pending: %v", openErr)
 	}
-	answers := []runs.InterruptAnswer{{
-		InterruptItemID: request.ItemID, MemberID: "member_claim", RequestID: "request_claim",
-		Resolution: interrupt.Resolution{Answers: [][]string{{"continue"}}},
-	}}
 	if _, found, claimResumeErr := interruptStore.ClaimResume(
-		ctx, pending.SessionID, pending.RootRunID, answers, createdAt.Add(2*time.Second),
+		ctx, pending.SessionID, pending.RootRunID,
 	); claimResumeErr != nil || !found {
 		t.Fatalf("ClaimResume: found=%t err=%v", found, claimResumeErr)
 	}

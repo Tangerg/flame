@@ -32,7 +32,7 @@ func TestResumeClaimSettlesReviewedToolCallsFromTheirItems(t *testing.T) {
 		Tool: &transcript.ToolInvocation{Name: "write"},
 	})
 	claim, err := NewResumeClaimCommit(
-		testCommitID("run_commit_approval"), pending, items, answers, pending.CreatedAt.Add(time.Second),
+		testCommitID("run_commit_approval"), pending, items, answers,
 	)
 	if err != nil {
 		t.Fatalf("NewResumeClaimCommit: %v", err)
@@ -80,7 +80,7 @@ func TestResumeClaimOwnsPendingAndQuestionAnswers(t *testing.T) {
 	}}
 
 	claim, err := NewResumeClaimCommit(
-		testCommitID("run_commit_question"), pending, items, answers, pending.CreatedAt.Add(time.Second),
+		testCommitID("run_commit_question"), pending, items, answers,
 	)
 	if err != nil {
 		t.Fatalf("NewResumeClaimCommit: %v", err)

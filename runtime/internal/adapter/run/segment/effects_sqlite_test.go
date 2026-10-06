@@ -6,7 +6,6 @@ import (
 	"errors"
 	"reflect"
 	"slices"
-	"strings"
 	"testing"
 	"time"
 
@@ -47,7 +46,6 @@ func mustResumeClaim(
 	commitID runtimeidentity.CommitID,
 	pending runs.Pending,
 	answers []runs.InterruptAnswer,
-	claimedAt time.Time,
 ) runs.ResumeClaimCommit {
 	t.Helper()
 	itemsByID := make(map[string]transcript.Item)
@@ -58,7 +56,7 @@ func mustResumeClaim(
 		}
 		itemsByID[open.ItemID] = item
 	}
-	claim, err := runs.NewResumeClaimCommit(commitID, pending, itemsByID, answers, claimedAt)
+	claim, err := runs.NewResumeClaimCommit(commitID, pending, itemsByID, answers)
 	if err != nil {
 		t.Fatalf("prepare Resume claim: %v", err)
 	}
@@ -71,18 +69,7 @@ func claimResumeForTest(
 	pending runs.Pending,
 ) {
 	t.Helper()
-	answers := make([]runs.InterruptAnswer, len(pending.Bindings))
-	for index, binding := range pending.Bindings {
-		answers[index] = runs.InterruptAnswer{
-			InterruptItemID: binding.InterruptItemID,
-			MemberID:        binding.MemberID,
-			RequestID:       binding.RequestID,
-			Resolution:      interrupt.Resolution{Approved: true},
-		}
-	}
-	_, found, err := store.ClaimResume(
-		t.Context(), pending.SessionID, pending.RootRunID, answers, time.Now().UTC(),
-	)
+	_, found, err := store.ClaimResume(t.Context(), pending.SessionID, pending.RootRunID)
 	if err != nil || !found {
 		t.Fatalf("claim resume for test: found=%t err=%v", found, err)
 	}
@@ -1311,7 +1298,7 @@ func TestClaimResumeAtomicallyRecordsAnswerAndInvalidatesCheckpoint(t *testing.T
 		Resolution:      interrupt.Resolution{Approved: true, Answers: [][]string{{"continue"}}},
 	}}
 	claim := mustResumeClaim(
-		t, transcriptStore, testCommitID("run_commit_resume_claim"), pending, answers, claimedAt,
+		t, transcriptStore, testCommitID("run_commit_resume_claim"), pending, answers,
 	)
 	replacements, err := claim.ItemReplacements()
 	if err != nil {
@@ -1330,7 +1317,7 @@ func TestClaimResumeAtomicallyRecordsAnswerAndInvalidatesCheckpoint(t *testing.T
 	stale := pending
 	stale.ExecutorID = "turn_stale"
 	staleClaim := mustResumeClaim(
-		t, transcriptStore, testCommitID("run_commit_stale_resume_claim"), stale, answers, claimedAt,
+		t, transcriptStore, testCommitID("run_commit_stale_resume_claim"), stale, answers,
 	)
 	if _, claimResumeErr := effects.ClaimResume(ctx, staleClaim); claimResumeErr == nil {
 		t.Fatal("ClaimResume accepted a stale waiting hand-off")
@@ -1364,18 +1351,15 @@ func TestClaimResumeAtomicallyRecordsAnswerAndInvalidatesCheckpoint(t *testing.T
 	if !reflect.DeepEqual(answeredQuestion.Answers, [][]string{{"continue"}}) {
 		t.Fatalf("answered question = %+v", answeredQuestion)
 	}
-	var state, encodedAnswers string
-	var storedClaimedAt int64
+	var state string
 	if err := db.QueryRowContext(ctx,
-		`SELECT state, answers, claimed_at FROM interrupts WHERE root_run_id = ?`,
+		`SELECT state FROM interrupts WHERE root_run_id = ?`,
 		pending.RootRunID,
-	).Scan(&state, &encodedAnswers, &storedClaimedAt); err != nil {
+	).Scan(&state); err != nil {
 		t.Fatalf("read answer claim: %v", err)
 	}
-	if state != "resuming" || storedClaimedAt != claimedAt.UnixNano() ||
-		!strings.Contains(encodedAnswers, `"requestId":"request_claim"`) ||
-		!strings.Contains(encodedAnswers, `"answers":[["continue"]]`) {
-		t.Fatalf("answer claim state=%q answers=%s claimedAt=%d", state, encodedAnswers, storedClaimedAt)
+	if state != "resuming" {
+		t.Fatalf("answer claim state=%q", state)
 	}
 
 	next := pending
@@ -1391,13 +1375,13 @@ func TestClaimResumeAtomicallyRecordsAnswerAndInvalidatesCheckpoint(t *testing.T
 		t.Fatalf("next interrupt = found:%t value:%+v err:%v", found, got, err)
 	}
 	if err := db.QueryRowContext(ctx,
-		`SELECT state, answers, claimed_at FROM interrupts WHERE root_run_id = ?`,
+		`SELECT state FROM interrupts WHERE root_run_id = ?`,
 		next.RootRunID,
-	).Scan(&state, &encodedAnswers, &storedClaimedAt); err != nil {
+	).Scan(&state); err != nil {
 		t.Fatalf("read advanced barrier: %v", err)
 	}
-	if state != "open" || encodedAnswers != "" || storedClaimedAt != 0 {
-		t.Fatalf("advanced barrier state=%q answers=%q claimedAt=%d", state, encodedAnswers, storedClaimedAt)
+	if state != "open" {
+		t.Fatalf("advanced barrier state=%q", state)
 	}
 }
 
@@ -1483,7 +1467,6 @@ func TestClaimResumeAtomicallyPersistsToolApprovalDecision(t *testing.T) {
 		testCommitID("run_commit_approval_claim"),
 		pending,
 		[]runs.InterruptAnswer{answer},
-		pending.CreatedAt.Add(time.Second),
 	)
 	newEffects := func(state RunStore) *Effects {
 		return mustNewEffects(Config{
@@ -1704,7 +1687,6 @@ func newResumeClaimSQLiteFixture(t *testing.T, suffix string) resumeClaimSQLiteF
 		testCommitID("run_commit_resume_claim_"+suffix),
 		pending,
 		answers,
-		pending.CreatedAt.Add(time.Second),
 	)
 	return resumeClaimSQLiteFixture{
 		ctx: ctx, db: database, pending: pending, answers: answers,
@@ -1836,13 +1818,6 @@ func newTerminalCheckpointFixture(
 		ctx,
 		pending.SessionID,
 		pending.RootRunID,
-		[]runs.InterruptAnswer{{
-			InterruptItemID: pending.Bindings[0].InterruptItemID,
-			MemberID:        pending.Bindings[0].MemberID,
-			RequestID:       pending.Bindings[0].RequestID,
-			Resolution:      interrupt.Resolution{Answers: [][]string{{"continue"}}},
-		}},
-		createdAt.Add(2*time.Second),
 	); err != nil || !found {
 		t.Fatalf("seed answer claim: found=%t err=%v", found, err)
 	}

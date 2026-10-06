@@ -437,18 +437,10 @@ func TestApplyTerminalRecoversClaimedResumeAtomically(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("read open interrupt: found=%t err=%v", found, err)
 	}
-	answers := []runsapp.InterruptAnswer{{
-		InterruptItemID: pending.Bindings[0].InterruptItemID,
-		MemberID:        pending.Bindings[0].MemberID,
-		RequestID:       pending.Bindings[0].RequestID,
-		Resolution:      interrupt.Resolution{Answers: [][]string{{"continue"}}},
-	}}
 	if _, claimResumeFound, claimResumeErr := ints.ClaimResume(
 		ctx,
 		pending.SessionID,
 		pending.RootRunID,
-		answers,
-		parkCreatedAt.Add(time.Second),
 	); claimResumeErr != nil || !claimResumeFound {
 		t.Fatalf("ClaimResume: found=%t err=%v", claimResumeFound, claimResumeErr)
 	}

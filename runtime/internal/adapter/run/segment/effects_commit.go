@@ -259,7 +259,7 @@ func (e *Effects) loadResumeCheckpoint(
 func (e *Effects) consumeResumePending(ctx context.Context, claim runs.ResumeClaimCommit) error {
 	pending := claim.Pending()
 	consumed, found, err := e.resumeClaims.ClaimResume(
-		ctx, pending.SessionID, pending.RootRunID, claim.Answers(), claim.ClaimedAt(),
+		ctx, pending.SessionID, pending.RootRunID,
 	)
 	if err != nil {
 		return fmt.Errorf("segment: consume resume Pending: %w", err)

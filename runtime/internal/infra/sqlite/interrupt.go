@@ -3,7 +3,6 @@ package sqlite
 import (
 	"context"
 	"database/sql"
-	"encoding/json/jsontext"
 	"errors"
 	"fmt"
 	"slices"
@@ -190,7 +189,7 @@ func (i *InterruptStore) Open(ctx context.Context, p InterruptRecord) error {
 		   continuations = excluded.continuations,
 		   interrupt_bindings = excluded.interrupt_bindings,
 		   created_at = excluded.created_at,
-		   state = ?, answers = '', claimed_at = 0
+		   state = ?
 		 WHERE interrupts.state = ?
 		   AND interrupts.session_id = excluded.session_id
 		   AND interrupts.executor_id = excluded.executor_id
@@ -377,25 +376,17 @@ func (i *InterruptStore) Consume(ctx context.Context, sessionID, runID string) (
 func (i *InterruptStore) ClaimResume(
 	ctx context.Context,
 	sessionID, runID string,
-	answers jsontext.Value,
-	claimedAt time.Time,
 ) (InterruptRecord, bool, error) {
 	if err := validatePendingOwner(sessionID, runID); err != nil {
 		return InterruptRecord{}, false, fmt.Errorf("sqlite: claim resume: %w", err)
 	}
-	if len(answers) == 0 || !jsontext.Value(answers).IsValid() {
-		return InterruptRecord{}, false, errors.New("sqlite: claim resume answers must be valid JSON")
-	}
-	if claimedAt.IsZero() {
-		return InterruptRecord{}, false, errors.New("sqlite: claim resume time is required")
-	}
 	row := conn(ctx, i.db).QueryRowContext(ctx,
 		`UPDATE interrupts
-		    SET state = ?, answers = ?, claimed_at = ?
+		    SET state = ?
 		  WHERE session_id = ? AND root_run_id = ? AND state = ?
 		  RETURNING `+interruptColumns,
 		interruptStateResuming.databaseValue(),
-		string(answers), claimedAt.UTC().UnixNano(), sessionID, runID,
+		sessionID, runID,
 		interruptStateOpen.databaseValue(),
 	)
 	record, err := scanPending(row)

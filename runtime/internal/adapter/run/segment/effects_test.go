@@ -1007,8 +1007,6 @@ func (f *fakeInterrupts) Delete(_ context.Context, sessionID, runID string) erro
 func (f *fakeInterrupts) ClaimResume(
 	_ context.Context,
 	sessionID, runID string,
-	_ []runs.InterruptAnswer,
-	_ time.Time,
 ) (runs.Pending, bool, error) {
 	if f.pending.SessionID != sessionID || f.pending.RootRunID != runID || f.resumeClaimed {
 		return runs.Pending{}, false, nil

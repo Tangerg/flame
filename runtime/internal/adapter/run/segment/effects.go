@@ -61,12 +61,7 @@ type InterruptStore interface {
 // nonrecoverable answer claim. It is separate from ordinary barrier mutation so
 // callers that never resume a Run do not acquire that lifecycle capability.
 type ResumeClaimStore interface {
-	ClaimResume(
-		ctx context.Context,
-		sessionID, rootRunID string,
-		answers []runs.InterruptAnswer,
-		claimedAt time.Time,
-	) (runs.Pending, bool, error)
+	ClaimResume(ctx context.Context, sessionID, rootRunID string) (runs.Pending, bool, error)
 	RequireResumeClaim(ctx context.Context, sessionID, rootRunID string) error
 }
 

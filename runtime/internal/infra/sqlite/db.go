@@ -326,13 +326,7 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			interrupt_bindings TEXT   NOT NULL,
 			created_at         INTEGER NOT NULL,
 			state              TEXT    NOT NULL DEFAULT '%[1]s',
-			answers            TEXT    NOT NULL DEFAULT '',
-			claimed_at         INTEGER NOT NULL DEFAULT 0,
-			CHECK (state IN ('%[1]s', '%[2]s')),
-			CHECK (
-				(state = '%[1]s' AND answers = '' AND claimed_at = 0) OR
-				(state = '%[2]s' AND answers != '' AND claimed_at > 0)
-			)
+			CHECK (state IN ('%[1]s', '%[2]s'))
 		)`,
 			interruptStateOpen.databaseValue(),
 			interruptStateResuming.databaseValue(),

@@ -1094,13 +1094,7 @@ func (inertRuntimeStores) GetInterrupt(context.Context, string) (runs.Pending, b
 	return runs.Pending{}, false, nil
 }
 
-func (inertRuntimeStores) ClaimResume(
-	context.Context,
-	string,
-	string,
-	[]runs.InterruptAnswer,
-	time.Time,
-) (runs.Pending, bool, error) {
+func (inertRuntimeStores) ClaimResume(context.Context, string, string) (runs.Pending, bool, error) {
 	return runs.Pending{}, false, nil
 }
 func (inertRuntimeStores) RequireResumeClaim(context.Context, string, string) error { return nil }

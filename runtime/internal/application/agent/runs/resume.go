@@ -81,7 +81,7 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 		}
 	}
 
-	claim, err := NewResumeClaimCommit(newRunCommitID(), pending, itemsByID, answers, c.publications.nowUTC())
+	claim, err := NewResumeClaimCommit(newRunCommitID(), pending, itemsByID, answers)
 	if err != nil {
 		return StartResult{}, fmt.Errorf("runs: prepare resume claim: %w", err)
 	}
