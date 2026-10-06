@@ -80,7 +80,7 @@ func liveCoordinator(t *testing.T, record run.Run) (*Coordinator, *journal) {
 		Runs:     &fakeRunProjection{runs: map[string]run.Run{testRunID: record}},
 	})
 	hub := mustNewJournal(t, testStreamScope(c.epoch, testRunID, testSegmentID), c.retention)
-	c.registry.Open(Record{ID: testRunID, SegmentID: testSegmentID, SessionID: "ses_1", ExecutorID: "turn_1"},
+	c.registry.Open(Record{ID: testRunID, SegmentID: testSegmentID, ExecutorID: "turn_1"},
 		testRunTreeOwner(t, hub), func() error { return nil })
 	return c, hub
 }
@@ -151,7 +151,7 @@ func TestSubscribeDoesNotRetargetAnOldSegmentToARacingResume(t *testing.T) {
 	oldHub := mustNewJournal(t, testStreamScope(coordinator.epoch, testRunID, "segment_old"), coordinator.retention)
 	newHub := mustNewJournal(t, testStreamScope(coordinator.epoch, testRunID, "segment_new"), coordinator.retention)
 	coordinator.registry.Open(
-		Record{ID: testRunID, SegmentID: "segment_old", SessionID: "ses_1", ExecutorID: "executor_old"},
+		Record{ID: testRunID, SegmentID: "segment_old", ExecutorID: "executor_old"},
 		testRunTreeOwner(t, oldHub), func() error { return nil },
 	)
 	newOwner := testRunTreeOwner(t, newHub)
@@ -160,7 +160,7 @@ func TestSubscribeDoesNotRetargetAnOldSegmentToARacingResume(t *testing.T) {
 		go func() {
 			close(started)
 			defer close(opened)
-			coordinator.registry.Open(Record{ID: testRunID, SegmentID: "segment_new", SessionID: "ses_1", ExecutorID: "executor_new"}, newOwner, func() error {
+			coordinator.registry.Open(Record{ID: testRunID, SegmentID: "segment_new", ExecutorID: "executor_new"}, newOwner, func() error {
 				projection.value = runRecord(run.Running, "segment_new", "")
 				return nil
 			})
@@ -352,7 +352,7 @@ func TestSubscribeRefusesACallerThatCouldNotFollowTheRun(t *testing.T) {
 	})
 	hub := mustNewJournal(t, testStreamScope(c.epoch, testRunID, testSegmentID), c.retention)
 	c.registry.Open(Record{
-		ID: testRunID, SegmentID: testSegmentID, SessionID: "ses_1",
+		ID: testRunID, SegmentID: testSegmentID,
 	}, testRunTreeOwner(t, hub), func() error { return nil })
 
 	_, err := c.Subscribe(t.Context(), SubscribeRequest{RunID: testRunID, SegmentID: testSegmentID})

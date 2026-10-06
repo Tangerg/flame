@@ -28,7 +28,7 @@ func (c *Coordinator) Steer(ctx context.Context, cmd SteerCommand) (string, erro
 	if admitErr := c.models.AdmitInput(durable.ModelSelection(), []corechat.Message{message}); admitErr != nil {
 		return "", fmt.Errorf("%w: %w", ErrUnsupportedMedia, admitErr)
 	}
-	itemID, err := c.steering.SubmitSteer(ctx, ExecutorRef{SessionID: rec.SessionID, ExecutorID: rec.ExecutorID}, cmd.Input)
+	itemID, err := c.steering.SubmitSteer(ctx, ExecutorRef{SessionID: durable.SessionID(), ExecutorID: rec.ExecutorID}, cmd.Input)
 	if err != nil {
 		if errors.Is(err, ErrExecutorNotLive) {
 			// Execution ended between resolving the record and delivering: the Run is

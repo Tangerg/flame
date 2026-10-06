@@ -215,7 +215,7 @@ func (c *Coordinator) resolveCancellationOwner(
 			)
 		}
 		return ExecutorRef{
-			SessionID:  live.record.SessionID,
+			SessionID:  root.SessionID(),
 			ExecutorID: live.record.ExecutorID,
 		}, live.owner.executorMemberSnapshot(), nil
 	case rundomain.Waiting:
@@ -329,13 +329,6 @@ func validateCancellationLiveRoot(live liveSegment, root rundomain.Run) error {
 			"runs: cancellation root %q is owned by registry entry %q",
 			root.ID(),
 			live.record.ID,
-		)
-	case live.record.SessionID != root.SessionID():
-		return fmt.Errorf(
-			"runs: cancellation root %q belongs to session %q but its live owner belongs to %q",
-			root.ID(),
-			root.SessionID(),
-			live.record.SessionID,
 		)
 	case live.record.ExecutorID == "":
 		return fmt.Errorf("runs: cancellation root %q live owner has no executor ID", root.ID())

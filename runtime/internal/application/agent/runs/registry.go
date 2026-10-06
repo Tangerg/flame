@@ -9,7 +9,6 @@ import (
 type Record struct {
 	ID           string
 	SegmentID    string
-	SessionID    string
 	ExecutorID   string
 	CancelReason string
 }

@@ -362,7 +362,6 @@ func (s *segmentStartup) activate(requestContext context.Context) (iter.Seq[Even
 	err := s.coordinator.registry.Open(Record{
 		ID:         spec.RunID,
 		SegmentID:  spec.SegmentID,
-		SessionID:  spec.SessionID,
 		ExecutorID: spec.ExecutorID,
 	}, s.treeOwner, func() error {
 		var err error
@@ -596,10 +595,11 @@ func (c *Coordinator) SubscribeSnapshot(ctx context.Context, req SubscribeReques
 	}
 	// Waiting for publication may cross a park/finish/resume boundary. The
 	// snapshot must not describe a successor Segment while tailing the old one.
-	if _, _, err := c.addressLiveSegment(ctx, req.RunID, req.SegmentID); err != nil {
+	_, durable, err := c.addressLiveSegment(ctx, req.RunID, req.SegmentID)
+	if err != nil {
 		return Subscription{}, err
 	}
-	if err := read(ctx, live.record.SessionID); err != nil {
+	if err := read(ctx, durable.SessionID()); err != nil {
 		return Subscription{}, err
 	}
 	return subscribeLiveSegment(ctx, live, req)

@@ -136,7 +136,7 @@ func TestCancellationRejectsLiveOwnerFactDrift(t *testing.T) {
 	spec := testSegment()
 	root := runForSegment(spec)
 	base := liveSegment{record: Record{
-		ID: spec.RunID, SegmentID: spec.SegmentID, SessionID: spec.SessionID, ExecutorID: spec.ExecutorID,
+		ID: spec.RunID, SegmentID: spec.SegmentID, ExecutorID: spec.ExecutorID,
 	}}
 	if err := validateCancellationLiveRoot(base, root); err != nil {
 		t.Fatalf("coherent live owner: %v", err)

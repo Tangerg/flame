@@ -8,7 +8,7 @@ import (
 func TestRegistryRemovesCompletedRun(t *testing.T) {
 	var r registry
 	owner := testRunTreeOwner(t, nil)
-	r.Open(Record{ID: "run_1", SessionID: "ses_1"}, owner, func() error { return nil })
+	r.Open(Record{ID: "run_1"}, owner, func() error { return nil })
 
 	e, ok := r.Get("run_1")
 	if !ok || e.owner != owner {
@@ -45,7 +45,7 @@ func TestRegistryOldSegmentCannotRemoveItsReplacement(t *testing.T) {
 
 func TestRegistryCancelReason(t *testing.T) {
 	var r registry
-	r.Open(Record{ID: "run_1", SessionID: "ses_1"}, nil, func() error { return nil })
+	r.Open(Record{ID: "run_1"}, nil, func() error { return nil })
 	e, ok := r.MarkCancel("run_1", "user asked")
 	if !ok {
 		t.Fatal("mark cancel must find the run")
