@@ -153,7 +153,7 @@ func TestRunJSONIsOneFinalResult(t *testing.T) {
 		t.Fatalf("result JSON spans multiple records:\n%s", out)
 	}
 	result := decodeResult(t, out)
-	if result.Type != "result" || result.Status != "completed" || result.RunID == "" || result.SessionID == "" {
+	if result.Type != "result" || result.Status != "finished" || result.RunID == "" || result.SessionID == "" {
 		t.Fatalf("result identity = %+v", result)
 	}
 	if result.Outcome.Status != "completed" || !strings.Contains(result.Text, "Replaced the sleep") {
@@ -388,7 +388,7 @@ func TestRunQuestionNamesTheResumableSession(t *testing.T) {
 		t.Fatalf("question error = %v", err)
 	}
 	result := decodeResult(t, out)
-	if result.Status != "interrupted" || len(result.Interactions) != 1 || result.Interactions[0].Kind != "question" || result.Interactions[0].Title != "Choose a strategy" {
+	if result.Status != "waiting" || len(result.Interactions) != 1 || result.Interactions[0].Kind != "question" || result.Interactions[0].Title != "Choose a strategy" {
 		t.Fatalf("interrupted result = %+v", result)
 	}
 	snapshot, getErr := rt.GetSession(t.Context(), id)
@@ -424,7 +424,7 @@ func TestRunReturnsAnErrorForNonCompletedOutcomes(t *testing.T) {
 				t.Fatalf("run error = %v, want %q", err, test.want)
 			}
 			result := decodeResult(t, out)
-			if result.Type != "result" || result.Status != string(test.outcome.Status) || result.Outcome.Status != string(test.outcome.Status) {
+			if result.Type != "result" || result.Status != "finished" || result.Outcome.Status != string(test.outcome.Status) {
 				t.Fatalf("result = %+v", result)
 			}
 			snapshot, getErr := runtime.GetSession(t.Context(), id)

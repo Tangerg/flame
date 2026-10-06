@@ -347,7 +347,7 @@ func TestResultJSONRetainsLatestRootProgressUsageBeforeSettlement(t *testing.T) 
 	if err := json.Unmarshal(output.Bytes(), &result); err != nil {
 		t.Fatal(err)
 	}
-	if result.Status != "incomplete" || result.Usage == nil || result.Usage.InputTokens != 33 || result.Usage.OutputTokens != 5 {
+	if result.Status != "running" || result.Usage == nil || result.Usage.InputTokens != 33 || result.Usage.OutputTokens != 5 {
 		t.Fatalf("incomplete result = %+v", result)
 	}
 }
@@ -399,7 +399,7 @@ func TestResultJSONKeepsPartialAssistantOutputInEventOrder(t *testing.T) {
 	if err := json.Unmarshal(output.Bytes(), &result); err != nil {
 		t.Fatal(err)
 	}
-	if result["status"] != "incomplete" || result["text"] != "first second" {
+	if result["status"] != "running" || result["text"] != "first second" {
 		t.Fatalf("partial result = %s", output.String())
 	}
 }
@@ -538,7 +538,7 @@ func TestResultJSONClearsPriorInterruptWhenANewSegmentStarts(t *testing.T) {
 	if err := json.Unmarshal(output.Bytes(), &result); err != nil {
 		t.Fatal(err)
 	}
-	if result["status"] != "incomplete" || result["interactions"] != nil {
+	if result["status"] != "running" || result["interactions"] != nil {
 		t.Fatalf("resumed result = %+v", result)
 	}
 }
@@ -561,7 +561,7 @@ func TestResultJSONFoldsFinalAssistantProjection(t *testing.T) {
 	if err := json.Unmarshal(output.Bytes(), &result); err != nil {
 		t.Fatal(err)
 	}
-	if result["status"] != "completed" || result["text"] != "hello world" || result["runId"] != "run_1" {
+	if result["status"] != "finished" || result["text"] != "hello world" || result["runId"] != "run_1" {
 		t.Fatalf("result = %+v", result)
 	}
 }
@@ -629,7 +629,7 @@ func TestRenderersPreserveChildRunIdentityWithoutSettlingTheRoot(t *testing.T) {
 	if err := json.Unmarshal(resultOutput.Bytes(), &result); err != nil {
 		t.Fatal(err)
 	}
-	if result.RunID != "run_1" || result.Status != "completed" || result.Text != "root answer" {
+	if result.RunID != "run_1" || result.Status != "finished" || result.Text != "root answer" {
 		t.Fatalf("tree result = %+v", result)
 	}
 }

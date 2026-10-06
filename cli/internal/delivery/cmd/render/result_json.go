@@ -121,7 +121,7 @@ func (r *ResultJSON) Begin(run conversation.Run, options prompt.RunOptions) erro
 	}
 	r.started = true
 	r.frame = resultFrame{
-		Type: "result", Status: "incomplete", RunID: run.ID,
+		Type: "result", Status: string(protocol.RunStatusRunning), RunID: run.ID,
 		SessionID: run.SessionID, Options: encodeRunOptions(options),
 	}
 	return nil
@@ -186,17 +186,17 @@ func (r *ResultJSON) Reconcile(snapshot conversation.SessionSnapshot) error {
 	}
 	r.frame.RunID = targetRunID
 	r.frame.SessionID = snapshot.Session.ID
-	r.frame.Status = "incomplete"
+	r.frame.Status = string(protocol.RunStatusRunning)
 	r.frame.Interactions = nil
 	r.frame.Outcome = nil
 	r.frame.Usage = nil
 	switch target.Status {
 	case protocol.RunStatusWaiting:
-		r.frame.Status = "interrupted"
+		r.frame.Status = string(protocol.RunStatusWaiting)
 		r.frame.Interactions = encodeInteractions(snapshot.Interactions)
 		r.frame.Usage = encodeUsage(target.Usage)
 	case protocol.RunStatusFinished:
-		r.frame.Status = string(target.Outcome.Status)
+		r.frame.Status = string(protocol.RunStatusFinished)
 		finished := encodeFinishedFrame(conversation.RunFinished{Outcome: target.Outcome, Usage: target.Usage})
 		r.frame.Outcome, r.frame.Usage = finished.Outcome, finished.Usage
 	case protocol.RunStatusRunning:
@@ -212,10 +212,10 @@ func (r *ResultJSON) fold(envelope conversation.RunEvent) {
 		}
 		if !r.started {
 			r.started = true
-			r.frame = resultFrame{Type: "result", Status: "incomplete"}
+			r.frame = resultFrame{Type: "result", Status: string(protocol.RunStatusRunning)}
 		}
 		r.frame.RunID, r.frame.SessionID = event.Run.ID, event.Run.SessionID
-		r.frame.Status = "incomplete"
+		r.frame.Status = string(protocol.RunStatusRunning)
 		r.frame.Interactions = nil
 		if r.frame.RunID == "" {
 			r.frame.RunID = envelope.RunID
@@ -241,17 +241,17 @@ func (r *ResultJSON) fold(envelope conversation.RunEvent) {
 	case conversation.RunInterrupted:
 		r.frame.Interactions = append(r.frame.Interactions, encodeInteractions(event.Interactions)...)
 		if r.scope.isRoot(envelope.RunID) {
-			r.frame.Status = "interrupted"
+			r.frame.Status = string(protocol.RunStatusWaiting)
 			r.frame.Usage = encodeUsage(event.Usage)
 		}
 	case conversation.RunSuspended:
 		if r.scope.isRoot(envelope.RunID) {
-			r.frame.Status = "interrupted"
+			r.frame.Status = string(protocol.RunStatusWaiting)
 			r.frame.Usage = encodeUsage(event.Usage)
 		}
 	case conversation.RunFinished:
 		if r.scope.isRoot(envelope.RunID) {
-			r.frame.Status = string(event.Outcome.Status)
+			r.frame.Status = string(protocol.RunStatusFinished)
 			r.frame.Interactions = nil
 			finished := encodeFinishedFrame(event)
 			r.frame.Outcome, r.frame.Usage = finished.Outcome, finished.Usage
