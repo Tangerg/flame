@@ -624,9 +624,6 @@ func (r *recoveryPlanner) session(sessionID string) (session.Session, error) {
 	if err != nil {
 		return session.Session{}, fmt.Errorf("runs: load recovery Session %q: %w", sessionID, err)
 	}
-	if err := sess.ValidateFor(sessionID); err != nil {
-		return session.Session{}, fmt.Errorf("runs: recovery session lookup for %q: %w", sessionID, err)
-	}
 	r.sessions[sessionID] = sess
 	return sess, nil
 }

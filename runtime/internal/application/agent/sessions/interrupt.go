@@ -122,9 +122,6 @@ func (c *Coordinator) terminalizePendingRun(
 	if err != nil {
 		return rundomain.Run{}, err
 	}
-	if err := snapshot.Session.ValidateFor(sessionID); err != nil {
-		return rundomain.Run{}, fmt.Errorf("sessions: terminal snapshot identity: %w", err)
-	}
 	messages, err := runs.TerminalConversation(ctx, c.runs, sessionID, pending.RootRunID, snapshot.Messages, outcome, detail)
 	if err != nil {
 		return rundomain.Run{}, err

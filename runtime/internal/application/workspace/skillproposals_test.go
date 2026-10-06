@@ -15,7 +15,6 @@ type fakeSkillProposals struct {
 	approved   []skills.ProposalRef
 	rejected   []skills.ProposalRef
 	submitErr  error
-	submitRef  *skills.ProposalRef
 	approveErr error
 	rejectErr  error
 }
@@ -25,9 +24,6 @@ func (f *fakeSkillProposals) SubmitProposal(_ context.Context, projectRoot strin
 	f.proposal = proposal
 	if f.submitErr != nil {
 		return skills.ProposalRef{}, nil, f.submitErr
-	}
-	if f.submitRef != nil {
-		return *f.submitRef, []string{"/repo/.flame/skills/_proposals/skill-name/SKILL.md"}, nil
 	}
 	return skills.NewProposalRef(proposal.Scope, proposal.Name, []byte(proposal.Instructions)), []string{"/repo/.flame/skills/_proposals/skill-name/SKILL.md"}, nil
 }
@@ -157,21 +153,6 @@ func TestSkillProposalMutationsValidateIdentity(t *testing.T) {
 	}
 	if unreached.root != "" {
 		t.Fatal("invalid proposal reached store")
-	}
-
-	mismatch := skills.NewProposalRef(skills.ScopeUser, proposal.Name, []byte("proposal"))
-	invalidAck := skills.ProposalRef{Scope: proposal.Scope, Name: proposal.Name, Revision: "invalid"}
-	for name, returned := range map[string]skills.ProposalRef{
-		"mismatch": mismatch,
-		"invalid":  invalidAck,
-	} {
-		t.Run(name+" acknowledgement", func(t *testing.T) {
-			fake := &fakeSkillProposals{submitRef: &returned}
-			c := newSkills(t, newScope(t, "", "", testPaths{}), &fakeSkillCatalog{}, nil, fake, nil, nil)
-			if _, err := c.SubmitProposal(t.Context(), "/repo", proposal); err == nil {
-				t.Fatal("SubmitProposal accepted invalid store acknowledgement")
-			}
-		})
 	}
 
 	invalid := skills.ProposalRef{Scope: skills.ScopeProject, Name: "review", Revision: "invalid"}

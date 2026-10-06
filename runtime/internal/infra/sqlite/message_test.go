@@ -10,6 +10,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/scope/core/chat"
+	history "github.com/Tangerg/scope/core/history"
 	"github.com/Tangerg/scope/core/history/storetest"
 )
 
@@ -133,15 +134,18 @@ func TestMessageStoreReadRejectsMalformedRows(t *testing.T) {
 	if _, err := store.Write(t.Context(), "conv", chat.NewUserMessage(chat.NewTextPart("valid"))); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := db.ExecContext(t.Context(),
-		`INSERT INTO messages(conversation_id, message) VALUES (?, ?)`,
-		"conv", `{"role":"user","parts":"not-an-array"}`,
-	); err != nil {
-		t.Fatal(err)
-	}
-
-	if messages, err := store.Read(t.Context(), "conv"); err == nil {
-		t.Fatalf("read silently returned %d messages after skipping a malformed durable row", len(messages))
+	for conversation, row := range map[string]string{
+		"conv":    `{"role":"user","parts":"not-an-array"}`,
+		"invalid": `{"role":"bogus","parts":[{"type":"text","text":"decodes but is not a message"}]}`,
+	} {
+		if _, err := db.ExecContext(t.Context(),
+			`INSERT INTO messages(conversation_id, message) VALUES (?, ?)`, conversation, row,
+		); err != nil {
+			t.Fatal(err)
+		}
+		if messages, err := store.Read(t.Context(), history.ConversationID(conversation)); err == nil {
+			t.Fatalf("%s: read returned %d messages over an undecodable durable row", conversation, len(messages))
+		}
 	}
 }
 

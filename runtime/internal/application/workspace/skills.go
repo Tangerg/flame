@@ -186,15 +186,6 @@ func (s *Skills) SubmitProposal(ctx context.Context, cwd string, proposal skills
 	if err != nil {
 		return ref, err
 	}
-	if err := ref.Validate(); err != nil {
-		return skills.ProposalRef{}, fmt.Errorf("workspace: submitted proposal reference is invalid: %w", err)
-	}
-	if ref.Scope != proposal.Scope || ref.Name != proposal.Name {
-		return skills.ProposalRef{}, fmt.Errorf(
-			"workspace: submitted proposal reference %s/%s does not acknowledge %s/%s",
-			ref.Scope, ref.Name, proposal.Scope, proposal.Name,
-		)
-	}
 	return ref, nil
 }
 

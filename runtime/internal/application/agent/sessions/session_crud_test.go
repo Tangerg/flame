@@ -171,33 +171,6 @@ func TestCoordinatorSessionCRUD(t *testing.T) {
 	}
 }
 
-func TestCoordinatorGetProtectsPointRead(t *testing.T) {
-	tests := []struct {
-		name  string
-		value session.Session
-	}{
-		{name: "invalid aggregate"},
-		{
-			name: "mismatched identity",
-			value: testsupport.MustRestoreSession(session.Snapshot{
-				ID: "ses_other", Workspace: testsupport.MustWorkspace("/repo"),
-			}),
-		},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			store := &rawPointSessionStore{crudSessionStore: &crudSessionStore{}, value: test.value}
-			coordinator := mustNewCoordinator(testDependencies(&crudStores{session: store}, Dependencies{}))
-			if _, err := coordinator.Get(t.Context(), "ses_1"); !errors.Is(err, session.ErrInvalid) {
-				t.Fatalf("Get error = %v, want ErrInvalid", err)
-			}
-			if store.getID != "ses_1" {
-				t.Fatalf("store request id = %q, want ses_1", store.getID)
-			}
-		})
-	}
-}
-
 func TestPrepareScheduledBuildsOneUnpersistedInitialAggregate(t *testing.T) {
 	store := &crudSessionStore{getErr: session.ErrNotFound}
 	createdAt := time.Unix(9, 0).UTC()

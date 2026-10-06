@@ -48,16 +48,9 @@ func (c *Coordinator) List(ctx context.Context) ([]session.Session, error) {
 	return c.sessions.List(ctx)
 }
 
-// Get returns one valid saved Session whose identity exactly matches id.
+// Get returns the saved Session with id.
 func (c *Coordinator) Get(ctx context.Context, id string) (session.Session, error) {
-	value, err := c.sessions.Get(ctx, id)
-	if err != nil {
-		return session.Session{}, err
-	}
-	if err := value.ValidateFor(id); err != nil {
-		return session.Session{}, fmt.Errorf("sessions: read session %q: %w", id, err)
-	}
-	return value, nil
+	return c.sessions.Get(ctx, id)
 }
 
 // InspectWorkspace resolves the live filesystem projection of an admitted cwd.

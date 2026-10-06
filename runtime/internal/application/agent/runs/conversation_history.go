@@ -76,9 +76,6 @@ func (m *ConversationHistory) Read(ctx context.Context, sessionID string) ([]cha
 	if err != nil {
 		return nil, fmt.Errorf("runs: read conversation for Session %q: %w", sessionID, err)
 	}
-	if err := conversation.ValidateMessages(messages); err != nil {
-		return nil, fmt.Errorf("runs: validate conversation for Session %q: %w", sessionID, err)
-	}
 	return messages, nil
 }
 
