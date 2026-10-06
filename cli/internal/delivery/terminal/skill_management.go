@@ -137,9 +137,6 @@ func skillProposalsDocument(proposals []workspace.SkillProposal) readerDocument 
 	sections := make([]ToolSection, 0, len(proposals)*2)
 	for _, proposal := range proposals {
 		provenance := string(proposal.Origin)
-		if provenance == "" {
-			provenance = "unspecified origin"
-		}
 		if proposal.Revises {
 			provenance += " · revises existing skill"
 		}
