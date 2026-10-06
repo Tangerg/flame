@@ -197,7 +197,7 @@ func TestMemoryIdempotencyStoreKeepsAbandonedClaimReserved(t *testing.T) {
 	if _, _, claimErr := store.Claim(t.Context(), record.Key, "second"); !errors.Is(claimErr, idempotency.ErrKeyConflict) {
 		t.Fatalf("reuse aged pending claim = %v, want ErrKeyConflict", claimErr)
 	}
-	record.Payload = []byte(`{"version":1}`)
+	record.Payload = []byte(`{"problem":null}`)
 	if completeErr := store.Complete(t.Context(), record); completeErr != nil {
 		t.Fatalf("complete aged pending claim: %v", completeErr)
 	}
@@ -222,7 +222,7 @@ func TestMemoryIdempotencyStorePrunesExpiredResultsBeforeNewClaim(t *testing.T) 
 	if err != nil || !claimed {
 		t.Fatalf("claim expired fixture = (%+v, %v, %v)", expired, claimed, err)
 	}
-	expired.Payload = []byte(`{"version":1}`)
+	expired.Payload = []byte(`{"problem":null}`)
 	if err := store.Complete(t.Context(), expired); err != nil {
 		t.Fatalf("complete expired fixture: %v", err)
 	}

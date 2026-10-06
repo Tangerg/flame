@@ -47,10 +47,6 @@ var ErrCursorTooLarge = errors.New("pagination: cursor exceeds maximum size")
 // than start the collection over.
 var ErrInvalidLimit = errors.New("pagination: page limit is invalid")
 
-// formatVersion changes when the token layout does, so a cursor in flight across
-// an upgrade is rejected instead of decoded as something else.
-const formatVersion = 2
-
 // Page is one keyset page: the rows, and the token that continues after them.
 // An empty NextCursor means the page reached the end of the collection — the
 // caller returns it as-is and never truncates a page silently.
@@ -60,9 +56,10 @@ type Page[T any] struct {
 }
 
 // token is the decoded cursor. Namespace and Filters identify the query; Key is
-// the sort position the previous page ended at.
+// the sort position the previous page ended at. Decoding is strict, so a token
+// of another layout is refused; a query whose key encoding changes takes a new
+// namespace rather than a layout number.
 type token struct {
-	Version   int      `json:"v"`
 	Namespace string   `json:"n"`
 	Filters   []string `json:"f,omitempty"`
 	Key       []string `json:"k"`
@@ -83,8 +80,8 @@ func Encode(namespace string, filters []string, key []string) (string, error) {
 		return "", ErrCursorTooLarge
 	}
 	encoded, err := opaquetoken.Encode(token{
-		Version: formatVersion, Namespace: namespace,
-		Filters: slices.Clone(filters), Key: slices.Clone(key),
+		Namespace: namespace,
+		Filters:   slices.Clone(filters), Key: slices.Clone(key),
 	}, runtimeidentity.MaximumCursorCharacters)
 	if err != nil {
 		if errors.Is(err, opaquetoken.ErrTooLarge) {
@@ -112,7 +109,7 @@ func Decode(cursor, namespace string, filters []string) ([]string, error) {
 	if err := opaquetoken.Decode(cursor, runtimeidentity.MaximumCursorCharacters, &decoded); err != nil {
 		return nil, ErrInvalidCursor
 	}
-	if decoded.Version != formatVersion || decoded.Namespace != namespace ||
+	if decoded.Namespace != namespace ||
 		!slices.Equal(decoded.Filters, filters) || len(decoded.Key) == 0 {
 		return nil, ErrInvalidCursor
 	}

@@ -26,7 +26,6 @@ import (
 const (
 	maxIdempotencyKeyBytes       = 255
 	idempotencyStoreWriteTimeout = 5 * time.Second
-	storedOutcomeVersion         = 1
 )
 
 type replayStore struct {
@@ -38,8 +37,10 @@ type replayStore struct {
 	pending   map[string]idempotency.Record
 }
 
+// storedOutcome carries no layout version. It decodes strictly against the
+// method's current result type, so a record this build cannot read is refused
+// as a stored-outcome failure rather than misread.
 type storedOutcome struct {
-	Version int                   `json:"version"`
 	Value   jsontext.Value        `json:"value,omitzero"`
 	Problem *protocol.ProblemData `json:"problem,omitzero"`
 }
@@ -131,9 +132,6 @@ func (r *replayStore) replay(ctx context.Context, method *Method, payload []byte
 	if err := decodeStoredJSON(payload, &stored); err != nil {
 		return failed(ProjectError(fmt.Errorf("idempotency: decode stored outcome: %w", err)))
 	}
-	if stored.Version != storedOutcomeVersion {
-		return failed(ProjectError(fmt.Errorf("idempotency: unsupported stored outcome version %d", stored.Version)))
-	}
 	if (len(stored.Value) == 0) == (stored.Problem == nil) {
 		return failed(ProjectError(errors.New("idempotency: stored outcome must contain exactly one value or problem")))
 	}
@@ -173,7 +171,7 @@ func (r *replayStore) replay(ctx context.Context, method *Method, payload []byte
 }
 
 func encodeStoredOutcome(result Result) ([]byte, error) {
-	stored := storedOutcome{Version: storedOutcomeVersion}
+	var stored storedOutcome
 	if result.Failure != nil {
 		problem := result.Failure.Problem()
 		stored.Problem = &problem

@@ -66,7 +66,7 @@ func TestDamagedCursorIsRejected(t *testing.T) {
 	for name, cursor := range map[string]string{
 		"not base64":  "!!!!",
 		"not json":    "aGVsbG8",
-		"empty key":   mustRawToken(t, token{Version: formatVersion, Namespace: "items", Filters: []string{"ses_1"}}),
+		"empty key":   mustRawToken(t, token{Namespace: "items", Filters: []string{"ses_1"}}),
 		"wrong shape": "eyJ2IjoxfQ",
 	} {
 		t.Run(name, func(t *testing.T) {

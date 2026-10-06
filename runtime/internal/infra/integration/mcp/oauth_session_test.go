@@ -296,7 +296,7 @@ func TestRestoreOAuthHandlerDoesNotDrainRejectedResponse(t *testing.T) {
 
 func TestRestoreOAuthHandlerRejectsMalformedPayload(t *testing.T) {
 	target := mcpserver.OAuthTarget{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), URL: "https://mcp.example/tools"}
-	store := &memoryOAuthStore{target: target.Fingerprint(), payload: []byte(`{"version":1,"unknown":true}`)}
+	store := &memoryOAuthStore{target: target.Fingerprint(), payload: []byte(`{"unknown":true}`)}
 	var handler auth.OAuthHandler
 	handler, err := restoreOAuthHandler(t.Context(), t.Context(), store, target)
 	if handler != nil || err == nil || !strings.Contains(err.Error(), "unknown object member name") {

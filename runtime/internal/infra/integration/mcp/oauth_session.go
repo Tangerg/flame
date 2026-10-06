@@ -29,14 +29,14 @@ type OAuthSessionStore interface {
 	RemoveOAuthSession(ctx context.Context, server mcpserver.ID, binding string) error
 }
 
-const oauthSessionVersion = 1
-
 var errStoredOAuthRejected = errors.New("mcp oauth: stored session was rejected; sign in again")
 
+// storedOAuthSession carries no layout version: it decodes strictly and
+// validates, so a session this build cannot read asks the user to sign in
+// again instead of being misread.
 type storedOAuthSession struct {
-	Version int               `json:"version"`
-	Config  storedOAuthConfig `json:"config"`
-	Token   storedOAuthToken  `json:"token"`
+	Config storedOAuthConfig `json:"config"`
+	Token  storedOAuthToken  `json:"token"`
 }
 
 type storedOAuthConfig struct {
@@ -61,7 +61,6 @@ func encodeOAuthSession(cfg *oauth2.Config, token *oauth2.Token) ([]byte, error)
 		return nil, errors.New("mcp oauth: config and token are required")
 	}
 	session := storedOAuthSession{
-		Version: oauthSessionVersion,
 		Config: storedOAuthConfig{
 			ClientID:     cfg.ClientID,
 			ClientSecret: cfg.ClientSecret,
@@ -115,9 +114,6 @@ func decodeOAuthSession(payload []byte) (*oauth2.Config, *oauth2.Token, error) {
 }
 
 func (s storedOAuthSession) validate() error {
-	if s.Version != oauthSessionVersion {
-		return fmt.Errorf("mcp oauth: unsupported session version %d", s.Version)
-	}
 	if err := s.Config.validate(); err != nil {
 		return err
 	}
