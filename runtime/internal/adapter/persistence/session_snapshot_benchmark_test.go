@@ -93,9 +93,6 @@ func BenchmarkSessionMaterialSnapshot(b *testing.B) {
 				if len(snapshot.Items) != count {
 					b.Fatalf("items = %d, want %d", len(snapshot.Items), count)
 				}
-				if err := snapshot.Validate(); err != nil {
-					b.Fatal(err)
-				}
 			}
 		})
 	}

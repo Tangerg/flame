@@ -72,50 +72,11 @@ func (e *TrajectoryExporter) Export(ctx context.Context, sessionID string) (Traj
 		return TrajectoryExport{}, err
 	}
 	collectedAt := time.Now().UTC()
-	if err := evidence.Snapshot.Session.ValidateFor(sessionID); err != nil {
-		return TrajectoryExport{}, fmt.Errorf("sessions: trajectory Session identity: %w", err)
-	}
-	if err := evidence.Validate(); err != nil {
-		return TrajectoryExport{}, err
-	}
 	view, err := e.coordinator.view(evidence.Snapshot.Session, ActivityIdle)
 	if err != nil {
 		return TrajectoryExport{}, err
 	}
 	return TrajectoryExport{Session: view, Evidence: evidence, CollectedAt: collectedAt}, nil
-}
-
-func (e TrajectoryEvidence) Validate() error {
-	if err := e.Snapshot.Validate(); err != nil {
-		return err
-	}
-	runIDs := make(map[string]struct{}, len(e.Snapshot.Runs))
-	for _, run := range e.Snapshot.Runs {
-		runIDs[run.ID()] = struct{}{}
-	}
-	callIDs := make(map[string]struct{}, len(e.ModelInvocations))
-	for _, recorded := range e.ModelInvocations {
-		if _, found := runIDs[recorded.RunID]; !found {
-			return fmt.Errorf("sessions: trajectory model invocation names unknown Run %q", recorded.RunID)
-		}
-		invocation := recorded.Invocation
-		if err := invocation.Validate(); err != nil {
-			return fmt.Errorf("sessions: trajectory model invocation: %w", err)
-		}
-		if invocation.State == runs.ModelInvocationStarted {
-			return errors.New("sessions: terminal trajectory contains an unsettled model invocation")
-		}
-		if _, found := callIDs[invocation.CallID]; found {
-			return fmt.Errorf("sessions: duplicate trajectory model invocation %q", invocation.CallID)
-		}
-		callIDs[invocation.CallID] = struct{}{}
-	}
-	for _, entry := range e.Feedback {
-		if err := entry.Validate(); err != nil {
-			return fmt.Errorf("sessions: trajectory feedback: %w", err)
-		}
-	}
-	return e.validateToolAttempts(runIDs)
 }
 
 func (e TrajectoryEvidence) validateToolAttempts(runIDs map[string]struct{}) error {

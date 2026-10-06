@@ -36,12 +36,6 @@ func (c *Coordinator) ExportSession(ctx context.Context, sessionID string) (Expo
 	if err != nil {
 		return ExportResult{}, err
 	}
-	if validateErr := snapshot.Session.ValidateFor(sessionID); validateErr != nil {
-		return ExportResult{}, fmt.Errorf("sessions: export snapshot identity: %w", validateErr)
-	}
-	if validateErr := snapshot.Validate(); validateErr != nil {
-		return ExportResult{}, validateErr
-	}
 	portable, err := snapshot.PortableSnapshot()
 	if err != nil {
 		return ExportResult{}, fmt.Errorf("sessions: prepare portable snapshot: %w", err)

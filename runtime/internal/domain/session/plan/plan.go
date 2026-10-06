@@ -124,14 +124,6 @@ func CurrentOf(state State) (Current, error) {
 	return Current{state: &state}, nil
 }
 
-// Validate verifies the optional aggregate and its committed State.
-func (c Current) Validate() error {
-	if c.state == nil {
-		return nil
-	}
-	return c.state.Validate()
-}
-
 // State returns the immutable committed State and whether one has been written.
 func (c Current) State() (State, bool) {
 	return optional.Present(c.state)
@@ -158,9 +150,6 @@ func (c Current) Version() Version {
 // Replace decides one committed whole-list replacement. An unwritten Current
 // receives the first revision; an existing State advances once.
 func (c Current) Replace(steps []Step, updatedAt time.Time) (State, error) {
-	if err := c.Validate(); err != nil {
-		return State{}, fmt.Errorf("%w: current value: %v", ErrInvalid, err)
-	}
 	if c.state == nil {
 		return create(steps, updatedAt)
 	}
@@ -171,8 +160,8 @@ func (c Current) Replace(steps []Step, updatedAt time.Time) (State, error) {
 // value; the aggregate owns revision advancement and rejects time travel or
 // revision overflow.
 func (s State) Replace(steps []Step, updatedAt time.Time) (State, error) {
-	if err := s.Validate(); err != nil {
-		return State{}, fmt.Errorf("%w: current state: %v", ErrInvalid, err)
+	if s.revision.IsZero() {
+		return State{}, fmt.Errorf("%w: replaced Plan state was never written", ErrInvalid)
 	}
 	if err := ValidateSteps(steps); err != nil {
 		return State{}, err
@@ -240,25 +229,8 @@ func (v Version) IsUnwritten() bool { return !v.committed }
 // Revision returns the committed revision and whether one exists.
 func (v Version) Revision() (uint64, bool) { return v.revision.Value(), v.committed }
 
-// Validate verifies that presence and numeric revision cannot contradict.
-func (v Version) Validate() error {
-	if v.committed && v.revision.IsZero() {
-		return fmt.Errorf("%w: committed version must be positive", ErrInvalid)
-	}
-	if !v.committed && !v.revision.IsZero() {
-		return fmt.Errorf("%w: unwritten version carries a revision", ErrInvalid)
-	}
-	return nil
-}
-
 // AdvancesTo verifies that next is exactly one replacement after v.
 func (v Version) AdvancesTo(next State) error {
-	if err := v.Validate(); err != nil {
-		return err
-	}
-	if err := next.Validate(); err != nil {
-		return err
-	}
 	expected := exactint.First()
 	if v.committed {
 		var err error

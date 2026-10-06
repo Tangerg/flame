@@ -51,14 +51,7 @@ func (c *PlanCoordinator) State(ctx context.Context, sessionID string) (plan.Cur
 	if err := resourceid.ValidateSession(sessionID); err != nil {
 		return plan.Current{}, fmt.Errorf("sessions: Plan: %w", err)
 	}
-	state, err := c.store.State(ctx, sessionID)
-	if err != nil {
-		return plan.Current{}, err
-	}
-	if err := state.Validate(); err != nil {
-		return plan.Current{}, fmt.Errorf("sessions: read invalid Plan state: %w", err)
-	}
-	return state, nil
+	return c.store.State(ctx, sessionID)
 }
 
 // Replace computes and commits one complete replacement using optimistic
