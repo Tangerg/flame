@@ -1,4 +1,4 @@
-export type BlockStatus = "running" | "complete" | "incomplete" | "requires-action";
+export type BlockStatus = "running" | "complete" | "incomplete";
 
 interface QuestionOption {
   label: string;
@@ -31,13 +31,10 @@ interface ContentBlockMap {
   tool: { kind: "tool"; toolCallId: string };
   approval: {
     kind: "approval";
-    status: BlockStatus;
     toolName?: string;
     command: string;
     reason: string;
     itemId?: string;
-    runId?: string;
-    decision?: "approved" | "declined";
     args?: Record<string, unknown>;
     rememberable?: boolean;
   };
@@ -45,7 +42,6 @@ interface ContentBlockMap {
     kind: "question";
     status: BlockStatus;
     itemId?: string;
-    runId?: string;
     questions: QuestionItem[];
     answered?: boolean;
     answers?: string[][];

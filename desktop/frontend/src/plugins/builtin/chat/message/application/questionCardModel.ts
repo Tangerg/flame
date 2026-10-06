@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import type { BlockStatus, QuestionItem } from "@/plugins/sdk/types/contentBlock";
+import type { BlockStatus, ContentBlock, QuestionItem } from "@/plugins/sdk/types/contentBlock";
 import type { TranscriptRow } from "@/plugins/builtin/agent/public/conversation";
 import { useQuestionAnswer } from "@/plugins/builtin/agent/public/hitl";
 import {
@@ -16,31 +16,23 @@ export interface QuestionCardSettledView {
   answers?: QuestionAnswers;
 }
 
-interface PendingQuestionRequest {
-  kind: "question";
-  status: "requires-action";
-  runId?: string;
-  itemId?: string;
-  questions: QuestionItem[];
-  answered?: boolean;
-  answers?: string[][];
+type QuestionBlock = Extract<ContentBlock, { kind: "question" }>;
+
+export interface PendingQuestionRequest {
+  block: QuestionBlock;
+  resumeRunId: string;
 }
 
 export function pendingQuestionRequest(
   rows: readonly TranscriptRow[],
 ): PendingQuestionRequest | null {
   for (let rowIndex = rows.length - 1; rowIndex >= 0; rowIndex -= 1) {
-    const blocks = rows[rowIndex]!.message.blocks;
-    for (let blockIndex = blocks.length - 1; blockIndex >= 0; blockIndex -= 1) {
-      const block = blocks[blockIndex]!;
-      if (
-        block.kind === "question" &&
-        block.status === "requires-action" &&
-        !block.answered &&
-        block.questions.length > 0
-      ) {
-        return block as PendingQuestionRequest;
-      }
+    const { message, facts } = rows[rowIndex]!;
+    for (let blockIndex = message.blocks.length - 1; blockIndex >= 0; blockIndex -= 1) {
+      const block = message.blocks[blockIndex]!;
+      if (block.kind !== "question" || block.answered || block.questions.length === 0) continue;
+      const resumeRunId = block.itemId === undefined ? undefined : facts.awaiting.get(block.itemId);
+      if (resumeRunId !== undefined) return { block, resumeRunId };
     }
   }
   return null;
@@ -48,11 +40,13 @@ export function pendingQuestionRequest(
 
 export function questionCardSettledView({
   status,
+  resumeRunId,
   answered,
   pending,
   answers,
 }: {
   status: BlockStatus;
+  resumeRunId?: string;
   answered?: boolean;
   pending: boolean;
   questions: readonly QuestionItem[];
@@ -60,38 +54,34 @@ export function questionCardSettledView({
   answers?: QuestionAnswers;
 }): QuestionCardSettledView {
   if (pending) return { settled: false };
-  if (!questionSettled(status, answered)) return { settled: false };
+  if (!questionSettled({ status, resumeRunId, answered })) return { settled: false };
   return { settled: true, answers };
 }
 
 export function canSubmitQuestionCard({
-  runId,
+  resumeRunId,
   itemId,
-  status,
   pending,
 }: {
-  runId?: string;
+  resumeRunId?: string;
   itemId?: string;
-  status: BlockStatus;
   pending: boolean;
 }): boolean {
-  return !pending && canSubmitQuestion({ runId, itemId, status });
+  return !pending && canSubmitQuestion({ resumeRunId, itemId });
 }
 
 export function useQuestionCardActions({
-  runId,
+  resumeRunId,
   itemId,
-  status,
   questions,
   draft,
 }: {
-  runId?: string;
+  resumeRunId?: string;
   itemId?: string;
-  status: BlockStatus;
   questions: readonly QuestionItem[];
   draft: QuestionDraft;
 }) {
-  const { submit, pending } = useQuestionAnswer(runId, itemId);
+  const { submit, pending } = useQuestionAnswer(resumeRunId, itemId);
   const complete = useMemo(() => questionDraftComplete(questions, draft), [questions, draft]);
 
   const submitAnswer = useCallback(
@@ -104,7 +94,7 @@ export function useQuestionCardActions({
   return {
     pending,
     complete,
-    disabled: !canSubmitQuestionCard({ runId, itemId, status, pending }),
+    disabled: !canSubmitQuestionCard({ resumeRunId, itemId, pending }),
     submit: submitAnswer,
   };
 }

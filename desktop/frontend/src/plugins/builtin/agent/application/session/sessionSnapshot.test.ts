@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import type { AgentSessionSnapshot } from "../ports/runtimeGateway";
 import { projectAgentSessionSnapshot } from "./sessionSnapshot";
+import { selectAwaitingInterrupts } from "../view/awaitingInterrupts";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 
 const SESSION_ID = "ses_snapshot";
@@ -40,11 +41,11 @@ describe("projectAgentSessionSnapshot", () => {
         {
           id: ROOT_RUN_ID,
           sessionId: SESSION_ID,
-          status: "running",
+          status: "waiting",
           parentRunId: null,
           rootRunId: ROOT_RUN_ID,
           spawnedByItemId: null,
-          activeSegmentId: "seg_root",
+          activeSegmentId: null,
           outcome: null,
           finishedAt: null,
           createdAt: "2026-07-30T01:00:00.000Z",
@@ -123,7 +124,7 @@ describe("projectAgentSessionSnapshot", () => {
     expect(view.runsById[ROOT_RUN_ID]).toMatchObject({
       parentRunId: null,
       rootRunId: ROOT_RUN_ID,
-      activeSegmentId: "seg_root",
+      status: "waiting",
     });
     expect(view.runsById[CHILD_RUN_ID]).toMatchObject({
       parentRunId: ROOT_RUN_ID,
@@ -152,11 +153,8 @@ describe("projectAgentSessionSnapshot", () => {
     ]);
     expect(
       view.messages.flatMap((message) => message.blocks).find((block) => block.kind === "approval"),
-    ).toMatchObject({
-      itemId: "item_approval",
-      runId: ROOT_RUN_ID,
-      status: "requires-action",
-    });
+    ).toMatchObject({ itemId: "item_approval" });
+    expect(selectAwaitingInterrupts(view).get("item_approval")).toBe(ROOT_RUN_ID);
     expect(view.pendingInterrupts).toEqual([
       {
         sessionId: SESSION_ID,

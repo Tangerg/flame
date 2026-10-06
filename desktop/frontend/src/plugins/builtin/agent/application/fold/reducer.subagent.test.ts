@@ -8,6 +8,7 @@ import type {
 import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
 import { reduceAgentEvent } from "./reducer";
 import { foldRunSnapshot } from "./runSnapshot";
+import { selectAwaitingInterrupts } from "../view/awaitingInterrupts";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 
 const METRICS = {
@@ -148,12 +149,13 @@ describe("reducer — source-owned Run tree", () => {
     const blocks = view.messages.flatMap((message) => message.blocks);
     expect(blocks.find((block) => block.kind === "approval")).toMatchObject({
       itemId: "approval_a",
-      runId: root.id,
     });
     expect(blocks.find((block) => block.kind === "question")).toMatchObject({
       itemId: "question_b",
-      runId: root.id,
     });
+    const awaiting = selectAwaitingInterrupts(view);
+    expect(awaiting.get("approval_a")).toBe(root.id);
+    expect(awaiting.get("question_b")).toBe(root.id);
     expect(view.messages.map((message) => message.runId)).toEqual([childA.id, childB.id]);
   });
 

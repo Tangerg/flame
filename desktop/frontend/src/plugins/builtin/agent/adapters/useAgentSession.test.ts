@@ -16,6 +16,7 @@ import { useAgentStore } from "./agentStore";
 import { useAgentSessionStore } from "./agentSessionStore";
 import { useAgentSession } from "./useAgentSession";
 import { selectCurrentRootRun } from "../application/view/runTree";
+import { selectAwaitingInterrupts } from "../application/view/awaitingInterrupts";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 
 let runtimeClient: () => FlameClient = () => {
@@ -619,6 +620,9 @@ describe("useAgentSession durable recovery", () => {
     stubClient(
       {},
       {
+        runs: [
+          runRef({ id: "run_int", sessionId: RID, status: "waiting", activeSegmentId: undefined }),
+        ],
         interrupts: [
           {
             rootRunId: "run_int",
@@ -640,8 +644,9 @@ describe("useAgentSession durable recovery", () => {
     const approval = view.messages
       .flatMap((m) => m.blocks)
       .find((b) => b.kind === "approval" && b.itemId === "item_appr");
-    expect(approval).toMatchObject({ status: "requires-action", runId: "run_int" });
-    expect(selectCurrentRootRun(view)).toBeNull();
+    expect(approval).toBeDefined();
+    expect(selectAwaitingInterrupts(view).get("item_appr")).toBe("run_int");
+    expect(selectCurrentRootRun(view)).toMatchObject({ id: "run_int", status: "waiting" });
   });
 
   it("reattaches to a still-running root run via runs.subscribe", async () => {
@@ -804,7 +809,7 @@ describe("useAgentSession durable recovery", () => {
     expect(view.pendingInterrupts).toHaveLength(1);
     expect(view.toolCalls.item_after_restart).toMatchObject({
       name: "shell",
-      status: "requires-action",
+      status: "running",
     });
     expect(readSnapshot).toHaveBeenCalledTimes(2);
 
@@ -901,7 +906,7 @@ describe("useAgentSession durable recovery", () => {
     expect(view.pendingInterrupts).toHaveLength(1);
     expect(view.toolCalls.item_restarted_tool).toMatchObject({
       name: "shell",
-      status: "requires-action",
+      status: "running",
     });
 
     releaseOldSnapshot(

@@ -32,7 +32,7 @@ export function onItemStarted(
   if (
     item.type !== "userMessage" &&
     materialized &&
-    !(item.type === "toolCall" && state.toolCalls[item.id]?.status === "requires-action")
+    !(item.type === "toolCall" && state.toolCalls[item.id]?.status === "running")
   ) {
     return state;
   }

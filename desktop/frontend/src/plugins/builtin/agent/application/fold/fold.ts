@@ -117,50 +117,12 @@ export function updateTool(
   return { ...state, toolCalls: { ...state.toolCalls, [id]: fn(existing) } };
 }
 
-export function markToolRequiresAction(
-  state: AgentSessionView,
-  runId: string,
-  id: string,
-): AgentSessionView {
-  return updateTool(state, runId, id, (tool) =>
-    tool.status === "requires-action" ? tool : { ...tool, status: "requires-action" },
-  );
-}
-
-export function settleRunPendingInterrupts(
-  state: AgentSessionView,
-  runId: string,
-): AgentSessionView {
-  const owned = state.pendingInterrupts.filter((group) => group.runId === runId);
-  if (owned.length === 0) return state;
-  const interruptItemIds = new Set(
-    owned.flatMap((group) => group.interrupts.map((interrupt) => interrupt.itemId)),
-  );
-  const actionable = (block: ContentBlock) =>
-    (block.kind === "approval" || block.kind === "question") &&
-    block.status === "requires-action" &&
-    block.itemId !== undefined &&
-    interruptItemIds.has(block.itemId);
-  const messages = state.messages.map((m) =>
-    m.blocks.some(actionable)
-      ? {
-          ...m,
-          blocks: m.blocks.map((b) =>
-            actionable(b) ? { ...b, status: "incomplete" as const } : b,
-          ),
-        }
-      : m,
-  );
-  let toolCalls = state.toolCalls;
-  for (const id of interruptItemIds) {
-    const tool = toolCalls[id];
-    if (!tool || tool.status !== "requires-action") continue;
-    toolCalls = { ...toolCalls, [id]: { ...tool, status: "err" } };
-  }
+// A run that is no longer waiting has no open interrupt; the Runtime's Pending
+// projection holds them only while their tree is parked.
+export function dropRunPendingInterrupts(state: AgentSessionView, runId: string): AgentSessionView {
+  if (!state.pendingInterrupts.some((group) => group.runId === runId)) return state;
   return {
     ...state,
-    messages,
-    toolCalls,
     pendingInterrupts: state.pendingInterrupts.filter((group) => group.runId !== runId),
   };
 }

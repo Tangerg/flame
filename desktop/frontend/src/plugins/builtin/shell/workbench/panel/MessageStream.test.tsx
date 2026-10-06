@@ -66,7 +66,7 @@ function transcriptRow(status: "running" | "complete"): TranscriptRow {
       ],
     },
     runOwner: { kind: "owned", runId: "run-terminal-footer", status: runStatus },
-    facts: { toolCalls: {}, delegatedRuns: {} },
+    facts: { toolCalls: {}, delegatedRuns: {}, awaiting: new Map<string, string>() },
   };
 }
 
@@ -86,7 +86,7 @@ function optimisticUserRow(): TranscriptRow {
       ],
     },
     runOwner: { kind: "unassigned" },
-    facts: { toolCalls: {}, delegatedRuns: {} },
+    facts: { toolCalls: {}, delegatedRuns: {}, awaiting: new Map<string, string>() },
   };
 }
 

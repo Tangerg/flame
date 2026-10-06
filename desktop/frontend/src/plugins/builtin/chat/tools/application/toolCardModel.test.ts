@@ -58,7 +58,7 @@ describe("toolCardModel", () => {
   });
 
   it("projects lifecycle flags and presentation data", () => {
-    const model = toolCardModel(t, tool({ status: "requires-action" }));
+    const model = toolCardModel(t, tool({ status: "ok" }));
 
     expect(model).toMatchObject({ running: false, denied: false });
     expect(model.intent.label).toBeTruthy();

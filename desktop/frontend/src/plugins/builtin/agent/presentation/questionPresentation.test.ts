@@ -99,33 +99,15 @@ describe("questionPresentation", () => {
     expect(questionAnswerText(answers, 2)).toBe("");
   });
 
-  it("derives settled state from block status or optimistic answer stamp", () => {
-    expect(questionSettled("complete", false)).toBe(true);
-    expect(questionSettled("requires-action", true)).toBe(true);
-    expect(questionSettled("requires-action", false)).toBe(false);
+  it("settles a question once it no longer awaits an answer", () => {
+    expect(questionSettled({ status: "complete" })).toBe(true);
+    expect(questionSettled({ status: "complete", resumeRunId: "run_1" })).toBe(false);
+    expect(questionSettled({ status: "running" })).toBe(false);
+    expect(questionSettled({ status: "running", answered: true })).toBe(true);
   });
 
-  it("submits open resumable questions, including an explicit skip", () => {
-    expect(
-      canSubmitQuestion({
-        runId: "run_1",
-        itemId: "item_1",
-        status: "requires-action",
-      }),
-    ).toBe(true);
-    expect(
-      canSubmitQuestion({
-        runId: "run_1",
-        itemId: "item_1",
-        status: "incomplete",
-      }),
-    ).toBe(false);
-    expect(
-      canSubmitQuestion({
-        runId: undefined,
-        itemId: "item_1",
-        status: "requires-action",
-      }),
-    ).toBe(false);
+  it("submits only a question that awaits an answer", () => {
+    expect(canSubmitQuestion({ resumeRunId: "run_1", itemId: "item_1" })).toBe(true);
+    expect(canSubmitQuestion({ resumeRunId: undefined, itemId: "item_1" })).toBe(false);
   });
 });

@@ -1,9 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
-import type { BlockStatus } from "@/plugins/sdk/types/contentBlock";
 import { toolFamilyId } from "@/lib/toolFamilies";
 import { toolIconFor } from "@/plugins/builtin/agent/public/toolIcon";
-import { type ApprovalDecision, type RememberScope } from "@/plugins/builtin/agent/public/hitl";
-import { approvalSettledDecision } from "@/plugins/builtin/agent/public/messagePresentation";
+import { type RememberScope } from "@/plugins/builtin/agent/public/hitl";
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
 import { useT } from "@/lib/i18n";
 import { Button, Divider, DropdownMenu, Icon, Surface, type IconName, vocab, Well } from "@/ui";
@@ -20,13 +18,12 @@ const ac = stylex.create({
 });
 
 interface Props {
-  status: BlockStatus;
+  /** The Run to resume; present only while this approval awaits an answer. */
+  resumeRunId?: string;
   toolName?: string;
   cmd: string;
   reason: string;
-  runId?: string;
   itemId?: string;
-  decision?: ApprovalDecision;
   args?: Record<string, unknown>;
   rememberable?: boolean;
 }
@@ -41,13 +38,11 @@ const REMEMBER_ACTIONS: readonly {
 ];
 
 export function ApprovalCard({
-  status,
+  resumeRunId,
   toolName,
   cmd,
   reason,
-  runId,
   itemId,
-  decision,
   args,
   rememberable = false,
 }: Props) {
@@ -58,14 +53,13 @@ export function ApprovalCard({
     originalArgs: hasArgs ? JSON.stringify(args, null, 2) : "",
   });
   const { pending, disabled, approve, decline } = useApprovalCardActions({
-    runId,
+    resumeRunId,
     itemId,
-    status,
     argsEditor: hasArgs ? argsEditor : undefined,
     runtimeAvailable,
   });
 
-  const finalised = approvalSettledDecision(status, decision, pending);
+  const finalised = pending;
   if (finalised === "approved") {
     return <HitlSettledRow label={t("approval.settled.approved")} />;
   }

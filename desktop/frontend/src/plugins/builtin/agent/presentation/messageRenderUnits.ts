@@ -24,11 +24,12 @@ const EMPTY_DELEGATING: ReadonlySet<string> = new Set();
 export function planRenderUnits(
   blocks: ContentBlock[],
   toolCalls: Record<string, ToolCall>,
+  awaiting: ReadonlyMap<string, string>,
   answerFollows = false,
   delegating: ReadonlySet<string> = EMPTY_DELEGATING,
 ): MessageRenderUnit[] {
   const hasQuestion = blocks.some((block) => block.kind === "question");
-  const approvalOwnedToolCallIds = findApprovalOwnedToolCallIds(blocks, toolCalls);
+  const approvalOwnedToolCallIds = findApprovalOwnedToolCallIds(blocks, awaiting);
   const answered = answeredAfter(blocks, answerFollows);
   const units: MessageRenderUnit[] = [];
   let wave: PositionedBlock[] = [];
@@ -139,14 +140,13 @@ function planWithinWave(
 
 function findApprovalOwnedToolCallIds(
   blocks: readonly ContentBlock[],
-  toolCalls: Record<string, ToolCall>,
+  awaiting: ReadonlyMap<string, string>,
 ): ReadonlySet<string> {
   const ids = new Set<string>();
   for (const block of blocks) {
-    if (block.kind !== "approval" || block.status !== "requires-action" || !block.itemId) {
-      continue;
+    if (block.kind === "approval" && block.itemId && awaiting.has(block.itemId)) {
+      ids.add(block.itemId);
     }
-    if (toolCalls[block.itemId]?.status === "requires-action") ids.add(block.itemId);
   }
   return ids;
 }

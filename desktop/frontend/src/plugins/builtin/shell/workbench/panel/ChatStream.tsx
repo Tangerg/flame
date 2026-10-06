@@ -99,13 +99,20 @@ export function ChatStream({ onSend }: Props) {
       expandedIds: expandedToolIds,
       onToggleExpand: toggleExpandedTool,
       textReveal,
-      questionInComposer: pendingQuestion ?? undefined,
+      questionInComposer: pendingQuestion?.block,
     }),
     [expandedToolIds, toggleExpandedTool, textReveal, pendingQuestion],
   );
 
   const composer = pendingQuestion ? (
-    <QuestionCard {...pendingQuestion} />
+    <QuestionCard
+      status={pendingQuestion.block.status}
+      resumeRunId={pendingQuestion.resumeRunId}
+      itemId={pendingQuestion.block.itemId}
+      questions={pendingQuestion.block.questions}
+      answered={pendingQuestion.block.answered}
+      answers={pendingQuestion.block.answers}
+    />
   ) : (
     <ComposerSurface onSend={onSend} />
   );

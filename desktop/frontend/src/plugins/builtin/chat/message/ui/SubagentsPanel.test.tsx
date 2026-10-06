@@ -76,6 +76,7 @@ function rows(run = child, text = "Child streamed output"): TranscriptRow[] {
             },
           ],
         },
+        awaiting: new Map<string, string>(),
       },
     },
   ];

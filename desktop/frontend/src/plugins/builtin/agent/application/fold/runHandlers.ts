@@ -8,7 +8,7 @@ import type {
   PendingInterrupt,
 } from "@/plugins/sdk/types/agentSessionView";
 import { setTimelineEntry } from "@/plugins/sdk";
-import { settleRunPendingInterrupts } from "./fold";
+import { dropRunPendingInterrupts } from "./fold";
 import { materializeInterrupt } from "./interruptMaterialization";
 import type { AgentFoldSource } from "./source";
 import { timelineEntry } from "./source";
@@ -136,7 +136,7 @@ export function onRunStarted(
     if (exactReplay) return state;
   }
   const next: AgentSessionView = {
-    ...state,
+    ...dropRunPendingInterrupts(state, run.id),
     commandError: null,
     runsById: {
       ...state.runsById,
@@ -234,12 +234,12 @@ export function onRunFinished(
     }
     for (const interrupt of outcome.interrupts) {
       const runId = interrupt.runId;
-      next = materializeInterrupt(next, interrupt, { ...source, runId }, rootRunId);
+      next = materializeInterrupt(next, interrupt, { ...source, runId });
     }
     return next;
   }
 
-  next = settleRunPendingInterrupts(next, source.runId);
+  next = dropRunPendingInterrupts(next, source.runId);
   const projectedOutcome = projectTerminalSegmentOutcome(outcome);
   if (isAgentRunFailure(projectedOutcome)) {
     const problem = projectedOutcome.error;

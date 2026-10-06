@@ -79,13 +79,11 @@ export function renderBlock(block: ContentBlock, key: number, facts: TurnFacts, 
       return (
         <ApprovalCard
           key={block.itemId ?? key}
-          status={block.status}
+          resumeRunId={block.itemId === undefined ? undefined : facts.awaiting.get(block.itemId)}
           toolName={block.toolName}
           cmd={block.command}
           reason={block.reason}
-          runId={block.runId}
           itemId={block.itemId}
-          decision={block.decision}
           args={block.args}
           rememberable={block.rememberable}
         />
@@ -96,7 +94,7 @@ export function renderBlock(block: ContentBlock, key: number, facts: TurnFacts, 
         <QuestionCard
           key={block.itemId ?? key}
           status={block.status}
-          runId={block.runId}
+          resumeRunId={block.itemId === undefined ? undefined : facts.awaiting.get(block.itemId)}
           itemId={block.itemId}
           questions={block.questions}
           answered={block.answered}
@@ -136,6 +134,7 @@ export function renderMessageBlocks(
   const units = messageBlockRenderUnits(
     narratedBlocks(message.blocks, facts.toolCalls, standingTool),
     facts.toolCalls,
+    facts.awaiting,
     answerFollows,
     new Set(Object.keys(facts.delegatedRuns)),
   ).filter((unit) => unit.kind !== "block" || unit.block !== ctx.questionInComposer);

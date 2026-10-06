@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { navigator } from "@/lib/navigation";
 import { useAgentStore } from "@/plugins/builtin/agent/adapters/agentStore";
+import { waitingRoots } from "./hitl.fixtures";
 import type { PendingInterruptGroup } from "@/plugins/sdk/types/agentSessionView";
 import { installInterruptResponseCoordinator } from "./interruptResponseCoordinator";
 import { registerApprovalActions } from "./useApprovalSubmit";
@@ -15,7 +16,11 @@ function seedPending(groups: PendingInterruptGroup[]): void {
   store.ensureSession(SESSION_ID);
   const token = store.beginViewRefresh(SESSION_ID, false)!;
   const view = useAgentStore.getState().sessions[SESSION_ID]!.view;
-  store.commitViewRefresh(SESSION_ID, token, { ...view, pendingInterrupts: groups });
+  store.commitViewRefresh(SESSION_ID, token, {
+    ...view,
+    runsById: waitingRoots(groups),
+    pendingInterrupts: groups,
+  });
 }
 
 beforeEach(() => {

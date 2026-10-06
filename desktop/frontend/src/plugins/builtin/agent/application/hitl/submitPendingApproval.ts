@@ -5,16 +5,18 @@ import type { ApprovalDecision } from "../../domain/hitl";
 import { WIRE_DECISION } from "./wireDecision";
 import { resumeInterrupt } from "./useInterruptResume";
 import { interruptResponseIsStaged } from "./interruptResponseCoordinator";
+import { selectAwaitingGroups } from "../view/awaitingInterrupts";
 
 export function submitPendingApproval(decision: ApprovalDecision): boolean {
   const sid = agentSessionState().getActiveSessionId();
   const entry = agentSessionView().getSession(sid);
   if (!entry) return false;
 
-  const hasPendingApproval = entry.view.pendingInterrupts.some((group) =>
+  const awaiting = selectAwaitingGroups(entry.view);
+  const hasPendingApproval = awaiting.some((group) =>
     group.interrupts.some((interrupt) => interrupt.kind === "approval"),
   );
-  const oi = entry.view.pendingInterrupts.find((group) =>
+  const oi = awaiting.find((group) =>
     group.interrupts.some(
       (interrupt) =>
         interrupt.kind === "approval" &&

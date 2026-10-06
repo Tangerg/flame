@@ -34,7 +34,7 @@ function row(id: string, owner: TranscriptRow["runOwner"]): TranscriptRow {
       blocks: [],
     },
     runOwner: owner,
-    facts: { toolCalls: {}, delegatedRuns: {} },
+    facts: { toolCalls: {}, delegatedRuns: {}, awaiting: new Map<string, string>() },
   };
 }
 

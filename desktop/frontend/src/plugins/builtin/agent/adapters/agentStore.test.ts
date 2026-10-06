@@ -9,6 +9,7 @@ import type {
 import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
 import { AgentViewRefreshOwner, useAgentStore } from "./agentStore";
 import { selectCurrentRootRun } from "../application/view/runTree";
+import { selectAwaitingInterrupts } from "../application/view/awaitingInterrupts";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 
 const SID = "ses_1";
@@ -133,6 +134,52 @@ describe("agentStore.commitCancelResponse", () => {
 
     expect(selectCurrentRootRun(view())?.status).toBe("finished");
     expect(view().timeline.at(-1)).toMatchObject({ kind: "run-end", summary: "canceled" });
+  });
+
+  it("closes a canceled parked tree's interrupts without inventing its Items", () => {
+    const store = useAgentStore.getState();
+    store.ensureSession(SID);
+    store.applyRunEvents(
+      SID,
+      [
+        runStarted("run_1", SID),
+        {
+          type: "item.started",
+          item: item({
+            type: "toolCall",
+            id: "tool_1",
+            startedAt: "2026-06-03T00:00:00.500Z",
+            tool: { name: "shell", arguments: { command: "rm x" } },
+          }),
+        } as StreamEvent,
+        runFinished({
+          type: "interrupt",
+          interrupts: [
+            {
+              itemId: "tool_1",
+              runId: "run_1",
+              type: "approval",
+              payload: { tool: { name: "shell", arguments: { command: "rm x" } } },
+            },
+          ],
+        } as SegmentOutcome),
+      ].map(fold),
+    );
+    expect(selectAwaitingInterrupts(view()).get("tool_1")).toBe("run_1");
+
+    store.commitCancelResponse(SID, materialToken(), {
+      type: "root",
+      run: runRef({
+        status: "finished",
+        activeSegmentId: undefined,
+        outcome: { type: "canceled" },
+        finishedAt: "2026-06-03T00:00:02.000Z",
+      }),
+    });
+
+    expect(selectAwaitingInterrupts(view()).size).toBe(0);
+    expect(view().pendingInterrupts).toEqual([]);
+    expect(view().toolCalls.tool_1?.status).toBe("running");
   });
 
   it("merges a child and its post-cancel root without inventing sibling lifecycle", () => {

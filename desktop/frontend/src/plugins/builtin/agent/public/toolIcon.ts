@@ -25,7 +25,6 @@ export function toolIconFor(key: string): IconName {
 
 export function toolCallIconFor(tool: ToolCall): IconName {
   if (tool.status === "err") return "x";
-  if (tool.status === "requires-action") return "alert";
   if (tool.status === "denied") return "stop";
   return toolIconFor(toolRoutingKey(tool));
 }

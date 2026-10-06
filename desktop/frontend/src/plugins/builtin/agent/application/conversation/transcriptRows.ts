@@ -6,10 +6,13 @@ import type {
 } from "@/plugins/sdk/types/agentSessionView";
 import type { DelegatedRunNarrativesByItemId } from "../view/runTree";
 import { selectDelegatedRunNarratives, selectRootNarrativeMessages } from "../view/runTree";
+import { selectAwaitingInterrupts } from "../view/awaitingInterrupts";
 
 export interface TurnFacts {
   toolCalls: Record<string, ToolCall>;
   delegatedRuns: DelegatedRunNarrativesByItemId;
+  /** The Run to resume for each of this turn's Items that awaits an answer. */
+  awaiting: ReadonlyMap<string, string>;
 }
 
 type TranscriptRunOwner =
@@ -23,7 +26,12 @@ export interface TranscriptRow {
 
 const NO_TOOL_CALLS: Record<string, ToolCall> = {};
 const NO_DELEGATED_RUNS: DelegatedRunNarrativesByItemId = {};
-const NO_FACTS: TurnFacts = { toolCalls: NO_TOOL_CALLS, delegatedRuns: NO_DELEGATED_RUNS };
+const NO_AWAITING: ReadonlyMap<string, string> = new Map();
+const NO_FACTS: TurnFacts = {
+  toolCalls: NO_TOOL_CALLS,
+  delegatedRuns: NO_DELEGATED_RUNS,
+  awaiting: NO_AWAITING,
+};
 const NO_ROWS: readonly TranscriptRow[] = [];
 
 interface CachedRow {
@@ -48,12 +56,13 @@ export function buildTranscriptRows(
   if (messages.length === 0) return { rows: NO_ROWS, cache: EMPTY_TRANSCRIPT_ROW_CACHE };
 
   const delegated = selectDelegatedRunNarratives(view);
+  const awaiting = selectAwaitingInterrupts(view);
   const rows: TranscriptRow[] = [];
   const cache = new Map<string, CachedRow>();
 
   for (const message of messages) {
     const runOwner = transcriptRunOwner(message, view);
-    const { facts, identities } = readTurnFacts(message, view.toolCalls, delegated);
+    const { facts, identities } = readTurnFacts(message, view.toolCalls, delegated, awaiting);
     const rowIdentities = [runOwnerIdentity(runOwner), ...identities];
     const cached = previous.get(message.id);
     if (cached !== undefined && sameIdentities(cached.identities, rowIdentities)) {
@@ -86,10 +95,21 @@ function readTurnFacts(
   message: Message,
   sessionToolCalls: Record<string, ToolCall>,
   delegated: DelegatedRunNarrativesByItemId,
+  sessionAwaiting: ReadonlyMap<string, string>,
 ): { facts: TurnFacts; identities: readonly unknown[] } {
   const identities: unknown[] = [message];
   let toolCalls: Record<string, ToolCall> | undefined;
   let delegatedRuns: DelegatedRunNarrativesByItemId | undefined;
+  let awaiting: Map<string, string> | undefined;
+
+  for (const block of message.blocks) {
+    const itemId = awaitableItemId(block);
+    const resumeRunId = itemId === undefined ? undefined : sessionAwaiting.get(itemId);
+    if (itemId === undefined || resumeRunId === undefined) continue;
+    awaiting ??= new Map();
+    awaiting.set(itemId, resumeRunId);
+    identities.push(`awaiting:${itemId}:${resumeRunId}`);
+  }
 
   const pending: Message[] = [message];
   const visitedRuns = new Set<string>();
@@ -125,13 +145,26 @@ function readTurnFacts(
   }
 
   const facts =
-    toolCalls === undefined && delegatedRuns === undefined
+    toolCalls === undefined && delegatedRuns === undefined && awaiting === undefined
       ? NO_FACTS
       : {
           toolCalls: toolCalls ?? NO_TOOL_CALLS,
           delegatedRuns: delegatedRuns ?? NO_DELEGATED_RUNS,
+          awaiting: awaiting ?? NO_AWAITING,
         };
   return { facts, identities };
+}
+
+function awaitableItemId(block: Message["blocks"][number]): string | undefined {
+  switch (block.kind) {
+    case "approval":
+    case "question":
+      return block.itemId;
+    case "tool":
+      return block.toolCallId;
+    default:
+      return undefined;
+  }
 }
 
 function sameIdentities(left: readonly unknown[], right: readonly unknown[]): boolean {

@@ -7,6 +7,7 @@ import type {
 import { setTimelineEntry } from "@/plugins/sdk/types/agentTimeline";
 import { projectRunRef } from "../view/runProjection";
 import { isAgentRunFailure } from "../view/runOutcome";
+import { dropRunPendingInterrupts } from "./fold";
 
 export function foldRunSnapshot(state: AgentSessionView, run: AgentRunFact): AgentSessionView {
   const projected = projectRunRef(run);
@@ -18,8 +19,9 @@ export function foldRunSnapshot(state: AgentSessionView, run: AgentRunFact): Age
       ? previous.progress
       : projected.progress;
   const contextTokens = projected.contextTokens ?? previous?.contextTokens ?? null;
+  const settled = projected.status === "waiting" ? state : dropRunPendingInterrupts(state, run.id);
   let next: AgentSessionView = {
-    ...state,
+    ...settled,
     runsById: {
       ...state.runsById,
       [run.id]: { ...projected, progress, contextTokens },

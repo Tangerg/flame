@@ -18,17 +18,12 @@ export function foldPendingInterruptSet(
     next = mergeGroup(next, snapshot.sessionId, runId, snapshot.rootRunId, interrupts);
   }
   for (const interrupt of snapshot.interrupts) {
-    next = materializeInterrupt(
-      next,
-      interrupt,
-      {
-        runId: interrupt.runId,
-        segmentId: null,
-        eventId: `snapshot:${snapshot.rootRunId}:interrupt:${interrupt.itemId}`,
-        timestamp: snapshot.createdAt,
-      },
-      snapshot.rootRunId,
-    );
+    next = materializeInterrupt(next, interrupt, {
+      runId: interrupt.runId,
+      segmentId: null,
+      eventId: `snapshot:${snapshot.rootRunId}:interrupt:${interrupt.itemId}`,
+      timestamp: snapshot.createdAt,
+    });
   }
   return next;
 }

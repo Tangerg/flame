@@ -13,7 +13,7 @@ export type {
   ToolMetaItem,
   ToolMetaTone,
 } from "../presentation/toolPresentation";
-export { approvalSettledDecision, canSubmitApproval } from "../presentation/approvalPresentation";
+export { canSubmitApproval } from "../presentation/approvalPresentation";
 export {
   canSubmitQuestion,
   clearQuestionAnswer,

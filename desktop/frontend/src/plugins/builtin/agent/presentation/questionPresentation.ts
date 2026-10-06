@@ -39,20 +39,27 @@ export function questionAnswerText(answers: QuestionAnswers, index: number): str
   return (answers[index] ?? []).filter(Boolean).join(", ");
 }
 
-export function questionSettled(status: BlockStatus, answered: boolean | undefined): boolean {
-  return status === "complete" || Boolean(answered);
+export function questionSettled({
+  status,
+  resumeRunId,
+  answered,
+}: {
+  status: BlockStatus;
+  resumeRunId?: string;
+  answered?: boolean;
+}): boolean {
+  if (resumeRunId !== undefined) return false;
+  return status !== "running" || Boolean(answered);
 }
 
 export function canSubmitQuestion({
-  runId,
+  resumeRunId,
   itemId,
-  status,
 }: {
-  runId?: string;
+  resumeRunId?: string;
   itemId?: string;
-  status: BlockStatus;
 }): boolean {
-  return Boolean(runId && itemId && status === "requires-action");
+  return Boolean(resumeRunId && itemId);
 }
 
 export function questionDraftAnswers(

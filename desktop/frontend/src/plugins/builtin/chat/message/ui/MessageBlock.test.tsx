@@ -44,7 +44,7 @@ function row(
       ],
     },
     runOwner: { kind: "owned", runId: "run-visible-material", status: "finished" },
-    facts: { toolCalls: {}, delegatedRuns: {} },
+    facts: { toolCalls: {}, delegatedRuns: {}, awaiting: new Map<string, string>() },
   };
 }
 

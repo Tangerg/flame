@@ -10,6 +10,8 @@ import {
   narratedBlocks,
 } from "./messageBlockModel";
 
+const NO_AWAITING: ReadonlyMap<string, string> = new Map();
+
 const text = (text: string, status: "running" | "complete" = "complete"): ContentBlock => ({
   kind: "text",
   text,
@@ -43,7 +45,7 @@ describe("messageBlockRenderUnits", () => {
   it("coerces only non-tail running text blocks to complete", () => {
     const blocks = [text("first", "running"), text("last", "running")];
 
-    expect(messageBlockRenderUnits(blocks, {})).toEqual([
+    expect(messageBlockRenderUnits(blocks, {}, NO_AWAITING)).toEqual([
       { kind: "block", block: text("first", "complete"), index: 0, superseded: true },
       { kind: "block", block: text("last", "running"), index: 1, superseded: false },
     ]);
@@ -53,7 +55,7 @@ describe("messageBlockRenderUnits", () => {
     const blocks = [toolBlock("a"), toolBlock("b"), text("done")];
     const tools = { a: tool("a", "read"), b: tool("b", "grep") };
 
-    expect(messageBlockRenderUnits(blocks, tools)).toEqual([
+    expect(messageBlockRenderUnits(blocks, tools, NO_AWAITING)).toEqual([
       { kind: "toolGroup", tools: [tools.a, tools.b], superseded: true },
       { kind: "block", block: text("done"), index: 2, superseded: false },
     ]);
@@ -63,7 +65,7 @@ describe("messageBlockRenderUnits", () => {
     const blocks = [reasoning(), toolBlock("a"), toolBlock("b")];
     const tools = { a: tool("a", "read"), b: tool("b", "grep") };
 
-    expect(messageBlockRenderUnits(blocks, tools, true)).toEqual([
+    expect(messageBlockRenderUnits(blocks, tools, NO_AWAITING, true)).toEqual([
       {
         kind: "wave",
         units: [
@@ -76,7 +78,7 @@ describe("messageBlockRenderUnits", () => {
 
   it("marks work the answer already speaks for, and only that work", () => {
     const superseded = (blocks: ContentBlock[], tools = {}) =>
-      messageBlockRenderUnits(blocks, tools).map((unit) =>
+      messageBlockRenderUnits(blocks, tools, NO_AWAITING).map((unit) =>
         unit.kind === "wave" ? "wave" : unit.superseded,
       );
 
@@ -149,16 +151,14 @@ describe("messageActionMaterialization", () => {
 
   it("keeps a streaming tail and an HITL boundary actionless even without root attention", () => {
     expect(messageActionMaterialization(row([text("partial", "running")]))).toBe("active");
+    const awaitingQuestion = row([
+      { kind: "question", status: "complete", itemId: "question_1", questions: [] },
+    ]);
     expect(
-      messageActionMaterialization(
-        row([
-          {
-            kind: "question",
-            status: "requires-action",
-            questions: [],
-          },
-        ]),
-      ),
+      messageActionMaterialization({
+        ...awaitingQuestion,
+        facts: { ...awaitingQuestion.facts, awaiting: new Map([["question_1", "run_1"]]) },
+      }),
     ).toBe("active");
   });
 
@@ -182,6 +182,7 @@ describe("messageActionMaterialization", () => {
               },
             ],
           },
+          awaiting: new Map<string, string>(),
         },
       }),
     ).toBe("active");
@@ -209,7 +210,6 @@ describe("narratedBlocks", () => {
 
   it.each([
     ["set_plan", "running"],
-    ["exit_plan_mode", "requires-action"],
     ["create_goal", "err"],
     ["delete_schedule", "denied"],
   ] as const)("keeps %s visible while its outcome is %s", (name, status) => {
@@ -239,13 +239,13 @@ describe("narratedBlocks", () => {
   it("preserves questions for the enclosing renderer to place", () => {
     const pending: ContentBlock = {
       kind: "question",
-      status: "requires-action",
+      status: "complete",
       questions: [],
     };
     const answered: ContentBlock = { ...pending, status: "complete", answered: true };
 
     const planned = (block: ContentBlock) =>
-      messageBlockRenderUnits(narratedBlocks([block], {}, standing), {});
+      messageBlockRenderUnits(narratedBlocks([block], {}, standing), {}, NO_AWAITING);
     expect(planned(pending)).toEqual([
       { kind: "block", block: pending, index: 0, superseded: false },
     ]);
@@ -262,7 +262,11 @@ describe("narratedBlocks", () => {
       t_b: tool("t_b", "grep"),
     };
 
-    const units = messageBlockRenderUnits(narratedBlocks(blocks, tools, standing), tools);
+    const units = messageBlockRenderUnits(
+      narratedBlocks(blocks, tools, standing),
+      tools,
+      NO_AWAITING,
+    );
 
     expect(units).toEqual([
       { kind: "toolGroup", tools: [tools.t_a, tools.t_b], superseded: false },
@@ -279,7 +283,7 @@ function row(blocks: ContentBlock[], toolCalls: Record<string, ToolCall> = {}): 
       blocks,
     },
     runOwner: { kind: "owned", runId: "run_1", status: "finished" },
-    facts: { toolCalls, delegatedRuns: {} },
+    facts: { toolCalls, delegatedRuns: {}, awaiting: new Map<string, string>() },
   };
 }
 

@@ -140,7 +140,8 @@ const qc = stylex.create({
 
 interface Props {
   status: BlockStatus;
-  runId?: string;
+  /** The Run to resume; present only while this question awaits an answer. */
+  resumeRunId?: string;
   itemId?: string;
   questions: QuestionItem[];
   answered?: boolean;
@@ -149,7 +150,7 @@ interface Props {
 
 const RECOMMENDED_SUFFIX = " (Recommended)";
 
-export function QuestionCard({ status, runId, itemId, questions, answered, answers }: Props) {
+export function QuestionCard({ status, resumeRunId, itemId, questions, answered, answers }: Props) {
   const t = useT();
   const questionCardId = useId();
   const runtimeAvailable = useRuntimeCommandsAvailable();
@@ -161,7 +162,7 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
   const activeQuestionRef = useRef<HTMLDivElement>(null);
   const composingRef = useRef(false);
   const compositionCommitPendingRef = useRef(false);
-  const actions = useQuestionCardActions({ runId, itemId, status, questions, draft });
+  const actions = useQuestionCardActions({ resumeRunId, itemId, questions, draft });
   const activeIndex = Math.min(questionIndex, Math.max(questions.length - 1, 0));
   const activeQuestion = questions[activeIndex];
   const activeDraft = draft[activeIndex] ?? { selected: [], text: "" };
@@ -192,6 +193,7 @@ export function QuestionCard({ status, runId, itemId, questions, answered, answe
 
   const settled = questionCardSettledView({
     status,
+    resumeRunId,
     answered,
     pending: actions.pending,
     questions,

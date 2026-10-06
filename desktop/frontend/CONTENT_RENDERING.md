@@ -478,7 +478,7 @@ type ProblemData =
 wire 经过 fold 后变成下面这些。**组件只接触这一层**，不 import 协议类型。
 
 ```ts
-type BlockStatus = "running" | "complete" | "incomplete" | "requires-action";
+type BlockStatus = "running" | "complete" | "incomplete";
 
 /** 内容区的原子。renderBlock 就是对这个联合做分发。 */
 type ViewContentBlock =
@@ -486,13 +486,11 @@ type ViewContentBlock =
   | { kind: "image";     mime: string; data: string }
   | { kind: "reasoning"; reasoningId: string; text: string; status: BlockStatus }
   | { kind: "tool";      toolCallId: string }               // 只带 id，实体在 TurnFacts.toolCalls
-  | { kind: "approval";  status: BlockStatus; itemId?: string; runId?: string;
+  | { kind: "approval";  itemId?: string;
                          toolName?: string; command: string; reason: string;
                          args?: Record<string, unknown>;
-                         risk?: "low" | "medium" | "high";
-                         rememberable?: boolean;
-                         decision?: "approved" | "declined" }
-  | { kind: "question";  status: BlockStatus; itemId?: string; runId?: string;
+                         rememberable?: boolean }
+  | { kind: "question";  status: BlockStatus; itemId?: string;
                          questions: QuestionItem[]; answered?: boolean; answers?: string[][] }
   | { kind: "compaction"; summary: string; droppedMessages?: number };
 
@@ -513,7 +511,11 @@ interface Message {
   blocks: ViewContentBlock[];
 }
 
-type ToolCallStatus = "running" | "ok" | "err" | "denied" | "requires-action";
+type ToolCallStatus = "running" | "ok" | "err" | "denied";
+
+/** 「在等你」不是任何 block 或 ToolCall 的状态：它是 Runtime 的 open interrupt。
+ *  TurnFacts.awaiting 把本 turn 中等待回答的 itemId 映射到要 resume 的 root Run，
+ *  只在 root Run 仍是 waiting 时成立。 */
 
 /** 工具卡的完整输入。所有可选字段"缺席"都意味着"这一项不画"。 */
 interface ToolCall {
@@ -716,7 +718,7 @@ interface BlockCtx {
 **现状答案（软）**：分三档 —— 出问题的最重、只读的最轻、有副作用的居中。分几档、怎么区分，重做时随意。
 
 ```
-① flagged（err / denied / requires-action）—— 状态优先，失败的读不再是一瞥
+① flagged（err / denied）—— 状态优先，失败的读不再是一瞥
    ┌──────────────────────────────────────────────┐
    │ ⚠ [icon] 标题                        · 状态  │
    │          错误原因（取代 detail）             │
@@ -738,7 +740,7 @@ interface BlockCtx {
 **为什么要分**：一条 turn 可以有一打「读」和一条「命令」，全给一样的分量，transcript 就是一整片灰。
 **硬约束**：`safetyClass` **缺席时按"非只读"处理**（与审批门同一张表 —— 卡的分量和门的判断不能互相矛盾）。
 
-#### 状态：五种，各自要传达什么
+#### 状态：四种，各自要传达什么
 
 | status | 何时 | **要传达的意思** | 硬约束 |
 | --- | --- | --- | --- |
@@ -746,7 +748,6 @@ interface BlockCtx {
 | `ok` | 正常结束 | 做完了，没什么可说 | 「没什么可说」的记号只在**真的没什么可说**时画（无任何 meta、无 diffstat）；有数字可报时那个数字就是结论 |
 | `err` | 有 `error` 或 `incomplete` | 失败了，这是原因 | 错误原因**取代**副行 —— 哪里错了压过它本来要做什么 |
 | `denied` | `error.type === "denied_by_user"` | **用户拒绝了** | **绝不能画成失败** —— 用户的决定不是错误。它需要一个和 `err` 明显不同的表达 |
-| `requires-action` | 挂在一个未决审批上 | 在等你 | 要能一眼与 `running` 区分 |
 
 #### 字段 → 要表达什么 → 大概在哪
 
@@ -866,7 +867,8 @@ Plan, Goal, and schedule tools omit their transcript rows only after Runtime rep
 
 **渲染要求**
 
-- Fold 可以同时保留同一调用的 ToolCall 与 approval block；当两者 `itemId` 完全相同且双方状态均为 `requires-action` 时，presentation planner 只渲染 approval request，不能再画一条重复命令的透明工具行。审批结算后该条件自然失效，历史 ToolCall 恢复；不得通过删除 Fold 事实、匹配命令文案或 CSS 隐藏实现去重。
+- Fold 可以同时保留同一调用的 ToolCall 与 approval block；当 approval 的 `itemId` 在 `TurnFacts.awaiting` 中时，presentation planner 只渲染 approval request，不能再画一条重复命令的透明工具行。interrupt 关闭后该条件自然失效，历史 ToolCall 恢复；不得通过删除 Fold 事实、匹配命令文案或 CSS 隐藏实现去重。
+- 客户端不推断 interrupt 关闭后 Item 的状态：ToolCall 状态只来自 Runtime 的 Item。
 - 三态：**待决**（阻塞视线）→ **已批准** / **已拒绝**（收成一行记录留在 transcript 里）。
 - **React key 必须是 `itemId`**，不能是数组下标 —— 卡持有本地参数草稿，下标 key 会把上一个 interrupt 的草稿泄漏给下一个。
 - 重连 / 重放再看到同一个 interrupt 要 **upsert 重申**同一张卡，不能追加第二张。

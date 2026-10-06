@@ -38,7 +38,8 @@ describe("questionCardSettledView", () => {
 
     expect(
       questionCardSettledView({
-        status: "requires-action",
+        status: "complete",
+        resumeRunId: "run",
         pending: true,
         questions: [question],
         draft,
@@ -49,7 +50,8 @@ describe("questionCardSettledView", () => {
   it("stays interactive before a question is answered", () => {
     expect(
       questionCardSettledView({
-        status: "requires-action",
+        status: "complete",
+        resumeRunId: "run",
         pending: false,
         questions: [question],
         draft: createQuestionDraft([question]),
@@ -88,59 +90,42 @@ describe("questionCardSettledView", () => {
 });
 
 describe("canSubmitQuestionCard", () => {
-  it("requires a resumable non-pending question and permits explicit skip", () => {
-    expect(
-      canSubmitQuestionCard({
-        runId: "run",
-        itemId: "item",
-        status: "requires-action",
-        pending: false,
-      }),
-    ).toBe(true);
-    expect(
-      canSubmitQuestionCard({
-        runId: "run",
-        itemId: "item",
-        status: "requires-action",
-        pending: true,
-      }),
-    ).toBe(false);
-    expect(
-      canSubmitQuestionCard({
-        runId: undefined,
-        itemId: "item",
-        status: "requires-action",
-        pending: false,
-      }),
-    ).toBe(false);
+  it("requires an awaiting non-pending question and permits explicit skip", () => {
+    expect(canSubmitQuestionCard({ resumeRunId: "run", itemId: "item", pending: false })).toBe(
+      true,
+    );
+    expect(canSubmitQuestionCard({ resumeRunId: "run", itemId: "item", pending: true })).toBe(
+      false,
+    );
+    expect(canSubmitQuestionCard({ resumeRunId: undefined, itemId: "item", pending: false })).toBe(
+      false,
+    );
   });
 });
 
 describe("pendingQuestionRequest", () => {
-  it("selects the latest unanswered question without inventing another read model", () => {
+  it("selects the latest unanswered question that awaits an answer", () => {
     const block = {
       kind: "question" as const,
-      status: "requires-action" as const,
-      runId: "run",
+      status: "complete" as const,
       itemId: "item",
       questions: [question],
     };
     const row = {
       message: { id: "message", role: "assistant", runId: "run", blocks: [block] },
       runOwner: { kind: "owned", runId: "run", status: "waiting" },
-      facts: { toolCalls: {}, delegatedRuns: {} },
+      facts: { toolCalls: {}, delegatedRuns: {}, awaiting: new Map([["item", "run_root"]]) },
     } as TranscriptRow;
 
-    expect(pendingQuestionRequest([row])).toBe(block);
+    expect(pendingQuestionRequest([row])).toEqual({ block, resumeRunId: "run_root" });
     expect(
       pendingQuestionRequest([
-        {
-          ...row,
-          message: {
-            ...row.message,
-            blocks: [{ ...block, status: "complete", answered: true }],
-          },
-        },
+        { ...row, facts: { ...row.facts, awaiting: new Map<string, string>() } },
+      ]),
+    ).toBeNull();
+    expect(
+      pendingQuestionRequest([
+        { ...row, message: { ...row.message, blocks: [{ ...block, answered: true }] } },
       ]),
     ).toBeNull();
   });

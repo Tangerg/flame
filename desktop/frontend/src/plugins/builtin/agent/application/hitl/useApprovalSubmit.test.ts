@@ -2,6 +2,8 @@ import { act, renderHook } from "@testing-library/react";
 import { navigator } from "@/lib/navigation";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useAgentStore } from "@/plugins/builtin/agent/adapters/agentStore";
+import { waitingRoots } from "./hitl.fixtures";
+import type { PendingInterruptGroup } from "@/plugins/sdk/types/agentSessionView";
 import { useApprovalSubmit } from "./useApprovalSubmit";
 import { installInterruptResponseCoordinator } from "./interruptResponseCoordinator";
 
@@ -24,16 +26,18 @@ function seedPending(itemId: string): void {
   store.ensureSession(SID);
   const token = store.beginViewRefresh(SID, false)!;
   const view = useAgentStore.getState().sessions[SID]!.view;
+  const groups: PendingInterruptGroup[] = [
+    {
+      sessionId: SID,
+      runId: "run_1",
+      rootRunId: "run_1",
+      interrupts: [{ itemId, kind: "approval" }],
+    },
+  ];
   store.commitViewRefresh(SID, token, {
     ...view,
-    pendingInterrupts: [
-      {
-        sessionId: SID,
-        runId: "run_1",
-        rootRunId: "run_1",
-        interrupts: [{ itemId, kind: "approval" }],
-      },
-    ],
+    runsById: waitingRoots(groups),
+    pendingInterrupts: groups,
   });
 }
 

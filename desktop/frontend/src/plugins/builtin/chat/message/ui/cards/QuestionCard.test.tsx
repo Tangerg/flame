@@ -20,8 +20,8 @@ describe("QuestionCard choice semantics", () => {
   it("exposes single-choice answers as a labeled radio group", () => {
     render(
       <QuestionCard
-        status="requires-action"
-        runId="run-1"
+        status="complete"
+        resumeRunId="run-1"
         itemId="question-1"
         questions={[
           {
@@ -48,8 +48,8 @@ describe("QuestionCard choice semantics", () => {
   it("exposes multi-choice answers as checkboxes", () => {
     render(
       <QuestionCard
-        status="requires-action"
-        runId="run-1"
+        status="complete"
+        resumeRunId="run-1"
         itemId="question-2"
         questions={[
           {
@@ -76,8 +76,8 @@ describe("QuestionCard choice semantics", () => {
   it("moves and selects within a radio group with the arrow keys", async () => {
     render(
       <QuestionCard
-        status="requires-action"
-        runId="run-1"
+        status="complete"
+        resumeRunId="run-1"
         itemId="question-3"
         questions={[
           {
@@ -115,8 +115,8 @@ describe("QuestionCard choice semantics", () => {
   it("uses the question as the only request heading and keeps option detail inline", () => {
     const { container } = render(
       <QuestionCard
-        status="requires-action"
-        runId="run-1"
+        status="complete"
+        resumeRunId="run-1"
         itemId="question-4"
         questions={[
           {
@@ -160,8 +160,8 @@ describe("QuestionCard choice semantics", () => {
   it("gives a freeform question a multiline answer surface", () => {
     render(
       <QuestionCard
-        status="requires-action"
-        runId="run-1"
+        status="complete"
+        resumeRunId="run-1"
         itemId="question-5"
         questions={[
           {
@@ -184,7 +184,6 @@ describe("QuestionCard choice semantics", () => {
     const { container } = render(
       <QuestionCard
         status="complete"
-        runId="run-1"
         itemId="question-6"
         answered
         answers={[["First constraint\nSecond constraint"]]}
@@ -220,8 +219,8 @@ describe("QuestionCard choice semantics", () => {
   it("presents multiple questions one at a time and advances without losing the draft", () => {
     render(
       <QuestionCard
-        status="requires-action"
-        runId="run-1"
+        status="complete"
+        resumeRunId="run-1"
         itemId="question-7"
         questions={[
           {
@@ -261,8 +260,8 @@ describe("QuestionCard choice semantics", () => {
   it("keeps an unmarked Chinese-IME commit Enter inside the freeform answer", () => {
     render(
       <QuestionCard
-        status="requires-action"
-        runId="run-1"
+        status="complete"
+        resumeRunId="run-1"
         itemId="question-ime"
         questions={[
           {

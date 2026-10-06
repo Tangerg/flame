@@ -7,6 +7,7 @@ import type {
   InterruptResumeInput,
 } from "../ports/sessionView";
 import { agentSessionView } from "../ports/sessionView";
+import { selectAwaitingGroups } from "../view/awaitingInterrupts";
 
 interface StagedResponse {
   input: InterruptResumeInput;
@@ -110,7 +111,7 @@ class InterruptResponseBatch {
 const batchKey = (sessionId: string, rootRunId: string) => tupleKey(sessionId, rootRunId);
 
 function openResponseIds(entry: AgentSessionViewEntry, rootRunId: string): string[] {
-  return entry.view.pendingInterrupts
+  return selectAwaitingGroups(entry.view)
     .filter((group) => group.rootRunId === rootRunId)
     .flatMap((group) =>
       group.interrupts

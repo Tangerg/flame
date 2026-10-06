@@ -1,5 +1,4 @@
 import { useCallback, useEffect } from "react";
-import type { BlockStatus } from "@/plugins/sdk/types/contentBlock";
 import {
   useApprovalSubmit,
   type ApprovalDecision,
@@ -34,33 +33,29 @@ export function approvalSubmitOptions({
 }
 
 export function canRegisterApprovalActions({
-  runId,
+  resumeRunId,
   itemId,
-  status,
   runtimeAvailable = true,
 }: {
-  runId?: string;
+  resumeRunId?: string;
   itemId?: string;
-  status: BlockStatus;
   runtimeAvailable?: boolean;
 }): boolean {
-  return Boolean(runtimeAvailable && runId && itemId && status === "requires-action");
+  return Boolean(runtimeAvailable && resumeRunId && itemId);
 }
 
 export function useApprovalCardActions({
-  runId,
+  resumeRunId,
   itemId,
-  status,
   argsEditor,
   runtimeAvailable,
 }: {
-  runId?: string;
+  resumeRunId?: string;
   itemId?: string;
-  status: BlockStatus;
   argsEditor?: ApprovalArgsCommitter;
   runtimeAvailable: boolean;
 }): ApprovalCardActionState {
-  const { submit, pending, registerActions } = useApprovalSubmit(runId, itemId);
+  const { submit, pending, registerActions } = useApprovalSubmit(resumeRunId, itemId);
 
   const approve = useCallback(
     (rememberScope?: RememberScope) => {
@@ -75,7 +70,7 @@ export function useApprovalCardActions({
     submit("declined");
   }, [submit]);
 
-  const registerable = canRegisterApprovalActions({ runId, itemId, status, runtimeAvailable });
+  const registerable = canRegisterApprovalActions({ resumeRunId, itemId, runtimeAvailable });
   useEffect(() => {
     if (!registerable) return;
     return registerActions({
@@ -86,7 +81,7 @@ export function useApprovalCardActions({
 
   return {
     pending,
-    disabled: !runtimeAvailable || !canSubmitApproval({ runId, itemId, pending, status }),
+    disabled: !runtimeAvailable || !canSubmitApproval({ resumeRunId, itemId, pending }),
     approve,
     decline,
   };

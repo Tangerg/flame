@@ -22,11 +22,12 @@ export function narratedBlocks(
 export function messageBlockRenderUnits(
   blocks: ContentBlock[],
   toolCalls: Record<string, ToolCall>,
+  awaiting: ReadonlyMap<string, string>,
   answerFollows = false,
   delegating?: ReadonlySet<string>,
 ): MessageRenderUnit[] {
   const lastIndex = blocks.length - 1;
-  return planRenderUnits(blocks, toolCalls, answerFollows, delegating).map((unit) => {
+  return planRenderUnits(blocks, toolCalls, awaiting, answerFollows, delegating).map((unit) => {
     if (unit.kind !== "block") return unit;
     const { block, index } = unit;
     if (block.kind === "text" && block.status === "running" && index !== lastIndex) {
@@ -60,10 +61,9 @@ export function messageActionMaterialization(row: TranscriptRow): MessageActionM
   }
 
   for (const block of row.message.blocks) {
-    if (blockOwnsActiveMaterial(block)) return "active";
+    if (blockOwnsActiveMaterial(block, row.facts.awaiting)) return "active";
     if (block.kind !== "tool") continue;
-    const call = row.facts.toolCalls[block.toolCallId];
-    if (call?.status === "running" || call?.status === "requires-action") return "active";
+    if (row.facts.toolCalls[block.toolCallId]?.status === "running") return "active";
   }
 
   for (const narratives of Object.values(row.facts.delegatedRuns)) {
@@ -73,13 +73,20 @@ export function messageActionMaterialization(row: TranscriptRow): MessageActionM
   return "settled";
 }
 
-function blockOwnsActiveMaterial(block: ContentBlock): boolean {
+function blockOwnsActiveMaterial(
+  block: ContentBlock,
+  awaiting: ReadonlyMap<string, string>,
+): boolean {
   switch (block.kind) {
     case "text":
     case "reasoning":
+      return block.status === "running";
     case "approval":
+      return block.itemId !== undefined && awaiting.has(block.itemId);
     case "question":
-      return block.status === "running" || block.status === "requires-action";
+      return (
+        block.status === "running" || (block.itemId !== undefined && awaiting.has(block.itemId))
+      );
     default:
       return false;
   }

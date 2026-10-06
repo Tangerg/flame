@@ -14,7 +14,7 @@ export interface AgentPlan {
   readonly steps: readonly PlanStep[];
 }
 
-export type ToolCallStatus = "running" | "ok" | "err" | "denied" | "requires-action";
+export type ToolCallStatus = "running" | "ok" | "err" | "denied";
 export type AgentSafetyClass = "safe" | "write" | "exec" | "network";
 
 export interface ToolFileChange {

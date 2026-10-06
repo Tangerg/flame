@@ -44,35 +44,11 @@ describe("approvalSubmitOptions", () => {
 });
 
 describe("canRegisterApprovalActions", () => {
-  it("registers shortcuts only for an open resumable approval", () => {
+  it("registers shortcuts only while the approval awaits an answer", () => {
+    expect(canRegisterApprovalActions({ resumeRunId: "run", itemId: "item" })).toBe(true);
+    expect(canRegisterApprovalActions({ resumeRunId: undefined, itemId: "item" })).toBe(false);
     expect(
-      canRegisterApprovalActions({
-        runId: "run",
-        itemId: "item",
-        status: "requires-action",
-      }),
-    ).toBe(true);
-    expect(
-      canRegisterApprovalActions({
-        runId: "run",
-        itemId: "item",
-        status: "complete",
-      }),
-    ).toBe(false);
-    expect(
-      canRegisterApprovalActions({
-        runId: undefined,
-        itemId: "item",
-        status: "requires-action",
-      }),
-    ).toBe(false);
-    expect(
-      canRegisterApprovalActions({
-        runId: "run",
-        itemId: "item",
-        status: "requires-action",
-        runtimeAvailable: false,
-      }),
+      canRegisterApprovalActions({ resumeRunId: "run", itemId: "item", runtimeAvailable: false }),
     ).toBe(false);
   });
 });
@@ -82,9 +58,8 @@ describe("useApprovalCardActions", () => {
     const argsEditor = { commit: vi.fn(() => ({ path: "/safe" })) };
     const { result } = renderHook(() =>
       useApprovalCardActions({
-        runId: "run",
+        resumeRunId: "run",
         itemId: "item",
-        status: "requires-action",
         argsEditor,
         runtimeAvailable: true,
       }),
@@ -103,9 +78,8 @@ describe("useApprovalCardActions", () => {
   it("keeps the registered keyboard approval one-shot", () => {
     renderHook(() =>
       useApprovalCardActions({
-        runId: "run",
+        resumeRunId: "run",
         itemId: "item",
-        status: "requires-action",
         runtimeAvailable: true,
       }),
     );

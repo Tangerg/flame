@@ -7,6 +7,7 @@ import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
 import { selectCurrentRootRun, selectVisibleProblem } from "../view/runTree";
 import { reconcileMessageIdentity } from "../view/viewMutations";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
+import { selectAwaitingInterrupts } from "../view/awaitingInterrupts";
 
 function item(partial: Record<string, unknown>): Item {
   return {
@@ -625,15 +626,14 @@ describe("reducer — HITL interrupt", () => {
     const block = s.messages.flatMap((m) => m.blocks).find((b) => b.kind === "approval");
     expect(block).toMatchObject({
       kind: "approval",
-      status: "requires-action",
       itemId: "tool_1",
-      runId: "run_1",
       command: "rm -rf x",
       rememberable: true,
     });
     expect(s.pendingInterrupts).toHaveLength(1);
     expect(s.pendingInterrupts[0]!.runId).toBe("run_1");
-    expect(s.toolCalls.tool_1?.status).toBe("requires-action");
+    expect(selectAwaitingInterrupts(s).get("tool_1")).toBe("run_1");
+    expect(s.toolCalls.tool_1?.status).toBe("running");
   });
 
   it("approval payload carries a ToolInvocation: command → cmd line, generic tool → editable args", () => {
@@ -704,13 +704,12 @@ describe("reducer — HITL interrupt", () => {
     const block = s.messages.flatMap((m) => m.blocks).find((b) => b.kind === "question");
     expect(block).toMatchObject({
       kind: "question",
-      status: "requires-action",
       itemId: "q1",
-      runId: "run_1",
       questions: [{ type: "choice", prompt: "Pick a database" }],
     });
     expect(s.pendingInterrupts).toHaveLength(1);
     expect(s.pendingInterrupts[0]!.runId).toBe("run_1");
+    expect(selectAwaitingInterrupts(s).get("q1")).toBe("run_1");
   });
 
   it("a second segment.started (resume) never splits the open turn — live grouping matches replay", () => {
@@ -798,15 +797,16 @@ describe("reducer — interrupt idempotency + terminal cleanup", () => {
     expect(s.pendingInterrupts[0]!.interrupts).toHaveLength(1);
   });
 
-  it("a terminal segment.finished clears open interrupts + downgrades the card (B2)", () => {
+  it("a run that leaves waiting closes its interrupts without inventing Item state (B2)", () => {
     let s = toInterrupt();
-    expect(s.pendingInterrupts).toHaveLength(1);
+    expect(selectAwaitingInterrupts(s).get("tool_1")).toBe("run_1");
 
     s = reduce(s, runStarted("run_1", "ses_1"), "run_1", "seg_resume");
-    s = reduce(s, runFinished({ type: "canceled" }));
     expect(s.pendingInterrupts).toHaveLength(0);
-    expect(approvalBlocks(s)[0]).toMatchObject({ status: "incomplete" });
-    expect(s.toolCalls.tool_1?.status).toBe("err");
+    expect(selectAwaitingInterrupts(s).size).toBe(0);
+    s = reduce(s, runFinished({ type: "canceled" }));
+    expect(approvalBlocks(s)).toHaveLength(1);
+    expect(s.toolCalls.tool_1?.status).toBe("running");
   });
 
   it("an authoritative empty completion removes provisional text", () => {

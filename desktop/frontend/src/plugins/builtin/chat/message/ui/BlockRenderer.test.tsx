@@ -29,7 +29,11 @@ it("animates opaque tool arrivals without remounting their surface when regroupe
   };
   const row = {
     message: { ...message("tool-arrivals", "root-run", first.id), blocks: [] as Message["blocks"] },
-    facts: { toolCalls: {} as Record<string, ToolCall>, delegatedRuns: {} },
+    facts: {
+      toolCalls: {} as Record<string, ToolCall>,
+      delegatedRuns: {},
+      awaiting: new Map<string, string>(),
+    },
   };
   const renderRow = () => (
     <MessageContext.Provider value={{ sessionId: "session-1", message: row.message }}>
@@ -77,7 +81,11 @@ it("does not animate historical tools on initial render", () => {
   const call = tool("historical-tool");
   const row = {
     message: message("historical-message", "root-run", call.id),
-    facts: { toolCalls: { [call.id]: call }, delegatedRuns: {} },
+    facts: {
+      toolCalls: { [call.id]: call },
+      delegatedRuns: {},
+      awaiting: new Map<string, string>(),
+    },
   };
   const { container } = render(
     <MessageContext.Provider value={{ sessionId: "session-1", message: row.message }}>
@@ -175,6 +183,7 @@ describe("delegated Run rendering", () => {
           },
         ],
       },
+      awaiting: new Map<string, string>(),
     };
 
     renderRootTool(parentTool.id, facts);
@@ -199,6 +208,7 @@ describe("delegated Run rendering", () => {
           { run: run("child-b", "root-run", "root-run", parentTool.id), messages: [] },
         ],
       },
+      awaiting: new Map<string, string>(),
     };
 
     renderRootTool(parentTool.id, facts);
@@ -220,6 +230,7 @@ describe("delegated Run rendering", () => {
           },
         ],
       },
+      awaiting: new Map<string, string>(),
     };
 
     renderRootTool(parentTool.id, facts);
@@ -251,7 +262,11 @@ describe("standing tool outcomes", () => {
     };
     const row = {
       message: message("plan-message", "root-run", call.id),
-      facts: { toolCalls: { [call.id]: call }, delegatedRuns: {} },
+      facts: {
+        toolCalls: { [call.id]: call },
+        delegatedRuns: {},
+        awaiting: new Map<string, string>(),
+      },
     };
     const renderRow = () => (
       <MessageContext.Provider value={{ sessionId: "session-1", message: row.message }}>
@@ -279,14 +294,14 @@ describe("standing tool outcomes", () => {
 it("only relocates the exact question already rendered by the composer", () => {
   const first = {
     kind: "question" as const,
-    status: "requires-action" as const,
+    status: "complete" as const,
     itemId: "first",
     questions: [],
   };
   const second = { ...first, itemId: "second" };
   const row = {
     message: { ...message("questions", "root-run", "ask"), blocks: [first, second] },
-    facts: { toolCalls: {}, delegatedRuns: {} },
+    facts: { toolCalls: {}, delegatedRuns: {}, awaiting: new Map<string, string>() },
   };
   expect(renderMessageBlocks(row, CTX)).toHaveLength(2);
   expect(renderMessageBlocks(row, { ...CTX, questionInComposer: first })).toHaveLength(1);

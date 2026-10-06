@@ -37,8 +37,7 @@ describe("ApprovalCard actions", () => {
   it("orders the deny action before the primary approval action", () => {
     render(
       <ApprovalCard
-        status="requires-action"
-        runId="run-1"
+        resumeRunId="run-1"
         itemId="approval-1"
         toolName="shell"
         cmd="npm test"
@@ -55,8 +54,7 @@ describe("ApprovalCard actions", () => {
   it("uses the Codex request hierarchy without local danger chrome", () => {
     const { container } = render(
       <ApprovalCard
-        status="requires-action"
-        runId="run-1"
+        resumeRunId="run-1"
         itemId="approval-1"
         toolName="shell"
         cmd="rm -rf node_modules && pnpm install"
@@ -78,8 +76,7 @@ describe("ApprovalCard actions", () => {
   it("keeps remembered approval scopes behind the primary split action", () => {
     render(
       <ApprovalCard
-        status="requires-action"
-        runId="run-1"
+        resumeRunId="run-1"
         itemId="approval-1"
         toolName="shell"
         cmd="npm test"
@@ -98,8 +95,7 @@ describe("ApprovalCard actions", () => {
     (name) => {
       render(
         <ApprovalCard
-          status="requires-action"
-          runId="run-1"
+          resumeRunId="run-1"
           itemId="approval-1"
           toolName={name}
           cmd=""

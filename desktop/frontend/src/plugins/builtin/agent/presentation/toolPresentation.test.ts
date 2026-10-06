@@ -75,7 +75,7 @@ describe("toolPresentation", () => {
     expect(toolIntent(t, { ...reading, status: "err" }).label.value).toBe("Read file");
   });
 
-  it.each(["err", "denied", "requires-action"] as const)(
+  it.each(["err", "denied"] as const)(
     "does not claim that an unaccepted Plan update succeeded (%s)",
     (status) => {
       const call = tool({ name: "set_plan", fn: "set_plan", status });
