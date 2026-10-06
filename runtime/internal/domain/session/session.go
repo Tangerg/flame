@@ -291,20 +291,6 @@ func (s Session) validate() error {
 	return nil
 }
 
-// ValidateFor proves this Session was constructed and carries the exact
-// identity asked for. Point reads use it before a stored Session can influence
-// another use case; the aggregate's own legality is settled by the constructor
-// or transition that produced it.
-func (s Session) ValidateFor(expectedID string) error {
-	if s.id == "" {
-		return fmt.Errorf("%w: value was never constructed", ErrInvalid)
-	}
-	if s.id != expectedID {
-		return fmt.Errorf("%w: id %q does not match requested identity %q", ErrInvalid, s.id, expectedID)
-	}
-	return nil
-}
-
 // Snapshot returns the complete technical representation of s.
 func (s Session) Snapshot() Snapshot {
 	return Snapshot{
