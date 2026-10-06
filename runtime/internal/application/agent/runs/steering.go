@@ -16,7 +16,7 @@ import (
 // points each guessing from the live registry.
 func (c *Coordinator) Steer(ctx context.Context, cmd SteerCommand) (string, error) {
 	cmd = cmd.clone()
-	live, err := c.addressLiveSegment(ctx, cmd.RunID, cmd.ExpectedSegmentID)
+	live, durable, err := c.addressLiveSegment(ctx, cmd.RunID, cmd.ExpectedSegmentID)
 	if err != nil {
 		return "", err
 	}
@@ -25,7 +25,7 @@ func (c *Coordinator) Steer(ctx context.Context, cmd SteerCommand) (string, erro
 	if err != nil {
 		return "", err
 	}
-	if admitErr := c.models.AdmitInput(rec.ModelSelection, []corechat.Message{message}); admitErr != nil {
+	if admitErr := c.models.AdmitInput(durable.ModelSelection(), []corechat.Message{message}); admitErr != nil {
 		return "", fmt.Errorf("%w: %w", ErrUnsupportedMedia, admitErr)
 	}
 	itemID, err := c.steering.SubmitSteer(ctx, ExecutorRef{SessionID: rec.SessionID, ExecutorID: rec.ExecutorID}, cmd.Input)

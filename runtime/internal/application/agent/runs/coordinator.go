@@ -360,13 +360,10 @@ func (s *segmentStartup) activate(requestContext context.Context) (iter.Seq[Even
 	s.treeOwner.observation.Lock()
 	var openings []routeOpening
 	err := s.coordinator.registry.Open(Record{
-		ID:             spec.RunID,
-		SegmentID:      spec.SegmentID,
-		SessionID:      spec.SessionID,
-		CreatedAt:      spec.CreatedAt,
-		ExecutorID:     spec.ExecutorID,
-		ModelSelection: spec.ModelSelection,
-		Capabilities:   spec.effectiveCapabilities(),
+		ID:         spec.RunID,
+		SegmentID:  spec.SegmentID,
+		SessionID:  spec.SessionID,
+		ExecutorID: spec.ExecutorID,
 	}, s.treeOwner, func() error {
 		var err error
 		openings, err = s.coordinator.commitOpening(requestContext, spec, s.routes)
@@ -610,7 +607,7 @@ func (c *Coordinator) SubscribeSnapshot(ctx context.Context, req SubscribeReques
 	}
 	// Waiting for publication may cross a park/finish/resume boundary. The
 	// snapshot must not describe a successor Segment while tailing the old one.
-	if _, err := c.addressLiveSegment(ctx, req.RunID, req.SegmentID); err != nil {
+	if _, _, err := c.addressLiveSegment(ctx, req.RunID, req.SegmentID); err != nil {
 		return Subscription{}, err
 	}
 	if err := read(ctx, live.record.SessionID); err != nil {
@@ -635,18 +632,19 @@ func subscribeLiveSegment(ctx context.Context, live liveSegment, req SubscribeRe
 }
 
 func (c *Coordinator) addressSubscription(ctx context.Context, req SubscribeRequest) (liveSegment, error) {
-	live, err := c.addressLiveSegment(ctx, req.RunID, req.SegmentID)
+	live, durable, err := c.addressLiveSegment(ctx, req.RunID, req.SegmentID)
 	if err != nil {
 		return liveSegment{}, err
 	}
-	if gap := live.record.Capabilities.MissingFrom(req.CallerCapabilities); !gap.IsEmpty() {
+	if gap := durable.Capabilities().MissingFrom(req.CallerCapabilities); !gap.IsEmpty() {
 		return liveSegment{}, &rundomain.InsufficientCapabilitiesError{RunID: req.RunID, Missing: gap}
 	}
 	return live, nil
 }
 
 // addressLiveSegment resolves the run and segment a control command addresses,
-// refusing with the reason the caller can act on.
+// refusing with the reason the caller can act on. It returns the durable Run,
+// which owns every fact about the Run beyond its live Segment.
 //
 // The durable record is the authority for the refusal, not the live registry:
 // the registry holds only running segments, so a run that is waiting, finished,
@@ -656,7 +654,7 @@ func (c *Coordinator) addressSubscription(ctx context.Context, req SubscribeRequ
 //
 // Both entry points into an executing run (subscribe and steer) resolve here, so
 // they cannot come to different conclusions about the same run.
-func (c *Coordinator) addressLiveSegment(ctx context.Context, runID, segmentID string) (liveSegment, error) {
+func (c *Coordinator) addressLiveSegment(ctx context.Context, runID, segmentID string) (liveSegment, rundomain.Run, error) {
 	// Capture the owner before reading its durable state. Retirement may remove
 	// that entry after the read, but cannot invalidate the captured journal.
 	// Exclude openings until both reads finish so a newly committed Segment
@@ -666,44 +664,44 @@ func (c *Coordinator) addressLiveSegment(ctx context.Context, runID, segmentID s
 	live, liveFound := c.registry.Get(runID)
 	run, ok, err := c.runs.Run(ctx, runID)
 	if err != nil {
-		return liveSegment{}, fmt.Errorf("runs: read run %q: %w", runID, err)
+		return liveSegment{}, rundomain.Run{}, fmt.Errorf("runs: read run %q: %w", runID, err)
 	}
 	if !ok {
-		return liveSegment{}, ErrRunNotFound
+		return liveSegment{}, rundomain.Run{}, ErrRunNotFound
 	}
 	if run.Lineage().IsChild() {
-		return liveSegment{}, fmt.Errorf("%w: %q", transcript.ErrNotRoot, runID)
+		return liveSegment{}, rundomain.Run{}, fmt.Errorf("%w: %q", transcript.ErrNotRoot, runID)
 	}
 	switch status := run.State().Status(); status {
 	case rundomain.StatusWaiting:
-		return liveSegment{}, fmt.Errorf("%w: %q", ErrRunWaiting, runID)
+		return liveSegment{}, rundomain.Run{}, fmt.Errorf("%w: %q", ErrRunWaiting, runID)
 	case rundomain.StatusFinished:
-		return liveSegment{}, fmt.Errorf("%w: %q", ErrRunFinished, runID)
+		return liveSegment{}, rundomain.Run{}, fmt.Errorf("%w: %q", ErrRunFinished, runID)
 	case rundomain.StatusRunning:
 	default:
-		return liveSegment{}, fmt.Errorf("runs: run %q has unknown status %q", runID, status)
+		return liveSegment{}, rundomain.Run{}, fmt.Errorf("runs: run %q has unknown status %q", runID, status)
 	}
 	if run.ActiveSegmentID() != segmentID {
-		return liveSegment{}, fmt.Errorf("%w: run %q is executing %q", ErrStaleSegment, runID, run.ActiveSegmentID())
+		return liveSegment{}, rundomain.Run{}, fmt.Errorf("%w: run %q is executing %q", ErrStaleSegment, runID, run.ActiveSegmentID())
 	}
 	if !liveFound {
 		// A Running record whose segment this process does not own. Restart recovery
 		// terminalizes orphans before the runtime serves, so this is a broken
 		// invariant rather than a state a client can act on — reporting it as one
 		// would teach the client a lie about the run.
-		return liveSegment{}, fmt.Errorf("runs: run %q is running segment %q with no live stream", runID, segmentID)
+		return liveSegment{}, rundomain.Run{}, fmt.Errorf("runs: run %q is running segment %q with no live stream", runID, segmentID)
 	}
 	if live.record.SegmentID != segmentID {
 		// Opening and owner publication share the fence above; a disagreement is
 		// an ownership fault, not a reason to retarget the caller's Segment.
-		return liveSegment{}, fmt.Errorf(
+		return liveSegment{}, rundomain.Run{}, fmt.Errorf(
 			"runs: run %q is executing segment %q but its live owner names %q",
 			runID,
 			segmentID,
 			live.record.SegmentID,
 		)
 	}
-	return live, nil
+	return live, run, nil
 }
 
 // BeginShutdown prevents new runs and cancels every in-flight pump.

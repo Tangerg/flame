@@ -2,23 +2,16 @@ package runs
 
 import (
 	"sync"
-	"time"
-
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
 )
 
 // Record is the observable state of an active run segment.
+// Record names the live Segment that owns one executing Run. The durable Run
+// owns everything else about it.
 type Record struct {
-	ID             string
-	SegmentID      string
-	SessionID      string
-	CreatedAt      time.Time
-	ExecutorID     string
-	ModelSelection modelref.Selection
-	// Capabilities is the Run's frozen optional behavior, carried on the live
-	// record so an insufficient subscriber is refused before attachment.
-	Capabilities run.Capabilities
+	ID           string
+	SegmentID    string
+	SessionID    string
+	ExecutorID   string
 	CancelReason string
 }
 
@@ -53,7 +46,7 @@ func (r *registry) Open(record Record, owner *runTreeOwner, commit func() error)
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.initLocked()
-	r.runs[record.ID] = liveSegment{record: cloneRecord(record), owner: owner}
+	r.runs[record.ID] = liveSegment{record: record, owner: owner}
 	return nil
 }
 
@@ -77,7 +70,6 @@ func (r *registry) Get(id string) (liveSegment, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	segment, ok := r.runs[id]
-	segment.record = cloneRecord(segment.record)
 	return segment, ok
 }
 
@@ -100,13 +92,7 @@ func (r *registry) MarkCancel(id, reason string) (liveSegment, bool) {
 	}
 	segment.record.CancelReason = reason
 	r.runs[id] = segment
-	segment.record = cloneRecord(segment.record)
 	return segment, true
-}
-
-func cloneRecord(record Record) Record {
-	record.Capabilities = record.Capabilities.Clone()
-	return record
 }
 
 func (r *registry) initLocked() {

@@ -136,9 +136,7 @@ func TestCancellationRejectsLiveOwnerFactDrift(t *testing.T) {
 	spec := testSegment()
 	root := runForSegment(spec)
 	base := liveSegment{record: Record{
-		ID: spec.RunID, SegmentID: spec.SegmentID, SessionID: spec.SessionID,
-		CreatedAt: spec.CreatedAt, ExecutorID: spec.ExecutorID,
-		ModelSelection: spec.ModelSelection, Capabilities: spec.Capabilities,
+		ID: spec.RunID, SegmentID: spec.SegmentID, SessionID: spec.SessionID, ExecutorID: spec.ExecutorID,
 	}}
 	if err := validateCancellationLiveRoot(base, root); err != nil {
 		t.Fatalf("coherent live owner: %v", err)
@@ -148,13 +146,6 @@ func TestCancellationRejectsLiveOwnerFactDrift(t *testing.T) {
 		mutate func(*liveSegment)
 	}{
 		{"segment", func(live *liveSegment) { live.record.SegmentID = "seg_other" }},
-		{"creation time", func(live *liveSegment) { live.record.CreatedAt = spec.CreatedAt.Add(time.Second) }},
-		{"model", func(live *liveSegment) {
-			live.record.ModelSelection = testsupport.MustModelSelection("anthropic", "model")
-		}},
-		{"run capabilities", func(live *liveSegment) {
-			live.record.Capabilities.ChildRuns = true
-		}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

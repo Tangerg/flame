@@ -3,20 +3,15 @@ package runs
 import (
 	"errors"
 	"testing"
-	"time"
-
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 )
 
 func TestRegistryRemovesCompletedRun(t *testing.T) {
 	var r registry
-	started := time.Unix(42, 0).UTC()
 	owner := testRunTreeOwner(t, nil)
-	r.Open(Record{ID: "run_1", SessionID: "ses_1", CreatedAt: started}, owner, func() error { return nil })
+	r.Open(Record{ID: "run_1", SessionID: "ses_1"}, owner, func() error { return nil })
 
 	e, ok := r.Get("run_1")
-	if !ok || e.record.CreatedAt != started || e.owner != owner {
+	if !ok || e.owner != owner {
 		t.Fatalf("entry = %+v, ok=%v", e, ok)
 	}
 
@@ -60,26 +55,6 @@ func TestRegistryCancelReason(t *testing.T) {
 	}
 	if _, ok := r.MarkCancel("missing", "x"); ok {
 		t.Fatal("mark cancel must miss unknown runs")
-	}
-}
-
-func TestRegistryOwnsRunCapabilities(t *testing.T) {
-	var reg registry
-	capabilities := run.Capabilities{
-		InterruptKinds: []interrupt.Kind{interrupt.Approval},
-	}
-	reg.Open(Record{ID: "run_1", Capabilities: capabilities}, nil, func() error { return nil })
-	capabilities.InterruptKinds[0] = interrupt.Question
-
-	first, ok := reg.Get("run_1")
-	if !ok || first.record.Capabilities.InterruptKinds[0] != interrupt.Approval {
-		t.Fatalf("stored capabilities followed caller mutation: %+v", first.record.Capabilities)
-	}
-	first.record.Capabilities.InterruptKinds[0] = interrupt.Question
-
-	second, ok := reg.Get("run_1")
-	if !ok || second.record.Capabilities.InterruptKinds[0] != interrupt.Approval {
-		t.Fatalf("Get leaked stored capabilities ownership: %+v", second.record.Capabilities)
 	}
 }
 

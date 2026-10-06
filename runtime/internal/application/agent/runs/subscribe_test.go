@@ -344,14 +344,15 @@ func TestSubscribeAfterOrphanRecoveryUsesFinishedStateBeforeOldCursor(t *testing
 }
 
 func TestSubscribeRefusesACallerThatCouldNotFollowTheRun(t *testing.T) {
-	record := runRecord(run.Running, testSegmentID, "")
+	snapshot := runRecord(run.Running, testSegmentID, "").Snapshot()
+	snapshot.Capabilities = run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval}}
+	record := testsupport.MustRestoreRun(snapshot)
 	c := mustNewCoordinator(Dependencies{
 		Runs: &fakeRunProjection{runs: map[string]run.Run{testRunID: record}},
 	})
-	capabilities := run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval}}
 	hub := mustNewJournal(t, testStreamScope(c.epoch, testRunID, testSegmentID), c.retention)
 	c.registry.Open(Record{
-		ID: testRunID, SegmentID: testSegmentID, SessionID: "ses_1", Capabilities: capabilities,
+		ID: testRunID, SegmentID: testSegmentID, SessionID: "ses_1",
 	}, testRunTreeOwner(t, hub), func() error { return nil })
 
 	_, err := c.Subscribe(t.Context(), SubscribeRequest{RunID: testRunID, SegmentID: testSegmentID})
