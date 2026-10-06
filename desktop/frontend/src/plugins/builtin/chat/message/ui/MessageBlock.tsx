@@ -151,7 +151,7 @@ function MessageBlockInner({
           )}
           {isUser && msg.steer && (
             <Badge>
-              {t(msg.steer.status === "accepted" ? "agent.steer.accepted" : "agent.steer.applied")}
+              {t(msg.runId === msg.steer.runId ? "agent.steer.applied" : "agent.steer.accepted")}
             </Badge>
           )}
           {isUser && !msg.steer && msg.runId === null && (

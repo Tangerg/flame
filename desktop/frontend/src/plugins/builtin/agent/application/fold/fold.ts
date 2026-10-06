@@ -179,9 +179,6 @@ export function appendUserMessage(
                     runId: item.runId,
                     createdAt: item.createdAt,
                     blocks: userContentBlocks(item.content),
-                    ...(message.steer
-                      ? { steer: { ...message.steer, status: "applied" as const } }
-                      : {}),
                   }
                 : message,
             ),

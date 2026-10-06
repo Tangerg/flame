@@ -64,7 +64,7 @@ describe("refreshAgentSessionProjection", () => {
         role: "user",
         runId: null,
         blocks: [{ kind: "text", text: "Use the attached reference", status: "complete" }],
-        steer: { runId: "run_steered", status: "accepted" },
+        steer: { runId: "run_steered" },
       });
       const read = Promise.withResolvers<AgentSessionMaterialRead>();
       const terminal: AgentSessionSnapshot = {

@@ -57,7 +57,8 @@ export interface Message {
   createdAt?: string;
   runId: string | null;
   blocks: ContentBlock[];
-  steer?: { runId: string; status: "accepted" | "applied" };
+  /** The Run this input steered; it is applied once it is that Run's Item. */
+  steer?: { runId: string };
 }
 
 export interface RunUsage {

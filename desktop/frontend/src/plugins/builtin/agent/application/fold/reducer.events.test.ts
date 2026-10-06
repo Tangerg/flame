@@ -379,12 +379,12 @@ describe("reducer — item fold", () => {
       if (receiptFirst) {
         state = reconcileMessageIdentity(state, "local-steer-1", "item_image", "run_1");
       }
-      expect(state.messages[0]?.steer?.status).toBe(receiptFirst ? "accepted" : undefined);
+      expect(state.messages[0]?.steer).toEqual(receiptFirst ? { runId: "run_1" } : undefined);
       expect(state.messages[0]?.runId).toBeNull();
       state = reduce(state, applied);
       if (!receiptFirst)
         state = reconcileMessageIdentity(state, "local-steer-1", "item_image", "run_1");
-      expect(state.messages[0]?.steer).toEqual({ runId: "run_1", status: "applied" });
+      expect(state.messages[0]?.steer).toEqual({ runId: "run_1" });
       expect(state.messages).toHaveLength(1);
       expect(state.messages[0]).toMatchObject({ id: "item_image", runId: "run_1" });
       expect(state.messages[0]!.blocks).toEqual([

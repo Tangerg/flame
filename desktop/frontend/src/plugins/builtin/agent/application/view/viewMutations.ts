@@ -17,14 +17,7 @@ export function reconcileMessageIdentity(
           .filter((message) => message.id !== fromId)
           .map((message) =>
             message.id === toId && steerRunId
-              ? {
-                  ...message,
-                  steer: {
-                    runId: steerRunId,
-                    status:
-                      message.runId === steerRunId ? ("applied" as const) : ("accepted" as const),
-                  },
-                }
+              ? { ...message, steer: { runId: steerRunId } }
               : message,
           )
       : view.messages.map((message) =>
@@ -32,9 +25,7 @@ export function reconcileMessageIdentity(
             ? {
                 ...message,
                 id: toId,
-                ...(steerRunId
-                  ? { steer: { runId: steerRunId, status: "accepted" as const } }
-                  : {}),
+                ...(steerRunId ? { steer: { runId: steerRunId } } : {}),
               }
             : message,
         ),
@@ -61,8 +52,8 @@ export function reconcileSteerMessages(
       (message) => message.id === pending.id && message.runId === steer.runId,
     );
     if (index >= 0) {
-      messages[index] = { ...messages[index]!, steer: { ...steer, status: "applied" } };
-    } else if (steer.status === "accepted") {
+      messages[index] = { ...messages[index]!, steer };
+    } else if (pending.runId !== steer.runId) {
       const run = authoritative.runsById[steer.runId];
       if (run?.status === "finished") unapplied = true;
       else if (run) messages.push(pending);

@@ -25,7 +25,7 @@ describe("view mutations - messages", () => {
       ...message("accepted"),
       role: "user" as const,
       runId: null,
-      steer: { runId: "run_1", status: "accepted" as const },
+      steer: { runId: "run_1" },
     };
     const previous = view({ messages: [pending] });
     const active = view({ runsById: { run_1: { id: "run_1", status: "running" } as never } });
@@ -34,7 +34,7 @@ describe("view mutations - messages", () => {
     const applied = { ...active, messages: [{ ...pending, steer: undefined, runId: "run_1" }] };
     expect(reconcileSteerMessages(previous, applied)).toMatchObject({
       unapplied: false,
-      view: { messages: [{ id: "accepted", runId: "run_1", steer: { status: "applied" } }] },
+      view: { messages: [{ id: "accepted", runId: "run_1", steer: { runId: "run_1" } }] },
     });
     const unrelated = {
       ...active,
@@ -48,9 +48,7 @@ describe("view mutations - messages", () => {
 
   it("removes an unapplied steer only after a full terminal snapshot and reports it once", () => {
     const previous = view({
-      messages: [
-        { ...message("accepted"), runId: null, steer: { runId: "run_1", status: "accepted" } },
-      ],
+      messages: [{ ...message("accepted"), runId: null, steer: { runId: "run_1" } }],
     });
     const terminal = view({ runsById: { run_1: { id: "run_1", status: "finished" } as never } });
     const settled = reconcileSteerMessages(previous, terminal);
@@ -62,7 +60,7 @@ describe("view mutations - messages", () => {
   it("marks a late receipt applied when its durable Item survived an authoritative refresh", () => {
     const current = view({ messages: [{ ...message("durable"), role: "user" }] });
     const accepted = reconcileMessageIdentity(current, "missing-local", "durable", "run_1");
-    expect(accepted.messages[0]?.steer).toEqual({ runId: "run_1", status: "applied" });
+    expect(accepted.messages[0]?.steer).toEqual({ runId: "run_1" });
   });
 
   it("relabels an optimistic message without touching unrelated messages", () => {

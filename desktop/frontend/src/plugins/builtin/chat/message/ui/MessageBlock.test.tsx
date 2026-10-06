@@ -70,7 +70,7 @@ describe("MessageBlock turn identity", () => {
     accepted.message = {
       ...accepted.message,
       runId: null,
-      steer: { runId: "run_1", status: "accepted" },
+      steer: { runId: "run_1" },
     };
     const { rerender } = render(
       <MessageBlock row={accepted} ctx={CTX} sessionId="session-steer" isLast isRunning />,
@@ -82,7 +82,7 @@ describe("MessageBlock turn identity", () => {
       message: {
         ...accepted.message,
         runId: "run_1",
-        steer: { runId: "run_1", status: "applied" as const },
+        steer: { runId: "run_1" },
       },
     };
     rerender(<MessageBlock row={applied} ctx={CTX} sessionId="session-steer" isLast isRunning />);
