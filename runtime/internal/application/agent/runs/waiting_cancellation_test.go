@@ -57,7 +57,6 @@ func (f *fakePreparedWaitingCancellation) value(t testing.TB) PreparedWaitingSub
 	}
 	prepared, err := NewPreparedWaitingSubtreeCancellation(
 		f.canceled,
-		nil,
 		f.interruptions,
 		checkpoint,
 		f,
@@ -133,7 +132,7 @@ func (f *fakePreparedWaitingCancellation) Discard() error {
 func TestPreparedWaitingSubtreeCancellationRefusesATypedNilChange(t *testing.T) {
 	var typedNil *fakePreparedWaitingCancellation
 	if _, err := NewPreparedWaitingSubtreeCancellation(
-		[]string{"member_a"}, nil, nil,
+		[]string{"member_a"}, nil,
 		testExecutorCheckpoint(),
 		&fakePreparedWaitingCancellation{},
 	); err != nil {
@@ -141,7 +140,7 @@ func TestPreparedWaitingSubtreeCancellationRefusesATypedNilChange(t *testing.T) 
 	}
 	for _, change := range []WaitingSubtreeChange{nil, typedNil} {
 		if _, err := NewPreparedWaitingSubtreeCancellation(
-			[]string{"member_a"}, nil, nil,
+			[]string{"member_a"}, nil,
 			testExecutorCheckpoint(),
 			change,
 		); err == nil {
@@ -152,7 +151,6 @@ func TestPreparedWaitingSubtreeCancellationRefusesATypedNilChange(t *testing.T) 
 
 func TestPreparedWaitingSubtreeCancellationOwnsProjections(t *testing.T) {
 	canceled := []string{"member_a"}
-	paused := []string{"member_b"}
 	interruptions := []MemberInterruption{{
 		MemberID:  "member_b",
 		RequestID: "request_b",
@@ -162,7 +160,6 @@ func TestPreparedWaitingSubtreeCancellationOwnsProjections(t *testing.T) {
 	change := &fakePreparedWaitingCancellation{}
 	prepared, err := NewPreparedWaitingSubtreeCancellation(
 		canceled,
-		paused,
 		interruptions,
 		checkpoint,
 		change,
@@ -172,17 +169,14 @@ func TestPreparedWaitingSubtreeCancellationOwnsProjections(t *testing.T) {
 	}
 
 	canceled[0] = "member_changed"
-	paused[0] = "member_changed"
 	interruptions[0].MemberID = "member_changed"
 	interruptions[0].Interrupt.Question.Fields[0].Prompt = "Changed?"
 	checkpoint.Payload[0] = 'x'
 
 	projectedCanceled := prepared.CanceledMemberIDs()
-	projectedPaused := prepared.PausedMemberIDs()
 	projectedInterruptions := prepared.PendingInterruptions()
 	projectedCheckpoint := prepared.Checkpoint()
 	projectedCanceled[0] = "member_projected"
-	projectedPaused[0] = "member_projected"
 	projectedInterruptions[0].MemberID = "member_projected"
 	projectedInterruptions[0].Interrupt.Question.Fields[0].Prompt = "Projected?"
 	projectedCheckpoint.Payload[0] = 'y'
@@ -190,9 +184,6 @@ func TestPreparedWaitingSubtreeCancellationOwnsProjections(t *testing.T) {
 	ownedInterruptions := prepared.PendingInterruptions()
 	if got := prepared.CanceledMemberIDs(); !slices.Equal(got, []string{"member_a"}) {
 		t.Fatalf("canceled members = %v, want owned input", got)
-	}
-	if got := prepared.PausedMemberIDs(); !slices.Equal(got, []string{"member_b"}) {
-		t.Fatalf("paused members = %v, want owned input", got)
 	}
 	if len(ownedInterruptions) != 1 ||
 		ownedInterruptions[0].MemberID != "member_b" ||

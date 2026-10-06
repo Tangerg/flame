@@ -190,8 +190,6 @@ type WaitingSubtreeChange interface {
 type PreparedWaitingSubtreeCancellation struct {
 	// CanceledMemberIDs names the exact product members projected as canceled.
 	canceledMemberIDs []string
-	// PausedMemberIDs names surviving members held before child-outcome consumption.
-	pausedMemberIDs []string
 	// PendingInterruptions contains the surviving external waiting boundaries.
 	pendingInterruptions []MemberInterruption
 	// Checkpoint is the opaque complete-tree state that Change.Apply installs.

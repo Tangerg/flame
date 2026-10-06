@@ -103,21 +103,16 @@ func assertPreparedWaitingCancellation(
 ) {
 	t.Helper()
 	canceledMemberIDs := prepared.CanceledMemberIDs()
-	pausedMemberIDs := prepared.PausedMemberIDs()
-	checkpoint := prepared.Checkpoint()
 	pendingInterruptions := prepared.PendingInterruptions()
 	if len(canceledMemberIDs) == 1 &&
 		canceledMemberIDs[0] == targetMemberID &&
-		len(pausedMemberIDs) == 1 &&
-		pausedMemberIDs[0] == checkpoint.RootMemberID &&
 		len(pendingInterruptions) == 0 {
 		return
 	}
 	cancelPrepare()
 	t.Fatalf(
-		"prepared waiting cancellation canceled=%v paused=%v interruptions=%d",
+		"prepared waiting cancellation canceled=%v interruptions=%d",
 		canceledMemberIDs,
-		pausedMemberIDs,
 		len(pendingInterruptions),
 	)
 }

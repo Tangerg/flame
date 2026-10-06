@@ -135,7 +135,7 @@ func (i *interactionSession) prepareWaitingSubtreeCancellation(
 		i.failSubtreePreparation(preparedSignal)
 		return runs.PreparedWaitingSubtreeCancellation{}, err
 	}
-	canceled, paused := i.partitionCapturedSubtree(stagedTree, targetID)
+	canceled := i.canceledSubtree(stagedTree, targetID)
 	resultingTree, err := i.committedTree(ctx, rootID)
 	if err != nil {
 		i.failSubtreePreparation(preparedSignal)
@@ -150,11 +150,6 @@ func (i *interactionSession) prepareWaitingSubtreeCancellation(
 		return runs.PreparedWaitingSubtreeCancellation{}, err
 	}
 	canceledMembers, err := i.executorMemberIDs(canceled)
-	if err != nil {
-		i.failSubtreePreparation(preparedSignal)
-		return runs.PreparedWaitingSubtreeCancellation{}, err
-	}
-	pausedMembers, err := i.executorMemberIDs(paused)
 	if err != nil {
 		i.failSubtreePreparation(preparedSignal)
 		return runs.PreparedWaitingSubtreeCancellation{}, err
@@ -178,7 +173,6 @@ func (i *interactionSession) prepareWaitingSubtreeCancellation(
 	}
 	prepared, err := runs.NewPreparedWaitingSubtreeCancellation(
 		canceledMembers,
-		pausedMembers,
 		interruptions,
 		checkpoint,
 		change,
@@ -250,16 +244,15 @@ func (i *interactionSession) completeSubtreePreparation(
 // The waiting cut precedes cancellation. Terminal processes are historical
 // evidence, not members that this cancellation can end or resume. Tool children
 // travel with their owning product member.
-func (i *interactionSession) partitionCapturedSubtree(
+func (i *interactionSession) canceledSubtree(
 	tree agent.TreeSnapshot,
 	targetID agent.ProcessID,
-) (canceled []agent.ProcessID, quiesced []agent.ProcessID) {
+) []agent.ProcessID {
 	i.state.mu.Lock()
 	deployments := i.state.deployments
 	i.state.mu.Unlock()
 	parents := capturedParents(tree)
-	canceled = make([]agent.ProcessID, 0)
-	quiesced = make([]agent.ProcessID, 0)
+	canceled := make([]agent.ProcessID, 0)
 	for _, snapshot := range tree.ProcessSnapshots() {
 		if snapshot.Status().Terminal() ||
 			(deployments != nil && deployments.toolChild(snapshot.DeploymentRef())) {
@@ -268,17 +261,12 @@ func (i *interactionSession) partitionCapturedSubtree(
 		processID := snapshot.ProcessID()
 		if descendsFrom(parents, processID, targetID) {
 			canceled = append(canceled, processID)
-			continue
 		}
-		quiesced = append(quiesced, processID)
 	}
 	slices.SortFunc(canceled, func(left, right agent.ProcessID) int {
 		return strings.Compare(left.String(), right.String())
 	})
-	slices.SortFunc(quiesced, func(left, right agent.ProcessID) int {
-		return strings.Compare(left.String(), right.String())
-	})
-	return canceled, quiesced
+	return canceled
 }
 
 func capturedParents(tree agent.TreeSnapshot) map[agent.ProcessID]agent.ProcessID {

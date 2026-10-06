@@ -19,14 +19,12 @@ import (
 // and ownership-independent projections of its resulting waiting tree.
 func NewPreparedWaitingSubtreeCancellation(
 	canceledMemberIDs []string,
-	pausedMemberIDs []string,
 	pendingInterruptions []MemberInterruption,
 	checkpoint ExecutorCheckpoint,
 	change WaitingSubtreeChange,
 ) (PreparedWaitingSubtreeCancellation, error) {
 	prepared := PreparedWaitingSubtreeCancellation{
 		canceledMemberIDs:    slices.Clone(canceledMemberIDs),
-		pausedMemberIDs:      slices.Clone(pausedMemberIDs),
 		pendingInterruptions: cloneMemberInterruptions(pendingInterruptions),
 		checkpoint:           checkpoint.Clone(),
 		change:               change,
@@ -40,11 +38,6 @@ func NewPreparedWaitingSubtreeCancellation(
 // CanceledMemberIDs returns the exact canceled executor members.
 func (p PreparedWaitingSubtreeCancellation) CanceledMemberIDs() []string {
 	return slices.Clone(p.canceledMemberIDs)
-}
-
-// PausedMemberIDs returns the surviving executor members held at the boundary.
-func (p PreparedWaitingSubtreeCancellation) PausedMemberIDs() []string {
-	return slices.Clone(p.pausedMemberIDs)
 }
 
 // PendingInterruptions returns ownership-independent surviving input boundaries.
@@ -94,25 +87,14 @@ func (p PreparedWaitingSubtreeCancellation) validate() error {
 		return errors.New("runs: prepared waiting subtree cancellation has no canceled members")
 	}
 	canceledMembers := make(map[string]struct{}, len(p.canceledMemberIDs))
-	seenMembers := make(map[string]struct{}, len(p.canceledMemberIDs)+len(p.pausedMemberIDs))
 	for _, memberID := range p.canceledMemberIDs {
 		if err := runtimeidentity.ValidateMember(memberID); err != nil {
 			return fmt.Errorf("runs: prepared waiting subtree cancellation: %w", err)
 		}
-		if _, duplicate := seenMembers[memberID]; duplicate {
+		if _, duplicate := canceledMembers[memberID]; duplicate {
 			return fmt.Errorf("runs: prepared waiting subtree cancellation repeats member %q", memberID)
 		}
 		canceledMembers[memberID] = struct{}{}
-		seenMembers[memberID] = struct{}{}
-	}
-	for _, memberID := range p.pausedMemberIDs {
-		if err := runtimeidentity.ValidateMember(memberID); err != nil {
-			return fmt.Errorf("runs: prepared waiting subtree cancellation: %w", err)
-		}
-		if _, duplicate := seenMembers[memberID]; duplicate {
-			return fmt.Errorf("runs: prepared waiting subtree cancellation repeats member %q", memberID)
-		}
-		seenMembers[memberID] = struct{}{}
 	}
 	requests := make(map[inputRequestKey]struct{}, len(p.pendingInterruptions))
 	for index, interruption := range p.pendingInterruptions {
