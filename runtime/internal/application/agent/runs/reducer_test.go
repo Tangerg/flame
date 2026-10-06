@@ -1871,3 +1871,36 @@ func TestFailedModelObservationReplacesLossyPreviewAndFencesLateDeltas(t *testin
 		})
 	}
 }
+
+func TestReducerOpeningPublishesTheAnswersItsResumeCommitted(t *testing.T) {
+	config := testReducerConfig()
+	config.Opened = reopened(config.Opened, func(s *run.Snapshot) { s.ActiveSegmentID = "seg_2" })
+	answered := func(runID, itemID string) transcript.Item {
+		return testsupport.MustRestoreItem(testsupport.ItemInput{
+			SessionID: config.Opened.SessionID(), RunID: runID, ID: itemID,
+			Kind: transcript.QuestionItem, Status: transcript.ItemCompleted, OccurredAt: config.Opened.CreatedAt(),
+			Question: &transcript.Question{
+				Fields:  []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}},
+				Answers: [][]string{{"yes"}},
+			},
+		})
+	}
+	mine := answered(config.Opened.ID(), "item_mine")
+	config.Continuation = testTreeContinuation(Pending{RootRunID: config.Opened.ID()})
+	config.Continuation.answeredQuestions = []transcript.Item{mine, answered("run_other", "item_other")}
+
+	opened := mustOpen(t, newReducer(config))
+	if len(opened) != 2 {
+		t.Fatalf("opening events = %d, want segment start and one answered Question", len(opened))
+	}
+	if _, started := opened[0].Event.(SegmentStarted); !started {
+		t.Fatalf("first opening event = %T, want SegmentStarted", opened[0].Event)
+	}
+	published, ok := opened[1].Event.(QuestionAnswered)
+	if !ok || !reflect.DeepEqual(published.Item.Snapshot(), mine.Snapshot()) {
+		t.Fatalf("second opening event = %#v, want this Run's answered Question", opened[1].Event)
+	}
+	if opened[1].Commit != nil {
+		t.Fatal("answered Question re-committed what the resume claim already owns")
+	}
+}

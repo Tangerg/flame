@@ -3251,6 +3251,13 @@ for await (const line of lines) {
       ],
     });
     const resumeEvents = await collectRunEvents(resumed.events);
+    expect(resumeEvents.slice(0, 2).map((frame) => frame.event)).toMatchObject([
+      { type: "segment.started" },
+      {
+        type: "item.completed",
+        item: { type: "question", id: question.itemId, question: { answers: [["Yes"]] } },
+      },
+    ]);
     expect(resumeEvents.at(-1)?.event).toMatchObject({
       type: "segment.finished",
       outcome: { type: "completed" },

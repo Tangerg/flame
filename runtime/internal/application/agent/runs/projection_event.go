@@ -63,6 +63,12 @@ type ItemCompleted struct {
 	mutatedPaths []string
 }
 
+// QuestionAnswered publishes a Question Item whose answers a resume committed
+// before its continuation opened. The resume claim owns that write, so the
+// event carries no commit of its own; it exists so a follower learns the
+// answers from the stream instead of deriving them or re-reading the Session.
+type QuestionAnswered struct{ Item transcript.Item }
+
 // PlanSnapshot publishes a persisted latest-value projection the run changed. It
 // carries the projection's own revision, not just its contents: the list is
 // replaced wholesale, so a fold that only saw contents could not tell an older
@@ -107,6 +113,7 @@ func (SegmentFinished) runEvent()   {}
 func (ItemStarted) runEvent()       {}
 func (ItemChanged) runEvent()       {}
 func (ItemCompleted) runEvent()     {}
+func (QuestionAnswered) runEvent()  {}
 func (PlanSnapshot) runEvent()      {}
 
 func (s SegmentStarted) validate() error {
@@ -156,12 +163,20 @@ func (i ItemCompleted) validate() error {
 	return nil
 }
 
+func (q QuestionAnswered) validate() error {
+	if q.Item.ID() == "" {
+		return errors.New("runs: answered Question event carries no Item")
+	}
+	return nil
+}
+
 func (SegmentStarted) Replayable() bool    { return true }
 func (SegmentProgressed) Replayable() bool { return false }
 func (SegmentFinished) Replayable() bool   { return true }
 func (ItemStarted) Replayable() bool       { return true }
 func (ItemChanged) Replayable() bool       { return false }
 func (ItemCompleted) Replayable() bool     { return true }
+func (QuestionAnswered) Replayable() bool  { return true }
 func (PlanSnapshot) Replayable() bool      { return true }
 
 func (SegmentStarted) Terminal() bool    { return false }
@@ -170,6 +185,7 @@ func (SegmentFinished) Terminal() bool   { return true }
 func (ItemStarted) Terminal() bool       { return false }
 func (ItemChanged) Terminal() bool       { return false }
 func (ItemCompleted) Terminal() bool     { return false }
+func (QuestionAnswered) Terminal() bool  { return false }
 func (PlanSnapshot) Terminal() bool      { return false }
 
 func (s SegmentStarted) retainedBytes() int  { return retainedRunBytes(s.Run) }
@@ -184,7 +200,10 @@ func (s SegmentFinished) retainedBytes() int {
 func (i ItemStarted) retainedBytes() int   { return retainedItemStartBytes(i.Item) }
 func (ItemChanged) retainedBytes() int     { return 0 }
 func (i ItemCompleted) retainedBytes() int { return retainedItemBytes(i.Item) }
-func (p PlanSnapshot) retainedBytes() int  { return retainedPlanSnapshotBytes(p) }
+func (q QuestionAnswered) retainedBytes() int {
+	return retainedItemBytes(q.Item)
+}
+func (p PlanSnapshot) retainedBytes() int { return retainedPlanSnapshotBytes(p) }
 
 type Progress struct {
 	Step          *int

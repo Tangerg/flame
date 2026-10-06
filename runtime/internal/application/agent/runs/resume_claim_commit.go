@@ -149,6 +149,21 @@ func (r ResumeClaimCommit) ItemReplacements() ([]transcript.Replacement, error) 
 	return replacements, nil
 }
 
+// answeredQuestions are the Question Items this claim settles, as committed.
+func (r ResumeClaimCommit) answeredQuestions() ([]transcript.Item, error) {
+	replacements, err := r.ItemReplacements()
+	if err != nil {
+		return nil, err
+	}
+	var answered []transcript.Item
+	for _, replacement := range replacements {
+		if item := replacement.State(); item.Kind() == transcript.QuestionItem {
+			answered = append(answered, item)
+		}
+	}
+	return answered, nil
+}
+
 // approvalVerdicts names the verdict on every reviewed ToolCall by its Item.
 func (r ResumeClaimCommit) approvalVerdicts() map[string]approvalVerdict {
 	answersByItem := make(map[string]InterruptAnswer, len(r.answers))

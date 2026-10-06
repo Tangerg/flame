@@ -513,6 +513,8 @@ func validateRoutedEvent(route *executorRoute, sessionID string, routed Projecti
 		return validateRouteItemStart(route, sessionID, event.Item)
 	case ItemCompleted:
 		return validateRouteItem(route, sessionID, event.Item)
+	case QuestionAnswered:
+		return validateRouteItem(route, sessionID, event.Item)
 	case PlanSnapshot:
 		if event.SessionID != sessionID {
 			return fmt.Errorf(

@@ -176,6 +176,11 @@ func (r *reducer) open() (reductionBatch, error) {
 		return reductionBatch{}, fmt.Errorf("%w: %w", errReducerInvariant, r.resume.err)
 	}
 	out := []ProjectionEvent{SegmentStarted{Run: r.cfg.Opened}}
+	if r.cfg.Continuation != nil {
+		for _, answered := range r.cfg.Continuation.answeredQuestionsFor(r.cfg.Opened.ID()) {
+			out = append(out, QuestionAnswered{Item: answered})
+		}
+	}
 	userMessage, err := r.openUserMessage()
 	if err != nil {
 		return reductionBatch{}, err

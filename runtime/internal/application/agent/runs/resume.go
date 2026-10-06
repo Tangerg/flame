@@ -128,6 +128,10 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 		return StartResult{}, fmt.Errorf("runs: prepare tree continuation: %w", err)
 	}
 	continuation.approvalVerdicts = claim.approvalVerdicts()
+	continuation.answeredQuestions, err = claim.answeredQuestions()
+	if err != nil {
+		return StartResult{}, fmt.Errorf("runs: prepare tree continuation: %w", err)
+	}
 	events, err := c.openSegment(ctx, segmentSpec{
 		RunID:            cmd.RunID,
 		SegmentID:        segmentID,

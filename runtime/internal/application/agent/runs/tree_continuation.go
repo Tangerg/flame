@@ -30,6 +30,19 @@ type treeContinuation struct {
 	// items are the Items the hand-off names; they own each drained Tool's
 	// occurrence and invocation.
 	items map[string]transcript.Item
+	// answeredQuestions are the Question Items the resume claim committed with
+	// their answers, in the order the hand-off named them.
+	answeredQuestions []transcript.Item
+}
+
+func (t *treeContinuation) answeredQuestionsFor(runID string) []transcript.Item {
+	var answered []transcript.Item
+	for _, item := range t.answeredQuestions {
+		if item.RunID() == runID {
+			answered = append(answered, item)
+		}
+	}
+	return answered
 }
 
 // sessionID is the parked root Run's Session.

@@ -36,6 +36,9 @@ func presentRunEvent(event runs.ProjectionEvent) protocol.StreamEvent {
 	case runs.ItemCompleted:
 		item := presentItem(event.Item)
 		return protocol.StreamEvent{Type: protocol.StreamItemCompleted, Item: &item}
+	case runs.QuestionAnswered:
+		item := presentItem(event.Item)
+		return protocol.StreamEvent{Type: protocol.StreamItemCompleted, Item: &item}
 	case runs.PlanSnapshot:
 		plan := presentPlan(event)
 		return protocol.StreamEvent{Type: protocol.StreamPlanUpdated, Plan: &plan}

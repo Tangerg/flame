@@ -272,11 +272,12 @@ func (r *reducer) projectOne(event ProjectionEvent) (reduction, error) {
 		if outcome, terminal := e.Run.Outcome(); terminal {
 			commit.Outcome = outcome
 		}
-	case ItemStarted, ItemChanged, SegmentProgressed, PlanSnapshot, SegmentStarted:
+	case ItemStarted, ItemChanged, SegmentProgressed, PlanSnapshot, SegmentStarted, QuestionAnswered:
 		// These events have no standalone EventCommit. SegmentStarted carries a Run
 		// for the stream, but the Run's durable opening IS its admission (or its
 		// resume) — recording it a second time here would be a second writer of
-		// facts admission already owns. Interrupt starts are folded into the atomic
+		// facts admission already owns. QuestionAnswered is the same for the answers
+		// the resume claim committed. Interrupt starts are folded into the atomic
 		// park write-set by project.
 	default:
 		return reduction{}, fmt.Errorf("%w: unhandled run event %T", errReducerInvariant, event)

@@ -36,6 +36,16 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
+## Protocol 2026-10-07.3
+
+A resume that answers Questions commits the answers before its continuation
+opens, and the continuation now publishes each answered Question as an
+`item.completed` immediately after `segment.started`. A Question Item may
+therefore complete twice: once unanswered when its Run parks, and once with its
+answers when the Run resumes. Clients fold the second completion like any other
+Item; they no longer derive answers from the command they sent or re-read the
+Session to learn them.
+
 ## Protocol 2026-10-07.2
 
 `SkillProposal.origin` is required. The Runtime records why it created every
