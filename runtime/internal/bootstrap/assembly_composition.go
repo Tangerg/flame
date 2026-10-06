@@ -61,7 +61,7 @@ func buildPolicyComposition(ctx context.Context, cfg Config) (policyComposition,
 	approvalPolicy, err := approvals.NewRuntimePolicy(
 		cfg.ApprovalMode,
 		cfg.Stores.ApprovalRules,
-		cfg.Stores.PlanModes,
+		cfg.Stores.ApprovalModes,
 		toolset.NewAuthorities(registry.Definition, cfg.A2AAgents),
 		invalidations.Publish,
 	)

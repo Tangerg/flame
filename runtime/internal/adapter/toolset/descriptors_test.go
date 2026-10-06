@@ -280,7 +280,7 @@ func testApprovalPolicy(t *testing.T) *approvals.RuntimePolicy {
 			t.Error(err)
 		}
 	})
-	policy, err := approvals.NewRuntimePolicy(approval.ModeBalanced, sqlite.NewApprovalRuleStore(db), sqlite.NewPlanModeStore(db), testsupport.ToolAuthorities{}, nil)
+	policy, err := approvals.NewRuntimePolicy(approval.ModeBalanced, sqlite.NewApprovalRuleStore(db), sqlite.NewModeStore(db), testsupport.ToolAuthorities{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

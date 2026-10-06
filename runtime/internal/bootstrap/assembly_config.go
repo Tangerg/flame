@@ -80,7 +80,8 @@ type Config struct {
 	// sqlite-backed registry and seeds the configured provider into it.
 	ProviderRegistry models.ProviderRegistry
 
-	// ApprovalMode sets the initial runtime approval stance. It must be explicit;
+	// ApprovalMode is the runtime approval stance until a user chooses one,
+	// which then persists. It must be explicit;
 	// [ComposeConfig] selects the product default [approval.ModeBalanced]. The
 	// empty or an unknown mode fails assembly.
 	ApprovalMode approval.Mode

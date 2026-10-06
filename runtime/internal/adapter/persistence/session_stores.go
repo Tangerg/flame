@@ -47,7 +47,7 @@ type SessionStoresConfig struct {
 	History             *runsapp.ConversationHistory
 	Plan                planProjection
 	ApprovalRules       sessionStateCleaner
-	PlanModes           sessionStateCleaner
+	ApprovalModes       sessionStateCleaner
 	ToolResults         *sqlitestore.ToolResultStore
 	ChildRunStarts      childRunStartReservationCleaner
 	Goals               goalStore
@@ -106,7 +106,7 @@ func NewSessionStores(cfg SessionStoresConfig) (*SessionStores, error) {
 		{name: "conversation history", value: cfg.History},
 		{name: "Plan projection", value: cfg.Plan},
 		{name: "approval rule store", value: cfg.ApprovalRules},
-		{name: "permission mode store", value: cfg.PlanModes},
+		{name: "permission mode store", value: cfg.ApprovalModes},
 		{name: "Tool result store", value: cfg.ToolResults},
 		{name: "child Run start reservation store", value: cfg.ChildRunStarts},
 		{name: "Goal store", value: cfg.Goals},
@@ -125,7 +125,7 @@ func NewSessionStores(cfg SessionStoresConfig) (*SessionStores, error) {
 		history:             cfg.History,
 		plan:                cfg.Plan,
 		approvalRules:       cfg.ApprovalRules,
-		planModes:           cfg.PlanModes,
+		planModes:           cfg.ApprovalModes,
 		toolResults:         cfg.ToolResults,
 		childRunStarts:      cfg.ChildRunStarts,
 		goals:               cfg.Goals,

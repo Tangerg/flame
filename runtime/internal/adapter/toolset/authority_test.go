@@ -96,7 +96,7 @@ func TestStandingRulesFollowCurrentSourceAuthority(t *testing.T) {
 	}
 	ref := testMCPRef(server.Name, testsupport.RemoteToolName("read"))
 	store := sqlite.NewApprovalRuleStore(db)
-	policy, err := approvals.NewRuntimePolicy(approval.ModeSafe, store, sqlite.NewPlanModeStore(db), NewAuthorities(userDefinitions(registry), nil), nil)
+	policy, err := approvals.NewRuntimePolicy(approval.ModeSafe, store, sqlite.NewModeStore(db), NewAuthorities(userDefinitions(registry), nil), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,7 +154,7 @@ func TestA2ARulesBecomeStaleWhenCardAuthorityChanges(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	store := sqlite.NewApprovalRuleStore(db)
-	modes := sqlite.NewPlanModeStore(db)
+	modes := sqlite.NewModeStore(db)
 	agent := A2AAgentConfig{Name: "research", CardURL: "https://one.example/card", AllowedRPCOrigins: []string{"https://rpc.example"}}
 	ref, err := tool.A2A(agent.Name)
 	if err != nil {

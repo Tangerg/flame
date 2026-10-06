@@ -3,7 +3,6 @@ package approvals
 import (
 	"context"
 	"fmt"
-	"sync/atomic"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
@@ -13,18 +12,18 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 )
 
-// NewRuntimePolicy constructs permission policy over durable session modes and
-// remembered rules. Only a Session may enter Plan mode; the Runtime default
-// must remain one of the ordinary permission modes.
+// NewRuntimePolicy constructs permission policy over durable permission modes
+// and remembered rules. initialDefault is the Runtime default until a user
+// chooses one; only a Session may enter Plan mode.
 func NewRuntimePolicy(
-	mode approval.Mode,
+	initialDefault approval.Mode,
 	store RuleStore,
 	modeStore ModeStore,
 	authorities SourceAuthorities,
 	invalidations invalidation.Publish,
 ) (*RuntimePolicy, error) {
-	if !mode.ValidDefault() {
-		return nil, fmt.Errorf("%w: %q", approval.ErrInvalidMode, mode)
+	if !initialDefault.ValidDefault() {
+		return nil, fmt.Errorf("%w: %q", approval.ErrInvalidMode, initialDefault)
 	}
 	for _, required := range []struct {
 		name  string
@@ -36,19 +35,24 @@ func NewRuntimePolicy(
 			return nil, fmt.Errorf("approvals: %s is required", required.name)
 		}
 	}
-	p := &RuntimePolicy{authorities: authorities, store: store, modeStore: modeStore, invalidations: invalidations}
-	p.mode.Store(&defaultModeState{mode: mode})
-	return p, nil
+	return &RuntimePolicy{
+		initialDefault: initialDefault, authorities: authorities, store: store,
+		modeStore: modeStore, invalidations: invalidations,
+	}, nil
 }
 
-// ModeStore persists explicit per-session permission state. Missing means use
-// the runtime default. Implementations must return found=false for a missing
-// session row and validate ownership at their persistence boundary.
+// ModeStore persists permission modes: the Runtime default a user chose, and
+// explicit per-session Plan mode. A missing session row means the session
+// follows the Runtime default; a missing default means none was chosen.
+// Implementations validate ownership and decoded modes at their persistence
+// boundary.
 //
 // Retiring a deleted Session's state is not here: the session write-set owns
 // that, transactionally with everything else the delete removes, through its
 // own cleaner port.
 type ModeStore interface {
+	DefaultMode(ctx context.Context) (mode approval.Mode, found bool, err error)
+	SetDefaultMode(ctx context.Context, mode approval.Mode) error
 	PlanModeActive(ctx context.Context, sessionID string) (bool, error)
 	StartPlanMode(ctx context.Context, sessionID string) (changed bool, err error)
 	EndPlanMode(ctx context.Context, sessionID string) (changed bool, err error)
@@ -56,40 +60,38 @@ type ModeStore interface {
 
 // RuntimePolicy combines two policy facts consumed together at the tool-call
 // boundary: session-effective permission mode and remembered approval rules.
-// The default mode is atomic; Plan-mode transitions are serialized because
-// they are rare state changes whose read/replace pair must be one process fact.
+// The Runtime default is durable so a restart never loosens or tightens the
+// stance a user chose.
 type RuntimePolicy struct {
-	mode          atomic.Pointer[defaultModeState]
-	authorities   SourceAuthorities
-	modeStore     ModeStore
-	store         RuleStore
-	invalidations invalidation.Publish
-}
-
-// defaultModeState gives the atomically replaced default one immutable typed
-// identity; it avoids translating the domain value through an implementation
-// integer that could disagree with its durable and wire name.
-type defaultModeState struct {
-	mode approval.Mode
+	initialDefault approval.Mode
+	authorities    SourceAuthorities
+	modeStore      ModeStore
+	store          RuleStore
+	invalidations  invalidation.Publish
 }
 
 // DefaultMode returns the runtime fallback used by sessions without an explicit
 // mode row.
-func (r *RuntimePolicy) DefaultMode(_ context.Context) (approval.Mode, error) {
-	state := r.mode.Load()
-	if state == nil || !state.mode.ValidDefault() {
-		return "", fmt.Errorf("%w: invalid stored default", approval.ErrInvalidMode)
+func (r *RuntimePolicy) DefaultMode(ctx context.Context) (approval.Mode, error) {
+	mode, found, err := r.modeStore.DefaultMode(ctx)
+	if err != nil {
+		return "", err
 	}
-	return state.mode, nil
+	if !found {
+		return r.initialDefault, nil
+	}
+	return mode, nil
 }
 
 // SetDefaultMode changes the runtime fallback. Plan mode is session-only and is
 // therefore rejected here.
-func (r *RuntimePolicy) SetDefaultMode(_ context.Context, mode approval.Mode) error {
+func (r *RuntimePolicy) SetDefaultMode(ctx context.Context, mode approval.Mode) error {
 	if !mode.ValidDefault() {
 		return fmt.Errorf("%w: %q", approval.ErrInvalidMode, mode)
 	}
-	r.mode.Store(&defaultModeState{mode: mode})
+	if err := r.modeStore.SetDefaultMode(ctx, mode); err != nil {
+		return err
+	}
 	r.invalidations.Notify(invalidation.Notice{Resource: invalidation.Approvals})
 	return nil
 }

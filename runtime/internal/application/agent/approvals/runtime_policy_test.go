@@ -42,7 +42,17 @@ func TestPolicyRejectsInvalidDefaultMode(t *testing.T) {
 }
 
 type memoryModeStore struct {
-	planning map[string]bool
+	defaultMode approval.Mode
+	planning    map[string]bool
+}
+
+func (m *memoryModeStore) DefaultMode(context.Context) (approval.Mode, bool, error) {
+	return m.defaultMode, m.defaultMode != "", nil
+}
+
+func (m *memoryModeStore) SetDefaultMode(_ context.Context, mode approval.Mode) error {
+	m.defaultMode = mode
+	return nil
 }
 
 func newMemoryModeStore() *memoryModeStore { return &memoryModeStore{planning: map[string]bool{}} }
@@ -305,5 +315,25 @@ func TestNewPolicyRequiresDurableStores(t *testing.T) {
 		if policy, err := NewRuntimePolicy(approval.ModeBalanced, test.rules, test.modes, testsupport.ToolAuthorities{}, nil); err == nil || policy != nil {
 			t.Fatalf("NewRuntimePolicy = (%v, %v), want required storage error", policy, err)
 		}
+	}
+}
+
+// A restarted Runtime builds a new policy over the same durable store; the
+// default a user chose there wins over the initial product default.
+func TestChosenDefaultModeOutlivesThePolicyThatSetIt(t *testing.T) {
+	modes := newMemoryModeStore()
+	first, err := newTestRuntimePolicy(approval.ModeBalanced, nil, modes, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := first.SetDefaultMode(t.Context(), approval.ModeSafe); err != nil {
+		t.Fatal(err)
+	}
+	restarted, err := newTestRuntimePolicy(approval.ModeBalanced, nil, modes, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, err := restarted.Mode(t.Context(), ""); err != nil || got != approval.ModeSafe {
+		t.Fatalf("restarted default = (%v, %v), want the chosen Safe", got, err)
 	}
 }

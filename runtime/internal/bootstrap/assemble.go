@@ -106,7 +106,7 @@ func buildAssemblyCore(
 		History:             execution.conversation.messages,
 		Plan:                cfg.Stores.Plan,
 		ApprovalRules:       cfg.Stores.ApprovalRules,
-		PlanModes:           cfg.Stores.PlanModes,
+		ApprovalModes:       cfg.Stores.ApprovalModes,
 		ToolResults:         cfg.Stores.ToolResults,
 		ChildRunStarts:      cfg.Stores.ChildRunStarts,
 		Goals:               cfg.Stores.Goals,

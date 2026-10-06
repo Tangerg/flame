@@ -16,7 +16,17 @@ import (
 )
 
 type modeStore struct {
-	planning map[string]bool
+	defaultMode approval.Mode
+	planning    map[string]bool
+}
+
+func (m *modeStore) DefaultMode(context.Context) (approval.Mode, bool, error) {
+	return m.defaultMode, m.defaultMode != "", nil
+}
+
+func (m *modeStore) SetDefaultMode(_ context.Context, mode approval.Mode) error {
+	m.defaultMode = mode
+	return nil
 }
 
 func (m *modeStore) PlanModeActive(_ context.Context, sessionID string) (bool, error) {

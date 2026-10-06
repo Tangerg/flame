@@ -164,7 +164,7 @@ type sessionStores struct {
 	history     *runsapp.ConversationHistory
 	plan        *sqlite.PlanStore
 	approvals   *sqlite.ApprovalRuleStore
-	modes       *sqlite.PlanModeStore
+	modes       *sqlite.ModeStore
 	toolResults *sqlite.ToolResultStore
 	childStarts *sqlite.ChildRunStartReservationStore
 	goals       *sqlite.GoalStore
@@ -206,7 +206,7 @@ func newWriteSetFixture(t *testing.T) (sessionStores, *sqlite.RunStore, *persist
 		history:     history,
 		plan:        plan,
 		approvals:   approvals,
-		modes:       sqlite.NewPlanModeStore(db),
+		modes:       sqlite.NewModeStore(db),
 		toolResults: sqlite.NewToolResultStore(db),
 		childStarts: sqlite.NewChildRunStartReservationStore(db),
 		goals:       sqlite.NewGoalStore(db),
@@ -214,7 +214,7 @@ func newWriteSetFixture(t *testing.T) (sessionStores, *sqlite.RunStore, *persist
 	sessionStores, err := persistence.NewSessionStores(persistence.SessionStoresConfig{
 		Sessions: ss.sessions, Transcript: ss.transcript, Interrupts: ss.interrupts,
 		Runs: ss.runs, ExecutorCheckpoints: ss.checkpoints, History: ss.history, Plan: ss.plan,
-		ApprovalRules: ss.approvals, PlanModes: ss.modes, ToolResults: ss.toolResults,
+		ApprovalRules: ss.approvals, ApprovalModes: ss.modes, ToolResults: ss.toolResults,
 		ChildRunStarts: ss.childStarts, Goals: ss.goals,
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
 			return sqlite.RunInTx(ctx, db, fn)

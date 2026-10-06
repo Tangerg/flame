@@ -479,6 +479,7 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		// A row means the session is in Plan mode; leaving Plan mode returns it to
 		// the current default permission mode. The row follows the owning session
 		// through the database FK lifecycle.
+		approvalDefaultModeSchema(),
 		`CREATE TABLE IF NOT EXISTS session_plan_modes (
 			session_id TEXT PRIMARY KEY REFERENCES sessions(id) ON DELETE CASCADE
 		)`,

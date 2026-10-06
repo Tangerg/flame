@@ -120,6 +120,20 @@ type memoryRuleStore struct {
 	mu       sync.Mutex
 	rules    map[string]approval.Rule
 	planning map[string]bool
+	mode     approval.Mode
+}
+
+func (m *memoryRuleStore) DefaultMode(context.Context) (approval.Mode, bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.mode, m.mode != "", nil
+}
+
+func (m *memoryRuleStore) SetDefaultMode(_ context.Context, mode approval.Mode) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.mode = mode
+	return nil
 }
 
 func newMemoryRuleStore() *memoryRuleStore {

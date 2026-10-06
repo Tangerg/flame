@@ -98,7 +98,7 @@ func TestRuntimeRejectedToolSurvivesFollowingCallsAndHistoryReads(t *testing.T) 
 				t.Fatal(err)
 			}
 			if test.planMode {
-				if _, err := stores.PlanModes.StartPlanMode(ctx, session.ID); err != nil {
+				if _, err := stores.ApprovalModes.StartPlanMode(ctx, session.ID); err != nil {
 					t.Fatal(err)
 				}
 			}
