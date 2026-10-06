@@ -806,9 +806,6 @@ func expectedCompiledConstraint(
 	case dispatch.ConstraintNonEmptyProperties:
 		return compiledConstraintExpectation{"minProperties", "nonEmptyProperties"}
 	case dispatch.ConstraintUniqueItems:
-		if leaf().Type.Kind() == reflect.Pointer {
-			return compiledConstraintExpectation{"uniqueItems", "optionalUniqueItems"}
-		}
 		return compiledConstraintExpectation{"uniqueItems", "uniqueItems"}
 	case dispatch.ConstraintMinItems:
 		if leaf().Optional {
@@ -816,9 +813,6 @@ func expectedCompiledConstraint(
 		}
 		return compiledConstraintExpectation{"minItems", "requiredMinItems"}
 	case dispatch.ConstraintMaxItems:
-		if leaf().Type.Kind() == reflect.Pointer {
-			return compiledConstraintExpectation{"maxItems", "optionalMaxItems"}
-		}
 		return compiledConstraintExpectation{"maxItems", "maxItems"}
 	case dispatch.ConstraintMaxLength:
 		if leaf().Type.Kind() == reflect.Pointer {
@@ -844,10 +838,6 @@ func expectedCompiledConstraint(
 		return compiledConstraintExpectation{"maxLength", "maxPropertyNameLength"}
 	case dispatch.ConstraintIdentityPropertyNames:
 		return compiledConstraintExpectation{"pattern", "identityPropertyNames"}
-	case dispatch.ConstraintPatternPropertyNames:
-		return compiledConstraintExpectation{"pattern", "patternPropertyNames"}
-	case dispatch.ConstraintPatternPropertyValues:
-		return compiledConstraintExpectation{"pattern", "patternPropertyValues"}
 	case dispatch.ConstraintPrefix:
 		field := leaf()
 		switch {
@@ -866,9 +856,6 @@ func expectedCompiledConstraint(
 		}
 		return compiledConstraintExpectation{"pattern", "textPrefixItems"}
 	case dispatch.ConstraintPatternItems:
-		if leaf().Type.Kind() == reflect.Pointer {
-			return compiledConstraintExpectation{"pattern", "optionalTextPatternItems"}
-		}
 		return compiledConstraintExpectation{"pattern", "textPatternItems"}
 	case dispatch.ConstraintPattern:
 		field := leaf()
@@ -950,9 +937,7 @@ func statesCheck(entry, path, keyword string, constraint dispatch.FieldConstrain
 	if constraint.Limit > 0 {
 		call += strconv.FormatInt(constraint.Limit, 10) + ")"
 	} else if constraint.Kind == dispatch.ConstraintPattern ||
-		constraint.Kind == dispatch.ConstraintPatternItems ||
-		constraint.Kind == dispatch.ConstraintPatternPropertyNames ||
-		constraint.Kind == dispatch.ConstraintPatternPropertyValues {
+		constraint.Kind == dispatch.ConstraintPatternItems {
 		call += strconv.Quote(constraint.Value) + ")"
 	} else if constraint.Value != "" {
 		call += strconv.Quote("^"+regexp.QuoteMeta(constraint.Value)) + ")"
@@ -1084,15 +1069,8 @@ func mapStatesPropertyConstraint(node map[string]any, property, keyword string, 
 		}
 	}
 	if constraint.Kind == dispatch.ConstraintMaxPropertyNameLength ||
-		constraint.Kind == dispatch.ConstraintIdentityPropertyNames ||
-		constraint.Kind == dispatch.ConstraintPatternPropertyNames {
+		constraint.Kind == dispatch.ConstraintIdentityPropertyNames {
 		constrained, hasProperty = constrained["propertyNames"].(map[string]any)
-		if !hasProperty {
-			return false
-		}
-	}
-	if constraint.Kind == dispatch.ConstraintPatternPropertyValues {
-		constrained, hasProperty = constrained["additionalProperties"].(map[string]any)
 		if !hasProperty {
 			return false
 		}
@@ -1127,9 +1105,7 @@ func schemaNodeStatesConstraint(node any, keyword string, constraint dispatch.Fi
 
 func constraintValueMatches(value any, constraint dispatch.FieldConstraint) bool {
 	if constraint.Kind == dispatch.ConstraintPattern ||
-		constraint.Kind == dispatch.ConstraintPatternItems ||
-		constraint.Kind == dispatch.ConstraintPatternPropertyNames ||
-		constraint.Kind == dispatch.ConstraintPatternPropertyValues {
+		constraint.Kind == dispatch.ConstraintPatternItems {
 		text, isText := value.(string)
 		return isText && text == constraint.Value
 	}

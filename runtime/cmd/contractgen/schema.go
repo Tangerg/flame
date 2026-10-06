@@ -572,10 +572,6 @@ func applyValueConstraints(node *schema, constraints []dispatch.FieldConstraint)
 			propertyNames(node).MaxLength = new(int(constraint.Limit))
 		case dispatch.ConstraintIdentityPropertyNames:
 			addPattern(propertyNames(node), dispatch.IdentityPattern)
-		case dispatch.ConstraintPatternPropertyNames:
-			addPattern(propertyNames(node), constraint.Value)
-		case dispatch.ConstraintPatternPropertyValues:
-			addPattern(node.AdditionalProps.(*schema), constraint.Value)
 		case dispatch.ConstraintPrefix:
 			addPattern(node, "^"+regexp.QuoteMeta(constraint.Value))
 		case dispatch.ConstraintPrefixItems:

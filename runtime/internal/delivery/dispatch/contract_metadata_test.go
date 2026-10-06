@@ -102,6 +102,27 @@ func TestShapeMetadataRejectsUnsupportedValidatorTargets(t *testing.T) {
 			want: "pointer target",
 		},
 		{
+			name: "pointer unique items",
+			constraint: FieldConstraint{
+				Field: "pointerItems", Kind: ConstraintUniqueItems,
+			},
+			want: "pointer target",
+		},
+		{
+			name: "pointer maximum items",
+			constraint: FieldConstraint{
+				Field: "pointerItems", Kind: ConstraintMaxItems, Limit: 4,
+			},
+			want: "pointer target",
+		},
+		{
+			name: "pointer pattern items",
+			constraint: FieldConstraint{
+				Field: "pointerItems", Kind: ConstraintPatternItems, Value: `\S`,
+			},
+			want: "pointer target",
+		},
+		{
 			name: "pointer minimum items",
 			constraint: FieldConstraint{
 				Field: "pointerItems", Kind: ConstraintMinItems, Limit: 2,
@@ -187,14 +208,9 @@ func TestShapeMetadataKeepsSupportedValidatorTargets(t *testing.T) {
 	for _, constraint := range []FieldConstraint{
 		{Field: "optionalPointer", Kind: ConstraintPrefix, Value: "id_"},
 		{Field: "optionalPointer", Kind: ConstraintPattern, Value: `\S`},
-		{Field: "pointerItems", Kind: ConstraintPatternItems, Value: `\S`},
-		{Field: "pointerItems", Kind: ConstraintMaxItems, Limit: 4},
-		{Field: "pointerItems", Kind: ConstraintUniqueItems},
 		{Field: "comparableItems", Kind: ConstraintUniqueItems},
 		{Field: "mapItems", Kind: ConstraintUniqueItems},
 		{Field: "requiredMinimum", Kind: ConstraintMinimum, Limit: 1},
-		{Field: "namedMap", Kind: ConstraintPatternPropertyNames, Value: `^color$`},
-		{Field: "namedMap", Kind: ConstraintPatternPropertyValues, Value: `^#[0-9a-f]{6}$`},
 	} {
 		err := (FieldConstraintSpec{
 			GoType:      reflect.TypeFor[constraintProjectionFixture](),
@@ -230,10 +246,7 @@ func TestShapeMetadataRejectsUnassignableValidatorTargets(t *testing.T) {
 			name:  "named slice pointer",
 			field: "namedPointerItems",
 			constraints: []FieldConstraint{
-				{Kind: ConstraintMaxItems, Limit: 4},
 				{Kind: ConstraintMaxItemLength, Limit: 16},
-				{Kind: ConstraintPatternItems, Value: `\S`},
-				{Kind: ConstraintUniqueItems},
 			},
 			want: "named slice pointer",
 		},
@@ -244,8 +257,6 @@ func TestShapeMetadataRejectsUnassignableValidatorTargets(t *testing.T) {
 				{Kind: ConstraintNonEmptyProperties},
 				{Kind: ConstraintMaxPropertyNameLength, Limit: 16},
 				{Kind: ConstraintIdentityPropertyNames},
-				{Kind: ConstraintPatternPropertyNames, Value: `^color$`},
-				{Kind: ConstraintPatternPropertyValues, Value: `^#[0-9a-f]{6}$`},
 			},
 			want: "builtin string keys",
 		},
@@ -272,10 +283,7 @@ func TestShapeMetadataKeepsAssignableNamedValidatorTargets(t *testing.T) {
 
 	for _, constraint := range []FieldConstraint{
 		{Field: "namedPointer", Kind: ConstraintNonEmpty},
-		{Field: "pointerNamedItems", Kind: ConstraintMaxItems, Limit: 4},
 		{Field: "pointerNamedItems", Kind: ConstraintMaxItemLength, Limit: 16},
-		{Field: "pointerNamedItems", Kind: ConstraintPatternItems, Value: `\S`},
-		{Field: "pointerNamedItems", Kind: ConstraintUniqueItems},
 		{Field: "namedMap", Kind: ConstraintNonEmptyProperties},
 		{Field: "namedMap", Kind: ConstraintMaxPropertyNameLength, Limit: 16},
 		{Field: "namedMap", Kind: ConstraintIdentityPropertyNames},

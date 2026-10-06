@@ -213,8 +213,7 @@ func constraintCheck(
 		dispatch.ConstraintPrefixItems, dispatch.ConstraintPatternItems:
 		return itemConstraintCheck(shape, selector, leaf, constraint)
 	case dispatch.ConstraintNonEmptyProperties, dispatch.ConstraintMaxPropertyNameLength,
-		dispatch.ConstraintIdentityPropertyNames, dispatch.ConstraintPatternPropertyNames,
-		dispatch.ConstraintPatternPropertyValues:
+		dispatch.ConstraintIdentityPropertyNames:
 		return propertyConstraintCheck(shape, selector, constraint)
 	default:
 		return unsupportedConstraintCheck(shape, constraint)
@@ -378,19 +377,11 @@ func itemConstraintCheck(
 		}
 		return fmt.Sprintf("%s(%s, %s)", validatorName, field, ref)
 	case dispatch.ConstraintUniqueItems:
-		validatorName := "uniqueItems"
-		if leaf.Type.Kind() == reflect.Pointer {
-			validatorName = "optionalUniqueItems"
-		}
-		return fmt.Sprintf("%s(%s, %s)", validatorName, field, ref)
+		return fmt.Sprintf("uniqueItems(%s, %s)", field, ref)
 	case dispatch.ConstraintMinItems:
 		return fmt.Sprintf("optionalMinItems(%s, %s, %d)", field, ref, constraint.Limit)
 	case dispatch.ConstraintMaxItems:
-		validatorName := "maxItems"
-		if leaf.Type.Kind() == reflect.Pointer {
-			validatorName = "optionalMaxItems"
-		}
-		return fmt.Sprintf("%s(%s, %s, %d)", validatorName, field, ref, constraint.Limit)
+		return fmt.Sprintf("maxItems(%s, %s, %d)", field, ref, constraint.Limit)
 	case dispatch.ConstraintMaxItemLength:
 		validatorName := "maxItemLength"
 		if leaf.Type.Kind() == reflect.Pointer {
@@ -407,13 +398,8 @@ func itemConstraintCheck(
 			strconv.Quote(constraint.Value),
 		)
 	case dispatch.ConstraintPatternItems:
-		validatorName := "textPatternItems"
-		if leaf.Type.Kind() == reflect.Pointer {
-			validatorName = "optionalTextPatternItems"
-		}
 		return fmt.Sprintf(
-			"%s(%s, %s, %s)",
-			validatorName,
+			"textPatternItems(%s, %s, %s)",
 			field,
 			ref,
 			strconv.Quote(constraint.Value),
@@ -437,10 +423,6 @@ func propertyConstraintCheck(
 		return fmt.Sprintf("maxPropertyNameLength(%s, %s, %d)", field, ref, constraint.Limit)
 	case dispatch.ConstraintIdentityPropertyNames:
 		return fmt.Sprintf("identityPropertyNames(%s, %s)", field, ref)
-	case dispatch.ConstraintPatternPropertyNames:
-		return fmt.Sprintf("patternPropertyNames(%s, %s, %s)", field, ref, strconv.Quote(constraint.Value))
-	case dispatch.ConstraintPatternPropertyValues:
-		return fmt.Sprintf("patternPropertyValues(%s, %s, %s)", field, ref, strconv.Quote(constraint.Value))
 	default:
 		return unsupportedConstraintCheck(shape, constraint)
 	}

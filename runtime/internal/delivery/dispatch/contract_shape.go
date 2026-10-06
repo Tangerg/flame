@@ -175,8 +175,6 @@ const (
 	// ConstraintIdentityPropertyNames applies ConstraintIdentity to every key of
 	// a string-keyed map.
 	ConstraintIdentityPropertyNames ConstraintKind = "identityPropertyNames"
-	ConstraintPatternPropertyNames  ConstraintKind = "patternPropertyNames"
-	ConstraintPatternPropertyValues ConstraintKind = "patternPropertyValues"
 	// ConstraintPrefix rejects a string that does not start with
 	// FieldConstraint.Value. It is used for framed opaque identities whose prefix
 	// is part of the public wire contract even though the remainder is not parsed.
@@ -208,8 +206,7 @@ func (c ConstraintKind) Valid() bool {
 		ConstraintMinItems, ConstraintMaxItems, ConstraintMaxLength, ConstraintMaxItemLength,
 		ConstraintIdentity, ConstraintIdentityItems, ConstraintMaxPropertyNameLength,
 		ConstraintIdentityPropertyNames, ConstraintPrefix, ConstraintPrefixItems, ConstraintPattern,
-		ConstraintPatternItems, ConstraintPatternPropertyNames, ConstraintPatternPropertyValues,
-		ConstraintMinimum, ConstraintMaximum:
+		ConstraintPatternItems, ConstraintMinimum, ConstraintMaximum:
 		return true
 	default:
 		return false
@@ -235,8 +232,7 @@ func (f FieldConstraint) String() string {
 	switch f.Kind {
 	case ConstraintMinItems, ConstraintMaxItems, ConstraintMaxLength, ConstraintMaxItemLength, ConstraintMaxPropertyNameLength, ConstraintMinimum, ConstraintMaximum:
 		return fmt.Sprintf("%s(%d)", f.Kind, f.Limit)
-	case ConstraintPrefix, ConstraintPrefixItems, ConstraintPattern, ConstraintPatternItems,
-		ConstraintPatternPropertyNames, ConstraintPatternPropertyValues:
+	case ConstraintPrefix, ConstraintPrefixItems, ConstraintPattern, ConstraintPatternItems:
 		return fmt.Sprintf("%s(%s)", f.Kind, strconv.Quote(f.Value))
 	default:
 		return f.Kind.String()
@@ -861,8 +857,7 @@ func validateConstraintArguments(owner string, constraint FieldConstraint) error
 		)
 	}
 	acceptsValue := constraint.Kind == ConstraintPrefix || constraint.Kind == ConstraintPrefixItems ||
-		constraint.Kind == ConstraintPattern || constraint.Kind == ConstraintPatternItems ||
-		constraint.Kind == ConstraintPatternPropertyNames || constraint.Kind == ConstraintPatternPropertyValues
+		constraint.Kind == ConstraintPattern || constraint.Kind == ConstraintPatternItems
 	if acceptsValue && constraint.Value == "" {
 		return fmt.Errorf(
 			"%s.%s constraint %s needs a non-empty value",
@@ -879,8 +874,7 @@ func validateConstraintArguments(owner string, constraint FieldConstraint) error
 			constraint.Kind,
 		)
 	}
-	if constraint.Kind == ConstraintPattern || constraint.Kind == ConstraintPatternItems ||
-		constraint.Kind == ConstraintPatternPropertyNames || constraint.Kind == ConstraintPatternPropertyValues {
+	if constraint.Kind == ConstraintPattern || constraint.Kind == ConstraintPatternItems {
 		if _, err := regexp.Compile(constraint.Value); err != nil {
 			return fmt.Errorf(
 				"%s.%s constraint %s has invalid pattern: %w",
@@ -989,8 +983,7 @@ func validateConstraintHelperAssignment(owner string, field contractshape.Field,
 	}
 	if constraint.Kind == ConstraintNonEmptyProperties ||
 		constraint.Kind == ConstraintMaxPropertyNameLength ||
-		constraint.Kind == ConstraintIdentityPropertyNames ||
-		constraint.Kind == ConstraintPatternPropertyNames || constraint.Kind == ConstraintPatternPropertyValues {
+		constraint.Kind == ConstraintIdentityPropertyNames {
 		valueType := field.Type
 		if valueType.Kind() == reflect.Pointer {
 			valueType = valueType.Elem()
@@ -1018,7 +1011,7 @@ func validatePointerConstraintProjection(owner string, field contractshape.Field
 	switch constraint.Kind {
 	case ConstraintNonEmptyItems, ConstraintNonEmptyProperties, ConstraintMinItems,
 		ConstraintMaxPropertyNameLength, ConstraintIdentityPropertyNames, ConstraintMinimum,
-		ConstraintPatternPropertyNames, ConstraintPatternPropertyValues:
+		ConstraintUniqueItems, ConstraintMaxItems, ConstraintPatternItems:
 		return fmt.Errorf(
 			"%s.%s constraint %s does not support a pointer target",
 			owner, constraint.Field, constraint.Kind,
@@ -1064,10 +1057,6 @@ func validateTextualConstraintTarget(owner string, valueType reflect.Type, const
 		if kind != reflect.Map || valueType.Key().Kind() != reflect.String {
 			return fmt.Errorf("%s.%s is %s; constraint %s requires a string-keyed map", owner, constraint.Field, valueType, constraint.Kind), true
 		}
-	case constraint.Kind == ConstraintPatternPropertyValues:
-		if kind != reflect.Map || valueType.Key().Kind() != reflect.String || valueType.Elem().Kind() != reflect.String {
-			return fmt.Errorf("%s.%s is %s; constraint %s requires a string-valued map", owner, constraint.Field, valueType, constraint.Kind), true
-		}
 	default:
 		return nil, false
 	}
@@ -1089,7 +1078,7 @@ func isStringItemConstraint(kind ConstraintKind) bool {
 }
 
 func isStringPropertyNameConstraint(kind ConstraintKind) bool {
-	return kind == ConstraintMaxPropertyNameLength || kind == ConstraintIdentityPropertyNames || kind == ConstraintPatternPropertyNames
+	return kind == ConstraintMaxPropertyNameLength || kind == ConstraintIdentityPropertyNames
 }
 
 func (c CarriedSpec) validate() error {

@@ -349,13 +349,6 @@ func maxItems[T any](field string, values []T, maximum int) FieldError {
 	return FieldError{}
 }
 
-func optionalMaxItems[T any](field string, values *[]T, maximum int) FieldError {
-	if values == nil {
-		return FieldError{}
-	}
-	return maxItems(field, *values, maximum)
-}
-
 func maxLength(field, value string, maximum int) FieldError {
 	if utf8.RuneCountInString(value) > maximum {
 		return FieldError{Field: field, Detail: fmt.Sprintf("must contain at most %d characters", maximum)}
@@ -429,13 +422,6 @@ func textPatternItems[Identity ~string](field string, values []Identity, pattern
 	return FieldError{}
 }
 
-func optionalTextPatternItems[Identity ~string](field string, values *[]Identity, pattern string) FieldError {
-	if values == nil {
-		return FieldError{}
-	}
-	return textPatternItems(field, *values, pattern)
-}
-
 func maxPropertyNameLength[Value any](field string, values map[string]Value, maximum int) FieldError {
 	for _, key := range slices.Sorted(maps.Keys(values)) {
 		if violation := maxLength(contractshape.MapPath(field, key), key, maximum); violation.Field != "" {
@@ -448,24 +434,6 @@ func maxPropertyNameLength[Value any](field string, values map[string]Value, max
 func identityPropertyNames[Value any](field string, values map[string]Value) FieldError {
 	for _, key := range slices.Sorted(maps.Keys(values)) {
 		if violation := identity(contractshape.MapPath(field, key), key); violation.Field != "" {
-			return violation
-		}
-	}
-	return FieldError{}
-}
-
-func patternPropertyNames[Value any](field string, values map[string]Value, pattern string) FieldError {
-	for _, key := range slices.Sorted(maps.Keys(values)) {
-		if violation := requiredTextPattern(contractshape.MapPath(field, key), key, pattern); violation.Field != "" {
-			return violation
-		}
-	}
-	return FieldError{}
-}
-
-func patternPropertyValues[Value ~string](field string, values map[string]Value, pattern string) FieldError {
-	for _, key := range slices.Sorted(maps.Keys(values)) {
-		if violation := requiredTextPattern(contractshape.MapPath(field, key), string(values[key]), pattern); violation.Field != "" {
 			return violation
 		}
 	}
@@ -535,13 +503,6 @@ func uniqueItems[T any](field string, values []T) FieldError {
 		seen[key] = true
 	}
 	return FieldError{}
-}
-
-func optionalUniqueItems[T any](field string, values *[]T) FieldError {
-	if values == nil {
-		return FieldError{}
-	}
-	return uniqueItems(field, *values)
 }
 
 // closedEnum rejects a value outside a closed set. Go's decoder puts any string
