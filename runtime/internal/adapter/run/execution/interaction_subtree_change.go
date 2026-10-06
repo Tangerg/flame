@@ -167,7 +167,7 @@ func (i *interactionSession) beginSubtreeApplication(
 ) error {
 	i.state.mu.Lock()
 	defer i.state.mu.Unlock()
-	if i.state.finished || i.state.boundary != interactionBoundarySubtreePrepared ||
+	if i.state.phase == interactionFinished || i.state.boundary != interactionBoundarySubtreePrepared ||
 		i.state.subtreeChange != change {
 		return runs.ErrExecutionClaimed
 	}

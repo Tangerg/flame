@@ -36,7 +36,7 @@ func (i *InteractionExecutor) CancelRunningSubtree(
 	session.state.mu.Lock()
 	root := session.state.process
 	managed := session.state.delegateChildren[processID]
-	available := !session.state.finished && session.state.boundary == interactionBoundaryInactive
+	available := session.state.phase != interactionFinished && session.state.boundary == interactionBoundaryInactive
 	session.state.mu.Unlock()
 	if !available || root == nil {
 		return runs.ErrExecutorNotLive

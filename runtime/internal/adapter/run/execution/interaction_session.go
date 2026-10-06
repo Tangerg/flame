@@ -63,9 +63,8 @@ type interactionState struct {
 	process                    *agent.Process
 	admittedProcessID          agent.ProcessID
 	observerWasAttached        bool
-	begun                      bool
+	phase                      interactionPhase
 	workersStarted             bool
-	finished                   bool
 	boundary                   interactionBoundary
 	dispatchReady              chan struct{}
 	waitingCheckpoint          runs.ExecutorCheckpoint
@@ -92,6 +91,16 @@ type pendingInteractionContinuation struct {
 	itemID    string
 	content   []transcript.ContentBlock
 }
+
+// interactionPhase orders one session's claim: a Process is begun at most once,
+// and a finished session never begins.
+type interactionPhase uint8
+
+const (
+	interactionPending interactionPhase = iota
+	interactionBegun
+	interactionFinished
+)
 
 type interactionBoundary uint8
 
@@ -153,10 +162,10 @@ func interactionSegmentDuration(
 func (i *interactionState) attachObserver() bool {
 	i.mu.Lock()
 	defer i.mu.Unlock()
-	if i.observerWasAttached || i.finished {
+	if i.observerWasAttached || i.phase == interactionFinished {
 		return false
 	}
-	if i.begun && i.boundary != interactionBoundaryContinuationStaged &&
+	if i.phase == interactionBegun && i.boundary != interactionBoundaryContinuationStaged &&
 		i.boundary != interactionBoundarySubtreePrepared {
 		return false
 	}
@@ -191,10 +200,10 @@ func (i *interactionState) durableContextCompacted() bool {
 func (i *interactionState) begin() bool {
 	i.mu.Lock()
 	defer i.mu.Unlock()
-	if i.begun || i.finished {
+	if i.phase != interactionPending {
 		return false
 	}
-	i.begun = true
+	i.phase = interactionBegun
 	return true
 }
 
@@ -279,7 +288,7 @@ func (i *interactionSession) stopReconciliation() {
 func (i *interactionSession) finish() {
 	i.lifetime.finishOnce.Do(func() {
 		i.state.mu.Lock()
-		i.state.finished = true
+		i.state.phase = interactionFinished
 		i.state.mu.Unlock()
 		i.lifetime.stopExecution()
 		i.stopReconciliation()
@@ -445,7 +454,7 @@ func (i *interactionSession) reconcileExecutionState() {
 func (i *interactionSession) publishWaitingBoundary() bool {
 	i.state.mu.Lock()
 	process := i.state.process
-	if process == nil || i.state.finished || i.state.boundary != interactionBoundaryInactive {
+	if process == nil || i.state.phase == interactionFinished || i.state.boundary != interactionBoundaryInactive {
 		i.state.mu.Unlock()
 		return false
 	}
@@ -482,7 +491,7 @@ func (i *interactionSession) publishWaitingBoundary() bool {
 	i.state.mu.Lock()
 	// The captured cut is the authority on what was waiting; re-reading a live
 	// status here would describe a different moment than the checkpoint does.
-	if i.state.finished || i.state.boundary != interactionBoundaryInactive ||
+	if i.state.phase == interactionFinished || i.state.boundary != interactionBoundaryInactive ||
 		i.state.process != process {
 		i.state.mu.Unlock()
 		return false
@@ -513,7 +522,7 @@ func (i *interactionSession) stageContinuation(checkpoint runs.ExecutorCheckpoin
 	}
 	i.state.mu.Lock()
 	defer i.state.mu.Unlock()
-	if i.state.finished || i.state.process == nil {
+	if i.state.phase == interactionFinished || i.state.process == nil {
 		return runs.ErrExecutorNotLive
 	}
 	if i.state.boundary != interactionBoundaryWaiting || i.state.observerWasAttached {
@@ -529,7 +538,7 @@ func (i *interactionSession) stageContinuation(checkpoint runs.ExecutorCheckpoin
 func (i *interactionSession) beginContinuation() error {
 	i.state.mu.Lock()
 	defer i.state.mu.Unlock()
-	if i.state.finished || i.state.process == nil {
+	if i.state.phase == interactionFinished || i.state.process == nil {
 		return runs.ErrExecutorNotLive
 	}
 	if i.state.boundary != interactionBoundaryContinuationStaged || !i.state.observerWasAttached {

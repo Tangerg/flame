@@ -83,11 +83,11 @@ func (i *interactionSession) initializeRestoredContinuation(
 	i.accounting.restore(usageByProcess, checkpoint.contextByProcess)
 	i.state.mu.Lock()
 	defer i.state.mu.Unlock()
-	if i.state.begun || i.state.finished || i.state.process != root {
+	if i.state.phase != interactionPending || i.state.process != root {
 		return runs.ErrExecutionClaimed
 	}
 	i.state.admittedProcessID = root.ID()
-	i.state.begun = true
+	i.state.phase = interactionBegun
 	i.state.boundary = boundary
 	i.state.dispatchReady = make(chan struct{})
 	i.state.waitingCheckpoint = continuation.Checkpoint.Clone()

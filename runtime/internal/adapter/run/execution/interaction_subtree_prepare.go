@@ -71,7 +71,7 @@ func (i *interactionSession) prepareWaitingSubtreeCancellation(
 		)
 	}
 	i.state.mu.Lock()
-	if i.state.finished || i.state.process == nil {
+	if i.state.phase == interactionFinished || i.state.process == nil {
 		i.state.mu.Unlock()
 		return runs.PreparedWaitingSubtreeCancellation{}, runs.ErrExecutorNotLive
 	}
@@ -232,7 +232,7 @@ func (i *interactionSession) completeSubtreePreparation(
 ) error {
 	i.state.mu.Lock()
 	defer i.state.mu.Unlock()
-	if i.state.finished || i.state.boundary != interactionBoundarySubtreePreparing ||
+	if i.state.phase == interactionFinished || i.state.boundary != interactionBoundarySubtreePreparing ||
 		i.state.subtreePrepared != preparedSignal || i.state.subtreeChange != nil {
 		if i.state.subtreePrepared == preparedSignal {
 			i.state.subtreePrepared = nil
