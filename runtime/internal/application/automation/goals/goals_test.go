@@ -576,18 +576,11 @@ func (f *fakeRuns) Cancel(_ context.Context, cmd runs.CancelCommand) (runs.Cance
 // fakeSessions is the driver's session-existence check; sessions exist unless
 // listed in deleted (nil map = all exist).
 type fakeSessions struct {
-	deleted   map[string]bool
-	selection modelref.Selection
+	deleted map[string]bool
 }
 
-func (f *fakeSessions) ModelSelection(_ context.Context, id string) (modelref.Selection, bool, error) {
-	if f.deleted[id] {
-		return modelref.Selection{}, false, nil
-	}
-	if f.selection.Configured() {
-		return f.selection, true, nil
-	}
-	return testGoalModelSelection(), true, nil
+func (f *fakeSessions) Exists(_ context.Context, id string) (bool, error) {
+	return !f.deleted[id], nil
 }
 
 type terminalRaceRuns struct {
@@ -622,7 +615,7 @@ func mustDriver(
 	t testing.TB,
 	store goals.Store,
 	autonomousRuns goals.AutonomousRuns,
-	sessions goals.SessionPolicyReader,
+	sessions goals.SessionExistence,
 	mutations *goals.SessionMutations,
 	ownership goals.DriveOwnership,
 	instructions goals.RunInstructionBuilder,
@@ -653,7 +646,7 @@ func TestNewDriverRejectsIncompleteComposition(t *testing.T) {
 		name         string
 		store        goals.Store
 		runs         goals.AutonomousRuns
-		sessions     goals.SessionPolicyReader
+		sessions     goals.SessionExistence
 		mutations    *goals.SessionMutations
 		ownership    goals.DriveOwnership
 		instructions goals.RunInstructionBuilder
@@ -800,37 +793,28 @@ func TestDriverCompletesAndClears(t *testing.T) {
 	waitTestSessionGoal(t, store, func(_ goal.Goal, ok bool) bool { return !ok }) // completed → cleared
 }
 
-func TestDriverFreezesTheSessionExactSelectionWhenGoalHasNoOverride(t *testing.T) {
+// Without its own override a Goal keeps no model: each Goal Run leaves the
+// selection to the Session as it is when that Run starts.
+func TestDriverLeavesGoalRunsOnTheSessionSelectionWithoutAnOverride(t *testing.T) {
 	store := newMemStore()
 	runUseCases := &fakeRuns{
 		t: t, store: store,
 		script: []scriptedRun{{setStatus: goal.StatusComplete, outcome: run.OutcomeCompleted}},
 	}
-	selection, err := modelref.NewWithReasoningEffort("openai", "gpt-5.6-sol", "xhigh")
-	if err != nil {
-		t.Fatal(err)
-	}
-	d := mustDriver(t,
-		store,
-		runUseCases,
-		&fakeSessions{selection: selection},
-		goals.NewSessionMutations(),
-		uncontendedDriveOwnership{},
-		testPrompt,
-	)
+	d := mustDriver(t, store, runUseCases, &fakeSessions{}, goals.NewSessionMutations(), uncontendedDriveOwnership{}, testPrompt)
 	cleanupDriver(t, d)
 	started, err := d.Start(t.Context(), "s1", "do it", modelref.Selection{}, run.Capabilities{})
 	if err != nil {
 		t.Fatalf("Start: %v", err)
 	}
-	if started.ModelSelection() != selection {
-		t.Fatalf("Goal selection = %+v, want Session selection %+v", started.ModelSelection(), selection)
+	if started.ModelSelection().Configured() {
+		t.Fatalf("Goal selection = %+v, want none of its own", started.ModelSelection())
 	}
 	waitTestSessionGoal(t, store, func(_ goal.Goal, ok bool) bool { return !ok })
 	runUseCases.mu.Lock()
 	defer runUseCases.mu.Unlock()
-	if len(runUseCases.commands) != 1 || runUseCases.commands[0].ModelSelection != selection {
-		t.Fatalf("autonomous Run selections = %+v, want exact Goal selection", runUseCases.commands)
+	if len(runUseCases.commands) != 1 || runUseCases.commands[0].ModelSelection.Configured() {
+		t.Fatalf("autonomous Run selections = %+v, want the Session's selection at start", runUseCases.commands)
 	}
 }
 

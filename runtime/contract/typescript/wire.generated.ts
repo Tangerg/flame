@@ -565,9 +565,9 @@ export interface GetSessionSnapshotRequest {
 
 export interface Goal {
   createdAt: string;
-  model: string;
+  model?: string;
   objective: string;
-  provider: string;
+  provider?: string;
   reason?: GoalReason;
   reasoningEffort?: string;
   sessionId: string;

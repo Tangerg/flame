@@ -9,16 +9,18 @@ import (
 // settlement window after the model has declared success and before the owning
 // drive has charged the final Run and cleared the objective.
 type Goal struct {
-	SessionID       string      `json:"sessionId"`
-	Objective       string      `json:"objective"`
-	Status          GoalStatus  `json:"status"`
-	Reason          *GoalReason `json:"reason,omitzero"`
-	Provider        string      `json:"provider"`
-	Model           string      `json:"model"`
-	ReasoningEffort string      `json:"reasoningEffort,omitempty"`
-	Used            GoalUsage   `json:"used"`
-	CreatedAt       time.Time   `json:"createdAt,omitzero"`
-	UpdatedAt       time.Time   `json:"updatedAt,omitzero"`
+	SessionID string      `json:"sessionId"`
+	Objective string      `json:"objective"`
+	Status    GoalStatus  `json:"status"`
+	Reason    *GoalReason `json:"reason,omitzero"`
+	// Provider and Model are the Goal's own model override. Absent, each Goal
+	// Run uses the Session's selection when it starts.
+	Provider        string    `json:"provider,omitempty"`
+	Model           string    `json:"model,omitempty"`
+	ReasoningEffort string    `json:"reasoningEffort,omitempty"`
+	Used            GoalUsage `json:"used"`
+	CreatedAt       time.Time `json:"createdAt,omitzero"`
+	UpdatedAt       time.Time `json:"updatedAt,omitzero"`
 }
 
 // GoalStatus is the lifecycle vocabulary exposed by the autonomous-goal API.

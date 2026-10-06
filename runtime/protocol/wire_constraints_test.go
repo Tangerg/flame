@@ -1641,8 +1641,6 @@ func TestGoalWireConstraintsCloseLifecycleState(t *testing.T) {
 	}{
 		{name: "missing objective", field: "objective", value: func() Goal { value := valid(GoalActive, nil); value.Objective = ""; return value }()},
 		{name: "blank objective", field: "objective", value: func() Goal { value := valid(GoalActive, nil); value.Objective = " \n"; return value }()},
-		{name: "missing provider", field: "provider", value: func() Goal { value := valid(GoalActive, nil); value.Provider = ""; return value }()},
-		{name: "missing model", field: "model", value: func() Goal { value := valid(GoalActive, nil); value.Model = ""; return value }()},
 		{name: "active reason", field: "reason", value: valid(GoalActive, &GoalReason{Code: GoalReasonStoppedByUser})},
 		{name: "completing reason", field: "reason", value: valid(GoalCompleting, &GoalReason{Code: GoalReasonStoppedByUser})},
 		{name: "paused without reason", field: "reason", value: valid(GoalPaused, nil)},

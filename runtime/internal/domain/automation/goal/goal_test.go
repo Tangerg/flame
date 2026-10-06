@@ -66,7 +66,6 @@ func TestNewRejectsIncompleteIdentityPolicyAndTime(t *testing.T) {
 		{name: "session oversized", sessionID: strings.Repeat("界", runtimeidentity.MaximumResourceCharacters+1), objective: "obj", selection: selection, incarnation: "inc", createdAt: now},
 		{name: "objective missing", sessionID: "ses", selection: selection, incarnation: "inc", createdAt: now},
 		{name: "objective blank", sessionID: "ses", objective: " \t ", selection: selection, incarnation: "inc", createdAt: now},
-		{name: "selection missing", sessionID: "ses", objective: "obj", incarnation: "inc", createdAt: now},
 		{name: "incarnation missing", sessionID: "ses", objective: "obj", selection: selection, createdAt: now},
 		{name: "incarnation whitespace", sessionID: "ses", objective: "obj", selection: selection, incarnation: "inc arnation", createdAt: now},
 		{name: "incarnation non-printing", sessionID: "ses", objective: "obj", selection: selection, incarnation: "inc\u200barnation", createdAt: now},

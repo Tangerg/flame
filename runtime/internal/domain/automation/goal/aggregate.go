@@ -203,8 +203,10 @@ func (g Goal) validate() error {
 	if !g.status.Valid() {
 		return fmt.Errorf("%w: unknown status %q", ErrInvalid, g.status)
 	}
-	if err := g.selection.ValidateExact(); err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalid, err)
+	if g.selection.Configured() {
+		if err := g.selection.ValidateExact(); err != nil {
+			return fmt.Errorf("%w: %w", ErrInvalid, err)
+		}
 	}
 	if err := g.capabilities.Validate(); err != nil {
 		return fmt.Errorf("%w: capabilities: %w", ErrInvalid, err)
@@ -247,10 +249,14 @@ func (g Goal) Clone() Goal {
 	return g
 }
 
-func (g Goal) SessionID() string                  { return g.sessionID }
-func (g Goal) Objective() string                  { return g.objective }
-func (g Goal) Status() Status                     { return g.status }
-func (g Goal) Reason() Reason                     { return g.reason }
+func (g Goal) SessionID() string { return g.sessionID }
+func (g Goal) Objective() string { return g.objective }
+func (g Goal) Status() Status    { return g.status }
+func (g Goal) Reason() Reason    { return g.reason }
+
+// ModelSelection is the Goal's own model override. Without one, each Goal Run
+// runs on the Session's selection at the time it starts, never a copy taken
+// when the Goal began.
 func (g Goal) ModelSelection() modelref.Selection { return g.selection }
 func (g Goal) Capabilities() run.Capabilities     { return g.capabilities.Clone() }
 func (g Goal) Used() Usage                        { return g.used }

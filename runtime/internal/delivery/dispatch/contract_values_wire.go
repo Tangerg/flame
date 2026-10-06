@@ -871,8 +871,6 @@ func registerGoalValues(s *Shapes) {
 		GoType: typeOf[protocol.Goal](),
 		Constraints: append(append(requiredResourceIdentity("sessionId"), []FieldConstraint{
 			{Field: "objective", Kind: ConstraintPattern, Value: nonBlankObjective},
-			{Field: "provider", Kind: ConstraintNonEmpty},
-			{Field: "model", Kind: ConstraintNonEmpty},
 		}...), modelSelectionIdentities()...),
 	})
 	nonNegative[protocol.GoalUsage](s, "runs", "costUsd", "steps")

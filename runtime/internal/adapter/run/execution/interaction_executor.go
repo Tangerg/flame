@@ -707,8 +707,7 @@ func runExecutionContext(
 		InterruptKinds: slices.Clone(start.InterruptKinds),
 	}.Normalized()
 	ctx = executionctx.WithScope(ctx, scope)
-	ctx = executionctx.WithRunCapabilities(ctx, capabilities)
-	return executionctx.WithModelSelection(ctx, start.ModelSelection)
+	return executionctx.WithRunCapabilities(ctx, capabilities)
 }
 
 // Release tears down one staged or terminal per-root Engine. It is idempotent

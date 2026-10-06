@@ -1219,16 +1219,16 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   Goal: allOf([
     object({
       createdAt: text(),
-      model: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      model: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       objective: allOf([text(), pattern("\\S")]),
-      provider: allOf([text(), minLength(1), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
+      provider: allOf([text(), maxLength(64), pattern("^[^\\p{C}\\p{Z}]*$")]),
       reason: ref(() => CHECKS.GoalReason),
       reasoningEffort: allOf([text(), maxLength(32), pattern("^[^\\p{C}\\p{Z}]*$")]),
       sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
       status: ref(() => CHECKS.GoalStatus),
       updatedAt: text(),
       used: ref(() => CHECKS.GoalUsage),
-    }, ["createdAt", "model", "objective", "provider", "sessionId", "status", "updatedAt", "used"]),
+    }, ["createdAt", "objective", "sessionId", "status", "updatedAt", "used"]),
     ifThen(
       fields({
         status: literal("active"),

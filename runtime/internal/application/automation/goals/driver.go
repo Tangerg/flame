@@ -77,11 +77,11 @@ type AutonomousRuns interface {
 	Cancel(ctx context.Context, cmd runs.CancelCommand) (runs.CancelResult, error)
 }
 
-// SessionPolicyReader returns the durable model policy together with Session
-// existence. A Goal with no explicit override freezes that exact policy before
-// it is persisted, so every autonomous Run and restart uses one selection.
-type SessionPolicyReader interface {
-	ModelSelection(ctx context.Context, sessionID string) (modelref.Selection, bool, error)
+// SessionExistence reports whether a Session exists. A Goal reads nothing else
+// from it: without its own override a Goal Run uses the Session's selection
+// when it starts.
+type SessionExistence interface {
+	Exists(ctx context.Context, sessionID string) (bool, error)
 }
 
 // DriveLease is the cross-process ownership of one Session's autonomous Goal
@@ -119,7 +119,7 @@ type RunInstructionBuilder func(RunInstructionInput) string
 type Driver struct {
 	goals          Store
 	runs           AutonomousRuns
-	sessions       SessionPolicyReader
+	sessions       SessionExistence
 	tasks          *taskgroup.Group
 	now            func() time.Time
 	newIncarnation func() string
@@ -168,7 +168,7 @@ func (g *goalCommandLease) transfer() DriveLease {
 func NewDriver(
 	store Store,
 	autonomousRuns AutonomousRuns,
-	sessions SessionPolicyReader,
+	sessions SessionExistence,
 	mutations *SessionMutations,
 	ownership DriveOwnership,
 	instructions RunInstructionBuilder,
@@ -223,18 +223,17 @@ func (d *Driver) Start(
 	if d.closed.Load() {
 		return goal.Goal{}, ErrClosed
 	}
-	sessionSelection, exists, err := d.sessions.ModelSelection(ctx, sessionID)
+	exists, err := d.sessions.Exists(ctx, sessionID)
 	if err != nil {
 		return goal.Goal{}, err
 	}
 	if !exists {
 		return goal.Goal{}, ErrNoSession
 	}
-	if !selection.Configured() {
-		selection = sessionSelection
-	}
-	if admissionErr := d.runs.AdmitSelection(selection); admissionErr != nil {
-		return goal.Goal{}, admissionErr
+	if selection.Configured() {
+		if admissionErr := d.runs.AdmitSelection(selection); admissionErr != nil {
+			return goal.Goal{}, admissionErr
+		}
 	}
 	existing, ok, err := loadGoal(ctx, d.goals, sessionID)
 	if err != nil {
@@ -692,7 +691,7 @@ func (d *Driver) reconcileGoal(ctx context.Context, g goal.Goal) error {
 		return nil
 	}
 	defer lease.Release()
-	_, exists, err := d.sessions.ModelSelection(ctx, g.SessionID())
+	exists, err := d.sessions.Exists(ctx, g.SessionID())
 	if err != nil {
 		return err
 	}

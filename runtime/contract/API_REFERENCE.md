@@ -1067,8 +1067,6 @@ TypeScript validator from this single registry projection.
 | `Goal` | `sessionId` | `identity` |
 | `Goal` | `sessionId` | `maxLength(256)` |
 | `Goal` | `objective` | `pattern("\\S")` |
-| `Goal` | `provider` | `nonEmpty` |
-| `Goal` | `model` | `nonEmpty` |
 | `Goal` | `provider` | `identity` |
 | `Goal` | `provider` | `maxLength(64)` |
 | `Goal` | `model` | `identity` |

@@ -4940,12 +4940,12 @@
             {
               "name": "Provider",
               "type": "string",
-              "tag": "json:\"provider\""
+              "tag": "json:\"provider,omitempty\""
             },
             {
               "name": "Model",
               "type": "string",
-              "tag": "json:\"model\""
+              "tag": "json:\"model,omitempty\""
             },
             {
               "name": "ReasoningEffort",

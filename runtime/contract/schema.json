@@ -2749,7 +2749,6 @@
         },
         "model": {
           "type": "string",
-          "minLength": 1,
           "maxLength": 256,
           "pattern": "^[^\\p{C}\\p{Z}]*$"
         },
@@ -2759,7 +2758,6 @@
         },
         "provider": {
           "type": "string",
-          "minLength": 1,
           "maxLength": 64,
           "pattern": "^[^\\p{C}\\p{Z}]*$"
         },
@@ -2790,9 +2788,7 @@
       },
       "required": [
         "createdAt",
-        "model",
         "objective",
-        "provider",
         "sessionId",
         "status",
         "updatedAt",

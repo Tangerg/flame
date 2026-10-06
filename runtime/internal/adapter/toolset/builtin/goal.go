@@ -167,8 +167,9 @@ func (c *creator) create(ctx context.Context, args createArgs) (goalResult, erro
 		return goalResult{Message: "Provide a non-empty autonomous objective."}, nil
 	}
 	capabilities, _ := executionctx.RunCapabilities(ctx)
-	selection, _ := executionctx.ModelSelection(ctx)
-	g, err := c.goals.Start(ctx, sessionID, args.Objective, selection, capabilities)
+	// Nobody chose a model for this Goal, so its Runs follow the Session's
+	// selection rather than a copy of the model this Run happens to use.
+	g, err := c.goals.Start(ctx, sessionID, args.Objective, modelref.Selection{}, capabilities)
 	if err != nil {
 		switch {
 		case errors.Is(err, goals.ErrGoalActive):

@@ -2028,8 +2028,6 @@ func (g Goal) ValidateWire() error {
 		identity("sessionId", g.SessionID),
 		maxLength("sessionId", g.SessionID, 256),
 		requiredTextPattern("objective", g.Objective, "\\S"),
-		requiredText("provider", g.Provider),
-		requiredText("model", g.Model),
 		identity("provider", g.Provider),
 		maxLength("provider", g.Provider, 64),
 		identity("model", g.Model),
