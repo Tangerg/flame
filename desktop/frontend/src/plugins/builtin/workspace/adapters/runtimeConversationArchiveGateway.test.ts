@@ -14,14 +14,6 @@ vi.mock("@/plugins/builtin/runtime/public/capabilities", () => ({
   runtimeCapability: () => true,
 }));
 
-vi.mock("@/plugins/builtin/agent/public/conversation", () => ({
-  getActiveConversationSnapshot: () => ({ messages: [], timeline: [], toolCalls: [] }),
-}));
-
-vi.mock("@/plugins/builtin/agent/public/messageContent", () => ({
-  flattenMarkdown: () => "",
-}));
-
 vi.mock("@/plugins/builtin/agent/public/session", () => ({
   getActiveSessionId: () => "session-current",
   invalidateAgentSessions: vi.fn().mockResolvedValue(undefined),

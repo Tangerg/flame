@@ -133,7 +133,6 @@ describe("agentStore.commitCancelResponse", () => {
     });
 
     expect(selectCurrentRootRun(view())?.status).toBe("finished");
-    expect(view().timeline.at(-1)).toMatchObject({ kind: "run-end", summary: "canceled" });
   });
 
   it("closes a canceled parked tree's interrupts without inventing its Items", () => {
@@ -300,7 +299,6 @@ describe("agentStore.applyRunSnapshot", () => {
       outcome: { type: "completed" },
       metrics: { steps: 4, activeDurationMillis: 120 },
     });
-    expect(view().timeline.at(-1)).toMatchObject({ kind: "run-end", status: "ok" });
   });
 });
 

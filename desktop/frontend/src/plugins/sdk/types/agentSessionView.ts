@@ -131,19 +131,6 @@ export interface AgentRunView {
   finishedAt: string | null;
 }
 
-type TimelineEntryKind =
-  "run-start" | "run-end" | "run-error" | "tool" | "approval-request" | "compaction";
-
-export interface TimelineEntry {
-  id: string;
-  ts: number;
-  kind: TimelineEntryKind;
-  runId: string | null;
-  summary?: string;
-  refId?: string;
-  status?: "ok" | "err" | "approved" | "declined";
-}
-
 type PendingInterruptKind = "approval" | "question";
 
 export interface PendingInterrupt {
@@ -164,7 +151,6 @@ export interface AgentSessionView {
   commandError: AgentProblem | null;
   dismissedProblemRunId: string | null;
   assistantTurnByRunId: Record<string, string>;
-  timeline: TimelineEntry[];
   pendingInterrupts: PendingInterruptGroup[];
   plan: AgentPlan | null;
   shared: Record<string, unknown>;
@@ -177,7 +163,6 @@ export const EMPTY_AGENT_SESSION_VIEW: AgentSessionView = {
   commandError: null,
   dismissedProblemRunId: null,
   assistantTurnByRunId: {},
-  timeline: [],
   pendingInterrupts: [],
   plan: null,
   shared: {},

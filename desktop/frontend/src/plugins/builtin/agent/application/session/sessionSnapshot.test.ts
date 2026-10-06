@@ -162,8 +162,5 @@ describe("projectAgentSessionSnapshot", () => {
       },
     ]);
     expect(view.plan).toMatchObject({ revision: 4 });
-    expect(
-      view.timeline.filter((entry) => entry.kind === "run-start").map((entry) => entry.runId),
-    ).toEqual([LOST_RUN_ID, ROOT_RUN_ID, CHILD_RUN_ID, RUNNING_CHILD_RUN_ID]);
   });
 });

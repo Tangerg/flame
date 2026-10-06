@@ -1,10 +1,7 @@
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { RetirableTaskCohort } from "@/lib/taskQueue";
 import { createPublicationSlot } from "@/lib/publicationSlot";
-import { formatDateTime } from "@/lib/i18n/relativeTime";
 import { t } from "@/lib/i18n";
-import { getActiveConversationSnapshot } from "@/plugins/builtin/agent/public/conversation";
-import { flattenMarkdown } from "@/plugins/builtin/agent/public/messageContent";
 import {
   getActiveSessionId,
   invalidateAgentSessions,
@@ -12,15 +9,11 @@ import {
   selectAgentSession,
 } from "@/plugins/builtin/agent/public/session";
 import { runtimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
-import { lookupExtensionByKey, notifyError } from "@/plugins/sdk";
-import { MESSAGE_ROLE } from "@/plugins/sdk/kernelPoints";
-import type { Message } from "@/plugins/sdk/types/agentSessionView";
+import { notifyError } from "@/plugins/sdk";
 import { toast } from "sonner";
-import { z } from "zod";
 import type {
   ConversationArchiveGateway,
   ConversationExportFormat,
-  ConversationExportResult,
 } from "./ports/conversationArchiveGateway";
 import type { FileTransferPort } from "./ports/fileTransfer";
 
@@ -28,90 +21,11 @@ function timestampForFilename(date: Date): string {
   return date.toISOString().replace(/[:.]/g, "-").slice(0, 19);
 }
 
-function roleDisplayName(role: Message["role"]): string {
-  const key = lookupExtensionByKey(MESSAGE_ROLE, role)?.displayName;
-  return key ? t(key) : role;
-}
-
-function renderMessageMarkdown(msg: Message): string {
-  const body = flattenMarkdown(msg.blocks).trim();
-  if (!body) return "";
-  const headerName = roleDisplayName(msg.role);
-  return `## ${headerName} · ${formatDateTime(msg.createdAt)}\n\n${body}\n`;
-}
-
-interface LocalExportMaterial {
-  readonly sessionId: string;
+interface ExportMaterial {
   readonly filename: string;
   readonly content: string;
   readonly mime: string;
 }
-
-function captureLocalExport(
-  sessionId: string,
-  format: ConversationExportFormat,
-): LocalExportMaterial {
-  const capturedAt = new Date();
-  const stamp = timestampForFilename(capturedAt);
-  const view = getActiveConversationSnapshot();
-  if (format === "md") {
-    const sections: string[] = [
-      `# ${t("convExport.docTitle")} \`${sessionId}\``,
-      `*${t("convExport.exportedAt", { time: capturedAt.toISOString() })}*`,
-      "",
-    ];
-    for (const message of view.messages) {
-      const rendered = renderMessageMarkdown(message);
-      if (rendered) sections.push(rendered);
-    }
-    return {
-      sessionId,
-      filename: `flame-${sessionId}-${stamp}.md`,
-      content: sections.join("\n"),
-      mime: "text/markdown;charset=utf-8",
-    };
-  }
-  return {
-    sessionId,
-    filename: `flame-${sessionId}-${stamp}.json`,
-    content: JSON.stringify(
-      {
-        version: 1,
-        sessionId,
-        exportedAt: capturedAt.toISOString(),
-        messages: view.messages,
-        timeline: view.timeline,
-        toolCalls: view.toolCalls,
-      },
-      null,
-      2,
-    ),
-    mime: "application/json;charset=utf-8",
-  };
-}
-
-function serverExportMaterial(
-  local: LocalExportMaterial,
-  format: ConversationExportFormat,
-  response: ConversationExportResult,
-): LocalExportMaterial | null {
-  if (format === "md" && response.format === "md" && response.markdown !== undefined) {
-    return { ...local, content: response.markdown };
-  }
-  if (format === "json" && response.format === "json" && response.artifact !== undefined) {
-    const content = JSON.stringify(response.artifact, null, 2);
-    return content === undefined ? null : { ...local, content };
-  }
-  return null;
-}
-
-const artifactEnvelope = z.looseObject({
-  version: z.literal(1),
-  session: z.looseObject({ id: z.string().min(1) }),
-  messages: z.array(z.unknown()),
-  runs: z.array(z.unknown()),
-  items: z.array(z.unknown()),
-});
 
 class ConversationArchiveGeneration {
   readonly #gateway: ConversationArchiveGateway;
@@ -130,23 +44,18 @@ class ConversationArchiveGeneration {
     try {
       const sessionId = getActiveSessionId();
       if (!sessionId) return;
-      const local = captureLocalExport(sessionId, format);
       if (!runtimeCapability("sessionExport")) {
-        this.#download(local);
+        notifyError(t("convExport.unsupported"), { source: "session" });
         return;
       }
-
-      let server: LocalExportMaterial | null = null;
-      try {
-        const response = await this.#cohort.run(() =>
-          this.#gateway.exportConversation(local.sessionId, format),
-        );
-        server = serverExportMaterial(local, format, response);
-      } catch (error) {
-        if (this.#cohort.retired) throw error;
-        console.warn("[export] sessions.export failed; falling back to captured material:", error);
-      }
-      this.#download(server ?? local);
+      const content = await this.#cohort.run(() =>
+        this.#gateway.exportConversation(sessionId, format),
+      );
+      this.#download({
+        filename: `flame-${sessionId}-${timestampForFilename(new Date())}.${format}`,
+        content,
+        mime: format === "md" ? "text/markdown;charset=utf-8" : "application/json;charset=utf-8",
+      });
     } catch (error) {
       if (!this.#cohort.retired) throw error;
     }
@@ -159,7 +68,6 @@ class ConversationArchiveGeneration {
       const stamp = timestampForFilename(new Date());
       const content = await this.#cohort.run(() => this.#gateway.exportTrajectory(sessionId));
       this.#download({
-        sessionId,
         filename: `flame-${sessionId}-trajectory-${stamp}.json`,
         content,
         mime: "application/json;charset=utf-8",
@@ -188,7 +96,7 @@ class ConversationArchiveGeneration {
   async #runImport(): Promise<void> {
     try {
       if (!runtimeCapability("sessionExport")) {
-        notifyError(t("convExport.importUnsupported"), { source: "import" });
+        notifyError(t("convExport.unsupported"), { source: "import" });
         return;
       }
       const text = await this.#cohort.run(() => this.#files.pickText("application/json,.json"));
@@ -200,11 +108,6 @@ class ConversationArchiveGeneration {
       } catch {
         this.#cohort.assertCurrent();
         notifyError(t("convExport.notJson"), { source: "import" });
-        return;
-      }
-      if (!artifactEnvelope.safeParse(artifact).success) {
-        this.#cohort.assertCurrent();
-        notifyError(t("convExport.notFlame"), { source: "import" });
         return;
       }
 
@@ -232,7 +135,7 @@ class ConversationArchiveGeneration {
     }
   }
 
-  #download(material: LocalExportMaterial): void {
+  #download(material: ExportMaterial): void {
     this.#cohort.assertCurrent();
     this.#files.download(material.filename, material.content, material.mime);
   }

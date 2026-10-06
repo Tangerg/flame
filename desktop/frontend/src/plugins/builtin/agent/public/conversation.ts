@@ -1,5 +1,5 @@
 export {
-  getActiveConversationSnapshot,
+  getActiveConversationMessages,
   useActiveConversationMessages,
   useActiveConversationRows,
 } from "../application/conversation/readModel";

@@ -6,7 +6,6 @@ import type {
   AgentProblem,
   AgentSessionView,
   Message,
-  TimelineEntry,
 } from "@/plugins/sdk/types/agentSessionView";
 import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
 import {
@@ -93,10 +92,6 @@ export function useTranscriptRows(): readonly TranscriptRow[] {
 export function useRunTree(): AgentRunTreeNode[] {
   const view = useActiveAgentView((current) => current);
   return useMemo(() => selectRunTree(view), [view]);
-}
-
-export function useAgentSessionTimeline(): TimelineEntry[] {
-  return useActiveAgentView((view) => view.timeline);
 }
 
 export function useAgentProblem(): AgentProblem | null {

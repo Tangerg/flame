@@ -10,11 +10,6 @@ import type { FileTransferPort } from "./ports/fileTransfer";
 
 const mocks = vi.hoisted(() => ({
   activeSessionId: "session-current" as string | undefined,
-  getActiveConversationSnapshot: vi.fn(() => ({
-    messages: [],
-    timeline: [],
-    toolCalls: [],
-  })),
   invalidateAgentSessions: vi.fn().mockResolvedValue(undefined),
   notifyError: vi.fn(),
   rehydrateSessionView: vi.fn().mockResolvedValue(undefined),
@@ -24,14 +19,6 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/plugins/builtin/runtime/public/capabilities", () => ({
   runtimeCapability: () => true,
-}));
-
-vi.mock("@/plugins/builtin/agent/public/conversation", () => ({
-  getActiveConversationSnapshot: mocks.getActiveConversationSnapshot,
-}));
-
-vi.mock("@/plugins/builtin/agent/public/messageContent", () => ({
-  flattenMarkdown: () => "",
 }));
 
 vi.mock("@/plugins/builtin/agent/public/session", () => ({
@@ -55,7 +42,6 @@ let files: FileTransferPort | null;
 
 beforeEach(() => {
   mocks.activeSessionId = "session-current";
-  mocks.getActiveConversationSnapshot.mockClear();
   mocks.invalidateAgentSessions.mockReset().mockResolvedValue(undefined);
   mocks.notifyError.mockReset();
   mocks.rehydrateSessionView.mockReset().mockResolvedValue(undefined);
@@ -83,7 +69,6 @@ describe("conversation archive generation", () => {
     await exporting;
 
     expect(exportTrajectory).toHaveBeenCalledExactlyOnceWith("session-current");
-    expect(mocks.getActiveConversationSnapshot).not.toHaveBeenCalled();
     expect(download).toHaveBeenCalledWith(
       expect.stringContaining("flame-session-current-trajectory-"),
       '{"schemaVersion":1,"evidence":"complete"}',
@@ -98,8 +83,30 @@ describe("conversation archive generation", () => {
 
     await expect(exportSessionTrajectory()).rejects.toBe(failure);
 
-    expect(mocks.getActiveConversationSnapshot).not.toHaveBeenCalled();
     expect(download).not.toHaveBeenCalled();
+  });
+
+  it("propagates conversation export failure without downloading a client-made substitute", async () => {
+    const failure = new Error("session is busy");
+    installFiles({ download, pickText: vi.fn() });
+    installGateway({ exportConversation: vi.fn().mockRejectedValue(failure) });
+
+    await expect(exportConversationMarkdown()).rejects.toBe(failure);
+
+    expect(download).not.toHaveBeenCalled();
+  });
+
+  it("hands Runtime the artifact it exported for admission", async () => {
+    const importConversation = vi.fn().mockResolvedValue({ id: "imported", title: "Imported" });
+    const artifact = { version: 30, session: { id: "imported" }, runs: [], items: [] };
+    installFiles({ download, pickText: () => Promise.resolve(JSON.stringify(artifact)) });
+    installGateway({ importConversation });
+
+    await importConversationJson();
+
+    expect(importConversation).toHaveBeenCalledExactlyOnceWith(artifact);
+    expect(mocks.notifyError).not.toHaveBeenCalled();
+    expect(mocks.selectAgentSession).toHaveBeenCalledWith("imported");
   });
 
   it("retires a pending evidence export before the previous Runtime can download", async () => {
@@ -187,7 +194,7 @@ describe("conversation archive generation", () => {
     expect(mocks.success).not.toHaveBeenCalled();
   });
 
-  it("does not turn a retired export failure into a successor local download", async () => {
+  it("does not turn a retired export failure into a successor download", async () => {
     const response = Promise.withResolvers<never>();
     const retiredExport = vi.fn(() => response.promise);
     installFiles({ download, pickText: vi.fn() });
@@ -196,7 +203,7 @@ describe("conversation archive generation", () => {
     const retired = exportConversationMarkdown();
     await vi.waitFor(() => expect(retiredExport).toHaveBeenCalledOnce());
     installGateway({
-      exportConversation: vi.fn().mockResolvedValue({ format: "md", markdown: "successor" }),
+      exportConversation: vi.fn().mockResolvedValue("successor"),
     });
     const hasSettled = observedSettlement(retired);
     await drainMicrotasks();
@@ -206,7 +213,6 @@ describe("conversation archive generation", () => {
     await retired;
 
     expect(settledAtReplacement).toBe(true);
-    expect(mocks.getActiveConversationSnapshot).toHaveBeenCalledOnce();
     expect(download).not.toHaveBeenCalled();
   });
 
@@ -307,13 +313,7 @@ function installFiles(next: FileTransferPort): void {
 }
 
 function validArtifact(id: string): string {
-  return JSON.stringify({
-    version: 1,
-    session: { id },
-    messages: [],
-    runs: [],
-    items: [],
-  });
+  return JSON.stringify({ version: 30, session: { id }, runs: [], items: [] });
 }
 
 function observedSettlement(operation: Promise<unknown>): () => boolean {

@@ -29,8 +29,7 @@ describe("the fold against the runtime's own samples", () => {
     expect(after).toBeDefined();
     expect(
       after.messages.length > before.messages.length ||
-        Object.keys(after.toolCalls).length > Object.keys(before.toolCalls).length ||
-        after.timeline.length > before.timeline.length,
+        Object.keys(after.toolCalls).length > Object.keys(before.toolCalls).length,
     ).toBe(true);
   });
 

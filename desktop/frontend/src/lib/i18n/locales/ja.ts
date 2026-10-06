@@ -640,12 +640,9 @@ export const ja: Record<string, string> = {
   "convExport.markdown": "会話を Markdown でエクスポート",
   "convExport.json": "会話を JSON でエクスポート",
   "convExport.import": "JSON から会話をインポート",
-  "convExport.docTitle": "会話",
-  "convExport.exportedAt": "{{time}} にエクスポート",
-  "convExport.importUnsupported": "このランタイムはセッションインポートをサポートしていません。",
+  "convExport.unsupported":
+    "このランタイムはセッションのエクスポートとインポートをサポートしていません。",
   "convExport.notJson": "JSON ファイルではありません。",
-  "convExport.notFlame":
-    "Flame セッションエクスポートではありません — 「会話をエクスポート」でエクスポートされた JSON を選択してください。",
   "convExport.importFailed": "会話をインポートできませんでした。",
   "convExport.importSuccess": "「{{title}}」をインポートしました。",
   "connection.error.token": "空白や制御文字を含まない有効なアクセストークンを入力してください。",

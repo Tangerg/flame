@@ -637,12 +637,8 @@ export const ko: Record<string, string> = {
   "convExport.markdown": "대화를 Markdown으로 내보내기",
   "convExport.json": "대화를 JSON으로 내보내기",
   "convExport.import": "JSON에서 대화 가져오기",
-  "convExport.docTitle": "대화",
-  "convExport.exportedAt": "{{time}}에 내보냄",
-  "convExport.importUnsupported": "이 런타임은 세션 가져오기를 지원하지 않습니다.",
+  "convExport.unsupported": "이 런타임은 세션 내보내기와 가져오기를 지원하지 않습니다.",
   "convExport.notJson": "JSON 파일이 아닙니다.",
-  "convExport.notFlame":
-    "Flame 세션 내보내기가 아닙니다 — '대화 내보내기'로 내보낸 JSON을 선택하세요.",
   "convExport.importFailed": "대화를 가져올 수 없습니다.",
   "convExport.importSuccess": "'{{title}}'을(를) 가져왔습니다.",
   "connection.error.token": "공백이나 제어 문자가 없는 유효한 액세스 토큰을 입력하세요.",

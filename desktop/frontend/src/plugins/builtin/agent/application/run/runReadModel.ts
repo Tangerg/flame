@@ -5,7 +5,6 @@ import type {
   AgentModelSelection,
   AgentRunOutcome,
   AgentRunView,
-  TimelineEntry,
 } from "@/plugins/sdk/types/agentSessionView";
 import { agentSessionView } from "../ports/sessionView";
 import type { AgentRootAttention, AgentRunTreeNode } from "../view/runTree";
@@ -70,10 +69,6 @@ export function useCurrentRootMaterial(): CurrentRootMaterial {
 
 export function useIsCurrentRootRunning(): boolean {
   return agentSessionView().useCurrentRootRunning();
-}
-
-export function useActiveSessionTimeline(): TimelineEntry[] {
-  return agentSessionView().useSessionTimeline();
 }
 
 export function useActiveSessionRunTree(): AgentRunTreeNode[] {

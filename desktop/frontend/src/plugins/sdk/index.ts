@@ -66,7 +66,6 @@ export {
   useSlashCommands,
   useWorkspaceViews,
 } from "./selectors";
-export { setTimelineEntry } from "./types/agentTimeline";
 
 export type { KeyValueStore } from "./storage";
 export type { AgentMessagePhase, AgentPlan, PlanStep } from "./types/agentSessionView";

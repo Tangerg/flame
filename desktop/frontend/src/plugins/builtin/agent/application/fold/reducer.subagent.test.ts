@@ -268,9 +268,6 @@ describe("reducer — source-owned Run tree", () => {
       fn: "Print the cwd",
       command: "pwd",
     });
-    expect(
-      view.timeline.find((entry) => entry.kind === "tool" && entry.refId === "root_tool"),
-    ).toMatchObject({ runId: "root", refId: "root_tool" });
   });
 
   it("converges live terminal folding with the durable RunRef snapshot", () => {
@@ -306,7 +303,7 @@ describe("reducer — source-owned Run tree", () => {
     expect(cold.runsById.root?.contextTokens).toBe(87_900);
   });
 
-  it("does not let duplicate or late segment.started regress a newer Run state", () => {
+  it("does not let a repeated or late segment.started regress a newer Run state", () => {
     const root = runningRun("root", "seg_root");
     const startEvent = started("evt_root_start", root);
     const startedView = reduceAgentEvent(EMPTY_AGENT_SESSION_VIEW, startEvent);
@@ -317,8 +314,7 @@ describe("reducer — source-owned Run tree", () => {
 
     expect(reduceAgentEvent(progressed, startEvent)).toBe(progressed);
     const terminal = reduceAgentEvent(progressed, finished("evt_root_finish", root.id, "seg_root"));
-    expect(reduceAgentEvent(terminal, startEvent)).toBe(terminal);
-
+    expect(() => reduceAgentEvent(terminal, startEvent)).toThrow("agent.fold.runStatusMismatch");
     expect(() => reduceAgentEvent(terminal, started("evt_late_start", root))).toThrow(
       "agent.fold.runStatusMismatch",
     );

@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type { AgentItem as Item, AgentStreamEvent as StreamEvent } from "@/plugins/sdk";
 import type { AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
 import { foldTestEvent as reduce } from "./reducer.fixtures";
-import { noMetrics } from "./reducer.fixtures";
 import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 
@@ -21,87 +20,10 @@ function item(partial: Record<string, unknown>): Item {
     ...partial,
   } as Item;
 }
-const started = (i: Item): StreamEvent => ({ type: "item.started", item: i });
 const completed = (i: Item): StreamEvent => ({ type: "item.completed", item: i });
 
 beforeEach(async () => {
   await loadPluginsForTest();
-});
-
-describe("reducer — timeline accumulator", () => {
-  it("records run-start / one tool record / run-end entries in order", () => {
-    let s: AgentSessionView = EMPTY_AGENT_SESSION_VIEW;
-    s = reduce(s, { type: "segment.started", run: { id: "r1", sessionId: "s" } as never });
-    s = reduce(
-      s,
-      started(
-        item({
-          id: "tc1",
-          type: "toolCall",
-          tool: { name: "shell", arguments: { command: "ls" } },
-        }),
-      ),
-    );
-    s = reduce(
-      s,
-      completed(
-        item({
-          id: "tc1",
-          type: "toolCall",
-          status: "completed",
-          tool: { name: "shell", arguments: { command: "ls" } },
-        }),
-      ),
-    );
-    s = reduce(s, {
-      type: "segment.finished",
-      contextTokens: 0,
-      outcome: { type: "completed" },
-      metrics: noMetrics,
-    });
-
-    expect(s.timeline.map((t) => t.kind)).toEqual(["run-start", "tool", "run-end"]);
-    expect(s.timeline.every((t) => t.runId === "r1")).toBe(true);
-    expect(s.timeline.find((t) => t.kind === "tool")?.status).toBe("ok");
-    expect(s.toolCalls["tc1"]?.fn).toBe("ls");
-  });
-
-  it("records an approval-request when a run finishes with an approval interrupt", () => {
-    let s: AgentSessionView = EMPTY_AGENT_SESSION_VIEW;
-    s = reduce(s, { type: "segment.started", run: { id: "r1", sessionId: "s" } as never });
-    s = reduce(
-      s,
-      started(
-        item({
-          id: "tc1",
-          type: "toolCall",
-          tool: { name: "shell", arguments: { command: "psql" } },
-        }),
-      ),
-    );
-    s = reduce(s, {
-      type: "segment.finished",
-      contextTokens: 0,
-      metrics: noMetrics,
-      outcome: {
-        type: "interrupt",
-        interrupts: [
-          {
-            itemId: "tc1" as never,
-            runId: "r1" as never,
-            type: "approval",
-            payload: {
-              tool: { name: "shell", arguments: { command: "psql" } },
-              rememberable: true,
-            },
-          },
-        ],
-      },
-    });
-    const approval = s.timeline.filter((t) => t.kind.startsWith("approval"));
-    expect(approval.map((t) => t.kind)).toEqual(["approval-request"]);
-    expect(approval[0]!.refId).toBe("tc1");
-  });
 });
 
 describe("reducer — plan", () => {

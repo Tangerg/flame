@@ -1,11 +1,9 @@
 import type { AgentInterrupt } from "@/plugins/sdk";
 import type { ContentBlock } from "@/plugins/sdk/types/contentBlock";
 import type { AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
-import { setTimelineEntry } from "@/plugins/sdk";
-import { commandString, editableArgs, mapQuestion, toolLabel } from "./projections";
+import { commandString, editableArgs, mapQuestion } from "./projections";
 import { appendToTurn, patchRunBlock } from "./fold";
 import type { AgentFoldSource } from "./source";
-import { sourceTimestamp } from "./source";
 
 export function materializeInterrupt(
   state: AgentSessionView,
@@ -39,15 +37,7 @@ export function materializeInterrupt(
       args: editableArgs(tool),
       rememberable: interrupt.payload.rememberable ?? false,
     };
-    const withBlock = appendToTurn(state, source.runId, interrupt.itemId, block, source.timestamp);
-    return setTimelineEntry({
-      id: `timeline:${source.eventId}:approval-request:${interrupt.itemId}`,
-      ts: sourceTimestamp(source),
-      kind: "approval-request",
-      runId: source.runId,
-      refId: interrupt.itemId,
-      summary: block.command || toolLabel(tool),
-    })(withBlock);
+    return appendToTurn(state, source.runId, interrupt.itemId, block, source.timestamp);
   }
   if (interrupt.type === "question") {
     const hasBlock = state.messages.some(

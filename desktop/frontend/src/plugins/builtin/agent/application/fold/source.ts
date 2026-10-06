@@ -1,5 +1,4 @@
 import type { AgentEventEnvelope, AgentItem } from "@/plugins/sdk";
-import type { TimelineEntry } from "@/plugins/sdk/types/agentSessionView";
 import { itemStartedAt } from "./projections";
 
 export interface AgentFoldSource {
@@ -24,29 +23,5 @@ export function durableItemSource(item: AgentItem): AgentFoldSource {
     segmentId: null,
     eventId: `history:${item.id}:${item.status === "running" ? "started" : "completed"}`,
     timestamp: itemStartedAt(item),
-  };
-}
-
-export function sourceTimestamp(source: AgentFoldSource): number {
-  const timestamp = Date.parse(source.timestamp);
-  if (Number.isNaN(timestamp)) {
-    throw new Error(
-      `agent.fold.timestampInvalid:event=${source.eventId};run=${source.runId};timestamp=${source.timestamp}`,
-    );
-  }
-  return timestamp;
-}
-
-export function timelineEntry(
-  source: AgentFoldSource,
-  kind: TimelineEntry["kind"],
-  patch: Partial<Omit<TimelineEntry, "id" | "ts" | "kind" | "runId">> = {},
-): TimelineEntry {
-  return {
-    id: `timeline:${source.eventId}:${kind}`,
-    ts: sourceTimestamp(source),
-    kind,
-    runId: source.runId,
-    ...patch,
   };
 }

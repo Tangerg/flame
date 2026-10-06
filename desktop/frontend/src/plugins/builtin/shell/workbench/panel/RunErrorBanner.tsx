@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { Icon, IconButton, vocab } from "@/ui";
 import { BannerAction } from "./BannerAction";
 import { flattenText } from "@/plugins/builtin/agent/public/messageContent";
-import { getActiveConversationSnapshot } from "@/plugins/builtin/agent/public/conversation";
+import { getActiveConversationMessages } from "@/plugins/builtin/agent/public/conversation";
 import {
   agentTextInput,
   useCanSendToAgent,
@@ -33,8 +33,9 @@ const reb = stylex.create({
 });
 
 function findLastUserText(): string {
-  const { messages } = getActiveConversationSnapshot();
-  const last = messages.findLast((m) => m.role === "user" && flattenText(m.blocks).trim() !== "");
+  const last = getActiveConversationMessages().findLast(
+    (m) => m.role === "user" && flattenText(m.blocks).trim() !== "",
+  );
   return last ? flattenText(last.blocks).trim() : "";
 }
 

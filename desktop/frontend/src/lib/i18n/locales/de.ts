@@ -662,12 +662,8 @@ export const de: Record<string, string> = {
   "convExport.markdown": "Konversation als Markdown exportieren",
   "convExport.json": "Konversation als JSON exportieren",
   "convExport.import": "Konversation aus JSON importieren",
-  "convExport.docTitle": "Unterhaltung",
-  "convExport.exportedAt": "Exportiert {{time}}",
-  "convExport.importUnsupported": "Diese Runtime unterstützt keinen Sitzungsimport.",
+  "convExport.unsupported": "Diese Runtime unterstützt keinen Sitzungsexport oder -import.",
   "convExport.notJson": "Keine JSON-Datei.",
-  "convExport.notFlame":
-    'Kein Flame-Sitzungsexport — wähle ein JSON, das über „Konversation exportieren" exportiert wurde.',
   "convExport.importFailed": "Konversation konnte nicht importiert werden.",
   "convExport.importSuccess": '"{{title}}" importiert.',
   "connection.error.token": "Gültiges Zugriffstoken ohne Leerzeichen oder Steuerzeichen eingeben.",

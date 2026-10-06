@@ -10,7 +10,12 @@ import { browserFileTransfer } from "./browserFileTransfer";
 function runtimeConversationArchiveGateway(client: FlameClient): ConversationArchiveGateway {
   return {
     async exportConversation(sessionId, format) {
-      return client.sessions.export(asSessionId(sessionId), format);
+      const response = await client.sessions.export(asSessionId(sessionId), format);
+      if (format === "md" && response.markdown !== undefined) return response.markdown;
+      if (format === "json" && response.artifact !== undefined) {
+        return JSON.stringify(response.artifact, null, 2);
+      }
+      throw new Error(`runtime contract violation: sessions.export omitted its ${format} result`);
     },
     async exportTrajectory(sessionId) {
       const response = await client.sessions.exportTrajectory({

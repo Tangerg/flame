@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createParameterizedDataQuery, type AgentItem, type AgentRunFact } from "@/plugins/sdk";
 import type { AgentRunTreeNode } from "../view/runTree";
-import { useActiveSessionRunTree, useActiveSessionTimeline } from "./runReadModel";
+import { useActiveSessionRunTree } from "./runReadModel";
 
 export interface TrajectoryQuery {
   sessionId: string;
@@ -59,7 +59,6 @@ export function useSessionTrajectory(
   cursor?: string,
 ) {
   const client = useQueryClient();
-  const timeline = useActiveSessionTimeline();
   const runs = useActiveSessionRunTree();
   const revision = JSON.stringify(runRevisions(runs));
   const params = useMemo(
@@ -77,7 +76,7 @@ export function useSessionTrajectory(
     return () => {
       active = false;
     };
-  }, [client, params, refetch, revision, timeline]);
+  }, [client, params, refetch, revision]);
   return query;
 }
 

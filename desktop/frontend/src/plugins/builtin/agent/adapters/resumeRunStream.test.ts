@@ -109,7 +109,6 @@ describe("accepted resume stream", () => {
       status: "running",
       approvalDecision: "approved",
     });
-    expect(view.timeline.every((entry) => !entry.id.includes(":local:"))).toBe(true);
     expect(accepted.close).toHaveBeenCalledOnce();
     expect(subscribe).toHaveBeenCalledWith(
       { runId: RUN, segmentId: SEGMENT, snapshot: true },

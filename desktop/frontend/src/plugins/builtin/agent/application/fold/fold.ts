@@ -342,10 +342,7 @@ export function foldCompaction(
   return { ...state, messages: [...state.messages, msg] };
 }
 
-export function writeToolCall(
-  state: AgentSessionView,
-  item: ItemOf<"toolCall">,
-): { state: AgentSessionView; tool: ToolCall } {
+export function writeToolCall(state: AgentSessionView, item: ItemOf<"toolCall">): AgentSessionView {
   const withBlock =
     state.toolCalls[item.id] === undefined
       ? appendToTurn(
@@ -357,7 +354,7 @@ export function writeToolCall(
         )
       : state;
   const tool = projectToolCall(item, withBlock.toolCalls[item.id]);
-  return { state: { ...withBlock, toolCalls: { ...withBlock.toolCalls, [item.id]: tool } }, tool };
+  return { ...withBlock, toolCalls: { ...withBlock.toolCalls, [item.id]: tool } };
 }
 
 function closeAssistantTurn(state: AgentSessionView, runId: string): AgentSessionView {

@@ -21,9 +21,9 @@ vi.mock("@/plugins/builtin/agent/public/input", () => ({
   },
 }));
 vi.mock("@/plugins/builtin/agent/public/conversation", () => ({
-  getActiveConversationSnapshot: () => ({
-    messages: [{ role: "user", blocks: [{ kind: "text", text: "Run the suite" }] }],
-  }),
+  getActiveConversationMessages: () => [
+    { role: "user", blocks: [{ kind: "text", text: "Run the suite" }] },
+  ],
 }));
 vi.mock("@/plugins/builtin/runtime/public/serviceStatus", () => ({
   useRuntimeCommandsAvailable: () => true,

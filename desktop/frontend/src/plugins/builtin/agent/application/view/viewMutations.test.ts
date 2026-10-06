@@ -15,7 +15,6 @@ function view(partial: Partial<AgentSessionView> = {}): AgentSessionView {
   return {
     ...EMPTY_AGENT_SESSION_VIEW,
     messages: [],
-    timeline: [],
     pendingInterrupts: [],
     ...partial,
   };

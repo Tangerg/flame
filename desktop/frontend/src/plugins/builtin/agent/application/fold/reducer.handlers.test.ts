@@ -64,7 +64,6 @@ describe("handler contract — run.*", () => {
     });
     expect(selectVisibleProblem(out)).toBeNull();
     expect(out.messages).toBe(s.messages);
-    expect(out.timeline.at(-1)).toMatchObject({ kind: "run-start", runId: "r1" });
   });
 
   it("segment.progress patches only the fields present, leaving sibling readout untouched", () => {

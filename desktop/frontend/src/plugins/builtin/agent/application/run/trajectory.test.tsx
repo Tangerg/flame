@@ -5,16 +5,13 @@ import { describe, expect, it, vi } from "vitest";
 import { DATA_PROVIDER, definePlugin } from "@/plugins/sdk";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 import type { AgentRunTreeNode } from "../view/runTree";
-import type { TimelineEntry } from "@/plugins/sdk/types/agentSessionView";
 import { TRAJECTORY_KEY, useSessionTrajectory, type TrajectoryPage } from "./trajectory";
 
 const projection = vi.hoisted(() => ({
   runs: [] as AgentRunTreeNode[],
-  timeline: [] as TimelineEntry[],
 }));
 vi.mock("./runReadModel", () => ({
   useActiveSessionRunTree: () => projection.runs,
-  useActiveSessionTimeline: () => projection.timeline,
 }));
 
 describe("durable trajectory queries", () => {
@@ -27,7 +24,6 @@ describe("durable trajectory queries", () => {
       progress: { step: 1, activity: "Preparing" },
     } as AgentRunTreeNode["run"];
     projection.runs = [{ run, children: [] }];
-    projection.timeline = [];
     const fetcher = vi.fn(async () => ({ data: [] }));
     await loadPluginsForTest(
       definePlugin({
@@ -78,7 +74,6 @@ describe("durable trajectory queries", () => {
       progress: null,
     } as AgentRunTreeNode["run"];
     projection.runs = [{ run, children: [] }];
-    projection.timeline = [];
     const pending = Promise.withResolvers<TrajectoryPage>();
     const initial: TrajectoryPage = {
       data: [

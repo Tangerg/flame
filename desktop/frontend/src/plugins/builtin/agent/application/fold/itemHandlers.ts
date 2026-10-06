@@ -12,7 +12,6 @@ import {
   writeToolCall,
 } from "./fold";
 import type { AgentFoldSource } from "./source";
-import { recordCompactionTimeline, recordToolTimeline } from "./itemTimeline";
 
 function assertItemSource(item: AgentItem, source: AgentFoldSource): void {
   if (item.runId !== source.runId) {
@@ -43,14 +42,12 @@ export function onItemStarted(
       return foldAgentMessage(state, item, blockStatus(item.status));
     case "reasoning":
       return foldReasoning(state, item, blockStatus(item.status));
-    case "toolCall": {
-      const { state: next, tool } = writeToolCall(state, item);
-      return recordToolTimeline(next, item, tool);
-    }
+    case "toolCall":
+      return writeToolCall(state, item);
     case "question":
       return foldQuestion(state, item, blockStatus(item.status));
     case "compaction":
-      return recordCompactionTimeline(foldCompaction(state, item), item);
+      return foldCompaction(state, item);
   }
 }
 
@@ -170,13 +167,11 @@ export function onItemCompleted(
       return foldAgentMessage(state, item, blockStatus(item.status));
     case "reasoning":
       return foldReasoning(state, item, blockStatus(item.status));
-    case "toolCall": {
-      const { state: next, tool } = writeToolCall(state, item);
-      return recordToolTimeline(next, item, tool);
-    }
+    case "toolCall":
+      return writeToolCall(state, item);
     case "question":
       return foldQuestion(state, item, blockStatus(item.status));
     case "compaction":
-      return recordCompactionTimeline(foldCompaction(state, item), item);
+      return foldCompaction(state, item);
   }
 }

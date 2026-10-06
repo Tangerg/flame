@@ -21,7 +21,6 @@ import {
   useRootNarrativeMessages,
   useRunTree,
   useTranscriptRows,
-  useAgentSessionTimeline,
   useAgentSharedMaterial,
 } from "./agentViewSelectors";
 import { AgentViewRefreshOwner, useAgentStore } from "./agentStore";
@@ -127,7 +126,6 @@ export function installAgentStatePorts(): () => void {
   const disposeViewState = configureAgentSessionViewPort({
     useCurrentRootRun,
     useCurrentRootRunning,
-    useSessionTimeline: useAgentSessionTimeline,
     useRootNarrativeMessages,
     useTranscriptRows,
     useRunTree,

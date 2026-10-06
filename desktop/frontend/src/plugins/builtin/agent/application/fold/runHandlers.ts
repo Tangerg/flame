@@ -7,11 +7,9 @@ import type {
   AgentSessionView,
   PendingInterrupt,
 } from "@/plugins/sdk/types/agentSessionView";
-import { setTimelineEntry } from "@/plugins/sdk";
 import { dropRunPendingInterrupts, mergeRunPendingInterrupts } from "./fold";
 import { materializeInterrupt } from "./interruptMaterialization";
 import type { AgentFoldSource } from "./source";
-import { timelineEntry } from "./source";
 import {
   projectRunMetrics,
   projectStartedRun,
@@ -116,12 +114,8 @@ export function onRunStarted(
 ): AgentSessionView {
   const started = projectStartedRun(run, source);
   const previous = state.runsById[run.id];
-  const exactReplay = state.timeline.some(
-    (entry) => entry.id === `timeline:${source.eventId}:run-start`,
-  );
   if (previous) {
     if (previous.status === "finished") {
-      if (exactReplay) return state;
       throw new Error(
         `agent.fold.runStatusMismatch:event=segment.started;run=${run.id};status=finished;expected=waitingOrAbsent`,
       );
@@ -132,9 +126,8 @@ export function onRunStarted(
         `agent.fold.segmentMismatch:event=segment.started;run=${run.id};eventSegment=${source.segmentId ?? "missing"};activeSegment=${previous.activeSegmentId ?? "missing"}`,
       );
     }
-    if (exactReplay) return state;
   }
-  const next: AgentSessionView = {
+  return {
     ...dropRunPendingInterrupts(state, run.id),
     commandError: null,
     runsById: {
@@ -142,7 +135,6 @@ export function onRunStarted(
       [run.id]: started,
     },
   };
-  return setTimelineEntry(timelineEntry(source, "run-start"))(next);
 }
 
 export function onRunProgress(
@@ -237,29 +229,5 @@ export function onRunFinished(
     return next;
   }
 
-  next = dropRunPendingInterrupts(next, source.runId);
-  const projectedOutcome = projectTerminalSegmentOutcome(outcome);
-  if (isAgentRunFailure(projectedOutcome)) {
-    const problem = projectedOutcome.error;
-    return setTimelineEntry(
-      timelineEntry(source, "run-error", {
-        status: "err",
-        summary: problem.message ?? problem.code,
-      }),
-    )(next);
-  }
-
-  return setTimelineEntry(
-    timelineEntry(source, "run-end", {
-      status: outcome.type === "completed" ? "ok" : undefined,
-      summary: terminalOutcomeSummary(projectedOutcome),
-    }),
-  )(next);
-}
-
-function terminalOutcomeSummary(outcome: AgentRunOutcome): string | undefined {
-  if (outcome.type === "completed") return undefined;
-  if (isAgentRunFailure(outcome))
-    return outcome.error.message ?? outcome.error.code ?? outcome.type;
-  return outcome.detail ?? outcome.type;
+  return dropRunPendingInterrupts(next, source.runId);
 }

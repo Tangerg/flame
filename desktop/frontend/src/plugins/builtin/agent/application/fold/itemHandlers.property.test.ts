@@ -141,9 +141,7 @@ describe("the live item fold, over the orderings a replay can produce", () => {
       );
       const view = foldAll([...frames, ...frames]);
       const messageIds = view.messages.map((message) => message.id);
-      const timelineIds = view.timeline.map((entry) => entry.id);
       expect(new Set(messageIds).size).toBe(messageIds.length);
-      expect(new Set(timelineIds).size).toBe(timelineIds.length);
     });
   });
 

@@ -919,12 +919,8 @@ export const en: Record<string, string> = {
   "convExport.markdown": "Export conversation as Markdown",
   "convExport.json": "Export conversation as JSON",
   "convExport.import": "Import conversation from JSON",
-  "convExport.docTitle": "Conversation",
-  "convExport.exportedAt": "Exported {{time}}",
-  "convExport.importUnsupported": "This runtime doesn't support session import.",
+  "convExport.unsupported": "This runtime doesn't support session export or import.",
   "convExport.notJson": "Not a JSON file.",
-  "convExport.notFlame":
-    'Not a Flame session export — pick a JSON exported via "Export conversation".',
   "convExport.importFailed": "Couldn't import the conversation.",
   "convExport.importSuccess": 'Imported "{{title}}".',
 
