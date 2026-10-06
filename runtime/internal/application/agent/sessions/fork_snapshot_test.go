@@ -31,7 +31,7 @@ func TestCopyForkSnapshotRemapsTheCompleteVisibleRunTree(t *testing.T) {
 		Lineage: run.Lineage{
 			SpawnedByItemID: "item_spawn", ParentRunID: "run_root", RootRunID: "run_root",
 		},
-		CreatedAt: at.Add(time.Millisecond),
+		CreatedAt:  at.Add(time.Millisecond),
 		FinishedAt: at.Add(time.Second), UpdatedAt: at.Add(time.Second), MessageMark: 1,
 	})
 	preview, err := tool.NewResult("delegated preview")

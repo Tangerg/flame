@@ -175,7 +175,7 @@ func (c *Coordinator) cancelWaitingChild(
 	// The open interrupt this cancellation settles refuses a relocation for as
 	// long as it exists, so the Session read before the claim still names the tree
 	// the claim reserves.
-	sess, err := c.sessionReader.Get(ctx, initial.pending.SessionID)
+	sess, err := c.sessionReader.Get(ctx, initial.root.run.SessionID())
 	if err != nil {
 		return CancelResult{}, err
 	}
@@ -316,7 +316,7 @@ func (c *Coordinator) waitingChildCancellationContinuation(
 		}
 		lostErr := c.terminations.ApplyRunLost(
 			ctx,
-			plan.pending.SessionID,
+			plan.root.run.SessionID(),
 			plan.root.run.ID(),
 			c.publications.nowUTC(),
 		)
@@ -382,7 +382,7 @@ func (c *Coordinator) resumeAfterWaitingChildCancellation(
 	events, err := c.openSegment(ctx, segmentSpec{
 		RunID:        plan.root.run.ID(),
 		SegmentID:    segmentID,
-		SessionID:    plan.pending.SessionID,
+		SessionID:    plan.root.run.SessionID(),
 		WorkspaceCWD: sess.Workspace().Path(),
 		Isolated:     sess.Isolated(),
 		ExecutorID:   plan.executor.ExecutorID,
@@ -470,7 +470,7 @@ func (c *Coordinator) recoverCommittedWaitingCancellation(
 	}
 	restored, err := c.waitingRestorer.RestoreWaitingExecution(recoveryCtx, continuation)
 	if err == nil {
-		err = restored.ValidateFor(plan.pending.SessionID)
+		err = restored.ValidateFor(plan.root.run.SessionID())
 	}
 	if err == nil && restored.ExecutorID != plan.executor.ExecutorID {
 		err = fmt.Errorf(
@@ -492,7 +492,7 @@ func (c *Coordinator) failCommittedWaitingCancellationRecovery(
 ) error {
 	if err := c.terminations.ApplyRunLost(
 		ctx,
-		plan.pending.SessionID,
+		plan.root.run.SessionID(),
 		plan.root.run.ID(),
 		c.publications.nowUTC(),
 	); err != nil {
@@ -577,7 +577,7 @@ func (c *Coordinator) publishWaitingChildCancellation(
 	}
 	appendRunID(plan.root.run.ID())
 	c.publications.publishWaitingSubtreeCanceled(
-		plan.pending.SessionID,
+		plan.root.run.SessionID(),
 		plan.root.run.ID(),
 		affected,
 	)
@@ -646,14 +646,8 @@ func (c *Coordinator) cancelParkedRun(ctx context.Context, cmd CancelCommand, va
 			return CancelResult{}, fmt.Errorf("runs: run %q is %s but has no open interrupt", cmd.RunID, refreshed.State())
 		}
 	}
-	if pending.SessionID != value.SessionID() {
-		return CancelResult{}, fmt.Errorf(
-			"runs: run %q belongs to session %q but its interrupt belongs to %q",
-			cmd.RunID, value.SessionID(), pending.SessionID,
-		)
-	}
 	return c.cancelClaimedParkedRun(ctx, cmd, ExecutorRef{
-		SessionID:  pending.SessionID,
+		SessionID:  value.SessionID(),
 		ExecutorID: pending.ExecutorID,
 	})
 }

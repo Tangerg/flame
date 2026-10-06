@@ -124,7 +124,7 @@ func (s *Handler) GetSessionSnapshot(ctx context.Context, in protocol.GetSession
 	for _, set := range sets {
 		out.Interrupts = append(out.Interrupts, protocol.PendingInterruptSet{
 			RootRunID:  set.Pending.RootRunID,
-			SessionID:  set.Pending.SessionID,
+			SessionID:  set.SessionID,
 			Interrupts: presentInterrupts(set.Interrupts),
 			CreatedAt:  set.Pending.CreatedAt,
 		})

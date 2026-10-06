@@ -207,6 +207,7 @@ func (*delegateSessionStore) ApplyRunLost(
 
 func (*delegateSessionStore) ApplyClaimedRunLost(
 	context.Context,
+	string,
 	runs.Pending,
 	time.Time,
 ) error {

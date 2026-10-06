@@ -30,7 +30,7 @@ func TestInteractionExecutorAppliesColdWaitingDelegateCancellationWithoutDuplica
 	if len(pending.Interrupts) != 1 || len(pending.Continuations) != 2 {
 		t.Fatalf("waiting Delegate boundary = %#v", barrier)
 	}
-	ref := runs.ExecutorRef{SessionID: pending.SessionID, ExecutorID: pending.ExecutorID}
+	ref := runs.ExecutorRef{SessionID: barrier.SessionID(), ExecutorID: pending.ExecutorID}
 	if err := fixture.executor.Release(t.Context(), ref); err != nil {
 		t.Fatal(err)
 	}
@@ -167,7 +167,7 @@ func waitingDelegateContinuation(barrier runs.TreeBarrierCommit, workspace strin
 		})
 	}
 	return runs.WaitingContinuation{
-		SessionID: pending.SessionID, ExecutorID: pending.ExecutorID,
+		SessionID: parked[pending.RootRunID].SessionID(), ExecutorID: pending.ExecutorID,
 		RootRunID: pending.RootRunID, Members: members,
 		Checkpoint: barrier.Checkpoint(), Capabilities: parked[pending.RootRunID].Capabilities(),
 		GoalIncarnationID: parked[pending.RootRunID].GoalIncarnationID(), Workspace: workspace,

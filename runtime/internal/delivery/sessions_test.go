@@ -159,7 +159,7 @@ func TestDeleteSession_Cascade(t *testing.T) {
 	if err := hist.AppendItem(ctx, testsupport.MustRestoreItem(testsupport.ItemInput{SessionID: id, RunID: "run_1", ID: "item_1", OccurredAt: now})); err != nil {
 		t.Fatalf("seed item: %v", err)
 	}
-	if err := openSeededPending(ctx, t, db, ints, serverPending("run_1", id, "", "", nil, now)); err != nil {
+	if err := openSeededPending(ctx, t, db, ints, id, serverPending("run_1", id, "", "", nil, now)); err != nil {
 		t.Fatalf("seed interrupt: %v", err)
 	}
 	history := map[string][]chat.Message{id: {chat.NewUserMessage(chat.NewTextPart("hi"))}}
@@ -225,7 +225,7 @@ func TestDeleteSession_CancelsParkedTurn(t *testing.T) {
 	ints := persistence.NewInterruptStore(sqlite.NewInterruptStore(db))
 	created, _ := insertSessionFixture(ctx, svc, "parked", "/w")
 	id := created.ID()
-	if err := openSeededPending(ctx, t, db, ints, serverPending(
+	if err := openSeededPending(ctx, t, db, ints, id, serverPending(
 		"run_parked",
 		id,
 		"exec_parked",
@@ -294,8 +294,8 @@ func TestForkSession(t *testing.T) {
 	}
 }
 
-func openSeededPending(ctx context.Context, t *testing.T, db *sql.DB, ints *persistence.InterruptStore, pending runs.Pending) error {
+func openSeededPending(ctx context.Context, t *testing.T, db *sql.DB, ints *persistence.InterruptStore, sessionID string, pending runs.Pending) error {
 	t.Helper()
 	runtime := stubRuntime{db: db, interrupts: ints, hist: sqlite.NewTranscriptStore(db)}
-	return runtime.openPending(ctx, t, pending)
+	return runtime.openPending(ctx, t, sessionID, pending)
 }

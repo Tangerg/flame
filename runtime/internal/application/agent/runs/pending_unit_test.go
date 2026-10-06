@@ -32,7 +32,7 @@ func TestResumeClaimSettlesReviewedToolCallsFromTheirItems(t *testing.T) {
 		Tool: &transcript.ToolInvocation{Name: "write"},
 	})
 	claim, err := NewResumeClaimCommit(
-		testCommitID("run_commit_approval"), pending, items, answers,
+		testCommitID("run_commit_approval"), fixtureSessionID, pending, items, answers,
 	)
 	if err != nil {
 		t.Fatalf("NewResumeClaimCommit: %v", err)
@@ -64,7 +64,7 @@ func TestResumeClaimOwnsPendingAndQuestionAnswers(t *testing.T) {
 	pending := validTreePending()
 	pending.Interrupts = []OpenInterrupt{{ItemID: "item_grandchild"}}
 	items := map[string]transcript.Item{"item_grandchild": testsupport.MustRestoreItem(testsupport.ItemInput{
-		ID: "item_grandchild", SessionID: pending.SessionID, RunID: "run_grandchild",
+		ID: "item_grandchild", SessionID: fixtureSessionID, RunID: "run_grandchild",
 		Kind: transcript.QuestionItem, OccurredAt: pending.CreatedAt,
 		Question: &transcript.Question{Fields: []transcript.QuestionField{{
 			Prompt: "Continue?", Kind: transcript.QuestionChoice,
@@ -80,7 +80,7 @@ func TestResumeClaimOwnsPendingAndQuestionAnswers(t *testing.T) {
 	}}
 
 	claim, err := NewResumeClaimCommit(
-		testCommitID("run_commit_question"), pending, items, answers,
+		testCommitID("run_commit_question"), fixtureSessionID, pending, items, answers,
 	)
 	if err != nil {
 		t.Fatalf("NewResumeClaimCommit: %v", err)
@@ -242,12 +242,6 @@ func TestPendingValidatesExactReadIdentities(t *testing.T) {
 	if err := (Pending{}).ValidateForRoot("run_root"); err == nil {
 		t.Fatal("ValidateForRoot accepted invalid Pending")
 	}
-	if err := pending.ValidateForSession(pending.SessionID); err != nil {
-		t.Fatalf("ValidateForSession exact Pending: %v", err)
-	}
-	if err := pending.ValidateForSession("session_other"); err == nil || !strings.Contains(err.Error(), "requested identity") {
-		t.Fatalf("ValidateForSession mismatched Pending error = %v", err)
-	}
 }
 
 func TestPendingEqualUsesLogicalDurableValue(t *testing.T) {
@@ -276,7 +270,6 @@ func validTreePending() Pending {
 	createdAt := time.Date(2026, 7, 30, 12, 0, 0, 0, time.UTC)
 	return Pending{
 		RootRunID:  "run_root",
-		SessionID:  "session_1",
 		ExecutorID: "turn_1",
 		Interrupts: OpenInterruptsOf([]transcript.Interrupt{
 			{

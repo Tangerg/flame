@@ -182,7 +182,7 @@ func TestResumeRunRefusesACallerThatCannotFollowTheRun(t *testing.T) {
 		}},
 		time.Unix(1, 0).UTC(),
 	)
-	if err := rt.openPendingWith(ctx, t, pending, run.Capabilities{
+	if err := rt.openPendingWith(ctx, t, sess.ID(), pending, run.Capabilities{
 		InterruptKinds: []interrupt.Kind{interrupt.Approval, interrupt.Question},
 	}); err != nil {
 		t.Fatalf("seed interrupt: %v", err)

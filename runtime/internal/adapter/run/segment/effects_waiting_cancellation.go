@@ -65,7 +65,7 @@ func (e *Effects) claimWaitingCancellation(
 	ctx context.Context,
 	commit runs.WaitingSubtreeCancellationCommit,
 ) error {
-	pending, found, err := e.interrupts.Consume(ctx, commit.SessionID(), commit.RootRunID())
+	pending, found, err := e.interrupts.Consume(ctx, commit.RootRunID())
 	if err != nil {
 		return fmt.Errorf(
 			"segment: claim waiting cancellation interrupt for root Run %q: %w",

@@ -24,7 +24,7 @@ func TestInteractionExecutorRestoresWaitingDelegateChildWithoutReadmission(t *te
 	reservationsBeforeRestore, outcomesBeforeRestore := fixture.admissionCounts()
 	assertWaitingDelegateBoundary(t, barrier)
 	if err := fixture.executor.Release(t.Context(), runs.ExecutorRef{
-		SessionID: pending.SessionID, ExecutorID: pending.ExecutorID,
+		SessionID: barrier.SessionID(), ExecutorID: pending.ExecutorID,
 	}); err != nil {
 		t.Fatal(err)
 	}

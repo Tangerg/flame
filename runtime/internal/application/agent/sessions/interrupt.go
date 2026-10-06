@@ -70,22 +70,16 @@ func (c *Coordinator) listOpenInterrupts(ctx context.Context, sessionID string) 
 	if err != nil {
 		return nil, err
 	}
-	if err := validatePendingCatalog(pending, sessionID); err != nil {
+	if err := validatePendingCatalog(pending); err != nil {
 		return nil, err
 	}
 	return pending, nil
 }
 
-func validatePendingCatalog(values []runs.Pending, sessionID string) error {
+func validatePendingCatalog(values []runs.Pending) error {
 	seen := make(map[string]struct{}, len(values))
 	for index, pending := range values {
-		var err error
-		if sessionID == "" {
-			err = pending.Validate()
-		} else {
-			err = pending.ValidateForSession(sessionID)
-		}
-		if err != nil {
+		if err := pending.Validate(); err != nil {
 			return fmt.Errorf("sessions: interrupt store row %d is invalid: %w", index+1, err)
 		}
 		if _, duplicate := seen[pending.RootRunID]; duplicate {
@@ -114,7 +108,7 @@ func (c *Coordinator) ApplyRunLost(ctx context.Context, sessionID, runID string,
 // ApplyClaimedRunLost ends the exact hand-off already owned by a successful
 // Resume claim. It uses the Pending value returned by that claim; the ordinary
 // open-interrupt projection intentionally does not expose a resuming row.
-func (c *Coordinator) ApplyClaimedRunLost(ctx context.Context, pending runs.Pending, finishedAt time.Time) error {
+func (c *Coordinator) ApplyClaimedRunLost(ctx context.Context, sessionID string, pending runs.Pending, finishedAt time.Time) error {
 	if finishedAt.IsZero() {
 		return fmt.Errorf("sessions: terminalize claimed Resume %q: finished time is required", pending.RootRunID)
 	}
@@ -123,6 +117,7 @@ func (c *Coordinator) ApplyClaimedRunLost(ctx context.Context, pending runs.Pend
 	}
 	_, err := c.terminalizePendingRun(
 		ctx,
+		sessionID,
 		pending,
 		finishedAt,
 		rundomain.OutcomeLost,
@@ -140,33 +135,34 @@ func (c *Coordinator) terminalizeParkedRun(ctx context.Context, sessionID, runID
 	if err != nil {
 		return rundomain.Run{}, err
 	}
-	if !found || pending.SessionID != sessionID {
+	if !found {
 		return rundomain.Run{}, fmt.Errorf("sessions: terminalize parked run %q: open interrupt not found for session %q", runID, sessionID)
 	}
-	return c.terminalizePendingRun(ctx, pending, finishedAt, outcome, detail, false)
+	return c.terminalizePendingRun(ctx, sessionID, pending, finishedAt, outcome, detail, false)
 }
 
 func (c *Coordinator) terminalizePendingRun(
 	ctx context.Context,
+	sessionID string,
 	pending runs.Pending,
 	finishedAt time.Time,
 	outcome rundomain.Outcome,
 	detail string,
 	resumeClaimed bool,
 ) (rundomain.Run, error) {
-	snapshot, err := c.snapshots.ReadSnapshot(ctx, pending.SessionID)
+	snapshot, err := c.snapshots.ReadSnapshot(ctx, sessionID)
 	if err != nil {
 		return rundomain.Run{}, err
 	}
-	if err := snapshot.Session.ValidateFor(pending.SessionID); err != nil {
+	if err := snapshot.Session.ValidateFor(sessionID); err != nil {
 		return rundomain.Run{}, fmt.Errorf("sessions: terminal snapshot identity: %w", err)
 	}
-	messages, err := runs.TerminalConversation(ctx, c.runs, pending.SessionID, pending.RootRunID, snapshot.Messages, outcome, detail)
+	messages, err := runs.TerminalConversation(ctx, c.runs, sessionID, pending.RootRunID, snapshot.Messages, outcome, detail)
 	if err != nil {
 		return rundomain.Run{}, err
 	}
 	plan, rootRun, err := (parkedRunTerminalization{
-		sessionID: pending.SessionID, rootRunID: pending.RootRunID, finishedAt: finishedAt,
+		sessionID: sessionID, rootRunID: pending.RootRunID, finishedAt: finishedAt,
 		outcome: outcome, detail: detail, pending: pending, snapshot: snapshot,
 		resumeClaimed:        resumeClaimed,
 		conversationMessages: messages,
@@ -187,18 +183,18 @@ func (c *Coordinator) terminalizePendingRun(
 		runIDs[index] = replacement.State().ID()
 	}
 	notices := []invalidation.Notice{
-		invalidation.InSession(invalidation.Runs, pending.SessionID, runIDs...),
-		invalidation.InSession(invalidation.Interrupts, pending.SessionID, pending.RootRunID),
-		invalidation.InSession(invalidation.Sessions, pending.SessionID),
+		invalidation.InSession(invalidation.Runs, sessionID, runIDs...),
+		invalidation.InSession(invalidation.Interrupts, sessionID, pending.RootRunID),
+		invalidation.InSession(invalidation.Sessions, sessionID),
 	}
 	if root, _ := plan.RootRun(); root.GoalIncarnationID() != "" {
-		notices = append(notices, invalidation.InSession(invalidation.Goals, pending.SessionID))
+		notices = append(notices, invalidation.InSession(invalidation.Goals, sessionID))
 	}
 	c.invalidations.Notify(notices...)
 	return rootRun, nil
 }
 
-func (c *Coordinator) parkedExecutions(ctx context.Context, runIDs []string) ([]RunExecutionBinding, error) {
+func (c *Coordinator) parkedExecutions(ctx context.Context, sessionID string, runIDs []string) ([]RunExecutionBinding, error) {
 	var out []RunExecutionBinding
 	for _, runID := range runIDs {
 		pending, found, err := c.lookupOpenInterrupt(ctx, runID)
@@ -214,7 +210,7 @@ func (c *Coordinator) parkedExecutions(ctx context.Context, runIDs []string) ([]
 		}
 		out = append(out, RunExecutionBinding{
 			RunID:            pending.RootRunID,
-			SessionID:        pending.SessionID,
+			SessionID:        sessionID,
 			ExecutorID:       pending.ExecutorID,
 			CheckpointRootID: root.MemberID,
 		})

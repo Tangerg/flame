@@ -129,7 +129,7 @@ func TestRollbackSession_CancelsDroppedParkedRun(t *testing.T) {
 	putRun(t, rt, sess.ID(), "run_1", 100, 2)
 	putRun(t, rt, sess.ID(), "run_2", 200, 4)
 	putUserItem(t, rt, sess.ID(), "run_2", "item_u2", "second prompt")
-	if err := rt.openPending(ctx, t, serverPending(
+	if err := rt.openPending(ctx, t, sess.ID(), serverPending(
 		"run_2",
 		sess.ID(),
 		"exec_parked",

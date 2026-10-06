@@ -111,7 +111,7 @@ func (s *Handler) ListInterrupts(ctx context.Context, in protocol.ListInterrupts
 	for _, set := range page.Rows {
 		presented := protocol.PendingInterruptSet{
 			RootRunID:  set.Pending.RootRunID,
-			SessionID:  set.Pending.SessionID,
+			SessionID:  set.SessionID,
 			Interrupts: presentInterrupts(set.Interrupts),
 			CreatedAt:  set.Pending.CreatedAt,
 		}

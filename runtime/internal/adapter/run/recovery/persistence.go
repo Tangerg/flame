@@ -28,7 +28,7 @@ type SessionStore interface {
 
 type InterruptStore interface {
 	List(ctx context.Context, sessionID string) ([]runs.Pending, error)
-	Delete(ctx context.Context, sessionID, rootRunID string) error
+	Delete(ctx context.Context, rootRunID string) error
 }
 
 type TranscriptStore interface {
@@ -366,9 +366,9 @@ func (p *Persistence) recordGoalRuns(ctx context.Context, commit runs.RecoveryCo
 }
 
 func (p *Persistence) deleteInterrupts(ctx context.Context, commit runs.RecoveryCommit) error {
-	for _, owner := range commit.DeleteInterrupts() {
-		if err := p.interrupts.Delete(ctx, owner.SessionID, owner.RootRunID); err != nil {
-			return fmt.Errorf("recovery: delete interrupt for root Run %q: %w", owner.RootRunID, err)
+	for _, rootRunID := range commit.DeleteInterrupts() {
+		if err := p.interrupts.Delete(ctx, rootRunID); err != nil {
+			return fmt.Errorf("recovery: delete interrupt for root Run %q: %w", rootRunID, err)
 		}
 	}
 	return nil

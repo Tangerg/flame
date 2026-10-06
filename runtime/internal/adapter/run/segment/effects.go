@@ -53,16 +53,16 @@ type GoalRunRecorder interface {
 // owning root terminalizes. Resume claiming remains a narrower, separate port.
 type InterruptStore interface {
 	Open(ctx context.Context, p runs.Pending) error
-	Consume(ctx context.Context, sessionID, rootRunID string) (runs.Pending, bool, error)
-	Delete(ctx context.Context, sessionID, rootRunID string) error
+	Consume(ctx context.Context, rootRunID string) (runs.Pending, bool, error)
+	Delete(ctx context.Context, rootRunID string) error
 }
 
 // ResumeClaimStore atomically changes one open hand-off into a durable,
 // nonrecoverable answer claim. It is separate from ordinary barrier mutation so
 // callers that never resume a Run do not acquire that lifecycle capability.
 type ResumeClaimStore interface {
-	ClaimResume(ctx context.Context, sessionID, rootRunID string) (runs.Pending, bool, error)
-	RequireResumeClaim(ctx context.Context, sessionID, rootRunID string) error
+	ClaimResume(ctx context.Context, rootRunID string) (runs.Pending, bool, error)
+	RequireResumeClaim(ctx context.Context, rootRunID string) error
 }
 
 // TranscriptStore is the run-segment append side of durable transcript

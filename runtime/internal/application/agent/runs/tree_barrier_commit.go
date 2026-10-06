@@ -85,6 +85,16 @@ func (t TreeBarrierCommit) Runs() []EventCommit { return cloneEventCommits(t.run
 // Checkpoint returns an isolated copy of the opaque executor continuation.
 func (t TreeBarrierCommit) Checkpoint() ExecutorCheckpoint { return t.checkpoint.Clone() }
 
+// SessionID is the Session of the tree's root Run, which owns it.
+func (t TreeBarrierCommit) SessionID() string {
+	for _, commit := range t.runs {
+		if commit.RunID == t.pending.RootRunID && commit.Run != nil {
+			return commit.Run.SessionID()
+		}
+	}
+	return ""
+}
+
 type treeBarrierValidator struct {
 	barrier       TreeBarrierCommit
 	continuations map[string]Continuation
@@ -93,8 +103,7 @@ type treeBarrierValidator struct {
 
 func (t treeBarrierValidator) validateCheckpoint(rootContinuation Continuation) error {
 	checkpoint := t.barrier.checkpoint
-	pending := t.barrier.pending
-	if err := checkpoint.ValidateOwnership(rootContinuation.MemberID, pending.SessionID); err != nil {
+	if err := checkpoint.ValidateOwnership(rootContinuation.MemberID, t.barrier.SessionID()); err != nil {
 		return fmt.Errorf("runs: tree barrier checkpoint ownership: %w", err)
 	}
 	return nil
@@ -128,9 +137,9 @@ func (t treeBarrierValidator) validateRun(index int, runCommit EventCommit) erro
 	if runCommit.State != StateSuspend || runCommit.Run == nil || runCommit.Run.State() != run.Waiting {
 		return fmt.Errorf("runs: tree barrier Run[%d] is not a waiting Run projection", index)
 	}
-	pending := t.barrier.pending
-	if runCommit.SessionID != pending.SessionID || runCommit.Run.SessionID() != pending.SessionID {
-		return fmt.Errorf("runs: tree barrier Run[%d] Session differs from Pending", index)
+	sessionID := t.barrier.SessionID()
+	if runCommit.SessionID != sessionID || runCommit.Run.SessionID() != sessionID {
+		return fmt.Errorf("runs: tree barrier Run[%d] Session differs from its root Run", index)
 	}
 	if _, exists := t.continuations[runCommit.RunID]; !exists {
 		return fmt.Errorf("runs: tree barrier Run[%d] has no continuation", index)

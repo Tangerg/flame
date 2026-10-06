@@ -66,8 +66,8 @@ func (i *InterruptStore) Get(ctx context.Context, rootRunID string) (runs.Pendin
 	return pending, true, nil
 }
 
-func (i *InterruptStore) Consume(ctx context.Context, sessionID, rootRunID string) (runs.Pending, bool, error) {
-	record, ok, err := i.storage.Consume(ctx, sessionID, rootRunID)
+func (i *InterruptStore) Consume(ctx context.Context, rootRunID string) (runs.Pending, bool, error) {
+	record, ok, err := i.storage.Consume(ctx, rootRunID)
 	if err != nil || !ok {
 		return runs.Pending{}, ok, err
 	}
@@ -78,8 +78,8 @@ func (i *InterruptStore) Consume(ctx context.Context, sessionID, rootRunID strin
 	return pending, true, nil
 }
 
-func (i *InterruptStore) ClaimResume(ctx context.Context, sessionID, rootRunID string) (runs.Pending, bool, error) {
-	record, found, err := i.storage.ClaimResume(ctx, sessionID, rootRunID)
+func (i *InterruptStore) ClaimResume(ctx context.Context, rootRunID string) (runs.Pending, bool, error) {
+	record, found, err := i.storage.ClaimResume(ctx, rootRunID)
 	if err != nil || !found {
 		return runs.Pending{}, found, err
 	}
@@ -90,19 +90,16 @@ func (i *InterruptStore) ClaimResume(ctx context.Context, sessionID, rootRunID s
 	return pending, true, nil
 }
 
-func (i *InterruptStore) RequireResumeClaim(ctx context.Context, sessionID, rootRunID string) error {
-	return i.storage.RequireResumeClaim(ctx, sessionID, rootRunID)
+func (i *InterruptStore) RequireResumeClaim(ctx context.Context, rootRunID string) error {
+	return i.storage.RequireResumeClaim(ctx, rootRunID)
 }
 
-func (i *InterruptStore) Delete(ctx context.Context, sessionID, rootRunID string) error {
-	return i.storage.Delete(ctx, sessionID, rootRunID)
+func (i *InterruptStore) Delete(ctx context.Context, rootRunID string) error {
+	return i.storage.Delete(ctx, rootRunID)
 }
 
-func (i *InterruptStore) DeleteResumeClaim(
-	ctx context.Context,
-	sessionID, rootRunID, rootMemberID string,
-) error {
-	return i.storage.DeleteResumeClaim(ctx, sessionID, rootRunID, rootMemberID)
+func (i *InterruptStore) DeleteResumeClaim(ctx context.Context, rootRunID, rootMemberID string) error {
+	return i.storage.DeleteResumeClaim(ctx, rootRunID, rootMemberID)
 }
 
 func pendingValues(records []sqlite.InterruptRecord) ([]runs.Pending, error) {
@@ -147,8 +144,7 @@ func interruptRecord(pending runs.Pending) sqlite.InterruptRecord {
 		}
 	}
 	return sqlite.InterruptRecord{
-		RootRunID: pending.RootRunID, SessionID: pending.SessionID,
-		ExecutorID: pending.ExecutorID,
+		RootRunID: pending.RootRunID, ExecutorID: pending.ExecutorID,
 		Interrupts: interrupts, Bindings: bindings,
 		Continuations: continuations,
 		CreatedAt:     pending.CreatedAt,
@@ -189,8 +185,7 @@ func pendingValue(record sqlite.InterruptRecord) runs.Pending {
 		}
 	}
 	return runs.Pending{
-		RootRunID: record.RootRunID, SessionID: record.SessionID,
-		ExecutorID: record.ExecutorID,
+		RootRunID: record.RootRunID, ExecutorID: record.ExecutorID,
 		Interrupts: interrupts, Bindings: bindings,
 		Continuations: continuations,
 		CreatedAt:     record.CreatedAt,

@@ -198,7 +198,7 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 			t.Fatal("completed sibling B is a waiting continuation member")
 		}
 	}
-	if err := executor.Release(t.Context(), runs.ExecutorRef{SessionID: pending.SessionID, ExecutorID: pending.ExecutorID}); err != nil {
+	if err := executor.Release(t.Context(), runs.ExecutorRef{SessionID: barrier.SessionID(), ExecutorID: pending.ExecutorID}); err != nil {
 		t.Fatal(err)
 	}
 	ref, err := executor.StageContinuation(t.Context(), waitingDelegateContinuation(barrier, workspace))

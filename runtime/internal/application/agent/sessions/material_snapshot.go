@@ -46,6 +46,8 @@ func (c *Coordinator) MaterialSnapshot(ctx context.Context, sessionID string) (M
 // InterruptSet is one open waiting hand-off with its interrupts projected from
 // the Items they name.
 type InterruptSet struct {
+	// SessionID is the Session of the set's root Run, which owns it.
+	SessionID  string
 	Pending    runs.Pending
 	Interrupts []transcript.Interrupt
 }
@@ -63,7 +65,7 @@ func (m MaterialSnapshot) InterruptSets() ([]InterruptSet, error) {
 		if err != nil {
 			return nil, fmt.Errorf("sessions: material snapshot interrupt %q: %w", pending.RootRunID, err)
 		}
-		sets[index] = InterruptSet{Pending: pending, Interrupts: interrupts}
+		sets[index] = InterruptSet{SessionID: m.Session.ID(), Pending: pending, Interrupts: interrupts}
 	}
 	return sets, nil
 }
@@ -167,9 +169,6 @@ func (validator *materialSnapshotValidator) indexInterrupts() error {
 	for _, pending := range validator.snapshot.Interrupts {
 		if err := pending.ValidateProjection(validator.snapshot.Runs, validator.snapshot.Items); err != nil {
 			return fmt.Errorf("sessions: material snapshot interrupt %q: %w", pending.RootRunID, err)
-		}
-		if pending.SessionID != validator.sessionID {
-			return fmt.Errorf("sessions: material snapshot interrupt %q belongs to Session %q, want %q", pending.RootRunID, pending.SessionID, validator.sessionID)
 		}
 		root, found := validator.runsByID[pending.RootRunID]
 		if !found {

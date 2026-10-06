@@ -315,8 +315,7 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		// claim changes the row to resuming; the next barrier replaces it and a
 		// terminal/recovery write-set deletes it.
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS interrupts (
-			root_run_id        TEXT    PRIMARY KEY,
-			session_id         TEXT    NOT NULL,
+			root_run_id        TEXT    PRIMARY KEY REFERENCES runs(run_id) ON DELETE CASCADE,
 			executor_id        TEXT    NOT NULL,
 			-- Derived from the root Continuation and checked again on decode. It
 			-- exists as a relational key so two pending sets cannot claim the same
@@ -333,8 +332,8 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			interruptStateOpen.databaseValue(),
 			interruptStateResuming.databaseValue(),
 		),
-		`CREATE INDEX IF NOT EXISTS idx_interrupts_session
-			ON interrupts(session_id, state)`,
+		`CREATE INDEX IF NOT EXISTS idx_interrupts_state
+			ON interrupts(state, created_at, root_run_id)`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_interrupts_root_member
 			ON interrupts(root_member_id)`,
 		// pending_workspace_mutations is the recoverable operation log for file

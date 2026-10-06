@@ -137,7 +137,7 @@ func (f *fakeRunSessions) ApplyRunLost(_ context.Context, _ string, runID string
 	return f.applyRunLost(runID, finishedAt)
 }
 
-func (f *fakeRunSessions) ApplyClaimedRunLost(_ context.Context, pending Pending, finishedAt time.Time) error {
+func (f *fakeRunSessions) ApplyClaimedRunLost(_ context.Context, _ string, pending Pending, finishedAt time.Time) error {
 	return f.applyRunLost(pending.RootRunID, finishedAt)
 }
 
@@ -1720,7 +1720,7 @@ func TestResumeRehydrateRestoresChildSourceProjection(t *testing.T) {
 	facts := fixtureFacts(pending)
 	facts.goalIncarnationID = "goal-lease-1"
 	sessions := &fakeRunSessions{
-		sess: testsupport.MustRestoreSession(session.Snapshot{ID: pending.SessionID, Workspace: testsupport.MustWorkspace("/work")}),
+		sess: testsupport.MustRestoreSession(session.Snapshot{ID: fixtureSessionID, Workspace: testsupport.MustWorkspace("/work")}),
 		pending: map[string]Pending{
 			pending.RootRunID: pending},
 		facts: map[string]parkedFacts{pending.RootRunID: facts},
@@ -1728,7 +1728,7 @@ func TestResumeRehydrateRestoresChildSourceProjection(t *testing.T) {
 	control := &fakeExecutionPorts{
 		prepareErr: ErrExecutorNotLive,
 		rehydrated: ExecutorRef{
-			SessionID:  pending.SessionID,
+			SessionID:  fixtureSessionID,
 			ExecutorID: pending.ExecutorID,
 		},
 	}
@@ -1790,7 +1790,7 @@ func TestResumeRehydrateRestoresChildAdmissionBeforeAnyChildExists(t *testing.T)
 	facts := fixtureFacts(pending)
 	facts.capabilities.ChildRuns = true
 	sessions := &fakeRunSessions{
-		sess: testsupport.MustRestoreSession(session.Snapshot{ID: pending.SessionID, Workspace: testsupport.MustWorkspace("/work")}),
+		sess: testsupport.MustRestoreSession(session.Snapshot{ID: fixtureSessionID, Workspace: testsupport.MustWorkspace("/work")}),
 		pending: map[string]Pending{
 			pending.RootRunID: pending},
 		facts: map[string]parkedFacts{pending.RootRunID: facts},
@@ -1798,7 +1798,7 @@ func TestResumeRehydrateRestoresChildAdmissionBeforeAnyChildExists(t *testing.T)
 	control := &fakeExecutionPorts{
 		prepareErr: ErrExecutorNotLive,
 		rehydrated: ExecutorRef{
-			SessionID:  pending.SessionID,
+			SessionID:  fixtureSessionID,
 			ExecutorID: pending.ExecutorID,
 		},
 	}
@@ -1880,7 +1880,6 @@ func testApprovalPending(memberID string, runCreatedAt time.Time) Pending {
 	interruptValues := approvalInterrupt(interruptItemID, runCreatedAt)
 	return Pending{
 		RootRunID:  "run_1",
-		SessionID:  "ses_1",
 		ExecutorID: "turn_1",
 		Interrupts: OpenInterruptsOf(interruptValues),
 		Bindings: []InterruptBinding{{

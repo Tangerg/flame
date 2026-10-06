@@ -660,7 +660,7 @@ func (c *QueryCoordinator) ListPendingInterruptPage(ctx context.Context, session
 	if err != nil {
 		return pagination.Page[InterruptSet]{}, err
 	}
-	if err := validatePendingInterruptPage(rows, sessionID, rootRunID, afterCreatedAt, afterID, size+1); err != nil {
+	if err := validatePendingInterruptPage(rows, rootRunID, afterCreatedAt, afterID, size+1); err != nil {
 		return pagination.Page[InterruptSet]{}, err
 	}
 	page, err := pagination.PageOf(rows, size, interruptPageNamespace, filters, func(pending runs.Pending) []string {
@@ -685,6 +685,7 @@ func (c *QueryCoordinator) ListPendingInterruptPage(ctx context.Context, session
 		if err != nil {
 			return pagination.Page[InterruptSet]{}, err
 		}
+		set.SessionID = root.SessionID()
 		sets = append(sets, set)
 	}
 	return pagination.Page[InterruptSet]{Rows: sets, NextCursor: page.NextCursor}, nil
@@ -710,11 +711,11 @@ func (c *QueryCoordinator) interruptSet(ctx context.Context, pending runs.Pendin
 	return InterruptSet{Pending: pending, Interrupts: interrupts}, nil
 }
 
-func validatePendingInterruptPage(rows []runs.Pending, sessionID, rootRunID string, afterCreatedAt int64, afterID string, maximum int) error {
+func validatePendingInterruptPage(rows []runs.Pending, rootRunID string, afterCreatedAt int64, afterID string, maximum int) error {
 	if len(rows) > maximum {
 		return fmt.Errorf("sessions: interrupt store returned %d rows, maximum %d", len(rows), maximum)
 	}
-	if err := validatePendingCatalog(rows, sessionID); err != nil {
+	if err := validatePendingCatalog(rows); err != nil {
 		return err
 	}
 	for index, pending := range rows {

@@ -586,7 +586,7 @@ func putWaitingRun(t *testing.T, rt *stubRuntime, sessionID, runID string, atUni
 	})); err != nil {
 		t.Fatalf("open interrupt item for %s: %v", runID, err)
 	}
-	if err := rt.openPending(ctx, t, serverPending(runID, sessionID, "", "", []transcript.Interrupt{{
+	if err := rt.openPending(ctx, t, sessionID, serverPending(runID, sessionID, "", "", []transcript.Interrupt{{
 		ItemID: "item_" + runID, Kind: interrupt.Question,
 		Question: &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}},
 	}}, at)); err != nil {

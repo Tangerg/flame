@@ -133,7 +133,6 @@ func bootstrapPending(
 	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}}
 	return runsapp.Pending{
 		RootRunID:  runID,
-		SessionID:  sessionID,
 		ExecutorID: "turn_" + runID,
 		Interrupts: runsapp.OpenInterruptsOf([]transcript.Interrupt{{
 			ItemID: itemID, ItemOccurredAt: itemOccurredAt,
@@ -439,7 +438,6 @@ func TestApplyTerminalRecoversClaimedResumeAtomically(t *testing.T) {
 	}
 	if _, claimResumeFound, claimResumeErr := ints.ClaimResume(
 		ctx,
-		pending.SessionID,
 		pending.RootRunID,
 	); claimResumeErr != nil || !claimResumeFound {
 		t.Fatalf("ClaimResume: found=%t err=%v", claimResumeFound, claimResumeErr)
@@ -465,7 +463,7 @@ func TestApplyTerminalRecoversClaimedResumeAtomically(t *testing.T) {
 	if applyTerminalErr := ss.ApplyTerminal(ctx, terminalPlan); applyTerminalErr != nil {
 		t.Fatalf("ApplyTerminal claimed Resume: %v", applyTerminalErr)
 	}
-	if requireResumeClaimErr := ints.RequireResumeClaim(ctx, pending.SessionID, pending.RootRunID); requireResumeClaimErr == nil {
+	if requireResumeClaimErr := ints.RequireResumeClaim(ctx, pending.RootRunID); requireResumeClaimErr == nil {
 		t.Fatal("claimed Resume interrupt survived terminal write-set")
 	}
 	if _, loadCheckpointErr := ss.checkpoints.LoadCheckpoint(ctx, memberID); !errors.Is(loadCheckpointErr, runsapp.ErrExecutorCheckpointNotFound) {

@@ -250,7 +250,7 @@ func (w waitingCancellationBuilder) validate() error {
 	}
 	if err := w.prepared.checkpoint.ValidateOwnership(
 		rootContinuation.MemberID,
-		w.plan.pending.SessionID,
+		w.plan.root.run.SessionID(),
 	); err != nil {
 		return fmt.Errorf("runs: invalid prepared waiting subtree checkpoint ownership: %w", err)
 	}
@@ -459,7 +459,6 @@ func (w waitingCancellationBuilder) treeContinuation(
 ) (*treeContinuation, error) {
 	continuation := &treeContinuation{
 		rootRunID:     w.plan.pending.RootRunID,
-		sessionID:     w.plan.pending.SessionID,
 		executorID:    w.plan.pending.ExecutorID,
 		interrupts:    slices.Clone(interrupts),
 		continuations: slices.Clone(continuations),

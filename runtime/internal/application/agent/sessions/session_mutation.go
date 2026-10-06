@@ -58,7 +58,7 @@ func (c *Coordinator) DeleteSession(ctx context.Context, sessionID string) error
 			for _, item := range pending {
 				if err := c.releaseExecution(ctx, RunExecutionBinding{
 					RunID:      item.RootRunID,
-					SessionID:  item.SessionID,
+					SessionID:  sessionID,
 					ExecutorID: item.ExecutorID,
 				}); err != nil {
 					cleanupErrs = append(cleanupErrs, err)

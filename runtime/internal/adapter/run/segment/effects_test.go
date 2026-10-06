@@ -55,7 +55,6 @@ func singleRunPending(
 	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}}
 	return runs.Pending{
 		RootRunID:  runID,
-		SessionID:  sessionID,
 		ExecutorID: "turn_" + runID,
 		Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 			ItemID: itemID, ItemOccurredAt: barrierCreatedAt,
@@ -76,10 +75,10 @@ func singleRunPending(
 }
 
 // singleRunQuestionItem is the Question Item singleRunPending's interrupt names.
-func singleRunQuestionItem(t testing.TB, pending runs.Pending) transcript.Item {
+func singleRunQuestionItem(t testing.TB, sessionID string, pending runs.Pending) transcript.Item {
 	t.Helper()
 	item, err := transcript.NewQuestion(transcript.ItemIdentity{
-		SessionID: pending.SessionID, RunID: pending.RootRunID,
+		SessionID: sessionID, RunID: pending.RootRunID,
 		ItemID: pending.Interrupts[0].ItemID, OccurredAt: pending.CreatedAt,
 	}, transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}})
 	if err != nil {
@@ -428,7 +427,7 @@ func TestCommitTreeBarrierRecordsPendingSetAndSuspends(t *testing.T) {
 				UpdatedAt:    barrierCreatedAt,
 				MessageMark:  run.UnknownMessageMark})),
 
-			Items: []transcript.Item{singleRunQuestionItem(t, pending)},
+			Items: []transcript.Item{singleRunQuestionItem(t, "ses_1", pending)},
 		}},
 		testRootExecutorCheckpoint(),
 	)
@@ -523,7 +522,7 @@ func TestCommitTreeBarrierRejectsInterruptsItsRunCannotPark(t *testing.T) {
 		t,
 		"run_1", "ses_1", "member_1", "request_1", "int_1", createdAt.Add(time.Second),
 	)
-	parked := testsupport.MustRestoreRun(run.Snapshot{SessionID: pending.SessionID,
+	parked := testsupport.MustRestoreRun(run.Snapshot{SessionID: "ses_1",
 		ID:             pending.RootRunID,
 		ModelSelection: testsupport.DefaultModelSelection(),
 		State:          run.Waiting,
@@ -984,8 +983,8 @@ func (f *fakeInterrupts) Open(_ context.Context, p runs.Pending) error {
 	return nil
 }
 
-func (f *fakeInterrupts) Consume(_ context.Context, sessionID, runID string) (runs.Pending, bool, error) {
-	if f.pending.SessionID != sessionID || f.pending.RootRunID != runID {
+func (f *fakeInterrupts) Consume(_ context.Context, runID string) (runs.Pending, bool, error) {
+	if f.pending.RootRunID != runID {
 		return runs.Pending{}, false, nil
 	}
 	pending := f.pending
@@ -993,30 +992,27 @@ func (f *fakeInterrupts) Consume(_ context.Context, sessionID, runID string) (ru
 	return pending, true, nil
 }
 
-func (f *fakeInterrupts) Delete(_ context.Context, sessionID, runID string) error {
+func (f *fakeInterrupts) Delete(_ context.Context, runID string) error {
 	if f.pending.RootRunID == "" {
 		return nil
 	}
-	if f.pending.SessionID != sessionID || f.pending.RootRunID != runID {
+	if f.pending.RootRunID != runID {
 		return transcript.ErrIdentityConflict
 	}
 	f.pending = runs.Pending{}
 	return nil
 }
 
-func (f *fakeInterrupts) ClaimResume(
-	_ context.Context,
-	sessionID, runID string,
-) (runs.Pending, bool, error) {
-	if f.pending.SessionID != sessionID || f.pending.RootRunID != runID || f.resumeClaimed {
+func (f *fakeInterrupts) ClaimResume(_ context.Context, runID string) (runs.Pending, bool, error) {
+	if f.pending.RootRunID != runID || f.resumeClaimed {
 		return runs.Pending{}, false, nil
 	}
 	f.resumeClaimed = true
 	return f.pending, true, nil
 }
 
-func (f *fakeInterrupts) RequireResumeClaim(_ context.Context, sessionID, runID string) error {
-	if !f.resumeClaimed || f.pending.SessionID != sessionID || f.pending.RootRunID != runID {
+func (f *fakeInterrupts) RequireResumeClaim(_ context.Context, runID string) error {
+	if !f.resumeClaimed || f.pending.RootRunID != runID {
 		return errors.New("fake: resume claim is unavailable")
 	}
 	return nil

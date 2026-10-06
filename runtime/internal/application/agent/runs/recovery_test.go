@@ -283,9 +283,15 @@ func (r *recoveryStoreStub) LoadExecutorCheckpoint(
 		if !found || root.MemberID != rootMemberID {
 			continue
 		}
+		sessionID := ""
+		for _, value := range r.runs {
+			if value.ID() == pending.RootRunID {
+				sessionID = value.SessionID()
+			}
+		}
 		return ExecutorCheckpoint{
 			RootMemberID: rootMemberID,
-			SessionID:    pending.SessionID,
+			SessionID:    sessionID,
 			Payload:      []byte(`{}`),
 			BuildID:      testExecutorBuildID,
 		}, nil
@@ -304,7 +310,7 @@ func (r *recoveryStoreStub) CommitRecovery(_ context.Context, commit RecoveryCom
 			values[0].SessionID = "session_mutated"
 		}
 		if values := commit.DeleteInterrupts(); len(values) != 0 {
-			values[0].SessionID = "session_mutated"
+			values[0] = "run_mutated"
 		}
 		if values := commit.DeleteCheckpointSessionIDs(); len(values) != 0 {
 			values[0] = "session_mutated"
@@ -617,7 +623,7 @@ func TestRecoveryRejectsInvalidClaimedPendingBeforePlanning(t *testing.T) {
 	parked, pending, _ := coherentRecoveryPark(t)
 	pending.Interrupts[0].ItemID = ""
 	active := testsupport.MustRestoreRun(rundomain.Snapshot{
-		ID: pending.RootRunID, SessionID: pending.SessionID, State: rundomain.Running,
+		ID: pending.RootRunID, SessionID: fixtureSessionID, State: rundomain.Running,
 		ActiveSegmentID: "segment_active", ModelSelection: testsupport.DefaultModelSelection(),
 		Capabilities: parked.Capabilities(), CreatedAt: parked.CreatedAt(),
 		MessageMark: rundomain.UnknownMessageMark,
@@ -1099,9 +1105,7 @@ func TestRecoveryChargesLostGoalOwnedRootToItsAdmissionLease(t *testing.T) {
 	}
 
 	foreignDeletion := invalidRecoveryCommit(store.commit, func(state *RecoveryCommitInput) {
-		state.DeleteInterrupts = append(state.DeleteInterrupts, InterruptOwner{
-			SessionID: "other-session", RootRunID: "run_foreign",
-		})
+		state.DeleteInterrupts = append(state.DeleteInterrupts, "run_foreign")
 	})
 	if err := foreignDeletion.Validate(); err == nil {
 		t.Fatal("RecoveryCommit.Validate accepted deletion of an unrelated Pending set")
@@ -1241,7 +1245,7 @@ func TestRecoveryTreatsUnavailableExecutorCheckpointAsResourceLoss(t *testing.T)
 		t.Fatalf("Reconcile: %v", err)
 	}
 	if recovered != 1 || len(store.commit.LostRuns()) != 1 ||
-		!reflect.DeepEqual(store.commit.DeleteInterrupts(), []InterruptOwner{{SessionID: run.SessionID(), RootRunID: run.ID()}}) ||
+		!reflect.DeepEqual(store.commit.DeleteInterrupts(), []string{run.ID()}) ||
 		len(store.commit.PreservedSessionIDs()) != 0 {
 		t.Fatalf("resource-loss recovery = %d, commit %+v", recovered, store.commit)
 	}
@@ -1437,35 +1441,6 @@ func TestRecoveryValidationFailureDoesNotCommitPartialRepair(t *testing.T) {
 	}
 }
 
-func TestRecoveryRejectsCrossSessionPendingWithoutCommit(t *testing.T) {
-	run, pending, item := coherentRecoveryPark(t)
-	pending.SessionID = "other-session"
-	store := &recoveryStoreStub{
-		runs:        []rundomain.Run{run},
-		pending:     []Pending{pending},
-		transcripts: map[string][]transcript.Item{run.SessionID(): {item}},
-	}
-	checkpointCalls := 0
-	recovery, err := newTestRecovery(store, waitingExecutionResumabilityFunc(func(context.Context, WaitingContinuation) (bool, error) {
-		checkpointCalls++
-		return true, nil
-	}))
-	if err != nil {
-		t.Fatalf("NewRecovery: %v", err)
-	}
-
-	if _, err := recovery.Reconcile(t.Context()); err == nil {
-		t.Fatal("Reconcile accepted a Pending owned by another Session")
-	}
-	if store.commits != 0 || checkpointCalls != 0 {
-		t.Fatalf("recovery mutated or probed executor after corruption: commits=%d checkpointCalls=%d", store.commits, checkpointCalls)
-	}
-}
-
-// TestRecoveryRejectsChildProtocolDriftWithoutProbingCheckpoint proves
-// parked_continuation_restates_no_run_fact for root-owned policy: every child Run
-// is parked under the root admission, even though Continuation does not repeat
-// that policy as a second source of truth.
 func coherentRecoveryPark(t *testing.T) (rundomain.Run, Pending, transcript.Item) {
 	t.Helper()
 	createdAt := time.Date(2026, 8, 1, 2, 0, 0, 0, time.UTC)
@@ -1485,7 +1460,6 @@ func coherentRecoveryPark(t *testing.T) (rundomain.Run, Pending, transcript.Item
 
 	pending := Pending{
 		RootRunID:  run.ID(),
-		SessionID:  run.SessionID(),
 		ExecutorID: "turn_root",
 		Interrupts: OpenInterruptsOf([]transcript.Interrupt{interrupt}),
 		Bindings: []InterruptBinding{{

@@ -12,7 +12,7 @@ import (
 
 // seedParkedRuns writes the Runs a test hand-off names. Every child member is a
 // direct child of the root, spawned by "item_spawn_" plus its Run suffix.
-func seedParkedRuns(t *testing.T, db *sql.DB, pending runs.Pending) {
+func seedParkedRuns(t *testing.T, db *sql.DB, sessionID string, pending runs.Pending) {
 	t.Helper()
 	members := make([]testsupport.ParkedMember, len(pending.Continuations))
 	for index, continuation := range pending.Continuations {
@@ -25,5 +25,5 @@ func seedParkedRuns(t *testing.T, db *sql.DB, pending runs.Pending) {
 			}
 		}
 	}
-	testsupport.SeedParkedRuns(t, db, pending.SessionID, pending.RootRunID, "", run.Capabilities{}, members)
+	testsupport.SeedParkedRuns(t, db, sessionID, pending.RootRunID, "", run.Capabilities{}, members)
 }

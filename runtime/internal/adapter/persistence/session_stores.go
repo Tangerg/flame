@@ -309,7 +309,7 @@ func (s *SessionStores) deleteRolledBackRuns(ctx context.Context, sessionID stri
 		if err := s.runs.Delete(ctx, sessionID, runID); err != nil {
 			return err
 		}
-		if err := s.interrupts.Delete(ctx, sessionID, runID); err != nil {
+		if err := s.interrupts.Delete(ctx, runID); err != nil {
 			return err
 		}
 	}
@@ -516,15 +516,10 @@ func (s *SessionStores) clearParkedRunState(
 	// Delete the interrupt before the terminal write: while it exists the Run is
 	// parked on it, and a Run cannot be both finished and waiting.
 	if resumeClaimed {
-		if err := s.interrupts.DeleteResumeClaim(
-			ctx,
-			root.SessionID(),
-			root.ID(),
-			checkpointRootID,
-		); err != nil {
+		if err := s.interrupts.DeleteResumeClaim(ctx, root.ID(), checkpointRootID); err != nil {
 			return err
 		}
-	} else if err := s.interrupts.Delete(ctx, root.SessionID(), root.ID()); err != nil {
+	} else if err := s.interrupts.Delete(ctx, root.ID()); err != nil {
 		return err
 	}
 	return s.deleteChildRunStarts(ctx, root.SessionID())
@@ -576,7 +571,7 @@ func (s *SessionStores) deleteInterrupts(ctx context.Context, sessionID string) 
 		return err
 	}
 	for _, interrupt := range pending {
-		if err := s.interrupts.Delete(ctx, sessionID, interrupt.RootRunID); err != nil {
+		if err := s.interrupts.Delete(ctx, interrupt.RootRunID); err != nil {
 			return err
 		}
 	}

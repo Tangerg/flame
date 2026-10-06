@@ -53,7 +53,7 @@ func TestGetSessionSnapshotProjectsOneLiveMaterialRead(t *testing.T) {
 	})); err != nil {
 		t.Fatalf("append approved ToolCall: %v", err)
 	}
-	if err := rt.openPending(t.Context(), t, serverPending(
+	if err := rt.openPending(t.Context(), t, "ses_1", serverPending(
 		"run_waiting", "ses_1", "exec_waiting", "member_waiting",
 		[]transcript.Interrupt{{
 			ItemID: "item_question", Kind: interrupt.Question, Question: &question,
@@ -150,7 +150,7 @@ func TestGetSessionSnapshotKeepsCapabilityAndExistenceRefusals(t *testing.T) {
 	})); err != nil {
 		t.Fatalf("append question Item: %v", err)
 	}
-	if err := rt.openPending(t.Context(), t, serverPending(
+	if err := rt.openPending(t.Context(), t, "ses_1", serverPending(
 		"run_waiting", "ses_1", "exec_waiting", "member_waiting", nil, createdAt,
 	)); err != nil {
 		t.Fatalf("open interrupt: %v", err)
@@ -183,7 +183,7 @@ func TestGetSessionSnapshotRejectsOwnerlessInterruptMaterial(t *testing.T) {
 	}), "seg_waiting", runtimeidentity.CommitID{}); err != nil {
 		t.Fatalf("suspend waiting Run: %v", err)
 	}
-	if err := rt.openPendingWithoutItems(t.Context(), t, serverPending(
+	if err := rt.openPendingWithoutItems(t.Context(), t, "ses_1", serverPending(
 		"run_waiting", "ses_1", "exec_waiting", "member_waiting", nil, createdAt,
 	)); err != nil {
 		t.Fatalf("open interrupt: %v", err)

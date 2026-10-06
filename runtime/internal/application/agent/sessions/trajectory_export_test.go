@@ -37,7 +37,7 @@ func TestTrajectoryExportReleasesAdmissionAndReturnsNoPartialEvidence(t *testing
 		t.Run(test.name, func(t *testing.T) {
 			stores := coordinatorStores{interrupts: &coordinatorInterrupts{pending: map[string]runs.Pending{}}}
 			if test.parked {
-				stores.interrupts.pending["run_1"] = testPending("run_1", "ses_1", time.Unix(1, 0).UTC())
+				stores.interrupts.pending["run_1"] = testPending("run_1", time.Unix(1, 0).UTC())
 			}
 			claimer := &testClaimer{claimed: map[string]bool{"ses_1": test.active}}
 			reader := &trajectoryEvidenceReader{evidence: TrajectoryEvidence{Snapshot: portableSnapshot()}, err: test.fail}

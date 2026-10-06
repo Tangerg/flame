@@ -23,7 +23,7 @@ func (c *Coordinator) applyRollback(ctx context.Context, sessionID string, bound
 	dropRunIDs := boundary.DroppedRunIDs()
 	// Read the parked executions BEFORE the write-set consumes their interrupts — the
 	// in-process executions still need canceling once the durable records are gone.
-	parked, err := c.parkedExecutions(ctx, dropRunIDs)
+	parked, err := c.parkedExecutions(ctx, sessionID, dropRunIDs)
 	if err != nil {
 		return err
 	}

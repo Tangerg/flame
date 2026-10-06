@@ -43,16 +43,20 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 	// ([sessions.Coordinator.ClaimIdleSession]), and it is consumed under the
 	// claim below. Without that, the tree reserved here could be one the Session
 	// no longer has.
-	sess, err := c.sessionReader.Get(ctx, pending.SessionID)
+	sessionID, err := c.pendingSessionID(ctx, pending)
 	if err != nil {
 		return StartResult{}, err
 	}
-	runAdmission, ok, leaseErr := c.admission.AcquireRun(ctx, pending.SessionID, sess.Workspace().Path())
+	sess, err := c.sessionReader.Get(ctx, sessionID)
+	if err != nil {
+		return StartResult{}, err
+	}
+	runAdmission, ok, leaseErr := c.admission.AcquireRun(ctx, sessionID, sess.Workspace().Path())
 	if leaseErr != nil {
 		return StartResult{}, leaseErr
 	}
 	if !ok {
-		return StartResult{}, fmt.Errorf("%w: session %q or working tree %q has a run or mutation in flight", ErrSessionBusy, pending.SessionID, sess.Workspace().Path())
+		return StartResult{}, fmt.Errorf("%w: session %q or working tree %q has a run or mutation in flight", ErrSessionBusy, sessionID, sess.Workspace().Path())
 	}
 	defer runAdmission.Release()
 	parkedRuns, err := c.runs.Tree(ctx, pending.RootRunID)
@@ -80,7 +84,7 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 		}
 	}
 
-	claim, err := NewResumeClaimCommit(newRunCommitID(), pending, itemsByID, answers)
+	claim, err := NewResumeClaimCommit(newRunCommitID(), sessionID, pending, itemsByID, answers)
 	if err != nil {
 		return StartResult{}, fmt.Errorf("runs: prepare resume claim: %w", err)
 	}
@@ -88,14 +92,14 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 	if err != nil {
 		return StartResult{}, err
 	}
-	attempt := c.ownClaimedResume(pending)
+	attempt := c.ownClaimedResume(sessionID, pending)
 	defer func() {
 		err = attempt.fail(ctx, err)
 		if err != nil {
 			result = StartResult{}
 		}
 	}()
-	if validateClaimedCheckpointErr := validateClaimedCheckpoint(checkpoint, pending); validateClaimedCheckpointErr != nil {
+	if validateClaimedCheckpointErr := validateClaimedCheckpoint(checkpoint, pending, sessionID); validateClaimedCheckpointErr != nil {
 		return StartResult{}, validateClaimedCheckpointErr
 	}
 	waiting, err := waitingContinuationFromPending(pending, checkpoint, parkedRuns, sess)
@@ -107,7 +111,7 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 		return StartResult{}, err
 	}
 	attempt.ownStagedExecution(c.releases, ref)
-	if validateForErr := attempt.staged.validateFor(pending.SessionID); validateForErr != nil {
+	if validateForErr := attempt.staged.validateFor(sessionID); validateForErr != nil {
 		return StartResult{}, validateForErr
 	}
 	segmentID := c.newSegmentID()
@@ -127,7 +131,7 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 	events, err := c.openSegment(ctx, segmentSpec{
 		RunID:            cmd.RunID,
 		SegmentID:        segmentID,
-		SessionID:        pending.SessionID,
+		SessionID:        sessionID,
 		WorkspaceCWD:     sess.Workspace().Path(),
 		Isolated:         sess.Isolated(),
 		ExecutorID:       ref.ExecutorID,
@@ -153,10 +157,10 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 		if continuation.RunID == pending.RootRunID {
 			continue
 		}
-		c.publications.publishRunMoved(pending.SessionID, continuation.RunID)
+		c.publications.publishRunMoved(sessionID, continuation.RunID)
 	}
-	c.publications.publishWaitingMoved(pending.SessionID, pending.RootRunID)
-	result = StartResult{RunID: cmd.RunID, SegmentID: segmentID, SessionID: pending.SessionID, Events: events}
+	c.publications.publishWaitingMoved(sessionID, pending.RootRunID)
+	result = StartResult{RunID: cmd.RunID, SegmentID: segmentID, SessionID: sessionID, Events: events}
 	if committedInput != nil {
 		// Named only when there is an item to name: the id is derived from the segment
 		// the same way a fresh run derives it, so the client reconciles its optimistic
@@ -166,7 +170,7 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 	return result, nil
 }
 
-func validateClaimedCheckpoint(checkpoint ExecutorCheckpoint, expected Pending) error {
+func validateClaimedCheckpoint(checkpoint ExecutorCheckpoint, expected Pending, sessionID string) error {
 	if err := checkpoint.Validate(); err != nil {
 		return err
 	}
@@ -174,5 +178,5 @@ func validateClaimedCheckpoint(checkpoint ExecutorCheckpoint, expected Pending) 
 	if !ok {
 		return errors.New("runs: claimed continuation has no root")
 	}
-	return checkpoint.ValidateOwnership(root.MemberID, expected.SessionID)
+	return checkpoint.ValidateOwnership(root.MemberID, sessionID)
 }

@@ -48,7 +48,7 @@ func TestClaimIdleSessionRejectsOpenInterrupt(t *testing.T) {
 	stores := coordinatorStores{
 		interrupts: &coordinatorInterrupts{
 			pending: map[string]runs.Pending{
-				"run_1": testPending("run_1", "ses_1", time.Unix(1, 0).UTC())},
+				"run_1": testPending("run_1", time.Unix(1, 0).UTC())},
 		},
 	}
 	claimer := &testClaimer{}
@@ -82,7 +82,7 @@ func TestClaimSessionMutationAllowsOpenInterrupt(t *testing.T) {
 	stores := coordinatorStores{
 		interrupts: &coordinatorInterrupts{
 			pending: map[string]runs.Pending{
-				"run_1": testPending("run_1", "ses_1", time.Unix(1, 0).UTC())},
+				"run_1": testPending("run_1", time.Unix(1, 0).UTC())},
 		},
 	}
 	claimer := &testClaimer{}
@@ -99,7 +99,7 @@ func TestClaimSessionMutationAllowsOpenInterrupt(t *testing.T) {
 
 func TestLookupOpenInterruptProtectsExactPendingIdentity(t *testing.T) {
 	requested := "run_requested"
-	exact := testPending(requested, "ses_1", time.Unix(1, 0).UTC())
+	exact := testPending(requested, time.Unix(1, 0).UTC())
 	coordinator := &Coordinator{interrupts: &coordinatorInterrupts{
 		pending: map[string]runs.Pending{requested: exact},
 	}}
@@ -113,7 +113,7 @@ func TestLookupOpenInterruptProtectsExactPendingIdentity(t *testing.T) {
 		pending runs.Pending
 	}{
 		{name: "invalid Pending"},
-		{name: "mismatched root", pending: testPending("run_other", "ses_1", time.Unix(1, 0).UTC())},
+		{name: "mismatched root", pending: testPending("run_other", time.Unix(1, 0).UTC())},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			coordinator := &Coordinator{interrupts: &coordinatorInterrupts{
@@ -127,7 +127,7 @@ func TestLookupOpenInterruptProtectsExactPendingIdentity(t *testing.T) {
 }
 
 func TestListOpenInterruptsProtectsSessionCatalog(t *testing.T) {
-	exact := testPending("run_exact", "ses_1", time.Unix(1, 0).UTC())
+	exact := testPending("run_exact", time.Unix(1, 0).UTC())
 	coordinator := &Coordinator{interrupts: &coordinatorInterrupts{
 		list: func(string) ([]runs.Pending, error) { return []runs.Pending{exact}, nil },
 	}}
@@ -141,7 +141,6 @@ func TestListOpenInterruptsProtectsSessionCatalog(t *testing.T) {
 		rows []runs.Pending
 	}{
 		{name: "invalid Pending", rows: []runs.Pending{{}}},
-		{name: "foreign Session", rows: []runs.Pending{testPending("run_foreign", "ses_other", time.Unix(1, 0).UTC())}},
 		{name: "duplicate root", rows: []runs.Pending{exact, exact}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -195,7 +194,7 @@ func TestApplyRunCancelProjectsTerminalTranscript(t *testing.T) {
 	stores := coordinatorStores{
 		interrupts: &coordinatorInterrupts{pending: map[string]runs.Pending{
 			"run_1": {
-				RootRunID: "run_1", SessionID: "ses_1", ExecutorID: "turn_1",
+				RootRunID: "run_1", ExecutorID: "turn_1",
 				Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 					ItemID: "item_1", ItemOccurredAt: createdAt,
 					RunID: "run_1", Kind: interrupt.Question, Question: question,
@@ -267,7 +266,7 @@ func TestApplyRunCancelSettlesQuestionToolAndClosesModelContext(t *testing.T) {
 		results: []chat.ToolResult{known},
 		interrupts: &coordinatorInterrupts{pending: map[string]runs.Pending{
 			"run_1": {
-				RootRunID: "run_1", SessionID: "ses_1", ExecutorID: "turn_1",
+				RootRunID: "run_1", ExecutorID: "turn_1",
 				Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 					ItemID: "item_question", ItemOccurredAt: createdAt,
 					RunID: "run_1", Kind: interrupt.Question, Question: question,
@@ -354,7 +353,7 @@ func TestApplyRunLostProjectsTerminalTranscript(t *testing.T) {
 	stores := coordinatorStores{
 		interrupts: &coordinatorInterrupts{pending: map[string]runs.Pending{
 			"run_1": {
-				RootRunID: "run_1", SessionID: "ses_1", ExecutorID: "turn_1",
+				RootRunID: "run_1", ExecutorID: "turn_1",
 				Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 					ItemID: "item_1", ItemOccurredAt: createdAt,
 					RunID: "run_1", Kind: interrupt.Approval, Approval: approval,
@@ -441,7 +440,7 @@ func TestApplyRunLostTerminalizesWholeParkedTreeInPostorder(t *testing.T) {
 		ChildRuns: true, InterruptKinds: []interrupt.Kind{interrupt.Question},
 	}
 	pending := runs.Pending{
-		RootRunID: "run_root", SessionID: "ses_1", ExecutorID: "turn_1",
+		RootRunID: "run_root", ExecutorID: "turn_1",
 		Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 			ItemID: "item_question", ItemOccurredAt: createdAt,
 			RunID: "run_child", Kind: interrupt.Question, Question: question,

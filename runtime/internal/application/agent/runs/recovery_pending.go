@@ -12,17 +12,8 @@ func indexRecoveryPending(values []Pending, activeRootSessions map[string]string
 		if err := pending.Validate(); err != nil {
 			return nil, fmt.Errorf("runs: recovery Pending[%d]: %w", index, err)
 		}
-		sessionID, active := activeRootSessions[pending.RootRunID]
-		if !active {
+		if _, active := activeRootSessions[pending.RootRunID]; !active {
 			return nil, fmt.Errorf("runs: recovery Pending %q has no claimed active root", pending.RootRunID)
-		}
-		if pending.SessionID != sessionID {
-			return nil, fmt.Errorf(
-				"runs: recovery Pending %q belongs to Session %q, want %q",
-				pending.RootRunID,
-				pending.SessionID,
-				sessionID,
-			)
 		}
 		if _, duplicate := byRoot[pending.RootRunID]; duplicate {
 			return nil, fmt.Errorf("runs: recovery has duplicate Pending for root Run %q", pending.RootRunID)

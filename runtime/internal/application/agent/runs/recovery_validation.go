@@ -53,7 +53,7 @@ func validateRecoveryParkedTree(
 			err,
 		)
 	}
-	if err := checkpoint.ValidateOwnership(rootContinuation.MemberID, pending.SessionID); err != nil {
+	if err := checkpoint.ValidateOwnership(rootContinuation.MemberID, tree.root.SessionID()); err != nil {
 		return UnresumableWaiting(LossWaitingStateUnavailable), nil
 	}
 	continuation, err := waitingContinuationFromPending(pending, checkpoint, values, sess)

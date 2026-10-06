@@ -174,7 +174,7 @@ func validMaterialSnapshot() MaterialSnapshot {
 			Kind: transcript.QuestionItem, Question: question, OccurredAt: createdAt,
 		})},
 		Interrupts: []runs.Pending{{
-			RootRunID: "run_root", SessionID: "ses_1", ExecutorID: "executor_root",
+			RootRunID: "run_root", ExecutorID: "executor_root",
 			Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 				ItemID: "item_question", ItemOccurredAt: createdAt,
 				RunID: "run_root", Kind: interrupt.Question, Question: question,

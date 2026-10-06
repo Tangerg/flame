@@ -170,7 +170,6 @@ func pendingForRun(
 	}
 	return runs.Pending{
 		RootRunID:  runID,
-		SessionID:  sessionID,
 		ExecutorID: "turn_" + runID,
 		Interrupts: runs.OpenInterruptsOf(copied),
 		Bindings:   bindings,

@@ -59,7 +59,6 @@ func (p Pending) ValidateProjection(values []rundomain.Run, items []transcript.I
 	for _, continuation := range p.Continuations {
 		if err := validatePendingContinuationTools(
 			p.RootRunID,
-			p.SessionID,
 			continuation,
 			itemsByID,
 			claimedItems,
@@ -100,8 +99,8 @@ func validatePendingRunTree(pending Pending, values []rundomain.Run) error {
 	if !found || !root.Lineage().IsRoot() {
 		return fmt.Errorf("runs: validate parked Run tree %q: root Run is missing", pending.RootRunID)
 	}
-	if root.SessionID() != pending.SessionID || root.State() != rundomain.Waiting {
-		return fmt.Errorf("runs: validate parked Run tree %q: root Run scope or state differs from Pending", pending.RootRunID)
+	if root.State() != rundomain.Waiting {
+		return fmt.Errorf("runs: validate parked Run tree %q: root Run is %s", pending.RootRunID, root.State())
 	}
 	if len(active) != len(pending.Continuations) {
 		return fmt.Errorf(
@@ -144,7 +143,7 @@ func validatePendingRunTree(pending Pending, values []rundomain.Run) error {
 	}
 	for _, continuation := range pending.Continuations {
 		value, found := active[continuation.RunID]
-		if !found || value.SessionID() != pending.SessionID || value.State() != rundomain.Waiting {
+		if !found || value.SessionID() != root.SessionID() || value.State() != rundomain.Waiting {
 			return fmt.Errorf(
 				"runs: validate parked Run tree %q: continuation Run %q is not active and waiting",
 				pending.RootRunID,

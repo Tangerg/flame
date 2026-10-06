@@ -117,7 +117,7 @@ func waitingContinuationFromPending(
 		return WaitingContinuation{}, fmt.Errorf("runs: waiting root Run %q is not parked", pending.RootRunID)
 	}
 	return NewWaitingContinuation(WaitingContinuation{
-		SessionID: pending.SessionID, ExecutorID: pending.ExecutorID,
+		SessionID: root.SessionID(), ExecutorID: pending.ExecutorID,
 		RootRunID: pending.RootRunID, Members: members, Checkpoint: checkpoint.Clone(),
 		Capabilities:      root.Capabilities(),
 		GoalIncarnationID: root.GoalIncarnationID(),

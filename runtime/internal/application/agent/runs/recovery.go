@@ -70,7 +70,9 @@ type RecoveryCommitInput struct {
 	ConversationTransitions []RecoveryConversationTransition
 	ModelInvocations        []ModelInvocationRecovery
 	ToolInvocations         []ToolInvocationRecovery
-	DeleteInterrupts        []InterruptOwner
+	// DeleteInterrupts names every lost root's interrupt record, including one
+	// hidden in the resuming state after an answer claim; deletion is idempotent.
+	DeleteInterrupts []string
 	// PreservedSessionIDs names waiting trees whose compatible checkpoint keeps
 	// them live. Together with lost-tree Sessions it owns the exact callback
 	// cleanup scope.
@@ -135,14 +137,6 @@ type RecoveryConversationTransition struct {
 	SessionID     string
 	ExpectedCount int
 	Messages      []corechat.Message
-}
-
-// InterruptOwner is the complete mutation authority for one root-owned
-// interrupt record. Recovery names every lost root, including a record hidden
-// in the resuming state after an answer claim; storage deletion is idempotent.
-type InterruptOwner struct {
-	SessionID string
-	RootRunID string
 }
 
 // Recovery owns the application policy that reconciles Run trees abandoned by
@@ -280,9 +274,13 @@ func (r *Recovery) publishRecoveredReadModels(commit RecoveryCommit) {
 	if len(changes) == 0 {
 		return
 	}
-	for _, owner := range commit.DeleteInterrupts() {
-		if scope := changes[owner.SessionID]; scope != nil {
-			scope.rootIDs = append(scope.rootIDs, owner.RootRunID)
+	sessionOfRun := make(map[string]string)
+	for _, recovery := range commit.LostRuns() {
+		sessionOfRun[recovery.State().ID()] = recovery.State().SessionID()
+	}
+	for _, rootRunID := range commit.DeleteInterrupts() {
+		if scope := changes[sessionOfRun[rootRunID]]; scope != nil {
+			scope.rootIDs = append(scope.rootIDs, rootRunID)
 		}
 	}
 	for _, charged := range commit.GoalRuns() {
@@ -489,15 +487,10 @@ func (r *recoveryPlanner) plan() (RecoveryCommit, int, error) {
 	}
 	for _, open := range r.pending {
 		if _, preserved := r.preserved[open.RootRunID]; preserved {
-			r.commit.PreservedSessionIDs = append(r.commit.PreservedSessionIDs, open.SessionID)
+			r.commit.PreservedSessionIDs = append(r.commit.PreservedSessionIDs, r.trees[open.RootRunID].root.SessionID())
 		}
 	}
-	slices.SortFunc(r.commit.DeleteInterrupts, func(left, right InterruptOwner) int {
-		if bySession := strings.Compare(left.SessionID, right.SessionID); bySession != 0 {
-			return bySession
-		}
-		return strings.Compare(left.RootRunID, right.RootRunID)
-	})
+	slices.Sort(r.commit.DeleteInterrupts)
 	slices.SortFunc(r.commit.ModelInvocations, compareModelInvocationRecoveries)
 	slices.SortFunc(r.commit.ToolInvocations, compareToolInvocationRecoveries)
 	slices.Sort(r.commit.PreservedSessionIDs)
@@ -594,10 +587,7 @@ func (r *recoveryPlanner) planTree(rootRunID string) error {
 			ExpectedCount: conversationSnapshot.count, Messages: closure,
 		},
 	)
-	r.commit.DeleteInterrupts = append(r.commit.DeleteInterrupts, InterruptOwner{
-		SessionID: tree.root.SessionID(),
-		RootRunID: tree.root.ID(),
-	})
+	r.commit.DeleteInterrupts = append(r.commit.DeleteInterrupts, tree.root.ID())
 	r.commit.DeleteCheckpointSessionIDs = append(
 		r.commit.DeleteCheckpointSessionIDs,
 		tree.root.SessionID(),

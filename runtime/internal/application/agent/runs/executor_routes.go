@@ -117,12 +117,12 @@ func validateResumedRouteRequest(spec segmentSpec, continuation *treeContinuatio
 	if err := continuation.validate(); err != nil {
 		return fmt.Errorf("runs: build resumed routes: %w", err)
 	}
-	if continuation.rootRunID != spec.RunID || continuation.sessionID != spec.SessionID {
+	if continuation.rootRunID != spec.RunID || continuation.sessionID() != spec.SessionID {
 		return fmt.Errorf(
 			"runs: resumed route scope %q/%q does not match continuation %q/%q",
 			spec.SessionID,
 			spec.RunID,
-			continuation.sessionID,
+			continuation.sessionID(),
 			continuation.rootRunID,
 		)
 	}

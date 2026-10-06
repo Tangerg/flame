@@ -325,9 +325,9 @@ func TestPublishWaitingChildCancellationInvalidatesExactReadSet(t *testing.T) {
 			coordinator.publishWaitingChildCancellation(plan, transformation)
 
 			want := []invalidation.Notice{
-				invalidation.InSession(invalidation.Runs, plan.pending.SessionID, test.affectedRunIDs...),
-				invalidation.InSession(invalidation.Interrupts, plan.pending.SessionID, plan.root.run.ID()),
-				invalidation.InSession(invalidation.Sessions, plan.pending.SessionID),
+				invalidation.InSession(invalidation.Runs, plan.root.run.SessionID(), test.affectedRunIDs...),
+				invalidation.InSession(invalidation.Interrupts, plan.root.run.SessionID(), plan.root.run.ID()),
+				invalidation.InSession(invalidation.Sessions, plan.root.run.SessionID()),
 			}
 			if got := invalidations.snapshot(); !reflect.DeepEqual(got, want) {
 				t.Fatalf("published notices = %+v, want %+v", got, want)
@@ -535,7 +535,7 @@ func TestCancelWaitingChildPassesDurableTreeToExecutorAfterRuntimeRestart(t *tes
 	}
 	rootContinuation, _ := plan.pending.RootContinuation()
 	continuation := request.Continuation()
-	if continuation.SessionID != plan.pending.SessionID ||
+	if continuation.SessionID != plan.root.run.SessionID() ||
 		continuation.ExecutorID != plan.pending.ExecutorID ||
 		continuation.Checkpoint.RootMemberID != rootContinuation.MemberID ||
 		continuation.Workspace != "/work" ||
@@ -791,7 +791,7 @@ func TestCancelWaitingChildTerminalizesCommittedTreeWhenActivationFails(t *testi
 		t.Fatalf("durable waiting commits = %d, want 1", len(effects.waitingCancels))
 	}
 	for _, runID := range []string{"run_b", plan.root.run.ID()} {
-		if !effects.terminalized(plan.pending.SessionID, runID) {
+		if !effects.terminalized(plan.root.run.SessionID(), runID) {
 			t.Fatalf("committed continuation failure did not terminalize Run %q", runID)
 		}
 	}
@@ -810,7 +810,7 @@ func TestCancelWaitingChildTerminalizesCommittedTreeWhenActivationFails(t *testi
 	if _, live := coordinator.registry.Get(plan.root.run.ID()); live {
 		t.Fatal("failed continuation retained a live root owner")
 	}
-	if hasActiveSession(coordinator, plan.pending.SessionID) {
+	if hasActiveSession(coordinator, plan.root.run.SessionID()) {
 		t.Fatal("failed continuation leaked admission")
 	}
 }
@@ -844,7 +844,7 @@ func TestCancelWaitingChildAbortsPreparedOperationWhenDurableCommitFails(t *test
 			prepared.discarded,
 		)
 	}
-	if hasActiveSession(coordinator, plan.pending.SessionID) {
+	if hasActiveSession(coordinator, plan.root.run.SessionID()) {
 		t.Fatal("failed waiting cancellation leaked admission")
 	}
 }
@@ -885,7 +885,7 @@ func waitingCancellationCoordinator(
 		return prepared.value(t), nil
 	}
 	sessions := &fakeRunSessions{
-		sess: testsupport.MustRestoreSession(session.Snapshot{ID: plan.pending.SessionID, Workspace: testsupport.MustWorkspace("/work")}),
+		sess: testsupport.MustRestoreSession(session.Snapshot{ID: plan.root.run.SessionID(), Workspace: testsupport.MustWorkspace("/work")}),
 		pending: map[string]Pending{
 			plan.pending.RootRunID: plan.pending},
 	}
@@ -934,7 +934,7 @@ func runACancellationPlan(
 		}
 		runsByID[continuation.RunID] = testsupport.MustRestoreRun(run.Snapshot{
 			ID:        continuation.RunID,
-			SessionID: pending.SessionID,
+			SessionID: fixtureSessionID,
 
 			State:          run.Waiting,
 			CreatedAt:      createdAt,
@@ -984,7 +984,7 @@ func runACancellationPlan(
 	plan, err := newCancellationPlan(
 		targetRunID,
 		runValues,
-		ExecutorRef{SessionID: pending.SessionID, ExecutorID: pending.ExecutorID},
+		ExecutorRef{SessionID: fixtureSessionID, ExecutorID: pending.ExecutorID},
 		members,
 		&pending,
 	)
@@ -993,7 +993,7 @@ func runACancellationPlan(
 	}
 	plan.spawningItem = testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID:         target.Lineage().SpawnedByItemID,
-		SessionID:  pending.SessionID,
+		SessionID:  fixtureSessionID,
 		RunID:      target.Lineage().ParentRunID,
 		Status:     transcript.ItemRunning,
 		Kind:       transcript.ToolCall,

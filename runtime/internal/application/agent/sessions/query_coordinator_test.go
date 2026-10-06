@@ -281,9 +281,6 @@ func (f *fakeInterrupts) ListPage(_ context.Context, sessionID, rootRunID string
 	f.afterCreatedAt, f.afterRunID, f.limit = afterCreatedAt, afterRunID, limit
 	var out []runs.Pending
 	for _, pending := range f.pending {
-		if sessionID != "" && pending.SessionID != sessionID {
-			continue
-		}
 		if !seeksPast(pending.CreatedAt.UnixNano(), pending.RootRunID, afterCreatedAt, afterRunID) {
 			continue
 		}
@@ -361,8 +358,8 @@ func TestCoordinatorReadsDelegateToProjections(t *testing.T) {
 	ctx := context.Background()
 	tx := &fakeTranscript{items: sequencedItems(1)}
 	runStore := &fakeRuns{runs: []run.Run{queryRun("run_1")}, history: []run.Run{approvalRootRun("ses_2", "run_1")}}
-	ints := &fakeInterrupts{pending: []runs.Pending{testPending("run_1", "ses_2", time.Unix(0, 1).UTC())}}
-	tx.items = append(tx.items, approvalItemsFor(ints.pending...)...)
+	ints := &fakeInterrupts{pending: []runs.Pending{testPending("run_1", time.Unix(0, 1).UTC())}}
+	tx.items = append(tx.items, approvalItemsFor("ses_2", ints.pending...)...)
 	c := newQueryCoordinator(t, QueryDependencies{Transcript: tx, Interrupts: ints, Runs: runStore, Sessions: &fakeSessions{}})
 
 	page, err := c.ListItemPage(ctx, Items("ses_1"), transcript.OldestFirst, "", pagination.DefaultLimit())
@@ -793,21 +790,21 @@ func testRunHistory(sessionID string, ids ...string) []run.Run {
 func testSessionPendingRuns(ids ...string) []runs.Pending {
 	out := make([]runs.Pending, 0, len(ids))
 	for i, id := range ids {
-		out = append(out, testPending(id, "ses_1", time.Unix(0, int64(i+1)).UTC()))
+		out = append(out, testPending(id, time.Unix(0, int64(i+1)).UTC()))
 	}
 	return out
 }
 
 // approvalItemsFor writes the ToolCall Item every approval of the hand-offs
 // awaits; the Items own what each approval asks.
-func approvalItemsFor(sets ...runs.Pending) []transcript.SequencedItem {
+func approvalItemsFor(sessionID string, sets ...runs.Pending) []transcript.SequencedItem {
 	var items []transcript.SequencedItem
 	for _, pending := range sets {
 		for index, open := range pending.Interrupts {
 			items = append(items, transcript.SequencedItem{
 				Sequence: int64(100 + len(items)),
 				Item: testsupport.MustRestoreItem(testsupport.ItemInput{
-					ID: open.ItemID, SessionID: pending.SessionID, RunID: pending.Continuations[index].RunID,
+					ID: open.ItemID, SessionID: sessionID, RunID: pending.Continuations[index].RunID,
 					Kind: transcript.ToolCall, Status: transcript.ItemRunning,
 					OccurredAt: pending.CreatedAt.Add(-time.Nanosecond),
 					Tool:       &transcript.ToolInvocation{Name: "shell"},
@@ -822,13 +819,13 @@ func approvalCapabilities() run.Capabilities {
 	return run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval}}
 }
 
-func testPending(rootRunID, sessionID string, createdAt time.Time) runs.Pending {
+func testPending(rootRunID string, createdAt time.Time) runs.Pending {
 	suffix := strings.TrimPrefix(rootRunID, "run_")
 	runCreatedAt := createdAt.Add(-time.Nanosecond)
 	itemID := "item_" + suffix
 	memberID := "member_" + suffix
 	return runs.Pending{
-		RootRunID: rootRunID, SessionID: sessionID, ExecutorID: "turn_" + suffix,
+		RootRunID: rootRunID, ExecutorID: "turn_" + suffix,
 		Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 			ItemID: itemID, ItemOccurredAt: runCreatedAt, RunID: rootRunID, Kind: interrupt.Approval,
 			Approval: &transcript.Approval{
@@ -849,8 +846,8 @@ func TestListPendingInterruptPageRejectsBrokenStoreOutput(t *testing.T) {
 	ordered := testSessionPendingRuns("run_1", "run_2", "run_3")
 	tie := time.Unix(0, 10).UTC()
 	tieDescending := []runs.Pending{
-		testPending("run_b", "ses_1", tie),
-		testPending("run_a", "ses_1", tie)}
+		testPending("run_b", tie),
+		testPending("run_a", tie)}
 	cursor, err := pagination.Encode(interruptPageNamespace, []string{"ses_1", ""}, []string{
 		strconv.FormatInt(ordered[0].CreatedAt.UnixNano(), 10), ordered[0].RootRunID,
 	})
@@ -869,7 +866,7 @@ func TestListPendingInterruptPageRejectsBrokenStoreOutput(t *testing.T) {
 		{name: "creation order", sessionID: "ses_1", rows: []runs.Pending{ordered[1], ordered[0]}},
 		{name: "identity tie order", sessionID: "ses_1", rows: tieDescending},
 		{name: "cursor replay", sessionID: "ses_1", cursor: cursor, rows: ordered[:1]},
-		{name: "Session filter", sessionID: "ses_1", rows: []runs.Pending{testPending("run_other", "ses_other", tie)}},
+		{name: "Session filter", sessionID: "ses_1", rows: []runs.Pending{testPending("run_other", tie)}},
 		{name: "root filter", rootRunID: "run_1", rows: []runs.Pending{ordered[1]}},
 		{name: "excess overfetch", sessionID: "ses_1", rows: ordered},
 	} {
@@ -892,7 +889,7 @@ func TestListPendingInterruptPageValidatesCaller(t *testing.T) {
 	stored := testSessionPendingRuns("run_1")
 	reader := &rawInterruptPageReader{fakeInterrupts: &fakeInterrupts{}, page: stored}
 	coordinator := newQueryCoordinator(t, QueryDependencies{
-		Transcript: &fakeTranscript{items: approvalItemsFor(stored...)}, Interrupts: reader,
+		Transcript: &fakeTranscript{items: approvalItemsFor("ses_1", stored...)}, Interrupts: reader,
 		Runs: &fakeRuns{history: []run.Run{approvalRootRun("ses_1", "run_1")}}, Sessions: &fakeSessions{},
 	})
 	invalidCaller := run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval, interrupt.Approval}}
@@ -918,7 +915,7 @@ func TestListPendingInterruptPageOwnsValidatedCallerCapabilities(t *testing.T) {
 		},
 	}
 	coordinator := newQueryCoordinator(t, QueryDependencies{
-		Transcript: &fakeTranscript{items: approvalItemsFor(testSessionPendingRuns("run_1")...)}, Interrupts: reader,
+		Transcript: &fakeTranscript{items: approvalItemsFor("ses_1", testSessionPendingRuns("run_1")...)}, Interrupts: reader,
 		Runs: &fakeRuns{history: []run.Run{approvalRootRun("ses_1", "run_1")}}, Sessions: &fakeSessions{},
 	})
 
@@ -945,7 +942,7 @@ func TestListPendingInterruptPageRefusesACallerThatCannotFollowTheRun(t *testing
 		InterruptKinds: []interrupt.Kind{interrupt.Approval, interrupt.Question},
 	}})
 	c := newQueryCoordinator(t, QueryDependencies{
-		Transcript: &fakeTranscript{items: approvalItemsFor(waiting...)},
+		Transcript: &fakeTranscript{items: approvalItemsFor("ses_1", waiting...)},
 		Runs:       &fakeRuns{history: []run.Run{root}},
 		Interrupts: &fakeInterrupts{pending: waiting},
 		Sessions:   &fakeSessions{},
@@ -975,7 +972,7 @@ func TestListPendingInterruptPageFiltersByRootAndRefusesAChild(t *testing.T) {
 	ctx := context.Background()
 	ints := &fakeInterrupts{pending: testSessionPendingRuns("run_1", "run_2")}
 	c := newQueryCoordinator(t, QueryDependencies{
-		Transcript: &fakeTranscript{items: approvalItemsFor(ints.pending...)},
+		Transcript: &fakeTranscript{items: approvalItemsFor("ses_1", ints.pending...)},
 		Runs: &fakeRuns{history: []run.Run{
 			queryRun("run_1"),
 			testsupport.MustRestoreRun(run.Snapshot{ID: "run_child", Lineage: run.Lineage{
@@ -1193,7 +1190,7 @@ func TestListRunPageRefusesACursorFromAnotherQuery(t *testing.T) {
 		testSessionRunHistory("run_3", "run_2", "run_1")...,
 	)
 	c := newQueryCoordinator(t, QueryDependencies{
-		Transcript: &fakeTranscript{items: append(sequencedItems(5), approvalItemsFor(testSessionPendingRuns("run_1", "run_2", "run_3")...)...)},
+		Transcript: &fakeTranscript{items: append(sequencedItems(5), approvalItemsFor("ses_1", testSessionPendingRuns("run_1", "run_2", "run_3")...)...)},
 		Runs:       &fakeRuns{runs: runHistory, history: runHistory},
 		Interrupts: &fakeInterrupts{pending: testSessionPendingRuns("run_1", "run_2", "run_3")},
 		Sessions:   &fakeSessions{},
@@ -1246,7 +1243,7 @@ func TestListPendingInterruptPagePagesOldestFirst(t *testing.T) {
 	ctx := context.Background()
 	ints := &fakeInterrupts{pending: testSessionPendingRuns("run_1", "run_2", "run_3")}
 	c := newQueryCoordinator(t, QueryDependencies{
-		Transcript: &fakeTranscript{items: approvalItemsFor(ints.pending...)},
+		Transcript: &fakeTranscript{items: approvalItemsFor("ses_1", ints.pending...)},
 		Runs:       &fakeRuns{history: testSessionRunHistory("run_3", "run_2", "run_1")},
 		Interrupts: ints,
 		Sessions:   &fakeSessions{},

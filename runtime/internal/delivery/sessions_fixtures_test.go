@@ -157,7 +157,6 @@ func serverPending(
 	}
 	return runs.Pending{
 		RootRunID:  runID,
-		SessionID:  sessionID,
 		ExecutorID: executorID,
 		Interrupts: runs.OpenInterruptsOf(open),
 		Bindings:   bindings,
@@ -447,44 +446,44 @@ func (s stubRuntime) Interrupts() *persistence.InterruptStore { return s.interru
 
 // openPending opens a test hand-off after giving it the Runs that own its
 // facts; the root Run admits exactly the interrupt kinds the hand-off parks on.
-func (s *stubRuntime) openPending(ctx context.Context, t *testing.T, pending runs.Pending) error {
+func (s *stubRuntime) openPending(ctx context.Context, t *testing.T, sessionID string, pending runs.Pending) error {
 	t.Helper()
 	capabilities := run.Capabilities{}
 	for _, request := range pending.Interrupts {
 		capabilities.InterruptKinds = append(capabilities.InterruptKinds, request.Kind())
 	}
-	return s.openPendingWith(ctx, t, pending, capabilities.Normalized())
+	return s.openPendingWith(ctx, t, sessionID, pending, capabilities.Normalized())
 }
 
 // openPendingWith opens a single-Run test hand-off whose root Run admitted
 // capabilities.
-func (s *stubRuntime) openPendingWith(ctx context.Context, t *testing.T, pending runs.Pending, capabilities run.Capabilities) error {
+func (s *stubRuntime) openPendingWith(ctx context.Context, t *testing.T, sessionID string, pending runs.Pending, capabilities run.Capabilities) error {
 	t.Helper()
 	members := make([]testsupport.ParkedMember, len(pending.Continuations))
 	for index, continuation := range pending.Continuations {
 		members[index] = testsupport.ParkedMember{RunID: continuation.RunID}
 	}
-	testsupport.SeedParkedRuns(t, s.db, pending.SessionID, pending.RootRunID, "", capabilities, members)
-	s.seedInterruptItems(ctx, t, pending)
+	testsupport.SeedParkedRuns(t, s.db, sessionID, pending.RootRunID, "", capabilities, members)
+	s.seedInterruptItems(ctx, t, sessionID, pending)
 	return s.interrupts.Open(ctx, pending)
 }
 
 // openPendingWithoutItems opens a test hand-off whose interrupt Items the
 // transcript never received.
-func (s *stubRuntime) openPendingWithoutItems(ctx context.Context, t *testing.T, pending runs.Pending) error {
+func (s *stubRuntime) openPendingWithoutItems(ctx context.Context, t *testing.T, sessionID string, pending runs.Pending) error {
 	t.Helper()
 	members := make([]testsupport.ParkedMember, len(pending.Continuations))
 	for index, continuation := range pending.Continuations {
 		members[index] = testsupport.ParkedMember{RunID: continuation.RunID}
 	}
-	testsupport.SeedParkedRuns(t, s.db, pending.SessionID, pending.RootRunID, "", run.Capabilities{}, members)
+	testsupport.SeedParkedRuns(t, s.db, sessionID, pending.RootRunID, "", run.Capabilities{}, members)
 	return s.interrupts.Open(ctx, pending)
 }
 
 // seedInterruptItems writes the Item each open interrupt names when the test
 // has not: a running shell ToolCall for an approval, and an unanswered
 // one-field Question otherwise. The Items own what the hand-off asks.
-func (s *stubRuntime) seedInterruptItems(ctx context.Context, t *testing.T, pending runs.Pending) {
+func (s *stubRuntime) seedInterruptItems(ctx context.Context, t *testing.T, sessionID string, pending runs.Pending) {
 	t.Helper()
 	for index, open := range pending.Interrupts {
 		if _, found, err := s.hist.Item(ctx, open.ItemID); err != nil || found {
@@ -494,7 +493,7 @@ func (s *stubRuntime) seedInterruptItems(ctx context.Context, t *testing.T, pend
 			continue
 		}
 		input := testsupport.ItemInput{
-			ID: open.ItemID, SessionID: pending.SessionID, RunID: pending.Continuations[index].RunID,
+			ID: open.ItemID, SessionID: sessionID, RunID: pending.Continuations[index].RunID,
 			OccurredAt: pending.CreatedAt,
 		}
 		if open.Approval != nil {
@@ -818,7 +817,7 @@ func (s stubLifecycleStores) ApplyRollback(ctx context.Context, plan sessions.Ro
 		if err := s.rt.runs.Delete(ctx, sessionID, runID); err != nil {
 			return err
 		}
-		if err := s.rt.interrupts.Delete(ctx, sessionID, runID); err != nil {
+		if err := s.rt.interrupts.Delete(ctx, runID); err != nil {
 			return err
 		}
 	}
@@ -924,7 +923,7 @@ func (s stubLifecycleStores) ApplyTerminal(ctx context.Context, plan sessions.Te
 			return err
 		}
 	}
-	if err := s.rt.interrupts.Delete(ctx, root.SessionID(), root.ID()); err != nil {
+	if err := s.rt.interrupts.Delete(ctx, root.ID()); err != nil {
 		return err
 	}
 	for _, replacement := range plan.Runs() {
@@ -948,7 +947,7 @@ func (s stubLifecycleStores) deleteInterrupts(ctx context.Context, sessionID str
 		return err
 	}
 	for _, p := range pending {
-		if err := s.rt.interrupts.Delete(ctx, sessionID, p.RootRunID); err != nil {
+		if err := s.rt.interrupts.Delete(ctx, p.RootRunID); err != nil {
 			return err
 		}
 	}
@@ -1085,19 +1084,19 @@ func (inertRuntimeStores) ListNonTerminalRuns(context.Context) ([]run.Run, error
 	return nil, nil
 }
 func (inertRuntimeStores) Open(context.Context, runs.Pending) error { return nil }
-func (inertRuntimeStores) Consume(context.Context, string, string) (runs.Pending, bool, error) {
+func (inertRuntimeStores) Consume(context.Context, string) (runs.Pending, bool, error) {
 	return runs.Pending{}, false, nil
 }
-func (inertRuntimeStores) Delete(context.Context, string, string) error { return nil }
+func (inertRuntimeStores) Delete(context.Context, string) error { return nil }
 func (inertRuntimeStores) GetInterrupt(context.Context, string) (runs.Pending, bool, error) {
 	return runs.Pending{}, false, nil
 }
 
-func (inertRuntimeStores) ClaimResume(context.Context, string, string) (runs.Pending, bool, error) {
+func (inertRuntimeStores) ClaimResume(context.Context, string) (runs.Pending, bool, error) {
 	return runs.Pending{}, false, nil
 }
-func (inertRuntimeStores) RequireResumeClaim(context.Context, string, string) error { return nil }
-func (inertRuntimeStores) AppendItem(context.Context, transcript.Item) error        { return nil }
+func (inertRuntimeStores) RequireResumeClaim(context.Context, string) error  { return nil }
+func (inertRuntimeStores) AppendItem(context.Context, transcript.Item) error { return nil }
 func (inertRuntimeStores) Item(context.Context, string) (transcript.Item, bool, error) {
 	return transcript.Item{}, false, nil
 }

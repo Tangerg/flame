@@ -307,7 +307,7 @@ func TestSessionImportRejectsOpenInterrupt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
-	if openErr := rt.openPending(ctx, t, serverPending(
+	if openErr := rt.openPending(ctx, t, ses.ID(), serverPending(
 		"run_parked",
 		ses.ID(),
 		"",
@@ -344,7 +344,7 @@ func TestSessionExportRejectsOpenInterrupt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
-	if openErr := rt.openPending(ctx, t, serverPending(
+	if openErr := rt.openPending(ctx, t, ses.ID(), serverPending(
 		"run_parked",
 		ses.ID(),
 		"",
@@ -394,7 +394,7 @@ func TestCancelParkedRunProducesPortableTerminalSnapshot(t *testing.T) {
 	})); appendItemErr != nil {
 		t.Fatalf("open interrupt item: %v", appendItemErr)
 	}
-	if openErr := rt.openPending(ctx, t, serverPending(
+	if openErr := rt.openPending(ctx, t, ses.ID(), serverPending(
 		"run_parked",
 		ses.ID(),
 		"exec_parked",
@@ -443,7 +443,7 @@ func TestRestoreSessionApplicationBoundaryRejectsOpenInterrupts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
-	if openErr := rt.openPending(ctx, t, serverPending(
+	if openErr := rt.openPending(ctx, t, ses.ID(), serverPending(
 		"run_old",
 		ses.ID(),
 		"",

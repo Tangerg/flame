@@ -226,13 +226,13 @@ func (e *Effects) applyResumeClaim(
 		}
 	}
 	if err := e.executorCheckpoints.DeleteCheckpoints(
-		ctx, pending.SessionID, []string{prepared.root.MemberID},
+		ctx, prepared.claim.SessionID(), []string{prepared.root.MemberID},
 	); err != nil {
 		return fmt.Errorf("segment: invalidate claimed executor checkpoint: %w", err)
 	}
 	*checkpoint = loaded.Clone()
 	if err := e.runState.RecordWaitingRunCommit(
-		ctx, pending.SessionID, pending.RootRunID, prepared.claim.CommitID(),
+		ctx, prepared.claim.SessionID(), pending.RootRunID, prepared.claim.CommitID(),
 	); err != nil {
 		return fmt.Errorf("segment: record resume claim commit receipt: %w", err)
 	}
@@ -243,13 +243,12 @@ func (e *Effects) loadResumeCheckpoint(
 	ctx context.Context,
 	prepared preparedResumeClaim,
 ) (runs.ExecutorCheckpoint, error) {
-	pending := prepared.claim.Pending()
 	loaded, err := e.executorCheckpoints.LoadCheckpoint(ctx, prepared.root.MemberID)
 	if err != nil {
 		return runs.ExecutorCheckpoint{}, fmt.Errorf("segment: load claimed executor checkpoint: %w", err)
 	}
 	if err := loaded.ValidateOwnership(
-		prepared.root.MemberID, pending.SessionID,
+		prepared.root.MemberID, prepared.claim.SessionID(),
 	); err != nil {
 		return runs.ExecutorCheckpoint{}, err
 	}
@@ -258,9 +257,7 @@ func (e *Effects) loadResumeCheckpoint(
 
 func (e *Effects) consumeResumePending(ctx context.Context, claim runs.ResumeClaimCommit) error {
 	pending := claim.Pending()
-	consumed, found, err := e.resumeClaims.ClaimResume(
-		ctx, pending.SessionID, pending.RootRunID,
-	)
+	consumed, found, err := e.resumeClaims.ClaimResume(ctx, pending.RootRunID)
 	if err != nil {
 		return fmt.Errorf("segment: consume resume Pending: %w", err)
 	}
@@ -281,7 +278,7 @@ func (e *Effects) reconcileResumeClaim(
 ) (runs.ExecutorCheckpoint, error) {
 	pending := claim.Pending()
 	settled, settleErr := e.reconcileRunCommit(
-		ctx, pending.SessionID, pending.RootRunID, "", claim.CommitID(),
+		ctx, claim.SessionID(), pending.RootRunID, "", claim.CommitID(),
 	)
 	if !settled {
 		return runs.ExecutorCheckpoint{}, errors.Join(commitErr, settleErr)
@@ -439,7 +436,7 @@ func (e *Effects) CommitEvent(ctx context.Context, commit runs.EventCommit) erro
 		if err := e.executorCheckpoints.DeleteCheckpoints(ctx, commit.SessionID, []string{commit.ObsoleteCheckpointRootID}); err != nil {
 			return fmt.Errorf("segment: delete terminal executor checkpoint %q: %w", commit.ObsoleteCheckpointRootID, err)
 		}
-		if err := e.interrupts.Delete(ctx, commit.SessionID, commit.RunID); err != nil {
+		if err := e.interrupts.Delete(ctx, commit.RunID); err != nil {
 			return fmt.Errorf("segment: delete terminal interrupt for root Run %q: %w", commit.RunID, err)
 		}
 		if err := e.childRunStarts.DeleteSession(ctx, commit.SessionID); err != nil {
@@ -548,7 +545,7 @@ func (e *Effects) CommitTreeBarrier(ctx context.Context, barrier runs.TreeBarrie
 		return errors.Join(err, errors.New("segment: tree barrier has no root Run commit"))
 	}
 	settled, settleErr := e.reconcileRunCommit(
-		ctx, pending.SessionID, pending.RootRunID, rootSegmentID, commitID,
+		ctx, barrier.SessionID(), pending.RootRunID, rootSegmentID, commitID,
 	)
 	if settled {
 		return nil
@@ -737,7 +734,7 @@ func (e *Effects) resumeTree(ctx context.Context, resume run.TreeResumeDraft) er
 	if err := resume.Validate(); err != nil {
 		return fmt.Errorf("segment: invalid tree resume: %w", err)
 	}
-	if err := e.resumeClaims.RequireResumeClaim(ctx, resume.SessionID, resume.RootRunID); err != nil {
+	if err := e.resumeClaims.RequireResumeClaim(ctx, resume.RootRunID); err != nil {
 		return fmt.Errorf("segment: require accepted answer claim: %w", err)
 	}
 	for _, run := range resume.Runs {

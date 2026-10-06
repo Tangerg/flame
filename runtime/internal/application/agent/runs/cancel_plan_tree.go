@@ -294,12 +294,10 @@ func validateCancellationPending(
 	if err := validatePendingRunTree(*pending, activeRuns); err != nil {
 		return fmt.Errorf("runs: build cancellation plan: %w", err)
 	}
-	if pending.RootRunID != root.ID() || pending.SessionID != root.SessionID() {
+	if pending.RootRunID != root.ID() {
 		return fmt.Errorf(
-			"runs: build cancellation plan: pending scope %q/%q differs from tree %q/%q",
-			pending.SessionID,
+			"runs: build cancellation plan: pending root %q differs from tree %q",
 			pending.RootRunID,
-			root.SessionID(),
 			root.ID(),
 		)
 	}

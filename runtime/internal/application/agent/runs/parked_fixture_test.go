@@ -63,6 +63,9 @@ func runForContinuation(pending Pending, continuation Continuation) run.Run {
 	return runWithFacts(pending, continuation, fixtureFacts(pending))
 }
 
+// fixtureSessionID is the Session every fixture hand-off's root Run belongs to.
+const fixtureSessionID = "ses_1"
+
 // parkedRunCreatedAt precedes every fixture clock, so a fixture tree can always
 // resume at whatever time its coordinator reads.
 var parkedRunCreatedAt = time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -75,7 +78,7 @@ func runWithFacts(pending Pending, continuation Continuation, facts parkedFacts)
 		capabilities = facts.capabilities
 	}
 	return testsupport.MustRestoreRun(run.Snapshot{ID: continuation.RunID,
-		SessionID:         pending.SessionID,
+		SessionID:         fixtureSessionID,
 		ModelSelection:    testsupport.DefaultModelSelection(),
 		GoalIncarnationID: goalIncarnationID,
 		State:             run.Waiting,
@@ -110,7 +113,7 @@ func fixtureItems(pending Pending) map[string]transcript.Item {
 			}
 		}
 		input := testsupport.ItemInput{
-			ID: open.ItemID, SessionID: pending.SessionID, RunID: runID, OccurredAt: occurredAt,
+			ID: open.ItemID, SessionID: fixtureSessionID, RunID: runID, OccurredAt: occurredAt,
 		}
 		if open.Approval != nil {
 			input.Kind, input.Status = transcript.ToolCall, transcript.ItemRunning
@@ -124,7 +127,7 @@ func fixtureItems(pending Pending) map[string]transcript.Item {
 	for _, continuation := range pending.Continuations {
 		for _, drained := range continuation.DrainedTools {
 			items[drained.ItemID] = testsupport.MustRestoreItem(testsupport.ItemInput{
-				ID: drained.ItemID, SessionID: pending.SessionID, RunID: continuation.RunID,
+				ID: drained.ItemID, SessionID: fixtureSessionID, RunID: continuation.RunID,
 				Kind: transcript.ToolCall, Status: transcript.ItemRunning, OccurredAt: occurredAt,
 				Tool: &transcript.ToolInvocation{Name: "delegate_task", Arguments: mustToolArguments(`{}`)},
 			})
@@ -147,7 +150,7 @@ func testTreeContinuationOf(pending Pending, interrupts []transcript.Interrupt) 
 	continuation := testTreeContinuation(pending)
 	for _, projected := range interrupts {
 		input := testsupport.ItemInput{
-			ID: projected.ItemID, SessionID: pending.SessionID, RunID: projected.RunID, OccurredAt: projected.ItemOccurredAt,
+			ID: projected.ItemID, SessionID: fixtureSessionID, RunID: projected.RunID, OccurredAt: projected.ItemOccurredAt,
 		}
 		if projected.Approval != nil {
 			input.Kind, input.Status = transcript.ToolCall, transcript.ItemRunning

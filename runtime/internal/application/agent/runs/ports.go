@@ -235,7 +235,7 @@ type PendingInterruptReader interface {
 type TerminationCommitter interface {
 	ApplyRunCancel(ctx context.Context, sessionID, runID, reason string, finishedAt time.Time) (run.Run, error)
 	ApplyRunLost(ctx context.Context, sessionID, runID string, finishedAt time.Time) error
-	ApplyClaimedRunLost(ctx context.Context, pending Pending, finishedAt time.Time) error
+	ApplyClaimedRunLost(ctx context.Context, sessionID string, pending Pending, finishedAt time.Time) error
 }
 
 // SessionPorts groups independently consumed Session-side capabilities for

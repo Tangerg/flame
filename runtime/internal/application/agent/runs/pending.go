@@ -19,11 +19,10 @@ import (
 // Bindings connects each Item to the executor request it answers;
 // Continuations is the durable state required to reopen every surviving Run
 // with a fresh Segment, including after host restart. The parked Runs own
-// their lineage, capabilities, and Goal incarnation, and the Items own what
-// was asked; a Pending names them and never restates those facts.
+// their Session, lineage, capabilities, and Goal incarnation, and the Items own
+// what was asked; a Pending names them and never restates those facts.
 type Pending struct {
 	RootRunID     string
-	SessionID     string
 	ExecutorID    string
 	Interrupts    []OpenInterrupt
 	Bindings      []InterruptBinding
@@ -176,19 +175,6 @@ func (p Pending) ValidateForRoot(expectedRootRunID string) error {
 	return p.requireRoot(expectedRootRunID)
 }
 
-// ValidateForTree verifies the complete hand-off and both identities that scope
-// it. A commit reasoning about one Session's root Run needs both, and asking for
-// them together is what stops one being checked while the other is assumed.
-func (p Pending) ValidateForTree(expectedSessionID, expectedRootRunID string) error {
-	if err := p.Validate(); err != nil {
-		return err
-	}
-	if err := p.requireSession(expectedSessionID); err != nil {
-		return err
-	}
-	return p.requireRoot(expectedRootRunID)
-}
-
 func (p Pending) requireRoot(expectedRootRunID string) error {
 	if p.RootRunID != expectedRootRunID {
 		return fmt.Errorf(
@@ -200,33 +186,9 @@ func (p Pending) requireRoot(expectedRootRunID string) error {
 	return nil
 }
 
-// ValidateForSession verifies the complete hand-off and its exact expected
-// Session identity. Session-scoped catalogs use it before stored continuation
-// state can influence lifecycle decisions.
-func (p Pending) ValidateForSession(expectedSessionID string) error {
-	if err := p.Validate(); err != nil {
-		return err
-	}
-	return p.requireSession(expectedSessionID)
-}
-
-func (p Pending) requireSession(expectedSessionID string) error {
-	if p.SessionID != expectedSessionID {
-		return fmt.Errorf(
-			"interrupts: pending Session %q does not match requested identity %q",
-			p.SessionID,
-			expectedSessionID,
-		)
-	}
-	return nil
-}
-
 func (p Pending) validateEnvelope() error {
 	if err := resourceid.ValidateRun(p.RootRunID); err != nil {
 		return fmt.Errorf("interrupts: pending root: %w", err)
-	}
-	if err := resourceid.ValidateSession(p.SessionID); err != nil {
-		return fmt.Errorf("interrupts: pending: %w", err)
 	}
 	if err := runtimeidentity.ValidateExecutor(p.ExecutorID); err != nil {
 		return fmt.Errorf("interrupts: pending: %w", err)

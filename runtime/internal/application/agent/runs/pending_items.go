@@ -23,7 +23,7 @@ func (p Pending) ProjectInterrupts(itemsByID map[string]transcript.Item) ([]tran
 		binding := p.Bindings[index]
 		continuation, _ := continuationForMember(p.Continuations, binding.MemberID)
 		item, found := itemsByID[open.ItemID]
-		if !found || item.SessionID() != p.SessionID || item.RunID() != continuation.RunID {
+		if !found || item.RunID() != continuation.RunID {
 			return nil, fmt.Errorf(
 				"interrupts: interrupt Item %q is not an Item of Run %q",
 				open.ItemID, continuation.RunID,
@@ -85,13 +85,13 @@ func OpenInterruptsOf(projected []transcript.Interrupt) []OpenInterrupt {
 // Item, not the hand-off, owns its occurrence and invocation.
 func drainedToolItem(
 	itemsByID map[string]transcript.Item,
-	sessionID, runID string,
+	runID string,
 	drained DrainedTool,
 ) (transcript.Item, transcript.ToolInvocation, error) {
 	item, found := itemsByID[drained.ItemID]
 	invocation, hasInvocation := item.ToolInvocation()
 	_, hasFailure := item.Failure()
-	if !found || item.SessionID() != sessionID || item.RunID() != runID ||
+	if !found || item.RunID() != runID ||
 		item.Kind() != transcript.ToolCall || item.Status() != transcript.ItemRunning ||
 		!hasInvocation || hasFailure {
 		return transcript.Item{}, transcript.ToolInvocation{}, fmt.Errorf(

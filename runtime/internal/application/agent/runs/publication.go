@@ -358,7 +358,6 @@ func (t treePublisher) reduceTreeBarrier(
 
 	projection := treeBarrierProjection{pending: Pending{
 		RootRunID:  routes.root.runID,
-		SessionID:  t.rootSpec.SessionID,
 		ExecutorID: t.rootSpec.ExecutorID,
 		CreatedAt:  boundaryAt,
 	},

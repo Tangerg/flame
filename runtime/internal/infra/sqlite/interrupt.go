@@ -36,7 +36,6 @@ type InterruptStore struct {
 // adapter; this record only names the values required by the storage codec.
 type InterruptRecord struct {
 	RootRunID     string
-	SessionID     string
 	ExecutorID    string
 	Interrupts    []OpenInterruptRecord
 	Bindings      []InterruptBindingRecord
@@ -91,9 +90,6 @@ func (i InterruptRecord) rootContinuation() (ContinuationRecord, bool) {
 
 func (i InterruptRecord) validateStorageShape() error {
 	if err := resourceid.ValidateRun(i.RootRunID); err != nil {
-		return err
-	}
-	if err := resourceid.ValidateSession(i.SessionID); err != nil {
 		return err
 	}
 	if err := runtimeidentity.ValidateExecutor(i.ExecutorID); err != nil {
@@ -180,8 +176,8 @@ func (i *InterruptStore) Open(ctx context.Context, p InterruptRecord) error {
 		return err
 	}
 	result, err := conn(ctx, i.db).ExecContext(ctx,
-		`INSERT INTO interrupts(root_run_id, session_id, executor_id, root_member_id, payload, continuations, interrupt_bindings, created_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		`INSERT INTO interrupts(root_run_id, executor_id, root_member_id, payload, continuations, interrupt_bindings, created_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(root_run_id) DO UPDATE SET
 		   executor_id = excluded.executor_id,
 		   root_member_id = excluded.root_member_id,
@@ -191,11 +187,9 @@ func (i *InterruptStore) Open(ctx context.Context, p InterruptRecord) error {
 		   created_at = excluded.created_at,
 		   state = ?
 		 WHERE interrupts.state = ?
-		   AND interrupts.session_id = excluded.session_id
 		   AND interrupts.executor_id = excluded.executor_id
 		   AND interrupts.root_member_id = excluded.root_member_id`,
 		p.RootRunID,
-		p.SessionID,
 		p.ExecutorID,
 		root.MemberID,
 		string(payload),
@@ -228,11 +222,11 @@ func (i *InterruptStore) Open(ctx context.Context, p InterruptRecord) error {
 
 // interruptColumns reads one hand-off. Its Runs own their lineage,
 // capabilities and Goal incarnation; the hand-off only names them.
-const interruptColumns = `root_run_id, session_id, executor_id,
+const interruptColumns = `root_run_id, executor_id,
 	root_member_id, payload, continuations, interrupt_bindings, created_at`
 
 // requireTreeRuns proves, in the hand-off's transaction, that the Runs it names
-// are its root Run in this Session and that root's descendants.
+// are a root Run and that root's descendants.
 func (i *InterruptStore) requireTreeRuns(ctx context.Context, p InterruptRecord) error {
 	var members sql.NullString
 	err := conn(ctx, i.db).QueryRowContext(ctx,
@@ -240,11 +234,11 @@ func (i *InterruptStore) requireTreeRuns(ctx context.Context, p InterruptRecord)
 		           FROM runs AS member
 		          WHERE member.session_id = root.session_id
 		            AND (member.run_id = root.run_id OR member.root_run_id = root.run_id))
-		   FROM runs AS root WHERE root.run_id = ? AND root.session_id = ? AND root.root_run_id = ''`,
-		p.RootRunID, p.SessionID,
+		   FROM runs AS root WHERE root.run_id = ? AND root.root_run_id = ''`,
+		p.RootRunID,
 	).Scan(&members)
 	if errors.Is(err, sql.ErrNoRows) {
-		return fmt.Errorf("%w: Pending root Run %q is not a root Run of Session %q", transcript.ErrIdentityConflict, p.RootRunID, p.SessionID)
+		return fmt.Errorf("%w: Pending root Run %q is not a root Run", transcript.ErrIdentityConflict, p.RootRunID)
 	}
 	if err != nil {
 		return fmt.Errorf("sqlite: inspect Pending root Run %q: %w", p.RootRunID, err)
@@ -286,7 +280,7 @@ func (i *InterruptStore) list(ctx context.Context, sessionID, rootRunID string, 
 	args := []any{interruptStateOpen.databaseValue()}
 	conditions := []string{`state = ?`}
 	if sessionID != "" {
-		conditions = append(conditions, `session_id = ?`)
+		conditions = append(conditions, `root_run_id IN (SELECT run_id FROM runs WHERE session_id = ?)`)
 		args = append(args, sessionID)
 	}
 	if rootRunID != "" {
@@ -348,19 +342,16 @@ func (i *InterruptStore) Get(ctx context.Context, runID string) (InterruptRecord
 // claim contract. A single statement means two concurrent resumes can't both
 // observe the same open interrupt: one claims it, the other gets ok=false, so a
 // non-idempotent tool never re-fires.
-func (i *InterruptStore) Consume(ctx context.Context, sessionID, runID string) (InterruptRecord, bool, error) {
-	if err := validatePendingOwner(sessionID, runID); err != nil {
+func (i *InterruptStore) Consume(ctx context.Context, runID string) (InterruptRecord, bool, error) {
+	if err := resourceid.ValidateRun(runID); err != nil {
 		return InterruptRecord{}, false, fmt.Errorf("sqlite: consume interrupt: %w", err)
 	}
 	row := conn(ctx, i.db).QueryRowContext(ctx,
-		`DELETE FROM interrupts WHERE session_id = ? AND root_run_id = ? AND state = ?
+		`DELETE FROM interrupts WHERE root_run_id = ? AND state = ?
 		 RETURNING `+interruptColumns,
-		sessionID, runID, interruptStateOpen.databaseValue())
+		runID, interruptStateOpen.databaseValue())
 	p, err := scanPending(row)
 	if errors.Is(err, sql.ErrNoRows) {
-		if rejectForeignPendingOwnerErr := i.rejectForeignPendingOwner(ctx, sessionID, runID); rejectForeignPendingOwnerErr != nil {
-			return InterruptRecord{}, false, rejectForeignPendingOwnerErr
-		}
 		return InterruptRecord{}, false, nil
 	}
 	if err != nil {
@@ -370,30 +361,23 @@ func (i *InterruptStore) Consume(ctx context.Context, sessionID, runID string) (
 }
 
 // ClaimResume atomically changes one exact open hand-off into a nonrecoverable
-// resuming record while retaining the validated answer for audit and crash
-// diagnosis. Open reads exclude the row until a new waiting boundary replaces
-// it or terminal cleanup deletes it.
-func (i *InterruptStore) ClaimResume(
-	ctx context.Context,
-	sessionID, runID string,
-) (InterruptRecord, bool, error) {
-	if err := validatePendingOwner(sessionID, runID); err != nil {
+// resuming record. Open reads exclude the row until a new waiting boundary
+// replaces it or terminal cleanup deletes it.
+func (i *InterruptStore) ClaimResume(ctx context.Context, runID string) (InterruptRecord, bool, error) {
+	if err := resourceid.ValidateRun(runID); err != nil {
 		return InterruptRecord{}, false, fmt.Errorf("sqlite: claim resume: %w", err)
 	}
 	row := conn(ctx, i.db).QueryRowContext(ctx,
 		`UPDATE interrupts
 		    SET state = ?
-		  WHERE session_id = ? AND root_run_id = ? AND state = ?
+		  WHERE root_run_id = ? AND state = ?
 		  RETURNING `+interruptColumns,
 		interruptStateResuming.databaseValue(),
-		sessionID, runID,
+		runID,
 		interruptStateOpen.databaseValue(),
 	)
 	record, err := scanPending(row)
 	if errors.Is(err, sql.ErrNoRows) {
-		if rejectForeignPendingOwnerErr := i.rejectForeignPendingOwner(ctx, sessionID, runID); rejectForeignPendingOwnerErr != nil {
-			return InterruptRecord{}, false, rejectForeignPendingOwnerErr
-		}
 		return InterruptRecord{}, false, nil
 	}
 	if err != nil {
@@ -404,29 +388,19 @@ func (i *InterruptStore) ClaimResume(
 
 // RequireResumeClaim proves that the exact root hand-off crossed the answer
 // claim linearization point before its Run tree is reopened.
-func (i *InterruptStore) RequireResumeClaim(ctx context.Context, sessionID, runID string) error {
-	if err := validatePendingOwner(sessionID, runID); err != nil {
+func (i *InterruptStore) RequireResumeClaim(ctx context.Context, runID string) error {
+	if err := resourceid.ValidateRun(runID); err != nil {
 		return fmt.Errorf("sqlite: require resume claim: %w", err)
 	}
-	var owner string
 	var state interruptState
 	err := conn(ctx, i.db).QueryRowContext(ctx,
-		`SELECT session_id, state FROM interrupts WHERE root_run_id = ?`, runID,
-	).Scan(&owner, &state)
+		`SELECT state FROM interrupts WHERE root_run_id = ?`, runID,
+	).Scan(&state)
 	if errors.Is(err, sql.ErrNoRows) {
 		return errors.New("sqlite: resume claim does not exist")
 	}
 	if err != nil {
 		return fmt.Errorf("sqlite: inspect resume claim: %w", err)
-	}
-	if owner != sessionID {
-		return fmt.Errorf(
-			"%w: Pending root Run %q belongs to Session %q, not %q",
-			transcript.ErrIdentityConflict,
-			runID,
-			owner,
-			sessionID,
-		)
 	}
 	if state != interruptStateResuming {
 		return fmt.Errorf("sqlite: interrupt for root Run %q is %q, not %s", runID, state, interruptStateResuming)
@@ -434,34 +408,23 @@ func (i *InterruptStore) RequireResumeClaim(ctx context.Context, sessionID, runI
 	return nil
 }
 
-func (i *InterruptStore) Delete(ctx context.Context, sessionID, runID string) error {
-	if err := validatePendingOwner(sessionID, runID); err != nil {
+func (i *InterruptStore) Delete(ctx context.Context, runID string) error {
+	if err := resourceid.ValidateRun(runID); err != nil {
 		return fmt.Errorf("sqlite: delete interrupt: %w", err)
 	}
-	result, err := conn(ctx, i.db).ExecContext(ctx,
-		`DELETE FROM interrupts WHERE session_id = ? AND root_run_id = ?`, sessionID, runID,
-	)
-	if err != nil {
+	if _, err := conn(ctx, i.db).ExecContext(ctx,
+		`DELETE FROM interrupts WHERE root_run_id = ?`, runID,
+	); err != nil {
 		return fmt.Errorf("sqlite: delete interrupt: %w", err)
 	}
-	deleted, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("sqlite: inspect deleted interrupt: %w", err)
-	}
-	if deleted == 1 {
-		return nil
-	}
-	return i.rejectForeignPendingOwner(ctx, sessionID, runID)
+	return nil
 }
 
 // DeleteResumeClaim consumes only the answer claim owned by a failed Resume.
 // It leaves ordinary open reads unchanged and cannot delete a replacement open
 // barrier that reuses the same root Run identity.
-func (i *InterruptStore) DeleteResumeClaim(
-	ctx context.Context,
-	sessionID, runID, rootMemberID string,
-) error {
-	if err := validatePendingOwner(sessionID, runID); err != nil {
+func (i *InterruptStore) DeleteResumeClaim(ctx context.Context, runID, rootMemberID string) error {
+	if err := resourceid.ValidateRun(runID); err != nil {
 		return fmt.Errorf("sqlite: delete Resume claim: %w", err)
 	}
 	if err := runtimeidentity.ValidateMember(rootMemberID); err != nil {
@@ -469,8 +432,8 @@ func (i *InterruptStore) DeleteResumeClaim(
 	}
 	result, err := conn(ctx, i.db).ExecContext(ctx,
 		`DELETE FROM interrupts
-		  WHERE session_id = ? AND root_run_id = ? AND root_member_id = ? AND state = ?`,
-		sessionID, runID, rootMemberID, interruptStateResuming.databaseValue(),
+		  WHERE root_run_id = ? AND root_member_id = ? AND state = ?`,
+		runID, rootMemberID, interruptStateResuming.databaseValue(),
 	)
 	if err != nil {
 		return fmt.Errorf("sqlite: delete Resume claim: %w", err)
@@ -479,44 +442,10 @@ func (i *InterruptStore) DeleteResumeClaim(
 	if err != nil {
 		return fmt.Errorf("sqlite: inspect deleted Resume claim: %w", err)
 	}
-	if deleted == 1 {
-		return nil
-	}
-	if err := i.rejectForeignPendingOwner(ctx, sessionID, runID); err != nil {
-		return err
-	}
-	return fmt.Errorf("sqlite: matching resuming interrupt for root Run %q was not found", runID)
-}
-
-func validatePendingOwner(sessionID, rootRunID string) error {
-	if err := resourceid.ValidateSession(sessionID); err != nil {
-		return err
-	}
-	if err := resourceid.ValidateRun(rootRunID); err != nil {
-		return err
+	if deleted != 1 {
+		return fmt.Errorf("sqlite: matching resuming interrupt for root Run %q was not found", runID)
 	}
 	return nil
-}
-
-func (i *InterruptStore) rejectForeignPendingOwner(ctx context.Context, sessionID, rootRunID string) error {
-	var owner string
-	err := conn(ctx, i.db).QueryRowContext(ctx,
-		`SELECT session_id FROM interrupts WHERE root_run_id = ?`,
-		rootRunID,
-	).Scan(&owner)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("sqlite: inspect interrupt %q owner: %w", rootRunID, err)
-	}
-	return fmt.Errorf(
-		"%w: Pending root Run %q belongs to Session %q, not %q",
-		transcript.ErrIdentityConflict,
-		rootRunID,
-		owner,
-		sessionID,
-	)
 }
 
 // scanRow abstracts *sql.Row and *sql.Rows so one scan path serves Get +
@@ -532,7 +461,6 @@ func scanPending(row scanRow) (InterruptRecord, error) {
 	)
 	if err := row.Scan(
 		&p.RootRunID,
-		&p.SessionID,
 		&p.ExecutorID,
 		&rootMemberID,
 		&payload,

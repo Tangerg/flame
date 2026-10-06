@@ -85,7 +85,7 @@ func (r RecoveryCommit) GoalRuns() []rundomain.Run {
 }
 
 // DeleteInterrupts returns the lost root-owned Pending records to remove.
-func (r RecoveryCommit) DeleteInterrupts() []InterruptOwner {
+func (r RecoveryCommit) DeleteInterrupts() []string {
 	return slices.Clone(r.state.DeleteInterrupts)
 }
 
@@ -255,11 +255,6 @@ func validateRecoveryModelInvocations(
 type recoverySegmentResourceKey struct {
 	resourceID string
 	segmentID  string
-}
-
-type recoveryInterruptOwnerKey struct {
-	sessionID string
-	rootRunID string
 }
 
 func validateRecoveryToolInvocations(
@@ -485,47 +480,28 @@ func validateRecoveryItemReplacement(replacement transcript.Replacement, finishe
 }
 
 func validateRecoveryInterruptDeletions(
-	values []InterruptOwner,
+	values []string,
 	lostByID map[string]rundomain.Replacement,
 ) error {
-	expected := make(map[string]rundomain.Run)
+	expected := make(map[string]struct{})
 	for _, recovery := range lostByID {
-		lost := recovery.State()
-		if lost.Lineage().IsRoot() {
-			expected[lost.ID()] = lost
+		if lost := recovery.State(); lost.Lineage().IsRoot() {
+			expected[lost.ID()] = struct{}{}
 		}
 	}
-	seen := make(map[recoveryInterruptOwnerKey]struct{}, len(values))
-	for index, value := range values {
-		if err := resourceid.ValidateSession(value.SessionID); err != nil {
+	for index, rootRunID := range values {
+		if err := resourceid.ValidateRun(rootRunID); err != nil {
 			return fmt.Errorf("runs: recovery commit interrupt deletion[%d]: %w", index, err)
 		}
-		if err := resourceid.ValidateRun(value.RootRunID); err != nil {
-			return fmt.Errorf("runs: recovery commit interrupt deletion[%d]: %w", index, err)
+		if _, found := expected[rootRunID]; !found {
+			return fmt.Errorf("runs: recovery commit interrupt deletion %q is not owned by a lost root Run", rootRunID)
 		}
-		key := recoveryInterruptOwnerKey{sessionID: value.SessionID, rootRunID: value.RootRunID}
-		if _, duplicate := seen[key]; duplicate {
-			return fmt.Errorf("runs: recovery commit repeats interrupt deletion %q/%q", value.SessionID, value.RootRunID)
-		}
-		seen[key] = struct{}{}
-		owner, found := expected[value.RootRunID]
-		if !found || owner.SessionID() != value.SessionID {
-			return fmt.Errorf(
-				"runs: recovery commit interrupt deletion %q/%q is not owned by a lost root Run",
-				value.SessionID,
-				value.RootRunID,
-			)
-		}
-		if index > 0 {
-			previous := values[index-1]
-			if previous.SessionID > value.SessionID ||
-				(previous.SessionID == value.SessionID && previous.RootRunID >= value.RootRunID) {
-				return errors.New("runs: recovery commit interrupt deletions are not in canonical order")
-			}
+		if index > 0 && values[index-1] >= rootRunID {
+			return errors.New("runs: recovery commit interrupt deletions are not in canonical order")
 		}
 	}
-	if len(seen) != len(expected) {
-		return fmt.Errorf("runs: recovery commit has %d interrupt deletions, want %d lost roots", len(seen), len(expected))
+	if len(values) != len(expected) {
+		return fmt.Errorf("runs: recovery commit has %d interrupt deletions, want %d lost roots", len(values), len(expected))
 	}
 	return nil
 }

@@ -104,7 +104,7 @@ func testRecoveryMarksClaimedResumeLost(t *testing.T, openingCommitted bool) {
 		t.Fatalf("Suspend: %v", suspendErr)
 	}
 	pending := runs.Pending{
-		RootRunID: "run_claim", SessionID: "session_claim", ExecutorID: "execution_claim", Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{request}),
+		RootRunID: "run_claim", ExecutorID: "execution_claim", Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{request}),
 		Bindings: []runs.InterruptBinding{{
 			InterruptItemID: request.ItemID, MemberID: "member_claim", RequestID: "request_claim",
 		}},
@@ -116,16 +116,14 @@ func testRecoveryMarksClaimedResumeLost(t *testing.T, openingCommitted bool) {
 	if openErr := interruptStore.Open(ctx, pending); openErr != nil {
 		t.Fatalf("Open Pending: %v", openErr)
 	}
-	if _, found, claimResumeErr := interruptStore.ClaimResume(
-		ctx, pending.SessionID, pending.RootRunID,
-	); claimResumeErr != nil || !found {
+	if _, found, claimResumeErr := interruptStore.ClaimResume(ctx, pending.RootRunID); claimResumeErr != nil || !found {
 		t.Fatalf("ClaimResume: found=%t err=%v", found, claimResumeErr)
 	}
 	if _, found, getErr := interruptStore.Get(ctx, pending.RootRunID); getErr != nil || found {
 		t.Fatalf("open Pending after claim = found:%t err:%v", found, getErr)
 	}
 	if openingCommitted {
-		if resumeErr := runStore.Resume(ctx, pending.SessionID, run.ResumeDraft{
+		if resumeErr := runStore.Resume(ctx, waiting.SessionID(), run.ResumeDraft{
 			RunID: pending.RootRunID, SegmentID: "segment_claim_resumed",
 		}, createdAt.Add(3*time.Second)); resumeErr != nil {
 			t.Fatalf("commit continuation opening: %v", resumeErr)
@@ -138,7 +136,7 @@ func testRecoveryMarksClaimedResumeLost(t *testing.T, openingCommitted bool) {
 	}
 	transcriptStore := sqlite.NewTranscriptStore(db)
 	questionItem, err := transcript.NewQuestion(transcript.ItemIdentity{
-		SessionID: pending.SessionID, RunID: request.RunID, ItemID: request.ItemID,
+		SessionID: waiting.SessionID(), RunID: request.RunID, ItemID: request.ItemID,
 		OccurredAt: request.ItemOccurredAt,
 	}, *request.Question)
 	if err != nil {
@@ -155,7 +153,7 @@ func testRecoveryMarksClaimedResumeLost(t *testing.T, openingCommitted bool) {
 	messageStore := sqlite.NewMessageStore(db)
 	if _, writeErr := messageStore.Write(
 		ctx,
-		chathistory.ConversationID(pending.SessionID),
+		chathistory.ConversationID(waiting.SessionID()),
 		corechat.NewUserMessage(corechat.NewTextPart("ask me")),
 		corechat.NewAssistantMessage(corechat.NewToolCallPart(corechat.ToolCall{
 			ID: "provider_call_claim", Name: "ask_user", Arguments: "{}",
@@ -205,7 +203,7 @@ func testRecoveryMarksClaimedResumeLost(t *testing.T, openingCommitted bool) {
 		!failed || failure.Kind != run.FailureLost || stored.MessageMark() != 3 {
 		t.Fatalf("recovered Run = found:%t value:%+v err:%v", found, stored, err)
 	}
-	messages, err := messageStore.Read(ctx, chathistory.ConversationID(pending.SessionID))
+	messages, err := messageStore.Read(ctx, chathistory.ConversationID(waiting.SessionID()))
 	if err != nil || len(messages) != 3 || messages[2].Role != corechat.RoleTool ||
 		len(messages[2].Parts) != 1 || messages[2].Parts[0].ToolResult == nil ||
 		messages[2].Parts[0].ToolResult.ID != "provider_call_claim" ||
@@ -230,9 +228,9 @@ func testRecoveryMarksClaimedResumeLost(t *testing.T, openingCommitted bool) {
 		t.Fatalf("accepted Question after recovery = %+v, want durable answer", storedQuestion)
 	}
 	wantNotices := []invalidation.Notice{
-		invalidation.InSession(invalidation.Runs, pending.SessionID, pending.RootRunID),
-		invalidation.InSession(invalidation.Interrupts, pending.SessionID, pending.RootRunID),
-		invalidation.InSession(invalidation.Sessions, pending.SessionID),
+		invalidation.InSession(invalidation.Runs, waiting.SessionID(), pending.RootRunID),
+		invalidation.InSession(invalidation.Interrupts, waiting.SessionID(), pending.RootRunID),
+		invalidation.InSession(invalidation.Sessions, waiting.SessionID()),
 	}
 	if !reflect.DeepEqual(notices, wantNotices) {
 		t.Fatalf("recovery notices = %+v, want %+v", notices, wantNotices)
@@ -306,9 +304,7 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 		ConversationTransitions: []runs.RecoveryConversationTransition{{
 			RootRunID: active.ID(), SessionID: active.SessionID(), ExpectedCount: 0,
 		}},
-		DeleteInterrupts: []runs.InterruptOwner{{
-			SessionID: active.SessionID(), RootRunID: active.ID(),
-		}},
+		DeleteInterrupts:           []string{active.ID()},
 		DeleteCheckpointSessionIDs: []string{"session_abandoned"},
 	})
 	if err != nil {
@@ -631,7 +627,7 @@ func TestRecoveryRejectsPartialParkWithoutMutatingIt(t *testing.T) {
 		t.Fatalf("Suspend: %v", suspendErr)
 	}
 	pending := runs.Pending{
-		RootRunID: "run_partial", SessionID: "session", ExecutorID: "turn_partial",
+		RootRunID: "run_partial", ExecutorID: "turn_partial",
 		Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{pendingInterrupt}),
 		Bindings: []runs.InterruptBinding{{
 			InterruptItemID: pendingInterrupt.ItemID, MemberID: "member_root", RequestID: "request_root",

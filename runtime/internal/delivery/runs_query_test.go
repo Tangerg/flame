@@ -388,7 +388,7 @@ func TestListInterruptsProjectsToWire(t *testing.T) {
 	}
 	reader := &fakeInterruptReader{pending: []runs.Pending{
 		{
-			RootRunID: "run_waiting", SessionID: "ses_1", ExecutorID: "turn_1",
+			RootRunID: "run_waiting", ExecutorID: "turn_1",
 			Interrupts: runs.OpenInterruptsOf([]transcript.Interrupt{{
 				ItemID: "item_1", ItemOccurredAt: created.Add(-time.Second),
 				RunID: "run_child", Kind: interrupt.Approval,

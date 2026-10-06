@@ -103,7 +103,7 @@ func (c coordinatorStores) ApplyRollback(ctx context.Context, plan RollbackPlan)
 		*c.rolledBack = plan
 	}
 	for _, runID := range plan.DropRunIDs() {
-		_ = c.interrupts.Delete(ctx, plan.SessionID(), runID)
+		_ = c.interrupts.Delete(ctx, runID)
 	}
 	return nil
 }
@@ -111,7 +111,7 @@ func (c coordinatorStores) ApplyRestore(context.Context, RestorePlan) error { re
 func (c coordinatorStores) ApplyDelete(ctx context.Context, plan DeletePlan) error {
 	pending, _ := c.interrupts.List(ctx, plan.SessionID())
 	for _, p := range pending {
-		_ = c.interrupts.Delete(ctx, plan.SessionID(), p.RootRunID)
+		_ = c.interrupts.Delete(ctx, p.RootRunID)
 	}
 	return nil
 }
@@ -123,7 +123,7 @@ func (c coordinatorStores) ApplyTerminal(ctx context.Context, plan TerminalPlan)
 	if !ok {
 		return errors.New("terminal plan has no root Run")
 	}
-	return c.interrupts.Delete(ctx, root.SessionID(), root.ID())
+	return c.interrupts.Delete(ctx, root.ID())
 }
 
 type coordinatorInterrupts struct {
@@ -150,9 +150,7 @@ func (c *coordinatorInterrupts) List(_ context.Context, sessionID string) ([]run
 	}
 	out := make([]runs.Pending, 0, len(c.pending))
 	for _, p := range c.pending {
-		if sessionID == "" || p.SessionID == sessionID {
-			out = append(out, p)
-		}
+		out = append(out, p)
 	}
 	return out, nil
 }
@@ -162,18 +160,15 @@ func (c *coordinatorInterrupts) Get(_ context.Context, parentRunID string) (runs
 	return p, ok, nil
 }
 
-func (c *coordinatorInterrupts) Consume(_ context.Context, sessionID, parentRunID string) (runs.Pending, bool, error) {
+func (c *coordinatorInterrupts) Consume(_ context.Context, parentRunID string) (runs.Pending, bool, error) {
 	p, ok := c.pending[parentRunID]
-	if ok && p.SessionID != sessionID {
-		return runs.Pending{}, false, nil
-	}
 	if ok {
 		delete(c.pending, parentRunID)
 	}
 	return p, ok, nil
 }
 
-func (c *coordinatorInterrupts) Delete(_ context.Context, _ string, parentRunID string) error {
+func (c *coordinatorInterrupts) Delete(_ context.Context, parentRunID string) error {
 	c.deleted = append(c.deleted, parentRunID)
 	if c.onDelete != nil {
 		c.onDelete(parentRunID)

@@ -129,7 +129,7 @@ func TestCommitWaitingSubtreeCancellationRejectsStalePendingWithoutMutation(t *t
 	fixture := newWaitingCancellationSQLiteFixture(t)
 	changedPending := fixture.commit.ExpectedPending()
 	changedPending.ExecutorID = "turn_replaced"
-	if _, found, err := fixture.interrupts.Consume(fixture.ctx, changedPending.SessionID, changedPending.RootRunID); err != nil || !found {
+	if _, found, err := fixture.interrupts.Consume(fixture.ctx, changedPending.RootRunID); err != nil || !found {
 		t.Fatalf("consume original Pending fixture: found=%t err=%v", found, err)
 	}
 	if err := fixture.interrupts.Open(fixture.ctx, changedPending); err != nil {

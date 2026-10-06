@@ -27,8 +27,7 @@ const runReadJoins = `LEFT JOIN interrupts AS i
 		   ON i.root_run_id = CASE
 		        WHEN r.root_run_id = '' THEN r.run_id
 		        ELSE r.root_run_id
-		      END
-		  AND i.session_id = r.session_id`
+		      END`
 
 // PageRuns returns one page of Runs a caller may browse, newest admission first,
 // scoped to sessionID and statuses when provided. Descendants are excluded unless

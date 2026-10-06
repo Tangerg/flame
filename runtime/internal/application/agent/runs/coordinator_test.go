@@ -57,7 +57,6 @@ func testTreeContinuation(pending Pending) *treeContinuation {
 	}
 	return &treeContinuation{
 		rootRunID:     pending.RootRunID,
-		sessionID:     pending.SessionID,
 		executorID:    pending.ExecutorID,
 		interrupts:    interrupts,
 		continuations: slices.Clone(pending.Continuations),
@@ -517,7 +516,7 @@ func (f *fakeEffects) ClaimResume(_ context.Context, claim ResumeClaimCommit) (E
 	pending := claim.Pending()
 	root, _ := pending.RootContinuation()
 	checkpoint.RootMemberID = root.MemberID
-	checkpoint.SessionID = pending.SessionID
+	checkpoint.SessionID = fixtureSessionID
 	if f.mutateClaim != nil {
 		f.mutateClaim(&checkpoint)
 	}
@@ -802,7 +801,7 @@ func TestResumedExecutorRoutesBindLiveTopologyWithoutPersistingIt(t *testing.T) 
 	continuation := mustTreeContinuation(t, pending)
 	spec := testSegment()
 	spec.RunID = pending.RootRunID
-	spec.SessionID = pending.SessionID
+	spec.SessionID = fixtureSessionID
 	spec.Continuation = continuation
 
 	coordinator := testCoordinator(&fakeExecutor{}, &fakeEffects{})
@@ -1255,7 +1254,6 @@ func resumedTreePending(createdAt time.Time) Pending {
 	}
 	return Pending{
 		RootRunID:  "run_1",
-		SessionID:  "ses_1",
 		ExecutorID: "turn_1",
 		Interrupts: OpenInterruptsOf([]transcript.Interrupt{
 			question("item_grandchild", "run_grandchild"),

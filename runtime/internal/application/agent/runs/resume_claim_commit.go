@@ -2,6 +2,7 @@ package runs
 
 import (
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"maps"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
@@ -19,7 +20,9 @@ type ResumeClaimCommit struct {
 	// CommitID identifies the complete answer-claim transaction. The checkpoint
 	// returned by a successful claim remains a one-shot in-memory hand-off.
 	commitID runtimeidentity.CommitID
-	expected Pending
+	// sessionID is the Session of the parked root Run read before the claim.
+	sessionID string
+	expected  Pending
 	// items are the Items the hand-off names, read before the claim. They own
 	// what each answered interrupt asked.
 	items   map[string]transcript.Item
@@ -30,12 +33,13 @@ type ResumeClaimCommit struct {
 // hand-off and stable transaction identity that consumes it.
 func NewResumeClaimCommit(
 	commitID runtimeidentity.CommitID,
+	sessionID string,
 	expected Pending,
 	items map[string]transcript.Item,
 	answers []InterruptAnswer,
 ) (ResumeClaimCommit, error) {
 	claim := ResumeClaimCommit{
-		commitID: commitID, expected: expected.Clone(), items: maps.Clone(items),
+		commitID: commitID, sessionID: sessionID, expected: expected.Clone(), items: maps.Clone(items),
 		answers: cloneInterruptAnswers(answers),
 	}
 	if err := claim.Validate(); err != nil {
@@ -67,6 +71,9 @@ func (r ResumeClaimCommit) Validate() error {
 	if err := r.expected.Validate(); err != nil {
 		return fmt.Errorf("runs: resume claim Pending: %w", err)
 	}
+	if err := resourceid.ValidateSession(r.sessionID); err != nil {
+		return fmt.Errorf("runs: resume claim: %w", err)
+	}
 	interrupts, err := r.expected.ProjectInterrupts(r.items)
 	if err != nil {
 		return fmt.Errorf("runs: resume claim: %w", err)
@@ -92,6 +99,9 @@ func (r ResumeClaimCommit) Validate() error {
 	}
 	return nil
 }
+
+// SessionID returns the Session of the claimed tree's root Run.
+func (r ResumeClaimCommit) SessionID() string { return r.sessionID }
 
 // CommitID returns the stable answer-claim transaction identity.
 func (r ResumeClaimCommit) CommitID() runtimeidentity.CommitID { return r.commitID }

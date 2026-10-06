@@ -85,7 +85,7 @@ func TestRunInTx_AtomicAcrossStores(t *testing.T) {
 		}},
 		time.Unix(2, 0).UTC(),
 	)
-	seedParkedRuns(t, db, pendingSet)
+	seedParkedRuns(t, db, "s2", pendingSet)
 	if runInTxErr := sqlite.RunInTx(ctx, db, func(ctx context.Context) error {
 		if openErr := ints.Open(ctx, pendingSet); openErr != nil {
 			return openErr
@@ -97,7 +97,7 @@ func TestRunInTx_AtomicAcrossStores(t *testing.T) {
 		if len(pendingList) != 1 || pendingList[0].RootRunID != "run_1" {
 			t.Fatalf("pending interrupts = %+v, want run_1 inside tx", pendingList)
 		}
-		return ints.Delete(ctx, "s2", "run_1")
+		return ints.Delete(ctx, "run_1")
 	}); runInTxErr != nil {
 		t.Fatalf("interrupt store inside tx: %v", runInTxErr)
 	}

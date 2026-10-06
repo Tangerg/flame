@@ -67,6 +67,7 @@ func (s *stagedExecutionHandoff) abandonWithin(
 // hand-off. A failed claim is made durably lost before its executor is released;
 // an accepted Segment consumes the staged executor instead.
 type claimedResumeAttempt struct {
+	sessionID    string
 	pending      Pending
 	terminations TerminationCommitter
 	nowUTC       func() time.Time
@@ -74,8 +75,9 @@ type claimedResumeAttempt struct {
 	settled      bool
 }
 
-func (c *Coordinator) ownClaimedResume(pending Pending) *claimedResumeAttempt {
+func (c *Coordinator) ownClaimedResume(sessionID string, pending Pending) *claimedResumeAttempt {
 	return &claimedResumeAttempt{
+		sessionID:    sessionID,
 		pending:      pending,
 		terminations: c.terminations,
 		nowUTC:       c.publications.nowUTC,
@@ -114,6 +116,7 @@ func (c *claimedResumeAttempt) fail(ctx context.Context, cause error) error {
 	defer cancel()
 	if err := c.terminations.ApplyClaimedRunLost(
 		cleanupCtx,
+		c.sessionID,
 		c.pending,
 		c.nowUTC(),
 	); err != nil {

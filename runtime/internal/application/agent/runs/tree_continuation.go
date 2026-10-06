@@ -19,7 +19,6 @@ import (
 // to open fresh Segments without inventing a fake human answer.
 type treeContinuation struct {
 	rootRunID        string
-	sessionID        string
 	executorID       string
 	interrupts       []transcript.Interrupt
 	approvalVerdicts map[string]approvalVerdict
@@ -31,6 +30,11 @@ type treeContinuation struct {
 	// items are the Items the hand-off names; they own each drained Tool's
 	// occurrence and invocation.
 	items map[string]transcript.Item
+}
+
+// sessionID is the parked root Run's Session.
+func (t *treeContinuation) sessionID() string {
+	return t.runs[t.rootRunID].SessionID()
 }
 
 // goalIncarnationID is the parked root Run's Goal incarnation.
@@ -76,7 +80,6 @@ func treeContinuationFromPending(
 	}
 	continuation := &treeContinuation{
 		rootRunID:     pending.RootRunID,
-		sessionID:     pending.SessionID,
 		executorID:    pending.ExecutorID,
 		interrupts:    interrupts,
 		continuations: slices.Clone(pending.Continuations),
@@ -95,9 +98,6 @@ func treeContinuationFromPending(
 func (t *treeContinuation) validate() error {
 	if err := resourceid.ValidateRun(t.rootRunID); err != nil {
 		return fmt.Errorf("runs: tree continuation root: %w", err)
-	}
-	if err := resourceid.ValidateSession(t.sessionID); err != nil {
-		return fmt.Errorf("runs: tree continuation: %w", err)
 	}
 	if _, parked := t.runs[t.rootRunID]; !parked {
 		return errors.New("runs: tree continuation root Run is not parked")

@@ -42,7 +42,6 @@ func validatePendingRunningItems(
 
 func validatePendingContinuationTools(
 	rootRunID string,
-	sessionID string,
 	continuation Continuation,
 	itemsByID map[string]transcript.Item,
 	claimedItems map[string]string,
@@ -51,7 +50,7 @@ func validatePendingContinuationTools(
 		if err := claimPendingItem(rootRunID, continuation.RunID, drained.ItemID, "drained tool", claimedItems); err != nil {
 			return err
 		}
-		if _, _, err := drainedToolItem(itemsByID, sessionID, continuation.RunID, drained); err != nil {
+		if _, _, err := drainedToolItem(itemsByID, continuation.RunID, drained); err != nil {
 			return fmt.Errorf("runs: validate parked Run tree %q: %w", rootRunID, err)
 		}
 	}

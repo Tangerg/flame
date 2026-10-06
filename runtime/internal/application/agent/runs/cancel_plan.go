@@ -266,7 +266,7 @@ func (c *Coordinator) resolveCancellationOwner(
 			}
 		}
 		return ExecutorRef{
-			SessionID:  pending.SessionID,
+			SessionID:  root.SessionID(),
 			ExecutorID: pending.ExecutorID,
 		}, members, nil
 	default:

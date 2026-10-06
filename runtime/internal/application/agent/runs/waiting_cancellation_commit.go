@@ -57,7 +57,7 @@ func NewParkedSubtreeCancellationCommit(
 ) (WaitingSubtreeCancellationCommit, error) {
 	return newWaitingSubtreeCancellationCommit(waitingSubtreeCancellationState{
 		CommitID: commitID, RootRunID: expectedPending.RootRunID,
-		TargetRunID: targetRunID, SessionID: expectedPending.SessionID,
+		TargetRunID: targetRunID, SessionID: parkedTreeSessionID(parkedRuns, expectedPending.RootRunID),
 		ParkedRuns: parkedRuns, ExpectedPending: expectedPending,
 		RemainingPending: &remainingPending, Checkpoint: checkpoint,
 		TerminalRuns: terminalRuns, TerminalItems: terminalItems,
@@ -79,7 +79,7 @@ func NewResumingSubtreeCancellationCommit(
 ) (WaitingSubtreeCancellationCommit, error) {
 	return newWaitingSubtreeCancellationCommit(waitingSubtreeCancellationState{
 		CommitID: commitID, RootRunID: expectedPending.RootRunID,
-		TargetRunID: targetRunID, SessionID: expectedPending.SessionID,
+		TargetRunID: targetRunID, SessionID: parkedTreeSessionID(parkedRuns, expectedPending.RootRunID),
 		ParkedRuns: parkedRuns, ExpectedPending: expectedPending,
 		Checkpoint: checkpoint, TerminalRuns: terminalRuns,
 		TerminalItems: terminalItems,
@@ -263,7 +263,7 @@ func validateWaitingCancellationBoundary(c waitingSubtreeCancellationState) erro
 	if err := resourceid.ValidateSession(c.SessionID); err != nil {
 		return fmt.Errorf("runs: waiting cancellation: %w", err)
 	}
-	if err := c.ExpectedPending.ValidateForTree(c.SessionID, c.RootRunID); err != nil {
+	if err := c.ExpectedPending.ValidateForRoot(c.RootRunID); err != nil {
 		return fmt.Errorf("runs: waiting cancellation expected Pending: %w", err)
 	}
 	if err := validatePendingRunTree(c.ExpectedPending, c.ParkedRuns); err != nil {
@@ -289,7 +289,7 @@ func validateWaitingCancellationDispositionEnvelope(c waitingSubtreeCancellation
 		}
 		return nil
 	}
-	if err := c.RemainingPending.ValidateForTree(c.SessionID, c.RootRunID); err != nil {
+	if err := c.RemainingPending.ValidateForRoot(c.RootRunID); err != nil {
 		return fmt.Errorf("runs: waiting cancellation reduced Pending: %w", err)
 	}
 	if len(c.OpeningEvents) != 0 {
@@ -583,4 +583,13 @@ func canonicalTime(value time.Time) time.Time {
 		return time.Time{}
 	}
 	return time.Unix(0, value.UnixNano()).UTC()
+}
+
+// parkedTreeSessionID is the Session of the parked tree's root Run, which owns
+// it; an absent root leaves it empty for validation to refuse.
+func parkedTreeSessionID(parked []rundomain.Run, rootRunID string) string {
+	if root, found := parkedRoot(rootRunID, parked); found {
+		return root.SessionID()
+	}
+	return ""
 }
