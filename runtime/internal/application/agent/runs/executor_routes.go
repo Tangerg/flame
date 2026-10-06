@@ -28,14 +28,13 @@ type executorRoute struct {
 	// admitted by this tree's opening.
 	resumed          *rundomain.Replacement
 	segmentStartedAt time.Time
-	segmentFinished  bool
+	boundary         segmentBoundary
 }
 
 type executorRoutes struct {
 	// admission is the fresh root's Draft; nil when the tree resumes. The root
 	// reducer's opened Run is admitted from this same value.
 	admission      *rundomain.Draft
-	rootBound      bool
 	root           *executorRoute
 	byMember       map[string]*executorRoute
 	byRunID        map[string]*executorRoute
@@ -104,9 +103,8 @@ func (c *Coordinator) resumedExecutorRoutes(
 		now:          c.publications.nowUTC,
 		resumedAt:    c.publications.nowUTC(),
 		routes: &executorRoutes{
-			rootBound: true,
-			byMember:  make(map[string]*executorRoute, len(continuation.continuations)),
-			byRunID:   make(map[string]*executorRoute, len(continuation.continuations)),
+			byMember: make(map[string]*executorRoute, len(continuation.continuations)),
+			byRunID:  make(map[string]*executorRoute, len(continuation.continuations)),
 		},
 		segmentIDs: map[string]struct{}{spec.SegmentID: {}},
 	}
@@ -281,7 +279,7 @@ func (e *executorRoutes) unfinishedInPostorder() ([]*executorRoute, error) {
 		if route == nil {
 			return nil, fmt.Errorf("runs: executor tree ordered unknown run %q", runID)
 		}
-		if !route.segmentFinished {
+		if !route.boundary.finished() {
 			if route.lineage.IsChild() {
 				parent := byRunID[route.lineage.ParentRunID]
 				if parent == nil {
@@ -291,7 +289,7 @@ func (e *executorRoutes) unfinishedInPostorder() ([]*executorRoute, error) {
 						route.lineage.ParentRunID,
 					)
 				}
-				if parent.segmentFinished {
+				if parent.boundary.finished() {
 					return nil, fmt.Errorf(
 						"runs: active executor route %q descends from finished route %q",
 						route.runID,
@@ -308,7 +306,7 @@ func (e *executorRoutes) unfinishedInPostorder() ([]*executorRoute, error) {
 func (e *executorRoutes) unfinishedCount() int {
 	count := 0
 	for _, route := range e.admissionOrder {
-		if !route.segmentFinished {
+		if !route.boundary.finished() {
 			count++
 		}
 	}
@@ -360,14 +358,13 @@ func (e *executorRoutes) resolve(member ExecutorMember) (*executorRoute, error) 
 		} else if route.member != member {
 			return nil, fmt.Errorf("runs: child executor member %q changed immutable lineage", member.MemberID)
 		}
-		if route.segmentFinished {
+		if route.boundary.finished() {
 			return nil, fmt.Errorf("runs: child executor member %q published after its segment finished", member.MemberID)
 		}
 		return route, nil
 	}
 
-	if !e.rootBound {
-		e.rootBound = true
+	if !e.root.memberBound {
 		e.root.member = member
 		e.root.memberBound = true
 		if member.MemberID != "" {
@@ -413,7 +410,7 @@ func (e *executorRoutes) parent(member ExecutorMember) (*executorRoute, error) {
 			member.ParentID,
 		)
 	}
-	if parent.segmentFinished {
+	if parent.boundary.finished() {
 		return nil, fmt.Errorf(
 			"runs: child executor member %q parent member %q already finished",
 			member.MemberID,
@@ -433,7 +430,7 @@ func (e *executorRoutes) installChild(member ExecutorMember, route *executorRout
 
 func (e *executorRoutes) abortUnfinished(cause error) {
 	for _, route := range e.admissionOrder {
-		if !route.segmentFinished && route.reducer != nil {
+		if !route.boundary.finished() && route.reducer != nil {
 			route.reducer.abort(cause)
 		}
 	}

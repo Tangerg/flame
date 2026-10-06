@@ -57,8 +57,7 @@ type segmentPump struct {
 	routes      *executorRoutes
 	publisher   treePublisher
 
-	rootBoundary segmentBoundary
-	childStarts  map[string]*managedChildStart
+	childStarts map[string]*managedChildStart
 	// deferredRootTerminal is the root's own segment boundary, withheld until
 	// every child run has terminalized. See resumeDeferredRootTerminal.
 	deferredRootTerminal ExecutionFact
@@ -107,7 +106,7 @@ func (s *segmentPump) processEvent(event ExecutorEvent) bool {
 		fact := commit.Fact()
 		err := s.handleAuthoritativeFact(event.Member, fact)
 		commit.Complete(err)
-		if err == nil && s.rootBoundary.finished() {
+		if err == nil && s.routes.root.boundary.finished() {
 			return false
 		}
 		// A rejected authoritative write is reported synchronously to the
@@ -350,18 +349,13 @@ func (s *segmentPump) handleTreeBarrier(event ExecutorEvent, barrier TreeInterru
 		s.fail(errors.New("runs: tree interrupt must be emitted by the root executor member"))
 		return
 	}
-	publication, err := s.publisher.publishTreeBarrier(
+	if _, err := s.publisher.publishTreeBarrier(
 		s.ownerCtx,
 		s.routes,
 		barrier,
 		s.coordinator.publications.nowUTC(),
-	)
-	if err != nil {
+	); err != nil {
 		s.fail(err)
-		return
-	}
-	if publication.published {
-		s.rootBoundary = publication.boundary
 	}
 }
 
@@ -432,17 +426,14 @@ func (s *segmentPump) projectFact(route *executorRoute, executionFact ExecutionF
 	if !publication.published {
 		return false, nil
 	}
-	route.segmentFinished = publication.finished()
+	route.boundary = publication.boundary
 	if route != s.routes.root {
 		return s.resumeDeferredRootTerminal()
-	}
-	if !s.rootBoundary.finished() {
-		s.rootBoundary = publication.boundary
 	}
 	// A committed root boundary is the last event this Segment can durably
 	// support. Leave a park alive for resume and never consume buffered events
 	// after a terminal transition.
-	return !s.rootBoundary.finished(), nil
+	return !s.routes.root.boundary.finished(), nil
 }
 
 // A non-authoritative executor may report the root boundary before its children.
@@ -536,7 +527,7 @@ func (s *segmentPump) finish() {
 		}
 		delete(s.childStarts, memberID)
 	}
-	if !s.rootBoundary.finished() {
+	if !s.routes.root.boundary.finished() {
 		s.synthesizeUnfinished()
 	}
 }
@@ -545,7 +536,7 @@ func (s *segmentPump) finish() {
 // exactly once. The product outcome is already committed (or was synthesized);
 // Release is resource ownership, not a second cancellation decision.
 func (s *segmentPump) releaseExecutorTree() {
-	if !s.rootBoundary.parked() {
+	if !s.routes.root.boundary.parked() {
 		s.tearDownExecutor()
 	}
 }
@@ -567,11 +558,8 @@ func (s *segmentPump) synthesizeUnfinished() {
 			childrenClosed = s.synthesizeRoute(ctx, route) && childrenClosed
 		}
 	}
-	if childrenClosed && !s.routes.root.segmentFinished {
-		s.rootBoundary = boundaryNone
-		if s.synthesizeRoute(ctx, s.routes.root) {
-			s.rootBoundary = boundaryFinished
-		}
+	if childrenClosed && !s.routes.root.boundary.finished() {
+		s.synthesizeRoute(ctx, s.routes.root)
 	}
 }
 
@@ -592,7 +580,6 @@ func (s *segmentPump) synthesizeRoute(ctx context.Context, route *executorRoute)
 		s.fail(err)
 		return false
 	}
-	route.segmentFinished = publication.finished()
 	if !publication.finished() || publication.parked() {
 		s.fail(fmt.Errorf(
 			"runs: synthesized terminal for run %q produced finished=%t parked=%t",
@@ -602,6 +589,7 @@ func (s *segmentPump) synthesizeRoute(ctx context.Context, route *executorRoute)
 		))
 		return false
 	}
+	route.boundary = boundaryFinished
 	return true
 }
 
@@ -644,10 +632,10 @@ func (s *segmentPump) settleMaintenanceFence() {
 		defer releaseMaintenance()
 	}
 	entry, tracked := s.coordinator.registry.Get(s.spec.RunID)
-	if tracked && !s.rootBoundary.parked() {
+	if tracked && !s.routes.root.boundary.parked() {
 		entry.owner.stop()
 	}
-	if !s.rootBoundary.finished() {
+	if !s.routes.root.boundary.finished() {
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(s.ownerCtx), runCleanupTimeout)
@@ -656,7 +644,7 @@ func (s *segmentPump) settleMaintenanceFence() {
 		SessionID:       s.spec.SessionID,
 		RunID:           s.spec.RunID,
 		WorkspaceCWD:    s.spec.WorkspaceCWD,
-		Parked:          s.rootBoundary.parked(),
+		Parked:          s.routes.root.boundary.parked(),
 		OpeningUserText: s.spec.OpeningUserText,
 	}); err != nil {
 		recordRunCleanupError(ctx, err)
@@ -688,7 +676,7 @@ func recordRunCleanupError(ctx context.Context, err error) {
 func (s *segmentPump) activeChildReservations(parentID string) int {
 	count := 0
 	for _, route := range s.routes.byMember {
-		if route.member.ParentID == parentID && !route.segmentFinished {
+		if route.member.ParentID == parentID && !route.boundary.finished() {
 			count++
 		}
 	}

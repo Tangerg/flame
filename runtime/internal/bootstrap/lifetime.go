@@ -20,8 +20,7 @@ type runtimeLifetime struct {
 
 	context      context.Context
 	closeMu      sync.Mutex
-	stopping     bool
-	closed       bool
+	phase        lifetimePhase
 	shutdownWait shutdownWaitPolicy
 	shutdown     *shutdownAttempt
 
@@ -34,6 +33,17 @@ type runtimeLifetime struct {
 	hostResources  []*teardown.Step
 	resourceGraph  *teardown.Sequence
 }
+
+// lifetimePhase orders Runtime shutdown. Stopping is entered once, by the first
+// attempt; a failed attempt leaves it there so a retry joins the remaining
+// teardown instead of broadcasting cancellation again.
+type lifetimePhase uint8
+
+const (
+	lifetimeRunning lifetimePhase = iota
+	lifetimeStopping
+	lifetimeClosed
+)
 
 func newRuntimeLifetime(ctx context.Context, resources []TerminalResource) *runtimeLifetime {
 	return &runtimeLifetime{
@@ -100,7 +110,7 @@ func beginShutdown(
 ) (attempt *shutdownAttempt, closed bool) {
 	lifetime.closeMu.Lock()
 	defer lifetime.closeMu.Unlock()
-	if lifetime.closed {
+	if lifetime.phase == lifetimeClosed {
 		return lifetime.shutdown, true
 	}
 	attempt = lifetime.shutdown
@@ -123,9 +133,9 @@ func runShutdown(
 		lifetime.runCoordinator,
 	}
 	lifetime.closeMu.Lock()
-	begin := !lifetime.stopping
+	begin := lifetime.phase == lifetimeRunning
 	if begin {
-		lifetime.stopping = true
+		lifetime.phase = lifetimeStopping
 	}
 	lifetime.closeMu.Unlock()
 
@@ -221,7 +231,7 @@ func finishShutdown(
 	if closed {
 		lifetime.toolResources = nil
 		lifetime.hostResources = nil
-		lifetime.closed = true
+		lifetime.phase = lifetimeClosed
 	}
 	close(attempt.done)
 }

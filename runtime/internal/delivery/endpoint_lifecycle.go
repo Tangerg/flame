@@ -15,12 +15,21 @@ import (
 type invocationGroup struct {
 	lifetime context.Context
 
-	mu       sync.Mutex
-	stopping bool
-	finished bool
-	active   map[*invocation]struct{}
-	done     chan struct{}
+	mu     sync.Mutex
+	phase  invocationPhase
+	active map[*invocation]struct{}
+	done   chan struct{}
 }
+
+// invocationPhase orders shutdown: admission stops first, and the group
+// finishes once the last accepted invocation returns.
+type invocationPhase uint8
+
+const (
+	invocationsAdmitting invocationPhase = iota
+	invocationsStopping
+	invocationsFinished
+)
 
 // invocation is one accepted binding call and its cancellation capability.
 // It is process-local, so its object identity is the registry key.
@@ -41,7 +50,7 @@ func newInvocationGroup(lifetime context.Context) *invocationGroup {
 func (i *invocationGroup) Attach(parent context.Context) (context.Context, func(), bool) {
 	ctx, cancel := context.WithCancel(parent)
 	i.mu.Lock()
-	if i.stopping || i.lifetime.Err() != nil {
+	if i.phase != invocationsAdmitting || i.lifetime.Err() != nil {
 		i.mu.Unlock()
 		cancel()
 		return nil, nil, false
@@ -68,7 +77,9 @@ func (i *invocationGroup) Attach(parent context.Context) (context.Context, func(
 // they actually return.
 func (i *invocationGroup) BeginShutdown() {
 	i.mu.Lock()
-	i.stopping = true
+	if i.phase == invocationsAdmitting {
+		i.phase = invocationsStopping
+	}
 	invocations := make([]*invocation, 0, len(i.active))
 	for registered := range i.active {
 		invocations = append(invocations, registered)
@@ -94,11 +105,11 @@ func (i *invocationGroup) AwaitShutdown(ctx context.Context) error {
 }
 
 func (i *invocationGroup) finishShutdownLocked() {
-	if !i.stopping || len(i.active) != 0 || i.finished {
+	if i.phase != invocationsStopping || len(i.active) != 0 {
 		return
 	}
 	close(i.done)
-	i.finished = true
+	i.phase = invocationsFinished
 }
 
 // ownStream keeps one accepted operation registered until its source returns.

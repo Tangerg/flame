@@ -63,7 +63,7 @@ func (s *segmentPump) commitExecutionTree(tree ExecutionTreeSettled) error {
 		projected.route.reducer = projected.reducer
 		for _, reduced := range projected.batch.events {
 			if reduced.Commit != nil && reduced.Commit.State == StateTerminalize {
-				projected.route.segmentFinished = true
+				projected.route.boundary = boundaryFinished
 				s.owner.recordTerminalRun(*reduced.Commit.Run)
 				s.coordinator.publications.publishRunMoved(s.spec.SessionID, projected.route.runID)
 				if reduced.Commit.ChargesGoal() {

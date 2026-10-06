@@ -333,7 +333,7 @@ func (t treePublisher) publishTreeBarrier(
 		return reductionPublication{}, nil
 	}
 	for _, projected := range projection.reductions {
-		projected.route.segmentFinished = true
+		projected.route.boundary = boundaryParked
 		t.publications.publishWaitingMoved(t.rootSpec.SessionID, projected.route.runID)
 	}
 	return reductionPublication{published: true, boundary: boundaryParked}, nil
@@ -396,7 +396,7 @@ func activeInterruptionsByMemberID(
 	interruptionsByMemberID := make(map[string][]MemberInterruption, len(interruptions))
 	for _, interruption := range interruptions {
 		route := routes.byMember[interruption.MemberID]
-		if route == nil || route.segmentFinished {
+		if route == nil || route.boundary.finished() {
 			return nil, fmt.Errorf(
 				"runs: request source member %q has no active Run",
 				interruption.MemberID,
