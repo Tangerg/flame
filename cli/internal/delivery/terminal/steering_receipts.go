@@ -15,6 +15,7 @@ import (
 type steerReceiptStatus string
 
 const (
+	steerPending     steerReceiptStatus = ""
 	steerAccepted    steerReceiptStatus = "accepted"
 	steerVerifying   steerReceiptStatus = "verifying"
 	steerApplied     steerReceiptStatus = "applied"
@@ -54,7 +55,7 @@ func (s *steerReceipt) status() steerReceiptStatus {
 	if s.finishedObserved || s.afterFinishedRead || s.readFailure != nil {
 		return steerUnconfirmed
 	}
-	return ""
+	return steerPending
 }
 
 func (s *steerReceipt) observeBlock(block conversation.Block) {
@@ -149,7 +150,7 @@ func (a *app) restoreSteerReceipts(snapshot conversation.SessionSnapshot) {
 func (a *app) refreshSteerPresentation() {
 	for _, entry := range a.steers.entries {
 		if entry.sessionID == a.session.current.ID && entry.runID == a.execution.conversation.RunID() {
-			entry.presented = ""
+			entry.presented = steerPending
 		}
 	}
 	a.presentSteerReceipts()
@@ -200,7 +201,7 @@ func (a *app) presentSteerReceipts() {
 			continue
 		}
 		status := entry.status()
-		if status == "" || entry.presented == status {
+		if status == steerPending || entry.presented == status {
 			continue
 		}
 		entry.presented = status
