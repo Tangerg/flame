@@ -506,7 +506,10 @@ func TestCancelingASelectedEmptyToolKeepsItsHeaderVisible(t *testing.T) {
 	view.content.Changed(toolID)
 	viewport := scrollBelowSelectedToolHeader(t, view, toolID)
 
-	if err := view.Apply(conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCanceled}}, nil); err != nil {
+	canceled := conversation.ToolCall{Kind: conversation.ToolShell, Command: "pending command", Status: conversation.ToolCanceled}
+	if err := view.Apply(conversation.BlockCompleted{Block: conversation.Block{
+		ID: "tool", Kind: conversation.BlockTool, Status: conversation.BlockStatusIncomplete, Tool: &canceled,
+	}}, nil); err != nil {
 		t.Fatal(err)
 	}
 	viewport.root.Draw(viewport.surface.View())
@@ -516,7 +519,7 @@ func TestCancelingASelectedEmptyToolKeepsItsHeaderVisible(t *testing.T) {
 	viewport.requireHeaderVisible(t)
 }
 
-func TestCanceledRunSettlesEveryLiveTranscriptBlock(t *testing.T) {
+func TestCanceledRunRendersRuntimeClosedLiveBlocks(t *testing.T) {
 	view := testTranscriptView(t)
 	if err := view.Apply(conversation.BlockStarted{Block: conversation.Block{ID: "answer", Kind: conversation.BlockAssistant}}, nil); err != nil {
 		t.Fatal(err)
@@ -528,6 +531,17 @@ func TestCanceledRunSettlesEveryLiveTranscriptBlock(t *testing.T) {
 	tool.SetExpanded(true)
 	if err := view.Apply(conversation.BlockDelta{BlockID: "tool", Text: "partial tool output\n"}, nil); err != nil {
 		t.Fatal(err)
+	}
+	canceled := conversation.ToolCall{
+		Kind: conversation.ToolShell, Command: "long command", Status: conversation.ToolCanceled, Output: "partial tool output\n",
+	}
+	for _, block := range []conversation.Block{
+		{ID: "answer", Kind: conversation.BlockAssistant, Status: conversation.BlockStatusIncomplete, Text: "partial answer"},
+		{ID: "tool", Kind: conversation.BlockTool, Status: conversation.BlockStatusIncomplete, Tool: &canceled},
+	} {
+		if err := view.Apply(conversation.BlockCompleted{Block: block}, nil); err != nil {
+			t.Fatal(err)
+		}
 	}
 	if err := view.Apply(conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCanceled}}, nil); err != nil {
 		t.Fatal(err)
@@ -554,7 +568,7 @@ func TestCanceledRunSettlesEveryLiveTranscriptBlock(t *testing.T) {
 	}
 }
 
-func TestChildCompletionSettlesOnlyThatRunsCollidingBlockIdentity(t *testing.T) {
+func TestChildBlockCompletionLeavesTheRootsCollidingBlockLive(t *testing.T) {
 	view := testTranscriptView(t)
 	rootID, childID, blockID := "run_root", "run_child", "answer"
 	apply := func(runID string, event conversation.Event) {
@@ -578,6 +592,10 @@ func TestChildCompletionSettlesOnlyThatRunsCollidingBlockIdentity(t *testing.T) 
 	apply(rootID, conversation.BlockDelta{BlockID: blockID, Text: "root partial"})
 	apply(childID, started(childID))
 	apply(childID, conversation.BlockDelta{BlockID: blockID, Text: "child partial"})
+	apply(childID, conversation.BlockCompleted{Block: conversation.Block{
+		ID: blockID, RunID: childID, Kind: conversation.BlockAssistant,
+		Status: conversation.BlockStatusCompleted, Text: "child partial",
+	}})
 	apply(childID, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})
 
 	if _, live := view.textStreams[transcriptBlockKey(childID, blockID)]; live {

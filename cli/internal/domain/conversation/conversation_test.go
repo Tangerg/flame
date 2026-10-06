@@ -162,6 +162,31 @@ func TestConversationRejectsApprovalForDifferentToolInvocation(t *testing.T) {
 	}
 }
 
+func TestConversationRejectsARunThatFinishesWithAnOpenItem(t *testing.T) {
+	for _, status := range []protocol.RunOutcomeType{protocol.OutcomeCompleted, protocol.OutcomeCanceled, protocol.OutcomeFailed} {
+		t.Run(string(status), func(t *testing.T) {
+			projection := New()
+			run := runningRun("seg_1")
+			apply(t, projection, RunEvent{EventID: "start", RunID: run.ID, SegmentID: run.ActiveSegmentID, Event: SegmentStarted{Run: run}})
+			tool := ToolCall{Kind: ToolShell, Name: "shell", Command: "sleep 10", Status: ToolRunning}
+			apply(t, projection, RunEvent{EventID: "tool", RunID: run.ID, SegmentID: run.ActiveSegmentID, Event: BlockStarted{Block: Block{
+				ID: "tool_1", RunID: run.ID, Status: BlockStatusRunning, Kind: BlockTool, Tool: &tool,
+			}}})
+
+			_, err := projection.ApplyRunEvent(RunEvent{
+				EventID: "finish", RunID: run.ID, SegmentID: run.ActiveSegmentID,
+				Event: RunFinished{Outcome: Outcome{Status: status}, Usage: run.Usage},
+			})
+			if !errors.Is(err, ErrInvalidTransition) {
+				t.Fatalf("finish with an open Item error = %v", err)
+			}
+			if blocks := projection.Blocks(); len(blocks) != 1 || blocks[0].Tool.Status != ToolRunning {
+				t.Fatalf("rejected finish changed the open Item: %+v", blocks)
+			}
+		})
+	}
+}
+
 func TestConversationFoldsRunProgressWithoutMakingPreviewsDurable(t *testing.T) {
 	projection := New()
 	cost := 0.1

@@ -7,7 +7,6 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/application/extensions"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
-	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/headless"
 )
 
@@ -46,11 +45,7 @@ func (t *transcriptView) apply(runID string, event conversation.Event, registry 
 	case conversation.BlockCompleted:
 		return t.complete(e.Block, registry)
 	case conversation.RunFinished:
-		if runID == "" {
-			t.settleLive(e.Outcome)
-		} else {
-			t.settleRun(runID, e.Outcome)
-		}
+		t.settleRun(runID)
 	case conversation.RunInterrupted:
 		t.sealToolGroup()
 	}
@@ -212,14 +207,6 @@ func (t *transcriptView) completeLiveTool(block conversation.Block) bool {
 	return true
 }
 
-func (t *transcriptView) settleLive(outcome conversation.Outcome) {
-	toolStatus := conversation.ToolError
-	if outcome.Status == protocol.OutcomeCanceled {
-		toolStatus = conversation.ToolCanceled
-	}
-	t.settleLivePresentation(toolStatus)
-}
-
 func (t *transcriptView) settleLivePresentation(toolStatus conversation.ToolStatus) {
 	for id, live := range t.textStreams {
 		live.block.setSource(live.text.String(), t.lookFor(live.kind))
@@ -257,41 +244,11 @@ func (t *transcriptView) rejectLivePresentation() {
 	t.settleLivePresentation(conversation.ToolError)
 }
 
-func (t *transcriptView) settleRun(runID string, outcome conversation.Outcome) {
-	for id, live := range t.textStreams {
-		if live.runID != runID {
-			continue
-		}
-		live.block.setSource(live.text.String(), t.lookFor(live.kind))
-		t.finishMarkdown(live.id, live.block)
-		live.stream.Reset()
-		delete(t.textStreams, id)
-	}
-	toolStatus := conversation.ToolError
-	if outcome.Status == protocol.OutcomeCanceled {
-		toolStatus = conversation.ToolCanceled
-	}
-	selectedCollapsed := false
-	for id, live := range t.tools {
-		if live.runID != runID {
-			continue
-		}
-		for _, tracked := range live.blocks {
-			selectedCollapsed = t.mutateTrackedTool(tracked, func(tool mutableToolBlock) { tool.Finish(toolStatus) }) || selectedCollapsed
-		}
-		if live.group != nil {
-			t.finishToolGroupIfReady(live.group)
-		} else {
-			for _, blockID := range live.ids {
-				t.content.Finish(blockID)
-			}
-		}
-		delete(t.tools, id)
-	}
+// settleRun ends a Run's presentation. Runtime closes every open Item before
+// a Run finishes and the conversation fold rejects a finish that leaves one
+// open, so only presentation-owned state remains to settle here.
+func (t *transcriptView) settleRun(runID string) {
 	t.finishPendingQuestions(runID)
-	if selectedCollapsed {
-		t.revealSelected()
-	}
 	if t.activeToolGroup != nil && t.activeToolGroup.runID == runID {
 		t.sealToolGroup()
 	}

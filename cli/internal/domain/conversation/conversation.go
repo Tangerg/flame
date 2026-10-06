@@ -287,20 +287,6 @@ func (c *Conversation) hasOpenBlocksForRun(runID string) bool {
 	return false
 }
 
-func (c *Conversation) settleOpenBlocksForRun(runID string, toolStatus ToolStatus) {
-	for index := range c.blocks {
-		block := &c.blocks[index]
-		if block.Status != BlockStatusRunning || block.RunID != runID {
-			continue
-		}
-		if block.Kind == BlockTool && block.Tool != nil {
-			block.Tool.Status = toolStatus
-		}
-		block.Status = BlockStatusIncomplete
-		delete(c.textStreams, blockIdentity(block.RunID, block.ID))
-	}
-}
-
 func blockIdentity(runID, blockID string) string {
 	return (BlockIdentity{RunID: runID, BlockID: blockID}).Key()
 }

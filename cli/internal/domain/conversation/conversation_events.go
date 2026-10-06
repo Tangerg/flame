@@ -418,8 +418,8 @@ func (c *Conversation) applyFinished(runID string, event RunFinished) error {
 	if run.Status == protocol.RunStatusWaiting && event.Outcome.Status != protocol.OutcomeCanceled {
 		return fmt.Errorf("%w: a waiting run can only finish by cancellation", ErrInvalidTransition)
 	}
-	if event.Outcome.Status == protocol.OutcomeCompleted && c.hasOpenBlocksForRun(runID) {
-		return fmt.Errorf("%w: completed run %s still has open blocks", ErrInvalidTransition, runID)
+	if c.hasOpenBlocksForRun(runID) {
+		return fmt.Errorf("%w: run %s finished with open blocks", ErrInvalidTransition, runID)
 	}
 	if err := validateUsageProgress(run.Usage, event.Usage); err != nil {
 		return fmt.Errorf("%w: run finished: %w", ErrInvalidTransition, err)
@@ -431,11 +431,6 @@ func (c *Conversation) applyFinished(runID string, event RunFinished) error {
 			}
 		}
 	}
-	toolStatus := ToolError
-	if event.Outcome.Status == protocol.OutcomeCanceled {
-		toolStatus = ToolCanceled
-	}
-	c.settleOpenBlocksForRun(runID, toolStatus)
 	run.Status = protocol.RunStatusFinished
 	run.ActiveSegmentID = ""
 	run.Outcome = event.Outcome.Clone()

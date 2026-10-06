@@ -3,6 +3,7 @@ package runtimefixture
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -311,8 +312,17 @@ func (r *Runtime) emitLocked(run *runState, event conversation.Event) error {
 	case conversation.BlockStarted:
 		if item.Block.Kind == conversation.BlockTool {
 			persistBlock(session, run.id, item.Block)
+		} else {
+			run.streaming = append(run.streaming, item.Block.Clone())
+		}
+	case conversation.BlockDelta:
+		for i := range run.streaming {
+			if run.streaming[i].ID == item.BlockID {
+				run.streaming[i].Text += item.Text
+			}
 		}
 	case conversation.BlockCompleted:
+		run.streaming = slices.DeleteFunc(run.streaming, func(open conversation.Block) bool { return open.ID == item.Block.ID })
 		persistBlock(session, run.id, item.Block)
 	case conversation.PlanChanged:
 		session.plan = conversation.ClonePlan(&item.Plan)
@@ -405,6 +415,7 @@ func (r *Runtime) finishLocked(run *runState, event conversation.RunFinished) er
 	run.status = protocol.RunStatusFinished
 	run.active = ""
 	run.interrupts = nil
+	run.streaming = nil
 	if session.planAtRun == nil {
 		session.planAtRun = make(map[string]*protocol.Plan)
 	}
@@ -416,6 +427,11 @@ func (r *Runtime) finishLocked(run *runState, event conversation.RunFinished) er
 func (r *Runtime) runningItemSettlementsLocked(run *runState, outcome conversation.Outcome) []conversation.Block {
 	session := r.sessions[run.sessionID]
 	var unsettled []conversation.Block
+	for _, open := range run.streaming {
+		block := open.Clone()
+		block.Status = conversation.BlockStatusIncomplete
+		unsettled = append(unsettled, block)
+	}
 	for _, item := range session.items {
 		if item.runID == run.id && item.block.Status == conversation.BlockStatusRunning {
 			block := item.block.Clone()

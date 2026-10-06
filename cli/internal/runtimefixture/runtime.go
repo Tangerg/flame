@@ -89,6 +89,9 @@ type runState struct {
 	cancelOnce      sync.Once
 	usage           conversation.Usage
 	outcome         conversation.Outcome
+	// streaming holds the text previews Runtime would close as incomplete
+	// Items before a terminal event; they are never durable while open.
+	streaming []conversation.Block
 }
 
 type segmentState struct {
