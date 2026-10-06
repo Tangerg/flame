@@ -52,8 +52,7 @@ type workspaceSubscription struct {
 	// exhausted closes exactly once when this connection has used every sequence
 	// identity JSON clients can represent exactly. The stream drains frames already
 	// accepted by events, then its owner stops watchers and unregisters it.
-	exhausted         chan struct{}
-	sequenceExhausted bool
+	exhausted chan struct{}
 	// topics is what THIS subscription asked for. The hub broadcasts every signal it
 	// receives; a subscription only sees the ones it can fold. A resync is narrowed
 	// to this same set before delivery: a client cannot re-read a topic it never
@@ -161,7 +160,7 @@ func (w *workspaceHub) publishTo(subscription *workspaceSubscription, event prot
 }
 
 func (*workspaceHub) sendLocked(subscription *workspaceSubscription, event protocol.RuntimeEvent) {
-	if subscription.sequenceExhausted {
+	if subscription.sequenceExhausted() {
 		return
 	}
 	if event.Type == protocol.RuntimeResync {
@@ -292,7 +291,7 @@ func (w *workspaceSubscription) prepareLocked(event protocol.RuntimeEvent) (prot
 // offerPreparedLocked hands a canonical event to the queue, advancing the
 // subscription sequence only when it fits.
 func (w *workspaceSubscription) offerPreparedLocked(event protocol.RuntimeEvent) bool {
-	if w.sequenceExhausted {
+	if w.sequenceExhausted() {
 		return false
 	}
 	select {
@@ -311,14 +310,22 @@ func (w *workspaceSubscription) offerLocked(event protocol.RuntimeEvent) bool {
 }
 
 func (w *workspaceSubscription) exhaustLocked() {
-	if w.sequenceExhausted {
+	if w.sequenceExhausted() {
 		return
 	}
-	w.sequenceExhausted = true
 	w.stalledTopics = nil
 	w.stalledWatchIDs = nil
 	w.stalledAllWatches = false
 	close(w.exhausted)
+}
+
+func (w *workspaceSubscription) sequenceExhausted() bool {
+	select {
+	case <-w.exhausted:
+		return true
+	default:
+		return false
+	}
 }
 
 func (w *workspaceSubscription) resyncEvent() protocol.RuntimeEvent {
@@ -366,7 +373,7 @@ func clearEmptyRuntimeScopes(event *protocol.RuntimeEvent) {
 // resync being stalled contributes its own scope, so a coalesced resync never
 // narrows what an earlier one had already widened.
 func (w *workspaceSubscription) stallLocked(event protocol.RuntimeEvent) {
-	if w.sequenceExhausted {
+	if w.sequenceExhausted() {
 		return
 	}
 	if w.stalledTopics == nil {
@@ -416,7 +423,7 @@ func (w *workspaceSubscription) stallFileScopeLocked(ids []string) {
 // the subscription is caught up — false means the queue is still full and the
 // caller's own signal has to fold in too.
 func (w *workspaceSubscription) flushStalledLocked() bool {
-	if w.sequenceExhausted {
+	if w.sequenceExhausted() {
 		return false
 	}
 	if len(w.stalledTopics) == 0 {

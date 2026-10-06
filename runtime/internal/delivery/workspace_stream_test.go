@@ -106,8 +106,8 @@ func TestWorkspaceHubEndsOnlyTheSubscriptionWhoseExactSequenceSpaceIsExhausted(t
 		delivered[0].Sequence != protocol.MaximumRuntimeEventSequence {
 		t.Fatalf("exhausted subscription delivered = %+v, want final exact frame", delivered)
 	}
-	if exhausting.sequence.wire() != protocol.MaximumRuntimeEventSequence || !exhausting.sequenceExhausted {
-		t.Fatalf("exhausted state = sequence %d exhausted %t", exhausting.sequence.wire(), exhausting.sequenceExhausted)
+	if exhausting.sequence.wire() != protocol.MaximumRuntimeEventSequence || !exhausting.sequenceExhausted() {
+		t.Fatalf("exhausted state = sequence %d exhausted %t", exhausting.sequence.wire(), exhausting.sequenceExhausted())
 	}
 
 	first, second := <-healthyEvents, <-healthyEvents
