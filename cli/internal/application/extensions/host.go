@@ -51,10 +51,19 @@ type Host struct {
 	loaded      map[string]*Loaded
 	states      map[string]LifecycleResult
 	order       []string
-	activated   bool
-	closed      bool
+	phase       hostPhase
 	closeErr    error
 }
+
+// hostPhase orders a Host's single activation and final close; a Host closed
+// before activation never activates.
+type hostPhase uint8
+
+const (
+	hostIdle hostPhase = iota
+	hostActive
+	hostClosed
+)
 
 func NewHost(registry *Registry) (*Host, error) {
 	if registry == nil {
@@ -75,15 +84,15 @@ func (h *Host) Activate(plugins []Plugin) ([]LifecycleResult, error) {
 	h.lifecycleMu.Lock()
 	defer h.lifecycleMu.Unlock()
 	h.stateMu.Lock()
-	if h.closed {
+	if h.phase == hostClosed {
 		h.stateMu.Unlock()
 		return nil, errHostClosed
 	}
-	if h.activated {
+	if h.phase == hostActive {
 		h.stateMu.Unlock()
 		return nil, errors.New("extensions: host is already activated")
 	}
-	h.activated = true
+	h.phase = hostActive
 
 	resolved := resolve(plugins)
 	for _, plugin := range resolved.plugins {
@@ -151,7 +160,7 @@ func (h *Host) Affected(id string) ([]string, error) {
 	}
 	h.stateMu.RLock()
 	defer h.stateMu.RUnlock()
-	if h.closed {
+	if h.phase == hostClosed {
 		return nil, errHostClosed
 	}
 	if _, exists := h.plugins[id]; !exists {
@@ -179,7 +188,7 @@ func (h *Host) Reload(id string) ([]LifecycleResult, error) {
 	h.lifecycleMu.Lock()
 	defer h.lifecycleMu.Unlock()
 	h.stateMu.Lock()
-	if h.closed {
+	if h.phase == hostClosed {
 		h.stateMu.Unlock()
 		return nil, errHostClosed
 	}
@@ -216,7 +225,7 @@ func (h *Host) Unload(id string) error {
 	h.lifecycleMu.Lock()
 	defer h.lifecycleMu.Unlock()
 	h.stateMu.Lock()
-	if h.closed {
+	if h.phase == hostClosed {
 		h.stateMu.Unlock()
 		return errHostClosed
 	}
@@ -326,7 +335,7 @@ func (h *Host) Close() error {
 	h.lifecycleMu.Lock()
 	defer h.lifecycleMu.Unlock()
 	h.stateMu.Lock()
-	if h.closed {
+	if h.phase == hostClosed {
 		err := h.closeErr
 		h.stateMu.Unlock()
 		return err
@@ -335,7 +344,7 @@ func (h *Host) Close() error {
 	for id := range h.plugins {
 		all[id] = true
 	}
-	h.closed = true
+	h.phase = hostClosed
 	h.stateMu.Unlock()
 	err := h.unloadSet(all)
 	h.stateMu.Lock()

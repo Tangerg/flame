@@ -152,7 +152,7 @@ func Run(ctx context.Context, cfg Config) (runErr error) {
 type localTerminalHost struct{ *term.Terminal }
 
 func (h localTerminalHost) Writer() program.FrameWriter { return h.Terminal.Writer() }
-func (h localTerminalHost) Input() program.EventSource  { return localTerminalInput{h.Terminal} }
+func (h localTerminalHost) Input() program.EventSource  { return localTerminalInput(h) }
 
 type localTerminalInput struct{ *term.Terminal }
 

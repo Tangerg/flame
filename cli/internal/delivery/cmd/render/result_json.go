@@ -11,16 +11,25 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
+// resultPhase orders the one result object: it has nothing to emit until a
+// run starts, and nothing more to fold once closed.
+type resultPhase uint8
+
+const (
+	resultPending resultPhase = iota
+	resultStarted
+	resultClosed
+)
+
 // ResultJSON folds a streamed run into one final JSON object. It retains only
 // assistant prose and terminal metadata; callers that need every event use [NDJSON].
 type ResultJSON struct {
-	out     io.Writer
-	err     error
-	closed  bool
-	started bool
-	scope   runScope
-	frame   resultFrame
-	prose   assistantProse
+	out   io.Writer
+	err   error
+	phase resultPhase
+	scope runScope
+	frame resultFrame
+	prose assistantProse
 }
 
 type assistantProse struct {
@@ -107,7 +116,7 @@ func (r *ResultJSON) Begin(run conversation.Run, options prompt.RunOptions) erro
 	if r.err != nil {
 		return r.err
 	}
-	if r.closed {
+	if r.phase == resultClosed {
 		r.err = errors.New("begin result after close")
 		return r.err
 	}
@@ -119,7 +128,7 @@ func (r *ResultJSON) Begin(run conversation.Run, options prompt.RunOptions) erro
 		r.err = fmt.Errorf("begin result: %w", err)
 		return r.err
 	}
-	r.started = true
+	r.phase = resultStarted
 	r.frame = resultFrame{
 		Type: "result", Status: string(protocol.RunStatusRunning), RunID: run.ID,
 		SessionID: run.SessionID, Options: encodeRunOptions(options),
@@ -132,7 +141,7 @@ func (r *ResultJSON) Render(envelope conversation.RunEvent) error {
 	if r.err != nil {
 		return r.err
 	}
-	if r.closed {
+	if r.phase == resultClosed {
 		r.err = errors.New("render result after close")
 		return r.err
 	}
@@ -157,7 +166,7 @@ func (r *ResultJSON) Reconcile(snapshot conversation.SessionSnapshot) error {
 	if r.err != nil {
 		return r.err
 	}
-	if r.closed {
+	if r.phase == resultClosed {
 		r.err = errors.New("reconcile result after close")
 		return r.err
 	}
@@ -165,7 +174,7 @@ func (r *ResultJSON) Reconcile(snapshot conversation.SessionSnapshot) error {
 		r.err = fmt.Errorf("reconcile result snapshot: %w", err)
 		return r.err
 	}
-	r.started = true
+	r.phase = resultStarted
 	r.prose.reset()
 	r.frame.Images = nil
 	target, err := resolveSnapshotRun(snapshot, r.frame.RunID)
@@ -210,8 +219,8 @@ func (r *ResultJSON) fold(envelope conversation.RunEvent) {
 		if !event.Run.Lineage.IsRoot() {
 			return
 		}
-		if !r.started {
-			r.started = true
+		if r.phase == resultPending {
+			r.phase = resultStarted
 			r.frame = resultFrame{Type: "result", Status: string(protocol.RunStatusRunning)}
 		}
 		r.frame.RunID, r.frame.SessionID = event.Run.ID, event.Run.SessionID
@@ -288,11 +297,12 @@ func (r *ResultJSON) appendImages(images []conversation.InlineImage) {
 // Close emits one object after at least a run.started event. It is idempotent;
 // failures before a run starts leave stdout empty.
 func (r *ResultJSON) Close() error {
-	if r.closed {
+	if r.phase == resultClosed {
 		return r.err
 	}
-	r.closed = true
-	if r.err != nil || !r.started {
+	started := r.phase == resultStarted
+	r.phase = resultClosed
+	if r.err != nil || !started {
 		return r.err
 	}
 	r.frame.Text = r.prose.text()
