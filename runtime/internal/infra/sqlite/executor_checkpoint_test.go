@@ -11,7 +11,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -27,24 +26,11 @@ func newExecutorCheckpointStorage(t *testing.T) (*sql.DB, *persistence.ExecutorC
 }
 
 func storedExecutorCheckpoint(rootMemberID, sessionID, payload string) runs.ExecutorCheckpoint {
-	cost, err := accounting.NewCost(0.25)
-	if err != nil {
-		panic(err)
-	}
 	return runs.ExecutorCheckpoint{
 		RootMemberID: rootMemberID,
 		SessionID:    sessionID,
 		Payload:      []byte(payload),
 		BuildID:      testsupport.BuildID,
-		Usage: accounting.Snapshot{Models: []accounting.ModelUsage{{
-			Model: "claude",
-			Tokens: accounting.Tokens{
-				InputTokens: 12, OutputTokens: 7, ReasoningTokens: 3,
-				CacheReadTokens: 4, CacheWriteTokens: 2,
-			},
-			Cost:  cost,
-			Calls: 1,
-		}}},
 	}
 }
 
@@ -56,7 +42,6 @@ func TestExecutorCheckpointStoreReplacesOneRootOwnedAggregate(t *testing.T) {
 		t.Fatalf("SaveCheckpoint(first): %v", err)
 	}
 	replacement := storedExecutorCheckpoint("member_root", first.SessionID, `{"tree":"replacement","children":["opaque"]}`)
-	replacement.Usage.Models[0].Calls = 2
 	if err := store.SaveCheckpoint(ctx, replacement); err != nil {
 		t.Fatalf("SaveCheckpoint(replacement): %v", err)
 	}
@@ -102,28 +87,6 @@ func TestExecutorCheckpointStoreRejectsBuildReplacement(t *testing.T) {
 				t.Fatalf("checkpoint after rejected replacement = %+v, want %+v", stored, first)
 			}
 		})
-	}
-}
-
-func TestExecutorCheckpointStoreRejectsCumulativeUsageRegression(t *testing.T) {
-	_, store := newExecutorCheckpointStorage(t)
-	first := storedExecutorCheckpoint("member_root", "session-1", `{"tree":"first"}`)
-	first.Usage.Models[0].Calls = 2
-	if err := store.SaveCheckpoint(t.Context(), first); err != nil {
-		t.Fatalf("SaveCheckpoint(first): %v", err)
-	}
-	replacement := first.Clone()
-	replacement.Payload = []byte(`{"tree":"stale"}`)
-	replacement.Usage.Models[0].Calls = 1
-	if err := store.SaveCheckpoint(t.Context(), replacement); !errors.Is(err, runs.ErrInvalidExecutorCheckpoint) {
-		t.Fatalf("SaveCheckpoint(regression) error = %v, want ErrInvalidExecutorCheckpoint", err)
-	}
-	stored, err := store.LoadCheckpoint(t.Context(), first.RootMemberID)
-	if err != nil {
-		t.Fatalf("LoadCheckpoint: %v", err)
-	}
-	if !reflect.DeepEqual(stored, first) {
-		t.Fatalf("checkpoint after usage regression = %+v, want %+v", stored, first)
 	}
 }
 
@@ -173,8 +136,7 @@ func TestExecutorCheckpointStoreRoundTripsApplicationEnvelope(t *testing.T) {
 	}
 	if got.RootMemberID != want.RootMemberID ||
 		got.BuildID != want.BuildID ||
-		got.SessionID != want.SessionID ||
-		!reflect.DeepEqual(got.Usage, want.Usage) {
+		got.SessionID != want.SessionID {
 		t.Fatalf("application envelope = %+v, want %+v", got, want)
 	}
 }
@@ -286,7 +248,7 @@ func TestExecutorCheckpointSchemaContainsOnlyOwnedData(t *testing.T) {
 		}
 		columns = append(columns, name)
 	}
-	want := []string{"root_member_id", "session_id", "build_id", "payload", "usage"}
+	want := []string{"root_member_id", "session_id", "build_id", "payload"}
 	if !slices.Equal(columns, want) {
 		t.Fatalf("executor checkpoint columns = %v, want %v", columns, want)
 	}

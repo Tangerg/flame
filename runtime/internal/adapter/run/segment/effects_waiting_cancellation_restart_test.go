@@ -242,8 +242,8 @@ func assertReplacementCheckpoint(
 ) {
 	t.Helper()
 	if !reflect.DeepEqual(
-		normalizedExecutorCheckpoint(checkpoint),
-		normalizedExecutorCheckpoint(fixture.replacementCheckpoint),
+		checkpoint,
+		fixture.replacementCheckpoint,
 	) {
 		t.Fatalf(
 			"restarted checkpoint differs from committed replacement:\ngot  %+v\nwant %+v",
@@ -292,8 +292,8 @@ func assertRestartedWaitingBoundary(
 		fixture.replacementCheckpoint.RootMemberID,
 	)
 	if err != nil || !reflect.DeepEqual(
-		normalizedExecutorCheckpoint(checkpoint),
-		normalizedExecutorCheckpoint(fixture.replacementCheckpoint),
+		checkpoint,
+		fixture.replacementCheckpoint,
 	) {
 		t.Fatalf("restarted executor checkpoint = (%+v, %v), want committed replacement", checkpoint, err)
 	}

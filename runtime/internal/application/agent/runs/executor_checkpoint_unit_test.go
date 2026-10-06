@@ -3,8 +3,6 @@ package runs
 import (
 	"errors"
 	"testing"
-
-	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 )
 
 func TestExecutorCheckpointValidatesOnlyApplicationEnvelope(t *testing.T) {
@@ -13,7 +11,6 @@ func TestExecutorCheckpointValidatesOnlyApplicationEnvelope(t *testing.T) {
 		SessionID:    "session-1",
 		Payload:      []byte(`{"executorOwned":"opaque"}`),
 		BuildID:      testExecutorBuildID,
-		Usage:        accounting.Snapshot{},
 	}
 	if err := valid.Validate(); err != nil {
 		t.Fatalf("Validate: %v", err)
@@ -47,12 +44,10 @@ func TestExecutorCheckpointCloneOwnsMutableData(t *testing.T) {
 		SessionID:    "session-1",
 		Payload:      []byte("payload"),
 		BuildID:      testExecutorBuildID,
-		Usage:        accounting.Snapshot{Models: []accounting.ModelUsage{{Model: "model"}}},
 	}
 	clone := original.Clone()
 	clone.Payload[0] = 'P'
-	clone.Usage.Models[0].Model = "changed"
-	if string(original.Payload) != "payload" || original.Usage.Models[0].Model != "model" {
+	if string(original.Payload) != "payload" {
 		t.Fatalf("Clone shares mutable storage with original: %+v", original)
 	}
 }

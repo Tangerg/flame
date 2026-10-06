@@ -609,6 +609,31 @@ type promptingInteractionAuthorizer struct {
 	resolved int
 }
 
+// rootRunMetricsForCheckpoint stands in for the parked root Run, which owns
+// the member's usage. Only the per-model call counts must agree with the
+// checkpoint; the token values are the Run's own.
+func rootRunMetricsForCheckpoint(checkpoint runs.ExecutorCheckpoint) run.Metrics {
+	state, err := decodeExecutorCheckpoint(checkpoint)
+	if err != nil {
+		panic(err)
+	}
+	calls := state.callsByProcess[state.tree.RootID()]
+	if len(calls) == 0 {
+		return run.Metrics{}
+	}
+	usage := &accounting.Usage{ByModel: make(map[string]accounting.Totals, len(calls))}
+	steps := 0
+	for model, count := range calls {
+		usage.ByModel[model] = accounting.Totals{}
+		steps += count
+	}
+	metrics, err := run.NewMetrics(usage, steps, 0)
+	if err != nil {
+		panic(err)
+	}
+	return metrics
+}
+
 func rootInteractionWaitingContinuation(
 	checkpoint runs.ExecutorCheckpoint,
 	workspace string,
@@ -617,32 +642,7 @@ func rootInteractionWaitingContinuation(
 ) runs.WaitingContinuation {
 	const rootRunID = "run_root"
 
-	metrics := run.Metrics{}
-	if len(checkpoint.Usage.Models) > 0 {
-		total, err := checkpoint.Usage.Total()
-		if err != nil {
-			panic(err)
-		}
-		usage := &accounting.Usage{
-			Total: accounting.Totals{
-				InputTokens: total.InputTokens, OutputTokens: total.OutputTokens,
-				ReasoningTokens: total.ReasoningTokens, CacheReadTokens: total.CacheReadTokens,
-				CacheWriteTokens: total.CacheWriteTokens, CostUSD: total.Cost.OptionalUSD(),
-			},
-			ByModel: make(map[string]accounting.Totals, len(checkpoint.Usage.Models)),
-		}
-		for _, model := range checkpoint.Usage.Models {
-			usage.ByModel[model.Model] = accounting.Totals{
-				InputTokens: model.InputTokens, OutputTokens: model.OutputTokens,
-				ReasoningTokens: model.ReasoningTokens, CacheReadTokens: model.CacheReadTokens,
-				CacheWriteTokens: model.CacheWriteTokens, CostUSD: model.Cost.OptionalUSD(),
-			}
-		}
-		metrics, err = run.NewMetrics(usage, total.Calls, 0)
-		if err != nil {
-			panic(err)
-		}
-	}
+	metrics := rootRunMetricsForCheckpoint(checkpoint)
 	return runs.WaitingContinuation{
 		SessionID: checkpoint.SessionID, ExecutorID: executorID, RootRunID: rootRunID,
 		Members: []runs.WaitingMember{{

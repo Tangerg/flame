@@ -7,7 +7,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
@@ -46,7 +45,6 @@ type ExecutorCheckpoint struct {
 	SessionID     string
 	Payload       []byte
 	BuildID       string
-	Usage         accounting.Snapshot
 }
 
 // Clone returns an ownership-independent checkpoint value.
@@ -54,7 +52,6 @@ func (e ExecutorCheckpoint) Clone() ExecutorCheckpoint {
 	e.ToolResultIDs = slices.Clone(e.ToolResultIDs)
 	e.Installations = slices.Clone(e.Installations)
 	e.Payload = append([]byte(nil), e.Payload...)
-	e.Usage.Models = append([]accounting.ModelUsage(nil), e.Usage.Models...)
 	return e
 }
 
@@ -78,9 +75,6 @@ func (e ExecutorCheckpoint) Validate() error {
 	}
 	if err := resourceid.ValidateSession(e.SessionID); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidExecutorCheckpoint, err)
-	}
-	if err := e.Usage.Validate(); err != nil {
-		return fmt.Errorf("%w: usage: %w", ErrInvalidExecutorCheckpoint, err)
 	}
 	return nil
 }

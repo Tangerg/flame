@@ -562,7 +562,6 @@ func (i *interactionState) continueExecution() {
 func executorCheckpointsEqual(left, right runs.ExecutorCheckpoint) bool {
 	return slices.Equal(left.ToolResultIDs, right.ToolResultIDs) && left.RootMemberID == right.RootMemberID && left.BuildID == right.BuildID &&
 		left.SessionID == right.SessionID &&
-		slices.Equal(left.Usage.Models, right.Usage.Models) &&
 		bytes.Equal(left.Payload, right.Payload)
 }
 

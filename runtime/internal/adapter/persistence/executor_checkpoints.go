@@ -59,7 +59,6 @@ func (e *ExecutorCheckpointStore) SaveCheckpoint(ctx context.Context, checkpoint
 		Payload:       append([]byte(nil), checkpoint.Payload...),
 		BuildID:       checkpoint.BuildID,
 		SessionID:     checkpoint.SessionID,
-		Usage:         checkpoint.Usage,
 	})
 	return translateCheckpointStorageError(err)
 }
@@ -76,7 +75,6 @@ func (e *ExecutorCheckpointStore) LoadCheckpoint(ctx context.Context, rootMember
 		Payload:       append([]byte(nil), record.Payload...),
 		BuildID:       record.BuildID,
 		SessionID:     record.SessionID,
-		Usage:         record.Usage,
 	}
 	if err := checkpoint.Validate(); err != nil {
 		return runs.ExecutorCheckpoint{}, fmt.Errorf("persistence: load executor checkpoint: %w", err)

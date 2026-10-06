@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"reflect"
 	"strings"
@@ -49,20 +50,13 @@ func TestAccountModelCallRejectsOutOfSequenceWithoutMutatingUsage(t *testing.T) 
 	if err := ledger.prepareModelContext(invocation, 100); err != nil {
 		t.Fatal(err)
 	}
-	before, err := ledger.snapshot()
-	if err != nil {
-		t.Fatal(err)
-	}
+	before := maps.Clone(ledger.usageByProcess[processID])
 
-	_, err = ledger.accountModelCall(invocation, "duplicate", interactionUsageTextResponse("duplicate", 3, 1))
+	_, err := ledger.accountModelCall(invocation, "duplicate", interactionUsageTextResponse("duplicate", 3, 1))
 	if err == nil || !strings.Contains(err.Error(), "differs from accounted calls") {
 		t.Fatalf("account duplicate call error = %v", err)
 	}
-	after, snapshotErr := ledger.snapshot()
-	if snapshotErr != nil {
-		t.Fatal(snapshotErr)
-	}
-	if !reflect.DeepEqual(after, before) {
+	if after := ledger.usageByProcess[processID]; !reflect.DeepEqual(after, before) {
 		t.Fatalf("rejected model call mutated usage: before=%+v after=%+v", before, after)
 	}
 	ledger.mu.Lock()

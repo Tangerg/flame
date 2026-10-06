@@ -17,13 +17,12 @@ import (
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
-// interactionAccounting owns per-Process model usage, usage restored from
-// retired Processes, and the root's Tool-call count. These facts share the
+// interactionAccounting owns per-Process model usage and the root's Tool-call
+// count. These facts share the
 // accounting snapshot/checkpoint invariant but not the Process-tree lock.
 type interactionAccounting struct {
 	mu                       sync.Mutex
 	usageByProcess           map[agent.ProcessID]map[string]accounting.ModelUsage
-	carriedUsage             map[string]accounting.ModelUsage
 	contextByProcess         map[agent.ProcessID]ModelContextTokenCalibration
 	preparedContextByProcess map[agent.ProcessID]preparedModelContext
 	selection                modelref.Selection
@@ -53,7 +52,6 @@ func newInteractionAccounting(
 ) interactionAccounting {
 	return interactionAccounting{
 		usageByProcess:           make(map[agent.ProcessID]map[string]accounting.ModelUsage),
-		carriedUsage:             make(map[string]accounting.ModelUsage),
 		contextByProcess:         make(map[agent.ProcessID]ModelContextTokenCalibration),
 		preparedContextByProcess: make(map[agent.ProcessID]preparedModelContext),
 		selection:                selection,
@@ -124,21 +122,6 @@ func (i *interactionAccounting) toolCallCount() int {
 	return i.toolCalls
 }
 
-func (i *interactionAccounting) snapshot() (accounting.Snapshot, error) {
-	i.mu.Lock()
-	defer i.mu.Unlock()
-	byModel := make(map[string]accounting.ModelUsage)
-	if err := mergeInteractionUsage(byModel, i.carriedUsage); err != nil {
-		return accounting.Snapshot{}, err
-	}
-	for _, processUsage := range i.usageByProcess {
-		if err := mergeInteractionUsage(byModel, processUsage); err != nil {
-			return accounting.Snapshot{}, err
-		}
-	}
-	return interactionUsageSnapshot(byModel), nil
-}
-
 func interactionUsageSnapshot(byModel map[string]accounting.ModelUsage) accounting.Snapshot {
 	models := make([]accounting.ModelUsage, 0, len(byModel))
 	for _, usage := range byModel {
@@ -148,25 +131,6 @@ func interactionUsageSnapshot(byModel map[string]accounting.ModelUsage) accounti
 		return strings.Compare(left.Model, right.Model)
 	})
 	return accounting.Snapshot{Models: models}
-}
-
-func mergeInteractionUsage(
-	target map[string]accounting.ModelUsage,
-	source map[string]accounting.ModelUsage,
-) error {
-	for model, usage := range source {
-		current, found := target[model]
-		if !found {
-			target[model] = usage
-			continue
-		}
-		combined, err := current.Add(usage)
-		if err != nil {
-			return fmt.Errorf("execution: aggregate model %q usage: %w", model, err)
-		}
-		target[model] = combined
-	}
-	return nil
 }
 
 func advanceProcessUsage(
@@ -208,12 +172,10 @@ func advanceProcessUsage(
 
 func (i *interactionAccounting) restore(
 	usageByProcess map[agent.ProcessID]map[string]accounting.ModelUsage,
-	carriedUsage map[string]accounting.ModelUsage,
 	contextByProcess map[agent.ProcessID]ModelContextTokenCalibration,
 ) {
 	i.mu.Lock()
 	i.usageByProcess = usageByProcess
-	i.carriedUsage = carriedUsage
 	i.contextByProcess = contextByProcess
 	i.preparedContextByProcess = make(map[agent.ProcessID]preparedModelContext)
 	i.mu.Unlock()
@@ -221,14 +183,13 @@ func (i *interactionAccounting) restore(
 
 func (i *interactionAccounting) checkpointLocked() (
 	map[agent.ProcessID]map[string]accounting.ModelUsage,
-	map[string]accounting.ModelUsage,
 	map[agent.ProcessID]ModelContextTokenCalibration,
 ) {
 	usageByProcess := make(map[agent.ProcessID]map[string]accounting.ModelUsage, len(i.usageByProcess))
 	for processID, byModel := range i.usageByProcess {
 		usageByProcess[processID] = maps.Clone(byModel)
 	}
-	return usageByProcess, maps.Clone(i.carriedUsage), maps.Clone(i.contextByProcess)
+	return usageByProcess, maps.Clone(i.contextByProcess)
 }
 
 func (i *interactionSession) interactionCheckpointPayload(
@@ -239,7 +200,7 @@ func (i *interactionSession) interactionCheckpointPayload(
 	// without making every model call contend with Process lifecycle transitions.
 	i.accounting.mu.Lock()
 	i.state.mu.Lock()
-	usageByProcess, carried, contexts := i.accounting.checkpointLocked()
+	usageByProcess, contexts := i.accounting.checkpointLocked()
 	pendingSteers := make(map[agent.SignalID]pendingInteractionSteer, len(i.state.pendingSteers))
 	for signalID, pending := range i.state.pendingSteers {
 		pendingSteers[signalID] = pendingInteractionSteer{
@@ -272,7 +233,6 @@ func (i *interactionSession) interactionCheckpointPayload(
 	return encodeInteractionCheckpointPayload(
 		tree,
 		usageByProcess,
-		carried,
 		contexts,
 		instructions,
 		pendingSteers,

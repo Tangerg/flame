@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"maps"
-	"math"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -40,7 +38,7 @@ func (i *interactionSession) validateWaitingTree(ctx context.Context, continuati
 	if err != nil {
 		return fmt.Errorf("%w: waiting members: %w", runs.ErrExecutorStateLost, err)
 	}
-	if _, _, err := restoreInteractionAccounting(continuation.Checkpoint.Usage, checkpoint, members); err != nil {
+	if _, err := restoreInteractionAccounting(checkpoint, members); err != nil {
 		return fmt.Errorf("%w: waiting accounting: %w", runs.ErrExecutorStateLost, err)
 	}
 	if _, _, err := i.restoreDelegateCalls(snapshots, members); err != nil {
@@ -74,9 +72,7 @@ func (i *interactionSession) initializeRestoredContinuation(
 	if err != nil {
 		return err
 	}
-	usageByProcess, carriedUsage, err := restoreInteractionAccounting(
-		continuation.Checkpoint.Usage, checkpoint, members,
-	)
+	usageByProcess, err := restoreInteractionAccounting(checkpoint, members)
 	if err != nil {
 		return fmt.Errorf("%w: restore Interaction accounting: %w", runs.ErrExecutorStateLost, err)
 	}
@@ -84,7 +80,7 @@ func (i *interactionSession) initializeRestoredContinuation(
 	if err != nil {
 		return fmt.Errorf("%w: restore Delegate bindings: %w", runs.ErrExecutorStateLost, err)
 	}
-	i.accounting.restore(usageByProcess, carriedUsage, checkpoint.contextByProcess)
+	i.accounting.restore(usageByProcess, checkpoint.contextByProcess)
 	i.state.mu.Lock()
 	defer i.state.mu.Unlock()
 	if i.state.begun || i.state.finished || i.state.process != root {
@@ -280,104 +276,22 @@ func restoreManagedDelegateCall(
 	}, nil
 }
 
+// restoreInteractionAccounting rebuilds per-Process usage for the surviving
+// members only: each member's Run owns its usage, and the checkpoint adds the
+// per-model call counts the Run does not record.
 func restoreInteractionAccounting(
-	total accounting.Snapshot,
 	checkpoint interactionCheckpointState,
 	members map[agent.ProcessID]runs.WaitingMember,
-) (map[agent.ProcessID]map[string]accounting.ModelUsage, map[string]accounting.ModelUsage, error) {
-	if err := total.Validate(); err != nil {
-		return nil, nil, err
-	}
-	usageByProcess, activeAggregate, err := restoreActiveInteractionAccounting(checkpoint, members)
-	if err != nil {
-		return nil, nil, err
-	}
-	carried, err := subtractInteractionUsage(total, activeAggregate)
-	if err != nil {
-		return nil, nil, err
-	}
-	expectedCarriedCalls, err := expectedCarriedInteractionCalls(checkpoint, members)
-	if err != nil {
-		return nil, nil, err
-	}
-	if err := validateCarriedInteractionCalls(carried, expectedCarriedCalls); err != nil {
-		return nil, nil, err
-	}
-	return usageByProcess, carried, nil
-}
-
-func restoreActiveInteractionAccounting(
-	checkpoint interactionCheckpointState,
-	members map[agent.ProcessID]runs.WaitingMember,
-) (map[agent.ProcessID]map[string]accounting.ModelUsage, map[string]accounting.ModelUsage, error) {
+) (map[agent.ProcessID]map[string]accounting.ModelUsage, error) {
 	usageByProcess := make(map[agent.ProcessID]map[string]accounting.ModelUsage, len(members))
-	activeAggregate := make(map[string]accounting.ModelUsage)
 	for processID, member := range members {
 		usage, err := accountingFromRunMetrics(member.Metrics, checkpoint.callsByProcess[processID])
 		if err != nil {
-			return nil, nil, fmt.Errorf("member %s: %w", processID, err)
+			return nil, fmt.Errorf("member %s: %w", processID, err)
 		}
 		usageByProcess[processID] = usage
-		if err := mergeInteractionUsage(activeAggregate, usage); err != nil {
-			return nil, nil, err
-		}
 	}
-	return usageByProcess, activeAggregate, nil
-}
-
-func expectedCarriedInteractionCalls(
-	checkpoint interactionCheckpointState,
-	members map[agent.ProcessID]runs.WaitingMember,
-) (map[string]int, error) {
-	expected, err := addInteractionCallCounts(nil, checkpoint.carriedCallCount)
-	if err != nil {
-		return nil, fmt.Errorf("carried call counts: %w", err)
-	}
-	for processID, byModel := range checkpoint.callsByProcess {
-		if _, active := members[processID]; active {
-			continue
-		}
-		expected, err = addInteractionCallCounts(expected, byModel)
-		if err != nil {
-			return nil, fmt.Errorf("retired member %s call counts: %w", processID, err)
-		}
-	}
-	return expected, nil
-}
-
-func addInteractionCallCounts(current, additions map[string]int) (map[string]int, error) {
-	next := maps.Clone(current)
-	if next == nil {
-		next = make(map[string]int)
-	}
-	for model, calls := range additions {
-		if calls <= 0 {
-			return nil, fmt.Errorf("model %q call count is not positive", model)
-		}
-		if existing := next[model]; existing > math.MaxInt-calls {
-			return nil, fmt.Errorf("model %q call count overflows", model)
-		}
-		next[model] += calls
-	}
-	return next, nil
-}
-
-func validateCarriedInteractionCalls(
-	carried map[string]accounting.ModelUsage,
-	expected map[string]int,
-) error {
-	for model, usage := range carried {
-		if expected[model] != usage.Calls {
-			return fmt.Errorf("carried model %q call count differs from checkpoint", model)
-		}
-		delete(expected, model)
-	}
-	for model, calls := range expected {
-		if calls != 0 {
-			return fmt.Errorf("carried model %q has calls without aggregate usage", model)
-		}
-	}
-	return nil
+	return usageByProcess, nil
 }
 
 func accountingFromRunMetrics(
@@ -461,30 +375,4 @@ func sameTranscriptUsage(total accounting.ModelUsage, value accounting.Totals) b
 	return total.InputTokens == value.InputTokens && total.OutputTokens == value.OutputTokens &&
 		total.ReasoningTokens == value.ReasoningTokens && total.CacheReadTokens == value.CacheReadTokens &&
 		total.CacheWriteTokens == value.CacheWriteTokens && total.Cost.Equal(cost)
-}
-
-func subtractInteractionUsage(
-	total accounting.Snapshot,
-	active map[string]accounting.ModelUsage,
-) (map[string]accounting.ModelUsage, error) {
-	remaining := make(map[string]accounting.ModelUsage, len(total.Models))
-	for _, usage := range total.Models {
-		remaining[usage.Model] = usage
-	}
-	for model, used := range active {
-		value, found := remaining[model]
-		if !found {
-			return nil, fmt.Errorf("active model %q usage exceeds tree checkpoint", model)
-		}
-		remainder, present, err := value.Subtract(used)
-		if err != nil {
-			return nil, fmt.Errorf("active model %q usage exceeds tree checkpoint: %w", model, err)
-		}
-		if !present {
-			delete(remaining, model)
-			continue
-		}
-		remaining[model] = remainder
-	}
-	return remaining, nil
 }

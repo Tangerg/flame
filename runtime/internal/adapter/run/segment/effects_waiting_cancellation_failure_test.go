@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"reflect"
-	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -439,8 +438,8 @@ func assertWaitingCancellationUnchanged(
 		t.Fatalf("load executor checkpoint after rollback: %v", err)
 	}
 	if !reflect.DeepEqual(
-		normalizedExecutorCheckpoint(checkpoint),
-		normalizedExecutorCheckpoint(fixture.originalCheckpoint),
+		checkpoint,
+		fixture.originalCheckpoint,
 	) {
 		t.Fatalf(
 			"executor checkpoint changed after rollback:\ngot  %+v\nwant %+v",
@@ -464,14 +463,4 @@ func assertWaitingCancellationUnchanged(
 	if err != nil || len(messages) != 0 {
 		t.Fatalf("conversation after rollback = %+v err=%v, want empty", messages, err)
 	}
-}
-
-func normalizedExecutorCheckpoint(
-	checkpoint runs.ExecutorCheckpoint,
-) runs.ExecutorCheckpoint {
-	checkpoint.Usage.Models = slices.Clone(checkpoint.Usage.Models)
-	if len(checkpoint.Usage.Models) == 0 {
-		checkpoint.Usage.Models = nil
-	}
-	return checkpoint
 }

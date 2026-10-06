@@ -5,9 +5,10 @@ package accounting
 import (
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/optional"
 	"math"
 	"slices"
+
+	"github.com/Tangerg/flame/runtime/internal/optional"
 
 	"github.com/Tangerg/scope/core/chat"
 
@@ -226,39 +227,6 @@ func (t Tokens) Add(other Tokens) (Tokens, error) {
 	return next, nil
 }
 
-// Subtract removes one independently valid counter from a cumulative total.
-// The remainder must still satisfy the token subset relationships.
-func (t Tokens) Subtract(other Tokens) (Tokens, error) {
-	if err := t.Validate(); err != nil {
-		return Tokens{}, fmt.Errorf("total token usage: %w", err)
-	}
-	if err := other.Validate(); err != nil {
-		return Tokens{}, fmt.Errorf("subtracted token usage: %w", err)
-	}
-	next := Tokens{}
-	fields := []struct {
-		name        string
-		total, used int64
-		target      *int64
-	}{
-		{name: "input", total: t.InputTokens, used: other.InputTokens, target: &next.InputTokens},
-		{name: "output", total: t.OutputTokens, used: other.OutputTokens, target: &next.OutputTokens},
-		{name: "reasoning", total: t.ReasoningTokens, used: other.ReasoningTokens, target: &next.ReasoningTokens},
-		{name: "cache-read", total: t.CacheReadTokens, used: other.CacheReadTokens, target: &next.CacheReadTokens},
-		{name: "cache-write", total: t.CacheWriteTokens, used: other.CacheWriteTokens, target: &next.CacheWriteTokens},
-	}
-	for _, field := range fields {
-		if field.used > field.total {
-			return Tokens{}, fmt.Errorf("accounting: %s token subtraction exceeds total", field.name)
-		}
-		*field.target = field.total - field.used
-	}
-	if err := next.Validate(); err != nil {
-		return Tokens{}, fmt.Errorf("accounting: token remainder: %w", err)
-	}
-	return next, nil
-}
-
 // Cost is one explicit pricing fact. Its zero value means pricing was
 // unavailable; a priced zero is constructed explicitly and remains distinct.
 // This prevents an unknown catalog entry from silently becoming a free model.
@@ -313,31 +281,6 @@ func (c Cost) Add(other Cost) (Cost, error) {
 		return Cost{}, errors.New("accounting: cost aggregate overflows")
 	}
 	return Cost{usd: c.usd + other.usd, available: true}, nil
-}
-
-// Subtract removes an available component from an available aggregate. An
-// unavailable total cannot prove any remainder and therefore stays unavailable.
-func (c Cost) Subtract(other Cost) (Cost, error) {
-	if err := c.Validate(); err != nil {
-		return Cost{}, err
-	}
-	if err := other.Validate(); err != nil {
-		return Cost{}, err
-	}
-	if !c.available {
-		return Cost{}, nil
-	}
-	if !other.available {
-		return Cost{}, errors.New("accounting: unavailable cost cannot be subtracted from a priced total")
-	}
-	if c.usd+1e-9 < other.usd {
-		return Cost{}, errors.New("accounting: cost subtraction exceeds total")
-	}
-	remaining := c.usd - other.usd
-	if math.Abs(remaining) < 1e-9 {
-		remaining = 0
-	}
-	return Cost{usd: remaining, available: true}, nil
 }
 
 // Validate reports corrupt private state. The unavailable zero value is valid.
@@ -411,63 +354,8 @@ func (m ModelUsage) Add(other ModelUsage) (ModelUsage, error) {
 	return ModelUsage{Model: m.Model, Tokens: tokens, Cost: cost, Calls: m.Calls + other.Calls}, nil
 }
 
-// Subtract removes one model slice from a cumulative slice of the same model.
-// The boolean reports whether a non-empty, valid ModelUsage remains; an exact
-// subtraction returns the zero value and false.
-func (m ModelUsage) Subtract(other ModelUsage) (ModelUsage, bool, error) {
-	if err := validateModelUsageSubtraction(m, other); err != nil {
-		return ModelUsage{}, false, err
-	}
-	tokens, err := m.Tokens.Subtract(other.Tokens)
-	if err != nil {
-		return ModelUsage{}, false, err
-	}
-	cost, err := m.Cost.Subtract(other.Cost)
-	if err != nil {
-		return ModelUsage{}, false, err
-	}
-	if other.Calls > m.Calls {
-		return ModelUsage{}, false, errors.New("accounting: model call subtraction exceeds total")
-	}
-	return newModelUsageRemainder(m.Model, tokens, cost, m.Calls-other.Calls)
-}
-
-func validateModelUsageSubtraction(total, used ModelUsage) error {
-	if err := total.Validate(); err != nil {
-		return fmt.Errorf("total model usage: %w", err)
-	}
-	if err := used.Validate(); err != nil {
-		return fmt.Errorf("subtracted model usage: %w", err)
-	}
-	if total.Model != used.Model {
-		return fmt.Errorf("accounting: cannot subtract models %q and %q", total.Model, used.Model)
-	}
-	return nil
-}
-
-func newModelUsageRemainder(
-	model string,
-	tokens Tokens,
-	cost Cost,
-	calls int,
-) (ModelUsage, bool, error) {
-	if calls == 0 {
-		usd, priced := cost.USD()
-		if tokens != (Tokens{}) || priced && usd != 0 {
-			return ModelUsage{}, false, errors.New("accounting: model usage remains without calls")
-		}
-		return ModelUsage{}, false, nil
-	}
-	remainder := ModelUsage{Model: model, Tokens: tokens, Cost: cost, Calls: calls}
-	if err := remainder.Validate(); err != nil {
-		return ModelUsage{}, false, fmt.Errorf("accounting: model usage remainder: %w", err)
-	}
-	return remainder, true, nil
-}
-
-// Snapshot is the durable usage projection for one complete execution tree.
-// Models are unique and sorted by model ID so concurrent
-// execution cannot make checkpoint bytes or output ordering nondeterministic.
+// Snapshot is a per-model usage set. Models are unique and sorted by model ID
+// so concurrent execution cannot make output ordering nondeterministic.
 type Snapshot struct {
 	Models []ModelUsage
 }
@@ -525,40 +413,6 @@ func (s Snapshot) Validate() error {
 		previous = model.Model
 		if err := model.Validate(); err != nil {
 			return fmt.Errorf("accounting snapshot: models[%d]: %w", index, err)
-		}
-	}
-	return nil
-}
-
-// ValidateAdvanceFrom proves that s is a cumulative continuation of previous.
-// A checkpoint may add models or increase counters, but it cannot erase a model
-// or rewind usage already committed at an earlier barrier.
-func (s Snapshot) ValidateAdvanceFrom(previous Snapshot) error {
-	if err := previous.Validate(); err != nil {
-		return fmt.Errorf("previous usage: %w", err)
-	}
-	if err := s.Validate(); err != nil {
-		return fmt.Errorf("next usage: %w", err)
-	}
-	nextByModel := make(map[string]ModelUsage, len(s.Models))
-	for _, model := range s.Models {
-		nextByModel[model.Model] = model
-	}
-	for _, before := range previous.Models {
-		after, found := nextByModel[before.Model]
-		if !found {
-			return fmt.Errorf("accounting snapshot: model %q disappeared", before.Model)
-		}
-		if after.InputTokens < before.InputTokens ||
-			after.OutputTokens < before.OutputTokens ||
-			after.ReasoningTokens < before.ReasoningTokens ||
-			after.CacheReadTokens < before.CacheReadTokens ||
-			after.CacheWriteTokens < before.CacheWriteTokens ||
-			after.Calls < before.Calls {
-			return fmt.Errorf("accounting snapshot: model %q usage regressed", before.Model)
-		}
-		if err := after.Cost.ValidateAdvanceFrom(before.Cost); err != nil {
-			return fmt.Errorf("accounting snapshot: model %q: %w", before.Model, err)
 		}
 	}
 	return nil

@@ -31,7 +31,6 @@ type interactionCheckpointPayloadWire struct {
 	Tree                jsontext.Value                      `json:"tree"`
 	Instructions        []corechat.Message                  `json:"instructions,omitempty"`
 	Members             []interactionMemberCallsWire        `json:"members,omitempty"`
-	Carried             []interactionModelCallsWire         `json:"carried,omitempty"`
 	Contexts            []interactionModelContextWire       `json:"contexts,omitempty"`
 	PendingSteers       []interactionPendingSteerWire       `json:"pending_steers,omitempty"`
 	PendingContinuation *interactionPendingContinuationWire `json:"pending_continuation,omitzero"`
@@ -77,7 +76,6 @@ type interactionCheckpointState struct {
 	toolMetadata        map[string]toolResultMetadata
 	tree                agent.TreeSnapshot
 	callsByProcess      map[agent.ProcessID]map[string]int
-	carriedCallCount    map[string]int
 	contextByProcess    map[agent.ProcessID]ModelContextTokenCalibration
 	instructions        []corechat.Message
 	pendingSteers       map[agent.SignalID]pendingInteractionSteer
@@ -110,15 +108,11 @@ func (i *interactionSession) executorCheckpoint(
 	if err != nil {
 		return runs.ExecutorCheckpoint{}, err
 	}
-	usage, err := i.accounting.snapshot()
-	if err != nil {
-		return runs.ExecutorCheckpoint{}, err
-	}
 	checkpoint := runs.ExecutorCheckpoint{
 		ToolResultIDs: checkpointToolResultIDs(decoded),
 		Installations: i.installationDependencies(),
 		RootMemberID:  tree.RootID().String(), SessionID: i.scope.SessionID,
-		Payload: payload, BuildID: i.buildID.String(), Usage: usage,
+		Payload: payload, BuildID: i.buildID.String(),
 	}
 	if err := checkpoint.Validate(); err != nil {
 		return runs.ExecutorCheckpoint{}, err
@@ -129,7 +123,6 @@ func (i *interactionSession) executorCheckpoint(
 func encodeInteractionCheckpointPayload(
 	tree agent.TreeSnapshot,
 	usageByProcess map[agent.ProcessID]map[string]accounting.ModelUsage,
-	carriedUsage map[string]accounting.ModelUsage,
 	contextByProcess map[agent.ProcessID]ModelContextTokenCalibration,
 	instructions []corechat.Message,
 	pendingSteers map[agent.SignalID]pendingInteractionSteer,
@@ -166,10 +159,6 @@ func encodeInteractionCheckpointPayload(
 		return strings.Compare(left.MemberID, right.MemberID)
 	})
 	var err error
-	wire.Carried, err = interactionCallCounts(carriedUsage)
-	if err != nil {
-		return nil, fmt.Errorf("execution: encode carried Interaction accounting: %w", err)
-	}
 	wire.Contexts, err = encodeInteractionModelContexts(contextByProcess, accounted)
 	if err != nil {
 		return nil, fmt.Errorf("execution: encode Interaction model contexts: %w", err)
@@ -361,10 +350,6 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 	if err != nil {
 		return interactionCheckpointState{}, fmt.Errorf("execution: Interaction checkpoint members: %w", err)
 	}
-	carriedCallCount, err := decodeInteractionCallCounts(wire.Carried)
-	if err != nil {
-		return interactionCheckpointState{}, fmt.Errorf("execution: Interaction checkpoint carried calls: %w", err)
-	}
 	contextByProcess, err := decodeInteractionModelContexts(wire.Contexts, processes, callsByProcess)
 	if err != nil {
 		return interactionCheckpointState{}, fmt.Errorf("execution: Interaction checkpoint model contexts: %w", err)
@@ -384,7 +369,7 @@ func decodeInteractionCheckpointPayload(payload []byte) (interactionCheckpointSt
 		return interactionCheckpointState{}, err
 	}
 	return interactionCheckpointState{
-		tree: tree, callsByProcess: callsByProcess, carriedCallCount: carriedCallCount,
+		tree: tree, callsByProcess: callsByProcess,
 		contextByProcess: contextByProcess, instructions: instructions, options: wire.Options.Clone(), pendingSteers: pendingSteers,
 		pendingContinuation: pendingContinuation, toolMetadata: metadata,
 	}, nil

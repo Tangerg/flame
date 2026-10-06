@@ -1084,7 +1084,6 @@ func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
 	checkpoint := executorCheckpoint(t, rootMemberID, "opaque waiting checkpoint", runs.ExecutorCheckpoint{
 		BuildID:   checkpointBuildID,
 		SessionID: "ses_1",
-		Usage:     accounting.Snapshot{},
 	})
 	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}}
 	commitCtx, cancelCommit := context.WithCancel(ctx)
@@ -1190,7 +1189,6 @@ func TestCommitTreeBarrierRollsBackCheckpointWhenRunSuspendFails(t *testing.T) {
 	checkpoint := executorCheckpoint(t, rootMemberID, "opaque rollback checkpoint", runs.ExecutorCheckpoint{
 		BuildID:   checkpointBuildID,
 		SessionID: "ses_rollback",
-		Usage:     accounting.Snapshot{},
 	})
 	interruptStore := persistence.NewInterruptStore(sqlite.NewInterruptStore(db))
 	effects := sqliteEffects(sqliteOpeningStores{
@@ -1763,8 +1761,7 @@ func executorCheckpointValuesEqual(left, right runs.ExecutorCheckpoint) bool {
 	return left.RootMemberID == right.RootMemberID &&
 		slices.Equal(left.Payload, right.Payload) &&
 		left.BuildID == right.BuildID &&
-		left.SessionID == right.SessionID &&
-		slices.Equal(left.Usage.Models, right.Usage.Models)
+		left.SessionID == right.SessionID
 }
 
 func TestCommitTerminalOwnsExecutorCheckpointDeletion(t *testing.T) {
@@ -1838,7 +1835,6 @@ func newTerminalCheckpointFixture(
 	if err := checkpointStore.SaveCheckpoint(ctx, executorCheckpoint(t, rootMemberID, "opaque terminal checkpoint", runs.ExecutorCheckpoint{
 		BuildID:   checkpointBuildID,
 		SessionID: "ses_terminal",
-		Usage:     accounting.Snapshot{},
 	})); err != nil {
 		t.Fatalf("seed checkpoint: %v", err)
 	}
@@ -2011,8 +2007,8 @@ func TestCommitWaitingSubtreeCancellationCommitsCompleteWriteSet(t *testing.T) {
 		t.Fatalf("load replacement executor checkpoint: %v", err)
 	}
 	if !reflect.DeepEqual(
-		normalizedExecutorCheckpoint(checkpoint),
-		normalizedExecutorCheckpoint(fixture.replacementCheckpoint),
+		checkpoint,
+		fixture.replacementCheckpoint,
 	) {
 		t.Fatalf("replacement executor checkpoint = %+v, want %+v", checkpoint, fixture.replacementCheckpoint)
 	}
@@ -2480,12 +2476,6 @@ func newWaitingCancellationSQLiteFixtureAt(
 	originalCheckpoint := executorCheckpoint(t, rootMemberID, "opaque checkpoint before cancellation", runs.ExecutorCheckpoint{
 		BuildID:   testsupport.AlternateBuildID,
 		SessionID: rootRun.SessionID(),
-		Usage: accounting.Snapshot{Models: []accounting.ModelUsage{{
-			Model:  "test-model",
-			Tokens: accounting.Tokens{InputTokens: 3, OutputTokens: 2},
-			Cost:   segmentTestCost(t, 0.25),
-			Calls:  1,
-		}}},
 	})
 	if saveCheckpointErr := checkpointStore.SaveCheckpoint(ctx, originalCheckpoint); saveCheckpointErr != nil {
 		t.Fatalf("seed executor checkpoint: %v", saveCheckpointErr)
@@ -2530,12 +2520,6 @@ func newWaitingCancellationSQLiteFixtureAt(
 	replacementCheckpoint := executorCheckpoint(t, rootMemberID, "opaque checkpoint after cancellation", runs.ExecutorCheckpoint{
 		BuildID:   testsupport.AlternateBuildID,
 		SessionID: rootRun.SessionID(),
-		Usage: accounting.Snapshot{Models: []accounting.ModelUsage{{
-			Model:  "test-model",
-			Tokens: accounting.Tokens{InputTokens: 8, OutputTokens: 5},
-			Cost:   segmentTestCost(t, 0.75),
-			Calls:  2,
-		}}},
 	})
 	conversationStore := sqlite.NewMessageStore(db)
 	effects := sqliteEffects(

@@ -59,58 +59,6 @@ func TestTokenAndModelUsageRejectOverflow(t *testing.T) {
 	}
 }
 
-func TestModelUsageSubtractOwnsRemainderInvariants(t *testing.T) {
-	total := ModelUsage{
-		Model: "model",
-		Tokens: Tokens{
-			InputTokens: 10, OutputTokens: 6, ReasoningTokens: 2,
-			CacheReadTokens: 4, CacheWriteTokens: 3,
-		},
-		Cost: mustCost(t, 1), Calls: 3,
-	}
-	used := ModelUsage{
-		Model: "model",
-		Tokens: Tokens{
-			InputTokens: 4, OutputTokens: 2, ReasoningTokens: 1,
-			CacheReadTokens: 1, CacheWriteTokens: 1,
-		},
-		Cost: mustCost(t, 0.25), Calls: 1,
-	}
-	want := ModelUsage{
-		Model: "model",
-		Tokens: Tokens{
-			InputTokens: 6, OutputTokens: 4, ReasoningTokens: 1,
-			CacheReadTokens: 3, CacheWriteTokens: 2,
-		},
-		Cost: mustCost(t, 0.75), Calls: 2,
-	}
-	got, present, err := total.Subtract(used)
-	if err != nil || !present || got != want {
-		t.Fatalf("Subtract = (%+v, %t, %v), want (%+v, true, nil)", got, present, err, want)
-	}
-	if got, present, err := total.Subtract(total); err != nil || present || got != (ModelUsage{}) {
-		t.Fatalf("exact Subtract = (%+v, %t, %v), want zero, false, nil", got, present, err)
-	}
-
-	for name, candidate := range map[string]ModelUsage{
-		"different model": {Model: "other", Calls: 1},
-		"token underflow": {
-			Model: "model", Tokens: Tokens{InputTokens: 11}, Cost: mustCost(t, 0), Calls: 1,
-		},
-		"cost underflow": {Model: "model", Cost: mustCost(t, 1.25), Calls: 1},
-		"call underflow": {Model: "model", Cost: mustCost(t, 0), Calls: 4},
-		"usage without remaining calls": {
-			Model: "model", Tokens: Tokens{InputTokens: 9}, Cost: mustCost(t, 1), Calls: 3,
-		},
-	} {
-		t.Run(name, func(t *testing.T) {
-			if _, _, err := total.Subtract(candidate); err == nil {
-				t.Fatal("Subtract accepted an invalid remainder")
-			}
-		})
-	}
-}
-
 func mustCost(t *testing.T, usd float64) Cost {
 	t.Helper()
 	cost, err := NewCost(usd)
@@ -179,42 +127,6 @@ func TestUsageRejectsInvalidModelIdentities(t *testing.T) {
 		if err := (Snapshot{Models: []ModelUsage{{Model: model, Calls: 1}}}).Validate(); err == nil {
 			t.Fatalf("Snapshot.Validate accepted model identity %q", model)
 		}
-	}
-}
-
-func TestSnapshotValidateAdvanceFromRejectsRegression(t *testing.T) {
-	previous := Snapshot{Models: []ModelUsage{{
-		Model: "model",
-		Tokens: Tokens{
-			InputTokens: 4, OutputTokens: 2, ReasoningTokens: 1,
-			CacheReadTokens: 1, CacheWriteTokens: 1,
-		},
-		Cost:  mustCost(t, 0.5),
-		Calls: 2,
-	}}}
-	next := previous
-	next.Models = append([]ModelUsage(nil), previous.Models...)
-	next.Models[0].Calls++
-	if err := next.ValidateAdvanceFrom(previous); err != nil {
-		t.Fatalf("ValidateAdvanceFrom: %v", err)
-	}
-
-	for name, mutate := range map[string]func(*Snapshot){
-		"model removed": func(value *Snapshot) { value.Models = nil },
-		"tokens":        func(value *Snapshot) { value.Models[0].InputTokens-- },
-		"cost": func(value *Snapshot) {
-			value.Models[0].Cost = mustCost(t, 0.25)
-		},
-		"calls": func(value *Snapshot) { value.Models[0].Calls-- },
-	} {
-		t.Run(name, func(t *testing.T) {
-			candidate := previous
-			candidate.Models = append([]ModelUsage(nil), previous.Models...)
-			mutate(&candidate)
-			if err := candidate.ValidateAdvanceFrom(previous); err == nil {
-				t.Fatal("ValidateAdvanceFrom accepted cumulative usage regression")
-			}
-		})
 	}
 }
 

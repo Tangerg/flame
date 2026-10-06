@@ -8,7 +8,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
@@ -28,7 +27,6 @@ type ExecutorCheckpointRecord struct {
 	SessionID     string
 	Payload       []byte
 	BuildID       string
-	Usage         accounting.Snapshot
 }
 
 func (e ExecutorCheckpointRecord) validate() error {
@@ -50,9 +48,6 @@ func (e ExecutorCheckpointRecord) validate() error {
 	if err := resourceid.ValidateSession(e.SessionID); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidExecutorCheckpointRecord, err)
 	}
-	if err := e.Usage.Validate(); err != nil {
-		return fmt.Errorf("%w: usage: %w", ErrInvalidExecutorCheckpointRecord, err)
-	}
 	return nil
 }
 
@@ -70,50 +65,30 @@ func NewExecutorCheckpointStore(db *sql.DB) *ExecutorCheckpointStore {
 	return &ExecutorCheckpointStore{db: db}
 }
 
-type executorUsageWire struct {
-	Models []executorModelUsageWire `json:"models"`
-}
-
-type executorModelUsageWire struct {
-	Model            string   `json:"model"`
-	InputTokens      int64    `json:"input_tokens"`
-	OutputTokens     int64    `json:"output_tokens"`
-	ReasoningTokens  int64    `json:"reasoning_tokens"`
-	CacheReadTokens  int64    `json:"cache_read_tokens"`
-	CacheWriteTokens int64    `json:"cache_write_tokens"`
-	CostUSD          *float64 `json:"cost_usd,omitzero"`
-	Calls            int      `json:"calls"`
-}
-
 // SaveCheckpoint atomically advances one root-owned executor checkpoint. The
-// root's Session and build are immutable; only the opaque payload and
-// cumulative usage may advance between barriers.
+// root's Session and build are immutable; only the opaque payload may advance
+// between barriers.
 func (e *ExecutorCheckpointStore) SaveCheckpoint(ctx context.Context, checkpoint ExecutorCheckpointRecord) error {
 	if err := checkpoint.validate(); err != nil {
 		return fmt.Errorf("sqlite: save executor checkpoint: %w", err)
 	}
-	encodedUsage, err := encodeExecutorUsage(checkpoint.Usage)
-	if err != nil {
-		return fmt.Errorf("sqlite: encode executor checkpoint usage: %w", err)
-	}
 	return RunInTx(ctx, e.db, func(ctx context.Context) error {
-		var owner, buildID, storedUsageData string
+		var owner, buildID string
 		err := conn(ctx, e.db).QueryRowContext(ctx,
-			`SELECT session_id, build_id, usage
+			`SELECT session_id, build_id
 			   FROM executor_checkpoints
 			  WHERE root_member_id = ?`,
 			checkpoint.RootMemberID,
-		).Scan(&owner, &buildID, &storedUsageData)
+		).Scan(&owner, &buildID)
 		if errors.Is(err, sql.ErrNoRows) {
 			_, err = conn(ctx, e.db).ExecContext(ctx,
 				`INSERT INTO executor_checkpoints(
-					root_member_id, session_id, build_id, payload, usage
-				 ) VALUES (?, ?, ?, ?, ?)`,
+					root_member_id, session_id, build_id, payload
+				 ) VALUES (?, ?, ?, ?)`,
 				checkpoint.RootMemberID,
 				checkpoint.SessionID,
 				checkpoint.BuildID,
 				checkpoint.Payload,
-				string(encodedUsage),
 			)
 			if err != nil {
 				return fmt.Errorf("sqlite: insert executor checkpoint %q: %w", checkpoint.RootMemberID, err)
@@ -141,29 +116,11 @@ func (e *ExecutorCheckpointStore) SaveCheckpoint(ctx context.Context, checkpoint
 				ErrInvalidExecutorCheckpointRecord,
 			)
 		}
-		storedUsage, err := decodeExecutorUsage(storedUsageData)
-		if err != nil {
-			return fmt.Errorf(
-				"sqlite: decode stored executor checkpoint %q usage: %w: %w",
-				checkpoint.RootMemberID,
-				ErrInvalidExecutorCheckpointRecord,
-				err,
-			)
-		}
-		if validateAdvanceFromErr := checkpoint.Usage.ValidateAdvanceFrom(storedUsage); validateAdvanceFromErr != nil {
-			return fmt.Errorf(
-				"sqlite: executor checkpoint %q cumulative usage cannot advance: %w: %w",
-				checkpoint.RootMemberID,
-				ErrInvalidExecutorCheckpointRecord,
-				validateAdvanceFromErr,
-			)
-		}
 		result, err := conn(ctx, e.db).ExecContext(ctx,
 			`UPDATE executor_checkpoints
-			    SET payload = ?, usage = ?
+			    SET payload = ?
 			  WHERE root_member_id = ?`,
 			checkpoint.Payload,
-			string(encodedUsage),
 			checkpoint.RootMemberID,
 		)
 		if err != nil {
@@ -199,14 +156,14 @@ func (e *ExecutorCheckpointStore) loadCheckpoint(ctx context.Context, rootMember
 	if err := runtimeidentity.ValidateMember(rootMemberID); err != nil {
 		return ExecutorCheckpointRecord{}, fmt.Errorf("sqlite: load executor checkpoint: %w", err)
 	}
-	var sessionID, buildID, usageData string
+	var sessionID, buildID string
 	var payload []byte
 	err := conn(ctx, e.db).QueryRowContext(ctx,
-		`SELECT session_id, build_id, payload, usage
+		`SELECT session_id, build_id, payload
 		   FROM executor_checkpoints
 		  WHERE root_member_id = ?`,
 		rootMemberID,
-	).Scan(&sessionID, &buildID, &payload, &usageData)
+	).Scan(&sessionID, &buildID, &payload)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ExecutorCheckpointRecord{}, fmt.Errorf(
 			"sqlite: load executor checkpoint %q: %w",
@@ -217,21 +174,11 @@ func (e *ExecutorCheckpointStore) loadCheckpoint(ctx context.Context, rootMember
 	if err != nil {
 		return ExecutorCheckpointRecord{}, fmt.Errorf("sqlite: load executor checkpoint %q: %w", rootMemberID, err)
 	}
-	usage, err := decodeExecutorUsage(usageData)
-	if err != nil {
-		return ExecutorCheckpointRecord{}, fmt.Errorf(
-			"sqlite: decode executor checkpoint %q usage: %w: %w",
-			rootMemberID,
-			ErrInvalidExecutorCheckpointRecord,
-			err,
-		)
-	}
 	checkpoint := ExecutorCheckpointRecord{
 		RootMemberID: rootMemberID,
 		SessionID:    sessionID,
 		Payload:      append([]byte(nil), payload...),
 		BuildID:      buildID,
-		Usage:        usage,
 	}
 	checkpoint.ToolResultIDs, err = e.toolResultReferences(ctx, rootMemberID)
 	if err != nil {
@@ -245,56 +192,6 @@ func (e *ExecutorCheckpointStore) loadCheckpoint(ctx context.Context, rootMember
 		return ExecutorCheckpointRecord{}, fmt.Errorf("sqlite: load executor checkpoint %q: %w", rootMemberID, err)
 	}
 	return checkpoint, nil
-}
-
-func encodeExecutorUsage(usage accounting.Snapshot) ([]byte, error) {
-	wire := executorUsageWire{Models: make([]executorModelUsageWire, len(usage.Models))}
-	for index, model := range usage.Models {
-		wire.Models[index] = executorModelUsageWire{
-			Model:            model.Model,
-			InputTokens:      model.InputTokens,
-			OutputTokens:     model.OutputTokens,
-			ReasoningTokens:  model.ReasoningTokens,
-			CacheReadTokens:  model.CacheReadTokens,
-			CacheWriteTokens: model.CacheWriteTokens,
-			CostUSD:          model.Cost.OptionalUSD(),
-			Calls:            model.Calls,
-		}
-	}
-	return encodeStoredJSON(wire)
-}
-
-func decodeExecutorUsage(data string) (accounting.Snapshot, error) {
-	var wire executorUsageWire
-	if err := decodeStoredJSON([]byte(data), &wire); err != nil {
-		return accounting.Snapshot{}, err
-	}
-	if wire.Models == nil {
-		return accounting.Snapshot{}, errors.New("usage models must be an array")
-	}
-	usage := accounting.Snapshot{Models: make([]accounting.ModelUsage, len(wire.Models))}
-	for index, model := range wire.Models {
-		cost, err := accounting.CostFromOptional(model.CostUSD)
-		if err != nil {
-			return accounting.Snapshot{}, fmt.Errorf("usage model[%d] cost: %w", index, err)
-		}
-		usage.Models[index] = accounting.ModelUsage{
-			Model: model.Model,
-			Tokens: accounting.Tokens{
-				InputTokens:      model.InputTokens,
-				OutputTokens:     model.OutputTokens,
-				ReasoningTokens:  model.ReasoningTokens,
-				CacheReadTokens:  model.CacheReadTokens,
-				CacheWriteTokens: model.CacheWriteTokens,
-			},
-			Cost:  cost,
-			Calls: model.Calls,
-		}
-	}
-	if err := usage.Validate(); err != nil {
-		return accounting.Snapshot{}, err
-	}
-	return usage, nil
 }
 
 // DeleteCheckpoints removes complete root-owned checkpoint aggregates in one
