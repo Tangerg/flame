@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -44,7 +45,7 @@ func validateRecoveryParkedTree(
 	}
 	checkpoint, err := store.LoadExecutorCheckpoint(ctx, rootContinuation.MemberID)
 	if errors.Is(err, ErrExecutorCheckpointNotFound) || errors.Is(err, ErrInvalidExecutorCheckpoint) {
-		return UnresumableWaiting(LossWaitingStateUnavailable), nil
+		return unresumableRecoveredTree(ctx, tree, rootContinuation.MemberID, err), nil
 	}
 	if err != nil {
 		return WaitingResumption{}, fmt.Errorf(
@@ -54,7 +55,7 @@ func validateRecoveryParkedTree(
 		)
 	}
 	if err := checkpoint.ValidateOwnership(rootContinuation.MemberID, tree.root.SessionID()); err != nil {
-		return UnresumableWaiting(LossWaitingStateUnavailable), nil
+		return unresumableRecoveredTree(ctx, tree, rootContinuation.MemberID, err), nil
 	}
 	continuation, err := waitingContinuationFromPending(pending, checkpoint, values, sess)
 	if err != nil {
@@ -73,4 +74,18 @@ func validateRecoveryParkedTree(
 		)
 	}
 	return resumption, nil
+}
+
+// unresumableRecoveredTree loses a tree whose waiting state cannot be read
+// back. The lost Run carries only the Loss; the cause can name paths or payload
+// details, so it goes to the operator log, as the executor probe's does.
+func unresumableRecoveredTree(ctx context.Context, tree recoveryRunTree, memberID string, cause error) WaitingResumption {
+	slog.WarnContext(ctx, "runs: waiting Run tree is not resumable",
+		"session.id", tree.root.SessionID(),
+		"run.id", tree.root.ID(),
+		"executor.member.id", memberID,
+		"loss", string(LossWaitingStateUnavailable),
+		"error", cause,
+	)
+	return UnresumableWaiting(LossWaitingStateUnavailable)
 }

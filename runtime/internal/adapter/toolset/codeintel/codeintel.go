@@ -217,8 +217,10 @@ func (a *Analyzer) Diagnostics(ctx context.Context, root, file string) (string, 
 // cache) is never blamed on the mutation. The bias is deliberately toward
 // under-reporting.
 //
-// Best-effort throughout: an empty / unsupported path or language-server
-// trouble produces no diagnostics. An apply error remains authoritative.
+// An empty or unsupported path produces no diagnostics, and a missing baseline
+// only widens what counts as new. A failed post-mutation read is reported as
+// unavailable rather than as a clean result. An apply error remains
+// authoritative.
 func (a *Analyzer) DiagnoseMutation(ctx context.Context, root, file string, apply func() error) (string, error) {
 	check := a != nil && file != "" && a.Supported(file)
 
@@ -235,7 +237,10 @@ func (a *Analyzer) DiagnoseMutation(ctx context.Context, root, file string, appl
 
 	after, derr := a.servers.Diagnostics(ctx, root, file)
 	if derr != nil {
-		return "", nil
+		if _, noServer := foldNoServer(derr); noServer {
+			return "", nil
+		}
+		return "Diagnostics unavailable: " + derr.Error(), nil
 	}
 	return diagnosticsSection(file, newProblems(baseline, after)), nil
 }
