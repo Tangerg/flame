@@ -89,7 +89,6 @@ type ToolApprovalStore interface {
 }
 
 type ToolResultStore interface {
-	Bind(ctx context.Context, sessionID, itemID string, ref toolresult.Ref) error
 	Discard(ctx context.Context, sessionID string, ref toolresult.Ref) error
 }
 

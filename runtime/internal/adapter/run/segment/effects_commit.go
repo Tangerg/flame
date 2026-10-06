@@ -813,23 +813,7 @@ func (e *Effects) openInterrupt(ctx context.Context, p runs.Pending) error {
 }
 
 func (e *Effects) appendItem(ctx context.Context, item transcript.Item) error {
-	if err := e.transcript.AppendItem(ctx, item); err != nil {
-		return err
-	}
-	invocation, present := item.ToolInvocation()
-	if !present || invocation.Offload == nil {
-		return nil
-	}
-	if invocation.Result == nil {
-		return errors.New("segment: offloaded tool result is absent")
-	}
-	if _, ok := invocation.Result.String(); !ok {
-		return errors.New("segment: offloaded tool result has no preview string")
-	}
-	if err := e.toolResults.Bind(ctx, item.SessionID(), item.ID(), *invocation.Offload); err != nil {
-		return fmt.Errorf("segment: bind offloaded tool result: %w", err)
-	}
-	return nil
+	return e.transcript.AppendItem(ctx, item)
 }
 
 func (e *Effects) applyState(ctx context.Context, commit runs.EventCommit) error {

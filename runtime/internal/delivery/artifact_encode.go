@@ -42,10 +42,10 @@ func artifactFromPortable(portable sessions.PortableSnapshot) (protocol.SessionA
 		items = append(items, encoded)
 	}
 	toolResults := make([]protocol.ArtifactToolResult, 0, len(portable.ToolResults))
-	for _, blob := range portable.ToolResults {
+	for _, result := range portable.ToolResults {
 		toolResults = append(toolResults, protocol.ArtifactToolResult{
-			ID: blob.ID.String(), ItemID: blob.ItemID,
-			Body: blob.Body, CreatedAt: blob.CreatedAt,
+			ID: result.Blob.ID.String(), ItemID: result.ItemID,
+			Body: result.Blob.Body, CreatedAt: result.Blob.CreatedAt,
 		})
 	}
 	return protocol.SessionArtifact{

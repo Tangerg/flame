@@ -778,16 +778,16 @@ func (s stubLifecycleStores) ApplyFork(ctx context.Context, plan sessions.ForkPl
 			return session.Session{}, err
 		}
 	}
-	for _, item := range snapshot.Items {
-		if err := s.rt.hist.AppendItem(ctx, item); err != nil {
-			return session.Session{}, err
-		}
-	}
 	for _, blob := range snapshot.ToolResults {
 		if s.rt.toolResults == nil {
 			return session.Session{}, errors.New("test runtime: tool-result persistence is unavailable")
 		}
 		if err := s.rt.toolResults.Restore(ctx, blob); err != nil {
+			return session.Session{}, err
+		}
+	}
+	for _, item := range snapshot.Items {
+		if err := s.rt.hist.AppendItem(ctx, item); err != nil {
 			return session.Session{}, err
 		}
 	}
@@ -868,16 +868,16 @@ func (s stubLifecycleStores) ApplyRestore(ctx context.Context, plan sessions.Res
 			return err
 		}
 	}
-	for _, it := range snapshot.Items {
-		if err := s.rt.hist.AppendItem(ctx, it); err != nil {
-			return err
-		}
-	}
 	for _, blob := range snapshot.ToolResults {
 		if s.rt.toolResults == nil {
 			return errors.New("test runtime: tool-result persistence is unavailable")
 		}
 		if err := s.rt.toolResults.Restore(ctx, blob); err != nil {
+			return err
+		}
+	}
+	for _, it := range snapshot.Items {
+		if err := s.rt.hist.AppendItem(ctx, it); err != nil {
 			return err
 		}
 	}
@@ -1550,9 +1550,6 @@ func (inertSegmentGoalRuns) RecordRun(context.Context, run.Run) error { return n
 
 type inertSegmentToolResults struct{}
 
-func (inertSegmentToolResults) Bind(context.Context, string, string, toolresult.Ref) error {
-	return nil
-}
 func (inertSegmentToolResults) Discard(context.Context, string, toolresult.Ref) error { return nil }
 
 type emptyModelInvocations struct{}

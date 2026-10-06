@@ -6,6 +6,7 @@ import (
 	json "encoding/json/v2"
 	"errors"
 	"fmt"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/sessions"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -103,9 +104,18 @@ func presentTrajectoryExport(result sessions.TrajectoryExport) (protocol.Session
 		}
 		out.Messages = append(out.Messages, encoded)
 	}
+	blobs := make(map[toolresult.ID]toolresult.Blob, len(snapshot.ToolResults))
 	for _, blob := range snapshot.ToolResults {
+		blobs[blob.ID] = blob
+	}
+	for _, item := range snapshot.Items {
+		invocation, present := item.ToolInvocation()
+		if !present || invocation.Offload == nil {
+			continue
+		}
+		blob := blobs[invocation.Offload.ID]
 		out.ToolResults = append(out.ToolResults, protocol.ArtifactToolResult{
-			ID: blob.ID.String(), ItemID: blob.ItemID,
+			ID: blob.ID.String(), ItemID: item.ID(),
 			Body: blob.Body, CreatedAt: blob.CreatedAt,
 		})
 	}

@@ -69,15 +69,17 @@ func portableArtifactFromWire(art protocol.SessionArtifact) (sessions.PortableSn
 		}
 		items = append(items, item)
 	}
-	toolResults := make([]toolresult.Blob, 0, len(art.ToolResults))
+	toolResults := make([]sessions.PortableToolResult, 0, len(art.ToolResults))
 	for index, encoded := range art.ToolResults {
 		id, parseIDErr := toolresult.ParseID(encoded.ID)
 		if parseIDErr != nil {
 			return sessions.PortableSnapshot{}, invalidArtifact(fmt.Sprintf("artifact.toolResults[%d].id", index), "%v", parseIDErr)
 		}
-		toolResults = append(toolResults, toolresult.Blob{
-			ID: id, SessionID: art.Session.ID, ItemID: encoded.ItemID,
-			Body: encoded.Body, CreatedAt: encoded.CreatedAt,
+		toolResults = append(toolResults, sessions.PortableToolResult{
+			ItemID: encoded.ItemID,
+			Blob: toolresult.Blob{
+				ID: id, SessionID: art.Session.ID, Body: encoded.Body, CreatedAt: encoded.CreatedAt,
+			},
 		})
 	}
 	plan, err := portablePlanFromArtifact(art.Plan)

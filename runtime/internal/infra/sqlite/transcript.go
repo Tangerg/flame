@@ -56,6 +56,18 @@ func (t *TranscriptStore) appendItemRecord(
 	offloadID toolresult.ID,
 ) error {
 	q := conn(ctx, t.db)
+	if offloadID != "" {
+		var staged bool
+		if err := q.QueryRowContext(ctx,
+			`SELECT EXISTS (SELECT 1 FROM tool_result_blobs WHERE id = ? AND session_id = ?)`,
+			offloadID, item.SessionID(),
+		).Scan(&staged); err != nil {
+			return fmt.Errorf("sqlite: inspect history item offload: %w", err)
+		}
+		if !staged {
+			return fmt.Errorf("sqlite: history item %q offloads to %q, which session %q does not hold", item.ID(), offloadID, item.SessionID())
+		}
+	}
 	result, err := q.ExecContext(ctx,
 		`INSERT INTO history_items(session_id, run_id, item_id, occurred_at, payload, offload_id)
 		 VALUES (?, ?, ?, ?, ?, ?)
@@ -112,7 +124,7 @@ func (t *TranscriptStore) Item(ctx context.Context, itemID string) (transcript.I
 	row := conn(ctx, t.db).QueryRowContext(ctx,
 		`SELECT session_id, run_id, item_id, occurred_at, payload, offload_id,
 		        (SELECT body FROM tool_result_blobs WHERE id = history_items.offload_id
-		          AND session_id = history_items.session_id AND item_id = history_items.item_id)
+		          AND session_id = history_items.session_id)
 		   FROM history_items
 		  WHERE item_id = ?`,
 		itemID,
@@ -262,8 +274,8 @@ func (t *TranscriptStore) DeleteRun(ctx context.Context, sessionID, runID string
 		q := conn(ctx, t.db)
 		if _, err := q.ExecContext(ctx,
 			`DELETE FROM tool_result_blobs
-			 WHERE item_id IN (
-			   SELECT item_id FROM history_items WHERE session_id = ? AND run_id = ?
+			 WHERE id IN (
+			   SELECT offload_id FROM history_items WHERE session_id = ? AND run_id = ? AND offload_id != ''
 			 )`, sessionID, runID,
 		); err != nil {
 			return fmt.Errorf("sqlite: delete run tool results: %w", err)
@@ -401,7 +413,7 @@ func (t *TranscriptStore) pageItems(ctx context.Context, scope, subject string, 
 	query := `SELECT h.seq, h.session_id, h.run_id, h.item_id, h.occurred_at, h.payload, h.offload_id, b.body
 		 FROM history_items AS h
 		 LEFT JOIN tool_result_blobs AS b
-		   ON b.id = h.offload_id AND b.session_id = h.session_id AND b.item_id = h.item_id
+		   ON b.id = h.offload_id AND b.session_id = h.session_id
 		 WHERE ` + scope
 	args := []any{subject}
 	bound, direction := `h.seq > ?`, ``

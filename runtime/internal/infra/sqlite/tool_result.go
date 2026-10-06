@@ -12,8 +12,9 @@ import (
 )
 
 // ToolResultStore is the single full-body source for oversized tool outputs.
-// Stage creates an unbound row before the tool returns; the run's atomic event
-// commit binds it to the canonical transcript item and its inline preview.
+// Stage creates an unbound row before the tool returns; the transcript Item
+// whose offload names it binds it when the run's atomic event commit appends
+// that Item.
 type ToolResultStore struct {
 	db *sql.DB
 }
@@ -63,59 +64,17 @@ func (t *ToolResultStore) Fetch(ctx context.Context, sessionID string, id toolre
 	return body, true, nil
 }
 
-// Bind attaches a freshly offloaded body to the transcript item committed in
-// the same transaction. The item keeps the preview that replaced the body.
-// Exact retries are idempotent; another item attempting to claim the ID is an
-// identity conflict.
-func (t *ToolResultStore) Bind(ctx context.Context, sessionID, itemID string, ref toolresult.Ref) error {
-	if err := ref.Validate(); err != nil {
-		return fmt.Errorf("sqlite: bind tool result: %w", err)
-	}
-	if err := resourceid.ValidateSession(sessionID); err != nil {
-		return fmt.Errorf("sqlite: bind tool result: %w", err)
-	}
-	if err := resourceid.ValidateItem(itemID); err != nil {
-		return fmt.Errorf("sqlite: bind tool result: %w", err)
-	}
-	result, err := conn(ctx, t.db).ExecContext(ctx,
-		`UPDATE tool_result_blobs
-		 SET item_id = ?
-		 WHERE id = ? AND session_id = ? AND item_id IN ('', ?)`,
-		itemID, ref.ID, sessionID, itemID,
-	)
-	if err != nil {
-		return fmt.Errorf("sqlite: bind tool result %q: %w", ref.ID, err)
-	}
-	changed, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("sqlite: inspect tool-result binding %q: %w", ref.ID, err)
-	}
-	if changed == 1 {
-		return nil
-	}
-	var ownerSession, ownerItem string
-	err = conn(ctx, t.db).QueryRowContext(ctx,
-		`SELECT session_id, item_id FROM tool_result_blobs WHERE id = ?`, ref.ID,
-	).Scan(&ownerSession, &ownerItem)
-	if errors.Is(err, sql.ErrNoRows) {
-		return fmt.Errorf("sqlite: bind tool result %q: blob does not exist", ref.ID)
-	}
-	if err != nil {
-		return fmt.Errorf("sqlite: inspect conflicting tool-result binding %q: %w", ref.ID, err)
-	}
-	return fmt.Errorf("%w: tool result %q belongs to session %q item %q",
-		toolresult.ErrIdentityConflict, ref.ID, ownerSession, ownerItem)
-}
-
 // List returns every transcript-bound blob owned by sessionID in stable order.
 func (t *ToolResultStore) List(ctx context.Context, sessionID string) ([]toolresult.Blob, error) {
 	if err := resourceid.ValidateSession(sessionID); err != nil {
 		return nil, fmt.Errorf("sqlite: list tool results: %w", err)
 	}
 	rows, err := conn(ctx, t.db).QueryContext(ctx,
-		`SELECT id, session_id, item_id, body, created_at
-		 FROM tool_result_blobs
-		 WHERE session_id = ? AND item_id != ''
+		`SELECT id, session_id, body, created_at
+		 FROM tool_result_blobs AS b
+		 WHERE session_id = ? AND EXISTS (
+		   SELECT 1 FROM history_items AS h WHERE h.offload_id = b.id AND h.session_id = b.session_id
+		 )
 		 ORDER BY created_at, id`, sessionID,
 	)
 	if err != nil {
@@ -127,7 +86,7 @@ func (t *ToolResultStore) List(ctx context.Context, sessionID string) ([]toolres
 		var blob toolresult.Blob
 		var rawID string
 		var createdAt int64
-		if scanErr := rows.Scan(&rawID, &blob.SessionID, &blob.ItemID, &blob.Body, &createdAt); scanErr != nil {
+		if scanErr := rows.Scan(&rawID, &blob.SessionID, &blob.Body, &createdAt); scanErr != nil {
 			return nil, fmt.Errorf("sqlite: scan tool result: %w", scanErr)
 		}
 		blob.ID, err = toolresult.ParseID(rawID)
@@ -153,9 +112,9 @@ func (t *ToolResultStore) Restore(ctx context.Context, blob toolresult.Blob) err
 		return fmt.Errorf("sqlite: restore tool result: %w", err)
 	}
 	_, err := conn(ctx, t.db).ExecContext(ctx,
-		`INSERT INTO tool_result_blobs(id, session_id, item_id, body, created_at)
-		 VALUES (?, ?, ?, ?, ?)`,
-		blob.ID, blob.SessionID, blob.ItemID, blob.Body, blob.CreatedAt.Unix(),
+		`INSERT INTO tool_result_blobs(id, session_id, body, created_at)
+		 VALUES (?, ?, ?, ?)`,
+		blob.ID, blob.SessionID, blob.Body, blob.CreatedAt.Unix(),
 	)
 	if err == nil {
 		return nil
@@ -173,6 +132,10 @@ func (t *ToolResultStore) Restore(ctx context.Context, blob toolresult.Blob) err
 	return fmt.Errorf("sqlite: restore tool result %q: %w", blob.ID, err)
 }
 
+// unboundToolResult selects bodies with neither an Item nor a checkpoint owner.
+const unboundToolResult = `NOT EXISTS (SELECT 1 FROM history_items WHERE offload_id = tool_result_blobs.id)
+	AND NOT EXISTS (SELECT 1 FROM executor_checkpoint_tool_results WHERE result_id = tool_result_blobs.id)`
+
 // Discard removes only bodies with neither an Item nor a checkpoint owner.
 // Failed publications must not invalidate a durable waiting continuation.
 func (t *ToolResultStore) Discard(ctx context.Context, sessionID string, ref toolresult.Ref) error {
@@ -183,7 +146,7 @@ func (t *ToolResultStore) Discard(ctx context.Context, sessionID string, ref too
 		return fmt.Errorf("sqlite: discard tool result: %w", err)
 	}
 	if _, err := conn(ctx, t.db).ExecContext(ctx,
-		`DELETE FROM tool_result_blobs WHERE id = ? AND session_id = ? AND item_id = '' AND NOT EXISTS (SELECT 1 FROM executor_checkpoint_tool_results WHERE result_id = tool_result_blobs.id)`,
+		`DELETE FROM tool_result_blobs WHERE id = ? AND session_id = ? AND `+unboundToolResult,
 		ref.ID, sessionID,
 	); err != nil {
 		return fmt.Errorf("sqlite: discard staged tool result %q: %w", ref.ID, err)
@@ -195,7 +158,7 @@ func (t *ToolResultStore) Discard(ctx context.Context, sessionID string, ref too
 // execution begins. Item and checkpoint references are both durable owners.
 func (t *ToolResultStore) PurgeUnbound(ctx context.Context) (int64, error) {
 	result, err := conn(ctx, t.db).ExecContext(ctx,
-		`DELETE FROM tool_result_blobs WHERE item_id = '' AND NOT EXISTS (SELECT 1 FROM executor_checkpoint_tool_results WHERE result_id = tool_result_blobs.id)`,
+		`DELETE FROM tool_result_blobs WHERE `+unboundToolResult,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("sqlite: purge staged tool results: %w", err)

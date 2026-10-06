@@ -65,8 +65,8 @@ func TestSnapshotPortableSnapshotOwnsCollections(t *testing.T) {
 	if portable.Items[0].ID() != "item_1" {
 		t.Fatalf("portable Item changed with source slice: %+v", portable.Items[0])
 	}
-	if portable.ToolResults[0].Body != "full body" {
-		t.Fatalf("portable tool result body = %q, want owned snapshot", portable.ToolResults[0].Body)
+	if portable.ToolResults[0].Blob.Body != "full body" {
+		t.Fatalf("portable tool result body = %q, want owned snapshot", portable.ToolResults[0].Blob.Body)
 	}
 	if portable.Plan[0].Description != "keep ownership" {
 		t.Fatalf("portable Plan description = %q, want owned snapshot", portable.Plan[0].Description)
@@ -88,8 +88,7 @@ func portableSnapshotWithCollections() Snapshot {
 		},
 	}))
 	snapshot.ToolResults = []toolresult.Blob{{
-		ID: "BLOB234", SessionID: "ses_1", ItemID: "item_tool",
-		Body: "full body", CreatedAt: at,
+		ID: "BLOB234", SessionID: "ses_1", Body: "full body", CreatedAt: at,
 	}}
 	snapshot.Plan = []plan.Step{{Description: "keep ownership", Status: plan.StatusPending}}
 	return snapshot
@@ -142,7 +141,7 @@ func TestSnapshotValidateToolResultsRejectsBrokenRelationships(t *testing.T) {
 			mutate: func(snapshot *Snapshot) {
 				mutateSnapshotItem(snapshot, func(item *transcript.ItemSnapshot) { item.Tool.Offload = nil })
 			},
-			want: "references missing transcript item",
+			want: "is named by no transcript item",
 		},
 		{
 			name: "foreign session",
@@ -152,13 +151,22 @@ func TestSnapshotValidateToolResultsRejectsBrokenRelationships(t *testing.T) {
 			want: "belongs to session",
 		},
 		{
-			name: "duplicate item binding",
+			name: "duplicate blob",
 			mutate: func(snapshot *Snapshot) {
-				duplicate := snapshot.ToolResults[0]
-				duplicate.ID = "OTHER234"
-				snapshot.ToolResults = append(snapshot.ToolResults, duplicate)
+				snapshot.ToolResults = append(snapshot.ToolResults, snapshot.ToolResults[0])
 			},
-			want: "multiple tool results",
+			want: "appears more than once",
+		},
+		{
+			name: "two items name one blob",
+			mutate: func(snapshot *Snapshot) {
+				second := snapshot.Items[0].Snapshot()
+				snapshot.Items = append(snapshot.Items, testsupport.MustRestoreItem(testsupport.ItemInput{
+					SessionID: "ses_1", ID: "item_2", Kind: transcript.ToolCall,
+					Status: transcript.ItemCompleted, Tool: second.Tool,
+				}))
+			},
+			want: "is named by both items",
 		},
 	}
 
@@ -197,8 +205,7 @@ func offloadedSnapshot(result string) Snapshot {
 			Tool:   &transcript.ToolInvocation{Name: "shell", Result: &value, Offload: ref},
 		})},
 		ToolResults: []toolresult.Blob{{
-			ID: "BLOB234", SessionID: "ses_1", ItemID: "item_1",
-			Body: "full body", CreatedAt: time.Unix(1, 0).UTC(),
+			ID: "BLOB234", SessionID: "ses_1", Body: "full body", CreatedAt: time.Unix(1, 0).UTC(),
 		}},
 	}
 }

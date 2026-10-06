@@ -52,7 +52,7 @@ func TestCheckpointOwnsResultsAcrossRestartAndReleasesThem(t *testing.T) {
 		t.Fatalf("orphan remains: %t %v", found, err)
 	}
 	// Once published, the Item owns the body even after its checkpoint is consumed.
-	if err := results.Bind(t.Context(), "session-1", "item_result", toolresult.Ref{ID: retained}); err != nil {
+	if err := sqlite.NewTranscriptStore(db).AppendItem(t.Context(), toolItem("session-1", "item_result", "preview", &toolresult.Ref{ID: retained})); err != nil {
 		t.Fatal(err)
 	}
 	if err := checkpoints.DeleteCheckpoints(t.Context(), "session-1", []string{checkpoint.RootMemberID}); err != nil {

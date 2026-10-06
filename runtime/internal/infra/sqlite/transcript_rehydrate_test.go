@@ -70,9 +70,6 @@ func TestTranscriptRehydratesOffloadedToolResult(t *testing.T) {
 	if err := tr.AppendItem(t.Context(), toolItem(sess, "item-1", preview, ref)); err != nil {
 		t.Fatal(err)
 	}
-	if err := blobs.Bind(t.Context(), sess, "item-1", *ref); err != nil {
-		t.Fatal(err)
-	}
 
 	items, err := tr.List(t.Context(), sess)
 	if err != nil {
@@ -95,12 +92,18 @@ func TestTranscriptRehydratesOffloadedToolResult(t *testing.T) {
 }
 
 func TestTranscriptSurfacesMissingOffloadedToolResult(t *testing.T) {
-	tr, _ := openTranscriptAndBlobs(t)
+	tr, blobs := openTranscriptAndBlobs(t)
 	const sess = "sess-2"
 	// A typed reference without its blob is durable corruption, not an ordinary
 	// non-offloaded result, and must not be hidden as a harmless preview.
-	preview := "missing offloaded preview"
-	if err := tr.AppendItem(t.Context(), toolItem(sess, "item-1", preview, &resultoffload.Ref{ID: "GONE234BLOB"})); err != nil {
+	if err := tr.AppendItem(t.Context(), toolItem(sess, "item-0", "preview", &resultoffload.Ref{ID: "GONE234BLOB"})); err == nil {
+		t.Fatal("an Item offloaded to a body its Session does not hold")
+	}
+	id := stageShellResult(t, blobs, sess, "full body")
+	if err := tr.AppendItem(t.Context(), toolItem(sess, "item-1", "missing offloaded preview", &resultoffload.Ref{ID: id})); err != nil {
+		t.Fatal(err)
+	}
+	if err := blobs.DropSession(t.Context(), sess); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := tr.List(t.Context(), sess); err == nil {
@@ -134,9 +137,6 @@ func TestDeleteRunDropsItsBoundToolResults(t *testing.T) {
 	id := stageShellResult(t, blobs, sess, "full body")
 	ref := &resultoffload.Ref{ID: id}
 	if err := tr.AppendItem(t.Context(), toolItem(sess, "item-1", "preview", ref)); err != nil {
-		t.Fatal(err)
-	}
-	if err := blobs.Bind(t.Context(), sess, "item-1", *ref); err != nil {
 		t.Fatal(err)
 	}
 	if err := tr.DeleteRun(t.Context(), sess, "run-1"); err != nil {

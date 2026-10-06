@@ -28,10 +28,18 @@ type PortableSnapshot struct {
 	Messages    []chat.Message
 	Items       []transcript.Item
 	Runs        []PortableRun
-	ToolResults []toolresult.Blob
+	ToolResults []PortableToolResult
 	// Plan is the session's Plan, carried as a value so an archive restores
 	// the work plan attached to the conversation rather than just the conversation.
 	Plan []plan.Step
+}
+
+// PortableToolResult is an offloaded body as an archive carries it. Archived
+// Items do not carry their offload, so the archive links each body to the Item
+// that offloaded it from this side instead.
+type PortableToolResult struct {
+	ItemID string
+	Blob   toolresult.Blob
 }
 
 // PortableSession is the terminal archive identity. It intentionally excludes
@@ -124,7 +132,7 @@ func (p PortableSnapshot) CanonicalSnapshot() (Snapshot, error) {
 		Session:     restoredSession,
 		Messages:    cloneSnapshotMessages(p.Messages),
 		Items:       append([]transcript.Item(nil), p.Items...),
-		ToolResults: append([]toolresult.Blob(nil), p.ToolResults...),
+		ToolResults: make([]toolresult.Blob, 0, len(p.ToolResults)),
 		Runs:        make([]run.Run, 0, len(p.Runs)),
 		Plan:        append([]plan.Step(nil), p.Plan...),
 	}
@@ -176,7 +184,7 @@ func (p PortableSnapshot) CanonicalSnapshot() (Snapshot, error) {
 		}
 		snapshot.Runs = append(snapshot.Runs, restored)
 	}
-	if err := bindPortableToolResults(&snapshot); err != nil {
+	if err := bindPortableToolResults(&snapshot, p.ToolResults); err != nil {
 		return Snapshot{}, fmt.Errorf("%w: %w", ErrInvalidPortableSnapshot, err)
 	}
 	if err := snapshot.Validate(); err != nil {
@@ -197,7 +205,7 @@ func (p PortableSession) session() (session.Session, error) {
 	})
 }
 
-func bindPortableToolResults(snapshot *Snapshot) error {
+func bindPortableToolResults(snapshot *Snapshot, results []PortableToolResult) error {
 	items := make(map[string]int, len(snapshot.Items))
 	for index, item := range snapshot.Items {
 		if _, duplicate := items[item.ID()]; duplicate {
@@ -205,10 +213,11 @@ func bindPortableToolResults(snapshot *Snapshot) error {
 		}
 		items[item.ID()] = index
 	}
-	for _, blob := range snapshot.ToolResults {
-		index, found := items[blob.ItemID]
+	for _, result := range results {
+		blob := result.Blob
+		index, found := items[result.ItemID]
 		if !found {
-			return fmt.Errorf("sessions: portable tool result %q references unknown item %q", blob.ID, blob.ItemID)
+			return fmt.Errorf("sessions: portable tool result %q references unknown item %q", blob.ID, result.ItemID)
 		}
 		item := &snapshot.Items[index]
 		itemSnapshot := item.Snapshot()
@@ -221,6 +230,7 @@ func bindPortableToolResults(snapshot *Snapshot) error {
 			return fmt.Errorf("sessions: bind portable tool result %q: %w", blob.ID, err)
 		}
 		*item = restored
+		snapshot.ToolResults = append(snapshot.ToolResults, blob)
 	}
 	return nil
 }
@@ -243,9 +253,20 @@ func (s Snapshot) PortableSnapshot() (PortableSnapshot, error) {
 		},
 		Messages:    cloneSnapshotMessages(s.Messages),
 		Items:       slices.Clone(s.Items),
-		ToolResults: slices.Clone(s.ToolResults),
+		ToolResults: make([]PortableToolResult, 0, len(s.ToolResults)),
 		Plan:        slices.Clone(s.Plan),
 		Runs:        make([]PortableRun, 0, len(s.Runs)),
+	}
+	blobs := make(map[toolresult.ID]toolresult.Blob, len(s.ToolResults))
+	for _, blob := range s.ToolResults {
+		blobs[blob.ID] = blob
+	}
+	for _, item := range s.Items {
+		if invocation, present := item.ToolInvocation(); present && invocation.Offload != nil {
+			portable.ToolResults = append(portable.ToolResults, PortableToolResult{
+				ItemID: item.ID(), Blob: blobs[invocation.Offload.ID],
+			})
+		}
 	}
 	for _, run := range s.Runs {
 		outcome, terminal := run.Outcome()

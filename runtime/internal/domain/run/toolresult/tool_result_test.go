@@ -20,13 +20,13 @@ func TestParseID(t *testing.T) {
 
 func TestToolResultBlobValidate(t *testing.T) {
 	blob := Blob{
-		ID: "BLOB234", SessionID: "ses_1", ItemID: "item_1", Body: "body", CreatedAt: time.Now().UTC(),
+		ID: "BLOB234", SessionID: "ses_1", Body: "body", CreatedAt: time.Now().UTC(),
 	}
 	if err := blob.Validate(); err != nil {
 		t.Fatalf("Validate: %v", err)
 	}
-	blob.ItemID = ""
+	blob.Body = ""
 	if err := blob.Validate(); err == nil {
-		t.Fatal("Validate accepted a blob without an item identity")
+		t.Fatal("Validate accepted a blob without a body")
 	}
 }

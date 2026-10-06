@@ -569,7 +569,4 @@ func seedOffloadedToolResult(t *testing.T, rt *stubRuntime, sessionID string) {
 	})); err != nil {
 		t.Fatalf("seed offloaded item: %v", err)
 	}
-	if err := rt.toolResults.Bind(ctx, sessionID, "item_offload", toolresult.Ref{ID: id}); err != nil {
-		t.Fatalf("bind tool result: %v", err)
-	}
 }

@@ -56,8 +56,7 @@ func TestCopyForkSnapshotRemapsTheCompleteVisibleRunTree(t *testing.T) {
 		Runs:  []run.Run{root, childRun},
 		Items: []transcript.Item{spawningItem},
 		ToolResults: []toolresult.Blob{{
-			ID: "BLOB234", SessionID: "ses_parent", ItemID: "item_spawn",
-			Body: "delegated full body", CreatedAt: at,
+			ID: "BLOB234", SessionID: "ses_parent", Body: "delegated full body", CreatedAt: at,
 		}},
 	}
 	runIDs := []string{"run_copy_root", "run_copy_child"}
@@ -97,7 +96,7 @@ func TestCopyForkSnapshotRemapsTheCompleteVisibleRunTree(t *testing.T) {
 		t.Fatalf("copied tool invocation = %+v, want remapped offload", invocation)
 	}
 	if len(copied.ToolResults) != 1 || copied.ToolResults[0].ID != "CLONE234" ||
-		copied.ToolResults[0].SessionID != "ses_child" || copied.ToolResults[0].ItemID != "item_copy_spawn" {
+		copied.ToolResults[0].SessionID != "ses_child" {
 		t.Fatalf("copied ToolResults = %+v, want child-owned remapped blob", copied.ToolResults)
 	}
 	if source.Runs[0].ID() != "run_root" || source.Items[0].ID() != "item_spawn" || source.ToolResults[0].ID != "BLOB234" {

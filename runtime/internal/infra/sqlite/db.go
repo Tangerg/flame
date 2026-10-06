@@ -623,14 +623,13 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		)`,
 		// Offloaded tool-result bodies (context eviction): a single tool output
 		// that exceeds the eviction threshold is moved here and model history keeps
-		// only a bounded head+tail preview. history_items.offload_id + item_id form
-		// the typed one-to-one relationship used to hydrate transcript reads; the
-		// the compact preview carries id only for deferred result reads. session_id
+		// only a bounded head+tail preview. history_items.offload_id is the one
+		// link from an Item to its body, used to hydrate transcript reads; a body no
+		// Item or checkpoint names is unbound staging. session_id
 		// scopes read-back, export, and delete; created_at orders portable records.
 		`CREATE TABLE IF NOT EXISTS tool_result_blobs (
 			id          TEXT    PRIMARY KEY,
 			session_id  TEXT    NOT NULL DEFAULT '',
-			item_id     TEXT    NOT NULL DEFAULT '',
 			body        TEXT    NOT NULL,
 			created_at  INTEGER NOT NULL DEFAULT (strftime('%s','now'))
 		)`,
@@ -644,8 +643,6 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			ON executor_checkpoint_installations(installation_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_tool_result_blobs_session
 			ON tool_result_blobs(session_id)`,
-		`CREATE UNIQUE INDEX IF NOT EXISTS idx_tool_result_blobs_item
-			ON tool_result_blobs(item_id) WHERE item_id != ''`,
 		// Append-only quality signals submitted through feedback.create. They are
 		// deliberately not foreign-keyed: a user may report a general issue or
 		// submit feedback after the referenced runtime records are cleaned up.

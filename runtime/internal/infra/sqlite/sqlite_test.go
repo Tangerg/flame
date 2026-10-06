@@ -413,6 +413,11 @@ func TestTranscriptStoreKeepsOffloadRelationshipsImmutableAndOneToOne(t *testing
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	store := sqlite.NewTranscriptStore(db)
+	for _, id := range []resultoffload.ID{"BLOB234", "OTHER234"} {
+		if err := sqlite.NewToolResultStore(db).Stage(t.Context(), resultoffload.Stage{ID: id, SessionID: "ses_a", Body: "body"}); err != nil {
+			t.Fatal(err)
+		}
+	}
 	now := time.Now().UTC()
 	preview, err := tool.NewResult("preview")
 	if err != nil {

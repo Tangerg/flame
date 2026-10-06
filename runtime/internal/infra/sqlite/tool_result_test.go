@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
@@ -80,7 +81,7 @@ func TestToolResultDropSession(t *testing.T) {
 }
 
 func TestToolResultDiscardAndStartupPurgeOnlyRemoveUnboundBlobs(t *testing.T) {
-	store := newToolResultStore(t)
+	transcriptStore, store := openTranscriptAndBlobs(t)
 	discardedID := stageShellResult(t, store, "ses_1", "discard me")
 	if err := store.Discard(t.Context(), "ses_1", toolresult.Ref{ID: discardedID}); err != nil {
 		t.Fatalf("discard: %v", err)
@@ -91,7 +92,7 @@ func TestToolResultDiscardAndStartupPurgeOnlyRemoveUnboundBlobs(t *testing.T) {
 
 	boundID := stageShellResult(t, store, "ses_1", "keep me")
 	boundRef := toolresult.Ref{ID: boundID}
-	if err := store.Bind(t.Context(), "ses_1", "item_1", boundRef); err != nil {
+	if err := transcriptStore.AppendItem(t.Context(), toolItem("ses_1", "item_1", "preview", &boundRef)); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.Discard(t.Context(), "ses_1", boundRef); err != nil {
@@ -129,25 +130,30 @@ func TestToolResultStoreRejectsIncompleteIdentity(t *testing.T) {
 	}
 }
 
-func TestToolResultBindingListAndRestore(t *testing.T) {
-	store := newToolResultStore(t)
+func TestToolResultItemBindingListAndRestore(t *testing.T) {
+	transcriptStore, store := openTranscriptAndBlobs(t)
+	unbound := stageShellResult(t, store, "source", "unbound body")
 	id := stageShellResult(t, store, "source", "full body")
 	ref := toolresult.Ref{ID: id}
-	if err := store.Bind(t.Context(), "source", "item_1", ref); err != nil {
+	if err := transcriptStore.AppendItem(t.Context(), toolItem("source", "item_1", "preview", &ref)); err != nil {
 		t.Fatalf("bind: %v", err)
 	}
-	if err := store.Bind(t.Context(), "source", "item_1", ref); err != nil {
+	if err := transcriptStore.AppendItem(t.Context(), toolItem("source", "item_1", "preview", &ref)); err != nil {
 		t.Fatalf("replayed bind: %v", err)
 	}
-	if err := store.Bind(t.Context(), "source", "item_2", ref); !errors.Is(err, toolresult.ErrIdentityConflict) {
+	if err := transcriptStore.AppendItem(t.Context(), toolItem("source", "item_2", "preview", &ref)); !errors.Is(err, transcript.ErrIdentityConflict) {
 		t.Fatalf("conflicting bind = %v, want ErrIdentityConflict", err)
+	}
+	foreign := stageShellResult(t, store, "other", "foreign body")
+	if err := transcriptStore.AppendItem(t.Context(), toolItem("source", "item_3", "preview", &toolresult.Ref{ID: foreign})); err == nil {
+		t.Fatal("an Item offloaded to another Session's body")
 	}
 
 	blobs, err := store.List(t.Context(), "source")
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
-	if len(blobs) != 1 || blobs[0].ID != id || blobs[0].ItemID != "item_1" || blobs[0].Body != "full body" {
+	if len(blobs) != 1 || blobs[0].ID == unbound || blobs[0].ID != id || blobs[0].Body != "full body" {
 		t.Fatalf("listed blobs = %+v, want exact bound blob", blobs)
 	}
 	blob := blobs[0]
@@ -168,7 +174,7 @@ func TestToolResultRestoreNeverReparentsAnID(t *testing.T) {
 	store := newToolResultStore(t)
 	id := stageShellResult(t, store, "owner", "body")
 	blob := toolresult.Blob{
-		ID: id, SessionID: "intruder", ItemID: "item_1", Body: "body", CreatedAt: time.Now().UTC(),
+		ID: id, SessionID: "intruder", Body: "body", CreatedAt: time.Now().UTC(),
 	}
 	if err := store.Restore(t.Context(), blob); !errors.Is(err, toolresult.ErrIdentityConflict) {
 		t.Fatalf("Restore() error = %v, want ErrIdentityConflict", err)

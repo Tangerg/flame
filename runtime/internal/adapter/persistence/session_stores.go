@@ -245,10 +245,10 @@ func (s *SessionStores) ApplyFork(ctx context.Context, fork sessions.ForkPlan) (
 		if err := s.restoreRuns(ctx, snapshot.Runs); err != nil {
 			return err
 		}
-		if err := s.appendTranscriptItems(ctx, snapshot.Items); err != nil {
+		if err := s.restoreToolResults(ctx, snapshot.ToolResults); err != nil {
 			return err
 		}
-		return s.restoreToolResults(ctx, snapshot.ToolResults)
+		return s.appendTranscriptItems(ctx, snapshot.Items)
 	})
 	if err != nil {
 		return session.Session{}, err
@@ -346,10 +346,10 @@ func (s *SessionStores) ApplyRestore(ctx context.Context, restore sessions.Resto
 		if err := s.restoreRuns(ctx, snapshot.Runs); err != nil {
 			return err
 		}
-		if err := s.appendTranscriptItems(ctx, snapshot.Items); err != nil {
+		if err := s.restoreToolResults(ctx, snapshot.ToolResults); err != nil {
 			return err
 		}
-		return s.restoreToolResults(ctx, snapshot.ToolResults)
+		return s.appendTranscriptItems(ctx, snapshot.Items)
 	})
 }
 

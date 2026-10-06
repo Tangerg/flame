@@ -9,11 +9,10 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
-// ValidateToolResults verifies that every typed transcript offload has exactly
-// one matching portable blob and that no blob is detached from its item.
+// ValidateToolResults verifies that every typed transcript offload names
+// exactly one blob of this Session and that every blob is named by one Item.
 func (s Snapshot) ValidateToolResults() error {
-	byItem := make(map[string]toolresult.Blob, len(s.ToolResults))
-	byID := make(map[toolresult.ID]string, len(s.ToolResults))
+	owners := make(map[toolresult.ID]string, len(s.ToolResults))
 	for index, blob := range s.ToolResults {
 		if err := blob.Validate(); err != nil {
 			return fmt.Errorf("sessions: tool result %d: %w", index, err)
@@ -21,16 +20,11 @@ func (s Snapshot) ValidateToolResults() error {
 		if blob.SessionID != s.Session.ID() {
 			return fmt.Errorf("sessions: tool result %q belongs to session %q, want %q", blob.ID, blob.SessionID, s.Session.ID())
 		}
-		if _, duplicate := byItem[blob.ItemID]; duplicate {
-			return fmt.Errorf("sessions: multiple tool results are bound to item %q", blob.ItemID)
+		if _, duplicate := owners[blob.ID]; duplicate {
+			return fmt.Errorf("sessions: tool result %q appears more than once", blob.ID)
 		}
-		if owner, duplicate := byID[blob.ID]; duplicate {
-			return fmt.Errorf("sessions: tool result %q is bound to both items %q and %q", blob.ID, owner, blob.ItemID)
-		}
-		byItem[blob.ItemID] = blob
-		byID[blob.ID] = blob.ItemID
+		owners[blob.ID] = ""
 	}
-
 	for _, item := range s.Items {
 		invocation, present := item.ToolInvocation()
 		if !present || invocation.Offload == nil {
@@ -46,14 +40,19 @@ func (s Snapshot) ValidateToolResults() error {
 		if _, ok := invocation.Result.String(); !ok {
 			return fmt.Errorf("sessions: item %q offloaded result is not a string", item.ID())
 		}
-		blob, exists := byItem[item.ID()]
-		if !exists || blob.ID != ref.ID {
+		owner, exists := owners[ref.ID]
+		if !exists {
 			return fmt.Errorf("sessions: item %q references missing tool result %q", item.ID(), ref.ID)
 		}
-		delete(byItem, item.ID())
+		if owner != "" {
+			return fmt.Errorf("sessions: tool result %q is named by both items %q and %q", ref.ID, owner, item.ID())
+		}
+		owners[ref.ID] = item.ID()
 	}
-	for itemID, blob := range byItem {
-		return fmt.Errorf("sessions: tool result %q references missing transcript item %q", blob.ID, itemID)
+	for id, owner := range owners {
+		if owner == "" {
+			return fmt.Errorf("sessions: tool result %q is named by no transcript item", id)
+		}
 	}
 	return nil
 }

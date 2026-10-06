@@ -85,10 +85,10 @@ func (s Stage) Validate() error {
 
 // Blob is the portable, session-owned record needed to restore both
 // transcript reconstruction and deferred result reads on another database.
+// The Item that offloaded it names it; a Blob does not name the Item back.
 type Blob struct {
 	ID        ID
 	SessionID string
-	ItemID    string
 	Body      string
 	CreatedAt time.Time
 }
@@ -99,9 +99,6 @@ func (b Blob) Validate() error {
 		errs = append(errs, err)
 	}
 	if err := resourceid.ValidateSession(b.SessionID); err != nil {
-		errs = append(errs, fmt.Errorf("toolresult: %w", err))
-	}
-	if err := resourceid.ValidateItem(b.ItemID); err != nil {
 		errs = append(errs, fmt.Errorf("toolresult: %w", err))
 	}
 	if b.Body == "" {

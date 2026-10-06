@@ -108,11 +108,13 @@ func (projection *forkSnapshotProjection) selectItems() {
 }
 
 func (projection *forkSnapshotProjection) selectToolResults() {
-	for _, blob := range projection.source.ToolResults {
-		if _, selected := projection.itemIDs[blob.ItemID]; !selected {
+	for _, item := range projection.source.Items {
+		if _, selected := projection.itemIDs[item.ID()]; !selected {
 			continue
 		}
-		projection.blobIDs[blob.ID] = projection.coordinator.newToolResultID()
+		if invocation, present := item.ToolInvocation(); present && invocation.Offload != nil {
+			projection.blobIDs[invocation.Offload.ID] = projection.coordinator.newToolResultID()
+		}
 	}
 	projection.forked.ToolResults = make([]toolresult.Blob, 0, len(projection.blobIDs))
 }
@@ -197,7 +199,6 @@ func (projection *forkSnapshotProjection) copyToolResults() {
 		}
 		blob.ID = newBlobID
 		blob.SessionID = projection.child.ID()
-		blob.ItemID = projection.itemIDs[blob.ItemID]
 		projection.forked.ToolResults = append(projection.forked.ToolResults, blob)
 	}
 }

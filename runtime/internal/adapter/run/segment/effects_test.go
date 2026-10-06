@@ -184,37 +184,6 @@ func TestCommitEventPersistsTranscriptAndTerminalizes(t *testing.T) {
 	}
 }
 
-func TestCommitEventBindsOffloadedResultWithTranscriptItem(t *testing.T) {
-	toolResults := new(fakeToolResults)
-	stores := &fakeStores{transcript: new(fakeTranscript), toolResults: toolResults}
-	effects := testEffects(stores, Config{State: new(fakeRunState), Tx: new(fakeTx).run})
-	ref := &toolresult.Ref{ID: "BLOB234"}
-	preview, err := tool.NewResult("preview")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	err = effects.CommitEvent(t.Context(), runs.EventCommit{
-		RunID: "run_1", SessionID: "ses_1", SegmentID: "segment_1", CommitID: testCommitID("run_commit_event_1"),
-		Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
-			SessionID: "ses_1", RunID: "run_1", ID: "item_1",
-			Kind: transcript.ToolCall, Status: transcript.ItemCompleted,
-			OccurredAt: time.Unix(1, 0).UTC(), FinishedAt: time.Unix(2, 0).UTC(),
-			Tool: &transcript.ToolInvocation{Name: "shell", Result: &preview, Offload: ref},
-		})},
-	})
-	if err != nil {
-		t.Fatalf("CommitEvent: %v", err)
-	}
-	if len(toolResults.bindings) != 1 {
-		t.Fatalf("bindings = %+v, want one", toolResults.bindings)
-	}
-	got := toolResults.bindings[0]
-	if got.sessionID != "ses_1" || got.itemID != "item_1" || got.ref != *ref {
-		t.Fatalf("binding = %+v, want exact item/ref", got)
-	}
-}
-
 func TestCommitEventDiscardsStagedOffloadAfterCommitFailure(t *testing.T) {
 	want := errors.New("transaction failed")
 	toolResults := new(fakeToolResults)
@@ -983,26 +952,17 @@ type fakeTranscript struct {
 	items []transcript.Item
 }
 
-type toolResultBinding struct {
+type discardedToolResult struct {
 	sessionID string
-	itemID    string
 	ref       toolresult.Ref
 }
 
 type fakeToolResults struct {
-	bindings  []toolResultBinding
-	discarded []toolResultBinding
-}
-
-func (f *fakeToolResults) Bind(_ context.Context, sessionID, itemID string, ref toolresult.Ref) error {
-	f.bindings = append(f.bindings, toolResultBinding{
-		sessionID: sessionID, itemID: itemID, ref: ref,
-	})
-	return nil
+	discarded []discardedToolResult
 }
 
 func (f *fakeToolResults) Discard(_ context.Context, sessionID string, ref toolresult.Ref) error {
-	f.discarded = append(f.discarded, toolResultBinding{sessionID: sessionID, ref: ref})
+	f.discarded = append(f.discarded, discardedToolResult{sessionID: sessionID, ref: ref})
 	return nil
 }
 
