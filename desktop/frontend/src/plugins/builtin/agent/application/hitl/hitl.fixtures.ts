@@ -1,17 +1,20 @@
 import type { AgentRunView, PendingInterruptGroup } from "@/plugins/sdk/types/agentSessionView";
 
-/** The parked roots that make these interrupt groups answerable. */
-export function waitingRoots(
+/** A parked tree whose root waits and whose interrupting Runs belong to it. */
+export function waitingTree(
+  sessionId: string,
+  rootRunId: string,
   groups: readonly PendingInterruptGroup[],
 ): Record<string, AgentRunView> {
   const runs: Record<string, AgentRunView> = {};
-  for (const group of groups) {
-    runs[group.rootRunId] = {
-      id: group.rootRunId,
-      sessionId: group.sessionId,
-      parentRunId: null,
-      rootRunId: group.rootRunId,
-      spawnedByItemId: null,
+  for (const runId of new Set([rootRunId, ...groups.map((group) => group.runId)])) {
+    const root = runId === rootRunId;
+    runs[runId] = {
+      id: runId,
+      sessionId,
+      parentRunId: root ? null : rootRunId,
+      rootRunId,
+      spawnedByItemId: root ? null : `item_spawn_${runId}`,
       status: "waiting",
       activeSegmentId: null,
       outcome: null,

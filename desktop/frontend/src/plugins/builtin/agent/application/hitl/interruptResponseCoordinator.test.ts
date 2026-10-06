@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useAgentStore } from "@/plugins/builtin/agent/adapters/agentStore";
-import { waitingRoots } from "./hitl.fixtures";
+import { waitingTree } from "./hitl.fixtures";
 import type { PendingInterruptGroup } from "@/plugins/sdk/types/agentSessionView";
 import {
   installInterruptResponseCoordinator,
@@ -19,7 +19,7 @@ function seedPending(groups: PendingInterruptGroup[]): void {
   const view = useAgentStore.getState().sessions[SESSION_ID]!.view;
   store.commitViewRefresh(SESSION_ID, token, {
     ...view,
-    runsById: waitingRoots(groups),
+    runsById: waitingTree(SESSION_ID, ROOT_RUN_ID, groups),
     pendingInterrupts: groups,
   });
 }
@@ -27,15 +27,11 @@ function seedPending(groups: PendingInterruptGroup[]): void {
 function groups(): PendingInterruptGroup[] {
   return [
     {
-      sessionId: SESSION_ID,
       runId: "run_child_a",
-      rootRunId: ROOT_RUN_ID,
       interrupts: [{ itemId: "approval_a", kind: "approval" }],
     },
     {
-      sessionId: SESSION_ID,
       runId: "run_child_b",
-      rootRunId: ROOT_RUN_ID,
       interrupts: [{ itemId: "question_b", kind: "question" }],
     },
   ];

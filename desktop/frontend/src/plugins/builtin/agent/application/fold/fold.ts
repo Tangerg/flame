@@ -1,6 +1,11 @@
 import type { AgentItem } from "@/plugins/sdk";
 import type { BlockStatus, ContentBlock } from "@/plugins/sdk/types/contentBlock";
-import type { AgentSessionView, Message, ToolCall } from "@/plugins/sdk/types/agentSessionView";
+import type {
+  AgentSessionView,
+  Message,
+  PendingInterrupt,
+  ToolCall,
+} from "@/plugins/sdk/types/agentSessionView";
 import {
   contentText,
   projectToolCall,
@@ -115,6 +120,33 @@ export function updateTool(
   const existing = state.toolCalls[id];
   if (!existing || existing.runId !== runId) return state;
   return { ...state, toolCalls: { ...state.toolCalls, [id]: fn(existing) } };
+}
+
+export function mergeRunPendingInterrupts(
+  state: AgentSessionView,
+  runId: string,
+  interrupts: readonly PendingInterrupt[],
+): AgentSessionView {
+  if (interrupts.length === 0) return state;
+  if (!state.runsById[runId]) {
+    throw new Error(`agent.fold.runMissing:event=interrupt;run=${runId}`);
+  }
+  const existing = state.pendingInterrupts.find((group) => group.runId === runId);
+  const known = new Set(existing?.interrupts.map((interrupt) => interrupt.itemId));
+  const fresh = interrupts.filter((interrupt) => !known.has(interrupt.itemId));
+  if (fresh.length === 0) return state;
+  if (!existing) {
+    return {
+      ...state,
+      pendingInterrupts: [...state.pendingInterrupts, { runId, interrupts: fresh }],
+    };
+  }
+  return {
+    ...state,
+    pendingInterrupts: state.pendingInterrupts.map((group) =>
+      group.runId === runId ? { ...group, interrupts: [...group.interrupts, ...fresh] } : group,
+    ),
+  };
 }
 
 // A run that is no longer waiting has no open interrupt; the Runtime's Pending

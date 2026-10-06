@@ -151,10 +151,9 @@ export interface PendingInterrupt {
   kind: PendingInterruptKind;
 }
 
+/** The open interrupts one Run raised; the Run itself names its tree's root. */
 export interface PendingInterruptGroup {
   runId: string;
-  rootRunId: string;
-  sessionId: string;
   interrupts: PendingInterrupt[];
 }
 

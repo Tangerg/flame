@@ -8,7 +8,7 @@ import type {
   PendingInterrupt,
 } from "@/plugins/sdk/types/agentSessionView";
 import { setTimelineEntry } from "@/plugins/sdk";
-import { dropRunPendingInterrupts } from "./fold";
+import { dropRunPendingInterrupts, mergeRunPendingInterrupts } from "./fold";
 import { materializeInterrupt } from "./interruptMaterialization";
 import type { AgentFoldSource } from "./source";
 import { timelineEntry } from "./source";
@@ -74,10 +74,9 @@ function isDuplicateRunFinish(
   if (!sameRunMetrics(run.metrics, projectedMetrics)) return false;
   if (outcome.type === "interrupt") {
     if (run.status !== "waiting") return false;
-    const rootRunId = run.rootRunId;
     const open = new Set(
       state.pendingInterrupts
-        .filter((group) => group.rootRunId === rootRunId)
+        .filter((group) => state.runsById[group.runId]?.rootRunId === run.rootRunId)
         .flatMap((group) => group.interrupts.map((interrupt) => interrupt.itemId)),
     );
     return outcome.interrupts.every((interrupt) => open.has(interrupt.itemId));
@@ -221,7 +220,6 @@ export function onRunFinished(
 
   if (outcome.type === "suspended") return next;
   if (outcome.type === "interrupt") {
-    const rootRunId = next.runsById[source.runId]!.rootRunId;
     const byRunId = new Map<string, PendingInterrupt[]>();
     for (const interrupt of outcome.interrupts) {
       const runId = interrupt.runId;
@@ -230,7 +228,7 @@ export function onRunFinished(
       byRunId.set(runId, pending);
     }
     for (const [runId, interrupts] of byRunId) {
-      next = mergePendingInterrupts(next, runId, rootRunId, interrupts);
+      next = mergeRunPendingInterrupts(next, runId, interrupts);
     }
     for (const interrupt of outcome.interrupts) {
       const runId = interrupt.runId;
@@ -264,40 +262,4 @@ function terminalOutcomeSummary(outcome: AgentRunOutcome): string | undefined {
   if (isAgentRunFailure(outcome))
     return outcome.error.message ?? outcome.error.code ?? outcome.type;
   return outcome.detail ?? outcome.type;
-}
-
-function mergePendingInterrupts(
-  state: AgentSessionView,
-  runId: string,
-  rootRunId: string,
-  interrupts: PendingInterrupt[],
-): AgentSessionView {
-  if (interrupts.length === 0) return state;
-  const run = state.runsById[runId];
-  if (!run) {
-    throw new Error(`agent.fold.runMissing:event=segment.finished.interrupt;run=${runId}`);
-  }
-  const existingGroup = state.pendingInterrupts.find(
-    (group) => group.runId === runId && group.rootRunId === rootRunId,
-  );
-  const existingIds = new Set(existingGroup?.interrupts.map((interrupt) => interrupt.itemId));
-  const fresh = interrupts.filter((interrupt) => !existingIds.has(interrupt.itemId));
-  if (fresh.length === 0) return state;
-  if (!existingGroup) {
-    return {
-      ...state,
-      pendingInterrupts: [
-        ...state.pendingInterrupts,
-        { runId, rootRunId, sessionId: run.sessionId, interrupts: fresh },
-      ],
-    };
-  }
-  return {
-    ...state,
-    pendingInterrupts: state.pendingInterrupts.map((group) =>
-      group.runId === runId && group.rootRunId === rootRunId
-        ? { ...group, interrupts: [...group.interrupts, ...fresh] }
-        : group,
-    ),
-  };
 }

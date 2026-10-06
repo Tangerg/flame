@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { navigator } from "@/lib/navigation";
 import { useAgentStore } from "@/plugins/builtin/agent/adapters/agentStore";
-import { waitingRoots } from "./hitl.fixtures";
+import { waitingTree } from "./hitl.fixtures";
 import type { PendingInterruptGroup } from "@/plugins/sdk/types/agentSessionView";
 import { installInterruptResponseCoordinator } from "./interruptResponseCoordinator";
 import { registerApprovalActions } from "./useApprovalSubmit";
@@ -18,7 +18,7 @@ function seedPending(groups: PendingInterruptGroup[]): void {
   const view = useAgentStore.getState().sessions[SESSION_ID]!.view;
   store.commitViewRefresh(SESSION_ID, token, {
     ...view,
-    runsById: waitingRoots(groups),
+    runsById: waitingTree(SESSION_ID, ROOT_RUN_ID, groups),
     pendingInterrupts: groups,
   });
 }
@@ -38,15 +38,11 @@ describe("submitPendingApproval", () => {
   it("walks an atomic child-run barrier and resumes its root once", () => {
     seedPending([
       {
-        sessionId: SESSION_ID,
         runId: "run_child_a",
-        rootRunId: ROOT_RUN_ID,
         interrupts: [{ itemId: "approval_a", kind: "approval" }],
       },
       {
-        sessionId: SESSION_ID,
         runId: "run_child_b",
-        rootRunId: ROOT_RUN_ID,
         interrupts: [{ itemId: "approval_b", kind: "approval" }],
       },
     ]);
@@ -86,9 +82,7 @@ describe("submitPendingApproval", () => {
   it("does not consume the approval shortcut for a question-only barrier", () => {
     seedPending([
       {
-        sessionId: SESSION_ID,
         runId: ROOT_RUN_ID,
-        rootRunId: ROOT_RUN_ID,
         interrupts: [{ itemId: "question_a", kind: "question" }],
       },
     ]);
@@ -103,9 +97,7 @@ describe("submitPendingApproval", () => {
   it("does not borrow a mounted approval card from another Session", () => {
     seedPending([
       {
-        sessionId: SESSION_ID,
         runId: ROOT_RUN_ID,
-        rootRunId: ROOT_RUN_ID,
         interrupts: [{ itemId: "approval_same", kind: "approval" }],
       },
     ]);
@@ -132,9 +124,7 @@ describe("submitPendingApproval", () => {
   it("does not borrow a mounted approval card from another root Run", () => {
     seedPending([
       {
-        sessionId: SESSION_ID,
         runId: ROOT_RUN_ID,
-        rootRunId: ROOT_RUN_ID,
         interrupts: [{ itemId: "approval_same", kind: "approval" }],
       },
     ]);
@@ -161,9 +151,7 @@ describe("submitPendingApproval", () => {
   it("uses the mounted card only for the exact approval owner", () => {
     seedPending([
       {
-        sessionId: SESSION_ID,
         runId: ROOT_RUN_ID,
-        rootRunId: ROOT_RUN_ID,
         interrupts: [{ itemId: "approval_exact", kind: "approval" }],
       },
     ]);

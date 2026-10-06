@@ -134,15 +134,11 @@ describe("reducer — source-owned Run tree", () => {
 
     expect(view.pendingInterrupts).toEqual([
       {
-        sessionId: "ses_1",
         runId: childA.id,
-        rootRunId: root.id,
         interrupts: [{ itemId: "approval_a", kind: "approval" }],
       },
       {
-        sessionId: "ses_1",
         runId: childB.id,
-        rootRunId: root.id,
         interrupts: [{ itemId: "question_b", kind: "question" }],
       },
     ]);

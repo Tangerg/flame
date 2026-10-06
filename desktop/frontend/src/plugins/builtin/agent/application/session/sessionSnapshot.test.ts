@@ -157,9 +157,7 @@ describe("projectAgentSessionSnapshot", () => {
     expect(selectAwaitingInterrupts(view).get("item_approval")).toBe(ROOT_RUN_ID);
     expect(view.pendingInterrupts).toEqual([
       {
-        sessionId: SESSION_ID,
         runId: CHILD_RUN_ID,
-        rootRunId: ROOT_RUN_ID,
         interrupts: [{ itemId: "item_approval", kind: "approval" }],
       },
     ]);
