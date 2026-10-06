@@ -428,18 +428,13 @@ func (c *Conversation) RestoreSnapshot(snapshot SessionSnapshot) error {
 	if active, ok := snapshot.ActiveRun(); ok {
 		next.runID = active.ID
 		next.segmentID = active.ActiveSegmentID
-		next.usage = active.Usage.Clone()
 		if active.Status == runtimeprotocol.RunStatusWaiting {
-			next.phase = Waiting
 			next.interrupts = CloneInterrupts(snapshot.Interrupts)
 		} else {
-			next.phase = Running
 			next.coldTail = true
 		}
 	} else if latest, ok := snapshot.LatestRun(); ok {
 		next.runID = latest.ID
-		next.usage = latest.Usage.Clone()
-		next.outcome = latest.Outcome.Clone()
 	}
 	*c = *next
 	return nil

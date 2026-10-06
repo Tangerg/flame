@@ -195,9 +195,10 @@ func (a *app) observeCurrentRunStatus() {
 }
 
 func (a *app) settleCurrentRunStatus() {
-	run, _ := a.execution.conversation.CurrentRun()
-	run.Outcome = a.execution.conversation.Outcome()
-	run.Usage = a.execution.conversation.Usage()
+	run, ok := a.execution.conversation.CurrentRun()
+	if !ok {
+		run.Outcome = a.execution.conversation.Outcome()
+	}
 	a.status.settled(run)
 }
 

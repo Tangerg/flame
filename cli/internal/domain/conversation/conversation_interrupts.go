@@ -19,7 +19,7 @@ type blockReplacement struct {
 // tool results remain stream-owned because their completed items do arrive on
 // the continuation segment.
 func (c *Conversation) RecordAcceptedInterruptAnswers(responses []InterruptAnswer) ([]Block, error) {
-	if c.phase != Waiting {
+	if c.Phase() != Waiting {
 		return nil, fmt.Errorf("%w: conversation is not waiting for interrupt answers", ErrInvalidTransition)
 	}
 	if len(responses) != len(c.interrupts) {

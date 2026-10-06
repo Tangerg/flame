@@ -34,11 +34,12 @@ func (c Phase) Valid() bool {
 type Conversation struct {
 	blocks     []Block
 	plan       *protocol.Plan
-	usage      Usage
 	interrupts []Interrupt
-	outcome    Outcome
 
-	phase       Phase
+	// opening is the only lifecycle fact held outside a Run: a root start the
+	// terminal requested before Runtime named its Run. Once runID is set the
+	// root Run alone answers phase, usage and outcome.
+	opening     opening
 	runID       string
 	segmentID   string
 	checkpoint  string
@@ -58,9 +59,16 @@ type Conversation struct {
 	restoredPlanRevision uint64
 }
 
+type opening uint8
+
+const (
+	openingNone opening = iota
+	openingPending
+	openingCanceled
+)
+
 func New() *Conversation {
 	return &Conversation{
-		phase:       Idle,
 		seen:        make(map[string]RunEvent),
 		runs:        make(map[string]Run),
 		index:       make(map[string]int),
@@ -71,7 +79,7 @@ func New() *Conversation {
 // ValidateInterruptReview checks a frozen review against the current root's
 // complete waiting set. Each interrupt retains its owning member Run ID.
 func (c *Conversation) ValidateInterruptReview(rootRunID string, interrupts []Interrupt) error {
-	if c.phase != Waiting || c.runID != rootRunID || !InterruptsEqual(c.interrupts, interrupts) {
+	if c.Phase() != Waiting || c.runID != rootRunID || !InterruptsEqual(c.interrupts, interrupts) {
 		return errors.New("interrupt review no longer matches the waiting root")
 	}
 	return nil
@@ -88,13 +96,41 @@ func (c *Conversation) PlanItems() []protocol.PlanStep {
 	return append([]protocol.PlanStep{}, c.plan.State.Steps...)
 }
 
-func (c *Conversation) Usage() Usage { return c.usage.Clone() }
+func (c *Conversation) Usage() Usage {
+	if c.runID == "" {
+		return Usage{}
+	}
+	return c.runs[c.runID].Usage.Clone()
+}
 
 func (c *Conversation) Interrupts() []Interrupt { return CloneInterrupts(c.interrupts) }
 
-func (c *Conversation) Outcome() Outcome { return c.outcome.Clone() }
+func (c *Conversation) Outcome() Outcome {
+	if c.runID == "" {
+		if c.opening == openingCanceled {
+			return Outcome{Status: protocol.OutcomeCanceled}
+		}
+		return Outcome{}
+	}
+	return c.runs[c.runID].Outcome.Clone()
+}
 
-func (c *Conversation) Phase() Phase { return c.phase }
+func (c *Conversation) Phase() Phase {
+	if c.runID == "" {
+		if c.opening == openingPending {
+			return Running
+		}
+		return Idle
+	}
+	switch c.runs[c.runID].Status {
+	case protocol.RunStatusRunning:
+		return Running
+	case protocol.RunStatusWaiting:
+		return Waiting
+	default:
+		return Idle
+	}
+}
 
 func (c *Conversation) RunID() string { return c.runID }
 
@@ -102,7 +138,7 @@ func (c *Conversation) SegmentID() string { return c.segmentID }
 
 func (c *Conversation) Checkpoint() string { return c.checkpoint }
 
-func (c *Conversation) Busy() bool { return c.phase != Idle }
+func (c *Conversation) Busy() bool { return c.Phase() != Idle }
 
 // CurrentRun returns the root Run whose lifecycle the conversation owns.
 // Descendant activity never replaces this root identity.
@@ -161,8 +197,8 @@ func (c *Conversation) MatchesSnapshot(snapshot SessionSnapshot) bool {
 		}
 	}
 	return equalPlans(c.plan, expected.plan) &&
-		c.usage.Equal(expected.usage) && equalInterrupts(c.interrupts, expected.interrupts) &&
-		c.outcome.Equal(expected.outcome) && c.phase == expected.phase && c.runID == expected.runID &&
+		c.Usage().Equal(expected.Usage()) && equalInterrupts(c.interrupts, expected.interrupts) &&
+		c.Outcome().Equal(expected.Outcome()) && c.Phase() == expected.Phase() && c.runID == expected.runID &&
 		c.segmentID == expected.segmentID && slices.EqualFunc(c.Runs(), expected.Runs(), Run.Equal)
 }
 
@@ -170,13 +206,11 @@ func (c *Conversation) Starting() error {
 	if c.Busy() {
 		return fmt.Errorf("%w: conversation is already busy", ErrInvalidTransition)
 	}
-	c.phase = Running
+	c.opening = openingPending
 	c.runID = ""
 	c.segmentID = ""
 	c.checkpoint = ""
 	c.seen = make(map[string]RunEvent)
-	c.usage = Usage{}
-	c.outcome = Outcome{}
 	c.interrupts = nil
 	c.reconciling = false
 	c.coldTail = false
@@ -184,21 +218,22 @@ func (c *Conversation) Starting() error {
 }
 
 func (c *Conversation) CancelStarting() error {
-	if c.phase != Running || c.runID != "" {
+	if c.runID != "" || c.opening != openingPending {
 		return fmt.Errorf("%w: conversation is not starting", ErrInvalidTransition)
 	}
-	c.phase = Idle
+	c.opening = openingCanceled
 	c.reconciling = false
 	c.coldTail = false
-	c.outcome = Outcome{Status: protocol.OutcomeCanceled}
 	return nil
 }
 
 func (c *Conversation) ClearPresentation() {
 	c.blocks = nil
 	c.plan = nil
-	c.usage = Usage{}
-	c.outcome = Outcome{}
+	if c.Phase() == Idle {
+		c.runID = ""
+		c.opening = openingNone
+	}
 	c.index = make(map[string]int)
 	c.textStreams = make(map[string]StreamedText)
 }

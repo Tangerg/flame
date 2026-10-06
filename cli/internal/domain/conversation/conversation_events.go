@@ -119,7 +119,7 @@ func (c *Conversation) validateEventIdentity(envelope RunEvent) error {
 		if !started.Run.Lineage.IsRoot() && started.Run.Lineage.RootRunID() != c.runID {
 			return fmt.Errorf("conversation: child run %s belongs to root %s, not %s", envelope.RunID, started.Run.Lineage.RootRunID(), c.runID)
 		}
-		if c.phase == Waiting && started.Run.Lineage.IsRoot() && c.runID != envelope.RunID {
+		if c.Phase() == Waiting && started.Run.Lineage.IsRoot() && c.runID != envelope.RunID {
 			return fmt.Errorf("conversation: resumed root run %s does not match waiting run %s", envelope.RunID, c.runID)
 		}
 		return nil
@@ -186,10 +186,9 @@ func (c *Conversation) applySegmentStarted(event SegmentStarted) error {
 }
 
 func (c *Conversation) applyRootSegmentStarted(run, previous Run, exists bool) error {
-	previousUsage := c.usage
-	switch c.phase {
+	previousUsage := c.Usage()
+	switch c.Phase() {
 	case Idle:
-		c.outcome = Outcome{}
 		previousUsage = Usage{}
 	case Waiting:
 		if c.runID != run.ID {
@@ -207,9 +206,8 @@ func (c *Conversation) applyRootSegmentStarted(run, previous Run, exists bool) e
 		return fmt.Errorf("%w: root segment started: %w", ErrInvalidTransition, err)
 	}
 	c.runID = run.ID
-	c.phase = Running
+	c.opening = openingNone
 	c.interrupts = nil
-	c.usage = run.Usage.Clone()
 	return nil
 }
 
@@ -307,9 +305,6 @@ func (c *Conversation) applyRunProgress(runID string, event RunProgress) error {
 	}
 	run.Usage = usage
 	c.runs[runID] = run
-	if runID == c.runID {
-		c.usage = usage.Clone()
-	}
 	return nil
 }
 
@@ -373,10 +368,6 @@ func (c *Conversation) applyInterrupted(runID string, event RunInterrupted) erro
 	run.Usage = event.Usage.Clone()
 	run.ContextTokens = event.ContextTokens
 	c.runs[runID] = run
-	if runID == c.runID {
-		c.phase = Waiting
-		c.usage = event.Usage.Clone()
-	}
 	c.reconciling = false
 	c.coldTail = false
 	c.interrupts = pending
@@ -402,8 +393,6 @@ func (c *Conversation) applySuspended(runID string, event RunSuspended) error {
 	run.ContextTokens = event.ContextTokens
 	c.runs[runID] = run
 	if runID == c.runID {
-		c.phase = Waiting
-		c.usage = event.Usage.Clone()
 		c.reconciling = false
 		c.coldTail = false
 	}
@@ -438,12 +427,9 @@ func (c *Conversation) applyFinished(runID string, event RunFinished) error {
 	run.ContextTokens = event.ContextTokens
 	c.runs[runID] = run
 	if runID == c.runID {
-		c.phase = Idle
 		c.reconciling = false
 		c.coldTail = false
 		c.interrupts = nil
-		c.outcome = event.Outcome.Clone()
-		c.usage = event.Usage.Clone()
 	}
 	return nil
 }
