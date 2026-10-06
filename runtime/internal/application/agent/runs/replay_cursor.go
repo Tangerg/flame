@@ -11,10 +11,6 @@ import (
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
-// replayCursorFormat changes when the token layout changes. A cursor held
-// across an incompatible upgrade is refused instead of being misread.
-const replayCursorFormat = 1
-
 // maximumReplayEpochBytes bounds the process-local authority carried inside
 // every replay cursor. crypto/rand.Text currently emits 26 RFC 4648 base32
 // bytes and may grow in a future Go release; this envelope leaves that room
@@ -52,11 +48,11 @@ func (r replayPosition) validate() error {
 	return nil
 }
 
-// encodedReplayPosition is the versioned token payload. The compact field names
-// reduce the cost of carrying a cursor on every published event; callers still
-// treat the resulting token as opaque.
+// encodedReplayPosition is the token payload. It carries no layout version:
+// its epoch is minted per process, so only the build that issued a cursor can
+// ever honor it. The compact field names reduce the cost of carrying a cursor
+// on every published event; callers still treat the resulting token as opaque.
 type encodedReplayPosition struct {
-	Version   int    `json:"v"`
 	Epoch     string `json:"e"`
 	RunID     string `json:"r"`
 	SegmentID string `json:"g"`
@@ -86,7 +82,7 @@ func encodeReplayCursor(position replayPosition) (string, error) {
 		return "", fmt.Errorf("%w: %v", errMalformedReplayCursor, err)
 	}
 	token, err := opaquetoken.Encode(encodedReplayPosition{
-		Version: replayCursorFormat, Epoch: position.epoch.String(),
+		Epoch: position.epoch.String(),
 		RunID: position.runID.String(), SegmentID: position.segmentID.String(), Sequence: position.sequence,
 	}, runtimeidentity.MaximumCursorCharacters)
 	if err != nil {
@@ -119,9 +115,6 @@ func decodeReplayCursor(token string) (replayPosition, error) {
 		return replayPosition{}, fmt.Errorf("%w: %v", errMalformedReplayCursor, err)
 	}
 	position := replayPosition{epoch: epoch, runID: runID, segmentID: segmentID, sequence: encoded.Sequence}
-	if encoded.Version != replayCursorFormat {
-		return replayPosition{}, errMalformedReplayCursor
-	}
 	if err := position.validate(); err != nil {
 		return replayPosition{}, fmt.Errorf("%w: %v", errMalformedReplayCursor, err)
 	}
