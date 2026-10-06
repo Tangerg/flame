@@ -136,9 +136,8 @@ func TestResolverInspectFindsRepositoryRoot(t *testing.T) {
 }
 
 func TestResolverInspectReportsUnavailableWorkspace(t *testing.T) {
-	empty, err := (workspaceadapter.Resolver{}).Inspect("")
-	if err != nil || !empty.Missing || empty.Path != "" || empty.ProjectRoot != "" {
-		t.Fatalf("Inspect empty = (%+v, %v), want unavailable empty identity", empty, err)
+	if _, err := (workspaceadapter.Resolver{}).Inspect(""); !errors.Is(err, workspaceadapter.ErrAbsolutePathRequired) {
+		t.Fatalf("Inspect empty error = %v, want ErrAbsolutePathRequired", err)
 	}
 
 	missing := filepath.Join(t.TempDir(), "gone")

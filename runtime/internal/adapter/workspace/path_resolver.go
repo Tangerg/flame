@@ -102,9 +102,6 @@ func (r Resolver) ResolveExistingInRoot(root, path string) (string, error) {
 // A path that disappeared (or was replaced by a non-directory) is a normal
 // workspace projection, not an error. Other filesystem failures remain explicit.
 func (Resolver) Inspect(path string) (workspaceapp.Resolved, error) {
-	if path == "" {
-		return workspaceapp.Resolved{Missing: true}, nil
-	}
 	cwd, err := Canonical(path)
 	if err != nil {
 		return workspaceapp.Resolved{}, err

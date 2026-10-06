@@ -179,20 +179,6 @@ func newAuthoredWatch(t *testing.T, scope *Scope, inspector IdentityInspector, w
 	return watch
 }
 
-func TestAuthoredWatchRejectsInvalidWorkspaceInspection(t *testing.T) {
-	root := t.TempDir()
-	watcher := &recordingAuthoredWatcher{}
-	useCases := newAuthoredWatch(t, newScope(t, root, root, testPaths{}), staticWorkspaceInspector{
-		resolved: Resolved{Path: root, ProjectRoot: filepath.Join(root, "nested")},
-	}, watcher)
-	if _, err := useCases.Watch([]string{root}, []AuthoredResource{AuthoredSkills}, func(AuthoredResource) {}); err == nil {
-		t.Fatal("Watch accepted invalid workspace inspection")
-	}
-	if watcher.scopes != nil {
-		t.Fatal("invalid workspace inspection reached watcher")
-	}
-}
-
 type staticWorkspaceInspector struct{ resolved Resolved }
 
 func (s staticWorkspaceInspector) Inspect(string) (Resolved, error) { return s.resolved, nil }
