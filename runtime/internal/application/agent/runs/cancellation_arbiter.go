@@ -22,7 +22,15 @@ type childCancellation struct {
 	targetTerminal *rundomain.Run
 	done           chan struct{}
 	err            error
-	finished       bool
+}
+
+func (c *childCancellation) finished() bool {
+	select {
+	case <-c.done:
+		return true
+	default:
+		return false
+	}
 }
 
 func (r *runTreeOwner) beginChildCancellation(
@@ -95,7 +103,7 @@ func (r *runTreeOwner) abortChildCancellation(attempt *childCancellation, err er
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if r.childCancel != attempt || attempt.finished {
+	if r.childCancel != attempt || attempt.finished() {
 		return
 	}
 	attempt.err = err
@@ -103,10 +111,9 @@ func (r *runTreeOwner) abortChildCancellation(attempt *childCancellation, err er
 }
 
 func (r *runTreeOwner) finishChildCancellationLocked(attempt *childCancellation) {
-	if attempt == nil || attempt.finished {
+	if attempt == nil || attempt.finished() {
 		return
 	}
-	attempt.finished = true
 	if r.childCancel == attempt {
 		r.childCancel = nil
 	}

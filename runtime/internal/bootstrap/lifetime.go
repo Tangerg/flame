@@ -54,9 +54,17 @@ func newRuntimeLifetime(ctx context.Context, resources []TerminalResource) *runt
 }
 
 type shutdownAttempt struct {
-	done      chan struct{}
-	err       error
-	completed bool
+	done chan struct{}
+	err  error
+}
+
+func (a *shutdownAttempt) completed() bool {
+	select {
+	case <-a.done:
+		return true
+	default:
+		return false
+	}
 }
 
 type shutdownComponent interface {
@@ -114,7 +122,7 @@ func beginShutdown(
 		return lifetime.shutdown, true
 	}
 	attempt = lifetime.shutdown
-	if attempt == nil || attempt.completed {
+	if attempt == nil || attempt.completed() {
 		attempt = &shutdownAttempt{done: make(chan struct{})}
 		lifetime.shutdown = attempt
 		go runShutdown(ownerCtx, lifetime, attempt)
@@ -227,7 +235,6 @@ func finishShutdown(
 	lifetime.closeMu.Lock()
 	defer lifetime.closeMu.Unlock()
 	attempt.err = err
-	attempt.completed = true
 	if closed {
 		lifetime.toolResources = nil
 		lifetime.hostResources = nil
