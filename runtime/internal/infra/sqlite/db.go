@@ -480,9 +480,9 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			revision   INTEGER NOT NULL CHECK (revision BETWEEN %d AND %d),
 			updated_at INTEGER NOT NULL
 		)`, firstExactInteger, exactint.Maximum),
-		// A session gets an explicit permission row only after entering Plan mode.
-		// The row retains the exact mode to restore on exit and follows the owning
-		// session through the database FK lifecycle.
+		// A row means the session is in Plan mode; leaving Plan mode returns it to
+		// the current default permission mode. The row follows the owning session
+		// through the database FK lifecycle.
 		`CREATE TABLE IF NOT EXISTS session_plan_modes (
 			session_id TEXT PRIMARY KEY REFERENCES sessions(id) ON DELETE CASCADE
 		)`,
@@ -505,7 +505,8 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		)`,
 		// One autonomous goal per session (Goal mode). The FK is the durable
 		// ownership invariant: a Goal cannot survive or be created after its
-		// Session. Used accounting is a small JSON blob read/written whole with the row.
+		// Session. Its usage is not stored: it is folded from the incarnation's
+		// terminal Runs on read.
 		`CREATE TABLE IF NOT EXISTS goals (
 			session_id TEXT    PRIMARY KEY REFERENCES sessions(id) ON DELETE CASCADE,
 			objective  TEXT    NOT NULL,
