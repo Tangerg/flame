@@ -233,10 +233,8 @@ func (n *NDJSON) Render(envelope conversation.RunEvent) error {
 		n.err = err
 		return n.err
 	}
-	f.EventID, f.SegmentID, f.StreamSegmentID, f.At = envelope.EventID, envelope.SegmentID, envelope.StreamSegment(), envelope.At
-	if f.RunID == "" {
-		f.RunID = envelope.RunID
-	}
+	f.RunID, f.EventID, f.SegmentID = envelope.RunID, envelope.EventID, envelope.SegmentID
+	f.StreamSegmentID, f.At = envelope.StreamSegment(), envelope.At
 	n.err = WriteJSONLine(n.out, f)
 	return n.err
 }
@@ -296,7 +294,7 @@ func encodeEventFrame(envelope conversation.RunEvent) (eventRecord, error) {
 	switch event := envelope.Event.(type) {
 	case conversation.SegmentStarted:
 		return eventRecord{
-			Type: "segment.started", RunID: event.Run.ID, SessionID: event.Run.SessionID,
+			Type: "segment.started", SessionID: event.Run.SessionID,
 			SpawnedByBlockID: event.Run.Lineage.SpawnedByBlockID(),
 			ParentRunID:      event.Run.Lineage.ParentRunID(), RootRunID: event.Run.Lineage.RootRunID(),
 		}, nil

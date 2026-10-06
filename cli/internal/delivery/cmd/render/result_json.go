@@ -226,9 +226,6 @@ func (r *ResultJSON) fold(envelope conversation.RunEvent) {
 		r.frame.RunID, r.frame.SessionID = event.Run.ID, event.Run.SessionID
 		r.frame.Status = string(protocol.RunStatusRunning)
 		r.frame.Interrupts = nil
-		if r.frame.RunID == "" {
-			r.frame.RunID = envelope.RunID
-		}
 	case conversation.BlockStarted:
 		if r.scope.isRoot(envelope.RunID) {
 			r.begin(event.Block)
