@@ -11,31 +11,12 @@ interface GoalUsage {
   steps: number;
 }
 
-type GoalStopCode =
-  | "stoppedByUser"
-  | "runtimeRestarted"
-  | "runStartFailed"
-  | "awaitingInput"
-  | "terminalOutcomeMissing"
-  | "runNotCompleted"
-  | "blockedByModel";
-
-interface GoalStop {
-  code: GoalStopCode;
-  detail: string;
-}
-
 export interface GoalReadModel {
   sessionId: string;
   objective: string;
   status: GoalStatus;
-  stop: GoalStop | null;
   used: GoalUsage;
-  provider: string;
-  model: string;
-  reasoningEffort: string;
   createdAt: string;
-  updatedAt: string;
 }
 
 export interface GoalState {

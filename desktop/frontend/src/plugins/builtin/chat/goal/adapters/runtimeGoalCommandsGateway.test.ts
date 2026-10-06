@@ -24,13 +24,8 @@ describe("Runtime Goal Adapter", () => {
       sessionId: "ses_goal",
       objective: "ship it",
       status: "blocked",
-      stop: { code: "blockedByModel", detail: "need an answer" },
-      provider: "openai",
-      model: "gpt-5",
-      reasoningEffort: "high",
       used: { runs: 2, costUsd: 0.75, steps: 12 },
       createdAt: "2026-08-12T08:00:00Z",
-      updatedAt: "2026-08-12T08:01:00Z",
     });
   });
 

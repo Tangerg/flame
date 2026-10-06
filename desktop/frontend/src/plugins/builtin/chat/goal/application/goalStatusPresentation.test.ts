@@ -8,13 +8,8 @@ function goal(patch: Partial<GoalReadModel> = {}): GoalReadModel {
     sessionId: "ses_1",
     objective: "Ship the retry fix",
     status: "active",
-    stop: null,
     used: { runs: 7, costUsd: 4.5, steps: 31 },
-    provider: "openai",
-    model: "gpt-5",
-    reasoningEffort: "high",
     createdAt: "2026-08-12T08:00:00Z",
-    updatedAt: "2026-08-12T08:01:00Z",
     ...patch,
   };
 }
@@ -27,7 +22,6 @@ describe("goal lifecycle actions", () => {
         goalCanResume(
           goal({
             status: code === "blockedByModel" ? "blocked" : "paused",
-            stop: { code, detail: "" },
           }),
         ),
       ).toBe(true);

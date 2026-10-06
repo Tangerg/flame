@@ -15,12 +15,8 @@ const model = vi.hoisted(() => ({
     sessionId: "session-a",
     objective: "Ship alpha",
     status: "active",
-    stop: null,
     used: { runs: 1, costUsd: 0, steps: 2 },
-    provider: "openai",
-    model: "gpt-5",
     createdAt: "2026-08-12T08:00:00Z",
-    updatedAt: "2026-08-12T08:01:00Z",
   } as GoalReadModel,
 }));
 
@@ -55,13 +51,8 @@ describe("Goal status surface", () => {
       sessionId: "session-a",
       objective: "Ship alpha",
       status: "active",
-      stop: null,
       used: { runs: 1, costUsd: 0, steps: 2 },
-      provider: "openai",
-      model: "gpt-5",
-      reasoningEffort: "",
       createdAt: "2026-08-12T08:00:00Z",
-      updatedAt: "2026-08-12T08:01:00Z",
     };
     model.stopGoal.mockClear();
     model.resumeGoal.mockClear();
@@ -212,7 +203,6 @@ describe("Goal status surface", () => {
     model.goal = {
       ...model.goal,
       status: "paused",
-      stop: { code: "stoppedByUser", detail: "" },
     };
     render(<GoalStatusSurface />);
 

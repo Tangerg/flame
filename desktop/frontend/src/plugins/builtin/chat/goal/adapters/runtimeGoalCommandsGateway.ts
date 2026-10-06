@@ -28,17 +28,12 @@ export function toGoalReadModel(goal: Goal): GoalReadModel {
     sessionId: goal.sessionId,
     objective: goal.objective,
     status: goal.status,
-    stop: goal.reason ? { code: goal.reason.code, detail: goal.reason.detail ?? "" } : null,
-    provider: goal.provider ?? "",
-    model: goal.model ?? "",
-    reasoningEffort: goal.reasoningEffort ?? "",
     used: {
       runs: goal.used.runs,
       ...(goal.used.costUsd !== undefined ? { costUsd: goal.used.costUsd } : {}),
       steps: goal.used.steps,
     },
     createdAt: goal.createdAt,
-    updatedAt: goal.updatedAt,
   };
 }
 
