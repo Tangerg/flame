@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 
 	"go.opentelemetry.io/otel/trace"
@@ -143,6 +144,7 @@ func (c *Coordinator) TestProvider(ctx context.Context, id string) (ProviderTest
 	}
 	if probeErr != nil {
 		trace.SpanFromContext(ctx).RecordError(probeErr)
+		slog.WarnContext(ctx, "models: provider test failed", "provider", id, "error", probeErr)
 		switch {
 		case errors.Is(probeErr, context.DeadlineExceeded):
 			return ProviderTestTimedOut, nil

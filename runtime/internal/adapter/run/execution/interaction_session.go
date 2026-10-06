@@ -332,6 +332,8 @@ func (i *interactionSession) reportDroppedDelta(ctx context.Context, delta agent
 	)
 	if !errors.Is(cause, errUnroutableDelta) {
 		span.RecordError(cause)
+		slog.ErrorContext(ctx, "execution: model response delta dropped",
+			"process.id", delta.ProcessID().String(), "error", cause)
 	}
 }
 
