@@ -36,7 +36,7 @@ func NewWaitingSubtreeCancellationRequest(
 		targetMemberID: targetMemberID,
 		reason:         reason,
 	}
-	if err := request.Validate(); err != nil {
+	if err := request.validate(); err != nil {
 		return WaitingSubtreeCancellationRequest{}, err
 	}
 	return request, nil
@@ -70,9 +70,9 @@ func (w WaitingContinuation) Clone() WaitingContinuation {
 	return w
 }
 
-// Validate verifies the Application-owned waiting subtree command without
+// validate verifies the Application-owned waiting subtree command without
 // interpreting the executor checkpoint payload.
-func (w WaitingSubtreeCancellationRequest) Validate() error {
+func (w WaitingSubtreeCancellationRequest) validate() error {
 	if err := w.continuation.Validate(); err != nil {
 		return fmt.Errorf("runs: waiting subtree continuation: %w", err)
 	}

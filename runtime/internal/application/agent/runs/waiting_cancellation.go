@@ -31,7 +31,7 @@ func NewPreparedWaitingSubtreeCancellation(
 		checkpoint:           checkpoint.Clone(),
 		change:               change,
 	}
-	if err := prepared.Validate(); err != nil {
+	if err := prepared.validate(); err != nil {
 		return PreparedWaitingSubtreeCancellation{}, err
 	}
 	return prepared, nil
@@ -81,9 +81,9 @@ func (p PreparedWaitingSubtreeCancellation) Discard() error {
 	return p.change.Discard()
 }
 
-// Validate verifies the Application projection and one-shot executor
+// validate verifies the Application projection and one-shot executor
 // capability without interpreting the opaque checkpoint payload.
-func (p PreparedWaitingSubtreeCancellation) Validate() error {
+func (p PreparedWaitingSubtreeCancellation) validate() error {
 	if dependency.Missing(p.change) {
 		return errors.New("runs: prepared waiting subtree cancellation has no executor change")
 	}
@@ -226,9 +226,6 @@ func (w waitingCancellationBuilder) build() (waitingCancellationTransformation, 
 }
 
 func (w waitingCancellationBuilder) validate() error {
-	if err := w.prepared.Validate(); err != nil {
-		return err
-	}
 	switch {
 	case w.plan.treeState != rundomain.Waiting:
 		return fmt.Errorf(

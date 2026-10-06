@@ -220,9 +220,6 @@ func (c *Coordinator) cancelWaitingChild(
 	if err != nil {
 		return CancelResult{}, err
 	}
-	if validateErr := prepared.Validate(); validateErr != nil {
-		return CancelResult{}, validateErr
-	}
 	defer func() {
 		if discardErr := prepared.Discard(); discardErr != nil {
 			result = CancelResult{}

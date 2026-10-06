@@ -19,9 +19,6 @@ func (i *InteractionExecutor) PrepareWaitingSubtreeCancellation(
 	ctx context.Context,
 	request runs.WaitingSubtreeCancellationRequest,
 ) (runs.PreparedWaitingSubtreeCancellation, error) {
-	if err := request.Validate(); err != nil {
-		return runs.PreparedWaitingSubtreeCancellation{}, err
-	}
 	continuation := request.Continuation()
 	ref := runs.ExecutorRef{
 		SessionID:  continuation.SessionID,
