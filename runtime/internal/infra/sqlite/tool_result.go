@@ -105,36 +105,34 @@ func (t *ToolResultStore) List(ctx context.Context, sessionID string) ([]toolres
 	return blobs, nil
 }
 
-// Restore inserts one artifact blob under its exact identity. It never adopts
-// an ID owned by another session.
+// Restore inserts one artifact blob under its exact identity within its
+// Session.
 func (t *ToolResultStore) Restore(ctx context.Context, blob toolresult.Blob) error {
 	if err := blob.Validate(); err != nil {
 		return fmt.Errorf("sqlite: restore tool result: %w", err)
 	}
-	_, err := conn(ctx, t.db).ExecContext(ctx,
+	result, err := conn(ctx, t.db).ExecContext(ctx,
 		`INSERT INTO tool_result_blobs(id, session_id, body, created_at)
-		 VALUES (?, ?, ?, ?)`,
+		 VALUES (?, ?, ?, ?)
+		 ON CONFLICT(session_id, id) DO NOTHING`,
 		blob.ID, blob.SessionID, blob.Body, blob.CreatedAt.Unix(),
 	)
-	if err == nil {
-		return nil
+	if err != nil {
+		return fmt.Errorf("sqlite: restore tool result %q: %w", blob.ID, err)
 	}
-	var owner string
-	ownerErr := conn(ctx, t.db).QueryRowContext(ctx,
-		`SELECT session_id FROM tool_result_blobs WHERE id = ?`, blob.ID,
-	).Scan(&owner)
-	if ownerErr == nil {
-		return fmt.Errorf("%w: tool result %q is already owned by session %q", toolresult.ErrIdentityConflict, blob.ID, owner)
+	if inserted, err := result.RowsAffected(); err != nil {
+		return fmt.Errorf("sqlite: inspect tool-result restore %q: %w", blob.ID, err)
+	} else if inserted == 0 {
+		return fmt.Errorf("%w: session %q already holds tool result %q", toolresult.ErrIdentityConflict, blob.SessionID, blob.ID)
 	}
-	if !errors.Is(ownerErr, sql.ErrNoRows) {
-		return fmt.Errorf("sqlite: inspect tool-result restore conflict %q: %w", blob.ID, errors.Join(err, ownerErr))
-	}
-	return fmt.Errorf("sqlite: restore tool result %q: %w", blob.ID, err)
+	return nil
 }
 
 // unboundToolResult selects bodies with neither an Item nor a checkpoint owner.
-const unboundToolResult = `NOT EXISTS (SELECT 1 FROM history_items WHERE offload_id = tool_result_blobs.id)
-	AND NOT EXISTS (SELECT 1 FROM executor_checkpoint_tool_results WHERE result_id = tool_result_blobs.id)`
+const unboundToolResult = `NOT EXISTS (SELECT 1 FROM history_items
+	  WHERE session_id = tool_result_blobs.session_id AND offload_id = tool_result_blobs.id)
+	AND NOT EXISTS (SELECT 1 FROM executor_checkpoint_tool_results
+	  WHERE session_id = tool_result_blobs.session_id AND result_id = tool_result_blobs.id)`
 
 // Discard removes only bodies with neither an Item nor a checkpoint owner.
 // Failed publications must not invalidate a durable waiting continuation.

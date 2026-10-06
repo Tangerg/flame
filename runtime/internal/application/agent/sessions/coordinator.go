@@ -269,12 +269,11 @@ type Coordinator struct {
 	// Every notice is published from a post-commit boundary, never from the commit
 	// itself: a signal for a transaction that then rolled back would send every
 	// listener to re-read state that never changed. nil publishes nothing.
-	invalidations   invalidation.Publish
-	now             func() time.Time
-	newID           func() string
-	newRunID        func() string
-	newItemID       func() string
-	newToolResultID func() toolresult.ID
+	invalidations invalidation.Publish
+	now           func() time.Time
+	newID         func() string
+	newRunID      func() string
+	newItemID     func() string
 }
 
 // Dependencies is the collaborator set [New] wires into a Coordinator. Durable
@@ -309,9 +308,8 @@ type Dependencies struct {
 	// Forks copy durable transcript facts under fresh global identities. The
 	// Session use case owns the remap; composition only supplies entropy-bearing
 	// identifiers in each resource namespace.
-	NewRunID        func() string
-	NewItemID       func() string
-	NewToolResultID func() toolresult.ID
+	NewRunID  func() string
+	NewItemID func() string
 }
 
 // ErrSessionBusy reports that a session already has an active or parked run.
@@ -345,7 +343,6 @@ func New(deps Dependencies) (*Coordinator, error) {
 		{"session id generator", deps.NewID},
 		{"run id generator", deps.NewRunID},
 		{"item id generator", deps.NewItemID},
-		{"tool result id generator", deps.NewToolResultID},
 	}
 	for _, required := range required {
 		if dependency.Missing(required.value) {
@@ -394,7 +391,6 @@ func New(deps Dependencies) (*Coordinator, error) {
 		newID:                 deps.NewID,
 		newRunID:              deps.NewRunID,
 		newItemID:             deps.NewItemID,
-		newToolResultID:       deps.NewToolResultID,
 	}, nil
 }
 

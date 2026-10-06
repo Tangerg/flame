@@ -10,7 +10,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 )
 
 // ItemIdentity is the immutable ownership and occurrence identity shared by
@@ -183,9 +182,9 @@ func (i Item) Snapshot() ItemSnapshot {
 
 // Fork derives a terminal historical Item for a child Session under fresh
 // ownership identities. Semantic content and lifecycle times are preserved. An
-// existing offloaded Tool result must be remapped together with its blob; the
-// method neither introduces nor removes offloading.
-func (i Item) Fork(sessionID, runID, itemID string, offload *toolresult.Ref) (Item, error) {
+// offloaded Tool result keeps its id: ids are Session-scoped, and the preview
+// spells the id out, so the child Session holds the body under the same one.
+func (i Item) Fork(sessionID, runID, itemID string) (Item, error) {
 	if i.status == ItemRunning {
 		return Item{}, errors.New("transcript: only a terminal Item can be forked")
 	}
@@ -193,13 +192,6 @@ func (i Item) Fork(sessionID, runID, itemID string, offload *toolresult.Ref) (It
 	snapshot.Identity.SessionID = sessionID
 	snapshot.Identity.RunID = runID
 	snapshot.Identity.ItemID = itemID
-	sourceOffloaded := snapshot.Tool != nil && snapshot.Tool.Offload != nil
-	if sourceOffloaded != (offload != nil) {
-		return Item{}, errors.New("transcript: fork must preserve Tool result offloading")
-	}
-	if snapshot.Tool != nil {
-		snapshot.Tool.Offload = offload
-	}
 	return RestoreItem(snapshot)
 }
 

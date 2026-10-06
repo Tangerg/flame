@@ -2,7 +2,6 @@ package sessions
 
 import (
 	"context"
-	"crypto/rand"
 	"errors"
 	"fmt"
 	"github.com/Tangerg/scope/core/chat"
@@ -15,7 +14,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
@@ -243,9 +241,6 @@ func testDependencies(stores testStores, deps Dependencies) Dependencies {
 			return fmt.Sprintf("item_fork_%d", itemSequence)
 		}
 	}
-	if deps.NewToolResultID == nil {
-		deps.NewToolResultID = func() toolresult.ID { return toolresult.ID(rand.Text()) }
-	}
 	if !deps.DefaultModelSelection.Configured() {
 		deps.DefaultModelSelection, _ = modelref.New("test-provider", "test-model")
 	}
@@ -320,9 +315,6 @@ func mustNewCoordinator(deps Dependencies) *Coordinator {
 	}
 	if deps.NewItemID == nil {
 		deps.NewItemID = func() string { return "item_test" }
-	}
-	if deps.NewToolResultID == nil {
-		deps.NewToolResultID = func() toolresult.ID { return toolresult.ID(rand.Text()) }
 	}
 	if !deps.DefaultModelSelection.Configured() {
 		deps.DefaultModelSelection, _ = modelref.New("test-provider", "test-model")

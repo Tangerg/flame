@@ -170,13 +170,19 @@ func TestToolResultItemBindingListAndRestore(t *testing.T) {
 	}
 }
 
-func TestToolResultRestoreNeverReparentsAnID(t *testing.T) {
+func TestToolResultIDsAreSessionScoped(t *testing.T) {
 	store := newToolResultStore(t)
-	id := stageShellResult(t, store, "owner", "body")
-	blob := toolresult.Blob{
-		ID: id, SessionID: "intruder", Body: "body", CreatedAt: time.Now().UTC(),
+	id := stageShellResult(t, store, "owner", "owner body")
+	copied := toolresult.Blob{ID: id, SessionID: "fork", Body: "fork body", CreatedAt: time.Now().UTC()}
+	if err := store.Restore(t.Context(), copied); err != nil {
+		t.Fatalf("restore under another Session: %v", err)
 	}
-	if err := store.Restore(t.Context(), blob); !errors.Is(err, toolresult.ErrIdentityConflict) {
-		t.Fatalf("Restore() error = %v, want ErrIdentityConflict", err)
+	for session, want := range map[string]string{"owner": "owner body", "fork": "fork body"} {
+		if body, found, err := store.Fetch(t.Context(), session, id); err != nil || !found || body != want {
+			t.Fatalf("fetch %s = (%q, %v, %v), want %q", session, body, found, err, want)
+		}
+	}
+	if err := store.Restore(t.Context(), copied); !errors.Is(err, toolresult.ErrIdentityConflict) {
+		t.Fatalf("restore over a held id = %v, want ErrIdentityConflict", err)
 	}
 }

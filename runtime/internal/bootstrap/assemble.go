@@ -152,7 +152,6 @@ func buildAssemblyCore(
 		NewID:                 newSessionID,
 		NewRunID:              newRunID,
 		NewItemID:             newItemID,
-		NewToolResultID:       newToolResultID,
 	}
 	sessionDependencies.Plan = sessions.PlanServices{
 		Boundaries: cfg.Stores.Plan, Replacements: policy.plans,

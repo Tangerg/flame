@@ -716,6 +716,11 @@ func TestApplyForkBranchesAndSeeds(t *testing.T) {
 			Name: "read_large", Result: &preview, Offload: &toolresult.Ref{ID: "FORK234"},
 		},
 	})
+	// The parent still holds the body under the id its preview spells out; the
+	// child copies it under that same id so the copied preview stays readable.
+	if err := ss.toolResults.Stage(ctx, toolresult.Stage{ID: "FORK234", SessionID: parent.ID(), Body: "complete durable body"}); err != nil {
+		t.Fatal(err)
+	}
 	forkedBlob := toolresult.Blob{
 		ID: "FORK234", SessionID: childState.ID(), Body: "complete durable body",
 		CreatedAt: forkedAt,
@@ -764,6 +769,9 @@ func TestApplyForkBranchesAndSeeds(t *testing.T) {
 	gotBlobs, err := ss.toolResults.List(ctx, child.ID())
 	if err != nil || len(gotBlobs) != 1 || gotBlobs[0].ID != forkedBlob.ID || gotBlobs[0].Body != forkedBlob.Body {
 		t.Fatalf("child ToolResults = %+v (err %v), want copied offloaded body", gotBlobs, err)
+	}
+	if body, found, err := ss.toolResults.Fetch(ctx, child.ID(), "FORK234"); err != nil || !found || body != forkedBlob.Body {
+		t.Fatalf("child read-back by the previewed id = (%q, %v, %v)", body, found, err)
 	}
 }
 

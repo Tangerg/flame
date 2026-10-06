@@ -66,8 +66,7 @@ func TestCopyForkSnapshotRemapsTheCompleteVisibleRunTree(t *testing.T) {
 			runIDs = runIDs[1:]
 			return id
 		},
-		newItemID:       func() string { return "item_copy_spawn" },
-		newToolResultID: func() toolresult.ID { return "CLONE234" },
+		newItemID: func() string { return "item_copy_spawn" },
 	}
 
 	copied, err := coordinator.copyForkSnapshot(source, child, ForkBoundary{
@@ -92,10 +91,10 @@ func TestCopyForkSnapshotRemapsTheCompleteVisibleRunTree(t *testing.T) {
 		t.Fatalf("copied Items = %+v, want child-owned remapped Item", copied.Items)
 	}
 	invocation, present := copied.Items[0].ToolInvocation()
-	if !present || invocation.Offload == nil || invocation.Offload.ID != "CLONE234" {
+	if !present || invocation.Offload == nil || invocation.Offload.ID != "BLOB234" {
 		t.Fatalf("copied tool invocation = %+v, want remapped offload", invocation)
 	}
-	if len(copied.ToolResults) != 1 || copied.ToolResults[0].ID != "CLONE234" ||
+	if len(copied.ToolResults) != 1 || copied.ToolResults[0].ID != "BLOB234" ||
 		copied.ToolResults[0].SessionID != "ses_child" {
 		t.Fatalf("copied ToolResults = %+v, want child-owned remapped blob", copied.ToolResults)
 	}

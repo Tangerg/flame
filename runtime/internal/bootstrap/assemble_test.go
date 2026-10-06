@@ -175,7 +175,7 @@ func TestAssemblyRejectsInvalidDefaultModelBeforeStartupReconciliation(t *testin
 	}
 	t.Cleanup(func() { _ = db.Close() })
 	store := sqlitestore.NewToolResultStore(db)
-	id := newToolResultID()
+	id := toolresult.ID("STAGED234")
 	if err := store.Stage(t.Context(), toolresult.Stage{
 		ID: id, SessionID: "ses_staged", Body: "unbound",
 	}); err != nil {

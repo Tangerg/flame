@@ -115,7 +115,8 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			root_member_id TEXT    PRIMARY KEY,
 			session_id      TEXT    NOT NULL,
 			build_id        TEXT    NOT NULL,
-			payload         BLOB    NOT NULL
+			payload         BLOB    NOT NULL,
+			UNIQUE(root_member_id, session_id)
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_executor_checkpoints_session
 			ON executor_checkpoints(session_id)`,
@@ -368,7 +369,7 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		`CREATE INDEX IF NOT EXISTS idx_history_items_session
 			ON history_items(session_id, seq)`,
 		`CREATE UNIQUE INDEX IF NOT EXISTS idx_history_items_offload
-			ON history_items(offload_id) WHERE offload_id != ''`,
+			ON history_items(session_id, offload_id) WHERE offload_id != ''`,
 		`CREATE TABLE IF NOT EXISTS providers (
 			id        TEXT PRIMARY KEY,
 			api_key   TEXT CHECK (api_key IS NULL OR length(api_key) > 0),
@@ -625,24 +626,30 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		// that exceeds the eviction threshold is moved here and model history keeps
 		// only a bounded head+tail preview. history_items.offload_id is the one
 		// link from an Item to its body, used to hydrate transcript reads; a body no
-		// Item or checkpoint names is unbound staging. session_id
-		// scopes read-back, export, and delete; created_at orders portable records.
+		// Item or checkpoint names is unbound staging. An id is unique within its
+		// Session only: the preview and conversation text spell it out, so a fork
+		// copies a body under the same id rather than renaming text it cannot
+		// rewrite. created_at orders portable records.
 		`CREATE TABLE IF NOT EXISTS tool_result_blobs (
-			id          TEXT    PRIMARY KEY,
-			session_id  TEXT    NOT NULL DEFAULT '',
+			session_id  TEXT    NOT NULL,
+			id          TEXT    NOT NULL,
 			body        TEXT    NOT NULL,
-			created_at  INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+			created_at  INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+			PRIMARY KEY(session_id, id)
 		)`,
+		// session_id restates the checkpoint's Session only so both foreign keys
+		// can name it; the first key forces the two to agree.
 		`CREATE TABLE IF NOT EXISTS executor_checkpoint_tool_results (
-			root_member_id TEXT NOT NULL REFERENCES executor_checkpoints(root_member_id) ON DELETE CASCADE,
-			result_id TEXT NOT NULL REFERENCES tool_result_blobs(id) ON DELETE RESTRICT,
-			PRIMARY KEY(root_member_id, result_id)
+			root_member_id TEXT NOT NULL,
+			session_id TEXT NOT NULL,
+			result_id TEXT NOT NULL,
+			PRIMARY KEY(root_member_id, result_id),
+			FOREIGN KEY(root_member_id, session_id) REFERENCES executor_checkpoints(root_member_id, session_id) ON DELETE CASCADE,
+			FOREIGN KEY(session_id, result_id) REFERENCES tool_result_blobs(session_id, id) ON DELETE RESTRICT
 		)`,
 		executorCheckpointInstallationsSchema(),
 		`CREATE INDEX IF NOT EXISTS idx_executor_checkpoint_installations_installation
 			ON executor_checkpoint_installations(installation_id)`,
-		`CREATE INDEX IF NOT EXISTS idx_tool_result_blobs_session
-			ON tool_result_blobs(session_id)`,
 		// Append-only quality signals submitted through feedback.create. They are
 		// deliberately not foreign-keyed: a user may report a general issue or
 		// submit feedback after the referenced runtime records are cleaned up.

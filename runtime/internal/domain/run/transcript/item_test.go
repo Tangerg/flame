@@ -209,14 +209,14 @@ func TestAnswerQuestionEnrichesAnImmutablePromptExactlyOnce(t *testing.T) {
 	}
 }
 
-func TestItemForkReidentifiesTerminalHistoryAndRemapsOffload(t *testing.T) {
+func TestItemForkReidentifiesTerminalHistoryAndKeepsOffload(t *testing.T) {
 	running, err := transcript.NewToolCall(
 		itemIdentity(), transcript.ToolInvocation{Name: "read_large"}, tool.SafetyClassSafe,
 	)
 	if err != nil {
 		t.Fatalf("NewToolCall: %v", err)
 	}
-	if _, forkErr := running.Fork("session-child", "run-child", "item-child", nil); forkErr == nil {
+	if _, forkErr := running.Fork("session-child", "run-child", "item-child"); forkErr == nil {
 		t.Fatal("Fork accepted a running Item")
 	}
 	preview, err := tool.NewResult("preview")
@@ -229,19 +229,14 @@ func TestItemForkReidentifiesTerminalHistoryAndRemapsOffload(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CompleteToolCall: %v", err)
 	}
-	if _, forkErr := completed.Fork("session-child", "run-child", "item-child", nil); forkErr == nil {
-		t.Fatal("Fork removed an existing offload reference")
-	}
-	forked, err := completed.Fork(
-		"session-child", "run-child", "item-child", &toolresult.Ref{ID: "TARGET23"},
-	)
+	forked, err := completed.Fork("session-child", "run-child", "item-child")
 	if err != nil {
 		t.Fatalf("Fork: %v", err)
 	}
 	invocation, present := forked.ToolInvocation()
 	if forked.SessionID() != "session-child" || forked.RunID() != "run-child" ||
 		forked.ID() != "item-child" || !present || invocation.Offload == nil ||
-		invocation.Offload.ID != "TARGET23" {
+		invocation.Offload.ID != "SOURCE23" {
 		t.Fatalf("forked Item = %+v", forked.Snapshot())
 	}
 	sourceInvocation, _ := completed.ToolInvocation()

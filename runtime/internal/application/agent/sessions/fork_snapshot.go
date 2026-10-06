@@ -29,7 +29,6 @@ func (c *Coordinator) copyForkSnapshot(
 		return Snapshot{}, err
 	}
 	projection.selectItems()
-	projection.selectToolResults()
 	if err := projection.copyRuns(); err != nil {
 		return Snapshot{}, err
 	}
@@ -49,7 +48,6 @@ type forkSnapshotProjection struct {
 	selectedRunIDs map[string]struct{}
 	runIDs         map[string]string
 	itemIDs        map[string]string
-	blobIDs        map[toolresult.ID]toolresult.ID
 	forked         Snapshot
 }
 
@@ -73,7 +71,6 @@ func newForkSnapshotProjection(
 		selectedRunIDs: make(map[string]struct{}, len(boundary.RunIDs)),
 		runIDs:         make(map[string]string, len(boundary.RunIDs)),
 		itemIDs:        make(map[string]string),
-		blobIDs:        make(map[toolresult.ID]toolresult.ID),
 		forked: Snapshot{
 			Session:  child,
 			Messages: boundary.Messages,
@@ -105,18 +102,6 @@ func (projection *forkSnapshotProjection) selectItems() {
 		}
 	}
 	projection.forked.Items = make([]transcript.Item, 0, len(projection.itemIDs))
-}
-
-func (projection *forkSnapshotProjection) selectToolResults() {
-	for _, item := range projection.source.Items {
-		if _, selected := projection.itemIDs[item.ID()]; !selected {
-			continue
-		}
-		if invocation, present := item.ToolInvocation(); present && invocation.Offload != nil {
-			projection.blobIDs[invocation.Offload.ID] = projection.coordinator.newToolResultID()
-		}
-	}
-	projection.forked.ToolResults = make([]toolresult.Blob, 0, len(projection.blobIDs))
 }
 
 func (projection *forkSnapshotProjection) copyRuns() error {
@@ -161,15 +146,10 @@ func (projection *forkSnapshotProjection) copyItems() error {
 		if !selected {
 			continue
 		}
-		offload, err := projection.remapOffload(value)
-		if err != nil {
-			return err
-		}
 		copied, err := value.Fork(
 			projection.child.ID(),
 			projection.runIDs[value.RunID()],
 			newID,
-			offload,
 		)
 		if err != nil {
 			return fmt.Errorf("sessions: copy fork item %q: %w", value.ID(), err)
@@ -179,25 +159,20 @@ func (projection *forkSnapshotProjection) copyItems() error {
 	return nil
 }
 
-func (projection *forkSnapshotProjection) remapOffload(item transcript.Item) (*toolresult.Ref, error) {
-	invocation, present := item.ToolInvocation()
-	if !present || invocation.Offload == nil {
-		return nil, nil
-	}
-	newBlobID, found := projection.blobIDs[invocation.Offload.ID]
-	if !found {
-		return nil, fmt.Errorf("sessions: fork item %q references an unavailable tool result", item.ID())
-	}
-	return &toolresult.Ref{ID: newBlobID}, nil
-}
-
 func (projection *forkSnapshotProjection) copyToolResults() {
+	blobs := make(map[toolresult.ID]toolresult.Blob, len(projection.source.ToolResults))
 	for _, blob := range projection.source.ToolResults {
-		newBlobID, selected := projection.blobIDs[blob.ID]
-		if !selected {
+		blobs[blob.ID] = blob
+	}
+	for _, item := range projection.forked.Items {
+		invocation, present := item.ToolInvocation()
+		if !present || invocation.Offload == nil {
 			continue
 		}
-		blob.ID = newBlobID
+		blob, found := blobs[invocation.Offload.ID]
+		if !found {
+			continue
+		}
 		blob.SessionID = projection.child.ID()
 		projection.forked.ToolResults = append(projection.forked.ToolResults, blob)
 	}

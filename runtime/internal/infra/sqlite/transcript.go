@@ -81,7 +81,7 @@ func (t *TranscriptStore) appendItemRecord(
 		item.SessionID(), item.RunID(), item.ID(), item.OccurredAt().UnixNano(), string(payload), offloadID,
 	)
 	if err != nil {
-		return t.explainItemAppendError(ctx, item.ID(), offloadID, err)
+		return t.explainItemAppendError(ctx, item.SessionID(), item.ID(), offloadID, err)
 	}
 	changed, err := result.RowsAffected()
 	if err != nil {
@@ -95,7 +95,7 @@ func (t *TranscriptStore) appendItemRecord(
 
 func (t *TranscriptStore) explainItemAppendError(
 	ctx context.Context,
-	itemID string,
+	sessionID, itemID string,
 	offloadID toolresult.ID,
 	appendErr error,
 ) error {
@@ -104,7 +104,7 @@ func (t *TranscriptStore) explainItemAppendError(
 	}
 	var ownerItemID string
 	ownerErr := conn(ctx, t.db).QueryRowContext(ctx,
-		`SELECT item_id FROM history_items WHERE offload_id = ?`, offloadID,
+		`SELECT item_id FROM history_items WHERE session_id = ? AND offload_id = ?`, sessionID, offloadID,
 	).Scan(&ownerItemID)
 	if ownerErr == nil && ownerItemID != itemID {
 		return fmt.Errorf("%w: offload %q already belongs to item %q", transcript.ErrIdentityConflict, offloadID, ownerItemID)
@@ -274,9 +274,9 @@ func (t *TranscriptStore) DeleteRun(ctx context.Context, sessionID, runID string
 		q := conn(ctx, t.db)
 		if _, err := q.ExecContext(ctx,
 			`DELETE FROM tool_result_blobs
-			 WHERE id IN (
+			 WHERE session_id = ? AND id IN (
 			   SELECT offload_id FROM history_items WHERE session_id = ? AND run_id = ? AND offload_id != ''
-			 )`, sessionID, runID,
+			 )`, sessionID, sessionID, runID,
 		); err != nil {
 			return fmt.Errorf("sqlite: delete run tool results: %w", err)
 		}
