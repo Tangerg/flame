@@ -537,7 +537,7 @@ func decodeInteractionPendingContinuation(
 		return nil, errors.New("does not name the root member")
 	}
 	if err := resourceid.ValidateItem(wire.ItemID); err != nil {
-		return nil, fmt.Errorf("Item: %w", err)
+		return nil, fmt.Errorf("item: %w", err)
 	}
 	if len(wire.Content) == 0 {
 		return nil, errors.New("has no product content")

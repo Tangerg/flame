@@ -91,7 +91,7 @@ func TestAuxiliaryCallObservation(t *testing.T) {
 			attrs := map[string]attribute.Value{}
 			for _, a := range span.Attributes {
 				attrs[string(a.Key)] = a.Value
-				if strings.Contains(a.Value.Emit(), "private") {
+				if strings.Contains(a.Value.String(), "private") {
 					t.Fatalf("content exposed in %s", a.Key)
 				}
 			}

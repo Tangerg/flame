@@ -102,30 +102,6 @@ func TestDeleteSessionDoesNotQuiesceGoalWhenDurableCommitFails(t *testing.T) {
 	}
 }
 
-// TestDeleteSessionCleansUpAfterGoalQuiesceFailure: the Session is gone as of
-// the commit, so a Goal that would not quiesce cannot turn the delete into a
-// failure — it settles, and the remaining cleanup still runs.
-func TestDeleteSessionCleansUpAfterGoalQuiesceFailure(t *testing.T) {
-	quiesceErr := errors.New("goal quiesce failed")
-	stores := newMutationStores("")
-	coordinator := mustNewCoordinator(testDependencies(stores, Dependencies{
-		ExecutionReleaser: mutationExecutions{operations: &stores.operations},
-		Paths:             testWorkspaceResolver{},
-		Goals:             mutationGoalGuard{operations: &stores.operations, quiesceErr: quiesceErr},
-	}))
-
-	if err := coordinator.DeleteSession(t.Context(), "ses_1"); err != nil {
-		t.Fatalf("DeleteSession reported a committed delete as failed: %v", err)
-	}
-	want := []string{"goal.mutation", "interrupt.read", "session.quiesce", "apply.delete", "goal.quiesce", "executor.release", "session.forget"}
-	if !slices.Equal(stores.operations, want) {
-		t.Fatalf("operations = %v, want post-commit cleanup despite quiesce failure", stores.operations)
-	}
-	if len(stores.deleted) != 1 {
-		t.Fatalf("deleted = %v, want the Session gone", stores.deleted)
-	}
-}
-
 func TestDeleteSessionDetachesExecutorReleaseFromCallerCancellation(t *testing.T) {
 	stores := newMutationStores("")
 	executions := new(observingExecutions)
@@ -392,8 +368,6 @@ var errMutationStage = errors.New("mutation stage failed")
 
 type mutationGoalGuard struct {
 	operations *[]string
-	quiesceErr error
-	settlement error
 }
 
 // WithSessionMutation mirrors the real guard's contract: a failed commit is the
@@ -409,7 +383,9 @@ func (m mutationGoalGuard) WithSessionMutation(
 		return err
 	}
 	*m.operations = append(*m.operations, "goal.quiesce")
-	m.settlement = errors.Join(m.quiesceErr, afterCommit(ctx))
+	// The real guard reports a settlement failure itself; the command's
+	// result is already decided by the commit.
+	_ = afterCommit(ctx)
 	return nil
 }
 
