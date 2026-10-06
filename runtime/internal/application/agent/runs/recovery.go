@@ -706,13 +706,11 @@ func recoverLostTree(
 			replacements = append(replacements, itemReplacement)
 		}
 
-		lost, err := active.RecoverLost(failure, finishedAt, active.Lineage().MessageMark(messageMark))
+		replacement, err := rundomain.Replace(active, func(active rundomain.Run) (rundomain.Run, error) {
+			return active.RecoverLost(failure, finishedAt, active.Lineage().MessageMark(messageMark))
+		})
 		if err != nil {
 			return nil, nil, fmt.Errorf("runs: recover lost Run %q: %w", active.ID(), err)
-		}
-		replacement, err := rundomain.NewReplacement(active, lost)
-		if err != nil {
-			return nil, nil, fmt.Errorf("runs: prepare lost Run %q replacement: %w", active.ID(), err)
 		}
 		lostRuns = append(lostRuns, replacement)
 	}

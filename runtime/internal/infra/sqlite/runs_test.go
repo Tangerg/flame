@@ -52,7 +52,7 @@ func storedRunReplacement(
 	if err != nil || !found {
 		t.Fatalf("load expected Run %q: found=%t err=%v", state.ID(), found, err)
 	}
-	return testsupport.MustRunReplacement(expected, state)
+	return testsupport.MustRunReplacement(expected, testsupport.DecidedRun(state))
 }
 
 func suspendRun(ctx context.Context, store *sqlite.RunStore, state run.Run, segmentID string) error {
@@ -386,7 +386,7 @@ func TestRunProgressFootprintSurvivesTerminalRead(t *testing.T) {
 	}
 	if terminalizeErr := store.Terminalize(
 		ctx,
-		testsupport.MustRunReplacement(current, terminal),
+		testsupport.MustRunReplacement(current, testsupport.DecidedRun(terminal)),
 	); terminalizeErr != nil {
 		t.Fatalf("Terminalize: %v", terminalizeErr)
 	}
@@ -524,8 +524,7 @@ func TestTerminalizeRequiresExactLiveRun(t *testing.T) {
 	unknownDraft := runDraft("run_unknown", "ses_unknown")
 	unknown := finishedRunFromDraft(unknownDraft, run.OutcomeCompleted)
 	if err := store.Terminalize(ctx, testsupport.MustRunReplacement(
-		admittedRunFromDraft(unknownDraft), unknown,
-	)); err == nil {
+		admittedRunFromDraft(unknownDraft), testsupport.DecidedRun(unknown),)); err == nil {
 		t.Fatal("terminalize unknown run must fail")
 	}
 	if err := store.Admit(ctx, runDraft("run_1", "ses_A")); err != nil {
@@ -534,8 +533,7 @@ func TestTerminalizeRequiresExactLiveRun(t *testing.T) {
 	otherDraft := runDraft("run_other", "ses_A")
 	other := finishedRunFromDraft(otherDraft, run.OutcomeCompleted)
 	if err := store.Terminalize(ctx, testsupport.MustRunReplacement(
-		admittedRunFromDraft(otherDraft), other,
-	)); err == nil {
+		admittedRunFromDraft(otherDraft), testsupport.DecidedRun(other),)); err == nil {
 		t.Fatal("terminalize mismatched run must fail")
 	}
 	expected, found, err := store.Run(ctx, "run_1")
@@ -546,14 +544,14 @@ func TestTerminalizeRequiresExactLiveRun(t *testing.T) {
 		snapshot.ActiveSegmentID = "seg_other"
 	})
 	finished := finishedRun("run_1", "ses_A", run.OutcomeCompleted)
-	if err := store.Terminalize(ctx, testsupport.MustRunReplacement(foreignExpected, finished)); err == nil {
+	if err := store.Terminalize(ctx, testsupport.MustRunReplacement(foreignExpected, testsupport.DecidedRun(finished))); err == nil {
 		t.Fatal("terminalize with a different expected Segment must fail")
 	}
 	unchanged, found, err := store.Run(ctx, "run_1")
 	if err != nil || !found || !unchanged.Equal(expected) {
 		t.Fatalf("Run after rejected replacement = (%+v, %t, %v), want unchanged", unchanged, found, err)
 	}
-	exact := testsupport.MustRunReplacement(expected, finished)
+	exact := testsupport.MustRunReplacement(expected, testsupport.DecidedRun(finished))
 	if err := store.Terminalize(ctx, exact); err != nil {
 		t.Fatalf("terminalize: %v", err)
 	}
@@ -587,7 +585,7 @@ func TestRecoverLostRequiresExactExpectedRun(t *testing.T) {
 	}
 	if err := store.RecoverLost(
 		ctx,
-		testsupport.MustRunReplacement(foreign, foreignLost),
+		testsupport.MustRunReplacement(foreign, testsupport.DecidedRun(foreignLost)),
 	); err == nil || !strings.Contains(err.Error(), "changed after the application prepared") {
 		t.Fatalf("RecoverLost with a different expected Segment error = %v", err)
 	}
@@ -604,17 +602,15 @@ func TestRecoverLostRequiresExactExpectedRun(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RecoverLost aggregate: %v", err)
 	}
-	if err := store.RecoverLost(ctx, testsupport.MustRunReplacement(actual, lost)); err != nil {
+	if err := store.RecoverLost(ctx, testsupport.MustRunReplacement(actual, testsupport.DecidedRun(lost))); err != nil {
 		t.Fatalf("RecoverLost exact aggregate: %v", err)
 	}
 }
 
-// TestTerminalizeParkedRunRejectsNonCancel proves the store defers to the
-// [run.State] machine: a parked (waiting) run may terminalize
-// only via cancellation — any other terminal must resume first — so a non-cancel
-// terminalize of a parked run surfaces an error instead of silently overwriting
-// the row, while a cancel of the same parked run succeeds.
-func TestTerminalizeParkedRunRejectsNonCancel(t *testing.T) {
+// A parked (waiting) run may terminalize only via cancellation: any other
+// terminal must resume first, so no replacement for it can be derived, while a
+// cancel of the same parked run is written as decided.
+func TestTerminalizeParkedRunOnlyByCancellation(t *testing.T) {
 	ctx := context.Background()
 	store, _ := newRunStores(t)
 
@@ -625,19 +621,22 @@ func TestTerminalizeParkedRunRejectsNonCancel(t *testing.T) {
 	if err := suspendRun(ctx, store, parked, "seg_open"); err != nil {
 		t.Fatalf("suspend: %v", err)
 	}
-	// A parked run cannot complete/error/cap out without resuming — the illegal
-	// transition is surfaced, not silently applied.
-	completed := finishedRun("run_1", "ses_A", run.OutcomeCompleted)
-	if err := store.Terminalize(ctx, testsupport.MustRunReplacement(parked, completed)); err == nil {
-		t.Fatal("terminalize(completed) of a parked run must be rejected as illegal")
+	// A parked run cannot complete/error/cap out without resuming — no
+	// replacement can be derived for that transition.
+	finishedAt := parked.UpdatedAt().Add(time.Second)
+	if _, err := run.Replace(parked, func(current run.Run) (run.Run, error) {
+		return current.Terminate(run.Termination{Outcome: run.OutcomeCompleted, FinishedAt: finishedAt})
+	}); err == nil {
+		t.Fatal("a parked run must not derive a completed replacement")
 	}
-	// The row is untouched — still non-terminal, still busy.
 	if err := store.Admit(ctx, runDraft("run_2", "ses_A")); !errors.Is(err, run.ErrSessionBusy) {
-		t.Fatalf("admit after rejected terminalize = %v, want ErrSessionBusy (row untouched)", err)
+		t.Fatalf("admit while parked = %v, want ErrSessionBusy", err)
 	}
 	// Cancellation of the same parked run is legal (Waiting → Canceled).
-	canceled := finishedRun("run_1", "ses_A", run.OutcomeCanceled)
-	if err := store.Terminalize(ctx, testsupport.MustRunReplacement(parked, canceled)); err != nil {
+	canceled := testsupport.MustRunReplacement(parked, func(current run.Run) (run.Run, error) {
+		return current.CancelWaiting("", finishedAt, 0)
+	})
+	if err := store.Terminalize(ctx, canceled); err != nil {
 		t.Fatalf("terminalize(canceled) of a parked run: %v", err)
 	}
 	if err := store.Admit(ctx, runDraft("run_3", "ses_A")); err != nil {

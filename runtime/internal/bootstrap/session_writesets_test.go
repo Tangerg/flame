@@ -362,7 +362,7 @@ func TestApplyTerminalDropsInterruptAndTerminalizes(t *testing.T) {
 
 	terminalPlan := bootstrapTerminalPlan(
 		t,
-		[]run.Replacement{testsupport.MustRunReplacement(parked, terminal)},
+		[]run.Replacement{testsupport.MustRunReplacement(parked, testsupport.DecidedRun(terminal))},
 		memberID,
 	)
 	if applyTerminalErr := ss.ApplyTerminal(ctx, terminalPlan); applyTerminalErr != nil {
@@ -403,7 +403,7 @@ func TestApplyTerminalRecoversLostParkAtomically(t *testing.T) {
 
 	terminalPlan := bootstrapTerminalPlan(
 		t,
-		[]run.Replacement{testsupport.MustRunReplacement(parked, terminal)},
+		[]run.Replacement{testsupport.MustRunReplacement(parked, testsupport.DecidedRun(terminal))},
 		memberID,
 	)
 	if applyTerminalErr := ss.ApplyTerminal(ctx, terminalPlan); applyTerminalErr != nil {
@@ -457,7 +457,7 @@ func TestApplyTerminalRecoversClaimedResumeAtomically(t *testing.T) {
 	}
 	terminalPlan := bootstrapClaimedResumeTerminalPlan(
 		t,
-		[]run.Replacement{testsupport.MustRunReplacement(parked, terminal)},
+		[]run.Replacement{testsupport.MustRunReplacement(parked, testsupport.DecidedRun(terminal))},
 		memberID,
 	)
 	if applyTerminalErr := ss.ApplyTerminal(ctx, terminalPlan); applyTerminalErr != nil {
@@ -530,7 +530,7 @@ func TestApplyTerminalChargesGoalOwnedParkAtomically(t *testing.T) {
 
 	terminalPlan := bootstrapTerminalPlan(
 		t,
-		[]run.Replacement{testsupport.MustRunReplacement(expected, terminal)},
+		[]run.Replacement{testsupport.MustRunReplacement(expected, testsupport.DecidedRun(terminal))},
 		memberID,
 	)
 	if applyTerminalErr := ss.ApplyTerminal(ctx, terminalPlan); applyTerminalErr != nil {

@@ -121,19 +121,17 @@ func (e *Effects) terminalizeWaitingCancellationRuns(
 ) (map[string]run.Run, error) {
 	terminalByID := make(map[string]run.Run, len(planned))
 	for _, replacement := range planned {
-		runRecord := replacement.State()
-		finalized, err := e.finishedRun(ctx, runRecord)
+		runID := replacement.State().ID()
+		finalReplacement, err := replacement.Then(func(state run.Run) (run.Run, error) {
+			return e.finishedRun(ctx, state)
+		})
 		if err != nil {
-			return nil, fmt.Errorf("segment: finalize canceled Run %q: %w", runRecord.ID(), err)
-		}
-		finalReplacement, err := run.NewReplacement(replacement.Expected(), finalized)
-		if err != nil {
-			return nil, fmt.Errorf("segment: finalize canceled Run %q replacement: %w", runRecord.ID(), err)
+			return nil, fmt.Errorf("segment: finalize canceled Run %q: %w", runID, err)
 		}
 		if err := e.runState.Terminalize(ctx, finalReplacement); err != nil {
-			return nil, fmt.Errorf("segment: terminalize canceled Run %q: %w", runRecord.ID(), err)
+			return nil, fmt.Errorf("segment: terminalize canceled Run %q: %w", runID, err)
 		}
-		terminalByID[runRecord.ID()] = finalized
+		terminalByID[runID] = finalReplacement.State()
 	}
 	return terminalByID, nil
 }

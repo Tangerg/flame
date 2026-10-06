@@ -198,23 +198,18 @@ func (t TerminalPlan) Validate() error {
 }
 
 func validateTerminalRunReplacement(replacement rundomain.Replacement) error {
-	state := replacement.State()
-	outcome, terminal := state.Outcome()
-	if !terminal {
-		return errors.New("terminal Run replacement has no outcome")
+	if err := replacement.Validate(); err != nil {
+		return err
 	}
-	return replacement.ValidateDerivedBy(func(expected rundomain.Run) (rundomain.Run, error) {
-		switch outcome {
-		case rundomain.OutcomeCanceled:
-			return expected.CancelWaiting(state.Detail(), state.FinishedAt(), state.MessageMark())
-		case rundomain.OutcomeLost:
-			failure, err := state.LostFailure()
-			if err != nil {
-				return rundomain.Run{}, err
-			}
-			return expected.RecoverLost(failure, state.FinishedAt(), state.MessageMark())
-		default:
-			return rundomain.Run{}, fmt.Errorf("terminal Run replacement has unsupported outcome %s", outcome)
-		}
-	})
+	state := replacement.State()
+	outcome, _ := state.Outcome()
+	switch outcome {
+	case rundomain.OutcomeCanceled:
+		return nil
+	case rundomain.OutcomeLost:
+		_, err := state.LostFailure()
+		return err
+	default:
+		return fmt.Errorf("terminal Run replacement has unsupported outcome %q", outcome)
+	}
 }

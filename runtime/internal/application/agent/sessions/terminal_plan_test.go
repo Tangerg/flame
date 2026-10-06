@@ -30,7 +30,7 @@ func TestTerminalPlanOwnsProjectionAndDerivesGoalRun(t *testing.T) {
 	if err != nil {
 		t.Fatalf("abandon ToolCall: %v", err)
 	}
-	runs := []run.Replacement{testsupport.MustRunReplacement(parked, terminal)}
+	runs := []run.Replacement{testsupport.MustRunReplacement(parked, testsupport.DecidedRun(terminal))}
 	items := []transcript.Item{incompleteItem}
 	messages := []chat.Message{chat.NewUserMessage(chat.NewTextPart("closed"))}
 
@@ -78,7 +78,7 @@ func TestClaimedResumeTerminalPlanRequiresLostRun(t *testing.T) {
 		t.Fatalf("cancel waiting Run: %v", err)
 	}
 	if _, err := NewClaimedResumeTerminalPlan(
-		[]run.Replacement{testsupport.MustRunReplacement(parked, canceled)}, nil, nil, "member_1",
+		[]run.Replacement{testsupport.MustRunReplacement(parked, testsupport.DecidedRun(canceled))}, nil, nil, "member_1",
 	); err == nil {
 		t.Fatal("claimed Resume terminal plan accepted a canceled Run")
 	}
@@ -87,7 +87,7 @@ func TestClaimedResumeTerminalPlanRequiresLostRun(t *testing.T) {
 		t.Fatalf("recover lost Run: %v", err)
 	}
 	plan, err := NewClaimedResumeTerminalPlan(
-		[]run.Replacement{testsupport.MustRunReplacement(parked, lost)}, nil, nil, "member_1",
+		[]run.Replacement{testsupport.MustRunReplacement(parked, testsupport.DecidedRun(lost))}, nil, nil, "member_1",
 	)
 	if err != nil {
 		t.Fatalf("NewClaimedResumeTerminalPlan: %v", err)

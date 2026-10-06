@@ -23,7 +23,7 @@ func TestConversationCompactionPlanOwnsOneSessionRunSet(t *testing.T) {
 		ID: "run_1", SessionID: "ses_1", State: run.Completed,
 		CreatedAt: time.Unix(1, 0).UTC(), MessageMark: 1,
 	})
-	replacement := testsupport.MustRunReplacement(current, current)
+	replacement := testsupport.MustRunReplacement(current, testsupport.DecidedRun(current))
 	input := []run.Replacement{replacement}
 	plan, err := NewConversationCompactionPlan("ses_1", compaction, input)
 	if err != nil {
@@ -55,7 +55,7 @@ func TestConversationCompactionPlanRejectsInvalidSessionRunSets(t *testing.T) {
 		ID: "run_foreign", SessionID: "ses_other", State: run.Completed,
 		CreatedAt: time.Unix(1, 0).UTC(), MessageMark: 0,
 	})
-	replacement := testsupport.MustRunReplacement(foreign, foreign)
+	replacement := testsupport.MustRunReplacement(foreign, testsupport.DecidedRun(foreign))
 	if _, err := NewConversationCompactionPlan("ses_1", compaction, []run.Replacement{replacement}); err == nil {
 		t.Fatal("NewConversationCompactionPlan accepted a foreign-Session Run")
 	}

@@ -161,20 +161,18 @@ func (m *ConversationHistory) RewriteForCompaction(
 	}
 	planned := make([]run.Replacement, len(runs))
 	for index, current := range runs {
-		replacement := current
-		if current.State().IsTerminal() && current.Lineage().IsRoot() {
+		planned[index], err = run.Replace(current, func(current run.Run) (run.Run, error) {
+			if !current.State().IsTerminal() || !current.Lineage().IsRoot() {
+				return current, nil
+			}
 			mark, err := compaction.RebaseMessageMark(current.MessageMark())
 			if err != nil {
-				return fmt.Errorf("runs: rebase conversation Run %q: %w", current.ID(), err)
+				return run.Run{}, err
 			}
-			replacement, err = current.WithMessageMark(mark)
-			if err != nil {
-				return fmt.Errorf("runs: rebase conversation Run %q: %w", current.ID(), err)
-			}
-		}
-		planned[index], err = run.NewReplacement(current, replacement)
+			return current.WithMessageMark(mark)
+		})
 		if err != nil {
-			return fmt.Errorf("runs: prepare conversation Run %q replacement: %w", current.ID(), err)
+			return fmt.Errorf("runs: rebase conversation Run %q: %w", current.ID(), err)
 		}
 	}
 	plan, err := NewConversationCompactionPlan(sessionID, compaction, planned)

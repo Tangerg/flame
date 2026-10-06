@@ -300,7 +300,7 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 		t.Fatalf("New failing persistence: %v", err)
 	}
 	commit, err := runs.NewRecoveryCommit(runs.RecoveryCommitInput{
-		LostRuns: []run.Replacement{testsupport.MustRunReplacement(active, lost)},
+		LostRuns: []run.Replacement{testsupport.MustRunReplacement(active, testsupport.DecidedRun(lost))},
 		ConversationTransitions: []runs.RecoveryConversationTransition{{
 			RootRunID: active.ID(), SessionID: active.SessionID(), ExpectedCount: 0,
 		}},

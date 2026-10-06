@@ -177,7 +177,7 @@ func TestCommitWaitingSubtreeCancellationRejectsRunContinuationFactDriftWithoutM
 			state := mutatedRun(replacement.State(), func(snapshot *run.Snapshot) {
 				snapshot.Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: snapshot.Metrics.Steps() + 1})
 			})
-			draft.terminalRuns[0] = testsupport.MustRunReplacement(replacement.Expected(), state)
+			draft.terminalRuns[0] = testsupport.MustRunReplacement(replacement.Expected(), testsupport.DecidedRun(state))
 		},
 		"root run capabilities": func(draft *waitingCancellationCommitDraft) {
 			last := len(draft.parkedRuns) - 1

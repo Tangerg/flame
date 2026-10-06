@@ -505,8 +505,7 @@ func (r *RunStore) UpdateProgress(
 // Terminalize ends the exact non-terminal Run snapshot that replacement names,
 // recording the outcome the application reached and the result that explains it.
 func (r *RunStore) Terminalize(ctx context.Context, replacement rundomain.Replacement) error {
-	expected := replacement.Expected()
-	return r.terminalize(ctx, &expected, replacement.State(), nil)
+	return r.replace(ctx, "terminalize", replacement)
 }
 
 // TerminalizeEvent ends one exact active Segment and stamps the immutable
@@ -522,16 +521,7 @@ func (r *RunStore) TerminalizeEvent(
 	if err != nil {
 		return err
 	}
-	return r.terminalize(ctx, nil, value, marker)
-}
-
-func (r *RunStore) terminalize(
-	ctx context.Context,
-	expected *rundomain.Run,
-	value rundomain.Run,
-	marker *runCommitMarker,
-) error {
-	return r.finish(ctx, "terminalize", expected, value, marker, func(current rundomain.Run) (rundomain.Run, error) {
+	return r.finish(ctx, "terminalize", nil, value, marker, func(current rundomain.Run) (rundomain.Run, error) {
 		outcome, terminal := value.Outcome()
 		if !terminal {
 			return rundomain.Run{}, errors.New("outcome is required")
@@ -587,23 +577,28 @@ func (r *RunStore) RebaseMessageMark(ctx context.Context, change rundomain.Repla
 // from either Running or Waiting, because it describes a Run nobody is driving
 // rather than one the executor finished.
 func (r *RunStore) RecoverLost(ctx context.Context, replacement rundomain.Replacement) error {
+	return r.replace(ctx, "recover lost", replacement)
+}
+
+// replace writes a Replacement's decided terminal state. Its legality was
+// settled when the Replacement was derived; the write fences the exact
+// aggregate it was derived from.
+func (r *RunStore) replace(ctx context.Context, op string, replacement rundomain.Replacement) error {
+	if err := replacement.Validate(); err != nil {
+		return fmt.Errorf("sqlite: %s run: %w", op, err)
+	}
 	expected := replacement.Expected()
-	value := replacement.State()
-	return r.finish(ctx, "recover lost", &expected, value, nil, func(current rundomain.Run) (rundomain.Run, error) {
-		failure, failed := value.Failure()
-		if !failed {
-			return rundomain.Run{}, errors.New("lost failure is required")
-		}
-		return current.RecoverLost(failure, value.FinishedAt(), value.MessageMark())
-	})
+	return r.finish(ctx, op, &expected, replacement.State(), nil, nil)
 }
 
 // finish ends a non-terminal Run, writing the terminal state, its reason, and the
 // facts that explain it in ONE statement — a row can never claim a terminal
 // state without the result behind it, nor hold a result while still running.
-// transition invokes the aggregate's rule for this kind of ending; the UPDATE
-// is a CAS on the committed source state, so a row that moved under the
-// transaction fails instead of being overwritten.
+// A Replacement supplies expected and is written as decided; an event commit,
+// which carries no prior aggregate, supplies transition instead and is checked
+// against the row it ends. Either way the UPDATE is a CAS on the committed
+// source state, so a row that moved under the transaction fails instead of
+// being overwritten.
 func (r *RunStore) finish(
 	ctx context.Context,
 	op string,
@@ -647,18 +642,23 @@ func (r *RunStore) finish(
 		if err := marker.requireActiveSegment(current.ActiveSegmentID()); err != nil {
 			return fmt.Errorf("sqlite: %s run: %w", op, err)
 		}
-		current, err = current.AdvanceProgress(
-			value.Metrics(), value.ContextTokens(), value.FinishedAt(),
-		)
-		if err != nil {
-			return fmt.Errorf("sqlite: %s run: advance aggregate metrics: %w", op, err)
+		if !value.State().IsTerminal() {
+			return fmt.Errorf("sqlite: %s run: state %s is not terminal", op, value.State())
 		}
-		next, err := transition(current)
-		if err != nil {
-			return fmt.Errorf("sqlite: %s run: %w", op, err)
-		}
-		if !next.Equal(value) {
-			return fmt.Errorf("sqlite: %s run: proposed Run differs from the aggregate transition", op)
+		if transition != nil {
+			advanced, err := current.AdvanceProgress(
+				value.Metrics(), value.ContextTokens(), value.FinishedAt(),
+			)
+			if err != nil {
+				return fmt.Errorf("sqlite: %s run: advance aggregate metrics: %w", op, err)
+			}
+			next, err := transition(advanced)
+			if err != nil {
+				return fmt.Errorf("sqlite: %s run: %w", op, err)
+			}
+			if !next.Equal(value) {
+				return fmt.Errorf("sqlite: %s run: proposed Run differs from the aggregate transition", op)
+			}
 		}
 		outcome, _ := value.Outcome()
 		commitSegmentID, commitID := marker.databaseValues()
@@ -669,9 +669,9 @@ func (r *RunStore) finish(
 			   usage = ?, context_tokens = ?, problem = ?, unresolved_effects = ?, message_mark = ?, finished_at = ?, updated_at = ?
 			 WHERE session_id = ? AND run_id = ? AND state = ?`
 		args := []any{
-			coarseState(next.State()).databaseValue(), commitSegmentID, commitID,
+			coarseState(value.State()).databaseValue(), commitSegmentID, commitID,
 			string(outcome), value.Detail(), metrics.steps, metrics.durationNs,
-			metrics.usage, next.ContextTokens(), encodedFailure, encodedEffects,
+			metrics.usage, value.ContextTokens(), encodedFailure, encodedEffects,
 			value.MessageMark(), value.FinishedAt().UTC().UnixNano(),
 			value.UpdatedAt().UTC().UnixNano(), value.SessionID(), value.ID(), coarseState(current.State()).databaseValue(),
 		}

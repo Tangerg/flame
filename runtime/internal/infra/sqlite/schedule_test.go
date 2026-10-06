@@ -514,7 +514,7 @@ func TestAcceptedScheduleOccurrenceFollowsRunLifecycle(t *testing.T) {
 				}
 				if err := runStore.Terminalize(
 					ctx,
-					testsupport.MustRunReplacement(current, finished),
+					testsupport.MustRunReplacement(current, testsupport.DecidedRun(finished)),
 				); err != nil {
 					t.Fatalf("persist terminal Run: %v", err)
 				}

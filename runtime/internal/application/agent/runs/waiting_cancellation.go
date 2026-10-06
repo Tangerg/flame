@@ -274,17 +274,11 @@ func (w waitingCancellationBuilder) terminalProjection(
 			)
 		}
 		expectedProcesses[member.memberID] = struct{}{}
-		terminal, err := canceledWaitingRun(member.run, w.reason, w.finishedAt)
+		replacement, err := rundomain.Replace(member.run, func(run rundomain.Run) (rundomain.Run, error) {
+			return canceledWaitingRun(run, w.reason, w.finishedAt)
+		})
 		if err != nil {
 			return nil, nil, err
-		}
-		replacement, err := rundomain.NewReplacement(member.run, terminal)
-		if err != nil {
-			return nil, nil, fmt.Errorf(
-				"runs: prepare canceled waiting Run %q replacement: %w",
-				member.run.ID(),
-				err,
-			)
 		}
 		terminalRuns = append(terminalRuns, replacement)
 		canceledRunIDs = append(canceledRunIDs, member.run.ID())

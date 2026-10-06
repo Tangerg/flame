@@ -212,14 +212,11 @@ func (r RecoveryCommit) Validate() error {
 }
 
 func validateLostRunReplacement(recovery rundomain.Replacement) error {
-	lost := recovery.State()
-	failure, err := lost.LostFailure()
-	if err != nil {
+	if err := recovery.Validate(); err != nil {
 		return err
 	}
-	return recovery.ValidateDerivedBy(func(expected rundomain.Run) (rundomain.Run, error) {
-		return expected.RecoverLost(failure, lost.FinishedAt(), lost.MessageMark())
-	})
+	_, err := recovery.State().LostFailure()
+	return err
 }
 
 func validateRecoveryModelInvocations(

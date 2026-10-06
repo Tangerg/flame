@@ -131,11 +131,17 @@ func MustRestoreRun(snapshot run.Snapshot) run.Run {
 	return restored
 }
 
-// MustRunReplacement constructs one exact Run replacement or panics.
-func MustRunReplacement(expected, state run.Run) run.Replacement {
-	replacement, err := run.NewReplacement(expected, state)
+// MustRunReplacement derives one Run replacement or panics.
+func MustRunReplacement(expected run.Run, transition func(run.Run) (run.Run, error)) run.Replacement {
+	replacement, err := run.Replace(expected, transition)
 	if err != nil {
 		panic(err)
 	}
 	return replacement
+}
+
+// DecidedRun is a transition that yields an already-built state, for tests
+// that need a replacement whose state they constructed directly.
+func DecidedRun(state run.Run) func(run.Run) (run.Run, error) {
+	return func(run.Run) (run.Run, error) { return state, nil }
 }

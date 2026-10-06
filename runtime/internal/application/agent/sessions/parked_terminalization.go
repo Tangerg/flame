@@ -140,30 +140,18 @@ func (p parkedRunTerminalization) terminalRuns(
 				run.ID(),
 			)
 		}
-		var terminal rundomain.Run
-		var err error
-		if p.outcome == rundomain.OutcomeLost {
-			terminal, err = run.RecoverLost(rundomain.Failure{
-				Kind:   rundomain.FailureLost,
-				Detail: "the parked Run tree's executor checkpoint could not be restored",
-			}, p.finishedAt, run.Lineage().MessageMark(messageMark))
-		} else {
-			terminal, err = run.CancelWaiting(
-				p.detail,
-				p.finishedAt,
-				run.Lineage().MessageMark(messageMark),
-			)
-		}
+		replacement, err := rundomain.Replace(run, func(run rundomain.Run) (rundomain.Run, error) {
+			mark := run.Lineage().MessageMark(messageMark)
+			if p.outcome == rundomain.OutcomeLost {
+				return run.RecoverLost(rundomain.Failure{
+					Kind:   rundomain.FailureLost,
+					Detail: "the parked Run tree's executor checkpoint could not be restored",
+				}, p.finishedAt, mark)
+			}
+			return run.CancelWaiting(p.detail, p.finishedAt, mark)
+		})
 		if err != nil {
 			return nil, fmt.Errorf("sessions: terminalize parked Run %q: %w", run.ID(), err)
-		}
-		replacement, err := rundomain.NewReplacement(run, terminal)
-		if err != nil {
-			return nil, fmt.Errorf(
-				"sessions: terminalize parked Run %q replacement: %w",
-				run.ID(),
-				err,
-			)
 		}
 		terminalRuns = append(terminalRuns, replacement)
 	}
