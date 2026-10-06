@@ -1,6 +1,7 @@
 package sessions
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"testing"
@@ -27,7 +28,7 @@ func (p *trajectoryPages) PageTrajectory(_ context.Context, _ string, _ bool, an
 	p.limit, p.reads = limit, p.reads+1
 	var result []TrajectoryEntry
 	for _, entry := range p.entries {
-		if anchor != nil && entry.Position().compare(*anchor) >= 0 {
+		if anchor != nil && compareTrajectoryPositions(entry.Position(), *anchor) >= 0 {
 			continue
 		}
 		result = append(result, entry)
@@ -36,6 +37,10 @@ func (p *trajectoryPages) PageTrajectory(_ context.Context, _ string, _ bool, an
 		}
 	}
 	return result, nil
+}
+
+func compareTrajectoryPositions(left, right TrajectoryPosition) int {
+	return cmp.Or(cmp.Compare(left.OccurredAt, right.OccurredAt), cmp.Compare(left.Kind, right.Kind), cmp.Compare(left.ID, right.ID))
 }
 
 func TestTrajectoryPageBindsItsCursorToSessionAndDescendants(t *testing.T) {
@@ -71,18 +76,5 @@ func TestTrajectoryPageBindsItsCursorToSessionAndDescendants(t *testing.T) {
 	}
 	if _, err := query.ListItemPage(t.Context(), Items("ses_1"), transcript.OldestFirst, first.NextCursor, pagination.DefaultLimit()); !errors.Is(err, pagination.ErrInvalidCursor) {
 		t.Fatalf("trajectory cursor used as Item cursor: %v", err)
-	}
-}
-
-func TestTrajectoryPageRejectsIncompleteOrUnorderedEvidence(t *testing.T) {
-	at := time.Unix(100, 0).UTC()
-	valid := TrajectoryEntry{OccurredAt: at, Model: &TrajectoryModelInvocation{
-		RunID: "run_1", ModelInvocationCommit: runs.ModelInvocationCommit{CallID: "call_1", SegmentID: "seg_1", StartedAt: at, State: runs.ModelInvocationStarted},
-	}}
-	for _, entries := range [][]TrajectoryEntry{{{}}, {valid, valid}, {{OccurredAt: at.Add(time.Second), Model: valid.Model}}} {
-		query := newQueryCoordinator(t, QueryDependencies{Trajectory: &trajectoryPages{entries: entries}})
-		if _, err := query.ListTrajectoryPage(t.Context(), "ses_1", false, "", pagination.DefaultLimit()); err == nil {
-			t.Fatalf("accepted invalid evidence: %+v", entries)
-		}
 	}
 }

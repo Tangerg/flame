@@ -127,38 +127,15 @@ func testPublication(t *testing.T, expected domain.State, through int64, content
 	return publication
 }
 
-func TestCurationValidatesDurableMaterial(t *testing.T) {
+func TestCurationNormalizesInputAndOrdersItems(t *testing.T) {
 	store := &fakeCurationStore{appended: []domain.LedgerFact{validLedgerFact(4, "fact")}}
 	curation := newCuration(t, CurationConfig{Store: store})
 	appended, err := curation.AppendLedger(t.Context(), validFactBatch(" fact ", "fact"))
 	if err != nil || len(appended) != 1 || len(store.appendBatch.Facts) != 1 || store.appendBatch.Facts[0] != "fact" {
 		t.Fatalf("AppendLedger = (%+v, %v), normalized batch = %+v", appended, err, store.appendBatch)
 	}
-
-	store.appended = []domain.LedgerFact{validLedgerFact(4, "other")}
-	if _, err := curation.AppendLedger(t.Context(), validFactBatch("fact")); err == nil {
-		t.Fatal("unrequested append acknowledgement was accepted")
-	}
-
-	// A State the domain accepts, so only the ordering rule can refuse this read.
-	curated := domain.State{Watermark: 1, UpdatedAt: time.Date(2026, time.September, 4, 8, 0, 0, 0, time.UTC)}
-	store.pending = []domain.LedgerFact{validLedgerFact(3, "three"), validLedgerFact(2, "two")}
-	if _, err := curation.PendingLedger(t.Context(), "/repo", curated, 2); err == nil {
-		t.Fatal("out-of-order pending ledger was accepted")
-	}
-	store.pending = nil
 	if _, err := curation.PendingLedger(t.Context(), "/repo", domain.State{Watermark: -1}, 2); err == nil {
 		t.Fatal("negative pending watermark was accepted")
-	}
-
-	store.state = domain.State{Watermark: 1}
-	if _, err := curation.State(t.Context(), "/repo"); err == nil {
-		t.Fatal("invalid curation state was accepted")
-	}
-
-	store.items = []domain.Item{readModelItem(t, '1', domain.ScopeProject, "/other", "foreign")}
-	if _, err := curation.Items(t.Context(), domain.ScopeProject, "/repo"); err == nil {
-		t.Fatal("foreign curation item was accepted")
 	}
 	first := readModelItem(t, '1', domain.ScopeProject, "/repo", "first")
 	second := readModelItem(t, '2', domain.ScopeProject, "/repo", "second")

@@ -160,39 +160,6 @@ func TestListOwnsManagementOrder(t *testing.T) {
 	}
 }
 
-func TestListRejectsCorruptManagementCatalog(t *testing.T) {
-	now := time.Date(2026, time.September, 4, 8, 0, 0, 0, time.UTC)
-	valid := validMemoryItem(testMemoryItemID('1'), domain.ScopeProject, "/repo", "fact", false, now)
-	foreign := validMemoryItem(testMemoryItemID('2'), domain.ScopeProject, "/other", "foreign", false, now)
-	rejected := valid
-	rejected.Origin = domain.OriginAuto
-	rejected.Status = domain.StatusRejected
-	invalid := valid
-	invalid.Content = " invalid "
-	for _, test := range []struct {
-		name  string
-		items []domain.Item
-	}{
-		{name: "invalid item", items: []domain.Item{invalid}},
-		{name: "foreign target", items: []domain.Item{foreign}},
-		{name: "hidden tombstone", items: []domain.Item{rejected}},
-		{name: "duplicate identity", items: []domain.Item{valid, valid}},
-		{name: "duplicate content", items: []domain.Item{
-			valid,
-			validMemoryItem(testMemoryItemID('3'), domain.ScopeProject, "/repo", "fact", false, now),
-		}},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			coordinator := newCoordinator(t, Config{
-				Store: &fakeStore{listed: test.items}, Roots: rootResolver{root: "/repo"},
-			})
-			if _, err := coordinator.List(t.Context(), domain.ScopeProject, "/repo"); err == nil {
-				t.Fatal("corrupt management catalog was accepted")
-			}
-		})
-	}
-}
-
 func TestUpdateDelegatesOneAtomicPatchWithApplicationClock(t *testing.T) {
 	store := &fakeStore{}
 	now := time.Date(2026, 7, 23, 9, 0, 0, 0, time.UTC)

@@ -122,37 +122,6 @@ func TestSearchKeywordOnlyWhenNoEmbedder(t *testing.T) {
 	}
 }
 
-func TestReadModelItemsProtectsExactActiveCatalog(t *testing.T) {
-	valid := readModelItem(t, '1', domain.ScopeProject, "/repo", "valid fact")
-	pending, err := domain.NewProposal(
-		testMemoryItemID('2'), "/repo", "pending fact",
-		time.Date(2026, time.September, 4, 8, 0, 0, 0, time.UTC),
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	foreign := readModelItem(t, '3', domain.ScopeProject, "/other", "foreign fact")
-	invalid := valid
-	invalid.Content = " canonical violation "
-	for _, test := range []struct {
-		name  string
-		items []domain.Item
-	}{
-		{name: "invalid item", items: []domain.Item{invalid}},
-		{name: "foreign target", items: []domain.Item{foreign}},
-		{name: "non-active item", items: []domain.Item{pending}},
-		{name: "duplicate identity", items: []domain.Item{valid, valid}},
-		{name: "duplicate content", items: []domain.Item{valid, readModelItem(t, '4', domain.ScopeProject, "/repo", "valid fact")}},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			reader := mustNewReadModel(t, &fakeItemSource{items: test.items}, nil)
-			if _, err := reader.Items(t.Context(), domain.ScopeProject, "/repo"); err == nil {
-				t.Fatal("corrupt target catalog was accepted")
-			}
-		})
-	}
-}
-
 func TestReadModelOwnsReturnedItemEmbeddings(t *testing.T) {
 	item := readModelItem(t, '1', domain.ScopeProject, "/repo", "valid fact")
 	item.EmbeddingSpace, item.Embedding = "fake", []float32{1, 0}
@@ -175,28 +144,6 @@ func TestReadModelOwnsReturnedItemEmbeddings(t *testing.T) {
 	searched[0].Embedding[0] = 8
 	if store.items[0].Embedding[0] != 1 {
 		t.Fatalf("store embedding changed through search result: %v", store.items[0].Embedding)
-	}
-}
-
-func TestReadModelSearchProtectsCombinedCatalog(t *testing.T) {
-	projectItem := readModelItem(t, '1', domain.ScopeProject, "/repo", "project fact")
-	userItem := readModelItem(t, '2', domain.ScopeUser, "", "user fact")
-	reader := mustNewReadModel(t, &fakeItemSource{items: []domain.Item{projectItem, userItem}}, nil)
-	if got, err := reader.Search(t.Context(), "/repo", "fact", 2); err != nil || len(got) != 2 {
-		t.Fatalf("Search valid combined catalog = (%+v, %v)", got, err)
-	}
-
-	foreign := readModelItem(t, '3', domain.ScopeProject, "/other", "foreign fact")
-	reader = mustNewReadModel(t, &fakeItemSource{items: []domain.Item{foreign}}, nil)
-	if _, err := reader.Search(t.Context(), "/repo", "fact", 1); err == nil {
-		t.Fatal("foreign project search item was accepted")
-	}
-
-	duplicateAcrossTargets := userItem
-	duplicateAcrossTargets.ID = projectItem.ID
-	reader = mustNewReadModel(t, &fakeItemSource{items: []domain.Item{projectItem, duplicateAcrossTargets}}, nil)
-	if _, err := reader.Search(t.Context(), "/repo", "fact", 2); err == nil {
-		t.Fatal("cross-target duplicate identity was accepted")
 	}
 }
 

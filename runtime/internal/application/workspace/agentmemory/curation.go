@@ -55,14 +55,7 @@ func (c *Curation) AppendLedger(ctx context.Context, batch domain.FactBatch) ([]
 	if len(normalized.Facts) == 0 {
 		return nil, nil
 	}
-	facts, err := c.store.AppendLedger(ctx, normalized)
-	if err != nil {
-		return nil, err
-	}
-	if err := validateAppendedFacts(facts, normalized); err != nil {
-		return nil, err
-	}
-	return facts, nil
+	return c.store.AppendLedger(ctx, normalized)
 }
 
 // PendingLedger returns facts not yet incorporated into the curated generation.
@@ -72,14 +65,7 @@ func (c *Curation) PendingLedger(ctx context.Context, project string, state doma
 	if err := validatePendingRead(project, state, limit); err != nil {
 		return nil, err
 	}
-	facts, err := c.store.PendingLedger(ctx, project, state.Watermark, limit)
-	if err != nil {
-		return nil, err
-	}
-	if err := validatePendingFacts(facts, state.Watermark, limit); err != nil {
-		return nil, err
-	}
-	return facts, nil
+	return c.store.PendingLedger(ctx, project, state.Watermark, limit)
 }
 
 // State returns the current curation watermark.
@@ -87,14 +73,7 @@ func (c *Curation) State(ctx context.Context, project string) (domain.State, err
 	if err := domain.ValidateTarget(domain.ScopeProject, project); err != nil {
 		return domain.State{}, err
 	}
-	state, err := c.store.State(ctx, project)
-	if err != nil {
-		return domain.State{}, err
-	}
-	if err := state.Validate(); err != nil {
-		return domain.State{}, fmt.Errorf("agentmemory: invalid curation state for project %q: %w", project, err)
-	}
-	return state, nil
+	return c.store.State(ctx, project)
 }
 
 // PublishGeneration publishes one compare-and-swap-protected curated
@@ -123,39 +102,8 @@ func (c *Curation) Items(ctx context.Context, scope domain.Scope, project string
 	if err != nil {
 		return nil, err
 	}
-	if err := validateActiveTargetCatalog(items, scope, project); err != nil {
-		return nil, err
-	}
 	slices.SortFunc(items, compareActiveItems)
 	return items, nil
-}
-
-func validateAppendedFacts(facts []domain.LedgerFact, batch domain.FactBatch) error {
-	if len(facts) > len(batch.Facts) {
-		return fmt.Errorf("agentmemory: append returned %d facts for a %d-fact batch", len(facts), len(batch.Facts))
-	}
-	remaining := make(map[string]struct{}, len(batch.Facts))
-	for _, content := range batch.Facts {
-		remaining[content] = struct{}{}
-	}
-	var previous int64
-	for index, fact := range facts {
-		if err := fact.Validate(); err != nil {
-			return fmt.Errorf("agentmemory: appended ledger row %d is invalid: %w", index+1, err)
-		}
-		if fact.Sequence <= previous {
-			return fmt.Errorf("agentmemory: appended ledger sequence %d is not after %d", fact.Sequence, previous)
-		}
-		previous = fact.Sequence
-		if fact.Day != batch.Day || !fact.CapturedAt.Equal(batch.CapturedAt) {
-			return fmt.Errorf("agentmemory: appended ledger row %d does not acknowledge its batch", index+1)
-		}
-		if _, requested := remaining[fact.Content]; !requested {
-			return fmt.Errorf("agentmemory: appended ledger row %d was not requested", index+1)
-		}
-		delete(remaining, fact.Content)
-	}
-	return nil
 }
 
 func validatePendingRead(project string, state domain.State, limit int) error {
@@ -167,23 +115,6 @@ func validatePendingRead(project string, state domain.State, limit int) error {
 	}
 	if limit <= 0 || limit > domain.MaxLedgerFoldFacts {
 		return fmt.Errorf("agentmemory: pending ledger limit must be between 1 and %d", domain.MaxLedgerFoldFacts)
-	}
-	return nil
-}
-
-func validatePendingFacts(facts []domain.LedgerFact, watermark int64, limit int) error {
-	if len(facts) > limit {
-		return fmt.Errorf("agentmemory: pending ledger returned %d facts, limit %d", len(facts), limit)
-	}
-	previous := watermark
-	for index, fact := range facts {
-		if err := fact.Validate(); err != nil {
-			return fmt.Errorf("agentmemory: pending ledger row %d is invalid: %w", index+1, err)
-		}
-		if fact.Sequence <= previous {
-			return fmt.Errorf("agentmemory: pending ledger sequence %d is not after %d", fact.Sequence, previous)
-		}
-		previous = fact.Sequence
 	}
 	return nil
 }

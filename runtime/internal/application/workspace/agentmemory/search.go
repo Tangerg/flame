@@ -50,14 +50,7 @@ func (r *ReadModel) Items(ctx context.Context, scope domain.Scope, project strin
 	if err := domain.ValidateTarget(scope, project); err != nil {
 		return nil, err
 	}
-	items, err := r.store.Items(ctx, scope, project)
-	if err != nil {
-		return nil, err
-	}
-	if err := validateActiveTargetCatalog(items, scope, project); err != nil {
-		return nil, err
-	}
-	return items, nil
+	return r.store.Items(ctx, scope, project)
 }
 
 // Search returns up to topK relevant project- and user-scoped memory items for
@@ -72,9 +65,6 @@ func (r *ReadModel) Search(ctx context.Context, project, query string, topK int)
 	}
 	items, err := r.store.SearchCorpus(ctx, project)
 	if err != nil || len(items) == 0 {
-		return nil, err
-	}
-	if err := validateSearchCatalog(items, project); err != nil {
 		return nil, err
 	}
 	semantic, ok := r.resolveSemanticQuery(ctx, query)

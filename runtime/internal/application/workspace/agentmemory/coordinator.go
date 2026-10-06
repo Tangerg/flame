@@ -75,9 +75,6 @@ func (c *Coordinator) List(ctx context.Context, scope domain.Scope, cwd string) 
 	if err != nil {
 		return nil, err
 	}
-	if err := validateManagementTargetCatalog(items, scope, project); err != nil {
-		return nil, err
-	}
 	slices.SortFunc(items, compareManagementItems)
 	return items, nil
 }

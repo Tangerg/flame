@@ -1,10 +1,8 @@
 package sessions
 
 import (
-	"cmp"
 	"context"
 	"errors"
-	"fmt"
 	"strconv"
 	"time"
 
@@ -55,10 +53,6 @@ type TrajectoryPosition struct {
 	ID         string
 }
 
-func (p TrajectoryPosition) compare(other TrajectoryPosition) int {
-	return cmp.Or(cmp.Compare(p.OccurredAt, other.OccurredAt), cmp.Compare(p.Kind, other.Kind), cmp.Compare(p.ID, other.ID))
-}
-
 func (p TrajectoryPosition) validate() error {
 	switch p.Kind {
 	case TrajectoryRun:
@@ -100,20 +94,6 @@ func (c *QueryCoordinator) ListTrajectoryPage(ctx context.Context, sessionID str
 	if err != nil {
 		return pagination.Page[TrajectoryEntry]{}, err
 	}
-	if len(rows) > size+1 {
-		return pagination.Page[TrajectoryEntry]{}, errors.New("sessions: trajectory reader exceeded page bound")
-	}
-	previous := anchor
-	for _, entry := range rows {
-		position := entry.Position()
-		if err := entry.validateFor(sessionID, includeDescendants); err != nil {
-			return pagination.Page[TrajectoryEntry]{}, err
-		}
-		if previous != nil && position.compare(*previous) >= 0 {
-			return pagination.Page[TrajectoryEntry]{}, errors.New("sessions: trajectory reader returned unordered observations")
-		}
-		previous = &position
-	}
 	return pagination.PageOf(rows, size, namespace, filters, func(entry TrajectoryEntry) []string {
 		position := entry.Position()
 		return []string{strconv.FormatInt(position.OccurredAt, 10), string(position.Kind), position.ID}
@@ -136,40 +116,4 @@ func trajectoryAnchor(key []string) (*TrajectoryPosition, error) {
 		return nil, pagination.ErrInvalidCursor
 	}
 	return &position, nil
-}
-
-func (e TrajectoryEntry) validateFor(sessionID string, includeDescendants bool) error {
-	count := 0
-	var occurredAt time.Time
-	if e.Run != nil {
-		count++
-		if e.Run.SessionID() != sessionID || (!includeDescendants && e.Run.Lineage().IsChild()) {
-			return errors.New("sessions: trajectory Run escaped its scope")
-		}
-		occurredAt = e.Run.CreatedAt()
-	}
-	if e.Model != nil {
-		count++
-		if err := resourceid.ValidateRun(e.Model.RunID); err != nil {
-			return fmt.Errorf("sessions: trajectory model Run: %w", err)
-		}
-		if err := e.Model.ModelInvocationCommit.Validate(); err != nil {
-			return fmt.Errorf("sessions: trajectory model observation: %w", err)
-		}
-		occurredAt = e.Model.StartedAt
-	}
-	if e.Item != nil {
-		count++
-		if e.Item.SessionID() != sessionID {
-			return errors.New("sessions: trajectory Item escaped its Session")
-		}
-		occurredAt = e.Item.OccurredAt()
-	}
-	if count != 1 || !e.OccurredAt.Equal(occurredAt) {
-		return errors.New("sessions: invalid trajectory observation")
-	}
-	if err := e.Position().validate(); err != nil {
-		return fmt.Errorf("sessions: trajectory identity: %w", err)
-	}
-	return nil
 }
