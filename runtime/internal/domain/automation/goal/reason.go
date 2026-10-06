@@ -72,7 +72,7 @@ func newReason(status Status, code ReasonCode, detail string) (Reason, error) {
 		switch code {
 		case ReasonBlockedByModel:
 			if detail == "" {
-				return Reason{}, fmt.Errorf("%w: model block requires an explanation", ErrInvalid)
+				return Reason{}, ErrBlockExplanationRequired
 			}
 		default:
 			return Reason{}, fmt.Errorf("%w: reason %q cannot block a Goal", ErrInvalid, code)

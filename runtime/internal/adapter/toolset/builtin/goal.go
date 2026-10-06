@@ -217,15 +217,11 @@ func (o *outcomeReporter) report(ctx context.Context, args reportArgs) (string, 
 		return "Invalid Goal outcome; use completed or blocked.", nil
 	}
 	reason := ""
-	if args.Outcome == reportOutcomeBlocked {
-		if args.Reason != nil {
-			reason = strings.TrimSpace(*args.Reason)
+	if args.Reason != nil {
+		if args.Outcome != reportOutcomeBlocked {
+			return "Omit reason when reporting a completed Goal.", nil
 		}
-		if reason == "" {
-			return "Provide a concrete reason when reporting a blocked Goal.", nil
-		}
-	} else if args.Reason != nil {
-		return "Omit reason when reporting a completed Goal.", nil
+		reason = strings.TrimSpace(*args.Reason)
 	}
 	incarnationID, _ := executionctx.GoalIncarnationID(ctx)
 	result, err := o.goals.Report(ctx, goals.ReportCommand{
@@ -236,9 +232,6 @@ func (o *outcomeReporter) report(ctx context.Context, args reportArgs) (string, 
 	})
 	if err != nil {
 		return "", err
-	}
-	if !result.Valid() {
-		return "", fmt.Errorf("goal tool received invalid report result %q", result)
 	}
 	switch result {
 	case goals.ReportApplied:

@@ -134,6 +134,10 @@ func TestReportGoalOutcomeBlockedRequiresReason(t *testing.T) {
 	if store.goals["s1"].Status() != goalstate.StatusActive {
 		t.Fatal("goal should stay active when blocked reason is missing")
 	}
+	blank := "   "
+	if out, _ := tl.report(testGoalRunContext(), reportArgs{Outcome: "blocked", Reason: &blank}); !strings.Contains(out, "reason") {
+		t.Fatalf("blocked with a blank reason = %q, want a reason prompt", out)
+	}
 
 	reason := " needs a key "
 	out, _ = tl.report(testGoalRunContext(), reportArgs{Outcome: "blocked", Reason: &reason})

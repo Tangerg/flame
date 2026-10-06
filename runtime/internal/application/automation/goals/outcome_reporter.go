@@ -32,12 +32,6 @@ const (
 	ReportInvalidOutcome ReportResult = "invalidOutcome"
 )
 
-// Valid reports whether r belongs to the complete report outcome set.
-func (r ReportResult) Valid() bool {
-	return r == ReportApplied || r == ReportNoActiveGoal || r == ReportSuperseded ||
-		r == ReportConflict || r == ReportReasonRequired || r == ReportInvalidOutcome
-}
-
 // OutcomeReporter owns terminal outcome validation and compare-and-swap.
 type OutcomeReporter struct {
 	goals Store
@@ -73,10 +67,10 @@ func (o *OutcomeReporter) Report(ctx context.Context, cmd ReportCommand) (Report
 	case goal.StatusComplete:
 		replacement, err = g.Complete(o.now())
 	case goal.StatusBlocked:
-		if cmd.Reason == "" {
+		replacement, err = g.Block(goal.ReasonBlockedByModel, cmd.Reason, o.now())
+		if errors.Is(err, goal.ErrBlockExplanationRequired) {
 			return ReportReasonRequired, nil
 		}
-		replacement, err = g.Block(goal.ReasonBlockedByModel, cmd.Reason, o.now())
 	default:
 		return ReportInvalidOutcome, nil
 	}

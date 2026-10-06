@@ -95,6 +95,9 @@ var (
 	ErrNotResumable        = errors.New("goal: status is not resumable")
 	ErrNotEditable         = errors.New("goal: status is not editable")
 	ErrRunIdentityConflict = errors.New("goal: Run identity conflict")
+	// ErrBlockExplanationRequired is the recoverable refusal of a model block
+	// that says nothing about what the user must do.
+	ErrBlockExplanationRequired = fmt.Errorf("%w: model block requires an explanation", ErrInvalid)
 )
 
 // Unwritten constructs the explicit absent Goal value for sessionID.
