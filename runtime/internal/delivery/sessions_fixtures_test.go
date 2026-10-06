@@ -675,7 +675,7 @@ func (s stubLifecycleStores) ReadSnapshot(ctx context.Context, id string) (sessi
 	if err != nil {
 		return sessions.Snapshot{}, err
 	}
-	items, err := s.rt.hist.List(ctx, id)
+	items, err := s.rt.hist.ListStored(ctx, id)
 	if err != nil {
 		return sessions.Snapshot{}, err
 	}
@@ -1550,7 +1550,7 @@ func (inertSegmentGoalRuns) RecordRun(context.Context, run.Run) error { return n
 
 type inertSegmentToolResults struct{}
 
-func (inertSegmentToolResults) Bind(context.Context, string, string, string, toolresult.Ref) error {
+func (inertSegmentToolResults) Bind(context.Context, string, string, toolresult.Ref) error {
 	return nil
 }
 func (inertSegmentToolResults) Discard(context.Context, string, toolresult.Ref) error { return nil }

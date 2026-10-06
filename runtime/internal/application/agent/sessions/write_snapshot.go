@@ -9,21 +9,17 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/conversation"
 )
 
-// ownWriteSnapshot normalizes and isolates one complete terminal projection
-// before a Session write-set owns it.
+// ownWriteSnapshot isolates one complete terminal projection before a Session
+// write-set owns it.
 func ownWriteSnapshot(snapshot Snapshot) (Snapshot, error) {
-	normalized, err := snapshot.NormalizeForRestore()
-	if err != nil {
-		return Snapshot{}, fmt.Errorf("normalize snapshot: %w", err)
-	}
-	history, err := conversation.New(normalized.Messages)
+	history, err := conversation.New(snapshot.Messages)
 	if err != nil {
 		return Snapshot{}, fmt.Errorf("conversation: %w", err)
 	}
 	owned := Snapshot{
-		Session: normalized.Session, Messages: history.Messages(),
-		Runs: runsInParentFirstOrder(normalized.Runs), Items: slices.Clone(normalized.Items),
-		ToolResults: slices.Clone(normalized.ToolResults), Plan: slices.Clone(normalized.Plan),
+		Session: snapshot.Session, Messages: history.Messages(),
+		Runs: runsInParentFirstOrder(snapshot.Runs), Items: slices.Clone(snapshot.Items),
+		ToolResults: slices.Clone(snapshot.ToolResults), Plan: slices.Clone(snapshot.Plan),
 	}
 	if err := owned.Validate(); err != nil {
 		return Snapshot{}, err

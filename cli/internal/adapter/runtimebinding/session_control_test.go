@@ -289,16 +289,14 @@ func TestSessionImportRejectsInvalidArtifactToolResults(t *testing.T) {
 	}{
 		{field: "id", mutate: func(result *protocol.ArtifactToolResult) { result.ID = "lowercase" }},
 		{field: "itemId", mutate: func(result *protocol.ArtifactToolResult) { result.ItemID = "" }},
-		{field: "toolName", mutate: func(result *protocol.ArtifactToolResult) { result.ToolName = " \t" }},
-		{field: "preview", mutate: func(result *protocol.ArtifactToolResult) { result.Preview = "" }},
 		{field: "body", mutate: func(result *protocol.ArtifactToolResult) { result.Body = "" }},
 		{field: "createdAt", mutate: func(result *protocol.ArtifactToolResult) { result.CreatedAt = time.Time{} }},
 	} {
 		t.Run(test.field, func(t *testing.T) {
 			artifact := validSessionImportArtifact()
 			artifact.ToolResults = []protocol.ArtifactToolResult{{
-				ID: "BLOB234", ItemID: "item_1", ToolName: "shell",
-				Preview: "bounded preview", Body: "full body", CreatedAt: testSessionTime,
+				ID: "BLOB234", ItemID: "item_1",
+				Body: "full body", CreatedAt: testSessionTime,
 			}}
 			test.mutate(&artifact.ToolResults[0])
 			assertSessionImportRejectsArtifact(t, artifact, test.field)

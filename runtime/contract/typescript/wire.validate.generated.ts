@@ -837,9 +837,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     createdAt: text(),
     id: allOf([text(), pattern("^[A-Z2-7]{2,64}$")]),
     itemId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-    preview: allOf([text(), minLength(1)]),
-    toolName: allOf([text(), pattern("\\S")]),
-  }, ["body", "createdAt", "id", "itemId", "preview", "toolName"]),
+  }, ["body", "createdAt", "id", "itemId"]),
   CancelRunRequest: object({
     reason: allOf([text(), maxLength(1024)]),
     runId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
@@ -3595,7 +3593,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     runs: array(ref(() => CHECKS.ArtifactRun)),
     session: ref(() => CHECKS.ArtifactSession),
     toolResults: array(ref(() => CHECKS.ArtifactToolResult)),
-    version: allOf([integer(), minimum(28), maximum(28)]),
+    version: allOf([integer(), minimum(29), maximum(29)]),
   }, ["items", "messages", "runs", "session", "toolResults", "version"]),
   SessionSnapshot: object({
     goal: ref(() => CHECKS.Goal),
@@ -3614,7 +3612,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     modelInvocations: array(ref(() => CHECKS.ModelInvocation)),
     plan: array(ref(() => CHECKS.PlanStep)),
     runs: array(ref(() => CHECKS.RunRef)),
-    schemaVersion: allOf([integer(), minimum(1), maximum(1)]),
+    schemaVersion: allOf([integer(), minimum(2), maximum(2)]),
     session: ref(() => CHECKS.Session),
     toolAttempts: array(ref(() => CHECKS.ToolAttempt)),
     toolResults: array(ref(() => CHECKS.ArtifactToolResult)),

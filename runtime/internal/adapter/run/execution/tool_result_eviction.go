@@ -88,7 +88,7 @@ func evictToolResult(
 		return output, nil
 	}
 	if err := store.Stage(ctx, toolresult.Stage{
-		ID: id, SessionID: sessionID, ToolName: toolName, Body: output,
+		ID: id, SessionID: sessionID, Body: output,
 	}); err != nil {
 		slog.WarnContext(ctx, "execution: persist offloaded tool result", "session.id", sessionID, "tool.name", toolName, "error", err)
 		return output, nil

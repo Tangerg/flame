@@ -823,11 +823,10 @@ func (e *Effects) appendItem(ctx context.Context, item transcript.Item) error {
 	if invocation.Result == nil {
 		return errors.New("segment: offloaded tool result is absent")
 	}
-	preview, ok := invocation.Result.String()
-	if !ok {
+	if _, ok := invocation.Result.String(); !ok {
 		return errors.New("segment: offloaded tool result has no preview string")
 	}
-	if err := e.toolResults.Bind(ctx, item.SessionID(), item.ID(), preview, *invocation.Offload); err != nil {
+	if err := e.toolResults.Bind(ctx, item.SessionID(), item.ID(), *invocation.Offload); err != nil {
 		return fmt.Errorf("segment: bind offloaded tool result: %w", err)
 	}
 	return nil

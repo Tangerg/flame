@@ -146,8 +146,10 @@ type TransientState interface {
 // Snapshot is one coherent, canonical Session aggregate read used by use cases
 // that must reason across multiple persisted projections.
 type Snapshot struct {
-	Session     session.Session
-	Messages    []chat.Message
+	Session  session.Session
+	Messages []chat.Message
+	// Items are stored Items: an offloaded Tool result carries the preview that
+	// replaced its body, and ToolResults own the bodies.
 	Items       []transcript.Item
 	Runs        []run.Run
 	ToolResults []toolresult.Blob

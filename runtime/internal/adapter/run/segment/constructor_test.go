@@ -207,7 +207,7 @@ func (inertGoalRuns) RecordRun(context.Context, run.Run) error { return nil }
 
 type inertToolResults struct{}
 
-func (inertToolResults) Bind(context.Context, string, string, string, toolresult.Ref) error {
+func (inertToolResults) Bind(context.Context, string, string, toolresult.Ref) error {
 	return nil
 }
 func (inertToolResults) Discard(context.Context, string, toolresult.Ref) error { return nil }

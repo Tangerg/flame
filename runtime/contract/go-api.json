@@ -2559,7 +2559,7 @@
         {
           "name": "SessionArtifactVersion",
           "type": "untyped int",
-          "value": "28"
+          "value": "29"
         },
         {
           "name": "SessionStatusIdle",
@@ -2579,7 +2579,7 @@
         {
           "name": "SessionTrajectoryVersion",
           "type": "untyped int",
-          "value": "1"
+          "value": "2"
         },
         {
           "name": "SkillLifecycleActive",
@@ -3769,16 +3769,6 @@
               "name": "ItemID",
               "type": "string",
               "tag": "json:\"itemId\""
-            },
-            {
-              "name": "ToolName",
-              "type": "string",
-              "tag": "json:\"toolName\""
-            },
-            {
-              "name": "Preview",
-              "type": "string",
-              "tag": "json:\"preview\""
             },
             {
               "name": "Body",

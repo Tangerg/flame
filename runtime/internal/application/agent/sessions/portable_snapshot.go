@@ -225,30 +225,29 @@ func bindPortableToolResults(snapshot *Snapshot) error {
 	return nil
 }
 
-// PortableSnapshot returns the normalized, terminal-only representation used by
-// archive encoders.
+// PortableSnapshot returns the terminal-only representation used by archive
+// encoders.
 func (s Snapshot) PortableSnapshot() (PortableSnapshot, error) {
-	normalized, err := s.NormalizeForRestore()
-	if err != nil {
+	if err := s.ValidateToolResults(); err != nil {
 		return PortableSnapshot{}, err
 	}
 	portable := PortableSnapshot{
 		Session: PortableSession{
-			ID:        normalized.Session.ID(),
-			Title:     normalized.Session.Title(),
-			CWD:       normalized.Session.Workspace().Path(),
-			Selection: normalized.Session.Selection(),
-			CreatedAt: normalized.Session.CreatedAt(),
-			UpdatedAt: normalized.Session.UpdatedAt(),
-			Favorite:  normalized.Session.Favorite(),
+			ID:        s.Session.ID(),
+			Title:     s.Session.Title(),
+			CWD:       s.Session.Workspace().Path(),
+			Selection: s.Session.Selection(),
+			CreatedAt: s.Session.CreatedAt(),
+			UpdatedAt: s.Session.UpdatedAt(),
+			Favorite:  s.Session.Favorite(),
 		},
-		Messages:    cloneSnapshotMessages(normalized.Messages),
-		Items:       slices.Clone(normalized.Items),
-		ToolResults: slices.Clone(normalized.ToolResults),
-		Plan:        slices.Clone(normalized.Plan),
-		Runs:        make([]PortableRun, 0, len(normalized.Runs)),
+		Messages:    cloneSnapshotMessages(s.Messages),
+		Items:       slices.Clone(s.Items),
+		ToolResults: slices.Clone(s.ToolResults),
+		Plan:        slices.Clone(s.Plan),
+		Runs:        make([]PortableRun, 0, len(s.Runs)),
 	}
-	for _, run := range normalized.Runs {
+	for _, run := range s.Runs {
 		outcome, terminal := run.Outcome()
 		if !terminal {
 			return PortableSnapshot{}, fmt.Errorf("sessions: terminal run %q has no outcome", run.ID())

@@ -2,6 +2,7 @@ package sessions
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
@@ -9,10 +10,7 @@ import (
 )
 
 // ValidateToolResults verifies that every typed transcript offload has exactly
-// one matching portable blob and that no blob is detached from its item. A
-// coherent read snapshot carries the hydrated body in Tool.Result, while a
-// restore projection carries the inline preview; both representations are
-// valid as long as the typed relationship and content agree with the blob.
+// one matching portable blob and that no blob is detached from its item.
 func (s Snapshot) ValidateToolResults() error {
 	byItem := make(map[string]toolresult.Blob, len(s.ToolResults))
 	byID := make(map[toolresult.ID]string, len(s.ToolResults))
@@ -45,19 +43,12 @@ func (s Snapshot) ValidateToolResults() error {
 		if invocation.Result == nil {
 			return fmt.Errorf("sessions: item %q offloaded result is absent", item.ID())
 		}
-		result, ok := invocation.Result.String()
-		if !ok {
+		if _, ok := invocation.Result.String(); !ok {
 			return fmt.Errorf("sessions: item %q offloaded result is not a string", item.ID())
 		}
 		blob, exists := byItem[item.ID()]
-		if !exists {
+		if !exists || blob.ID != ref.ID {
 			return fmt.Errorf("sessions: item %q references missing tool result %q", item.ID(), ref.ID)
-		}
-		if blob.ID != ref.ID || blob.ToolName != invocation.Name {
-			return fmt.Errorf("sessions: item %q and tool result %q disagree on identity or tool", item.ID(), blob.ID)
-		}
-		if result != blob.Preview && result != blob.Body {
-			return fmt.Errorf("sessions: item %q result matches neither tool result %q preview nor body", item.ID(), blob.ID)
 		}
 		delete(byItem, item.ID())
 	}
@@ -67,43 +58,33 @@ func (s Snapshot) ValidateToolResults() error {
 	return nil
 }
 
-// NormalizeForRestore returns a copy whose offloaded transcript results use
-// their bounded previews. This is the only representation written back to
-// history: full bodies remain in ToolResults and are joined structurally on
-// reads. The source snapshot is not mutated.
-func (s Snapshot) NormalizeForRestore() (Snapshot, error) {
-	if err := s.ValidateToolResults(); err != nil {
-		return Snapshot{}, err
-	}
-	if len(s.ToolResults) == 0 {
-		return s, nil
-	}
-
-	byItem := make(map[string]toolresult.Blob, len(s.ToolResults))
+// HydratedItems returns the Items with each offloaded result replaced by its
+// body, the form transcript reads present. The snapshot is not mutated.
+func (s Snapshot) HydratedItems() ([]transcript.Item, error) {
+	bodies := make(map[toolresult.ID]string, len(s.ToolResults))
 	for _, blob := range s.ToolResults {
-		byItem[blob.ItemID] = blob
+		bodies[blob.ID] = blob.Body
 	}
-
-	normalized := s
-	normalized.Items = append([]transcript.Item(nil), s.Items...)
-	for i := range normalized.Items {
-		item := &normalized.Items[i]
-		itemSnapshot := item.Snapshot()
-		if itemSnapshot.Tool == nil || itemSnapshot.Tool.Offload == nil {
+	items := slices.Clone(s.Items)
+	for i, item := range items {
+		snapshot := item.Snapshot()
+		if snapshot.Tool == nil || snapshot.Tool.Offload == nil {
 			continue
 		}
-		blob := byItem[item.ID()]
-		preview, err := tool.NewResult(blob.Preview)
-		if err != nil {
-			return Snapshot{}, fmt.Errorf("sessions: normalize item %q preview: %w", item.ID(), err)
+		body, found := bodies[snapshot.Tool.Offload.ID]
+		if !found {
+			return nil, fmt.Errorf("sessions: item %q references missing tool result %q", item.ID(), snapshot.Tool.Offload.ID)
 		}
-		itemSnapshot.Tool.Result = &preview
-		itemSnapshot.Tool.Offload = &toolresult.Ref{ID: blob.ID}
-		restored, err := transcript.RestoreItem(itemSnapshot)
+		result, err := tool.NewResult(body)
 		if err != nil {
-			return Snapshot{}, fmt.Errorf("sessions: normalize item %q: %w", item.ID(), err)
+			return nil, fmt.Errorf("sessions: hydrate item %q: %w", item.ID(), err)
 		}
-		*item = restored
+		snapshot.Tool.Result = &result
+		hydrated, err := transcript.RestoreItem(snapshot)
+		if err != nil {
+			return nil, fmt.Errorf("sessions: hydrate item %q: %w", item.ID(), err)
+		}
+		items[i] = hydrated
 	}
-	return normalized, nil
+	return items, nil
 }

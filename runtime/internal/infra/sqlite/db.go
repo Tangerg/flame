@@ -631,8 +631,6 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			id          TEXT    PRIMARY KEY,
 			session_id  TEXT    NOT NULL DEFAULT '',
 			item_id     TEXT    NOT NULL DEFAULT '',
-			tool_name   TEXT    NOT NULL DEFAULT '',
-			preview     TEXT    NOT NULL DEFAULT '',
 			body        TEXT    NOT NULL,
 			created_at  INTEGER NOT NULL DEFAULT (strftime('%s','now'))
 		)`,

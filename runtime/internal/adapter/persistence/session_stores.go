@@ -191,7 +191,7 @@ func (s *SessionStores) ReadSnapshot(ctx context.Context, sessionID string) (ses
 		if err != nil {
 			return err
 		}
-		items, err := s.transcript.List(ctx, sessionID)
+		items, err := s.transcript.ListStored(ctx, sessionID)
 		if err != nil {
 			return err
 		}

@@ -44,8 +44,8 @@ func artifactFromPortable(portable sessions.PortableSnapshot) (protocol.SessionA
 	toolResults := make([]protocol.ArtifactToolResult, 0, len(portable.ToolResults))
 	for _, blob := range portable.ToolResults {
 		toolResults = append(toolResults, protocol.ArtifactToolResult{
-			ID: blob.ID.String(), ItemID: blob.ItemID, ToolName: blob.ToolName,
-			Preview: blob.Preview, Body: blob.Body, CreatedAt: blob.CreatedAt,
+			ID: blob.ID.String(), ItemID: blob.ItemID,
+			Body: blob.Body, CreatedAt: blob.CreatedAt,
 		})
 	}
 	return protocol.SessionArtifact{

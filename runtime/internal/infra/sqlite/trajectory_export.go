@@ -28,8 +28,8 @@ func (s *SessionStore) TrajectoryExportSize(ctx context.Context, sessionID strin
 			+ length(CAST(parent_run_id AS BLOB)) + length(CAST(root_run_id AS BLOB)) + length(CAST(reasoning_effort AS BLOB))
 			+ length(CAST(state AS BLOB)) + length(CAST(outcome AS BLOB))
 			+ length(CAST(provider AS BLOB)) + length(CAST(model AS BLOB))) FROM runs WHERE session_id = ?
-		UNION ALL SELECT COUNT(*), SUM(length(CAST(body AS BLOB)) + length(CAST(preview AS BLOB))
-			+ length(CAST(id AS BLOB)) + length(CAST(item_id AS BLOB)) + length(CAST(tool_name AS BLOB))) FROM tool_result_blobs WHERE session_id = ?
+		UNION ALL SELECT COUNT(*), SUM(length(CAST(body AS BLOB))
+			+ length(CAST(id AS BLOB)) + length(CAST(item_id AS BLOB))) FROM tool_result_blobs WHERE session_id = ?
 		UNION ALL SELECT COUNT(*), SUM(length(CAST(steps AS BLOB))) FROM session_plans WHERE session_id = ?
 		UNION ALL SELECT COUNT(*), SUM(COALESCE(length(CAST(usage AS BLOB)), 0) + length(CAST(call_id AS BLOB))
 			+ length(CAST(run_id AS BLOB)) + length(CAST(segment_id AS BLOB)) + length(CAST(state AS BLOB))) FROM model_invocations WHERE session_id = ?

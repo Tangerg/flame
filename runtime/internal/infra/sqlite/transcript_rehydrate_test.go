@@ -70,7 +70,7 @@ func TestTranscriptRehydratesOffloadedToolResult(t *testing.T) {
 	if err := tr.AppendItem(t.Context(), toolItem(sess, "item-1", preview, ref)); err != nil {
 		t.Fatal(err)
 	}
-	if err := blobs.Bind(t.Context(), sess, "item-1", preview, *ref); err != nil {
+	if err := blobs.Bind(t.Context(), sess, "item-1", *ref); err != nil {
 		t.Fatal(err)
 	}
 
@@ -136,7 +136,7 @@ func TestDeleteRunDropsItsBoundToolResults(t *testing.T) {
 	if err := tr.AppendItem(t.Context(), toolItem(sess, "item-1", "preview", ref)); err != nil {
 		t.Fatal(err)
 	}
-	if err := blobs.Bind(t.Context(), sess, "item-1", "preview", *ref); err != nil {
+	if err := blobs.Bind(t.Context(), sess, "item-1", *ref); err != nil {
 		t.Fatal(err)
 	}
 	if err := tr.DeleteRun(t.Context(), sess, "run-1"); err != nil {

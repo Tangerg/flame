@@ -1,5 +1,5 @@
 {
-  "version": 28,
+  "version": 29,
   "session": {
     "id": "ses_01",
     "title": "Refactor the runtime protocol",
@@ -60,7 +60,7 @@
           "command": "ls -la",
           "description": "List the working tree"
         },
-        "result": "total 0\n"
+        "result": "total 0\n…[result offloaded; use read_tool_result with BLOB234]…"
       },
       "safetyClass": "exec",
       "approvalDecision": "approve"
@@ -70,8 +70,6 @@
     {
       "id": "BLOB234",
       "itemId": "item_01",
-      "toolName": "shell",
-      "preview": "total 0\n…[result offloaded; use read_tool_result with BLOB234]…",
       "body": "total 0\n",
       "createdAt": "2026-07-07T10:00:05Z"
     }

@@ -57,7 +57,6 @@ func TestCopyForkSnapshotRemapsTheCompleteVisibleRunTree(t *testing.T) {
 		Items: []transcript.Item{spawningItem},
 		ToolResults: []toolresult.Blob{{
 			ID: "BLOB234", SessionID: "ses_parent", ItemID: "item_spawn",
-			ToolName: "delegate_task", Preview: "delegated preview",
 			Body: "delegated full body", CreatedAt: at,
 		}},
 	}

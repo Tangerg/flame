@@ -6562,11 +6562,11 @@
       "rules": [
         {
           "field": "schemaVersion",
-          "constraint": "minimum(1)"
+          "constraint": "minimum(2)"
         },
         {
           "field": "schemaVersion",
-          "constraint": "maximum(1)"
+          "constraint": "maximum(2)"
         }
       ]
     },
@@ -6761,14 +6761,6 @@
           "constraint": "pattern(\"^[A-Z2-7]{2,64}$\")"
         },
         {
-          "field": "toolName",
-          "constraint": "pattern(\"\\\\S\")"
-        },
-        {
-          "field": "preview",
-          "constraint": "nonEmpty"
-        },
-        {
           "field": "body",
           "constraint": "nonEmpty"
         },
@@ -6791,11 +6783,11 @@
       "rules": [
         {
           "field": "version",
-          "constraint": "minimum(28)"
+          "constraint": "minimum(29)"
         },
         {
           "field": "version",
-          "constraint": "maximum(28)"
+          "constraint": "maximum(29)"
         }
       ]
     },

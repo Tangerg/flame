@@ -7340,9 +7340,7 @@
           "body": {},
           "createdAt": {},
           "id": {},
-          "itemId": {},
-          "preview": {},
-          "toolName": {}
+          "itemId": {}
         },
         "unevaluatedProperties": false,
         "allOf": [

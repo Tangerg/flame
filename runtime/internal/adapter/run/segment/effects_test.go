@@ -210,7 +210,7 @@ func TestCommitEventBindsOffloadedResultWithTranscriptItem(t *testing.T) {
 		t.Fatalf("bindings = %+v, want one", toolResults.bindings)
 	}
 	got := toolResults.bindings[0]
-	if got.sessionID != "ses_1" || got.itemID != "item_1" || got.preview != "preview" || got.ref != *ref {
+	if got.sessionID != "ses_1" || got.itemID != "item_1" || got.ref != *ref {
 		t.Fatalf("binding = %+v, want exact item/ref", got)
 	}
 }
@@ -986,7 +986,6 @@ type fakeTranscript struct {
 type toolResultBinding struct {
 	sessionID string
 	itemID    string
-	preview   string
 	ref       toolresult.Ref
 }
 
@@ -995,9 +994,9 @@ type fakeToolResults struct {
 	discarded []toolResultBinding
 }
 
-func (f *fakeToolResults) Bind(_ context.Context, sessionID, itemID, preview string, ref toolresult.Ref) error {
+func (f *fakeToolResults) Bind(_ context.Context, sessionID, itemID string, ref toolresult.Ref) error {
 	f.bindings = append(f.bindings, toolResultBinding{
-		sessionID: sessionID, itemID: itemID, preview: preview, ref: ref,
+		sessionID: sessionID, itemID: itemID, ref: ref,
 	})
 	return nil
 }

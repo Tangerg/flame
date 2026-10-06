@@ -35,8 +35,8 @@ import (
 // is that the document this build writes is the version the contract named. Bumping
 // it is a breaking act, so it should cost a deliberate edit here.
 func TestArtifactVersionMatchesCurrentContractBaseline(t *testing.T) {
-	if protocol.SessionArtifactVersion != 28 {
-		t.Fatalf("SessionArtifactVersion = %d; current Runtime contract requires artifact v28",
+	if protocol.SessionArtifactVersion != 29 {
+		t.Fatalf("SessionArtifactVersion = %d; current Runtime contract requires artifact v29",
 			protocol.SessionArtifactVersion)
 	}
 }
@@ -550,7 +550,7 @@ func seedOffloadedToolResult(t *testing.T, rt *stubRuntime, sessionID string) {
 	body := strings.Repeat("offloaded-", 200)
 	id := toolresult.ID(rand.Text())
 	if err := rt.toolResults.Stage(ctx, toolresult.Stage{
-		ID: id, SessionID: sessionID, ToolName: "vendor_tool", Body: body,
+		ID: id, SessionID: sessionID, Body: body,
 	}); err != nil {
 		t.Fatalf("stage tool result: %v", err)
 	}
@@ -569,7 +569,7 @@ func seedOffloadedToolResult(t *testing.T, rt *stubRuntime, sessionID string) {
 	})); err != nil {
 		t.Fatalf("seed offloaded item: %v", err)
 	}
-	if err := rt.toolResults.Bind(ctx, sessionID, "item_offload", preview, toolresult.Ref{ID: id}); err != nil {
+	if err := rt.toolResults.Bind(ctx, sessionID, "item_offload", toolresult.Ref{ID: id}); err != nil {
 		t.Fatalf("bind tool result: %v", err)
 	}
 }

@@ -20,8 +20,7 @@ func TestParseID(t *testing.T) {
 
 func TestToolResultBlobValidate(t *testing.T) {
 	blob := Blob{
-		ID: "BLOB234", SessionID: "ses_1", ItemID: "item_1", ToolName: "shell",
-		Preview: "preview", Body: "body", CreatedAt: time.Now().UTC(),
+		ID: "BLOB234", SessionID: "ses_1", ItemID: "item_1", Body: "body", CreatedAt: time.Now().UTC(),
 	}
 	if err := blob.Validate(); err != nil {
 		t.Fatalf("Validate: %v", err)

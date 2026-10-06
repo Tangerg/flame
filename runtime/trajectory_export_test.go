@@ -160,7 +160,7 @@ func TestExportTrajectoryReopensCompleteEvidenceThroughBinding(t *testing.T) {
 		t.Fatal(err)
 	}
 	trajectory := exported.Trajectory
-	if trajectory.SchemaVersion != 1 || trajectory.Session.ID != ses.ID ||
+	if trajectory.SchemaVersion != protocol.SessionTrajectoryVersion || trajectory.Session.ID != ses.ID ||
 		len(trajectory.Runs) != 2 || len(trajectory.Items) != 2 || len(trajectory.ModelInvocations) != 102 ||
 		len(trajectory.ToolAttempts) != 2 || len(trajectory.Messages) != 1 || len(trajectory.Feedback) != 4 {
 		t.Fatalf("incomplete exported evidence: runs=%d items=%d models=%d tools=%d messages=%d feedback=%d",

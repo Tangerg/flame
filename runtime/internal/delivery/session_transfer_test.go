@@ -146,7 +146,7 @@ func TestSessionExportImportCarriesOffloadedToolResultsAcrossDatabases(t *testin
 	body := strings.Repeat("portable-result-", 100)
 	id := resultoffload.ID("BLOB234")
 	if stageErr := sourceRuntime.toolResults.Stage(ctx, resultoffload.Stage{
-		ID: id, SessionID: ses.ID(), ToolName: "vendor_tool", Body: body,
+		ID: id, SessionID: ses.ID(), Body: body,
 	}); stageErr != nil {
 		t.Fatalf("stage source result: %v", stageErr)
 	}
@@ -165,7 +165,7 @@ func TestSessionExportImportCarriesOffloadedToolResultsAcrossDatabases(t *testin
 	if appendItemErr := sourceRuntime.hist.AppendItem(ctx, item); appendItemErr != nil {
 		t.Fatalf("append source item: %v", appendItemErr)
 	}
-	if bindErr := sourceRuntime.toolResults.Bind(ctx, ses.ID(), item.ID(), preview, *ref); bindErr != nil {
+	if bindErr := sourceRuntime.toolResults.Bind(ctx, ses.ID(), item.ID(), *ref); bindErr != nil {
 		t.Fatalf("bind source result: %v", bindErr)
 	}
 	if seedHistoryErr := sourceRuntime.SeedHistory(ctx, ses.ID(), []chat.Message{
@@ -181,8 +181,8 @@ func TestSessionExportImportCarriesOffloadedToolResultsAcrossDatabases(t *testin
 	if got := len(exported.Artifact.ToolResults); got != 1 {
 		t.Fatalf("artifact tool results = %d, want 1", got)
 	}
-	if exported.Artifact.ToolResults[0].Body != body || exported.Artifact.ToolResults[0].Preview != preview {
-		t.Fatal("artifact did not preserve the offloaded body and preview")
+	if exported.Artifact.ToolResults[0].Body != body {
+		t.Fatal("artifact did not preserve the offloaded body")
 	}
 	if len(exported.Artifact.Items) != 1 || exported.Artifact.Items[0].Tool == nil || exported.Artifact.Items[0].Tool.Result != preview {
 		t.Fatal("artifact item duplicated the full body instead of carrying its bounded preview")

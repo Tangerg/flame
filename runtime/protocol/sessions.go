@@ -184,9 +184,10 @@ type ExportSessionResponse struct {
 // artifact it doesn't recognize; development builds do not migrate old
 // artifacts.
 //
-// Version 28 preserves unresolved external effects as read-only terminal history.
-// Imported process and effect identities never authorize execution or recovery.
-const SessionArtifactVersion = 28
+// Version 29 keeps an offloaded result's preview on its Item only; the tool
+// result carries the body. Imported process and effect identities never
+// authorize execution or recovery.
+const SessionArtifactVersion = 29
 
 // SessionArtifact is the portable, round-trippable form of a session: its
 // identity plus the full conversation — chat messages (the model's context),
@@ -346,14 +347,11 @@ const (
 )
 
 // ArtifactToolResult carries the single full-body source for an offloaded tool
-// item. ItemID binds it structurally; Preview is the model-history replacement
-// restored into the transcript while Body remains available to presentation and
-// read_tool_result.
+// item. ItemID binds it structurally; the Item itself carries the preview that
+// replaced Body in model history.
 type ArtifactToolResult struct {
 	ID        string    `json:"id"`
 	ItemID    string    `json:"itemId"`
-	ToolName  string    `json:"toolName"`
-	Preview   string    `json:"preview"`
 	Body      string    `json:"body"`
 	CreatedAt time.Time `json:"createdAt,omitzero"`
 }

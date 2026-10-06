@@ -47,8 +47,8 @@ func TestEvict_OversizedIsOffloadedWithRetrievablePreview(t *testing.T) {
 	if store.calls != 1 {
 		t.Fatalf("Stage called %d times, want 1", store.calls)
 	}
-	if store.lastStage.SessionID != "sess-1" || store.lastStage.ToolName != "shell" || store.lastStage.Body != body {
-		t.Fatalf("Stage value = %+v, want session/tool/full-body", store.lastStage)
+	if store.lastStage.SessionID != "sess-1" || store.lastStage.Body != body {
+		t.Fatalf("Stage value = %+v, want session/full-body", store.lastStage)
 	}
 	if len(got) >= len(body) {
 		t.Fatalf("preview (%d) not smaller than body (%d)", len(got), len(body))

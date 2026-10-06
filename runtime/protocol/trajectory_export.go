@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-const SessionTrajectoryVersion = 1
+const SessionTrajectoryVersion = 2
 
 var ErrExportTooLarge = errors.New("export_too_large")
 

@@ -2248,8 +2248,6 @@ func (a ArtifactSession) ValidateWire() error {
 func (a ArtifactToolResult) ValidateWire() error {
 	return collectWireViolations("ArtifactToolResult",
 		requiredTextPattern("id", a.ID, "^[A-Z2-7]{2,64}$"),
-		requiredTextPattern("toolName", a.ToolName, "\\S"),
-		requiredText("preview", a.Preview),
 		requiredText("body", a.Body),
 		requiredText("itemId", a.ItemID),
 		identity("itemId", a.ItemID),
@@ -2283,15 +2281,15 @@ func (p PageContinuation) ValidateWire() error {
 
 func (s SessionTrajectory) ValidateWire() error {
 	return collectWireViolations("SessionTrajectory",
-		minimumNumber("schemaVersion", s.SchemaVersion, 1),
-		maximumNumber("schemaVersion", s.SchemaVersion, 1),
+		minimumNumber("schemaVersion", s.SchemaVersion, 2),
+		maximumNumber("schemaVersion", s.SchemaVersion, 2),
 	)
 }
 
 func (s SessionArtifact) ValidateWire() error {
 	return collectWireViolations("SessionArtifact",
-		minimumNumber("version", s.Version, 28),
-		maximumNumber("version", s.Version, 28),
+		minimumNumber("version", s.Version, 29),
+		maximumNumber("version", s.Version, 29),
 	)
 }
 

@@ -968,7 +968,7 @@ func TestDomainDoesNotOwnConcreteToolInventory(t *testing.T) {
 func TestDeliveryDoesNotOwnArchiveRecoveryOrValidation(t *testing.T) {
 	sessionsPkg := runtimeModule + "/internal/application/agent/sessions"
 	forbidCalls(t, "./internal/delivery/...", map[string]string{
-		sessionsPkg + ".Snapshot.NormalizeForRestore":          "archive normalization belongs to application/agent/sessions",
+		sessionsPkg + ".Snapshot.HydratedItems":                "archive hydration belongs to application/agent/sessions",
 		sessionsPkg + ".Snapshot.ValidateToolResults":          "archive structural validation belongs to application/agent/sessions",
 		sessionsPkg + ".PortableSnapshot.CanonicalSnapshot":    "terminal archive derivation belongs to application/agent/sessions",
 		sessionsPkg + ".Coordinator.RecoverWorkspaceMutations": "startup recovery belongs to the composition root",

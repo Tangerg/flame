@@ -18,19 +18,19 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
-func TestSnapshotNormalizeForRestoreProjectsPreviewWithoutMutatingSource(t *testing.T) {
-	snapshot := offloadedSnapshot("full body")
+func TestSnapshotHydratedItemsJoinBodiesWithoutMutatingSource(t *testing.T) {
+	snapshot := offloadedSnapshot("bounded preview")
 
-	normalized, err := snapshot.NormalizeForRestore()
+	hydrated, err := snapshot.HydratedItems()
 	if err != nil {
-		t.Fatalf("NormalizeForRestore: %v", err)
+		t.Fatalf("HydratedItems: %v", err)
 	}
-	normalizedTool, _ := normalized.Items[0].ToolInvocation()
-	if got, _ := normalizedTool.Result.String(); got != "bounded preview" {
-		t.Fatalf("normalized result = %q, want bounded preview", got)
+	hydratedTool, _ := hydrated[0].ToolInvocation()
+	if got, _ := hydratedTool.Result.String(); got != "full body" {
+		t.Fatalf("hydrated result = %q, want full body", got)
 	}
 	sourceTool, _ := snapshot.Items[0].ToolInvocation()
-	if got, _ := sourceTool.Result.String(); got != "full body" {
+	if got, _ := sourceTool.Result.String(); got != "bounded preview" {
 		t.Fatalf("source result mutated to %q", got)
 	}
 }
@@ -88,8 +88,8 @@ func portableSnapshotWithCollections() Snapshot {
 		},
 	}))
 	snapshot.ToolResults = []toolresult.Blob{{
-		ID: "BLOB234", SessionID: "ses_1", ItemID: "item_tool", ToolName: "shell",
-		Preview: "bounded preview", Body: "full body", CreatedAt: at,
+		ID: "BLOB234", SessionID: "ses_1", ItemID: "item_tool",
+		Body: "full body", CreatedAt: at,
 	}}
 	snapshot.Plan = []plan.Step{{Description: "keep ownership", Status: plan.StatusPending}}
 	return snapshot
@@ -152,17 +152,6 @@ func TestSnapshotValidateToolResultsRejectsBrokenRelationships(t *testing.T) {
 			want: "belongs to session",
 		},
 		{
-			name: "unrelated result",
-			mutate: func(snapshot *Snapshot) {
-				result, err := tool.NewResult("neither preview nor body")
-				if err != nil {
-					t.Fatal(err)
-				}
-				mutateSnapshotItem(snapshot, func(item *transcript.ItemSnapshot) { item.Tool.Result = &result })
-			},
-			want: "matches neither",
-		},
-		{
 			name: "duplicate item binding",
 			mutate: func(snapshot *Snapshot) {
 				duplicate := snapshot.ToolResults[0]
@@ -175,7 +164,7 @@ func TestSnapshotValidateToolResultsRejectsBrokenRelationships(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			snapshot := offloadedSnapshot("full body")
+			snapshot := offloadedSnapshot("bounded preview")
 			tt.mutate(&snapshot)
 			if err := snapshot.ValidateToolResults(); err == nil || !strings.Contains(err.Error(), tt.want) {
 				t.Fatalf("ValidateToolResults() error = %v, want containing %q", err, tt.want)
@@ -208,8 +197,8 @@ func offloadedSnapshot(result string) Snapshot {
 			Tool:   &transcript.ToolInvocation{Name: "shell", Result: &value, Offload: ref},
 		})},
 		ToolResults: []toolresult.Blob{{
-			ID: "BLOB234", SessionID: "ses_1", ItemID: "item_1", ToolName: "shell",
-			Preview: "bounded preview", Body: "full body", CreatedAt: time.Unix(1, 0).UTC(),
+			ID: "BLOB234", SessionID: "ses_1", ItemID: "item_1",
+			Body: "full body", CreatedAt: time.Unix(1, 0).UTC(),
 		}},
 	}
 }

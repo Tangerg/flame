@@ -5,7 +5,6 @@ package toolresult
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
@@ -67,7 +66,6 @@ func (r Ref) Validate() error { return r.ID.Validate() }
 type Stage struct {
 	ID        ID
 	SessionID string
-	ToolName  string
 	Body      string
 }
 
@@ -78,9 +76,6 @@ func (s Stage) Validate() error {
 	}
 	if err := resourceid.ValidateSession(s.SessionID); err != nil {
 		errs = append(errs, fmt.Errorf("toolresult: %w", err))
-	}
-	if strings.TrimSpace(s.ToolName) == "" {
-		errs = append(errs, errors.New("toolresult: tool name is required"))
 	}
 	if s.Body == "" {
 		errs = append(errs, errors.New("toolresult: body is required"))
@@ -94,8 +89,6 @@ type Blob struct {
 	ID        ID
 	SessionID string
 	ItemID    string
-	ToolName  string
-	Preview   string
 	Body      string
 	CreatedAt time.Time
 }
@@ -110,12 +103,6 @@ func (b Blob) Validate() error {
 	}
 	if err := resourceid.ValidateItem(b.ItemID); err != nil {
 		errs = append(errs, fmt.Errorf("toolresult: %w", err))
-	}
-	if strings.TrimSpace(b.ToolName) == "" {
-		errs = append(errs, errors.New("toolresult: tool name is required"))
-	}
-	if b.Preview == "" {
-		errs = append(errs, errors.New("toolresult: preview is required"))
 	}
 	if b.Body == "" {
 		errs = append(errs, errors.New("toolresult: body is required"))

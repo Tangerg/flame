@@ -717,8 +717,7 @@ func TestApplyForkBranchesAndSeeds(t *testing.T) {
 		},
 	})
 	forkedBlob := toolresult.Blob{
-		ID: "FORK234", SessionID: childState.ID(), ItemID: forkedToolItem.ID(),
-		ToolName: "read_large", Preview: "bounded preview", Body: "complete durable body",
+		ID: "FORK234", SessionID: childState.ID(), ItemID: forkedToolItem.ID(), Body: "complete durable body",
 		CreatedAt: forkedAt,
 	}
 	fork, err := sessions.NewForkPlan(parent.ID(), sessions.Snapshot{

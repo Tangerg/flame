@@ -105,8 +105,8 @@ func presentTrajectoryExport(result sessions.TrajectoryExport) (protocol.Session
 	}
 	for _, blob := range snapshot.ToolResults {
 		out.ToolResults = append(out.ToolResults, protocol.ArtifactToolResult{
-			ID: blob.ID.String(), ItemID: blob.ItemID, ToolName: blob.ToolName,
-			Preview: blob.Preview, Body: blob.Body, CreatedAt: blob.CreatedAt,
+			ID: blob.ID.String(), ItemID: blob.ItemID,
+			Body: blob.Body, CreatedAt: blob.CreatedAt,
 		})
 	}
 	for _, row := range result.Evidence.ModelInvocations {

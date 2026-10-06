@@ -203,12 +203,8 @@ func (projection *forkSnapshotProjection) copyToolResults() {
 }
 
 func (projection *forkSnapshotProjection) finish() (Snapshot, error) {
-	normalized, err := projection.forked.NormalizeForRestore()
-	if err != nil {
-		return Snapshot{}, fmt.Errorf("sessions: normalize fork snapshot: %w", err)
-	}
-	if err := normalized.Validate(); err != nil {
+	if err := projection.forked.Validate(); err != nil {
 		return Snapshot{}, fmt.Errorf("sessions: validate fork snapshot: %w", err)
 	}
-	return normalized, nil
+	return projection.forked, nil
 }

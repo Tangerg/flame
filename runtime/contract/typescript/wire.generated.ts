@@ -12,7 +12,7 @@
 export const PROTOCOL_VERSION = "2026-10-02.1";
 
 // The only Session Artifact version this runtime imports or exports.
-export const SESSION_ARTIFACT_VERSION = 28;
+export const SESSION_ARTIFACT_VERSION = 29;
 
 // The maximum length of one opaque pagination cursor on the public wire.
 export const MAXIMUM_PAGINATION_CURSOR_CHARACTERS = 65536;
@@ -298,8 +298,6 @@ export interface ArtifactToolResult {
   createdAt: string;
   id: string;
   itemId: string;
-  preview: string;
-  toolName: string;
 }
 
 export interface CancelRunRequest {

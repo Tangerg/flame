@@ -46,11 +46,15 @@ func (c *Coordinator) ExportSession(ctx context.Context, sessionID string) (Expo
 	if err != nil {
 		return ExportResult{}, fmt.Errorf("sessions: prepare portable snapshot: %w", err)
 	}
+	items, err := snapshot.HydratedItems()
+	if err != nil {
+		return ExportResult{}, err
+	}
 	view, err := c.view(snapshot.Session, ActivityIdle)
 	if err != nil {
 		return ExportResult{}, err
 	}
-	return ExportResult{Session: view, Snapshot: portable, Items: snapshot.Items}, nil
+	return ExportResult{Session: view, Snapshot: portable, Items: items}, nil
 }
 
 // Validate checks the complete Session and the snapshot's referential integrity

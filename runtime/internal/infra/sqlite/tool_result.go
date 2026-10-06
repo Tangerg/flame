@@ -25,16 +25,15 @@ func NewToolResultStore(db *sql.DB) *ToolResultStore {
 }
 
 // Stage persists a body under its precomputed identity after the observer has
-// verified that replacing it with a preview reduces model context. ToolName is
-// retained for relationship validation and diagnostics.
+// verified that replacing it with a preview reduces model context.
 func (t *ToolResultStore) Stage(ctx context.Context, stage toolresult.Stage) error {
 	if err := stage.Validate(); err != nil {
 		return fmt.Errorf("sqlite: stage tool result: %w", err)
 	}
 	_, err := conn(ctx, t.db).ExecContext(ctx,
-		`INSERT INTO tool_result_blobs(id, session_id, tool_name, body, created_at)
-		 VALUES (?, ?, ?, ?, strftime('%s','now'))`,
-		stage.ID, stage.SessionID, stage.ToolName, stage.Body)
+		`INSERT INTO tool_result_blobs(id, session_id, body, created_at)
+		 VALUES (?, ?, ?, strftime('%s','now'))`,
+		stage.ID, stage.SessionID, stage.Body)
 	if err != nil {
 		return fmt.Errorf("sqlite: stage tool result %q: %w", stage.ID, err)
 	}
@@ -65,9 +64,10 @@ func (t *ToolResultStore) Fetch(ctx context.Context, sessionID string, id toolre
 }
 
 // Bind attaches a freshly offloaded body to the transcript item committed in
-// the same transaction. Exact retries are idempotent; another item or preview
-// attempting to claim the ID is an identity conflict.
-func (t *ToolResultStore) Bind(ctx context.Context, sessionID, itemID, preview string, ref toolresult.Ref) error {
+// the same transaction. The item keeps the preview that replaced the body.
+// Exact retries are idempotent; another item attempting to claim the ID is an
+// identity conflict.
+func (t *ToolResultStore) Bind(ctx context.Context, sessionID, itemID string, ref toolresult.Ref) error {
 	if err := ref.Validate(); err != nil {
 		return fmt.Errorf("sqlite: bind tool result: %w", err)
 	}
@@ -77,15 +77,11 @@ func (t *ToolResultStore) Bind(ctx context.Context, sessionID, itemID, preview s
 	if err := resourceid.ValidateItem(itemID); err != nil {
 		return fmt.Errorf("sqlite: bind tool result: %w", err)
 	}
-	if preview == "" {
-		return errors.New("sqlite: bind tool result requires preview")
-	}
 	result, err := conn(ctx, t.db).ExecContext(ctx,
 		`UPDATE tool_result_blobs
-		 SET item_id = ?, preview = ?
-		 WHERE id = ? AND session_id = ?
-		   AND (item_id = '' OR (item_id = ? AND preview = ?))`,
-		itemID, preview, ref.ID, sessionID, itemID, preview,
+		 SET item_id = ?
+		 WHERE id = ? AND session_id = ? AND item_id IN ('', ?)`,
+		itemID, ref.ID, sessionID, itemID,
 	)
 	if err != nil {
 		return fmt.Errorf("sqlite: bind tool result %q: %w", ref.ID, err)
@@ -97,18 +93,18 @@ func (t *ToolResultStore) Bind(ctx context.Context, sessionID, itemID, preview s
 	if changed == 1 {
 		return nil
 	}
-	var ownerSession, ownerItem, ownerPreview string
+	var ownerSession, ownerItem string
 	err = conn(ctx, t.db).QueryRowContext(ctx,
-		`SELECT session_id, item_id, preview FROM tool_result_blobs WHERE id = ?`, ref.ID,
-	).Scan(&ownerSession, &ownerItem, &ownerPreview)
+		`SELECT session_id, item_id FROM tool_result_blobs WHERE id = ?`, ref.ID,
+	).Scan(&ownerSession, &ownerItem)
 	if errors.Is(err, sql.ErrNoRows) {
 		return fmt.Errorf("sqlite: bind tool result %q: blob does not exist", ref.ID)
 	}
 	if err != nil {
 		return fmt.Errorf("sqlite: inspect conflicting tool-result binding %q: %w", ref.ID, err)
 	}
-	return fmt.Errorf("%w: tool result %q belongs to session %q item %q with preview length %d",
-		toolresult.ErrIdentityConflict, ref.ID, ownerSession, ownerItem, len(ownerPreview))
+	return fmt.Errorf("%w: tool result %q belongs to session %q item %q",
+		toolresult.ErrIdentityConflict, ref.ID, ownerSession, ownerItem)
 }
 
 // List returns every transcript-bound blob owned by sessionID in stable order.
@@ -117,7 +113,7 @@ func (t *ToolResultStore) List(ctx context.Context, sessionID string) ([]toolres
 		return nil, fmt.Errorf("sqlite: list tool results: %w", err)
 	}
 	rows, err := conn(ctx, t.db).QueryContext(ctx,
-		`SELECT id, session_id, item_id, tool_name, preview, body, created_at
+		`SELECT id, session_id, item_id, body, created_at
 		 FROM tool_result_blobs
 		 WHERE session_id = ? AND item_id != ''
 		 ORDER BY created_at, id`, sessionID,
@@ -131,7 +127,7 @@ func (t *ToolResultStore) List(ctx context.Context, sessionID string) ([]toolres
 		var blob toolresult.Blob
 		var rawID string
 		var createdAt int64
-		if scanErr := rows.Scan(&rawID, &blob.SessionID, &blob.ItemID, &blob.ToolName, &blob.Preview, &blob.Body, &createdAt); scanErr != nil {
+		if scanErr := rows.Scan(&rawID, &blob.SessionID, &blob.ItemID, &blob.Body, &createdAt); scanErr != nil {
 			return nil, fmt.Errorf("sqlite: scan tool result: %w", scanErr)
 		}
 		blob.ID, err = toolresult.ParseID(rawID)
@@ -157,9 +153,9 @@ func (t *ToolResultStore) Restore(ctx context.Context, blob toolresult.Blob) err
 		return fmt.Errorf("sqlite: restore tool result: %w", err)
 	}
 	_, err := conn(ctx, t.db).ExecContext(ctx,
-		`INSERT INTO tool_result_blobs(id, session_id, item_id, tool_name, preview, body, created_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		blob.ID, blob.SessionID, blob.ItemID, blob.ToolName, blob.Preview, blob.Body, blob.CreatedAt.Unix(),
+		`INSERT INTO tool_result_blobs(id, session_id, item_id, body, created_at)
+		 VALUES (?, ?, ?, ?, ?)`,
+		blob.ID, blob.SessionID, blob.ItemID, blob.Body, blob.CreatedAt.Unix(),
 	)
 	if err == nil {
 		return nil

@@ -25,7 +25,7 @@ func stageShellResult(t *testing.T, store *sqlite.ToolResultStore, sessionID, bo
 	t.Helper()
 	id := toolresult.ID(rand.Text())
 	if err := store.Stage(t.Context(), toolresult.Stage{
-		ID: id, SessionID: sessionID, ToolName: "shell", Body: body,
+		ID: id, SessionID: sessionID, Body: body,
 	}); err != nil {
 		t.Fatalf("stage: %v", err)
 	}
@@ -91,7 +91,7 @@ func TestToolResultDiscardAndStartupPurgeOnlyRemoveUnboundBlobs(t *testing.T) {
 
 	boundID := stageShellResult(t, store, "ses_1", "keep me")
 	boundRef := toolresult.Ref{ID: boundID}
-	if err := store.Bind(t.Context(), "ses_1", "item_1", "preview", boundRef); err != nil {
+	if err := store.Bind(t.Context(), "ses_1", "item_1", boundRef); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.Discard(t.Context(), "ses_1", boundRef); err != nil {
@@ -116,16 +116,11 @@ func TestToolResultDiscardAndStartupPurgeOnlyRemoveUnboundBlobs(t *testing.T) {
 
 func TestToolResultStoreRejectsIncompleteIdentity(t *testing.T) {
 	store := newToolResultStore(t)
-	valid := toolresult.Stage{ID: toolresult.ID("BLOB234"), SessionID: "ses_1", ToolName: "shell", Body: "body"}
+	valid := toolresult.Stage{ID: toolresult.ID("BLOB234"), SessionID: "ses_1", Body: "body"}
 	missingSession := valid
 	missingSession.SessionID = ""
 	if err := store.Stage(t.Context(), missingSession); err == nil {
 		t.Fatal("Stage accepted an empty session ID")
-	}
-	missingTool := valid
-	missingTool.ToolName = ""
-	if err := store.Stage(t.Context(), missingTool); err == nil {
-		t.Fatal("Stage accepted an empty tool name")
 	}
 	missingBody := valid
 	missingBody.Body = ""
@@ -138,13 +133,13 @@ func TestToolResultBindingListAndRestore(t *testing.T) {
 	store := newToolResultStore(t)
 	id := stageShellResult(t, store, "source", "full body")
 	ref := toolresult.Ref{ID: id}
-	if err := store.Bind(t.Context(), "source", "item_1", "preview", ref); err != nil {
+	if err := store.Bind(t.Context(), "source", "item_1", ref); err != nil {
 		t.Fatalf("bind: %v", err)
 	}
-	if err := store.Bind(t.Context(), "source", "item_1", "preview", ref); err != nil {
+	if err := store.Bind(t.Context(), "source", "item_1", ref); err != nil {
 		t.Fatalf("replayed bind: %v", err)
 	}
-	if err := store.Bind(t.Context(), "source", "item_2", "other", ref); !errors.Is(err, toolresult.ErrIdentityConflict) {
+	if err := store.Bind(t.Context(), "source", "item_2", ref); !errors.Is(err, toolresult.ErrIdentityConflict) {
 		t.Fatalf("conflicting bind = %v, want ErrIdentityConflict", err)
 	}
 
@@ -152,7 +147,7 @@ func TestToolResultBindingListAndRestore(t *testing.T) {
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
-	if len(blobs) != 1 || blobs[0].ID != id || blobs[0].ItemID != "item_1" || blobs[0].Preview != "preview" || blobs[0].Body != "full body" {
+	if len(blobs) != 1 || blobs[0].ID != id || blobs[0].ItemID != "item_1" || blobs[0].Body != "full body" {
 		t.Fatalf("listed blobs = %+v, want exact bound blob", blobs)
 	}
 	blob := blobs[0]
@@ -173,8 +168,7 @@ func TestToolResultRestoreNeverReparentsAnID(t *testing.T) {
 	store := newToolResultStore(t)
 	id := stageShellResult(t, store, "owner", "body")
 	blob := toolresult.Blob{
-		ID: id, SessionID: "intruder", ItemID: "item_1", ToolName: "shell",
-		Preview: "preview", Body: "body", CreatedAt: time.Now().UTC(),
+		ID: id, SessionID: "intruder", ItemID: "item_1", Body: "body", CreatedAt: time.Now().UTC(),
 	}
 	if err := store.Restore(t.Context(), blob); !errors.Is(err, toolresult.ErrIdentityConflict) {
 		t.Fatalf("Restore() error = %v, want ErrIdentityConflict", err)

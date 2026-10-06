@@ -193,48 +193,60 @@ func materializeTranscriptItem(
 	payload, rawOffloadID string,
 	offloaded sql.NullString,
 ) (transcript.Item, error) {
+	snapshot, err := storedTranscriptItem(sessionID, runID, itemID, occurredAt, payload, rawOffloadID)
+	if err != nil {
+		return transcript.Item{}, err
+	}
+	if snapshot.Tool != nil && snapshot.Tool.Offload != nil {
+		if !offloaded.Valid {
+			return transcript.Item{}, fmt.Errorf("sqlite: history item %q references missing tool result %q", itemID, snapshot.Tool.Offload.ID)
+		}
+		body, err := tool.NewResult(offloaded.String)
+		if err != nil {
+			return transcript.Item{}, fmt.Errorf("sqlite: decode history item %q offloaded text: %w", itemID, err)
+		}
+		snapshot.Tool.Result = &body
+	}
+	item, err := transcript.RestoreItem(snapshot)
+	if err != nil {
+		return transcript.Item{}, fmt.Errorf("sqlite: decoded history item %q: %w", itemID, err)
+	}
+	return item, nil
+}
+
+// storedTranscriptItem decodes one row as written: an offloaded Tool result
+// keeps the preview that replaced its body.
+func storedTranscriptItem(
+	sessionID, runID, itemID string,
+	occurredAt int64,
+	payload, rawOffloadID string,
+) (transcript.ItemSnapshot, error) {
 	snapshot, err := decodeTranscriptItem([]byte(payload))
 	if err != nil {
-		return transcript.Item{}, fmt.Errorf("sqlite: decode history item %q: %w", itemID, err)
+		return transcript.ItemSnapshot{}, fmt.Errorf("sqlite: decode history item %q: %w", itemID, err)
 	}
 	snapshot.Identity = transcript.ItemIdentity{
 		SessionID: sessionID, RunID: runID, ItemID: itemID,
 		OccurredAt: time.Unix(0, occurredAt).UTC(),
 	}
 	if rawOffloadID == "" {
-		item, restoreItemErr := transcript.RestoreItem(snapshot)
-		if restoreItemErr != nil {
-			return transcript.Item{}, fmt.Errorf("sqlite: decoded history item %q: %w", itemID, restoreItemErr)
-		}
-		return item, nil
+		return snapshot, nil
 	}
 	id, err := toolresult.ParseID(rawOffloadID)
 	if err != nil {
-		return transcript.Item{}, fmt.Errorf("sqlite: decode history item %q offload: %w", itemID, err)
+		return transcript.ItemSnapshot{}, fmt.Errorf("sqlite: decode history item %q offload: %w", itemID, err)
 	}
 	if snapshot.Tool == nil {
-		return transcript.Item{}, fmt.Errorf("sqlite: history item %q has an offload identity but no tool invocation", itemID)
+		return transcript.ItemSnapshot{}, fmt.Errorf("sqlite: history item %q has an offload identity but no tool invocation", itemID)
 	}
 	if snapshot.Tool.Result == nil {
-		return transcript.Item{}, fmt.Errorf("sqlite: history item %q has an offload identity but no preview", itemID)
+		return transcript.ItemSnapshot{}, fmt.Errorf("sqlite: history item %q has an offload identity but no preview", itemID)
 	}
 	if _, ok := snapshot.Tool.Result.String(); !ok {
-		return transcript.Item{}, fmt.Errorf("sqlite: history item %q has an offload identity but no preview string", itemID)
-	}
-	if !offloaded.Valid {
-		return transcript.Item{}, fmt.Errorf("sqlite: history item %q references missing tool result %q", itemID, id)
+		return transcript.ItemSnapshot{}, fmt.Errorf("sqlite: history item %q has an offload identity but no preview string", itemID)
 	}
 	snapshot.Tool.Offload = &toolresult.Ref{ID: id}
-	body, err := tool.NewResult(offloaded.String)
-	if err != nil {
-		return transcript.Item{}, fmt.Errorf("sqlite: decode history item %q offloaded text: %w", itemID, err)
-	}
-	snapshot.Tool.Result = &body
-	item, err := transcript.RestoreItem(snapshot)
-	if err != nil {
-		return transcript.Item{}, fmt.Errorf("sqlite: decoded history item %q: %w", itemID, err)
-	}
-	return item, nil
+	return snapshot, nil
 }
 
 // DeleteRun removes one run's items from a session's history. The Run's own row
@@ -287,6 +299,44 @@ func (t *TranscriptStore) List(ctx context.Context, sessionID string) ([]transcr
 	out := make([]transcript.Item, 0, len(sequenced))
 	for _, entry := range sequenced {
 		out = append(out, entry.Item)
+	}
+	return out, nil
+}
+
+// ListStored returns a session's Items as written, in durable append order:
+// an offloaded Tool result keeps its preview instead of the joined body. A
+// portable Session snapshot captures this form beside the bodies it offloads.
+func (t *TranscriptStore) ListStored(ctx context.Context, sessionID string) ([]transcript.Item, error) {
+	rows, err := conn(ctx, t.db).QueryContext(ctx,
+		`SELECT session_id, run_id, item_id, occurred_at, payload, offload_id
+		   FROM history_items
+		  WHERE session_id = ?
+		  ORDER BY seq`,
+		sessionID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("sqlite: list stored history items: %w", err)
+	}
+	defer func() { _ = rows.Close() }()
+	var out []transcript.Item
+	for rows.Next() {
+		var session, runID, itemID, payload, rawOffloadID string
+		var occurredAt int64
+		if err := rows.Scan(&session, &runID, &itemID, &occurredAt, &payload, &rawOffloadID); err != nil {
+			return nil, fmt.Errorf("sqlite: scan stored history item: %w", err)
+		}
+		snapshot, err := storedTranscriptItem(session, runID, itemID, occurredAt, payload, rawOffloadID)
+		if err != nil {
+			return nil, err
+		}
+		item, err := transcript.RestoreItem(snapshot)
+		if err != nil {
+			return nil, fmt.Errorf("sqlite: decoded history item %q: %w", itemID, err)
+		}
+		out = append(out, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("sqlite: list stored history items: %w", err)
 	}
 	return out, nil
 }

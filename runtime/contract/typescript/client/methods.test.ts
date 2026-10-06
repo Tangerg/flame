@@ -233,7 +233,7 @@ describe("methods factory", () => {
       createdAt: "2026-07-07T10:04:00Z",
     };
     const trajectory: SessionTrajectory = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       collectedAt: "2026-07-07T10:05:00Z",
       session: session as Session,
       runs: [],

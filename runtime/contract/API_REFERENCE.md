@@ -584,8 +584,8 @@ TypeScript validator from this single registry projection.
 | `UpdateSessionRequest` | `model` | `maxLength(256)` |
 | `UpdateSessionRequest` | `reasoningEffort` | `identity` |
 | `UpdateSessionRequest` | `reasoningEffort` | `maxLength(32)` |
-| `SessionTrajectory` | `schemaVersion` | `minimum(1)` |
-| `SessionTrajectory` | `schemaVersion` | `maximum(1)` |
+| `SessionTrajectory` | `schemaVersion` | `minimum(2)` |
+| `SessionTrajectory` | `schemaVersion` | `maximum(2)` |
 | `ArtifactSession` | `id` | `nonEmpty` |
 | `ArtifactSession` | `id` | `identity` |
 | `ArtifactSession` | `id` | `maxLength(256)` |
@@ -629,14 +629,12 @@ TypeScript validator from this single registry projection.
 | `ArtifactItem` | `durationMillis` | `nonNegative` |
 | `ArtifactItem` | `durationMillis` | `maximum(9223372036854)` |
 | `ArtifactToolResult` | `id` | `pattern("^[A-Z2-7]{2,64}$")` |
-| `ArtifactToolResult` | `toolName` | `pattern("\\S")` |
-| `ArtifactToolResult` | `preview` | `nonEmpty` |
 | `ArtifactToolResult` | `body` | `nonEmpty` |
 | `ArtifactToolResult` | `itemId` | `nonEmpty` |
 | `ArtifactToolResult` | `itemId` | `identity` |
 | `ArtifactToolResult` | `itemId` | `maxLength(256)` |
-| `SessionArtifact` | `version` | `minimum(28)` |
-| `SessionArtifact` | `version` | `maximum(28)` |
+| `SessionArtifact` | `version` | `minimum(29)` |
+| `SessionArtifact` | `version` | `maximum(29)` |
 | `ArtifactProblem` | `retryAfterSeconds` | `positive` |
 | `ArtifactProblem` | `retryAfterSeconds` | `maximum(9223372036)` |
 | `ContentBlock` | `text` | `pattern("\\S")` |

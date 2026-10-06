@@ -1417,23 +1417,13 @@
           "minLength": 1,
           "maxLength": 256,
           "pattern": "^[^\\p{C}\\p{Z}]*$"
-        },
-        "preview": {
-          "type": "string",
-          "minLength": 1
-        },
-        "toolName": {
-          "type": "string",
-          "pattern": "\\S"
         }
       },
       "required": [
         "body",
         "createdAt",
         "id",
-        "itemId",
-        "preview",
-        "toolName"
+        "itemId"
       ]
     },
     "CancelRunRequest": {
@@ -9928,8 +9918,8 @@
         },
         "version": {
           "type": "integer",
-          "minimum": 28,
-          "maximum": 28
+          "minimum": 29,
+          "maximum": 29
         }
       },
       "required": [
@@ -10032,8 +10022,8 @@
         },
         "schemaVersion": {
           "type": "integer",
-          "minimum": 1,
-          "maximum": 1
+          "minimum": 2,
+          "maximum": 2
         },
         "session": {
           "$ref": "#/$defs/Session"

@@ -238,8 +238,6 @@ func registerArtifactValues(s *Shapes) {
 		GoType: typeOf[protocol.ArtifactToolResult](),
 		Constraints: append([]FieldConstraint{
 			{Field: "id", Kind: ConstraintPattern, Value: toolresult.IDPattern},
-			{Field: "toolName", Kind: ConstraintPattern, Value: `\S`},
-			{Field: "preview", Kind: ConstraintNonEmpty},
 			{Field: "body", Kind: ConstraintNonEmpty},
 		}, requiredResourceIdentity("itemId")...),
 	})
