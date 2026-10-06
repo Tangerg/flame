@@ -54,7 +54,6 @@ type ToolAuthorizationRequest struct {
 	CallID            string
 	Tool              tool.Ref
 	SourceFingerprint fingerprint.Digest
-	ToolName          string
 	Arguments         tool.Arguments
 	SafetyClass       tool.SafetyClass
 	FileMutation      tool.FileMutationScope

@@ -369,7 +369,7 @@ func (o *observedInteractionTool) authorizationRequest(
 	}
 	return ToolAuthorizationRequest{
 		SessionID: o.start.SessionID, WorkspaceCWD: o.start.WorkspaceCWD,
-		CallID: callID, Tool: o.ref, SourceFingerprint: o.sourceFingerprint, ToolName: name, Arguments: arguments,
+		CallID: callID, Tool: o.ref, SourceFingerprint: o.sourceFingerprint, Arguments: arguments,
 		SafetyClass:     o.interpreter.SafetyClass(o.ref),
 		FileMutation:    fileMutationScope(o.inner, arguments, o.start.CWD),
 		ShellCommand:    o.interpreter.ShellCommand(o.ref, arguments.Canonical()),
@@ -391,7 +391,7 @@ func (o *observedInteractionTool) requestToolApproval(
 	}
 	resolution, err := runinput.Require(
 		ctx,
-		interrupt.Key(string(interrupt.Approval), request.ToolName, request.Arguments.Canonical()),
+		interrupt.Key(string(interrupt.Approval), request.Tool.ModelName(), request.Arguments.Canonical()),
 		pending,
 	)
 	if err != nil {
@@ -450,14 +450,14 @@ func (o *observedInteractionTool) resolveToolApproval(
 			}
 		}
 		if _, err := o.prepareInvocation(corechat.ToolCall{
-			ID: request.CallID, Name: request.ToolName, Arguments: arguments.Canonical(),
+			ID: request.CallID, Name: request.Tool.ModelName(), Arguments: arguments.Canonical(),
 		}, arguments); err != nil {
 			return arguments, false, "", err
 		}
 	}
 	decision, err := o.authorizer.ResolveToolApproval(ctx, request, prompt, resolution)
 	if err != nil {
-		return tool.Arguments{}, false, "", interaction.HostFailure(fmt.Errorf("execution: resolve Tool %q approval: %w", request.ToolName, err))
+		return tool.Arguments{}, false, "", interaction.HostFailure(fmt.Errorf("execution: resolve Tool %q approval: %w", request.Tool.ModelName(), err))
 	}
 	arguments := request.Arguments
 	if rewritten, ok := decision.EffectiveArguments(); ok {

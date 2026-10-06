@@ -88,7 +88,7 @@ func (t *ToolAuthorizer) AuthorizeTool(
 	case approval.GatePass:
 		return AllowTool(), nil
 	case approval.GateDeny:
-		return DenyTool(approvalDenialMessage(plan.Denial, request.ToolName)), nil
+		return DenyTool(approvalDenialMessage(plan.Denial, request.Tool.ModelName())), nil
 	case approval.GatePrompt:
 		prompt := runs.ApprovalPrompt{
 			CallID: request.CallID,
@@ -151,9 +151,6 @@ func validateToolAuthorizationRequest(request ToolAuthorizationRequest) error {
 	if err := request.Tool.ValidateFingerprint(request.SourceFingerprint); err != nil {
 		return err
 	}
-	if request.Tool.ModelName() != request.ToolName {
-		return errors.New("execution: tool name differs from its reference")
-	}
 	if err := validateToolAuthorizationText("SessionID", request.SessionID); err != nil {
 		return err
 	}
@@ -161,9 +158,6 @@ func validateToolAuthorizationRequest(request ToolAuthorizationRequest) error {
 		return err
 	}
 	if err := validateToolAuthorizationText("CallID", request.CallID); err != nil {
-		return err
-	}
-	if err := validateToolAuthorizationText("ToolName", request.ToolName); err != nil {
 		return err
 	}
 	if !request.SafetyClass.Valid() {

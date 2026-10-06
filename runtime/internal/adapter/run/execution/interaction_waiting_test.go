@@ -683,7 +683,7 @@ func (p *promptingInteractionAuthorizer) ResolveToolApproval(
 	if err != nil {
 		return AllowTool(), err
 	}
-	if request.ToolName == "" {
+	if request.Tool.ModelName() == "" {
 		return AllowTool(), errors.New("missing Tool identity")
 	}
 	return AllowToolWithArguments(arguments), nil

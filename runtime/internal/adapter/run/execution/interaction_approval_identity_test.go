@@ -45,7 +45,7 @@ func TestRestoredToolApprovalRejectsIdentityAndAuthorityDrift(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	request := ToolAuthorizationRequest{SessionID: "ses_1", WorkspaceCWD: "/workspace", CallID: "call_1", Tool: original, SourceFingerprint: testsupport.ToolFingerprint(original), ToolName: original.ModelName(), Arguments: args, SafetyClass: tool.SafetyClassNetwork, FileMutation: tool.FileMutationNone}
+	request := ToolAuthorizationRequest{SessionID: "ses_1", WorkspaceCWD: "/workspace", CallID: "call_1", Tool: original, SourceFingerprint: testsupport.ToolFingerprint(original), Arguments: args, SafetyClass: tool.SafetyClassNetwork, FileMutation: tool.FileMutationNone}
 	policy := &identityApprovalPolicy{}
 	authorizer, err := NewToolAuthorizer(policy, toolset.NewInterpreter(nil))
 	if err != nil {
@@ -68,7 +68,7 @@ func TestRestoredToolApprovalRejectsIdentityAndAuthorityDrift(t *testing.T) {
 		t.Fatal(err)
 	}
 	answer := interrupt.Resolution{Approved: true, RememberScope: approval.ScopeGlobal}
-	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: request.ToolName}, func(context.Context, struct{}) (string, error) {
+	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: request.Tool.ModelName()}, func(context.Context, struct{}) (string, error) {
 		return "unused", nil
 	})
 	if err != nil {
@@ -89,7 +89,6 @@ func TestRestoredToolApprovalRejectsIdentityAndAuthorityDrift(t *testing.T) {
 		{"different authority", func(r *ToolAuthorizationRequest) {
 			r.SourceFingerprint = testsupport.Digest("different authority")
 		}},
-		{"different name", func(r *ToolAuthorizationRequest) { r.ToolName = "replacement" }},
 	} {
 		t.Run(change.name, func(t *testing.T) {
 			current := request
@@ -143,7 +142,7 @@ func TestRememberedApprovalUsesConfirmedArguments(t *testing.T) {
 			}
 			request := ToolAuthorizationRequest{
 				SessionID: "ses_1", WorkspaceCWD: "/workspace", CallID: "call_1",
-				Tool: ref, ToolName: ref.ModelName(), Arguments: arguments,
+				Tool: ref, Arguments: arguments,
 				SafetyClass: tool.SafetyClassExec, FileMutation: tool.FileMutationNone,
 			}
 			policy := &identityApprovalPolicy{}
@@ -208,7 +207,7 @@ func TestApprovalSourceChangeKeepsOneShotDecision(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			request := ToolAuthorizationRequest{SessionID: "ses_1", WorkspaceCWD: "/workspace", CallID: "call_1", Tool: ref, ToolName: ref.ModelName(), Arguments: arguments, SafetyClass: tool.SafetyClassExec, FileMutation: tool.FileMutationNone}
+			request := ToolAuthorizationRequest{SessionID: "ses_1", WorkspaceCWD: "/workspace", CallID: "call_1", Tool: ref, Arguments: arguments, SafetyClass: tool.SafetyClassExec, FileMutation: tool.FileMutationNone}
 			policy := &identityApprovalPolicy{rememberErr: rememberErr}
 			authorizer, err := NewToolAuthorizer(policy, toolset.NewInterpreter(nil))
 			if err != nil {

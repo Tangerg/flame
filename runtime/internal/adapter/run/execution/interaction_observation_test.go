@@ -1386,7 +1386,7 @@ func (s selectiveDenyInteractionTools) AuthorizeTool(
 	_ context.Context,
 	request ToolAuthorizationRequest,
 ) (ToolAuthorizationDecision, error) {
-	if request.ToolName != s.name {
+	if request.Tool.ModelName() != s.name {
 		return AllowTool(), nil
 	}
 	return DenyTool(s.reason), nil
