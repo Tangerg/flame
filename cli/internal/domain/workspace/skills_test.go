@@ -6,8 +6,6 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-const testSkillRevision = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-
 func TestProposalReferencePreservesImmutableReviewIdentity(t *testing.T) {
 	proposal := SkillProposal{
 		Name: "release-checks", Revision: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",

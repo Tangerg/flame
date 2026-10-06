@@ -37,16 +37,6 @@ func (t *treeContinuation) sessionID() string {
 	return t.runs[t.rootRunID].SessionID()
 }
 
-// goalIncarnationID is the parked root Run's Goal incarnation.
-func (t *treeContinuation) goalIncarnationID() string {
-	return t.runs[t.rootRunID].GoalIncarnationID()
-}
-
-// capabilities is the parked root Run's frozen optional behavior.
-func (t *treeContinuation) capabilities() run.Capabilities {
-	return t.runs[t.rootRunID].Capabilities()
-}
-
 func parkedRunsByID(parked []run.Run) map[string]run.Run {
 	byID := make(map[string]run.Run, len(parked))
 	for _, value := range parked {

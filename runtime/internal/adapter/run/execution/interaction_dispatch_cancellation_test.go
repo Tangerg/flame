@@ -23,15 +23,6 @@ func mustInteractionProcessID(t *testing.T, value string) agent.ProcessID {
 	return id
 }
 
-func mustInteractionEffectID(t *testing.T, value string) agent.EffectID {
-	t.Helper()
-	id, err := agent.ParseEffectID(value)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return id
-}
-
 func TestInteractionDispatchWaitsForSegment(t *testing.T) {
 	for _, action := range []string{"activate", "cancel", "release"} {
 		t.Run(action, func(t *testing.T) {

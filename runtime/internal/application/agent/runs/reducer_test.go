@@ -1700,18 +1700,6 @@ func startedItemID(t *testing.T, reductions []reduction) string {
 	return ""
 }
 
-func completedToolNames(reductions []reduction) []string {
-	var names []string
-	for _, reduction := range reductions {
-		if event, ok := reduction.Event.(ItemCompleted); ok {
-			if invocation, present := event.Item.ToolInvocation(); present {
-				names = append(names, invocation.Name)
-			}
-		}
-	}
-	return names
-}
-
 // TestReducerReportsFrozenRunCapabilitiesOnEverySegment pins what a resumed
 // segment reports about the Run: the capabilities admitted with it, taken from
 // the park's hand-off rather than an empty fresh-segment value or the resuming

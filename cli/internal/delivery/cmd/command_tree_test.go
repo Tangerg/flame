@@ -464,30 +464,6 @@ func TestOutputFormatCompletionFiltersCandidates(t *testing.T) {
 	}
 }
 
-type alwaysDisconnected struct{ Runtime }
-
-func (a alwaysDisconnected) StartRun(ctx context.Context, input prompt.StartRun) (conversation.SegmentStream, error) {
-	stream, err := a.Runtime.StartRun(ctx, input)
-	if err != nil {
-		return conversation.SegmentStream{}, err
-	}
-	upstream := stream.Events
-	stream.Events = func(yield func(conversation.RunEvent, error) bool) {
-		for event, streamErr := range upstream {
-			if !yield(event, streamErr) || streamErr != nil {
-				return
-			}
-			yield(conversation.RunEvent{}, fmt.Errorf("test transport: %w", conversation.ErrDisconnected))
-			return
-		}
-	}
-	return stream, nil
-}
-
-func (alwaysDisconnected) SubscribeRun(context.Context, conversation.SubscribeRun) (conversation.SegmentStream, error) {
-	return conversation.SegmentStream{}, fmt.Errorf("test transport: %w", conversation.ErrDisconnected)
-}
-
 func shortCompletedScript(string) runtimefixture.Script {
 	return runtimefixture.Script{Prelude: []runtimefixture.Step{
 		{Event: conversation.BlockCompleted{Block: conversation.Block{ID: "answer", Kind: conversation.BlockAssistant, Text: "done"}}},

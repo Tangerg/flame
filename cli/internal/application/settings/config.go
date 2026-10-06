@@ -220,10 +220,3 @@ func (c Config) Clone() Config {
 	}
 	return out
 }
-
-func clonePointer[T any](value *T) *T {
-	if value == nil {
-		return nil
-	}
-	return new(*value)
-}

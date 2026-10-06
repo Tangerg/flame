@@ -345,17 +345,3 @@ func dueSchedule(t testing.TB, id string, dueAt time.Time) schedule.Schedule {
 		CreatedAt: dueAt.Add(-time.Hour), NextRunAt: dueAt, Revision: 1,
 	})
 }
-
-func pendingOccurrence(t testing.TB, scheduleID string, dueAt time.Time) schedule.Occurrence {
-	t.Helper()
-	claim, err := schedule.NewClaim(
-		dueSchedule(t, scheduleID, dueAt),
-		"ses_"+scheduleID,
-		"run_"+scheduleID+"_"+dueAt.Format("150405"),
-		dueAt,
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return claim.Occurrence()
-}

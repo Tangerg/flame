@@ -7,11 +7,3 @@ func testMCPServerName(raw string) ServerName {
 	}
 	return name
 }
-
-func testRemoteToolName(raw string) RemoteToolName {
-	name, err := ParseRemoteToolName(raw)
-	if err != nil {
-		panic(err)
-	}
-	return name
-}

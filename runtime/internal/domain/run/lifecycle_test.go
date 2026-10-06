@@ -101,12 +101,6 @@ func TestRecoverLost(t *testing.T) {
 	}
 }
 
-func intPointer(value int) *int { return &value }
-
-func int64Pointer(value int64) *int64 { return &value }
-
-func floatPointer(value float64) *float64 { return &value }
-
 // TestOutcomeTerminalState pins the outcome → terminal-state mapping: completion
 // and cancellation get their own states; every failure flavor folds into Failed.
 func TestOutcomeTerminalState(t *testing.T) {

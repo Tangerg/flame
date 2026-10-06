@@ -24,22 +24,6 @@ func (f failingWaitingCheckpointStore) SaveCheckpoint(context.Context, runs.Exec
 	return f.err
 }
 
-type failingWaitingItemReplacer struct {
-	ItemReplacer
-	failItemID string
-	err        error
-}
-
-func (f failingWaitingItemReplacer) ReplaceItem(
-	ctx context.Context,
-	replacement transcript.Replacement,
-) error {
-	if f.failItemID == "" || f.failItemID == replacement.Expected().ID() {
-		return f.err
-	}
-	return f.ItemReplacer.ReplaceItem(ctx, replacement)
-}
-
 type failingWaitingRunWriter struct {
 	RunStore
 	resumeErr      error
