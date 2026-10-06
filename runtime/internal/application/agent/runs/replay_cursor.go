@@ -27,9 +27,6 @@ var (
 	errReplaySequenceExhausted = errors.New("runs: replay sequence is exhausted")
 )
 
-// MaximumReplayCursorCharacters is Application's projection of the shared
-// opaque-cursor envelope. Run event framing is added outside Application.
-const MaximumReplayCursorCharacters = runtimeidentity.MaximumCursorCharacters
 
 // replayPosition is a point in one Run journal. It stays private because the
 // journal is the only authority that may mint, interpret, or compare one.
@@ -92,7 +89,7 @@ func encodeReplayCursor(position replayPosition) (string, error) {
 	token, err := opaquetoken.Encode(encodedReplayPosition{
 		Version: replayCursorFormat, Epoch: position.epoch.String(),
 		RunID: position.runID.String(), SegmentID: position.segmentID.String(), Sequence: position.sequence,
-	}, MaximumReplayCursorCharacters)
+	}, runtimeidentity.MaximumCursorCharacters)
 	if err != nil {
 		if errors.Is(err, opaquetoken.ErrTooLarge) {
 			return "", errReplayCursorTooLarge
@@ -103,11 +100,11 @@ func encodeReplayCursor(position replayPosition) (string, error) {
 }
 
 func decodeReplayCursor(token string) (replayPosition, error) {
-	if len(token) > MaximumReplayCursorCharacters {
+	if len(token) > runtimeidentity.MaximumCursorCharacters {
 		return replayPosition{}, fmt.Errorf("%w: %w", errMalformedReplayCursor, errReplayCursorTooLarge)
 	}
 	var encoded encodedReplayPosition
-	if err := opaquetoken.Decode(token, MaximumReplayCursorCharacters, &encoded); err != nil {
+	if err := opaquetoken.Decode(token, runtimeidentity.MaximumCursorCharacters, &encoded); err != nil {
 		return replayPosition{}, errMalformedReplayCursor
 	}
 	epoch, err := parseReplayEpoch(encoded.Epoch)

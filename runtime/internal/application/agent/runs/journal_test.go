@@ -2,6 +2,7 @@ package runs
 
 import (
 	"errors"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"iter"
 	"strings"
 	"sync"
@@ -60,7 +61,7 @@ func TestNewJournalRejectsInvalidResourceContracts(t *testing.T) {
 	if journal, err := newJournal(validScope, Retention{}); journal != nil || err == nil {
 		t.Fatalf("newJournal with zero retention = (%v, %v), want nil/error", journal, err)
 	}
-	oversized := strings.Repeat("x", MaximumReplayCursorCharacters+1)
+	oversized := strings.Repeat("x", runtimeidentity.MaximumCursorCharacters+1)
 	if scope, err := newStreamScope(testEpoch, oversized, testSegmentID); err == nil || scope != (streamScope{}) {
 		t.Fatalf("newStreamScope with oversized Run = (%v, %v), want zero/error", scope, err)
 	}

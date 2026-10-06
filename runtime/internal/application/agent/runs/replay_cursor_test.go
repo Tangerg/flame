@@ -3,6 +3,7 @@ package runs
 import (
 	"encoding/base64"
 	"errors"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"strings"
 	"testing"
 
@@ -41,7 +42,7 @@ func testSegmentResourceID(raw string) resourceid.SegmentID {
 }
 
 func TestReplayCursorResourceEnvelopeRejectsBothDirections(t *testing.T) {
-	oversized := strings.Repeat("x", MaximumReplayCursorCharacters+1)
+	oversized := strings.Repeat("x", runtimeidentity.MaximumCursorCharacters+1)
 	if _, err := decodeReplayCursor(oversized); !errors.Is(err, errMalformedReplayCursor) ||
 		!errors.Is(err, errReplayCursorTooLarge) {
 		t.Fatalf("decode oversized cursor err = %v, want malformed and too large", err)

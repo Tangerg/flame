@@ -2,6 +2,7 @@ package pagination
 
 import (
 	"errors"
+	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"strings"
 	"testing"
 
@@ -77,7 +78,7 @@ func TestDamagedCursorIsRejected(t *testing.T) {
 }
 
 func TestCursorResourceEnvelopeAppliesBeforeDecodeAndAfterEncode(t *testing.T) {
-	oversized := strings.Repeat("a", MaximumCursorCharacters+1)
+	oversized := strings.Repeat("a", runtimeidentity.MaximumCursorCharacters+1)
 	if _, err := Decode(oversized, "items", nil); !errors.Is(err, ErrInvalidCursor) || !errors.Is(err, ErrCursorTooLarge) {
 		t.Fatalf("Decode oversized err = %v, want ErrInvalidCursor and ErrCursorTooLarge", err)
 	}
@@ -87,7 +88,7 @@ func TestCursorResourceEnvelopeAppliesBeforeDecodeAndAfterEncode(t *testing.T) {
 
 	// Control characters fit the raw-material preflight but expand under JSON
 	// escaping. The exact encoded bound must catch that second growth mode.
-	escapingExpansion := strings.Repeat("\x00", MaximumCursorCharacters/2)
+	escapingExpansion := strings.Repeat("\x00", runtimeidentity.MaximumCursorCharacters/2)
 	if _, err := Encode("items", []string{escapingExpansion}, []string{"1"}); !errors.Is(err, ErrCursorTooLarge) {
 		t.Fatalf("Encode escaping expansion err = %v, want ErrCursorTooLarge", err)
 	}
@@ -207,7 +208,7 @@ func mustEncode(t *testing.T, namespace string, filters, key []string) string {
 
 func mustRawToken(t *testing.T, value token) string {
 	t.Helper()
-	cursor, err := opaquetoken.Encode(value, MaximumCursorCharacters)
+	cursor, err := opaquetoken.Encode(value, runtimeidentity.MaximumCursorCharacters)
 	if err != nil {
 		t.Fatalf("encode raw token: %v", err)
 	}

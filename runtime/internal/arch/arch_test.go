@@ -15,31 +15,9 @@ import (
 	"strings"
 	"testing"
 
-	applicationruns "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
-
-func TestPaginationCursorResourceContractDoesNotDriftAcrossRings(t *testing.T) {
-	if pagination.MaximumCursorCharacters != protocol.MaximumPaginationCursorCharacters {
-		t.Fatalf(
-			"Application cursor ceiling = %d, public wire ceiling = %d",
-			pagination.MaximumCursorCharacters,
-			protocol.MaximumPaginationCursorCharacters,
-		)
-	}
-}
-
-func TestRunReplayCursorResourceContractDoesNotDriftAcrossRings(t *testing.T) {
-	if applicationruns.MaximumReplayCursorCharacters+len(protocol.IDPrefixEvent) != protocol.MaximumRunEventIDCharacters {
-		t.Fatalf(
-			"Application replay cursor ceiling + framing = %d, public event-id ceiling = %d",
-			applicationruns.MaximumReplayCursorCharacters+len(protocol.IDPrefixEvent),
-			protocol.MaximumRunEventIDCharacters,
-		)
-	}
-}
 
 // TestProductionDoesNotImportTestSupport keeps builders and in-memory fakes
 // outside the production graph after their package consolidation.

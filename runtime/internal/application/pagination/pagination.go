@@ -51,11 +51,6 @@ var ErrInvalidLimit = errors.New("pagination: page limit is invalid")
 // an upgrade is rejected instead of decoded as something else.
 const formatVersion = 2
 
-// MaximumCursorCharacters is Application's projection of the shared cursor
-// resource envelope. It is exported so architecture tests can prove that every
-// cursor authority uses the same limit as the public wire contract.
-const MaximumCursorCharacters = runtimeidentity.MaximumCursorCharacters
-
 // Page is one keyset page: the rows, and the token that continues after them.
 // An empty NextCursor means the page reached the end of the collection — the
 // caller returns it as-is and never truncates a page silently.
@@ -90,7 +85,7 @@ func Encode(namespace string, filters []string, key []string) (string, error) {
 	encoded, err := opaquetoken.Encode(token{
 		Version: formatVersion, Namespace: namespace,
 		Filters: slices.Clone(filters), Key: slices.Clone(key),
-	}, MaximumCursorCharacters)
+	}, runtimeidentity.MaximumCursorCharacters)
 	if err != nil {
 		if errors.Is(err, opaquetoken.ErrTooLarge) {
 			return "", ErrCursorTooLarge
@@ -110,11 +105,11 @@ func Decode(cursor, namespace string, filters []string) ([]string, error) {
 	if cursor == "" {
 		return nil, nil
 	}
-	if len(cursor) > MaximumCursorCharacters {
+	if len(cursor) > runtimeidentity.MaximumCursorCharacters {
 		return nil, fmt.Errorf("%w: %w", ErrInvalidCursor, ErrCursorTooLarge)
 	}
 	var decoded token
-	if err := opaquetoken.Decode(cursor, MaximumCursorCharacters, &decoded); err != nil {
+	if err := opaquetoken.Decode(cursor, runtimeidentity.MaximumCursorCharacters, &decoded); err != nil {
 		return nil, ErrInvalidCursor
 	}
 	if decoded.Version != formatVersion || decoded.Namespace != namespace ||
@@ -129,7 +124,7 @@ func Decode(cursor, namespace string, filters []string) ([]string, error) {
 // and every slice element consumes at least one decoded byte. Escaping can make
 // the final token larger, which the exact encoded-size check catches afterward.
 func rawMaterialFits(namespace string, groups ...[]string) bool {
-	remaining := MaximumCursorCharacters
+	remaining := runtimeidentity.MaximumCursorCharacters
 	consume := func(size int) bool {
 		if size < 0 || size > remaining {
 			return false
