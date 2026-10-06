@@ -52,8 +52,8 @@ func (a *app) handleConfiguredAction(event input.Event, action keymap.Action) bo
 		return true
 	}
 	// Oolong modal stacks intentionally consume every key so input cannot leak
-	// into covered content. Blocking runtime interactions are the exception at
-	// the product-policy layer: their cancel action must resolve the interaction,
+	// into covered content. Blocking runtime interrupts are the exception at
+	// the product-policy layer: their cancel action must resolve the interrupt,
 	// not disappear into the modal boundary.
 	if action == cancelRun && (a.dialogs.approval != nil || a.dialogs.questionnaire != nil) {
 		a.handleCancelGesture()

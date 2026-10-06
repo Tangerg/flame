@@ -10,11 +10,11 @@ import (
 )
 
 type sessionSnapshotRecord struct {
-	Session      sessionFrame       `json:"session"`
-	Transcript   []blockFrame       `json:"transcript"`
-	Runs         []runFrame         `json:"runs"`
-	Plan         *planSnapshotFrame `json:"plan,omitzero"`
-	Interactions []interactionJSON  `json:"interactions,omitempty"`
+	Session    sessionFrame       `json:"session"`
+	Transcript []blockFrame       `json:"transcript"`
+	Runs       []runFrame         `json:"runs"`
+	Plan       *planSnapshotFrame `json:"plan,omitzero"`
+	Interrupts []interruptJSON    `json:"interrupts,omitempty"`
 }
 
 type sessionPageRecord struct {
@@ -113,11 +113,11 @@ func WriteSessionSnapshotJSON(w io.Writer, snapshot conversation.SessionSnapshot
 		return fmt.Errorf("render session snapshot: %w", err)
 	}
 	record := sessionSnapshotRecord{
-		Session:      encodeSession(snapshot.Session),
-		Transcript:   make([]blockFrame, 0, len(snapshot.Transcript)),
-		Runs:         make([]runFrame, 0, len(snapshot.Runs)),
-		Plan:         encodePlanSnapshot(snapshot.Plan),
-		Interactions: encodeInteractions(snapshot.Interactions),
+		Session:    encodeSession(snapshot.Session),
+		Transcript: make([]blockFrame, 0, len(snapshot.Transcript)),
+		Runs:       make([]runFrame, 0, len(snapshot.Runs)),
+		Plan:       encodePlanSnapshot(snapshot.Plan),
+		Interrupts: encodeInterrupts(snapshot.Interrupts),
 	}
 	for _, block := range snapshot.Transcript {
 		record.Transcript = append(record.Transcript, *encodeBlock(block))

@@ -358,11 +358,11 @@ func TestInteractiveBinarySurvivesResizeAndApprovalRoundTrip(t *testing.T) {
 }
 
 const (
-	mixedInteractionPTYScenario = "mixed-interaction-contract"
-	cancelReentryPTYScenario    = "cancel-reentry-contract"
+	mixedInterruptPTYScenario = "mixed-interrupt-contract"
+	cancelReentryPTYScenario  = "cancel-reentry-contract"
 )
 
-func TestInteractiveTerminalCompletesMixedInteractionReviewThroughPTY(t *testing.T) {
+func TestInteractiveTerminalCompletesMixedInterruptReviewThroughPTY(t *testing.T) {
 	if !ptytest.Supported() {
 		t.Skip("no pty on this platform")
 	}
@@ -371,9 +371,9 @@ func TestInteractiveTerminalCompletesMixedInteractionReviewThroughPTY(t *testing
 		Size: size,
 		Env: terminalTestEnvironment(t, map[string]string{
 			"TERM": "xterm-256color", "COLORTERM": "truecolor", "LANG": "en_US.UTF-8",
-			"FLAME_PTY_TEST_SCENARIO": mixedInteractionPTYScenario,
+			"FLAME_PTY_TEST_SCENARIO": mixedInterruptPTYScenario,
 		}),
-	}, os.Args[0], "-test.run=^TestMixedInteractionPTYRuntime$")
+	}, os.Args[0], "-test.run=^TestMixedInterruptPTYRuntime$")
 	if errors.Is(err, ptytest.ErrUnsupported) {
 		t.Skip("no pty on this platform")
 	}
@@ -383,7 +383,7 @@ func TestInteractiveTerminalCompletesMixedInteractionReviewThroughPTY(t *testing
 	t.Cleanup(func() { _ = session.Close() })
 
 	waitForVisibleTerminalText(t, session, size, "Ask flame")
-	writeTerminalInput(t, session, "exercise mixed interactions\r")
+	writeTerminalInput(t, session, "exercise mixed interrupts\r")
 	waitForVisibleTerminalText(t, session, size, "Run contract checks", "Allow once")
 	writeTerminalInput(t, session, strings.Repeat("\x1b[B", 8)+"\r")
 	waitForVisibleTerminalText(t, session, size, "Edit tool arguments", `"command": "go test ./..."`)
@@ -396,7 +396,7 @@ func TestInteractiveTerminalCompletesMixedInteractionReviewThroughPTY(t *testing
 	writeTerminalInput(t, session, "\x1b[B\r")
 	waitForVisibleTerminalText(t, session, size, "Choose checks", "Unit", "Integration")
 	writeTerminalInput(t, session, " \r")
-	waitForVisibleTerminalText(t, session, size, "Review interactions")
+	waitForVisibleTerminalText(t, session, size, "Review interrupts")
 
 	minimal := ptytest.Size{Cols: 1, Rows: 1}
 	if err := session.Resize(minimal); err != nil {
@@ -405,25 +405,25 @@ func TestInteractiveTerminalCompletesMixedInteractionReviewThroughPTY(t *testing
 	if err := session.Resize(size); err != nil {
 		t.Fatal(err)
 	}
-	waitForVisibleTerminalText(t, session, size, "Review interactions", "Submit all decisions")
+	waitForVisibleTerminalText(t, session, size, "Review interrupts", "Submit all decisions")
 	writeTerminalInput(t, session, "\x1b[B\r")
 	waitForVisibleTerminalText(t, session, size, "Choose checks", "Unit", "Integration")
 	writeTerminalInput(t, session, "\x1b[B \r")
-	waitForVisibleTerminalText(t, session, size, "Review interactions")
+	waitForVisibleTerminalText(t, session, size, "Review interrupts")
 	writeTerminalInput(t, session, "\r")
 	waitForVisibleTerminalText(t, session, size, "PTY HITL contract accepted", "complete")
 	quitInteractiveSession(t, session)
 }
 
-// TestMixedInteractionPTYRuntime is launched as the child process above. The
+// TestMixedInterruptPTYRuntime is launched as the child process above. The
 // environment guard keeps the ordinary package test run non-interactive.
-func TestMixedInteractionPTYRuntime(t *testing.T) {
-	if os.Getenv("FLAME_PTY_TEST_SCENARIO") != mixedInteractionPTYScenario {
+func TestMixedInterruptPTYRuntime(t *testing.T) {
+	if os.Getenv("FLAME_PTY_TEST_SCENARIO") != mixedInterruptPTYScenario {
 		return
 	}
 	backend := runtimefixture.New()
 	backend.Instant = true
-	backend.Script = func(string) runtimefixture.Script { return mixedInteractionPTYScript() }
+	backend.Script = func(string) runtimefixture.Script { return mixedInterruptPTYScript() }
 	if err := terminal.Run(t.Context(), terminal.Config{
 		OpenWorkbench: func() (*workbench.Store, error) { return workbenchFactory("")("") },
 		Runtime:       backend, Workspace: t.TempDir(),
@@ -432,7 +432,7 @@ func TestMixedInteractionPTYRuntime(t *testing.T) {
 	}
 }
 
-func TestInteractiveTerminalCanStartANewRunAfterCancelingInteractionReview(t *testing.T) {
+func TestInteractiveTerminalCanStartANewRunAfterCancelingInterruptReview(t *testing.T) {
 	if !ptytest.Supported() {
 		t.Skip("no pty on this platform")
 	}
@@ -453,7 +453,7 @@ func TestInteractiveTerminalCanStartANewRunAfterCancelingInteractionReview(t *te
 	t.Cleanup(func() { _ = session.Close() })
 
 	waitForVisibleTerminalText(t, session, size, "Ask flame")
-	writeTerminalInput(t, session, "cancel interaction review\r")
+	writeTerminalInput(t, session, "cancel interrupt review\r")
 	waitForVisibleTerminalText(t, session, size, "Run contract checks", "Allow once")
 	writeTerminalInput(t, session, "\r")
 	waitForVisibleTerminalText(t, session, size, "Describe intent")
@@ -462,14 +462,14 @@ func TestInteractiveTerminalCanStartANewRunAfterCancelingInteractionReview(t *te
 	writeTerminalInput(t, session, "\r")
 	waitForVisibleTerminalText(t, session, size, "Choose checks", "Unit")
 	writeTerminalInput(t, session, " \r")
-	waitForVisibleTerminalText(t, session, size, "Review interactions")
+	waitForVisibleTerminalText(t, session, size, "Review interrupts")
 	writeTerminalInput(t, session, "\x1b[B\x1b[B\r")
 	waitForVisibleTerminalText(t, session, size, "canceled", "Ask flame")
 
 	writeTerminalInput(t, session, "run after cancellation\r")
 	waitForVisibleTerminalText(t, session, size, "PTY cancellation reentry accepted", "complete")
 	if bytes.Contains(session.Transcript().Bytes(), []byte("PTY cancellation contract violated")) {
-		t.Fatal("canceling the interaction review resumed the rejected decisions")
+		t.Fatal("canceling the interrupt review resumed the rejected decisions")
 	}
 	quitInteractiveSession(t, session)
 }
@@ -504,7 +504,7 @@ func TestCancelReentryPTYRuntime(t *testing.T) {
 
 func cancelReentryPTYScript() runtimefixture.Script {
 	return runtimefixture.Script{
-		Interactions: mixedInteractionPTYInteractions(),
+		Interrupts: mixedInterruptPTYInterrupts(),
 		Continue: func([]conversation.InterruptAnswer) []runtimefixture.Step {
 			return []runtimefixture.Step{
 				{Event: conversation.BlockCompleted{Block: conversation.Block{
@@ -516,12 +516,12 @@ func cancelReentryPTYScript() runtimefixture.Script {
 	}
 }
 
-func mixedInteractionPTYScript() runtimefixture.Script {
+func mixedInterruptPTYScript() runtimefixture.Script {
 	return runtimefixture.Script{
-		Interactions: mixedInteractionPTYInteractions(),
+		Interrupts: mixedInterruptPTYInterrupts(),
 		Continue: func(provided []conversation.InterruptAnswer) []runtimefixture.Step {
 			result := "PTY HITL contract rejected"
-			if mixedInteractionPTYAnswersMatch(provided) {
+			if mixedInterruptPTYAnswersMatch(provided) {
 				result = "PTY HITL contract accepted"
 			}
 			return []runtimefixture.Step{
@@ -532,8 +532,8 @@ func mixedInteractionPTYScript() runtimefixture.Script {
 	}
 }
 
-func mixedInteractionPTYInteractions() []conversation.Interaction {
-	return []conversation.Interaction{
+func mixedInterruptPTYInterrupts() []conversation.Interrupt {
+	return []conversation.Interrupt{
 		conversation.Approval{
 			ItemID: "approval", Title: "Run contract checks", Rememberable: true,
 			RuleHint: "shell:go test ./...",
@@ -563,7 +563,7 @@ func mixedInteractionPTYInteractions() []conversation.Interaction {
 	}
 }
 
-func mixedInteractionPTYAnswersMatch(provided []conversation.InterruptAnswer) bool {
+func mixedInterruptPTYAnswersMatch(provided []conversation.InterruptAnswer) bool {
 	if len(provided) != 4 {
 		return false
 	}

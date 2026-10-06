@@ -139,8 +139,8 @@ func TestOneShotRecoversADelegatedApprovalBeforeResumingTheRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 	root, ok := snapshot.LatestRun()
-	if !ok || root.Status != protocol.RunStatusFinished || root.Outcome.Status != protocol.OutcomeCompleted || len(snapshot.Interactions) != 0 {
-		t.Fatalf("root after recovery = %+v, interactions = %+v", root, snapshot.Interactions)
+	if !ok || root.Status != protocol.RunStatusFinished || root.Outcome.Status != protocol.OutcomeCompleted || len(snapshot.Interrupts) != 0 {
+		t.Fatalf("root after recovery = %+v, interrupts = %+v", root, snapshot.Interrupts)
 	}
 	if len(snapshot.Runs) != 2 {
 		t.Fatalf("continuation changed the admitted root and child: %+v", snapshot.Runs)

@@ -223,11 +223,11 @@ func projectSnapshot(read coldRead) (conversation.SessionSnapshot, error) {
 		if set.RootRunID != active.ID {
 			return conversation.SessionSnapshot{}, fmt.Errorf("waiting run %s has a pending interrupt set for root %s", active.ID, set.RootRunID)
 		}
-		interactions, err := projectInteractions(set.Interrupts)
+		interrupts, err := projectInterrupts(set.Interrupts)
 		if err != nil {
 			return conversation.SessionSnapshot{}, err
 		}
-		snapshot.Interactions = interactions
+		snapshot.Interrupts = interrupts
 	} else if len(read.interrupts) != 0 {
 		return conversation.SessionSnapshot{}, fmt.Errorf("session %s has interrupts without a waiting root run", snapshot.Session.ID)
 	}

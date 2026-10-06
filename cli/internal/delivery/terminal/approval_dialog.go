@@ -104,7 +104,7 @@ func (a *app) buildApprovalDialog(theme kit.Theme, glyphs kit.Glyphs) {
 }
 
 func (a *app) setApprovalForm(initial approvalAction) {
-	review := a.dialogs.interactionReview
+	review := a.dialogs.interruptReview
 	approval := a.dialogs.approval
 	draft := a.dialogs.approvalDraft
 	if draft == nil {
@@ -127,12 +127,12 @@ func (a *app) setApprovalForm(initial approvalAction) {
 	a.dialogs.approvalForm = headless.NewForm(choice, reason)
 	a.dialogs.approvalForm.Keys = keys
 	a.dialogs.approvalForm.Done = func() {
-		if a.dialogs.interactionReview == review && a.dialogs.approval == approval && a.dialogs.approvalDraft == draft {
+		if a.dialogs.interruptReview == review && a.dialogs.approval == approval && a.dialogs.approvalDraft == draft {
 			a.answerApproval(draft.choice)
 		}
 	}
 	a.dialogs.approvalForm.GaveUp = func() {
-		if a.dialogs.interactionReview == review && a.dialogs.approval == approval && a.dialogs.approvalDraft == draft {
+		if a.dialogs.interruptReview == review && a.dialogs.approval == approval && a.dialogs.approvalDraft == draft {
 			a.backOrCancelApproval()
 		}
 	}
@@ -150,7 +150,7 @@ func (a *app) openApproval(approval conversation.Approval) {
 	a.dialogs.approvalArguments = editableApprovalArguments(approval.Tool)
 	a.dialogs.approvalOverride = nil
 	initial := defaultApprovalAction(a.settings.Approval.Remember.Scope())
-	if answer, ok := a.dialogs.interactionReview.CurrentAnswer().(conversation.ApprovalAnswer); ok {
+	if answer, ok := a.dialogs.interruptReview.CurrentAnswer().(conversation.ApprovalAnswer); ok {
 		initial = approvalActionFromAnswer(answer)
 		a.dialogs.approvalDraft.reason = answer.Reason
 		if answer.ArgumentOverride != nil {
@@ -172,7 +172,7 @@ func (a *app) openApproval(approval conversation.Approval) {
 		}
 	}
 	a.dialogs.approvalSections = slices.Clone(presentation.Sections)
-	details := []string{a.dialogs.interactionReview.SubmissionFailure(), approval.Detail, presentation.Label}
+	details := []string{a.dialogs.interruptReview.SubmissionFailure(), approval.Detail, presentation.Label}
 	if approval.Risk != "" {
 		details = append(details, "risk: "+string(approval.Risk))
 	}
@@ -209,41 +209,41 @@ func (a *app) setApprovalPreview(sections []ToolSection) {
 	a.dialogs.approvalPane.view.Scroll = &a.dialogs.approvalPane.scroll
 }
 
-func (a *app) openInteractions(interactions []conversation.Interaction) {
-	if a.dialogs.interactionReview != nil {
-		a.fail(errors.New("runtime opened interactions while another set is active"))
+func (a *app) openInterrupts(interrupts []conversation.Interrupt) {
+	if a.dialogs.interruptReview != nil {
+		a.fail(errors.New("runtime opened interrupts while another set is active"))
 		return
 	}
-	review, err := newInteractionReview(interactions)
+	review, err := newInterruptReview(interrupts)
 	if err != nil {
-		a.fail(fmt.Errorf("runtime interactions: %w", err))
+		a.fail(fmt.Errorf("runtime interrupts: %w", err))
 		return
 	}
-	a.dialogs.interactionReview = review
-	a.openCurrentInteraction()
-	a.raiseAttention(interactionAttention(interactions))
+	a.dialogs.interruptReview = review
+	a.openCurrentInterrupt()
+	a.raiseAttention(interruptAttention(interrupts))
 }
 
-func (a *app) openCurrentInteraction() {
-	if a.dialogs.interactionReview == nil {
+func (a *app) openCurrentInterrupt() {
+	if a.dialogs.interruptReview == nil {
 		return
 	}
-	if a.dialogs.interactionReview.Reviewing() {
-		a.openInteractionSummary()
+	if a.dialogs.interruptReview.Reviewing() {
+		a.openInterruptSummary()
 		return
 	}
-	interaction, ok := a.dialogs.interactionReview.Current()
+	interrupt, ok := a.dialogs.interruptReview.Current()
 	if !ok {
-		a.fail(errors.New("interaction review has no current item"))
+		a.fail(errors.New("interrupt review has no current item"))
 		return
 	}
-	switch item := interaction.(type) {
+	switch item := interrupt.(type) {
 	case conversation.Approval:
 		a.openApproval(item)
 	case conversation.Question:
 		a.openQuestion(item)
 	default:
-		a.fail(errors.New("runtime returned an unknown interaction"))
+		a.fail(errors.New("runtime returned an unknown interrupt"))
 	}
 }
 
@@ -266,38 +266,38 @@ func (a *app) answerApproval(action approvalAction) {
 }
 
 func (a *app) submitApproval(decision conversation.ApprovalAnswer) {
-	if a.dialogs.interactionReview == nil {
+	if a.dialogs.interruptReview == nil {
 		return
 	}
-	if err := a.dialogs.interactionReview.Record(decision); err != nil {
+	if err := a.dialogs.interruptReview.Record(decision); err != nil {
 		a.fail(fmt.Errorf("record approval: %w", err))
 		return
 	}
 	a.clearApprovalProjection()
 	a.dialogs.approvalDialog.Dismiss()
-	a.advanceInteractionReview()
+	a.advanceInterruptReview()
 }
 
 func (a *app) backOrCancelApproval() {
-	if a.backInteraction() {
+	if a.backInterrupt() {
 		return
 	}
 	a.answerApproval(approvalDenyOnce)
 }
 
-func (a *app) advanceInteractionReview() {
-	if a.dialogs.interactionReview == nil {
+func (a *app) advanceInterruptReview() {
+	if a.dialogs.interruptReview == nil {
 		return
 	}
-	if a.dialogs.interactionReview.Advance() || a.dialogs.interactionReview.Reviewing() {
-		a.openCurrentInteraction()
+	if a.dialogs.interruptReview.Advance() || a.dialogs.interruptReview.Reviewing() {
+		a.openCurrentInterrupt()
 		return
 	}
-	a.resumeInteractions()
+	a.resumeInterrupts()
 }
 
-func (a *app) backInteraction() bool {
-	if a.dialogs.interactionReview == nil || !a.dialogs.interactionReview.Back() {
+func (a *app) backInterrupt() bool {
+	if a.dialogs.interruptReview == nil || !a.dialogs.interruptReview.Back() {
 		return false
 	}
 	if a.dialogs.approval != nil {
@@ -313,22 +313,22 @@ func (a *app) backInteraction() bool {
 		a.dialogs.reviewDialog.Controller().Dismiss()
 		a.dialogs.reviewDialog = nil
 	}
-	a.openCurrentInteraction()
+	a.openCurrentInterrupt()
 	return true
 }
 
-func (a *app) resumeInteractions() {
-	if a.dialogs.interactionReview == nil {
+func (a *app) resumeInterrupts() {
+	if a.dialogs.interruptReview == nil {
 		return
 	}
-	answers, err := a.dialogs.interactionReview.Responses()
+	answers, err := a.dialogs.interruptReview.Responses()
 	if err != nil {
-		a.fail(fmt.Errorf("commit interaction review: %w", err))
+		a.fail(fmt.Errorf("commit interrupt review: %w", err))
 		return
 	}
 	runID := a.execution.conversation.RunID()
-	review := a.dialogs.interactionReview
-	if err := a.execution.conversation.ValidateInteractionReview(runID, review.Items()); err != nil {
+	review := a.dialogs.interruptReview
+	if err := a.execution.conversation.ValidateInterruptReview(runID, review.Items()); err != nil {
 		failure := fmt.Errorf("resume blocked: %w", err)
 		review.ReportSubmissionFailure(failure)
 		a.fail(failure)
@@ -339,47 +339,47 @@ func (a *app) resumeInteractions() {
 	replayGuard := commandReplayGuard(a.runtimeProfile)
 	if a.workbench != nil {
 		pending := workbench.PendingResume{
-			Command: command.Clone(), Interactions: review.Items(), Replay: replayGuard,
+			Command: command.Clone(), Interrupts: review.Items(), Replay: replayGuard,
 		}
 		if err := a.workbench.StagePendingResume(a.session.current.ID, pending, nil); err != nil {
-			failure := fmt.Errorf("resume blocked: save interaction decisions: %w", err)
+			failure := fmt.Errorf("resume blocked: save interrupt decisions: %w", err)
 			review.ReportSubmissionFailure(failure)
 			a.message(failure.Error())
 			a.status.note("resume blocked · review preserved")
-			if reopenErr := a.reopenCompletedInteractionReview(review); reopenErr != nil {
+			if reopenErr := a.reopenCompletedInterruptReview(review); reopenErr != nil {
 				a.fail(errors.Join(failure, reopenErr))
 			}
 			return
 		}
 	}
-	a.deliverInteractionResume(review, command, replayGuard)
+	a.deliverInterruptResume(review, command, replayGuard)
 }
 
-// reopenCompletedInteractionReview restores the UI owner of a completed HITL
+// reopenCompletedInterruptReview restores the UI owner of a completed HITL
 // draft when the draft could not be durably staged or its delivery was
 // definitively refused. A multi-item draft returns to its review summary; a
-// single-item draft returns to the answered interaction so the user can retry
+// single-item draft returns to the answered interrupt so the user can retry
 // or revise it.
-func (a *app) reopenCompletedInteractionReview(review *interactionReview) error {
-	if review == nil || a.dialogs.interactionReview != review {
-		return errors.New("completed interaction review is no longer active")
+func (a *app) reopenCompletedInterruptReview(review *interruptReview) error {
+	if review == nil || a.dialogs.interruptReview != review {
+		return errors.New("completed interrupt review is no longer active")
 	}
 	if !review.completed() {
-		return errors.New("interaction review is not complete")
+		return errors.New("interrupt review is not complete")
 	}
 	if review.Reviewing() {
-		a.openInteractionSummary()
+		a.openInterruptSummary()
 		return nil
 	}
 	if !review.Back() {
-		return errors.New("interaction review cannot return to its submitted answer")
+		return errors.New("interrupt review cannot return to its submitted answer")
 	}
-	a.openCurrentInteraction()
+	a.openCurrentInterrupt()
 	return nil
 }
 
-func (a *app) deliverInteractionResume(
-	review *interactionReview,
+func (a *app) deliverInterruptResume(
+	review *interruptReview,
 	command conversation.ResumeRun,
 	replayGuard replay.Guard,
 ) {
@@ -403,16 +403,16 @@ func (a *app) deliverInteractionResume(
 	}, streamOpeningObserver{
 		persistent: true,
 		accepted: func(conversation.SegmentStream) streamOpeningDisposition {
-			a.dialogs.interactionReview = nil
+			a.dialogs.interruptReview = nil
 			a.settleAcknowledgedResume(command.CommandID)
-			acceptedQuestions, err := a.execution.conversation.RecordAcceptedInteractionAnswers(command.Answers)
+			acceptedQuestions, err := a.execution.conversation.RecordAcceptedInterruptAnswers(command.Answers)
 			if err == nil {
 				err = a.transcript.acceptQuestions(acceptedQuestions)
 			}
 			if err != nil {
-				failure := fmt.Errorf("project accepted interaction answers: %w", err)
+				failure := fmt.Errorf("project accepted interrupt answers: %w", err)
 				a.cancelRuntimePreservingFailure(conversation.CancelRun{
-					RunID: command.RunID, Reason: "terminal could not project accepted interaction answers",
+					RunID: command.RunID, Reason: "terminal could not project accepted interrupt answers",
 				})
 				a.fail(failure)
 				return rejectOpenedStream
@@ -421,13 +421,13 @@ func (a *app) deliverInteractionResume(
 		},
 		rejected: func(failure error) error {
 			if _, accepted := conversation.AcceptedMutationReceipt(failure); accepted {
-				a.dialogs.interactionReview = nil
+				a.dialogs.interruptReview = nil
 				a.cancelRuntimePreservingFailure(conversation.CancelRun{
 					RunID: command.RunID, Reason: "runtime returned an invalid resume receipt",
 				})
 				return failure
 			}
-			return a.restoreRejectedInteractionReview(review, command, failure)
+			return a.restoreRejectedInterruptReview(review, command, failure)
 		},
 	})
 }
@@ -435,7 +435,7 @@ func (a *app) deliverInteractionResume(
 func (a *app) settleAcknowledgedResume(commandID replay.CommandID) {
 	if err := a.retireAcknowledgedResume(commandID); err != nil {
 		a.reportWorkbenchIssue(workbenchResumeOutbox, err)
-		a.message("could not settle acknowledged interaction decisions: " + err.Error())
+		a.message("could not settle acknowledged interrupt decisions: " + err.Error())
 		a.retryAuthoringSettlement(
 			resumeSettlementOperation,
 			func() error { return a.retireAcknowledgedResume(commandID) },
@@ -455,19 +455,19 @@ func (a *app) retireAcknowledgedResume(commandID replay.CommandID) error {
 	return a.workbench.AcknowledgePendingResume(a.session.current.ID, commandID)
 }
 
-func (a *app) restoreRejectedInteractionReview(review *interactionReview, command conversation.ResumeRun, failure error) error {
+func (a *app) restoreRejectedInterruptReview(review *interruptReview, command conversation.ResumeRun, failure error) error {
 	callFailure, refused := errors.AsType[*resumeRunCallError](failure)
 	if refused && a.workbench != nil && errors.Is(callFailure.err, mutation.ErrReplayGuaranteeUnavailable) {
 		a.reconcileExpiredResume(command)
 		return nil
 	}
-	if !refused || mutation.OutcomeUnknown(callFailure.err) || a.dialogs.interactionReview != review ||
+	if !refused || mutation.OutcomeUnknown(callFailure.err) || a.dialogs.interruptReview != review ||
 		a.execution.conversation.Phase() != conversation.Waiting || a.execution.conversation.RunID() != command.RunID {
 		return failure
 	}
 	if a.workbench != nil {
 		if err := a.workbench.RejectPendingResume(a.session.current.ID, command.CommandID); err != nil {
-			return errors.Join(failure, fmt.Errorf("release refused interaction decisions: %w", err))
+			return errors.Join(failure, fmt.Errorf("release refused interrupt decisions: %w", err))
 		}
 	}
 	a.execution.following = false
@@ -478,7 +478,7 @@ func (a *app) restoreRejectedInteractionReview(review *interactionReview, comman
 	}
 	a.status.note("resume refused · review preserved")
 	review.ReportSubmissionFailure(fmt.Errorf("resume refused: %w", callFailure.err))
-	if err := a.reopenCompletedInteractionReview(review); err != nil {
+	if err := a.reopenCompletedInterruptReview(review); err != nil {
 		return errors.Join(failure, err)
 	}
 	return nil
@@ -495,7 +495,7 @@ func (a *app) reconcileExpiredResume(command conversation.ResumeRun) {
 		},
 		func(snapshot conversation.SessionSnapshot, err error) {
 			if err != nil {
-				a.message("could not reconcile expired interaction delivery: " + err.Error())
+				a.message("could not reconcile expired interrupt delivery: " + err.Error())
 				a.status.note("resume outcome unknown · decisions preserved")
 				return
 			}
@@ -504,7 +504,7 @@ func (a *app) reconcileExpiredResume(command conversation.ResumeRun) {
 				return
 			}
 			if err := a.installSnapshot(snapshot); err != nil {
-				a.fail(fmt.Errorf("reconcile expired interaction delivery: %w", err))
+				a.fail(fmt.Errorf("reconcile expired interrupt delivery: %w", err))
 				return
 			}
 			a.restorePendingResume()
@@ -515,10 +515,10 @@ func (a *app) reconcileExpiredResume(command conversation.ResumeRun) {
 	}
 }
 
-func (a *app) abortInteractions(reason string) {
+func (a *app) abortInterrupts(reason string) {
 	a.clearApprovalProjection()
 	a.dialogs.questionnaire = nil
-	a.dialogs.interactionReview = nil
+	a.dialogs.interruptReview = nil
 	if a.dialogs.reviewDialog != nil {
 		a.dialogs.reviewDialog.Controller().Dismiss()
 		a.dialogs.reviewDialog = nil

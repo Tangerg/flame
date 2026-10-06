@@ -108,8 +108,8 @@ func equalRunProtocolProfiles(left, right *protocol.RunProtocolProfile) bool {
 // receipt is missing. It does not authorize restoring or resending the input.
 var ErrSteerReceiptUnavailable = errors.New("steer acceptance receipt is unavailable")
 
-// Interaction is a closed interrupt payload.
-type Interaction interface{ isInteraction() }
+// Interrupt is a closed interrupt payload.
+type Interrupt interface{ isInterrupt() }
 
 type Approval struct {
 	RunID        string
@@ -150,9 +150,9 @@ type QuestionField struct {
 	Options     []protocol.QuestionOption
 }
 
-func (Approval) isInteraction() {}
+func (Approval) isInterrupt() {}
 
-func (Question) isInteraction() {}
+func (Question) isInterrupt() {}
 
 type Answer interface{ isAnswer() }
 

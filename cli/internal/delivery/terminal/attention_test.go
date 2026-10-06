@@ -111,7 +111,7 @@ func TestUnfocusedApprovalRequestsAttention(t *testing.T) {
 			Prelude: []runtimefixture.Step{{Delay: 50 * time.Millisecond, Event: conversation.BlockCompleted{Block: conversation.Block{
 				ID: "thinking", Kind: conversation.BlockReasoning, Text: "checking permissions",
 			}}}},
-			Interactions: []conversation.Interaction{conversation.Approval{
+			Interrupts: []conversation.Interrupt{conversation.Approval{
 				ItemID: "approval", Title: "Write config", Tool: &conversation.ToolCall{
 					Kind: conversation.ToolEdit, Name: "edit", Path: "config.json", Status: conversation.ToolRunning,
 				},

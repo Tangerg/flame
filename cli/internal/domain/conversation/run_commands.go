@@ -54,7 +54,7 @@ type ResumeRun struct {
 
 // Equal reports whether two resume commands carry the same complete decision
 // set. Answer order is semantic because the command consumes the runtime's
-// ordered interaction set atomically.
+// ordered interrupt set atomically.
 func (r ResumeRun) Equal(other ResumeRun) bool {
 	if r.CommandID != other.CommandID || r.RunID != other.RunID || (r.Message == nil) != (other.Message == nil) || !slices.Equal(r.Input, other.Input) {
 		return false
@@ -69,7 +69,7 @@ func (r ResumeRun) Equal(other ResumeRun) bool {
 
 // Clone detaches every mutable answer and optional message owned by a resume
 // command. Delivery adapters may retain the clone across retries or process
-// restarts without sharing the interaction editor's draft state.
+// restarts without sharing the interrupt editor's draft state.
 func (r ResumeRun) Clone() ResumeRun {
 	r.Input = slices.Clone(r.Input)
 	answers := r.Answers

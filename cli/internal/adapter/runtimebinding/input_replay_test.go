@@ -131,7 +131,7 @@ func TestMutationReplaysActualAttachmentBytesAfterWorkbenchRestart(t *testing.T)
 					err = store.StagePendingResume("ses_1", workbench.PendingResume{
 						Command: conversation.ResumeRun{CommandID: commandID, RunID: "run_1", Message: &message, Input: input,
 							Answers: []conversation.InterruptAnswer{{ItemID: approval.ItemID, Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalDeny}}}},
-						Interactions: []conversation.Interaction{approval}, Replay: guard,
+						Interrupts: []conversation.Interrupt{approval}, Replay: guard,
 					}, prepared)
 				case "steer":
 					draft := prompt.Message{Text: "/steer " + message.Text, Attachments: slices.Clone(message.Attachments)}

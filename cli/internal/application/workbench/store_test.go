@@ -263,7 +263,7 @@ func TestStoreStashesDraftWithoutRetiringSessionOutboxes(t *testing.T) {
 			CommandID: replay.CommandID("cli_22222222222222222222222222222222"), RunID: approval.RunID,
 			Answers: []conversation.InterruptAnswer{{ItemID: approval.ItemID, Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalDeny}}},
 		},
-		Interactions: []conversation.Interaction{approval}, Replay: replay.UnprotectedGuard(),
+		Interrupts: []conversation.Interrupt{approval}, Replay: replay.UnprotectedGuard(),
 	}
 	if stagePendingResumeErr := store.StagePendingResume(sessionID, resume, nil); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)
@@ -480,7 +480,7 @@ func TestStoreRetiresCompleteSessionStateBehindADurableTombstone(t *testing.T) {
 			CommandID: replay.CommandID("cli_22222222222222222222222222222222"), RunID: approval.RunID,
 			Answers: []conversation.InterruptAnswer{{ItemID: approval.ItemID, Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalDeny}}},
 		},
-		Interactions: []conversation.Interaction{approval}, Replay: replay.UnprotectedGuard(),
+		Interrupts: []conversation.Interrupt{approval}, Replay: replay.UnprotectedGuard(),
 	}
 	if stagePendingResumeErr := store.StagePendingResume(sessionID, resume, nil); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)
@@ -1343,7 +1343,7 @@ func stageDispatchingPendingRun(t *testing.T, store *Store, command prompt.Start
 	}
 }
 
-func TestStorePersistsPendingInteractionResumeUntilExactSettlement(t *testing.T) {
+func TestStorePersistsPendingInterruptResumeUntilExactSettlement(t *testing.T) {
 	directory := t.TempDir()
 	store, err := OpenDirectory(directory, Config{})
 	if err != nil {
@@ -1368,13 +1368,13 @@ func TestStorePersistsPendingInteractionResumeUntilExactSettlement(t *testing.T)
 				},
 			}},
 		},
-		Interactions: []conversation.Interaction{approval}, Replay: replay.UnprotectedGuard(),
+		Interrupts: []conversation.Interrupt{approval}, Replay: replay.UnprotectedGuard(),
 	}
 	if stagePendingResumeErr := store.StagePendingResume("ses_1", pending, nil); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)
 	}
 	pending.Command.Answers[0].Answer = conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove}
-	pending.Interactions[0] = conversation.Approval{RunID: "mutated"}
+	pending.Interrupts[0] = conversation.Approval{RunID: "mutated"}
 
 	reopened, err := OpenDirectory(directory, Config{})
 	if err != nil {
@@ -1382,7 +1382,7 @@ func TestStorePersistsPendingInteractionResumeUntilExactSettlement(t *testing.T)
 	}
 	restored, ok := reopened.PendingResume("ses_1")
 	if !ok || restored.Command.CommandID != replay.CommandID("cli_33333333333333333333333333333333") ||
-		restored.Command.RunID != approval.RunID || len(restored.Interactions) != 1 {
+		restored.Command.RunID != approval.RunID || len(restored.Interrupts) != 1 {
 		t.Fatalf("restored pending resume = %+v, present = %v", restored, ok)
 	}
 	answer, ok := restored.Command.Answers[0].Answer.(conversation.ApprovalAnswer)
@@ -1418,7 +1418,7 @@ func TestStagingTheSameResumeCommandRejectsDifferentDecisions(t *testing.T) {
 			CommandID: replay.CommandID("cli_66666666666666666666666666666666"), RunID: approval.RunID,
 			Answers: []conversation.InterruptAnswer{{ItemID: approval.ItemID, Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove}}},
 		},
-		Interactions: []conversation.Interaction{approval}, Replay: replay.UnprotectedGuard(),
+		Interrupts: []conversation.Interrupt{approval}, Replay: replay.UnprotectedGuard(),
 	}
 	if err := store.StagePendingResume("ses_1", pending, nil); err != nil {
 		t.Fatal(err)
@@ -1434,13 +1434,13 @@ func TestStagingTheSameResumeCommandRejectsDifferentDecisions(t *testing.T) {
 	if err := store.StagePendingResume("ses_1", changedAnswer, nil); err == nil {
 		t.Fatal("same resume identity accepted a different answer")
 	}
-	changedInteraction := clonePendingResume(pending)
-	changedInteraction.Interactions[0] = conversation.Approval{
+	changedInterrupt := clonePendingResume(pending)
+	changedInterrupt.Interrupts[0] = conversation.Approval{
 		RunID: approval.RunID, ItemID: approval.ItemID, Title: "Different request", Rememberable: true,
 		Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Status: conversation.ToolRunning},
 	}
-	if err := store.StagePendingResume("ses_1", changedInteraction, nil); err == nil {
-		t.Fatal("same resume identity accepted a different interaction")
+	if err := store.StagePendingResume("ses_1", changedInterrupt, nil); err == nil {
+		t.Fatal("same resume identity accepted a different interrupt")
 	}
 	message := prompt.Message{Text: "additional guidance"}
 	changedMessage := clonePendingResume(pending)
@@ -1473,8 +1473,8 @@ func TestStoreRequeuesAnExpiredResumeWithOneDurableReplacementIdentity(t *testin
 				Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove},
 			}},
 		},
-		Interactions: []conversation.Interaction{approval},
-		Replay:       protectedReplayGuard(t, "runtime-a", time.Now().UTC().Add(-time.Second)),
+		Interrupts: []conversation.Interrupt{approval},
+		Replay:     protectedReplayGuard(t, "runtime-a", time.Now().UTC().Add(-time.Second)),
 	}
 	if stagePendingResumeErr := store.StagePendingResume("ses_1", pending, nil); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)
@@ -1485,7 +1485,7 @@ func TestStoreRequeuesAnExpiredResumeWithOneDurableReplacementIdentity(t *testin
 		t.Fatal(err)
 	}
 	if requeued.Command.CommandID == pending.Command.CommandID || requeued.Replay != replayGuard ||
-		len(requeued.Command.Answers) != 1 || !conversation.InteractionsEqual(requeued.Interactions, pending.Interactions) {
+		len(requeued.Command.Answers) != 1 || !conversation.InterruptsEqual(requeued.Interrupts, pending.Interrupts) {
 		t.Fatalf("requeued resume = %+v", requeued)
 	}
 	reopened, err := OpenDirectory(directory, Config{})
@@ -1521,7 +1521,7 @@ func TestStoreRejectsPendingResumeWithoutCommandIdentity(t *testing.T) {
 				Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove},
 			}},
 		},
-		Interactions: []conversation.Interaction{approval}, Replay: replay.UnprotectedGuard(),
+		Interrupts: []conversation.Interrupt{approval}, Replay: replay.UnprotectedGuard(),
 	}
 
 	if err := store.StagePendingResume("ses_1", pending, nil); err == nil {
@@ -1532,7 +1532,7 @@ func TestStoreRejectsPendingResumeWithoutCommandIdentity(t *testing.T) {
 	}
 }
 
-func TestStorePersistsTheCompleteMixedInteractionReview(t *testing.T) {
+func TestStorePersistsTheCompleteMixedInterruptReview(t *testing.T) {
 	directory := t.TempDir()
 	store, err := OpenDirectory(directory, Config{})
 	if err != nil {
@@ -1559,7 +1559,7 @@ func TestStorePersistsTheCompleteMixedInteractionReview(t *testing.T) {
 				{ItemID: question.ItemID, Answer: conversation.QuestionAnswer{Values: [][]string{{"portable"}, {"linux", "freebsd"}}}},
 			},
 		},
-		Interactions: []conversation.Interaction{approval, question}, Replay: replay.UnprotectedGuard(),
+		Interrupts: []conversation.Interrupt{approval, question}, Replay: replay.UnprotectedGuard(),
 	}
 	if stagePendingResumeErr := store.StagePendingResume("ses_1", pending, nil); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)
@@ -1569,7 +1569,7 @@ func TestStorePersistsTheCompleteMixedInteractionReview(t *testing.T) {
 		t.Fatal(err)
 	}
 	restored, ok := reopened.PendingResume("ses_1")
-	if !ok || len(restored.Command.Answers) != 2 || len(restored.Interactions) != 2 {
+	if !ok || len(restored.Command.Answers) != 2 || len(restored.Interrupts) != 2 {
 		t.Fatalf("restored mixed resume = %+v, present = %t", restored, ok)
 	}
 	approvalAnswer, ok := restored.Command.Answers[0].Answer.(conversation.ApprovalAnswer)

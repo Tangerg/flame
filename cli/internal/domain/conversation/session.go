@@ -126,12 +126,12 @@ type SessionPage struct {
 // Runs, Plan, and Goal are durable values, never reconstructed from a historical
 // event stream. Runs contains roots and descendants in creation order.
 type SessionSnapshot struct {
-	Session      Session
-	Transcript   []Block
-	Runs         []Run
-	Plan         *runtimeprotocol.Plan
-	Goal         *runtimeprotocol.Goal
-	Interactions []Interaction
+	Session    Session
+	Transcript []Block
+	Runs       []Run
+	Plan       *runtimeprotocol.Plan
+	Goal       *runtimeprotocol.Goal
+	Interrupts []Interrupt
 }
 
 // LatestRun returns the most recently created root run.
@@ -360,8 +360,8 @@ func (s SessionSnapshot) validateLifecycle(transcript snapshotTranscript, runs s
 		if s.Session.Status != runtimeprotocol.SessionStatusRunning {
 			return fmt.Errorf("session snapshot: running run has session status %s", s.Session.Status)
 		}
-		if len(s.Interactions) != 0 {
-			return errors.New("session snapshot: running run carries pending interactions")
+		if len(s.Interrupts) != 0 {
+			return errors.New("session snapshot: running run carries pending interrupts")
 		}
 	case runtimeprotocol.RunStatusWaiting:
 		return s.validateWaitingLifecycle(active, transcript, runs)
@@ -373,8 +373,8 @@ func (s SessionSnapshot) validateIdleLifecycle(transcript snapshotTranscript) er
 	if len(transcript.running) != 0 {
 		return errors.New("session snapshot: idle session carries a running transcript block")
 	}
-	if len(s.Interactions) != 0 {
-		return errors.New("session snapshot: idle session carries pending interactions")
+	if len(s.Interrupts) != 0 {
+		return errors.New("session snapshot: idle session carries pending interrupts")
 	}
 	if s.Session.Status != runtimeprotocol.SessionStatusIdle {
 		return fmt.Errorf("session snapshot: session status is %s without an active run", s.Session.Status)
@@ -386,12 +386,12 @@ func (s SessionSnapshot) validateWaitingLifecycle(active Run, transcript snapsho
 	if s.Session.Status != runtimeprotocol.SessionStatusWaiting {
 		return fmt.Errorf("session snapshot: waiting run has session status %s", s.Session.Status)
 	}
-	if err := ValidateInteractions(s.Interactions); err != nil {
+	if err := ValidateInterrupts(s.Interrupts); err != nil {
 		return fmt.Errorf("session snapshot: waiting run: %w", err)
 	}
-	for _, interaction := range s.Interactions {
-		itemID := InteractionItemID(interaction)
-		runID := InteractionRunID(interaction)
+	for _, interrupt := range s.Interrupts {
+		itemID := InterruptItemID(interrupt)
+		runID := InterruptRunID(interrupt)
 		run, runExists := runs.byID[runID]
 		block, exists := transcript.byIdentity[blockIdentity(runID, itemID)]
 		rootID := run.Lineage.RootRunID()
@@ -404,7 +404,7 @@ func (s SessionSnapshot) validateWaitingLifecycle(active Run, transcript snapsho
 		if !exists {
 			return fmt.Errorf("session snapshot: waiting interrupt references unknown item %s", itemID)
 		}
-		if err := validateInteractionItem(interaction, block); err != nil {
+		if err := validateInterruptItem(interrupt, block); err != nil {
 			return fmt.Errorf("session snapshot: waiting run: %w", err)
 		}
 	}
@@ -431,7 +431,7 @@ func (c *Conversation) RestoreSnapshot(snapshot SessionSnapshot) error {
 		next.usage = active.Usage.Clone()
 		if active.Status == runtimeprotocol.RunStatusWaiting {
 			next.phase = Waiting
-			next.interactions = CloneInteractions(snapshot.Interactions)
+			next.interrupts = CloneInterrupts(snapshot.Interrupts)
 		} else {
 			next.phase = Running
 			next.coldTail = true

@@ -47,7 +47,7 @@ func TestStorePersistsRunAndResumeReplayOwnership(t *testing.T) {
 				ItemID: approval.ItemID, Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalDeny},
 			}},
 		},
-		Interactions: []conversation.Interaction{approval}, Replay: resumeGuard,
+		Interrupts: []conversation.Interrupt{approval}, Replay: resumeGuard,
 	}
 	if stagePendingResumeErr := store.StagePendingResume("ses_2", resume, nil); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)

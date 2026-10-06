@@ -71,10 +71,10 @@ func TestTerminalResumesAColdDelegatedApprovalThroughTheWorkbench(t *testing.T) 
 				t.Fatal(err)
 			}
 			root, ok := snapshot.ActiveRun()
-			if !ok || root.Status != protocol.RunStatusWaiting || len(snapshot.Interactions) != 1 {
+			if !ok || root.Status != protocol.RunStatusWaiting || len(snapshot.Interrupts) != 1 {
 				t.Fatalf("waiting tree = %+v", snapshot)
 			}
-			childID := conversation.InteractionRunID(snapshot.Interactions[0])
+			childID := conversation.InterruptRunID(snapshot.Interrupts[0])
 			if childID == root.ID {
 				t.Fatal("fixture did not delegate the approval")
 			}
@@ -89,9 +89,9 @@ func TestTerminalResumesAColdDelegatedApprovalThroughTheWorkbench(t *testing.T) 
 				stagedCommand = "cli_33333333333333333333333333333333"
 				pending := workbench.PendingResume{
 					Command: conversation.ResumeRun{CommandID: stagedCommand, RunID: root.ID, Answers: []conversation.InterruptAnswer{{
-						ItemID: conversation.InteractionItemID(snapshot.Interactions[0]), Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove},
+						ItemID: conversation.InterruptItemID(snapshot.Interrupts[0]), Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove},
 					}}},
-					Interactions: snapshot.Interactions, Replay: commandReplayGuard(&profile),
+					Interrupts: snapshot.Interrupts, Replay: commandReplayGuard(&profile),
 				}
 				if err := store.StagePendingResume(session.ID, pending, nil); err != nil {
 					t.Fatal(err)
@@ -129,7 +129,7 @@ func TestTerminalResumesAColdDelegatedApprovalThroughTheWorkbench(t *testing.T) 
 			default:
 				t.Fatal("resume reached Runtime without its durable decision")
 			}
-			if pending.Command.RunID != root.ID || conversation.InteractionRunID(pending.Interactions[0]) != childID ||
+			if pending.Command.RunID != root.ID || conversation.InterruptRunID(pending.Interrupts[0]) != childID ||
 				(pendingAtStartup && pending.Command.CommandID != stagedCommand) {
 				t.Fatalf("dispatched root/member review = %+v", pending)
 			}

@@ -88,18 +88,18 @@ func (r *Runtime) rememberApprovalLocked(run *runState, approval conversation.Ap
 	r.rules = append(r.rules, stored)
 }
 
-func (r *Runtime) resolveRememberedLocked(run *runState, interactions []conversation.Interaction) (resolved []conversation.InterruptAnswer, pending []conversation.Interaction) {
-	resolved = make([]conversation.InterruptAnswer, 0, len(interactions))
-	pending = make([]conversation.Interaction, 0, len(interactions))
-	for _, interaction := range interactions {
-		approval, ok := interaction.(conversation.Approval)
+func (r *Runtime) resolveRememberedLocked(run *runState, interrupts []conversation.Interrupt) (resolved []conversation.InterruptAnswer, pending []conversation.Interrupt) {
+	resolved = make([]conversation.InterruptAnswer, 0, len(interrupts))
+	pending = make([]conversation.Interrupt, 0, len(interrupts))
+	for _, interrupt := range interrupts {
+		approval, ok := interrupt.(conversation.Approval)
 		if !ok {
-			pending = append(pending, conversation.CloneInteraction(interaction))
+			pending = append(pending, conversation.CloneInterrupt(interrupt))
 			continue
 		}
 		answer, matched := r.rememberedAnswerLocked(run, approval)
 		if !matched {
-			pending = append(pending, conversation.CloneInteraction(interaction))
+			pending = append(pending, conversation.CloneInterrupt(interrupt))
 			continue
 		}
 		resolved = append(resolved, conversation.InterruptAnswer{ItemID: approval.ItemID, Answer: answer})

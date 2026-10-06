@@ -60,11 +60,11 @@ func ReplacePlan(delay time.Duration, steps []protocol.PlanStep) Step {
 	return Step{Delay: delay, plan: &planReplacementAction{steps: cloned, err: err}}
 }
 
-// Script is one run's worth of events. Prelude plays first; Interactions, when
+// Script is one run's worth of events. Prelude plays first; Interrupts, when
 // non-empty, park the run as one atomic waiting set.
 type Script struct {
 	Prelude        []Step
-	Interactions   []conversation.Interaction
+	Interrupts     []conversation.Interrupt
 	InterruptUsage conversation.Usage
 	Continue       func([]conversation.InterruptAnswer) []Step
 }
@@ -85,15 +85,15 @@ func buildScriptSafely(build func(string) Script, authoredPrompt string) (script
 func (s Script) validate() error {
 	interrupted := s.interrupts()
 	if interrupted {
-		interactions := conversation.CloneInteractions(s.Interactions)
-		for i, interaction := range interactions {
-			interactions[i] = bindInteractionToRun(interaction, "fixture")
+		interrupts := conversation.CloneInterrupts(s.Interrupts)
+		for i, interrupt := range interrupts {
+			interrupts[i] = bindInterruptToRun(interrupt, "fixture")
 		}
-		if err := conversation.ValidateInteractions(interactions); err != nil {
+		if err := conversation.ValidateInterrupts(interrupts); err != nil {
 			return err
 		}
 	} else if s.Continue != nil {
-		return errors.New("script without an interaction has a continuation")
+		return errors.New("script without an interrupt has a continuation")
 	}
 	return validateSteps(s.Prelude, !interrupted)
 }
@@ -105,7 +105,7 @@ func continueSafely(script Script, answers []conversation.InterruptAnswer) (step
 		}
 	}()
 	if script.Continue == nil {
-		return nil, errors.New("script interaction has no continuation")
+		return nil, errors.New("script interrupt has no continuation")
 	}
 	steps = cloneSteps(script.Continue(cloneAnswers(answers)))
 	if err := validateSteps(steps, true); err != nil {
@@ -163,7 +163,7 @@ func validateSteps(steps []Step, requireFinish bool) error {
 
 func cloneScript(script Script) Script {
 	script.Prelude = cloneSteps(script.Prelude)
-	script.Interactions = conversation.CloneInteractions(script.Interactions)
+	script.Interrupts = conversation.CloneInterrupts(script.Interrupts)
 	script.InterruptUsage = script.InterruptUsage.Clone()
 	return script
 }
@@ -194,8 +194,8 @@ func cloneSteps(steps []Step) []Step {
 func namespaceScript(script Script, runID string) Script {
 	originalContinue := script.Continue
 	script.Prelude = namespaceSteps(script.Prelude, runID)
-	for i, interaction := range script.Interactions {
-		script.Interactions[i] = namespaceInteraction(interaction, runID)
+	for i, interrupt := range script.Interrupts {
+		script.Interrupts[i] = namespaceInterrupt(interrupt, runID)
 	}
 	if originalContinue != nil {
 		script.Continue = func(answers []conversation.InterruptAnswer) []Step {
@@ -229,9 +229,9 @@ func namespaceSteps(steps []Step, runID string) []Step {
 	return out
 }
 
-func namespaceInteraction(interaction conversation.Interaction, runID string) conversation.Interaction {
-	interaction = bindInteractionToRun(interaction, runID)
-	switch item := interaction.(type) {
+func namespaceInterrupt(interrupt conversation.Interrupt, runID string) conversation.Interrupt {
+	interrupt = bindInterruptToRun(interrupt, runID)
+	switch item := interrupt.(type) {
 	case conversation.Approval:
 		item.ItemID = runID + ":" + item.ItemID
 		return item
@@ -243,8 +243,8 @@ func namespaceInteraction(interaction conversation.Interaction, runID string) co
 	}
 }
 
-func bindInteractionToRun(interaction conversation.Interaction, runID string) conversation.Interaction {
-	switch item := interaction.(type) {
+func bindInterruptToRun(interrupt conversation.Interrupt, runID string) conversation.Interrupt {
+	switch item := interrupt.(type) {
 	case conversation.Approval:
 		item.RunID = runID
 		return item
@@ -256,7 +256,7 @@ func bindInteractionToRun(interaction conversation.Interaction, runID string) co
 	}
 }
 
-func (s Script) interrupts() bool { return len(s.Interactions) != 0 }
+func (s Script) interrupts() bool { return len(s.Interrupts) != 0 }
 
 const (
 	// tick paces one streamed word. Fast enough to feel live, slow enough that
@@ -376,7 +376,7 @@ func (d defaultScenario) script() Script {
 	return Script{
 		Prelude:        d.prelude(),
 		InterruptUsage: conversation.Usage{InputTokens: 12_800, OutputTokens: 684, CacheReadTokens: 9_600, CostUSD: new(0.0264), Duration: 9 * time.Second},
-		Interactions: []conversation.Interaction{conversation.Approval{
+		Interrupts: []conversation.Interrupt{conversation.Approval{
 			ItemID: "tool_2",
 			Title:  "edit internal/store/cache_test.go",
 			Detail: "Replace the fixed 50ms sleep with a wait on the janitor's sweep signal.",

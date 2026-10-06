@@ -99,7 +99,7 @@ func TestUnavailableInputPreservesOriginalRunResumeAndSteer(t *testing.T) {
 					Answers: []conversation.InterruptAnswer{{ItemID: approval.ItemID, Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalDeny}}},
 					Message: &message, Input: input,
 				},
-				Interactions: []conversation.Interaction{approval}, Replay: steer.Replay(),
+				Interrupts: []conversation.Interrupt{approval}, Replay: steer.Replay(),
 			}
 			if err := store.StagePendingResume("ses_resume", resume, preparedTestInput(t, store, message, input)); err != nil {
 				t.Fatal(err)

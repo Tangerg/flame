@@ -656,12 +656,12 @@ func pendingRunEqual(left, right PendingRun) bool {
 
 func pendingResumeEqual(left, right PendingResume) bool {
 	return left.Command.Equal(right.Command) && left.Replay == right.Replay &&
-		conversation.InteractionsEqual(left.Interactions, right.Interactions)
+		conversation.InterruptsEqual(left.Interrupts, right.Interrupts)
 }
 
 func clonePendingResume(pending PendingResume) PendingResume {
 	pending.Command = pending.Command.Clone()
-	pending.Interactions = conversation.CloneInteractions(pending.Interactions)
+	pending.Interrupts = conversation.CloneInterrupts(pending.Interrupts)
 	return pending
 }
 

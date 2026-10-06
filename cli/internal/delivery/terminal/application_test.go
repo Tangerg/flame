@@ -922,7 +922,7 @@ func TestRejectedResumeRetirementFailurePreservesTheDurableDecision(t *testing.T
 	}
 
 	close(runtime.release)
-	first.Shows(t, "release refused interaction decisions")
+	first.Shows(t, "release refused interrupt decisions")
 	first.Hides(t, "Tool approval")
 	first.Press(input.Enter)
 	first.Repaint()
@@ -970,7 +970,7 @@ func TestAcceptedQuestionResumeSettlementRetriesTheExactDurableDecision(t *testi
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{
-			Interactions: []conversation.Interaction{conversation.Question{
+			Interrupts: []conversation.Interrupt{conversation.Question{
 				ItemID: "question", Title: "Persist settlement",
 				Fields: []conversation.QuestionField{{
 					Prompt: "Continue?", Kind: conversation.QuestionSingle,
@@ -1047,7 +1047,7 @@ func TestClosingDuringAnAcceptedResumeCancelsTheRunAndRetiresTheDecision(t *test
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{
-			Interactions: []conversation.Interaction{conversation.Approval{
+			Interrupts: []conversation.Interrupt{conversation.Approval{
 				ItemID: "approval", Title: "Close during resume",
 				Tool: &conversation.ToolCall{
 					Kind: conversation.ToolShell, Name: "shell", Command: "true", Status: conversation.ToolRunning,
@@ -1145,7 +1145,7 @@ func TestAcceptedResumeProjectionFailureRejectsTheContinuationTail(t *testing.T)
 	base.Instant = true
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{
-			Interactions: []conversation.Interaction{conversation.Question{
+			Interrupts: []conversation.Interrupt{conversation.Question{
 				ItemID: "question", Title: "Corrupt accepted projection",
 				Fields: []conversation.QuestionField{{
 					Prompt: "Continue?", Kind: conversation.QuestionSingle,
@@ -1174,7 +1174,7 @@ func TestAcceptedResumeProjectionFailureRejectsTheContinuationTail(t *testing.T)
 	host.Press(input.Enter)
 	host.Shows(t, "Corrupt accepted projection")
 	host.Press(input.Enter)
-	host.Shows(t, "project accepted interaction answers")
+	host.Shows(t, "project accepted interrupt answers")
 	awaitState(t, "the unprojectable continuation to be canceled", func() bool {
 		return len(runtime.cancellationAttempts()) == 1
 	})
@@ -1196,12 +1196,12 @@ func TestAcceptedResumeProjectionFailureRejectsTheContinuationTail(t *testing.T)
 	stop()
 }
 
-func TestPendingMixedInteractionResumeSurvivesRestartWithoutLosingAnswers(t *testing.T) {
+func TestPendingMixedInterruptResumeSurvivesRestartWithoutLosingAnswers(t *testing.T) {
 	base := runtimefixture.New()
 	base.Instant = true
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{
-			Interactions: []conversation.Interaction{
+			Interrupts: []conversation.Interrupt{
 				conversation.Approval{
 					ItemID: "approval", Title: "Run checks", Rememberable: true,
 					RuleHint: "shell:go test ./...",
@@ -1225,7 +1225,7 @@ func TestPendingMixedInteractionResumeSurvivesRestartWithoutLosingAnswers(t *tes
 	}
 	opened, err := base.StartRun(t.Context(), prompt.StartRun{
 		CommandID: replay.CommandID("cli_55555555555555555555555555555555"),
-		SessionID: "ses_demo_1", Message: prompt.Message{Text: "persist mixed interaction delivery"},
+		SessionID: "ses_demo_1", Message: prompt.Message{Text: "persist mixed interrupt delivery"},
 		Options: prompt.RunOptions{},
 	})
 	if err != nil {
@@ -1240,8 +1240,8 @@ func TestPendingMixedInteractionResumeSurvivesRestartWithoutLosingAnswers(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(snapshot.Interactions) != 2 {
-		t.Fatalf("waiting interactions = %+v", snapshot.Interactions)
+	if len(snapshot.Interrupts) != 2 {
+		t.Fatalf("waiting interrupts = %+v", snapshot.Interrupts)
 	}
 	override, err := conversation.ParseToolArgumentOverride([]byte(`{"command":"go test -race ./...","count":20}`))
 	if err != nil {
@@ -1252,13 +1252,13 @@ func TestPendingMixedInteractionResumeSurvivesRestartWithoutLosingAnswers(t *tes
 		RunID:     opened.RunID,
 		Answers: []conversation.InterruptAnswer{
 			{
-				ItemID: conversation.InteractionItemID(snapshot.Interactions[0]),
+				ItemID: conversation.InterruptItemID(snapshot.Interrupts[0]),
 				Answer: conversation.ApprovalAnswer{
 					Decision: protocol.ApprovalApprove, Remember: protocol.RememberProject, ArgumentOverride: override,
 				},
 			},
 			{
-				ItemID: conversation.InteractionItemID(snapshot.Interactions[1]),
+				ItemID: conversation.InterruptItemID(snapshot.Interrupts[1]),
 				Answer: conversation.QuestionAnswer{Values: [][]string{{"portable"}, {"linux", "freebsd"}}},
 			},
 		},
@@ -1269,7 +1269,7 @@ func TestPendingMixedInteractionResumeSurvivesRestartWithoutLosingAnswers(t *tes
 		t.Fatal(err)
 	}
 	if stagePendingResumeErr := store.StagePendingResume("ses_demo_1", workbench.PendingResume{
-		Command: command, Interactions: snapshot.Interactions, Replay: durableCommandReplayGuard(t),
+		Command: command, Interrupts: snapshot.Interrupts, Replay: durableCommandReplayGuard(t),
 	}, nil); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)
 	}
@@ -1311,7 +1311,7 @@ func TestPendingMixedInteractionResumeSurvivesRestartWithoutLosingAnswers(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	approvalID := conversation.InteractionItemID(snapshot.Interactions[0])
+	approvalID := conversation.InterruptItemID(snapshot.Interrupts[0])
 	index := slices.IndexFunc(completed.Transcript, func(block conversation.Block) bool {
 		return block.RunID == opened.RunID && block.ID == approvalID
 	})
@@ -1327,7 +1327,7 @@ func TestLaunchRetiresAnExpiredResumeAlreadyProvenByTheRuntime(t *testing.T) {
 	base.Instant = true
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{
-			Interactions: []conversation.Interaction{conversation.Approval{
+			Interrupts: []conversation.Interrupt{conversation.Approval{
 				ItemID: "approval", Title: "Already accepted",
 				Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Status: conversation.ToolRunning},
 			}},
@@ -1348,13 +1348,13 @@ func TestLaunchRetiresAnExpiredResumeAlreadyProvenByTheRuntime(t *testing.T) {
 		}
 	}
 	waiting, err := base.GetSession(t.Context(), "ses_demo_1")
-	if err != nil || len(waiting.Interactions) != 1 {
+	if err != nil || len(waiting.Interrupts) != 1 {
 		t.Fatalf("waiting session = %+v, %v", waiting, err)
 	}
 	command := conversation.ResumeRun{
 		CommandID: "cli_eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", RunID: opened.RunID,
 		Answers: []conversation.InterruptAnswer{{
-			ItemID: conversation.InteractionItemID(waiting.Interactions[0]),
+			ItemID: conversation.InterruptItemID(waiting.Interrupts[0]),
 			Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalDeny},
 		}},
 	}
@@ -1374,7 +1374,7 @@ func TestLaunchRetiresAnExpiredResumeAlreadyProvenByTheRuntime(t *testing.T) {
 	}
 	profile := steerReplayTestProfile(t, "/tmp/flame-cli-test")
 	if stagePendingResumeErr := store.StagePendingResume("ses_demo_1", workbench.PendingResume{
-		Command: command, Interactions: waiting.Interactions,
+		Command: command, Interrupts: waiting.Interrupts,
 		Replay: protectedCommandReplayGuard(
 			t, profile.Discovery().Capabilities.Limits.Idempotency.Namespace, time.Now().UTC().Add(-time.Second),
 		),
@@ -1405,7 +1405,7 @@ func TestLaunchReidentifiesAnExpiredResumeProvenUncommitted(t *testing.T) {
 	base.Instant = true
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{
-			Interactions: []conversation.Interaction{conversation.Approval{
+			Interrupts: []conversation.Interrupt{conversation.Approval{
 				ItemID: "approval", Title: "Retry safely",
 				Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Status: conversation.ToolRunning},
 			}},
@@ -1426,13 +1426,13 @@ func TestLaunchReidentifiesAnExpiredResumeProvenUncommitted(t *testing.T) {
 		}
 	}
 	waiting, err := base.GetSession(t.Context(), "ses_demo_1")
-	if err != nil || len(waiting.Interactions) != 1 {
+	if err != nil || len(waiting.Interrupts) != 1 {
 		t.Fatalf("waiting session = %+v, %v", waiting, err)
 	}
 	oldCommand := conversation.ResumeRun{
 		CommandID: "cli_fefefefefefefefefefefefefefefefe", RunID: opened.RunID,
 		Answers: []conversation.InterruptAnswer{{
-			ItemID: conversation.InteractionItemID(waiting.Interactions[0]),
+			ItemID: conversation.InterruptItemID(waiting.Interrupts[0]),
 			Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalDeny},
 		}},
 	}
@@ -1443,7 +1443,7 @@ func TestLaunchReidentifiesAnExpiredResumeProvenUncommitted(t *testing.T) {
 	}
 	profile := steerReplayTestProfile(t, "/tmp/flame-cli-test")
 	if stagePendingResumeErr := store.StagePendingResume("ses_demo_1", workbench.PendingResume{
-		Command: oldCommand, Interactions: waiting.Interactions,
+		Command: oldCommand, Interrupts: waiting.Interrupts,
 		Replay: protectedCommandReplayGuard(
 			t, profile.Discovery().Capabilities.Limits.Idempotency.Namespace, time.Now().UTC().Add(-time.Second),
 		),
@@ -1476,7 +1476,7 @@ func TestActiveResumeReconcilesWhenReplayExpiresAfterAnUncertainAttempt(t *testi
 	base.Instant = true
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{
-			Interactions: []conversation.Interaction{conversation.Approval{
+			Interrupts: []conversation.Interrupt{conversation.Approval{
 				ItemID: "approval", Title: "Expire during delivery",
 				Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Status: conversation.ToolRunning},
 			}},
@@ -1573,7 +1573,7 @@ func TestSwitchingSessionsRecoversTheDestinationPendingResume(t *testing.T) {
 	base.Instant = true
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{
-			Interactions: []conversation.Interaction{conversation.Approval{
+			Interrupts: []conversation.Interrupt{conversation.Approval{
 				ItemID: "destination-approval", Title: "Approve destination run",
 				Tool: &conversation.ToolCall{Kind: conversation.ToolRead, Name: "read", Path: "README.md", Status: conversation.ToolRunning},
 			}},
@@ -1599,13 +1599,13 @@ func TestSwitchingSessionsRecoversTheDestinationPendingResume(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(snapshot.Interactions) != 1 {
-		t.Fatalf("destination interactions = %+v", snapshot.Interactions)
+	if len(snapshot.Interrupts) != 1 {
+		t.Fatalf("destination interrupts = %+v", snapshot.Interrupts)
 	}
 	command := conversation.ResumeRun{
 		CommandID: replay.CommandID("cli_99999999999999999999999999999999"), RunID: opened.RunID,
 		Answers: []conversation.InterruptAnswer{{
-			ItemID: conversation.InteractionItemID(snapshot.Interactions[0]),
+			ItemID: conversation.InterruptItemID(snapshot.Interrupts[0]),
 			Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove},
 		}},
 	}
@@ -1615,7 +1615,7 @@ func TestSwitchingSessionsRecoversTheDestinationPendingResume(t *testing.T) {
 		t.Fatal(err)
 	}
 	if stagePendingResumeErr := store.StagePendingResume("ses_demo_2", workbench.PendingResume{
-		Command: command, Interactions: snapshot.Interactions, Replay: durableCommandReplayGuard(t),
+		Command: command, Interrupts: snapshot.Interrupts, Replay: durableCommandReplayGuard(t),
 	}, nil); stagePendingResumeErr != nil {
 		t.Fatal(stagePendingResumeErr)
 	}
@@ -3184,7 +3184,7 @@ func TestQuestionFormSubmitsTypedAnswerAndCanCancel(t *testing.T) {
 	answers := make(chan conversation.QuestionAnswer, 2)
 	backend.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{
-			Interactions: []conversation.Interaction{conversation.Question{
+			Interrupts: []conversation.Interrupt{conversation.Question{
 				ItemID: "question_1", Title: "Choose a strategy", Detail: "One short decision",
 				Fields: []conversation.QuestionField{{
 					Header: "Strategy", Prompt: "Choose a strategy", Kind: conversation.QuestionSingle,
@@ -3226,7 +3226,7 @@ func TestQuestionnaireSurvivesResizeBetweenFields(t *testing.T) {
 	answers := make(chan conversation.QuestionAnswer, 1)
 	backend.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{
-			Interactions: []conversation.Interaction{conversation.Question{
+			Interrupts: []conversation.Interrupt{conversation.Question{
 				ItemID: "deployment-plan", Title: "Plan deployment", Detail: "Complete every field",
 				Fields: []conversation.QuestionField{
 					{Header: "Goal", Prompt: "What should change?", Kind: conversation.QuestionText},
@@ -3298,7 +3298,7 @@ func TestCustomMultipleQuestionKeepsInvalidInputEditable(t *testing.T) {
 	answers := make(chan conversation.QuestionAnswer, 1)
 	backend.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{
-			Interactions: []conversation.Interaction{conversation.Question{
+			Interrupts: []conversation.Interrupt{conversation.Question{
 				ItemID: "targets", Title: "Choose targets",
 				Fields: []conversation.QuestionField{{
 					Prompt: "Targets", Kind: conversation.QuestionMulti, AllowCustom: true,
@@ -3350,7 +3350,7 @@ func TestCustomSingleQuestionPreservesOptionsAndSurvivesResize(t *testing.T) {
 	answers := make(chan conversation.QuestionAnswer, 1)
 	backend.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{
-			Interactions: []conversation.Interaction{conversation.Question{
+			Interrupts: []conversation.Interrupt{conversation.Question{
 				ItemID: "platform", Title: "Choose platform", Detail: "Select a supported platform or provide another one",
 				Fields: []conversation.QuestionField{{
 					Prompt: "Platform", Kind: conversation.QuestionSingle, AllowCustom: true,
@@ -3764,7 +3764,7 @@ func TestApprovalDenialSubmitsOptionalUserFeedback(t *testing.T) {
 	answers := make(chan []conversation.InterruptAnswer, 1)
 	backend.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{
-			Interactions: []conversation.Interaction{conversation.Approval{
+			Interrupts: []conversation.Interrupt{conversation.Approval{
 				ItemID: "approval-feedback", Title: "Run destructive command", Detail: "Review this request carefully",
 				Tool: &conversation.ToolCall{
 					Kind: conversation.ToolShell, Name: "shell", Command: "rm generated.txt", Status: conversation.ToolRunning,
@@ -3805,7 +3805,7 @@ func TestApprovalCanRememberADenialWithoutLosingFeedback(t *testing.T) {
 	answers := make(chan conversation.ApprovalAnswer, 1)
 	backend.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{
-			Interactions: []conversation.Interaction{conversation.Approval{
+			Interrupts: []conversation.Interrupt{conversation.Approval{
 				ItemID: "remember-denial", Title: "Delete generated fixtures", Rememberable: true,
 				RuleHint: "shell:rm generated/*",
 				Tool: &conversation.ToolCall{
@@ -3868,7 +3868,7 @@ func TestApprovalFormSubmitsEveryDecisionAndRememberScope(t *testing.T) {
 			answers := make(chan conversation.ApprovalAnswer, 1)
 			backend.Script = func(string) runtimefixture.Script {
 				return runtimefixture.Script{
-					Interactions: []conversation.Interaction{conversation.Approval{
+					Interrupts: []conversation.Interrupt{conversation.Approval{
 						ItemID: "approval-matrix", Title: "Review generated command", Rememberable: true,
 						RuleHint: "shell:go test ./...",
 						Tool: &conversation.ToolCall{
@@ -3952,7 +3952,7 @@ func TestApprovalCanEditToolArgumentsOnceAcrossValidationAndResize(t *testing.T)
 	answers := make(chan conversation.ApprovalAnswer, 1)
 	backend.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{
-			Interactions: []conversation.Interaction{conversation.Approval{
+			Interrupts: []conversation.Interrupt{conversation.Approval{
 				ItemID: "edit-approval", Title: "Run generated command",
 				Rememberable: true,
 				Tool: &conversation.ToolCall{
@@ -4019,7 +4019,7 @@ func TestCancelingApprovalArgumentEditReturnsToTheUnchangedApproval(t *testing.T
 	answers := make(chan conversation.ApprovalAnswer, 1)
 	backend.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{
-			Interactions: []conversation.Interaction{conversation.Approval{
+			Interrupts: []conversation.Interrupt{conversation.Approval{
 				ItemID: "cancel-edit-approval", Title: "Run generated command",
 				Tool: &conversation.ToolCall{
 					Kind: conversation.ToolShell, Name: "shell", Command: "echo original", Status: conversation.ToolRunning,
@@ -4063,7 +4063,7 @@ func TestApprovalStateSurvivesMinimalViewportAndRestores(t *testing.T) {
 	answers := make(chan conversation.ApprovalAnswer, 1)
 	backend.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{
-			Interactions: []conversation.Interaction{conversation.Approval{
+			Interrupts: []conversation.Interrupt{conversation.Approval{
 				ItemID: "resize-approval", Title: "Run generated command",
 				Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Command: "rm generated.txt", Status: conversation.ToolRunning},
 			}},
@@ -4106,7 +4106,7 @@ func TestNonRememberableApprovalOverridesConfiguredRememberDefault(t *testing.T)
 	answers := make(chan conversation.ApprovalAnswer, 1)
 	backend.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{
-			Interactions: []conversation.Interaction{conversation.Approval{
+			Interrupts: []conversation.Interrupt{conversation.Approval{
 				ItemID: "one-shot-approval", Title: "Read generated report",
 				Tool: &conversation.ToolCall{Kind: conversation.ToolRead, Name: "read", Path: "report.txt", Status: conversation.ToolRunning},
 			}},
@@ -4136,11 +4136,11 @@ func TestNonRememberableApprovalOverridesConfiguredRememberDefault(t *testing.T)
 	stop()
 }
 
-func TestMultiInteractionReviewSupportsBackEditAndOneFinalResume(t *testing.T) {
+func TestMultiInterruptReviewSupportsBackEditAndOneFinalResume(t *testing.T) {
 	backend := runtimefixture.New()
 	backend.Instant = true
 	answers := make(chan []conversation.InterruptAnswer, 2)
-	backend.Script = func(string) runtimefixture.Script { return multiInteractionReviewScript(answers) }
+	backend.Script = func(string) runtimefixture.Script { return multiInterruptReviewScript(answers) }
 	host, stop := runUIWith(t, backend)
 	host.Shows(t, "Ask flame")
 	host.Type("test the project")
@@ -4156,14 +4156,14 @@ func TestMultiInteractionReviewSupportsBackEditAndOneFinalResume(t *testing.T) {
 	host.Shows(t, "Choose platform")
 	showsPlain(t, host, "● Linux")
 	host.Press(input.Enter)
-	host.Shows(t, "Review interactions")
+	host.Shows(t, "Review interrupts")
 	if !host.Resize(1, 1) || !host.Repaint() {
-		t.Fatal("interaction review did not survive a temporarily minimal viewport")
+		t.Fatal("interrupt review did not survive a temporarily minimal viewport")
 	}
 	if !host.Resize(96, 28) {
-		t.Fatal("interaction review viewport could not be restored")
+		t.Fatal("interrupt review viewport could not be restored")
 	}
-	host.Shows(t, "Review interactions")
+	host.Shows(t, "Review interrupts")
 	select {
 	case premature := <-answers:
 		t.Fatalf("runtime resumed before final review: %+v", premature)
@@ -4171,18 +4171,18 @@ func TestMultiInteractionReviewSupportsBackEditAndOneFinalResume(t *testing.T) {
 	}
 	host.Press(input.Down)
 	host.Press(input.Enter)
-	host.Hides(t, "Review interactions")
+	host.Hides(t, "Review interrupts")
 	host.Shows(t, "Choose platform")
 	host.Press(input.Down)
 	showsPlain(t, host, "● Darwin")
 	host.Press(input.Enter)
-	host.Shows(t, "Review interactions")
+	host.Shows(t, "Review interrupts")
 	host.Press(input.Enter)
 	host.Press(input.Enter)
 	host.Shows(t, "complete")
 	provided := <-answers
 	if len(provided) != 2 {
-		t.Fatalf("interaction answers = %+v", provided)
+		t.Fatalf("interrupt answers = %+v", provided)
 	}
 	question, ok := provided[1].Answer.(conversation.QuestionAnswer)
 	if !ok || question.Values[0][0] != "Darwin" {
@@ -4198,11 +4198,11 @@ func TestMultiInteractionReviewSupportsBackEditAndOneFinalResume(t *testing.T) {
 	stop()
 }
 
-func TestCancelingInteractionReviewDoesNotResumeTheRuntime(t *testing.T) {
+func TestCancelingInterruptReviewDoesNotResumeTheRuntime(t *testing.T) {
 	backend := runtimefixture.New()
 	backend.Instant = true
 	answers := make(chan []conversation.InterruptAnswer, 1)
-	backend.Script = func(string) runtimefixture.Script { return multiInteractionReviewScript(answers) }
+	backend.Script = func(string) runtimefixture.Script { return multiInterruptReviewScript(answers) }
 	host, stop := runUIWith(t, backend)
 	host.Shows(t, "Ask flame")
 	host.Type("review then cancel")
@@ -4213,7 +4213,7 @@ func TestCancelingInteractionReviewDoesNotResumeTheRuntime(t *testing.T) {
 	host.Shows(t, "Choose platform")
 	showsPlain(t, host, "● Linux")
 	host.Press(input.Enter)
-	host.Shows(t, "Review interactions")
+	host.Shows(t, "Review interrupts")
 	host.Press(input.Down)
 	host.Press(input.Down)
 	showsPlain(t, host, "● Cancel the run")
@@ -4229,9 +4229,9 @@ func TestCancelingInteractionReviewDoesNotResumeTheRuntime(t *testing.T) {
 	stop()
 }
 
-func multiInteractionReviewScript(answers chan<- []conversation.InterruptAnswer) runtimefixture.Script {
+func multiInterruptReviewScript(answers chan<- []conversation.InterruptAnswer) runtimefixture.Script {
 	return runtimefixture.Script{
-		Interactions: []conversation.Interaction{
+		Interrupts: []conversation.Interrupt{
 			conversation.Approval{
 				ItemID: "approval", Title: "Run tests", Rememberable: true,
 				Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning},
@@ -4725,7 +4725,7 @@ func TestApprovalRemainsUsableAtRepresentativeWidths(t *testing.T) {
 
 func approvalWidthScript(string) runtimefixture.Script {
 	return runtimefixture.Script{
-		Interactions: []conversation.Interaction{conversation.Approval{
+		Interrupts: []conversation.Interrupt{conversation.Approval{
 			ItemID: "responsive-approval",
 			Title:  "Review the proposed change",
 			Detail: "Confirm that the approval form remains usable at this terminal width.",

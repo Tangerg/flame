@@ -176,7 +176,7 @@ func (r *Runtime) activateResumeLocked(ctx context.Context, message *prompt.Mess
 	for _, block := range answeredQuestions {
 		persistBlock(session, run.id, block)
 	}
-	run.interactions = nil
+	run.interrupts = nil
 	run.status = protocol.RunStatusRunning
 	segment := r.openSegmentLocked(run)
 	if err := r.setSessionStatusLocked(session, protocol.SessionStatusRunning); err != nil {
@@ -216,7 +216,7 @@ func (r *Runtime) acceptedQuestionBlocksLocked(run *runState, answers []conversa
 		if !isQuestionAnswer {
 			continue
 		}
-		question := findQuestion(run.interactions, response.ItemID)
+		question := findQuestion(run.interrupts, response.ItemID)
 		if question == nil {
 			return nil, fmt.Errorf("mock: question answer references non-question item %s", response.ItemID)
 		}
@@ -237,7 +237,7 @@ func (r *Runtime) acceptedQuestionBlocksLocked(run *runState, answers []conversa
 func (r *Runtime) recordAnswersLocked(run *runState, answers []conversation.InterruptAnswer) {
 	for _, response := range answers {
 		run.answers[response.ItemID] = conversation.CloneAnswer(response.Answer)
-		approval := findApproval(run.interactions, response.ItemID)
+		approval := findApproval(run.interrupts, response.ItemID)
 		answer, ok := response.Answer.(conversation.ApprovalAnswer)
 		if approval != nil && ok && answer.Remember != "" {
 			r.rememberApprovalLocked(run, *approval, answer)
@@ -264,9 +264,9 @@ func completeScriptAnswers(run *runState, provided []conversation.InterruptAnswe
 	for _, answer := range provided {
 		byID[answer.ItemID] = answer.Answer
 	}
-	complete := make([]conversation.InterruptAnswer, 0, len(run.script.Interactions))
-	for _, interaction := range run.script.Interactions {
-		id := conversation.InteractionItemID(interaction)
+	complete := make([]conversation.InterruptAnswer, 0, len(run.script.Interrupts))
+	for _, interrupt := range run.script.Interrupts {
+		id := conversation.InterruptItemID(interrupt)
 		answer, ok := byID[id]
 		if !ok {
 			return nil, fmt.Errorf("mock: script interrupt %s has no answer", id)
@@ -280,38 +280,38 @@ func validateResumeSet(run *runState, answers []conversation.InterruptAnswer) er
 	if run.status != protocol.RunStatusWaiting {
 		return fmt.Errorf("%w: run %s", conversation.ErrInterruptNotOpen, run.id)
 	}
-	if len(answers) != len(run.interactions) {
-		return fmt.Errorf("mock: resume answers %d interrupts; waiting set has %d", len(answers), len(run.interactions))
+	if len(answers) != len(run.interrupts) {
+		return fmt.Errorf("mock: resume answers %d interrupts; waiting set has %d", len(answers), len(run.interrupts))
 	}
 	byID := make(map[string]conversation.Answer, len(answers))
 	for _, answer := range answers {
 		byID[answer.ItemID] = answer.Answer
 	}
-	for _, interaction := range run.interactions {
-		id := conversation.InteractionItemID(interaction)
+	for _, interrupt := range run.interrupts {
+		id := conversation.InterruptItemID(interrupt)
 		answer, ok := byID[id]
 		if !ok {
 			return fmt.Errorf("mock: waiting interrupt %s has no answer", id)
 		}
-		if err := conversation.ValidateAnswer(interaction, answer); err != nil {
+		if err := conversation.ValidateAnswer(interrupt, answer); err != nil {
 			return fmt.Errorf("mock: interrupt %s: %w", id, err)
 		}
 	}
 	return nil
 }
 
-func findApproval(interactions []conversation.Interaction, id string) *conversation.Approval {
-	for _, interaction := range interactions {
-		if approval, ok := interaction.(conversation.Approval); ok && approval.ItemID == id {
+func findApproval(interrupts []conversation.Interrupt, id string) *conversation.Approval {
+	for _, interrupt := range interrupts {
+		if approval, ok := interrupt.(conversation.Approval); ok && approval.ItemID == id {
 			return &approval
 		}
 	}
 	return nil
 }
 
-func findQuestion(interactions []conversation.Interaction, id string) *conversation.Question {
-	for _, interaction := range interactions {
-		if question, ok := interaction.(conversation.Question); ok && question.ItemID == id {
+func findQuestion(interrupts []conversation.Interrupt, id string) *conversation.Question {
+	for _, interrupt := range interrupts {
+		if question, ok := interrupt.(conversation.Question); ok && question.ItemID == id {
 			return &question
 		}
 	}

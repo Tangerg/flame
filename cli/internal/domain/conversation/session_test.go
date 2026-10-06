@@ -104,7 +104,7 @@ func TestSessionSnapshotRestoresDurableProjection(t *testing.T) {
 		},
 		Plan: testPlan(t, 3, []protocol.PlanStep{{Description: "inspect", Status: protocol.PlanStatusInProgress}}),
 		Runs: []Run{testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusWaiting})},
-		Interactions: []Interaction{Approval{
+		Interrupts: []Interrupt{Approval{
 			RunID: "run_1", ItemID: "tool_1", Title: "edit", Rememberable: true,
 			Tool: &ToolCall{Kind: ToolEdit, Name: "edit", Status: ToolRunning},
 		}},
@@ -116,18 +116,18 @@ func TestSessionSnapshotRestoresDurableProjection(t *testing.T) {
 	if err := projection.RestoreSnapshot(snapshot); err != nil {
 		t.Fatal(err)
 	}
-	if projection.Phase() != Waiting || len(projection.Blocks()) != 2 || len(projection.Interactions()) != 1 {
-		t.Fatalf("restored conversation = phase %v, blocks %d, interactions %d", projection.Phase(), len(projection.Blocks()), len(projection.Interactions()))
+	if projection.Phase() != Waiting || len(projection.Blocks()) != 2 || len(projection.Interrupts()) != 1 {
+		t.Fatalf("restored conversation = phase %v, blocks %d, interrupts %d", projection.Phase(), len(projection.Blocks()), len(projection.Interrupts()))
 	}
 }
 
-func TestSessionSnapshotRejectsWaitingWithoutInteractions(t *testing.T) {
+func TestSessionSnapshotRejectsWaitingWithoutInterrupts(t *testing.T) {
 	snapshot := SessionSnapshot{
 		Session: Session{ID: "ses_1", Status: protocol.SessionStatusWaiting, Provider: testSessionProvider, Model: testSessionModel, Workspace: testWorkspace("/tmp/demo"), Revision: 1},
 		Runs:    []Run{testRootRun(Run{ID: "run_1", SessionID: "ses_1", Status: protocol.RunStatusWaiting})},
 	}
 	if err := snapshot.Validate(); err == nil {
-		t.Fatal("waiting snapshot without interactions was accepted")
+		t.Fatal("waiting snapshot without interrupts was accepted")
 	}
 }
 
@@ -263,7 +263,7 @@ func TestSessionSnapshotRestoresAChildOwnedInterrupt(t *testing.T) {
 			{ID: "delegate", RunID: root.ID, Status: BlockStatusRunning, Kind: BlockTool, Tool: &ToolCall{Kind: ToolTask, Name: "delegate_task", Status: ToolRunning}},
 			{ID: approval.ItemID, RunID: child.ID, Status: BlockStatusRunning, Kind: BlockTool, Tool: approval.Tool},
 		},
-		Interactions: []Interaction{approval},
+		Interrupts: []Interrupt{approval},
 	}
 	if err := snapshot.Validate(); err != nil {
 		t.Fatalf("Validate: %v", err)
@@ -276,26 +276,26 @@ func TestSessionSnapshotRestoresAChildOwnedInterrupt(t *testing.T) {
 	if err := projection.RestoreSnapshot(snapshot); err != nil {
 		t.Fatalf("RestoreSnapshot: %v", err)
 	}
-	if projection.RunID() != root.ID || projection.Interactions()[0].(Approval).RunID != child.ID {
-		t.Fatalf("restored tree = root %s interactions %+v", projection.RunID(), projection.Interactions())
+	if projection.RunID() != root.ID || projection.Interrupts()[0].(Approval).RunID != child.ID {
+		t.Fatalf("restored tree = root %s interrupts %+v", projection.RunID(), projection.Interrupts())
 	}
-	if err := projection.ValidateInteractionReview(root.ID, []Interaction{approval}); err != nil {
+	if err := projection.ValidateInterruptReview(root.ID, []Interrupt{approval}); err != nil {
 		t.Fatalf("child review rejected under its waiting root: %v", err)
 	}
 	for _, test := range []struct {
-		name         string
-		rootID       string
-		interactions []Interaction
+		name       string
+		rootID     string
+		interrupts []Interrupt
 	}{
-		{name: "child command target", rootID: child.ID, interactions: []Interaction{approval}},
-		{name: "another root", rootID: "run_other", interactions: []Interaction{approval}},
+		{name: "child command target", rootID: child.ID, interrupts: []Interrupt{approval}},
+		{name: "another root", rootID: "run_other", interrupts: []Interrupt{approval}},
 		{name: "missing member", rootID: root.ID},
-		{name: "duplicate member", rootID: root.ID, interactions: []Interaction{approval, approval}},
-		{name: "another member", rootID: root.ID, interactions: []Interaction{Approval{RunID: "run_unrelated", ItemID: approval.ItemID}}},
-		{name: "stale item", rootID: root.ID, interactions: []Interaction{Approval{RunID: child.ID, ItemID: "item_earlier"}}},
+		{name: "duplicate member", rootID: root.ID, interrupts: []Interrupt{approval, approval}},
+		{name: "another member", rootID: root.ID, interrupts: []Interrupt{Approval{RunID: "run_unrelated", ItemID: approval.ItemID}}},
+		{name: "stale item", rootID: root.ID, interrupts: []Interrupt{Approval{RunID: child.ID, ItemID: "item_earlier"}}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			if err := projection.ValidateInteractionReview(test.rootID, test.interactions); err == nil {
+			if err := projection.ValidateInterruptReview(test.rootID, test.interrupts); err == nil {
 				t.Fatal("accepted a review outside the authoritative waiting set")
 			}
 		})

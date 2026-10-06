@@ -49,7 +49,7 @@ func (i invalidEventAfterInterruptRuntime) StartRun(
 	return stream, nil
 }
 
-func TestStreamFailureRetiresTheObsoleteInteractionProjection(t *testing.T) {
+func TestStreamFailureRetiresTheObsoleteInterruptProjection(t *testing.T) {
 	approval := func(arguments bool) conversation.Approval {
 		call := &conversation.ToolCall{
 			Kind: conversation.ToolShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning,
@@ -60,24 +60,24 @@ func TestStreamFailureRetiresTheObsoleteInteractionProjection(t *testing.T) {
 		return conversation.Approval{ItemID: "approval_before_stream_failure", Title: "Approve before failure", Tool: call}
 	}
 	tests := []struct {
-		name        string
-		interaction conversation.Interaction
-		open        string
-		editArgs    bool
-		obsolete    []string
+		name      string
+		interrupt conversation.Interrupt
+		open      string
+		editArgs  bool
+		obsolete  []string
 	}{
 		{
-			name: "approval", interaction: approval(false), open: "Tool approval",
+			name: "approval", interrupt: approval(false), open: "Tool approval",
 			obsolete: []string{"Tool approval"},
 		},
 		{
-			name: "approval argument editor", interaction: approval(true), open: "Tool approval",
+			name: "approval argument editor", interrupt: approval(true), open: "Tool approval",
 			editArgs: true,
 			obsolete: []string{"Tool approval", "Edit tool arguments"},
 		},
 		{
 			name: "question",
-			interaction: conversation.Question{
+			interrupt: conversation.Question{
 				ItemID: "question_before_stream_failure", Title: "Choose before failure",
 				Fields: []conversation.QuestionField{{
 					Header: "Strategy", Prompt: "Choose a strategy", Kind: conversation.QuestionSingle,
@@ -93,7 +93,7 @@ func TestStreamFailureRetiresTheObsoleteInteractionProjection(t *testing.T) {
 			backend.Instant = true
 			backend.Script = func(string) runtimefixture.Script {
 				return runtimefixture.Script{
-					Interactions: []conversation.Interaction{test.interaction},
+					Interrupts: []conversation.Interrupt{test.interrupt},
 					Continue: func([]conversation.InterruptAnswer) []runtimefixture.Step {
 						return []runtimefixture.Step{{Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}
 					},
@@ -129,13 +129,13 @@ func TestStreamFailureRetiresTheObsoleteInteractionProjection(t *testing.T) {
 	}
 }
 
-func TestPendingResumePersistenceFailureReopensTheInteractionForRetry(t *testing.T) {
+func TestPendingResumePersistenceFailureReopensTheInterruptForRetry(t *testing.T) {
 	backend := runtimefixture.New()
 	backend.Instant = true
 	answers := make(chan conversation.ApprovalAnswer, 1)
 	backend.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{
-			Interactions: []conversation.Interaction{conversation.Approval{
+			Interrupts: []conversation.Interrupt{conversation.Approval{
 				ItemID: "approval_resume_persistence", Title: "Persist before resuming",
 				Tool: &conversation.ToolCall{
 					Kind: conversation.ToolShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning,
@@ -156,7 +156,7 @@ func TestPendingResumePersistenceFailureReopensTheInteractionForRetry(t *testing
 
 	restoreStateDirectory := blockStateDirectoryWrites(t, stateDirectory)
 	host.Press(input.Enter)
-	host.Shows(t, "resume blocked: save interaction decisions")
+	host.Shows(t, "resume blocked: save interrupt decisions")
 	host.Shows(t, "Tool approval")
 	select {
 	case answer := <-answers:
@@ -179,7 +179,7 @@ func TestPendingResumePersistenceFailureReopensTheQuestionForRetry(t *testing.T)
 	answers := make(chan conversation.QuestionAnswer, 1)
 	backend.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{
-			Interactions: []conversation.Interaction{conversation.Question{
+			Interrupts: []conversation.Interrupt{conversation.Question{
 				ItemID: "question_resume_persistence", Title: "Persist question before resuming",
 				Fields: []conversation.QuestionField{{
 					Prompt: "Strategy", Kind: conversation.QuestionSingle,
@@ -201,7 +201,7 @@ func TestPendingResumePersistenceFailureReopensTheQuestionForRetry(t *testing.T)
 
 	restoreStateDirectory := blockStateDirectoryWrites(t, stateDirectory)
 	host.Press(input.Enter)
-	host.Shows(t, "resume blocked: save interaction decisions")
+	host.Shows(t, "resume blocked: save interrupt decisions")
 	host.Shows(t, "Persist question before resuming")
 	host.Shows(t, "Safe")
 	select {
@@ -224,7 +224,7 @@ func TestPendingResumePersistenceFailureReopensTheBatchReviewForRetry(t *testing
 	backend := runtimefixture.New()
 	backend.Instant = true
 	answers := make(chan []conversation.InterruptAnswer, 1)
-	backend.Script = func(string) runtimefixture.Script { return multiInteractionReviewScript(answers) }
+	backend.Script = func(string) runtimefixture.Script { return multiInterruptReviewScript(answers) }
 	stateDirectory := t.TempDir()
 	host, stop := runUIFromConfig(t, Config{Runtime: backend, Workspace: t.TempDir(), OpenWorkbench: persistentTestWorkbench(stateDirectory)})
 	host.Shows(t, "Ask flame")
@@ -234,13 +234,13 @@ func TestPendingResumePersistenceFailureReopensTheBatchReviewForRetry(t *testing
 	host.Press(input.Enter)
 	host.Shows(t, "Choose platform")
 	host.Press(input.Enter)
-	host.Shows(t, "Review interactions")
+	host.Shows(t, "Review interrupts")
 
 	restoreStateDirectory := blockStateDirectoryWrites(t, stateDirectory)
 	host.Press(input.Enter)
 	host.Press(input.Enter)
-	host.Shows(t, "resume blocked: save interaction decisions")
-	host.Shows(t, "Review interactions")
+	host.Shows(t, "resume blocked: save interrupt decisions")
+	host.Shows(t, "Review interrupts")
 	select {
 	case answer := <-answers:
 		t.Fatalf("runtime resumed without a durable command: %+v", answer)
@@ -252,7 +252,7 @@ func TestPendingResumePersistenceFailureReopensTheBatchReviewForRetry(t *testing
 	host.Press(input.Enter)
 	host.Shows(t, "complete")
 	if answer := <-answers; len(answer) != 2 {
-		t.Fatalf("retried interaction batch = %+v", answer)
+		t.Fatalf("retried interrupt batch = %+v", answer)
 	}
 	stop()
 }

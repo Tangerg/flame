@@ -14,7 +14,7 @@ import (
 	"github.com/Tangerg/oolong/core/text"
 )
 
-// picker is the common interaction behind sessions, models, commands and other
+// picker is the common interrupt behind sessions, models, commands and other
 // searchable catalogs. Domain-specific dialogs supply only labels and actions.
 type picker[T any] struct {
 	theme  kit.Theme

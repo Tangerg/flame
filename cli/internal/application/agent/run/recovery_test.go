@@ -109,7 +109,7 @@ func TestAttachSessionReturnsAuthoritativeStateWhenNoStreamIsRequired(t *testing
 		runtime := runtimefixture.New()
 		runtime.Instant = true
 		runtime.Script = func(string) runtimefixture.Script {
-			return runtimefixture.Script{Interactions: []conversation.Interaction{conversation.Approval{
+			return runtimefixture.Script{Interrupts: []conversation.Interrupt{conversation.Approval{
 				ItemID: "approval_1", Title: "Run checks",
 				Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning},
 			}}}
@@ -132,7 +132,7 @@ func TestAttachSessionReturnsAuthoritativeStateWhenNoStreamIsRequired(t *testing
 			t.Fatal(err)
 		}
 		if recovered.Run.ID != opened.RunID || recovered.Run.Status != protocol.RunStatusWaiting ||
-			recovered.Stream.Events != nil || len(recovered.Snapshot.Interactions) != 1 {
+			recovered.Stream.Events != nil || len(recovered.Snapshot.Interrupts) != 1 {
 			t.Fatalf("waiting session attachment = %+v", recovered)
 		}
 	})

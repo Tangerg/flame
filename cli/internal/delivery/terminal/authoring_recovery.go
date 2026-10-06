@@ -67,19 +67,19 @@ func (a *app) restorePendingResume() {
 		return
 	}
 	if _, err := pending.ReplayCommand(); err != nil {
-		a.fail(fmt.Errorf("recover interaction input: %w", err))
+		a.fail(fmt.Errorf("recover interrupt input: %w", err))
 		return
 	}
 	if !commandReplayStoreMatches(pending.Replay, a.runtimeProfile) {
-		a.fail(errors.New("recover interaction decisions: command belongs to another runtime"))
+		a.fail(errors.New("recover interrupt decisions: command belongs to another runtime"))
 		return
 	}
-	if err := a.execution.conversation.ValidateInteractionReview(pending.Command.RunID, pending.Interactions); err != nil {
+	if err := a.execution.conversation.ValidateInterruptReview(pending.Command.RunID, pending.Interrupts); err != nil {
 		// The authoritative snapshot has advanced beyond this decision. Its exact
 		// runtime outcome is therefore already visible and the local outbox can be
 		// retired without replaying an obsolete command.
 		if err := a.workbench.AcknowledgePendingResume(a.session.current.ID, pending.Command.CommandID); err != nil {
-			a.fail(fmt.Errorf("retire settled interaction decisions: %w", err))
+			a.fail(fmt.Errorf("retire settled interrupt decisions: %w", err))
 		}
 		return
 	}
@@ -88,23 +88,23 @@ func (a *app) restorePendingResume() {
 			a.session.current.ID, pending.Command.CommandID, commandReplayGuard(a.runtimeProfile),
 		)
 		if err != nil {
-			a.fail(fmt.Errorf("recover interaction decisions: replace expired command: %w", err))
+			a.fail(fmt.Errorf("recover interrupt decisions: replace expired command: %w", err))
 			return
 		}
 		pending = requeued
-		a.status.note("interaction delivery expired · retrying safely")
+		a.status.note("interrupt delivery expired · retrying safely")
 	}
-	review, err := restoreInteractionReview(pending.Interactions, pending.Command.Answers)
+	review, err := restoreInterruptReview(pending.Interrupts, pending.Command.Answers)
 	if err != nil {
-		a.fail(fmt.Errorf("restore pending interaction decisions: %w", err))
+		a.fail(fmt.Errorf("restore pending interrupt decisions: %w", err))
 		return
 	}
-	a.dismissInteractionProjection()
-	a.dialogs.interactionReview = review
-	a.deliverInteractionResume(review, pending.Command.Clone(), pending.Replay)
+	a.dismissInterruptProjection()
+	a.dialogs.interruptReview = review
+	a.deliverInterruptResume(review, pending.Command.Clone(), pending.Replay)
 }
 
-func sameInteractions(left, right []conversation.Interaction) bool {
+func sameInterrupts(left, right []conversation.Interrupt) bool {
 	if len(left) != len(right) {
 		return false
 	}

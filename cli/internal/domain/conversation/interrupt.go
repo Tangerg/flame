@@ -9,8 +9,8 @@ import (
 	runtimeprotocol "github.com/Tangerg/flame/runtime/protocol"
 )
 
-func InteractionItemID(interaction Interaction) string {
-	switch item := interaction.(type) {
+func InterruptItemID(interrupt Interrupt) string {
+	switch item := interrupt.(type) {
 	case Approval:
 		return item.ItemID
 	case Question:
@@ -20,8 +20,8 @@ func InteractionItemID(interaction Interaction) string {
 	}
 }
 
-func InteractionRunID(interaction Interaction) string {
-	switch item := interaction.(type) {
+func InterruptRunID(interrupt Interrupt) string {
+	switch item := interrupt.(type) {
 	case Approval:
 		return item.RunID
 	case Question:
@@ -31,34 +31,34 @@ func InteractionRunID(interaction Interaction) string {
 	}
 }
 
-func ValidateInteraction(interaction Interaction) error {
-	switch item := interaction.(type) {
+func ValidateInterrupt(interrupt Interrupt) error {
+	switch item := interrupt.(type) {
 	case Approval:
 		return item.Validate()
 	case Question:
 		if item.Answered() {
-			return errors.New("interaction question already has accepted answers")
+			return errors.New("interrupt question already has accepted answers")
 		}
 		return item.Validate()
 	case nil:
-		return errors.New("interaction is nil")
+		return errors.New("interrupt is nil")
 	default:
-		return fmt.Errorf("interaction %T is unsupported", interaction)
+		return fmt.Errorf("interrupt %T is unsupported", interrupt)
 	}
 }
 
-func ValidateInteractions(interactions []Interaction) error {
-	if len(interactions) == 0 {
-		return errors.New("interactions are empty")
+func ValidateInterrupts(interrupts []Interrupt) error {
+	if len(interrupts) == 0 {
+		return errors.New("interrupts are empty")
 	}
-	seen := make(map[string]struct{}, len(interactions))
-	for i, interaction := range interactions {
-		if err := ValidateInteraction(interaction); err != nil {
-			return fmt.Errorf("interaction %d: %w", i+1, err)
+	seen := make(map[string]struct{}, len(interrupts))
+	for i, interrupt := range interrupts {
+		if err := ValidateInterrupt(interrupt); err != nil {
+			return fmt.Errorf("interrupt %d: %w", i+1, err)
 		}
-		id := InteractionItemID(interaction)
+		id := InterruptItemID(interrupt)
 		if _, duplicate := seen[id]; duplicate {
-			return fmt.Errorf("interaction item id %q is duplicated", id)
+			return fmt.Errorf("interrupt item id %q is duplicated", id)
 		}
 		seen[id] = struct{}{}
 	}
@@ -153,7 +153,7 @@ func (q Question) Validate() error {
 }
 
 // Answered reports whether this question is an authoritative completed
-// transcript fact rather than a pending interaction.
+// transcript fact rather than a pending interrupt.
 func (q Question) Answered() bool { return q.Answers != nil }
 
 // Accept returns the durable transcript form of a pending question after the
@@ -221,11 +221,11 @@ func (q QuestionField) Equal(other QuestionField) bool {
 		q.AllowCustom == other.AllowCustom && slices.Equal(q.Options, other.Options)
 }
 
-func ValidateAnswer(interaction Interaction, answer Answer) error {
-	if err := ValidateInteraction(interaction); err != nil {
+func ValidateAnswer(interrupt Interrupt, answer Answer) error {
+	if err := ValidateInterrupt(interrupt); err != nil {
 		return err
 	}
-	switch item := interaction.(type) {
+	switch item := interrupt.(type) {
 	case Approval:
 		provided, ok := answer.(ApprovalAnswer)
 		if !ok {
@@ -242,7 +242,7 @@ func ValidateAnswer(interaction Interaction, answer Answer) error {
 		}
 		return validateQuestionAnswer(item, provided)
 	default:
-		return fmt.Errorf("interaction %T is unsupported", interaction)
+		return fmt.Errorf("interrupt %T is unsupported", interrupt)
 	}
 }
 
@@ -315,8 +315,8 @@ func questionOffers(field QuestionField, value string) bool {
 	return slices.ContainsFunc(field.Options, func(option runtimeprotocol.QuestionOption) bool { return option.Label == value })
 }
 
-func CloneInteraction(interaction Interaction) Interaction {
-	switch item := interaction.(type) {
+func CloneInterrupt(interrupt Interrupt) Interrupt {
+	switch item := interrupt.(type) {
 	case Approval:
 		return item.Clone()
 	case Question:
@@ -356,10 +356,10 @@ func equalAnswerValues(left, right [][]string) bool {
 	})
 }
 
-func CloneInteractions(interactions []Interaction) []Interaction {
-	out := make([]Interaction, len(interactions))
-	for i, interaction := range interactions {
-		out[i] = CloneInteraction(interaction)
+func CloneInterrupts(interrupts []Interrupt) []Interrupt {
+	out := make([]Interrupt, len(interrupts))
+	for i, interrupt := range interrupts {
+		out[i] = CloneInterrupt(interrupt)
 	}
 	return out
 }
@@ -378,7 +378,7 @@ func CloneAnswer(answer Answer) Answer {
 	}
 }
 
-// AnswerEqual reports whether two interaction answers carry the same complete
+// AnswerEqual reports whether two interrupt answers carry the same complete
 // decision value, including edited tool arguments and ordered question values.
 func AnswerEqual(left, right Answer) bool {
 	switch typed := left.(type) {
@@ -394,10 +394,10 @@ func AnswerEqual(left, right Answer) bool {
 	}
 }
 
-// InteractionsEqual reports whether two ordered pending interaction sets are
+// InterruptsEqual reports whether two ordered pending interrupt sets are
 // the same runtime decision surface.
-func InteractionsEqual(left, right []Interaction) bool {
-	return slices.EqualFunc(left, right, func(left, right Interaction) bool {
+func InterruptsEqual(left, right []Interrupt) bool {
+	return slices.EqualFunc(left, right, func(left, right Interrupt) bool {
 		switch typed := left.(type) {
 		case Approval:
 			other, ok := right.(Approval)

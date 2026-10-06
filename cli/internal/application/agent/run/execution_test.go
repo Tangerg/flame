@@ -350,7 +350,7 @@ func TestExecuteLeavesQuestionsParked(t *testing.T) {
 	runtime.Instant = true
 	runtime.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{
-			Interactions: []conversation.Interaction{conversation.Question{
+			Interrupts: []conversation.Interrupt{conversation.Question{
 				ItemID: "q_1", Title: "Target",
 				Fields: []conversation.QuestionField{{Prompt: "Target", Kind: conversation.QuestionSingle, Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}}}},
 			}},
@@ -365,7 +365,7 @@ func TestExecuteLeavesQuestionsParked(t *testing.T) {
 		ReplayPolicy: unavailableReplayPolicy(t),
 		Start:        testRunStart(session.ID, "ask"),
 	})
-	if _, ok := errors.AsType[*interactionRequiredError](err); !ok {
+	if _, ok := errors.AsType[*interruptRequiredError](err); !ok {
 		t.Fatalf("error = %v", err)
 	}
 	snapshot, snapshotErr := runtime.GetSession(t.Context(), session.ID)
@@ -509,7 +509,7 @@ func TestExecuteResumesTheCompleteTreeAfterItsRootSuspends(t *testing.T) {
 				initial = append(initial,
 					event("event_child_started_"+suffix, child, root.ActiveSegmentID, conversation.SegmentStarted{Run: child}),
 					event("event_approval_started_"+suffix, child, root.ActiveSegmentID, conversation.BlockStarted{Block: block}),
-					event("event_child_waiting_"+suffix, child, root.ActiveSegmentID, conversation.RunInterrupted{Interactions: []conversation.Interaction{approval}}),
+					event("event_child_waiting_"+suffix, child, root.ActiveSegmentID, conversation.RunInterrupted{Interrupts: []conversation.Interrupt{approval}}),
 				)
 				wantAnswers = append(wantAnswers, conversation.InterruptAnswer{ItemID: block.ID, Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove}})
 				child.ActiveSegmentID += "_resumed"

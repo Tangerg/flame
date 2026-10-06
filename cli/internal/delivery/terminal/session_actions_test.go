@@ -79,7 +79,7 @@ func TestRetiringSessionStateClearsOnlyTheRetiredSession(t *testing.T) {
 					ItemID: approval.ItemID, Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalDeny},
 				}},
 			},
-			Interactions: []conversation.Interaction{approval},
+			Interrupts: []conversation.Interrupt{approval},
 		}, nil); stagePendingResumeErr != nil {
 			t.Fatal(stagePendingResumeErr)
 		}

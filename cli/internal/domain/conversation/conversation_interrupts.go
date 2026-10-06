@@ -9,7 +9,7 @@ type blockReplacement struct {
 	block Block
 }
 
-// RecordAcceptedInteractionAnswers folds the durable part of an acknowledged
+// RecordAcceptedInterruptAnswers folds the durable part of an acknowledged
 // resume command before its continuation segment arrives. Question answers are
 // persisted by the runtime at the resume linearization point, but are not
 // repeated on the new segment stream; recording them here keeps the live
@@ -18,31 +18,31 @@ type blockReplacement struct {
 // The complete waiting set is validated before any block is changed. Approval
 // tool results remain stream-owned because their completed items do arrive on
 // the continuation segment.
-func (c *Conversation) RecordAcceptedInteractionAnswers(responses []InterruptAnswer) ([]Block, error) {
+func (c *Conversation) RecordAcceptedInterruptAnswers(responses []InterruptAnswer) ([]Block, error) {
 	if c.phase != Waiting {
-		return nil, fmt.Errorf("%w: conversation is not waiting for interaction answers", ErrInvalidTransition)
+		return nil, fmt.Errorf("%w: conversation is not waiting for interrupt answers", ErrInvalidTransition)
 	}
-	if len(responses) != len(c.interactions) {
+	if len(responses) != len(c.interrupts) {
 		return nil, fmt.Errorf(
-			"%w: accepted response set has %d answers for %d interactions",
-			ErrInvalidTransition, len(responses), len(c.interactions),
+			"%w: accepted response set has %d answers for %d interrupts",
+			ErrInvalidTransition, len(responses), len(c.interrupts),
 		)
 	}
 	byID, err := indexAcceptedAnswers(responses)
 	if err != nil {
 		return nil, err
 	}
-	replacements := make([]blockReplacement, 0, len(c.interactions))
-	for _, interaction := range c.interactions {
-		itemID := InteractionItemID(interaction)
+	replacements := make([]blockReplacement, 0, len(c.interrupts))
+	for _, interrupt := range c.interrupts {
+		itemID := InterruptItemID(interrupt)
 		answer, exists := byID[itemID]
 		if !exists {
 			return nil, fmt.Errorf("%w: accepted response is missing item %s", ErrInvalidTransition, itemID)
 		}
-		if err := ValidateAnswer(interaction, answer); err != nil {
+		if err := ValidateAnswer(interrupt, answer); err != nil {
 			return nil, fmt.Errorf("%w: accepted response for item %s: %v", ErrInvalidTransition, itemID, err)
 		}
-		replacement, replace, err := c.acceptedQuestionReplacement(interaction, answer)
+		replacement, replace, err := c.acceptedQuestionReplacement(interrupt, answer)
 		if err != nil {
 			return nil, err
 		}
@@ -70,8 +70,8 @@ func indexAcceptedAnswers(responses []InterruptAnswer) (map[string]Answer, error
 	return byID, nil
 }
 
-func (c *Conversation) acceptedQuestionReplacement(interaction Interaction, answer Answer) (blockReplacement, bool, error) {
-	question, isQuestion := interaction.(Question)
+func (c *Conversation) acceptedQuestionReplacement(interrupt Interrupt, answer Answer) (blockReplacement, bool, error) {
+	question, isQuestion := interrupt.(Question)
 	if !isQuestion {
 		return blockReplacement{}, false, nil
 	}
@@ -85,7 +85,7 @@ func (c *Conversation) acceptedQuestionReplacement(interaction Interaction, answ
 		return blockReplacement{}, false, fmt.Errorf("%w: accepted question references unknown item %s", ErrInvalidTransition, itemID)
 	}
 	current := c.blocks[at]
-	if err := validateInteractionItem(question, current); err != nil {
+	if err := validateInterruptItem(question, current); err != nil {
 		return blockReplacement{}, false, fmt.Errorf("%w: accepted question item %s: %v", ErrInvalidTransition, itemID, err)
 	}
 	accepted, err := question.Accept(response)

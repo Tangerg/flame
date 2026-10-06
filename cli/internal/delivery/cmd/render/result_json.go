@@ -84,16 +84,16 @@ func (a *assistantProse) ensureIndex() {
 }
 
 type resultFrame struct {
-	Type         string            `json:"type"`
-	Status       string            `json:"status"`
-	RunID        string            `json:"runId"`
-	SessionID    string            `json:"sessionId"`
-	Text         string            `json:"text,omitzero"`
-	Images       []imageFrame      `json:"images,omitzero"`
-	Options      *runOptionsJSON   `json:"options,omitzero"`
-	Interactions []interactionJSON `json:"interactions,omitzero"`
-	Outcome      *outcomeJSON      `json:"outcome,omitzero"`
-	Usage        *usageJSON        `json:"usage,omitzero"`
+	Type       string          `json:"type"`
+	Status     string          `json:"status"`
+	RunID      string          `json:"runId"`
+	SessionID  string          `json:"sessionId"`
+	Text       string          `json:"text,omitzero"`
+	Images     []imageFrame    `json:"images,omitzero"`
+	Options    *runOptionsJSON `json:"options,omitzero"`
+	Interrupts []interruptJSON `json:"interrupts,omitzero"`
+	Outcome    *outcomeJSON    `json:"outcome,omitzero"`
+	Usage      *usageJSON      `json:"usage,omitzero"`
 }
 
 // NewResultJSON builds a renderer that emits at most one JSON result from Close.
@@ -187,13 +187,13 @@ func (r *ResultJSON) Reconcile(snapshot conversation.SessionSnapshot) error {
 	r.frame.RunID = targetRunID
 	r.frame.SessionID = snapshot.Session.ID
 	r.frame.Status = string(protocol.RunStatusRunning)
-	r.frame.Interactions = nil
+	r.frame.Interrupts = nil
 	r.frame.Outcome = nil
 	r.frame.Usage = nil
 	switch target.Status {
 	case protocol.RunStatusWaiting:
 		r.frame.Status = string(protocol.RunStatusWaiting)
-		r.frame.Interactions = encodeInteractions(snapshot.Interactions)
+		r.frame.Interrupts = encodeInterrupts(snapshot.Interrupts)
 		r.frame.Usage = encodeUsage(target.Usage)
 	case protocol.RunStatusFinished:
 		r.frame.Status = string(protocol.RunStatusFinished)
@@ -216,7 +216,7 @@ func (r *ResultJSON) fold(envelope conversation.RunEvent) {
 		}
 		r.frame.RunID, r.frame.SessionID = event.Run.ID, event.Run.SessionID
 		r.frame.Status = string(protocol.RunStatusRunning)
-		r.frame.Interactions = nil
+		r.frame.Interrupts = nil
 		if r.frame.RunID == "" {
 			r.frame.RunID = envelope.RunID
 		}
@@ -239,7 +239,7 @@ func (r *ResultJSON) fold(envelope conversation.RunEvent) {
 			r.complete(event.Block)
 		}
 	case conversation.RunInterrupted:
-		r.frame.Interactions = append(r.frame.Interactions, encodeInteractions(event.Interactions)...)
+		r.frame.Interrupts = append(r.frame.Interrupts, encodeInterrupts(event.Interrupts)...)
 		if r.scope.isRoot(envelope.RunID) {
 			r.frame.Status = string(protocol.RunStatusWaiting)
 			r.frame.Usage = encodeUsage(event.Usage)
@@ -252,7 +252,7 @@ func (r *ResultJSON) fold(envelope conversation.RunEvent) {
 	case conversation.RunFinished:
 		if r.scope.isRoot(envelope.RunID) {
 			r.frame.Status = string(protocol.RunStatusFinished)
-			r.frame.Interactions = nil
+			r.frame.Interrupts = nil
 			finished := encodeFinishedFrame(event)
 			r.frame.Outcome, r.frame.Usage = finished.Outcome, finished.Usage
 		}

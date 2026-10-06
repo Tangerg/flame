@@ -22,7 +22,7 @@ Steer acknowledgement preserves Runtime's exact reserved User Item ID. Acceptanc
 
 One-shot execution reads the complete tree interruption from Conversation after the root Segment closes. Member interrupts alone do not authorize a resume; a stream lost before the root boundary must reconnect or recover the durable snapshot first.
 
-Terminal interaction reviews retain each pending Item's member Run identity while the resume command addresses the root. Before staging a decision, Conversation compares its reviewed interactions with the complete authoritative waiting set. The durable workbench preserves the exact command, member identities, and answers across restart; recovery applies the same waiting-set check.
+Terminal interrupt reviews retain each pending Item's member Run identity while the resume command addresses the root. Before staging a decision, Conversation compares its reviewed interrupts with the complete authoritative waiting set. The durable workbench preserves the exact command, member identities, and answers across restart; recovery applies the same waiting-set check.
 
 Cold recovery reads the root's authoritative status first. A running root is recovered with `runs.subscribe(snapshot: true)`, whose material and successor tail share one Runtime observation boundary. CLI installs that material and the opaque head cursor before consuming the tail; it never replaces the material with an independent read after attachment. Waiting and finished roots install the authoritative snapshot without subscribing. Independently owned Session metadata keeps its existing stability check around the snapshot subscription, and an unstable attempt releases its tail before retrying.
 
@@ -127,7 +127,7 @@ Workbench stores prepared content in separate SHA-256-addressed files so the sup
 
 ## JSON
 
-The CLI speaks one JSON vocabulary, `encoding/json/v2`. Duplicate members, trailing documents, and unknown members are refused by the decoder itself rather than by a hand-written validating pass, and `omitzero` marks the fields whose absence is a fact, so a present-but-empty value survives the round trip. Bytes that are hashed, compared against a second projection, persisted, or piped to another program are encoded deterministically; only the durable workbench records also keep a nil collection as `null`, because a reloaded record has to distinguish an unanswered interaction from an empty answer. The two exceptions that still decode with `encoding/json` decode a JSON number into an `any`: only that package can preserve an identifier outside float64's exact range, which is what keeps a reviewed tool argument the same value when it executes.
+The CLI speaks one JSON vocabulary, `encoding/json/v2`. Duplicate members, trailing documents, and unknown members are refused by the decoder itself rather than by a hand-written validating pass, and `omitzero` marks the fields whose absence is a fact, so a present-but-empty value survives the round trip. Bytes that are hashed, compared against a second projection, persisted, or piped to another program are encoded deterministically; only the durable workbench records also keep a nil collection as `null`, because a reloaded record has to distinguish an unanswered interrupt from an empty answer. The two exceptions that still decode with `encoding/json` decode a JSON number into an `any`: only that package can preserve an identifier outside float64's exact range, which is what keeps a reviewed tool argument the same value when it executes.
 
 ## Package shape
 
@@ -138,7 +138,7 @@ A package must own a coherent CLI vocabulary, local aggregate, workflow lifecycl
 | Prompt authoring | `domain/authoring/prompt` | Message and attachment values, authored model options, Start and Steer intents, frozen input |
 | FIFO authoring | `domain/authoring/queue` | Pure entry identity, editing holds, ordering and dispatch reservations |
 | Exact replay | `domain/authoring/replay` | Stable command identity, capability and replay-guard values |
-| Conversation | `domain/conversation` | Transcript folding, stream deduplication, interaction review and Runtime projections |
+| Conversation | `domain/conversation` | Transcript folding, stream deduplication, interrupt review and Runtime projections |
 | Workbench | `application/workbench` | Local authoring lifetime, durable records, draft transfers, queue transactions and outbox settlement |
 | Mutation admission | `application/mutation` | Identity generation, replay clocks and exact acknowledgement policy shared by workflows |
 | Agent workflows | `application/agent/run`, `application/agent/session` | Run observation and command workflows over consumer-owned Runtime ports |

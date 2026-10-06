@@ -83,7 +83,7 @@ type runState struct {
 	active          string
 	segments        map[string]*segmentState
 	script          Script
-	interactions    []conversation.Interaction
+	interrupts      []conversation.Interrupt
 	answers         map[string]conversation.Answer
 	cancel          chan struct{}
 	cancelOnce      sync.Once

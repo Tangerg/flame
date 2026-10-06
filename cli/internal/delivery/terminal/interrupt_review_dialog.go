@@ -13,34 +13,34 @@ import (
 	"github.com/Tangerg/oolong/core/layout"
 )
 
-type interactionSummaryPane struct {
+type interruptSummaryPane struct {
 	viewport *headless.Viewport
 	form     *kit.Form
 }
 
-// interactionReviewCancellationReason is the reason a cancel decision carries,
+// interruptReviewCancellationReason is the reason a cancel decision carries,
 // not a fourth decision. It stays out of the block below: a spelled-out value
 // there reads as a member, and dropping the value would silently make it one.
-const interactionReviewCancellationReason = "interactions canceled during terminal review"
+const interruptReviewCancellationReason = "interrupts canceled during terminal review"
 
-type interactionReviewDecision uint8
+type interruptReviewDecision uint8
 
 const (
-	interactionReviewSubmit interactionReviewDecision = iota + 1
-	interactionReviewBack
-	interactionReviewCancel
+	interruptReviewSubmit interruptReviewDecision = iota + 1
+	interruptReviewBack
+	interruptReviewCancel
 )
 
-func (d interactionReviewDecision) Validate() error {
+func (d interruptReviewDecision) Validate() error {
 	switch d {
-	case interactionReviewSubmit, interactionReviewBack, interactionReviewCancel:
+	case interruptReviewSubmit, interruptReviewBack, interruptReviewCancel:
 		return nil
 	default:
-		return fmt.Errorf("interaction review decision %d is invalid", d)
+		return fmt.Errorf("interrupt review decision %d is invalid", d)
 	}
 }
 
-func (i *interactionSummaryPane) Draw(frame headless.Frame) {
+func (i *interruptSummaryPane) Draw(frame headless.Frame) {
 	rows := frame.Subs((layout.Flow{Axis: layout.Down}).Rects(frame.Bounds().Size(), []layout.Slot{
 		{Size: layout.Flex(1)},
 		{Size: layout.Fixed(min(i.form.HeightForWidth(frame.Bounds().Dx()), 7))},
@@ -49,40 +49,40 @@ func (i *interactionSummaryPane) Draw(frame headless.Frame) {
 	i.form.Draw(rows[1])
 }
 
-func (i *interactionSummaryPane) Handle(event input.Event) bool {
+func (i *interruptSummaryPane) Handle(event input.Event) bool {
 	if i.form.Handle(event) {
 		return true
 	}
 	return i.viewport.Handle(event)
 }
 
-func (i *interactionSummaryPane) Focus(has bool) { i.form.Focus(has) }
+func (i *interruptSummaryPane) Focus(has bool) { i.form.Focus(has) }
 
-func (a *app) openInteractionSummary() {
-	review := a.dialogs.interactionReview
+func (a *app) openInterruptSummary() {
+	review := a.dialogs.interruptReview
 	if review == nil || !review.Reviewing() {
 		return
 	}
 	if _, err := review.Responses(); err != nil {
-		a.fail(fmt.Errorf("review interactions: %w", err))
+		a.fail(fmt.Errorf("review interrupts: %w", err))
 		return
 	}
-	decision := interactionReviewSubmit
-	choice := &headless.Select[interactionReviewDecision]{
-		Same:  headless.Equal[interactionReviewDecision],
+	decision := interruptReviewSubmit
+	choice := &headless.Select[interruptReviewDecision]{
+		Same:  headless.Equal[interruptReviewDecision],
 		Label: "Review complete", Value: headless.Bind(&decision), Rows: 3,
 	}
-	choice.SetOptions([]headless.Option[interactionReviewDecision]{
-		{Label: "Submit all decisions", Value: interactionReviewSubmit},
-		{Label: "Go back and edit", Value: interactionReviewBack},
-		{Label: "Cancel the run", Value: interactionReviewCancel},
+	choice.SetOptions([]headless.Option[interruptReviewDecision]{
+		{Label: "Submit all decisions", Value: interruptReviewSubmit},
+		{Label: "Go back and edit", Value: interruptReviewBack},
+		{Label: "Cancel the run", Value: interruptReviewCancel},
 	})
 	form := headless.NewForm(choice)
 	form.Keys = headless.DefaultFormKeys()
 	var dialog *kit.Dialog
 	settled := false
 	form.Done = func() {
-		if settled || a.dialogs.interactionReview != review || a.dialogs.reviewDialog != dialog {
+		if settled || a.dialogs.interruptReview != review || a.dialogs.reviewDialog != dialog {
 			return
 		}
 		if err := decision.Validate(); err != nil {
@@ -93,43 +93,43 @@ func (a *app) openInteractionSummary() {
 		dialog.Controller().Dismiss()
 		a.dialogs.reviewDialog = nil
 		switch decision {
-		case interactionReviewSubmit:
-			a.resumeInteractions()
-		case interactionReviewBack:
-			a.backInteraction()
-		case interactionReviewCancel:
-			a.abortInteractions(interactionReviewCancellationReason)
+		case interruptReviewSubmit:
+			a.resumeInterrupts()
+		case interruptReviewBack:
+			a.backInterrupt()
+		case interruptReviewCancel:
+			a.abortInterrupts(interruptReviewCancellationReason)
 		}
 	}
 	form.GaveUp = func() {
-		if settled || a.dialogs.interactionReview != review || a.dialogs.reviewDialog != dialog {
+		if settled || a.dialogs.interruptReview != review || a.dialogs.reviewDialog != dialog {
 			return
 		}
 		settled = true
 		dialog.Controller().Dismiss()
 		a.dialogs.reviewDialog = nil
-		if !a.backInteraction() {
-			a.abortInteractions(interactionReviewCancellationReason)
+		if !a.backInterrupt() {
+			a.abortInterrupts(interruptReviewCancellationReason)
 		}
 	}
 	dressed := kit.NewForm(kit.FormConfig{
 		Theme: a.transcript.theme, Glyphs: a.transcript.glyphs, Controller: form,
 		Hints: []keymap.Action{headless.Submit, headless.Cancel},
 	})
-	summary := kit.NewParagraph(interactionSummary(review), a.transcript.theme.Text)
+	summary := kit.NewParagraph(interruptSummary(review), a.transcript.theme.Text)
 	viewport := headless.NewViewport(headless.Static{Of: summary})
 	viewport.Scroll().Wheel(a.loop.Environment().Wheel())
-	pane := &interactionSummaryPane{viewport: viewport, form: dressed}
+	pane := &interruptSummaryPane{viewport: viewport, form: dressed}
 	dialog = kit.NewDialog(kit.DialogConfig{
 		Stack: &a.stack, Theme: a.transcript.theme, Glyphs: a.transcript.glyphs,
-		Title: "Review interactions", Body: pane,
+		Title: "Review interrupts", Body: pane,
 		Where: layout.Placement{Width: 88, Height: 22},
 	})
 	a.dialogs.reviewDialog = dialog
 	dialog.Controller().Show()
 }
 
-func interactionSummary(review *interactionReview) string {
+func interruptSummary(review *interruptReview) string {
 	items, answers := review.Items(), review.Answers()
 	lines := make([]string, 0, len(items)+2)
 	if failure := review.SubmissionFailure(); failure != "" {
@@ -137,13 +137,13 @@ func interactionSummary(review *interactionReview) string {
 	}
 	lines = append(lines, "Nothing is sent to the runtime until you submit this review.")
 	for index, item := range items {
-		lines = append(lines, fmt.Sprintf("%d. %s", index+1, summarizeInteraction(item, answers[index])))
+		lines = append(lines, fmt.Sprintf("%d. %s", index+1, summarizeInterrupt(item, answers[index])))
 	}
 	return strings.Join(lines, "\n\n")
 }
 
-func summarizeInteraction(item conversation.Interaction, answer conversation.Answer) string {
-	switch interaction := item.(type) {
+func summarizeInterrupt(item conversation.Interrupt, answer conversation.Answer) string {
+	switch interrupt := item.(type) {
 	case conversation.Approval:
 		provided, _ := answer.(conversation.ApprovalAnswer)
 		decision := "allow once"
@@ -161,15 +161,15 @@ func summarizeInteraction(item conversation.Interaction, answer conversation.Ans
 		if provided.ArgumentOverride != nil {
 			decision += " with edited arguments: " + string(provided.ArgumentOverride.JSON())
 		}
-		return interaction.Title + " — " + decision
+		return interrupt.Title + " — " + decision
 	case conversation.Question:
 		provided, _ := answer.(conversation.QuestionAnswer)
 		values := make([]string, 0, len(provided.Values))
 		for _, field := range provided.Values {
 			values = append(values, strings.Join(field, ", "))
 		}
-		return interaction.Title + " — " + strings.Join(values, " · ")
+		return interrupt.Title + " — " + strings.Join(values, " · ")
 	default:
-		return "Unknown interaction"
+		return "Unknown interrupt"
 	}
 }

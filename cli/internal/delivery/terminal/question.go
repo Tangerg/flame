@@ -205,7 +205,7 @@ func (q *questionResponse) multipleValues() ([]string, error) {
 }
 
 func (a *app) openQuestion(question conversation.Question) {
-	review, err := newQuestionnaire(question, a.dialogs.interactionReview.CurrentAnswer())
+	review, err := newQuestionnaire(question, a.dialogs.interruptReview.CurrentAnswer())
 	if err != nil {
 		a.fail(err)
 		return
@@ -330,7 +330,7 @@ func (a *app) showQuestionDialog(review *questionnaire, fields []headless.Field)
 	dressed := kit.NewForm(kit.FormConfig{
 		Theme: a.transcript.theme, Glyphs: a.transcript.glyphs, Controller: form,
 		Title: strings.Join(nonEmptyStrings([]string{
-			a.dialogs.interactionReview.SubmissionFailure(), review.question.Detail,
+			a.dialogs.interruptReview.SubmissionFailure(), review.question.Detail,
 		}), "\n"),
 		Hints: []keymap.Action{headless.Submit, headless.Cancel},
 	})
@@ -382,10 +382,10 @@ func (a *app) finishQuestionnaire(canceled bool) {
 	}
 	if canceled {
 		a.dialogs.questionnaire = nil
-		if a.backInteraction() {
+		if a.backInterrupt() {
 			return
 		}
-		a.abortInteractions("question canceled by the terminal user")
+		a.abortInterrupts("question canceled by the terminal user")
 		return
 	}
 	answer, err := review.Answer()
@@ -393,12 +393,12 @@ func (a *app) finishQuestionnaire(canceled bool) {
 		a.fail(err)
 		return
 	}
-	if err := a.dialogs.interactionReview.Record(answer); err != nil {
+	if err := a.dialogs.interruptReview.Record(answer); err != nil {
 		a.fail(fmt.Errorf("record question: %w", err))
 		return
 	}
 	a.dialogs.questionnaire = nil
-	a.advanceInteractionReview()
+	a.advanceInterruptReview()
 }
 
 func questionOptions(field conversation.QuestionField) []headless.Option[questionChoice] {

@@ -245,15 +245,15 @@ func TestQuestionItemAndInterruptShareProjection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("projectItem: %v", err)
 	}
-	interaction, err := projectInteraction(protocol.Interrupt{
+	interrupt, err := projectInterrupt(protocol.Interrupt{
 		ItemID: "item_1", RunID: "run_1", Type: protocol.InterruptQuestion,
 		Payload: &protocol.InterruptPayload{Question: question},
 	})
 	if err != nil {
-		t.Fatalf("projectInteraction: %v", err)
+		t.Fatalf("projectInterrupt: %v", err)
 	}
-	if block.Question == nil || !reflect.DeepEqual(*block.Question, interaction.(conversation.Question)) {
-		t.Fatalf("block question = %+v, interrupt = %+v", block.Question, interaction)
+	if block.Question == nil || !reflect.DeepEqual(*block.Question, interrupt.(conversation.Question)) {
+		t.Fatalf("block question = %+v, interrupt = %+v", block.Question, interrupt)
 	}
 }
 
@@ -284,7 +284,7 @@ func TestCompletedQuestionPreservesAcceptedAnswers(t *testing.T) {
 }
 
 func TestApprovalInterruptPreservesCompleteToolArguments(t *testing.T) {
-	interaction, err := projectInteraction(protocol.Interrupt{
+	interrupt, err := projectInterrupt(protocol.Interrupt{
 		ItemID: "tool_1", RunID: "run_1", Type: protocol.InterruptApproval,
 		Payload: &protocol.InterruptPayload{
 			Tool: &protocol.ToolInvocation{
@@ -299,7 +299,7 @@ func TestApprovalInterruptPreservesCompleteToolArguments(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	approval := interaction.(conversation.Approval)
+	approval := interrupt.(conversation.Approval)
 	if approval.Tool == nil || approval.Tool.Name != "mcp__calendar__create_event" ||
 		!bytes.Contains(approval.Tool.ArgumentsJSON, []byte(`"source":"approval"`)) ||
 		approval.Risk != protocol.ApprovalRiskHigh || approval.Detail != "creates a shared event" || !approval.Rememberable {
@@ -545,7 +545,7 @@ func TestProjectSnapshotMatchesApprovalInvocationWithoutErasingItemLifecycle(t *
 	if err := snapshot.Validate(); err != nil {
 		t.Fatalf("snapshot: %v", err)
 	}
-	approval, ok := snapshot.Interactions[0].(conversation.Approval)
+	approval, ok := snapshot.Interrupts[0].(conversation.Approval)
 	itemTool := snapshot.Transcript[0].Tool
 	if !ok || itemTool == nil || approval.Tool == nil ||
 		itemTool.Safety != protocol.SafetyClassExec || !itemTool.StartedAt.Equal(startedAt) ||

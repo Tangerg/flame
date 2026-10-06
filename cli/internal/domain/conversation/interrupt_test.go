@@ -122,8 +122,8 @@ func TestCompletedQuestionOwnsAndValidatesAcceptedAnswers(t *testing.T) {
 	if err := question.Validate(); err != nil {
 		t.Fatal(err)
 	}
-	if err := ValidateInteraction(question); err == nil {
-		t.Fatal("answered transcript question was accepted as a pending interaction")
+	if err := ValidateInterrupt(question); err == nil {
+		t.Fatal("answered transcript question was accepted as a pending interrupt")
 	}
 	cloned := question.Clone()
 	if !question.Equal(cloned) {

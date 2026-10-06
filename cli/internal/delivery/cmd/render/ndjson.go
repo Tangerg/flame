@@ -55,34 +55,34 @@ func (n *NDJSON) Begin(run conversation.Run, _ prompt.RunOptions) error {
 // lets a reader ignore what it does not use. Type is always set and is the only
 // field a consumer must switch on.
 type eventRecord struct {
-	Type             string            `json:"type"`
-	EventID          string            `json:"eventId,omitzero"`
-	SegmentID        string            `json:"segmentId,omitzero"`
-	StreamSegmentID  string            `json:"streamSegmentId,omitzero"`
-	Status           string            `json:"status,omitzero"`
-	Revision         uint64            `json:"revision,omitzero"`
-	At               time.Time         `json:"at,omitzero"`
-	RunID            string            `json:"runId,omitzero"`
-	SpawnedByBlockID string            `json:"spawnedByBlockId,omitzero"`
-	ParentRunID      string            `json:"parentRunId,omitzero"`
-	RootRunID        string            `json:"rootRunId,omitzero"`
-	SessionID        string            `json:"sessionId,omitzero"`
-	ItemID           string            `json:"itemId,omitzero"`
-	Options          *runOptionsJSON   `json:"options,omitzero"`
-	BlockID          string            `json:"blockId,omitzero"`
-	Text             string            `json:"text,omitzero"`
-	Step             *int              `json:"step,omitzero"`
-	ContextTokens    *int64            `json:"contextTokens,omitzero"`
-	Activity         string            `json:"activity,omitzero"`
-	Name             string            `json:"name,omitzero"`
-	Payload          jsontext.Value    `json:"payload,omitzero"`
-	Block            *blockFrame       `json:"block,omitzero"`
-	Transcript       []blockFrame      `json:"transcript,omitzero"`
-	Runs             []runFrame        `json:"runs,omitzero"`
-	Plan             []planFrame       `json:"plan,omitzero"`
-	Interactions     []interactionJSON `json:"interactions,omitzero"`
-	Outcome          *outcomeJSON      `json:"outcome,omitzero"`
-	Usage            *usageJSON        `json:"usage,omitzero"`
+	Type             string          `json:"type"`
+	EventID          string          `json:"eventId,omitzero"`
+	SegmentID        string          `json:"segmentId,omitzero"`
+	StreamSegmentID  string          `json:"streamSegmentId,omitzero"`
+	Status           string          `json:"status,omitzero"`
+	Revision         uint64          `json:"revision,omitzero"`
+	At               time.Time       `json:"at,omitzero"`
+	RunID            string          `json:"runId,omitzero"`
+	SpawnedByBlockID string          `json:"spawnedByBlockId,omitzero"`
+	ParentRunID      string          `json:"parentRunId,omitzero"`
+	RootRunID        string          `json:"rootRunId,omitzero"`
+	SessionID        string          `json:"sessionId,omitzero"`
+	ItemID           string          `json:"itemId,omitzero"`
+	Options          *runOptionsJSON `json:"options,omitzero"`
+	BlockID          string          `json:"blockId,omitzero"`
+	Text             string          `json:"text,omitzero"`
+	Step             *int            `json:"step,omitzero"`
+	ContextTokens    *int64          `json:"contextTokens,omitzero"`
+	Activity         string          `json:"activity,omitzero"`
+	Name             string          `json:"name,omitzero"`
+	Payload          jsontext.Value  `json:"payload,omitzero"`
+	Block            *blockFrame     `json:"block,omitzero"`
+	Transcript       []blockFrame    `json:"transcript,omitzero"`
+	Runs             []runFrame      `json:"runs,omitzero"`
+	Plan             []planFrame     `json:"plan,omitzero"`
+	Interrupts       []interruptJSON `json:"interrupts,omitzero"`
+	Outcome          *outcomeJSON    `json:"outcome,omitzero"`
+	Usage            *usageJSON      `json:"usage,omitzero"`
 }
 
 type runOptionsJSON struct {
@@ -110,7 +110,7 @@ type blockFrame struct {
 	Text            string            `json:"text,omitzero"`
 	Attachments     []attachmentFrame `json:"attachments,omitzero"`
 	Images          []imageFrame      `json:"images,omitzero"`
-	Question        *interactionJSON  `json:"question,omitzero"`
+	Question        *interruptJSON    `json:"question,omitzero"`
 	Tool            *toolFrame        `json:"tool,omitzero"`
 }
 
@@ -158,7 +158,7 @@ type planFrame struct {
 	Status string `json:"status"`
 }
 
-type interactionJSON struct {
+type interruptJSON struct {
 	Kind         string              `json:"kind"`
 	RunID        string              `json:"runId"`
 	ItemID       string              `json:"itemId"`
@@ -282,7 +282,7 @@ func (n *NDJSON) Reconcile(snapshot conversation.SessionSnapshot) error {
 		}
 	}
 	if target.Status == protocol.RunStatusWaiting {
-		frame.Interactions = encodeInteractions(snapshot.Interactions)
+		frame.Interrupts = encodeInterrupts(snapshot.Interrupts)
 	}
 	if target.Status == protocol.RunStatusFinished {
 		finished := encodeFinishedFrame(conversation.RunFinished{Outcome: target.Outcome, Usage: target.Usage})
@@ -323,7 +323,7 @@ func encodeEventFrame(envelope conversation.RunEvent) (eventRecord, error) {
 	case conversation.PlanChanged:
 		return eventRecord{Type: "plan.changed", Revision: event.Plan.State.Revision, Plan: encodePlan(event.Plan.State.Steps)}, nil
 	case conversation.RunInterrupted:
-		return eventRecord{Type: "run.interrupted", Interactions: encodeInteractions(event.Interactions), Usage: encodeUsage(event.Usage)}, nil
+		return eventRecord{Type: "run.interrupted", Interrupts: encodeInterrupts(event.Interrupts), Usage: encodeUsage(event.Usage)}, nil
 	case conversation.RunSuspended:
 		return eventRecord{Type: "run.suspended", Usage: encodeUsage(event.Usage)}, nil
 	case conversation.RunFinished:
@@ -401,26 +401,26 @@ func encodeGenerationParams(params protocol.GenerationParams) *generationParamsJ
 	}
 }
 
-func encodeInteractions(interactions []conversation.Interaction) []interactionJSON {
-	out := make([]interactionJSON, 0, len(interactions))
-	for _, interaction := range interactions {
-		if encoded := encodeInteraction(interaction); encoded != nil {
+func encodeInterrupts(interrupts []conversation.Interrupt) []interruptJSON {
+	out := make([]interruptJSON, 0, len(interrupts))
+	for _, interrupt := range interrupts {
+		if encoded := encodeInterrupt(interrupt); encoded != nil {
 			out = append(out, *encoded)
 		}
 	}
 	return out
 }
 
-func encodeInteraction(interaction conversation.Interaction) *interactionJSON {
-	switch item := interaction.(type) {
+func encodeInterrupt(interrupt conversation.Interrupt) *interruptJSON {
+	switch item := interrupt.(type) {
 	case conversation.Approval:
-		return &interactionJSON{
+		return &interruptJSON{
 			Kind: "approval", RunID: item.RunID, ItemID: item.ItemID, Title: item.Title,
 			Detail: item.Detail, Tool: encodeTool(item.Tool), Diff: item.Diff, Risk: string(item.Risk),
 			RuleHint: item.RuleHint, Rememberable: item.Rememberable,
 		}
 	case conversation.Question:
-		out := &interactionJSON{
+		out := &interruptJSON{
 			Kind: "question", RunID: item.RunID, ItemID: item.ItemID,
 			Title: item.Title, Detail: item.Detail, Answers: conversation.CloneAnswers(item.Answers),
 		}
@@ -467,7 +467,7 @@ func encodeBlock(b conversation.Block) *blockFrame {
 		out.Tool = encodeTool(b.Tool)
 	}
 	if b.Question != nil {
-		out.Question = encodeInteraction(*b.Question)
+		out.Question = encodeInterrupt(*b.Question)
 	}
 	return out
 }

@@ -224,7 +224,7 @@ func (e *executionDriver) run(ctx context.Context) error {
 			case conversation.Idle:
 				return errorForOutcome(e.conversation.Outcome())
 			case conversation.Waiting:
-				if err := e.resume(ctx, e.conversation.Interactions(), e.current.RunID); err != nil {
+				if err := e.resume(ctx, e.conversation.Interrupts(), e.current.RunID); err != nil {
 					return err
 				}
 				continue
@@ -244,8 +244,8 @@ func (e *executionDriver) run(ctx context.Context) error {
 	}
 }
 
-func (e *executionDriver) resume(ctx context.Context, interactions []conversation.Interaction, runID string) error {
-	answers, err := unattendedAnswers(interactions, e.invocation.ApproveAll, e.invocation.Start.SessionID)
+func (e *executionDriver) resume(ctx context.Context, interrupts []conversation.Interrupt, runID string) error {
+	answers, err := unattendedAnswers(interrupts, e.invocation.ApproveAll, e.invocation.Start.SessionID)
 	if err != nil {
 		return err
 	}
@@ -321,7 +321,7 @@ func (e *executionDriver) installRecovery(ctx context.Context, recovered Recover
 	case protocol.RunStatusFinished:
 		return false, errorForOutcome(recovered.Run.Outcome)
 	case protocol.RunStatusWaiting:
-		if err := e.resume(ctx, recovered.Snapshot.Interactions, recovered.Run.ID); err != nil {
+		if err := e.resume(ctx, recovered.Snapshot.Interrupts, recovered.Run.ID); err != nil {
 			return false, err
 		}
 	case protocol.RunStatusRunning:
@@ -394,16 +394,16 @@ func errorForOutcome(outcome conversation.Outcome) error {
 	return &outcomeError{outcome: outcome}
 }
 
-func unattendedAnswers(interactions []conversation.Interaction, approveAll bool, sessionID string) ([]conversation.InterruptAnswer, error) {
-	answers := make([]conversation.InterruptAnswer, 0, len(interactions))
-	for _, interaction := range interactions {
-		switch item := interaction.(type) {
+func unattendedAnswers(interrupts []conversation.Interrupt, approveAll bool, sessionID string) ([]conversation.InterruptAnswer, error) {
+	answers := make([]conversation.InterruptAnswer, 0, len(interrupts))
+	for _, interrupt := range interrupts {
+		switch item := interrupt.(type) {
 		case conversation.Approval:
 			answers = append(answers, conversation.InterruptAnswer{ItemID: item.ItemID, Answer: approvalAnswer(approveAll)})
 		case conversation.Question:
-			return nil, &interactionRequiredError{title: item.Title, sessionID: sessionID}
+			return nil, &interruptRequiredError{title: item.Title, sessionID: sessionID}
 		default:
-			return nil, errors.New("runtime returned an unknown interaction")
+			return nil, errors.New("runtime returned an unknown interrupt")
 		}
 	}
 	return answers, nil
@@ -419,11 +419,11 @@ func approvalAnswer(approveAll bool) conversation.ApprovalAnswer {
 	}
 }
 
-type interactionRequiredError struct {
+type interruptRequiredError struct {
 	title     string
 	sessionID string
 }
 
-func (i *interactionRequiredError) Error() string {
+func (i *interruptRequiredError) Error() string {
 	return fmt.Sprintf("run needs answers to %q; continue it interactively with --session %s", i.title, i.sessionID)
 }

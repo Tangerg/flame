@@ -8,7 +8,7 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-func TestInteractionReviewRecordsEditsAndCommitsInRuntimeOrder(t *testing.T) {
+func TestInterruptReviewRecordsEditsAndCommitsInRuntimeOrder(t *testing.T) {
 	approval := conversation.Approval{
 		RunID: "run_1", ItemID: "approval", Title: "Run command", Rememberable: true,
 		Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning},
@@ -17,7 +17,7 @@ func TestInteractionReviewRecordsEditsAndCommitsInRuntimeOrder(t *testing.T) {
 		RunID: "run_1", ItemID: "question", Title: "Choose target",
 		Fields: []conversation.QuestionField{{Prompt: "Target", Kind: conversation.QuestionSingle, Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}}}},
 	}
-	review, err := newInteractionReview([]conversation.Interaction{approval, question})
+	review, err := newInterruptReview([]conversation.Interrupt{approval, question})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,12 +53,12 @@ func TestInteractionReviewRecordsEditsAndCommitsInRuntimeOrder(t *testing.T) {
 	}
 }
 
-func TestInteractionReviewRejectsInvalidAnswersAndIncompleteCommit(t *testing.T) {
+func TestInterruptReviewRejectsInvalidAnswersAndIncompleteCommit(t *testing.T) {
 	approval := conversation.Approval{
 		RunID: "run_1", ItemID: "approval", Title: "Read file",
 		Tool: &conversation.ToolCall{Kind: conversation.ToolRead, Name: "read", Path: "README.md", Status: conversation.ToolRunning},
 	}
-	review, err := newInteractionReview([]conversation.Interaction{approval})
+	review, err := newInterruptReview([]conversation.Interrupt{approval})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +70,7 @@ func TestInteractionReviewRejectsInvalidAnswersAndIncompleteCommit(t *testing.T)
 	}
 }
 
-func TestInteractionReviewRestoresACommittedBatchWithoutSharingAnswers(t *testing.T) {
+func TestInterruptReviewRestoresACommittedBatchWithoutSharingAnswers(t *testing.T) {
 	approval := conversation.Approval{
 		RunID: "run_1", ItemID: "approval", Title: "Run command", Rememberable: true,
 		Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning},
@@ -86,7 +86,7 @@ func TestInteractionReviewRestoresACommittedBatchWithoutSharingAnswers(t *testin
 		{ItemID: approval.ItemID, Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove, Remember: protocol.RememberSession}},
 		{ItemID: question.ItemID, Answer: conversation.QuestionAnswer{Values: [][]string{{"linux", "darwin"}}}},
 	}
-	review, err := restoreInteractionReview([]conversation.Interaction{approval, question}, responses)
+	review, err := restoreInterruptReview([]conversation.Interrupt{approval, question}, responses)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestInteractionReviewRestoresACommittedBatchWithoutSharingAnswers(t *testin
 	}
 }
 
-func TestInteractionSummaryDisclosesEditedApprovalArguments(t *testing.T) {
+func TestInterruptSummaryDisclosesEditedApprovalArguments(t *testing.T) {
 	t.Parallel()
 	approval := conversation.Approval{
 		RunID: "run_1", ItemID: "approval", Title: "Run command",
@@ -114,8 +114,8 @@ func TestInteractionSummaryDisclosesEditedApprovalArguments(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	review, err := restoreInteractionReview(
-		[]conversation.Interaction{approval},
+	review, err := restoreInterruptReview(
+		[]conversation.Interrupt{approval},
 		[]conversation.InterruptAnswer{{
 			ItemID: approval.ItemID,
 			Answer: conversation.ApprovalAnswer{
@@ -126,24 +126,24 @@ func TestInteractionSummaryDisclosesEditedApprovalArguments(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := summarizeInteraction(review.items[0], review.answers[0])
+	got := summarizeInterrupt(review.items[0], review.answers[0])
 	for _, want := range []string{"with edited arguments", `{"command":"echo safe"}`} {
 		if !strings.Contains(got, want) {
-			t.Fatalf("interaction summary %q omits %q", got, want)
+			t.Fatalf("interrupt summary %q omits %q", got, want)
 		}
 	}
 }
 
-func TestInteractionSummaryDisclosesRememberedDenial(t *testing.T) {
+func TestInterruptSummaryDisclosesRememberedDenial(t *testing.T) {
 	t.Parallel()
 	approval := conversation.Approval{Title: "Delete generated file"}
 	answer := conversation.ApprovalAnswer{
 		Decision: protocol.ApprovalDeny, Remember: protocol.RememberProject, Reason: "preserve fixtures",
 	}
-	got := summarizeInteraction(approval, answer)
+	got := summarizeInterrupt(approval, answer)
 	for _, want := range []string{"deny for project", "preserve fixtures"} {
 		if !strings.Contains(got, want) {
-			t.Fatalf("interaction summary %q omits %q", got, want)
+			t.Fatalf("interrupt summary %q omits %q", got, want)
 		}
 	}
 }

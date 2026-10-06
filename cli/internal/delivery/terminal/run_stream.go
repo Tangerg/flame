@@ -308,14 +308,14 @@ func (a *app) applyPresentationEvent(envelope conversation.RunEvent) {
 		}
 	case conversation.RunInterrupted:
 		if a.execution.conversation.Phase() == conversation.Waiting {
-			a.openInteractions(a.execution.conversation.Interactions())
+			a.openInterrupts(a.execution.conversation.Interrupts())
 			a.header.SetUsage(a.execution.conversation.Usage())
 			a.observeCurrentRunStatus()
 			a.status.note("waiting for your answers")
 		}
 	case conversation.RunSuspended:
 		if a.execution.conversation.Phase() == conversation.Waiting {
-			a.openInteractions(a.execution.conversation.Interactions())
+			a.openInterrupts(a.execution.conversation.Interrupts())
 			a.header.SetUsage(a.execution.conversation.Usage())
 			a.observeCurrentRunStatus()
 			a.status.note("waiting for your answers")
@@ -393,7 +393,7 @@ func (a *app) fail(err error) {
 		return
 	}
 	a.execution.following = false
-	a.dismissInteractionProjection()
+	a.dismissInterruptProjection()
 	if a.execution.conversation.Phase() == conversation.Running &&
 		a.execution.conversation.RunID() == "" && a.execution.openingRunID == "" {
 		err = errors.Join(err, a.execution.conversation.CancelStarting())

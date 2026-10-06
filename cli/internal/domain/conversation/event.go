@@ -107,17 +107,17 @@ type PlanChanged struct {
 }
 
 // RunInterrupted closes the current segment and parks the stable logical run.
-// Interactions is the complete pending set that must be answered atomically;
+// Interrupts is the complete pending set that must be answered atomically;
 // Usage and ContextTokens are the complete durable Run facts committed at that
 // segment boundary.
 type RunInterrupted struct {
-	Interactions  []Interaction
+	Interrupts    []Interrupt
 	Usage         Usage
 	ContextTokens int64
 }
 
 // RunSuspended closes a member segment because another run in the same tree
-// interrupted. It carries no duplicate interactions; the tree-level pending
+// interrupted. It carries no duplicate interrupts; the tree-level pending
 // set is assembled from the member that raised them.
 type RunSuspended struct {
 	Usage         Usage
@@ -196,7 +196,7 @@ func (item PlanChanged) equal(event Event) bool {
 func (item RunInterrupted) equal(event Event) bool {
 	other, ok := event.(RunInterrupted)
 	return ok && item.ContextTokens == other.ContextTokens && item.Usage.Equal(other.Usage) &&
-		equalInteractions(item.Interactions, other.Interactions)
+		equalInterrupts(item.Interrupts, other.Interrupts)
 }
 
 func (item RunSuspended) equal(event Event) bool {
@@ -255,7 +255,7 @@ func CloneEvent(event Event) Event {
 		item.Plan = *ClonePlan(&item.Plan)
 		return item
 	case RunInterrupted:
-		item.Interactions = CloneInteractions(item.Interactions)
+		item.Interrupts = CloneInterrupts(item.Interrupts)
 		item.Usage = item.Usage.Clone()
 		return item
 	case RunSuspended:
@@ -285,8 +285,8 @@ func equalOptionalUsage(left, right *Usage) bool {
 	return (left == nil) == (right == nil) && (left == nil || left.Equal(*right))
 }
 
-func equalInteractions(left, right []Interaction) bool {
-	return slices.EqualFunc(left, right, func(left, right Interaction) bool {
+func equalInterrupts(left, right []Interrupt) bool {
+	return slices.EqualFunc(left, right, func(left, right Interrupt) bool {
 		switch item := left.(type) {
 		case Approval:
 			other, ok := right.(Approval)

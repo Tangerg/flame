@@ -26,7 +26,7 @@ func (s *Store) PendingResume(sessionID string) (PendingResume, bool) {
 	return clonePendingResume(pending), ok
 }
 
-// StagePendingResume transfers a completed interaction review into the durable
+// StagePendingResume transfers a completed interrupt review into the durable
 // command outbox before delivery starts.
 func (s *Store) StagePendingResume(sessionID string, pending PendingResume, input *PreparedInput) error {
 	if err := runtimeprotocol.ValidateSessionID(sessionID); err != nil {
@@ -66,7 +66,7 @@ func (s *Store) StagePendingResume(sessionID string, pending PendingResume, inpu
 }
 
 // AcknowledgePendingResume retires exactly the command whose runtime response
-// was observed. A stale callback cannot delete a newer interaction decision.
+// was observed. A stale callback cannot delete a newer interrupt decision.
 func (s *Store) AcknowledgePendingResume(sessionID string, commandID replay.CommandID) error {
 	return s.retirePendingResume(sessionID, commandID)
 }

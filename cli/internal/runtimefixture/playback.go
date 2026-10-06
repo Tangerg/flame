@@ -51,15 +51,15 @@ func (r *Runtime) park(run *runState) {
 		r.mu.Unlock()
 		return
 	}
-	interactionEvents, err := r.interruptItemEventsLocked(run)
+	interruptEvents, err := r.interruptItemEventsLocked(run)
 	if err != nil {
 		r.mu.Unlock()
 		r.finish(run, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeFailed, Problem: &protocol.ProblemData{Type: protocol.ProblemInternalError, Detail: err.Error()}}})
 		return
 	}
-	resolved, pending := r.resolveRememberedLocked(run, run.script.Interactions)
+	resolved, pending := r.resolveRememberedLocked(run, run.script.Interrupts)
 	approvalEvents := approvalCompletionEvents(run, resolved)
-	revisionChanges := sessionEventRevisionChanges(len(interactionEvents) + len(approvalEvents))
+	revisionChanges := sessionEventRevisionChanges(len(interruptEvents) + len(approvalEvents))
 	if len(resolved) != 0 {
 		revisionChanges = revisionChanges.plus(sessionEventRevisionChange())
 	}
@@ -72,7 +72,7 @@ func (r *Runtime) park(run *runState) {
 		r.mu.Unlock()
 		return
 	}
-	if err := r.emitAllLocked(run, interactionEvents); err != nil {
+	if err := r.emitAllLocked(run, interruptEvents); err != nil {
 		r.failSegmentLocked(run, err)
 		r.mu.Unlock()
 		return
@@ -116,9 +116,9 @@ func (r *Runtime) park(run *runState) {
 		return
 	}
 	run.status = protocol.RunStatusWaiting
-	run.interactions = conversation.CloneInteractions(pending)
+	run.interrupts = conversation.CloneInterrupts(pending)
 	run.usage = run.script.InterruptUsage.Clone()
-	if err := r.emitLocked(run, conversation.RunInterrupted{Interactions: conversation.CloneInteractions(run.interactions), Usage: run.usage}); err != nil {
+	if err := r.emitLocked(run, conversation.RunInterrupted{Interrupts: conversation.CloneInterrupts(run.interrupts), Usage: run.usage}); err != nil {
 		r.failSegmentLocked(run, err)
 		r.mu.Unlock()
 		return
@@ -134,11 +134,11 @@ func (r *Runtime) park(run *runState) {
 
 func (r *Runtime) interruptItemEventsLocked(run *runState) ([]conversation.Event, error) {
 	session := r.sessions[run.sessionID]
-	events := make([]conversation.Event, 0, len(run.script.Interactions))
-	for _, interaction := range run.script.Interactions {
-		itemID := conversation.InteractionItemID(interaction)
+	events := make([]conversation.Event, 0, len(run.script.Interrupts))
+	for _, interrupt := range run.script.Interrupts {
+		itemID := conversation.InterruptItemID(interrupt)
 		if block, exists := durableBlock(session, run.id, itemID); exists {
-			switch interaction.(type) {
+			switch interrupt.(type) {
 			case conversation.Approval:
 				if block.Kind != conversation.BlockTool || block.Status != conversation.BlockStatusRunning {
 					return nil, fmt.Errorf("approval item %s is not a running tool", itemID)
@@ -150,7 +150,7 @@ func (r *Runtime) interruptItemEventsLocked(run *runState) ([]conversation.Event
 			}
 			continue
 		}
-		switch item := interaction.(type) {
+		switch item := interrupt.(type) {
 		case conversation.Approval:
 			events = append(events, conversation.BlockStarted{Block: conversation.Block{
 				ID: item.ItemID, Kind: conversation.BlockTool, Tool: cloneTool(item.Tool),
@@ -168,7 +168,7 @@ func (r *Runtime) interruptItemEventsLocked(run *runState) ([]conversation.Event
 func approvalCompletionEvents(run *runState, answers []conversation.InterruptAnswer) []conversation.Event {
 	events := make([]conversation.Event, 0, len(answers))
 	for _, response := range answers {
-		approval := findApproval(run.script.Interactions, response.ItemID)
+		approval := findApproval(run.script.Interrupts, response.ItemID)
 		answer, ok := response.Answer.(conversation.ApprovalAnswer)
 		if approval == nil || !ok {
 			continue
@@ -404,7 +404,7 @@ func (r *Runtime) finishLocked(run *runState, event conversation.RunFinished) er
 	}
 	run.status = protocol.RunStatusFinished
 	run.active = ""
-	run.interactions = nil
+	run.interrupts = nil
 	if session.planAtRun == nil {
 		session.planAtRun = make(map[string]*protocol.Plan)
 	}

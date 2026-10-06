@@ -36,7 +36,7 @@ func newAttentionCenter() attentionCenter {
 }
 
 // Observe records terminal focus intent. Oolong owns FocusIn in its event loop,
-// so any deliberate keyboard, paste, or mouse-down interaction is also treated as
+// so any deliberate keyboard, paste, or mouse-down interrupt is also treated as
 // proof that the user has returned. FocusIn is still accepted for direct hosts.
 func (a *attentionCenter) Observe(event input.Event) bool {
 	switch event := event.(type) {
@@ -103,10 +103,10 @@ func (a *app) setWindowTitle() {
 	a.loop.Session().SetTitle(title)
 }
 
-func interactionAttention(interactions []conversation.Interaction) attentionSignal {
+func interruptAttention(interrupts []conversation.Interrupt) attentionSignal {
 	message := "flame needs your input"
-	if len(interactions) == 1 {
-		switch interactions[0].(type) {
+	if len(interrupts) == 1 {
+		switch interrupts[0].(type) {
 		case conversation.Approval:
 			message = "flame needs tool approval"
 		case conversation.Question:

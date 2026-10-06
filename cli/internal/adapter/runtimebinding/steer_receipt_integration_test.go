@@ -125,13 +125,13 @@ func testSteerReceiptAtModelBoundary(t *testing.T, mode protocol.ApprovalMode) {
 			t.Fatal(err)
 		}
 		root, active := waiting.ActiveRun()
-		if !active || root.Status != protocol.RunStatusWaiting || len(waiting.Interactions) != 1 ||
+		if !active || root.Status != protocol.RunStatusWaiting || len(waiting.Interrupts) != 1 ||
 			slices.ContainsFunc(waiting.Transcript, findReceiptItem) {
 			t.Fatalf("accepted steer crossed the model boundary before approval: %+v", waiting)
 		}
 		previousSegment := opened.SegmentID
 		opened, err = connection.ResumeRun(ctx, conversation.ResumeRun{RunID: opened.RunID, Answers: []conversation.InterruptAnswer{{
-			ItemID: conversation.InteractionItemID(waiting.Interactions[0]), Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove},
+			ItemID: conversation.InterruptItemID(waiting.Interrupts[0]), Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove},
 		}}})
 		if err != nil || opened.SegmentID == previousSegment {
 			t.Fatalf("resume after accepted steer: segment=%s err=%v", opened.SegmentID, err)

@@ -25,7 +25,7 @@ func (t *transcriptView) acceptQuestions(blocks []conversation.Block) error {
 	accepted := make([]acceptance, 0, len(blocks))
 	for _, block := range blocks {
 		if block.Kind != conversation.BlockQuestion || block.Question == nil {
-			return fmt.Errorf("terminal transcript: accepted interaction block %s is not a question", block.ID)
+			return fmt.Errorf("terminal transcript: accepted interrupt block %s is not a question", block.ID)
 		}
 		key := transcriptBlockKey(block.RunID, block.ID)
 		tracked, exists := t.pendingQuestions[key]
@@ -62,12 +62,12 @@ func (t *transcriptView) finishPendingQuestions(runID string) {
 
 // reconcilePendingQuestions closes presentation lifetimes after a cold read.
 // An unanswered durable Question remains hidden and retained only when the same
-// snapshot exposes it as an open interaction. Canceled historical questions are
+// snapshot exposes it as an open interrupt. Canceled historical questions are
 // still intentionally invisible, but must not pin the transcript forever.
-func (t *transcriptView) reconcilePendingQuestions(interactions []conversation.Interaction) error {
-	open := make(map[string]struct{}, len(interactions))
-	for _, interaction := range interactions {
-		question, ok := interaction.(conversation.Question)
+func (t *transcriptView) reconcilePendingQuestions(interrupts []conversation.Interrupt) error {
+	open := make(map[string]struct{}, len(interrupts))
+	for _, interrupt := range interrupts {
+		question, ok := interrupt.(conversation.Question)
 		if !ok {
 			continue
 		}

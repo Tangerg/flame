@@ -21,7 +21,7 @@ const (
 	toolContentInset   = 2
 )
 
-// toolDisclosure is the shared interaction contract for an individual tool or
+// toolDisclosure is the shared interrupt contract for an individual tool or
 // a semantic group of adjacent tools.
 type toolDisclosure interface {
 	headless.Block

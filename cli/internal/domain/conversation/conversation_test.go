@@ -19,7 +19,7 @@ func TestConversationFoldsInitialAndResumedSegments(t *testing.T) {
 	}
 	apply(t, projection, RunEvent{EventID: "opaque:item-done", RunID: "run_1", SegmentID: "seg_1", Event: BlockCompleted{Block: Block{ID: "msg_1", RunID: "run_1", Status: BlockStatusCompleted, Kind: BlockAssistant, Text: "final"}}})
 
-	interrupts := []Interaction{
+	interrupts := []Interrupt{
 		runningApproval("item_approval", "run shell"),
 		Question{RunID: "run_1", ItemID: "item_question", Title: "choose", Fields: []QuestionField{{Prompt: "Which?", Kind: QuestionSingle, Options: []protocol.QuestionOption{{Label: "A"}, {Label: "B"}}}}},
 	}
@@ -37,10 +37,10 @@ func TestConversationFoldsInitialAndResumedSegments(t *testing.T) {
 	interruptedUsage := Usage{InputTokens: 10, OutputTokens: 2}
 	interruptedContext := int64(8_192)
 	apply(t, projection, RunEvent{EventID: "opaque:park", RunID: "run_1", SegmentID: "seg_1", Event: RunInterrupted{
-		Interactions: interrupts, Usage: interruptedUsage, ContextTokens: interruptedContext,
+		Interrupts: interrupts, Usage: interruptedUsage, ContextTokens: interruptedContext,
 	}})
-	if projection.Phase() != Waiting || len(projection.Interactions()) != 2 || !projection.Usage().Equal(interruptedUsage) {
-		t.Fatalf("waiting projection = phase %v, interactions %d, usage %+v", projection.Phase(), len(projection.Interactions()), projection.Usage())
+	if projection.Phase() != Waiting || len(projection.Interrupts()) != 2 || !projection.Usage().Equal(interruptedUsage) {
+		t.Fatalf("waiting projection = phase %v, interrupts %d, usage %+v", projection.Phase(), len(projection.Interrupts()), projection.Usage())
 	}
 	if runs := projection.Runs(); len(runs) != 1 || runs[0].ContextTokens != interruptedContext {
 		t.Fatalf("waiting run context = %+v, want %d", runs, interruptedContext)
@@ -48,7 +48,7 @@ func TestConversationFoldsInitialAndResumedSegments(t *testing.T) {
 	if current, ok := projection.CurrentRun(); !ok || current.ID != "run_1" || current.ContextTokens != interruptedContext {
 		t.Fatalf("waiting current Run = %+v, %t", current, ok)
 	}
-	acceptedQuestions, err := projection.RecordAcceptedInteractionAnswers([]InterruptAnswer{
+	acceptedQuestions, err := projection.RecordAcceptedInterruptAnswers([]InterruptAnswer{
 		{ItemID: approval.ItemID, Answer: ApprovalAnswer{Decision: protocol.ApprovalApprove}},
 		{ItemID: question.ItemID, Answer: QuestionAnswer{Values: [][]string{{"A"}}}},
 	})
@@ -59,7 +59,7 @@ func TestConversationFoldsInitialAndResumedSegments(t *testing.T) {
 		!acceptedQuestions[0].Question.Answered() || acceptedQuestions[0].Question.Answers[0][0] != "A" {
 		t.Fatalf("accepted questions = %+v", acceptedQuestions)
 	}
-	if projection.Phase() != Waiting || len(projection.Interactions()) != 2 {
+	if projection.Phase() != Waiting || len(projection.Interrupts()) != 2 {
 		t.Fatal("accepted answers released waiting state before the continuation segment")
 	}
 
@@ -67,7 +67,7 @@ func TestConversationFoldsInitialAndResumedSegments(t *testing.T) {
 	resumed.Usage = interruptedUsage
 	resumed.ContextTokens = interruptedContext
 	apply(t, projection, RunEvent{EventID: "different-space:start", RunID: "run_1", SegmentID: "seg_2", Event: SegmentStarted{Run: resumed}})
-	if projection.Phase() != Running || projection.SegmentID() != "seg_2" || len(projection.Interactions()) != 0 {
+	if projection.Phase() != Running || projection.SegmentID() != "seg_2" || len(projection.Interrupts()) != 0 {
 		t.Fatalf("resumed projection = phase %v, segment %q", projection.Phase(), projection.SegmentID())
 	}
 	completedTool := startedApprovalTool.Clone()
@@ -130,8 +130,8 @@ func TestConversationRejectsRegressingRunUsage(t *testing.T) {
 		ID: approval.ItemID, RunID: "run_1", Status: BlockStatusRunning, Kind: BlockTool, Tool: approval.Tool,
 	}}})
 	interrupted := RunInterrupted{
-		Interactions: []Interaction{approval},
-		Usage:        Usage{InputTokens: 9},
+		Interrupts: []Interrupt{approval},
+		Usage:      Usage{InputTokens: 9},
 	}
 	if _, err := projection.ApplyRunEvent(RunEvent{EventID: "wait", RunID: "run_1", SegmentID: "seg_1", Event: interrupted}); !errors.Is(err, ErrInvalidTransition) {
 		t.Fatalf("regressing usage error = %v", err)
@@ -155,7 +155,7 @@ func TestConversationRejectsApprovalForDifferentToolInvocation(t *testing.T) {
 
 	_, err := projection.ApplyRunEvent(RunEvent{
 		EventID: "wait", RunID: run.ID, SegmentID: run.ActiveSegmentID,
-		Event: RunInterrupted{Interactions: []Interaction{approval}, Usage: run.Usage},
+		Event: RunInterrupted{Interrupts: []Interrupt{approval}, Usage: run.Usage},
 	})
 	if !errors.Is(err, ErrInvalidTransition) {
 		t.Fatalf("different approval invocation error = %v", err)
@@ -293,10 +293,10 @@ func TestConversationResumesATreeInterruptedByAChild(t *testing.T) {
 	apply(t, projection, treeEvent("approval-start", child.ID, child.ActiveSegmentID, root.ActiveSegmentID, BlockStarted{Block: Block{
 		ID: approval.ItemID, RunID: child.ID, Status: BlockStatusRunning, Kind: BlockTool, Tool: approval.Tool,
 	}}))
-	apply(t, projection, treeEvent("child-wait", child.ID, child.ActiveSegmentID, root.ActiveSegmentID, RunInterrupted{Interactions: []Interaction{approval}, Usage: Usage{InputTokens: 3}}))
+	apply(t, projection, treeEvent("child-wait", child.ID, child.ActiveSegmentID, root.ActiveSegmentID, RunInterrupted{Interrupts: []Interrupt{approval}, Usage: Usage{InputTokens: 3}}))
 	apply(t, projection, treeEvent("root-suspend", root.ID, root.ActiveSegmentID, root.ActiveSegmentID, RunSuspended{Usage: Usage{InputTokens: 5}}))
-	if projection.Phase() != Waiting || len(projection.Interactions()) != 1 || projection.Interactions()[0].(Approval).RunID != child.ID {
-		t.Fatalf("tree wait = phase %v interactions %+v", projection.Phase(), projection.Interactions())
+	if projection.Phase() != Waiting || len(projection.Interrupts()) != 1 || projection.Interrupts()[0].(Approval).RunID != child.ID {
+		t.Fatalf("tree wait = phase %v interrupts %+v", projection.Phase(), projection.Interrupts())
 	}
 
 	resumedRoot := root

@@ -11,7 +11,7 @@ import (
 
 // ToolArgumentOverride is a validated, immutable replacement for one pending
 // tool call's argument object. It is deliberately a value object instead of an
-// exported map so interaction drafts, durable outbox entries, and adapters
+// exported map so interrupt drafts, durable outbox entries, and adapters
 // cannot share mutable approval state.
 type ToolArgumentOverride struct {
 	encoded []byte

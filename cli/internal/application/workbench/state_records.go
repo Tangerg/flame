@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	formatVersion         = 1
+	formatVersion         = 2
 	maximumStateBytes     = 16 << 20
 	sessionStateExtension = ".json"
 )

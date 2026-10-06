@@ -84,7 +84,7 @@ func TestQuestionPresenterShowsAcceptedTranscriptAnswers(t *testing.T) {
 	}
 }
 
-func TestPendingQuestionPresenterHasNoVisibleInteractionSurface(t *testing.T) {
+func TestPendingQuestionPresenterHasNoVisibleInterruptSurface(t *testing.T) {
 	t.Parallel()
 	question := conversation.Question{
 		RunID: "run_1", ItemID: "question_1", Title: "Target",

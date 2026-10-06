@@ -22,10 +22,10 @@ func (s *sessionContextLease) current(candidate *sessionContextLease) bool {
 	return s != nil && s == candidate && !s.retired
 }
 
-func (a *app) canPreserveInteractionProjection(next *conversation.Conversation) bool {
-	return a.dialogs.interactionReview != nil && a.execution.conversation.Phase() == conversation.Waiting &&
+func (a *app) canPreserveInterruptProjection(next *conversation.Conversation) bool {
+	return a.dialogs.interruptReview != nil && a.execution.conversation.Phase() == conversation.Waiting &&
 		next != nil && next.Phase() == conversation.Waiting && a.execution.conversation.RunID() == next.RunID() &&
-		sameInteractions(a.execution.conversation.Interactions(), next.Interactions())
+		sameInterrupts(a.execution.conversation.Interrupts(), next.Interrupts())
 }
 
 func (a *app) prepareSessionProjectionReplacement(next conversation.Session, projection *conversation.Conversation) {
@@ -36,15 +36,15 @@ func (a *app) prepareSessionProjectionReplacement(next conversation.Session, pro
 	if a.dialogs.reader.ObservingSource() {
 		a.dismissReader()
 	}
-	if !a.canPreserveInteractionProjection(projection) {
-		a.dismissInteractionProjection()
+	if !a.canPreserveInterruptProjection(projection) {
+		a.dismissInterruptProjection()
 	}
 }
 
 func (a *app) retireSessionContext() {
 	a.session.context.retire()
 	a.session.context = newSessionContextLease()
-	a.dismissInteractionProjection()
+	a.dismissInterruptProjection()
 	a.dismissConfirmation()
 	a.dismissReader()
 	a.dismissContextEditor()

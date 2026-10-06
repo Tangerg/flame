@@ -105,7 +105,7 @@ func projectPlan(plan *protocol.Plan) (*protocol.Plan, error) {
 	return &projected, nil
 }
 
-func projectInteraction(value protocol.Interrupt) (conversation.Interaction, error) {
+func projectInterrupt(value protocol.Interrupt) (conversation.Interrupt, error) {
 	if value.Payload == nil {
 		return nil, fmt.Errorf("interrupt %s has no payload", value.ItemID)
 	}
@@ -126,16 +126,16 @@ func projectInteraction(value protocol.Interrupt) (conversation.Interaction, err
 	}
 }
 
-func projectInteractions(values []protocol.Interrupt) ([]conversation.Interaction, error) {
-	interactions := make([]conversation.Interaction, 0, len(values))
+func projectInterrupts(values []protocol.Interrupt) ([]conversation.Interrupt, error) {
+	interrupts := make([]conversation.Interrupt, 0, len(values))
 	for _, value := range values {
-		projected, err := projectInteraction(value)
+		projected, err := projectInterrupt(value)
 		if err != nil {
 			return nil, err
 		}
-		interactions = append(interactions, projected)
+		interrupts = append(interrupts, projected)
 	}
-	return interactions, nil
+	return interrupts, nil
 }
 
 func cloneModelUsage(value protocol.ModelUsage) protocol.ModelUsage {

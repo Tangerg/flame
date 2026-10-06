@@ -996,7 +996,7 @@ func TestLaunchDoesNotReplayRunOrResumeOwnershipIntoAnotherRuntimeStore(t *testi
 			want: "recover pending run: replay guarantee expired or belongs to another runtime",
 		},
 		{
-			name: "interaction resume",
+			name: "interrupt resume",
 			stage: func(t *testing.T, store *workbench.Store) {
 				approval := conversation.Approval{
 					RunID: "run_waiting", ItemID: "approval_1", Title: "Proceed?",
@@ -1009,14 +1009,14 @@ func TestLaunchDoesNotReplayRunOrResumeOwnershipIntoAnotherRuntimeStore(t *testi
 							ItemID: approval.ItemID, Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalDeny},
 						}},
 					},
-					Interactions: []conversation.Interaction{approval},
-					Replay:       protectedCommandReplayGuard(t, "idp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", time.Now().UTC().Add(time.Hour)),
+					Interrupts: []conversation.Interrupt{approval},
+					Replay:     protectedCommandReplayGuard(t, "idp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", time.Now().UTC().Add(time.Hour)),
 				}
 				if err := store.StagePendingResume("ses_demo_1", pending, nil); err != nil {
 					t.Fatal(err)
 				}
 			},
-			want: "recover interaction decisions: command belongs to another runtime",
+			want: "recover interrupt decisions: command belongs to another runtime",
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -1045,7 +1045,7 @@ func TestLaunchDoesNotReplayRunOrResumeOwnershipIntoAnotherRuntimeStore(t *testi
 			if test.name == "run start" && len(reopened.PendingRuns("ses_demo_1")) != 1 {
 				t.Fatal("cross-store recovery retired pending run ownership")
 			}
-			if test.name == "interaction resume" {
+			if test.name == "interrupt resume" {
 				if _, found := reopened.PendingResume("ses_demo_1"); !found {
 					t.Fatal("cross-store recovery retired pending resume ownership")
 				}

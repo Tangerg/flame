@@ -175,7 +175,7 @@ func (r *Runtime) sessionSnapshotLocked(id string) (conversation.SessionSnapshot
 		}
 	}
 	if active := r.runs[state.active]; active != nil {
-		snapshot.Interactions = conversation.CloneInteractions(active.interactions)
+		snapshot.Interrupts = conversation.CloneInterrupts(active.interrupts)
 	}
 	if err := snapshot.Validate(); err != nil {
 		return conversation.SessionSnapshot{}, fmt.Errorf("mock: invalid session snapshot: %w", err)

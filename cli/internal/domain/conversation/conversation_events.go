@@ -208,7 +208,7 @@ func (c *Conversation) applyRootSegmentStarted(run, previous Run, exists bool) e
 	}
 	c.runID = run.ID
 	c.phase = Running
-	c.interactions = nil
+	c.interrupts = nil
 	c.usage = run.Usage.Clone()
 	return nil
 }
@@ -350,13 +350,13 @@ func (c *Conversation) applyInterrupted(runID string, event RunInterrupted) erro
 	if err := c.requireRunRunning(runID, "interrupt a run"); err != nil {
 		return err
 	}
-	for _, interaction := range event.Interactions {
-		itemID := InteractionItemID(interaction)
+	for _, interrupt := range event.Interrupts {
+		itemID := InterruptItemID(interrupt)
 		at, exists := c.index[blockIdentity(runID, itemID)]
 		if !exists {
 			return fmt.Errorf("%w: interrupt references unknown item %s", ErrInvalidTransition, itemID)
 		}
-		if err := validateInteractionItem(interaction, c.blocks[at]); err != nil {
+		if err := validateInterruptItem(interrupt, c.blocks[at]); err != nil {
 			return fmt.Errorf("%w: %w", ErrInvalidTransition, err)
 		}
 	}
@@ -364,8 +364,8 @@ func (c *Conversation) applyInterrupted(runID string, event RunInterrupted) erro
 	if err := validateUsageProgress(run.Usage, event.Usage); err != nil {
 		return fmt.Errorf("%w: run interrupted: %w", ErrInvalidTransition, err)
 	}
-	pending := append(CloneInteractions(c.interactions), CloneInteractions(event.Interactions)...)
-	if err := ValidateInteractions(pending); err != nil {
+	pending := append(CloneInterrupts(c.interrupts), CloneInterrupts(event.Interrupts)...)
+	if err := ValidateInterrupts(pending); err != nil {
 		return fmt.Errorf("%w: tree interrupt set: %v", ErrInvalidTransition, err)
 	}
 	run.Status = protocol.RunStatusWaiting
@@ -379,7 +379,7 @@ func (c *Conversation) applyInterrupted(runID string, event RunInterrupted) erro
 	}
 	c.reconciling = false
 	c.coldTail = false
-	c.interactions = pending
+	c.interrupts = pending
 	return nil
 }
 
@@ -392,7 +392,7 @@ func (c *Conversation) applySuspended(runID string, event RunSuspended) error {
 		return fmt.Errorf("%w: run suspended: %w", ErrInvalidTransition, err)
 	}
 	if runID == c.runID {
-		if err := ValidateInteractions(c.interactions); err != nil {
+		if err := ValidateInterrupts(c.interrupts); err != nil {
 			return fmt.Errorf("%w: root run suspended without a valid tree interrupt: %v", ErrInvalidTransition, err)
 		}
 	}
@@ -446,7 +446,7 @@ func (c *Conversation) applyFinished(runID string, event RunFinished) error {
 		c.phase = Idle
 		c.reconciling = false
 		c.coldTail = false
-		c.interactions = nil
+		c.interrupts = nil
 		c.outcome = event.Outcome.Clone()
 		c.usage = event.Usage.Clone()
 	}

@@ -35,14 +35,14 @@ type PendingRun struct {
 // PendingResume is a HITL decision whose command may already have reached the
 // runtime. It remains durable until the runtime either acknowledges the exact
 // command identity or definitively rejects it. Command addresses the root;
-// Interactions retain the members from the authoritative waiting set reviewed
+// Interrupts retain the members from the authoritative waiting set reviewed
 // by the terminal before staging.
 type PendingResume struct {
 	InputDigest  inputDigest `json:"inputDigest,omitzero"`
 	inputFailure error
-	Command      conversation.ResumeRun     `json:"-"`
-	Interactions []conversation.Interaction `json:"interactions"`
-	Replay       replay.Guard               `json:"replay"`
+	Command      conversation.ResumeRun   `json:"-"`
+	Interrupts   []conversation.Interrupt `json:"interrupts"`
+	Replay       replay.Guard             `json:"replay"`
 }
 
 func (p PendingResume) validate() error {
@@ -58,18 +58,18 @@ func (p PendingResume) validate() error {
 	if p.Command.CommandID == "" {
 		return errors.New("resume command id is empty")
 	}
-	if err := conversation.ValidateInteractions(p.Interactions); err != nil {
+	if err := conversation.ValidateInterrupts(p.Interrupts); err != nil {
 		return err
 	}
-	if len(p.Command.Answers) != len(p.Interactions) {
-		return errors.New("resume answer count does not match interactions")
+	if len(p.Command.Answers) != len(p.Interrupts) {
+		return errors.New("resume answer count does not match interrupts")
 	}
-	for index, interaction := range p.Interactions {
+	for index, interrupt := range p.Interrupts {
 		response := p.Command.Answers[index]
-		if response.ItemID != conversation.InteractionItemID(interaction) {
-			return fmt.Errorf("resume answer %d targets another interaction", index+1)
+		if response.ItemID != conversation.InterruptItemID(interrupt) {
+			return fmt.Errorf("resume answer %d targets another interrupt", index+1)
 		}
-		if err := conversation.ValidateAnswer(interaction, response.Answer); err != nil {
+		if err := conversation.ValidateAnswer(interrupt, response.Answer); err != nil {
 			return fmt.Errorf("resume answer %d: %w", index+1, err)
 		}
 	}
@@ -77,63 +77,63 @@ func (p PendingResume) validate() error {
 }
 
 type pendingResumeJSON struct {
-	InputDigest  inputDigest              `json:"inputDigest,omitzero"`
-	CommandID    replay.CommandID         `json:"commandId"`
-	RunID        string                   `json:"runId"`
-	Message      *prompt.Message          `json:"message,omitzero"`
-	Interactions []pendingInteractionJSON `json:"interactions"`
-	Replay       replay.Guard             `json:"replay"`
+	InputDigest inputDigest            `json:"inputDigest,omitzero"`
+	CommandID   replay.CommandID       `json:"commandId"`
+	RunID       string                 `json:"runId"`
+	Message     *prompt.Message        `json:"message,omitzero"`
+	Interrupts  []pendingInterruptJSON `json:"interrupts"`
+	Replay      replay.Guard           `json:"replay"`
 }
 
-type pendingInteractionKind string
+type pendingInterruptKind string
 
 const (
-	pendingApprovalInteraction pendingInteractionKind = "approval"
-	pendingQuestionInteraction pendingInteractionKind = "question"
+	pendingApprovalInterrupt pendingInterruptKind = "approval"
+	pendingQuestionInterrupt pendingInterruptKind = "question"
 )
 
-type pendingInteractionJSON struct {
-	Kind           pendingInteractionKind       `json:"kind"`
+type pendingInterruptJSON struct {
+	Kind           pendingInterruptKind         `json:"kind"`
 	Approval       *conversation.Approval       `json:"approval,omitzero"`
 	Question       *conversation.Question       `json:"question,omitzero"`
 	ApprovalAnswer *conversation.ApprovalAnswer `json:"approvalAnswer,omitzero"`
 	QuestionAnswer *conversation.QuestionAnswer `json:"questionAnswer,omitzero"`
 }
 
-func newPendingInteractionJSON(
-	interaction conversation.Interaction,
+func newPendingInterruptJSON(
+	interrupt conversation.Interrupt,
 	answer conversation.Answer,
-) (pendingInteractionJSON, error) {
-	switch item := interaction.(type) {
+) (pendingInterruptJSON, error) {
+	switch item := interrupt.(type) {
 	case conversation.Approval:
 		decision, ok := answer.(conversation.ApprovalAnswer)
 		if !ok {
-			return pendingInteractionJSON{}, errors.New("pending approval has another answer kind")
+			return pendingInterruptJSON{}, errors.New("pending approval has another answer kind")
 		}
 		cloned := item.Clone()
-		return pendingInteractionJSON{
-			Kind: pendingApprovalInteraction, Approval: &cloned, ApprovalAnswer: &decision,
+		return pendingInterruptJSON{
+			Kind: pendingApprovalInterrupt, Approval: &cloned, ApprovalAnswer: &decision,
 		}, nil
 	case conversation.Question:
 		response, ok := conversation.CloneAnswer(answer).(conversation.QuestionAnswer)
 		if !ok {
-			return pendingInteractionJSON{}, errors.New("pending question has another answer kind")
+			return pendingInterruptJSON{}, errors.New("pending question has another answer kind")
 		}
 		cloned := item.Clone()
-		return pendingInteractionJSON{
-			Kind: pendingQuestionInteraction, Question: &cloned, QuestionAnswer: &response,
+		return pendingInterruptJSON{
+			Kind: pendingQuestionInterrupt, Question: &cloned, QuestionAnswer: &response,
 		}, nil
 	default:
-		return pendingInteractionJSON{}, fmt.Errorf("pending resume has unknown interaction %T", interaction)
+		return pendingInterruptJSON{}, fmt.Errorf("pending resume has unknown interrupt %T", interrupt)
 	}
 }
 
-func (p pendingInteractionJSON) decode(index int) (conversation.Interaction, conversation.InterruptAnswer, error) {
+func (p pendingInterruptJSON) decode(index int) (conversation.Interrupt, conversation.InterruptAnswer, error) {
 	switch p.Kind {
-	case pendingApprovalInteraction:
+	case pendingApprovalInterrupt:
 		if p.Approval == nil || p.ApprovalAnswer == nil || p.Question != nil || p.QuestionAnswer != nil {
 			return nil, conversation.InterruptAnswer{}, fmt.Errorf(
-				"pending resume interaction %d has an invalid approval shape",
+				"pending resume interrupt %d has an invalid approval shape",
 				index+1,
 			)
 		}
@@ -141,10 +141,10 @@ func (p pendingInteractionJSON) decode(index int) (conversation.Interaction, con
 			ItemID: p.Approval.ItemID,
 			Answer: *p.ApprovalAnswer,
 		}, nil
-	case pendingQuestionInteraction:
+	case pendingQuestionInterrupt:
 		if p.Question == nil || p.QuestionAnswer == nil || p.Approval != nil || p.ApprovalAnswer != nil {
 			return nil, conversation.InterruptAnswer{}, fmt.Errorf(
-				"pending resume interaction %d has an invalid question shape",
+				"pending resume interrupt %d has an invalid question shape",
 				index+1,
 			)
 		}
@@ -154,7 +154,7 @@ func (p pendingInteractionJSON) decode(index int) (conversation.Interaction, con
 		}, nil
 	default:
 		return nil, conversation.InterruptAnswer{}, fmt.Errorf(
-			"pending resume interaction %d has unknown kind %q",
+			"pending resume interrupt %d has unknown kind %q",
 			index+1,
 			p.Kind,
 		)
@@ -166,19 +166,19 @@ func (p PendingResume) MarshalJSON() ([]byte, error) {
 		return nil, err
 	}
 	wire := pendingResumeJSON{
-		InputDigest:  p.InputDigest,
-		CommandID:    p.Command.CommandID,
-		RunID:        p.Command.RunID,
-		Message:      p.Command.Message,
-		Interactions: make([]pendingInteractionJSON, len(p.Interactions)),
-		Replay:       p.Replay,
+		InputDigest: p.InputDigest,
+		CommandID:   p.Command.CommandID,
+		RunID:       p.Command.RunID,
+		Message:     p.Command.Message,
+		Interrupts:  make([]pendingInterruptJSON, len(p.Interrupts)),
+		Replay:      p.Replay,
 	}
-	for index, interaction := range p.Interactions {
-		encoded, err := newPendingInteractionJSON(interaction, p.Command.Answers[index].Answer)
+	for index, interrupt := range p.Interrupts {
+		encoded, err := newPendingInterruptJSON(interrupt, p.Command.Answers[index].Answer)
 		if err != nil {
 			return nil, err
 		}
-		wire.Interactions[index] = encoded
+		wire.Interrupts[index] = encoded
 	}
 	// The record travels inside a state file, so it is encoded under the same
 	// options: the store owns the durable representations, not this type.
@@ -194,17 +194,17 @@ func (p *PendingResume) UnmarshalJSON(encoded []byte) error {
 		InputDigest: wire.InputDigest,
 		Command: conversation.ResumeRun{
 			CommandID: wire.CommandID, RunID: wire.RunID, Message: wire.Message,
-			Answers: make([]conversation.InterruptAnswer, len(wire.Interactions)),
+			Answers: make([]conversation.InterruptAnswer, len(wire.Interrupts)),
 		},
-		Interactions: make([]conversation.Interaction, len(wire.Interactions)),
-		Replay:       wire.Replay,
+		Interrupts: make([]conversation.Interrupt, len(wire.Interrupts)),
+		Replay:     wire.Replay,
 	}
-	for index, item := range wire.Interactions {
-		interaction, answer, err := item.decode(index)
+	for index, item := range wire.Interrupts {
+		interrupt, answer, err := item.decode(index)
 		if err != nil {
 			return err
 		}
-		decoded.Interactions[index] = interaction
+		decoded.Interrupts[index] = interrupt
 		decoded.Command.Answers[index] = answer
 	}
 	if err := decoded.validate(); err != nil {

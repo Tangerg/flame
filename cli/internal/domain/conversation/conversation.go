@@ -1,4 +1,4 @@
-// Package conversation folds Runtime facts into CLI-owned transcript and interaction projections.
+// Package conversation folds Runtime facts into CLI-owned transcript and interrupt projections.
 package conversation
 
 import (
@@ -32,11 +32,11 @@ func (c Phase) Valid() bool {
 // Conversation is the terminal-facing aggregate. Durable history is restored
 // from Items; live state is folded from one exact segment stream at a time.
 type Conversation struct {
-	blocks       []Block
-	plan         *protocol.Plan
-	usage        Usage
-	interactions []Interaction
-	outcome      Outcome
+	blocks     []Block
+	plan       *protocol.Plan
+	usage      Usage
+	interrupts []Interrupt
+	outcome    Outcome
 
 	phase       Phase
 	runID       string
@@ -68,11 +68,11 @@ func New() *Conversation {
 	}
 }
 
-// ValidateInteractionReview checks a frozen review against the current root's
-// complete waiting set. Each interaction retains its owning member Run ID.
-func (c *Conversation) ValidateInteractionReview(rootRunID string, interactions []Interaction) error {
-	if c.phase != Waiting || c.runID != rootRunID || !InteractionsEqual(c.interactions, interactions) {
-		return errors.New("interaction review no longer matches the waiting root")
+// ValidateInterruptReview checks a frozen review against the current root's
+// complete waiting set. Each interrupt retains its owning member Run ID.
+func (c *Conversation) ValidateInterruptReview(rootRunID string, interrupts []Interrupt) error {
+	if c.phase != Waiting || c.runID != rootRunID || !InterruptsEqual(c.interrupts, interrupts) {
+		return errors.New("interrupt review no longer matches the waiting root")
 	}
 	return nil
 }
@@ -90,7 +90,7 @@ func (c *Conversation) PlanItems() []protocol.PlanStep {
 
 func (c *Conversation) Usage() Usage { return c.usage.Clone() }
 
-func (c *Conversation) Interactions() []Interaction { return CloneInteractions(c.interactions) }
+func (c *Conversation) Interrupts() []Interrupt { return CloneInterrupts(c.interrupts) }
 
 func (c *Conversation) Outcome() Outcome { return c.outcome.Clone() }
 
@@ -161,7 +161,7 @@ func (c *Conversation) MatchesSnapshot(snapshot SessionSnapshot) bool {
 		}
 	}
 	return equalPlans(c.plan, expected.plan) &&
-		c.usage.Equal(expected.usage) && equalInteractions(c.interactions, expected.interactions) &&
+		c.usage.Equal(expected.usage) && equalInterrupts(c.interrupts, expected.interrupts) &&
 		c.outcome.Equal(expected.outcome) && c.phase == expected.phase && c.runID == expected.runID &&
 		c.segmentID == expected.segmentID && slices.EqualFunc(c.Runs(), expected.Runs(), Run.Equal)
 }
@@ -177,7 +177,7 @@ func (c *Conversation) Starting() error {
 	c.seen = make(map[string]RunEvent)
 	c.usage = Usage{}
 	c.outcome = Outcome{}
-	c.interactions = nil
+	c.interrupts = nil
 	c.reconciling = false
 	c.coldTail = false
 	return nil

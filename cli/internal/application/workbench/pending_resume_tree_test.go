@@ -30,7 +30,7 @@ func TestPendingResumePreservesMixedMemberReviewsAcrossRestart(t *testing.T) {
 				{ItemID: question.ItemID, Answer: conversation.QuestionAnswer{Values: [][]string{{"Safe"}}}},
 			},
 		},
-		Interactions: []conversation.Interaction{approval, question}, Replay: replay.UnprotectedGuard(),
+		Interrupts: []conversation.Interrupt{approval, question}, Replay: replay.UnprotectedGuard(),
 	}
 	if err := store.StagePendingResume("ses_1", pending, nil); err != nil {
 		t.Fatal(err)
@@ -45,7 +45,7 @@ func TestPendingResumePreservesMixedMemberReviewsAcrossRestart(t *testing.T) {
 	t.Cleanup(func() { _ = reopened.Close() })
 	restored, ok := reopened.PendingResume("ses_1")
 	if !ok || !pendingResumeEqual(restored, pending) || restored.Command.RunID != "run_root" ||
-		conversation.InteractionRunID(restored.Interactions[0]) != approval.RunID || conversation.InteractionRunID(restored.Interactions[1]) != question.RunID {
+		conversation.InterruptRunID(restored.Interrupts[0]) != approval.RunID || conversation.InterruptRunID(restored.Interrupts[1]) != question.RunID {
 		t.Fatalf("restored root/member decision = %+v, found=%t", restored, ok)
 	}
 	for _, mutate := range []func(*PendingResume){

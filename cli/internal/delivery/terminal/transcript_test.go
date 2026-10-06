@@ -139,7 +139,7 @@ func TestAcceptedQuestionRevealsItsDurableAnswerInPlace(t *testing.T) {
 		t.Fatal(applyErr)
 	}
 	if drawn := drawRoot(t, view, 48, 6); strings.Contains(drawn, question.Title) {
-		t.Fatalf("pending question leaked an interaction-looking transcript row:\n%s", drawn)
+		t.Fatalf("pending question leaked an interrupt-looking transcript row:\n%s", drawn)
 	}
 	if view.content.Finished(view.content.FirstBlock()) {
 		t.Fatal("pending question was eligible for retention before its answer settled")
@@ -452,7 +452,7 @@ func TestDetailFreeCompletedToolIsNotAnnouncedExpandable(t *testing.T) {
 		t.Fatalf("selection announcement = %+v", selection)
 	}
 	if !view.Handle(input.Key{Code: input.Enter}) || block.Expanded() {
-		t.Fatal("detail-free tool expanded through keyboard interaction")
+		t.Fatal("detail-free tool expanded through keyboard interrupt")
 	}
 }
 

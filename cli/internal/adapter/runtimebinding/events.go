@@ -144,12 +144,12 @@ func (r runEventProjection) segmentFinished() (projectedRunEvent, error) {
 	contextTokens := *stream.ContextTokens
 	switch stream.Outcome.Type {
 	case protocol.SegmentInterrupt:
-		interactions, err := projectInteractions(stream.Outcome.Interrupts)
+		interrupts, err := projectInterrupts(stream.Outcome.Interrupts)
 		if err != nil {
 			return projectedRunEvent{}, fmt.Errorf("event %s: %w", r.source.EventID, err)
 		}
 		return includeRunEvent(conversation.RunInterrupted{
-			Interactions: interactions, Usage: usage, ContextTokens: contextTokens,
+			Interrupts: interrupts, Usage: usage, ContextTokens: contextTokens,
 		}), nil
 	case protocol.SegmentSuspended:
 		return includeRunEvent(conversation.RunSuspended{Usage: usage, ContextTokens: contextTokens}), nil

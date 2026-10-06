@@ -62,7 +62,7 @@ func TestReplacedApprovalFormCannotMutateTheCurrentDraft(t *testing.T) {
 		Content: &application.dialogs.approvalPane.preview, Scroll: &application.dialogs.approvalPane.scroll,
 		Theme: transcript.theme, Glyphs: transcript.glyphs,
 	}
-	application.dialogs.interactionReview = &interactionReview{}
+	application.dialogs.interruptReview = &interruptReview{}
 	application.dialogs.approval = &conversation.Approval{}
 	application.setApprovalForm(approvalAllowOnce)
 	retired := application.dialogs.approvalDraft
@@ -71,7 +71,7 @@ func TestReplacedApprovalFormCannotMutateTheCurrentDraft(t *testing.T) {
 	surface := grid.NewSurface(80, 20)
 	root.Draw(surface.View())
 
-	application.dialogs.interactionReview = &interactionReview{}
+	application.dialogs.interruptReview = &interruptReview{}
 	application.dialogs.approval = &conversation.Approval{}
 	application.dialogs.approvalDraft = &approvalDecisionDraft{}
 	application.setApprovalForm(approvalAllowOnce)

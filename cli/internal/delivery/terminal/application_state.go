@@ -77,7 +77,7 @@ type dialogState struct {
 	activeContextEditor *contextEditorSession
 	questionnaire       *questionnaire
 	questionDialog      *kit.Dialog
-	interactionReview   *interactionReview
+	interruptReview     *interruptReview
 	reviewDialog        *kit.Dialog
 	commandPicker       *picker[commandPaletteItem]
 	commandDialog       *presentationDialog

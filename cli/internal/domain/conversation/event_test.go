@@ -27,8 +27,8 @@ func TestRunEventEqualityUsesDomainValues(t *testing.T) {
 	event := RunEvent{
 		EventID: "event_1", RunID: "run_1", SegmentID: "segment_1", At: at,
 		Event: RunInterrupted{
-			Interactions: []Interaction{approval, question},
-			Usage:        Usage{InputTokens: 3, CostUSD: &cost, Duration: time.Second},
+			Interrupts: []Interrupt{approval, question},
+			Usage:      Usage{InputTokens: 3, CostUSD: &cost, Duration: time.Second},
 		},
 	}
 
@@ -40,18 +40,18 @@ func TestRunEventEqualityUsesDomainValues(t *testing.T) {
 
 	changed := event.Clone()
 	interrupted := changed.Event.(RunInterrupted)
-	changedApproval := interrupted.Interactions[0].(Approval)
+	changedApproval := interrupted.Interrupts[0].(Approval)
 	changedApproval.Tool.Output = "different"
-	interrupted.Interactions[0] = changedApproval
+	interrupted.Interrupts[0] = changedApproval
 	changed.Event = interrupted
 	if event.Equal(changed) {
 		t.Fatal("a nested tool projection change was ignored")
 	}
 	changed = event.Clone()
 	interrupted = changed.Event.(RunInterrupted)
-	changedQuestion := interrupted.Interactions[1].(Question)
+	changedQuestion := interrupted.Interrupts[1].(Question)
 	changedQuestion.Fields[0].Options[0].Description = "different"
-	interrupted.Interactions[1] = changedQuestion
+	interrupted.Interrupts[1] = changedQuestion
 	changed.Event = interrupted
 	if event.Equal(changed) {
 		t.Fatal("a nested question option change was ignored")

@@ -13,7 +13,7 @@ import (
 
 // questionBlock separates an open human decision from its durable transcript
 // fact. A pending Question occupies its stable transcript position without
-// drawing an interaction-looking prompt before the dialog owns input. Once the
+// drawing an interrupt-looking prompt before the dialog owns input. Once the
 // runtime accepts the answer, the same block becomes visible in place.
 type questionBlock struct {
 	theme    kit.Theme

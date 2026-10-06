@@ -285,18 +285,18 @@ func validateModelUsageProgress(label string, previous, next runtimeprotocol.Mod
 	}
 }
 
-// validateInteractionItem binds one pending interaction to the transcript block
+// validateInterruptItem binds one pending interrupt to the transcript block
 // the CLI folded for it. The two projections come from different reads, so this
 // relationship is established here and nowhere else.
-func validateInteractionItem(interaction Interaction, block Block) error {
-	itemID := InteractionItemID(interaction)
+func validateInterruptItem(interrupt Interrupt, block Block) error {
+	itemID := InterruptItemID(interrupt)
 	if block.ID != itemID {
-		return fmt.Errorf("interaction item %s resolved to block %s", itemID, block.ID)
+		return fmt.Errorf("interrupt item %s resolved to block %s", itemID, block.ID)
 	}
-	if runID := InteractionRunID(interaction); block.RunID != runID {
-		return fmt.Errorf("interaction item %s belongs to run %s, not %s", itemID, runID, block.RunID)
+	if runID := InterruptRunID(interrupt); block.RunID != runID {
+		return fmt.Errorf("interrupt item %s belongs to run %s, not %s", itemID, runID, block.RunID)
 	}
-	switch item := interaction.(type) {
+	switch item := interrupt.(type) {
 	case Approval:
 		if block.Kind != BlockTool || block.Status != BlockStatusRunning || block.Tool == nil {
 			return fmt.Errorf("approval item %s is not a running tool", itemID)
@@ -312,7 +312,7 @@ func validateInteractionItem(interaction Interaction, block Block) error {
 			return fmt.Errorf("question item %s differs from its question block", itemID)
 		}
 	default:
-		return fmt.Errorf("interaction item %s has unsupported type %T", itemID, interaction)
+		return fmt.Errorf("interrupt item %s has unsupported type %T", itemID, interrupt)
 	}
 	return nil
 }

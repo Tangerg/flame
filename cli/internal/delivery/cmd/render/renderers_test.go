@@ -116,7 +116,7 @@ func TestNDJSONCarriesSegmentIdentityAndInterruptSet(t *testing.T) {
 	renderer := NewNDJSON(&output)
 	events := []conversation.RunEvent{
 		testEvent("evt_start", conversation.SegmentStarted{Run: testRun()}),
-		testEvent("evt_wait", conversation.RunInterrupted{Usage: conversation.Usage{InputTokens: 42}, Interactions: []conversation.Interaction{
+		testEvent("evt_wait", conversation.RunInterrupted{Usage: conversation.Usage{InputTokens: 42}, Interrupts: []conversation.Interrupt{
 			testApproval("tool_1", "shell"),
 			conversation.Question{RunID: "run_1", ItemID: "question_1", Title: "choose", Fields: []conversation.QuestionField{{Prompt: "Target", Kind: conversation.QuestionSingle, Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}}}}},
 		}}),
@@ -140,15 +140,15 @@ func TestNDJSONCarriesSegmentIdentityAndInterruptSet(t *testing.T) {
 	if frame["segmentId"] != "seg_1" || frame["eventId"] != "evt_wait" {
 		t.Fatalf("event identity = %+v", frame)
 	}
-	interactions, ok := frame["interactions"].([]any)
-	if !ok || len(interactions) != 2 {
-		t.Fatalf("interactions = %#v", frame["interactions"])
+	interrupts, ok := frame["interrupts"].([]any)
+	if !ok || len(interrupts) != 2 {
+		t.Fatalf("interrupts = %#v", frame["interrupts"])
 	}
-	approval := interactions[0].(map[string]any)
+	approval := interrupts[0].(map[string]any)
 	tool := approval["tool"].(map[string]any)
 	arguments := tool["arguments"].(map[string]any)
 	if approval["rememberable"] != true || tool["name"] != "shell" || arguments["command"] != "go test ./..." {
-		t.Fatalf("approval interaction = %#v", approval)
+		t.Fatalf("approval interrupt = %#v", approval)
 	}
 	usage, ok := frame["usage"].(map[string]any)
 	if !ok || usage["inputTokens"] != float64(42) {
@@ -524,7 +524,7 @@ func TestResultJSONClearsPriorInterruptWhenANewSegmentStarts(t *testing.T) {
 	resumed.ActiveSegmentID = "seg_2"
 	for _, event := range []conversation.RunEvent{
 		testEvent("start", conversation.SegmentStarted{Run: testRun()}),
-		testEvent("wait", conversation.RunInterrupted{Interactions: []conversation.Interaction{question}}),
+		testEvent("wait", conversation.RunInterrupted{Interrupts: []conversation.Interrupt{question}}),
 		{EventID: "resume", RunID: "run_1", SegmentID: "seg_2", Event: conversation.SegmentStarted{Run: resumed}},
 	} {
 		if err := renderer.Render(event); err != nil {
@@ -538,7 +538,7 @@ func TestResultJSONClearsPriorInterruptWhenANewSegmentStarts(t *testing.T) {
 	if err := json.Unmarshal(output.Bytes(), &result); err != nil {
 		t.Fatal(err)
 	}
-	if result["status"] != "running" || result["interactions"] != nil {
+	if result["status"] != "running" || result["interrupts"] != nil {
 		t.Fatalf("resumed result = %+v", result)
 	}
 }

@@ -310,12 +310,12 @@ func (a *app) installSessionMetadata(session conversation.Session) {
 	a.dialogs.sessionCenter.Upsert(session)
 }
 
-// dismissInteractionProjection drops only the obsolete terminal-side answer
-// draft. It never answers or cancels the runtime interaction.
-func (a *app) dismissInteractionProjection() {
+// dismissInterruptProjection drops only the obsolete terminal-side answer
+// draft. It never answers or cancels the runtime interrupt.
+func (a *app) dismissInterruptProjection() {
 	a.clearApprovalProjection()
 	a.dialogs.questionnaire = nil
-	a.dialogs.interactionReview = nil
+	a.dialogs.interruptReview = nil
 	if a.dialogs.approvalDialog != nil {
 		a.dialogs.approvalDialog.Dismiss()
 	}

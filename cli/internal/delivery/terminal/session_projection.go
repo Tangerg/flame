@@ -36,7 +36,7 @@ func presentSnapshot(view *transcriptView, snapshot conversation.SessionSnapshot
 			return fmt.Errorf("restore transcript block %s: %w", block.ID, err)
 		}
 	}
-	if err := view.reconcilePendingQuestions(snapshot.Interactions); err != nil {
+	if err := view.reconcilePendingQuestions(snapshot.Interrupts); err != nil {
 		return fmt.Errorf("restore pending questions: %w", err)
 	}
 	view.SealToolGroups()
@@ -127,8 +127,8 @@ func (a *app) reconcileRunSnapshot(snapshot conversation.SessionSnapshot, stream
 		a.showRecoveredRunStatus("reconnected", active)
 	case conversation.Waiting:
 		a.execution.following = false
-		if a.dialogs.interactionReview == nil {
-			a.openInteractions(projection.conversation.Interactions())
+		if a.dialogs.interruptReview == nil {
+			a.openInterrupts(projection.conversation.Interrupts())
 		}
 		a.observeCurrentRunStatus()
 		a.status.note("waiting for your answers")
@@ -159,8 +159,8 @@ func (a *app) restoreActivity(snapshot conversation.SessionSnapshot) {
 	a.prompt.SetBusy(a.execution.conversation.Busy())
 	switch a.execution.conversation.Phase() {
 	case conversation.Waiting:
-		if a.dialogs.interactionReview == nil {
-			a.openInteractions(a.execution.conversation.Interactions())
+		if a.dialogs.interruptReview == nil {
+			a.openInterrupts(a.execution.conversation.Interrupts())
 		}
 		a.observeCurrentRunStatus()
 		a.status.note("waiting for your answers")

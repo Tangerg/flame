@@ -120,8 +120,8 @@ func (t *Text) renderEvent(envelope conversation.RunEvent) {
 	case conversation.PlanChanged:
 		t.plan(event.Plan.State.Steps)
 	case conversation.RunInterrupted:
-		for _, interaction := range event.Interactions {
-			t.showInteraction(interaction)
+		for _, interrupt := range event.Interrupts {
+			t.showInterrupt(interrupt)
 		}
 		t.showUsage(event.Usage)
 	case conversation.RunSuspended:
@@ -208,7 +208,7 @@ func (t *Text) finish(b conversation.Block) {
 
 // Reconcile replaces missing streamed facts with an authoritative cold-read
 // projection after replay is no longer possible. Already rendered blocks and
-// interactions are not printed twice.
+// interrupts are not printed twice.
 func (t *Text) Reconcile(snapshot conversation.SessionSnapshot) error {
 	if t.err != nil {
 		return t.err
@@ -237,8 +237,8 @@ func (t *Text) Reconcile(snapshot conversation.SessionSnapshot) error {
 		}
 	}
 	if target.Status == protocol.RunStatusWaiting {
-		for _, interaction := range snapshot.Interactions {
-			t.showInteraction(interaction)
+		for _, interrupt := range snapshot.Interrupts {
+			t.showInterrupt(interrupt)
 		}
 		t.showUsage(target.Usage)
 	}
@@ -260,13 +260,13 @@ func (t *Text) resume(block conversation.Block) {
 	t.begin(block)
 }
 
-func (t *Text) showInteraction(interaction conversation.Interaction) {
-	key := streamBlockKey(conversation.InteractionRunID(interaction), conversation.InteractionItemID(interaction))
+func (t *Text) showInterrupt(interrupt conversation.Interrupt) {
+	key := streamBlockKey(conversation.InterruptRunID(interrupt), conversation.InterruptItemID(interrupt))
 	if _, duplicate := t.shown[key]; duplicate {
 		return
 	}
 	t.shown[key] = struct{}{}
-	t.interrupted(interaction)
+	t.interrupted(interrupt)
 }
 
 func (t *Text) completedText(block conversation.Block) string {
@@ -475,9 +475,9 @@ func (t *Text) plan(items []protocol.PlanStep) {
 	}
 }
 
-func (t *Text) interrupted(interaction conversation.Interaction) {
+func (t *Text) interrupted(interrupt conversation.Interrupt) {
 	t.blank()
-	switch item := interaction.(type) {
+	switch item := interrupt.(type) {
 	case conversation.Approval:
 		t.line("? " + item.Title)
 		if item.Detail != "" {

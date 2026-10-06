@@ -71,9 +71,9 @@ func validateRunEventOwnership(envelope conversation.RunEvent) error {
 			return fmt.Errorf("block %s belongs to run %s, not %s", event.Block.ID, event.Block.RunID, envelope.RunID)
 		}
 	case conversation.RunInterrupted:
-		for _, interaction := range event.Interactions {
-			if conversation.InteractionRunID(interaction) != envelope.RunID {
-				return fmt.Errorf("interrupt for run %s carries an interaction from run %s", envelope.RunID, conversation.InteractionRunID(interaction))
+		for _, interrupt := range event.Interrupts {
+			if conversation.InterruptRunID(interrupt) != envelope.RunID {
+				return fmt.Errorf("interrupt for run %s carries an interrupt from run %s", envelope.RunID, conversation.InterruptRunID(interrupt))
 			}
 		}
 	}

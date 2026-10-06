@@ -171,10 +171,10 @@ type commandResult struct {
 		Status string `json:"status"`
 		Error  string `json:"error"`
 	} `json:"outcome"`
-	Interactions []struct {
+	Interrupts []struct {
 		Kind  string `json:"kind"`
 		Title string `json:"title"`
-	} `json:"interactions"`
+	} `json:"interrupts"`
 }
 
 func decodeResult(t *testing.T, output string) commandResult {
@@ -377,7 +377,7 @@ func TestRunRejectsConflictingReplay(t *testing.T) {
 func TestRunQuestionNamesTheResumableSession(t *testing.T) {
 	rt := instantRuntime()
 	rt.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{Interactions: []conversation.Interaction{conversation.Question{
+		return runtimefixture.Script{Interrupts: []conversation.Interrupt{conversation.Question{
 			ItemID: "question_1", Title: "Choose a strategy",
 			Fields: []conversation.QuestionField{{Prompt: "Strategy", Kind: conversation.QuestionText}},
 		}}}
@@ -388,7 +388,7 @@ func TestRunQuestionNamesTheResumableSession(t *testing.T) {
 		t.Fatalf("question error = %v", err)
 	}
 	result := decodeResult(t, out)
-	if result.Status != "waiting" || len(result.Interactions) != 1 || result.Interactions[0].Kind != "question" || result.Interactions[0].Title != "Choose a strategy" {
+	if result.Status != "waiting" || len(result.Interrupts) != 1 || result.Interrupts[0].Kind != "question" || result.Interrupts[0].Title != "Choose a strategy" {
 		t.Fatalf("interrupted result = %+v", result)
 	}
 	snapshot, getErr := rt.GetSession(t.Context(), id)
@@ -399,8 +399,8 @@ func TestRunQuestionNamesTheResumableSession(t *testing.T) {
 	if !activeOK || active.Status != protocol.RunStatusWaiting {
 		t.Fatalf("question did not leave a resumable waiting run: %+v", snapshot.Runs)
 	}
-	if len(snapshot.Interactions) != 1 || conversation.InteractionItemID(snapshot.Interactions[0]) == "" {
-		t.Fatalf("question waiting set = %+v, want one pending interaction", snapshot.Interactions)
+	if len(snapshot.Interrupts) != 1 || conversation.InterruptItemID(snapshot.Interrupts[0]) == "" {
+		t.Fatalf("question waiting set = %+v, want one pending interrupt", snapshot.Interrupts)
 	}
 }
 
@@ -1029,10 +1029,10 @@ func followApprovalInterrupt(t *testing.T, stream conversation.SegmentStream) co
 			t.Fatal(streamErr)
 		}
 		if parked, ok := event.Event.(conversation.RunInterrupted); ok {
-			if len(parked.Interactions) != 1 {
-				t.Fatalf("pending interactions = %+v, want one", parked.Interactions)
+			if len(parked.Interrupts) != 1 {
+				t.Fatalf("pending interrupts = %+v, want one", parked.Interrupts)
 			}
-			interrupted, _ = parked.Interactions[0].(conversation.Approval)
+			interrupted, _ = parked.Interrupts[0].(conversation.Approval)
 		}
 	}
 	if interrupted.ItemID == "" {

@@ -164,7 +164,7 @@ func TestMockParkRevisionExhaustionDoesNotPublishAPartialWaitingSet(t *testing.T
 	runtime.Instant = true
 	runtime.Script = func(string) Script {
 		return Script{
-			Interactions: []conversation.Interaction{approvalFixture("approval", "approve")},
+			Interrupts: []conversation.Interrupt{approvalFixture("approval", "approve")},
 			Continue: func([]conversation.InterruptAnswer) []Step {
 				return []Step{eventStep(0, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}
 			},
@@ -187,9 +187,9 @@ func TestMockParkRevisionExhaustionDoesNotPublishAPartialWaitingSet(t *testing.T
 	}
 	run := runtime.runs[opened.RunID]
 	if state.meta.Status != protocol.SessionStatusRunning || run.status != protocol.RunStatusRunning ||
-		len(run.interactions) != 0 || len(run.answers) != 0 || len(state.items) != 1 {
-		t.Fatalf("park exhaustion published partial waiting state: meta %+v run %+v interactions %d answers %d items %d",
-			state.meta, projectRun(run), len(run.interactions), len(run.answers), len(state.items))
+		len(run.interrupts) != 0 || len(run.answers) != 0 || len(state.items) != 1 {
+		t.Fatalf("park exhaustion published partial waiting state: meta %+v run %+v interrupts %d answers %d items %d",
+			state.meta, projectRun(run), len(run.interrupts), len(run.answers), len(state.items))
 	}
 }
 
@@ -275,7 +275,7 @@ func TestRuntimePreservesAuthoredMessageTextAcrossRunMutations(t *testing.T) {
 	runtime.Script = func(input string) Script {
 		scriptInput = input
 		return Script{
-			Interactions: []conversation.Interaction{approvalFixture("approval", "Continue")},
+			Interrupts: []conversation.Interrupt{approvalFixture("approval", "Continue")},
 			Continue: func([]conversation.InterruptAnswer) []Step {
 				return []Step{eventStep(time.Hour, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}
 			},
@@ -294,14 +294,14 @@ func TestRuntimePreservesAuthoredMessageTextAcrossRunMutations(t *testing.T) {
 		t.Fatalf("start text = script %q, events %q", scriptInput, authoredUserTexts(openingEvents))
 	}
 	snapshot, err := runtime.GetSession(t.Context(), "ses_demo_1")
-	if err != nil || len(snapshot.Interactions) != 1 {
+	if err != nil || len(snapshot.Interrupts) != 1 {
 		t.Fatalf("waiting snapshot = %+v, %v", snapshot, err)
 	}
 
 	continued, err := runtime.ResumeRun(t.Context(), conversation.ResumeRun{
 		RunID: opened.RunID,
 		Answers: []conversation.InterruptAnswer{{
-			ItemID: conversation.InteractionItemID(snapshot.Interactions[0]),
+			ItemID: conversation.InterruptItemID(snapshot.Interrupts[0]),
 			Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove},
 		}},
 		Message: &prompt.Message{Text: resumeText},
@@ -347,9 +347,9 @@ func TestRuntimeStartResumeAndColdRestore(t *testing.T) {
 		t.Fatal(err)
 	}
 	opened, projection := startWaitingRun(t, runtime, session.ID)
-	interaction := requireWaitingProjection(t, runtime, session.ID, opened)
-	resumeApprovedRun(t, runtime, opened, projection, interaction)
-	requireCompletedColdProjection(t, runtime, session.ID, opened.RunID, interaction)
+	interrupt := requireWaitingProjection(t, runtime, session.ID, opened)
+	resumeApprovedRun(t, runtime, opened, projection, interrupt)
+	requireCompletedColdProjection(t, runtime, session.ID, opened.RunID, interrupt)
 }
 
 func TestMockResumeRevisionExhaustionIsAtomic(t *testing.T) {
@@ -357,7 +357,7 @@ func TestMockResumeRevisionExhaustionIsAtomic(t *testing.T) {
 	runtime.Instant = true
 	runtime.Script = func(string) Script {
 		return Script{
-			Interactions: []conversation.Interaction{approvalFixture("approval", "approve")},
+			Interrupts: []conversation.Interrupt{approvalFixture("approval", "approve")},
 			Continue: func([]conversation.InterruptAnswer) []Step {
 				return []Step{eventStep(0, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}
 			},
@@ -373,7 +373,7 @@ func TestMockResumeRevisionExhaustionIsAtomic(t *testing.T) {
 	}
 	projection := conversation.New()
 	drain(t, opened, projection)
-	interaction := projection.Interactions()[0]
+	interrupt := projection.Interrupts()[0]
 	state := runtime.sessions[session.ID]
 	state.meta.Revision = exactint.Maximum
 	run := runtime.runs[opened.RunID]
@@ -385,7 +385,7 @@ func TestMockResumeRevisionExhaustionIsAtomic(t *testing.T) {
 	originalRules := len(runtime.rules)
 
 	_, err = runtime.ResumeRun(t.Context(), conversation.ResumeRun{RunID: opened.RunID, Answers: []conversation.InterruptAnswer{{
-		ItemID: conversation.InteractionItemID(interaction), Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove},
+		ItemID: conversation.InterruptItemID(interrupt), Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove},
 	}}})
 	if !errors.Is(err, errSessionRevisionExhausted) {
 		t.Fatalf("resume after revision exhaustion error = %v", err)
@@ -465,39 +465,39 @@ func startWaitingRun(t *testing.T, runtime *Runtime, sessionID string) (conversa
 	}
 	projection := conversation.New()
 	drain(t, opened, projection)
-	if projection.Phase() != conversation.Waiting || len(projection.Interactions()) != 1 {
-		t.Fatalf("after first segment: phase %v, interactions %d", projection.Phase(), len(projection.Interactions()))
+	if projection.Phase() != conversation.Waiting || len(projection.Interrupts()) != 1 {
+		t.Fatalf("after first segment: phase %v, interrupts %d", projection.Phase(), len(projection.Interrupts()))
 	}
 	return opened, projection
 }
 
-func requireWaitingProjection(t *testing.T, runtime *Runtime, sessionID string, opened conversation.SegmentStream) conversation.Interaction {
+func requireWaitingProjection(t *testing.T, runtime *Runtime, sessionID string, opened conversation.SegmentStream) conversation.Interrupt {
 	t.Helper()
 	waiting, err := runtime.GetSession(t.Context(), sessionID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(waiting.Interactions) != 1 {
-		t.Fatalf("waiting interactions = %d, want 1", len(waiting.Interactions))
+	if len(waiting.Interrupts) != 1 {
+		t.Fatalf("waiting interrupts = %d, want 1", len(waiting.Interrupts))
 	}
 	waitingRun, ok := waiting.LatestRun()
 	if !ok {
 		t.Fatal("waiting snapshot has no run")
 	}
-	interaction := waiting.Interactions[0]
-	approvalItem, ok := snapshotBlock(waiting, opened.RunID, conversation.InteractionItemID(interaction))
+	interrupt := waiting.Interrupts[0]
+	approvalItem, ok := snapshotBlock(waiting, opened.RunID, conversation.InterruptItemID(interrupt))
 	if !ok || approvalItem.Kind != conversation.BlockTool || approvalItem.Status != conversation.BlockStatusRunning || waitingRun.Usage.InputTokens == 0 {
 		t.Fatalf("waiting approval projection = item %+v, usage %+v", approvalItem, waitingRun.Usage)
 	}
-	return interaction
+	return interrupt
 }
 
-func resumeApprovedRun(t *testing.T, runtime *Runtime, opened conversation.SegmentStream, projection *conversation.Conversation, interaction conversation.Interaction) {
+func resumeApprovedRun(t *testing.T, runtime *Runtime, opened conversation.SegmentStream, projection *conversation.Conversation, interrupt conversation.Interrupt) {
 	t.Helper()
 	continued, err := runtime.ResumeRun(t.Context(), conversation.ResumeRun{
 		RunID: opened.RunID,
 		Answers: []conversation.InterruptAnswer{{
-			ItemID: conversation.InteractionItemID(interaction),
+			ItemID: conversation.InterruptItemID(interrupt),
 			Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove, Remember: protocol.RememberProject},
 		}},
 	})
@@ -513,20 +513,20 @@ func resumeApprovedRun(t *testing.T, runtime *Runtime, opened conversation.Segme
 	}
 }
 
-func requireCompletedColdProjection(t *testing.T, runtime *Runtime, sessionID, runID string, interaction conversation.Interaction) {
+func requireCompletedColdProjection(t *testing.T, runtime *Runtime, sessionID, runID string, interrupt conversation.Interrupt) {
 	t.Helper()
 	snapshot, err := runtime.GetSession(t.Context(), sessionID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, active := snapshot.ActiveRun(); active || len(snapshot.Interactions) != 0 || len(snapshot.Transcript) < 4 {
-		t.Fatalf("snapshot = runs %+v, interactions %d, transcript %d", snapshot.Runs, len(snapshot.Interactions), len(snapshot.Transcript))
+	if _, active := snapshot.ActiveRun(); active || len(snapshot.Interrupts) != 0 || len(snapshot.Transcript) < 4 {
+		t.Fatalf("snapshot = runs %+v, interrupts %d, transcript %d", snapshot.Runs, len(snapshot.Interrupts), len(snapshot.Transcript))
 	}
 	_, ok := snapshot.LatestRun()
 	if !ok {
 		t.Fatal("latest run is missing")
 	}
-	approvalItem, ok := snapshotBlock(snapshot, runID, conversation.InteractionItemID(interaction))
+	approvalItem, ok := snapshotBlock(snapshot, runID, conversation.InterruptItemID(interrupt))
 	if !ok || approvalItem.Status != conversation.BlockStatusCompleted || approvalItem.Tool.Status != conversation.ToolOK {
 		t.Fatalf("completed approval item = %+v", approvalItem)
 	}
@@ -784,7 +784,7 @@ func TestScriptContinuationReceivesFixtureLocalItemIDs(t *testing.T) {
 	var received string
 	runtime.Script = func(string) Script {
 		return Script{
-			Interactions: []conversation.Interaction{approvalFixture("approval", "approve")},
+			Interrupts: []conversation.Interrupt{approvalFixture("approval", "approve")},
 			Continue: func(answers []conversation.InterruptAnswer) []Step {
 				received = answers[0].ItemID
 				return []Step{eventStep(0, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}
@@ -798,9 +798,9 @@ func TestScriptContinuationReceivesFixtureLocalItemIDs(t *testing.T) {
 	}
 	projection := conversation.New()
 	drain(t, opened, projection)
-	interaction := projection.Interactions()[0]
+	interrupt := projection.Interrupts()[0]
 	continued, err := runtime.ResumeRun(t.Context(), conversation.ResumeRun{RunID: opened.RunID, Answers: []conversation.InterruptAnswer{{
-		ItemID: conversation.InteractionItemID(interaction), Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove},
+		ItemID: conversation.InterruptItemID(interrupt), Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove},
 	}}})
 	if err != nil {
 		t.Fatal(err)
@@ -817,7 +817,7 @@ func TestApprovalArgumentOverrideBecomesTheCompletedToolProjection(t *testing.T)
 	original := []byte(`{"command":"rm generated.txt"}`)
 	runtime.Script = func(string) Script {
 		return Script{
-			Interactions: []conversation.Interaction{conversation.Approval{
+			Interrupts: []conversation.Interrupt{conversation.Approval{
 				ItemID: "approval", Title: "Run command",
 				Tool: &conversation.ToolCall{
 					Kind: conversation.ToolShell, Name: "shell", Status: conversation.ToolRunning, ArgumentsJSON: original,
@@ -838,14 +838,14 @@ func TestApprovalArgumentOverrideBecomesTheCompletedToolProjection(t *testing.T)
 	}
 	projection := conversation.New()
 	drain(t, opened, projection)
-	interaction := projection.Interactions()[0]
+	interrupt := projection.Interrupts()[0]
 	override, err := conversation.ParseToolArgumentOverride([]byte(`{"command":"echo safe"}`))
 	if err != nil {
 		t.Fatal(err)
 	}
 	continued, err := runtime.ResumeRun(t.Context(), conversation.ResumeRun{
 		RunID: opened.RunID, Answers: []conversation.InterruptAnswer{{
-			ItemID: conversation.InteractionItemID(interaction),
+			ItemID: conversation.InterruptItemID(interrupt),
 			Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove, ArgumentOverride: override},
 		}},
 	})
@@ -857,7 +857,7 @@ func TestApprovalArgumentOverrideBecomesTheCompletedToolProjection(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	completed, ok := snapshotBlock(snapshot, opened.RunID, conversation.InteractionItemID(interaction))
+	completed, ok := snapshotBlock(snapshot, opened.RunID, conversation.InterruptItemID(interrupt))
 	if !ok || completed.Tool == nil || string(completed.Tool.ArgumentsJSON) != `{"command":"echo safe"}` {
 		t.Fatalf("completed edited tool = %+v", completed)
 	}
@@ -891,7 +891,7 @@ func TestRememberedRulesRemoveOnlyMatchedApprovalsFromThePendingSet(t *testing.T
 	var continuedWith []conversation.InterruptAnswer
 	runtime.Script = func(string) Script {
 		return Script{
-			Interactions: []conversation.Interaction{
+			Interrupts: []conversation.Interrupt{
 				func() conversation.Approval {
 					approval := approvalFixture("approval", "run tests")
 					approval.RuleHint, approval.Rememberable = "shell:go test ./...", true
@@ -912,13 +912,13 @@ func TestRememberedRulesRemoveOnlyMatchedApprovalsFromThePendingSet(t *testing.T
 	}
 	projection := conversation.New()
 	drain(t, opened, projection)
-	pending := projection.Interactions()
+	pending := projection.Interrupts()
 	if len(pending) != 1 {
-		t.Fatalf("pending interactions = %+v, want only the unmatched question", pending)
+		t.Fatalf("pending interrupts = %+v, want only the unmatched question", pending)
 	}
 	question, ok := pending[0].(conversation.Question)
 	if !ok {
-		t.Fatalf("pending interaction = %T, want question", pending[0])
+		t.Fatalf("pending interrupt = %T, want question", pending[0])
 	}
 	waiting, err := runtime.GetSession(t.Context(), session.ID)
 	if err != nil {
