@@ -94,7 +94,7 @@ func (scope fileSelection) list(ctx context.Context, opts workspaceapp.FileListO
 	scope.handle = rootHandle
 	if opts.Glob != "" {
 		if _, err := matchGlob(opts.Glob, ""); err != nil {
-			return nil, fmt.Errorf("%w %q: %v", ErrInvalidGlob, opts.Glob, err)
+			return nil, fmt.Errorf("%w %q: %w", ErrInvalidGlob, opts.Glob, err)
 		}
 	}
 	for _, part := range strings.Split(scope.physical, "/") {
@@ -381,7 +381,7 @@ func recursiveFiles(scope fileSelection, files []string, glob string) ([]workspa
 			}
 			matched, err := matchGlob(glob, candidate)
 			if err != nil {
-				return nil, fmt.Errorf("%w %q: %v", ErrInvalidGlob, glob, err)
+				return nil, fmt.Errorf("%w %q: %w", ErrInvalidGlob, glob, err)
 			}
 			if !matched {
 				continue

@@ -146,7 +146,7 @@ func newModelContextCompaction(
 	}
 	if err := resourceid.ValidateSession(input.SessionID); err != nil {
 		return ModelContextCompaction{}, fmt.Errorf(
-			"%w: owning %v",
+			"%w: owning %w",
 			errInvalidModelContextCompaction,
 			err,
 		)
