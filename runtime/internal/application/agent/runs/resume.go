@@ -132,19 +132,16 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 		return StartResult{}, fmt.Errorf("runs: bind Tool approval continuation: %w", bindToolApprovalResolutionsErr)
 	}
 	events, err := c.openSegment(ctx, segmentSpec{
-		RunID:             cmd.RunID,
-		SegmentID:         segmentID,
-		SessionID:         pending.SessionID,
-		WorkspaceCWD:      sess.Workspace().Path(),
-		Isolated:          sess.Isolated(),
-		ExecutorID:        ref.ExecutorID,
-		ModelSelection:    root.ModelSelection(),
-		GoalIncarnationID: root.GoalIncarnationID(),
-		CreatedAt:         root.CreatedAt(),
-		Input:             cmd.Input,
-		Continuation:      continuation,
-		admission:         &runAdmission,
-		DetachActivation:  true,
+		RunID:            cmd.RunID,
+		SegmentID:        segmentID,
+		SessionID:        pending.SessionID,
+		WorkspaceCWD:     sess.Workspace().Path(),
+		Isolated:         sess.Isolated(),
+		ExecutorID:       ref.ExecutorID,
+		Input:            cmd.Input,
+		Continuation:     continuation,
+		admission:        &runAdmission,
+		DetachActivation: true,
 		BeginExecution: func(beginCtx context.Context) error {
 			return c.continuation.BeginContinuation(
 				beginCtx, ref, claimed.Answers, committedInput, root.Capabilities().InterruptKinds,

@@ -29,8 +29,10 @@ type segmentSpec struct {
 	// WorkspaceCWD. Anything this layer reports against the workspace has to
 	// account for it: the project directory does not change while such a Run
 	// executes.
-	Isolated           bool
-	ExecutorID         string
+	Isolated   bool
+	ExecutorID string
+	// The admission facts below describe a fresh root only. A resumed Segment
+	// reads them from the parked Runs in Continuation, which own them.
 	ModelSelection     modelref.Selection
 	GoalIncarnationID  string
 	InitialSession     *session.Session
@@ -68,19 +70,4 @@ type segmentSpec struct {
 
 func (s segmentSpec) executorRef() ExecutorRef {
 	return ExecutorRef{SessionID: s.SessionID, ExecutorID: s.ExecutorID}
-}
-
-func (s segmentSpec) priorMetrics() run.Metrics {
-	if s.Continuation == nil {
-		return run.Metrics{}
-	}
-	root, _ := s.Continuation.run(s.Continuation.rootRunID)
-	return root.Metrics()
-}
-
-func (s segmentSpec) effectiveCapabilities() run.Capabilities {
-	if s.Continuation == nil {
-		return s.Capabilities
-	}
-	return s.Continuation.capabilities()
 }

@@ -377,24 +377,17 @@ func (c *Coordinator) resumeAfterWaitingChildCancellation(
 	change WaitingSubtreeChange,
 	runAdmission *ownership.RunAdmission,
 ) (CancelResult, error) {
-	root, ok := transformation.continuation.run(transformation.continuation.rootRunID)
-	if !ok {
-		return CancelResult{}, errors.New("runs: waiting child cancellation continuation has no root Run")
-	}
 	segmentID := c.newSegmentID()
 	var committed WaitingSubtreeCancellationResult
 	events, err := c.openSegment(ctx, segmentSpec{
-		RunID:             plan.root.run.ID(),
-		SegmentID:         segmentID,
-		SessionID:         plan.pending.SessionID,
-		WorkspaceCWD:      sess.Workspace().Path(),
-		Isolated:          sess.Isolated(),
-		ExecutorID:        plan.executor.ExecutorID,
-		ModelSelection:    root.ModelSelection(),
-		GoalIncarnationID: transformation.continuation.goalIncarnationID(),
-		CreatedAt:         root.CreatedAt(),
-		Continuation:      transformation.continuation,
-		admission:         runAdmission,
+		RunID:        plan.root.run.ID(),
+		SegmentID:    segmentID,
+		SessionID:    plan.pending.SessionID,
+		WorkspaceCWD: sess.Workspace().Path(),
+		Isolated:     sess.Isolated(),
+		ExecutorID:   plan.executor.ExecutorID,
+		Continuation: transformation.continuation,
+		admission:    runAdmission,
 		CommitOpening: func(commitCtx context.Context, opening OpeningCommit) error {
 			_, admitting := opening.Admission()
 			resume, resuming := opening.Resume()

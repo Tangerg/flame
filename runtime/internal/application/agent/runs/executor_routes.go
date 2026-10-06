@@ -60,8 +60,7 @@ func (c *Coordinator) openingRoutes(
 		GoalIncarnationID: spec.GoalIncarnationID,
 		CreatedAt:         spec.CreatedAt, UserInput: spec.Input,
 		ConversationInput: spec.ConversationInput, ModelOnlyInput: spec.ModelOnlyInput,
-		Metrics:      spec.priorMetrics(),
-		Capabilities: spec.effectiveCapabilities(),
+		Capabilities: spec.Capabilities,
 		Now:          c.publications.nowUTC, CancelReason: cancellationReason(cancelReason, spec.RunID),
 	})
 	root := &executorRoute{
@@ -69,7 +68,7 @@ func (c *Coordinator) openingRoutes(
 		segmentID:      spec.SegmentID,
 		rootRunID:      spec.RunID,
 		modelSelection: spec.ModelSelection,
-		capabilities:   spec.effectiveCapabilities(),
+		capabilities:   spec.Capabilities,
 		reducer:        rootReducer,
 	}
 	return &executorRoutes{
