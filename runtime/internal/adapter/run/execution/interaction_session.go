@@ -13,7 +13,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	agent "github.com/Tangerg/scope/agent"
@@ -525,7 +524,7 @@ func (i *interactionSession) stageContinuation(checkpoint runs.ExecutorCheckpoin
 	return nil
 }
 
-func (i *interactionSession) beginContinuation(allowedInterrupts []interrupt.Kind) error {
+func (i *interactionSession) beginContinuation() error {
 	i.state.mu.Lock()
 	defer i.state.mu.Unlock()
 	if i.state.finished || i.state.process == nil {
@@ -533,9 +532,6 @@ func (i *interactionSession) beginContinuation(allowedInterrupts []interrupt.Kin
 	}
 	if i.state.boundary != interactionBoundaryContinuationStaged || !i.state.observerWasAttached {
 		return errors.New("execution: Interaction continuation was not staged and observed")
-	}
-	if !slices.Equal(i.start.InterruptKinds, allowedInterrupts) {
-		return errors.New("execution: continuation capabilities differ from the staged Interaction")
 	}
 	return nil
 }

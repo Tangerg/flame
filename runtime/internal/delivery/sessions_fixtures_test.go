@@ -552,7 +552,7 @@ func (executionStub) StageContinuation(_ context.Context, continuation runs.Wait
 	return runs.ExecutorRef{SessionID: continuation.SessionID, ExecutorID: continuation.ExecutorID}, nil
 }
 
-func (executionStub) BeginContinuation(context.Context, runs.ExecutorRef, []runs.InterruptAnswer, *runs.CommittedUserInput, []interrupt.Kind) error {
+func (executionStub) BeginContinuation(context.Context, runs.ExecutorRef, []runs.InterruptAnswer, *runs.CommittedUserInput) error {
 	return nil
 }
 func (executionStub) Release(context.Context, runs.ExecutorRef) error { return nil }
@@ -601,9 +601,8 @@ func (s stubRuntime) BeginContinuation(
 	ref runs.ExecutorRef,
 	answers []runs.InterruptAnswer,
 	input *runs.CommittedUserInput,
-	allowed []interrupt.Kind,
 ) error {
-	return s.executionController().BeginContinuation(ctx, ref, answers, input, allowed)
+	return s.executionController().BeginContinuation(ctx, ref, answers, input)
 }
 
 func (s stubRuntime) ValidateRootStart(req runs.RootExecutionStart) error {

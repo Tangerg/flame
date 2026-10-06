@@ -137,7 +137,7 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 		DetachActivation: true,
 		BeginExecution: func(beginCtx context.Context) error {
 			return c.continuation.BeginContinuation(
-				beginCtx, ref, answers, committedInput, root.Capabilities().InterruptKinds,
+				beginCtx, ref, answers, committedInput,
 			)
 		},
 	})

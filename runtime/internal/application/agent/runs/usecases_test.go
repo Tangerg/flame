@@ -289,7 +289,6 @@ func (f *fakeExecutionPorts) BeginContinuation(
 	_ ExecutorRef,
 	_ []InterruptAnswer,
 	input *CommittedUserInput,
-	_ []interrupt.Kind,
 ) error {
 	if input != nil {
 		f.continuationInput = &CommittedUserInput{

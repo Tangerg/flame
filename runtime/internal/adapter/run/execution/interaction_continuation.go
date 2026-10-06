@@ -13,7 +13,6 @@ import (
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	agent "github.com/Tangerg/scope/agent"
 )
@@ -27,13 +26,12 @@ func (i *InteractionExecutor) BeginContinuation(
 	ref runs.ExecutorRef,
 	answers []runs.InterruptAnswer,
 	input *runs.CommittedUserInput,
-	allowedInterrupts []interrupt.Kind,
 ) error {
 	session, err := i.session(ref)
 	if err != nil {
 		return err
 	}
-	if beginContinuationErr := session.beginContinuation(allowedInterrupts); beginContinuationErr != nil {
+	if beginContinuationErr := session.beginContinuation(); beginContinuationErr != nil {
 		return beginContinuationErr
 	}
 	paused, err := session.pausedProcessIDs()

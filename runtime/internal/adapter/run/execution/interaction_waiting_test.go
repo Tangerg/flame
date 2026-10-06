@@ -130,18 +130,13 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 		RequestID:  binding.RequestID,
 		Resolution: interrupt.Resolution{Answers: [][]string{{"chosen"}}},
 	}}
-	if err := executor.BeginContinuation(
-		t.Context(), restored, answers, nil, []interrupt.Kind{interrupt.Approval},
-	); err == nil {
-		t.Fatal("BeginContinuation accepted capabilities that differ from staging")
-	}
 	committedInput := &runs.CommittedUserInput{
 		ItemID: "item_followup",
 		Content: []transcript.ContentBlock{{
 			Kind: transcript.TextContent, Text: "also include edge cases",
 		}},
 	}
-	if err := executor.BeginContinuation(t.Context(), restored, answers, committedInput, []interrupt.Kind{interrupt.Question}); err != nil {
+	if err := executor.BeginContinuation(t.Context(), restored, answers, committedInput); err != nil {
 		t.Fatal(err)
 	}
 	events := <-resumedEvents
@@ -241,7 +236,7 @@ func TestInteractionExecutorRestoresRuntimeAskUserTool(t *testing.T) {
 		InterruptItemID: "item_ask_user", MemberID: binding.MemberID,
 		RequestID:  binding.RequestID,
 		Resolution: interrupt.Resolution{Answers: [][]string{{"chosen"}}},
-	}}, nil, []interrupt.Kind{interrupt.Question}); err != nil {
+	}}, nil); err != nil {
 		t.Fatal(err)
 	}
 	observed := <-events
@@ -317,7 +312,7 @@ func TestInteractionExecutorRestoresInteractiveApprovalWithoutRepeatingPolicyOrH
 		InterruptItemID: "item_approval", MemberID: binding.MemberID,
 		RequestID:  binding.RequestID,
 		Resolution: interrupt.Resolution{Approved: true},
-	}}, nil, []interrupt.Kind{interrupt.Approval}); err != nil {
+	}}, nil); err != nil {
 		t.Fatal(err)
 	}
 	observed := <-events
@@ -382,7 +377,7 @@ func TestInteractionExecutorCancellationStopsApprovedInflightTool(t *testing.T) 
 	if err := executor.BeginContinuation(t.Context(), ref, []runs.InterruptAnswer{{
 		InterruptItemID: "item_approval", MemberID: binding.MemberID,
 		RequestID: binding.RequestID, Resolution: interrupt.Resolution{Approved: true},
-	}}, nil, []interrupt.Kind{interrupt.Approval}); err != nil {
+	}}, nil); err != nil {
 		t.Fatal(err)
 	}
 	select {
@@ -458,7 +453,7 @@ func TestInteractionExecutorCancellationStopsApprovedForegroundShell(t *testing.
 	if err := executor.BeginContinuation(t.Context(), ref, []runs.InterruptAnswer{{
 		InterruptItemID: "item_approval", MemberID: binding.MemberID,
 		RequestID: binding.RequestID, Resolution: interrupt.Resolution{Approved: true},
-	}}, nil, []interrupt.Kind{interrupt.Approval}); err != nil {
+	}}, nil); err != nil {
 		t.Fatal(err)
 	}
 	deadline := time.Now().Add(time.Second)
@@ -556,7 +551,7 @@ func TestInteractionExecutorPreservesDeferredAdvertisementAcrossWaitingRestore(t
 		InterruptItemID: "item_question", MemberID: binding.MemberID,
 		RequestID:  binding.RequestID,
 		Resolution: interrupt.Resolution{Answers: [][]string{{"yes"}}},
-	}}, nil, []interrupt.Kind{interrupt.Question}); err != nil {
+	}}, nil); err != nil {
 		t.Fatal(err)
 	}
 	observed := <-events

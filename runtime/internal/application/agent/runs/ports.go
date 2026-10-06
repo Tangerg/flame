@@ -108,7 +108,6 @@ type WaitingExecutionContinuer interface {
 		ref ExecutorRef,
 		answers []InterruptAnswer,
 		input *CommittedUserInput,
-		allowedInterrupts []interrupt.Kind,
 	) error
 }
 
