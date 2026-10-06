@@ -5,12 +5,10 @@ import (
 	"encoding/base64"
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
-	"errors"
 	"fmt"
 
 	"github.com/Tangerg/flame/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
-	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -153,10 +151,6 @@ func (r *Connection) ImportSession(ctx context.Context, request session.ImportRe
 	if err := protocol.ValidateWireTree(artifact); err != nil {
 		return conversation.Session{}, fmt.Errorf("import session: %w", err)
 	}
-	resolvedWorkspace, err := r.Resolve(ctx, workspace.ResolveRequest{Path: artifact.Session.Workspace.Path})
-	if err != nil {
-		return conversation.Session{}, fmt.Errorf("import session workspace: %w", err)
-	}
 	options := r.commandOptions()
 	response, err := r.sessions.ImportSession(ctx, protocol.ImportSessionRequest{Artifact: artifact}, options)
 	if err != nil {
@@ -165,50 +159,5 @@ func (r *Connection) ImportSession(ctx context.Context, request session.ImportRe
 	if response == nil || response.Session == nil {
 		return conversation.Session{}, runtimeContractViolation("import session returned an incomplete result")
 	}
-	projected, err := projectSessionResult("import session", artifact.Session.ID, response.Session, nil)
-	if err != nil {
-		return conversation.Session{}, err
-	}
-	if err := validateImportedSession(artifact.Session, resolvedWorkspace, projected); err != nil {
-		return conversation.Session{}, runtimeContractViolation("import session returned an invalid acknowledgement: %v", err)
-	}
-	return projected, nil
-}
-
-func validateImportedSession(archived protocol.ArtifactSession, resolvedWorkspace workspace.Workspace, result conversation.Session) error {
-	var problems []error
-	if result.Title != archived.Title {
-		problems = append(problems, fmt.Errorf("runtime returned title %q, want %q", result.Title, archived.Title))
-	}
-	if result.Workspace != resolvedWorkspace {
-		problems = append(problems, fmt.Errorf("runtime returned workspace %+v, want resolved workspace %+v", result.Workspace, resolvedWorkspace))
-	}
-	archivedModel := conversation.ModelRef{Provider: archived.Provider, Model: archived.Model}
-	resultModel := conversation.ModelRef{Provider: result.Provider, Model: result.Model}
-	if resultModel != archivedModel {
-		problems = append(problems, fmt.Errorf("runtime returned model %q, want %q", resultModel, archivedModel))
-	}
-	if result.ReasoningEffort != archived.ReasoningEffort {
-		problems = append(problems, fmt.Errorf(
-			"runtime returned reasoning effort %q, want %q",
-			result.ReasoningEffort,
-			archived.ReasoningEffort,
-		))
-	}
-	if result.Favorite != archived.Favorite {
-		problems = append(problems, fmt.Errorf("runtime returned favorite %t, want %t", result.Favorite, archived.Favorite))
-	}
-	if !result.CreatedAt.Equal(archived.CreatedAt) {
-		problems = append(problems, fmt.Errorf("runtime returned created time %s, want %s", result.CreatedAt, archived.CreatedAt))
-	}
-	// A new import retains the archived update time. Importing over an existing
-	// identity records the restore commit in the target Runtime's revision space,
-	// so its update time may advance but must never move behind the archive.
-	if result.UpdatedAt.Before(archived.UpdatedAt) {
-		problems = append(problems, fmt.Errorf("runtime returned updated time %s before archived time %s", result.UpdatedAt, archived.UpdatedAt))
-	}
-	if result.Status != protocol.SessionStatusIdle {
-		problems = append(problems, fmt.Errorf("runtime returned status %q, want %q", result.Status, protocol.SessionStatusIdle))
-	}
-	return errors.Join(problems...)
+	return projectSessionResult("import session", artifact.Session.ID, response.Session, nil)
 }

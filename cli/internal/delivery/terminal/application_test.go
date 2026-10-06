@@ -458,18 +458,6 @@ func (b *blockingCloseCancellationRuntime) cancelAttempts() []conversation.Cance
 	return slices.Clone(b.attempts)
 }
 
-type mismatchedSessionUpdateRuntime struct {
-	Runtime
-	returned conversation.Session
-}
-
-func (m *mismatchedSessionUpdateRuntime) UpdateSession(ctx context.Context, input conversation.UpdateSession) (conversation.Session, error) {
-	if _, err := m.Runtime.UpdateSession(ctx, input); err != nil {
-		return conversation.Session{}, err
-	}
-	return m.returned, nil
-}
-
 func (f *flakyCancellationRuntime) CancelRun(ctx context.Context, input conversation.CancelRun) (conversation.RunCancellation, error) {
 	f.attempts.Add(1)
 	for remaining := f.remaining.Load(); remaining > 0; remaining = f.remaining.Load() {
@@ -2771,32 +2759,6 @@ func TestSessionCenterPaginatesAndManagesSelectedSession(t *testing.T) {
 	}
 
 	host.Press(input.Esc)
-	host.Send(input.Key{Code: input.Character, Rune: 'c', Mods: input.Ctrl})
-	stop()
-}
-
-func TestSessionCenterRejectsAMismatchedUpdateProjection(t *testing.T) {
-	base := runtimefixture.New()
-	workspace := t.TempDir()
-	target, err := base.CreateSession(t.Context(), conversation.CreateSession{Title: "Update target", Workspace: workspace})
-	if err != nil {
-		t.Fatal(err)
-	}
-	returned, err := base.CreateSession(t.Context(), conversation.CreateSession{Title: "Wrong response", Workspace: workspace})
-	if err != nil {
-		t.Fatal(err)
-	}
-	backend := &mismatchedSessionUpdateRuntime{Runtime: base, returned: returned}
-	host, stop := runUIWithWorkspace(t, backend, workspace)
-	host.Shows(t, "Ask flame")
-	host.Send(input.Key{Code: input.Character, Rune: 'r', Mods: input.Ctrl})
-	host.Shows(t, "Sessions · Center")
-	host.Type(target.Title)
-	host.Shows(t, target.Title)
-
-	host.Send(input.Key{Code: input.Character, Rune: 'f', Mods: input.Alt})
-	host.Press(input.Esc)
-	host.Shows(t, "updating favorite failed: session update")
 	host.Send(input.Key{Code: input.Character, Rune: 'c', Mods: input.Ctrl})
 	stop()
 }

@@ -73,10 +73,9 @@ func TestAuthoringDocumentsUseTheUnifiedReaderPath(t *testing.T) {
 }
 
 type hookServiceStub struct {
-	mu          sync.Mutex
-	trusted     bool
-	ignoreTrust bool
-	changed     chan bool
+	mu      sync.Mutex
+	trusted bool
+	changed chan bool
 }
 
 type blockingHookTrustService struct {
@@ -108,9 +107,7 @@ func (h *hookServiceStub) Catalog(context.Context, string) (workspace.HookCatalo
 
 func (h *hookServiceStub) SetProjectTrust(_ context.Context, _ string, trusted bool) error {
 	h.mu.Lock()
-	if !h.ignoreTrust {
-		h.trusted = trusted
-	}
+	h.trusted = trusted
 	h.mu.Unlock()
 	h.changed <- trusted
 	return nil
@@ -138,23 +135,6 @@ func TestHookAuditAndTrustRequireResizeSafeConfirmation(t *testing.T) {
 		t.Fatal("project trust was not enabled")
 	}
 	host.Shows(t, "project trust true")
-	stop()
-}
-
-func TestHookTrustDoesNotReportSuccessWhenAuthoritativeCatalogIsUnchanged(t *testing.T) {
-	hooks := &hookServiceStub{ignoreTrust: true, changed: make(chan bool, 1)}
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Hooks: hooks, Workspace: "/workspace"})
-	host.Shows(t, "Ask flame")
-	host.Type("/hooks-trust")
-	host.Press(input.Enter)
-	host.Shows(t, "Trust project hooks")
-	host.Press(input.Down)
-	host.Press(input.Enter)
-	if trusted := awaitValue(t, hooks.changed, "ignored hook trust change"); !trusted {
-		t.Fatal("hook trust request revoked trust")
-	}
-	host.Shows(t, "update project hook trust failed: verify project hook trust")
-	host.Hides(t, "project hook trust updated")
 	stop()
 }
 

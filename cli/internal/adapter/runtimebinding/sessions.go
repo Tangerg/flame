@@ -127,14 +127,7 @@ func (r *Connection) CreateSession(ctx context.Context, input conversation.Creat
 		request.Workspace = &protocol.WorkspaceRef{Path: validated.Workspace}
 	}
 	created, err := r.sessionCatalog.CreateSession(ctx, request, options)
-	projected, err := projectSessionResult("create session", "", created, err)
-	if err != nil {
-		return conversation.Session{}, err
-	}
-	if err := validated.ValidateResult(projected); err != nil {
-		return conversation.Session{}, runtimeContractViolation("create session returned an invalid acknowledgement: %v", err)
-	}
-	return projected, nil
+	return projectSessionResult("create session", "", created, err)
 }
 
 func (r *Connection) UpdateSession(ctx context.Context, input conversation.UpdateSession) (conversation.Session, error) {
@@ -167,14 +160,7 @@ func (r *Connection) UpdateSession(ctx context.Context, input conversation.Updat
 		request.Workspace = &protocol.WorkspaceRef{Path: *validated.Workspace}
 	}
 	updated, err := r.sessionCatalog.UpdateSession(ctx, request, options)
-	projected, err := projectSessionResult("update session", input.SessionID, updated, err)
-	if err != nil {
-		return conversation.Session{}, err
-	}
-	if err := validated.ValidateResult(projected); err != nil {
-		return conversation.Session{}, runtimeContractViolation("update session returned an invalid acknowledgement: %v", err)
-	}
-	return projected, nil
+	return projectSessionResult("update session", input.SessionID, updated, err)
 }
 
 func (r *Connection) ForkSession(ctx context.Context, input conversation.ForkSession) (conversation.Session, error) {
@@ -185,14 +171,7 @@ func (r *Connection) ForkSession(ctx context.Context, input conversation.ForkSes
 	forked, err := r.sessionCatalog.ForkSession(ctx, protocol.ForkSessionRequest{
 		SessionID: input.SessionID, FromRunID: input.FromRunID, Title: input.Title,
 	}, options)
-	projected, err := projectSessionResult("fork session", "", forked, err)
-	if err != nil {
-		return conversation.Session{}, err
-	}
-	if err := input.ValidateResult(projected); err != nil {
-		return conversation.Session{}, runtimeContractViolation("fork session returned an invalid acknowledgement: %v", err)
-	}
-	return projected, nil
+	return projectSessionResult("fork session", "", forked, err)
 }
 
 func projectSessionResult(operation, expectedID string, result *protocol.Session, err error) (conversation.Session, error) {

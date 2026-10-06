@@ -107,10 +107,6 @@ func TestCatalogsRejectResponsesOutsideTheRequestedIdentity(t *testing.T) {
 	}, meta: requestMeta("test")}
 	_, err := models.ListModels(t.Context())
 	requireRuntimeContractViolation(t, err)
-
-	approvals := &Connection{approvals: &approvalBindingRecorder{setMode: protocol.ApprovalModeYolo}, meta: requestMeta("test")}
-	_, err = approvals.SetApprovalMode(t.Context(), protocol.ApprovalModeSafe)
-	requireRuntimeContractViolation(t, err)
 }
 
 func TestModelCatalogRejectsOutOfOrderRuntimeResults(t *testing.T) {

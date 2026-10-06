@@ -4,6 +4,7 @@ import (
 	"context"
 	json "encoding/json/v2"
 	"errors"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -666,9 +667,10 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 	if err != nil {
 		t.Fatalf("Create MCP server: %v", err)
 	}
-	if validateResultErr := candidate.ValidateResult(created); validateResultErr != nil {
-		t.Fatalf("created MCP server: %v", validateResultErr)
+	if created.ID != mcp.UserServer(candidate.Name) || created.Status.Type != protocol.MCPServerDisabled {
+		t.Fatalf("created MCP server = %+v", created)
 	}
+	requireIntegrationMCPServer(t, created, candidate.Description, 5, true, "X-Key")
 	maskedHeader := created.Connection.HeadersMasked["X-Key"]
 	created.Connection.HeadersMasked["X-Key"] = "caller-reused-header"
 	*created.HandshakeTimeout.Seconds = 1
@@ -680,8 +682,9 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 	if index < 0 {
 		t.Fatal("created MCP server disappeared after result reuse")
 	}
-	if err := candidate.ValidateResult(servers[index]); err != nil || servers[index].Connection.HeadersMasked["X-Key"] != maskedHeader {
-		t.Fatalf("caller reuse changed the Runtime MCP server: %v", err)
+	requireIntegrationMCPServer(t, servers[index], candidate.Description, 5, true, "X-Key")
+	if servers[index].Connection.HeadersMasked["X-Key"] != maskedHeader {
+		t.Fatalf("caller reuse changed the Runtime MCP server: %+v", servers[index])
 	}
 	for _, test := range []struct {
 		name   string
@@ -728,16 +731,13 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 			}
 		})
 	}
-	expectedCandidate := candidate.Clone()
 	delete(candidate.Connection.Headers.Value, "X-Key")
 	candidate.Connection.Headers.Value["X-Reused"] = "caller-reused-header"
 	servers, err = runtime.Servers(t.Context())
 	if err != nil || index >= len(servers) {
 		t.Fatalf("list MCP servers after input reuse: (%+v, %v)", servers, err)
 	}
-	if err := expectedCandidate.ValidateResult(servers[index]); err != nil {
-		t.Fatalf("caller input reuse changed the Runtime MCP server: %v", err)
-	}
+	requireIntegrationMCPServer(t, servers[index], candidate.Description, 5, true, "X-Key")
 	clearAuthorization := mcp.AuthorizationChange{Kind: protocol.MCPSecretClear}
 	clearHeaders := mcp.HeadersChange{Kind: protocol.MCPSecretClear}
 	description := "Updated integration MCP"
@@ -756,9 +756,7 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 	if err != nil {
 		t.Fatalf("Update MCP server: %v", err)
 	}
-	if err := update.ValidateResult(updated); err != nil {
-		t.Fatalf("updated MCP server: %v", err)
-	}
+	requireIntegrationMCPServer(t, updated, description, 10, false)
 	description = "caller-reused-description"
 	*update.HandshakeTimeout = mcp.HandshakeTimeout{}
 	servers, err = runtime.Servers(t.Context())
@@ -772,6 +770,18 @@ func requireMCPMutationLifecycle(t *testing.T, runtime *Connection) {
 	}
 	if err := runtime.DeleteServer(t.Context(), mcp.UserServer(candidate.Name)); err != nil {
 		t.Fatalf("Delete MCP server: %v", err)
+	}
+}
+
+func requireIntegrationMCPServer(
+	t *testing.T, server protocol.MCPServer, description string, timeoutSeconds int, authorized bool, headers ...string,
+) {
+	t.Helper()
+	if server.Description != description || server.HandshakeTimeout.Seconds == nil ||
+		*server.HandshakeTimeout.Seconds != timeoutSeconds ||
+		(server.Connection.AuthorizationMasked != "") != authorized ||
+		!slices.Equal(slices.Sorted(maps.Keys(server.Connection.HeadersMasked)), headers) {
+		t.Fatalf("MCP server = %+v", server)
 	}
 }
 

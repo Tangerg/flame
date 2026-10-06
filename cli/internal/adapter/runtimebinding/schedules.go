@@ -2,7 +2,6 @@ package runtimebinding
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -86,14 +85,7 @@ func (r *Connection) Create(ctx context.Context, request protocol.CreateSchedule
 		request.Workspace = &protocol.WorkspaceRef{Path: resolved.Path}
 	}
 	created, err := r.schedules.CreateSchedule(ctx, request, options)
-	result, err := scheduleResult("create schedule", "", created, err)
-	if err != nil {
-		return protocol.Schedule{}, err
-	}
-	if err := validateCreateScheduleResult(request, result); err != nil {
-		return protocol.Schedule{}, runtimeContractViolation("create schedule returned an invalid acknowledgement: %v", err)
-	}
-	return result, nil
+	return scheduleResult("create schedule", "", created, err)
 }
 
 func (r *Connection) Update(ctx context.Context, request protocol.UpdateScheduleRequest) (protocol.Schedule, error) {
@@ -109,14 +101,7 @@ func (r *Connection) Update(ctx context.Context, request protocol.UpdateSchedule
 		request.Workspace = &protocol.WorkspaceRef{Path: resolved.Path}
 	}
 	updated, err := r.schedules.UpdateSchedule(ctx, request, options)
-	result, err := scheduleResult("update schedule", request.ID, updated, err)
-	if err != nil {
-		return protocol.Schedule{}, err
-	}
-	if err := validateUpdateScheduleResult(request, result); err != nil {
-		return protocol.Schedule{}, runtimeContractViolation("update schedule returned an invalid acknowledgement: %v", err)
-	}
-	return result, nil
+	return scheduleResult("update schedule", request.ID, updated, err)
 }
 
 func (r *Connection) Delete(ctx context.Context, id string) error {
@@ -155,80 +140,4 @@ func scheduleResult(operation, expectedID string, result *protocol.Schedule, err
 		return protocol.Schedule{}, err
 	}
 	return *result, nil
-}
-
-func validateCreateScheduleResult(request protocol.CreateScheduleRequest, result protocol.Schedule) error {
-	var problems []error
-	if result.Revision != 1 {
-		problems = append(problems, fmt.Errorf("initial revision is %d, want 1", result.Revision))
-	}
-	if result.Title != request.Title {
-		problems = append(problems, fmt.Errorf("title is %q, want %q", result.Title, request.Title))
-	}
-	if result.Instructions != request.Instructions {
-		problems = append(problems, errors.New("instructions differ from the request"))
-	}
-	if !equalScheduleWorkspace(result.Workspace, request.Workspace) {
-		problems = append(problems, errors.New("workspace differs from the request"))
-	}
-	if result.Provider != request.Provider || result.Model != request.Model || result.ReasoningEffort != request.ReasoningEffort {
-		problems = append(problems, errors.New("model selection differs from the request"))
-	}
-	if result.Cron != request.Cron {
-		problems = append(problems, fmt.Errorf("cron is %q, want %q", result.Cron, request.Cron))
-	}
-	if !result.Enabled {
-		problems = append(problems, errors.New("new schedule is disabled"))
-	}
-	if result.LastRunAt != nil {
-		problems = append(problems, errors.New("new schedule has already run"))
-	}
-	return errors.Join(problems...)
-}
-
-func validateUpdateScheduleResult(request protocol.UpdateScheduleRequest, result protocol.Schedule) error {
-	var problems []error
-	if result.Revision != request.ExpectedRevision+1 {
-		problems = append(problems, fmt.Errorf("revision is %d, want %d", result.Revision, request.ExpectedRevision+1))
-	}
-	if request.Title != nil && result.Title != *request.Title {
-		problems = append(problems, fmt.Errorf("title is %q, want %q", result.Title, *request.Title))
-	}
-	if request.Instructions != nil && result.Instructions != *request.Instructions {
-		problems = append(problems, errors.New("instructions differ from the request"))
-	}
-	if request.Workspace != nil && !equalScheduleWorkspace(result.Workspace, request.Workspace) {
-		problems = append(problems, errors.New("workspace differs from the request"))
-	}
-	if request.WorkspaceMode == protocol.ScheduleWorkspaceDefault && result.Workspace != nil {
-		problems = append(problems, errors.New("default workspace update retained an explicit workspace"))
-	}
-	if request.Provider != nil {
-		if result.Provider != *request.Provider || result.Model != *request.Model {
-			problems = append(problems, errors.New("model identity differs from the request"))
-		}
-		expectedEffort := ""
-		if request.ReasoningEffort != nil {
-			expectedEffort = *request.ReasoningEffort
-		}
-		if result.ReasoningEffort != expectedEffort {
-			problems = append(problems, fmt.Errorf("reasoning effort is %q, want %q", result.ReasoningEffort, expectedEffort))
-		}
-	} else if request.ReasoningEffort != nil && result.ReasoningEffort != *request.ReasoningEffort {
-		problems = append(problems, fmt.Errorf("reasoning effort is %q, want %q", result.ReasoningEffort, *request.ReasoningEffort))
-	}
-	if request.Cron != nil && result.Cron != *request.Cron {
-		problems = append(problems, fmt.Errorf("cron is %q, want %q", result.Cron, *request.Cron))
-	}
-	if request.Enabled != nil && result.Enabled != *request.Enabled {
-		problems = append(problems, fmt.Errorf("enabled is %t, want %t", result.Enabled, *request.Enabled))
-	}
-	return errors.Join(problems...)
-}
-
-func equalScheduleWorkspace(left, right *protocol.WorkspaceRef) bool {
-	if left == nil || right == nil {
-		return left == nil && right == nil
-	}
-	return left.Path == right.Path
 }

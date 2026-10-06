@@ -49,7 +49,8 @@ func (h HandshakeTimeout) Validate() error {
 	return nil
 }
 
-// Matches compares authored intent with the Runtime acknowledgement.
+// Matches reports whether a server already carries this timeout, so an edit
+// form sends only what the operator changed.
 func (h HandshakeTimeout) Matches(other protocol.MCPHandshakeTimeout) bool {
 	if !h.bounded {
 		return other.Type == protocol.MCPHandshakeUnbounded && other.Seconds == nil
@@ -259,29 +260,6 @@ func ToolLabel(ref protocol.ToolRef) (string, error) {
 	}
 }
 
-func (c Candidate) ValidateResult(result protocol.MCPServer) error {
-	if err := c.Validate(); err != nil {
-		return err
-	}
-	var problems []error
-	if result.ID != UserServer(c.Name) {
-		problems = append(problems, fmt.Errorf("runtime returned server %q, want %q", ServerLabel(result.ID), c.Name))
-	}
-	if result.Description != c.Description {
-		problems = append(problems, fmt.Errorf("runtime returned description %q, want %q", result.Description, c.Description))
-	}
-	if !c.HandshakeTimeout.Matches(result.HandshakeTimeout) {
-		problems = append(problems, fmt.Errorf("runtime did not confirm handshake timeout %s", c.HandshakeTimeout))
-	}
-
-	problems = append(problems, validateEnabledResult(c.Enabled, result.Status))
-	problems = append(problems, c.Connection.validateCreateResult(result.Connection))
-	if err := errors.Join(problems...); err != nil {
-		return fmt.Errorf("MCP candidate %s: %w", c.Name, err)
-	}
-	return nil
-}
-
 type ServerUpdate struct {
 	Server           protocol.MCPServerID
 	Enabled          *bool
@@ -313,156 +291,6 @@ func (s ServerUpdate) Validate() error {
 
 func (s ServerUpdate) HasChanges() bool {
 	return s.Enabled != nil || s.Description != nil || s.Connection != nil || s.HandshakeTimeout != nil
-}
-
-func (s ServerUpdate) ValidateResult(result protocol.MCPServer) error {
-	if err := s.Validate(); err != nil {
-		return err
-	}
-	var problems []error
-	if result.ID != s.Server {
-		problems = append(problems, fmt.Errorf("runtime returned server %q, want %q", ServerLabel(result.ID), ServerLabel(s.Server)))
-	}
-	if s.Enabled != nil {
-		problems = append(problems, validateEnabledResult(*s.Enabled, result.Status))
-	}
-	if s.Description != nil && result.Description != *s.Description {
-		problems = append(problems, fmt.Errorf("runtime returned description %q, want %q", result.Description, *s.Description))
-	}
-	if s.HandshakeTimeout != nil && !s.HandshakeTimeout.Matches(result.HandshakeTimeout) {
-		problems = append(problems, fmt.Errorf("runtime did not confirm handshake timeout %s", *s.HandshakeTimeout))
-	}
-
-	if s.Connection != nil {
-		problems = append(problems, s.Connection.validateUpdateResult(result.Connection))
-	}
-	if err := errors.Join(problems...); err != nil {
-		return fmt.Errorf("MCP update %s: %w", ServerLabel(s.Server), err)
-	}
-	return nil
-}
-
-func validateEnabledResult(enabled bool, state protocol.MCPServerState) error {
-	disabled := state.Type == protocol.MCPServerDisabled
-	if disabled == enabled {
-		return fmt.Errorf("runtime returned state %q for enabled=%t", state.Type, enabled)
-	}
-	return nil
-}
-
-func (c ConnectionInput) validateCreateResult(result protocol.MCPConnection) error {
-	if err := c.validateVisibleResult(result); err != nil {
-		return err
-	}
-	switch c.Transport {
-	case protocol.MCPTransportStreamableHTTP:
-		if err := validateMaskedSecret("authorization", c.Authorization, result.AuthorizationMasked); err != nil {
-			return err
-		}
-		return validateMaskedMap("headers", c.Headers, result.HeadersMasked)
-	case protocol.MCPTransportStdio:
-		return validateMaskedMap("environment", c.Environment, result.EnvMasked)
-	default:
-		return nil
-	}
-}
-
-func (c ConnectionInput) validateUpdateResult(result protocol.MCPConnection) error {
-	if err := c.validateVisibleResult(result); err != nil {
-		return err
-	}
-	switch c.Transport {
-	case protocol.MCPTransportStreamableHTTP:
-		if c.Authorization != nil {
-			if err := validateMaskedSecret("authorization", c.Authorization, result.AuthorizationMasked); err != nil {
-				return err
-			}
-		}
-		if c.Headers != nil {
-			return validateMaskedMap("headers", c.Headers, result.HeadersMasked)
-		}
-	case protocol.MCPTransportStdio:
-		if c.Environment != nil {
-			return validateMaskedMap("environment", c.Environment, result.EnvMasked)
-		}
-	}
-	return nil
-}
-
-func (c ConnectionInput) validateVisibleResult(result protocol.MCPConnection) error {
-	var problems []error
-	if result.Type != c.Transport {
-		problems = append(problems, fmt.Errorf("runtime returned transport %q, want %q", result.Type, c.Transport))
-	}
-	switch c.Transport {
-	case protocol.MCPTransportStreamableHTTP:
-		if result.URL != c.URL {
-			problems = append(problems, fmt.Errorf("runtime returned URL %q, want %q", result.URL, c.URL))
-		}
-	case protocol.MCPTransportStdio:
-		if result.Command != c.Command {
-			problems = append(problems, fmt.Errorf("runtime returned command %q, want %q", result.Command, c.Command))
-		}
-		if !slices.Equal(result.Args, c.Args) {
-			problems = append(problems, fmt.Errorf("runtime returned args %v, want %v", result.Args, c.Args))
-		}
-		if result.Dir != c.Directory {
-			problems = append(problems, fmt.Errorf("runtime returned directory %q, want %q", result.Dir, c.Directory))
-		}
-	}
-	return errors.Join(problems...)
-}
-
-func validateMaskedSecret(label string, change *AuthorizationChange, masked string) error {
-	switch {
-	case change == nil && masked != "":
-		return fmt.Errorf("runtime returned unexpected masked %s", label)
-	case change != nil && change.Kind == protocol.MCPSecretSet && masked == "":
-		return fmt.Errorf("runtime did not confirm masked %s", label)
-	case change != nil && change.Kind == protocol.MCPSecretClear && masked != "":
-		return fmt.Errorf("runtime kept masked %s after clear", label)
-	default:
-		return nil
-	}
-}
-
-func validateMaskedMap[T interface {
-	HeadersChange | EnvironmentChange
-}](label string, raw *T, masked map[string]string) error {
-	if raw == nil {
-		if len(masked) != 0 {
-			return fmt.Errorf("runtime returned unexpected masked %s", label)
-		}
-		return nil
-	}
-	var kind protocol.MCPSecretChangeType
-	var values map[string]string
-	switch change := any(*raw).(type) {
-	case HeadersChange:
-		kind, values = change.Kind, change.Value
-	case EnvironmentChange:
-		kind, values = change.Kind, change.Value
-	}
-	if kind == protocol.MCPSecretClear {
-		if len(masked) != 0 {
-			return fmt.Errorf("runtime kept masked %s after clear", label)
-		}
-		return nil
-	}
-	if len(masked) != len(values) {
-		return fmt.Errorf(
-			"runtime returned masked %s keys %v, want %v",
-			label,
-			slices.Sorted(maps.Keys(masked)),
-			slices.Sorted(maps.Keys(values)),
-		)
-	}
-	for key := range values {
-		if masked[key] == "" {
-			return fmt.Errorf("runtime did not confirm masked %s key %q", label, key)
-		}
-	}
-	return nil
 }
 
 // AuthorizationReference is the stable identity used to observe an attempt.

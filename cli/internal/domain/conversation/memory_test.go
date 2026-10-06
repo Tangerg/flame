@@ -51,24 +51,3 @@ func TestMemoryItemRejectsReversedTimestamps(t *testing.T) {
 		t.Fatalf("ValidateMemoryItem() = %v", err)
 	}
 }
-
-func TestAgentMemoryAddResultMustFulfillTheCommand(t *testing.T) {
-	t.Parallel()
-	now := time.Now()
-	valid := protocol.AgentMemoryItem{
-		ID: testMemoryID, Scope: protocol.AgentMemoryScopeUser, Content: "authored", Origin: protocol.AgentMemoryOriginUser, Status: protocol.AgentMemoryStatusActive,
-		CreatedAt: now, UpdatedAt: now,
-	}
-	target, err := NewMemoryTarget(protocol.AgentMemoryScopeUser, "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := target.ValidateAddResult(" authored ", valid); err != nil {
-		t.Fatalf("valid add result: %v", err)
-	}
-	wrongAdd := valid
-	wrongAdd.Content = "ignored"
-	if err := target.ValidateAddResult("authored", wrongAdd); err == nil || !strings.Contains(err.Error(), "content") {
-		t.Fatalf("add result error = %v", err)
-	}
-}

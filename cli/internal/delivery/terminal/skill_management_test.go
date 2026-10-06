@@ -32,14 +32,12 @@ func TestResolveSkillProposalRequiresRevisionWhenNamesAreNotUnique(t *testing.T)
 }
 
 type skillServiceStub struct {
-	mu              sync.Mutex
-	discovered      []protocol.Skill
-	managed         []protocol.ManagedSkill
-	proposals       []workspace.SkillProposal
-	reads           atomic.Int32
-	decisions       chan skillDecision
-	ignoreLifecycle bool
-	ignoreDecision  bool
+	mu         sync.Mutex
+	discovered []protocol.Skill
+	managed    []protocol.ManagedSkill
+	proposals  []workspace.SkillProposal
+	reads      atomic.Int32
+	decisions  chan skillDecision
 }
 
 type skillDecision struct {
@@ -112,9 +110,7 @@ func (s *skillServiceStub) setLifecycle(name string, lifecycle protocol.SkillLif
 	defer s.mu.Unlock()
 	for index := range s.managed {
 		if s.managed[index].Name == name {
-			if !s.ignoreLifecycle {
-				s.managed[index].Lifecycle = lifecycle
-			}
+			s.managed[index].Lifecycle = lifecycle
 			return nil
 		}
 	}
@@ -137,9 +133,7 @@ func (s *skillServiceStub) decide(reference workspace.SkillProposalReference, ap
 	defer s.mu.Unlock()
 	for index, proposal := range s.proposals {
 		if proposal.Name == reference.Name && proposal.Scope == reference.Scope && proposal.Revision == reference.Revision {
-			if !s.ignoreDecision {
-				s.proposals = append(s.proposals[:index], s.proposals[index+1:]...)
-			}
+			s.proposals = append(s.proposals[:index], s.proposals[index+1:]...)
 			s.decisions <- skillDecision{approve: approve, reference: reference}
 			return nil
 		}
@@ -283,37 +277,6 @@ func TestSkillProposalFinalReviewCanScrollToCompleteInstructions(t *testing.T) {
 		t.Fatalf("reading dispatched a decision: %+v", decision)
 	default:
 	}
-}
-
-func TestSkillLifecycleDoesNotReportSuccessWhenManagedCatalogIsUnchanged(t *testing.T) {
-	service := newSkillServiceStub()
-	service.ignoreLifecycle = true
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Skills: service})
-	host.Shows(t, "Ask flame")
-	host.Type("/skill-archive review")
-	host.Press(input.Enter)
-	host.Shows(t, "archiving skill failed: verify skill lifecycle")
-	host.Hides(t, "archiving skill complete")
-	stop()
-}
-
-func TestSkillProposalDoesNotReportSuccessWhenReviewedRevisionRemainsPending(t *testing.T) {
-	service := newSkillServiceStub()
-	service.ignoreDecision = true
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Skills: service})
-	host.Shows(t, "Ask flame")
-	host.Type("/skill-approve user/release-checks")
-	host.Press(input.Enter)
-	host.Shows(t, "Approve Skill proposal")
-	host.Press(input.Down)
-	host.Press(input.Enter)
-	decision := awaitValue(t, service.decisions, "ignored skill proposal decision")
-	if !decision.approve {
-		t.Fatal("skill proposal approval was sent as rejection")
-	}
-	host.Shows(t, "approving skill proposal failed: verify skill proposal decision")
-	host.Hides(t, "approving skill proposal complete")
-	stop()
 }
 
 func TestSkillsChangedRefetchesOnlyAnOpenSkillProjection(t *testing.T) {

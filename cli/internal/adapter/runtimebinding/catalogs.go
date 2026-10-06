@@ -117,11 +117,7 @@ func (r *Connection) SetApprovalMode(ctx context.Context, mode protocol.Approval
 	if result == nil {
 		return "", runtimeContractViolation("set approval mode returned nil")
 	}
-	applied := result.Mode
-	if applied != mode {
-		return "", runtimeContractViolation("set approval mode returned %q for %q", applied, mode)
-	}
-	return applied, nil
+	return result.Mode, nil
 }
 
 func (r *Connection) ListApprovalRules(ctx context.Context, sessionID string) ([]protocol.ApprovalRule, error) {

@@ -176,23 +176,15 @@ func (m *modelConfigBindingStub) UpdateProvider(_ context.Context, request proto
 	return &m.providers[0], nil
 }
 
-func TestModelConfigurationRejectsMutationIdentityDrift(t *testing.T) {
+func TestProviderUpdateRejectsIdentityDrift(t *testing.T) {
 	t.Parallel()
 	stub := &modelConfigBindingStub{
-		utilityReply:  &protocol.UtilityRole{Provider: "other", Model: "model"},
 		providerReply: &protocol.Provider{ID: "other"},
-		utilitySet:    func(protocol.UtilityRole, flameruntime.CommandOptions) {},
 		updated:       func(protocol.UpdateProviderRequest, flameruntime.CommandOptions) {},
 	}
 	runtime := &Connection{modelConfig: stub, meta: requestMeta("test")}
-	role, err := models.NewConfiguredRole(models.UtilityRole, "deepseek", "chat")
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = runtime.SetRole(t.Context(), role)
-	requireRuntimeContractViolation(t, err)
 	change := models.ValueChange{Kind: protocol.ProviderConfigClear}
-	_, err = runtime.UpdateProvider(t.Context(), models.UpdateProvider{Provider: "deepseek", APIKey: &change})
+	_, err := runtime.UpdateProvider(t.Context(), models.UpdateProvider{Provider: "deepseek", APIKey: &change})
 	requireRuntimeContractViolation(t, err)
 }
 
@@ -218,51 +210,6 @@ func TestModelConfigurationRejectsOutOfOrderProviderCatalog(t *testing.T) {
 	requireRuntimeContractViolation(t, err)
 }
 
-func TestProviderUpdateRejectsAcknowledgementDrift(t *testing.T) {
-	t.Parallel()
-	setBaseURL := models.ValueChange{Kind: protocol.ProviderConfigSet, Value: "https://new.example"}
-	setAPIKey := models.ValueChange{Kind: protocol.ProviderConfigSet, Value: "stored-secret"}
-	update := models.UpdateProvider{Provider: "deepseek", BaseURL: &setBaseURL, APIKey: &setAPIKey}
-	valid := func() protocol.Provider {
-		baseURL := setBaseURL.Value
-		return protocol.Provider{
-			ID: "deepseek", BaseURL: &baseURL,
-			Credential: &protocol.ProviderCredential{Masked: "st****et", Source: protocol.ProviderKeySourceStored},
-			Configured: true, CredentialRequirement: protocol.ProviderAPIKeyRequired,
-		}
-	}
-	tests := []struct {
-		name   string
-		mutate func(*protocol.Provider)
-	}{
-		{name: "base URL", mutate: func(result *protocol.Provider) {
-			baseURL := "https://old.example"
-			result.BaseURL = &baseURL
-		}},
-		{name: "missing key", mutate: func(result *protocol.Provider) { result.Credential = nil }},
-		{name: "environment key", mutate: func(result *protocol.Provider) {
-			result.Credential = &protocol.ProviderCredential{Masked: "st****et", Source: protocol.ProviderKeySourceEnv}
-		}},
-		{name: "raw key", mutate: func(result *protocol.Provider) {
-			result.Credential = &protocol.ProviderCredential{Masked: setAPIKey.Value, Source: protocol.ProviderKeySourceStored}
-		}},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			result := valid()
-			test.mutate(&result)
-			stub := &modelConfigBindingStub{
-				providerReply: &result,
-				updated:       func(protocol.UpdateProviderRequest, flameruntime.CommandOptions) {},
-			}
-			runtime := &Connection{modelConfig: stub, meta: requestMeta("test")}
-			_, err := runtime.UpdateProvider(t.Context(), update)
-			requireRuntimeContractViolation(t, err)
-		})
-	}
-}
-
 func TestProviderUpdateAcceptsClearWithEnvironmentFallback(t *testing.T) {
 	t.Parallel()
 	clear := models.ValueChange{Kind: protocol.ProviderConfigClear}
@@ -279,26 +226,6 @@ func TestProviderUpdateAcceptsClearWithEnvironmentFallback(t *testing.T) {
 		Provider: "deepseek", BaseURL: &clear, APIKey: &clear,
 	}); err != nil {
 		t.Fatalf("UpdateProvider clear with environment fallback: %v", err)
-	}
-
-	stillConfigured := "https://still-configured.example"
-	result.BaseURL = &stillConfigured
-	if _, err := runtime.UpdateProvider(t.Context(), models.UpdateProvider{
-		Provider: "deepseek", BaseURL: &clear,
-	}); err == nil {
-		t.Fatal("UpdateProvider accepted a base URL after clear")
-	} else {
-		requireRuntimeContractViolation(t, err)
-	}
-
-	result.BaseURL = nil
-	result.Credential = &protocol.ProviderCredential{Masked: "st****ed", Source: protocol.ProviderKeySourceStored}
-	if _, err := runtime.UpdateProvider(t.Context(), models.UpdateProvider{
-		Provider: "deepseek", APIKey: &clear,
-	}); err == nil {
-		t.Fatal("UpdateProvider accepted a stored key after clear")
-	} else {
-		requireRuntimeContractViolation(t, err)
 	}
 }
 
@@ -582,69 +509,6 @@ func TestGoalAdapterRejectsInvalidSessionIdentityBeforeCallingRuntime(t *testing
 			if stub.last != "" || stub.getCalls != 0 {
 				t.Fatalf("invalid session identity reached Runtime: last=%q getCalls=%d", stub.last, stub.getCalls)
 			}
-		})
-	}
-}
-
-func TestGoalAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
-	t.Parallel()
-	paused := *activeProtocolGoal()
-	paused.Status = protocol.GoalPaused
-	paused.Reason = &protocol.GoalReason{Code: protocol.GoalReasonStoppedByUser}
-	tests := []struct {
-		name   string
-		stub   *goalBindingStub
-		invoke func(*Connection) error
-	}{
-		{
-			name: "start fields",
-			stub: &goalBindingStub{startResult: func() *protocol.Goal {
-				result := *activeProtocolGoal()
-				result.Objective = "ignored"
-				return &result
-			}()},
-			invoke: func(runtime *Connection) error {
-				_, err := runtime.StartGoal(t.Context(), protocol.StartGoalRequest{
-					SessionID: "ses_1", Objective: "finish",
-				})
-				return err
-			},
-		},
-		{
-			name: "stop remains active",
-			stub: &goalBindingStub{stopResult: activeProtocolGoal()},
-			invoke: func(runtime *Connection) error {
-				_, err := runtime.StopGoal(t.Context(), "ses_1")
-				return err
-			},
-		},
-		{
-			name: "update objective",
-			stub: &goalBindingStub{current: activeProtocolGoal(), updateResult: func() *protocol.Goal {
-				result := *activeProtocolGoal()
-				result.Objective = "ignored"
-				return &result
-			}()},
-			invoke: func(runtime *Connection) error {
-				_, err := runtime.UpdateGoal(t.Context(), protocol.UpdateGoalRequest{SessionID: "ses_1", Objective: "ship"})
-				return err
-			},
-		},
-		{
-			name: "resume remains paused",
-			stub: &goalBindingStub{resumeResult: &paused},
-			invoke: func(runtime *Connection) error {
-				_, err := runtime.ResumeGoal(t.Context(), "ses_1")
-				return err
-			},
-		},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			test.stub.t = t
-			runtime := &Connection{goals: test.stub, meta: requestMeta("test")}
-			requireRuntimeContractViolation(t, test.invoke(runtime))
 		})
 	}
 }

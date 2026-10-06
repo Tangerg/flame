@@ -307,7 +307,7 @@ func TestMCPAuthorizationAdapterPreservesAbsenceAndEnforcesReferenceIdentity(t *
 	}
 }
 
-func TestMCPAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
+func TestMCPAdapterRejectsMutationIdentityDrift(t *testing.T) {
 	t.Parallel()
 	authorization := mcp.AuthorizationChange{Kind: protocol.MCPSecretSet, Value: "Bearer secret"}
 	candidate := mcp.Candidate{
@@ -323,26 +323,15 @@ func TestMCPAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 	createResult := wireMCPServerFromCandidate(projectedCandidate)
 	wrongIdentity := createResult
 	wrongIdentity.ID = mcp.UserServer("other")
-	createResult.Description = "ignored"
 	description := "Updated"
-	enabled := false
-	update := mcp.ServerUpdate{Server: mcp.UserServer(candidate.Name), Enabled: &enabled, Description: &description}
-	updateResult := wireMCPServer()
-	updateResult.Status = protocol.MCPServerState{Type: protocol.MCPServerDisabled}
-	updateResult.Description = "ignored"
+	update := mcp.ServerUpdate{Server: mcp.UserServer(candidate.Name), Description: &description}
+	updateIdentity := wireMCPServer()
+	updateIdentity.ID = mcp.UserServer("other")
 	tests := []struct {
 		name   string
 		stub   *mcpBindingStub
 		invoke func(*Connection) error
 	}{
-		{
-			name: "create fields",
-			stub: &mcpBindingStub{createResult: &createResult},
-			invoke: func(runtime *Connection) error {
-				_, err := runtime.CreateServer(t.Context(), candidate)
-				return err
-			},
-		},
 		{
 			name: "create identity",
 			stub: &mcpBindingStub{createResult: &wrongIdentity},
@@ -352,8 +341,8 @@ func TestMCPAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
 			},
 		},
 		{
-			name: "update fields",
-			stub: &mcpBindingStub{updateResult: &updateResult},
+			name: "update identity",
+			stub: &mcpBindingStub{updateResult: &updateIdentity},
 			invoke: func(runtime *Connection) error {
 				_, err := runtime.UpdateServer(t.Context(), update)
 				return err

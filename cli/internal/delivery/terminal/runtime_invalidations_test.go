@@ -69,11 +69,10 @@ func installChangedSessionProjection(
 type mutableRuntimeCatalog struct {
 	Runtime
 
-	mu                 sync.Mutex
-	models             []protocol.Model
-	rules              []protocol.ApprovalRule
-	deleted            chan string
-	ignoreRuleDeletion bool
+	mu      sync.Mutex
+	models  []protocol.Model
+	rules   []protocol.ApprovalRule
+	deleted chan string
 }
 
 type blockingApprovalModeRuntime struct {
@@ -169,9 +168,7 @@ func (m *mutableRuntimeCatalog) ListApprovalRules(context.Context, string) ([]pr
 
 func (m *mutableRuntimeCatalog) DeleteApprovalRule(_ context.Context, id string) error {
 	m.mu.Lock()
-	if !m.ignoreRuleDeletion {
-		m.rules = slices.DeleteFunc(m.rules, func(rule protocol.ApprovalRule) bool { return rule.ID == id })
-	}
+	m.rules = slices.DeleteFunc(m.rules, func(rule protocol.ApprovalRule) bool { return rule.ID == id })
 	m.mu.Unlock()
 	if m.deleted != nil {
 		m.deleted <- id
@@ -349,29 +346,6 @@ func TestApprovalRuleDeletionResolvesAUniquePrefixAndSurvivesResize(t *testing.T
 		t.Fatalf("deleted approval rule = %q", id)
 	}
 	host.Shows(t, "No remembered approval rules")
-	stop()
-}
-
-func TestApprovalRuleDeletionDoesNotReportSuccessWhenRuleRemains(t *testing.T) {
-	catalog := &mutableRuntimeCatalog{
-		Runtime: runtimefixture.New(), deleted: make(chan string, 1), ignoreRuleDeletion: true,
-	}
-	catalog.setRules(protocol.ApprovalRule{
-		ID: "rule_external_123", Scope: protocol.ApprovalRuleScopeGlobal, Tool: protocol.ToolRef{Type: protocol.ToolRefBuiltIn, Name: "shell"}, ModelName: "shell",
-		Subject: protocol.ApprovalSubject{Type: protocol.ApprovalSubjectExact, Value: "go test ./..."}, Decision: protocol.ApprovalRuleDecisionAllow,
-	})
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: catalog})
-	host.Shows(t, "Ask flame")
-	host.Type("/rule-delete rule_external_123")
-	host.Press(input.Enter)
-	host.Shows(t, "Forget approval rule")
-	host.Press(input.Down)
-	host.Press(input.Enter)
-	if id := awaitValue(t, catalog.deleted, "ignored approval rule deletion"); id != "rule_external_123" {
-		t.Fatalf("deleted approval rule = %q", id)
-	}
-	host.Shows(t, "forget approval rule failed: verify approval rule deletion")
-	host.Hides(t, "approval rule forgotten")
 	stop()
 }
 

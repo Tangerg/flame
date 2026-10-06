@@ -158,19 +158,18 @@ func (a *app) ArchiveSkill(name string) error {
 	if a.skills == nil {
 		return errors.New("this runtime composition has no skill service")
 	}
-	return a.changeSkillLifecycle("archiving skill", name, protocol.SkillLifecycleArchived, a.skills.Archive)
+	return a.changeSkillLifecycle("archiving skill", name, a.skills.Archive)
 }
 
 func (a *app) RestoreSkill(name string) error {
 	if a.skills == nil {
 		return errors.New("this runtime composition has no skill service")
 	}
-	return a.changeSkillLifecycle("restoring skill", name, protocol.SkillLifecycleActive, a.skills.Restore)
+	return a.changeSkillLifecycle("restoring skill", name, a.skills.Restore)
 }
 
 func (a *app) changeSkillLifecycle(
 	status, name string,
-	lifecycle protocol.SkillLifecycle,
 	change func(context.Context, string) error,
 ) error {
 	name = strings.TrimSpace(name)
@@ -180,17 +179,7 @@ func (a *app) changeSkillLifecycle(
 	a.status.note(status + " " + name)
 	started := a.runAdmissionMutation(skillOperation, false,
 		func(ctx context.Context) (string, error) {
-			if err := change(ctx, name); err != nil {
-				return "", err
-			}
-			managed, err := a.skills.Managed(ctx)
-			if err != nil {
-				return "", err
-			}
-			if err := workspace.ValidateSkillLifecycleAcknowledgement(managed, name, lifecycle); err != nil {
-				return "", fmt.Errorf("verify skill lifecycle: %w", err)
-			}
-			return name, nil
+			return name, change(ctx, name)
 		},
 		func(changed string, err error) {
 			if err != nil {
@@ -291,17 +280,7 @@ func (a *app) decideSkillProposal(reference workspace.SkillProposalReference, ap
 	a.status.note(verb + " skill proposal " + reference.Name)
 	started := a.runAdmissionMutation(skillOperation, false,
 		func(ctx context.Context) (workspace.SkillProposalReference, error) {
-			if err := decide(ctx, reference); err != nil {
-				return workspace.SkillProposalReference{}, err
-			}
-			pending, err := a.skills.Proposals(ctx, reference.Workspace)
-			if err != nil {
-				return workspace.SkillProposalReference{}, err
-			}
-			if err := reference.ValidateDecisionAcknowledgement(pending); err != nil {
-				return workspace.SkillProposalReference{}, fmt.Errorf("verify skill proposal decision: %w", err)
-			}
-			return reference, nil
+			return reference, decide(ctx, reference)
 		},
 		func(reviewed workspace.SkillProposalReference, err error) {
 			if err != nil {

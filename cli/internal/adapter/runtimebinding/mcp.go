@@ -50,13 +50,7 @@ func (r *Connection) CreateServer(ctx context.Context, candidate mcp.Candidate) 
 	if err != nil {
 		return protocol.MCPServer{}, classifyError(err)
 	}
-	if result == nil {
-		return protocol.MCPServer{}, runtimeContractViolation("create MCP server returned nil")
-	}
-	if err := candidate.ValidateResult(*result); err != nil {
-		return protocol.MCPServer{}, runtimeContractViolation("create MCP server returned an invalid acknowledgement: %v", err)
-	}
-	return *result, nil
+	return mcpServerResult("create MCP server", mcp.UserServer(candidate.Name), result)
 }
 
 func (r *Connection) UpdateServer(ctx context.Context, update mcp.ServerUpdate) (protocol.MCPServer, error) {
@@ -82,11 +76,17 @@ func (r *Connection) UpdateServer(ctx context.Context, update mcp.ServerUpdate) 
 	if err != nil {
 		return protocol.MCPServer{}, classifyError(err)
 	}
+	return mcpServerResult("update MCP server", update.Server, result)
+}
+
+func mcpServerResult(operation string, expected protocol.MCPServerID, result *protocol.MCPServer) (protocol.MCPServer, error) {
 	if result == nil {
-		return protocol.MCPServer{}, runtimeContractViolation("update MCP server returned nil")
+		return protocol.MCPServer{}, runtimeContractViolation("%s returned nil", operation)
 	}
-	if err := update.ValidateResult(*result); err != nil {
-		return protocol.MCPServer{}, runtimeContractViolation("update MCP server returned an invalid acknowledgement: %v", err)
+	if result.ID != expected {
+		return protocol.MCPServer{}, runtimeContractViolation(
+			"%s returned %s for %s", operation, mcp.ServerLabel(result.ID), mcp.ServerLabel(expected),
+		)
 	}
 	return *result, nil
 }

@@ -288,87 +288,24 @@ func TestAgentMemoryMutationRejectsIdentityDrift(t *testing.T) {
 	requireRuntimeContractViolation(t, err)
 }
 
-func TestNormalizeAgentMemoryUpdateUsesRuntimeContractAndOwnsPointers(t *testing.T) {
-	t.Parallel()
-
-	content, pinned := " edited ", true
-	request := protocol.AgentMemoryUpdateRequest{ID: adapterMemoryIDOne, Content: &content, Pinned: &pinned}
-	normalized, err := normalizeAgentMemoryUpdate(request)
-	if err != nil || normalized.Content == nil || *normalized.Content != "edited" || normalized.Pinned == nil || !*normalized.Pinned {
-		t.Fatalf("normalizeAgentMemoryUpdate = (%+v, %v)", normalized, err)
-	}
-	pinned = false
-	if !*normalized.Pinned {
-		t.Fatal("normalized request aliases caller pinned storage")
-	}
-	blank := "  "
-	for _, invalid := range []protocol.AgentMemoryUpdateRequest{
-		{ID: adapterMemoryIDOne},
-		{ID: adapterMemoryIDOne, Content: &blank},
-	} {
-		if _, err := normalizeAgentMemoryUpdate(invalid); err == nil {
-			t.Fatalf("accepted invalid update %+v", invalid)
-		}
-	}
-}
-
-func TestAgentMemoryAdapterRejectsMutationAcknowledgementDrift(t *testing.T) {
+func TestAgentMemoryAdapterRejectsAnUnidentifiedAddition(t *testing.T) {
 	t.Parallel()
 	now := time.Now()
-	wrongContent := protocol.AgentMemoryItem{
-		ID: adapterMemoryIDOne, Scope: protocol.AgentMemoryScopeProject, Content: "ignored",
-		Origin: protocol.AgentMemoryOriginUser, Status: protocol.AgentMemoryStatusActive, Pinned: true,
-		CreatedAt: now, UpdatedAt: now,
-	}
-	wrongPinned := wrongContent
-	wrongPinned.Content, wrongPinned.Pinned = "edited", false
-	wrongAdd := protocol.AgentMemoryItem{
-		ID: adapterMemoryIDTwo, Scope: protocol.AgentMemoryScopeUser, Content: "ignored",
+	unidentifiedAdd := protocol.AgentMemoryItem{
+		Scope: protocol.AgentMemoryScopeUser, Content: "authored",
 		Origin: protocol.AgentMemoryOriginUser, Status: protocol.AgentMemoryStatusActive,
 		CreatedAt: now, UpdatedAt: now,
 	}
-	unidentifiedAdd := wrongAdd
-	unidentifiedAdd.ID, unidentifiedAdd.Content = "", "authored"
 	tests := []struct {
 		name   string
 		stub   *agentMemoryBindingStub
 		invoke func(*AgentMemory) error
 	}{
 		{
-			name: "update content",
-			stub: &agentMemoryBindingStub{updateResult: &wrongContent},
-			invoke: func(adapter *AgentMemory) error {
-				content, pinned := "edited", true
-				_, err := adapter.Update(t.Context(), protocol.AgentMemoryUpdateRequest{ID: adapterMemoryIDOne, Content: &content, Pinned: &pinned})
-				return err
-			},
-		},
-		{
-			name: "update pinned",
-			stub: &agentMemoryBindingStub{updateResult: &wrongPinned},
-			invoke: func(adapter *AgentMemory) error {
-				content, pinned := "edited", true
-				_, err := adapter.Update(t.Context(), protocol.AgentMemoryUpdateRequest{ID: adapterMemoryIDOne, Content: &content, Pinned: &pinned})
-				return err
-			},
-		},
-		{
-			// add mints the item ID, so no acknowledgement check compares one
-			// and the presence of an identity is the whole contract.
+			// add mints the item ID, so the presence of an identity is the
+			// whole contract.
 			name: "add identity",
 			stub: &agentMemoryBindingStub{addResult: &unidentifiedAdd},
-			invoke: func(adapter *AgentMemory) error {
-				target, err := conversation.NewMemoryTarget(protocol.AgentMemoryScopeUser, "")
-				if err != nil {
-					return err
-				}
-				_, err = adapter.Add(t.Context(), target, "authored")
-				return err
-			},
-		},
-		{
-			name: "add content",
-			stub: &agentMemoryBindingStub{addResult: &wrongAdd},
 			invoke: func(adapter *AgentMemory) error {
 				target, err := conversation.NewMemoryTarget(protocol.AgentMemoryScopeUser, "")
 				if err != nil {

@@ -14,7 +14,6 @@ import (
 	"github.com/Tangerg/flame/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
-	"github.com/Tangerg/flame/cli/internal/domain/workspace"
 	flameruntime "github.com/Tangerg/flame/runtime"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -333,72 +332,6 @@ func TestSessionImportRejectsBlankArtifactToolName(t *testing.T) {
 		Tool: &protocol.ToolInvocation{Name: " \t", Arguments: map[string]any{}},
 	}}
 	assertSessionImportRejectsArtifact(t, artifact, "name")
-}
-
-func TestSessionImportRejectsAcknowledgementDrift(t *testing.T) {
-	t.Parallel()
-	createdAt := time.Date(2026, time.August, 14, 8, 0, 0, 0, time.UTC)
-	updatedAt := createdAt.Add(time.Hour)
-	artifact := protocol.SessionArtifact{
-		Version: protocol.SessionArtifactVersion,
-		Session: protocol.ArtifactSession{
-			ID: "ses_1", Title: "Imported", Workspace: protocol.WorkspaceRef{Path: "/workspace"},
-			Provider: "deepseek", Model: "deep", ReasoningEffort: "high",
-			CreatedAt: createdAt, UpdatedAt: updatedAt, Favorite: true,
-		},
-	}
-	body, err := json.Marshal(artifact)
-	if err != nil {
-		t.Fatal(err)
-	}
-	document, err := session.NewDocument(protocol.ExportFormatJSON, body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	resolvedWorkspace := workspace.Workspace{Path: "/workspace", ProjectRoot: "/workspace", Availability: protocol.WorkspaceAvailable}
-	valid := protocol.Session{
-		ID: artifact.Session.ID, Title: artifact.Session.Title, Status: protocol.SessionStatusIdle,
-		Provider: artifact.Session.Provider, Model: artifact.Session.Model, ReasoningEffort: artifact.Session.ReasoningEffort,
-		Workspace: testProtocolWorkspace(artifact.Session.Workspace.Path, artifact.Session.Workspace.Path, protocol.WorkspaceAvailable),
-		CreatedAt: artifact.Session.CreatedAt, UpdatedAt: artifact.Session.UpdatedAt.Add(time.Second),
-		Favorite: artifact.Session.Favorite, Revision: 1,
-	}
-	tests := []struct {
-		name   string
-		mutate func(*protocol.Session)
-	}{
-		{name: "title", mutate: func(result *protocol.Session) { result.Title = "ignored" }},
-		{name: "workspace", mutate: func(result *protocol.Session) { result.Workspace.Ref.Path = "/other" }},
-		{name: "workspace project root", mutate: func(result *protocol.Session) { result.Workspace.ProjectRoot = "/other" }},
-		{name: "workspace availability", mutate: func(result *protocol.Session) { result.Workspace.Availability = protocol.WorkspaceMissing }},
-		{name: "model", mutate: func(result *protocol.Session) { result.Model = "shallow" }},
-		{name: "reasoning effort", mutate: func(result *protocol.Session) { result.ReasoningEffort = "medium" }},
-		{name: "favorite", mutate: func(result *protocol.Session) { result.Favorite = false }},
-		{name: "created time", mutate: func(result *protocol.Session) { result.CreatedAt = result.CreatedAt.Add(time.Second) }},
-		{name: "updated time moves backward", mutate: func(result *protocol.Session) { result.UpdatedAt = artifact.Session.UpdatedAt.Add(-time.Second) }},
-		{name: "status", mutate: func(result *protocol.Session) { result.Status = protocol.SessionStatusRunning }},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			t.Parallel()
-			result := valid
-			test.mutate(&result)
-			stub := sessionBindingStub{imported: func(context.Context, protocol.ImportSessionRequest, flameruntime.CommandOptions) (*protocol.ImportSessionResponse, error) {
-				return &protocol.ImportSessionResponse{Session: &result}, nil
-			}}
-			runtime := &Connection{
-				sessions: stub,
-				workspaces: &workspaceBindingStub{resolved: &protocol.WorkspaceInfo{
-					Ref: protocol.WorkspaceRef{Path: resolvedWorkspace.Path}, ProjectRoot: resolvedWorkspace.ProjectRoot,
-					Availability: protocol.WorkspaceAvailable,
-				}},
-				meta:    requestMeta("test"),
-				profile: sessionControlProfile(t, protocol.FeatureSessionExport),
-			}
-			_, err := runtime.ImportSession(t.Context(), session.ImportRequest{Artifact: document})
-			requireRuntimeContractViolation(t, err)
-		})
-	}
 }
 
 func TestSessionControlRejectsConditionalOperationsBeforeCallingBinding(t *testing.T) {

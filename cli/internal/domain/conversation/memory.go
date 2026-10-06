@@ -1,7 +1,6 @@
 package conversation
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
@@ -48,48 +47,6 @@ func (t MemoryTarget) Validate() error {
 func ValidateMemoryItem(item protocol.AgentMemoryItem) error {
 	if item.UpdatedAt.Before(item.CreatedAt) {
 		return fmt.Errorf("agent memory item %s was updated before creation", item.ID)
-	}
-	return nil
-}
-
-// NormalizeMemoryContent trims what a caller offered and refuses what is left
-// when nothing is. Both moments need the same answer — the binding before it
-// sends the content and the target after Runtime echoes it back — so the rule
-// and the trimming that decides it live together here.
-func NormalizeMemoryContent(content string) (string, error) {
-	content = strings.TrimSpace(content)
-	if content == "" {
-		return "", errors.New("add agent memory: content is empty")
-	}
-	return content, nil
-}
-
-func (t MemoryTarget) ValidateAddResult(content string, result protocol.AgentMemoryItem) error {
-	if err := t.Validate(); err != nil {
-		return err
-	}
-	content, err := NormalizeMemoryContent(content)
-	if err != nil {
-		return err
-	}
-	var problems []error
-	if err := ValidateMemoryItem(result); err != nil {
-		problems = append(problems, fmt.Errorf("runtime result: %w", err))
-	}
-	if result.Scope != t.Scope {
-		problems = append(problems, fmt.Errorf("runtime returned %s scope, want %s", result.Scope, t.Scope))
-	}
-	if result.Content != content {
-		problems = append(problems, fmt.Errorf("runtime returned content %q, want %q", result.Content, content))
-	}
-	if result.Origin != protocol.AgentMemoryOriginUser || result.Status != protocol.AgentMemoryStatusActive {
-		problems = append(problems, fmt.Errorf(
-			"runtime returned %s/%s provenance, want %s/%s",
-			result.Origin, result.Status, protocol.AgentMemoryOriginUser, protocol.AgentMemoryStatusActive,
-		))
-	}
-	if err := errors.Join(problems...); err != nil {
-		return fmt.Errorf("add agent memory: %w", err)
 	}
 	return nil
 }

@@ -1,7 +1,6 @@
 package mcp
 
 import (
-	"strings"
 	"testing"
 	"time"
 
@@ -63,128 +62,6 @@ func TestServerUpdateRequiresAnExplicitChange(t *testing.T) {
 	if err := (ServerUpdate{Server: UserServer("docs"), Description: &description}).Validate(); err != nil {
 		t.Fatal(err)
 	}
-}
-
-func TestMCPMutationResultsMustFulfillTheCommand(t *testing.T) {
-	t.Parallel()
-	timeout := mustHandshakeTimeout(t, 15)
-	authorization := AuthorizationChange{Kind: protocol.MCPSecretSet, Value: "Bearer secret"}
-	headers := HeadersChange{Kind: protocol.MCPSecretSet, Value: map[string]string{"X-Key": "secret"}}
-	candidate := Candidate{
-		Name: "docs", Enabled: true, Description: "Documentation", HandshakeTimeout: timeout,
-		Connection: ConnectionInput{
-			Transport: protocol.MCPTransportStreamableHTTP, URL: "https://mcp.example/tools",
-			Authorization: &authorization, Headers: &headers,
-		},
-	}
-	valid := protocol.MCPServer{
-		ID: UserServer(candidate.Name), Description: candidate.Description, HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeBounded, Seconds: new(15)},
-		Connection: protocol.MCPConnection{
-			Type: protocol.MCPTransportStreamableHTTP, URL: candidate.Connection.URL,
-			AuthorizationMasked: "****", HeadersMasked: map[string]string{"X-Key": "****"},
-		},
-		Status: protocol.MCPServerState{Type: protocol.MCPServerDisconnected},
-	}
-	if err := candidate.ValidateResult(valid); err != nil {
-		t.Fatalf("valid create result: %v", err)
-	}
-	for _, test := range []struct {
-		name   string
-		mutate func(*protocol.MCPServer)
-		want   string
-	}{
-		{name: "description", mutate: func(result *protocol.MCPServer) { result.Description = "ignored" }, want: "description"},
-		{name: "timeout", mutate: func(result *protocol.MCPServer) {
-			result.HandshakeTimeout = protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeBounded, Seconds: new(1)}
-		}, want: "timeout"},
-		{name: "URL", mutate: func(result *protocol.MCPServer) { result.Connection.URL = "https://other.example" }, want: "URL"},
-		{name: "authorization", mutate: func(result *protocol.MCPServer) { result.Connection.AuthorizationMasked = "" }, want: "authorization"},
-		{name: "headers", mutate: func(result *protocol.MCPServer) { result.Connection.HeadersMasked = nil }, want: "headers"},
-		{name: "enabled", mutate: func(result *protocol.MCPServer) { result.Status.Type = protocol.MCPServerDisabled }, want: "enabled"},
-	} {
-		t.Run("create "+test.name, func(t *testing.T) {
-			result := valid
-			test.mutate(&result)
-			err := candidate.ValidateResult(result)
-			if err == nil || !strings.Contains(err.Error(), test.want) {
-				t.Fatalf("ValidateResult error = %v, want %q", err, test.want)
-			}
-		})
-	}
-
-	description, enabled := "Updated", false
-	updatedTimeout := mustHandshakeTimeout(t, 30)
-	update := ServerUpdate{
-		Server: UserServer(candidate.Name), Enabled: &enabled, Description: &description,
-		HandshakeTimeout: &updatedTimeout,
-	}
-	updated := valid
-	updated.Description, updated.HandshakeTimeout = description, protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeBounded, Seconds: new(30)}
-	updated.Status = protocol.MCPServerState{Type: protocol.MCPServerDisabled}
-	if err := update.ValidateResult(updated); err != nil {
-		t.Fatalf("valid update result: %v", err)
-	}
-	wrongUpdate := updated
-	wrongUpdate.Description = "ignored"
-	if err := update.ValidateResult(wrongUpdate); err == nil || !strings.Contains(err.Error(), "description") {
-		t.Fatalf("update result error = %v", err)
-	}
-
-	clearAuthorization := AuthorizationChange{Kind: protocol.MCPSecretClear}
-	clearHeaders := HeadersChange{Kind: protocol.MCPSecretClear}
-	connectionUpdate := ServerUpdate{
-		Server: UserServer(candidate.Name),
-		Connection: &ConnectionInput{
-			Transport: protocol.MCPTransportStreamableHTTP, URL: candidate.Connection.URL,
-			Authorization: &clearAuthorization, Headers: &clearHeaders,
-		},
-	}
-	cleared := valid
-	cleared.Connection.AuthorizationMasked = ""
-	cleared.Connection.HeadersMasked = nil
-	if err := connectionUpdate.ValidateResult(cleared); err != nil {
-		t.Fatalf("valid secret clear result: %v", err)
-	}
-	uncleared := cleared
-	uncleared.Connection.AuthorizationMasked = "****"
-	if err := connectionUpdate.ValidateResult(uncleared); err == nil || !strings.Contains(err.Error(), "authorization") {
-		t.Fatalf("secret clear result error = %v", err)
-	}
-
-	environment := EnvironmentChange{Kind: protocol.MCPSecretSet, Value: map[string]string{"TOKEN": "secret"}}
-	stdioCandidate := Candidate{
-		Name: "local", Enabled: false,
-		Connection: ConnectionInput{
-			Transport: protocol.MCPTransportStdio, Command: "mcp-server", Args: []string{"--stdio"},
-			Environment: &environment, Directory: "/workspace",
-		},
-	}
-	stdioResult := protocol.MCPServer{
-		HandshakeTimeout: protocol.MCPHandshakeTimeout{Type: protocol.MCPHandshakeUnbounded},
-		ID:               UserServer(stdioCandidate.Name),
-		Connection: protocol.MCPConnection{
-			Type: protocol.MCPTransportStdio, Command: "mcp-server", Args: []string{"--stdio"},
-			EnvMasked: map[string]string{"TOKEN": "****"}, Dir: "/workspace",
-		},
-		Status: protocol.MCPServerState{Type: protocol.MCPServerDisabled},
-	}
-	if err := stdioCandidate.ValidateResult(stdioResult); err != nil {
-		t.Fatalf("valid stdio result: %v", err)
-	}
-	missingEnvironment := stdioResult
-	missingEnvironment.Connection.EnvMasked = nil
-	if err := stdioCandidate.ValidateResult(missingEnvironment); err == nil || !strings.Contains(err.Error(), "environment") {
-		t.Fatalf("stdio result error = %v", err)
-	}
-}
-
-func mustHandshakeTimeout(t *testing.T, seconds int) HandshakeTimeout {
-	t.Helper()
-	timeout, err := NewHandshakeTimeout(seconds)
-	if err != nil {
-		t.Fatalf("NewHandshakeTimeout(%d): %v", seconds, err)
-	}
-	return timeout
 }
 
 func TestHandshakeTimeoutRejectsNumericDisableSentinel(t *testing.T) {

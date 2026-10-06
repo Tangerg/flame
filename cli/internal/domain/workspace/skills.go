@@ -1,46 +1,8 @@
 package workspace
 
-import (
-	"errors"
-	"fmt"
-	"strings"
-
-	"github.com/Tangerg/flame/runtime/protocol"
-)
+import "github.com/Tangerg/flame/runtime/protocol"
 
 func DiscoveredSkillKey(skill protocol.Skill) string { return string(skill.Scope) + "/" + skill.Name }
-
-// ValidateSkillLifecycleAcknowledgement proves that an authoritative managed-skill
-// catalog reflects the requested lifecycle for exactly one named skill.
-func ValidateSkillLifecycleAcknowledgement(catalog []protocol.ManagedSkill, name string, lifecycle protocol.SkillLifecycle) error {
-	name = strings.TrimSpace(name)
-	if name == "" {
-		return errors.New("managed skill acknowledgement name is empty")
-	}
-	if err := (protocol.ManagedSkill{Name: name, Lifecycle: lifecycle}).ValidateWire(); err != nil {
-		return err
-	}
-	// Each catalog entry arrived through the endpoint, which validated it. What
-	// this proves is the acknowledgement: exactly one entry carries the name, and
-	// it carries the lifecycle that was asked for.
-	found := false
-	for _, skill := range catalog {
-		if skill.Name != name {
-			continue
-		}
-		if found {
-			return fmt.Errorf("managed skill acknowledgement repeats %q", name)
-		}
-		found = true
-		if skill.Lifecycle != lifecycle {
-			return fmt.Errorf("managed skill %q lifecycle is %q, want %q", name, skill.Lifecycle, lifecycle)
-		}
-	}
-	if !found {
-		return fmt.Errorf("managed skill %q is missing after lifecycle change", name)
-	}
-	return nil
-}
 
 type SkillProposal struct {
 	Name          string
@@ -93,22 +55,4 @@ func (p SkillProposalReference) Validate() error {
 		Workspace: protocol.WorkspaceRef{Path: p.Workspace},
 		Name:      p.Name, Revision: p.Revision, Scope: p.Scope,
 	})
-}
-
-// ValidateDecisionAcknowledgement proves that the exact immutable proposal
-// reviewed by Approve or Reject is no longer pending. Other revisions of the
-// same skill remain independent proposals.
-func (p SkillProposalReference) ValidateDecisionAcknowledgement(pending []SkillProposal) error {
-	if err := p.Validate(); err != nil {
-		return err
-	}
-	for index, proposal := range pending {
-		if err := proposal.Validate(); err != nil {
-			return fmt.Errorf("skill proposal acknowledgement item %d: %w", index+1, err)
-		}
-		if proposal.Name == p.Name && proposal.Scope == p.Scope && proposal.Revision == p.Revision {
-			return fmt.Errorf("skill proposal %s remains pending after decision", proposal.Key())
-		}
-	}
-	return nil
 }

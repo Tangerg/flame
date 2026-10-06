@@ -41,32 +41,3 @@ func TestSkillClosedVocabulariesRejectUnknownValues(t *testing.T) {
 		t.Fatal("unknown lifecycle was accepted")
 	}
 }
-
-func TestManagedSkillValidatesLifecycleAcknowledgement(t *testing.T) {
-	catalog := []protocol.ManagedSkill{{Name: "review", Lifecycle: protocol.SkillLifecycleActive}}
-	if err := ValidateSkillLifecycleAcknowledgement(catalog, "review", protocol.SkillLifecycleActive); err != nil {
-		t.Fatalf("active lifecycle acknowledgement: %v", err)
-	}
-	if err := ValidateSkillLifecycleAcknowledgement(catalog, "review", protocol.SkillLifecycleArchived); err == nil {
-		t.Fatal("accepted unchanged lifecycle")
-	}
-	if err := ValidateSkillLifecycleAcknowledgement(catalog, "missing", protocol.SkillLifecycleActive); err == nil {
-		t.Fatal("accepted missing managed skill")
-	}
-}
-
-func TestProposalReferenceValidatesDecisionAcknowledgement(t *testing.T) {
-	reference := SkillProposalReference{Workspace: "/workspace", Name: "release-checks", Revision: testSkillRevision, Scope: protocol.SkillScopeUser}
-	decided := SkillProposal{
-		Name: reference.Name, Revision: reference.Revision, Scope: reference.Scope,
-		Description: "Release safely", Instructions: "Run every gate.",
-	}
-	if err := reference.ValidateDecisionAcknowledgement([]SkillProposal{decided}); err == nil {
-		t.Fatal("accepted the reviewed proposal as still pending")
-	}
-	newRevision := decided
-	newRevision.Revision = "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
-	if err := reference.ValidateDecisionAcknowledgement([]SkillProposal{newRevision}); err != nil {
-		t.Fatalf("new proposal revision: %v", err)
-	}
-}

@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Tangerg/flame/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/cli/internal/domain/workspace"
@@ -247,7 +246,7 @@ func (a *app) relocateSession(path string) {
 			if err != nil {
 				return conversation.SessionSnapshot{}, err
 			}
-			if _, err := session.Update(ctx, a.runtime, conversation.UpdateSession{
+			if _, err := a.runtime.UpdateSession(ctx, conversation.UpdateSession{
 				SessionID: sessionID, Workspace: &path, ExpectedRevision: latest.Session.Revision,
 			}); err != nil {
 				return conversation.SessionSnapshot{}, err

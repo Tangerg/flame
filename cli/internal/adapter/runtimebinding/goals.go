@@ -23,18 +23,7 @@ func (r *Connection) UpdateGoal(ctx context.Context, update protocol.UpdateGoalR
 	}
 	options := r.commandOptions()
 	result, err := r.goals.UpdateGoal(ctx, update, options)
-	updated, err := goalResult("update goal", update.SessionID, result, err)
-	if err != nil {
-		return protocol.Goal{}, err
-	}
-	if updated.Objective != update.Objective {
-		return protocol.Goal{}, runtimeContractViolation(
-			"update goal returned objective %q, want %q",
-			updated.Objective,
-			update.Objective,
-		)
-	}
-	return updated, nil
+	return goalResult("update goal", update.SessionID, result, err)
 }
 
 func (r *Connection) ClearGoal(ctx context.Context, sessionID string) error {
@@ -71,52 +60,15 @@ func (r *Connection) StartGoal(ctx context.Context, start protocol.StartGoalRequ
 	}
 	options := r.commandOptions()
 	result, err := r.goals.StartGoal(ctx, start, options)
-	started, err := goalResult("start goal", start.SessionID, result, err)
-	if err != nil {
-		return protocol.Goal{}, err
-	}
-	if started.Objective != start.Objective || started.Status != protocol.GoalActive ||
-		!goalStartSelectionAcknowledged(start, started) ||
-		started.Used.Runs != 0 || started.Used.Steps != 0 || started.Used.CostUSD != nil {
-		return protocol.Goal{}, runtimeContractViolation("start goal returned an acknowledgement that differs from the request")
-	}
-	return started, nil
-}
-
-func goalStartSelectionAcknowledged(start protocol.StartGoalRequest, started protocol.Goal) bool {
-	if start.Provider == "" && start.Model == "" {
-		// Omission delegates selection to the Session. Goal is the authoritative
-		// resolved result, so there is no request value to echo here.
-		return true
-	}
-	return started.Provider == start.Provider && started.Model == start.Model &&
-		started.ReasoningEffort == start.ReasoningEffort
+	return goalResult("start goal", start.SessionID, result, err)
 }
 
 func (r *Connection) StopGoal(ctx context.Context, sessionID string) (protocol.Goal, error) {
-	stopped, err := r.changeGoal(ctx, "stop goal", sessionID, r.goals.StopGoal)
-	if err != nil {
-		return protocol.Goal{}, err
-	}
-	if stopped.Status == protocol.GoalActive {
-		return protocol.Goal{}, runtimeContractViolation("stop goal returned an active acknowledgement")
-	}
-	return stopped, nil
+	return r.changeGoal(ctx, "stop goal", sessionID, r.goals.StopGoal)
 }
 
 func (r *Connection) ResumeGoal(ctx context.Context, sessionID string) (protocol.Goal, error) {
-	resumed, err := r.changeGoal(ctx, "resume goal", sessionID, r.goals.ResumeGoal)
-	if err != nil {
-		return protocol.Goal{}, err
-	}
-	if resumed.Status != protocol.GoalActive {
-		return protocol.Goal{}, runtimeContractViolation(
-			"resume goal returned status %q, want %q",
-			resumed.Status,
-			protocol.GoalActive,
-		)
-	}
-	return resumed, nil
+	return r.changeGoal(ctx, "resume goal", sessionID, r.goals.ResumeGoal)
 }
 
 func (r *Connection) changeGoal(
@@ -165,8 +117,4 @@ func cloneGoal(value protocol.Goal) protocol.Goal {
 	}
 	value.Used.CostUSD = clonePointer(value.Used.CostUSD)
 	return value
-}
-
-func equalOptional[T comparable](left, right *T) bool {
-	return (left == nil) == (right == nil) && (left == nil || *left == *right)
 }

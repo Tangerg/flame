@@ -8,7 +8,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/cli/internal/application/agent/session"
 	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -70,7 +69,7 @@ func (a *app) selectSessionModel(model protocol.Model) {
 			if err != nil {
 				return conversation.Session{}, err
 			}
-			return session.Update(ctx, a.runtime, conversation.UpdateSession{
+			return a.runtime.UpdateSession(ctx, conversation.UpdateSession{
 				SessionID:        sessionID,
 				Model:            &conversation.ModelRef{Provider: model.Provider, Model: model.ID},
 				ExpectedRevision: latest.Session.Revision,
@@ -300,13 +299,7 @@ func (a *app) deleteApprovalRule(sessionID, id string) {
 				return approvalRuleDeletionResult{}, err
 			}
 			rules, err := a.runtime.ListApprovalRules(ctx, sessionID)
-			if err != nil {
-				return approvalRuleDeletionResult{}, err
-			}
-			if err := validateApprovalRuleDeletion(rules, id); err != nil {
-				return approvalRuleDeletionResult{}, fmt.Errorf("verify approval rule deletion: %w", err)
-			}
-			return approvalRuleDeletionResult{id: id, rules: rules}, nil
+			return approvalRuleDeletionResult{id: id, rules: rules}, err
 		},
 		func(deleted approvalRuleDeletionResult, err error) {
 			if err != nil {
@@ -333,15 +326,6 @@ func (a *app) syncOptions(message string) {
 	a.prompt.SetOptions(a.displayOptions())
 	a.brand.SetOptions(a.displayOptions())
 	a.message(message)
-}
-
-func validateApprovalRuleDeletion(rules []protocol.ApprovalRule, id string) error {
-	for _, rule := range rules {
-		if rule.ID == id {
-			return fmt.Errorf("approval rule %q remains after deletion", id)
-		}
-	}
-	return nil
 }
 
 func approvalModeTitle(mode protocol.ApprovalMode) string {

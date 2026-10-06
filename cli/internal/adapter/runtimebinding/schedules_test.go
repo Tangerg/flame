@@ -2,7 +2,6 @@ package runtimebinding
 
 import (
 	"context"
-	"strings"
 	"testing"
 	"time"
 
@@ -270,58 +269,6 @@ func TestScheduleAdapterRejectsAMutationForAnotherSchedule(t *testing.T) {
 	value := wireSchedule(time.Unix(1, 0), "sch_other")
 	_, err := scheduleResult("update schedule", "sch_expected", &value, nil)
 	requireRuntimeContractViolation(t, err)
-}
-
-func TestScheduleAdapterRejectsMismatchedMutationAcknowledgements(t *testing.T) {
-	now := time.Date(2026, time.August, 12, 10, 0, 0, 0, time.UTC)
-	newRuntime := func(stub *scheduleBindingStub) *Connection {
-		return &Connection{
-			schedules: stub,
-			workspaces: &workspaceBindingStub{resolved: &protocol.WorkspaceInfo{
-				Ref: protocol.WorkspaceRef{Path: "/workspace"}, ProjectRoot: "/workspace",
-				Availability: protocol.WorkspaceAvailable,
-			}},
-			meta: requestMeta("test"),
-		}
-	}
-
-	t.Run("create", func(t *testing.T) {
-		request := protocol.CreateScheduleRequest{
-			Title: "Expected", Instructions: "review everything", Cron: "0 9 * * *",
-		}
-		result := wireSchedule(now, "sch_created")
-		result.Title = "Other"
-		result.Instructions, result.Cron = request.Instructions, request.Cron
-		stub := &scheduleBindingStub{t: t, now: now, keys: make(map[string]struct{}), createResult: &result}
-		_, err := newRuntime(stub).Create(t.Context(), request)
-		requireRuntimeContractViolation(t, err)
-	})
-
-	// create names no expected ID, so every other acknowledgement check passes
-	// and the presence of an identity is the whole contract.
-	t.Run("create identity", func(t *testing.T) {
-		request := protocol.CreateScheduleRequest{
-			Title: "Review", Instructions: "review the repository", Cron: "0 * * * *",
-		}
-		result := wireSchedule(now, "")
-		stub := &scheduleBindingStub{t: t, now: now, keys: make(map[string]struct{}), createResult: &result}
-		_, err := newRuntime(stub).Create(t.Context(), request)
-		if err == nil || !strings.Contains(err.Error(), "without an id") {
-			t.Fatalf("create error = %v, want a missing identity", err)
-		}
-		requireRuntimeContractViolation(t, err)
-	})
-
-	t.Run("update", func(t *testing.T) {
-		title := "Expected"
-		request := protocol.UpdateScheduleRequest{ID: "sch_1", ExpectedRevision: 1, Title: &title}
-		result := wireSchedule(now, request.ID)
-		result.Revision = request.ExpectedRevision + 1
-		result.Title = "Other"
-		stub := &scheduleBindingStub{t: t, now: now, keys: make(map[string]struct{}), updateResult: &result}
-		_, err := newRuntime(stub).Update(t.Context(), request)
-		requireRuntimeContractViolation(t, err)
-	})
 }
 
 func cloneSchedule(value protocol.Schedule) protocol.Schedule {
