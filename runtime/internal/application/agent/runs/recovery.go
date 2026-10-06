@@ -695,13 +695,11 @@ func recoverLostTree(
 				Kind:   tool.FailureExecution,
 				Detail: "tool call interrupted because the run was lost on restart",
 			}
-			replacement, err := item.AbandonToolCall(&failure, finishedAt)
+			itemReplacement, err := transcript.Replace(item, func(item transcript.Item) (transcript.Item, error) {
+				return item.AbandonToolCall(&failure, finishedAt)
+			})
 			if err != nil {
 				return nil, nil, fmt.Errorf("runs: recover lost Item %q: %w", item.ID(), err)
-			}
-			itemReplacement, err := transcript.NewReplacement(item, replacement)
-			if err != nil {
-				return nil, nil, fmt.Errorf("runs: prepare lost Item %q replacement: %w", item.ID(), err)
 			}
 			replacements = append(replacements, itemReplacement)
 		}

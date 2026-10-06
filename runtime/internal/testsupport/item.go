@@ -104,13 +104,17 @@ func MustRestoreItem(input ItemInput) transcript.Item {
 	return item
 }
 
-// MustItemReplacement returns one validated exact Item replacement or panics.
-// Production callers handle construction errors; fixtures use this helper to
-// keep their intended state transition readable.
-func MustItemReplacement(expected, state transcript.Item) transcript.Replacement {
-	replacement, err := transcript.NewReplacement(expected, state)
+// MustItemReplacement derives one Item replacement or panics.
+func MustItemReplacement(expected transcript.Item, transition func(transcript.Item) (transcript.Item, error)) transcript.Replacement {
+	replacement, err := transcript.Replace(expected, transition)
 	if err != nil {
 		panic(err)
 	}
 	return replacement
+}
+
+// DecidedItem is a transition that yields an already-built Item, for tests
+// that need a replacement whose state they constructed directly.
+func DecidedItem(state transcript.Item) func(transcript.Item) (transcript.Item, error) {
+	return func(transcript.Item) (transcript.Item, error) { return state, nil }
 }

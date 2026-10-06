@@ -3,13 +3,11 @@ package runs
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"slices"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -183,7 +181,7 @@ func (r RecoveryCommit) Validate() error {
 				expected.ID(),
 			)
 		}
-		if err := validateRecoveryItemReplacement(replacement, owner.State().FinishedAt()); err != nil {
+		if err := validateAbandonedToolReplacement(replacement, owner.State().FinishedAt()); err != nil {
 			return fmt.Errorf("runs: recovery commit Item replacement[%d]: %w", index, err)
 		}
 		if _, duplicate := replacedItems[expected.ID()]; duplicate {
@@ -456,22 +454,6 @@ func validateRecoveryClosureMessages(rootID string, messages []corechat.Message)
 			}
 			seenToolCalls[result.ID] = struct{}{}
 		}
-	}
-	return nil
-}
-
-func validateRecoveryItemReplacement(replacement transcript.Replacement, finishedAt time.Time) error {
-	expected := replacement.Expected()
-	failure := tool.Failure{
-		Kind:   tool.FailureExecution,
-		Detail: "tool call interrupted because the run was lost on restart",
-	}
-	want, err := expected.AbandonToolCall(&failure, finishedAt)
-	if err != nil {
-		return fmt.Errorf("expected recovery transition: %w", err)
-	}
-	if !reflect.DeepEqual(replacement.State().Snapshot(), want.Snapshot()) {
-		return fmt.Errorf("replacement rewrites facts other than recovery status for Item %q", expected.ID())
 	}
 	return nil
 }

@@ -131,22 +131,18 @@ func (r ResumeClaimCommit) ItemReplacements() ([]transcript.Replacement, error) 
 		if !found {
 			return nil, fmt.Errorf("interrupt item %q was not read", open.ItemID)
 		}
-		var replacement transcript.Item
-		var err error
-		switch open.Kind() {
-		case interrupt.Question:
-			replacement, err = expected.AnswerQuestion(answer.Resolution.Answers)
-		case interrupt.Approval:
-			replacement, err = expected.ResolveToolApproval(approval.DecisionOf(answer.Resolution.Approved))
-		default:
-			return nil, fmt.Errorf("interrupt item %q has unknown kind %q", open.ItemID, open.Kind())
-		}
+		itemReplacement, err := transcript.Replace(expected, func(expected transcript.Item) (transcript.Item, error) {
+			switch open.Kind() {
+			case interrupt.Question:
+				return expected.AnswerQuestion(answer.Resolution.Answers)
+			case interrupt.Approval:
+				return expected.ResolveToolApproval(approval.DecisionOf(answer.Resolution.Approved))
+			default:
+				return transcript.Item{}, fmt.Errorf("unknown interrupt kind %q", open.Kind())
+			}
+		})
 		if err != nil {
 			return nil, fmt.Errorf("settle interrupt item %q: %w", open.ItemID, err)
-		}
-		itemReplacement, err := transcript.NewReplacement(expected, replacement)
-		if err != nil {
-			return nil, fmt.Errorf("prepare interrupt item %q replacement: %w", open.ItemID, err)
 		}
 		replacements = append(replacements, itemReplacement)
 	}

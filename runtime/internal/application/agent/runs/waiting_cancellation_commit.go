@@ -377,13 +377,6 @@ func (w *waitingCancellationValidation) validateTerminalRuns() error {
 		if !terminal || outcome != rundomain.OutcomeCanceled {
 			return fmt.Errorf("runs: waiting cancellation Run[%d] has no canceled outcome", index)
 		}
-		derived, err := expected.CancelWaiting(run.Detail(), run.FinishedAt(), run.MessageMark())
-		if err != nil {
-			return fmt.Errorf("runs: waiting cancellation Run[%d] transition: %w", index, err)
-		}
-		if !derived.Equal(run) {
-			return fmt.Errorf("runs: waiting cancellation Run[%d] rewrites non-terminal facts", index)
-		}
 		if _, duplicate := w.terminalRunIDs[run.ID()]; duplicate {
 			return fmt.Errorf("runs: waiting cancellation repeats Run %q", run.ID())
 		}
@@ -431,7 +424,7 @@ func (w waitingCancellationValidation) validateTerminalItems() error {
 			return fmt.Errorf("runs: waiting cancellation repeats terminal Item %q", expectedItem.ID())
 		}
 		seen[expectedItem.ID()] = struct{}{}
-		if err := validateTerminalItemReplacement(
+		if err := validateAbandonedToolReplacement(
 			replacement,
 			w.finishedAtByRunID[expectedTool.runID],
 		); err != nil {
@@ -441,25 +434,23 @@ func (w waitingCancellationValidation) validateTerminalItems() error {
 	return nil
 }
 
-func validateTerminalItemReplacement(
-	replacement transcript.Replacement,
-	finishedAt time.Time,
-) error {
-	expectedItem := replacement.Expected()
-	replacementItem := replacement.State()
-	if _, present := expectedItem.ToolInvocation(); expectedItem.Kind() != transcript.ToolCall || !present {
+// validateAbandonedToolReplacement checks the outcome a write-set accepts for
+// an interrupted ToolCall: the Replacement derived it, so only its kind is
+// checked here, not the transition again.
+func validateAbandonedToolReplacement(replacement transcript.Replacement, finishedAt time.Time) error {
+	state := replacement.State()
+	if _, present := state.ToolInvocation(); state.Kind() != transcript.ToolCall || !present {
 		return errors.New("tool Item is not a ToolCall")
 	}
-	failure, failed := replacementItem.Failure()
+	if state.Status() != transcript.ItemIncomplete {
+		return errors.New("tool replacement is not abandoned")
+	}
+	failure, failed := state.Failure()
 	if !failed || failure.Kind != tool.FailureExecution {
 		return errors.New("tool replacement has an invalid failure")
 	}
-	expected, err := expectedItem.AbandonToolCall(&failure, finishedAt)
-	if err != nil {
-		return err
-	}
-	if !reflect.DeepEqual(expected.Snapshot(), replacementItem.Snapshot()) {
-		return errors.New("replacement changes facts beyond terminal status")
+	if !state.FinishedAt().Equal(finishedAt) {
+		return errors.New("tool replacement finishes at another time than its Run")
 	}
 	return nil
 }

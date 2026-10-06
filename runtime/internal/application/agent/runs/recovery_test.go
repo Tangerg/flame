@@ -940,7 +940,7 @@ func TestRecoveryMarksAbandonedRunTreeLostInPostorder(t *testing.T) {
 		t.Fatal("RecoveryCommit.Validate accepted an Item replacement that was never constructed")
 	}
 	unmovedReplacement := invalidRecoveryCommit(store.commit, func(state *RecoveryCommitInput) {
-		state.ItemReplacements[0] = testsupport.MustItemReplacement(toolItem, toolItem)
+		state.ItemReplacements[0] = testsupport.MustItemReplacement(toolItem, testsupport.DecidedItem(toolItem))
 	})
 	if err := unmovedReplacement.Validate(); err == nil {
 		t.Fatal("RecoveryCommit.Validate accepted an Item replacement that is not the recovery transition")

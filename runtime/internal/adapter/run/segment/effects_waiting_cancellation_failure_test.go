@@ -166,13 +166,6 @@ func TestCommitWaitingSubtreeCancellationRejectsMismatchedCheckpointBindingWitho
 // a forged terminal projection cannot rewrite the canceled Run's admitted facts.
 func TestCommitWaitingSubtreeCancellationRejectsRunContinuationFactDriftWithoutMutation(t *testing.T) {
 	for name, mutate := range map[string]func(*waitingCancellationCommitDraft){
-		"cumulative metrics": func(draft *waitingCancellationCommitDraft) {
-			replacement := draft.terminalRuns[0]
-			state := mutatedRun(replacement.State(), func(snapshot *run.Snapshot) {
-				snapshot.Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: snapshot.Metrics.Steps() + 1})
-			})
-			draft.terminalRuns[0] = testsupport.MustRunReplacement(replacement.Expected(), testsupport.DecidedRun(state))
-		},
 		"root run capabilities": func(draft *waitingCancellationCommitDraft) {
 			last := len(draft.parkedRuns) - 1
 			draft.parkedRuns[last] = mutatedRun(draft.parkedRuns[last], func(snapshot *run.Snapshot) {

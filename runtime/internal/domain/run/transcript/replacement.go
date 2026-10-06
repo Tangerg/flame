@@ -2,16 +2,24 @@ package transcript
 
 import "fmt"
 
-// Replacement binds an already-decided Item state to the exact aggregate it
-// was derived from. Persistence uses it to reject a different current Item
-// rather than overwriting a racing transcript transition.
+// Replacement binds a decided Item state to the exact aggregate it was
+// derived from. It is built only by applying a transition to that Item, so its
+// legality is settled at construction; persistence rejects a different current
+// Item rather than overwriting a racing transcript transition.
 type Replacement struct {
 	expected Item
 	state    Item
 }
 
-// NewReplacement constructs one exact Item aggregate replacement.
-func NewReplacement(expected, state Item) (Replacement, error) {
+// Replace derives one Replacement by applying transition to expected.
+func Replace(expected Item, transition func(Item) (Item, error)) (Replacement, error) {
+	if expected.ID() == "" {
+		return Replacement{}, fmt.Errorf("%w: replacement carries no Item", ErrIdentityConflict)
+	}
+	state, err := transition(expected)
+	if err != nil {
+		return Replacement{}, err
+	}
 	replacement := Replacement{expected: expected, state: state}
 	if err := replacement.validate(); err != nil {
 		return Replacement{}, err
@@ -19,9 +27,7 @@ func NewReplacement(expected, state Item) (Replacement, error) {
 	return replacement, nil
 }
 
-// validate proves the two aggregates were constructed and retain one Item
-// identity. Their legality is settled by the constructors that produced them;
-// only the zero value can reach here unbuilt.
+// validate rejects the zero value and a transition that changed ownership.
 func (r Replacement) validate() error {
 	if r.expected.ID() == "" {
 		return fmt.Errorf("%w: replacement carries no Item", ErrIdentityConflict)

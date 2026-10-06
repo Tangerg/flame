@@ -321,13 +321,11 @@ func (w waitingCancellationBuilder) settleWaitingItems(
 			Kind:   tool.FailureExecution,
 			Detail: w.reason,
 		}
-		settled, err := item.AbandonToolCall(&itemFailure, w.finishedAt)
+		itemReplacement, err := transcript.Replace(item, func(item transcript.Item) (transcript.Item, error) {
+			return item.AbandonToolCall(&itemFailure, w.finishedAt)
+		})
 		if err != nil {
 			return nil, nil, fmt.Errorf("runs: settle waiting Item %q: %w", item.ID(), err)
-		}
-		itemReplacement, err := transcript.NewReplacement(item, settled)
-		if err != nil {
-			return nil, nil, fmt.Errorf("runs: prepare waiting Item %q replacement: %w", item.ID(), err)
 		}
 		terminalItems = append(terminalItems, itemReplacement)
 	}

@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func TestReplacementRequiresOneValidItemIdentity(t *testing.T) {
+func TestReplaceRequiresOneValidItemIdentity(t *testing.T) {
 	at := time.Unix(1, 0).UTC()
 	expected, err := NewUserMessage(ItemIdentity{
 		SessionID: "ses_1", RunID: "run_1", ItemID: "item_1", OccurredAt: at,
@@ -20,7 +20,7 @@ func TestReplacementRequiresOneValidItemIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	replacement, err := NewReplacement(expected, state)
+	replacement, err := Replace(expected, func(Item) (Item, error) { return state, nil })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,10 +34,10 @@ func TestReplacementRequiresOneValidItemIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := NewReplacement(expected, foreign); !errors.Is(err, ErrIdentityConflict) {
+	if _, err := Replace(expected, func(Item) (Item, error) { return foreign, nil }); !errors.Is(err, ErrIdentityConflict) {
 		t.Fatalf("identity error = %v, want ErrIdentityConflict", err)
 	}
-	if _, err := NewReplacement(Item{}, state); err == nil {
-		t.Fatal("NewReplacement accepted an invalid expected Item")
+	if _, err := Replace(Item{}, func(Item) (Item, error) { return state, nil }); err == nil {
+		t.Fatal("Replace accepted an invalid expected Item")
 	}
 }
