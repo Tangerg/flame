@@ -28,73 +28,77 @@ func drop(r *Releases, digest fingerprint.Digest) {
 }
 
 func TestColdVerificationIsSharedPerDigestAndIndependentAcrossDigests(t *testing.T) {
-	r := testReleases(t)
-	first, err := publishPackage(t.Context(), r, writePackage(t, map[string]string{"plugin.json": portableManifest, "notes.txt": "first"}))
-	if err != nil {
-		t.Fatal(err)
-	}
-	second, err := publishPackage(t.Context(), r, writePackage(t, map[string]string{"plugin.json": portableManifest, "notes.txt": "second"}))
-	if err != nil {
-		t.Fatal(err)
-	}
-	drop(r, first.Digest())
-	drop(r, second.Digest())
-	inFlight := func(err error) func() {
-		running := &verification{done: make(chan struct{}), err: err}
-		r.mu.Lock()
-		r.verifying[first.Digest()] = running
-		r.mu.Unlock()
-		return func() {
-			r.mu.Lock()
-			delete(r.verifying, first.Digest())
-			r.mu.Unlock()
-			close(running.done)
+	synctest.Test(t, func(t *testing.T) {
+		r := testReleases(t)
+		first, err := publishPackage(t.Context(), r, writePackage(t, map[string]string{"plugin.json": portableManifest, "notes.txt": "first"}))
+		if err != nil {
+			t.Fatal(err)
 		}
-	}
+		second, err := publishPackage(t.Context(), r, writePackage(t, map[string]string{"plugin.json": portableManifest, "notes.txt": "second"}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		drop(r, first.Digest())
+		drop(r, second.Digest())
+		inFlight := func(err error) func() {
+			running := &verification{done: make(chan struct{}), err: err}
+			r.mu.Lock()
+			r.verifying[first.Digest()] = running
+			r.mu.Unlock()
+			return func() {
+				r.mu.Lock()
+				delete(r.verifying, first.Digest())
+				r.mu.Unlock()
+				close(running.done)
+			}
+		}
 
-	shared := errors.New("shared verification outcome")
-	finish := inFlight(shared)
-	joined := make(chan error, 1)
-	go func() {
-		_, err := r.integrity(t.Context(), first.Digest())
-		joined <- err
-	}()
-	if _, err := r.integrity(t.Context(), second.Digest()); err != nil {
-		t.Fatalf("another release waited behind a cold verification: %v", err)
-	}
-	select {
-	case err := <-joined:
-		t.Fatalf("a caller finished before the verification it joined: %v", err)
-	default:
-	}
-	finish()
-	if err := <-joined; !errors.Is(err, shared) || !errors.Is(err, plugin.ErrUnavailable) {
-		t.Fatalf("joined caller = %v, want the shared outcome", err)
-	}
-	if _, found := verificationOf(t, r, first.Digest()); found {
-		t.Fatal("a joined caller scanned the release again")
-	}
+		shared := errors.New("shared verification outcome")
+		finish := inFlight(shared)
+		joined := make(chan error, 1)
+		go func() {
+			_, err := r.integrity(t.Context(), first.Digest())
+			joined <- err
+		}()
+		if _, err := r.integrity(t.Context(), second.Digest()); err != nil {
+			t.Fatalf("another release waited behind a cold verification: %v", err)
+		}
+		synctest.Wait()
+		select {
+		case err := <-joined:
+			t.Fatalf("a caller finished before the verification it joined: %v", err)
+		default:
+		}
+		finish()
+		if err := <-joined; !errors.Is(err, shared) || !errors.Is(err, plugin.ErrUnavailable) {
+			t.Fatalf("joined caller = %v, want the shared outcome", err)
+		}
+		if _, found := verificationOf(t, r, first.Digest()); found {
+			t.Fatal("a joined caller scanned the release again")
+		}
 
-	finish = inFlight(context.Canceled)
-	go func() {
-		_, err := r.integrity(t.Context(), first.Digest())
-		joined <- err
-	}()
-	finish()
-	if err := <-joined; err != nil {
-		t.Fatalf("a scan canceled by its own caller decided another caller's outcome: %v", err)
-	}
-	if _, found := verificationOf(t, r, first.Digest()); !found {
-		t.Fatal("the surviving caller did not verify the release itself")
-	}
+		finish = inFlight(context.Canceled)
+		go func() {
+			_, err := r.integrity(t.Context(), first.Digest())
+			joined <- err
+		}()
+		synctest.Wait()
+		finish()
+		if err := <-joined; err != nil {
+			t.Fatalf("a scan canceled by its own caller decided another caller's outcome: %v", err)
+		}
+		if _, found := verificationOf(t, r, first.Digest()); !found {
+			t.Fatal("the surviving caller did not verify the release itself")
+		}
 
-	ctx, cancel := context.WithCancel(t.Context())
-	finish = inFlight(nil)
-	defer finish()
-	cancel()
-	if _, err := r.integrity(ctx, first.Digest()); !errors.Is(err, context.Canceled) {
-		t.Fatalf("a canceled caller kept waiting for another scan: %v", err)
-	}
+		ctx, cancel := context.WithCancel(t.Context())
+		finish = inFlight(nil)
+		defer finish()
+		cancel()
+		if _, err := r.integrity(ctx, first.Digest()); !errors.Is(err, context.Canceled) {
+			t.Fatalf("a canceled caller kept waiting for another scan: %v", err)
+		}
+	})
 }
 
 func TestLeadershipRechecksTheCacheAndHandsOffToOneScan(t *testing.T) {
