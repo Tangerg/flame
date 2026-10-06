@@ -7,7 +7,6 @@ import (
 	"iter"
 	"os"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
@@ -580,7 +579,7 @@ func (i *InteractionExecutor) restoreWaitingTree(
 	defer finishAssembly()
 	assembly, abandon := i.installations.begin()
 	defer abandon()
-	if err := i.validateRestoreScope(continuation.Checkpoint.Scope); err != nil {
+	if err := validateRestoreWorkspace(continuation); err != nil {
 		return err
 	}
 	checkpoint, err := decodeExecutorCheckpoint(continuation.Checkpoint)
@@ -655,24 +654,20 @@ func (i *InteractionExecutor) restoreWaitingTree(
 	return nil
 }
 
-func (i *InteractionExecutor) validateRestoreScope(scope runs.ExecutionScope) error {
-	if scope.Isolated {
+func validateRestoreWorkspace(continuation runs.WaitingContinuation) error {
+	if continuation.Isolated {
 		return fmt.Errorf("%w: isolated workspaces are not restorable after executor loss", runs.ErrExecutorStateLost)
 	}
-	for _, path := range []string{scope.CWD, scope.WorkspaceCWD} {
-		if strings.TrimSpace(path) == "" {
-			return fmt.Errorf("%w: restore workspace path is empty", runs.ErrExecutorStateLost)
+	path := continuation.Workspace
+	info, err := os.Stat(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("%w: restore workspace %q: %w", runs.ErrExecutorStateLost, path, err)
 		}
-		info, err := os.Stat(path)
-		if err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				return fmt.Errorf("%w: restore workspace %q: %w", runs.ErrExecutorStateLost, path, err)
-			}
-			return fmt.Errorf("execution: inspect restore workspace %q: %w", path, err)
-		}
-		if !info.IsDir() {
-			return fmt.Errorf("%w: restore workspace %q is unavailable", runs.ErrExecutorStateLost, path)
-		}
+		return fmt.Errorf("execution: inspect restore workspace %q: %w", path, err)
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("%w: restore workspace %q is unavailable", runs.ErrExecutorStateLost, path)
 	}
 	return nil
 }

@@ -16,7 +16,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -517,14 +516,7 @@ func TestCommitTreeBarrierRejectsMismatchedCheckpointBindingBeforeTransaction(t 
 		mutate   func(*runs.ExecutorCheckpoint)
 	}{
 		{name: "root", identity: "root", mutate: func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.RootMemberID = "other_proc" }},
-		{name: "session", identity: "session", mutate: func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.SessionID = "other_session" }},
-		{name: "goal incarnation", identity: "goal_incarnation", mutate: func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.GoalIncarnationID = "other_goal" }},
-		{name: "provider", identity: "provider", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
-			checkpoint.ModelSelection, _ = modelref.New("openai", checkpoint.ModelSelection.Model())
-		}},
-		{name: "model", identity: "model", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
-			checkpoint.ModelSelection, _ = modelref.New(checkpoint.ModelSelection.Provider(), "other-model")
-		}},
+		{name: "session", identity: "session", mutate: func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.SessionID = "other_session" }},
 	}
 	for _, mutation := range mutations {
 		t.Run(mutation.name, func(t *testing.T) {
@@ -557,14 +549,6 @@ func TestCommitTreeBarrierRejectsRunContinuationFactDriftBeforeTransaction(t *te
 		identity string
 		mutate   func(*runs.Pending, *run.Run)
 	}{
-		{
-			name: "frozen model selection", identity: "frozen_model_selection",
-			mutate: func(_ *runs.Pending, record *run.Run) {
-				snapshot := record.Snapshot()
-				snapshot.ModelSelection = testsupport.MustModelSelection("openai", "gpt")
-				*record = testsupport.MustRestoreRun(snapshot)
-			},
-		},
 		{
 			name: "frozen run capabilities", identity: "frozen_run_capabilities",
 			mutate: func(_ *runs.Pending, record *run.Run) {
@@ -603,7 +587,6 @@ func TestCommitTreeBarrierRejectsRunContinuationFactDriftBeforeTransaction(t *te
 
 			test.mutate(&pending, &run)
 			checkpoint := testRootExecutorCheckpoint()
-			checkpoint.Scope.GoalIncarnationID = pending.GoalIncarnationID
 			_, err := runs.NewTreeBarrierCommit(
 				testCommitID(runtimeidentity.CommitPrefix+"barrier_fact_"+test.identity),
 				pending,

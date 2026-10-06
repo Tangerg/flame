@@ -97,31 +97,7 @@ func (t treeBarrierValidator) validateCheckpoint(rootContinuation Continuation) 
 	if err := checkpoint.ValidateOwnership(rootContinuation.MemberID, pending.SessionID); err != nil {
 		return fmt.Errorf("runs: tree barrier checkpoint ownership: %w", err)
 	}
-	if checkpoint.Scope.GoalIncarnationID != pending.GoalIncarnationID {
-		return fmt.Errorf(
-			"runs: tree barrier checkpoint goal incarnation %q does not match Pending %q: %w",
-			checkpoint.Scope.GoalIncarnationID,
-			pending.GoalIncarnationID,
-			ErrInvalidExecutorCheckpoint,
-		)
-	}
-	root, found := t.rootRun()
-	if !found {
-		return fmt.Errorf("runs: tree barrier has no root Run commit: %w", ErrInvalidExecutorCheckpoint)
-	}
-	if !checkpoint.ModelSelection.Equal(root.ModelSelection()) {
-		return fmt.Errorf("runs: tree barrier checkpoint model differs from the root Run: %w", ErrInvalidExecutorCheckpoint)
-	}
 	return nil
-}
-
-func (t treeBarrierValidator) rootRun() (run.Run, bool) {
-	for _, runCommit := range t.barrier.runs {
-		if runCommit.Run != nil && runCommit.RunID == t.barrier.pending.RootRunID {
-			return *runCommit.Run, true
-		}
-	}
-	return run.Run{}, false
 }
 
 func (t treeBarrierValidator) validateRuns() error {

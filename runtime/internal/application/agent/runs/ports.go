@@ -316,14 +316,19 @@ type WaitingMember struct {
 // WaitingContinuation is the complete Application-owned input for staging one
 // parked tree. Checkpoint payload interpretation remains executor-private;
 // Members carries surviving product identities, accounting, and unfinished Tools.
+// Capabilities and GoalIncarnationID are the root Run's, and Workspace and
+// Isolated the owning Session's: a restored executor reads its policy from
+// them, never from a copy inside the checkpoint.
 type WaitingContinuation struct {
-	SessionID                string
-	ExecutorID               string
-	RootRunID                string
-	Members                  []WaitingMember
-	Checkpoint               ExecutorCheckpoint
-	Capabilities             run.Capabilities
-	ChildRunAdmissionEnabled bool
+	SessionID         string
+	ExecutorID        string
+	RootRunID         string
+	Members           []WaitingMember
+	Checkpoint        ExecutorCheckpoint
+	Capabilities      run.Capabilities
+	GoalIncarnationID string
+	Workspace         string
+	Isolated          bool
 }
 
 // IsolationProvider resolves the sandbox working-copy directory an isolated

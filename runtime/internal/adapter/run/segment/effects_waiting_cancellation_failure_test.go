@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
@@ -153,15 +152,8 @@ func TestCommitWaitingSubtreeCancellationRejectsStalePendingWithoutMutation(t *t
 
 func TestCommitWaitingSubtreeCancellationRejectsMismatchedCheckpointBindingWithoutMutation(t *testing.T) {
 	for name, mutate := range map[string]func(*runs.ExecutorCheckpoint){
-		"root":             func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.RootMemberID = "other_root" },
-		"session":          func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.SessionID = "other_session" },
-		"goal incarnation": func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.GoalIncarnationID = "other_goal" },
-		"provider": func(checkpoint *runs.ExecutorCheckpoint) {
-			checkpoint.ModelSelection, _ = modelref.New("openai", "model")
-		},
-		"model": func(checkpoint *runs.ExecutorCheckpoint) {
-			checkpoint.ModelSelection, _ = modelref.New("anthropic", "other-model")
-		},
+		"root":    func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.RootMemberID = "other_root" },
+		"session": func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.SessionID = "other_session" },
 	} {
 		t.Run(name, func(t *testing.T) {
 			fixture := newWaitingCancellationSQLiteFixture(t)

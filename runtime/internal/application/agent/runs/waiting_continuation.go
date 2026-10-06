@@ -6,8 +6,11 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
@@ -100,6 +103,7 @@ func waitingContinuationFromPending(
 	pending Pending,
 	checkpoint ExecutorCheckpoint,
 	parked []run.Run,
+	sess session.Session,
 ) (WaitingContinuation, error) {
 	if err := pending.Validate(); err != nil {
 		return WaitingContinuation{}, err
@@ -111,8 +115,10 @@ func waitingContinuationFromPending(
 	return NewWaitingContinuation(WaitingContinuation{
 		SessionID: pending.SessionID, ExecutorID: pending.ExecutorID,
 		RootRunID: pending.RootRunID, Members: members, Checkpoint: checkpoint.Clone(),
-		Capabilities:             pending.Capabilities,
-		ChildRunAdmissionEnabled: pending.Capabilities.ChildRuns,
+		Capabilities:      pending.Capabilities,
+		GoalIncarnationID: pending.GoalIncarnationID,
+		Workspace:         sess.Workspace().Path(),
+		Isolated:          sess.Isolated(),
 	})
 }
 
@@ -207,8 +213,11 @@ func validateWaitingContinuationEnvelope(continuation WaitingContinuation) error
 	if err := continuation.Capabilities.Validate(); err != nil {
 		return fmt.Errorf("runs: waiting continuation capabilities: %w", err)
 	}
-	if continuation.ChildRunAdmissionEnabled != continuation.Capabilities.ChildRuns {
-		return errors.New("runs: waiting continuation child admission differs from frozen capabilities")
+	if _, _, err := goalref.ParseOptionalIncarnation(continuation.GoalIncarnationID); err != nil {
+		return fmt.Errorf("runs: waiting continuation: %w", err)
+	}
+	if strings.TrimSpace(continuation.Workspace) == "" || continuation.Workspace != strings.TrimSpace(continuation.Workspace) {
+		return errors.New("runs: waiting continuation workspace is required without surrounding whitespace")
 	}
 	return nil
 }
@@ -274,4 +283,15 @@ func validateWaitingContinuationOrder(members []WaitingMember, canonicalRunIDs [
 		}
 	}
 	return nil
+}
+
+// RootModelSelection is the root Run's frozen model selection, which a restored
+// executor resumes with.
+func (w WaitingContinuation) RootModelSelection() modelref.Selection {
+	for _, member := range w.Members {
+		if member.RunID == w.RootRunID {
+			return member.ModelSelection
+		}
+	}
+	return modelref.Selection{}
 }

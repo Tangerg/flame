@@ -345,12 +345,7 @@ func (t treePublisher) reduceTreeBarrier(
 	if routes == nil || routes.root == nil {
 		return treeBarrierProjection{}, errors.New("runs: publish tree barrier without a root executor route")
 	}
-	if err := barrier.validateFor(
-		routes.root.member.MemberID,
-		t.rootSpec.SessionID,
-		t.rootSpec.GoalIncarnationID,
-		routes.root.modelSelection,
-	); err != nil {
+	if err := barrier.validateFor(routes.root.member.MemberID, t.rootSpec.SessionID); err != nil {
 		return treeBarrierProjection{}, err
 	}
 	interruptionsByMemberID, err := activeInterruptionsByMemberID(routes, barrier.Interruptions())

@@ -243,7 +243,7 @@ func (c *Coordinator) cancelWaitingChild(
 		return CancelResult{}, err
 	}
 	if transformation.remaining != nil {
-		return c.commitWaitingChildCancellation(cleanupCtx, plan, transformation, prepared)
+		return c.commitWaitingChildCancellation(cleanupCtx, sess, plan, transformation, prepared)
 	}
 	return c.resumeAfterWaitingChildCancellation(
 		cleanupCtx,
@@ -328,14 +328,12 @@ func (c *Coordinator) waitingChildCancellationContinuation(
 		}
 		return WaitingContinuation{}, fmt.Errorf("%w: %w", ErrRunNotFound, err)
 	}
-	if err := validateCheckpointSessionScope(checkpoint, sess); err != nil {
-		return WaitingContinuation{}, err
-	}
-	return waitingContinuationFromPending(plan.pending, checkpoint, plan.treeRuns())
+	return waitingContinuationFromPending(plan.pending, checkpoint, plan.treeRuns(), sess)
 }
 
 func (c *Coordinator) commitWaitingChildCancellation(
 	ctx context.Context,
+	sess session.Session,
 	plan cancellationPlan,
 	transformation waitingCancellationTransformation,
 	change WaitingSubtreeChange,
@@ -360,7 +358,7 @@ func (c *Coordinator) commitWaitingChildCancellation(
 		)
 		// The database transaction is authoritative. Tear down the obsolete
 		// execution and restore only from its committed resulting checkpoint.
-		if recoveryErr := c.recoverCommittedWaitingCancellation(ctx, plan, transformation); recoveryErr != nil {
+		if recoveryErr := c.recoverCommittedWaitingCancellation(ctx, sess, plan, transformation); recoveryErr != nil {
 			return CancelResult{}, errors.Join(applyErr, recoveryErr)
 		}
 	}
@@ -450,6 +448,7 @@ func (c *Coordinator) resumeAfterWaitingChildCancellation(
 
 func (c *Coordinator) recoverCommittedWaitingCancellation(
 	ctx context.Context,
+	sess session.Session,
 	plan cancellationPlan,
 	transformation waitingCancellationTransformation,
 ) error {
@@ -462,6 +461,7 @@ func (c *Coordinator) recoverCommittedWaitingCancellation(
 		*transformation.remaining,
 		transformation.checkpoint,
 		plan.survivingRuns(),
+		sess,
 	)
 	if err != nil {
 		return c.failCommittedWaitingCancellationRecovery(recoveryCtx, plan, err)

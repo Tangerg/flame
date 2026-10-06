@@ -7,15 +7,11 @@ import (
 	"errors"
 	"reflect"
 	"slices"
-	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
@@ -31,29 +27,15 @@ func newExecutorCheckpointStorage(t *testing.T) (*sql.DB, *persistence.ExecutorC
 }
 
 func storedExecutorCheckpoint(rootMemberID, sessionID, payload string) runs.ExecutorCheckpoint {
-	selection, err := modelref.NewWithReasoningEffort("anthropic", "claude", "high")
-	if err != nil {
-		panic(err)
-	}
 	cost, err := accounting.NewCost(0.25)
 	if err != nil {
 		panic(err)
 	}
 	return runs.ExecutorCheckpoint{
 		RootMemberID: rootMemberID,
+		SessionID:    sessionID,
 		Payload:      []byte(payload),
 		BuildID:      testsupport.BuildID,
-		Scope: runs.ExecutionScope{
-			SessionID:         sessionID,
-			CWD:               "/workspace/" + sessionID,
-			Isolated:          true,
-			GoalIncarnationID: "lease-" + sessionID,
-		},
-		ModelSelection: selection,
-		Capabilities: run.Capabilities{
-			ChildRuns:      true,
-			InterruptKinds: []interrupt.Kind{interrupt.Approval, interrupt.Question},
-		},
 		Usage: accounting.Snapshot{Models: []accounting.ModelUsage{{
 			Model: "claude",
 			Tokens: accounting.Tokens{
@@ -73,7 +55,7 @@ func TestExecutorCheckpointStoreReplacesOneRootOwnedAggregate(t *testing.T) {
 	if err := store.SaveCheckpoint(ctx, first); err != nil {
 		t.Fatalf("SaveCheckpoint(first): %v", err)
 	}
-	replacement := storedExecutorCheckpoint("member_root", first.Scope.SessionID, `{"tree":"replacement","children":["opaque"]}`)
+	replacement := storedExecutorCheckpoint("member_root", first.SessionID, `{"tree":"replacement","children":["opaque"]}`)
 	replacement.Usage.Models[0].Calls = 2
 	if err := store.SaveCheckpoint(ctx, replacement); err != nil {
 		t.Fatalf("SaveCheckpoint(replacement): %v", err)
@@ -92,25 +74,7 @@ func TestExecutorCheckpointStoreReplacesOneRootOwnedAggregate(t *testing.T) {
 	}
 }
 
-func TestExecutorCheckpointStorageRejectsMissingModelIdentity(t *testing.T) {
-	db, err := sqlite.Open(t.Context(), ":memory:")
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-
-	err = sqlite.NewExecutorCheckpointStore(db).SaveCheckpoint(t.Context(), sqlite.ExecutorCheckpointRecord{
-		RootMemberID: "member_root",
-		Payload:      []byte("opaque"),
-		BuildID:      testsupport.BuildID,
-		Scope:        sqlite.ExecutorScopeRecord{SessionID: "session-1"},
-	})
-	if !errors.Is(err, sqlite.ErrInvalidExecutorCheckpointRecord) || !strings.Contains(err.Error(), "model selection is required") {
-		t.Fatalf("SaveCheckpoint without model identity error = %v", err)
-	}
-}
-
-func TestExecutorCheckpointStoreRejectsImmutablePolicyReplacement(t *testing.T) {
+func TestExecutorCheckpointStoreRejectsBuildReplacement(t *testing.T) {
 	_, store := newExecutorCheckpointStorage(t)
 	first := storedExecutorCheckpoint("member_root", "session-1", `{"tree":"first"}`)
 	if err := store.SaveCheckpoint(t.Context(), first); err != nil {
@@ -121,21 +85,6 @@ func TestExecutorCheckpointStoreRejectsImmutablePolicyReplacement(t *testing.T) 
 		mutate func(*runs.ExecutorCheckpoint)
 	}{
 		{name: "build", mutate: func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.BuildID = testsupport.AlternateBuildID }},
-		{name: "cwd", mutate: func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.CWD = "/other" }},
-		{name: "isolation", mutate: func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.Isolated = false }},
-		{name: "goal incarnation", mutate: func(checkpoint *runs.ExecutorCheckpoint) { checkpoint.Scope.GoalIncarnationID = "other-lease" }},
-		{name: "provider", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
-			checkpoint.ModelSelection, _ = modelref.New("openai", "claude")
-		}},
-		{name: "model", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
-			checkpoint.ModelSelection, _ = modelref.New("anthropic", "claude-sonnet")
-		}},
-		{name: "reasoning effort", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
-			checkpoint.ModelSelection, _ = modelref.NewWithReasoningEffort("anthropic", "claude", "medium")
-		}},
-		{name: "capabilities", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
-			checkpoint.Capabilities.ChildRuns = false
-		}},
 	}
 	for _, mutation := range mutations {
 		t.Run(mutation.name, func(t *testing.T) {
@@ -192,7 +141,7 @@ func TestExecutorCheckpointStoreRejectsOwnerReassignment(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadCheckpoint: %v", err)
 	}
-	if stored.Scope.SessionID != first.Scope.SessionID || !bytes.Equal(stored.Payload, first.Payload) {
+	if stored.SessionID != first.SessionID || !bytes.Equal(stored.Payload, first.Payload) {
 		t.Fatalf("checkpoint after rejected reassignment = %+v, want original owner and payload", stored)
 	}
 }
@@ -224,60 +173,9 @@ func TestExecutorCheckpointStoreRoundTripsApplicationEnvelope(t *testing.T) {
 	}
 	if got.RootMemberID != want.RootMemberID ||
 		got.BuildID != want.BuildID ||
-		got.Scope != want.Scope ||
-		got.ModelSelection != want.ModelSelection ||
-		!reflect.DeepEqual(got.Capabilities, want.Capabilities) ||
+		got.SessionID != want.SessionID ||
 		!reflect.DeepEqual(got.Usage, want.Usage) {
 		t.Fatalf("application envelope = %+v, want %+v", got, want)
-	}
-}
-
-func TestExecutorCheckpointStoreRejectsRetiredOrMalformedPolicy(t *testing.T) {
-	tests := map[string]func(string) string{
-		"unknown policy field": func(policy string) string {
-			return `{"unexpected":true,` + policy[1:]
-		},
-		"retired lease field": func(policy string) string {
-			return strings.Replace(policy, `"goal_incarnation_id"`, `"goal_lease_id"`, 1)
-		},
-		"missing capability set": func(policy string) string {
-			return strings.Replace(policy, `"capabilities":{"child_runs":true,"interrupt_kinds":["approval","question"]}`, `"capabilities":null`, 1)
-		},
-		"noncanonical kinds": func(policy string) string {
-			return strings.Replace(policy, `["approval","question"]`, `["question","approval"]`, 1)
-		},
-		"unknown kind": func(policy string) string {
-			return strings.Replace(policy, `["approval","question"]`, `["approval","future"]`, 1)
-		},
-	}
-	for name, mutate := range tests {
-		t.Run(name, func(t *testing.T) {
-			db, store := newExecutorCheckpointStorage(t)
-			checkpoint := storedExecutorCheckpoint("member_root", "session-1", `{"opaque":true}`)
-			if err := store.SaveCheckpoint(t.Context(), checkpoint); err != nil {
-				t.Fatalf("SaveCheckpoint: %v", err)
-			}
-			var policy string
-			if err := db.QueryRowContext(t.Context(),
-				`SELECT policy FROM executor_checkpoints WHERE root_member_id = ?`, checkpoint.RootMemberID,
-			).Scan(&policy); err != nil {
-				t.Fatalf("read policy: %v", err)
-			}
-			corrupted := mutate(policy)
-			if corrupted == policy {
-				t.Fatalf("corruption %q did not change policy %s", name, policy)
-			}
-			if _, err := db.ExecContext(t.Context(),
-				`UPDATE executor_checkpoints SET policy = ? WHERE root_member_id = ?`,
-				corrupted,
-				checkpoint.RootMemberID,
-			); err != nil {
-				t.Fatalf("corrupt policy: %v", err)
-			}
-			if _, err := store.LoadCheckpoint(t.Context(), checkpoint.RootMemberID); !errors.Is(err, runs.ErrInvalidExecutorCheckpoint) {
-				t.Fatalf("LoadCheckpoint error = %v, want ErrInvalidExecutorCheckpoint", err)
-			}
-		})
 	}
 }
 
@@ -388,7 +286,7 @@ func TestExecutorCheckpointSchemaContainsOnlyOwnedData(t *testing.T) {
 		}
 		columns = append(columns, name)
 	}
-	want := []string{"root_member_id", "session_id", "build_id", "payload", "policy", "usage"}
+	want := []string{"root_member_id", "session_id", "build_id", "payload", "usage"}
 	if !slices.Equal(columns, want) {
 		t.Fatalf("executor checkpoint columns = %v, want %v", columns, want)
 	}

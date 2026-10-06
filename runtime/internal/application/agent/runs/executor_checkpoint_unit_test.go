@@ -2,28 +2,18 @@ package runs
 
 import (
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"strings"
 	"testing"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 )
 
 func TestExecutorCheckpointValidatesOnlyApplicationEnvelope(t *testing.T) {
 	valid := ExecutorCheckpoint{
 		RootMemberID: "root",
+		SessionID:    "session-1",
 		Payload:      []byte(`{"executorOwned":"opaque"}`),
 		BuildID:      testExecutorBuildID,
-		Scope: ExecutionScope{
-			SessionID:         "session-1",
-			CWD:               "/workspace/project",
-			Isolated:          true,
-			GoalIncarnationID: "lease-1",
-		},
-		ModelSelection: testsupport.MustModelSelection("anthropic", "claude"),
-		Usage:          accounting.Snapshot{},
+		Usage:        accounting.Snapshot{},
 	}
 	if err := valid.Validate(); err != nil {
 		t.Fatalf("Validate: %v", err)
@@ -37,16 +27,8 @@ func TestExecutorCheckpointValidatesOnlyApplicationEnvelope(t *testing.T) {
 		{name: "unstable root", mutate: func(checkpoint *ExecutorCheckpoint) { checkpoint.RootMemberID = " root" }},
 		{name: "empty payload", mutate: func(checkpoint *ExecutorCheckpoint) { checkpoint.Payload = nil }},
 		{name: "empty build", mutate: func(checkpoint *ExecutorCheckpoint) { checkpoint.BuildID = "" }},
-		{name: "empty model selection", mutate: func(checkpoint *ExecutorCheckpoint) {
-			checkpoint.ModelSelection = modelref.Selection{}
-		}},
-		{name: "unstable session", mutate: func(checkpoint *ExecutorCheckpoint) { checkpoint.Scope.SessionID = " session-1" }},
-		{name: "unstable cwd", mutate: func(checkpoint *ExecutorCheckpoint) { checkpoint.Scope.CWD = "/workspace/project " }},
-		{name: "goal incarnation whitespace", mutate: func(checkpoint *ExecutorCheckpoint) { checkpoint.Scope.GoalIncarnationID = "lease 1" }},
-		{name: "goal incarnation non-printing", mutate: func(checkpoint *ExecutorCheckpoint) { checkpoint.Scope.GoalIncarnationID = "lease\u200b1" }},
-		{name: "goal incarnation oversized", mutate: func(checkpoint *ExecutorCheckpoint) {
-			checkpoint.Scope.GoalIncarnationID = strings.Repeat("界", goalref.MaximumIncarnationCharacters+1)
-		}},
+		{name: "empty session", mutate: func(checkpoint *ExecutorCheckpoint) { checkpoint.SessionID = "" }},
+		{name: "unstable session", mutate: func(checkpoint *ExecutorCheckpoint) { checkpoint.SessionID = " session-1" }},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -62,6 +44,7 @@ func TestExecutorCheckpointValidatesOnlyApplicationEnvelope(t *testing.T) {
 func TestExecutorCheckpointCloneOwnsMutableData(t *testing.T) {
 	original := ExecutorCheckpoint{
 		RootMemberID: "root",
+		SessionID:    "session-1",
 		Payload:      []byte("payload"),
 		BuildID:      testExecutorBuildID,
 		Usage:        accounting.Snapshot{Models: []accounting.ModelUsage{{Model: "model"}}},
@@ -77,62 +60,20 @@ func TestExecutorCheckpointCloneOwnsMutableData(t *testing.T) {
 func TestExecutorCheckpointValidatesCrossAggregateOwnership(t *testing.T) {
 	checkpoint := ExecutorCheckpoint{
 		RootMemberID: "member-root",
+		SessionID:    "session-1",
 		Payload:      []byte("opaque"),
 		BuildID:      testExecutorBuildID,
-		Scope: ExecutionScope{
-			SessionID:    "session-1",
-			CWD:          "/scratch/project",
-			WorkspaceCWD: "/workspace/project",
-		},
-		ModelSelection: testsupport.MustModelSelection("anthropic", "claude"),
 	}
-	expected := ExecutorCheckpointExpectation{
-		RootMemberID:   "member-root",
-		SessionID:      "session-1",
-		CWD:            "/scratch/project",
-		WorkspaceCWD:   "/workspace/project",
-		ModelSelection: testsupport.MustModelSelection("anthropic", "claude"),
+	if err := checkpoint.ValidateOwnership("member-root", "session-1"); err != nil {
+		t.Fatalf("ValidateOwnership: %v", err)
 	}
-	if err := checkpoint.ValidateFor(expected); err != nil {
-		t.Fatalf("ValidateFor: %v", err)
-	}
-	differentEffort := expected
-	selectionWithEffort, err := modelref.NewWithReasoningEffort("anthropic", "claude", "high")
-	if err != nil {
-		t.Fatal(err)
-	}
-	differentEffort.ModelSelection = selectionWithEffort
-	if err := checkpoint.ValidateFor(differentEffort); !errors.Is(err, ErrInvalidExecutorCheckpoint) ||
-		!strings.Contains(err.Error(), "reasoning effort high") {
-		t.Fatalf("reasoning mismatch error = %v, want complete selection identity", err)
-	}
-
-	tests := []struct {
-		name   string
-		mutate func(*ExecutorCheckpointExpectation)
-	}{
-		{name: "root", mutate: func(value *ExecutorCheckpointExpectation) { value.RootMemberID = "other-root" }},
-		{name: "session", mutate: func(value *ExecutorCheckpointExpectation) { value.SessionID = "other-session" }},
-		{name: "cwd", mutate: func(value *ExecutorCheckpointExpectation) { value.CWD = "/other/workspace" }},
-		{name: "workspace", mutate: func(value *ExecutorCheckpointExpectation) { value.WorkspaceCWD = "/other/workspace" }},
-		{name: "isolation", mutate: func(value *ExecutorCheckpointExpectation) { value.Isolated = true }},
-		{name: "goal incarnation", mutate: func(value *ExecutorCheckpointExpectation) { value.GoalIncarnationID = "other-lease" }},
-		{name: "provider", mutate: func(value *ExecutorCheckpointExpectation) {
-			value.ModelSelection = testsupport.MustModelSelection("openai", "claude")
-		}},
-		{name: "model", mutate: func(value *ExecutorCheckpointExpectation) {
-			value.ModelSelection = testsupport.MustModelSelection("anthropic", "claude-sonnet")
-		}},
-		{name: "empty model selection", mutate: func(value *ExecutorCheckpointExpectation) {
-			value.ModelSelection = modelref.Selection{}
-		}},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			mismatch := expected
-			test.mutate(&mismatch)
-			if err := checkpoint.ValidateFor(mismatch); !errors.Is(err, ErrInvalidExecutorCheckpoint) {
-				t.Fatalf("ValidateFor error = %v, want ErrInvalidExecutorCheckpoint", err)
+	for _, mismatch := range []struct{ name, root, session string }{
+		{name: "root", root: "other-root", session: "session-1"},
+		{name: "session", root: "member-root", session: "other-session"},
+	} {
+		t.Run(mismatch.name, func(t *testing.T) {
+			if err := checkpoint.ValidateOwnership(mismatch.root, mismatch.session); !errors.Is(err, ErrInvalidExecutorCheckpoint) {
+				t.Fatalf("ValidateOwnership error = %v, want ErrInvalidExecutorCheckpoint", err)
 			}
 		})
 	}

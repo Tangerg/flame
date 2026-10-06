@@ -1082,10 +1082,9 @@ func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
 		t.Fatalf("start Tool invocation: %v", startToolInvocationErr)
 	}
 	checkpoint := executorCheckpoint(t, rootMemberID, "opaque waiting checkpoint", runs.ExecutorCheckpoint{
-		BuildID:        checkpointBuildID,
-		Scope:          runs.ExecutionScope{SessionID: "ses_1"},
-		ModelSelection: testsupport.MustModelSelection("anthropic", "claude"),
-		Usage:          accounting.Snapshot{},
+		BuildID:   checkpointBuildID,
+		SessionID: "ses_1",
+		Usage:     accounting.Snapshot{},
 	})
 	question := &transcript.Question{Fields: []transcript.QuestionField{{Prompt: "Continue?", Kind: transcript.QuestionText}}}
 	commitCtx, cancelCommit := context.WithCancel(ctx)
@@ -1189,10 +1188,9 @@ func TestCommitTreeBarrierRollsBackCheckpointWhenRunSuspendFails(t *testing.T) {
 	const rootMemberID = "member_rollback"
 	checkpointStore := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
 	checkpoint := executorCheckpoint(t, rootMemberID, "opaque rollback checkpoint", runs.ExecutorCheckpoint{
-		BuildID:        checkpointBuildID,
-		Scope:          runs.ExecutionScope{SessionID: "ses_rollback"},
-		ModelSelection: testsupport.MustModelSelection("anthropic", "claude"),
-		Usage:          accounting.Snapshot{},
+		BuildID:   checkpointBuildID,
+		SessionID: "ses_rollback",
+		Usage:     accounting.Snapshot{},
 	})
 	interruptStore := persistence.NewInterruptStore(sqlite.NewInterruptStore(db))
 	effects := sqliteEffects(sqliteOpeningStores{
@@ -1269,11 +1267,10 @@ func TestClaimResumeAtomicallyRecordsAnswerAndInvalidatesCheckpoint(t *testing.T
 	}
 	root, _ := pending.RootContinuation()
 	checkpoint := runs.ExecutorCheckpoint{
-		RootMemberID:   root.MemberID,
-		Payload:        []byte(`{"opaque":"tree"}`),
-		BuildID:        checkpointBuildID,
-		Scope:          runs.ExecutionScope{SessionID: pending.SessionID},
-		ModelSelection: testsupport.DefaultModelSelection(),
+		RootMemberID: root.MemberID,
+		Payload:      []byte(`{"opaque":"tree"}`),
+		BuildID:      checkpointBuildID,
+		SessionID:    pending.SessionID,
 	}
 	if saveCheckpointErr := checkpointStore.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {
 		t.Fatalf("save checkpoint: %v", saveCheckpointErr)
@@ -1457,8 +1454,7 @@ func TestClaimResumeAtomicallyPersistsToolApprovalDecision(t *testing.T) {
 	root, _ := pending.RootContinuation()
 	checkpoint := runs.ExecutorCheckpoint{
 		RootMemberID: root.MemberID, Payload: []byte(`{"opaque":"tree"}`),
-		BuildID: checkpointBuildID, Scope: runs.ExecutionScope{SessionID: pending.SessionID},
-		ModelSelection: testsupport.DefaultModelSelection(),
+		BuildID: checkpointBuildID, SessionID: pending.SessionID,
 	}
 	if saveCheckpointErr := checkpoints.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {
 		t.Fatalf("save checkpoint: %v", saveCheckpointErr)
@@ -1682,11 +1678,10 @@ func newResumeClaimSQLiteFixture(t *testing.T, suffix string) resumeClaimSQLiteF
 		t.Fatal("fixture Pending has no root continuation")
 	}
 	checkpoint := runs.ExecutorCheckpoint{
-		RootMemberID:   root.MemberID,
-		Payload:        []byte(`{"opaque":"tree"}`),
-		BuildID:        checkpointBuildID,
-		Scope:          runs.ExecutionScope{SessionID: pending.SessionID},
-		ModelSelection: testsupport.DefaultModelSelection(),
+		RootMemberID: root.MemberID,
+		Payload:      []byte(`{"opaque":"tree"}`),
+		BuildID:      checkpointBuildID,
+		SessionID:    pending.SessionID,
 	}
 	if saveCheckpointErr := checkpoints.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {
 		t.Fatalf("save checkpoint: %v", saveCheckpointErr)
@@ -1768,9 +1763,7 @@ func executorCheckpointValuesEqual(left, right runs.ExecutorCheckpoint) bool {
 	return left.RootMemberID == right.RootMemberID &&
 		slices.Equal(left.Payload, right.Payload) &&
 		left.BuildID == right.BuildID &&
-		left.Scope == right.Scope &&
-		left.ModelSelection == right.ModelSelection &&
-		left.Capabilities.Equal(right.Capabilities) &&
+		left.SessionID == right.SessionID &&
 		slices.Equal(left.Usage.Models, right.Usage.Models)
 }
 
@@ -1843,9 +1836,9 @@ func newTerminalCheckpointFixture(
 	checkpointStore := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(database))
 	const rootMemberID = "member_terminal"
 	if err := checkpointStore.SaveCheckpoint(ctx, executorCheckpoint(t, rootMemberID, "opaque terminal checkpoint", runs.ExecutorCheckpoint{
-		BuildID: checkpointBuildID,
-		Scope:   runs.ExecutionScope{SessionID: "ses_terminal"},
-		Usage:   accounting.Snapshot{},
+		BuildID:   checkpointBuildID,
+		SessionID: "ses_terminal",
+		Usage:     accounting.Snapshot{},
 	})); err != nil {
 		t.Fatalf("seed checkpoint: %v", err)
 	}
@@ -2485,8 +2478,8 @@ func newWaitingCancellationSQLiteFixtureAt(
 	checkpointStore := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
 	const rootMemberID = "member_root"
 	originalCheckpoint := executorCheckpoint(t, rootMemberID, "opaque checkpoint before cancellation", runs.ExecutorCheckpoint{
-		BuildID: testsupport.AlternateBuildID,
-		Scope:   runs.ExecutionScope{SessionID: rootRun.SessionID()},
+		BuildID:   testsupport.AlternateBuildID,
+		SessionID: rootRun.SessionID(),
 		Usage: accounting.Snapshot{Models: []accounting.ModelUsage{{
 			Model:  "test-model",
 			Tokens: accounting.Tokens{InputTokens: 3, OutputTokens: 2},
@@ -2535,8 +2528,8 @@ func newWaitingCancellationSQLiteFixtureAt(
 		}
 	}
 	replacementCheckpoint := executorCheckpoint(t, rootMemberID, "opaque checkpoint after cancellation", runs.ExecutorCheckpoint{
-		BuildID: testsupport.AlternateBuildID,
-		Scope:   runs.ExecutionScope{SessionID: rootRun.SessionID()},
+		BuildID:   testsupport.AlternateBuildID,
+		SessionID: rootRun.SessionID(),
 		Usage: accounting.Snapshot{Models: []accounting.ModelUsage{{
 			Model:  "test-model",
 			Tokens: accounting.Tokens{InputTokens: 8, OutputTokens: 5},
@@ -2600,9 +2593,6 @@ func executorCheckpoint(
 	t.Helper()
 	checkpoint.RootMemberID = rootMemberID
 	checkpoint.Payload = []byte(payload)
-	if !checkpoint.ModelSelection.Configured() {
-		checkpoint.ModelSelection = testsupport.DefaultModelSelection()
-	}
 	if err := checkpoint.Validate(); err != nil {
 		t.Fatalf("executor checkpoint: %v", err)
 	}

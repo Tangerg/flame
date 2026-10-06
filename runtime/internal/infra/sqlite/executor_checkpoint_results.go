@@ -14,7 +14,7 @@ func (e *ExecutorCheckpointStore) replaceToolResultReferences(ctx context.Contex
 		return err
 	}
 	for _, id := range checkpoint.ToolResultIDs {
-		result, err := conn(ctx, e.db).ExecContext(ctx, `INSERT INTO executor_checkpoint_tool_results(root_member_id, result_id) SELECT ?, id FROM tool_result_blobs WHERE id = ? AND session_id = ?`, checkpoint.RootMemberID, id, checkpoint.Scope.SessionID)
+		result, err := conn(ctx, e.db).ExecContext(ctx, `INSERT INTO executor_checkpoint_tool_results(root_member_id, result_id) SELECT ?, id FROM tool_result_blobs WHERE id = ? AND session_id = ?`, checkpoint.RootMemberID, id, checkpoint.SessionID)
 		if err != nil {
 			return err
 		}

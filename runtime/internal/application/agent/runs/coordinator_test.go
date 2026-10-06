@@ -508,11 +508,7 @@ func (f *fakeEffects) ClaimResume(_ context.Context, claim ResumeClaimCommit) (C
 	pending := claim.Pending()
 	root, _ := pending.RootContinuation()
 	checkpoint.RootMemberID = root.MemberID
-	checkpoint.Scope.SessionID = pending.SessionID
-	checkpoint.Scope.CWD = "/work"
-	checkpoint.Scope.WorkspaceCWD = "/work"
-	checkpoint.Scope.GoalIncarnationID = pending.GoalIncarnationID
-	checkpoint.ModelSelection = testsupport.DefaultModelSelection()
+	checkpoint.SessionID = pending.SessionID
 	claimed := ClaimedResume{
 		Pending: pending, Answers: claim.Answers(),
 		Checkpoint: checkpoint,
@@ -555,8 +551,6 @@ func (f *fakeEffects) ReadWaitingCheckpoint(
 ) (ExecutorCheckpoint, error) {
 	checkpoint := testExecutorCheckpoint()
 	checkpoint.RootMemberID = rootMemberID
-	checkpoint.Scope.CWD = "/work"
-	checkpoint.Scope.WorkspaceCWD = "/work"
 	return checkpoint, nil
 }
 

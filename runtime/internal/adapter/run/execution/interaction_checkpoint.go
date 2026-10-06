@@ -12,7 +12,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	agent "github.com/Tangerg/scope/agent"
@@ -86,16 +85,15 @@ type interactionCheckpointState struct {
 }
 
 func (i interactionCheckpointState) restoredStart(continuation runs.WaitingContinuation) runs.RootExecutionStart {
-	checkpoint := continuation.Checkpoint
 	return runs.RootExecutionStart{
 		SessionID:                continuation.SessionID,
-		CWD:                      checkpoint.Scope.CWD,
-		WorkspaceCWD:             checkpoint.Scope.WorkspaceCWD,
-		Isolated:                 checkpoint.Scope.Isolated,
-		GoalIncarnationID:        checkpoint.Scope.GoalIncarnationID,
-		ModelSelection:           checkpoint.ModelSelection,
+		CWD:                      continuation.Workspace,
+		WorkspaceCWD:             continuation.Workspace,
+		Isolated:                 continuation.Isolated,
+		GoalIncarnationID:        continuation.GoalIncarnationID,
+		ModelSelection:           continuation.RootModelSelection(),
 		InterruptKinds:           slices.Clone(continuation.Capabilities.InterruptKinds),
-		ChildRunAdmissionEnabled: continuation.ChildRunAdmissionEnabled,
+		ChildRunAdmissionEnabled: continuation.Capabilities.ChildRuns,
 		WorkingContext:           cloneChatMessages(i.instructions),
 		Options:                  new(i.options.Clone()),
 	}
@@ -119,14 +117,8 @@ func (i *interactionSession) executorCheckpoint(
 	checkpoint := runs.ExecutorCheckpoint{
 		ToolResultIDs: checkpointToolResultIDs(decoded),
 		Installations: i.installationDependencies(),
-		RootMemberID:  tree.RootID().String(), Payload: payload,
-		BuildID: i.buildID.String(), Scope: i.scope,
-		ModelSelection: i.start.ModelSelection,
-		Capabilities: run.Capabilities{
-			ChildRuns:      i.start.ChildRunAdmissionEnabled,
-			InterruptKinds: slices.Clone(i.start.InterruptKinds),
-		},
-		Usage: usage,
+		RootMemberID:  tree.RootID().String(), SessionID: i.scope.SessionID,
+		Payload: payload, BuildID: i.buildID.String(), Usage: usage,
 	}
 	if err := checkpoint.Validate(); err != nil {
 		return runs.ExecutorCheckpoint{}, err

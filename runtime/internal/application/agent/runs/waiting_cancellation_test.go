@@ -70,15 +70,8 @@ func (f *fakePreparedWaitingCancellation) value(t testing.TB) PreparedWaitingSub
 func TestPrepareWaitingCancellationRejectsCheckpointBoundToDifferentApplicationFacts(t *testing.T) {
 	plan := runACancellationPlan(t, false)
 	for name, mutate := range map[string]func(*ExecutorCheckpoint){
-		"root":             func(checkpoint *ExecutorCheckpoint) { checkpoint.RootMemberID = "other_root" },
-		"session":          func(checkpoint *ExecutorCheckpoint) { checkpoint.Scope.SessionID = "other_session" },
-		"goal incarnation": func(checkpoint *ExecutorCheckpoint) { checkpoint.Scope.GoalIncarnationID = "other_goal" },
-		"provider": func(checkpoint *ExecutorCheckpoint) {
-			checkpoint.ModelSelection = testsupport.MustModelSelection("anthropic", checkpoint.ModelSelection.Model())
-		},
-		"model": func(checkpoint *ExecutorCheckpoint) {
-			checkpoint.ModelSelection = testsupport.MustModelSelection(checkpoint.ModelSelection.Provider(), "other-model")
-		},
+		"root":    func(checkpoint *ExecutorCheckpoint) { checkpoint.RootMemberID = "other_root" },
+		"session": func(checkpoint *ExecutorCheckpoint) { checkpoint.SessionID = "other_session" },
 	} {
 		t.Run(name, func(t *testing.T) {
 			checkpoint := testExecutorCheckpoint()
@@ -544,8 +537,8 @@ func TestCancelWaitingChildPassesDurableTreeToExecutorAfterRuntimeRestart(t *tes
 	if continuation.SessionID != plan.pending.SessionID ||
 		continuation.ExecutorID != plan.pending.ExecutorID ||
 		continuation.Checkpoint.RootMemberID != rootContinuation.MemberID ||
-		continuation.Checkpoint.Scope.CWD != "/work" ||
-		continuation.Checkpoint.ModelSelection != plan.root.run.ModelSelection() {
+		continuation.Workspace != "/work" ||
+		!continuation.RootModelSelection().Equal(plan.root.run.ModelSelection()) {
 		t.Fatalf("waiting subtree request = %+v, want durable root continuation", request)
 	}
 	if prepared.applied != 1 ||

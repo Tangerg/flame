@@ -4,22 +4,15 @@ import (
 	"context"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
 
 func testRootExecutorCheckpoint() runs.ExecutorCheckpoint {
 	const rootMemberID = "member_1"
-
-	selection, err := modelref.New("anthropic", "claude")
-	if err != nil {
-		panic(err)
-	}
 	return runs.ExecutorCheckpoint{
-		RootMemberID:   rootMemberID,
-		Payload:        []byte("opaque root checkpoint"),
-		BuildID:        checkpointBuildID,
-		Scope:          runs.ExecutionScope{SessionID: "ses_1"},
-		ModelSelection: selection,
+		RootMemberID: rootMemberID,
+		SessionID:    "ses_1",
+		Payload:      []byte("opaque root checkpoint"),
+		BuildID:      checkpointBuildID,
 	}
 }
 

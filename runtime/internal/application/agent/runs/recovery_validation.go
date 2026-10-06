@@ -42,16 +42,6 @@ func validateRecoveryParkedTree(
 	if sess.Isolated() {
 		return UnresumableWaiting(LossIsolatedWorkspace), nil
 	}
-	expected := ExecutorCheckpointExpectation{
-		RootMemberID:      rootContinuation.MemberID,
-		SessionID:         pending.SessionID,
-		CWD:               sess.Workspace().Path(),
-		WorkspaceCWD:      sess.Workspace().Path(),
-		Isolated:          false,
-		GoalIncarnationID: pending.GoalIncarnationID,
-		ModelSelection:    tree.root.ModelSelection(),
-		Capabilities:      pending.Capabilities,
-	}
 	checkpoint, err := store.LoadExecutorCheckpoint(ctx, rootContinuation.MemberID)
 	if errors.Is(err, ErrExecutorCheckpointNotFound) || errors.Is(err, ErrInvalidExecutorCheckpoint) {
 		return UnresumableWaiting(LossWaitingStateUnavailable), nil
@@ -63,10 +53,10 @@ func validateRecoveryParkedTree(
 			err,
 		)
 	}
-	if validateForErr := checkpoint.ValidateFor(expected); validateForErr != nil {
-		return UnresumableWaiting(LossConfigurationChanged), nil
+	if err := checkpoint.ValidateOwnership(rootContinuation.MemberID, pending.SessionID); err != nil {
+		return UnresumableWaiting(LossWaitingStateUnavailable), nil
 	}
-	continuation, err := waitingContinuationFromPending(pending, checkpoint, values)
+	continuation, err := waitingContinuationFromPending(pending, checkpoint, values, sess)
 	if err != nil {
 		return WaitingResumption{}, fmt.Errorf(
 			"runs: build waiting continuation %q for recovery: %w",

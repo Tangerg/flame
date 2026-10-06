@@ -119,11 +119,10 @@ func bootstrapClaimedResumeTerminalPlan(
 // only adapter/run/execution may construct or interpret a tree snapshot.
 func bootstrapCheckpoint(rootMemberID, sessionID string) runsapp.ExecutorCheckpoint {
 	return runsapp.ExecutorCheckpoint{
-		RootMemberID:   rootMemberID,
-		Payload:        []byte("opaque executor checkpoint"),
-		BuildID:        bootstrapCheckpointBuildID,
-		Scope:          runsapp.ExecutionScope{SessionID: sessionID},
-		ModelSelection: testsupport.DefaultModelSelection(),
+		RootMemberID: rootMemberID,
+		Payload:      []byte("opaque executor checkpoint"),
+		BuildID:      bootstrapCheckpointBuildID,
+		SessionID:    sessionID,
 	}
 }
 
@@ -304,7 +303,6 @@ func parkWithGoalLease(
 	}
 	memberID := "member_" + runID
 	checkpoint := bootstrapCheckpoint(memberID, sessionID)
-	checkpoint.Scope.GoalIncarnationID = goalIncarnationID
 	if err := checkpoints.SaveCheckpoint(ctx, checkpoint); err != nil {
 		t.Fatalf("save executor checkpoint: %v", err)
 	}

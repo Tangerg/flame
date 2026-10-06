@@ -3,10 +3,11 @@ package execution
 import (
 	"context"
 	"errors"
-	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"testing"
 	"time"
+
+	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
@@ -23,7 +24,8 @@ func TestInteractionWaitingRecoveryPreservesCancellation(t *testing.T) {
 			name, want = "deadline", context.DeadlineExceeded
 		}
 		t.Run(name, func(t *testing.T) {
-			checkpoint := captureInteractionQuestionCheckpoint(t, t.TempDir())
+			workspace := t.TempDir()
+			checkpoint := captureInteractionQuestionCheckpoint(t, workspace)
 			executor := newObservedTestInteractionExecutor(t, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 				return nil, errors.New("waiting recovery must not call the model")
 			}), InteractionExecutorConfig{
@@ -32,7 +34,7 @@ func TestInteractionWaitingRecoveryPreservesCancellation(t *testing.T) {
 				}},
 				ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 			})
-			continuation := rootInteractionWaitingContinuation(checkpoint, "exec_restore", run.Capabilities{
+			continuation := rootInteractionWaitingContinuation(checkpoint, workspace, "exec_restore", run.Capabilities{
 				InterruptKinds: []interrupt.Kind{interrupt.Question},
 			})
 			ctx, cancel := context.WithCancel(t.Context())
@@ -60,7 +62,8 @@ func TestInteractionWaitingRecoveryPreservesCancellation(t *testing.T) {
 }
 
 func TestInteractionWaitingRecoveryPreservesActivationFailure(t *testing.T) {
-	checkpoint := captureInteractionQuestionCheckpoint(t, t.TempDir())
+	workspace := t.TempDir()
+	checkpoint := captureInteractionQuestionCheckpoint(t, workspace)
 	failure := errors.New("tree storage unavailable")
 	store := &recoveryTreeStore{ExecutionTreeStore: testTrees(t), failure: failure}
 	executor := newObservedTestInteractionExecutor(t, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
@@ -72,7 +75,7 @@ func TestInteractionWaitingRecoveryPreservesActivationFailure(t *testing.T) {
 		}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 	})
-	continuation := rootInteractionWaitingContinuation(checkpoint, "exec_restore", run.Capabilities{
+	continuation := rootInteractionWaitingContinuation(checkpoint, workspace, "exec_restore", run.Capabilities{
 		InterruptKinds: []interrupt.Kind{interrupt.Question},
 	})
 	head, found, err := store.LoadExecutionTree(t.Context(), continuation.SessionID, checkpoint.RootMemberID)
@@ -103,7 +106,8 @@ func TestInteractionWaitingRecoveryPreservesActivationFailure(t *testing.T) {
 }
 
 func TestInteractionWaitingRecoveryPreservesCancellationAfterActivation(t *testing.T) {
-	checkpoint := captureInteractionQuestionCheckpoint(t, t.TempDir())
+	workspace := t.TempDir()
+	checkpoint := captureInteractionQuestionCheckpoint(t, workspace)
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	store := &recoveryTreeStore{ExecutionTreeStore: testTrees(t), afterSave: cancel}
@@ -116,7 +120,7 @@ func TestInteractionWaitingRecoveryPreservesCancellationAfterActivation(t *testi
 		}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},
 	})
-	continuation := rootInteractionWaitingContinuation(checkpoint, "exec_restore", run.Capabilities{
+	continuation := rootInteractionWaitingContinuation(checkpoint, workspace, "exec_restore", run.Capabilities{
 		InterruptKinds: []interrupt.Kind{interrupt.Question},
 	})
 	_, err := executor.RestoreWaitingExecution(ctx, continuation)

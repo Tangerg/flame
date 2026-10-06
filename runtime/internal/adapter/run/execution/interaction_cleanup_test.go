@@ -3,12 +3,13 @@ package execution
 import (
 	"context"
 	"errors"
-	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"testing/synctest"
+
+	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
@@ -77,7 +78,6 @@ func TestInteractionFailedDiscardRemainsOwnedUntilShutdown(t *testing.T) {
 		})
 		start := interactionTestStart()
 		start.CWD, start.WorkspaceCWD = workspace, workspace
-		start.ModelSelection = checkpoint.ModelSelection
 		start.InterruptKinds = []interrupt.Kind{interrupt.Question}
 		state, err := decodeExecutorCheckpoint(checkpoint)
 		if err != nil {

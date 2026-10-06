@@ -284,20 +284,11 @@ func (r *recoveryStoreStub) LoadExecutorCheckpoint(
 		if !found || root.MemberID != rootMemberID {
 			continue
 		}
-		sess, found := r.sessions[pending.SessionID]
-		if !found {
-			sess = testsupport.MustRestoreSession(session.Snapshot{ID: pending.SessionID, Workspace: testsupport.MustWorkspace("/workspace")})
-		}
 		return ExecutorCheckpoint{
 			RootMemberID: rootMemberID,
+			SessionID:    pending.SessionID,
 			Payload:      []byte(`{}`),
 			BuildID:      testExecutorBuildID,
-			Scope: ExecutionScope{
-				SessionID: pending.SessionID, CWD: sess.Workspace().Path(), WorkspaceCWD: sess.Workspace().Path(),
-				Isolated: sess.Isolated(), GoalIncarnationID: pending.GoalIncarnationID,
-			},
-			ModelSelection: testsupport.DefaultModelSelection(),
-			Capabilities:   pending.Capabilities,
 		}, nil
 	}
 	return ExecutorCheckpoint{}, ErrExecutorCheckpointNotFound
@@ -1175,13 +1166,10 @@ func TestRecoveryPreservesOnlyCoherentInterruptedTree(t *testing.T) {
 		t.Fatalf("Reconcile: %v", err)
 	}
 	wantContinuation, err := waitingContinuationFromPending(pending, ExecutorCheckpoint{
-		RootMemberID: "member_root", Payload: []byte(`{}`), BuildID: testExecutorBuildID,
-		Scope: ExecutionScope{
-			SessionID: run.SessionID(), CWD: "/workspace", WorkspaceCWD: "/workspace",
-			GoalIncarnationID: pending.GoalIncarnationID,
-		},
-		ModelSelection: run.ModelSelection(), Capabilities: pending.Capabilities,
-	}, []rundomain.Run{run})
+		RootMemberID: "member_root", SessionID: run.SessionID(), Payload: []byte(`{}`), BuildID: testExecutorBuildID,
+	}, []rundomain.Run{run}, testsupport.MustRestoreSession(session.Snapshot{
+		ID: run.SessionID(), Workspace: testsupport.MustWorkspace("/workspace"),
+	}))
 	if err != nil {
 		t.Fatalf("waitingContinuationFromPending: %v", err)
 	}
@@ -1328,28 +1316,7 @@ func TestRecoveryRejectsExecutorCheckpointOwnedByDifferentApplicationFacts(t *te
 			checkpoint.RootMemberID = "member_other"
 		}},
 		{name: "session", mutate: func(checkpoint *ExecutorCheckpoint) {
-			checkpoint.Scope.SessionID = "session_other"
-		}},
-		{name: "working directory", mutate: func(checkpoint *ExecutorCheckpoint) {
-			checkpoint.Scope.CWD = "/other/workspace"
-		}},
-		{name: "workspace", mutate: func(checkpoint *ExecutorCheckpoint) {
-			checkpoint.Scope.WorkspaceCWD = "/other/workspace"
-		}},
-		{name: "isolation", mutate: func(checkpoint *ExecutorCheckpoint) {
-			checkpoint.Scope.Isolated = true
-		}},
-		{name: "goal incarnation", mutate: func(checkpoint *ExecutorCheckpoint) {
-			checkpoint.Scope.GoalIncarnationID = "goal_other"
-		}},
-		{name: "provider", mutate: func(checkpoint *ExecutorCheckpoint) {
-			checkpoint.ModelSelection = testsupport.MustModelSelection("openai", checkpoint.ModelSelection.Model())
-		}},
-		{name: "model", mutate: func(checkpoint *ExecutorCheckpoint) {
-			checkpoint.ModelSelection = testsupport.MustModelSelection(checkpoint.ModelSelection.Provider(), "model_other")
-		}},
-		{name: "capabilities", mutate: func(checkpoint *ExecutorCheckpoint) {
-			checkpoint.Capabilities.ChildRuns = true
+			checkpoint.SessionID = "session_other"
 		}},
 	}
 	for _, test := range tests {
@@ -1361,15 +1328,9 @@ func TestRecoveryRejectsExecutorCheckpointOwnedByDifferentApplicationFacts(t *te
 			}
 			checkpoint := ExecutorCheckpoint{
 				RootMemberID: root.MemberID,
+				SessionID:    run.SessionID(),
 				Payload:      []byte(`{}`),
 				BuildID:      testExecutorBuildID,
-				Scope: ExecutionScope{
-					SessionID:    run.SessionID(),
-					CWD:          "/workspace",
-					WorkspaceCWD: "/workspace",
-				},
-				ModelSelection: testsupport.DefaultModelSelection(),
-				Capabilities:   pending.Capabilities.Clone(),
 			}
 			test.mutate(&checkpoint)
 

@@ -36,7 +36,7 @@ func TestInteractionExecutorAppliesColdWaitingDelegateCancellationWithoutDuplica
 	}
 	target := pending.Interrupts[0]
 	targetMemberID := memberIDForRun(t, pending, target.RunID)
-	continuation := waitingDelegateContinuation(barrier)
+	continuation := waitingDelegateContinuation(barrier, fixture.workspace)
 	request, err := runs.NewWaitingSubtreeCancellationRequest(
 		continuation,
 		targetMemberID,
@@ -151,7 +151,7 @@ func memberIDForRun(t *testing.T, pending runs.Pending, runID string) string {
 	return ""
 }
 
-func waitingDelegateContinuation(barrier runs.TreeBarrierCommit) runs.WaitingContinuation {
+func waitingDelegateContinuation(barrier runs.TreeBarrierCommit, workspace string) runs.WaitingContinuation {
 	pending := barrier.Pending()
 	parked := make(map[string]run.Run, len(pending.Continuations))
 	for _, commit := range barrier.Runs() {
@@ -170,6 +170,6 @@ func waitingDelegateContinuation(barrier runs.TreeBarrierCommit) runs.WaitingCon
 		SessionID: pending.SessionID, ExecutorID: pending.ExecutorID,
 		RootRunID: pending.RootRunID, Members: members,
 		Checkpoint: barrier.Checkpoint(), Capabilities: pending.Capabilities,
-		ChildRunAdmissionEnabled: pending.Capabilities.ChildRuns,
+		GoalIncarnationID: pending.GoalIncarnationID, Workspace: workspace,
 	}
 }

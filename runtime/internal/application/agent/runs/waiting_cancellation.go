@@ -248,22 +248,6 @@ func (w waitingCancellationBuilder) validate() error {
 	); err != nil {
 		return fmt.Errorf("runs: invalid prepared waiting subtree checkpoint ownership: %w", err)
 	}
-	if w.prepared.checkpoint.Scope.GoalIncarnationID != w.plan.pending.GoalIncarnationID {
-		return fmt.Errorf(
-			"runs: prepared waiting subtree checkpoint goal incarnation %q does not match Pending %q: %w",
-			w.prepared.checkpoint.Scope.GoalIncarnationID,
-			w.plan.pending.GoalIncarnationID,
-			ErrInvalidExecutorCheckpoint,
-		)
-	}
-	if !w.prepared.checkpoint.ModelSelection.Equal(w.plan.root.run.ModelSelection()) {
-		return fmt.Errorf(
-			"runs: prepared waiting subtree checkpoint model %q does not match the root Run %q: %w",
-			w.prepared.checkpoint.ModelSelection,
-			w.plan.root.run.ModelSelection(),
-			ErrInvalidExecutorCheckpoint,
-		)
-	}
 	return nil
 }
 

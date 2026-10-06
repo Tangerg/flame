@@ -266,13 +266,6 @@ func validateWaitingCancellationBoundary(c waitingSubtreeCancellationState) erro
 	if err := c.Checkpoint.ValidateOwnership(rootContinuation.MemberID, c.SessionID); err != nil {
 		return fmt.Errorf("runs: waiting cancellation checkpoint ownership: %w", err)
 	}
-	if c.Checkpoint.Scope.GoalIncarnationID != c.ExpectedPending.GoalIncarnationID ||
-		!c.Checkpoint.ModelSelection.Equal(c.RootRun.ModelSelection()) {
-		return fmt.Errorf(
-			"runs: waiting cancellation checkpoint differs from the root Run: %w",
-			ErrInvalidExecutorCheckpoint,
-		)
-	}
 	return nil
 }
 

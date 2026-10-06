@@ -7,7 +7,6 @@ import (
 	"slices"
 	"time"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -283,33 +282,12 @@ func (t TreeInterrupted) validate() error {
 	return nil
 }
 
-func (t TreeInterrupted) validateFor(
-	rootMemberID string,
-	sessionID string,
-	goalIncarnationID string,
-	selection modelref.Selection,
-) error {
+func (t TreeInterrupted) validateFor(rootMemberID, sessionID string) error {
 	if err := t.validate(); err != nil {
 		return err
 	}
 	if err := t.checkpoint.ValidateOwnership(rootMemberID, sessionID); err != nil {
 		return fmt.Errorf("runs: executor tree interrupt checkpoint ownership: %w", err)
-	}
-	if t.checkpoint.Scope.GoalIncarnationID != goalIncarnationID {
-		return fmt.Errorf(
-			"runs: executor tree interrupt checkpoint goal incarnation %q does not match Run %q: %w",
-			t.checkpoint.Scope.GoalIncarnationID,
-			goalIncarnationID,
-			ErrInvalidExecutorCheckpoint,
-		)
-	}
-	if !t.checkpoint.ModelSelection.Equal(selection) {
-		return fmt.Errorf(
-			"runs: executor tree interrupt checkpoint model %q does not match Run %q: %w",
-			t.checkpoint.ModelSelection,
-			selection,
-			ErrInvalidExecutorCheckpoint,
-		)
 	}
 	return nil
 }

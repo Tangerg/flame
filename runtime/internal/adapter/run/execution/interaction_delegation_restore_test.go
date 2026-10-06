@@ -29,7 +29,7 @@ func TestInteractionExecutorRestoresWaitingDelegateChildWithoutReadmission(t *te
 		t.Fatal(err)
 	}
 
-	continuation := waitingDelegateContinuation(barrier)
+	continuation := waitingDelegateContinuation(barrier, fixture.workspace)
 	resumption, err := fixture.executor.CanResumeWaitingExecution(t.Context(), continuation)
 	resumable := resumption.Resumable()
 	if err != nil || !resumable {

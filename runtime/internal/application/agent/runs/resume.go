@@ -10,7 +10,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
 // Resume validates one complete response set, atomically consumes the waiting
@@ -87,20 +86,10 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 			result = StartResult{}
 		}
 	}()
-	if validateClaimedResumeErr := validateClaimedResume(claimed, pending, answers, sess); validateClaimedResumeErr != nil {
+	if validateClaimedResumeErr := validateClaimedResume(claimed, pending, answers); validateClaimedResumeErr != nil {
 		return StartResult{}, validateClaimedResumeErr
 	}
-	members, err := waitingMembersFromPending(pending, parkedRuns)
-	if err != nil {
-		return StartResult{}, err
-	}
-	waiting, err := NewWaitingContinuation(WaitingContinuation{
-		SessionID: pending.SessionID, ExecutorID: pending.ExecutorID,
-		RootRunID: pending.RootRunID, Members: members,
-		Checkpoint:               claimed.Checkpoint,
-		Capabilities:             pending.Capabilities,
-		ChildRunAdmissionEnabled: pending.Capabilities.ChildRuns,
-	})
+	waiting, err := waitingContinuationFromPending(pending, claimed.Checkpoint, parkedRuns, sess)
 	if err != nil {
 		return StartResult{}, fmt.Errorf("runs: prepare waiting continuation: %w", err)
 	}
@@ -181,7 +170,6 @@ func validateClaimedResume(
 	claimed ClaimedResume,
 	expected Pending,
 	expectedAnswers []InterruptAnswer,
-	sess session.Session,
 ) error {
 	if !reflect.DeepEqual(claimed.Pending, expected) {
 		return errors.New("runs: claimed waiting hand-off differs from the accepted Pending value")
@@ -196,8 +184,5 @@ func validateClaimedResume(
 	if !ok {
 		return errors.New("runs: claimed continuation has no root")
 	}
-	if err := claimed.Checkpoint.ValidateOwnership(root.MemberID, expected.SessionID); err != nil {
-		return err
-	}
-	return validateCheckpointSessionScope(claimed.Checkpoint, sess)
+	return claimed.Checkpoint.ValidateOwnership(root.MemberID, expected.SessionID)
 }

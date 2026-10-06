@@ -21,7 +21,7 @@ func unresumable(
 	cause error,
 ) (runs.WaitingResumption, error) {
 	slog.WarnContext(ctx, "execution: waiting execution is not resumable",
-		"session.id", continuation.Checkpoint.Scope.SessionID,
+		"session.id", continuation.SessionID,
 		"executor.id", continuation.ExecutorID,
 		"loss", string(loss),
 		"reason", reason,
@@ -54,10 +54,10 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 	if !i.acceptsBuild(checkpoint.BuildID) {
 		return unresumable(ctx, continuation, runs.LossOtherBuild, "checkpoint belongs to another build", nil)
 	}
-	if checkpoint.Scope.Isolated {
+	if continuation.Isolated {
 		return unresumable(ctx, continuation, runs.LossIsolatedWorkspace, "isolated workspace does not survive executor loss", nil)
 	}
-	if err := i.validateRestoreScope(checkpoint.Scope); err != nil {
+	if err := validateRestoreWorkspace(continuation); err != nil {
 		if errors.Is(err, runs.ErrExecutorStateLost) {
 			return unresumable(ctx, continuation, runs.LossWorkspaceUnavailable, "restore workspace is unavailable", err)
 		}

@@ -105,8 +105,9 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	workspace := t.TempDir()
 	sessions := &delegateSessionStore{value: testsupport.MustRestoreSession(session.Snapshot{
-		ID: "session_1", Title: "completed sibling", Workspace: testsupport.MustWorkspace(t.TempDir()),
+		ID: "session_1", Title: "completed sibling", Workspace: testsupport.MustWorkspace(workspace),
 	})}
 	projection := newDelegateProjection(t)
 	runSequence, segmentSequence := 0, 0
@@ -200,7 +201,7 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 	if err := executor.Release(t.Context(), runs.ExecutorRef{SessionID: pending.SessionID, ExecutorID: pending.ExecutorID}); err != nil {
 		t.Fatal(err)
 	}
-	ref, err := executor.StageContinuation(t.Context(), waitingDelegateContinuation(barrier))
+	ref, err := executor.StageContinuation(t.Context(), waitingDelegateContinuation(barrier, workspace))
 	if err != nil {
 		t.Fatalf("restore completed sibling beside a waiting member: %v", err)
 	}

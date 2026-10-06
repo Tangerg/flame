@@ -4,16 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"strings"
 
-	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
-	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
-	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/toolresult"
-	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
@@ -36,60 +31,22 @@ type ExecutionScope struct {
 	GoalIncarnationID string
 }
 
-// Validate rejects ambiguous host identities before they cross a durable
-// continuation boundary.
-func (e ExecutionScope) Validate() error {
-	if err := resourceid.ValidateSession(e.SessionID); err != nil {
-		return fmt.Errorf("execution: scope: %w", err)
-	}
-	for _, field := range []struct {
-		name  string
-		value string
-	}{
-		{name: "working dir", value: e.CWD},
-		{name: "workspace dir", value: e.WorkspaceCWD},
-	} {
-		if field.value != strings.TrimSpace(field.value) {
-			return fmt.Errorf("execution: scope %s has surrounding whitespace", field.name)
-		}
-	}
-	if _, _, err := goalref.ParseOptionalIncarnation(e.GoalIncarnationID); err != nil {
-		return fmt.Errorf("execution: scope: %w", err)
-	}
-	return nil
-}
-
 // ExecutorCheckpoint is one root-owned durable continuation aggregate. Payload
 // contains the complete executor tree and is opaque outside its executor
-// implementation; the host owns only the aggregate identity and metadata needed
-// to decide whether and how the continuation may be restored. Installations is
-// the executor's canonical dependency projection; it is stored beside the
-// payload so installation admission never interprets continuation state.
+// implementation; the host owns only the aggregate identity and the metadata
+// no other owner records. Model selection, capabilities, and goal incarnation
+// belong to the root Run, and workspace and isolation to the Session; restore
+// reads them from those owners. Installations is the executor's canonical
+// dependency projection; it is stored beside the payload so installation
+// admission never interprets continuation state.
 type ExecutorCheckpoint struct {
-	ToolResultIDs  []toolresult.ID
-	Installations  []plugin.Dependency
-	RootMemberID   string
-	Payload        []byte
-	BuildID        string
-	Scope          ExecutionScope
-	ModelSelection modelref.Selection
-	Capabilities   run.Capabilities
-	Usage          accounting.Snapshot
-}
-
-// ExecutorCheckpointExpectation is the durable identity and host context a
-// durable continuation must still belong to before it may be retained or
-// restored. It contains no executor topology: every field is independently
-// known by the owning Run and Session.
-type ExecutorCheckpointExpectation struct {
-	RootMemberID      string
-	SessionID         string
-	CWD               string
-	WorkspaceCWD      string
-	Isolated          bool
-	GoalIncarnationID string
-	ModelSelection    modelref.Selection
-	Capabilities      run.Capabilities
+	ToolResultIDs []toolresult.ID
+	Installations []plugin.Dependency
+	RootMemberID  string
+	SessionID     string
+	Payload       []byte
+	BuildID       string
+	Usage         accounting.Snapshot
 }
 
 // Clone returns an ownership-independent checkpoint value.
@@ -97,7 +54,6 @@ func (e ExecutorCheckpoint) Clone() ExecutorCheckpoint {
 	e.ToolResultIDs = slices.Clone(e.ToolResultIDs)
 	e.Installations = slices.Clone(e.Installations)
 	e.Payload = append([]byte(nil), e.Payload...)
-	e.Capabilities = e.Capabilities.Clone()
 	e.Usage.Models = append([]accounting.ModelUsage(nil), e.Usage.Models...)
 	return e
 }
@@ -120,14 +76,8 @@ func (e ExecutorCheckpoint) Validate() error {
 	if _, err := runtimeidentity.ParseBuild(e.BuildID); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidExecutorCheckpoint, err)
 	}
-	if err := e.Scope.Validate(); err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidExecutorCheckpoint, err)
-	}
-	if err := e.ModelSelection.ValidateExact(); err != nil {
-		return fmt.Errorf("%w: %w", ErrInvalidExecutorCheckpoint, err)
-	}
-	if err := e.Capabilities.Validate(); err != nil {
-		return fmt.Errorf("%w: capabilities: %w", ErrInvalidExecutorCheckpoint, err)
+	if err := resourceid.ValidateSession(e.SessionID); err != nil {
+		return fmt.Errorf("%w: %v", ErrInvalidExecutorCheckpoint, err)
 	}
 	if err := e.Usage.Validate(); err != nil {
 		return fmt.Errorf("%w: usage: %w", ErrInvalidExecutorCheckpoint, err)
@@ -157,106 +107,13 @@ func (e ExecutorCheckpoint) ValidateOwnership(rootMemberID, sessionID string) er
 			rootMemberID,
 		)
 	}
-	if e.Scope.SessionID != sessionID {
+	if e.SessionID != sessionID {
 		return fmt.Errorf(
 			"%w: session ID %q does not match owner %q",
 			ErrInvalidExecutorCheckpoint,
-			e.Scope.SessionID,
+			e.SessionID,
 			sessionID,
 		)
-	}
-	return nil
-}
-
-// ValidateFor proves both ownership and every host fact independently known at
-// restore time. This prevents one logical execution from running tools in
-// the checkpoint workspace while hooks or delegated work use the Session's
-// current workspace.
-func (e ExecutorCheckpoint) ValidateFor(expected ExecutorCheckpointExpectation) error {
-	if err := e.ValidateOwnership(expected.RootMemberID, expected.SessionID); err != nil {
-		return err
-	}
-	if expected.CWD != strings.TrimSpace(expected.CWD) {
-		return fmt.Errorf("%w: expected working dir has surrounding whitespace", ErrInvalidExecutorCheckpoint)
-	}
-	if expected.WorkspaceCWD != strings.TrimSpace(expected.WorkspaceCWD) {
-		return fmt.Errorf("%w: expected workspace dir has surrounding whitespace", ErrInvalidExecutorCheckpoint)
-	}
-	if err := expected.ModelSelection.ValidateExact(); err != nil {
-		return fmt.Errorf("%w: expected %w", ErrInvalidExecutorCheckpoint, err)
-	}
-	if err := expected.Capabilities.Validate(); err != nil {
-		return fmt.Errorf("%w: expected capabilities: %w", ErrInvalidExecutorCheckpoint, err)
-	}
-	if _, _, err := goalref.ParseOptionalIncarnation(expected.GoalIncarnationID); err != nil {
-		return fmt.Errorf("%w: expected %v", ErrInvalidExecutorCheckpoint, err)
-	}
-	if e.Scope.CWD != expected.CWD {
-		return fmt.Errorf(
-			"%w: working dir %q does not match owner %q",
-			ErrInvalidExecutorCheckpoint,
-			e.Scope.CWD,
-			expected.CWD,
-		)
-	}
-	if e.Scope.WorkspaceCWD != expected.WorkspaceCWD {
-		return fmt.Errorf(
-			"%w: workspace dir %q does not match owner %q",
-			ErrInvalidExecutorCheckpoint,
-			e.Scope.WorkspaceCWD,
-			expected.WorkspaceCWD,
-		)
-	}
-	if e.Scope.Isolated != expected.Isolated {
-		return fmt.Errorf(
-			"%w: isolation %t does not match owner %t",
-			ErrInvalidExecutorCheckpoint,
-			e.Scope.Isolated,
-			expected.Isolated,
-		)
-	}
-	if e.Scope.GoalIncarnationID != expected.GoalIncarnationID {
-		return fmt.Errorf(
-			"%w: goal incarnation ID %q does not match owner %q",
-			ErrInvalidExecutorCheckpoint,
-			e.Scope.GoalIncarnationID,
-			expected.GoalIncarnationID,
-		)
-	}
-	if !e.ModelSelection.Equal(expected.ModelSelection) {
-		return fmt.Errorf(
-			"%w: model selection %q does not match owner %q",
-			ErrInvalidExecutorCheckpoint,
-			e.ModelSelection,
-			expected.ModelSelection,
-		)
-	}
-	if !e.Capabilities.Equal(expected.Capabilities) {
-		return fmt.Errorf(
-			"%w: capabilities %+v do not match owner %+v",
-			ErrInvalidExecutorCheckpoint,
-			e.Capabilities,
-			expected.Capabilities,
-		)
-	}
-	return nil
-}
-
-func validateCheckpointSessionScope(
-	checkpoint ExecutorCheckpoint,
-	sess session.Session,
-) error {
-	if checkpoint.Scope.WorkspaceCWD != sess.Workspace().Path() || checkpoint.Scope.Isolated != sess.Isolated() {
-		return fmt.Errorf("%w: checkpoint workspace scope differs from Session", ErrExecutorStateLost)
-	}
-	if sess.Isolated() {
-		if strings.TrimSpace(checkpoint.Scope.CWD) == "" {
-			return fmt.Errorf("%w: isolated checkpoint working directory is empty", ErrExecutorStateLost)
-		}
-		return nil
-	}
-	if checkpoint.Scope.CWD != sess.Workspace().Path() {
-		return fmt.Errorf("%w: checkpoint working directory differs from Session", ErrExecutorStateLost)
 	}
 	return nil
 }

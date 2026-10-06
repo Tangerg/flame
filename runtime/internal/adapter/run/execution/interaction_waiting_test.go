@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"log/slog"
 	"reflect"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
@@ -91,6 +92,7 @@ func TestInteractionExecutorRestoresWaitingTreeAndDeliversSemanticAnswer(t *test
 
 	continuation := rootInteractionWaitingContinuation(
 		barrier.Checkpoint(),
+		workspace,
 		ref.ExecutorID,
 		run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}},
 	)
@@ -223,6 +225,7 @@ func TestInteractionExecutorRestoresRuntimeAskUserTool(t *testing.T) {
 	}
 	if _, stageContinuationErr := executor.StageContinuation(t.Context(), rootInteractionWaitingContinuation(
 		barrier.Checkpoint(),
+		workspace,
 		ref.ExecutorID,
 		run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}},
 	)); stageContinuationErr != nil {
@@ -296,6 +299,7 @@ func TestInteractionExecutorRestoresInteractiveApprovalWithoutRepeatingPolicyOrH
 	}
 	continuation := rootInteractionWaitingContinuation(
 		barrier.Checkpoint(),
+		workspace,
 		ref.ExecutorID,
 		run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval}},
 	)
@@ -362,6 +366,7 @@ func TestInteractionExecutorCancellationStopsApprovedInflightTool(t *testing.T) 
 	})
 	continuation := rootInteractionWaitingContinuation(
 		barrier.Checkpoint(),
+		workspace,
 		ref.ExecutorID,
 		run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval}},
 	)
@@ -437,6 +442,7 @@ func TestInteractionExecutorCancellationStopsApprovedForegroundShell(t *testing.
 	})
 	continuation := rootInteractionWaitingContinuation(
 		barrier.Checkpoint(),
+		workspace,
 		ref.ExecutorID,
 		run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval}},
 	)
@@ -534,6 +540,7 @@ func TestInteractionExecutorPreservesDeferredAdvertisementAcrossWaitingRestore(t
 	}
 	if _, stageContinuationErr := executor.StageContinuation(t.Context(), rootInteractionWaitingContinuation(
 		barrier.Checkpoint(),
+		workspace,
 		ref.ExecutorID,
 		run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}},
 	)); stageContinuationErr != nil {
@@ -604,6 +611,7 @@ type promptingInteractionAuthorizer struct {
 
 func rootInteractionWaitingContinuation(
 	checkpoint runs.ExecutorCheckpoint,
+	workspace string,
 	executorID string,
 	capabilities run.Capabilities,
 ) runs.WaitingContinuation {
@@ -636,13 +644,12 @@ func rootInteractionWaitingContinuation(
 		}
 	}
 	return runs.WaitingContinuation{
-		SessionID: checkpoint.Scope.SessionID, ExecutorID: executorID, RootRunID: rootRunID,
+		SessionID: checkpoint.SessionID, ExecutorID: executorID, RootRunID: rootRunID,
 		Members: []runs.WaitingMember{{
 			RunID: rootRunID, MemberID: checkpoint.RootMemberID,
-			ModelSelection: checkpoint.ModelSelection, Metrics: metrics,
+			ModelSelection: interactionTestStart().ModelSelection, Metrics: metrics,
 		}},
-		Checkpoint: checkpoint, Capabilities: capabilities,
-		ChildRunAdmissionEnabled: capabilities.ChildRuns,
+		Checkpoint: checkpoint, Capabilities: capabilities, Workspace: workspace,
 	}
 }
 
@@ -687,32 +694,32 @@ func TestInteractionExecutorRejectsInvalidWaitingRecoveryFacts(t *testing.T) {
 	checkpoint := captureInteractionQuestionCheckpoint(t, workspace)
 	for _, test := range []struct {
 		name   string
-		mutate func(*runs.ExecutorCheckpoint)
+		mutate func(*runs.WaitingContinuation)
 	}{
-		{name: "corrupt payload", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
-			checkpoint.Payload = []byte(`{"tree":null}`)
+		{name: "corrupt payload", mutate: func(continuation *runs.WaitingContinuation) {
+			continuation.Checkpoint.Payload = []byte(`{"tree":null}`)
 		}},
-		{name: "wrong build", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
-			checkpoint.BuildID = "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+		{name: "wrong build", mutate: func(continuation *runs.WaitingContinuation) {
+			continuation.Checkpoint.BuildID = "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 		}},
-		{name: "missing workspace", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
-			checkpoint.Scope.CWD = workspace + "/gone"
+		{name: "missing workspace", mutate: func(continuation *runs.WaitingContinuation) {
+			continuation.Workspace = workspace + "/gone"
 		}},
-		{name: "isolated workspace", mutate: func(checkpoint *runs.ExecutorCheckpoint) {
-			checkpoint.Scope.Isolated = true
+		{name: "isolated workspace", mutate: func(continuation *runs.WaitingContinuation) {
+			continuation.Isolated = true
 		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			candidate := checkpoint.Clone()
-			test.mutate(&candidate)
 			executor := newObservedTestInteractionExecutor(t, chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
 				return nil, errors.New("model must not be called while restoring")
 			}), InteractionExecutorConfig{})
 			continuation := rootInteractionWaitingContinuation(
-				candidate,
+				checkpoint.Clone(),
+				workspace,
 				"exec_restore",
 				run.Capabilities{},
 			)
+			test.mutate(&continuation)
 
 			_, err := executor.StageContinuation(t.Context(), continuation)
 			if !errors.Is(err, runs.ErrExecutorStateLost) {
@@ -735,6 +742,7 @@ func TestInteractionExecutorRejectsInvalidWaitingRecoveryFacts(t *testing.T) {
 		}
 		_, err = executor.StageContinuation(t.Context(), rootInteractionWaitingContinuation(
 			checkpoint,
+			workspace,
 			"exec_restore",
 			run.Capabilities{},
 		))
@@ -757,6 +765,7 @@ func TestInteractionExecutorProbesWaitingCheckpointThroughExactRestorePath(t *te
 	})
 	continuation := rootInteractionWaitingContinuation(
 		checkpoint,
+		workspace,
 		"exec_probe",
 		run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}},
 	)
@@ -1118,7 +1127,7 @@ func TestUnresumableWaitingExecutionReportsWhy(t *testing.T) {
 		func(context.Context, *chat.Request) (*chat.Response, error) {
 			return nil, errors.New("model must not be called while probing")
 		}), InteractionExecutorConfig{})
-	continuation := rootInteractionWaitingContinuation(foreign, "exec_probe", run.Capabilities{})
+	continuation := rootInteractionWaitingContinuation(foreign, workspace, "exec_probe", run.Capabilities{})
 
 	resumption, err := executor.CanResumeWaitingExecution(t.Context(), continuation)
 

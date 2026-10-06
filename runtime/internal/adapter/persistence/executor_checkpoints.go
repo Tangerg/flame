@@ -58,16 +58,8 @@ func (e *ExecutorCheckpointStore) SaveCheckpoint(ctx context.Context, checkpoint
 		RootMemberID:  checkpoint.RootMemberID,
 		Payload:       append([]byte(nil), checkpoint.Payload...),
 		BuildID:       checkpoint.BuildID,
-		Scope: sqlite.ExecutorScopeRecord{
-			SessionID:         checkpoint.Scope.SessionID,
-			CWD:               checkpoint.Scope.CWD,
-			WorkspaceCWD:      checkpoint.Scope.WorkspaceCWD,
-			Isolated:          checkpoint.Scope.Isolated,
-			GoalIncarnationID: checkpoint.Scope.GoalIncarnationID,
-		},
-		ModelSelection: checkpoint.ModelSelection,
-		Capabilities:   checkpoint.Capabilities.Clone(),
-		Usage:          checkpoint.Usage,
+		SessionID:     checkpoint.SessionID,
+		Usage:         checkpoint.Usage,
 	})
 	return translateCheckpointStorageError(err)
 }
@@ -83,16 +75,8 @@ func (e *ExecutorCheckpointStore) LoadCheckpoint(ctx context.Context, rootMember
 		RootMemberID:  record.RootMemberID,
 		Payload:       append([]byte(nil), record.Payload...),
 		BuildID:       record.BuildID,
-		Scope: runs.ExecutionScope{
-			SessionID:         record.Scope.SessionID,
-			CWD:               record.Scope.CWD,
-			WorkspaceCWD:      record.Scope.WorkspaceCWD,
-			Isolated:          record.Scope.Isolated,
-			GoalIncarnationID: record.Scope.GoalIncarnationID,
-		},
-		ModelSelection: record.ModelSelection,
-		Capabilities:   record.Capabilities.Clone(),
-		Usage:          record.Usage,
+		SessionID:     record.SessionID,
+		Usage:         record.Usage,
 	}
 	if err := checkpoint.Validate(); err != nil {
 		return runs.ExecutorCheckpoint{}, fmt.Errorf("persistence: load executor checkpoint: %w", err)

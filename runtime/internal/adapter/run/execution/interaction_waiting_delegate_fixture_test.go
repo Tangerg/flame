@@ -3,10 +3,11 @@ package execution
 import (
 	"context"
 	"errors"
-	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"slices"
 	"testing"
 	"time"
+
+	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 
 	runinput "github.com/Tangerg/flame/runtime/internal/adapter/run/input"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
@@ -24,6 +25,7 @@ type waitingDelegateFixture struct {
 	executor    *InteractionExecutor
 	coordinator *runs.Coordinator
 	projection  *delegateProjection
+	workspace   string
 }
 
 func newWaitingDelegateFixture(t *testing.T, identity string) *waitingDelegateFixture {
@@ -73,6 +75,7 @@ func newWaitingDelegateFixture(t *testing.T, identity string) *waitingDelegateFi
 	})
 	return &waitingDelegateFixture{
 		model: model, executor: executor, coordinator: coordinator, projection: projection,
+		workspace: workspace,
 	}
 }
 

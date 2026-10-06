@@ -284,7 +284,7 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 	checkpointStore := persistence.NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db))
 	checkpoint := runs.ExecutorCheckpoint{
 		RootMemberID: "member_orphan", Payload: []byte(`{"opaque":true}`), BuildID: testsupport.BuildID,
-		Scope: runs.ExecutionScope{SessionID: "session_abandoned"}, ModelSelection: testsupport.DefaultModelSelection(),
+		SessionID: "session_abandoned",
 	}
 	if saveCheckpointErr := checkpointStore.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {
 		t.Fatalf("SaveCheckpoint: %v", saveCheckpointErr)
@@ -450,11 +450,10 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 		t.Fatalf("start Tool invocation: %v", startToolInvocationErr)
 	}
 	checkpoint := runs.ExecutorCheckpoint{
-		RootMemberID:   "orphan_checkpoint",
-		Payload:        []byte(`{"opaque":true}`),
-		BuildID:        testsupport.BuildID,
-		Scope:          runs.ExecutionScope{SessionID: "session"},
-		ModelSelection: testsupport.DefaultModelSelection(),
+		RootMemberID: "orphan_checkpoint",
+		Payload:      []byte(`{"opaque":true}`),
+		BuildID:      testsupport.BuildID,
+		SessionID:    "session",
 	}
 	if saveCheckpointErr := checkpointStore.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {
 		t.Fatalf("SaveCheckpoint: %v", saveCheckpointErr)
@@ -656,7 +655,7 @@ func TestRecoveryRejectsPartialParkWithoutMutatingIt(t *testing.T) {
 	}
 	checkpoint := runs.ExecutorCheckpoint{
 		RootMemberID: "member_root", Payload: []byte(`{"opaque":true}`), BuildID: testsupport.BuildID,
-		Scope: runs.ExecutionScope{SessionID: "session"}, ModelSelection: testsupport.DefaultModelSelection(),
+		SessionID: "session",
 	}
 	if saveCheckpointErr := checkpointStore.SaveCheckpoint(ctx, checkpoint); saveCheckpointErr != nil {
 		t.Fatalf("SaveCheckpoint: %v", saveCheckpointErr)
