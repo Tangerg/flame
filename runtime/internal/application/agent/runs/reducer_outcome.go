@@ -126,7 +126,7 @@ func (r *reducer) finishedRun(outcome run.Outcome, failure *run.Failure, detail 
 	}
 	terminal, err := current.Terminate(run.Termination{
 		Outcome: outcome, Detail: detail, Failure: failure, UnresolvedEffects: effects,
-		FinishedAt: r.now().UTC(), MessageMark: run.UnknownMessageMark,
+		FinishedAt: r.now().UTC(), MessageMark: run.UnknownMessageMark(),
 	})
 	if err != nil {
 		return SegmentFinished{}, err

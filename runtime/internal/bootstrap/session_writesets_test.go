@@ -68,7 +68,7 @@ func bootstrapRestoreReplacement(
 func bootstrapRollbackPlan(
 	t *testing.T,
 	sessionID string,
-	keepMessageMark int,
+	keepMessageMark run.MessageMark,
 	dropRunIDs []string,
 	checkpointRootIDs []string,
 	planReplacement *plan.Replacement,
@@ -265,7 +265,7 @@ func restoredRun(sessionID, runID string, at time.Time) run.Run {
 	return testsupport.MustRestoreRun(run.Snapshot{
 		SessionID: sessionID, ID: runID, State: run.Completed,
 		Outcome:   &outcome,
-		CreatedAt: at, FinishedAt: at, UpdatedAt: at, MessageMark: 0,
+		CreatedAt: at, FinishedAt: at, UpdatedAt: at, MessageMark: run.MessageMarkAt(0),
 	})
 }
 
@@ -320,7 +320,7 @@ func parkWithGoalLease(
 		},
 
 		CreatedAt:   parkCreatedAt,
-		MessageMark: run.UnknownMessageMark,
+		MessageMark: run.UnknownMessageMark(),
 	}),
 		"seg_open", runtimeidentity.CommitID{},
 	); err != nil {
@@ -355,7 +355,7 @@ func TestApplyTerminalDropsInterruptAndTerminalizes(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("read parked Run: found=%t err=%v", found, err)
 	}
-	terminal, err := parked.CancelWaiting("", finishedAt, 0)
+	terminal, err := parked.CancelWaiting("", finishedAt, run.MessageMarkAt(0))
 	if err != nil {
 		t.Fatalf("cancel parked Run: %v", err)
 	}
@@ -396,7 +396,7 @@ func TestApplyTerminalRecoversLostParkAtomically(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("read parked Run: found=%t err=%v", found, err)
 	}
-	terminal, err := parked.RecoverLost(run.Failure{Kind: run.FailureLost}, finishedAt, 0)
+	terminal, err := parked.RecoverLost(run.Failure{Kind: run.FailureLost}, finishedAt, run.MessageMarkAt(0))
 	if err != nil {
 		t.Fatalf("recover parked Run: %v", err)
 	}
@@ -451,7 +451,7 @@ func TestApplyTerminalRecoversClaimedResumeAtomically(t *testing.T) {
 		t.Fatalf("read parked Run: found=%t err=%v", found, err)
 	}
 	finishedAt := parkCreatedAt.Add(time.Minute)
-	terminal, err := parked.RecoverLost(run.Failure{Kind: run.FailureLost}, finishedAt, 0)
+	terminal, err := parked.RecoverLost(run.Failure{Kind: run.FailureLost}, finishedAt, run.MessageMarkAt(0))
 	if err != nil {
 		t.Fatalf("recover parked Run: %v", err)
 	}
@@ -523,7 +523,7 @@ func TestApplyTerminalChargesGoalOwnedParkAtomically(t *testing.T) {
 	if err != nil {
 		t.Fatalf("advance parked Goal Run metrics: %v", err)
 	}
-	terminal, err := parked.RecoverLost(run.Failure{Kind: run.FailureLost}, finishedAt, 0)
+	terminal, err := parked.RecoverLost(run.Failure{Kind: run.FailureLost}, finishedAt, run.MessageMarkAt(0))
 	if err != nil {
 		t.Fatalf("recover parked Goal Run: %v", err)
 	}
@@ -569,7 +569,7 @@ func TestApplyRollbackDropsRunsAndFreesAdmission(t *testing.T) {
 	seedGoal(t, ss, "ses_A")
 
 	if err := ss.ApplyRollback(ctx, bootstrapRollbackPlan(
-		t, "ses_A", run.UnknownMessageMark, []string{"run_1"}, []string{memberID}, nil,
+		t, "ses_A", run.UnknownMessageMark(), []string{"run_1"}, []string{memberID}, nil,
 	)); err != nil {
 		t.Fatalf("ApplyRollback: %v", err)
 	}
@@ -615,7 +615,7 @@ func TestApplyRollbackRepublishesBoundaryPlan(t *testing.T) {
 
 	boundary := []plan.Step{{Description: "the plan at the boundary", Status: plan.StatusPending}}
 	if applyRollbackErr := ss.ApplyRollback(ctx, bootstrapRollbackPlan(
-		t, "ses_A", run.UnknownMessageMark, []string{"run_1"}, []string{memberID},
+		t, "ses_A", run.UnknownMessageMark(), []string{"run_1"}, []string{memberID},
 		prepareFixturePlan(t, ctx, ss.plan, "ses_A", boundary),
 	)); applyRollbackErr != nil {
 		t.Fatalf("ApplyRollback: %v", applyRollbackErr)
@@ -649,7 +649,7 @@ func TestApplyRollbackClearsToARecordedEmptyBoundary(t *testing.T) {
 	}
 
 	if applyRollbackErr := ss.ApplyRollback(ctx, bootstrapRollbackPlan(
-		t, "ses_A", run.UnknownMessageMark, []string{"run_1"}, []string{memberID},
+		t, "ses_A", run.UnknownMessageMark(), []string{"run_1"}, []string{memberID},
 		prepareFixturePlan(t, ctx, ss.plan, "ses_A", nil),
 	)); applyRollbackErr != nil {
 		t.Fatalf("ApplyRollback: %v", applyRollbackErr)
@@ -688,7 +688,7 @@ func TestApplyForkBranchesAndSeeds(t *testing.T) {
 	forkedAt := time.Now().UTC()
 	forkedRun := testsupport.MustRestoreRun(run.Snapshot{
 		SessionID: childState.ID(), ID: "run_child_history", State: run.Completed,
-		CreatedAt: forkedAt, FinishedAt: forkedAt, UpdatedAt: forkedAt, MessageMark: 1,
+		CreatedAt: forkedAt, FinishedAt: forkedAt, UpdatedAt: forkedAt, MessageMark: run.MessageMarkAt(1),
 	})
 	forkedItem := testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID: childState.ID(), RunID: forkedRun.ID(), ID: "item_child_history",
@@ -912,7 +912,7 @@ func TestRollbackPlanRejectsInvalidCheckpointSetBeforePersistence(t *testing.T) 
 	}
 
 	_, err := sessions.NewRollbackPlan(parent.ID(), transcript.Boundary{
-		KeepMessageMark: run.UnknownMessageMark,
+		KeepMessageMark: run.UnknownMessageMark(),
 		Dropped:         []transcript.RunNode{{ID: "run_drop"}},
 	}, []string{"member_preserve", ""}, nil)
 	if err == nil {

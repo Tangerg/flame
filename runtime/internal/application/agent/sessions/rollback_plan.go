@@ -17,7 +17,7 @@ import (
 // needs no terminalization: dropping its record also releases the admission slot.
 type RollbackPlan struct {
 	sessionID         resourceid.SessionID
-	keepMessageMark   int
+	keepMessageMark   rundomain.MessageMark
 	dropRunIDs        []resourceid.RunID
 	checkpointRootIDs []runtimeidentity.MemberID
 	planReplacement   *plan.Replacement
@@ -68,8 +68,8 @@ func (r RollbackPlan) Validate() error {
 	if err := r.sessionID.Validate(); err != nil {
 		return fmt.Errorf("sessions: rollback plan session: %w", err)
 	}
-	if r.keepMessageMark < rundomain.UnknownMessageMark {
-		return fmt.Errorf("sessions: rollback plan message mark %d is invalid", r.keepMessageMark)
+	if count, known := r.keepMessageMark.Count(); known && count < 0 {
+		return fmt.Errorf("sessions: rollback plan message mark %s is invalid", r.keepMessageMark)
 	}
 	if len(r.dropRunIDs) == 0 {
 		return errors.New("sessions: rollback plan has no dropped runs")
@@ -132,7 +132,7 @@ func (r RollbackPlan) SessionID() string { return r.sessionID.String() }
 // TruncationMark returns the exact retained message count when the boundary has
 // one. Unknown pre-watermark boundaries return false and leave history intact.
 func (r RollbackPlan) TruncationMark() (int, bool) {
-	return r.keepMessageMark, r.keepMessageMark != rundomain.UnknownMessageMark
+	return r.keepMessageMark.Count()
 }
 
 // DropRunIDs returns the isolated canonical Run deletion order.

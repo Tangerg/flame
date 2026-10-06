@@ -215,7 +215,7 @@ func TestApplyRunCancelProjectsTerminalTranscript(t *testing.T) {
 				Capabilities: run.Capabilities{
 					InterruptKinds: []interrupt.Kind{interrupt.Question},
 				},
-				CreatedAt: createdAt, MessageMark: -1,
+				CreatedAt: createdAt, MessageMark: run.MessageMarkAt(-1),
 			})},
 			Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 				ID: "item_1", RunID: "run_1", SessionID: "ses_1",
@@ -244,8 +244,8 @@ func TestApplyRunCancelProjectsTerminalTranscript(t *testing.T) {
 	if appliedRoot.Detail() != "user stopped" || !appliedRoot.FinishedAt().Equal(finishedAt) {
 		t.Fatalf("terminal detail/time = %q/%v", appliedRoot.Detail(), appliedRoot.FinishedAt())
 	}
-	if appliedRoot.MessageMark() != 2 {
-		t.Fatalf("terminal mark = %d, want 2", appliedRoot.MessageMark())
+	if appliedRoot.MessageMark() != run.MessageMarkAt(2) {
+		t.Fatalf("terminal mark = %s, want 2", appliedRoot.MessageMark())
 	}
 	if items := applied.Items(); len(items) != 0 {
 		t.Fatalf("interrupt items = %+v, want complete Question prompt left unchanged", items)
@@ -294,7 +294,7 @@ func TestApplyRunCancelSettlesQuestionToolAndClosesModelContext(t *testing.T) {
 				ID: "run_1", SessionID: "ses_1", State: run.Waiting,
 				ModelSelection: selection,
 				Capabilities:   run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}},
-				CreatedAt:      createdAt, MessageMark: run.UnknownMessageMark,
+				CreatedAt:      createdAt, MessageMark: run.UnknownMessageMark(),
 			})},
 			Items: []transcript.Item{
 				testsupport.MustRestoreItem(testsupport.ItemInput{
@@ -317,7 +317,7 @@ func TestApplyRunCancelSettlesQuestionToolAndClosesModelContext(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ApplyRunCancel: %v", err)
 	}
-	if terminal.State() != run.Canceled || terminal.MessageMark() != 3 {
+	if terminal.State() != run.Canceled || terminal.MessageMark() != run.MessageMarkAt(3) {
 		t.Fatalf("terminal Run = %+v, want canceled at message mark 3", terminal)
 	}
 	items := applied.Items()
@@ -379,7 +379,7 @@ func TestApplyRunLostProjectsTerminalTranscript(t *testing.T) {
 				Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 4, Usage: &accounting.Usage{
 					Total: accounting.Totals{CostUSD: &costUSD},
 				}}),
-				CreatedAt: createdAt, MessageMark: -1,
+				CreatedAt: createdAt, MessageMark: run.MessageMarkAt(-1),
 			})},
 			Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 				ID: "item_1", RunID: "run_1", SessionID: "ses_1",
@@ -420,7 +420,7 @@ func TestApplyRunLostProjectsTerminalTranscript(t *testing.T) {
 		toolFailure.Detail != "tool call abandoned because its run could not be resumed" {
 		t.Fatalf("terminal items = %+v, want incomplete failed tool naming its cause", items)
 	}
-	if applied.CheckpointRootID() != "member_1" || !appliedRoot.FinishedAt().Equal(finishedAt) || appliedRoot.MessageMark() != 1 {
+	if applied.CheckpointRootID() != "member_1" || !appliedRoot.FinishedAt().Equal(finishedAt) || appliedRoot.MessageMark() != run.MessageMarkAt(1) {
 		t.Fatalf("terminal plan = %+v", applied)
 	}
 	if appliedRoot.GoalIncarnationID() != "lease_1" {
@@ -466,13 +466,13 @@ func TestApplyRunLostTerminalizesWholeParkedTreeInPostorder(t *testing.T) {
 					ID: "run_root", SessionID: "ses_1", State: run.Waiting,
 					ModelSelection: selection,
 					Capabilities:   capabilities,
-					CreatedAt:      createdAt, MessageMark: run.UnknownMessageMark,
+					CreatedAt:      createdAt, MessageMark: run.UnknownMessageMark(),
 				}),
 				testsupport.MustRestoreRun(run.Snapshot{
 					ID: "run_child", SessionID: "ses_1", State: run.Waiting,
 					ModelSelection: selection,
 					Lineage:        childLineage,
-					CreatedAt:      createdAt, MessageMark: run.UnknownMessageMark,
+					CreatedAt:      createdAt, MessageMark: run.UnknownMessageMark(),
 				}),
 			},
 			Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{

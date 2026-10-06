@@ -121,7 +121,7 @@ func finishedRunFromDraft(draft run.Draft, outcome run.Outcome) run.Run {
 		failure = &run.Failure{Kind: run.FailureLost}
 	}
 	value, err = value.Terminate(run.Termination{
-		Outcome: outcome, Failure: failure, FinishedAt: finishedAt, MessageMark: 0,
+		Outcome: outcome, Failure: failure, FinishedAt: finishedAt, MessageMark: run.MessageMarkAt(0),
 	})
 	if err != nil {
 		panic(err)
@@ -390,7 +390,7 @@ func TestRunProgressFootprintSurvivesTerminalRead(t *testing.T) {
 		t.Fatalf("read running Run: found=%v err=%v", found, err)
 	}
 	terminal, err := current.Terminate(run.Termination{
-		Outcome: run.OutcomeCompleted, FinishedAt: updatedAt.Add(time.Second), MessageMark: 1,
+		Outcome: run.OutcomeCompleted, FinishedAt: updatedAt.Add(time.Second), MessageMark: run.MessageMarkAt(1),
 	})
 	if err != nil {
 		t.Fatalf("Terminate: %v", err)
@@ -589,7 +589,7 @@ func TestRecoverLostRequiresExactExpectedRun(t *testing.T) {
 	foreignLost, err := foreign.RecoverLost(
 		run.Failure{Kind: run.FailureLost},
 		finishedAt,
-		0,
+		run.MessageMarkAt(0),
 	)
 	if err != nil {
 		t.Fatalf("RecoverLost foreign aggregate: %v", err)
@@ -608,7 +608,7 @@ func TestRecoverLostRequiresExactExpectedRun(t *testing.T) {
 	lost, err := actual.RecoverLost(
 		run.Failure{Kind: run.FailureLost},
 		finishedAt,
-		0,
+		run.MessageMarkAt(0),
 	)
 	if err != nil {
 		t.Fatalf("RecoverLost aggregate: %v", err)
@@ -645,7 +645,7 @@ func TestTerminalizeParkedRunOnlyByCancellation(t *testing.T) {
 	}
 	// Cancellation of the same parked run is legal (Waiting → Canceled).
 	canceled := testsupport.MustRunReplacement(parked, func(current run.Run) (run.Run, error) {
-		return current.CancelWaiting("", finishedAt, 0)
+		return current.CancelWaiting("", finishedAt, run.MessageMarkAt(0))
 	})
 	if err := store.Terminalize(ctx, canceled); err != nil {
 		t.Fatalf("terminalize(canceled) of a parked run: %v", err)

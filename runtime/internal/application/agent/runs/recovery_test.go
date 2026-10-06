@@ -152,7 +152,7 @@ func TestRecoveryRejectsInvalidTranscriptBeforePlanning(t *testing.T) {
 	active := testsupport.MustRestoreRun(rundomain.Snapshot{
 		ID: "run_active", SessionID: "session_active", State: rundomain.Running,
 		ActiveSegmentID: "segment_active", CreatedAt: createdAt,
-		MessageMark: rundomain.UnknownMessageMark,
+		MessageMark: rundomain.UnknownMessageMark(),
 	})
 	foreign := testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_foreign", SessionID: "session_foreign", RunID: active.ID(),
@@ -210,12 +210,12 @@ func TestRecoveryRejectsActiveOpenToolWithoutItsRunningItem(t *testing.T) {
 	root := testsupport.MustRestoreRun(rundomain.Snapshot{
 		ID: "run_root", SessionID: "session", State: rundomain.Running,
 		ActiveSegmentID: "segment_root", CreatedAt: createdAt,
-		MessageMark: rundomain.UnknownMessageMark,
+		MessageMark: rundomain.UnknownMessageMark(),
 	})
 	child := testsupport.MustRestoreRun(rundomain.Snapshot{
 		ID: "run_child", SessionID: root.SessionID(), State: rundomain.Running,
 		ActiveSegmentID: "segment_child", CreatedAt: createdAt,
-		MessageMark: rundomain.UnknownMessageMark,
+		MessageMark: rundomain.UnknownMessageMark(),
 		Lineage: rundomain.Lineage{
 			ParentRunID: root.ID(), RootRunID: root.ID(), SpawnedByItemID: "item_spawn",
 		},
@@ -357,10 +357,10 @@ func TestRecoveryRejectsInvalidRunCatalogBeforeAdmission(t *testing.T) {
 	active := testsupport.MustRestoreRun(rundomain.Snapshot{
 		ID: "run_active", SessionID: "session_active", State: rundomain.Running,
 		ActiveSegmentID: "segment_active", CreatedAt: createdAt,
-		MessageMark: rundomain.UnknownMessageMark,
+		MessageMark: rundomain.UnknownMessageMark(),
 	})
 	terminal, err := active.Terminate(rundomain.Termination{
-		Outcome: rundomain.OutcomeCompleted, FinishedAt: createdAt.Add(time.Second), MessageMark: 0,
+		Outcome: rundomain.OutcomeCompleted, FinishedAt: createdAt.Add(time.Second), MessageMark: rundomain.MessageMarkAt(0),
 	})
 	if err != nil {
 		t.Fatalf("Terminate fixture: %v", err)
@@ -368,7 +368,7 @@ func TestRecoveryRejectsInvalidRunCatalogBeforeAdmission(t *testing.T) {
 	secondRoot := testsupport.MustRestoreRun(rundomain.Snapshot{
 		ID: "run_second", SessionID: active.SessionID(), State: rundomain.Running,
 		ActiveSegmentID: "segment_second", CreatedAt: createdAt,
-		MessageMark: rundomain.UnknownMessageMark,
+		MessageMark: rundomain.UnknownMessageMark(),
 	})
 	for name, candidates := range map[string][]rundomain.Run{
 		"invalid aggregate":          {{}},
@@ -412,12 +412,12 @@ func TestRecoveryRejectsIncoherentActiveTreeBeforePlanning(t *testing.T) {
 	root := testsupport.MustRestoreRun(rundomain.Snapshot{
 		ID: "run_root", SessionID: "session_tree", State: rundomain.Running,
 		ActiveSegmentID: "segment_root", Capabilities: capabilities, CreatedAt: createdAt,
-		MessageMark: rundomain.UnknownMessageMark,
+		MessageMark: rundomain.UnknownMessageMark(),
 	})
 	child := testsupport.MustRestoreRun(rundomain.Snapshot{
 		ID: "run_child", SessionID: root.SessionID(), State: rundomain.Running,
 		ActiveSegmentID: "segment_child", CreatedAt: createdAt,
-		MessageMark: rundomain.UnknownMessageMark,
+		MessageMark: rundomain.UnknownMessageMark(),
 		Lineage: rundomain.Lineage{
 			SpawnedByItemID: "item_spawn", ParentRunID: root.ID(), RootRunID: root.ID(),
 		},
@@ -491,12 +491,12 @@ func TestRecoverySkipsFactsOwnedByAnotherRuntime(t *testing.T) {
 	recoverable := testsupport.MustRestoreRun(rundomain.Snapshot{
 		ID: "run_recoverable", SessionID: "session_recoverable", State: rundomain.Running,
 		ActiveSegmentID: "segment_recoverable", CreatedAt: createdAt,
-		MessageMark: rundomain.UnknownMessageMark,
+		MessageMark: rundomain.UnknownMessageMark(),
 	})
 	foreign := testsupport.MustRestoreRun(rundomain.Snapshot{
 		ID: "run_foreign", SessionID: "session_foreign", State: rundomain.Running,
 		ActiveSegmentID: "segment_foreign", CreatedAt: createdAt,
-		MessageMark: rundomain.UnknownMessageMark,
+		MessageMark: rundomain.UnknownMessageMark(),
 	})
 	store := &recoveryStoreStub{
 		runs:              []rundomain.Run{recoverable, foreign},
@@ -558,7 +558,7 @@ func TestRecoveryOwnsOpenInvocationCatalogsBeforeFiltering(t *testing.T) {
 	active := testsupport.MustRestoreRun(rundomain.Snapshot{
 		ID: "run_active", SessionID: "session_active", State: rundomain.Running,
 		ActiveSegmentID: "segment_active", CreatedAt: createdAt,
-		MessageMark: rundomain.UnknownMessageMark,
+		MessageMark: rundomain.UnknownMessageMark(),
 	})
 	models := []OpenModelInvocation{
 		{SessionID: "session_foreign", RunID: "run_foreign", SegmentID: "segment_foreign", CallID: "model_foreign", StartedAt: createdAt},
@@ -626,7 +626,7 @@ func TestRecoveryRejectsInvalidClaimedPendingBeforePlanning(t *testing.T) {
 		ID: pending.RootRunID, SessionID: fixtureSessionID, State: rundomain.Running,
 		ActiveSegmentID: "segment_active", ModelSelection: testsupport.DefaultModelSelection(),
 		Capabilities: parked.Capabilities(), CreatedAt: parked.CreatedAt(),
-		MessageMark: rundomain.UnknownMessageMark,
+		MessageMark: rundomain.UnknownMessageMark(),
 	})
 	store := &recoveryStoreStub{
 		runs: []rundomain.Run{active}, pending: []Pending{pending},
@@ -652,7 +652,7 @@ func TestRecoveryRejectsInvalidClaimedOpenInvocationsBeforePlanning(t *testing.T
 	active := testsupport.MustRestoreRun(rundomain.Snapshot{
 		ID: "run_active", SessionID: "session_active", State: rundomain.Running,
 		ActiveSegmentID: "segment_active", CreatedAt: createdAt,
-		MessageMark: rundomain.UnknownMessageMark,
+		MessageMark: rundomain.UnknownMessageMark(),
 	})
 	model := OpenModelInvocation{
 		SessionID: active.SessionID(), RunID: active.ID(), SegmentID: "segment_active",
@@ -714,12 +714,12 @@ func TestRecoveryRejectsOpenInvocationThatContradictsActiveRun(t *testing.T) {
 	first := testsupport.MustRestoreRun(rundomain.Snapshot{
 		ID: "run_first", SessionID: "session_first", State: rundomain.Running,
 		ActiveSegmentID: "segment_first", CreatedAt: createdAt,
-		MessageMark: rundomain.UnknownMessageMark,
+		MessageMark: rundomain.UnknownMessageMark(),
 	})
 	second := testsupport.MustRestoreRun(rundomain.Snapshot{
 		ID: "run_second", SessionID: "session_second", State: rundomain.Running,
 		ActiveSegmentID: "segment_second", CreatedAt: createdAt,
-		MessageMark: rundomain.UnknownMessageMark,
+		MessageMark: rundomain.UnknownMessageMark(),
 	})
 	model := OpenModelInvocation{
 		SessionID: first.SessionID(), RunID: first.ID(), SegmentID: first.ActiveSegmentID(),
@@ -781,7 +781,7 @@ func TestRecoveryDoesNotPublishBeforeItsCommitSucceeds(t *testing.T) {
 	abandoned := testsupport.MustRestoreRun(rundomain.Snapshot{
 		ID: "run_abandoned", SessionID: "session_abandoned", State: rundomain.Running,
 		ActiveSegmentID: "segment_abandoned", CreatedAt: createdAt,
-		MessageMark: rundomain.UnknownMessageMark,
+		MessageMark: rundomain.UnknownMessageMark(),
 	})
 	commitErr := errors.New("commit failed")
 	store := &recoveryStoreStub{
@@ -816,11 +816,11 @@ func TestRecoveryMarksAbandonedRunTreeLostInPostorder(t *testing.T) {
 	createdAt := time.Date(2026, 8, 1, 1, 0, 0, 0, time.UTC)
 	finishedAt := createdAt.Add(time.Minute)
 	root := testsupport.MustRestoreRun(rundomain.Snapshot{ID: "run_root", SessionID: "session", State: rundomain.Running,
-		ActiveSegmentID: "segment_root", CreatedAt: createdAt, MessageMark: rundomain.UnknownMessageMark})
+		ActiveSegmentID: "segment_root", CreatedAt: createdAt, MessageMark: rundomain.UnknownMessageMark()})
 
 	child := testsupport.MustRestoreRun(rundomain.Snapshot{ID: "run_child", SessionID: root.SessionID(), State: rundomain.Running,
 		ActiveSegmentID: "segment_child",
-		CreatedAt:       createdAt, MessageMark: rundomain.UnknownMessageMark, Lineage: rundomain.Lineage{ParentRunID: root.ID(), RootRunID: root.ID(),
+		CreatedAt:       createdAt, MessageMark: rundomain.UnknownMessageMark(), Lineage: rundomain.Lineage{ParentRunID: root.ID(), RootRunID: root.ID(),
 			SpawnedByItemID: "item_spawn"}})
 
 	item := testsupport.MustRestoreItem(testsupport.ItemInput{
@@ -987,7 +987,7 @@ func TestRecoveryDoesNotMoveDurableTimeBackwardWhenTheClockRegresses(t *testing.
 			active := testsupport.MustRestoreRun(rundomain.Snapshot{
 				ID: "run", SessionID: "session", State: rundomain.Running,
 				ActiveSegmentID: "segment", CreatedAt: base, UpdatedAt: updatedAt,
-				MessageMark: rundomain.UnknownMessageMark,
+				MessageMark: rundomain.UnknownMessageMark(),
 			})
 			store := &recoveryStoreStub{
 				runs:         []rundomain.Run{active},
@@ -1063,7 +1063,7 @@ func TestRecoveryChargesLostGoalOwnedRootToItsAdmissionLease(t *testing.T) {
 		Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 3,
 			Usage: &accounting.Usage{Total: accounting.Totals{CostUSD: &cost}}}),
 
-		CreatedAt: createdAt, MessageMark: rundomain.UnknownMessageMark})
+		CreatedAt: createdAt, MessageMark: rundomain.UnknownMessageMark()})
 
 	store := &recoveryStoreStub{
 		runs:         []rundomain.Run{run},
@@ -1400,7 +1400,7 @@ func TestRecoveryAtomicallyClosesLostQuestionToolContext(t *testing.T) {
 	resultText, textual := result.Output.Text()
 	if result.ID != "provider_call_open" || result.Name != "ask_user" ||
 		!textual || resultText != lostToolResult || !result.IsError ||
-		lostRuns[0].State().MessageMark() != 3 {
+		lostRuns[0].State().MessageMark() != rundomain.MessageMarkAt(3) {
 		t.Fatalf("closure/lost Run = %#v / %+v", result, lostRuns[0])
 	}
 
@@ -1456,7 +1456,7 @@ func coherentRecoveryPark(t *testing.T) (rundomain.Run, Pending, transcript.Item
 	run := testsupport.MustRestoreRun(rundomain.Snapshot{ID: "run_root", SessionID: "session", State: rundomain.Waiting,
 		ModelSelection: selection,
 		Capabilities:   rundomain.Capabilities{InterruptKinds: []interruptdomain.Kind{interruptdomain.Question}},
-		CreatedAt:      createdAt, UpdatedAt: createdAt.Add(time.Second), MessageMark: rundomain.UnknownMessageMark})
+		CreatedAt:      createdAt, UpdatedAt: createdAt.Add(time.Second), MessageMark: rundomain.UnknownMessageMark()})
 
 	pending := Pending{
 		RootRunID:  run.ID(),

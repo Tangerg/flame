@@ -225,7 +225,7 @@ func scanRunRow(row scanRow, pendingPolicy pendingReadPolicy) (rundomain.Run, er
 		problem           string
 		unresolvedEffects string
 
-		messageMark         int
+		messageMark         sql.NullInt64
 		capabilities        string
 		durationNs          int64
 		createdAt           int64
@@ -271,7 +271,7 @@ func scanRunRow(row scanRow, pendingPolicy pendingReadPolicy) (rundomain.Run, er
 		Metrics: metrics, ContextTokens: contextTokens,
 		Capabilities: capabilitiesValue,
 		CreatedAt:    time.Unix(0, createdAt).UTC(), UpdatedAt: time.Unix(0, updatedAt).UTC(),
-		MessageMark: messageMark,
+		MessageMark: decodeMessageMark(messageMark),
 	}
 
 	snapshot.UnresolvedEffects, err = decodeUnresolvedEffects(unresolvedEffects)
@@ -380,4 +380,19 @@ func decodeRunFailure(encoded string) (*rundomain.Failure, error) {
 		DocURL:     row.DocURL,
 		RetryAfter: retryAfter,
 	}, nil
+}
+
+// messageMarkValue stores an unknown watermark as NULL.
+func messageMarkValue(mark rundomain.MessageMark) any {
+	if count, known := mark.Count(); known {
+		return count
+	}
+	return nil
+}
+
+func decodeMessageMark(value sql.NullInt64) rundomain.MessageMark {
+	if !value.Valid {
+		return rundomain.UnknownMessageMark()
+	}
+	return rundomain.MessageMarkAt(int(value.Int64))
 }

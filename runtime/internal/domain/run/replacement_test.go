@@ -17,7 +17,7 @@ func TestReplaceDerivesTheStateFromItsExpectedRun(t *testing.T) {
 		t.Fatalf("Admit: %v", err)
 	}
 	replacement, err := Replace(expected, func(current Run) (Run, error) {
-		return current.RecoverLost(Failure{Kind: FailureLost}, finishedAt, 0)
+		return current.RecoverLost(Failure{Kind: FailureLost}, finishedAt, MessageMarkAt(0))
 	})
 	if err != nil {
 		t.Fatalf("Replace: %v", err)

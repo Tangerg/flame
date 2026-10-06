@@ -145,8 +145,8 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		//
 		// message_mark is the conversation message count captured when a root Run
 		// finished and atomically rebased by every later compaction — the per-tree
-		// rollback/fork watermark fork{fromRunId} truncates to. -1 is
-		// run.UnknownMessageMark: a Run that has not finished has no watermark yet,
+		// rollback/fork watermark fork{fromRunId} truncates to. NULL is
+		// run.UnknownMessageMark(): a Run that has not finished has no watermark yet,
 		// and a child never has one because its root ends the tree.
 		// commit_segment_id / commit_id are a technical receipt for the latest
 		// complete Application Run write-set: opening, event, waiting barrier,
@@ -178,7 +178,7 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			problem            TEXT    NOT NULL DEFAULT '',
 			unresolved_effects TEXT NOT NULL DEFAULT '[]' CHECK (json_valid(unresolved_effects) AND json_type(unresolved_effects) = 'array'),
 			capabilities       TEXT    NOT NULL DEFAULT '',
-			message_mark       INTEGER NOT NULL DEFAULT -1,
+			message_mark       INTEGER CHECK (message_mark IS NULL OR message_mark >= 0),
 			created_at         INTEGER NOT NULL,
 			finished_at        INTEGER NOT NULL DEFAULT 0,
 			updated_at         INTEGER NOT NULL,
@@ -188,7 +188,7 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 				 parent_run_id != run_id AND root_run_id != run_id)
 			),
 			CHECK (root_run_id = '' OR goal_incarnation_id = ''),
-			CHECK (root_run_id = '' OR message_mark = -1),
+			CHECK (root_run_id = '' OR message_mark IS NULL),
 			CHECK (
 				(commit_segment_id = '' AND commit_id = '') OR
 				(commit_id != '' AND (

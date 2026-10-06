@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/Tangerg/flame/runtime/internal/optional"
 	"slices"
+	"strconv"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
@@ -16,11 +17,30 @@ import (
 // different Session.
 var ErrIdentityConflict = errors.New("run: identity conflict")
 
-// UnknownMessageMark is the watermark of a Run whose final conversation count
-// is not known yet. It cannot be confused with a real count, including zero.
-// The watermark is the conversation length where a whole Run tree ended, so
-// only its root carries one; a child keeps this value for its whole life.
-const UnknownMessageMark = -1
+// MessageMark is the conversation length where a whole Run tree ended. Only a
+// terminal root records one; a child, and a Run whose final count is not
+// known yet, carries none. The zero value is that absence, so it cannot be
+// confused with a real count, including zero.
+type MessageMark struct {
+	count int
+	known bool
+}
+
+// UnknownMessageMark() names the absent watermark.
+func UnknownMessageMark() MessageMark { return MessageMark{} }
+
+// MessageMarkAt records a known conversation length.
+func MessageMarkAt(count int) MessageMark { return MessageMark{count: count, known: true} }
+
+// Count returns the recorded conversation length, if one is known.
+func (m MessageMark) Count() (int, bool) { return m.count, m.known }
+
+func (m MessageMark) String() string {
+	if !m.known {
+		return "unknown"
+	}
+	return strconv.Itoa(m.count)
+}
 
 // Run is one logical unit of agent work from admission through any waiting and
 // resume boundaries to exactly one terminal outcome. Its fields are private so
@@ -43,7 +63,7 @@ type Run struct {
 	createdAt         time.Time
 	finishedAt        time.Time
 	updatedAt         time.Time
-	messageMark       int
+	messageMark       MessageMark
 }
 
 // Snapshot is the complete immutable value needed to restore or persist a Run.
@@ -68,7 +88,7 @@ type Snapshot struct {
 	CreatedAt     time.Time
 	FinishedAt    time.Time
 	UpdatedAt     time.Time
-	MessageMark   int
+	MessageMark   MessageMark
 }
 
 // Admit creates the authoritative aggregate for a fresh root or child Run.
@@ -81,7 +101,7 @@ func Admit(draft Draft) (Run, error) {
 		ModelSelection: draft.ModelSelection, GoalIncarnationID: draft.GoalIncarnationID,
 		State: Running, ActiveSegmentID: draft.SegmentID,
 		Capabilities: draft.Capabilities, CreatedAt: draft.CreatedAt.UTC(),
-		UpdatedAt: draft.CreatedAt.UTC(), MessageMark: UnknownMessageMark,
+		UpdatedAt: draft.CreatedAt.UTC(), MessageMark: UnknownMessageMark(),
 	})
 }
 
@@ -226,7 +246,7 @@ func (r Run) validate() error {
 	if r.lineage.IsChild() && !r.capabilities.IsEmpty() {
 		return errors.New("run: child carries capabilities its root owns")
 	}
-	if r.lineage.IsChild() && r.messageMark != UnknownMessageMark {
+	if r.lineage.IsChild() && r.messageMark != UnknownMessageMark() {
 		return errors.New("run: child carries the conversation watermark its root owns")
 	}
 	if r.state.IsTerminal() {
@@ -245,8 +265,8 @@ func (r Run) validateOpen() error {
 		return fmt.Errorf("run: %s Run carries terminal detail", r.state)
 	case !r.finishedAt.IsZero():
 		return fmt.Errorf("run: %s Run carries finish time", r.state)
-	case r.messageMark != UnknownMessageMark:
-		return fmt.Errorf("run: %s Run carries message watermark %d", r.state, r.messageMark)
+	case r.messageMark != UnknownMessageMark():
+		return fmt.Errorf("run: %s Run carries message watermark %s", r.state, r.messageMark)
 	}
 	return nil
 }
@@ -299,8 +319,8 @@ func (r Run) validateTerminal() error {
 		return errors.New("run: finish time precedes creation")
 	case r.updatedAt.Before(r.finishedAt):
 		return errors.New("run: update time precedes finish")
-	case r.messageMark < UnknownMessageMark:
-		return fmt.Errorf("run: terminal Run has message watermark %d", r.messageMark)
+	case r.messageMark.known && r.messageMark.count < 0:
+		return fmt.Errorf("run: terminal Run has message watermark %s", r.messageMark)
 	}
 	return nil
 }
@@ -366,7 +386,7 @@ type Termination struct {
 	Detail            string
 	Failure           *Failure
 	FinishedAt        time.Time
-	MessageMark       int
+	MessageMark       MessageMark
 }
 
 // Terminate finishes a Running Run with one coherent terminal fact set.
@@ -379,7 +399,7 @@ func (r Run) Terminate(termination Termination) (Run, error) {
 }
 
 // CancelWaiting finishes a Waiting Run as canceled.
-func (r Run) CancelWaiting(detail string, finishedAt time.Time, messageMark int) (Run, error) {
+func (r Run) CancelWaiting(detail string, finishedAt time.Time, messageMark MessageMark) (Run, error) {
 	if r.state != Waiting {
 		return Run{}, fmt.Errorf("run: cannot cancel %s Run as waiting", r.state)
 	}
@@ -398,7 +418,7 @@ func (r Run) LostFailure() (Failure, error) {
 	return failure, nil
 }
 
-func (r Run) RecoverLost(failure Failure, finishedAt time.Time, messageMark int) (Run, error) {
+func (r Run) RecoverLost(failure Failure, finishedAt time.Time, messageMark MessageMark) (Run, error) {
 	next, ok := r.state.RecoverLost()
 	if !ok {
 		return Run{}, fmt.Errorf("run: cannot recover terminal %s Run as lost", r.state)
@@ -436,7 +456,7 @@ func (r Run) WithMessageMark(messageMark int) (Run, error) {
 	if messageMark < 0 {
 		return Run{}, errors.New("run: message watermark must not be negative")
 	}
-	r.messageMark = messageMark
+	r.messageMark = MessageMarkAt(messageMark)
 	if err := r.validate(); err != nil {
 		return Run{}, err
 	}
@@ -483,6 +503,6 @@ func (r Run) Capabilities() Capabilities { return r.capabilities.Clone() }
 func (r Run) CreatedAt() time.Time       { return r.createdAt }
 func (r Run) FinishedAt() time.Time      { return r.finishedAt }
 func (r Run) UpdatedAt() time.Time       { return r.updatedAt }
-func (r Run) MessageMark() int           { return r.messageMark }
+func (r Run) MessageMark() MessageMark   { return r.messageMark }
 
 func (r Run) UnresolvedEffects() []UnresolvedEffect { return slices.Clone(r.unresolvedEffects) }

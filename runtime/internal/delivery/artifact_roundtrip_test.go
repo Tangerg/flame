@@ -418,7 +418,7 @@ func seedCanceledRun(t *testing.T, rt *stubRuntime, sessionID string) {
 			InterruptKinds: []interrupt.Kind{interrupt.Approval},
 		},
 		CreatedAt: time.Unix(2, 0).UTC(), FinishedAt: time.Unix(3, 0).UTC(),
-		UpdatedAt: time.Unix(3, 0).UTC(), MessageMark: 1}),
+		UpdatedAt: time.Unix(3, 0).UTC(), MessageMark: run.MessageMarkAt(1)}),
 	); err != nil {
 		t.Fatalf("seed completed run: %v", err)
 	}
@@ -438,7 +438,7 @@ func seedChildRun(t *testing.T, rt *stubRuntime, sessionID string) {
 		CreatedAt:      time.Unix(7, 0).UTC(),
 		FinishedAt:     time.Unix(8, 0).UTC(),
 		UpdatedAt:      time.Unix(8, 0).UTC(),
-		MessageMark:    1, Lineage: run.Lineage{SpawnedByItemID: "item_tool", ParentRunID: "run_done", RootRunID: "run_done"}}),
+		MessageMark:    run.MessageMarkAt(1), Lineage: run.Lineage{SpawnedByItemID: "item_tool", ParentRunID: "run_done", RootRunID: "run_done"}}),
 	); err != nil {
 		t.Fatalf("seed child run: %v", err)
 	}
@@ -458,7 +458,7 @@ func seedFailedRun(t *testing.T, rt *stubRuntime, sessionID string) {
 			InterruptKinds: []interrupt.Kind{interrupt.Question},
 		},
 		CreatedAt: time.Unix(4, 0).UTC(), FinishedAt: time.Unix(5, 0).UTC(),
-		UpdatedAt: time.Unix(5, 0).UTC(), MessageMark: 2}),
+		UpdatedAt: time.Unix(5, 0).UTC(), MessageMark: run.MessageMarkAt(2)}),
 	); err != nil {
 		t.Fatalf("seed failed run: %v", err)
 	}

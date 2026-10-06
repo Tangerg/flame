@@ -243,7 +243,7 @@ func TestTerminalConversationPreservesSparseResultsAcrossRestart(t *testing.T) {
 				t.Fatalf("terminal discarded exact output or call order: %+v", stored[1])
 			}
 			terminal, found, err := state.Run(ctx, draft.RunID)
-			if err != nil || !found || terminal.MessageMark() != 2 {
+			if err != nil || !found || terminal.MessageMark() != run.MessageMarkAt(2) {
 				t.Fatalf("terminal watermark = %+v, %t, %v", terminal, found, err)
 			}
 			if results, err := state.UnpublishedToolResults(ctx, draft.SessionID, draft.RunID); err != nil || len(results) != 0 {

@@ -20,7 +20,7 @@ func portableSnapshot() Snapshot {
 		Runs: []run.Run{testsupport.MustRestoreRun(run.Snapshot{
 			SessionID: "ses_1", ID: "run_1", State: run.Completed,
 			Capabilities: run.Capabilities{ChildRuns: true},
-			CreatedAt:    time.Unix(1, 0), FinishedAt: time.Unix(2, 0), MessageMark: 0,
+			CreatedAt:    time.Unix(1, 0), FinishedAt: time.Unix(2, 0), MessageMark: run.MessageMarkAt(0),
 		})},
 		Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 			SessionID: "ses_1", ID: "item_1", RunID: "run_1",

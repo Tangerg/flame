@@ -758,7 +758,7 @@ func runForSegment(spec segmentSpec) run.Run {
 		GoalIncarnationID: spec.GoalIncarnationID,
 		Capabilities:      spec.Capabilities,
 		CreatedAt:         spec.CreatedAt, UpdatedAt: spec.CreatedAt,
-		MessageMark: run.UnknownMessageMark})
+		MessageMark: run.UnknownMessageMark()})
 
 }
 

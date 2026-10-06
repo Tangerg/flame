@@ -417,7 +417,7 @@ func TestCommitEventRejectsTerminalFromReplacedSegment(t *testing.T) {
 		t.Fatal(resumeErr)
 	}
 	staleTerminal, err := oldSegment.Terminate(run.Termination{
-		Outcome: run.OutcomeCompleted, FinishedAt: finishedAt, MessageMark: 0,
+		Outcome: run.OutcomeCompleted, FinishedAt: finishedAt, MessageMark: run.MessageMarkAt(0),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -786,7 +786,7 @@ func waitingTestSessionRun(
 		State: run.Waiting,
 
 		CreatedAt:   createdAt,
-		MessageMark: run.UnknownMessageMark, Lineage: run.Lineage{SpawnedByItemID: lineage.SpawnedByItemID,
+		MessageMark: run.UnknownMessageMark(), Lineage: run.Lineage{SpawnedByItemID: lineage.SpawnedByItemID,
 			ParentRunID: lineage.ParentRunID,
 			RootRunID:   lineage.RootRunID}})
 
@@ -1003,7 +1003,7 @@ func TestCommitEventRecordsGoalRunWithTerminalRun(t *testing.T) {
 		t.Fatalf("advance Run metrics: %v", err)
 	}
 	updated, err = updated.Terminate(run.Termination{
-		Outcome: run.OutcomeCompleted, FinishedAt: finishedAt, MessageMark: run.UnknownMessageMark,
+		Outcome: run.OutcomeCompleted, FinishedAt: finishedAt, MessageMark: run.UnknownMessageMark(),
 	})
 	if err != nil {
 		t.Fatalf("finish Run: %v", err)
@@ -1122,7 +1122,7 @@ func TestCommitTreeBarrierProducesDurableTriplet(t *testing.T) {
 			Run: runPointer(testsupport.MustRestoreRun(run.Snapshot{SessionID: "ses_1", ID: "run_1", State: run.Waiting,
 				ModelSelection: testsupport.DefaultModelSelection(),
 				Capabilities:   questionCapabilities(),
-				CreatedAt:      createdAt, UpdatedAt: parkedAt, MessageMark: -1})),
+				CreatedAt:      createdAt, UpdatedAt: parkedAt, MessageMark: run.MessageMarkAt(-1)})),
 		}},
 		checkpoint,
 	)
@@ -1197,7 +1197,7 @@ func TestCommitTreeBarrierRollsBackCheckpointWhenRunSuspendFails(t *testing.T) {
 		Capabilities:   questionCapabilities(),
 		CreatedAt:      createdAt,
 		UpdatedAt:      parkedAt,
-		MessageMark:    run.UnknownMessageMark,
+		MessageMark:    run.UnknownMessageMark(),
 	})
 	barrier := mustTreeBarrier(
 		t,
@@ -2428,11 +2428,11 @@ func newWaitingCancellationSQLiteFixtureAt(
 	if saveCheckpointErr := checkpointStore.SaveCheckpoint(ctx, originalCheckpoint); saveCheckpointErr != nil {
 		t.Fatalf("seed executor checkpoint: %v", saveCheckpointErr)
 	}
-	terminalChild, err := childRun.CancelWaiting("stop delegated branch", finishedAt, run.UnknownMessageMark)
+	terminalChild, err := childRun.CancelWaiting("stop delegated branch", finishedAt, run.UnknownMessageMark())
 	if err != nil {
 		t.Fatalf("cancel child fixture: %v", err)
 	}
-	terminalGrandchild, err := grandchildRun.CancelWaiting("stop delegated branch", finishedAt, run.UnknownMessageMark)
+	terminalGrandchild, err := grandchildRun.CancelWaiting("stop delegated branch", finishedAt, run.UnknownMessageMark())
 	if err != nil {
 		t.Fatalf("cancel grandchild fixture: %v", err)
 	}
@@ -2643,7 +2643,7 @@ func TestCommitEventAppendsConversationBeforeResolvingTerminalWatermark(t *testi
 		t.Fatalf("conversation = %#v, %v", stored, err)
 	}
 	runs, err := state.ListRuns(ctx, draft.SessionID)
-	if err != nil || len(runs) != 1 || runs[0].MessageMark() != 1 {
+	if err != nil || len(runs) != 1 || runs[0].MessageMark() != run.MessageMarkAt(1) {
 		t.Fatalf("terminal Run = %#v, %v; want watermark 1", runs, err)
 	}
 }
@@ -2698,7 +2698,7 @@ func TestCommitEventReconcilesAmbiguousTerminalCommit(t *testing.T) {
 		t.Fatalf("ambiguous CommitEvent = %v, want reconciled success", commitEventErr)
 	}
 	stored, found, err := state.Run(ctx, draft.RunID)
-	if err != nil || !found || stored.MessageMark() != 1 || !stored.State().IsTerminal() {
+	if err != nil || !found || stored.MessageMark() != run.MessageMarkAt(1) || !stored.State().IsTerminal() {
 		t.Fatalf("terminal Run = %#v found=%t err=%v, want terminal watermark 1", stored, found, err)
 	}
 	var terminalSegmentID, terminalCommitID string

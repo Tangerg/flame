@@ -941,7 +941,7 @@ func runACancellationPlan(
 			UpdatedAt:      pending.CreatedAt,
 			ModelSelection: testsupport.MustModelSelection("openai", "model"),
 			Capabilities:   capabilities,
-			MessageMark:    run.UnknownMessageMark,
+			MessageMark:    run.UnknownMessageMark(),
 			Lineage:        fixtureLineage(pending.RootRunID, continuation.RunID),
 		})
 

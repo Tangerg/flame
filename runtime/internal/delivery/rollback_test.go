@@ -62,7 +62,7 @@ func putRun(t *testing.T, rt *stubRuntime, sessionID, runID string, atUnix int64
 	if err := rt.runs.Restore(t.Context(), testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: runID, State: run.Completed,
 		Outcome:   &outcome,
 		CreatedAt: time.Unix(atUnix, 0).UTC(), FinishedAt: time.Unix(atUnix, 0).UTC(),
-		UpdatedAt: time.Unix(atUnix, 0).UTC(), MessageMark: mark}),
+		UpdatedAt: time.Unix(atUnix, 0).UTC(), MessageMark: run.MessageMarkAt(mark)}),
 	); err != nil {
 		t.Fatalf("putRun %s: %v", runID, err)
 	}
@@ -234,7 +234,7 @@ func TestPersistRunCarriesCreatedAt(t *testing.T) {
 	outcome := run.OutcomeCompleted
 	terminal := testsupport.MustRestoreRun(run.Snapshot{ID: "run_1", SessionID: sess.ID(), State: run.Completed, Outcome: &outcome,
 		CreatedAt: started, FinishedAt: started.Add(time.Minute),
-		UpdatedAt: started.Add(time.Minute), MessageMark: run.UnknownMessageMark})
+		UpdatedAt: started.Add(time.Minute), MessageMark: run.UnknownMessageMark()})
 	commit := appRuns.EventCommit{
 		RunID: "run_1", SessionID: sess.ID(), SegmentID: "seg_open", State: appRuns.StateTerminalize, Outcome: outcome,
 		CommitID: testCommitID("run_commit_event_rollback"),

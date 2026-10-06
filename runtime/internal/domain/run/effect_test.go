@@ -21,7 +21,7 @@ func TestUnresolvedEffectConstructionAndTerminalOwnership(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	snapshot := Snapshot{SessionID: "session_1", ID: "run_1", ModelSelection: mustRunSelection(t), State: Running, ActiveSegmentID: "segment_1", CreatedAt: time.Unix(1, 0), UpdatedAt: time.Unix(1, 0), MessageMark: UnknownMessageMark}
+	snapshot := Snapshot{SessionID: "session_1", ID: "run_1", ModelSelection: mustRunSelection(t), State: Running, ActiveSegmentID: "segment_1", CreatedAt: time.Unix(1, 0), UpdatedAt: time.Unix(1, 0), MessageMark: UnknownMessageMark()}
 	active, err := Restore(snapshot)
 	if err != nil {
 		t.Fatal(err)

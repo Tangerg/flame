@@ -126,7 +126,7 @@ func TestMaterialSnapshotRejectsRunningItemOwnedByTerminalRun(t *testing.T) {
 		ID: "run_root", SessionID: "ses_1", State: run.Completed,
 		ModelSelection: testsupport.DefaultModelSelection(), Capabilities: snapshot.Runs[0].Capabilities(),
 		Outcome: &outcome, CreatedAt: createdAt, FinishedAt: finishedAt,
-		UpdatedAt: finishedAt, MessageMark: 0,
+		UpdatedAt: finishedAt, MessageMark: run.MessageMarkAt(0),
 	})
 	snapshot.Interrupts = nil
 
@@ -167,7 +167,7 @@ func validMaterialSnapshot() MaterialSnapshot {
 		Runs: []run.Run{testsupport.MustRestoreRun(run.Snapshot{
 			ID: "run_root", SessionID: "ses_1", State: run.Waiting,
 			ModelSelection: selection, Capabilities: capabilities,
-			CreatedAt: createdAt, MessageMark: run.UnknownMessageMark,
+			CreatedAt: createdAt, MessageMark: run.UnknownMessageMark(),
 		})},
 		Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 			ID: "item_question", SessionID: "ses_1", RunID: "run_root",
@@ -201,7 +201,7 @@ func validApprovalMaterialSnapshot() MaterialSnapshot {
 	snapshot.Runs[0] = testsupport.MustRestoreRun(run.Snapshot{
 		ID: "run_root", SessionID: "ses_1", State: run.Waiting,
 		ModelSelection: testsupport.DefaultModelSelection(), Capabilities: capabilities,
-		CreatedAt: snapshot.Runs[0].CreatedAt(), MessageMark: run.UnknownMessageMark,
+		CreatedAt: snapshot.Runs[0].CreatedAt(), MessageMark: run.UnknownMessageMark(),
 	})
 	snapshot.Items[0] = testsupport.MustRestoreItem(testsupport.ItemInput{
 		ID: "item_approval", SessionID: "ses_1", RunID: "run_root",

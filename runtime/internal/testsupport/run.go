@@ -115,7 +115,7 @@ func MustRestoreRun(snapshot run.Snapshot) run.Run {
 		}
 	}
 	if !snapshot.State.IsTerminal() || snapshot.Lineage.IsChild() {
-		snapshot.MessageMark = run.UnknownMessageMark
+		snapshot.MessageMark = run.UnknownMessageMark()
 	}
 	if snapshot.UpdatedAt.IsZero() {
 		if !snapshot.FinishedAt.IsZero() {

@@ -507,7 +507,7 @@ func TestAcceptedScheduleOccurrenceFollowsRunLifecycle(t *testing.T) {
 					t.Fatalf("load Run: found=%t err=%v", found, err)
 				}
 				finished, err := current.Terminate(run.Termination{
-					Outcome: run.OutcomeCompleted, FinishedAt: dueAt.Add(time.Second), MessageMark: 0,
+					Outcome: run.OutcomeCompleted, FinishedAt: dueAt.Add(time.Second), MessageMark: run.MessageMarkAt(0),
 				})
 				if err != nil {
 					t.Fatalf("terminate Run: %v", err)

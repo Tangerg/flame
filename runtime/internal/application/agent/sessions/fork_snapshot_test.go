@@ -24,7 +24,7 @@ func TestCopyForkSnapshotRemapsTheCompleteVisibleRunTree(t *testing.T) {
 	root := testsupport.MustRestoreRun(run.Snapshot{
 		SessionID: "ses_parent", ID: "run_root", State: run.Completed,
 		Capabilities: run.Capabilities{ChildRuns: true}, CreatedAt: at,
-		FinishedAt: at.Add(time.Second), UpdatedAt: at.Add(time.Second), MessageMark: 1,
+		FinishedAt: at.Add(time.Second), UpdatedAt: at.Add(time.Second), MessageMark: run.MessageMarkAt(1),
 	})
 	childRun := testsupport.MustRestoreRun(run.Snapshot{
 		SessionID: "ses_parent", ID: "run_child", State: run.Completed,
@@ -32,7 +32,7 @@ func TestCopyForkSnapshotRemapsTheCompleteVisibleRunTree(t *testing.T) {
 			SpawnedByItemID: "item_spawn", ParentRunID: "run_root", RootRunID: "run_root",
 		},
 		CreatedAt:  at.Add(time.Millisecond),
-		FinishedAt: at.Add(time.Second), UpdatedAt: at.Add(time.Second), MessageMark: 1,
+		FinishedAt: at.Add(time.Second), UpdatedAt: at.Add(time.Second), MessageMark: run.MessageMarkAt(1),
 	})
 	preview, err := tool.NewResult("delegated preview")
 	if err != nil {

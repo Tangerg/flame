@@ -84,7 +84,7 @@ func runWithFacts(pending Pending, continuation Continuation, facts parkedFacts)
 		State:             run.Waiting,
 		Capabilities:      capabilities,
 		CreatedAt:         parkedRunCreatedAt,
-		MessageMark:       run.UnknownMessageMark,
+		MessageMark:       run.UnknownMessageMark(),
 		Lineage:           fixtureLineage(pending.RootRunID, continuation.RunID),
 	})
 }

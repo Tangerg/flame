@@ -263,7 +263,7 @@ func putChildRun(t *testing.T, rt *stubRuntime, sessionID, runID string, atUnix 
 
 		State: run.Completed, Outcome: &outcome,
 		CreatedAt: time.Unix(atUnix, 0).UTC(), FinishedAt: time.Unix(atUnix, 0).UTC(),
-		UpdatedAt: time.Unix(atUnix, 0).UTC(), MessageMark: mark, Lineage: run.Lineage{SpawnedByItemID: "item_spawn",
+		UpdatedAt: time.Unix(atUnix, 0).UTC(), MessageMark: run.MessageMarkAt(mark), Lineage: run.Lineage{SpawnedByItemID: "item_spawn",
 			ParentRunID: "run_root", RootRunID: "run_root"}}),
 	); err != nil {
 		t.Fatalf("put child run %s: %v", runID, err)

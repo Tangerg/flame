@@ -431,7 +431,7 @@ func goalTestRunningRun(t *testing.T, incarnationID string, now time.Time) run.R
 	value, err := run.Restore(run.Snapshot{
 		SessionID: "ses_1", ID: "run_running", ModelSelection: testSelection(t),
 		GoalIncarnationID: incarnationID, State: run.Running, ActiveSegmentID: "segment_1",
-		CreatedAt: createdAt, UpdatedAt: now, MessageMark: run.UnknownMessageMark,
+		CreatedAt: createdAt, UpdatedAt: now, MessageMark: run.UnknownMessageMark(),
 	})
 	if err != nil {
 		t.Fatal(err)

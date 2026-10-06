@@ -575,7 +575,7 @@ func putWaitingRun(t *testing.T, rt *stubRuntime, sessionID, runID string, atUni
 	}
 	if err := rt.runs.Suspend(ctx, testsupport.MustRestoreRun(run.Snapshot{
 		SessionID: sessionID, ID: runID, State: run.Waiting, Capabilities: capabilities,
-		CreatedAt: at, MessageMark: run.UnknownMessageMark,
+		CreatedAt: at, MessageMark: run.UnknownMessageMark(),
 	}), segmentID, runtimeidentity.CommitID{}); err != nil {
 		t.Fatalf("park %s: %v", runID, err)
 	}

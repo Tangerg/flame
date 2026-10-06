@@ -112,7 +112,7 @@ func (r *RunStore) Admit(ctx context.Context, draft rundomain.Draft) error {
 			admitted.ModelSelection().Provider(), admitted.ModelSelection().Model(), admitted.ModelSelection().ReasoningEffort(),
 			admitted.GoalIncarnationID(),
 			capabilities,
-			rundomain.UnknownMessageMark, now, now)
+			nil, now, now)
 		// Two constraints can reject this INSERT and they mean opposite things: the
 		// primary key says the id is spoken for, the partial index says the Session
 		// already owns another root tree.
@@ -520,7 +520,11 @@ func (r *RunStore) RebaseMessageMark(ctx context.Context, change rundomain.Repla
 	if !expected.State().IsTerminal() || !replacement.State().IsTerminal() {
 		return errors.New("sqlite: rebase Run message watermark: terminal Run is required")
 	}
-	derived, err := expected.WithMessageMark(replacement.MessageMark())
+	count, known := replacement.MessageMark().Count()
+	if !known {
+		return errors.New("sqlite: rebase Run message watermark: the rebased watermark is unknown")
+	}
+	derived, err := expected.WithMessageMark(count)
 	if err != nil {
 		return fmt.Errorf("sqlite: rebase Run message watermark: %w", err)
 	}
@@ -529,8 +533,8 @@ func (r *RunStore) RebaseMessageMark(ctx context.Context, change rundomain.Repla
 	}
 	result, err := conn(ctx, r.db).ExecContext(ctx,
 		`UPDATE runs SET message_mark = ?
-		 WHERE session_id = ? AND run_id = ? AND state = ? AND message_mark = ?`,
-		replacement.MessageMark(), expected.SessionID(), expected.ID(), runStateTerminal.databaseValue(), expected.MessageMark(),
+		 WHERE session_id = ? AND run_id = ? AND state = ? AND message_mark IS ?`,
+		count, expected.SessionID(), expected.ID(), runStateTerminal.databaseValue(), messageMarkValue(expected.MessageMark()),
 	)
 	if err != nil {
 		return fmt.Errorf("sqlite: rebase Run %q message watermark: %w", expected.ID(), err)
@@ -629,7 +633,7 @@ func (r *RunStore) finish(
 			coarseState(value.State()).databaseValue(), commitSegmentID, commitID,
 			string(outcome), value.Detail(), metrics.steps, metrics.durationNs,
 			metrics.usage, value.ContextTokens(), encodedFailure, encodedEffects,
-			value.MessageMark(), value.FinishedAt().UTC().UnixNano(),
+			messageMarkValue(value.MessageMark()), value.FinishedAt().UTC().UnixNano(),
 			value.UpdatedAt().UTC().UnixNano(), value.SessionID(), value.ID(), coarseState(current.State()).databaseValue(),
 		}
 		if expected != nil {
@@ -724,7 +728,7 @@ func (r *RunStore) Restore(ctx context.Context, value rundomain.Run) error {
 		selection.Provider(), selection.Model(), selection.ReasoningEffort(),
 		value.GoalIncarnationID(),
 		value.Detail(), metrics.steps, metrics.durationNs, metrics.usage, value.ContextTokens(), encodedFailure, encodedEffects,
-		capabilities, value.MessageMark(),
+		capabilities, messageMarkValue(value.MessageMark()),
 		value.CreatedAt().UTC().UnixNano(), value.FinishedAt().UTC().UnixNano(), value.UpdatedAt().UTC().UnixNano())
 	if isPrimaryKeyViolation(err) {
 		// A Run id belongs to one Session for its whole lifetime. An import that

@@ -18,7 +18,7 @@ func TestEventCommitUsesCompleteRunStateInvariant(t *testing.T) {
 	createdAt := time.Date(2026, 8, 1, 3, 0, 0, 0, time.UTC)
 	waiting := testsupport.MustRestoreRun(run.Snapshot{ID: "run_1", SessionID: "session", State: run.Waiting,
 		CreatedAt: createdAt, UpdatedAt: createdAt,
-		MessageMark: run.UnknownMessageMark})
+		MessageMark: run.UnknownMessageMark()})
 
 	valid := EventCommit{
 		RunID: waiting.ID(), SessionID: waiting.SessionID(), SegmentID: "segment_1",
@@ -66,7 +66,7 @@ func TestTerminalEventCommitAllowsOnlyTheTransactionalWatermarkPlaceholder(t *te
 	outcome := run.OutcomeCanceled
 	record := testsupport.MustRestoreRun(run.Snapshot{ID: "run_1", SessionID: "session", State: run.Canceled,
 		Outcome: &outcome, CreatedAt: createdAt, UpdatedAt: createdAt.Add(time.Second),
-		FinishedAt: createdAt.Add(time.Second), MessageMark: run.UnknownMessageMark})
+		FinishedAt: createdAt.Add(time.Second), MessageMark: run.UnknownMessageMark()})
 
 	commit := EventCommit{
 		RunID: record.ID(), SessionID: record.SessionID(), SegmentID: "segment_1", State: StateTerminalize,
@@ -81,7 +81,7 @@ func TestTerminalEventCommitAllowsOnlyTheTransactionalWatermarkPlaceholder(t *te
 	}
 
 	invalid := record.Snapshot()
-	invalid.MessageMark = run.UnknownMessageMark - 1
+	invalid.MessageMark = run.MessageMarkAt(-1)
 	if _, err := run.Restore(invalid); err == nil {
 		t.Fatal("Run.Restore accepted an invalid negative message watermark")
 	}

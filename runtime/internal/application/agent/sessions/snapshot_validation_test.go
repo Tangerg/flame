@@ -118,7 +118,7 @@ func portableSnapshotWithMessage() Snapshot {
 	snapshot := portableSnapshot()
 	snapshot.Messages = []chat.Message{chat.NewUserMessage(chat.NewTextPart("original"))}
 	root := snapshot.Runs[0].Snapshot()
-	root.MessageMark = 1
+	root.MessageMark = run.MessageMarkAt(1)
 	snapshot.Runs[0] = testsupport.MustRestoreRun(root)
 	return snapshot
 }
@@ -271,6 +271,7 @@ func TestPortableSnapshotDelegatesModelIdentityToRun(t *testing.T) {
 		Runs: []PortableRun{{
 			SessionID: "ses_1", ID: "run_1", Outcome: run.OutcomeCompleted,
 			Capabilities: &capabilities, CreatedAt: at, FinishedAt: at, UpdatedAt: at,
+			MessageMark: run.MessageMarkAt(0),
 		}},
 	}
 	_, err := portable.CanonicalSnapshot()
@@ -306,13 +307,13 @@ func TestPortableSnapshotKeepsCapabilitiesOnTheRoot(t *testing.T) {
 			{
 				SessionID: "ses_1", ID: "run_root", Outcome: run.OutcomeCompleted,
 				Selection: selection, Capabilities: &capabilities,
-				CreatedAt: at, FinishedAt: at, UpdatedAt: at,
+				CreatedAt: at, FinishedAt: at, UpdatedAt: at, MessageMark: run.MessageMarkAt(0),
 			},
 			{
 				SessionID: "ses_1", ID: "run_child", Outcome: run.OutcomeCompleted,
 				SpawnedByItemID: "item_1", ParentRunID: "run_root", RootRunID: "run_root",
 				Selection: selection, CreatedAt: at, FinishedAt: at, UpdatedAt: at,
-				MessageMark: run.UnknownMessageMark,
+				MessageMark: run.UnknownMessageMark(),
 			},
 		},
 	}

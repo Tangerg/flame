@@ -96,7 +96,7 @@ func testRecoveryMarksClaimedResumeLost(t *testing.T, openingCommitted bool) {
 	waiting := testsupport.MustRestoreRun(run.Snapshot{ID: "run_claim", SessionID: "session_claim", State: run.Waiting,
 		Capabilities: capabilities,
 		CreatedAt:    createdAt, UpdatedAt: createdAt.Add(time.Second),
-		MessageMark: run.UnknownMessageMark})
+		MessageMark: run.UnknownMessageMark()})
 
 	if suspendErr := runStore.Suspend(
 		ctx, waiting, "segment_claim", runtimeidentity.CommitID{},
@@ -200,7 +200,7 @@ func testRecoveryMarksClaimedResumeLost(t *testing.T, openingCommitted bool) {
 	stored, found, err := runStore.Run(ctx, pending.RootRunID)
 	failure, failed := stored.Failure()
 	if err != nil || !found || stored.State() != run.Failed ||
-		!failed || failure.Kind != run.FailureLost || stored.MessageMark() != 3 {
+		!failed || failure.Kind != run.FailureLost || stored.MessageMark() != run.MessageMarkAt(3) {
 		t.Fatalf("recovered Run = found:%t value:%+v err:%v", found, stored, err)
 	}
 	messages, err := messageStore.Read(ctx, chathistory.ConversationID(waiting.SessionID()))
@@ -262,7 +262,7 @@ func TestRecoveryCleanupIsScopedToClaimedSessions(t *testing.T) {
 	finishedAt := createdAt.Add(time.Second)
 	lost, err := active.RecoverLost(run.Failure{
 		Kind: run.FailureLost, Detail: "run lost on restart",
-	}, finishedAt, 0)
+	}, finishedAt, run.MessageMarkAt(0))
 	if err != nil {
 		t.Fatalf("RecoverLost: %v", err)
 	}
@@ -542,7 +542,7 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 	stored, found, err := runStore.Run(ctx, "run_lost")
 	failure, failed := stored.Failure()
 	if err != nil || !found || stored.State() != run.Failed ||
-		!failed || failure.Kind != run.FailureLost || stored.MessageMark() != 3 {
+		!failed || failure.Kind != run.FailureLost || stored.MessageMark() != run.MessageMarkAt(3) {
 		t.Fatalf("recovered Run = found:%t value:%+v err:%v", found, stored, err)
 	}
 	recoveredMessages, err := messageStore.Read(ctx, "session")
@@ -621,7 +621,7 @@ func TestRecoveryRejectsPartialParkWithoutMutatingIt(t *testing.T) {
 			InterruptKinds: []interrupt.Kind{interrupt.Question},
 		},
 		CreatedAt: createdAt,
-		UpdatedAt: createdAt.Add(time.Second), MessageMark: run.UnknownMessageMark}),
+		UpdatedAt: createdAt.Add(time.Second), MessageMark: run.UnknownMessageMark()}),
 		"segment", runtimeidentity.CommitID{},
 	); suspendErr != nil {
 		t.Fatalf("Suspend: %v", suspendErr)

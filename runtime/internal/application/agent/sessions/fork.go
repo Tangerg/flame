@@ -47,16 +47,23 @@ func ResolveForkBoundary(msgs []chat.Message, runs []run.Run, fromRunID string) 
 		}
 	}
 	for _, run := range runs {
-		if run.State().IsTerminal() && run.Lineage().IsRoot() && (run.MessageMark() < 0 || run.MessageMark() > len(msgs)) {
-			return ForkBoundary{}, fmt.Errorf("sessions: terminal run %q has invalid message watermark %d", run.ID(), run.MessageMark())
+		if !run.State().IsTerminal() || !run.Lineage().IsRoot() {
+			continue
+		}
+		if count, known := run.MessageMark().Count(); !known || count > len(msgs) {
+			return ForkBoundary{}, fmt.Errorf("sessions: terminal run %q has invalid message watermark %s", run.ID(), run.MessageMark())
 		}
 	}
 	boundary, err := transcript.TimelineFromRuns(runs).PortableBoundaryAt(fromRunID)
 	if err != nil {
 		return ForkBoundary{}, err
 	}
+	keep, known := boundary.KeepMessageMark.Count()
+	if !known {
+		return ForkBoundary{}, fmt.Errorf("sessions: fork boundary at %q has no message watermark", boundary.KeepRunID)
+	}
 	return ForkBoundary{
-		Messages: cloneSnapshotMessages(msgs[:boundary.KeepMessageMark]),
+		Messages: cloneSnapshotMessages(msgs[:keep]),
 		RunIDs:   boundary.RunIDs,
 		RunID:    boundary.KeepRunID,
 	}, nil

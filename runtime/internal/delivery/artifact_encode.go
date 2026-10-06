@@ -229,9 +229,10 @@ func artifactItemFromTranscript(item transcript.Item) (protocol.ArtifactItem, er
 	return out, nil
 }
 
-func artifactMessageMark(mark int) *int {
-	if mark == run.UnknownMessageMark {
+func artifactMessageMark(mark run.MessageMark) *int {
+	count, known := mark.Count()
+	if !known {
 		return nil
 	}
-	return &mark
+	return &count
 }

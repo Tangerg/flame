@@ -10,7 +10,7 @@ import (
 
 func TestRollbackPlanOwnsResolvedBoundaryAndCheckpointScope(t *testing.T) {
 	boundary := transcript.Boundary{
-		KeepMessageMark: 4,
+		KeepMessageMark: rundomain.MessageMarkAt(4),
 		Dropped:         []transcript.RunNode{{ID: "run_1"}, {ID: "run_2"}},
 	}
 	checkpointRoots := []string{"member_1"}
@@ -35,20 +35,20 @@ func TestRollbackPlanOwnsResolvedBoundaryAndCheckpointScope(t *testing.T) {
 	}
 
 	unknown, err := NewRollbackPlan("ses_1", transcript.Boundary{
-		KeepMessageMark: rundomain.UnknownMessageMark,
+		KeepMessageMark: rundomain.UnknownMessageMark(),
 		Dropped:         []transcript.RunNode{{ID: "run_1"}},
 	}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if mark, known := unknown.TruncationMark(); mark != rundomain.UnknownMessageMark || known {
+	if mark, known := unknown.TruncationMark(); known {
 		t.Fatalf("unknown coordinate = %d, %t", mark, known)
 	}
 }
 
 func TestRollbackPlanRejectsInvalidWriteSets(t *testing.T) {
 	validBoundary := transcript.Boundary{
-		KeepMessageMark: 0,
+		KeepMessageMark: rundomain.MessageMarkAt(0),
 		Dropped:         []transcript.RunNode{{ID: "run_1"}},
 	}
 	tests := []struct {
@@ -59,7 +59,7 @@ func TestRollbackPlanRejectsInvalidWriteSets(t *testing.T) {
 		replacement *plan.Replacement
 	}{
 		{name: "session", sessionID: "", boundary: validBoundary},
-		{name: "message mark", sessionID: "ses_1", boundary: transcript.Boundary{KeepMessageMark: -2, Dropped: validBoundary.Dropped}},
+		{name: "message mark", sessionID: "ses_1", boundary: transcript.Boundary{KeepMessageMark: rundomain.MessageMarkAt(-2), Dropped: validBoundary.Dropped}},
 		{name: "no dropped Runs", sessionID: "ses_1", boundary: transcript.Boundary{}},
 		{name: "invalid Run", sessionID: "ses_1", boundary: transcript.Boundary{Dropped: []transcript.RunNode{{ID: "run bad"}}}},
 		{name: "repeated Run", sessionID: "ses_1", boundary: transcript.Boundary{Dropped: []transcript.RunNode{{ID: "run_1"}, {ID: "run_1"}}}},

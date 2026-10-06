@@ -488,7 +488,7 @@ func (w waitingCancellationBuilder) remainingPending(
 }
 
 func canceledWaitingRun(run rundomain.Run, reason string, finishedAt time.Time) (rundomain.Run, error) {
-	terminal, err := run.CancelWaiting(reason, finishedAt, rundomain.UnknownMessageMark)
+	terminal, err := run.CancelWaiting(reason, finishedAt, rundomain.UnknownMessageMark())
 	if err != nil {
 		return rundomain.Run{}, fmt.Errorf("runs: cancel waiting Run %q: %w", run.ID(), err)
 	}

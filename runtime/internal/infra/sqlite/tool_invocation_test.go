@@ -90,7 +90,7 @@ func TestToolInvocationJournalAllowsOneLogicalCallAcrossContinuationSegments(t *
 		t.Fatalf("active Run = %v, %v", found, err)
 	}
 	terminal, err := active.Terminate(run.Termination{
-		Outcome: run.OutcomeCompleted, FinishedAt: startedAt.Add(time.Second), MessageMark: 0,
+		Outcome: run.OutcomeCompleted, FinishedAt: startedAt.Add(time.Second), MessageMark: run.MessageMarkAt(0),
 	})
 	if err != nil {
 		t.Fatal(err)

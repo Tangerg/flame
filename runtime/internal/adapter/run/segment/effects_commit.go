@@ -759,7 +759,7 @@ func (e *Effects) applyState(ctx context.Context, commit runs.EventCommit) error
 // is in its terminal post-compaction shape by the time a terminal event arrives),
 // and the row's touch time.
 func (e *Effects) finishedRun(ctx context.Context, record run.Run) (run.Run, error) {
-	if record.Lineage().IsRoot() && record.MessageMark() < 0 {
+	if _, known := record.MessageMark().Count(); record.Lineage().IsRoot() && !known {
 		mark, err := e.conversation.Count(ctx, record.SessionID())
 		if err != nil {
 			return run.Run{}, fmt.Errorf("segment: resolve terminal message watermark: %w", err)

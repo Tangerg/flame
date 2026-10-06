@@ -63,7 +63,7 @@ func seedCompactionHistory(t *testing.T, messages *persistence.ConversationStore
 		terminal := testsupport.MustRestoreRun(run.Snapshot{
 			ID: "run_" + string(rune('a'+index)), SessionID: "ses_long",
 			State: run.Completed, CreatedAt: at, FinishedAt: at, UpdatedAt: at,
-			MessageMark: mark,
+			MessageMark: run.MessageMarkAt(mark),
 		})
 		if err := runs.Restore(t.Context(), terminal); err != nil {
 			t.Fatal(err)
@@ -99,8 +99,8 @@ func TestConversationCompactionRebasesRunsAcrossRepeatedLongTurns(t *testing.T) 
 	}
 	wantMarks := []int{1, 1, 1, 3}
 	for index, current := range afterRuns {
-		if current.MessageMark() != wantMarks[index] {
-			t.Errorf("Run %s mark = %d, want %d", current.ID(), current.MessageMark(), wantMarks[index])
+		if current.MessageMark() != run.MessageMarkAt(wantMarks[index]) {
+			t.Errorf("Run %s mark = %s, want %d", current.ID(), current.MessageMark(), wantMarks[index])
 		}
 	}
 	if _, resolveForkBoundaryErr := sessions.ResolveForkBoundary(after, afterRuns, "run_b"); resolveForkBoundaryErr != nil {
@@ -118,7 +118,7 @@ func TestConversationCompactionRebasesRunsAcrossRepeatedLongTurns(t *testing.T) 
 	at := time.Unix(10, 0).UTC()
 	latest := testsupport.MustRestoreRun(run.Snapshot{
 		ID: "run_e", SessionID: "ses_long", State: run.Completed,
-		CreatedAt: at, FinishedAt: at, UpdatedAt: at, MessageMark: 8,
+		CreatedAt: at, FinishedAt: at, UpdatedAt: at, MessageMark: run.MessageMarkAt(8),
 	})
 	if restoreErr := runs.Restore(t.Context(), latest); restoreErr != nil {
 		t.Fatal(restoreErr)
@@ -139,11 +139,11 @@ func TestConversationCompactionRebasesRunsAcrossRepeatedLongTurns(t *testing.T) 
 		if current.ID() == "run_e" {
 			want = 3
 		}
-		if current.MessageMark() != want {
-			t.Errorf("Run %s mark after second compaction = %d, want %d", current.ID(), current.MessageMark(), want)
+		if current.MessageMark() != run.MessageMarkAt(want) {
+			t.Errorf("Run %s mark after second compaction = %s, want %d", current.ID(), current.MessageMark(), want)
 		}
-		if current.MessageMark() > len(after) {
-			t.Errorf("Run %s mark %d exceeds current history %d", current.ID(), current.MessageMark(), len(after))
+		if count, _ := current.MessageMark().Count(); count > len(after) {
+			t.Errorf("Run %s mark %s exceeds current history %d", current.ID(), current.MessageMark(), len(after))
 		}
 	}
 	if _, err := sessions.ResolveForkBoundary(after, afterRuns, "run_e"); err != nil {
@@ -188,8 +188,8 @@ func TestConversationCompactionRollsBackHistoryWhenRunRebaseFails(t *testing.T) 
 	}
 	for index, current := range afterRuns {
 		want := (index + 1) * 2
-		if current.MessageMark() != want {
-			t.Errorf("Run %s mark after rollback = %d, want %d", current.ID(), current.MessageMark(), want)
+		if current.MessageMark() != run.MessageMarkAt(want) {
+			t.Errorf("Run %s mark after rollback = %s, want %d", current.ID(), current.MessageMark(), want)
 		}
 	}
 }

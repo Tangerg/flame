@@ -90,9 +90,9 @@ func TestMessagesRejectsMissingSession(t *testing.T) {
 func TestMessagesPlansCompactionRunWatermarks(t *testing.T) {
 	at := time.Unix(10, 0).UTC()
 	compactions := &recordingCompactions{runs: []run.Run{
-		testsupport.MustRestoreRun(run.Snapshot{ID: "run_before", SessionID: "ses_1", State: run.Completed, CreatedAt: at, MessageMark: 4}),
-		testsupport.MustRestoreRun(run.Snapshot{ID: "run_cut", SessionID: "ses_1", State: run.Completed, CreatedAt: at.Add(time.Second), MessageMark: 6}),
-		testsupport.MustRestoreRun(run.Snapshot{ID: "run_recent", SessionID: "ses_1", State: run.Completed, CreatedAt: at.Add(2 * time.Second), MessageMark: 8}),
+		testsupport.MustRestoreRun(run.Snapshot{ID: "run_before", SessionID: "ses_1", State: run.Completed, CreatedAt: at, MessageMark: run.MessageMarkAt(4)}),
+		testsupport.MustRestoreRun(run.Snapshot{ID: "run_cut", SessionID: "ses_1", State: run.Completed, CreatedAt: at.Add(time.Second), MessageMark: run.MessageMarkAt(6)}),
+		testsupport.MustRestoreRun(run.Snapshot{ID: "run_recent", SessionID: "ses_1", State: run.Completed, CreatedAt: at.Add(2 * time.Second), MessageMark: run.MessageMarkAt(8)}),
 		testsupport.MustRestoreRun(run.Snapshot{ID: "run_active", SessionID: "ses_1", State: run.Running, CreatedAt: at.Add(3 * time.Second)}),
 	}}
 	messages := newConversationHistory(t, testsupport.NewConversationStore(), compactions)
@@ -108,13 +108,13 @@ func TestMessagesPlansCompactionRunWatermarks(t *testing.T) {
 	if len(planned) != 4 {
 		t.Fatalf("planned Runs = %d, want 4", len(planned))
 	}
-	wantMarks := []int{1, 1, 3, run.UnknownMessageMark}
+	wantMarks := []run.MessageMark{run.MessageMarkAt(1), run.MessageMarkAt(1), run.MessageMarkAt(3), run.UnknownMessageMark()}
 	for index, replacement := range planned {
 		if !replacement.Expected().Equal(compactions.runs[index]) {
 			t.Fatalf("planned Run %d lost its expected CAS aggregate", index)
 		}
 		if got := replacement.State().MessageMark(); got != wantMarks[index] {
-			t.Errorf("replacement mark[%d] = %d, want %d", index, got, wantMarks[index])
+			t.Errorf("replacement mark[%d] = %s, want %s", index, got, wantMarks[index])
 		}
 	}
 }

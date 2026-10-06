@@ -214,7 +214,7 @@ func cancellationTree(state run.State) []run.Run {
 		}
 		return testsupport.MustRestoreRun(run.Snapshot{ID: id, SessionID: "ses_1", State: state,
 			ActiveSegmentID: "segment_" + id, CreatedAt: createdAt,
-			UpdatedAt: createdAt, MessageMark: run.UnknownMessageMark, Lineage: lineage})
+			UpdatedAt: createdAt, MessageMark: run.UnknownMessageMark(), Lineage: lineage})
 	}
 	return []run.Run{
 		makeRun("run_a0", "run_a"),

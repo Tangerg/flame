@@ -18,8 +18,8 @@ func TestResolveForkBoundary(t *testing.T) {
 		chat.NewUserMessage(chat.NewTextPart("three")),
 	}
 	runs := []run.Run{
-		testsupport.MustRestoreRun(run.Snapshot{ID: "run_1", State: run.Completed, CreatedAt: time.Unix(1, 0), MessageMark: 2}),
-		testsupport.MustRestoreRun(run.Snapshot{ID: "run_2", State: run.Completed, CreatedAt: time.Unix(3, 0), MessageMark: 3}),
+		testsupport.MustRestoreRun(run.Snapshot{ID: "run_1", State: run.Completed, CreatedAt: time.Unix(1, 0), MessageMark: run.MessageMarkAt(2)}),
+		testsupport.MustRestoreRun(run.Snapshot{ID: "run_2", State: run.Completed, CreatedAt: time.Unix(3, 0), MessageMark: run.MessageMarkAt(3)}),
 	}
 
 	got, err := ResolveForkBoundary(msgs, runs, "run_1")
@@ -54,11 +54,11 @@ func TestResolveForkBoundaryExcludesActiveTail(t *testing.T) {
 		chat.NewUserMessage(chat.NewTextPart("active")),
 	}
 	runs := []run.Run{
-		testsupport.MustRestoreRun(run.Snapshot{ID: "run_1", State: run.Completed, CreatedAt: time.Unix(1, 0), MessageMark: 2}),
-		testsupport.MustRestoreRun(run.Snapshot{ID: "run_2", State: run.Running, CreatedAt: time.Unix(2, 0), MessageMark: -1}),
+		testsupport.MustRestoreRun(run.Snapshot{ID: "run_1", State: run.Completed, CreatedAt: time.Unix(1, 0), MessageMark: run.MessageMarkAt(2)}),
+		testsupport.MustRestoreRun(run.Snapshot{ID: "run_2", State: run.Running, CreatedAt: time.Unix(2, 0), MessageMark: run.MessageMarkAt(-1)}),
 		testsupport.MustRestoreRun(run.Snapshot{
 			ID: "run_2_child", Lineage: run.Lineage{SpawnedByItemID: "item_task", ParentRunID: "run_2", RootRunID: "run_2"},
-			State: run.Completed, CreatedAt: time.Unix(3, 0), MessageMark: 3,
+			State: run.Completed, CreatedAt: time.Unix(3, 0), MessageMark: run.MessageMarkAt(3),
 		}),
 	}
 
@@ -78,7 +78,7 @@ func TestResolveForkBoundaryExcludesActiveTail(t *testing.T) {
 }
 
 func TestResolveForkBoundaryRejectsActiveTarget(t *testing.T) {
-	runs := []run.Run{testsupport.MustRestoreRun(run.Snapshot{ID: "run_active", State: run.Running, CreatedAt: time.Unix(1, 0), MessageMark: -1})}
+	runs := []run.Run{testsupport.MustRestoreRun(run.Snapshot{ID: "run_active", State: run.Running, CreatedAt: time.Unix(1, 0), MessageMark: run.MessageMarkAt(-1)})}
 	if _, err := ResolveForkBoundary([]chat.Message{chat.NewUserMessage(chat.NewTextPart("active"))}, runs, "run_active"); err != transcript.ErrRunNotFound {
 		t.Fatalf("resolve active target error = %v, want ErrRunNotFound", err)
 	}

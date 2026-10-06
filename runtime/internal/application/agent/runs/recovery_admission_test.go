@@ -36,7 +36,7 @@ func TestNewRunWaitsForRecoveryToReleaseItsSessionProbe(t *testing.T) {
 	store := &gatedRecoveryCatalog{
 		recoveryStoreStub: &recoveryStoreStub{runs: []rundomain.Run{testsupport.MustRestoreRun(rundomain.Snapshot{
 			ID: "run_previous", SessionID: "ses_1", State: rundomain.Running, ActiveSegmentID: "seg_previous",
-			CreatedAt: time.Now().UTC(), MessageMark: rundomain.UnknownMessageMark,
+			CreatedAt: time.Now().UTC(), MessageMark: rundomain.UnknownMessageMark(),
 		})}}, claimed: make(chan struct{}), release: make(chan struct{}),
 	}
 	gate := testsupport.NewAdmissionGate()

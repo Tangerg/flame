@@ -381,7 +381,7 @@ func TestCancelParkedRunProducesPortableTerminalSnapshot(t *testing.T) {
 	if suspendErr := rt.runs.Suspend(ctx, testsupport.MustRestoreRun(run.Snapshot{SessionID: ses.ID(), ID: "run_parked", State: run.Waiting,
 		Capabilities: capabilities,
 
-		CreatedAt: parkedAt, MessageMark: run.UnknownMessageMark}),
+		CreatedAt: parkedAt, MessageMark: run.UnknownMessageMark()}),
 		"seg_open", runtimeidentity.CommitID{},
 	); suspendErr != nil {
 		t.Fatalf("suspend parked run: %v", suspendErr)

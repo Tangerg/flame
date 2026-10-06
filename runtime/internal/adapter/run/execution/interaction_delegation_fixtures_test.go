@@ -403,7 +403,7 @@ func (d *delegateProjection) applyOpening(opening runs.OpeningCommit) {
 			ModelSelection: draft.ModelSelection, GoalIncarnationID: draft.GoalIncarnationID,
 			Capabilities: draft.Capabilities,
 			CreatedAt:    draft.CreatedAt, UpdatedAt: draft.CreatedAt,
-			MessageMark: run.UnknownMessageMark, Lineage: run.Lineage{SpawnedByItemID: draft.SpawnedByItemID, ParentRunID: draft.ParentRunID,
+			MessageMark: run.UnknownMessageMark(), Lineage: run.Lineage{SpawnedByItemID: draft.SpawnedByItemID, ParentRunID: draft.ParentRunID,
 				RootRunID: draft.RootRunID}})
 
 	}

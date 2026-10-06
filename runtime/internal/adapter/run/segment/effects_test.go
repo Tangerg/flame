@@ -175,8 +175,8 @@ func TestCommitEventPersistsTranscriptAndTerminalizes(t *testing.T) {
 	if finished.SessionID() != "ses_1" || finished.ID() != "run_1" || !runHasOutcome(finished, run.OutcomeCompleted) {
 		t.Fatalf("terminalized run = %+v", finished)
 	}
-	if finished.MessageMark() != 7 {
-		t.Fatalf("terminalized mark = %d, want the resolved 7", finished.MessageMark())
+	if finished.MessageMark() != run.MessageMarkAt(7) {
+		t.Fatalf("terminalized mark = %s, want the resolved 7", finished.MessageMark())
 	}
 	if tx.calls != 1 {
 		t.Fatalf("RunInTx calls = %d, want 1 (the whole commit is one transaction)", tx.calls)
@@ -418,7 +418,7 @@ func TestCommitTreeBarrierRecordsPendingSetAndSuspends(t *testing.T) {
 				Capabilities: questionCapabilities(),
 				CreatedAt:    runCreatedAt,
 				UpdatedAt:    barrierCreatedAt,
-				MessageMark:  run.UnknownMessageMark})),
+				MessageMark:  run.UnknownMessageMark()})),
 
 			Items: []transcript.Item{singleRunQuestionItem(t, "ses_1", pending)},
 		}},
@@ -461,7 +461,7 @@ func TestCommitTreeBarrierRejectsIncompleteContinuation(t *testing.T) {
 			RunID: "run_1", SessionID: "ses_1", SegmentID: "segment_1", State: runs.StateSuspend,
 			Run: runPointer(testsupport.MustRestoreRun(run.Snapshot{SessionID: "ses_1", ID: "run_1", State: run.Waiting,
 				CreatedAt:   createdAt,
-				MessageMark: run.UnknownMessageMark})),
+				MessageMark: run.UnknownMessageMark()})),
 		}},
 		testRootExecutorCheckpoint(),
 	)
@@ -495,7 +495,7 @@ func TestCommitTreeBarrierRejectsMismatchedCheckpointBindingBeforeTransaction(t 
 					RunID: "run_1", SessionID: "ses_1", SegmentID: "segment_1", State: runs.StateSuspend,
 					Run: runPointer(testsupport.MustRestoreRun(run.Snapshot{SessionID: "ses_1", ID: "run_1", State: run.Waiting,
 						CreatedAt:   createdAt,
-						MessageMark: run.UnknownMessageMark})),
+						MessageMark: run.UnknownMessageMark()})),
 				}},
 				checkpoint,
 			)
@@ -522,7 +522,7 @@ func TestCommitTreeBarrierRejectsInterruptsItsRunCannotPark(t *testing.T) {
 		Metrics:        testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 2}),
 		Capabilities:   run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Approval}},
 		CreatedAt:      createdAt,
-		MessageMark:    run.UnknownMessageMark})
+		MessageMark:    run.UnknownMessageMark()})
 	_, err := runs.NewTreeBarrierCommit(
 		testCommitID(runtimeidentity.CommitPrefix+"barrier_unadmitted_kind"),
 		pending,
@@ -804,7 +804,7 @@ func finishedRunRecord(runID, sessionID string, outcome run.Outcome) *run.Run {
 	record := testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: runID, State: state, Outcome: &outcome,
 		CreatedAt:   time.Unix(1, 0).UTC(),
 		FinishedAt:  time.Unix(2, 0).UTC(),
-		MessageMark: run.UnknownMessageMark})
+		MessageMark: run.UnknownMessageMark()})
 	return &record
 }
 

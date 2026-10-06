@@ -40,8 +40,8 @@ type RunNode struct {
 	SpawnedByItemID string    // non-empty: a child Run
 	RootRunID       string    // non-empty: the root that owns this child Run
 	CreatedAt       time.Time // wall-clock Run order
-	MessageMark     int       // conversation message watermark; -1 when unknown
-	Terminal        bool      // whether the complete root tree can become portable
+	MessageMark     run.MessageMark
+	Terminal        bool // whether the complete root tree can become portable
 }
 
 // IsRoot reports whether the Run opens an execution rather than representing a
@@ -85,8 +85,8 @@ func OpeningUserMessagesByRun(items []Item) map[string][]ContentBlock {
 // Boundary is the inclusive-keep split of a timeline at a run:
 //
 //   - KeepMessageMark: the watermark to keep — the MessageMark of the last kept
-//     tree's root, which ends after every child Run it spawned. -1 when that
-//     watermark is unknown (in-flight / pre-watermark), which the caller clamps.
+//     tree's root, which ends after every child Run it spawned. Unknown when
+//     that tree is still in flight, which the caller clamps.
 //   - KeepRunID: the run that watermark belongs to — the boundary's identity for
 //     the Session Plan recorded per run, which unlike the message log has
 //     no watermark of its own to seek to. It is deliberately the SAME node
@@ -99,7 +99,7 @@ func OpeningUserMessagesByRun(items []Item) map[string][]ContentBlock {
 //     attributes child sessions to dropped Runs. Zero when nothing is
 //     dropped (or the whole timeline is dropped).
 type Boundary struct {
-	KeepMessageMark int
+	KeepMessageMark run.MessageMark
 	KeepRunID       string
 	Dropped         []RunNode
 	BoundaryTime    time.Time
@@ -109,7 +109,7 @@ type Boundary struct {
 // Run and every child it spawned become portable as one unit, so RunIDs and the
 // message watermark always describe the same complete trees.
 type PortableBoundary struct {
-	KeepMessageMark int
+	KeepMessageMark run.MessageMark
 	KeepRunID       string
 	RunIDs          []string
 }
@@ -183,7 +183,7 @@ func (t Timeline) PortableBoundaryAt(runID string) (PortableBoundary, error) {
 		return PortableBoundary{}, ErrRunNotFound
 	}
 	if len(portable) == 0 {
-		return PortableBoundary{}, nil
+		return PortableBoundary{KeepMessageMark: run.MessageMarkAt(0)}, nil
 	}
 	if runID == "" {
 		runID = portable[len(portable)-1].ID
@@ -227,7 +227,7 @@ func (t Timeline) ordered() ([]RunNode, error) {
 
 func boundaryAtOrdered(nodes []RunNode, runID string, requireRoot bool) (Boundary, error) {
 	if runID == "" {
-		return Boundary{Dropped: nodes}, nil
+		return Boundary{KeepMessageMark: run.MessageMarkAt(0), Dropped: nodes}, nil
 	}
 	if err := resourceid.ValidateRun(runID); err != nil {
 		return Boundary{}, fmt.Errorf("timeline boundary: %w", err)

@@ -18,7 +18,7 @@ func TestTerminalPlanOwnsProjectionAndDerivesGoalRun(t *testing.T) {
 		ID: "run_1", SessionID: "ses_1", State: run.Waiting,
 		GoalIncarnationID: "lease_1", CreatedAt: createdAt,
 	})
-	terminal, err := parked.CancelWaiting("stopped", finishedAt, 1)
+	terminal, err := parked.CancelWaiting("stopped", finishedAt, run.MessageMarkAt(1))
 	if err != nil {
 		t.Fatalf("cancel waiting Run: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestClaimedResumeTerminalPlanRequiresLostRun(t *testing.T) {
 	parked := testsupport.MustRestoreRun(run.Snapshot{
 		ID: "run_1", SessionID: "ses_1", State: run.Waiting, CreatedAt: createdAt,
 	})
-	canceled, err := parked.CancelWaiting("stopped", finishedAt, 0)
+	canceled, err := parked.CancelWaiting("stopped", finishedAt, run.MessageMarkAt(0))
 	if err != nil {
 		t.Fatalf("cancel waiting Run: %v", err)
 	}
@@ -82,7 +82,7 @@ func TestClaimedResumeTerminalPlanRequiresLostRun(t *testing.T) {
 	); err == nil {
 		t.Fatal("claimed Resume terminal plan accepted a canceled Run")
 	}
-	lost, err := parked.RecoverLost(run.Failure{Kind: run.FailureLost}, finishedAt, 0)
+	lost, err := parked.RecoverLost(run.Failure{Kind: run.FailureLost}, finishedAt, run.MessageMarkAt(0))
 	if err != nil {
 		t.Fatalf("recover lost Run: %v", err)
 	}

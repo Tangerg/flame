@@ -25,7 +25,7 @@ func TestRestoreRejectsInvalidState(t *testing.T) {
 	snapshot := Snapshot{
 		SessionID: "session_1", ID: "run_1", ModelSelection: mustRunSelection(t),
 		State: Waiting, CreatedAt: time.Unix(1, 0), UpdatedAt: time.Unix(1, 0),
-		MessageMark: UnknownMessageMark,
+		MessageMark: UnknownMessageMark(),
 	}
 	if _, err := Restore(snapshot); err != nil {
 		t.Fatalf("valid waiting Run: %v", err)
@@ -54,7 +54,7 @@ func TestChildRunCarriesNoCapabilitiesOfItsOwn(t *testing.T) {
 	if _, err := Restore(Snapshot{
 		SessionID: "session_1", ID: "run_child", Lineage: lineage, ModelSelection: mustRunSelection(t),
 		State: Waiting, Capabilities: capabilities, CreatedAt: time.Unix(1, 0), UpdatedAt: time.Unix(1, 0),
-		MessageMark: UnknownMessageMark,
+		MessageMark: UnknownMessageMark(),
 	}); err == nil {
 		t.Fatal("Restore accepted a child stating its root's capabilities")
 	}
@@ -160,7 +160,7 @@ func TestRunProgressPreservesLatestPromptFootprintAcrossLifecycle(t *testing.T) 
 		t.Fatalf("AdvanceProgress after compaction: %v", err)
 	}
 	value, err = value.Terminate(Termination{
-		Outcome: OutcomeCompleted, FinishedAt: createdAt.Add(3 * time.Second), MessageMark: 1,
+		Outcome: OutcomeCompleted, FinishedAt: createdAt.Add(3 * time.Second), MessageMark: MessageMarkAt(1),
 	})
 	if err != nil {
 		t.Fatalf("Terminate: %v", err)
@@ -202,7 +202,7 @@ func TestRunTerminalFactsRemainCoherent(t *testing.T) {
 			}
 			terminal, err := value.Terminate(Termination{
 				Outcome: test.outcome, Failure: test.failure, Detail: test.detail,
-				FinishedAt: time.Unix(2, 0).UTC(), MessageMark: 0,
+				FinishedAt: time.Unix(2, 0).UTC(), MessageMark: MessageMarkAt(0),
 			})
 			if test.wantErr {
 				if err == nil {
@@ -214,7 +214,7 @@ func TestRunTerminalFactsRemainCoherent(t *testing.T) {
 				t.Fatalf("Terminate: %v", err)
 			}
 			if outcome, ok := terminal.Outcome(); !ok || outcome != test.outcome ||
-				!terminal.FinishedAt().Equal(time.Unix(2, 0).UTC()) || terminal.MessageMark() != 0 {
+				!terminal.FinishedAt().Equal(time.Unix(2, 0).UTC()) || terminal.MessageMark() != MessageMarkAt(0) {
 				t.Fatalf("terminal Run = %+v", terminal.Snapshot())
 			}
 		})
@@ -231,7 +231,7 @@ func TestForkReidentifiesTerminalHistoryAndClearsGoalAttribution(t *testing.T) {
 		t.Fatalf("Admit: %v", err)
 	}
 	source, err = source.Terminate(Termination{
-		Outcome: OutcomeCompleted, FinishedAt: createdAt.Add(time.Second), MessageMark: 2,
+		Outcome: OutcomeCompleted, FinishedAt: createdAt.Add(time.Second), MessageMark: MessageMarkAt(2),
 	})
 	if err != nil {
 		t.Fatalf("Terminate: %v", err)
@@ -270,7 +270,7 @@ func TestForkKeepsTheLineageKindItWasDerivedFrom(t *testing.T) {
 		t.Fatalf("Admit root: %v", err)
 	}
 	root, err = root.Terminate(Termination{
-		Outcome: OutcomeCompleted, FinishedAt: createdAt.Add(time.Second), MessageMark: 1,
+		Outcome: OutcomeCompleted, FinishedAt: createdAt.Add(time.Second), MessageMark: MessageMarkAt(1),
 	})
 	if err != nil {
 		t.Fatalf("Terminate root: %v", err)
@@ -320,14 +320,14 @@ func TestCancelWaitingRefusesARunThatIsNotWaiting(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Admit: %v", err)
 	}
-	if _, err := value.CancelWaiting("", createdAt.Add(time.Second), 0); err == nil {
+	if _, err := value.CancelWaiting("", createdAt.Add(time.Second), MessageMarkAt(0)); err == nil {
 		t.Fatal("CancelWaiting canceled a Running Run")
 	}
 	suspended, err := value.Suspend(createdAt.Add(time.Second))
 	if err != nil {
 		t.Fatalf("Suspend: %v", err)
 	}
-	if _, err := suspended.CancelWaiting("", createdAt.Add(2*time.Second), 0); err != nil {
+	if _, err := suspended.CancelWaiting("", createdAt.Add(2*time.Second), MessageMarkAt(0)); err != nil {
 		t.Fatalf("CancelWaiting refused a Waiting Run: %v", err)
 	}
 }
@@ -363,7 +363,7 @@ func TestRunRejectsIllegalTransitionsAndRegressingFacts(t *testing.T) {
 		t.Fatal("Run accepted regressing metrics")
 	}
 	terminal, err := value.Terminate(Termination{
-		Outcome: OutcomeCompleted, FinishedAt: createdAt.Add(2 * time.Second), MessageMark: UnknownMessageMark,
+		Outcome: OutcomeCompleted, FinishedAt: createdAt.Add(2 * time.Second), MessageMark: UnknownMessageMark(),
 	})
 	if err != nil {
 		t.Fatalf("Terminate: %v", err)
@@ -457,7 +457,7 @@ func TestRestoreRejectsSnapshotsThatBreakRunInvariants(t *testing.T) {
 			*s = Snapshot{
 				SessionID: s.SessionID, ID: s.ID, ModelSelection: s.ModelSelection,
 				State: Running, CreatedAt: createdAt, UpdatedAt: createdAt,
-				MessageMark: UnknownMessageMark,
+				MessageMark: UnknownMessageMark(),
 			}
 		}},
 		{name: "lost without a lost failure", break_: func(s *Snapshot) {
@@ -471,7 +471,7 @@ func TestRestoreRejectsSnapshotsThatBreakRunInvariants(t *testing.T) {
 			*s = Snapshot{
 				SessionID: s.SessionID, ID: s.ID, ModelSelection: s.ModelSelection,
 				State: Running, ActiveSegmentID: " segment_1", CreatedAt: createdAt,
-				UpdatedAt: createdAt, MessageMark: UnknownMessageMark,
+				UpdatedAt: createdAt, MessageMark: UnknownMessageMark(),
 			}
 		}},
 		{name: "failure the Failure value rejects", break_: func(s *Snapshot) {

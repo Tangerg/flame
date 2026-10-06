@@ -21,7 +21,7 @@ func TestConversationCompactionPlanOwnsOneSessionRunSet(t *testing.T) {
 	}
 	current := testsupport.MustRestoreRun(run.Snapshot{
 		ID: "run_1", SessionID: "ses_1", State: run.Completed,
-		CreatedAt: time.Unix(1, 0).UTC(), MessageMark: 1,
+		CreatedAt: time.Unix(1, 0).UTC(), MessageMark: run.MessageMarkAt(1),
 	})
 	replacement := testsupport.MustRunReplacement(current, testsupport.DecidedRun(current))
 	input := []run.Replacement{replacement}
@@ -53,7 +53,7 @@ func TestConversationCompactionPlanRejectsInvalidSessionRunSets(t *testing.T) {
 	}
 	foreign := testsupport.MustRestoreRun(run.Snapshot{
 		ID: "run_foreign", SessionID: "ses_other", State: run.Completed,
-		CreatedAt: time.Unix(1, 0).UTC(), MessageMark: 0,
+		CreatedAt: time.Unix(1, 0).UTC(), MessageMark: run.MessageMarkAt(0),
 	})
 	replacement := testsupport.MustRunReplacement(foreign, testsupport.DecidedRun(foreign))
 	if _, err := NewConversationCompactionPlan("ses_1", compaction, []run.Replacement{replacement}); err == nil {

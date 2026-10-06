@@ -352,7 +352,7 @@ func TestAssemblyRecoversParkedRunWithIncompatibleDeployment(t *testing.T) {
 	}
 	if err := cfg.Stores.Runs.Suspend(ctx, testsupport.MustRestoreRun(run.Snapshot{SessionID: sessionID, ID: runID, State: run.Waiting,
 		Capabilities: profile,
-		CreatedAt:    createdAt, MessageMark: run.UnknownMessageMark}),
+		CreatedAt:    createdAt, MessageMark: run.UnknownMessageMark()}),
 		"seg_open", runtimeidentity.CommitID{},
 	); err != nil {
 		t.Fatalf("suspend: %v", err)

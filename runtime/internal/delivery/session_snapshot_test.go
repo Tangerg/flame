@@ -33,7 +33,7 @@ func TestGetSessionSnapshotProjectsOneLiveMaterialRead(t *testing.T) {
 	if err := rt.runs.Suspend(t.Context(), testsupport.MustRestoreRun(run.Snapshot{
 		ID: "run_waiting", SessionID: "ses_1", State: run.Waiting,
 		Capabilities: capabilities, CreatedAt: createdAt, UpdatedAt: createdAt,
-		MessageMark: run.UnknownMessageMark,
+		MessageMark: run.UnknownMessageMark(),
 	}), "seg_waiting", runtimeidentity.CommitID{}); err != nil {
 		t.Fatalf("suspend waiting Run: %v", err)
 	}
@@ -137,7 +137,7 @@ func TestGetSessionSnapshotKeepsCapabilityAndExistenceRefusals(t *testing.T) {
 	if err := rt.runs.Suspend(t.Context(), testsupport.MustRestoreRun(run.Snapshot{
 		ID: "run_waiting", SessionID: "ses_1", State: run.Waiting,
 		Capabilities: capabilities, CreatedAt: createdAt, UpdatedAt: createdAt,
-		MessageMark: run.UnknownMessageMark,
+		MessageMark: run.UnknownMessageMark(),
 	}), "seg_waiting", runtimeidentity.CommitID{}); err != nil {
 		t.Fatalf("suspend waiting Run: %v", err)
 	}
@@ -179,7 +179,7 @@ func TestGetSessionSnapshotRejectsOwnerlessInterruptMaterial(t *testing.T) {
 	if err := rt.runs.Suspend(t.Context(), testsupport.MustRestoreRun(run.Snapshot{
 		ID: "run_waiting", SessionID: "ses_1", State: run.Waiting,
 		Capabilities: capabilities, CreatedAt: createdAt, UpdatedAt: createdAt,
-		MessageMark: run.UnknownMessageMark,
+		MessageMark: run.UnknownMessageMark(),
 	}), "seg_waiting", runtimeidentity.CommitID{}); err != nil {
 		t.Fatalf("suspend waiting Run: %v", err)
 	}

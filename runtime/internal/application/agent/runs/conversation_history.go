@@ -165,7 +165,11 @@ func (m *ConversationHistory) RewriteForCompaction(
 			if !current.State().IsTerminal() || !current.Lineage().IsRoot() {
 				return current, nil
 			}
-			mark, err := compaction.RebaseMessageMark(current.MessageMark())
+			count, known := current.MessageMark().Count()
+			if !known {
+				return run.Run{}, errors.New("terminal root Run has no message watermark")
+			}
+			mark, err := compaction.RebaseMessageMark(count)
 			if err != nil {
 				return run.Run{}, err
 			}

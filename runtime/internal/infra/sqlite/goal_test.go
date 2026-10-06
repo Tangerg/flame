@@ -89,7 +89,7 @@ func persistTerminalGoalRun(
 			Usage: &accounting.Usage{Total: accounting.Totals{CostUSD: costUSD}},
 		}),
 		CreatedAt: completedAt.Add(-time.Second), FinishedAt: completedAt,
-		UpdatedAt: completedAt, MessageMark: 0,
+		UpdatedAt: completedAt, MessageMark: run.MessageMarkAt(0),
 	})
 	if err := store.Restore(t.Context(), value); err != nil {
 		t.Fatalf("persist terminal Goal Run: %v", err)

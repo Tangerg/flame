@@ -544,9 +544,9 @@ func portableToolFailureFromArtifact(path string, artifact *protocol.ArtifactPro
 	}, nil
 }
 
-func portableMessageMark(mark *int) int {
+func portableMessageMark(mark *int) run.MessageMark {
 	if mark == nil {
-		return run.UnknownMessageMark
+		return run.UnknownMessageMark()
 	}
-	return *mark
+	return run.MessageMarkAt(*mark)
 }

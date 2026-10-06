@@ -81,7 +81,7 @@ type PortableRun struct {
 	CreatedAt    time.Time
 	FinishedAt   time.Time
 	UpdatedAt    time.Time
-	MessageMark  int
+	MessageMark  run.MessageMark
 }
 
 // rootID is the Run that owns this Run's capabilities: itself for a root and
@@ -113,7 +113,7 @@ func (p PortableRun) validateLineage() error {
 		if p.Capabilities == nil {
 			return fmt.Errorf("root run %q carries no capabilities", p.ID)
 		}
-		if p.MessageMark < 0 {
+		if _, known := p.MessageMark.Count(); !known {
 			return fmt.Errorf("root run %q carries no conversation watermark", p.ID)
 		}
 		return nil

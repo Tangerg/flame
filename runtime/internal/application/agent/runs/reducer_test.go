@@ -28,7 +28,7 @@ func testReducerConfig() reducerConfig {
 		Opened: testsupport.MustRestoreRun(run.Snapshot{
 			SessionID: "ses_1", ID: "run_1", ModelSelection: testsupport.MustModelSelection("anthropic", "claude"),
 			State: run.Running, ActiveSegmentID: "seg_1",
-			CreatedAt: now, UpdatedAt: now, MessageMark: run.UnknownMessageMark,
+			CreatedAt: now, UpdatedAt: now, MessageMark: run.UnknownMessageMark(),
 		}),
 		WorkspaceCWD: "/work",
 		Now:          func() time.Time { return now },

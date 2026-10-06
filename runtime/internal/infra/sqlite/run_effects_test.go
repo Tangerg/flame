@@ -34,7 +34,7 @@ func TestTerminalEffectsSurviveDatabaseReopen(t *testing.T) {
 			if outcome == run.OutcomeLost {
 				failure = &run.Failure{Kind: run.FailureLost}
 			}
-			terminal, err := value.Terminate(run.Termination{Outcome: outcome, Failure: failure, FinishedAt: time.Unix(9, 0), MessageMark: 0, UnresolvedEffects: []run.UnresolvedEffect{evidence}})
+			terminal, err := value.Terminate(run.Termination{Outcome: outcome, Failure: failure, FinishedAt: time.Unix(9, 0), MessageMark: run.MessageMarkAt(0), UnresolvedEffects: []run.UnresolvedEffect{evidence}})
 			if err != nil {
 				t.Fatal(err)
 			}
