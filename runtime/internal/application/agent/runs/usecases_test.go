@@ -1535,7 +1535,7 @@ func TestResumeOpeningFailureCompensatesTheResumingClaimBeforeReleasingTree(t *t
 		sessions.fakeRunSessions,
 		&fakeEffects{
 			openingErr: openingErr,
-			mutateClaim: func(*ClaimedResume) {
+			mutateClaim: func(*ExecutorCheckpoint) {
 				sessions.claimed = true
 			},
 		},
@@ -1567,21 +1567,21 @@ func TestResumeOpeningFailureCompensatesTheResumingClaimBeforeReleasingTree(t *t
 	}
 }
 
-func TestResumeRejectsClaimResultDriftBeforeStagingAndMarksRunLost(t *testing.T) {
+func TestResumeRejectsAForeignClaimedCheckpointBeforeStagingAndMarksRunLost(t *testing.T) {
 	for _, test := range []struct {
 		name   string
-		mutate func(*ClaimedResume)
+		mutate func(*ExecutorCheckpoint)
 	}{
 		{
-			name: "Pending",
-			mutate: func(claimed *ClaimedResume) {
-				claimed.Pending.ExecutorID = "exec_foreign"
+			name: "root member",
+			mutate: func(checkpoint *ExecutorCheckpoint) {
+				checkpoint.RootMemberID = "member_foreign"
 			},
 		},
 		{
-			name: "answer",
-			mutate: func(claimed *ClaimedResume) {
-				claimed.Answers[0].Resolution.Approved = false
+			name: "Session",
+			mutate: func(checkpoint *ExecutorCheckpoint) {
+				checkpoint.SessionID = "ses_foreign"
 			},
 		},
 	} {

@@ -430,7 +430,7 @@ type fakeEffects struct {
 	terminalRelease    <-chan struct{}
 	finishStarted      chan<- struct{}
 	finishRelease      <-chan struct{}
-	mutateClaim        func(*ClaimedResume)
+	mutateClaim        func(*ExecutorCheckpoint)
 	childStarts        map[string]ChildRunStartReservation
 	childOutcomes      map[string]ChildRunStartOutcome
 	abortBounded       []bool
@@ -509,23 +509,19 @@ func (f *fakeEffects) AbortChildRunStart(
 	return nil
 }
 
-func (f *fakeEffects) ClaimResume(_ context.Context, claim ResumeClaimCommit) (ClaimedResume, error) {
+func (f *fakeEffects) ClaimResume(_ context.Context, claim ResumeClaimCommit) (ExecutorCheckpoint, error) {
 	if err := claim.Validate(); err != nil {
-		return ClaimedResume{}, err
+		return ExecutorCheckpoint{}, err
 	}
 	checkpoint := testExecutorCheckpoint()
 	pending := claim.Pending()
 	root, _ := pending.RootContinuation()
 	checkpoint.RootMemberID = root.MemberID
 	checkpoint.SessionID = pending.SessionID
-	claimed := ClaimedResume{
-		Pending: pending, Answers: claim.Answers(),
-		Checkpoint: checkpoint,
-	}
 	if f.mutateClaim != nil {
-		f.mutateClaim(&claimed)
+		f.mutateClaim(&checkpoint)
 	}
-	return claimed, nil
+	return checkpoint, nil
 }
 
 type completeTestProjectionPorts interface {

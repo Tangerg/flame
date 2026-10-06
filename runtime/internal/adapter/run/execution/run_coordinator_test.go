@@ -81,8 +81,8 @@ func testDefaultSelection() modelref.Selection {
 
 type inertRunProjection struct{}
 
-func (inertRunProjection) ClaimResume(context.Context, runs.ResumeClaimCommit) (runs.ClaimedResume, error) {
-	return runs.ClaimedResume{}, errors.New("inert Run projection")
+func (inertRunProjection) ClaimResume(context.Context, runs.ResumeClaimCommit) (runs.ExecutorCheckpoint, error) {
+	return runs.ExecutorCheckpoint{}, errors.New("inert Run projection")
 }
 
 func (inertRunProjection) CommitWaitingSubtreeCancellation(

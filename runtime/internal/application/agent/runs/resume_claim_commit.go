@@ -53,16 +53,6 @@ func cloneInterruptAnswers(answers []InterruptAnswer) []InterruptAnswer {
 	return owned
 }
 
-// ClaimedResume is the immutable result of a successful answer claim. The
-// checkpoint is returned from the same transaction that made it nonrecoverable;
-// callers may hold it only long enough to stage the continuation in this use
-// case and never persist it again.
-type ClaimedResume struct {
-	Pending    Pending
-	Answers    []InterruptAnswer
-	Checkpoint ExecutorCheckpoint
-}
-
 // approvalVerdict is the accepted decision on one reviewed ToolCall and the
 // executor call that resumes it.
 type approvalVerdict struct {

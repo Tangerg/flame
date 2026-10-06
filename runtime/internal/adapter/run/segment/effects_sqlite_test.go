@@ -1333,8 +1333,7 @@ func TestClaimResumeAtomicallyRecordsAnswerAndInvalidatesCheckpoint(t *testing.T
 	if err != nil {
 		t.Fatalf("ClaimResume: %v", err)
 	}
-	if !reflect.DeepEqual(claimed.Pending, pending) || !reflect.DeepEqual(claimed.Answers, answers) ||
-		!reflect.DeepEqual(claimed.Checkpoint, checkpoint) {
+	if !reflect.DeepEqual(claimed, checkpoint) {
 		t.Fatalf("claimed resume = %+v", claimed)
 	}
 	if _, getFound, getErr := interruptStore.Get(ctx, pending.RootRunID); getErr != nil || getFound {
@@ -1528,9 +1527,7 @@ func TestClaimResumeReconcilesAmbiguousCommit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ClaimResume after lost COMMIT receipt: %v", err)
 	}
-	if !reflect.DeepEqual(claimed.Pending, fixture.pending) ||
-		!reflect.DeepEqual(claimed.Answers, fixture.answers) ||
-		!reflect.DeepEqual(claimed.Checkpoint, fixture.checkpoint) {
+	if !reflect.DeepEqual(claimed, fixture.checkpoint) {
 		t.Fatalf("reconciled claim = %+v", claimed)
 	}
 	matched, err := fixture.runStore.RunCommitCommitted(

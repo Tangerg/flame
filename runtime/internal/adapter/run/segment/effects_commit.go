@@ -176,17 +176,17 @@ func validateStartedChildOpening(
 func (e *Effects) ClaimResume(
 	ctx context.Context,
 	claim runs.ResumeClaimCommit,
-) (runs.ClaimedResume, error) {
+) (runs.ExecutorCheckpoint, error) {
 	prepared, err := prepareResumeClaim(claim)
 	if err != nil {
-		return runs.ClaimedResume{}, err
+		return runs.ExecutorCheckpoint{}, err
 	}
 	var checkpoint runs.ExecutorCheckpoint
 	err = e.runInTx(ctx, func(ctx context.Context) error {
 		return e.applyResumeClaim(ctx, prepared, &checkpoint)
 	})
 	if err == nil {
-		return claimedResumeResult(claim, checkpoint), nil
+		return checkpoint, nil
 	}
 	return e.reconcileResumeClaim(ctx, claim, checkpoint, err)
 }
@@ -278,29 +278,22 @@ func (e *Effects) reconcileResumeClaim(
 	claim runs.ResumeClaimCommit,
 	checkpoint runs.ExecutorCheckpoint,
 	commitErr error,
-) (runs.ClaimedResume, error) {
+) (runs.ExecutorCheckpoint, error) {
 	pending := claim.Pending()
 	settled, settleErr := e.reconcileRunCommit(
 		ctx, pending.SessionID, pending.RootRunID, "", claim.CommitID(),
 	)
 	if !settled {
-		return runs.ClaimedResume{}, errors.Join(commitErr, settleErr)
+		return runs.ExecutorCheckpoint{}, errors.Join(commitErr, settleErr)
 	}
 	if err := checkpoint.Validate(); err != nil {
-		return runs.ClaimedResume{}, errors.Join(
+		return runs.ExecutorCheckpoint{}, errors.Join(
 			commitErr,
 			errors.New("segment: committed resume claim checkpoint is unavailable to this caller"),
 			err,
 		)
 	}
-	return claimedResumeResult(claim, checkpoint), nil
-}
-
-func claimedResumeResult(claim runs.ResumeClaimCommit, checkpoint runs.ExecutorCheckpoint) runs.ClaimedResume {
-	return runs.ClaimedResume{
-		Pending: claim.Pending(), Answers: claim.Answers(),
-		Checkpoint: checkpoint,
-	}
+	return checkpoint, nil
 }
 
 // CommitOpening accepts one segment atomically. A fresh segment admits its Run;

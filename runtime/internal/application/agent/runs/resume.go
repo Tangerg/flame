@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 
 	corechat "github.com/Tangerg/scope/core/chat"
 
@@ -85,7 +84,7 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 	if err != nil {
 		return StartResult{}, fmt.Errorf("runs: prepare resume claim: %w", err)
 	}
-	claimed, err := c.resumeClaims.ClaimResume(ctx, claim)
+	checkpoint, err := c.resumeClaims.ClaimResume(ctx, claim)
 	if err != nil {
 		return StartResult{}, err
 	}
@@ -96,10 +95,10 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 			result = StartResult{}
 		}
 	}()
-	if validateClaimedResumeErr := validateClaimedResume(claimed, pending, answers); validateClaimedResumeErr != nil {
-		return StartResult{}, validateClaimedResumeErr
+	if validateClaimedCheckpointErr := validateClaimedCheckpoint(checkpoint, pending); validateClaimedCheckpointErr != nil {
+		return StartResult{}, validateClaimedCheckpointErr
 	}
-	waiting, err := waitingContinuationFromPending(pending, claimed.Checkpoint, parkedRuns, sess)
+	waiting, err := waitingContinuationFromPending(pending, checkpoint, parkedRuns, sess)
 	if err != nil {
 		return StartResult{}, fmt.Errorf("runs: prepare waiting continuation: %w", err)
 	}
@@ -138,7 +137,7 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 		DetachActivation: true,
 		BeginExecution: func(beginCtx context.Context) error {
 			return c.continuation.BeginContinuation(
-				beginCtx, ref, claimed.Answers, committedInput, root.Capabilities().InterruptKinds,
+				beginCtx, ref, answers, committedInput, root.Capabilities().InterruptKinds,
 			)
 		},
 	})
@@ -167,23 +166,13 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 	return result, nil
 }
 
-func validateClaimedResume(
-	claimed ClaimedResume,
-	expected Pending,
-	expectedAnswers []InterruptAnswer,
-) error {
-	if !reflect.DeepEqual(claimed.Pending, expected) {
-		return errors.New("runs: claimed waiting hand-off differs from the accepted Pending value")
-	}
-	if !reflect.DeepEqual(claimed.Answers, expectedAnswers) {
-		return errors.New("runs: claimed answers differ from the accepted answer set")
-	}
-	if err := claimed.Checkpoint.Validate(); err != nil {
+func validateClaimedCheckpoint(checkpoint ExecutorCheckpoint, expected Pending) error {
+	if err := checkpoint.Validate(); err != nil {
 		return err
 	}
 	root, ok := expected.RootContinuation()
 	if !ok {
 		return errors.New("runs: claimed continuation has no root")
 	}
-	return claimed.Checkpoint.ValidateOwnership(root.MemberID, expected.SessionID)
+	return checkpoint.ValidateOwnership(root.MemberID, expected.SessionID)
 }

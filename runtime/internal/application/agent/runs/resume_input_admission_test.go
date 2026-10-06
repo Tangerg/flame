@@ -35,7 +35,7 @@ func (a *resumeInputAdmitter) AdmitInput(selection modelref.Selection, messages 
 func TestResumeRejectsModelInputBeforeConsumingWait(t *testing.T) {
 	pending := testApprovalPending("member_1", time.Date(2025, 1, 2, 3, 4, 5, 0, time.UTC))
 	claims := 0
-	effects := &fakeEffects{mutateClaim: func(*ClaimedResume) { claims++ }}
+	effects := &fakeEffects{mutateClaim: func(*ExecutorCheckpoint) { claims++ }}
 	sessions := &fakeRunSessions{
 		sess: testsupport.MustRestoreSession(session.Snapshot{
 			ID: "ses_1", Workspace: testsupport.MustWorkspace("/work"),
