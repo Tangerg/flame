@@ -177,7 +177,7 @@ func TestShellOversizedExitTwoRemainsAnExplicitDeny(t *testing.T) {
 		Event: domainhooks.PreToolUse,
 		Tool:  &domainhooks.ToolInput{Name: "shell"},
 	})
-	if !decision.Block || decision.Reason != "blocked" {
+	if decision.Verdict != domainhooks.VerdictBlock || decision.Reason != "blocked" {
 		t.Fatalf("oversized exit-two decision = %+v, want explicit bounded deny", decision)
 	}
 }
@@ -194,7 +194,7 @@ func TestShellMalformedDecisionIsObservableAndNonBlocking(t *testing.T) {
 		Event: domainhooks.PreToolUse,
 		Tool:  &domainhooks.ToolInput{Name: "shell"},
 	})
-	if decision.Block || observed == nil {
+	if decision.Verdict == domainhooks.VerdictBlock || observed == nil {
 		t.Fatalf("malformed decision = %+v observed=%v, want observable non-blocking failure", decision, observed)
 	}
 }

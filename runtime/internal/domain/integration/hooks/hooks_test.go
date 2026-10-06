@@ -188,9 +188,9 @@ func TestValidateCommandMaterialRejectsCorruptResourceReferences(t *testing.T) {
 // hook set that escalates and then denies must read as a denial — the same
 // decision it would be had the denying hook matched first.
 func TestFoldDecidesTheSameCallWhateverOrderHooksFire(t *testing.T) {
-	deny := func(d *Decision) { d.Fold(true, false, "blocked by policy", "", "") }
-	ask := func(d *Decision) { d.Fold(false, true, "please review", "", "") }
-	rewrite := func(d *Decision) { d.Fold(false, false, "", "", `{"path":"/tmp"}`) }
+	deny := func(d *Decision) { d.Fold(VerdictBlock, "blocked by policy", "", "") }
+	ask := func(d *Decision) { d.Fold(VerdictAsk, "please review", "", "") }
+	rewrite := func(d *Decision) { d.Fold(VerdictAllow, "", "", `{"path":"/tmp"}`) }
 
 	for _, test := range []struct {
 		name  string
@@ -206,11 +206,11 @@ func TestFoldDecidesTheSameCallWhateverOrderHooksFire(t *testing.T) {
 			for _, fold := range test.order {
 				fold(&decision)
 			}
-			if !decision.Block || decision.Reason != "blocked by policy" {
+			if decision.Verdict != VerdictBlock || decision.Reason != "blocked by policy" {
 				t.Fatalf("decision = %+v, want a denial stating its reason", decision)
 			}
-			if decision.Ask || decision.RewriteArguments != "" {
-				t.Fatalf("denied decision still escalates or rewrites: %+v", decision)
+			if decision.RewriteArguments != "" {
+				t.Fatalf("denied decision still rewrites: %+v", decision)
 			}
 		})
 	}

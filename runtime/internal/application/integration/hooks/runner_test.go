@@ -45,7 +45,7 @@ func TestRunner_DeclarativeInject(t *testing.T) {
 	if dec.InjectContext != "remember: use tabs" {
 		t.Fatalf("InjectContext = %q", dec.InjectContext)
 	}
-	if dec.Block {
+	if dec.Verdict == hookdomain.VerdictBlock {
 		t.Error("declarative inject should not block")
 	}
 }
@@ -125,8 +125,8 @@ func TestRunner_StdoutDenyBlocks(t *testing.T) {
 		Command: "hook",
 	}}
 	dec := r.Run(ctxBG(), hooks, hookdomain.Input{Event: hookdomain.PreToolUse, Tool: &hookdomain.ToolInput{Name: "shell"}})
-	if !dec.Block || dec.Reason != "no rm allowed" {
-		t.Fatalf("got block=%v reason=%q, want deny", dec.Block, dec.Reason)
+	if dec.Verdict != hookdomain.VerdictBlock || dec.Reason != "no rm allowed" {
+		t.Fatalf("got verdict=%v reason=%q, want deny", dec.Verdict, dec.Reason)
 	}
 }
 
@@ -141,8 +141,8 @@ func TestRunner_Exit2Blocks(t *testing.T) {
 		Command: "hook",
 	}}
 	dec := r.Run(ctxBG(), hooks, hookdomain.Input{Event: hookdomain.PreToolUse, Tool: &hookdomain.ToolInput{Name: "shell"}})
-	if !dec.Block || dec.Reason != "blocked by policy" {
-		t.Fatalf("got block=%v reason=%q, want exit-2 block w/ stderr reason", dec.Block, dec.Reason)
+	if dec.Verdict != hookdomain.VerdictBlock || dec.Reason != "blocked by policy" {
+		t.Fatalf("got verdict=%v reason=%q, want exit-2 block w/ stderr reason", dec.Verdict, dec.Reason)
 	}
 }
 
@@ -150,8 +150,8 @@ func TestRunner_AskEscalates(t *testing.T) {
 	r := NewRunner(&commandStub{results: []CommandResult{{Decision: CommandDecision{Verdict: CommandAsk, Reason: "review"}}}}, nil)
 	hooks := []hookdomain.Hook{{Event: hookdomain.PreToolUse, Command: "hook"}}
 	dec := r.Run(ctxBG(), hooks, hookdomain.Input{Event: hookdomain.PreToolUse, Tool: &hookdomain.ToolInput{Name: "shell"}})
-	if dec.Block || !dec.Ask {
-		t.Fatalf("got block=%v ask=%v, want ask", dec.Block, dec.Ask)
+	if dec.Verdict != hookdomain.VerdictAsk {
+		t.Fatalf("got verdict=%v, want ask", dec.Verdict)
 	}
 }
 
@@ -179,7 +179,7 @@ func TestRunner_NonBlockingErrorProceeds(t *testing.T) {
 	})
 	hooks := []hookdomain.Hook{{Event: hookdomain.PreToolUse, Command: "hook"}}
 	dec := r.Run(ctxBG(), hooks, hookdomain.Input{Event: hookdomain.PreToolUse, Tool: &hookdomain.ToolInput{Name: "shell"}})
-	if dec.Block {
+	if dec.Verdict == hookdomain.VerdictBlock {
 		t.Error("a non-2 exit must NOT block (broken hook can't brick the agent)")
 	}
 	if len(errs) != 1 || !strings.Contains(errs[0], "boom") {
@@ -196,7 +196,7 @@ func TestRunner_InvalidVerdictIsObservableAndIgnored(t *testing.T) {
 	decision := r.Run(ctxBG(), []hookdomain.Hook{{
 		Event: hookdomain.PreToolUse, Command: "hook",
 	}}, hookdomain.Input{Event: hookdomain.PreToolUse, Tool: &hookdomain.ToolInput{Name: "shell"}})
-	if decision.Block || decision.Ask || decision.InjectContext != "" || decision.RewriteArguments != "" {
+	if decision.Verdict != hookdomain.VerdictAllow || decision.InjectContext != "" || decision.RewriteArguments != "" {
 		t.Fatalf("invalid verdict changed decision: %+v", decision)
 	}
 	if got == nil || !strings.Contains(got.Error(), "invalid command verdict") {
@@ -209,7 +209,7 @@ func TestRunner_TimeoutIsNonBlocking(t *testing.T) {
 	r := NewRunner(&commandStub{results: []CommandResult{{TimedOut: true}}}, func(_ context.Context, _ string, err error) { got = err })
 	hooks := []hookdomain.Hook{{Event: hookdomain.PreToolUse, Command: "hook", TimeoutMillis: 40}}
 	dec := r.Run(ctxBG(), hooks, hookdomain.Input{Event: hookdomain.PreToolUse, Tool: &hookdomain.ToolInput{Name: "shell"}})
-	if dec.Block {
+	if dec.Verdict == hookdomain.VerdictBlock {
 		t.Error("a timed-out hook must not block")
 	}
 	if got == nil || !strings.Contains(got.Error(), "timed out") {
@@ -223,11 +223,11 @@ func TestRunner_MatcherGatesByToolName(t *testing.T) {
 	hooks := []hookdomain.Hook{{Event: hookdomain.PreToolUse, Matcher: "shell", Command: "hook"}}
 
 	denied := r.Run(ctxBG(), hooks, hookdomain.Input{Event: hookdomain.PreToolUse, Tool: &hookdomain.ToolInput{Name: "shell"}})
-	if !denied.Block {
+	if denied.Verdict != hookdomain.VerdictBlock {
 		t.Error("matcher shell should fire for shell")
 	}
 	passed := r.Run(ctxBG(), hooks, hookdomain.Input{Event: hookdomain.PreToolUse, Tool: &hookdomain.ToolInput{Name: "read"}})
-	if passed.Block {
+	if passed.Verdict == hookdomain.VerdictBlock {
 		t.Error("matcher shell must NOT fire for read")
 	}
 	if cmds.calls() != 1 {
@@ -260,7 +260,7 @@ func TestRunner_WrongEventDoesNotFire(t *testing.T) {
 	r := NewRunner(cmds, nil)
 	hooks := []hookdomain.Hook{{Event: hookdomain.Stop, Command: "hook"}}
 	dec := r.Run(ctxBG(), hooks, hookdomain.Input{Event: hookdomain.PreToolUse, Tool: &hookdomain.ToolInput{Name: "shell"}})
-	if dec.Block {
+	if dec.Verdict == hookdomain.VerdictBlock {
 		t.Error("a Stop hook must not fire on PreToolUse")
 	}
 	if cmds.calls() != 0 {

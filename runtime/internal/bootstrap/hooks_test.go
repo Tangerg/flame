@@ -62,7 +62,7 @@ func TestHookCommandFailureIsReportedWithoutAnActiveSpan(t *testing.T) {
 		t.Fatal(err)
 	}
 	decision := bound.Run(t.Context(), domainhooks.Input{Event: domainhooks.Stop, SessionID: "session:one", CWD: home})
-	if decision.Block || decision.Ask {
+	if decision.Verdict != domainhooks.VerdictAllow {
 		t.Fatalf("broken observe-only command changed the lifecycle decision: %+v", decision)
 	}
 	if output := diagnostics.String(); !strings.Contains(output, "exit status 7") || !strings.Contains(output, configPath) {

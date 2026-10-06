@@ -140,7 +140,7 @@ type promptHookResult struct {
 }
 
 func (p promptHookResult) applyTo(message *corechat.Message) error {
-	if p.decision.Block {
+	if p.decision.Verdict == domainhooks.VerdictBlock {
 		reason := strings.TrimSpace(p.decision.Reason)
 		if reason == "" {
 			reason = "blocked by a lifecycle hook"
@@ -194,8 +194,7 @@ func (w *WorkingContextComposer) evaluatePromptHooks(
 		)
 	}
 	result.decision.Fold(
-		submitted.Block,
-		submitted.Ask,
+		submitted.Verdict,
 		submitted.Reason,
 		submitted.InjectContext,
 		submitted.RewriteArguments,
@@ -241,7 +240,7 @@ func (w *WorkingContextComposer) BeforeToolUse(
 			Arguments: input.Arguments.Canonical(),
 		},
 	})
-	if decision.Block {
+	if decision.Verdict == domainhooks.VerdictBlock {
 		return DenyToolHook(decision.Reason), nil
 	}
 	var rewrittenArguments *tool.Arguments
@@ -252,7 +251,7 @@ func (w *WorkingContextComposer) BeforeToolUse(
 		}
 		rewrittenArguments = &arguments
 	}
-	return AllowToolHook(decision.Ask, rewrittenArguments), nil
+	return AllowToolHook(decision.Verdict == domainhooks.VerdictAsk, rewrittenArguments), nil
 }
 
 // AfterToolUse runs the observe-only post-call hook. Its decision cannot alter
@@ -296,7 +295,7 @@ func (w *WorkingContextComposer) BeforeCompaction(
 	decision := bound.Run(ctx, domainhooks.Input{
 		Event: domainhooks.PreCompact, SessionID: sessionID, CWD: cwd,
 	})
-	return !decision.Block, nil
+	return decision.Verdict != domainhooks.VerdictBlock, nil
 }
 
 // NotifyWaiting runs the observe-only notification hook for a committed

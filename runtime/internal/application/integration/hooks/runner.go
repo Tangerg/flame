@@ -60,6 +60,17 @@ func (c CommandVerdict) Valid() bool {
 	return c == CommandAllow || c == CommandDeny || c == CommandAsk
 }
 
+func (c CommandVerdict) domain() domain.Verdict {
+	switch c {
+	case CommandDeny:
+		return domain.VerdictBlock
+	case CommandAsk:
+		return domain.VerdictAsk
+	default:
+		return domain.VerdictAllow
+	}
+}
+
 // CommandDecision is the typed control information returned by a hook command.
 // Its process encoding belongs to the command runner, never this domain.
 type CommandDecision struct {
@@ -109,7 +120,7 @@ func (r *Runner) Run(ctx context.Context, hooks []domain.Hook, in domain.Input) 
 		}
 		if h.Command == "" {
 			// Declarative: a literal context injection, no exec.
-			dec.Fold(false, false, "", strings.TrimSpace(h.Inject), "")
+			dec.Fold(domain.VerdictAllow, "", strings.TrimSpace(h.Inject), "")
 			continue
 		}
 		if !commandInputReady {
@@ -156,20 +167,19 @@ func (r *Runner) runOne(ctx context.Context, h domain.Hook, in domain.Input, dec
 			r.fail(ctx, h.Source, errors.New("hook returned an invalid command verdict"))
 			return
 		}
-		block := out.Verdict == CommandDeny
-		ask := out.Verdict == CommandAsk
+		verdict := out.Verdict.domain()
 		reason := out.Reason
-		if block && reason == "" {
+		if verdict == domain.VerdictBlock && reason == "" {
 			reason = strings.TrimSpace(result.Stderr)
 		}
-		dec.Fold(block, ask, reason, strings.TrimSpace(out.InjectContext), strings.TrimSpace(out.RewriteArguments))
+		dec.Fold(verdict, reason, strings.TrimSpace(out.InjectContext), strings.TrimSpace(out.RewriteArguments))
 	case result.ExitCode == blockExitCode:
 		// Exit 2: block. Reason is the stdout JSON's, else stderr.
 		reason := out.Reason
 		if reason == "" {
 			reason = strings.TrimSpace(result.Stderr)
 		}
-		dec.Fold(true, false, reason, strings.TrimSpace(out.InjectContext), "")
+		dec.Fold(domain.VerdictBlock, reason, strings.TrimSpace(out.InjectContext), "")
 	default:
 		// Any other non-zero exit (or spawn failure): a broken hook. Non-blocking
 		// — the action proceeds — but surfaced via onError so it's observable.
