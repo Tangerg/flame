@@ -388,9 +388,18 @@ type journalSubscriber struct {
 	queuedLive       int
 	queuedReplayable int
 	queuedBytes      int
-	finishing        bool
-	aborted          bool
+	phase            subscriberPhase
 }
+
+// subscriberPhase orders a subscription's end: finishing drains the queue,
+// aborting abandons it and overrides a pending finish.
+type subscriberPhase uint8
+
+const (
+	subscriberOpen subscriberPhase = iota
+	subscriberFinishing
+	subscriberAborted
+)
 
 // newJournalSubscriber primes a subscriber with a replay backlog. The backlog
 // arrives already charged — dequeuing then releases exactly what the window
@@ -421,7 +430,7 @@ func newJournalSubscriber(backlog []chargedEvent, retention Retention) *journalS
 // instead, and reads the abnormal end of stream as "reconnect and recover".
 func (j *journalSubscriber) enqueue(ev Event, size int) bool {
 	j.mu.Lock()
-	if j.finishing || j.aborted {
+	if j.phase != subscriberOpen {
 		j.mu.Unlock()
 		return false
 	}
@@ -456,7 +465,9 @@ func (j *journalSubscriber) enqueue(ev Event, size int) bool {
 // order, then its sequence ends.
 func (j *journalSubscriber) finish() {
 	j.mu.Lock()
-	j.finishing = true
+	if j.phase == subscriberOpen {
+		j.phase = subscriberFinishing
+	}
 	j.ready.Broadcast()
 	j.mu.Unlock()
 }
@@ -465,7 +476,7 @@ func (j *journalSubscriber) finish() {
 // wakes a consumer blocked waiting for the next event.
 func (j *journalSubscriber) abort() {
 	j.mu.Lock()
-	j.aborted = true
+	j.phase = subscriberAborted
 	clear(j.queue[j.head:])
 	j.queue = nil
 	j.head = 0
@@ -496,10 +507,10 @@ func (j *journalSubscriber) events() iter.Seq[Event] {
 func (j *journalSubscriber) next() (Event, bool) {
 	j.mu.Lock()
 	defer j.mu.Unlock()
-	for j.head == len(j.queue) && !j.finishing && !j.aborted {
+	for j.head == len(j.queue) && j.phase == subscriberOpen {
 		j.ready.Wait()
 	}
-	if j.aborted || (j.head == len(j.queue) && j.finishing) {
+	if j.phase == subscriberAborted || (j.head == len(j.queue) && j.phase == subscriberFinishing) {
 		return Event{}, false
 	}
 	queued := j.queue[j.head]

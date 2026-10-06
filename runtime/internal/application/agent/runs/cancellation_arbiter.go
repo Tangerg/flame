@@ -271,7 +271,7 @@ func (r *runTreeOwner) requestCancel(
 			)
 		}
 		activation := r.activation
-		if activation.done != nil && activation.started && !activation.finished {
+		if activation.phase == activationStarted {
 			r.mu.Unlock()
 			select {
 			case <-activation.done:
@@ -280,7 +280,7 @@ func (r *runTreeOwner) requestCancel(
 				return false, context.Cause(ctx)
 			}
 		}
-		if activation.done != nil && activation.finished && activation.err != nil {
+		if activation.phase == activationResolved && activation.err != nil {
 			r.mu.Unlock()
 			return false, fmt.Errorf(
 				"%w: segment activation failed: %v",

@@ -42,11 +42,20 @@ type runTreeOwner struct {
 // the executor side-effect boundary, so cancellation must either win before
 // activation starts or wait for activation to finish; executing both calls at
 // once leaves neither side able to classify the resulting executor error.
+// activationPhase is where executor activation stands. It resolves once, either
+// through a started activation or directly when cancellation or rejection wins.
+type activationPhase uint8
+
+const (
+	activationPending activationPhase = iota
+	activationStarted
+	activationResolved
+)
+
 type segmentActivation struct {
-	done     chan struct{}
-	started  bool
-	finished bool
-	err      error
+	done  chan struct{}
+	phase activationPhase
+	err   error
 }
 
 // newRunTreeOwner builds the root Segment's complete ownership record. Its
@@ -72,17 +81,17 @@ func (r *runTreeOwner) beginExecution(
 	begin func(context.Context) error,
 ) (canceled bool, err error) {
 	r.mu.Lock()
-	if r.activation.started || r.activation.finished {
+	if r.activation.phase != activationPending {
 		r.mu.Unlock()
 		return false, errors.New("runs: segment activation already resolved")
 	}
 	if r.cancelRequested {
-		r.activation.finished = true
+		r.activation.phase = activationResolved
 		close(r.activation.done)
 		r.mu.Unlock()
 		return true, nil
 	}
-	r.activation.started = true
+	r.activation.phase = activationStarted
 	r.mu.Unlock()
 
 	if begin != nil {
@@ -90,7 +99,7 @@ func (r *runTreeOwner) beginExecution(
 	}
 	r.mu.Lock()
 	r.activation.err = err
-	r.activation.finished = true
+	r.activation.phase = activationResolved
 	close(r.activation.done)
 	r.mu.Unlock()
 	return false, err
@@ -102,11 +111,11 @@ func (r *runTreeOwner) rejectActivation(cause error) error {
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if r.activation.started || r.activation.finished {
+	if r.activation.phase != activationPending {
 		return errors.New("runs: segment activation already resolved")
 	}
 	r.activation.err = cause
-	r.activation.finished = true
+	r.activation.phase = activationResolved
 	close(r.activation.done)
 	return nil
 }

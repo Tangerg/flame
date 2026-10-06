@@ -21,13 +21,22 @@ import (
 // The zero value is ready to use. Start and Close are safe to call
 // concurrently; once closed, a Group cannot be reused.
 type Group struct {
-	mu       sync.Mutex
-	closed   bool
-	finished bool
-	tasks    map[*registeredTask]struct{}
-	idle     chan struct{}
-	allDone  chan struct{}
+	mu      sync.Mutex
+	phase   groupPhase
+	tasks   map[*registeredTask]struct{}
+	idle    chan struct{}
+	allDone chan struct{}
 }
+
+// groupPhase orders a Group's lifecycle: it closes to new tasks, then
+// finishes once the last attached task returns.
+type groupPhase uint8
+
+const (
+	groupOpen groupPhase = iota
+	groupClosed
+	groupFinished
+)
 
 // registeredTask is the identity and cancellation capability of one attached
 // task. It never leaves the owning Group, so object identity is the exact
@@ -105,7 +114,7 @@ func (g *Group) attach(parent context.Context) (ctx context.Context, release fun
 	ctx, cancel := context.WithCancel(parent)
 
 	g.mu.Lock()
-	if g.closed {
+	if g.phase != groupOpen {
 		g.mu.Unlock()
 		cancel()
 		return nil, nil, false
@@ -162,7 +171,9 @@ func (g *Group) Drain(ctx context.Context) error {
 // starts joining any one component.
 func (g *Group) Cancel() {
 	g.mu.Lock()
-	g.closed = true
+	if g.phase == groupOpen {
+		g.phase = groupClosed
+	}
 	tasks := slices.Collect(maps.Keys(g.tasks))
 	g.finishCloseLocked()
 	g.mu.Unlock()
@@ -200,12 +211,12 @@ func (g *Group) doneLocked() chan struct{} {
 }
 
 func (g *Group) finishCloseLocked() {
-	if !g.closed || len(g.tasks) != 0 || g.finished {
+	if g.phase != groupClosed || len(g.tasks) != 0 {
 		return
 	}
 	if g.allDone == nil {
 		g.allDone = make(chan struct{})
 	}
 	close(g.allDone)
-	g.finished = true
+	g.phase = groupFinished
 }

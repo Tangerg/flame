@@ -27,8 +27,11 @@ type reductionPublication struct {
 	boundary  segmentBoundary
 }
 
-func (p reductionPublication) finished() bool { return p.boundary != boundaryNone }
-func (p reductionPublication) parked() bool   { return p.boundary == boundaryParked }
+func (b segmentBoundary) finished() bool { return b != boundaryNone }
+func (b segmentBoundary) parked() bool   { return b == boundaryParked }
+
+func (p reductionPublication) finished() bool { return p.boundary.finished() }
+func (p reductionPublication) parked() bool   { return p.boundary.parked() }
 
 // treePublisher owns the batch boundary between source-Run reductions and
 // their persisted and live projections. Every child keeps its own Run/Segment
