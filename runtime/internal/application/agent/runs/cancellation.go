@@ -468,18 +468,7 @@ func (c *Coordinator) recoverCommittedWaitingCancellation(
 			releaseErr,
 		)
 	}
-	restored, err := c.waitingRestorer.RestoreWaitingExecution(recoveryCtx, continuation)
-	if err == nil {
-		err = restored.ValidateFor(plan.root.run.SessionID())
-	}
-	if err == nil && restored.ExecutorID != plan.executor.ExecutorID {
-		err = fmt.Errorf(
-			"restored executor %q differs from committed executor %q",
-			restored.ExecutorID,
-			plan.executor.ExecutorID,
-		)
-	}
-	if err != nil {
+	if _, err := c.waitingRestorer.RestoreWaitingExecution(recoveryCtx, continuation); err != nil {
 		return c.failCommittedWaitingCancellationRecovery(recoveryCtx, plan, err)
 	}
 	return nil

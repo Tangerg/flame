@@ -20,10 +20,6 @@ func ownStagedExecution(releases ExecutionReleaser, ref ExecutorRef) *stagedExec
 	return &stagedExecutionHandoff{releases: releases, ref: ref, owned: true}
 }
 
-func (s *stagedExecutionHandoff) validateFor(sessionID string) error {
-	return s.ref.ValidateFor(sessionID)
-}
-
 func (s *stagedExecutionHandoff) transfer() ExecutorRef {
 	if !s.owned {
 		panic("runs: staged execution ownership transferred more than once")

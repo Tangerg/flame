@@ -80,9 +80,6 @@ func (c *Coordinator) Start(ctx context.Context, cmd StartCommand) (result Start
 			result = StartResult{}
 		}
 	}()
-	if validateForErr := staged.validateFor(preparation.session.ID()); validateForErr != nil {
-		return StartResult{}, validateForErr
-	}
 
 	cmd = preparation.command
 	var runID string

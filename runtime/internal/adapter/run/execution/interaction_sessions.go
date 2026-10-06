@@ -115,9 +115,6 @@ func (s *interactionSessions) lookup(ref runs.ExecutorRef) (*interactionSession,
 }
 
 func (s *interactionSessions) require(ref runs.ExecutorRef) (*interactionSession, error) {
-	if err := ref.ValidateFor(ref.SessionID); err != nil {
-		return nil, err
-	}
 	session, err := s.lookup(ref)
 	if err != nil {
 		return nil, err

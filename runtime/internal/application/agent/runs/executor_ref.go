@@ -1,12 +1,6 @@
 package runs
 
-import (
-	"errors"
-	"fmt"
-
-	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
-)
+import "errors"
 
 // ErrInvalidExecutorRef reports an incomplete or cross-session executor
 // identity.
@@ -17,22 +11,4 @@ var ErrInvalidExecutorRef = errors.New("execution: invalid executor reference")
 type ExecutorRef struct {
 	SessionID  string
 	ExecutorID string
-}
-
-// ValidateFor checks that the executor returned a complete identity bound to
-// the admitted session.
-func (e ExecutorRef) ValidateFor(sessionID string) error {
-	if err := resourceid.ValidateSession(e.SessionID); err != nil {
-		return fmt.Errorf("%w: %v", ErrInvalidExecutorRef, err)
-	}
-	if err := resourceid.ValidateSession(sessionID); err != nil {
-		return fmt.Errorf("%w: admitted %v", ErrInvalidExecutorRef, err)
-	}
-	if err := runtimeidentity.ValidateExecutor(e.ExecutorID); err != nil {
-		return fmt.Errorf("%w: %v", ErrInvalidExecutorRef, err)
-	}
-	if e.SessionID != sessionID {
-		return fmt.Errorf("%w: executor session %q does not match admitted session %q", ErrInvalidExecutorRef, e.SessionID, sessionID)
-	}
-	return nil
 }

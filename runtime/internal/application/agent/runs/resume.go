@@ -111,9 +111,6 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 		return StartResult{}, err
 	}
 	attempt.ownStagedExecution(c.releases, ref)
-	if validateForErr := attempt.staged.validateFor(sessionID); validateForErr != nil {
-		return StartResult{}, validateForErr
-	}
 	segmentID := c.newSegmentID()
 	var committedInput *CommittedUserInput
 	if len(cmd.Input) > 0 {

@@ -1127,25 +1127,6 @@ func TestFastStartReleaseCannotCrossTerminalMaintenance(t *testing.T) {
 	}
 }
 
-func TestStartRejectsForeignExecutorIdentityAndReleasesIt(t *testing.T) {
-	exec := &fakeExecutor{}
-	effects := &fakeEffects{}
-	sessions := &fakeRunSessions{sess: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/work")})}
-	control := &fakeExecutionPorts{startRef: ExecutorRef{SessionID: "ses_foreign", ExecutorID: "turn_1"}}
-	c := newUseCaseCoordinator(exec, control, sessions, effects)
-
-	_, err := c.Start(context.Background(), StartCommand{SessionID: "ses_1", Input: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}}})
-	if !errors.Is(err, ErrInvalidExecutorRef) {
-		t.Fatalf("Start error = %v, want ErrInvalidExecutorRef", err)
-	}
-	if len(control.released) != 1 || control.released[0] != control.startRef {
-		t.Fatalf("canceled control = %+v, want invalid started execution", control.released)
-	}
-	if _, ok := c.registry.Get("run_new"); len(effects.openings) != 0 || ok {
-		t.Fatal("invalid execution identity reached Run admission")
-	}
-}
-
 func TestResumeCommitsOpeningBeforeActivation(t *testing.T) {
 	createdAt := time.Date(2025, 1, 2, 3, 4, 5, 0, time.UTC)
 	effects := &fakeEffects{}
