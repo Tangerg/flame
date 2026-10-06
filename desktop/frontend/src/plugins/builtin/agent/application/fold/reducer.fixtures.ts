@@ -14,7 +14,6 @@ import { reduceAgentEvent } from "./reducer";
 export const noMetrics: RunMetrics = {
   steps: 0,
   activeDurationMillis: 0,
-  usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 },
 };
 
 let nextEventSequence = 0;
@@ -84,11 +83,11 @@ export function foldTestEvent(
 
 export const runFinished = (
   outcome: SegmentOutcome,
-  metrics: Omit<RunMetrics, "usage"> & { usage?: RunMetrics["usage"] } = noMetrics,
+  metrics: RunMetrics = noMetrics,
   contextTokens = 0,
 ): StreamEvent => ({
   type: "segment.finished",
   contextTokens,
   outcome,
-  metrics: { ...metrics, usage: metrics.usage ?? noMetrics.usage },
+  metrics,
 });

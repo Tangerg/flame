@@ -40,12 +40,12 @@ import type {
 } from "@/plugins/sdk/types/agentSessionView";
 import { runtimePlanUpdate } from "./runtimePlan";
 
-function runtimeUsage(usage?: Usage): RunUsage {
+function runtimeUsage(usage: Usage): RunUsage {
   return {
-    inputTokens: usage?.inputTokens ?? 0,
-    outputTokens: usage?.outputTokens ?? 0,
-    cacheReadTokens: usage?.cacheReadTokens ?? 0,
-    ...(usage?.costUsd !== undefined ? { costUsd: usage.costUsd } : {}),
+    inputTokens: usage.inputTokens ?? 0,
+    outputTokens: usage.outputTokens ?? 0,
+    cacheReadTokens: usage.cacheReadTokens ?? 0,
+    ...(usage.costUsd !== undefined ? { costUsd: usage.costUsd } : {}),
   };
 }
 
@@ -53,7 +53,7 @@ function runtimeRunMetrics(metrics: RunMetrics): AgentRunMetrics {
   return {
     steps: metrics.steps,
     activeDurationMillis: metrics.activeDurationMillis,
-    usage: runtimeUsage(metrics.usage),
+    ...(metrics.usage ? { usage: runtimeUsage(metrics.usage) } : {}),
   };
 }
 

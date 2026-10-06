@@ -99,6 +99,10 @@ describe("Runtime → Agent fact adapter", () => {
     expect(mapped.outcome).toEqual({ type: "canceled" });
   });
 
+  it("keeps unreported usage absent instead of reporting zero tokens", () => {
+    expect("usage" in runtimeRunFact(runningRoot()).metrics).toBe(false);
+  });
+
   it("normalizes a live root Run into a complete product fact", () => {
     expect(
       runtimeRunFact(
@@ -123,11 +127,7 @@ describe("Runtime → Agent fact adapter", () => {
         model: "gpt-5.6-sol",
         reasoningEffort: "high",
       },
-      metrics: {
-        steps: 2,
-        activeDurationMillis: 25,
-        usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 },
-      },
+      metrics: { steps: 2, activeDurationMillis: 25 },
       contextTokens: 198_000,
       createdAt: "2026-08-12T08:00:00.000Z",
       finishedAt: null,

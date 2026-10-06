@@ -10,7 +10,7 @@ export function projectRunMetrics(metrics: AgentRunMetrics): AgentRunMetrics {
   return {
     steps: metrics.steps,
     activeDurationMillis: metrics.activeDurationMillis,
-    usage: { ...metrics.usage },
+    ...(metrics.usage ? { usage: { ...metrics.usage } } : {}),
   };
 }
 

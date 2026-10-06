@@ -218,12 +218,16 @@ function RecordMetrics({ record }: { record: RecordView }) {
           {record.durationMillis === undefined ? "—" : fmtDuration(record.durationMillis)}
         </Datum>
         <Datum label={t("timeline.steps")}>{run.metrics.steps}</Datum>
-        <Datum label={t("timeline.inputTokens")}>{fmtTokens(run.metrics.usage.inputTokens)}</Datum>
-        <Datum label={t("timeline.outputTokens")}>
-          {fmtTokens(run.metrics.usage.outputTokens)}
+        <Datum label={t("timeline.inputTokens")}>
+          {run.metrics.usage === undefined ? "—" : fmtTokens(run.metrics.usage.inputTokens)}
         </Datum>
-        <Datum label={t("usage.cache")}>{fmtTokens(run.metrics.usage.cacheReadTokens)}</Datum>
-        {run.metrics.usage.costUsd !== undefined && (
+        <Datum label={t("timeline.outputTokens")}>
+          {run.metrics.usage === undefined ? "—" : fmtTokens(run.metrics.usage.outputTokens)}
+        </Datum>
+        {run.metrics.usage !== undefined && (
+          <Datum label={t("usage.cache")}>{fmtTokens(run.metrics.usage.cacheReadTokens)}</Datum>
+        )}
+        {run.metrics.usage?.costUsd !== undefined && (
           <Datum label={t("timeline.cost")}>{fmtCost(run.metrics.usage.costUsd)}</Datum>
         )}
       </>

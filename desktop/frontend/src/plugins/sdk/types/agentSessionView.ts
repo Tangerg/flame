@@ -99,7 +99,8 @@ export type AgentRunOutcome =
 export interface AgentRunMetrics {
   steps: number;
   activeDurationMillis: number;
-  usage: RunUsage;
+  /** Absent when the Run reported no model usage; never a zero stand-in. */
+  usage?: RunUsage;
 }
 
 export interface AgentRunProgress {

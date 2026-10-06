@@ -6,6 +6,7 @@ import type {
   AgentRunView,
   AgentSessionView,
   PendingInterrupt,
+  RunUsage,
 } from "@/plugins/sdk/types/agentSessionView";
 import { dropRunPendingInterrupts, mergeRunPendingInterrupts } from "./fold";
 import { materializeInterrupt } from "./interruptMaterialization";
@@ -17,14 +18,21 @@ import {
 } from "../view/runProjection";
 import { isAgentRunFailure } from "../view/runOutcome";
 
+function sameRunUsage(left: RunUsage | undefined, right: RunUsage | undefined): boolean {
+  if (!left || !right) return left === right;
+  return (
+    left.inputTokens === right.inputTokens &&
+    left.outputTokens === right.outputTokens &&
+    left.cacheReadTokens === right.cacheReadTokens &&
+    left.costUsd === right.costUsd
+  );
+}
+
 function sameRunMetrics(left: AgentRunMetrics, right: AgentRunMetrics): boolean {
   return (
     left.steps === right.steps &&
     left.activeDurationMillis === right.activeDurationMillis &&
-    left.usage.inputTokens === right.usage.inputTokens &&
-    left.usage.outputTokens === right.usage.outputTokens &&
-    left.usage.cacheReadTokens === right.usage.cacheReadTokens &&
-    left.usage.costUsd === right.usage.costUsd
+    sameRunUsage(left.usage, right.usage)
   );
 }
 

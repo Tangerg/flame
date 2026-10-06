@@ -33,7 +33,7 @@ beforeEach(async () => {
 });
 
 describe("handler contract — run.*", () => {
-  it("segment.started resets usage to zero + clears a prior error, without touching the stream", () => {
+  it("segment.started carries no prior usage + clears a prior error, without touching the stream", () => {
     let s = reduce(EMPTY_AGENT_SESSION_VIEW, runStarted("r0", "s0"));
     s = reduce(
       s,
@@ -51,7 +51,7 @@ describe("handler contract — run.*", () => {
       ),
     );
     s = reduce(s, started(item({ id: "a", type: "agentMessage", content: [] })));
-    expect(s.runsById.r0?.metrics.usage.inputTokens).toBe(500);
+    expect(s.runsById.r0?.metrics.usage?.inputTokens).toBe(500);
     expect(selectVisibleProblem(s, EMPTY_PROBLEM_PRESENTATION)).not.toBeNull();
 
     const out = reduce(s, runStarted("r1", "s1"));
@@ -59,10 +59,8 @@ describe("handler contract — run.*", () => {
       status: "running",
       id: "r1",
       sessionId: "s1",
-      metrics: {
-        usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 },
-      },
     });
+    expect(selectCurrentRootRun(out)?.metrics.usage).toBeUndefined();
     expect(selectVisibleProblem(out, EMPTY_PROBLEM_PRESENTATION)).toBeNull();
     expect(out.messages).toBe(s.messages);
   });
