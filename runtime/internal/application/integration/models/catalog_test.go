@@ -42,7 +42,7 @@ func TestProviderMetadataRejectsIncompletePolicies(t *testing.T) {
 
 func TestModelOwnsValidatedIdentityAndCapabilitySnapshot(t *testing.T) {
 	levels := []string{"low", "high"}
-	details := &Details{Reasoning: true, ReasoningLevels: levels, Pricing: &Pricing{InputPerMillion: 1}}
+	details := &Details{Reasoning: true, ReasoningLevels: levels, ReasoningDefault: "low", Pricing: &Pricing{InputPerMillion: 1}}
 	model, err := NewModel("openai", "gpt-5", details)
 	if err != nil {
 		t.Fatal(err)
@@ -59,6 +59,9 @@ func TestModelOwnsValidatedIdentityAndCapabilitySnapshot(t *testing.T) {
 	}
 	if _, err := NewModel("openai", "bad model", nil); err == nil {
 		t.Fatal("NewModel accepted a non-canonical identity")
+	}
+	if _, err := NewModel("openai", "gpt-5", &Details{Reasoning: true, ReasoningLevels: []string{"low", "high"}}); err == nil {
+		t.Fatal("NewModel accepted reasoning levels without a default level")
 	}
 }
 

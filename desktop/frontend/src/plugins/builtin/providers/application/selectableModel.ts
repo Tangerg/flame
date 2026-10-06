@@ -80,11 +80,7 @@ export class SelectableModel {
   }
 
   reasoningLevelOrDefault(level?: string | null): string | undefined {
-    if (!this.reasoning) return undefined;
     if (level && this.acceptsReasoningLevel(level)) return level;
-    if (this.reasoningDefaultLevel && this.acceptsReasoningLevel(this.reasoningDefaultLevel)) {
-      return this.reasoningDefaultLevel;
-    }
-    return this.reasoningLevels[0];
+    return this.reasoningDefaultLevel;
   }
 }

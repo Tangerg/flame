@@ -85,8 +85,8 @@ type ModelCapabilities struct {
 	// increasing order (e.g. ["low","medium","high"]). Empty when reasoning is
 	// budget-controlled (no discrete levels) or unsupported.
 	ReasoningLevels []string `json:"reasoningLevels,omitempty"`
-	// ReasoningDefaultLevel is the effort used when the caller picks none;
-	// empty when there are no levels.
+	// ReasoningDefaultLevel is the effort used when the caller picks none. It
+	// is one of ReasoningLevels, present exactly when there are levels.
 	ReasoningDefaultLevel string `json:"reasoningDefaultLevel,omitempty"`
 	// Multimodal is a convenience flag: the model accepts image input. The
 	// full set is InputModalities.
