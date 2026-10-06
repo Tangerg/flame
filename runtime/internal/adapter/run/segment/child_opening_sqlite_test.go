@@ -204,12 +204,13 @@ func TestStartedChildOpeningReconcilesOnlyItsExactWriteSet(t *testing.T) {
 		RunID: root.RunID, SessionID: root.SessionID, SegmentID: root.SegmentID,
 		Items: []transcript.Item{spawningItem},
 	}}
-	opening := mustAdmissionOpening(
-		t, testCommitID("run_commit_child_started"), child,
-		nil, nil, "", nil, openingEvents,
-	)
+	started, err := runs.NewStartedChildRun(reservation, child.ModelSelection, startedAt, openingEvents)
+	if err != nil {
+		t.Fatal(err)
+	}
+	opening := started.Opening()
 	loseReceipt = true
-	if commitStartedChildRunErr := effects.CommitStartedChildRun(commitCtx, reservation, opening); commitStartedChildRunErr != nil {
+	if commitStartedChildRunErr := effects.CommitStartedChildRun(commitCtx, started); commitStartedChildRunErr != nil {
 		t.Fatalf("ambiguous CommitStartedChildRun = %v, want reconciled success", commitStartedChildRunErr)
 	}
 	matched, err := runStore.RunCommitCommitted(
@@ -218,14 +219,14 @@ func TestStartedChildOpeningReconcilesOnlyItsExactWriteSet(t *testing.T) {
 	if err != nil || !matched {
 		t.Fatalf("child opening marker matched=%t err=%v, want true/nil", matched, err)
 	}
-	if commitStartedChildRunErr := effects.CommitStartedChildRun(ctx, reservation, opening); commitStartedChildRunErr != nil {
+	if commitStartedChildRunErr := effects.CommitStartedChildRun(ctx, started); commitStartedChildRunErr != nil {
 		t.Fatalf("exact concluded child opening = %v, want idempotent success", commitStartedChildRunErr)
 	}
-	otherOpening := mustAdmissionOpening(
-		t, testCommitID("run_commit_other_child_started"), child,
-		nil, nil, "", nil, openingEvents,
-	)
-	if commitStartedChildRunErr := effects.CommitStartedChildRun(ctx, reservation, otherOpening); commitStartedChildRunErr == nil {
+	other, err := runs.NewStartedChildRun(reservation, child.ModelSelection, startedAt, openingEvents)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if commitStartedChildRunErr := effects.CommitStartedChildRun(ctx, other); commitStartedChildRunErr == nil {
 		t.Fatal("different child opening write-set reused a concluded reservation")
 	}
 	items, err := transcriptStore.List(ctx, root.SessionID)

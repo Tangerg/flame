@@ -236,9 +236,7 @@ func (s *segmentPump) handleChildRunStartOutcome(
 	case ChildRunStarted:
 		err = s.coordinator.finalizeChildOpening(s.spec, s.owner, prepared, request.StartedAt)
 		if err == nil {
-			err = s.coordinator.childStarts.CommitStartedChildRun(
-				s.ownerCtx, prepared.reservation, prepared.opening,
-			)
+			err = s.coordinator.childStarts.CommitStartedChildRun(s.ownerCtx, prepared.started)
 		}
 		if err == nil {
 			managed.outcome = request.Outcome
@@ -274,7 +272,7 @@ func (s *segmentPump) handleChildRunStartOutcome(
 			prepared.releaseBinding(s.owner)
 			prepared.route.reducer = nil
 			prepared.batch = reductionBatch{}
-			prepared.opening = OpeningCommit{}
+			prepared.started = StartedChildRun{}
 		}
 	case ChildRunStartAborted:
 		err = s.coordinator.childStarts.AbortChildRunStart(s.ownerCtx, prepared.reservation)

@@ -459,11 +459,8 @@ func (f *fakeEffects) ReserveChildRunStart(
 	return nil
 }
 
-func (f *fakeEffects) CommitStartedChildRun(
-	_ context.Context,
-	reservation ChildRunStartReservation,
-	opening OpeningCommit,
-) error {
+func (f *fakeEffects) CommitStartedChildRun(_ context.Context, started StartedChildRun) error {
+	reservation, opening := started.Reservation(), started.Opening()
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	attempt := len(f.openings) + 1
@@ -564,18 +561,14 @@ type blockingChildOpeningEffects struct {
 	release <-chan struct{}
 }
 
-func (b *blockingChildOpeningEffects) CommitStartedChildRun(
-	ctx context.Context,
-	reservation ChildRunStartReservation,
-	opening OpeningCommit,
-) error {
+func (b *blockingChildOpeningEffects) CommitStartedChildRun(ctx context.Context, started StartedChildRun) error {
 	b.started <- struct{}{}
 	select {
 	case <-b.release:
 	case <-ctx.Done():
 		return ctx.Err()
 	}
-	return b.fakeEffects.CommitStartedChildRun(ctx, reservation, opening)
+	return b.fakeEffects.CommitStartedChildRun(ctx, started)
 }
 
 func (f *fakeEffects) CommitOpening(_ context.Context, opening OpeningCommit) error {

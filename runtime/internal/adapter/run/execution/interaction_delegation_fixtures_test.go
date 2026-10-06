@@ -267,11 +267,8 @@ func (d *delegateProjection) ReserveChildRunStart(
 	return nil
 }
 
-func (d *delegateProjection) CommitStartedChildRun(
-	_ context.Context,
-	reservation runs.ChildRunStartReservation,
-	opening runs.OpeningCommit,
-) error {
+func (d *delegateProjection) CommitStartedChildRun(_ context.Context, started runs.StartedChildRun) error {
+	reservation, opening := started.Reservation(), started.Opening()
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	memberID := reservation.Member.MemberID

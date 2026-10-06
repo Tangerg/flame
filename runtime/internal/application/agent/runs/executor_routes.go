@@ -582,7 +582,7 @@ type preparedChildStart struct {
 	spawningItem transcript.Item
 	route        *executorRoute
 	batch        reductionBatch
-	opening      OpeningCommit
+	started      StartedChildRun
 	reservation  ChildRunStartReservation
 }
 
@@ -685,18 +685,8 @@ func (c *Coordinator) finalizeChildOpening(
 	if child.reducer != nil {
 		return fmt.Errorf("runs: child member %q opening was already finalized", prepared.member.MemberID)
 	}
-	parentRun := prepared.parent.reducer.cfg.Opened
-	admission := rundomain.Draft{
-		RunID:           child.runID,
-		SessionID:       spec.SessionID,
-		SpawnedByItemID: child.lineage.SpawnedByItemID,
-		ParentRunID:     child.lineage.ParentRunID,
-		RootRunID:       child.lineage.RootRunID,
-		SegmentID:       child.segmentID,
-		ModelSelection:  parentRun.ModelSelection(),
-		CreatedAt:       startedAt,
-	}
-	opened, err := rundomain.Admit(admission)
+	model := prepared.parent.reducer.cfg.Opened.ModelSelection()
+	opened, err := rundomain.Admit(prepared.reservation.draft(model, startedAt))
 	if err != nil {
 		return fmt.Errorf("runs: admit child member %q: %w", prepared.member.MemberID, err)
 	}
@@ -731,14 +721,12 @@ func (c *Coordinator) finalizeChildOpening(
 	if err := validateRouteReductionBatch(child, spec.SessionID, projected); err != nil {
 		return err
 	}
-	opening, err := NewAdmissionOpeningCommit(
-		newRunCommitID(), admission, nil, nil, "", nil, events,
-	)
+	started, err := NewStartedChildRun(prepared.reservation, model, startedAt, events)
 	if err != nil {
 		return fmt.Errorf("runs: child member %q opening: %w", prepared.member.MemberID, err)
 	}
 	prepared.batch = projected
-	prepared.opening = opening
+	prepared.started = started
 	return nil
 }
 

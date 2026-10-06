@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
+	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
@@ -72,6 +74,55 @@ func (c ChildRunStartReservation) validateIdentity() error {
 	return nil
 }
 
+// draft is the child Run this reservation admits once its executor child has
+// started: every identity comes from the reservation, which owns them.
+func (c ChildRunStartReservation) draft(model modelref.Selection, startedAt time.Time) rundomain.Draft {
+	return rundomain.Draft{
+		RunID:           c.Binding.RunID,
+		SessionID:       c.SessionID,
+		SpawnedByItemID: c.SpawnedByItemID,
+		ParentRunID:     c.Binding.ParentRunID,
+		RootRunID:       c.RootRunID,
+		SegmentID:       c.SegmentID,
+		ModelSelection:  model,
+		CreatedAt:       startedAt,
+	}
+}
+
+// StartedChildRun is the write-set that concludes one reservation with the
+// Running child Run it admits. The opening is derived from the reservation, so
+// the two cannot name different children.
+type StartedChildRun struct {
+	reservation ChildRunStartReservation
+	opening     OpeningCommit
+}
+
+// NewStartedChildRun derives the child Run admission from the reservation it
+// concludes.
+func NewStartedChildRun(
+	reservation ChildRunStartReservation,
+	model modelref.Selection,
+	startedAt time.Time,
+	events []EventCommit,
+) (StartedChildRun, error) {
+	if err := reservation.Validate(); err != nil {
+		return StartedChildRun{}, err
+	}
+	opening, err := NewAdmissionOpeningCommit(
+		newRunCommitID(), reservation.draft(model, startedAt), nil, nil, "", nil, events,
+	)
+	if err != nil {
+		return StartedChildRun{}, err
+	}
+	return StartedChildRun{reservation: reservation, opening: opening}, nil
+}
+
+// Reservation returns the reservation the start concludes.
+func (s StartedChildRun) Reservation() ChildRunStartReservation { return s.reservation }
+
+// Opening returns the child Run's admission write-set.
+func (s StartedChildRun) Opening() OpeningCommit { return s.opening }
+
 // ChildRunStartCommitter owns the three durable transitions of an invisible
 // child start reservation. CommitStarted atomically concludes the exact
 // reservation with the child Run opening; Abort concludes it without publishing
@@ -79,11 +130,7 @@ func (c ChildRunStartReservation) validateIdentity() error {
 // reject a contradictory conclusion.
 type ChildRunStartCommitter interface {
 	ReserveChildRunStart(ctx context.Context, reservation ChildRunStartReservation) error
-	CommitStartedChildRun(
-		ctx context.Context,
-		reservation ChildRunStartReservation,
-		opening OpeningCommit,
-	) error
+	CommitStartedChildRun(ctx context.Context, started StartedChildRun) error
 	AbortChildRunStart(ctx context.Context, reservation ChildRunStartReservation) error
 }
 

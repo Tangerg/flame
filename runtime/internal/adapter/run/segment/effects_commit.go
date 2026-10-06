@@ -36,17 +36,11 @@ func (e *Effects) ReserveChildRunStart(
 
 // CommitStartedChildRun atomically consumes the invisible reservation with the
 // public Running child Run and its causal parent Item.
-func (e *Effects) CommitStartedChildRun(
-	ctx context.Context,
-	reservation runs.ChildRunStartReservation,
-	opening runs.OpeningCommit,
-) error {
-	record, err := childRunStartReservationRecord(reservation)
+func (e *Effects) CommitStartedChildRun(ctx context.Context, started runs.StartedChildRun) error {
+	opening := started.Opening()
+	record, err := childRunStartReservationRecord(started.Reservation())
 	if err != nil {
 		return err
-	}
-	if validateStartedChildOpeningErr := validateStartedChildOpening(reservation, opening); validateStartedChildOpeningErr != nil {
-		return validateStartedChildOpeningErr
 	}
 	alreadyConcluded := false
 	err = e.runInTx(ctx, func(ctx context.Context) error {
@@ -148,26 +142,6 @@ type preparedResumeClaim struct {
 	claim            runs.ResumeClaimCommit
 	root             runs.Continuation
 	itemReplacements []transcript.Replacement
-}
-
-func validateStartedChildOpening(
-	reservation runs.ChildRunStartReservation,
-	opening runs.OpeningCommit,
-) error {
-	if err := opening.Validate(); err != nil {
-		return fmt.Errorf("segment: invalid started child opening: %w", err)
-	}
-	admission, admitting := opening.Admission()
-	_, resuming := opening.Resume()
-	if !admitting || resuming || admission.RunID != reservation.Binding.RunID ||
-		admission.SessionID != reservation.SessionID ||
-		admission.ParentRunID != reservation.Binding.ParentRunID ||
-		admission.RootRunID != reservation.RootRunID ||
-		admission.SpawnedByItemID != reservation.SpawnedByItemID ||
-		admission.SegmentID != reservation.SegmentID {
-		return errors.New("segment: started child opening differs from its reservation")
-	}
-	return nil
 }
 
 // ClaimResume is the waiting-answer linearization point. Loading the exact

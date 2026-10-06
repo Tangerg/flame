@@ -299,11 +299,6 @@ func TestCommitStartedChildRunOwnsOneTransactionBoundary(t *testing.T) {
 		RootRunID:       "run_root",
 		ReservedAt:      startedAt.Add(-time.Second),
 	}
-	draft := run.Draft{
-		RunID: "run_child", SessionID: "ses_1", SegmentID: "segment_child",
-		SpawnedByItemID: "item_delegate", ParentRunID: "run_root", RootRunID: "run_root",
-		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: startedAt,
-	}
 	tx := &nonReentrantTx{}
 	childStarts := &fakeChildRunStarts{}
 	runState := &fakeRunState{}
@@ -311,10 +306,11 @@ func TestCommitStartedChildRunOwnsOneTransactionBoundary(t *testing.T) {
 		State: runState, ChildRunStarts: childStarts, Tx: tx.run,
 	})
 
-	opening := mustAdmissionOpening(
-		t, testCommitID("run_commit_child"), draft, nil, nil, "", nil, nil,
-	)
-	if err := effects.CommitStartedChildRun(t.Context(), reservation, opening); err != nil {
+	started, err := runs.NewStartedChildRun(reservation, testsupport.DefaultModelSelection(), startedAt, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := effects.CommitStartedChildRun(t.Context(), started); err != nil {
 		t.Fatalf("CommitStartedChildRun: %v", err)
 	}
 	if tx.calls != 1 {
