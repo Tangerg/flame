@@ -410,12 +410,16 @@ func (a *app) recoverDraft(message prompt.Message) error {
 
 func (a *app) restoreComposer(message prompt.Message) {
 	a.clearComposer()
-	for _, item := range message.Attachments {
+	a.insertComposerAttachments(message.Attachments)
+	a.composer.Editor().Insert(message.Text)
+	a.scheduleDraftPersistence()
+}
+
+func (a *app) insertComposerAttachments(items []prompt.Attachment) {
+	for _, item := range items {
 		element := a.composer.Editor().InsertElement(fileElement, "@"+item.Name)
 		a.attachmentElements[element.ID] = item
 	}
-	a.composer.Editor().Insert(message.Text)
-	a.scheduleDraftPersistence()
 }
 
 func (a *app) recallPrevious() bool {

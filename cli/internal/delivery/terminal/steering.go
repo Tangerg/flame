@@ -110,7 +110,7 @@ func (a *app) deliverPreparedSteer(request prompt.SteerRun, sourceDraft prompt.M
 		a.steers.reject(pending)
 		recovered, err := a.rejectSteer(pending)
 		if err != nil {
-			a.restoreComposer(workbenchMergeSteerAttachments(a, request.Message.Attachments))
+			a.restoreSteerAttachments(request.Message.Attachments)
 			return fmt.Errorf("another steer operation is already running; restore attachments: %w", err)
 		}
 		a.restoreComposer(recovered)
@@ -133,7 +133,7 @@ func (a *app) settleSteer(result runworkflow.SteerResult, deliveryErr error) {
 		a.steers.reject(result.Pending)
 		recovered, err := a.rejectSteer(result.Pending)
 		if err != nil {
-			a.restoreComposer(workbenchMergeSteerAttachments(a, result.Pending.Message().Attachments))
+			a.restoreSteerAttachments(result.Pending.Message().Attachments)
 			a.message("steer run failed; restored attachments were not saved: " + err.Error())
 			return
 		}
@@ -189,10 +189,15 @@ func (a *app) rejectSteer(pending workbench.PendingSteer) (prompt.Message, error
 	return recovered, nil
 }
 
-func workbenchMergeSteerAttachments(a *app, rejected []prompt.Attachment) prompt.Message {
+// restoreSteerAttachments returns a rejected steer's attachments to the
+// composer. A draft that cannot be read is left as the user wrote it and the
+// attachments are inserted into it, rather than replaced by them.
+func (a *app) restoreSteerAttachments(rejected []prompt.Attachment) {
 	current, _, err := a.currentDraft()
 	if err != nil {
-		return prompt.Message{Attachments: slices.Clone(rejected)}
+		a.insertComposerAttachments(rejected)
+		a.scheduleDraftPersistence()
+		return
 	}
-	return workbench.MergeSteerAttachments(current, rejected)
+	a.restoreComposer(workbench.MergeSteerAttachments(current, rejected))
 }

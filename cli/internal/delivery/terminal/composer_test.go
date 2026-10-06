@@ -2,6 +2,7 @@ package terminal
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
@@ -63,5 +64,16 @@ func TestCommittedComposerCannotUndoIntoReleasedAttachmentPayloads(t *testing.T)
 	editor.Do(headless.Undo)
 	if !editor.Empty() || len(editor.Elements()) != 0 {
 		t.Fatal("committed draft can resurrect text or released attachments")
+	}
+}
+
+func TestRejectedSteerAttachmentsNeverReplaceAnUnreadableDraft(t *testing.T) {
+	a := &app{attachmentElements: make(map[uint64]prompt.Attachment), closed: true}
+	editor := a.composer.Editor()
+	editor.InsertElement(fileElement, "@orphan.md")
+	editor.Insert(" keep this text")
+	a.restoreSteerAttachments([]prompt.Attachment{{Name: "rejected.md"}})
+	if text := editor.Text(); !strings.Contains(text, "keep this text") || !strings.Contains(text, "@rejected.md") {
+		t.Fatalf("composer = %q, want the user's text kept and the rejected attachment inserted", text)
 	}
 }
