@@ -13,24 +13,22 @@ type trackedQuestion struct {
 	block *questionBlock
 }
 
-// revealAnsweredQuestions shows the answers the Runtime committed for pending
-// questions in place, so the transcript keeps its scroll, selection and search.
-func (t *transcriptView) revealAnsweredQuestions(blocks []conversation.Block) {
-	for _, block := range blocks {
-		key := transcriptBlockKey(block.RunID, block.ID)
-		tracked, pending := t.pendingQuestions[key]
-		if !pending {
-			continue
-		}
-		tracked.block.setQuestion(*block.Question)
-		t.content.Changed(tracked.id)
-		t.content.Finish(tracked.id)
-		delete(t.pendingQuestions, key)
+// revealAnsweredQuestion shows the answers a resumed Run re-completed for a
+// pending question in place, so the transcript keeps its scroll, selection and
+// search.
+func (t *transcriptView) revealAnsweredQuestion(block conversation.Block) bool {
+	key := transcriptBlockKey(block.RunID, block.ID)
+	tracked, pending := t.pendingQuestions[key]
+	if !pending || block.Question == nil || !block.Question.Answered() {
+		return false
 	}
-	if len(blocks) > 0 {
-		t.refreshSearch()
-		t.announceSelection()
-	}
+	tracked.block.setQuestion(*block.Question)
+	t.content.Changed(tracked.id)
+	t.content.Finish(tracked.id)
+	delete(t.pendingQuestions, key)
+	t.refreshSearch()
+	t.announceSelection()
+	return true
 }
 
 func (t *transcriptView) finishPendingQuestions(runID string) {

@@ -165,7 +165,7 @@ func (r *Runtime) activateResumeLocked(ctx context.Context, message *prompt.Mess
 	}
 	approvalEvents := approvalCompletionEvents(run, prepared.answers)
 	session := r.sessions[run.sessionID]
-	if err := session.requireRevisionCapacity(resumeRunRevisionChanges(session, message, len(approvalEvents))); err != nil {
+	if err := session.requireRevisionCapacity(resumeRunRevisionChanges(session, message, len(answeredQuestions)+len(approvalEvents))); err != nil {
 		return conversation.SegmentStream{}, err
 	}
 	fault, err := r.takeFaultLocked()
@@ -185,6 +185,11 @@ func (r *Runtime) activateResumeLocked(ctx context.Context, message *prompt.Mess
 	if err := r.emitLocked(run, conversation.SegmentStarted{Run: projectRun(run)}); err != nil {
 		return conversation.SegmentStream{}, err
 	}
+	for _, block := range answeredQuestions {
+		if err := r.emitLocked(run, conversation.BlockCompleted{Block: block}); err != nil {
+			return conversation.SegmentStream{}, err
+		}
+	}
 	userItemID, err := r.emitResumeMessageLocked(run, message)
 	if err != nil {
 		return conversation.SegmentStream{}, err
@@ -195,10 +200,10 @@ func (r *Runtime) activateResumeLocked(ctx context.Context, message *prompt.Mess
 	return r.bindSegmentLocked(ctx, run, segment, 0, 0, userItemID, fault), nil
 }
 
-func resumeRunRevisionChanges(session *sessionState, message *prompt.Message, approvalEvents int) sessionRevisionChanges {
+func resumeRunRevisionChanges(session *sessionState, message *prompt.Message, itemEvents int) sessionRevisionChanges {
 	changes := sessionStatusRevisionChanges(session, protocol.SessionStatusRunning).
 		plus(sessionEventRevisionChange()).
-		plus(sessionEventRevisionChanges(approvalEvents))
+		plus(sessionEventRevisionChanges(itemEvents))
 	if message != nil {
 		changes = changes.plus(sessionEventRevisionChange())
 	}
@@ -206,8 +211,8 @@ func resumeRunRevisionChanges(session *sessionState, message *prompt.Message, ap
 }
 
 // acceptedQuestionBlocksLocked mirrors the production runtime's resume
-// linearization point: accepted answers replace the durable Question items but
-// are not replayed as events on the continuation segment.
+// linearization point: accepted answers replace the durable Question items, and
+// the continuation segment re-completes each one right after it starts.
 func (r *Runtime) acceptedQuestionBlocksLocked(run *runState, answers []conversation.InterruptAnswer) ([]conversation.Block, error) {
 	session := r.sessions[run.sessionID]
 	accepted := make([]conversation.Block, 0, len(answers))

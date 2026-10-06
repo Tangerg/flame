@@ -94,11 +94,9 @@ func (e *eventApplicationError) Error() string { return e.err.Error() }
 func (e *eventApplicationError) Unwrap() error { return e.err }
 
 func (s *streamFollower) run() {
-	openCtx, retire := context.WithCancel(s.ctx)
-	defer retire()
 	var current conversation.SegmentStream
 	for {
-		opened, err := s.open(openCtx)
+		opened, err := s.open(s.ctx)
 		if err == nil {
 			current = opened
 			s.failures = 0
@@ -108,12 +106,8 @@ func (s *streamFollower) run() {
 			return
 		}
 	}
-	switch s.postOpenAccepted(current) {
-	case followOpenedStream:
+	if s.postOpenAccepted(current) == followOpenedStream {
 		s.runStream(current)
-	case recoverOpenedStream:
-		retire()
-		s.followAttachedSession()
 	}
 }
 

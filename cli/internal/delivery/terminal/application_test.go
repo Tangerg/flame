@@ -1114,7 +1114,7 @@ func TestMisdirectedAcceptedResumeReceiptCancelsAndSettlesTheRequestedRun(t *tes
 }
 
 // TestAcceptedResumeShowsTheRuntimeRecordedAnswer: the answers a resume
-// commits come from the Runtime's snapshot, so the terminal neither re-derives
+// commits arrive on its continuation stream, so the terminal neither re-derives
 // them from its own command nor refuses the continuation when that command
 // changes after acceptance.
 func TestAcceptedResumeShowsTheRuntimeRecordedAnswer(t *testing.T) {

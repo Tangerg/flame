@@ -147,7 +147,9 @@ func TestAnsweredQuestionRevealsTheRuntimeAnswerInPlace(t *testing.T) {
 	answered := question.Clone()
 	answered.Answers = [][]string{{"linux"}}
 	block.Question = &answered
-	view.revealAnsweredQuestions([]conversation.Block{block})
+	if applyErr := view.Apply(conversation.BlockCompleted{Block: block}, registry); applyErr != nil {
+		t.Fatal(applyErr)
+	}
 	drawn := drawRoot(t, view, 48, 6)
 	if !strings.Contains(drawn, question.Title) || !strings.Contains(drawn, "answer · linux") {
 		t.Fatalf("accepted question was not revealed in place:\n%s", drawn)

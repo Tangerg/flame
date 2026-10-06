@@ -72,6 +72,14 @@ func (c *Conversation) ignoreRecoveredOverlap(envelope RunEvent) (bool, error) {
 			return true, nil
 		}
 	}
+	if completed, ok := event.(BlockCompleted); ok && completed.Block.Kind == BlockQuestion {
+		// A resumed continuation re-completes each answered Question. A projection
+		// that already holds the answered Item, from a cold read, has nothing to fold.
+		if at, exists := c.index[blockIdentity(completed.Block.RunID, completed.Block.ID)]; exists &&
+			c.blocks[at].Status != BlockStatusRunning && c.blocks[at].Equal(completed.Block) {
+			return true, nil
+		}
+	}
 	if delta, ok := event.(BlockDelta); ok {
 		key := blockIdentity(envelope.RunID, delta.BlockID)
 		if _, exists := c.index[key]; !exists && c.coldTail {
@@ -102,7 +110,7 @@ func (c *Conversation) ignoreRecoveredOverlap(envelope RunEvent) (bool, error) {
 	case BlockCompleted:
 		key := blockIdentity(item.Block.RunID, item.Block.ID)
 		at, exists := c.index[key]
-		if !exists || c.blocks[at].Status == BlockStatusRunning {
+		if !exists || c.blocks[at].Status == BlockStatusRunning || answersQuestion(c.blocks[at], item.Block) {
 			return false, nil
 		}
 		if !c.blocks[at].Equal(item.Block) {
@@ -312,7 +320,26 @@ func (c *Conversation) applyBlockCompleted(runID string, event BlockCompleted) e
 	if err := c.requireRunRunning(runID, "complete a block"); err != nil {
 		return err
 	}
+	if at, exists := c.index[blockIdentity(event.Block.RunID, event.Block.ID)]; exists && answersQuestion(c.blocks[at], event.Block) {
+		c.blocks[at] = event.Block.Clone()
+		return nil
+	}
 	return c.put(event.Block, true)
+}
+
+// answersQuestion reports whether completed is the answered form of a Question
+// that parked unanswered: the only Item a resumed Run completes a second time.
+func answersQuestion(current, completed Block) bool {
+	if current.Kind != BlockQuestion || completed.Kind != BlockQuestion ||
+		current.Status == BlockStatusRunning || current.Question == nil || completed.Question == nil {
+		return false
+	}
+	if current.Question.Answered() || !completed.Question.Answered() {
+		return false
+	}
+	unanswered := completed.Question.Clone()
+	unanswered.Answers = nil
+	return current.Question.Equal(unanswered)
 }
 
 func (c *Conversation) applyPlanChanged(runID string, event PlanChanged) error {

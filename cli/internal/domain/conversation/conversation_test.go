@@ -48,30 +48,31 @@ func TestConversationFoldsInitialAndResumedSegments(t *testing.T) {
 	if current, ok := projection.CurrentRun(); !ok || current.ID != "run_1" || current.ContextTokens != interruptedContext {
 		t.Fatalf("waiting current Run = %+v, %t", current, ok)
 	}
-	if _, err := projection.InstallAnsweredQuestions(nil); err == nil {
-		t.Fatal("installed answers the Runtime has not committed")
-	}
-	answered := question.Clone()
-	answered.Answers = [][]string{{"A"}}
-	installed, err := projection.InstallAnsweredQuestions([]Block{{
-		ID: question.ItemID, RunID: "run_1", Status: BlockStatusCompleted, Kind: BlockQuestion, Question: &answered,
-	}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(installed) != 1 || !installed[0].Question.Answered() || installed[0].Question.Answers[0][0] != "A" {
-		t.Fatalf("installed questions = %+v", installed)
-	}
-	if projection.Phase() != Waiting || len(projection.Interrupts()) != 2 {
-		t.Fatal("installed answers released waiting state before the continuation segment")
-	}
-
 	resumed := runningRun("seg_2")
 	resumed.Usage = interruptedUsage
 	resumed.ContextTokens = interruptedContext
 	apply(t, projection, RunEvent{EventID: "different-space:start", RunID: "run_1", SegmentID: "seg_2", Event: SegmentStarted{Run: resumed}})
 	if projection.Phase() != Running || projection.SegmentID() != "seg_2" || len(projection.Interrupts()) != 0 {
 		t.Fatalf("resumed projection = phase %v, segment %q", projection.Phase(), projection.SegmentID())
+	}
+	answered := question.Clone()
+	answered.Answers = [][]string{{"A"}}
+	answeredBlock := Block{ID: question.ItemID, RunID: "run_1", Status: BlockStatusCompleted, Kind: BlockQuestion, Question: &answered}
+	apply(t, projection, RunEvent{EventID: "question-answered", RunID: "run_1", SegmentID: "seg_2", Event: BlockCompleted{Block: answeredBlock}})
+	for _, block := range projection.Blocks() {
+		if block.ID == question.ItemID && (block.Question == nil || !block.Question.Equal(answered)) {
+			t.Fatalf("answered Question block = %+v", block)
+		}
+	}
+	if repeated, err := projection.ApplyRunEvent(RunEvent{EventID: "question-answered-again", RunID: "run_1", SegmentID: "seg_2", Event: BlockCompleted{Block: answeredBlock}}); err != nil || repeated.Applied {
+		t.Fatalf("identical re-completion = (%+v, %v), want an ignored no-op", repeated, err)
+	}
+	otherAnswer := question.Clone()
+	otherAnswer.Answers = [][]string{{"B"}}
+	if _, err := projection.ApplyRunEvent(RunEvent{EventID: "question-reanswered", RunID: "run_1", SegmentID: "seg_2", Event: BlockCompleted{Block: Block{
+		ID: question.ItemID, RunID: "run_1", Status: BlockStatusCompleted, Kind: BlockQuestion, Question: &otherAnswer,
+	}}}); err == nil {
+		t.Fatal("an answered Question accepted different answers")
 	}
 	completedTool := startedApprovalTool.Clone()
 	completedTool.Status = ToolOK

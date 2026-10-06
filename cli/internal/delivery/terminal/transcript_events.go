@@ -155,6 +155,9 @@ func (t *transcriptView) complete(block conversation.Block, registry *extensions
 	if block.Kind == conversation.BlockTool && t.completeLiveTool(block) {
 		return nil
 	}
+	if block.Kind == conversation.BlockQuestion && t.revealAnsweredQuestion(block) {
+		return nil
+	}
 	return t.appendCompleted(block, registry)
 }
 
