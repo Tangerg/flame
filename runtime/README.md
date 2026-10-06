@@ -43,8 +43,9 @@ consumers together. The timeline requires `sessions.trajectory`, and evaluation
 export requires `sessions.exportTrajectory`. Bundled clients reject an older
 Runtime through the existing exact protocol-version checks; an updated Runtime
 likewise refuses requests declaring an older version. There is no legacy endpoint
-fallback. The trajectory document has its own `schemaVersion: 1`, independent of
-the Runtime protocol and importable Session artifacts.
+fallback. The trajectory document has its own `schemaVersion`
+(`protocol.SessionTrajectoryVersion`), independent of the Runtime protocol and
+importable Session artifacts.
 
 Model invocation and Tool attempt `callId` values preserve the executor's exact
 identity: 1–256 ASCII letters, digits, dots, underscores, colons, or hyphens.
@@ -57,9 +58,9 @@ The protocol includes bounded `WatchSpec.paths` with advertised subscription lim
 `prompt_source_too_large` for an AGENTS.md cascade that cannot be included whole.
 The existing Run, Segment, Item, and command identities keep their meanings.
 
-Portable Session artifacts now require version 28 and preserve unresolved-effect
-evidence for every terminal outcome. Older artifact versions are rejected; export
-again from the updated Runtime. The SQLite history representation is unchanged.
+Portable Session artifacts carry `protocol.SessionArtifactVersion` and preserve
+unresolved-effect evidence for every terminal outcome. Any other artifact version
+is rejected; export again from the updated Runtime. The SQLite history representation is unchanged.
 CLI attachment commands retain their prepared content with the original command
 and replay guard; an older dispatched or ambiguous command whose attachment bytes
 are unavailable remains unresolved and is never reconstructed from the current
@@ -534,12 +535,12 @@ Title generation is nested under `run segment maintenance`, with `run.id`, `gen_
 ## Trajectory evidence export
 
 `sessions.exportTrajectory` / `Runtime.ExportTrajectory` exports one JSON evaluation
-document with `schemaVersion: 1` and a collection timestamp. It includes the Session,
+document with `schemaVersion` (`protocol.SessionTrajectoryVersion`) and a collection timestamp. It includes the Session,
 all root and child Runs, Items, retained conversation messages, offloaded Tool bodies,
 current Plan, model attempts, Tool attempts, and matching user feedback. Child evidence
 requires negotiated `subagents`; the export never silently omits it. The existing
-`sessions.export` / `sessions.import` portable artifact remains version 28 and retains
-its separate import contract.
+`sessions.export` / `sessions.import` portable artifact keeps its own version and
+separate import contract.
 
 Export holds the idle Session admission and reads every source in one SQLite
 transaction. An active or waiting Run returns `session_busy`; finish or cancel it
@@ -624,7 +625,7 @@ Waiting checkpoints declare the offloaded result IDs required by their continuat
 
 Unknown-effect observations retain the Effect IDs and the first available local failure diagnostic. The RunLost record preserves these details while keeping the outcome unknown; diagnostic text is never evidence that an external operation succeeded or failed.
 
-Portable Session artifacts preserve unresolved effects on every terminal outcome, including canceled and timed-out Runs. Artifact version 28 retains the exact source process and Effect identities, cause, reason, and detail through export and import. These are read-only historical evidence: imported Runs have no active Segment, open interrupt, or execution checkpoint, and the identities do not authorize resume or retry. Import accepts version 28 only; earlier development artifacts are rejected rather than treated as complete evidence.
+Portable Session artifacts preserve unresolved effects on every terminal outcome, including canceled and timed-out Runs. The artifact retains the exact source process and Effect identities, cause, reason, and detail through export and import. These are read-only historical evidence: imported Runs have no active Segment, open interrupt, or execution checkpoint, and the identities do not authorize resume or retry. Import accepts only the current artifact version; earlier development artifacts are rejected rather than treated as complete evidence.
 
 Unknown-effect termination closes every unfinished member in Run-tree postorder, retaining the same evidence on each lost Run. Completed members keep their outcomes. Each terminal commit settles open model attempts as unknown and abandons unfinished Tool Items without inventing model-visible results; the executor is released only after the terminal publication sequence.
 
