@@ -268,12 +268,6 @@ func (c Cost) OptionalUSD() *float64 {
 // Add combines independently priced calls. One unavailable component makes
 // the aggregate unavailable because a known partial sum is not a total cost.
 func (c Cost) Add(other Cost) (Cost, error) {
-	if err := c.Validate(); err != nil {
-		return Cost{}, err
-	}
-	if err := other.Validate(); err != nil {
-		return Cost{}, err
-	}
 	if !c.available || !other.available {
 		return Cost{}, nil
 	}
@@ -281,20 +275,6 @@ func (c Cost) Add(other Cost) (Cost, error) {
 		return Cost{}, errors.New("accounting: cost aggregate overflows")
 	}
 	return Cost{usd: c.usd + other.usd, available: true}, nil
-}
-
-// Validate reports corrupt private state. The unavailable zero value is valid.
-func (c Cost) Validate() error {
-	if !c.available {
-		if c.usd != 0 {
-			return errors.New("accounting: unavailable cost carries a value")
-		}
-		return nil
-	}
-	if c.usd < 0 || math.IsNaN(c.usd) || math.IsInf(c.usd, 0) {
-		return errors.New("accounting: cost must be finite and non-negative")
-	}
-	return nil
 }
 
 // Equal preserves availability as part of the accounting fact.
@@ -306,12 +286,6 @@ func (c Cost) Equal(other Cost) bool {
 // previous. Pricing may become unavailable when a later component is
 // unpriced, but an unavailable aggregate can never become exact again.
 func (c Cost) ValidateAdvanceFrom(previous Cost) error {
-	if err := previous.Validate(); err != nil {
-		return fmt.Errorf("previous cost: %w", err)
-	}
-	if err := c.Validate(); err != nil {
-		return fmt.Errorf("next cost: %w", err)
-	}
 	if (!previous.available && c.available) ||
 		(previous.available && c.available && c.usd < previous.usd) {
 		return errors.New("accounting: cumulative cost regressed")
@@ -424,9 +398,6 @@ func (m ModelUsage) Validate() error {
 		return fmt.Errorf("model usage: %w", err)
 	}
 	if err := m.Tokens.Validate(); err != nil {
-		return fmt.Errorf("model usage: %w", err)
-	}
-	if err := m.Cost.Validate(); err != nil {
 		return fmt.Errorf("model usage: %w", err)
 	}
 	if m.Calls <= 0 {

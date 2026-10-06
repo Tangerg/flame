@@ -65,16 +65,16 @@ func NewTokenLimits(values TokenLimitValues) (TokenLimits, error) {
 		limits.maxOutputTokens = *values.MaxOutputTokens
 		limits.maxOutputKnown = true
 	}
-	if err := limits.Validate(); err != nil {
+	if err := limits.validate(); err != nil {
 		return TokenLimits{}, err
 	}
 	return limits, nil
 }
 
-// Validate checks the relationships that are knowable without inventing
+// validate checks the relationships that are knowable without inventing
 // provider defaults. An unknown total window leaves independent maxima usable
 // as facts, while a known total window bounds each maximum individually.
-func (t TokenLimits) Validate() error {
+func (t TokenLimits) validate() error {
 	for _, fact := range []struct {
 		name    string
 		value   int64
@@ -150,9 +150,6 @@ func (r OutputReservation) Tokens() (int64, bool) { return r.tokens, r.present }
 // requested output. The bool is false only when neither the provider input
 // maximum nor a total context reservation establishes a hard input ceiling.
 func (t TokenLimits) InputCeiling(reservation OutputReservation) (int64, bool, error) {
-	if err := t.Validate(); err != nil {
-		return 0, false, err
-	}
 	requestedOutput, requested := reservation.Tokens()
 	if requested && t.maxOutputKnown && requestedOutput > t.maxOutputTokens {
 		return 0, false, fmt.Errorf(

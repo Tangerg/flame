@@ -22,9 +22,6 @@ func (u Usage) validate() error {
 	if u.Runs < 0 || u.Steps < 0 {
 		return errors.New("goal: usage counts must be non-negative")
 	}
-	if err := u.Cost.Validate(); err != nil {
-		return fmt.Errorf("goal: usage cost: %w", err)
-	}
 	if u.Runs == 0 && (u.Steps != 0 || u.Cost != (accounting.Cost{})) {
 		return errors.New("goal: empty usage carries spending")
 	}
