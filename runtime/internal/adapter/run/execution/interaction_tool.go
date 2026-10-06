@@ -211,7 +211,7 @@ func (o *observedInteractionTool) prepareInvocation(call corechat.ToolCall, argu
 		return toolcontract.Invocation{}, failure
 	}
 	if o.interpreter.UsesStandardPolicy(o.ref) {
-		if _, err := o.approvalSubject(call.Name, arguments); err != nil {
+		if err := o.validateApprovalSubject(call.Name, arguments); err != nil {
 			return toolcontract.Invocation{}, err
 		}
 	}
@@ -339,9 +339,11 @@ func (o *observedInteractionTool) prepare(
 	return arguments, false, "", nil
 }
 
-func (o *observedInteractionTool) approvalSubject(name string, arguments tool.Arguments) (string, error) {
-	subject, err := o.interpreter.ApprovalSubject(o.ref, arguments)
-	if err != nil {
+// validateApprovalSubject turns effective arguments that cannot derive an
+// approval subject into a known Tool failure before authorization runs, where
+// the same refusal would surface only as a host failure.
+func (o *observedInteractionTool) validateApprovalSubject(name string, arguments tool.Arguments) error {
+	if _, err := o.interpreter.ApprovalSubject(o.ref, arguments); err != nil {
 		cause := fmt.Errorf("execution: derive Tool %q approval subject: %w", name, err)
 		if errors.Is(err, tool.ErrInvalidArguments) {
 			failure, failureErr := toolcontract.NewFailure(toolcontract.FailureConfig{
@@ -349,13 +351,13 @@ func (o *observedInteractionTool) approvalSubject(name string, arguments tool.Ar
 				Output: corechat.NewTextToolOutput("invalid effective arguments: " + executorDiagnostic(cause)),
 			})
 			if failureErr != nil {
-				return "", interaction.HostFailure(failureErr)
+				return interaction.HostFailure(failureErr)
 			}
-			return "", failure
+			return failure
 		}
-		return "", interaction.HostFailure(cause)
+		return interaction.HostFailure(cause)
 	}
-	return subject, nil
+	return nil
 }
 
 func (o *observedInteractionTool) authorizationRequest(
@@ -364,7 +366,7 @@ func (o *observedInteractionTool) authorizationRequest(
 	arguments tool.Arguments,
 	requireApproval bool,
 ) (ToolAuthorizationRequest, error) {
-	if _, err := o.approvalSubject(name, arguments); err != nil {
+	if err := o.validateApprovalSubject(name, arguments); err != nil {
 		return ToolAuthorizationRequest{}, err
 	}
 	return ToolAuthorizationRequest{

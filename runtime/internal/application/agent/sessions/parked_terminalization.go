@@ -217,8 +217,8 @@ func (projection *parkedTerminalItemProjection) project(item transcript.Item) er
 	if request, found := projection.interrupts[item.ID()]; found {
 		return projection.projectInterrupt(item, request)
 	}
-	if drained, found := projection.drained[item.ID()]; found {
-		return projection.projectDrained(item, drained)
+	if _, found := projection.drained[item.ID()]; found {
+		return projection.projectDrained(item)
 	}
 	if _, pending := projection.pendingRunIDs[item.RunID()]; pending && item.Status() == transcript.ItemRunning {
 		return fmt.Errorf(
@@ -230,17 +230,12 @@ func (projection *parkedTerminalItemProjection) project(item transcript.Item) er
 	return nil
 }
 
-func (projection *parkedTerminalItemProjection) projectDrained(
-	item transcript.Item,
-	drained runs.DrainedTool,
-) error {
-	settled, changed, err := projection.owner.terminalDrainedItem(item, drained)
+func (projection *parkedTerminalItemProjection) projectDrained(item transcript.Item) error {
+	settled, err := projection.owner.terminalDrainedItem(item)
 	if err != nil {
 		return err
 	}
-	if changed {
-		projection.items = append(projection.items, settled)
-	}
+	projection.items = append(projection.items, settled)
 	delete(projection.drained, item.ID())
 	return nil
 }
@@ -297,13 +292,10 @@ func (projection *parkedTerminalItemProjection) validateComplete() error {
 	return nil
 }
 
-func (p parkedRunTerminalization) terminalDrainedItem(
-	item transcript.Item,
-	drained runs.DrainedTool,
-) (transcript.Item, bool, error) {
+func (p parkedRunTerminalization) terminalDrainedItem(item transcript.Item) (transcript.Item, error) {
 	if _, present := item.ToolInvocation(); item.SessionID() != p.sessionID ||
 		item.Kind() != transcript.ToolCall || !present {
-		return transcript.Item{}, false, fmt.Errorf(
+		return transcript.Item{}, fmt.Errorf(
 			"sessions: terminalize parked Run tree %q: drained Tool Item %q is not a ToolCall of this Session",
 			p.rootRunID,
 			item.ID(),
@@ -313,15 +305,15 @@ func (p parkedRunTerminalization) terminalDrainedItem(
 	case transcript.ItemRunning:
 		settled, err := item.AbandonToolCall(p.abandonmentFailure(), p.finishedAt)
 		if err != nil {
-			return transcript.Item{}, false, fmt.Errorf(
+			return transcript.Item{}, fmt.Errorf(
 				"sessions: terminalize parked ToolCall %q: %w",
 				item.ID(),
 				err,
 			)
 		}
-		return settled, true, nil
+		return settled, nil
 	default:
-		return transcript.Item{}, false, fmt.Errorf(
+		return transcript.Item{}, fmt.Errorf(
 			"sessions: terminalize parked Run tree %q: drained Tool Item %q is %s",
 			p.rootRunID,
 			item.ID(),

@@ -307,7 +307,7 @@ func (d *Driver) resolveGoalRunStartError(
 	// A start failure is an operational fact already reported in diagnostics.
 	// Persist only its stable cause so Goal status never stores diagnostic
 	// details that cannot be recovered consistently.
-	disposition, err := d.pauseOwned(ctx, g, goal.ReasonRunStartFailed, "")
+	disposition, err := d.pauseOwned(ctx, g, goal.ReasonRunStartFailed)
 	if err != nil && ctx.Err() != nil {
 		return "", nil
 	}
@@ -358,7 +358,7 @@ func (d *Driver) resolveTerminalRun(
 		// HITL: child boundaries may have been present and a broken stream may end
 		// without any boundary at all. Preserve that distinction as a contract
 		// failure instead of inventing a waiting Run.
-		disposition, err := d.pauseOwned(ctx, g, goal.ReasonTerminalOutcomeMissing, "")
+		disposition, err := d.pauseOwned(ctx, g, goal.ReasonTerminalOutcomeMissing)
 		if err != nil {
 			if ctx.Err() != nil {
 				return "", nil
@@ -371,7 +371,7 @@ func (d *Driver) resolveTerminalRun(
 		// Waiting is a first-class root boundary. The user may resume the Goal
 		// drive while resolving the durable interrupt; WaitSessionStartable keeps
 		// that drive behind the same parked Run until it terminalizes.
-		disposition, err := d.pauseOwned(ctx, g, goal.ReasonAwaitingInput, "")
+		disposition, err := d.pauseOwned(ctx, g, goal.ReasonAwaitingInput)
 		if err != nil {
 			if ctx.Err() != nil {
 				return "", nil
@@ -385,7 +385,7 @@ func (d *Driver) resolveTerminalRun(
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, "malformed terminal run")
-		disposition, pauseErr := d.pauseOwned(ctx, g, goal.ReasonTerminalOutcomeMissing, "")
+		disposition, pauseErr := d.pauseOwned(ctx, g, goal.ReasonTerminalOutcomeMissing)
 		if pauseErr != nil {
 			if ctx.Err() != nil {
 				return "", nil
@@ -466,11 +466,10 @@ func (d *Driver) pauseOwned(
 	ctx context.Context,
 	current *goal.Goal,
 	code goal.ReasonCode,
-	detail string,
 ) (runDisposition, error) {
 	for current.Status() == goal.StatusActive {
 		expected := current.Version()
-		candidate, transitionErr := current.Pause(code, detail, d.now())
+		candidate, transitionErr := current.Pause(code, "", d.now())
 		if transitionErr != nil {
 			return "", transitionErr
 		}
