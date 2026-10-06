@@ -385,7 +385,10 @@ func (a *app) deliverInterruptResume(
 ) {
 	a.status.active("resuming")
 	a.syncAnimation()
+	sessionID := a.session.current.ID
+	var committed []conversation.Block
 	a.followOpening(func(ctx context.Context) (conversation.SegmentStream, error) {
+		committed = nil
 		if err := commandReplayAdmission(replayGuard, a.runtimeProfile)(); err != nil {
 			return conversation.SegmentStream{}, &resumeRunCallError{err: err}
 		}
@@ -399,24 +402,25 @@ func (a *app) deliverInterruptResume(
 		if err := stream.ValidateResume(command.RunID, command.Message); err != nil {
 			return conversation.SegmentStream{}, conversation.NewAcceptedMutationError(stream, fmt.Errorf("resume run: %w", err))
 		}
+		// Resume commits question answers before the continuation opens, and the
+		// continuation does not repeat them. A failed read leaves them to the
+		// snapshot recovery the acceptance falls back to.
+		if answersQuestions(command) {
+			if snapshot, err := a.runtime.GetSession(ctx, sessionID); err == nil {
+				committed = snapshot.Transcript
+			}
+		}
 		return stream, nil
 	}, streamOpeningObserver{
 		persistent: true,
 		accepted: func(conversation.SegmentStream) streamOpeningDisposition {
 			a.dialogs.interruptReview = nil
 			a.settleAcknowledgedResume(command.CommandID)
-			acceptedQuestions, err := a.execution.conversation.RecordAcceptedInterruptAnswers(command.Answers)
-			if err == nil {
-				err = a.transcript.acceptQuestions(acceptedQuestions)
-			}
+			answered, err := a.execution.conversation.InstallAnsweredQuestions(committed)
 			if err != nil {
-				failure := fmt.Errorf("project accepted interrupt answers: %w", err)
-				a.cancelRuntimePreservingFailure(conversation.CancelRun{
-					RunID: command.RunID, Reason: "terminal could not project accepted interrupt answers",
-				})
-				a.fail(failure)
-				return rejectOpenedStream
+				return recoverOpenedStream
 			}
+			a.transcript.revealAnsweredQuestions(answered)
 			return followOpenedStream
 		},
 		rejected: func(failure error) error {
@@ -430,6 +434,15 @@ func (a *app) deliverInterruptResume(
 			return a.restoreRejectedInterruptReview(review, command, failure)
 		},
 	})
+}
+
+func answersQuestions(command conversation.ResumeRun) bool {
+	for _, answer := range command.Answers {
+		if _, question := answer.Answer.(conversation.QuestionAnswer); question {
+			return true
+		}
+	}
+	return false
 }
 
 func (a *app) settleAcknowledgedResume(commandID replay.CommandID) {

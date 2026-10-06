@@ -119,7 +119,7 @@ func TestFollowingLongAnswerDoesNotPinAnExpiredUserLabel(t *testing.T) {
 	}
 }
 
-func TestAcceptedQuestionRevealsItsDurableAnswerInPlace(t *testing.T) {
+func TestAnsweredQuestionRevealsTheRuntimeAnswerInPlace(t *testing.T) {
 	view := testTranscriptView(t)
 	registry := new(extensions.Registry)
 	loaded, err := extensions.Load(registry, builtinPlugin())
@@ -144,14 +144,10 @@ func TestAcceptedQuestionRevealsItsDurableAnswerInPlace(t *testing.T) {
 	if view.content.Finished(view.content.FirstBlock()) {
 		t.Fatal("pending question was eligible for retention before its answer settled")
 	}
-	accepted, err := question.Accept(conversation.QuestionAnswer{Values: [][]string{{"linux"}}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	block.Question = &accepted
-	if err := view.acceptQuestions([]conversation.Block{block}); err != nil {
-		t.Fatal(err)
-	}
+	answered := question.Clone()
+	answered.Answers = [][]string{{"linux"}}
+	block.Question = &answered
+	view.revealAnsweredQuestions([]conversation.Block{block})
 	drawn := drawRoot(t, view, 48, 6)
 	if !strings.Contains(drawn, question.Title) || !strings.Contains(drawn, "answer · linux") {
 		t.Fatalf("accepted question was not revealed in place:\n%s", drawn)

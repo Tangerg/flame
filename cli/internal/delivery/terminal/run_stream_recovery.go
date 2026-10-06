@@ -25,29 +25,33 @@ func (a *app) followRecoveredSession() {
 			app: a, ctx: ctx, dispatcher: dispatcher, lease: lease, sessionID: sessionID,
 			applyEvent: a.apply,
 		}
-		recovered, ok := follower.restoreAttachedSession(sessionID)
-		if !ok {
-			return
-		}
-		active := true
-		var reconcileErr error
-		postErr := post(ctx, dispatcher, func() {
-			if !follower.current() {
-				active = false
-				return
-			}
-			reconcileErr = a.reconcileRunSnapshot(recovered.Snapshot, recovered.Stream)
-		})
-		if postErr != nil || reconcileErr != nil {
-			follower.postFailure(errors.Join(postErr, reconcileErr))
-			return
-		}
-		if !active || recovered.Run.Status != protocol.RunStatusRunning {
-			return
-		}
-		follower.checkpoint = recovered.Stream.HeadEventID
-		follower.runStream(recovered.Stream)
+		follower.followAttachedSession()
 	})
+}
+
+func (s *streamFollower) followAttachedSession() {
+	recovered, ok := s.restoreAttachedSession(s.sessionID)
+	if !ok {
+		return
+	}
+	active := true
+	var reconcileErr error
+	postErr := post(s.ctx, s.dispatcher, func() {
+		if !s.current() {
+			active = false
+			return
+		}
+		reconcileErr = s.app.reconcileRunSnapshot(recovered.Snapshot, recovered.Stream)
+	})
+	if postErr != nil || reconcileErr != nil {
+		s.postFailure(errors.Join(postErr, reconcileErr))
+		return
+	}
+	if !active || recovered.Run.Status != protocol.RunStatusRunning {
+		return
+	}
+	s.checkpoint = recovered.Stream.HeadEventID
+	s.runStream(recovered.Stream)
 }
 
 type streamFollower struct {
@@ -90,9 +94,11 @@ func (e *eventApplicationError) Error() string { return e.err.Error() }
 func (e *eventApplicationError) Unwrap() error { return e.err }
 
 func (s *streamFollower) run() {
+	openCtx, retire := context.WithCancel(s.ctx)
+	defer retire()
 	var current conversation.SegmentStream
 	for {
-		opened, err := s.open(s.ctx)
+		opened, err := s.open(openCtx)
 		if err == nil {
 			current = opened
 			s.failures = 0
@@ -102,25 +108,33 @@ func (s *streamFollower) run() {
 			return
 		}
 	}
-	if !s.postOpenAccepted(current) {
-		return
+	switch s.postOpenAccepted(current) {
+	case followOpenedStream:
+		s.runStream(current)
+	case recoverOpenedStream:
+		retire()
+		s.followAttachedSession()
 	}
-	s.runStream(current)
 }
 
-func (s *streamFollower) postOpenAccepted(opened conversation.SegmentStream) bool {
+func (s *streamFollower) postOpenAccepted(opened conversation.SegmentStream) streamOpeningDisposition {
 	if s.opening.accepted == nil {
-		return true
+		return followOpenedStream
 	}
-	active := true
+	disposition := rejectOpenedStream
 	err := post(s.ctx, s.dispatcher, func() {
 		if !s.current() {
-			active = false
 			return
 		}
-		active = s.opening.accepted(opened) == followOpenedStream && s.current()
+		disposition = s.opening.accepted(opened)
+		if !s.current() {
+			disposition = rejectOpenedStream
+		}
 	})
-	return err == nil && active
+	if err != nil {
+		return rejectOpenedStream
+	}
+	return disposition
 }
 
 func (s *streamFollower) waitBeforeOpenRetry(cause error) bool {

@@ -223,6 +223,10 @@ type streamOpeningDisposition uint8
 const (
 	rejectOpenedStream streamOpeningDisposition = iota
 	followOpenedStream
+	// recoverOpenedStream retires an acknowledged stream whose command changed
+	// durable state the stream does not repeat, and installs the Runtime's
+	// snapshot of the Session before following its tail.
+	recoverOpenedStream
 )
 
 type streamOpeningObserver struct {

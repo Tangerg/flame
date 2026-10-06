@@ -13,41 +13,24 @@ type trackedQuestion struct {
 	block *questionBlock
 }
 
-// acceptQuestions reveals the durable Question replacements acknowledged by a
-// successful resume command. Validation is all-or-nothing so a malformed local
-// projection cannot leave only part of a multi-question set visible.
-func (t *transcriptView) acceptQuestions(blocks []conversation.Block) error {
-	type acceptance struct {
-		key      string
-		tracked  trackedQuestion
-		question conversation.Question
-	}
-	accepted := make([]acceptance, 0, len(blocks))
+// revealAnsweredQuestions shows the answers the Runtime committed for pending
+// questions in place, so the transcript keeps its scroll, selection and search.
+func (t *transcriptView) revealAnsweredQuestions(blocks []conversation.Block) {
 	for _, block := range blocks {
-		if block.Kind != conversation.BlockQuestion || block.Question == nil {
-			return fmt.Errorf("terminal transcript: accepted interrupt block %s is not a question", block.ID)
-		}
 		key := transcriptBlockKey(block.RunID, block.ID)
-		tracked, exists := t.pendingQuestions[key]
-		if !exists {
-			return fmt.Errorf("terminal transcript: accepted question block %s is not pending", block.ID)
+		tracked, pending := t.pendingQuestions[key]
+		if !pending {
+			continue
 		}
-		if err := tracked.block.validateAccepted(*block.Question); err != nil {
-			return fmt.Errorf("terminal transcript: %w", err)
-		}
-		accepted = append(accepted, acceptance{key: key, tracked: tracked, question: block.Question.Clone()})
+		tracked.block.setQuestion(*block.Question)
+		t.content.Changed(tracked.id)
+		t.content.Finish(tracked.id)
+		delete(t.pendingQuestions, key)
 	}
-	for _, item := range accepted {
-		item.tracked.block.accept(item.question)
-		t.content.Changed(item.tracked.id)
-		t.content.Finish(item.tracked.id)
-		delete(t.pendingQuestions, item.key)
-	}
-	if len(accepted) > 0 {
+	if len(blocks) > 0 {
 		t.refreshSearch()
 		t.announceSelection()
 	}
-	return nil
 }
 
 func (t *transcriptView) finishPendingQuestions(runID string) {

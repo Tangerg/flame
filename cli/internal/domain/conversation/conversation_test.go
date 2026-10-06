@@ -48,19 +48,22 @@ func TestConversationFoldsInitialAndResumedSegments(t *testing.T) {
 	if current, ok := projection.CurrentRun(); !ok || current.ID != "run_1" || current.ContextTokens != interruptedContext {
 		t.Fatalf("waiting current Run = %+v, %t", current, ok)
 	}
-	acceptedQuestions, err := projection.RecordAcceptedInterruptAnswers([]InterruptAnswer{
-		{ItemID: approval.ItemID, Answer: ApprovalAnswer{Decision: protocol.ApprovalApprove}},
-		{ItemID: question.ItemID, Answer: QuestionAnswer{Values: [][]string{{"A"}}}},
-	})
+	if _, err := projection.InstallAnsweredQuestions(nil); err == nil {
+		t.Fatal("installed answers the Runtime has not committed")
+	}
+	answered := question.Clone()
+	answered.Answers = [][]string{{"A"}}
+	installed, err := projection.InstallAnsweredQuestions([]Block{{
+		ID: question.ItemID, RunID: "run_1", Status: BlockStatusCompleted, Kind: BlockQuestion, Question: &answered,
+	}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(acceptedQuestions) != 1 || acceptedQuestions[0].Question == nil ||
-		!acceptedQuestions[0].Question.Answered() || acceptedQuestions[0].Question.Answers[0][0] != "A" {
-		t.Fatalf("accepted questions = %+v", acceptedQuestions)
+	if len(installed) != 1 || !installed[0].Question.Answered() || installed[0].Question.Answers[0][0] != "A" {
+		t.Fatalf("installed questions = %+v", installed)
 	}
 	if projection.Phase() != Waiting || len(projection.Interrupts()) != 2 {
-		t.Fatal("accepted answers released waiting state before the continuation segment")
+		t.Fatal("installed answers released waiting state before the continuation segment")
 	}
 
 	resumed := runningRun("seg_2")

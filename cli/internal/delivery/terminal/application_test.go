@@ -291,10 +291,8 @@ type invalidAcceptedResumeRuntime struct {
 type corruptingAcceptedResumeRuntime struct {
 	Runtime
 
-	mu                  sync.Mutex
-	cancellations       []conversation.CancelRun
-	tailRead            chan struct{}
-	releaseCancellation chan struct{}
+	mu            sync.Mutex
+	cancellations []conversation.CancelRun
 }
 
 type recordingRuntime struct {
@@ -734,14 +732,6 @@ func (c *corruptingAcceptedResumeRuntime) ResumeRun(
 	if len(input.Answers) != 0 {
 		input.Answers[0].ItemID = "corrupted_after_runtime_acceptance"
 	}
-	original := stream.Events
-	stream.Events = func(yield func(conversation.RunEvent, error) bool) {
-		select {
-		case c.tailRead <- struct{}{}:
-		default:
-		}
-		original(yield)
-	}
 	return stream, err
 }
 
@@ -752,11 +742,6 @@ func (c *corruptingAcceptedResumeRuntime) CancelRun(
 	c.mu.Lock()
 	c.cancellations = append(c.cancellations, input)
 	c.mu.Unlock()
-	select {
-	case <-c.releaseCancellation:
-	case <-ctx.Done():
-		return conversation.RunCancellation{}, context.Cause(ctx)
-	}
 	return c.Runtime.CancelRun(ctx, input)
 }
 
@@ -1128,13 +1113,17 @@ func TestMisdirectedAcceptedResumeReceiptCancelsAndSettlesTheRequestedRun(t *tes
 	stop()
 }
 
-func TestAcceptedResumeProjectionFailureRejectsTheContinuationTail(t *testing.T) {
+// TestAcceptedResumeShowsTheRuntimeRecordedAnswer: the answers a resume
+// commits come from the Runtime's snapshot, so the terminal neither re-derives
+// them from its own command nor refuses the continuation when that command
+// changes after acceptance.
+func TestAcceptedResumeShowsTheRuntimeRecordedAnswer(t *testing.T) {
 	base := runtimefixture.New()
 	base.Instant = true
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{
 			Interrupts: []conversation.Interrupt{conversation.Question{
-				ItemID: "question", Title: "Corrupt accepted projection",
+				ItemID: "question", Title: "Accepted answer",
 				Fields: []conversation.QuestionField{{
 					Prompt: "Continue?", Kind: conversation.QuestionSingle,
 					Options: []protocol.QuestionOption{{Label: "Continue"}, {Label: "Stop"}},
@@ -1143,45 +1132,34 @@ func TestAcceptedResumeProjectionFailureRejectsTheContinuationTail(t *testing.T)
 			Continue: func([]conversation.InterruptAnswer) []runtimefixture.Step {
 				return []runtimefixture.Step{
 					{Event: conversation.BlockCompleted{Block: conversation.Block{
-						ID: "untrusted-tail", Kind: conversation.BlockNotice, Text: "UNTRUSTED_CONTINUATION_TAIL",
+						ID: "continuation", Kind: conversation.BlockNotice, Text: "CONTINUATION_TAIL",
 					}}},
 					{Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 				}
 			},
 		}
 	}
-	runtime := &corruptingAcceptedResumeRuntime{
-		Runtime: base, tailRead: make(chan struct{}, 1), releaseCancellation: make(chan struct{}),
-	}
-	releaseCancellation := sync.OnceFunc(func() { close(runtime.releaseCancellation) })
+	runtime := &corruptingAcceptedResumeRuntime{Runtime: base}
 	stateDirectory := t.TempDir()
 	host, stop := runUIWithState(t, runtime, "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
-	t.Cleanup(releaseCancellation)
+	defer stop()
 	host.Shows(t, "Ask flame")
-	host.Type("reject an unprojectable accepted continuation")
+	host.Type("answer through the runtime record")
 	host.Press(input.Enter)
-	host.Shows(t, "Corrupt accepted projection")
+	host.Shows(t, "Accepted answer")
 	host.Press(input.Enter)
-	host.Shows(t, "project accepted interrupt answers")
-	awaitState(t, "the unprojectable continuation to be canceled", func() bool {
-		return len(runtime.cancellationAttempts()) == 1
-	})
-	select {
-	case <-runtime.tailRead:
-		t.Fatal("stream follower consumed a continuation after its accepted projection failed")
-	case <-time.After(250 * time.Millisecond):
+	host.Shows(t, "answer · Continue")
+	host.Shows(t, "CONTINUATION_TAIL")
+	if attempts := runtime.cancellationAttempts(); len(attempts) != 0 {
+		t.Fatalf("accepted resume was canceled: %+v", attempts)
 	}
-	host.Hides(t, "UNTRUSTED_CONTINUATION_TAIL")
-	host.Hides(t, "apply runtime event")
 	store, err := openTestWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if durable, exists := store.PendingResume("ses_demo_1"); exists {
-		t.Fatalf("unprojectable accepted resume remains durable: %+v", durable)
+		t.Fatalf("accepted resume remains durable: %+v", durable)
 	}
-	releaseCancellation()
-	stop()
 }
 
 func TestPendingMixedInterruptResumeSurvivesRestartWithoutLosingAnswers(t *testing.T) {

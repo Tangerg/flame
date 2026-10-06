@@ -1,7 +1,6 @@
 package terminal
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
@@ -34,24 +33,6 @@ func newQuestionBlock(theme kit.Theme, glyphs kit.Glyphs, question conversation.
 }
 
 func (q *questionBlock) answered() bool { return q.question.Answered() }
-
-func (q *questionBlock) validateAccepted(question conversation.Question) error {
-	if !question.Answered() {
-		return fmt.Errorf("question %s has no accepted answers", question.ItemID)
-	}
-	expected, err := q.question.Accept(conversation.QuestionAnswer{Values: question.Answers})
-	if err != nil {
-		return err
-	}
-	if !expected.Equal(question) {
-		return fmt.Errorf("accepted question %s differs from its pending transcript item", question.ItemID)
-	}
-	return nil
-}
-
-func (q *questionBlock) accept(question conversation.Question) {
-	q.setQuestion(question)
-}
 
 func (q *questionBlock) HeightForWidth(width int) int {
 	if !q.answered() {
