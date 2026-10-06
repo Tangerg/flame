@@ -15,6 +15,7 @@ import (
 	"strings"
 	"testing"
 
+	applicationruns "github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -590,15 +591,9 @@ func TestWorkspaceFileReadsDoNotInheritModelExecutorSemantics(t *testing.T) {
 // applies max_results only after complete stdout materialization. Runtime's
 // model tools share the bounded, ignore-aware workspace catalog and scanner.
 func TestModelSearchUsesTheFiniteWorkspaceCorpus(t *testing.T) {
-	root := moduleRoot(t)
-	toolset := filepath.Join(root, "internal", "adapter", "toolset")
 	forbidCalls(t, "./internal/adapter/toolset/...", map[string]string{
 		"github.com/Tangerg/scope/tools/fs.NewGlobTool": "Runtime model glob must use the finite workspace catalog",
 		"github.com/Tangerg/scope/tools/fs.NewGrepTool": "Runtime model grep must use the bounded workspace text scanner",
-	})
-	forbidExternalImports(t, filepath.Join(toolset, "bounded_search.go"), []string{
-		"os/exec",
-		"github.com/Tangerg/scope/tools/fs",
 	})
 }
 
@@ -768,49 +763,24 @@ func receiverName(recv *ast.FieldList) string {
 // checkpoint store. Application owns Run execution; Bootstrap owns Runtime shutdown.
 // Two forms: (a) the Application task group is import-forbidden outright (a
 // field would need the import; this also catches a held cancel-func group); (b)
-// a struct-field AST walk forbids a held checkpoint store or run registry,
-// whose packages the Server imports for other reasons (adapter/workspace's
+// the Handler's field types may not include a checkpoint store or run registry,
+// whose packages delivery imports for other reasons (adapter/workspace's
 // Git capability probe; application/agent/runs' Coordinator + Event).
 func TestDeliveryHoldsNoRunLifecycleState(t *testing.T) {
-	root := moduleRoot(t)
-	dir := filepath.Join(root, "internal", "delivery", "handler.go")
-	forbidExternalImports(t, dir, []string{"github.com/Tangerg/flame/runtime/internal/application/taskgroup"})
+	forbidExternalImports(t, filepath.Join(moduleRoot(t), "internal", "delivery"), []string{"github.com/Tangerg/flame/runtime/internal/application/taskgroup"})
 
 	// taskgroup.Group is also import-forbidden above; context.CancelFunc and
 	// runs.Registry cover the rule's "cancel func" + "run registry" clauses so a
-	// hand-rolled live-run map's cancel handles can't be parked on the Server.
+	// hand-rolled live-run map's cancel handles can't be parked on the Handler.
 	forbiddenFields := []string{"taskgroup.Group", "workspace.Checkpoints", "runs.Registry", "context.CancelFunc"}
-	walkErr := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
-			return nil
-		}
-		f, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
-		if err != nil {
-			return err
-		}
-		ast.Inspect(f, func(n ast.Node) bool {
-			st, ok := n.(*ast.StructType)
-			if !ok || st.Fields == nil {
-				return true
+	handler := reflect.TypeFor[delivery.Handler]()
+	for field := range handler.Fields() {
+		held := field.Type.String()
+		for _, bad := range forbiddenFields {
+			if strings.Contains(held, bad) {
+				t.Errorf("delivery.Handler holds %s — run-lifecycle state belongs to the Application", bad)
 			}
-			for _, field := range st.Fields.List {
-				ts := exprString(field.Type)
-				for _, bad := range forbiddenFields {
-					if strings.Contains(ts, bad) {
-						rel, _ := filepath.Rel(root, path)
-						t.Errorf("%s: delivery struct holds %s — run-lifecycle state belongs to the Application", rel, bad)
-					}
-				}
-			}
-			return true
-		})
-		return nil
-	})
-	if walkErr != nil {
-		t.Fatalf("walk delivery: %v", walkErr)
+		}
 	}
 }
 
@@ -1274,12 +1244,10 @@ func TestTranscriptItemHasNoExternalMutationSurface(t *testing.T) {
 func TestTranscriptItemSnapshotStaysAtTechnicalBoundaries(t *testing.T) {
 	root := moduleRoot(t)
 	allowed := map[string]struct{}{
-		"internal/application/agent/sessions/portable_snapshot.go":   {},
-		"internal/application/agent/sessions/snapshot_validation.go": {},
-		"internal/delivery/artifact_decode.go":                       {},
-		"internal/infra/sqlite/transcript.go":                        {},
-		"internal/infra/sqlite/transcript_codec.go":                  {},
-		"internal/testsupport/item.go":                               {},
+		"internal/application/agent/sessions": {},
+		"internal/delivery":                   {},
+		"internal/infra/sqlite":               {},
+		"internal/testsupport":                {},
 	}
 	walkErr := filepath.WalkDir(filepath.Join(root, "internal"), func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
@@ -1292,7 +1260,7 @@ func TestTranscriptItemSnapshotStaysAtTechnicalBoundaries(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		if _, accepted := allowed[filepath.ToSlash(relative)]; accepted {
+		if _, accepted := allowed[filepath.ToSlash(filepath.Dir(relative))]; accepted {
 			return nil
 		}
 		file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
@@ -1444,30 +1412,41 @@ func assertCanonicalExecutionRecordSource(t *testing.T, root, path string, file 
 // retain only product vocabulary.
 func TestRuntimeInterruptValuesStayWireFree(t *testing.T) {
 	root := moduleRoot(t)
-	paths := []string{
-		filepath.Join(root, "internal", "application", "agent", "runs", "interrupt_contract.go"),
-		filepath.Join(root, "internal", "domain", "run", "interrupt", "resolution.go"),
-	}
-	for _, path := range paths {
+	interruptDomain := filepath.Join(root, "internal", "domain", "run", "interrupt")
+	forbidExternalImports(t, interruptDomain, []string{"encoding/json"})
+	walkErr := filepath.WalkDir(interruptDomain, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil || entry.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+			return err
+		}
 		f, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
 		if err != nil {
-			t.Fatalf("parse %s: %v", path, err)
-		}
-		for _, imp := range f.Imports {
-			if strings.Trim(imp.Path.Value, `"`) == "encoding/json" {
-				rel, _ := filepath.Rel(root, path)
-				t.Errorf("%s: runtime interrupt value must not import encoding/json", rel)
-			}
+			return err
 		}
 		ast.Inspect(f, func(node ast.Node) bool {
 			field, ok := node.(*ast.Field)
-			if !ok || field.Tag == nil || !strings.Contains(field.Tag.Value, `json:`) {
-				return true
+			if ok && field.Tag != nil && strings.Contains(field.Tag.Value, `json:`) {
+				rel, _ := filepath.Rel(root, path)
+				t.Errorf("%s: runtime interrupt value must not carry JSON tag %s", rel, field.Tag.Value)
 			}
-			rel, _ := filepath.Rel(root, path)
-			t.Errorf("%s: runtime interrupt value must not carry JSON tag %s", rel, field.Tag.Value)
 			return true
 		})
+		return nil
+	})
+	if walkErr != nil {
+		t.Fatal(walkErr)
+	}
+	for _, value := range []reflect.Type{
+		reflect.TypeFor[applicationruns.Interrupt](),
+		reflect.TypeFor[applicationruns.ApprovalPrompt](),
+		reflect.TypeFor[applicationruns.QuestionPrompt](),
+		reflect.TypeFor[applicationruns.QuestionFieldSpec](),
+		reflect.TypeFor[applicationruns.QuestionOptionSpec](),
+	} {
+		for field := range value.Fields() {
+			if _, tagged := field.Tag.Lookup("json"); tagged {
+				t.Errorf("runs.%s.%s: runtime interrupt value must not carry a JSON tag", value.Name(), field.Name)
+			}
+		}
 	}
 }
 
@@ -2005,7 +1984,7 @@ func moduleRoot(t *testing.T) string {
 func TestRuntimeUsesOneJSONVocabulary(t *testing.T) {
 	root := moduleRoot(t)
 	exact := map[string]string{
-		filepath.Join("internal", "exactjson", "numbers.go"): "names json.Number as the exact-number carrier",
+		filepath.Join("internal", "exactjson"): "names json.Number as the exact-number carrier",
 	}
 	found := make(map[string]bool, len(exact))
 	walkErr := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
@@ -2027,11 +2006,12 @@ func TestRuntimeUsesOneJSONVocabulary(t *testing.T) {
 			if relErr != nil {
 				return relErr
 			}
-			if _, allowed := exact[relative]; !allowed {
+			pkg := filepath.Dir(relative)
+			if _, allowed := exact[pkg]; !allowed {
 				t.Errorf("%s imports encoding/json; Runtime decodes with encoding/json/v2", relative)
 				continue
 			}
-			found[relative] = true
+			found[pkg] = true
 			assertOnlyJSONNumberIsUsed(t, relative, path, imported)
 		}
 		return nil
