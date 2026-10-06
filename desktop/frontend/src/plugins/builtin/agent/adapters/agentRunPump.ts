@@ -27,13 +27,13 @@ interface RunStreamAck {
 export type RunStream = StreamingResult<RunStreamAck, RunEvent>;
 
 export interface RunStreamReattachment extends RunStream {
-  cursor: string;
+  cursor: string | null;
 }
 
 export interface RunStreamPosition {
   runId: RunId;
   segmentId: SegmentId;
-  lastEventId: string;
+  lastEventId: string | null;
   recovery: "replay" | "cold";
 }
 
@@ -84,7 +84,7 @@ export function createAgentRunPump({
       let position: RunStreamPosition = {
         runId,
         segmentId: stream.result.segmentId,
-        lastEventId: stream.result.headEventId ?? "",
+        lastEventId: stream.result.headEventId ?? null,
         recovery: "replay",
       };
       activeBatcher?.dispose();

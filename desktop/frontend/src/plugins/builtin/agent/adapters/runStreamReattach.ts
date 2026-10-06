@@ -53,7 +53,7 @@ export function createRunStreamReattach({
         return {
           result: brandAck(tail.result),
           events: tail.events,
-          cursor: tail.result.headEventId ?? "",
+          cursor: tail.result.headEventId ?? null,
         };
       } catch (tailErr) {
         if (!isCancelled() && !signal.aborted && agentRuntime().isRunGone(tailErr)) {
@@ -73,7 +73,7 @@ export function createRunStreamReattach({
     try {
       const stream = await settleRunStreamOpening(
         client().runs.subscribe(target, signal, {
-          ...(position.lastEventId ? { lastEventId: position.lastEventId } : {}),
+          ...(position.lastEventId !== null ? { lastEventId: position.lastEventId } : {}),
         }),
         signal,
       );
@@ -85,7 +85,7 @@ export function createRunStreamReattach({
       return {
         result: brandAck(stream.result),
         events: stream.events,
-        cursor: position.lastEventId || stream.result.headEventId || "",
+        cursor: position.lastEventId ?? stream.result.headEventId ?? null,
       };
     } catch (err) {
       if (isCancelled() || signal.aborted) return null;

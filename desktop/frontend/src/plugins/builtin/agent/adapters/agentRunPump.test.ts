@@ -189,7 +189,7 @@ describe("agent run pump reattach", () => {
       result: { runId: RUN, segmentId: SEGMENT },
       events: { [Symbol.asyncIterator]: () => ({ next: () => Promise.reject(failure) }) },
     });
-    const { pump, positions } = pumpWith(async () => ({ ...invalid(), cursor: "" }));
+    const { pump, positions } = pumpWith(async () => ({ ...invalid(), cursor: null }));
     const settled = pump
       .pump(invalid(), new AbortController().signal)
       .catch((error: unknown) => error);
@@ -240,7 +240,7 @@ describe("agent run pump reattach", () => {
     await pump.pump(interrupted, new AbortController().signal);
 
     expect(applyEvents).not.toHaveBeenCalled();
-    expect(positions[0]?.lastEventId).toBe("");
+    expect(positions[0]?.lastEventId).toBeNull();
   });
 
   it("requests cold recovery after an authoritative protocol violation", async () => {
