@@ -124,13 +124,7 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 	if err != nil {
 		return StartResult{}, fmt.Errorf("runs: prepare tree continuation: %w", err)
 	}
-	approvalResolutions, err := claim.ToolApprovalResolutions()
-	if err != nil {
-		return StartResult{}, fmt.Errorf("runs: prepare Tool approval continuation: %w", err)
-	}
-	if bindToolApprovalResolutionsErr := continuation.bindToolApprovalResolutions(approvalResolutions); bindToolApprovalResolutionsErr != nil {
-		return StartResult{}, fmt.Errorf("runs: bind Tool approval continuation: %w", bindToolApprovalResolutionsErr)
-	}
+	continuation.approvalVerdicts = claim.approvalVerdicts()
 	events, err := c.openSegment(ctx, segmentSpec{
 		RunID:            cmd.RunID,
 		SegmentID:        segmentID,

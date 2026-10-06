@@ -145,10 +145,9 @@ type childRunStartReservationPayload struct {
 }
 
 type preparedResumeClaim struct {
-	claim                runs.ResumeClaimCommit
-	root                 runs.Continuation
-	questionReplacements []transcript.Replacement
-	approvalResolutions  []runs.ToolApprovalResolution
+	claim            runs.ResumeClaimCommit
+	root             runs.Continuation
+	itemReplacements []transcript.Replacement
 }
 
 func validateStartedChildOpening(
@@ -201,19 +200,11 @@ func prepareResumeClaim(claim runs.ResumeClaimCommit) (preparedResumeClaim, erro
 	if !ok {
 		return preparedResumeClaim{}, errors.New("segment: resume claim has no root continuation")
 	}
-	questionReplacements, err := claim.QuestionReplacements()
+	itemReplacements, err := claim.ItemReplacements()
 	if err != nil {
-		return preparedResumeClaim{}, fmt.Errorf("segment: prepare answered questions: %w", err)
+		return preparedResumeClaim{}, fmt.Errorf("segment: prepare answered interrupts: %w", err)
 	}
-	approvalResolutions, err := claim.ToolApprovalResolutions()
-	if err != nil {
-		return preparedResumeClaim{}, fmt.Errorf("segment: prepare Tool approval resolutions: %w", err)
-	}
-	return preparedResumeClaim{
-		claim: claim, root: root,
-		questionReplacements: questionReplacements,
-		approvalResolutions:  approvalResolutions,
-	}, nil
+	return preparedResumeClaim{claim: claim, root: root, itemReplacements: itemReplacements}, nil
 }
 
 func (e *Effects) applyResumeClaim(
@@ -229,14 +220,9 @@ func (e *Effects) applyResumeClaim(
 	if err := e.consumeResumePending(ctx, prepared.claim); err != nil {
 		return err
 	}
-	for _, resolution := range prepared.approvalResolutions {
-		if err := e.resolveToolApproval(ctx, resolution); err != nil {
-			return fmt.Errorf("segment: record Tool approval %q: %w", resolution.Identity.ItemID, err)
-		}
-	}
-	for _, replacement := range prepared.questionReplacements {
+	for _, replacement := range prepared.itemReplacements {
 		if err := e.itemReplacer.ReplaceItem(ctx, replacement); err != nil {
-			return fmt.Errorf("segment: record answered question %q: %w", replacement.Expected().ID(), err)
+			return fmt.Errorf("segment: record answered interrupt %q: %w", replacement.Expected().ID(), err)
 		}
 	}
 	if err := e.executorCheckpoints.DeleteCheckpoints(
@@ -308,38 +294,6 @@ func (e *Effects) reconcileResumeClaim(
 		)
 	}
 	return claimedResumeResult(claim, checkpoint), nil
-}
-
-func (e *Effects) resolveToolApproval(
-	ctx context.Context,
-	resolution runs.ToolApprovalResolution,
-) error {
-	current, found, err := e.toolApprovals.Item(ctx, resolution.Identity.ItemID)
-	if err != nil {
-		return err
-	}
-	if !found {
-		return errors.New("running ToolCall is absent")
-	}
-	if current.SessionID() != resolution.Identity.SessionID ||
-		current.RunID() != resolution.Identity.RunID ||
-		current.ID() != resolution.Identity.ItemID ||
-		!current.OccurredAt().Equal(resolution.Identity.OccurredAt) {
-		return fmt.Errorf("%w: running ToolCall identity differs from Pending", transcript.ErrIdentityConflict)
-	}
-	invocation, present := current.ToolInvocation()
-	if !present || !invocation.Equal(resolution.Invocation) {
-		return fmt.Errorf("%w: running ToolCall invocation differs from Pending", transcript.ErrIdentityConflict)
-	}
-	replacement, err := current.ResolveToolApproval(resolution.Decision)
-	if err != nil {
-		return err
-	}
-	change, err := transcript.NewReplacement(current, replacement)
-	if err != nil {
-		return fmt.Errorf("prepare Tool approval Item replacement: %w", err)
-	}
-	return e.toolApprovals.ReplaceItem(ctx, change)
 }
 
 func claimedResumeResult(claim runs.ResumeClaimCommit, checkpoint runs.ExecutorCheckpoint) runs.ClaimedResume {

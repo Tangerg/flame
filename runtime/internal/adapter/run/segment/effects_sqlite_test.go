@@ -1313,7 +1313,7 @@ func TestClaimResumeAtomicallyRecordsAnswerAndInvalidatesCheckpoint(t *testing.T
 	claim := mustResumeClaim(
 		t, transcriptStore, testCommitID("run_commit_resume_claim"), pending, answers, claimedAt,
 	)
-	replacements, err := claim.QuestionReplacements()
+	replacements, err := claim.ItemReplacements()
 	if err != nil {
 		t.Fatalf("prepare question replacement: %v", err)
 	}
@@ -1488,7 +1488,7 @@ func TestClaimResumeAtomicallyPersistsToolApprovalDecision(t *testing.T) {
 	newEffects := func(state RunStore) *Effects {
 		return mustNewEffects(Config{
 			ResumeClaims: interrupts, ExecutorCheckpoints: checkpoints,
-			ToolApprovals: transcriptStore, State: state,
+			ItemReplacer: transcriptStore, State: state,
 			Tx: func(ctx context.Context, fn func(context.Context) error) error {
 				return sqlite.RunInTx(ctx, db, fn)
 			},

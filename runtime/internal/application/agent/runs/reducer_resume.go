@@ -25,7 +25,7 @@ type resumableItem struct {
 }
 
 func resumeBindingFrom(continuation treeContinuation, runID string) *resumeBinding {
-	builder := newResumeBindingBuilder(continuation.approvalResolutions)
+	builder := newResumeBindingBuilder(continuation.approvalVerdicts)
 	if err := builder.addInterrupts(continuation.interrupts, runID); err != nil {
 		return &resumeBinding{err: err}
 	}
@@ -38,12 +38,12 @@ func resumeBindingFrom(continuation treeContinuation, runID string) *resumeBindi
 }
 
 type resumeBindingBuilder struct {
-	binding             resumeBinding
-	approvalResolutions map[string]ToolApprovalResolution
+	binding          resumeBinding
+	approvalVerdicts map[string]approvalVerdict
 }
 
-func newResumeBindingBuilder(resolutions map[string]ToolApprovalResolution) *resumeBindingBuilder {
-	return &resumeBindingBuilder{approvalResolutions: resolutions, binding: resumeBinding{
+func newResumeBindingBuilder(verdicts map[string]approvalVerdict) *resumeBindingBuilder {
+	return &resumeBindingBuilder{approvalVerdicts: verdicts, binding: resumeBinding{
 		callItems: make(map[string]resumableItem),
 	}}
 }
@@ -68,21 +68,21 @@ func (r *resumeBindingBuilder) addInterrupts(interrupts []transcript.Interrupt, 
 		switch pending.Kind {
 		case interrupt.Approval:
 			if pending.Approval != nil && pending.Approval.Tool.Name != "" {
-				resolution, found := r.approvalResolutions[pending.ItemID]
+				verdict, found := r.approvalVerdicts[pending.ItemID]
 				if !found {
 					return fmt.Errorf("resume Tool approval %q has no accepted resolution", pending.ItemID)
 				}
 				// Accepting the answer settles the verdict, while the Tool Item
 				// stays open until execution finishes or activation is abandoned.
 				r.binding.drained = append(r.binding.drained, DrainedTool{
-					ItemID: pending.ItemID, CallID: resolution.CallID,
+					ItemID: pending.ItemID, CallID: verdict.callID,
 				})
 				r.addItem(
-					resolution.CallID,
+					verdict.callID,
 					pending.ItemID,
 					pending.ItemOccurredAt,
 					pending.Approval.Tool,
-					resolution.Decision,
+					verdict.decision,
 				)
 			}
 		case interrupt.Question:

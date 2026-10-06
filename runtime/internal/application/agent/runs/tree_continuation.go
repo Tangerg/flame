@@ -8,7 +8,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
@@ -19,12 +18,12 @@ import (
 // tree whose final interrupt was canceled still has enough continuation state
 // to open fresh Segments without inventing a fake human answer.
 type treeContinuation struct {
-	rootRunID           string
-	sessionID           string
-	executorID          string
-	interrupts          []transcript.Interrupt
-	approvalResolutions map[string]ToolApprovalResolution
-	continuations       []Continuation
+	rootRunID        string
+	sessionID        string
+	executorID       string
+	interrupts       []transcript.Interrupt
+	approvalVerdicts map[string]approvalVerdict
+	continuations    []Continuation
 	// runs are the parked Runs the continuations hand off, by ID. A resumed
 	// route reads its admission, accounting and creation from them; the
 	// continuation carries none of those facts.
@@ -64,43 +63,6 @@ func parkedRoot(rootRunID string, parked []run.Run) (run.Run, bool) {
 func (t *treeContinuation) run(runID string) (run.Run, bool) {
 	value, found := t.runs[runID]
 	return value, found
-}
-
-func (t *treeContinuation) bindToolApprovalResolutions(
-	resolutions []ToolApprovalResolution,
-) error {
-	if len(resolutions) == 0 {
-		return nil
-	}
-	interruptItems := make(map[string]transcript.Interrupt, len(t.interrupts))
-	for _, pending := range t.interrupts {
-		interruptItems[pending.ItemID] = pending
-	}
-	resolved := make(map[string]ToolApprovalResolution, len(resolutions))
-	for _, resolution := range resolutions {
-		if err := resolution.Validate(); err != nil {
-			return err
-		}
-		if resolution.Identity.SessionID != t.sessionID {
-			return fmt.Errorf("runs: Tool approval item %q belongs to another Session", resolution.Identity.ItemID)
-		}
-		pending, exists := interruptItems[resolution.Identity.ItemID]
-		if !exists {
-			return fmt.Errorf("runs: Tool approval item %q is not in the continuation", resolution.Identity.ItemID)
-		}
-		if pending.Kind != interrupt.Approval || pending.Approval == nil ||
-			pending.RunID != resolution.Identity.RunID ||
-			!pending.ItemOccurredAt.Equal(resolution.Identity.OccurredAt) ||
-			!pending.Approval.Tool.Equal(resolution.Invocation) {
-			return fmt.Errorf("runs: Tool approval item %q differs from the continuation", resolution.Identity.ItemID)
-		}
-		if _, duplicate := resolved[resolution.Identity.ItemID]; duplicate {
-			return fmt.Errorf("runs: Tool approval item %q is resolved twice", resolution.Identity.ItemID)
-		}
-		resolved[resolution.Identity.ItemID] = resolution
-	}
-	t.approvalResolutions = resolved
-	return nil
 }
 
 func treeContinuationFromPending(

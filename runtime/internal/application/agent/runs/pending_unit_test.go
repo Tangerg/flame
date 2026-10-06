@@ -13,7 +13,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
-func TestResumeClaimDerivesExactToolApprovalResolutions(t *testing.T) {
+func TestResumeClaimSettlesReviewedToolCallsFromTheirItems(t *testing.T) {
 	pending := validTreePending()
 	answers := make([]InterruptAnswer, len(pending.Bindings))
 	for index, binding := range pending.Bindings {
@@ -37,20 +37,21 @@ func TestResumeClaimDerivesExactToolApprovalResolutions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewResumeClaimCommit: %v", err)
 	}
-	resolutions, err := claim.ToolApprovalResolutions()
+	replacements, err := claim.ItemReplacements()
 	if err != nil {
-		t.Fatalf("ToolApprovalResolutions: %v", err)
+		t.Fatalf("ItemReplacements: %v", err)
 	}
-	if len(resolutions) != 2 ||
-		resolutions[0].Identity.ItemID != "item_grandchild" ||
-		resolutions[0].CallID != "call_grandchild" ||
-		resolutions[0].Invocation.Name != "shell" ||
-		resolutions[0].Decision != approval.Allow ||
-		resolutions[1].Identity.ItemID != "item_b" ||
-		resolutions[1].CallID != "call_b" ||
-		resolutions[1].Invocation.Name != "write" ||
-		resolutions[1].Decision != approval.Deny {
-		t.Fatalf("Tool approval resolutions = %+v", resolutions)
+	if len(replacements) != 2 ||
+		replacements[0].Expected().ID() != "item_grandchild" ||
+		replacements[0].State().ApprovalDecision() != approval.Allow ||
+		replacements[1].Expected().ID() != "item_b" ||
+		replacements[1].State().ApprovalDecision() != approval.Deny {
+		t.Fatalf("Tool approval replacements = %+v", replacements)
+	}
+	verdicts := claim.approvalVerdicts()
+	if verdicts["item_grandchild"] != (approvalVerdict{callID: "call_grandchild", decision: approval.Allow}) ||
+		verdicts["item_b"] != (approvalVerdict{callID: "call_b", decision: approval.Deny}) {
+		t.Fatalf("approval verdicts = %+v", verdicts)
 	}
 
 	claim.answers[0].Resolution.Answers = [][]string{{"unexpected"}}

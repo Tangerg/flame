@@ -1135,14 +1135,8 @@ func TestCoordinatorResumeCommitsBeforeActivation(t *testing.T) {
 	pending := testApprovalPending("member_root", spec.CreatedAt)
 	spec.Continuation = mustTreeContinuation(t, pending)
 	request := spec.Continuation.interrupts[0]
-	if err := spec.Continuation.bindToolApprovalResolutions([]ToolApprovalResolution{{
-		Identity: transcript.ItemIdentity{
-			SessionID: pending.SessionID, RunID: request.RunID,
-			ItemID: request.ItemID, OccurredAt: request.ItemOccurredAt,
-		},
-		CallID: pending.Bindings[0].ToolCallID, Invocation: request.Approval.Tool, Decision: approval.Allow,
-	}}); err != nil {
-		t.Fatal(err)
+	spec.Continuation.approvalVerdicts = map[string]approvalVerdict{
+		request.ItemID: {callID: pending.Bindings[0].ToolCallID, decision: approval.Allow},
 	}
 	activatedAfterOpening := false
 	spec.BeginExecution = func(context.Context) error {

@@ -67,30 +67,11 @@ type ClaimedResume struct {
 	Checkpoint ExecutorCheckpoint
 }
 
-// ToolApprovalResolution is the exact durable ToolCall fact accepted by one
-// human answer. The persistence boundary resolves this identity inside the same
-// transaction that consumes the Pending barrier.
-type ToolApprovalResolution struct {
-	Identity   transcript.ItemIdentity
-	CallID     string
-	Invocation transcript.ToolInvocation
-	Decision   approval.Decision
-}
-
-func (t ToolApprovalResolution) Validate() error {
-	if err := t.Identity.Validate(); err != nil {
-		return err
-	}
-	if err := runtimeidentity.ValidateEffect(t.CallID); err != nil {
-		return fmt.Errorf("runs: approval Tool call: %w", err)
-	}
-	if err := t.Invocation.Validate(true); err != nil {
-		return fmt.Errorf("runs: approval Tool invocation: %w", err)
-	}
-	if !t.Decision.Valid() {
-		return fmt.Errorf("runs: invalid Tool approval decision %q", t.Decision)
-	}
-	return nil
+// approvalVerdict is the accepted decision on one reviewed ToolCall and the
+// executor call that resumes it.
+type approvalVerdict struct {
+	callID   string
+	decision approval.Decision
 }
 
 func (r ResumeClaimCommit) Validate() error {
@@ -123,11 +104,8 @@ func (r ResumeClaimCommit) Validate() error {
 			return fmt.Errorf("runs: resume claim answer[%d]: %w", index, err)
 		}
 	}
-	if _, err := r.QuestionReplacements(); err != nil {
-		return fmt.Errorf("runs: resume claim question projections: %w", err)
-	}
-	if _, err := r.ToolApprovalResolutions(); err != nil {
-		return fmt.Errorf("runs: resume claim Tool approval projections: %w", err)
+	if _, err := r.ItemReplacements(); err != nil {
+		return fmt.Errorf("runs: resume claim Item projections: %w", err)
 	}
 	return nil
 }
@@ -144,82 +122,62 @@ func (r ResumeClaimCommit) Answers() []InterruptAnswer { return cloneInterruptAn
 // ClaimedAt returns the answer linearization time.
 func (r ResumeClaimCommit) ClaimedAt() time.Time { return r.claimedAt }
 
-// ToolApprovalResolutions derives the durable verdict for every accepted
-// approval response from the exact Pending snapshot. It deliberately carries
-// the original prompt invocation so the answer claim validates the exact
-// reviewed boundary. Edited arguments become the approved execution input and
-// may therefore replace the invocation on the terminal Tool Item; Item and
-// provider call identities, rather than mutable arguments, preserve continuity.
-func (r ResumeClaimCommit) ToolApprovalResolutions() ([]ToolApprovalResolution, error) {
-	interrupts, err := r.expected.ProjectInterrupts(r.items)
-	if err != nil {
-		return nil, err
-	}
-	answersByItem := make(map[string]InterruptAnswer, len(r.answers))
-	bindingsByItem := make(map[string]InterruptBinding, len(r.expected.Bindings))
-	for _, answer := range r.answers {
-		answersByItem[answer.InterruptItemID] = answer
-	}
-	for _, binding := range r.expected.Bindings {
-		bindingsByItem[binding.InterruptItemID] = binding
-	}
-	resolutions := make([]ToolApprovalResolution, 0, len(interrupts))
-	for _, request := range interrupts {
-		if request.Kind != interrupt.Approval {
-			continue
-		}
-		answer, ok := answersByItem[request.ItemID]
-		if !ok {
-			return nil, fmt.Errorf("approval item %q has no answer", request.ItemID)
-		}
-		resolution := ToolApprovalResolution{
-			Identity: transcript.ItemIdentity{
-				SessionID: r.expected.SessionID, RunID: request.RunID,
-				ItemID: request.ItemID, OccurredAt: request.ItemOccurredAt,
-			},
-			CallID:     bindingsByItem[request.ItemID].ToolCallID,
-			Invocation: request.Approval.Tool,
-			Decision:   approval.DecisionOf(answer.Resolution.Approved),
-		}
-		if err := resolution.Validate(); err != nil {
-			return nil, fmt.Errorf("approval item %q: %w", request.ItemID, err)
-		}
-		resolutions = append(resolutions, resolution)
-	}
-	return resolutions, nil
-}
-
-// QuestionReplacements derives the transcript compare-and-swap write-set for
-// every accepted Question answer: each Question Item read before the claim is
-// replaced by itself carrying the accepted answers. The persistence port only
-// executes these replacements in the same transaction as the claim.
-func (r ResumeClaimCommit) QuestionReplacements() ([]transcript.Replacement, error) {
+// ItemReplacements derives the transcript compare-and-swap write-set the claim
+// settles: each Question Item read before the claim carries its accepted
+// answers, and each reviewed ToolCall carries its verdict. The persistence port
+// only executes these replacements in the same transaction as the claim.
+func (r ResumeClaimCommit) ItemReplacements() ([]transcript.Replacement, error) {
 	answersByItem := make(map[string]InterruptAnswer, len(r.answers))
 	for _, answer := range r.answers {
 		answersByItem[answer.InterruptItemID] = answer
 	}
 	replacements := make([]transcript.Replacement, 0, len(r.expected.Interrupts))
 	for _, open := range r.expected.Interrupts {
-		if open.Kind() != interrupt.Question {
-			continue
-		}
 		answer, ok := answersByItem[open.ItemID]
 		if !ok {
-			return nil, fmt.Errorf("question item %q has no answer", open.ItemID)
+			return nil, fmt.Errorf("interrupt item %q has no answer", open.ItemID)
 		}
 		expected, found := r.items[open.ItemID]
 		if !found {
-			return nil, fmt.Errorf("question item %q was not read", open.ItemID)
+			return nil, fmt.Errorf("interrupt item %q was not read", open.ItemID)
 		}
-		replacement, err := expected.AnswerQuestion(answer.Resolution.Answers)
+		var replacement transcript.Item
+		var err error
+		switch open.Kind() {
+		case interrupt.Question:
+			replacement, err = expected.AnswerQuestion(answer.Resolution.Answers)
+		case interrupt.Approval:
+			replacement, err = expected.ResolveToolApproval(approval.DecisionOf(answer.Resolution.Approved))
+		default:
+			return nil, fmt.Errorf("interrupt item %q has unknown kind %q", open.ItemID, open.Kind())
+		}
 		if err != nil {
-			return nil, fmt.Errorf("answer question item %q: %w", open.ItemID, err)
+			return nil, fmt.Errorf("settle interrupt item %q: %w", open.ItemID, err)
 		}
 		itemReplacement, err := transcript.NewReplacement(expected, replacement)
 		if err != nil {
-			return nil, fmt.Errorf("prepare question item %q replacement: %w", open.ItemID, err)
+			return nil, fmt.Errorf("prepare interrupt item %q replacement: %w", open.ItemID, err)
 		}
 		replacements = append(replacements, itemReplacement)
 	}
 	return replacements, nil
+}
+
+// approvalVerdicts names the verdict on every reviewed ToolCall by its Item.
+func (r ResumeClaimCommit) approvalVerdicts() map[string]approvalVerdict {
+	answersByItem := make(map[string]InterruptAnswer, len(r.answers))
+	for _, answer := range r.answers {
+		answersByItem[answer.InterruptItemID] = answer
+	}
+	verdicts := make(map[string]approvalVerdict)
+	for index, open := range r.expected.Interrupts {
+		if open.Kind() != interrupt.Approval {
+			continue
+		}
+		verdicts[open.ItemID] = approvalVerdict{
+			callID:   r.expected.Bindings[index].ToolCallID,
+			decision: approval.DecisionOf(answersByItem[open.ItemID].Resolution.Approved),
+		}
+	}
+	return verdicts
 }

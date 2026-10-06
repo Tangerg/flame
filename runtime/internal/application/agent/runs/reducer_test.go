@@ -909,14 +909,8 @@ func TestReducerCarriesLaterPausedCallIdentityAcrossSequentialResumes(t *testing
 			RunID: "run_1", DrainedTools: slices.Clone(first.drained),
 		}}}, firstInterrupted.Interrupts)
 	request := firstInterrupted.Interrupts[0]
-	if err := config.Continuation.bindToolApprovalResolutions([]ToolApprovalResolution{{
-		Identity: transcript.ItemIdentity{
-			SessionID: "ses_1", RunID: request.RunID,
-			ItemID: request.ItemID, OccurredAt: request.ItemOccurredAt,
-		},
-		CallID: "call-1", Invocation: request.Approval.Tool, Decision: approval.Allow,
-	}}); err != nil {
-		t.Fatal(err)
+	config.Continuation.approvalVerdicts = map[string]approvalVerdict{
+		request.ItemID: {callID: "call-1", decision: approval.Allow},
 	}
 	resumed := newReducer(config)
 	mustOpen(t, resumed)
@@ -969,13 +963,8 @@ func TestReducerResumeKeepsEditedApprovalIdentityBesideSameNameDrainedTool(t *te
 				CallID: "call_sibling",
 			}},
 		}}})
-	config.Continuation.approvalResolutions = map[string]ToolApprovalResolution{
-		"item_approval": {
-			Identity: transcript.ItemIdentity{
-				SessionID: "ses_1", RunID: "run_1", ItemID: "item_approval", OccurredAt: approvalAt,
-			},
-			CallID: "call_approval", Invocation: reviewed, Decision: approval.Allow,
-		},
+	config.Continuation.approvalVerdicts = map[string]approvalVerdict{
+		"item_approval": {callID: "call_approval", decision: approval.Allow},
 	}
 
 	reducer := newReducer(config)
@@ -1125,13 +1114,8 @@ func TestReducerResumeReusesInterruptedItems(t *testing.T) {
 	config.Continuation = testTreeContinuationOf(Pending{
 		RootRunID: "run_1", SessionID: "ses_1",
 		Interrupts: OpenInterruptsOf(interrupts)}, interrupts)
-	config.Continuation.approvalResolutions = map[string]ToolApprovalResolution{
-		"item_approval": {
-			Identity: transcript.ItemIdentity{
-				SessionID: "ses_1", RunID: "run_1", ItemID: "item_approval", OccurredAt: approvalAt,
-			},
-			CallID: "call_1", Invocation: reviewed, Decision: approval.Allow,
-		},
+	config.Continuation.approvalVerdicts = map[string]approvalVerdict{
+		"item_approval": {callID: "call_1", decision: approval.Allow},
 	}
 	reducer := newReducer(config)
 	opening := mustOpen(t, reducer)

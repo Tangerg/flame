@@ -182,7 +182,6 @@ func buildAssemblyCore(
 		Sessions:            cfg.Stores.Sessions,
 		Transcript:          cfg.Stores.Transcript,
 		ItemReplacer:        cfg.Stores.Transcript,
-		ToolApprovals:       cfg.Stores.Transcript,
 		ModelInvocations:    cfg.Stores.ModelInvocations,
 		ToolInvocations:     cfg.Stores.ToolInvocations,
 		Conversation:        execution.conversation.store,

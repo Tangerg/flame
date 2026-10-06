@@ -1302,13 +1302,6 @@ func nonNilRunsegmentItems(store *sqlite.TranscriptStore, fallback inertRuntimeS
 	return store
 }
 
-func nonNilRunsegmentApprovals(store *sqlite.TranscriptStore, fallback inertRuntimeStores) segment.ToolApprovalStore {
-	if store == nil {
-		return fallback
-	}
-	return store
-}
-
 func runProgressFor(state segment.RunStore) segment.RunProgressWriter {
 	progress, ok := state.(segment.RunProgressWriter)
 	if !ok {
@@ -1326,7 +1319,6 @@ func (s stubRuntime) RunSegmentEffects() *segment.Effects {
 		Sessions:            nonNilRunsegmentSessions(s.sess, stores),
 		Transcript:          nonNilRunsegmentTranscript(s.hist, stores),
 		ItemReplacer:        nonNilRunsegmentItems(s.hist, stores),
-		ToolApprovals:       nonNilRunsegmentApprovals(s.hist, stores),
 		ModelInvocations:    stores,
 		ToolInvocations:     stores,
 		Conversation:        stubMessageCounter{rt: s},

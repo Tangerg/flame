@@ -102,13 +102,6 @@ func mustNewEffects(cfg Config) *Effects {
 			cfg.ItemReplacer = items
 		}
 	}
-	if dependency.Missing(cfg.ToolApprovals) {
-		if approvals, ok := cfg.Transcript.(ToolApprovalStore); ok {
-			cfg.ToolApprovals = approvals
-		} else {
-			cfg.ToolApprovals = items
-		}
-	}
 	if dependency.Missing(cfg.ModelInvocations) {
 		cfg.ModelInvocations = inertModelInvocations{}
 	}
