@@ -29,13 +29,11 @@ describe("provider configuration", () => {
         ProviderConfiguration.restore({
           id: "openai",
           configured: false,
-          credentialRequirement: "apiKeyRequired",
         }),
         ProviderConfiguration.restore({
           id: "deepseek",
           credential: { masked: "ds****st", source: "stored" },
           configured: true,
-          credentialRequirement: "apiKeyRequired",
         }),
       ],
     );
@@ -44,7 +42,6 @@ describe("provider configuration", () => {
       baseUrl: "https://models.example.test/v1",
       credential: { masked: "sk****st", source: "stored" },
       configured: true,
-      credentialRequirement: "apiKeyRequired",
       embeddingCapable: true,
       defaultEmbeddingModel: "embed-1",
     });
@@ -64,7 +61,6 @@ describe("provider configuration", () => {
         id: "deepseek",
         credential: { masked: "ds****st", source: "stored" },
         configured: true,
-        credentialRequirement: "apiKeyRequired",
       }),
     ]);
   });
@@ -132,7 +128,6 @@ describe("provider configuration", () => {
       baseUrl: "https://api.deepseek.test",
       credential: { masked: "ds****st", source: "stored" },
       configured: true,
-      credentialRequirement: "apiKeyRequired",
     });
     const updateProviderGateway = vi
       .fn()

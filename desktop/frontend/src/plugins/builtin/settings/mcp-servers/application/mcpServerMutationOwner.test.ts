@@ -42,7 +42,7 @@ describe("MCPServerMutationOwner", () => {
     const setEnabled = vi
       .fn()
       .mockReturnValueOnce(retired.promise)
-      .mockResolvedValueOnce(server({ status: "connected", tools: 2 }));
+      .mockResolvedValueOnce(server({ status: "connected", toolCount: 2 }));
     const gateway = { setEnabled } as unknown as MCPServerGateway;
     owner = MCPServerMutationOwner.install(gateway);
     queryClient.setQueryData([MCP_SERVERS_KEY], [server()]);
@@ -88,7 +88,7 @@ describe("MCPServerMutationOwner", () => {
   });
 
   it("does not turn failed cache repair into an accepted server command failure", async () => {
-    const saved = server({ status: "connected", tools: 2 });
+    const saved = server({ status: "connected", toolCount: 2 });
     owner = MCPServerMutationOwner.install({
       setEnabled: vi.fn().mockResolvedValue(saved),
     } as unknown as MCPServerGateway);
@@ -145,10 +145,7 @@ describe("MCPServerMutationOwner", () => {
 function server(overrides: Partial<MCPServerSettings> = {}): MCPServerSettings {
   return {
     id: userMCPServer("cloud"),
-    desc: "",
-    tools: 0,
     status: "disconnected",
-    icon: "tool",
     type: "streamableHttp",
     enabled: true,
     handshakeTimeout: { type: "unbounded" },

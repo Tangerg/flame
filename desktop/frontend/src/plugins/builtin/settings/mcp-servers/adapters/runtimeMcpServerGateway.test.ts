@@ -144,8 +144,6 @@ describe("runtimeMcpServerGateway", () => {
       }),
     ).resolves.toMatchObject({
       id: userMCPServer("local-tools"),
-      desc: "Local tools",
-      tools: 3,
       status: "connected",
       type: "stdio",
       enabled: true,
@@ -196,7 +194,7 @@ describe("runtimeMcpServerGateway", () => {
       successorInstallation.dispose();
       retiredInstallation.dispose();
     };
-    queryClient.setQueryData([MCP_SERVERS_KEY], [server({ status: "connected", tools: 2 })]);
+    queryClient.setQueryData([MCP_SERVERS_KEY], [server({ status: "connected", toolCount: 2 })]);
 
     retiredUpdate.resolve(runtimeServer({ status: { type: "disabled" } }));
     await expect(inFlightSettlement).resolves.toMatchObject({
@@ -207,7 +205,7 @@ describe("runtimeMcpServerGateway", () => {
     });
     expect(updateSuccessor).not.toHaveBeenCalled();
     expect(queryClient.getQueryData([MCP_SERVERS_KEY])).toEqual([
-      server({ status: "connected", tools: 2 }),
+      server({ status: "connected", toolCount: 2 }),
     ]);
   });
 
@@ -295,10 +293,7 @@ function runtimeServer(overrides: Record<string, unknown> = {}) {
 function server(overrides: Partial<MCPServerSettings> = {}): MCPServerSettings {
   return {
     id: userMCPServer("cloud"),
-    desc: "",
-    tools: 0,
     status: "disconnected",
-    icon: "tool",
     type: "streamableHttp",
     enabled: true,
     handshakeTimeout: { type: "unbounded" },

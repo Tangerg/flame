@@ -62,7 +62,6 @@ function providerConfiguration(provider: Provider): ProviderConfiguration {
     baseUrl: provider.baseUrl,
     credential: provider.credential,
     configured: provider.configured,
-    credentialRequirement: provider.credentialRequirement,
     requiresBaseUrl: provider.requiresBaseUrl,
     embeddingCapable: provider.embeddingCapable,
     defaultEmbeddingModel: provider.defaultEmbeddingModel,

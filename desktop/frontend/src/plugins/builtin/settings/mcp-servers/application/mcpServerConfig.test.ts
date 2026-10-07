@@ -8,10 +8,7 @@ import { MCPServerMutationOwner } from "./mcpServerMutationOwner";
 function server(overrides: Partial<MCPServerSettings> = {}): MCPServerSettings {
   return {
     id: userMCPServer("cloud"),
-    desc: "",
-    tools: 0,
     status: "disconnected",
-    icon: "tool",
     type: "streamableHttp",
     enabled: true,
     handshakeTimeout: { type: "unbounded" },
@@ -81,7 +78,7 @@ describe("MCP server configuration", () => {
       expect(setEnabled).toHaveBeenNthCalledWith(2, userMCPServer("cloud"), true),
     );
 
-    second.resolve(server({ status: "connected", enabled: true, tools: 2, toolCount: 2 }));
+    second.resolve(server({ status: "connected", enabled: true, toolCount: 2 }));
     await expect(enabled).resolves.toMatchObject({ status: "connected", enabled: true });
     expect(queryClient.getQueryData<MCPServerSettings[]>([MCP_SERVERS_KEY])?.[0]).toMatchObject({
       status: "connected",

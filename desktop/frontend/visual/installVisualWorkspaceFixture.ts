@@ -194,7 +194,6 @@ const PROVIDERS: ProviderConfiguration[] = [
     baseUrl: "https://api.openai.com/v1",
     credential: { masked: "sk-…7F2A", source: "stored" },
     configured: true,
-    credentialRequirement: "apiKeyRequired",
     embeddingCapable: true,
     defaultEmbeddingModel: "text-embedding-3-large",
   }),
@@ -202,7 +201,6 @@ const PROVIDERS: ProviderConfiguration[] = [
     id: "anthropic",
     baseUrl: "https://api.anthropic.com",
     configured: false,
-    credentialRequirement: "apiKeyRequired",
     embeddingCapable: false,
   }),
 ];

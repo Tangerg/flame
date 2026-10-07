@@ -91,10 +91,7 @@ function runtimeServer(overrides: Record<string, unknown> = {}) {
 function server(overrides: Partial<MCPServerSettings> = {}): MCPServerSettings {
   return {
     id: userMCPServer("cloud"),
-    desc: "",
-    tools: 0,
     status: "disconnected",
-    icon: "tool",
     type: "streamableHttp",
     enabled: true,
     handshakeTimeout: { type: "unbounded" },

@@ -7,17 +7,14 @@ describe("providerRoleIsAvailable", () => {
       id: "configured",
       credential: { masked: "sk****42", source: "stored" },
       configured: true,
-      credentialRequirement: "apiKeyRequired",
     }),
     ProviderConfiguration.restore({
       id: "missing-key",
       configured: false,
-      credentialRequirement: "apiKeyRequired",
     }),
     ProviderConfiguration.restore({
       id: "test-endpoint",
       configured: true,
-      credentialRequirement: "apiKeyOptional",
     }),
   ];
 

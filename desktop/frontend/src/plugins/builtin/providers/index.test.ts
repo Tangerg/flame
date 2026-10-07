@@ -121,7 +121,6 @@ describe("providers plugin Runtime generation wiring", () => {
     retired.resolve({
       id: "openai-compatible",
       configured: false,
-      credentialRequirement: "apiKeyRequired",
       baseUrl: "https://retired.example.test/v1",
     });
     await Promise.resolve();
@@ -144,7 +143,6 @@ function provider(overrides: Partial<ProviderConfigurationSnapshot> = {}): Provi
   return ProviderConfiguration.restore({
     id: "openai-compatible",
     configured: false,
-    credentialRequirement: "apiKeyRequired",
     requiresBaseUrl: true,
     embeddingCapable: true,
     defaultEmbeddingModel: "embed-1",

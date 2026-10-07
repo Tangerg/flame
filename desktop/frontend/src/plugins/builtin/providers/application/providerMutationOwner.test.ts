@@ -133,7 +133,6 @@ function provider(overrides: Partial<ProviderConfigurationSnapshot> = {}): Provi
   return ProviderConfiguration.restore({
     id: "openai-compatible",
     configured: false,
-    credentialRequirement: "apiKeyRequired",
     requiresBaseUrl: true,
     embeddingCapable: true,
     defaultEmbeddingModel: "embed-1",

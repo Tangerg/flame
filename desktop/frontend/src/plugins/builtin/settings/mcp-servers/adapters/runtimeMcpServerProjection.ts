@@ -1,5 +1,5 @@
 import type { MCPServer } from "@flame/runtime-contract/client";
-import { mcpServerIcon, type MCPServerSettings } from "../application/mcpServerQueries";
+import type { MCPServerSettings } from "../application/mcpServerQueries";
 import { mcpStatusText } from "./mcpStatusText";
 import {
   boundedMCPHandshakeTimeout,
@@ -11,11 +11,8 @@ export function mcpServerSettings(server: MCPServer): MCPServerSettings {
   const status = server.status;
   return {
     id: server.id,
-    desc: server.description ?? "",
-    tools: status.type === "connected" ? status.toolCount : 0,
     status: status.type,
     errorDetail: statusProblem(server),
-    icon: mcpServerIcon(server.id.name),
     type: connection.type,
     enabled: status.type !== "disabled",
     description: server.description,

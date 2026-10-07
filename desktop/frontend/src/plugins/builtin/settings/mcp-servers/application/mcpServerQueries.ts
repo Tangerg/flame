@@ -11,11 +11,8 @@ type MCPServerStatus =
 
 export interface MCPServerSettings {
   id: MCPServerID;
-  desc: string;
-  tools: number;
   status: MCPServerStatus;
   errorDetail?: string;
-  icon: string;
   type: MCPTransport;
   enabled: boolean;
   description?: string;
@@ -51,21 +48,6 @@ export function sameMCPServer(left: MCPServerID, right: MCPServerID): boolean {
 
 export const MCP_SERVERS_KEY = "mcp-servers";
 export const MCP_TOOLS_KEY = "mcp-tools";
-
-const MCP_ICON = new Map([
-  ["filesystem", "folder"],
-  ["git", "branch"],
-  ["github", "git"],
-  ["linear", "list"],
-  ["shell", "terminal"],
-  ["slack", "chat"],
-  ["web-search", "globe"],
-  ["websearch", "globe"],
-]);
-
-export function mcpServerIcon(name: string): string {
-  return MCP_ICON.get(name.toLowerCase()) ?? "tool";
-}
 
 export const useMCPServers = createDataQuery<MCPServerSettings[]>(MCP_SERVERS_KEY);
 export const useMCPTools = createParameterizedDataQuery<McpToolsQuery, MCPToolSummary[]>(

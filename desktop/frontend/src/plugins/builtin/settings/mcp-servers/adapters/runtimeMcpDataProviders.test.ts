@@ -80,10 +80,7 @@ describe("runtime MCP data providers", () => {
     await expect(pending).resolves.toMatchObject([
       {
         id: { origin: { type: "user" }, name: "git" },
-        desc: "Branches, commits",
-        tools: 2,
         status: "connected",
-        icon: "branch",
         type: "stdio",
         enabled: true,
         command: "mcp-git",
@@ -91,14 +88,12 @@ describe("runtime MCP data providers", () => {
       },
       {
         id: { origin: { type: "user" }, name: "flaky" },
-        tools: 0,
         status: "failed",
         errorDetail: "Couldn't reach this server — check the command or URL and retry.",
         enabled: true,
       },
       {
         id: { origin: { type: "user" }, name: "cloud" },
-        tools: 0,
         status: "needsAuth",
         errorDetail: "This server needs you to sign in before it can be used.",
         type: "streamableHttp",

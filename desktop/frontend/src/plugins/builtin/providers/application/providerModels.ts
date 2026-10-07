@@ -4,29 +4,15 @@ export interface ProviderRole {
 }
 
 export type ProviderCredentialSource = "stored" | "env";
-export type ProviderCredentialRequirement = "apiKeyRequired" | "apiKeyOptional";
 
 export interface ProviderConfigurationSnapshot {
   id: string;
   baseUrl?: string;
   credential?: { masked: string; source: ProviderCredentialSource };
   configured: boolean;
-  credentialRequirement: ProviderCredentialRequirement;
   requiresBaseUrl?: boolean;
   embeddingCapable?: boolean;
   defaultEmbeddingModel?: string;
-}
-
-export class ProviderAuthentication {
-  private constructor(readonly requirement: ProviderCredentialRequirement) {}
-
-  static restore(requirement: ProviderCredentialRequirement): ProviderAuthentication {
-    return new ProviderAuthentication(requirement);
-  }
-
-  get requiresAPIKey(): boolean {
-    return this.requirement === "apiKeyRequired";
-  }
 }
 
 export class ProviderCredential {
@@ -54,14 +40,12 @@ export class ProviderConfiguration {
     readonly baseUrl: string | undefined,
     readonly credential: ProviderCredential | undefined,
     private readonly configuredState: boolean,
-    readonly authentication: ProviderAuthentication,
     readonly requiresBaseUrl: boolean,
     readonly embeddingCapable: boolean,
     readonly defaultEmbeddingModel: string | undefined,
   ) {}
 
   static restore(snapshot: ProviderConfigurationSnapshot): ProviderConfiguration {
-    const authentication = ProviderAuthentication.restore(snapshot.credentialRequirement);
     const credential = snapshot.credential
       ? ProviderCredential.configured(snapshot.credential.masked, snapshot.credential.source)
       : undefined;
@@ -70,7 +54,6 @@ export class ProviderConfiguration {
       snapshot.baseUrl,
       credential,
       snapshot.configured,
-      authentication,
       snapshot.requiresBaseUrl ?? false,
       snapshot.embeddingCapable ?? false,
       snapshot.defaultEmbeddingModel,

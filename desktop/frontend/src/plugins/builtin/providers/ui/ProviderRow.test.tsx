@@ -29,7 +29,6 @@ const provider = (
       ? (overrides.baseUrl ?? "https://gateway.example.test/v1")
       : overrides.baseUrl,
     configured,
-    credentialRequirement: "apiKeyRequired",
     requiresBaseUrl: true,
     ...overrides,
   });
@@ -151,7 +150,6 @@ describe("ProviderRow", () => {
           baseUrl: undefined,
           configured: true,
           credential: undefined,
-          credentialRequirement: "apiKeyOptional",
           requiresBaseUrl: false,
         })}
       />,

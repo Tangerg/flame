@@ -60,10 +60,7 @@ describe("mcpServerDraft", () => {
   it("keeps blank http authorization omitted and parses extra headers", () => {
     const server: MCPServerSettings = {
       id: userMCPServer("cloud"),
-      desc: "",
-      tools: 0,
       status: "disabled",
-      icon: "tool",
       type: "streamableHttp",
       enabled: false,
       handshakeTimeout: { type: "unbounded" },
@@ -101,10 +98,7 @@ describe("mcpServerDraft", () => {
   it("initializes editable text fields from an existing server", () => {
     const draft = MCPServerEdit.of({
       id: userMCPServer("fs"),
-      desc: "",
-      tools: 0,
       status: "connected",
-      icon: "folder",
       type: "stdio",
       enabled: true,
       command: "node",
@@ -129,10 +123,7 @@ describe("mcpServerDraft", () => {
   it("requires an explicit credential decision when the HTTP origin changes", () => {
     const server: MCPServerSettings = {
       id: userMCPServer("cloud"),
-      desc: "",
-      tools: 0,
       status: "disconnected",
-      icon: "tool",
       type: "streamableHttp",
       enabled: true,
       handshakeTimeout: { type: "unbounded" },
@@ -153,10 +144,7 @@ describe("mcpServerDraft", () => {
   it("requires explicit dispositions for stored headers when the HTTP origin changes", () => {
     const server: MCPServerSettings = {
       id: userMCPServer("cloud"),
-      desc: "",
-      tools: 0,
       status: "disconnected",
-      icon: "tool",
       type: "streamableHttp",
       enabled: true,
       handshakeTimeout: { type: "unbounded" },
@@ -177,10 +165,7 @@ describe("mcpServerDraft", () => {
   it("preserves stored environment only for an unchanged stdio process target", () => {
     const server: MCPServerSettings = {
       id: userMCPServer("fs"),
-      desc: "",
-      tools: 0,
       status: "disconnected",
-      icon: "folder",
       type: "stdio",
       enabled: true,
       handshakeTimeout: { type: "unbounded" },

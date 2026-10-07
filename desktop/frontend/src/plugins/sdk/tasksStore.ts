@@ -24,7 +24,6 @@ interface TaskEntry {
   status: TaskStatus;
   error?: string;
   startedAt: number;
-  settledAt?: number;
 }
 
 interface TasksState {
@@ -71,7 +70,6 @@ class TaskLifecycle implements TaskEntry {
   message: string | null;
   status: TaskStatus = "running";
   error?: string;
-  settledAt?: number;
 
   constructor(id: string, opts: TaskStartOptions) {
     this.id = id;
@@ -104,7 +102,6 @@ class TaskLifecycle implements TaskEntry {
   private settle(status: Exclude<TaskStatus, "running">): boolean {
     if (this.status !== "running") return false;
     this.status = status;
-    this.settledAt = Date.now();
     return true;
   }
 }
