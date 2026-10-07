@@ -9,7 +9,7 @@ import (
 func TestProposalReferencePreservesImmutableReviewIdentity(t *testing.T) {
 	proposal := SkillProposal{
 		Name: "release-checks", Revision: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-		Scope: protocol.SkillScopeUser, Description: "Review releases consistently.", Instructions: "Run every release gate.",
+		Scope: protocol.SkillProposalScopeUser, Description: "Review releases consistently.", Instructions: "Run every release gate.",
 		Origin: protocol.SkillProposalOriginRequested,
 	}
 	if err := proposal.Validate(); err != nil {

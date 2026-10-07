@@ -65,7 +65,7 @@ func (s *skillBindingStub) ListManagedSkills(_ context.Context, options flamerun
 func (s *skillBindingStub) ListSkillProposals(_ context.Context, request protocol.WorkspaceQuery, options flameruntime.CallOptions) (*protocol.Page[protocol.SkillProposal], error) {
 	s.assertCall(request.Workspace.Path, options.RequestMeta)
 	return protocol.NewPage([]protocol.SkillProposal{{
-		Name: "release-checks", Revision: skillRevision, Scope: protocol.SkillScopeUser,
+		Name: "release-checks", Revision: skillRevision, Scope: protocol.SkillProposalScopeUser,
 		Description: "Release safely", Instructions: "Run every release gate.",
 		Origin: protocol.SkillProposalOriginRequested, SourceSession: "ses_1",
 	}}), nil
@@ -223,8 +223,8 @@ func TestSkillAdapterRejectsInvalidWireValues(t *testing.T) {
 		}, {
 			name: "repeated proposal slot",
 			stub: &invalidSkillBindingStub{proposals: protocol.NewPage([]protocol.SkillProposal{
-				{Name: "review", Revision: skillRevision, Scope: protocol.SkillScopeProject, Description: "Review code", Instructions: "Inspect code."},
-				{Name: "review", Revision: otherSkillRevision, Scope: protocol.SkillScopeProject, Description: "Review again", Instructions: "Inspect code again."},
+				{Name: "review", Revision: skillRevision, Scope: protocol.SkillProposalScopeProject, Description: "Review code", Instructions: "Inspect code."},
+				{Name: "review", Revision: otherSkillRevision, Scope: protocol.SkillProposalScopeProject, Description: "Review again", Instructions: "Inspect code again."},
 			})},
 			read: func(runtime *Connection) error {
 				_, err := runtime.Proposals(t.Context(), "/workspace")

@@ -7,7 +7,7 @@ func DiscoveredSkillKey(skill protocol.Skill) string { return string(skill.Scope
 type SkillProposal struct {
 	Name          string
 	Revision      string
-	Scope         protocol.SkillScope
+	Scope         protocol.SkillProposalScope
 	Description   string
 	Instructions  string
 	Origin        protocol.SkillProposalOrigin
@@ -47,7 +47,7 @@ type SkillProposalReference struct {
 	Workspace string
 	Name      string
 	Revision  string
-	Scope     protocol.SkillScope
+	Scope     protocol.SkillProposalScope
 }
 
 func (p SkillProposalReference) Validate() error {

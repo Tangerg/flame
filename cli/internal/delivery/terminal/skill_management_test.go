@@ -19,8 +19,8 @@ import (
 const terminalSkillRevision = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
 func TestResolveSkillProposalRequiresRevisionWhenNamesAreNotUnique(t *testing.T) {
-	first := workspace.SkillProposal{Name: "shared", Scope: protocol.SkillScopeUser, Revision: terminalSkillRevision}
-	second := workspace.SkillProposal{Name: "shared", Scope: protocol.SkillScopeUser, Revision: "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"}
+	first := workspace.SkillProposal{Name: "shared", Scope: protocol.SkillProposalScopeUser, Revision: terminalSkillRevision}
+	second := workspace.SkillProposal{Name: "shared", Scope: protocol.SkillProposalScopeUser, Revision: "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"}
 	proposals := []workspace.SkillProposal{first, second}
 	if _, err := resolveSkillProposal(proposals, "user/shared"); err == nil {
 		t.Fatal("ambiguous proposal name was accepted")
@@ -71,8 +71,8 @@ func newSkillServiceStub() *skillServiceStub {
 		discovered: []protocol.Skill{{Name: "release-checks", Description: "Release safely", Scope: protocol.SkillScopeProject}},
 		managed:    []protocol.ManagedSkill{{Name: "review", Description: "Review code", Lifecycle: protocol.SkillLifecycleActive}},
 		proposals: []workspace.SkillProposal{
-			{Name: "release-checks", Revision: terminalSkillRevision, Scope: protocol.SkillScopeUser, Description: "Release safely", Instructions: "Run every release gate.", Origin: protocol.SkillProposalOriginRequested},
-			{Name: "cleanup", Revision: terminalSkillRevision, Scope: protocol.SkillScopeProject, Description: "Clean generated files", Instructions: "Remove only generated output.", Origin: protocol.SkillProposalOriginMined},
+			{Name: "release-checks", Revision: terminalSkillRevision, Scope: protocol.SkillProposalScopeUser, Description: "Release safely", Instructions: "Run every release gate.", Origin: protocol.SkillProposalOriginRequested},
+			{Name: "cleanup", Revision: terminalSkillRevision, Scope: protocol.SkillProposalScopeProject, Description: "Clean generated files", Instructions: "Remove only generated output.", Origin: protocol.SkillProposalOriginMined},
 		},
 		decisions: make(chan skillDecision, 2),
 	}
