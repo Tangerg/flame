@@ -53,26 +53,8 @@ type createArgs struct {
 
 type getArgs struct{}
 
-type reportOutcome string
-
-const (
-	reportOutcomeCompleted reportOutcome = "completed"
-	reportOutcomeBlocked   reportOutcome = "blocked"
-)
-
-func (r reportOutcome) goalStatus() (goalstate.Status, bool) {
-	switch r {
-	case reportOutcomeCompleted:
-		return goalstate.StatusComplete, true
-	case reportOutcomeBlocked:
-		return goalstate.StatusBlocked, true
-	default:
-		return "", false
-	}
-}
-
 type reportArgs struct {
-	Outcome reportOutcome `json:"outcome" jsonschema:"required,enum=completed,enum=blocked" jsonschema_description:"completed = the whole objective is achieved and verified; blocked = progress requires the user or an external state change."`
+	Outcome goals.Outcome `json:"outcome" jsonschema:"required,enum=completed,enum=blocked" jsonschema_description:"completed = the whole objective is achieved and verified; blocked = progress requires the user or an external state change."`
 	Reason  *string       `json:"reason,omitzero" jsonschema_description:"Concrete blocker and what must change. Required for blocked; omit for completed."`
 }
 
@@ -212,22 +194,18 @@ func (o *outcomeReporter) report(ctx context.Context, args reportArgs) (string, 
 	if sessionID == "" {
 		return "No active session; cannot report a Goal outcome.", nil
 	}
-	outcome, valid := args.Outcome.goalStatus()
-	if !valid {
-		return "Invalid Goal outcome; use completed or blocked.", nil
+	incarnationID, goalRun := executionctx.GoalIncarnationID(ctx)
+	if !goalRun {
+		return "This Run is not pursuing a Goal; no outcome was reported.", nil
 	}
 	reason := ""
 	if args.Reason != nil {
-		if args.Outcome != reportOutcomeBlocked {
-			return "Omit reason when reporting a completed Goal.", nil
-		}
-		reason = strings.TrimSpace(*args.Reason)
+		reason = *args.Reason
 	}
-	incarnationID, _ := executionctx.GoalIncarnationID(ctx)
 	result, err := o.goals.Report(ctx, goals.ReportCommand{
 		SessionID:     sessionID,
 		IncarnationID: incarnationID,
-		Outcome:       outcome,
+		Outcome:       args.Outcome,
 		Reason:        reason,
 	})
 	if err != nil {
@@ -235,7 +213,7 @@ func (o *outcomeReporter) report(ctx context.Context, args reportArgs) (string, 
 	}
 	switch result {
 	case goals.ReportApplied:
-		if args.Outcome == reportOutcomeCompleted {
+		if args.Outcome == goals.OutcomeCompleted {
 			return "Goal outcome reported as completed. The autonomous loop will stop after this Run.", nil
 		}
 		return "Goal outcome reported as blocked. The loop will stop and surface the reason to the user.", nil
@@ -247,6 +225,8 @@ func (o *outcomeReporter) report(ctx context.Context, args reportArgs) (string, 
 		return "The Goal changed concurrently; inspect it with get_goal before reporting an outcome.", nil
 	case goals.ReportReasonRequired:
 		return "Provide a concrete reason when reporting a blocked Goal.", nil
+	case goals.ReportReasonForbidden:
+		return "Omit reason when reporting a completed Goal.", nil
 	case goals.ReportInvalidOutcome:
 		return "Invalid Goal outcome; use completed or blocked.", nil
 	default:

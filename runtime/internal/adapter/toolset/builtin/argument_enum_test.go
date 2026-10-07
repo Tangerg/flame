@@ -5,6 +5,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
 )
 
 // TestArgumentEnumsMatchTheirVocabulary compares the two spellings of a closed
@@ -34,7 +36,7 @@ func TestArgumentEnumsMatchTheirVocabulary(t *testing.T) {
 			name:     "goal report outcome",
 			args:     reportArgs{},
 			field:    "Outcome",
-			declared: []string{string(reportOutcomeCompleted), string(reportOutcomeBlocked)},
+			declared: []string{string(goals.OutcomeCompleted), string(goals.OutcomeBlocked)},
 		},
 	}
 	for _, test := range tests {

@@ -217,6 +217,25 @@ func TestReportGoalOutcomeSupersededStampRefused(t *testing.T) {
 	}
 }
 
+// TestReportGoalOutcomeOutsideAGoalRun proves a Run admitted without a Goal
+// incarnation is refused as such rather than failing the tool call.
+func TestReportGoalOutcomeOutsideAGoalRun(t *testing.T) {
+	store := newMemStore()
+	store.put(testSessionActiveGoal())
+	ctx := executionctx.WithScope(context.Background(), runs.ExecutionScope{SessionID: "s1"})
+
+	out, err := newReporter(t, store).report(ctx, reportArgs{Outcome: goals.OutcomeCompleted})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "not pursuing a Goal") {
+		t.Fatalf("output = %q, want a not-a-Goal-Run refusal", out)
+	}
+	if store.goals["s1"].Status() != goalstate.StatusActive {
+		t.Fatal("a Run outside the Goal must not change it")
+	}
+}
+
 func TestReportGoalOutcomeNoSession(t *testing.T) {
 	out, err := newReporter(t, newMemStore()).report(context.Background(), reportArgs{Outcome: "completed"})
 	if err != nil {

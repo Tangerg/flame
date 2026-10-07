@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/dependency"
@@ -11,12 +12,23 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 )
 
+// Outcome is a terminal result a Goal Run may report. Any other value is
+// refused as ReportInvalidOutcome.
+type Outcome string
+
+const (
+	OutcomeCompleted Outcome = "completed"
+	OutcomeBlocked   Outcome = "blocked"
+)
+
 // ReportCommand is a model-originated terminal outcome for the active Goal.
 // IncarnationID is required and identifies the Goal that admitted this Run.
+// Reason explains a blocked outcome and must be empty for a completed one;
+// surrounding whitespace is not part of it.
 type ReportCommand struct {
 	SessionID     string
 	IncarnationID string
-	Outcome       goal.Status
+	Outcome       Outcome
 	Reason        string
 }
 
@@ -24,12 +36,13 @@ type ReportCommand struct {
 type ReportResult string
 
 const (
-	ReportApplied        ReportResult = "applied"
-	ReportNoActiveGoal   ReportResult = "noActiveGoal"
-	ReportSuperseded     ReportResult = "superseded"
-	ReportConflict       ReportResult = "conflict"
-	ReportReasonRequired ReportResult = "reasonRequired"
-	ReportInvalidOutcome ReportResult = "invalidOutcome"
+	ReportApplied         ReportResult = "applied"
+	ReportNoActiveGoal    ReportResult = "noActiveGoal"
+	ReportSuperseded      ReportResult = "superseded"
+	ReportConflict        ReportResult = "conflict"
+	ReportReasonRequired  ReportResult = "reasonRequired"
+	ReportReasonForbidden ReportResult = "reasonForbidden"
+	ReportInvalidOutcome  ReportResult = "invalidOutcome"
 )
 
 // OutcomeReporter owns terminal outcome validation and compare-and-swap.
@@ -51,6 +64,16 @@ func (o *OutcomeReporter) Report(ctx context.Context, cmd ReportCommand) (Report
 	if _, err := goalref.ParseIncarnation(cmd.IncarnationID); err != nil {
 		return "", fmt.Errorf("goals: report: %w", err)
 	}
+	reason := strings.TrimSpace(cmd.Reason)
+	switch cmd.Outcome {
+	case OutcomeCompleted:
+		if reason != "" {
+			return ReportReasonForbidden, nil
+		}
+	case OutcomeBlocked:
+	default:
+		return ReportInvalidOutcome, nil
+	}
 	g, ok, err := loadGoal(ctx, o.goals, cmd.SessionID)
 	if err != nil {
 		return "", err
@@ -63,16 +86,13 @@ func (o *OutcomeReporter) Report(ctx context.Context, cmd ReportCommand) (Report
 	}
 	expected := g.Version()
 	var replacement goal.Goal
-	switch cmd.Outcome {
-	case goal.StatusComplete:
+	if cmd.Outcome == OutcomeCompleted {
 		replacement, err = g.Complete(o.now())
-	case goal.StatusBlocked:
-		replacement, err = g.Block(goal.ReasonBlockedByModel, cmd.Reason, o.now())
+	} else {
+		replacement, err = g.Block(goal.ReasonBlockedByModel, reason, o.now())
 		if errors.Is(err, goal.ErrBlockExplanationRequired) {
 			return ReportReasonRequired, nil
 		}
-	default:
-		return ReportInvalidOutcome, nil
 	}
 	if err != nil {
 		return "", err

@@ -1171,7 +1171,7 @@ func TestResumeObservesOutstandingGoalRunTerminalReport(t *testing.T) {
 	result, err := reporter.Report(t.Context(), goals.ReportCommand{
 		SessionID:     "s1",
 		IncarnationID: g.IncarnationID(),
-		Outcome:       goal.StatusComplete,
+		Outcome:       goals.OutcomeCompleted,
 	})
 	if err != nil || result != goals.ReportApplied {
 		t.Fatalf("report outstanding Run outcome: result=%v err=%v", result, err)
