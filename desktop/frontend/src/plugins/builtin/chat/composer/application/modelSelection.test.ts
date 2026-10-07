@@ -34,7 +34,7 @@ describe("resolveComposerModelSelection", () => {
         { kind: "explicit", provider: "openai", model: "gpt-5", reasoningEffort: "high" },
         { provider: "deepseek", model: "deepseek-v4-pro" },
       ),
-    ).toEqual({ model: models[2], reasoningEffort: "high" });
+    ).toEqual({ model: models[2], reasoningEffort: "high", explicit: true });
   });
 
   it("restores the active Session exact model and effort before a preference exists", () => {
@@ -48,7 +48,7 @@ describe("resolveComposerModelSelection", () => {
           reasoningEffort: "low",
         },
       ),
-    ).toEqual({ model: models[1], reasoningEffort: "low" });
+    ).toEqual({ model: models[1], reasoningEffort: "low", explicit: false });
   });
 
   it("does not rewrite a durable Session effort retired by a refreshed catalog", () => {
@@ -62,7 +62,7 @@ describe("resolveComposerModelSelection", () => {
           reasoningEffort: "retired-level",
         },
       ),
-    ).toEqual({ model: models[2], reasoningEffort: "retired-level" });
+    ).toEqual({ model: models[2], reasoningEffort: "retired-level", explicit: false });
   });
 
   it("falls back to the target model default when the prior effort is unsupported", () => {
@@ -77,7 +77,7 @@ describe("resolveComposerModelSelection", () => {
         },
         null,
       ),
-    ).toEqual({ model: models[1], reasoningEffort: "high" });
+    ).toEqual({ model: models[1], reasoningEffort: "high", explicit: true });
   });
 
   it("restores a Session by exact provider/model when providers share a model id", () => {
@@ -91,7 +91,7 @@ describe("resolveComposerModelSelection", () => {
           model: "shared-model",
         },
       ),
-    ).toEqual({ model: ambiguous[1], reasoningEffort: undefined });
+    ).toEqual({ model: ambiguous[1], reasoningEffort: undefined, explicit: false });
   });
 
   it("waits for an active Session summary instead of racing to the catalog default", () => {
@@ -102,6 +102,7 @@ describe("resolveComposerModelSelection", () => {
     expect(resolveComposerModelSelection(models, { kind: "session" }, null)).toEqual({
       model: models[2],
       reasoningEffort: "medium",
+      explicit: false,
     });
   });
 
@@ -124,18 +125,42 @@ describe("resolveComposerModelSelection", () => {
 });
 
 describe("resolveComposerRunOptions", () => {
-  it("omits an override until the person makes an explicit Composer choice", () => {
-    expect(resolveComposerRunOptions({ kind: "session" })).toEqual({});
+  it("omits an override when the selection follows the Session or Runtime default", () => {
+    expect(
+      resolveComposerRunOptions(
+        resolveComposerModelSelection(
+          models,
+          { kind: "session" },
+          { provider: "openai", model: "gpt-5" },
+        ),
+      ),
+    ).toEqual({});
   });
 
-  it("forwards model and effort as one exact override", () => {
+  it("sends the shown model when an explicit choice falls back to the Session", () => {
+    const selection = resolveComposerModelSelection(
+      models,
+      { kind: "explicit", provider: "anthropic", model: "claude-retired", reasoningEffort: "high" },
+      { provider: "openai", model: "gpt-5" },
+    );
+    expect(selection).toEqual({ model: models[2], reasoningEffort: "medium", explicit: false });
+    expect(resolveComposerRunOptions(selection)).toEqual({});
+  });
+
+  it("forwards the shown model and effort as one exact override", () => {
     expect(
-      resolveComposerRunOptions({
-        kind: "explicit",
-        provider: "openai",
-        model: "gpt-5",
-        reasoningEffort: "high",
-      }),
-    ).toEqual({ provider: "openai", model: "gpt-5", reasoningEffort: "high" });
+      resolveComposerRunOptions(
+        resolveComposerModelSelection(
+          models,
+          {
+            kind: "explicit",
+            provider: "deepseek",
+            model: "deepseek-v4-pro",
+            reasoningEffort: "medium",
+          },
+          null,
+        ),
+      ),
+    ).toEqual({ provider: "deepseek", model: "deepseek-v4-pro", reasoningEffort: "high" });
   });
 });

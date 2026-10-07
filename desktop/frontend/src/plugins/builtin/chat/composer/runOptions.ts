@@ -1,6 +1,6 @@
 import { AGENT_RUN_OPTIONS, definePlugin } from "@/plugins/sdk";
 import { resolveComposerRunOptions } from "./application/modelSelection";
-import { selectedComposerModelPreference } from "./public/modelPreference";
+import { selectedModelSelection } from "./public/selectedModel";
 
 export const composerRunOptions = definePlugin({
   name: "flame.builtin.composer-run-options",
@@ -8,7 +8,7 @@ export const composerRunOptions = definePlugin({
     ctx.contribute(AGENT_RUN_OPTIONS, {
       id: "composer.model",
       priority: 0,
-      resolve: () => resolveComposerRunOptions(selectedComposerModelPreference()),
+      resolve: () => resolveComposerRunOptions(selectedModelSelection()),
     });
   },
 });

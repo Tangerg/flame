@@ -16,6 +16,7 @@ export interface ComposerSessionModelSelection {
 export interface ResolvedComposerModelSelection<T extends ComposerModelOption> {
   model: T;
   reasoningEffort?: string;
+  explicit: boolean;
 }
 
 export function resolveComposerModelSelection<T extends ComposerModelOption>(
@@ -32,6 +33,7 @@ export function resolveComposerModelSelection<T extends ComposerModelOption>(
       return {
         model: preferred,
         reasoningEffort: preferred.reasoningLevelOrDefault(preference.reasoningEffort),
+        explicit: true,
       };
     }
   }
@@ -50,25 +52,31 @@ export function resolveComposerModelSelection<T extends ComposerModelOption>(
           model: sessionModel,
           reasoningEffort:
             activeSessionSelection.reasoningEffort ?? sessionModel.reasoningLevelOrDefault(),
+          explicit: false,
         }
       : undefined;
   }
   const runtimeDefault = models.find((candidate) => candidate.default);
   return runtimeDefault
-    ? { model: runtimeDefault, reasoningEffort: runtimeDefault.reasoningLevelOrDefault() }
+    ? {
+        model: runtimeDefault,
+        reasoningEffort: runtimeDefault.reasoningLevelOrDefault(),
+        explicit: false,
+      }
     : undefined;
 }
 
-export function resolveComposerRunOptions(preference: ComposerModelPreference): {
+export function resolveComposerRunOptions(
+  selection: ResolvedComposerModelSelection<ComposerModelOption> | undefined,
+): {
   provider?: string;
   model?: string;
   reasoningEffort?: string;
 } {
-  return preference.kind === "explicit"
-    ? {
-        provider: preference.provider,
-        model: preference.model,
-        ...(preference.reasoningEffort ? { reasoningEffort: preference.reasoningEffort } : {}),
-      }
-    : {};
+  if (!selection?.explicit) return {};
+  return {
+    provider: selection.model.provider,
+    model: selection.model.id,
+    ...(selection.reasoningEffort ? { reasoningEffort: selection.reasoningEffort } : {}),
+  };
 }
