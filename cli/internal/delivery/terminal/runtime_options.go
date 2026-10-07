@@ -76,10 +76,11 @@ func (a *app) selectSessionModel(model protocol.Model) {
 			})
 		},
 		func(updated conversation.Session) error {
+			// The Session now owns the choice. A retained launch override would
+			// outrank it here and follow the user into every other Session.
+			a.options.Provider, a.options.Model, a.options.ReasoningEffort = "", "", ""
 			a.setActiveSession(updated)
-			a.options.Provider, a.options.Model = model.Provider, model.ID
-			a.options.ReasoningEffort = ""
-			a.syncOptions("model · " + model.Provider + "/" + model.ID)
+			a.syncOptions("model · " + updated.Provider + "/" + updated.Model)
 			return nil
 		},
 	)

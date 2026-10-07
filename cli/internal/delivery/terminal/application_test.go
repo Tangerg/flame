@@ -3021,8 +3021,25 @@ func TestProviderQualifiedModelAppliesToTheNextRun(t *testing.T) {
 	host.Shows(t, "How should flame proceed?")
 	host.Press(input.Esc)
 	host.Shows(t, "complete")
-	if got := backend.options(); got.Provider != "synthetic" || got.Model != "deep" {
-		t.Fatalf("StartRun options = %+v", got)
+	if got := backend.options(); got.Provider != "" || got.Model != "" || got.ReasoningEffort != "" {
+		t.Fatalf("StartRun overrode the selected Session model = %+v", got)
+	}
+	snapshot, err = backend.GetSession(t.Context(), snapshot.Session.ID)
+	if run, ok := snapshot.LatestRun(); err != nil || !ok || run.Provider != "synthetic" || run.Model != "deep" {
+		t.Fatalf("run after model selection = %+v, %v", run, err)
+	}
+
+	host.Type("/new")
+	host.Press(input.Enter)
+	host.Shows(t, "session · Untitled session")
+	host.Shows(t, "mock/balanced")
+	host.Type("use the new session model")
+	host.Press(input.Enter)
+	host.Shows(t, "How should flame proceed?")
+	host.Press(input.Esc)
+	host.Shows(t, "complete")
+	if got := backend.options(); got.Provider != "" || got.Model != "" {
+		t.Fatalf("another Session inherited the previous Session's model = %+v", got)
 	}
 
 	host.Send(input.Key{Code: input.Character, Rune: 'c', Mods: input.Ctrl})
