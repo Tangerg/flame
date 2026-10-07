@@ -19,10 +19,21 @@ type pluginBinding interface {
 	UninstallPlugin(context.Context, protocol.PluginRequest, flameruntime.CommandOptions) error
 }
 
-func (r *Connection) ListPlugins(ctx context.Context) (*protocol.Page[protocol.PluginInstallation], error) {
-	options := r.callOptions()
-	value, err := r.plugins.ListPlugins(ctx, options)
-	return value, classifyError(err)
+func (r *Connection) ListPlugins(ctx context.Context) ([]protocol.PluginInstallation, error) {
+	page, err := r.plugins.ListPlugins(ctx, r.callOptions())
+	if err != nil {
+		return nil, classifyError(err)
+	}
+	installations, err := requireCompletePage("list plugins", page)
+	if err != nil {
+		return nil, err
+	}
+	if err := requireUniqueIdentities("list plugins", installations, func(installation protocol.PluginInstallation) string {
+		return installation.ID
+	}); err != nil {
+		return nil, err
+	}
+	return installations, nil
 }
 func (r *Connection) InstallPlugin(ctx context.Context, request protocol.InstallPluginRequest, commandID replay.CommandID) (*protocol.PluginInstallation, error) {
 	options, err := r.commandOptionsFor(commandID)
@@ -30,7 +41,7 @@ func (r *Connection) InstallPlugin(ctx context.Context, request protocol.Install
 		return nil, err
 	}
 	value, err := r.plugins.InstallPlugin(ctx, request, options)
-	return value, classifyError(err)
+	return pluginResult("install plugin", "", value, err)
 }
 func (r *Connection) StagePlugin(ctx context.Context, request protocol.StagePluginRequest, commandID replay.CommandID) (*protocol.PluginInstallation, error) {
 	options, err := r.commandOptionsFor(commandID)
@@ -38,7 +49,7 @@ func (r *Connection) StagePlugin(ctx context.Context, request protocol.StagePlug
 		return nil, err
 	}
 	value, err := r.plugins.StagePlugin(ctx, request, options)
-	return value, classifyError(err)
+	return pluginResult("stage plugin", request.InstallationID, value, err)
 }
 func (r *Connection) SelectPlugin(ctx context.Context, request protocol.PluginReleaseRequest, commandID replay.CommandID) (*protocol.PluginInstallation, error) {
 	options, err := r.commandOptionsFor(commandID)
@@ -46,7 +57,7 @@ func (r *Connection) SelectPlugin(ctx context.Context, request protocol.PluginRe
 		return nil, err
 	}
 	value, err := r.plugins.SelectPlugin(ctx, request, options)
-	return value, classifyError(err)
+	return pluginResult("select plugin", request.InstallationID, value, err)
 }
 func (r *Connection) ApprovePlugin(ctx context.Context, request protocol.PluginReleaseRequest, commandID replay.CommandID) (*protocol.PluginInstallation, error) {
 	options, err := r.commandOptionsFor(commandID)
@@ -54,7 +65,7 @@ func (r *Connection) ApprovePlugin(ctx context.Context, request protocol.PluginR
 		return nil, err
 	}
 	value, err := r.plugins.ApprovePlugin(ctx, request, options)
-	return value, classifyError(err)
+	return pluginResult("approve plugin", request.InstallationID, value, err)
 }
 func (r *Connection) ConfigurePlugin(ctx context.Context, request protocol.ConfigurePluginRequest, commandID replay.CommandID) (*protocol.PluginInstallation, error) {
 	options, err := r.commandOptionsFor(commandID)
@@ -62,7 +73,7 @@ func (r *Connection) ConfigurePlugin(ctx context.Context, request protocol.Confi
 		return nil, err
 	}
 	value, err := r.plugins.ConfigurePlugin(ctx, request, options)
-	return value, classifyError(err)
+	return pluginResult("configure plugin", request.InstallationID, value, err)
 }
 func (r *Connection) SetPluginEnablement(ctx context.Context, request protocol.SetPluginEnablementRequest, commandID replay.CommandID) (*protocol.PluginInstallation, error) {
 	options, err := r.commandOptionsFor(commandID)
@@ -70,7 +81,7 @@ func (r *Connection) SetPluginEnablement(ctx context.Context, request protocol.S
 		return nil, err
 	}
 	value, err := r.plugins.SetPluginEnablement(ctx, request, options)
-	return value, classifyError(err)
+	return pluginResult("set plugin enablement", request.InstallationID, value, err)
 }
 func (r *Connection) RevokePlugin(ctx context.Context, request protocol.PluginRequest, commandID replay.CommandID) (*protocol.PluginInstallation, error) {
 	options, err := r.commandOptionsFor(commandID)
@@ -78,7 +89,7 @@ func (r *Connection) RevokePlugin(ctx context.Context, request protocol.PluginRe
 		return nil, err
 	}
 	value, err := r.plugins.RevokePlugin(ctx, request, options)
-	return value, classifyError(err)
+	return pluginResult("revoke plugin", request.InstallationID, value, err)
 }
 func (r *Connection) UninstallPlugin(ctx context.Context, request protocol.PluginRequest, commandID replay.CommandID) error {
 	options, err := r.commandOptionsFor(commandID)
@@ -86,4 +97,23 @@ func (r *Connection) UninstallPlugin(ctx context.Context, request protocol.Plugi
 		return err
 	}
 	return classifyError(r.plugins.UninstallPlugin(ctx, request, options))
+}
+
+// pluginResult binds a mutation's reported installation to the one the request
+// named, so a command never prints another installation's state as its own.
+func pluginResult(
+	operation, expectedID string,
+	result *protocol.PluginInstallation,
+	err error,
+) (*protocol.PluginInstallation, error) {
+	if err != nil {
+		return nil, classifyError(err)
+	}
+	if result == nil {
+		return nil, runtimeContractViolation("%s returned nil", operation)
+	}
+	if err := requireIdentity(operation, result.ID, expectedID); err != nil {
+		return nil, err
+	}
+	return result, nil
 }

@@ -13,7 +13,7 @@ import (
 )
 
 type pluginRuntime interface {
-	ListPlugins(context.Context) (*protocol.Page[protocol.PluginInstallation], error)
+	ListPlugins(context.Context) ([]protocol.PluginInstallation, error)
 	InstallPlugin(context.Context, protocol.InstallPluginRequest, replay.CommandID) (*protocol.PluginInstallation, error)
 	StagePlugin(context.Context, protocol.StagePluginRequest, replay.CommandID) (*protocol.PluginInstallation, error)
 	SelectPlugin(context.Context, protocol.PluginReleaseRequest, replay.CommandID) (*protocol.PluginInstallation, error)
@@ -46,11 +46,14 @@ func newPluginsCommand(provider runtimeProvider) *cobra.Command {
 		if err != nil {
 			return err
 		}
-		result, err := runtime.ListPlugins(cmd.Context())
+		installations, err := runtime.ListPlugins(cmd.Context())
 		if err != nil {
 			return err
 		}
-		return render.WriteJSONLine(cmd.OutOrStdout(), result)
+		if installations == nil {
+			installations = []protocol.PluginInstallation{}
+		}
+		return render.WriteJSONLine(cmd.OutOrStdout(), protocol.Page[protocol.PluginInstallation]{Data: installations})
 	}})
 	root.AddCommand(
 		pluginMutationCommand(provider, "install", "Install an immutable directory or ZIP on the Runtime", pluginRuntime.InstallPlugin),
