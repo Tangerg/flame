@@ -113,45 +113,6 @@ func TestVCSRejectsRepeatedChangePath(t *testing.T) {
 	}
 }
 
-func TestVCSDiffAppliesDefaultBudgetAtTheFirstFileBoundary(t *testing.T) {
-	rows := make([]DiffRow, MaxWorkspaceDiffRows+1)
-	for index := range rows {
-		rows[index] = DiffRow{Type: DiffRowAdded, Code: "line"}
-	}
-	vcs := newVCS(t, newScope(t, "", "", testPaths{}), &resourceGitReader{
-		files: []FileDiff{{Path: "large.txt", Status: FileStatusModified, Rows: rows}},
-	})
-
-	diff, err := vcs.Diff(t.Context(), DiffInput{CWD: "/repo"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(diff.Files) != 0 || !diff.Truncated {
-		t.Fatalf("Diff = %d files, truncated=%v; want zero whole files and an honest cut", len(diff.Files), diff.Truncated)
-	}
-}
-
-func TestVCSDiffAppliesMaterialBudgetAtTheFirstFileBoundary(t *testing.T) {
-	vcs := newVCS(t, newScope(t, "", "", testPaths{}), &resourceGitReader{
-		files: []FileDiff{{
-			Path:   "large.txt",
-			Status: FileStatusModified,
-			Rows: []DiffRow{{
-				Type: DiffRowAdded,
-				Code: strings.Repeat("x", MaxWorkspaceDiffBytes+1),
-			}},
-		}},
-	})
-
-	diff, err := vcs.Diff(t.Context(), DiffInput{CWD: "/repo"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(diff.Files) != 0 || !diff.Truncated {
-		t.Fatalf("Diff = %d files, truncated=%v; want zero whole files and an honest material cut", len(diff.Files), diff.Truncated)
-	}
-}
-
 func TestVCSDiffRejectsRepeatedRetainedPath(t *testing.T) {
 	vcs := newVCS(t, newScope(t, "", "", testPaths{}), &resourceGitReader{files: []FileDiff{
 		{Path: "main.go", Status: FileStatusModified},

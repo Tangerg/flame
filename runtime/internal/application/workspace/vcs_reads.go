@@ -129,6 +129,8 @@ type RawDiffResult struct {
 // GitReader is the application-owned port for working-tree status and diff
 // reads. Its error contract uses this package's VCS sentinels. Results transfer
 // ownership to the caller, including the rows within structured diffs.
+// StructuredDiff returns only whole files, at most maxFiles of them holding at
+// most maxRows rows altogether, and reports Truncated when it stopped early.
 type GitReader interface {
 	Changes(ctx context.Context, root string, maxChanges int) ([]FileChange, error)
 	StructuredDiff(ctx context.Context, root, path string, base bool, maxFiles, maxRows, maxBytes int) (StructuredDiffResult, error)
@@ -200,8 +202,10 @@ func (v *VCS) Changes(ctx context.Context, cwd string) ([]FileChange, error) {
 	return changes, nil
 }
 
-// Diff reads a workspace VCS diff, keeping path confinement and file-boundary
-// truncation in the application use case.
+// Diff reads a workspace VCS diff, keeping path confinement in the application
+// use case. This use case chooses the file, row and byte limits; the reader
+// owns cutting at a whole-file boundary within them, because only it can stop
+// before materializing what does not fit.
 func (v *VCS) Diff(ctx context.Context, input DiffInput) (Diff, error) {
 	root, err := v.scope.ResolveRoot(input.CWD)
 	if err != nil {
@@ -243,52 +247,12 @@ func (v *VCS) Diff(ctx context.Context, input DiffInput) (Diff, error) {
 	if err := result.Baseline.Validate(); err != nil {
 		return Diff{}, err
 	}
-	files, truncated := limitDiffFiles(result.Files, MaxWorkspaceDiffFiles, rowLimit, MaxWorkspaceDiffBytes)
-	paths := make(map[string]struct{}, len(files))
-	for _, file := range files {
+	paths := make(map[string]struct{}, len(result.Files))
+	for _, file := range result.Files {
 		if _, duplicate := paths[file.Path]; duplicate {
 			return Diff{}, fmt.Errorf("workspace: VCS diff repeated path %q", file.Path)
 		}
 		paths[file.Path] = struct{}{}
 	}
-	return Diff{Baseline: result.Baseline, Files: files, Truncated: result.Truncated || truncated}, nil
-}
-
-func limitDiffFiles(files []FileDiff, maxFiles, maxRows, maxBytes int) ([]FileDiff, bool) {
-	rows, material := 0, 0
-	for index, file := range files {
-		if index >= maxFiles || len(file.Rows) > maxRows-rows {
-			return files[:index], true
-		}
-		fileMaterial, fits := diffFileMaterialBytes(file, maxBytes-material)
-		if !fits {
-			return files[:index], true
-		}
-		rows += len(file.Rows)
-		material += fileMaterial
-	}
-	return files, false
-}
-
-func diffFileMaterialBytes(file FileDiff, remaining int) (int, bool) {
-	if remaining < 0 {
-		return 0, false
-	}
-	used := 0
-	add := func(size int) bool {
-		if size > remaining-used {
-			return false
-		}
-		used += size
-		return true
-	}
-	if !add(len(file.Path)) || !add(len(file.PreviousPath)) {
-		return 0, false
-	}
-	for _, row := range file.Rows {
-		if !add(len(row.Text)) || !add(len(row.Code)) {
-			return 0, false
-		}
-	}
-	return used, true
+	return Diff{Baseline: result.Baseline, Files: result.Files, Truncated: result.Truncated}, nil
 }
