@@ -129,7 +129,7 @@ func (a *app) openScheduleForm(mode scheduleFormMode, scheduled protocol.Schedul
 	fields := []headless.Field{
 		textField("Title", "Optional name", &draft.title, nil),
 		textField("Instructions", "Prompt sent when this schedule fires", &draft.instructions, requiredText),
-		textField("Cron", defaultScheduleCron, &draft.cron, validateCronShape),
+		textField("Cron", defaultScheduleCron, &draft.cron, requiredText),
 		textField("Workspace", "Empty uses the runtime default", &draft.workspace, nil),
 		textField("Provider", "Optional; set together with model", &draft.provider, nil),
 		textField("Model", "Optional; set together with provider", &draft.model, func(string) error {
@@ -193,14 +193,6 @@ func (a *app) openScheduleForm(mode scheduleFormMode, scheduled protocol.Schedul
 	})
 	a.dialogs.scheduleDialog = dialog
 	dialog.Controller().Show()
-}
-
-func validateCronShape(value string) error {
-	fields := strings.Fields(value)
-	if len(fields) != 5 {
-		return errors.New("cron must contain exactly five fields")
-	}
-	return nil
 }
 
 func validateScheduleModelPair(provider, model string) error {

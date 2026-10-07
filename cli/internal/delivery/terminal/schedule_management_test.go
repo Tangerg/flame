@@ -232,6 +232,27 @@ func TestScheduleCreateFormSurvivesExtremeResize(t *testing.T) {
 	stop()
 }
 
+func TestScheduleCreateFormLeavesCronGrammarToRuntime(t *testing.T) {
+	service := newScheduleServiceStub()
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Schedules: service})
+	host.Shows(t, "Ask flame")
+	host.Type("/schedule-create")
+	host.Press(input.Enter)
+	host.Shows(t, "Create scheduled run")
+	host.Press(input.Tab)
+	host.Type("audit the repository")
+	host.Press(input.Tab)
+	host.Send(input.Key{Code: input.Character, Rune: 'u', Mods: input.Ctrl})
+	const zoned = "CRON_TZ=Asia/Shanghai 0 9 * * 1-5"
+	host.Type(zoned)
+	host.Press(input.Enter)
+	created := awaitValue(t, service.created, "schedule creation")
+	if created.Cron != zoned {
+		t.Fatalf("created schedule cron = %q, want %q", created.Cron, zoned)
+	}
+	stop()
+}
+
 func TestScheduleFormDoesNotNormalizeModelIdentity(t *testing.T) {
 	draft := scheduleFormDraft{
 		instructions: "review the repository",
