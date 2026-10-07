@@ -68,7 +68,7 @@ func TestSkillProposalListMapsCompleteReviewContent(t *testing.T) {
 		t.Fatalf("data = %+v", out.Data)
 	}
 	got := out.Data[0]
-	if got.Name != ref.Name || got.Revision != ref.Revision || got.Scope != protocol.SkillScopeProject ||
+	if got.Name != ref.Name || got.Revision != ref.Revision || got.Scope != protocol.SkillProposalScopeProject ||
 		got.Description == "" || got.Instructions == "" || got.Origin != protocol.SkillProposalOriginRequested ||
 		got.SourceSession != "ses_1" || !got.Revises {
 		t.Fatalf("wire proposal = %+v", got)
@@ -125,7 +125,7 @@ func TestSkillProposalStaleReviewMapsRevisionConflict(t *testing.T) {
 }
 
 func wireProposalRef(root string, ref skills.ProposalRef) protocol.SkillProposalRef {
-	scope, _ := presentSkillScope(ref.Scope)
+	scope, _ := presentSkillProposalScope(ref.Scope)
 	return protocol.SkillProposalRef{
 		Workspace: protocol.WorkspaceRef{Path: root},
 		Name:      ref.Name,

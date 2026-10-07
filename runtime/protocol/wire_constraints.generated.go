@@ -285,7 +285,7 @@ func (s SkillProposalRef) ValidateWire() error {
 	return collectWireViolations("SkillProposalRef",
 		requiredTextPattern("name", s.Name, "\\S"),
 		requiredTextPattern("revision", s.Revision, "^[0-9a-f]{64}$"),
-		closedEnum("scope", string(s.Scope), []string{"project", "user", "installation"}, false),
+		closedEnum("scope", string(s.Scope), []string{"project", "user"}, false),
 	)
 }
 
@@ -2554,7 +2554,7 @@ func (s SkillProposal) ValidateWire() error {
 		requiredTextPattern("revision", s.Revision, "^[0-9a-f]{64}$"),
 		requiredTextPattern("description", s.Description, "\\S"),
 		requiredTextPattern("instructions", s.Instructions, "\\S"),
-		closedEnum("scope", string(s.Scope), []string{"project", "user", "installation"}, false),
+		closedEnum("scope", string(s.Scope), []string{"project", "user"}, false),
 		closedEnum("origin", string(s.Origin), []string{"requested", "mined"}, false),
 	)
 }

@@ -8,6 +8,16 @@ const (
 	SkillProposalOriginMined     SkillProposalOrigin = "mined"
 )
 
+// SkillProposalScope names the library a proposal would join. Proposals are
+// made only for the project or user library; installed plugins bring their own
+// Skills and are never proposed into.
+type SkillProposalScope string
+
+const (
+	SkillProposalScopeProject SkillProposalScope = "project"
+	SkillProposalScopeUser    SkillProposalScope = "user"
+)
+
 // SkillProposal is complete immutable Skill content awaiting review. Name,
 // Revision, and Scope form the content-addressed reference used by approve and
 // reject operations. List results contain one current revision per Scope/Name,
@@ -15,7 +25,7 @@ const (
 type SkillProposal struct {
 	Name          string              `json:"name"`
 	Revision      string              `json:"revision"`
-	Scope         SkillScope          `json:"scope"`
+	Scope         SkillProposalScope  `json:"scope"`
 	Description   string              `json:"description"`
 	Instructions  string              `json:"instructions"`
 	Origin        SkillProposalOrigin `json:"origin"`
@@ -28,8 +38,8 @@ type SkillProposal struct {
 // applicable proposal returns revision_conflict; clients must read and review
 // current content before issuing a new decision.
 type SkillProposalRef struct {
-	Workspace WorkspaceRef `json:"workspace"`
-	Name      string       `json:"name"`
-	Revision  string       `json:"revision"`
-	Scope     SkillScope   `json:"scope"`
+	Workspace WorkspaceRef       `json:"workspace"`
+	Name      string             `json:"name"`
+	Revision  string             `json:"revision"`
+	Scope     SkillProposalScope `json:"scope"`
 }

@@ -63,7 +63,7 @@ func TestSkillCurationReportsMissingResources(t *testing.T) {
 
 func TestSkillWorkspaceFailuresMatchPublishedContract(t *testing.T) {
 	workspace := protocol.WorkspaceRef{Path: filepath.Join(t.TempDir(), "missing")}
-	proposal := protocol.SkillProposalRef{Workspace: workspace, Scope: protocol.SkillScopeProject, Name: "example", Revision: strings.Repeat("a", 64)}
+	proposal := protocol.SkillProposalRef{Workspace: workspace, Scope: protocol.SkillProposalScopeProject, Name: "example", Revision: strings.Repeat("a", 64)}
 	endpoint := mustNewEndpoint(t, newWorkspaceHandler(t.TempDir()), EndpointConfig{})
 	for _, tc := range []struct {
 		method Name

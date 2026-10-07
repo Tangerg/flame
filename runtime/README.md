@@ -36,6 +36,13 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
+## Protocol 2026-10-07.6
+
+`SkillProposal.scope` and `SkillProposalRef.scope` are `SkillProposalScope`:
+`project` or `user`. A proposal never joins an installed plugin's library, so
+the wire no longer admits `installation` there; a reference naming it is
+refused by request validation.
+
 ## Protocol 2026-10-07.5
 
 Every problem that can end a Run, tool call or Item now publishes its default

@@ -2249,7 +2249,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-07.5\""
+          "value": "\"2026-10-07.6\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -2600,6 +2600,16 @@
           "name": "SkillProposalOriginRequested",
           "type": "SkillProposalOrigin",
           "value": "\"requested\""
+        },
+        {
+          "name": "SkillProposalScopeProject",
+          "type": "SkillProposalScope",
+          "value": "\"project\""
+        },
+        {
+          "name": "SkillProposalScopeUser",
+          "type": "SkillProposalScope",
+          "value": "\"user\""
         },
         {
           "name": "SkillScopeInstallation",
@@ -9244,7 +9254,7 @@
             },
             {
               "name": "Scope",
-              "type": "SkillScope",
+              "type": "SkillProposalScope",
               "tag": "json:\"scope\""
             },
             {
@@ -9306,7 +9316,7 @@
             },
             {
               "name": "Scope",
-              "type": "SkillScope",
+              "type": "SkillProposalScope",
               "tag": "json:\"scope\""
             }
           ],
@@ -9316,6 +9326,11 @@
               "signature": "func() error"
             }
           ]
+        },
+        {
+          "name": "SkillProposalScope",
+          "kind": "defined",
+          "underlying": "string"
         },
         {
           "name": "SkillScope",

@@ -118,7 +118,7 @@ func (s *Handler) ListSkillProposals(ctx context.Context, in protocol.WorkspaceQ
 	}
 	out := make([]protocol.SkillProposal, 0, len(proposals))
 	for _, proposal := range proposals {
-		scope, ok := presentSkillScope(proposal.Ref.Scope)
+		scope, ok := presentSkillProposalScope(proposal.Ref.Scope)
 		if !ok {
 			return nil, fmt.Errorf("skills.proposals.list: unsupported scope %q", proposal.Ref.Scope)
 		}
@@ -159,15 +159,35 @@ func (s *Handler) RejectSkillProposal(ctx context.Context, in protocol.SkillProp
 }
 
 func skillProposalRef(in protocol.SkillProposalRef) (skills.ProposalRef, error) {
-	scope, ok := proposalScopeDomain(in.Scope)
-	if !ok {
-		return skills.ProposalRef{}, NewFailure(protocol.ErrInvalidParams, "scope must be project or user")
-	}
-	ref := skills.ProposalRef{Scope: scope, Name: in.Name, Revision: in.Revision}
+	ref := skills.ProposalRef{Scope: proposalScopeDomain(in.Scope), Name: in.Name, Revision: in.Revision}
 	if err := ref.Validate(); err != nil {
 		return skills.ProposalRef{}, NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	}
 	return ref, nil
+}
+
+func presentSkillProposalScope(scope skills.Scope) (protocol.SkillProposalScope, bool) {
+	switch scope {
+	case skills.ScopeProject:
+		return protocol.SkillProposalScopeProject, true
+	case skills.ScopeUser:
+		return protocol.SkillProposalScopeUser, true
+	default:
+		return "", false
+	}
+}
+
+// proposalScopeDomain maps a scope the endpoint's wire validation has already
+// admitted to its closed set.
+func proposalScopeDomain(scope protocol.SkillProposalScope) skills.Scope {
+	switch scope {
+	case protocol.SkillProposalScopeProject:
+		return skills.ScopeProject
+	case protocol.SkillProposalScopeUser:
+		return skills.ScopeUser
+	default:
+		panic(fmt.Sprintf("delivery: unvalidated skill proposal scope %q", scope))
+	}
 }
 
 func presentSkillScope(scope skills.Scope) (protocol.SkillScope, bool) {
@@ -176,17 +196,6 @@ func presentSkillScope(scope skills.Scope) (protocol.SkillScope, bool) {
 		return protocol.SkillScopeProject, true
 	case skills.ScopeUser:
 		return protocol.SkillScopeUser, true
-	default:
-		return "", false
-	}
-}
-
-func proposalScopeDomain(scope protocol.SkillScope) (skills.Scope, bool) {
-	switch scope {
-	case protocol.SkillScopeProject:
-		return skills.ScopeProject, true
-	case protocol.SkillScopeUser:
-		return skills.ScopeUser, true
 	default:
 		return "", false
 	}

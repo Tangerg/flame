@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-07.5";
+export const PROTOCOL_VERSION = "2026-10-07.6";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 30;
@@ -1750,7 +1750,7 @@ export interface SkillProposal {
   origin: SkillProposalOrigin;
   revises?: boolean;
   revision: string;
-  scope: SkillScope;
+  scope: SkillProposalScope;
   sourceSession?: string;
 }
 
@@ -1759,9 +1759,11 @@ export type SkillProposalOrigin = "requested" | "mined";
 export interface SkillProposalRef {
   name: string;
   revision: string;
-  scope: SkillScope;
+  scope: SkillProposalScope;
   workspace: WorkspaceRef;
 }
+
+export type SkillProposalScope = "project" | "user";
 
 export type SkillScope = "project" | "user" | "installation";
 
@@ -2105,6 +2107,7 @@ export const WIRE_ENUMS = {
   SessionStatus: ["running", "waiting", "idle"],
   SkillLifecycle: ["active", "archived"],
   SkillProposalOrigin: ["requested", "mined"],
+  SkillProposalScope: ["project", "user"],
   SkillScope: ["project", "user", "installation"],
   StreamEventType: ["segment.started", "segment.progress", "segment.finished", "item.started", "item.delta", "item.completed", "plan.updated"],
   SuppressibleRunEventType: ["segment.progress", "item.delta"],

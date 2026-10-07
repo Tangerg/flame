@@ -2,7 +2,7 @@
   "openrpc": "1.3.2",
   "info": {
     "title": "Flame Runtime Protocol",
-    "version": "2026-10-07.5",
+    "version": "2026-10-07.6",
     "description": "Generated from the Contract Registry. Shapes live in schema.json; this document is the method surface."
   },
   "methods": [
@@ -3169,7 +3169,7 @@
           "name": "scope",
           "required": true,
           "schema": {
-            "$ref": "schema.json#/$defs/SkillScope"
+            "$ref": "schema.json#/$defs/SkillProposalScope"
           }
         },
         {
@@ -3265,7 +3265,7 @@
           "name": "scope",
           "required": true,
           "schema": {
-            "$ref": "schema.json#/$defs/SkillScope"
+            "$ref": "schema.json#/$defs/SkillProposalScope"
           }
         },
         {
