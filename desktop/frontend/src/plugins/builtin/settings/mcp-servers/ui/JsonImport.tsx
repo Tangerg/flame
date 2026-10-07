@@ -1,3 +1,4 @@
+import { failureText } from "@/lib/rpcErrors";
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useState } from "react";
@@ -40,7 +41,7 @@ export function JsonImport() {
       setOpen(false);
     } catch (err) {
       if (wasGenerationRetired(err)) return;
-      setError(err instanceof Error ? err.message : t("mcp.import.error"));
+      setError(failureText(err, t("mcp.import.error")));
     } finally {
       setBusy(false);
     }

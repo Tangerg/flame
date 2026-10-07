@@ -1,3 +1,4 @@
+import { failureText } from "@/lib/rpcErrors";
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useState } from "react";
@@ -69,7 +70,7 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
       onDone();
     } catch (err) {
       if (wasGenerationRetired(err)) return;
-      fail(err instanceof Error ? err.message : t("mcp.error.save"));
+      fail(failureText(err, t("mcp.error.save")));
     } finally {
       setSaving(false);
     }
@@ -85,7 +86,7 @@ export function ServerForm({ server, onDone, onCancel }: Props) {
       onDone();
     } catch (err) {
       if (wasGenerationRetired(err)) return;
-      fail(err instanceof Error ? err.message : t("mcp.error.remove"));
+      fail(failureText(err, t("mcp.error.remove")));
     } finally {
       setSaving(false);
     }

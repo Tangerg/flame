@@ -1,5 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { RpcError } from "@flame/runtime-contract/client";
+import { t } from "@/lib/i18n";
 import { useAsyncFeedback } from "./useAsyncFeedback";
 
 describe("useAsyncFeedback", () => {
@@ -31,6 +33,24 @@ describe("useAsyncFeedback", () => {
       }, "fallback");
     });
     expect(result.current.feedback).toEqual({ state: "error", reason: "network down" });
+  });
+
+  it("run -> thrown Runtime problem surfaces its product copy, not the problem symbol", async () => {
+    const { result } = renderHook(() => useAsyncFeedback());
+    await act(async () => {
+      await result.current.run(async () => {
+        throw new RpcError({
+          code: -32000,
+          message: "mcp_server_already_exists",
+          data: { type: "mcp_server_already_exists" },
+        });
+      }, "fallback");
+    });
+    expect(result.current.feedback).toEqual({
+      state: "error",
+      reason: t("rpcError.mcp_server_already_exists"),
+    });
+    expect(t("rpcError.mcp_server_already_exists")).not.toBe("mcp_server_already_exists");
   });
 
   it("returns an ignored lifecycle settlement to idle", async () => {

@@ -66,6 +66,10 @@ export function rpcErrorText(err: unknown): string | undefined {
   return describeRpcError(err) ?? (err.data.detail || err.message);
 }
 
+export function failureText(err: unknown, fallback: string): string {
+  return rpcErrorText(err) ?? (err instanceof Error ? err.message : fallback);
+}
+
 export function isUnsupportedMethod(err: unknown): boolean {
   return isErrorType(err, "method_not_found");
 }

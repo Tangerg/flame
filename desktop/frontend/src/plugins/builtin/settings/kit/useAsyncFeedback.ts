@@ -1,3 +1,4 @@
+import { failureText } from "@/lib/rpcErrors";
 import { useLayoutEffect, useRef, useState } from "react";
 
 export type AsyncFeedback =
@@ -52,7 +53,7 @@ export function useAsyncFeedback(materialGeneration?: unknown) {
         publish({ state: "idle" });
         return;
       }
-      fail(err instanceof Error ? err.message : fallback);
+      fail(failureText(err, fallback));
     }
   };
 

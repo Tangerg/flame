@@ -1,3 +1,4 @@
+import { failureText } from "@/lib/rpcErrors";
 import { useState } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { notifyError } from "@/plugins/sdk";
@@ -84,7 +85,7 @@ function SessionTimeline({
     try {
       await exportSessionTrajectory();
     } catch (error) {
-      notifyError(error instanceof Error ? error.message : t("timeline.exportFailed"), {
+      notifyError(failureText(error, t("timeline.exportFailed")), {
         source: "session",
       });
     } finally {

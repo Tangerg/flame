@@ -1,3 +1,4 @@
+import { failureText } from "@/lib/rpcErrors";
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useId, useRef, useState } from "react";
@@ -68,7 +69,7 @@ export function ProviderRow({ p }: { p: ProviderConfiguration }) {
       return await op();
     } catch (err) {
       if (!wasGenerationRetired(err)) {
-        fail(err instanceof Error ? err.message : t("providers.error.save"));
+        fail(failureText(err, t("providers.error.save")));
       }
       return null;
     } finally {

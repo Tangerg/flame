@@ -1,3 +1,4 @@
+import { failureText } from "@/lib/rpcErrors";
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useCallback, useRef, useState } from "react";
@@ -83,7 +84,7 @@ function SkillRow({ skill }: { skill: ManagedSkill }) {
       await (archived ? restoreSkill(skill.name) : archiveSkill(skill.name));
     } catch (error) {
       if (!wasGenerationRetired(error)) {
-        notifyError(error instanceof Error ? error.message : t("skillLibrary.error"), {
+        notifyError(failureText(error, t("skillLibrary.error")), {
           source: "skills",
         });
       }

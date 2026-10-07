@@ -1,3 +1,4 @@
+import { failureText } from "@/lib/rpcErrors";
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useEffect, useId, useRef, useState } from "react";
@@ -61,7 +62,7 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
       await setEnabled(server.id, enabled);
     } catch (err) {
       if (wasGenerationRetired(err)) return;
-      notifyError(err instanceof Error ? err.message : t("mcp.error.toggle"), { source: "mcp" });
+      notifyError(failureText(err, t("mcp.error.toggle")), { source: "mcp" });
     }
   };
 
@@ -74,7 +75,7 @@ export function ServerRow({ server }: { server: MCPServerSettings }) {
       await authorize(server.id, controller.signal);
     } catch (err) {
       if (controller.signal.aborted || wasGenerationRetired(err)) return;
-      notifyError(err instanceof Error ? err.message : t("mcp.error.signIn"), { source: "mcp" });
+      notifyError(failureText(err, t("mcp.error.signIn")), { source: "mcp" });
     } finally {
       if (authorizationController.current === controller) {
         authorizationController.current = null;

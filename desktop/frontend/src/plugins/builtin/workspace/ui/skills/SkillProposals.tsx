@@ -1,3 +1,4 @@
+import { failureText } from "@/lib/rpcErrors";
 import * as stylex from "@stylexjs/stylex";
 import { SkillProposalRevisionConflictError } from "@/plugins/builtin/workspace/application/ports/skillCurationGateway";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
@@ -76,9 +77,7 @@ function SkillProposalRow({ proposal }: { proposal: SkillProposal }) {
           notifyError(
             error instanceof SkillProposalRevisionConflictError
               ? t("skillProposals.conflict")
-              : error instanceof Error
-                ? error.message
-                : t("skillProposals.error"),
+              : failureText(error, t("skillProposals.error")),
             {
               source: "skills",
             },
