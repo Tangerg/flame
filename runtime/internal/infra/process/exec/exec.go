@@ -144,17 +144,17 @@ type Shell struct {
 	cancel    context.CancelFunc
 	process   *shellProcessOwner
 	started   time.Time
-	id        shellID       // the owner-map key, mirrored here for RetainedForSession
-	sessionID string        // session that launched it; scopes RetainedForSession
-	cwd       string        // physical working-tree identity, established by Launch
-	command   string        // the shell command, for a session's live-state readout
-	done      chan struct{} // closed once the process finishes
+	sessionID string // session that launched it; scopes RetainedForSession
+	cwd       string // physical working-tree identity, established by Launch
+	command   string // the shell command, for a session's live-state readout
+	// done is the one completion signal: it closes after the terminal fields
+	// below are written, so a reader that observed it reads a settled outcome.
+	done chan struct{}
 
 	mu       sync.Mutex
-	buf      []byte // tail of stdout+stderr, capped at maxBuffer
-	total    int    // absolute bytes ever written (buf holds the last len(buf))
-	readPos  int    // absolute offset already returned to the caller
-	finished bool
+	buf      []byte        // tail of stdout+stderr, capped at maxBuffer
+	total    int           // absolute bytes ever written (buf holds the last len(buf))
+	readPos  int           // absolute offset already returned to the caller
 	exitInfo string        // "exit 0" / "exit 2" / "signal: killed" — set on completion
 	exitCode int           // process exit code; -1 when it never ran / wasn't an exit
 	killed   bool          // terminated by ctx/timeout/kill rather than exiting on its own
@@ -253,7 +253,6 @@ func (s *Shells) Launch(ctx context.Context, sessionID, cwd, command string, tim
 	}
 	s.nextID++
 	id := newShellID(s.epoch, s.nextID)
-	sh.id = id
 	// Start while holding the owner lock so shutdown cannot observe a Shell
 	// whose exec.Cmd is only partly initialized. Once the shell is published,
 	// cmd.Process is immutable and Kill/KillAll may safely use it.
@@ -319,9 +318,9 @@ func (s *Shells) RetainedForSession(sessionID string) []RetainedShell {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	var out []RetainedShell
-	for _, sh := range s.shells {
+	for id, sh := range s.shells {
 		if sh.sessionID == sessionID {
-			out = append(out, RetainedShell{ID: sh.id.String(), Command: sh.command})
+			out = append(out, RetainedShell{ID: id.String(), Command: sh.command})
 		}
 	}
 	slices.SortFunc(out, func(a, b RetainedShell) int { return strings.Compare(a.ID, b.ID) })
@@ -335,10 +334,7 @@ func (s *Shells) Kill(sessionID, id string) (running bool, err error) {
 	if !ok {
 		return false, fmt.Errorf("%w: %q", ErrShellNotFound, id)
 	}
-	sh.mu.Lock()
-	running = !sh.finished
-	sh.mu.Unlock()
-	if !running {
+	if sh.finished() {
 		return false, nil
 	}
 	sh.cancel()
@@ -365,7 +361,7 @@ func (s *Shells) Remove(id string) {
 // leaving other Sessions' jobs addressable. It is the process-lifecycle
 // boundary used before replacing or deleting a Session.
 func (s *Shells) StopSession(sessionID string) error {
-	return s.stopMatching("for Session "+strconv.Quote(sessionID), func(sh *Shell) (bool, error) {
+	return s.stopMatching("for Session "+strconv.Quote(sessionID), func(_ shellID, sh *Shell) (bool, error) {
 		return sh.sessionID == sessionID, nil
 	})
 }
@@ -384,19 +380,19 @@ func (s *Shells) StopWorkspace(root string) error {
 	if err != nil {
 		return fmt.Errorf("exec: resolve workspace root %q: %w", root, err)
 	}
-	return s.stopMatching("for workspace "+strconv.Quote(root), func(sh *Shell) (bool, error) {
+	return s.stopMatching("for workspace "+strconv.Quote(root), func(id shellID, sh *Shell) (bool, error) {
 		if sh.cwd == "" {
 			return false, nil
 		}
 		inside, err := pathidentity.Contains(physicalRoot, sh.cwd)
 		if err != nil {
-			return false, fmt.Errorf("exec: compare shell %q workspace: %w", sh.id, err)
+			return false, fmt.Errorf("exec: compare shell %q workspace: %w", id, err)
 		}
 		return inside, nil
 	})
 }
 
-func (s *Shells) stopMatching(action string, matches func(*Shell) (bool, error)) error {
+func (s *Shells) stopMatching(action string, matches func(shellID, *Shell) (bool, error)) error {
 	if s == nil {
 		return nil
 	}
@@ -406,7 +402,7 @@ func (s *Shells) stopMatching(action string, matches func(*Shell) (bool, error))
 	selected := make(map[shellID]*Shell)
 	var errs []error
 	for id, sh := range s.shells {
-		match, err := matches(sh)
+		match, err := matches(id, sh)
 		if err != nil {
 			errs = append(errs, err)
 			continue
@@ -457,11 +453,9 @@ func stopDetachedShells(shells map[shellID]*Shell, action string) ([]shellID, er
 	stopped := make([]shellID, 0, len(ids))
 	for _, id := range ids {
 		sh := shells[id]
-		select {
-		case <-sh.done:
+		if sh.finished() {
 			stopped = append(stopped, id)
 			continue
-		default:
 		}
 		sh.cancel()
 		if err := sh.process.stop(); err != nil {
@@ -503,13 +497,9 @@ func (s *shellProcessOwner) stop() error {
 	return s.err
 }
 
+// finish is called exactly once: by the start failure or by the waiter.
 func (s *Shell) finish(info string, code int, killed bool, cleanup error) {
 	s.mu.Lock()
-	if s.finished {
-		s.mu.Unlock()
-		return
-	}
-	s.finished = true
 	s.exitInfo = info
 	s.exitCode = code
 	s.killed = killed
@@ -522,6 +512,15 @@ func (s *Shell) finish(info string, code int, killed bool, cleanup error) {
 // Done is closed when the process finishes — the foreground shell race selects
 // on it to detect completion without polling.
 func (s *Shell) Done() <-chan struct{} { return s.done }
+
+func (s *Shell) finished() bool {
+	select {
+	case <-s.done:
+		return true
+	default:
+		return false
+	}
+}
 
 // Outcome reports a finished shell's exit code, whether it was killed
 // (timeout / explicit kill) rather than exiting on its own, its wall-clock
@@ -556,9 +555,12 @@ func (s *Shell) Read() (out string, dropped bool) {
 
 // Status reports whether the shell finished and its exit info.
 func (s *Shell) Status() (done bool, info string) {
+	if !s.finished() {
+		return false, ""
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.finished, s.exitInfo
+	return true, s.exitInfo
 }
 
 // Write funnels the shell's stdout/stderr into its capped ring buffer (the
