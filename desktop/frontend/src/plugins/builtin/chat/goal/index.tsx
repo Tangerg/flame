@@ -1,3 +1,4 @@
+import { toolFamilyNames } from "@/lib/toolFamilies";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { contributeLayout, definePlugin, notifyError, type SlashCommandSpec } from "@/plugins/sdk";
@@ -24,8 +25,6 @@ import { createGoalComposerSubmitMode } from "./application/goalComposerSubmitMo
 import type { GoalState } from "./application/goalReadModel";
 
 const GOAL_SURFACE = "composer.overlay.top:goal";
-
-export const GOAL_STANDING_TOOLS = ["create_goal", "get_goal", "report_goal_outcome"] as const;
 
 const GOAL_SLASH_COMMAND: SlashCommandSpec = {
   description: "slash.goal",
@@ -59,7 +58,7 @@ export function createGoalPlugin(runtimeClient: () => FlameClient) {
         order: 4,
         component: GoalModeIndicator,
       });
-      for (const key of GOAL_STANDING_TOOLS) {
+      for (const key of toolFamilyNames("goals")) {
         ctx.contribute(TOOL_STANDING_SURFACE, GOAL_SURFACE, { key });
       }
       ctx.contribute(

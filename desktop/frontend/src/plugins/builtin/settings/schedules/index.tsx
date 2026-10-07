@@ -1,3 +1,4 @@
+import { toolFamilyNames } from "@/lib/toolFamilies";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import { lazy } from "react";
 import { definePlugin } from "@/plugins/sdk";
@@ -9,12 +10,6 @@ import {
   registerScheduleDataProvider,
 } from "./adapters/runtimeScheduleGateway";
 import { RUNTIME_STREAM, followRuntimeGeneration } from "@/plugins/builtin/runtime/public/services";
-
-export const SCHEDULE_STANDING_TOOLS = [
-  "create_schedule",
-  "list_schedules",
-  "delete_schedule",
-] as const;
 
 const SchedulesPane = lazy(() =>
   import("./ui/SchedulesPane").then(({ SchedulesPane }) => ({ default: SchedulesPane })),
@@ -38,7 +33,7 @@ export function createSchedulesPlugin(runtimeClient: () => FlameClient) {
         order: 58,
         component: SchedulesPane,
       });
-      for (const key of SCHEDULE_STANDING_TOOLS) {
+      for (const key of toolFamilyNames("schedules")) {
         ctx.contribute(TOOL_STANDING_SURFACE, SCHEDULES_PANE, { key });
       }
     },

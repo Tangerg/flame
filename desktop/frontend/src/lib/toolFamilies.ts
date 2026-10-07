@@ -1,9 +1,9 @@
-export interface ToolFamily {
+interface ToolFamily {
   id: string;
   tools: readonly { name: string; icon: string }[];
 }
 
-export const TOOL_FAMILIES: readonly ToolFamily[] = [
+export const TOOL_FAMILIES = [
   {
     id: "shell",
     tools: [
@@ -83,7 +83,13 @@ export const TOOL_FAMILIES: readonly ToolFamily[] = [
       { name: "report_goal_outcome", icon: "clipboard-check" },
     ],
   },
-];
+] as const satisfies readonly ToolFamily[];
+
+type ToolFamilyId = (typeof TOOL_FAMILIES)[number]["id"];
+
+export function toolFamilyNames(id: ToolFamilyId): readonly string[] {
+  return TOOL_FAMILIES.find((family) => family.id === id)!.tools.map((tool) => tool.name);
+}
 
 export function toolFamilyId(name: string): string | undefined {
   return FAMILY_BY_TOOL.get(name);

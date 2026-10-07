@@ -1,16 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { TOOL_ICON_BY_NAME } from "@/lib/toolFamilies";
+import { TOOL_ICON_BY_NAME, toolFamilyNames } from "@/lib/toolFamilies";
 import { lookupExtensionByKey, TOOL_PREVIEW } from "@/plugins/sdk";
 import { toolPreviewPlugins } from "@/main/builtinPlugins";
-import { GOAL_STANDING_TOOLS } from "./chat/goal";
-import { PLAN_STANDING_TOOLS } from "./chat/plan-progress";
-import { SCHEDULE_STANDING_TOOLS } from "./settings/schedules";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 
 const STANDING = new Set<string>([
-  ...PLAN_STANDING_TOOLS,
-  ...GOAL_STANDING_TOOLS,
-  ...SCHEDULE_STANDING_TOOLS,
+  ...toolFamilyNames("plan"),
+  ...toolFamilyNames("goals"),
+  ...toolFamilyNames("schedules"),
 ]);
 
 describe("built-in tool rendering composition", () => {
