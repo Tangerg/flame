@@ -2,11 +2,13 @@ package builtin
 
 import (
 	"context"
+	json "encoding/json/v2"
 	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
 // TestAskUser_Validation: malformed args and an empty questions list are
@@ -97,5 +99,48 @@ func TestAnswerText(t *testing.T) {
 	got := answerText(multi, answers)
 	if !strings.Contains(got, "DB: sqlite") || !strings.Contains(got, "Langs: go, rust") {
 		t.Errorf("multi = %q, want labeled lines incl. \"DB: sqlite\" and \"Langs: go, rust\"", got)
+	}
+}
+
+// Struct tags cannot name constants, so the advertised schema restates the
+// question limits the transcript owns. This pins that projection to its owner:
+// a changed limit must change what the model is told.
+func TestAskUserSchemaProjectsTheTranscriptLimits(t *testing.T) {
+	tool, err := NewAskUser(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	type property struct {
+		MaxItems  *int `json:"maxItems"`
+		MaxLength *int `json:"maxLength"`
+	}
+	type definition struct {
+		Properties map[string]property `json:"properties"`
+	}
+	var schema struct {
+		Properties map[string]property   `json:"properties"`
+		Defs       map[string]definition `json:"$defs"`
+	}
+	if err := json.Unmarshal(tool.Definition().InputSchema, &schema); err != nil {
+		t.Fatal(err)
+	}
+	var question definition
+	for name, candidate := range schema.Defs {
+		if strings.HasSuffix(name, "_questionArg") {
+			question = candidate
+		}
+	}
+	for _, limit := range []struct {
+		name string
+		got  *int
+		want int
+	}{
+		{"questions.maxItems", schema.Properties["questions"].MaxItems, transcript.MaximumQuestionFields},
+		{"header.maxLength", question.Properties["header"].MaxLength, transcript.MaximumQuestionHeaderCharacters},
+		{"options.maxItems", question.Properties["options"].MaxItems, transcript.MaximumQuestionOptions},
+	} {
+		if limit.got == nil || *limit.got != limit.want {
+			t.Errorf("ask_user schema %s = %v, want %d", limit.name, limit.got, limit.want)
+		}
 	}
 }

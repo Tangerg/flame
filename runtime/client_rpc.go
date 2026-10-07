@@ -18,6 +18,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 	"github.com/Tangerg/flame/runtime/internal/delivery/transport"
+	flamehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/go-sdk/jsonrpc"
 	"github.com/Tangerg/sse"
@@ -237,13 +238,7 @@ func decodeTransportError(response *http.Response, mediaType string, limit int) 
 	if err != nil {
 		return errors.Join(failure, err)
 	}
-	var problem struct {
-		Type      string `json:"type"`
-		Title     string `json:"title"`
-		Status    int    `json:"status"`
-		Detail    string `json:"detail"`
-		RequestID string `json:"requestId,omitempty"`
-	}
+	var problem flamehttp.Problem
 	if err := contractshape.DecodeValue(encoded, &problem, "problem"); err == nil && problem.Status == response.StatusCode {
 		failure.Type = problem.Type
 	}
@@ -255,18 +250,7 @@ func knownTransportRefusal(err error) bool {
 	if !ok {
 		return false
 	}
-	switch problem.Type {
-	case "urn:flame:transport:invalid_request":
-		return problem.StatusCode == http.StatusBadRequest
-	case "urn:flame:transport:unauthorized":
-		return problem.StatusCode == http.StatusUnauthorized
-	case "urn:flame:transport:request_too_large":
-		return problem.StatusCode == http.StatusRequestEntityTooLarge
-	case "urn:flame:transport:unsupported_media_type":
-		return problem.StatusCode == http.StatusUnsupportedMediaType
-	default:
-		return false
-	}
+	return flamehttp.RefusedBeforeDispatch(problem.StatusCode, problem.Type)
 }
 
 func invalidRemote(detail string) error {
