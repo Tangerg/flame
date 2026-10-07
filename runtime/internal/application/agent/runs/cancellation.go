@@ -131,28 +131,11 @@ func (c *Coordinator) cancelLiveChild(
 			cancelRunningSubtreeErr,
 		)
 	}
-	target, root, err := owner.waitChildCancellation(cleanupCtx, attempt)
+	target, err := owner.waitChildCancellation(cleanupCtx, attempt)
 	if err != nil {
 		return CancelResult{}, err
 	}
-	targetOutcome, targetHasOutcome := target.Outcome()
-	if target.ID() != plan.target.run.ID() ||
-		target.State() != rundomain.Canceled ||
-		!targetHasOutcome || targetOutcome != rundomain.OutcomeCanceled {
-		return CancelResult{}, fmt.Errorf(
-			"runs: child cancellation for %q committed invalid target snapshot %q in state %s",
-			plan.target.run.ID(),
-			target.ID(),
-			target.State(),
-		)
-	}
-	if root.ID() != plan.root.run.ID() || !root.Lineage().IsRoot() {
-		return CancelResult{}, fmt.Errorf(
-			"runs: child cancellation for %q returned invalid root snapshot %q",
-			plan.target.run.ID(),
-			root.ID(),
-		)
-	}
+	root := plan.root.run
 	return CancelResult{Run: target, RootRun: &root}, nil
 }
 
@@ -511,10 +494,7 @@ func validateWaitingChildCancellationResult(
 	result WaitingSubtreeCancellationResult,
 ) error {
 	target := result.TargetRun
-	targetOutcome, targetHasOutcome := target.Outcome()
-	if target.ID() != plan.target.run.ID() ||
-		target.State() != rundomain.Canceled ||
-		!targetHasOutcome || targetOutcome != rundomain.OutcomeCanceled {
+	if target.ID() != plan.target.run.ID() || target.State() != rundomain.Canceled {
 		return fmt.Errorf(
 			"runs: waiting child cancellation for %q committed invalid target snapshot %q in state %s",
 			plan.target.run.ID(),
@@ -684,8 +664,7 @@ func rootCancelResult(value rundomain.Run) (CancelResult, error) {
 	if value.Lineage().IsChild() {
 		return CancelResult{}, fmt.Errorf("runs: canceled root result %q is a child Run", value.ID())
 	}
-	outcome, hasOutcome := value.Outcome()
-	if value.State() != rundomain.Canceled || !hasOutcome || outcome != rundomain.OutcomeCanceled {
+	if value.State() != rundomain.Canceled {
 		return CancelResult{}, fmt.Errorf("runs: cancel committed invalid terminal Run %q in state %s", value.ID(), value.State())
 	}
 	return CancelResult{Run: value}, nil

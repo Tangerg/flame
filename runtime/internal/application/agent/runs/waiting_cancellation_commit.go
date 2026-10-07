@@ -373,10 +373,6 @@ func (w *waitingCancellationValidation) validateTerminalRuns() error {
 		case run.State() != rundomain.Canceled:
 			return fmt.Errorf("runs: waiting cancellation Run[%d] is not canceled", index)
 		}
-		outcome, terminal := run.Outcome()
-		if !terminal || outcome != rundomain.OutcomeCanceled {
-			return fmt.Errorf("runs: waiting cancellation Run[%d] has no canceled outcome", index)
-		}
 		if _, duplicate := w.terminalRunIDs[run.ID()]; duplicate {
 			return fmt.Errorf("runs: waiting cancellation repeats Run %q", run.ID())
 		}

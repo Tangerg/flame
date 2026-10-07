@@ -364,14 +364,12 @@ func TestLiveChildCancellationAndNaturalTerminalHaveOneTreeOwner(t *testing.T) {
 			}),
 		)
 
-		target, root, err := owner.waitChildCancellation(t.Context(), attempt)
+		target, err := owner.waitChildCancellation(t.Context(), attempt)
 		if err != nil {
 			t.Fatalf("wait child cancellation: %v", err)
 		}
-		if target.ID() != plan.target.run.ID() ||
-			target.State() != run.Canceled ||
-			root.ID() != plan.root.run.ID() {
-			t.Fatalf("child cancellation result = target:%+v root:%+v", target, root)
+		if target.ID() != plan.target.run.ID() || target.State() != run.Canceled {
+			t.Fatalf("child cancellation result = %+v", target)
 		}
 	})
 
@@ -388,7 +386,7 @@ func TestLiveChildCancellationAndNaturalTerminalHaveOneTreeOwner(t *testing.T) {
 		}
 
 		owner.recordTerminalRun(completed)
-		if _, _, err := owner.waitChildCancellation(t.Context(), attempt); !errors.Is(err, ErrRunFinished) {
+		if _, err := owner.waitChildCancellation(t.Context(), attempt); !errors.Is(err, ErrRunFinished) {
 			t.Fatalf("child cancellation result = %v, want ErrRunFinished", err)
 		}
 		if owner.childCancel != nil {
