@@ -12,10 +12,9 @@ import (
 func MustOccurrenceRunRequest(scheduleID string, dueAt time.Time, sessionID, runID string) schedule.RunRequest {
 	dueAt = dueAt.UTC()
 	occurrence, err := schedule.RestoreOccurrence(schedule.OccurrenceSnapshot{
-		ID:         scheduleID + ":" + strconv.FormatInt(dueAt.UnixMilli(), 10),
-		ScheduleID: scheduleID,
-		Execution:  schedule.ExecutionSnapshot{Title: "Scheduled", Instructions: "scheduled", Cron: "@daily"},
-		DueAt:      dueAt, FiredAt: dueAt, NextRunAt: dueAt.Add(24 * time.Hour),
+		ID:        scheduleID + ":" + strconv.FormatInt(dueAt.UnixMilli(), 10),
+		Execution: schedule.ExecutionSnapshot{Title: "Scheduled", Instructions: "scheduled", Cron: "@daily"},
+		FiredAt:   dueAt, NextRunAt: dueAt.Add(24 * time.Hour),
 		SessionID: sessionID, RunID: runID,
 	})
 	if err != nil {

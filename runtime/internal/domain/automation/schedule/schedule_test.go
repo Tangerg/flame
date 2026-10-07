@@ -116,6 +116,12 @@ func TestOccurrenceCapturesExecutionAndRejectsEarlyFiring(t *testing.T) {
 		t.Fatalf("NewClaim: %v", err)
 	}
 	occurrence := claim.Occurrence()
+	if occurrence.ScheduleID() != scheduled.ID() || !occurrence.DueAt().Equal(dueAt) {
+		t.Fatalf("occurrence cursor = %s@%s, want %s@%s", occurrence.ScheduleID(), occurrence.DueAt(), scheduled.ID(), dueAt)
+	}
+	if request := occurrence.RunRequest(); request.ScheduleID() != scheduled.ID() {
+		t.Fatalf("occurrence RunRequest Schedule = %q, want %q", request.ScheduleID(), scheduled.ID())
+	}
 	replacement := "after"
 	edited, err := scheduled.Edit(Patch{Instructions: &replacement}, scheduled.Revision(), dueAt)
 	if err != nil {
@@ -135,7 +141,7 @@ func TestOccurrenceCapturesExecutionAndRejectsEarlyFiring(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ManualRunRequest: %v", err)
 	}
-	if manual.OccurrenceID() != "" || manual.SessionID() != "ses_manual" || manual.RunID() != "run_manual" {
+	if manual.OccurrenceID() != "" || manual.ScheduleID() != edited.ID() || manual.SessionID() != "ses_manual" || manual.RunID() != "run_manual" {
 		t.Fatalf("manual request durable identity = (%q, %q, %q)", manual.OccurrenceID(), manual.SessionID(), manual.RunID())
 	}
 	manualRecord, ok := manual.ManualRecord()
@@ -148,14 +154,11 @@ func TestOccurrenceCapturesExecutionAndRejectsEarlyFiring(t *testing.T) {
 		name string
 		edit func(*OccurrenceSnapshot)
 	}{
-		{name: "occurrence belongs to another Schedule", edit: func(value *OccurrenceSnapshot) {
-			value.ID = "sch_other:" + strconv.FormatInt(value.DueAt.UnixMilli(), 10)
-		}},
-		{name: "occurrence due cursor differs", edit: func(value *OccurrenceSnapshot) {
-			value.ID = value.ScheduleID + ":" + strconv.FormatInt(value.DueAt.UnixMilli()+1, 10)
+		{name: "fired before its due cursor", edit: func(value *OccurrenceSnapshot) {
+			value.ID = occurrence.ScheduleID() + ":" + strconv.FormatInt(value.FiredAt.UnixMilli()+1, 10)
 		}},
 		{name: "malformed Schedule", edit: func(value *OccurrenceSnapshot) {
-			value.ScheduleID = "sch_bad id"
+			value.ID = "sch_bad id:" + strconv.FormatInt(occurrence.DueAt().UnixMilli(), 10)
 		}},
 		{name: "malformed occurrence", edit: func(value *OccurrenceSnapshot) {
 			value.ID = "sch_hourly:not-a-time"
@@ -169,7 +172,7 @@ func TestOccurrenceCapturesExecutionAndRejectsEarlyFiring(t *testing.T) {
 			corrupt := snapshot
 			test.edit(&corrupt)
 			if _, err := RestoreOccurrence(corrupt); err == nil {
-				t.Fatal("RestoreOccurrence accepted contradictory identity")
+				t.Fatal("RestoreOccurrence accepted a malformed occurrence")
 			}
 		})
 	}

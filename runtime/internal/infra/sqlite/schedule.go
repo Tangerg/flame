@@ -160,8 +160,8 @@ func (s *ScheduleStore) Claim(ctx context.Context, claim schedule.Claim) (claime
 						SELECT 1 FROM schedule_firings
 						 WHERE schedule_id = ? AND state = ?
 				   )`,
-			toMillis(snapshot.NextRunAt), next.Value(), snapshot.ScheduleID, expectedRevision,
-			toMillis(snapshot.DueAt), snapshot.ScheduleID, scheduleFiringPending.databaseValue())
+			toMillis(snapshot.NextRunAt), next.Value(), occurrence.ScheduleID(), expectedRevision,
+			toMillis(occurrence.DueAt()), occurrence.ScheduleID(), scheduleFiringPending.databaseValue())
 		if execContextErr != nil {
 			return fmt.Errorf("sqlite: claim schedule occurrence: %w", execContextErr)
 		}
@@ -177,9 +177,9 @@ func (s *ScheduleStore) Claim(ctx context.Context, claim schedule.Claim) (claime
 				id, schedule_id, title, instructions, cwd, provider, model, reasoning_effort, cron,
 				due_at, fired_at, next_run_at, session_id, run_id, state
 			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			snapshot.ID, snapshot.ScheduleID, execution.Title, execution.Instructions,
+			snapshot.ID, occurrence.ScheduleID(), execution.Title, execution.Instructions,
 			execution.CWD, execution.ModelSelection.Provider(), execution.ModelSelection.Model(), execution.ModelSelection.ReasoningEffort(), execution.Cron,
-			toMillis(snapshot.DueAt), toMillis(snapshot.FiredAt), toMillis(snapshot.NextRunAt), snapshot.SessionID, snapshot.RunID,
+			toMillis(occurrence.DueAt()), toMillis(snapshot.FiredAt), toMillis(snapshot.NextRunAt), snapshot.SessionID, snapshot.RunID,
 			scheduleFiringPending.databaseValue())
 		if execContextErr != nil {
 			return fmt.Errorf("sqlite: persist schedule occurrence: %w", execContextErr)
@@ -198,8 +198,8 @@ func (s *ScheduleStore) Pending(ctx context.Context, afterDueAt time.Time, after
 		return nil, errors.New("sqlite: schedule pending limit must be positive")
 	}
 	rows, err := conn(ctx, s.db).QueryContext(ctx,
-		`SELECT id, schedule_id, title, instructions, cwd, provider, model, reasoning_effort, cron,
-			due_at, fired_at, next_run_at, session_id, run_id
+		`SELECT id, title, instructions, cwd, provider, model, reasoning_effort, cron,
+			fired_at, next_run_at, session_id, run_id
 		 FROM schedule_firings WHERE state = ? AND (due_at > ? OR (due_at = ? AND id > ?))
 		 ORDER BY due_at, id
 		 LIMIT ?`, scheduleFiringPending.databaseValue(), toMillis(afterDueAt), toMillis(afterDueAt), afterID, limit)
@@ -393,10 +393,10 @@ func scanSchedule(scan func(...any) error) (schedule.Schedule, error) {
 func scanOccurrence(scan func(...any) error) (schedule.Occurrence, error) {
 	var snapshot schedule.OccurrenceSnapshot
 	var title, instructions, cwd, provider, model, reasoningEffort, cron string
-	var dueAt, firedAt, nextRunAt int64
-	if err := scan(&snapshot.ID, &snapshot.ScheduleID, &title, &instructions,
+	var firedAt, nextRunAt int64
+	if err := scan(&snapshot.ID, &title, &instructions,
 		&cwd, &provider, &model, &reasoningEffort, &cron,
-		&dueAt, &firedAt, &nextRunAt, &snapshot.SessionID, &snapshot.RunID); err != nil {
+		&firedAt, &nextRunAt, &snapshot.SessionID, &snapshot.RunID); err != nil {
 		return schedule.Occurrence{}, err
 	}
 	selection, err := modelref.NewWithReasoningEffort(provider, model, reasoningEffort)
@@ -407,7 +407,6 @@ func scanOccurrence(scan func(...any) error) (schedule.Occurrence, error) {
 		Title: title, Instructions: instructions, CWD: cwd,
 		ModelSelection: selection, Cron: cron,
 	}
-	snapshot.DueAt = fromMillis(dueAt)
 	snapshot.FiredAt = fromMillis(firedAt)
 	snapshot.NextRunAt = fromMillis(nextRunAt)
 	occurrence, err := schedule.RestoreOccurrence(snapshot)

@@ -10,29 +10,26 @@ import (
 )
 
 // OccurrenceSnapshot is the complete durable representation of one cron
-// firing after its schedule cursor claim has succeeded.
+// firing after its schedule cursor claim has succeeded. Its ID names the
+// Schedule and the due cursor it consumed, so neither is stored beside it.
 type OccurrenceSnapshot struct {
-	ID         string
-	ScheduleID string
-	Execution  ExecutionSnapshot
-	DueAt      time.Time
-	FiredAt    time.Time
-	NextRunAt  time.Time
-	SessionID  string
-	RunID      string
+	ID        string
+	Execution ExecutionSnapshot
+	FiredAt   time.Time
+	NextRunAt time.Time
+	SessionID string
+	RunID     string
 }
 
 // Occurrence is one durable cron firing intent. It captures only the execution
 // value plus the Schedule CAS/cursor facts needed to claim exactly once.
 type Occurrence struct {
-	id         occurrenceIdentity
-	scheduleID resourceid.ScheduleID
-	execution  Execution
-	dueAt      time.Time
-	firedAt    time.Time
-	nextRunAt  time.Time
-	sessionID  string
-	runID      string
+	id        occurrenceIdentity
+	execution Execution
+	firedAt   time.Time
+	nextRunAt time.Time
+	sessionID string
+	runID     string
 }
 
 // Claim binds one immutable occurrence to the exact Schedule revision and due
@@ -71,8 +68,7 @@ func NewClaim(s Schedule, sessionID, runID string, firedAt time.Time) (Claim, er
 		return Claim{}, err
 	}
 	occurrence := Occurrence{
-		id: occurrenceID, scheduleID: s.id,
-		execution: s.Execution(), dueAt: s.nextRunAt, firedAt: firedAt,
+		id: occurrenceID, execution: s.Execution(), firedAt: firedAt,
 		nextRunAt: nextRunAt, sessionID: sessionID, runID: runID,
 	}
 	value := Claim{occurrence: occurrence, expectedRevision: s.revision}
@@ -87,12 +83,6 @@ func (o Occurrence) Validate() error {
 	if err := o.id.Validate(); err != nil {
 		return err
 	}
-	if _, err := parseScheduleID(o.scheduleID.String()); err != nil {
-		return fmt.Errorf("schedule: occurrence: %w", err)
-	}
-	if o.id.scheduleID != o.scheduleID {
-		return errors.New("schedule: occurrence identity belongs to another Schedule")
-	}
 	if o.sessionID == "" || o.runID == "" {
 		return errors.New("schedule: occurrence identities are required")
 	}
@@ -105,16 +95,14 @@ func (o Occurrence) Validate() error {
 	if err := o.execution.Validate(); err != nil {
 		return err
 	}
-	if o.dueAt.IsZero() || o.firedAt.IsZero() || o.nextRunAt.IsZero() {
+	if o.firedAt.IsZero() || o.nextRunAt.IsZero() {
 		return errors.New("schedule: occurrence times are required")
 	}
-	if o.id.dueMillis != o.dueAt.UnixMilli() {
-		return errors.New("schedule: occurrence identity and due cursor disagree")
-	}
-	if o.firedAt.Before(o.dueAt) {
+	dueAt := o.DueAt()
+	if o.firedAt.Before(dueAt) {
 		return errors.New("schedule: occurrence fired before it was due")
 	}
-	if !o.nextRunAt.After(o.dueAt) || !o.nextRunAt.After(o.firedAt) {
+	if !o.nextRunAt.After(dueAt) || !o.nextRunAt.After(o.firedAt) {
 		return errors.New("schedule: occurrence next cursor must follow its history")
 	}
 	return nil
@@ -138,17 +126,12 @@ func RestoreOccurrence(snapshot OccurrenceSnapshot) (Occurrence, error) {
 	if err != nil {
 		return Occurrence{}, err
 	}
-	scheduleID, err := parseScheduleID(snapshot.ScheduleID)
-	if err != nil {
-		return Occurrence{}, err
-	}
 	execution, err := RestoreExecution(snapshot.Execution)
 	if err != nil {
 		return Occurrence{}, err
 	}
 	value := Occurrence{
-		id: occurrenceID, scheduleID: scheduleID,
-		execution: execution, dueAt: canonicalTime(snapshot.DueAt), firedAt: canonicalTime(snapshot.FiredAt),
+		id: occurrenceID, execution: execution, firedAt: canonicalTime(snapshot.FiredAt),
 		nextRunAt: canonicalTime(snapshot.NextRunAt), sessionID: snapshot.SessionID,
 		runID: snapshot.RunID,
 	}
@@ -161,16 +144,16 @@ func RestoreOccurrence(snapshot OccurrenceSnapshot) (Occurrence, error) {
 // Snapshot returns the complete durable occurrence representation.
 func (o Occurrence) Snapshot() OccurrenceSnapshot {
 	return OccurrenceSnapshot{
-		ID: o.id.String(), ScheduleID: o.scheduleID.String(), Execution: o.execution.Snapshot(),
-		DueAt: o.dueAt, FiredAt: o.firedAt, NextRunAt: o.nextRunAt,
+		ID: o.id.String(), Execution: o.execution.Snapshot(),
+		FiredAt: o.firedAt, NextRunAt: o.nextRunAt,
 		SessionID: o.sessionID, RunID: o.runID,
 	}
 }
 
 func (o Occurrence) ID() string           { return o.id.String() }
-func (o Occurrence) ScheduleID() string   { return o.scheduleID.String() }
+func (o Occurrence) ScheduleID() string   { return o.id.scheduleID.String() }
 func (o Occurrence) Execution() Execution { return o.execution }
-func (o Occurrence) DueAt() time.Time     { return o.dueAt }
+func (o Occurrence) DueAt() time.Time     { return time.UnixMilli(o.id.dueMillis).UTC() }
 func (o Occurrence) FiredAt() time.Time   { return o.firedAt }
 func (o Occurrence) NextRunAt() time.Time { return o.nextRunAt }
 func (o Occurrence) SessionID() string    { return o.sessionID }

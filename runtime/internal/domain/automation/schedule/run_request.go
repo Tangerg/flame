@@ -20,7 +20,6 @@ type RunRecord struct {
 // requests carry stable Session/Run identities and one Run record but no cron
 // occurrence; cron requests carry the occurrence and the same stable identities.
 type RunRequest struct {
-	scheduleID   resourceid.ScheduleID
 	execution    Execution
 	manualRecord *RunRecord
 	occurrenceID occurrenceIdentity
@@ -64,7 +63,7 @@ func ManualRunRequest(s Schedule, sessionID, runID string, ranAt time.Time) (Run
 		return RunRequest{}, err
 	}
 	value := RunRequest{
-		scheduleID: s.id, execution: s.Execution(), manualRecord: &record,
+		execution: s.Execution(), manualRecord: &record,
 		sessionID: sessionID, runID: runID,
 	}
 	return value, value.Validate()
@@ -73,7 +72,7 @@ func ManualRunRequest(s Schedule, sessionID, runID string, ranAt time.Time) (Run
 // RunRequest returns the stable launch input owned by this durable occurrence.
 func (o Occurrence) RunRequest() RunRequest {
 	return RunRequest{
-		scheduleID: o.scheduleID, execution: o.execution, occurrenceID: o.id,
+		execution: o.execution, occurrenceID: o.id,
 		sessionID: o.sessionID, runID: o.runID,
 	}
 }
@@ -82,9 +81,6 @@ func (o Occurrence) RunRequest() RunRequest {
 // one aggregate-owned Run record or occurrence-backed with every stable
 // identity present.
 func (r RunRequest) Validate() error {
-	if _, err := parseScheduleID(r.scheduleID.String()); err != nil {
-		return fmt.Errorf("schedule: run request: %w", err)
-	}
 	if err := r.execution.Validate(); err != nil {
 		return err
 	}
@@ -94,9 +90,6 @@ func (r RunRequest) Validate() error {
 		}
 		if err := r.manualRecord.Validate(); err != nil {
 			return err
-		}
-		if r.manualRecord.scheduleID != r.scheduleID {
-			return errors.New("schedule: manual run record belongs to another Schedule")
 		}
 		if r.sessionID == "" || r.runID == "" {
 			return errors.New("schedule: manual run request identities are required")
@@ -124,9 +117,6 @@ func (r RunRequest) Validate() error {
 	if err := r.occurrenceID.Validate(); err != nil {
 		return err
 	}
-	if r.occurrenceID.scheduleID != r.scheduleID {
-		return errors.New("schedule: run request occurrence belongs to another Schedule")
-	}
 	if err := resourceid.ValidateSession(r.sessionID); err != nil {
 		return fmt.Errorf("schedule: run request: %w", err)
 	}
@@ -136,7 +126,14 @@ func (r RunRequest) Validate() error {
 	return nil
 }
 
-func (r RunRequest) ScheduleID() string   { return r.scheduleID.String() }
+// ScheduleID names the Schedule through the one fact that ties the request to
+// it: its manual Run record or its occurrence.
+func (r RunRequest) ScheduleID() string {
+	if r.manualRecord != nil {
+		return r.manualRecord.ScheduleID()
+	}
+	return r.occurrenceID.scheduleID.String()
+}
 func (r RunRequest) Execution() Execution { return r.execution }
 func (r RunRequest) ManualRecord() (RunRecord, bool) {
 	return optional.Present(r.manualRecord)
