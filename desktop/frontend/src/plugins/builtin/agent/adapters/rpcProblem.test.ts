@@ -23,6 +23,24 @@ describe("agent RPC problem projection", () => {
     ).toEqual({ code: "rate_limited", message: "try later", retryAfterSeconds: 3 });
   });
 
+  it("retains the active Run that refused a command", () => {
+    expect(
+      agentProblemFromRpcFailure(
+        new RpcError({
+          code: -32010,
+          message: "session_has_active_run",
+          data: {
+            type: "session_has_active_run",
+            activeRun: { runId: "run_1", status: "waiting" },
+          },
+        }),
+      ),
+    ).toEqual({
+      code: "session_has_active_run",
+      activeRun: { runId: "run_1", status: "waiting" },
+    });
+  });
+
   it("does not turn programming errors into user-facing command failures", () => {
     expect(agentProblemFromRpcFailure(new TypeError("broken adapter"))).toBeNull();
   });

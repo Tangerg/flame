@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  errorDetail,
-  errorRetryAfterSeconds,
-  errorType,
   isErrorResponse,
   isNotification,
   isResponse,
@@ -133,33 +130,5 @@ describe("parseRpcMessage envelope gate", () => {
     expect(
       parseRpcMessage(`{"jsonrpc":"2.0","id":"1","error":{"code":1.5,"message":"no"}}`),
     ).toBeNull();
-  });
-});
-
-describe("errorDetail reports only what the runtime said", () => {
-  it("returns the per-occurrence detail", () => {
-    expect(errorDetail({ type: "tool_failed", detail: "exit status 2" })).toBe("exit status 2");
-  });
-
-  it("returns undefined when there is no detail, symbol or not", () => {
-    expect(errorDetail({ type: "session_busy" })).toBeUndefined();
-    expect(errorDetail({ type: "session_busy", detail: "" })).toBeUndefined();
-    expect(errorDetail({})).toBeUndefined();
-    expect(errorDetail(undefined)).toBeUndefined();
-  });
-
-  it("leaves the symbol to errorType, which is what branch logic reads", () => {
-    expect(errorType({ type: "session_busy" })).toBe("session_busy");
-  });
-});
-
-describe("errorRetryAfterSeconds", () => {
-  it("accepts only a positive integer delay", () => {
-    expect(errorRetryAfterSeconds({ retryAfterSeconds: 3 })).toBe(3);
-    expect(errorRetryAfterSeconds({ retryAfterSeconds: 0 })).toBeUndefined();
-    expect(errorRetryAfterSeconds({ retryAfterSeconds: -1 })).toBeUndefined();
-    expect(errorRetryAfterSeconds({ retryAfterSeconds: 1.5 })).toBeUndefined();
-    expect(errorRetryAfterSeconds({ retryAfterSeconds: "3" })).toBeUndefined();
-    expect(errorRetryAfterSeconds(undefined)).toBeUndefined();
   });
 });

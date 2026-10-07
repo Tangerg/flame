@@ -14,12 +14,12 @@ export function isErrorType<Type extends ProblemData["type"]>(
   error: unknown,
   type: Type,
 ): error is RpcError & { readonly data: ProblemOf<Type> } {
-  return error instanceof RpcError && error.data?.type === type;
+  return error instanceof RpcError && error.data.type === type;
 }
 
 export class RpcError extends Error {
   readonly code?: number;
-  readonly data?: ProblemData;
+  readonly data: ProblemData;
   readonly requestId?: string;
 
   constructor(payload: BusinessErrorPayload, requestId?: string) {
@@ -34,7 +34,7 @@ export class RpcError extends Error {
 interface BusinessErrorPayload {
   code?: number;
   message: string;
-  data?: ProblemData;
+  data: ProblemData;
 }
 
 export class RpcTransportError extends Error {

@@ -1,6 +1,4 @@
 import {
-  errorDetail,
-  errorRetryAfterSeconds,
   type CancelRunResponse,
   type ContentBlock,
   type Interrupt,
@@ -57,13 +55,14 @@ function runtimeRunMetrics(metrics: RunMetrics): AgentRunMetrics {
   };
 }
 
-function runtimeProblem(problem: ProblemData): AgentProblem {
-  const message = errorDetail(problem);
-  const retryAfterSeconds = errorRetryAfterSeconds(problem);
+export function runtimeProblem(problem: ProblemData): AgentProblem {
   return {
     code: problem.type,
-    ...(message !== undefined ? { message } : {}),
-    ...(retryAfterSeconds !== undefined ? { retryAfterSeconds } : {}),
+    ...(problem.detail ? { message: problem.detail } : {}),
+    ...("retryAfterSeconds" in problem && problem.retryAfterSeconds !== undefined
+      ? { retryAfterSeconds: problem.retryAfterSeconds }
+      : {}),
+    ...(problem.type === "session_has_active_run" ? { activeRun: { ...problem.activeRun } } : {}),
   };
 }
 

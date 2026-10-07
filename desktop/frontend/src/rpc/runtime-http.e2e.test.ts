@@ -28,7 +28,6 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createFlameClient, type FlameClient } from "@flame/runtime-contract/client/sdk";
 import { RpcError } from "@flame/runtime-contract/client/errors";
 import { asRunId, asSegmentId, asSessionId } from "@flame/runtime-contract/client/ids";
-import { errorType } from "@flame/runtime-contract/client/types";
 import { createSidecarClient } from "@flame/runtime-contract/client/sidecar";
 import { createHttpTransport } from "@flame/runtime-contract/client/transports/http";
 import {
@@ -1016,7 +1015,7 @@ for await (const line of lines) {
   it("admits the shipped portable package through the shared client and revokes its reads", async () => {
     if (!client) throw new Error("runtime client was not initialized");
     await expect(client.plugins.install({ source: "relative/package" })).rejects.toSatisfy(
-      (error: unknown) => error instanceof RpcError && errorType(error.data) === "invalid_params",
+      (error: unknown) => error instanceof RpcError && error.data.type === "invalid_params",
     );
     const installed = await client.plugins.install({
       source: resolve(runtimeDirectory, "../examples/plugins/trajectory"),
@@ -1106,7 +1105,7 @@ for await (const line of lines) {
         }),
       ).rejects.toSatisfy(
         (error: unknown) =>
-          error instanceof RpcError && errorType(error.data) === "session_has_active_run",
+          error instanceof RpcError && error.data.type === "session_has_active_run",
       );
       const successor = await observer.runs.subscribe({ runId, segmentId, snapshot: true });
       await observer.runs.steer(runId, segmentId, [
@@ -1223,7 +1222,7 @@ for await (const line of lines) {
       expect(rejected[0]?.reason).toSatisfy(
         (error: unknown) =>
           error instanceof RpcError &&
-          ["interrupt_not_open", "session_busy"].includes(errorType(error.data) ?? ""),
+          ["interrupt_not_open", "session_busy"].includes(error.data.type),
       );
       const winner = accepted[0];
       if (!winner) throw new Error("no view acquired the waiting continuation");
@@ -1335,8 +1334,7 @@ for await (const line of lines) {
 
     await client.sessions.delete(sessionId);
     await expect(client.sessions.get(sessionId)).rejects.toSatisfy(
-      (error: unknown) =>
-        error instanceof RpcError && errorType(error.data) === "session_not_found",
+      (error: unknown) => error instanceof RpcError && error.data.type === "session_not_found",
     );
 
     streamController.abort();
@@ -1361,7 +1359,7 @@ for await (const line of lines) {
         params: { maxTokens: 272_001 },
       }),
     ).rejects.toSatisfy(
-      (error: unknown) => error instanceof RpcError && errorType(error.data) === "invalid_params",
+      (error: unknown) => error instanceof RpcError && error.data.type === "invalid_params",
     );
     await expect(client.runs.list({ sessionId })).resolves.toMatchObject({ data: [] });
     await expect(
@@ -1435,8 +1433,7 @@ for await (const line of lines) {
         sessionIds: [deletedId],
       });
       await expect(client.sessions.get(asSessionId(deletedId))).rejects.toSatisfy(
-        (error: unknown) =>
-          error instanceof RpcError && errorType(error.data) === "session_not_found",
+        (error: unknown) => error instanceof RpcError && error.data.type === "session_not_found",
       );
     } finally {
       for (const id of createdIds) await client.sessions.delete(asSessionId(id));
@@ -2218,7 +2215,7 @@ for await (const line of lines) {
     await expect(
       client.models.setEmbeddingRole({ provider: providerId, model: "e2e-model" }),
     ).rejects.toSatisfy(
-      (error: unknown) => error instanceof RpcError && errorType(error.data) === "invalid_params",
+      (error: unknown) => error instanceof RpcError && error.data.type === "invalid_params",
     );
     await client.providers.update({
       provider: "openai",
@@ -3724,14 +3721,13 @@ for await (const line of lines) {
     });
 
     await expect(client.mcp.authorizationAttempts.create(serverId)).rejects.toSatisfy(
-      (error: unknown) => error instanceof RpcError && errorType(error.data) === "invalid_params",
+      (error: unknown) => error instanceof RpcError && error.data.type === "invalid_params",
     );
     await expect(
       client.mcp.authorizationAttempts.get("mcpauth_ABCDEFGHIJKLMNOPQRSTUVWXYZ"),
     ).rejects.toSatisfy(
       (error: unknown) =>
-        error instanceof RpcError &&
-        errorType(error.data) === "mcp_authorization_attempt_not_found",
+        error instanceof RpcError && error.data.type === "mcp_authorization_attempt_not_found",
     );
 
     connectController.abort();
@@ -3939,8 +3935,7 @@ for await (const line of lines) {
       readFile(join(workspaceRoot, ".flame", "skills", projectProposal.name, "SKILL.md"), "utf8"),
     ).resolves.toContain(projectProposal.instructions);
     await expect(workspace.skills.approveProposal(projectRef)).rejects.toSatisfy(
-      (error: unknown) =>
-        error instanceof RpcError && errorType(error.data) === "revision_conflict",
+      (error: unknown) => error instanceof RpcError && error.data.type === "revision_conflict",
     );
 
     const userSession = await client.sessions.create({
@@ -4154,7 +4149,7 @@ for await (const line of lines) {
       ],
     });
     await expect(client.agentMemory.review(project.id, "approve")).rejects.toSatisfy(
-      (error: unknown) => error instanceof RpcError && errorType(error.data) === "invalid_params",
+      (error: unknown) => error instanceof RpcError && error.data.type === "invalid_params",
     );
 
     await client.agentMemory.delete(project.id);
@@ -4331,12 +4326,10 @@ for await (const line of lines) {
     await expect(
       client.workspace({ path: plainRoot }).files.list({ path: "escape" }),
     ).rejects.toSatisfy(
-      (error: unknown) =>
-        error instanceof RpcError && errorType(error.data) === "path_outside_root",
+      (error: unknown) => error instanceof RpcError && error.data.type === "path_outside_root",
     );
     await expect(workspace.files.read({ path: "../AGENTS.md" })).rejects.toSatisfy(
-      (error: unknown) =>
-        error instanceof RpcError && errorType(error.data) === "path_outside_root",
+      (error: unknown) => error instanceof RpcError && error.data.type === "path_outside_root",
     );
 
     const untrusted = await workspace.hooks.list();

@@ -1,4 +1,4 @@
-import { errorDetail, errorType, isErrorType, RpcError } from "@flame/runtime-contract/client";
+import { isErrorType, RpcError } from "@flame/runtime-contract/client";
 import { t } from "./i18n";
 
 export const MAPPED_TYPES: readonly string[] = [
@@ -58,12 +58,12 @@ export function describeErrorType(type: string | undefined): string | undefined 
 
 export function describeRpcError(err: unknown): string | undefined {
   if (!(err instanceof RpcError)) return undefined;
-  return describeErrorType(errorType(err.data));
+  return describeErrorType(err.data.type);
 }
 
 export function rpcErrorText(err: unknown): string | undefined {
   if (!(err instanceof RpcError)) return undefined;
-  return describeRpcError(err) ?? errorDetail(err.data) ?? err.message;
+  return describeRpcError(err) ?? (err.data.detail || err.message);
 }
 
 export function isUnsupportedMethod(err: unknown): boolean {

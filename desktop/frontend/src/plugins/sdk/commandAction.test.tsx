@@ -50,7 +50,11 @@ describe("useCommandAction", () => {
   });
 
   it("says what the Runtime said, and takes the next command", async () => {
-    const command = vi.fn(() => Promise.reject(new RpcError({ message: "runtime said no" })));
+    const command = vi.fn(() =>
+      Promise.reject(
+        new RpcError({ message: "runtime said no", data: { type: "invalid_request" } }),
+      ),
+    );
     render(<Harness command={command} />);
 
     await act(async () => {

@@ -42,46 +42,6 @@ interface RpcErrorPayload {
 
 export const RPC_METHOD_NOT_FOUND = -32601;
 
-export function errorType(data: unknown): string | undefined {
-  if (data && typeof data === "object" && "type" in data) {
-    const t = (data as { type: unknown }).type;
-    return typeof t === "string" ? t : undefined;
-  }
-  return undefined;
-}
-
-export function errorDetail(data: unknown): string | undefined {
-  if (data && typeof data === "object") {
-    const d = (data as { detail?: unknown }).detail;
-    if (typeof d === "string" && d) return d;
-  }
-  return undefined;
-}
-
-export function errorActiveRun(data: unknown): { runId: string; status: string } | undefined {
-  if (!data || typeof data !== "object") return undefined;
-  const ref = (data as { activeRun?: unknown }).activeRun;
-  if (!ref || typeof ref !== "object") return undefined;
-  const { runId, status } = ref as { runId?: unknown; status?: unknown };
-  if (typeof runId !== "string" || !runId) return undefined;
-  if (typeof status !== "string" || !status) return undefined;
-  return { runId, status };
-}
-
-export function errorRetryAfterSeconds(data: unknown): number | undefined {
-  if (data && typeof data === "object") {
-    const retryAfterSeconds = (data as { retryAfterSeconds?: unknown }).retryAfterSeconds;
-    if (
-      typeof retryAfterSeconds === "number" &&
-      Number.isInteger(retryAfterSeconds) &&
-      retryAfterSeconds > 0
-    ) {
-      return retryAfterSeconds;
-    }
-  }
-  return undefined;
-}
-
 export function isResponse(msg: RpcMessage): msg is RpcResponse {
   return "id" in msg && msg.id !== undefined && !("method" in msg);
 }

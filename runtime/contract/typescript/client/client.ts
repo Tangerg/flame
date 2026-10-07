@@ -186,7 +186,7 @@ export function createRpcClient(transport: Transport, options: RpcClientOptions 
             {
               code: payload.code,
               message: payload.message,
-              data: payload.data as ProblemData | undefined,
+              data: payload.data as ProblemData,
             },
             metadata?.requestId,
           ),
