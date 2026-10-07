@@ -45,9 +45,16 @@ type AuthoredScope struct {
 // AuthoredResourceWatcher adapts external filesystem state into semantic
 // resource changes. Implementations own filenames, cascades, notification
 // mechanisms, and symlink identity. Watch borrows scopes and resources for the
-// call; implementations own any retained observation configuration.
+// call; implementations own any retained observation configuration. report
+// receives the first failure of each background outage; it is the only place
+// an outage is observable, so the caller decides what it ends.
 type AuthoredResourceWatcher interface {
-	Watch(scopes []AuthoredScope, resources []AuthoredResource, notify func(AuthoredResource)) (AuthoredObservation, error)
+	Watch(
+		scopes []AuthoredScope,
+		resources []AuthoredResource,
+		notify func(AuthoredResource),
+		report func(error),
+	) (AuthoredObservation, error)
 }
 
 // AuthoredChange identifies exact file-backed resource members that were
@@ -103,7 +110,12 @@ func NewAuthoredWatch(scope *Scope, workspaces IdentityInspector, watcher Author
 // Watch starts one caller-owned observation. An empty cwd list still observes
 // the implementation's global resource scopes. cwds and resources are borrowed
 // for the call.
-func (a *AuthoredWatch) Watch(cwds []string, resources []AuthoredResource, notify func(AuthoredResource)) (AuthoredObservation, error) {
+func (a *AuthoredWatch) Watch(
+	cwds []string,
+	resources []AuthoredResource,
+	notify func(AuthoredResource),
+	report func(error),
+) (AuthoredObservation, error) {
 	resources = distinctAuthoredResources(resources)
 	if len(resources) == 0 {
 		return nopAuthoredWatch{}, nil
@@ -133,7 +145,7 @@ func (a *AuthoredWatch) Watch(cwds []string, resources []AuthoredResource, notif
 		seen[identity] = struct{}{}
 		scopes = append(scopes, AuthoredScope{Workspace: root, ProjectRoot: resolved.ProjectRoot})
 	}
-	inner, err := a.watcher.Watch(scopes, resources, notify)
+	inner, err := a.watcher.Watch(scopes, resources, notify, report)
 	if err != nil {
 		return nil, err
 	}

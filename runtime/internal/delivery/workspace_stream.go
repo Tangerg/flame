@@ -548,6 +548,7 @@ func (s *Handler) SubscribeRuntime(ctx context.Context, request protocol.Runtime
 					s.workspaceHub.publishTo(subscription, event)
 				}
 			},
+			reportObservationError,
 		)
 		if err != nil {
 			if fileWatcher != nil {

@@ -22,6 +22,7 @@ func (r *recordingAuthoredWatcher) Watch(
 	scopes []AuthoredScope,
 	resources []AuthoredResource,
 	_ func(AuthoredResource),
+	_ func(error),
 ) (AuthoredObservation, error) {
 	r.scopes = slices.Clone(scopes)
 	r.resources = slices.Clone(resources)
@@ -48,7 +49,7 @@ func TestAuthoredWatchReportsFailedAcceptanceAndContinuesBroadcast(t *testing.T)
 	watcher := &recordingAuthoredWatcher{acceptErr: errors.New("file observation unavailable")}
 	useCases := newAuthoredWatch(t, newScope(t, root, root, testPaths{}), staticWorkspaceInspector{}, watcher)
 	for range 2 {
-		observation, err := useCases.Watch(nil, []AuthoredResource{AuthoredSkills}, func(AuthoredResource) {})
+		observation, err := useCases.Watch(nil, []AuthoredResource{AuthoredSkills}, func(AuthoredResource) {}, func(error) {})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -73,6 +74,7 @@ func TestAuthoredWatchResolvesAndDeduplicatesScopes(t *testing.T) {
 		[]string{"", root},
 		[]AuthoredResource{AuthoredHooks, AuthoredHooks, AuthoredSkills},
 		func(AuthoredResource) {},
+		func(error) {},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -95,7 +97,7 @@ func TestAuthoredWatchOwnsObservationScopes(t *testing.T) {
 	}
 	useCases := newAuthoredWatch(t, newScope(t, root, root, testPaths{}), inspector, watcher)
 
-	observation, err := useCases.Watch(cwds, []AuthoredResource{AuthoredSkills}, func(AuthoredResource) {})
+	observation, err := useCases.Watch(cwds, []AuthoredResource{AuthoredSkills}, func(AuthoredResource) {}, func(error) {})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,12 +114,12 @@ func TestAuthoredWatchOwnsChangesForEveryObservation(t *testing.T) {
 	useCases := newAuthoredWatch(t, newScope(t, root, root, testPaths{}), staticWorkspaceInspector{
 		resolved: Resolved{Path: root, ProjectRoot: root},
 	}, watcher)
-	first, err := useCases.Watch(nil, []AuthoredResource{AuthoredSkills}, func(AuthoredResource) {})
+	first, err := useCases.Watch(nil, []AuthoredResource{AuthoredSkills}, func(AuthoredResource) {}, func(error) {})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() { _ = first.Close() }()
-	second, err := useCases.Watch(nil, []AuthoredResource{AuthoredSkills}, func(AuthoredResource) {})
+	second, err := useCases.Watch(nil, []AuthoredResource{AuthoredSkills}, func(AuthoredResource) {}, func(error) {})
 	if err != nil {
 		t.Fatal(err)
 	}

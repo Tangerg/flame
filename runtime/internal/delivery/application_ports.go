@@ -171,5 +171,6 @@ type workspaceAuthoredWatchUseCases interface {
 		cwds []string,
 		resources []workspaceapp.AuthoredResource,
 		notify func(workspaceapp.AuthoredResource),
+		report func(error),
 	) (workspaceapp.AuthoredObservation, error)
 }

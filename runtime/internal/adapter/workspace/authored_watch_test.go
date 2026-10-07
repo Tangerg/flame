@@ -1,11 +1,8 @@
 package workspace
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"io"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
@@ -26,9 +23,6 @@ func TestAuthoredWatcherReportsOutagesAndRecovers(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			project := t.TempDir()
 			reports := make(chan error, 8)
-			previousLogger := slog.Default()
-			slog.SetDefault(slog.New(observationDiagnostics{Handler: slog.NewTextHandler(io.Discard, nil), failures: reports}))
-			t.Cleanup(func() { slog.SetDefault(previousLogger) })
 			watcher, err := NewAuthoredWatcher(t.TempDir(), "")
 			if err != nil {
 				t.Fatal(err)
@@ -38,6 +32,7 @@ func TestAuthoredWatcherReportsOutagesAndRecovers(t *testing.T) {
 				[]workspaceapp.AuthoredScope{{Workspace: project, ProjectRoot: project}},
 				[]workspaceapp.AuthoredResource{test.resource},
 				func(resource workspaceapp.AuthoredResource) { events <- resource },
+				func(err error) { reports <- err },
 			)
 			if err != nil {
 				t.Fatal(err)
@@ -103,21 +98,6 @@ func TestAuthoredWatcherReportsOutagesAndRecovers(t *testing.T) {
 	}
 }
 
-type observationDiagnostics struct {
-	slog.Handler
-	failures chan error
-}
-
-func (d observationDiagnostics) Handle(_ context.Context, record slog.Record) error {
-	record.Attrs(func(attr slog.Attr) bool {
-		if err, ok := attr.Value.Any().(error); attr.Key == "error" && ok {
-			d.failures <- err
-		}
-		return true
-	})
-	return nil
-}
-
 func TestAuthoredWatcherMapsGlobalAndWorkspaceCascades(t *testing.T) {
 	home := t.TempDir()
 	skillsHome := t.TempDir()
@@ -135,6 +115,7 @@ func TestAuthoredWatcherMapsGlobalAndWorkspaceCascades(t *testing.T) {
 		[]workspaceapp.AuthoredScope{{Workspace: workspace, ProjectRoot: project}},
 		[]workspaceapp.AuthoredResource{workspaceapp.AuthoredHooks, workspaceapp.AuthoredSkills},
 		func(resource workspaceapp.AuthoredResource) { events <- resource },
+		func(err error) { t.Errorf("observation outage: %v", err) },
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -183,6 +164,7 @@ func TestAuthoredWatcherScopesSkillsToSelectedWorkspace(t *testing.T) {
 		[]workspaceapp.AuthoredScope{{Workspace: workspace, ProjectRoot: project}},
 		[]workspaceapp.AuthoredResource{workspaceapp.AuthoredSkills},
 		func(resource workspaceapp.AuthoredResource) { events <- resource },
+		func(err error) { t.Errorf("observation outage: %v", err) },
 	)
 	if err != nil {
 		t.Fatal(err)

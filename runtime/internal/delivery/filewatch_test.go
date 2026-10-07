@@ -192,6 +192,49 @@ func TestWorkspaceSubscribe_ContentObservationFailureEndsStream(t *testing.T) {
 	}
 }
 
+// A Hooks or Skills outage is observable only through its report. The stream
+// owns that report as it does for file content, so a subscription whose authored
+// observation is down ends instead of staying live without invalidations.
+func TestWorkspaceSubscribe_AuthoredObservationFailureEndsStream(t *testing.T) {
+	root := t.TempDir()
+	parent := filepath.Join(root, ".flame")
+	if err := os.Mkdir(parent, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	s := newWorkspaceHandler(root)
+	s.workspaceHub = newWorkspaceHub()
+	_, stream, err := s.SubscribeRuntime(t.Context(), protocol.RuntimeSubscribeRequest{
+		Topics: []protocol.RuntimeTopic{protocol.TopicHooksChanged},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ended := make(chan error, 1)
+	go func() {
+		for _, err := range stream {
+			if err != nil {
+				ended <- err
+				return
+			}
+		}
+		ended <- nil
+	}()
+	if err := os.Remove(parent); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(parent, []byte("not a directory"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-ended:
+		if err == nil {
+			t.Fatal("observation failure became a clean end")
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("unavailable observation left a silently live subscription")
+	}
+}
+
 func TestWorkspaceSubscribe_ContentRegistrationRejectsOutsideAlias(t *testing.T) {
 	root, outside := t.TempDir(), t.TempDir()
 	if err := os.Symlink(outside, filepath.Join(root, "alias")); err != nil {

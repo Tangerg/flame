@@ -48,6 +48,7 @@ func (inertAuthoredWatcher) Watch(
 	[]workspaceapp.AuthoredScope,
 	[]workspaceapp.AuthoredResource,
 	func(workspaceapp.AuthoredResource),
+	func(error),
 ) (workspaceapp.AuthoredObservation, error) {
 	return inertWorkspaceCloser{}, nil
 }

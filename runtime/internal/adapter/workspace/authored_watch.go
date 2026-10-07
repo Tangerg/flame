@@ -3,7 +3,6 @@ package workspace
 import (
 	"errors"
 	"fmt"
-	"log/slog"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -54,6 +53,7 @@ func (a AuthoredWatcher) Watch(
 	scopes []workspaceapp.AuthoredScope,
 	resources []workspaceapp.AuthoredResource,
 	notify func(workspaceapp.AuthoredResource),
+	report func(error),
 ) (workspaceapp.AuthoredObservation, error) {
 	targets := make([]fileobservation.Target, 0, 1+len(scopes)*2)
 	if slices.Contains(resources, workspaceapp.AuthoredHooks) {
@@ -73,9 +73,6 @@ func (a AuthoredWatcher) Watch(
 				})
 			}
 		}
-	}
-	report := func(err error) {
-		slog.Error("workspace: authored resource observation failed", "error", err)
 	}
 	files, err := fileobservation.Watch(targets, func(keys []string) {
 		for _, key := range keys {
