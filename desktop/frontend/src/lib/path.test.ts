@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { basename, splitFilePath } from "./path";
+import { basename, fileExtension, splitFilePath } from "./path";
 
 describe("a directory path carrying its trailing separator", () => {
   it.each([
@@ -21,5 +21,16 @@ describe("a directory path carrying its trailing separator", () => {
   it("still splits an ordinary file path", () => {
     expect(splitFilePath("src/lib/path.ts")).toEqual({ directory: "src/lib", name: "path.ts" });
     expect(splitFilePath("path.ts")).toEqual({ directory: "", name: "path.ts" });
+  });
+});
+
+describe("a file extension", () => {
+  it.each([
+    ["docs/README.MD", "md"],
+    ["src/a.test.ts", "ts"],
+    ["a.dir/Makefile", ""],
+    ["config/.gitignore", ""],
+  ])("of %o is %o", (path, extension) => {
+    expect(fileExtension(path)).toBe(extension);
   });
 });

@@ -1,6 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { Activity, useLayoutEffect, useRef, useState } from "react";
 import { copyText } from "@/lib/clipboard";
+import { fileExtension } from "@/lib/path";
 import { isImeKey } from "@/lib/ime";
 import { lookupExtensionByKey } from "@/plugins/sdk";
 import { WORKSPACE_FILE_RENDERER } from "@/plugins/sdk/kernelPoints";
@@ -54,11 +55,6 @@ interface LineWindow {
 
 function initialWindow(line: number): LineWindow {
   return line > 0 ? { start: Math.max(1, line - WINDOW_RADIUS), end: line + WINDOW_RADIUS } : {};
-}
-
-function extensionOf(path: string): string {
-  const dot = path.lastIndexOf("../../views");
-  return dot > path.lastIndexOf("/") ? path.slice(dot + 1).toLowerCase() : "";
 }
 
 export function FileWorkspace() {
@@ -124,7 +120,7 @@ function FilePreview({ viewer }: { viewer: WorkspaceFileViewer }) {
   const moreBefore = firstShown > 1;
   const moreAfter = data !== undefined && lastShown < data.totalLines;
 
-  const renderer = lookupExtensionByKey(WORKSPACE_FILE_RENDERER, extensionOf(viewer.path));
+  const renderer = lookupExtensionByKey(WORKSPACE_FILE_RENDERER, fileExtension(viewer.path));
   const wholeFile = data !== undefined && !moreBefore && !moreAfter;
   const [mode, setMode] = useState<"rendered" | "source">("rendered");
   const showRendered = renderer !== undefined && wholeFile && mode === "rendered";

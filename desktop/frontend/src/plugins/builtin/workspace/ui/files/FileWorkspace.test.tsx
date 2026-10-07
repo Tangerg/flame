@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DATA_PROVIDER, definePlugin } from "@/plugins/sdk";
+import { WORKSPACE_FILE_RENDERER } from "@/plugins/sdk/kernelPoints";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 import { configureLocalWorkspace } from "../../application/ports/localWorkspace";
 import { navigator } from "@/lib/navigation";
@@ -81,6 +82,11 @@ beforeEach(async () => {
           key: WORKSPACE_READ_FILE_KEY,
           fetcher: (params) => readFile(params as WorkspaceReadFileQuery),
         });
+        ctx.contribute(
+          WORKSPACE_FILE_RENDERER,
+          ({ content }) => <article data-testid="rendered-markdown">{content}</article>,
+          { key: "md" },
+        );
       },
     }),
   );
@@ -119,6 +125,14 @@ describe("workspace files panel", () => {
 
     await screen.findByText("package main");
     expect(readFile).toHaveBeenCalledWith({ cwd: undefined, path: "src/main.go" });
+  });
+
+  it("renders a whole file through the renderer registered for its extension", async () => {
+    readFile.mockResolvedValue({ content: "# Title", startLine: 1, totalLines: 1 });
+    openWorkspaceFile("docs/README.md");
+    mount(<FileWorkspace />);
+
+    expect((await screen.findByTestId("rendered-markdown")).textContent).toBe("# Title");
   });
 
   it("waits for an unresolved Session workspace before following a line reference", async () => {

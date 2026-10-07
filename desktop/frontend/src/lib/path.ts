@@ -8,3 +8,9 @@ export function splitFilePath(path: string): { directory: string; name: string }
   if (cut < 0) return { directory: "", name: trimmed || path };
   return { directory: trimmed.slice(0, cut), name: trimmed.slice(cut + 1) };
 }
+
+export function fileExtension(path: string): string {
+  const name = path.slice(path.lastIndexOf("/") + 1);
+  const dot = name.lastIndexOf(".");
+  return dot > 0 ? name.slice(dot + 1).toLowerCase() : "";
+}
