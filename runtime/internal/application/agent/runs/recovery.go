@@ -33,7 +33,6 @@ type RecoveryStore interface {
 	ListTranscript(ctx context.Context, sessionID string) ([]transcript.Item, error)
 	LoadExecutorCheckpoint(ctx context.Context, rootMemberID string) (ExecutorCheckpoint, error)
 	ReadMessages(ctx context.Context, sessionID string) ([]corechat.Message, error)
-	CountMessages(ctx context.Context, sessionID string) (int, error)
 	CommitRecovery(ctx context.Context, commit RecoveryCommit) error
 }
 
@@ -164,16 +163,10 @@ type recoveryPlanner struct {
 	trees         map[string]recoveryRunTree
 	transcripts   map[string][]transcript.Item
 	sessions      map[string]session.Session
-	conversations map[string]recoveryConversationSnapshot
+	conversations map[string]conversation.Conversation
 	preserved     map[string]struct{}
 	commit        RecoveryCommitInput
 	finishedAt    time.Time
-	reconciled    int
-}
-
-type recoveryConversationSnapshot struct {
-	history conversation.Conversation
-	count   int
 }
 
 // NewRecovery constructs the Run ownership recovery use case.
@@ -419,7 +412,7 @@ func newRecoveryPlanner(
 		trees:         trees,
 		transcripts:   make(map[string][]transcript.Item),
 		sessions:      make(map[string]session.Session),
-		conversations: make(map[string]recoveryConversationSnapshot),
+		conversations: make(map[string]conversation.Conversation),
 		preserved:     make(map[string]struct{}, len(trees)),
 		finishedAt:    recovery.now().UTC(),
 	}
@@ -499,7 +492,7 @@ func (r *recoveryPlanner) plan() (RecoveryCommit, int, error) {
 	if err != nil {
 		return RecoveryCommit{}, 0, err
 	}
-	return commit, r.reconciled, nil
+	return commit, len(commit.LostRuns()), nil
 }
 
 func compareModelInvocationRecoveries(left, right ModelInvocationRecovery) int {
@@ -561,11 +554,11 @@ func (r *recoveryPlanner) planTree(rootRunID string) error {
 		}
 		loss = resumption.Loss()
 	}
-	conversationSnapshot, err := r.conversation(tree.root.SessionID())
+	history, err := r.conversation(tree.root.SessionID())
 	if err != nil {
 		return err
 	}
-	closure, err := TerminalConversation(r.ctx, r.store, tree.root.SessionID(), tree.root.ID(), conversationSnapshot.history.Messages(), rundomain.OutcomeLost, "")
+	closure, err := TerminalConversation(r.ctx, r.store, tree.root.SessionID(), tree.root.ID(), history.Messages(), rundomain.OutcomeLost, "")
 	if err != nil {
 		return fmt.Errorf(
 			"runs: close recovery conversation for root Run %q: %w",
@@ -573,7 +566,7 @@ func (r *recoveryPlanner) planTree(rootRunID string) error {
 			err,
 		)
 	}
-	messageMark := conversationSnapshot.count + len(closure)
+	messageMark := history.Count() + len(closure)
 	lostRuns, replacements, err := recoverLostTree(tree, items, messageMark, r.finishedAt, loss)
 	if err != nil {
 		return err
@@ -584,7 +577,7 @@ func (r *recoveryPlanner) planTree(rootRunID string) error {
 		r.commit.ConversationTransitions,
 		RecoveryConversationTransition{
 			RootRunID: tree.root.ID(), SessionID: tree.root.SessionID(),
-			ExpectedCount: conversationSnapshot.count, Messages: closure,
+			ExpectedCount: history.Count(), Messages: closure,
 		},
 	)
 	r.commit.DeleteInterrupts = append(r.commit.DeleteInterrupts, tree.root.ID())
@@ -592,7 +585,6 @@ func (r *recoveryPlanner) planTree(rootRunID string) error {
 		r.commit.DeleteCheckpointSessionIDs,
 		tree.root.SessionID(),
 	)
-	r.reconciled += len(lostRuns)
 	return nil
 }
 
@@ -628,13 +620,13 @@ func (r *recoveryPlanner) session(sessionID string) (session.Session, error) {
 	return sess, nil
 }
 
-func (r *recoveryPlanner) conversation(sessionID string) (recoveryConversationSnapshot, error) {
-	if snapshot, ok := r.conversations[sessionID]; ok {
-		return snapshot, nil
+func (r *recoveryPlanner) conversation(sessionID string) (conversation.Conversation, error) {
+	if history, ok := r.conversations[sessionID]; ok {
+		return history, nil
 	}
 	messages, err := r.store.ReadMessages(r.ctx, sessionID)
 	if err != nil {
-		return recoveryConversationSnapshot{}, fmt.Errorf(
+		return conversation.Conversation{}, fmt.Errorf(
 			"runs: load recovery conversation for Session %q: %w",
 			sessionID,
 			err,
@@ -642,31 +634,14 @@ func (r *recoveryPlanner) conversation(sessionID string) (recoveryConversationSn
 	}
 	history, err := conversation.New(messages)
 	if err != nil {
-		return recoveryConversationSnapshot{}, fmt.Errorf(
+		return conversation.Conversation{}, fmt.Errorf(
 			"runs: validate recovery conversation for Session %q: %w",
 			sessionID,
 			err,
 		)
 	}
-	count, err := r.store.CountMessages(r.ctx, sessionID)
-	if err != nil {
-		return recoveryConversationSnapshot{}, fmt.Errorf(
-			"runs: load recovery message watermark for Session %q: %w",
-			sessionID,
-			err,
-		)
-	}
-	if count != history.Count() {
-		return recoveryConversationSnapshot{}, fmt.Errorf(
-			"runs: recovery conversation for Session %q decoded %d messages at stored watermark %d",
-			sessionID,
-			history.Count(),
-			count,
-		)
-	}
-	snapshot := recoveryConversationSnapshot{history: history, count: count}
-	r.conversations[sessionID] = snapshot
-	return snapshot, nil
+	r.conversations[sessionID] = history
+	return history, nil
 }
 
 func recoverLostTree(

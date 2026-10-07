@@ -206,10 +206,6 @@ func (p *Persistence) ListTranscript(ctx context.Context, sessionID string) ([]t
 	return p.transcript.List(ctx, sessionID)
 }
 
-func (p *Persistence) CountMessages(ctx context.Context, sessionID string) (int, error) {
-	return p.messages.Count(ctx, sessionID)
-}
-
 func (p *Persistence) UnpublishedToolResults(ctx context.Context, sessionID, runID string) ([]corechat.ToolResult, error) {
 	return p.runs.UnpublishedToolResults(ctx, sessionID, runID)
 }

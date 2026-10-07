@@ -97,13 +97,6 @@ func (r *recoveryStoreStub) ListTranscript(_ context.Context, sessionID string) 
 	return append([]transcript.Item(nil), r.transcripts[sessionID]...), nil
 }
 
-func (r *recoveryStoreStub) CountMessages(_ context.Context, sessionID string) (int, error) {
-	if _, explicit := r.messageMarks[sessionID]; !explicit {
-		return len(r.messages[sessionID]), nil
-	}
-	return r.messageMarks[sessionID], nil
-}
-
 func (r *recoveryStoreStub) ReadMessages(
 	_ context.Context,
 	sessionID string,
