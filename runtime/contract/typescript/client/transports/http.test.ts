@@ -7,6 +7,9 @@ import {
 } from "@flame/runtime-contract/client/errors";
 import type { WireMethodName } from "@flame/runtime-contract/methods";
 import { createHttpTransport } from "@flame/runtime-contract/client/transports/http";
+import { createFlameClient } from "@flame/runtime-contract/client/sdk";
+import { asSessionId } from "@flame/runtime-contract/client/ids";
+import { createMutationJournal } from "@flame/runtime-contract/client/mutationJournal";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -327,7 +330,9 @@ describe("HTTPTransport — streamable HTTP", () => {
     });
 
     await expect(transport.send(req("2", "sessions.get"))).rejects.toThrow(
-      "non-streaming RPC method sessions.get returned an event stream",
+      new RpcProtocolError("RPC response", [
+        { path: "$", detail: "must not be an event stream for non-streaming method sessions.get" },
+      ]),
     );
     await transport.close();
   });
@@ -362,9 +367,7 @@ describe("HTTPTransport — streamable HTTP", () => {
       fetch: fetchStub,
     });
 
-    await expect(transport.send(req("2", "sessions.get"))).rejects.toThrow(
-      "RPC call ended without a response",
-    );
+    await expect(transport.send(req("2", "sessions.get"))).rejects.toBeInstanceOf(RpcProtocolError);
     await transport.close();
   });
 
@@ -381,7 +384,9 @@ describe("HTTPTransport — streamable HTTP", () => {
     });
 
     await expect(transport.send(req("2", "sessions.get"))).rejects.toThrow(
-      "does not match the outbound request",
+      new RpcProtocolError("RPC response", [
+        { path: "$.id", detail: "must match the outbound request" },
+      ]),
     );
     await transport.close();
   });
@@ -798,4 +803,41 @@ it("keeps an authenticated request on its exact configured target", async () => 
   );
   expect(fetchStub).toHaveBeenCalledOnce();
   await transport.close();
+});
+
+describe("HTTP mutation acknowledgement", () => {
+  it.each([
+    ["no content", () => new Response(null, { status: 204 })],
+    [
+      "another request's response",
+      () =>
+        new Response(JSON.stringify({ jsonrpc: "2.0", id: "other", result: {} }), {
+          headers: { "Content-Type": "application/json" },
+        }),
+    ],
+  ])("keeps the command unresolved without replaying it after %s", async (_case, respond) => {
+    const entries = new Map<string, unknown>();
+    const fetchStub = vi.fn(async () => respond());
+    const client = createFlameClient(
+      createHttpTransport({ baseUrl: "http://x", fetch: fetchStub as unknown as typeof fetch }),
+      {
+        mutationJournal: createMutationJournal({
+          storage: {
+            get: (key) => structuredClone(entries.get(key)),
+            set: (key, value) => void entries.set(key, structuredClone(value)),
+            remove: (key) => void entries.delete(key),
+            keys: () => [...entries.keys()],
+          },
+          scope: () => ({ namespace: "idp_store", retentionSeconds: 3600 }),
+        }),
+      },
+    );
+
+    await expect(client.sessions.delete(asSessionId("ses_1"))).rejects.toBeInstanceOf(
+      RpcProtocolError,
+    );
+    expect(fetchStub).toHaveBeenCalledOnce();
+    expect(entries.size).toBe(1);
+    await client.close();
+  });
 });

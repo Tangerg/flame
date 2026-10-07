@@ -287,9 +287,9 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
     if (metadata.requestId) span.setAttribute("flame.request_id", metadata.requestId);
 
     if (res.status === 204 || res.status === 202) {
-      const err = new RpcTransportError(
-        `http ${res.status}: RPC call ended without a response`,
-        res.status,
+      const err = new RpcProtocolError(
+        "RPC response",
+        [{ path: "$", detail: `must answer the call, not end it with http ${res.status}` }],
         metadata.requestId,
       );
       endSpan(span, err);
@@ -298,9 +298,9 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
 
     if (res.ok && (res.headers.get("Content-Type") ?? "").includes("text/event-stream")) {
       if (!isWireStreamingMethodName(method)) {
-        const err = new RpcTransportError(
-          `non-streaming RPC method ${method} returned an event stream`,
-          undefined,
+        const err = new RpcProtocolError(
+          "RPC response",
+          [{ path: "$", detail: `must not be an event stream for non-streaming method ${method}` }],
           metadata.requestId,
         );
         endSpan(span, err);
@@ -364,9 +364,9 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       throw err;
     }
     if (!text) {
-      const err = new RpcTransportError(
-        "RPC response body is empty",
-        undefined,
+      const err = new RpcProtocolError(
+        "RPC response",
+        [{ path: "$", detail: "must not be empty" }],
         metadata.requestId,
       );
       endSpan(span, err);
@@ -383,9 +383,9 @@ export function createHttpTransport(config: HttpTransportConfig): Transport {
       throw err;
     }
     if (!isResponse(inbound) || inbound.id !== rpcId) {
-      const err = new RpcTransportError(
-        "RPC response does not match the outbound request",
-        undefined,
+      const err = new RpcProtocolError(
+        "RPC response",
+        [{ path: "$.id", detail: "must match the outbound request" }],
         metadata.requestId,
       );
       endSpan(span, err);
