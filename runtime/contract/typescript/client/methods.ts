@@ -10,7 +10,7 @@ import type {
   SetMCPToolExposureRequest,
   SetApprovalRuleRequest,
 } from "../wire.generated";
-import type { RpcClient } from "./client";
+import type { RpcCallOptions, RpcClient } from "./client";
 import type { MutationPromise } from "./mutation";
 import { createWireCallPath, type MethodsOptions, type WireCall } from "./wireCallPath";
 import type { RunId, SegmentId, SessionId } from "./ids";
@@ -40,7 +40,10 @@ import type {
   EmbeddingRole,
   ListApprovalRulesResult,
   ListFilesRequest,
+  ListInterruptsRequest,
+  ListItemsRequest,
   ListItemsResponse,
+  ListRunsRequest,
   ListSessionsRequest,
   ListSessionTrajectoryRequest,
   MCPAuthorizationAttempt,
@@ -63,10 +66,7 @@ import type {
   RollbackSessionResponse,
   RunEvent,
   ReadFileRequest,
-  ItemListScope,
-  ItemOrder,
   RunRef,
-  RunStatus,
   RunScheduleNowResponse,
   Schedule,
   CreateScheduleRequest,
@@ -83,8 +83,11 @@ import type {
   SkillProposalRef,
   AgentMemoryItem,
   AgentMemoryList,
+  AgentMemoryReviewDecision,
   AgentMemoryScope,
+  AgentMemoryUpdateRequest,
   Goal,
+  StartGoalRequest,
   StartRunRequest,
   RuntimeSubscribeRequest,
   RuntimeSubscribeResponse,
@@ -221,11 +224,7 @@ export interface Methods {
     ) => MutationPromise<SteerRunResponse>;
     get: (runId: RunId, signal?: AbortSignal) => Promise<RunRef>;
     list: (
-      query?: PageQuery & {
-        sessionId?: SessionId;
-        statuses?: RunStatus[];
-        includeDescendants?: boolean;
-      },
+      query?: Omit<ListRunsRequest, "sessionId"> & { sessionId?: SessionId },
       signal?: AbortSignal,
     ) => AutoPagingPromise<Page<RunRef>>;
   };
@@ -234,20 +233,15 @@ export interface Methods {
   };
   interrupts: {
     list: (
-      query?: PageQuery & { sessionId?: SessionId; rootRunId?: RunId },
+      query?: Omit<ListInterruptsRequest, "sessionId" | "rootRunId"> & {
+        sessionId?: SessionId;
+        rootRunId?: RunId;
+      },
       signal?: AbortSignal,
     ) => AutoPagingPromise<Page<PendingInterruptSet>>;
   };
   items: {
-    list: (
-      params: {
-        scope: ItemListScope;
-        order?: ItemOrder;
-        cursor?: string;
-        limit?: number;
-      },
-      signal?: AbortSignal,
-    ) => AutoPagingPromise<ListItemsResponse>;
+    list: (params: ListItemsRequest, signal?: AbortSignal) => AutoPagingPromise<ListItemsResponse>;
   };
   workspaces: {
     resolve: (ref?: WorkspaceRef, signal?: AbortSignal) => Promise<WorkspaceInfo>;
@@ -316,24 +310,15 @@ export interface Methods {
   };
   agentMemory: {
     list: (target: AgentMemoryTarget, signal?: AbortSignal) => Promise<AgentMemoryList>;
-    review: (id: string, decision: "approve" | "reject") => MutationPromise<void>;
-    update: (params: {
-      id: string;
-      content?: string;
-      pinned?: boolean;
-    }) => MutationPromise<AgentMemoryItem>;
+    review: (id: string, decision: AgentMemoryReviewDecision) => MutationPromise<void>;
+    update: (params: AgentMemoryUpdateRequest) => MutationPromise<AgentMemoryItem>;
     delete: (id: string) => MutationPromise<void>;
     add: (params: AgentMemoryTarget & { content: string }) => MutationPromise<AgentMemoryItem>;
   };
   goals: {
     get: (sessionId: SessionId, signal?: AbortSignal) => Promise<Goal | null>;
     start: (
-      params: {
-        sessionId: SessionId;
-        objective: string;
-        provider?: string;
-        model?: string;
-      },
+      params: Omit<StartGoalRequest, "sessionId"> & { sessionId: SessionId },
       signal?: AbortSignal,
     ) => MutationPromise<Goal>;
     update: (params: UpdateGoalRequest, signal?: AbortSignal) => MutationPromise<Goal>;
@@ -403,6 +388,18 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
 
   const { call, perform, openMutation } = createWireCallPath(client, options);
 
+  const attachRunStream = async <R extends { segmentId: string }>(
+    signal: AbortSignal | undefined,
+    request: (options: Pick<RpcCallOptions, "signal" | "onRequestRpcId">) => Promise<R>,
+  ): Promise<StreamingResult<R, RunEvent>> => {
+    const stream = streamRunEvents(client, runEventStreamOptions(signal));
+    const result = await callOrDispose(stream, () =>
+      request({ signal: stream.requestSignal, onRequestRpcId: stream.bindRequest }),
+    );
+    stream.bind(result.segmentId);
+    return { result, events: stream.events };
+  };
+
   const openWorkspace = async (
     ref?: WorkspaceRef,
     signal?: AbortSignal,
@@ -451,52 +448,34 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
         openMutation(
           "runs.start",
           params,
-          async (idempotencyKey, attempt, preparedParams) => {
-            const stream = streamRunEvents(client, runEventStreamOptions(attempt.signal));
-            const result = await callOrDispose(stream, () =>
+          (idempotencyKey, attempt, preparedParams) =>
+            attachRunStream(attempt.signal, (options) =>
               perform("runs.start", preparedParams, {
-                signal: stream.requestSignal,
+                ...options,
                 idempotencyKey,
                 idempotencyNamespace: attempt.idempotencyNamespace,
-                onRequestRpcId: stream.bindRequest,
               }),
-            );
-            stream.bind(result.segmentId);
-            return { result, events: stream.events };
-          },
+            ),
           signal,
         ),
       resume: (params, signal) =>
         openMutation(
           "runs.resume",
           params,
-          async (idempotencyKey, attempt, preparedParams) => {
-            const stream = streamRunEvents(client, runEventStreamOptions(attempt.signal));
-            const result = await callOrDispose(stream, () =>
+          (idempotencyKey, attempt, preparedParams) =>
+            attachRunStream(attempt.signal, (options) =>
               perform("runs.resume", preparedParams, {
-                signal: stream.requestSignal,
+                ...options,
                 idempotencyKey,
                 idempotencyNamespace: attempt.idempotencyNamespace,
-                onRequestRpcId: stream.bindRequest,
               }),
-            );
-            stream.bind(result.segmentId);
-            return { result, events: stream.events };
-          },
+            ),
           signal,
         ),
-      subscribe: async (params, signal, options) => {
-        const stream = streamRunEvents(client, runEventStreamOptions(signal));
-        const result = await callOrDispose(stream, () =>
-          call("runs.subscribe", params, {
-            signal: stream.requestSignal,
-            lastEventId: options?.lastEventId,
-            onRequestRpcId: stream.bindRequest,
-          }),
-        );
-        stream.bind(result.segmentId);
-        return { result, events: stream.events };
-      },
+      subscribe: (params, signal, options) =>
+        attachRunStream(signal, (callOptions) =>
+          call("runs.subscribe", params, { ...callOptions, lastEventId: options?.lastEventId }),
+        ),
       cancel: (runId, reason) => call("runs.cancel", { runId, reason }),
       steer: (runId, expectedSegmentId, input) =>
         call("runs.steer", { runId, expectedSegmentId, input }),

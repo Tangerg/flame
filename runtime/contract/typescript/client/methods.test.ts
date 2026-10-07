@@ -478,6 +478,31 @@ describe("methods factory", () => {
     expect(call).toHaveBeenCalledWith("goals.get", { sessionId: "ses_1" }, { signal });
   });
 
+  it("forwards the complete generated Goal start contract", async () => {
+    const call = vi.fn().mockResolvedValue({ sessionId: "ses_1" });
+    const methods = createMethods({ call } as unknown as RpcClient);
+
+    await methods.goals.start({
+      sessionId: asSessionId("ses_1"),
+      objective: "Ship beta",
+      provider: "openai",
+      model: "gpt",
+      reasoningEffort: "high",
+    });
+
+    expect(call).toHaveBeenCalledWith(
+      "goals.start",
+      {
+        sessionId: "ses_1",
+        objective: "Ship beta",
+        provider: "openai",
+        model: "gpt",
+        reasoningEffort: "high",
+      },
+      expect.objectContaining({ idempotencyKey: expect.any(String) }),
+    );
+  });
+
   it("forwards Goal update and clear through the generated mutation contract", async () => {
     const call = vi.fn().mockResolvedValue({
       sessionId: "ses_1",
