@@ -1,4 +1,5 @@
-export type ConversationExportFormat = "md" | "json";
+import type { ExportFormat } from "@flame/runtime-contract/wire";
+export type { ExportFormat };
 
 interface ImportedConversation {
   id: string;
@@ -6,7 +7,7 @@ interface ImportedConversation {
 }
 
 export interface ConversationArchiveGateway {
-  exportConversation(sessionId: string, format: ConversationExportFormat): Promise<string>;
+  exportConversation(sessionId: string, format: ExportFormat): Promise<string>;
   exportTrajectory(sessionId: string): Promise<string>;
   importConversation(artifact: unknown): Promise<ImportedConversation>;
 }

@@ -26,6 +26,7 @@ import type {
   UpdateGoalRequest,
   CreateSessionRequest,
   Diff,
+  ExportFormat,
   ExportSessionResponse,
   ExportTrajectoryRequest,
   ExportTrajectoryResponse,
@@ -187,7 +188,7 @@ export interface Methods {
     rollback: (params: RollbackSessionRequest) => MutationPromise<RollbackSessionResponse>;
     export: (
       sessionId: SessionId,
-      format?: "md" | "json",
+      format?: ExportFormat,
       signal?: AbortSignal,
     ) => Promise<ExportSessionResponse>;
     exportTrajectory: (

@@ -1,3 +1,4 @@
+import type { HookScope } from "@flame/runtime-contract/wire";
 import { createParameterizedDataQuery } from "@/plugins/sdk";
 
 export interface HookReadModel {
@@ -6,7 +7,7 @@ export interface HookReadModel {
   command?: string;
   inject?: string;
   timeoutMs?: number;
-  scope: "global" | "project";
+  scope: HookScope;
   source: string;
   active: boolean;
 }

@@ -1,3 +1,4 @@
+import type { ModelInvocationState } from "@flame/runtime-contract/wire";
 import { useEffect, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createParameterizedDataQuery, type AgentItem, type AgentRunFact } from "@/plugins/sdk";
@@ -15,7 +16,7 @@ export interface ModelInvocation {
   callId: string;
   runId: string;
   segmentId: string;
-  state: "started" | "completed" | "failed" | "unknown";
+  state: ModelInvocationState;
   startedAt: string;
   settledAt?: string;
   firstOutputLatencyMillis?: number;

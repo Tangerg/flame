@@ -1,8 +1,7 @@
-import type { ApprovalDecision } from "@flame/runtime-contract/wire";
+import type { ApprovalDecision, ApprovalMode } from "@flame/runtime-contract/wire";
 
-export type { ApprovalDecision };
+export type { ApprovalDecision, ApprovalMode };
 
-export type ApprovalMode = "safe" | "balanced" | "yolo";
 export type RememberScope = "session" | "project" | "global";
 
 export interface InterruptRef {

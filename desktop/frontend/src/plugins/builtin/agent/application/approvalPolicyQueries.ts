@@ -1,4 +1,4 @@
-import type { ApprovalSubject, ToolRef } from "@flame/runtime-contract/wire";
+import type { ApprovalRuleDecision, ApprovalSubject, ToolRef } from "@flame/runtime-contract/wire";
 import { createDataQuery, createParameterizedDataQuery } from "@/plugins/sdk";
 import type { ApprovalMode, RememberScope } from "../domain/hitl";
 
@@ -14,7 +14,7 @@ export interface ApprovalRuleSummary {
   stale: boolean;
   subject: ApprovalSubject;
   dir?: string;
-  decision: "allow" | "deny";
+  decision: ApprovalRuleDecision;
 }
 
 export const APPROVAL_MODE_KEY = "approval-mode";

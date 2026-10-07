@@ -1,17 +1,15 @@
 import { mcpServerLabel } from "@/lib/toolSource";
-import type { MCPServerID } from "@flame/runtime-contract/wire";
+import type { MCPServerID, MCPServerStateType, MCPTransport } from "@flame/runtime-contract/wire";
 import { createDataQuery, createParameterizedDataQuery } from "@/plugins/sdk";
 import type { MCPHandshakeTimeout } from "./mcpHandshakeTimeout";
 
 export type { MCPServerID };
 
-export type MCPTransport = "stdio" | "streamableHttp";
-type MCPServerStatus =
-  "disabled" | "disconnected" | "connecting" | "connected" | "failed" | "needsAuth";
+export type { MCPTransport };
 
 export interface MCPServerSettings {
   id: MCPServerID;
-  status: MCPServerStatus;
+  status: MCPServerStateType;
   errorDetail?: string;
   type: MCPTransport;
   enabled: boolean;

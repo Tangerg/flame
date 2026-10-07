@@ -11,10 +11,7 @@ import {
 import { runtimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
 import { notifyError } from "@/plugins/sdk";
 import { toast } from "sonner";
-import type {
-  ConversationArchiveGateway,
-  ConversationExportFormat,
-} from "./ports/conversationArchiveGateway";
+import type { ConversationArchiveGateway, ExportFormat } from "./ports/conversationArchiveGateway";
 import type { FileTransferPort } from "./ports/fileTransfer";
 
 function timestampForFilename(date: Date): string {
@@ -40,7 +37,7 @@ class ConversationArchiveGeneration {
     this.#files = files;
   }
 
-  async export(format: ConversationExportFormat): Promise<void> {
+  async export(format: ExportFormat): Promise<void> {
     try {
       const sessionId = getActiveSessionId();
       if (!sessionId) return;
@@ -172,7 +169,7 @@ export class ConversationArchiveOwner {
     return owner;
   }
 
-  export(format: ConversationExportFormat): Promise<void> {
+  export(format: ExportFormat): Promise<void> {
     return this.#generation.export(format);
   }
 

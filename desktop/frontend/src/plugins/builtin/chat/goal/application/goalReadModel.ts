@@ -1,9 +1,10 @@
+import type { GoalStatus } from "@flame/runtime-contract/wire";
 import {
   useAgentSessionSharedMaterial,
   type AgentProjectionMaterial,
 } from "@/plugins/builtin/agent/public/sessionMaterial";
 
-export type GoalStatus = "active" | "paused" | "blocked" | "completing";
+export type { GoalStatus };
 
 interface GoalUsage {
   runs: number;

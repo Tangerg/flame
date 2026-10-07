@@ -11,7 +11,7 @@ import {
 } from "@/plugins/sdk";
 import { RUNTIME_STREAM, followRuntimeGeneration } from "@/plugins/builtin/runtime/public/services";
 import type { Message } from "@/plugins/sdk/types/agentSessionView";
-import type { MessageFeedbackRating } from "./domain/feedback";
+import type { FeedbackRating } from "./domain/feedback";
 import { canRateMessage } from "./application/messageActionAvailability";
 import { useMessageFeedback } from "./public/feedback";
 import { installRuntimeFeedbackGateway } from "./adapters/runtimeFeedback";
@@ -28,7 +28,7 @@ function RateableFeedbackButtons({ msg }: { msg: Message }) {
   const sessionId = useCurrentMessageSessionId();
   const feedback = useMessageFeedback(sessionId, msg);
 
-  const rate = (rating: MessageFeedbackRating): void => {
+  const rate = (rating: FeedbackRating): void => {
     if (feedback.rating === rating) return;
     void feedback.submit(rating).catch((error: unknown) => {
       if (wasGenerationRetired(error)) return;

@@ -1,5 +1,5 @@
 import { patchToolResult } from "@/plugins/sdk";
-import type { ChangeStatus } from "@flame/runtime-contract/wire";
+import { WIRE_ENUMS, type ChangeStatus } from "@flame/runtime-contract/wire";
 
 export interface PatchChange {
   path: string;
@@ -7,12 +7,7 @@ export interface PatchChange {
   from?: string;
 }
 
-const PATCH_STATUSES: ReadonlySet<string> = new Set<ChangeStatus>([
-  "added",
-  "deleted",
-  "modified",
-  "moved",
-]);
+const PATCH_STATUSES: ReadonlySet<string> = new Set<ChangeStatus>(WIRE_ENUMS.ChangeStatus);
 
 export function projectPatchChanges(result: string | undefined): PatchChange[] {
   const changes = patchToolResult(result)?.changes;

@@ -1,3 +1,13 @@
+import type {
+  AgentMemoryOrigin,
+  AgentMemoryScope,
+  AgentMemoryStatus,
+  FileEntryType,
+  FileStatus,
+  SkillLifecycle,
+  SkillProposalOrigin,
+  SkillScope,
+} from "@flame/runtime-contract/wire";
 import type { WorkspaceDiffMode } from "./diffVocabulary";
 import { createDataQuery, createParameterizedDataQuery } from "@/plugins/sdk";
 
@@ -20,7 +30,7 @@ export interface WorkspaceFileChange {
 export interface WorkspaceSkill {
   name: string;
   description: string;
-  scope: "project" | "user" | "installation";
+  scope: SkillScope;
   installation?: { installationId: string; digest: string };
 }
 
@@ -47,7 +57,7 @@ export interface WorkspaceCatalogQuery {
 export interface ManagedSkill {
   name: string;
   description: string;
-  lifecycle: "active" | "archived";
+  lifecycle: SkillLifecycle;
 }
 
 export interface SkillProposal {
@@ -57,22 +67,22 @@ export interface SkillProposal {
   scope: "project" | "user";
   description: string;
   instructions: string;
-  origin: "requested" | "mined";
+  origin: SkillProposalOrigin;
   revises: boolean;
   sourceSession?: string;
 }
 
 export interface AgentMemoryQuery {
-  scope: "project" | "user";
+  scope: AgentMemoryScope;
   cwd?: string;
 }
 
 export interface AgentMemoryEntry {
   id: string;
-  scope: "project" | "user";
+  scope: AgentMemoryScope;
   content: string;
-  origin: "auto" | "user";
-  status: "active" | "pending";
+  origin: AgentMemoryOrigin;
+  status: AgentMemoryStatus;
   pinned: boolean;
   sessionId?: string;
   createdAt: string;
@@ -98,7 +108,7 @@ export type WorkspaceDiffRow =
 
 export interface WorkspaceFileDiff {
   path: string;
-  status: "added" | "modified" | "deleted" | "renamed" | "untracked";
+  status: FileStatus;
   previousPath?: string;
   added?: number;
   removed?: number;
@@ -124,7 +134,7 @@ export interface WorkspaceListFilesQuery {
 export interface WorkspaceFileEntry {
   path: string;
   name: string;
-  type: "file" | "dir" | "symlink";
+  type: FileEntryType;
   sizeBytes?: number;
 }
 

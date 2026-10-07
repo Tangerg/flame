@@ -1,14 +1,13 @@
+import type { ProviderKeySource } from "@flame/runtime-contract/wire";
 export interface ProviderRole {
   provider?: string;
   model?: string;
 }
 
-export type ProviderCredentialSource = "stored" | "env";
-
 export interface ProviderConfigurationSnapshot {
   id: string;
   baseUrl?: string;
-  credential?: { masked: string; source: ProviderCredentialSource };
+  credential?: { masked: string; source: ProviderKeySource };
   configured: boolean;
   requiresBaseUrl?: boolean;
   embeddingCapable?: boolean;
@@ -18,10 +17,10 @@ export interface ProviderConfigurationSnapshot {
 export class ProviderCredential {
   private constructor(
     readonly masked: string,
-    readonly source: ProviderCredentialSource,
+    readonly source: ProviderKeySource,
   ) {}
 
-  static configured(masked: string, source: ProviderCredentialSource): ProviderCredential {
+  static configured(masked: string, source: ProviderKeySource): ProviderCredential {
     return new ProviderCredential(masked, source);
   }
 

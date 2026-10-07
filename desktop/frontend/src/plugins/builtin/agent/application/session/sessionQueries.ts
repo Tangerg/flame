@@ -1,17 +1,18 @@
+import type { SessionStatus, WorkspaceAvailability } from "@flame/runtime-contract/wire";
 import { createDataQuery } from "@/plugins/sdk";
 import { queryClient } from "@/lib/queryClient";
 import type { AgentCommandOwner } from "../agentCommandOwner";
 
 interface AgentSessionWorkspace {
   path: string;
-  availability: "available" | "missing";
+  availability: WorkspaceAvailability;
 }
 
 export interface AgentSessionSummary {
   id: string;
   revision: number;
   title: string;
-  status: "running" | "waiting" | "idle";
+  status: SessionStatus;
   provider: string;
   model: string;
   reasoningEffort?: string;

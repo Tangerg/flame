@@ -1,4 +1,4 @@
-import type { MCPServerID } from "@flame/runtime-contract/wire";
+import type { MCPServerID, RestoreType } from "@flame/runtime-contract/wire";
 import { createSingletonPort } from "@/lib/ports/singletonPort";
 import type { AgentItem, AgentPendingInterruptSet, AgentRunFact } from "@/plugins/sdk";
 import type { ApprovalMode } from "../../domain/hitl";
@@ -6,7 +6,7 @@ import type { AgentInput } from "../../domain/input";
 import type { AgentPlan } from "@/plugins/sdk/types/agentSessionView";
 import type { AgentSessionSummary } from "../session/sessionQueries";
 
-export type RestoreType = "history" | "files" | "both";
+export type { RestoreType };
 
 export interface AgentSessionSnapshot {
   items: AgentItem[];

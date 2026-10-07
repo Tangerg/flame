@@ -1,7 +1,7 @@
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { RetirableTaskCohort } from "@/lib/taskQueue";
-import type { MessageFeedbackRating } from "../domain/feedback";
+import type { FeedbackRating } from "../domain/feedback";
 
 export interface MessageFeedbackTarget {
   readonly sessionId: string;
@@ -12,7 +12,7 @@ export interface MessageFeedbackTarget {
 export interface MessageFeedbackGateway {
   createMessageFeedback(input: {
     target: MessageFeedbackTarget;
-    rating: MessageFeedbackRating;
+    rating: FeedbackRating;
   }): Promise<void>;
 }
 
@@ -23,10 +23,10 @@ class MessageFeedbackAggregate {
   readonly #gateway: MessageFeedbackGateway;
   readonly #cohort: RetirableTaskCohort;
   readonly #publish: () => void;
-  #accepted: MessageFeedbackRating | undefined;
-  #selected: MessageFeedbackRating | undefined;
+  #accepted: FeedbackRating | undefined;
+  #selected: FeedbackRating | undefined;
   #latestLease: object = {};
-  #latestResult: Promise<MessageFeedbackRating> | null = null;
+  #latestResult: Promise<FeedbackRating> | null = null;
 
   constructor(
     target: MessageFeedbackTarget,
@@ -40,11 +40,11 @@ class MessageFeedbackAggregate {
     this.#publish = publish;
   }
 
-  rating(): MessageFeedbackRating | undefined {
+  rating(): FeedbackRating | undefined {
     return this.#selected;
   }
 
-  submit(rating: MessageFeedbackRating): Promise<MessageFeedbackRating> {
+  submit(rating: FeedbackRating): Promise<FeedbackRating> {
     this.#cohort.assertCurrent();
     if (this.#selected === rating) {
       return this.#latestResult ?? Promise.resolve(rating);
@@ -65,7 +65,7 @@ class MessageFeedbackAggregate {
     return result;
   }
 
-  async #execute(lease: object, rating: MessageFeedbackRating): Promise<MessageFeedbackRating> {
+  async #execute(lease: object, rating: FeedbackRating): Promise<FeedbackRating> {
     try {
       await this.#cohort.settle(
         this.#gateway.createMessageFeedback({ target: this.#target, rating }),
@@ -95,14 +95,11 @@ class MessageFeedbackGeneration {
     this.#publish = publish;
   }
 
-  rating(target: MessageFeedbackTarget): MessageFeedbackRating | undefined {
+  rating(target: MessageFeedbackTarget): FeedbackRating | undefined {
     return this.#aggregates.get(messageFeedbackIdentity(target))?.rating();
   }
 
-  submit(
-    target: MessageFeedbackTarget,
-    rating: MessageFeedbackRating,
-  ): Promise<MessageFeedbackRating> {
+  submit(target: MessageFeedbackTarget, rating: FeedbackRating): Promise<FeedbackRating> {
     this.#cohort.assertCurrent();
     const identity = messageFeedbackIdentity(target);
     let aggregate = this.#aggregates.get(identity);
@@ -146,7 +143,7 @@ export class MessageFeedbackOwner {
     return owner;
   }
 
-  static rating(target: MessageFeedbackTarget): MessageFeedbackRating | undefined {
+  static rating(target: MessageFeedbackTarget): FeedbackRating | undefined {
     const owner = messageFeedbackPublication.current();
     return owner && !owner.#disposed ? owner.#generation.rating(target) : undefined;
   }
@@ -165,10 +162,7 @@ export class MessageFeedbackOwner {
     };
   }
 
-  submit(
-    target: MessageFeedbackTarget,
-    rating: MessageFeedbackRating,
-  ): Promise<MessageFeedbackRating> {
+  submit(target: MessageFeedbackTarget, rating: FeedbackRating): Promise<FeedbackRating> {
     return this.#generation.submit(target, rating);
   }
 
@@ -209,9 +203,7 @@ export class MessageFeedbackOwner {
 
 const messageFeedbackPublication = createPublicationSlot<MessageFeedbackOwner>();
 
-export function messageFeedbackRating(
-  target: MessageFeedbackTarget,
-): MessageFeedbackRating | undefined {
+export function messageFeedbackRating(target: MessageFeedbackTarget): FeedbackRating | undefined {
   return MessageFeedbackOwner.rating(target);
 }
 
@@ -224,8 +216,8 @@ export function subscribeMessageFeedback(
 
 export function submitMessageFeedback(
   target: MessageFeedbackTarget,
-  rating: MessageFeedbackRating,
-): Promise<MessageFeedbackRating> {
+  rating: FeedbackRating,
+): Promise<FeedbackRating> {
   return MessageFeedbackOwner.current().submit(target, rating);
 }
 

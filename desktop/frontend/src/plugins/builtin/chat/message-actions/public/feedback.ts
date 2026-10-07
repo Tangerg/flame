@@ -6,11 +6,11 @@ import {
   subscribeMessageFeedback,
   type MessageFeedbackTarget,
 } from "../application/feedback";
-import type { MessageFeedbackRating } from "../domain/feedback";
+import type { FeedbackRating } from "../domain/feedback";
 
 interface MessageFeedbackModel {
-  rating: MessageFeedbackRating | undefined;
-  submit(rating: MessageFeedbackRating): Promise<MessageFeedbackRating>;
+  rating: FeedbackRating | undefined;
+  submit(rating: FeedbackRating): Promise<FeedbackRating>;
 }
 
 export function useMessageFeedback(sessionId: string, message: Message): MessageFeedbackModel {
@@ -29,7 +29,7 @@ export function useMessageFeedback(sessionId: string, message: Message): Message
   const snapshot = useCallback(() => messageFeedbackRating(target), [target]);
   const rating = useSyncExternalStore(subscribe, snapshot, snapshot);
   const submit = useCallback(
-    (next: MessageFeedbackRating) => submitMessageFeedbackIntent(target, next),
+    (next: FeedbackRating) => submitMessageFeedbackIntent(target, next),
     [target],
   );
   return useMemo(() => ({ rating, submit }), [rating, submit]);

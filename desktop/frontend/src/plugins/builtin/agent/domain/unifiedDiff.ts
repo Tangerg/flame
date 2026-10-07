@@ -1,9 +1,8 @@
-type FileChangeStatus = "added" | "deleted" | "modified" | "moved";
-
+import type { ChangeStatus } from "@flame/runtime-contract/wire";
 export interface UnifiedDiffFile {
   path: string;
   from?: string;
-  status: FileChangeStatus;
+  status: ChangeStatus;
   added: number;
   removed: number;
 }
@@ -87,7 +86,7 @@ function sealed(file: OpenFile): UnifiedDiffFile[] {
   ];
 }
 
-function status(file: OpenFile): FileChangeStatus {
+function status(file: OpenFile): ChangeStatus {
   if (!file.old) return "added";
   if (!file.new) return "deleted";
   return file.old === file.new ? "modified" : "moved";
