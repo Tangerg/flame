@@ -89,8 +89,8 @@ func TestStatusProgressIncludesRuntimeActivityStepAndContext(t *testing.T) {
 	status := newStatusView(kit.Dark(), kit.Unicode())
 	step, contextTokens := 7, int64(12_345)
 	status.progress(conversation.RunProgress{Step: &step, ContextTokens: &contextTokens, Activity: "calling tools"})
-	if !status.busy || status.doing != "calling tools · step 7" || status.contextTokens != contextTokens {
-		t.Fatalf("progress status = busy %t, doing %q", status.busy, status.doing)
+	if status.phase != statusActive || status.doing != "calling tools · step 7" || status.contextTokens != contextTokens {
+		t.Fatalf("progress status = phase %d, doing %q", status.phase, status.doing)
 	}
 	status.active("using shell")
 	if got := drawStatic(t, status, 72, 1); !strings.Contains(got, "using shell") || !strings.Contains(got, "ctx 12,345") {
@@ -129,12 +129,16 @@ func TestSettledStatusIncludesRunRecoveryMetadata(t *testing.T) {
 func TestClientFailureDoesNotInventARunOutcome(t *testing.T) {
 	status := newStatusView(kit.Dark(), kit.Unicode())
 	status.fail("event projection rejected", true)
-	if !status.busy || !status.danger || status.outcome.Status != "" ||
+	if status.phase != statusActive || status.outcome.Status != "" ||
 		status.doing != "client failed: event projection rejected" {
-		t.Fatalf("client failure status = %+v", status)
+		t.Fatalf("client failure while work continues = %+v", status)
+	}
+	status.fail("event projection rejected", false)
+	if status.phase != statusFailed || status.outcome.Status != "" {
+		t.Fatalf("client failure after work stopped = %+v", status)
 	}
 	status.active("reconnected")
-	if status.danger || !status.busy {
+	if status.phase != statusActive {
 		t.Fatalf("active status retained local failure: %+v", status)
 	}
 }

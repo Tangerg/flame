@@ -291,10 +291,20 @@ type statusView struct {
 	contextTokens      int64
 	outcome            conversation.Outcome
 	status             kit.Status
-	busy               bool
-	danger             bool
+	phase              statusPhase
 	runningDescendants int
 }
+
+// statusPhase is the one lifecycle the status row draws. A local failure
+// observed while work continues stays active: the row keeps animating the
+// failure text rather than claiming the work stopped.
+type statusPhase uint8
+
+const (
+	statusIdle statusPhase = iota
+	statusActive
+	statusFailed
+)
 
 func newStatusView(theme kit.Theme, glyphs kit.Glyphs) *statusView {
 	return &statusView{theme: theme, glyphs: glyphs, doing: "ready"}
@@ -316,7 +326,7 @@ func (s *statusView) Draw(view grid.View) {
 		kit.Label{Text: statusLineText(s.problem), Style: s.theme.Danger, Ellipsis: s.glyphs.Ellipsis}.Draw(view)
 		return
 	}
-	if s.busy {
+	if s.phase == statusActive {
 		s.status.Theme, s.status.Glyphs = s.theme, s.glyphs
 		s.status.Doing, s.status.Elapsed = statusLineText(s.doing), s.elapsed
 		right := joinStatusLabels(
@@ -335,7 +345,7 @@ func (s *statusView) Draw(view grid.View) {
 	right := joinStatusLabels(contextLabel(s.contextTokens), usageLabel(s.usage))
 	style := s.theme.Muted
 	switch {
-	case s.danger:
+	case s.phase == statusFailed:
 		style = s.theme.Danger
 	case s.outcome.Status == protocol.OutcomeCompleted:
 		style = s.theme.Success
@@ -425,8 +435,7 @@ func (s *statusView) tick(elapsed time.Duration) {
 func (s *statusView) settled(run conversation.Run) {
 	s.observeRun(run)
 	s.outcome, s.elapsed = run.Outcome.Clone(), ""
-	s.busy = false
-	s.danger = false
+	s.phase = statusIdle
 	s.runningDescendants = 0
 	switch run.Outcome.Status {
 	case protocol.OutcomeCompleted:
@@ -459,8 +468,7 @@ func (s *statusView) active(label string) {
 	s.doing = label
 	s.outcome = conversation.Outcome{}
 	s.elapsed = ""
-	s.busy = true
-	s.danger = false
+	s.phase = statusActive
 }
 
 func (s *statusView) progress(progress conversation.RunProgress) {
@@ -484,16 +492,17 @@ func (s *statusView) progress(progress conversation.RunProgress) {
 func (s *statusView) note(label string) {
 	s.doing = label
 	s.outcome = conversation.Outcome{}
-	s.busy = false
-	s.danger = false
+	s.phase = statusIdle
 }
 
 func (s *statusView) fail(detail string, busy bool) {
 	s.doing = "client failed: " + detail
 	s.outcome = conversation.Outcome{}
 	s.elapsed = ""
-	s.busy = busy
-	s.danger = true
+	s.phase = statusFailed
+	if busy {
+		s.phase = statusActive
+	}
 }
 
 func usageLabel(usage conversation.Usage) string {
