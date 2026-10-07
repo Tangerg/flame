@@ -164,19 +164,12 @@ type RunStore interface {
 	RunCommitCommitted(ctx context.Context, sessionID, runID, segmentID string, commitID runtimeidentity.CommitID) (bool, error)
 }
 
-// RunProgressWriter updates cumulative consumption and latest prompt footprint
-// for one exact active segment. Keeping it separate from lifecycle writing lets
-// consumers depend on the narrower behavior they actually exercise.
+// RunProgressWriter writes the running Run the Application advanced at one
+// model-response boundary, fenced to its active Segment. Keeping it separate
+// from lifecycle writing lets consumers depend on the narrower behavior they
+// actually exercise.
 type RunProgressWriter interface {
-	UpdateProgress(
-		ctx context.Context,
-		sessionID string,
-		runID string,
-		segmentID string,
-		metrics run.Metrics,
-		contextTokens int64,
-		updatedAt time.Time,
-	) error
+	UpdateProgress(ctx context.Context, progressed run.Run) error
 }
 
 // ExecutorCheckpointStore persists and removes root-owned opaque executor

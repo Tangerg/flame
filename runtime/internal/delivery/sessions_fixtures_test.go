@@ -1384,7 +1384,7 @@ func (stubRunState) RunCommitCommitted(context.Context, string, string, string, 
 	return false, nil
 }
 
-func (stubRunState) UpdateProgress(context.Context, string, string, string, run.Metrics, int64, time.Time) error {
+func (stubRunState) UpdateProgress(context.Context, run.Run) error {
 	return nil
 }
 

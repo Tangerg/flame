@@ -872,15 +872,7 @@ func (f *fakeRunState) Terminalize(_ context.Context, replacement run.Replacemen
 	return nil
 }
 
-func (*fakeRunState) UpdateProgress(
-	context.Context,
-	string,
-	string,
-	string,
-	run.Metrics,
-	int64,
-	time.Time,
-) error {
+func (*fakeRunState) UpdateProgress(context.Context, run.Run) error {
 	return nil
 }
 

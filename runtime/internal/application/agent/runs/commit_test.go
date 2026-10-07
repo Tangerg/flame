@@ -172,9 +172,9 @@ func TestEventCommitOwnsInvocationAndProgressSegment(t *testing.T) {
 		t.Fatal("EventCommit accepted a model invocation from another Segment")
 	}
 	commit.ModelInvocations = nil
-	commit.Progress = &ProgressCommit{
-		SegmentID: "segment_2", Metrics: run.Metrics{}, UpdatedAt: startedAt,
-	}
+	commit.Progress = new(testsupport.MustProgressedRun(run.Draft{
+		RunID: "run_1", SessionID: "session", SegmentID: "segment_2", CreatedAt: startedAt,
+	}, run.Metrics{}, 0, startedAt))
 	if err := commit.Validate(); err == nil {
 		t.Fatal("EventCommit accepted progress from another Segment")
 	}
@@ -308,9 +308,7 @@ func TestOpeningCommitOwnsEveryOpeningEvent(t *testing.T) {
 		t.Fatalf("child OpeningCommit rejected its parent/child projections: %v", err)
 	}
 	withProgress := childEvent
-	withProgress.Progress = &ProgressCommit{
-		SegmentID: child.SegmentID, UpdatedAt: createdAt, Metrics: run.Metrics{},
-	}
+	withProgress.Progress = new(testsupport.MustProgressedRun(child, run.Metrics{}, 0, createdAt))
 	if _, err := NewAdmissionOpeningCommit(
 		testCommitID("run_commit_child_progress"), child,
 		nil, nil, nil, []EventCommit{parentEvent, withProgress},

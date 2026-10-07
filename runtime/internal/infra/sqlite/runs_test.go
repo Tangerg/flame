@@ -381,7 +381,7 @@ func TestRunProgressFootprintSurvivesTerminalRead(t *testing.T) {
 	metrics := testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 1})
 	updatedAt := runCreatedAt.Add(time.Second)
 	if updateErr := store.UpdateProgress(
-		ctx, "ses_context", "run_context", "seg_open", metrics, 87_900, updatedAt,
+		ctx, testsupport.MustProgressedRun(draft, metrics, 87_900, updatedAt),
 	); updateErr != nil {
 		t.Fatalf("UpdateProgress: %v", updateErr)
 	}
@@ -410,6 +410,35 @@ func TestRunProgressFootprintSurvivesTerminalRead(t *testing.T) {
 	}
 	if recovered.ModelSelection() != selection {
 		t.Fatalf("recovered model selection = %+v, want %+v", recovered.ModelSelection(), selection)
+	}
+}
+
+// TestRunProgressIsFencedToTheActiveSegment proves the one check persistence
+// keeps for a decided progress write: the row must still be running the
+// Segment the advanced Run names.
+func TestRunProgressIsFencedToTheActiveSegment(t *testing.T) {
+	ctx := context.Background()
+	store, _ := newRunStores(t)
+	draft := runDraft("run_fenced", "ses_fenced")
+	if admitErr := store.Admit(ctx, draft); admitErr != nil {
+		t.Fatalf("admit: %v", admitErr)
+	}
+	stale := draft
+	stale.SegmentID = "seg_stale"
+	metrics := testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 3})
+	updatedAt := runCreatedAt.Add(time.Second)
+	if err := store.UpdateProgress(ctx, testsupport.MustProgressedRun(stale, metrics, 10, updatedAt)); err == nil {
+		t.Fatal("UpdateProgress wrote progress for a Segment that is not active")
+	}
+	stored, found, err := store.Run(ctx, "run_fenced")
+	if err != nil || !found || stored.Metrics().Steps() != 0 || stored.ContextTokens() != 0 {
+		t.Fatalf("stored Run = %#v found=%t err=%v, want the admitted Run untouched", stored, found, err)
+	}
+	if err := suspendRun(ctx, store, parkedRunFromDraft(draft), "seg_open"); err != nil {
+		t.Fatalf("suspend: %v", err)
+	}
+	if err := store.UpdateProgress(ctx, testsupport.MustProgressedRun(draft, metrics, 10, updatedAt)); err == nil {
+		t.Fatal("UpdateProgress wrote progress for a parked Run")
 	}
 }
 

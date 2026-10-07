@@ -54,12 +54,8 @@ func (r *reducer) runRecord(state run.State) (run.Run, error) {
 	if state != run.Running && state != run.Waiting {
 		return run.Run{}, fmt.Errorf("reducer cannot project non-terminal state %s", state)
 	}
-	metrics, err := r.metrics()
-	if err != nil {
-		return run.Run{}, err
-	}
 	updatedAt := r.now()
-	current, err := r.cfg.Opened.AdvanceProgress(metrics, r.contextTokens, updatedAt)
+	current, err := r.progressedRun(updatedAt)
 	if err != nil {
 		return run.Run{}, fmt.Errorf("project Run: %w", err)
 	}
@@ -67,6 +63,17 @@ func (r *reducer) runRecord(state run.State) (run.Run, error) {
 		return current.Suspend(updatedAt)
 	}
 	return current, nil
+}
+
+// progressedRun is the opened Run advanced to everything this segment has
+// reported by updatedAt. Every Run record the segment commits, whether a
+// model-response boundary or its park, is derived here from the opening record.
+func (r *reducer) progressedRun(updatedAt time.Time) (run.Run, error) {
+	metrics, err := r.metrics()
+	if err != nil {
+		return run.Run{}, err
+	}
+	return r.cfg.Opened.AdvanceProgress(metrics, r.contextTokens, updatedAt)
 }
 
 // metrics is the Run's cumulative consumption as of now: what it brought into

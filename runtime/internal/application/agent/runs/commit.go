@@ -27,7 +27,7 @@ const (
 
 // ModelInvocationState records the durable application observation of one
 // provider call. It is deliberately smaller than a model response: semantic
-// output belongs to Transcript Items and accounting belongs to ProgressCommit.
+// output belongs to Transcript Items and accounting belongs to EventCommit.Progress.
 // This record exists to distinguish an invocation that never crossed the
 // provider boundary from one whose final projection became indeterminate.
 type ModelInvocationState string
@@ -178,33 +178,6 @@ func (m ModelInvocationCommit) Validate() error {
 	return nil
 }
 
-// ProgressCommit is the durable progress snapshot produced at a model-response
-// boundary. Metrics are cumulative; ContextTokens is the latest prompt footprint
-// and may decrease after compaction. SegmentID fences both facts to the exact
-// running segment so a stale continuation cannot overwrite a newer Run.
-type ProgressCommit struct {
-	SegmentID     string
-	Metrics       run.Metrics
-	ContextTokens int64
-	UpdatedAt     time.Time
-}
-
-func (r ProgressCommit) validate() error {
-	if err := resourceid.ValidateSegment(r.SegmentID); err != nil {
-		return fmt.Errorf("runs: progress: %w", err)
-	}
-	if r.UpdatedAt.IsZero() {
-		return errors.New("runs: progress update time is required")
-	}
-	if err := r.Metrics.Validate(); err != nil {
-		return fmt.Errorf("runs: progress metrics: %w", err)
-	}
-	if r.ContextTokens < 0 {
-		return errors.New("runs: progress context tokens must not be negative")
-	}
-	return nil
-}
-
 type EventCommit struct {
 	ResultPublication *ResultPublication
 	ToolResults       []corechat.ToolResult
@@ -234,8 +207,11 @@ type EventCommit struct {
 	// Items derived from one authoritative executor fact.
 	ModelInvocations []ModelInvocationCommit
 	ToolInvocations  []ToolInvocationCommit
-	Progress         *ProgressCommit
-	Run              *run.Run
+	// Progress is the running Run as the domain advanced it at a model-response
+	// boundary. Persistence writes it fenced to its active Segment and does not
+	// re-derive the advance.
+	Progress *run.Run
+	Run      *run.Run
 	// ObsoleteCheckpointRootID identifies the executor checkpoint aggregate the
 	// root Run terminal makes obsolete. Child terminal commits leave it empty.
 	ObsoleteCheckpointRootID string
@@ -314,11 +290,14 @@ func (e EventCommit) Validate() error {
 		return err
 	}
 	if e.Progress != nil {
-		if err := e.Progress.validate(); err != nil {
-			return err
+		if e.Progress.ID() != e.RunID || e.Progress.SessionID() != e.SessionID {
+			return fmt.Errorf("runs: event commit progress belongs to Run %q in Session %q", e.Progress.ID(), e.Progress.SessionID())
 		}
-		if e.Progress.SegmentID != e.SegmentID {
-			return fmt.Errorf("runs: event commit progress belongs to Segment %q, want %q", e.Progress.SegmentID, e.SegmentID)
+		if e.Progress.State() != run.Running || e.Progress.ActiveSegmentID() != e.SegmentID {
+			return fmt.Errorf(
+				"runs: event commit progress is %s in Segment %q, want running Segment %q",
+				e.Progress.State(), e.Progress.ActiveSegmentID(), e.SegmentID,
+			)
 		}
 	}
 	return e.validateLifecycle()

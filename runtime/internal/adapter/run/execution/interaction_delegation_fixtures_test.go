@@ -424,17 +424,8 @@ func (d *delegateProjection) applyCommit(commit runs.EventCommit) {
 		return
 	}
 	if commit.Progress != nil {
-		value, found := d.runs[commit.RunID]
-		if found {
-			advanced, err := value.AdvanceProgress(
-				commit.Progress.Metrics,
-				commit.Progress.ContextTokens,
-				commit.Progress.UpdatedAt,
-			)
-			if err != nil {
-				panic(err)
-			}
-			d.runs[commit.RunID] = advanced
+		if _, found := d.runs[commit.RunID]; found {
+			d.runs[commit.RunID] = *commit.Progress
 		}
 	}
 }

@@ -617,13 +617,14 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 	if err := commit.Validate(); err != nil {
 		t.Fatalf("continuation commit: %v", err)
 	}
-	rootSegmentID := ""
+	var resumedRoot run.Run
 	for _, draft := range resume.Runs {
 		if draft.State().ID() == commit.RootRunID() {
-			rootSegmentID = draft.State().ActiveSegmentID()
+			resumedRoot = draft.State()
 			break
 		}
 	}
+	rootSegmentID := resumedRoot.ActiveSegmentID()
 	openingItem := testsupport.MustRestoreItem(testsupport.ItemInput{
 		SessionID: commit.SessionID(), RunID: commit.RootRunID(), ID: "item_resume_projection",
 		OccurredAt: time.Date(2026, 7, 30, 2, 3, 5, 0, time.UTC),
@@ -694,9 +695,7 @@ func TestCancelWaitingChildOpensContinuationWhenFinalBoundaryIsRemoved(t *testin
 		t.Fatal("waiting cancellation accepted a nested top-level event identity")
 	}
 	observed := withOpening.OpeningEvents()
-	observed[0].Progress = &ProgressCommit{
-		SegmentID: rootSegmentID, UpdatedAt: openingItem.OccurredAt(), Metrics: run.Metrics{},
-	}
+	observed[0].Progress = &resumedRoot
 	if _, err := NewResumingSubtreeCancellationCommit(
 		commit.CommitID(), commit.TargetRunID(), commit.ParkedRuns(), commit.ExpectedPending(),
 		commit.Checkpoint(), commit.TerminalRuns(), commit.TerminalItems(), ownedResume, observed,

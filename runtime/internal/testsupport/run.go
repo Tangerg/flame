@@ -166,3 +166,17 @@ func MustResumeRuns(resumedAt time.Time, parked []run.Run, segmentIDs []string) 
 func MustParkedRun(runID, sessionID string, createdAt time.Time) run.Run {
 	return MustRestoreRun(run.Snapshot{ID: runID, SessionID: sessionID, State: run.Waiting, CreatedAt: createdAt})
 }
+
+// MustProgressedRun admits draft and advances it to one model-response
+// boundary, as the reducer does before committing progress, or panics.
+func MustProgressedRun(draft run.Draft, metrics run.Metrics, contextTokens int64, at time.Time) run.Run {
+	admitted, err := run.Admit(RunDraft(draft))
+	if err != nil {
+		panic(err)
+	}
+	progressed, err := admitted.AdvanceProgress(metrics, contextTokens, at)
+	if err != nil {
+		panic(err)
+	}
+	return progressed
+}

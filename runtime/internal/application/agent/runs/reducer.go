@@ -347,9 +347,9 @@ func (r *reducer) completeModelCall(completed ModelCallCompleted) (factReduction
 	if err != nil {
 		return factReduction{}, fmt.Errorf("%w: model call usage: %w", errExecutorContract, err)
 	}
-	metrics, err := r.metrics()
+	progressed, err := r.progressedRun(finishedAt)
 	if err != nil {
-		return factReduction{}, fmt.Errorf("%w: model call metrics: %w", errExecutorContract, err)
+		return factReduction{}, fmt.Errorf("%w: model call progress: %w", errExecutorContract, err)
 	}
 	return factReduction{
 		events:               append(events, progressEvents...),
@@ -359,10 +359,7 @@ func (r *reducer) completeModelCall(completed ModelCallCompleted) (factReduction
 			State: ModelInvocationCompleted, StartedAt: startedAt, FinishedAt: finishedAt, Usage: completed.ReportedUsage,
 			FirstOutputLatencyMillis: completed.FirstOutputLatencyMillis,
 		}},
-		progress: &ProgressCommit{
-			SegmentID: r.cfg.Opened.ActiveSegmentID(), Metrics: metrics,
-			ContextTokens: r.contextTokens, UpdatedAt: finishedAt,
-		},
+		progress: &progressed,
 	}, nil
 }
 

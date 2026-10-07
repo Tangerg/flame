@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"time"
 
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	sqlite3 "modernc.org/sqlite"
@@ -264,10 +263,10 @@ func (r *RunStore) validateChildPlacement(
 	return nil
 }
 
-// Suspend persists the exact active Segment's transition from Running to
-// Waiting, recording what the Run had consumed up to the park. Every tree
-// member is fenced by segmentID; the root additionally supplies commitID so
-// the complete barrier can be reconciled after an ambiguous transaction result.
+// Suspend writes the domain-decided park of the exact active Segment, recording
+// what the Run had consumed up to the park. Every tree member is fenced by
+// segmentID on a running row; the root additionally supplies commitID so the
+// complete barrier can be reconciled after an ambiguous transaction result.
 func (r *RunStore) Suspend(
 	ctx context.Context,
 	value rundomain.Run,
@@ -285,93 +284,62 @@ func (r *RunStore) Suspend(
 			return err
 		}
 	}
-	if value.State() != rundomain.Waiting {
-		return fmt.Errorf("sqlite: suspend run %q: state is %s, want waiting", value.ID(), value.State())
-	}
 	metrics, err := runMetricsRow(value.Metrics())
 	if err != nil {
 		return fmt.Errorf("sqlite: suspend run %q: %w", value.ID(), err)
 	}
-	return RunInTx(ctx, r.db, func(ctx context.Context) error {
-		current, found, err := r.runForTransition(ctx, value.ID())
-		if err != nil {
-			return err
-		}
-		if !found || current.SessionID() != value.SessionID() {
-			return errors.New("sqlite: suspend run: active run not found")
-		}
-		if current.ActiveSegmentID() != segmentID {
-			return fmt.Errorf(
-				"sqlite: suspend run: active Segment is %q, want %q",
-				current.ActiveSegmentID(),
-				segmentID,
-			)
-		}
-		commitSegmentID, commitID := marker.databaseValues()
-		// The segment identity is cleared in the same statement that parks the Run:
-		// a Run waiting on a person has no segment to attach to.
-		res, err := conn(ctx, r.db).ExecContext(ctx,
-			`UPDATE runs SET state = ?, active_segment_id = '', commit_segment_id = ?, commit_id = ?,
-			        steps = ?, active_duration_ns = ?, usage = ?, context_tokens = ?, updated_at = ?
-			 WHERE session_id = ? AND run_id = ? AND state = ? AND active_segment_id = ?`,
-			coarseState(value.State()).databaseValue(), commitSegmentID, commitID,
-			metrics.steps, metrics.durationNs, metrics.usage, value.ContextTokens(), value.UpdatedAt().UTC().UnixNano(),
-			value.SessionID(), value.ID(), coarseState(current.State()).databaseValue(), segmentID)
-		if err != nil {
-			return fmt.Errorf("sqlite: suspend run: %w", err)
-		}
-		n, err := res.RowsAffected()
-		if err != nil {
-			return fmt.Errorf("sqlite: suspend run: read affected rows: %w", err)
-		}
-		if n == 0 {
-			return fmt.Errorf("sqlite: suspend run: state changed concurrently (was %s)", current.State())
-		}
-		return nil
-	})
+	commitSegmentID, commitIDValue := marker.databaseValues()
+	// The segment identity is cleared in the same statement that parks the Run:
+	// a Run waiting on a person has no segment to attach to.
+	res, err := conn(ctx, r.db).ExecContext(ctx,
+		`UPDATE runs SET state = ?, active_segment_id = '', commit_segment_id = ?, commit_id = ?,
+		        steps = ?, active_duration_ns = ?, usage = ?, context_tokens = ?, updated_at = ?
+		 WHERE session_id = ? AND run_id = ? AND state = ? AND active_segment_id = ?`,
+		coarseState(value.State()).databaseValue(), commitSegmentID, commitIDValue,
+		metrics.steps, metrics.durationNs, metrics.usage, value.ContextTokens(), value.UpdatedAt().UTC().UnixNano(),
+		value.SessionID(), value.ID(), runStateRunning.databaseValue(), segmentID)
+	if err != nil {
+		return fmt.Errorf("sqlite: suspend run %q: %w", value.ID(), err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("sqlite: suspend run %q: read affected rows: %w", value.ID(), err)
+	}
+	if n == 0 {
+		return fmt.Errorf("sqlite: suspend run %q: Segment %q is no longer the running Segment", value.ID(), segmentID)
+	}
+	return nil
 }
 
-// Resume writes the exact parked Run's decided continuation (Waiting →
-// Running). Unlike cleanup transitions it is strict: a row that is no longer
-// the parked Run the replacement was derived from means the continuation
-// opening does not own the durable Run and must roll back.
+// Resume writes the exact parked Run's decided continuation. Unlike cleanup
+// transitions it is strict: a row that is no longer the parked Run the
+// replacement was derived from means the continuation opening does not own the
+// durable Run and must roll back.
 func (r *RunStore) Resume(ctx context.Context, replacement rundomain.Replacement) error {
 	if err := replacement.Validate(); err != nil {
 		return fmt.Errorf("sqlite: resume run: %w", err)
 	}
 	expected, next := replacement.Expected(), replacement.State()
-	if expected.State() != rundomain.Waiting || next.State() != rundomain.Running {
-		return fmt.Errorf("sqlite: resume run %q: replacement does not move from waiting to running", next.ID())
+	// The accrual is untouched: a continuation inherits what the park committed,
+	// and the segment now opening has consumed nothing yet. What does move is the
+	// segment identity, which the park cleared and this one replaces.
+	res, err := conn(ctx, r.db).ExecContext(ctx,
+		`UPDATE runs SET state = ?, active_segment_id = ?, commit_segment_id = '', commit_id = '', updated_at = ?
+		 WHERE session_id = ? AND run_id = ? AND state = ? AND updated_at = ?`,
+		coarseState(next.State()).databaseValue(), next.ActiveSegmentID(), next.UpdatedAt().UTC().UnixNano(),
+		expected.SessionID(), expected.ID(), coarseState(expected.State()).databaseValue(),
+		expected.UpdatedAt().UTC().UnixNano())
+	if err != nil {
+		return fmt.Errorf("sqlite: resume run %q: %w", next.ID(), err)
 	}
-	return RunInTx(ctx, r.db, func(ctx context.Context) error {
-		current, found, err := r.runForTransition(ctx, next.ID())
-		if err != nil {
-			return err
-		}
-		if !found || !current.Equal(expected) {
-			return fmt.Errorf("sqlite: resume run: Run %q is not the parked Run the continuation resumes", next.ID())
-		}
-		// The accrual is untouched: a continuation inherits what the park committed,
-		// and the segment now opening has consumed nothing yet. What does move is the
-		// segment identity, which the park cleared and this one replaces.
-		res, err := conn(ctx, r.db).ExecContext(ctx,
-			`UPDATE runs SET state = ?, active_segment_id = ?, commit_segment_id = '', commit_id = '', updated_at = ?
-			 WHERE session_id = ? AND run_id = ? AND state = ? AND updated_at = ?`,
-			coarseState(next.State()).databaseValue(), next.ActiveSegmentID(), next.UpdatedAt().UTC().UnixNano(),
-			next.SessionID(), next.ID(), coarseState(expected.State()).databaseValue(),
-			expected.UpdatedAt().UTC().UnixNano())
-		if err != nil {
-			return fmt.Errorf("sqlite: resume run: %w", err)
-		}
-		n, err := res.RowsAffected()
-		if err != nil {
-			return fmt.Errorf("sqlite: resume run: read affected rows: %w", err)
-		}
-		if n == 0 {
-			return fmt.Errorf("sqlite: resume run: state changed concurrently (was %s)", current.State())
-		}
-		return nil
-	})
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("sqlite: resume run %q: read affected rows: %w", next.ID(), err)
+	}
+	if n == 0 {
+		return fmt.Errorf("sqlite: resume run: Run %q is not the parked Run the continuation resumes", next.ID())
+	}
+	return nil
 }
 
 // RequireActiveSegment proves that an event transaction still belongs to the
@@ -412,81 +380,42 @@ func (r *RunStore) RequireActiveSegment(ctx context.Context, sessionID, runID, s
 	return nil
 }
 
-// UpdateProgress records cumulative accounting and the latest prompt footprint
-// observed at one model-call boundary while fencing both facts to the exact
-// active segment. It never moves lifecycle state and rejects stale or regressing
-// cumulative accounting.
-func (r *RunStore) UpdateProgress(
-	ctx context.Context,
-	sessionID string,
-	runID string,
-	segmentID string,
-	metrics rundomain.Metrics,
-	contextTokens int64,
-	updatedAt time.Time,
-) error {
-	if err := validateRunCoordinates("update Run progress", sessionID, runID, segmentID); err != nil {
+// UpdateProgress writes the Run the domain advanced at one model-call boundary:
+// its cumulative accounting, latest prompt footprint and update time. The write
+// is fenced to the running Segment the Run names, so a stale continuation cannot
+// overwrite a newer Run; it never moves lifecycle state.
+func (r *RunStore) UpdateProgress(ctx context.Context, progressed rundomain.Run) error {
+	if err := validateRunCoordinates("update Run progress", progressed.SessionID(), progressed.ID(), progressed.ActiveSegmentID()); err != nil {
 		return err
 	}
-	if updatedAt.IsZero() {
-		return errors.New("sqlite: update Run progress requires an update time")
+	encoded, err := runMetricsRow(progressed.Metrics())
+	if err != nil {
+		return fmt.Errorf("sqlite: update Run progress for %q: %w", progressed.ID(), err)
 	}
-	if err := metrics.Validate(); err != nil {
-		return fmt.Errorf("sqlite: update Run progress for %q: %w", runID, err)
+	result, err := conn(ctx, r.db).ExecContext(ctx,
+		`UPDATE runs SET steps = ?, active_duration_ns = ?, usage = ?, context_tokens = ?, updated_at = ?
+		 WHERE session_id = ? AND run_id = ? AND state = ? AND active_segment_id = ?`,
+		encoded.steps,
+		encoded.durationNs,
+		encoded.usage,
+		progressed.ContextTokens(),
+		progressed.UpdatedAt().UTC().UnixNano(),
+		progressed.SessionID(),
+		progressed.ID(),
+		runStateRunning.databaseValue(),
+		progressed.ActiveSegmentID(),
+	)
+	if err != nil {
+		return fmt.Errorf("sqlite: update Run progress for %q: %w", progressed.ID(), err)
 	}
-	if contextTokens < 0 {
-		return fmt.Errorf("sqlite: update Run progress for %q: context tokens must not be negative", runID)
+	changed, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("sqlite: inspect Run progress update for %q: %w", progressed.ID(), err)
 	}
-	return RunInTx(ctx, r.db, func(ctx context.Context) error {
-		current, found, err := r.Run(ctx, runID)
-		if err != nil {
-			return err
-		}
-		if !found || current.SessionID() != sessionID {
-			return fmt.Errorf("sqlite: update Run progress: running Run %q was not found in session %q", runID, sessionID)
-		}
-		if current.State() != rundomain.Running || current.ActiveSegmentID() != segmentID {
-			return fmt.Errorf(
-				"sqlite: update Run progress: Run %q is %s in segment %q, want running segment %q",
-				runID,
-				current.State(),
-				current.ActiveSegmentID(),
-				segmentID,
-			)
-		}
-		next, err := current.AdvanceProgress(metrics, contextTokens, updatedAt)
-		if err != nil {
-			return fmt.Errorf("sqlite: update Run progress for %q: %w", runID, err)
-		}
-		encoded, err := runMetricsRow(next.Metrics())
-		if err != nil {
-			return fmt.Errorf("sqlite: update Run progress for %q: %w", runID, err)
-		}
-		result, err := conn(ctx, r.db).ExecContext(ctx,
-			`UPDATE runs SET steps = ?, active_duration_ns = ?, usage = ?, context_tokens = ?, updated_at = ?
-			 WHERE session_id = ? AND run_id = ? AND state = ? AND active_segment_id = ?`,
-			encoded.steps,
-			encoded.durationNs,
-			encoded.usage,
-			next.ContextTokens(),
-			updatedAt.UTC().UnixNano(),
-			sessionID,
-			runID,
-			runStateRunning.databaseValue(),
-			segmentID,
-		)
-		if err != nil {
-			return fmt.Errorf("sqlite: update Run progress for %q: %w", runID, err)
-		}
-		changed, err := result.RowsAffected()
-		if err != nil {
-			return fmt.Errorf("sqlite: inspect Run progress update for %q: %w", runID, err)
-		}
-		if changed != 1 {
-			return fmt.Errorf("sqlite: update Run progress for %q lost its active-segment fence", runID)
-		}
-		return nil
-	})
+	if changed != 1 {
+		return fmt.Errorf("sqlite: update Run progress for %q lost its active-segment fence", progressed.ID())
+	}
+	return nil
 }
 
 // Terminalize ends the exact non-terminal Run snapshot that replacement names,

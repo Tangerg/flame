@@ -675,15 +675,7 @@ func (e *Effects) applyProgress(ctx context.Context, commit runs.EventCommit) er
 	if commit.Progress == nil {
 		return nil
 	}
-	if err := e.runProgress.UpdateProgress(
-		ctx,
-		commit.SessionID,
-		commit.RunID,
-		commit.Progress.SegmentID,
-		commit.Progress.Metrics,
-		commit.Progress.ContextTokens,
-		commit.Progress.UpdatedAt,
-	); err != nil {
+	if err := e.runProgress.UpdateProgress(ctx, *commit.Progress); err != nil {
 		return fmt.Errorf("segment: update Run progress: %w", err)
 	}
 	return nil

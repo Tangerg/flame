@@ -40,7 +40,7 @@ type factReduction struct {
 	conversationMessages []corechat.Message
 	modelInvocations     []ModelInvocationCommit
 	toolInvocations      []ToolInvocationCommit
-	progress             *ProgressCommit
+	progress             *run.Run
 }
 
 func (r *reducer) newEventCommit() *EventCommit {
@@ -99,7 +99,7 @@ func (r *reducer) attachDurableObservation(
 	conversationMessages []corechat.Message,
 	modelInvocations []ModelInvocationCommit,
 	toolInvocations []ToolInvocationCommit,
-	progress *ProgressCommit,
+	progress *run.Run,
 ) error {
 	if len(conversationMessages) == 0 && len(modelInvocations) == 0 && len(toolInvocations) == 0 && progress == nil {
 		return nil

@@ -334,9 +334,10 @@ func TestCommitEventAtomicallyRecordsModelFinalAndRunAccounting(t *testing.T) {
 		StartedAt: startedAt, FinishedAt: finishedAt,
 	}
 	usage := &accounting.Usage{Total: accounting.Totals{InputTokens: 2, OutputTokens: 1}}
-	wrongSegment := runs.ProgressCommit{
-		SegmentID: "seg_wrong", Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 1, Usage: usage}), UpdatedAt: finishedAt,
-	}
+	wrongSegment := testsupport.MustProgressedRun(
+		run.Draft{RunID: "run_model", SessionID: "ses_model", SegmentID: "seg_wrong", CreatedAt: startedAt},
+		testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 1, Usage: usage}), 0, finishedAt,
+	)
 	err = effects.CommitEvent(ctx, runs.EventCommit{
 		RunID: "run_model", SessionID: "ses_model", SegmentID: "seg_model", CommitID: testCommitID("run_commit_event_model_wrong"),
 		Items:            []transcript.Item{item},
@@ -355,8 +356,10 @@ func TestCommitEventAtomicallyRecordsModelFinalAndRunAccounting(t *testing.T) {
 		t.Fatalf("history after rollback = %#v err=%v, want empty", items, listErr)
 	}
 
-	progress := wrongSegment
-	progress.SegmentID = "seg_model"
+	progress := testsupport.MustProgressedRun(
+		run.Draft{RunID: "run_model", SessionID: "ses_model", SegmentID: "seg_model", CreatedAt: startedAt},
+		wrongSegment.Metrics(), 0, finishedAt,
+	)
 	if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
 		RunID: "run_model", SessionID: "ses_model", SegmentID: "seg_model", CommitID: testCommitID("run_commit_event_model_complete"),
 		Items:            []transcript.Item{item},
@@ -577,9 +580,10 @@ func TestCommitEventAtomicallyRecordsCanonicalToolBatch(t *testing.T) {
 			State: runs.ToolInvocationCompleted, StartedAt: startedAt, FinishedAt: finishedAt,
 		})
 	}
-	wrongSegment := runs.ProgressCommit{
-		SegmentID: "seg_wrong", Metrics: run.Metrics{}, UpdatedAt: finishedAt,
-	}
+	wrongSegment := testsupport.MustProgressedRun(
+		run.Draft{RunID: "run_tools", SessionID: "ses_tools", SegmentID: "seg_wrong", CreatedAt: startedAt},
+		run.Metrics{}, 0, finishedAt,
+	)
 	err = effects.CommitEvent(ctx, runs.EventCommit{
 		RunID: "run_tools", SessionID: "ses_tools", SegmentID: "seg_tools", CommitID: testCommitID("run_commit_event_tools_wrong"),
 		Items:           items,
@@ -602,8 +606,10 @@ func TestCommitEventAtomicallyRecordsCanonicalToolBatch(t *testing.T) {
 		}
 	}
 
-	progress := wrongSegment
-	progress.SegmentID = "seg_tools"
+	progress := testsupport.MustProgressedRun(
+		run.Draft{RunID: "run_tools", SessionID: "ses_tools", SegmentID: "seg_tools", CreatedAt: startedAt},
+		run.Metrics{}, 0, finishedAt,
+	)
 	if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
 		RunID: "run_tools", SessionID: "ses_tools", SegmentID: "seg_tools", CommitID: testCommitID("run_commit_event_tools_complete"),
 		Items:           items,
@@ -2865,13 +2871,9 @@ func TestCommitEventReconcilesAmbiguousAuthoritativeCommit(t *testing.T) {
 			CallID: "model_call_1", SegmentID: draft.SegmentID,
 			State: runs.ModelInvocationCompleted, StartedAt: startedAt, FinishedAt: finishedAt,
 		}},
-		Progress: &runs.ProgressCommit{
-			SegmentID: draft.SegmentID,
-			Metrics: testsupport.MustRunMetrics(testsupport.RunMetricsInput{
-				Steps: 1, Usage: usage,
-			}),
-			UpdatedAt: finishedAt,
-		},
+		Progress: new(testsupport.MustProgressedRun(draft, testsupport.MustRunMetrics(testsupport.RunMetricsInput{
+			Steps: 1, Usage: usage,
+		}), 0, finishedAt)),
 	}
 	if commitEventErr := ambiguousEffects.CommitEvent(commitCtx, commit); commitEventErr != nil {
 		t.Fatalf("ambiguous authoritative CommitEvent = %v, want reconciled success", commitEventErr)
