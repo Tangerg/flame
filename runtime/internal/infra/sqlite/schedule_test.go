@@ -591,8 +591,8 @@ func TestScheduleStoreRejectsDuplicatePendingRows(t *testing.T) {
 	}
 	insert := func(id, sessionID, runID string) error {
 		_, err := db.ExecContext(ctx, `INSERT INTO schedule_firings(
-			id, schedule_id, instructions, cron, due_at, fired_at, next_run_at, session_id, run_id, state
-		) VALUES (?, ?, 'review', '@hourly', ?, ?, ?, ?, ?, 'pending')`,
+			id, schedule_id, instructions, due_at, fired_at, next_run_at, session_id, run_id, state
+		) VALUES (?, ?, 'review', ?, ?, ?, ?, ?, 'pending')`,
 			id, created.ID(), dueAt.UnixMilli(), dueAt.UnixMilli(), dueAt.Add(time.Hour).UnixMilli(), sessionID, runID)
 		return err
 	}

@@ -12,7 +12,6 @@ type Execution struct {
 	instructions   string
 	cwd            string
 	modelSelection modelref.Selection
-	cron           string
 }
 
 // ExecutionSnapshot is the persistence representation of [Execution].
@@ -21,14 +20,13 @@ type ExecutionSnapshot struct {
 	Instructions   string
 	CWD            string
 	ModelSelection modelref.Selection
-	Cron           string
 }
 
 // Execution returns the immutable instructions a manual or cron firing runs.
 func (s Schedule) Execution() Execution {
 	return Execution{
 		title: s.title, instructions: s.instructions, cwd: s.cwd,
-		modelSelection: s.modelSelection, cron: s.cron,
+		modelSelection: s.modelSelection,
 	}
 }
 
@@ -37,7 +35,7 @@ func (s Schedule) Execution() Execution {
 func RestoreExecution(snapshot ExecutionSnapshot) (Execution, error) {
 	value := Execution{
 		title: snapshot.Title, instructions: snapshot.Instructions, cwd: snapshot.CWD,
-		modelSelection: snapshot.ModelSelection, cron: snapshot.Cron,
+		modelSelection: snapshot.ModelSelection,
 	}
 	if err := value.Validate(); err != nil {
 		return Execution{}, err
@@ -45,22 +43,18 @@ func RestoreExecution(snapshot ExecutionSnapshot) (Execution, error) {
 	return value, nil
 }
 
-// Validate checks the complete captured execution value.
+// Validate checks the complete captured execution value. The trigger is not
+// part of it: a firing already exists, so the cron that produced it has no
+// further say over what runs.
 func (e Execution) Validate() error {
-	if err := validateInstructions(e.instructions); err != nil {
-		return err
-	}
-	if e.cron == "" {
-		return ErrCronRequired
-	}
-	return ValidateCron(e.cron)
+	return validateInstructions(e.instructions)
 }
 
 // Snapshot returns the complete persistence representation.
 func (e Execution) Snapshot() ExecutionSnapshot {
 	return ExecutionSnapshot{
 		Title: e.title, Instructions: e.instructions, CWD: e.cwd,
-		ModelSelection: e.modelSelection, Cron: e.cron,
+		ModelSelection: e.modelSelection,
 	}
 }
 

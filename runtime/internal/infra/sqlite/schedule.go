@@ -174,11 +174,11 @@ func (s *ScheduleStore) Claim(ctx context.Context, claim schedule.Claim) (claime
 		}
 		_, execContextErr = conn(ctx, s.db).ExecContext(ctx,
 			`INSERT INTO schedule_firings(
-				id, schedule_id, title, instructions, cwd, provider, model, reasoning_effort, cron,
+				id, schedule_id, title, instructions, cwd, provider, model, reasoning_effort,
 				due_at, fired_at, next_run_at, session_id, run_id, state
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			snapshot.ID, occurrence.ScheduleID(), execution.Title, execution.Instructions,
-			execution.CWD, execution.ModelSelection.Provider(), execution.ModelSelection.Model(), execution.ModelSelection.ReasoningEffort(), execution.Cron,
+			execution.CWD, execution.ModelSelection.Provider(), execution.ModelSelection.Model(), execution.ModelSelection.ReasoningEffort(),
 			toMillis(occurrence.DueAt()), toMillis(snapshot.FiredAt), toMillis(snapshot.NextRunAt), snapshot.SessionID, snapshot.RunID,
 			scheduleFiringPending.databaseValue())
 		if execContextErr != nil {
@@ -198,7 +198,7 @@ func (s *ScheduleStore) Pending(ctx context.Context, afterDueAt time.Time, after
 		return nil, errors.New("sqlite: schedule pending limit must be positive")
 	}
 	rows, err := conn(ctx, s.db).QueryContext(ctx,
-		`SELECT id, title, instructions, cwd, provider, model, reasoning_effort, cron,
+		`SELECT id, title, instructions, cwd, provider, model, reasoning_effort,
 			fired_at, next_run_at, session_id, run_id
 		 FROM schedule_firings WHERE state = ? AND (due_at > ? OR (due_at = ? AND id > ?))
 		 ORDER BY due_at, id
@@ -392,10 +392,10 @@ func scanSchedule(scan func(...any) error) (schedule.Schedule, error) {
 
 func scanOccurrence(scan func(...any) error) (schedule.Occurrence, error) {
 	var snapshot schedule.OccurrenceSnapshot
-	var title, instructions, cwd, provider, model, reasoningEffort, cron string
+	var title, instructions, cwd, provider, model, reasoningEffort string
 	var firedAt, nextRunAt int64
 	if err := scan(&snapshot.ID, &title, &instructions,
-		&cwd, &provider, &model, &reasoningEffort, &cron,
+		&cwd, &provider, &model, &reasoningEffort,
 		&firedAt, &nextRunAt, &snapshot.SessionID, &snapshot.RunID); err != nil {
 		return schedule.Occurrence{}, err
 	}
@@ -405,7 +405,7 @@ func scanOccurrence(scan func(...any) error) (schedule.Occurrence, error) {
 	}
 	snapshot.Execution = schedule.ExecutionSnapshot{
 		Title: title, Instructions: instructions, CWD: cwd,
-		ModelSelection: selection, Cron: cron,
+		ModelSelection: selection,
 	}
 	snapshot.FiredAt = fromMillis(firedAt)
 	snapshot.NextRunAt = fromMillis(nextRunAt)

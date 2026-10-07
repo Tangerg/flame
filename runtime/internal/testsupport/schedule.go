@@ -13,7 +13,7 @@ func MustOccurrenceRunRequest(scheduleID string, dueAt time.Time, sessionID, run
 	dueAt = dueAt.UTC()
 	occurrence, err := schedule.RestoreOccurrence(schedule.OccurrenceSnapshot{
 		ID:        scheduleID + ":" + strconv.FormatInt(dueAt.UnixMilli(), 10),
-		Execution: schedule.ExecutionSnapshot{Title: "Scheduled", Instructions: "scheduled", Cron: "@daily"},
+		Execution: schedule.ExecutionSnapshot{Title: "Scheduled", Instructions: "scheduled"},
 		FiredAt:   dueAt, NextRunAt: dueAt.Add(24 * time.Hour),
 		SessionID: sessionID, RunID: runID,
 	})

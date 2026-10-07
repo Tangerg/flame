@@ -566,7 +566,6 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			provider    TEXT    NOT NULL DEFAULT '',
 			model       TEXT    NOT NULL DEFAULT '',
 			reasoning_effort TEXT NOT NULL DEFAULT '',
-			cron        TEXT    NOT NULL,
 			due_at      INTEGER NOT NULL,
 			fired_at    INTEGER NOT NULL,
 			next_run_at INTEGER NOT NULL,
