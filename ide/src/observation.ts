@@ -52,17 +52,26 @@ export async function observeRun(
   }
 }
 
+export type SessionRead =
+  { kind: "current"; snapshot: SessionSnapshot } | { kind: "superseded" } | { kind: "deleted" };
+
 // Selecting another Session aborts the read in flight; that read is superseded,
 // not failed, so it must not surface as an error of the command that began it.
+// A Session deleted by another client is a fact about the selection, not a
+// failed refresh to retry on the next change.
 export async function readSessionSnapshot(
   client: { sessions: Pick<FlameClient["sessions"], "snapshot"> },
   sessionId: string,
   signal: AbortSignal,
-): Promise<SessionSnapshot | undefined> {
+): Promise<SessionRead> {
   try {
-    return await client.sessions.snapshot(asSessionId(sessionId), true, signal);
+    return {
+      kind: "current",
+      snapshot: await client.sessions.snapshot(asSessionId(sessionId), true, signal),
+    };
   } catch (error) {
-    if (signal.aborted) return undefined;
+    if (signal.aborted) return { kind: "superseded" };
+    if (isErrorType(error, "session_not_found")) return { kind: "deleted" };
     throw error;
   }
 }

@@ -588,8 +588,13 @@ class Workbench implements vscode.TreeDataProvider<Session> {
       const observation = new AbortController();
       this.#observation = observation;
       const signal = AbortSignal.any([connection.signal, observation.signal]);
-      const snapshot = await readSessionSnapshot(connection.client, session.id, signal);
-      if (!snapshot || signal.aborted || this.#session?.id !== session.id) return;
+      const read = await readSessionSnapshot(connection.client, session.id, signal);
+      if (read.kind === "superseded" || signal.aborted || this.#session?.id !== session.id) return;
+      if (read.kind === "deleted") {
+        this.#forgetDeletedSession(session);
+        return;
+      }
+      const snapshot = read.snapshot;
       this.#show(snapshot);
       const run = snapshot.runs.find((value) => value.status === "running" && !value.parentRunId);
       if (!run) return;
@@ -619,6 +624,19 @@ class Workbench implements vscode.TreeDataProvider<Session> {
     };
     this.#refreshing = this.#refreshing.catch(() => undefined).then(refresh);
     return this.#refreshing;
+  }
+
+  #forgetDeletedSession(session: Session): void {
+    this.#observation?.abort();
+    this.#session = undefined;
+    this.#output.clear();
+    if (!this.#runtimeEventsLost) {
+      this.#status.text = "$(flame) Flame: Select Session";
+      this.#status.command = "flame.selectSession";
+    }
+    void vscode.window.showWarningMessage(
+      `Flame: Session "${session.title || session.id}" no longer exists on the Runtime. Select another Session.`,
+    );
   }
 
   #show(snapshot: SessionSnapshot): void {

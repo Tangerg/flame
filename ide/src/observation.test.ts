@@ -183,7 +183,26 @@ describe("IDE Session snapshot read", () => {
       selection.signal,
     );
     selection.abort();
-    await expect(read).resolves.toBeUndefined();
+    await expect(read).resolves.toEqual({ kind: "superseded" });
+  });
+
+  it("names a Session another client deleted instead of failing the refresh", async () => {
+    await expect(
+      readSessionSnapshot(
+        {
+          sessions: {
+            snapshot: vi.fn().mockRejectedValue(
+              new RpcError({
+                message: "session_not_found",
+                data: { type: "session_not_found" },
+              }),
+            ),
+          },
+        },
+        "ses_a",
+        new AbortController().signal,
+      ),
+    ).resolves.toEqual({ kind: "deleted" });
   });
 
   it("reports a read that failed while still current", async () => {
