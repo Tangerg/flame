@@ -1036,6 +1036,21 @@ export const ja: Record<string, string> = {
   "rpcError.idempotency_conflict": "同じ要求が別の内容で既に送信されています。",
   "rpcError.plugin_changed":
     "実行の準備中にプラグインが変更されました。何も開始されていません。再送信して再試行してください。",
+  "rpcError.capability_not_negotiated": "接続中のランタイムはこの機能を提供していません。",
+  "rpcError.export_too_large":
+    "このセッションは大きすぎるため、1 つの軌跡としてエクスポートできません。",
+  "rpcError.invalid_protocol_version":
+    "このランタイムは異なるプロトコルバージョンを使用しています。Flame またはランタイムを更新してください。",
+  "rpcError.mcp_owned_by_installation":
+    "このサーバーはプラグインが提供しています。プラグイン側で変更してください。",
+  "rpcError.plugin_in_use":
+    "このプラグインに依存しているセッションがあります。依存がなくなってから再試行してください。",
+  "rpcError.plugin_not_found": "そのプラグインはもうインストールされていません。",
+  "rpcError.plugin_stale":
+    "開いた後にプラグインが変更されました。再読み込みしてもう一度確認してください。",
+  "rpcError.plugin_unapproved": "使用する前にこのプラグインのリリースを承認してください。",
+  "rpcError.plugin_unavailable":
+    "そのプラグインのリリースは検証に失敗しました。再インストールまたは更新してください。",
   "session.error.create": "セッションを作成できませんでした。",
   "session.directory.title": "新しいセッション",
   "session.directory.description":

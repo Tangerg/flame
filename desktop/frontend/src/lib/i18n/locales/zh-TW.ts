@@ -986,6 +986,16 @@ export const zhTW: Record<string, string> = {
   "rpcError.interrupt_not_open": "該請求已不再等待回覆。",
   "rpcError.idempotency_conflict": "同一請求先前已用不同內容送出過。",
   "rpcError.plugin_changed": "準備執行時外掛程式已變更，尚未啟動任何內容。請重新送出以重試。",
+  "rpcError.capability_not_negotiated": "已連線的執行環境不提供此功能。",
+  "rpcError.export_too_large": "此對話過大，無法匯出為單一軌跡。",
+  "rpcError.invalid_protocol_version":
+    "此執行環境使用不同的通訊協定版本——請更新 Flame 或執行環境。",
+  "rpcError.mcp_owned_by_installation": "此伺服器由外掛程式提供——請透過外掛程式修改。",
+  "rpcError.plugin_in_use": "仍有對話依賴此外掛程式——請在不再使用後重試。",
+  "rpcError.plugin_not_found": "該外掛程式已不再安裝。",
+  "rpcError.plugin_stale": "該外掛程式在你開啟後已變更——請重新載入並再次檢閱。",
+  "rpcError.plugin_unapproved": "請先核准此外掛程式版本再使用。",
+  "rpcError.plugin_unavailable": "該外掛程式版本未通過驗證——請重新安裝或更新外掛程式。",
   "session.error.create": "無法建立工作階段。",
   "session.directory.title": "新增對話",
   "session.directory.description":

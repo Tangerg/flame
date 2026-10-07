@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { validateWire } from "@flame/runtime-contract/validate";
+import { PROBLEM_RECOVERY, RUN_PROBLEM_RECOVERY } from "@flame/runtime-contract/wire";
 import { RpcError, RpcTransportError, RPC_METHOD_NOT_FOUND } from "@flame/runtime-contract/client";
 import { en } from "./i18n/locales/en";
 import { MAPPED_TYPES, describeErrorType, isUnsupportedMethod, rpcErrorText } from "./rpcErrors";
@@ -26,6 +27,14 @@ describe("the protocol error copy table", () => {
   it("is not vacuous — the check does reject a symbol the wire lacks", () => {
     expect(isWireProblemType("file_too_large")).toBe(false);
     expect(isWireProblemType("session_busy")).toBe(true);
+  });
+
+  it("explains every problem the Runtime hands to the person", () => {
+    const promptUser = Object.entries({ ...PROBLEM_RECOVERY, ...RUN_PROBLEM_RECOVERY })
+      .filter(([, recovery]) => recovery === "promptUser")
+      .map(([type]) => type);
+    expect(promptUser.length).toBeGreaterThan(0);
+    expect(promptUser.filter((type) => !MAPPED_TYPES.includes(type))).toEqual([]);
   });
 
   it("has copy for every symbol it claims to map", () => {

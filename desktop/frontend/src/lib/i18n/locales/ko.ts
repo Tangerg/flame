@@ -1020,6 +1020,18 @@ export const ko: Record<string, string> = {
   "rpcError.idempotency_conflict": "같은 요청이 다른 내용으로 이미 전송되었습니다.",
   "rpcError.plugin_changed":
     "실행을 준비하는 동안 플러그인이 변경되었습니다. 아무것도 시작되지 않았습니다. 다시 보내 재시도하세요.",
+  "rpcError.capability_not_negotiated": "연결된 런타임이 이 기능을 제공하지 않습니다.",
+  "rpcError.export_too_large": "이 세션은 너무 커서 하나의 궤적으로 내보낼 수 없습니다.",
+  "rpcError.invalid_protocol_version":
+    "이 런타임은 다른 프로토콜 버전을 사용합니다. Flame 또는 런타임을 업데이트하세요.",
+  "rpcError.mcp_owned_by_installation": "이 서버는 플러그인이 제공합니다. 플러그인에서 변경하세요.",
+  "rpcError.plugin_in_use":
+    "아직 이 플러그인에 의존하는 세션이 있습니다. 더 이상 사용하지 않을 때 다시 시도하세요.",
+  "rpcError.plugin_not_found": "해당 플러그인은 더 이상 설치되어 있지 않습니다.",
+  "rpcError.plugin_stale": "연 이후 플러그인이 변경되었습니다. 새로 고친 뒤 다시 검토하세요.",
+  "rpcError.plugin_unapproved": "사용하기 전에 이 플러그인 릴리스를 승인하세요.",
+  "rpcError.plugin_unavailable":
+    "해당 플러그인 릴리스가 검증에 실패했습니다. 플러그인을 다시 설치하거나 업데이트하세요.",
   "session.error.create": "세션을 만들 수 없습니다.",
   "session.directory.title": "새 세션",
   "session.directory.description":

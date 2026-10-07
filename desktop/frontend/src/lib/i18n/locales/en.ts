@@ -1053,6 +1053,19 @@ export const en: Record<string, string> = {
   "rpcError.idempotency_conflict": "The same request was already made with different contents.",
   "rpcError.plugin_changed":
     "A plugin changed while the run was being prepared. Nothing was started — send again to retry.",
+  "rpcError.capability_not_negotiated": "The connected runtime doesn't offer this feature.",
+  "rpcError.export_too_large": "This session is too large to export as one trajectory.",
+  "rpcError.invalid_protocol_version":
+    "This runtime speaks a different protocol version — update Flame or the runtime.",
+  "rpcError.mcp_owned_by_installation":
+    "A plugin provides this server — change it through the plugin instead.",
+  "rpcError.plugin_in_use":
+    "A session still depends on this plugin — try again once it no longer does.",
+  "rpcError.plugin_not_found": "That plugin is no longer installed.",
+  "rpcError.plugin_stale": "That plugin changed since you opened it — reload and review it again.",
+  "rpcError.plugin_unapproved": "Approve this plugin release before using it.",
+  "rpcError.plugin_unavailable":
+    "That plugin release failed verification — reinstall or update the plugin.",
   "session.error.create": "Couldn't create the session.",
   "session.directory.title": "New session",
   "session.directory.description":

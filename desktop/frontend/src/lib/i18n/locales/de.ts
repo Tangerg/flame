@@ -1071,6 +1071,21 @@ export const de: Record<string, string> = {
   "rpcError.idempotency_conflict": "Dieselbe Anfrage wurde bereits mit anderem Inhalt gestellt.",
   "rpcError.plugin_changed":
     "Ein Plugin hat sich geändert, während der Lauf vorbereitet wurde. Es wurde nichts gestartet – erneut senden, um es noch einmal zu versuchen.",
+  "rpcError.capability_not_negotiated": "Die verbundene Runtime bietet diese Funktion nicht an.",
+  "rpcError.export_too_large":
+    "Diese Sitzung ist zu groß, um als ein Verlauf exportiert zu werden.",
+  "rpcError.invalid_protocol_version":
+    "Diese Runtime spricht eine andere Protokollversion — aktualisiere Flame oder die Runtime.",
+  "rpcError.mcp_owned_by_installation":
+    "Ein Plugin stellt diesen Server bereit — ändere ihn stattdessen über das Plugin.",
+  "rpcError.plugin_in_use":
+    "Eine Sitzung hängt noch von diesem Plugin ab — versuche es erneut, sobald das nicht mehr so ist.",
+  "rpcError.plugin_not_found": "Dieses Plugin ist nicht mehr installiert.",
+  "rpcError.plugin_stale":
+    "Dieses Plugin hat sich seit dem Öffnen geändert — neu laden und erneut prüfen.",
+  "rpcError.plugin_unapproved": "Genehmige diese Plugin-Version, bevor du sie verwendest.",
+  "rpcError.plugin_unavailable":
+    "Diese Plugin-Version hat die Prüfung nicht bestanden — installiere oder aktualisiere das Plugin neu.",
   "session.error.create": "Sitzung konnte nicht erstellt werden.",
   "session.directory.title": "Neue Sitzung",
   "session.directory.description":

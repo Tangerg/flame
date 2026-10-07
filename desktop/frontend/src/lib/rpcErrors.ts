@@ -40,6 +40,15 @@ export const MAPPED_TYPES: readonly string[] = [
   "interrupt_not_open",
   "idempotency_conflict",
   "plugin_changed",
+  "plugin_in_use",
+  "plugin_not_found",
+  "plugin_stale",
+  "plugin_unapproved",
+  "plugin_unavailable",
+  "mcp_owned_by_installation",
+  "export_too_large",
+  "capability_not_negotiated",
+  "invalid_protocol_version",
 ];
 
 export function describeActiveRunRefusal(problem: {
