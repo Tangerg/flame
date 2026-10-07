@@ -51,10 +51,7 @@ func TestStoreRejectsInvalidPersistedSessionDraft(t *testing.T) {
 		t.Fatal(err)
 	}
 	invalid := prompt.Message{Attachments: []prompt.Attachment{{ID: "invalid"}}}
-	encoded, err := json.Marshal(envelope[sessionState]{
-		Version: formatVersion,
-		Value:   sessionState{SessionID: sessionID, Draft: invalid},
-	})
+	encoded, err := json.Marshal(sessionState{SessionID: sessionID, Draft: invalid})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -812,18 +809,18 @@ func TestStoreDoesNotDeduplicateChangedAttachmentMetadata(t *testing.T) {
 	}
 }
 
-func TestStoreRejectsUnknownOnDiskFormat(t *testing.T) {
+func TestStoreRejectsAFileOfAnotherShape(t *testing.T) {
 	directory := t.TempDir()
-	if err := os.WriteFile(filepath.Join(directory, "history.json"), []byte(`{"version":99,"value":[]}`), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(directory, "history.json"), []byte(`{"version":2,"value":[]}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := OpenDirectory(directory, Config{}); err == nil {
-		t.Fatal("unknown format was accepted")
+		t.Fatal("a file of another shape was accepted")
 	}
 }
 
 func TestStoreRejectsTrailingAndOversizedStateSnapshots(t *testing.T) {
-	valid := []byte(`{"version":1,"value":[]}`)
+	valid := []byte(`[]`)
 	tests := []struct {
 		name string
 		body []byte
@@ -850,12 +847,8 @@ func TestStoreRejectsUnknownStateFields(t *testing.T) {
 		body string
 	}{
 		{
-			name: "envelope",
-			body: `{"version":1,"value":[],"future":true}`,
-		},
-		{
 			name: "value",
-			body: `{"version":1,"value":[{"path":"/tmp/workspace","lastOpened":"2026-08-31T00:00:00Z","future":true}]}`,
+			body: `[{"path":"/tmp/workspace","lastOpened":"2026-08-31T00:00:00Z","future":true}]`,
 		},
 	}
 	for _, test := range tests {
@@ -876,32 +869,37 @@ func TestStoreRejectsInvalidDurableCatalogValues(t *testing.T) {
 		name string
 		file string
 		body string
+		want string
 	}{
 		{
 			name: "duplicate stash identity",
 			file: stashesName,
-			body: `{"version":1,"value":[` +
-				`{"id":"0123456789abcdef","createdAt":"2026-08-31T00:00:00Z","Message":{"Text":"first"}},` +
-				`{"id":"0123456789abcdef","createdAt":"2026-08-31T00:00:01Z","Message":{"Text":"second"}}]}`,
+			body: `[` +
+				`{"id":"0123456789abcdef","createdAt":"2026-08-31T00:00:00Z","message":{"Text":"first"}},` +
+				`{"id":"0123456789abcdef","createdAt":"2026-08-31T00:00:01Z","message":{"Text":"second"}}]`,
+			want: "repeats",
 		},
 		{
 			name: "empty stash prompt",
 			file: stashesName,
-			body: `{"version":1,"value":[` +
-				`{"id":"0123456789abcdef","createdAt":"2026-08-31T00:00:00Z","Message":{"Text":""}}]}`,
+			body: `[` +
+				`{"id":"0123456789abcdef","createdAt":"2026-08-31T00:00:00Z","message":{"Text":""}}]`,
+			want: "empty",
 		},
 		{
 			name: "empty workspace",
 			file: "workspaces.json",
-			body: `{"version":1,"value":[` +
-				`{"path":"","lastOpened":"2026-08-31T00:00:00Z"}]}`,
+			body: `[` +
+				`{"path":"","lastOpened":"2026-08-31T00:00:00Z"}]`,
+			want: "is required",
 		},
 		{
 			name: "duplicate workspace",
 			file: "workspaces.json",
-			body: `{"version":1,"value":[` +
+			body: `[` +
 				`{"path":"/workspace","lastOpened":"2026-08-31T00:00:00Z"},` +
-				`{"path":"/workspace","lastOpened":"2026-08-31T00:00:01Z"}]}`,
+				`{"path":"/workspace","lastOpened":"2026-08-31T00:00:01Z"}]`,
+			want: "repeats path",
 		},
 	}
 	for _, test := range tests {
@@ -910,8 +908,8 @@ func TestStoreRejectsInvalidDurableCatalogValues(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(directory, test.file), []byte(test.body), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := OpenDirectory(directory, Config{}); err == nil {
-				t.Fatal("invalid durable catalog value was accepted")
+			if _, err := OpenDirectory(directory, Config{}); err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("open invalid durable catalog value = %v, want %q", err, test.want)
 			}
 		})
 	}
@@ -1101,12 +1099,12 @@ func testCapacity(t *testing.T, value int) *Capacity {
 func TestStoreRejectsDuplicateHistoryCommandIdentity(t *testing.T) {
 	directory := t.TempDir()
 	commandID := replay.CommandID("cli_cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd")
-	encoded := fmt.Sprintf(`{"version":1,"value":[{"Text":"one","commandId":%q},{"Text":"two","commandId":%q}]}`, commandID, commandID)
+	encoded := fmt.Sprintf(`[{"Text":"one","commandId":%q},{"Text":"two","commandId":%q}]`, commandID, commandID)
 	if err := os.WriteFile(filepath.Join(directory, "history.json"), []byte(encoded), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := OpenDirectory(directory, Config{}); err == nil {
-		t.Fatal("duplicate history command identity was accepted")
+	if _, err := OpenDirectory(directory, Config{}); err == nil || !strings.Contains(err.Error(), "repeats command") {
+		t.Fatalf("open duplicate history command identity = %v", err)
 	}
 }
 

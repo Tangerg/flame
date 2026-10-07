@@ -17,15 +17,9 @@ import (
 )
 
 const (
-	formatVersion         = 2
 	maximumStateBytes     = 16 << 20
 	sessionStateExtension = ".json"
 )
-
-type envelope[T any] struct {
-	Version int `json:"version"`
-	Value   T   `json:"value"`
-}
 
 type sessionState struct {
 	SessionID       string                  `json:"sessionId"`
@@ -108,15 +102,8 @@ func (s *Store) load(name string, value any) error {
 	if err != nil {
 		return err
 	}
-	var raw envelope[jsontext.Value]
-	if err := decodeStateJSON(body, &raw); err != nil {
+	if err := decodeStateJSON(body, value); err != nil {
 		return fmt.Errorf("decode workbench state %q: %w", name, err)
-	}
-	if raw.Version != formatVersion {
-		return fmt.Errorf("unsupported workbench format %d", raw.Version)
-	}
-	if err := decodeStateJSON(raw.Value, value); err != nil {
-		return fmt.Errorf("decode workbench state %q value: %w", name, err)
 	}
 	return nil
 }
@@ -345,7 +332,7 @@ func (s *Store) save(name string, value any) error {
 	// A state file is read by a person and compared between runs, so the same
 	// value must produce the same bytes.
 	encoded, err := json.Marshal(
-		envelope[any]{Version: formatVersion, Value: value},
+		value,
 		jsontext.WithIndent("  "),
 		stateJSONOptions,
 	)
