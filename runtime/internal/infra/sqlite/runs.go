@@ -437,7 +437,8 @@ func (r *RunStore) TerminalizeEvent(
 	if err != nil {
 		return err
 	}
-	return r.finish(ctx, "terminalize", nil, value, marker)
+	return r.finish(ctx, "terminalize", value, marker,
+		`state = ? AND active_segment_id = ?`, runStateRunning.databaseValue(), segmentID)
 }
 
 // RebaseMessageMark writes the watermark of an Application-decided
@@ -484,23 +485,26 @@ func (r *RunStore) replace(ctx context.Context, op string, replacement rundomain
 		return fmt.Errorf("sqlite: %s run: %w", op, err)
 	}
 	expected := replacement.Expected()
-	return r.finish(ctx, op, &expected, replacement.State(), nil)
+	return r.finish(ctx, op, replacement.State(), nil,
+		`state = ? AND active_segment_id = ? AND updated_at = ?`,
+		coarseState(expected.State()).databaseValue(), expected.ActiveSegmentID(), expected.UpdatedAt().UTC().UnixNano())
 }
 
 // finish ends a non-terminal Run, writing the terminal state, its reason, and the
 // facts that explain it in ONE statement — a row can never claim a terminal
 // state without the result behind it, nor hold a result while still running.
 // The terminal state was decided by the aggregate's transition before it got
-// here; a Replacement additionally fences the exact aggregate it was derived
-// from, and an event commit fences its active Segment. Either way the UPDATE
-// is a CAS on the committed source state, so a row that moved under the
-// transaction fails instead of being overwritten.
+// here and is not re-derived. fence names the committed source row: a
+// Replacement fences the exact aggregate it was derived from, and an event
+// commit fences its active Segment. Either way the UPDATE is a CAS, so a row
+// that moved under the transaction fails instead of being overwritten.
 func (r *RunStore) finish(
 	ctx context.Context,
 	op string,
-	expected *rundomain.Run,
 	value rundomain.Run,
 	marker *runCommitMarker,
+	fence string,
+	fenceArgs ...any,
 ) error {
 	metrics, err := runMetricsRow(value.Metrics())
 	if err != nil {
@@ -519,50 +523,23 @@ func (r *RunStore) finish(
 	if err != nil {
 		return fmt.Errorf("sqlite: %s run %q: %w", op, value.ID(), err)
 	}
+	outcome, _ := value.Outcome()
+	commitSegmentID, commitID := marker.databaseValues()
+	query :=
+		`UPDATE runs SET
+		   state = ?, active_segment_id = '', commit_segment_id = ?, commit_id = ?,
+		   outcome = ?, detail = ?, steps = ?, active_duration_ns = ?,
+		   usage = ?, context_tokens = ?, problem = ?, unresolved_effects = ?, message_mark = ?, finished_at = ?, updated_at = ?
+		 WHERE session_id = ? AND run_id = ? AND ` + fence
+	args := []any{
+		coarseState(value.State()).databaseValue(), commitSegmentID, commitID,
+		string(outcome), value.Detail(), metrics.steps, metrics.durationNs,
+		metrics.usage, value.ContextTokens(), encodedFailure, encodedEffects,
+		messageMarkValue(value.MessageMark()), value.FinishedAt().UTC().UnixNano(),
+		value.UpdatedAt().UTC().UnixNano(), value.SessionID(), value.ID(),
+	}
+	args = append(args, fenceArgs...)
 	return RunInTx(ctx, r.db, func(ctx context.Context) error {
-		current, found, err := r.runForTransition(ctx, value.ID())
-		if err != nil {
-			return err
-		}
-		if !found || current.SessionID() != value.SessionID() {
-			return fmt.Errorf("sqlite: %s run: active run not found", op)
-		}
-		if expected != nil && !current.Equal(*expected) {
-			return fmt.Errorf(
-				"sqlite: %s run: Run %q changed after the application prepared its replacement",
-				op,
-				value.ID(),
-			)
-		}
-		if err := marker.requireActiveSegment(current.ActiveSegmentID()); err != nil {
-			return fmt.Errorf("sqlite: %s run: %w", op, err)
-		}
-		if !value.State().IsTerminal() {
-			return fmt.Errorf("sqlite: %s run: state %s is not terminal", op, value.State())
-		}
-		outcome, _ := value.Outcome()
-		commitSegmentID, commitID := marker.databaseValues()
-		query :=
-			`UPDATE runs SET
-			   state = ?, active_segment_id = '', commit_segment_id = ?, commit_id = ?,
-			   outcome = ?, detail = ?, steps = ?, active_duration_ns = ?,
-			   usage = ?, context_tokens = ?, problem = ?, unresolved_effects = ?, message_mark = ?, finished_at = ?, updated_at = ?
-			 WHERE session_id = ? AND run_id = ? AND state = ?`
-		args := []any{
-			coarseState(value.State()).databaseValue(), commitSegmentID, commitID,
-			string(outcome), value.Detail(), metrics.steps, metrics.durationNs,
-			metrics.usage, value.ContextTokens(), encodedFailure, encodedEffects,
-			messageMarkValue(value.MessageMark()), value.FinishedAt().UTC().UnixNano(),
-			value.UpdatedAt().UTC().UnixNano(), value.SessionID(), value.ID(), coarseState(current.State()).databaseValue(),
-		}
-		if expected != nil {
-			query += ` AND active_segment_id = ? AND updated_at = ?`
-			args = append(args, expected.ActiveSegmentID(), expected.UpdatedAt().UTC().UnixNano())
-		}
-		if marker != nil {
-			query += ` AND active_segment_id = ?`
-			args = append(args, marker.segmentID)
-		}
 		res, err := conn(ctx, r.db).ExecContext(ctx, query, args...)
 		if err != nil {
 			return fmt.Errorf("sqlite: %s run: %w", op, err)
@@ -572,7 +549,7 @@ func (r *RunStore) finish(
 			return fmt.Errorf("sqlite: %s run: read affected rows: %w", op, err)
 		}
 		if n == 0 {
-			return fmt.Errorf("sqlite: %s run: state changed concurrently (was %s)", op, current.State())
+			return fmt.Errorf("sqlite: %s run %q: Run changed after the application prepared its terminal state", op, value.ID())
 		}
 		// A root Run's end is also a boundary of the session's Plan, and this CAS is
 		// the only place a Run can reach terminal — so the boundary is stamped here
@@ -659,14 +636,6 @@ func (r *RunStore) Restore(ctx context.Context, value rundomain.Run) error {
 		return fmt.Errorf("sqlite: restore run %q: %w", value.ID(), err)
 	}
 	return nil
-}
-
-// runForTransition reads the aggregate that a write is about to advance. It
-// tolerates a temporarily absent Pending row because write-sets may delete that
-// row before terminalizing the Run in the same transaction; the proposed
-// aggregate transition remains the authority for whether the write is legal.
-func (r *RunStore) runForTransition(ctx context.Context, runID string) (rundomain.Run, bool, error) {
-	return r.readRun(ctx, "read Run for transition", runID, scanRunForRecovery)
 }
 
 // coarseState is the column value a Run in state s is stored under. It routes

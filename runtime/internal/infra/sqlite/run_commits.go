@@ -101,16 +101,6 @@ func newRunCommitMarker(
 	return &runCommitMarker{segmentID: segmentID, commitID: commitID}, nil
 }
 
-func (r *runCommitMarker) requireActiveSegment(activeSegmentID string) error {
-	if r == nil {
-		return nil
-	}
-	if activeSegmentID != r.segmentID {
-		return fmt.Errorf("active Segment is %q, want %q", activeSegmentID, r.segmentID)
-	}
-	return nil
-}
-
 func (r *runCommitMarker) databaseValues() (string, string) {
 	if r == nil {
 		return "", ""
