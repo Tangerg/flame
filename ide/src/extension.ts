@@ -584,11 +584,13 @@ class Workbench implements vscode.TreeDataProvider<Session> {
       const observation = new AbortController();
       this.#observation = observation;
       const signal = AbortSignal.any([connection.signal, observation.signal]);
-      const [current, snapshot] = await Promise.all([
-        connection.client.sessions.get(asSessionId(session.id), signal),
-        connection.client.sessions.snapshot(asSessionId(session.id), true, signal),
-      ]);
+      const snapshot = await connection.client.sessions.snapshot(
+        asSessionId(session.id),
+        true,
+        signal,
+      );
       if (signal.aborted || this.#session?.id !== session.id) return;
+      const current = snapshot.session;
       this.#session = current;
       this.#render(snapshot);
       this.#status.text = `$(flame) ${current.title || "Flame"}: ${current.status}`;

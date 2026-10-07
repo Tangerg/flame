@@ -6,6 +6,8 @@ import {
   type FlameClient,
 } from "@flame/runtime-contract/client";
 import { asRunId, asSegmentId } from "@flame/runtime-contract/client";
+import type { Session } from "@flame/runtime-contract/wire";
+import sessionSample from "@flame/runtime-contract/samples/session.json";
 import type { RunStream, RunStreamPosition } from "./agentRunPump";
 import { createRunStreamReattach } from "./runStreamReattach";
 
@@ -69,7 +71,7 @@ describe("run stream reattach", () => {
         result: {
           ...stream.result,
           headEventId: "evt_new",
-          snapshot: { items: [], runs: [], interrupts: [] },
+          snapshot: { session: sessionSample as Session, items: [], runs: [], interrupts: [] },
         },
       };
     });

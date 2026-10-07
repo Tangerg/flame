@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { RunEvent, RunRef, SessionSnapshot } from "@flame/runtime-contract/wire";
 import runRef from "@flame/runtime-contract/samples/runref.full.json";
+import sessionSample from "@flame/runtime-contract/samples/session.json";
 import { observeRun } from "./observation";
 import { RpcError } from "@flame/runtime-contract/client";
 
@@ -9,7 +10,12 @@ const running: RunRef = {
   status: "running",
   activeSegmentId: "seg_current",
 };
-const snapshot: SessionSnapshot = { runs: [running], items: [], interrupts: [] };
+const snapshot: SessionSnapshot = {
+  session: sessionSample as SessionSnapshot["session"],
+  runs: [running],
+  items: [],
+  interrupts: [],
+};
 const event: RunEvent = {
   runId: running.id,
   segmentId: "seg_current",
