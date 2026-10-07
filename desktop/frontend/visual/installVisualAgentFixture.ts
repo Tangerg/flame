@@ -423,7 +423,7 @@ function commitVisualInterruptResponses(
           runId: interrupt.runId,
           startedAt: group.createdAt,
           status: approved ? "running" : "completed",
-          approvalDecision: approved ? "approved" : "declined",
+          approvalDecision: approved ? "approve" : "deny",
           tool: {
             ...interrupt.payload.tool,
             arguments: response.editedArgs ?? interrupt.payload.tool.arguments,

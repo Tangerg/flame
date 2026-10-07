@@ -125,8 +125,8 @@ function runStatus(run: AgentRunFact): Pick<TimelineRecord, "statusKey" | "tone"
 
 function itemStatus(item: AgentItem): Pick<TimelineRecord, "statusKey" | "tone" | "attention"> {
   if (item.type !== "toolCall") return ITEM_STATUS[item.status];
-  if (item.approvalDecision === "declined")
-    return { statusKey: "timeline.state.declined", tone: "warning", attention: true };
+  if (item.approvalDecision === "deny")
+    return { statusKey: "timeline.state.deny", tone: "warning", attention: true };
   if (item.error)
     return { statusKey: "timeline.modelCall.failed", tone: "negative", attention: true };
   return ITEM_STATUS[item.status];

@@ -53,9 +53,9 @@ describe("submitPendingApproval", () => {
     });
     useAgentStore.getState().setResume(SESSION_ID, resume);
 
-    expect(submitPendingApproval("approved")).toBe(true);
+    expect(submitPendingApproval("approve")).toBe(true);
     expect(resume).not.toHaveBeenCalled();
-    expect(submitPendingApproval("declined")).toBe(true);
+    expect(submitPendingApproval("deny")).toBe(true);
     expect(resume).toHaveBeenCalledWith(
       ROOT_RUN_ID,
       [
@@ -71,11 +71,11 @@ describe("submitPendingApproval", () => {
       expect.any(Function),
       expect.any(Function),
     );
-    expect(submitPendingApproval("approved")).toBe(true);
+    expect(submitPendingApproval("approve")).toBe(true);
 
     accept?.();
     expect(useAgentStore.getState().sessions[SESSION_ID]!.view.pendingInterrupts).toHaveLength(2);
-    expect(submitPendingApproval("approved")).toBe(true);
+    expect(submitPendingApproval("approve")).toBe(true);
     expect(resume).toHaveBeenCalledOnce();
   });
 
@@ -91,7 +91,7 @@ describe("submitPendingApproval", () => {
       vi.fn(() => true),
     );
 
-    expect(submitPendingApproval("approved")).toBe(false);
+    expect(submitPendingApproval("approve")).toBe(false);
   });
 
   it("does not borrow a mounted approval card from another Session", () => {
@@ -113,7 +113,7 @@ describe("submitPendingApproval", () => {
     );
 
     try {
-      expect(submitPendingApproval("approved")).toBe(true);
+      expect(submitPendingApproval("approve")).toBe(true);
       expect(retiredApprove).not.toHaveBeenCalled();
       expect(resume).toHaveBeenCalledOnce();
     } finally {
@@ -140,7 +140,7 @@ describe("submitPendingApproval", () => {
     );
 
     try {
-      expect(submitPendingApproval("approved")).toBe(true);
+      expect(submitPendingApproval("approve")).toBe(true);
       expect(retiredApprove).not.toHaveBeenCalled();
       expect(resume).toHaveBeenCalledOnce();
     } finally {
@@ -167,7 +167,7 @@ describe("submitPendingApproval", () => {
     );
 
     try {
-      expect(submitPendingApproval("approved")).toBe(true);
+      expect(submitPendingApproval("approve")).toBe(true);
       expect(approve).toHaveBeenCalledOnce();
       expect(resume).not.toHaveBeenCalled();
     } finally {

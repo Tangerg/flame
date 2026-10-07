@@ -66,13 +66,13 @@ describe("useApprovalCardActions", () => {
     );
 
     act(() => result.current.approve("project"));
-    expect(hitl.submit).toHaveBeenLastCalledWith("approved", {
+    expect(hitl.submit).toHaveBeenLastCalledWith("approve", {
       editedArgs: { path: "/safe" },
       rememberScope: "project",
     });
 
     act(() => result.current.decline());
-    expect(hitl.submit).toHaveBeenLastCalledWith("declined");
+    expect(hitl.submit).toHaveBeenLastCalledWith("deny");
   });
 
   it("keeps the registered keyboard approval one-shot", () => {
@@ -86,6 +86,6 @@ describe("useApprovalCardActions", () => {
 
     const registered = hitl.registerActions.mock.calls.at(-1)?.[0];
     act(() => registered?.approve());
-    expect(hitl.submit).toHaveBeenLastCalledWith("approved", undefined);
+    expect(hitl.submit).toHaveBeenLastCalledWith("approve", undefined);
   });
 });

@@ -47,7 +47,7 @@ export interface ToolCall {
   safetyClass?: AgentSafetyClass;
   range?: { start: number; end: number };
   durationMillis?: number;
-  approvalDecision?: "approved" | "declined";
+  approvalDecision?: "approve" | "deny";
 }
 
 export interface Message {

@@ -2,7 +2,6 @@ import { agentSessionState } from "../ports/sessionState";
 import { agentSessionView } from "../ports/sessionView";
 import { getApprovalActions } from "./useApprovalSubmit";
 import type { ApprovalDecision } from "../../domain/hitl";
-import { WIRE_DECISION } from "./wireDecision";
 import { resumeInterrupt } from "./useInterruptResume";
 import { interruptResponseIsStaged } from "./interruptResponseCoordinator";
 import { selectAwaitingGroups } from "../view/awaitingInterrupts";
@@ -41,14 +40,14 @@ export function submitPendingApproval(decision: ApprovalDecision): boolean {
   const itemId = interrupt.itemId;
   const actions = getApprovalActions({ sessionId: sid, rootRunId: oi.rootRunId, itemId });
   if (actions) {
-    if (decision === "approved") actions.approve();
+    if (decision === "approve") actions.approve();
     else actions.decline();
     return true;
   }
 
   resumeInterrupt(sid, oi.rootRunId, itemId, {
     type: "approval",
-    decision: WIRE_DECISION[decision],
+    decision,
   });
   return true;
 }

@@ -1,6 +1,5 @@
 import { useCallback } from "react";
 import type { ApprovalDecision, InterruptRef, RememberScope } from "../../domain/hitl";
-import { WIRE_DECISION } from "./wireDecision";
 import { useInterruptResume } from "./useInterruptResume";
 
 export interface ApprovalSubmitOptions {
@@ -62,7 +61,7 @@ export function useApprovalSubmit(rootRunId?: string, itemId?: string): Approval
     (decision: ApprovalDecision, opts?: ApprovalSubmitOptions) => {
       resume(decision, {
         type: "approval",
-        decision: WIRE_DECISION[decision],
+        decision,
         ...(opts?.editedArgs ? { editedArgs: opts.editedArgs } : {}),
         ...(opts?.rememberScope ? { remember: { scope: opts.rememberScope } } : {}),
       });

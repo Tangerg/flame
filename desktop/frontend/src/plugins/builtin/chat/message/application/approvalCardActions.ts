@@ -61,13 +61,13 @@ export function useApprovalCardActions({
     (rememberScope?: RememberScope) => {
       const editedArgs = argsEditor?.commit();
       if (editedArgs === null) return;
-      submit("approved", approvalSubmitOptions({ editedArgs, rememberScope }));
+      submit("approve", approvalSubmitOptions({ editedArgs, rememberScope }));
     },
     [argsEditor, submit],
   );
 
   const decline = useCallback(() => {
-    submit("declined");
+    submit("deny");
   }, [submit]);
 
   const registerable = canRegisterApprovalActions({ resumeRunId, itemId, runtimeAvailable });

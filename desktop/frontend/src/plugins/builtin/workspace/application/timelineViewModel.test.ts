@@ -118,7 +118,7 @@ describe("durable timeline projection", () => {
 
   it("distinguishes declined and incomplete tools from recorded tool errors", () => {
     const values = [
-      { approvalDecision: "declined" as const },
+      { approvalDecision: "deny" as const },
       { status: "incomplete" as const },
       { error: { message: "connection failed" } },
     ].map((patch, index): TrajectoryEntry => ({
@@ -141,7 +141,7 @@ describe("durable timeline projection", () => {
         record.attention,
       ]),
     ).toEqual([
-      ["timeline.state.declined", "warning", true],
+      ["timeline.state.deny", "warning", true],
       ["timeline.state.incomplete", "warning", true],
       ["timeline.modelCall.failed", "negative", true],
     ]);

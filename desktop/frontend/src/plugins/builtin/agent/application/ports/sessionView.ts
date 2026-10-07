@@ -1,8 +1,7 @@
 import { createSingletonPort } from "@/lib/ports/singletonPort";
 import type { AgentRunStartOptions } from "@/plugins/sdk";
 import type { AgentInput } from "../../domain/input";
-import type { RememberScope } from "../../domain/hitl";
-import type { WireDecision } from "../hitl/wireDecision";
+import type { ApprovalDecision, RememberScope } from "../../domain/hitl";
 import type {
   AgentProblem,
   AgentPlan,
@@ -24,7 +23,7 @@ export type SendAgentInputAction = (input: AgentInput, options?: AgentRunStartOp
 export type InterruptResumePayload =
   | {
       type: "approval";
-      decision: WireDecision;
+      decision: ApprovalDecision;
       editedArgs?: Record<string, unknown>;
       remember?: { scope: RememberScope };
     }

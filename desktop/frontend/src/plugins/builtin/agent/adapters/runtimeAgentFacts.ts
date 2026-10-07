@@ -253,11 +253,7 @@ export function runtimeItem(item: Item): AgentItem {
         ...(item.finishedAt !== undefined ? { finishedAt: item.finishedAt } : {}),
         ...(item.durationMillis !== undefined ? { durationMillis: item.durationMillis } : {}),
         ...(item.safetyClass !== undefined ? { safetyClass: item.safetyClass } : {}),
-        ...(item.approvalDecision === "approve"
-          ? { approvalDecision: "approved" as const }
-          : item.approvalDecision === "deny"
-            ? { approvalDecision: "declined" as const }
-            : {}),
+        ...(item.approvalDecision !== undefined ? { approvalDecision: item.approvalDecision } : {}),
         ...(item.error ? { error: runtimeProblem(item.error) } : {}),
         tool: runtimeTool(item.tool),
       };

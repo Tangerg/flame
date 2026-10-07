@@ -22,12 +22,11 @@ export const composerKeymap = definePlugin({
       },
       approveOrSend: ({ submit }) => {
         if (!runtimeCommandsAvailable()) return true;
-        if (submitPendingApproval("approved")) return true;
+        if (submitPendingApproval("approve")) return true;
         submit();
         return true;
       },
-      declineApproval: () =>
-        runtimeCommandsAvailable() ? submitPendingApproval("declined") : true,
+      declineApproval: () => (runtimeCommandsAvailable() ? submitPendingApproval("deny") : true),
       stopRun: () => runtimeCommandsAvailable() && stopCurrentRootRun(),
       historyPrevious: ({ event }) =>
         recallPreviousHistoryFromKey({ event, recall: recallPreviousComposerHistory }),

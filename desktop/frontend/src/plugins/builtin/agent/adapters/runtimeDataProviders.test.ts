@@ -117,7 +117,7 @@ describe("agent Runtime data providers", () => {
       type: "item",
       item: {
         durationMillis: 0,
-        approvalDecision: "declined",
+        approvalDecision: "deny",
         error: { code: "denied_by_user" },
         tool: { result: {} },
       },

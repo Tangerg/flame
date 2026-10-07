@@ -60,10 +60,10 @@ export function ApprovalCard({
   });
 
   const finalised = pending;
-  if (finalised === "approved") {
+  if (finalised === "approve") {
     return <HitlSettledRow label={t("approval.settled.approved")} />;
   }
-  if (finalised === "declined") {
+  if (finalised === "deny") {
     return <Divider icon={<Icon name="x" size="xs" />}>{t("approval.settled.declined")}</Divider>;
   }
 

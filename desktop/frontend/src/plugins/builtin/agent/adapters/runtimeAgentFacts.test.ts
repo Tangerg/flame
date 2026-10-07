@@ -213,7 +213,7 @@ describe("Runtime → Agent fact adapter", () => {
     expect(tool).toMatchObject({
       type: "toolCall",
       safetyClass: "exec",
-      approvalDecision: "declined",
+      approvalDecision: "deny",
       error: { code: "tool_failed", message: "exit 1" },
     });
 

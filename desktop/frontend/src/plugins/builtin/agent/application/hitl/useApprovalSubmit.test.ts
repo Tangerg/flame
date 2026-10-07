@@ -53,21 +53,21 @@ describe("useApprovalSubmit", () => {
     const resume = bindResume();
     seedPending("item_1");
     const { result } = renderHook(() => useApprovalSubmit("run_1", "item_1"));
-    act(() => result.current.submit("approved"));
+    act(() => result.current.submit("approve"));
     expect(resume).toHaveBeenCalledWith(
       "run_1",
       [{ itemId: "item_1", response: { type: "approval", decision: "approve" } }],
       expect.any(Function),
       expect.any(Function),
     );
-    expect(result.current.pending).toBe("approved");
+    expect(result.current.pending).toBe("approve");
   });
 
   it("maps declined → deny", () => {
     const resume = bindResume();
     seedPending("item_2");
     const { result } = renderHook(() => useApprovalSubmit("run_1", "item_2"));
-    act(() => result.current.submit("declined"));
+    act(() => result.current.submit("deny"));
     expect(resume).toHaveBeenCalledWith(
       "run_1",
       [{ itemId: "item_2", response: { type: "approval", decision: "deny" } }],
@@ -80,7 +80,7 @@ describe("useApprovalSubmit", () => {
     const resume = bindResume();
     seedPending("item_e");
     const { result } = renderHook(() => useApprovalSubmit("run_1", "item_e"));
-    act(() => result.current.submit("approved", { editedArgs: { path: "/safe" } }));
+    act(() => result.current.submit("approve", { editedArgs: { path: "/safe" } }));
     expect(resume).toHaveBeenCalledWith(
       "run_1",
       [
@@ -98,7 +98,7 @@ describe("useApprovalSubmit", () => {
     const resume = bindResume();
     seedPending("item_r");
     const { result } = renderHook(() => useApprovalSubmit("run_1", "item_r"));
-    act(() => result.current.submit("declined", { rememberScope: "project" }));
+    act(() => result.current.submit("deny", { rememberScope: "project" }));
     expect(resume).toHaveBeenCalledWith(
       "run_1",
       [
@@ -115,14 +115,14 @@ describe("useApprovalSubmit", () => {
   it("no-ops without a runId/itemId, and never double-submits", () => {
     const resume = bindResume();
     const { result } = renderHook(() => useApprovalSubmit(undefined, undefined));
-    act(() => result.current.submit("approved"));
+    act(() => result.current.submit("approve"));
     expect(resume).not.toHaveBeenCalled();
 
     seedPending("item_3");
     const { result: r2 } = renderHook(() => useApprovalSubmit("run_1", "item_3"));
-    act(() => r2.current.submit("approved"));
-    act(() => r2.current.submit("declined"));
-    expect(r2.current.pending).toBe("approved");
+    act(() => r2.current.submit("approve"));
+    act(() => r2.current.submit("deny"));
+    expect(r2.current.pending).toBe("approve");
     expect(resume).toHaveBeenCalledTimes(1);
   });
 
@@ -131,9 +131,9 @@ describe("useApprovalSubmit", () => {
     seedPending("item_ok");
     const before = useAgentStore.getState().sessions[SID]!.view;
     const { result } = renderHook(() => useApprovalSubmit("run_1", "item_ok"));
-    act(() => result.current.submit("approved"));
+    act(() => result.current.submit("approve"));
     expect(useAgentStore.getState().sessions[SID]!.view).toBe(before);
-    expect(result.current.pending).toBe("approved");
+    expect(result.current.pending).toBe("approve");
   });
 
   it("rolls back pending and does NOT resolve when the resume rejects (channel-a)", () => {
@@ -141,7 +141,7 @@ describe("useApprovalSubmit", () => {
     seedPending("item_fail");
     const before = useAgentStore.getState().sessions[SID]!.view;
     const { result } = renderHook(() => useApprovalSubmit("run_1", "item_fail"));
-    act(() => result.current.submit("approved"));
+    act(() => result.current.submit("approve"));
     expect(useAgentStore.getState().sessions[SID]!.view).toBe(before);
     expect(result.current.pending).toBeNull();
   });
