@@ -77,6 +77,7 @@ type eventRecord struct {
 	Payload          jsontext.Value  `json:"payload,omitzero"`
 	Block            *blockFrame     `json:"block,omitzero"`
 	Transcript       []blockFrame    `json:"transcript,omitzero"`
+	Run              *runFrame       `json:"run,omitzero"`
 	Runs             []runFrame      `json:"runs,omitzero"`
 	Plan             []planFrame     `json:"plan,omitzero"`
 	Interrupts       []interruptJSON `json:"interrupts,omitzero"`
@@ -282,8 +283,7 @@ func (n *NDJSON) Reconcile(snapshot conversation.SessionSnapshot) error {
 		frame.Interrupts = encodeInterrupts(snapshot.Interrupts)
 	}
 	if target.Status == protocol.RunStatusFinished {
-		finished := encodeFinishedFrame(conversation.RunFinished{Outcome: target.Outcome, Usage: target.Usage})
-		frame.Outcome, frame.Usage = finished.Outcome, finished.Usage
+		frame.Outcome, frame.Usage = encodeOutcome(target.Outcome), encodeUsage(target.Usage)
 	}
 	n.err = WriteJSONLine(n.out, frame)
 	return n.err
@@ -319,22 +319,15 @@ func encodeEventFrame(envelope conversation.RunEvent) (eventRecord, error) {
 		return eventRecord{Type: "block.completed", Block: encodeBlock(event.Block)}, nil
 	case conversation.PlanChanged:
 		return eventRecord{Type: "plan.changed", Revision: event.Plan.State.Revision, Plan: encodePlan(event.Plan.State.Steps)}, nil
-	case conversation.RunInterrupted:
-		return eventRecord{Type: "run.interrupted", Interrupts: encodeInterrupts(event.Interrupts), Usage: encodeUsage(event.Usage)}, nil
-	case conversation.RunSuspended:
-		return eventRecord{Type: "run.suspended", Usage: encodeUsage(event.Usage)}, nil
-	case conversation.RunFinished:
-		return encodeFinishedFrame(event), nil
+	case conversation.SegmentFinished:
+		run := encodeRun(event.Run)
+		frame := eventRecord{Type: "segment.finished", Run: &run}
+		if len(event.Interrupts) != 0 {
+			frame.Interrupts = encodeInterrupts(event.Interrupts)
+		}
+		return frame, nil
 	default:
 		return eventRecord{}, fmt.Errorf("render NDJSON event: unsupported event %T", envelope.Event)
-	}
-}
-
-func encodeFinishedFrame(event conversation.RunFinished) eventRecord {
-	return eventRecord{
-		Type:    "run.finished",
-		Outcome: encodeOutcome(event.Outcome),
-		Usage:   encodeUsage(event.Usage),
 	}
 }
 

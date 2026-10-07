@@ -315,7 +315,7 @@ func (s *sessionReadFailureRuntime) GetSession(ctx context.Context, sessionID st
 func TestRecoveredSessionRetriesATransientColdRead(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: conversation.RunFinished{
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Finish: &runtimefixture.Finish{
 			Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}
@@ -358,7 +358,7 @@ func TestRunStatusRetainsRuntimeContextFootprintAfterSettlement(t *testing.T) {
 			{Delay: 10 * time.Millisecond, Event: conversation.BlockCompleted{Block: conversation.Block{
 				ID: "answer", Kind: conversation.BlockAssistant, Text: "context-aware answer",
 			}}},
-			{Delay: 10 * time.Millisecond, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
+			{Delay: 10 * time.Millisecond, Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	host, stop := runUIWith(t, backend)
@@ -486,7 +486,7 @@ func TestInvalidAcceptedStartReceiptCancelsAndSettlesTheExactMutation(t *testing
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
+			Delay: time.Hour, Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	releaseCancellation := make(chan struct{})
@@ -541,7 +541,7 @@ func TestInvalidAcceptedStartReceiptSettlesTheMemoryOnlyQueue(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
+			Delay: time.Hour, Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	releaseCancellation := make(chan struct{})
@@ -568,7 +568,7 @@ func TestInvalidAcceptedStartBlocksTheNextRunUntilColdRecoverySucceeds(t *testin
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
+			Delay: time.Hour, Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	runtime := &invalidAcceptedStartRuntime{
@@ -593,7 +593,7 @@ func TestRetryingInvalidAcceptedStartCleanupRecoversAuthoritativeProjection(t *t
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
+			Delay: time.Hour, Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	runtime := &invalidAcceptedStartRuntime{Runtime: base, refuseFirst: true}
@@ -658,7 +658,7 @@ func TestLaunchReplaysADispatchingRunFromTheDurableOutbox(t *testing.T) {
 func TestLaunchDoesNotReplayAnOutboxCommandAlreadyVisibleInRuntime(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}}
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}}
 	}
 	command := prompt.StartRun{
 		CommandID: replay.CommandID("cli_abcdef0123456789abcdef0123456789"),
@@ -695,7 +695,7 @@ func TestLaunchDoesNotReplayAnOutboxCommandAlreadyVisibleInRuntime(t *testing.T)
 func TestLaunchRequeuesARejectedHandshakeBehindAnotherActiveRun(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: conversation.RunFinished{
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Finish: &runtimefixture.Finish{
 			Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}
@@ -745,7 +745,7 @@ func TestLaunchRequeuesARejectedHandshakeBehindAnotherActiveRun(t *testing.T) {
 func TestLaunchFinishesCancellationOfAnUnconfirmedRunStart(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: conversation.RunFinished{
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Finish: &runtimefixture.Finish{
 			Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}
@@ -801,7 +801,7 @@ func TestLaunchFinishesCancellationOfAnUnconfirmedRunStart(t *testing.T) {
 func TestCanceledStartRetainsOwnershipUntilDurableSettlementRecovers(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: conversation.RunFinished{
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Finish: &runtimefixture.Finish{
 			Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}
@@ -875,7 +875,7 @@ func TestCanceledStartRetainsOwnershipUntilDurableSettlementRecovers(t *testing.
 func TestLaunchCancelsAnAcceptedRunWithAnInvalidRecoveredReceipt(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: conversation.RunFinished{
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Finish: &runtimefixture.Finish{
 			Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}

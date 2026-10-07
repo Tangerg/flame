@@ -38,12 +38,12 @@ func TestTextRendersRunRecoveryMetadata(t *testing.T) {
 	if err := renderer.Begin(testRun(), prompt.RunOptions{}); err != nil {
 		t.Fatal(err)
 	}
-	if err := renderer.Render(testEvent("failed", conversation.RunFinished{Outcome: conversation.Outcome{
+	if err := renderer.Render(testEvent("failed", finishedSegment(testRun(), conversation.Outcome{
 		Status: protocol.OutcomeFailed,
 		Problem: &protocol.ProblemData{
 			Type: "rate_limited", Detail: "quota exhausted", RetryAfterSeconds: 12,
 		},
-	}})); err != nil {
+	}, conversation.Usage{}))); err != nil {
 		t.Fatal(err)
 	}
 	if err := renderer.Close(); err != nil {
@@ -116,10 +116,10 @@ func TestNDJSONCarriesSegmentIdentityAndInterruptSet(t *testing.T) {
 	renderer := NewNDJSON(&output)
 	events := []conversation.RunEvent{
 		testEvent("evt_start", conversation.SegmentStarted{Run: testRun()}),
-		testEvent("evt_wait", conversation.RunInterrupted{Usage: conversation.Usage{InputTokens: 42}, Interrupts: []conversation.Interrupt{
+		testEvent("evt_wait", parkedSegment(testRun(), conversation.Usage{InputTokens: 42},
 			testApproval("tool_1", "shell"),
 			conversation.Question{RunID: "run_1", ItemID: "question_1", Title: "choose", Fields: []conversation.QuestionField{{Prompt: "Target", Kind: conversation.QuestionSingle, Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}}}}},
-		}}),
+		)),
 	}
 	for _, event := range events {
 		if err := renderer.Render(event); err != nil {
@@ -137,7 +137,7 @@ func TestNDJSONCarriesSegmentIdentityAndInterruptSet(t *testing.T) {
 	if err := json.Unmarshal([]byte(lines[1]), &frame); err != nil {
 		t.Fatal(err)
 	}
-	if frame["segmentId"] != "seg_1" || frame["eventId"] != "evt_wait" {
+	if frame["type"] != "segment.finished" || frame["segmentId"] != "seg_1" || frame["eventId"] != "evt_wait" {
 		t.Fatalf("event identity = %+v", frame)
 	}
 	interrupts, ok := frame["interrupts"].([]any)
@@ -150,9 +150,12 @@ func TestNDJSONCarriesSegmentIdentityAndInterruptSet(t *testing.T) {
 	if approval["rememberable"] != true || tool["name"] != "shell" || arguments["command"] != "go test ./..." {
 		t.Fatalf("approval interrupt = %#v", approval)
 	}
-	usage, ok := frame["usage"].(map[string]any)
-	if !ok || usage["inputTokens"] != float64(42) {
-		t.Fatalf("interrupt usage = %#v", frame["usage"])
+	run, ok := frame["run"].(map[string]any)
+	if !ok || run["id"] != "run_1" || run["status"] != "waiting" || run["activeSegmentId"] != nil || run["outcome"] != nil {
+		t.Fatalf("waiting run = %#v", frame["run"])
+	}
+	if usage := run["usage"].(map[string]any); usage["inputTokens"] != float64(42) {
+		t.Fatalf("waiting run usage = %#v", usage)
 	}
 }
 
@@ -361,7 +364,7 @@ func TestResultJSONUsesAuthoritativeAssistantCompletionAfterDeltas(t *testing.T)
 		testEvent("first", conversation.BlockDelta{BlockID: "answer", Text: "provisional first"}),
 		testEvent("second", conversation.BlockDelta{BlockID: "answer", Text: " provisional second"}),
 		testEvent("complete", conversation.BlockCompleted{Block: conversation.Block{ID: "answer", Kind: conversation.BlockAssistant, Text: "authoritative"}}),
-		testEvent("finished", conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}),
+		testEvent("finished", finishedSegment(testRun(), conversation.Outcome{Status: protocol.OutcomeCompleted}, conversation.Usage{})),
 	} {
 		if err := renderer.Render(event); err != nil {
 			t.Fatal(err)
@@ -412,7 +415,7 @@ func TestResultJSONDoesNotRetainProvisionalTextForEmptyCompletion(t *testing.T) 
 		testEvent("start", conversation.BlockStarted{Block: conversation.Block{ID: "answer", Kind: conversation.BlockAssistant}}),
 		testEvent("delta", conversation.BlockDelta{BlockID: "answer", Text: "provisional"}),
 		testEvent("complete", conversation.BlockCompleted{Block: conversation.Block{ID: "answer", Kind: conversation.BlockAssistant}}),
-		testEvent("finished", conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}),
+		testEvent("finished", finishedSegment(testRun(), conversation.Outcome{Status: protocol.OutcomeCompleted}, conversation.Usage{})),
 	} {
 		if err := renderer.Render(event); err != nil {
 			t.Fatal(err)
@@ -524,7 +527,7 @@ func TestResultJSONClearsPriorInterruptWhenANewSegmentStarts(t *testing.T) {
 	resumed.ActiveSegmentID = "seg_2"
 	for _, event := range []conversation.RunEvent{
 		testEvent("start", conversation.SegmentStarted{Run: testRun()}),
-		testEvent("wait", conversation.RunInterrupted{Interrupts: []conversation.Interrupt{question}}),
+		testEvent("wait", parkedSegment(testRun(), conversation.Usage{}, question)),
 		{EventID: "resume", RunID: "run_1", SegmentID: "seg_2", Event: conversation.SegmentStarted{Run: resumed}},
 	} {
 		if err := renderer.Render(event); err != nil {
@@ -780,10 +783,9 @@ func testEvents() []conversation.RunEvent {
 			Kind: conversation.ToolShell, Name: "shell", Summary: "go test ./...", Status: conversation.ToolOK,
 			Command: "go test ./...", Output: "PASS", ExitCode: &code,
 		}}}),
-		testEvent("evt_done", conversation.RunFinished{
-			Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted},
-			Usage:   conversation.Usage{InputTokens: 1_200, OutputTokens: 80, CacheReadTokens: 600, CostUSD: new(0.01), Duration: time.Second},
-		}),
+		testEvent("evt_done", finishedSegment(testRun(), conversation.Outcome{Status: protocol.OutcomeCompleted},
+			conversation.Usage{InputTokens: 1_200, OutputTokens: 80, CacheReadTokens: 600, CostUSD: new(0.01), Duration: time.Second},
+		)),
 	}
 }
 
@@ -814,11 +816,11 @@ func runTreeEvents(t *testing.T) []conversation.RunEvent {
 		event("child-block-started", child.ID, child.ActiveSegmentID, conversation.BlockStarted{Block: block(child.ID, "", conversation.BlockStatusRunning)}),
 		event("child-delta", child.ID, child.ActiveSegmentID, conversation.BlockDelta{BlockID: "answer", Text: "child answer"}),
 		event("child-block-completed", child.ID, child.ActiveSegmentID, conversation.BlockCompleted{Block: block(child.ID, "child answer", conversation.BlockStatusCompleted)}),
-		event("child-finished", child.ID, child.ActiveSegmentID, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}),
+		event("child-finished", child.ID, child.ActiveSegmentID, finishedSegment(child, conversation.Outcome{Status: protocol.OutcomeCompleted}, conversation.Usage{})),
 		event("root-block-started", root.ID, root.ActiveSegmentID, conversation.BlockStarted{Block: block(root.ID, "", conversation.BlockStatusRunning)}),
 		event("root-delta", root.ID, root.ActiveSegmentID, conversation.BlockDelta{BlockID: "answer", Text: "root answer"}),
 		event("root-block-completed", root.ID, root.ActiveSegmentID, conversation.BlockCompleted{Block: block(root.ID, "root answer", conversation.BlockStatusCompleted)}),
-		event("root-finished", root.ID, root.ActiveSegmentID, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}),
+		event("root-finished", root.ID, root.ActiveSegmentID, finishedSegment(root, conversation.Outcome{Status: protocol.OutcomeCompleted}, conversation.Usage{})),
 	}
 }
 
@@ -834,6 +836,18 @@ func testEvent(id string, event conversation.Event) conversation.RunEvent {
 		event = item
 	}
 	return conversation.RunEvent{EventID: id, RunID: "run_1", SegmentID: "seg_1", At: time.Unix(1, 0), Event: event}
+}
+
+// parkedSegment ends run's segment as Runtime would park it: waiting, with the
+// interrupts it raised, or suspended when it raised none.
+func parkedSegment(run conversation.Run, usage conversation.Usage, interrupts ...conversation.Interrupt) conversation.SegmentFinished {
+	run.Status, run.ActiveSegmentID, run.Usage = protocol.RunStatusWaiting, "", usage
+	return conversation.SegmentFinished{Run: run, Interrupts: interrupts}
+}
+
+func finishedSegment(run conversation.Run, outcome conversation.Outcome, usage conversation.Usage) conversation.SegmentFinished {
+	run.Status, run.ActiveSegmentID, run.Outcome, run.Usage = protocol.RunStatusFinished, "", outcome, usage
+	return conversation.SegmentFinished{Run: run}
 }
 
 func testRun() conversation.Run {

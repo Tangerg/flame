@@ -26,10 +26,7 @@ func TestRunEventEqualityUsesDomainValues(t *testing.T) {
 	at := time.Date(2026, time.August, 12, 8, 0, 0, 0, time.UTC)
 	event := RunEvent{
 		EventID: "event_1", RunID: "run_1", SegmentID: "segment_1", At: at,
-		Event: RunInterrupted{
-			Interrupts: []Interrupt{approval, question},
-			Usage:      Usage{InputTokens: 3, CostUSD: &cost, Duration: time.Second},
-		},
+		Event: parkedSegment(runningRun("segment_1"), Usage{InputTokens: 3, CostUSD: &cost, Duration: time.Second}, approval, question),
 	}
 
 	clone := event.Clone()
@@ -39,7 +36,7 @@ func TestRunEventEqualityUsesDomainValues(t *testing.T) {
 	}
 
 	changed := event.Clone()
-	interrupted := changed.Event.(RunInterrupted)
+	interrupted := changed.Event.(SegmentFinished)
 	changedApproval := interrupted.Interrupts[0].(Approval)
 	changedApproval.Tool.Output = "different"
 	interrupted.Interrupts[0] = changedApproval
@@ -48,7 +45,7 @@ func TestRunEventEqualityUsesDomainValues(t *testing.T) {
 		t.Fatal("a nested tool projection change was ignored")
 	}
 	changed = event.Clone()
-	interrupted = changed.Event.(RunInterrupted)
+	interrupted = changed.Event.(SegmentFinished)
 	changedQuestion := interrupted.Interrupts[1].(Question)
 	changedQuestion.Fields[0].Options[0].Description = "different"
 	interrupted.Interrupts[1] = changedQuestion
@@ -58,16 +55,16 @@ func TestRunEventEqualityUsesDomainValues(t *testing.T) {
 	}
 
 	unknownCost := event.Clone()
-	interrupted = unknownCost.Event.(RunInterrupted)
-	interrupted.Usage.CostUSD = nil
+	interrupted = unknownCost.Event.(SegmentFinished)
+	interrupted.Run.Usage.CostUSD = nil
 	unknownCost.Event = interrupted
 	if event.Equal(unknownCost) {
 		t.Fatal("unknown cost was treated as an explicit zero cost")
 	}
 
 	changedContext := event.Clone()
-	interrupted = changedContext.Event.(RunInterrupted)
-	interrupted.ContextTokens++
+	interrupted = changedContext.Event.(SegmentFinished)
+	interrupted.Run.ContextTokens++
 	changedContext.Event = interrupted
 	if event.Equal(changedContext) {
 		t.Fatal("different segment-boundary context was ignored")
@@ -145,13 +142,13 @@ func TestEphemeralEventsCloneOwnedValues(t *testing.T) {
 }
 
 func TestFinishedEventCloneOwnsOutcomeProblem(t *testing.T) {
-	event := RunFinished{Outcome: Outcome{
+	event := finishedSegment(runningRun("segment_1"), Outcome{
 		Status:  protocol.OutcomeFailed,
 		Problem: &protocol.ProblemData{Type: "rate_limited", Detail: "rate limited", RetryAfterSeconds: 2},
-	}}
-	clone := CloneEvent(event).(RunFinished)
-	clone.Outcome.Problem.Detail = "mutated"
-	if failure.Equal(event.Outcome.Problem, clone.Outcome.Problem) || !equalEvent(event, CloneEvent(event)) {
+	}, Usage{})
+	clone := CloneEvent(event).(SegmentFinished)
+	clone.Run.Outcome.Problem.Detail = "mutated"
+	if failure.Equal(event.Run.Outcome.Problem, clone.Run.Outcome.Problem) || !equalEvent(event, CloneEvent(event)) {
 		t.Fatal("finished event outcome problem is not value-owned")
 	}
 }

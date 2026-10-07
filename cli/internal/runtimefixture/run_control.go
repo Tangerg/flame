@@ -347,7 +347,7 @@ func (r *Runtime) CancelRun(ctx context.Context, in conversation.CancelRun) (con
 	if run.status == protocol.RunStatusFinished {
 		return conversation.RunCancellation{}, fmt.Errorf("%w: %s", conversation.ErrRunFinished, run.id)
 	}
-	if err := r.finishLocked(run, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCanceled, Detail: strings.TrimSpace(in.Reason)}}); err != nil {
+	if err := r.finishLocked(run, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCanceled, Detail: strings.TrimSpace(in.Reason)}}); err != nil {
 		return conversation.RunCancellation{}, err
 	}
 	run.cancelOnce.Do(func() { close(run.cancel) })

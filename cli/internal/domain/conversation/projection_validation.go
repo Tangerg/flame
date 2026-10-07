@@ -72,7 +72,7 @@ func ValidateEvent(event Event) error {
 			return errors.New("block delta without text")
 		}
 		return nil
-	case ToolArgumentsDelta, RunProgress, RunInterrupted, RunSuspended:
+	case ToolArgumentsDelta, RunProgress:
 		return nil
 	case CustomEvent:
 		if strings.TrimSpace(item.Name) == "" {
@@ -87,12 +87,29 @@ func ValidateEvent(event Event) error {
 	case PlanChanged:
 		_, err := committedPlanState(&item.Plan)
 		return err
-	case RunFinished:
-		return nil
+	case SegmentFinished:
+		return item.validate()
 	case nil:
 		return errors.New("event is nil")
 	default:
 		return fmt.Errorf("event %T is unsupported", event)
+	}
+}
+
+func (e SegmentFinished) validate() error {
+	if err := e.Run.Validate(); err != nil {
+		return fmt.Errorf("segment finished: %w", err)
+	}
+	switch e.Run.Status {
+	case runtimeprotocol.RunStatusWaiting:
+		return nil
+	case runtimeprotocol.RunStatusFinished:
+		if len(e.Interrupts) != 0 {
+			return errors.New("segment finished a finished run with interrupts")
+		}
+		return nil
+	default:
+		return fmt.Errorf("segment finished with a %s run", e.Run.Status)
 	}
 }
 

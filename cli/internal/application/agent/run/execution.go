@@ -353,13 +353,10 @@ func consume(stream conversation.EventStream, projection *conversation.Conversat
 			followed.err = err
 			break
 		}
-		switch event.Event.(type) {
-		case conversation.RunInterrupted, conversation.RunSuspended, conversation.RunFinished:
-			if event.RunID == projection.RunID() {
-				// The root boundary follows every member's terminal projection.
-				// Conversation now owns the complete outcome or pending set.
-				return followed
-			}
+		if _, finished := event.Event.(conversation.SegmentFinished); finished && event.RunID == projection.RunID() {
+			// The root boundary follows every member's terminal projection.
+			// Conversation now owns the complete outcome or pending set.
+			return followed
 		}
 	}
 	return followed

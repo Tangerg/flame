@@ -780,7 +780,7 @@ func TestSteerTargetsTheObservedSegmentAndRestoresAttachmentsOnRefusal(t *testin
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: conversation.BlockStarted{Block: conversation.Block{ID: "thinking", Kind: conversation.BlockReasoning}}},
-			{Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
+			{Delay: time.Hour, Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	backend := &steeringRuntime{Runtime: base, err: conversation.ErrStaleSegment}
@@ -816,7 +816,7 @@ func TestSteerReportsWhenRejectedAttachmentsCannotBePersisted(t *testing.T) {
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: conversation.BlockStarted{Block: conversation.Block{ID: "thinking", Kind: conversation.BlockReasoning}}},
-			{Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
+			{Delay: time.Hour, Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	backend := &blockedSteeringRuntime{
@@ -876,7 +876,7 @@ func TestSteerConfirmsATimedOutAcknowledgementWithOneIdentity(t *testing.T) {
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: conversation.BlockStarted{Block: conversation.Block{ID: "thinking", Kind: conversation.BlockReasoning}}},
-			{Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
+			{Delay: time.Hour, Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	backend := &uncertainSteeringRuntime{Runtime: base}
@@ -902,7 +902,7 @@ func TestRestartSettlesAcceptedSteerWithoutReturningItsAttachments(t *testing.T)
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: conversation.BlockStarted{Block: conversation.Block{ID: "thinking", Kind: conversation.BlockReasoning}}},
-			{Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
+			{Delay: time.Hour, Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	runtime := &committedThenCanceledSteeringRuntime{

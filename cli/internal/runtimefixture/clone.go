@@ -13,3 +13,11 @@ func projectRun(run *runState) conversation.Run {
 		Outcome:       run.outcome.Clone(), Usage: run.usage.Clone(),
 	}
 }
+
+// boundaryRun is the record a segment ends with. The fixture still holds the
+// active segment to publish the frame, but the Run it describes has left it.
+func boundaryRun(run *runState) conversation.Run {
+	record := projectRun(run)
+	record.ActiveSegmentID = ""
+	return record
+}

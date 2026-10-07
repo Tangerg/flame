@@ -206,8 +206,7 @@ func (r *ResultJSON) Reconcile(snapshot conversation.SessionSnapshot) error {
 		r.frame.Usage = encodeUsage(target.Usage)
 	case protocol.RunStatusFinished:
 		r.frame.Status = string(protocol.RunStatusFinished)
-		finished := encodeFinishedFrame(conversation.RunFinished{Outcome: target.Outcome, Usage: target.Usage})
-		r.frame.Outcome, r.frame.Usage = finished.Outcome, finished.Usage
+		r.frame.Outcome, r.frame.Usage = encodeOutcome(target.Outcome), encodeUsage(target.Usage)
 	case protocol.RunStatusRunning:
 	}
 	return nil
@@ -244,23 +243,16 @@ func (r *ResultJSON) fold(envelope conversation.RunEvent) {
 		if r.scope.isRoot(envelope.RunID) {
 			r.complete(event.Block)
 		}
-	case conversation.RunInterrupted:
+	case conversation.SegmentFinished:
 		r.frame.Interrupts = append(r.frame.Interrupts, encodeInterrupts(event.Interrupts)...)
-		if r.scope.isRoot(envelope.RunID) {
-			r.frame.Status = string(protocol.RunStatusWaiting)
-			r.frame.Usage = encodeUsage(event.Usage)
+		if !r.scope.isRoot(envelope.RunID) {
+			return
 		}
-	case conversation.RunSuspended:
-		if r.scope.isRoot(envelope.RunID) {
-			r.frame.Status = string(protocol.RunStatusWaiting)
-			r.frame.Usage = encodeUsage(event.Usage)
-		}
-	case conversation.RunFinished:
-		if r.scope.isRoot(envelope.RunID) {
-			r.frame.Status = string(protocol.RunStatusFinished)
+		r.frame.Status = string(event.Run.Status)
+		r.frame.Usage = encodeUsage(event.Run.Usage)
+		if event.Run.Status == protocol.RunStatusFinished {
 			r.frame.Interrupts = nil
-			finished := encodeFinishedFrame(event)
-			r.frame.Outcome, r.frame.Usage = finished.Outcome, finished.Usage
+			r.frame.Outcome = encodeOutcome(event.Run.Outcome)
 		}
 	case conversation.PlanChanged, conversation.ToolArgumentsDelta, conversation.CustomEvent:
 		// A final result intentionally omits incremental plan state.

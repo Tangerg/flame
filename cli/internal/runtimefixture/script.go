@@ -17,13 +17,22 @@ import (
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
-// Step is one scripted action: wait, then either emit an already committed
-// event or ask the mock Runtime to commit a Plan replacement. Plan content is a
-// separate action because only the Runtime owns its durable revision.
+// Step is one scripted action: wait, then emit an already committed event, ask
+// the mock Runtime to commit a Plan replacement, or finish the Run. Plan content
+// and the finish are separate actions because only the Runtime owns the Plan's
+// durable revision and the Run record a segment ends with.
 type Step struct {
-	Delay time.Duration
-	Event conversation.Event
-	plan  *planReplacementAction
+	Delay  time.Duration
+	Event  conversation.Event
+	Finish *Finish
+	plan   *planReplacementAction
+}
+
+// Finish is a scripted terminal outcome and the metering the Run reached. The
+// mock Runtime publishes the finished Run record built from it.
+type Finish struct {
+	Outcome conversation.Outcome
+	Usage   conversation.Usage
 }
 
 type planReplacementAction struct {
@@ -33,6 +42,10 @@ type planReplacementAction struct {
 
 func eventStep(delay time.Duration, event conversation.Event) Step {
 	return Emit(delay, event)
+}
+
+func finishStep(delay time.Duration, finish Finish) Step {
+	return Step{Delay: delay, Finish: &finish}
 }
 
 func replacePlanStep(delay time.Duration, steps []protocol.PlanStep) Step {
@@ -120,8 +133,21 @@ func validateSteps(steps []Step, requireFinish bool) error {
 		if step.Delay < 0 {
 			return fmt.Errorf("step %d has a negative delay", i+1)
 		}
+		actions := 0
+		for _, present := range []bool{step.Event != nil, step.Finish != nil, step.plan != nil} {
+			if present {
+				actions++
+			}
+		}
+		if actions != 1 {
+			return fmt.Errorf("step %d must have exactly one action", i+1)
+		}
 		switch {
-		case step.Event != nil && step.plan == nil:
+		case step.Event != nil:
+			switch step.Event.(type) {
+			case conversation.SegmentStarted, conversation.SegmentFinished, conversation.PlanChanged:
+				return fmt.Errorf("step %d contains a runtime-owned event", i+1)
+			}
 			event := step.Event
 			switch item := event.(type) {
 			case conversation.BlockStarted:
@@ -136,23 +162,13 @@ func validateSteps(steps []Step, requireFinish bool) error {
 			if err := conversation.ValidateEvent(event); err != nil {
 				return fmt.Errorf("step %d: %w", i+1, err)
 			}
-			switch step.Event.(type) {
-			case conversation.SegmentStarted, conversation.RunInterrupted, conversation.PlanChanged:
-				return fmt.Errorf("step %d contains a runtime-owned event", i+1)
-			case conversation.RunFinished:
-				if i != len(steps)-1 {
-					return fmt.Errorf("step %d finishes before the script ends", i+1)
-				}
-				finished = true
+		case step.Finish != nil:
+			if i != len(steps)-1 {
+				return fmt.Errorf("step %d finishes before the script ends", i+1)
 			}
-		case step.Event == nil && step.plan != nil:
-			if step.plan.err != nil {
-				return fmt.Errorf("step %d: %w", i+1, step.plan.err)
-			}
-		case step.Event == nil && step.plan == nil:
-			return fmt.Errorf("step %d has no action", i+1)
-		default:
-			return fmt.Errorf("step %d mixes an event with a Plan replacement", i+1)
+			finished = true
+		case step.plan.err != nil:
+			return fmt.Errorf("step %d: %w", i+1, step.plan.err)
 		}
 	}
 	if requireFinish && !finished {
@@ -179,6 +195,10 @@ func cloneSteps(steps []Step) []Step {
 	cloned := slices.Clone(steps)
 	for i := range cloned {
 		cloned[i].Event = conversation.CloneEvent(cloned[i].Event)
+		if cloned[i].Finish != nil {
+			finish := Finish{Outcome: cloned[i].Finish.Outcome.Clone(), Usage: cloned[i].Finish.Usage.Clone()}
+			cloned[i].Finish = &finish
+		}
 		if cloned[i].plan != nil {
 			plan := *cloned[i].plan
 			plan.steps = slices.Clone(plan.steps)
@@ -345,7 +365,7 @@ func (d defaultScenario) approved() []Step {
 		"go test ./internal/store -run TestCacheExpiry -count=50",
 		conversation.ToolOK, "ok  \tgithub.com/example/store\t2.104s", "", 2*time.Second+104*time.Millisecond)
 	approved = append(approved, stream("msg_2", conversation.BlockAssistant, d.summary)...)
-	approved = append(approved, eventStep(beat, conversation.RunFinished{
+	approved = append(approved, finishStep(beat, Finish{
 		Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted},
 		Usage: conversation.Usage{
 			InputTokens: 18422, OutputTokens: 1163, CacheReadTokens: 12800,
@@ -361,7 +381,7 @@ func (d defaultScenario) denied() []Step {
 		ID: "note_1", Kind: conversation.BlockNotice, Text: "Edit declined — internal/store/cache_test.go left unchanged.",
 	}}))
 	denied = append(denied, stream("msg_3", conversation.BlockAssistant, d.declined)...)
-	denied = append(denied, eventStep(beat, conversation.RunFinished{
+	denied = append(denied, finishStep(beat, Finish{
 		Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted},
 		Usage: conversation.Usage{
 			InputTokens: 14180, OutputTokens: 742, CacheReadTokens: 12800,

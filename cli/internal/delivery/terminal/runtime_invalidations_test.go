@@ -1083,7 +1083,7 @@ func TestRuntimeInvalidationDefersColdReplacementUntilTheStreamSettles(t *testin
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: conversation.BlockStarted{Block: conversation.Block{ID: "thinking", Kind: conversation.BlockReasoning}}},
-			{Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
+			{Delay: time.Hour, Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	backend := &snapshotCountingRuntime{Runtime: base, readSignal: make(chan struct{}, 16)}
@@ -1142,7 +1142,7 @@ func TestRuntimeInvalidationFencesRunAdmissionUntilRefreshApplies(t *testing.T) 
 	base.Script = func(authoredPrompt string) runtimefixture.Script {
 		runStarted <- authoredPrompt
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
+			Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	backend := &blockingSnapshotRuntime{
@@ -1627,7 +1627,7 @@ func TestDeletedSessionReplacementClosesItsQueueEditor(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
-			{Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
+			{Delay: time.Hour, Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	backend := &snapshotCountingRuntime{Runtime: base, readSignal: make(chan struct{}, 8)}
@@ -1693,7 +1693,7 @@ func TestMatchingInterruptInvalidationPreservesTheOpenApproval(t *testing.T) {
 			}},
 			Continue: func(provided []conversation.InterruptAnswer) []runtimefixture.Step {
 				answers <- provided
-				return []runtimefixture.Step{{Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -1746,7 +1746,7 @@ func TestAdvancedInterruptInvalidationClosesTheApprovalArgumentEditor(t *testing
 				},
 			}},
 			Continue: func([]conversation.InterruptAnswer) []runtimefixture.Step {
-				return []runtimefixture.Step{{Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -1800,7 +1800,7 @@ func TestInterruptInvalidationWinsARejectedStaleResume(t *testing.T) {
 				Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Command: "go test ./...", Status: conversation.ToolRunning},
 			}},
 			Continue: func([]conversation.InterruptAnswer) []runtimefixture.Step {
-				return []runtimefixture.Step{{Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}

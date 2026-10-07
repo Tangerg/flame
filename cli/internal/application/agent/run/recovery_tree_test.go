@@ -110,12 +110,12 @@ func newColdTreeSource(t *testing.T) *coldTreeSource {
 		source.tail = append(source.tail, conversation.RunEvent{
 			EventID: "evt_finished_" + id, RunID: child.ID, SegmentID: child.ActiveSegmentID,
 			StreamSegmentID: root.ActiveSegmentID, At: time.Unix(1, 0),
-			Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
+			Event: conversation.SegmentFinished{Run: finishedRun(child)},
 		})
 	}
 	source.tail = append(source.tail, conversation.RunEvent{
 		EventID: "evt_root_finished", RunID: root.ID, SegmentID: root.ActiveSegmentID,
-		At: time.Unix(2, 0), Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
+		At: time.Unix(2, 0), Event: conversation.SegmentFinished{Run: finishedRun(root)},
 	})
 	return source
 }
@@ -153,4 +153,10 @@ func (s *coldTreeSource) SubscribeRun(_ context.Context, request conversation.Su
 		}
 	}
 	return stream, nil
+}
+
+func finishedRun(run conversation.Run) conversation.Run {
+	run.Status, run.ActiveSegmentID = protocol.RunStatusFinished, ""
+	run.Outcome = conversation.Outcome{Status: protocol.OutcomeCompleted}
+	return run
 }

@@ -92,11 +92,15 @@ func TestSteerReceiptCanApplyAfterAnInterruptedSegment(t *testing.T) {
 	result := receiptTestResult(t, "ses_1", "run_root", "seg_root", "item_exact")
 	receipts.accept(result)
 	entry := receipts.entries[0]
-	receipts.observeEvent("ses_1", conversation.RunEvent{RunID: "run_child", SegmentID: "seg_child", Event: conversation.RunInterrupted{}})
+	receipts.observeEvent("ses_1", conversation.RunEvent{RunID: "run_child", SegmentID: "seg_child", Event: conversation.SegmentFinished{
+		Run: conversation.Run{ID: "run_child", Status: protocol.RunStatusWaiting},
+	}})
 	if got := entry.status(); got != steerAccepted || len(receipts.needingRead("ses_1")) != 0 {
 		t.Fatalf("member interrupt settled root receipt: %s", got)
 	}
-	receipts.observeEvent("ses_1", conversation.RunEvent{RunID: "run_root", SegmentID: "seg_root", Event: conversation.RunSuspended{}})
+	receipts.observeEvent("ses_1", conversation.RunEvent{RunID: "run_root", SegmentID: "seg_root", Event: conversation.SegmentFinished{
+		Run: conversation.Run{ID: "run_root", Status: protocol.RunStatusWaiting},
+	}})
 	if got := entry.status(); got != steerAccepted || len(receipts.needingRead("ses_1")) != 0 {
 		t.Fatalf("paused run without item = %s", got)
 	}
@@ -372,7 +376,7 @@ func TestTerminalDoesNotReplayOldSteerStatusAfterALaterRun(t *testing.T) {
 	backend.Runtime.Script = func(authoredPrompt string) runtimefixture.Script {
 		if authoredPrompt == "later work" {
 			return runtimefixture.Script{Prelude: []runtimefixture.Step{
-				{Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
+				{Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 			}}
 		}
 		return longWork(authoredPrompt)
@@ -403,7 +407,7 @@ func delayedSteerRuntime(t *testing.T) *delayedSteerReceiptRuntime {
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: conversation.BlockStarted{Block: conversation.Block{ID: "thinking", Kind: conversation.BlockReasoning}}},
-			{Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
+			{Delay: time.Hour, Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	return &delayedSteerReceiptRuntime{

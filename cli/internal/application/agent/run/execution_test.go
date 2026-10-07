@@ -355,7 +355,7 @@ func TestExecuteLeavesQuestionsParked(t *testing.T) {
 				Fields: []conversation.QuestionField{{Prompt: "Target", Kind: conversation.QuestionSingle, Options: []protocol.QuestionOption{{Label: "linux"}, {Label: "darwin"}}}},
 			}},
 			Continue: func([]conversation.InterruptAnswer) []runtimefixture.Step {
-				return []runtimefixture.Step{{Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}
@@ -381,7 +381,7 @@ func TestExecuteReconnectsOnlyTheCurrentSegment(t *testing.T) {
 	runtime.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Delay: 30 * time.Millisecond, Event: conversation.BlockCompleted{Block: conversation.Block{ID: "answer", Kind: conversation.BlockAssistant, Text: "done"}}},
-			{Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
+			{Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	session, _ := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: t.TempDir()})
@@ -422,13 +422,9 @@ func TestExecuteReconnectsWhenAChildFinishesBeforeTheStreamDisconnects(t *testin
 	initialEvents := []conversation.RunEvent{
 		event("event_root_started", root.ID, root.ActiveSegmentID, conversation.SegmentStarted{Run: root}),
 		event("event_child_started", child.ID, child.ActiveSegmentID, conversation.SegmentStarted{Run: child}),
-		event("event_child_finished", child.ID, child.ActiveSegmentID, conversation.RunFinished{
-			Outcome: conversation.Outcome{Status: protocol.OutcomeCanceled, Detail: "child canceled"},
-		}),
+		event("event_child_finished", child.ID, child.ActiveSegmentID, finishedSegment(child, conversation.Outcome{Status: protocol.OutcomeCanceled, Detail: "child canceled"})),
 	}
-	rootFinished := event("event_root_finished", root.ID, root.ActiveSegmentID, conversation.RunFinished{
-		Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted},
-	})
+	rootFinished := event("event_root_finished", root.ID, root.ActiveSegmentID, finishedSegment(root, conversation.Outcome{Status: protocol.OutcomeCompleted}))
 	stream := func(events []conversation.RunEvent, terminal error) conversation.EventStream {
 		return func(yield func(conversation.RunEvent, error) bool) {
 			for _, item := range events {
@@ -509,7 +505,7 @@ func TestExecuteResumesTheCompleteTreeAfterItsRootSuspends(t *testing.T) {
 				initial = append(initial,
 					event("event_child_started_"+suffix, child, root.ActiveSegmentID, conversation.SegmentStarted{Run: child}),
 					event("event_approval_started_"+suffix, child, root.ActiveSegmentID, conversation.BlockStarted{Block: block}),
-					event("event_child_waiting_"+suffix, child, root.ActiveSegmentID, conversation.RunInterrupted{Interrupts: []conversation.Interrupt{approval}}),
+					event("event_child_waiting_"+suffix, child, root.ActiveSegmentID, parkedSegment(child, approval)),
 				)
 				wantAnswers = append(wantAnswers, conversation.InterruptAnswer{ItemID: block.ID, Answer: conversation.ApprovalAnswer{Decision: protocol.ApprovalApprove}})
 				child.ActiveSegmentID += "_resumed"
@@ -518,11 +514,11 @@ func TestExecuteResumesTheCompleteTreeAfterItsRootSuspends(t *testing.T) {
 				continued = append(continued,
 					event("event_child_resumed_"+suffix, child, resumedRoot.ActiveSegmentID, conversation.SegmentStarted{Run: child}),
 					event("event_approval_completed_"+suffix, child, resumedRoot.ActiveSegmentID, conversation.BlockCompleted{Block: block}),
-					event("event_child_finished_"+suffix, child, resumedRoot.ActiveSegmentID, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}),
+					event("event_child_finished_"+suffix, child, resumedRoot.ActiveSegmentID, finishedSegment(child, conversation.Outcome{Status: protocol.OutcomeCompleted})),
 				)
 			}
-			rootSuspended := event("event_root_suspended", root, root.ActiveSegmentID, conversation.RunSuspended{})
-			continued = append(continued, event("event_root_finished", resumedRoot, resumedRoot.ActiveSegmentID, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}))
+			rootSuspended := event("event_root_suspended", root, root.ActiveSegmentID, parkedSegment(root))
+			continued = append(continued, event("event_root_finished", resumedRoot, resumedRoot.ActiveSegmentID, finishedSegment(resumedRoot, conversation.Outcome{Status: protocol.OutcomeCompleted})))
 			stream := func(events []conversation.RunEvent, terminal error) conversation.EventStream {
 				return func(yield func(conversation.RunEvent, error) bool) {
 					for _, item := range events {
@@ -587,7 +583,7 @@ func TestExecuteReleasesAnUnconsumedOpeningWithoutCancelingItsRun(t *testing.T) 
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
+			Delay: time.Hour, Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	runtime := &observedOpeningRuntime{Runtime: base}
@@ -629,7 +625,7 @@ func TestExecuteReportsExplicitCancellationFailure(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
+			Delay: time.Hour, Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	cleanupFailure := errors.New("cancellation refused")
@@ -666,7 +662,7 @@ func TestExecuteConfirmsTimedOutCleanupWithoutChangingIdentity(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
+			Delay: time.Hour, Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	runtime := &uncertainAcknowledgementRuntime{Runtime: base}
@@ -696,7 +692,7 @@ func TestExecuteRejectsAMisdirectedExplicitCancellation(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
+			Delay: time.Hour, Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	session, err := base.CreateSession(t.Context(), conversation.CreateSession{Workspace: t.TempDir()})
@@ -720,7 +716,7 @@ func TestExecuteRejectsAMisdirectedExplicitCancellation(t *testing.T) {
 func TestExecutePreservesRunWhenOpeningObservationIsInvalid(t *testing.T) {
 	base := runtimefixture.New()
 	base.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}}
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}}
 	}
 	session, _ := base.CreateSession(t.Context(), conversation.CreateSession{Workspace: t.TempDir()})
 	err := Execute(t.Context(), Invocation{
@@ -775,7 +771,7 @@ func TestExecuteRecoversAfterProlongedOutageWithoutCancelingRun(t *testing.T) {
 		base.Script = func(string) runtimefixture.Script {
 			return runtimefixture.Script{Prelude: []runtimefixture.Step{
 				{Delay: 3 * time.Minute, Event: conversation.BlockCompleted{Block: conversation.Block{ID: "answer", Kind: conversation.BlockAssistant, Text: "done"}}},
-				{Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
+				{Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 			}}
 		}
 		runtime := &outageRuntime{refusingCancellationRuntime: &refusingCancellationRuntime{Runtime: base, failure: errors.New("unexpected cancel")}, remaining: 100, failure: conversation.ErrDisconnected}
@@ -806,7 +802,7 @@ func TestExecutePreservesRunAfterPermanentObservationFailure(t *testing.T) {
 	base := runtimefixture.New()
 	base.Faults = []runtimefixture.SubscriptionFault{{Kind: runtimefixture.FaultDisconnect, After: 1}}
 	base.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}}
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}}
 	}
 	runtime := &outageRuntime{refusingCancellationRuntime: &refusingCancellationRuntime{Runtime: base}, remaining: 1, failure: conversation.ErrEventConflict}
 	session, err := base.CreateSession(t.Context(), conversation.CreateSession{Workspace: t.TempDir()})
@@ -828,4 +824,18 @@ func TestExecutePreservesRunAfterPermanentObservationFailure(t *testing.T) {
 	if _, err := base.CancelRun(t.Context(), conversation.CancelRun{CommandID: mutation.NewCommandID(), RunID: active.ID, Reason: "test cleanup"}); err != nil {
 		t.Fatal(err)
 	}
+}
+
+// parkedSegment ends run's segment as Runtime would park it: waiting, with the
+// interrupts it raised, or suspended when it raised none.
+func parkedSegment(run conversation.Run, interrupts ...conversation.Interrupt) conversation.SegmentFinished {
+	run = run.Clone()
+	run.Status, run.ActiveSegmentID = protocol.RunStatusWaiting, ""
+	return conversation.SegmentFinished{Run: run, Interrupts: interrupts}
+}
+
+func finishedSegment(run conversation.Run, outcome conversation.Outcome) conversation.SegmentFinished {
+	run = run.Clone()
+	run.Status, run.ActiveSegmentID, run.Outcome = protocol.RunStatusFinished, "", outcome
+	return conversation.SegmentFinished{Run: run}
 }

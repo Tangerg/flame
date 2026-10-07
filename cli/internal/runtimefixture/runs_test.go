@@ -12,7 +12,7 @@ import (
 func TestRunCatalogReadsFiltersAndPaginatesNewestFirst(t *testing.T) {
 	runtime := New()
 	runtime.Script = func(string) Script {
-		return Script{Prelude: []Step{eventStep(time.Hour, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}}
+		return Script{Prelude: []Step{finishStep(time.Hour, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}}
 	}
 	opened, err := runtime.StartRun(t.Context(), testStartRun("ses_demo_1", "active"))
 	if err != nil {
@@ -52,7 +52,7 @@ func TestRunCatalogRetainsLatestProgressFootprint(t *testing.T) {
 	runtime.Script = func(string) Script {
 		return Script{Prelude: []Step{
 			eventStep(0, conversation.RunProgress{ContextTokens: &contextTokens, Usage: &conversation.Usage{InputTokens: 40}}),
-			eventStep(time.Hour, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}),
+			finishStep(time.Hour, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}),
 		}}
 	}
 	opened, err := runtime.StartRun(t.Context(), testStartRun("ses_demo_1", "progress"))
@@ -82,24 +82,24 @@ func TestRunStreamFinishesWithLatestProgressFootprint(t *testing.T) {
 	runtime.Script = func(string) Script {
 		return Script{Prelude: []Step{
 			eventStep(0, conversation.RunProgress{ContextTokens: &contextTokens}),
-			eventStep(0, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}),
+			finishStep(0, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}),
 		}}
 	}
 	opened, err := runtime.StartRun(t.Context(), testStartRun("ses_demo_1", "progress"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	var finished conversation.RunFinished
+	var finished conversation.SegmentFinished
 	for event, streamErr := range opened.Events {
 		if streamErr != nil {
 			t.Fatal(streamErr)
 		}
-		if boundary, ok := event.Event.(conversation.RunFinished); ok {
+		if boundary, ok := event.Event.(conversation.SegmentFinished); ok {
 			finished = boundary
 		}
 	}
-	if finished.ContextTokens != contextTokens {
-		t.Fatalf("finished context tokens = %d, want %d", finished.ContextTokens, contextTokens)
+	if finished.Run.Status != protocol.RunStatusFinished || finished.Run.ContextTokens != contextTokens {
+		t.Fatalf("finished run = %+v, want context tokens %d", finished.Run, contextTokens)
 	}
 	got, err := runtime.GetRun(t.Context(), opened.RunID)
 	if err != nil || got.ContextTokens != contextTokens {

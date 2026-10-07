@@ -60,7 +60,7 @@ func TestSteerPreparationFailurePreservesTheEditableInstructionAndAttachments(t 
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: conversation.BlockStarted{Block: conversation.Block{ID: "thinking", Kind: conversation.BlockReasoning}}},
-			{Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
+			{Delay: time.Hour, Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	backend := unavailableAttachmentRuntime{steeringRuntime: &steeringRuntime{Runtime: base}}
@@ -124,7 +124,7 @@ func TestInputPreparationLeavesTheUIResponsiveAndUnsentInputEditable(t *testing.
 				base.Script = func(string) runtimefixture.Script {
 					return runtimefixture.Script{Prelude: []runtimefixture.Step{
 						{Event: conversation.BlockStarted{Block: conversation.Block{ID: "thinking", Kind: conversation.BlockReasoning}}},
-						{Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
+						{Delay: time.Hour, Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 					}}
 				}
 				backend := &pausedInputRuntime{
@@ -219,7 +219,7 @@ func TestEditingSteerDuringInputPreparationPreservesTheNewDraft(t *testing.T) {
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{
 			{Event: conversation.BlockStarted{Block: conversation.Block{ID: "thinking", Kind: conversation.BlockReasoning}}},
-			{Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
+			{Delay: time.Hour, Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
 	backend := &pausedInputRuntime{

@@ -122,8 +122,10 @@ func (s *steerReceipts) observeEvent(sessionID string, envelope conversation.Run
 		switch event := envelope.Event.(type) {
 		case conversation.BlockCompleted:
 			entry.observeBlock(event.Block)
-		case conversation.RunFinished:
-			entry.finishedObserved = true
+		case conversation.SegmentFinished:
+			if event.Run.Status == protocol.RunStatusFinished {
+				entry.finishedObserved = true
+			}
 		}
 	}
 }

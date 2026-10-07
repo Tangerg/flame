@@ -138,8 +138,8 @@ func TestRunStreamingJSONIsOneObjectPerLineEndingWithTheRun(t *testing.T) {
 		t.Fatalf("first frame = %s, want segment.started", lines[0])
 	}
 	last := decodeRunFrame(t, lines[len(lines)-1])
-	if last.Type != "run.finished" || last.Outcome.Status != "completed" {
-		t.Fatalf("last frame = %s, want a completed run.finished", lines[len(lines)-1])
+	if last.Type != "segment.finished" || last.Run.Status != "finished" || last.Run.Outcome.Status != "completed" {
+		t.Fatalf("last frame = %s, want a segment.finished with a completed run", lines[len(lines)-1])
 	}
 }
 
@@ -187,10 +187,13 @@ func decodeResult(t *testing.T, output string) commandResult {
 }
 
 type runFrame struct {
-	Type    string `json:"type"`
-	Outcome struct {
-		Status string `json:"status"`
-	} `json:"outcome"`
+	Type string `json:"type"`
+	Run  struct {
+		Status  string `json:"status"`
+		Outcome struct {
+			Status string `json:"status"`
+		} `json:"outcome"`
+	} `json:"run"`
 }
 
 func requireTypedJSONLines(t *testing.T, lines []string) {
@@ -210,16 +213,11 @@ func requireTypedJSONLines(t *testing.T, lines []string) {
 
 func decodeRunFrame(t *testing.T, line string) runFrame {
 	t.Helper()
-	var last struct {
-		Type    string `json:"type"`
-		Outcome struct {
-			Status string `json:"status"`
-		} `json:"outcome"`
-	}
-	if err := json.Unmarshal([]byte(line), &last); err != nil {
+	var frame runFrame
+	if err := json.Unmarshal([]byte(line), &frame); err != nil {
 		t.Fatalf("frame is not JSON: %v", err)
 	}
-	return runFrame(last)
+	return frame
 }
 
 func TestRunRecoversTransportFaultsWithoutRenderingDuplicates(t *testing.T) {
@@ -239,6 +237,9 @@ func TestRunRecoversTransportFaultsWithoutRenderingDuplicates(t *testing.T) {
 					Type    string `json:"type"`
 					EventID string `json:"eventId"`
 					Status  string `json:"status"`
+					Run     struct {
+						Status string `json:"status"`
+					} `json:"run"`
 				}
 				if err := json.Unmarshal([]byte(line), &frame); err != nil {
 					t.Fatalf("line %d: %v", i, err)
@@ -250,9 +251,12 @@ func TestRunRecoversTransportFaultsWithoutRenderingDuplicates(t *testing.T) {
 					seen[frame.EventID] = true
 				}
 				lastType, lastStatus = frame.Type, frame.Status
+				if frame.Type == "segment.finished" {
+					lastStatus = frame.Run.Status
+				}
 			}
-			if lastType != "run.finished" && (lastType != "run.snapshot" || lastStatus != "finished") {
-				t.Fatalf("last event = %q (%q), want run.finished or a finished run.snapshot\n%s", lastType, lastStatus, out)
+			if lastStatus != "finished" || (lastType != "segment.finished" && lastType != "run.snapshot") {
+				t.Fatalf("last event = %q (%q), want a finished segment.finished or run.snapshot\n%s", lastType, lastStatus, out)
 			}
 		})
 	}
@@ -416,7 +420,7 @@ func TestRunReturnsAnErrorForNonCompletedOutcomes(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			runtime := instantRuntime()
 			runtime.Script = func(string) runtimefixture.Script {
-				return runtimefixture.Script{Prelude: []runtimefixture.Step{{Event: conversation.RunFinished{Outcome: test.outcome}}}}
+				return runtimefixture.Script{Prelude: []runtimefixture.Step{{Finish: &runtimefixture.Finish{Outcome: test.outcome}}}}
 			}
 			id := firstSession(t, runtime)
 			out, _, err := executeCommand(t, runtime, "", "run", "--json", "-s", id, "finish this way")
@@ -467,7 +471,7 @@ func TestOutputFormatCompletionFiltersCandidates(t *testing.T) {
 func shortCompletedScript(string) runtimefixture.Script {
 	return runtimefixture.Script{Prelude: []runtimefixture.Step{
 		{Event: conversation.BlockCompleted{Block: conversation.Block{ID: "answer", Kind: conversation.BlockAssistant, Text: "done"}}},
-		{Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
+		{Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 	}}
 }
 
@@ -476,7 +480,7 @@ func TestRunReadsAPipedPromptAndCombinesItWithTheArgument(t *testing.T) {
 	rt := instantRuntime()
 	rt.Script = func(authoredPrompt string) runtimefixture.Script {
 		captured = authoredPrompt
-		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Event: conversation.RunFinished{
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Finish: &runtimefixture.Finish{
 			Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted},
 		}}}}
 	}
@@ -1004,7 +1008,7 @@ func followApprovalInterrupt(t *testing.T, stream conversation.SegmentStream) co
 		if streamErr != nil {
 			t.Fatal(streamErr)
 		}
-		if parked, ok := event.Event.(conversation.RunInterrupted); ok {
+		if parked, ok := event.Event.(conversation.SegmentFinished); ok && len(parked.Interrupts) != 0 {
 			if len(parked.Interrupts) != 1 {
 				t.Fatalf("pending interrupts = %+v, want one", parked.Interrupts)
 			}

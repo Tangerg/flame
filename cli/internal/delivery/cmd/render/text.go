@@ -119,20 +119,8 @@ func (t *Text) renderEvent(envelope conversation.RunEvent) {
 		t.finish(event.Block)
 	case conversation.PlanChanged:
 		t.plan(event.Plan.State.Steps)
-	case conversation.RunInterrupted:
-		for _, interrupt := range event.Interrupts {
-			t.showInterrupt(interrupt)
-		}
-		t.showUsage(event.Usage)
-	case conversation.RunSuspended:
-		if t.scope.isRoot(envelope.RunID) {
-			t.showUsage(event.Usage)
-		}
-	case conversation.RunFinished:
-		if t.scope.isRoot(envelope.RunID) {
-			t.finished(event)
-			t.settled = true
-		}
+	case conversation.SegmentFinished:
+		t.segmentFinished(envelope.RunID, event)
 	default:
 		t.err = fmt.Errorf("render text event: unsupported event %T", event)
 	}
@@ -243,7 +231,7 @@ func (t *Text) Reconcile(snapshot conversation.SessionSnapshot) error {
 		t.showUsage(target.Usage)
 	}
 	if target.Status == protocol.RunStatusFinished && !t.settled {
-		t.finished(conversation.RunFinished{Outcome: target.Outcome, Usage: target.Usage})
+		t.finished(target)
 		t.settled = true
 	}
 	return t.err
@@ -493,16 +481,36 @@ func (t *Text) interrupted(interrupt conversation.Interrupt) {
 	}
 }
 
-func (t *Text) finished(e conversation.RunFinished) {
+func (t *Text) segmentFinished(runID string, event conversation.SegmentFinished) {
+	root := t.scope.isRoot(runID)
+	switch {
+	case event.Run.Status == protocol.RunStatusFinished:
+		if root {
+			t.finished(event.Run)
+			t.settled = true
+		}
+	case event.Suspended():
+		if root {
+			t.showUsage(event.Run.Usage)
+		}
+	default:
+		for _, interrupt := range event.Interrupts {
+			t.showInterrupt(interrupt)
+		}
+		t.showUsage(event.Run.Usage)
+	}
+}
+
+func (t *Text) finished(run conversation.Run) {
 	t.blank()
-	if e.Outcome.Status != protocol.OutcomeCompleted {
-		msg := string(e.Outcome.Status)
-		if detail := e.Outcome.Explanation(); detail != "" {
+	if run.Outcome.Status != protocol.OutcomeCompleted {
+		msg := string(run.Outcome.Status)
+		if detail := run.Outcome.Explanation(); detail != "" {
 			msg += ": " + detail
 		}
 		t.line(msg)
 	}
-	t.showUsage(e.Usage)
+	t.showUsage(run.Usage)
 }
 
 func (t *Text) showUsage(u conversation.Usage) {

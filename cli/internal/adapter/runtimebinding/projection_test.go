@@ -208,10 +208,10 @@ func TestProjectRunUsagePreservesStepsAndPerModelAttribution(t *testing.T) {
 }
 
 func TestProjectOutcomePreservesStructuredProblem(t *testing.T) {
-	outcome := projectOutcome(protocol.OutcomeFailed, &protocol.ProblemData{
+	outcome := projectRunOutcome(protocol.RunOutcome{Type: protocol.OutcomeFailed, Error: &protocol.ProblemData{
 		Type: protocol.ProblemRateLimited, Detail: "quota exhausted",
 		DocURL: "https://docs.example/rate-limit", RetryAfterSeconds: 2,
-	}, "")
+	}})
 	if outcome.Status != protocol.OutcomeFailed || outcome.Description() != "quota exhausted" || outcome.Problem == nil ||
 		outcome.Problem.RetryAfterSeconds != 2 || outcome.Problem.DocURL != "https://docs.example/rate-limit" {
 		t.Fatalf("outcome = %+v", outcome)
@@ -472,11 +472,12 @@ func TestProjectTreeStreamRetainsProducerAndStreamSegments(t *testing.T) {
 	source := func(yield func(protocol.RunEvent, error) bool) {
 		yield(protocol.RunEvent{
 			RunID: "run_root", SegmentID: "seg_root", EventID: "evt_suspend", Timestamp: time.Now(),
-			Event: protocol.StreamEvent{
-				Type:    protocol.StreamSegmentFinished,
-				Outcome: &protocol.SegmentOutcome{Type: protocol.SegmentSuspended},
-				Metrics: &protocol.RunMetrics{}, ContextTokens: &contextTokens,
-			},
+			Event: protocol.StreamEvent{Type: protocol.StreamSegmentFinished, Run: &protocol.RunRef{
+				RunSummary: protocol.RunSummary{
+					ID: "run_root", SessionID: "ses_1", Status: protocol.RunStatusWaiting, CreatedAt: time.Now(),
+				},
+				ContextTokens: contextTokens,
+			}},
 		}, nil)
 	}
 	for event, err := range projectEventStream(source, "seg_root") {
@@ -486,12 +487,12 @@ func TestProjectTreeStreamRetainsProducerAndStreamSegments(t *testing.T) {
 		if event.StreamSegment() != "seg_root" || event.SegmentID != "seg_root" {
 			t.Fatalf("event segments = producer %s stream %s", event.SegmentID, event.StreamSegment())
 		}
-		suspended, ok := event.Event.(conversation.RunSuspended)
-		if !ok {
-			t.Fatalf("event = %T, want RunSuspended", event.Event)
+		suspended, ok := event.Event.(conversation.SegmentFinished)
+		if !ok || !suspended.Suspended() {
+			t.Fatalf("event = %+v, want a suspended segment.finished", event.Event)
 		}
-		if suspended.ContextTokens != contextTokens {
-			t.Fatalf("suspended context tokens = %d, want %d", suspended.ContextTokens, contextTokens)
+		if suspended.Run.ContextTokens != contextTokens {
+			t.Fatalf("suspended context tokens = %d, want %d", suspended.Run.ContextTokens, contextTokens)
 		}
 		return
 	}

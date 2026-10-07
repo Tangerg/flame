@@ -541,7 +541,9 @@ func TestCanceledRunRendersRuntimeClosedLiveBlocks(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if err := view.Apply(conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCanceled}}, nil); err != nil {
+	if err := view.Apply(conversation.SegmentFinished{Run: conversation.Run{
+		Status: protocol.RunStatusFinished, Outcome: conversation.Outcome{Status: protocol.OutcomeCanceled},
+	}}, nil); err != nil {
 		t.Fatal(err)
 	}
 	if len(view.textStreams) != 0 || len(view.tools) != 0 {
@@ -594,7 +596,10 @@ func TestChildBlockCompletionLeavesTheRootsCollidingBlockLive(t *testing.T) {
 		ID: blockID, RunID: childID, Kind: conversation.BlockAssistant,
 		Status: conversation.BlockStatusCompleted, Text: "child partial",
 	}})
-	apply(childID, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})
+	apply(childID, conversation.SegmentFinished{Run: conversation.Run{
+		ID: childID, Lineage: lineage, Status: protocol.RunStatusFinished,
+		Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted},
+	}})
 
 	if _, live := view.textStreams[conversation.BlockKey(childID, blockID)]; live {
 		t.Fatal("child text stream survived child completion")

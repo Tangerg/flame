@@ -86,7 +86,7 @@ func TestRunningTreeRecoveryUsesTheRuntimeSnapshotAndSuccessorTail(t *testing.T)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, finished := event.Event.(conversation.RunFinished); finished && event.RunID != opened.RunID {
+		if finished, ok := event.Event.(conversation.SegmentFinished); ok && finished.Run.Status == protocol.RunStatusFinished && event.RunID != opened.RunID {
 			childFinished = true
 		}
 		if _, err := projection.ApplyRunEvent(event); err != nil {
@@ -153,8 +153,8 @@ func TestOneShotRecoversADelegatedApprovalBeforeResumingTheRoot(t *testing.T) {
 		t.Fatalf("approved child tool did not complete: %+v", snapshot.Transcript)
 	}
 	if !slices.ContainsFunc(renderer.events, func(event conversation.RunEvent) bool {
-		_, finished := event.Event.(conversation.RunFinished)
-		return event.RunID == root.ID && finished
+		finished, ok := event.Event.(conversation.SegmentFinished)
+		return event.RunID == root.ID && ok && finished.Run.Status == protocol.RunStatusFinished
 	}) {
 		t.Fatal("the recovered root completion was not rendered")
 	}
@@ -177,7 +177,7 @@ func (r *interruptedRootStream) StartRun(ctx context.Context, request prompt.Sta
 	events := stream.Events
 	stream.Events = func(yield func(conversation.RunEvent, error) bool) {
 		for event, streamErr := range events {
-			if _, suspended := event.Event.(conversation.RunSuspended); suspended && event.RunID == stream.RunID {
+			if finished, ok := event.Event.(conversation.SegmentFinished); ok && finished.Suspended() && event.RunID == stream.RunID {
 				r.disconnected = true
 				yield(conversation.RunEvent{}, conversation.ErrDisconnected)
 				return

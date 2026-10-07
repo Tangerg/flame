@@ -106,28 +106,19 @@ type PlanChanged struct {
 	Plan runtimeprotocol.Plan
 }
 
-// RunInterrupted closes the current segment and parks the stable logical run.
-// Interrupts is the complete pending set that must be answered atomically;
-// Usage and ContextTokens are the complete durable Run facts committed at that
-// segment boundary.
-type RunInterrupted struct {
-	Interrupts    []Interrupt
-	Usage         Usage
-	ContextTokens int64
+// SegmentFinished closes a segment with the Run record Runtime committed at
+// that boundary: waiting, or finished with its outcome, usage and context
+// footprint. Interrupts is the pending set this Run raised itself; a waiting
+// Run without them was suspended because another Run in its tree raised them.
+type SegmentFinished struct {
+	Run        Run
+	Interrupts []Interrupt
 }
 
-// RunSuspended closes a member segment because another run in the same tree
-// interrupted. It carries no duplicate interrupts; the tree-level pending
-// set is assembled from the member that raised them.
-type RunSuspended struct {
-	Usage         Usage
-	ContextTokens int64
-}
-
-type RunFinished struct {
-	Outcome       Outcome
-	Usage         Usage
-	ContextTokens int64
+// Suspended reports whether the Run is waiting on interrupts another Run in
+// its tree raised.
+func (e SegmentFinished) Suspended() bool {
+	return e.Run.Status == runtimeprotocol.RunStatusWaiting && len(e.Interrupts) == 0
 }
 
 func (SegmentStarted) isEvent() {}
@@ -146,11 +137,7 @@ func (BlockCompleted) isEvent() {}
 
 func (PlanChanged) isEvent() {}
 
-func (RunInterrupted) isEvent() {}
-
-func (RunSuspended) isEvent() {}
-
-func (RunFinished) isEvent() {}
+func (SegmentFinished) isEvent() {}
 
 func (item SegmentStarted) equal(event Event) bool {
 	other, ok := event.(SegmentStarted)
@@ -193,28 +180,16 @@ func (item PlanChanged) equal(event Event) bool {
 	return ok && equalPlans(&item.Plan, &other.Plan)
 }
 
-func (item RunInterrupted) equal(event Event) bool {
-	other, ok := event.(RunInterrupted)
-	return ok && item.ContextTokens == other.ContextTokens && item.Usage.Equal(other.Usage) &&
-		equalInterrupts(item.Interrupts, other.Interrupts)
-}
-
-func (item RunSuspended) equal(event Event) bool {
-	other, ok := event.(RunSuspended)
-	return ok && item.ContextTokens == other.ContextTokens && item.Usage.Equal(other.Usage)
-}
-
-func (item RunFinished) equal(event Event) bool {
-	other, ok := event.(RunFinished)
-	return ok && item.ContextTokens == other.ContextTokens &&
-		item.Outcome.Equal(other.Outcome) && item.Usage.Equal(other.Usage)
+func (item SegmentFinished) equal(event Event) bool {
+	other, ok := event.(SegmentFinished)
+	return ok && item.Run.Equal(other.Run) && equalInterrupts(item.Interrupts, other.Interrupts)
 }
 
 // ReplayableEvent reports whether the underlying runtime retains this event in
 // its segment journal. Deltas are deliberately ephemeral.
 func ReplayableEvent(event Event) bool {
 	switch event.(type) {
-	case SegmentStarted, BlockStarted, BlockCompleted, PlanChanged, RunInterrupted, RunSuspended, RunFinished:
+	case SegmentStarted, BlockStarted, BlockCompleted, PlanChanged, SegmentFinished:
 		return true
 	default:
 		return false
@@ -254,16 +229,9 @@ func CloneEvent(event Event) Event {
 	case PlanChanged:
 		item.Plan = *ClonePlan(&item.Plan)
 		return item
-	case RunInterrupted:
+	case SegmentFinished:
+		item.Run = item.Run.Clone()
 		item.Interrupts = CloneInterrupts(item.Interrupts)
-		item.Usage = item.Usage.Clone()
-		return item
-	case RunSuspended:
-		item.Usage = item.Usage.Clone()
-		return item
-	case RunFinished:
-		item.Outcome = item.Outcome.Clone()
-		item.Usage = item.Usage.Clone()
 		return item
 	default:
 		return nil

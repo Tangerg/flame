@@ -271,7 +271,7 @@ func (a *app) apply(event conversation.RunEvent) error {
 	a.observeSteerEvent(event)
 	a.status.setRunningDescendants(a.execution.conversation.RunningDescendants())
 	switch event.Event.(type) {
-	case conversation.SegmentStarted, conversation.RunProgress, conversation.RunInterrupted, conversation.RunSuspended, conversation.RunFinished:
+	case conversation.SegmentStarted, conversation.RunProgress, conversation.SegmentFinished:
 		a.refreshOpenTimeline()
 	}
 	a.transcript.DiscardExcess()
@@ -310,23 +310,17 @@ func (a *app) applyPresentationEvent(envelope conversation.RunEvent) {
 		} else if strings.TrimSpace(event.Activity) != "" {
 			a.status.active("subagent · " + event.Activity)
 		}
-	case conversation.RunInterrupted:
-		if a.execution.conversation.Phase() == conversation.Waiting {
+	case conversation.SegmentFinished:
+		switch {
+		case event.Run.Status == runtimeprotocol.RunStatusFinished:
+			if envelope.RunID == a.execution.conversation.RunID() {
+				a.noteRunFinished()
+			}
+		case a.execution.conversation.Phase() == conversation.Waiting:
 			a.openInterrupts(a.execution.conversation.Interrupts())
 			a.header.SetUsage(a.execution.conversation.Usage())
 			a.observeCurrentRunStatus()
 			a.status.note("waiting for your answers")
-		}
-	case conversation.RunSuspended:
-		if a.execution.conversation.Phase() == conversation.Waiting {
-			a.openInterrupts(a.execution.conversation.Interrupts())
-			a.header.SetUsage(a.execution.conversation.Usage())
-			a.observeCurrentRunStatus()
-			a.status.note("waiting for your answers")
-		}
-	case conversation.RunFinished:
-		if envelope.RunID == a.execution.conversation.RunID() {
-			a.noteRunFinished()
 		}
 	case conversation.BlockDelta, conversation.ToolArgumentsDelta, conversation.CustomEvent:
 	default:

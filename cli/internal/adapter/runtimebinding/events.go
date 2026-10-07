@@ -137,33 +137,16 @@ func (r runEventProjection) planUpdated() (projectedRunEvent, error) {
 
 func (r runEventProjection) segmentFinished() (projectedRunEvent, error) {
 	stream := r.source.Event
-	if stream.Outcome == nil || stream.Metrics == nil || stream.ContextTokens == nil {
-		return projectedRunEvent{}, fmt.Errorf("event %s: segment.finished is incomplete", r.source.EventID)
+	if stream.Run == nil {
+		return projectedRunEvent{}, fmt.Errorf("event %s: segment.finished has no run", r.source.EventID)
 	}
-	usage := projectUsage(*stream.Metrics)
-	contextTokens := *stream.ContextTokens
-	switch stream.Outcome.Type {
-	case protocol.SegmentInterrupt:
-		interrupts, err := projectInterrupts(stream.Outcome.Interrupts)
-		if err != nil {
-			return projectedRunEvent{}, fmt.Errorf("event %s: %w", r.source.EventID, err)
-		}
-		return includeRunEvent(conversation.RunInterrupted{
-			Interrupts: interrupts, Usage: usage, ContextTokens: contextTokens,
-		}), nil
-	case protocol.SegmentSuspended:
-		return includeRunEvent(conversation.RunSuspended{Usage: usage, ContextTokens: contextTokens}), nil
-	default:
-		return includeRunEvent(conversation.RunFinished{
-			// Every segment terminal that reaches here is a run terminal: the two
-			// segment-only tags are answered by the cases above.
-			Outcome: projectOutcome(
-				protocol.RunOutcomeType(stream.Outcome.Type),
-				stream.Outcome.Error,
-				stream.Outcome.Detail,
-			),
-			Usage:         usage,
-			ContextTokens: contextTokens,
-		}), nil
+	run, err := projectRun(*stream.Run)
+	if err != nil {
+		return projectedRunEvent{}, fmt.Errorf("event %s: %w", r.source.EventID, err)
 	}
+	interrupts, err := projectInterrupts(stream.Interrupts)
+	if err != nil {
+		return projectedRunEvent{}, fmt.Errorf("event %s: %w", r.source.EventID, err)
+	}
+	return includeRunEvent(conversation.SegmentFinished{Run: run, Interrupts: interrupts}), nil
 }

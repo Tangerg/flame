@@ -73,6 +73,7 @@ func TestStartRunMapsOptionsAndProjectsAtomicStream(t *testing.T) {
 			t.Fatalf("start options = %+v", options)
 		}
 		contextTokens := int64(12_345)
+		finishedAt := time.Unix(2, 0).UTC()
 		return &protocol.StartRunResponse{RunID: runID, SegmentID: segmentID, UserItemID: "item_user"}, func(yield func(protocol.RunEvent, error) bool) {
 			yield(protocol.RunEvent{
 				RunID: runID, SegmentID: segmentID, EventID: "evt_1", Timestamp: time.Unix(1, 0),
@@ -87,11 +88,14 @@ func TestStartRunMapsOptionsAndProjectsAtomicStream(t *testing.T) {
 			}, nil)
 			yield(protocol.RunEvent{
 				RunID: runID, SegmentID: segmentID, EventID: "evt_2", Timestamp: time.Unix(2, 0),
-				Event: protocol.StreamEvent{
-					Type:    protocol.StreamSegmentFinished,
-					Outcome: &protocol.SegmentOutcome{Type: protocol.SegmentCompleted},
-					Metrics: &protocol.RunMetrics{}, ContextTokens: &contextTokens,
-				},
+				Event: protocol.StreamEvent{Type: protocol.StreamSegmentFinished, Run: &protocol.RunRef{
+					RunSummary: protocol.RunSummary{
+						ID: runID, SessionID: "ses_1", Provider: "deepseek", Model: "deepseek-reasoner",
+						Status: protocol.RunStatusFinished, Outcome: &protocol.RunOutcome{Type: protocol.OutcomeCompleted},
+						CreatedAt: time.Unix(1, 0).UTC(), FinishedAt: finishedAt,
+					},
+					ContextTokens: contextTokens,
+				}},
 			}, nil)
 		}, nil
 	}
@@ -120,7 +124,9 @@ func TestStartRunMapsOptionsAndProjectsAtomicStream(t *testing.T) {
 	if _, ok := events[0].Event.(conversation.SegmentStarted); !ok {
 		t.Fatalf("first event = %T", events[0].Event)
 	}
-	if finished, ok := events[1].Event.(conversation.RunFinished); !ok || finished.Outcome.Status != protocol.OutcomeCompleted || finished.ContextTokens != 12_345 {
+	if finished, ok := events[1].Event.(conversation.SegmentFinished); !ok || finished.Run.Status != protocol.RunStatusFinished ||
+		finished.Run.Outcome.Status != protocol.OutcomeCompleted || finished.Run.ContextTokens != 12_345 ||
+		!finished.Run.FinishedAt.Equal(time.Unix(2, 0)) {
 		t.Fatalf("second event = %+v", events[1].Event)
 	}
 }

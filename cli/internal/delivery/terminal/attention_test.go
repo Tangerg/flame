@@ -117,7 +117,7 @@ func TestUnfocusedApprovalRequestsAttention(t *testing.T) {
 				},
 			}},
 			Continue: func([]conversation.InterruptAnswer) []runtimefixture.Step {
-				return []runtimefixture.Step{{Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}
+				return []runtimefixture.Step{{Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}
 			},
 		}
 	}

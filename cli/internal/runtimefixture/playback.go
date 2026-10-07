@@ -22,16 +22,15 @@ func (r *Runtime) playSteps(run *runState, steps []Step) bool {
 	for _, step := range steps {
 		if err := r.pause(run, step.Delay); err != nil {
 			if errors.Is(err, errCanceled) {
-				r.finish(run, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCanceled}})
+				r.finish(run, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCanceled}})
 			}
 			return false
 		}
 		switch {
+		case step.Finish != nil:
+			r.finish(run, *step.Finish)
+			return false
 		case step.Event != nil:
-			if finished, done := step.Event.(conversation.RunFinished); done {
-				r.finish(run, finished)
-				return false
-			}
 			if !r.emit(run, step.Event) {
 				return false
 			}
@@ -55,7 +54,7 @@ func (r *Runtime) park(run *runState) {
 	interruptEvents, err := r.interruptItemEventsLocked(run)
 	if err != nil {
 		r.mu.Unlock()
-		r.finish(run, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeFailed, Problem: &protocol.ProblemData{Type: protocol.ProblemInternalError, Detail: err.Error()}}})
+		r.finish(run, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeFailed, Problem: &protocol.ProblemData{Type: protocol.ProblemInternalError, Detail: err.Error()}}})
 		return
 	}
 	resolved, pending := r.resolveRememberedLocked(run, run.script.Interrupts)
@@ -104,7 +103,7 @@ func (r *Runtime) park(run *runState) {
 			steps, err = continueSafely(run.script, answers)
 		}
 		if err != nil {
-			r.finish(run, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeFailed, Problem: &protocol.ProblemData{Type: protocol.ProblemInternalError, Detail: err.Error()}}})
+			r.finish(run, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeFailed, Problem: &protocol.ProblemData{Type: protocol.ProblemInternalError, Detail: err.Error()}}})
 			return
 		}
 		r.mu.Lock()
@@ -119,7 +118,7 @@ func (r *Runtime) park(run *runState) {
 	run.status = protocol.RunStatusWaiting
 	run.interrupts = conversation.CloneInterrupts(pending)
 	run.usage = run.script.InterruptUsage.Clone()
-	if err := r.emitLocked(run, conversation.RunInterrupted{Interrupts: conversation.CloneInterrupts(run.interrupts), Usage: run.usage}); err != nil {
+	if err := r.emitLocked(run, conversation.SegmentFinished{Run: boundaryRun(run), Interrupts: conversation.CloneInterrupts(run.interrupts)}); err != nil {
 		r.failSegmentLocked(run, err)
 		r.mu.Unlock()
 		return
@@ -292,15 +291,6 @@ func (r *Runtime) emitLocked(run *runState, event conversation.Event) error {
 			item.Block.Status = completedBlockStatus(item.Block)
 		}
 		event = item
-	case conversation.RunInterrupted:
-		item.ContextTokens = run.contextTokens
-		event = item
-	case conversation.RunSuspended:
-		item.ContextTokens = run.contextTokens
-		event = item
-	case conversation.RunFinished:
-		item.ContextTokens = run.contextTokens
-		event = item
 	}
 	envelope := conversation.RunEvent{
 		EventID: r.identities.next(eventIdentity), RunID: run.id,
@@ -333,9 +323,7 @@ func (r *Runtime) emitLocked(run *runState, event conversation.Event) error {
 		if item.Usage != nil {
 			run.usage = item.Usage.Clone()
 		}
-	case conversation.RunInterrupted:
-		r.closeSegmentLocked(segment)
-	case conversation.RunFinished:
+	case conversation.SegmentFinished:
 		r.closeSegmentLocked(segment)
 	}
 	close(segment.changed)
@@ -371,20 +359,20 @@ func (r *Runtime) failSegmentLocked(run *runState, err error) {
 	segment.changed = make(chan struct{})
 }
 
-func (r *Runtime) finish(run *runState, event conversation.RunFinished) {
+func (r *Runtime) finish(run *runState, finish Finish) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if err := r.finishLocked(run, event); err != nil {
+	if err := r.finishLocked(run, finish); err != nil {
 		r.failSegmentLocked(run, err)
 	}
 }
 
-func (r *Runtime) finishLocked(run *runState, event conversation.RunFinished) error {
+func (r *Runtime) finishLocked(run *runState, finish Finish) error {
 	if run.status == protocol.RunStatusFinished {
 		return nil
 	}
 	session := r.sessions[run.sessionID]
-	settlements := r.runningItemSettlementsLocked(run, event.Outcome)
+	settlements := r.runningItemSettlementsLocked(run, finish.Outcome)
 	revisionChanges := sessionStatusRevisionChanges(session, protocol.SessionStatusIdle)
 	if run.active != "" {
 		if run.segments[run.active] == nil {
@@ -396,15 +384,17 @@ func (r *Runtime) finishLocked(run *runState, event conversation.RunFinished) er
 		return err
 	}
 
-	run.outcome = event.Outcome
-	run.usage = event.Usage.Clone()
+	run.outcome = finish.Outcome.Clone()
+	run.usage = finish.Usage.Clone()
 	if run.active != "" {
 		for _, block := range settlements {
 			if err := r.emitLocked(run, conversation.BlockCompleted{Block: block}); err != nil {
 				return err
 			}
 		}
-		if err := r.emitLocked(run, event); err != nil {
+		finished := boundaryRun(run)
+		finished.Status = protocol.RunStatusFinished
+		if err := r.emitLocked(run, conversation.SegmentFinished{Run: finished}); err != nil {
 			return err
 		}
 	} else {

@@ -173,8 +173,8 @@ func TestRunsCancelRequiresConfirmationAndReturnsRootSnapshot(t *testing.T) {
 	runtime.Instant = false
 	runtime.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour,
-			Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
+			Delay:  time.Hour,
+			Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	opened, err := runtime.StartRun(t.Context(), prompt.StartRun{
@@ -280,7 +280,7 @@ func TestRunsCancelConfirmsTimeoutWithOneMutationIdentity(t *testing.T) {
 	base.Instant = false
 	base.Script = func(string) runtimefixture.Script {
 		return runtimefixture.Script{Prelude: []runtimefixture.Step{{
-			Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
+			Delay: time.Hour, Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}},
 		}}}
 	}
 	opened, err := base.StartRun(t.Context(), prompt.StartRun{

@@ -70,7 +70,10 @@ func validateRunEventOwnership(envelope conversation.RunEvent) error {
 		if event.Block.RunID != envelope.RunID {
 			return fmt.Errorf("block %s belongs to run %s, not %s", event.Block.ID, event.Block.RunID, envelope.RunID)
 		}
-	case conversation.RunInterrupted:
+	case conversation.SegmentFinished:
+		if event.Run.ID != envelope.RunID {
+			return fmt.Errorf("segment of run %s finished run %s", envelope.RunID, event.Run.ID)
+		}
 		for _, interrupt := range event.Interrupts {
 			if conversation.InterruptRunID(interrupt) != envelope.RunID {
 				return fmt.Errorf("interrupt for run %s carries an interrupt from run %s", envelope.RunID, conversation.InterruptRunID(interrupt))

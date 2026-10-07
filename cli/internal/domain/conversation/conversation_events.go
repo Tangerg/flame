@@ -162,12 +162,8 @@ func (c *Conversation) apply(envelope RunEvent) error {
 		err = c.applyBlockCompleted(envelope.RunID, item)
 	case PlanChanged:
 		err = c.applyPlanChanged(envelope.RunID, item)
-	case RunInterrupted:
-		err = c.applyInterrupted(envelope.RunID, item)
-	case RunSuspended:
-		err = c.applySuspended(envelope.RunID, item)
-	case RunFinished:
-		err = c.applyFinished(envelope.RunID, item)
+	case SegmentFinished:
+		err = c.applySegmentFinished(envelope.RunID, item)
 	default:
 		err = fmt.Errorf("conversation: event %T is unsupported", envelope.Event)
 	}
@@ -367,11 +363,52 @@ func (c *Conversation) applyPlanChanged(runID string, event PlanChanged) error {
 	return nil
 }
 
-func (c *Conversation) applyInterrupted(runID string, event RunInterrupted) error {
-	if err := c.requireRunRunning(runID, "interrupt a run"); err != nil {
+// applySegmentFinished replaces the Run with the record Runtime committed at
+// the boundary. The fold checks only what the CLI composes across events: the
+// interrupt set assembled for the tree, and the blocks and members still open.
+func (c *Conversation) applySegmentFinished(runID string, event SegmentFinished) error {
+	if err := c.requireRunRunning(runID, "finish a segment"); err != nil {
 		return err
 	}
-	for _, interrupt := range event.Interrupts {
+	previous := c.runs[runID]
+	if event.Run.ID != runID {
+		return fmt.Errorf("%w: segment of run %s finished run %s", ErrInvalidTransition, runID, event.Run.ID)
+	}
+	if event.Run.Lineage != previous.Lineage {
+		return fmt.Errorf("%w: run %s changed lineage", ErrInvalidTransition, runID)
+	}
+	if err := validateUsageProgress(previous.Usage, event.Run.Usage); err != nil {
+		return fmt.Errorf("%w: segment finished: %w", ErrInvalidTransition, err)
+	}
+	var err error
+	if event.Run.Status == protocol.RunStatusFinished {
+		err = c.validateRunFinished(runID)
+	} else {
+		err = c.parkRun(runID, event.Interrupts)
+	}
+	if err != nil {
+		return err
+	}
+	c.rememberRun(event.Run)
+	if runID == c.runID {
+		c.recovery = recoveryNone
+		if event.Run.Status == protocol.RunStatusFinished {
+			c.interrupts = nil
+		}
+	}
+	return nil
+}
+
+func (c *Conversation) parkRun(runID string, interrupts []Interrupt) error {
+	if len(interrupts) == 0 {
+		if runID == c.runID {
+			if err := ValidateInterrupts(c.interrupts); err != nil {
+				return fmt.Errorf("%w: root run suspended without a valid tree interrupt: %w", ErrInvalidTransition, err)
+			}
+		}
+		return nil
+	}
+	for _, interrupt := range interrupts {
 		itemID := InterruptItemID(interrupt)
 		at, exists := c.index[BlockKey(runID, itemID)]
 		if !exists {
@@ -381,78 +418,26 @@ func (c *Conversation) applyInterrupted(runID string, event RunInterrupted) erro
 			return fmt.Errorf("%w: %w", ErrInvalidTransition, err)
 		}
 	}
-	run := c.runs[runID]
-	if err := validateUsageProgress(run.Usage, event.Usage); err != nil {
-		return fmt.Errorf("%w: run interrupted: %w", ErrInvalidTransition, err)
-	}
-	pending := append(CloneInterrupts(c.interrupts), CloneInterrupts(event.Interrupts)...)
+	pending := append(CloneInterrupts(c.interrupts), CloneInterrupts(interrupts)...)
 	if err := ValidateInterrupts(pending); err != nil {
 		return fmt.Errorf("%w: tree interrupt set: %w", ErrInvalidTransition, err)
 	}
-	run.Status = protocol.RunStatusWaiting
-	run.ActiveSegmentID = ""
-	run.Usage = event.Usage.Clone()
-	run.ContextTokens = event.ContextTokens
-	c.runs[runID] = run
-	c.recovery = recoveryNone
 	c.interrupts = pending
+	c.recovery = recoveryNone
 	return nil
 }
 
-func (c *Conversation) applySuspended(runID string, event RunSuspended) error {
-	if err := c.requireRunRunning(runID, "suspend a run"); err != nil {
-		return err
-	}
-	run := c.runs[runID]
-	if err := validateUsageProgress(run.Usage, event.Usage); err != nil {
-		return fmt.Errorf("%w: run suspended: %w", ErrInvalidTransition, err)
-	}
-	if runID == c.runID {
-		if err := ValidateInterrupts(c.interrupts); err != nil {
-			return fmt.Errorf("%w: root run suspended without a valid tree interrupt: %w", ErrInvalidTransition, err)
-		}
-	}
-	run.Status = protocol.RunStatusWaiting
-	run.ActiveSegmentID = ""
-	run.Usage = event.Usage.Clone()
-	run.ContextTokens = event.ContextTokens
-	c.runs[runID] = run
-	if runID == c.runID {
-		c.recovery = recoveryNone
-	}
-	return nil
-}
-
-func (c *Conversation) applyFinished(runID string, event RunFinished) error {
-	run, exists := c.runs[runID]
-	if !exists {
-		return fmt.Errorf("%w: cannot finish unknown run %s", ErrInvalidTransition, runID)
-	}
-	if run.Status == protocol.RunStatusWaiting && event.Outcome.Status != protocol.OutcomeCanceled {
-		return fmt.Errorf("%w: a waiting run can only finish by cancellation", ErrInvalidTransition)
-	}
+func (c *Conversation) validateRunFinished(runID string) error {
 	if c.hasOpenBlocksForRun(runID) {
 		return fmt.Errorf("%w: run %s finished with open blocks", ErrInvalidTransition, runID)
 	}
-	if err := validateUsageProgress(run.Usage, event.Usage); err != nil {
-		return fmt.Errorf("%w: run finished: %w", ErrInvalidTransition, err)
+	if runID != c.runID {
+		return nil
 	}
-	if runID == c.runID {
-		for memberID, member := range c.runs {
-			if memberID != runID && member.Lineage.RootRunID() == runID && member.Status != protocol.RunStatusFinished {
-				return fmt.Errorf("%w: root run finished while child %s is %s", ErrInvalidTransition, memberID, member.Status)
-			}
+	for memberID, member := range c.runs {
+		if memberID != runID && member.Lineage.RootRunID() == runID && member.Status != protocol.RunStatusFinished {
+			return fmt.Errorf("%w: root run finished while child %s is %s", ErrInvalidTransition, memberID, member.Status)
 		}
-	}
-	run.Status = protocol.RunStatusFinished
-	run.ActiveSegmentID = ""
-	run.Outcome = event.Outcome.Clone()
-	run.Usage = event.Usage.Clone()
-	run.ContextTokens = event.ContextTokens
-	c.runs[runID] = run
-	if runID == c.runID {
-		c.recovery = recoveryNone
-		c.interrupts = nil
 	}
 	return nil
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/Tangerg/flame/cli/internal/application/extensions"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
+	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/headless"
 )
 
@@ -44,10 +45,12 @@ func (t *transcriptView) apply(runID string, event conversation.Event, registry 
 		return t.appendCustom(runID, e, registry)
 	case conversation.BlockCompleted:
 		return t.complete(e.Block, registry)
-	case conversation.RunFinished:
-		t.settleRun(runID)
-	case conversation.RunInterrupted:
-		t.sealToolGroup()
+	case conversation.SegmentFinished:
+		if e.Run.Status == protocol.RunStatusFinished {
+			t.settleRun(runID)
+		} else if len(e.Interrupts) != 0 {
+			t.sealToolGroup()
+		}
 	}
 	return nil
 }

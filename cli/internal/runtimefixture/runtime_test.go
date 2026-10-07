@@ -132,7 +132,7 @@ func TestMockBackgroundEventRevisionExhaustionTerminatesTheSegmentWithoutPartial
 	runtime.Script = func(string) Script {
 		return Script{Prelude: []Step{
 			eventStep(0, conversation.BlockCompleted{Block: conversation.Block{ID: "answer", Kind: conversation.BlockAssistant, Text: "must not commit"}}),
-			eventStep(0, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}),
+			finishStep(0, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}),
 		}}
 	}
 	session, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: "/tmp/mock"})
@@ -166,7 +166,7 @@ func TestMockParkRevisionExhaustionDoesNotPublishAPartialWaitingSet(t *testing.T
 		return Script{
 			Interrupts: []conversation.Interrupt{approvalFixture("approval", "approve")},
 			Continue: func([]conversation.InterruptAnswer) []Step {
-				return []Step{eventStep(0, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}
+				return []Step{finishStep(0, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}
 			},
 		}
 	}
@@ -196,7 +196,7 @@ func TestMockParkRevisionExhaustionDoesNotPublishAPartialWaitingSet(t *testing.T
 func TestMockFinishRevisionExhaustionLeavesTheRunExecutingAndReportsTheStreamFailure(t *testing.T) {
 	runtime := New()
 	runtime.Script = func(string) Script {
-		return Script{Prelude: []Step{eventStep(0, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}}
+		return Script{Prelude: []Step{finishStep(0, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}}
 	}
 	session, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: "/tmp/mock"})
 	if err != nil {
@@ -223,7 +223,7 @@ func TestMockFinishRevisionExhaustionLeavesTheRunExecutingAndReportsTheStreamFai
 func TestMockCancelRevisionExhaustionIsAtomic(t *testing.T) {
 	runtime := New()
 	runtime.Script = func(string) Script {
-		return Script{Prelude: []Step{eventStep(time.Hour, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}}
+		return Script{Prelude: []Step{finishStep(time.Hour, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}}
 	}
 	session, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: "/tmp/mock"})
 	if err != nil {
@@ -277,7 +277,7 @@ func TestRuntimePreservesAuthoredMessageTextAcrossRunMutations(t *testing.T) {
 		return Script{
 			Interrupts: []conversation.Interrupt{approvalFixture("approval", "Continue")},
 			Continue: func([]conversation.InterruptAnswer) []Step {
-				return []Step{eventStep(time.Hour, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}
+				return []Step{finishStep(time.Hour, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}
 			},
 		}
 	}
@@ -359,7 +359,7 @@ func TestMockResumeRevisionExhaustionIsAtomic(t *testing.T) {
 		return Script{
 			Interrupts: []conversation.Interrupt{approvalFixture("approval", "approve")},
 			Continue: func([]conversation.InterruptAnswer) []Step {
-				return []Step{eventStep(0, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}
+				return []Step{finishStep(0, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}
 			},
 		}
 	}
@@ -542,7 +542,7 @@ func TestRuntimeReconnectUsesOpaqueReplayCheckpoint(t *testing.T) {
 	runtime.Script = func(string) Script {
 		return Script{Prelude: []Step{
 			eventStep(30*time.Millisecond, conversation.BlockCompleted{Block: conversation.Block{ID: "answer", Kind: conversation.BlockAssistant, Text: "done"}}),
-			eventStep(0, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}),
+			finishStep(0, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}),
 		}}
 	}
 	session, _ := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: "/tmp/mock"})
@@ -583,7 +583,7 @@ func TestRuntimeReconnectUsesOpaqueReplayCheckpoint(t *testing.T) {
 func TestRuntimeSubscribeWithoutCheckpointAttachesAtHead(t *testing.T) {
 	runtime := New()
 	runtime.Script = func(string) Script {
-		return Script{Prelude: []Step{eventStep(time.Second, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}}
+		return Script{Prelude: []Step{finishStep(time.Second, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}}
 	}
 	session, _ := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: "/tmp/mock"})
 	opened, err := runtime.StartRun(t.Context(), testStartRun(session.ID, "hello"))
@@ -653,7 +653,7 @@ func TestRuntimeRollbackRestoresTheEarliestDroppedOpeningInput(t *testing.T) {
 func TestRuntimeForkExcludesAnActiveTail(t *testing.T) {
 	runtime := New()
 	runtime.Script = func(string) Script {
-		return Script{Prelude: []Step{eventStep(time.Hour, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}}
+		return Script{Prelude: []Step{finishStep(time.Hour, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}}
 	}
 	opened, err := runtime.StartRun(t.Context(), testStartRun("ses_demo_1", "active tail"))
 	if err != nil {
@@ -686,7 +686,7 @@ func TestRuntimeForkCopiesThePlanAtItsRunBoundary(t *testing.T) {
 		}
 		return Script{Prelude: []Step{
 			replacePlanStep(0, plan),
-			eventStep(delay, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}),
+			finishStep(delay, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}),
 		}}
 	}
 	session, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: "/tmp/mock"})
@@ -733,7 +733,7 @@ func TestRuntimeColdReadTracksAndSettlesRunningItems(t *testing.T) {
 		return Script{Prelude: []Step{
 			eventStep(0, conversation.BlockStarted{Block: conversation.Block{ID: "answer", Kind: conversation.BlockAssistant}}),
 			eventStep(0, conversation.BlockStarted{Block: conversation.Block{ID: "tool", Kind: conversation.BlockTool, Tool: &conversation.ToolCall{Kind: conversation.ToolShell, Name: "shell", Status: conversation.ToolRunning}}}),
-			eventStep(time.Hour, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}),
+			finishStep(time.Hour, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}),
 		}}
 	}
 	session, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: "/tmp/mock"})
@@ -787,7 +787,7 @@ func TestScriptContinuationReceivesFixtureLocalItemIDs(t *testing.T) {
 			Interrupts: []conversation.Interrupt{approvalFixture("approval", "approve")},
 			Continue: func(answers []conversation.InterruptAnswer) []Step {
 				received = answers[0].ItemID
-				return []Step{eventStep(0, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}
+				return []Step{finishStep(0, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}
 			},
 		}
 	}
@@ -824,7 +824,7 @@ func TestApprovalArgumentOverrideBecomesTheCompletedToolProjection(t *testing.T)
 				},
 			}},
 			Continue: func([]conversation.InterruptAnswer) []Step {
-				return []Step{eventStep(0, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}
+				return []Step{finishStep(0, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}
 			},
 		}
 	}
@@ -901,7 +901,7 @@ func TestRememberedRulesRemoveOnlyMatchedApprovalsFromThePendingSet(t *testing.T
 			},
 			Continue: func(answers []conversation.InterruptAnswer) []Step {
 				continuedWith = cloneAnswers(answers)
-				return []Step{eventStep(0, conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}
+				return []Step{finishStep(0, Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}})}
 			},
 		}
 	}

@@ -46,7 +46,7 @@ func TestRecoverReadsAFinishedRunAfterItsSegmentExpires(t *testing.T) {
 func TestRecoverInstallsTheSnapshotSubscriptionHeadForALiveRun(t *testing.T) {
 	runtime := runtimefixture.New()
 	runtime.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}}
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}}
 	}
 	session, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: t.TempDir()})
 	if err != nil {
@@ -78,7 +78,7 @@ func TestRecoverInstallsTheSnapshotSubscriptionHeadForALiveRun(t *testing.T) {
 func TestAttachSessionUsesTheSubscriptionSnapshotWithoutASecondMaterialRead(t *testing.T) {
 	runtime := runtimefixture.New()
 	runtime.Script = func(string) runtimefixture.Script {
-		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}}
+		return runtimefixture.Script{Prelude: []runtimefixture.Step{{Delay: time.Hour, Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}}}}
 	}
 	session, err := runtime.CreateSession(t.Context(), conversation.CreateSession{Workspace: t.TempDir()})
 	if err != nil {
@@ -212,7 +212,7 @@ func TestRequiredRecognizesOnlyColdRecoveryConditions(t *testing.T) {
 func completedScript(string) runtimefixture.Script {
 	return runtimefixture.Script{Prelude: []runtimefixture.Step{
 		{Event: conversation.BlockCompleted{Block: conversation.Block{ID: "answer", Kind: conversation.BlockAssistant, Text: "done"}}},
-		{Event: conversation.RunFinished{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
+		{Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 	}}
 }
 
