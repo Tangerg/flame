@@ -51,3 +51,27 @@ export async function observeRun(
     }
   }
 }
+
+export interface RuntimeChangeSink {
+  refresh(): Promise<void>;
+  refreshFailed(error: unknown): void;
+}
+
+// A failed refresh is one stale read, not a lost subscription: the next change
+// reads again, so only the stream ending stops observation.
+export async function followRuntimeChanges(
+  client: { runtimeEvents: Pick<FlameClient["runtimeEvents"], "subscribe"> },
+  sink: RuntimeChangeSink,
+  signal: AbortSignal,
+): Promise<void> {
+  const subscription = await client.runtimeEvents.subscribe(
+    { topics: ["sessions.changed", "runs.changed", "interrupts.changed"] },
+    signal,
+  );
+  for await (const _event of subscription.events) {
+    if (signal.aborted) return;
+    await sink.refresh().catch((error: unknown) => {
+      if (!signal.aborted) sink.refreshFailed(error);
+    });
+  }
+}

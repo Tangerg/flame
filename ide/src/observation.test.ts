@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { RunEvent, RunRef, SessionSnapshot } from "@flame/runtime-contract/wire";
 import runRef from "@flame/runtime-contract/samples/runref.full.json";
 import sessionSample from "@flame/runtime-contract/samples/session.json";
-import { observeRun } from "./observation";
+import { followRuntimeChanges, observeRun } from "./observation";
 import { RpcError } from "@flame/runtime-contract/client";
 
 const running: RunRef = {
@@ -123,4 +123,44 @@ describe("IDE run attachment", () => {
       expect(sink.snapshot).toHaveBeenCalledWith(snapshot);
     },
   );
+});
+
+describe("IDE Runtime change following", () => {
+  function changes(count: number) {
+    return vi.fn().mockResolvedValue({
+      result: {},
+      events: (async function* () {
+        for (let index = 0; index < count; index++) yield { type: "sessions.changed" };
+      })(),
+    });
+  }
+
+  it("keeps following after one refresh fails, reporting that failure", async () => {
+    const failure = new Error("sessions.list unavailable");
+    const refresh = vi.fn().mockRejectedValueOnce(failure).mockResolvedValue(undefined);
+    const refreshFailed = vi.fn();
+    await followRuntimeChanges(
+      { runtimeEvents: { subscribe: changes(2) } },
+      { refresh, refreshFailed },
+      new AbortController().signal,
+    );
+    expect(refresh).toHaveBeenCalledTimes(2);
+    expect(refreshFailed).toHaveBeenCalledExactlyOnceWith(failure);
+  });
+
+  it("reports no refresh failure once its owner has retired", async () => {
+    const abort = new AbortController();
+    const refresh = vi.fn(async () => {
+      abort.abort();
+      throw new Error("connection closed");
+    });
+    const refreshFailed = vi.fn();
+    await followRuntimeChanges(
+      { runtimeEvents: { subscribe: changes(2) } },
+      { refresh, refreshFailed },
+      abort.signal,
+    );
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(refreshFailed).not.toHaveBeenCalled();
+  });
 });

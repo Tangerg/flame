@@ -5,7 +5,6 @@ import { asSessionId, normalizeRuntimeEndpoint } from "@flame/runtime-contract/c
 import type {
   Interrupt,
   InterruptResponse,
-  Item,
   QuestionField,
   Session,
   SessionSnapshot,
@@ -14,7 +13,8 @@ import { parseReviewedJSON } from "@flame/runtime-contract/client/json";
 import { checkRequest } from "@flame/runtime-contract/client/request";
 import { commandFailureMessage, Connection, type Command, type CommandResult } from "./connection";
 import { inputFromEditor, type EditorSnapshot } from "./editorContext";
-import { observeRun } from "./observation";
+import { followRuntimeChanges, observeRun } from "./observation";
+import { itemText } from "./transcript";
 
 type PluginCommand = Extract<Command, { method: `plugins.${string}` }>;
 
@@ -83,6 +83,7 @@ class Workbench implements vscode.TreeDataProvider<Session> {
   #connecting?: AbortController;
   #refreshing: Promise<void> = Promise.resolve();
   #submitted?: EditorSnapshot;
+  #runtimeEventsLost = false;
   #closed = false;
 
   constructor(context: vscode.ExtensionContext) {
@@ -266,31 +267,41 @@ class Workbench implements vscode.TreeDataProvider<Session> {
     if (this.#connection !== connection) return;
     this.#status.command = "flame.selectSession";
     this.#status.text = "$(flame) Flame: Select Session";
+    this.#observeRuntime(connection);
     await this.#refresh();
     if (this.#connection !== connection) return;
-    this.#track(async () => {
-      try {
-        const subscription = await connection.client.runtimeEvents.subscribe(
-          { topics: ["sessions.changed", "runs.changed", "interrupts.changed"] },
-          connection.signal,
-        );
-        for await (const _event of subscription.events) {
-          if (this.#connection !== connection || connection.signal.aborted) return;
-          await this.#refresh();
-        }
-      } catch (error) {
-        if (this.#connection === connection && !connection.signal.aborted) {
-          this.#status.text = "$(warning) Flame: Refresh connection";
-          this.#output.appendLine(
-            `Runtime observation ended: ${error instanceof Error ? error.message : String(error)}. Connect again to restore notifications.`,
-          );
-        }
-      }
-    });
     if (connection.pendingCommands().length > 0)
       await vscode.window.showWarningMessage(
         "Flame has an unresolved command. Use Retry Unresolved Command to recover the exact saved input.",
       );
+  }
+
+  #observeRuntime(connection: Connection): void {
+    this.#track(async () => {
+      let ended = "the Runtime closed the event stream";
+      try {
+        await followRuntimeChanges(
+          connection.client,
+          {
+            refresh: () => this.#refresh(),
+            refreshFailed: (error) =>
+              this.#output.appendLine(
+                `Session refresh failed: ${commandFailureMessage(error)}. The next Runtime change or Refresh Session tries again.`,
+              ),
+          },
+          connection.signal,
+        );
+      } catch (error) {
+        ended = commandFailureMessage(error);
+      }
+      if (this.#connection !== connection || connection.signal.aborted) return;
+      this.#runtimeEventsLost = true;
+      this.#status.text = "$(warning) Flame: Reconnect";
+      this.#status.command = "flame.connect";
+      this.#output.appendLine(
+        `Runtime observation ended: ${ended}. Connect again to restore notifications.`,
+      );
+    });
   }
 
   async #disconnect(): Promise<void> {
@@ -303,6 +314,7 @@ class Workbench implements vscode.TreeDataProvider<Session> {
     this.#sessions = [];
     this.#session = undefined;
     this.#submitted = undefined;
+    this.#runtimeEventsLost = false;
     this.#changes.fire();
     this.#status.text = "$(plug) Flame: Connect";
     this.#status.command = "flame.connect";
@@ -394,11 +406,12 @@ class Workbench implements vscode.TreeDataProvider<Session> {
     });
     if (!prompt?.trim() || this.#connection !== connection || this.#session?.id !== session.id)
       return;
-    if (snapshot) this.#submitted = snapshot;
-    await this.#execute({
+    const result = await connection.execute({
       method: "runs.start",
       params: { sessionId: session.id, input: inputFromEditor(prompt, snapshot) },
     });
+    if (snapshot && this.#connection === connection) this.#submitted = snapshot;
+    if (await this.#adopt(connection, result)) this.#output.show(true);
   }
 
   async #execute(command: Command): Promise<void> {
@@ -442,12 +455,11 @@ class Workbench implements vscode.TreeDataProvider<Session> {
   async #resume(): Promise<void> {
     const connection = this.#connected();
     const session = this.#selected();
-    const waiting = await connection.client.interrupts.list(
-      { sessionId: asSessionId(session.id) },
-      connection.signal,
-    );
+    const waiting = await connection.client.interrupts
+      .list({ sessionId: asSessionId(session.id) }, connection.signal)
+      .autoPagingToArray();
     const selected = await vscode.window.showQuickPick(
-      waiting.data.map((value) => ({
+      waiting.map((value) => ({
         label: value.rootRunId,
         description: `${value.interrupts.length} pending responses`,
         value,
@@ -596,7 +608,7 @@ class Workbench implements vscode.TreeDataProvider<Session> {
               },
               event: (value) => {
                 if (!signal.aborted && value.event.type === "item.completed")
-                  this.#output.appendLine(this.#item(value.event.item));
+                  this.#output.appendLine(itemText(value.event.item));
               },
             },
             signal,
@@ -616,30 +628,15 @@ class Workbench implements vscode.TreeDataProvider<Session> {
   #show(snapshot: SessionSnapshot): void {
     const session = snapshot.session;
     this.#session = session;
-    this.#status.text = `$(flame) ${session.title || "Flame"}: ${session.status}`;
+    if (!this.#runtimeEventsLost)
+      this.#status.text = `$(flame) ${session.title || "Flame"}: ${session.status}`;
     this.#output.clear();
     this.#output.appendLine(`${session.title} · ${session.workspace.ref.path}`);
-    for (const item of snapshot.items) this.#output.appendLine(this.#item(item));
+    for (const item of snapshot.items) this.#output.appendLine(itemText(item));
     for (const waiting of snapshot.interrupts)
       this.#output.appendLine(
         `Run ${waiting.rootRunId} is waiting for ${waiting.interrupts.length} response(s). Use Flame: Respond to Waiting Run.`,
       );
-  }
-
-  #item(item: Item): string {
-    switch (item.type) {
-      case "userMessage":
-      case "agentMessage":
-        return `${item.type === "userMessage" ? "You" : "Flame"}: ${(item.content ?? []).map((block) => (block.type === "text" ? block.text : "[image]")).join("\n")}`;
-      case "reasoning":
-        return item.redacted ? "[reasoning redacted]" : (item.text ?? "");
-      case "question":
-        return item.question.fields.map((field) => field.prompt).join("\n");
-      case "toolCall":
-        return `${item.tool.name} [${item.status}]\n${JSON.stringify(item.tool.result ?? item.tool.arguments, null, 2)}`;
-      case "compaction":
-        return `[context compacted]\n${item.summary}`;
-    }
   }
 
   async #showDocument(name: string, text: string, language?: string): Promise<void> {

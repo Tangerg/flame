@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import discovery from "@flame/runtime-contract/samples/method.discover.resp.json";
 import { HTTP_ENDPOINTS, PROTOCOL_VERSION } from "@flame/runtime-contract/wire";
 import { commandFailureMessage, Connection, type Command } from "./connection";
-import { createPreparedMutationJournal } from "@flame/runtime-contract/client";
+import { createPreparedMutationJournal, RpcError } from "@flame/runtime-contract/client";
 import { CommandStorage } from "./commandStore";
 
 const disposers: Array<() => Promise<void> | void> = [];
@@ -325,5 +325,18 @@ describe("IDE connection lifetime and replay", () => {
       (request) => request.message.method === "sessions.create",
     );
     expect(mutations.every((request) => request.key === pending.idempotencyKey)).toBe(true);
+  });
+
+  it("explains a Runtime refusal with its detail rather than only its problem symbol", () => {
+    const refusal = new RpcError({
+      message: "invalid_params",
+      data: { type: "invalid_params", detail: "input must not be empty" },
+    });
+    expect(commandFailureMessage(refusal)).toBe("input must not be empty");
+    expect(
+      commandFailureMessage(
+        new RpcError({ message: "session_busy", data: { type: "session_busy" } }),
+      ),
+    ).toBe("session_busy");
   });
 });

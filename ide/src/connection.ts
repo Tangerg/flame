@@ -1,4 +1,5 @@
 import { requireRuntimeEndpoint } from "@flame/runtime-contract/client/endpoint";
+import { errorMessage } from "@flame/runtime-contract/client/errors";
 import {
   createFlameClient,
   createHttpTransport,
@@ -6,6 +7,7 @@ import {
   createSidecarClient,
   asRunId,
   isErrorType,
+  RpcError,
   type FlameClient,
 } from "@flame/runtime-contract/client";
 import {
@@ -19,6 +21,7 @@ import {
   type PreparedMutation,
   type PreparedMutationJournal,
 } from "@flame/runtime-contract/client/mutationJournal";
+import type { WireMutationMethodName } from "@flame/runtime-contract/methods";
 import { CommandStorage } from "./commandStore";
 
 export type Command = Extract<
@@ -29,14 +32,7 @@ export type Command = Extract<
       | "runs.start"
       | "runs.resume"
       | "runs.cancel"
-      | "plugins.install"
-      | "plugins.stage"
-      | "plugins.select"
-      | "plugins.approve"
-      | "plugins.configure"
-      | "plugins.setEnablement"
-      | "plugins.revoke"
-      | "plugins.uninstall";
+      | Extract<WireMutationMethodName, `plugins.${string}`>;
   }
 >;
 
@@ -59,7 +55,8 @@ const REQUEST_META: RequestMeta = {
 export function commandFailureMessage(error: unknown): string {
   if (isErrorType(error, "plugin_changed"))
     return "A plugin changed while the run was being prepared. Nothing was started; send it again to retry.";
-  return error instanceof Error ? error.message : String(error);
+  if (error instanceof RpcError && error.data.detail) return error.data.detail;
+  return errorMessage(error);
 }
 
 export class Connection {
