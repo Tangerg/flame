@@ -1,6 +1,7 @@
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RunErrorBanner } from "./RunErrorBanner";
+import { PROBLEM_RECOVERY, RUN_PROBLEM_RECOVERY } from "@flame/runtime-contract/wire";
 import type { AgentProblem } from "@/plugins/sdk/types/agentSessionView";
 
 const state = vi.hoisted(() => ({
@@ -41,16 +42,32 @@ afterEach(() => {
 const retryButton = () => screen.queryByRole("button", { name: /Retry/ });
 
 describe("run error banner", () => {
-  it("withholds retry for the codes retrying cannot fix", () => {
-    state.problem = { code: "provider_rejected" } as AgentProblem;
-    render(<RunErrorBanner />);
+  it.each([
+    [
+      "a Run the provider rejected",
+      { code: "provider_rejected", recovery: RUN_PROBLEM_RECOVERY.provider_rejected },
+    ],
+    [
+      "a Run refused its credential",
+      { code: "invalid_api_key", recovery: RUN_PROBLEM_RECOVERY.invalid_api_key },
+    ],
+    [
+      "a request with invalid params",
+      { code: "invalid_params", recovery: PROBLEM_RECOVERY.invalid_params },
+    ],
+  ] satisfies [string, AgentProblem][])(
+    "withholds retry for %s, as the Runtime's recovery says",
+    (_, problem) => {
+      state.problem = problem;
+      render(<RunErrorBanner />);
 
-    expect(retryButton()).toBeNull();
-    expect(screen.getByRole("alert").textContent).toContain("provider_rejected");
-  });
+      expect(retryButton()).toBeNull();
+      expect(screen.getByRole("alert").textContent).toContain(problem.code!);
+    },
+  );
 
-  it("offers retry for a code that a second attempt can fix", () => {
-    state.problem = { code: "provider_error" } as AgentProblem;
+  it("offers retry for a Run an internal error ended", () => {
+    state.problem = { code: "internal_error", recovery: RUN_PROBLEM_RECOVERY.internal_error };
     render(<RunErrorBanner />);
 
     expect(retryButton()).not.toBeNull();

@@ -37,6 +37,7 @@ describe("agent RPC problem projection", () => {
       ),
     ).toEqual({
       code: "session_has_active_run",
+      recovery: "promptUser",
       activeRun: { runId: "run_1", status: "waiting" },
     });
   });

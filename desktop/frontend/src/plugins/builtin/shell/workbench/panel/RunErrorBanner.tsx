@@ -39,8 +39,6 @@ function findLastUserText(): string {
   return last ? flattenText(last.blocks).trim() : "";
 }
 
-const UNRETRYABLE: readonly string[] = ["invalid_api_key", "invalid_params", "provider_rejected"];
-
 interface RetryCountdown {
   problem: AgentProblem | null;
   retryAfter: number;
@@ -84,7 +82,11 @@ export function RunErrorBanner() {
     dismissActiveSessionProblem();
   };
 
-  const canRetry = canSend && Boolean(retryText) && !UNRETRYABLE.includes(error?.code ?? "");
+  const canRetry =
+    canSend &&
+    Boolean(retryText) &&
+    error?.recovery !== "stop" &&
+    error?.recovery !== "reauthenticate";
 
   return (
     <AnimatePresence initial={false}>

@@ -479,6 +479,7 @@ describe("useAgentSession run timing guards", () => {
     await waitFor(() => {
       expect(useAgentStore.getState().sessions[SID]!.problem.commandError).toEqual({
         code: "stale_segment",
+        recovery: "refetch",
         message: "run already moved",
       });
     });

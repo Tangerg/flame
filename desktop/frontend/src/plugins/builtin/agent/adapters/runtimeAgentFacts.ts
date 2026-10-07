@@ -16,6 +16,11 @@ import {
   type ToolInvocation,
   type Usage,
 } from "@flame/runtime-contract/client";
+import {
+  PROBLEM_RECOVERY,
+  RUN_PROBLEM_RECOVERY,
+  type RecoveryAction,
+} from "@flame/runtime-contract/wire";
 import type {
   AgentCancelResult,
   AgentEventEnvelope,
@@ -55,9 +60,22 @@ function runtimeRunMetrics(metrics: RunMetrics): AgentRunMetrics {
   };
 }
 
-export function runtimeProblem(problem: ProblemData): AgentProblem {
+export function requestProblem(problem: ProblemData): AgentProblem {
+  return runtimeProblem(problem, PROBLEM_RECOVERY);
+}
+
+function runProblem(problem: ProblemData): AgentProblem {
+  return runtimeProblem(problem, RUN_PROBLEM_RECOVERY);
+}
+
+function runtimeProblem(
+  problem: ProblemData,
+  recoveries: Partial<Record<ProblemData["type"], RecoveryAction>>,
+): AgentProblem {
+  const recovery = recoveries[problem.type];
   return {
     code: problem.type,
+    ...(recovery ? { recovery } : {}),
     ...(problem.detail ? { message: problem.detail } : {}),
     ...("retryAfterSeconds" in problem && problem.retryAfterSeconds !== undefined
       ? { retryAfterSeconds: problem.retryAfterSeconds }
@@ -76,7 +94,7 @@ function runtimeRunOutcome(outcome: RunOutcome): AgentRunOutcome {
     case "timedOut":
     case "failed":
     case "lost":
-      return { type: outcome.type, error: runtimeProblem(outcome.error), ...evidence };
+      return { type: outcome.type, error: runProblem(outcome.error), ...evidence };
     case "canceled":
       return {
         type: outcome.type,
@@ -254,7 +272,7 @@ export function runtimeItem(item: Item): AgentItem {
         ...(item.durationMillis !== undefined ? { durationMillis: item.durationMillis } : {}),
         ...(item.safetyClass !== undefined ? { safetyClass: item.safetyClass } : {}),
         ...(item.approvalDecision !== undefined ? { approvalDecision: item.approvalDecision } : {}),
-        ...(item.error ? { error: runtimeProblem(item.error) } : {}),
+        ...(item.error ? { error: runProblem(item.error) } : {}),
         tool: runtimeTool(item.tool),
       };
   }

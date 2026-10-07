@@ -1,3 +1,4 @@
+import type { RecoveryAction } from "@flame/runtime-contract/wire";
 import type { ContentBlock } from "@/plugins/sdk/types/contentBlock";
 
 export type MessageRole = "user" | "assistant" | "system";
@@ -71,6 +72,7 @@ export interface RunUsage {
 export interface AgentProblem {
   message?: string;
   code?: string;
+  recovery?: RecoveryAction;
   retryAfterSeconds?: number;
   activeRun?: { runId: string; status: string };
 }

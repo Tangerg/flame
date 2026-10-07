@@ -52,7 +52,7 @@ const runtimeTopics = new Set(manifest.runtimeTopics.map((topic) => topic.type))
 // ends, and the verdicts that ride a successful result.
 const problemTypes = new Set([
   ...manifest.errors.types.map((error) => error.type),
-  ...manifest.errors.runChannelTypes,
+  ...manifest.errors.runChannelTypes.map((problem) => problem.type),
   ...manifest.errors.inlineStatusTypes,
 ]);
 
