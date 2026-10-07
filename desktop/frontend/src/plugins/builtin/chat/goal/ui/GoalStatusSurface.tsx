@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Button, IconButton, TextEditorDialog, vocab } from "@/ui";
 import { AgentComposerTopTraySurface } from "@/ui/agent";
 import { color } from "@/styles/tokens.stylex";
@@ -22,8 +22,7 @@ const goalTray = stylex.create({
   },
 });
 import { useT } from "@/lib/i18n";
-import { rpcErrorText } from "@/lib/rpcErrors";
-import { notifyError } from "@/plugins/sdk";
+import { notifyError, useCommandAction } from "@/plugins/sdk";
 import { clearGoal, resumeGoal, stopGoal, updateGoal } from "../application/goalCommands";
 import { GOAL_STATUS_I18N, goalCanResume } from "../application/goalStatusPresentation";
 import { type GoalReadModel, useGoalMaterial } from "../application/goalReadModel";
@@ -80,63 +79,55 @@ export function GoalStatusSurface() {
 
 function GoalRow({ goal }: { goal: GoalReadModel }) {
   const t = useT();
-  const [pending, setPending] = useState<"clear" | "status" | "edit" | null>(null);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(goal.objective);
-  const commandInFlight = useRef(false);
   const runtimeAvailable = useRuntimeCommandsAvailable();
   const canChangeStatus = goal.status === "active" || goalCanResume(goal);
   const canEdit = goal.status !== "completing";
   const nextObjective = draft.trim();
   const canSave = canEdit && nextObjective.length > 0 && nextObjective !== goal.objective;
+  const clearAction = useCommandAction({
+    wasRetired: wasGenerationRetired,
+    fallback: t("goal.error.clear"),
+  });
+  const statusFallback = t(goal.status === "active" ? "goal.error.pause" : "goal.error.resume");
+  const statusAction = useCommandAction({
+    wasRetired: wasGenerationRetired,
+    fallback: statusFallback,
+  });
+  const editAction = useCommandAction({
+    wasRetired: wasGenerationRetired,
+    fallback: t("goal.error.update"),
+  });
+  const busy = clearAction.busy || statusAction.busy || editAction.busy;
 
-  const runCommand = async (
-    kind: "clear" | "status" | "edit",
-    command: () => Promise<void>,
-    fallback: string,
-  ) => {
-    if (commandInFlight.current) return false;
-    if (!runtimeCommandsAvailable()) {
-      notifyError(fallback);
-      return false;
-    }
-    commandInFlight.current = true;
-    setPending(kind);
-    try {
-      await command();
-      return true;
-    } catch (error) {
-      if (!wasGenerationRetired(error)) notifyError(rpcErrorText(error) ?? fallback);
-      return false;
-    } finally {
-      commandInFlight.current = false;
-      setPending(null);
-    }
+  const admitted = (fallback: string) => {
+    if (runtimeCommandsAvailable()) return true;
+    notifyError(fallback);
+    return false;
   };
 
-  const changeStatus = async () => {
-    if (!canChangeStatus) return;
-    const fallback = goal.status === "active" ? t("goal.error.pause") : t("goal.error.resume");
-    await runCommand(
-      "status",
-      () => (goal.status === "active" ? stopGoal(goal.sessionId) : resumeGoal(goal.sessionId)),
-      fallback,
+  const changeStatus = () => {
+    if (!canChangeStatus || !admitted(statusFallback)) return;
+    statusAction.run(() =>
+      goal.status === "active" ? stopGoal(goal.sessionId) : resumeGoal(goal.sessionId),
     );
   };
 
-  const clear = () => runCommand("clear", () => clearGoal(goal.sessionId), t("goal.error.clear"));
-
-  const save = async () => {
-    if (!canSave) return;
-    const saved = await runCommand(
-      "edit",
-      () => updateGoal({ sessionId: goal.sessionId, objective: nextObjective }),
-      t("goal.error.update"),
-    );
-    if (saved) setEditing(false);
+  const clear = () => {
+    if (!admitted(t("goal.error.clear"))) return;
+    clearAction.run(() => clearGoal(goal.sessionId));
   };
 
-  const controlsDisabled = pending !== null || !runtimeAvailable;
+  const save = () => {
+    if (!canSave || !admitted(t("goal.error.update"))) return;
+    editAction.run(async () => {
+      await updateGoal({ sessionId: goal.sessionId, objective: nextObjective });
+      setEditing(false);
+    });
+  };
+
+  const controlsDisabled = busy || !runtimeAvailable;
   const openEditor = () => {
     setDraft(goal.objective);
     setEditing(true);
@@ -153,7 +144,7 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
             variant="bare"
             size="xs"
             disabled={!canEdit}
-            pending={pending !== null}
+            pending={busy}
             flex="fill"
             title={goal.objective}
             className={stylex.props(gs.summary).className}
@@ -175,8 +166,8 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
             quiet
             title={t("goal.action.clear")}
             disabled={controlsDisabled}
-            aria-busy={pending === "clear"}
-            onClick={() => void clear()}
+            aria-busy={clearAction.busy}
+            onClick={clear}
           />
           {canChangeStatus && (
             <IconButton
@@ -186,8 +177,8 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
               quiet
               title={t(goal.status === "active" ? "goal.action.pause" : "goal.action.resume")}
               disabled={controlsDisabled}
-              aria-busy={pending === "status"}
-              onClick={() => void changeStatus()}
+              aria-busy={statusAction.busy}
+              onClick={changeStatus}
             />
           )}
           {canEdit && (
@@ -206,7 +197,7 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
       <TextEditorDialog
         open={editing}
         onOpenChange={(open) => {
-          if (pending !== "edit") setEditing(open);
+          if (!editAction.busy) setEditing(open);
         }}
         icon={
           <GoalGlyph
@@ -222,9 +213,9 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
         cancelLabel={t("common.cancel")}
         saveLabel={t("goal.edit.save")}
         savingLabel={t("goal.edit.saving")}
-        busy={pending === "edit"}
+        busy={editAction.busy}
         saveDisabled={!canSave}
-        onSave={() => void save()}
+        onSave={save}
       />
     </>
   );

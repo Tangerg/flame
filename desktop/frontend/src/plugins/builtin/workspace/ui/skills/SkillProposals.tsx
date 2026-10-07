@@ -1,13 +1,12 @@
-import { failureText } from "@/lib/rpcErrors";
 import * as stylex from "@stylexjs/stylex";
 import { SkillProposalRevisionConflictError } from "@/plugins/builtin/workspace/application/ports/skillCurationGateway";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
-import { useCallback, useRef, useState } from "react";
+import { useState } from "react";
 import { Badge, Collapsible, DataView, PillButton, Tag, TextButton, vocab, Well } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { type as typeStep } from "@/styles/tokens.stylex";
 import { viewStyles as vs } from "../viewStyles";
-import { notifyError } from "@/plugins/sdk";
+import { notifyError, useCommandAction } from "@/plugins/sdk";
 import {
   useSkillProposals,
   type SkillProposal,
@@ -60,36 +59,22 @@ export function SkillProposals() {
 
 function SkillProposalRow({ proposal }: { proposal: SkillProposal }) {
   const t = useT();
-  const actionPending = useRef(false);
-  const [busy, setBusy] = useState(false);
   const [reading, setReading] = useState(false);
-
-  const act = useCallback(
-    async (run: () => Promise<void>) => {
-      if (actionPending.current) return;
-      actionPending.current = true;
-      setBusy(true);
+  const { busy, run } = useCommandAction({
+    wasRetired: wasGenerationRetired,
+    fallback: t("skillProposals.error"),
+    source: "skills",
+  });
+  const act = (decide: () => Promise<void>) =>
+    run(async () => {
       try {
-        await run();
+        await decide();
       } catch (error) {
-        if (!wasGenerationRetired(error)) {
-          if (error instanceof SkillProposalRevisionConflictError) setReading(true);
-          notifyError(
-            error instanceof SkillProposalRevisionConflictError
-              ? t("skillProposals.conflict")
-              : failureText(error, t("skillProposals.error")),
-            {
-              source: "skills",
-            },
-          );
-        }
-      } finally {
-        actionPending.current = false;
-        setBusy(false);
+        if (!(error instanceof SkillProposalRevisionConflictError)) throw error;
+        setReading(true);
+        notifyError(t("skillProposals.conflict"), { source: "skills" });
       }
-    },
-    [t],
-  );
+    });
 
   const handle = {
     workspace: proposal.workspace,
@@ -125,7 +110,7 @@ function SkillProposalRow({ proposal }: { proposal: SkillProposal }) {
             size="sm"
             variant="danger"
             pending={busy}
-            onClick={() => void act(() => rejectSkillProposal(handle))}
+            onClick={() => act(() => rejectSkillProposal(handle))}
           >
             {t("skillProposals.reject")}
           </PillButton>
@@ -133,7 +118,7 @@ function SkillProposalRow({ proposal }: { proposal: SkillProposal }) {
             size="sm"
             variant="solid"
             pending={busy}
-            onClick={() => void act(() => approveSkillProposal(handle))}
+            onClick={() => act(() => approveSkillProposal(handle))}
           >
             {t("skillProposals.approve")}
           </PillButton>

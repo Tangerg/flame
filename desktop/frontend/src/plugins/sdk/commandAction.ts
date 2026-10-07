@@ -3,7 +3,7 @@ import { rpcErrorText } from "@/lib/rpcErrors";
 import { notifyError, type NotifySource } from "./notifications";
 
 export interface CommandActionConfig {
-  wasRetired: (error: unknown) => boolean;
+  wasRetired?: (error: unknown) => boolean;
   fallback: string;
   source?: NotifySource;
 }
@@ -28,7 +28,7 @@ export function useCommandAction({
       setBusy(true);
       command()
         .catch((error: unknown) => {
-          if (wasRetired(error)) return;
+          if (wasRetired?.(error)) return;
           notifyError(rpcErrorText(error) ?? fallback, source ? { source } : undefined);
         })
         .finally(() => {

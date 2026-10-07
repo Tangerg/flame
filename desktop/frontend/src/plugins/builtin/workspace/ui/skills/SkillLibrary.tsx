@@ -1,12 +1,10 @@
-import { failureText } from "@/lib/rpcErrors";
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
-import { useCallback, useRef, useState } from "react";
 import { DataView, gap, PillButton, SectionLabel, vocab } from "@/ui";
 import { useT } from "@/lib/i18n";
 import { type as typeStep } from "@/styles/tokens.stylex";
 import { viewStyles as vs } from "../viewStyles";
-import { notifyError } from "@/plugins/sdk";
+import { useCommandAction } from "@/plugins/sdk";
 import {
   useManagedSkills,
   type ManagedSkill,
@@ -74,25 +72,11 @@ function SkillSection({ label, skills }: { label: string; skills: ManagedSkill[]
 function SkillRow({ skill }: { skill: ManagedSkill }) {
   const t = useT();
   const archived = skill.lifecycle === "archived";
-  const actionPending = useRef(false);
-  const [busy, setBusy] = useState(false);
-  const onAction = useCallback(async () => {
-    if (actionPending.current) return;
-    actionPending.current = true;
-    setBusy(true);
-    try {
-      await (archived ? restoreSkill(skill.name) : archiveSkill(skill.name));
-    } catch (error) {
-      if (!wasGenerationRetired(error)) {
-        notifyError(failureText(error, t("skillLibrary.error")), {
-          source: "skills",
-        });
-      }
-    } finally {
-      actionPending.current = false;
-      setBusy(false);
-    }
-  }, [archived, skill.name, t]);
+  const { busy, run } = useCommandAction({
+    wasRetired: wasGenerationRetired,
+    fallback: t("skillLibrary.error"),
+    source: "skills",
+  });
 
   return (
     <div {...stylex.props(vs.lineTop, vs.gutter, vs.rowPad)}>
@@ -106,7 +90,7 @@ function SkillRow({ skill }: { skill: ManagedSkill }) {
         size="sm"
         variant={archived ? "outlined" : "danger"}
         pending={busy}
-        onClick={() => void onAction()}
+        onClick={() => run(() => (archived ? restoreSkill(skill.name) : archiveSkill(skill.name)))}
       >
         {archived ? t("skillLibrary.restore") : t("skillLibrary.archive")}
       </PillButton>

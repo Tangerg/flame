@@ -1,14 +1,13 @@
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { Badge, DataView, EmptyState, gap, Icon, Surface, Switch, Tag, vocab } from "@/ui";
-import { isUnsupportedMethod, rpcErrorText } from "@/lib/rpcErrors";
+import { isUnsupportedMethod } from "@/lib/rpcErrors";
 import type { HookReadModel } from "../application/hookConfig";
 import { useHookConfigs } from "../application/hookConfig";
 import { setHookTrust } from "../application/hookTrust";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
-import { notifyError } from "@/plugins/sdk";
+import { useCommandAction } from "@/plugins/sdk";
 import { useT } from "@/lib/i18n";
-import { useRef, useState } from "react";
 import { color, face, leading, space, type as typeStep, weight } from "@/styles/tokens.stylex";
 import { settingStyles as ss } from "../../kit/settingStyles";
 
@@ -68,8 +67,10 @@ function HookRow({ h }: { h: HookReadModel }) {
 
 export function HooksPane() {
   const t = useT();
-  const [trusting, setTrusting] = useState(false);
-  const trustingRef = useRef(false);
+  const trust = useCommandAction({
+    wasRetired: wasGenerationRetired,
+    fallback: t("hooks.error.trust"),
+  });
   const workspace = useActiveSessionWorkspace();
   const { data, isLoading, isError, error, refetch } = useHookConfigs(
     workspace.status === "ready" ? { cwd: workspace.cwd } : undefined,
@@ -86,21 +87,6 @@ export function HooksPane() {
   }
 
   const projectRoot = data?.projectRoot;
-
-  const onTrust = async (trusted: boolean) => {
-    if (!projectRoot || trustingRef.current) return;
-    trustingRef.current = true;
-    setTrusting(true);
-    try {
-      await setHookTrust(projectRoot, trusted);
-    } catch (err) {
-      if (wasGenerationRetired(err)) return;
-      notifyError(rpcErrorText(err) ?? t("hooks.error.trust"));
-    } finally {
-      trustingRef.current = false;
-      setTrusting(false);
-    }
-  };
 
   return (
     <div {...stylex.props(vocab.column, gap.s4)}>
@@ -124,8 +110,8 @@ export function HooksPane() {
           </div>
           <Switch
             checked={data?.projectTrusted ?? false}
-            disabled={trusting}
-            onCheckedChange={(v) => void onTrust(v)}
+            disabled={trust.busy}
+            onCheckedChange={(trusted) => trust.run(() => setHookTrust(projectRoot, trusted))}
             ariaLabel={t("hooks.trust.aria")}
           />
         </Surface>

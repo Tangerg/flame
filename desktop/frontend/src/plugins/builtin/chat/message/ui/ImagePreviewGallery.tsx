@@ -1,14 +1,13 @@
 import * as stylex from "@stylexjs/stylex";
 import { cn } from "@/lib/classNames";
 import {
-  useRef,
   useState,
   type KeyboardEventHandler,
   type MouseEventHandler,
   type ReactElement,
 } from "react";
-import { toast } from "sonner";
 import { useT } from "@/lib/i18n";
+import { useCommandAction } from "@/plugins/sdk";
 import { IconButton, LightboxDialog } from "@/ui";
 import { saveInlineImage } from "../application/imageSave";
 import { MESSAGE_CONTENT_SELECTOR } from "./messageContent";
@@ -153,8 +152,7 @@ export function ImagePreviewGallery({ item, titleFallback, trigger }: Props) {
   const [gallery, setGallery] = useState<GalleryState | null>(null);
   const [zoomIndex, setZoomIndex] = useState(0);
   const [fittedSize, setFittedSize] = useState<FittedImageSize | null>(null);
-  const [saving, setSaving] = useState(false);
-  const savingRef = useRef(false);
+  const save = useCommandAction({ fallback: t("message.image.downloadFailed") });
 
   const setGalleryIndex = (index: number) => {
     setZoomIndex(0);
@@ -196,20 +194,6 @@ export function ImagePreviewGallery({ item, titleFallback, trigger }: Props) {
     setZoomIndex(0);
     setFittedSize(null);
   };
-  const saveActiveImage = async () => {
-    if (savingRef.current) return;
-    savingRef.current = true;
-    setSaving(true);
-    try {
-      await saveInlineImage(active.src);
-    } catch {
-      toast.error(t("message.image.downloadFailed"));
-    } finally {
-      savingRef.current = false;
-      setSaving(false);
-    }
-  };
-
   return (
     <LightboxDialog
       open={zoomed}
@@ -238,9 +222,9 @@ export function ImagePreviewGallery({ item, titleFallback, trigger }: Props) {
           <IconButton
             icon="download"
             title={t("message.image.download")}
-            aria-busy={saving}
-            pending={saving}
-            onClick={() => void saveActiveImage()}
+            aria-busy={save.busy}
+            pending={save.busy}
+            onClick={() => save.run(() => saveInlineImage(active.src))}
             variant="media"
             size="xl"
           />
