@@ -794,6 +794,11 @@
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
+        "plugin_not_found",
+        "plugin_in_use",
+        "plugin_unapproved",
+        "plugin_stale",
         "capability_not_negotiated"
       ],
       "features": [
@@ -808,6 +813,11 @@
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
+        "plugin_not_found",
+        "plugin_in_use",
+        "plugin_unapproved",
+        "plugin_stale",
         "capability_not_negotiated"
       ],
       "features": [
@@ -822,6 +832,11 @@
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
+        "plugin_not_found",
+        "plugin_in_use",
+        "plugin_unapproved",
+        "plugin_stale",
         "capability_not_negotiated"
       ],
       "features": [
@@ -836,6 +851,11 @@
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
+        "plugin_not_found",
+        "plugin_in_use",
+        "plugin_unapproved",
+        "plugin_stale",
         "capability_not_negotiated"
       ],
       "features": [
@@ -850,6 +870,11 @@
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
+        "plugin_not_found",
+        "plugin_in_use",
+        "plugin_unapproved",
+        "plugin_stale",
         "capability_not_negotiated"
       ],
       "features": [
@@ -864,6 +889,11 @@
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
+        "plugin_not_found",
+        "plugin_in_use",
+        "plugin_unapproved",
+        "plugin_stale",
         "capability_not_negotiated"
       ],
       "features": [
@@ -878,6 +908,11 @@
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
+        "plugin_not_found",
+        "plugin_in_use",
+        "plugin_unapproved",
+        "plugin_stale",
         "capability_not_negotiated"
       ],
       "features": [
@@ -892,6 +927,11 @@
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
+        "plugin_not_found",
+        "plugin_in_use",
+        "plugin_unapproved",
+        "plugin_stale",
         "capability_not_negotiated"
       ],
       "features": [
@@ -906,6 +946,11 @@
       "replayCursor": "none",
       "pagination": "none",
       "errors": [
+        "plugin_unavailable",
+        "plugin_not_found",
+        "plugin_in_use",
+        "plugin_unapproved",
+        "plugin_stale",
         "capability_not_negotiated"
       ],
       "features": [
@@ -1606,27 +1651,82 @@
       {
         "type": "plugin_in_use",
         "code": -32041,
-        "recoveryAction": "promptUser"
+        "recoveryAction": "promptUser",
+        "methods": [
+          "plugins.approve",
+          "plugins.configure",
+          "plugins.install",
+          "plugins.list",
+          "plugins.revoke",
+          "plugins.select",
+          "plugins.setEnablement",
+          "plugins.stage",
+          "plugins.uninstall"
+        ]
       },
       {
         "type": "plugin_not_found",
         "code": -32040,
-        "recoveryAction": "promptUser"
+        "recoveryAction": "promptUser",
+        "methods": [
+          "plugins.approve",
+          "plugins.configure",
+          "plugins.install",
+          "plugins.list",
+          "plugins.revoke",
+          "plugins.select",
+          "plugins.setEnablement",
+          "plugins.stage",
+          "plugins.uninstall"
+        ]
       },
       {
         "type": "plugin_stale",
         "code": -32043,
-        "recoveryAction": "promptUser"
+        "recoveryAction": "promptUser",
+        "methods": [
+          "plugins.approve",
+          "plugins.configure",
+          "plugins.install",
+          "plugins.list",
+          "plugins.revoke",
+          "plugins.select",
+          "plugins.setEnablement",
+          "plugins.stage",
+          "plugins.uninstall"
+        ]
       },
       {
         "type": "plugin_unapproved",
         "code": -32042,
-        "recoveryAction": "promptUser"
+        "recoveryAction": "promptUser",
+        "methods": [
+          "plugins.approve",
+          "plugins.configure",
+          "plugins.install",
+          "plugins.list",
+          "plugins.revoke",
+          "plugins.select",
+          "plugins.setEnablement",
+          "plugins.stage",
+          "plugins.uninstall"
+        ]
       },
       {
         "type": "plugin_unavailable",
         "code": -32045,
-        "recoveryAction": "promptUser"
+        "recoveryAction": "promptUser",
+        "methods": [
+          "plugins.approve",
+          "plugins.configure",
+          "plugins.install",
+          "plugins.list",
+          "plugins.revoke",
+          "plugins.select",
+          "plugins.setEnablement",
+          "plugins.stage",
+          "plugins.uninstall"
+        ]
       },
       {
         "type": "prompt_source_too_large",

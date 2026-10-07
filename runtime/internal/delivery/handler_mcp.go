@@ -172,7 +172,7 @@ func (s *Handler) GetMCPAuthorizationAttempt(ctx context.Context, attemptID stri
 func wireMCPError(err error) error {
 	switch {
 	case errors.Is(err, mcpapp.ErrOwnedByInstallation):
-		return NewFailure(errors.Join(protocol.ErrMCPOwnedByInstallation, err), protocol.ErrMCPOwnedByInstallation.Error())
+		return NewFailure(errors.Join(protocol.ErrMCPOwnedByInstallation, err), err.Error())
 	case errors.Is(err, mcpapp.ErrUnknownServer):
 		return NewFailure(errors.Join(protocol.ErrMCPServerNotFound, err), err.Error())
 	case errors.Is(err, mcpapp.ErrServerAlreadyExists):

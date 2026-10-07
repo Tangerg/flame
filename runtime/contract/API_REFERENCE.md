@@ -64,15 +64,15 @@ Protocol `2026-10-07.7` · 98 methods
 | `mcp.servers.reconnect` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_not_found`, `mcp_server_disabled`, `capability_not_negotiated` |
 | `mcp.authorizationAttempts.create` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_not_found`, `mcp_server_disabled`, `capability_not_negotiated` |
 | `mcp.authorizationAttempts.get` | query | unary | none | none | none | — | `mcp` | `mcp_authorization_attempt_not_found`, `capability_not_negotiated` |
-| `plugins.list` | query | unary | none | none | none | — | `plugins` | `capability_not_negotiated` |
-| `plugins.install` | command | unary | replayResponse | none | none | — | `plugins` | `capability_not_negotiated` |
-| `plugins.stage` | command | unary | replayResponse | none | none | — | `plugins` | `capability_not_negotiated` |
-| `plugins.select` | command | unary | replayResponse | none | none | — | `plugins` | `capability_not_negotiated` |
-| `plugins.approve` | command | unary | replayResponse | none | none | — | `plugins` | `capability_not_negotiated` |
-| `plugins.configure` | command | unary | replayResponse | none | none | — | `plugins` | `capability_not_negotiated` |
-| `plugins.setEnablement` | command | unary | replayResponse | none | none | — | `plugins` | `capability_not_negotiated` |
-| `plugins.revoke` | command | unary | replayResponse | none | none | — | `plugins` | `capability_not_negotiated` |
-| `plugins.uninstall` | command | unary | replayResponse | none | none | — | `plugins` | `capability_not_negotiated` |
+| `plugins.list` | query | unary | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_unapproved`, `plugin_stale`, `capability_not_negotiated` |
+| `plugins.install` | command | unary | replayResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_unapproved`, `plugin_stale`, `capability_not_negotiated` |
+| `plugins.stage` | command | unary | replayResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_unapproved`, `plugin_stale`, `capability_not_negotiated` |
+| `plugins.select` | command | unary | replayResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_unapproved`, `plugin_stale`, `capability_not_negotiated` |
+| `plugins.approve` | command | unary | replayResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_unapproved`, `plugin_stale`, `capability_not_negotiated` |
+| `plugins.configure` | command | unary | replayResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_unapproved`, `plugin_stale`, `capability_not_negotiated` |
+| `plugins.setEnablement` | command | unary | replayResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_unapproved`, `plugin_stale`, `capability_not_negotiated` |
+| `plugins.revoke` | command | unary | replayResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_unapproved`, `plugin_stale`, `capability_not_negotiated` |
+| `plugins.uninstall` | command | unary | replayResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_unapproved`, `plugin_stale`, `capability_not_negotiated` |
 | `hooks.list` | query | unary | none | none | none | — | — | `workspace_unavailable` |
 | `hooks.setTrust` | command | unary | replayResponse | none | none | — | — | `workspace_unavailable` |
 | `approval.setRule` | command | unary | replayResponse | none | none | — | — | — |

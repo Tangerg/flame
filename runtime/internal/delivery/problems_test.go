@@ -8,6 +8,7 @@ import (
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -59,5 +60,15 @@ func TestProjectErrorRejectsMalformedExplicitFailure(t *testing.T) {
 	failure := ProjectError(NewFailure(protocol.ErrSessionHasActiveRun, "missing active run"))
 	if !errors.Is(failure, protocol.ErrInternalError) {
 		t.Fatalf("invalid structured failure escaped projection: %+v", failure.Problem())
+	}
+}
+
+// A plugin refusal explains itself with the owner's cause; its detail must not
+// open with the problem type the client already reads.
+func TestPluginRefusalDetailIsTheOwnersCause(t *testing.T) {
+	cause := errors.Join(plugin.ErrInUse, errors.New("release is in use"))
+	got := ProjectError(wirePluginError(cause)).Problem()
+	if got.Type != protocol.ErrPluginInUse.Error() || got.Detail != cause.Error() {
+		t.Fatalf("problem = %+v, want type plugin_in_use with detail %q", got, cause.Error())
 	}
 }

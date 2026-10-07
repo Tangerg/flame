@@ -56,15 +56,15 @@ func wirePluginError(err error) error {
 	case errors.Is(err, plugin.ErrInvalid):
 		return InvalidParameters(err)
 	case errors.Is(err, plugin.ErrUnavailable):
-		return errors.Join(protocol.ErrPluginUnavailable, err)
+		return NewFailure(errors.Join(protocol.ErrPluginUnavailable, err), err.Error())
 	case errors.Is(err, plugin.ErrNotFound):
-		return errors.Join(protocol.ErrPluginNotFound, err)
+		return NewFailure(errors.Join(protocol.ErrPluginNotFound, err), err.Error())
 	case errors.Is(err, plugin.ErrInUse):
-		return errors.Join(protocol.ErrPluginInUse, err)
+		return NewFailure(errors.Join(protocol.ErrPluginInUse, err), err.Error())
 	case errors.Is(err, plugin.ErrUnapproved):
-		return errors.Join(protocol.ErrPluginUnapproved, err)
+		return NewFailure(errors.Join(protocol.ErrPluginUnapproved, err), err.Error())
 	case errors.Is(err, plugin.ErrStale):
-		return errors.Join(protocol.ErrPluginStale, err)
+		return NewFailure(errors.Join(protocol.ErrPluginStale, err), err.Error())
 	default:
 		return err
 	}
