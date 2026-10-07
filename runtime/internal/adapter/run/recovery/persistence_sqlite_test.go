@@ -3,6 +3,7 @@ package recovery
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
 	"reflect"
 	"testing"
 	"time"
@@ -165,7 +166,7 @@ func testRecoveryMarksClaimedResumeLost(t *testing.T, openingCommitted bool) {
 	store, err := New(Config{
 		Sessions: sessionStore, Runs: runStore, Interrupts: interruptStore,
 		Transcript: transcriptStore, Messages: mustConversationStore(t, messageStore),
-		GoalRuns: sqlite.NewGoalStore(db), ExecutorCheckpoints: checkpointStore,
+		GoalRuns: mustGoalRuns(t, sqlite.NewGoalStore(db)), ExecutorCheckpoints: checkpointStore,
 		ModelInvocations: sqlite.NewModelInvocationStore(db),
 		ToolInvocations:  sqlite.NewToolInvocationStore(db),
 		ChildRunStarts:   sqlite.NewChildRunStartReservationStore(db),
@@ -515,7 +516,7 @@ func TestRecoveryRepairsWholeDurableLifecycle(t *testing.T) {
 		Interrupts:          interruptStore,
 		Transcript:          transcriptStore,
 		Messages:            mustConversationStore(t, messageStore),
-		GoalRuns:            goalStore,
+		GoalRuns:            mustGoalRuns(t, goalStore),
 		ExecutorCheckpoints: checkpointStore,
 		ModelInvocations:    modelInvocations,
 		ToolInvocations:     toolInvocations,
@@ -648,7 +649,7 @@ func TestRecoveryRejectsPartialParkWithoutMutatingIt(t *testing.T) {
 	}
 	persistence, err := New(Config{
 		Sessions: sessionStore, Runs: runStore, Interrupts: interruptStore, Transcript: transcriptStore,
-		Messages: mustConversationStore(t, sqlite.NewMessageStore(db)), GoalRuns: sqlite.NewGoalStore(db), ExecutorCheckpoints: checkpointStore,
+		Messages: mustConversationStore(t, sqlite.NewMessageStore(db)), GoalRuns: mustGoalRuns(t, sqlite.NewGoalStore(db)), ExecutorCheckpoints: checkpointStore,
 		ModelInvocations: sqlite.NewModelInvocationStore(db), ToolInvocations: sqlite.NewToolInvocationStore(db),
 		ChildRunStarts: sqlite.NewChildRunStartReservationStore(db),
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
@@ -687,4 +688,13 @@ func mustConversationStore(t *testing.T, messages *sqlite.MessageStore) *persist
 		t.Fatalf("conversation store: %v", err)
 	}
 	return store
+}
+
+func mustGoalRuns(tb testing.TB, store goals.Store) *goals.RunRecorder {
+	tb.Helper()
+	recorder, err := goals.NewRunRecorder(store)
+	if err != nil {
+		tb.Fatal(err)
+	}
+	return recorder
 }

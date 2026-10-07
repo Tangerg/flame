@@ -102,41 +102,6 @@ func (g *GoalStore) Save(ctx context.Context, replacement goal.Replacement) (boo
 	return true, nil
 }
 
-// RecordRun applies a terminal goal-owned Run to the Session's Goal inside the
-// Run's terminal transaction. The Run row owns the outcome and accounting; a
-// Goal of another incarnation is history and is left untouched.
-func (g *GoalStore) RecordRun(ctx context.Context, value run.Run) error {
-	return RunInTx(ctx, g.db, func(ctx context.Context) error {
-		current, err := g.Get(ctx, value.SessionID())
-		if err != nil {
-			return err
-		}
-		existing, found := current.Goal()
-		if !found || existing.IncarnationID() != value.GoalIncarnationID() {
-			return nil
-		}
-		replacement, changed, err := existing.RecordRun(value)
-		if err != nil {
-			return fmt.Errorf("sqlite: apply Goal Run: %w", err)
-		}
-		if !changed {
-			return nil
-		}
-		change, err := goal.NewReplacement(existing.Version(), replacement)
-		if err != nil {
-			return fmt.Errorf("sqlite: prepare goal run replacement: %w", err)
-		}
-		applied, err := g.Save(ctx, change)
-		if err != nil {
-			return err
-		}
-		if !applied {
-			return errors.New("sqlite: record Goal Run lost Goal ownership")
-		}
-		return nil
-	})
-}
-
 func rowsAffected(res sql.Result) (bool, error) {
 	n, err := res.RowsAffected()
 	if err != nil {

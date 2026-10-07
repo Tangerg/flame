@@ -34,6 +34,7 @@ type SessionStores struct {
 	toolResults         *sqlitestore.ToolResultStore
 	childRunStarts      childRunStartReservationCleaner
 	goals               goalStore
+	goalRuns            goalRunRecorder
 	tx                  Transactor
 }
 
@@ -51,6 +52,7 @@ type SessionStoresConfig struct {
 	ToolResults         *sqlitestore.ToolResultStore
 	ChildRunStarts      childRunStartReservationCleaner
 	Goals               goalStore
+	GoalRuns            goalRunRecorder
 	Tx                  Transactor
 }
 
@@ -86,6 +88,11 @@ type childRunStartReservationCleaner interface {
 type goalStore interface {
 	Get(ctx context.Context, sessionID string) (goal.Current, error)
 	Clear(ctx context.Context, sessionID string) error
+}
+
+// goalRunRecorder applies a terminal Goal-owned root Run to its Goal inside the
+// write-set that ended the Run.
+type goalRunRecorder interface {
 	RecordRun(ctx context.Context, value rundomain.Run) error
 }
 
@@ -110,6 +117,7 @@ func NewSessionStores(cfg SessionStoresConfig) (*SessionStores, error) {
 		{name: "Tool result store", value: cfg.ToolResults},
 		{name: "child Run start reservation store", value: cfg.ChildRunStarts},
 		{name: "Goal store", value: cfg.Goals},
+		{name: "Goal Run recorder", value: cfg.GoalRuns},
 		{name: "transactor", value: cfg.Tx},
 	} {
 		if dependency.Missing(required.value) {
@@ -129,6 +137,7 @@ func NewSessionStores(cfg SessionStoresConfig) (*SessionStores, error) {
 		toolResults:         cfg.ToolResults,
 		childRunStarts:      cfg.ChildRunStarts,
 		goals:               cfg.Goals,
+		goalRuns:            cfg.GoalRuns,
 		tx:                  cfg.Tx,
 	}, nil
 }
@@ -544,7 +553,7 @@ func (s *SessionStores) recordGoalTerminalRun(ctx context.Context, root rundomai
 	if root.GoalIncarnationID() == "" {
 		return nil
 	}
-	if err := s.goals.RecordRun(ctx, root); err != nil {
+	if err := s.goalRuns.RecordRun(ctx, root); err != nil {
 		return fmt.Errorf("persistence: record Goal Run for Run %q: %w", root.ID(), err)
 	}
 	return nil

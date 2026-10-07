@@ -93,6 +93,10 @@ func buildAssemblyCore(
 	if err != nil {
 		return nil, err
 	}
+	goalRuns, err := goals.NewRunRecorder(cfg.Stores.Goals)
+	if err != nil {
+		return nil, fmt.Errorf("runtime: Goal Run recorder: %w", err)
+	}
 	admissionGate, err := ownership.NewGate(ownershipLeases)
 	if err != nil {
 		return nil, fmt.Errorf("runtime: session admission: %w", err)
@@ -110,6 +114,7 @@ func buildAssemblyCore(
 		ToolResults:         cfg.Stores.ToolResults,
 		ChildRunStarts:      cfg.Stores.ChildRunStarts,
 		Goals:               cfg.Stores.Goals,
+		GoalRuns:            goalRuns,
 		Tx:                  persistence.Transactor(cfg.Stores.Transactor),
 	})
 	if err != nil {
@@ -193,7 +198,7 @@ func buildAssemblyCore(
 		Tx:                  segment.Transactor(cfg.Stores.Transactor),
 	}
 	runSegmentConfig.Schedules = cfg.Stores.Schedules
-	runSegmentConfig.GoalRuns = cfg.Stores.Goals
+	runSegmentConfig.GoalRuns = goalRuns
 	runSegmentConfig.ToolResults = cfg.Stores.ToolResults
 	runSegmentEffects, err := segment.New(runSegmentConfig)
 	if err != nil {
@@ -331,7 +336,7 @@ func buildAssemblyCore(
 		Interrupts:          cfg.Stores.Interrupts,
 		Transcript:          cfg.Stores.Transcript,
 		Messages:            execution.conversation.store,
-		GoalRuns:            cfg.Stores.Goals,
+		GoalRuns:            goalRuns,
 		ExecutorCheckpoints: cfg.Stores.ExecutorCheckpoints,
 		ModelInvocations:    cfg.Stores.ModelInvocations,
 		ToolInvocations:     cfg.Stores.ToolInvocations,

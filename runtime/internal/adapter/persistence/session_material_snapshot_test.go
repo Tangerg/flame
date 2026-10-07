@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
 	"path/filepath"
 	"testing"
 	"time"
@@ -128,6 +129,7 @@ func TestReadMaterialSnapshotKeepsSessionPlanAndGoalOnOneTransaction(t *testing.
 		ToolResults:         sqlite.NewToolResultStore(readerDB),
 		ChildRunStarts:      sqlite.NewChildRunStartReservationStore(readerDB),
 		Goals:               blockingGoal,
+		GoalRuns:            mustGoalRuns(t, writerGoalStore),
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
 			return sqlite.RunInTx(ctx, readerDB, fn)
 		},
@@ -237,4 +239,13 @@ func mustConversationStore(tb testing.TB, messages *sqlite.MessageStore) *Conver
 		tb.Fatalf("conversation store: %v", err)
 	}
 	return store
+}
+
+func mustGoalRuns(tb testing.TB, store goals.Store) *goals.RunRecorder {
+	tb.Helper()
+	recorder, err := goals.NewRunRecorder(store)
+	if err != nil {
+		tb.Fatal(err)
+	}
+	return recorder
 }

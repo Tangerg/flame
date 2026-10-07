@@ -45,7 +45,8 @@ func BenchmarkSessionMaterialSnapshot(b *testing.B) {
 				ExecutorCheckpoints: NewExecutorCheckpointStore(sqlite.NewExecutorCheckpointStore(db)),
 				Plan:                sqlite.NewPlanStore(db), ApprovalRules: sqlite.NewApprovalRuleStore(db),
 				ApprovalModes: sqlite.NewModeStore(db), ToolResults: sqlite.NewToolResultStore(db),
-				ChildRunStarts: sqlite.NewChildRunStartReservationStore(db), Goals: sqlite.NewGoalStore(db), Tx: tx,
+				ChildRunStarts: sqlite.NewChildRunStartReservationStore(db), Goals: sqlite.NewGoalStore(db),
+				GoalRuns: mustGoalRuns(b, sqlite.NewGoalStore(db)), Tx: tx,
 			})
 			if err != nil {
 				b.Fatal(err)

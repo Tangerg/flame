@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
 	"path/filepath"
 	"testing"
 	"time"
@@ -215,7 +216,7 @@ func newWriteSetFixture(t *testing.T) (sessionStores, *sqlite.RunStore, *persist
 		Sessions: ss.sessions, Transcript: ss.transcript, Interrupts: ss.interrupts,
 		Runs: ss.runs, ExecutorCheckpoints: ss.checkpoints, History: ss.history, Plan: ss.plan,
 		ApprovalRules: ss.approvals, ApprovalModes: ss.modes, ToolResults: ss.toolResults,
-		ChildRunStarts: ss.childStarts, Goals: ss.goals,
+		ChildRunStarts: ss.childStarts, Goals: ss.goals, GoalRuns: mustGoalRuns(t, ss.goals),
 		Tx: func(ctx context.Context, fn func(context.Context) error) error {
 			return sqlite.RunInTx(ctx, db, fn)
 		},
@@ -1039,4 +1040,13 @@ func mustPlanCoordinator(deps sessions.PlanDependencies) *sessions.PlanCoordinat
 		panic(err)
 	}
 	return coordinator
+}
+
+func mustGoalRuns(tb testing.TB, store goals.Store) *goals.RunRecorder {
+	tb.Helper()
+	recorder, err := goals.NewRunRecorder(store)
+	if err != nil {
+		tb.Fatal(err)
+	}
+	return recorder
 }

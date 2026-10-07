@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
 	"reflect"
 	"slices"
 	"testing"
@@ -994,7 +995,7 @@ func TestCommitEventRecordsGoalRunWithTerminalRun(t *testing.T) {
 	}
 	history := sqlite.NewTranscriptStore(db)
 	effects := sqliteEffects(sqliteOpeningStores{transcript: history}, Config{
-		GoalRuns: goals,
+		GoalRuns: mustGoalRuns(t, goals),
 		State:    state,
 		Tx:       func(ctx context.Context, fn func(context.Context) error) error { return sqlite.RunInTx(ctx, db, fn) },
 	})
@@ -3143,4 +3144,13 @@ func seedPending(t *testing.T, db *sql.DB, sessionID string, pending runs.Pendin
 // questionCapabilities is the Run contract singleRunPending's question needs.
 func questionCapabilities() run.Capabilities {
 	return run.Capabilities{InterruptKinds: []interrupt.Kind{interrupt.Question}}
+}
+
+func mustGoalRuns(tb testing.TB, store goals.Store) *goals.RunRecorder {
+	tb.Helper()
+	recorder, err := goals.NewRunRecorder(store)
+	if err != nil {
+		tb.Fatal(err)
+	}
+	return recorder
 }

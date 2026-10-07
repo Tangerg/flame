@@ -111,11 +111,8 @@ func TestGoalStoreFoldsUsageFromTheIncarnationsRuns(t *testing.T) {
 	if applied, saveErr := store.Save(t.Context(), goalReplacement(t, g, unwrittenVersion(t, sessionID))); saveErr != nil || !applied {
 		t.Fatalf("Save = (%v, %v), want true, nil", applied, saveErr)
 	}
-	completed := persistTerminalGoalRun(t, runs, sessionID, g.IncarnationID(), "run_goal_run", run.OutcomeCompleted, new(0.25), 3, now.Add(time.Minute))
+	persistTerminalGoalRun(t, runs, sessionID, g.IncarnationID(), "run_goal_run", run.OutcomeCompleted, new(0.25), 3, now.Add(time.Minute))
 	persistTerminalGoalRun(t, runs, sessionID, "another_lease", "run_other_goal", run.OutcomeCompleted, new(1.0), 7, now.Add(time.Minute))
-	if err := store.RecordRun(t.Context(), completed); err != nil {
-		t.Fatalf("RecordRun: %v", err)
-	}
 	got, found, err := readGoal(t.Context(), store, sessionID)
 	if err != nil || !found {
 		t.Fatalf("Get = (%v, %v), want found", found, err)
@@ -126,11 +123,8 @@ func TestGoalStoreFoldsUsageFromTheIncarnationsRuns(t *testing.T) {
 	}
 
 	canceled := persistTerminalGoalRun(t, runs, sessionID, g.IncarnationID(), "run_canceled", run.OutcomeCanceled, nil, 2, now.Add(2*time.Minute))
-	if err := store.RecordRun(t.Context(), canceled); err != nil {
-		t.Fatalf("RecordRun(canceled): %v", err)
-	}
 	got, _, err = readGoal(t.Context(), store, sessionID)
-	if _, priced := got.Used().Cost.USD(); err != nil || got.Status() != goal.StatusPaused ||
+	if _, priced := got.Used().Cost.USD(); err != nil ||
 		got.Used().Runs != 2 || got.Used().Steps != 5 || priced {
 		t.Fatalf("goal after canceled Run = %+v, %v", got.Snapshot(), err)
 	}
