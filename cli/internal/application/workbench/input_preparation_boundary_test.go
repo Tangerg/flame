@@ -31,7 +31,7 @@ func TestPreparedInputPublicationKeepsItsPayloadAfterStateRootReplacement(t *tes
 	if err := os.Mkdir(directory, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	stageErr := store.StagePendingSteer(pending, source, prepared)
+	_, stageErr := store.StagePendingSteer(pending, source, prepared)
 	reopened, err := OpenDirectory(directory, Config{})
 	if err != nil {
 		t.Fatal(err)

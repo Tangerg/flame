@@ -148,24 +148,24 @@ func (s *Store) PendingSteer(sessionID string) (PendingSteer, bool) {
 // durable composer draft into a replayable runtime command. A crash therefore
 // observes either the editable attachments or the command journal, never an
 // empty gap between them.
-func (s *Store) StagePendingSteer(pending PendingSteer, sourceDraft prompt.Message, input *PreparedInput) error {
+func (s *Store) StagePendingSteer(pending PendingSteer, sourceDraft prompt.Message, input *PreparedInput) (PendingSteer, error) {
 	pending = pending.clone()
 	blocks, digest, err := input.bind(s, pending.command.Message)
 	if err != nil {
-		return err
+		return PendingSteer{}, err
 	}
 	pending.command.Input, pending.inputDigest = blocks, digest
 	sourceDraft = sourceDraft.Clone()
 	wantCommand := steerSourcePrefix + pending.command.Message.Text
 	if strings.TrimSpace(sourceDraft.Text) != wantCommand {
-		return errors.New("pending steer source draft does not contain the exact command")
+		return PendingSteer{}, errors.New("pending steer source draft does not contain the exact command")
 	}
 	if !slices.Equal(sourceDraft.Attachments, pending.command.Message.Attachments) {
-		return errors.New("pending steer does not own the source draft attachments")
+		return PendingSteer{}, errors.New("pending steer does not own the source draft attachments")
 	}
 	if !sourceDraft.IsEmpty() {
 		if err := sourceDraft.Validate(); err != nil {
-			return fmt.Errorf("pending steer source draft: %w", err)
+			return PendingSteer{}, fmt.Errorf("pending steer source draft: %w", err)
 		}
 	}
 
@@ -173,23 +173,23 @@ func (s *Store) StagePendingSteer(pending PendingSteer, sourceDraft prompt.Messa
 	defer s.mu.Unlock()
 	if current, exists := s.pendingSteers[pending.sessionID]; exists {
 		if pendingSteerEqual(current, pending) {
-			return nil
+			return current.clone(), nil
 		}
-		return errors.New("another steer command is already pending")
+		return PendingSteer{}, errors.New("another steer command is already pending")
 	}
 	if current, exists := s.drafts[pending.sessionID]; exists != !sourceDraft.IsEmpty() ||
 		(exists && !current.Equal(sourceDraft)) {
-		return errors.New("session draft changed before steer attachment transfer")
+		return PendingSteer{}, errors.New("session draft changed before steer attachment transfer")
 	}
 	if err := s.saveSessionStateRecord(
 		pending.sessionID, prompt.Message{}, s.pendingRuns[pending.sessionID],
 		s.pendingResumePointer(pending.sessionID), s.pendingRollbackPointer(pending.sessionID), &pending,
 	); err != nil {
-		return err
+		return PendingSteer{}, err
 	}
 	delete(s.drafts, pending.sessionID)
 	s.pendingSteers[pending.sessionID] = pending
-	return nil
+	return pending.clone(), nil
 }
 
 // AcknowledgePendingSteer consumes the exact accepted command, records its

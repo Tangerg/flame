@@ -44,7 +44,7 @@ func TestPrepareSessionKeepsExpiredSteerAsARecoveryIssue(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := store.StagePendingSteer(pending, source, preparedInput); err != nil {
+	if _, err := store.StagePendingSteer(pending, source, preparedInput); err != nil {
 		t.Fatal(err)
 	}
 
@@ -92,7 +92,7 @@ func TestRestartReportsAPendingSteerRuntimeRefused(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := store.StagePendingSteer(pending, source, preparedInput); err != nil {
+	if _, err := store.StagePendingSteer(pending, source, preparedInput); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.Close(); err != nil {

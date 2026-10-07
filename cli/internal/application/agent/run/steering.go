@@ -45,11 +45,11 @@ func StageSteer(
 	if err != nil {
 		return workbench.PendingSteer{}, err
 	}
-	if err := authoring.StagePendingSteer(pending, sourceDraft, input); err != nil {
+	staged, err := authoring.StagePendingSteer(pending, sourceDraft, input)
+	if err != nil {
 		return workbench.PendingSteer{}, fmt.Errorf("stage steer command: %w", err)
 	}
-	pending, _ = authoring.PendingSteer(sessionID)
-	return pending, nil
+	return staged, nil
 }
 
 // SteerResult binds settlement to the exact durable command.

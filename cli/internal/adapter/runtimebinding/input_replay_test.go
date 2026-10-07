@@ -144,7 +144,7 @@ func TestMutationReplaysActualAttachmentBytesAfterWorkbenchRestart(t *testing.T)
 					if createErr != nil {
 						t.Fatal(createErr)
 					}
-					err = store.StagePendingSteer(pending, draft, prepared)
+					_, err = store.StagePendingSteer(pending, draft, prepared)
 				}
 				if err != nil {
 					t.Fatal(err)

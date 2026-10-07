@@ -108,7 +108,7 @@ func TestUnavailableInputPreservesOriginalRunResumeAndSteer(t *testing.T) {
 			if err := store.SaveDraft(steer.SessionID(), source); err != nil {
 				t.Fatal(err)
 			}
-			if err := store.StagePendingSteer(steer, source, preparedTestInput(t, store, message, input)); err != nil {
+			if _, err := store.StagePendingSteer(steer, source, preparedTestInput(t, store, message, input)); err != nil {
 				t.Fatal(err)
 			}
 			original := store.PendingRuns(start.SessionID)[0]
@@ -268,7 +268,7 @@ func TestOpeningAnotherStoreDoesNotDeleteInputAwaitingPublication(t *testing.T) 
 	if err := store.SaveDraft(pending.SessionID(), source); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.StagePendingSteer(pending, source, prepared); err != nil {
+	if _, err := store.StagePendingSteer(pending, source, prepared); err != nil {
 		t.Fatal(err)
 	}
 	if err := store.Close(); err != nil {

@@ -24,8 +24,12 @@ func TestPendingSteerAtomicallyReturnsAttachmentsIntoANewerDraft(t *testing.T) {
 		t.Fatal(saveDraftErr)
 	}
 	pending := steerTestPending(t, sessionID, attachment)
-	if stagePendingSteerErr := store.StagePendingSteer(pending, source, preparedTestInput(t, store, pending.Message(), pending.Command().Input)); stagePendingSteerErr != nil {
-		t.Fatal(stagePendingSteerErr)
+	returned, err := store.StagePendingSteer(pending, source, preparedTestInput(t, store, pending.Message(), pending.Command().Input))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored, found := store.PendingSteer(sessionID); !found || !pendingSteerEqual(returned, stored) || returned.inputDigest != stored.inputDigest {
+		t.Fatalf("staged pending steer = %+v, stored %+v (found %t)", returned, stored, found)
 	}
 	if draft, found := store.Draft(sessionID); found {
 		t.Fatalf("draft after staging = %+v, found %t", draft, found)
@@ -77,8 +81,12 @@ func TestPendingSteerAcknowledgementIsRestartIdempotentAndPreservesDraft(t *test
 	if saveDraftErr := store.SaveDraft(sessionID, source); saveDraftErr != nil {
 		t.Fatal(saveDraftErr)
 	}
-	if stagePendingSteerErr := store.StagePendingSteer(pending, source, preparedTestInput(t, store, pending.Message(), pending.Command().Input)); stagePendingSteerErr != nil {
-		t.Fatal(stagePendingSteerErr)
+	returned, err := store.StagePendingSteer(pending, source, preparedTestInput(t, store, pending.Message(), pending.Command().Input))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stored, found := store.PendingSteer(sessionID); !found || !pendingSteerEqual(returned, stored) || returned.inputDigest != stored.inputDigest {
+		t.Fatalf("staged pending steer = %+v, stored %+v (found %t)", returned, stored, found)
 	}
 	newer := prompt.Message{Text: "keep this newer thought"}
 	if saveDraftErr := store.SaveDraft(sessionID, newer); saveDraftErr != nil {
@@ -205,7 +213,7 @@ func TestSteerSettlementRefusesAnotherCommandsSteer(t *testing.T) {
 		t.Fatal(err)
 	}
 	pending := steerTestPending(t, sessionID, attachment)
-	if err := store.StagePendingSteer(pending, source, preparedTestInput(t, store, pending.Message(), pending.Command().Input)); err != nil {
+	if _, err := store.StagePendingSteer(pending, source, preparedTestInput(t, store, pending.Message(), pending.Command().Input)); err != nil {
 		t.Fatal(err)
 	}
 

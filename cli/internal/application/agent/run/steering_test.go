@@ -126,7 +126,7 @@ func TestRecoverContinuesPastAnUnreplayableSteer(t *testing.T) {
 	if err := fixture.store.SaveDraft(second.SessionID(), secondSource); err != nil {
 		t.Fatal(err)
 	}
-	if err := fixture.store.StagePendingSteer(second, secondSource, prepareSteerTestInput(t, fixture.store, second.Command())); err != nil {
+	if _, err := fixture.store.StagePendingSteer(second, secondSource, prepareSteerTestInput(t, fixture.store, second.Command())); err != nil {
 		t.Fatal(err)
 	}
 
