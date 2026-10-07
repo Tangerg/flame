@@ -52,6 +52,21 @@ export async function observeRun(
   }
 }
 
+// Selecting another Session aborts the read in flight; that read is superseded,
+// not failed, so it must not surface as an error of the command that began it.
+export async function readSessionSnapshot(
+  client: { sessions: Pick<FlameClient["sessions"], "snapshot"> },
+  sessionId: string,
+  signal: AbortSignal,
+): Promise<SessionSnapshot | undefined> {
+  try {
+    return await client.sessions.snapshot(asSessionId(sessionId), true, signal);
+  } catch (error) {
+    if (signal.aborted) return undefined;
+    throw error;
+  }
+}
+
 export interface RuntimeChangeSink {
   refresh(): Promise<void>;
   refreshFailed(error: unknown): void;

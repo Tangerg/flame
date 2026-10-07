@@ -13,7 +13,7 @@ import { parseReviewedJSON } from "@flame/runtime-contract/client/json";
 import { checkRequest } from "@flame/runtime-contract/client/request";
 import { commandFailureMessage, Connection, type Command, type CommandResult } from "./connection";
 import { inputFromEditor, type EditorSnapshot } from "./editorContext";
-import { followRuntimeChanges, observeRun } from "./observation";
+import { followRuntimeChanges, observeRun, readSessionSnapshot } from "./observation";
 import { itemText } from "./transcript";
 
 type PluginCommand = Extract<Command, { method: `plugins.${string}` }>;
@@ -588,12 +588,8 @@ class Workbench implements vscode.TreeDataProvider<Session> {
       const observation = new AbortController();
       this.#observation = observation;
       const signal = AbortSignal.any([connection.signal, observation.signal]);
-      const snapshot = await connection.client.sessions.snapshot(
-        asSessionId(session.id),
-        true,
-        signal,
-      );
-      if (signal.aborted || this.#session?.id !== session.id) return;
+      const snapshot = await readSessionSnapshot(connection.client, session.id, signal);
+      if (!snapshot || signal.aborted || this.#session?.id !== session.id) return;
       this.#show(snapshot);
       const run = snapshot.runs.find((value) => value.status === "running" && !value.parentRunId);
       if (!run) return;

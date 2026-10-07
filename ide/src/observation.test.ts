@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { RunEvent, RunRef, SessionSnapshot } from "@flame/runtime-contract/wire";
 import runRef from "@flame/runtime-contract/samples/runref.full.json";
 import sessionSample from "@flame/runtime-contract/samples/session.json";
-import { followRuntimeChanges, observeRun } from "./observation";
+import { followRuntimeChanges, observeRun, readSessionSnapshot } from "./observation";
 import { RpcError } from "@flame/runtime-contract/client";
 
 const running: RunRef = {
@@ -162,5 +162,38 @@ describe("IDE Runtime change following", () => {
     );
     expect(refresh).toHaveBeenCalledTimes(1);
     expect(refreshFailed).not.toHaveBeenCalled();
+  });
+});
+
+describe("IDE Session snapshot read", () => {
+  function abortableSnapshot() {
+    return vi.fn(
+      (_sessionId: string, _includeDescendants?: boolean, signal?: AbortSignal) =>
+        new Promise<SessionSnapshot>((_resolve, reject) => {
+          signal?.addEventListener("abort", () => reject(new Error("fetch failed: aborted")));
+        }),
+    );
+  }
+
+  it("settles a read superseded by another selection without reporting a failure", async () => {
+    const selection = new AbortController();
+    const read = readSessionSnapshot(
+      { sessions: { snapshot: abortableSnapshot() } },
+      "ses_a",
+      selection.signal,
+    );
+    selection.abort();
+    await expect(read).resolves.toBeUndefined();
+  });
+
+  it("reports a read that failed while still current", async () => {
+    const failure = new Error("connection refused");
+    await expect(
+      readSessionSnapshot(
+        { sessions: { snapshot: vi.fn().mockRejectedValue(failure) } },
+        "ses_a",
+        new AbortController().signal,
+      ),
+    ).rejects.toBe(failure);
   });
 });
