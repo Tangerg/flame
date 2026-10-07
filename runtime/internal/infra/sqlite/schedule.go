@@ -25,7 +25,7 @@ func NewScheduleStore(db *sql.DB) *ScheduleStore {
 
 // scheduleColumns is the schedules row in scan order. Every read shares it so
 // a column added to the table cannot reach one query and miss another.
-const scheduleColumns = `id, title, instructions, cwd, provider, model, reasoning_effort, cron, enabled, last_run_at, next_run_at, created_at, revision`
+const scheduleColumns = `id, title, instructions, cwd, provider, model, reasoning_effort, cron, last_run_at, next_run_at, created_at, revision`
 
 func (s *ScheduleStore) Insert(ctx context.Context, scheduled schedule.Schedule) error {
 	if err := scheduled.Validate(); err != nil {
@@ -36,11 +36,11 @@ func (s *ScheduleStore) Insert(ctx context.Context, scheduled schedule.Schedule)
 	}
 	snapshot := scheduled.Snapshot()
 	_, err := conn(ctx, s.db).ExecContext(ctx,
-		`INSERT INTO schedules (id, title, instructions, cwd, provider, model, reasoning_effort, cron, enabled, last_run_at, next_run_at, created_at, revision)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO schedules (id, title, instructions, cwd, provider, model, reasoning_effort, cron, last_run_at, next_run_at, created_at, revision)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		snapshot.ID, snapshot.Title, snapshot.Instructions, snapshot.CWD,
 		snapshot.ModelSelection.Provider(), snapshot.ModelSelection.Model(), snapshot.ModelSelection.ReasoningEffort(), snapshot.Cron,
-		boolToInt(snapshot.Enabled), toMillis(snapshot.LastRunAt), toMillis(snapshot.NextRunAt), snapshot.CreatedAt.UnixMilli(), snapshot.Revision)
+		toMillis(snapshot.LastRunAt), toMillis(snapshot.NextRunAt), snapshot.CreatedAt.UnixMilli(), snapshot.Revision)
 	if err != nil {
 		return fmt.Errorf("sqlite: create schedule: %w", err)
 	}
@@ -53,11 +53,11 @@ func (s *ScheduleStore) Update(ctx context.Context, replacement schedule.Replace
 	snapshot := sc.Snapshot()
 	res, err := conn(ctx, s.db).ExecContext(ctx,
 		`UPDATE schedules
-		 SET title = ?, instructions = ?, cwd = ?, provider = ?, model = ?, reasoning_effort = ?, cron = ?, enabled = ?, next_run_at = ?, revision = ?
+		 SET title = ?, instructions = ?, cwd = ?, provider = ?, model = ?, reasoning_effort = ?, cron = ?, next_run_at = ?, revision = ?
 		 WHERE id = ? AND revision = ?`,
 		snapshot.Title, snapshot.Instructions, snapshot.CWD,
 		snapshot.ModelSelection.Provider(), snapshot.ModelSelection.Model(), snapshot.ModelSelection.ReasoningEffort(), snapshot.Cron,
-		boolToInt(snapshot.Enabled), toMillis(snapshot.NextRunAt), snapshot.Revision, snapshot.ID, expectedRevision)
+		toMillis(snapshot.NextRunAt), snapshot.Revision, snapshot.ID, expectedRevision)
 	if err != nil {
 		return fmt.Errorf("sqlite: update schedule: %w", err)
 	}
@@ -125,7 +125,7 @@ func (s *ScheduleStore) Due(ctx context.Context, now time.Time, limit int) ([]sc
 	return s.query(ctx, "list due schedules",
 		`SELECT `+scheduleColumns+`
 		 FROM schedules
-		 WHERE enabled = 1 AND next_run_at > 0 AND next_run_at <= ?
+		 WHERE next_run_at > 0 AND next_run_at <= ?
 		   AND NOT EXISTS (SELECT 1 FROM schedule_firings WHERE schedule_id = schedules.id AND state = ?)
 		 ORDER BY next_run_at, id
 		 LIMIT ?`, now.UnixMilli(), scheduleFiringPending.databaseValue(), limit)
@@ -370,9 +370,9 @@ func (s *ScheduleStore) query(ctx context.Context, operation, q string, args ...
 func scanSchedule(scan func(...any) error) (schedule.Schedule, error) {
 	var snapshot schedule.Snapshot
 	var provider, model, reasoningEffort string
-	var enabled, lastMillis, nextMillis, createdMillis int64
+	var lastMillis, nextMillis, createdMillis int64
 	if err := scan(&snapshot.ID, &snapshot.Title, &snapshot.Instructions, &snapshot.CWD, &provider, &model, &reasoningEffort, &snapshot.Cron,
-		&enabled, &lastMillis, &nextMillis, &createdMillis, &snapshot.Revision); err != nil {
+		&lastMillis, &nextMillis, &createdMillis, &snapshot.Revision); err != nil {
 		return schedule.Schedule{}, err
 	}
 	selection, err := modelref.NewWithReasoningEffort(provider, model, reasoningEffort)
@@ -380,7 +380,6 @@ func scanSchedule(scan func(...any) error) (schedule.Schedule, error) {
 		return schedule.Schedule{}, fmt.Errorf("sqlite: decode schedule model selection: %w", err)
 	}
 	snapshot.ModelSelection = selection
-	snapshot.Enabled = enabled != 0
 	snapshot.LastRunAt = fromMillis(lastMillis)
 	snapshot.NextRunAt = fromMillis(nextMillis)
 	snapshot.CreatedAt = time.UnixMilli(createdMillis).UTC()

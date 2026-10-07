@@ -50,13 +50,6 @@ func insertSchedule(ctx context.Context, store *sqlite.ScheduleStore, snapshot s
 	if snapshot.Revision == 0 {
 		snapshot.Revision = 1
 	}
-	if snapshot.Enabled && snapshot.NextRunAt.IsZero() {
-		next, err := schedule.NextRun(snapshot.Cron, snapshot.CreatedAt)
-		if err != nil {
-			return schedule.Schedule{}, err
-		}
-		snapshot.NextRunAt = next
-	}
 	value, err := schedule.Restore(snapshot)
 	if err != nil {
 		return schedule.Schedule{}, err
@@ -116,7 +109,7 @@ func TestScheduleCRUD(t *testing.T) {
 	}
 	created, err := insertSchedule(ctx, s, schedule.Snapshot{
 		Title: "standup", Instructions: "summarize the diff", CWD: "/proj",
-		ModelSelection: selection, Cron: "0 9 * * 1-5", Enabled: true, NextRunAt: past,
+		ModelSelection: selection, Cron: "0 9 * * 1-5", NextRunAt: past,
 	})
 	if err != nil {
 		t.Fatalf("create: %v", err)
@@ -210,7 +203,7 @@ func TestScheduleRecordRunLeavesCursor(t *testing.T) {
 
 	past := time.Now().Add(-time.Hour).UTC().Truncate(time.Millisecond)
 	created, err := insertSchedule(ctx, s, schedule.Snapshot{
-		Instructions: "p", Cron: "@daily", Enabled: true, NextRunAt: past,
+		Instructions: "p", Cron: "@daily", NextRunAt: past,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -263,7 +256,7 @@ func TestScheduleRevisionExhaustionIsAtomicAcrossOperationalMutations(t *testing
 	store := sqlite.NewScheduleStore(db)
 	dueAt := time.Date(2026, 8, 29, 9, 0, 0, 0, time.UTC)
 	created, err := insertSchedule(ctx, store, schedule.Snapshot{
-		Instructions: "review", Cron: "0 * * * *", Enabled: true, NextRunAt: dueAt,
+		Instructions: "review", Cron: "0 * * * *", NextRunAt: dueAt,
 	})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
@@ -320,7 +313,7 @@ func TestScheduleClaimRejectsStaleRevisionWithUnchangedCursor(t *testing.T) {
 	store := newScheduleStore(t)
 	dueAt := time.Date(2026, 7, 26, 9, 0, 0, 0, time.UTC)
 	created, err := insertSchedule(ctx, store, schedule.Snapshot{
-		Instructions: "old instructions", Cron: "0 * * * *", Enabled: true, NextRunAt: dueAt,
+		Instructions: "old instructions", Cron: "0 * * * *", NextRunAt: dueAt,
 	})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
@@ -374,7 +367,7 @@ func TestPendingOccurrenceAcceptsAfterScheduleDeletionAndReopen(t *testing.T) {
 	store := sqlite.NewScheduleStore(db)
 	dueAt := time.Date(2026, 9, 14, 9, 0, 0, 0, time.UTC)
 	created, err := insertSchedule(ctx, store, schedule.Snapshot{
-		Title: "review", Instructions: "review", Cron: "0 * * * *", Enabled: true,
+		Title: "review", Instructions: "review", Cron: "0 * * * *",
 		NextRunAt: dueAt, ModelSelection: testsupport.DefaultModelSelection(),
 	})
 	if err != nil {
@@ -421,7 +414,7 @@ func TestScheduleOccurrenceSurvivesDispatchAndAcceptsOnce(t *testing.T) {
 		t.Fatalf("model selection: %v", selectionErr)
 	}
 	created, err := insertSchedule(ctx, store, schedule.Snapshot{
-		Title: "hourly", Instructions: "review", Cron: "0 * * * *", Enabled: true, NextRunAt: dueAt,
+		Title: "hourly", Instructions: "review", Cron: "0 * * * *", NextRunAt: dueAt,
 		ModelSelection: selection,
 	})
 	if err != nil {
@@ -480,7 +473,7 @@ func TestAcceptedScheduleOccurrenceFollowsRunLifecycle(t *testing.T) {
 			store, runStore, database := newScheduleRunStores(t)
 			dueAt := time.Date(2026, 9, 1, 9, 0, 0, 0, time.UTC)
 			created, err := insertSchedule(ctx, store, schedule.Snapshot{
-				Instructions: "review", Cron: "@hourly", Enabled: true, NextRunAt: dueAt,
+				Instructions: "review", Cron: "@hourly", NextRunAt: dueAt,
 			})
 			if err != nil {
 				t.Fatalf("create Schedule: %v", err)
@@ -536,7 +529,7 @@ func TestScheduleClaimKeepsOnlyOnePendingOccurrencePerSchedule(t *testing.T) {
 	firstDueAt := time.Date(2026, 7, 26, 9, 0, 0, 0, time.UTC)
 	secondDueAt := firstDueAt.Add(time.Hour)
 	created, err := insertSchedule(ctx, store, schedule.Snapshot{
-		Title: "hourly", Instructions: "review", Cron: "0 * * * *", Enabled: true, NextRunAt: firstDueAt,
+		Title: "hourly", Instructions: "review", Cron: "0 * * * *", NextRunAt: firstDueAt,
 	})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
@@ -591,7 +584,7 @@ func TestScheduleStoreRejectsDuplicatePendingRows(t *testing.T) {
 	store := sqlite.NewScheduleStore(db)
 	dueAt := time.Date(2026, 7, 26, 9, 0, 0, 0, time.UTC)
 	created, err := insertSchedule(ctx, store, schedule.Snapshot{
-		Instructions: "review", Cron: "@hourly", Enabled: true, NextRunAt: dueAt,
+		Instructions: "review", Cron: "@hourly", NextRunAt: dueAt,
 	})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
@@ -643,7 +636,7 @@ func TestScheduleUpdateNotFound(t *testing.T) {
 func TestScheduleDueSkipsDisabled(t *testing.T) {
 	ctx := context.Background()
 	s := newScheduleStore(t)
-	if _, err := insertSchedule(ctx, s, schedule.Snapshot{Instructions: "p", Cron: "@daily", Enabled: false}); err != nil {
+	if _, err := insertSchedule(ctx, s, schedule.Snapshot{Instructions: "p", Cron: "@daily"}); err != nil {
 		t.Fatal(err)
 	}
 	due, err := s.Due(ctx, time.Now(), 100)
@@ -692,7 +685,7 @@ func TestScheduleUnacknowledgedOccurrenceSurvivesStoreReopen(t *testing.T) {
 	store := sqlite.NewScheduleStore(db)
 	past := time.Now().Add(-time.Hour).UTC().Truncate(time.Millisecond)
 	created, err := insertSchedule(ctx, store, schedule.Snapshot{
-		Instructions: "p", Cron: "@daily", Enabled: true, NextRunAt: past,
+		Instructions: "p", Cron: "@daily", NextRunAt: past,
 	})
 	if err != nil {
 		t.Fatalf("create: %v", err)
@@ -726,9 +719,9 @@ func TestScheduleQueriesUseIDAsStableTieBreaker(t *testing.T) {
 	nextRunAt := time.Date(2026, 7, 19, 11, 0, 0, 0, time.UTC).UnixMilli()
 	for _, id := range []string{"sch_a", "sch_c", "sch_b"} {
 		_, execContextErr := db.ExecContext(t.Context(), `INSERT INTO schedules(
-			id, title, instructions, cwd, provider, model, cron, enabled,
+			id, title, instructions, cwd, provider, model, cron,
 			last_run_at, next_run_at, created_at, revision
-		) VALUES (?, '', 'review', '', '', '', '0 9 * * *', 1, 0, ?, ?, 1)`,
+		) VALUES (?, '', 'review', '', '', '', '0 9 * * *', 0, ?, ?, 1)`,
 			id, nextRunAt, createdAt)
 		if execContextErr != nil {
 			t.Fatalf("insert %s: %v", id, execContextErr)
@@ -785,9 +778,9 @@ func TestScheduleDuePrioritizesOldestBacklog(t *testing.T) {
 	insert := func(id string, dueAt time.Time) {
 		t.Helper()
 		_, execContextErr := db.ExecContext(ctx, `INSERT INTO schedules(
-			id, title, instructions, cwd, provider, model, cron, enabled,
+			id, title, instructions, cwd, provider, model, cron,
 			last_run_at, next_run_at, created_at, revision
-		) VALUES (?, '', 'review', '', '', '', '0 9 * * *', 1, 0, ?, ?, 1)`,
+		) VALUES (?, '', 'review', '', '', '', '0 9 * * *', 0, ?, ?, 1)`,
 			id, dueAt.UnixMilli(), dueAt.UnixMilli())
 		if execContextErr != nil {
 			t.Fatalf("insert %s: %v", id, execContextErr)

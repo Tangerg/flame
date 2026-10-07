@@ -341,7 +341,7 @@ func (c *cancelingScheduledRunStarter) StartScheduledRun(ctx context.Context, re
 func dueSchedule(t testing.TB, id string, dueAt time.Time) schedule.Schedule {
 	t.Helper()
 	return mustStoredSchedule(t, schedule.Snapshot{
-		ID: id, Instructions: "review", Cron: "* * * * *", Enabled: true,
+		ID: id, Instructions: "review", Cron: "* * * * *",
 		CreatedAt: dueAt.Add(-time.Hour), NextRunAt: dueAt, Revision: 1,
 	})
 }

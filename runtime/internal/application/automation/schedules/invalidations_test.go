@@ -45,7 +45,7 @@ func (i *invalidationScheduleStore) Delete(context.Context, string) (bool, error
 func TestCommittedScheduleMutationsPublishExactInvalidations(t *testing.T) {
 	store := &invalidationScheduleStore{
 		runNowStore: &runNowStore{schedule: mustStoredSchedule(t, schedule.Snapshot{
-			ID: "sch_updated", Revision: 1, Instructions: "before", Cron: "@daily", Enabled: true,
+			ID: "sch_updated", Revision: 1, Instructions: "before", Cron: "@daily",
 			CreatedAt: testScheduleCreatedAt, NextRunAt: testScheduleCreatedAt.Add(time.Hour),
 		})},
 		deleteFound: true,
@@ -61,7 +61,7 @@ func TestCommittedScheduleMutationsPublishExactInvalidations(t *testing.T) {
 	})
 
 	if _, err := coordinator.Create(t.Context(), schedule.Draft{
-		Instructions: "create", Cron: "@daily", Enabled: true,
+		Instructions: "create", Cron: "@daily",
 	}); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
@@ -91,7 +91,7 @@ func TestScheduleMutationsPublishOnlyAfterActualCommit(t *testing.T) {
 		t.Run(operation, func(t *testing.T) {
 			store := &invalidationScheduleStore{
 				runNowStore: &runNowStore{schedule: mustStoredSchedule(t, schedule.Snapshot{
-					ID: "sch_1", Revision: 1, Instructions: "before", Cron: "@daily", Enabled: true,
+					ID: "sch_1", Revision: 1, Instructions: "before", Cron: "@daily",
 					CreatedAt: testScheduleCreatedAt, NextRunAt: testScheduleCreatedAt.Add(time.Hour),
 				})},
 				fail: operation, deleteFound: true,

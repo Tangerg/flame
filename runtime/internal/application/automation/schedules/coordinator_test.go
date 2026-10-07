@@ -228,7 +228,6 @@ func TestUpdatePreservesAcceptedScheduleAfterCallerReuse(t *testing.T) {
 		Instructions: "before",
 		CWD:          "/before",
 		Cron:         "0 9 * * *",
-		Enabled:      true,
 		LastRunAt:    lastRun,
 		CreatedAt:    createdAt,
 		NextRunAt:    lastRun.Add(time.Hour),
@@ -433,12 +432,6 @@ func mustStoredSchedule(t testing.TB, snapshot schedule.Snapshot) schedule.Sched
 	}
 	if snapshot.Revision == 0 {
 		snapshot.Revision = 1
-	}
-	if !snapshot.Enabled && snapshot.NextRunAt.IsZero() {
-		// Disabled is a valid explicit fixture state.
-	} else if snapshot.NextRunAt.IsZero() {
-		snapshot.Enabled = true
-		snapshot.NextRunAt = snapshot.CreatedAt.Add(time.Hour)
 	}
 	value, err := schedule.Restore(snapshot)
 	if err != nil {

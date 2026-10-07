@@ -202,7 +202,7 @@ func TestUpdateSchedulePreservesStoredTimestampsAndCanDisable(t *testing.T) {
 	}
 	reg := &fakeScheduleRegistry{byID: map[string]schedule.Schedule{
 		"sch_1": mustServerSchedule(t, schedule.Snapshot{
-			ID: "sch_1", Instructions: "Review", Cron: "@daily", Enabled: true,
+			ID: "sch_1", Instructions: "Review", Cron: "@daily",
 			ModelSelection: selection, LastRunAt: last, CreatedAt: createdAt,
 			NextRunAt: last.Add(time.Hour), Revision: 1,
 		}),
@@ -249,7 +249,7 @@ func TestUpdateScheduleCanReturnToDefaultWorkspace(t *testing.T) {
 	reg := &fakeScheduleRegistry{byID: map[string]schedule.Schedule{
 		"sch_1": mustServerSchedule(t, schedule.Snapshot{
 			ID: "sch_1", Revision: 1, Instructions: "Review the repository",
-			CWD: t.TempDir(), Cron: "@daily", Enabled: true,
+			CWD: t.TempDir(), Cron: "@daily",
 		}),
 	}}
 	s := handlerWithSchedules(t, reg)
@@ -282,9 +282,6 @@ func mustServerSchedule(t testing.TB, snapshot schedule.Snapshot) schedule.Sched
 	}
 	if snapshot.Revision == 0 {
 		snapshot.Revision = 1
-	}
-	if snapshot.Enabled && snapshot.NextRunAt.IsZero() {
-		snapshot.NextRunAt = snapshot.CreatedAt.Add(time.Hour)
 	}
 	scheduled, err := schedule.Restore(snapshot)
 	if err != nil {

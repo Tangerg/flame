@@ -506,7 +506,7 @@ func (r *reducer) toolEnd(e ToolCallFinished) ([]ProjectionEvent, []ToolInvocati
 			return nil, nil, err
 		}
 		if e.ModelResult.ID != ref.sourceCallID || e.ModelResult.Name != ref.name {
-			return nil, nil, errors.New("Tool result differs from its source call")
+			return nil, nil, errors.New("model-attributed Tool result differs from its source call")
 		}
 	}
 	r.endToolAttempt(ref)

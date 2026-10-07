@@ -75,7 +75,6 @@ type Snapshot struct {
 	CWD            string
 	ModelSelection modelref.Selection
 	Cron           string
-	Enabled        bool
 	LastRunAt      time.Time
 	NextRunAt      time.Time
 	CreatedAt      time.Time
@@ -92,11 +91,13 @@ type Schedule struct {
 	cwd            string
 	modelSelection modelref.Selection
 	cron           string
-	enabled        bool
 	lastRunAt      time.Time
-	nextRunAt      time.Time
-	createdAt      time.Time
-	revision       exactint.Counter
+	// nextRunAt is zero exactly when the schedule is disabled; it is the one
+	// record of whether the schedule fires.
+
+	nextRunAt time.Time
+	createdAt time.Time
+	revision  exactint.Counter
 }
 
 // Patch is a partial update to a Schedule. Nil fields keep the existing value;
@@ -123,10 +124,10 @@ func New(id string, draft Draft, createdAt time.Time) (Schedule, error) {
 	createdAt = canonicalTime(createdAt)
 	value := Schedule{
 		id: parsedID, title: draft.Title, instructions: draft.Instructions, cwd: draft.CWD,
-		modelSelection: draft.ModelSelection, cron: draft.Cron, enabled: draft.Enabled,
+		modelSelection: draft.ModelSelection, cron: draft.Cron,
 		createdAt: createdAt, revision: exactint.First(),
 	}
-	return value.ScheduledAfter(createdAt)
+	return value.scheduledAfter(draft.Enabled, createdAt)
 }
 
 // Restore reconstructs a Schedule from durable state and rechecks every
@@ -143,7 +144,7 @@ func Restore(snapshot Snapshot) (Schedule, error) {
 	value := Schedule{
 		id: parsedID, title: snapshot.Title, instructions: snapshot.Instructions,
 		cwd: snapshot.CWD, modelSelection: snapshot.ModelSelection, cron: snapshot.Cron,
-		enabled: snapshot.Enabled, lastRunAt: canonicalTime(snapshot.LastRunAt),
+		lastRunAt: canonicalTime(snapshot.LastRunAt),
 		nextRunAt: canonicalTime(snapshot.NextRunAt), createdAt: canonicalTime(snapshot.CreatedAt),
 		revision: revision,
 	}
@@ -181,15 +182,16 @@ func (s Schedule) Edit(p Patch, expectedRevision uint64, after time.Time) (Sched
 	if p.Cron != nil {
 		s.cron = *p.Cron
 	}
+	enabled := s.Enabled()
 	if p.Enabled != nil {
-		s.enabled = *p.Enabled
+		enabled = *p.Enabled
 	}
 	next, err := s.revision.Next()
 	if err != nil {
 		return Schedule{}, ErrRevisionExhausted
 	}
 	s.revision = next
-	return s.ScheduledAfter(after)
+	return s.scheduledAfter(enabled, after)
 }
 
 // Validate checks every aggregate invariant before a Schedule crosses a
@@ -203,9 +205,6 @@ func (s Schedule) Validate() error {
 	}
 	if s.createdAt.IsZero() {
 		return errors.New("schedule: creation time is required")
-	}
-	if s.enabled == s.nextRunAt.IsZero() {
-		return errors.New("schedule: enabled state and next-run cursor disagree")
 	}
 	if !s.lastRunAt.IsZero() && s.lastRunAt.Before(s.createdAt) {
 		return errors.New("schedule: last run precedes creation")
@@ -236,13 +235,13 @@ func validateInstructions(instructions string) error {
 	return nil
 }
 
-// ScheduledAfter validates s and returns a copy with NextRunAt matching its
-// enabled state. Disabled schedules always have a zero NextRunAt.
-func (s Schedule) ScheduledAfter(after time.Time) (Schedule, error) {
+// scheduledAfter validates s and returns a copy whose cursor records enabled:
+// the next cron instant after after, or zero when disabled.
+func (s Schedule) scheduledAfter(enabled bool, after time.Time) (Schedule, error) {
 	if err := s.validateProduct(); err != nil {
 		return Schedule{}, err
 	}
-	if !s.enabled {
+	if !enabled {
 		s.nextRunAt = time.Time{}
 		return s, s.Validate()
 	}
@@ -258,7 +257,7 @@ func (s Schedule) ScheduledAfter(after time.Time) (Schedule, error) {
 func (s Schedule) Snapshot() Snapshot {
 	return Snapshot{
 		ID: s.id.String(), Title: s.title, Instructions: s.instructions, CWD: s.cwd,
-		ModelSelection: s.modelSelection, Cron: s.cron, Enabled: s.enabled,
+		ModelSelection: s.modelSelection, Cron: s.cron,
 		LastRunAt: s.lastRunAt, NextRunAt: s.nextRunAt, CreatedAt: s.createdAt,
 		Revision: s.revision.Value(),
 	}
@@ -270,7 +269,7 @@ func (s Schedule) Instructions() string               { return s.instructions }
 func (s Schedule) CWD() string                        { return s.cwd }
 func (s Schedule) ModelSelection() modelref.Selection { return s.modelSelection }
 func (s Schedule) Cron() string                       { return s.cron }
-func (s Schedule) Enabled() bool                      { return s.enabled }
+func (s Schedule) Enabled() bool                      { return !s.nextRunAt.IsZero() }
 func (s Schedule) LastRunAt() time.Time               { return s.lastRunAt }
 func (s Schedule) NextRunAt() time.Time               { return s.nextRunAt }
 func (s Schedule) CreatedAt() time.Time               { return s.createdAt }

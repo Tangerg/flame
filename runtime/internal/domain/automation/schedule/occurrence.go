@@ -55,7 +55,7 @@ type Acceptance struct {
 // instant. Stable Run identities are supplied before persistence so a
 // crash/retry cannot create a second Run.
 func NewClaim(s Schedule, sessionID, runID string, firedAt time.Time) (Claim, error) {
-	if !s.enabled || s.nextRunAt.IsZero() {
+	if !s.Enabled() {
 		return Claim{}, errors.New("schedule: only an enabled due schedule can form an occurrence")
 	}
 	firedAt = canonicalTime(firedAt)

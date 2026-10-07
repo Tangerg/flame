@@ -68,8 +68,6 @@ func TestScheduleRestoreRejectsContradictoryLifecycle(t *testing.T) {
 		{name: "zero revision", edit: func(s *Snapshot) { s.Revision = 0 }, want: ErrRevisionRequired},
 		{name: "inexact revision", edit: func(s *Snapshot) { s.Revision = exactint.Maximum + 1 }, want: ErrRevisionExhausted},
 		{name: "missing creation", edit: func(s *Snapshot) { s.CreatedAt = time.Time{} }},
-		{name: "enabled without cursor", edit: func(s *Snapshot) { s.Enabled = true }},
-		{name: "disabled with cursor", edit: func(s *Snapshot) { s.NextRunAt = createdAt.Add(time.Hour) }},
 		{name: "run before creation", edit: func(s *Snapshot) { s.LastRunAt = createdAt.Add(-time.Second) }},
 		{name: "blank instructions", edit: func(s *Snapshot) { s.Instructions = " \n\t" }, want: ErrInstructionsRequired},
 	}
@@ -219,7 +217,6 @@ func TestScheduleApplyPatch(t *testing.T) {
 		Instructions: "summarize",
 		CWD:          "/work",
 		Cron:         "@daily",
-		Enabled:      true,
 		NextRunAt:    time.Unix(60, 0),
 		CreatedAt:    time.Unix(1, 0),
 		Revision:     1,
@@ -256,10 +253,10 @@ func TestScheduleApplyPatch(t *testing.T) {
 func TestScheduleScheduledAfter(t *testing.T) {
 	after := time.Date(2026, 6, 17, 10, 0, 0, 0, time.UTC)
 	sc := mustSchedule(t, Snapshot{
-		ID: "sch_1", Instructions: "do it", Cron: "0 9 * * 1-5", Enabled: true,
+		ID: "sch_1", Instructions: "do it", Cron: "0 9 * * 1-5",
 		NextRunAt: after.Add(time.Hour), CreatedAt: after.Add(-time.Hour), Revision: 1,
 	})
-	got, err := sc.ScheduledAfter(after)
+	got, err := sc.scheduledAfter(true, after)
 	if err != nil {
 		t.Fatalf("ScheduledAfter: %v", err)
 	}
@@ -269,7 +266,7 @@ func TestScheduleScheduledAfter(t *testing.T) {
 	}
 
 	disabled := mustSchedule(t, Snapshot{
-		ID: "sch_2", Instructions: "do it", Cron: "@daily", Enabled: true,
+		ID: "sch_2", Instructions: "do it", Cron: "@daily",
 		NextRunAt: want, CreatedAt: after.Add(-time.Hour), Revision: 1,
 	})
 	disabledFlag := false
