@@ -19,7 +19,6 @@ vi.mock("../../application/diffViewModel", async (importOriginal) => ({
     fileFocus: projection.fileFocus,
     files: projection.files,
     gitEnabled: true,
-    isError: false,
     isLoading: false,
     notARepo: false,
     view: {

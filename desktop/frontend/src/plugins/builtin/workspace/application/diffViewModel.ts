@@ -39,10 +39,8 @@ export function useWorkspaceDiffView(mode: WorkspaceDiffMode) {
   const view = workspaceDiffViewModel(query.data);
   return {
     fileFocus,
-    data: query.data,
     files: view.files,
     isLoading: query.isLoading || workspace.status === "resolving",
-    isError: query.isError,
     error: query.error,
     gitEnabled,
     notARepo: isVcsUnavailable(query.error),

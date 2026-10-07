@@ -18,8 +18,6 @@ const persistedDockScopeSchema = z.object({
     .object({
       expandedDirs: z.array(z.string()),
       lastFilePath: z.string().nullable(),
-      searchQuery: z.string(),
-      searchPath: z.string(),
       diffMode: z.enum(DIFF_MODES),
       diffLayout: z.enum(DIFF_LAYOUTS),
       collapsedDiffFiles: z.array(z.string()),
@@ -41,8 +39,6 @@ interface WorkspaceFileViewer {
 const EMPTY_MEMORY: WorkspaceViewMemory = {
   expandedDirs: [],
   lastFilePath: null,
-  searchQuery: "",
-  searchPath: "",
   diffMode: "worktree",
   diffLayout: "unified",
   collapsedDiffFiles: [],

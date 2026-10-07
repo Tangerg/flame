@@ -9,8 +9,6 @@ export interface WorkspaceFileViewer {
 export interface WorkspaceViewMemory {
   expandedDirs: readonly string[];
   lastFilePath: string | null;
-  searchQuery: string;
-  searchPath: string;
   diffMode: WorkspaceDiffMode;
   diffLayout: DiffLayout;
   collapsedDiffFiles: readonly string[];

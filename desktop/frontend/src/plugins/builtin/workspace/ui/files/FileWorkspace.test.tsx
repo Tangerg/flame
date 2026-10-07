@@ -60,8 +60,6 @@ beforeEach(async () => {
     memory: {
       expandedDirs: [],
       lastFilePath: null,
-      searchQuery: "",
-      searchPath: "",
       diffMode: "worktree",
       diffLayout: "unified",
       collapsedDiffFiles: [],
