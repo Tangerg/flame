@@ -1,8 +1,10 @@
 package terminal
 
 import (
+	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/components/headless"
@@ -82,5 +84,33 @@ func TestSessionCenterCommandInterruptsAPendingPickerClick(t *testing.T) {
 	}
 	if opened != 0 {
 		t.Fatalf("release after load-more opened %d sessions", opened)
+	}
+}
+
+func TestSessionCenterKeepsRuntimeCatalogOrder(t *testing.T) {
+	t.Parallel()
+	center := newSessionCenterPane(kit.Theme{}, kit.Glyphs{}, func(conversation.Session) {})
+	now := time.Now()
+	runtimeOrder := []conversation.Session{
+		{ID: "ses_recent", UpdatedAt: now},
+		{ID: "ses_favorite", Favorite: true, UpdatedAt: now.Add(-time.Hour)},
+	}
+	if err := center.SetPage(conversation.SessionPage{Items: runtimeOrder[:1], NextCursor: "next"}, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := center.SetPage(conversation.SessionPage{Items: runtimeOrder[1:]}, true); err != nil {
+		t.Fatal(err)
+	}
+	center.Replace(conversation.Session{ID: "ses_recent", Favorite: true, UpdatedAt: now})
+	center.Replace(conversation.Session{ID: "ses_unloaded", Favorite: true, UpdatedAt: now})
+	got := make([]string, len(center.items))
+	for index, session := range center.items {
+		got[index] = session.ID
+	}
+	if want := []string{"ses_recent", "ses_favorite"}; !slices.Equal(got, want) {
+		t.Fatalf("session center order = %v, want Runtime's %v", got, want)
+	}
+	if !center.items[0].Favorite {
+		t.Fatal("replaced session kept its stale metadata")
 	}
 }

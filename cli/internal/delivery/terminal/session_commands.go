@@ -161,10 +161,11 @@ func (a *app) updateSessionFromCenter(id, label string, build func(conversation.
 				a.message(label + " failed: " + err.Error())
 				return
 			}
-			a.dialogs.sessionCenter.Upsert(updated)
+			a.dialogs.sessionCenter.Replace(updated)
 			if updated.ID == a.session.current.ID {
 				a.setActiveSession(updated)
 			}
+			a.applySessionInvalidation(true, false)
 			a.message(label + " complete")
 		},
 	)

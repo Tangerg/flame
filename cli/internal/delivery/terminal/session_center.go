@@ -3,7 +3,6 @@ package terminal
 import (
 	"fmt"
 	"slices"
-	"strings"
 
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/components/headless"
@@ -74,7 +73,7 @@ func (s *sessionCenterPane) SetPage(page conversation.SessionPage, appendPage bo
 		}
 		next = append(slices.Clone(s.items), page.Items...)
 	}
-	s.items, s.cursor = sortSessionCenter(next), page.NextCursor
+	s.items, s.cursor = next, page.NextCursor
 	if page.NextCursor != "" {
 		s.seenCursors[page.NextCursor] = struct{}{}
 	}
@@ -82,20 +81,15 @@ func (s *sessionCenterPane) SetPage(page conversation.SessionPage, appendPage bo
 	return nil
 }
 
-func (s *sessionCenterPane) Upsert(session conversation.Session) {
-	selected, selectedOK := s.picker.Current()
-	updated := false
-	for index := range s.items {
-		if s.items[index].ID == session.ID {
-			s.items[index], updated = session, true
-			break
-		}
+// Replace refreshes a loaded Session in place. Where it belongs in the catalog
+// is Runtime's ordering, which only a reloaded page can say.
+func (s *sessionCenterPane) Replace(session conversation.Session) {
+	index := slices.IndexFunc(s.items, func(loaded conversation.Session) bool { return loaded.ID == session.ID })
+	if index < 0 {
+		return
 	}
-	if !updated {
-		s.items = append(s.items, session)
-	}
-	s.items = sortSessionCenter(s.items)
-	if selectedOK && selected.ID == session.ID {
+	s.items[index] = session
+	if selected, ok := s.picker.Current(); ok && selected.ID == session.ID {
 		s.picker.Reset()
 	}
 	s.picker.SetItems(s.items)
@@ -178,20 +172,3 @@ func (s *sessionCenterPane) Handle(event input.Event) bool {
 }
 
 func (s *sessionCenterPane) Focus(has bool) { s.picker.Focus(has) }
-
-func sortSessionCenter(sessions []conversation.Session) []conversation.Session {
-	sorted := slices.Clone(sessions)
-	slices.SortStableFunc(sorted, func(left, right conversation.Session) int {
-		if left.Favorite != right.Favorite {
-			if left.Favorite {
-				return -1
-			}
-			return 1
-		}
-		if compared := right.UpdatedAt.Compare(left.UpdatedAt); compared != 0 {
-			return compared
-		}
-		return strings.Compare(left.ID, right.ID)
-	})
-	return sorted
-}

@@ -307,7 +307,7 @@ func (a *app) readInvalidatedSession(ctx context.Context, sessionID string) (con
 
 func (a *app) installSessionMetadata(session conversation.Session) {
 	a.setActiveSession(session)
-	a.dialogs.sessionCenter.Upsert(session)
+	a.dialogs.sessionCenter.Replace(session)
 }
 
 // dismissInterruptProjection drops only the obsolete terminal-side answer
