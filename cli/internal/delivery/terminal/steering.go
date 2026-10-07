@@ -201,3 +201,18 @@ func (a *app) restoreSteerAttachments(rejected []prompt.Attachment) {
 	}
 	a.restoreComposer(workbench.MergeSteerAttachments(current, rejected))
 }
+
+func (a *app) reportRefusedSteers(refused []runworkflow.SteerRefusal) {
+	if len(refused) == 0 {
+		return
+	}
+	causes := make([]string, 0, len(refused))
+	for _, refusal := range refused {
+		cause := refusal.Cause.Error()
+		if refusal.SessionID != a.session.current.ID {
+			cause = "session " + refusal.SessionID + ": " + cause
+		}
+		causes = append(causes, cause)
+	}
+	a.message("steer sent before restart was refused; attachments returned to the draft · " + strings.Join(causes, "; "))
+}

@@ -112,12 +112,13 @@ func Run(ctx context.Context, cfg Config) (runErr error) {
 				settings:    prepared.settings,
 				options:     prepared.options, keyBindings: prepared.keyBindings, queue: prompts,
 				workbench: prepared.workbench, initialDraft: prepared.draft, editor: prepared.editor,
-				recoveredSteers: prepared.recoveryIssues.receipts,
+				recoveredSteers: prepared.recoveryIssues.steers.Accepted,
 				localDirectory:  cfg.LocalDirectory, detachOnExit: cfg.DetachOnExit,
 			})
 			if prepared.rollbackRecovery != nil {
 				active.reportSessionRollbackRecovery(*prepared.rollbackRecovery)
 			}
+			active.reportRefusedSteers(prepared.recoveryIssues.steers.Refused)
 			active.reportWorkbenchIssue(workbenchSteerOutbox, prepared.recoveryIssues.steer)
 			return headless.NewRoot(active)
 		},
@@ -181,8 +182,8 @@ type preparedSession struct {
 }
 
 type sessionCommandRecovery struct {
-	steer    error
-	receipts []runworkflow.SteerResult
+	steer  error
+	steers runworkflow.SteerRecovery
 }
 
 func prepareSession(ctx context.Context, cfg Config) (preparedSession, error) {
@@ -256,10 +257,10 @@ func recoverSessionCommands(
 	); err != nil {
 		return sessionCommandRecovery{}, fmt.Errorf("recover session deletions: %w", err)
 	}
-	receipts, err := runworkflow.RecoverSteers(
+	steers, err := runworkflow.RecoverSteers(
 		ctx, runtime, authoring, replayPolicy, runtimeRecoveryBackoff,
 	)
-	recovery.receipts = receipts
+	recovery.steers = steers
 	if err != nil {
 		if !errors.Is(err, runworkflow.ErrSteerReplayUnavailable) {
 			return sessionCommandRecovery{}, fmt.Errorf("recover steer commands: %w", err)

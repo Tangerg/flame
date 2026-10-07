@@ -68,6 +68,42 @@ func TestPrepareSessionKeepsExpiredSteerAsARecoveryIssue(t *testing.T) {
 	}
 }
 
+func TestRestartReportsAPendingSteerRuntimeRefused(t *testing.T) {
+	stateDirectory := t.TempDir()
+	store, err := openTestWorkbench(stateDirectory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := prompt.SteerRun{
+		CommandID: "cli_66666666666666666666666666666666",
+		RunID:     "run_gone",
+		SegmentID: "seg_gone",
+		Message:   prompt.Message{Text: "refused while away"},
+	}
+	pending, err := workbench.NewPendingSteer("ses_demo_1", command, time.Now().UTC(), durableCommandReplayGuard(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := prompt.Message{Text: "/steer refused while away"}
+	if err := store.SaveDraft(pending.SessionID(), source); err != nil {
+		t.Fatal(err)
+	}
+	preparedInput, err := store.PrepareInput(t.Context(), pending.Message(), pending.Command().Input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.StagePendingSteer(pending, source, preparedInput); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	host, stop := runUIWithReplayState(t, runtimefixture.New(), "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
+	showsPlain(t, host, "steer sent before restart was refused")
+	stop()
+}
+
 func TestPrepareSessionMergesInitialPromptAfterConfirmedRollbackRecovery(t *testing.T) {
 	runtime := runtimefixture.New()
 	workspace := t.TempDir()

@@ -36,9 +36,13 @@ func TestRecoverReplaysAndAcknowledgesTheExactDurableSteer(t *testing.T) {
 	store, pending := fixture.store, fixture.pending
 	runtime := new(steerRuntimeStub)
 	fixture.now = pending.StagedAt().Add(time.Minute)
-	accepted, err := RecoverSteers(t.Context(), runtime, store, fixture.policy(t), fastBackoff(t))
+	recovered, err := RecoverSteers(t.Context(), runtime, store, fixture.policy(t), fastBackoff(t))
 	if err != nil {
 		t.Fatal(err)
+	}
+	accepted := recovered.Accepted
+	if len(recovered.Refused) != 0 {
+		t.Fatalf("accepted steer reported refusals = %+v", recovered.Refused)
 	}
 	if len(accepted) != 1 || accepted[0].Receipt.UserItemID != "item_steer" ||
 		accepted[0].Pending.SessionID() != pending.SessionID() || !accepted[0].Pending.Command().Equal(pending.Command()) {
@@ -61,8 +65,13 @@ func TestRecoverReturnsAttachmentsAfterAReplayableRefusal(t *testing.T) {
 	store, pending := fixture.store, fixture.pending
 	runtime := &steerRuntimeStub{err: conversation.ErrStaleSegment}
 	fixture.now = pending.StagedAt().Add(time.Minute)
-	if _, err := RecoverSteers(t.Context(), runtime, store, fixture.policy(t), fastBackoff(t)); err != nil {
+	recovered, err := RecoverSteers(t.Context(), runtime, store, fixture.policy(t), fastBackoff(t))
+	if err != nil {
 		t.Fatal(err)
+	}
+	if len(recovered.Accepted) != 0 || len(recovered.Refused) != 1 ||
+		recovered.Refused[0].SessionID != pending.SessionID() || !errors.Is(recovered.Refused[0].Cause, conversation.ErrStaleSegment) {
+		t.Fatalf("recovered refusal = %+v", recovered)
 	}
 	if _, found := store.PendingSteer(pending.SessionID()); found {
 		t.Fatal("rejected steer remains pending")

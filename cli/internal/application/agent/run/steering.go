@@ -94,6 +94,20 @@ func DeliverSteer(
 	return result, err
 }
 
+// SteerRefusal is a recovered steer that Runtime definitively refused. Its
+// attachments are already back in the Session's durable draft; the cause is
+// kept because nothing else tells the user the instruction never arrived.
+type SteerRefusal struct {
+	SessionID string
+	Cause     error
+}
+
+// SteerRecovery reports every steer recovery settled.
+type SteerRecovery struct {
+	Accepted []SteerResult
+	Refused  []SteerRefusal
+}
+
 // RecoverSteers replays every unsettled command only while the same runtime
 // idempotency namespace still guarantees its original response. Definitive
 // refusals atomically return attachments to the durable session draft. Commands
@@ -107,11 +121,11 @@ func RecoverSteers(
 	authoring *workbench.Store,
 	policy mutation.ReplayPolicy,
 	backoff retry.Backoff,
-) ([]SteerResult, error) {
+) (SteerRecovery, error) {
 	if authoring == nil {
-		return nil, workbench.ErrUnavailable
+		return SteerRecovery{}, workbench.ErrUnavailable
 	}
-	var accepted []SteerResult
+	var recovered SteerRecovery
 	var deferredSessions []string
 	var deferredFailures []error
 	for _, pending := range authoring.PendingSteers() {
@@ -127,29 +141,30 @@ func RecoverSteers(
 		result, err := DeliverSteer(ctx, runtime, pending, policy, backoff)
 		switch result.Outcome {
 		case mutation.Confirmed:
-			accepted = append(accepted, result)
+			recovered.Accepted = append(recovered.Accepted, result)
 			if acknowledgeErr := authoring.AcknowledgePendingSteer(
 				pending.SessionID(), pending.CommandID(),
 			); acknowledgeErr != nil {
-				return accepted, errors.Join(err, acknowledgeErr)
+				return recovered, errors.Join(err, acknowledgeErr)
 			}
 		case mutation.Rejected:
 			draft, _ := authoring.Draft(pending.SessionID())
 			if _, rejectErr := authoring.RejectPendingSteer(
 				pending.SessionID(), pending.CommandID(), draft,
 			); rejectErr != nil {
-				return accepted, errors.Join(err, rejectErr)
+				return recovered, errors.Join(err, rejectErr)
 			}
+			recovered.Refused = append(recovered.Refused, SteerRefusal{SessionID: pending.SessionID(), Cause: err})
 		case mutation.Unknown:
-			return accepted, err
+			return recovered, err
 		default:
-			return accepted, errors.New("steer settlement returned an invalid outcome")
+			return recovered, errors.New("steer settlement returned an invalid outcome")
 		}
 	}
 	if len(deferredSessions) == 0 {
-		return accepted, nil
+		return recovered, nil
 	}
-	return accepted, errors.Join(fmt.Errorf(
+	return recovered, errors.Join(fmt.Errorf(
 		"%w for sessions %s: input or runtime replay guarantee is unavailable",
 		ErrSteerReplayUnavailable,
 		strings.Join(deferredSessions, ", "),
