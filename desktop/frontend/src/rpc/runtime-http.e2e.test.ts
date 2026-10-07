@@ -1120,7 +1120,7 @@ for await (const line of lines) {
       expect(result.stdout).toContain(run.id);
       expect(events.at(-1)?.event).toMatchObject({
         type: "segment.finished",
-        outcome: { type: "completed" },
+        run: { status: "finished", outcome: { type: "completed" } },
       });
       await expect(
         observer.runs.list({ sessionId: asSessionId(session.id) }),
@@ -1229,7 +1229,7 @@ for await (const line of lines) {
       const events = await collectRunEvents(winner.value.events);
       expect(events.at(-1)?.event).toMatchObject({
         type: "segment.finished",
-        outcome: { type: "completed" },
+        run: { status: "finished", outcome: { type: "completed" } },
       });
       await expect(first.interrupts.list({ rootRunId: runId })).resolves.toMatchObject({
         data: [],
@@ -1473,7 +1473,7 @@ for await (const line of lines) {
       const events = await collectRunEvents(started.events);
       expect(events.at(-1)?.event).toMatchObject({
         type: "segment.finished",
-        outcome: { type: "completed" },
+        run: { status: "finished", outcome: { type: "completed" } },
       });
       const runs = await client.runs
         .list({ sessionId: asSessionId(session.id) })
@@ -1741,7 +1741,8 @@ for await (const line of lines) {
     const startEvents = await collectRunEvents(started.events);
     expect(startEvents.at(-1)?.event).toMatchObject({
       type: "segment.finished",
-      outcome: { type: "interrupt" },
+      run: { status: "waiting" },
+      interrupts: expect.arrayContaining([expect.anything()]),
     });
     const pending = await client.interrupts.list({ rootRunId: runId });
     const question = pending.data[0]?.interrupts[0];
@@ -1780,7 +1781,7 @@ for await (const line of lines) {
       const resumeEvents = await collectRunEvents(resumed.events);
       expect(resumeEvents.at(-1)?.event).toMatchObject({
         type: "segment.finished",
-        outcome: { type: "completed" },
+        run: { status: "finished", outcome: { type: "completed" } },
       });
       await expect(nextRuntimeEvent(runtimeEvents, "interrupts.changed")).resolves.toMatchObject({
         type: "interrupts.changed",
@@ -2327,7 +2328,7 @@ for await (const line of lines) {
     expect(events.some((event) => event.event.type === "item.delta")).toBe(true);
     expect(events.at(-1)?.event).toMatchObject({
       type: "segment.finished",
-      outcome: { type: "completed" },
+      run: { status: "finished", outcome: { type: "completed" } },
     });
     await expect(client.runs.get(runId)).resolves.toMatchObject({
       id: runId,
@@ -2382,12 +2383,12 @@ for await (const line of lines) {
       );
       expect(openingEvents.at(-1)?.event).toMatchObject({
         type: "segment.finished",
-        outcome: { type: "completed" },
+        run: { status: "finished", outcome: { type: "completed" } },
       });
       expect(attachedEvents.some((event) => event.event.type === "item.delta")).toBe(true);
       expect(attachedEvents.at(-1)?.event).toMatchObject({
         type: "segment.finished",
-        outcome: { type: "completed" },
+        run: { status: "finished", outcome: { type: "completed" } },
       });
     } finally {
       gate.release.resolve();
@@ -2437,7 +2438,7 @@ for await (const line of lines) {
       });
       expect(events.at(-1)?.event).toMatchObject({
         type: "segment.finished",
-        outcome: { type: "completed" },
+        run: { status: "finished", outcome: { type: "completed" } },
       });
       await expect(
         client.items.list({ scope: { type: "run", runId: started.result.runId } }),
@@ -2491,7 +2492,7 @@ for await (const line of lines) {
       );
       expect(events.at(-1)?.event).toMatchObject({
         type: "segment.finished",
-        outcome: { type: "canceled", detail: "HTTP cancellation E2E" },
+        run: { status: "finished", outcome: { type: "canceled", detail: "HTTP cancellation E2E" } },
       });
       await expect(client.runs.get(runId)).resolves.toMatchObject({
         id: runId,
@@ -2683,7 +2684,7 @@ for await (const line of lines) {
     const continuedEvents = await collectRunEvents(continued.events);
     expect(continuedEvents.at(-1)?.event).toMatchObject({
       type: "segment.finished",
-      outcome: { type: "completed" },
+      run: { status: "finished", outcome: { type: "completed" } },
     });
 
     streamController.abort();
@@ -2774,7 +2775,7 @@ for await (const line of lines) {
     });
     expect(events.at(-1)?.event).toMatchObject({
       type: "segment.finished",
-      outcome: { type: "completed" },
+      run: { status: "finished", outcome: { type: "completed" } },
     });
   });
 
@@ -2793,7 +2794,8 @@ for await (const line of lines) {
     const startEvents = await collectRunEvents(started.events);
     expect(startEvents.at(-1)?.event).toMatchObject({
       type: "segment.finished",
-      outcome: { type: "interrupt" },
+      run: { status: "waiting" },
+      interrupts: expect.arrayContaining([expect.anything()]),
     });
     const waiting = await client.runs.get(runId);
     expect(waiting).toMatchObject({ status: "waiting" });
@@ -2836,7 +2838,7 @@ for await (const line of lines) {
     );
     expect(resumeEvents.at(-1)?.event).toMatchObject({
       type: "segment.finished",
-      outcome: { type: "completed" },
+      run: { status: "finished", outcome: { type: "completed" } },
     });
     await expect(client.interrupts.list({ rootRunId: runId })).resolves.toMatchObject({ data: [] });
     await expect(client.runs.get(runId)).resolves.toMatchObject({
@@ -2879,7 +2881,8 @@ for await (const line of lines) {
     const startEvents = await collectRunEvents(started.events);
     expect(startEvents.at(-1)?.event).toMatchObject({
       type: "segment.finished",
-      outcome: { type: "interrupt" },
+      run: { status: "waiting" },
+      interrupts: expect.arrayContaining([expect.anything()]),
     });
     await expect(nextRuntimeEvent(runtimeEvents, "interrupts.changed")).resolves.toMatchObject({
       type: "interrupts.changed",
@@ -2918,7 +2921,7 @@ for await (const line of lines) {
     const resumeEvents = await collectRunEvents(resumed.events);
     expect(resumeEvents.at(-1)?.event).toMatchObject({
       type: "segment.finished",
-      outcome: { type: "completed" },
+      run: { status: "finished", outcome: { type: "completed" } },
     });
     await expect(nextRuntimeEvent(runtimeEvents, "interrupts.changed")).resolves.toMatchObject({
       type: "interrupts.changed",
@@ -2968,7 +2971,8 @@ for await (const line of lines) {
     const startEvents = await collectRunEvents(started.events);
     expect(startEvents.at(-1)?.event).toMatchObject({
       type: "segment.finished",
-      outcome: { type: "interrupt" },
+      run: { status: "waiting" },
+      interrupts: expect.arrayContaining([expect.anything()]),
     });
 
     const pending = await client.interrupts.list({ rootRunId: runId });
@@ -3009,7 +3013,8 @@ for await (const line of lines) {
     const firstResumeEvents = await collectRunEvents(resumed.events);
     expect(firstResumeEvents.at(-1)?.event).toMatchObject({
       type: "segment.finished",
-      outcome: { type: "interrupt" },
+      run: { status: "waiting" },
+      interrupts: expect.arrayContaining([expect.anything()]),
     });
 
     const firstLifecycle = [...startEvents, ...firstResumeEvents];
@@ -3060,7 +3065,7 @@ for await (const line of lines) {
     const finalEvents = await collectRunEvents(completed.events);
     expect(finalEvents.at(-1)?.event).toMatchObject({
       type: "segment.finished",
-      outcome: { type: "completed" },
+      run: { status: "finished", outcome: { type: "completed" } },
     });
     await expect(client.interrupts.list({ rootRunId: runId })).resolves.toMatchObject({ data: [] });
 
@@ -3257,7 +3262,7 @@ for await (const line of lines) {
     ]);
     expect(resumeEvents.at(-1)?.event).toMatchObject({
       type: "segment.finished",
-      outcome: { type: "completed" },
+      run: { status: "finished", outcome: { type: "completed" } },
     });
     await expect(client.interrupts.list({ rootRunId: runId })).resolves.toMatchObject({ data: [] });
     await expect(client.items.list({ scope: { type: "run", runId } })).resolves.toMatchObject({
@@ -3513,7 +3518,8 @@ for await (const line of lines) {
         const events = await collectRunEvents(waiting.events);
         expect(events.at(-1)?.event).toMatchObject({
           type: "segment.finished",
-          outcome: { type: "interrupt" },
+          run: { status: "waiting" },
+          interrupts: expect.arrayContaining([expect.anything()]),
         });
         waitingRuns.push(waiting.result.runId);
       }
@@ -4000,7 +4006,7 @@ for await (const line of lines) {
     const events = await collectRunEvents(started.events);
     expect(events.at(-1)?.event).toMatchObject({
       type: "segment.finished",
-      outcome: { type: "completed" },
+      run: { status: "finished", outcome: { type: "completed" } },
     });
 
     const changed = await nextRuntimeEvent(runtimeEvents, "files.changed");
@@ -4511,7 +4517,7 @@ for await (const line of lines) {
       const terminalEvents = await failedEvents;
       expect(terminalEvents.at(-1)?.event).toMatchObject({
         type: "segment.finished",
-        outcome: { type: "failed" },
+        run: { status: "finished", outcome: { type: "failed" } },
       });
 
       recoveryCall = createProviderGate(compactionRecoveryMarker);
@@ -4537,7 +4543,7 @@ for await (const line of lines) {
       recoveryCall.release.resolve();
       expect((await recoveredEvents).at(-1)?.event).toMatchObject({
         type: "segment.finished",
-        outcome: { type: "completed" },
+        run: { status: "finished", outcome: { type: "completed" } },
       });
       await expect(client.sessions.snapshot(sessionId)).resolves.toMatchObject({ plan });
     } finally {
@@ -4631,7 +4637,7 @@ for await (const line of lines) {
       recoveryCall.release.resolve();
       expect((await recoveredEvents).at(-1)?.event).toMatchObject({
         type: "segment.finished",
-        outcome: { type: "completed" },
+        run: { status: "finished", outcome: { type: "completed" } },
       });
       await expect(client.sessions.snapshot(sessionId)).resolves.toMatchObject({ plan });
     } finally {

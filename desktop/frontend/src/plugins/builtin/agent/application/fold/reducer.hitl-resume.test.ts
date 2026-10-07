@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type { AgentItem as Item, AgentStreamEvent as StreamEvent } from "@/plugins/sdk";
 import type { AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
-import { foldTestEvent as reduce, runFinished } from "./reducer.fixtures";
+import { foldTestEvent as reduce, runWaiting } from "./reducer.fixtures";
 import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 
@@ -52,17 +52,14 @@ describe("reducer — HITL resume preserves toolOutput on result", () => {
     );
     s = reduce(
       s,
-      runFinished({
-        type: "interrupt",
-        interrupts: [
-          {
-            itemId: TOOL,
-            runId: "run_X" as never,
-            type: "approval",
-            payload: { tool: { name: "shell", arguments: { command: "pwd" } } },
-          },
-        ],
-      }),
+      runWaiting([
+        {
+          itemId: TOOL,
+          runId: "run_X" as never,
+          type: "approval",
+          payload: { tool: { name: "shell", arguments: { command: "pwd" } } },
+        },
+      ]),
     );
     expect(s.toolCalls[TOOL]?.result).toBeUndefined();
     expect(s.toolCalls[TOOL]?.status).toBe("running");

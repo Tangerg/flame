@@ -68,10 +68,8 @@ describe("Runtime → Agent fact adapter", () => {
       const projected = runtimeRunFact(run);
       expect(projected.outcome?.unresolvedEffects).toEqual(unresolvedEffects);
       expect(projected.outcome?.unresolvedEffects).not.toBe(unresolvedEffects);
-      const live = runtimeAgentEvent(
-        event({ type: "segment.finished", outcome, metrics: METRICS, contextTokens: 0 }),
-      );
-      expect(live.event).toMatchObject({ outcome: projected.outcome });
+      const live = runtimeAgentEvent(event({ type: "segment.finished", run }));
+      expect(live.event).toMatchObject({ run: projected, interrupts: [] });
       expect(runtimeCancelResult({ type: "root", run })).toMatchObject({ run: projected });
       const child = {
         ...run,
@@ -86,6 +84,43 @@ describe("Runtime → Agent fact adapter", () => {
       });
     },
   );
+
+  it.each([
+    [
+      "a finished Run",
+      runningRoot({
+        status: "finished",
+        activeSegmentId: undefined,
+        outcome: { type: "completed" },
+        finishedAt: "2026-08-12T08:00:02.000Z",
+      }),
+      "run_root",
+      "interruptsWithoutWaiting",
+    ],
+    [
+      "another Run",
+      runningRoot({ status: "waiting", activeSegmentId: undefined }),
+      "run_child",
+      "foreignInterrupt",
+    ],
+  ] as const)("refuses interrupts a finishing segment attributes to %s", (_, run, runId, error) => {
+    expect(() =>
+      runtimeAgentEvent(
+        event({
+          type: "segment.finished",
+          run,
+          interrupts: [
+            {
+              type: "approval",
+              itemId: "item_tool",
+              runId,
+              payload: { tool: { name: "shell", arguments: { command: "pwd" } } },
+            },
+          ],
+        }),
+      ),
+    ).toThrow(`agent.adapter.segment.${error}`);
+  });
 
   it("omits an empty unresolved effect collection", () => {
     const mapped = runtimeRunFact(

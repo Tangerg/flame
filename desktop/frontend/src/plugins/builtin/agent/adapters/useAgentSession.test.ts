@@ -1116,10 +1116,17 @@ describe("useAgentSession durable recovery", () => {
             timestamp: "2026-08-13T00:00:01.000Z",
             event: {
               type: "segment.finished",
-              outcome: { type: "completed" },
-              metrics: { steps: 1, activeDurationMillis: 1 },
+              run: runRef({
+                id: "run_exact_read",
+                sessionId: RID,
+                status: "finished",
+                activeSegmentId: undefined,
+                outcome: { type: "completed" },
+                metrics: { steps: 1, activeDurationMillis: 1 },
+                finishedAt: "2026-08-13T00:00:01.000Z",
+              }),
             },
-          } as RunEvent;
+          } satisfies RunEvent;
         })(),
       }),
     );

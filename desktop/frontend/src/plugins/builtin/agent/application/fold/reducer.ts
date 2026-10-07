@@ -17,7 +17,7 @@ function applyCoreEvent(state: AgentSessionView, envelope: AgentEventEnvelope): 
     case "segment.progress":
       return onRunProgress(state, event.progress, source);
     case "segment.finished":
-      return onRunFinished(state, event.outcome, event.metrics, event.contextTokens, source);
+      return onRunFinished(state, event.run, event.interrupts, source);
     case "item.started":
       return onItemStarted(state, event.item, source);
     case "item.delta":

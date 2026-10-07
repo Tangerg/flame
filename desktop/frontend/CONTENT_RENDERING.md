@@ -82,11 +82,11 @@ Session ──┬── Run ──┬── Item   (userMessage / agentMessage /
    │  ◄── item.completed       { item: toolCall }        ← 权威：arguments + result 在这里落定
    │  ◄── plan.updated         { plan: { state: { steps: [...] } } } ← 整份已提交 Session Plan
    │  ◄── item.started/delta/completed { agentMessage }
-   │  ◄── segment.finished     { outcome, metrics }
+   │  ◄── segment.finished     { run, interrupts? }
    ▼
 ```
 
-**需要人介入时**，`segment.finished` 的 outcome 是 `{ type: "interrupt", interrupts: [...] }`，Run 不结束；客户端调 `runs.resume` 带上答复，开新的一段。
+**需要人介入时**，`segment.finished` 的 `run.status` 是 `waiting`，并带上该 Run 自己发起的 `interrupts`；Run 不结束，客户端调 `runs.resume` 带上答复，开新的一段。`waiting` 却没有 `interrupts` 的 Run 是被同一棵树里另一个 Run 的中断挂起的。
 
 ### 0.3 四层数据通路
 
@@ -195,7 +195,7 @@ interface RunEvent {
 type StreamEvent =
   | { type: "segment.started"; run: RunRef }
   | { type: "segment.progress"; progress: RunProgress }
-  | { type: "segment.finished"; outcome: SegmentOutcome; metrics: RunMetrics }
+  | { type: "segment.finished"; run: RunRef; interrupts?: Interrupt[] }
   | { type: "item.started"; item: Item }
   | { type: "item.delta"; itemId: string; delta: ItemDelta }
   | { type: "item.completed"; item: Item }
@@ -212,7 +212,7 @@ type StreamEvent =
 | `segment.progress` | ⬜ | ⬜ | **只能改善实时观感** |
 | `item.delta` | ⬜ | ⬜ | 同上 |
 
-> `segment.finished` **不带 `run`** —— 段结束时 Run 的完整状态要从 `runs.get` 读。
+> `segment.finished` 的 `run` 是段结束时 Run 的持久记录（`waiting` 或带 outcome、metrics、contextTokens、finishedAt 的 `finished`）；客户端直接替换自己的 Run，不从事件时间或结束原因推导。
 
 ### 2.2 Item（六变体）
 
@@ -842,7 +842,7 @@ Plan, Goal, and schedule tools omit their transcript rows only after Runtime rep
 ### 4.8 审批请求
 
 **位置** D3。
-**何时** `segment.finished{outcome:{type:"interrupt"}}` 里带 `approval`。此时 Run 已转 `waiting`，资源全释放。
+**何时** `segment.finished{run:{status:"waiting"}, interrupts}` 里带 `approval`。此时 Run 已转 `waiting`，资源全释放。
 
 ```
 ┌─ Shell command ──────────────────────────────────┐

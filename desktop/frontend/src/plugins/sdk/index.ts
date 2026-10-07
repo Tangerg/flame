@@ -84,7 +84,6 @@ export type {
   AgentQuestionField,
   AgentQuestionOption,
   AgentRunFact,
-  AgentSegmentOutcome,
   AgentStreamEvent,
   AgentToolInvocation,
   AgentRunOptionsProviderSpec,

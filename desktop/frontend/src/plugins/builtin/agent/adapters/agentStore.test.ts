@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type {
+  Interrupt,
   Item,
   RunEvent,
+  RunOutcome,
   RunRef,
-  SegmentOutcome,
   StreamEvent,
 } from "@flame/runtime-contract/client";
 import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
@@ -30,12 +31,6 @@ const runStarted = (id: string, sessionId: string): StreamEvent => ({
     provider: "openai",
     model: "gpt-5",
   },
-});
-const runFinished = (outcome: SegmentOutcome): StreamEvent => ({
-  type: "segment.finished",
-  contextTokens: 0,
-  outcome,
-  metrics: { steps: 0, activeDurationMillis: 0 },
 });
 let eventSequence = 0;
 const fold = (event: StreamEvent): RunEvent => {
@@ -73,6 +68,21 @@ const runRef = (partial: Partial<RunRef> = {}): RunRef => ({
   provider: "openai",
   model: "gpt-5",
   ...partial,
+});
+
+const runFinished = (outcome: RunOutcome): StreamEvent => ({
+  type: "segment.finished",
+  run: runRef({
+    status: "finished",
+    activeSegmentId: undefined,
+    outcome,
+    finishedAt: "2026-06-03T00:00:01.000Z",
+  }),
+});
+const runWaiting = (interrupts: Interrupt[]): StreamEvent => ({
+  type: "segment.finished",
+  run: runRef({ status: "waiting", activeSegmentId: undefined }),
+  interrupts,
 });
 
 const view = () => useAgentStore.getState().sessions[SID]!.view;
@@ -152,17 +162,14 @@ describe("agentStore.commitCancelResponse", () => {
             tool: { name: "shell", arguments: { command: "rm x" } },
           }),
         } as StreamEvent,
-        runFinished({
-          type: "interrupt",
-          interrupts: [
-            {
-              itemId: "tool_1",
-              runId: "run_1",
-              type: "approval",
-              payload: { tool: { name: "shell", arguments: { command: "rm x" } } },
-            },
-          ],
-        } as SegmentOutcome),
+        runWaiting([
+          {
+            itemId: "tool_1",
+            runId: "run_1",
+            type: "approval",
+            payload: { tool: { name: "shell", arguments: { command: "rm x" } } },
+          },
+        ]),
       ].map(fold),
     );
     expect(selectAwaitingInterrupts(view()).get("tool_1")).toBe("run_1");

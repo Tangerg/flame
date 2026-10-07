@@ -5,7 +5,7 @@ import type {
   AgentStreamEvent as StreamEvent,
 } from "@/plugins/sdk";
 import type { AgentSessionView, Message } from "@/plugins/sdk/types/agentSessionView";
-import { foldTestEvent as reduce } from "./reducer.fixtures";
+import { foldTestEvent as reduce, runFinished } from "./reducer.fixtures";
 import { appendToTurn } from "./fold";
 import { itemStartedAt } from "./projections";
 import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
@@ -159,16 +159,14 @@ const FULL_STREAM: StreamEvent[] = [
   started(m2),
   delta("m2", { type: "content", text: "Done." }),
   completed(m2),
-  {
-    type: "segment.finished",
-    contextTokens: 0,
-    outcome: { type: "completed" },
-    metrics: {
+  runFinished(
+    { type: "completed" },
+    {
       steps: 1,
       activeDurationMillis: 0,
       usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 },
     },
-  },
+  ),
 ];
 
 describe("reducer — render convergence across delivery modes", () => {

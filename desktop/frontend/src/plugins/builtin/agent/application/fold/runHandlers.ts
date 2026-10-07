@@ -1,21 +1,17 @@
-import type { AgentRunFact, AgentSegmentOutcome } from "@/plugins/sdk";
+import type { AgentInterrupt, AgentRunFact } from "@/plugins/sdk";
 import type {
   AgentRunMetrics,
   AgentRunOutcome,
   AgentRunProgress,
   AgentRunView,
   AgentSessionView,
-  PendingInterrupt,
   RunUsage,
 } from "@/plugins/sdk/types/agentSessionView";
 import { dropRunPendingInterrupts, mergeRunPendingInterrupts } from "./fold";
 import { materializeInterrupt } from "./interruptMaterialization";
+import { foldRunSnapshot } from "./runSnapshot";
 import type { AgentFoldSource } from "./source";
-import {
-  projectRunMetrics,
-  projectStartedRun,
-  projectTerminalSegmentOutcome,
-} from "../view/runProjection";
+import { projectFinishedRun, projectStartedRun } from "../view/runProjection";
 import { isAgentRunFailure } from "../view/runOutcome";
 
 function sameRunUsage(left: RunUsage | undefined, right: RunUsage | undefined): boolean {
@@ -70,29 +66,25 @@ function sameRunOutcome(left: AgentRunOutcome | null, right: AgentRunOutcome): b
 
 function isDuplicateRunFinish(
   state: AgentSessionView,
-  outcome: AgentSegmentOutcome,
-  metrics: AgentRunMetrics,
-  source: AgentFoldSource,
+  run: AgentRunView,
+  interrupts: readonly AgentInterrupt[],
 ): boolean {
-  const run = state.runsById[source.runId];
-  if (!run) return false;
-  const projectedMetrics = projectRunMetrics(metrics);
-  if (!sameRunMetrics(run.metrics, projectedMetrics)) return false;
-  if (outcome.type === "interrupt") {
-    if (run.status !== "waiting") return false;
-    const open = new Set(
-      state.pendingInterrupts
-        .filter((group) => state.runsById[group.runId]?.rootRunId === run.rootRunId)
-        .flatMap((group) => group.interrupts.map((interrupt) => interrupt.itemId)),
-    );
-    return outcome.interrupts.every((interrupt) => open.has(interrupt.itemId));
-  }
-  if (outcome.type === "suspended") return run.status === "waiting";
-  return (
-    run.status === "finished" &&
-    run.finishedAt === source.timestamp &&
-    sameRunOutcome(run.outcome, projectTerminalSegmentOutcome(outcome))
+  const previous = state.runsById[run.id];
+  if (!previous || previous.status === "running") return false;
+  if (
+    previous.status !== run.status ||
+    previous.finishedAt !== run.finishedAt ||
+    !sameRunMetrics(previous.metrics, run.metrics)
+  )
+    return false;
+  if (run.status === "finished")
+    return run.outcome !== null && sameRunOutcome(previous.outcome, run.outcome);
+  const open = new Set(
+    state.pendingInterrupts
+      .filter((group) => group.runId === run.id)
+      .flatMap((group) => group.interrupts.map((interrupt) => interrupt.itemId)),
   );
+  return interrupts.every((interrupt) => open.has(interrupt.itemId));
 }
 
 function statedFootprint(tokens: number | undefined): number | null {
@@ -102,12 +94,11 @@ function statedFootprint(tokens: number | undefined): number | null {
 function updateRun(
   state: AgentSessionView,
   runId: string,
-  eventType: "segment.progress" | "segment.finished",
   update: (run: AgentRunView) => AgentRunView,
 ): AgentSessionView {
   const run = state.runsById[runId];
   if (!run) {
-    throw new Error(`agent.fold.runMissing:event=${eventType};run=${runId}`);
+    throw new Error(`agent.fold.runMissing:event=segment.progress;run=${runId}`);
   }
   return {
     ...state,
@@ -149,7 +140,7 @@ export function onRunProgress(
   progress: AgentRunProgress,
   source: AgentFoldSource,
 ): AgentSessionView {
-  return updateRun(state, source.runId, "segment.progress", (run) => {
+  return updateRun(state, source.runId, (run) => {
     if (run.status !== "running") {
       throw new Error(
         `agent.fold.runStatusMismatch:event=segment.progress;run=${run.id};status=${run.status};expected=running`,
@@ -177,64 +168,34 @@ export function onRunProgress(
 
 export function onRunFinished(
   state: AgentSessionView,
-  outcome: AgentSegmentOutcome,
-  metrics: AgentRunMetrics,
-  contextTokens: number,
+  run: AgentRunFact,
+  interrupts: readonly AgentInterrupt[],
   source: AgentFoldSource,
 ): AgentSessionView {
-  if (isDuplicateRunFinish(state, outcome, metrics, source)) return state;
-  let next = updateRun(state, source.runId, "segment.finished", (run) => {
-    if (run.status !== "running") {
-      throw new Error(
-        `agent.fold.runStatusMismatch:event=segment.finished;run=${run.id};status=${run.status};expected=running`,
-      );
-    }
-    if (source.segmentId !== run.activeSegmentId) {
-      throw new Error(
-        `agent.fold.segmentMismatch:event=segment.finished;run=${run.id};eventSegment=${source.segmentId ?? "missing"};activeSegment=${run.activeSegmentId ?? "missing"}`,
-      );
-    }
-    if (outcome.type === "interrupt" || outcome.type === "suspended") {
-      return {
-        ...run,
-        status: "waiting",
-        activeSegmentId: null,
-        outcome: null,
-        metrics: projectRunMetrics(metrics),
-        progress: null,
-        contextTokens: statedFootprint(contextTokens) ?? run.contextTokens,
-      };
-    }
-    return {
-      ...run,
-      status: "finished",
-      activeSegmentId: null,
-      outcome: projectTerminalSegmentOutcome(outcome),
-      metrics: projectRunMetrics(metrics),
-      progress: null,
-      contextTokens: statedFootprint(contextTokens) ?? run.contextTokens,
-      finishedAt: source.timestamp,
-    };
-  });
-
-  if (outcome.type === "suspended") return next;
-  if (outcome.type === "interrupt") {
-    const byRunId = new Map<string, PendingInterrupt[]>();
-    for (const interrupt of outcome.interrupts) {
-      const runId = interrupt.runId;
-      const pending = byRunId.get(runId) ?? [];
-      pending.push({ itemId: interrupt.itemId, kind: interrupt.type });
-      byRunId.set(runId, pending);
-    }
-    for (const [runId, interrupts] of byRunId) {
-      next = mergeRunPendingInterrupts(next, runId, interrupts);
-    }
-    for (const interrupt of outcome.interrupts) {
-      const runId = interrupt.runId;
-      next = materializeInterrupt(next, interrupt, { ...source, runId });
-    }
-    return next;
+  const finished = projectFinishedRun(run, source);
+  if (isDuplicateRunFinish(state, finished, interrupts)) return state;
+  const previous = state.runsById[run.id];
+  if (!previous) {
+    throw new Error(`agent.fold.runMissing:event=segment.finished;run=${run.id}`);
+  }
+  if (previous.status !== "running") {
+    throw new Error(
+      `agent.fold.runStatusMismatch:event=segment.finished;run=${run.id};status=${previous.status};expected=running`,
+    );
+  }
+  if (source.segmentId !== previous.activeSegmentId) {
+    throw new Error(
+      `agent.fold.segmentMismatch:event=segment.finished;run=${run.id};eventSegment=${source.segmentId ?? "missing"};activeSegment=${previous.activeSegmentId ?? "missing"}`,
+    );
   }
 
-  return dropRunPendingInterrupts(next, source.runId);
+  let next = foldRunSnapshot(state, run);
+  if (interrupts.length === 0) return next;
+  next = mergeRunPendingInterrupts(
+    next,
+    run.id,
+    interrupts.map((interrupt) => ({ itemId: interrupt.itemId, kind: interrupt.type })),
+  );
+  for (const interrupt of interrupts) next = materializeInterrupt(next, interrupt, source);
+  return next;
 }

@@ -12,7 +12,6 @@ import {
   type RunOutcome,
   type RunProgress,
   type RunRef,
-  type SegmentOutcome,
   type ToolInvocation,
   type Usage,
 } from "@flame/runtime-contract/client";
@@ -31,7 +30,6 @@ import type {
   AgentPendingInterruptSet,
   AgentQuestion,
   AgentRunFact,
-  AgentSegmentOutcome,
   AgentToolInvocation,
 } from "@/plugins/sdk";
 import type {
@@ -318,12 +316,20 @@ function runtimeProgress(progress: RunProgress): AgentRunProgress {
   };
 }
 
-function runtimeSegmentOutcome(outcome: SegmentOutcome): AgentSegmentOutcome {
-  if (outcome.type === "interrupt") {
-    return { type: "interrupt", interrupts: outcome.interrupts.map(runtimeInterrupt) };
+function runtimeFinishedInterrupts(run: RunRef, interrupts: Interrupt[]): AgentInterrupt[] {
+  if (interrupts.length > 0 && run.status !== "waiting") {
+    throw new Error(
+      `agent.adapter.segment.interruptsWithoutWaiting:run=${run.id};status=${run.status}`,
+    );
   }
-  if (outcome.type === "suspended") return { type: "suspended" };
-  return runtimeRunOutcome(outcome);
+  for (const interrupt of interrupts) {
+    if (interrupt.runId !== run.id) {
+      throw new Error(
+        `agent.adapter.segment.foreignInterrupt:run=${run.id};interruptRun=${interrupt.runId};item=${interrupt.itemId}`,
+      );
+    }
+  }
+  return interrupts.map(runtimeInterrupt);
 }
 
 export function runtimeAgentEvent(envelope: RunEvent): AgentEventEnvelope {
@@ -337,9 +343,8 @@ export function runtimeAgentEvent(envelope: RunEvent): AgentEventEnvelope {
       case "segment.finished":
         return {
           type: event.type,
-          contextTokens: event.contextTokens,
-          metrics: runtimeRunMetrics(event.metrics),
-          outcome: runtimeSegmentOutcome(event.outcome),
+          run: runtimeRunFact(event.run),
+          interrupts: runtimeFinishedInterrupts(event.run, event.interrupts ?? []),
         } as const;
       case "item.started":
       case "item.completed":

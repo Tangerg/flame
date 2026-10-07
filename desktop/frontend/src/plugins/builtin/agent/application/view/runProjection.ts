@@ -1,23 +1,13 @@
-import type { AgentRunFact, AgentSegmentOutcome } from "@/plugins/sdk";
-import type {
-  AgentRunMetrics,
-  AgentRunOutcome,
-  AgentRunView,
-} from "@/plugins/sdk/types/agentSessionView";
+import type { AgentRunFact } from "@/plugins/sdk";
+import type { AgentRunMetrics, AgentRunView } from "@/plugins/sdk/types/agentSessionView";
 import type { AgentFoldSource } from "../fold/source";
 
-export function projectRunMetrics(metrics: AgentRunMetrics): AgentRunMetrics {
+function projectRunMetrics(metrics: AgentRunMetrics): AgentRunMetrics {
   return {
     steps: metrics.steps,
     activeDurationMillis: metrics.activeDurationMillis,
     ...(metrics.usage ? { usage: { ...metrics.usage } } : {}),
   };
-}
-
-export function projectTerminalSegmentOutcome(
-  outcome: Exclude<AgentSegmentOutcome, { type: "interrupt" | "suspended" }>,
-): AgentRunOutcome {
-  return outcome;
 }
 
 export function projectRunRef(run: AgentRunFact): AgentRunView {
@@ -55,6 +45,19 @@ export function projectStartedRun(run: AgentRunFact, source: AgentFoldSource): A
   if (projected.activeSegmentId !== source.segmentId) {
     throw new Error(
       `agent.fold.startedSegmentMismatch:run=${run.id};payloadSegment=${projected.activeSegmentId ?? "missing"};eventSegment=${source.segmentId}`,
+    );
+  }
+  return projected;
+}
+
+export function projectFinishedRun(run: AgentRunFact, source: AgentFoldSource): AgentRunView {
+  if (run.id !== source.runId) {
+    throw new Error(`agent.fold.finishedRunMismatch:eventRun=${source.runId};payloadRun=${run.id}`);
+  }
+  const projected = projectRunRef(run);
+  if (projected.status === "running") {
+    throw new Error(
+      `agent.fold.finishedStatusMismatch:run=${run.id};status=running;expected=waitingOrFinished`,
     );
   }
   return projected;

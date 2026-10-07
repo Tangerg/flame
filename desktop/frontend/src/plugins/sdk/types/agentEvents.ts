@@ -149,18 +149,10 @@ export interface AgentPendingInterruptSet {
   sessionId: string;
 }
 
-export type AgentSegmentOutcome =
-  { type: "interrupt"; interrupts: AgentInterrupt[] } | { type: "suspended" } | AgentRunOutcome;
-
 export type AgentStreamEvent =
   | { type: "segment.started"; run: AgentRunFact }
   | { type: "segment.progress"; progress: AgentRunProgress }
-  | {
-      type: "segment.finished";
-      contextTokens: number;
-      metrics: AgentRunMetrics;
-      outcome: AgentSegmentOutcome;
-    }
+  | { type: "segment.finished"; interrupts: AgentInterrupt[]; run: AgentRunFact }
   | { type: "item.started"; item: AgentItem }
   | { type: "item.delta"; delta: AgentItemDelta; itemId: string }
   | { type: "item.completed"; item: AgentItem }

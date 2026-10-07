@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import type {
   AgentEventEnvelope as RunEvent,
+  AgentInterrupt,
   AgentItem as Item,
   AgentRunFact as RunRef,
   AgentStreamEvent as StreamEvent,
@@ -65,12 +66,26 @@ function progress(eventId: string, runId: string, segmentId: string, step: numbe
   });
 }
 
-function finished(eventId: string, runId: string, segmentId: string): RunEvent {
-  return envelope(eventId, runId, segmentId, {
+function finished(eventId: string, run: RunRef): RunEvent {
+  return envelope(eventId, run.id, run.activeSegmentId!, {
     type: "segment.finished",
-    contextTokens: 0,
-    outcome: { type: "completed" },
-    metrics: { ...METRICS, steps: 7, activeDurationMillis: 50 },
+    run: {
+      ...run,
+      status: "finished",
+      activeSegmentId: null,
+      outcome: { type: "completed" },
+      metrics: { ...METRICS, steps: 7, activeDurationMillis: 50 },
+      finishedAt: "2026-06-03T00:02:00.000Z",
+    },
+    interrupts: [],
+  });
+}
+
+function waiting(eventId: string, run: RunRef, interrupts: AgentInterrupt[] = []): RunEvent {
+  return envelope(eventId, run.id, run.activeSegmentId!, {
+    type: "segment.finished",
+    run: { ...run, status: "waiting", activeSegmentId: null },
+    interrupts,
   });
 }
 
@@ -104,33 +119,31 @@ describe("reducer — source-owned Run tree", () => {
 
     view = reduceAgentEvent(
       view,
-      envelope("evt_root_wait", root.id, "seg_root", {
-        type: "segment.finished",
-        contextTokens: 0,
-        outcome: {
-          type: "interrupt",
-          interrupts: [
-            {
-              type: "approval",
-              itemId: "approval_a",
-              runId: childA.id,
-              payload: { tool: { name: "shell", arguments: { command: "make test" } } },
-            },
-            {
-              type: "question",
-              itemId: "question_b",
-              runId: childB.id,
-              payload: {
-                question: {
-                  fields: [{ type: "text", prompt: "Release name?", header: "Name" }],
-                },
-              },
-            },
-          ],
+      waiting("evt_a_wait", childA, [
+        {
+          type: "approval",
+          itemId: "approval_a",
+          runId: childA.id,
+          payload: { tool: { name: "shell", arguments: { command: "make test" } } },
         },
-        metrics: METRICS,
-      }),
+      ]),
     );
+    view = reduceAgentEvent(
+      view,
+      waiting("evt_b_wait", childB, [
+        {
+          type: "question",
+          itemId: "question_b",
+          runId: childB.id,
+          payload: {
+            question: {
+              fields: [{ type: "text", prompt: "Release name?", header: "Name" }],
+            },
+          },
+        },
+      ]),
+    );
+    view = reduceAgentEvent(view, waiting("evt_root_wait", root));
 
     expect(view.pendingInterrupts).toEqual([
       {
@@ -209,7 +222,7 @@ describe("reducer — source-owned Run tree", () => {
       },
     });
 
-    view = reduceAgentEvent(view, finished("evt_nested_finish", nested.id, "seg_nested"));
+    view = reduceAgentEvent(view, finished("evt_nested_finish", nested));
     expect(view.runsById.nested).toMatchObject({
       status: "finished",
       outcome: { type: "completed" },
@@ -272,21 +285,17 @@ describe("reducer — source-owned Run tree", () => {
 
   it("converges live terminal folding with the durable RunRef snapshot", () => {
     const root = runningRun("root", "seg_root");
-    const terminalEvent = finished("evt_root_finish", root.id, "seg_root");
+    const terminalEvent = finished("evt_root_finish", root);
     const startedView = reduceAgentEvent(EMPTY_AGENT_SESSION_VIEW, started("evt_root_start", root));
     const live = reduceAgentEvent(startedView, terminalEvent);
     const duplicate = reduceAgentEvent(live, terminalEvent);
     expect(duplicate).toBe(live);
 
-    const cold = foldRunSnapshot(EMPTY_AGENT_SESSION_VIEW, {
-      ...root,
-      status: "finished",
-      activeSegmentId: null,
-      outcome: { type: "completed" },
-      metrics: { ...METRICS, steps: 7, activeDurationMillis: 50 },
-      finishedAt: terminalEvent.timestamp,
-    });
+    const event = terminalEvent.event;
+    if (event.type !== "segment.finished") throw new Error("expected segment.finished");
+    const cold = foldRunSnapshot(EMPTY_AGENT_SESSION_VIEW, event.run);
     expect(cold.runsById.root).toEqual(live.runsById.root);
+    expect(live.runsById.root?.finishedAt).toBe("2026-06-03T00:02:00.000Z");
   });
 
   it("hydrates the last authoritative prompt footprint from a durable Run snapshot", () => {
@@ -313,7 +322,7 @@ describe("reducer — source-owned Run tree", () => {
     );
 
     expect(reduceAgentEvent(progressed, startEvent)).toBe(progressed);
-    const terminal = reduceAgentEvent(progressed, finished("evt_root_finish", root.id, "seg_root"));
+    const terminal = reduceAgentEvent(progressed, finished("evt_root_finish", root));
     expect(() => reduceAgentEvent(terminal, startEvent)).toThrow("agent.fold.runStatusMismatch");
     expect(() => reduceAgentEvent(terminal, started("evt_late_start", root))).toThrow(
       "agent.fold.runStatusMismatch",

@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AgentItem as Item, AgentStreamEvent as StreamEvent } from "@/plugins/sdk";
 import type { AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
-import { foldTestEvent as reduce, runFinished, testRunEvent } from "./reducer.fixtures";
+import {
+  FINISHED_AT,
+  foldTestEvent as reduce,
+  runFinished,
+  runWaiting,
+  testRunEvent,
+} from "./reducer.fixtures";
 import { reduceAgentEvent, reduceDurableItem } from "./reducer";
 import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
 import { selectCurrentRootRun } from "../view/runTree";
@@ -60,10 +66,13 @@ describe("reducer — run lifecycle", () => {
         reduceAgentEvent(settled, {
           ...finish,
           eventId: "conflict",
-          event: runFinished({
-            type: "canceled",
-            unresolvedEffects: [{ ...effect, [field]: "different" }],
-          }),
+          event: testRunEvent(
+            settled,
+            runFinished({
+              type: "canceled",
+              unresolvedEffects: [{ ...effect, [field]: "different" }],
+            }),
+          ).event,
         }),
       ).toThrow("agent.fold.runStatusMismatch");
       expect(settled.runsById.run_1?.outcome?.unresolvedEffects).toEqual([effect]);
@@ -83,15 +92,15 @@ describe("reducer — run lifecycle", () => {
     });
   });
 
-  for (const outcome of [
-    { type: "completed" },
-    { type: "canceled", detail: "" },
-    { type: "suspended" },
+  for (const [name, frame] of [
+    ["completed", runFinished({ type: "completed" })],
+    ["canceled", runFinished({ type: "canceled", detail: "" })],
+    ["waiting", runWaiting()],
   ] as const) {
-    it(`a re-delivered segment.finished{${outcome.type}} settles silently`, () => {
+    it(`a re-delivered segment.finished{${name}} settles silently`, () => {
       const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
       const started = reduce(EMPTY_AGENT_SESSION_VIEW, runStarted("run_1", "ses_1"));
-      const finish = testRunEvent(started, runFinished(outcome));
+      const finish = testRunEvent(started, frame);
       const settled = reduceAgentEvent(started, finish);
 
       expect(reduceAgentEvent(settled, { ...finish, eventId: "evt_replay" })).toBe(settled);
@@ -108,9 +117,37 @@ describe("reducer — run lifecycle", () => {
       reduceAgentEvent(settled, {
         ...finish,
         eventId: "evt_contradiction",
-        event: runFinished({ type: "failed", error: { code: "provider_error", message: "boom" } }),
+        event: testRunEvent(
+          settled,
+          runFinished({ type: "failed", error: { code: "provider_error", message: "boom" } }),
+        ).event,
       }),
     ).toThrow("agent.fold.runStatusMismatch");
+  });
+
+  it("takes finishedAt from the Run the frame carries, not from the frame's time", () => {
+    const started = reduce(EMPTY_AGENT_SESSION_VIEW, runStarted("run_1", "ses_1"));
+    const finish = testRunEvent(started, runFinished({ type: "completed" }));
+    expect(finish.timestamp).not.toBe(FINISHED_AT);
+
+    const settled = reduceAgentEvent(started, finish);
+
+    expect(settled.runsById.run_1).toMatchObject({ status: "finished", finishedAt: FINISHED_AT });
+  });
+
+  it("treats a later finish time for the same Run as a contradiction, not a replay", () => {
+    const started = reduce(EMPTY_AGENT_SESSION_VIEW, runStarted("run_1", "ses_1"));
+    const finish = testRunEvent(started, runFinished({ type: "completed" }));
+    const settled = reduceAgentEvent(started, finish);
+    const event = finish.event;
+    if (event.type !== "segment.finished") throw new Error("expected segment.finished");
+    const later = {
+      ...finish,
+      eventId: "evt_later",
+      event: { ...event, run: { ...event.run, finishedAt: "2026-06-03T00:09:00.000Z" } },
+    };
+
+    expect(() => reduceAgentEvent(settled, later)).toThrow("agent.fold.runStatusMismatch");
   });
 
   it("segment.finished{failed} stores the error; a fresh segment.started clears it", () => {
@@ -608,20 +645,17 @@ describe("reducer — HITL interrupt", () => {
     );
     s = reduce(
       s,
-      runFinished({
-        type: "interrupt",
-        interrupts: [
-          {
-            itemId: "tool_1" as never,
-            runId: "run_1" as never,
-            type: "approval",
-            payload: {
-              tool: { name: "shell", arguments: { command: "rm -rf x" } },
-              rememberable: true,
-            },
+      runWaiting([
+        {
+          itemId: "tool_1" as never,
+          runId: "run_1" as never,
+          type: "approval",
+          payload: {
+            tool: { name: "shell", arguments: { command: "rm -rf x" } },
+            rememberable: true,
           },
-        ],
-      }),
+        },
+      ]),
     );
     const block = s.messages.flatMap((m) => m.blocks).find((b) => b.kind === "approval");
     expect(block).toMatchObject({
@@ -650,20 +684,17 @@ describe("reducer — HITL interrupt", () => {
     );
     s = reduce(
       s,
-      runFinished({
-        type: "interrupt",
-        interrupts: [
-          {
-            itemId: "t1" as never,
-            runId: "run_1" as never,
-            type: "approval",
-            payload: {
-              tool: { name: "fs.write", arguments: { path: "/etc/hosts" } },
-              rememberable: false,
-            },
+      runWaiting([
+        {
+          itemId: "t1" as never,
+          runId: "run_1" as never,
+          type: "approval",
+          payload: {
+            tool: { name: "fs.write", arguments: { path: "/etc/hosts" } },
+            rememberable: false,
           },
-        ],
-      }),
+        },
+      ]),
     );
     const block = s.messages.flatMap((m) => m.blocks).find((b) => b.kind === "approval");
     expect(block).toMatchObject({
@@ -678,28 +709,25 @@ describe("reducer — HITL interrupt", () => {
     let s = reduce(EMPTY_AGENT_SESSION_VIEW, runStarted("run_1", "ses_1"));
     s = reduce(
       s,
-      runFinished({
-        type: "interrupt",
-        interrupts: [
-          {
-            itemId: "q1" as never,
-            runId: "run_1" as never,
-            type: "question",
-            payload: {
-              question: {
-                fields: [
-                  {
-                    type: "choice",
-                    prompt: "Pick a database",
-                    options: [{ label: "Postgres" }, { label: "SQLite" }],
-                    allowCustom: true,
-                  },
-                ],
-              },
+      runWaiting([
+        {
+          itemId: "q1" as never,
+          runId: "run_1" as never,
+          type: "question",
+          payload: {
+            question: {
+              fields: [
+                {
+                  type: "choice",
+                  prompt: "Pick a database",
+                  options: [{ label: "Postgres" }, { label: "SQLite" }],
+                  allowCustom: true,
+                },
+              ],
             },
           },
-        ],
-      }),
+        },
+      ]),
     );
     const block = s.messages.flatMap((m) => m.blocks).find((b) => b.kind === "question");
     expect(block).toMatchObject({
@@ -726,20 +754,17 @@ describe("reducer — HITL interrupt", () => {
     );
     s = reduce(
       s,
-      runFinished({
-        type: "interrupt",
-        interrupts: [
-          {
-            itemId: "tool_1" as never,
-            runId: "run_1" as never,
-            type: "approval",
-            payload: {
-              tool: { name: "shell", arguments: { command: "rm x" } },
-              rememberable: true,
-            },
+      runWaiting([
+        {
+          itemId: "tool_1" as never,
+          runId: "run_1" as never,
+          type: "approval",
+          payload: {
+            tool: { name: "shell", arguments: { command: "rm x" } },
+            rememberable: true,
           },
-        ],
-      }),
+        },
+      ]),
     );
     expect(s.messages).toHaveLength(1);
     const turnId = s.messages[0]!.id;
@@ -756,17 +781,14 @@ describe("reducer — HITL interrupt", () => {
 
 describe("reducer — interrupt idempotency + terminal cleanup", () => {
   const approvalInterrupt = (itemId: string, command: string): StreamEvent =>
-    runFinished({
-      type: "interrupt",
-      interrupts: [
-        {
-          itemId: itemId as never,
-          runId: "run_1" as never,
-          type: "approval",
-          payload: { tool: { name: "shell", arguments: { command } }, rememberable: true },
-        },
-      ],
-    });
+    runWaiting([
+      {
+        itemId: itemId as never,
+        runId: "run_1" as never,
+        type: "approval",
+        payload: { tool: { name: "shell", arguments: { command } }, rememberable: true },
+      },
+    ]);
 
   const toInterrupt = (): AgentSessionView => {
     let s = reduce(EMPTY_AGENT_SESSION_VIEW, runStarted("run_1", "ses_1"));

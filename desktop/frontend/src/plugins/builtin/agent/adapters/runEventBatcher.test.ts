@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { RunEvent } from "@flame/runtime-contract/client";
+import type { RunEvent, RunRef } from "@flame/runtime-contract/client";
 import { createRunEventBatcher } from "./runEventBatcher";
 
 let sequence = 0;
@@ -11,29 +11,33 @@ const envelope = (event: RunEvent["event"]): RunEvent => ({
   timestamp: "2026-06-03T00:00:00.000Z",
 });
 
-const runStarted = (): RunEvent =>
-  envelope({
-    type: "segment.started",
+const run: RunRef = {
+  id: "run_1",
+  sessionId: "ses_1",
+  status: "running",
+  activeSegmentId: "seg_1",
+  createdAt: "2026-06-03T00:00:00.000Z",
+  metrics: { steps: 0, activeDurationMillis: 0 },
+  protocolProfile: { interruptTypes: [], requiredFeatures: [] },
+  provider: "openai",
+  model: "gpt-5",
+};
+
+const runStarted = (): RunEvent => envelope({ type: "segment.started", run });
+
+const runFinished = (): RunEvent => {
+  const { activeSegmentId: _activeSegmentId, ...rest } = run;
+  return envelope({
+    type: "segment.finished",
     run: {
-      id: "run_1",
-      sessionId: "ses_1",
-      status: "running",
-      activeSegmentId: "seg_1",
-      createdAt: "2026-06-03T00:00:00.000Z",
-      metrics: { steps: 0, activeDurationMillis: 0 },
-      protocolProfile: { interruptTypes: [], requiredFeatures: [] },
-      provider: "openai",
-      model: "gpt-5",
+      ...rest,
+      status: "finished",
+      outcome: { type: "completed" },
+      metrics: { steps: 0, activeDurationMillis: 1 },
+      finishedAt: "2026-06-03T00:00:01.000Z",
     },
   });
-
-const runFinished = (): RunEvent =>
-  envelope({
-    type: "segment.finished",
-    contextTokens: 0,
-    outcome: { type: "completed" },
-    metrics: { steps: 0, activeDurationMillis: 1 },
-  });
+};
 
 function frameScheduler() {
   const scheduled: Array<() => void> = [];
