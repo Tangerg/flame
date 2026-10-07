@@ -6,6 +6,7 @@ import type {
 } from "@flame/runtime-contract/client/client";
 import { describe, expect, it } from "vitest";
 import type { RunEvent, RuntimeEvent } from "@flame/runtime-contract/wire";
+import { finishedSegment } from "@flame/runtime-contract/client/transports/memory.testkit";
 import {
   MAXIMUM_BUFFERED_EPHEMERAL_RUN_EVENTS,
   MAXIMUM_BUFFERED_RUNTIME_EVENTS,
@@ -123,14 +124,7 @@ describe("streamRunEvents — response ownership (bound)", () => {
         item: { id: "item_1", type: "agentMessage" } as never,
       }),
     );
-    emit(
-      evt("run_root", "seg_root", "evt_2", {
-        type: "segment.finished",
-        contextTokens: 0,
-        outcome: { type: "completed" },
-        metrics: { steps: 0, activeDurationMillis: 0 },
-      }),
-    );
+    emit(evt("run_root", "seg_root", "evt_2", finishedSegment("run_root")));
     await consume;
 
     expect(collected).toEqual(["item.started", "segment.finished"]);
@@ -143,14 +137,7 @@ describe("streamRunEvents — response ownership (bound)", () => {
     stream.bindRequest("rpc_run");
     stream.bind("seg_root");
 
-    emit(
-      evt("run_root", "seg_root", "evt_finish", {
-        type: "segment.finished",
-        contextTokens: 0,
-        outcome: { type: "completed" },
-        metrics: { steps: 0, activeDurationMillis: 0 },
-      }),
-    );
+    emit(evt("run_root", "seg_root", "evt_finish", finishedSegment("run_root")));
 
     expect(activeCount()).toBe(0);
     expect(stream.requestSignal.aborted).toBe(true);
@@ -177,22 +164,8 @@ describe("streamRunEvents — response ownership (bound)", () => {
         item: { id: "item_c", type: "agentMessage" } as never,
       }),
     );
-    emit(
-      evt("run_child", "seg_child", "evt_4", {
-        type: "segment.finished",
-        contextTokens: 0,
-        outcome: { type: "completed" },
-        metrics: { steps: 0, activeDurationMillis: 0 },
-      }),
-    );
-    emit(
-      evt("run_root", "seg_root", "evt_5", {
-        type: "segment.finished",
-        contextTokens: 0,
-        outcome: { type: "completed" },
-        metrics: { steps: 0, activeDurationMillis: 0 },
-      }),
-    );
+    emit(evt("run_child", "seg_child", "evt_4", finishedSegment("run_child")));
+    emit(evt("run_root", "seg_root", "evt_5", finishedSegment("run_root")));
     await consume;
 
     expect(collected.map((e) => e.runId)).toEqual(["run_child", "run_child", "run_root"]);
@@ -215,14 +188,7 @@ describe("streamRunEvents — response ownership (bound)", () => {
     });
     emit(started);
     emit(started);
-    emit(
-      evt("run_root", "seg_root", "evt_2", {
-        type: "segment.finished",
-        contextTokens: 0,
-        outcome: { type: "completed" },
-        metrics: { steps: 0, activeDurationMillis: 0 },
-      }),
-    );
+    emit(evt("run_root", "seg_root", "evt_2", finishedSegment("run_root")));
     await consume;
 
     expect(collected).toEqual(["evt_1", "evt_2"]);
@@ -273,14 +239,7 @@ describe("streamRunEvents — response ownership (bound)", () => {
       }),
     );
     emit(first);
-    emit(
-      evt("run_root", "seg_root", "evt_4", {
-        type: "segment.finished",
-        contextTokens: 0,
-        outcome: { type: "completed" },
-        metrics: { steps: 0, activeDurationMillis: 0 },
-      }),
-    );
+    emit(evt("run_root", "seg_root", "evt_4", finishedSegment("run_root")));
     await consume;
 
     expect(collected).toEqual([
@@ -324,14 +283,7 @@ describe("streamRunEvents — response ownership (bound)", () => {
       }),
     );
     emit(first);
-    emit(
-      evt("run_root", "seg_root", "evt_done", {
-        type: "segment.finished",
-        contextTokens: 0,
-        outcome: { type: "completed" },
-        metrics: { steps: 0, activeDurationMillis: 0 },
-      }),
-    );
+    emit(evt("run_root", "seg_root", "evt_done", finishedSegment("run_root")));
     await consume;
 
     expect(collected).toEqual(["evt_1111", "evt_2222", "evt_1111", "evt_done"]);
@@ -453,14 +405,7 @@ describe("streamRunEvents — response ownership (bound)", () => {
       const { client, emit, emitDown } = fakeClient();
       const stream = streamRunEvents(client);
       stream.bindRequest("rpc_run");
-      emit(
-        evt(run, segment, "evt_finish", {
-          type: "segment.finished",
-          contextTokens: 0,
-          metrics: { steps: 0, activeDurationMillis: 0 },
-          outcome: { type: "completed" },
-        }),
-      );
+      emit(evt(run, segment, "evt_finish", finishedSegment(run)));
       emitDown();
       stream.bind("seg_root");
       const iterator = stream.events[Symbol.asyncIterator]();
@@ -491,14 +436,7 @@ describe("streamRunEvents — response ownership (bound)", () => {
         item: { id: "item_1", type: "agentMessage" } as never,
       }),
     );
-    emit(
-      evt("run_root", "seg_root", "evt_2", {
-        type: "segment.finished",
-        contextTokens: 0,
-        outcome: { type: "completed" },
-        metrics: { steps: 0, activeDurationMillis: 0 },
-      }),
-    );
+    emit(evt("run_root", "seg_root", "evt_2", finishedSegment("run_root")));
     await consume;
 
     expect(collected).toEqual(["item.started", "segment.finished"]);
@@ -563,14 +501,7 @@ describe("streamRunEvents — deferred bind lifecycle", () => {
       }),
     );
     bind("seg_root");
-    emit(
-      evt("run_root", "seg_root", "evt_3", {
-        type: "segment.finished",
-        contextTokens: 0,
-        outcome: { type: "completed" },
-        metrics: { steps: 0, activeDurationMillis: 0 },
-      }),
-    );
+    emit(evt("run_root", "seg_root", "evt_3", finishedSegment("run_root")));
     await consume;
 
     expect(collected).toEqual(["segment.started", "item.started", "segment.finished"]);
@@ -582,14 +513,7 @@ describe("streamRunEvents — deferred bind lifecycle", () => {
     stream.bindRequest("rpc_run");
 
     emit(rootStarted());
-    emit(
-      evt("run_root", "seg_root", "evt_finish", {
-        type: "segment.finished",
-        contextTokens: 0,
-        outcome: { type: "completed" },
-        metrics: { steps: 0, activeDurationMillis: 0 },
-      }),
-    );
+    emit(evt("run_root", "seg_root", "evt_finish", finishedSegment("run_root")));
     stream.bind("seg_root");
 
     expect(activeCount()).toBe(0);

@@ -43,7 +43,6 @@ export type {
   ToolAttemptState,
   RunRef,
   RunOutcome,
-  SegmentOutcome,
   RunProgress,
   RunMetrics,
   RunProtocolProfile,

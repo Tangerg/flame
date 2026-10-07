@@ -36,6 +36,9 @@ func Samples() []Sample {
 		{"segment.started.json", reflect.TypeFor[protocol.RunEvent]()},
 		{"segment.progress.json", reflect.TypeFor[protocol.RunEvent]()},
 		{"segment.finished.json", reflect.TypeFor[protocol.RunEvent]()},
+		// A Run that raised interrupts finishes its segment waiting, with the
+		// interrupts on the same frame.
+		{"segment.finished.interrupt.json", reflect.TypeFor[protocol.RunEvent]()},
 		{"item.started.json", reflect.TypeFor[protocol.RunEvent]()},
 		{"item.delta.json", reflect.TypeFor[protocol.RunEvent]()},
 		{"item.completed.json", reflect.TypeFor[protocol.RunEvent]()},
@@ -59,11 +62,6 @@ func Samples() []Sample {
 		{"outcome.failed.json", reflect.TypeFor[protocol.RunOutcome]()},
 
 		{"outcome.canceled.json", reflect.TypeFor[protocol.RunOutcome]()},
-		// The two stops a run survives are SegmentOutcome-only, and bound to it: a
-		// RunOutcome can never carry either. `suspended` is produced only for a root
-		// profile that negotiated features.subagents.
-		{"segment.outcome.interrupt.json", reflect.TypeFor[protocol.SegmentOutcome]()},
-		{"segment.outcome.suspended.json", reflect.TypeFor[protocol.SegmentOutcome]()},
 		{"runref.full.json", reflect.TypeFor[protocol.RunRef]()},
 		// A summary travels on its own on the cold read, and a waiting run is the one
 		// state with no outcome to explain it — the pair a full RunRef cannot show.

@@ -131,7 +131,7 @@ func testProtocolSiblingRestart(t *testing.T, delegateCalls []chat.ToolCall, can
 		for event := range events {
 			observed = append(observed, event)
 			if event.RunID != started.RunID && event.Event.Type == protocol.StreamSegmentFinished &&
-				event.Event.Outcome != nil && event.Event.Outcome.Type == protocol.SegmentCompleted {
+				event.Event.Run.Outcome != nil && event.Event.Run.Outcome.Type == protocol.OutcomeCompleted {
 				bCompleted <- event.RunID
 			}
 		}
@@ -141,7 +141,7 @@ func testProtocolSiblingRestart(t *testing.T, delegateCalls []chat.ToolCall, can
 	select {
 	case bRunID = <-bCompleted:
 	case observed := <-initialDone:
-		diagnostic, _ := json.Marshal(observed[len(observed)-1].Event.Outcome)
+		diagnostic, _ := json.Marshal(observed[len(observed)-1].Event)
 		t.Fatalf("tree stopped before sibling B completed after %d model calls: %s", calls.Load(), diagnostic)
 	case <-time.After(lifecycleWaitBudget(t)):
 		t.Fatal("completed sibling B was held behind running sibling A")
@@ -335,8 +335,8 @@ func TestProtocolCancelsOneWaitingSiblingAndAnswersTheOther(t *testing.T) {
 	}
 	if len(pending.Data) != 1 || len(pending.Data[0].Interrupts) == 0 {
 		for _, event := range openingEvents {
-			if event.Event.Outcome != nil {
-				encoded, _ := json.Marshal(event.Event.Outcome)
+			if event.Event.Type == protocol.StreamSegmentFinished {
+				encoded, _ := json.Marshal(event.Event.Run.Outcome)
 				t.Logf("run %s outcome: %s", event.RunID, encoded)
 			}
 		}

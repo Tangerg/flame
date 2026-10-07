@@ -428,7 +428,7 @@ func (r *remoteRunTarget) SubscribeRun(ctx context.Context, request protocol.Sub
 	return ack, func(yield func(protocol.RunEvent, error) bool) {
 		yield(protocol.RunEvent{
 			RunID: request.RunID, SegmentID: request.SegmentID, EventID: "evt_opaque_tail", Timestamp: time.Unix(1, 0).UTC(),
-			Event: protocol.StreamEvent{Type: protocol.StreamSegmentFinished, Outcome: &protocol.SegmentOutcome{Type: protocol.SegmentCompleted}, Metrics: &protocol.RunMetrics{}, ContextTokens: new(int64)},
+			Event: protocol.StreamEvent{Type: protocol.StreamSegmentFinished, Run: &protocol.RunRef{RunSummary: protocol.RunSummary{ID: request.RunID, SessionID: "ses_test", Provider: "mock", Model: "balanced", Status: protocol.RunStatusFinished, Outcome: &protocol.RunOutcome{Type: protocol.OutcomeCompleted}, CreatedAt: time.Unix(1, 0).UTC(), FinishedAt: time.Unix(2, 0).UTC()}}},
 		}, nil)
 	}, nil
 }

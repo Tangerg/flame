@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-07.6` · 98 methods
+Protocol `2026-10-07.7` · 98 methods
 
 ## Methods
 
@@ -230,18 +230,6 @@ publish one namespaced pattern branch without weakening first-party tags.
 | `canceled` | — | `detail`, `unresolvedEffects` |
 | `lost` | `error` | `unresolvedEffects` |
 
-### `SegmentOutcome`
-
-| tag | required | optional |
-| --- | --- | --- |
-| `interrupt` | `interrupts` | — |
-| `suspended` | — | — |
-| `completed` | — | `unresolvedEffects` |
-| `timedOut` | `error` | `unresolvedEffects` |
-| `failed` | `error` | `unresolvedEffects` |
-| `canceled` | — | `detail`, `unresolvedEffects` |
-| `lost` | `error` | `unresolvedEffects` |
-
 ### `TrajectoryEntry`
 
 | tag | required | optional |
@@ -455,7 +443,7 @@ Forbidden on every variant: `durable`.
 | --- | --- | --- |
 | `segment.started` | `run` | — |
 | `segment.progress` | `progress` | — |
-| `segment.finished` | `outcome`, `metrics`, `contextTokens` | — |
+| `segment.finished` | `run` | `interrupts` |
 | `item.started` | `item` | — |
 | `item.delta` | `itemId`, `delta` | — |
 | `item.completed` | `item` | — |
@@ -794,7 +782,6 @@ TypeScript validator from this single registry projection.
 | `ItemListScope` | `runId` | `maxLength(256)` |
 | `StreamEvent` | `itemId` | `identity` |
 | `StreamEvent` | `itemId` | `maxLength(256)` |
-| `StreamEvent` | `contextTokens` | `nonNegative` |
 | `ListModelInvocationsRequest` | `runId` | `nonEmpty` |
 | `ListModelInvocationsRequest` | `runId` | `identity` |
 | `ListModelInvocationsRequest` | `runId` | `maxLength(256)` |

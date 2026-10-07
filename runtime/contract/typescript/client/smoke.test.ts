@@ -181,7 +181,6 @@ describe("smoke: v2 end-to-end happy path", () => {
         startReq.id,
       );
       injectRunFinished(transport, "run_1", "seg_1", "evt_5", startReq.id, {
-        type: "interrupt",
         interrupts: [
           {
             itemId: asItemId("item_tool"),
@@ -200,11 +199,9 @@ describe("smoke: v2 end-to-end happy path", () => {
     for await (const ev of events) firstRun.push(ev);
     const finish = firstRun.at(-1)!;
     expect(finish.event.type).toBe("segment.finished");
-    expect(finish.event.type === "segment.finished" && finish.event.outcome.type).toBe("interrupt");
+    expect(finish.event.type === "segment.finished" && finish.event.run.status).toBe("waiting");
     const interrupt =
-      finish.event.type === "segment.finished" && finish.event.outcome.type === "interrupt"
-        ? finish.event.outcome.interrupts[0]!
-        : null;
+      finish.event.type === "segment.finished" ? (finish.event.interrupts?.[0] ?? null) : null;
     expect(interrupt?.itemId).toBe("item_tool");
 
     const resumePromise = methods.runs.resume({
@@ -262,19 +259,13 @@ describe("smoke: v2 end-to-end happy path", () => {
         },
         resumeReq.id,
       );
-      injectRunFinished(
-        transport,
-        "run_1",
-        "seg_2",
-        "evt_3",
-        resumeReq.id,
-        { type: "completed" },
-        {
+      injectRunFinished(transport, "run_1", "seg_2", "evt_3", resumeReq.id, {
+        metrics: {
           usage: { inputTokens: 100, outputTokens: 20 },
           steps: 2,
           activeDurationMillis: 0,
         },
-      );
+      });
     }, 0);
 
     const secondRun: RunEvent[] = [];

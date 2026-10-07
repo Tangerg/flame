@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Flame Runtime Protocol wire types",
-  "protocolVersion": "2026-10-07.6",
+  "protocolVersion": "2026-10-07.7",
   "$defs": {
     "ActiveRunRef": {
       "type": "object",
@@ -9620,138 +9620,6 @@
         "hits"
       ]
     },
-    "SegmentOutcome": {
-      "type": "object",
-      "properties": {
-        "detail": {
-          "type": "string"
-        },
-        "error": {
-          "$ref": "#/$defs/ProblemData"
-        },
-        "interrupts": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/Interrupt"
-          }
-        },
-        "type": {
-          "$ref": "#/$defs/SegmentOutcomeType"
-        },
-        "unresolvedEffects": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/UnresolvedEffect"
-          }
-        }
-      },
-      "oneOf": [
-        {
-          "properties": {
-            "detail": false,
-            "error": false,
-            "type": {
-              "const": "interrupt"
-            },
-            "unresolvedEffects": false
-          },
-          "required": [
-            "interrupts",
-            "type"
-          ]
-        },
-        {
-          "properties": {
-            "detail": false,
-            "error": false,
-            "interrupts": false,
-            "type": {
-              "const": "suspended"
-            },
-            "unresolvedEffects": false
-          },
-          "required": [
-            "type"
-          ]
-        },
-        {
-          "properties": {
-            "detail": false,
-            "error": false,
-            "interrupts": false,
-            "type": {
-              "const": "completed"
-            }
-          },
-          "required": [
-            "type"
-          ]
-        },
-        {
-          "properties": {
-            "detail": false,
-            "interrupts": false,
-            "type": {
-              "const": "timedOut"
-            }
-          },
-          "required": [
-            "error",
-            "type"
-          ]
-        },
-        {
-          "properties": {
-            "detail": false,
-            "interrupts": false,
-            "type": {
-              "const": "failed"
-            }
-          },
-          "required": [
-            "error",
-            "type"
-          ]
-        },
-        {
-          "properties": {
-            "error": false,
-            "interrupts": false,
-            "type": {
-              "const": "canceled"
-            }
-          },
-          "required": [
-            "type"
-          ]
-        },
-        {
-          "properties": {
-            "detail": false,
-            "interrupts": false,
-            "type": {
-              "const": "lost"
-            }
-          },
-          "required": [
-            "error",
-            "type"
-          ]
-        }
-      ]
-    },
-    "SegmentOutcomeType": {
-      "type": "string",
-      "enum": [
-        "interrupt",
-        "suspended",
-        "completed",
-        "timedOut",
-        "failed",
-        "canceled",
-        "lost"
-      ]
-    },
     "ServerCapabilities": {
       "type": "object",
       "properties": {
@@ -10706,12 +10574,14 @@
     "StreamEvent": {
       "type": "object",
       "properties": {
-        "contextTokens": {
-          "type": "integer",
-          "minimum": 0
-        },
         "delta": {
           "$ref": "#/$defs/ItemDelta"
+        },
+        "interrupts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Interrupt"
+          }
         },
         "item": {
           "$ref": "#/$defs/Item"
@@ -10720,12 +10590,6 @@
           "type": "string",
           "maxLength": 256,
           "pattern": "^[^\\p{C}\\p{Z}]*$"
-        },
-        "metrics": {
-          "$ref": "#/$defs/RunMetrics"
-        },
-        "outcome": {
-          "$ref": "#/$defs/SegmentOutcome"
         },
         "plan": {
           "$ref": "#/$defs/Plan"
@@ -10743,13 +10607,11 @@
       "oneOf": [
         {
           "properties": {
-            "contextTokens": false,
             "delta": false,
             "durable": false,
+            "interrupts": false,
             "item": false,
             "itemId": false,
-            "metrics": false,
-            "outcome": false,
             "plan": false,
             "progress": false,
             "type": {
@@ -10763,13 +10625,11 @@
         },
         {
           "properties": {
-            "contextTokens": false,
             "delta": false,
             "durable": false,
+            "interrupts": false,
             "item": false,
             "itemId": false,
-            "metrics": false,
-            "outcome": false,
             "plan": false,
             "run": false,
             "type": {
@@ -10789,26 +10649,21 @@
             "itemId": false,
             "plan": false,
             "progress": false,
-            "run": false,
             "type": {
               "const": "segment.finished"
             }
           },
           "required": [
-            "contextTokens",
-            "metrics",
-            "outcome",
+            "run",
             "type"
           ]
         },
         {
           "properties": {
-            "contextTokens": false,
             "delta": false,
             "durable": false,
+            "interrupts": false,
             "itemId": false,
-            "metrics": false,
-            "outcome": false,
             "plan": false,
             "progress": false,
             "run": false,
@@ -10823,11 +10678,9 @@
         },
         {
           "properties": {
-            "contextTokens": false,
             "durable": false,
+            "interrupts": false,
             "item": false,
-            "metrics": false,
-            "outcome": false,
             "plan": false,
             "progress": false,
             "run": false,
@@ -10843,12 +10696,10 @@
         },
         {
           "properties": {
-            "contextTokens": false,
             "delta": false,
             "durable": false,
+            "interrupts": false,
             "itemId": false,
-            "metrics": false,
-            "outcome": false,
             "plan": false,
             "progress": false,
             "run": false,
@@ -10863,13 +10714,11 @@
         },
         {
           "properties": {
-            "contextTokens": false,
             "delta": false,
             "durable": false,
+            "interrupts": false,
             "item": false,
             "itemId": false,
-            "metrics": false,
-            "outcome": false,
             "progress": false,
             "run": false,
             "type": {

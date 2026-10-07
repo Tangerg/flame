@@ -745,10 +745,7 @@ func (f liveDeepSeekFixture) runTurn(t *testing.T, sessionID, prompt string) liv
 			compactionSeen = true
 		}
 		if event.RunID == started.RunID && event.Event.Type == protocol.StreamSegmentFinished {
-			if event.Event.ContextTokens == nil {
-				t.Fatalf("Run %s final segment omitted context tokens", started.RunID)
-			}
-			contextTokens := *event.Event.ContextTokens
+			contextTokens := event.Event.Run.ContextTokens
 			boundaryContextTokens = &contextTokens
 		}
 	}

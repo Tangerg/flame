@@ -291,8 +291,6 @@ export type WireTypeName =
   | "ScheduleWorkspaceMode"
   | "SearchHit"
   | "SearchResult"
-  | "SegmentOutcome"
-  | "SegmentOutcomeType"
   | "ServerCapabilities"
   | "ServerInfo"
   | "Session"
@@ -3515,57 +3513,6 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   SearchResult: object({
     hits: array(ref(() => CHECKS.SearchHit)),
   }, ["hits"]),
-  SegmentOutcome: allOf([
-    object({
-      detail: text(),
-      error: ref(() => CHECKS.ProblemData),
-      interrupts: array(ref(() => CHECKS.Interrupt)),
-      type: ref(() => CHECKS.SegmentOutcomeType),
-      unresolvedEffects: array(ref(() => CHECKS.UnresolvedEffect)),
-    }, []),
-    oneOf([
-      fields({
-        detail: absent(),
-        error: absent(),
-        type: literal("interrupt"),
-        unresolvedEffects: absent(),
-      }, ["interrupts", "type"]),
-      fields({
-        detail: absent(),
-        error: absent(),
-        interrupts: absent(),
-        type: literal("suspended"),
-        unresolvedEffects: absent(),
-      }, ["type"]),
-      fields({
-        detail: absent(),
-        error: absent(),
-        interrupts: absent(),
-        type: literal("completed"),
-      }, ["type"]),
-      fields({
-        detail: absent(),
-        interrupts: absent(),
-        type: literal("timedOut"),
-      }, ["error", "type"]),
-      fields({
-        detail: absent(),
-        interrupts: absent(),
-        type: literal("failed"),
-      }, ["error", "type"]),
-      fields({
-        error: absent(),
-        interrupts: absent(),
-        type: literal("canceled"),
-      }, ["type"]),
-      fields({
-        detail: absent(),
-        interrupts: absent(),
-        type: literal("lost"),
-      }, ["error", "type"]),
-    ]),
-  ]),
-  SegmentOutcomeType: enumOf(["interrupt", "suspended", "completed", "timedOut", "failed", "canceled", "lost"]),
   ServerCapabilities: object({
     features: record(ref(() => CHECKS.FeatureCapability)),
     limits: ref(() => CHECKS.RuntimeLimits),
@@ -3790,12 +3737,10 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   }, ["userItemId"]),
   StreamEvent: allOf([
     object({
-      contextTokens: allOf([integer(), minimum(0)]),
       delta: ref(() => CHECKS.ItemDelta),
+      interrupts: array(ref(() => CHECKS.Interrupt)),
       item: ref(() => CHECKS.Item),
       itemId: allOf([text(), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
-      metrics: ref(() => CHECKS.RunMetrics),
-      outcome: ref(() => CHECKS.SegmentOutcome),
       plan: ref(() => CHECKS.Plan),
       progress: ref(() => CHECKS.RunProgress),
       run: ref(() => CHECKS.RunRef),
@@ -3803,25 +3748,21 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     }, []),
     oneOf([
       fields({
-        contextTokens: absent(),
         delta: absent(),
         durable: absent(),
+        interrupts: absent(),
         item: absent(),
         itemId: absent(),
-        metrics: absent(),
-        outcome: absent(),
         plan: absent(),
         progress: absent(),
         type: literal("segment.started"),
       }, ["run", "type"]),
       fields({
-        contextTokens: absent(),
         delta: absent(),
         durable: absent(),
+        interrupts: absent(),
         item: absent(),
         itemId: absent(),
-        metrics: absent(),
-        outcome: absent(),
         plan: absent(),
         run: absent(),
         type: literal("segment.progress"),
@@ -3833,52 +3774,43 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
         itemId: absent(),
         plan: absent(),
         progress: absent(),
-        run: absent(),
         type: literal("segment.finished"),
-      }, ["contextTokens", "metrics", "outcome", "type"]),
+      }, ["run", "type"]),
       fields({
-        contextTokens: absent(),
         delta: absent(),
         durable: absent(),
+        interrupts: absent(),
         itemId: absent(),
-        metrics: absent(),
-        outcome: absent(),
         plan: absent(),
         progress: absent(),
         run: absent(),
         type: literal("item.started"),
       }, ["item", "type"]),
       fields({
-        contextTokens: absent(),
         durable: absent(),
+        interrupts: absent(),
         item: absent(),
-        metrics: absent(),
-        outcome: absent(),
         plan: absent(),
         progress: absent(),
         run: absent(),
         type: literal("item.delta"),
       }, ["delta", "itemId", "type"]),
       fields({
-        contextTokens: absent(),
         delta: absent(),
         durable: absent(),
+        interrupts: absent(),
         itemId: absent(),
-        metrics: absent(),
-        outcome: absent(),
         plan: absent(),
         progress: absent(),
         run: absent(),
         type: literal("item.completed"),
       }, ["item", "type"]),
       fields({
-        contextTokens: absent(),
         delta: absent(),
         durable: absent(),
+        interrupts: absent(),
         item: absent(),
         itemId: absent(),
-        metrics: absent(),
-        outcome: absent(),
         progress: absent(),
         run: absent(),
         type: literal("plan.updated"),

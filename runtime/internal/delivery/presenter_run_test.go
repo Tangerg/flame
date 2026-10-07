@@ -56,7 +56,7 @@ func TestPresentSegmentFinishedCarriesDurablePromptFootprint(t *testing.T) {
 		Outcome:       &completed,
 	})
 	event := presentRunEvent(runs.SegmentFinished{Run: value})
-	if event.ContextTokens == nil || *event.ContextTokens != 87_900 {
-		t.Fatalf("segment.finished contextTokens = %v, want 87900", event.ContextTokens)
+	if event.Run == nil || event.Run.ContextTokens != 87_900 {
+		t.Fatalf("segment.finished run = %+v, want contextTokens 87900", event.Run)
 	}
 }

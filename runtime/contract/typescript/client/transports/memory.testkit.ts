@@ -1,6 +1,6 @@
 import type { MemoryTransport } from "./memory";
 import type { TransportRequest } from "../transport";
-import type { RunMetrics, SegmentOutcome, StreamEvent } from "@flame/runtime-contract/wire";
+import type { Interrupt, RunMetrics, RunRef, StreamEvent } from "@flame/runtime-contract/wire";
 import type { WireMethodName } from "@flame/runtime-contract/methods";
 import { RUN_EVENT_METHOD } from "../stream";
 import { JSONRPC_VERSION, type RpcId, type RpcMessage } from "../types";
@@ -49,21 +49,38 @@ export function injectRunEvent(
   });
 }
 
+export interface SegmentFinish {
+  interrupts?: Interrupt[];
+  metrics?: RunMetrics;
+}
+
+export function finishedSegment(runId: string, finish: SegmentFinish = {}): StreamEvent {
+  const waiting = finish.interrupts !== undefined;
+  const run: RunRef = {
+    id: runId as never,
+    sessionId: "ses_1" as never,
+    provider: "mock",
+    model: "mock",
+    status: waiting ? "waiting" : "finished",
+    metrics: finish.metrics ?? { steps: 0, activeDurationMillis: 0 },
+    protocolProfile: { requiredFeatures: [], interruptTypes: ["approval", "question"] },
+    createdAt: "2026-06-03T00:00:00Z",
+    ...(waiting
+      ? {}
+      : { finishedAt: "2026-06-03T00:00:00Z", outcome: { type: "completed" as const } }),
+  };
+  return waiting
+    ? { type: "segment.finished", run, interrupts: finish.interrupts! }
+    : { type: "segment.finished", run };
+}
+
 export function injectRunFinished(
   t: MemoryTransport,
   runId: string,
   segmentId: string,
   eventId: string,
   requestRpcId: RpcId,
-  outcome: SegmentOutcome = { type: "completed" },
-  metrics: RunMetrics = { steps: 0, activeDurationMillis: 0 },
+  finish: SegmentFinish = {},
 ): void {
-  injectRunEvent(
-    t,
-    runId,
-    segmentId,
-    eventId,
-    { type: "segment.finished", contextTokens: 0, outcome, metrics },
-    requestRpcId,
-  );
+  injectRunEvent(t, runId, segmentId, eventId, finishedSegment(runId, finish), requestRpcId);
 }

@@ -95,27 +95,6 @@ func presentRunProtocolProfile(capabilities rundomain.Capabilities) protocol.Run
 	return out
 }
 
-// presentSegmentFinished maps the run record a segment ended with onto the pair
-// the event publishes: why the segment stopped, and what the run has consumed.
-func presentSegmentFinished(run rundomain.Run, interrupts []transcript.Interrupt) (protocol.SegmentOutcome, protocol.RunMetrics) {
-	metrics := presentMetrics(run.Metrics())
-	if run.State() == rundomain.Waiting {
-		if len(interrupts) == 0 {
-			return protocol.SegmentOutcome{Type: protocol.SegmentSuspended}, metrics
-		}
-		return protocol.SegmentOutcome{
-			Type:       protocol.SegmentInterrupt,
-			Interrupts: presentInterrupts(interrupts),
-		}, metrics
-	}
-	terminal := presentOutcome(run)
-	return protocol.SegmentOutcome{
-		Type:   protocol.SegmentOutcomeType(terminal.Type),
-		Error:  terminal.Error,
-		Detail: terminal.Detail, UnresolvedEffects: terminal.UnresolvedEffects,
-	}, metrics
-}
-
 func presentOutcome(run rundomain.Run) protocol.RunOutcome {
 	outcome, terminal := run.Outcome()
 	if !terminal {

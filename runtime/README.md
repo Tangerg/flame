@@ -36,6 +36,15 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
+## Protocol 2026-10-07.7
+
+`segment.finished` carries `run`, the RunRef the segment ended with, and
+`interrupts` when that Run raised them. Its former `outcome`, `metrics` and
+`contextTokens` are gone, and so is `SegmentOutcome`: the Run's own status,
+outcome, metrics and context footprint state the boundary, so a client
+replaces its Run instead of deriving one from why the segment stopped. A
+waiting Run without `interrupts` was suspended by another Run in its tree.
+
 ## Protocol 2026-10-07.6
 
 `SkillProposal.scope` and `SkillProposalRef.scope` are `SkillProposalScope`:

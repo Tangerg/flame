@@ -31,7 +31,10 @@ import {
 import type { Item, RunEvent, StreamEvent } from "@flame/runtime-contract/wire";
 import { RUN_EVENT_METHOD, RUNTIME_EVENT_METHOD } from "@flame/runtime-contract/client/stream";
 import { createMemoryTransport } from "@flame/runtime-contract/client/transports/memory";
-import { waitForRequest } from "@flame/runtime-contract/client/transports/memory.testkit";
+import {
+  finishedSegment,
+  waitForRequest,
+} from "@flame/runtime-contract/client/transports/memory.testkit";
 import type { RpcMessage } from "@flame/runtime-contract/client/types";
 import { JSONRPC_VERSION } from "@flame/runtime-contract/client/types";
 import runRef from "@flame/runtime-contract/samples/runref.full.json";
@@ -1118,12 +1121,7 @@ describe("methods factory", () => {
       {
         jsonrpc: JSONRPC_VERSION,
         method: RUN_EVENT_METHOD,
-        params: runEvent("run_1", "seg_1", "evt_2", {
-          type: "segment.finished",
-          contextTokens: 0,
-          outcome: { type: "completed" },
-          metrics: { steps: 0, activeDurationMillis: 0 },
-        }),
+        params: runEvent("run_1", "seg_1", "evt_2", finishedSegment("run_1")),
       },
       undefined,
       req.id,
@@ -1192,12 +1190,7 @@ describe("methods factory", () => {
       {
         jsonrpc: JSONRPC_VERSION,
         method: RUN_EVENT_METHOD,
-        params: runEvent("run_1", "seg_1", "evt_2", {
-          type: "segment.finished",
-          contextTokens: 0,
-          outcome: { type: "completed" },
-          metrics: { steps: 0, activeDurationMillis: 0 },
-        }),
+        params: runEvent("run_1", "seg_1", "evt_2", finishedSegment("run_1")),
       },
       undefined,
       req.id,

@@ -159,8 +159,8 @@ type UnresolvedEffect struct {
 //	canceled                 → optional Detail
 //
 // An interrupt is deliberately not a member: parking is a status, not a terminal
-// reason, and a parked run is resumable. The segment that parked reports it as a
-// [SegmentOutcome].
+// reason, and a parked run is resumable. The segment.finished that parked it
+// carries the Run as waiting, with the interrupts it raised.
 type RunOutcome struct {
 	UnresolvedEffects []UnresolvedEffect `json:"unresolvedEffects,omitempty"`
 	Type              RunOutcomeType     `json:"type"`
@@ -171,50 +171,6 @@ type RunOutcome struct {
 	// Detail is a human-readable note for the non-error terminals
 	// canceled outcome. The runs.cancel reason flows here.
 	Detail string `json:"detail,omitempty"`
-}
-
-// SegmentOutcomeType discriminates the SegmentOutcome union: every way a
-// run can stop for good, plus the two ways a segment can stop while its run
-// carries on.
-type SegmentOutcomeType string
-
-const (
-	// SegmentInterrupt — this segment produced the interrupts it carries, and its
-	// run is now waiting for them to be answered.
-	SegmentInterrupt SegmentOutcomeType = "interrupt"
-	// SegmentSuspended — this segment stopped because another run in its tree
-	// interrupted, not because it produced an interrupt itself. It carries no
-	// interrupts: they belong to the run that raised them, and copying them here
-	// would make one pending item appear twice in the stream.
-	SegmentSuspended SegmentOutcomeType = "suspended"
-
-	// The terminals a segment shares with its run. They are CONVERSIONS of the
-	// RunOutcomeType constants, not five more string literals: SegmentOutcome
-	// contains RunOutcome, so a terminal renamed on one side must be renamed on
-	// the other, and a second spelling is exactly how that stops happening.
-	SegmentCompleted = SegmentOutcomeType(OutcomeCompleted)
-	SegmentTimedOut  = SegmentOutcomeType(OutcomeTimedOut)
-	SegmentFailed    = SegmentOutcomeType(OutcomeFailed)
-	SegmentCanceled  = SegmentOutcomeType(OutcomeCanceled)
-	SegmentLost      = SegmentOutcomeType(OutcomeLost)
-)
-
-// SegmentOutcome is why a SEGMENT stopped: either the run stopped for good
-// — in which case this is a RunOutcome — or the run is only pausing.
-//
-//	interrupt                → Interrupts (non-empty)
-//	suspended                → nothing further
-//	every RunOutcomeType     → as RunOutcome
-type SegmentOutcome struct {
-	UnresolvedEffects []UnresolvedEffect `json:"unresolvedEffects,omitempty"`
-	Type              SegmentOutcomeType `json:"type"`
-	// Error and Detail belong to the terminal tags, and carry exactly what the
-	// same-named RunOutcome fields do.
-	Error  *ProblemData `json:"error,omitzero"`
-	Detail string       `json:"detail,omitempty"`
-	// Interrupts is the pending set THIS segment's run raised, and appears only
-	// on the interrupt tag.
-	Interrupts []Interrupt `json:"interrupts,omitempty"`
 }
 
 // StartRunRequest is the runs.start body. The session owns cwd,

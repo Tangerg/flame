@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-07.6";
+export const PROTOCOL_VERSION = "2026-10-07.7";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 30;
@@ -1590,17 +1590,6 @@ export interface SearchResult {
   hits: SearchHit[];
 }
 
-export type SegmentOutcome =
-  | { type: "interrupt"; interrupts: Interrupt[] }
-  | { type: "suspended" }
-  | { type: "completed"; unresolvedEffects?: UnresolvedEffect[] }
-  | { type: "timedOut"; error: ProblemData; unresolvedEffects?: UnresolvedEffect[] }
-  | { type: "failed"; error: ProblemData; unresolvedEffects?: UnresolvedEffect[] }
-  | { type: "canceled"; detail?: string; unresolvedEffects?: UnresolvedEffect[] }
-  | { type: "lost"; error: ProblemData; unresolvedEffects?: UnresolvedEffect[] };
-
-export type SegmentOutcomeType = "interrupt" | "suspended" | "completed" | "timedOut" | "failed" | "canceled" | "lost";
-
 export interface ServerCapabilities {
   features: Record<string, FeatureCapability>;
   limits: RuntimeLimits;
@@ -1808,7 +1797,7 @@ export interface SteerRunResponse {
 export type StreamEvent =
   | { type: "segment.started"; run: RunRef }
   | { type: "segment.progress"; progress: RunProgress }
-  | { type: "segment.finished"; contextTokens: number; metrics: RunMetrics; outcome: SegmentOutcome }
+  | { type: "segment.finished"; interrupts?: Interrupt[]; run: RunRef }
   | { type: "item.started"; item: Item }
   | { type: "item.delta"; delta: ItemDelta; itemId: string }
   | { type: "item.completed"; item: Item }
@@ -2103,7 +2092,6 @@ export const WIRE_ENUMS = {
   RuntimeTopic: ["files.changed", "skills.changed", "mcp.changed", "plugins.changed", "schedules.changed", "sessions.changed", "runs.changed", "plan.changed", "goals.changed", "interrupts.changed", "hooks.changed", "models.changed", "approvals.changed", "agentMemory.changed"],
   SafetyClass: ["safe", "write", "exec", "network"],
   ScheduleWorkspaceMode: ["default"],
-  SegmentOutcomeType: ["interrupt", "suspended", "completed", "timedOut", "failed", "canceled", "lost"],
   SessionStatus: ["running", "waiting", "idle"],
   SkillLifecycle: ["active", "archived"],
   SkillProposalOrigin: ["requested", "mined"],

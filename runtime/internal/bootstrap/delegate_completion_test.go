@@ -76,7 +76,7 @@ func TestProtocolCompletesAllDelegates(t *testing.T) {
 		t.Fatal(started.Failure)
 	}
 	rootRunID := started.Value.(*protocol.StartRunResponse).RunID
-	streamed := make(map[string]protocol.SegmentOutcomeType)
+	streamed := make(map[string]protocol.RunOutcomeType)
 	answers := make(map[string]int)
 	for value, err := range started.Events {
 		if err != nil {
@@ -86,11 +86,11 @@ func TestProtocolCompletesAllDelegates(t *testing.T) {
 		if event.Event.Type == protocol.StreamItemCompleted && event.Event.Item.Type == protocol.ItemTypeAgentMessage {
 			answers[event.RunID]++
 		}
-		if event.Event.Type == protocol.StreamSegmentFinished && event.Event.Outcome != nil {
+		if event.Event.Type == protocol.StreamSegmentFinished && event.Event.Run.Outcome != nil {
 			if answers[event.RunID] != 1 {
 				t.Fatalf("Run %s ended with %d assistant answers, want one before its terminal", event.RunID, answers[event.RunID])
 			}
-			streamed[event.RunID] = event.Event.Outcome.Type
+			streamed[event.RunID] = event.Event.Run.Outcome.Type
 		}
 	}
 	listed := endpoint.Invoke(ctx, delivery.RunsList, protocol.ListRunsRequest{
@@ -130,7 +130,7 @@ func TestProtocolCompletesAllDelegates(t *testing.T) {
 		if value.Status != protocol.RunStatusFinished || value.Outcome == nil {
 			t.Fatalf("unfinished Run: %+v", value)
 		}
-		if protocol.RunOutcomeType(streamed[value.ID]) != value.Outcome.Type {
+		if streamed[value.ID] != value.Outcome.Type {
 			t.Fatalf("Run %s stream outcome %s differs from durable %s", value.ID, streamed[value.ID], value.Outcome.Type)
 		}
 		if value.ID != rootRunID && value.Outcome.Type == protocol.OutcomeCompleted {

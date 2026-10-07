@@ -22,10 +22,9 @@ func presentRunEvent(event runs.ProjectionEvent) protocol.StreamEvent {
 		progress := presentProgress(event.Progress)
 		return protocol.StreamEvent{Type: protocol.StreamSegmentProgress, Progress: &progress}
 	case runs.SegmentFinished:
-		outcome, metrics := presentSegmentFinished(event.Run, event.Interrupts)
+		run := presentRun(event.Run)
 		return protocol.StreamEvent{
-			Type: protocol.StreamSegmentFinished, Outcome: &outcome, Metrics: &metrics,
-			ContextTokens: new(event.Run.ContextTokens()),
+			Type: protocol.StreamSegmentFinished, Run: &run, Interrupts: presentInterrupts(event.Interrupts),
 		}
 	case runs.ItemStarted:
 		item := presentItemStart(event.Item)

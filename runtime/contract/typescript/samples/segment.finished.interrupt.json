@@ -1,0 +1,44 @@
+{
+  "runId": "run_01",
+  "segmentId": "seg_01",
+  "eventId": "evt_04",
+  "timestamp": "2026-07-07T10:00:12Z",
+  "event": {
+    "type": "segment.finished",
+    "run": {
+      "id": "run_01",
+      "sessionId": "ses_01",
+      "model": "claude-opus-4-8",
+      "provider": "anthropic",
+      "status": "waiting",
+      "metrics": {
+        "steps": 2,
+        "activeDurationMillis": 8100
+      },
+      "protocolProfile": {
+        "requiredFeatures": [],
+        "interruptTypes": [
+          "approval"
+        ]
+      },
+      "createdAt": "2026-07-07T10:00:00Z"
+    },
+    "interrupts": [
+      {
+        "itemId": "item_09",
+        "runId": "run_01",
+        "type": "approval",
+        "payload": {
+          "tool": {
+            "name": "shell",
+            "arguments": {
+              "command": "rm -rf build"
+            }
+          },
+          "risk": "high",
+          "reason": "destructive command"
+        }
+      }
+    ]
+  }
+}

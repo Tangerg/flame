@@ -441,9 +441,8 @@ func registerRunValues(s *Shapes) {
 		Constraints: append(resourceIdentity("sessionId"), resourceIdentity("runId")...),
 	})
 	s.valueConstraint(FieldConstraintSpec{
-		GoType: typeOf[protocol.StreamEvent](),
-		Constraints: append(resourceIdentity("itemId"),
-			FieldConstraint{Field: "contextTokens", Kind: ConstraintNonNegative}),
+		GoType:      typeOf[protocol.StreamEvent](),
+		Constraints: resourceIdentity("itemId"),
 	})
 }
 
@@ -980,7 +979,7 @@ func registerRuntimeValues(s *Shapes) {
 	})
 	// A set is owned by its root, while every Interrupt names the Run that raised
 	// it. Empty ids satisfy JSON's string type but identify neither resource, so
-	// both the live segment outcome and cold interrupt read must reject them.
+	// both the live segment.finished frame and cold interrupt read must reject them.
 	s.valueConstraint(FieldConstraintSpec{
 		GoType:      typeOf[protocol.Interrupt](),
 		Constraints: append(requiredResourceIdentity("itemId"), requiredResourceIdentity("runId")...),

@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-07.6",
+  "protocolVersion": "2026-10-07.7",
   "features": [
     "reasoning",
     "multimodal",
@@ -3156,61 +3156,6 @@
       ]
     },
     {
-      "type": "SegmentOutcome",
-      "discriminator": "type",
-      "variants": [
-        {
-          "tag": "interrupt",
-          "required": [
-            "interrupts"
-          ]
-        },
-        {
-          "tag": "suspended"
-        },
-        {
-          "tag": "completed",
-          "optional": [
-            "unresolvedEffects"
-          ]
-        },
-        {
-          "tag": "timedOut",
-          "required": [
-            "error"
-          ],
-          "optional": [
-            "unresolvedEffects"
-          ]
-        },
-        {
-          "tag": "failed",
-          "required": [
-            "error"
-          ],
-          "optional": [
-            "unresolvedEffects"
-          ]
-        },
-        {
-          "tag": "canceled",
-          "optional": [
-            "detail",
-            "unresolvedEffects"
-          ]
-        },
-        {
-          "tag": "lost",
-          "required": [
-            "error"
-          ],
-          "optional": [
-            "unresolvedEffects"
-          ]
-        }
-      ]
-    },
-    {
       "type": "TrajectoryEntry",
       "discriminator": "type",
       "variants": [
@@ -3994,9 +3939,10 @@
         {
           "tag": "segment.finished",
           "required": [
-            "outcome",
-            "metrics",
-            "contextTokens"
+            "run"
+          ],
+          "optional": [
+            "interrupts"
           ]
         },
         {
@@ -7637,10 +7583,6 @@
         {
           "field": "itemId",
           "constraint": "maxLength(256)"
-        },
-        {
-          "field": "contextTokens",
-          "constraint": "nonNegative"
         }
       ]
     },
@@ -9811,6 +9753,10 @@
       "shape": "RunEvent"
     },
     {
+      "file": "segment.finished.interrupt.json",
+      "shape": "RunEvent"
+    },
+    {
       "file": "item.started.json",
       "shape": "RunEvent"
     },
@@ -9873,14 +9819,6 @@
     {
       "file": "outcome.canceled.json",
       "shape": "RunOutcome"
-    },
-    {
-      "file": "segment.outcome.interrupt.json",
-      "shape": "SegmentOutcome"
-    },
-    {
-      "file": "segment.outcome.suspended.json",
-      "shape": "SegmentOutcome"
     },
     {
       "file": "runref.full.json",

@@ -36,7 +36,7 @@ const (
 //
 //	segment.started     → Run
 //	segment.progress    → Progress
-//	segment.finished    → Outcome, Metrics, ContextTokens
+//	segment.finished    → Run, and Interrupts when that Run raised them
 //	item.started    → Item
 //	item.delta      → ItemID, Delta
 //	item.completed  → Item
@@ -44,22 +44,20 @@ const (
 type StreamEvent struct {
 	Type StreamEventType `json:"type"`
 
-	Run      *RunRef         `json:"run,omitzero"`
-	Progress *RunProgress    `json:"progress,omitzero"`
-	Outcome  *SegmentOutcome `json:"outcome,omitzero"`
-	// Metrics rides every segment.finished, terminal or not: a client reads what
-	// the run consumed from one field instead of looking for it in whichever
-	// branch of the outcome happens to carry it.
-	Metrics *RunMetrics `json:"metrics,omitzero"`
-	// ContextTokens is the final durable prompt footprint at this segment
-	// boundary. It repeats the latest progress preview because progress is not
-	// replayable: a reconnecting client must recover the same RunRef value from
-	// the authoritative completion frame alone.
-	ContextTokens *int64     `json:"contextTokens,omitzero"`
-	Item          *Item      `json:"item,omitzero"`
-	ItemID        string     `json:"itemId,omitempty"`
-	Delta         *ItemDelta `json:"delta,omitzero"`
-	Plan          *Plan      `json:"plan,omitzero"`
+	// Run is the record a segment opened or ended with. On segment.finished it
+	// is the Run's durable state at that boundary — waiting, or finished with
+	// its outcome, metrics, and context footprint — so a client replaces its
+	// copy instead of deriving one from why the segment stopped.
+	Run      *RunRef      `json:"run,omitzero"`
+	Progress *RunProgress `json:"progress,omitzero"`
+	// Interrupts is the pending set the finishing Run raised itself. A waiting
+	// Run without them was suspended because another Run in its tree raised
+	// interrupts; they belong to that Run and appear once, on its frame.
+	Interrupts []Interrupt `json:"interrupts,omitempty"`
+	Item       *Item       `json:"item,omitzero"`
+	ItemID     string      `json:"itemId,omitempty"`
+	Delta      *ItemDelta  `json:"delta,omitzero"`
+	Plan       *Plan       `json:"plan,omitzero"`
 }
 
 // Authoritative reports whether the event itself is a fact a client may fold.

@@ -233,27 +233,8 @@ func registerRunUnions(s *Shapes) {
 		Discriminator: "type",
 		Variants:      runOutcomeVariants(),
 	})
-
-	// A segment stops for any reason a run does, plus the two that leave the run
-	// alive. The terminal variants are the SAME list, converted — because
-	// SegmentOutcome contains RunOutcome, and a second list is how a terminal comes
-	// to be legal for one and not the other.
-	s.union(UnionSpec{
-		GoType:        typeOf[protocol.SegmentOutcome](),
-		Discriminator: "type",
-		Variants: append([]VariantSpec{
-			{Tag: string(protocol.SegmentInterrupt), Required: []string{"interrupts"}},
-			// `suspended` adds nothing: the interrupts belong to the run that raised
-			// them, so a run stopped by someone else's barrier carries none.
-			{Tag: string(protocol.SegmentSuspended)},
-		}, runOutcomeVariants()...),
-	})
 }
 
-// runOutcomeVariants is the terminal half of both run-outcome unions. It is a
-// function rather than a shared slice because a VariantSpec holds slices a caller
-// could otherwise append into, and the two registrations must not be able to
-// reach each other's fields.
 func runOutcomeVariants() []VariantSpec {
 	variants := []VariantSpec{
 		{Tag: string(protocol.OutcomeCompleted)},
@@ -404,7 +385,7 @@ func registerEventUnions(s *Shapes) {
 		Variants: []VariantSpec{
 			{Tag: string(protocol.StreamSegmentStarted), Required: []string{"run"}},
 			{Tag: string(protocol.StreamSegmentProgress), Required: []string{"progress"}},
-			{Tag: string(protocol.StreamSegmentFinished), Required: []string{"outcome", "metrics", "contextTokens"}},
+			{Tag: string(protocol.StreamSegmentFinished), Required: []string{"run"}, Optional: []string{"interrupts"}},
 			{Tag: string(protocol.StreamItemStarted), Required: []string{"item"}},
 			{Tag: string(protocol.StreamItemDelta), Required: []string{"itemId", "delta"}},
 			{Tag: string(protocol.StreamItemCompleted), Required: []string{"item"}},

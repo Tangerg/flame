@@ -2249,7 +2249,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-07.6\""
+          "value": "\"2026-10-07.7\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -2520,41 +2520,6 @@
           "name": "ScheduleWorkspaceDefault",
           "type": "ScheduleWorkspaceMode",
           "value": "\"default\""
-        },
-        {
-          "name": "SegmentCanceled",
-          "type": "SegmentOutcomeType",
-          "value": "\"canceled\""
-        },
-        {
-          "name": "SegmentCompleted",
-          "type": "SegmentOutcomeType",
-          "value": "\"completed\""
-        },
-        {
-          "name": "SegmentFailed",
-          "type": "SegmentOutcomeType",
-          "value": "\"failed\""
-        },
-        {
-          "name": "SegmentInterrupt",
-          "type": "SegmentOutcomeType",
-          "value": "\"interrupt\""
-        },
-        {
-          "name": "SegmentLost",
-          "type": "SegmentOutcomeType",
-          "value": "\"lost\""
-        },
-        {
-          "name": "SegmentSuspended",
-          "type": "SegmentOutcomeType",
-          "value": "\"suspended\""
-        },
-        {
-          "name": "SegmentTimedOut",
-          "type": "SegmentOutcomeType",
-          "value": "\"timedOut\""
         },
         {
           "name": "SessionArtifactVersion",
@@ -8588,48 +8553,6 @@
           "underlying": "string"
         },
         {
-          "name": "SegmentOutcome",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "UnresolvedEffects",
-              "type": "[]UnresolvedEffect",
-              "tag": "json:\"unresolvedEffects,omitempty\""
-            },
-            {
-              "name": "Type",
-              "type": "SegmentOutcomeType",
-              "tag": "json:\"type\""
-            },
-            {
-              "name": "Error",
-              "type": "*ProblemData",
-              "tag": "json:\"error,omitzero\""
-            },
-            {
-              "name": "Detail",
-              "type": "string",
-              "tag": "json:\"detail,omitempty\""
-            },
-            {
-              "name": "Interrupts",
-              "type": "[]Interrupt",
-              "tag": "json:\"interrupts,omitempty\""
-            }
-          ],
-          "methods": [
-            {
-              "name": "ValidateWire",
-              "signature": "func() error"
-            }
-          ]
-        },
-        {
-          "name": "SegmentOutcomeType",
-          "kind": "defined",
-          "underlying": "string"
-        },
-        {
           "name": "ServerCapabilities",
           "kind": "struct",
           "fields": [
@@ -9529,19 +9452,9 @@
               "tag": "json:\"progress,omitzero\""
             },
             {
-              "name": "Outcome",
-              "type": "*SegmentOutcome",
-              "tag": "json:\"outcome,omitzero\""
-            },
-            {
-              "name": "Metrics",
-              "type": "*RunMetrics",
-              "tag": "json:\"metrics,omitzero\""
-            },
-            {
-              "name": "ContextTokens",
-              "type": "*int64",
-              "tag": "json:\"contextTokens,omitzero\""
+              "name": "Interrupts",
+              "type": "[]Interrupt",
+              "tag": "json:\"interrupts,omitempty\""
             },
             {
               "name": "Item",
