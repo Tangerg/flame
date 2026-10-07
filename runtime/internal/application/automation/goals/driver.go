@@ -457,9 +457,9 @@ func (d *Driver) Stop(ctx context.Context, sessionID string) (goal.Goal, error) 
 }
 
 // UpdateObjective quiesces any locally owned drive before replacing the text.
-// The replacement keeps lifecycle and accounting but receives a fresh
-// incarnation, so a Run admitted for the previous objective cannot charge or
-// transition it. An objective that was active before quiescence continues when
+// The replacement keeps its lifecycle but receives a fresh incarnation, so a
+// Run admitted for the previous objective cannot charge or transition it, and
+// its usage starts from the new objective's Runs. An objective that was active before quiescence continues when
 // its canceled Run did not independently block or complete the Goal.
 func (d *Driver) UpdateObjective(
 	ctx context.Context,

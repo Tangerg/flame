@@ -437,6 +437,9 @@ func (g Goal) reviseObjective(objective, incarnationID string, resume bool, now 
 	next := g.Clone()
 	next.objective, next.incarnationID = objective, parsedIncarnationID
 	next.revision, next.updatedAt = firstRevision, updatedAt
+	// Usage is folded from the incarnation's Runs, and a fresh incarnation has
+	// none yet; carrying the old total would answer differently than any read.
+	next.used = Usage{}
 	if resume {
 		next.status, next.reason = StatusActive, Reason{}
 	}

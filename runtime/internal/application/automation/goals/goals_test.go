@@ -1375,7 +1375,7 @@ func TestDriverUpdateObjectiveQuiescesAndContinuesTheActiveGoal(t *testing.T) {
 	if updated.Objective() != "second" || updated.Status() != goal.StatusActive {
 		t.Fatalf("updated Goal = %+v", updated)
 	}
-	if updated.IncarnationID() == first.IncarnationID() || updated.Used().Runs != 1 {
+	if updated.IncarnationID() == first.IncarnationID() || updated.Used() != (goal.Usage{}) {
 		t.Fatalf("updated provenance/accounting = incarnation %q used %+v", updated.IncarnationID(), updated.Used())
 	}
 	select {

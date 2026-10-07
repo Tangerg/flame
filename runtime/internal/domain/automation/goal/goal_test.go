@@ -362,6 +362,25 @@ func TestReviseObjectiveStartsFreshVersionAndPreservesFacts(t *testing.T) {
 		t.Fatalf("fresh incarnation advance: %v", err)
 	}
 
+	charged := paused.Snapshot()
+	charged.Used, err = UsageOf("inc_1", []run.Run{
+		goalTestRun(t, "run_1", "inc_1", run.OutcomeCompleted, new(0.25), 3, now),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	spent, err := Restore(charged)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fresh, err := spent.ReviseObjective("third", "inc_4", now.Add(2*time.Second))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fresh.Used() != (Usage{}) {
+		t.Fatalf("revised incarnation used = %+v, want none of its predecessor's Runs", fresh.Used())
+	}
+
 	activeRevision, err := paused.ReviseObjectiveAndResume("second", "inc_3", now.Add(2*time.Second))
 	if err != nil {
 		t.Fatal(err)
