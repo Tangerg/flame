@@ -30,39 +30,26 @@ func NewConversationCompactionPlan(
 	if err != nil {
 		return ConversationCompactionPlan{}, fmt.Errorf("runs: conversation compaction session: %w", err)
 	}
-	plan := ConversationCompactionPlan{
-		sessionID: id, compaction: compaction, runs: slices.Clone(runs),
-	}
-	if err := plan.Validate(); err != nil {
-		return ConversationCompactionPlan{}, err
-	}
-	return plan, nil
-}
-
-// Validate proves the write-set contains valid, uniquely identified Run
-// replacements belonging to its one conversation Session.
-func (p ConversationCompactionPlan) Validate() error {
-	if err := p.sessionID.Validate(); err != nil {
-		return fmt.Errorf("runs: conversation compaction session: %w", err)
-	}
-	seen := make(map[string]struct{}, len(p.runs))
-	for index, replacement := range p.runs {
+	seen := make(map[string]struct{}, len(runs))
+	for index, replacement := range runs {
 		if err := replacement.Validate(); err != nil {
-			return fmt.Errorf("runs: conversation compaction run[%d]: %w", index, err)
+			return ConversationCompactionPlan{}, fmt.Errorf("runs: conversation compaction run[%d]: %w", index, err)
 		}
 		expected := replacement.Expected()
-		if expected.SessionID() != p.sessionID.String() {
-			return fmt.Errorf(
+		if expected.SessionID() != id.String() {
+			return ConversationCompactionPlan{}, fmt.Errorf(
 				"runs: conversation compaction run %q belongs to another session",
 				expected.ID(),
 			)
 		}
 		if _, duplicate := seen[expected.ID()]; duplicate {
-			return fmt.Errorf("runs: conversation compaction repeats run %q", expected.ID())
+			return ConversationCompactionPlan{}, fmt.Errorf("runs: conversation compaction repeats run %q", expected.ID())
 		}
 		seen[expected.ID()] = struct{}{}
 	}
-	return nil
+	return ConversationCompactionPlan{
+		sessionID: id, compaction: compaction, runs: slices.Clone(runs),
+	}, nil
 }
 
 // SessionID returns the exact conversation owner.

@@ -36,8 +36,8 @@ func TestConversationCompactionPlanOwnsOneSessionRunSet(t *testing.T) {
 		t.Fatalf("plan lost its exact write-set: session=%q runs=%+v", plan.SessionID(), got)
 	}
 	got[0] = run.Replacement{}
-	if err := plan.Validate(); err != nil {
-		t.Fatalf("returned Run slice mutated plan: %v", err)
+	if !plan.Runs()[0].Expected().Equal(current) {
+		t.Fatal("returned Run slice mutated plan")
 	}
 }
 
@@ -61,8 +61,5 @@ func TestConversationCompactionPlanRejectsInvalidSessionRunSets(t *testing.T) {
 	}
 	if _, err := NewConversationCompactionPlan("ses_other", compaction, []run.Replacement{replacement, replacement}); err == nil {
 		t.Fatal("NewConversationCompactionPlan accepted a repeated Run")
-	}
-	if err := (ConversationCompactionPlan{}).Validate(); err == nil {
-		t.Fatal("zero ConversationCompactionPlan is valid")
 	}
 }
