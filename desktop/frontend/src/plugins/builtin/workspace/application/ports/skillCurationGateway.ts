@@ -1,8 +1,10 @@
+import type { SkillProposalScope } from "@flame/runtime-contract/wire";
+
 export interface SkillProposalHandle {
   workspace: string;
   name: string;
   revision: string;
-  scope: "project" | "user";
+  scope: SkillProposalScope;
 }
 
 export interface SkillCurationGateway {

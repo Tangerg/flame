@@ -6,6 +6,7 @@ import type {
   FileStatus,
   SkillLifecycle,
   SkillProposalOrigin,
+  SkillProposalScope,
   SkillScope,
 } from "@flame/runtime-contract/wire";
 import type { WorkspaceDiffMode } from "./diffVocabulary";
@@ -64,7 +65,7 @@ export interface SkillProposal {
   workspace: string;
   name: string;
   revision: string;
-  scope: "project" | "user";
+  scope: SkillProposalScope;
   description: string;
   instructions: string;
   origin: SkillProposalOrigin;
