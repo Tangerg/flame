@@ -3,7 +3,7 @@ import { z } from "zod";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { normalizeCombo } from "@/lib/combo";
-import { discardOlderVersions, rehydrateOrDefault } from "@/lib/persistedStore";
+import { rehydrateOrDefault } from "@/lib/persistedStore";
 import type { Paired } from "@/lib/persistedStore";
 import type { CommandSpec } from "./types";
 import { COMMAND } from "./kernelPoints";
@@ -52,8 +52,6 @@ export const useShortcutOverrides = create<ShortcutOverridesState>()(
     {
       name: STORAGE_KEY,
       storage: createJSONStorage(() => localStorage),
-      version: 1,
-      migrate: discardOlderVersions,
       partialize: (state) => ({ overrides: state.overrides }),
       merge: rehydrateOrDefault(STORAGE_KEY, persistSchema),
     },

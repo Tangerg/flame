@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { discardOlderVersions, rehydrateOrDefault } from "@/lib/persistedStore";
+import { rehydrateOrDefault } from "@/lib/persistedStore";
 import type { Paired } from "@/lib/persistedStore";
 
 export interface RecentModel {
@@ -38,8 +38,6 @@ export const useRecentModelsStore = create<RecentModelsState>()(
     {
       name: STORAGE_KEY,
       storage: createJSONStorage(() => localStorage),
-      version: 1,
-      migrate: discardOlderVersions,
       merge: rehydrateOrDefault(STORAGE_KEY, persistSchema),
     },
   ),

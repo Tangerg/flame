@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { discardOlderVersions, rehydrateOrDefault } from "@/lib/persistedStore";
+import { rehydrateOrDefault } from "@/lib/persistedStore";
 import type { Paired } from "@/lib/persistedStore";
 import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
 
@@ -42,8 +42,6 @@ export const useShellLayoutStore = create<ShellLayoutState & ShellLayoutActions>
     {
       name: STORAGE_KEY,
       storage: createJSONStorage(() => localStorage),
-      version: 2,
-      migrate: discardOlderVersions,
       merge: rehydrateOrDefault(STORAGE_KEY, shellLayoutPersistSchema),
     },
   ),

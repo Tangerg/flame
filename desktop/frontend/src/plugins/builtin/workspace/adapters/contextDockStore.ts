@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { discardOlderVersions, rehydrateOrDefault, ScopedPersistence } from "@/lib/persistedStore";
+import { rehydrateOrDefault, ScopedPersistence } from "@/lib/persistedStore";
 import { WORKSPACE_DOCK_CATALOG } from "../application/navigation";
 import type { WorkspaceViewMemory } from "../application/ports/navigationState";
 import { DIFF_LAYOUTS, DIFF_MODES } from "../application/diffVocabulary";
@@ -276,8 +276,6 @@ export const useContextDockStore = create<ContextDockState & ContextDockActions>
       storage: createJSONStorage(() => persistence.storage),
       skipHydration: true,
       partialize: (state) => ({ sessionScopes: persistedSessionScopes(state) }),
-      version: 3,
-      migrate: discardOlderVersions,
       onRehydrateStorage: () => (_state, error) => {
         if (error) useContextDockStore.setState(emptyDockState());
       },

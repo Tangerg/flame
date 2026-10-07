@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import { discardOlderVersions, ScopedPersistence } from "@/lib/persistedStore";
+import { ScopedPersistence } from "@/lib/persistedStore";
 import { openSession } from "../application/session/sessionSelectionModel";
 
 const sessionPersistSchema = z.object({
@@ -50,8 +50,6 @@ export const useAgentSessionStore = create<AgentSessionState & AgentSessionActio
         openSessionIds: s.openSessionIds,
         lastSessionId: s.lastSessionId,
       }),
-      version: 9,
-      migrate: discardOlderVersions,
       onRehydrateStorage: () => (_state, error) => {
         if (error) useAgentSessionStore.setState(emptySessionState());
       },

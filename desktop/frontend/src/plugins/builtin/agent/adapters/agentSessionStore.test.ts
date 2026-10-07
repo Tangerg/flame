@@ -39,24 +39,17 @@ describe("the cold-start seed", () => {
   });
 });
 
-describe("storage written by an older version", () => {
-  it("boots on defaults and restamps storage at the current version", async () => {
+describe("a stored payload of another shape", () => {
+  it("boots on defaults", async () => {
     localStorage.setItem(
       useAgentSessionStore.persist.getOptions().name!,
-      JSON.stringify({ state: { openSessionIds: ["stale"], lastSessionId: "stale" }, version: 1 }),
+      JSON.stringify({ state: { openSessionIds: "stale", lastSessionId: "stale" } }),
     );
 
     await useAgentSessionStore.persist.rehydrate();
 
     expect(store().openSessionIds).toEqual([]);
     expect(store().lastSessionId).toBe("");
-
-    const stored = JSON.parse(
-      localStorage.getItem(useAgentSessionStore.persist.getOptions().name!) ?? "null",
-    ) as {
-      version: number;
-    };
-    expect(stored.version).toBe(useAgentSessionStore.persist.getOptions().version);
   });
 });
 

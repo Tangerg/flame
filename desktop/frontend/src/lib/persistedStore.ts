@@ -53,8 +53,6 @@ export class ScopedPersistence<State> {
   }
 }
 
-export const discardOlderVersions = () => undefined as never;
-
 export function rehydrateOrDefault<Persisted, Restored extends object = Persisted & object>(
   storageKey: string,
   schema: ZodType<Persisted>,

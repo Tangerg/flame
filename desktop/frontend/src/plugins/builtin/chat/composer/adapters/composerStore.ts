@@ -4,7 +4,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { fileToInputImage } from "@/plugins/builtin/chat/composer/public/input";
 import { countLines } from "@/plugins/builtin/chat/composer/public/largePaste";
 import { t } from "@/lib/i18n";
-import { discardOlderVersions, ScopedPersistence } from "@/lib/persistedStore";
+import { ScopedPersistence } from "@/lib/persistedStore";
 import { notifyError } from "@/plugins/sdk";
 import type { ComposerImage } from "../domain/draft";
 import type { ComposerModelPreference } from "../application/ports/state";
@@ -115,8 +115,6 @@ export const useComposerStore = create<ComposerState & ComposerActions>()(
       name: STORAGE_KEY,
       storage: createJSONStorage(() => persistence.storage),
       skipHydration: true,
-      version: 4,
-      migrate: discardOlderVersions,
       onRehydrateStorage: () => (_state, error) => {
         if (error) useComposerStore.setState(emptyComposerState());
       },

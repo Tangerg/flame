@@ -249,10 +249,8 @@ describe("per-session scopes", () => {
     const persisted = JSON.parse(
       localStorage.getItem(useContextDockStore.persist.getOptions().name!) ?? "null",
     ) as {
-      version: number;
       state: { sessionScopes: [string, { fileFocus: { revision: string } }][] };
     };
-    expect(persisted.version).toBe(3);
     expect(persisted.state.sessionScopes[0]?.[1].fileFocus.revision).toBe("1");
 
     vi.resetModules();
@@ -316,29 +314,11 @@ describe("renderer storage validation", () => {
     expect(dock().dockViewIds).toEqual([]);
   });
 
-  it("discards an older scope payload and restamps the current version", async () => {
-    localStorage.setItem(
-      useContextDockStore.persist.getOptions().name!,
-      JSON.stringify({ state: { sessionScopes: [["stale", {}]] }, version: 0 }),
-    );
-
-    await useContextDockStore.persist.rehydrate();
-
-    expect(dock().sessionScopes.size).toBe(0);
-    const stored = JSON.parse(
-      localStorage.getItem(useContextDockStore.persist.getOptions().name!) ?? "null",
-    ) as {
-      version: number;
-    };
-    expect(stored.version).toBe(useContextDockStore.persist.getOptions().version);
-  });
-
   it("falls back to empty memory when the current payload is malformed", async () => {
     localStorage.setItem(
       useContextDockStore.persist.getOptions().name!,
       JSON.stringify({
         state: { sessionScopes: [["s1", { dockViewIds: "not-an-array" }]] },
-        version: useContextDockStore.persist.getOptions().version,
       }),
     );
 
