@@ -119,6 +119,7 @@ func Run(ctx context.Context, cfg Config) (runErr error) {
 				active.reportSessionRollbackRecovery(*prepared.rollbackRecovery)
 			}
 			active.reportRefusedSteers(prepared.recoveryIssues.steers.Refused)
+			active.reportUnloadedPlugins(results, discovered.Issues)
 			active.reportWorkbenchIssue(workbenchSteerOutbox, prepared.recoveryIssues.steer)
 			return headless.NewRoot(active)
 		},

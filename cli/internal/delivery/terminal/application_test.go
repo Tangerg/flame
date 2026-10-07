@@ -2486,6 +2486,19 @@ func TestAPluginSourceCanAddACommand(t *testing.T) {
 	stop()
 }
 
+func TestAPluginThatFailsSetupIsReportedAtStartup(t *testing.T) {
+	plugin := extensions.Plugin{
+		ID: "test.broken", Version: "1.0.0", APIVersion: extensions.HostAPIVersion,
+		Setup: func(*extensions.Scope) error { return errors.New("broken setup") },
+	}
+	host, stop := runUI(t, plugin)
+	host.Shows(t, "1 plugin did not load · /plugins for details")
+	host.Type("/plugins")
+	host.Press(input.Enter)
+	host.Shows(t, "broken setup")
+	stop()
+}
+
 func TestAsynchronousPluginCommandKeepsTheTerminalResponsive(t *testing.T) {
 	release := make(chan struct{})
 	plugin := extensions.Plugin{
