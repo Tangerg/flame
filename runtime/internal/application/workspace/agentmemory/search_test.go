@@ -309,3 +309,20 @@ func withEmbedding(t *testing.T, item domain.Item, space string, vector []float3
 	}
 	return cached
 }
+
+// TestReadModelItemsOrdersTiesLikeCuration proves the injected catalog and the
+// curation input share one order, so equally recent items cannot swap places
+// depending on how storage happened to return them.
+func TestReadModelItemsOrdersTiesLikeCuration(t *testing.T) {
+	first := readModelItem(t, '1', domain.ScopeProject, "/repo", "first")
+	second := readModelItem(t, '2', domain.ScopeProject, "/repo", "second")
+	store := &fakeItemSource{items: []domain.Item{first, second}}
+	model, err := NewReadModel(store, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	items, err := model.Items(t.Context(), domain.ScopeProject, "/repo")
+	if err != nil || len(items) != 2 || items[0].ID() != second.ID() || items[1].ID() != first.ID() {
+		t.Fatalf("read model item order = (%+v, %v), want the identity tie-break", items, err)
+	}
+}

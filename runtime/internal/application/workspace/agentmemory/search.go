@@ -11,7 +11,8 @@ import (
 )
 
 // ReadStore supplies the active memory views used in model context. Search
-// combines the exact project with user memory; Items reads one exact target.
+// combines the exact project with user memory; Items reads one exact target
+// without presentation ordering, which this package owns.
 // Returned items and collections transfer ownership to the caller. SetEmbeddings
 // borrows its updates synchronously; the cache remains conditional on exact content identity.
 type ReadStore interface {
@@ -45,12 +46,18 @@ func NewReadModel(store ReadStore, resolveEmbedder func(context.Context) (Embedd
 	return &ReadModel{store: store, resolveEmbedder: resolveEmbedder}, nil
 }
 
-// Items returns the complete active catalog for one exact target.
+// Items returns the complete active catalog for one exact target, in the same
+// order curation folds it: pinned and newer first, identity breaking ties.
 func (r *ReadModel) Items(ctx context.Context, scope domain.Scope, project string) ([]domain.Item, error) {
 	if err := domain.ValidateTarget(scope, project); err != nil {
 		return nil, err
 	}
-	return r.store.Items(ctx, scope, project)
+	items, err := r.store.Items(ctx, scope, project)
+	if err != nil {
+		return nil, err
+	}
+	slices.SortFunc(items, compareActiveItems)
+	return items, nil
 }
 
 // Search returns up to topK relevant project- and user-scoped memory items for

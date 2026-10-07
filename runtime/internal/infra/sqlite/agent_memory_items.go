@@ -204,9 +204,9 @@ func restoreItem(snapshot agentmemory.ItemSnapshot) (agentmemory.Item, error) {
 	return item, nil
 }
 
-// Items lists the active items for (scope, project): pinned first, then most
-// recently updated. Pending and rejected items are excluded — only approved
-// memory is injected into the prompt.
+// Items lists the complete active item set for (scope, project). Pending and
+// rejected items are excluded — only approved memory is injected into the
+// prompt. Application owns the order.
 func (a *AgentMemoryStore) Items(ctx context.Context, scope agentmemory.Scope, project string) ([]agentmemory.Item, error) {
 	token, err := memoryPartition(scope, project)
 	if err != nil {
@@ -216,7 +216,6 @@ func (a *AgentMemoryStore) Items(ctx context.Context, scope agentmemory.Scope, p
 		`SELECT `+agentMemoryItemColumns+`
 		 FROM agent_memory_items
 		 WHERE scope = ? AND project = ? AND status = 'active'
-		 ORDER BY pinned DESC, updated_at DESC
 		 LIMIT ?`, "agent memory items", agentmemory.MaxVisiblePerTarget, token, project)
 }
 
