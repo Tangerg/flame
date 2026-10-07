@@ -814,6 +814,7 @@ export const zh: Record<string, string> = {
   "convExport.import": "从 JSON 导入对话",
   "convExport.unsupported": "此运行时不支持会话导出与导入。",
   "convExport.notJson": "不是 JSON 文件。",
+  "convExport.exportFailed": "无法导出对话。",
   "convExport.importFailed": "无法导入对话。",
   "convExport.importSuccess": "已导入「{{title}}」。",
   "connection.error.token": "请输入不含空格或控制字符的有效访问令牌。",

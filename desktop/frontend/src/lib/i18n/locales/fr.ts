@@ -682,6 +682,7 @@ export const fr: Record<string, string> = {
   "convExport.unsupported":
     "Ce runtime ne prend pas en charge l'exportation ni l'importation de session.",
   "convExport.notJson": "Ce n'est pas un fichier JSON.",
+  "convExport.exportFailed": "Impossible d'exporter la conversation.",
   "convExport.importFailed": "Impossible d'importer la conversation.",
   "convExport.importSuccess": "« {{title}} » importée.",
   "connection.error.token": "Saisissez un jeton valide sans espaces ni caractères de contrôle.",

@@ -644,6 +644,7 @@ export const ja: Record<string, string> = {
   "convExport.unsupported":
     "このランタイムはセッションのエクスポートとインポートをサポートしていません。",
   "convExport.notJson": "JSON ファイルではありません。",
+  "convExport.exportFailed": "会話をエクスポートできませんでした。",
   "convExport.importFailed": "会話をインポートできませんでした。",
   "convExport.importSuccess": "「{{title}}」をインポートしました。",
   "connection.error.token": "空白や制御文字を含まない有効なアクセストークンを入力してください。",

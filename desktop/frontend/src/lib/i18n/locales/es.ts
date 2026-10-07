@@ -678,6 +678,7 @@ export const es: Record<string, string> = {
   "convExport.import": "Importar conversación desde JSON",
   "convExport.unsupported": "Este runtime no admite la exportación ni la importación de sesiones.",
   "convExport.notJson": "No es un archivo JSON.",
+  "convExport.exportFailed": "No se pudo exportar la conversación.",
   "convExport.importFailed": "No se pudo importar la conversación.",
   "convExport.importSuccess": "«{{title}}» importada.",
   "connection.error.token": "Introduce un token válido sin espacios ni caracteres de control.",

@@ -643,6 +643,7 @@ export const zhTW: Record<string, string> = {
   "convExport.import": "從 JSON 匯入對話",
   "convExport.unsupported": "此執行時不支援工作階段匯出與匯入。",
   "convExport.notJson": "非 JSON 檔案。",
+  "convExport.exportFailed": "無法匯出對話。",
   "convExport.importFailed": "無法匯入對話。",
   "convExport.importSuccess": "已匯入「{{title}}」。",
   "connection.error.token": "請輸入不含空格或控制字元的有效存取權杖。",

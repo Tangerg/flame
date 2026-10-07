@@ -922,6 +922,7 @@ export const en: Record<string, string> = {
   "convExport.import": "Import conversation from JSON",
   "convExport.unsupported": "This runtime doesn't support session export or import.",
   "convExport.notJson": "Not a JSON file.",
+  "convExport.exportFailed": "Couldn't export the conversation.",
   "convExport.importFailed": "Couldn't import the conversation.",
   "convExport.importSuccess": 'Imported "{{title}}".',
 

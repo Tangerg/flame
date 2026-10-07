@@ -2,6 +2,7 @@ import { GenerationRetiredError } from "@/lib/asyncOwnership";
 import { RetirableTaskCohort } from "@/lib/taskQueue";
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { t } from "@/lib/i18n";
+import { failureText } from "@/lib/rpcErrors";
 import {
   getActiveSessionId,
   invalidateAgentSessions,
@@ -54,7 +55,8 @@ class ConversationArchiveGeneration {
         mime: format === "md" ? "text/markdown;charset=utf-8" : "application/json;charset=utf-8",
       });
     } catch (error) {
-      if (!this.#cohort.retired) throw error;
+      if (this.#cohort.retired) return;
+      notifyError(failureText(error, t("convExport.exportFailed")), { source: "session" });
     }
   }
 

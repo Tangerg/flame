@@ -640,6 +640,7 @@ export const ko: Record<string, string> = {
   "convExport.import": "JSON에서 대화 가져오기",
   "convExport.unsupported": "이 런타임은 세션 내보내기와 가져오기를 지원하지 않습니다.",
   "convExport.notJson": "JSON 파일이 아닙니다.",
+  "convExport.exportFailed": "대화를 내보낼 수 없습니다.",
   "convExport.importFailed": "대화를 가져올 수 없습니다.",
   "convExport.importSuccess": "'{{title}}'을(를) 가져왔습니다.",
   "connection.error.token": "공백이나 제어 문자가 없는 유효한 액세스 토큰을 입력하세요.",

@@ -665,6 +665,7 @@ export const de: Record<string, string> = {
   "convExport.import": "Konversation aus JSON importieren",
   "convExport.unsupported": "Diese Runtime unterstützt keinen Sitzungsexport oder -import.",
   "convExport.notJson": "Keine JSON-Datei.",
+  "convExport.exportFailed": "Konversation konnte nicht exportiert werden.",
   "convExport.importFailed": "Konversation konnte nicht importiert werden.",
   "convExport.importSuccess": '"{{title}}" importiert.',
   "connection.error.token": "Gültiges Zugriffstoken ohne Leerzeichen oder Steuerzeichen eingeben.",

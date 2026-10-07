@@ -86,13 +86,16 @@ describe("conversation archive generation", () => {
     expect(download).not.toHaveBeenCalled();
   });
 
-  it("propagates conversation export failure without downloading a client-made substitute", async () => {
+  it("reports conversation export failure without downloading a client-made substitute", async () => {
     const failure = new Error("session is busy");
     installFiles({ download, pickText: vi.fn() });
     installGateway({ exportConversation: vi.fn().mockRejectedValue(failure) });
 
-    await expect(exportConversationMarkdown()).rejects.toBe(failure);
+    await exportConversationMarkdown();
 
+    expect(mocks.notifyError).toHaveBeenCalledExactlyOnceWith("session is busy", {
+      source: "session",
+    });
     expect(download).not.toHaveBeenCalled();
   });
 
