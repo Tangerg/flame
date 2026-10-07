@@ -249,6 +249,46 @@ func TestRuntimeSearchContractsContainOnlyComposableInputs(t *testing.T) {
 	}
 }
 
+// Struct tags cannot name constants, so the advertised bounds are spelled as
+// literals. This keeps each literal equal to the limit its owner enforces: a
+// schema-valid request must never reach a stricter rule underneath.
+func TestRuntimeSearchSchemasAdvertiseTheirOwnersLimits(t *testing.T) {
+	type bounds struct {
+		Properties struct {
+			Pattern struct {
+				MaxLength int `json:"maxLength"`
+			} `json:"pattern"`
+			Path struct {
+				MaxLength int `json:"maxLength"`
+			} `json:"path"`
+			MaxResults struct {
+				Maximum int `json:"maximum"`
+			} `json:"max_results"`
+		} `json:"properties"`
+	}
+	for _, test := range []struct {
+		name          string
+		patternLength int
+	}{
+		{name: "grep", patternLength: maxRuntimeSearchPatternBytes},
+		{name: "glob", patternLength: maxRuntimeGlobPatternBytes},
+	} {
+		var schema bounds
+		if err := json.Unmarshal(namedDirectTool(t, t.TempDir(), test.name).Definition().InputSchema, &schema); err != nil {
+			t.Fatalf("decode %s schema: %v", test.name, err)
+		}
+		if got := schema.Properties.MaxResults.Maximum; got != workspaceapp.MaxGrepLimit {
+			t.Errorf("%s max_results maximum = %d, want %d", test.name, got, workspaceapp.MaxGrepLimit)
+		}
+		if got := schema.Properties.Pattern.MaxLength; got != test.patternLength {
+			t.Errorf("%s pattern maxLength = %d, want %d", test.name, got, test.patternLength)
+		}
+		if got := schema.Properties.Path.MaxLength; got != maxRuntimeSearchPathBytes {
+			t.Errorf("%s path maxLength = %d, want %d", test.name, got, maxRuntimeSearchPathBytes)
+		}
+	}
+}
+
 func TestRuntimeSearchRejectsNumericDefaultSentinels(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()

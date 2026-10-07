@@ -22,8 +22,6 @@ import (
 )
 
 const (
-	defaultRuntimeSearchResults  = 100
-	maxRuntimeSearchResults      = 1000
 	maxRuntimeSearchPatternBytes = workspaceapp.MaxGrepQueryBytes
 	maxRuntimeGlobPatternBytes   = 4 << 10
 	maxRuntimeSearchPathBytes    = 4 << 10
@@ -143,7 +141,7 @@ func runtimeGlob(ctx context.Context, root string, request runtimeGlobRequest) (
 	if err != nil {
 		return runtimePathSearchResponse{}, err
 	}
-	limit := optional.Value(request.MaxResults, defaultRuntimeSearchResults)
+	limit := optional.Value(request.MaxResults, workspaceapp.DefaultGrepLimit)
 	entries, err := workspaceadapter.SearchFiles(ctx, root, path, request.Pattern)
 	if err != nil {
 		if errors.Is(err, workspaceadapter.ErrListingTooLarge) {
@@ -197,7 +195,7 @@ func runtimeGrep(ctx context.Context, root string, request runtimeGrepRequest) (
 	if err != nil {
 		return runtimeSearchResponse{}, err
 	}
-	limit := optional.Value(request.MaxResults, defaultRuntimeSearchResults)
+	limit := optional.Value(request.MaxResults, workspaceapp.DefaultGrepLimit)
 	result, err := (workspaceadapter.FileBrowser{}).Grep(ctx, root, workspaceapp.GrepPlan{
 		Path: path, Pattern: pattern, Limit: limit,
 	})
