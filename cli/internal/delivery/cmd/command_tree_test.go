@@ -1107,6 +1107,24 @@ func TestCompletionWritesOnlyCobraDirective(t *testing.T) {
 	}
 }
 
+func TestSessionCompletionMatchesTheTypedIDPrefix(t *testing.T) {
+	rt := runtimefixture.New()
+	sessionID := firstSession(t, rt)
+	prefix := sessionID[:len(sessionID)-2]
+	out, _, err := executeCommand(t, rt, "", "__complete", "sessions", "show", prefix)
+	if err != nil {
+		t.Fatalf("complete sessions: %v", err)
+	}
+	if !strings.Contains(out, sessionID+"\t") {
+		t.Fatalf("completion for %q does not offer %s:\n%s", prefix, sessionID, out)
+	}
+	for line := range strings.Lines(out) {
+		if id, _, ok := strings.Cut(line, "\t"); ok && !strings.HasPrefix(id, prefix) {
+			t.Fatalf("completion for %q offers %s", prefix, id)
+		}
+	}
+}
+
 func TestApprovalListDefaultsToGlobalRules(t *testing.T) {
 	backend := runtimefixture.New()
 	ref := protocol.ToolRef{Type: protocol.ToolRefBuiltIn, Name: "shell"}

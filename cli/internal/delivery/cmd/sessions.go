@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"strings"
 	"text/tabwriter"
 	"time"
 
@@ -339,17 +338,17 @@ func completeSessionIDs(provider runtimeProvider) cobra.CompletionFunc {
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}
-		page, err := runtime.ListSessions(cmd.Context(), conversation.SessionQuery{PageSize: conversation.MaximumPageSize(), Search: toComplete})
+		// The completed word is a Session ID, which Runtime's search does not
+		// match; searching with it would hide every candidate.
+		page, err := runtime.ListSessions(cmd.Context(), conversation.SessionQuery{PageSize: conversation.MaximumPageSize()})
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}
 		items := make([]string, 0, len(page.Items))
 		for _, session := range page.Items {
-			if toComplete == "" || strings.HasPrefix(session.ID, toComplete) || strings.Contains(strings.ToLower(session.Title), strings.ToLower(toComplete)) {
-				items = append(items, session.ID+"\t"+session.Title)
-			}
+			items = append(items, session.ID+"\t"+session.Title)
 		}
-		return items, cobra.ShellCompDirectiveNoFileComp
+		return filterCompletionPrefix(items, toComplete), cobra.ShellCompDirectiveNoFileComp
 	}
 }
 
