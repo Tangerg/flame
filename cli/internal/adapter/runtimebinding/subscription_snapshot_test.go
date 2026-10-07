@@ -14,12 +14,12 @@ import (
 func TestSnapshotSubscriptionProjectsOnlyTheAcknowledgedMaterial(t *testing.T) {
 	metadata := snapshotSession(1)
 	metadata.Status = protocol.SessionStatusRunning
-	reads := &snapshotBindingStub{sessions: []*protocol.Session{metadata}}
+	reads := &snapshotBindingStub{}
 	root := protocol.RunRef{
 		RunSummary:      protocol.RunSummary{ID: "run_root", SessionID: metadata.ID, Status: protocol.RunStatusRunning},
 		ActiveSegmentID: "seg_root",
 	}
-	material := &protocol.SessionSnapshot{Runs: []protocol.RunRef{root}}
+	material := &protocol.SessionSnapshot{Session: metadata, Runs: []protocol.RunRef{root}}
 	head := "evt_opaque_head"
 	var streamContext context.Context
 	runtime := &Connection{snapshot: reads, profile: snapshotProfile(t), meta: requestMeta("test")}
@@ -41,8 +41,8 @@ func TestSnapshotSubscriptionProjectsOnlyTheAcknowledgedMaterial(t *testing.T) {
 	if stream.Snapshot == nil || len(stream.Snapshot.Runs) != 1 || stream.Snapshot.Runs[0].ID != root.ID || stream.HeadEventID != head {
 		t.Fatalf("projected snapshot subscription = %+v", stream)
 	}
-	if reads.sessionCalls != 2 || len(reads.snapshotRequests) != 0 {
-		t.Fatalf("independent reads: metadata=%d material=%d", reads.sessionCalls, len(reads.snapshotRequests))
+	if stream.Snapshot.Session.ID != metadata.ID || len(reads.snapshotRequests) != 0 {
+		t.Fatalf("snapshot subscription made an independent read: session=%+v material=%d", stream.Snapshot.Session, len(reads.snapshotRequests))
 	}
 	if streamContext.Err() != nil {
 		t.Fatalf("live subscription context was released: %v", streamContext.Err())
@@ -54,56 +54,26 @@ func TestSnapshotSubscriptionProjectsOnlyTheAcknowledgedMaterial(t *testing.T) {
 	}
 }
 
-func TestSnapshotSubscriptionReleasesTheTailWhenSessionMetadataChanges(t *testing.T) {
-	first := snapshotSession(1)
-	first.Status = protocol.SessionStatusRunning
-	second := *first
-	second.Revision = 2
-	reads := &snapshotBindingStub{sessions: []*protocol.Session{first, &second, &second}}
-	root := protocol.RunRef{
-		RunSummary:      protocol.RunSummary{ID: "run_root", SessionID: first.ID, Status: protocol.RunStatusRunning},
-		ActiveSegmentID: "seg_root",
-	}
-	var contexts []context.Context
-	runtime := &Connection{snapshot: reads, profile: snapshotProfile(t), meta: requestMeta("test")}
-	runtime.runs = runBindingStub{subscribe: func(ctx context.Context, _ protocol.SubscribeRunRequest, _ flameruntime.RunSubscriptionOptions) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
-		if len(contexts) != 0 && contexts[0].Err() == nil {
-			t.Fatal("superseded snapshot tail is still attached")
-		}
-		contexts = append(contexts, ctx)
-		return &protocol.SubscribeRunResponse{
-			RunID: root.ID, SegmentID: root.ActiveSegmentID,
-			Snapshot: &protocol.SessionSnapshot{Runs: []protocol.RunRef{root}},
-		}, func(func(protocol.RunEvent, error) bool) {}, nil
-	}}
-	stream, err := runtime.SubscribeRun(t.Context(), conversation.SubscribeRun{
-		SessionID: first.ID, RunID: root.ID, SegmentID: root.ActiveSegmentID, Snapshot: true,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(contexts) != 2 || stream.Snapshot == nil || stream.Snapshot.Session.Revision != second.Revision || len(reads.snapshotRequests) != 0 {
-		t.Fatalf("stable subscription: attempts=%d snapshot=%+v", len(contexts), stream.Snapshot)
-	}
-	for range stream.Events {
-	}
-}
-
 func TestSnapshotSubscriptionRejectsMissingOrMisdirectedMaterial(t *testing.T) {
-	for _, name := range []string{"missing", "another session"} {
+	for _, name := range []string{"missing", "another session", "another session's run"} {
 		t.Run(name, func(t *testing.T) {
 			metadata := snapshotSession(1)
 			metadata.Status = protocol.SessionStatusRunning
 			runtime := &Connection{
-				snapshot: &snapshotBindingStub{sessions: []*protocol.Session{metadata}},
+				snapshot: &snapshotBindingStub{},
 				profile:  snapshotProfile(t), meta: requestMeta("test"),
 			}
 			var attached context.Context
 			runtime.runs = runBindingStub{subscribe: func(ctx context.Context, _ protocol.SubscribeRunRequest, _ flameruntime.RunSubscriptionOptions) (*protocol.SubscribeRunResponse, iter.Seq2[protocol.RunEvent, error], error) {
 				attached = ctx
 				ack := &protocol.SubscribeRunResponse{RunID: "run_root", SegmentID: "seg_root"}
-				if name == "another session" {
-					ack.Snapshot = &protocol.SessionSnapshot{Runs: []protocol.RunRef{{RunSummary: protocol.RunSummary{ID: "run_root", SessionID: "ses_other"}}}}
+				switch name {
+				case "another session":
+					other := metadata
+					other.ID = "ses_other"
+					ack.Snapshot = &protocol.SessionSnapshot{Session: other}
+				case "another session's run":
+					ack.Snapshot = &protocol.SessionSnapshot{Session: metadata, Runs: []protocol.RunRef{{RunSummary: protocol.RunSummary{ID: "run_root", SessionID: "ses_other"}}}}
 				}
 				return ack, func(func(protocol.RunEvent, error) bool) {}, nil
 			}}

@@ -12,11 +12,8 @@ import (
 )
 
 type snapshotBinding interface {
-	GetSession(context.Context, protocol.GetSessionRequest, flameruntime.CallOptions) (*protocol.Session, error)
 	GetSessionSnapshot(context.Context, protocol.GetSessionSnapshotRequest, flameruntime.CallOptions) (*protocol.SessionSnapshot, error)
 }
-
-const snapshotStabilityAttempts = 8
 
 type coldRead struct {
 	session    protocol.Session
@@ -27,89 +24,37 @@ type coldRead struct {
 	interrupts []protocol.PendingInterruptSet
 }
 
-// GetSession binds independently owned Session metadata to one transactionally
-// coherent material snapshot. Identical metadata projections around the read
-// prove that its lifecycle cannot belong to a different Session generation.
+// GetSession reads one Session and its material from a single Runtime
+// snapshot, which carries the Session it was read from.
 func (r *Connection) GetSession(ctx context.Context, sessionID string) (conversation.SessionSnapshot, error) {
-	sessionRequest := protocol.GetSessionRequest{SessionID: sessionID}
-	if err := sessionRequest.ValidateWire(); err != nil {
-		return conversation.SessionSnapshot{}, fmt.Errorf("get session: %w", err)
-	}
-	snapshotRequest := protocol.GetSessionSnapshotRequest{
+	request := protocol.GetSessionSnapshotRequest{
 		SessionID: sessionID, IncludeDescendants: r.profile.Supports(protocol.FeatureSubagents),
 	}
-	if err := snapshotRequest.ValidateWire(); err != nil {
+	if err := request.ValidateWire(); err != nil {
 		return conversation.SessionSnapshot{}, fmt.Errorf("get session: %w", err)
 	}
-
-	previous, err := r.readSession(ctx, sessionRequest)
+	snapshot, err := r.snapshot.GetSessionSnapshot(ctx, request, r.callOptions())
+	if err != nil {
+		return conversation.SessionSnapshot{}, classifyError(err)
+	}
+	if snapshot == nil {
+		return conversation.SessionSnapshot{}, runtimeContractViolation("get session snapshot returned nil")
+	}
+	material, err := r.snapshotMaterial(sessionID, snapshot)
 	if err != nil {
 		return conversation.SessionSnapshot{}, err
 	}
-	for range snapshotStabilityAttempts {
-		material, err := r.readMaterialSnapshot(ctx, snapshotRequest)
-		if err != nil {
-			return conversation.SessionSnapshot{}, err
-		}
-		current, err := r.readSession(ctx, sessionRequest)
-		if err != nil {
-			return conversation.SessionSnapshot{}, err
-		}
-		if sessionProjectionEqual(previous, current) {
-			material.session = current
-			projected, err := projectSnapshot(material)
-			if err != nil {
-				return conversation.SessionSnapshot{}, runtimeContractViolation("get session projection is invalid: %v", err)
-			}
-			return projected, nil
-		}
-		previous = current
-	}
-	return conversation.SessionSnapshot{}, fmt.Errorf("%w: session %s changed throughout cold recovery", conversation.ErrDisconnected, sessionID)
-}
-
-func (r *Connection) readSession(ctx context.Context, request protocol.GetSessionRequest) (protocol.Session, error) {
-	session, err := r.snapshot.GetSession(ctx, request, r.callOptions())
+	projected, err := projectSnapshot(material)
 	if err != nil {
-		return protocol.Session{}, classifyError(err)
+		return conversation.SessionSnapshot{}, runtimeContractViolation("get session projection is invalid: %v", err)
 	}
-	if session == nil {
-		return protocol.Session{}, runtimeContractViolation("get session returned nil")
-	}
-	if projected := projectSession(*session); projected.ID != request.SessionID {
-		return protocol.Session{}, runtimeContractViolation(
-			"get session returned id %q for %q", projected.ID, request.SessionID,
-		)
-	}
-	return *session, nil
+	return projected, nil
 }
 
-// sessionProjectionEqual compares durable Session facts rather than Go's
-// in-memory representation. In particular, equal timestamps may arrive with
-// different locations across binding or protocol projections.
-func sessionProjectionEqual(left, right protocol.Session) bool {
-	return left.ID == right.ID && left.Title == right.Title && left.Status == right.Status &&
-		left.Provider == right.Provider && left.Model == right.Model &&
-		left.ReasoningEffort == right.ReasoningEffort && left.Workspace == right.Workspace &&
-		left.CreatedAt.Equal(right.CreatedAt) && left.UpdatedAt.Equal(right.UpdatedAt) &&
-		left.Favorite == right.Favorite && left.Revision == right.Revision
-}
-
-func (r *Connection) readMaterialSnapshot(
-	ctx context.Context,
-	request protocol.GetSessionSnapshotRequest,
-) (coldRead, error) {
-	snapshot, err := r.snapshot.GetSessionSnapshot(ctx, request, r.callOptions())
-	if err != nil {
-		return coldRead{}, classifyError(err)
+func (r *Connection) snapshotMaterial(sessionID string, snapshot *protocol.SessionSnapshot) (coldRead, error) {
+	if snapshot.Session.ID != sessionID {
+		return coldRead{}, runtimeContractViolation("session snapshot returned session %q for %q", snapshot.Session.ID, sessionID)
 	}
-	if snapshot == nil {
-		return coldRead{}, runtimeContractViolation("get session snapshot returned nil")
-	}
-	return r.snapshotMaterial(snapshot)
-}
-
-func (r *Connection) snapshotMaterial(snapshot *protocol.SessionSnapshot) (coldRead, error) {
 	planEnabled := r.profile.Supports(protocol.FeaturePlan)
 	if planEnabled && snapshot.Plan == nil {
 		return coldRead{}, runtimeContractViolation("get session snapshot omitted plan while the plan feature is enabled")
@@ -121,60 +66,41 @@ func (r *Connection) snapshotMaterial(snapshot *protocol.SessionSnapshot) (coldR
 		return coldRead{}, runtimeContractViolation("get session snapshot returned goal while the goals feature is disabled")
 	}
 	return coldRead{
-		runs: snapshot.Runs, items: snapshot.Items, plan: snapshot.Plan, goal: snapshot.Goal,
-		interrupts: snapshot.Interrupts,
+		session: snapshot.Session, runs: snapshot.Runs, items: snapshot.Items, plan: snapshot.Plan,
+		goal: snapshot.Goal, interrupts: snapshot.Interrupts,
 	}, nil
 }
 
 func (r *Connection) subscribeSnapshot(ctx context.Context, input conversation.SubscribeRun) (conversation.SegmentStream, error) {
-	request := protocol.GetSessionRequest{SessionID: input.SessionID}
-	previous, err := r.readSession(ctx, request)
+	streamCtx, release := context.WithCancel(ctx)
+	stream, snapshot, err := r.subscribeRun(streamCtx, input)
 	if err != nil {
+		release()
 		return conversation.SegmentStream{}, err
 	}
-	for range snapshotStabilityAttempts {
-		streamCtx, release := context.WithCancel(ctx)
-		stream, snapshot, err := r.subscribeRun(streamCtx, input)
-		if err != nil {
-			release()
-			return conversation.SegmentStream{}, err
-		}
-		current, err := r.readSession(ctx, request)
-		if err != nil {
-			release()
-			return conversation.SegmentStream{}, err
-		}
-		if !sessionProjectionEqual(previous, current) {
-			release()
-			previous = current
-			continue
-		}
-		material, err := r.snapshotMaterial(snapshot)
-		if err != nil {
-			release()
-			return conversation.SegmentStream{}, err
-		}
-		for _, run := range material.runs {
-			if run.SessionID != input.SessionID {
-				release()
-				return conversation.SegmentStream{}, runtimeContractViolation("subscribe run snapshot returned run %s from session %s for %s", run.ID, run.SessionID, input.SessionID)
-			}
-		}
-		material.session = current
-		projected, err := projectSnapshot(material)
-		if err != nil {
-			release()
-			return conversation.SegmentStream{}, runtimeContractViolation("subscribe run snapshot projection is invalid: %v", err)
-		}
-		stream.Snapshot = &projected
-		events := stream.Events
-		stream.Events = func(yield func(conversation.RunEvent, error) bool) {
-			defer release()
-			events(yield)
-		}
-		return stream, nil
+	material, err := r.snapshotMaterial(input.SessionID, snapshot)
+	if err != nil {
+		release()
+		return conversation.SegmentStream{}, err
 	}
-	return conversation.SegmentStream{}, fmt.Errorf("%w: session %s changed throughout snapshot subscription", conversation.ErrDisconnected, input.SessionID)
+	for _, run := range material.runs {
+		if run.SessionID != input.SessionID {
+			release()
+			return conversation.SegmentStream{}, runtimeContractViolation("subscribe run snapshot returned run %s from session %s for %s", run.ID, run.SessionID, input.SessionID)
+		}
+	}
+	projected, err := projectSnapshot(material)
+	if err != nil {
+		release()
+		return conversation.SegmentStream{}, runtimeContractViolation("subscribe run snapshot projection is invalid: %v", err)
+	}
+	stream.Snapshot = &projected
+	events := stream.Events
+	stream.Events = func(yield func(conversation.RunEvent, error) bool) {
+		defer release()
+		events(yield)
+	}
+	return stream, nil
 }
 
 func projectSnapshot(read coldRead) (conversation.SessionSnapshot, error) {
