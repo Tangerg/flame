@@ -17,7 +17,7 @@ const shellDescendantPIDEnv = "SCOPE_EXEC_DESCENDANT_PID_FILE"
 func TestShellKillReclaimsDescendants(t *testing.T) {
 	pidFile := t.TempDir() + "/descendant.pid"
 	t.Setenv(shellDescendantPIDEnv, pidFile)
-	shells := NewShells(nil, false)
+	shells := unconfinedShells(t)
 	t.Cleanup(func() { _ = shells.KillAll() })
 
 	id, err := shells.Launch(
@@ -51,7 +51,7 @@ func TestShellKillReclaimsDescendants(t *testing.T) {
 func TestShellCompletionReclaimsDescendantsWithoutRewritingLeaderExit(t *testing.T) {
 	pidFile := t.TempDir() + "/descendant.pid"
 	t.Setenv(shellDescendantPIDEnv, pidFile)
-	shells := NewShells(nil, false)
+	shells := unconfinedShells(t)
 	t.Cleanup(func() { _ = shells.KillAll() })
 
 	id, err := shells.Launch(

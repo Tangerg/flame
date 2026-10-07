@@ -64,8 +64,8 @@ type BuildConfig struct {
 	// host with no isolation backend enabling it fails the build (fail-closed).
 	SandboxShell bool
 	// SandboxReadOnlyPaths re-opens declared toolchain roots below the hidden
-	// home for reads (e.g. a language toolchain or dependency cache under $HOME).
-	// Ignored unless SandboxShell is set.
+	// home for reads (e.g. a language toolchain or dependency cache under $HOME)
+	// in every jail, including an isolated session's.
 	SandboxReadOnlyPaths []string
 }
 
@@ -123,15 +123,14 @@ func Build(ctx context.Context, config BuildConfig) (_ Built, err error) {
 
 	tracker := newReadTracker()
 
-	// OS command isolation for the shell tools. Build the confiner whenever the
-	// host supports it — isolated sessions jail their shell even when the global
-	// sandbox.shell opt-in is off. If the global opt-in IS on but the host has no
-	// backend, that is a hard, fail-closed configuration error (refuse assembly).
+	// Isolated sessions jail their shell even when the global sandbox.shell
+	// opt-in is off, so a confiner failure refuses assembly only under that
+	// opt-in; otherwise the shell set keeps the cause for isolated commands.
 	confiner, confErr := sandbox.NewConfiner(config.UserHome, config.SandboxReadOnlyPaths)
-	if confErr != nil && config.SandboxShell {
-		return Built{}, fmt.Errorf("toolset: enable shell sandbox: %w", confErr)
+	shells, err := exec.NewShells(confiner, confErr, config.SandboxShell)
+	if err != nil {
+		return Built{}, fmt.Errorf("toolset: build shells: %w", err)
 	}
-	shells := exec.NewShells(confiner, config.SandboxShell)
 	shellTools, err := builtin.BuildShell(shells)
 	if err != nil {
 		return Built{}, fmt.Errorf("toolset: build shell tools: %w", err)

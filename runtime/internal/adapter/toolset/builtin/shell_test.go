@@ -18,11 +18,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/executionctx"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/exec"
+	"github.com/Tangerg/flame/runtime/internal/infra/process/sandbox"
 )
 
 func TestShellToolsCannotReadOrStopAnotherSession(t *testing.T) {
-	shells := exec.NewShells(nil, false)
-	cleanupShells(t, shells)
+	shells := unconfinedShells(t)
 	owner := executionctx.WithScope(t.Context(), runs.ExecutionScope{SessionID: "owner", CWD: t.TempDir()})
 	other := executionctx.WithScope(t.Context(), runs.ExecutionScope{SessionID: "other", CWD: t.TempDir()})
 	started, err := callTextTool(owner, shellTool(t, shells, "shell"),
@@ -61,8 +61,7 @@ func TestShellToolsCannotReadOrStopAnotherSession(t *testing.T) {
 func TestShellOutputsPreserveArbitraryBytes(t *testing.T) {
 	for _, background := range []bool{false, true} {
 		t.Run(map[bool]string{false: "foreground", true: "background"}[background], func(t *testing.T) {
-			shells := exec.NewShells(nil, false)
-			cleanupShells(t, shells)
+			shells := unconfinedShells(t)
 			command := `printf '\377\000\303'`
 			var output string
 			var err error
@@ -117,13 +116,18 @@ func shellTool(t *testing.T, shells *exec.Shells, name string) toolcontract.Tool
 	return nil
 }
 
-func cleanupShells(t *testing.T, shells *exec.Shells) {
+func unconfinedShells(t *testing.T) *exec.Shells {
 	t.Helper()
+	shells, err := exec.NewShells(nil, sandbox.ErrUnavailable, false)
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Cleanup(func() {
 		if err := shells.KillAll(); err != nil {
 			t.Errorf("KillAll: %v", err)
 		}
 	})
+	return shells
 }
 
 func backgroundShellID(t *testing.T, result string) string {
@@ -144,8 +148,7 @@ func backgroundShellID(t *testing.T, result string) string {
 // finishes within the auto-background window and returns its output + exit code
 // inline (not as a background job).
 func TestShell_CompletesInline(t *testing.T) {
-	shells := exec.NewShells(nil, false)
-	cleanupShells(t, shells)
+	shells := unconfinedShells(t)
 	shell := shellTool(t, shells, "shell")
 
 	out, err := callTextTool(attachedRun(t), shell, `{"command":"printf hello","description":"Print hello"}`)
@@ -166,8 +169,7 @@ func TestShell_CompletesInline(t *testing.T) {
 }
 
 func TestShellContractRejectsRemovedArguments(t *testing.T) {
-	shells := exec.NewShells(nil, false)
-	cleanupShells(t, shells)
+	shells := unconfinedShells(t)
 	shell := shellTool(t, shells, "shell")
 	output := shellTool(t, shells, "read_shell_output")
 
@@ -188,8 +190,7 @@ func TestShellContractRejectsRemovedArguments(t *testing.T) {
 }
 
 func TestShellContractRejectsNumericAbsenceSentinels(t *testing.T) {
-	shells := exec.NewShells(nil, false)
-	cleanupShells(t, shells)
+	shells := unconfinedShells(t)
 	shell := shellTool(t, shells, "shell")
 	output := shellTool(t, shells, "read_shell_output")
 
@@ -234,8 +235,7 @@ func TestShellDurationValuesPreservePresence(t *testing.T) {
 }
 
 func TestShellRequiresConciseDescription(t *testing.T) {
-	shells := exec.NewShells(nil, false)
-	cleanupShells(t, shells)
+	shells := unconfinedShells(t)
 	shell := shellTool(t, shells, "shell")
 
 	for _, arguments := range []string{
@@ -252,8 +252,7 @@ func TestShellRequiresConciseDescription(t *testing.T) {
 }
 
 func TestShellDescriptionSchemaIsRequiredAndBounded(t *testing.T) {
-	shells := exec.NewShells(nil, false)
-	cleanupShells(t, shells)
+	shells := unconfinedShells(t)
 	shell := shellTool(t, shells, "shell")
 	encoded := shell.Definition().InputSchema
 	var schema struct {
@@ -275,8 +274,7 @@ func TestShellDescriptionSchemaIsRequiredAndBounded(t *testing.T) {
 // TestShell_RunInBackground checks the explicit-background path: the command
 // returns a shell id immediately, and read_shell_output reads its output.
 func TestShell_RunInBackground(t *testing.T) {
-	shells := exec.NewShells(nil, false)
-	cleanupShells(t, shells)
+	shells := unconfinedShells(t)
 	shell := shellTool(t, shells, "shell")
 	output := shellTool(t, shells, "read_shell_output")
 
@@ -326,8 +324,7 @@ func TestShell_RunInBackground(t *testing.T) {
 // returns its output + a finished status in a single call (the crush wait
 // design — event-driven, no sleep poll loop).
 func TestReadShellOutput_Wait(t *testing.T) {
-	shells := exec.NewShells(nil, false)
-	cleanupShells(t, shells)
+	shells := unconfinedShells(t)
 	shell := shellTool(t, shells, "shell")
 	output := shellTool(t, shells, "read_shell_output")
 
@@ -349,8 +346,7 @@ func TestReadShellOutput_Wait(t *testing.T) {
 // TestReadShellOutput_WaitTimeout returns the current still-running output (not an
 // error) when timeout_millis elapses before the command exits.
 func TestReadShellOutput_WaitTimeout(t *testing.T) {
-	shells := exec.NewShells(nil, false)
-	cleanupShells(t, shells)
+	shells := unconfinedShells(t)
 	shell := shellTool(t, shells, "shell")
 	output := shellTool(t, shells, "read_shell_output")
 
@@ -375,8 +371,7 @@ func TestReadShellOutput_WaitTimeout(t *testing.T) {
 // after auto_background_after_seconds seconds is moved to the background and stays
 // addressable by its shell id.
 func TestShell_AutoBackground(t *testing.T) {
-	shells := exec.NewShells(nil, false)
-	cleanupShells(t, shells)
+	shells := unconfinedShells(t)
 	shell := shellTool(t, shells, "shell")
 
 	out, err := callTextTool(attachedRun(t), shell, `{"command":"sleep 30","description":"Wait in the background","auto_background_after_seconds":1}`)
@@ -390,8 +385,7 @@ func TestShell_AutoBackground(t *testing.T) {
 }
 
 func TestShellCanceledForegroundJoinsBeforeRemoval(t *testing.T) {
-	shells := exec.NewShells(nil, false)
-	cleanupShells(t, shells)
+	shells := unconfinedShells(t)
 	tools := &commandTools{shells: shells}
 	ctx, cancel := context.WithCancel(attachedRun(t))
 	result := make(chan error, 1)
@@ -435,8 +429,7 @@ func TestShellCanceledForegroundJoinsBeforeRemoval(t *testing.T) {
 
 // TestReadShellOutput_UnknownShell reports an unknown id gracefully (not an error).
 func TestReadShellOutput_UnknownShell(t *testing.T) {
-	shells := exec.NewShells(nil, false)
-	cleanupShells(t, shells)
+	shells := unconfinedShells(t)
 	output := shellTool(t, shells, "read_shell_output")
 
 	miss, err := callTextTool(attachedRun(t), output, `{"shell_id":"bg_999"}`)
@@ -453,8 +446,7 @@ func TestShellReportsACommandThatNeverStarted(t *testing.T) {
 	for _, background := range []bool{false, true} {
 		name := map[bool]string{false: "foreground", true: "background"}[background]
 		t.Run(name, func(t *testing.T) {
-			shells := exec.NewShells(nil, false)
-			cleanupShells(t, shells)
+			shells := unconfinedShells(t)
 			tools, err := BuildShell(shells)
 			if err != nil {
 				t.Fatal(err)
@@ -498,8 +490,7 @@ func TestShellReportsACommandThatNeverStarted(t *testing.T) {
 // A Tool executes inside a Run; without one there is no workspace to run in,
 // and the shell must refuse rather than run in some process default.
 func TestShellRefusesToRunWithoutAnAttachedRun(t *testing.T) {
-	shells := exec.NewShells(nil, false)
-	cleanupShells(t, shells)
+	shells := unconfinedShells(t)
 	shell := shellTool(t, shells, "shell")
 	if _, err := callTextTool(t.Context(), shell, `{"command":"printf hello","description":"Print hello"}`); err == nil || !strings.Contains(err.Error(), "no attached Run workspace") {
 		t.Fatalf("shell without a Run scope = %v, want a refusal", err)

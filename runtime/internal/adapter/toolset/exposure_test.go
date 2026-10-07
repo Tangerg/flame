@@ -2,11 +2,14 @@ package toolset
 
 import (
 	"context"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	"github.com/Tangerg/flame/runtime/internal/infra/process/exec"
+	"github.com/Tangerg/flame/runtime/internal/infra/process/sandbox"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
@@ -152,5 +155,30 @@ func TestBuildRequiresExplicitProcessPaths(t *testing.T) {
 	}
 	if _, err := Build(t.Context(), BuildConfig{Lifetime: t.Context(), UserHome: "relative"}); err == nil {
 		t.Fatal("Build accepted a relative user home")
+	}
+}
+
+// Isolated sessions jail their shell without the global sandbox opt-in, so a
+// confiner configuration error must reach the isolated command rather than
+// read as a host with no sandbox backend.
+func TestBuildKeepsTheConfinerCauseForIsolatedShells(t *testing.T) {
+	config := BuildConfig{
+		Lifetime:             t.Context(),
+		UserHome:             t.TempDir(),
+		SandboxReadOnlyPaths: []string{"relative-toolchain"},
+	}
+	_, cause := sandbox.NewConfiner(config.UserHome, config.SandboxReadOnlyPaths)
+	if cause == nil {
+		t.Fatal("NewConfiner accepted a relative read-only path")
+	}
+	built, err := Build(t.Context(), config)
+	if err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+	closeBuiltToolset(t, built)
+
+	_, err = built.Shells.Launch(t.Context(), "session", t.TempDir(), "true", exec.Timeout{}, true)
+	if err == nil || !strings.Contains(err.Error(), cause.Error()) {
+		t.Fatalf("isolated launch error = %v, want cause %q", err, cause)
 	}
 }

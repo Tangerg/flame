@@ -2,11 +2,12 @@ package maintenance
 
 import (
 	"context"
-	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"strings"
 	"testing"
 
+	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/exec"
+	"github.com/Tangerg/flame/runtime/internal/infra/process/sandbox"
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/chatclient"
 )
@@ -42,7 +43,10 @@ func TestCompactorPreservesUnreadCompletedShell(t *testing.T) {
 	}
 	client, _ := chatclient.New(newTextStubModel("BULLETS"), chatclient.Config{})
 
-	shells := exec.NewShells(nil, false)
+	shells, err := exec.NewShells(nil, sandbox.ErrUnavailable, false)
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Cleanup(func() { _ = shells.KillAll() })
 	id, err := shells.Launch(t.Context(), sessID, "", "printf unread-result", exec.Timeout{}, false)
 	if err != nil {

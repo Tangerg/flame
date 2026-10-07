@@ -7,7 +7,6 @@ import (
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/infra/process/exec"
 )
 
 // Rejecting the model's arguments happens before any command is launched, so the
@@ -15,8 +14,7 @@ import (
 // an operation whose durable outcome it cannot prove and settles the whole Run
 // tree as lost — a contradictory flag pair ended a real Session this way.
 func TestShellArgumentRejectionFailsTheCallNotTheRun(t *testing.T) {
-	shells := exec.NewShells(nil, false)
-	cleanupShells(t, shells)
+	shells := unconfinedShells(t)
 
 	for _, testCase := range []struct {
 		name      string

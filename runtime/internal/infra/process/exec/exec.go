@@ -56,10 +56,12 @@ type Shells struct {
 	closeOnce sync.Once
 	closeErr  error
 	// confiner jails each command in an in-place OS sandbox (workspace-write
-	// only, network denied, $HOME hidden, env scrubbed) when non-nil; nil means
-	// the host has no isolation backend. Built fail-closed at construction, so a
-	// non-nil confiner is always a working backend.
-	confiner *sandbox.Confiner
+	// only, network denied, $HOME hidden, env scrubbed) when non-nil. Built
+	// fail-closed at construction, so a non-nil confiner is always a working
+	// backend; when it is nil, unconfinable is why, and every command that must
+	// be jailed reports that cause rather than a generic absence.
+	confiner     *sandbox.Confiner
+	unconfinable error
 	// alwaysJail confines every command (the global sandbox.shell opt-in). When
 	// false, only commands launched isolated=true are jailed — an isolated
 	// session's shell is always confined regardless of the global opt-in.
@@ -109,12 +111,24 @@ func parseShellID(raw string) (shellID, bool) {
 
 func (s shellID) String() string { return s.value }
 
-// NewShells creates an empty background-shell set. confiner is the OS jail (nil
-// when the host has no backend); alwaysJail confines every command (the global
-// sandbox.shell opt-in). An isolated-session command is jailed even when
-// alwaysJail is false.
-func NewShells(confiner *sandbox.Confiner, alwaysJail bool) *Shells {
-	return &Shells{epoch: rand.Text(), shells: map[shellID]*Shell{}, confiner: confiner, alwaysJail: alwaysJail}
+// NewShells creates an empty background-shell set from the outcome of
+// [sandbox.NewConfiner]: exactly one of confiner and unconfinable is non-nil.
+// alwaysJail confines every command (the global sandbox.shell opt-in). An
+// isolated-session command is jailed even when alwaysJail is false.
+func NewShells(confiner *sandbox.Confiner, unconfinable error, alwaysJail bool) (*Shells, error) {
+	if (confiner == nil) == (unconfinable == nil) {
+		return nil, errors.New("exec: shells need either a confiner or the reason there is none")
+	}
+	if alwaysJail && confiner == nil {
+		return nil, fmt.Errorf("exec: confine every shell: %w", unconfinable)
+	}
+	return &Shells{
+		epoch:        rand.Text(),
+		shells:       map[shellID]*Shell{},
+		confiner:     confiner,
+		unconfinable: unconfinable,
+		alwaysJail:   alwaysJail,
+	}, nil
 }
 
 // command returns the program, args, and environment to spawn for a shell
@@ -127,7 +141,7 @@ func (s *Shells) command(cwd, command string, isolated bool) (name string, args,
 		return "/bin/sh", []string{"-c", command}, nil, nil
 	}
 	if s.confiner == nil {
-		return "", nil, nil, fmt.Errorf("exec: isolated shell requires a sandbox backend: %w", sandbox.ErrUnavailable)
+		return "", nil, nil, fmt.Errorf("exec: isolated shell cannot be confined: %w", s.unconfinable)
 	}
 	confined, err := s.confiner.Confine(cwd, command)
 	if err != nil {

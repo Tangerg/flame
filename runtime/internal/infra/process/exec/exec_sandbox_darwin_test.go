@@ -19,10 +19,10 @@ func TestLaunchSandboxConfinesWrites(t *testing.T) {
 	outside := filepath.Join(t.TempDir(), "outside.txt")
 
 	confiner, err := sandbox.NewConfiner(t.TempDir(), nil)
+	shells, err := NewShells(confiner, err, true)
 	if err != nil {
-		t.Fatalf("new confiner: %v", err)
+		t.Fatalf("new shells: %v", err)
 	}
-	shells := NewShells(confiner, true)
 	t.Cleanup(func() { _ = shells.KillAll() })
 
 	run := func(command string) *Shell {
@@ -65,10 +65,10 @@ func TestLaunchIsolatedJailsWithoutGlobalFlag(t *testing.T) {
 	outside := filepath.Join(t.TempDir(), "out.txt")
 
 	confiner, err := sandbox.NewConfiner(t.TempDir(), nil)
+	shells, err := NewShells(confiner, err, false) // global jail OFF
 	if err != nil {
-		t.Fatalf("new confiner: %v", err)
+		t.Fatalf("new shells: %v", err)
 	}
-	shells := NewShells(confiner, false) // global jail OFF
 	t.Cleanup(func() { _ = shells.KillAll() })
 
 	id, err := shells.Launch(t.Context(), "s1", workspace, "printf x > "+strconv.Quote(outside), testTimeout(t, 10*time.Second), true)

@@ -8,10 +8,12 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/infra/process/sandbox"
 )
 
 func TestLaunchRejectsCanceledCallerBeforeDetaching(t *testing.T) {
-	shells := NewShells(nil, false)
+	shells := unconfinedShells(t)
 	t.Cleanup(func() { _ = shells.KillAll() })
 	ctx, cancel := context.WithCancelCause(t.Context())
 	cause := errors.New("run stopped before shell launch")
@@ -26,7 +28,7 @@ func TestLaunchRejectsCanceledCallerBeforeDetaching(t *testing.T) {
 }
 
 func TestShellLookupAndStopRequireTheOwningSession(t *testing.T) {
-	shells := NewShells(nil, false)
+	shells := unconfinedShells(t)
 	t.Cleanup(func() { _ = shells.KillAll() })
 	id, err := shells.Launch(t.Context(), "owner", t.TempDir(), "sleep 30", Timeout{}, false)
 	if err != nil {
@@ -52,13 +54,27 @@ func TestShellLookupAndStopRequireTheOwningSession(t *testing.T) {
 	}
 }
 
-// TestLaunchIsolatedWithoutBackendFailsClosed proves an isolated-session command
-// on a host with no sandbox backend is refused rather than run unconfined.
-func TestLaunchIsolatedWithoutBackendFailsClosed(t *testing.T) {
-	shells := NewShells(nil, false) // no confiner (no backend), global jail off
+func unconfinedShells(t *testing.T) *Shells {
+	t.Helper()
+	shells, err := NewShells(nil, sandbox.ErrUnavailable, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return shells
+}
+
+// TestLaunchIsolatedWithoutConfinerFailsClosed proves an isolated-session
+// command without a confiner is refused rather than run unconfined, and that the
+// refusal names why the confiner could not be built.
+func TestLaunchIsolatedWithoutConfinerFailsClosed(t *testing.T) {
+	cause := errors.New("sandbox: read-only path must be absolute")
+	shells, err := NewShells(nil, cause, false)
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Cleanup(func() { _ = shells.KillAll() })
-	if _, err := shells.Launch(t.Context(), "", t.TempDir(), "true", Timeout{}, true); err == nil {
-		t.Fatal("isolated launch without a sandbox backend must fail closed")
+	if _, err := shells.Launch(t.Context(), "", t.TempDir(), "true", Timeout{}, true); !errors.Is(err, cause) {
+		t.Fatalf("isolated launch error = %v, want the confiner's cause", err)
 	}
 	// A non-isolated command on the same set still runs (unconfined).
 	if _, err := shells.Launch(t.Context(), "", t.TempDir(), "true", Timeout{}, false); err != nil {
@@ -66,11 +82,20 @@ func TestLaunchIsolatedWithoutBackendFailsClosed(t *testing.T) {
 	}
 }
 
+func TestNewShellsRequiresConfinerOutcome(t *testing.T) {
+	if _, err := NewShells(nil, nil, false); err == nil {
+		t.Fatal("NewShells without a confiner or its absence cause succeeded")
+	}
+	if _, err := NewShells(nil, sandbox.ErrUnavailable, true); !errors.Is(err, sandbox.ErrUnavailable) {
+		t.Fatalf("always-jailed NewShells without a confiner = %v, want its cause", err)
+	}
+}
+
 // TestShells_RunReadKill drives the background-command lifecycle end to end: a
 // command's output is captured and read incrementally, completion is reported,
 // and kill stops a still-running shell.
 func TestShells_RunReadKill(t *testing.T) {
-	shells := NewShells(nil, false)
+	shells := unconfinedShells(t)
 	t.Cleanup(func() {
 		if err := shells.KillAll(); err != nil {
 			t.Errorf("KillAll: %v", err)
@@ -114,7 +139,7 @@ func TestShells_RunReadKill(t *testing.T) {
 // TestShells_TimeoutKills checks the hard-timeout path: a command outliving
 // its timeout is killed, and Outcome reports it as killed with a duration.
 func TestShells_TimeoutKills(t *testing.T) {
-	shells := NewShells(nil, false)
+	shells := unconfinedShells(t)
 	t.Cleanup(func() {
 		if err := shells.KillAll(); err != nil {
 			t.Errorf("KillAll: %v", err)
@@ -144,7 +169,7 @@ func TestShells_TimeoutKills(t *testing.T) {
 }
 
 func TestShellsKillAllJoinsProcesses(t *testing.T) {
-	shells := NewShells(nil, false)
+	shells := unconfinedShells(t)
 	id, err := shells.Launch(context.Background(), "", "", "sleep 30", Timeout{}, false)
 	if err != nil {
 		t.Fatal(err)
@@ -165,7 +190,7 @@ func TestShellsKillAllJoinsProcesses(t *testing.T) {
 }
 
 func TestShellsRejectLaunchAfterKillAll(t *testing.T) {
-	shells := NewShells(nil, false)
+	shells := unconfinedShells(t)
 	if err := shells.KillAll(); err != nil {
 		t.Fatalf("KillAll: %v", err)
 	}
@@ -175,15 +200,15 @@ func TestShellsRejectLaunchAfterKillAll(t *testing.T) {
 }
 
 func TestShellsKillMissingHasStableIdentity(t *testing.T) {
-	shells := NewShells(nil, false)
+	shells := unconfinedShells(t)
 	if _, err := shells.Kill("", "bg_missing"); !errors.Is(err, ErrShellNotFound) {
 		t.Fatalf("Kill missing shell = %v, want ErrShellNotFound", err)
 	}
 }
 
 func TestShellIdentityDoesNotAliasAcrossOwners(t *testing.T) {
-	first := NewShells(nil, false)
-	second := NewShells(nil, false)
+	first := unconfinedShells(t)
+	second := unconfinedShells(t)
 	t.Cleanup(func() {
 		_ = first.KillAll()
 		_ = second.KillAll()
@@ -214,7 +239,7 @@ func TestShellIdentityCodecAndExhaustion(t *testing.T) {
 			t.Errorf("parseShellID(%q) = %q, %t; want zero/false", invalid, parsed.String(), ok)
 		}
 	}
-	shells := NewShells(nil, false)
+	shells := unconfinedShells(t)
 	shells.nextID = ^uint64(0)
 	if _, err := shells.Launch(t.Context(), "", "", "true", Timeout{}, false); !errors.Is(err, ErrShellIdentityExhausted) {
 		t.Fatalf("Launch after identity exhaustion = %v, want ErrShellIdentityExhausted", err)
@@ -222,7 +247,7 @@ func TestShellIdentityCodecAndExhaustion(t *testing.T) {
 }
 
 func TestShellsFailedLaunchCanBeShutDown(t *testing.T) {
-	shells := NewShells(nil, false)
+	shells := unconfinedShells(t)
 	id, err := shells.Launch(t.Context(), "", t.TempDir()+"/missing", "printf unreachable", Timeout{}, false)
 	if err != nil {
 		t.Fatalf("Launch: %v", err)
@@ -237,7 +262,7 @@ func TestShellsFailedLaunchCanBeShutDown(t *testing.T) {
 
 func TestShellsLaunchRacesKillAll(t *testing.T) {
 	for range 25 {
-		shells := NewShells(nil, false)
+		shells := unconfinedShells(t)
 		result := make(chan struct {
 			id  string
 			err error
@@ -284,7 +309,7 @@ func mustShell(t *testing.T, shells *Shells, sessionID, id string) *Shell {
 
 // Completed commands remain addressable until their final output is consumed.
 func TestShells_RetainedForSession(t *testing.T) {
-	shells := NewShells(nil, false)
+	shells := unconfinedShells(t)
 	t.Cleanup(func() { _ = shells.KillAll() })
 
 	if _, err := shells.Launch(context.Background(), "sess-a", "", "sleep 30", Timeout{}, false); err != nil {
@@ -323,7 +348,7 @@ func TestShells_RetainedForSession(t *testing.T) {
 }
 
 func TestShellsStopOwnedProcesses(t *testing.T) {
-	shells := NewShells(nil, false)
+	shells := unconfinedShells(t)
 	t.Cleanup(func() { _ = shells.KillAll() })
 	root := t.TempDir()
 	nested := filepath.Join(root, "nested")
@@ -391,7 +416,7 @@ func waitForDone(t *testing.T, shells *Shells, sessionID, id string) {
 // through a symlink, and comparing the two spellings as text answers that the
 // shell is somewhere else.
 func TestShellsStopEveryAliasOfTheRestoredTree(t *testing.T) {
-	shells := NewShells(nil, false)
+	shells := unconfinedShells(t)
 	t.Cleanup(func() { _ = shells.KillAll() })
 
 	tree := t.TempDir()

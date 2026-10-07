@@ -23,6 +23,7 @@ import (
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	infraexec "github.com/Tangerg/flame/runtime/internal/infra/process/exec"
+	"github.com/Tangerg/flame/runtime/internal/infra/process/sandbox"
 	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 )
@@ -405,7 +406,10 @@ func TestInteractionExecutorCancellationStopsApprovedInflightTool(t *testing.T) 
 
 func TestInteractionExecutorCancellationStopsApprovedForegroundShell(t *testing.T) {
 	workspace := t.TempDir()
-	shells := infraexec.NewShells(nil, false)
+	shells, err := infraexec.NewShells(nil, sandbox.ErrUnavailable, false)
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Cleanup(func() {
 		if err := shells.KillAll(); err != nil {
 			t.Errorf("KillAll: %v", err)
