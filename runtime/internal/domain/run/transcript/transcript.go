@@ -86,7 +86,7 @@ func OpeningUserMessagesByRun(items []Item) map[string][]ContentBlock {
 //
 //   - KeepMessageMark: the watermark to keep — the MessageMark of the last kept
 //     tree's root, which ends after every child Run it spawned. Unknown when
-//     that tree is still in flight, which the caller clamps.
+//     that tree is still in flight, and rollback then leaves the log intact.
 //   - KeepRunID: the run that watermark belongs to — the boundary's identity for
 //     the Session Plan recorded per run, which unlike the message log has
 //     no watermark of its own to seek to. It is deliberately the SAME node
@@ -95,14 +95,10 @@ func OpeningUserMessagesByRun(items []Item) map[string][]ContentBlock {
 //     which is a boundary before any run wrote anything.
 //   - Dropped: the runs at/after the boundary, in timeline order — the next root
 //     run plus everything after it (its child Runs) included.
-//   - BoundaryTime: the first dropped root run's CreatedAt — the cut-off that
-//     attributes child sessions to dropped Runs. Zero when nothing is
-//     dropped (or the whole timeline is dropped).
 type Boundary struct {
 	KeepMessageMark run.MessageMark
 	KeepRunID       string
 	Dropped         []RunNode
-	BoundaryTime    time.Time
 }
 
 // PortableBoundary is a stable prefix that can seed another Session. A root
@@ -248,7 +244,6 @@ func boundaryAtOrdered(nodes []RunNode, runID string, requireRoot bool) (Boundar
 				KeepMessageMark: kept.MessageMark,
 				KeepRunID:       kept.ID,
 				Dropped:         slices.Clone(nodes[k:]),
-				BoundaryTime:    nodes[k].CreatedAt,
 			}, nil
 		}
 	}

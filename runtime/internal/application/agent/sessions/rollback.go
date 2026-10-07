@@ -12,10 +12,9 @@ import (
 // durable record + dangling interrupt as ONE atomic write-set, then cancels
 // any in-process parked executions that were abandoned. Delegated work is represented
 // by first-class child Runs in this same session, so there is no parallel hidden
-// Session tree to infer or purge. A keepMark < 0 (unknown watermark —
-// chain terminal still in-flight / pre-watermark) leaves the log untouched
-// rather than guessing at a boundary that was never recorded. An empty boundary
-// (nothing dropped) is a no-op.
+// Session tree to infer or purge. An unknown boundary watermark leaves the log
+// untouched rather than guessing at a boundary that was never recorded. An
+// empty boundary (nothing dropped) is a no-op.
 func (c *Coordinator) applyRollback(ctx context.Context, sessionID string, boundary transcript.Boundary) error {
 	if len(boundary.Dropped) == 0 {
 		return nil

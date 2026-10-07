@@ -47,13 +47,13 @@ func TestBoundaryAt(t *testing.T) {
 	timeline := transcript.Timeline(nodes)
 
 	// Keep through R1 inclusive → keep R1+S1 (watermark 4, R1's own),
-	// drop R2+R3, boundary at R2's time.
+	// drop R2+R3.
 	b, err := timeline.BoundaryAt("R1")
 	if err != nil {
 		t.Fatalf("R1: %v", err)
 	}
-	if b.KeepMessageMark != run.MessageMarkAt(4) || len(b.Dropped) != 2 || b.Dropped[0].ID != "R2" || !b.BoundaryTime.Equal(time.Unix(3, 0).UTC()) {
-		t.Fatalf("R1 split = keep%s drop%v boundary%v, want keep4 [R2 R3] @3", b.KeepMessageMark, runIDs(b.Dropped), b.BoundaryTime.Unix())
+	if b.KeepMessageMark != run.MessageMarkAt(4) || len(b.Dropped) != 2 || b.Dropped[0].ID != "R2" {
+		t.Fatalf("R1 split = keep%s drop%v, want keep4 [R2 R3]", b.KeepMessageMark, runIDs(b.Dropped))
 	}
 	if got := b.DroppedRunIDs(); len(got) != 2 || got[0] != "R2" || got[1] != "R3" {
 		t.Fatalf("DroppedRunIDs = %v, want [R2 R3]", got)
@@ -70,8 +70,8 @@ func TestBoundaryAt(t *testing.T) {
 	}
 
 	// Drop everything (empty target) → keep 0, drop all.
-	if b, _ := timeline.BoundaryAt(""); b.KeepMessageMark != run.MessageMarkAt(0) || len(b.Dropped) != 4 || !b.BoundaryTime.IsZero() {
-		t.Fatalf("drop-all = keep%s drop%d boundary%v, want keep0 drop4 zero", b.KeepMessageMark, len(b.Dropped), b.BoundaryTime)
+	if b, _ := timeline.BoundaryAt(""); b.KeepMessageMark != run.MessageMarkAt(0) || len(b.Dropped) != 4 {
+		t.Fatalf("drop-all = keep%s drop%d, want keep0 drop4", b.KeepMessageMark, len(b.Dropped))
 	}
 
 	// A child Run target is not a root → ErrNotRoot.
