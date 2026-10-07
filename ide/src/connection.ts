@@ -38,7 +38,6 @@ export type Command = Extract<
 
 export interface CommandResult {
   sessionId?: string;
-  runId?: string;
   pluginResult?: PluginInstallation;
 }
 
@@ -167,20 +166,16 @@ export class Connection {
       case "runs.start": {
         const accepted = await this.client.runs.start(command.params, this.signal);
         await accepted.events[Symbol.asyncIterator]().return?.();
-        return { sessionId: command.params.sessionId, runId: accepted.result.runId };
+        return { sessionId: command.params.sessionId };
       }
       case "runs.resume": {
         const accepted = await this.client.runs.resume(command.params, this.signal);
         await accepted.events[Symbol.asyncIterator]().return?.();
-        return { runId: accepted.result.runId };
+        return {};
       }
-      case "runs.cancel": {
-        const result = await this.client.runs.cancel(
-          asRunId(command.params.runId),
-          command.params.reason,
-        );
-        return { runId: result.run.id };
-      }
+      case "runs.cancel":
+        await this.client.runs.cancel(asRunId(command.params.runId), command.params.reason);
+        return {};
       case "plugins.install":
         return { pluginResult: await this.client.plugins.install(command.params) };
       case "plugins.stage":

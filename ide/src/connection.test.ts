@@ -263,7 +263,6 @@ describe("IDE connection lifetime and replay", () => {
     disposers.push(() => successor.close());
     await expect(successor.retry(saved.idempotencyKey)).resolves.toEqual({
       sessionId: "ses_1",
-      runId: "run_1",
     });
     const starts = server.requests.filter((request) => request.message.method === "runs.start");
     expect(starts).toHaveLength(3);
