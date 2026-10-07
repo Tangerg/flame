@@ -114,21 +114,16 @@ func (c Conversation) CloseOpenToolCallsWithResults(
 	return closed, appended, nil
 }
 
-type toolCallGeneration int
-
-type openToolCall struct {
-	call       chat.ToolCall
-	generation toolCallGeneration
-}
-
+// openToolCalls lists every opened ToolCall in order and maps each still-open
+// ID to the position that opened it. A provider may reuse a call ID after its
+// result, so only the entry at the recorded position is the open call.
 type openToolCalls struct {
-	ordered    []openToolCall
-	current    map[string]toolCallGeneration
-	generation toolCallGeneration
+	ordered []chat.ToolCall
+	current map[string]int
 }
 
 func indexOpenToolCalls(messages []chat.Message) openToolCalls {
-	calls := openToolCalls{current: make(map[string]toolCallGeneration)}
+	calls := openToolCalls{current: make(map[string]int)}
 	for _, message := range messages {
 		for _, part := range message.Parts {
 			calls.observe(part)
@@ -150,12 +145,8 @@ func (calls *openToolCalls) open(call chat.ToolCall) {
 	if _, alreadyOpen := calls.current[call.ID]; alreadyOpen {
 		return
 	}
-	calls.generation++
-	calls.current[call.ID] = calls.generation
-	calls.ordered = append(calls.ordered, openToolCall{
-		call:       call,
-		generation: calls.generation,
-	})
+	calls.current[call.ID] = len(calls.ordered)
+	calls.ordered = append(calls.ordered, call)
 }
 
 func (calls openToolCalls) empty() bool { return len(calls.current) == 0 }
@@ -165,11 +156,11 @@ func (calls openToolCalls) close(
 	completed completedToolResults,
 ) ([]chat.ToolResult, error) {
 	results := make([]chat.ToolResult, 0, len(calls.current))
-	for _, unresolved := range calls.ordered {
-		if !calls.isCurrent(unresolved) {
+	for position, unresolved := range calls.ordered {
+		if opened, present := calls.current[unresolved.ID]; !present || opened != position {
 			continue
 		}
-		result, err := completed.resolve(unresolved.call, fallback)
+		result, err := completed.resolve(unresolved, fallback)
 		if err != nil {
 			return nil, err
 		}
@@ -183,11 +174,6 @@ func (calls openToolCalls) close(
 		)
 	}
 	return results, nil
-}
-
-func (calls openToolCalls) isCurrent(candidate openToolCall) bool {
-	generation, present := calls.current[candidate.call.ID]
-	return present && generation == candidate.generation
 }
 
 type completedToolResults map[string]chat.ToolResult

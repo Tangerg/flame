@@ -200,10 +200,11 @@ func usageModelKey(provider, model string, qualified bool) string {
 // usageAccumulator preserves the metering fields needed while folding Run
 // records into one report bucket.
 type usageAccumulator struct {
-	tokens       accounting.Totals
-	cost         accounting.Cost
-	costObserved bool
-	runs         int
+	tokens accounting.Totals
+	// cost is meaningful only once runs is positive: the first Run sets it and
+	// each later Run adds to it, so one unpriced Run leaves the bucket unpriced.
+	cost accounting.Cost
+	runs int
 }
 
 // addRun folds one Run's metering into this bucket. The bucket starts at its
@@ -240,14 +241,13 @@ func (u *usageAccumulator) addRun(usage accounting.Totals) error {
 	if err != nil {
 		return err
 	}
-	if next.costObserved {
+	if next.runs > 0 {
 		next.cost, err = next.cost.Add(cost)
 		if err != nil {
 			return err
 		}
 	} else {
 		next.cost = cost
-		next.costObserved = true
 	}
 	next.runs++
 	*u = next
@@ -256,9 +256,7 @@ func (u *usageAccumulator) addRun(usage accounting.Totals) error {
 
 func (u usageAccumulator) usage() accounting.Totals {
 	out := u.tokens
-	if u.costObserved {
-		out.CostUSD = u.cost.OptionalUSD()
-	}
+	out.CostUSD = u.cost.OptionalUSD()
 	return out
 }
 

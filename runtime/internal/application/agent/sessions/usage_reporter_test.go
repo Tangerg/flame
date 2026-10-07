@@ -220,8 +220,8 @@ func TestSessionUsageDoesNotPresentKnownPartialCostAsTotal(t *testing.T) {
 
 func TestBucketsBySpendRanksByCostDesc(t *testing.T) {
 	m := map[string]*usageAccumulator{
-		"cheap": {tokens: accounting.Totals{InputTokens: 1}, cost: mustUsageCost(t, 0.1), costObserved: true},
-		"dear":  {tokens: accounting.Totals{InputTokens: 1}, cost: mustUsageCost(t, 9), costObserved: true},
+		"cheap": {tokens: accounting.Totals{InputTokens: 1}, cost: mustUsageCost(t, 0.1), runs: 1},
+		"dear":  {tokens: accounting.Totals{InputTokens: 1}, cost: mustUsageCost(t, 9), runs: 1},
 	}
 	out := bucketsBySpend(m)
 	if out[0].Key != "dear" {

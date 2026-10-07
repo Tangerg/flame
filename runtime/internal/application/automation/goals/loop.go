@@ -137,7 +137,7 @@ func (d *Driver) launchLocked(
 // registered and its error is returned until an explicit lifecycle command
 // quiesces it. The caller holds this session's mutation lock.
 func (d *Driver) ensureDriveLocked(ctx context.Context, sessionID, incarnationID string) error {
-	if d.closed.Load() {
+	if d.tasks.Closed() {
 		return ErrClosed
 	}
 	if drive := d.mutations.activeDrive(sessionID); drive != nil {

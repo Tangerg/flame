@@ -226,3 +226,17 @@ func TestDetachedTaskDefectEndsOnlyThatTask(t *testing.T) {
 		t.Fatalf("Close after a defect: %v", err)
 	}
 }
+
+func TestGroupClosedReportsCancel(t *testing.T) {
+	var tasks Group
+	if tasks.Closed() {
+		t.Fatal("a new group reported closed")
+	}
+	tasks.Cancel()
+	if !tasks.Closed() {
+		t.Fatal("a canceled group reported open")
+	}
+	if tasks.Start(t.Context(), func(context.Context) {}) {
+		t.Fatal("a closed group accepted a task")
+	}
+}

@@ -183,6 +183,14 @@ func (g *Group) Cancel() {
 	}
 }
 
+// Closed reports whether the group has stopped accepting tasks, so a component
+// can refuse work it would otherwise only learn to refuse at Start or Attach.
+func (g *Group) Closed() bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.phase != groupOpen
+}
+
 // Wait joins all active tasks after [Cancel]. The caller owns the deadline, so
 // a shutdown timeout becomes observable instead of silently leaking work.
 func (g *Group) Wait(ctx context.Context) error {

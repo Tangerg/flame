@@ -16,7 +16,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -127,7 +126,6 @@ type Driver struct {
 
 	mutations *SessionMutations
 	ownership DriveOwnership
-	closed    atomic.Bool
 }
 
 type goalCommandLease struct {
@@ -220,7 +218,7 @@ func (d *Driver) Start(
 		return goal.Goal{}, err
 	}
 	defer release()
-	if d.closed.Load() {
+	if d.tasks.Closed() {
 		return goal.Goal{}, ErrClosed
 	}
 	exists, err := d.sessions.Exists(ctx, sessionID)
@@ -309,7 +307,7 @@ func (d *Driver) Resume(ctx context.Context, sessionID string, caller run.Capabi
 		return goal.Goal{}, err
 	}
 	defer release()
-	if d.closed.Load() {
+	if d.tasks.Closed() {
 		return goal.Goal{}, ErrClosed
 	}
 	g, ok, err := loadGoal(ctx, d.goals, sessionID)
@@ -387,7 +385,7 @@ func (d *Driver) Stop(ctx context.Context, sessionID string) (goal.Goal, error) 
 		return goal.Goal{}, err
 	}
 	defer release()
-	if d.closed.Load() {
+	if d.tasks.Closed() {
 		return goal.Goal{}, ErrClosed
 	}
 	initial, initiallyPresent, err := loadGoal(ctx, d.goals, sessionID)
@@ -473,7 +471,7 @@ func (d *Driver) UpdateObjective(
 		return goal.Goal{}, err
 	}
 	defer release()
-	if d.closed.Load() {
+	if d.tasks.Closed() {
 		return goal.Goal{}, ErrClosed
 	}
 	initial, err := d.editableGoal(ctx, sessionID)
@@ -580,7 +578,7 @@ func (d *Driver) Clear(ctx context.Context, sessionID string) error {
 		return err
 	}
 	defer release()
-	if d.closed.Load() {
+	if d.tasks.Closed() {
 		return ErrClosed
 	}
 	initial, present, err := loadGoal(ctx, d.goals, sessionID)
@@ -727,7 +725,6 @@ func (d *Driver) BeginShutdown() {
 	}
 	release := d.mutations.acquireAll()
 	defer release()
-	d.closed.Store(true)
 	d.tasks.Cancel()
 }
 
