@@ -4,6 +4,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/Tangerg/flame/cli/internal/application/settings"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/headless"
@@ -142,17 +143,17 @@ func TestApprovalOptionsKeepOneShotActionsStableAndExposeRememberedDenials(t *te
 
 func TestApprovalDefaultSelectsEveryConfiguredRememberScope(t *testing.T) {
 	tests := []struct {
-		scope protocol.RememberScopeKind
-		want  approvalAction
+		preference settings.RememberPreference
+		want       approvalAction
 	}{
-		{want: approvalAllowOnce},
-		{scope: protocol.RememberSession, want: approvalAllowSession},
-		{scope: protocol.RememberProject, want: approvalAllowProject},
-		{scope: protocol.RememberGlobal, want: approvalAllowGlobal},
+		{preference: settings.RememberNone, want: approvalAllowOnce},
+		{preference: settings.RememberSession, want: approvalAllowSession},
+		{preference: settings.RememberProject, want: approvalAllowProject},
+		{preference: settings.RememberGlobal, want: approvalAllowGlobal},
 	}
 	for _, test := range tests {
-		if got := defaultApprovalAction(test.scope); got != test.want {
-			t.Errorf("defaultApprovalAction(%q) = %q, want %q", test.scope, got, test.want)
+		if got := defaultApprovalAction(test.preference); got != test.want {
+			t.Errorf("defaultApprovalAction(%q) = %q, want %q", test.preference, got, test.want)
 		}
 	}
 }

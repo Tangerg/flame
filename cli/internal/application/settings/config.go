@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
-	"github.com/Tangerg/flame/runtime/protocol"
 )
 
 const (
@@ -71,8 +70,7 @@ type Approval struct {
 	Remember RememberPreference `json:"remember" mapstructure:"remember"`
 }
 
-// RememberPreference is the explicit configuration vocabulary. "none" maps
-// to an omitted Runtime remember directive.
+// RememberPreference selects the approval choice the terminal offers first.
 type RememberPreference string
 
 const (
@@ -81,19 +79,6 @@ const (
 	RememberProject RememberPreference = "project"
 	RememberGlobal  RememberPreference = "global"
 )
-
-func (r RememberPreference) Scope() protocol.RememberScopeKind {
-	switch r {
-	case RememberSession:
-		return protocol.RememberSession
-	case RememberProject:
-		return protocol.RememberProject
-	case RememberGlobal:
-		return protocol.RememberGlobal
-	default:
-		return ""
-	}
-}
 
 type UI struct {
 	Mouse            bool `json:"mouse"             mapstructure:"mouse"`

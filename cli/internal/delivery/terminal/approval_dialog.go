@@ -149,7 +149,7 @@ func (a *app) openApproval(approval conversation.Approval) {
 	a.dialogs.approvalDraft = &approvalDecisionDraft{}
 	a.dialogs.approvalArguments = editableApprovalArguments(approval.Tool)
 	a.dialogs.approvalOverride = nil
-	initial := defaultApprovalAction(a.settings.Approval.Remember.Scope())
+	initial := defaultApprovalAction(a.settings.Approval.Remember)
 	if answer, ok := a.dialogs.interruptReview.CurrentAnswer().(conversation.ApprovalAnswer); ok {
 		initial = approvalActionFromAnswer(answer)
 		a.dialogs.approvalDraft.reason = answer.Reason

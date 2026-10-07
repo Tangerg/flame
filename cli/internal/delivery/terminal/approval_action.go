@@ -3,6 +3,7 @@ package terminal
 import (
 	"slices"
 
+	"github.com/Tangerg/flame/cli/internal/application/settings"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/components/headless"
@@ -55,13 +56,13 @@ func (a approvalAction) Normalize(rememberable bool) approvalAction {
 	return approvalAllowOnce
 }
 
-func defaultApprovalAction(scope protocol.RememberScopeKind) approvalAction {
-	switch scope {
-	case protocol.RememberSession:
+func defaultApprovalAction(preference settings.RememberPreference) approvalAction {
+	switch preference {
+	case settings.RememberSession:
 		return approvalAllowSession
-	case protocol.RememberProject:
+	case settings.RememberProject:
 		return approvalAllowProject
-	case protocol.RememberGlobal:
+	case settings.RememberGlobal:
 		return approvalAllowGlobal
 	default:
 		return approvalAllowOnce
