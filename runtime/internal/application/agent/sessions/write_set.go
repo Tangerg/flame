@@ -103,7 +103,7 @@ func newTerminalPlan(
 		checkpointRootID: checkpointRoot,
 		resumeClaimed:    resumeClaimed,
 	}
-	if err := terminal.Validate(); err != nil {
+	if err := terminal.validate(); err != nil {
 		return TerminalPlan{}, err
 	}
 	return terminal, nil
@@ -133,10 +133,10 @@ func (t TerminalPlan) CheckpointRootID() string { return t.checkpointRootID.Stri
 // ConsumesClaimedResume reports whether the plan consumes a claimed Resume hand-off.
 func (t TerminalPlan) ConsumesClaimedResume() bool { return t.resumeClaimed }
 
-// Validate proves that the parked-tree terminal write-set is complete,
+// validate proves that the parked-tree terminal write-set is complete,
 // canonical, owner-bound, and carries exactly the Goal accounting fact implied
 // by its root terminal Run.
-func (t TerminalPlan) Validate() error {
+func (t TerminalPlan) validate() error {
 	root, ok := t.RootRun()
 	if !ok {
 		return errors.New("sessions: terminal plan must end with one root Run")
@@ -174,9 +174,6 @@ func (t TerminalPlan) Validate() error {
 	}
 	if !slices.Equal(actualOrder, tree.Postorder()) {
 		return errors.New("sessions: terminal plan Runs are not in canonical postorder")
-	}
-	if err := t.checkpointRootID.Validate(); err != nil {
-		return fmt.Errorf("sessions: terminal plan checkpoint root: %w", err)
 	}
 	seenItems := make(map[string]struct{}, len(t.items))
 	for index, item := range t.items {

@@ -25,6 +25,7 @@ type RollbackPlan struct {
 
 // NewRollbackPlan binds one resolved transcript boundary, its parked executor
 // roots, and its already-decided Plan replacement to the exact Session owner.
+// It is the plan's only validation: every field is parsed or proven here once.
 func NewRollbackPlan(
 	sessionID string,
 	boundary transcript.Boundary,
@@ -35,6 +36,9 @@ func NewRollbackPlan(
 	if err != nil {
 		return RollbackPlan{}, fmt.Errorf("sessions: rollback plan session: %w", err)
 	}
+	if count, known := boundary.KeepMessageMark.Count(); known && count < 0 {
+		return RollbackPlan{}, fmt.Errorf("sessions: rollback plan message mark %s is invalid", boundary.KeepMessageMark)
+	}
 	dropRunIDs, err := parseRollbackRunIDs(boundary.DroppedRunIDs())
 	if err != nil {
 		return RollbackPlan{}, err
@@ -43,72 +47,33 @@ func NewRollbackPlan(
 	if err != nil {
 		return RollbackPlan{}, err
 	}
-	var ownedPlanReplacement *plan.Replacement
 	if planReplacement != nil {
 		if err := planReplacement.Validate(); err != nil {
 			return RollbackPlan{}, fmt.Errorf("sessions: rollback plan replacement: %w", err)
 		}
-		cloned := *planReplacement
-		ownedPlanReplacement = &cloned
 	}
-	rollback := RollbackPlan{
+	return RollbackPlan{
 		sessionID: id, keepMessageMark: boundary.KeepMessageMark,
 		dropRunIDs: dropRunIDs, checkpointRootIDs: checkpointRoots,
-		planReplacement: ownedPlanReplacement,
-	}
-	if err := rollback.Validate(); err != nil {
-		return RollbackPlan{}, err
-	}
-	return rollback, nil
-}
-
-// Validate proves all rollback identities are canonical and unique and the
-// message coordinate is either exact or the one Domain-owned unknown sentinel.
-func (r RollbackPlan) Validate() error {
-	if err := r.sessionID.Validate(); err != nil {
-		return fmt.Errorf("sessions: rollback plan session: %w", err)
-	}
-	if count, known := r.keepMessageMark.Count(); known && count < 0 {
-		return fmt.Errorf("sessions: rollback plan message mark %s is invalid", r.keepMessageMark)
-	}
-	if len(r.dropRunIDs) == 0 {
-		return errors.New("sessions: rollback plan has no dropped runs")
-	}
-	seenRuns := make(map[string]struct{}, len(r.dropRunIDs))
-	for index, id := range r.dropRunIDs {
-		if err := id.Validate(); err != nil {
-			return fmt.Errorf("sessions: rollback plan dropped run[%d]: %w", index, err)
-		}
-		if _, duplicate := seenRuns[id.String()]; duplicate {
-			return fmt.Errorf("sessions: rollback plan repeats dropped run %q", id.String())
-		}
-		seenRuns[id.String()] = struct{}{}
-	}
-	seenRoots := make(map[string]struct{}, len(r.checkpointRootIDs))
-	for index, id := range r.checkpointRootIDs {
-		if err := id.Validate(); err != nil {
-			return fmt.Errorf("sessions: rollback plan checkpoint root[%d]: %w", index, err)
-		}
-		if _, duplicate := seenRoots[id.String()]; duplicate {
-			return fmt.Errorf("sessions: rollback plan repeats checkpoint root %q", id.String())
-		}
-		seenRoots[id.String()] = struct{}{}
-	}
-	if r.planReplacement != nil {
-		if err := r.planReplacement.Validate(); err != nil {
-			return fmt.Errorf("sessions: rollback plan replacement: %w", err)
-		}
-	}
-	return nil
+		planReplacement: optional.Clone(planReplacement),
+	}, nil
 }
 
 func parseRollbackRunIDs(values []string) ([]resourceid.RunID, error) {
+	if len(values) == 0 {
+		return nil, errors.New("sessions: rollback plan has no dropped runs")
+	}
 	ids := make([]resourceid.RunID, len(values))
+	seen := make(map[string]struct{}, len(values))
 	for index, value := range values {
 		id, err := resourceid.ParseRun(value)
 		if err != nil {
 			return nil, fmt.Errorf("sessions: rollback plan dropped run[%d]: %w", index, err)
 		}
+		if _, duplicate := seen[value]; duplicate {
+			return nil, fmt.Errorf("sessions: rollback plan repeats dropped run %q", value)
+		}
+		seen[value] = struct{}{}
 		ids[index] = id
 	}
 	return ids, nil
@@ -116,11 +81,16 @@ func parseRollbackRunIDs(values []string) ([]resourceid.RunID, error) {
 
 func parseRollbackCheckpointRoots(values []string) ([]runtimeidentity.MemberID, error) {
 	ids := make([]runtimeidentity.MemberID, len(values))
+	seen := make(map[string]struct{}, len(values))
 	for index, value := range values {
 		id, err := runtimeidentity.ParseMember(value)
 		if err != nil {
 			return nil, fmt.Errorf("sessions: rollback plan checkpoint root[%d]: %w", index, err)
 		}
+		if _, duplicate := seen[value]; duplicate {
+			return nil, fmt.Errorf("sessions: rollback plan repeats checkpoint root %q", value)
+		}
+		seen[value] = struct{}{}
 		ids[index] = id
 	}
 	return ids, nil

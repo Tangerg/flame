@@ -21,13 +21,5 @@ func NewDeletePlan(sessionID string) (DeletePlan, error) {
 	return DeletePlan{sessionID: id}, nil
 }
 
-// Validate proves that the deletion addresses one canonical Session.
-func (d DeletePlan) Validate() error {
-	if err := d.sessionID.Validate(); err != nil {
-		return fmt.Errorf("sessions: delete plan: %w", err)
-	}
-	return nil
-}
-
 // SessionID returns the exact durable owner to remove.
 func (d DeletePlan) SessionID() string { return d.sessionID.String() }

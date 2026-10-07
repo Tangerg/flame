@@ -43,15 +43,11 @@ func NewRestorePlan(
 	owned.Session = restoredSession
 	// The replacement is the sole stored representation of restored Plan steps.
 	owned.Plan = nil
-	restore := RestorePlan{
+	return RestorePlan{
 		sessionReplacement: sessionReplacement,
 		snapshot:           owned,
 		planReplacement:    replacement,
-	}
-	if err := restore.Validate(); err != nil {
-		return RestorePlan{}, err
-	}
-	return restore, nil
+	}, nil
 }
 
 func ownRestorePlanReplacement(steps []plan.Step, replacement *plan.Replacement) (*plan.Replacement, error) {
@@ -79,22 +75,6 @@ func validateRestorePlanReplacement(steps []plan.Step, replacement *plan.Replace
 		return errors.New("sessions: restore plan Plan replacement differs from restored steps")
 	}
 	return nil
-}
-
-// Validate proves that the committed Session, every restored projection, and
-// the optional Plan transition remain one coherent replacement.
-func (r RestorePlan) Validate() error {
-	if err := r.sessionReplacement.Validate(); err != nil {
-		return fmt.Errorf("sessions: restore plan Session replacement: %w", err)
-	}
-	snapshot := r.Snapshot()
-	if err := snapshot.Validate(); err != nil {
-		return fmt.Errorf("sessions: restore plan snapshot: %w", err)
-	}
-	if snapshot.Session.Snapshot() != r.sessionReplacement.State().Snapshot() {
-		return errors.New("sessions: restore plan snapshot differs from its Session replacement")
-	}
-	return validateRestorePlanReplacement(snapshot.Plan, r.planReplacement)
 }
 
 // SessionReplacement returns the exact initial insert or monotonic replacement.

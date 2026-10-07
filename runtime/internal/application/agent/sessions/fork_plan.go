@@ -34,6 +34,12 @@ func NewForkPlan(
 	if err != nil {
 		return ForkPlan{}, fmt.Errorf("sessions: fork plan snapshot: %w", err)
 	}
+	if owned.Session.ParentID() != parent.String() {
+		return ForkPlan{}, errors.New("sessions: fork plan child belongs to a different parent")
+	}
+	if owned.Session.Revision() != 1 {
+		return ForkPlan{}, errors.New("sessions: fork plan child is not at its initial revision")
+	}
 	replacement, err := ownForkPlanReplacement(owned.Plan, planReplacement)
 	if err != nil {
 		return ForkPlan{}, err
@@ -41,11 +47,7 @@ func NewForkPlan(
 	// The replacement is the sole stored representation of inherited Plan steps.
 	// Snapshot reconstructs the read projection from that owner when requested.
 	owned.Plan = nil
-	fork := ForkPlan{parentID: parent, snapshot: owned, planReplacement: replacement}
-	if err := fork.Validate(); err != nil {
-		return ForkPlan{}, err
-	}
-	return fork, nil
+	return ForkPlan{parentID: parent, snapshot: owned, planReplacement: replacement}, nil
 }
 
 func ownForkPlanReplacement(steps []plan.Step, replacement *plan.Replacement) (*plan.Replacement, error) {
@@ -75,26 +77,6 @@ func validateForkPlanReplacement(steps []plan.Step, replacement *plan.Replacemen
 		return errors.New("sessions: fork plan replacement differs from the inherited Plan")
 	}
 	return nil
-}
-
-// Validate proves that the child is an initial fork of the addressed parent and
-// that every durable projection and optional Plan transition agrees with it.
-func (f ForkPlan) Validate() error {
-	if err := f.parentID.Validate(); err != nil {
-		return fmt.Errorf("sessions: fork plan parent: %w", err)
-	}
-	snapshot := f.Snapshot()
-	if err := snapshot.Validate(); err != nil {
-		return fmt.Errorf("sessions: fork plan snapshot: %w", err)
-	}
-	child := snapshot.Session
-	if child.ParentID() != f.parentID.String() {
-		return errors.New("sessions: fork plan child belongs to a different parent")
-	}
-	if child.Revision() != 1 {
-		return errors.New("sessions: fork plan child is not at its initial revision")
-	}
-	return validateForkPlanReplacement(snapshot.Plan, f.planReplacement)
 }
 
 // ParentID returns the canonical parent Session identity.

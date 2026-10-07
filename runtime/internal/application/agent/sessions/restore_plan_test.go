@@ -33,9 +33,6 @@ func TestRestorePlanOwnsItsCommittedProjection(t *testing.T) {
 	if got := restore.Snapshot(); got.Messages[0].Parts[0].Text != "remembered" || len(got.Items) != 1 {
 		t.Fatalf("returned projection mutated restore plan: %+v", got)
 	}
-	if err := restore.Validate(); err != nil {
-		t.Fatalf("owned restore plan became invalid: %v", err)
-	}
 }
 
 func TestRestorePlanBindsTheExactPlanTransition(t *testing.T) {
@@ -97,8 +94,5 @@ func TestRestorePlanRejectsIncoherentWriteSets(t *testing.T) {
 				t.Fatal("NewRestorePlan accepted an incoherent write-set")
 			}
 		})
-	}
-	if err := (RestorePlan{}).Validate(); err == nil {
-		t.Fatal("zero RestorePlan is valid")
 	}
 }
