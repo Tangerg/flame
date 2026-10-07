@@ -22,9 +22,30 @@ type contextEditor struct {
 	keys     *keymap.Map
 	save     func(string)
 	cancel   func()
-	problem  string
-	failed   bool
-	saving   bool
+	phase    contextSavePhase
+	failure  string
+}
+
+type contextSavePhase uint8
+
+const (
+	contextUnsaved contextSavePhase = iota
+	contextSaving
+	contextSaveFailed
+	contextSavedWithNewEdits
+)
+
+func (c *contextEditor) notice() string {
+	switch c.phase {
+	case contextSaving:
+		return "Saving…"
+	case contextSaveFailed:
+		return c.failure
+	case contextSavedWithNewEdits:
+		return "Saved. New edits remain unsaved."
+	default:
+		return ""
+	}
 }
 
 type contextEditorRequest struct {
@@ -76,7 +97,8 @@ func newContextEditor(theme kit.Theme, clipboard headless.Clipboard, content, pl
 
 func (c *contextEditor) Draw(frame headless.Frame) {
 	_, height := frame.Size()
-	if c.problem == "" || height < 2 {
+	notice := c.notice()
+	if notice == "" || height < 2 {
 		c.composer.Draw(frame)
 		return
 	}
@@ -85,10 +107,10 @@ func (c *contextEditor) Draw(frame headless.Frame) {
 	}))
 	c.composer.Draw(rows[0])
 	style := c.theme.Subtle
-	if c.failed {
+	if c.phase == contextSaveFailed {
 		style = c.theme.Danger
 	}
-	rows[1].Text(0, 0, c.problem, style)
+	rows[1].Text(0, 0, notice, style)
 }
 
 func (c *contextEditor) Handle(event input.Event) bool {
@@ -129,31 +151,26 @@ func (a *app) openContextEditor(request contextEditorRequest) *contextEditorSess
 	}
 	editor.cancel = session.Dismiss
 	editor.save = func(value string) {
-		if editor.saving || session.closed || a.dialogs.activeContextEditor != session {
+		if editor.phase == contextSaving || session.closed || a.dialogs.activeContextEditor != session {
 			return
 		}
-		editor.saving = true
-		editor.problem, editor.failed = "Saving…", false
-		if dialog != nil {
-			dialog.Controller().SetDescription("Saving…")
+		enter := func(phase contextSavePhase, failure string) {
+			editor.phase, editor.failure = phase, failure
+			if dialog != nil {
+				dialog.Controller().SetDescription(editor.notice())
+			}
 		}
+		enter(contextSaving, "")
 		complete := func(err error) bool {
 			if session.closed || a.dialogs.activeContextEditor != session {
 				return false
 			}
-			editor.saving = false
 			if err != nil {
-				editor.problem, editor.failed = err.Error(), true
-				if dialog != nil {
-					dialog.Controller().SetDescription(err.Error())
-				}
+				enter(contextSaveFailed, err.Error())
 				return false
 			}
 			if editor.composer.Editor().Text() != value {
-				editor.problem, editor.failed = "Saved. New edits remain unsaved.", false
-				if dialog != nil {
-					dialog.Controller().SetDescription(editor.problem)
-				}
+				enter(contextSavedWithNewEdits, "")
 				return false
 			}
 			session.Dismiss()

@@ -218,6 +218,25 @@ func TestAgentMemoryMultilineAddSurvivesResize(t *testing.T) {
 	stop()
 }
 
+func TestAgentMemoryEditorKeepsTheDraftAcrossARejectedSave(t *testing.T) {
+	memory := newAgentMemoryServiceStub()
+	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), AgentMemory: memory, Workspace: "/workspace"})
+	host.Shows(t, "Ask flame")
+	host.Type("/memory-add user")
+	host.Press(input.Enter)
+	host.Shows(t, "Add user memory")
+	host.Send(input.Key{Code: input.Character, Rune: 's', Mods: input.Ctrl})
+	host.Shows(t, "memory content is empty")
+
+	host.Type("durable fact")
+	host.Send(input.Key{Code: input.Character, Rune: 's', Mods: input.Ctrl})
+	if got := awaitValue(t, memory.added, "agent memory add"); got != "durable fact" {
+		t.Fatalf("added content = %q", got)
+	}
+	host.Hides(t, "memory content is empty")
+	stop()
+}
+
 func TestPendingAgentMemoryReviewRequiresResizeSafeConfirmation(t *testing.T) {
 	memory := newAgentMemoryServiceStub()
 	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), AgentMemory: memory, Workspace: "/workspace"})
