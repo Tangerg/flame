@@ -88,6 +88,23 @@ func TestAuthoredWatchResolvesAndDeduplicatesScopes(t *testing.T) {
 	}
 }
 
+func TestAuthoredWatchRefusesAnUnknownResource(t *testing.T) {
+	root := t.TempDir()
+	watcher := &recordingAuthoredWatcher{}
+	useCases := newAuthoredWatch(t, newScope(t, root, root, testPaths{}), staticWorkspaceInspector{
+		resolved: Resolved{Path: root, ProjectRoot: root},
+	}, watcher)
+	for _, resources := range [][]AuthoredResource{{"plans"}, {AuthoredSkills, ""}} {
+		if observation, err := useCases.Watch(nil, resources, func(AuthoredResource) {}, func(error) {}); err == nil {
+			_ = observation.Close()
+			t.Fatalf("Watch(%q) started an observation", resources)
+		}
+	}
+	if watcher.resources != nil {
+		t.Fatalf("watcher observed %q for a refused request", watcher.resources)
+	}
+}
+
 func TestAuthoredWatchOwnsObservationScopes(t *testing.T) {
 	root := t.TempDir()
 	cwds := []string{filepath.Join(root, "first"), filepath.Join(root, "second")}

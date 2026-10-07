@@ -116,7 +116,10 @@ func (a *AuthoredWatch) Watch(
 	notify func(AuthoredResource),
 	report func(error),
 ) (AuthoredObservation, error) {
-	resources = distinctAuthoredResources(resources)
+	resources, err := distinctAuthoredResources(resources)
+	if err != nil {
+		return nil, err
+	}
 	if len(resources) == 0 {
 		return nopAuthoredWatch{}, nil
 	}
@@ -198,14 +201,20 @@ func (m *managedAuthoredObservation) Close() error {
 	return err
 }
 
-func distinctAuthoredResources(resources []AuthoredResource) []AuthoredResource {
+// distinctAuthoredResources refuses a resource outside the closed set rather
+// than dropping it: a request that named only unknown resources would
+// otherwise start an observation that can never fire.
+func distinctAuthoredResources(resources []AuthoredResource) ([]AuthoredResource, error) {
 	out := make([]AuthoredResource, 0, len(resources))
 	for _, resource := range resources {
-		if resource.Valid() && !slices.Contains(out, resource) {
+		if !resource.Valid() {
+			return nil, fmt.Errorf("workspace: authored resource %q is not observable", resource)
+		}
+		if !slices.Contains(out, resource) {
 			out = append(out, resource)
 		}
 	}
-	return out
+	return out, nil
 }
 
 type nopAuthoredWatch struct{}
