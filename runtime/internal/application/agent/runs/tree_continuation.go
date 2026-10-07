@@ -9,7 +9,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
-	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
 // treeContinuation is the application-private execution hand-off shared by
@@ -19,7 +18,6 @@ import (
 // to open fresh Segments without inventing a fake human answer.
 type treeContinuation struct {
 	rootRunID        string
-	executorID       string
 	interrupts       []transcript.Interrupt
 	approvalVerdicts map[string]approvalVerdict
 	continuations    []Continuation
@@ -83,7 +81,6 @@ func treeContinuationFromPending(
 	}
 	continuation := &treeContinuation{
 		rootRunID:     pending.RootRunID,
-		executorID:    pending.ExecutorID,
 		interrupts:    interrupts,
 		continuations: slices.Clone(pending.Continuations),
 		runs:          parkedRunsByID(parked),
@@ -104,9 +101,6 @@ func (t *treeContinuation) validate() error {
 	}
 	if _, parked := t.runs[t.rootRunID]; !parked {
 		return errors.New("runs: tree continuation root Run is not parked")
-	}
-	if err := runtimeidentity.ValidateExecutor(t.executorID); err != nil {
-		return fmt.Errorf("runs: tree continuation: %w", err)
 	}
 	switch {
 	case len(t.continuations) == 0:
@@ -170,15 +164,6 @@ func (t *treeContinuation) validate() error {
 		}
 	}
 	return nil
-}
-
-func (t *treeContinuation) root() (Continuation, bool) {
-	for _, member := range t.continuations {
-		if member.RunID == t.rootRunID {
-			return member, true
-		}
-	}
-	return Continuation{}, false
 }
 
 func (t *treeContinuation) forRun(runID string) (Continuation, bool) {

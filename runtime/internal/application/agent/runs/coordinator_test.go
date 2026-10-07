@@ -57,7 +57,6 @@ func testTreeContinuation(pending Pending) *treeContinuation {
 	}
 	return &treeContinuation{
 		rootRunID:     pending.RootRunID,
-		executorID:    pending.ExecutorID,
 		interrupts:    interrupts,
 		continuations: slices.Clone(pending.Continuations),
 		runs:          parkedRunsByID(parkedTree(pending, fixtureFacts(pending))),

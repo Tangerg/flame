@@ -279,12 +279,11 @@ func TestRunTreeOwnerCancellationArbiterAllowsOnlyOneTreeOwner(t *testing.T) {
 		if _, err := treeOwner.requestCancel(t.Context(), "stop root", acceptRootCancel); !errors.Is(err, ErrSessionBusy) {
 			t.Fatalf("root cancellation error = %v, want ErrSessionBusy", err)
 		}
-		if canceled || treeOwner.cancelRequested || treeOwner.cancelReason != "" {
+		if canceled || treeOwner.rootCancel != nil {
 			t.Fatalf(
-				"losing root cancellation mutated owner state: canceled=%t requested=%t reason=%q",
+				"losing root cancellation mutated owner state: canceled=%t root=%+v",
 				canceled,
-				treeOwner.cancelRequested,
-				treeOwner.cancelReason,
+				treeOwner.rootCancel,
 			)
 		}
 		treeOwner.abortChildCancellation(attempt, errors.New("test complete"))

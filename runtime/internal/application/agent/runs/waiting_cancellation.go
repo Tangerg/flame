@@ -209,10 +209,10 @@ func (w waitingCancellationBuilder) build() (waitingCancellationTransformation, 
 
 func (w waitingCancellationBuilder) validate() error {
 	switch {
-	case w.plan.treeState != rundomain.Waiting:
+	case w.plan.treeState() != rundomain.Waiting:
 		return fmt.Errorf(
 			"runs: waiting cancellation plan is %s",
-			w.plan.treeState,
+			w.plan.treeState(),
 		)
 	case !w.plan.target.run.Lineage().IsChild():
 		return errors.New("runs: waiting cancellation target is not a child Run")
@@ -430,7 +430,6 @@ func (w waitingCancellationBuilder) treeContinuation(
 ) (*treeContinuation, error) {
 	continuation := &treeContinuation{
 		rootRunID:     w.plan.pending.RootRunID,
-		executorID:    w.plan.pending.ExecutorID,
 		interrupts:    slices.Clone(interrupts),
 		continuations: slices.Clone(continuations),
 		runs:          parkedRunsByID(w.plan.survivingRuns()),

@@ -26,7 +26,7 @@ func (c *Coordinator) Cancel(ctx context.Context, cmd CancelCommand) (CancelResu
 		return CancelResult{}, err
 	}
 	if plan.target.run.Lineage().IsChild() {
-		switch plan.treeState {
+		switch plan.treeState() {
 		case rundomain.Running:
 			if !live {
 				return CancelResult{}, fmt.Errorf(
@@ -41,7 +41,7 @@ func (c *Coordinator) Cancel(ctx context.Context, cmd CancelCommand) (CancelResu
 			return CancelResult{}, fmt.Errorf(
 				"runs: child Run %q belongs to a tree in state %s",
 				cmd.RunID,
-				plan.treeState,
+				plan.treeState(),
 			)
 		}
 	}
@@ -66,10 +66,8 @@ func (c *Coordinator) Cancel(ctx context.Context, cmd CancelCommand) (CancelResu
 		if errors.Is(requestErr, ErrRunFinished) {
 			return CancelResult{}, errors.Join(requestErr, entry.owner.wait(cleanupCtx))
 		}
-		c.registry.MarkCancel(plan.root.run.ID(), cmd.Reason)
 		return CancelResult{}, errors.Join(requestErr, entry.owner.wait(cleanupCtx))
 	}
-	c.registry.MarkCancel(plan.root.run.ID(), cmd.Reason)
 	if interruptCommitted {
 		// The interrupt transaction won before cancellation. Its pump owns the
 		// live admission until it has published and closed the parked segment;
@@ -270,11 +268,11 @@ func (c *Coordinator) resolveClaimedWaitingChildCancellation(
 			)
 		}
 	}
-	if plan.treeState != rundomain.Waiting || !plan.target.run.Lineage().IsChild() {
+	if plan.treeState() != rundomain.Waiting || !plan.target.run.Lineage().IsChild() {
 		return cancellationPlan{}, fmt.Errorf(
 			"runs: waiting child cancellation for %q resolved a %s root/child state",
 			cmd.RunID,
-			plan.treeState,
+			plan.treeState(),
 		)
 	}
 	return plan, nil

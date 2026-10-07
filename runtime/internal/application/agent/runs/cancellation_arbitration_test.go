@@ -432,7 +432,6 @@ func runningChildCancellationPlan() cancellationPlan {
 			hasMember: true,
 		},
 		targetSubtree: []cancellationRun{{run: child}},
-		treeState:     run.Running,
 	}
 }
 

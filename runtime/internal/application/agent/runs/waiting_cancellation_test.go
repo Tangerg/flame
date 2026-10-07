@@ -1049,7 +1049,7 @@ func assertRetainedParentTool(
 	}) {
 		t.Fatalf("spawning Item %q was settled by the Application", itemID)
 	}
-	root, ok := transformation.continuation.root()
+	root, ok := transformation.continuation.forRun(transformation.continuation.rootRunID)
 	if !ok {
 		t.Fatal("continuation has no root")
 	}

@@ -39,10 +39,10 @@ func (r *runTreeOwner) beginChildCancellation(
 	if !plan.target.run.Lineage().IsChild() {
 		return nil, fmt.Errorf("runs: cancellation target %q is not a child Run", plan.target.run.ID())
 	}
-	if plan.treeState != rundomain.Running {
+	if plan.treeState() != rundomain.Running {
 		return nil, fmt.Errorf(
 			"runs: live child cancellation requires a running tree, got %s",
-			plan.treeState,
+			plan.treeState(),
 		)
 	}
 	if !plan.target.hasMember {
@@ -69,7 +69,7 @@ func (r *runTreeOwner) beginChildCancellation(
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	switch {
-	case r.cancelRequested:
+	case r.rootCancel != nil:
 		return nil, fmt.Errorf(
 			"%w: root Run %q cancellation owns the tree",
 			ErrSessionBusy,
@@ -262,7 +262,7 @@ func (r *runTreeOwner) requestCancel(
 				targetRunID,
 			)
 		}
-		if r.cancelRequested {
+		if r.rootCancel != nil {
 			r.mu.Unlock()
 			return false, fmt.Errorf(
 				"%w: root Run cancellation already owns the tree",
@@ -287,16 +287,15 @@ func (r *runTreeOwner) requestCancel(
 				activation.err,
 			)
 		}
-		r.cancelRequested = true
-		r.cancelReason = reason
+		r.rootCancel = &rootCancellation{reason: reason}
 		inflight := r.interrupt.active
 		r.mu.Unlock()
 		if requestExecutor == nil {
-			r.abortRootCancellation(reason)
+			r.abortRootCancellation()
 			return false, errors.New("runs: root executor cancellation request is unavailable")
 		}
 		if err := requestExecutor(ctx); err != nil {
-			r.abortRootCancellation(reason)
+			r.abortRootCancellation()
 			return false, err
 		}
 		if inflight != nil {
@@ -316,13 +315,13 @@ func (r *runTreeOwner) requestCancel(
 	}
 }
 
-func (r *runTreeOwner) abortRootCancellation(reason string) {
+// abortRootCancellation withdraws the root cancellation its requester claimed.
+// While one is claimed every other requester is refused as busy, so the claim
+// being withdrawn is always the caller's own.
+func (r *runTreeOwner) abortRootCancellation() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if r.cancelRequested && r.cancelReason == reason {
-		r.cancelRequested = false
-		r.cancelReason = ""
-	}
+	r.rootCancel = nil
 }
 
 // commitInterrupt reserves the interrupt boundary, runs its owner-cancelable
@@ -332,7 +331,7 @@ func (r *runTreeOwner) abortRootCancellation(reason string) {
 func (r *runTreeOwner) commitInterrupt(ctx context.Context, commit func(context.Context) error) (committed bool, err error) {
 	commitCtx, cancelCommit := context.WithCancel(ctx)
 	r.mu.Lock()
-	if r.cancelRequested {
+	if r.rootCancel != nil {
 		r.mu.Unlock()
 		cancelCommit()
 		return false, nil
@@ -372,5 +371,8 @@ func (r *runTreeOwner) CancelReasonFor(runID string) string {
 			return r.childCancel.reason
 		}
 	}
-	return r.cancelReason
+	if r.rootCancel == nil {
+		return ""
+	}
+	return r.rootCancel.reason
 }

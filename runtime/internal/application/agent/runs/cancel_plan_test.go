@@ -51,8 +51,8 @@ func TestCancellationPlanPartitionsCanonicalSubtree(t *testing.T) {
 	if plan.root.run.ID() != "run_root" || plan.target.run.ID() != "run_a" {
 		t.Fatalf("root/target = %q/%q, want run_root/run_a", plan.root.run.ID(), plan.target.run.ID())
 	}
-	if plan.treeState != run.Running || plan.hasPending {
-		t.Fatalf("tree state/pending = %s/%t, want running/false", plan.treeState, plan.hasPending)
+	if plan.treeState() != run.Running || plan.hasPending {
+		t.Fatalf("tree state/pending = %s/%t, want running/false", plan.treeState(), plan.hasPending)
 	}
 	if got, want := cancellationRunIDs(plan.targetSubtree), []string{"run_a0", "run_a1", "run_a"}; !slices.Equal(got, want) {
 		t.Fatalf("target subtree = %v, want %v", got, want)

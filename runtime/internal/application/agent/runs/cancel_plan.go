@@ -27,7 +27,6 @@ type cancellationPlan struct {
 	target          cancellationRun
 	targetSubtree   []cancellationRun
 	survivingTree   []cancellationRun
-	treeState       rundomain.State
 	executor        ExecutorRef
 	pending         Pending
 	hasPending      bool
@@ -39,8 +38,10 @@ type cancellationPlan struct {
 	interrupts           []transcript.Interrupt
 	targetInterruptItems []transcript.Item
 	targetDrainedItems   []transcript.Item
-	completePostorderIDs []string
 }
+
+// treeState is the lifecycle state of the whole tree, which its root owns.
+func (p cancellationPlan) treeState() rundomain.State { return p.root.run.State() }
 
 // treeRuns is every Run of the planned tree: the surviving members and the
 // target subtree.
@@ -100,7 +101,7 @@ func (c *Coordinator) cancellationPlanFor(
 	if err != nil {
 		return cancellationPlan{}, liveSegment{}, false, err
 	}
-	if plan.treeState == rundomain.Waiting && plan.target.run.Lineage().IsChild() {
+	if plan.treeState() == rundomain.Waiting && plan.target.run.Lineage().IsChild() {
 		if err := c.loadWaitingCancellationItems(ctx, &plan); err != nil {
 			return cancellationPlan{}, liveSegment{}, false, err
 		}

@@ -31,10 +31,15 @@ type runTreeOwner struct {
 	terminalRuns    map[string]run.Run
 	executorMembers map[string]string
 	childCancel     *childCancellation
-	cancelRequested bool
-	cancelReason    string
+	rootCancel      *rootCancellation
 	activation      segmentActivation
 	interrupt       interruptBoundary
+}
+
+// rootCancellation is the whole-tree cancellation that owns a Run tree once
+// requested; the owner holds none until then.
+type rootCancellation struct {
+	reason string
 }
 
 // segmentActivation serializes the post-commit executor activation with root
@@ -85,7 +90,7 @@ func (r *runTreeOwner) beginExecution(
 		r.mu.Unlock()
 		return false, errors.New("runs: segment activation already resolved")
 	}
-	if r.cancelRequested {
+	if r.rootCancel != nil {
 		r.activation.phase = activationResolved
 		close(r.activation.done)
 		r.mu.Unlock()

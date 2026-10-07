@@ -7,10 +7,9 @@ import (
 // Record names the live Segment that owns one executing Run. The durable Run
 // owns everything else about it.
 type Record struct {
-	ID           string
-	SegmentID    string
-	ExecutorID   string
-	CancelReason string
+	ID         string
+	SegmentID  string
+	ExecutorID string
 }
 
 // liveSegment is the coordinator's process-local state for a currently active
@@ -78,19 +77,6 @@ func (r *registry) Running(id string) (liveSegment, bool) {
 	r.opening.RLock()
 	defer r.opening.RUnlock()
 	return r.Get(id)
-}
-
-// MarkCancel records the human-facing cancel reason and returns the live run.
-func (r *registry) MarkCancel(id, reason string) (liveSegment, bool) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	segment, ok := r.runs[id]
-	if !ok {
-		return liveSegment{}, false
-	}
-	segment.record.CancelReason = reason
-	r.runs[id] = segment
-	return segment, true
 }
 
 func (r *registry) initLocked() {
