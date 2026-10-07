@@ -1,7 +1,7 @@
 import type { KeyValueStore } from "@/plugins/sdk";
 import { configureRuntimeMutationJournalStorage } from "../application/ports/mutationJournal";
 
-const STORAGE_PREFIX = "mutation-journal-v3.";
+const STORAGE_PREFIX = "mutation-journal.";
 const PROBE_STORAGE_PREFIX = `${STORAGE_PREFIX}probe:`;
 
 function storageKey(key: string): string {

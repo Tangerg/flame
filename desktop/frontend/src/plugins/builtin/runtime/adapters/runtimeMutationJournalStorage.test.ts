@@ -35,11 +35,11 @@ describe("Runtime mutation journal storage adapter", () => {
 
     const storage = installedRuntimeMutationJournalStorage();
     expect(storage).not.toBeNull();
-    stored.set("mutation-journal-v3.probe:stale", "stale-probe");
+    stored.set("mutation-journal.probe:stale", "stale-probe");
     storage?.set("entry:key-1", { version: 1 });
     expect(storage?.get("entry:key-1")).toEqual({ version: 1 });
     expect(storage?.keys()).toEqual(["entry:key-1"]);
-    expect(stored.has("mutation-journal-v3.entry:key-1")).toBe(true);
+    expect(stored.has("mutation-journal.entry:key-1")).toBe(true);
     storage?.remove("entry:key-1");
     expect(storage?.get("entry:key-1")).toBeUndefined();
 
@@ -50,7 +50,7 @@ describe("Runtime mutation journal storage adapter", () => {
   it("ignores records outside the only current storage shape", () => {
     const stored = new Map<string, unknown>([
       ["mutation-journal-v1", { version: 1 }],
-      ["mutation-journal-v2.entry:old", { version: 3 }],
+      ["mutation-journal-v3.entry:old", { version: 2 }],
     ]);
     const ctx: { storage: KeyValueStore } = {
       storage: {

@@ -104,7 +104,6 @@ describe("mutation journal", () => {
       "idempotencyKey",
       "namespace",
       "salt",
-      "version",
     ]);
     expect(JSON.stringify(entry)).not.toContain("never persist me");
     expect(entry).not.toHaveProperty("owner");
@@ -313,7 +312,6 @@ describe("mutation journal", () => {
 
     const endpointShape = new MemoryStorage();
     endpointShape.values.set("entry:old-key", {
-      version: 2,
       salt: "salt",
       endpoint: "http://127.0.0.1:17171",
       namespace: "idp_runtime_store",

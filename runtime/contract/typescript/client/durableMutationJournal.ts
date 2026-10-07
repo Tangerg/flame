@@ -1,8 +1,7 @@
-const JOURNAL_VERSION = 2;
 const MAX_ENTRIES = 256;
 const ENTRY_PREFIX = "entry:";
 const FINGERPRINT_FIELD_SEPARATOR = "\u0000";
-const JOURNAL_ENTRY_FIELD_COUNT = 7;
+const JOURNAL_ENTRY_FIELD_COUNT = 6;
 const MAX_IDENTITY_LENGTH = 255;
 const FINGERPRINT_HEX_LENGTH = 32;
 const MILLISECONDS_PER_SECOND = 1_000;
@@ -41,7 +40,6 @@ export class MutationJournalCapacityError extends MutationJournalError {
 }
 
 interface JournalEntry {
-  version: typeof JOURNAL_VERSION;
   salt: string;
   namespace: string;
   fingerprint: string;
@@ -94,7 +92,6 @@ function validEntry(value: unknown): value is JournalEntry {
   const entry = value as Partial<JournalEntry>;
   return (
     Object.keys(value).length === JOURNAL_ENTRY_FIELD_COUNT &&
-    entry.version === JOURNAL_VERSION &&
     validText(entry.salt, MAX_IDENTITY_LENGTH) &&
     validText(entry.namespace, MAX_IDENTITY_LENGTH) &&
     typeof entry.fingerprint === "string" &&
@@ -228,7 +225,6 @@ function matchesCommand(entry: JournalEntry, method: string, params: unknown): b
 
 function sameEntry(left: JournalEntry, right: JournalEntry): boolean {
   return (
-    left.version === right.version &&
     left.salt === right.salt &&
     left.namespace === right.namespace &&
     left.fingerprint === right.fingerprint &&
@@ -292,7 +288,6 @@ export function openDurableMutationJournal(
     const createdAt = options.now();
     const salt = crypto.randomUUID();
     const entry: JournalEntry = {
-      version: JOURNAL_VERSION,
       salt,
       namespace: scope.namespace,
       fingerprint: fingerprint(
