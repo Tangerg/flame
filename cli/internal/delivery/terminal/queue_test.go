@@ -1183,14 +1183,13 @@ func TestPendingRunRecoveryPreservesAnEditedSuccessor(t *testing.T) {
 			if err := store.Close(); err != nil {
 				t.Fatal(err)
 			}
-			readPending := func() []workbench.PendingRun {
-				t.Helper()
+			readPending := func() ([]workbench.PendingRun, error) {
 				reopened, err := openTestWorkbench(stateDirectory)
 				if err != nil {
-					t.Fatal(err)
+					return nil, err
 				}
 				defer reopened.Close()
-				return reopened.PendingRuns(command.SessionID)
+				return reopened.PendingRuns(command.SessionID), nil
 			}
 			host, stop := runUIWithReplayState(t, gate, "/tmp/flame-cli-test", command.SessionID, stateDirectory)
 			awaitState(t, "pending run recovery to start", func() bool {
@@ -1212,7 +1211,12 @@ func TestPendingRunRecoveryPreservesAnEditedSuccessor(t *testing.T) {
 
 			close(gate.release)
 			awaitState(t, "pending run recovery to settle durably", func() bool {
-				pending := readPending()
+				// The terminal may replace the state file while this second
+				// reader loads it; that read is simply retried.
+				pending, err := readPending()
+				if err != nil {
+					return false
+				}
 				if outcome == "accepted" {
 					return len(pending) == 1 && pending[0].Command.CommandID == successor.CommandID
 				}
@@ -1222,7 +1226,12 @@ func TestPendingRunRecoveryPreservesAnEditedSuccessor(t *testing.T) {
 			host.Type("_AND_AFTER_RECOVERY")
 			host.Press(input.Enter)
 			host.Shows(t, "queued prompt updated")
-			pending := readPending()
+			var pending []workbench.PendingRun
+			awaitState(t, "a settled authoring read", func() bool {
+				var err error
+				pending, err = readPending()
+				return err == nil
+			})
 			last := pending[len(pending)-1]
 			if last.Command.Message.Text != "EDITED_BEFORE_RECOVERY_AND_AFTER_RECOVERY" || last.Command.CommandID == successor.CommandID {
 				t.Fatalf("saved successor after recovery = %+v", last)
