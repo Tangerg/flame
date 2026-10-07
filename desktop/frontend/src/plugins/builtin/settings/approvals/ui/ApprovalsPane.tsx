@@ -7,7 +7,7 @@ import { RulesRow } from "./RulesRow";
 
 export function ApprovalsPane() {
   const t = useT();
-  const { data: mode, isError } = useApprovalModeConfig();
+  const { data: approval, isError } = useApprovalModeConfig();
   if (isError) {
     return (
       <EmptyState
@@ -19,7 +19,7 @@ export function ApprovalsPane() {
   }
   return (
     <SettingsGroup>
-      <ModeRow mode={mode} />
+      <ModeRow approval={approval} />
       <RulesRow />
     </SettingsGroup>
   );

@@ -25,7 +25,8 @@ import {
 import { AGENT_SESSIONS } from "@/plugins/builtin/agent/public/services";
 import {
   APPROVAL_MODE_KEY,
-  type ApprovalMode,
+  type ApprovalModePolicy,
+  type ApprovalModeResult,
 } from "@/plugins/builtin/agent/public/approvalPolicy";
 import {
   composerBootstrap,
@@ -86,6 +87,12 @@ import {
 } from "./agentSessionSnapshots";
 import { installVisualRuntimeServiceStatusPort } from "./installVisualRuntimeServiceStatusPort";
 import { VISUAL_PRIMARY_MODEL_CONTEXT_WINDOW } from "./agentFixtureFacts";
+
+const VISUAL_APPROVAL_MODES: ApprovalModePolicy[] = [
+  { mode: "safe", write: "prompt", exec: "prompt", network: "prompt" },
+  { mode: "balanced", write: "pass", exec: "prompt", network: "pass" },
+  { mode: "yolo", write: "pass", exec: "pass", network: "pass" },
+];
 
 const VISUAL_MODELS: SelectableModel[] = [
   new SelectableModel({
@@ -171,7 +178,7 @@ function visualAgentRuntimeGateway(
     },
     isRunGone: () => false,
     isReplayLost: () => false,
-    setApprovalMode: async (mode) => mode,
+    setApprovalMode: async (mode) => ({ mode, modes: VISUAL_APPROVAL_MODES }),
     allowMCPTool: async () => undefined,
     forgetApprovalRule: async () => undefined,
   };
@@ -306,7 +313,10 @@ export async function installVisualAgentFixture(
   queryClient.setQueryData([AGENT_SESSIONS_KEY], projectless ? [] : [visualSession(state)]);
   queryClient.setQueryData<WorkspaceProjectSummary[]>([WORKSPACE_PROJECTS_KEY], []);
   queryClient.setQueryData([MODELS_KEY], VISUAL_MODELS);
-  queryClient.setQueryData<ApprovalMode>([APPROVAL_MODE_KEY], "balanced");
+  queryClient.setQueryData<ApprovalModeResult>([APPROVAL_MODE_KEY], {
+    mode: "balanced",
+    modes: VISUAL_APPROVAL_MODES,
+  });
   await loadPluginsForTest(
     flameLight,
     defaultAccents,

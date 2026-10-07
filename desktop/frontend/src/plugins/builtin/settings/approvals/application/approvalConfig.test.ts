@@ -5,7 +5,6 @@ import { forgetApprovalRules } from "./approvalConfig";
 const { forgetRules } = vi.hoisted(() => ({ forgetRules: vi.fn() }));
 
 vi.mock("@/plugins/builtin/agent/public/approvalPolicy", () => ({
-  APPROVAL_MODES: [],
   forgetRule: vi.fn(),
   forgetRules,
   setApprovalMode: vi.fn(),

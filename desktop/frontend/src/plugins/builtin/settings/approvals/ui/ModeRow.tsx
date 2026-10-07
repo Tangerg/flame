@@ -1,16 +1,19 @@
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { ChoiceList, ChoiceOption, Icon, SkeletonList, vocab } from "@/ui";
-import { setApprovalMode } from "@/plugins/builtin/agent/public/approvalPolicy";
-import { APPROVAL_MODES, type ApprovalMode } from "../application/approvalConfig";
+import {
+  APPROVAL_MODE_LABEL_KEY,
+  describeApprovalMode,
+  setApprovalMode,
+  type ApprovalMode,
+  type ApprovalModeResult,
+} from "@/plugins/builtin/agent/public/approvalPolicy";
 import { rpcErrorText } from "@/lib/rpcErrors";
 import { notifyError } from "@/plugins/sdk";
 import { useT } from "@/lib/i18n";
 import { useId, useState } from "react";
 import { color, leading, motion, space, type as typeStep, weight } from "@/styles/tokens.stylex";
 import { SettingRow } from "../../kit";
-
-const MODE_VALUES = APPROVAL_MODES.map((option) => option.value);
 
 const m = stylex.create({
   body: { display: "flex", minWidth: 0, flex: 1, flexDirection: "column", gap: space.s0_5 },
@@ -19,8 +22,9 @@ const m = stylex.create({
   spin: { animation: motion.spin },
 });
 
-export function ModeRow({ mode }: { mode: ApprovalMode | undefined }) {
+export function ModeRow({ approval }: { approval: ApprovalModeResult | undefined }) {
   const t = useT();
+  const mode = approval?.mode;
   const labelId = useId();
   const [pending, setPending] = useState<ApprovalMode | null>(null);
   const shown = pending ?? mode;
@@ -43,35 +47,42 @@ export function ModeRow({ mode }: { mode: ApprovalMode | undefined }) {
       sub={t("approvals.mode.sub")}
       align="stacked"
     >
-      {mode === undefined ? (
-        <SkeletonList count={APPROVAL_MODES.length} label={t("common.loading")} />
+      {approval === undefined ? (
+        <SkeletonList
+          count={Object.keys(APPROVAL_MODE_LABEL_KEY).length}
+          label={t("common.loading")}
+        />
       ) : (
         <ChoiceList
           multiple={false}
           value={shown === undefined ? [] : [shown]}
-          values={MODE_VALUES}
+          values={approval.modes.map((policy) => policy.mode)}
           labelledBy={labelId}
           pending={pending !== null}
           onValueChange={([next]) => {
             if (next !== undefined) void onChange(next as ApprovalMode);
           }}
         >
-          {APPROVAL_MODES.map((o) => (
+          {approval.modes.map((policy) => (
             <ChoiceOption
-              key={o.value}
+              key={policy.mode}
               multiple={false}
-              value={o.value}
-              selected={o.value === shown}
-              label={t(o.labelKey)}
-              description={t(o.descKey)}
+              value={policy.mode}
+              selected={policy.mode === shown}
+              label={t(APPROVAL_MODE_LABEL_KEY[policy.mode])}
+              description={describeApprovalMode(policy, t)}
               pending={pending !== null}
-              busy={o.value === pending}
+              busy={policy.mode === pending}
             >
               <span {...stylex.props(m.body)}>
-                <span {...stylex.props(m.name, typeStep.uiMd)}>{t(o.labelKey)}</span>
-                <span {...stylex.props(m.desc, typeStep.uiMd)}>{t(o.descKey)}</span>
+                <span {...stylex.props(m.name, typeStep.uiMd)}>
+                  {t(APPROVAL_MODE_LABEL_KEY[policy.mode])}
+                </span>
+                <span {...stylex.props(m.desc, typeStep.uiMd)}>
+                  {describeApprovalMode(policy, t)}
+                </span>
               </span>
-              {o.value === pending && (
+              {policy.mode === pending && (
                 <Icon
                   name="loop"
                   size="sm"

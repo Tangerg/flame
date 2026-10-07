@@ -202,11 +202,15 @@ describe("agentRuntimeGateway", () => {
   });
 
   it("projects the approval mode saved by the Runtime", async () => {
-    const setMode = vi.fn().mockResolvedValue({ mode: "safe" });
+    const saved = {
+      mode: "safe",
+      modes: [{ mode: "safe", write: "prompt", exec: "prompt", network: "prompt" }],
+    };
+    const setMode = vi.fn().mockResolvedValue(saved);
     runtimeClient = () => ({ approval: { setMode } }) as unknown as FlameClient;
     uninstall = installAgentRuntimeGateway(getRuntimeClient);
 
-    await expect(agentRuntime().setApprovalMode("safe")).resolves.toBe("safe");
+    await expect(agentRuntime().setApprovalMode("safe")).resolves.toEqual(saved);
     expect(setMode).toHaveBeenCalledWith("safe");
   });
 

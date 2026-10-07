@@ -119,7 +119,7 @@ class RuntimeAgentGateway implements AgentRuntimeGateway {
   }
 
   async setApprovalMode(mode: Parameters<AgentRuntimeGateway["setApprovalMode"]>[0]) {
-    return (await this.runtimeClient().approval.setMode(mode)).mode;
+    return this.runtimeClient().approval.setMode(mode);
   }
 
   async allowMCPTool(server: MCPServerID, name: string) {

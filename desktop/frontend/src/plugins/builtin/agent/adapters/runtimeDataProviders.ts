@@ -69,7 +69,7 @@ export function registerAgentDataProviders(
   });
   ctx.contribute(DATA_PROVIDER, {
     key: APPROVAL_MODE_KEY,
-    fetcher: async (_params, signal) => (await runtimeClient().approval.getMode(signal)).mode,
+    fetcher: (_params, signal) => runtimeClient().approval.getMode(signal),
   });
   ctx.contribute(DATA_PROVIDER, {
     key: APPROVAL_RULES_KEY,

@@ -10,7 +10,7 @@ export {
   useApprovalMode,
   useApprovalRules,
 } from "../application/approvalPolicyQueries";
-export type { ApprovalMode } from "../domain/hitl";
-export { APPROVAL_MODE_OPTION, APPROVAL_MODES } from "../presentation/approvalModes";
+export type { ApprovalMode, ApprovalModePolicy, ApprovalModeResult } from "../domain/hitl";
+export { APPROVAL_MODE_LABEL_KEY, describeApprovalMode } from "../presentation/approvalModes";
 
 export type { ApprovalRuleSummary } from "../application/approvalPolicyQueries";

@@ -788,10 +788,13 @@ export const es: Record<string, string> = {
   "usage.byProvider": "Por proveedor",
   "usage.byModel": "Por modelo",
   "usage.byDay": "Por día",
-  "approvals.mode.safe.desc": "Preguntar antes de cada edición o comando.",
-  "approvals.mode.balanced.desc":
-    "Permitir ediciones automáticamente; preguntar antes de ejecutar comandos.",
-  "approvals.mode.auto.desc": "Ejecutar todo sin preguntar.",
+  "approvals.toolClass.write": "Ediciones",
+  "approvals.toolClass.exec": "Comandos",
+  "approvals.toolClass.network": "Red",
+  "approvals.gate.pass": "permitido",
+  "approvals.gate.prompt": "pregunta antes",
+  "approvals.gate.deny": "rechazado",
+  "approvals.gate.entry": "{{toolClass}}: {{gate}}",
   "hooks.intro":
     "Los hooks ejecutan tus propios comandos en puntos fijos de un turno: antes de una herramienta, después de un prompt, al compactar. Los hooks globales (~/.flame) se ejecutan siempre; los de un proyecto solo después de que confíes en él.",
   "hooks.trust": "Confiar en los hooks de este proyecto",

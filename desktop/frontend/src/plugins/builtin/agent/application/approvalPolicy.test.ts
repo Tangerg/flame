@@ -6,7 +6,7 @@ import { installAgentRuntimeGateway } from "../adapters/agentRuntimeGateway";
 import { configureAgentRuntimeGateway, type AgentRuntimeGateway } from "./ports/runtimeGateway";
 import { forgetRules, setApprovalMode, allowMCPTool } from "./approvalPolicy";
 import { APPROVAL_MODE_KEY, APPROVAL_RULES_KEY } from "./approvalPolicyQueries";
-import type { ApprovalMode } from "../domain/hitl";
+import type { ApprovalMode, ApprovalModeResult } from "../domain/hitl";
 import { rejected } from "@/test/rejected";
 
 let runtimeClient: () => FlameClient = () => {
@@ -45,38 +45,38 @@ describe("approval policy", () => {
   });
 
   it("serializes mode changes and commits each authoritative response", async () => {
-    const first = Promise.withResolvers<ApprovalMode>();
-    const second = Promise.withResolvers<ApprovalMode>();
+    const first = Promise.withResolvers<ApprovalModeResult>();
+    const second = Promise.withResolvers<ApprovalModeResult>();
     const setMode = vi
-      .fn<(mode: ApprovalMode) => Promise<ApprovalMode>>()
+      .fn<(mode: ApprovalMode) => Promise<ApprovalModeResult>>()
       .mockReturnValueOnce(first.promise)
       .mockReturnValueOnce(second.promise);
     uninstall = configureAgentRuntimeGateway({
       setApprovalMode: setMode,
     } as unknown as AgentRuntimeGateway);
-    queryClient.setQueryData([APPROVAL_MODE_KEY], "balanced");
+    queryClient.setQueryData([APPROVAL_MODE_KEY], saved("balanced"));
 
     const safe = setApprovalMode("safe");
     const yolo = setApprovalMode("yolo");
     await Promise.resolve();
     expect(setMode).toHaveBeenCalledTimes(1);
 
-    first.resolve("safe");
-    await expect(safe).resolves.toBe("safe");
+    first.resolve(saved("safe"));
+    await expect(safe).resolves.toEqual(saved("safe"));
     await Promise.resolve();
     expect(setMode).toHaveBeenNthCalledWith(2, "yolo");
 
-    second.resolve("yolo");
-    await expect(yolo).resolves.toBe("yolo");
-    expect(queryClient.getQueryData([APPROVAL_MODE_KEY])).toBe("yolo");
+    second.resolve(saved("yolo"));
+    await expect(yolo).resolves.toEqual(saved("yolo"));
+    expect(queryClient.getQueryData([APPROVAL_MODE_KEY])).toEqual(saved("yolo"));
   });
 
   it("continues with the next mode after a rejected change", async () => {
-    const first = Promise.withResolvers<ApprovalMode>();
+    const first = Promise.withResolvers<ApprovalModeResult>();
     const setMode = vi
-      .fn<(mode: ApprovalMode) => Promise<ApprovalMode>>()
+      .fn<(mode: ApprovalMode) => Promise<ApprovalModeResult>>()
       .mockReturnValueOnce(first.promise)
-      .mockResolvedValueOnce("yolo");
+      .mockResolvedValueOnce(saved("yolo"));
     uninstall = configureAgentRuntimeGateway({
       setApprovalMode: setMode,
     } as unknown as AgentRuntimeGateway);
@@ -86,30 +86,30 @@ describe("approval policy", () => {
     first.reject(new Error("not saved"));
 
     await expect(rejected).rejects.toThrow("not saved");
-    await expect(accepted).resolves.toBe("yolo");
+    await expect(accepted).resolves.toEqual(saved("yolo"));
     expect(setMode).toHaveBeenNthCalledWith(2, "yolo");
   });
 
   it("does not serialize the successor behind an old Plugin Host mode change", async () => {
-    const retiredMode = Promise.withResolvers<ApprovalMode>();
+    const retiredMode = Promise.withResolvers<ApprovalModeResult>();
     uninstall = configureAgentRuntimeGateway({
       setApprovalMode: vi.fn(() => retiredMode.promise),
     } as unknown as AgentRuntimeGateway);
     const retired = setApprovalMode("safe");
 
-    const successorSetMode = vi.fn().mockResolvedValue({ mode: "yolo" });
+    const successorSetMode = vi.fn().mockResolvedValue(saved("yolo"));
     runtimeClient = () => ({ approval: { setMode: successorSetMode } }) as unknown as FlameClient;
     const disposeSuccessor = installAgentRuntimeGateway(getRuntimeClient);
     const successor = setApprovalMode("yolo");
     await Promise.resolve();
     const successorStartedBeforeRetiredSettlement = successorSetMode.mock.calls.length;
-    retiredMode.resolve("safe");
+    retiredMode.resolve(saved("safe"));
     try {
       await Promise.allSettled([retired, successor]);
       expect(successorStartedBeforeRetiredSettlement).toBe(1);
       expect(successorSetMode).toHaveBeenCalledTimes(1);
       expect(successorSetMode).toHaveBeenCalledWith("yolo");
-      expect(queryClient.getQueryData([APPROVAL_MODE_KEY])).toBe("yolo");
+      expect(queryClient.getQueryData([APPROVAL_MODE_KEY])).toEqual(saved("yolo"));
     } finally {
       disposeSuccessor.dispose();
     }
@@ -175,5 +175,16 @@ function rule(id: string): ApprovalRuleSummary {
     modelName: "shell",
     stale: false,
     decision: "allow",
+  };
+}
+
+function saved(mode: ApprovalMode): ApprovalModeResult {
+  return {
+    mode,
+    modes: [
+      { mode: "safe", write: "prompt", exec: "prompt", network: "prompt" },
+      { mode: "balanced", write: "pass", exec: "prompt", network: "pass" },
+      { mode: "yolo", write: "pass", exec: "pass", network: "pass" },
+    ],
   };
 }

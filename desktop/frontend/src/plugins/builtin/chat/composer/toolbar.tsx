@@ -9,8 +9,8 @@ import { AgentComposerChip } from "@/ui/agent";
 import { imageFiles } from "@/plugins/builtin/chat/composer/public/input";
 import { useSelectedModel } from "./public/selectedModel";
 import {
-  APPROVAL_MODE_OPTION,
-  APPROVAL_MODES,
+  APPROVAL_MODE_LABEL_KEY,
+  describeApprovalMode,
   setApprovalMode,
   useApprovalMode,
   type ApprovalMode,
@@ -108,9 +108,9 @@ const MODE_ICON: Record<ApprovalMode, IconName> = {
 
 function ApprovalModePill() {
   const t = useT();
-  const { data: mode, isError } = useApprovalMode();
-  if (isError || mode === undefined) return null;
-  const current = APPROVAL_MODE_OPTION[mode];
+  const { data: approval, isError } = useApprovalMode();
+  if (isError || approval === undefined) return null;
+  const { mode, modes } = approval;
   const full = mode === "yolo";
   const onSelect = async (next: ApprovalMode) => {
     if (next === mode) return;
@@ -130,7 +130,7 @@ function ApprovalModePill() {
             variant={full ? "wash" : "ghost"}
             tone={full ? "warning" : undefined}
             leading={<Icon name={MODE_ICON[mode]} size="sm" full />}
-            label={t(current.labelKey)}
+            label={t(APPROVAL_MODE_LABEL_KEY[mode])}
             labelVisibility={full ? "always" : "wide"}
           />
         }
@@ -139,29 +139,29 @@ function ApprovalModePill() {
         <div aria-hidden {...stylex.props(toolbarStyles.menuHeading, typeStep.uiSm)}>
           {t("approvals.mode.aria")}
         </div>
-        {APPROVAL_MODES.map((m) => (
+        {modes.map((policy) => (
           <DropdownMenu.Item
-            key={m.value}
-            onClick={() => void onSelect(m.value)}
+            key={policy.mode}
+            onClick={() => void onSelect(policy.mode)}
             layout="pick"
             styles={toolbarStyles.describedRow}
           >
             <span {...stylex.props(toolbarStyles.optionGlyphBox)}>
               <Icon
-                name={MODE_ICON[m.value]}
+                name={MODE_ICON[policy.mode]}
                 size="md"
                 className={stylex.props(toolbarStyles.optionGlyph).className}
               />
             </span>
             <span {...stylex.props(vocab.min)}>
               <span {...stylex.props(toolbarStyles.optionTitle, typeStep.uiMd)}>
-                {t(m.labelKey)}
+                {t(APPROVAL_MODE_LABEL_KEY[policy.mode])}
               </span>
               <span {...stylex.props(toolbarStyles.optionDetail, typeStep.uiSm)}>
-                {t(m.descKey)}
+                {describeApprovalMode(policy, t)}
               </span>
             </span>
-            {m.value === mode && (
+            {policy.mode === mode && (
               <span {...stylex.props(toolbarStyles.optionGlyphBox)}>
                 <Icon name="check" size="xs" className={stylex.props(vocab.accent).className} />
               </span>

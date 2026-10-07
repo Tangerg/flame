@@ -1,16 +1,16 @@
 import type { MCPServerID } from "@flame/runtime-contract/wire";
 import type { ApprovalRuleSummary } from "./approvalPolicyQueries";
 import { APPROVAL_MODE_KEY, APPROVAL_RULES_KEY } from "./approvalPolicyQueries";
-import type { ApprovalMode } from "../domain/hitl";
+import type { ApprovalMode, ApprovalModeResult } from "../domain/hitl";
 import { queryClient } from "@/lib/queryClient";
 import { agentRuntime } from "./ports/runtimeGateway";
 import { agentCommandOwner, type AgentCommandOwner } from "./agentCommandOwner";
 
-export function setApprovalMode(mode: ApprovalMode): Promise<ApprovalMode> {
+export function setApprovalMode(mode: ApprovalMode): Promise<ApprovalModeResult> {
   const owner = agentCommandOwner();
   const runtime = agentRuntime();
   return owner.serializeApprovalMode(async () => {
-    let saved: ApprovalMode;
+    let saved: ApprovalModeResult;
     try {
       saved = await owner.settle(runtime.setApprovalMode(mode));
     } catch (error) {

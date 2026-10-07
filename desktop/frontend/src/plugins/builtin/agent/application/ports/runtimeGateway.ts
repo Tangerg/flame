@@ -1,7 +1,7 @@
 import type { MCPServerID, RestoreType } from "@flame/runtime-contract/wire";
 import { createSingletonPort } from "@/lib/ports/singletonPort";
 import type { AgentItem, AgentPendingInterruptSet, AgentRunFact } from "@/plugins/sdk";
-import type { ApprovalMode } from "../../domain/hitl";
+import type { ApprovalMode, ApprovalModeResult } from "../../domain/hitl";
 import type { AgentInput } from "../../domain/input";
 import type { AgentPlan } from "@/plugins/sdk/types/agentSessionView";
 import type { AgentSessionSummary } from "../session/sessionQueries";
@@ -55,7 +55,7 @@ export interface AgentRuntimeGateway {
   steerRun(runId: string, segmentId: string, input: AgentInput): Promise<{ userItemId: string }>;
   isRunGone(error: unknown): boolean;
   isReplayLost(error: unknown): boolean;
-  setApprovalMode(mode: ApprovalMode): Promise<ApprovalMode>;
+  setApprovalMode(mode: ApprovalMode): Promise<ApprovalModeResult>;
   allowMCPTool(server: MCPServerID, name: string): Promise<void>;
   forgetApprovalRule(id: string): Promise<void>;
 }

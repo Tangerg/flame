@@ -792,10 +792,13 @@ export const fr: Record<string, string> = {
   "usage.byProvider": "Par fournisseur",
   "usage.byModel": "Par modèle",
   "usage.byDay": "Par jour",
-  "approvals.mode.safe.desc": "Demander avant chaque modification ou commande.",
-  "approvals.mode.balanced.desc":
-    "Autoriser les modifications ; demander avant d'exécuter des commandes.",
-  "approvals.mode.auto.desc": "Tout exécuter sans demander.",
+  "approvals.toolClass.write": "Modifications",
+  "approvals.toolClass.exec": "Commandes",
+  "approvals.toolClass.network": "Réseau",
+  "approvals.gate.pass": "autorisé",
+  "approvals.gate.prompt": "demande d'abord",
+  "approvals.gate.deny": "refusé",
+  "approvals.gate.entry": "{{toolClass}} : {{gate}}",
   "hooks.intro":
     "Les hooks exécutent vos propres commandes à des points fixes d'un tour — avant un outil, après un prompt, lors d'un compactage. Les hooks globaux (~/.flame) s'exécutent toujours ; ceux d'un projet seulement après que vous lui accordez votre confiance.",
   "hooks.trust": "Faire confiance aux hooks de ce projet",

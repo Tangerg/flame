@@ -1,15 +1,10 @@
 import type { ApprovalRuleSummary } from "@/plugins/builtin/agent/public/approvalPolicy";
 import {
-  APPROVAL_MODES,
   forgetRule,
   forgetRules,
-  type ApprovalMode,
   useApprovalMode,
   useApprovalRules,
 } from "@/plugins/builtin/agent/public/approvalPolicy";
-
-export type { ApprovalMode };
-export { APPROVAL_MODES };
 
 export function useApprovalModeConfig() {
   return useApprovalMode();
