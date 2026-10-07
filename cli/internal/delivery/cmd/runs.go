@@ -283,12 +283,9 @@ func completeFirstRunArgument(provider runtimeProvider) cobra.CompletionFunc {
 		}
 		items := make([]string, 0, len(page.Items))
 		for _, run := range page.Items {
-			if toComplete != "" && !strings.HasPrefix(run.ID, toComplete) {
-				continue
-			}
 			items = append(items, fmt.Sprintf("%s\t%s · %s · %s", run.ID, runScope(run), run.Status, runModel(run)))
 		}
-		return items, cobra.ShellCompDirectiveNoFileComp
+		return filterCompletionPrefix(items, toComplete), cobra.ShellCompDirectiveNoFileComp
 	}
 }
 

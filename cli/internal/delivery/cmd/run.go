@@ -175,14 +175,7 @@ func completeOutputFormat(_ *cobra.Command, _ []string, toComplete string) ([]st
 		string(outputJSON) + "\twrite one final result object",
 		string(outputStreamingJSON) + "\tstream one event object per line",
 	}
-	matched := candidates[:0]
-	for _, candidate := range candidates {
-		formatName, _, _ := strings.Cut(candidate, "\t")
-		if strings.HasPrefix(formatName, toComplete) {
-			matched = append(matched, candidate)
-		}
-	}
-	return matched, cobra.ShellCompDirectiveNoFileComp
+	return filterCompletionPrefix(candidates, toComplete), cobra.ShellCompDirectiveNoFileComp
 }
 
 func (r *runFlags) readMessageText(cmd *cobra.Command, args []string) (string, error) {
