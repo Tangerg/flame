@@ -2249,7 +2249,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-07.4\""
+          "value": "\"2026-10-07.5\""
         },
         {
           "name": "ProviderAPIKeyOptional",

@@ -11,6 +11,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/contractcatalog"
 	"github.com/Tangerg/flame/runtime/internal/contractshape"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
 	"github.com/Tangerg/flame/runtime/internal/delivery/dispatch"
 	runtimehttp "github.com/Tangerg/flame/runtime/internal/delivery/transport/http"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -79,6 +80,37 @@ func (t *tsEmitter) problemCodes() {
 		t.line("  %s: %d,", strconv.Quote(name), codes[name])
 	}
 	t.line("} as const satisfies Partial<Record<ProblemData['type'], number>>;")
+	t.line("")
+	actions, ok := contractcatalog.EnumValues(reflect.TypeFor[protocol.RecoveryAction]())
+	if !ok {
+		panic("contractgen: RecoveryAction has no registered wire values")
+	}
+	quoted := make([]string, len(actions))
+	for index, action := range actions {
+		quoted[index] = strconv.Quote(action)
+	}
+	t.line("// The default next move a client offers for a problem, by where it arrived.")
+	t.line("export type RecoveryAction = %s;", strings.Join(quoted, " | "))
+	t.line("")
+	t.line("// A failed request's problem.")
+	t.line("export const PROBLEM_RECOVERY = {")
+	for _, name := range slices.Sorted(maps.Keys(codes)) {
+		recovery, declared := delivery.RecoveryFor(name)
+		if !declared {
+			panic("contractgen: problem type " + name + " declares no recovery action")
+		}
+		t.line("  %s: %s,", strconv.Quote(name), strconv.Quote(string(recovery)))
+	}
+	t.line("} as const satisfies Partial<Record<ProblemData['type'], RecoveryAction>>;")
+	t.line("")
+	t.line("// A problem that ended a Run, tool call or Item.")
+	t.line("export const RUN_PROBLEM_RECOVERY = {")
+	for _, contract := range dispatch.ProblemContracts() {
+		if slices.Contains(contract.Channels, dispatch.ProblemChannelExecution) {
+			t.line("  %s: %s,", strconv.Quote(contract.Type), strconv.Quote(string(contract.ExecutionRecovery)))
+		}
+	}
+	t.line("} as const satisfies Partial<Record<ProblemData['type'], RecoveryAction>>;")
 	t.line("")
 }
 

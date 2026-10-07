@@ -69,9 +69,9 @@ type methodEntry struct {
 // The methods are DERIVED from the registrations rather than declared: every method
 // already lists the errors it returns, and a second list is a second answer.
 type errorRegistry struct {
-	Types    []errorEntry `json:"types"`
-	RunTypes []string     `json:"runChannelTypes"`
-	Inline   []string     `json:"inlineStatusTypes"`
+	Types    []errorEntry      `json:"types"`
+	RunTypes []runProblemEntry `json:"runChannelTypes"`
+	Inline   []string          `json:"inlineStatusTypes"`
 }
 
 // errorEntry is one published business error.
@@ -81,6 +81,13 @@ type errorEntry struct {
 	Recovery          string   `json:"recoveryAction"`
 	RetryAfterSeconds int      `json:"retryAfterSeconds,omitzero"`
 	Methods           []string `json:"methods,omitempty"`
+}
+
+// runProblemEntry is one problem that ends a Run, tool call or Item, with the
+// default next move a client offers when it does.
+type runProblemEntry struct {
+	Type     string `json:"type"`
+	Recovery string `json:"recoveryAction"`
 }
 
 type capabilityEntry struct {
@@ -274,11 +281,21 @@ func errors(registry *delivery.Registry) errorRegistry {
 		// The run/tool channels carry no numeric code — only a symbolic type
 		// They are listed so a client's copy table can be checked
 		// for completeness against the runtime rather than against a doc.
-		RunTypes: dispatch.ProblemTypesFor(dispatch.ProblemChannelExecution),
+		RunTypes: runProblemTypes(),
 		// MCP status problems ride a query's own result instead of failing the
 		// call and carry no detail; their closed vocabulary is its enum owner.
 		Inline: mcpStatusProblemTypes(),
 	}
+}
+
+func runProblemTypes() []runProblemEntry {
+	var out []runProblemEntry
+	for _, contract := range dispatch.ProblemContracts() {
+		if slices.Contains(contract.Channels, dispatch.ProblemChannelExecution) {
+			out = append(out, runProblemEntry{Type: contract.Type, Recovery: string(contract.ExecutionRecovery)})
+		}
+	}
+	return out
 }
 
 func mcpStatusProblemTypes() []string {

@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-07.4",
+  "protocolVersion": "2026-10-07.5",
   "features": [
     "reasoning",
     "multimodal",
@@ -1847,18 +1847,54 @@
       }
     ],
     "runChannelTypes": [
-      "agent_stuck",
-      "child_run_canceled",
-      "denied_by_user",
-      "internal_error",
-      "invalid_api_key",
-      "provider_rejected",
-      "provider_unavailable",
-      "rate_limited",
-      "run_lost",
-      "timeout",
-      "tool_canceled",
-      "tool_failed"
+      {
+        "type": "agent_stuck",
+        "recoveryAction": "promptUser"
+      },
+      {
+        "type": "child_run_canceled",
+        "recoveryAction": "stop"
+      },
+      {
+        "type": "denied_by_user",
+        "recoveryAction": "stop"
+      },
+      {
+        "type": "internal_error",
+        "recoveryAction": "promptUser"
+      },
+      {
+        "type": "invalid_api_key",
+        "recoveryAction": "reauthenticate"
+      },
+      {
+        "type": "provider_rejected",
+        "recoveryAction": "stop"
+      },
+      {
+        "type": "provider_unavailable",
+        "recoveryAction": "waitRetryAfter"
+      },
+      {
+        "type": "rate_limited",
+        "recoveryAction": "waitRetryAfter"
+      },
+      {
+        "type": "run_lost",
+        "recoveryAction": "promptUser"
+      },
+      {
+        "type": "timeout",
+        "recoveryAction": "promptUser"
+      },
+      {
+        "type": "tool_canceled",
+        "recoveryAction": "stop"
+      },
+      {
+        "type": "tool_failed",
+        "recoveryAction": "promptUser"
+      }
     ],
     "inlineStatusTypes": [
       "mcp_authorization_failed",

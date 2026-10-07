@@ -36,6 +36,16 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
+## Protocol 2026-10-07.5
+
+Every problem that can end a Run, tool call or Item now publishes its default
+recovery action: the manifest's `runChannelTypes` entries carry
+`recoveryAction`, and the TypeScript contract exports `RUN_PROBLEM_RECOVERY`
+beside `PROBLEM_RECOVERY` for failed requests. The two differ for a type that
+rides both channels: an `internal_error` request stops, while a Run it ended
+can be prompted again. Clients take whether to offer a retry from these tables
+instead of keeping their own list.
+
 ## Protocol 2026-10-07.4
 
 `SessionSnapshot.session` is required: the snapshot carries the Session it was

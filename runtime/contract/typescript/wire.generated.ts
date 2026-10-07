@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-07.4";
+export const PROTOCOL_VERSION = "2026-10-07.5";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 30;
@@ -125,6 +125,74 @@ export const PROBLEM_CODES = {
   "vcs_unavailable": -32017,
   "workspace_unavailable": -32005,
 } as const satisfies Partial<Record<ProblemData['type'], number>>;
+
+// The default next move a client offers for a problem, by where it arrived.
+export type RecoveryAction = "refetch" | "coldRecover" | "resubscribe" | "reauthenticate" | "waitRetryAfter" | "promptUser" | "stop";
+
+// A failed request's problem.
+export const PROBLEM_RECOVERY = {
+  "capability_not_negotiated": "promptUser",
+  "checkpoint_conflict": "promptUser",
+  "checkpoint_unavailable": "promptUser",
+  "export_too_large": "promptUser",
+  "idempotency_conflict": "promptUser",
+  "idempotency_in_progress": "waitRetryAfter",
+  "idempotency_store_mismatch": "coldRecover",
+  "internal_error": "stop",
+  "interrupt_not_open": "coldRecover",
+  "invalid_params": "stop",
+  "invalid_protocol_version": "promptUser",
+  "invalid_request": "stop",
+  "item_not_found": "refetch",
+  "mcp_authorization_attempt_not_found": "stop",
+  "mcp_owned_by_installation": "promptUser",
+  "mcp_server_already_exists": "refetch",
+  "mcp_server_disabled": "refetch",
+  "mcp_server_not_found": "refetch",
+  "method_not_found": "stop",
+  "path_outside_root": "promptUser",
+  "plugin_changed": "promptUser",
+  "plugin_in_use": "promptUser",
+  "plugin_not_found": "promptUser",
+  "plugin_stale": "promptUser",
+  "plugin_unapproved": "promptUser",
+  "plugin_unavailable": "promptUser",
+  "prompt_source_too_large": "promptUser",
+  "provider_error": "promptUser",
+  "replay_cursor_invalid": "resubscribe",
+  "replay_unavailable": "coldRecover",
+  "revision_conflict": "refetch",
+  "run_finished": "coldRecover",
+  "run_not_found": "refetch",
+  "run_not_root": "refetch",
+  "run_waiting": "coldRecover",
+  "schedule_not_found": "refetch",
+  "session_busy": "refetch",
+  "session_has_active_run": "promptUser",
+  "session_not_found": "refetch",
+  "skill_not_found": "refetch",
+  "skill_unavailable": "promptUser",
+  "stale_segment": "refetch",
+  "unsupported_mime": "promptUser",
+  "vcs_unavailable": "promptUser",
+  "workspace_unavailable": "promptUser",
+} as const satisfies Partial<Record<ProblemData['type'], RecoveryAction>>;
+
+// A problem that ended a Run, tool call or Item.
+export const RUN_PROBLEM_RECOVERY = {
+  "agent_stuck": "promptUser",
+  "child_run_canceled": "stop",
+  "denied_by_user": "stop",
+  "internal_error": "promptUser",
+  "invalid_api_key": "reauthenticate",
+  "provider_rejected": "stop",
+  "provider_unavailable": "waitRetryAfter",
+  "rate_limited": "waitRetryAfter",
+  "run_lost": "promptUser",
+  "timeout": "promptUser",
+  "tool_canceled": "stop",
+  "tool_failed": "promptUser",
+} as const satisfies Partial<Record<ProblemData['type'], RecoveryAction>>;
 
 // The methods the runtime sends downstream. A client only ever subscribes.
 export const NOTIFICATIONS_RUN_EVENT = "notifications.run.event";
