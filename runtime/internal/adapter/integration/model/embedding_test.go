@@ -31,7 +31,4 @@ func TestEmbeddingSpaceIDPreservesFieldBoundaries(t *testing.T) {
 	if left == right {
 		t.Fatal("different embedding identity fields produced the same space")
 	}
-	if !strings.HasPrefix(left, embeddingSpaceVersion) {
-		t.Fatalf("embedding space %q does not carry its encoding version", left)
-	}
 }

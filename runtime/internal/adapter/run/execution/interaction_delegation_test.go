@@ -30,11 +30,9 @@ func durationPointer(value time.Duration) *time.Duration {
 func TestInteractionExecutorRunsDelegateAsProductChildRun(t *testing.T) {
 	model := newDelegatingStubModel()
 	executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{
-		Lifetime:               t.Context(),
-		ChatResolver:           staticInteractionChatResolver(model),
-		ImplementationIdentity: "interaction-delegate-test-build",
-		ConfigurationIdentity:  "interaction-delegate-test-config",
-		BuildID:                interactionTestBuildID,
+		Lifetime:     t.Context(),
+		ChatResolver: staticInteractionChatResolver(model),
+		BuildID:      interactionTestBuildID,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -174,11 +172,9 @@ func TestInteractionExecutorRunsDelegateAsProductChildRun(t *testing.T) {
 func TestInteractionExecutorCanceledDelegateWithUnknownModelOutcomeFailsRoot(t *testing.T) {
 	model := newCancelableDelegateModel()
 	executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{
-		Lifetime:               t.Context(),
-		ChatResolver:           staticInteractionChatResolver(model),
-		ImplementationIdentity: "interaction-running-cancel-test-build",
-		ConfigurationIdentity:  "interaction-running-cancel-test-config",
-		BuildID:                interactionTestBuildID,
+		Lifetime:     t.Context(),
+		ChatResolver: staticInteractionChatResolver(model),
+		BuildID:      interactionTestBuildID,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -537,8 +533,6 @@ func startDelegateTreeWithCompactor(t *testing.T, model chat.Model, input string
 	executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{
 		Lifetime:               t.Context(),
 		ChatResolver:           staticInteractionChatResolver(model),
-		ImplementationIdentity: "interaction-delegate-tree-test-build",
-		ConfigurationIdentity:  "interaction-delegate-tree-test-config",
 		MaxConcurrentToolCalls: intPointer(4), BuildID: interactionTestBuildID,
 		ModelContextCompactor: compactor, ModelContextState: contextState,
 	})

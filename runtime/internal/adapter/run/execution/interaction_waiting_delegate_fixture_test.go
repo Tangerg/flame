@@ -39,11 +39,9 @@ func newWaitingDelegateFixture(t *testing.T, identity string) *waitingDelegateFi
 		t.Fatal(err)
 	}
 	executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{
-		Lifetime:               t.Context(),
-		ChatResolver:           staticInteractionChatResolver(model),
-		ImplementationIdentity: identity + "-build",
-		ConfigurationIdentity:  identity + "-config",
-		BuildID:                interactionTestBuildID,
+		Lifetime:     t.Context(),
+		ChatResolver: staticInteractionChatResolver(model),
+		BuildID:      interactionTestBuildID,
 		ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "ask")}, manifest: toolset.Manifest{
 			Visible: []toolcontract.Tool{question},
 		}},

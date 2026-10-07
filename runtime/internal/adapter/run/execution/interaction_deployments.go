@@ -187,7 +187,7 @@ func (i *interactionDeploymentBuilder) buildAtDepth(depth int, next agent.Deploy
 		tools, err = interaction.NewToolSet(interaction.ToolSetConfig{
 			Name: definitionName + ".tools", Description: definitionDescription,
 			Tools: visible, DeferredTools: deferred,
-			ImplementationDigest: agent.ComputeDigest([]byte(i.executor.implementationIdentity.String())),
+			ImplementationDigest: agent.ComputeDigest([]byte(i.executor.buildID.String())),
 			ConfigurationDigest:  agent.ComputeDigest(configuration),
 		})
 		if err != nil {
@@ -248,7 +248,7 @@ func (i *interactionDeploymentBuilder) buildAtDepth(depth int, next agent.Deploy
 	deployment, err := agent.NewDeployment(agent.DeploymentConfig{
 		Definition:           deploymentDefinition,
 		Dispatcher:           &interactionDispatcher{inner: dispatcher, session: i.session},
-		ImplementationDigest: agent.ComputeDigest([]byte(i.executor.implementationIdentity.String())),
+		ImplementationDigest: agent.ComputeDigest([]byte(i.executor.buildID.String())),
 		ConfigurationDigest:  agent.ComputeDigest(configuration),
 	})
 	if err != nil {

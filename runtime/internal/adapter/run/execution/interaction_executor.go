@@ -56,8 +56,6 @@ type InteractionExecutorConfig struct {
 	ExecutionTrees            runs.ExecutionTreeStore
 	BuildID                   string
 	ChatResolver              InteractionChatResolver
-	ImplementationIdentity    string
-	ConfigurationIdentity     string
 	StreamModelResponses      bool
 	DeltaBufferCapacity       *int
 	MaxConcurrentToolCalls    *int
@@ -81,13 +79,11 @@ type InteractionExecutorConfig struct {
 // root owns an independent Engine and exactly one Interaction Process; the
 // Application owns durable Run state and consumes only [runs.ExecutorEvent].
 type InteractionExecutor struct {
-	installations          *installationAdmission
-	lifetime               context.Context
-	config                 InteractionExecutorConfig
-	policy                 interactionExecutionPolicy
-	buildID                runtimeidentity.BuildID
-	implementationIdentity deploymentIdentity
-	configurationIdentity  deploymentIdentity
+	installations *installationAdmission
+	lifetime      context.Context
+	config        InteractionExecutorConfig
+	policy        interactionExecutionPolicy
+	buildID       runtimeidentity.BuildID
 
 	sessions interactionSessions
 }
@@ -129,17 +125,9 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 			return nil, fmt.Errorf("execution: Interaction %s is typed nil", capability.name)
 		}
 	}
-	implementationIdentity, err := parseDeploymentIdentity("deployment implementation identity", config.ImplementationIdentity)
-	if err != nil {
-		return nil, fmt.Errorf("execution: Interaction: %w", err)
-	}
 	buildID, err := runtimeidentity.ParseBuild(config.BuildID)
 	if err != nil {
 		return nil, fmt.Errorf("execution: Interaction %w", err)
-	}
-	configurationIdentity, err := parseDeploymentIdentity("deployment configuration identity", config.ConfigurationIdentity)
-	if err != nil {
-		return nil, fmt.Errorf("execution: Interaction: %w", err)
 	}
 	policy, err := newInteractionExecutionPolicy(config)
 	if err != nil {
@@ -148,15 +136,11 @@ func NewInteractionExecutor(config InteractionExecutorConfig) (*InteractionExecu
 	lifetime := config.Lifetime
 	config.Lifetime = nil
 	config.BuildID = ""
-	config.ImplementationIdentity = ""
-	config.ConfigurationIdentity = ""
 	return &InteractionExecutor{
 		lifetime: lifetime, config: config, policy: policy,
-		buildID:                buildID,
-		implementationIdentity: implementationIdentity,
-		configurationIdentity:  configurationIdentity,
-		sessions:               newInteractionSessions(),
-		installations:          newInstallationAdmission(),
+		buildID:       buildID,
+		sessions:      newInteractionSessions(),
+		installations: newInstallationAdmission(),
 	}, nil
 }
 
@@ -313,7 +297,6 @@ func (i *InteractionExecutor) interactionConfiguration(
 	instructions []corechat.Message,
 ) ([]byte, error) {
 	configuration, err := agent.EncodePayload(struct {
-		Identity               string             `json:"identity"`
 		Provider               string             `json:"provider"`
 		Model                  string             `json:"model"`
 		Streaming              bool               `json:"streaming"`
@@ -324,7 +307,6 @@ func (i *InteractionExecutor) interactionConfiguration(
 		DelegateOptions        corechat.Options   `json:"delegateOptions"`
 		Instructions           []corechat.Message `json:"instructions,omitempty"`
 	}{
-		Identity: i.configurationIdentity.String(),
 		Provider: session.accounting.providerName(), Model: session.accounting.modelName(),
 		Streaming:              i.config.StreamModelResponses,
 		MaxConcurrentToolCalls: i.policy.maxConcurrentToolCalls,
@@ -349,12 +331,11 @@ func (i *InteractionExecutor) interactionToolConfiguration(manifest toolset.Mani
 	}
 	configuration, err := agent.EncodePayload(struct {
 		Installations     []installationDependencyWire `json:"installations"`
-		Identity          string                       `json:"identity"`
 		ToolResultOffload *toolResultOffloadIdentity   `json:"toolResultOffload,omitzero"`
 		ToolHooks         bool                         `json:"toolHooks"`
 		VisibleTools      []toolConfigurationIdentity  `json:"visibleTools,omitempty"`
 		DeferredTools     []toolConfigurationIdentity  `json:"deferredTools,omitempty"`
-	}{installationDependencies(manifest.Installations), i.configurationIdentity.String(), i.policy.toolResultOffload.identity(), i.config.ToolHooks != nil, visible, deferred})
+	}{installationDependencies(manifest.Installations), i.policy.toolResultOffload.identity(), i.config.ToolHooks != nil, visible, deferred})
 	if err != nil {
 		return nil, fmt.Errorf("execution: encode Interaction Tool configuration identity: %w", err)
 	}

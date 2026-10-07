@@ -729,8 +729,6 @@ func TestInteractionExecutorRejectsInvalidWaitingRecoveryFacts(t *testing.T) {
 		executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{
 			Lifetime:     t.Context(),
 			ChatResolver: staticInteractionChatResolver(model), BuildID: interactionTestBuildID,
-			ImplementationIdentity: "interaction-observation-test-build",
-			ConfigurationIdentity:  "different-deployment-configuration",
 		})
 		if err != nil {
 			t.Fatal(err)

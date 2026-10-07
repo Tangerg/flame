@@ -95,7 +95,6 @@ func testWaitingTreeWithCompletedSibling(t *testing.T, splitBatch bool) {
 	}
 	executor, err := newTestConfiguredInteractionExecutor(t, InteractionExecutorConfig{
 		Lifetime: t.Context(), ChatResolver: staticInteractionChatResolver(model),
-		ImplementationIdentity: "completed-sibling-build", ConfigurationIdentity: "completed-sibling-config",
 		MaxConcurrentToolCalls: intPointer(4), BuildID: interactionTestBuildID,
 		ToolResolver:    staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "ask"), testsupport.A2ATool(t, "store")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{question, ordinary}}},
 		ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{},

@@ -7,8 +7,6 @@ import (
 	"io"
 )
 
-const embeddingSpaceVersion = "embedding-v2:"
-
 // embeddingSpaceID fingerprints every non-secret client input that can select
 // a different vector coordinate system. Length framing preserves exact field
 // boundaries without admitting separator collisions. Credentials are excluded:
@@ -21,5 +19,5 @@ func embeddingSpaceID(providerID, model, baseURL string) string {
 	}
 	var digest [sha256.Size]byte
 	copy(digest[:], hash.Sum(nil))
-	return embeddingSpaceVersion + hex.EncodeToString(digest[:])
+	return hex.EncodeToString(digest[:])
 }

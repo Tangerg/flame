@@ -1591,8 +1591,6 @@ func newObservedTestInteractionExecutor(
 	}
 	extra.ChatResolver = interactionChatResolver(model, counter)
 	extra.Lifetime = t.Context()
-	extra.ImplementationIdentity = "interaction-observation-test-build"
-	extra.ConfigurationIdentity = "interaction-observation-test-config"
 	extra.BuildID = interactionTestBuildID
 	extra.UnknownEffectPollInterval = durationPointer(5 * time.Millisecond)
 	executor, err := newTestConfiguredInteractionExecutor(t, extra)
