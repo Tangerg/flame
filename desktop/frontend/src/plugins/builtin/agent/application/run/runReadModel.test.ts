@@ -62,7 +62,6 @@ describe("CurrentRootMaterial", () => {
     ];
 
     expect(material.terminalTurnIndex(rows)).toBe(1);
-    expect(material.attention).toEqual({ status: "finished", runId: "run-a" });
     expect(material.outcome).toEqual({ type: "completed" });
   });
 

@@ -22,7 +22,6 @@ export interface RunOpeningController {
     run: (signal: AbortSignal) => Promise<StreamingResult<Result, RunEvent>>,
     onResult?: (result: Result) => void,
     onStartError?: () => boolean | void,
-    follow?: RunOpeningControllerOptions["pump"],
   ) => void;
   retire: () => void;
 }
@@ -42,7 +41,7 @@ export function createRunOpeningController({
 
   return {
     isStarting: () => starting,
-    begin(run, onResult, onStartError, follow = pump) {
+    begin(run, onResult, onStartError) {
       endActiveSpan?.();
       starting = true;
       const ownLease = (openingLease = {});
@@ -76,7 +75,7 @@ export function createRunOpeningController({
             try {
               onResult?.(stream.result);
               span.setAttribute("flame.run_id", stream.result.runId);
-              await follow(stream, ctrl.signal);
+              await pump(stream, ctrl.signal);
             } catch (err) {
               if (isCancelled() || ctrl.signal.aborted || ownLease !== openingLease) return;
               failure = err;

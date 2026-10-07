@@ -113,11 +113,7 @@ const batchKey = (sessionId: string, rootRunId: string) => tupleKey(sessionId, r
 function openResponseIds(entry: AgentSessionViewEntry, rootRunId: string): string[] {
   return selectAwaitingGroups(entry.view)
     .filter((group) => group.rootRunId === rootRunId)
-    .flatMap((group) =>
-      group.interrupts
-        .filter((interrupt) => interrupt.kind === "approval" || interrupt.kind === "question")
-        .map((interrupt) => interrupt.itemId),
-    );
+    .flatMap((group) => group.interrupts.map((interrupt) => interrupt.itemId));
 }
 
 class InterruptResponseCoordinator {

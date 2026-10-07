@@ -1,18 +1,11 @@
 import type { AgentRunView } from "@/plugins/sdk/types/agentSessionView";
+import { terminalSettlementStatus } from "../application/run/rootAttention";
 import { isAgentRunFailure } from "../application/view/runOutcome";
 
 export type AgentRunPresentationState = "running" | "waiting" | "finished" | "error" | "canceled";
 
 export function agentRunPresentationState(run: AgentRunView): AgentRunPresentationState {
-  if (run.status !== "finished") return run.status;
-  if (isAgentRunFailure(run.outcome)) return "error";
-  switch (run.outcome?.type) {
-    case "canceled":
-      return "canceled";
-    case "completed":
-    case undefined:
-      return "finished";
-  }
+  return run.status === "finished" ? terminalSettlementStatus(run.outcome) : run.status;
 }
 
 export function agentRunDetail(run: AgentRunView): string | null {

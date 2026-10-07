@@ -57,7 +57,7 @@ function submitGoalComposerMode(
   const goalCommand = context.slash?.command === "/goal";
   const objective = (goalCommand ? context.slash?.args : context.text)?.trim() ?? "";
   const existing = state.goal;
-  if (existing?.status === "active" || existing?.status === "completing") {
+  if (!goalCanEnterComposerMode(existing)) {
     dependencies.reportUnavailable();
     return;
   }

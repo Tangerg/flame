@@ -1,13 +1,12 @@
 import { useMemo } from "react";
 import type {
   AgentProblem,
-  AgentRunMetrics,
   AgentModelSelection,
   AgentRunOutcome,
   AgentRunView,
 } from "@/plugins/sdk/types/agentSessionView";
 import { agentSessionView } from "../ports/sessionView";
-import type { AgentRootAttention, AgentRunTreeNode } from "../view/runTree";
+import type { AgentRunTreeNode } from "../view/runTree";
 import type { TranscriptRow } from "../conversation/transcriptRows";
 import { isAgentRunFailure } from "../view/runOutcome";
 
@@ -17,23 +16,17 @@ export class CurrentRootMaterial {
   readonly runId: string | null;
   readonly status: AgentRunView["status"] | "idle";
   readonly outcome: AgentRunOutcome | null;
-  readonly metrics: AgentRunMetrics | null;
   readonly contextTokens: number | null;
   readonly modelSelection: AgentModelSelection | null;
   readonly startedAt: number | null;
-  readonly attention: AgentRootAttention;
 
   private constructor(run: AgentRunView | null) {
     this.runId = run?.id ?? null;
     this.status = run?.status ?? "idle";
     this.outcome = run?.outcome ?? null;
-    this.metrics = run?.metrics ?? null;
     this.contextTokens = run?.contextTokens ?? null;
     this.modelSelection = run?.modelSelection ?? null;
     this.startedAt = epochMillis(run?.createdAt);
-    this.attention = Object.freeze(
-      run ? { status: run.status, runId: run.id } : { status: "idle", runId: null },
-    );
     Object.freeze(this);
   }
 
