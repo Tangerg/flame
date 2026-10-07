@@ -6,7 +6,7 @@ import { createFlameClient } from "@flame/runtime-contract/client";
 import { createMemoryTransport } from "@flame/runtime-contract/client/transports/memory";
 import { respondSuccess } from "@flame/runtime-contract/client/transports/memory.testkit";
 import { USAGE_SUMMARY_KEY, useUsageReport } from "../application/usageConfig";
-import { recentUsage } from "../application/usagePeriod";
+import { ALL_TIME_USAGE, recentUsage } from "../application/usagePeriod";
 import { installUsageGateway } from "./runtimeUsageGateway";
 
 let queryClient: QueryClient;
@@ -83,5 +83,26 @@ describe("mounted Usage summary generation", () => {
     expect(firstSignal?.aborted).toBe(true);
     expect(send.mock.calls[1]?.[1]?.aborted).toBe(false);
     expect(hook.result.current.data?.total.inputTokens).toBe(34);
+  });
+
+  it("does not present one period's report as another's while the new one loads", async () => {
+    const hook = renderHook(({ period }) => useUsageReport(period), {
+      wrapper,
+      initialProps: { period: ALL_TIME_USAGE },
+    });
+    unmountHook = hook.unmount;
+    const allTime = await waitForUsageRequest(0);
+    respondSuccess(transport, allTime.id, {
+      total: { inputTokens: 900, outputTokens: 100 },
+      sessions: 9,
+      runs: 30,
+    });
+    await waitFor(() => expect(hook.result.current.data?.total.inputTokens).toBe(900));
+
+    hook.rerender({ period: recentUsage(7) });
+    await waitForUsageRequest(1);
+
+    expect(hook.result.current.data).toBeUndefined();
+    expect(hook.result.current.isLoading).toBe(true);
   });
 });

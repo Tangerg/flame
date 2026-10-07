@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { usageGateway } from "./ports/usageGateway";
 import { ALL_TIME_USAGE, recentUsage, type UsagePeriod } from "./usagePeriod";
 
@@ -37,6 +37,5 @@ export function useUsageReport(period: UsagePeriod) {
   return useQuery({
     queryKey: [USAGE_SUMMARY_KEY, ...period.cacheKey()],
     queryFn: ({ signal }) => usageGateway().loadSummary(period, signal),
-    placeholderData: keepPreviousData,
   });
 }
