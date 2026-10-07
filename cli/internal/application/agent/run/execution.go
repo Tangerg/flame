@@ -101,19 +101,9 @@ func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 	if validateStartErr := opened.ValidateStart(); validateStartErr != nil {
 		return fmt.Errorf("start run: %w", validateStartErr)
 	}
-	run := conversation.Run{
-		ID: opened.RunID, SessionID: invocation.Start.SessionID,
-		Lineage:  conversation.RootRunLineage(),
-		Provider: invocation.Start.Options.Provider, Model: invocation.Start.Options.Model,
-		ReasoningEffort: invocation.Start.Options.ReasoningEffort,
-		Status:          protocol.RunStatusRunning, ActiveSegmentID: opened.SegmentID,
-	}
-	if run.Provider == "" {
-		// The runtime default is intentionally opaque to the caller. Validation
-		// permits the pair to be empty.
-		run.Model = ""
-		run.ReasoningEffort = ""
-	}
+	// Only the identity is known here; the selected model and every other Run
+	// fact arrive from Runtime with segment.started.
+	run := conversation.Run{ID: opened.RunID, SessionID: invocation.Start.SessionID, Lineage: conversation.RootRunLineage()}
 	if beginErr := invocation.Renderer.Begin(run, invocation.Start.Options); beginErr != nil {
 		return beginErr
 	}

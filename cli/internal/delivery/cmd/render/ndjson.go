@@ -68,7 +68,6 @@ type eventRecord struct {
 	RootRunID        string          `json:"rootRunId,omitzero"`
 	SessionID        string          `json:"sessionId,omitzero"`
 	ItemID           string          `json:"itemId,omitzero"`
-	Options          *runOptionsJSON `json:"options,omitzero"`
 	BlockID          string          `json:"blockId,omitzero"`
 	Text             string          `json:"text,omitzero"`
 	Step             *int            `json:"step,omitzero"`
