@@ -22,14 +22,13 @@ const (
 )
 
 type sessionHeader struct {
-	theme        kit.Theme
-	glyphs       kit.Glyphs
-	session      conversation.Session
-	usage        conversation.Usage
-	goal         protocol.Goal
-	goalPresent  bool
-	changes      int
-	changesKnown bool
+	theme       kit.Theme
+	glyphs      kit.Glyphs
+	session     conversation.Session
+	usage       conversation.Usage
+	goal        protocol.Goal
+	goalPresent bool
+	changes     int
 }
 
 func newSessionHeader(theme kit.Theme, glyphs kit.Glyphs, session conversation.Session) *sessionHeader {
@@ -49,7 +48,7 @@ func (s *sessionHeader) SetGoal(current *protocol.Goal) {
 }
 
 func (s *sessionHeader) SetWorkspaceChanges(count int) {
-	s.changes, s.changesKnown = max(count, 0), true
+	s.changes = max(count, 0)
 }
 
 func (s *sessionHeader) HeightForWidth(width int) int {
@@ -64,7 +63,7 @@ func (s *sessionHeader) Draw(view grid.View) {
 	if width < headerMinWidth || height <= 0 {
 		return
 	}
-	right := headerRightLabel(s.usage, s.changes, s.changesKnown)
+	right := headerRightLabel(s.usage, s.changes)
 	rightWidth := text.Width(right)
 	if rightWidth > 0 && rightWidth < width {
 		view.Text(width-rightWidth, 0, right, s.theme.Subtle)
@@ -141,12 +140,12 @@ func goalUsageLabel(used protocol.GoalUsage) string {
 	return strings.Join(parts, "  ")
 }
 
-func headerRightLabel(usage conversation.Usage, changes int, known bool) string {
+func headerRightLabel(usage conversation.Usage, changes int) string {
 	parts := make([]string, 0, 2)
 	if tokens := headerUsageLabel(usage); tokens != "" {
 		parts = append(parts, tokens)
 	}
-	if known && changes > 0 {
+	if changes > 0 {
 		parts = append(parts, fmt.Sprintf("Δ%d", changes))
 	}
 	return strings.Join(parts, "  ")

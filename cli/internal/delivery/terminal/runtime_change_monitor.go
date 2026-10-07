@@ -17,6 +17,9 @@ const workspaceWatchID = "flame-active-workspace"
 
 func (a *app) followRuntimeChanges() {
 	a.operations.Cancel(runtimeChangesOperation)
+	// The count describes the workspace the cancelled monitor watched; the new
+	// workspace has no count until its own monitor reads one, if it ever does.
+	a.header.SetWorkspaceChanges(0)
 	workspacePath := a.session.current.Workspace.Path
 	var repository WorkspaceChanges
 	if a.runtimeSupports(protocol.FeatureGit) {

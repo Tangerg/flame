@@ -620,3 +620,28 @@ func TestObservedRuntimeResourcesRequireTheirPublishedFeature(t *testing.T) {
 
 var _ Workspaces = (*workspaceServiceStub)(nil)
 var _ changefeed.Source = (*changeSourceStub)(nil)
+
+// perWorkspaceChanges serves the stub's changes for the original workspace
+// only; any other workspace's read waits for cancellation, so the header can
+// show nothing but what it retained from the previous workspace.
+type perWorkspaceChanges struct {
+	*workspaceServiceStub
+}
+
+func (p perWorkspaceChanges) Changes(ctx context.Context, path string) ([]workspace.Change, error) {
+	if path == "/tmp/flame-cli-test" {
+		return p.workspaceServiceStub.Changes(ctx, path)
+	}
+	<-ctx.Done()
+	return nil, ctx.Err()
+}
+
+func TestWorkspaceChangeCountDoesNotFollowTheSessionIntoAnotherWorkspace(t *testing.T) {
+	host, stop := runUIWithWorkspaceBackend(t, perWorkspaceChanges{newWorkspaceServiceStub()}, nil)
+	host.Shows(t, "Δ1")
+	host.Type("/workspace " + t.TempDir())
+	host.Press(input.Enter)
+	host.Shows(t, "session · ")
+	host.Hides(t, "Δ1")
+	stop()
+}
