@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"slices"
@@ -64,9 +65,14 @@ func (s *Store) openLeasedRoot(ctx context.Context, operation string) (*os.Root,
 		_ = root.Close()
 		return nil, nil, fmt.Errorf("skillauthoring: %s: acquire library lease: %w", operation, err)
 	}
+	// The operation's own outcome is already decided when cleanup runs, so a
+	// failure here cannot change it; but a lease that stays held stalls every
+	// later library operation, and its cause would otherwise reach no one.
 	cleanup := func() {
-		_ = lease.Release()
-		_ = root.Close()
+		if err := errors.Join(lease.Release(), root.Close()); err != nil {
+			slog.ErrorContext(ctx, "skillauthoring: release library lease",
+				"operation", operation, "error", err)
+		}
 	}
 	return root, cleanup, nil
 }

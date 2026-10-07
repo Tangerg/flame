@@ -179,6 +179,7 @@ type gitWatch struct {
 	done         chan struct{}
 	exited       chan struct{}
 	closeOnce    sync.Once
+	closeErr     error
 }
 
 func (g *gitWatch) run() {
@@ -325,9 +326,11 @@ func (g *gitWatch) Close() error {
 		g.stop()
 		close(g.done)
 		<-g.exited
-		_ = g.fsw.Close()
+		if err := g.fsw.Close(); err != nil {
+			g.closeErr = fmt.Errorf("close git watcher: %w", err)
+		}
 	})
-	return nil
+	return g.closeErr
 }
 
 func closeFailedWatch(watcher *fsnotify.Watcher, cause error) error {

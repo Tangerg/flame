@@ -28,6 +28,7 @@ type observerLifecycle struct {
 	done      chan struct{}
 	exited    chan struct{}
 	closeOnce sync.Once
+	closeErr  error
 	stateMu   sync.Mutex
 	reconcile func(acceptance) error
 	report    func(error)
@@ -188,7 +189,9 @@ func (o *observerLifecycle) Close() error {
 		close(o.done)
 		o.stateMu.Unlock()
 		<-o.exited
-		_ = o.fsw.Close()
+		if err := o.fsw.Close(); err != nil {
+			o.closeErr = fmt.Errorf("%s: close watcher: %w", o.label, err)
+		}
 	})
-	return nil
+	return o.closeErr
 }
