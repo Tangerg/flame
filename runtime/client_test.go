@@ -412,7 +412,18 @@ func (r *remoteRunTarget) SubscribeRun(ctx context.Context, request protocol.Sub
 	head := "evt_opaque_head"
 	ack := &protocol.SubscribeRunResponse{RunID: request.RunID, SegmentID: request.SegmentID, HeadEventID: &head}
 	if request.Snapshot {
-		ack.Snapshot = &protocol.SessionSnapshot{Items: []protocol.Item{}, Runs: []protocol.RunRef{}, Interrupts: []protocol.PendingInterruptSet{}}
+		at := time.Date(2026, 8, 11, 1, 0, 0, 0, time.UTC)
+		ack.Snapshot = &protocol.SessionSnapshot{
+			Session: protocol.Session{
+				ID: "ses_test", Status: protocol.SessionStatusRunning, Provider: "mock", Model: "balanced",
+				Workspace: protocol.WorkspaceInfo{
+					Ref: protocol.WorkspaceRef{Path: "/workspace"}, ProjectRoot: "/workspace",
+					Availability: protocol.WorkspaceAvailable,
+				},
+				CreatedAt: at, UpdatedAt: at, Revision: 1,
+			},
+			Items: []protocol.Item{}, Runs: []protocol.RunRef{}, Interrupts: []protocol.PendingInterruptSet{},
+		}
 	}
 	return ack, func(yield func(protocol.RunEvent, error) bool) {
 		yield(protocol.RunEvent{

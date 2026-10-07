@@ -24,12 +24,25 @@ type MaterialSnapshot struct {
 	Goal       *goal.Goal
 }
 
-// MaterialSnapshot reads the complete mounted-session projection at one
-// database snapshot. No process-local admission is required: concurrent writes
-// either precede or follow the storage transaction and can never split the
-// returned Run, interrupt, transcript, and Plan facts.
-func (c *Coordinator) MaterialSnapshot(ctx context.Context, sessionID string) (MaterialSnapshot, error) {
-	return c.materialSnapshots.ReadMaterialSnapshot(ctx, sessionID)
+// MaterialView reads the complete mounted-session projection at one database
+// snapshot, together with the Session read model resolved from that same
+// snapshot. No process-local admission is required: concurrent writes either
+// precede or follow the storage transaction and can never split the returned
+// Session, Run, interrupt, transcript, and Plan facts.
+func (c *Coordinator) MaterialView(ctx context.Context, sessionID string) (MaterialSnapshot, View, error) {
+	snapshot, err := c.materialSnapshots.ReadMaterialSnapshot(ctx, sessionID)
+	if err != nil {
+		return MaterialSnapshot{}, View{}, err
+	}
+	activity := ActivityIdle
+	for _, value := range snapshot.Runs {
+		activity = activity.with(value)
+	}
+	view, err := c.view(snapshot.Session, activity)
+	if err != nil {
+		return MaterialSnapshot{}, View{}, err
+	}
+	return snapshot, view, nil
 }
 
 // InterruptSet is one open waiting hand-off with its interrupts projected from

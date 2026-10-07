@@ -86,7 +86,7 @@ func (s *Handler) GetSession(ctx context.Context, id string) (*protocol.Session,
 // the snapshot as a whole, so no response can silently trim a waiting set or a
 // child Run that the caller could not fold.
 func (s *Handler) GetSessionSnapshot(ctx context.Context, in protocol.GetSessionSnapshotRequest) (*protocol.SessionSnapshot, error) {
-	snapshot, err := s.sessions.MaterialSnapshot(ctx, in.SessionID)
+	snapshot, view, err := s.sessions.MaterialView(ctx, in.SessionID)
 	if err != nil {
 		return nil, wireSessionErr(err)
 	}
@@ -104,6 +104,7 @@ func (s *Handler) GetSessionSnapshot(ctx context.Context, in protocol.GetSession
 		}
 	}
 	out := &protocol.SessionSnapshot{
+		Session:    presentSession(view),
 		Items:      make([]protocol.Item, 0, len(snapshot.Items)),
 		Runs:       make([]protocol.RunRef, 0, len(snapshot.Runs)),
 		Interrupts: make([]protocol.PendingInterruptSet, 0, len(snapshot.Interrupts)),

@@ -2249,7 +2249,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-07.3\""
+          "value": "\"2026-10-07.4\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -8816,6 +8816,11 @@
           "name": "SessionSnapshot",
           "kind": "struct",
           "fields": [
+            {
+              "name": "Session",
+              "type": "Session",
+              "tag": "json:\"session\""
+            },
             {
               "name": "Items",
               "type": "[]Item",

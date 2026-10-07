@@ -59,10 +59,12 @@ type GetSessionSnapshotRequest struct {
 }
 
 // SessionSnapshot is one transactionally coherent material read of the facts a
-// live client folds together. Plan is absent when this Runtime does not expose
+// live client folds together, including the Session itself, so a client never
+// pairs Session metadata from another read with this material. Plan is absent when this Runtime does not expose
 // the Plan capability. Goal is absent when Goal mode is unavailable or this
 // Session has no standing objective.
 type SessionSnapshot struct {
+	Session    Session               `json:"session"`
 	Items      []Item                `json:"items"`
 	Runs       []RunRef              `json:"runs"`
 	Interrupts []PendingInterruptSet `json:"interrupts"`

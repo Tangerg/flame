@@ -36,6 +36,13 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
+## Protocol 2026-10-07.4
+
+`SessionSnapshot.session` is required: the snapshot carries the Session it was
+read from, with its status resolved from the snapshot's own Runs. Clients take
+Session metadata from the snapshot instead of pairing it with a separate
+`sessions.get`, which could observe another moment.
+
 ## Protocol 2026-10-07.3
 
 A resume that answers Questions commits the answers before its continuation

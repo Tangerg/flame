@@ -3608,7 +3608,8 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     items: array(ref(() => CHECKS.Item)),
     plan: ref(() => CHECKS.Plan),
     runs: array(ref(() => CHECKS.RunRef)),
-  }, ["interrupts", "items", "runs"]),
+    session: ref(() => CHECKS.Session),
+  }, ["interrupts", "items", "runs", "session"]),
   SessionStatus: enumOf(["running", "waiting", "idle"]),
   SessionTrajectory: object({
     collectedAt: text(),

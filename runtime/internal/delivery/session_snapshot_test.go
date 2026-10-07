@@ -108,6 +108,9 @@ func TestGetSessionSnapshotProjectsOneLiveMaterialRead(t *testing.T) {
 		snapshot.Items[1].ApprovalDecision != protocol.ApprovalApprove {
 		t.Fatalf("Items = %+v, want question and durable approved ToolCall", snapshot.Items)
 	}
+	if snapshot.Session.ID != "ses_1" || snapshot.Session.Status != protocol.SessionStatusWaiting {
+		t.Fatalf("Session = %+v, want ses_1 waiting on its snapshot's Run", snapshot.Session)
+	}
 	if len(snapshot.Runs) != 1 || snapshot.Runs[0].ID != "run_waiting" || snapshot.Runs[0].Status != protocol.RunStatusWaiting {
 		t.Fatalf("Runs = %+v, want the waiting Run", snapshot.Runs)
 	}

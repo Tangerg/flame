@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-07.3";
+export const PROTOCOL_VERSION = "2026-10-07.4";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 30;
@@ -1580,6 +1580,7 @@ export interface SessionSnapshot {
   items: Item[];
   plan?: Plan;
   runs: RunRef[];
+  session: Session;
 }
 
 export type SessionStatus = "running" | "waiting" | "idle";

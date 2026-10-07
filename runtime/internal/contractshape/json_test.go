@@ -35,14 +35,15 @@ func TestTypedWireRequiredFieldsUsePublishedShape(t *testing.T) {
 	}{
 		{raw: `{}`, value: protocol.SessionSnapshot{}},
 		{raw: `{"name":"tool"}`, value: protocol.ToolInvocation{}},
-		{raw: `{"items":[],"runs":[],"interrupts":[],"plan":{"sessionId":"ses_test","state":{}}}`, value: protocol.SessionSnapshot{}},
+		{raw: `{"items":[],"runs":[],"interrupts":[]}`, value: protocol.SessionSnapshot{}},
+		{raw: `{"session":{"id":"ses_test","title":"","status":"idle","provider":"p","model":"m","workspace":{"ref":{"path":"/w"},"projectRoot":"/w","availability":"available"},"revision":1},"items":[],"runs":[],"interrupts":[],"plan":{"sessionId":"ses_test","state":{}}}`, value: protocol.SessionSnapshot{}},
 	} {
 		if err := contractshape.DecodeValue(jsontext.Value(test.raw), reflect.New(reflect.TypeOf(test.value)).Interface(), "result"); err == nil {
 			t.Fatalf("missing required response field accepted: %s", test.raw)
 		}
 	}
 	var snapshot protocol.SessionSnapshot
-	if err := contractshape.DecodeValue(jsontext.Value(`{"items":[],"runs":[],"interrupts":[]}`), &snapshot, "result"); err != nil {
+	if err := contractshape.DecodeValue(jsontext.Value(`{"session":{"id":"ses_test","title":"","status":"idle","provider":"p","model":"m","workspace":{"ref":{"path":"/w"},"projectRoot":"/w","availability":"available"},"revision":1},"items":[],"runs":[],"interrupts":[]}`), &snapshot, "result"); err != nil {
 		t.Fatalf("optional response fields became required: %v", err)
 	}
 }

@@ -72,21 +72,29 @@ func (c *Coordinator) Activities(ctx context.Context, sessionIDs []string) (map[
 		if _, ok := requested[sessionID]; !ok {
 			continue
 		}
-		switch activeRun.State().Status() {
-		case run.StatusRunning:
-			activities[sessionID] = ActivityRunning
-		case run.StatusWaiting:
-			if activities[sessionID] == ActivityIdle {
-				activities[sessionID] = ActivityWaiting
-			}
-		case run.StatusFinished:
+		if activeRun.State().Status() == run.StatusFinished {
 			return nil, fmt.Errorf(
 				"sessions: non-terminal Run read returned finished Run %q",
 				activeRun.ID(),
 			)
 		}
+		activities[sessionID] = activities[sessionID].with(activeRun)
 	}
 	return activities, nil
+}
+
+// with folds one Run into a Session's activity: a running Run dominates a
+// waiting one, and a finished Run leaves the activity as it was.
+func (a Activity) with(value run.Run) Activity {
+	switch value.State().Status() {
+	case run.StatusRunning:
+		return ActivityRunning
+	case run.StatusWaiting:
+		if a == ActivityIdle {
+			return ActivityWaiting
+		}
+	}
+	return a
 }
 
 // viewPageNamespace binds cursors to this session read independently of other
