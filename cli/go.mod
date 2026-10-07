@@ -3,7 +3,7 @@ module github.com/Tangerg/flame/cli
 go 1.27.0
 
 require (
-	github.com/Tangerg/flame/runtime v0.0.0-20261007152432-1c5d3e403f31
+	github.com/Tangerg/flame/runtime v0.0.0-20261007155241-77e15f0b50d7
 	github.com/Tangerg/flame/runtime/localruntime v0.0.0-20260928062620-d1d16d98ad6e
 	github.com/Tangerg/oolong/components v0.21.0
 	github.com/Tangerg/oolong/core v0.21.0
