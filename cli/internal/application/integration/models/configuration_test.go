@@ -39,11 +39,8 @@ func TestRoleAndProviderChangesHaveExplicitSemantics(t *testing.T) {
 	}
 }
 
-func TestProviderConfiguredStateIsNotCredentialPresence(t *testing.T) {
-	optionalProvider, err := NewProvider(ProviderSpec{
-		ID: "test-endpoint", Configured: true, CredentialRequirement: protocol.ProviderAPIKeyOptional,
-		EmbeddingCapable: true,
-	})
+func TestProviderConfiguredStateIsRuntimeVerdict(t *testing.T) {
+	optionalProvider, err := NewProvider(ProviderSpec{ID: "test-endpoint", Configured: true, EmbeddingCapable: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,41 +51,24 @@ func TestProviderConfiguredStateIsNotCredentialPresence(t *testing.T) {
 		t.Fatal("optional provider invented a credential")
 	}
 
-	if _, err := NewProvider(ProviderSpec{
-		ID: "openai", Configured: true, CredentialRequirement: protocol.ProviderAPIKeyRequired,
-	}); err == nil {
-		t.Fatal("required API-key provider was configured without a credential")
+	// Runtime may know readiness inputs the redacted projection omits, so a
+	// verdict that disagrees with the visible credential and endpoint stands.
+	endpointless, err := NewProvider(ProviderSpec{ID: "compatible", Configured: true, RequiresBaseURL: true})
+	if err != nil {
+		t.Fatalf("Runtime's configured verdict was rejected: %v", err)
 	}
-	if _, err := NewProvider(ProviderSpec{
-		ID: "compatible", Configured: true, CredentialRequirement: protocol.ProviderAPIKeyOptional, RequiresBaseURL: true,
-	}); err == nil {
-		t.Fatal("provider was configured without its required endpoint")
+	if !endpointless.Configured() {
+		t.Fatal("Runtime's configured verdict was replaced by a client derivation")
 	}
-
 	credential, err := NewCredential("sk****ed", protocol.ProviderKeySourceStored)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := NewProvider(ProviderSpec{
-		ID: "openai", Credential: &credential, Configured: false, CredentialRequirement: protocol.ProviderAPIKeyRequired,
-	}); err == nil {
-		t.Fatal("ready provider was accepted as not configured")
-	}
-	if _, err := NewProvider(ProviderSpec{
-		ID: "test-endpoint", Configured: false, CredentialRequirement: protocol.ProviderAPIKeyOptional,
-	}); err == nil {
-		t.Fatal("keyless provider with a built-in endpoint was accepted as not configured")
-	}
-
-	endpoint := "https://gateway.example/v1"
-	partial, err := NewProvider(ProviderSpec{
-		ID: "openai-compatible", BaseURL: &endpoint, Configured: false,
-		CredentialRequirement: protocol.ProviderAPIKeyRequired, RequiresBaseURL: true,
-	})
+	unready, err := NewProvider(ProviderSpec{ID: "openai", Credential: &credential, Configured: false})
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("Runtime's not-configured verdict was rejected: %v", err)
 	}
-	if partial.Configured() {
-		t.Fatal("provider without its required credential became configured")
+	if unready.Configured() {
+		t.Fatal("credential presence overrode Runtime's not-configured verdict")
 	}
 }

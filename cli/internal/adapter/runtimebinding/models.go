@@ -174,8 +174,7 @@ func projectProvider(value protocol.Provider) (models.Provider, error) {
 	}
 	return models.NewProvider(models.ProviderSpec{
 		ID: value.ID, BaseURL: value.BaseURL, Credential: credential, Configured: value.Configured,
-		CredentialRequirement: value.CredentialRequirement,
-		RequiresBaseURL:       value.RequiresBaseURL, EmbeddingCapable: value.EmbeddingCapable,
+		RequiresBaseURL: value.RequiresBaseURL, EmbeddingCapable: value.EmbeddingCapable,
 	})
 }
 

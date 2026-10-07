@@ -247,7 +247,6 @@ func terminalTestProvider(id, rawBaseURL, masked string, source protocol.Provide
 	}
 	provider, err := models.NewProvider(models.ProviderSpec{
 		ID: id, BaseURL: &rawBaseURL, Credential: &credential, Configured: true,
-		CredentialRequirement: protocol.ProviderAPIKeyRequired,
 	})
 	if err != nil {
 		panic(err)

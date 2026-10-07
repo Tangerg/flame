@@ -116,10 +116,6 @@ func (r Roles) Validate() error {
 	return nil
 }
 
-const (
-	credentialMaskGlyph = "*"
-)
-
 type Credential struct {
 	masked string
 	source runtimeprotocol.ProviderKeySource
@@ -144,43 +140,32 @@ func (c Credential) Validate() error {
 }
 
 func (c Credential) Masked() string { return c.masked }
-func (c Credential) Source() runtimeprotocol.ProviderKeySource {
-	return c.source
-}
 func (c Credential) FromEnvironment() bool {
 	return c.source == runtimeprotocol.ProviderKeySourceEnv
 }
 func (c Credential) Stored() bool { return c.source == runtimeprotocol.ProviderKeySourceStored }
 
-// Exposes reports whether a returned mask reproduces a non-mask credential.
-// An all-mask input is indistinguishable from a correctly redacted value and
-// contains no information to expose.
-func (c Credential) Exposes(raw string) bool {
-	return c.masked == raw && strings.Trim(raw, credentialMaskGlyph) != ""
-}
-
 type ProviderSpec struct {
-	ID                    string
-	BaseURL               *string
-	Credential            *Credential
-	Configured            bool
-	CredentialRequirement runtimeprotocol.ProviderCredentialRequirement
-	RequiresBaseURL       bool
-	EmbeddingCapable      bool
+	ID               string
+	BaseURL          *string
+	Credential       *Credential
+	Configured       bool
+	RequiresBaseURL  bool
+	EmbeddingCapable bool
 }
 
 type Provider struct {
-	id                    string
-	baseURL               string
-	credential            Credential
-	credentialRequirement runtimeprotocol.ProviderCredentialRequirement
-	requiresBaseURL       bool
-	embeddingCapable      bool
+	id               string
+	baseURL          string
+	credential       Credential
+	configured       bool
+	requiresBaseURL  bool
+	embeddingCapable bool
 }
 
 func NewProvider(spec ProviderSpec) (Provider, error) {
 	provider := Provider{
-		id: spec.ID, credentialRequirement: spec.CredentialRequirement,
+		id: spec.ID, configured: spec.Configured,
 		requiresBaseURL: spec.RequiresBaseURL, embeddingCapable: spec.EmbeddingCapable,
 	}
 	if spec.BaseURL != nil {
@@ -195,25 +180,12 @@ func NewProvider(spec ProviderSpec) (Provider, error) {
 	if err := provider.Validate(); err != nil {
 		return Provider{}, err
 	}
-	if configured := provider.Configured(); configured != spec.Configured {
-		return Provider{}, fmt.Errorf(
-			"provider %s wire configured state %v contradicts derived readiness %v",
-			provider.id,
-			spec.Configured,
-			configured,
-		)
-	}
 	return provider, nil
 }
 
 func (p Provider) Validate() error {
 	if err := runtimeprotocol.ValidateProviderIdentity(p.id); err != nil {
 		return err
-	}
-	switch p.credentialRequirement {
-	case runtimeprotocol.ProviderAPIKeyRequired, runtimeprotocol.ProviderAPIKeyOptional:
-	default:
-		return fmt.Errorf("provider %s: credential requirement %q is invalid", p.id, p.credentialRequirement)
 	}
 	if p.baseURL != "" && (p.baseURL != strings.TrimSpace(p.baseURL)) {
 		return fmt.Errorf("provider %s has a non-canonical base URL", p.id)
@@ -228,15 +200,10 @@ func (p Provider) Validate() error {
 
 func (p Provider) ID() string { return p.id }
 
-// Configured derives readiness from the same closed credential and endpoint
-// policies that validated the provider. The wire's configured flag is checked
-// at construction and never becomes a second mutable truth inside the entity.
-func (p Provider) Configured() bool {
-	credentialReady := p.credentialRequirement == runtimeprotocol.ProviderAPIKeyOptional ||
-		p.credentialRequirement == runtimeprotocol.ProviderAPIKeyRequired && p.credential != (Credential{})
-	endpointReady := !p.requiresBaseURL || p.baseURL != ""
-	return credentialReady && endpointReady
-}
+// Configured is Runtime's readiness verdict. Runtime alone knows every input
+// to it, so the CLI reports the verdict instead of re-deriving it from the
+// credential and endpoint it happens to see.
+func (p Provider) Configured() bool { return p.configured }
 
 func (p Provider) RequiresBaseURL() bool { return p.requiresBaseURL }
 
