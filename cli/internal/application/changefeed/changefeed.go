@@ -37,10 +37,10 @@ type Subscription struct {
 	Watches []Watch
 }
 
-// SubscriptionLimits are the delivery constraints negotiated with the
-// runtime. A zero value means the transport did not advertise a constraint.
-// Partition keeps those transport details out of change consumers while
-// preserving every requested topic and workspace-observation scope.
+// SubscriptionLimits are the delivery constraints the Runtime advertises at
+// discovery, where both are always positive. Partition keeps those transport
+// details out of change consumers while preserving every requested topic and
+// workspace-observation scope.
 type SubscriptionLimits struct {
 	MaxTopics  int
 	MaxWatches int
@@ -50,17 +50,11 @@ func (s SubscriptionLimits) Partition(subscription Subscription) ([]Subscription
 	if err := subscription.Validate(); err != nil {
 		return nil, err
 	}
-	if s.MaxTopics < 0 || s.MaxWatches < 0 {
-		return nil, errors.New("change subscription limits cannot be negative")
+	if s.MaxTopics <= 0 || s.MaxWatches <= 0 {
+		return nil, errors.New("change subscription limits must be positive")
 	}
-	topicLimit := len(subscription.Topics)
-	if s.MaxTopics > 0 {
-		topicLimit = min(s.MaxTopics, topicLimit)
-	}
-	watchLimit := len(subscription.Watches)
-	if s.MaxWatches > 0 {
-		watchLimit = min(s.MaxWatches, watchLimit)
-	}
+	topicLimit := min(s.MaxTopics, len(subscription.Topics))
+	watchLimit := min(s.MaxWatches, len(subscription.Watches))
 	if len(subscription.Topics) <= topicLimit && len(subscription.Watches) <= watchLimit {
 		return []Subscription{cloneSubscription(subscription)}, nil
 	}

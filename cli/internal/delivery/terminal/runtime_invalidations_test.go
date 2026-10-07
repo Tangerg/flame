@@ -680,7 +680,7 @@ func TestRuntimeChangeMonitorStopsOnAnIncompatibleSubscription(t *testing.T) {
 	}
 	source.subscribeErr <- conversation.ErrIncompatibleRuntime
 
-	err := (runtimeChangeMonitor{source: source}).run(t.Context())
+	err := (runtimeChangeMonitor{subscriptionLimits: testSubscriptionLimits, source: source}).run(t.Context())
 	if !errors.Is(err, conversation.ErrIncompatibleRuntime) {
 		t.Fatalf("run error = %v, want ErrIncompatibleRuntime", err)
 	}
@@ -699,7 +699,7 @@ func TestRuntimeChangeMonitorStopsOnAPermanentSubscriptionFailure(t *testing.T) 
 	}
 	source.subscribeErr <- permanent
 
-	err := (runtimeChangeMonitor{source: source}).run(t.Context())
+	err := (runtimeChangeMonitor{subscriptionLimits: testSubscriptionLimits, source: source}).run(t.Context())
 	if !errors.Is(err, permanent) {
 		t.Fatalf("run error = %v, want permanent subscription failure", err)
 	}
@@ -717,7 +717,7 @@ func TestRuntimeChangeMonitorStopsOnAnIncompatibleStream(t *testing.T) {
 	}
 	source.streamErrors <- conversation.ErrIncompatibleRuntime
 
-	err := (runtimeChangeMonitor{source: source}).run(t.Context())
+	err := (runtimeChangeMonitor{subscriptionLimits: testSubscriptionLimits, source: source}).run(t.Context())
 	if !errors.Is(err, conversation.ErrIncompatibleRuntime) {
 		t.Fatalf("run error = %v, want ErrIncompatibleRuntime", err)
 	}
@@ -738,7 +738,7 @@ func TestRuntimeChangeMonitorReconnectsWhenAStreamClosesUnexpectedly(t *testing.
 	}
 	done := make(chan error, 1)
 	go func() {
-		done <- (runtimeChangeMonitor{source: source, recovery: testBackoff(t, time.Nanosecond, time.Nanosecond)}).run(ctx)
+		done <- (runtimeChangeMonitor{subscriptionLimits: testSubscriptionLimits, source: source, recovery: testBackoff(t, time.Nanosecond, time.Nanosecond)}).run(ctx)
 	}()
 
 	awaitSignal(t, source.subscription, "initial runtime subscription")
@@ -760,8 +760,9 @@ func TestRuntimeChangeMonitorBacksOffRepeatedEmptyStreams(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	monitor := runtimeChangeMonitor{
-		source:   source,
-		recovery: testBackoff(t, 20*time.Millisecond, 40*time.Millisecond),
+		subscriptionLimits: testSubscriptionLimits,
+		source:             source,
+		recovery:           testBackoff(t, 20*time.Millisecond, 40*time.Millisecond),
 	}
 	done := make(chan error, 1)
 	started := time.Now()
@@ -1033,7 +1034,8 @@ func TestRuntimeChangeMonitorKeepsGlobalEventsAliveWithoutVersionControl(t *test
 	filesApplied := make(chan []workspace.Change, 2)
 	eventsApplied := make(chan changefeed.Event, 1)
 	monitor := runtimeChangeMonitor{
-		workspace: "/workspace", source: source, watchFiles: true,
+		subscriptionLimits: testSubscriptionLimits,
+		workspace:          "/workspace", source: source, watchFiles: true,
 		repository: changeReaderFunc(func(context.Context, string) ([]workspace.Change, error) {
 			if reads.Add(1) == 1 {
 				return nil, workspace.ErrVersionControlUnavailable
@@ -1890,7 +1892,8 @@ func TestRuntimeChangeMonitorTurnsASequenceGapIntoFullResync(t *testing.T) {
 	var events []changefeed.Event
 	var resyncs [][]protocol.RuntimeTopic
 	monitor := runtimeChangeMonitor{
-		source: source, resources: runtimeResourceObservation{plan: true},
+		subscriptionLimits: testSubscriptionLimits,
+		source:             source, resources: runtimeResourceObservation{plan: true},
 		applyEvent: func(event changefeed.Event) error {
 			events = append(events, event)
 			return nil
@@ -1925,7 +1928,8 @@ func TestRuntimeChangeMonitorDetectsASequenceGapOnTheFirstFrame(t *testing.T) {
 	source.events <- changefeed.Event{Type: protocol.RuntimeSessionsChanged, Sequence: 2}
 	var resyncs [][]protocol.RuntimeTopic
 	monitor := runtimeChangeMonitor{
-		source: source, resources: runtimeResourceObservation{plan: true},
+		subscriptionLimits: testSubscriptionLimits,
+		source:             source, resources: runtimeResourceObservation{plan: true},
 		applyEvent: func(changefeed.Event) error {
 			return errors.New("a frame absorbed by gap recovery must not be applied again")
 		},
@@ -1957,7 +1961,8 @@ func TestRuntimeChangeMonitorRefreshesFilesOnceForASequenceGap(t *testing.T) {
 	}
 	resyncs := 0
 	monitor := runtimeChangeMonitor{
-		workspace: "/workspace", repository: service, source: source, watchFiles: true,
+		subscriptionLimits: testSubscriptionLimits,
+		workspace:          "/workspace", repository: service, source: source, watchFiles: true,
 		applyFiles: func([]workspace.Change) error { return nil },
 		applyResync: func([]protocol.RuntimeTopic) error {
 			resyncs++
@@ -1991,7 +1996,8 @@ func TestRuntimeChangeMonitorRefreshesFilesForBroadWorkspaceInvalidations(t *tes
 	}
 	applied := 0
 	monitor := runtimeChangeMonitor{
-		workspace: "/workspace", repository: service, source: source, watchFiles: true,
+		subscriptionLimits: testSubscriptionLimits,
+		workspace:          "/workspace", repository: service, source: source, watchFiles: true,
 		applyFiles: func([]workspace.Change) error {
 			applied++
 			if applied == 2 {
@@ -2008,7 +2014,7 @@ func TestRuntimeChangeMonitorRefreshesFilesForBroadWorkspaceInvalidations(t *tes
 
 func TestRuntimeChangeMonitorTreatsAnUnscopedFileInvalidationAsBroad(t *testing.T) {
 	t.Parallel()
-	monitor := runtimeChangeMonitor{workspace: "/workspace"}
+	monitor := runtimeChangeMonitor{subscriptionLimits: testSubscriptionLimits, workspace: "/workspace"}
 	tests := []struct {
 		name  string
 		event changefeed.Event
@@ -2044,7 +2050,8 @@ func TestRuntimeChangeMonitorAppliesAContiguousScopedResync(t *testing.T) {
 	}
 	var applied []changefeed.Event
 	monitor := runtimeChangeMonitor{
-		source: source, resources: runtimeResourceObservation{skills: true},
+		subscriptionLimits: testSubscriptionLimits,
+		source:             source, resources: runtimeResourceObservation{skills: true},
 		applyEvent: func(event changefeed.Event) error {
 			applied = append(applied, event)
 			cancel()
@@ -2104,3 +2111,5 @@ func TestRunChangesInvalidateSessionActivityCatalog(t *testing.T) {
 		})
 	}
 }
+
+var testSubscriptionLimits = changefeed.SubscriptionLimits{MaxTopics: 16, MaxWatches: 32}

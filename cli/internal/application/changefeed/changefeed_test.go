@@ -85,13 +85,13 @@ func TestSubscriptionLimitsPartitionWithoutLosingDeliveryScope(t *testing.T) {
 	}
 }
 
-func TestSubscriptionLimitsKeepAnUnboundedRequestWhole(t *testing.T) {
+func TestSubscriptionLimitsKeepARequestWithinThemWhole(t *testing.T) {
 	t.Parallel()
 	requested := Subscription{
 		Topics:  []protocol.RuntimeTopic{protocol.TopicFilesChanged, protocol.TopicSessionsChanged},
 		Watches: []Watch{{ID: "active", Workspace: "/workspace"}},
 	}
-	partitions, err := (SubscriptionLimits{}).Partition(requested)
+	partitions, err := (SubscriptionLimits{MaxTopics: 2, MaxWatches: 1}).Partition(requested)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -272,9 +272,12 @@ func assertPartitionDeliveryInvariants(
 func TestSubscriptionLimitsRejectInvalidConstraints(t *testing.T) {
 	t.Parallel()
 	requested := Subscription{Topics: []protocol.RuntimeTopic{protocol.TopicSessionsChanged}}
-	for _, limits := range []SubscriptionLimits{{MaxTopics: -1}, {MaxWatches: -1}} {
+	for _, limits := range []SubscriptionLimits{
+		{MaxTopics: -1, MaxWatches: 1}, {MaxTopics: 1, MaxWatches: -1},
+		{}, {MaxTopics: 1}, {MaxWatches: 1},
+	} {
 		if _, err := limits.Partition(requested); err == nil {
-			t.Fatalf("negative limits %+v were accepted", limits)
+			t.Fatalf("limits %+v were accepted", limits)
 		}
 	}
 }

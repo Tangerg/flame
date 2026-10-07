@@ -374,6 +374,7 @@ func TestRuntimeChangeMonitorDoesNotRegressAfterAStaleFrame(t *testing.T) {
 	t.Parallel()
 	invalidations, resyncs := 0, 0
 	monitor := runtimeChangeMonitor{
+		subscriptionLimits: testSubscriptionLimits,
 		applyEvent: func(changefeed.Event) error {
 			invalidations++
 			return nil
@@ -420,7 +421,8 @@ func TestWorkspaceMonitorSubscribesBeforeItsAuthoritativeRead(t *testing.T) {
 		mu.Unlock()
 	}
 	monitor := runtimeChangeMonitor{
-		workspace: "/workspace", watchFiles: true,
+		subscriptionLimits: testSubscriptionLimits,
+		workspace:          "/workspace", watchFiles: true,
 		source: changeSourceFunc(func(ctx context.Context, _ changefeed.Subscription) (changefeed.EventStream, error) {
 			record("subscribe")
 			return func(func(changefeed.Event, error) bool) { <-ctx.Done() }, nil
@@ -454,7 +456,8 @@ func TestWorkspaceMonitorReadsFilesWhenTheChangeSourceCannotWatchThem(t *testing
 	read := make(chan struct{}, 1)
 	applied := make(chan []workspace.Change, 1)
 	monitor := runtimeChangeMonitor{
-		workspace: "/workspace", source: source, watchFiles: true,
+		subscriptionLimits: testSubscriptionLimits,
+		workspace:          "/workspace", source: source, watchFiles: true,
 		repository: changeReaderFunc(func(context.Context, string) ([]workspace.Change, error) {
 			read <- struct{}{}
 			return []workspace.Change{{Path: "main.go", Status: protocol.FileStatusModified}}, nil
@@ -502,7 +505,8 @@ func TestWorkspaceMonitorDoesNotRequestAFileWatchWithoutTheNegotiatedCapability(
 		protocol.TopicFilesChanged, protocol.TopicSessionsChanged,
 	}}
 	monitor := runtimeChangeMonitor{
-		source: source, repository: changeReaderFunc(func(context.Context, string) ([]workspace.Change, error) {
+		subscriptionLimits: testSubscriptionLimits,
+		source:             source, repository: changeReaderFunc(func(context.Context, string) ([]workspace.Change, error) {
 			return nil, nil
 		}),
 	}
@@ -522,7 +526,7 @@ func TestWorkspaceMonitorObservesStateOnlyWithPlanProjection(t *testing.T) {
 		protocol.TopicSessionsChanged, protocol.TopicRunsChanged,
 		protocol.TopicPlanChanged, protocol.TopicInterruptsChanged,
 	}}
-	monitor := runtimeChangeMonitor{source: source}
+	monitor := runtimeChangeMonitor{subscriptionLimits: testSubscriptionLimits, source: source}
 	withoutPlan := []protocol.RuntimeTopic{
 		protocol.TopicSessionsChanged, protocol.TopicRunsChanged, protocol.TopicInterruptsChanged,
 	}
@@ -551,7 +555,8 @@ func TestWorkspaceMonitorWatchesAuthoredResourcesWithoutGitProjection(t *testing
 		},
 	}
 	monitor := runtimeChangeMonitor{
-		workspace: "/workspace", source: source, watchFiles: true,
+		subscriptionLimits: testSubscriptionLimits,
+		workspace:          "/workspace", source: source, watchFiles: true,
 		resources: runtimeResourceObservation{skills: true, hooks: true},
 	}
 	wantTopics := []protocol.RuntimeTopic{
