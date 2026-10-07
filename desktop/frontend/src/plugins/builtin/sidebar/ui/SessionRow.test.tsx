@@ -15,7 +15,7 @@ vi.mock("@/ui", async (original) => ({
   },
 }));
 
-function edit() {
+function edit(title = "Original") {
   const onRename = vi.fn();
   const onSelect = vi.fn();
   render(
@@ -23,7 +23,7 @@ function edit() {
       session={{
         id: "s",
         revision: 1,
-        title: "Original",
+        title,
         time: new Date().toISOString(),
         attention: "none",
         favorite: false,
@@ -34,9 +34,10 @@ function edit() {
     />,
   );
   fireEvent.click(screen.getByRole("button", { name: "Rename" }));
-  const input = screen.getByRole("textbox");
+  const input = screen.getByRole<HTMLInputElement>("textbox");
+  const initial = input.value;
   fireEvent.change(input, { target: { value: "新的标题" } });
-  return { input, onRename, onSelect };
+  return { input, initial, onRename, onSelect };
 }
 
 describe("session title editing", () => {
@@ -63,5 +64,9 @@ describe("session title editing", () => {
     expect(screen.getByRole("textbox")).toBe(input);
     fireEvent.blur(input);
     expect(onRename).toHaveBeenCalledExactlyOnceWith("s", 1, "新的标题");
+  });
+  it("opens an untitled Session's editor empty instead of with its display fallback", () => {
+    const { initial } = edit("");
+    expect(initial).toBe("");
   });
 });

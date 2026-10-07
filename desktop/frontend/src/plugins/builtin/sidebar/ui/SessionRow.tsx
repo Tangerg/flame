@@ -61,6 +61,7 @@ function SessionTitleField({
     <TextField
       variant="inline"
       defaultValue={title}
+      placeholder={t("session.untitled")}
       aria-label={t("session.row.titleLabel")}
       // oxlint-disable-next-line jsx-a11y/no-autofocus
       autoFocus
@@ -188,7 +189,7 @@ export function SessionRow({
       {renaming ? (
         <AgentRowEditor indent={indented ? "nested" : "none"}>
           <SessionTitleField
-            title={title}
+            title={session.title.trim()}
             onCommit={(next) => onRename?.(session.id, session.revision, next)}
             onSettle={(restoreFocus) => {
               setRenaming(false);
