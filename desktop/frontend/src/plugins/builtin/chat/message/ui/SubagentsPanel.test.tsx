@@ -201,3 +201,13 @@ it("names delegated tasks from their parent tool call in both list and detail", 
   expect(screen.getByRole("region", { name: "Audit axios cancellation" })).toBeTruthy();
   expect(navigator().get().subagent).toBe("child");
 });
+
+it("counts a subagent waiting on the person as active, not running", () => {
+  material.rows = rows({ ...child, status: "waiting" });
+  navigator().go({ session: "session" });
+  openWorkspaceSubagentRun(null);
+  render(<SubagentsPanel />);
+  expect(screen.getByText("2 subagents")).toBeTruthy();
+  expect(screen.queryByText(/running/)).toBeNull();
+  expect(screen.getByText("Active · 1")).toBeTruthy();
+});

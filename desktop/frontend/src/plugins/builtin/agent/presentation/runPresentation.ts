@@ -4,7 +4,9 @@ import { isAgentRunFailure } from "../application/view/runOutcome";
 
 export type AgentRunPresentationState = "running" | "waiting" | "finished" | "error" | "canceled";
 
-export function agentRunPresentationState(run: AgentRunView): AgentRunPresentationState {
+export function agentRunPresentationState(
+  run: Pick<AgentRunView, "status" | "outcome">,
+): AgentRunPresentationState {
   return run.status === "finished" ? terminalSettlementStatus(run.outcome) : run.status;
 }
 

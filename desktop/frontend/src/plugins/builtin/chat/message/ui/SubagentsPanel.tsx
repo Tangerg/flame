@@ -54,7 +54,7 @@ export function SubagentsPanel() {
   const entries = useMemo(() => subagentEntries(rows), [rows]);
   const selectedId = useWorkspaceSubagentRunId();
   const selected = entries.find(({ narrative }) => narrative.run.id === selectedId);
-  const running = entries.filter(({ narrative }) => narrative.run.status !== "finished").length;
+  const running = entries.filter(({ narrative }) => narrative.run.status === "running").length;
   return (
     <AgentWorkspaceView ariaLabel={t("subagents.title")}>
       <AgentSurfaceHeader>

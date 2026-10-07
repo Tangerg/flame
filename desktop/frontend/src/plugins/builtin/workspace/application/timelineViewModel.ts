@@ -1,6 +1,10 @@
 import type { AgentItem, AgentRunFact } from "@/plugins/sdk";
 import type { Tone } from "@/lib/tone";
 import type { TrajectoryEntry } from "@/plugins/builtin/agent/public/run";
+import {
+  agentRunPresentationState,
+  type AgentRunPresentationState,
+} from "@/plugins/builtin/agent/public/runPresentation";
 
 export type TimelineCategory = "all" | "run" | "model" | "toolCall" | "message" | "attention";
 export type TimelineKind = "run" | "model" | AgentItem["type"];
@@ -111,16 +115,19 @@ function timelineRecord(source: TrajectoryEntry): TimelineRecord {
   };
 }
 
+const RUN_STATUS: Record<
+  AgentRunPresentationState,
+  Pick<TimelineRecord, "statusKey" | "tone" | "attention">
+> = {
+  running: { statusKey: "agent.runTree.status.running", tone: "accent", attention: false },
+  waiting: { statusKey: "agent.runTree.status.waiting", tone: "warning", attention: true },
+  finished: { statusKey: "agent.runTree.status.finished", tone: "success", attention: false },
+  canceled: { statusKey: "agent.runTree.status.canceled", tone: "neutral", attention: false },
+  error: { statusKey: "agent.runTree.status.error", tone: "negative", attention: true },
+};
+
 function runStatus(run: AgentRunFact): Pick<TimelineRecord, "statusKey" | "tone" | "attention"> {
-  if (run.status === "running")
-    return { statusKey: "agent.runTree.status.running", tone: "accent", attention: false };
-  if (run.status === "waiting")
-    return { statusKey: "agent.runTree.status.waiting", tone: "warning", attention: true };
-  if (run.outcome?.type === "completed")
-    return { statusKey: "agent.runTree.status.finished", tone: "success", attention: false };
-  if (run.outcome?.type === "canceled")
-    return { statusKey: "agent.runTree.status.canceled", tone: "neutral", attention: false };
-  return { statusKey: "agent.runTree.status.error", tone: "negative", attention: true };
+  return RUN_STATUS[agentRunPresentationState(run)];
 }
 
 function itemStatus(item: AgentItem): Pick<TimelineRecord, "statusKey" | "tone" | "attention"> {
