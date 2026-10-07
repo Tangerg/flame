@@ -107,17 +107,21 @@ func TestListRejectsShadowedSkillLeak(t *testing.T) {
 	}
 }
 
-func TestListRejectsInvalidOrUnboundedCatalog(t *testing.T) {
-	for name, found := range map[string][]SkillSummary{
-		"invalid row": {{Name: "review", Description: "Review the project changes.", Source: SkillSource{}}},
-		"capacity":    make([]SkillSummary, 2*skills.MaxSkillsPerSource+1),
-	} {
-		t.Run(name, func(t *testing.T) {
-			c := newSkills(t, newScope(t, "", "", testPaths{}), &fakeSkillCatalog{skills: found}, nil, &fakeSkillProposals{}, nil, nil)
-			if _, err := c.List(t.Context(), "/repo"); err == nil {
-				t.Fatal("List error = nil, want rejected catalog")
-			}
-		})
+func TestListRejectsInvalidCatalogRow(t *testing.T) {
+	found := []SkillSummary{{Name: "review", Description: "Review the project changes.", Source: SkillSource{}}}
+	c := newSkills(t, newScope(t, "", "", testPaths{}), &fakeSkillCatalog{skills: found}, nil, &fakeSkillProposals{}, nil, nil)
+	if _, err := c.List(t.Context(), "/repo"); err == nil {
+		t.Fatal("List error = nil, want rejected catalog")
+	}
+}
+
+// The catalog bound is checked before any row, so rows past every selectable
+// source's capacity are refused for their count alone.
+func TestListRejectsCatalogBeyondEverySourceCapacity(t *testing.T) {
+	found := make([]SkillSummary, (plugin.MaxInstallations+2)*skills.MaxSkillsPerSource+1)
+	c := newSkills(t, newScope(t, "", "", testPaths{}), &fakeSkillCatalog{skills: found}, nil, &fakeSkillProposals{}, nil, nil)
+	if _, err := c.List(t.Context(), "/repo"); !errors.Is(err, skills.ErrLibraryCapacity) {
+		t.Fatalf("List error = %v, want ErrLibraryCapacity", err)
 	}
 }
 
