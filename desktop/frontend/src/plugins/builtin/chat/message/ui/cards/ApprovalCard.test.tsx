@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { TOOL_FAMILIES } from "@/lib/toolFamilies";
+import { en } from "@/lib/i18n/locales/en";
+import { TOOL_FAMILIES, toolFamilyId } from "@/lib/toolFamilies";
 import { ApprovalCard } from "./ApprovalCard";
 
 const actions = vi.hoisted(() => ({
@@ -102,6 +103,9 @@ describe("ApprovalCard actions", () => {
           reason="Do the thing."
         />,
       );
+      const family = en[`tools.family.${toolFamilyId(name)}`];
+      expect(family).toBeDefined();
+      expect(screen.getAllByText(family!, { exact: true }).length).toBeGreaterThan(0);
       expect(screen.queryByText(name, { exact: true })).toBeNull();
     },
   );
