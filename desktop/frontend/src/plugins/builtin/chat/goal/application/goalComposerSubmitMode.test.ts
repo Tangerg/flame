@@ -25,8 +25,7 @@ beforeEach(() => {
     composerText: () => composerText,
     goalState: () => goalState,
     runtimeAvailable: () => true,
-    modelPreference: () => ({
-      kind: "explicit",
+    runOptions: () => ({
       provider: "openai",
       model: "gpt-5",
       reasoningEffort: "high",
@@ -94,8 +93,8 @@ describe("Goal composer submit mode", () => {
     expect(owner.snapshot().phase).toBe("inactive");
   });
 
-  it("sends the inherited session preference as no model fields at all", async () => {
-    dependencies.modelPreference = () => ({ kind: "session" });
+  it("sends no model fields when the run options name no override", async () => {
+    dependencies.runOptions = () => ({});
     const mode = createGoalComposerSubmitMode(owner, dependencies);
 
     mode.submit(context);

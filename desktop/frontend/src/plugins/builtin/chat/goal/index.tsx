@@ -1,7 +1,13 @@
 import { toolFamilyNames } from "@/lib/toolFamilies";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
-import { contributeLayout, definePlugin, notifyError, type SlashCommandSpec } from "@/plugins/sdk";
+import {
+  contributeLayout,
+  definePlugin,
+  notifyError,
+  resolveAgentRunStartOptions,
+  type SlashCommandSpec,
+} from "@/plugins/sdk";
 import {
   COMPOSER_SUBMIT_MODE,
   SLASH_COMMAND,
@@ -17,7 +23,6 @@ import { getActiveSessionId } from "@/plugins/builtin/agent/public/session";
 import { getAgentSessionSharedMaterial } from "@/plugins/builtin/agent/public/sessionMaterial";
 import { getComposerText } from "@/plugins/builtin/chat/composer/public/draft";
 import { focusComposer } from "@/plugins/builtin/chat/composer/public/focus";
-import { selectedComposerModelPreference } from "@/plugins/builtin/chat/composer/public/modelPreference";
 import { runtimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
 import { startGoal } from "./application/goalCommands";
 import { GoalComposerModeOwner } from "./application/goalComposerMode";
@@ -68,7 +73,7 @@ export function createGoalPlugin(runtimeClient: () => FlameClient) {
           composerText: getComposerText,
           goalState: (sessionId) => getAgentSessionSharedMaterial<GoalState>(sessionId, "goal"),
           runtimeAvailable: runtimeCommandsAvailable,
-          modelPreference: selectedComposerModelPreference,
+          runOptions: resolveAgentRunStartOptions,
           start: startGoal,
           focusComposer,
           reportUnavailable: () => notifyError(t("goal.error.unavailable")),

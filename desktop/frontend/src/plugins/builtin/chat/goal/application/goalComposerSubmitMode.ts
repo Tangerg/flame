@@ -1,15 +1,18 @@
-import type { ComposerSubmitModeContext, ComposerSubmitModeSpec } from "@/plugins/sdk";
+import type {
+  AgentRunStartOptions,
+  ComposerSubmitModeContext,
+  ComposerSubmitModeSpec,
+} from "@/plugins/sdk";
 import type { GoalReadModel, GoalState } from "./goalReadModel";
 import type { StartGoalInput } from "./ports/goalCommandsGateway";
 import { GoalComposerModeOwner } from "./goalComposerMode";
-import type { ComposerModelPreference } from "../../composer/public/modelPreference";
 
 export interface GoalComposerSubmitDependencies {
   getActiveSessionId(): string | null;
   composerText(): string;
   goalState(sessionId: string): GoalState | undefined;
   runtimeAvailable(): boolean;
-  modelPreference(): ComposerModelPreference;
+  runOptions(): AgentRunStartOptions;
   start(input: StartGoalInput): Promise<void>;
   focusComposer(): void;
   reportUnavailable(): void;
@@ -90,19 +93,8 @@ async function startGoal(
   sessionId: string,
   objective: string,
 ): Promise<void> {
-  const preference = dependencies.modelPreference();
   try {
-    await dependencies.start({
-      sessionId,
-      objective,
-      ...(preference.kind === "explicit"
-        ? {
-            provider: preference.provider,
-            model: preference.model,
-            ...(preference.reasoningEffort ? { reasoningEffort: preference.reasoningEffort } : {}),
-          }
-        : {}),
-    });
+    await dependencies.start({ sessionId, objective, ...dependencies.runOptions() });
     const committed = owner.finish(sessionId, true);
     if (
       committed &&
