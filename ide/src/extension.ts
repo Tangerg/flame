@@ -12,7 +12,7 @@ import type {
 } from "@flame/runtime-contract/wire";
 import { parseReviewedJSON } from "@flame/runtime-contract/client/json";
 import { checkRequest } from "@flame/runtime-contract/client/request";
-import { commandFailureMessage, Connection, type Command } from "./connection";
+import { commandFailureMessage, Connection, type Command, type CommandResult } from "./connection";
 import { inputFromEditor, type EditorSnapshot } from "./editorContext";
 import { observeRun } from "./observation";
 
@@ -403,19 +403,22 @@ class Workbench implements vscode.TreeDataProvider<Session> {
 
   async #execute(command: Command): Promise<void> {
     const connection = this.#connected();
-    const result = await connection.execute(command);
-    if (this.#connection !== connection) return;
+    if (await this.#adopt(connection, await connection.execute(command))) this.#output.show(true);
+  }
+
+  async #adopt(connection: Connection, result: CommandResult): Promise<boolean> {
+    if (this.#connection !== connection) return false;
     if (result.sessionId) {
       const session = await connection.client.sessions.get(
         asSessionId(result.sessionId),
         connection.signal,
       );
-      if (this.#connection !== connection) return;
+      if (this.#connection !== connection) return false;
       this.#observation?.abort();
       this.#session = session;
     }
     await this.#refresh();
-    this.#output.show(true);
+    return true;
   }
 
   async #retry(): Promise<void> {
@@ -433,18 +436,7 @@ class Workbench implements vscode.TreeDataProvider<Session> {
       },
     );
     if (!selected || this.#connection !== connection) return;
-    const result = await connection.retry(selected.pending.idempotencyKey);
-    if (this.#connection !== connection) return;
-    if (result.sessionId) {
-      const session = await connection.client.sessions.get(
-        asSessionId(result.sessionId),
-        connection.signal,
-      );
-      if (this.#connection !== connection) return;
-      this.#observation?.abort();
-      this.#session = session;
-    }
-    await this.#refresh();
+    await this.#adopt(connection, await connection.retry(selected.pending.idempotencyKey));
   }
 
   async #resume(): Promise<void> {
@@ -590,10 +582,7 @@ class Workbench implements vscode.TreeDataProvider<Session> {
         signal,
       );
       if (signal.aborted || this.#session?.id !== session.id) return;
-      const current = snapshot.session;
-      this.#session = current;
-      this.#render(snapshot);
-      this.#status.text = `$(flame) ${current.title || "Flame"}: ${current.status}`;
+      this.#show(snapshot);
       const run = snapshot.runs.find((value) => value.status === "running" && !value.parentRunId);
       if (!run) return;
       this.#track(async () => {
@@ -603,7 +592,7 @@ class Workbench implements vscode.TreeDataProvider<Session> {
             run.id,
             {
               snapshot: (value) => {
-                if (!signal.aborted) this.#render(value);
+                if (!signal.aborted) this.#show(value);
               },
               event: (value) => {
                 if (!signal.aborted && value.event.type === "item.completed")
@@ -624,9 +613,12 @@ class Workbench implements vscode.TreeDataProvider<Session> {
     return this.#refreshing;
   }
 
-  #render(snapshot: SessionSnapshot): void {
+  #show(snapshot: SessionSnapshot): void {
+    const session = snapshot.session;
+    this.#session = session;
+    this.#status.text = `$(flame) ${session.title || "Flame"}: ${session.status}`;
     this.#output.clear();
-    this.#output.appendLine(`${this.#selected().title} · ${this.#selected().workspace.ref.path}`);
+    this.#output.appendLine(`${session.title} · ${session.workspace.ref.path}`);
     for (const item of snapshot.items) this.#output.appendLine(this.#item(item));
     for (const waiting of snapshot.interrupts)
       this.#output.appendLine(
