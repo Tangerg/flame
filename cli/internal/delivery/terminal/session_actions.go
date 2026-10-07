@@ -237,7 +237,7 @@ func appendRollbackWarnings(label string, images int, cleanupErr, journalErr err
 	return label
 }
 
-func (a *app) reportSessionRollbackRecovery(recovery workbench.SessionRollbackRecovery) {
+func rollbackRecoveryNotice(recovery workbench.SessionRollbackRecovery) string {
 	label := fmt.Sprintf("recovered rollback input · %d runs removed", recovery.DroppedCount)
 	if recovery.Merged {
 		label += "; restored opening text before the newer draft"
@@ -245,7 +245,7 @@ func (a *app) reportSessionRollbackRecovery(recovery workbench.SessionRollbackRe
 	if recovery.OpeningImages > 0 {
 		label += fmt.Sprintf("; %d inline images must be reattached", recovery.OpeningImages)
 	}
-	a.message(label)
+	return label
 }
 
 func parseRollbackArgument(sessionID, argument string) (conversation.RollbackSession, error) {

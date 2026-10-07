@@ -25,10 +25,10 @@ func (a *app) ShowPlugins() {
 	a.transcript.Append(&kit.Entry{Theme: a.transcript.theme, Label: "plugins", Body: strings.Join(lines, "\n")})
 }
 
-// reportUnloadedPlugins says at startup that something did not load. A plugin
+// unloadedPluginsNotice says at startup that something did not load. A plugin
 // that fails discovery, resolution or setup contributes nothing, so without
 // this notice its absence is indistinguishable from a plugin never installed.
-func (a *app) reportUnloadedPlugins(results []extensions.LifecycleResult, issues []extensions.SourceIssue) {
+func unloadedPluginsNotice(results []extensions.LifecycleResult, issues []extensions.SourceIssue) string {
 	unloaded := len(issues)
 	for _, result := range results {
 		if result.Phase != extensions.PluginLoaded {
@@ -37,10 +37,11 @@ func (a *app) reportUnloadedPlugins(results []extensions.LifecycleResult, issues
 	}
 	switch unloaded {
 	case 0:
+		return ""
 	case 1:
-		a.message("1 plugin did not load · /plugins for details")
+		return "1 plugin did not load · /plugins for details"
 	default:
-		a.message(fmt.Sprintf("%d plugins did not load · /plugins for details", unloaded))
+		return fmt.Sprintf("%d plugins did not load · /plugins for details", unloaded)
 	}
 }
 

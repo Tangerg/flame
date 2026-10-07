@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/Tangerg/flame/cli/internal/adapter/filesystem/attachment"
@@ -21,6 +23,7 @@ import (
 	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	"github.com/Tangerg/oolong/components/headless"
+	"github.com/Tangerg/oolong/components/kit"
 	"github.com/Tangerg/oolong/core/program"
 	"github.com/Tangerg/oolong/core/term"
 )
@@ -115,11 +118,15 @@ func Run(ctx context.Context, cfg Config) (runErr error) {
 				recoveredSteers: prepared.recoveryIssues.steers.Accepted,
 				localDirectory:  cfg.LocalDirectory, detachOnExit: cfg.DetachOnExit,
 			})
+			var rollbackNotice string
 			if prepared.rollbackRecovery != nil {
-				active.reportSessionRollbackRecovery(*prepared.rollbackRecovery)
+				rollbackNotice = rollbackRecoveryNotice(*prepared.rollbackRecovery)
 			}
-			active.reportRefusedSteers(prepared.recoveryIssues.steers.Refused)
-			active.reportUnloadedPlugins(results, discovered.Issues)
+			active.announceStartup(
+				rollbackNotice,
+				active.refusedSteersNotice(prepared.recoveryIssues.steers.Refused),
+				unloadedPluginsNotice(results, discovered.Issues),
+			)
 			active.reportWorkbenchIssue(workbenchSteerOutbox, prepared.recoveryIssues.steer)
 			return headless.NewRoot(active)
 		},
@@ -346,4 +353,18 @@ func requireLoadedPlugin(results []extensions.LifecycleResult, id string) error 
 		return fmt.Errorf("session: required plugin %q is %s", id, result.Phase)
 	}
 	return fmt.Errorf("session: required plugin %q was not discovered", id)
+}
+
+// announceStartup reports what recovery and plugin loading found. The status
+// row holds one message, so several notices go to the transcript together
+// instead of each replacing the one before it.
+func (a *app) announceStartup(notices ...string) {
+	notices = slices.DeleteFunc(notices, func(notice string) bool { return notice == "" })
+	switch len(notices) {
+	case 0:
+	case 1:
+		a.message(notices[0])
+	default:
+		a.transcript.Append(&kit.Entry{Theme: a.transcript.theme, Label: "startup", Body: strings.Join(notices, "\n")})
+	}
 }

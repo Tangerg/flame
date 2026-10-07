@@ -595,7 +595,7 @@ func (a *app) installSnapshot(snapshot conversation.SessionSnapshot) error {
 	}
 	installation.apply(a)
 	if installation.rollbackRecovery != nil {
-		a.reportSessionRollbackRecovery(*installation.rollbackRecovery)
+		a.message(rollbackRecoveryNotice(*installation.rollbackRecovery))
 	}
 	return nil
 }

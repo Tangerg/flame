@@ -6,6 +6,7 @@ import (
 	"time"
 
 	runworkflow "github.com/Tangerg/flame/cli/internal/application/agent/run"
+	"github.com/Tangerg/flame/cli/internal/application/extensions"
 	"github.com/Tangerg/flame/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/cli/internal/domain/authoring/prompt"
 	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
@@ -70,6 +71,33 @@ func TestPrepareSessionKeepsExpiredSteerAsARecoveryIssue(t *testing.T) {
 
 func TestRestartReportsAPendingSteerRuntimeRefused(t *testing.T) {
 	stateDirectory := t.TempDir()
+	stageSteerRuntimeWillRefuse(t, stateDirectory)
+
+	host, stop := runUIWithReplayState(t, runtimefixture.New(), "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
+	showsPlain(t, host, "steer sent before restart was refused")
+	stop()
+}
+
+func TestRestartKeepsEveryStartupNoticeVisible(t *testing.T) {
+	stateDirectory := t.TempDir()
+	stageSteerRuntimeWillRefuse(t, stateDirectory)
+	broken := extensions.Plugin{
+		ID: "test.broken", Version: "1.0.0", APIVersion: extensions.HostAPIVersion,
+		Setup: func(*extensions.Scope) error { return errors.New("broken setup") },
+	}
+	profile := steerReplayTestProfile(t, "/tmp/flame-cli-test")
+	host, stop := runUIFromConfig(t, Config{
+		Runtime: runtimefixture.New(), RuntimeProfile: &profile, Workspace: "/tmp/flame-cli-test",
+		SessionID: "ses_demo_1", OpenWorkbench: persistentTestWorkbench(stateDirectory),
+		Plugins: []extensions.Plugin{broken},
+	})
+	showsPlain(t, host, "steer sent before restart was refused")
+	showsPlain(t, host, "1 plugin did not load")
+	stop()
+}
+
+func stageSteerRuntimeWillRefuse(t *testing.T, stateDirectory string) {
+	t.Helper()
 	store, err := openTestWorkbench(stateDirectory)
 	if err != nil {
 		t.Fatal(err)
@@ -98,10 +126,6 @@ func TestRestartReportsAPendingSteerRuntimeRefused(t *testing.T) {
 	if err := store.Close(); err != nil {
 		t.Fatal(err)
 	}
-
-	host, stop := runUIWithReplayState(t, runtimefixture.New(), "/tmp/flame-cli-test", "ses_demo_1", stateDirectory)
-	showsPlain(t, host, "steer sent before restart was refused")
-	stop()
 }
 
 func TestPrepareSessionMergesInitialPromptAfterConfirmedRollbackRecovery(t *testing.T) {
