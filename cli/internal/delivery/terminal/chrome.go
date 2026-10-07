@@ -22,13 +22,12 @@ const (
 )
 
 type sessionHeader struct {
-	theme       kit.Theme
-	glyphs      kit.Glyphs
-	session     conversation.Session
-	usage       conversation.Usage
-	goal        protocol.Goal
-	goalPresent bool
-	changes     int
+	theme   kit.Theme
+	glyphs  kit.Glyphs
+	session conversation.Session
+	usage   conversation.Usage
+	goal    *protocol.Goal
+	changes int
 }
 
 func newSessionHeader(theme kit.Theme, glyphs kit.Glyphs, session conversation.Session) *sessionHeader {
@@ -41,10 +40,11 @@ func (s *sessionHeader) SetUsage(usage conversation.Usage) { s.usage = usage.Clo
 
 func (s *sessionHeader) SetGoal(current *protocol.Goal) {
 	if current == nil {
-		s.goal, s.goalPresent = protocol.Goal{}, false
+		s.goal = nil
 		return
 	}
-	s.goal, s.goalPresent = *current, true
+	goal := *current
+	s.goal = &goal
 }
 
 func (s *sessionHeader) SetWorkspaceChanges(count int) {
@@ -92,7 +92,7 @@ func (s *sessionHeader) Draw(view grid.View) {
 }
 
 func (s *sessionHeader) drawGoal(view grid.View) {
-	if !s.goalPresent {
+	if s.goal == nil {
 		return
 	}
 	width, _ := view.Size()
