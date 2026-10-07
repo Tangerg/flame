@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +13,8 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
+	"github.com/Tangerg/flame/runtime/internal/httporigin"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -270,7 +271,7 @@ func TestEndpointHTTPClientRejectsCrossOriginRedirect(t *testing.T) {
 	require.NoError(t, err)
 	resp, err := client.Get(source.URL)
 	require.Error(t, err)
-	assert.ErrorIs(t, err, errCrossOrigin)
+	assert.ErrorIs(t, err, httporigin.ErrCrossOriginRedirect)
 	assert.False(t, targetHit.Load(), "cross-origin redirect reached target")
 	if resp != nil {
 		_ = resp.Body.Close()

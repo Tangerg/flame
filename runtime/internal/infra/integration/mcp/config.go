@@ -11,7 +11,6 @@ import (
 	"os/exec"
 	"slices"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -22,6 +21,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/optional"
 	"github.com/Tangerg/go-sdk/auth"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
+	"golang.org/x/oauth2"
 )
 
 // Transport is the wire mode of an MCP server connection. The zero value is
@@ -237,10 +237,9 @@ func dial(
 			transport := &sdkmcp.StreamableClientTransport{
 				Endpoint:     cfg.Endpoint,
 				HTTPClient:   httpClient,
-				OAuthHandler: cfg.OAuthHandler,
+				OAuthHandler: authorizationChallenge{oauth: cfg.OAuthHandler},
 			}
-			session, err := client.Connect(sessionCtx, transport, nil)
-			return session, classifyHTTPDialError(httpClient, err)
+			return client.Connect(sessionCtx, transport, nil)
 		case TransportStdio:
 			cmd := exec.CommandContext(sessionCtx, cfg.Command, cfg.Args...)
 			if cfg.Env != nil {
@@ -325,10 +324,7 @@ func connectSession(
 	return session, cancelLifetime, nil
 }
 
-const (
-	maxRedirects             = 10
-	maxMCPResponseFrameBytes = 64 << 20
-)
+const maxMCPResponseFrameBytes = 64 << 20
 
 var (
 	errCrossOrigin              = errors.New("mcp: cross-origin request blocked")
@@ -347,15 +343,9 @@ func endpointHTTPClient(endpoint, authorization string, headers map[string]strin
 		base:                  http.DefaultTransport,
 		maxResponseFrameBytes: maxMCPResponseFrameBytes,
 	}
-	return &http.Client{
-		Transport: transport,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) >= maxRedirects {
-				return fmt.Errorf("mcp: stopped after %d redirects", maxRedirects)
-			}
-			return transport.validateTarget(req.URL)
-		},
-	}, nil
+	// The transport pins every request, including the first, to the configured
+	// origin, so the shared same-origin redirect policy keeps the chain there.
+	return &http.Client{Transport: transport, CheckRedirect: httporigin.CheckRedirect}, nil
 }
 
 type headerRoundTripper struct {
@@ -363,7 +353,6 @@ type headerRoundTripper struct {
 	authorization         string
 	headers               map[string]string
 	base                  http.RoundTripper
-	lastStatus            atomic.Int64
 	maxResponseFrameBytes int64
 }
 
@@ -380,25 +369,37 @@ func (h *headerRoundTripper) RoundTrip(req *http.Request) (*http.Response, error
 	}
 	response, err := h.base.RoundTrip(r)
 	if response != nil {
-		h.lastStatus.Store(int64(response.StatusCode))
 		httpresponse.LimitBody(response, h.maxResponseFrameBytes, errMCPResponseFrameTooLarge)
 	}
 	return response, err
 }
 
-func (h *headerRoundTripper) classifyDialError(err error) error {
-	if err == nil {
-		return nil
-	}
-	if h.lastStatus.Load() == http.StatusUnauthorized {
-		return errors.Join(mcpserver.ErrAuthorizationRequired, err)
-	}
-	return err
+// authorizationChallenge is installed on every Streamable HTTP transport
+// because the SDK hands Authorize the exact refused request and response; its
+// own status error carries only text. A 401 therefore marks the failure of the
+// request it answered, never a concurrent or later request's outcome. Without
+// an OAuth handler the challenge cannot be answered here, so it fails the
+// request instead of letting the SDK retry.
+type authorizationChallenge struct {
+	oauth auth.OAuthHandler
 }
 
-func classifyHTTPDialError(client *http.Client, err error) error {
-	if transport, ok := client.Transport.(*headerRoundTripper); ok {
-		return transport.classifyDialError(err)
+func (a authorizationChallenge) TokenSource(ctx context.Context) (oauth2.TokenSource, error) {
+	if a.oauth == nil {
+		return nil, nil
+	}
+	return a.oauth.TokenSource(ctx)
+}
+
+func (a authorizationChallenge) Authorize(ctx context.Context, request *http.Request, response *http.Response) error {
+	var err error
+	if a.oauth == nil {
+		err = errors.Join(fmt.Errorf("mcp: server responded %s", response.Status), response.Body.Close())
+	} else {
+		err = a.oauth.Authorize(ctx, request, response)
+	}
+	if err != nil && response.StatusCode == http.StatusUnauthorized {
+		return errors.Join(mcpserver.ErrAuthorizationRequired, err)
 	}
 	return err
 }
