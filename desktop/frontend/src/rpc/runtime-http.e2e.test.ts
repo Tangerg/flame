@@ -3078,8 +3078,14 @@ for await (const line of lines) {
 
     const original = await client.approval.getMode();
     const alternate = original.mode === "yolo" ? "balanced" : "yolo";
-    await expect(client.approval.setMode(alternate)).resolves.toEqual({ mode: alternate });
-    await expect(client.approval.getMode()).resolves.toEqual({ mode: alternate });
+    await expect(client.approval.setMode(alternate)).resolves.toEqual({
+      mode: alternate,
+      modes: original.modes,
+    });
+    await expect(client.approval.getMode()).resolves.toEqual({
+      mode: alternate,
+      modes: original.modes,
+    });
     await expect(client.approval.setMode(original.mode)).resolves.toEqual(original);
     await expect(client.approval.getMode()).resolves.toEqual(original);
   }, 30_000);
