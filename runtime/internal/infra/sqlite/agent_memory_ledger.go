@@ -10,8 +10,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 )
 
-var errAgentMemoryProject = errors.New("sqlite: agent memory project is required")
-
 // AppendLedger inserts facts that have not already appeared in project. Facts
 // are immutable and deduplicated independently, so a response containing one
 // repeated bullet never suppresses its genuinely new siblings.
@@ -69,8 +67,8 @@ func (a *AgentMemoryStore) AppendLedger(ctx context.Context, batch agentmemory.F
 // PendingLedger lists a project's facts strictly after watermark in sequence
 // order. limit must be positive so every curation call has an explicit bound.
 func (a *AgentMemoryStore) PendingLedger(ctx context.Context, project string, watermark int64, limit int) ([]agentmemory.LedgerFact, error) {
-	if project == "" {
-		return nil, errAgentMemoryProject
+	if err := agentmemory.ValidateTarget(agentmemory.ScopeProject, project); err != nil {
+		return nil, err
 	}
 	if watermark < 0 {
 		return nil, errors.New("sqlite: agent memory watermark must not be negative")
@@ -113,8 +111,8 @@ func (a *AgentMemoryStore) PendingLedger(ctx context.Context, project string, wa
 // State returns the project's curation watermark. An unknown project has a zero
 // watermark.
 func (a *AgentMemoryStore) State(ctx context.Context, project string) (agentmemory.State, error) {
-	if project == "" {
-		return agentmemory.State{}, errAgentMemoryProject
+	if err := agentmemory.ValidateTarget(agentmemory.ScopeProject, project); err != nil {
+		return agentmemory.State{}, err
 	}
 	var st agentmemory.State
 	var updatedAt int64

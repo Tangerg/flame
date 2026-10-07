@@ -94,6 +94,20 @@ func TestAgentMemoryPendingLedgerRequiresBoundedPage(t *testing.T) {
 	}
 }
 
+// TestAgentMemoryLedgerReadsRequireTheDomainsProject proves storage refuses
+// exactly the project targets the domain refuses, a blank one included.
+func TestAgentMemoryLedgerReadsRequireTheDomainsProject(t *testing.T) {
+	store := newAgentMemoryStore(t)
+	for _, project := range []string{"", "   "} {
+		if _, err := store.State(t.Context(), project); err == nil {
+			t.Fatalf("State(%q) was accepted", project)
+		}
+		if _, err := store.PendingLedger(t.Context(), project, 0, 1); err == nil {
+			t.Fatalf("PendingLedger(%q) was accepted", project)
+		}
+	}
+}
+
 func TestAgentMemoryReconcileAdvancesWatermarkAndItems(t *testing.T) {
 	store := newAgentMemoryStore(t)
 	facts := appendAgentFacts(t, store, "/repo", "2026-07-19", "one", "two")
