@@ -210,7 +210,7 @@ func TestSessionCenterConvergesPostCommitDeleteFailureAndRetiresLocalState(t *te
 		t.Fatal(saveDraftErr)
 	}
 	backend := &postCommitSessionDeleteRuntime{Runtime: base, deleted: make(chan struct{}, 1)}
-	host, stop := runUIFromConfig(t, Config{Runtime: backend, SessionID: "ses_demo_1", OpenWorkbench: persistentTestWorkbench(stateDirectory)})
+	host, stop := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), Runtime: backend, SessionID: "ses_demo_1", OpenWorkbench: persistentTestWorkbench(stateDirectory)})
 	host.Shows(t, "Ask flame")
 	host.Send(input.Key{Code: input.Character, Rune: 'r', Mods: input.Ctrl})
 	host.Shows(t, "Sessions · Center")
@@ -584,7 +584,7 @@ func TestImportRequiresConfirmationAndInstallsTheAuthoritativeSession(t *testing
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{OpenWorkbench: memoryTestWorkbench, Runtime: backend, Transfers: importingTransfer{runtime: backend}, Workspace: workspace, Host: host})
+		done <- Run(ctx, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: backend, Transfers: importingTransfer{runtime: backend}, Workspace: workspace, Host: host})
 	}()
 	var once sync.Once
 	stop := func() {

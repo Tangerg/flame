@@ -134,7 +134,7 @@ func TestDynamicCompletionLoadsTheConfiguredRuntimeTarget(t *testing.T) {
 	var target string
 	root := NewRoot(Dependencies{OpenRuntime: func(_ context.Context, endpoint string) (Runtime, RuntimeProfile, error) {
 		target = endpoint
-		return instantRuntime(), nil, nil
+		return instantRuntime(), new(commandRuntimeProfile(t)), nil
 	}})
 	var out bytes.Buffer
 	root.SetOut(&out)

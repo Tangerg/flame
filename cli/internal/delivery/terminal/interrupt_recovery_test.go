@@ -148,7 +148,7 @@ func TestPendingResumePersistenceFailureReopensTheInterruptForRetry(t *testing.T
 		}
 	}
 	stateDirectory := t.TempDir()
-	host, stop := runUIFromConfig(t, Config{Runtime: backend, Workspace: t.TempDir(), OpenWorkbench: persistentTestWorkbench(stateDirectory)})
+	host, stop := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), Runtime: backend, Workspace: t.TempDir(), OpenWorkbench: persistentTestWorkbench(stateDirectory)})
 	host.Shows(t, "Ask flame")
 	host.Type("exercise local resume persistence")
 	host.Press(input.Enter)
@@ -193,7 +193,7 @@ func TestPendingResumePersistenceFailureReopensTheQuestionForRetry(t *testing.T)
 		}
 	}
 	stateDirectory := t.TempDir()
-	host, stop := runUIFromConfig(t, Config{Runtime: backend, Workspace: t.TempDir(), OpenWorkbench: persistentTestWorkbench(stateDirectory)})
+	host, stop := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), Runtime: backend, Workspace: t.TempDir(), OpenWorkbench: persistentTestWorkbench(stateDirectory)})
 	host.Shows(t, "Ask flame")
 	host.Type("exercise question resume persistence")
 	host.Press(input.Enter)
@@ -226,7 +226,7 @@ func TestPendingResumePersistenceFailureReopensTheBatchReviewForRetry(t *testing
 	answers := make(chan []conversation.InterruptAnswer, 1)
 	backend.Script = func(string) runtimefixture.Script { return multiInterruptReviewScript(answers) }
 	stateDirectory := t.TempDir()
-	host, stop := runUIFromConfig(t, Config{Runtime: backend, Workspace: t.TempDir(), OpenWorkbench: persistentTestWorkbench(stateDirectory)})
+	host, stop := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), Runtime: backend, Workspace: t.TempDir(), OpenWorkbench: persistentTestWorkbench(stateDirectory)})
 	host.Shows(t, "Ask flame")
 	host.Type("exercise batch resume persistence")
 	host.Press(input.Enter)

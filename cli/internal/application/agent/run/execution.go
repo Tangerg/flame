@@ -82,7 +82,7 @@ func Execute(ctx context.Context, invocation Invocation) (runErr error) {
 		return fmt.Errorf("prepare one-shot start replay guard: %w", err)
 	}
 	opened, err := openRun(observationCtx, invocation.Runtime, invocation.Start,
-		mutation.FreshReplayAdmission(invocation.ReplayPolicy, startReplay))
+		mutation.ReplayAdmission(invocation.ReplayPolicy, startReplay))
 	if err != nil {
 		if receipt, accepted := conversation.AcceptedMutationReceipt(err); accepted {
 			opened = receipt
@@ -168,7 +168,7 @@ func cancelRequestedRun(
 		return fmt.Errorf("prepare requested run cancellation replay guard: %w", err)
 	}
 	result, err := mutation.ConfirmAdmitted(
-		cancelCtx, mutation.AcknowledgementBackoff(), mutation.FreshReplayAdmission(replayPolicy, replayGuard),
+		cancelCtx, mutation.AcknowledgementBackoff(), mutation.ReplayAdmission(replayPolicy, replayGuard),
 		func(ctx context.Context) (conversation.RunCancellation, error) {
 			return runtime.CancelRun(ctx, conversation.CancelRun{
 				CommandID: commandID, RunID: runID, Reason: "CLI execution canceled",
@@ -243,7 +243,7 @@ func (e *executionDriver) resume(ctx context.Context, interrupts []conversation.
 		return fmt.Errorf("prepare one-shot resume replay guard: %w", err)
 	}
 	continued, err := mutation.ConfirmAdmitted(
-		ctx, mutation.AcknowledgementBackoff(), mutation.FreshReplayAdmission(e.invocation.ReplayPolicy, replayGuard),
+		ctx, mutation.AcknowledgementBackoff(), mutation.ReplayAdmission(e.invocation.ReplayPolicy, replayGuard),
 		func(ctx context.Context) (conversation.SegmentStream, error) {
 			return e.invocation.Runtime.ResumeRun(ctx, command)
 		},

@@ -29,3 +29,20 @@ func Discovery() *protocol.DiscoverResponse {
 		},
 	}
 }
+
+// CompleteDiscovery advertises every published feature, and the client
+// agreement that opts into each one requiring it, as a complete Runtime
+// composition negotiated by the CLI would.
+func CompleteDiscovery() (*protocol.DiscoverResponse, *protocol.ClientCapabilities) {
+	discovery := Discovery()
+	client := &protocol.ClientCapabilities{Features: map[string]protocol.FeaturePreference{}}
+	for _, feature := range protocol.Features() {
+		discovery.Capabilities.Features[feature.Key] = protocol.FeatureCapability{
+			Enabled: true, ClientOptIn: feature.ClientOptIn, RequiredByRunProtocol: feature.RequiredByRunProtocol,
+		}
+		if feature.ClientOptIn {
+			client.Features[feature.Key] = protocol.FeaturePreference{Enabled: true}
+		}
+	}
+	return discovery, client
+}

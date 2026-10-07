@@ -116,15 +116,6 @@ func advertisedRollbackPolicy(
 	return policy
 }
 
-func unavailableRollbackPolicy(t *testing.T, now func() time.Time) mutation.ReplayPolicy {
-	t.Helper()
-	policy, err := mutation.UnavailableReplayPolicy(now)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return policy
-}
-
 func (r *recordingRuntime) RollbackSession(
 	ctx context.Context,
 	request conversation.RollbackSession,
@@ -165,7 +156,7 @@ func TestFileRollbackStopsRetryingWhenReplayExpires(t *testing.T) {
 		now = pending.Replay.Until()
 		runtime.reject = nil
 	}
-	result, err := settleRollback(t.Context(), runtime, pending, policy, fastBackoff(t), false)
+	result, err := settleRollback(t.Context(), runtime, pending, policy, fastBackoff(t))
 	if result.Outcome != mutation.Unknown || !errors.Is(err, mutation.ErrReplayGuaranteeUnavailable) {
 		t.Fatalf("settlement = outcome %v, error %v", result.Outcome, err)
 	}
@@ -193,7 +184,7 @@ func TestRecoverConfirmsAnAlreadyAppliedRollbackWithoutReplay(t *testing.T) {
 		SessionID: "ses_demo_1", Scope: protocol.RestoreHistory,
 	})
 	now := time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC)
-	policy := unavailableRollbackPolicy(t, func() time.Time { return now })
+	policy := advertisedRollbackPolicy(t, "runtime-a", time.Hour, func() time.Time { return now })
 	pending := preview.journal(
 		replay.CommandID("cli_11111111111111111111111111111111"), replay.UnprotectedGuard(), now,
 	)
@@ -268,7 +259,7 @@ func TestRecoverReplaysAPreparedHistoryRollbackWithItsStableIdentity(t *testing.
 		SessionID: "ses_demo_1", Scope: protocol.RestoreHistory,
 	})
 	now := time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC)
-	policy := unavailableRollbackPolicy(t, func() time.Time { return now })
+	policy := advertisedRollbackPolicy(t, "runtime-a", time.Hour, func() time.Time { return now })
 	pending := preview.journal(
 		replay.CommandID("cli_22222222222222222222222222222222"), replay.UnprotectedGuard(), now,
 	)
@@ -357,7 +348,7 @@ func TestRecoverRetiresADefinitivelyRejectedHistoryRollback(t *testing.T) {
 		SessionID: "ses_demo_1", Scope: protocol.RestoreHistory,
 	})
 	now := time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC)
-	policy := unavailableRollbackPolicy(t, func() time.Time { return now })
+	policy := advertisedRollbackPolicy(t, "runtime-a", time.Hour, func() time.Time { return now })
 	pending := preview.journal(
 		replay.CommandID("cli_44444444444444444444444444444444"), replay.UnprotectedGuard(), now,
 	)
@@ -385,7 +376,7 @@ func TestRecoverPreservesHistoryRollbackRejectedByAnotherRuntimeStore(t *testing
 		SessionID: "ses_demo_1", Scope: protocol.RestoreHistory,
 	})
 	now := time.Date(2026, 8, 13, 10, 0, 0, 0, time.UTC)
-	policy := unavailableRollbackPolicy(t, func() time.Time { return now })
+	policy := advertisedRollbackPolicy(t, "runtime-a", time.Hour, func() time.Time { return now })
 	pending := preview.journal(
 		replay.CommandID("cli_55555555555555555555555555555555"), replay.UnprotectedGuard(), now,
 	)

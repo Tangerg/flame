@@ -46,7 +46,7 @@ func TestRemoteSessionAttachmentsStayLocalAcrossSwitchAndRelocation(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	host, stop := runUIFromConfig(t, Config{OpenWorkbench: memoryTestWorkbench,
+	host, stop := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench,
 		Runtime: backend, SessionID: first.ID, LocalDirectory: local, DetachOnExit: true,
 	})
 	host.Shows(t, "Ask flame")
@@ -101,7 +101,7 @@ func TestRemoteSessionEditorAndDocumentsUseTheLocalDirectory(t *testing.T) {
 	backend := &recordingRuntime{Runtime: runtimefixture.New()}
 	backend.Instant = true
 	backend.Script = stableCompletedScript
-	host, stop := runUIFromConfig(t, Config{OpenWorkbench: memoryTestWorkbench,
+	host, stop := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench,
 		Runtime: backend, Workspace: `Z:\server\project`, LocalDirectory: local,
 		DetachOnExit: true, Transfers: outputTransferStub{},
 	})
@@ -159,7 +159,7 @@ func TestRemotePluginCommandsReceiveLocalAndRuntimeDirectories(t *testing.T) {
 			return err
 		},
 	}
-	host, stop := runUIFromConfig(t, Config{OpenWorkbench: memoryTestWorkbench,
+	host, stop := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench,
 		Runtime: backend, SessionID: created.ID, LocalDirectory: local,
 		DetachOnExit: true, Plugins: []extensions.Plugin{plugin},
 	})
@@ -192,7 +192,7 @@ func TestSharedTerminalExitLeavesNewAndAttachedRunsAlive(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			host, stop := runUIFromConfig(t, Config{OpenWorkbench: memoryTestWorkbench,
+			host, stop := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench,
 				Runtime: backend, SessionID: created.ID, LocalDirectory: t.TempDir(), DetachOnExit: true,
 			})
 			if !attached {

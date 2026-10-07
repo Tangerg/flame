@@ -58,7 +58,7 @@ func (blockingUsageService) Summary(context.Context, conversation.UsageSummaryPe
 
 func TestUsageAndModelRoleCommandsProjectRuntimeConfiguration(t *testing.T) {
 	models := newModelConfigServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Usage: usageServiceStub{}, ModelConfig: models})
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Usage: usageServiceStub{}, ModelConfig: models})
 	host.Shows(t, "Ask flame")
 	host.Type("/usage 30")
 	host.Press(input.Enter)
@@ -180,7 +180,7 @@ func protectedCommandReplayGuard(t *testing.T, namespace string, until time.Time
 
 func TestSessionReplacementCancelsAnOutstandingSideQuery(t *testing.T) {
 	usageService := blockingUsageService{started: make(chan struct{}), canceled: make(chan struct{})}
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Usage: usageService})
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Usage: usageService})
 	host.Shows(t, "Ask flame")
 	host.Type("/usage")
 	host.Press(input.Enter)
@@ -308,7 +308,7 @@ func (*modelConfigServiceStub) TestProvider(_ context.Context, providerID string
 
 func TestProviderConfigurationMasksSecretsAndPreservesExplicitChanges(t *testing.T) {
 	service := newModelConfigServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), ModelConfig: service})
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), ModelConfig: service})
 	host.Shows(t, "Ask flame")
 	host.Type("/providers")
 	host.Press(input.Enter)
@@ -349,7 +349,7 @@ func TestEnvironmentProviderCanBeOverriddenByStoredKey(t *testing.T) {
 	service.providers[0] = terminalTestProvider(
 		"deepseek", "https://api.deepseek.example", "sk****env", protocol.ProviderKeySourceEnv,
 	)
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench,
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench,
 		Runtime: runtimefixture.New(), ModelConfig: service,
 	})
 	host.Shows(t, "Ask flame")
@@ -387,7 +387,7 @@ func TestProviderMutationOutlivesSameSessionProjectionReplacement(t *testing.T) 
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1),
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: backend, ModelConfig: service, Changes: source, SessionID: "ses_demo_1"})
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: backend, ModelConfig: service, Changes: source, SessionID: "ses_demo_1"})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "runtime change subscription")
 	host.Type("/provider-config deepseek")
@@ -571,7 +571,7 @@ func TestGoalLifecycleAndInvalidationRefreshTheOpenGoalReader(t *testing.T) {
 		events: make(chan changefeed.Event, 2), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 2), supported: []protocol.RuntimeTopic{protocol.TopicGoalsChanged},
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Goals: goals, Changes: source})
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Goals: goals, Changes: source})
 	host.Shows(t, "Ask flame")
 	subscription := awaitValue(t, source.subscription, "goal invalidation subscription")
 	if len(subscription.Topics) != 1 || subscription.Topics[0] != protocol.TopicGoalsChanged {
@@ -664,7 +664,7 @@ func TestGoalInvalidationConvergesAfterATransientReadFailure(t *testing.T) {
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1), supported: []protocol.RuntimeTopic{protocol.TopicGoalsChanged},
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Goals: goals, Changes: source})
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Goals: goals, Changes: source})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "goal invalidation subscription")
 	host.Type("/goal")
@@ -696,7 +696,7 @@ func TestGoalInvalidationDoesNotRetryAnIncompatibleProjection(t *testing.T) {
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1), supported: []protocol.RuntimeTopic{protocol.TopicGoalsChanged},
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Goals: goals, Changes: source})
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Goals: goals, Changes: source})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "goal invalidation subscription")
 	host.Type("/goal")
@@ -729,7 +729,7 @@ func TestGoalInvalidationDoesNotRetryAPermanentProjectionFailure(t *testing.T) {
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1), supported: []protocol.RuntimeTopic{protocol.TopicGoalsChanged},
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Goals: goals, Changes: source})
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Goals: goals, Changes: source})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "goal invalidation subscription")
 	host.Type("/goal")
@@ -780,7 +780,7 @@ func TestLatestReaderQueryRetiresAnOlderBoundedContextProjection(t *testing.T) {
 		started:              make(chan struct{}, 1),
 		canceled:             make(chan struct{}, 1),
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Workspaces: workspaces, Goals: new(goalServiceStub)})
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Workspaces: workspaces, Goals: new(goalServiceStub)})
 	host.Shows(t, "Ask flame")
 	host.Type("/workspaces")
 	host.Press(input.Enter)
@@ -826,7 +826,7 @@ func TestReaderRefreshDoesNotCancelAGoalLifecycleCommand(t *testing.T) {
 	}
 	release := sync.OnceFunc(func() { close(service.release) })
 	t.Cleanup(release)
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Goals: service})
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Goals: service})
 	host.Shows(t, "Ask flame")
 	host.Type("/goal-stop")
 	host.Press(input.Enter)
@@ -861,7 +861,7 @@ func TestGoalMutationOutlivesSameSessionProjectionReplacement(t *testing.T) {
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1),
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: backend, Goals: service, Changes: source, SessionID: "ses_demo_1"})
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: backend, Goals: service, Changes: source, SessionID: "ses_demo_1"})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "runtime change subscription")
 	host.Type("/goal-stop")
@@ -892,7 +892,7 @@ func TestGoalMutationDoesNotInstallAReaderAfterSessionSwitch(t *testing.T) {
 	}
 	release := sync.OnceFunc(func() { close(service.release) })
 	t.Cleanup(release)
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Goals: service, SessionID: "ses_demo_1"})
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Goals: service, SessionID: "ses_demo_1"})
 	host.Shows(t, "Ask flame")
 	host.Type("/goal-stop")
 	host.Press(input.Enter)
@@ -946,4 +946,13 @@ func awaitValue[T any](t *testing.T, values <-chan T, what string) T {
 		t.Fatal("timed out waiting for " + what)
 		return *new(T)
 	}
+}
+
+func featuredTerminalProfile(t testing.TB) *runtimebinding.Profile {
+	t.Helper()
+	profile, err := runtimebinding.NewProfile(runtimefixture.CompleteDiscovery())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &profile
 }

@@ -8,22 +8,14 @@ import (
 	"github.com/Tangerg/flame/cli/internal/domain/authoring/replay"
 )
 
-func TestNegotiatedReplayPolicyKeepsUnavailableAndInvalidDistinct(t *testing.T) {
+func TestNegotiatedReplayPolicyRequiresANegotiatedProfile(t *testing.T) {
 	t.Parallel()
 
-	unavailable, err := mutation.PolicyFromProfile(nil, time.Now)
-	if err != nil {
-		t.Fatal(err)
-	}
-	guard, err := unavailable.NewGuard()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if unavailable.Available() || !unavailable.CanStart(guard) || unavailable.Replayable(guard) {
-		t.Fatalf("unavailable policy = %+v, guard %+v", unavailable, guard)
+	if _, err := mutation.PolicyFromProfile(nil, time.Now); err == nil {
+		t.Fatal("a missing profile produced a replay policy")
 	}
 	if _, err := mutation.PolicyFromProfile(&Profile{}, time.Now); err == nil {
-		t.Fatal("invalid advertised command replay capability degraded to unavailable")
+		t.Fatal("an unnegotiated profile produced a replay policy")
 	}
 }
 
@@ -44,7 +36,7 @@ func TestNegotiatedReplayPolicyProjectsTheAdvertisedStoreAndClock(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !policy.Available() || guard.Namespace() != capability.Namespace() ||
+	if guard.Namespace() != capability.Namespace() ||
 		!guard.Until().Equal(now.Add(10*time.Minute)) {
 		t.Fatalf("advertised policy = %+v, guard %+v", policy, guard)
 	}

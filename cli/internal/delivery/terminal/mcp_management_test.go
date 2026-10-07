@@ -267,7 +267,7 @@ func TestMCPAuthorizationOutlivesSameSessionProjectionReplacement(t *testing.T) 
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1),
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: backend, MCP: service, Changes: source, SessionID: "ses_demo_1"})
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: backend, MCP: service, Changes: source, SessionID: "ses_demo_1"})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "runtime change subscription")
 	host.Type("/mcp-auth docs")
@@ -327,7 +327,7 @@ func TestMCPLifecycleMutationOutlivesSameSessionProjectionReplacement(t *testing
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1),
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: backend, MCP: service, Changes: source, SessionID: "ses_demo_1"})
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: backend, MCP: service, Changes: source, SessionID: "ses_demo_1"})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "runtime change subscription")
 	host.Type("/mcp-reconnect docs")
@@ -398,7 +398,7 @@ func TestMCPToolsDocumentFormatsRuntimeSchema(t *testing.T) {
 
 func TestMCPReadersFormsAndLifecycleCommands(t *testing.T) {
 	service := newMCPServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), MCP: service})
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), MCP: service})
 	host.Shows(t, "Ask flame")
 	host.Type("/mcp")
 	host.Press(input.Enter)
@@ -490,7 +490,7 @@ func TestMCPReadersFormsAndLifecycleCommands(t *testing.T) {
 
 func TestMCPProbeValidatesAnUnpersistedCandidateAcrossResize(t *testing.T) {
 	service := newMCPServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), MCP: service})
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), MCP: service})
 	host.Shows(t, "Ask flame")
 	host.Type("/mcp-probe")
 	host.Press(input.Enter)
@@ -521,7 +521,7 @@ func TestMCPProbeValidatesAnUnpersistedCandidateAcrossResize(t *testing.T) {
 
 func TestMCPStdioWizardKeepsEveryFieldVisibleAndSecretsMasked(t *testing.T) {
 	service := newMCPServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), MCP: service})
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), MCP: service})
 	host.Shows(t, "Ask flame")
 	host.Type("/mcp-create")
 	host.Press(input.Enter)
@@ -573,7 +573,7 @@ func TestMCPChangedRefetchesTheOpenServerReader(t *testing.T) {
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1), supported: []protocol.RuntimeTopic{protocol.TopicMCPChanged},
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), MCP: service, Changes: source})
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), MCP: service, Changes: source})
 	host.Shows(t, "Ask flame")
 	subscription := awaitValue(t, source.subscription, "MCP invalidation subscription")
 	if len(subscription.Topics) != 1 || subscription.Topics[0] != protocol.TopicMCPChanged {
@@ -620,7 +620,7 @@ func TestMCPToolCommandsUseSeparateExposureAndApprovalOwners(t *testing.T) {
 	service := newMCPServiceStub()
 	runtime := runtimefixture.New()
 	runtime.ToolModelNames = map[string]string{"mcp/docs/read": "docs_read"}
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtime, MCP: service})
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtime, MCP: service})
 	defer stop()
 	host.Shows(t, "Ask flame")
 	host.Type("/mcp-tool docs read disable")
@@ -659,7 +659,7 @@ func TestMCPApprovalMutationDoesNotWaitForReconnect(t *testing.T) {
 	defer close(service.release)
 	backend := runtimefixture.New()
 	backend.ToolModelNames = map[string]string{"mcp/docs/read": "docs_read"}
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: backend, MCP: service})
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: backend, MCP: service})
 	defer stop()
 	host.Shows(t, "Ask flame")
 	host.Type("/mcp-reconnect docs")

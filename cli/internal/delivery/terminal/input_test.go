@@ -14,7 +14,7 @@ func TestHandledNoOpEditsCannotStarveDraftAutosave(t *testing.T) {
 	backend := runtimefixture.New()
 	backend.Instant = true
 	stateDirectory := t.TempDir()
-	host, stop := runUIFromConfig(t, Config{Runtime: backend, Workspace: t.TempDir(), OpenWorkbench: persistentTestWorkbench(stateDirectory)})
+	host, stop := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), Runtime: backend, Workspace: t.TempDir(), OpenWorkbench: persistentTestWorkbench(stateDirectory)})
 	host.Shows(t, "Ask flame")
 	sessionID := firstRuntimeSession(t, backend)
 	host.Type("draft survives no-op edits")
@@ -50,7 +50,7 @@ func TestResolvedKeyTextSchedulesDraftAutosave(t *testing.T) {
 	backend := runtimefixture.New()
 	backend.Instant = true
 	stateDirectory := t.TempDir()
-	host, stop := runUIFromConfig(t, Config{Runtime: backend, Workspace: t.TempDir(), OpenWorkbench: persistentTestWorkbench(stateDirectory)})
+	host, stop := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), Runtime: backend, Workspace: t.TempDir(), OpenWorkbench: persistentTestWorkbench(stateDirectory)})
 	host.Shows(t, "Ask flame")
 	sessionID := firstRuntimeSession(t, backend)
 
@@ -90,7 +90,7 @@ func TestProgrammaticComposerEditsScheduleDraftAutosave(t *testing.T) {
 			backend := runtimefixture.New()
 			backend.Instant = true
 			stateDirectory := t.TempDir()
-			host, stop := runUIFromConfig(t, Config{Runtime: backend, Workspace: t.TempDir(), OpenWorkbench: persistentTestWorkbench(stateDirectory)})
+			host, stop := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), Runtime: backend, Workspace: t.TempDir(), OpenWorkbench: persistentTestWorkbench(stateDirectory)})
 			host.Shows(t, "Ask flame")
 			sessionID := firstRuntimeSession(t, backend)
 

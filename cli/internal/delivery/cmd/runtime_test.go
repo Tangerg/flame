@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	json "encoding/json/v2"
+	"io"
 	"reflect"
 	"strings"
 	"testing"
@@ -71,13 +72,7 @@ func TestRuntimeInfoWritesCompleteHumanAndMachineProfiles(t *testing.T) {
 
 func commandRuntimeProfile(t *testing.T, edits ...func(*protocol.DiscoverResponse, *protocol.ClientCapabilities)) runtimebinding.Profile {
 	t.Helper()
-	discovery := runtimefixture.Discovery()
-	discovery.Capabilities.Features[protocol.FeatureMCP] = protocol.FeatureCapability{
-		Enabled: true, ClientOptIn: true, RequiredByRunProtocol: true,
-	}
-	client := &protocol.ClientCapabilities{Features: map[string]protocol.FeaturePreference{
-		protocol.FeatureMCP: {Enabled: true},
-	}}
+	discovery, client := runtimefixture.CompleteDiscovery()
 	for _, edit := range edits {
 		edit(discovery, client)
 	}
@@ -86,4 +81,23 @@ func commandRuntimeProfile(t *testing.T, edits ...func(*protocol.DiscoverRespons
 		t.Fatal(err)
 	}
 	return profile
+}
+
+func TestCommandsRefuseARuntimeWithoutANegotiatedProfile(t *testing.T) {
+	t.Parallel()
+	for _, args := range [][]string{
+		{"runs", "ls", "--include-descendants"},
+		{"plugins", "list"},
+		{"runtime", "info"},
+	} {
+		root := NewRoot(Dependencies{OpenRuntime: func(context.Context, string) (Runtime, RuntimeProfile, error) {
+			return runtimefixture.New(), nil, nil
+		}})
+		root.SetOut(io.Discard)
+		root.SetErr(io.Discard)
+		root.SetArgs(args)
+		if err := root.ExecuteContext(t.Context()); err == nil || !strings.Contains(err.Error(), "negotiated profile") {
+			t.Fatalf("%v without a profile = %v", args, err)
+		}
+	}
 }

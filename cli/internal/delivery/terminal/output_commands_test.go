@@ -85,7 +85,7 @@ func runUIWithCopyHost(t *testing.T, backend Runtime, workspace string) (*copyTe
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{OpenWorkbench: memoryTestWorkbench, Runtime: backend, Transfers: outputTransferStub{}, Workspace: workspace, Host: host})
+		done <- Run(ctx, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: backend, Transfers: outputTransferStub{}, Workspace: workspace, Host: host})
 	}()
 	var once sync.Once
 	stop := func() {
@@ -167,7 +167,7 @@ func TestSessionExportOutlivesSameSessionProjectionReplacement(t *testing.T) {
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1),
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: backend, Transfers: transfer, Changes: source, SessionID: created.ID})
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: backend, Transfers: transfer, Changes: source, SessionID: created.ID})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "runtime change subscription")
 	host.Type("/export markdown owned.md")

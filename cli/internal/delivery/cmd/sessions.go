@@ -73,8 +73,7 @@ func newSessionsUpdateCommand(provider runtimeProvider) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if update.Workspace != nil && profile != nil &&
-				!profile.Supports(protocol.FeatureRelocate) {
+			if update.Workspace != nil && !profile.Supports(protocol.FeatureRelocate) {
 				return fmt.Errorf("runtime capability %q was not negotiated", protocol.FeatureRelocate)
 			}
 			updated, err := runtime.UpdateSession(cmd.Context(), update)

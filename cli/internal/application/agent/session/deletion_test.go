@@ -161,7 +161,7 @@ func TestSettlePreservesDeletionRejectedByAnotherRuntimeStore(t *testing.T) {
 	policy := replayPolicy(t, "runtime-a", time.Hour, time.Now)
 	outcome, err := settleDeletion(
 		t.Context(), runtime, request, protectedGuard(t, "runtime-a", deadline),
-		policy, fastBackoff(t), false,
+		policy, fastBackoff(t),
 	)
 	if outcome != mutation.Unknown || !errors.Is(err, conversation.ErrCommandStoreMismatch) {
 		t.Fatalf("store mismatch settlement = outcome %v, error %v", outcome, err)

@@ -83,7 +83,7 @@ func runUIWithSettings(t *testing.T, backend Runtime, configured settings.Config
 
 func runUIConfigured(t *testing.T, backend Runtime, workspace string, configured *settings.Config, plugins ...extensions.Plugin) (*programtest.Host, func()) {
 	t.Helper()
-	return runUIFromConfig(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: backend, Workspace: workspace, Plugins: plugins, Settings: configured})
+	return runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: backend, Workspace: workspace, Plugins: plugins, Settings: configured})
 }
 
 func runUIFromConfig(t *testing.T, config Config) (*programtest.Host, func()) {
@@ -115,7 +115,7 @@ func runUIForSession(t *testing.T, backend Runtime, sessionID string) (*programt
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{OpenWorkbench: memoryTestWorkbench, Runtime: backend, SessionID: sessionID, Host: host})
+		done <- Run(ctx, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: backend, SessionID: sessionID, Host: host})
 	}()
 
 	var once sync.Once
@@ -142,7 +142,8 @@ func runUIWithState(t *testing.T, backend Runtime, workspace, sessionID, stateDi
 	done := make(chan error, 1)
 	go func() {
 		done <- Run(ctx, Config{
-			Runtime: backend, Workspace: workspace, SessionID: sessionID,
+			RuntimeProfile: featuredTerminalProfile(t),
+			Runtime:        backend, Workspace: workspace, SessionID: sessionID,
 			OpenWorkbench: openWorkbench, Host: handoverTestHost{host},
 		})
 	}()
@@ -2006,7 +2007,7 @@ func TestQuitRequiresAConfirmingSecondPress(t *testing.T) {
 	defer cancel()
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{OpenWorkbench: memoryTestWorkbench, Runtime: backend, Workspace: "/tmp/flame-cli-test", Host: host})
+		done <- Run(ctx, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: backend, Workspace: "/tmp/flame-cli-test", Host: host})
 	}()
 
 	host.Shows(t, "Ask flame")
@@ -2187,7 +2188,7 @@ func TestClosingDuringCancellationReusesThePendingCommandIdentity(t *testing.T) 
 			ctx, cancel := context.WithCancel(t.Context())
 			done := make(chan error, 1)
 			go func() {
-				done <- Run(ctx, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtime, Workspace: "/tmp/flame-cli-test", Host: host, DetachOnExit: detach})
+				done <- Run(ctx, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtime, Workspace: "/tmp/flame-cli-test", Host: host, DetachOnExit: detach})
 			}()
 			t.Cleanup(func() {
 				cancel()
@@ -2239,7 +2240,7 @@ func TestClosingTheTerminalPropagatesRuntimeCancellationFailure(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtime, Workspace: "/tmp/flame-cli-test", Host: host})
+		done <- Run(ctx, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtime, Workspace: "/tmp/flame-cli-test", Host: host})
 	}()
 	t.Cleanup(func() {
 		cancel()
@@ -2277,7 +2278,7 @@ func TestClosingTheTerminalRejectsAnInvalidCancellationReceipt(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtime, Workspace: "/tmp/flame-cli-test", Host: host})
+		done <- Run(ctx, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtime, Workspace: "/tmp/flame-cli-test", Host: host})
 	}()
 	t.Cleanup(func() {
 		cancel()
@@ -2312,7 +2313,8 @@ func TestClosingTheTerminalPropagatesFinalDraftPersistenceFailure(t *testing.T) 
 	done := make(chan error, 1)
 	go func() {
 		done <- Run(ctx, Config{
-			Runtime: base, Workspace: "/tmp/flame-cli-test",
+			RuntimeProfile: featuredTerminalProfile(t),
+			Runtime:        base, Workspace: "/tmp/flame-cli-test",
 			OpenWorkbench: persistentTestWorkbench(stateDirectory), Host: host,
 		})
 	}()
@@ -2474,7 +2476,7 @@ func TestAPluginSourceCanAddACommand(t *testing.T) {
 	}
 	backend := runtimefixture.New()
 	backend.Instant = true
-	host, stop := runUIFromConfig(t, Config{OpenWorkbench: memoryTestWorkbench,
+	host, stop := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench,
 		Runtime: backend, Workspace: "/tmp/flame-cli-test",
 		PluginSources: []extensions.Source{extensions.StaticSource{Name: "test", Plugins: []extensions.Plugin{plugin}}},
 	})
@@ -2798,7 +2800,7 @@ func TestSessionChangeOwnsTheComposerUntilItsSnapshotIsInstalled(t *testing.T) {
 		releaseChange: make(chan struct{}),
 	}
 	stateDirectory := t.TempDir()
-	host, stop := runUIFromConfig(t, Config{Runtime: backend, Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(stateDirectory)})
+	host, stop := runUIFromConfig(t, Config{RuntimeProfile: featuredTerminalProfile(t), Runtime: backend, Workspace: "/tmp/flame-cli-test", OpenWorkbench: persistentTestWorkbench(stateDirectory)})
 	host.Shows(t, "Ask flame")
 	originalSession := firstRuntimeSession(t, base)
 	host.Type("/new")
@@ -3112,7 +3114,7 @@ func TestRunRejectsAnUnresolvableAttachmentWorkspace(t *testing.T) {
 	if err := os.Symlink(workspace, workspace); err != nil {
 		t.Fatal(err)
 	}
-	err := Run(t.Context(), Config{OpenWorkbench: memoryTestWorkbench,
+	err := Run(t.Context(), Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench,
 		Runtime: runtimefixture.New(), Workspace: workspace,
 		Host:     programtest.New(t, programtest.Config{Width: 80, Height: 24}),
 		Settings: new(settings.Default()),
@@ -3122,10 +3124,17 @@ func TestRunRejectsAnUnresolvableAttachmentWorkspace(t *testing.T) {
 	}
 }
 
+func TestPrepareSessionRefusesARuntimeWithoutANegotiatedProfile(t *testing.T) {
+	_, err := prepareSession(t.Context(), Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Workspace: t.TempDir()})
+	if err == nil || !strings.Contains(err.Error(), "runtime profile") {
+		t.Fatalf("prepare without a profile = %v", err)
+	}
+}
+
 func TestPrepareSessionDistinguishesDefaultsFromExplicitFalseValues(t *testing.T) {
 	configured := settings.Default()
 	configured.UI.Mouse = false
-	prepared, err := prepareSession(t.Context(), Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Workspace: t.TempDir(), Settings: new(configured)})
+	prepared, err := prepareSession(t.Context(), Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Workspace: t.TempDir(), Settings: new(configured)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -3133,7 +3142,7 @@ func TestPrepareSessionDistinguishesDefaultsFromExplicitFalseValues(t *testing.T
 		t.Fatal("explicit mouse=false was replaced by the default")
 	}
 
-	defaults, err := prepareSession(t.Context(), Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Workspace: t.TempDir()})
+	defaults, err := prepareSession(t.Context(), Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), Workspace: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -193,7 +193,7 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 		catalog := &mutableRuntimeCatalog{Runtime: runtimefixture.New()}
 		catalog.setModels(protocol.Model{ID: "old", Provider: "mock", DisplayName: "Old model"})
 		source := runtimeResourceChangeSource(protocol.TopicModelsChanged)
-		host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: catalog, Changes: source})
+		host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: catalog, Changes: source})
 		host.Shows(t, "Ask flame")
 		assertSingleRuntimeTopic(t, source.subscription, protocol.TopicModelsChanged)
 		host.Type("/model")
@@ -212,7 +212,7 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 		catalog := &mutableRuntimeCatalog{Runtime: runtimefixture.New()}
 		catalog.setModels(protocol.Model{ID: "old", Provider: "mock", DisplayName: "Old catalog model"})
 		source := runtimeResourceChangeSource(protocol.TopicModelsChanged)
-		host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: catalog, Changes: source})
+		host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: catalog, Changes: source})
 		host.Shows(t, "Ask flame")
 		assertSingleRuntimeTopic(t, source.subscription, protocol.TopicModelsChanged)
 		host.Type("/models")
@@ -230,7 +230,7 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 	t.Run("model roles", func(t *testing.T) {
 		service := newModelConfigServiceStub()
 		source := runtimeResourceChangeSource(protocol.TopicModelsChanged)
-		host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), ModelConfig: service, Changes: source})
+		host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), ModelConfig: service, Changes: source})
 		host.Shows(t, "Ask flame")
 		assertSingleRuntimeTopic(t, source.subscription, protocol.TopicModelsChanged)
 		host.Type("/roles")
@@ -255,7 +255,7 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 	t.Run("providers", func(t *testing.T) {
 		service := newModelConfigServiceStub()
 		source := runtimeResourceChangeSource(protocol.TopicModelsChanged)
-		host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), ModelConfig: service, Changes: source})
+		host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), ModelConfig: service, Changes: source})
 		host.Shows(t, "Ask flame")
 		assertSingleRuntimeTopic(t, source.subscription, protocol.TopicModelsChanged)
 		host.Type("/providers")
@@ -278,7 +278,7 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 		t.Run("approval rules/"+string(topic), func(t *testing.T) {
 			catalog := &mutableRuntimeCatalog{Runtime: runtimefixture.New()}
 			source := runtimeResourceChangeSource(topic)
-			host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: catalog, Changes: source})
+			host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: catalog, Changes: source})
 			host.Shows(t, "Ask flame")
 			assertSingleRuntimeTopic(t, source.subscription, topic)
 			host.Type("/rules")
@@ -301,7 +301,7 @@ func TestRuntimeResourceInvalidationsRefreshTheOpenProjection(t *testing.T) {
 	t.Run("agent memory", func(t *testing.T) {
 		memory := newAgentMemoryServiceStub()
 		source := runtimeResourceChangeSource(protocol.TopicAgentMemoryChanged)
-		host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), AgentMemory: memory, Changes: source, Workspace: "/workspace"})
+		host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), AgentMemory: memory, Changes: source, Workspace: "/workspace"})
 		host.Shows(t, "Ask flame")
 		assertSingleRuntimeTopic(t, source.subscription, protocol.TopicAgentMemoryChanged)
 		host.Type("/memory project")
@@ -326,7 +326,7 @@ func TestApprovalRuleDeletionResolvesAUniquePrefixAndSurvivesResize(t *testing.T
 		ID: "rule_external_123", Scope: protocol.ApprovalRuleScopeGlobal, Tool: protocol.ToolRef{Type: protocol.ToolRefBuiltIn, Name: "shell"}, ModelName: "shell",
 		Subject: protocol.ApprovalSubject{Type: protocol.ApprovalSubjectExact, Value: "go test ./..."}, Decision: protocol.ApprovalRuleDecisionAllow,
 	})
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: catalog})
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: catalog})
 	host.Shows(t, "Ask flame")
 	host.Type("/rules")
 	host.Press(input.Enter)
@@ -1340,7 +1340,7 @@ func runUIWithRuntimeChangeServices(t *testing.T, runtime Runtime, workspaces Wo
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
 	go func() {
-		done <- Run(ctx, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtime, Workspaces: workspaces, Changes: source, SessionID: sessionID, Host: host})
+		done <- Run(ctx, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtime, Workspaces: workspaces, Changes: source, SessionID: sessionID, Host: host})
 	}()
 	var once sync.Once
 	stop := func() {
@@ -1589,7 +1589,8 @@ func TestDeletedActiveSessionTransfersItsUnsentDraftToTheReplacement(t *testing.
 	}
 	stateDirectory := t.TempDir()
 	host, stop := runUIFromConfig(t, Config{
-		Runtime: base, Changes: source, SessionID: "ses_demo_1",
+		RuntimeProfile: featuredTerminalProfile(t),
+		Runtime:        base, Changes: source, SessionID: "ses_demo_1",
 		OpenWorkbench: persistentTestWorkbench(stateDirectory),
 	})
 	host.Shows(t, "Ask flame")

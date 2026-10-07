@@ -94,13 +94,6 @@ func TestBuiltinCommandsHonorNegotiatedFineGrainedCapabilities(t *testing.T) {
 			t.Errorf("%s availability = %+v", name, availability)
 		}
 	}
-
-	application.runtimeProfile = nil
-	if !availableWithGitWorkspaceService(application).Enabled() ||
-		!availableForRelocation(application).Enabled() ||
-		!availableWithSessionTransfer(application).Enabled() {
-		t.Fatal("backend without discovery lost its service-based fallback")
-	}
 }
 
 func TestRuntimeFeatureServicesRequireBothPortAndPublishedCapability(t *testing.T) {
@@ -139,13 +132,6 @@ func TestRuntimeFeatureServicesRequireBothPortAndPublishedCapability(t *testing.
 		profile = terminalProfileWithFeatures(t, features)
 		if availability := check(application); !availability.Enabled() {
 			t.Errorf("enabled %s availability = %+v", feature, availability)
-		}
-	}
-
-	application.runtimeProfile = nil
-	for feature, check := range checks {
-		if availability := check(application); !availability.Enabled() {
-			t.Errorf("undiscovered %s availability = %+v", feature, availability)
 		}
 	}
 }

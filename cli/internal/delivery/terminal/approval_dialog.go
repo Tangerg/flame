@@ -392,7 +392,7 @@ func (a *app) deliverInterruptResume(
 	a.status.active("resuming")
 	a.syncAnimation()
 	a.followOpening(func(ctx context.Context) (conversation.SegmentStream, error) {
-		if err := mutation.FreshReplayAdmission(a.replayPolicy, replayGuard)(); err != nil {
+		if err := mutation.ReplayAdmission(a.replayPolicy, replayGuard)(); err != nil {
 			return conversation.SegmentStream{}, &resumeRunCallError{err: err}
 		}
 		stream, err := a.runtime.ResumeRun(ctx, command)

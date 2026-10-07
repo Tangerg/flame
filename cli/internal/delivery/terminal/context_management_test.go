@@ -186,7 +186,7 @@ func (a *agentMemoryServiceStub) Add(_ context.Context, target conversation.Memo
 
 func TestAgentMemoryReaderShowsScopeAndProvenance(t *testing.T) {
 	memory := newAgentMemoryServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), AgentMemory: memory, Workspace: "/workspace"})
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), AgentMemory: memory, Workspace: "/workspace"})
 	host.Shows(t, "Ask flame")
 	host.Type("/memory project")
 	host.Press(input.Enter)
@@ -197,7 +197,7 @@ func TestAgentMemoryReaderShowsScopeAndProvenance(t *testing.T) {
 
 func TestAgentMemoryMultilineAddSurvivesResize(t *testing.T) {
 	memory := newAgentMemoryServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), AgentMemory: memory, Workspace: "/workspace"})
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), AgentMemory: memory, Workspace: "/workspace"})
 	host.Shows(t, "Ask flame")
 	host.Type("/memory-add user")
 	host.Press(input.Enter)
@@ -220,7 +220,7 @@ func TestAgentMemoryMultilineAddSurvivesResize(t *testing.T) {
 
 func TestAgentMemoryEditorKeepsTheDraftAcrossARejectedSave(t *testing.T) {
 	memory := newAgentMemoryServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), AgentMemory: memory, Workspace: "/workspace"})
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), AgentMemory: memory, Workspace: "/workspace"})
 	host.Shows(t, "Ask flame")
 	host.Type("/memory-add user")
 	host.Press(input.Enter)
@@ -239,7 +239,7 @@ func TestAgentMemoryEditorKeepsTheDraftAcrossARejectedSave(t *testing.T) {
 
 func TestPendingAgentMemoryReviewRequiresResizeSafeConfirmation(t *testing.T) {
 	memory := newAgentMemoryServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), AgentMemory: memory, Workspace: "/workspace"})
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), AgentMemory: memory, Workspace: "/workspace"})
 	host.Shows(t, "Ask flame")
 	host.Type("/memory-approve project " + terminalMemoryPendingID)
 	host.Press(input.Enter)
@@ -271,7 +271,7 @@ func TestAgentMemoryReviewOutlivesSameSessionProjectionReplacement(t *testing.T)
 		events: make(chan changefeed.Event, 1), subscription: make(chan changefeed.Subscription, 1),
 		applied: make(chan changefeed.Event, 1),
 	}
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: backend, AgentMemory: memory, Changes: source, SessionID: "ses_demo_1"})
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: backend, AgentMemory: memory, Changes: source, SessionID: "ses_demo_1"})
 	host.Shows(t, "Ask flame")
 	awaitValue(t, source.subscription, "runtime change subscription")
 	host.Type("/memory-approve project " + terminalMemoryPendingID)
@@ -316,7 +316,7 @@ func TestAgentMemoryUpdateDoesNotInstallAReaderAfterSessionSwitch(t *testing.T) 
 	}
 	release := sync.OnceFunc(func() { close(memory.release) })
 	t.Cleanup(release)
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), AgentMemory: memory, SessionID: "ses_demo_1"})
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), AgentMemory: memory, SessionID: "ses_demo_1"})
 	host.Shows(t, "Ask flame")
 	host.Type("/memory-unpin user " + terminalMemoryUserID)
 	host.Press(input.Enter)
@@ -344,7 +344,7 @@ func TestAgentMemoryUpdateDoesNotInstallAReaderAfterSessionSwitch(t *testing.T) 
 
 func TestAgentMemoryEditPinAndDeleteRoundTripThroughAuthoritativeReads(t *testing.T) {
 	memory := newAgentMemoryServiceStub()
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), AgentMemory: memory, Workspace: "/workspace"})
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New(), AgentMemory: memory, Workspace: "/workspace"})
 	host.Shows(t, "Ask flame")
 
 	host.Type("/memory-edit user " + terminalMemoryUserID)

@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"maps"
@@ -69,9 +68,6 @@ func newRuntimeInfoCommand(provider runtimeProvider) *cobra.Command {
 			_, profile, err := provider.Open(cmd)
 			if err != nil {
 				return err
-			}
-			if profile == nil {
-				return errors.New("runtime discovery profile is unavailable")
 			}
 			if asJSON {
 				return render.WriteJSONLine(cmd.OutOrStdout(), struct {

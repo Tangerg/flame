@@ -160,9 +160,6 @@ func runtimeStatusText(profile RuntimeProfile, options prompt.RunOptions, mode p
 		"model: " + modelLabel(options),
 		"approval mode: " + string(mode),
 	}
-	if profile == nil {
-		return strings.Join(lines, "\n")
-	}
 	features := profile.AvailableFeatureNames()
 	if len(features) == 0 {
 		features = []string{"none"}

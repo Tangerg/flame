@@ -159,7 +159,7 @@ func openStartRunWithBackoff(
 	backoff retry.Backoff,
 ) (conversation.SegmentStream, error) {
 	return mutation.ConfirmAdmitted(
-		ctx, backoff, mutation.FreshReplayAdmission(replayPolicy, replayGuard),
+		ctx, backoff, mutation.ReplayAdmission(replayPolicy, replayGuard),
 		func(ctx context.Context) (conversation.SegmentStream, error) {
 			return runtime.StartRun(ctx, command)
 		},
@@ -271,7 +271,7 @@ func (a *app) cancelRootRun(
 	replayGuard replay.Guard,
 ) error {
 	result, err := mutation.ConfirmAdmitted(
-		ctx, runtimeRecoveryBackoff, mutation.FreshReplayAdmission(a.replayPolicy, replayGuard),
+		ctx, runtimeRecoveryBackoff, mutation.ReplayAdmission(a.replayPolicy, replayGuard),
 		func(ctx context.Context) (conversation.RunCancellation, error) {
 			attemptCtx, cancel := context.WithTimeout(ctx, runtimeControlTimeout)
 			defer cancel()
@@ -379,7 +379,7 @@ func (a *app) cancelRuntimeNow(
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ownerCtx), runtimeControlTimeout)
 	defer cancel()
 	result, err := mutation.ConfirmAdmitted(
-		ctx, runtimeRecoveryBackoff, mutation.FreshReplayAdmission(a.replayPolicy, replayGuard),
+		ctx, runtimeRecoveryBackoff, mutation.ReplayAdmission(a.replayPolicy, replayGuard),
 		func(ctx context.Context) (conversation.RunCancellation, error) {
 			return a.runtime.CancelRun(ctx, target)
 		},

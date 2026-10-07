@@ -29,7 +29,7 @@ func requirePluginRuntime(cmd *cobra.Command, provider runtimeProvider) (pluginR
 	if err != nil {
 		return nil, err
 	}
-	if profile != nil && !profile.Supports(protocol.FeaturePlugins) {
+	if !profile.Supports(protocol.FeaturePlugins) {
 		return nil, errors.New("runtime plugins are unavailable")
 	}
 	supported, ok := runtime.(pluginRuntime)

@@ -70,27 +70,6 @@ func ReplayAdmission(policy ReplayPolicy, guard replay.Guard) Admission {
 	}
 }
 
-// FreshReplayAdmission admits one never-attempted command even when the
-// Runtime does not advertise replay, then fences any uncertain retry: the first
-// successful admission consumes the command's one unprotected attempt, and all
-// later calls require a current replay promise.
-func FreshReplayAdmission(policy ReplayPolicy, guard replay.Guard) Admission {
-	first := true
-	return func() error {
-		if first {
-			if !policy.CanStart(guard) {
-				return ErrReplayGuaranteeUnavailable
-			}
-			first = false
-			return nil
-		}
-		if !policy.Replayable(guard) {
-			return ErrReplayGuaranteeUnavailable
-		}
-		return nil
-	}
-}
-
 // AcknowledgementUncertain reports whether a mutation may have committed even
 // though its acknowledgement was not observed. Callers must retry the same
 // command identity; a fresh identity could execute the user's intent twice.

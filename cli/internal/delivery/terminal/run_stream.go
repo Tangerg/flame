@@ -106,7 +106,7 @@ func (a *app) startPreparedRun(input prompt.StartRun, prepared *workbench.Prepar
 	}
 	a.presentRunStart(status)
 	a.followOpening(func(ctx context.Context) (conversation.SegmentStream, error) {
-		if err := mutation.FreshReplayAdmission(a.replayPolicy, replayGuard)(); err != nil {
+		if err := mutation.ReplayAdmission(a.replayPolicy, replayGuard)(); err != nil {
 			return conversation.SegmentStream{}, err
 		}
 		opened, err := a.runtime.StartRun(ctx, input)

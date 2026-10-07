@@ -92,8 +92,7 @@ func (r *runsListFlags) execute(cmd *cobra.Command, provider runtimeProvider) er
 	if err != nil {
 		return err
 	}
-	if r.includeDescendants && profile != nil &&
-		!profile.Supports(protocol.FeatureSubagents) {
+	if r.includeDescendants && !profile.Supports(protocol.FeatureSubagents) {
 		return fmt.Errorf("runtime capability %q was not negotiated", protocol.FeatureSubagents)
 	}
 	page, err := runtime.ListRuns(cmd.Context(), query)
@@ -214,7 +213,7 @@ func newRunsCancelCommand(provider runtimeProvider) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("prepare run cancellation replay guard: %w", err)
 			}
-			result, err := mutation.ConfirmAdmitted(cmd.Context(), mutation.AcknowledgementBackoff(), mutation.FreshReplayAdmission(replayPolicy, replayGuard), func(ctx context.Context) (conversation.RunCancellation, error) {
+			result, err := mutation.ConfirmAdmitted(cmd.Context(), mutation.AcknowledgementBackoff(), mutation.ReplayAdmission(replayPolicy, replayGuard), func(ctx context.Context) (conversation.RunCancellation, error) {
 				return runtime.CancelRun(ctx, request)
 			})
 			if err != nil {
@@ -276,10 +275,8 @@ func completeFirstRunArgument(provider runtimeProvider) cobra.CompletionFunc {
 		if err != nil {
 			return nil, cobra.ShellCompDirectiveError
 		}
-		includeDescendants := profile == nil ||
-			profile.Supports(protocol.FeatureSubagents)
 		page, err := runtime.ListRuns(cmd.Context(), conversation.RunQuery{
-			IncludeDescendants: includeDescendants, PageSize: conversation.MaximumPageSize(),
+			IncludeDescendants: profile.Supports(protocol.FeatureSubagents), PageSize: conversation.MaximumPageSize(),
 		})
 		if err != nil || page.Validate() != nil {
 			return nil, cobra.ShellCompDirectiveError

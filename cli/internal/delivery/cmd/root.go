@@ -79,10 +79,11 @@ func (r runtimeProvider) Open(cmd *cobra.Command) (Runtime, RuntimeProfile, erro
 	if runtime == nil {
 		return nil, nil, errors.New("runtime factory returned no agent runtime")
 	}
-	if profile != nil {
-		if err := profile.Validate(); err != nil {
-			return nil, nil, err
-		}
+	if profile == nil {
+		return nil, nil, errors.New("runtime factory returned no negotiated profile")
+	}
+	if err := profile.Validate(); err != nil {
+		return nil, nil, err
 	}
 	return runtime, profile, nil
 }

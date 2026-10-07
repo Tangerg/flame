@@ -43,11 +43,14 @@ func Delete(
 		return DeletionResult{}, err
 	}
 	pending, exists := authoring.PendingSessionDeletion(sessionID)
-	fresh := !exists
 	if exists && pending.Phase == workbench.SessionDeletionConfirmed {
 		return DeletionResult{Request: pending.Request(), Outcome: mutation.Confirmed}, nil
 	}
 	request := pending.Request()
+	if exists && !policy.Replayable(pending.Replay) {
+		outcome, err := resolveExpired(ctx, runtime, pending.SessionID, pending.Replay, policy)
+		return DeletionResult{Request: request, Outcome: outcome}, err
+	}
 	if !exists {
 		commandID := mutation.NewCommandID()
 		request = conversation.DeleteSession{CommandID: commandID, SessionID: sessionID}
@@ -63,15 +66,7 @@ func Delete(
 			return DeletionResult{}, errors.New("staged session deletion is absent")
 		}
 	}
-	if fresh {
-		outcome, err := settleDeletion(ctx, runtime, request, pending.Replay, policy, backoff, true)
-		return DeletionResult{Request: request, Outcome: outcome}, err
-	}
-	if !policy.Replayable(pending.Replay) {
-		outcome, err := resolveExpired(ctx, runtime, pending.SessionID, pending.Replay, policy)
-		return DeletionResult{Request: request, Outcome: outcome}, err
-	}
-	outcome, err := settleDeletion(ctx, runtime, request, pending.Replay, policy, backoff, false)
+	outcome, err := settleDeletion(ctx, runtime, request, pending.Replay, policy, backoff)
 	return DeletionResult{Request: request, Outcome: outcome}, err
 }
 
@@ -85,13 +80,8 @@ func settleDeletion(
 	replayGuard replay.Guard,
 	policy mutation.ReplayPolicy,
 	backoff retry.Backoff,
-	fresh bool,
 ) (mutation.Outcome, error) {
-	admit := mutation.ReplayAdmission(policy, replayGuard)
-	if fresh {
-		admit = mutation.FreshReplayAdmission(policy, replayGuard)
-	}
-	_, err := mutation.ConfirmAdmitted(ctx, backoff, admit, func(ctx context.Context) (struct{}, error) {
+	_, err := mutation.ConfirmAdmitted(ctx, backoff, mutation.ReplayAdmission(policy, replayGuard), func(ctx context.Context) (struct{}, error) {
 		return struct{}{}, runtime.DeleteSession(ctx, request)
 	})
 	if err == nil || errors.Is(err, conversation.ErrSessionNotFound) {
@@ -170,7 +160,7 @@ func RecoverDeletions(
 			}
 			continue
 		}
-		outcome, err := settleDeletion(ctx, runtime, result.Request, pending.Replay, policy, backoff, false)
+		outcome, err := settleDeletion(ctx, runtime, result.Request, pending.Replay, policy, backoff)
 		result.Outcome = outcome
 		switch outcome {
 		case mutation.Confirmed:

@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/cli/internal/adapter/runtimebinding"
 	"github.com/Tangerg/flame/cli/internal/application/workbench"
 	"github.com/Tangerg/flame/cli/internal/delivery/cmd"
 	"github.com/Tangerg/flame/cli/internal/delivery/terminal"
@@ -424,9 +425,13 @@ func TestMixedInterruptPTYRuntime(t *testing.T) {
 	backend := runtimefixture.New()
 	backend.Instant = true
 	backend.Script = func(string) runtimefixture.Script { return mixedInterruptPTYScript() }
+	profile, err := runtimebinding.NewProfile(runtimefixture.CompleteDiscovery())
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := terminal.Run(t.Context(), terminal.Config{
 		OpenWorkbench: func() (*workbench.Store, error) { return workbenchFactory("")("") },
-		Runtime:       backend, Workspace: t.TempDir(),
+		Runtime:       backend, RuntimeProfile: profile, Workspace: t.TempDir(),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -494,9 +499,13 @@ func TestCancelReentryPTYRuntime(t *testing.T) {
 			{Finish: &runtimefixture.Finish{Outcome: conversation.Outcome{Status: protocol.OutcomeCompleted}}},
 		}}
 	}
+	profile, err := runtimebinding.NewProfile(runtimefixture.CompleteDiscovery())
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := terminal.Run(t.Context(), terminal.Config{
 		OpenWorkbench: func() (*workbench.Store, error) { return workbenchFactory("")("") },
-		Runtime:       backend, Workspace: t.TempDir(),
+		Runtime:       backend, RuntimeProfile: profile, Workspace: t.TempDir(),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -810,6 +819,10 @@ func TestFlameProcess(t *testing.T) {
 	}
 	os.Args = append([]string{os.Args[0]}, flag.Args()...)
 	runtime := runtimefixture.New()
+	profile, err := runtimebinding.NewProfile(runtimefixture.CompleteDiscovery())
+	if err != nil {
+		t.Fatal(err)
+	}
 	announced := false
 	announce := func() {
 		if announced {
@@ -823,13 +836,13 @@ func TestFlameProcess(t *testing.T) {
 	dependencies := cmd.Dependencies{
 		OpenRuntime: func(context.Context, string) (cmd.Runtime, cmd.RuntimeProfile, error) {
 			announce()
-			return runtime, nil, nil
+			return runtime, profile, nil
 		},
 		StartTerminal: func(ctx context.Context, request cmd.TerminalRequest) error {
 			announce()
 			configured := request.Settings.Clone()
 			return terminal.Run(ctx, terminal.Config{
-				Runtime: runtime, SessionID: request.SessionID, Workspace: request.Workspace,
+				Runtime: runtime, RuntimeProfile: profile, SessionID: request.SessionID, Workspace: request.Workspace,
 				InitialPrompt: request.InitialPrompt, Settings: &configured,
 				OpenWorkbench: func() (*workbench.Store, error) { return openWorkbench(request.Settings.Runtime.Endpoint) },
 			})

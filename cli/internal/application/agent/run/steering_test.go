@@ -244,49 +244,6 @@ func TestRecoverStopsRetryingWhenTheReplayGuaranteeExpires(t *testing.T) {
 	}
 }
 
-func TestUnavailableRuntimeSeparatesFreshSteerDeliveryFromColdRecovery(t *testing.T) {
-	store, err := openTestWorkbench(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
-	attachment := prompt.Attachment{
-		ID: "att_notes", Kind: protocol.ContentBlockText, Name: "notes.txt",
-		Path: filepath.Join(t.TempDir(), "notes.txt"), MimeType: "text/plain", Size: 5,
-	}
-	request := prompt.SteerRun{
-		CommandID: "cli_33333333333333333333333333333333",
-		RunID:     "run_1", SegmentID: "seg_1",
-		Message: prompt.Message{Text: "inspect ownership", Attachments: []prompt.Attachment{attachment}},
-		Input: []protocol.ContentBlock{
-			{Type: protocol.ContentBlockText, Text: "inspect ownership"},
-			{Type: protocol.ContentBlockText, Text: "fixture attachment"},
-		},
-	}
-	source := prompt.Message{Text: "/steer inspect ownership", Attachments: []prompt.Attachment{attachment}}
-	if err := store.SaveDraft("ses_1", source); err != nil {
-		t.Fatal(err)
-	}
-	policy := unavailableReplayPolicy(t)
-	pending, err := StageSteer(store, "ses_1", request, source, policy, prepareSteerTestInput(t, store, request))
-	if err != nil {
-		t.Fatal(err)
-	}
-	runtime := &steerRuntimeStub{err: conversation.ErrDisconnected}
-	result, err := DeliverSteer(t.Context(), runtime, pending, policy, fastBackoff(t))
-	if result.Outcome != mutation.Unknown || !errors.Is(err, mutation.ErrReplayGuaranteeUnavailable) || len(runtime.requests) != 1 {
-		t.Fatalf("fresh delivery = outcome %v, error %v, requests %+v", result.Outcome, err, runtime.requests)
-	}
-
-	runtime = new(steerRuntimeStub)
-	_, err = RecoverSteers(t.Context(), runtime, store, policy, fastBackoff(t))
-	if err == nil || len(runtime.requests) != 0 {
-		t.Fatalf("cold recovery = %v, requests %+v", err, runtime.requests)
-	}
-	if durable, found := store.PendingSteer(pending.SessionID()); !found || !durable.Command().Equal(pending.Command()) {
-		t.Fatalf("unprotected steer = %+v, found %t", durable, found)
-	}
-}
-
 type steerFixture struct {
 	store      *workbench.Store
 	pending    workbench.PendingSteer

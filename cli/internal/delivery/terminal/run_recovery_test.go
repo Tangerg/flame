@@ -138,11 +138,12 @@ func TestPrepareSessionMergesInitialPromptAfterConfirmedRollbackRecovery(t *test
 	}
 
 	prepared, err := prepareSession(t.Context(), Config{
-		Runtime:       runtime,
-		SessionID:     created.ID,
-		Workspace:     workspace,
-		OpenWorkbench: persistentTestWorkbench(stateDirectory),
-		InitialPrompt: "from argv",
+		RuntimeProfile: featuredTerminalProfile(t),
+		Runtime:        runtime,
+		SessionID:      created.ID,
+		Workspace:      workspace,
+		OpenWorkbench:  persistentTestWorkbench(stateDirectory),
+		InitialPrompt:  "from argv",
 	})
 	if err != nil {
 		t.Fatal(err)

@@ -227,10 +227,11 @@ func validatedSessionConfig(cfg Config) (RuntimeProfile, settings.Config, keyBin
 		return nil, settings.Config{}, keyBindings{}, errors.New("session local directory is not absolute")
 	}
 	profile := cfg.RuntimeProfile
-	if profile != nil {
-		if err := profile.Validate(); err != nil {
-			return nil, settings.Config{}, keyBindings{}, fmt.Errorf("session runtime profile: %w", err)
-		}
+	if profile == nil {
+		return nil, settings.Config{}, keyBindings{}, errors.New("session runtime profile is required")
+	}
+	if err := profile.Validate(); err != nil {
+		return nil, settings.Config{}, keyBindings{}, fmt.Errorf("session runtime profile: %w", err)
 	}
 	configured := settings.Default()
 	if cfg.Settings != nil {

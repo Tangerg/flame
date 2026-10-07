@@ -48,7 +48,7 @@ func executeCommand(t *testing.T, rt Runtime, stdin string, args ...string) (str
 	if rt == nil {
 		rt = runtimefixture.New()
 	}
-	return executeCommandWithRuntime(t, rt, nil, stdin, args...)
+	return executeCommandWithRuntime(t, rt, new(commandRuntimeProfile(t)), stdin, args...)
 }
 
 func executeCommandWithRuntime(
@@ -868,7 +868,7 @@ func TestSessionsDeleteConvergesPostCommitFailureAndRetiresWorkbenchState(t *tes
 	var output bytes.Buffer
 	root := NewRoot(Dependencies{
 		OpenRuntime: func(context.Context, string) (Runtime, RuntimeProfile, error) {
-			return runtime, nil, nil
+			return runtime, new(commandRuntimeProfile(t)), nil
 		},
 		OpenWorkbench: func(string) (*workbench.Store, error) { return openTestWorkbench(stateDirectory) },
 	})

@@ -23,7 +23,7 @@ func (p partialModelCatalog) ListModels(ctx context.Context) ([]protocol.Model, 
 func TestModelCatalogDisplaysPartialResultsAndDiscoveryErrors(t *testing.T) {
 	for _, command := range []string{"/models", "/model"} {
 		t.Run(command, func(t *testing.T) {
-			host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: partialModelCatalog{Runtime: runtimefixture.New()}})
+			host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: partialModelCatalog{Runtime: runtimefixture.New()}})
 			t.Cleanup(stop)
 			host.Shows(t, "Ask flame")
 			host.Type(command)
@@ -76,7 +76,7 @@ func TestModelCatalogDocumentConsumesCompleteModelMetadata(t *testing.T) {
 }
 
 func TestModelsCommandOpensTheRuntimeCatalog(t *testing.T) {
-	host, stop := runUIWithRuntimeServices(t, Config{OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New()})
+	host, stop := runUIWithRuntimeServices(t, Config{RuntimeProfile: featuredTerminalProfile(t), OpenWorkbench: memoryTestWorkbench, Runtime: runtimefixture.New()})
 	host.Shows(t, "Ask flame")
 	host.Type("/models")
 	host.Press(input.Enter)

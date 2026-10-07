@@ -16,15 +16,6 @@ func confirm[T any](ctx context.Context, backoff retry.Backoff, attempt func(con
 	return ConfirmAdmitted(ctx, backoff, nil, attempt)
 }
 
-func unavailableReplayPolicy(t testing.TB) ReplayPolicy {
-	t.Helper()
-	policy, err := UnavailableReplayPolicy(time.Now)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return policy
-}
-
 func TestAcknowledgementUncertainIncludesMutationTimeouts(t *testing.T) {
 	for _, err := range []error{
 		conversation.ErrDisconnected,
@@ -179,36 +170,27 @@ func TestReplayAdmissionExpiresAtItsDeadline(t *testing.T) {
 	}
 }
 
-func TestUnavailableRuntimeAdmitsOneFreshAttemptButNoRetryOrRecovery(t *testing.T) {
+func TestReplayAdmissionNeverStartsAnUnprotectedCommand(t *testing.T) {
 	t.Parallel()
 
-	policy := unavailableReplayPolicy(t)
-	guard, err := policy.NewGuard()
+	capability, err := replay.NewCapability("runtime-a", time.Minute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	policy, err := NewReplayPolicy(capability, time.Now)
 	if err != nil {
 		t.Fatal(err)
 	}
 	attempts := 0
 	_, err = ConfirmAdmitted(
-		t.Context(), fastBackoff(t), FreshReplayAdmission(policy, guard),
-		func(context.Context) (struct{}, error) {
-			attempts++
-			return struct{}{}, conversation.ErrDisconnected
-		},
-	)
-	if !errors.Is(err, ErrReplayGuaranteeUnavailable) || attempts != 1 {
-		t.Fatalf("fresh unprotected mutation = %v after %d attempts", err, attempts)
-	}
-
-	attempts = 0
-	_, err = ConfirmAdmitted(
-		t.Context(), fastBackoff(t), ReplayAdmission(policy, guard),
+		t.Context(), fastBackoff(t), ReplayAdmission(policy, replay.UnprotectedGuard()),
 		func(context.Context) (struct{}, error) {
 			attempts++
 			return struct{}{}, nil
 		},
 	)
 	if !errors.Is(err, ErrReplayGuaranteeUnavailable) || attempts != 0 {
-		t.Fatalf("unprotected recovery = %v after %d attempts", err, attempts)
+		t.Fatalf("unprotected command = %v after %d attempts", err, attempts)
 	}
 }
 

@@ -59,9 +59,8 @@ type SteerResult struct {
 	Receipt protocol.SteerRunResponse
 }
 
-// DeliverSteer settles a freshly staged command. An unadvertised Runtime permits
-// exactly one I/O attempt; only an advertised guard permits acknowledgement
-// retries.
+// DeliverSteer settles a freshly staged command, retrying an uncertain
+// acknowledgement only while its replay guard still holds.
 func DeliverSteer(
 	ctx context.Context,
 	runtime steerRuntime,
@@ -78,7 +77,7 @@ func DeliverSteer(
 		return result, err
 	}
 	receipt, err := mutation.ConfirmAdmitted(ctx, backoff,
-		mutation.FreshReplayAdmission(policy, pending.Replay()), func(ctx context.Context) (protocol.SteerRunResponse, error) {
+		mutation.ReplayAdmission(policy, pending.Replay()), func(ctx context.Context) (protocol.SteerRunResponse, error) {
 			return runtime.SteerRun(ctx, command)
 		})
 	if err == nil {
