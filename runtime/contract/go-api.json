@@ -1122,6 +1122,21 @@
           "value": "\"deny\""
         },
         {
+          "name": "ApprovalGateDeny",
+          "type": "ApprovalGate",
+          "value": "\"deny\""
+        },
+        {
+          "name": "ApprovalGatePass",
+          "type": "ApprovalGate",
+          "value": "\"pass\""
+        },
+        {
+          "name": "ApprovalGatePrompt",
+          "type": "ApprovalGate",
+          "value": "\"prompt\""
+        },
+        {
           "name": "ApprovalModeBalanced",
           "type": "ApprovalMode",
           "value": "\"balanced\""
@@ -2249,7 +2264,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-07.7\""
+          "value": "\"2026-10-07.8\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -3286,9 +3301,46 @@
           "underlying": "string"
         },
         {
+          "name": "ApprovalGate",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
           "name": "ApprovalMode",
           "kind": "defined",
           "underlying": "string"
+        },
+        {
+          "name": "ApprovalModePolicy",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "Mode",
+              "type": "ApprovalMode",
+              "tag": "json:\"mode\""
+            },
+            {
+              "name": "Write",
+              "type": "ApprovalGate",
+              "tag": "json:\"write\""
+            },
+            {
+              "name": "Exec",
+              "type": "ApprovalGate",
+              "tag": "json:\"exec\""
+            },
+            {
+              "name": "Network",
+              "type": "ApprovalGate",
+              "tag": "json:\"network\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
         },
         {
           "name": "ApprovalModeResult",
@@ -3298,6 +3350,11 @@
               "name": "Mode",
               "type": "ApprovalMode",
               "tag": "json:\"mode\""
+            },
+            {
+              "name": "Modes",
+              "type": "[]ApprovalModePolicy",
+              "tag": "json:\"modes\""
             }
           ],
           "methods": [

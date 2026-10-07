@@ -190,3 +190,26 @@ func TestSetApprovalRuleProjectsActionableFailures(t *testing.T) {
 		})
 	}
 }
+
+// The gate a mode applies is the domain's decision; the reply publishes it so a
+// client describes modes from the policy instead of restating it.
+func TestApprovalModeReplyPublishesTheDomainGateMatrix(t *testing.T) {
+	s := handlerWithApprovals(&approvalPolicyFake{mode: approval.ModeSafe}, nil)
+	got, err := s.GetApprovalMode(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[protocol.ApprovalMode]protocol.ApprovalModePolicy{
+		protocol.ApprovalModeSafe:     {Mode: protocol.ApprovalModeSafe, Write: protocol.ApprovalGatePrompt, Exec: protocol.ApprovalGatePrompt, Network: protocol.ApprovalGatePrompt},
+		protocol.ApprovalModeBalanced: {Mode: protocol.ApprovalModeBalanced, Write: protocol.ApprovalGatePass, Exec: protocol.ApprovalGatePrompt, Network: protocol.ApprovalGatePass},
+		protocol.ApprovalModeYolo:     {Mode: protocol.ApprovalModeYolo, Write: protocol.ApprovalGatePass, Exec: protocol.ApprovalGatePass, Network: protocol.ApprovalGatePass},
+	}
+	if len(got.Modes) != len(want) {
+		t.Fatalf("modes = %+v, want %d policies", got.Modes, len(want))
+	}
+	for _, policy := range got.Modes {
+		if want[policy.Mode] != policy {
+			t.Fatalf("policy %+v, want %+v", policy, want[policy.Mode])
+		}
+	}
+}

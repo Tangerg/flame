@@ -36,6 +36,13 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
+## Protocol 2026-10-07.8
+
+`ApprovalModeResult.modes` is required: every default mode with the gate
+(`pass`, `prompt` or `deny`) it applies to write, exec and network tools, taken
+from the Runtime's own policy. Clients describe a mode from it instead of
+restating what each mode allows.
+
 ## Protocol 2026-10-07.7
 
 `segment.finished` carries `run`, the RunRef the segment ended with, and

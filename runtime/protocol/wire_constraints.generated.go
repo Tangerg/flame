@@ -2724,6 +2724,15 @@ func (s SubscriptionLimits) ValidateWire() error {
 	)
 }
 
+func (a ApprovalModePolicy) ValidateWire() error {
+	return collectWireViolations("ApprovalModePolicy",
+		closedEnum("mode", string(a.Mode), []string{"safe", "balanced", "yolo"}, false),
+		closedEnum("write", string(a.Write), []string{"pass", "prompt", "deny"}, false),
+		closedEnum("exec", string(a.Exec), []string{"pass", "prompt", "deny"}, false),
+		closedEnum("network", string(a.Network), []string{"pass", "prompt", "deny"}, false),
+	)
+}
+
 func (a ApprovalModeResult) ValidateWire() error {
 	return collectWireViolations("ApprovalModeResult",
 		closedEnum("mode", string(a.Mode), []string{"safe", "balanced", "yolo"}, false),

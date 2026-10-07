@@ -49,11 +49,8 @@ type ForgetApprovalRuleRequest struct {
 }
 
 // ApprovalMode is the runtime's default tool-permission stance
-// (approval.getMode / approval.setMode). It mirrors the engine's approval gate:
-//
-//	safe      every write/exec/network tool prompts for approval
-//	balanced  write/network auto-allowed; only exec (shell) prompts (the default)
-//	yolo      everything auto-allowed
+// (approval.getMode / approval.setMode). What each mode does with each tool
+// class is published as ApprovalModeResult.modes, not restated by clients.
 type ApprovalMode string
 
 const (
@@ -67,10 +64,30 @@ type SetApprovalModeRequest struct {
 	Mode ApprovalMode `json:"mode"`
 }
 
+// ApprovalGate is what a mode does with a call of one tool safety class: run
+// it, ask the user, or refuse it.
+type ApprovalGate string
+
+const (
+	ApprovalGatePass   ApprovalGate = "pass"
+	ApprovalGatePrompt ApprovalGate = "prompt"
+	ApprovalGateDeny   ApprovalGate = "deny"
+)
+
+// ApprovalModePolicy is the gate one mode applies to each side-effecting tool
+// class. Read-only (safe) tools never gate in any mode.
+type ApprovalModePolicy struct {
+	Mode    ApprovalMode `json:"mode"`
+	Write   ApprovalGate `json:"write"`
+	Exec    ApprovalGate `json:"exec"`
+	Network ApprovalGate `json:"network"`
+}
+
 // ApprovalModeResult — the approval.getMode / setMode reply: the (new)
-// current stance.
+// current stance, and the policy of every mode a client may offer.
 type ApprovalModeResult struct {
-	Mode ApprovalMode `json:"mode"`
+	Mode  ApprovalMode         `json:"mode"`
+	Modes []ApprovalModePolicy `json:"modes"`
 }
 
 // SetApprovalRuleRequest records a standing decision against the current source

@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-07.7";
+export const PROTOCOL_VERSION = "2026-10-07.8";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 30;
@@ -274,10 +274,20 @@ export interface AppliedChange {
 
 export type ApprovalDecision = "approve" | "deny";
 
+export type ApprovalGate = "pass" | "prompt" | "deny";
+
 export type ApprovalMode = "safe" | "balanced" | "yolo";
+
+export interface ApprovalModePolicy {
+  exec: ApprovalGate;
+  mode: ApprovalMode;
+  network: ApprovalGate;
+  write: ApprovalGate;
+}
 
 export interface ApprovalModeResult {
   mode: ApprovalMode;
+  modes: ApprovalModePolicy[];
 }
 
 export type ApprovalRisk = "low" | "medium" | "high";
@@ -2023,6 +2033,7 @@ export const WIRE_ENUMS = {
   AgentMemoryScope: ["project", "user"],
   AgentMemoryStatus: ["active", "pending"],
   ApprovalDecision: ["approve", "deny"],
+  ApprovalGate: ["pass", "prompt", "deny"],
   ApprovalMode: ["safe", "balanced", "yolo"],
   ApprovalRisk: ["low", "medium", "high"],
   ApprovalRuleDecision: ["allow", "deny"],

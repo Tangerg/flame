@@ -7,6 +7,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/approvals"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
 
@@ -21,7 +22,7 @@ func (s *Handler) GetApprovalMode(ctx context.Context) (*protocol.ApprovalModeRe
 	if !ok {
 		return nil, fmt.Errorf("delivery: %w: %q", approval.ErrInvalidMode, m)
 	}
-	return &protocol.ApprovalModeResult{Mode: mode}, nil
+	return &protocol.ApprovalModeResult{Mode: mode, Modes: presentApprovalModePolicies()}, nil
 }
 
 // SetApprovalMode sets the runtime's default tool-permission stance (approval.setMode).
@@ -33,7 +34,7 @@ func (s *Handler) SetApprovalMode(ctx context.Context, in protocol.SetApprovalMo
 	if err := s.approvals.SetDefaultMode(ctx, mode); err != nil {
 		return nil, err
 	}
-	return &protocol.ApprovalModeResult{Mode: in.Mode}, nil
+	return &protocol.ApprovalModeResult{Mode: in.Mode, Modes: presentApprovalModePolicies()}, nil
 }
 
 // ListApprovalRules lists the persisted rules visible from a session
@@ -110,6 +111,39 @@ func presentApprovalDecision(decision approval.Decision) (protocol.ApprovalRuleD
 		return protocol.ApprovalRuleDecisionDeny, true
 	default:
 		return "", false
+	}
+}
+
+// presentApprovalModePolicies publishes the gate matrix the domain applies, so
+// a client describes a mode from the policy rather than restating it.
+func presentApprovalModePolicies() []protocol.ApprovalModePolicy {
+	modes := []approval.Mode{approval.ModeSafe, approval.ModeBalanced, approval.ModeYolo}
+	out := make([]protocol.ApprovalModePolicy, 0, len(modes))
+	for _, mode := range modes {
+		wire, ok := presentApprovalMode(mode)
+		if !ok {
+			panic(fmt.Sprintf("delivery: approval mode %q has no wire name", mode))
+		}
+		out = append(out, protocol.ApprovalModePolicy{
+			Mode:    wire,
+			Write:   presentApprovalGate(approval.GateFor(tool.SafetyClassWrite, mode)),
+			Exec:    presentApprovalGate(approval.GateFor(tool.SafetyClassExec, mode)),
+			Network: presentApprovalGate(approval.GateFor(tool.SafetyClassNetwork, mode)),
+		})
+	}
+	return out
+}
+
+func presentApprovalGate(gate approval.GateAction) protocol.ApprovalGate {
+	switch gate {
+	case approval.GatePass:
+		return protocol.ApprovalGatePass
+	case approval.GatePrompt:
+		return protocol.ApprovalGatePrompt
+	case approval.GateDeny:
+		return protocol.ApprovalGateDeny
+	default:
+		panic(fmt.Sprintf("delivery: unknown approval gate %q", gate))
 	}
 }
 

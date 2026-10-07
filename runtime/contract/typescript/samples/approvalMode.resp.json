@@ -1,3 +1,8 @@
 {
-  "mode": "balanced"
+  "mode": "balanced",
+  "modes": [
+    { "mode": "safe", "write": "prompt", "exec": "prompt", "network": "prompt" },
+    { "mode": "balanced", "write": "pass", "exec": "prompt", "network": "pass" },
+    { "mode": "yolo", "write": "pass", "exec": "pass", "network": "pass" }
+  ]
 }

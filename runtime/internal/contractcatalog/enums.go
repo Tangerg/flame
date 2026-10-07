@@ -29,6 +29,7 @@ var wireEnums = map[reflect.Type][]string{
 	reflect.TypeFor[protocol.AgentMemoryScope]():                  {string(protocol.AgentMemoryScopeProject), string(protocol.AgentMemoryScopeUser)},
 	reflect.TypeFor[protocol.AgentMemoryStatus]():                 {string(protocol.AgentMemoryStatusActive), string(protocol.AgentMemoryStatusPending)},
 	reflect.TypeFor[protocol.ApprovalDecision]():                  {string(protocol.ApprovalApprove), string(protocol.ApprovalDeny)},
+	reflect.TypeFor[protocol.ApprovalGate]():                      {string(protocol.ApprovalGatePass), string(protocol.ApprovalGatePrompt), string(protocol.ApprovalGateDeny)},
 	reflect.TypeFor[protocol.ApprovalMode]():                      {string(protocol.ApprovalModeSafe), string(protocol.ApprovalModeBalanced), string(protocol.ApprovalModeYolo)},
 	reflect.TypeFor[protocol.ApprovalRisk]():                      {string(protocol.ApprovalRiskLow), string(protocol.ApprovalRiskMedium), string(protocol.ApprovalRiskHigh)},
 	reflect.TypeFor[protocol.ToolRefType]():                       {string(protocol.ToolRefBuiltIn), string(protocol.ToolRefMCP), string(protocol.ToolRefA2A)},

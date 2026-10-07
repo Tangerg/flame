@@ -32,7 +32,9 @@ export type WireTypeName =
   | "AgentMemoryUpdateRequest"
   | "AppliedChange"
   | "ApprovalDecision"
+  | "ApprovalGate"
   | "ApprovalMode"
+  | "ApprovalModePolicy"
   | "ApprovalModeResult"
   | "ApprovalRisk"
   | "ApprovalRule"
@@ -462,10 +464,18 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     status: ref(() => CHECKS.ChangeStatus),
   }, ["path", "status"]),
   ApprovalDecision: enumOf(["approve", "deny"]),
+  ApprovalGate: enumOf(["pass", "prompt", "deny"]),
   ApprovalMode: enumOf(["safe", "balanced", "yolo"]),
+  ApprovalModePolicy: object({
+    exec: ref(() => CHECKS.ApprovalGate),
+    mode: ref(() => CHECKS.ApprovalMode),
+    network: ref(() => CHECKS.ApprovalGate),
+    write: ref(() => CHECKS.ApprovalGate),
+  }, ["exec", "mode", "network", "write"]),
   ApprovalModeResult: object({
     mode: ref(() => CHECKS.ApprovalMode),
-  }, ["mode"]),
+    modes: array(ref(() => CHECKS.ApprovalModePolicy)),
+  }, ["mode", "modes"]),
   ApprovalRisk: enumOf(["low", "medium", "high"]),
   ApprovalRule: allOf([
     object({
