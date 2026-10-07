@@ -40,9 +40,10 @@ type CompactionPolicyValues struct {
 }
 
 // compactionPolicy is the validated, immutable policy consumed by Compactor.
+// A zero maxTokens is the absent explicit trigger: construction refuses a
+// present value that is not positive.
 type compactionPolicy struct {
-	maxTokens         int
-	maxTokensExplicit bool
+	maxTokens int
 }
 
 func newCompactionPolicy(values CompactionPolicyValues) (compactionPolicy, error) {
@@ -52,7 +53,6 @@ func newCompactionPolicy(values CompactionPolicyValues) (compactionPolicy, error
 			return compactionPolicy{}, errors.New("compaction policy: maximum tokens must be positive")
 		}
 		policy.maxTokens = *values.MaxTokens
-		policy.maxTokensExplicit = true
 	}
 	return policy, nil
 }
@@ -77,7 +77,7 @@ func (p compactionPolicy) tokenTrigger(limits modelref.TokenLimits, options chat
 	contextWindow, contextWindowKnown := limits.ContextWindow()
 
 	trigger := defaultCompactMaxTokens
-	if p.maxTokensExplicit {
+	if p.maxTokens > 0 {
 		trigger = p.maxTokens
 	} else if contextWindowKnown {
 		window := tokenLimitInt(contextWindow)

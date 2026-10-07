@@ -102,7 +102,7 @@ func TestCompactionPolicyPreservesOptionalPresence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if defaults.maxTokensExplicit {
+	if defaults.maxTokens != 0 {
 		t.Fatalf("default policy = %+v", defaults)
 	}
 
