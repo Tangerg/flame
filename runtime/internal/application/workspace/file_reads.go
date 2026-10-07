@@ -237,12 +237,8 @@ func (f *Files) Head(ctx context.Context, cwd, path string, limit HeadLineLimit)
 	if err != nil {
 		return FileHead{}, err
 	}
-	lines, err := limit.Lines()
-	if err != nil {
-		return FileHead{}, err
-	}
 	read, err := f.readFile(ctx, root, FileReadPlan{
-		Path: path, EndLine: lines, StartLine: 1, MaxBytes: DefaultFileReadBytes,
+		Path: path, EndLine: limit.Lines(), StartLine: 1, MaxBytes: DefaultFileReadBytes,
 	})
 	if err != nil {
 		return FileHead{}, err
@@ -254,18 +250,10 @@ func (f *Files) Head(ctx context.Context, cwd, path string, limit HeadLineLimit)
 }
 
 // Read returns all or a one-based inclusive line window of a workspace
-// file. It validates ranges before invoking the filesystem port.
+// file. Its range and byte budget were settled when they were constructed.
 func (f *Files) Read(ctx context.Context, cwd string, input FileReadInput) (FileReadResult, error) {
 	if input.Path == "" {
 		return FileReadResult{}, ErrPathRequired
-	}
-	start, end, err := input.Range.Bounds()
-	if err != nil {
-		return FileReadResult{}, err
-	}
-	maxBytes, err := input.ByteLimit.Bytes()
-	if err != nil {
-		return FileReadResult{}, err
 	}
 	root, err := f.scope.ResolveRoot(cwd)
 	if err != nil {
@@ -275,7 +263,8 @@ func (f *Files) Read(ctx context.Context, cwd string, input FileReadInput) (File
 	if err != nil {
 		return FileReadResult{}, err
 	}
-	return f.readFile(ctx, root, FileReadPlan{Path: path, StartLine: start, EndLine: end, MaxBytes: maxBytes})
+	start, end := input.Range.Bounds()
+	return f.readFile(ctx, root, FileReadPlan{Path: path, StartLine: start, EndLine: end, MaxBytes: input.ByteLimit.Bytes()})
 }
 
 func (f *Files) readFile(ctx context.Context, root string, input FileReadPlan) (FileReadResult, error) {
@@ -308,11 +297,7 @@ func (f *Files) Grep(ctx context.Context, cwd string, input GrepInput) (GrepResu
 			return GrepResult{}, err
 		}
 	}
-	limit, err := input.Limit.Matches()
-	if err != nil {
-		return GrepResult{}, err
-	}
-	return f.files.Grep(ctx, root, GrepPlan{Path: input.Path, Pattern: pattern, Limit: limit})
+	return f.files.Grep(ctx, root, GrepPlan{Path: input.Path, Pattern: pattern, Limit: input.Limit.Matches()})
 }
 
 func previewLines(read FileReadResult) []FileLine {

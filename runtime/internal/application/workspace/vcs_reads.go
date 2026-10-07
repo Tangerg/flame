@@ -144,13 +144,10 @@ type DiffInput struct {
 	RowLimit DiffRowLimit
 }
 
-// DiffRowLimit is the caller's structured-diff row budget. Its zero value is
-// the named default intent; an explicit value can only be constructed as a
-// positive row count. Raw diffs do not consume this value at all.
-type DiffRowLimit struct {
-	explicit bool
-	rows     int
-}
+// DiffRowLimit is the caller's structured-diff row budget. Zero is the named
+// default; the constructor admits only a positive row count. Raw diffs do not
+// consume this value at all.
+type DiffRowLimit struct{ rows int }
 
 // DefaultDiffRowLimit asks the structured read to use its owned maximum.
 func DefaultDiffRowLimit() DiffRowLimit { return DiffRowLimit{} }
@@ -160,21 +157,15 @@ func NewDiffRowLimit(rows int) (DiffRowLimit, error) {
 	if rows <= 0 {
 		return DiffRowLimit{}, ErrPageLimit
 	}
-	return DiffRowLimit{explicit: true, rows: rows}, nil
+	return DiffRowLimit{rows: rows}, nil
 }
 
 // Rows resolves this request against the Application-owned maximum.
-func (l DiffRowLimit) Rows() (int, error) {
-	if !l.explicit {
-		if l.rows != 0 {
-			return 0, ErrPageLimit
-		}
-		return MaxWorkspaceDiffRows, nil
+func (l DiffRowLimit) Rows() int {
+	if l.rows == 0 {
+		return MaxWorkspaceDiffRows
 	}
-	if l.rows <= 0 {
-		return 0, ErrPageLimit
-	}
-	return min(l.rows, MaxWorkspaceDiffRows), nil
+	return min(l.rows, MaxWorkspaceDiffRows)
 }
 
 // Diff is a structured or raw workspace diff.
@@ -236,10 +227,7 @@ func (v *VCS) Diff(ctx context.Context, input DiffInput) (Diff, error) {
 		}
 		return Diff{Baseline: result.Baseline, Patch: result.Patch}, nil
 	}
-	rowLimit, err := input.RowLimit.Rows()
-	if err != nil {
-		return Diff{}, err
-	}
+	rowLimit := input.RowLimit.Rows()
 	result, err := v.git.StructuredDiff(
 		ctx,
 		root,

@@ -199,23 +199,20 @@ func TestVCSPassesApplicationLimitsToTheGitReader(t *testing.T) {
 	}
 }
 
-func TestDiffRowLimitOwnsDefaultClampAndInvalidState(t *testing.T) {
-	if rows, err := DefaultDiffRowLimit().Rows(); err != nil || rows != MaxWorkspaceDiffRows {
-		t.Fatalf("default Rows = (%d, %v), want %d", rows, err, MaxWorkspaceDiffRows)
+func TestDiffRowLimitOwnsDefaultAndClamp(t *testing.T) {
+	if rows := DefaultDiffRowLimit().Rows(); rows != MaxWorkspaceDiffRows {
+		t.Fatalf("default Rows = %d, want %d", rows, MaxWorkspaceDiffRows)
 	}
 	large, err := NewDiffRowLimit(MaxWorkspaceDiffRows + 1)
 	if err != nil {
 		t.Fatalf("NewDiffRowLimit: %v", err)
 	}
-	if rows, resolveErr := large.Rows(); resolveErr != nil || rows != MaxWorkspaceDiffRows {
-		t.Fatalf("clamped Rows = (%d, %v), want %d", rows, resolveErr, MaxWorkspaceDiffRows)
+	if rows := large.Rows(); rows != MaxWorkspaceDiffRows {
+		t.Fatalf("clamped Rows = %d, want %d", rows, MaxWorkspaceDiffRows)
 	}
 	for _, rows := range []int{0, -1} {
 		if _, constructErr := NewDiffRowLimit(rows); !errors.Is(constructErr, ErrPageLimit) {
 			t.Fatalf("NewDiffRowLimit(%d) = %v, want ErrPageLimit", rows, constructErr)
 		}
-	}
-	if _, err := (DiffRowLimit{explicit: true}).Rows(); !errors.Is(err, ErrPageLimit) {
-		t.Fatalf("corrupt DiffRowLimit = %v, want ErrPageLimit", err)
 	}
 }

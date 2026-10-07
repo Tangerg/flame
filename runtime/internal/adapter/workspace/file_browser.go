@@ -37,10 +37,6 @@ func (FileBrowser) Read(ctx context.Context, root string, input workspaceapp.Fil
 	if cause := context.Cause(ctx); cause != nil {
 		return workspaceapp.FileReadResult{}, cause
 	}
-	budget, err := workspaceReadBudget(input.MaxBytes)
-	if err != nil {
-		return workspaceapp.FileReadResult{}, err
-	}
 	path := input.Path
 	if !filepath.IsAbs(path) {
 		path = filepath.Join(root, path)
@@ -88,7 +84,7 @@ func (FileBrowser) Read(ctx context.Context, root string, input workspaceapp.Fil
 	}
 	result, err := textread.Scan(ctx, file, textread.Options{
 		InputBytes: workspaceapp.MaxFileReadSourceBytes, LineBytes: workspaceapp.MaxFileReadLineBytes,
-		OutputBytes: budget, StartLine: start, MaxLines: lines, PartialLine: true,
+		OutputBytes: input.MaxBytes, StartLine: start, MaxLines: lines, PartialLine: true,
 	})
 	if err != nil {
 		switch {
@@ -119,15 +115,4 @@ func (FileBrowser) Read(ctx context.Context, root string, input workspaceapp.Fil
 		Content: result.Content, TotalLines: result.TotalLines, StartLine: result.StartLine,
 		EndLine: result.EndLine, Truncated: result.Truncated, OutputTruncated: result.OutputTruncated,
 	}, nil
-}
-
-func workspaceReadBudget(requested int) (int, error) {
-	switch {
-	case requested < 0:
-		return 0, workspaceapp.ErrInvalidFileRange
-	case requested == 0:
-		return workspaceapp.DefaultFileReadBytes, nil
-	default:
-		return min(requested, workspaceapp.MaxFileReadBytes), nil
-	}
 }

@@ -86,7 +86,7 @@ func TestFileBrowserReadConfinesSymlinksToWorkspace(t *testing.T) {
 	if err := os.Symlink(filepath.Join("nested", "inside.txt"), filepath.Join(root, "inside-link")); err != nil {
 		t.Fatal(err)
 	}
-	read, err := (FileBrowser{}).Read(t.Context(), root, workspaceapp.FileReadPlan{Path: "inside-link"})
+	read, err := (FileBrowser{}).Read(t.Context(), root, workspaceapp.FileReadPlan{Path: "inside-link", MaxBytes: workspaceapp.DefaultFileReadBytes})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +102,7 @@ func TestFileBrowserReadConfinesSymlinksToWorkspace(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, err := (FileBrowser{}).Read(
-		t.Context(), root, workspaceapp.FileReadPlan{Path: "outside-link"},
+		t.Context(), root, workspaceapp.FileReadPlan{Path: "outside-link", MaxBytes: workspaceapp.DefaultFileReadBytes},
 	); !errors.Is(err, workspaceapp.ErrPathOutsideRoot) {
 		t.Fatalf("escaping symlink error = %v, want ErrPathOutsideRoot", err)
 	}
