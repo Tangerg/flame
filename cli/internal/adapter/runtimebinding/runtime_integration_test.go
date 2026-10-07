@@ -638,11 +638,11 @@ func requireRuntimeCatalogs(t *testing.T, runtime *Connection, sessionID, worksp
 	}
 
 	applied, err := runtime.SetApprovalMode(t.Context(), protocol.ApprovalModeSafe)
-	if err != nil || applied != protocol.ApprovalModeSafe {
+	if err != nil || applied.Mode != protocol.ApprovalModeSafe || len(applied.Modes) == 0 {
 		t.Fatalf("SetApprovalMode = (%q, %v)", applied, err)
 	}
 	mode, err := runtime.GetApprovalMode(t.Context())
-	if err != nil || mode != protocol.ApprovalModeSafe {
+	if err != nil || mode.Mode != protocol.ApprovalModeSafe {
 		t.Fatalf("GetApprovalMode = (%q, %v)", mode, err)
 	}
 }

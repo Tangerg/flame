@@ -132,21 +132,31 @@ func mockModelTokenLimits(contextWindow, maxOutput int64) *protocol.ModelTokenLi
 	return &protocol.ModelTokenLimits{ContextWindow: &contextWindow, MaxOutputTokens: &maxOutput}
 }
 
-func (r *Runtime) GetApprovalMode(ctx context.Context) (protocol.ApprovalMode, error) {
+// approvalModePolicies is the fixture's stand-in for the Runtime's published
+// gate matrix.
+func approvalModePolicies() []protocol.ApprovalModePolicy {
+	return []protocol.ApprovalModePolicy{
+		{Mode: protocol.ApprovalModeSafe, Write: protocol.ApprovalGatePrompt, Exec: protocol.ApprovalGatePrompt, Network: protocol.ApprovalGatePrompt},
+		{Mode: protocol.ApprovalModeBalanced, Write: protocol.ApprovalGatePass, Exec: protocol.ApprovalGatePrompt, Network: protocol.ApprovalGatePass},
+		{Mode: protocol.ApprovalModeYolo, Write: protocol.ApprovalGatePass, Exec: protocol.ApprovalGatePass, Network: protocol.ApprovalGatePass},
+	}
+}
+
+func (r *Runtime) GetApprovalMode(ctx context.Context) (protocol.ApprovalModeResult, error) {
 	if err := context.Cause(ctx); err != nil {
-		return "", err
+		return protocol.ApprovalModeResult{}, err
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	return r.approvalMode, nil
+	return protocol.ApprovalModeResult{Mode: r.approvalMode, Modes: approvalModePolicies()}, nil
 }
 
-func (r *Runtime) SetApprovalMode(ctx context.Context, mode protocol.ApprovalMode) (protocol.ApprovalMode, error) {
+func (r *Runtime) SetApprovalMode(ctx context.Context, mode protocol.ApprovalMode) (protocol.ApprovalModeResult, error) {
 	if err := context.Cause(ctx); err != nil {
-		return "", err
+		return protocol.ApprovalModeResult{}, err
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.approvalMode = mode
-	return mode, nil
+	return protocol.ApprovalModeResult{Mode: mode, Modes: approvalModePolicies()}, nil
 }

@@ -43,17 +43,16 @@ func (a *app) buildRuntimePickers(theme kit.Theme, glyphs kit.Glyphs) {
 	a.dialogs.modelPicker.cancel = a.dialogs.modelDialog.Dismiss
 
 	a.dialogs.approvalModePicker = newPicker(theme, glyphs, "search approval modes",
-		approvalModeTitle,
-		approvalModeDetail,
-		func(mode protocol.ApprovalMode) {
+		func(policy protocol.ApprovalModePolicy) string { return approvalModeTitle(policy.Mode) },
+		approvalPolicyDetail,
+		func(policy protocol.ApprovalModePolicy) {
 			if !a.dialogs.approvalModeDialog.Open() {
 				return
 			}
 			a.dialogs.approvalModeDialog.Dismiss()
-			a.setApprovalMode(mode)
+			a.setApprovalMode(policy.Mode)
 		},
 	)
-	a.dialogs.approvalModePicker.SetItems([]protocol.ApprovalMode{protocol.ApprovalModeSafe, protocol.ApprovalModeBalanced, protocol.ApprovalModeYolo})
 	a.dialogs.approvalModeDialog = newPresentationDialog(kit.DialogConfig{
 		Stack: &a.stack, Theme: theme, Glyphs: glyphs, Title: "Runtime approval mode", Body: a.dialogs.approvalModePicker,
 		Where: layout.Placement{Width: 88, Height: 9},
@@ -121,35 +120,47 @@ func (a *app) ChooseApprovalMode() {
 		a.message("approval mode changes apply between runs")
 		return
 	}
-	a.dialogs.approvalModePicker.Reset()
-	a.dialogs.approvalModeDialog.Show()
-	a.status.note("choose the runtime approval mode")
+	a.runOperation(pickerCatalogOperation, true,
+		func(ctx context.Context) (protocol.ApprovalModeResult, error) { return a.runtime.GetApprovalMode(ctx) },
+		func(result protocol.ApprovalModeResult, err error) {
+			if err != nil {
+				a.message("could not read approval modes: " + err.Error())
+				return
+			}
+			a.dialogs.approvalModePicker.Reset()
+			a.dialogs.approvalModePicker.SetItems(result.Modes)
+			a.dialogs.approvalModeDialog.Show()
+			a.status.note("choose the runtime approval mode")
+		},
+	)
 }
 
 func (a *app) setApprovalMode(mode protocol.ApprovalMode) {
 	a.runAdmissionMutation(approvalModeOperation, true,
-		func(ctx context.Context) (protocol.ApprovalMode, error) { return a.runtime.SetApprovalMode(ctx, mode) },
-		func(applied protocol.ApprovalMode, err error) {
+		func(ctx context.Context) (protocol.ApprovalModeResult, error) {
+			return a.runtime.SetApprovalMode(ctx, mode)
+		},
+		func(applied protocol.ApprovalModeResult, err error) {
 			if err != nil {
 				a.message("could not set approval mode: " + err.Error())
 				return
 			}
-			a.message("approval mode · " + string(applied))
+			a.message("approval mode · " + string(applied.Mode))
 		},
 	)
 }
 
 func (a *app) ShowRuntimeStatus() {
 	a.runOperation(pickerCatalogOperation, true,
-		func(ctx context.Context) (protocol.ApprovalMode, error) { return a.runtime.GetApprovalMode(ctx) },
-		func(mode protocol.ApprovalMode, err error) {
+		func(ctx context.Context) (protocol.ApprovalModeResult, error) { return a.runtime.GetApprovalMode(ctx) },
+		func(result protocol.ApprovalModeResult, err error) {
 			if err != nil {
 				a.message("could not read runtime status: " + err.Error())
 				return
 			}
 			a.transcript.Append(&kit.Entry{
 				Theme: a.transcript.theme, Label: "runtime options",
-				Body: runtimeStatusText(a.runtimeProfile, a.displayOptions(), mode),
+				Body: runtimeStatusText(a.runtimeProfile, a.displayOptions(), result.Mode),
 			})
 		},
 	)
@@ -339,16 +350,24 @@ func approvalModeTitle(mode protocol.ApprovalMode) string {
 	}
 }
 
-func approvalModeDetail(mode protocol.ApprovalMode) string {
-	switch mode {
-	case protocol.ApprovalModeSafe:
-		return "ask before write, exec, and network tools"
-	case protocol.ApprovalModeBalanced:
-		return "allow writes and network; ask before shell execution"
-	case protocol.ApprovalModeYolo:
-		return "allow every tool without approval prompts"
+// approvalPolicyDetail describes a mode from the gates the Runtime publishes
+// for it, so the picker cannot drift from the policy it selects.
+func approvalPolicyDetail(policy protocol.ApprovalModePolicy) string {
+	return "write " + approvalGateText(policy.Write) +
+		" · exec " + approvalGateText(policy.Exec) +
+		" · network " + approvalGateText(policy.Network)
+}
+
+func approvalGateText(gate protocol.ApprovalGate) string {
+	switch gate {
+	case protocol.ApprovalGatePass:
+		return "allowed"
+	case protocol.ApprovalGatePrompt:
+		return "asks first"
+	case protocol.ApprovalGateDeny:
+		return "refused"
 	default:
-		return ""
+		return string(gate)
 	}
 }
 

@@ -4294,7 +4294,7 @@ func TestApprovalModeSelectionRoundTripsThroughTheRuntime(t *testing.T) {
 	host.Press(input.Enter)
 	host.Shows(t, "approval mode · safe")
 	mode, err := backend.GetApprovalMode(t.Context())
-	if err != nil || mode != protocol.ApprovalModeSafe {
+	if err != nil || mode.Mode != protocol.ApprovalModeSafe {
 		t.Fatalf("approval mode = (%q, %v)", mode, err)
 	}
 

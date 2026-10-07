@@ -78,31 +78,31 @@ func (r *Connection) ListModels(ctx context.Context) ([]protocol.Model, error) {
 	return models, errors.Join(discoveryErrors...)
 }
 
-func (r *Connection) GetApprovalMode(ctx context.Context) (protocol.ApprovalMode, error) {
+func (r *Connection) GetApprovalMode(ctx context.Context) (protocol.ApprovalModeResult, error) {
 	result, err := r.approvals.GetApprovalMode(ctx, r.callOptions())
 	if err != nil {
-		return "", classifyError(err)
+		return protocol.ApprovalModeResult{}, classifyError(err)
 	}
 	if result == nil {
-		return "", runtimeContractViolation("get approval mode returned nil")
+		return protocol.ApprovalModeResult{}, runtimeContractViolation("get approval mode returned nil")
 	}
-	return result.Mode, nil
+	return *result, nil
 }
 
-func (r *Connection) SetApprovalMode(ctx context.Context, mode protocol.ApprovalMode) (protocol.ApprovalMode, error) {
+func (r *Connection) SetApprovalMode(ctx context.Context, mode protocol.ApprovalMode) (protocol.ApprovalModeResult, error) {
 	request := protocol.SetApprovalModeRequest{Mode: mode}
 	if err := protocol.ValidateWireTree(request); err != nil {
-		return "", err
+		return protocol.ApprovalModeResult{}, err
 	}
 	options := r.commandOptions()
 	result, err := r.approvals.SetApprovalMode(ctx, request, options)
 	if err != nil {
-		return "", classifyError(err)
+		return protocol.ApprovalModeResult{}, classifyError(err)
 	}
 	if result == nil {
-		return "", runtimeContractViolation("set approval mode returned nil")
+		return protocol.ApprovalModeResult{}, runtimeContractViolation("set approval mode returned nil")
 	}
-	return result.Mode, nil
+	return *result, nil
 }
 
 func (r *Connection) ListApprovalRules(ctx context.Context, sessionID string) ([]protocol.ApprovalRule, error) {

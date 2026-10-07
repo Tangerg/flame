@@ -137,7 +137,7 @@ func (b *blockingSessionDeleteRuntime) DeleteSession(
 func (b *blockingApprovalModeRuntime) SetApprovalMode(
 	ctx context.Context,
 	mode protocol.ApprovalMode,
-) (protocol.ApprovalMode, error) {
+) (protocol.ApprovalModeResult, error) {
 	select {
 	case b.started <- mode:
 	default:
@@ -150,7 +150,7 @@ func (b *blockingApprovalModeRuntime) SetApprovalMode(
 		case b.canceled <- struct{}{}:
 		default:
 		}
-		return "", context.Cause(ctx)
+		return protocol.ApprovalModeResult{}, context.Cause(ctx)
 	}
 }
 
@@ -403,7 +403,7 @@ func TestApprovalModeMutationOutlivesSameSessionProjectionReplacement(t *testing
 	release()
 	host.Shows(t, "approval mode · safe")
 	mode, err := base.GetApprovalMode(t.Context())
-	if err != nil || mode != protocol.ApprovalModeSafe {
+	if err != nil || mode.Mode != protocol.ApprovalModeSafe {
 		t.Fatalf("approval mode after mutation = (%q, %v)", mode, err)
 	}
 	stop()
