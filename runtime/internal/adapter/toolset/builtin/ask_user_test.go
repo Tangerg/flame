@@ -19,10 +19,8 @@ func TestAskUser_Validation(t *testing.T) {
 	if _, err := callTextTool(context.Background(), tool, `not json`); err == nil {
 		t.Error("invalid JSON must error")
 	}
-	if _, err := callTextTool(context.Background(), tool, `{"questions":[]}`); err == nil {
-		t.Error("empty questions must error")
-	}
 	for _, arguments := range []string{
+		`{"questions":[]}`,
 		`{"questions":[{"question":""}]}`,
 		`{"questions":[{"question":"Choose","header":"1234567890123"}]}`,
 		`{"questions":[{"question":"Choose","options":[{"label":"one"}]}]}`,
@@ -32,6 +30,26 @@ func TestAskUser_Validation(t *testing.T) {
 		if _, err := callTextTool(context.Background(), tool, arguments); err == nil {
 			t.Errorf("arguments outside the ask_user contract must error: %s", arguments)
 		}
+	}
+}
+
+// The schema admits questions the interrupt contract refuses. Nothing has parked
+// when that refusal happens, so it must fail the call rather than lose the Run tree.
+func TestAskUserQuestionRejectionFailsTheCallNotTheRun(t *testing.T) {
+	tool, err := NewAskUser(func(context.Context, string, runs.Interrupt) (interrupt.Resolution, error) {
+		t.Fatal("a refused question must not park")
+		return interrupt.Resolution{}, nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, arguments := range []string{
+		`{"questions":[{"question":"   "}]}`,
+		`{"questions":[{"question":"Choose","options":[{"label":"Yes"},{"label":"Yes"}]}]}`,
+		`{"questions":[{"question":"Choose","options":[{"label":"Yes "},{"label":"No"}]}]}`,
+	} {
+		_, err := callTextTool(t.Context(), tool, arguments)
+		requireDefiniteFailure(t, err, "ask_user "+arguments)
 	}
 }
 

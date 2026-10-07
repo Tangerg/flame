@@ -5,6 +5,7 @@ package schedules
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -16,6 +17,19 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
+
+// ErrRefused matches an error from Create or Delete that the Coordinator raised
+// before it reached the store. Nothing changed, so a caller that must prove
+// that, such as a model's tool call, can settle the command as definite; a store
+// failure never matches, because only the store knows what it wrote.
+var ErrRefused = errors.New("schedules: refused before any change")
+
+// refusal keeps its cause's message and identity; it only adds ErrRefused.
+type refusal struct{ cause error }
+
+func (r refusal) Error() string      { return r.cause.Error() }
+func (r refusal) Unwrap() error      { return r.cause }
+func (refusal) Is(target error) bool { return target == ErrRefused }
 
 // ManagementStore is the editable-schedule persistence slice owned by this
 // use case. ListPage transfers ownership of its result slice to the caller.
@@ -154,6 +168,18 @@ func (c *Coordinator) ListPage(ctx context.Context, cursor string, limit paginat
 // the draft itself is a schedule. The draft is the Domain's own admitted input
 // value, so this use case takes it rather than restating its fields.
 func (c *Coordinator) Create(ctx context.Context, draft schedule.Draft) (schedule.Schedule, error) {
+	created, err := c.admit(draft)
+	if err != nil {
+		return schedule.Schedule{}, refusal{err}
+	}
+	if err := c.store.Insert(ctx, created); err != nil {
+		return schedule.Schedule{}, fmt.Errorf("schedules: create: %w", err)
+	}
+	c.invalidations.Notify(invalidation.ForSchedules(created.ID()))
+	return created, nil
+}
+
+func (c *Coordinator) admit(draft schedule.Draft) (schedule.Schedule, error) {
 	if err := c.models.AdmitSelection(draft.ModelSelection); err != nil {
 		return schedule.Schedule{}, fmt.Errorf("schedules: model selection is not admitted: %w", err)
 	}
@@ -165,15 +191,7 @@ func (c *Coordinator) Create(ctx context.Context, draft schedule.Draft) (schedul
 		return schedule.Schedule{}, err
 	}
 	draft.CWD = resolvedCWD
-	created, err := schedule.New(c.newScheduleID(), draft, c.now())
-	if err != nil {
-		return schedule.Schedule{}, err
-	}
-	if err := c.store.Insert(ctx, created); err != nil {
-		return schedule.Schedule{}, fmt.Errorf("schedules: create: %w", err)
-	}
-	c.invalidations.Notify(invalidation.ForSchedules(created.ID()))
-	return created, nil
+	return schedule.New(c.newScheduleID(), draft, c.now())
 }
 
 // Update applies a patch to an existing schedule, preserving durable identity
@@ -239,7 +257,7 @@ func (c *Coordinator) updateExisting(
 // Delete removes a schedule by id.
 func (c *Coordinator) Delete(ctx context.Context, id string) error {
 	if err := schedule.ValidateID(id); err != nil {
-		return err
+		return refusal{err}
 	}
 	deleted, err := c.store.Delete(ctx, id)
 	if err != nil {

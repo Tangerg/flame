@@ -3,12 +3,14 @@ package builtin
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	toolcontract "github.com/Tangerg/scope/core/tool"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/toolfailure"
+	scheduleapp "github.com/Tangerg/flame/runtime/internal/application/automation/schedules"
 	"github.com/Tangerg/flame/runtime/internal/application/pagination"
 	scheduledomain "github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
@@ -115,7 +117,7 @@ func BuildSchedules(coordinator ScheduleManagement) ([]toolcontract.Tool, error)
 func (s *scheduleManagementTools) list(ctx context.Context, in listScheduleArgs) (scheduleListResponse, error) {
 	page, err := s.coordinator.ListPage(ctx, in.Cursor, pagination.DefaultLimit())
 	if err != nil {
-		return scheduleListResponse{}, fmt.Errorf("list_schedules: %w", err)
+		return scheduleListResponse{}, toolfailure.Definite(fmt.Errorf("list_schedules: %w", err))
 	}
 	views := make([]scheduleView, len(page.Rows))
 	for i, sc := range page.Rows {
@@ -138,16 +140,26 @@ func (s *scheduleManagementTools) create(ctx context.Context, in createScheduleA
 		Enabled:        true,
 	})
 	if err != nil {
-		return scheduleResponse{}, fmt.Errorf("create_schedule: %w", err)
+		return scheduleResponse{}, settleScheduleCommand(fmt.Errorf("create_schedule: %w", err))
 	}
 	return scheduleResponse{Schedule: viewSchedule(created)}, nil
 }
 
 func (s *scheduleManagementTools) delete(ctx context.Context, in deleteScheduleArgs) (scheduleDeleteResponse, error) {
 	if err := s.coordinator.Delete(ctx, in.ScheduleID); err != nil {
-		return scheduleDeleteResponse{}, fmt.Errorf("delete_schedule: %w", err)
+		return scheduleDeleteResponse{}, settleScheduleCommand(fmt.Errorf("delete_schedule: %w", err))
 	}
 	return scheduleDeleteResponse(in), nil
+}
+
+// settleScheduleCommand fails only the call when the Coordinator refused it
+// before writing; a store failure stays unclassified because its outcome is
+// unproven.
+func settleScheduleCommand(err error) error {
+	if errors.Is(err, scheduleapp.ErrRefused) {
+		return toolfailure.Definite(err)
+	}
+	return err
 }
 
 func viewSchedule(sc scheduledomain.Schedule) scheduleView {

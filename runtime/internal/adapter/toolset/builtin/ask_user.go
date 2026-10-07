@@ -4,7 +4,6 @@ package builtin
 import (
 	"context"
 	json "encoding/json/v2"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -34,13 +33,6 @@ type questionArg struct {
 type optionArg struct {
 	Label       string `json:"label" jsonschema:"minLength=1" jsonschema_description:"The choice shown to the user."`
 	Description string `json:"description,omitempty" jsonschema_description:"Optional one-line explanation of the choice."`
-}
-
-func (a askUserArgs) validate() error {
-	if len(a.Questions) == 0 {
-		return errors.New("at least one question is required")
-	}
-	return nil
 }
 
 func (a askUserArgs) toFields() []runs.QuestionFieldSpec {
@@ -86,9 +78,6 @@ func NewAskUser(interrupt runs.InterruptFunc) (toolcontract.Tool, error) {
 }
 
 func (a *asker) ask(ctx context.Context, args askUserArgs) (string, error) {
-	if err := args.validate(); err != nil {
-		return "", toolfailure.Definite(fmt.Errorf("ask_user: %w", err))
-	}
 	arguments, err := args.arguments()
 	if err != nil {
 		return "", err
@@ -99,8 +88,10 @@ func (a *asker) ask(ctx context.Context, args askUserArgs) (string, error) {
 		Fields:    args.toFields(),
 	}
 	pending := runs.Interrupt{Kind: interrupt.Question, Question: &in}
-	if validateErr := pending.Validate(); validateErr != nil {
-		return "", fmt.Errorf("ask_user: %w", validateErr)
+	// The interrupt contract owns the question rules; the schema only approximates
+	// them, so a refusal here is the model's argument rejected before anything parks.
+	if err := pending.Validate(); err != nil {
+		return "", toolfailure.Definite(fmt.Errorf("ask_user: %w", err))
 	}
 	// First pass interrupts (bubbles up, parks); resume returns the human's
 	// structured answers at this same call site.

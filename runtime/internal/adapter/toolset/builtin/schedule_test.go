@@ -137,12 +137,60 @@ func TestSchedulesCreateRejectsUnavailableWorkdir(t *testing.T) {
 	}
 	missing := filepath.Join(t.TempDir(), "missing")
 	_, err = callTextTool(t.Context(), scheduleByName(tools)["create_schedule"], `{"instructions":"summarize","cron":"0 9 * * *","workspace_path":"`+missing+`"}`)
-	if !errors.Is(err, workspaceapp.ErrCWDUnavailable) {
-		t.Fatalf("create cwd err = %v, want ErrCWDUnavailable", err)
+	requireDefiniteFailure(t, err, "create_schedule with a missing workspace")
+	var failure *toolcontract.Failure
+	if errors.As(err, &failure); !errors.Is(failure.Cause(), workspaceapp.ErrCWDUnavailable) {
+		t.Fatalf("create cwd cause = %v, want ErrCWDUnavailable", failure.Cause())
 	}
 	if len(reg.items) != 0 {
 		t.Fatalf("created %d schedule(s), want none", len(reg.items))
 	}
+}
+
+// A schedule command the Coordinator refuses before writing changed nothing, so
+// it fails the call. Left unclassified, the Host would settle the whole Run tree
+// as lost over a cron expression the model can simply rewrite.
+func TestScheduleRefusalFailsTheCallNotTheRun(t *testing.T) {
+	reg := newMemoryScheduleRegistry()
+	tools, err := BuildSchedules(newTestScheduleCoordinator(reg))
+	if err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+	byName := scheduleByName(tools)
+	for _, testCase := range []struct{ tool, arguments string }{
+		{tool: "create_schedule", arguments: `{"instructions":"summarize","cron":"every day at 9"}`},
+		{tool: "create_schedule", arguments: `{"instructions":"   ","cron":"0 9 * * *"}`},
+		{tool: "delete_schedule", arguments: `{"schedule_id":"daily-report"}`},
+		{tool: "list_schedules", arguments: `{"cursor":"not-a-cursor"}`},
+	} {
+		_, err := callTextTool(t.Context(), byName[testCase.tool], testCase.arguments)
+		requireDefiniteFailure(t, err, testCase.tool+" "+testCase.arguments)
+	}
+	if len(reg.items) != 0 {
+		t.Fatalf("created %d schedule(s), want none", len(reg.items))
+	}
+}
+
+// Only the store knows whether a failed write landed, so its failure must stay
+// unclassified for the Host to settle.
+func TestScheduleStoreFailureStaysUnproven(t *testing.T) {
+	tools, err := BuildSchedules(newTestScheduleCoordinator(failingScheduleInsert{newMemoryScheduleRegistry()}))
+	if err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+	_, err = callTextTool(t.Context(), scheduleByName(tools)["create_schedule"], `{"instructions":"summarize","cron":"0 9 * * *"}`)
+	if err == nil {
+		t.Fatal("create succeeded although the store failed")
+	}
+	if _, definite := errors.AsType[*toolcontract.Failure](err); definite {
+		t.Fatalf("create store failure = %v, want an unclassified error", err)
+	}
+}
+
+type failingScheduleInsert struct{ *memoryScheduleRegistry }
+
+func (failingScheduleInsert) Insert(context.Context, scheduledomain.Schedule) error {
+	return errors.New("disk I/O error")
 }
 
 func scheduleByName(tools []toolcontract.Tool) map[string]toolcontract.Tool {
