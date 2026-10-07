@@ -89,13 +89,22 @@ func (a *app) ReloadPlugin(id string) {
 		a.message(err.Error())
 		return
 	}
+	var failed []extensions.LifecycleResult
 	for _, result := range results {
 		if result.Err != nil {
-			a.message(fmt.Sprintf("plugin %s · %s · %v", result.PluginID, result.Phase, result.Err))
-			return
+			failed = append(failed, result)
 		}
 	}
-	a.message("reloaded plugin " + id)
+	// The status row holds one message, so several failures point at /plugins
+	// rather than letting the last one overwrite the rest.
+	switch len(failed) {
+	case 0:
+		a.message("reloaded plugin " + id)
+	case 1:
+		a.message(fmt.Sprintf("plugin %s · %s · %v", failed[0].PluginID, failed[0].Phase, failed[0].Err))
+	default:
+		a.message(fmt.Sprintf("%d plugins did not reload · /plugins for details", len(failed)))
+	}
 }
 
 func (a *app) UnloadPlugin(id string) {

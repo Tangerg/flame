@@ -2401,6 +2401,31 @@ func TestSlashCompletionHelpAndTranscriptSearchUseRegisteredCommands(t *testing.
 	stop()
 }
 
+func TestReloadReportsEveryPluginItCouldNotRestore(t *testing.T) {
+	var loads atomic.Int32
+	base := extensions.Plugin{ID: "test.base", Version: "1.0.0", APIVersion: extensions.HostAPIVersion, Setup: func(*extensions.Scope) error {
+		if loads.Add(1) > 1 {
+			return errors.New("base setup broke")
+		}
+		return nil
+	}}
+	dependent := extensions.Plugin{ID: "test.dependent", Version: "1.0.0", APIVersion: extensions.HostAPIVersion, Requires: []string{"test.base"}, Setup: func(*extensions.Scope) error {
+		return nil
+	}}
+	host, stop := runUI(t, base, dependent)
+	host.Shows(t, "Ask flame")
+	host.Type("/reload test.base")
+	host.Press(input.Enter)
+	host.Shows(t, "2 plugins did not reload · /plugins for details")
+	host.Type("/plugins")
+	host.Press(input.Enter)
+	host.Shows(t, "base setup broke")
+	host.Shows(t, "requires inactive plugin")
+
+	host.Send(input.Key{Code: input.Character, Rune: 'c', Mods: input.Ctrl})
+	stop()
+}
+
 func TestSlashCommandsEnforceTheirArgumentCardinality(t *testing.T) {
 	host, stop := runUI(t)
 	host.Shows(t, "Ask flame")
