@@ -10,11 +10,6 @@ import { useId, useState } from "react";
 import { color, leading, motion, space, type as typeStep, weight } from "@/styles/tokens.stylex";
 import { SettingRow } from "../../kit";
 
-type ApprovalModeIntent = {
-  mode: ApprovalMode;
-  settlement: "pending" | "accepted-awaiting-projection";
-} | null;
-
 const MODE_VALUES = APPROVAL_MODES.map((option) => option.value);
 
 const m = stylex.create({
@@ -27,25 +22,18 @@ const m = stylex.create({
 export function ModeRow({ mode }: { mode: ApprovalMode | undefined }) {
   const t = useT();
   const labelId = useId();
-  const [intent, setIntent] = useState<ApprovalModeIntent>(null);
-  const activeIntent =
-    intent?.settlement === "accepted-awaiting-projection" && intent.mode === mode ? null : intent;
-  const shown = activeIntent?.mode ?? mode;
+  const [pending, setPending] = useState<ApprovalMode | null>(null);
+  const shown = pending ?? mode;
 
   const onChange = async (next: ApprovalMode) => {
-    if (activeIntent !== null || next === mode) return;
-    setIntent({ mode: next, settlement: "pending" });
+    if (pending !== null || next === mode) return;
+    setPending(next);
     try {
-      const accepted = await setApprovalMode(next);
-      setIntent((current) =>
-        current?.mode === next
-          ? { mode: accepted, settlement: "accepted-awaiting-projection" }
-          : current,
-      );
+      await setApprovalMode(next);
     } catch (err) {
-      setIntent((current) => (current?.mode === next ? null : current));
-      if (wasGenerationRetired(err)) return;
-      notifyError(rpcErrorText(err) ?? t("approvals.error.mode"));
+      if (!wasGenerationRetired(err)) notifyError(rpcErrorText(err) ?? t("approvals.error.mode"));
+    } finally {
+      setPending(null);
     }
   };
   return (
@@ -63,7 +51,7 @@ export function ModeRow({ mode }: { mode: ApprovalMode | undefined }) {
           value={shown === undefined ? [] : [shown]}
           values={MODE_VALUES}
           labelledBy={labelId}
-          pending={activeIntent !== null}
+          pending={pending !== null}
           onValueChange={([next]) => {
             if (next !== undefined) void onChange(next as ApprovalMode);
           }}
@@ -76,14 +64,14 @@ export function ModeRow({ mode }: { mode: ApprovalMode | undefined }) {
               selected={o.value === shown}
               label={t(o.labelKey)}
               description={t(o.descKey)}
-              pending={activeIntent !== null}
-              busy={o.value === activeIntent?.mode}
+              pending={pending !== null}
+              busy={o.value === pending}
             >
               <span {...stylex.props(m.body)}>
                 <span {...stylex.props(m.name, typeStep.uiMd)}>{t(o.labelKey)}</span>
                 <span {...stylex.props(m.desc, typeStep.uiMd)}>{t(o.descKey)}</span>
               </span>
-              {o.value === activeIntent?.mode && (
+              {o.value === pending && (
                 <Icon
                   name="loop"
                   size="sm"

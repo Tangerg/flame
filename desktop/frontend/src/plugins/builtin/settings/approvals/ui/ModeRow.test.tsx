@@ -22,7 +22,7 @@ beforeEach(() => {
 });
 
 describe("ModeRow", () => {
-  it("owns the visible selection and duplicate admission while a save is pending", async () => {
+  it("owns the visible selection and duplicate admission only while a save is pending", async () => {
     const saving = Promise.withResolvers<ApprovalMode>();
     model.setApprovalMode.mockReturnValue(saving.promise);
     const view = render(<ModeRow mode="balanced" />);
@@ -43,19 +43,11 @@ describe("ModeRow", () => {
     fireEvent.click(safe);
     const callsWhileSaving = model.setApprovalMode.mock.calls.length;
 
+    view.rerender(<ModeRow mode="yolo" />);
     await act(async () => {
       saving.resolve("yolo");
       await saving.promise;
     });
-    const acceptedBeforeProjection = {
-      auto: auto.getAttribute("aria-checked"),
-      balanced: balanced.getAttribute("aria-checked"),
-      disabled: [safe, balanced, auto].every(
-        (button) => button.getAttribute("aria-disabled") === "true",
-      ),
-    };
-
-    view.rerender(<ModeRow mode="yolo" />);
     await waitFor(() => expect(auto.getAttribute("aria-disabled")).toBeNull());
 
     expect(pendingSelection).toEqual({
@@ -65,11 +57,6 @@ describe("ModeRow", () => {
       disabled: true,
     });
     expect(callsWhileSaving).toBe(1);
-    expect(acceptedBeforeProjection).toEqual({
-      auto: "true",
-      balanced: "false",
-      disabled: true,
-    });
     expect(auto.getAttribute("aria-checked")).toBe("true");
   });
 
