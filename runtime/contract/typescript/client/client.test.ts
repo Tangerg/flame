@@ -9,7 +9,7 @@ import { createMemoryTransport } from "@flame/runtime-contract/client/transports
 import { waitForRequest } from "@flame/runtime-contract/client/transports/memory.testkit";
 import type { Transport } from "@flame/runtime-contract/client/transport";
 import type { RpcMessage } from "@flame/runtime-contract/client/types";
-import { JSONRPC_VERSION, RPC_METHOD_NOT_FOUND } from "@flame/runtime-contract/client/types";
+import { JSONRPC_VERSION } from "@flame/runtime-contract/client/types";
 import { PROBLEM_CODES } from "@flame/runtime-contract/wire";
 import session from "@flame/runtime-contract/samples/session.json";
 import { MAXIMUM_RUN_EVENT_ID_CHARACTERS, RUN_EVENT_ID_PREFIX } from "@flame/runtime-contract/wire";
@@ -453,6 +453,5 @@ describe("RpcClient", () => {
     } as RpcMessage);
     await expect(promise).resolves.toEqual(session);
     await client.close();
-    expect(RPC_METHOD_NOT_FOUND).toBeLessThan(0);
   });
 });

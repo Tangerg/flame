@@ -47,6 +47,31 @@ describe("unary mutation settlement", () => {
     },
   );
 
+  it("refuses a command its owner already retired without an unobserved deadline", async () => {
+    const unhandled = vi.fn();
+    process.on("unhandledRejection", unhandled);
+    try {
+      const refusal = new TypeError("invalid params");
+      const owner = new AbortController();
+      owner.abort(new Error("owner retired"));
+      const settler = createMutationSettler();
+      await expect(
+        settler.settle(
+          "runs.start:ses_1",
+          () => {
+            throw refusal;
+          },
+          { parent: owner.signal },
+        ),
+      ).rejects.toBe(refusal);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(unhandled).not.toHaveBeenCalled();
+      settler.dispose();
+    } finally {
+      process.off("unhandledRejection", unhandled);
+    }
+  });
+
   it("replays a timed-out attempt with the same logical mutation", async () => {
     vi.useFakeTimers();
     const retry = vi.fn((_options?: { signal?: AbortSignal }) => resolvedMutation("committed"));

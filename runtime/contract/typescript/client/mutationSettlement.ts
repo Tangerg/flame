@@ -56,6 +56,9 @@ function createAttempt(
     resolveDeadline = () => resolve(undefined as never);
     rejectDeadline = reject;
   });
+  // An attempt whose operation never opens is never raced; its rejection is
+  // still delivered to every wait().
+  deadline.catch(() => undefined);
   let timer: ReturnType<typeof setTimeout> | undefined = setTimeout(() => {
     timer = undefined;
     deadlineSettled = true;

@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { validateWire } from "@flame/runtime-contract/validate";
-import { PROBLEM_RECOVERY, RUN_PROBLEM_RECOVERY } from "@flame/runtime-contract/wire";
-import { RpcError, RpcTransportError, RPC_METHOD_NOT_FOUND } from "@flame/runtime-contract/client";
+import {
+  PROBLEM_CODES,
+  PROBLEM_RECOVERY,
+  RUN_PROBLEM_RECOVERY,
+} from "@flame/runtime-contract/wire";
+import { RpcError, RpcTransportError } from "@flame/runtime-contract/client";
 import { en } from "./i18n/locales/en";
 import { MAPPED_TYPES, describeErrorType, isUnsupportedMethod, rpcErrorText } from "./rpcErrors";
 
@@ -76,7 +80,7 @@ describe("the protocol error copy table", () => {
     expect(
       isUnsupportedMethod(
         new RpcError({
-          code: RPC_METHOD_NOT_FOUND,
+          code: PROBLEM_CODES.method_not_found,
           message: "method not found",
           data: { type: "method_not_found" },
         }),

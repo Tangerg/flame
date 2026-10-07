@@ -40,8 +40,6 @@ interface RpcErrorPayload {
   data?: unknown;
 }
 
-export const RPC_METHOD_NOT_FOUND = -32601;
-
 export function isResponse(msg: RpcMessage): msg is RpcResponse {
   return "id" in msg && msg.id !== undefined && !("method" in msg);
 }

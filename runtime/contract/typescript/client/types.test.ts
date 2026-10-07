@@ -5,8 +5,8 @@ import {
   isResponse,
   JSONRPC_VERSION,
   parseRpcMessage,
-  RPC_METHOD_NOT_FOUND,
 } from "@flame/runtime-contract/client/types";
+import { PROBLEM_CODES } from "@flame/runtime-contract/wire";
 
 describe("rpc/types discriminators", () => {
   it("isResponse matches { jsonrpc, id, result|error } but not Request", () => {
@@ -15,7 +15,7 @@ describe("rpc/types discriminators", () => {
       isResponse({
         jsonrpc: JSONRPC_VERSION,
         id: "2",
-        error: { code: RPC_METHOD_NOT_FOUND, message: "no" },
+        error: { code: PROBLEM_CODES.method_not_found, message: "no" },
       }),
     ).toBe(true);
     expect(isResponse({ jsonrpc: JSONRPC_VERSION, id: "1", method: "x" })).toBe(false);
