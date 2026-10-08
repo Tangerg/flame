@@ -1,4 +1,4 @@
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, expect, it, onTestFinished, vi } from "vitest";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import type { PluginInstallation } from "@flame/runtime-contract/wire";
 import { queryClient } from "@/lib/queryClient";
@@ -50,7 +50,13 @@ function connectionEvents(signal: AbortSignal): AsyncIterable<never> {
 
 function client(
   list: (signal?: AbortSignal) => Promise<{ data: PluginInstallation[] }>,
-  subscribe = async (_params: unknown, signal: AbortSignal) => ({
+  subscribe: (
+    params: unknown,
+    signal: AbortSignal,
+  ) => Promise<{ events: AsyncIterable<unknown> }> = async (
+    _params: unknown,
+    signal: AbortSignal,
+  ) => ({
     events: connectionEvents(signal),
   }),
 ): FlameClient {
@@ -194,6 +200,76 @@ it("withdraws its realization failure when the owning generation retires", async
   await resetKernelForTest();
   expect(usePackageRealization.getState().failure).toBeNull();
 });
+
+it.each(["initial snapshot", "event refresh", "event stream"] as const)(
+  "releases the failed %s subscription before retry and retirement",
+  async (stage) => {
+    const defaults = queryClient.getQueryDefaults([PACKAGES_KEY]);
+    queryClient.setQueryDefaults([PACKAGES_KEY], { retry: false });
+    onTestFinished(() => queryClient.setQueryDefaults([PACKAGES_KEY], defaults));
+    const ready = Promise.withResolvers<void>();
+    const active = new Set<AbortSignal>();
+    const row = installation("d3cbafab-ef30-4e20-9583-42f5316dc865", "package");
+    const failure = new Error(`${stage} unavailable`);
+    let failing = true;
+    const list = vi.fn(async (): Promise<{ data: PluginInstallation[] }> => {
+      if (failing && (stage === "initial snapshot" || list.mock.calls.length > 1)) throw failure;
+      return { data: [row] };
+    });
+    const subscribe = vi.fn(async (_params: unknown, signal: AbortSignal) => {
+      await ready.promise;
+      active.add(signal);
+      const close = () => {
+        active.delete(signal);
+        signal.removeEventListener("abort", close);
+      };
+      signal.addEventListener("abort", close, { once: true });
+      return {
+        events: {
+          [Symbol.asyncIterator]() {
+            const pending = connectionEvents(signal)[Symbol.asyncIterator]();
+            return {
+              async next() {
+                if (failing && stage === "event stream") throw failure;
+                if (failing && stage === "event refresh")
+                  return { done: false, value: {} } as const;
+                return pending.next();
+              },
+              async return() {
+                close();
+                return { done: true, value: undefined } as const;
+              },
+            };
+          },
+        },
+      };
+    });
+    await loadPluginsForTest(
+      runtimePlugin(),
+      createPluginsPane(() => client(list, subscribe)),
+    );
+    ready.resolve();
+    await vi.waitFor(() =>
+      expect(usePackageRealization.getState().failure?.reason).toBe(failure.message),
+    );
+    expect(active.size).toBe(0);
+    expect(contributionsTo(COLOR_THEME)).toEqual([]);
+
+    failing = false;
+    usePackageRealization.getState().failure!.retry();
+
+    await vi.waitFor(() => expect(subscribe).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() =>
+      expect(contributionsTo(COLOR_THEME).map((entry) => entry.item.label)).toEqual([
+        "package · package",
+      ]),
+    );
+    expect(active.size).toBe(1);
+    await resetKernelForTest();
+    expect(active.size).toBe(0);
+    expect(contributionsTo(COLOR_THEME)).toEqual([]);
+  },
+);
 
 it("presents and retains only the themes Runtime admits", async () => {
   const admitted = installation("d3cbafab-ef30-4e20-9583-42f5316dc865", "admitted");

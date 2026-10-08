@@ -89,9 +89,12 @@ export function registerPackageContributions(
           { topics: ["plugins.changed"] },
           signal,
         );
-        await refresh();
-        for await (const _event of subscription.events) {
+        const events = subscription.events[Symbol.asyncIterator]();
+        try {
           await refresh();
+          while (!(await events.next()).done) await refresh();
+        } finally {
+          await events.return?.();
         }
       } catch (error) {
         for (const resource of resources.values()) await resource.lifetime[asyncDisposeSymbol]();

@@ -221,8 +221,11 @@ Package themes declare a light/dark scheme. Their portable colors pass through t
 palette derivation as the custom theme, so every package theme publishes a complete token
 set. A theme that declares an accent owns it while selected; otherwise the user's accent
 applies. A failed theme realization stays local to the window: Settings → Plugins shows it
-with a retry and never writes it back to Runtime installation state. The appearance owner
-persists a rendered projection solely for first paint, keyed by the selected preference.
+with a retry and never writes it back to Runtime installation state.
+Each package realization owns its event iterator from subscription through initial
+snapshot loading and event refreshes. Every exit closes that iterator before reporting
+failure or allowing a retry; Runtime connection retirement joins the active realization.
+The appearance owner persists a rendered projection solely for first paint, keyed by the selected preference.
 Without a matching projection, first paint and live scheme decisions both follow system
 appearance until a registered contribution states the scheme. A complete Runtime catalog withdraws
 a selected package theme Runtime no longer admits, while preserving it across temporary
