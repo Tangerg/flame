@@ -128,6 +128,26 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
       });
       assert.match(result.error, /carrier probe timed out/);
     });
+    await t.test("requires CSP evidence for the attempted network resource", async (t) => {
+      const result = await runProbe(t, context, origin, () => {
+        if (window === window.top) return;
+        const fetch = window.fetch;
+        window.fetch = (url) => fetch(`${url}-unrelated`);
+      });
+      assert.match(result.error, /carrier probe timed out/);
+    });
+    await t.test("requires CSP evidence for the attempted navigation resource", async (t) => {
+      const result = await runProbe(t, context, origin, () => {
+        if (window === window.top) return;
+        addEventListener("message", (event) => {
+          if (event.data?.type !== "navigate") return;
+          event.stopImmediatePropagation();
+          parent.postMessage({ type: "carrier-navigation" }, "*");
+          location.href = new URL("/carrier-navigation-unrelated", document.baseURI).href;
+        });
+      });
+      assert.match(result.error, /carrier probe timed out/);
+    });
     await t.test("rejects a readable network response", async (t) => {
       const result = await runProbe(t, context, origin, () => {
         if (window !== window.top) window.fetch = () => Promise.resolve(new Response());

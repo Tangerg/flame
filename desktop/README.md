@@ -268,6 +268,9 @@ Network isolation requires a trusted browser CSP `connect-src` violation alongsi
 expected fetch rejection. An unexpected probe error is terminal failure. Browser cases
 also reject readable responses and synthetic CSP witnesses, so generic network failure
 cannot stand in for policy enforcement.
+Both network and navigation witnesses must report enforcement against the exact URL
+issued by the host. A violation for another resource cannot complete the pending attempt;
+browser fault cases exercise both mismatches and verify terminal cleanup.
 
 Run the browser gate from `frontend/`:
 

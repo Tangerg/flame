@@ -81,7 +81,12 @@
         let witness;
         const blockedNetwork = new Promise((resolve) => {
           witness = (event) => {
-            if (event.isTrusted && event.effectiveDirective === "connect-src")
+            if (
+              event.isTrusted &&
+              event.disposition === "enforce" &&
+              event.effectiveDirective === "connect-src" &&
+              event.blockedURI === leakURL
+            )
               resolve(event.effectiveDirective);
           };
           addEventListener("securitypolicyviolation", witness);
@@ -186,16 +191,15 @@
           escapeURL: new URL("/carrier-escape", location.href).href,
           leakURL: new URL("/carrier-leak", location.href).href,
         });
+        const navigationTarget = new URL(
+          native ? bindingURL("Touch", "carrier-child") : "/carrier-navigation",
+          location.href,
+        ).href;
         const navigationFrame = createFrame(
           "Untrusted navigation probe",
           probeNavigation,
           {
-            target: new URL(
-              native
-                ? bindingURL("Touch", "carrier-child")
-                : "/carrier-navigation",
-              location.href,
-            ).href,
+            target: navigationTarget,
           },
         );
         let channel;
@@ -304,7 +308,10 @@
             window,
             "securitypolicyviolation",
             (event) =>
-              event.isTrusted && event.effectiveDirective === "frame-src",
+              event.isTrusted &&
+              event.disposition === "enforce" &&
+              event.effectiveDirective === "frame-src" &&
+              event.blockedURI === navigationTarget,
             signal,
             () =>
               navigationFrame.contentWindow.postMessage(
