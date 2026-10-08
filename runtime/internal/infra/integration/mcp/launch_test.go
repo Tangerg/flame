@@ -17,7 +17,7 @@ import (
 )
 
 func TestRejectedLaunchRetiresItsResourceExactlyOnce(t *testing.T) {
-	for _, refusal := range []string{"invalid configuration", "canceled", "shutdown", "stdio authorization"} {
+	for _, refusal := range []string{"invalid configuration", "canceled configuration", "canceled authorization", "shutdown", "stdio authorization"} {
 		t.Run(refusal, func(t *testing.T) {
 			var retired atomic.Int32
 			retirementErr := errors.New("retirement failed")
@@ -27,7 +27,7 @@ func TestRejectedLaunchRetiresItsResourceExactlyOnce(t *testing.T) {
 			if refusal == "invalid configuration" {
 				config.Command = ""
 			}
-			if refusal == "canceled" {
+			if strings.HasPrefix(refusal, "canceled") {
 				canceled, cancel := context.WithCancel(ctx)
 				cancel()
 				ctx = canceled
@@ -38,7 +38,7 @@ func TestRejectedLaunchRetiresItsResourceExactlyOnce(t *testing.T) {
 				}
 			}
 			input, err := NewLaunch(config, nil, func() error { retired.Add(1); return retirementErr })
-			if refusal == "stdio authorization" {
+			if strings.HasSuffix(refusal, "authorization") {
 				c.servers = []*server{{id: config.ID(), config: config}}
 				if err != nil {
 					t.Fatal(err)

@@ -913,7 +913,7 @@ func toolNames(catalog []Executable) []string {
 	return names
 }
 
-func TestCanceledAuthorizationWithdrawsThePreviousSession(t *testing.T) {
+func TestCanceledConnectionCommandsPreserveTheCurrentSession(t *testing.T) {
 	remote := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "test-server", Version: "v1"}, nil)
 	addRemoteTool(t, remote, "first")
 	httpServer := httptest.NewServer(sdkmcp.NewStreamableHTTPHandler(
@@ -923,7 +923,7 @@ func TestCanceledAuthorizationWithdrawsThePreviousSession(t *testing.T) {
 	t.Cleanup(httpServer.Close)
 
 	config := ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("detach"), Transport: TransportHTTP, Endpoint: httpServer.URL}
-	c, _, err := testDial(t.Context(), t.Context(), []ServerConfig{config}, nil)
+	c, initial, err := testDial(t.Context(), t.Context(), []ServerConfig{config}, nil)
 	if err != nil {
 		t.Fatalf("Dial: %v", err)
 	}
@@ -933,21 +933,36 @@ func TestCanceledAuthorizationWithdrawsThePreviousSession(t *testing.T) {
 		}
 	})
 
-	publications := make(chan []string, 1)
-	c.SetToolSink(func(catalog []Executable) { publications <- toolNames(catalog) })
+	var publications [][]string
+	c.SetToolSink(func(catalog []Executable) { publications = append(publications, toolNames(catalog)) })
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if err := c.Authorize(ctx, mustLaunch(t, config)); !errors.Is(err, context.Canceled) {
-		t.Fatalf("canceled authorization = %v, want cancellation", err)
-	}
-	if names := <-publications; len(names) != 0 {
-		t.Fatalf("authorization kept the previous catalog: %v", names)
-	}
-	if tools := liveToolNames(c, config.ID()); len(tools) != 0 {
-		t.Fatalf("tools after failed authorization = %v", tools)
-	}
-	if statuses := c.Statuses(); len(statuses) != 1 || statuses[0].State != mcpserver.ConnectionFailed {
-		t.Fatalf("status after failed authorization = %+v", statuses)
+	for _, test := range []struct {
+		name    string
+		command func() error
+	}{
+		{"configure", func() error { return c.Configure(ctx, mustLaunch(t, config)) }},
+		{"refuse", func() error { return c.Refuse(ctx, config.ID(), mcpserver.FailureConfiguration) }},
+		{"authorize", func() error { return c.Authorize(ctx, mustLaunch(t, config)) }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			name, command := test.name, test.command
+			if err := command(); !errors.Is(err, context.Canceled) {
+				t.Fatalf("canceled %s = %v, want cancellation", name, err)
+			}
+			if len(publications) != 0 {
+				t.Fatalf("canceled %s published tools: %v", name, publications)
+			}
+			if tools := liveToolNames(c, config.ID()); !slices.Equal(tools, []string{"detach_first"}) {
+				t.Fatalf("tools after canceled %s = %v", name, tools)
+			}
+			if len(initial) != 1 || !initial[0].Current() {
+				t.Fatalf("canceled %s retired the current executable", name)
+			}
+			if statuses := c.Statuses(); len(statuses) != 1 || statuses[0].State != mcpserver.ConnectionConnected || statuses[0].ToolCount != 1 {
+				t.Fatalf("status after canceled %s = %+v", name, statuses)
+			}
+		})
 	}
 }
 

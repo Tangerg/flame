@@ -310,8 +310,11 @@ transition, not only a command error: when configuration, reconnect or authoriza
 cannot obtain an admitted configuration, a removed or disabled source is detached and any
 other refusal settles as `mcp_configuration_failed`, and either way the previous session
 stops serving tools. A connection dispatch or an installation reconciliation that cannot read its source owner
-settles the same way, so the failure reaches status readers instead of only the log. Supersession cancels obsolete work; shutdown cancels
-and joins every admitted attempt.
+settles the same way, so the failure reaches status readers instead of only the log.
+The connection owner admits configuration, authorization and refusal under the same lock
+that advances live state. A command canceled before admission changes no session, tools,
+credentials or status; a superseded launch cannot withdraw its replacement connection.
+Supersession cancels obsolete work; shutdown cancels and joins every admitted attempt.
 A stdio server that reports an exit status after its input closes or it is signaled has
 exited, so its retirement succeeded whatever the status. Only a session that could not be
 stopped, or a process-group cleanup that failed, is a retirement failure; it is logged when

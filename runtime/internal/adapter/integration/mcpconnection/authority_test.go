@@ -282,10 +282,7 @@ func TestAuthorizationUsesCurrentOwnerCredentials(t *testing.T) {
 	})
 	server.Authorization = "Bearer local-test"
 	registry.set(server)
-	// Cancellation prevents a regressed OAuth path from opening the system browser.
-	ctx, cancel := context.WithCancel(t.Context())
-	cancel()
-	if err := pool.Authorize(ctx, server.ID()); err == nil || !strings.Contains(err.Error(), "static authorization") {
+	if err := pool.Authorize(t.Context(), server.ID()); err == nil || !strings.Contains(err.Error(), "static authorization") {
 		t.Fatalf("authorization ignored the owner's static credentials: %v", err)
 	}
 }

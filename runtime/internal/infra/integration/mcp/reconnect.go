@@ -126,6 +126,10 @@ func (c *Connections) Authorize(ctx context.Context, source *Launch) (err error)
 		c.mu.Unlock()
 		return ErrConnectionsClosed
 	}
+	if err := ctx.Err(); err != nil {
+		c.mu.Unlock()
+		return err
+	}
 	configuredServer := c.find(cfg.ID())
 	if configuredServer == nil {
 		c.mu.Unlock()
