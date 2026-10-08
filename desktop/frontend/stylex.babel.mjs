@@ -1,6 +1,5 @@
 import path from "node:path";
 import styleXPlugin from "@stylexjs/babel-plugin";
-import typescriptPreset from "@babel/preset-typescript";
 
 /**
  * The one StyleX Babel configuration, read by both halves of the pipeline.
@@ -19,7 +18,8 @@ const root = path.resolve(import.meta.dirname);
 export const stylexBabelConfig = {
   babelrc: false,
   configFile: false,
-  presets: [[typescriptPreset, { isTSX: true, allExtensions: true }]],
+  parserOpts: { plugins: ["typescript"] },
+  overrides: [{ test: /\.tsx$/, parserOpts: { plugins: ["typescript", "jsx"] } }],
   plugins: [
     [
       styleXPlugin,

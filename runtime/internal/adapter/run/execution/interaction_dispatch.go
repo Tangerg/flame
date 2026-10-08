@@ -31,6 +31,6 @@ func (i *interactionDispatcher) Dispatch(
 	return i.inner.Dispatch(ctx, request, emit)
 }
 
-func (i *interactionDispatcher) ReplayPolicy(effect agent.Effect) agent.ReplayPolicy {
-	return i.inner.ReplayPolicy(effect)
+func (i *interactionDispatcher) Policy(effect agent.Effect) agent.EffectPolicy {
+	return i.inner.Policy(effect)
 }

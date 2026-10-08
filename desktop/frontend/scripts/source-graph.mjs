@@ -66,15 +66,14 @@ function importEdges(source) {
 
 function runtimeSpecifiers(path) {
   if (/\.d\.[cm]?ts$/.test(path)) return new Set();
-  // Use the same TypeScript erasure as the frontend's Babel pipeline. An
-  // ordinary import used only in type positions also vanishes at runtime.
+  // Erase TypeScript before collecting runtime edges. An ordinary import used
+  // only in type positions disappears from the emitted module.
   const { ast } = transformSync(readFileSync(path, "utf8"), {
     filename: path,
     babelrc: false,
     configFile: false,
-    presets: [
-      [typescriptPreset, { isTSX: true, allExtensions: true, onlyRemoveTypeImports: false }],
-    ],
+    parserOpts: { plugins: path.endsWith(".tsx") ? ["jsx"] : [] },
+    presets: [[typescriptPreset, { onlyRemoveTypeImports: false }]],
     ast: true,
     code: false,
   });

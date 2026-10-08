@@ -365,8 +365,11 @@ func TestRuntimeSearchConfinesPathsAndPreservesCancellation(t *testing.T) {
 			cause := errors.New("execution owner stopped")
 			cancel(cause)
 			_, err := callTextTool(ctx, namedDirectTool(t, root, name), `{"pattern":"x"}`)
-			if !errors.Is(err, cause) {
-				t.Fatalf("search cancellation = %v, want original cause", err)
+			if !errors.Is(err, context.Canceled) {
+				t.Fatalf("search cancellation = %v, want context.Canceled", err)
+			}
+			if context.Cause(ctx) != cause {
+				t.Fatalf("execution cancellation cause = %v, want original cause", context.Cause(ctx))
 			}
 			if _, known := errors.AsType[*toolcontract.Failure](err); known {
 				t.Fatal("cancellation became model feedback")

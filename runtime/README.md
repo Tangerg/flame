@@ -671,7 +671,7 @@ Root and delegated Interactions, ordinary Tools, and lifetime child/process coun
 
 ## Scope execution settlement
 
-Runtime uses the released Scope v0.41.0 modules. Static Tool and Delegate
+Runtime uses the released Scope modules pinned in `go.mod`. Static Tool and Delegate
 bindings belong to Scope Deployments through `Definition.ChildDeployments`;
 Scope owns their identity, start, and restoration. Provider construction uses
 Scope's `Chat`, `Messages`, `ChatCompletions`, or `Responses` entrypoint for the
@@ -828,11 +828,14 @@ Stored JSON uses the standard library's single-pass strict decoder. Columns requ
 
 `GOWORK=off go test ./internal/adapter/persistence -run '^$' -bench BenchmarkSessionMaterialSnapshot -benchmem` measures coherent SQLite material reads and application validation at increasing history sizes. It excludes protocol encoding and client rendering; evaluate those separately before changing snapshot completeness or the subscription fence.
 
-## Scope v0.41 integration
+## Scope integration
 
-The v0.41 upgrade is separate from the tool identity and approval policy changes.
-It uses static `ChildDeployments`, the released provider constructors and transport,
-and Scope error categories. Workspace and waiting-tree validation errors mark a
+Runtime uses static `ChildDeployments`, the released provider constructors and
+transport, and Scope error categories. The Dispatcher owns each Effect's replay
+and capability policy; Runtime's Segment gate forwards that complete policy.
+An Interaction's final Output carries either a model response or direct Tool
+results, without a second completion-source field. Workspace and waiting-tree
+validation errors mark a
 probe as nonresumable only when their cause is `ErrExecutorStateLost`. Storage,
 cancellation, and other unexpected probe errors propagate to recovery instead of
 being persisted as irreversible state loss. Malformed or incompatible checkpoints
@@ -871,7 +874,7 @@ before model discovery and reserves every built-in name, including unavailable t
 Cross-server collisions never reject a connection: all competing remote identities
 are excluded symmetrically. `mcp.tools.list` reports their model names and conflicting
 source references, which CLI and Desktop display alongside the connected catalog.
-Scope v0.41.0 rejects a whole MCP source when names collide within that source,
+Scope rejects a whole MCP source when names collide within that source,
 before returning any executables. Preserving its unrelated tools requires an
 upstream discovery API that can exclude collisions; Flame does not replace
 Scope discovery or assign temporary names to work around it.

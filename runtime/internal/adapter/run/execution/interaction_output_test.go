@@ -131,12 +131,12 @@ func TestDelegatedOutputSurvivesColdRestoreWithoutReplyCache(t *testing.T) {
 				t.Fatalf("restored output=%+v calls=%d error=%v", output, modelCalls.Load(), err)
 			}
 			if test.direct {
-				if output.Source != interaction.CompletionSourceDirectToolResults || toolCalls.Load() != 1 ||
+				if output.ModelResponse != nil || toolCalls.Load() != 1 ||
 					len(output.DirectToolResults) != 1 || output.DirectToolResults[0].ID != "answer_1" {
 					t.Fatalf("direct result changed: output=%+v calls=%d", output, toolCalls.Load())
 				}
 			} else {
-				if output.Source != interaction.CompletionSourceModelResponse {
+				if output.ModelResponse == nil {
 					t.Fatal("restored output lost its assistant message")
 				}
 				want, _ := agent.EncodePayload(test.message)

@@ -510,37 +510,46 @@ func TestInteractionExecutorReportsDispatcherPanicAsUnknownEffect(t *testing.T) 
 
 func TestInteractionTerminationMappingIsComplete(t *testing.T) {
 	tests := []struct {
-		name, status, cause, reason string
-		failureKind, failureCode    string
-		wantOutcome                 run.Outcome
-		wantFailure                 run.FailureKind
-		hasFailure                  bool
+		name, cause, reason      string
+		failureKind, failureCode string
+		wantOutcome              run.Outcome
+		wantFailure              run.FailureKind
+		hasFailure               bool
 	}{
-		{name: "completion", status: "completed", cause: "completion", wantOutcome: run.OutcomeCompleted},
-		{name: "parent deadline", status: "timed_out", cause: "parent_deadline", reason: "parent deadline", wantOutcome: run.OutcomeTimedOut, wantFailure: run.FailureTimeout, hasFailure: true},
-		{name: "host deadline", status: "timed_out", cause: "host_deadline", reason: "host deadline", wantOutcome: run.OutcomeTimedOut, wantFailure: run.FailureTimeout, hasFailure: true},
-		{name: "parent cancellation", status: "canceled", cause: "parent_cancellation", reason: "parent canceled", wantOutcome: run.OutcomeCanceled},
-		{name: "host cancellation", status: "canceled", cause: "host_cancellation", reason: "host canceled", wantOutcome: run.OutcomeCanceled},
-		{name: "unresolved effects stop", status: "canceled", cause: "host_cancellation", reason: unresolvedEffectsStopReason, wantOutcome: run.OutcomeLost, wantFailure: run.FailureLost, hasFailure: true},
-		{name: "strategy failure", status: "failed", cause: "execution_failure", reason: "strategy failed", failureKind: "execution", failureCode: "execution.failed", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureAgentStuck, hasFailure: true},
-		{name: "invalid model response", status: "failed", cause: "external_failure", reason: "invalid response", failureKind: "external", failureCode: "interaction.model.invalid_response", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureProviderRejected, hasFailure: true},
-		{name: "incomplete tool calls", status: "failed", cause: "external_failure", reason: "incomplete tool calls", failureKind: "external", failureCode: "interaction.model.tool_calls_not_completed", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureProviderRejected, hasFailure: true},
-		{name: "unknown external failure", status: "failed", cause: "external_failure", reason: "external failure", failureKind: "external", failureCode: "new.external.failure", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureInternal, hasFailure: true},
-		{name: "unresolved delegate", status: "failed", cause: "external_failure", reason: "unresolved external work", failureKind: "external", failureCode: "interaction.delegate.unresolved_effects", wantOutcome: run.OutcomeLost, wantFailure: run.FailureLost, hasFailure: true},
-		{name: "host projection failure", status: "failed", cause: "external_failure", reason: "journal unavailable", failureKind: "external", failureCode: "interaction.host.failed", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureInternal, hasFailure: true},
-		{name: "contract failure", status: "failed", cause: "contract_failure", reason: "contract failed", failureKind: "contract", failureCode: "contract.failed", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureInternal, hasFailure: true},
-		{name: "panic", status: "failed", cause: "panic", reason: "execution panicked", failureKind: "panic", failureCode: "execution.panic", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureInternal, hasFailure: true},
-		{name: "engine kill", status: "killed", cause: "engine_kill", reason: "engine shutdown", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureInternal, hasFailure: true},
+		{name: "completion", wantOutcome: run.OutcomeCompleted},
+		{name: "parent deadline", cause: "parent_deadline", reason: "parent deadline", wantOutcome: run.OutcomeTimedOut, wantFailure: run.FailureTimeout, hasFailure: true},
+		{name: "host deadline", cause: "host_deadline", reason: "host deadline", wantOutcome: run.OutcomeTimedOut, wantFailure: run.FailureTimeout, hasFailure: true},
+		{name: "parent cancellation", cause: "parent_cancellation", reason: "parent canceled", wantOutcome: run.OutcomeCanceled},
+		{name: "host cancellation", cause: "host_cancellation", reason: "host canceled", wantOutcome: run.OutcomeCanceled},
+		{name: "unresolved effects stop", cause: "host_cancellation", reason: unresolvedEffectsStopReason, wantOutcome: run.OutcomeLost, wantFailure: run.FailureLost, hasFailure: true},
+		{name: "strategy failure", reason: "strategy failed", failureKind: "execution", failureCode: "execution.failed", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureAgentStuck, hasFailure: true},
+		{name: "invalid model response", reason: "invalid response", failureKind: "external", failureCode: "interaction.model.invalid_response", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureProviderRejected, hasFailure: true},
+		{name: "incomplete tool calls", reason: "incomplete tool calls", failureKind: "external", failureCode: "interaction.model.tool_calls_not_completed", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureProviderRejected, hasFailure: true},
+		{name: "unknown external failure", reason: "external failure", failureKind: "external", failureCode: "new.external.failure", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureInternal, hasFailure: true},
+		{name: "unresolved delegate", reason: "unresolved external work", failureKind: "external", failureCode: "interaction.delegate.unresolved_effects", wantOutcome: run.OutcomeLost, wantFailure: run.FailureLost, hasFailure: true},
+		{name: "host projection failure", reason: "journal unavailable", failureKind: "external", failureCode: "interaction.host.failed", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureInternal, hasFailure: true},
+		{name: "contract failure", reason: "contract failed", failureKind: "contract", failureCode: "contract.failed", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureInternal, hasFailure: true},
+		{name: "panic", reason: "execution panicked", failureKind: "panic", failureCode: "execution.panic", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureInternal, hasFailure: true},
+		{name: "engine kill", cause: "engine_kill", reason: "engine shutdown", wantOutcome: run.OutcomeFailed, wantFailure: run.FailureInternal, hasFailure: true},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			wire := map[string]any{
-				"status": test.status, "cause": test.cause, "reason": test.reason,
-			}
-			if test.failureKind != "" {
-				wire["failure"] = map[string]string{
-					"kind": test.failureKind, "code": test.failureCode, "message": test.reason,
+			wire := map[string]any{}
+			switch {
+			case test.failureKind != "":
+				failure, err := agent.NewFailure(agent.FailureKind(test.failureKind), test.failureCode, test.reason)
+				if err != nil {
+					t.Fatal(err)
 				}
+				wire["failure"] = failure
+			case test.cause != "":
+				wire["cause"], wire["reason"] = test.cause, test.reason
+			default:
+				output, err := agent.EncodePayload("completed")
+				if err != nil {
+					t.Fatal(err)
+				}
+				wire["output"] = output
 			}
 			payload, err := json.Marshal(wire)
 			if err != nil {

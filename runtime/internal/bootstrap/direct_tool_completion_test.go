@@ -40,14 +40,14 @@ func TestProtocolCompletesDirectToolResults(t *testing.T) {
 						for _, part := range message.Parts {
 							if part.ToolResult != nil && part.ToolResult.Name == "delegate_task" {
 								var output struct {
-									Source            string            `json:"source"`
+									ModelResponse     *chat.Response    `json:"model_response"`
 									DirectToolResults []chat.ToolResult `json:"direct_tool_results"`
 									ModelCalls        uint64            `json:"model_calls"`
 								}
 								if err := json.Unmarshal(part.ToolResult.Output.Details, &output); err != nil {
 									return nil, err
 								}
-								if output.Source != "direct_tool_results" || output.ModelCalls != 2 {
+								if output.ModelResponse != nil || len(output.DirectToolResults) == 0 || output.ModelCalls != 2 {
 									return nil, fmt.Errorf("delegated completion changed: %+v", output)
 								}
 								results = output.DirectToolResults

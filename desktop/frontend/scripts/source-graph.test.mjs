@@ -154,6 +154,22 @@ test("ordinary imports used only as types do not create runtime cycles", () => {
   );
 });
 
+test("TSX component imports remain runtime dependencies", () => {
+  fixture(
+    {
+      "src/entry.tsx":
+        'import { View } from "./view"; import type { Shape } from "./shape"; export const render = (props: Shape) => <View {...props} />;',
+      "src/view.tsx": "export const View = () => <div />;",
+      "src/shape.ts": "export interface Shape { title: string }",
+    },
+    (root) => {
+      const { graph, values } = readSourceGraph(root);
+      assert.deepEqual(new Set(graph["entry.tsx"]), new Set(["view.tsx", "shape.ts"]));
+      assert.deepEqual(values["entry.tsx"], ["view.tsx"]);
+    },
+  );
+});
+
 test("resolved Runtime SDK paths and aliases keep the client boundary", () => {
   const sdk = fileURLToPath(import.meta.resolve("@flame/runtime-contract/client/ids"));
   fixture(

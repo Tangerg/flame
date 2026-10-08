@@ -159,7 +159,7 @@ func TestInteractionExecutorRunsDelegateAsProductChildRun(t *testing.T) {
 		t.Fatal(err)
 	}
 	output, err := payload.Decode[interaction.Output]()
-	if err != nil || output.Validate() != nil || output.Source != interaction.CompletionSourceModelResponse ||
+	if err != nil || output.Validate() != nil || output.ModelResponse == nil ||
 		output.ModelResponse.Text() != "subtask: result" || output.ModelCalls != 1 {
 		t.Fatalf("Delegate result lost its Scope output: %+v, %v", output, err)
 	}
