@@ -435,6 +435,58 @@ func TestLiveToolStreamsInPlaceAndCompletesFromAuthoritativeOutput(t *testing.T)
 	}
 }
 
+func TestObservationFailureRetainsRuntimeToolStatus(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		kind   conversation.ToolKind
+		sealed bool
+	}{
+		{name: "single", kind: conversation.ToolShell},
+		{name: "active group", kind: conversation.ToolRead},
+		{name: "sealed group", kind: conversation.ToolRead, sealed: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			view := testTranscriptView(t)
+			registry := new(extensions.Registry)
+			loaded, err := extensions.Load(registry, builtinPlugin())
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = loaded.Dispose() })
+			view.ToggleDetails()
+			call := conversation.ToolCall{Kind: test.kind, Command: "pending command", Path: "live.go", Status: conversation.ToolRunning}
+			if err := view.Apply(conversation.BlockStarted{Block: conversation.Block{ID: "tool", Kind: conversation.BlockTool, Tool: &call}}, registry); err != nil {
+				t.Fatal(err)
+			}
+			if err := view.Apply(conversation.BlockDelta{BlockID: "tool", Text: "observed output"}, nil); err != nil {
+				t.Fatal(err)
+			}
+			if test.kind == conversation.ToolRead {
+				if err := view.Apply(conversation.BlockStarted{Block: conversation.Block{ID: "tool-2", Kind: conversation.BlockTool, Tool: &call}}, registry); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if test.sealed {
+				view.Append(newUserMessageBlock(view.theme, selfSpeaker, "semantic boundary"))
+			}
+			view.rejectLivePresentation()
+			drawn := drawRoot(t, view, 80, 20)
+			if !strings.Contains(drawn, "running") || !strings.Contains(drawn, "observed output") || strings.Contains(drawn, "error") {
+				t.Fatalf("observation failure rewrote Runtime tool evidence:\n%s", drawn)
+			}
+			for index := range view.content.Len() {
+				id := view.content.FirstBlock() + headless.BlockID(index)
+				if !view.content.Finished(id) {
+					t.Fatal("observation failure left a presentation block live")
+				}
+			}
+			if len(view.tools) != 0 || view.activeToolGroup != nil {
+				t.Fatal("observation failure retained a live tool observer")
+			}
+		})
+	}
+}
+
 func TestDetailFreeCompletedToolIsNotAnnouncedExpandable(t *testing.T) {
 	view := testTranscriptView(t)
 	var selection transcriptSelection

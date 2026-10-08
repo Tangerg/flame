@@ -38,7 +38,6 @@ type mutableToolBlock interface {
 	toolDisclosure
 	Update(conversation.Block)
 	AppendOutput(string)
-	Finish(conversation.ToolStatus)
 }
 
 type toolBlock struct {
@@ -79,14 +78,6 @@ func (t *toolBlock) AppendOutput(chunk string) {
 		return
 	}
 	t.call.Output += chunk
-	t.rebuild()
-}
-
-func (t *toolBlock) Finish(status conversation.ToolStatus) {
-	if t.call.Status != conversation.ToolRunning {
-		return
-	}
-	t.call.Status = status
 	t.rebuild()
 }
 

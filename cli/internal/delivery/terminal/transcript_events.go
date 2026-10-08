@@ -213,20 +213,19 @@ func (t *transcriptView) completeLiveTool(block conversation.Block) bool {
 	return true
 }
 
-func (t *transcriptView) settleLivePresentation(toolStatus conversation.ToolStatus) {
+// Ending observation releases presentation resources without deciding a Tool
+// outcome. An authoritative cold snapshot replaces the last observed evidence.
+func (t *transcriptView) rejectLivePresentation() {
 	for id, live := range t.textStreams {
 		live.block.setSource(live.text.String(), t.lookFor(live.kind))
 		t.finishMarkdown(live.id, live.block)
 		live.stream.Reset()
 		delete(t.textStreams, id)
 	}
-	selectedCollapsed := false
+	t.sealToolGroup()
 	for id, live := range t.tools {
-		for _, tracked := range live.blocks {
-			selectedCollapsed = t.mutateTrackedTool(tracked, func(tool mutableToolBlock) { tool.Finish(toolStatus) }) || selectedCollapsed
-		}
 		if live.group != nil {
-			t.finishToolGroupIfReady(live.group)
+			t.content.Finish(live.group.id)
 		} else {
 			for _, blockID := range live.ids {
 				t.content.Finish(blockID)
@@ -235,19 +234,8 @@ func (t *transcriptView) settleLivePresentation(toolStatus conversation.ToolStat
 		delete(t.tools, id)
 	}
 	t.finishPendingQuestions("")
-	if selectedCollapsed {
-		t.revealSelected()
-	}
-	t.sealToolGroup()
 	t.refreshSearch()
 	t.announceSelection()
-}
-
-// rejectLivePresentation closes provisional terminal blocks after the client
-// can no longer trust its event projection. It does not invent a Runtime Run
-// outcome; an authoritative cold snapshot will replace this presentation.
-func (t *transcriptView) rejectLivePresentation() {
-	t.settleLivePresentation(conversation.ToolError)
 }
 
 // settleRun ends a Run's presentation. Runtime closes every open Item before
