@@ -17,23 +17,42 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 )
 
-type installationMemory struct{ record *plugin.Record }
+type installationMemory struct {
+	record  *plugin.Record
+	catalog releaseMemory
+}
 
-func (s *installationMemory) List(context.Context) ([]*plugin.Installation, error) {
+func (s *installationMemory) List(ctx context.Context) ([]plugin.Snapshot, error) {
 	if s.record == nil {
 		return nil, nil
 	}
-	i, err := plugin.Restore(*s.record)
+	snapshot, err := s.Get(ctx, s.record.ID)
 	if err != nil {
 		return nil, err
 	}
-	return []*plugin.Installation{i}, nil
+	return []plugin.Snapshot{snapshot}, nil
 }
-func (s *installationMemory) Get(context.Context, resourceid.InstallationID) (*plugin.Installation, error) {
+func (s *installationMemory) Get(ctx context.Context, _ resourceid.InstallationID) (plugin.Snapshot, error) {
 	if s.record == nil {
-		return nil, plugin.ErrNotFound
+		return plugin.Snapshot{}, plugin.ErrNotFound
 	}
-	return plugin.Restore(*s.record)
+	installation, err := plugin.Restore(*s.record)
+	if err != nil {
+		return plugin.Snapshot{}, err
+	}
+	selected, err := s.catalog.Get(ctx, installation.Selected())
+	if err != nil {
+		return plugin.Snapshot{}, err
+	}
+	snapshot := plugin.Snapshot{Installation: installation, Selected: selected}
+	if digest, staged := installation.Staged(); staged {
+		staged, err := s.catalog.Get(ctx, digest)
+		if err != nil {
+			return plugin.Snapshot{}, err
+		}
+		snapshot.Staged = &staged
+	}
+	return snapshot, nil
 }
 func (s *installationMemory) Save(_ context.Context, i *plugin.Installation) error {
 	r := i.Snapshot()
@@ -117,7 +136,7 @@ type admittedInstallationStore struct {
 	dependencies *installationDependencies
 }
 
-func (s admittedInstallationStore) List(ctx context.Context) ([]*plugin.Installation, error) {
+func (s admittedInstallationStore) List(ctx context.Context) ([]plugin.Snapshot, error) {
 	if !s.dependencies.held {
 		return nil, errors.New("capacity read outside installation admission")
 	}
@@ -157,11 +176,12 @@ func installationFixture(t *testing.T) (*installationMemory, *installationDepend
 	if err := i.Approve(release); err != nil {
 		t.Fatal(err)
 	}
-	s := &installationMemory{}
+	catalog := releaseMemory{release.Digest(): release}
+	s := &installationMemory{catalog: catalog}
 	if err := s.Save(t.Context(), i); err != nil {
 		t.Fatal(err)
 	}
-	return s, &installationDependencies{}, i.ID(), releaseMemory{release.Digest(): release}
+	return s, &installationDependencies{}, i.ID(), catalog
 }
 
 func TestCommittedInstallationLeavesConnectionOutcomeToItsSupervisor(t *testing.T) {
@@ -171,7 +191,7 @@ func TestCommittedInstallationLeavesConnectionOutcomeToItsSupervisor(t *testing.
 			t.Fatal("external reconcile retained executable admission")
 		}
 		current, err := store.Get(ctx, id)
-		if err != nil || !current.Active() {
+		if err != nil || !current.Installation.Active() {
 			t.Fatal("realization preceded durable enablement")
 		}
 		return errors.New("supervisor is closing")
@@ -291,7 +311,7 @@ func TestStaleConfigurationNeverReachesPersistenceOrRealization(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(before.Snapshot(), after.Snapshot()) {
+	if !reflect.DeepEqual(before.Installation.Snapshot(), after.Installation.Snapshot()) {
 		t.Fatal("stale configuration advanced durable installation facts")
 	}
 }
@@ -313,7 +333,7 @@ func TestFailedPreparationIsObservedByTheChangeAndEveryLaterListing(t *testing.T
 				t.Fatal("package preparation retained executable admission")
 			}
 			current, err := store.Get(ctx, id)
-			if err != nil || !current.Active() || !installation.Active() {
+			if err != nil || !current.Installation.Active() || !installation.Active() {
 				t.Fatal("package preparation preceded durable enablement")
 			}
 			return errors.New("backend directory could not be created")
@@ -382,7 +402,7 @@ func TestChangedSourcesAreWithdrawnInsideAdmissionAfterTheCommit(t *testing.T) {
 					current, err := store.Get(t.Context(), id)
 					switch operation {
 					case "disable":
-						if err != nil || current.Active() {
+						if err != nil || current.Installation.Active() {
 							t.Fatalf("withdrawal preceded the durable change: %+v, %v", current, err)
 						}
 					case "uninstall":
@@ -448,7 +468,7 @@ func TestInstallationReconcileCanReenterTheOwner(t *testing.T) {
 		t.Fatal(err)
 	}
 	current, err := store.Get(t.Context(), id)
-	if err != nil || current.Active() || calls != 2 {
+	if err != nil || current.Installation.Active() || calls != 2 {
 		t.Fatalf("reentrant withdrawal: %+v, %v, calls=%d", current, err, calls)
 	}
 }
@@ -544,9 +564,9 @@ func TestCommittedInstallationRealizationFollowsRuntimeLifetime(t *testing.T) {
 
 func TestInstallDecidesCapacityAtTheAdmissionSerializationPoint(t *testing.T) {
 	dependencies := &installationDependencies{}
-	store := admittedInstallationStore{installationMemory: &installationMemory{}, dependencies: dependencies}
 	release := testsupport.Release(t, "1", plugin.Declaration{Name: "package"})
 	catalog := releaseMemory{release.Digest(): release}
+	store := admittedInstallationStore{installationMemory: &installationMemory{catalog: catalog}, dependencies: dependencies}
 	packages := installationPackages{materialize: func(context.Context, string) (plugin.Release, error) {
 		if dependencies.held {
 			t.Fatal("package materialization held installation admission")

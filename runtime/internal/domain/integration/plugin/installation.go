@@ -93,6 +93,15 @@ type Configuration struct {
 	Skills  map[string]ComponentChange
 }
 
+// Snapshot binds installation state to the immutable releases it names. It is
+// a detached read projection; only Installation transitions advance admission.
+// Store readers must hydrate all three values from the same consistent read.
+type Snapshot struct {
+	Installation *Installation
+	Selected     Release
+	Staged       *Release
+}
+
 // Installation alone advances selection, trust, and configuration. A
 // transition that depends on release content is handed the release read from
 // the admitted catalog and refuses any release other than the one it names.

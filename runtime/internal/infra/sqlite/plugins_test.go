@@ -205,8 +205,11 @@ func TestInstallationStateRoundTripsRelationally(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(restored.Snapshot(), i.Snapshot()) {
-		t.Fatalf("relational round trip = %+v, want %+v", restored.Snapshot(), i.Snapshot())
+	if !reflect.DeepEqual(restored.Installation.Snapshot(), i.Snapshot()) {
+		t.Fatalf("relational round trip = %+v, want %+v", restored.Installation.Snapshot(), i.Snapshot())
+	}
+	if restored.Selected.Digest() != release.Digest() || restored.Staged == nil || restored.Staged.Digest() != candidate.Digest() {
+		t.Fatalf("installation read lost its selected or staged release: %+v", restored)
 	}
 	requireRows(t, db, map[string]int{"plugin_installation_values": 1, "plugin_installation_disabled": 2, "mcp_sources": 2})
 	for _, statement := range []string{

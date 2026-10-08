@@ -313,7 +313,7 @@ func TestMCPRegistryRetainsUnavailableDeclaredSources(t *testing.T) {
 	if err := store.Save(t.Context(), installation); err != nil {
 		t.Fatal(err)
 	}
-	registry, err := plugins.NewRegistry(users, store, releases.catalog, releases)
+	registry, err := plugins.NewRegistry(users, store, releases)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -390,7 +390,7 @@ func TestMCPCatalogRetainsAnUnavailableBackendAndItsHealthyPeer(t *testing.T) {
 	if err := store.Save(t.Context(), installation); err != nil {
 		t.Fatal(err)
 	}
-	registry, err := plugins.NewRegistry(users, store, releases.catalog, releases)
+	registry, err := plugins.NewRegistry(users, store, releases)
 	if err != nil {
 		t.Fatal(err)
 	}

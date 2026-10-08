@@ -32,9 +32,9 @@ type identifiedInstallations struct {
 	id resourceid.InstallationID
 }
 
-func (s *identifiedInstallations) Get(ctx context.Context, id resourceid.InstallationID) (*plugin.Installation, error) {
+func (s *identifiedInstallations) Get(ctx context.Context, id resourceid.InstallationID) (plugin.Snapshot, error) {
 	if id != s.id {
-		return nil, plugin.ErrNotFound
+		return plugin.Snapshot{}, plugin.ErrNotFound
 	}
 	return s.installationMemory.Get(ctx, id)
 }
@@ -86,7 +86,7 @@ func TestRegistryResolvesOneServerPerOrigin(t *testing.T) {
 	if err := installation.Enable(release); err != nil {
 		t.Fatal(err)
 	}
-	installations := &identifiedInstallations{installationMemory: &installationMemory{}, id: installation.ID()}
+	installations := &identifiedInstallations{installationMemory: &installationMemory{catalog: releaseMemory{release.Digest(): release}}, id: installation.ID()}
 	if err := installations.Save(t.Context(), installation); err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +107,7 @@ func TestRegistryResolvesOneServerPerOrigin(t *testing.T) {
 		userOff:  {Source: mcpserver.UserSource(), Name: userOff, Transport: mcpserver.TransportStdio, Command: "paused"},
 	}
 	packages := &singleServerPackages{}
-	registry, err := NewRegistry(users, installations, releaseMemory{release.Digest(): release}, packages)
+	registry, err := NewRegistry(users, installations, packages)
 	if err != nil {
 		t.Fatal(err)
 	}

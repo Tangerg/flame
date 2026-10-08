@@ -90,7 +90,7 @@ func BenchmarkAuthorizedToolCall(b *testing.B) {
 	if err := releases.Prepare(b.Context(), installation, release); err != nil {
 		b.Fatal(err)
 	}
-	registry, err := plugins.NewRegistry(sqlite.NewMCPServerStore(db), installations, catalog, releases)
+	registry, err := plugins.NewRegistry(sqlite.NewMCPServerStore(db), installations, releases)
 	if err != nil {
 		b.Fatal(err)
 	}

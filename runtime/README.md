@@ -140,8 +140,11 @@ Install from an absolute directory or ZIP path on the Runtime machine. Admission
 regular files into a bounded, SHA-256-addressed release; it does not execute package code.
 The immutable release catalog owns the declaration accepted at first admission and is the
 only owner of release content: an installation names its selected and staged releases by
-digest and every reader takes the declaration from the catalog. A release is admitted once
-by its constructor, which validates each contribution exactly once (package admission
+digest. Installation reads hydrate selected and staged catalog declarations in the same
+storage transaction as installation state. Lists, MCP definitions and Skills consume that
+coherent snapshot, so concurrent release reclamation cannot break a later metadata join.
+Byte availability remains a live filesystem observation after the transaction. A release
+is admitted once by its constructor, which validates each contribution exactly once (package admission
 isolates an invalid contribution against the ones admitted before it); persistence,
 installations and projections trust the admitted value. Repeated installation and cold
 loading use that declaration; integrity validation does not reinterpret package

@@ -106,7 +106,7 @@ func TestReleaseUpdateRetainsPluginDataWithoutImplicitMigration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	servers, err := realizedServers(t.Context(), releases, current, selected.Selected)
+	servers, err := realizedServers(t.Context(), releases, current.Installation, selected.Selected)
 	if err != nil || len(servers) != 1 {
 		t.Fatalf("descriptors = %+v, %v", servers, err)
 	}

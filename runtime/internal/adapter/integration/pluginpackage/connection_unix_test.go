@@ -63,7 +63,7 @@ func TestRepairedReleaseReconnectsThroughItsCurrentDefinition(t *testing.T) {
 	if err := installations.Save(t.Context(), installation); err != nil {
 		t.Fatal(err)
 	}
-	registry, err := plugins.NewRegistry(users, installations, releases.catalog, releases)
+	registry, err := plugins.NewRegistry(users, installations, releases)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +152,7 @@ func TestTamperedPackageCannotLaunchThroughConnectionEntrypoints(t *testing.T) {
 	if err := releases.Prepare(t.Context(), installation, release); err != nil {
 		t.Fatalf("prepare = %v", err)
 	}
-	registry, err := plugins.NewRegistry(userServers, installations, releases.catalog, releases)
+	registry, err := plugins.NewRegistry(userServers, installations, releases)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -272,7 +272,7 @@ func TestBackendPreparationFailureIsObservedByLaterReads(t *testing.T) {
 			t.Fatalf("later listing = %+v, %v; want the failed backend observed", listed, err)
 		}
 	}
-	registry, err := plugins.NewRegistry(users, installations, releases.catalog, releases)
+	registry, err := plugins.NewRegistry(users, installations, releases)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -327,7 +327,7 @@ func TestDisabledInstallationServerRefusesConnectionAsDisabled(t *testing.T) {
 	if err := installations.Save(t.Context(), installation); err != nil {
 		t.Fatal(err)
 	}
-	registry, err := plugins.NewRegistry(users, installations, releases.catalog, releases)
+	registry, err := plugins.NewRegistry(users, installations, releases)
 	if err != nil {
 		t.Fatal(err)
 	}

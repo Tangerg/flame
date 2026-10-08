@@ -14,8 +14,8 @@ import (
 )
 
 type Store interface {
-	List(context.Context) ([]*plugin.Installation, error)
-	Get(context.Context, resourceid.InstallationID) (*plugin.Installation, error)
+	List(context.Context) ([]plugin.Snapshot, error)
+	Get(context.Context, resourceid.InstallationID) (plugin.Snapshot, error)
 	Save(context.Context, *plugin.Installation) error
 	Remove(context.Context, resourceid.InstallationID) error
 }
@@ -50,23 +50,14 @@ type userServers interface {
 type Registry struct {
 	user          userServers
 	installations Store
-	catalog       Catalog
 	packages      PackageSources
 }
 
-func NewRegistry(user userServers, installations Store, catalog Catalog, packages PackageSources) (*Registry, error) {
-	if user == nil || installations == nil || catalog == nil || packages == nil {
+func NewRegistry(user userServers, installations Store, packages PackageSources) (*Registry, error) {
+	if user == nil || installations == nil || packages == nil {
 		return nil, errors.New("plugins: registry dependencies are required")
 	}
-	return &Registry{user, installations, catalog, packages}, nil
-}
-
-func (r *Registry) release(ctx context.Context, installation *plugin.Installation) (plugin.Release, error) {
-	release, err := r.catalog.Get(ctx, installation.Selected())
-	if err != nil {
-		return plugin.Release{}, fmt.Errorf("plugins: read release %s: %w", installation.Selected(), err)
-	}
-	return release, nil
+	return &Registry{user: user, installations: installations, packages: packages}, nil
 }
 
 // Catalog lists every source of every origin. Each installation's sources come
@@ -85,12 +76,9 @@ func (r *Registry) Catalog(ctx context.Context) ([]mcpapp.Source, error) {
 	if err != nil {
 		return nil, err
 	}
-	for _, installation := range installations {
-		release, err := r.release(ctx, installation)
-		if err != nil {
-			return nil, err
-		}
-		realization, err := r.packages.Realize(ctx, installation, release)
+	for _, snapshot := range installations {
+		installation := snapshot.Installation
+		realization, err := r.packages.Realize(ctx, installation, snapshot.Selected)
 		if err != nil {
 			return nil, fmt.Errorf("plugins: realize installation %s: %w", installation.ID(), err)
 		}
@@ -107,18 +95,14 @@ func (r *Registry) resolve(ctx context.Context, id mcpserver.ID, reach Reach) (m
 	if !installed {
 		return r.user.Get(ctx, id.Name())
 	}
-	installation, err := r.installations.Get(ctx, installationID)
+	snapshot, err := r.installations.Get(ctx, installationID)
 	if errors.Is(err, plugin.ErrNotFound) {
 		return mcpserver.Server{}, false, nil
 	}
 	if err != nil {
 		return mcpserver.Server{}, false, fmt.Errorf("plugins: read installation %s: %w", installationID, err)
 	}
-	release, err := r.release(ctx, installation)
-	if err != nil {
-		return mcpserver.Server{}, false, err
-	}
-	return r.packages.Server(ctx, installation, release, id.Name(), reach)
+	return r.packages.Server(ctx, snapshot.Installation, snapshot.Selected, id.Name(), reach)
 }
 
 // Definition reads desired configuration and authority independently of executable

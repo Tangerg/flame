@@ -58,25 +58,31 @@ func (c realizingConnections) ReconcileInstallation(ctx context.Context, _ []mcp
 }
 
 type singleInstallationStore struct {
-	mu     sync.Mutex
-	record *plugin.Record
+	mu      sync.Mutex
+	record  *plugin.Record
+	catalog releaseCatalog
 }
 
-func (s *singleInstallationStore) List(ctx context.Context) ([]*plugin.Installation, error) {
+func (s *singleInstallationStore) List(ctx context.Context) ([]plugin.Snapshot, error) {
 	installation, err := s.Get(ctx, resourceid.InstallationID{})
 	if errors.Is(err, plugin.ErrNotFound) {
 		return nil, nil
 	}
-	return []*plugin.Installation{installation}, err
+	return []plugin.Snapshot{installation}, err
 }
 
-func (s *singleInstallationStore) Get(context.Context, resourceid.InstallationID) (*plugin.Installation, error) {
+func (s *singleInstallationStore) Get(ctx context.Context, _ resourceid.InstallationID) (plugin.Snapshot, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.record == nil {
-		return nil, plugin.ErrNotFound
+		return plugin.Snapshot{}, plugin.ErrNotFound
 	}
-	return plugin.Restore(*s.record)
+	installation, err := plugin.Restore(*s.record)
+	if err != nil {
+		return plugin.Snapshot{}, err
+	}
+	selected, err := s.catalog.Get(ctx, installation.Selected())
+	return plugin.Snapshot{Installation: installation, Selected: selected}, err
 }
 
 func (s *singleInstallationStore) Save(_ context.Context, installation *plugin.Installation) error {
@@ -133,7 +139,7 @@ func TestRunAssembledAfterUninstallCommitCannotDependOnTheRemovedRelease(t *test
 	if err := installation.Enable(release); err != nil {
 		t.Fatal(err)
 	}
-	store := &singleInstallationStore{}
+	store := &singleInstallationStore{catalog: releaseCatalog{release.Digest(): release}}
 	if err := store.Save(t.Context(), installation); err != nil {
 		t.Fatal(err)
 	}

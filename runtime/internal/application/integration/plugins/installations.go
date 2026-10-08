@@ -140,8 +140,8 @@ func (c *Coordinator) List(ctx context.Context) ([]Inspection, error) {
 		return nil, fmt.Errorf("plugins: list installations: %w", err)
 	}
 	result := make([]Inspection, 0, len(installations))
-	for _, installation := range installations {
-		inspection, err := c.inspect(ctx, installation)
+	for _, snapshot := range installations {
+		inspection, err := c.inspect(ctx, snapshot)
 		if err != nil {
 			return nil, err
 		}
@@ -150,23 +150,13 @@ func (c *Coordinator) List(ctx context.Context) ([]Inspection, error) {
 	return result, nil
 }
 
-func (c *Coordinator) inspect(ctx context.Context, installation *plugin.Installation) (Inspection, error) {
-	selected, err := c.catalog.Get(ctx, installation.Selected())
-	if err != nil {
-		return Inspection{}, fmt.Errorf("plugins: read release %s: %w", installation.Selected(), err)
-	}
+func (c *Coordinator) inspect(ctx context.Context, snapshot plugin.Snapshot) (Inspection, error) {
+	installation, selected := snapshot.Installation, snapshot.Selected
 	view, err := installation.View(selected)
 	if err != nil {
 		return Inspection{}, err
 	}
-	inspection := Inspection{View: view, Selected: selected}
-	if digest, staged := installation.Staged(); staged {
-		release, err := c.catalog.Get(ctx, digest)
-		if err != nil {
-			return Inspection{}, fmt.Errorf("plugins: read release %s: %w", digest, err)
-		}
-		inspection.Staged = &release
-	}
+	inspection := Inspection{View: view, Selected: selected, Staged: snapshot.Staged}
 	if inspection.Realization, err = c.packages.Realize(ctx, installation, selected); err != nil {
 		return Inspection{}, fmt.Errorf("plugins: observe installation %s: %w", installation.ID(), err)
 	}
@@ -201,6 +191,7 @@ func (c *Coordinator) Install(ctx context.Context, source string) (_ Inspection,
 	if err != nil {
 		return Inspection{}, fmt.Errorf("plugins: admit installation: %w", err)
 	}
+	var committed plugin.Snapshot
 	unreclaimed, err := c.commit(ctx, id, AllowInUse, func() error {
 		existing, err := c.store.List(ctx)
 		if err != nil {
@@ -209,16 +200,18 @@ func (c *Coordinator) Install(ctx context.Context, source string) (_ Inspection,
 		if len(existing) >= plugin.MaxInstallations {
 			return fmt.Errorf("%w: installation capacity", plugin.ErrInvalid)
 		}
-		if _, err := candidate.Publish(ctx); err != nil {
+		published, err := candidate.Publish(ctx)
+		if err != nil {
 			return fmt.Errorf("plugins: publish release: %w", err)
 		}
+		committed = plugin.Snapshot{Installation: installation, Selected: published}
 		return c.store.Save(ctx, installation)
 	})
 	if err != nil {
 		return Inspection{}, errors.Join(err, unreclaimed)
 	}
 	c.publish.Notify(invalidation.Notice{Resource: invalidation.Plugins})
-	inspection, err := c.inspect(ctx, installation)
+	inspection, err := c.inspect(ctx, committed)
 	if err = errors.Join(err, unreclaimed); err != nil {
 		return Inspection{}, fmt.Errorf("plugins: installation %s changed: %w", id, err)
 	}
@@ -270,7 +263,7 @@ func (c *Coordinator) reclaim(ctx context.Context, held []plugin.Dependency) err
 	if err != nil {
 		return fmt.Errorf("plugins: reclaim releases: %w", err)
 	}
-	if err := c.packages.Reclaim(ctx, plugin.RetainedReleases(installations, held)); err != nil {
+	if err := c.packages.Reclaim(ctx, plugin.RetainedReleases(installationStates(installations), held)); err != nil {
 		return fmt.Errorf("plugins: reclaim releases: %w", err)
 	}
 	return nil
@@ -324,21 +317,18 @@ func (c *Coordinator) Configure(ctx context.Context, id resourceid.InstallationI
 }
 func (c *Coordinator) change(ctx context.Context, id resourceid.InstallationID, admission ChangeAdmission, transition func(context.Context, *plugin.Installation, plugin.Release) error) (Inspection, error) {
 	var reconcile []mcpserver.ID
-	var committed *plugin.Installation
-	var release plugin.Release
+	var committed plugin.Snapshot
 	unreclaimed, err := c.commit(ctx, id, admission, func() error {
-		installation, err := c.store.Get(ctx, id)
+		snapshot, err := c.store.Get(ctx, id)
 		if err != nil {
 			return err
 		}
+		installation := snapshot.Installation
 		previous, err := plugin.Restore(installation.Snapshot())
 		if err != nil {
 			return err
 		}
-		before, err := c.catalog.Get(ctx, installation.Selected())
-		if err != nil {
-			return fmt.Errorf("plugins: read release %s: %w", installation.Selected(), err)
-		}
+		before := snapshot.Selected
 		if err := transition(ctx, installation, before); err != nil {
 			return err
 		}
@@ -359,10 +349,17 @@ func (c *Coordinator) change(ctx context.Context, id resourceid.InstallationID, 
 			}
 			reconcile = append(reconcile, server)
 		}
+		committed = plugin.Snapshot{Installation: installation, Selected: after}
+		if digest, staged := installation.Staged(); staged {
+			staged, err := c.catalog.Get(ctx, digest)
+			if err != nil {
+				return fmt.Errorf("plugins: read staged release %s: %w", digest, err)
+			}
+			committed.Staged = &staged
+		}
 		if err := c.store.Save(ctx, installation); err != nil {
 			return err
 		}
-		committed, release = installation, after
 		// The live tool catalog follows the commit inside the same critical
 		// section: a Run assembled after it cannot see the superseded tools.
 		return c.connections.WithdrawInstallation(reconcile)
@@ -377,7 +374,7 @@ func (c *Coordinator) change(ctx context.Context, id resourceid.InstallationID, 
 		// an unprepared backend reads as unavailable in every inspection, and
 		// each connection's failure is its supervisor's status. These records
 		// keep only the operational cause for the trace.
-		if err := c.packages.Prepare(realizationCtx, committed, release); err != nil {
+		if err := c.packages.Prepare(realizationCtx, committed.Installation, committed.Selected); err != nil {
 			slog.WarnContext(ctx, "committed plugin preparation failed", "installation", id, "error", err)
 		}
 		if err := c.connections.ReconcileInstallation(realizationCtx, reconcile); err != nil {
@@ -399,15 +396,12 @@ func (c *Coordinator) Uninstall(ctx context.Context, id resourceid.InstallationI
 	// it requires quiescence; Revoke stays available to withdraw authority
 	// from work that is still in use.
 	unreclaimed, err := c.commit(ctx, id, RequireQuiescent, func() error {
-		installation, err := c.store.Get(ctx, id)
+		snapshot, err := c.store.Get(ctx, id)
 		if err != nil {
 			return err
 		}
-		release, err := c.catalog.Get(ctx, installation.Selected())
-		if err != nil {
-			return fmt.Errorf("plugins: read release %s: %w", installation.Selected(), err)
-		}
-		servers, err = installation.ServerIDs(release)
+		installation := snapshot.Installation
+		servers, err = installation.ServerIDs(snapshot.Selected)
 		if err != nil {
 			return err
 		}
@@ -447,4 +441,12 @@ func (c *Coordinator) realizationContext(request context.Context) (context.Conte
 		stop()
 		cancel(nil)
 	}
+}
+
+func installationStates(snapshots []plugin.Snapshot) []*plugin.Installation {
+	result := make([]*plugin.Installation, 0, len(snapshots))
+	for _, snapshot := range snapshots {
+		result = append(result, snapshot.Installation)
+	}
+	return result
 }

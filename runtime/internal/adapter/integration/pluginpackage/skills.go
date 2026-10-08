@@ -18,8 +18,8 @@ import (
 )
 
 type skillInstallations interface {
-	List(context.Context) ([]*plugin.Installation, error)
-	Get(context.Context, resourceid.InstallationID) (*plugin.Installation, error)
+	List(context.Context) ([]plugin.Snapshot, error)
+	Get(context.Context, resourceid.InstallationID) (plugin.Snapshot, error)
 }
 type Skills struct {
 	releases      *Releases
@@ -35,13 +35,10 @@ func (s *Skills) SkillBundles(ctx context.Context) ([]promptsource.PackageSkillB
 		return nil, err
 	}
 	var bundles []promptsource.PackageSkillBundle
-	for _, installation := range installations {
+	for _, snapshot := range installations {
+		installation, release := snapshot.Installation, snapshot.Selected
 		if !installation.Active() {
 			continue
-		}
-		release, err := s.releases.catalog.Get(ctx, installation.Selected())
-		if err != nil {
-			return nil, fmt.Errorf("pluginpackage: read release %s: %w", installation.Selected(), err)
 		}
 		names, err := installation.EnabledSkills(release)
 		if err != nil {
@@ -66,19 +63,16 @@ func (s *Skills) ReadSkillResource(ctx context.Context, dependency plugin.Depend
 	if !fs.ValidPath(resource) || strings.ContainsRune(resource, '\\') {
 		return nil, fmt.Errorf("%w: Skill resource identity", plugin.ErrInvalid)
 	}
-	installation, err := s.installations.Get(ctx, dependency.InstallationID)
+	snapshot, err := s.installations.Get(ctx, dependency.InstallationID)
 	if err != nil {
 		if errors.Is(err, plugin.ErrNotFound) {
 			return nil, errors.Join(workspaceapp.ErrSkillUnavailable, err)
 		}
 		return nil, err
 	}
+	installation, release := snapshot.Installation, snapshot.Selected
 	if installation.Dependency() != dependency {
 		return nil, errors.Join(workspaceapp.ErrSkillUnavailable, plugin.ErrStale)
-	}
-	release, err := s.releases.catalog.Get(ctx, dependency.Digest)
-	if err != nil {
-		return nil, fmt.Errorf("pluginpackage: read release %s: %w", dependency.Digest, err)
 	}
 	enabled, err := installation.EnabledSkills(release)
 	if err != nil {

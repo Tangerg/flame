@@ -20,8 +20,8 @@ const (
 	disabledSkill  = "skill"
 )
 
-func (s *InstallationStore) List(ctx context.Context) ([]*plugin.Installation, error) {
-	var result []*plugin.Installation
+func (s *InstallationStore) List(ctx context.Context) ([]plugin.Snapshot, error) {
+	var result []plugin.Snapshot
 	err := RunInTx(ctx, s.db, func(ctx context.Context) error {
 		records, err := s.records(ctx, `SELECT id,source,selected_digest,staged_digest,admission_state FROM plugin_installations ORDER BY id`)
 		if err != nil {
@@ -39,8 +39,8 @@ func (s *InstallationStore) List(ctx context.Context) ([]*plugin.Installation, e
 	return result, err
 }
 
-func (s *InstallationStore) Get(ctx context.Context, id resourceid.InstallationID) (*plugin.Installation, error) {
-	var result *plugin.Installation
+func (s *InstallationStore) Get(ctx context.Context, id resourceid.InstallationID) (plugin.Snapshot, error) {
+	var result plugin.Snapshot
 	err := RunInTx(ctx, s.db, func(ctx context.Context) error {
 		records, err := s.records(ctx, `SELECT id,source,selected_digest,staged_digest,admission_state FROM plugin_installations WHERE id=?`, id.String())
 		if err != nil {
@@ -88,51 +88,68 @@ func (s *InstallationStore) records(ctx context.Context, query string, args ...a
 	return result, rows.Err()
 }
 
-func (s *InstallationStore) restore(ctx context.Context, record plugin.Record) (*plugin.Installation, error) {
+func (s *InstallationStore) restore(ctx context.Context, record plugin.Record) (plugin.Snapshot, error) {
 	id := record.ID.String()
 	values, err := conn(ctx, s.db).QueryContext(ctx, `SELECT input_id,value FROM plugin_installation_values WHERE installation_id=?`, id)
 	if err != nil {
-		return nil, err
+		return plugin.Snapshot{}, err
 	}
 	defer values.Close()
 	record.Values = map[string]string{}
 	for values.Next() {
 		var input, value string
 		if err := values.Scan(&input, &value); err != nil {
-			return nil, err
+			return plugin.Snapshot{}, err
 		}
 		record.Values[input] = value
 	}
 	if err := values.Err(); err != nil {
-		return nil, err
+		return plugin.Snapshot{}, err
 	}
 	disabled, err := conn(ctx, s.db).QueryContext(ctx, `SELECT kind,name FROM plugin_installation_disabled WHERE installation_id=? ORDER BY kind,name`, id)
 	if err != nil {
-		return nil, err
+		return plugin.Snapshot{}, err
 	}
 	defer disabled.Close()
 	for disabled.Next() {
 		var kind, name string
 		if err := disabled.Scan(&kind, &name); err != nil {
-			return nil, err
+			return plugin.Snapshot{}, err
 		}
 		switch kind {
 		case disabledServer:
 			server, err := mcpserver.ParseServerName(name)
 			if err != nil {
-				return nil, fmt.Errorf("sqlite: installation %s disabled server: %w", id, err)
+				return plugin.Snapshot{}, fmt.Errorf("sqlite: installation %s disabled server: %w", id, err)
 			}
 			record.DisabledServers = append(record.DisabledServers, server)
 		case disabledSkill:
 			record.DisabledSkills = append(record.DisabledSkills, name)
 		default:
-			return nil, fmt.Errorf("sqlite: installation %s disabled component kind %q", id, kind)
+			return plugin.Snapshot{}, fmt.Errorf("sqlite: installation %s disabled component kind %q", id, kind)
 		}
 	}
 	if err := disabled.Err(); err != nil {
-		return nil, err
+		return plugin.Snapshot{}, err
 	}
-	return plugin.Restore(record)
+	installation, err := plugin.Restore(record)
+	if err != nil {
+		return plugin.Snapshot{}, err
+	}
+	catalog := NewReleaseStore(s.db)
+	selected, err := catalog.Get(ctx, record.Selected)
+	if err != nil {
+		return plugin.Snapshot{}, fmt.Errorf("sqlite: read installation %s selected release: %w", id, err)
+	}
+	result := plugin.Snapshot{Installation: installation, Selected: selected}
+	if record.Staged != nil {
+		staged, err := catalog.Get(ctx, *record.Staged)
+		if err != nil {
+			return plugin.Snapshot{}, fmt.Errorf("sqlite: read installation %s staged release: %w", id, err)
+		}
+		result.Staged = &staged
+	}
+	return result, nil
 }
 
 // Save replaces the installation's state and keeps one MCP source row per
