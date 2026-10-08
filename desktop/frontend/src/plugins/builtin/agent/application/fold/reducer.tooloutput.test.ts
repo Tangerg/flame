@@ -1,9 +1,8 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { AgentItem as Item, AgentStreamEvent as StreamEvent } from "@/plugins/sdk";
 import type { AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
 import { foldTestEvent as reduce } from "./reducer.fixtures";
 import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
-import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 
 function item(partial: Record<string, unknown>): Item {
   return {
@@ -24,10 +23,6 @@ const started = (i: Item): StreamEvent => ({ type: "item.started", item: i });
 const completed = (i: Item): StreamEvent => ({ type: "item.completed", item: i });
 const delta = (itemId: string, d: Record<string, unknown>): StreamEvent =>
   ({ type: "item.delta", itemId, delta: d }) as StreamEvent;
-
-beforeEach(async () => {
-  await loadPluginsForTest();
-});
 
 const cmd = (result: Record<string, unknown>) => ({
   name: "shell",

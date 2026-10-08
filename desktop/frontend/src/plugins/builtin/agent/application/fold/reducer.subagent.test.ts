@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import type {
   AgentEventEnvelope as RunEvent,
   AgentInterrupt,
@@ -10,7 +10,6 @@ import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
 import { reduceAgentEvent } from "./reducer";
 import { foldRunSnapshot } from "./runSnapshot";
 import { selectAwaitingInterrupts } from "../view/awaitingInterrupts";
-import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 
 const METRICS = {
   steps: 0,
@@ -95,10 +94,6 @@ function itemStarted(eventId: string, item: Item, segmentId: string): RunEvent {
     item,
   });
 }
-
-beforeEach(async () => {
-  await loadPluginsForTest();
-});
 
 describe("reducer — source-owned Run tree", () => {
   it("keeps child interrupt provenance while binding the complete set to its root", () => {

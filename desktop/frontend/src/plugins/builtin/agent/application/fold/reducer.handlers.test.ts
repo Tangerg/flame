@@ -1,10 +1,9 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { AgentItem as Item, AgentStreamEvent as StreamEvent } from "@/plugins/sdk";
 import { foldTestEvent as reduce, runFinished } from "./reducer.fixtures";
 import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
 import { selectCurrentRootRun } from "../view/runTree";
 import { EMPTY_PROBLEM_PRESENTATION, selectVisibleProblem } from "../view/problemPresentation";
-import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 
 function item(partial: Record<string, unknown>): Item {
   return {
@@ -26,10 +25,6 @@ const runProgress = (progress: Record<string, unknown>): StreamEvent =>
 const snapshot = (revision: number): StreamEvent => ({
   type: "plan.updated",
   plan: { revision, steps: [] },
-});
-
-beforeEach(async () => {
-  await loadPluginsForTest();
 });
 
 describe("handler contract — run.*", () => {

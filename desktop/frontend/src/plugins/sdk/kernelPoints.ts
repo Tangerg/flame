@@ -4,7 +4,6 @@ import type {
   CommandSpec,
   ComposerKeyBindingSpec,
   ComposerSubmitModeSpec,
-  StreamEventHandler,
   DataProviderSpec,
   LayoutSlotSpec,
   LocaleSpec,
@@ -108,10 +107,6 @@ export const READY_HANDLER = defineExtensionPoint<ReadyHandler>({
   keying: "multi",
 });
 
-export const STREAM_EVENT_HANDLER = defineExtensionPoint<{
-  eventType: string;
-  handler: StreamEventHandler;
-}>({ id: "flame.events.stream", keying: "multi" });
 export const LAYOUT_SLOT = defineExtensionPoint<{ slot: string; spec: LayoutSlotSpec }>({
   id: "flame.layoutSlot",
   keying: "multi",

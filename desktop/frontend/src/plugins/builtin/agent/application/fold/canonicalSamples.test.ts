@@ -1,11 +1,10 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { RunEvent } from "@flame/runtime-contract/client";
 import { validateWire } from "@flame/runtime-contract/validate";
 import segmentStarted from "@flame/runtime-contract/samples/segment.started.json";
 import segmentFinished from "@flame/runtime-contract/samples/segment.finished.json";
 import segmentFinishedInterrupt from "@flame/runtime-contract/samples/segment.finished.interrupt.json";
 import type { AgentItem } from "@/plugins/sdk";
-import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
 import { runtimeAgentEvent } from "../../adapters/runtimeAgentFacts";
 import { selectAwaitingInterrupts } from "../view/awaitingInterrupts";
@@ -58,10 +57,6 @@ describe("the fold against the runtime's own samples", () => {
 });
 
 describe("segment.finished against the runtime's own samples", () => {
-  beforeEach(async () => {
-    await loadPluginsForTest();
-  });
-
   const foldFrames = (...frames: unknown[]) =>
     frames.reduce(
       (view: typeof EMPTY_AGENT_SESSION_VIEW, frame) =>

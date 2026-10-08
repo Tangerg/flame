@@ -233,7 +233,8 @@ advance a retired view generation.
 ## Runtime events and interruption
 
 The shared client validates wire values and owns HTTP/SSE transport. Agent fold
-routes the resulting events to source-owned projection handlers. View models
+routes the resulting events directly to its own projection handlers. Plugins
+cannot register event reducers or replace the core Agent view. View models
 preserve exact sequence and identity values; timestamps come from the event
 that established a fact rather than the client clock.
 

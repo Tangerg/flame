@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { AgentItem as Item, AgentStreamEvent as StreamEvent } from "@/plugins/sdk";
 import type { AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
 import {
@@ -13,7 +13,6 @@ import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
 import { selectCurrentRootRun } from "../view/runTree";
 import { EMPTY_PROBLEM_PRESENTATION, selectVisibleProblem } from "../view/problemPresentation";
 import { reconcileMessageIdentity } from "../view/viewMutations";
-import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 import { selectAwaitingInterrupts } from "../view/awaitingInterrupts";
 
 function item(partial: Record<string, unknown>): Item {
@@ -38,10 +37,6 @@ const delta = (itemId: string, d: Record<string, unknown>): StreamEvent =>
 const runStarted = (id: string, sessionId: string): StreamEvent => ({
   type: "segment.started",
   run: { id, sessionId } as never,
-});
-
-beforeEach(async () => {
-  await loadPluginsForTest();
 });
 
 describe("reducer — run lifecycle", () => {
@@ -841,25 +836,5 @@ describe("reducer — interrupt idempotency + terminal cleanup", () => {
     );
     const block = s.messages.flatMap((m) => m.blocks).find((b) => b.kind === "text");
     expect(block).toMatchObject({ kind: "text", itemId: "m1", text: "", status: "complete" });
-  });
-});
-
-describe("optional event projections", () => {
-  it("isolates optional plugin failures after applying the core fact", async () => {
-    const { contributeForTest } = await import("@/plugins/sdk/testKernel");
-    const { STREAM_EVENT_HANDLER } = await import("@/plugins/sdk");
-    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    await contributeForTest((ctx) =>
-      ctx.contribute(STREAM_EVENT_HANDLER, {
-        eventType: "segment.started",
-        handler: () => {
-          throw new Error("optional view failed");
-        },
-      }),
-    );
-    const next = reduce(EMPTY_AGENT_SESSION_VIEW, runStarted("run_1", "ses_1"));
-    expect(next.runsById.run_1?.status).toBe("running");
-    expect(error).toHaveBeenCalled();
-    error.mockRestore();
   });
 });

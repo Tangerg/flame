@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import type {
   AgentItem as Item,
   AgentItemDelta,
@@ -9,11 +9,6 @@ import { foldTestEvent as reduce, runFinished } from "./reducer.fixtures";
 import { appendToTurn } from "./fold";
 import { itemStartedAt } from "./projections";
 import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
-import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
-
-beforeEach(async () => {
-  await loadPluginsForTest();
-});
 
 type StartableItem = Extract<Item, { type: "agentMessage" | "reasoning" | "toolCall" }>;
 

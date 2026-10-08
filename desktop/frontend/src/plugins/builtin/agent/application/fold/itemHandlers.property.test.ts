@@ -1,5 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
+import { describe, expect, it } from "vitest";
 import { validateWire } from "@flame/runtime-contract/validate";
 import type { AgentItem, AgentStreamEvent } from "@/plugins/sdk";
 import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
@@ -69,21 +68,6 @@ function foldAll(events: readonly AgentStreamEvent[]): AgentSessionView {
   return view;
 }
 
-let swallowed: string[] = [];
-
-beforeEach(async () => {
-  await loadPluginsForTest();
-  swallowed = [];
-  vi.spyOn(console, "error").mockImplementation((...args: unknown[]) => {
-    const first = String(args[0] ?? "");
-    if (first.includes("stream handler")) swallowed.push(args.map(String).join(" "));
-  });
-});
-
-afterEach(() => {
-  vi.restoreAllMocks();
-});
-
 describe("the live item fold, over the orderings a replay can produce", () => {
   it("actually folds the shuffled corpus, so the properties below are not measuring nothing", () => {
     let kept = 0;
@@ -99,31 +83,14 @@ describe("the live item fold, over the orderings a replay can produce", () => {
     });
     expect(kept / generated).toBeGreaterThan(0.9);
     expect(projected).toBeGreaterThan(200);
-    expect(swallowed).toEqual([]);
-  });
-
-  it("never drops a frame into the handler's catch, in any order", () => {
-    forEachSeed(300, (a) => {
-      swallowed = [];
-      const frames = permitted(
-        shuffled(
-          a,
-          Array.from({ length: 2 + a.int(3) }, (_, i) => framesFor(a, `item_${i}`)).flat(),
-        ),
-      );
-      foldAll(frames);
-      expect(swallowed.slice(0, 2)).toEqual([]);
-    });
   });
 
   it("survives a frame delivered twice, which is what a replay is", () => {
     forEachSeed(300, (a) => {
-      swallowed = [];
       const frames = permitted(framesFor(a, "item_0"));
       const replayed = [...frames, ...frames];
       const once = foldAll(frames);
       const twice = foldAll(replayed);
-      expect(swallowed.slice(0, 2)).toEqual([]);
       expect(twice.messages.map((message) => message.id)).toEqual(
         once.messages.map((message) => message.id),
       );
@@ -156,12 +123,10 @@ describe("the live item fold, over the orderings a replay can produce", () => {
 
   it("keeps a completed item completed when its start replays afterwards", () => {
     forEachSeed(300, (a) => {
-      swallowed = [];
       const [started, completed] = permitted(framesFor(a, "item_0"));
       if (!started || !completed) return;
       const settled = foldAll([started, completed]);
       const regressed = foldAll([started, completed, started]);
-      expect(swallowed.slice(0, 2)).toEqual([]);
       expect(regressed.toolCalls).toEqual(settled.toolCalls);
       expect(regressed.messages.map((message) => message.blocks.length)).toEqual(
         settled.messages.map((message) => message.blocks.length),
@@ -171,10 +136,8 @@ describe("the live item fold, over the orderings a replay can produce", () => {
 
   it("segments a finished run without losing what it already showed", () => {
     forEachSeed(200, (a) => {
-      swallowed = [];
       const frames = permitted(framesFor(a, "item_0"));
       const view = foldAll([...frames, runFinished({ type: "completed" })]);
-      expect(swallowed.slice(0, 2)).toEqual([]);
       expect(view.messages.length + Object.keys(view.toolCalls).length).toBeGreaterThan(0);
     });
   });

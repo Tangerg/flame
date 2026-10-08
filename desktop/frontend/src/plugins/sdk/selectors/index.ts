@@ -8,8 +8,6 @@ export {
 
 export { executeCommand, lookupSlashCommandOwner, useSlashCommands } from "./commands";
 
-export { lookupStreamHandlers } from "./events";
-
 export { useLayoutSlot, useSettingsPanes, useWorkIndexItems, useWorkspaceViews } from "./layout";
 
 export { lookupToolActionOwner, lookupToolViewOpenerOwner } from "./messages";

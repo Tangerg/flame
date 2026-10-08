@@ -48,7 +48,6 @@ export type { ParameterizedQueryOptions } from "./dataQuery";
 
 export {
   executeCommand,
-  lookupStreamHandlers,
   lookupDataProvider,
   lookupExtensionByKey,
   lookupExtensionOwner,
@@ -97,7 +96,6 @@ export type {
   ComposerSubmitModeSpec,
   ContextDockDestinationScope,
   ContentBlock,
-  StreamEventHandler,
   DataProviderSpec,
   Disposable,
   ExtensionContributionOptions,
