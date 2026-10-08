@@ -112,6 +112,10 @@ func (c releaseCatalog) Get(_ context.Context, digest fingerprint.Digest) (plugi
 
 type preparedPackages struct{}
 
+func (preparedPackages) ReadView(context.Context, *plugin.Installation, plugin.ViewDeclaration) (string, error) {
+	return "", errors.New("unexpected view read")
+}
+
 func (preparedPackages) Materialize(context.Context, string) (plugins.Candidate, error) {
 	return nil, errors.New("unexpected materialization")
 }

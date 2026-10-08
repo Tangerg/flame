@@ -13,7 +13,7 @@ typedef struct {
 
 static ChromeMetrics measureOnMain(void *windowHandle) {
 	ChromeMetrics metrics = {0, 0, 0};
-	NSWindow *window = (NSWindow *)windowHandle;
+	NSWindow *window = (__bridge NSWindow *)windowHandle;
 	if (window == nil) return metrics;
 	NSButton *close = [window standardWindowButton:NSWindowCloseButton];
 	NSButton *zoom = [window standardWindowButton:NSWindowZoomButton];

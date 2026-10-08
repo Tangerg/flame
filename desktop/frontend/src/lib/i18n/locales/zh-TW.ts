@@ -1258,6 +1258,10 @@ export const zhTW: Record<string, string> = {
   "file.change.renamed": "重新命名自 {{path}}",
   "file.change.below": "包含工作樹變更",
 
+  "packages.view.selectSession": "選擇一個工作階段來查看其軌跡。",
+  "packages.view.loading": "正在開啟外掛程式頁面…",
+  "packages.view.identity": "{{title}} · 唯讀外掛程式",
+
   "packages.loading": "正在載入…",
 
   "packages.trust":

@@ -10,7 +10,7 @@
 //   - the class names the theme painter writes,
 //   - the canvas colour per scheme, which lives in globals.css as a token,
 //   - the attribute the focus-ring rule gates on,
-//   - and, across the language boundary, the native window colour in main.go,
+//   - and, across the language boundary, the native window colour in application.go,
 //     which shows for the frame before the WebView paints.
 //
 // Contracts in three languages, held by nothing. One had already drifted: the dark
@@ -38,7 +38,7 @@ const modality = read(`../public/${MODALITY_FILE}`);
 const css = read("../src/styles/globals.css");
 const store = read("../src/plugins/builtin/theme/adapters/appearanceStore.ts");
 const painter = read("../src/plugins/builtin/theme/adapters/documentAppearance.ts");
-const shell = read("../../main.go");
+const shell = read("../../application.go");
 
 const failures = [];
 
@@ -141,7 +141,7 @@ expect(
     shellCanvases.length === 2 &&
     shellCanvases[0] === canvasTokens[0] &&
     shellCanvases[1] === canvasTokens[1],
-  `main.go opens the window ${shellCanvases.join(" / ")} where --color-bg is ${canvasTokens.join(" / ")}`,
+  `application.go opens the window ${shellCanvases.join(" / ")} where --color-bg is ${canvasTokens.join(" / ")}`,
 );
 
 // The runtime-derived mirrors — the type ladder, the depth step, the motion ladder and the

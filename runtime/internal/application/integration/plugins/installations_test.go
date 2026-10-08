@@ -80,6 +80,10 @@ type installationPackages struct {
 	realize     func(context.Context, *plugin.Installation) (Realization, error)
 }
 
+func (installationPackages) ReadView(context.Context, *plugin.Installation, plugin.ViewDeclaration) (string, error) {
+	return "", errors.New("unexpected view read")
+}
+
 type candidateRelease struct{ release plugin.Release }
 
 func (c candidateRelease) Release() plugin.Release                         { return c.release }

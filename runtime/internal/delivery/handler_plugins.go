@@ -24,6 +24,8 @@ type pluginUseCases interface {
 	Revoke(context.Context, resourceid.InstallationID) (plugins.Inspection, error)
 	Configure(context.Context, resourceid.InstallationID, fingerprint.Digest, plugin.Configuration) (plugins.Inspection, error)
 	Uninstall(context.Context, resourceid.InstallationID) error
+	ReadView(context.Context, resourceid.InstallationID, fingerprint.Digest, string) (string, error)
+	WithView(context.Context, resourceid.InstallationID, fingerprint.Digest, string, func(*plugin.Installation, plugin.ViewDeclaration) error) error
 }
 
 func parseInstallationID(text string) (resourceid.InstallationID, error) {
@@ -186,4 +188,32 @@ func (s *Handler) UninstallPlugin(ctx context.Context, in protocol.PluginRequest
 		return err
 	}
 	return wirePluginError(s.plugins.Uninstall(ctx, id))
+}
+
+func (s *Handler) ReadPluginView(ctx context.Context, in protocol.ReadPluginViewRequest) (*protocol.PluginViewResource, error) {
+	id, digest, err := parseInstallationRelease(in.InstallationID, in.Digest)
+	if err != nil {
+		return nil, err
+	}
+	html, err := s.plugins.ReadView(ctx, id, digest, in.ViewID)
+	if err != nil {
+		return nil, wirePluginError(err)
+	}
+	return &protocol.PluginViewResource{HTML: html}, nil
+}
+
+func (s *Handler) ReadPluginTrajectory(ctx context.Context, in protocol.ReadPluginTrajectoryRequest) (page *protocol.Page[protocol.TrajectoryEntry], err error) {
+	id, digest, err := parseInstallationRelease(in.InstallationID, in.Digest)
+	if err != nil {
+		return nil, err
+	}
+	err = s.plugins.WithView(ctx, id, digest, in.ViewID, func(*plugin.Installation, plugin.ViewDeclaration) error {
+		var readErr error
+		page, readErr = s.ListSessionTrajectory(ctx, protocol.ListSessionTrajectoryRequest{SessionID: in.SessionID, PageQuery: in.PageQuery})
+		return readErr
+	})
+	if err != nil {
+		return nil, wirePluginError(err)
+	}
+	return page, nil
 }

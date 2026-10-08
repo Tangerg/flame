@@ -29,6 +29,7 @@ const (
 	MaxServers     = 64
 	MaxInputs      = 64
 	MaxThemes      = 32
+	MaxViews       = 16
 	MaxDiagnostics = 1024
 )
 
@@ -100,6 +101,7 @@ type Declaration struct {
 	Servers     []Server
 	Inputs      []Input
 	Themes      []Theme
+	Views       []ViewDeclaration
 	Skills      []Skill
 	Diagnostics []Diagnostic
 }
@@ -111,6 +113,7 @@ func (d Declaration) clone() Declaration {
 	}
 	d.Inputs = slices.Clone(d.Inputs)
 	d.Themes = slices.Clone(d.Themes)
+	d.Views = slices.Clone(d.Views)
 	d.Skills = slices.Clone(d.Skills)
 	d.Diagnostics = slices.Clone(d.Diagnostics)
 	return d
@@ -149,6 +152,11 @@ func NewRelease(digest fingerprint.Digest, declaration Declaration) (Release, er
 	}
 	for _, theme := range declaration.Themes {
 		if err := builder.AdmitTheme(theme); err != nil {
+			return Release{}, err
+		}
+	}
+	for _, view := range declaration.Views {
+		if err := builder.AdmitView(view); err != nil {
 			return Release{}, err
 		}
 	}

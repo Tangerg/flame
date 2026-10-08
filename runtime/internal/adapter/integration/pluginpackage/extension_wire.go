@@ -42,6 +42,12 @@ type wireTheme struct {
 	Scheme string          `json:"scheme"`
 	Colors wireThemeColors `json:"colors"`
 }
+type wireView struct {
+	ID    string          `json:"id"`
+	Title string          `json:"title"`
+	Type  plugin.ViewKind `json:"type"`
+	Entry string          `json:"entry"`
+}
 type wireThemeColors struct {
 	Background *string `json:"background,omitempty"`
 	Foreground *string `json:"foreground,omitempty"`

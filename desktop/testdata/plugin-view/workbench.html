@@ -1,0 +1,10 @@
+<!doctype html><script type="module">
+import {Call,Events} from '/wails/runtime.js';
+Events.On('desktop:plugin-page', event=>{
+ const {id,message}=event.data;
+ if(typeof id==='string' && typeof message?.type==='string')
+  void Call.ByName('main.NativeGate.Observe',id,message.type);
+});
+await Call.ByName('main.NativeGate.Touch');
+window.webkit.messageHandlers.external.postMessage('gate-start');
+</script>

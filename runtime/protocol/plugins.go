@@ -75,8 +75,37 @@ type PluginRelease struct {
 	Servers     []PluginServerDeclaration `json:"servers"`
 	Inputs      []PluginInput             `json:"inputs"`
 	Themes      []PluginTheme             `json:"themes"`
+	Views       []PluginView              `json:"views"`
 	Skills      []PluginSkill             `json:"skills"`
 	Diagnostics []PluginDiagnostic        `json:"diagnostics"`
+}
+
+type PluginViewType string
+
+const PluginViewSessionTrajectory PluginViewType = "sessionTrajectory"
+
+type PluginView struct {
+	ID    string         `json:"id"`
+	Title string         `json:"title"`
+	Type  PluginViewType `json:"type"`
+}
+
+// ReadPluginViewRequest addresses an admitted resource, never a filesystem path.
+type ReadPluginViewRequest struct {
+	PluginReleaseRequest
+	ViewID string `json:"viewId"`
+}
+
+type PluginViewResource struct {
+	HTML string `json:"html"`
+}
+
+// ReadPluginTrajectoryRequest scopes the existing trajectory projection to
+// the Session selected by the trusted host. It grants no execution operations.
+type ReadPluginTrajectoryRequest struct {
+	ReadPluginViewRequest
+	SessionID string `json:"sessionId"`
+	PageQuery
 }
 
 // PluginServerDeclaration is a closed union by transport that projects a

@@ -1,3 +1,4 @@
+import { browserPluginCarrier } from "./browserPluginCarrier";
 import { z } from "zod";
 import type { NotificationAuthorization } from "@/foundation/notificationAuthorization";
 import { downloadBlob } from "./download";
@@ -15,6 +16,7 @@ export function createBrowserHost(): ClientHost {
   const listeners = new Set<(target: string) => void>();
   return {
     kind: "web",
+    pluginCarrier: browserPluginCarrier,
     async bootstrap() {
       const endpoint = window.location.origin;
       if (!/^https?:\/\//.test(endpoint)) {

@@ -1397,6 +1397,10 @@ export const fr: Record<string, string> = {
   "file.change.renamed": "Renommé depuis {{path}}",
   "file.change.below": "Contient des modifications de l'arbre de travail",
 
+  "packages.view.selectSession": "Sélectionnez une session pour consulter sa trajectoire.",
+  "packages.view.loading": "Ouverture de la page du plugin…",
+  "packages.view.identity": "{{title}} · Plugin en lecture seule",
+
   "packages.loading": "Chargement…",
 
   "packages.trust":

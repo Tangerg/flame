@@ -6,15 +6,17 @@ import (
 )
 
 const (
-	PluginsList          Name = "plugins.list"
-	PluginsInstall       Name = "plugins.install"
-	PluginsStage         Name = "plugins.stage"
-	PluginsSelect        Name = "plugins.select"
-	PluginsApprove       Name = "plugins.approve"
-	PluginsConfigure     Name = "plugins.configure"
-	PluginsSetEnablement Name = "plugins.setEnablement"
-	PluginsRevoke        Name = "plugins.revoke"
-	PluginsUninstall     Name = "plugins.uninstall"
+	PluginsList           Name = "plugins.list"
+	PluginsInstall        Name = "plugins.install"
+	PluginsStage          Name = "plugins.stage"
+	PluginsSelect         Name = "plugins.select"
+	PluginsApprove        Name = "plugins.approve"
+	PluginsConfigure      Name = "plugins.configure"
+	PluginsSetEnablement  Name = "plugins.setEnablement"
+	PluginsRevoke         Name = "plugins.revoke"
+	PluginsUninstall      Name = "plugins.uninstall"
+	PluginsReadView       Name = "plugins.readView"
+	PluginsReadTrajectory Name = "plugins.readTrajectory"
 )
 
 // pluginErrors is every problem wirePluginError can raise. Each plugins method
@@ -30,6 +32,16 @@ func pluginErrors() []string {
 }
 
 func registerPlugins(r *Registry) {
+	r.query(MethodMeta{Name: PluginsReadView, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
+		ReadPluginView(context.Context, protocol.ReadPluginViewRequest) (*protocol.PluginViewResource, error)
+	}, ctx context.Context, in protocol.ReadPluginViewRequest) (*protocol.PluginViewResource, error) {
+		return s.ReadPluginView(ctx, in)
+	})
+	r.query(MethodMeta{Name: PluginsReadTrajectory, CapabilityRules: requires(protocol.FeaturePlugins), Errors: append(pluginErrors(), protocol.ErrSessionNotFound.Error()), Materializes: []Name{SessionsTrajectory}}, func(s interface {
+		ReadPluginTrajectory(context.Context, protocol.ReadPluginTrajectoryRequest) (*protocol.Page[protocol.TrajectoryEntry], error)
+	}, ctx context.Context, in protocol.ReadPluginTrajectoryRequest) (*protocol.Page[protocol.TrajectoryEntry], error) {
+		return s.ReadPluginTrajectory(ctx, in)
+	})
 	r.query(MethodMeta{Name: PluginsList, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
 		ListPlugins(context.Context) (*protocol.Page[protocol.PluginInstallation], error)
 	}, ctx context.Context, _ struct{}) (*protocol.Page[protocol.PluginInstallation], error) {

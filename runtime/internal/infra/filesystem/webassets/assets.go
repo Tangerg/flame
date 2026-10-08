@@ -4,6 +4,7 @@ package webassets
 import (
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"net/http"
 	"os"
@@ -71,6 +72,21 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil || !info.Mode().IsRegular() {
 		http.NotFound(w, r)
 		return
+	}
+	if name == "plugin-carrier.html" {
+		policy, err := os.OpenInRoot(h.directory, "plugin-carrier-policy.txt")
+		if err != nil {
+			http.Error(w, "carrier policy unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		encoded, readErr := io.ReadAll(io.LimitReader(policy, 256))
+		closeErr := policy.Close()
+		value := strings.TrimSpace(string(encoded))
+		if errors.Join(readErr, closeErr) != nil || value == "" || strings.ContainsAny(value, "\r\n") || len(encoded) >= 256 {
+			http.Error(w, "invalid carrier policy", http.StatusServiceUnavailable)
+			return
+		}
+		w.Header().Set("Connection-Allowlist", value)
 	}
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("X-Content-Type-Options", "nosniff")

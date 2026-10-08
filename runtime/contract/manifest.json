@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-07.8",
+  "protocolVersion": "2026-10-08.1",
   "features": [
     "reasoning",
     "multimodal",
@@ -787,6 +787,48 @@
       ]
     },
     {
+      "name": "plugins.readView",
+      "kind": "unary",
+      "operation": "query",
+      "idempotency": "none",
+      "replayCursor": "none",
+      "pagination": "none",
+      "errors": [
+        "plugin_unavailable",
+        "plugin_not_found",
+        "plugin_in_use",
+        "plugin_unapproved",
+        "plugin_stale",
+        "capability_not_negotiated"
+      ],
+      "features": [
+        "plugins"
+      ]
+    },
+    {
+      "name": "plugins.readTrajectory",
+      "kind": "unary",
+      "operation": "query",
+      "idempotency": "none",
+      "replayCursor": "none",
+      "pagination": "cursor",
+      "errors": [
+        "plugin_unavailable",
+        "plugin_not_found",
+        "plugin_in_use",
+        "plugin_unapproved",
+        "plugin_stale",
+        "session_not_found",
+        "capability_not_negotiated"
+      ],
+      "features": [
+        "plugins"
+      ],
+      "materializes": [
+        "sessions.trajectory"
+      ]
+    },
+    {
       "name": "plugins.list",
       "kind": "unary",
       "operation": "query",
@@ -1471,6 +1513,8 @@
           "plugins.configure",
           "plugins.install",
           "plugins.list",
+          "plugins.readTrajectory",
+          "plugins.readView",
           "plugins.revoke",
           "plugins.select",
           "plugins.setEnablement",
@@ -1657,6 +1701,8 @@
           "plugins.configure",
           "plugins.install",
           "plugins.list",
+          "plugins.readTrajectory",
+          "plugins.readView",
           "plugins.revoke",
           "plugins.select",
           "plugins.setEnablement",
@@ -1673,6 +1719,8 @@
           "plugins.configure",
           "plugins.install",
           "plugins.list",
+          "plugins.readTrajectory",
+          "plugins.readView",
           "plugins.revoke",
           "plugins.select",
           "plugins.setEnablement",
@@ -1689,6 +1737,8 @@
           "plugins.configure",
           "plugins.install",
           "plugins.list",
+          "plugins.readTrajectory",
+          "plugins.readView",
           "plugins.revoke",
           "plugins.select",
           "plugins.setEnablement",
@@ -1705,6 +1755,8 @@
           "plugins.configure",
           "plugins.install",
           "plugins.list",
+          "plugins.readTrajectory",
+          "plugins.readView",
           "plugins.revoke",
           "plugins.select",
           "plugins.setEnablement",
@@ -1721,6 +1773,8 @@
           "plugins.configure",
           "plugins.install",
           "plugins.list",
+          "plugins.readTrajectory",
+          "plugins.readView",
           "plugins.revoke",
           "plugins.select",
           "plugins.setEnablement",
@@ -1859,6 +1913,7 @@
           "goals.update",
           "items.list",
           "plan.get",
+          "plugins.readTrajectory",
           "runs.start",
           "sessions.delete",
           "sessions.export",
@@ -2389,6 +2444,26 @@
         {
           "requires": [
             "mcp"
+          ]
+        }
+      ]
+    },
+    {
+      "method": "plugins.readView",
+      "rules": [
+        {
+          "requires": [
+            "plugins"
+          ]
+        }
+      ]
+    },
+    {
+      "method": "plugins.readTrajectory",
+      "rules": [
+        {
+          "requires": [
+            "plugins"
           ]
         }
       ]
@@ -8560,6 +8635,58 @@
         {
           "field": "name",
           "constraint": "pattern(\"^[a-z0-9][a-z0-9._-]{0,31}$\")"
+        }
+      ]
+    },
+    {
+      "type": "ReadPluginViewRequest",
+      "rules": [
+        {
+          "field": "viewId",
+          "constraint": "pattern(\"^[a-z][a-z0-9._-]{0,63}$\")"
+        }
+      ]
+    },
+    {
+      "type": "ReadPluginTrajectoryRequest",
+      "rules": [
+        {
+          "field": "sessionId",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "identity"
+        },
+        {
+          "field": "sessionId",
+          "constraint": "maxLength(256)"
+        }
+      ]
+    },
+    {
+      "type": "PluginViewResource",
+      "rules": [
+        {
+          "field": "html",
+          "constraint": "maxLength(524288)"
+        }
+      ]
+    },
+    {
+      "type": "PluginView",
+      "rules": [
+        {
+          "field": "id",
+          "constraint": "pattern(\"^[a-z][a-z0-9._-]{0,63}$\")"
+        },
+        {
+          "field": "title",
+          "constraint": "nonEmpty"
+        },
+        {
+          "field": "title",
+          "constraint": "maxLength(128)"
         }
       ]
     },

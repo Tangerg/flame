@@ -36,6 +36,25 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
+## Protocol 2026-10-08.1
+
+Portable releases publish `views` alongside themes, Skills and MCP declarations. The only
+admitted view type is `sessionTrajectory`, a bounded, self-contained HTML entry.
+`plugins.readView` addresses an enabled, approved installation by exact selected digest
+and declared view ID. `plugins.readTrajectory` applies the same authorization and delegates
+to the existing Session trajectory query. No second trajectory store or execution path exists.
+
+The client binds the Session before opening the isolated page. The page receives the
+initial result once and can request only the next cursor or a refresh of that bound query.
+It receives no Runtime credential, arbitrary resource path, Session selector or RPC tunnel.
+Authorization is captured under installation admission; accepted reads complete outside
+that lock, and withdrawal refuses subsequent reads. Clients retire their local page when
+installation admission, selected release, Session or Runtime connection changes.
+
+This is a breaking development protocol change. Rebuild the shared client, Desktop, CLI
+and IDE against this catalog; earlier protocol versions are refused. Existing package
+releases without a view continue to describe their admitted declarative resources.
+
 ## Protocol 2026-10-07.8
 
 `ApprovalModeResult.modes` is required: every default mode with the gate
@@ -406,17 +425,20 @@ preference and the first-paint projection with it. Themes use the existing
 Dougong Host and child lifetimes; client connection replacement retires the predecessor
 before publishing its successor.
 
-The current implementation is Slice A/B of the design. Action forms, Runtime projection
-queries, HTML resources, graphical views and their bridge are unavailable. They have no
-public protocol or client entrypoint. Unsupported contribution kinds produce diagnostics
-without withdrawing independent themes, Skills or MCP declarations. Slice C's contract
-requires the browser and Wails carrier spike; Slice D requires concrete consumers and
-shared execution/Interrupt ownership before introducing another invocation path.
+The current implementation includes Slice A/B and one optional Slice C page. A package
+may declare `contributes.views` with `id`, `title`, `type: "sessionTrajectory"`, and a portable
+`.html` `entry`. Admission validates UTF-8 HTML, confined resource access and the release
+fingerprint. Invalid views produce diagnostics without withdrawing independent themes,
+Skills or MCP declarations. Action forms, arbitrary projection queries, mutation bridges,
+IDE view hosting and language integrations remain unavailable.
 
-The [trajectory example](../examples/plugins/trajectory/plugin.json) exercises a theme
-and a Skill through existing Runtime tools. Package limits are 128 MiB total copied bytes,
-16 MiB per file, 4096 entries, 256 Skills and 128 installations. Skill documents and
-resources obey the existing 1 MiB Skill limits.
+The [trajectory example](../examples/plugins/trajectory/plugin.json) exercises a theme,
+a Skill and an isolated Session trajectory page. The public page API requires no code
+execution in Runtime. Desktop's [carrier acceptance](../desktop/README.md#plugin-carrier-acceptance)
+owns rendering qualification; an unavailable renderer does not change installation state.
+Package limits are 128 MiB total copied bytes, 16 MiB per file, 4096 entries, 256 Skills and
+128 installations. Skill documents and resources obey the existing 1 MiB Skill limits.
+HTML views are limited to 16 declarations per release and 512 KiB per entry.
 
 This is a breaking protocol/storage change. Rebuild all clients and generated contracts
 together. Installation records reference immutable declarations by digest. Installation

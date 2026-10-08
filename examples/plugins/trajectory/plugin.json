@@ -2,7 +2,7 @@
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "flame.trajectory-example",
   "version": "1.0.0",
-  "description": "A bounded theme and Skill for inspecting Session history through the existing Runtime tools.",
+  "description": "An isolated read-only page, bounded theme and Skill for inspecting existing Session trajectory observations.",
   "extensions": {
     "io.github.tangerg.flame": {
       "apiVersion": 1,
@@ -19,6 +19,14 @@
               "muted": "#a3a8b2",
               "border": "#373b43"
             }
+          }
+        ],
+        "views": [
+          {
+            "id": "trajectory",
+            "title": "Trajectory analysis",
+            "type": "sessionTrajectory",
+            "entry": "views/trajectory.html"
           }
         ]
       }

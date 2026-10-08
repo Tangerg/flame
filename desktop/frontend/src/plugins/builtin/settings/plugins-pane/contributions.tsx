@@ -1,8 +1,10 @@
+import type { PluginCarrier } from "@/foundation/pluginCarrier";
 import { asyncDisposeSymbol } from "dougong";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import type { PluginInstallation } from "@flame/runtime-contract/wire";
 import type { ContributionLifetime } from "@/plugins/sdk/definePlugin";
-import { DATA_PROVIDER } from "@/plugins/sdk/kernelPoints";
+import { DATA_PROVIDER, WORKSPACE_VIEW } from "@/plugins/sdk/kernelPoints";
+import { PackageView } from "./ui/PackageView";
 import { queryClient } from "@/lib/queryClient";
 import {
   contributePaletteTheme,
@@ -19,6 +21,7 @@ function packageThemeId(installation: string, theme: string): string {
 export function registerPackageContributions(
   scope: ContributionLifetime,
   client: FlameClient,
+  carrier: PluginCarrier,
 ): void {
   scope.cleanup(packageOperations.configure({ ...client.plugins, signal: scope.signal }));
   const fetcher = async (_params?: unknown, signal?: AbortSignal) =>
@@ -54,6 +57,37 @@ export function registerPackageContributions(
       if (scope.signal.aborted) return;
       const lifetime = scope.lifetime(installation.id);
       resources.set(installation.id, { signature, lifetime });
+      for (const view of release.views) {
+        const binding = {
+          installationId: installation.id,
+          digest: release.digest,
+          viewId: view.id,
+        };
+        const reads = (sessionId: string) => {
+          const read = (cursor: string | undefined, signal: AbortSignal) =>
+            client.plugins.readTrajectory({ ...binding, sessionId, cursor }, signal);
+          return {
+            read,
+            async load(signal: AbortSignal) {
+              const [resource, initial] = await Promise.all([
+                client.plugins.readView(binding, signal),
+                read(undefined, signal),
+              ]);
+              return { html: resource.html, initial };
+            },
+          };
+        };
+        const title = `${release.name} · ${view.title}`;
+        const component = () => (
+          <PackageView reads={reads} title={title} lifetime={lifetime} carrier={carrier} />
+        );
+        lifetime.contribute(WORKSPACE_VIEW, {
+          id: `package:${installation.id}:${view.id}`,
+          title,
+          dock: "session",
+          component,
+        });
+      }
       for (const theme of release.themes) {
         const { background, foreground, accent, muted, border } = theme.colors;
         contributePaletteTheme(lifetime, {

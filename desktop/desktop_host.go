@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -54,6 +55,11 @@ type pathOpener interface {
 // Every exported method becomes a Wails IPC entry point. Keep composition setters
 // unexported; TestDesktopHostBinds checks the exposed method set.
 type DesktopHost struct {
+	pluginPages        map[string]*nativePluginPage
+	pluginPagePublish  func(string, json.RawMessage)
+	pluginPageSequence uint64
+	pluginPagesClosed  bool
+
 	localTokenPath         string
 	workingDirectoryPicker workingDirectoryPicker
 	imageSaver             imageSaver
@@ -74,6 +80,7 @@ func newDesktopHost(home string) (*DesktopHost, error) {
 	}
 	return &DesktopHost{
 		localTokenPath: dataDirectory.LocalTokenPath(),
+		pluginPages:    make(map[string]*nativePluginPage),
 	}, nil
 }
 

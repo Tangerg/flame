@@ -1319,6 +1319,10 @@ export const ja: Record<string, string> = {
   "file.change.renamed": "{{path}} から名前を変更",
   "file.change.below": "作業ツリーの変更を含む",
 
+  "packages.view.selectSession": "軌跡を確認するセッションを選択してください。",
+  "packages.view.loading": "プラグインページを開いています…",
+  "packages.view.identity": "{{title}} · 読み取り専用プラグイン",
+
   "packages.loading": "読み込み中…",
 
   "packages.trust":

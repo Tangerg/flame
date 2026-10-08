@@ -214,8 +214,8 @@ The status, authorization attempt and connection test projections accept only th
 their state allows and reject anything else as a Runtime contract violation.
 External themes contribute through the existing Dougong Host and child lifetimes;
 connection replacement retires the predecessor before publishing new contributions.
-Plugin actions, HTML views and bridges are unavailable until the design's carrier spike
-and subsequent slices establish their contracts. Runtime-owned MCP tools continue through
+One optional read-only Session trajectory page now uses the qualified carriers below.
+Plugin actions, mutation bridges and general Runtime access remain unavailable. Runtime-owned MCP tools continue through
 the existing execution and approval path. See [Runtime's plugin contract](../runtime/README.md#portable-plugins).
 
 Package themes declare a light/dark scheme. Their portable colors pass through the same
@@ -361,8 +361,54 @@ control messages.
 The application's `RawMessageHandler` cannot supply that guarantee: Wails processes its
 control messages before that callback. Removing JavaScript globals or suppressing frame
 errors does not repair the native admission owner. That original frame carrier remains
-unavailable. Each carrier requires its own passing gate before implementing Slice C's
-public view/resource/bridge contract on that carrier. The qualified browser and independent
-native spikes do not implement Slice C or qualify the original Wails frame. Independent
-themes, Skills and MCP declarations
-retain their existing admission and lifecycle.
+unavailable. Slice C uses the qualified Chromium entry document and independent native
+WebKit view; it does not qualify the original Wails frame. Independent themes, Skills and
+MCP declarations retain their existing admission and lifecycle.
+
+### Optional Session trajectory page
+
+An admitted `sessionTrajectory` view registers a Session dock contribution through the
+existing Dougong Host. Runtime owns package admission and canonical trajectory data.
+The trusted client captures installation, selected digest, view ID and active Session;
+the guest can ask only for a cursor or refresh. Initial data is reused on connection.
+The page renders recorded Run, model-call and Item observations, including missing usage,
+without constructing execution, approval or retry state.
+
+The browser loads the fixed `/plugin-carrier.html` entry in an opaque frame. Runtime and
+Vite read its enforcing header from `frontend/public/plugin-carrier-policy.txt`. Before
+receiving any plugin HTML or data, the entry requires an actual enforcing engine report.
+Only that constrained document creates the guest Blob. Chromium 156 passes; the tested
+WebKit 27.2 browser refuses the renderer before receiving plugin bytes.
+
+On macOS, Desktop creates a separate nonpersistent WKWebView with per-view lockdown,
+its own content controller and a main-frame-only native message handler. The Wails
+workbench retains its normal bindings. Layout follows the dock's clipped bounds. A sibling native view cannot join HTML CSS
+stacking, so it yields while a workbench popup is rendered, including exit motion. Hiding
+or closing a focused page restores workbench focus. Other desktop targets report this renderer
+unavailable. The qualified target was macOS 26.5 with Wails v3 beta.28; other engine/OS
+versions require their own gate result.
+
+Session changes close the prior instance. Installation withdrawal or digest changes
+retire its contribution lifetime, and Runtime connection replacement joins predecessor
+cleanup before registering successor contributions. Native IDs identify physical pages;
+late allocation, reply or closure cannot advance another instance. Pending reads receive
+cancellation and retired pages refuse publication. Read failures preserve already displayed
+evidence and remain explicit; local carrier failure never disables the installation.
+
+Run the production page and transport gate from `desktop/frontend/`:
+
+```sh
+node --test scripts/plugin-trajectory.browser.test.mjs
+```
+
+Run the native production carrier gate from `desktop/` in a macOS graphical session:
+
+```sh
+wails3 task darwin:check:plugin-view
+```
+
+The native gate builds through the shipping deployment floor, uses a temporary product
+home and owned TCP/UDP listeners, and checks positive workbench bindings, no guest network
+packets or resource requests, native sender rejection, viewport resize, focus restoration,
+retirement and successor isolation. It requires exactly one terminal report. The separate
+carrier controls above remain qualification evidence for the engine boundary.

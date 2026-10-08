@@ -1,0 +1,162 @@
+<!doctype html>
+<meta charset="utf-8" />
+<meta
+  http-equiv="Content-Security-Policy"
+  content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; frame-src blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
+/>
+<style>
+  html,
+  body,
+  iframe {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
+    overflow: hidden;
+  }
+</style>
+<script>
+  (() => {
+    const native = window.webkit?.messageHandlers?.carrier;
+    let transport;
+    let guest;
+    let port;
+    let url;
+    let booted = false;
+    const publish = (value) =>
+      native ? native.postMessage(JSON.stringify(value)) : transport?.postMessage(value);
+    const fail = (reason) => publish({ type: "failure", reason });
+    const policy =
+      "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; frame-src 'none'; worker-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
+    function receive(value) {
+      if (value?.type === "boot" && !booted) {
+        booted = true;
+        guest = document.createElement("iframe");
+        guest.sandbox.add("allow-scripts");
+        guest.referrerPolicy = "no-referrer";
+        guest.setAttribute(
+          "allow",
+          "camera 'none'; microphone 'none'; geolocation 'none'; clipboard-read 'none'; clipboard-write 'none'",
+        );
+        guest.title = "Plugin page";
+        url = URL.createObjectURL(
+          new Blob(
+            [
+              `<!doctype html><meta http-equiv="Content-Security-Policy" content="${policy}">`,
+              value.html,
+            ],
+            { type: "text/html" },
+          ),
+        );
+        let connected = false;
+        let loads = 0;
+        const ready = (event) => {
+          if (
+            connected ||
+            event.source !== guest.contentWindow ||
+            event.origin !== "null" ||
+            event.data !== "flame.trajectory.ready.v1"
+          )
+            return;
+          connected = true;
+          removeEventListener("message", ready);
+          const channel = new MessageChannel();
+          port = channel.port1;
+          port.onmessage = (event) => publish({ type: "request", request: event.data });
+          port.start();
+          guest.contentWindow.postMessage(
+            { type: "flame.trajectory.connect.v1", initial: value.initial },
+            "*",
+            [channel.port2],
+          );
+          publish({ type: "connected" });
+        };
+        addEventListener("message", ready);
+        guest.onload = () => {
+          if (++loads > 1) fail("The plugin document navigated away.");
+        };
+        guest.src = url;
+        document.body.append(guest);
+      } else if (value?.type === "reply") port?.postMessage(value.reply);
+    }
+    window.flameCarrierReceive = receive;
+    addEventListener("message", (event) => {
+      if (
+        native ||
+        transport ||
+        event.source !== parent ||
+        event.data !== "flame.carrier.connect.v1" ||
+        event.ports.length !== 1
+      )
+        return;
+      transport = event.ports[0];
+      transport.onmessage = (event) => receive(event.data);
+      transport.start();
+    });
+    addEventListener("error", (event) => fail(String(event.message)));
+    addEventListener("unhandledrejection", (event) => fail(String(event.reason)));
+    addEventListener(
+      "pagehide",
+      () => {
+        port?.close();
+        transport?.close();
+        guest?.remove();
+        if (url) URL.revokeObjectURL(url);
+      },
+      { once: true },
+    );
+    addEventListener(
+      "DOMContentLoaded",
+      async () => {
+        if (native) {
+          if (typeof RTCPeerConnection !== "undefined")
+            fail("Native WebKit did not withdraw WebRTC.");
+          else publish({ type: "ready" });
+          return;
+        }
+        try {
+          if (typeof ReportingObserver !== "function" || typeof RTCPeerConnection !== "function")
+            throw new Error("The browser cannot enforce plugin network isolation.");
+          const enforcement = Promise.withResolvers();
+          const observer = new ReportingObserver(
+            (reports) => {
+              for (const report of reports) {
+                const encoded = Object.getPrototypeOf(report).toJSON.call(report);
+                if (
+                  encoded.type === "connection-allowlist" &&
+                  encoded.body.connection === "webrtc" &&
+                  encoded.body.disposition === "enforce"
+                )
+                  enforcement.resolve();
+              }
+            },
+            { types: ["connection-allowlist"], buffered: true },
+          );
+          observer.observe();
+          const peer = new RTCPeerConnection();
+          const deadline = setTimeout(
+            () =>
+              enforcement.reject(
+                new Error("The browser does not enforce plugin network isolation."),
+              ),
+            3000,
+          );
+          try {
+            peer.createDataChannel("policy-control");
+            await peer.setLocalDescription();
+            await enforcement.promise;
+          } finally {
+            clearTimeout(deadline);
+            peer.close();
+            observer.disconnect();
+          }
+          parent.postMessage({ type: "flame.carrier.ready.v1" }, "*");
+        } catch (error) {
+          parent.postMessage({ type: "flame.carrier.failure.v1" }, "*");
+        }
+      },
+      { once: true },
+    );
+  })();
+</script>

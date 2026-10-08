@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-07.8` · 98 methods
+Protocol `2026-10-08.1` · 100 methods
 
 ## Methods
 
@@ -64,6 +64,8 @@ Protocol `2026-10-07.8` · 98 methods
 | `mcp.servers.reconnect` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_not_found`, `mcp_server_disabled`, `capability_not_negotiated` |
 | `mcp.authorizationAttempts.create` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_not_found`, `mcp_server_disabled`, `capability_not_negotiated` |
 | `mcp.authorizationAttempts.get` | query | unary | none | none | none | — | `mcp` | `mcp_authorization_attempt_not_found`, `capability_not_negotiated` |
+| `plugins.readView` | query | unary | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_unapproved`, `plugin_stale`, `capability_not_negotiated` |
+| `plugins.readTrajectory` | query | unary | none | none | cursor | `sessions.trajectory` | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_unapproved`, `plugin_stale`, `session_not_found`, `capability_not_negotiated` |
 | `plugins.list` | query | unary | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_unapproved`, `plugin_stale`, `capability_not_negotiated` |
 | `plugins.install` | command | unary | replayResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_unapproved`, `plugin_stale`, `capability_not_negotiated` |
 | `plugins.stage` | command | unary | replayResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_unapproved`, `plugin_stale`, `capability_not_negotiated` |
@@ -925,6 +927,14 @@ TypeScript validator from this single registry projection.
 | `MCPHeadersChange` | `value` | `nonEmptyProperties` |
 | `MCPEnvironmentChange` | `value` | `nonEmptyProperties` |
 | `MCPServerCandidate` | `name` | `pattern("^[a-z0-9][a-z0-9._-]{0,31}$")` |
+| `ReadPluginViewRequest` | `viewId` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
+| `ReadPluginTrajectoryRequest` | `sessionId` | `nonEmpty` |
+| `ReadPluginTrajectoryRequest` | `sessionId` | `identity` |
+| `ReadPluginTrajectoryRequest` | `sessionId` | `maxLength(256)` |
+| `PluginViewResource` | `html` | `maxLength(524288)` |
+| `PluginView` | `id` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
+| `PluginView` | `title` | `nonEmpty` |
+| `PluginView` | `title` | `maxLength(128)` |
 | `PluginThemeColors` | `background` | `pattern("^#[0-9a-fA-F]{6}$")` |
 | `PluginThemeColors` | `foreground` | `pattern("^#[0-9a-fA-F]{6}$")` |
 | `PluginThemeColors` | `accent` | `pattern("^#[0-9a-fA-F]{6}$")` |
@@ -1196,6 +1206,8 @@ available. Refusal is `capability_not_negotiated` — never a silent downgrade.
 | `mcp.servers.reconnect` | always | `mcp` |
 | `mcp.authorizationAttempts.create` | always | `mcp` |
 | `mcp.authorizationAttempts.get` | always | `mcp` |
+| `plugins.readView` | always | `plugins` |
+| `plugins.readTrajectory` | always | `plugins` |
 | `plugins.list` | always | `plugins` |
 | `plugins.install` | always | `plugins` |
 | `plugins.stage` | always | `plugins` |

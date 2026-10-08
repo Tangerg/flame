@@ -1251,6 +1251,10 @@ export const zh: Record<string, string> = {
   "file.change.below": "包含工作树改动",
   "file.unsupported.sub": "Flame 以文本方式显示工作区文件，请用对应的应用打开它。",
 
+  "packages.view.selectSession": "选择一个会话来查看其轨迹。",
+  "packages.view.loading": "正在打开插件页面…",
+  "packages.view.identity": "{{title}} · 只读插件",
+
   "packages.loading": "正在加载…",
 
   "packages.trust":

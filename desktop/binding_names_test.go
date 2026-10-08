@@ -13,6 +13,7 @@ var boundMethods = []string{
 	"Bootstrap", "ChooseWorkingDirectory", "NotificationAuthorization", "OpenPath",
 	"RequestNotificationAuthorization", "RevealPath", "RevealWindow", "SaveImage",
 	"SendNotification", "WindowChrome",
+	"OpenPluginPage", "ClosePluginPage", "PositionPluginPage", "SendPluginPage",
 }
 
 func TestDesktopHostBindsExactlyTheDeclaredMethods(t *testing.T) {
@@ -52,6 +53,11 @@ func TestDesktopHostMethodNamesMatchTheFrontend(t *testing.T) {
 		t.Fatalf("read the frontend's host bridge: %v", err)
 	}
 
+	carrierSource, err := os.ReadFile("frontend/src/platform/desktopPluginCarrier.ts")
+	if err != nil {
+		t.Fatal(err)
+	}
+	source = append(source, carrierSource...)
 	for _, method := range boundMethods {
 		if _, ok := hostType.MethodByName(method); !ok {
 			t.Errorf("DesktopHost has no exported %s method to bind", method)

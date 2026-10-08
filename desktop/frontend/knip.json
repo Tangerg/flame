@@ -6,7 +6,8 @@
     "src/plugins/sdk/index.ts",
     "postcss.config.mjs",
     "public/focus-modality.js",
-    "scripts/check-plugin-carrier-native.mjs"
+    "scripts/check-plugin-carrier-native.mjs",
+    "scripts/check-plugin-view-native.mjs"
   ],
   "ignoreExportsUsedInFile": false,
   "ignoreDependencies": ["husky", "lint-staged", "@commitlint/cli"]

@@ -82,6 +82,10 @@ func presentPluginRelease(release plugin.Release) (protocol.PluginRelease, error
 		result.Themes = append(result.Themes, presentPluginTheme(item))
 	}
 	result.Skills = make([]protocol.PluginSkill, 0, len(v.Skills))
+	result.Views = make([]protocol.PluginView, 0, len(v.Views))
+	for _, view := range v.Views {
+		result.Views = append(result.Views, protocol.PluginView{ID: view.ID, Title: view.Title, Type: protocol.PluginViewType(view.Kind)})
+	}
 	for _, item := range v.Skills {
 		result.Skills = append(result.Skills, presentPluginSkill(item))
 	}

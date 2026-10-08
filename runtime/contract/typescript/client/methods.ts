@@ -1,5 +1,8 @@
 import type {
   PluginInstallation,
+  PluginViewResource,
+  ReadPluginViewRequest,
+  ReadPluginTrajectoryRequest,
   InstallPluginRequest,
   StagePluginRequest,
   PluginReleaseRequest,
@@ -283,6 +286,11 @@ export interface Methods {
     };
   };
   plugins: {
+    readView: (params: ReadPluginViewRequest, signal?: AbortSignal) => Promise<PluginViewResource>;
+    readTrajectory: (
+      params: ReadPluginTrajectoryRequest,
+      signal?: AbortSignal,
+    ) => Promise<Page<TrajectoryEntry>>;
     list: (signal?: AbortSignal) => Promise<Page<PluginInstallation>>;
     install: (params: InstallPluginRequest) => MutationPromise<PluginInstallation>;
     stage: (params: StagePluginRequest) => MutationPromise<PluginInstallation>;
@@ -541,6 +549,8 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       },
     },
     plugins: {
+      readView: (params, signal) => call("plugins.readView", params, { signal }),
+      readTrajectory: (params, signal) => call("plugins.readTrajectory", params, { signal }),
       list: (signal) => call("plugins.list", {}, { signal }),
       install: (params) => call("plugins.install", params),
       stage: (params) => call("plugins.stage", params),

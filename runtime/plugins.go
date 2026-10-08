@@ -9,6 +9,14 @@ import (
 func (r *binding) ListPlugins(ctx context.Context, options CallOptions) (*protocol.Page[protocol.PluginInstallation], error) {
 	return r.invoke[struct{}, *protocol.Page[protocol.PluginInstallation]](ctx, delivery.PluginsList, struct{}{}, callOptions(options))
 }
+
+func (r *binding) ReadPluginView(ctx context.Context, request protocol.ReadPluginViewRequest, options CallOptions) (*protocol.PluginViewResource, error) {
+	return r.invoke[protocol.ReadPluginViewRequest, *protocol.PluginViewResource](ctx, delivery.PluginsReadView, request, callOptions(options))
+}
+
+func (r *binding) ReadPluginTrajectory(ctx context.Context, request protocol.ReadPluginTrajectoryRequest, options CallOptions) (*protocol.Page[protocol.TrajectoryEntry], error) {
+	return r.invoke[protocol.ReadPluginTrajectoryRequest, *protocol.Page[protocol.TrajectoryEntry]](ctx, delivery.PluginsReadTrajectory, request, callOptions(options))
+}
 func (r *binding) InstallPlugin(ctx context.Context, request protocol.InstallPluginRequest, options CommandOptions) (*protocol.PluginInstallation, error) {
 	return r.invoke[protocol.InstallPluginRequest, *protocol.PluginInstallation](ctx, delivery.PluginsInstall, request, commandOptions(options))
 }

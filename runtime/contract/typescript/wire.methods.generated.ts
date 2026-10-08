@@ -93,9 +93,12 @@ import type {
   PluginInstallation,
   PluginReleaseRequest,
   PluginRequest,
+  PluginViewResource,
   Provider,
   ProviderTestResult,
   ReadFileRequest,
+  ReadPluginTrajectoryRequest,
+  ReadPluginViewRequest,
   ResolveWorkspaceRequest,
   ResumeRunRequest,
   ResumeRunResponse,
@@ -223,6 +226,8 @@ const METHOD_NAMES = [
   "mcp.servers.reconnect",
   "mcp.authorizationAttempts.create",
   "mcp.authorizationAttempts.get",
+  "plugins.readView",
+  "plugins.readTrajectory",
   "plugins.list",
   "plugins.install",
   "plugins.stage",
@@ -336,6 +341,8 @@ const VALUE_METHOD_NAMES = [
   "mcp.tools.list",
   "mcp.authorizationAttempts.create",
   "mcp.authorizationAttempts.get",
+  "plugins.readView",
+  "plugins.readTrajectory",
   "plugins.list",
   "plugins.install",
   "plugins.stage",
@@ -767,6 +774,20 @@ export const WIRE_METHOD_POLICY = {
     idempotency: "none",
     replayCursor: "none",
     pagination: "none",
+  },
+  "plugins.readView": {
+    operation: "query",
+    response: "unary",
+    idempotency: "none",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "plugins.readTrajectory": {
+    operation: "query",
+    response: "unary",
+    idempotency: "none",
+    replayCursor: "none",
+    pagination: "cursor",
   },
   "plugins.list": {
     operation: "query",
@@ -1239,6 +1260,12 @@ export const WIRE_CAPABILITY_POLICY: {
   "mcp.authorizationAttempts.get": [
     { requires: ["mcp"] },
   ],
+  "plugins.readView": [
+    { requires: ["plugins"] },
+  ],
+  "plugins.readTrajectory": [
+    { requires: ["plugins"] },
+  ],
   "plugins.list": [
     { requires: ["plugins"] },
   ],
@@ -1371,6 +1398,8 @@ export interface WireShapes {
   "mcp.servers.reconnect": { params: MCPServerRequest };
   "mcp.authorizationAttempts.create": { params: CreateMCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
   "mcp.authorizationAttempts.get": { params: MCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
+  "plugins.readView": { params: ReadPluginViewRequest; result: PluginViewResource };
+  "plugins.readTrajectory": { params: ReadPluginTrajectoryRequest; result: PageOfTrajectoryEntry };
   "plugins.list": { params: Record<string, never>; result: PageOfPluginInstallation };
   "plugins.install": { params: InstallPluginRequest; result: PluginInstallation };
   "plugins.stage": { params: StagePluginRequest; result: PluginInstallation };

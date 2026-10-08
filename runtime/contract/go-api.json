@@ -303,6 +303,14 @@
               "signature": "func(ctx context.Context, options CallOptions) (*protocol.Page[protocol.WorkspaceSummary], error)"
             },
             {
+              "name": "ReadPluginTrajectory",
+              "signature": "func(ctx context.Context, request protocol.ReadPluginTrajectoryRequest, options CallOptions) (*protocol.Page[protocol.TrajectoryEntry], error)"
+            },
+            {
+              "name": "ReadPluginView",
+              "signature": "func(ctx context.Context, request protocol.ReadPluginViewRequest, options CallOptions) (*protocol.PluginViewResource, error)"
+            },
+            {
               "name": "ReadWorkspaceFile",
               "signature": "func(ctx context.Context, request protocol.ReadFileRequest, options CallOptions) (*protocol.FileContent, error)"
             },
@@ -797,6 +805,14 @@
             {
               "name": "ListWorkspaces",
               "signature": "func(ctx context.Context, options CallOptions) (*protocol.Page[protocol.WorkspaceSummary], error)"
+            },
+            {
+              "name": "ReadPluginTrajectory",
+              "signature": "func(ctx context.Context, request protocol.ReadPluginTrajectoryRequest, options CallOptions) (*protocol.Page[protocol.TrajectoryEntry], error)"
+            },
+            {
+              "name": "ReadPluginView",
+              "signature": "func(ctx context.Context, request protocol.ReadPluginViewRequest, options CallOptions) (*protocol.PluginViewResource, error)"
             },
             {
               "name": "ReadWorkspaceFile",
@@ -2197,6 +2213,11 @@
           "value": "\"set\""
         },
         {
+          "name": "PluginViewSessionTrajectory",
+          "type": "PluginViewType",
+          "value": "\"sessionTrajectory\""
+        },
+        {
           "name": "ProblemAgentStuck",
           "type": "untyped string",
           "value": "\"agent_stuck\""
@@ -2264,7 +2285,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-07.8\""
+          "value": "\"2026-10-08.1\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -7309,6 +7330,11 @@
               "tag": "json:\"themes\""
             },
             {
+              "name": "Views",
+              "type": "[]PluginView",
+              "tag": "json:\"views\""
+            },
+            {
               "name": "Skills",
               "type": "[]PluginSkill",
               "tag": "json:\"skills\""
@@ -7525,6 +7551,55 @@
         },
         {
           "name": "PluginValueChangeType",
+          "kind": "defined",
+          "underlying": "string"
+        },
+        {
+          "name": "PluginView",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Title",
+              "type": "string",
+              "tag": "json:\"title\""
+            },
+            {
+              "name": "Type",
+              "type": "PluginViewType",
+              "tag": "json:\"type\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "PluginViewResource",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "HTML",
+              "type": "string",
+              "tag": "json:\"html\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "PluginViewType",
           "kind": "defined",
           "underlying": "string"
         },
@@ -7846,6 +7921,52 @@
               "name": "MaxBytes",
               "type": "*int",
               "tag": "json:\"maxBytes,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "ReadPluginTrajectoryRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ReadPluginViewRequest",
+              "type": "ReadPluginViewRequest"
+            },
+            {
+              "name": "SessionID",
+              "type": "string",
+              "tag": "json:\"sessionId\""
+            },
+            {
+              "name": "PageQuery",
+              "type": "PageQuery"
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "ReadPluginViewRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "PluginReleaseRequest",
+              "type": "PluginReleaseRequest"
+            },
+            {
+              "name": "ViewID",
+              "type": "string",
+              "tag": "json:\"viewId\""
             }
           ],
           "methods": [

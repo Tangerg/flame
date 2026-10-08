@@ -105,7 +105,10 @@ func parse(ctx context.Context, root *os.Root, digest fingerprint.Digest) (plugi
 		return plugin.Release{}, err
 	}
 	if raw, found := envelope["extensions"]; found {
-		parseExtensions(raw, release)
+		parseExtensions(raw, release, ctx, root)
+		if err := ctx.Err(); err != nil {
+			return plugin.Release{}, err
+		}
 	}
 	if err = parseSkills(ctx, root, release); err != nil {
 		return plugin.Release{}, err
@@ -113,7 +116,7 @@ func parse(ctx context.Context, root *os.Root, digest fingerprint.Digest) (plugi
 	return release.Release(digest)
 }
 
-func parseExtensions(raw jsontext.Value, release *plugin.Builder) {
+func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Context, root *os.Root) {
 	var namespaces map[string]jsontext.Value
 	if err := json.Unmarshal(raw, &namespaces); err != nil || namespaces == nil {
 		report(release, plugin.Component{Kind: plugin.ComponentManifestField, Name: "extensions"}, plugin.DiagnosticInvalidDeclaration)
@@ -142,6 +145,23 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder) {
 		}
 	}
 	for _, component := range slices.Sorted(maps.Keys(contributes)) {
+		if component == "views" {
+			admitContributions(contributes[component], release, plugin.Component{Kind: plugin.ComponentContribution, Name: component}, func(w wireView) error {
+				view := plugin.ViewDeclaration{ID: w.ID, Title: w.Title, Kind: w.Type, Entry: w.Entry}
+				if !plugin.ValidResourcePath(view.Entry) {
+					return plugin.ErrInvalid
+				}
+				body, err := read(ctx, root, view.Entry, plugin.MaxViewBytes)
+				if err != nil {
+					return err
+				}
+				if err := validateViewHTML(body); err != nil {
+					return err
+				}
+				return release.AdmitView(view)
+			})
+			continue
+		}
 		if component != "themes" {
 			report(release, plugin.Component{Kind: plugin.ComponentContribution, Name: component}, plugin.DiagnosticUnsupportedContribution)
 			continue

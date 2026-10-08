@@ -1299,6 +1299,10 @@ export const ko: Record<string, string> = {
   "file.change.renamed": "{{path}}에서 이름 변경됨",
   "file.change.below": "작업 트리 변경 사항 포함",
 
+  "packages.view.selectSession": "경로를 확인할 세션을 선택하세요.",
+  "packages.view.loading": "플러그인 페이지를 여는 중…",
+  "packages.view.identity": "{{title}} · 읽기 전용 플러그인",
+
   "packages.loading": "불러오는 중…",
 
   "packages.trust":

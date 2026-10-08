@@ -1,3 +1,4 @@
+import { desktopPluginCarrier } from "./desktopPluginCarrier";
 import { z } from "zod";
 import type { NotificationAuthorization } from "@/foundation/notificationAuthorization";
 import { normalizeRuntimeEndpoint } from "@flame/runtime-contract/client/endpoint";
@@ -71,6 +72,7 @@ export function createDesktopHostClient(binding: DesktopHostBinding): ClientHost
   let pending: Promise<ClientBootstrap> | undefined;
   return {
     kind: "desktop",
+    pluginCarrier: desktopPluginCarrier(binding),
     bootstrap() {
       pending ??= (async () => {
         const host = binding;

@@ -46,6 +46,7 @@ function reviewedInstallation(): PluginInstallation {
       inputs: [],
       skills: [],
       themes: [],
+      views: [],
       diagnostics: [],
     },
   };

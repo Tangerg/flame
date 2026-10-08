@@ -1369,6 +1369,10 @@ export const de: Record<string, string> = {
   "file.change.renamed": "Umbenannt von {{path}}",
   "file.change.below": "Enthält Änderungen im Arbeitsbaum",
 
+  "packages.view.selectSession": "Wählen Sie eine Sitzung, um ihren Verlauf anzusehen.",
+  "packages.view.loading": "Plugin-Seite wird geöffnet…",
+  "packages.view.identity": "{{title}} · Schreibgeschütztes Plugin",
+
   "packages.loading": "Laden…",
 
   "packages.trust":

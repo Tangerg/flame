@@ -1,9 +1,10 @@
+import { browserPluginCarrier } from "@/platform/browserPluginCarrier";
 import { afterEach, expect, it, onTestFinished, vi } from "vitest";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import type { PluginInstallation } from "@flame/runtime-contract/wire";
 import { queryClient } from "@/lib/queryClient";
 import { definePlugin, contributionsTo } from "@/plugins/sdk";
-import { COLOR_THEME } from "@/plugins/sdk/kernelPoints";
+import { COLOR_THEME, WORKSPACE_VIEW } from "@/plugins/sdk/kernelPoints";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
 import {
   RuntimeConnectionGeneration,
@@ -102,6 +103,7 @@ function installation(id: string, name: string): PluginInstallation {
       inputs: [],
       skills: [],
       diagnostics: [],
+      views: [],
       themes: [{ id: "theme", title: name, scheme: "dark", colors: { background: "#181a1e" } }],
     },
   };
@@ -132,7 +134,7 @@ it("joins the retired Runtime before publishing the latest package generation", 
   });
   await loadPluginsForTest(
     runtime,
-    createPluginsPane(() => selected),
+    createPluginsPane(() => selected, browserPluginCarrier),
   );
   await vi.waitFor(() => expect(original).toHaveBeenCalledOnce());
   const retired = packageOperations.get();
@@ -171,7 +173,7 @@ it("keeps a failed realization local to this client and retries it on request", 
     }));
   await loadPluginsForTest(
     runtimePlugin(),
-    createPluginsPane(() => client(list, subscribe)),
+    createPluginsPane(() => client(list, subscribe), browserPluginCarrier),
   );
   await vi.waitFor(() =>
     expect(usePackageRealization.getState().failure?.reason).toBe("event stream refused"),
@@ -194,7 +196,7 @@ it("withdraws its realization failure when the owning generation retires", async
   const subscribe = vi.fn().mockRejectedValue(new Error("event stream refused"));
   await loadPluginsForTest(
     runtimePlugin(),
-    createPluginsPane(() => client(async () => ({ data: [] }), subscribe)),
+    createPluginsPane(() => client(async () => ({ data: [] }), subscribe), browserPluginCarrier),
   );
   await vi.waitFor(() => expect(usePackageRealization.getState().failure).not.toBeNull());
   await resetKernelForTest();
@@ -246,7 +248,7 @@ it.each(["initial snapshot", "event refresh", "event stream"] as const)(
     });
     await loadPluginsForTest(
       runtimePlugin(),
-      createPluginsPane(() => client(list, subscribe)),
+      createPluginsPane(() => client(list, subscribe), browserPluginCarrier),
     );
     ready.resolve();
     await vi.waitFor(() =>
@@ -277,15 +279,31 @@ it("presents and retains only the themes Runtime admits", async () => {
     ...installation("0c31c796-224c-40fa-a721-6696971bb697", "withheld"),
     presentation: "withheld",
   };
+  admitted.selected.views = [{ id: "trajectory", title: "Trajectory", type: "sessionTrajectory" }];
+  withheld.selected.views = admitted.selected.views;
   await loadPluginsForTest(
     runtimePlugin(),
-    createPluginsPane(() => client(async () => ({ data: [admitted, withheld] }))),
+    createPluginsPane(
+      () => client(async () => ({ data: [admitted, withheld] })),
+      browserPluginCarrier,
+    ),
   );
   await vi.waitFor(() =>
     expect(contributionsTo(COLOR_THEME).map((entry) => entry.item.label)).toEqual([
       "admitted · admitted",
     ]),
   );
+  expect(
+    contributionsTo(WORKSPACE_VIEW).map((entry) => ({
+      id: entry.item.id,
+      title: entry.item.title,
+    })),
+  ).toEqual([
+    {
+      id: "package:d3cbafab-ef30-4e20-9583-42f5316dc865:trajectory",
+      title: "admitted · Trajectory",
+    },
+  ]);
   expect(retainThemeSelection).toHaveBeenLastCalledWith(
     ["package:d3cbafab-ef30-4e20-9583-42f5316dc865:theme"],
     "package:",

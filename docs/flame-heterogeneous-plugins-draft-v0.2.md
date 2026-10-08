@@ -1489,9 +1489,10 @@ A deferred capability is unavailable, not a placeholder implementation returning
 
 ### 21.3 Recommended implementation slices
 
-The current working implementation stops at Slice A/B. Earlier action/view prototypes
-have been withdrawn with their public API, client entrypoints and bridge. Their contracts
-must be established after the carrier spike rather than retained as compatibility surfaces.
+The current implementation includes Slice A/B and one optional Slice C Session trajectory
+page. Earlier action/view prototypes were withdrawn rather than retained as compatibility
+surfaces. The present view/resource contract was established from the qualified carrier
+gates; action forms and broader host integrations remain deferred.
 
 **Slice 0: tool identity and policy ownership.** Implement [`tool-identity-and-policy-ownership.md`](tool-identity-and-policy-ownership.md) and pass its acceptance tests. It is a breaking repair of the current product, valuable without plugins, and a prerequisite for every later slice.
 
@@ -1503,7 +1504,18 @@ must be established after the carrier spike rather than retained as compatibilit
 
 The reproducible browser and native gates now live in [Desktop's carrier acceptance](../desktop/README.md#plugin-carrier-acceptance), which owns their commands and current carrier findings. The network gate includes WebRTC with packet observations outside the frame; a fetch-only CSP check does not establish network isolation. A failed carrier gate blocks that carrier's Slice C admission. Repair the executing carrier's authority boundary before introducing the public view/bridge contract; JavaScript global replacement is not an enforcement owner.
 
-**Slice C: one optional graphical page.** Load an isolated read-oriented view through the existing Dougong host and shared client. Verify native/browser boundaries, connection replacement, initial-result reuse, and local realization failure without backend state changes.
+**Slice C: one optional graphical page.** Implemented for the Session trajectory example
+through the existing Dougong host and shared client. Runtime admits one bounded
+`sessionTrajectory` HTML resource and authorizes reads against the exact installation,
+release and view. Its read endpoint delegates to canonical Session trajectory queries.
+The trusted client binds the Session and gives the page only initial data and cursor-based
+reads. Chromium uses an enforcing entry document; macOS uses an independent, locked-down
+WKWebView. Unsupported carriers refuse admission before receiving plugin content.
+Installation withdrawal, release selection, Session changes and connection replacement
+retire local authority; accepted reads do not retain installation admission during I/O.
+Resource, bridge, browser/native isolation and lifetime checks accompany this boundary.
+[Desktop's acceptance](../desktop/README.md#optional-session-trajectory-page) owns commands
+and tested engine/OS scope. This slice introduces no mutation path or second business owner.
 
 **Slice D: broaden proven surfaces.** Add necessary action forms, result renderers, IDE hosting, or language integrations only after their consumers are concrete. Preserve one definition and one policy path.
 
