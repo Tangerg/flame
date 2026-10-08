@@ -16,6 +16,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/cancelread"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skilldocument"
 )
 
 // usageFile is the store-root sidecar holding per-skill usage. Its dot-prefixed
@@ -118,9 +119,12 @@ func (s *Store) SweepIdle(ctx context.Context, now time.Time, archiveAfter time.
 		if !found {
 			continue
 		}
-		skill, err := skillspec.Parse(content)
-		if err != nil {
+		skill, err := skilldocument.Load(ctx, name, content)
+		if errors.Is(err, skillspec.ErrInvalidSkill) {
 			continue
+		}
+		if err != nil {
+			return archived, identities, fmt.Errorf("skillauthoring: load idle skill %q: %w", name, err)
 		}
 		if skills.ProposalOrigin(skill.Metadata[metadataOrigin]).Validate() != nil {
 			continue // provenance gate: only agent-authored skills auto-curate
@@ -160,31 +164,6 @@ func activeSkillNames(ctx context.Context, root *os.Root) ([]string, error) {
 	return active, err
 }
 
-// dropUsage removes a skill's usage record if present. Used when a skill leaves
-// the active set (archived), so a later restore is judged fresh rather than
-// inheriting a stale last-used time.
-func (s *Store) dropUsage(ctx context.Context, name string) error {
-	if err := contextError(ctx, "drop skill usage"); err != nil {
-		return err
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	root, cleanup, err := s.openLeasedRoot(ctx, "drop skill usage")
-	if err != nil {
-		return err
-	}
-	defer cleanup()
-	usage, err := readUsage(ctx, root)
-	if err != nil {
-		return err
-	}
-	if _, ok := usage[name]; !ok {
-		return nil
-	}
-	delete(usage, name)
-	return writeUsage(ctx, root, usage)
-}
-
 func readUsage(ctx context.Context, root *os.Root) (map[string]usageRecord, error) {
 	if err := contextError(ctx, "read skill usage"); err != nil {
 		return nil, err
@@ -218,13 +197,11 @@ func readUsage(ctx context.Context, root *os.Root) (map[string]usageRecord, erro
 		return nil, fmt.Errorf("skillauthoring: read usage: %w", verifyErr)
 	}
 	var usage map[string]usageRecord
-	if err := json.Unmarshal(data, &usage); err != nil {
-		// A corrupt usage file is non-critical metadata: start fresh rather than
-		// wedging skill loads and curation on it.
-		return map[string]usageRecord{}, nil
+	if err := json.Unmarshal(data, &usage, json.RejectUnknownMembers(true)); err != nil {
+		return nil, fmt.Errorf("skillauthoring: decode usage: %w", err)
 	}
 	if usage == nil {
-		usage = map[string]usageRecord{}
+		return nil, errors.New("skillauthoring: usage metadata must be an object")
 	}
 	if len(usage) > skills.MaxSkillsPerSource {
 		return nil, fmt.Errorf(
@@ -236,9 +213,7 @@ func readUsage(ctx context.Context, root *os.Root) (map[string]usageRecord, erro
 	}
 	for name := range usage {
 		if !validName(name) {
-			// Invalid records are non-critical corrupt metadata, like malformed
-			// JSON: discard the sidecar rather than preserving unusable keys.
-			return map[string]usageRecord{}, nil
+			return nil, fmt.Errorf("skillauthoring: usage metadata has invalid skill name %q", name)
 		}
 	}
 	return usage, nil

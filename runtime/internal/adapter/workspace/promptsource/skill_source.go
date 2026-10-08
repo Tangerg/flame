@@ -1,7 +1,6 @@
 package promptsource
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -10,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"unicode/utf8"
 
 	sdk "github.com/Tangerg/scope/skills"
 
@@ -19,6 +17,7 @@ import (
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/pathidentity"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skilldocument"
 )
 
 // runtimeSkillSource is Runtime's finite admission boundary around the Agent
@@ -147,7 +146,7 @@ func (r *runtimeSkillSource) document(ctx context.Context, name string) (*sdk.Sk
 	if err := skillSourceContextError(ctx, "load"); err != nil {
 		return nil, nil, err
 	}
-	skill, err := LoadSkillDocument(ctx, name, content)
+	skill, err := skilldocument.Load(ctx, name, content)
 	return skill, content, err
 }
 
@@ -215,31 +214,6 @@ func readSkillDocument(ctx context.Context, name string, source *openedSkillDocu
 		return nil, fmt.Errorf("runtime skill source: read %q: %w", name, verifyErr)
 	}
 	return content, nil
-}
-
-// Scope owns format parsing and directory-name binding. The finite filesystem
-// exposes only these verified bytes, so parsing never reopens their pathname.
-func LoadSkillDocument(ctx context.Context, name string, content []byte) (*sdk.Skill, error) {
-	if !utf8.Valid(content) {
-		return nil, fmt.Errorf("%w %q: document is not UTF-8", sdk.ErrInvalidSkill, name)
-	}
-	repository, err := sdk.NewRepository(skillDocumentFS{name: name, content: content}, sdk.RepositoryConfig{MaxSkillBytes: domainskills.MaxAuthoredSkillDocumentBytes})
-	if err != nil {
-		return nil, err
-	}
-	return repository.Load(ctx, name)
-}
-
-type skillDocumentFS struct {
-	name    string
-	content []byte
-}
-
-func (f skillDocumentFS) Open(name string) (fs.File, error) {
-	if name != f.name+"/"+sdk.SkillFile {
-		return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
-	}
-	return &skillResourceBytes{Reader: bytes.NewReader(f.content), name: sdk.SkillFile}, nil
 }
 
 func (r *runtimeSkillSource) OpenResource(ctx context.Context, name, resource string) (fs.File, error) {

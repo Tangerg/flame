@@ -92,3 +92,39 @@ func TestRecordUseRejectsOverCapacityUsageMap(t *testing.T) {
 		t.Fatalf("RecordUse error = %v, want ErrLibraryCapacity beyond %d records", err, skills.MaxSkillsPerSource)
 	}
 }
+
+func TestCorruptUsageCannotBeReplacedByFreshHistory(t *testing.T) {
+	for _, corrupt := range []string{
+		`{"agent-skill":`,
+		`{"INVALID":{"firstSeen":1}}`,
+		`{"agent-skill":{"FirstSeen":1}}`,
+		`{"agent-skill":{"firstSeen":1,"unknown":1}}`,
+		`{"agent-skill":{"firstSeen":1,"firstSeen":2}}`,
+		`null`,
+	} {
+		t.Run(corrupt, func(t *testing.T) {
+			root := t.TempDir()
+			store := newStore(t, root, skills.ScopeUser)
+			installActiveAgentSkill(t, store, "agent-skill")
+			path := filepath.Join(root, ".usage.json")
+			if err := os.WriteFile(path, []byte(corrupt), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := store.RecordUse(t.Context(), "agent-skill", sweepBase); err == nil {
+				t.Fatal("corrupt activity metadata was silently replaced")
+			}
+			if _, _, err := store.SweepIdle(t.Context(), sweepBase, sweepArchive); err == nil {
+				t.Fatal("curation accepted corrupt activity metadata")
+			}
+			if _, err := store.Archive(t.Context(), "agent-skill"); err == nil {
+				t.Fatal("archive accepted corrupt activity metadata")
+			}
+			if content, err := os.ReadFile(path); err != nil || string(content) != corrupt {
+				t.Fatalf("corrupt metadata was overwritten: %q, %v", content, err)
+			}
+			if _, err := os.Stat(filepath.Join(root, "agent-skill", "SKILL.md")); err != nil {
+				t.Fatalf("failed archive changed lifecycle: %v", err)
+			}
+		})
+	}
+}

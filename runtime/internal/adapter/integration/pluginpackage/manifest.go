@@ -12,11 +12,11 @@ import (
 	"path"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skilldocument"
 	sdk "github.com/Tangerg/scope/skills"
 )
 
@@ -367,7 +367,7 @@ func parseSkills(ctx context.Context, root *os.Root, release *plugin.Builder) er
 			report(release, plugin.Component{Kind: plugin.ComponentSkill, Name: entry.Name()}, plugin.DiagnosticUnavailableComponent)
 			continue
 		}
-		skill, err := promptsource.LoadSkillDocument(ctx, entry.Name(), content)
+		skill, err := skilldocument.Load(ctx, entry.Name(), content)
 		if err != nil {
 			if ctx.Err() != nil {
 				return ctx.Err()

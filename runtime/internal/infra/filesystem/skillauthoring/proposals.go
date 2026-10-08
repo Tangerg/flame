@@ -14,6 +14,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skilldocument"
 )
 
 // SubmitProposal validates and stages proposal in its name-owned review slot.
@@ -109,15 +110,14 @@ func (s *Store) ApproveProposal(ctx context.Context, ref skills.ProposalRef) ([]
 	if !found {
 		return nil, fmt.Errorf("skillauthoring: no proposal %q at revision %q: %w", ref.Name, ref.Revision, skills.ErrNotFound)
 	}
-	if validateSkillErr := validateSkill(ref.Name, content); validateSkillErr != nil {
-		return nil, validateSkillErr
+	skill, err := validateSkill(ctx, ref.Name, content)
+	if err != nil {
+		return nil, err
 	}
 	// A revision replaces the active skill of the same name (archiving the old
 	// version) rather than conflicting; it also handles its own archive slot, so
 	// it runs before the archived-conflict guard below.
-	if revises, proposalRevisesErr := proposalRevises(content); proposalRevisesErr != nil {
-		return nil, proposalRevisesErr
-	} else if revises {
+	if skill.Metadata[metadataRevises] == metadataTrue {
 		return s.replaceActive(ctx, root, ref, content)
 	}
 	if _, statErr := root.Lstat(s.archiveDir(ref.Name)); statErr == nil {
@@ -172,16 +172,6 @@ func (s *Store) ApproveProposal(ctx context.Context, ref skills.ProposalRef) ([]
 		return distinctPaths(identities), fmt.Errorf("skillauthoring: remove approved proposal %q: %w", ref.Name, err)
 	}
 	return distinctPaths(identities), nil
-}
-
-// proposalRevises reports whether staged content is marked as a revision of the
-// active skill of the same name (frontmatter metadata revises: "true").
-func proposalRevises(content []byte) (bool, error) {
-	skill, err := skillspec.Parse(content)
-	if err != nil {
-		return false, fmt.Errorf("skillauthoring: parse proposal frontmatter: %w", err)
-	}
-	return skill.Metadata[metadataRevises] == metadataTrue, nil
 }
 
 // replaceActive installs a revising proposal as the active skill, archiving the
@@ -279,18 +269,18 @@ func (s *Store) ListProposals(ctx context.Context) ([]skills.ProposalReview, err
 		if !found {
 			continue
 		}
-		skill, err := skillspec.Parse(content)
-		if err != nil {
+		skill, err := skilldocument.Load(ctx, name, content)
+		if errors.Is(err, skillspec.ErrInvalidSkill) {
 			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("skillauthoring: load proposal %q: %w", name, err)
 		}
 		origin := skills.ProposalOrigin(skill.Metadata[metadataOrigin])
 		if origin.Validate() != nil {
 			continue
 		}
 		ref := skills.NewProposalRef(s.scope, skill.Name, content)
-		if ref.Name != name {
-			continue
-		}
 		out = append(out, skills.ProposalReview{
 			Ref:           ref,
 			Description:   skill.Description,

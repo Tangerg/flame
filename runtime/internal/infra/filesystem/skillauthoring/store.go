@@ -20,6 +20,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/advisorylock"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skilldocument"
 )
 
 // Store serializes writes to one scoped skills root. The same instance must be
@@ -132,31 +133,19 @@ func (s *Store) lifecycleDir(lifecycle skills.Lifecycle, name string) (string, e
 	}
 }
 
-func validateSkill(name string, content []byte) error {
-	if len(content) > skills.MaxAuthoredSkillDocumentBytes {
-		return fmt.Errorf(
-			"skillauthoring: validate skill %q: %w: %d bytes exceeds %d",
-			name,
-			skills.ErrDocumentTooLarge,
-			len(content),
-			skills.MaxAuthoredSkillDocumentBytes,
-		)
-	}
-	skill, err := skillspec.Parse(content)
+func validateSkill(ctx context.Context, name string, content []byte) (*skillspec.Skill, error) {
+	skill, err := skilldocument.Load(ctx, name, content)
 	if err != nil {
-		return fmt.Errorf("skillauthoring: parse skill %q: %w", name, err)
+		return nil, fmt.Errorf("skillauthoring: load skill %q: %w", name, err)
 	}
 	if strings.TrimSpace(skill.Instructions) == "" {
-		return fmt.Errorf("skillauthoring: validate skill %q: skill instructions are required", name)
-	}
-	if skill.Name != name {
-		return fmt.Errorf("skillauthoring: skill name mismatch: frontmatter %q, path %q", skill.Name, name)
+		return nil, fmt.Errorf("skillauthoring: validate skill %q: skill instructions are required", name)
 	}
 	proposal := skills.Proposal{Name: skill.Name, Description: skill.Description, Instructions: skill.Instructions}
 	if issue := proposal.SafetyIssue(); issue != skills.ProposalSafe {
-		return proposalSafetyError(name, issue)
+		return nil, proposalSafetyError(name, issue)
 	}
-	return nil
+	return skill, nil
 }
 
 func proposalSafetyError(name string, issue skills.ProposalSafetyIssue) error {

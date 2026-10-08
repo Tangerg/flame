@@ -13,6 +13,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skilldocument"
 )
 
 // List returns active and archived skills from one library snapshot. Directory
@@ -56,9 +57,12 @@ func managedEntries(ctx context.Context, root *os.Root, directory string, names 
 		if !found {
 			continue
 		}
-		skill, err := skillspec.Parse(content)
-		if err != nil || skill.Name != name {
+		skill, err := skilldocument.Load(ctx, name, content)
+		if errors.Is(err, skillspec.ErrInvalidSkill) {
 			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("skillauthoring: load %s skill %q: %w", lifecycle, name, err)
 		}
 		out = append(out, skills.Entry{Name: name, Description: skill.Description, Lifecycle: lifecycle})
 	}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -153,5 +154,76 @@ func TestSweepIdleRejectsOverCapacityManagedLibrary(t *testing.T) {
 
 	if _, _, err := store.SweepIdle(t.Context(), sweepBase, sweepArchive); !errors.Is(err, skills.ErrLibraryCapacity) {
 		t.Fatalf("SweepIdle error = %v, want ErrLibraryCapacity beyond %d active Skills", err, skills.MaxSkillsPerSource)
+	}
+}
+
+func TestSweepIdlePreservesSkillsWithInvalidDocumentIdentity(t *testing.T) {
+	for _, invalid := range []string{"other-skill", "ａｇｅｎｔ-skill"} {
+		t.Run(invalid, func(t *testing.T) {
+			root := t.TempDir()
+			store := newStore(t, root, skills.ScopeUser)
+			installActiveAgentSkill(t, store, "agent-skill")
+			if err := store.RecordUse(t.Context(), "agent-skill", sweepBase); err != nil {
+				t.Fatal(err)
+			}
+			path := filepath.Join(root, "agent-skill", "SKILL.md")
+			content, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			content = []byte(strings.Replace(string(content), "name: agent-skill", "name: "+invalid, 1))
+			if err := os.WriteFile(path, content, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			archived, changed, err := store.SweepIdle(t.Context(), sweepBase.Add(sweepArchive+time.Hour), sweepArchive)
+			if err != nil || len(archived) != 0 || len(changed) != 0 {
+				t.Fatalf("invalid document was curated: archived=%v, changed=%v, err=%v", archived, changed, err)
+			}
+			if remaining, err := os.ReadFile(path); err != nil || string(remaining) != string(content) {
+				t.Fatalf("invalid document changed: %q, %v", remaining, err)
+			}
+		})
+	}
+}
+
+func TestRestoreReplayPreservesRecordedUse(t *testing.T) {
+	root := t.TempDir()
+	store := newStore(t, root, skills.ScopeUser)
+	installActiveAgentSkill(t, store, "agent-skill")
+	if _, err := store.Archive(t.Context(), "agent-skill"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Restore(t.Context(), "agent-skill"); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.RecordUse(t.Context(), "agent-skill", sweepBase); err != nil {
+		t.Fatal(err)
+	}
+	changed, err := store.Restore(t.Context(), "agent-skill")
+	if err != nil || len(changed) != 0 {
+		t.Fatalf("restore replay = %v, %v", changed, err)
+	}
+	archived, _, err := store.SweepIdle(t.Context(), sweepBase.Add(sweepArchive+time.Hour), sweepArchive)
+	if err != nil || len(archived) != 1 || archived[0] != "agent-skill" {
+		t.Fatalf("restore replay erased the recorded activity: archived=%v, err=%v", archived, err)
+	}
+}
+
+func TestFailedRestorePreservesRecordedUse(t *testing.T) {
+	root := t.TempDir()
+	store := newStore(t, root, skills.ScopeUser)
+	if err := store.RecordUse(t.Context(), "missing-skill", sweepBase); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(root, ".usage.json")
+	before, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Restore(t.Context(), "missing-skill"); !errors.Is(err, skills.ErrNotFound) {
+		t.Fatalf("restore missing skill = %v, want not found", err)
+	}
+	if after, err := os.ReadFile(path); err != nil || string(after) != string(before) {
+		t.Fatalf("failed restore changed recorded activity: %q, %v", after, err)
 	}
 }

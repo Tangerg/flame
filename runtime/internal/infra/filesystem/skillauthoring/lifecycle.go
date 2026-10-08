@@ -44,33 +44,15 @@ func (s *Store) archiveActive(root *os.Root, name string) ([]string, error) {
 	return distinctPaths(append(identities, s.skillIdentities(activeDir, archiveDir)...)), nil
 }
 
-// Archive moves an active skill out of discovery without deleting it, returns
-// the exact public file identities changed by the move, and drops
-// its usage record. Dropping the record — the same thing the idle sweep does on
-// auto-archive — makes "a restored skill starts with a fresh grace floor" hold
-// no matter which path archived it: without it, a manually archived-then-restored
-// agent-authored skill would carry a stale last-used time and be re-archived on
-// the next sweep.
+// Archive moves an active skill out of discovery and retires its usage under
+// one library lease. Returned identities include any committed move on error.
 func (s *Store) Archive(ctx context.Context, name string) ([]string, error) {
-	identities, err := s.moveLifecycle(ctx, name, skills.Active, skills.Archived)
-	if err != nil {
-		return identities, err
-	}
-	return identities, s.dropUsage(ctx, name)
+	return s.moveLifecycle(ctx, name, skills.Active, skills.Archived)
 }
 
 // Restore moves an archived skill back into the active set and returns the
 // exact public file identities changed by the move.
 func (s *Store) Restore(ctx context.Context, name string) ([]string, error) {
-	// Drop any leftover usage record BEFORE the move so the restored skill always
-	// starts with a fresh grace floor — even if an earlier Archive crashed between
-	// its rename and its own dropUsage, leaving a stale record. move + dropUsage
-	// are two filesystem operations and cannot be atomic; dropping first makes a
-	// crash here either a no-op re-restore (still archived, usage already gone) or
-	// a clean fresh floor (moved, usage already gone), never active-with-stale-usage.
-	if err := s.dropUsage(ctx, name); err != nil {
-		return nil, err
-	}
 	return s.moveLifecycle(ctx, name, skills.Archived, skills.Active)
 }
 
@@ -103,7 +85,7 @@ func (s *Store) moveLifecycle(ctx context.Context, name string, from, to skills.
 
 	info, err := root.Lstat(source)
 	if errors.Is(err, fs.ErrNotExist) {
-		return nil, inspectCompletedLifecycleMove(root, name, destination, operation)
+		return nil, inspectCompletedLifecycleMove(ctx, root, name, destination, operation)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("skillauthoring: cannot %s %q: %w", operation, name, err)
@@ -118,7 +100,7 @@ func (s *Store) moveLifecycle(ctx context.Context, name string, from, to skills.
 	if !found {
 		return nil, fmt.Errorf("%w: cannot %s %q", skills.ErrNotFound, operation, name)
 	}
-	if err := validateSkill(name, content); err != nil {
+	if _, err := validateSkill(ctx, name, content); err != nil {
 		return nil, err
 	}
 	if _, err := root.Lstat(destination); err == nil {
@@ -132,23 +114,40 @@ func (s *Store) moveLifecycle(ctx context.Context, name string, from, to skills.
 	if err := contextError(ctx, operation+" skill"); err != nil {
 		return nil, err
 	}
+	usage, err := readUsage(ctx, root)
+	if err != nil {
+		return nil, err
+	}
+	_, hadUsage := usage[name]
+	delete(usage, name)
+	// Reset archived activity before restoring visibility so a crash cannot
+	// expose an active Skill with a stale grace floor. Replays returned above
+	// without advancing either lifecycle or activity.
+	if from == skills.Archived && hadUsage {
+		if err := writeUsage(ctx, root, usage); err != nil {
+			return nil, err
+		}
+	}
 	if err := root.Rename(source, destination); err != nil {
 		moved, reconcileErr := reconcileLifecycleRename(root, name, source, destination, operation, content, err)
-		if moved {
-			return s.skillIdentities(source, destination), reconcileErr
+		if !moved {
+			return nil, reconcileErr
 		}
-		return nil, reconcileErr
 	}
-	return s.skillIdentities(source, destination), nil
+	identities := s.skillIdentities(source, destination)
+	if from == skills.Active && hadUsage {
+		return identities, writeUsage(ctx, root, usage)
+	}
+	return identities, nil
 }
 
-func inspectCompletedLifecycleMove(root *os.Root, name, destination, operation string) error {
+func inspectCompletedLifecycleMove(ctx context.Context, root *os.Root, name, destination, operation string) error {
 	content, found, err := readSkill(root, destination)
 	if err != nil {
 		return fmt.Errorf("skillauthoring: inspect completed %s for %q: %w", operation, name, err)
 	}
 	if found {
-		if err := validateSkill(name, content); err != nil {
+		if _, err := validateSkill(ctx, name, content); err != nil {
 			return fmt.Errorf("%w: cannot replay %s %q: %w", skills.ErrConflict, operation, name, err)
 		}
 		return nil

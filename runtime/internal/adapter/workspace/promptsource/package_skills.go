@@ -12,6 +12,7 @@ import (
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skilldocument"
 	sdk "github.com/Tangerg/scope/skills"
 )
 
@@ -124,7 +125,7 @@ func (s *packageSkillSource) document(ctx context.Context, name string) (*sdk.Sk
 	if len(content) > domainskills.MaxAuthoredSkillDocumentBytes {
 		return nil, nil, domainskills.ErrDocumentTooLarge
 	}
-	skill, err := LoadSkillDocument(ctx, name, content)
+	skill, err := skilldocument.Load(ctx, name, content)
 	return skill, content, err
 }
 func (s *packageSkillSource) Load(ctx context.Context, name string) (*sdk.Skill, error) {
