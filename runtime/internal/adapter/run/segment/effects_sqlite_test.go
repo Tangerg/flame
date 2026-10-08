@@ -21,6 +21,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
+	"github.com/Tangerg/flame/runtime/internal/exactint"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
@@ -857,8 +858,8 @@ func TestCommitOpeningRollsBackScheduledSession(t *testing.T) {
 
 // TestCommitOpeningOwnsManualScheduleRunFact proves run-now LastRunAt is part
 // of admission rather than a fallible post-accept write. Exact opening replay
-// must not charge the Schedule twice, and a missing Schedule must roll back the
-// new Session and Run together.
+// must not charge the Schedule twice; absence or revision exhaustion rolls back
+// the new Session and Run together.
 func TestCommitOpeningOwnsManualScheduleRunFact(t *testing.T) {
 	db, err := sqlite.Open(t.Context(), ":memory:")
 	if err != nil {
@@ -918,35 +919,58 @@ func TestCommitOpeningOwnsManualScheduleRunFact(t *testing.T) {
 		t.Fatalf("replayed Schedule revision = (%d, %v), want %d", replayed.Revision(), err, committed.Revision())
 	}
 
-	missing, err := schedule.New("sch_missing", schedule.Draft{Instructions: "review", Cron: "@daily"}, createdAt)
-	if err != nil {
-		t.Fatalf("new missing Schedule: %v", err)
-	}
-	missingRequest, err := schedule.ManualRunRequest(missing, "ses_manual_missing", "run_manual_missing", createdAt.Add(time.Second))
-	if err != nil {
-		t.Fatalf("missing Schedule run request: %v", err)
-	}
-	missingSession := testsupport.MustRestoreSession(session.Snapshot{
-		ID: "ses_manual_missing", Workspace: testsupport.MustWorkspace("/work"),
-		CreatedAt: createdAt, UpdatedAt: createdAt, Revision: 1,
-	})
-	missingDraft := run.Draft{
-		RunID: "run_manual_missing", SessionID: missingSession.ID(), SegmentID: "seg_manual_missing",
-		ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
-	}
-	missingOpening := mustAdmissionOpening(
-		t, testCommitID("run_commit_manual_schedule_missing"), missingDraft,
-		&missingSession, nil, &missingRequest, nil,
-	)
-	err = effects.CommitOpening(ctx, missingOpening)
-	if !errors.Is(err, schedule.ErrNotFound) {
-		t.Fatalf("missing Schedule opening error = %v, want ErrNotFound", err)
-	}
-	if _, getErr := sessions.Get(ctx, missingSession.ID()); !errors.Is(getErr, session.ErrNotFound) {
-		t.Fatalf("Session survived rejected manual schedule opening: %v", getErr)
-	}
-	if _, found, getErr := state.Run(ctx, missingDraft.RunID); getErr != nil || found {
-		t.Fatalf("Run survived rejected manual schedule opening: found=%t err=%v", found, getErr)
+	for _, test := range []struct {
+		name string
+		want error
+	}{
+		{name: "missing", want: schedule.ErrNotFound},
+		{name: "exhausted", want: schedule.ErrRevisionExhausted},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			source, err := schedule.New("sch_"+test.name, schedule.Draft{Instructions: "review", Cron: "@daily"}, createdAt)
+			if err != nil {
+				t.Fatal(err)
+			}
+			request, err := schedule.ManualRunRequest(source, "ses_manual_"+test.name, "run_manual_"+test.name, createdAt.Add(time.Second))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if test.name == "exhausted" {
+				if err := schedules.Insert(ctx, source); err != nil {
+					t.Fatal(err)
+				}
+				if _, err := db.ExecContext(ctx, `UPDATE schedules SET revision = ? WHERE id = ?`, exactint.Maximum, source.ID()); err != nil {
+					t.Fatal(err)
+				}
+			}
+			newSession := testsupport.MustRestoreSession(session.Snapshot{
+				ID: request.SessionID(), Workspace: testsupport.MustWorkspace("/work"),
+				CreatedAt: createdAt, UpdatedAt: createdAt, Revision: 1,
+			})
+			draft := run.Draft{
+				RunID: request.RunID(), SessionID: newSession.ID(), SegmentID: "seg_manual_" + test.name,
+				ModelSelection: testsupport.DefaultModelSelection(), CreatedAt: createdAt,
+			}
+			opening := mustAdmissionOpening(
+				t, testCommitID("run_commit_manual_schedule_"+test.name), draft,
+				&newSession, nil, &request, nil,
+			)
+			if err := effects.CommitOpening(ctx, opening); !errors.Is(err, test.want) {
+				t.Fatalf("Schedule opening error = %v, want %v", err, test.want)
+			}
+			if _, getErr := sessions.Get(ctx, newSession.ID()); !errors.Is(getErr, session.ErrNotFound) {
+				t.Fatalf("Session survived rejected manual schedule opening: %v", getErr)
+			}
+			if _, found, getErr := state.Run(ctx, draft.RunID); getErr != nil || found {
+				t.Fatalf("Run survived rejected manual schedule opening: found=%t err=%v", found, getErr)
+			}
+			if test.name == "exhausted" {
+				unchanged, err := schedules.Get(ctx, source.ID())
+				if err != nil || unchanged.Revision() != exactint.Maximum || !unchanged.LastRunAt().IsZero() {
+					t.Fatalf("Schedule changed after rolled-back opening: (%+v, %v)", unchanged.Snapshot(), err)
+				}
+			}
+		})
 	}
 }
 

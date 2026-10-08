@@ -52,6 +52,49 @@ func TestScheduleRecordRunOwnsDurableTime(t *testing.T) {
 	}
 }
 
+func TestScheduleAcceptRunOwnsOperationalTransition(t *testing.T) {
+	for _, enabled := range []bool{false, true} {
+		t.Run(strconv.FormatBool(enabled), func(t *testing.T) {
+			createdAt := time.Date(2026, 8, 29, 8, 0, 0, 0, time.UTC)
+			scheduled, err := New("sch_accepted", Draft{
+				Instructions: "review", Cron: "0 * * * *", Enabled: enabled,
+			}, createdAt)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, invalid := range []time.Time{{}, createdAt.Add(-time.Millisecond)} {
+				if _, err := scheduled.AcceptRun(invalid); err == nil {
+					t.Fatalf("AcceptRun accepted invalid time %v", invalid)
+				}
+			}
+			ranAt := createdAt.Add(time.Hour + 456*time.Microsecond)
+			accepted, err := scheduled.AcceptRun(ranAt)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if accepted.Revision() != scheduled.Revision()+1 || !accepted.LastRunAt().Equal(canonicalTime(ranAt)) {
+				t.Fatalf("accepted Run state = %+v", accepted.Snapshot())
+			}
+			if !accepted.NextRunAt().Equal(scheduled.NextRunAt()) || accepted.Enabled() != enabled {
+				t.Fatal("Run acceptance changed the cron cursor")
+			}
+			if scheduled.Revision() != 1 || !scheduled.LastRunAt().IsZero() {
+				t.Fatal("Run acceptance mutated its source Schedule")
+			}
+			for _, delayedAt := range []time.Time{createdAt, ranAt} {
+				next, err := accepted.AcceptRun(delayedAt)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if next.Revision() != accepted.Revision()+1 || !next.LastRunAt().Equal(accepted.LastRunAt()) || !next.NextRunAt().Equal(accepted.NextRunAt()) {
+					t.Fatalf("delayed Run acceptance = %+v", next.Snapshot())
+				}
+				accepted = next
+			}
+		})
+	}
+}
+
 func TestScheduleRestoreRejectsContradictoryLifecycle(t *testing.T) {
 	t.Parallel()
 
@@ -86,6 +129,37 @@ func TestScheduleRestoreRejectsContradictoryLifecycle(t *testing.T) {
 	}
 }
 
+func TestScheduleClaimRejectsExhaustedRevision(t *testing.T) {
+	createdAt := time.Date(2026, 8, 29, 8, 0, 0, 0, time.UTC)
+	scheduled, err := Restore(Snapshot{
+		ID: "sch_exhausted", Instructions: "review", Cron: "0 * * * *",
+		CreatedAt: createdAt, NextRunAt: createdAt.Add(time.Hour), Revision: exactint.Maximum,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := scheduled.Claim("ses_exhausted", "run_exhausted", scheduled.NextRunAt()); !errors.Is(err, ErrRevisionExhausted) {
+		t.Fatalf("claim error = %v, want ErrRevisionExhausted before persistence", err)
+	}
+	if _, err := scheduled.AcceptRun(scheduled.NextRunAt()); !errors.Is(err, ErrRevisionExhausted) {
+		t.Fatalf("accept Run error = %v, want ErrRevisionExhausted before persistence", err)
+	}
+	snapshot := scheduled.Snapshot()
+	snapshot.Revision = exactint.Maximum - 1
+	penultimate, err := Restore(snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	claim, err := penultimate.Claim("ses_last", "run_last", penultimate.NextRunAt())
+	if err != nil || claim.State().Revision() != exactint.Maximum {
+		t.Fatalf("last exact Claim revision = (%d, %v)", claim.State().Revision(), err)
+	}
+	accepted, err := penultimate.AcceptRun(penultimate.NextRunAt())
+	if err != nil || accepted.Revision() != exactint.Maximum {
+		t.Fatalf("last exact accepted Run revision = (%d, %v)", accepted.Revision(), err)
+	}
+}
+
 func TestOccurrenceCapturesExecutionAndRejectsEarlyFiring(t *testing.T) {
 	createdAt := time.Date(2026, 8, 29, 8, 0, 0, 0, time.UTC)
 	scheduled, err := New("sch_hourly", Draft{
@@ -95,8 +169,8 @@ func TestOccurrenceCapturesExecutionAndRejectsEarlyFiring(t *testing.T) {
 		t.Fatalf("New: %v", err)
 	}
 	dueAt := scheduled.NextRunAt()
-	if _, err := NewClaim(scheduled, "ses_early", "run_early", dueAt.Add(-time.Second)); err == nil {
-		t.Fatal("NewClaim accepted a firing before its due cursor")
+	if _, err := scheduled.Claim("ses_early", "run_early", dueAt.Add(-time.Second)); err == nil {
+		t.Fatal("Claim accepted a firing before its due cursor")
 	}
 	for _, identity := range []string{
 		" padded",
@@ -104,18 +178,25 @@ func TestOccurrenceCapturesExecutionAndRejectsEarlyFiring(t *testing.T) {
 		"hidden\u200bvalue",
 		strings.Repeat("界", runtimeidentity.MaximumResourceCharacters+1),
 	} {
-		if _, err := NewClaim(scheduled, identity, "run_valid", dueAt); err == nil {
-			t.Errorf("NewClaim accepted Session identity %q", identity)
+		if _, err := scheduled.Claim(identity, "run_valid", dueAt); err == nil {
+			t.Errorf("Claim accepted Session identity %q", identity)
 		}
-		if _, err := NewClaim(scheduled, "ses_valid", identity, dueAt); err == nil {
-			t.Errorf("NewClaim accepted Run identity %q", identity)
+		if _, err := scheduled.Claim("ses_valid", identity, dueAt); err == nil {
+			t.Errorf("Claim accepted Run identity %q", identity)
 		}
 	}
-	claim, err := NewClaim(scheduled, "ses_due", "run_due", dueAt)
+	claim, err := scheduled.Claim("ses_due", "run_due", dueAt)
 	if err != nil {
-		t.Fatalf("NewClaim: %v", err)
+		t.Fatalf("Claim: %v", err)
 	}
 	occurrence := claim.Occurrence()
+	state := claim.State()
+	if claim.ExpectedRevision() != scheduled.Revision() || state.Revision() != scheduled.Revision()+1 || !state.NextRunAt().Equal(occurrence.NextRunAt()) {
+		t.Fatalf("Claim did not decide its complete cursor/revision transition: %+v", state.Snapshot())
+	}
+	if state.ID() != scheduled.ID() || !state.CreatedAt().Equal(scheduled.CreatedAt()) || !state.LastRunAt().Equal(scheduled.LastRunAt()) {
+		t.Fatalf("Claim changed unrelated lifecycle facts: %+v", state.Snapshot())
+	}
 	if occurrence.ScheduleID() != scheduled.ID() || !occurrence.DueAt().Equal(dueAt) {
 		t.Fatalf("occurrence cursor = %s@%s, want %s@%s", occurrence.ScheduleID(), occurrence.DueAt(), scheduled.ID(), dueAt)
 	}

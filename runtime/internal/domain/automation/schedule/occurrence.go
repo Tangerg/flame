@@ -32,12 +32,13 @@ type Occurrence struct {
 	runID     string
 }
 
-// Claim binds one immutable occurrence to the exact Schedule revision and due
-// cursor it intends to consume. A claimed/pending Occurrence no longer carries
-// this precondition, so zero never doubles as a lifecycle marker.
+// Claim binds a decided Schedule cursor/revision transition and its immutable
+// occurrence to the revision and due cursor it consumes. Pending occurrences
+// retain execution intent, not the Schedule transition's precondition.
 type Claim struct {
 	occurrence       Occurrence
 	expectedRevision exactint.Counter
+	state            Schedule
 }
 
 // Acceptance identifies the exact durable occurrence and Run whose opening
@@ -48,10 +49,10 @@ type Acceptance struct {
 	runID        string
 }
 
-// NewClaim captures one due cursor and derives the next cursor from the firing
-// instant. Stable Run identities are supplied before persistence so a
-// crash/retry cannot create a second Run.
-func NewClaim(s Schedule, sessionID, runID string, firedAt time.Time) (Claim, error) {
+// Claim decides a due cursor's successor and advances the Schedule revision.
+// Stable Run identities are supplied before persistence so a crash/retry
+// cannot create a second Run.
+func (s Schedule) Claim(sessionID, runID string, firedAt time.Time) (Claim, error) {
 	if !s.Enabled() {
 		return Claim{}, errors.New("schedule: only an enabled due schedule can form an occurrence")
 	}
@@ -71,11 +72,15 @@ func NewClaim(s Schedule, sessionID, runID string, firedAt time.Time) (Claim, er
 		id: occurrenceID, execution: s.Execution(), firedAt: firedAt,
 		nextRunAt: nextRunAt, sessionID: sessionID, runID: runID,
 	}
-	value := Claim{occurrence: occurrence, expectedRevision: s.revision}
-	if err := value.Validate(); err != nil {
+	if err := occurrence.Validate(); err != nil {
 		return Claim{}, err
 	}
-	return value, nil
+	state, err := s.advanceRevision()
+	if err != nil {
+		return Claim{}, err
+	}
+	state.nextRunAt = nextRunAt
+	return Claim{occurrence: occurrence, expectedRevision: s.revision, state: state}, nil
 }
 
 // Validate verifies the immutable durable firing value.
@@ -108,11 +113,9 @@ func (o Occurrence) Validate() error {
 	return nil
 }
 
-// Validate verifies the claim's occurrence and exact non-zero CAS identity.
+// Validate rejects an unattached claim. Private construction has already
+// decided its transition and validated the occurrence.
 func (c Claim) Validate() error {
-	if err := c.occurrence.Validate(); err != nil {
-		return err
-	}
 	if c.expectedRevision.IsZero() {
 		return ErrRevisionRequired
 	}
@@ -164,6 +167,9 @@ func (c Claim) Occurrence() Occurrence { return c.occurrence }
 
 // ExpectedRevision returns the exact Schedule revision this claim consumes.
 func (c Claim) ExpectedRevision() uint64 { return c.expectedRevision.Value() }
+
+// State returns the Schedule state decided with this occurrence.
+func (c Claim) State() Schedule { return c.state }
 
 // Validate rejects partial occurrence ownership.
 func (a Acceptance) Validate() error {

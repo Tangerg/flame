@@ -28,7 +28,7 @@ type RunRequest struct {
 }
 
 // RecordRun forms the manual execution fact owned by the Run opening without
-// changing the cron cursor. The store advances it from the current revision.
+// changing the Schedule. Acceptance applies it to the then-current aggregate.
 func (s Schedule) RecordRun(ranAt time.Time) (RunRecord, error) {
 	value := RunRecord{scheduleID: s.id, ranAt: canonicalTime(ranAt)}
 	if err := value.Validate(); err != nil {
@@ -38,6 +38,23 @@ func (s Schedule) RecordRun(ranAt time.Time) (RunRecord, error) {
 		return RunRecord{}, errors.New("schedule: recorded run precedes creation")
 	}
 	return value, nil
+}
+
+// AcceptRun records one accepted Run without changing the cron cursor. Delayed
+// acceptance retains the latest Run time while still advancing one revision.
+func (s Schedule) AcceptRun(ranAt time.Time) (Schedule, error) {
+	record, err := s.RecordRun(ranAt)
+	if err != nil {
+		return Schedule{}, err
+	}
+	next, err := s.advanceRevision()
+	if err != nil {
+		return Schedule{}, err
+	}
+	if record.ranAt.After(next.lastRunAt) {
+		next.lastRunAt = record.ranAt
+	}
+	return next, nil
 }
 
 // Validate rejects an incomplete manual execution fact.

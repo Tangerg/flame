@@ -61,7 +61,7 @@ func insertSchedule(ctx context.Context, store *sqlite.ScheduleStore, snapshot s
 }
 
 func testClaim(scheduled schedule.Schedule, sessionID, runID string, firedAt time.Time) schedule.Claim {
-	value, err := schedule.NewClaim(scheduled, sessionID, runID, firedAt)
+	value, err := scheduled.Claim(sessionID, runID, firedAt)
 	if err != nil {
 		panic(err)
 	}
@@ -240,6 +240,9 @@ func TestScheduleRecordRunLeavesCursor(t *testing.T) {
 	if !got.LastRunAt().Equal(ranAt) {
 		t.Errorf("LastRunAt = %v, want monotonic %v after delayed older completion", got.LastRunAt(), ranAt)
 	}
+	if got.Revision() != created.Revision()+4 {
+		t.Errorf("revision = %d, want one claim and three accepted Runs after revision %d", got.Revision(), created.Revision())
+	}
 	due, _ := s.Due(ctx, time.Now(), 100)
 	if len(due) != 0 {
 		t.Errorf("due after RecordRun = %+v, want none (cursor still in the future)", due)
@@ -276,9 +279,8 @@ func TestScheduleRevisionExhaustionIsAtomicAcrossOperationalMutations(t *testing
 	if err != nil || !exhausted.LastRunAt().IsZero() || exhausted.Revision() != exactint.Maximum {
 		t.Fatalf("schedule after rejected RecordRun = (%+v, %v)", exhausted, err)
 	}
-	claim := testClaim(exhausted, "ses_exhausted", "run_exhausted", dueAt)
-	if claimed, err := store.Claim(ctx, claim); claimed || !errors.Is(err, schedule.ErrRevisionExhausted) {
-		t.Fatalf("Claim = (%v, %v), want false, ErrRevisionExhausted", claimed, err)
+	if _, err := exhausted.Claim("ses_exhausted", "run_exhausted", dueAt); !errors.Is(err, schedule.ErrRevisionExhausted) {
+		t.Fatalf("prepare Claim error = %v, want ErrRevisionExhausted", err)
 	}
 	if pending, err := store.Pending(ctx, time.Time{}, "", 10); err != nil || len(pending) != 0 {
 		t.Fatalf("Pending after rejected Claim = (%+v, %v)", pending, err)
@@ -289,7 +291,7 @@ func TestScheduleRevisionExhaustionIsAtomicAcrossOperationalMutations(t *testing
 	if err != nil {
 		t.Fatalf("Get reset schedule: %v", err)
 	}
-	claim = testClaim(current, "ses_accepted", "run_accepted", dueAt)
+	claim := testClaim(current, "ses_accepted", "run_accepted", dueAt)
 	occurrence := claim.Occurrence()
 	if claimed, err := store.Claim(ctx, claim); err != nil || !claimed {
 		t.Fatalf("Claim before exhausted Accept = (%v, %v)", claimed, err)

@@ -143,14 +143,7 @@ func (s *ScheduleStore) Claim(ctx context.Context, claim schedule.Claim) (claime
 	occurrence := claim.Occurrence()
 	snapshot := occurrence.Snapshot()
 	expectedRevision := claim.ExpectedRevision()
-	revision, err := exactint.Restore(expectedRevision)
-	if err != nil {
-		return false, fmt.Errorf("sqlite: advance claimed schedule revision: %w", err)
-	}
-	next, err := revision.Next()
-	if err != nil {
-		return false, fmt.Errorf("sqlite: advance claimed schedule revision: %w", schedule.ErrRevisionExhausted)
-	}
+	state := claim.State()
 	execution := snapshot.Execution
 	err = RunInTx(ctx, s.db, func(ctx context.Context) error {
 		res, execContextErr := conn(ctx, s.db).ExecContext(ctx,
@@ -160,7 +153,7 @@ func (s *ScheduleStore) Claim(ctx context.Context, claim schedule.Claim) (claime
 						SELECT 1 FROM schedule_firings
 						 WHERE schedule_id = ? AND state = ?
 				   )`,
-			toMillis(snapshot.NextRunAt), next.Value(), occurrence.ScheduleID(), expectedRevision,
+			toMillis(state.NextRunAt()), state.Revision(), state.ID(), expectedRevision,
 			toMillis(occurrence.DueAt()), occurrence.ScheduleID(), scheduleFiringPending.databaseValue())
 		if execContextErr != nil {
 			return fmt.Errorf("sqlite: claim schedule occurrence: %w", execContextErr)
@@ -256,7 +249,7 @@ func (s *ScheduleStore) Accept(ctx context.Context, acceptance schedule.Acceptan
 				`SELECT schedule_id, fired_at FROM schedule_firings WHERE id = ? AND run_id = ?`, occurrenceID, runID).Scan(&scheduleID, &firedAt); scanErr != nil {
 				return fmt.Errorf("sqlite: load accepted schedule occurrence: %w", scanErr)
 			}
-			_, err := s.advanceScheduleRunFact(ctx, scheduleID, firedAt)
+			_, err := s.recordAcceptedRun(ctx, scheduleID, fromMillis(firedAt))
 			return err
 		}
 		var storedRunID, rawState string
@@ -282,11 +275,11 @@ func (s *ScheduleStore) Accept(ctx context.Context, acceptance schedule.Acceptan
 	})
 }
 
-// RecordRun moves only last_run_at; next_run_at is left as-is so a manual
-// run-now never rewinds the cron cursor.
+// RecordRun atomically persists the current aggregate's accepted-Run transition;
+// a manual run-now never rewinds the cron cursor.
 func (s *ScheduleStore) RecordRun(ctx context.Context, record schedule.RunRecord) error {
 	return RunInTx(ctx, s.db, func(ctx context.Context) error {
-		updated, err := s.advanceScheduleRunFact(ctx, record.ScheduleID(), toMillis(record.RanAt()))
+		updated, err := s.recordAcceptedRun(ctx, record.ScheduleID(), record.RanAt())
 		if err != nil {
 			return err
 		}
@@ -297,36 +290,36 @@ func (s *ScheduleStore) RecordRun(ctx context.Context, record schedule.RunRecord
 	})
 }
 
-func (s *ScheduleStore) advanceScheduleRunFact(ctx context.Context, id string, ranAtMillis int64) (bool, error) {
-	if err := schedule.ValidateID(id); err != nil {
+func (s *ScheduleStore) recordAcceptedRun(ctx context.Context, id string, ranAt time.Time) (bool, error) {
+	current, err := s.Get(ctx, id)
+	if errors.Is(err, schedule.ErrNotFound) {
+		// A claimed occurrence survives Schedule deletion; a manual opening
+		// requires the Schedule. The caller owns this absence policy.
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	next, err := current.AcceptRun(ranAt)
+	if err != nil {
 		return false, err
 	}
 	result, err := conn(ctx, s.db).ExecContext(ctx,
 		`UPDATE schedules
-		 SET last_run_at = MAX(last_run_at, ?), revision = revision + ?
-		 WHERE id = ? AND revision < ?`,
-		ranAtMillis, exactint.First().Value(), id, exactint.Maximum)
+		 SET last_run_at = ?, revision = ?
+		 WHERE id = ? AND revision = ?`,
+		toMillis(next.LastRunAt()), next.Revision(), next.ID(), current.Revision())
 	if err != nil {
-		return false, fmt.Errorf("sqlite: advance schedule run fact: %w", err)
+		return false, fmt.Errorf("sqlite: persist accepted schedule run: %w", err)
 	}
 	updated, err := result.RowsAffected()
 	if err != nil {
-		return false, fmt.Errorf("sqlite: inspect advanced schedule run fact: %w", err)
+		return false, fmt.Errorf("sqlite: inspect accepted schedule run: %w", err)
 	}
 	if updated == 0 {
-		// Absence and revision exhaustion are distinct outcomes: occurrence
-		// acceptance survives deletion, while a manual opening requires a Schedule.
-		var exhausted bool
-		if err := conn(ctx, s.db).QueryRowContext(ctx,
-			`SELECT EXISTS(SELECT 1 FROM schedules WHERE id = ? AND revision >= ?)`,
-			id, exactint.Maximum).Scan(&exhausted); err != nil {
-			return false, fmt.Errorf("sqlite: inspect schedule run projection: %w", err)
-		}
-		if exhausted {
-			return false, schedule.ErrRevisionExhausted
-		}
+		return false, schedule.ErrRevisionConflict
 	}
-	return updated != 0, nil
+	return true, nil
 }
 
 func (s *ScheduleStore) Delete(ctx context.Context, id string) (bool, error) {

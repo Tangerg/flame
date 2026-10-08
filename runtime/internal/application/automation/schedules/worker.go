@@ -220,8 +220,7 @@ func (w *worker) claimDueOccurrence(
 	scheduled schedule.Schedule,
 	now time.Time,
 ) (schedule.Occurrence, bool) {
-	claim, err := schedule.NewClaim(
-		scheduled,
+	claim, err := scheduled.Claim(
 		w.newSessionID(),
 		w.newRunID(),
 		now,

@@ -56,7 +56,7 @@ func TestWorkerAdvancesHealthySchedulesPastFailedSQLiteBacklog(t *testing.T) {
 		if err := store.Insert(ctx, scheduled); err != nil {
 			t.Fatal(err)
 		}
-		claim, err := schedule.NewClaim(scheduled, "ses_"+id, "run_"+id, now.Add(-2*time.Minute))
+		claim, err := scheduled.Claim("ses_"+id, "run_"+id, now.Add(-2*time.Minute))
 		if err != nil {
 			t.Fatal(err)
 		}

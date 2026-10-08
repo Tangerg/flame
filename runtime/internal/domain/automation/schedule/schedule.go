@@ -186,12 +186,23 @@ func (s Schedule) Edit(p Patch, expectedRevision uint64, after time.Time) (Sched
 	if p.Enabled != nil {
 		enabled = *p.Enabled
 	}
+	next, err := s.advanceRevision()
+	if err != nil {
+		return Schedule{}, err
+	}
+	return next.scheduledAfter(enabled, after)
+}
+
+func (s Schedule) advanceRevision() (Schedule, error) {
+	if s.revision.IsZero() {
+		return Schedule{}, ErrRevisionRequired
+	}
 	next, err := s.revision.Next()
 	if err != nil {
 		return Schedule{}, ErrRevisionExhausted
 	}
 	s.revision = next
-	return s.scheduledAfter(enabled, after)
+	return s, nil
 }
 
 // Validate checks every aggregate invariant before a Schedule crosses a
