@@ -14,23 +14,17 @@ assert.ok(linkerFlags, "run the native carrier gate through the desktop task gra
 const directory = await mkdtemp(join(tmpdir(), "flame-plugin-carrier-"));
 try {
   const executable = join(directory, "carrier-probe");
+  const compilerFlags = ["-tags", "production", "-ldflags", linkerFlags];
+  const goOptions = {
+    cwd: fileURLToPath(new URL("../..", import.meta.url)),
+    timeout: 120_000,
+    maxBuffer: 1024 * 1024,
+  };
+  await execute("go", ["test", ...compilerFlags, "./testdata/plugin-carrier"], goOptions);
   await execute(
     "go",
-    [
-      "build",
-      "-tags",
-      "production",
-      "-ldflags",
-      linkerFlags,
-      "-o",
-      executable,
-      "./testdata/plugin-carrier",
-    ],
-    {
-      cwd: fileURLToPath(new URL("../..", import.meta.url)),
-      timeout: 120_000,
-      maxBuffer: 1024 * 1024,
-    },
+    ["build", ...compilerFlags, "-o", executable, "./testdata/plugin-carrier"],
+    goOptions,
   );
   const { stdout } = await execute(executable, [], { timeout: 30_000, maxBuffer: 1024 * 1024 });
   const reports = stdout.split("\n").filter((value) => value.startsWith("carrier-result:"));
@@ -50,6 +44,16 @@ try {
   assert.ok(
     result.nativeBaseline.ready >= 1,
     "the trusted native event positive control must settle",
+  );
+  assert.equal(
+    result.nativeBaseline.resourceRequests,
+    0,
+    "the trusted host must not issue plugin resource probes",
+  );
+  assert.equal(
+    effects.resourceRequests,
+    result.nativeBaseline.resourceRequests,
+    "a blocked plugin request reached the native asset handler",
   );
   assert.equal(
     effects.calls,

@@ -249,7 +249,9 @@ Wails window. It checks opaque origin, host DOM/storage separation, CSP network 
 restrictions, source-bound channel bootstrap, and publication before and after channel
 retirement. Browser tests additionally seed and verify a host cookie canary. Native effects
 are counted in Go; an unreadable or rejected response is not evidence that dispatch was
-refused. The fixture opens no product Runtime and loads no product configuration.
+refused. The native asset handler counts plugin probe requests before serving them,
+including missing resources. The fixture opens no product Runtime and loads no product
+configuration.
 
 MessageEvent owns sender identity; a frame's claimed origin stays inside its observation
 payload and cannot replace host metadata. Native reports keep carrier observations and
@@ -262,6 +264,10 @@ A triggered wait owns both listener registration and its starting operation, so 
 port failure settles that wait instead of leaving an unhandled cancellation rejection.
 Every browser scenario owns its page and verifies host identity, frame disposal and the
 absence of orphaned waits; port start and send failures have separate regression cases.
+Network isolation requires a trusted browser CSP `connect-src` violation alongside the
+expected fetch rejection. An unexpected probe error is terminal failure. Browser cases
+also reject readable responses and synthetic CSP witnesses, so generic network failure
+cannot stand in for policy enforcement.
 
 Run the browser gate from `frontend/`:
 
@@ -275,10 +281,10 @@ Run the native release gate from `desktop/` on macOS with a graphical session:
 wails3 task darwin:check:plugin-carrier
 ```
 
-The native task consumes the shipping deployment floor from `Taskfile.yml` and builds its
-fixture into an owned temporary directory. It does not rebuild the application, generate
-bindings or alter user data. These gates are separate from the ordinary frontend check:
-the native gate must pass before enabling a third-party HTML carrier.
+The native task consumes the shipping deployment floor from `Taskfile.yml`, runs the
+fixture's Go tests and builds it into an owned temporary directory. It does not rebuild the
+application, generate bindings or alter user data. These gates are separate from the ordinary
+frontend check: the native gate must pass before enabling a third-party HTML carrier.
 
 The current Wails macOS carrier fails that gate. An opaque-origin `srcdoc` frame with
 `sandbox="allow-scripts"` and restrictive CSP can send `wails:runtime:ready` through

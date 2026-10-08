@@ -107,6 +107,33 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
       });
       assert.match(result.error, /injected port send failure/);
     });
+    await t.test("rejects an unexpected fetch failure", async (t) => {
+      const result = await runProbe(t, context, origin, () => {
+        if (window !== window.top)
+          window.fetch = () => Promise.reject(new Error("injected fetch probe failure"));
+      });
+      assert.match(result.error, /injected fetch probe failure/);
+    });
+    await t.test("requires a trusted CSP witness for a rejected fetch", async (t) => {
+      const result = await runProbe(t, context, origin, () => {
+        if (window === window.top) return;
+        window.fetch = () => {
+          dispatchEvent(
+            new SecurityPolicyViolationEvent("securitypolicyviolation", {
+              effectiveDirective: "connect-src",
+            }),
+          );
+          return Promise.reject(new TypeError("injected network failure"));
+        };
+      });
+      assert.match(result.error, /carrier probe timed out/);
+    });
+    await t.test("rejects a readable network response", async (t) => {
+      const result = await runProbe(t, context, origin, () => {
+        if (window !== window.top) window.fetch = () => Promise.resolve(new Response());
+      });
+      assert.throws(() => assertCarrierIsolation(result), /plugin frame escaped through network/);
+    });
     assert.deepEqual(escapedRequests, [], "blocked requests must not reach their effect owner");
   });
 }

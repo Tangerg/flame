@@ -16,10 +16,15 @@ export function assertCarrierIsolation(result) {
     "cookieCanary",
     "topNavigation",
     "popup",
-    "networkRead",
   ]) {
     assert.equal(observations[operation], false, `plugin frame escaped through ${operation}`);
   }
+  assert.equal(observations.network.read, false, "plugin frame escaped through network");
+  assert.equal(
+    observations.network.blockedDirective,
+    "connect-src",
+    "the child CSP must reject its network request",
+  );
   assert.ok(result.channel.receivedBeforeClose > 0, "publication must work before retirement");
   assert.equal(
     result.channel.retirementOrigin,

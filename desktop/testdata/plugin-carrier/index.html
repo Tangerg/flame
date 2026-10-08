@@ -30,7 +30,7 @@
         return frame;
       }
 
-      function probeBoundary({ escapeURL, leakURL }) {
+      async function probeBoundary({ escapeURL, leakURL }) {
         const attempt = (operation) => {
           try {
             operation();
@@ -61,15 +61,6 @@
             "wails:runtime:ready",
           );
         }
-        observations.networkRead = false;
-        const attemptedNetwork = fetch(leakURL).then(
-          () => {
-            observations.networkRead = true;
-          },
-          () => {},
-        );
-        const image = new Image();
-        image.src = leakURL;
         let port;
         addEventListener("message", (event) => {
           if (event.source !== parent) return;
@@ -87,9 +78,29 @@
             parent.postMessage({ type: "carrier-retired" }, "*");
           }
         });
-        attemptedNetwork.then(() =>
-          parent.postMessage({ type: "carrier-child", observations }, "*"),
-        );
+        let witness;
+        const blockedNetwork = new Promise((resolve) => {
+          witness = (event) => {
+            if (event.isTrusted && event.effectiveDirective === "connect-src")
+              resolve(event.effectiveDirective);
+          };
+          addEventListener("securitypolicyviolation", witness);
+        });
+        const image = new Image();
+        image.src = leakURL;
+        try {
+          await fetch(leakURL);
+          observations.network = { read: true };
+        } catch (error) {
+          if (!(error instanceof TypeError)) throw error;
+          observations.network = {
+            read: false,
+            blockedDirective: await blockedNetwork,
+          };
+        } finally {
+          removeEventListener("securitypolicyviolation", witness);
+        }
+        parent.postMessage({ type: "carrier-child", observations }, "*");
       }
 
       function probeNavigation({ target }) {

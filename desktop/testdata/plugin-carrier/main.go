@@ -20,15 +20,17 @@ var assets embed.FS
 // Probe records effects at the native owner, even when an attacking frame
 // cannot read the response. It never opens a Runtime or touches user data.
 type Probe struct {
-	calls         atomic.Uint64
-	ready         atomic.Uint64
-	childMessages atomic.Uint64
+	calls            atomic.Uint64
+	ready            atomic.Uint64
+	childMessages    atomic.Uint64
+	resourceRequests atomic.Uint64
 }
 
 type effects struct {
-	Calls         uint64 `json:"calls"`
-	Ready         uint64 `json:"ready"`
-	ChildMessages uint64 `json:"childMessages"`
+	Calls            uint64 `json:"calls"`
+	Ready            uint64 `json:"ready"`
+	ChildMessages    uint64 `json:"childMessages"`
+	ResourceRequests uint64 `json:"resourceRequests"`
 }
 
 type report struct {
@@ -39,7 +41,22 @@ type report struct {
 func (p *Probe) Touch() uint64 { return p.calls.Add(1) }
 
 func (p *Probe) Snapshot() effects {
-	return effects{Calls: p.calls.Load(), Ready: p.ready.Load(), ChildMessages: p.childMessages.Load()}
+	return effects{
+		Calls:            p.calls.Load(),
+		Ready:            p.ready.Load(),
+		ChildMessages:    p.childMessages.Load(),
+		ResourceRequests: p.resourceRequests.Load(),
+	}
+}
+
+func (p *Probe) assetHandler() http.Handler {
+	files := http.FileServer(http.FS(assets))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/carrier-") {
+			p.resourceRequests.Add(1)
+		}
+		files.ServeHTTP(w, r)
+	})
 }
 
 func main() {
@@ -48,7 +65,7 @@ func main() {
 	app = application.New(application.Options{
 		Name:     "Flame plugin carrier probe",
 		Services: []application.Service{application.NewService(probe)},
-		Assets:   application.AssetOptions{Handler: http.FileServer(http.FS(assets))},
+		Assets:   application.AssetOptions{Handler: probe.assetHandler()},
 		RawMessageHandler: func(_ application.Window, message string, origin *application.OriginInfo) {
 			if origin != nil && !origin.IsMainFrame && message == "carrier-witness" {
 				probe.childMessages.Add(1)
