@@ -294,26 +294,43 @@ fixture's Go tests and builds it into an owned temporary directory. It does not 
 application, generate bindings or alter user data. These gates are separate from the ordinary
 frontend check: the gate for each carrier must pass before enabling third-party HTML.
 
-The probe negotiates a WebRTC data channel against an owned loopback STUN endpoint,
-in addition to fetch, image and navigation attempts. Packet counts belong to the UDP
-receiver outside the frame. Both browser and native consumers require that count to
-remain zero and require trusted evidence that `webrtc 'block'` was enforced. A missing
-ICE candidate or an ordinary connection failure alone does not establish isolation.
+The probe negotiates a WebRTC data channel with both an owned loopback STUN endpoint
+and an explicit remote ICE candidate targeting the same UDP receiver, in addition to
+fetch, image and navigation attempts. Packet counts belong to the receiver outside the
+frame. Both browser and native consumers require that count to remain zero and require
+an enforcing `connection-allowlist` browser report. Local ICE candidates are diagnostic
+data, not outgoing network effects. A missing candidate or ordinary connection failure
+alone does not establish isolation.
 
-The current Chromium 156 and WebKit 27.2 browser carriers fail this network gate:
-both sent STUN packets despite `connect-src 'none'` and `webrtc 'block'`. The proposed
-WebRTC directive is specified in [CSP Level 3](https://www.w3.org/TR/CSP/#directive-webrtc);
-[WebKit's implementation issue](https://bugs.webkit.org/show_bug.cgi?id=255651) remains
-open. Browser plugin HTML is unavailable until the executing carrier enforces the
-network boundary. Overwriting JavaScript globals does not provide that guarantee.
+`testdata/plugin-carrier/network-policy.txt` owns the network policy. The browser and
+native response handlers project it into the `Connection-Allowlist` header on the
+unprivileged entry document. That document receives brokered HTML and creates its Blob
+URL inside the constrained context, preserving the inherited network policy. The main
+host has no guest connection policy. The host's frame CSP permits the exact entry URL
+and Blob documents; it does not permit arbitrary same-origin navigation.
 
-The current Wails macOS carrier also sends STUN packets to the Go-owned receiver,
+The full Chromium 156 carrier passes this gate. Its executing network service enforces
+the empty allowlist and blocks WebRTC while the frame remains usable. Browser negative
+controls prove that an absent or report-only policy sends packets and fails admission.
+Fault injection also rejects plain objects impersonating browser reports.
+The browser task selects full Chromium explicitly; the separate default headless-shell
+binary crashes under this policy and is not a qualified carrier. See the
+[Chrome announcement](https://developer.chrome.com/blog/connection-allowlist-announcement)
+and [policy specification](https://wicg.github.io/connection-allowlists/).
+
+WebKit 27.2 ignores this connection header and sends packets, so its gate fails.
+`connect-src 'none'` alone does not cover WebRTC, and the proposed CSP WebRTC directive
+is not enforced by either tested engine. The fixture no longer presents that directive
+as a security boundary. [WebKit's implementation issue](https://bugs.webkit.org/show_bug.cgi?id=255651)
+remains open. Overwriting JavaScript globals cannot replace executing-carrier enforcement.
+
+The current Wails macOS carrier also sends packets to the Go-owned receiver,
 so its network gate fails independently of native binding dispatch. An opaque-origin
-`srcdoc` frame with `sandbox="allow-scripts"` and restrictive CSP can send `wails:runtime:ready` through
+Blob frame with `sandbox="allow-scripts"` and restrictive CSP can send `wails:runtime:ready` through
 `webkit.messageHandlers.external`, advancing native window readiness. The trusted event
 positive control records one event; the child raises the native owner's count to two,
 despite having no `window.wails` and no access to the parent DOM. The fixture's parent
-`frame-src blob:` policy blocks self-navigation into the native Runtime route, but does
+frame policy blocks self-navigation into the native Runtime route, but does
 not block this script-message path.
 
 Native dispatch must enforce frame authority before processing framework control messages.
@@ -321,6 +338,7 @@ The application's `RawMessageHandler` cannot supply that guarantee: Wails proces
 control messages before that callback. Removing JavaScript globals or suppressing frame
 errors does not repair the native admission owner. Until that boundary is repaired or an
 independent unprivileged carrier passes the same gate, native plugin HTML remains
-unavailable. Slice C's public view/resource/bridge contract must not be introduced while
-these carrier gates fail. Independent themes, Skills and MCP declarations retain
-their existing admission and lifecycle.
+unavailable. Each carrier requires its own passing gate before implementing Slice C's
+public view/resource/bridge contract on that carrier. A passing browser spike does not
+implement Slice C or qualify Wails. Independent themes, Skills and MCP declarations
+retain their existing admission and lifecycle.

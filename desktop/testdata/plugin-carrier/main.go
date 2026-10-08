@@ -16,7 +16,7 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
-//go:embed index.html
+//go:embed index.html frame.html network-policy.txt
 var assets embed.FS
 
 // Probe records effects at the native owner, even when an attacking frame
@@ -84,14 +84,31 @@ func (p *Probe) listenPeer() (func() error, error) {
 	}, nil
 }
 
-func (p *Probe) assetHandler() http.Handler {
+func (p *Probe) assetHandler() (http.Handler, error) {
+	index, err := assets.ReadFile("index.html")
+	if err != nil {
+		return nil, err
+	}
+	policy, err := assets.ReadFile("network-policy.txt")
+	if err != nil {
+		return nil, err
+	}
+	host := strings.ReplaceAll(string(index), "__CARRIER_FRAME_SOURCE__", "wails://localhost/frame.html")
 	files := http.FileServer(http.FS(assets))
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/carrier-") {
 			p.resourceRequests.Add(1)
 		}
+		if r.URL.Path == "/" || r.URL.Path == "/index.html" {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			http.ServeContent(w, r, "index.html", time.Time{}, strings.NewReader(host))
+			return
+		}
+		if r.URL.Path == "/frame.html" {
+			w.Header().Set("Connection-Allowlist", strings.TrimSpace(string(policy)))
+		}
 		files.ServeHTTP(w, r)
-	})
+	}), nil
 }
 
 func main() {
@@ -105,11 +122,15 @@ func main() {
 			log.Fatal(err)
 		}
 	}()
+	handler, err := probe.assetHandler()
+	if err != nil {
+		log.Fatal(err)
+	}
 	var app *application.App
 	app = application.New(application.Options{
 		Name:     "Flame plugin carrier probe",
 		Services: []application.Service{application.NewService(probe)},
-		Assets:   application.AssetOptions{Handler: probe.assetHandler()},
+		Assets:   application.AssetOptions{Handler: handler},
 		RawMessageHandler: func(_ application.Window, message string, origin *application.OriginInfo) {
 			if origin != nil && !origin.IsMainFrame && message == "carrier-witness" {
 				probe.childMessages.Add(1)

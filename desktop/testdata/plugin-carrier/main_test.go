@@ -11,7 +11,10 @@ import (
 
 func TestAssetRequestsRecordEffectsEvenWhenTheResourceIsMissing(t *testing.T) {
 	probe := &Probe{}
-	handler := probe.assetHandler()
+	handler, err := probe.assetHandler()
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, tt := range []struct {
 		path     string
 		status   int
@@ -32,6 +35,34 @@ func TestAssetRequestsRecordEffectsEvenWhenTheResourceIsMissing(t *testing.T) {
 				t.Fatalf("resource requests = %d, want %d", got, tt.requests)
 			}
 		})
+	}
+}
+
+func TestCarrierEntryReceivesPolicyWithoutRestrictingHost(t *testing.T) {
+	probe := &Probe{}
+	handler, err := probe.assetHandler()
+	if err != nil {
+		t.Fatal(err)
+	}
+	policy, err := assets.ReadFile("network-policy.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	frame := httptest.NewRecorder()
+	handler.ServeHTTP(frame, httptest.NewRequest(http.MethodGet, "/frame.html", nil))
+	if frame.Code != http.StatusOK || frame.Header().Get("Connection-Allowlist") != strings.TrimSpace(string(policy)) {
+		t.Fatalf("frame did not receive its enforcing policy: %d, %v", frame.Code, frame.Header())
+	}
+	host := httptest.NewRecorder()
+	handler.ServeHTTP(host, httptest.NewRequest(http.MethodGet, "/", nil))
+	if host.Header().Get("Connection-Allowlist") != "" {
+		t.Fatal("guest policy restricted the trusted host")
+	}
+	if !strings.Contains(host.Body.String(), "frame-src wails://localhost/frame.html blob:") {
+		t.Fatal("host frame policy did not name its constrained entry")
+	}
+	if probe.Snapshot().ResourceRequests != 0 {
+		t.Fatal("trusted carrier setup counted as a plugin escape")
 	}
 }
 

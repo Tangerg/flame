@@ -942,6 +942,8 @@ Third-party Web UI must run outside the main application's origin and privileges
 
 Start with a restrictive content policy and grant only required script/resource origins. Check every relevant channel: scripts, connections, images, styles, fonts, forms, frames, workers, navigation, clipboard, and file downloads. Network permissions in a resource declaration are requests; the effective policy is the host-approved intersection.
 
+The executing carrier owns network enforcement. CSP connection restrictions alone do not cover WebRTC. A constrained entry document may receive brokered bytes and create a local document that inherits its connection policy; creating the document in an unrestricted host context does not establish that guarantee. An unsupported policy makes the carrier unavailable. [Desktop's carrier acceptance](../desktop/README.md#plugin-carrier-acceptance) owns the tested mechanism and carrier findings.
+
 Bundled assets and brokered reads are the initial preference. Direct remote origins are a separate reviewed capability. A permitted image or navigation endpoint can still carry data; preventing parent DOM access does not prevent exfiltration of data deliberately supplied to a view.
 
 Third-party themes should be bounded token data, not arbitrary CSS capable of concealing trusted UI. The host controls plugin identity chrome, permission dialogs, and failure overlays. A plugin may draw arbitrary content within its surface, but it must not be able to obscure which parts of the application are trusted controls.

@@ -44,10 +44,9 @@ export function assertCarrierIsolation(result, peerPackets) {
   );
   assert.equal(observations.peer.attempted, true, "the frame must negotiate a data channel");
   assert.equal(peerPackets, 0, "a plugin WebRTC packet reached the trusted UDP witness");
-  assert.equal(observations.peer.candidates, 0, "plugin frame escaped through ICE gathering");
   assert.equal(
-    observations.peer.blockedDirective,
-    "webrtc",
-    "the child CSP must enforce WebRTC isolation",
+    observations.peer.policyEnforced,
+    true,
+    "the executing carrier must enforce its network allowlist",
   );
 }

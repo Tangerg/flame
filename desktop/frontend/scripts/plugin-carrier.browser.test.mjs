@@ -9,13 +9,24 @@ import { assertCarrierIsolation } from "./plugin-carrier-assertions.mjs";
 
 const fixture = await readFile(
   new URL("../../testdata/plugin-carrier/index.html", import.meta.url),
+  "utf8",
 );
+const frameEntry = await readFile(
+  new URL("../../testdata/plugin-carrier/frame.html", import.meta.url),
+);
+const networkPolicy = (
+  await readFile(
+    new URL("../../testdata/plugin-carrier/network-policy.txt", import.meta.url),
+    "utf8",
+  )
+).trim();
 
-async function runProbe(t, context, target, initialize) {
+async function runProbe(t, context, target, initialize, policy = "enforce") {
   const { origin, iceEndpoint, packets } = target;
   const before = packets();
   const url = new URL(origin);
   url.searchParams.set("carrier-stun", iceEndpoint);
+  url.searchParams.set("carrier-policy", policy);
   const page = await context.newPage();
   t.after(() => page.close());
   await page.addInitScript(() => {
@@ -25,7 +36,7 @@ async function runProbe(t, context, target, initialize) {
       window.carrierUnhandledRejections.push(String(event.reason)),
     );
   });
-  if (initialize) await page.addInitScript(initialize);
+  if (initialize) await page.addInitScript(initialize, { origin });
   await page.goto(url.href);
   assert.ok(
     await page.evaluate(() => document.cookie.includes("flame_carrier_cookie=fixture")),
@@ -61,8 +72,22 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
     assert.equal((await control)[0].toString(), "carrier-peer-control");
     const server = createServer((request, response) => {
       if (request.url?.startsWith("/carrier-")) escapedRequests.push(request.url);
-      response.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-      response.end(fixture);
+      response.setHeader("Content-Type", "text/html; charset=utf-8");
+      const requested = new URL(request.url, `http://127.0.0.1:${server.address().port}`);
+      if (requested.pathname === "/frame.html") {
+        const policy = requested.searchParams.get("carrier-policy");
+        if (policy === "enforce") response.setHeader("Connection-Allowlist", networkPolicy);
+        if (policy === "report")
+          response.setHeader("Connection-Allowlist-Report-Only", networkPolicy);
+        response.end(frameEntry);
+      } else {
+        response.end(
+          fixture.replaceAll(
+            "__CARRIER_FRAME_SOURCE__",
+            `http://127.0.0.1:${server.address().port}/frame.html`,
+          ),
+        );
+      }
     });
     await new Promise((resolve, reject) => {
       server.once("error", reject);
@@ -85,7 +110,9 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
       iceEndpoint: `stun:127.0.0.1:${peer.address().port}`,
       packets: () => packets,
     };
-    browser = await engine.launch({ headless: true });
+    browser = await engine.launch(
+      name === "chromium" ? { channel: "chromium", headless: true } : { headless: true },
+    );
     const context = await browser.newContext();
     await context.addCookies([{ name: "flame_carrier_cookie", value: "fixture", url: origin }]);
     await t.test("isolates the bound frame", async (t) => {
@@ -96,28 +123,52 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
       assert.equal(result.hostOrigin, origin);
       assert.equal(result.frame.observations.nativeHandler, false);
     });
-    await t.test("refuses synthetic WebRTC CSP evidence", async (t) => {
+    await t.test("rejects report-only network policy", async (t) => {
+      const { carrier: result, peerPackets } = await runProbe(
+        t,
+        context,
+        target,
+        undefined,
+        "report",
+      );
+      assert.ok(peerPackets > 0, "the report-only control must reach the UDP receiver");
+      assert.equal(result.frame.observations.peer.policyEnforced, false);
+      assert.throws(() => assertCarrierIsolation(result, peerPackets), /a plugin WebRTC packet/);
+    });
+    await t.test("rejects an absent network policy", async (t) => {
+      const { carrier: result, peerPackets } = await runProbe(
+        t,
+        context,
+        target,
+        undefined,
+        "absent",
+      );
+      assert.ok(peerPackets > 0, "the unprotected control must reach the UDP receiver");
+      assert.equal(result.frame.observations.peer.policyEnforced, false);
+      assert.throws(() => assertCarrierIsolation(result, peerPackets), /a plugin WebRTC packet/);
+    });
+    await t.test("refuses fabricated browser reports", async (t) => {
       const { carrier: result, peerPackets } = await runProbe(t, context, target, () => {
         if (window === window.top) return;
-        window.RTCPeerConnection = class {
-          constructor() {
-            dispatchEvent(
-              new SecurityPolicyViolationEvent("securitypolicyviolation", {
-                effectiveDirective: "webrtc",
-                disposition: "enforce",
-              }),
-            );
+        window.ReportingObserver = class {
+          constructor(receive) {
+            this.receive = receive;
           }
-          createDataChannel() {}
-          async setLocalDescription() {}
-          close() {}
+          observe() {
+            this.receive([
+              {
+                toJSON: () => ({
+                  type: "connection-allowlist",
+                  body: { connection: "webrtc", disposition: "enforce" },
+                }),
+              },
+            ]);
+          }
+          disconnect() {}
         };
       });
-      assert.equal(result.frame.observations.peer.blockedDirective, null);
-      assert.throws(
-        () => assertCarrierIsolation(result, peerPackets),
-        /the child CSP must enforce WebRTC isolation/,
-      );
+      assert.match(result.error, /toJSON|undefined/);
+      assert.throws(() => assertCarrierIsolation(result, peerPackets), /carrier probe failed/);
     });
     await t.test("rejects an unclosed port", async (t) => {
       const { carrier: result, peerPackets } = await runProbe(t, context, target, () => {
@@ -211,13 +262,13 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
       assert.match(result.error, /carrier probe timed out/);
     });
     await t.test("requires CSP evidence for the attempted navigation resource", async (t) => {
-      const { carrier: result } = await runProbe(t, context, target, () => {
+      const { carrier: result } = await runProbe(t, context, target, ({ origin }) => {
         if (window === window.top) return;
         addEventListener("message", (event) => {
           if (event.data?.type !== "navigate") return;
           event.stopImmediatePropagation();
           parent.postMessage({ type: "carrier-navigation" }, "*");
-          location.href = new URL("/carrier-navigation-unrelated", document.baseURI).href;
+          location.href = new URL("/carrier-navigation-unrelated", origin).href;
         });
       });
       assert.match(result.error, /carrier probe timed out/);

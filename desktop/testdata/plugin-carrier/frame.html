@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Unprivileged carrier entry</title>
+  </head>
+  <body>
+    <script>
+      const fail = (error) =>
+        parent.postMessage(
+          { type: "carrier-error", error: String(error) },
+          "*",
+        );
+      addEventListener("error", (event) => fail(event.message));
+      addEventListener("unhandledrejection", (event) => fail(event.reason));
+      function receive(event) {
+        if (
+          event.source !== parent ||
+          event.data?.type !== "carrier-content" ||
+          typeof event.data.content !== "string"
+        )
+          return;
+        removeEventListener("message", receive);
+        // The constrained document must create the URL so its policy survives navigation.
+        location.replace(
+          URL.createObjectURL(
+            new Blob([event.data.content], { type: "text/html" }),
+          ),
+        );
+      }
+      addEventListener("message", receive);
+    </script>
+  </body>
+</html>
