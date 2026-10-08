@@ -7,6 +7,8 @@ import { test } from "node:test";
 import { chromium, webkit } from "@playwright/test";
 import { assertCarrierIsolation } from "./plugin-carrier-assertions.mjs";
 
+const enforcement = { kind: "connection-allowlist" };
+
 const fixture = await readFile(
   new URL("../../testdata/plugin-carrier/index.html", import.meta.url),
   "utf8",
@@ -118,8 +120,8 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
     await t.test("isolates the bound frame", async (t) => {
       const { carrier: result, peerPackets } = await runProbe(t, context, target);
       t.diagnostic(JSON.stringify({ peer: result.frame?.observations.peer, peerPackets }));
-      assertCarrierIsolation(result, peerPackets);
-      assert.equal(result.native, false);
+      assertCarrierIsolation(result, peerPackets, enforcement);
+      assert.equal(result.wails, false);
       assert.equal(result.hostOrigin, origin);
       assert.equal(result.frame.observations.nativeHandler, false);
     });
@@ -133,7 +135,10 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
       );
       assert.ok(peerPackets > 0, "the report-only control must reach the UDP receiver");
       assert.equal(result.frame.observations.peer.policyEnforced, false);
-      assert.throws(() => assertCarrierIsolation(result, peerPackets), /a plugin WebRTC packet/);
+      assert.throws(
+        () => assertCarrierIsolation(result, peerPackets, enforcement),
+        /a plugin WebRTC packet/,
+      );
     });
     await t.test("rejects an absent network policy", async (t) => {
       const { carrier: result, peerPackets } = await runProbe(
@@ -145,7 +150,10 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
       );
       assert.ok(peerPackets > 0, "the unprotected control must reach the UDP receiver");
       assert.equal(result.frame.observations.peer.policyEnforced, false);
-      assert.throws(() => assertCarrierIsolation(result, peerPackets), /a plugin WebRTC packet/);
+      assert.throws(
+        () => assertCarrierIsolation(result, peerPackets, enforcement),
+        /a plugin WebRTC packet/,
+      );
     });
     await t.test("refuses fabricated browser reports", async (t) => {
       const { carrier: result, peerPackets } = await runProbe(t, context, target, () => {
@@ -168,14 +176,31 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
         };
       });
       assert.match(result.error, /toJSON|undefined/);
-      assert.throws(() => assertCarrierIsolation(result, peerPackets), /carrier probe failed/);
+      assert.throws(
+        () => assertCarrierIsolation(result, peerPackets, enforcement),
+        /carrier probe failed/,
+      );
     });
+    await t.test(
+      "refuses JavaScript withdrawal of the WebRTC API as policy evidence",
+      async (t) => {
+        const { carrier: result, peerPackets } = await runProbe(t, context, target, () => {
+          if (window !== window.top) window.RTCPeerConnection = undefined;
+        });
+        assert.equal(peerPackets, 0);
+        assert.equal(result.frame.observations.peer.available, false);
+        assert.throws(
+          () => assertCarrierIsolation(result, peerPackets, enforcement),
+          /the WebRTC positive control must exist/,
+        );
+      },
+    );
     await t.test("rejects an unclosed port", async (t) => {
       const { carrier: result, peerPackets } = await runProbe(t, context, target, () => {
         if (window === window.top) MessagePort.prototype.close = () => {};
       });
       assert.throws(
-        () => assertCarrierIsolation(result, peerPackets),
+        () => assertCarrierIsolation(result, peerPackets, enforcement),
         /a retired channel must stop publication/,
         "the gate must detect an unclosed port before removing its frame",
       );
@@ -278,7 +303,7 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
         if (window !== window.top) window.fetch = () => Promise.resolve(new Response());
       });
       assert.throws(
-        () => assertCarrierIsolation(result, peerPackets),
+        () => assertCarrierIsolation(result, peerPackets, enforcement),
         /plugin frame escaped through network/,
       );
     });

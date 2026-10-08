@@ -14,7 +14,7 @@
     <script>
       const pause = (milliseconds) =>
         new Promise((resolve) => setTimeout(resolve, milliseconds));
-      const native = location.protocol === "wails:";
+      const wails = location.protocol === "wails:";
       const childPolicy = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; base-uri 'none'; form-action 'none'">`;
 
       function createFrame(title, program, input, signal) {
@@ -68,7 +68,10 @@
           nativeHandler:
             typeof window.webkit?.messageHandlers?.external?.postMessage ===
             "function",
-          wailsGlobal: typeof window.wails !== "undefined",
+          carrierHandler:
+            typeof window.webkit?.messageHandlers?.carrier?.postMessage ===
+            "function",
+          wailsGlobal: typeof window._wails !== "undefined",
         };
         if (observations.nativeHandler) {
           window.webkit.messageHandlers.external.postMessage("carrier-witness");
@@ -76,6 +79,10 @@
             "wails:runtime:ready",
           );
         }
+        if (observations.carrierHandler)
+          window.webkit.messageHandlers.carrier.postMessage(
+            "wails:runtime:ready",
+          );
         let port;
         addEventListener("message", (event) => {
           if (event.source !== parent) return;
@@ -123,62 +130,65 @@
         if (!iceEndpoint)
           throw new Error("the trusted host must supply an ICE probe endpoint");
         observations.peer = {
+          available: typeof RTCPeerConnection === "function",
           attempted: false,
           candidates: 0,
           policyEnforced: false,
         };
-        const observer = new ReportingObserver(
-          (reports) => {
-            try {
-              for (const report of reports) {
-                const encoded =
-                  Object.getPrototypeOf(report).toJSON.call(report);
-                if (
-                  encoded.type === "connection-allowlist" &&
-                  encoded.body.connection === "webrtc" &&
-                  encoded.body.disposition === "enforce"
-                )
-                  observations.peer.policyEnforced = true;
+        if (observations.peer.available) {
+          const observer = new ReportingObserver(
+            (reports) => {
+              try {
+                for (const report of reports) {
+                  const encoded =
+                    Object.getPrototypeOf(report).toJSON.call(report);
+                  if (
+                    encoded.type === "connection-allowlist" &&
+                    encoded.body.connection === "webrtc" &&
+                    encoded.body.disposition === "enforce"
+                  )
+                    observations.peer.policyEnforced = true;
+                }
+              } catch (error) {
+                parent.postMessage(
+                  { type: "carrier-error", error: String(error) },
+                  "*",
+                );
               }
-            } catch (error) {
-              parent.postMessage(
-                { type: "carrier-error", error: String(error) },
-                "*",
-              );
-            }
-          },
-          { types: ["connection-allowlist"], buffered: true },
-        );
-        observer.observe();
-        const peer = new RTCPeerConnection({
-          iceServers: [{ urls: iceEndpoint }],
-        });
-        peer.onicecandidate = (event) => {
-          if (event.candidate) observations.peer.candidates++;
-        };
-        try {
-          peer.createDataChannel("carrier-peer");
-          await peer.setLocalDescription();
-          const remoteSDP = peer.localDescription.sdp
-            .replaceAll("a=setup:actpass", "a=setup:active")
-            .replace(/a=ice-ufrag:[^\r\n]+/g, "a=ice-ufrag:carrierRemote")
-            .replace(
-              /a=ice-pwd:[^\r\n]+/g,
-              "a=ice-pwd:carrierRemote01234567890123456789",
-            );
-          await peer.setRemoteDescription({ type: "answer", sdp: remoteSDP });
-          const port = Number(
-            iceEndpoint.slice(iceEndpoint.lastIndexOf(":") + 1),
+            },
+            { types: ["connection-allowlist"], buffered: true },
           );
-          await peer.addIceCandidate({
-            candidate: `candidate:carrier 1 udp 2130706431 127.0.0.1 ${port} typ host`,
-            sdpMid: peer.localDescription.sdp.match(/a=mid:([^\r\n]+)/)[1],
+          observer.observe();
+          const peer = new RTCPeerConnection({
+            iceServers: [{ urls: iceEndpoint }],
           });
-          observations.peer.attempted = true;
-          await new Promise((resolve) => setTimeout(resolve, 600));
-        } finally {
-          peer.close();
-          observer.disconnect();
+          peer.onicecandidate = (event) => {
+            if (event.candidate) observations.peer.candidates++;
+          };
+          try {
+            peer.createDataChannel("carrier-peer");
+            await peer.setLocalDescription();
+            const remoteSDP = peer.localDescription.sdp
+              .replaceAll("a=setup:actpass", "a=setup:active")
+              .replace(/a=ice-ufrag:[^\r\n]+/g, "a=ice-ufrag:carrierRemote")
+              .replace(
+                /a=ice-pwd:[^\r\n]+/g,
+                "a=ice-pwd:carrierRemote01234567890123456789",
+              );
+            await peer.setRemoteDescription({ type: "answer", sdp: remoteSDP });
+            const port = Number(
+              iceEndpoint.slice(iceEndpoint.lastIndexOf(":") + 1),
+            );
+            await peer.addIceCandidate({
+              candidate: `candidate:carrier 1 udp 2130706431 127.0.0.1 ${port} typ host`,
+              sdpMid: peer.localDescription.sdp.match(/a=mid:([^\r\n]+)/)[1],
+            });
+            observations.peer.attempted = true;
+            await new Promise((resolve) => setTimeout(resolve, 600));
+          } finally {
+            peer.close();
+            observer.disconnect();
+          }
         }
         parent.postMessage({ type: "carrier-child", observations }, "*");
       }
@@ -259,7 +269,7 @@
       };
 
       async function run() {
-        const result = { native, hostOrigin: location.origin };
+        const result = { wails, hostOrigin: location.origin };
         const lifetime = new AbortController();
         const { signal } = lifetime;
         let frame;
@@ -270,21 +280,16 @@
           10_000,
         );
         try {
-          if (native) {
+          let nativeBaseline;
+          if (wails) {
             window.webkit.messageHandlers.external.postMessage(
               "wails:runtime:ready",
             );
             await invoke("Touch", signal);
-            let baseline = await invoke("Snapshot", signal);
-            while (baseline.ready === 0) {
-              signal.throwIfAborted();
-              await pause(10);
-              baseline = await invoke("Snapshot", signal);
-            }
-            result.nativeBaseline = baseline;
+            nativeBaseline = await invoke("Begin", signal);
           }
-          const iceEndpoint = native
-            ? result.nativeBaseline.peerEndpoint
+          const iceEndpoint = wails
+            ? nativeBaseline.peerEndpoint
             : new URL(location.href).searchParams.get("carrier-stun");
           frame = createFrame(
             "Untrusted plugin probe",
@@ -297,7 +302,7 @@
             signal,
           );
           const navigationTarget = new URL(
-            native
+            wails
               ? bindingURL("Touch", "carrier-child")
               : "/carrier-navigation",
             location.href,
@@ -437,7 +442,7 @@
             encoded = JSON.stringify({ error: String(error) });
           }
           document.getElementById("result").textContent = encoded;
-          if (native)
+          if (wails)
             window.webkit.messageHandlers.external.postMessage(
               "carrier-result:" + encoded,
             );

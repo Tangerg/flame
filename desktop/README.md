@@ -254,8 +254,10 @@ including missing resources. The fixture opens no product Runtime and loads no p
 configuration.
 
 MessageEvent owns sender identity; a frame's claimed origin stays inside its observation
-payload and cannot replace host metadata. Native reports keep carrier observations and
-Go-owned effect counters in separate fields. Channel retirement compares snapshots of one
+payload and cannot replace host metadata. Native reports keep carrier observations, the
+Go-owned baseline and current effects, and native WebKit configuration evidence in separate
+fields. `Probe.Begin` joins readiness and freezes one baseline before guest admission;
+the page cannot replace it. Channel retirement compares snapshots of one
 receive counter after the still-live frame witnesses an attempted send to the closed port.
 Browser fault injection verifies that an unclosed port fails this gate and that a child
 failure disposes its frames. One probe lifetime cancels pending waits and disposes frames,
@@ -283,13 +285,19 @@ Run the browser gate from `frontend/`:
 npm run check:plugin-carrier:browser
 ```
 
-Run the native release gate from `desktop/` on macOS with a graphical session:
+Run the independent native carrier gate from `desktop/` on macOS with a graphical session:
+
+```sh
+wails3 task darwin:check:plugin-carrier:isolated
+```
+
+The original Wails frame remains a separate, unqualified carrier:
 
 ```sh
 wails3 task darwin:check:plugin-carrier
 ```
 
-The native task consumes the shipping deployment floor from `Taskfile.yml`, runs the
+Each native task consumes the shipping deployment floor from `Taskfile.yml`, runs the
 fixture's Go tests and builds it into an owned temporary directory. It does not rebuild the
 application, generate bindings or alter user data. These gates are separate from the ordinary
 frontend check: the gate for each carrier must pass before enabling third-party HTML.
@@ -297,12 +305,15 @@ frontend check: the gate for each carrier must pass before enabling third-party 
 The probe negotiates a WebRTC data channel with both an owned loopback STUN endpoint
 and an explicit remote ICE candidate targeting the same UDP receiver, in addition to
 fetch, image and navigation attempts. Packet counts belong to the receiver outside the
-frame. Both browser and native consumers require that count to remain zero and require
-an enforcing `connection-allowlist` browser report. Local ICE candidates are diagnostic
+frame. Every carrier requires that count to remain zero. Browser enforcement requires an
+enforcing `connection-allowlist` report; the independent native carrier requires WebKit's
+native lockdown configuration and the engine's withdrawal of the WebRTC API. The carrier
+profile is selected by the trusted runner, never by the frame's claims. Local ICE candidates
+are diagnostic
 data, not outgoing network effects. A missing candidate or ordinary connection failure
 alone does not establish isolation.
 
-`testdata/plugin-carrier/network-policy.txt` owns the network policy. The browser and
+`testdata/plugin-carrier/network-policy.txt` owns the connection-header policy. The browser and
 native response handlers project it into the `Connection-Allowlist` header on the
 unprivileged entry document. That document receives brokered HTML and creates its Blob
 URL inside the constrained context, preserving the inherited network policy. The main
@@ -329,16 +340,29 @@ so its network gate fails independently of native binding dispatch. An opaque-or
 Blob frame with `sandbox="allow-scripts"` and restrictive CSP can send `wails:runtime:ready` through
 `webkit.messageHandlers.external`, advancing native window readiness. The trusted event
 positive control records one event; the child raises the native owner's count to two,
-despite having no `window.wails` and no access to the parent DOM. The fixture's parent
+despite having no `window._wails` and no access to the parent DOM. The fixture's parent
 frame policy blocks self-navigation into the native Runtime route, but does
 not block this script-message path.
 
-Native dispatch must enforce frame authority before processing framework control messages.
+The independent native spike passes on macOS 26.5 with the released Wails beta.28.
+It embeds a separate WKWebView through the Wails window's public native handle, without
+copying framework dispatch or replacing JavaScript globals. Apple's public
+[`WKWebpagePreferences.isLockdownModeEnabled`](https://developer.apple.com/documentation/webkit/wkwebpagepreferences/islockdownmodeenabled)
+configuration belongs only to that view. Its website data store is nonpersistent and its
+content controller has no Wails injection or handler. Native frame identity admits
+publication from the trusted coordinator and rejects guest messages before any effect.
+The Wails workbench uses its normal runtime and retains one binding call and one readiness
+event. The native control disables lockdown, sends packets, and fails admission; API
+absence alone cannot qualify a carrier. Closing the owned view removes its handler and
+navigation delegate, stops loading, detaches the view, and releases its callback handle.
+
+The original Wails dispatch must enforce frame authority before processing framework
+control messages.
 The application's `RawMessageHandler` cannot supply that guarantee: Wails processes its
 control messages before that callback. Removing JavaScript globals or suppressing frame
-errors does not repair the native admission owner. Until that boundary is repaired or an
-independent unprivileged carrier passes the same gate, native plugin HTML remains
+errors does not repair the native admission owner. That original frame carrier remains
 unavailable. Each carrier requires its own passing gate before implementing Slice C's
-public view/resource/bridge contract on that carrier. A passing browser spike does not
-implement Slice C or qualify Wails. Independent themes, Skills and MCP declarations
+public view/resource/bridge contract on that carrier. The qualified browser and independent
+native spikes do not implement Slice C or qualify the original Wails frame. Independent
+themes, Skills and MCP declarations
 retain their existing admission and lifecycle.

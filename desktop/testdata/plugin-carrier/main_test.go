@@ -1,6 +1,9 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -10,8 +13,8 @@ import (
 )
 
 func TestAssetRequestsRecordEffectsEvenWhenTheResourceIsMissing(t *testing.T) {
-	probe := &Probe{}
-	handler, err := probe.assetHandler()
+	probe := newProbe()
+	handler, err := probe.assetHandler("wails://localhost/frame.html")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -31,7 +34,7 @@ func TestAssetRequestsRecordEffectsEvenWhenTheResourceIsMissing(t *testing.T) {
 			if response.Code != tt.status {
 				t.Fatalf("status = %d, want %d", response.Code, tt.status)
 			}
-			if got := probe.Snapshot().ResourceRequests; got != tt.requests {
+			if got := probe.snapshot().ResourceRequests; got != tt.requests {
 				t.Fatalf("resource requests = %d, want %d", got, tt.requests)
 			}
 		})
@@ -39,8 +42,8 @@ func TestAssetRequestsRecordEffectsEvenWhenTheResourceIsMissing(t *testing.T) {
 }
 
 func TestCarrierEntryReceivesPolicyWithoutRestrictingHost(t *testing.T) {
-	probe := &Probe{}
-	handler, err := probe.assetHandler()
+	probe := newProbe()
+	handler, err := probe.assetHandler("wails://localhost/frame.html")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,13 +64,13 @@ func TestCarrierEntryReceivesPolicyWithoutRestrictingHost(t *testing.T) {
 	if !strings.Contains(host.Body.String(), "frame-src wails://localhost/frame.html blob:") {
 		t.Fatal("host frame policy did not name its constrained entry")
 	}
-	if probe.Snapshot().ResourceRequests != 0 {
+	if probe.snapshot().ResourceRequests != 0 {
 		t.Fatal("trusted carrier setup counted as a plugin escape")
 	}
 }
 
 func TestPeerWitnessRecordsPacketsOutsideTheFrame(t *testing.T) {
-	probe := &Probe{}
+	probe := newProbe()
 	closePeer, err := probe.listenPeer()
 	if err != nil {
 		t.Fatal(err)
@@ -77,7 +80,7 @@ func TestPeerWitnessRecordsPacketsOutsideTheFrame(t *testing.T) {
 			t.Error(err)
 		}
 	})
-	address := strings.TrimPrefix(probe.Snapshot().PeerEndpoint, "stun:")
+	address := strings.TrimPrefix(probe.snapshot().PeerEndpoint, "stun:")
 	sender, err := net.Dial("udp4", address)
 	if err != nil {
 		t.Fatal(err)
@@ -87,13 +90,106 @@ func TestPeerWitnessRecordsPacketsOutsideTheFrame(t *testing.T) {
 		t.Fatal(err)
 	}
 	deadline := time.Now().Add(time.Second)
-	for probe.Snapshot().PeerPackets == 0 {
+	for probe.snapshot().PeerPackets == 0 {
 		if time.Now().After(deadline) {
 			t.Fatal("peer witness did not observe its positive control")
 		}
 		time.Sleep(time.Millisecond)
 	}
-	if probe.Snapshot().PeerPackets != 1 {
-		t.Fatalf("peer packet count = %d", probe.Snapshot().PeerPackets)
+	if probe.snapshot().PeerPackets != 1 {
+		t.Fatalf("peer packet count = %d", probe.snapshot().PeerPackets)
+	}
+}
+
+func TestNativeOwnerFreezesTheBaselineBeforeGuestEffects(t *testing.T) {
+	probe := newProbe()
+	probe.Touch()
+	probe.noteReady()
+	baseline, err := probe.Begin(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	probe.Touch()
+	probe.noteReady()
+	encoded, err := probe.encodeReport(`{}`, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got report
+	if err := json.Unmarshal(encoded, &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Baseline == nil || *got.Baseline != baseline || got.Effects.Calls != 2 || got.Effects.Ready != 2 {
+		t.Fatalf("baseline advanced with guest effects: %s", encoded)
+	}
+	if _, err := probe.Begin(t.Context()); err == nil {
+		t.Fatal("a second caller replaced the baseline")
+	}
+}
+
+func TestNativeProbeDoesNotBeginBeforeReadiness(t *testing.T) {
+	probe := newProbe()
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	probe.noteReady()
+	if _, err := probe.Begin(ctx); !errors.Is(err, context.Canceled) {
+		t.Fatalf("begin: %v", err)
+	}
+	encoded, err := probe.encodeReport(`{}`, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got report
+	if err := json.Unmarshal(encoded, &got); err != nil {
+		t.Fatal(err)
+	}
+	var failure struct{ Error string }
+	if err := json.Unmarshal(got.Carrier, &failure); err != nil {
+		t.Fatal(err)
+	}
+	if got.Baseline != nil || failure.Error == "" {
+		t.Fatalf("missing readiness became apparent success: %s", encoded)
+	}
+}
+
+func TestInvalidNativeResultPublishesExplicitFailure(t *testing.T) {
+	probe := newProbe()
+	probe.noteReady()
+	if _, err := probe.Begin(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := probe.encodeReport("invalid JSON", nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got report
+	if err := json.Unmarshal(encoded, &got); err != nil {
+		t.Fatal(err)
+	}
+	var failure struct{ Error string }
+	if err := json.Unmarshal(got.Carrier, &failure); err != nil {
+		t.Fatal(err)
+	}
+	if got.Baseline == nil || failure.Error == "" {
+		t.Fatalf("invalid result became apparent success: %s", encoded)
+	}
+}
+
+func TestNativeBoundaryFailurePreservesItsCauseWithoutInventingReadiness(t *testing.T) {
+	probe := newProbe()
+	encoded, err := probe.encodeReport("", errors.New("native navigation failed"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got report
+	if err := json.Unmarshal(encoded, &got); err != nil {
+		t.Fatal(err)
+	}
+	var failure struct{ Error string }
+	if err := json.Unmarshal(got.Carrier, &failure); err != nil {
+		t.Fatal(err)
+	}
+	if got.Baseline != nil || failure.Error != "native navigation failed" {
+		t.Fatalf("native failure lost its cause or invented a baseline: %s", encoded)
 	}
 }
