@@ -19,9 +19,8 @@ import (
 // installed.
 var tracer = otel.Tracer("scope/flame/infra/integration/mcp")
 
-// Dial connects to each configured server, lists its tools, and returns the
-// Connections handle alongside the merged model-facing tool list. The server
-// name namespaces tools across servers.
+// Dial connects to each configured server and discovers its tools. SetToolSink
+// publishes the admitted catalog once its consumer is ready.
 //
 // Failure, two tiers: a config mistake (duplicate name / invalid entry) is
 // FATAL (validated before any dial); a reachability failure is TOLERATED
@@ -33,15 +32,15 @@ func Dial(
 	servers []ServerConfig,
 	oauthSessions OAuthSessionStore,
 	configuration func(context.Context, mcpserver.ID) (*Launch, error),
-) (*Connections, []Executable, error) {
+) (*Connections, error) {
 	if ctx == nil {
-		return nil, nil, errors.New("mcp: startup context is required")
+		return nil, errors.New("mcp: startup context is required")
 	}
 	if lifetime == nil {
-		return nil, nil, errors.New("mcp: lifetime is required")
+		return nil, errors.New("mcp: lifetime is required")
 	}
 	if configuration == nil {
-		return nil, nil, errors.New("mcp: connection configuration source is required")
+		return nil, errors.New("mcp: connection configuration source is required")
 	}
 	// Always carry a client, even with zero servers: the registry starts empty
 	// and the common path is a 0-server boot followed by a runtime Configure,
@@ -49,7 +48,7 @@ func Dial(
 	if len(servers) == 0 {
 		return &Connections{
 			lifetime: lifetime, client: newClient(), oauthSessions: oauthSessions,
-		}, nil, nil
+		}, nil
 	}
 	servers = slices.Clone(servers)
 	for i := range servers {
@@ -63,11 +62,11 @@ func Dial(
 	for index := range servers {
 		srv := &servers[index]
 		if _, dup := seen[srv.ID()]; dup {
-			return nil, nil, fmt.Errorf("mcp: duplicate server name %q", srv.ID())
+			return nil, fmt.Errorf("mcp: duplicate server name %q", srv.ID())
 		}
 		seen[srv.ID()] = struct{}{}
 		if verr := srv.Validate(); verr != nil {
-			return nil, nil, fmt.Errorf("mcp: invalid server %q: %w", srv.ID(), verr)
+			return nil, fmt.Errorf("mcp: invalid server %q: %w", srv.ID(), verr)
 		}
 	}
 
@@ -81,7 +80,7 @@ func Dial(
 		trace.WithAttributes(attribute.Int("mcp.server.count", len(servers))))
 	defer span.End()
 
-	var tools []Executable
+	toolCount := 0
 	failures := 0
 	for _, srv := range servers {
 		configuredServer := &server{id: srv.ID(), config: srv, oauth: srv.OAuthHandler}
@@ -150,16 +149,16 @@ func Dial(
 			continue
 		}
 		configuredServer.settle(session, srcTools, mcpserver.ConnectionConnected, "")
-		tools = append(tools, srcTools...)
+		toolCount += len(srcTools)
 		c.servers = append(c.servers, configuredServer)
 	}
 
 	span.SetAttributes(
-		attribute.Int("mcp.tool.count", len(tools)),
+		attribute.Int("mcp.tool.count", toolCount),
 		attribute.Int("mcp.server.failed", failures),
 	)
 	if failures > 0 {
 		span.SetStatus(codes.Error, fmt.Sprintf("%d/%d MCP servers failed to connect", failures, len(servers)))
 	}
-	return c, tools, nil
+	return c, nil
 }

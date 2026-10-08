@@ -146,7 +146,7 @@ func TestToolEnvironmentDialsMCPServer(t *testing.T) {
 // entries with the same Name must abort tool construction rather than
 // silently overwriting.
 func TestToolEnvironmentRejectsDuplicateMCPNames(t *testing.T) {
-	_, _, err := mcpconnection.Open(context.Background(), t.Context(), []mcpserver.Server{
+	_, err := mcpconnection.Open(context.Background(), t.Context(), []mcpserver.Server{
 		{Source: mcpserver.UserSource(), Name: testsupport.ServerName("dup"), Transport: mcpserver.TransportStreamableHTTP, URL: "http://example.invalid/"},
 		{Source: mcpserver.UserSource(), Name: testsupport.ServerName("dup"), Transport: mcpserver.TransportStreamableHTTP, URL: "http://other.invalid/"},
 	}, nil, testSourceRegistry(nil))
@@ -159,7 +159,7 @@ func TestToolEnvironmentRejectsDuplicateMCPNames(t *testing.T) {
 // failures at build time so operators don't discover the
 // problem on the first tool call.
 func TestToolEnvironmentRejectsBadMCPEndpoint(t *testing.T) {
-	_, _, err := mcpconnection.Open(context.Background(), t.Context(), []mcpserver.Server{
+	_, err := mcpconnection.Open(context.Background(), t.Context(), []mcpserver.Server{
 		{Source: mcpserver.UserSource(), Name: testsupport.ServerName("bad"), Transport: mcpserver.TransportStreamableHTTP}, // empty URL fails validation
 	}, nil, testSourceRegistry(nil))
 	if err == nil {
@@ -214,7 +214,7 @@ func TestToolEnvironmentDialsStdioMCP(t *testing.T) {
 // TestToolEnvironmentRejectsEmptyStdioCommand mirrors the
 // HTTP empty-endpoint guard for the stdio path.
 func TestToolEnvironmentRejectsEmptyStdioCommand(t *testing.T) {
-	_, _, err := mcpconnection.Open(context.Background(), t.Context(), []mcpserver.Server{{
+	_, err := mcpconnection.Open(context.Background(), t.Context(), []mcpserver.Server{{
 		Source:    mcpserver.UserSource(),
 		Name:      testsupport.ServerName("bad"),
 		Transport: mcpserver.TransportStdio,
@@ -280,12 +280,12 @@ func TestToolEnvironmentReconnectsMCP(t *testing.T) {
 
 func mustMCPToolEnvironment(t *testing.T, servers []mcpserver.Server) (toolset.Built, *mcpconnection.Pool) {
 	t.Helper()
-	pool, mcpTools, err := mcpconnection.Open(t.Context(), t.Context(), servers, nil, testSourceRegistry(servers))
+	pool, err := mcpconnection.Open(t.Context(), t.Context(), servers, nil, testSourceRegistry(servers))
 	if err != nil {
 		t.Fatalf("Open MCP pool: %v", err)
 	}
 	built, err := toolset.Build(t.Context(), toolset.BuildConfig{Lifetime: t.Context(),
-		UserHome: t.TempDir(), MCPTools: mcpTools,
+		UserHome: t.TempDir(),
 	})
 	if err != nil {
 		_ = pool.Shutdown(context.WithoutCancel(t.Context()))

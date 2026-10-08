@@ -51,7 +51,7 @@ type toolEnvironmentBuilder func(context.Context, toolEnvironmentDependencies) (
 
 func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies) (toolEnvironment, error) {
 	cfg := deps.config
-	mcpPool, mcpTools, err := mcpconnection.Open(
+	mcpPool, err := mcpconnection.Open(
 		ctx,
 		deps.lifetime,
 		deps.mcp.servers,
@@ -76,7 +76,6 @@ func buildToolEnvironment(ctx context.Context, deps toolEnvironmentDependencies)
 		SkillsUserDir: cfg.SkillsUserDir, PackageSkills: deps.packageSkills,
 		Online:          cfg.Online,
 		LSPServers:      cfg.LSPServers,
-		MCPTools:        mcpTools,
 		A2AAgents:       cfg.A2AAgents,
 		Plan:            deps.plan,
 		Interrupt:       runinput.Require,

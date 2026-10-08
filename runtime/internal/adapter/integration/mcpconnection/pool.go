@@ -37,21 +37,21 @@ func Open(
 	lifetime context.Context,
 	servers []mcpserver.Server,
 	oauthSessions mcp.OAuthSessionStore, registry sourceRegistry,
-) (*Pool, []toolcontract.Tool, error) {
+) (*Pool, error) {
 	if registry == nil {
-		return nil, nil, errors.New("mcp connection: source registry is required")
+		return nil, errors.New("mcp connection: source registry is required")
 	}
 	configs, err := configsFromServers(servers)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	pool := &Pool{registry: registry}
-	inner, toolset, err := mcp.Dial(ctx, lifetime, configs, oauthSessions, pool.connectionLaunch)
+	inner, err := mcp.Dial(ctx, lifetime, configs, oauthSessions, pool.connectionLaunch)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	pool.inner = inner
-	return pool, pool.authorizedTools(toolset), nil
+	return pool, nil
 }
 
 func (p *Pool) Statuses() []mcpserver.ConnectionStatus {
@@ -140,8 +140,8 @@ func (p *Pool) Detach(name mcpserver.ID) error {
 	return p.inner.Detach(name)
 }
 
-// SetToolSink wires live connection changes to the resolver's atomically
-// replaceable MCP tool catalog.
+// SetToolSink publishes the initial catalog and live connection changes to the
+// resolver through the connection owner's publication boundary.
 func (p *Pool) SetToolSink(sink func([]toolcontract.Tool)) {
 	p.inner.SetToolSink(func(catalog []mcp.Executable) { sink(p.authorizedTools(catalog)) })
 }

@@ -20,6 +20,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 type reconnectObserver struct {
@@ -75,7 +76,7 @@ func TestRepairedReleaseReconnectsThroughItsCurrentDefinition(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("source definition = %v, %v", found, err)
 	}
-	pool, _, err := mcpconnection.Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry)
+	pool, err := mcpconnection.Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,7 +161,7 @@ func TestTamperedPackageCannotLaunchThroughConnectionEntrypoints(t *testing.T) {
 	if err != nil || len(sources) != 1 {
 		t.Fatalf("sources = %v, %v", sources, err)
 	}
-	pool, _, err := mcpconnection.Open(t.Context(), t.Context(), []mcpserver.Server{sources[0].Server}, nil, registry)
+	pool, err := mcpconnection.Open(t.Context(), t.Context(), []mcpserver.Server{sources[0].Server}, nil, registry)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,7 +203,7 @@ func TestTamperedPackageCannotLaunchThroughConnectionEntrypoints(t *testing.T) {
 		})
 	}
 	t.Run("startup", func(t *testing.T) {
-		pool, tools, err := mcpconnection.Open(t.Context(), t.Context(), []mcpserver.Server{sources[0].Server}, nil, registry)
+		pool, err := mcpconnection.Open(t.Context(), t.Context(), []mcpserver.Server{sources[0].Server}, nil, registry)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -211,6 +212,8 @@ func TestTamperedPackageCannotLaunchThroughConnectionEntrypoints(t *testing.T) {
 				t.Error(err)
 			}
 		}()
+		var tools []toolcontract.Tool
+		pool.SetToolSink(func(catalog []toolcontract.Tool) { tools = catalog })
 		statuses := pool.Statuses()
 		if len(tools) != 0 || len(statuses) != 1 || statuses[0].State != mcpserver.ConnectionFailed {
 			t.Fatalf("tampered startup = %v, %v", tools, statuses)

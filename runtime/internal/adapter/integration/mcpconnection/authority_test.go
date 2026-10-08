@@ -46,7 +46,7 @@ func TestRetainedToolRejectsChangedCredentialsBeforeReconciliation(t *testing.T)
 				server.Headers = map[string]string{"X-API-Key": "first"}
 			}
 			registry := &mutableSourceRegistry{server: server.Clone()}
-			pool, initial, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry)
+			pool, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -55,6 +55,8 @@ func TestRetainedToolRejectsChangedCredentialsBeforeReconciliation(t *testing.T)
 					t.Error(err)
 				}
 			})
+			var initial []toolcontract.Tool
+			pool.SetToolSink(func(tools []toolcontract.Tool) { initial = tools })
 			if len(initial) != 1 {
 				t.Fatalf("initial tools = %d, want 1", len(initial))
 			}
@@ -161,11 +163,13 @@ func TestFrozenExecutableAfterReconnectIsRejected(t *testing.T) {
 	t.Cleanup(transport.Close)
 	server := mcpserver.Server{Source: testInstallationSource(t), Name: testsupport.ServerName("remote"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}
 	registry := &mutableSourceRegistry{server: server.Clone()}
-	pool, initial, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry)
+	pool, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = pool.Shutdown(context.WithoutCancel(t.Context())) })
+	var initial []toolcontract.Tool
+	pool.SetToolSink(func(tools []toolcontract.Tool) { initial = tools })
 	if len(initial) != 1 {
 		t.Fatalf("initial tools = %d, want 1", len(initial))
 	}
@@ -223,7 +227,7 @@ func TestReconnectUsesCurrentOwnerConfiguration(t *testing.T) {
 	oldRemote, currentRemote := openRemote(&oldCalls), openRemote(&currentCalls)
 	server := mcpserver.Server{Source: testInstallationSource(t), Name: testsupport.ServerName("remote"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: oldRemote.URL}
 	registry := &mutableSourceRegistry{server: server.Clone()}
-	pool, _, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry)
+	pool, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -271,7 +275,7 @@ func TestAuthorizationUsesCurrentOwnerCredentials(t *testing.T) {
 	t.Cleanup(transport.Close)
 	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}
 	registry := &mutableSourceRegistry{server: server.Clone()}
-	pool, _, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry)
+	pool, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry)
 	if err != nil {
 		t.Fatal(err)
 	}

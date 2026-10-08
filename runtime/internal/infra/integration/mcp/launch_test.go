@@ -98,7 +98,7 @@ func TestSessionLedgerOwnsLaunchResourceThroughDetachAndShutdown(t *testing.T) {
 func TestStartupAdmissionFailureRetiresTheUnlaunchedResource(t *testing.T) {
 	config := ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("server"), Transport: TransportStdio, Command: "must-not-start"}
 	var retired atomic.Int32
-	c, _, err := Dial(t.Context(), t.Context(), []ServerConfig{config}, nil, func(context.Context, mcpserver.ID) (*Launch, error) {
+	c, err := Dial(t.Context(), t.Context(), []ServerConfig{config}, nil, func(context.Context, mcpserver.ID) (*Launch, error) {
 		other := config.Clone()
 		other.Name = testsupport.ServerName("other")
 		return NewLaunch(other, nil, func() error { retired.Add(1); return nil })

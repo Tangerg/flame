@@ -95,7 +95,7 @@ func TestRefusedConnectionWithdrawsTheLiveSession(t *testing.T) {
 			t.Cleanup(transport.Close)
 			server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}
 			registry := &mutableSourceRegistry{server: server.Clone()}
-			pool, initial, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry)
+			pool, err := Open(t.Context(), t.Context(), []mcpserver.Server{server}, nil, registry)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -104,6 +104,8 @@ func TestRefusedConnectionWithdrawsTheLiveSession(t *testing.T) {
 					t.Error(err)
 				}
 			})
+			var initial []toolcontract.Tool
+			pool.SetToolSink(func(tools []toolcontract.Tool) { initial = tools })
 			if len(initial) != 1 {
 				t.Fatalf("initial tools = %d", len(initial))
 			}
@@ -139,7 +141,7 @@ func TestRefusedConnectionWithdrawsTheLiveSession(t *testing.T) {
 func TestSupersededRefusalRecordsNothing(t *testing.T) {
 	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: "https://mcp.example/tools"}
 	registry := &mutableSourceRegistry{server: server.Clone(), refusal: errors.New("unreadable source")}
-	pool, _, err := Open(t.Context(), t.Context(), nil, nil, registry)
+	pool, err := Open(t.Context(), t.Context(), nil, nil, registry)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -15,6 +15,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
+	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 type heldLaunchRegistry struct {
@@ -50,7 +51,7 @@ func TestSupersededAuthorizationPreservesReplacementConnection(t *testing.T) {
 	defer transport.Close()
 	server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Enabled: true, Transport: mcpserver.TransportStreamableHTTP, URL: transport.URL}
 	registry := &heldLaunchRegistry{mutableSourceRegistry: &mutableSourceRegistry{server: server.Clone()}, guard: ctx, captured: make(chan struct{}), resume: make(chan struct{})}
-	pool, initial, err := Open(ctx, ctx, []mcpserver.Server{server}, nil, registry)
+	pool, err := Open(ctx, ctx, []mcpserver.Server{server}, nil, registry)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,6 +60,8 @@ func TestSupersededAuthorizationPreservesReplacementConnection(t *testing.T) {
 			t.Error(err)
 		}
 	}()
+	var initial []toolcontract.Tool
+	pool.SetToolSink(func(tools []toolcontract.Tool) { initial = tools })
 	if len(initial) != 1 {
 		t.Fatalf("initial tools=%d", len(initial))
 	}

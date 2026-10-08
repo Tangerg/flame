@@ -14,12 +14,11 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/process/exec"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/sandbox"
 	scopea2a "github.com/Tangerg/scope/a2a"
-	toolcontract "github.com/Tangerg/scope/core/tool"
 )
 
 // This file is the tool-assembly entry point. It is the SOLE place that
 // constructs the capability adapters the tools wrap (code intelligence,
-// background exec, MCP, A2A) and wires them into the resolver — so the engine
+// background exec, A2A) and wires them into the resolver — so the engine
 // CORE imports none of them; it receives the assembled [Built]. Tool capability
 // construction therefore stays outside Agent
 // execution (doc/ARCHITECTURE.md).
@@ -29,15 +28,12 @@ import (
 type BuildConfig struct {
 	// Lifetime is the process-owned root for local capability resources that
 	// outlive the startup call and individual Tool invocations.
-	Lifetime      context.Context
-	UserHome      string
-	PackageSkills promptsource.PackageSkills
-	SkillsUserDir string
-	Online        OnlineConfig
-	LSPServers    []codeintel.ServerSpec
-	// MCPTools is the initial live MCP catalog. Its owner updates the resolver
-	// after reconnects; toolset deliberately does not own MCP connections.
-	MCPTools       []toolcontract.Tool
+	Lifetime       context.Context
+	UserHome       string
+	PackageSkills  promptsource.PackageSkills
+	SkillsUserDir  string
+	Online         OnlineConfig
+	LSPServers     []codeintel.ServerSpec
 	A2AAgents      []A2AAgentConfig
 	Plan           builtin.PlanUseCases   // backs set_plan + exit_plan_mode; nil → both are omitted
 	PlanMode       builtin.PlanModePolicy // session-scoped Plan mode; nil → enter/exit are omitted
@@ -238,8 +234,6 @@ func Build(ctx context.Context, config BuildConfig) (_ Built, err error) {
 	if err != nil {
 		return Built{}, fmt.Errorf("toolset: build resolver: %w", err)
 	}
-	resolver.SetMCPTools(config.MCPTools) // seed the hot-swappable MCP set
-
 	cleanupOnError = false
 	return Built{
 		Resolver: resolver,

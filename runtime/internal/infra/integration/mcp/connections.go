@@ -92,14 +92,14 @@ type Connections struct {
 	attempts sync.WaitGroup
 }
 
-// SetToolSink registers the callback connection mutations invoke with the
-// rebuilt model-facing MCP tool set (the engine wires it to its resolver's
-// atomic hot-swap). The sink runs while the connection lock is held, so it must
-// publish in memory without blocking or calling back into Connections.
+// SetToolSink publishes the current catalog and every subsequent connection
+// change through the same critical section. The sink must publish in memory
+// without blocking or calling back into Connections.
 func (c *Connections) SetToolSink(sink func([]Executable)) {
 	c.mu.Lock()
+	defer c.mu.Unlock()
 	c.onTools = sink
-	c.mu.Unlock()
+	c.publishToolsLocked()
 }
 
 // newClient builds the shared MCP client identity used for every server's
