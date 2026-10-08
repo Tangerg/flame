@@ -9,11 +9,15 @@ version: '3'
 vars:
   APP_NAME: "flame"
   BIN_DIR: "build/bin"
+  NATIVE_BIN: '{{.BIN_DIR}}/native/{{.APP_NAME}}'
+  UNIVERSAL_BIN: '{{.BIN_DIR}}/universal/{{.APP_NAME}}'
   PACKAGE_MANAGER: '{{.PACKAGE_MANAGER | default "npm"}}'
   # Single source for Vite's listener, Wails' webview URL, and the HMR client. See
   # frontend/vite.config.ts for why HMR cannot infer this value reliably.
   VITE_PORT: '{{.WAILS_VITE_PORT | default 5174}}'
   GOOS: '{{.GOOS | default OS}}'
+  # Go 1.27 requires macOS 13. Compiler inputs and bundle metadata project this floor.
+  MACOS_MIN_VERSION: "13.0"
 
 includes:
   common: ./build/Taskfile.yml

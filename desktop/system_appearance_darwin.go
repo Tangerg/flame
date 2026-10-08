@@ -1,10 +1,8 @@
 package main
 
 /*
-// Same floor as the rest of this package's darwin objects — see window_chrome_darwin.go
-// for why it is stated per file.
-#cgo CFLAGS: -mmacosx-version-min=10.13 -x objective-c
-#cgo LDFLAGS: -framework Cocoa -mmacosx-version-min=10.13
+#cgo CFLAGS: -x objective-c
+#cgo LDFLAGS: -framework Cocoa
 #import <Cocoa/Cocoa.h>
 
 // Read through NSUserDefaults rather than NSApp.effectiveAppearance: the window's colour

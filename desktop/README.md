@@ -51,7 +51,7 @@
 - **状态 / 数据 / 路由**：Zustand（多小 store）/ TanStack React Query / TanStack Router。
 - **协议**：自研 Flame Runtime Protocol v2（JSON-RPC 2.0，已弃用 AG-UI），权威定义见 `../runtime/contract/`（`manifest.json` / `openrpc.json` / `schema.json` 是机器真值，`API_REFERENCE.md` 是它们生成的人读索引）。
 - **桌面壳**：Wails v3（beta，版本钉在 `go.mod`）。**测试**：Vitest + Testing Library。**构建 / 质检**：VoidZero 栈（Vite + Rolldown / Vitest / OxLint）+ prettier + knip。
-- **运行基线**：macOS 宿主最低为 12.0，系统 Safari / WebKit 必须为 17.4 或更新版本；Wails 的 WKWebView 使用系统 WebKit。Dougong 的浏览器契约和前端使用的 `Promise.withResolvers()`、`AbortSignal.any()` 都要求该基线。Monterey / Ventura 可以通过软件更新单独升级 Safari，无须为此升级 macOS，见 [WebKit 的 Safari 17.4 发布说明](https://webkit.org/blog/15063/webkit-features-in-safari-17-4/)。Web 客户端的构建目标为 Chromium 131 与 Safari 17.4，统一在 `frontend/vite.config.ts` 声明；Node 测试通过不代表旧 WebView 支持这些 API。
+- **Runtime baseline**: `MACOS_MIN_VERSION` in `Taskfile.yml` owns the native deployment floor required by the Go toolchain. Go, cgo, the external linker and both generated app bundles consume it. Wails uses the system WebKit, which must be Safari 17.4 or newer for Dougong, `Promise.withResolvers()` and `AbortSignal.any()`. The Web client's Chromium 131 and Safari 17.4 targets are declared in `frontend/vite.config.ts`; Node tests do not verify older WebViews.
 - 具体库（命令面板 / Toast / 图标 / 高亮 / i18n / 动画 等）见 `package.json` 与 §3「不重复造轮子」。
 
 ---
@@ -130,6 +130,7 @@ perf 排查沉淀的硬规则 —— 几个"看似没事其实在累积"的坑�
 ## 7 · 工作流
 
 - **开发**：`wails3 dev`（在 `desktop/` 跑；自动起 vite + Go backend）。构建编排在 `Taskfile.yml` + `build/`（v3 取代 v2 的 `wails.json`），走 CLI 自带的 task runner —— `wails3 task build` / `run` / `package`，不需要单独装 `task`。CLI 自身：`go install github.com/wailsapp/wails/v3/cmd/wails3@<go.mod 里钉的版本>`。
+- Native and universal executables use the separate `NATIVE_BIN` and `UNIVERSAL_BIN` outputs owned by `Taskfile.yml`. `package` and `package:universal` select the corresponding source; both retain the same executable name inside the app bundle. A universal build never replaces the Go-owned native output.
 - **Wails 三处版本必须同时动，且都钉死不用范围**：`go.mod` 的 `wails/v3`、上面那个 CLI、以及 `frontend/package.json` 的 `@wailsio/runtime`。第三个不是跟着前两个的版本号走 —— 它跟着 **Go 模块 in-tree 带的那份 runtime**（v3 仓库里 `internal/runtime/desktop/@wailsio/runtime`），npm 上的发布节奏比 Go 慢，所以两个号本来就不相等、**看起来"落后"是正常的**。用 `^` 范围会让 `npm install` 装到另一个 beta，把同一个 runtime 的两半配错。**这条链断掉时两侧都不打日志**（实测：故意写错绑定方法名，前端 `console.error` 不进终端、Go 侧也不记 rejection），所以症状只会是功能静默失效 —— 不要靠日志找它，靠 `binding_names_test.go`。
 - **质量门禁**（在 `frontend/` 跑）：`npm run check` —— 类型 / lint / 格式 / 测试 / 死码 / 架构守卫 / 视觉与文案守卫 / 产物体积，全绿才往下走（单项可单跑，名字见 `package.json` 的 `check:*`）。**不在这里列举守卫清单** —— 它只会漂：曾列 8 项时实际已有 14 项。
 - **会漂的量（测试数 / 插件数 / 文件数）直接跑命令查，不在本文件维护硬编码数字。**

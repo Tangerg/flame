@@ -16,7 +16,7 @@ tasks:
           OBFUSCATED: '{{.OBFUSCATED}}'
           GARBLE_ARGS: '{{.GARBLE_ARGS}}'
     vars:
-      DEFAULT_OUTPUT: '{{.BIN_DIR}}/{{.APP_NAME}}'
+      DEFAULT_OUTPUT: '{{.NATIVE_BIN}}'
       OUTPUT: '{{ .OUTPUT | default .DEFAULT_OUTPUT }}'
 
   build:native:
@@ -39,20 +39,16 @@ tasks:
     cmds:
       - '{{if eq .OBFUSCATED "true"}}garble {{.GARBLE_ARGS}} build{{else}}go build{{end}} {{.BUILD_FLAGS}} -o "{{.OUTPUT}}"'
     vars:
-      BUILD_FLAGS: '{{if eq .DEV "true"}}{{if or .EXTRA_TAGS (eq .OBFUSCATED "true")}}-tags {{if eq .OBFUSCATED "true"}}wails_obfuscated{{if .EXTRA_TAGS}},{{end}}{{end}}{{.EXTRA_TAGS}} {{end}}-buildvcs=false -gcflags=all="-l"{{else}}-tags production{{if eq .OBFUSCATED "true"}},wails_obfuscated{{end}}{{if .EXTRA_TAGS}},{{.EXTRA_TAGS}}{{end}} -trimpath -buildvcs=false -ldflags="-w -s"{{end}}'
-      DEFAULT_OUTPUT: '{{.BIN_DIR}}/{{.APP_NAME}}'
+      BUILD_FLAGS: '{{if eq .DEV "true"}}{{if or .EXTRA_TAGS (eq .OBFUSCATED "true")}}-tags {{if eq .OBFUSCATED "true"}}wails_obfuscated{{if .EXTRA_TAGS}},{{end}}{{end}}{{.EXTRA_TAGS}} {{end}}-buildvcs=false -gcflags=all="-l"{{else}}-tags production{{if eq .OBFUSCATED "true"}},wails_obfuscated{{end}}{{if .EXTRA_TAGS}},{{.EXTRA_TAGS}}{{end}} -trimpath -buildvcs=false{{end}} -ldflags="{{if ne .DEV "true"}}-w -s {{end}}-macos={{.MACOS_MIN_VERSION}} -extldflags=-mmacosx-version-min={{.MACOS_MIN_VERSION}}"'
+      DEFAULT_OUTPUT: '{{.NATIVE_BIN}}'
       OUTPUT: '{{ .OUTPUT | default .DEFAULT_OUTPUT }}'
     env:
       GOOS: darwin
       CGO_ENABLED: 1
       GOARCH: '{{.ARCH | default ARCH}}'
-      # Match the 10.13 minimum carried by every Wails darwin cgo source. A higher cgo
-      # target conflicts with the arm64 linker's 11.0 floor and produces deployment-target
-      # warnings. The packaged runtime floor remains the plist's LSMinimumSystemVersion
-      # (and 11.0 on Apple silicon); these flags only bound compiler assumptions.
-      CGO_CFLAGS: "-mmacosx-version-min=10.13"
-      CGO_LDFLAGS: "-mmacosx-version-min=10.13"
-      MACOSX_DEPLOYMENT_TARGET: "10.13"
+      CGO_CFLAGS: "-mmacosx-version-min={{.MACOS_MIN_VERSION}}"
+      CGO_LDFLAGS: "-mmacosx-version-min={{.MACOS_MIN_VERSION}}"
+      MACOSX_DEPLOYMENT_TARGET: "{{.MACOS_MIN_VERSION}}"
 
 
   build:universal:
@@ -61,11 +57,11 @@ tasks:
       - task: build
         vars:
           ARCH: amd64
-          OUTPUT: "{{.BIN_DIR}}/{{.APP_NAME}}-amd64"
+          OUTPUT: "{{.UNIVERSAL_BIN}}-amd64"
       - task: build
         vars:
           ARCH: arm64
-          OUTPUT: "{{.BIN_DIR}}/{{.APP_NAME}}-arm64"
+          OUTPUT: "{{.UNIVERSAL_BIN}}-arm64"
     cmds:
       - task: '{{if eq OS "darwin"}}build:universal:lipo:native{{else}}build:universal:lipo:go{{end}}'
 
@@ -73,15 +69,15 @@ tasks:
     summary: Creates universal binary using native lipo (macOS)
     internal: true
     cmds:
-      - lipo -create -output "{{.BIN_DIR}}/{{.APP_NAME}}" "{{.BIN_DIR}}/{{.APP_NAME}}-amd64" "{{.BIN_DIR}}/{{.APP_NAME}}-arm64"
-      - rm "{{.BIN_DIR}}/{{.APP_NAME}}-amd64" "{{.BIN_DIR}}/{{.APP_NAME}}-arm64"
+      - lipo -create -output "{{.UNIVERSAL_BIN}}" "{{.UNIVERSAL_BIN}}-amd64" "{{.UNIVERSAL_BIN}}-arm64"
+      - rm "{{.UNIVERSAL_BIN}}-amd64" "{{.UNIVERSAL_BIN}}-arm64"
 
   build:universal:lipo:go:
     summary: Creates universal binary using wails3 tool lipo (Linux/Windows)
     internal: true
     cmds:
-      - wails3 tool lipo -output "{{.BIN_DIR}}/{{.APP_NAME}}" -input "{{.BIN_DIR}}/{{.APP_NAME}}-amd64" -input "{{.BIN_DIR}}/{{.APP_NAME}}-arm64"
-      - rm -f "{{.BIN_DIR}}/{{.APP_NAME}}-amd64" "{{.BIN_DIR}}/{{.APP_NAME}}-arm64"
+      - wails3 tool lipo -output "{{.UNIVERSAL_BIN}}" -input "{{.UNIVERSAL_BIN}}-amd64" -input "{{.UNIVERSAL_BIN}}-arm64"
+      - rm -f "{{.UNIVERSAL_BIN}}-amd64" "{{.UNIVERSAL_BIN}}-arm64"
 
   package:
     summary: Packages the application into a `.app` bundle
@@ -89,6 +85,8 @@ tasks:
       - task: build
     cmds:
       - task: create:app:bundle
+        vars:
+          BINARY_SOURCE: '{{.OUTPUT | default .NATIVE_BIN}}'
 
   package:universal:
     summary: Packages darwin universal binary (arm64 + amd64)
@@ -96,6 +94,8 @@ tasks:
       - task: build:universal
     cmds:
       - task: create:app:bundle
+        vars:
+          BINARY_SOURCE: '{{.UNIVERSAL_BIN}}'
 
   package:dmg:
     summary: Packages the application into a styled `.dmg`
@@ -131,22 +131,29 @@ tasks:
   create:app:bundle:
     summary: Creates an `.app` bundle
     cmds:
-      - mkdir -p "{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/MacOS"
-      - mkdir -p "{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/Resources"
-      - cp build/darwin/icons.icns "{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/Resources"
+      - mkdir -p "{{.APP_BUNDLE}}/Contents/MacOS"
+      - mkdir -p "{{.APP_BUNDLE}}/Contents/Resources"
+      - cp build/darwin/icons.icns "{{.APP_BUNDLE}}/Contents/Resources"
       - |
         if [ -f build/darwin/Assets.car ]; then
-          cp build/darwin/Assets.car "{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/Resources"
+          cp build/darwin/Assets.car "{{.APP_BUNDLE}}/Contents/Resources"
         fi
-      - cp "{{.BIN_DIR}}/{{.APP_NAME}}" "{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/MacOS"
-      - cp build/darwin/Info.plist "{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents"
+      - cp "{{.BINARY_SOURCE}}" "{{.APP_BUNDLE}}/Contents/MacOS/{{.APP_NAME}}"
+      - cp "{{.PLIST_SOURCE}}" "{{.APP_BUNDLE}}/Contents/Info.plist"
+      - /usr/libexec/PlistBuddy -c 'Add :LSMinimumSystemVersion string {{.MACOS_MIN_VERSION}}' "{{.APP_BUNDLE}}/Contents/Info.plist"
       - task: '{{if eq OS "darwin"}}codesign:adhoc{{else}}codesign:skip{{end}}'
+        vars:
+          APP_BUNDLE: '{{.APP_BUNDLE}}'
+    vars:
+      BINARY_SOURCE: '{{.BINARY_SOURCE | default .NATIVE_BIN}}'
+      APP_BUNDLE: '{{.BIN_DIR}}/{{.APP_NAME}}{{if eq .DEV "true"}}.dev{{end}}.app'
+      PLIST_SOURCE: 'build/darwin/Info{{if eq .DEV "true"}}.dev{{end}}.plist'
 
   codesign:adhoc:
     summary: Ad-hoc signs the app bundle (macOS only)
     internal: true
     cmds:
-      - codesign --force --deep --sign - "{{.BIN_DIR}}/{{.APP_NAME}}.app"
+      - codesign --force --deep --sign - "{{.APP_BUNDLE}}"
 
   codesign:skip:
     summary: Skips codesigning when cross-compiling
@@ -156,16 +163,9 @@ tasks:
 
   run:
     cmds:
-      - mkdir -p "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/MacOS"
-      - mkdir -p "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/Resources"
-      - cp build/darwin/icons.icns "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/Resources"
-      - |
-        if [ -f build/darwin/Assets.car ]; then
-          cp build/darwin/Assets.car "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/Resources"
-        fi
-      - cp "{{.BIN_DIR}}/{{.APP_NAME}}" "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/MacOS"
-      - cp "build/darwin/Info.dev.plist" "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/Info.plist"
-      - codesign --force --deep --sign - "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app"
+      - task: create:app:bundle
+        vars:
+          DEV: "true"
       - '"{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/MacOS/{{.APP_NAME}}"'
 
   sign:

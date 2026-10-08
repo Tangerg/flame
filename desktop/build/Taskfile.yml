@@ -102,6 +102,10 @@ tasks:
 
   update:build-assets:
     summary: Regenerates the bundle metadata from build/config.yml
+    platforms: [darwin]
     dir: build
     cmds:
       - wails3 update build-assets -name "{{.APP_NAME}}" -binaryname "{{.APP_NAME}}" -config config.yml -dir .
+      # Wails owns the base metadata; application packaging owns the deployment floor.
+      - /usr/libexec/PlistBuddy -c 'Delete :LSMinimumSystemVersion' darwin/Info.plist
+      - /usr/libexec/PlistBuddy -c 'Delete :LSMinimumSystemVersion' darwin/Info.dev.plist
