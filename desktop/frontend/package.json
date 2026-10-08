@@ -16,6 +16,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "check:plugin-carrier:browser": "node --test scripts/plugin-carrier.browser.test.mjs",
     "lint": "oxlint src visual scripts --deny-warnings",
     "lint:fix": "oxlint src --fix --deny-warnings",
     "typecheck": "tsc --noEmit",

@@ -4,6 +4,16 @@ includes:
   common: ../Taskfile.yml
 
 tasks:
+  check:plugin-carrier:
+    summary: Verifies third-party frame isolation in the shipping Wails carrier
+    cmds:
+      - node frontend/scripts/check-plugin-carrier-native.mjs '-macos={{.MACOS_MIN_VERSION}} -extldflags=-mmacosx-version-min={{.MACOS_MIN_VERSION}}'
+    env:
+      CGO_ENABLED: 1
+      CGO_CFLAGS: "-mmacosx-version-min={{.MACOS_MIN_VERSION}}"
+      CGO_LDFLAGS: "-mmacosx-version-min={{.MACOS_MIN_VERSION}}"
+      MACOSX_DEPLOYMENT_TARGET: "{{.MACOS_MIN_VERSION}}"
+
   build:
     summary: Builds the application
     cmds:

@@ -241,3 +241,45 @@ merging or replacing another source's text. The SDK exposes no independent dicti
 Explicit selection advances the locale preference immediately; lazy activation cannot
 replace a newer choice. Until activation succeeds, the existing English fallback remains
 available, and selection failures are displayed in the appearance pane.
+
+## Plugin carrier acceptance
+
+The carrier spike uses the same brokered HTML fixture in Chromium, WebKit and an isolated
+Wails window. It checks opaque origin, host DOM/storage separation, CSP network and navigation
+restrictions, source-bound channel bootstrap, and publication before and after channel
+retirement. Browser tests additionally seed and verify a host cookie canary. Native effects
+are counted in Go; an unreadable or rejected response is not evidence that dispatch was
+refused. The fixture opens no product Runtime and loads no product configuration.
+
+Run the browser gate from `frontend/`:
+
+```sh
+npm run check:plugin-carrier:browser
+```
+
+Run the native release gate from `desktop/` on macOS with a graphical session:
+
+```sh
+wails3 task darwin:check:plugin-carrier
+```
+
+The native task consumes the shipping deployment floor from `Taskfile.yml` and builds its
+fixture into an owned temporary directory. It does not rebuild the application, generate
+bindings or alter user data. These gates are separate from the ordinary frontend check:
+the native gate must pass before enabling a third-party HTML carrier.
+
+The current Wails macOS carrier fails that gate. An opaque-origin `srcdoc` frame with
+`sandbox="allow-scripts"` and restrictive CSP can send `wails:runtime:ready` through
+`webkit.messageHandlers.external`, advancing native window readiness. The trusted event
+positive control records one event; the child raises the native owner's count to two,
+despite having no `window.wails` and no access to the parent DOM. The fixture's parent
+`frame-src blob:` policy blocks self-navigation into the native Runtime route, but does
+not block this script-message path.
+
+Native dispatch must enforce frame authority before processing framework control messages.
+The application's `RawMessageHandler` cannot supply that guarantee: Wails processes its
+control messages before that callback. Removing JavaScript globals or suppressing frame
+errors does not repair the native admission owner. Until that boundary is repaired or an
+independent unprivileged carrier passes the same gate, native plugin HTML remains
+unavailable. Passing the browser spike alone does not implement Slice C or authorize
+native rendering.

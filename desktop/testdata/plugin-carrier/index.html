@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'unsafe-inline' 'self' wails:; style-src 'unsafe-inline'; connect-src 'self'; frame-src blob:; base-uri 'none'; form-action 'none'"
+    />
+    <title>Plugin carrier probe</title>
+  </head>
+  <body>
+    <h1>Plugin carrier probe</h1>
+    <pre id="result">Running</pre>
+    <script>
+      const pause = (milliseconds) =>
+        new Promise((resolve) => setTimeout(resolve, milliseconds));
+      const native = location.protocol === "wails:";
+      const result = {
+        native,
+        hostOrigin: location.origin,
+        frames: [],
+        messagesBeforeRetirement: 0,
+        messagesAfterRetirement: 0,
+      };
+      const bindingURL = (method, callID = crypto.randomUUID()) => {
+        const query = new URLSearchParams({
+          object: "0",
+          method: "0",
+          args: JSON.stringify({
+            "call-id": callID,
+            methodName: `main.Probe.${method}`,
+            args: [],
+          }),
+        });
+        return `/wails/runtime?${query}`;
+      };
+      const invoke = async (method) => {
+        const response = await fetch(bindingURL(method));
+        if (!response.ok)
+          throw new Error(`native positive control failed: ${response.status}`);
+        return response.json();
+      };
+      const childPolicy = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; base-uri 'none'; form-action 'none'">`;
+      const child = `${childPolicy}
+        <script>
+          const attempt = (operation) => { try { operation(); return true; } catch { return false; } };
+          const observations = {
+            parentDOM: attempt(() => parent.document.body.innerHTML),
+            parentStorage: attempt(() => parent.localStorage.length),
+            storage: attempt(() => localStorage.length),
+            cookieCanary: attempt(() => { if (!document.cookie.includes("flame_carrier_cookie=fixture")) throw new Error("no canary"); }),
+            topNavigation: attempt(() => top.location.href = new URL("/carrier-escape", document.baseURI).href),
+            popup: window.open(new URL("/carrier-escape", document.baseURI).href) !== null,
+            nativeHandler: typeof window.webkit?.messageHandlers?.external?.postMessage === "function",
+            wailsGlobal: typeof window.wails !== "undefined",
+          };
+          if (observations.nativeHandler) {
+            window.webkit.messageHandlers.external.postMessage("carrier-witness");
+            window.webkit.messageHandlers.external.postMessage("wails:runtime:ready");
+          }
+          const leak = new URL("/carrier-leak", document.baseURI).href;
+          observations.networkRead = false;
+          const attemptedNetwork = fetch(leak).then(() => { observations.networkRead = true; }, () => {});
+          const image = new Image();
+          image.src = leak;
+          addEventListener("message", (event) => {
+            if (event.source !== parent || event.data !== "carrier-channel" || event.ports.length !== 1) return;
+            const port = event.ports[0];
+            port.onmessage = (message) => {
+              if (message.data === "ping") port.postMessage("pong");
+              if (message.data === "tick") setInterval(() => port.postMessage("tick"), 20);
+            };
+            port.start();
+            port.postMessage("connected");
+          });
+          attemptedNetwork.then(() => parent.postMessage({ type: "carrier-child", observations }, "*"));
+        <\/script>`;
+
+      const run = async () => {
+        if (native) {
+          window.webkit.messageHandlers.external.postMessage(
+            "wails:runtime:ready",
+          );
+          await invoke("Touch");
+          result.nativeBefore = await invoke("Snapshot");
+          const deadline = performance.now() + 2000;
+          while (result.nativeBefore.ready === 0) {
+            if (performance.now() > deadline)
+              throw new Error("native event positive control did not settle");
+            await pause(10);
+            result.nativeBefore = await invoke("Snapshot");
+          }
+        }
+        const frame = document.createElement("iframe");
+        frame.title = "Untrusted plugin probe";
+        frame.sandbox = "allow-scripts";
+        const bootstrapped = new Promise((resolve) => {
+          const listener = (event) => {
+            if (
+              event.source !== frame.contentWindow ||
+              event.data?.type !== "carrier-child"
+            )
+              return;
+            removeEventListener("message", listener);
+            result.frames.push({
+              origin: event.origin,
+              ...event.data.observations,
+            });
+            resolve();
+          };
+          addEventListener("message", listener);
+        });
+        frame.srcdoc = child;
+        document.body.append(frame);
+        await bootstrapped;
+        const channel = new MessageChannel();
+        const connected = new Promise((resolve) => {
+          channel.port1.onmessage = (event) => {
+            if (event.data === "connected") channel.port1.postMessage("ping");
+            if (event.data === "pong") resolve();
+          };
+        });
+        frame.contentWindow.postMessage("carrier-channel", "*", [
+          channel.port2,
+        ]);
+        await connected;
+        result.channel = true;
+        let retired = false;
+        const ticking = new Promise((resolve) => {
+          channel.port1.onmessage = (event) => {
+            if (event.data !== "tick") return;
+            if (retired) result.messagesAfterRetirement++;
+            else result.messagesBeforeRetirement++;
+            resolve();
+          };
+        });
+        channel.port1.postMessage("tick");
+        await ticking;
+        retired = true;
+        channel.port1.close();
+        frame.remove();
+        await pause(100);
+        const target = native
+          ? new URL(bindingURL("Touch", "carrier-child"), location.href).href
+          : new URL("/carrier-navigation", location.href).href;
+        const navigationFrame = document.createElement("iframe");
+        navigationFrame.title = "Untrusted navigation probe";
+        navigationFrame.sandbox = "allow-scripts";
+        const navigationAttempted = new Promise((resolve) => {
+          const listener = (event) => {
+            if (
+              event.source !== navigationFrame.contentWindow ||
+              event.data?.type !== "carrier-navigation"
+            )
+              return;
+            if (event.data.phase === "ready")
+              navigationFrame.contentWindow.postMessage(
+                { type: "navigate", target },
+                "*",
+              );
+            if (event.data.phase === "attempt") {
+              removeEventListener("message", listener);
+              result.navigationOrigin = event.origin;
+              resolve();
+            }
+          };
+          addEventListener("message", listener);
+        });
+        const navigationBlocked = new Promise((resolve) => {
+          const listener = (event) => {
+            if (event.effectiveDirective !== "frame-src") return;
+            removeEventListener("securitypolicyviolation", listener);
+            result.navigationBlocked = event.effectiveDirective;
+            resolve();
+          };
+          addEventListener("securitypolicyviolation", listener);
+        });
+        navigationFrame.srcdoc = `${childPolicy}<script>
+          addEventListener("message", (event) => {
+            if (event.source !== parent || event.data?.type !== "navigate") return;
+            parent.postMessage({ type: "carrier-navigation", phase: "attempt" }, "*");
+            location.href = event.data.target;
+          }, { once: true });
+          parent.postMessage({ type: "carrier-navigation", phase: "ready" }, "*");
+        <\/script>`;
+        document.body.append(navigationFrame);
+        await Promise.all([navigationAttempted, navigationBlocked]);
+        if (native) result.nativeAfter = await invoke("Snapshot");
+        navigationFrame.remove();
+        return result;
+      };
+      window.addEventListener("load", () => {
+        run()
+          .then((value) => {
+            document.getElementById("result").textContent = JSON.stringify(
+              value,
+              null,
+              2,
+            );
+            window.carrierResult = value;
+            if (native)
+              window.webkit.messageHandlers.external.postMessage(
+                "carrier-result:" + JSON.stringify(value),
+              );
+          })
+          .catch((error) => {
+            const failure = { error: String(error) };
+            document.getElementById("result").textContent =
+              JSON.stringify(failure);
+            window.carrierResult = failure;
+            if (native)
+              window.webkit.messageHandlers.external.postMessage(
+                "carrier-result:" + JSON.stringify(failure),
+              );
+          });
+      });
+    </script>
+  </body>
+</html>
