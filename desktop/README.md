@@ -251,6 +251,14 @@ retirement. Browser tests additionally seed and verify a host cookie canary. Nat
 are counted in Go; an unreadable or rejected response is not evidence that dispatch was
 refused. The fixture opens no product Runtime and loads no product configuration.
 
+MessageEvent owns sender identity; a frame's claimed origin stays inside its observation
+payload and cannot replace host metadata. Native reports keep carrier observations and
+Go-owned effect counters in separate fields. Channel retirement compares snapshots of one
+receive counter after the still-live frame witnesses an attempted send to the closed port.
+Browser fault injection verifies that an unclosed port fails this gate and that a child
+failure disposes its frames. One probe lifetime cancels pending waits and disposes frames,
+ports, listeners and its deadline before publishing one terminal result.
+
 Run the browser gate from `frontend/`:
 
 ```sh

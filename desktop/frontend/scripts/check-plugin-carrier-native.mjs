@@ -33,26 +33,32 @@ try {
     },
   );
   const { stdout } = await execute(executable, [], { timeout: 30_000, maxBuffer: 1024 * 1024 });
-  const line = stdout.split("\n").find((value) => value.startsWith("carrier-result:"));
-  assert.ok(line, "native fixture exited without a carrier result");
-  const result = JSON.parse(line.slice("carrier-result:".length));
-  console.log(JSON.stringify(result, null, 2));
+  const reports = stdout.split("\n").filter((value) => value.startsWith("carrier-result:"));
+  assert.equal(reports.length, 1, "native fixture must publish exactly one terminal result");
+  const [line] = reports;
+  const report = JSON.parse(line.slice("carrier-result:".length));
+  console.log(JSON.stringify(report, null, 2));
+  const { carrier: result, effects } = report;
   assertCarrierIsolation(result);
   assert.equal(result.native, true);
   assert.equal(result.hostOrigin, "wails://localhost");
-  assert.equal(result.nativeBefore.calls, 1, "the trusted binding positive control must reach Go");
+  assert.equal(
+    result.nativeBaseline.calls,
+    1,
+    "the trusted binding positive control must reach Go",
+  );
   assert.ok(
-    result.nativeBefore.ready >= 1,
+    result.nativeBaseline.ready >= 1,
     "the trusted native event positive control must settle",
   );
   assert.equal(
-    result.nativeFinal.calls,
-    result.nativeBefore.calls,
+    effects.calls,
+    result.nativeBaseline.calls,
     "an opaque-origin frame reached a native binding",
   );
   assert.equal(
-    result.nativeFinal.ready,
-    result.nativeBefore.ready,
+    effects.ready,
+    result.nativeBaseline.ready,
     "an opaque-origin frame advanced native window state",
   );
 } finally {

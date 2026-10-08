@@ -2,9 +2,13 @@ import assert from "node:assert/strict";
 
 export function assertCarrierIsolation(result) {
   assert.equal(result.error, undefined, "carrier probe failed before observing isolation");
-  assert.equal(result.frames.length, 1, "only the bound frame may publish its bootstrap");
-  const frame = result.frames[0];
-  assert.equal(frame.origin, "null", "plugin content must have an opaque origin");
+  assert.equal(result.frame.origin, "null", "only the bound opaque-origin frame may bootstrap");
+  const observations = result.frame.observations;
+  assert.equal(
+    observations.origin,
+    "forged-origin",
+    "the frame must attempt to forge host metadata",
+  );
   for (const operation of [
     "parentDOM",
     "parentStorage",
@@ -14,11 +18,23 @@ export function assertCarrierIsolation(result) {
     "popup",
     "networkRead",
   ]) {
-    assert.equal(frame[operation], false, `plugin frame escaped through ${operation}`);
+    assert.equal(observations[operation], false, `plugin frame escaped through ${operation}`);
   }
-  assert.equal(result.channel, true, "the bound frame must complete its channel exchange");
-  assert.ok(result.messagesBeforeRetirement > 0, "publication must work before retirement");
-  assert.equal(result.messagesAfterRetirement, 0, "a retired channel must stop publication");
-  assert.equal(result.navigationOrigin, "null", "the navigating frame must witness its attempt");
-  assert.equal(result.navigationBlocked, "frame-src", "the host CSP must reject frame navigation");
+  assert.ok(result.channel.receivedBeforeClose > 0, "publication must work before retirement");
+  assert.equal(
+    result.channel.retirementOrigin,
+    "null",
+    "the live frame must attempt a retired send",
+  );
+  assert.equal(
+    result.channel.receivedAfterClose,
+    result.channel.receivedBeforeClose,
+    "a retired channel must stop publication while its frame remains alive",
+  );
+  assert.equal(result.navigation.origin, "null", "the navigating frame must witness its attempt");
+  assert.equal(
+    result.navigation.blockedDirective,
+    "frame-src",
+    "the host CSP must reject frame navigation",
+  );
 }

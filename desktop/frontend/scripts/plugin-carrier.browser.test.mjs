@@ -47,8 +47,35 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
     assertCarrierIsolation(result);
     assert.equal(result.native, false);
     assert.equal(result.hostOrigin, origin);
-    assert.equal(result.frames[0].nativeHandler, false);
-    assert.deepEqual(escapedRequests, [], "blocked requests must not reach their effect owner");
+    assert.equal(result.frame.observations.nativeHandler, false);
     assert.equal(page.url(), `${origin}/`, "the plugin must not navigate the trusted host");
+    assert.equal(page.frames().length, 1, "successful completion must dispose every child frame");
+    await page.close();
+
+    const openChannelPage = await context.newPage();
+    await openChannelPage.addInitScript(() => {
+      if (window === window.top) MessagePort.prototype.close = () => {};
+    });
+    await openChannelPage.goto(origin);
+    await openChannelPage.waitForFunction(() => window.carrierResult !== undefined);
+    const openChannel = await openChannelPage.evaluate(() => window.carrierResult);
+    assert.throws(
+      () => assertCarrierIsolation(openChannel),
+      /a retired channel must stop publication/,
+      "the gate must detect an unclosed port before removing its frame",
+    );
+    await openChannelPage.close();
+
+    const failurePage = await context.newPage();
+    await failurePage.addInitScript(() => {
+      if (window !== window.top)
+        parent.postMessage({ type: "carrier-error", error: "injected frame failure" }, "*");
+    });
+    await failurePage.goto(origin);
+    await failurePage.waitForFunction(() => window.carrierResult !== undefined);
+    const failure = await failurePage.evaluate(() => window.carrierResult);
+    assert.match(failure.error, /injected frame failure/);
+    assert.equal(failurePage.frames().length, 1, "failure must dispose every child frame");
+    assert.deepEqual(escapedRequests, [], "blocked requests must not reach their effect owner");
   });
 }

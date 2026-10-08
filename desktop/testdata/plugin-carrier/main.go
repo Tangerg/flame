@@ -25,10 +25,21 @@ type Probe struct {
 	childMessages atomic.Uint64
 }
 
+type effects struct {
+	Calls         uint64 `json:"calls"`
+	Ready         uint64 `json:"ready"`
+	ChildMessages uint64 `json:"childMessages"`
+}
+
+type report struct {
+	Carrier json.RawMessage `json:"carrier"`
+	Effects effects         `json:"effects"`
+}
+
 func (p *Probe) Touch() uint64 { return p.calls.Add(1) }
 
-func (p *Probe) Snapshot() map[string]uint64 {
-	return map[string]uint64{"calls": p.calls.Load(), "ready": p.ready.Load(), "childMessages": p.childMessages.Load()}
+func (p *Probe) Snapshot() effects {
+	return effects{Calls: p.calls.Load(), Ready: p.ready.Load(), ChildMessages: p.childMessages.Load()}
 }
 
 func main() {
@@ -43,17 +54,19 @@ func main() {
 				probe.childMessages.Add(1)
 				return
 			}
-			if origin == nil || !origin.IsMainFrame || !strings.HasPrefix(message, "carrier-result:") {
+			if origin == nil || !origin.IsMainFrame {
 				return
 			}
-			var result map[string]any
-			if err := json.Unmarshal([]byte(strings.TrimPrefix(message, "carrier-result:")), &result); err != nil {
-				log.Printf("invalid carrier result: %v", err)
+			payload, found := strings.CutPrefix(message, "carrier-result:")
+			if !found {
+				return
+			}
+			if !json.Valid([]byte(payload)) {
+				log.Print("invalid carrier result")
 				app.Quit()
 				return
 			}
-			result["nativeFinal"] = probe.Snapshot()
-			encoded, err := json.Marshal(result)
+			encoded, err := json.Marshal(report{Carrier: json.RawMessage(payload), Effects: probe.Snapshot()})
 			if err != nil {
 				log.Printf("encode carrier result: %v", err)
 			} else {
