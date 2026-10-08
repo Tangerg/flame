@@ -23,10 +23,11 @@ import (
 // connections of one digest. users counts resource claims, never installation
 // admission or executable-manifest dependencies. MCP owns each claim's lifetime.
 type executionContent struct {
-	ready chan struct{}
-	tree  *executionTree
-	err   error
-	users int
+	ready     chan struct{}
+	tree      *executionTree
+	err       error
+	abandoned bool
+	users     int
 }
 
 type executionTree struct {
@@ -146,37 +147,52 @@ func (r *Releases) Connection(ctx context.Context, installation *plugin.Installa
 }
 
 func (r *Releases) execution(ctx context.Context, digest fingerprint.Digest, source *os.Root) (*executionLease, error) {
-	r.executionMu.Lock()
-	content := r.executions[digest]
-	build := content == nil
-	if build {
-		content = &executionContent{ready: make(chan struct{})}
-		r.executions[digest] = content
-	}
-	content.users++
-	r.executionMu.Unlock()
-	if build {
-		tree, err := r.copyExecution(ctx, source, digest)
+	for {
+		if cause := context.Cause(ctx); cause != nil {
+			return nil, cause
+		}
 		r.executionMu.Lock()
-		content.tree, content.err = tree, err
-		if err != nil {
-			delete(r.executions, digest)
+		content := r.executions[digest]
+		build := content == nil
+		if build {
+			content = &executionContent{ready: make(chan struct{})}
+			r.executions[digest] = content
 		}
-		close(content.ready)
+		content.users++
 		r.executionMu.Unlock()
-	}
-	select {
-	case <-content.ready:
-		if content.err != nil {
-			return nil, content.err
+		if build {
+			tree, err := r.copyExecution(ctx, source, digest)
+			r.executionMu.Lock()
+			content.tree, content.err = tree, err
+			content.abandoned = ctx.Err() != nil && (errors.Is(err, ctx.Err()) || errors.Is(err, context.Cause(ctx)))
+			if err != nil {
+				delete(r.executions, digest)
+			}
+			close(content.ready)
+			r.executionMu.Unlock()
 		}
-	case <-ctx.Done():
-		return nil, errors.Join(context.Cause(ctx), r.releaseExecution(digest, content))
+		if !build {
+			select {
+			case <-content.ready:
+			case <-ctx.Done():
+				return nil, errors.Join(context.Cause(ctx), r.releaseExecution(digest, content))
+			}
+		}
+		if cause := context.Cause(ctx); cause != nil {
+			return nil, errors.Join(cause, content.err, r.releaseExecution(digest, content))
+		}
+		if content.err != nil {
+			err := errors.Join(content.err, r.releaseExecution(digest, content))
+			// An abandoned creator has no outcome for another live caller.
+			// Only cancellation hands preparation over; content and I/O
+			// failures remain the shared outcome and are never retried.
+			if content.abandoned {
+				continue
+			}
+			return nil, err
+		}
+		return &executionLease{path: content.tree.path, close: sync.OnceValue(func() error { return r.releaseExecution(digest, content) })}, nil
 	}
-	if cause := context.Cause(ctx); cause != nil {
-		return nil, errors.Join(cause, r.releaseExecution(digest, content))
-	}
-	return &executionLease{path: content.tree.path, close: sync.OnceValue(func() error { return r.releaseExecution(digest, content) })}, nil
 }
 
 func (r *Releases) copyExecution(ctx context.Context, source *os.Root, digest fingerprint.Digest) (_ *executionTree, err error) {

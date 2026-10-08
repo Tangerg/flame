@@ -195,8 +195,9 @@ sealed execution content and verifies that copy against the admitted digest. Com
 arguments, environment and working directory are projected onto that content; replacing,
 rewriting or reclaiming the published release cannot redirect an admitted process or its
 later package reads. Connections of one digest share the content while any launch or
-session holds it. This resource claim transfers once into the MCP session ledger and is
-retired after process teardown, including failed handshakes, rejected or superseded
+session holds it. A canceled preparation ends only its caller's claim; surviving callers
+acquire content under their own context. This resource claim transfers once into the MCP
+session ledger and is retired after process teardown, including failed handshakes, rejected or superseded
 attempts, detach and shutdown. Retained source descriptors contain neither the claim nor
 relocated paths and cannot launch installation stdio. Startup collects abandoned execution
 copies using directory leases, preserving copies held by another Runtime. This protects
