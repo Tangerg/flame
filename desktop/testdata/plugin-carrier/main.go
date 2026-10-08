@@ -3,8 +3,10 @@ package main
 import (
 	"embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"strings"
 	"sync/atomic"
@@ -24,6 +26,8 @@ type Probe struct {
 	ready            atomic.Uint64
 	childMessages    atomic.Uint64
 	resourceRequests atomic.Uint64
+	peerPackets      atomic.Uint64
+	peerEndpoint     string
 }
 
 type effects struct {
@@ -31,6 +35,8 @@ type effects struct {
 	Ready            uint64 `json:"ready"`
 	ChildMessages    uint64 `json:"childMessages"`
 	ResourceRequests uint64 `json:"resourceRequests"`
+	PeerPackets      uint64 `json:"peerPackets"`
+	PeerEndpoint     string `json:"peerEndpoint"`
 }
 
 type report struct {
@@ -46,7 +52,36 @@ func (p *Probe) Snapshot() effects {
 		Ready:            p.ready.Load(),
 		ChildMessages:    p.childMessages.Load(),
 		ResourceRequests: p.resourceRequests.Load(),
+		PeerPackets:      p.peerPackets.Load(),
+		PeerEndpoint:     p.peerEndpoint,
 	}
+}
+
+// The receiver observes packets outside the frame and its claimed CSP evidence.
+func (p *Probe) listenPeer() (func() error, error) {
+	socket, err := net.ListenPacket("udp4", "127.0.0.1:0")
+	if err != nil {
+		return nil, err
+	}
+	p.peerEndpoint = "stun:" + socket.LocalAddr().String()
+	joined := make(chan error, 1)
+	go func() {
+		buffer := make([]byte, 64<<10)
+		for {
+			if _, _, err := socket.ReadFrom(buffer); err != nil {
+				if errors.Is(err, net.ErrClosed) {
+					err = nil
+				}
+				joined <- err
+				return
+			}
+			p.peerPackets.Add(1)
+		}
+	}()
+	return func() error {
+		closeErr := socket.Close()
+		return errors.Join(closeErr, <-joined)
+	}, nil
 }
 
 func (p *Probe) assetHandler() http.Handler {
@@ -61,6 +96,15 @@ func (p *Probe) assetHandler() http.Handler {
 
 func main() {
 	probe := &Probe{}
+	closePeer, err := probe.listenPeer()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		if err := closePeer(); err != nil {
+			log.Fatal(err)
+		}
+	}()
 	var app *application.App
 	app = application.New(application.Options{
 		Name:     "Flame plugin carrier probe",

@@ -15,7 +15,7 @@
       const pause = (milliseconds) =>
         new Promise((resolve) => setTimeout(resolve, milliseconds));
       const native = location.protocol === "wails:";
-      const childPolicy = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; base-uri 'none'; form-action 'none'">`;
+      const childPolicy = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; webrtc 'block'; base-uri 'none'; form-action 'none'">`;
 
       function createFrame(title, program, input) {
         const frame = document.createElement("iframe");
@@ -30,7 +30,7 @@
         return frame;
       }
 
-      async function probeBoundary({ escapeURL, leakURL }) {
+      async function probeBoundary({ escapeURL, leakURL, iceEndpoint }) {
         const attempt = (operation) => {
           try {
             operation();
@@ -104,6 +104,37 @@
           };
         } finally {
           removeEventListener("securitypolicyviolation", witness);
+        }
+        if (!iceEndpoint)
+          throw new Error("the trusted host must supply an ICE probe endpoint");
+        observations.peer = {
+          attempted: false,
+          candidates: 0,
+          blockedDirective: null,
+        };
+        const peerWitness = (event) => {
+          if (
+            event.isTrusted &&
+            event.disposition === "enforce" &&
+            event.effectiveDirective === "webrtc"
+          )
+            observations.peer.blockedDirective = event.effectiveDirective;
+        };
+        addEventListener("securitypolicyviolation", peerWitness);
+        const peer = new RTCPeerConnection({
+          iceServers: [{ urls: iceEndpoint }],
+        });
+        peer.onicecandidate = (event) => {
+          if (event.candidate) observations.peer.candidates++;
+        };
+        try {
+          peer.createDataChannel("carrier-peer");
+          await peer.setLocalDescription();
+          observations.peer.attempted = true;
+          await new Promise((resolve) => setTimeout(resolve, 600));
+        } finally {
+          peer.close();
+          removeEventListener("securitypolicyviolation", peerWitness);
         }
         parent.postMessage({ type: "carrier-child", observations }, "*");
       }
@@ -187,40 +218,14 @@
         const result = { native, hostOrigin: location.origin };
         const lifetime = new AbortController();
         const { signal } = lifetime;
-        const frame = createFrame("Untrusted plugin probe", probeBoundary, {
-          escapeURL: new URL("/carrier-escape", location.href).href,
-          leakURL: new URL("/carrier-leak", location.href).href,
-        });
-        const navigationTarget = new URL(
-          native ? bindingURL("Touch", "carrier-child") : "/carrier-navigation",
-          location.href,
-        ).href;
-        const navigationFrame = createFrame(
-          "Untrusted navigation probe",
-          probeNavigation,
-          {
-            target: navigationTarget,
-          },
-        );
+        let frame;
+        let navigationFrame;
         let channel;
         const deadline = setTimeout(
           () => lifetime.abort(new Error("carrier probe timed out")),
           10_000,
         );
         try {
-          addEventListener(
-            "message",
-            (event) => {
-              if (
-                event.source !== null &&
-                event.data?.type === "carrier-error" &&
-                (event.source === frame.contentWindow ||
-                  event.source === navigationFrame.contentWindow)
-              )
-                lifetime.abort(new Error(event.data.error));
-            },
-            { signal },
-          );
           if (native) {
             window.webkit.messageHandlers.external.postMessage(
               "wails:runtime:ready",
@@ -234,6 +239,40 @@
             }
             result.nativeBaseline = baseline;
           }
+          const iceEndpoint = native
+            ? result.nativeBaseline.peerEndpoint
+            : new URL(location.href).searchParams.get("carrier-stun");
+          frame = createFrame("Untrusted plugin probe", probeBoundary, {
+            escapeURL: new URL("/carrier-escape", location.href).href,
+            leakURL: new URL("/carrier-leak", location.href).href,
+            iceEndpoint,
+          });
+          const navigationTarget = new URL(
+            native
+              ? bindingURL("Touch", "carrier-child")
+              : "/carrier-navigation",
+            location.href,
+          ).href;
+          navigationFrame = createFrame(
+            "Untrusted navigation probe",
+            probeNavigation,
+            {
+              target: navigationTarget,
+            },
+          );
+          addEventListener(
+            "message",
+            (event) => {
+              if (
+                event.source !== null &&
+                event.data?.type === "carrier-error" &&
+                (event.source === frame.contentWindow ||
+                  event.source === navigationFrame.contentWindow)
+              )
+                lifetime.abort(new Error(event.data.error));
+            },
+            { signal },
+          );
           const bootstrap = await fromFrame(
             frame,
             "carrier-child",
@@ -333,8 +372,8 @@
           lifetime.abort();
           channel?.port1.close();
           channel?.port2.close();
-          frame.remove();
-          navigationFrame.remove();
+          frame?.remove();
+          navigationFrame?.remove();
         }
       }
 

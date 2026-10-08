@@ -292,10 +292,24 @@ wails3 task darwin:check:plugin-carrier
 The native task consumes the shipping deployment floor from `Taskfile.yml`, runs the
 fixture's Go tests and builds it into an owned temporary directory. It does not rebuild the
 application, generate bindings or alter user data. These gates are separate from the ordinary
-frontend check: the native gate must pass before enabling a third-party HTML carrier.
+frontend check: the gate for each carrier must pass before enabling third-party HTML.
 
-The current Wails macOS carrier fails that gate. An opaque-origin `srcdoc` frame with
-`sandbox="allow-scripts"` and restrictive CSP can send `wails:runtime:ready` through
+The probe negotiates a WebRTC data channel against an owned loopback STUN endpoint,
+in addition to fetch, image and navigation attempts. Packet counts belong to the UDP
+receiver outside the frame. Both browser and native consumers require that count to
+remain zero and require trusted evidence that `webrtc 'block'` was enforced. A missing
+ICE candidate or an ordinary connection failure alone does not establish isolation.
+
+The current Chromium 156 and WebKit 27.2 browser carriers fail this network gate:
+both sent STUN packets despite `connect-src 'none'` and `webrtc 'block'`. The proposed
+WebRTC directive is specified in [CSP Level 3](https://www.w3.org/TR/CSP/#directive-webrtc);
+[WebKit's implementation issue](https://bugs.webkit.org/show_bug.cgi?id=255651) remains
+open. Browser plugin HTML is unavailable until the executing carrier enforces the
+network boundary. Overwriting JavaScript globals does not provide that guarantee.
+
+The current Wails macOS carrier also sends STUN packets to the Go-owned receiver,
+so its network gate fails independently of native binding dispatch. An opaque-origin
+`srcdoc` frame with `sandbox="allow-scripts"` and restrictive CSP can send `wails:runtime:ready` through
 `webkit.messageHandlers.external`, advancing native window readiness. The trusted event
 positive control records one event; the child raises the native owner's count to two,
 despite having no `window.wails` and no access to the parent DOM. The fixture's parent
@@ -307,5 +321,6 @@ The application's `RawMessageHandler` cannot supply that guarantee: Wails proces
 control messages before that callback. Removing JavaScript globals or suppressing frame
 errors does not repair the native admission owner. Until that boundary is repaired or an
 independent unprivileged carrier passes the same gate, native plugin HTML remains
-unavailable. Passing the browser spike alone does not implement Slice C or authorize
-native rendering.
+unavailable. Slice C's public view/resource/bridge contract must not be introduced while
+these carrier gates fail. Independent themes, Skills and MCP declarations retain
+their existing admission and lifecycle.

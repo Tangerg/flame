@@ -33,7 +33,7 @@ try {
   const report = JSON.parse(line.slice("carrier-result:".length));
   console.log(JSON.stringify(report, null, 2));
   const { carrier: result, effects } = report;
-  assertCarrierIsolation(result);
+  assertCarrierIsolation(result, effects.peerPackets);
   assert.equal(result.native, true);
   assert.equal(result.hostOrigin, "wails://localhost");
   assert.equal(

@@ -1,9 +1,12 @@
 package main
 
 import (
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 )
 
 func TestAssetRequestsRecordEffectsEvenWhenTheResourceIsMissing(t *testing.T) {
@@ -29,5 +32,37 @@ func TestAssetRequestsRecordEffectsEvenWhenTheResourceIsMissing(t *testing.T) {
 				t.Fatalf("resource requests = %d, want %d", got, tt.requests)
 			}
 		})
+	}
+}
+
+func TestPeerWitnessRecordsPacketsOutsideTheFrame(t *testing.T) {
+	probe := &Probe{}
+	closePeer, err := probe.listenPeer()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := closePeer(); err != nil {
+			t.Error(err)
+		}
+	})
+	address := strings.TrimPrefix(probe.Snapshot().PeerEndpoint, "stun:")
+	sender, err := net.Dial("udp4", address)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer sender.Close()
+	if _, err := sender.Write([]byte("positive control")); err != nil {
+		t.Fatal(err)
+	}
+	deadline := time.Now().Add(time.Second)
+	for probe.Snapshot().PeerPackets == 0 {
+		if time.Now().After(deadline) {
+			t.Fatal("peer witness did not observe its positive control")
+		}
+		time.Sleep(time.Millisecond)
+	}
+	if probe.Snapshot().PeerPackets != 1 {
+		t.Fatalf("peer packet count = %d", probe.Snapshot().PeerPackets)
 	}
 }

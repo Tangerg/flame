@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 
-export function assertCarrierIsolation(result) {
+export function assertCarrierIsolation(result, peerPackets) {
   assert.equal(result.error, undefined, "carrier probe failed before observing isolation");
   assert.equal(result.frame.origin, "null", "only the bound opaque-origin frame may bootstrap");
   const observations = result.frame.observations;
@@ -41,5 +41,13 @@ export function assertCarrierIsolation(result) {
     result.navigation.blockedDirective,
     "frame-src",
     "the host CSP must reject frame navigation",
+  );
+  assert.equal(observations.peer.attempted, true, "the frame must negotiate a data channel");
+  assert.equal(peerPackets, 0, "a plugin WebRTC packet reached the trusted UDP witness");
+  assert.equal(observations.peer.candidates, 0, "plugin frame escaped through ICE gathering");
+  assert.equal(
+    observations.peer.blockedDirective,
+    "webrtc",
+    "the child CSP must enforce WebRTC isolation",
   );
 }

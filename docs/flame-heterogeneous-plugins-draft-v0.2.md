@@ -1497,7 +1497,7 @@ must be established after the carrier spike rather than retained as compatibilit
 
 **Carrier spike, before Slice C's contract.** In the Wails v3 build in use and in the browser build, prototype a sandboxed frame that receives brokered bytes. Determine native-binding injection into child frames, custom-resource origin, CSP enforcement, navigation escape, and teardown. The bridge contract in Section 13 is finalized only from that evidence. A carrier that cannot enforce the boundary reports the renderer unavailable (Section 13.7).
 
-The reproducible browser and native gates now live in [Desktop's carrier acceptance](../desktop/README.md#plugin-carrier-acceptance), which owns their commands and current carrier findings. A failed native gate blocks that carrier's Slice C admission; it must be repaired at the native authority boundary before introducing the public view/bridge contract.
+The reproducible browser and native gates now live in [Desktop's carrier acceptance](../desktop/README.md#plugin-carrier-acceptance), which owns their commands and current carrier findings. The network gate includes WebRTC with packet observations outside the frame; a fetch-only CSP check does not establish network isolation. A failed carrier gate blocks that carrier's Slice C admission. Repair the executing carrier's authority boundary before introducing the public view/bridge contract; JavaScript global replacement is not an enforcement owner.
 
 **Slice C: one optional graphical page.** Load an isolated read-oriented view through the existing Dougong host and shared client. Verify native/browser boundaries, connection replacement, initial-result reuse, and local realization failure without backend state changes.
 

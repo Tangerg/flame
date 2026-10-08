@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
+import { createSocket } from "node:dgram";
+import { once } from "node:events";
 import { test } from "node:test";
 import { chromium, webkit } from "@playwright/test";
 import { assertCarrierIsolation } from "./plugin-carrier-assertions.mjs";
@@ -9,7 +11,11 @@ const fixture = await readFile(
   new URL("../../testdata/plugin-carrier/index.html", import.meta.url),
 );
 
-async function runProbe(t, context, origin, initialize) {
+async function runProbe(t, context, target, initialize) {
+  const { origin, iceEndpoint, packets } = target;
+  const before = packets();
+  const url = new URL(origin);
+  url.searchParams.set("carrier-stun", iceEndpoint);
   const page = await context.newPage();
   t.after(() => page.close());
   await page.addInitScript(() => {
@@ -20,7 +26,7 @@ async function runProbe(t, context, origin, initialize) {
     );
   });
   if (initialize) await page.addInitScript(initialize);
-  await page.goto(origin);
+  await page.goto(url.href);
   assert.ok(
     await page.evaluate(() => document.cookie.includes("flame_carrier_cookie=fixture")),
     "the trusted host must see its cookie positive control",
@@ -31,16 +37,28 @@ async function runProbe(t, context, origin, initialize) {
     encoded: document.getElementById("result").textContent,
     unhandledRejections: window.carrierUnhandledRejections,
   }));
-  assert.equal(page.url(), `${origin}/`, "the plugin must not navigate the trusted host");
+  assert.equal(page.url(), url.href, "the plugin must not navigate the trusted host");
   assert.equal(page.frames().length, 1, "terminal completion must dispose every child frame");
   assert.deepEqual(unhandledRejections, [], "terminal completion must settle every owned wait");
   assert.deepEqual(result, JSON.parse(encoded), "terminal consumers must share one JSON result");
-  return result;
+  return { carrier: result, peerPackets: packets() - before };
 }
 
 for (const [name, engine] of Object.entries({ chromium, webkit })) {
   test(`${name}: brokered opaque-origin content respects the carrier boundary`, async (t) => {
     const escapedRequests = [];
+    const peer = createSocket("udp4");
+    let packets = 0;
+    peer.on("message", (packet) => {
+      if (packet.toString() !== "carrier-peer-control") packets++;
+    });
+    t.after(() => peer.close());
+    const listening = once(peer, "listening", { signal: AbortSignal.timeout(5_000) });
+    peer.bind(0, "127.0.0.1");
+    await listening;
+    const control = once(peer, "message", { signal: AbortSignal.timeout(5_000) });
+    peer.send(Buffer.from("carrier-peer-control"), peer.address().port, "127.0.0.1");
+    assert.equal((await control)[0].toString(), "carrier-peer-control");
     const server = createServer((request, response) => {
       if (request.url?.startsWith("/carrier-")) escapedRequests.push(request.url);
       response.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
@@ -62,35 +80,64 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
     });
     const address = server.address();
     const origin = `http://127.0.0.1:${address.port}`;
+    const target = {
+      origin,
+      iceEndpoint: `stun:127.0.0.1:${peer.address().port}`,
+      packets: () => packets,
+    };
     browser = await engine.launch({ headless: true });
     const context = await browser.newContext();
     await context.addCookies([{ name: "flame_carrier_cookie", value: "fixture", url: origin }]);
     await t.test("isolates the bound frame", async (t) => {
-      const result = await runProbe(t, context, origin);
-      assertCarrierIsolation(result);
+      const { carrier: result, peerPackets } = await runProbe(t, context, target);
+      t.diagnostic(JSON.stringify({ peer: result.frame?.observations.peer, peerPackets }));
+      assertCarrierIsolation(result, peerPackets);
       assert.equal(result.native, false);
       assert.equal(result.hostOrigin, origin);
       assert.equal(result.frame.observations.nativeHandler, false);
     });
+    await t.test("refuses synthetic WebRTC CSP evidence", async (t) => {
+      const { carrier: result, peerPackets } = await runProbe(t, context, target, () => {
+        if (window === window.top) return;
+        window.RTCPeerConnection = class {
+          constructor() {
+            dispatchEvent(
+              new SecurityPolicyViolationEvent("securitypolicyviolation", {
+                effectiveDirective: "webrtc",
+                disposition: "enforce",
+              }),
+            );
+          }
+          createDataChannel() {}
+          async setLocalDescription() {}
+          close() {}
+        };
+      });
+      assert.equal(result.frame.observations.peer.blockedDirective, null);
+      assert.throws(
+        () => assertCarrierIsolation(result, peerPackets),
+        /the child CSP must enforce WebRTC isolation/,
+      );
+    });
     await t.test("rejects an unclosed port", async (t) => {
-      const result = await runProbe(t, context, origin, () => {
+      const { carrier: result, peerPackets } = await runProbe(t, context, target, () => {
         if (window === window.top) MessagePort.prototype.close = () => {};
       });
       assert.throws(
-        () => assertCarrierIsolation(result),
+        () => assertCarrierIsolation(result, peerPackets),
         /a retired channel must stop publication/,
         "the gate must detect an unclosed port before removing its frame",
       );
     });
     await t.test("disposes a failed child", async (t) => {
-      const result = await runProbe(t, context, origin, () => {
+      const { carrier: result } = await runProbe(t, context, target, () => {
         if (window !== window.top)
           parent.postMessage({ type: "carrier-error", error: "injected frame failure" }, "*");
       });
       assert.match(result.error, /injected frame failure/);
     });
     await t.test("publishes failure when frame evidence cannot be encoded", async (t) => {
-      const result = await runProbe(t, context, origin, () => {
+      const { carrier: result } = await runProbe(t, context, target, () => {
         if (window === window.top) return;
         addEventListener("securitypolicyviolation", (event) => {
           if (event.effectiveDirective !== "connect-src") return;
@@ -102,7 +149,7 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
       assert.match(result.error, /circular|cyclic/i);
     });
     await t.test("projects browser evidence through the terminal JSON contract", async (t) => {
-      const result = await runProbe(t, context, origin, () => {
+      const { carrier: result } = await runProbe(t, context, target, () => {
         if (window === window.top) return;
         addEventListener("securitypolicyviolation", (event) => {
           if (event.effectiveDirective === "connect-src")
@@ -115,7 +162,7 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
       assert.deepEqual(result.frame.observations, {});
     });
     await t.test("settles a wait when port start fails", async (t) => {
-      const result = await runProbe(t, context, origin, () => {
+      const { carrier: result } = await runProbe(t, context, target, () => {
         if (window === window.top)
           MessagePort.prototype.start = () => {
             throw new Error("injected port start failure");
@@ -124,7 +171,7 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
       assert.match(result.error, /injected port start failure/);
     });
     await t.test("settles a wait when port send fails", async (t) => {
-      const result = await runProbe(t, context, origin, () => {
+      const { carrier: result } = await runProbe(t, context, target, () => {
         if (window !== window.top) return;
         const postMessage = MessagePort.prototype.postMessage;
         MessagePort.prototype.postMessage = function (...args) {
@@ -135,14 +182,14 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
       assert.match(result.error, /injected port send failure/);
     });
     await t.test("rejects an unexpected fetch failure", async (t) => {
-      const result = await runProbe(t, context, origin, () => {
+      const { carrier: result } = await runProbe(t, context, target, () => {
         if (window !== window.top)
           window.fetch = () => Promise.reject(new Error("injected fetch probe failure"));
       });
       assert.match(result.error, /injected fetch probe failure/);
     });
     await t.test("requires a trusted CSP witness for a rejected fetch", async (t) => {
-      const result = await runProbe(t, context, origin, () => {
+      const { carrier: result } = await runProbe(t, context, target, () => {
         if (window === window.top) return;
         window.fetch = () => {
           dispatchEvent(
@@ -156,7 +203,7 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
       assert.match(result.error, /carrier probe timed out/);
     });
     await t.test("requires CSP evidence for the attempted network resource", async (t) => {
-      const result = await runProbe(t, context, origin, () => {
+      const { carrier: result } = await runProbe(t, context, target, () => {
         if (window === window.top) return;
         const fetch = window.fetch;
         window.fetch = (url) => fetch(`${url}-unrelated`);
@@ -164,7 +211,7 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
       assert.match(result.error, /carrier probe timed out/);
     });
     await t.test("requires CSP evidence for the attempted navigation resource", async (t) => {
-      const result = await runProbe(t, context, origin, () => {
+      const { carrier: result } = await runProbe(t, context, target, () => {
         if (window === window.top) return;
         addEventListener("message", (event) => {
           if (event.data?.type !== "navigate") return;
@@ -176,10 +223,13 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
       assert.match(result.error, /carrier probe timed out/);
     });
     await t.test("rejects a readable network response", async (t) => {
-      const result = await runProbe(t, context, origin, () => {
+      const { carrier: result, peerPackets } = await runProbe(t, context, target, () => {
         if (window !== window.top) window.fetch = () => Promise.resolve(new Response());
       });
-      assert.throws(() => assertCarrierIsolation(result), /plugin frame escaped through network/);
+      assert.throws(
+        () => assertCarrierIsolation(result, peerPackets),
+        /plugin frame escaped through network/,
+      );
     });
     assert.deepEqual(escapedRequests, [], "blocked requests must not reach their effect owner");
   });
