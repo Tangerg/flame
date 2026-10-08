@@ -258,6 +258,10 @@ receive counter after the still-live frame witnesses an attempted send to the cl
 Browser fault injection verifies that an unclosed port fails this gate and that a child
 failure disposes its frames. One probe lifetime cancels pending waits and disposes frames,
 ports, listeners and its deadline before publishing one terminal result.
+A triggered wait owns both listener registration and its starting operation, so a synchronous
+port failure settles that wait instead of leaving an unhandled cancellation rejection.
+Every browser scenario owns its page and verifies host identity, frame disposal and the
+absence of orphaned waits; port start and send failures have separate regression cases.
 
 Run the browser gate from `frontend/`:
 

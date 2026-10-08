@@ -102,11 +102,15 @@
         parent.postMessage({ type: "carrier-navigation-ready" }, "*");
       }
 
-      function waitFor(target, type, accepts, signal) {
+      function waitFor(target, type, accepts, signal, start) {
         return new Promise((resolve, reject) => {
           const cleanup = () => {
             target.removeEventListener(type, listener);
             signal.removeEventListener("abort", aborted);
+          };
+          const fail = (error) => {
+            cleanup();
+            reject(error);
           };
           const listener = (event) => {
             try {
@@ -114,21 +118,25 @@
               cleanup();
               resolve(event);
             } catch (error) {
-              cleanup();
-              reject(error);
+              fail(error);
             }
           };
-          const aborted = () => {
-            cleanup();
-            reject(signal.reason);
-          };
+          const aborted = () => fail(signal.reason);
           target.addEventListener(type, listener);
           signal.addEventListener("abort", aborted, { once: true });
-          if (signal.aborted) aborted();
+          if (signal.aborted) {
+            aborted();
+            return;
+          }
+          try {
+            start?.();
+          } catch (error) {
+            fail(error);
+          }
         });
       }
 
-      const fromFrame = (frame, type, signal) =>
+      const fromFrame = (frame, type, signal, start) =>
         waitFor(
           window,
           "message",
@@ -137,6 +145,7 @@
             event.source === frame.contentWindow &&
             event.data?.type === type,
           signal,
+          start,
         );
 
       const bindingURL = (method, callID = crypto.randomUUID()) => {
@@ -210,10 +219,18 @@
             }
             result.nativeBaseline = baseline;
           }
-          const bootstrapped = fromFrame(frame, "carrier-child", signal);
-          window.postMessage({ type: "carrier-child", observations: {} }, "*");
-          document.body.append(frame);
-          const bootstrap = await bootstrapped;
+          const bootstrap = await fromFrame(
+            frame,
+            "carrier-child",
+            signal,
+            () => {
+              window.postMessage(
+                { type: "carrier-child", observations: {} },
+                "*",
+              );
+              document.body.append(frame);
+            },
+          );
           result.frame = {
             origin: bootstrap.origin,
             observations: bootstrap.data.observations,
@@ -223,34 +240,35 @@
           channel.port1.addEventListener("message", () => received++, {
             signal,
           });
-          const connected = waitFor(
+          await waitFor(
             channel.port1,
             "message",
             (event) => event.data === "connected",
             signal,
+            () => {
+              channel.port1.start();
+              frame.contentWindow.postMessage("carrier-channel", "*", [
+                channel.port2,
+              ]);
+            },
           );
-          channel.port1.start();
-          frame.contentWindow.postMessage("carrier-channel", "*", [
-            channel.port2,
-          ]);
-          await connected;
-          const pong = waitFor(
+          await waitFor(
             channel.port1,
             "message",
             (event) => event.data === "pong",
             signal,
+            () => channel.port1.postMessage("ping"),
           );
-          channel.port1.postMessage("ping");
-          await pong;
           const beforeClose = received;
-          const attemptedAfterClose = fromFrame(
+          const retirement = await fromFrame(
             frame,
             "carrier-retired",
             signal,
+            () => {
+              channel.port1.close();
+              frame.contentWindow.postMessage("carrier-retired", "*");
+            },
           );
-          channel.port1.close();
-          frame.contentWindow.postMessage("carrier-retired", "*");
-          const retirement = await attemptedAfterClose;
           await pause(100);
           signal.throwIfAborted();
           result.channel = {
@@ -260,13 +278,12 @@
           };
           frame.remove();
 
-          const ready = fromFrame(
+          await fromFrame(
             navigationFrame,
             "carrier-navigation-ready",
             signal,
+            () => document.body.append(navigationFrame),
           );
-          document.body.append(navigationFrame);
-          await ready;
           const navigationAttempt = fromFrame(
             navigationFrame,
             "carrier-navigation",
@@ -278,8 +295,12 @@
             (event) =>
               event.isTrusted && event.effectiveDirective === "frame-src",
             signal,
+            () =>
+              navigationFrame.contentWindow.postMessage(
+                { type: "navigate" },
+                "*",
+              ),
           );
-          navigationFrame.contentWindow.postMessage({ type: "navigate" }, "*");
           const [attempt, blocked] = await Promise.all([
             navigationAttempt,
             navigationBlocked,
