@@ -1,4 +1,8 @@
 import { browserPluginCarrier } from "@/platform/browserPluginCarrier";
+import { cleanup, render, screen } from "@testing-library/react";
+import { configureNavigator } from "@/lib/navigation";
+import { createMemoryNavigator } from "@/lib/navigation.testkit";
+import { createElement } from "react";
 import { afterEach, expect, it, onTestFinished, vi } from "vitest";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import type { PluginInstallation } from "@flame/runtime-contract/wire";
@@ -24,6 +28,7 @@ vi.mock("@/plugins/builtin/theme/public/appearance", () => ({
 }));
 
 afterEach(async () => {
+  cleanup();
   vi.mocked(retainThemeSelection).mockClear();
   await resetKernelForTest();
   queryClient.removeQueries({ queryKey: [PACKAGES_KEY] });
@@ -308,4 +313,53 @@ it("presents and retains only the themes Runtime admits", async () => {
     ["package:d3cbafab-ef30-4e20-9583-42f5316dc865:theme"],
     "package:",
   );
+});
+
+it("cancels and joins both initial view reads when either one fails", async () => {
+  const row = installation("d3cbafab-ef30-4e20-9583-42f5316dc865", "package");
+  row.selected.views = [{ id: "trajectory", title: "Trajectory", type: "sessionTrajectory" }];
+  const pending = Promise.withResolvers<{ data: [] }>();
+  const readView = vi.fn(async () => {
+    throw new Error("package resource unavailable");
+  });
+  const readTrajectory = vi.fn((_params: unknown, _signal?: AbortSignal) => pending.promise);
+  const selected = client(async () => ({ data: [row] }));
+  selected.plugins.readView = readView;
+  selected.plugins.readTrajectory = readTrajectory;
+  const close = vi.fn(async () => {});
+  const send = vi.fn(async () => {});
+  try {
+    await loadPluginsForTest(
+      runtimePlugin(),
+      createPluginsPane(() => selected, {
+        async open(_container, _signal, receive) {
+          receive({ type: "ready" });
+          return { close, send };
+        },
+      }),
+    );
+    await vi.waitFor(() => expect(contributionsTo(WORKSPACE_VIEW)).toHaveLength(1));
+    configureNavigator(createMemoryNavigator({ session: "session-a" }));
+    const View = contributionsTo(WORKSPACE_VIEW)[0]!.item.component;
+    render(createElement(View));
+    await vi.waitFor(() => expect(readTrajectory).toHaveBeenCalledOnce());
+    expect(readTrajectory.mock.calls[0]![1]!.aborted).toBe(true);
+    expect(send).not.toHaveBeenCalled();
+    let retired = false;
+    const retirement = resetKernelForTest().then(() => (retired = true));
+    await vi.waitFor(() => expect(close).toHaveBeenCalledOnce());
+    expect(retired).toBe(false);
+    pending.resolve({ data: [] });
+    await retirement;
+    expect(readTrajectory.mock.calls[0]![0]).toEqual({
+      installationId: row.id,
+      digest: row.selected.digest,
+      viewId: "trajectory",
+      sessionId: "session-a",
+      cursor: undefined,
+    });
+    expect(screen.queryByRole("alert")).toBeNull();
+  } finally {
+    pending.resolve({ data: [] });
+  }
 });

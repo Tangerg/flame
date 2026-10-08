@@ -4,7 +4,7 @@ import type { ContributionLifetime } from "@/plugins/sdk/definePlugin";
 import { useEffect, useRef, useState } from "react";
 import * as stylex from "@stylexjs/stylex";
 import type { PluginCarrier } from "@/foundation/pluginCarrier";
-import type { TrajectoryViewReads } from "../application/trajectoryView";
+import type { TrajectoryViewReads, TrajectoryViewStatus } from "../application/trajectoryView";
 import { useActiveSessionId } from "@/plugins/builtin/agent/public/session";
 import { mountTrajectoryFrame } from "../adapters/trajectoryFrame";
 import { space, color, type as typeStep } from "@/styles/tokens.stylex";
@@ -51,41 +51,22 @@ function SessionView({
 }) {
   const t = useT();
   const container = useRef<HTMLDivElement>(null);
-  const [status, setStatus] = useState<
-    { type: "loading" } | { type: "ready" } | { type: "failure"; reason: string }
-  >({ type: "loading" });
+  const [status, setStatus] = useState<TrajectoryViewStatus>({ type: "loading" });
   useEffect(() => {
     const instance = lifetime.lifetime(`session:${sessionId}`);
     const signal = instance.signal;
-    const started = container.current
-      ? mountTrajectoryFrame({
+    if (container.current)
+      instance.cleanup(
+        mountTrajectoryFrame({
           container: container.current,
           reads: reads(sessionId),
           carrier,
           signal,
-          fail: (reason) => {
-            if (!signal.aborted) setStatus({ type: "failure", reason });
+          status: (value) => {
+            if (!signal.aborted) setStatus(value);
           },
-        }).then(
-          (close) => {
-            if (!signal.aborted) setStatus({ type: "ready" });
-            return close;
-          },
-          (error) => {
-            if (!signal.aborted)
-              setStatus({
-                type: "failure",
-                reason:
-                  error instanceof Error ? error.message : "The plugin page could not be opened.",
-              });
-            return undefined;
-          },
-        )
-      : Promise.resolve(undefined);
-    instance.cleanup(async () => {
-      const close = await started;
-      await close?.();
-    });
+        }),
+      );
     return () => {
       void instance[asyncDisposeSymbol]().catch(console.error);
     };

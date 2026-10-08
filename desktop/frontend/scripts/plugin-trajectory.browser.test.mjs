@@ -54,11 +54,11 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
               response.end(`<!doctype html>${csp}<div id="frame" style="height:600px"></div><script type="module">
       import {mountTrajectoryFrame} from '/src/plugins/builtin/settings/plugins-pane/adapters/trajectoryFrame.ts';
       import {browserPluginCarrier} from '/src/platform/browserPluginCarrier.ts';
-      window.mount=async(html,initial)=>{
+      window.mount=(html,initial)=>{
        window.reads=[];window.loads=0;window.failures=[];window.controller=new AbortController();
-       try {window.dispose=await mountTrajectoryFrame({container:document.getElementById('frame'),carrier:browserPluginCarrier,signal:window.controller.signal,
-        reads:{load:async()=>{window.loads++;return {html,initial}},read:async(cursor,signal)=>{window.reads.push({cursor,signal});if(window.hold)await new Promise(resolve=>window.releaseRead=resolve);if(window.readFailure)throw new Error('read rejected');return {data:[]};}},fail:reason=>window.failures.push(reason)});}
-       catch(error){window.failure=String(error);}
+       window.dispose=mountTrajectoryFrame({container:document.getElementById('frame'),carrier:browserPluginCarrier,signal:window.controller.signal,
+        reads:{load:async()=>{window.loads++;return {html,initial}},read:async(cursor,signal)=>{window.reads.push({cursor,signal});if(window.hold)await new Promise(resolve=>window.releaseRead=resolve);if(window.readFailure)throw new Error('read rejected');return {data:[]};}},
+        status:value=>{window.viewStatus=value;if(value.type==='failure'){window.failure=value.reason;window.failures.push(value.reason)}}});
       };
     </script>`);
             });
@@ -116,6 +116,7 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
     }
     const frame = page.frameLocator("iframe").frameLocator("iframe");
     await frame.getByText("1 recorded observations loaded.").waitFor();
+    await page.waitForFunction(() => window.viewStatus?.type === "ready");
     assert.equal(await page.evaluate(() => window.reads.length), 0);
     assert.equal(await page.evaluate(() => window.loads), 1);
     await frame.locator("summary").click();
@@ -157,6 +158,7 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
       void window.mount(html, { data: [] });
     }, malicious);
     await page.waitForFunction(() => window.failures.length === 1);
+    assert.equal(await page.evaluate(() => window.viewStatus.type), "failure");
     assert.match(await page.evaluate(() => window.failures[0]), /unsupported/);
     assert.equal(await page.evaluate(() => window.reads.length), 0);
     assert.equal(await page.locator("iframe").count(), 0);

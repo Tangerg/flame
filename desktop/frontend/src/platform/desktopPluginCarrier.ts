@@ -10,14 +10,14 @@ export function desktopPluginCarrier(binding: DesktopHostBinding): PluginCarrier
       let id: string | undefined;
       let closed = false;
       let closing: Promise<void> | undefined;
-      const queued = new Map<string, unknown>();
+      let queued: Map<string, unknown[]> | undefined = new Map();
       const unlisten = await binding.on("desktop:plugin-page", (value) => {
         const parsed = eventSchema.safeParse(value);
         if (!parsed.success || closed) return;
-        if (id === undefined) {
-          const message = parsed.data.message as { type?: unknown } | null;
-          if (message?.type === "ready" || message?.type === "failure")
-            queued.set(parsed.data.id, parsed.data.message);
+        if (queued) {
+          const messages = queued.get(parsed.data.id) ?? [];
+          messages.push(parsed.data.message);
+          queued.set(parsed.data.id, messages);
         } else if (parsed.data.id === id) receive(parsed.data.message);
       });
       const bounds = () => {
@@ -46,6 +46,8 @@ export function desktopPluginCarrier(binding: DesktopHostBinding): PluginCarrier
           removeEventListener("scroll", layout, true);
           signal.removeEventListener("abort", abort);
           unlisten();
+          queued?.clear();
+          queued = undefined;
           if (id) await binding.call("main.DesktopHost.ClosePluginPage", id);
         })());
       const layout = () => {
@@ -85,9 +87,12 @@ export function desktopPluginCarrier(binding: DesktopHostBinding): PluginCarrier
         signal.addEventListener("abort", abort, { once: true });
         await binding.call("main.DesktopHost.PositionPluginPage", id, bounds());
         signal.throwIfAborted();
-        const pending = queued.get(id);
-        if (pending !== undefined) receive(pending);
-        queued.clear();
+        const pending = queued?.get(id) ?? [];
+        queued = undefined;
+        for (const message of pending) {
+          if (closed) break;
+          receive(message);
+        }
         return {
           async send(message) {
             if (closed) throw new Error("Plugin carrier retired.");

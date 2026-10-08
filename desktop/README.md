@@ -394,6 +394,14 @@ cleanup before registering successor contributions. Native IDs identify physical
 late allocation, reply or closure cannot advance another instance. Pending reads receive
 cancellation and retired pages refuse publication. Read failures preserve already displayed
 evidence and remain explicit; local carrier failure never disables the installation.
+The trajectory bridge alone advances each page's initialization and terminal status;
+React renders that projection. Qualification precedes resource loading, and connection
+is accepted only after boot publication starts. The contribution receives its cleanup
+handle immediately. Cleanup joins allocation, startup and pending reads even when physical
+closure fails; publication failure retires the channel instead of becoming a read error.
+Initial HTML and trajectory reads cancel and join their sibling on failure. The native
+transport preserves early messages in source order through initial positioning; the
+bridge owns their operation and handshake validation.
 
 Run the production page and transport gate from `desktop/frontend/`:
 

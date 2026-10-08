@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { validateWire } from "@flame/runtime-contract/validate";
 import type { PluginCarrier, PluginPage } from "@/foundation/pluginCarrier";
-import type { TrajectoryViewReads } from "../application/trajectoryView";
+import type { TrajectoryViewReads, TrajectoryViewStatus } from "../application/trajectoryView";
 
 const incoming = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("ready") }),
@@ -19,54 +19,59 @@ const incoming = z.discriminatedUnion("type", [
   }),
 ]);
 
-export async function mountTrajectoryFrame({
+export function mountTrajectoryFrame({
   container,
   reads,
   carrier,
   signal,
-  fail,
+  status,
 }: {
   container: HTMLElement;
   reads: TrajectoryViewReads;
   carrier: PluginCarrier;
   signal: AbortSignal;
-  fail: (reason: string) => void;
-}): Promise<() => Promise<void>> {
+  status: (value: TrajectoryViewStatus) => void;
+}): () => Promise<void> {
   const lifetime = new AbortController();
   const owned = AbortSignal.any([signal, lifetime.signal]);
-  const initialized = Promise.withResolvers<void>();
-  const settled = initialized.promise.then(
-    () => ({ error: undefined }),
-    (error) => ({ error }),
-  );
-  let page: PluginPage | undefined;
+  const openingSettled = Promise.withResolvers<void>();
+  let phase:
+    | { type: "opening" | "qualified" | "retired" }
+    | { type: "booting" | "connected"; page: PluginPage } = { type: "opening" };
   let reading: Promise<void> | undefined;
-  let connected = false;
-  let ready = false;
-  let boot: (() => Promise<void>) | undefined;
   let closing: Promise<void> | undefined;
   const close = () =>
     (closing ??= (async () => {
+      phase = { type: "retired" };
       lifetime.abort();
       clearTimeout(deadline);
       signal.removeEventListener("abort", retire);
-      initialized.reject(new Error("Plugin page retired."));
-      await page?.close();
-      await reading;
+      openingSettled.resolve();
+      const results = await Promise.allSettled([
+        allocation.then(
+          (page) => page.close(),
+          () => undefined,
+        ),
+        startup,
+        reading,
+      ]);
+      const errors = results.flatMap((result) =>
+        result.status === "rejected" ? [result.reason] : [],
+      );
+      if (errors.length) throw new AggregateError(errors, "The plugin page could not be retired.");
     })());
   const reject = (reason: string) => {
     if (owned.aborted) return;
-    initialized.reject(new Error(reason));
-    fail(reason);
+    status({ type: "failure", reason });
     void close().catch(console.error);
   };
   const retire = () => {
     void close().catch(console.error);
   };
   const deadline = setTimeout(() => reject("The plugin did not initialize."), 10000);
-  signal.addEventListener("abort", retire, { once: true });
-  try {
-    page = await carrier.open(container, owned, (value) => {
+  const allocation = Promise.resolve().then(() => {
+    owned.throwIfAborted();
+    return carrier.open(container, owned, (value) => {
       if (owned.aborted) return;
       const parsed = incoming.safeParse(value);
       if (!parsed.success) {
@@ -79,25 +84,25 @@ export async function mountTrajectoryFrame({
         return;
       }
       if (message.type === "ready") {
-        if (ready) {
+        if (phase.type !== "opening") {
           reject("The plugin carrier repeated initialization.");
           return;
         }
-        ready = true;
-        void boot?.().catch((error) => reject(String(error)));
+        phase = { type: "qualified" };
+        openingSettled.resolve();
         return;
       }
       if (message.type === "connected") {
-        if (!ready || connected) {
+        if (phase.type !== "booting") {
           reject("Invalid plugin initialization.");
           return;
         }
-        connected = true;
+        phase = { type: "connected", page: phase.page };
         clearTimeout(deadline);
-        initialized.resolve();
+        status({ type: "ready" });
         return;
       }
-      if (!connected) {
+      if (phase.type !== "connected") {
         reject("The plugin requested data before initialization.");
         return;
       }
@@ -105,40 +110,37 @@ export async function mountTrajectoryFrame({
         reject("The plugin already has a pending read.");
         return;
       }
+      const page = phase.page;
       reading = (async () => {
+        let reply;
         try {
           const result = await reads.read(message.request.cursor, owned);
-          if (!owned.aborted)
-            await page?.send({
-              type: "reply",
-              reply: { type: "page", page: result, cursor: message.request.cursor },
-            });
+          reply = { type: "page", page: result, cursor: message.request.cursor };
         } catch {
-          if (!owned.aborted)
-            await page?.send({
-              type: "reply",
-              reply: { type: "error", reason: "The trajectory read failed. Refresh to try again." },
-            });
-        } finally {
-          reading = undefined;
+          reply = { type: "error", reason: "The trajectory read failed. Refresh to try again." };
         }
-      })();
-      void reading.catch(() => reject("The plugin channel could not publish its result."));
+        if (!owned.aborted) await page.send({ type: "reply", reply });
+      })()
+        .catch(() => reject("The plugin channel could not publish its result."))
+        .finally(() => {
+          reading = undefined;
+        });
     });
-    if (owned.aborted) {
-      await page.close();
-      owned.throwIfAborted();
-    }
+  });
+  const startup = (async () => {
+    const page = await allocation;
+    owned.throwIfAborted();
+    await openingSettled.promise;
+    owned.throwIfAborted();
     const { html, initial } = await reads.load(owned);
-    boot = async () => {
-      if (!owned.aborted) await page?.send({ type: "boot", html, initial });
-    };
-    if (ready) await boot();
-    const result = await settled;
-    if (result.error) throw result.error;
-    return close;
-  } catch (error) {
-    await close();
-    throw error;
-  }
+    owned.throwIfAborted();
+    phase = { type: "booting", page };
+    await page.send({ type: "boot", html, initial });
+  })().catch((error) => {
+    reject(error instanceof Error ? error.message : "The plugin page could not be opened.");
+  });
+  signal.addEventListener("abort", retire, { once: true });
+  if (owned.aborted) retire();
+  else status({ type: "loading" });
+  return close;
 }

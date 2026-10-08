@@ -59,7 +59,10 @@ it("binds early readiness and later traffic to the native instance, then retires
   f.emit("page-1", { type: "ready" });
   complete("page-1");
   const page = await opening;
-  expect(receive.mock.calls).toEqual([[{ type: "ready" }]]);
+  expect(receive.mock.calls).toEqual([
+    [{ type: "request", request: { cursor: "unaccepted" } }],
+    [{ type: "ready" }],
+  ]);
   f.emit("other", { type: "request" });
   f.emit("page-1", { type: "connected" });
   expect(receive).toHaveBeenLastCalledWith({ type: "connected" });
@@ -198,4 +201,52 @@ it("joins the same physical closure when abort and lifetime cleanup overlap", as
   closed.resolve();
   await first;
   expect(completed).toBe(true);
+});
+
+it.each([
+  [{ type: "failure", reason: "native isolation failed" }, { type: "ready" }],
+  [{ type: "ready" }, { type: "ready" }],
+])("preserves early control messages in delivery order: %j then %j", async (first, second) => {
+  const allocated = Promise.withResolvers<string>();
+  const f = fixture(() => allocated.promise);
+  const receive = vi.fn();
+  const opening = f.carrier.open(f.container, new AbortController().signal, receive);
+  await vi.waitFor(() => expect(f.binding.call).toHaveBeenCalled());
+  f.emit("page-early", first);
+  f.emit("page-early", second);
+  allocated.resolve("page-early");
+  const page = await opening;
+  await page.close();
+  expect(receive.mock.calls).toEqual([[first], [second]]);
+});
+
+it("keeps buffering through initial positioning so later messages cannot overtake earlier ones", async () => {
+  const allocated = Promise.withResolvers<string>();
+  const positioned = Promise.withResolvers<void>();
+  const f = fixture(() => allocated.promise);
+  const invoke = f.binding.call;
+  f.binding.call = vi.fn((method, ...args) =>
+    method.endsWith("PositionPluginPage") ? positioned.promise : invoke(method, ...args),
+  );
+  const receive = vi.fn();
+  const opening = f.carrier.open(f.container, new AbortController().signal, receive);
+  await vi.waitFor(() => expect(f.binding.call).toHaveBeenCalled());
+  f.emit("page-order", { type: "ready" });
+  allocated.resolve("page-order");
+  await vi.waitFor(() =>
+    expect(f.binding.call).toHaveBeenLastCalledWith(
+      "main.DesktopHost.PositionPluginPage",
+      "page-order",
+      expect.any(Object),
+    ),
+  );
+  f.emit("page-order", { type: "failure", reason: "native process terminated" });
+  expect(receive).not.toHaveBeenCalled();
+  positioned.resolve();
+  const page = await opening;
+  await page.close();
+  expect(receive.mock.calls).toEqual([
+    [{ type: "ready" }],
+    [{ type: "failure", reason: "native process terminated" }],
+  ]);
 });

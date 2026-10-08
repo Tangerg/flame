@@ -69,11 +69,20 @@ export function registerPackageContributions(
           return {
             read,
             async load(signal: AbortSignal) {
-              const [resource, initial] = await Promise.all([
-                client.plugins.readView(binding, signal),
-                read(undefined, signal),
-              ]);
-              return { html: resource.html, initial };
+              const loading = new AbortController();
+              const owned = AbortSignal.any([signal, loading.signal]);
+              const pending = [
+                client.plugins.readView(binding, owned),
+                read(undefined, owned),
+              ] as const;
+              try {
+                const [resource, initial] = await Promise.all(pending);
+                return { html: resource.html, initial };
+              } catch (error) {
+                loading.abort(error);
+                await Promise.allSettled(pending);
+                throw error;
+              }
             },
           };
         };
