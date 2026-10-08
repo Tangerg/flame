@@ -341,19 +341,18 @@
       window.addEventListener(
         "load",
         async () => {
-          let result;
+          let encoded;
           try {
-            result = await run();
+            encoded = JSON.stringify(await run());
           } catch (error) {
-            result = { error: String(error) };
+            encoded = JSON.stringify({ error: String(error) });
           }
-          const encoded = JSON.stringify(result);
           document.getElementById("result").textContent = encoded;
           if (native)
             window.webkit.messageHandlers.external.postMessage(
               "carrier-result:" + encoded,
             );
-          window.carrierResult = result;
+          window.carrierResult = JSON.parse(encoded);
         },
         { once: true },
       );

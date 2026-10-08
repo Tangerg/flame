@@ -26,13 +26,15 @@ async function runProbe(t, context, origin, initialize) {
     "the trusted host must see its cookie positive control",
   );
   await page.waitForFunction(() => window.carrierResult !== undefined);
-  const { result, unhandledRejections } = await page.evaluate(() => ({
+  const { result, encoded, unhandledRejections } = await page.evaluate(() => ({
     result: window.carrierResult,
+    encoded: document.getElementById("result").textContent,
     unhandledRejections: window.carrierUnhandledRejections,
   }));
   assert.equal(page.url(), `${origin}/`, "the plugin must not navigate the trusted host");
   assert.equal(page.frames().length, 1, "terminal completion must dispose every child frame");
   assert.deepEqual(unhandledRejections, [], "terminal completion must settle every owned wait");
+  assert.deepEqual(result, JSON.parse(encoded), "terminal consumers must share one JSON result");
   return result;
 }
 
@@ -86,6 +88,31 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
           parent.postMessage({ type: "carrier-error", error: "injected frame failure" }, "*");
       });
       assert.match(result.error, /injected frame failure/);
+    });
+    await t.test("publishes failure when frame evidence cannot be encoded", async (t) => {
+      const result = await runProbe(t, context, origin, () => {
+        if (window === window.top) return;
+        addEventListener("securitypolicyviolation", (event) => {
+          if (event.effectiveDirective !== "connect-src") return;
+          const observations = {};
+          observations.loop = observations;
+          parent.postMessage({ type: "carrier-child", observations }, "*");
+        });
+      });
+      assert.match(result.error, /circular|cyclic/i);
+    });
+    await t.test("projects browser evidence through the terminal JSON contract", async (t) => {
+      const result = await runProbe(t, context, origin, () => {
+        if (window === window.top) return;
+        addEventListener("securitypolicyviolation", (event) => {
+          if (event.effectiveDirective === "connect-src")
+            parent.postMessage(
+              { type: "carrier-child", observations: { omitted: undefined } },
+              "*",
+            );
+        });
+      });
+      assert.deepEqual(result.frame.observations, {});
     });
     await t.test("settles a wait when port start fails", async (t) => {
       const result = await runProbe(t, context, origin, () => {

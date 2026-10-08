@@ -271,6 +271,11 @@ cannot stand in for policy enforcement.
 Both network and navigation witnesses must report enforcement against the exact URL
 issued by the host. A violation for another resource cannot complete the pending attempt;
 browser fault cases exercise both mismatches and verify terminal cleanup.
+The terminal publisher owns JSON encoding and its failure result. Page output, native
+publication and the browser result all project that same encoded value. Cyclic frame
+evidence produces an explicit terminal failure after cleanup instead of an orphaned
+rejection or a missing report. Browser regression cases also verify that fields omitted
+by JSON cannot survive in an independent in-memory result.
 
 Run the browser gate from `frontend/`:
 
