@@ -621,7 +621,7 @@ func (i *interactionSession) await() {
 
 func (i *interactionSession) publishResult(result agent.Result) error {
 	member := runs.ExecutorMember{MemberID: result.ProcessID().String()}
-	if result.Status() == agent.StatusCompleted {
+	if result.Termination().Status() == agent.StatusCompleted {
 		i.maintainCompletedRoot()
 	}
 	end, err := i.segmentEnd(result)

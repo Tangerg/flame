@@ -41,11 +41,11 @@ func (i *InteractionExecutor) CancelRunningSubtree(
 	if !available || root == nil {
 		return runs.ErrExecutorNotLive
 	}
-	if managed == nil || processID == root.ID() {
+	if managed == nil || processID == root.Relation().ProcessID() {
 		return errors.New("execution: running subtree target is not a managed Delegate")
 	}
 	process, found := session.engine.Process(processID)
-	if !found || process.Relation().RootID() != root.ID() {
+	if !found || process.Relation().RootID() != root.Relation().ProcessID() {
 		return runs.ErrExecutorNotLive
 	}
 	controlCtx, cancel := session.lifetime.bind(ctx)
@@ -78,7 +78,7 @@ func (i *interactionSession) captureHumanInputBarrier(
 	// A root that is not waiting is not yet a barrier rather than a fault: the
 	// reconciler asks again. This is the only place that decides it, so the
 	// caller no longer pre-reads a status that could move before the cut.
-	rootMember, found := inspection.Process(root.ID())
+	rootMember, found := inspection.Process(root.Relation().ProcessID())
 	if !found || rootMember.Snapshot.Status() != agent.StatusWaiting {
 		return agent.TreeSnapshot{}, nil, false, nil
 	}
@@ -106,10 +106,10 @@ func (i *interactionSession) captureHumanInputBarrier(
 				continue
 			}
 			paused = true
-			if _, requested := requestedPauses[snapshot.ProcessID()]; requested {
+			if _, requested := requestedPauses[snapshot.Relation().ProcessID()]; requested {
 				continue
 			}
-			process, found := i.engine.Process(snapshot.ProcessID())
+			process, found := i.engine.Process(snapshot.Relation().ProcessID())
 			if !found {
 				return agent.TreeSnapshot{}, nil, false, nil
 			}
@@ -117,9 +117,9 @@ func (i *interactionSession) captureHumanInputBarrier(
 			// Retain that receipt until this capture observes the settled cut.
 			if err := process.Pause(ctx, interactionBarrierPauseReason); err != nil &&
 				!errors.Is(err, agent.ErrProcessFinished) {
-				return agent.TreeSnapshot{}, nil, false, fmt.Errorf("pause Interaction member %s: %w", snapshot.ProcessID(), err)
+				return agent.TreeSnapshot{}, nil, false, fmt.Errorf("pause Interaction member %s: %w", snapshot.Relation().ProcessID(), err)
 			}
-			requestedPauses[snapshot.ProcessID()] = struct{}{}
+			requestedPauses[snapshot.Relation().ProcessID()] = struct{}{}
 		}
 		if paused {
 			select {
@@ -180,7 +180,7 @@ func (i *interactionSession) pendingInterruptions(
 	}
 	relations := make(map[agent.ProcessID]agent.ProcessRelation, len(tree.ProcessSnapshots()))
 	for _, snapshot := range tree.ProcessSnapshots() {
-		relations[snapshot.ProcessID()] = snapshot.Relation()
+		relations[snapshot.Relation().ProcessID()] = snapshot.Relation()
 	}
 	interruptions := make([]runs.MemberInterruption, 0, len(pendingInputs))
 	for _, pending := range pendingInputs {
@@ -225,7 +225,7 @@ func (i *interactionSession) unknownEffectIDs(ctx context.Context) ([]agent.Effe
 		if member.Snapshot.Status().Terminal() {
 			continue
 		}
-		processID := member.Snapshot.ProcessID()
+		processID := member.Snapshot.Relation().ProcessID()
 		if i.modelFailures.has(processID) {
 			continue
 		}
@@ -285,7 +285,7 @@ func (i *interactionSession) pausedProcessIDs() ([]agent.ProcessID, error) {
 		// A committed subtree cancellation can still be draining in this cut.
 		// Its product owner has retired the member and never resumes its descendants.
 		retired := false
-		for id := snapshot.ProcessID(); id.Valid(); id = parents[id] {
+		for id := snapshot.Relation().ProcessID(); id.Valid(); id = parents[id] {
 			i.state.mu.Lock()
 			managed := i.state.delegateChildren[id]
 			i.state.mu.Unlock()
@@ -299,7 +299,7 @@ func (i *interactionSession) pausedProcessIDs() ([]agent.ProcessID, error) {
 			}
 		}
 		if !retired {
-			paused = append(paused, snapshot.ProcessID())
+			paused = append(paused, snapshot.Relation().ProcessID())
 		}
 	}
 	return paused, nil

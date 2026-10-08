@@ -258,7 +258,7 @@ func (i *interactionSession) canceledSubtree(
 			(deployments != nil && deployments.toolChild(snapshot.DeploymentRef())) {
 			continue
 		}
-		processID := snapshot.ProcessID()
+		processID := snapshot.Relation().ProcessID()
 		if descendsFrom(parents, processID, targetID) {
 			canceled = append(canceled, processID)
 		}
@@ -273,7 +273,7 @@ func capturedParents(tree agent.TreeSnapshot) map[agent.ProcessID]agent.ProcessI
 	parents := make(map[agent.ProcessID]agent.ProcessID, len(tree.ProcessSnapshots()))
 	for _, snapshot := range tree.ProcessSnapshots() {
 		if parentID, child := snapshot.Relation().ParentID(); child {
-			parents[snapshot.ProcessID()] = parentID
+			parents[snapshot.Relation().ProcessID()] = parentID
 		}
 	}
 	return parents

@@ -26,60 +26,100 @@ func TestSkillResourceReadPreservesFormatOwnerFailure(t *testing.T) {
 }
 
 func TestSkillAdmissionAndReadsShareDirectoryNameBinding(t *testing.T) {
-	for _, origin := range []string{"project", "package"} {
-		t.Run(origin, func(t *testing.T) {
-			name := "ｒｅｖｉｅｗ"
-			document := "---\nname: review\ndescription: Review a result\n---\nInspect the results.\n"
-			releases, store, _ := testReleaseStore(t)
-			source := writePackage(t, map[string]string{"plugin.json": portableManifest, "skills/" + name + "/SKILL.md": document})
-			cwd := ""
-			if origin == "project" {
-				cwd = t.TempDir()
-				directory := filepath.Join(promptsource.ProjectSkillDir(cwd), name)
-				if err := os.MkdirAll(directory, 0700); err != nil {
-					t.Fatal(err)
+	for _, test := range []struct {
+		label       string
+		directory   string
+		frontmatter string
+		valid       bool
+	}{
+		{label: "canonical", directory: "review", frontmatter: "review", valid: true},
+		{label: "canonical Unicode", directory: "审查", frontmatter: "审查", valid: true},
+		{label: "noncanonical directory", directory: "ｒｅｖｉｅｗ", frontmatter: "review"},
+		{label: "noncanonical frontmatter", directory: "review", frontmatter: "ｒｅｖｉｅｗ"},
+	} {
+		for _, origin := range []string{"project", "package"} {
+			t.Run(test.label+"/"+origin, func(t *testing.T) {
+				name := test.directory
+				document := "---\nname: " + test.frontmatter + "\ndescription: Review a result\n---\nInspect the results.\n"
+				releases, store, _ := testReleaseStore(t)
+				source := writePackage(t, map[string]string{"plugin.json": portableManifest, "skills/" + name + "/SKILL.md": document})
+				cwd := ""
+				if origin == "project" {
+					cwd = t.TempDir()
+					directory := filepath.Join(promptsource.ProjectSkillDir(cwd), name)
+					if err := os.MkdirAll(directory, 0700); err != nil {
+						t.Fatal(err)
+					}
+					if err := os.WriteFile(filepath.Join(directory, sdk.SkillFile), []byte(document), 0600); err != nil {
+						t.Fatal(err)
+					}
+				} else {
+					release, err := publishPackage(t.Context(), releases, source)
+					if err != nil {
+						t.Fatalf("Skill admission = %+v, %v", release, err)
+					}
+					declaration := release.Declaration()
+					if test.valid {
+						if len(declaration.Skills) != 1 || declaration.Skills[0].Name != name {
+							t.Fatalf("canonical Skill admission = %+v", declaration)
+						}
+					} else if len(declaration.Skills) != 0 || len(declaration.Diagnostics) != 1 || declaration.Diagnostics[0].Code != plugin.DiagnosticInvalidDeclaration {
+						t.Fatalf("noncanonical Skill was admitted: %+v", declaration)
+					}
+					installation, err := plugin.New(testsupport.InstallationID(t), source, release)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if err := installation.Approve(release); err != nil {
+						t.Fatal(err)
+					}
+					if err := installation.Enable(release); err != nil {
+						t.Fatal(err)
+					}
+					if err := store.Save(t.Context(), installation); err != nil {
+						t.Fatal(err)
+					}
 				}
-				if err := os.WriteFile(filepath.Join(directory, sdk.SkillFile), []byte(document), 0600); err != nil {
-					t.Fatal(err)
+				skills := NewSkills(releases, store)
+				catalog := promptsource.NewSkills("", skills)
+				discovery, err := catalog.List(t.Context(), cwd)
+				if !test.valid {
+					if err != nil || len(discovery.Skills) != 0 {
+						t.Fatalf("noncanonical Skill was discovered: %+v, %v", discovery, err)
+					}
+					model, _, err := promptsource.OverlaySkillSource(t.Context(), cwd, "", skills, nil)
+					if err != nil {
+						t.Fatal(err)
+					}
+					for _, alias := range []string{"review", "ｒｅｖｉｅｗ"} {
+						if _, err := catalog.Get(t.Context(), cwd, alias); err == nil {
+							t.Fatalf("noncanonical Skill detail was loaded through %q", alias)
+						}
+						if model != nil {
+							if _, err := model.Load(t.Context(), alias); err == nil {
+								t.Fatalf("noncanonical model Skill was loaded through %q", alias)
+							}
+						}
+					}
+					return
 				}
-			} else {
-				release, err := publishPackage(t.Context(), releases, source)
-				if err != nil || len(release.Declaration().Skills) != 1 || release.Declaration().Skills[0].Name != name {
-					t.Fatalf("Skill admission = %+v, %v", release, err)
+				if err != nil || len(discovery.Skills) != 1 || discovery.Skills[0].Name != name || len(discovery.Diagnostics) != 0 {
+					t.Fatalf("Skill discovery contradicted admission: %+v, %v", discovery, err)
 				}
-				installation, err := plugin.New(testsupport.InstallationID(t), source, release)
+				detail, err := catalog.Get(t.Context(), cwd, name)
+				if err != nil || detail.Instructions != "Inspect the results.\n" {
+					t.Fatalf("Skill detail contradicted admission: %+v, %v", detail, err)
+				}
+				model, _, err := promptsource.OverlaySkillSource(t.Context(), cwd, "", skills, nil)
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err := installation.Approve(release); err != nil {
-					t.Fatal(err)
+				loaded, err := model.Load(t.Context(), name)
+				if err != nil || loaded.Name != name || loaded.Instructions != detail.Instructions {
+					t.Fatalf("model Skill contradicted admission: %+v, %v", loaded, err)
 				}
-				if err := installation.Enable(release); err != nil {
-					t.Fatal(err)
-				}
-				if err := store.Save(t.Context(), installation); err != nil {
-					t.Fatal(err)
-				}
-			}
-			skills := NewSkills(releases, store)
-			catalog := promptsource.NewSkills("", skills)
-			discovery, err := catalog.List(t.Context(), cwd)
-			if err != nil || len(discovery.Skills) != 1 || discovery.Skills[0].Name != name || len(discovery.Diagnostics) != 0 {
-				t.Fatalf("Skill discovery contradicted admission: %+v, %v", discovery, err)
-			}
-			detail, err := catalog.Get(t.Context(), cwd, name)
-			if err != nil || detail.Instructions != "Inspect the results.\n" {
-				t.Fatalf("Skill detail contradicted admission: %+v, %v", detail, err)
-			}
-			model, _, err := promptsource.OverlaySkillSource(t.Context(), cwd, "", skills, nil)
-			if err != nil {
-				t.Fatal(err)
-			}
-			loaded, err := model.Load(t.Context(), name)
-			if err != nil || loaded.Name != name || loaded.Instructions != detail.Instructions {
-				t.Fatalf("model Skill contradicted admission: %+v, %v", loaded, err)
-			}
-		})
+			})
+		}
 	}
 }
 

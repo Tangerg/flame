@@ -234,7 +234,7 @@ func (i *interactionSession) executorMemberByProcessID(
 	root := i.state.process
 	managed := i.state.delegateChildren[processID]
 	i.state.mu.Unlock()
-	if root != nil && root.ID() == processID {
+	if root != nil && root.Relation().ProcessID() == processID {
 		return basicExecutorMember(root.Relation()), true
 	}
 	if managed == nil {

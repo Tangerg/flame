@@ -28,15 +28,6 @@ func modelInvocationIDFrom(effectID agent.EffectID, modelCallSequence uint64) (r
 	return parsedInvocationID(modelInvocationNamespace, digest.Sum(nil), modelCallSequence)
 }
 
-func toolInvocationID(invocation interaction.ToolInvocation) (runtimeidentity.EffectID, error) {
-	caller, present := invocation.Relation().ParentID()
-	if !present {
-		return runtimeidentity.EffectID{}, agent.ErrInvalidProcessRelation
-	}
-	call := invocation.ToolCall()
-	return logicalToolCallID(caller, invocation.ModelCallSequence(), invocation.ToolCallIndex(), call.ID, call.Name)
-}
-
 func logicalToolCallID(
 	caller agent.ProcessID,
 	modelCallSequence uint64,

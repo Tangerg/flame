@@ -83,7 +83,7 @@ func (i *InteractionExecutor) CanResumeWaitingExecution(
 		return runs.WaitingResumption{}, err
 	}
 	snapshots := state.tree.ProcessSnapshots()
-	if len(snapshots) == 0 || snapshots[0].ProcessID() != rootID ||
+	if len(snapshots) == 0 || snapshots[0].Relation().ProcessID() != rootID ||
 		!isInteractionWaitingBoundary(snapshots[0].Status()) {
 		return unresumable(ctx, continuation, runs.LossWaitingStateUnavailable, "checkpoint tree is not at a waiting boundary", nil)
 	}

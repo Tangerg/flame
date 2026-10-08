@@ -19,7 +19,7 @@ func (i *interactionSession) terminalEffects(ctx context.Context, owner agent.Pr
 	var effects []run.UnresolvedEffect
 	for _, member := range inspection.Processes {
 		snapshot := member.Snapshot
-		processID := snapshot.ProcessID()
+		processID := snapshot.Relation().ProcessID()
 		parentID, _ := snapshot.Relation().ParentID()
 		if processID != owner && (parentID != owner || !i.state.deployments.toolChild(snapshot.DeploymentRef())) {
 			continue
@@ -46,7 +46,7 @@ func (i *interactionSession) terminalEffects(ctx context.Context, owner agent.Pr
 
 func subtreeDrained(inspection agent.TreeInspection, root agent.ProcessID) bool {
 	for _, member := range inspection.Processes {
-		current := member.Snapshot.ProcessID()
+		current := member.Snapshot.Relation().ProcessID()
 		for {
 			if current == root {
 				if !member.Snapshot.Status().Terminal() || member.Work != agent.ProcessWorkIdle {

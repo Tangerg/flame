@@ -23,7 +23,7 @@ func (i *interactionSession) publishRuntimeFailure(cause error) error {
 		}
 		member := i.executorMember(owner.Snapshot.Relation())
 		i.state.mu.Lock()
-		managed := i.state.delegateChildren[owner.Snapshot.ProcessID()]
+		managed := i.state.delegateChildren[owner.Snapshot.Relation().ProcessID()]
 		i.state.mu.Unlock()
 		if managed != nil {
 			managed.mu.Lock()
@@ -36,14 +36,14 @@ func (i *interactionSession) publishRuntimeFailure(cause error) error {
 		var effects []run.UnresolvedEffect
 		for _, process := range inspection.Processes {
 			parent, _ := process.Snapshot.Relation().ParentID()
-			if process.Snapshot.ProcessID() != owner.Snapshot.ProcessID() && (parent != owner.Snapshot.ProcessID() || !i.state.deployments.toolChild(process.Snapshot.DeploymentRef())) {
+			if process.Snapshot.Relation().ProcessID() != owner.Snapshot.Relation().ProcessID() && (parent != owner.Snapshot.Relation().ProcessID() || !i.state.deployments.toolChild(process.Snapshot.DeploymentRef())) {
 				continue
 			}
 			if process.RuntimeError == nil {
 				continue
 			}
 			for _, id := range process.RuntimeError.UnresolvedEffectIDs() {
-				effect, err := run.NewUnresolvedEffect(process.Snapshot.ProcessID().String(), id.String(), "runtime_failure", executorDiagnostic(cause), executorDiagnostic(process.RuntimeError))
+				effect, err := run.NewUnresolvedEffect(process.Snapshot.Relation().ProcessID().String(), id.String(), "runtime_failure", executorDiagnostic(cause), executorDiagnostic(process.RuntimeError))
 				if err != nil {
 					return err
 				}

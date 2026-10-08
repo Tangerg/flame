@@ -18,7 +18,7 @@ func (i *interactionSession) validateWaitingTree(ctx context.Context, continuati
 	// to resume on top of one is this Runtime's policy, so it stays here.
 	snapshots := make(map[agent.ProcessID]agent.ProcessSnapshot)
 	for _, snapshot := range checkpoint.tree.ProcessSnapshots() {
-		snapshots[snapshot.ProcessID()] = snapshot
+		snapshots[snapshot.Relation().ProcessID()] = snapshot
 		if len(snapshot.UnknownEffectIDs()) != 0 {
 			return fmt.Errorf("%w: waiting tree contains unresolved effects", runs.ErrExecutorStateLost)
 		}
@@ -58,17 +58,17 @@ func (i *interactionSession) initializeRestoredContinuation(
 	}
 	snapshots := make(map[agent.ProcessID]agent.ProcessSnapshot, len(checkpoint.tree.ProcessSnapshots()))
 	for _, snapshot := range checkpoint.tree.ProcessSnapshots() {
-		snapshots[snapshot.ProcessID()] = snapshot
+		snapshots[snapshot.Relation().ProcessID()] = snapshot
 	}
 	// The boundary being restored is the checkpoint's, so the checkpoint is what
 	// has to carry it. A live status would describe the tree after restore
 	// rather than the cut this continuation answers.
 	rootSnapshot, captured := snapshots[checkpoint.tree.RootID()]
-	if root == nil || root.ID() != checkpoint.tree.RootID() || !captured ||
+	if root == nil || root.Relation().ProcessID() != checkpoint.tree.RootID() || !captured ||
 		!isInteractionWaitingBoundary(rootSnapshot.Status()) {
 		return fmt.Errorf("%w: restored Interaction root is not at a waiting boundary", runs.ErrExecutorStateLost)
 	}
-	members, err := i.restoredWaitingMembers(continuation, snapshots, root.ID())
+	members, err := i.restoredWaitingMembers(continuation, snapshots, root.Relation().ProcessID())
 	if err != nil {
 		return err
 	}
@@ -86,7 +86,7 @@ func (i *interactionSession) initializeRestoredContinuation(
 	if i.state.phase != interactionPending || i.state.process != root {
 		return runs.ErrExecutionClaimed
 	}
-	i.state.admittedProcessID = root.ID()
+	i.state.admittedProcessID = root.Relation().ProcessID()
 	i.state.phase = interactionBegun
 	i.state.boundary = boundary
 	i.state.dispatchReady = make(chan struct{})

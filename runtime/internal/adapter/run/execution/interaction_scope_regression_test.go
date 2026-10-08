@@ -85,7 +85,7 @@ func TestCanceledToolRetainsEvidenceAfterRootAwait(t *testing.T) {
 			t.Error(err)
 		}
 		result, err := session.state.process.Await(t.Context())
-		if err != nil || !result.Status().Terminal() {
+		if err != nil || !result.Termination().Status().Terminal() {
 			t.Errorf("root Await: %v", err)
 		}
 		close(release)
@@ -521,7 +521,7 @@ func TestRootAndDelegateCompleteLongExecution(t *testing.T) {
 				budget := member.Snapshot.Budget()
 				for _, quota := range []agent.Quota{budget.Steps, budget.Effects, budget.Signals} {
 					if _, limited := quota.Maximum(); limited {
-						return nil, fmt.Errorf("process %s retains a cumulative quota", member.Snapshot.ProcessID())
+						return nil, fmt.Errorf("process %s retains a cumulative quota", member.Snapshot.Relation().ProcessID())
 					}
 				}
 			}

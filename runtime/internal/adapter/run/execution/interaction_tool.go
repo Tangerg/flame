@@ -55,10 +55,16 @@ func (o *observedInteractionTool) ConcurrencyPolicy() func(toolcontract.Invocati
 }
 
 func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.Invocation) (returned corechat.ToolOutput, returnedErr error) {
-	invocation, arguments, callID, err := o.attributedInvocation(ctx, bound)
+	invocation, reference, arguments, err := o.attributedInvocation(ctx, bound)
 	if err != nil {
 		return corechat.ToolOutput{}, err
 	}
+	call := invocation.ToolCall()
+	identity, err := logicalToolCallID(reference.ProcessID(), reference.ModelCallSequence(), reference.ToolCallIndex(), call.ID, call.Name)
+	if err != nil {
+		return corechat.ToolOutput{}, err
+	}
+	callID := identity.String()
 	defer func() {
 		if returnedErr == nil {
 			return
@@ -74,7 +80,6 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 		}
 		o.session.effectFailures.record(invocation.EffectID(), returnedErr)
 	}()
-	call := invocation.ToolCall()
 	member, hasCaller := o.session.toolCallMember(invocation.Relation())
 	if !hasCaller {
 		return corechat.ToolOutput{}, errors.New("execution: Tool call has no calling Interaction member")
@@ -94,8 +99,8 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 
 	rawArguments := arguments.Canonical()
 	start := runs.ToolCallStarted{
-		CallID: callID, ModelCallSequence: invocation.ModelCallSequence(),
-		ToolCallIndex: invocation.ToolCallIndex(), SourceCallID: call.ID, ToolName: call.Name,
+		CallID: callID, ModelCallSequence: reference.ModelCallSequence(),
+		ToolCallIndex: reference.ToolCallIndex(), SourceCallID: call.ID, ToolName: call.Name,
 		Arguments: rawArguments, Activity: o.activity(call.Name, arguments),
 		SafetyClass: o.interpreter.SafetyClass(o.ref),
 	}
@@ -230,24 +235,24 @@ func (o *observedInteractionTool) projectionFailure(cause error) error {
 func (o *observedInteractionTool) attributedInvocation(
 	ctx context.Context,
 	bound toolcontract.Invocation,
-) (interaction.ToolInvocation, tool.Arguments, string, error) {
+) (interaction.ToolInvocation, interaction.ToolCallRef, tool.Arguments, error) {
 	invocation, ok := interaction.ToolInvocationFromContext(ctx)
 	if !ok {
-		return interaction.ToolInvocation{}, tool.Arguments{}, "", errors.New("execution: Tool call has no Interaction attribution")
+		return interaction.ToolInvocation{}, interaction.ToolCallRef{}, tool.Arguments{}, errors.New("execution: Tool call has no Interaction attribution")
+	}
+	reference, ok := invocation.Reference()
+	if !ok {
+		return interaction.ToolInvocation{}, interaction.ToolCallRef{}, tool.Arguments{}, errors.New("execution: Tool call has no Interaction reference")
 	}
 	call := invocation.ToolCall()
 	if call.Name != o.Definition().Name {
-		return interaction.ToolInvocation{}, tool.Arguments{}, "", errors.New("execution: Tool invocation differs from its bound executable")
+		return interaction.ToolInvocation{}, interaction.ToolCallRef{}, tool.Arguments{}, errors.New("execution: Tool invocation differs from its bound executable")
 	}
 	arguments, err := tool.ParseArguments(string(bound.Arguments()))
 	if err != nil {
-		return interaction.ToolInvocation{}, tool.Arguments{}, "", fmt.Errorf("execution: parse Tool %q arguments: %w", call.Name, err)
+		return interaction.ToolInvocation{}, interaction.ToolCallRef{}, tool.Arguments{}, fmt.Errorf("execution: parse Tool %q arguments: %w", call.Name, err)
 	}
-	callIdentity, err := toolInvocationID(invocation)
-	if err != nil {
-		return interaction.ToolInvocation{}, tool.Arguments{}, "", err
-	}
-	return invocation, arguments, callIdentity.String(), nil
+	return invocation, reference, arguments, nil
 }
 
 func (o *observedInteractionTool) projectToolOutcome(

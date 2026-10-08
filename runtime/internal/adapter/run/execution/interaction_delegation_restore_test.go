@@ -138,7 +138,7 @@ func assertWaitingDelegateBoundary(t *testing.T, barrier runs.TreeBarrierCommit)
 	// captured, and that no Interrupt is addressed to anything else.
 	captured := make(map[string]struct{}, len(checkpointState.tree.ProcessSnapshots()))
 	for _, snapshot := range checkpointState.tree.ProcessSnapshots() {
-		captured[snapshot.ProcessID().String()] = struct{}{}
+		captured[snapshot.Relation().ProcessID().String()] = struct{}{}
 	}
 	members := make(map[string]struct{}, len(pending.Continuations))
 	for _, continuation := range pending.Continuations {

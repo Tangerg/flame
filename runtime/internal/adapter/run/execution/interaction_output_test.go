@@ -103,8 +103,8 @@ func TestDelegatedOutputSurvivesColdRestoreWithoutReplyCache(t *testing.T) {
 				t.Fatal(err)
 			}
 			result, err := engine.Run(t.Context(), deployment, input)
-			if err != nil || result.Status() != agent.StatusCompleted {
-				t.Fatalf("run: status=%s error=%v", result.Status(), err)
+			if err != nil || result.Termination().Status() != agent.StatusCompleted {
+				t.Fatalf("run: status=%s error=%v", result.Termination().Status(), err)
 			}
 			tree, err := engine.CaptureTree(t.Context(), result.ProcessID())
 			if err != nil {
@@ -125,7 +125,7 @@ func TestDelegatedOutputSurvivesColdRestoreWithoutReplyCache(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			payload, _ := result.Output()
+			payload, _ := result.Termination().Output()
 			output, err := payload.Decode[interaction.Output]()
 			if err != nil || output.Validate() != nil || output.ModelCalls != 1 || modelCalls.Load() != 1 {
 				t.Fatalf("restored output=%+v calls=%d error=%v", output, modelCalls.Load(), err)

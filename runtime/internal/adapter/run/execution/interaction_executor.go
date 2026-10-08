@@ -583,7 +583,7 @@ func (i *InteractionExecutor) restoreWaitingTree(
 		return err
 	}
 	processSnapshots := checkpoint.tree.ProcessSnapshots()
-	if len(processSnapshots) == 0 || processSnapshots[0].ProcessID() != rootID ||
+	if len(processSnapshots) == 0 || processSnapshots[0].Relation().ProcessID() != rootID ||
 		!isInteractionWaitingBoundary(processSnapshots[0].Status()) {
 		return fmt.Errorf("%w: Interaction restore requires a product waiting boundary", runs.ErrExecutorStateLost)
 	}

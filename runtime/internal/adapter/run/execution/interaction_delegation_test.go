@@ -387,7 +387,7 @@ func TestInteractionExecutorInternalDelegateWaitDoesNotFreezeRunningChild(t *tes
 		if !readable {
 			t.Fatal("Interaction tree is not inspectable")
 		}
-		root, inspected := inspection.Process(execution.state.processHandle().ID())
+		root, inspected := inspection.Process(execution.state.processHandle().Relation().ProcessID())
 		if inspected && root.Snapshot.Status() == agent.StatusWaiting {
 			break
 		}

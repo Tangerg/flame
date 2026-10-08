@@ -193,7 +193,7 @@ func (i *interactionSession) prepareCommittedContinuationInput(
 		return nil, runs.ErrExecutorNotLive
 	}
 	return &pendingInteractionContinuation{
-		processID: process.ID(), itemID: input.ItemID,
+		processID: process.Relation().ProcessID(), itemID: input.ItemID,
 		content: transcript.CloneContent(input.Content),
 	}, nil
 }

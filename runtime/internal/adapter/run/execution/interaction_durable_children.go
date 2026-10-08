@@ -13,7 +13,7 @@ func (i *interactionSession) childTerminalFacts(tree agent.TreeSnapshot) ([]runs
 	for index := len(snapshots) - 1; index >= 0; index-- {
 		snapshot := snapshots[index]
 		i.state.mu.Lock()
-		managed := i.state.delegateChildren[snapshot.ProcessID()]
+		managed := i.state.delegateChildren[snapshot.Relation().ProcessID()]
 		i.state.mu.Unlock()
 		if managed == nil {
 			continue
@@ -30,7 +30,7 @@ func (i *interactionSession) childTerminalFacts(tree agent.TreeSnapshot) ([]runs
 		}
 		settled := true
 		for _, child := range snapshots {
-			if descendsFrom(parents, child.ProcessID(), snapshot.ProcessID()) && (!child.Status().Terminal() || len(child.UnknownEffectIDs()) > 0) {
+			if descendsFrom(parents, child.Relation().ProcessID(), snapshot.Relation().ProcessID()) && (!child.Status().Terminal() || len(child.UnknownEffectIDs()) > 0) {
 				settled = false
 				break
 			}

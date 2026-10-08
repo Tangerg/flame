@@ -398,8 +398,10 @@ Discovery distinguishes package name conflicts from unavailable release bytes or
 withdrawn authority. An override diagnostic can accompany its available project
 or user Skill; independent installations do not share one Skill capacity budget.
 Admission, discovery, detail and model loading share Scope's format and directory-name
-binding. Parsing consumes exactly the verified bytes and preserves the directory's
-spelling when frontmatter names are equivalent under the format's Unicode rule.
+binding. Parsing consumes exactly the verified bytes. Names must already be in Unicode
+NFKC form, and the directory and frontmatter must have exactly the same name. Rename
+noncanonical directories and update their frontmatter before rebuilding a package;
+Runtime neither normalizes names nor keeps aliases for their former spelling.
 
 Configuration changes use `valueChanges: { "input-id": { "type": "set", "value": "..." } }`
 or an explicit `{ "type": "clear" }`. An optional empty value remains a configured

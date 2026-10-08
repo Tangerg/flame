@@ -392,7 +392,7 @@ func decodeInteractionCheckpointTree(
 	}
 	processes := make(map[agent.ProcessID]struct{}, len(tree.ProcessSnapshots()))
 	for _, snapshot := range tree.ProcessSnapshots() {
-		processes[snapshot.ProcessID()] = struct{}{}
+		processes[snapshot.Relation().ProcessID()] = struct{}{}
 	}
 	return tree, processes, nil
 }
