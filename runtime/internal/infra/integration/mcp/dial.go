@@ -32,7 +32,7 @@ func Dial(
 	lifetime context.Context,
 	servers []ServerConfig,
 	oauthSessions OAuthSessionStore,
-	configuration func(context.Context, mcpserver.ID) (ServerConfig, error),
+	configuration func(context.Context, mcpserver.ID) (*Launch, error),
 ) (*Connections, []Executable, error) {
 	if ctx == nil {
 		return nil, nil, errors.New("mcp: startup context is required")
@@ -86,17 +86,27 @@ func Dial(
 	for _, srv := range servers {
 		configuredServer := &server{id: srv.ID(), config: srv, oauth: srv.OAuthHandler}
 		configuredServer.config.OAuthHandler = nil
-		current, err := configuration(ctx, srv.ID())
+		input, err := configuration(ctx, srv.ID())
+		var prepared *launch
+		var current ServerConfig
+		if err == nil {
+			prepared, err = input.take()
+			if err == nil {
+				current = prepared.config
+			}
+		} else {
+			err = errors.Join(err, input.Close())
+		}
 		if err == nil && current.ID() != srv.ID() {
 			err = errors.New("mcp: connection configuration source changed identity")
-		}
-		if err == nil {
-			err = current.Validate()
 		}
 		if err == nil && current.Transport == TransportHTTP && current.OAuthHandler == nil && current.Authorization == "" {
 			current.OAuthHandler, err = restoreOAuthHandler(ctx, lifetime, oauthSessions, current.oauthTarget())
 		}
 		if err != nil {
+			if prepared != nil {
+				err = errors.Join(err, prepared.close())
+			}
 			slog.ErrorContext(ctx, "mcp: startup admission failed", "server.name", srv.ID().String(), "error", err)
 			configuredServer.settle(nil, nil, mcpserver.ConnectionFailed, mcpserver.FailureConfiguration)
 			failures++
@@ -107,7 +117,8 @@ func Dial(
 		configuredServer.config = srv.Clone()
 		configuredServer.config.OAuthHandler = nil
 		configuredServer.oauth = srv.OAuthHandler
-		session, cleanupSession, derr := dial(ctx, lifetime, client, srv)
+		prepared.config = current
+		session, cleanupSession, derr := dial(ctx, lifetime, client, prepared)
 		if derr != nil {
 			slog.ErrorContext(ctx, "mcp: startup connection failed",
 				"server.name", srv.ID().String(), "error", derr,

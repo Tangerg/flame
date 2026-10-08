@@ -96,13 +96,13 @@ func TestHTTPDialClassifiesTheRefusedRequestNotTheLastResponse(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			server := refusingInitializedServer(t, tc.refusal)
 			client := sdkmcp.NewClient(&sdkmcp.Implementation{Name: "test", Version: "v0"}, nil)
-			_, _, err := dial(t.Context(), t.Context(), client, ServerConfig{
+			_, _, err := dial(t.Context(), t.Context(), client, &launch{config: ServerConfig{
 				Source:       mcpserver.UserSource(),
 				Name:         testsupport.ServerName("refusing"),
 				Transport:    TransportHTTP,
 				Endpoint:     server.URL,
 				OAuthHandler: tc.oauth,
-			})
+			}})
 			if err == nil {
 				t.Fatal("dial succeeded, want a refused initialized notification")
 			}

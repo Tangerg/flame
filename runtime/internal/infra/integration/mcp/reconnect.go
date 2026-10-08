@@ -19,11 +19,19 @@ import (
 // have superseded it. The owner cancels ctx before it detaches a server; the
 // check under mu therefore guarantees a superseded configuration never
 // re-adds a detached server or replaces a newer connection.
-func (c *Connections) Configure(ctx context.Context, cfg ServerConfig) error {
-	cfg = cfg.Clone()
-	if err := cfg.Validate(); err != nil {
-		return fmt.Errorf("mcp: invalid server %q: %w", cfg.ID(), err)
+func (c *Connections) Configure(ctx context.Context, input *Launch) (err error) {
+	prepared, err := input.take()
+	if err != nil {
+		return err
 	}
+	var attempt *connectionAttempt
+	defer func() {
+		err = errors.Join(err, prepared.close())
+		if attempt != nil {
+			c.finishAttempt(attempt)
+		}
+	}()
+	cfg := &prepared.config
 	c.mu.Lock()
 	if c.closed {
 		c.mu.Unlock()
@@ -35,23 +43,22 @@ func (c *Connections) Configure(ctx context.Context, cfg ServerConfig) error {
 	}
 	configuredServer := c.find(cfg.ID())
 	if configuredServer == nil {
-		configuredServer = &server{id: cfg.ID(), config: cfg}
+		configuredServer = &server{id: cfg.ID(), config: cfg.Clone()}
 		c.servers = append(c.servers, configuredServer)
 	}
-	oauth := reusableOAuth(configuredServer.config, cfg, configuredServer.oauth)
+	oauth := reusableOAuth(configuredServer.config, *cfg, configuredServer.oauth)
 	if oauth == nil {
 		oauth = cfg.OAuthHandler
 	}
 	configuredServer.oauth = oauth
 	detachedSession := configuredServer.session
-	configuredServer.config = cfg
+	configuredServer.config = cfg.Clone()
 	configuredServer.config.OAuthHandler = nil
 	configuredServer.settle(nil, nil, mcpserver.ConnectionConnecting, "")
 	cfg.OAuthHandler = oauth
-	attempt := c.beginAttempt(ctx, configuredServer)
+	attempt = c.beginAttempt(ctx, configuredServer)
 	c.publishToolsLocked()
 	c.mu.Unlock()
-	defer c.finishAttempt(attempt)
 
 	closeErr := c.closeSession(attempt.ctx, detachedSession)
 	if cfg.Transport == TransportHTTP && oauth == nil && cfg.Authorization == "" {
@@ -74,7 +81,7 @@ func (c *Connections) Configure(ctx context.Context, cfg ServerConfig) error {
 		c.mu.Unlock()
 		cfg.OAuthHandler = oauth
 	}
-	return errors.Join(closeErr, c.dialAndSwap(attempt, cfg, false))
+	return errors.Join(closeErr, c.dialAndSwap(attempt, prepared, false))
 }
 
 func reusableOAuth(current, candidate ServerConfig, handler auth.OAuthHandler) auth.OAuthHandler {
@@ -98,12 +105,20 @@ func reusableOAuth(current, candidate ServerConfig, handler auth.OAuthHandler) a
 // [oauthFlowTimeout] elapses. Returns
 // [mcpserver.ErrUnknownServer] for an unconfigured name. A newer operation for
 // the same server supersedes this attempt.
-func (c *Connections) Authorize(ctx context.Context, input ServerConfig) (err error) {
-	input = input.Clone()
-	if err := input.Validate(); err != nil {
+func (c *Connections) Authorize(ctx context.Context, source *Launch) (err error) {
+	prepared, err := source.take()
+	if err != nil {
 		return err
 	}
-	if input.OAuthHandler != nil {
+	var attempt *connectionAttempt
+	defer func() {
+		err = errors.Join(err, prepared.close())
+		if attempt != nil {
+			c.finishAttempt(attempt)
+		}
+	}()
+	cfg := &prepared.config
+	if cfg.OAuthHandler != nil {
 		return errors.New("mcp: explicit authorization cannot supply an OAuth handler")
 	}
 	c.mu.Lock()
@@ -111,28 +126,26 @@ func (c *Connections) Authorize(ctx context.Context, input ServerConfig) (err er
 		c.mu.Unlock()
 		return ErrConnectionsClosed
 	}
-	configuredServer := c.find(input.ID())
+	configuredServer := c.find(cfg.ID())
 	if configuredServer == nil {
 		c.mu.Unlock()
-		return fmt.Errorf("%w: %q", mcpserver.ErrUnknownServer, input.ID())
+		return fmt.Errorf("%w: %q", mcpserver.ErrUnknownServer, cfg.ID())
 	}
-	if input.Transport != TransportHTTP {
+	if cfg.Transport != TransportHTTP {
 		c.mu.Unlock()
 		return errors.New("mcp: OAuth applies to HTTP servers only")
 	}
-	if input.Authorization != "" {
+	if cfg.Authorization != "" {
 		c.mu.Unlock()
 		return errors.New("mcp: clear static authorization before starting OAuth")
 	}
 	detachedSession := configuredServer.session
-	configuredServer.config = input.Clone()
+	configuredServer.config = cfg.Clone()
 	configuredServer.oauth = nil
 	configuredServer.settle(nil, nil, mcpserver.ConnectionConnecting, "")
-	attempt := c.beginAttempt(ctx, configuredServer)
-	cfg := input
+	attempt = c.beginAttempt(ctx, configuredServer)
 	c.publishToolsLocked()
 	c.mu.Unlock()
-	defer c.finishAttempt(attempt)
 
 	closeErr := c.closeSession(attempt.ctx, detachedSession)
 
@@ -156,7 +169,7 @@ func (c *Connections) Authorize(ctx context.Context, input ServerConfig) (err er
 	cfg.OAuthHandler = handler
 
 	attempt.ctx = ctx
-	return errors.Join(closeErr, c.dialAndSwap(attempt, cfg, true))
+	return errors.Join(closeErr, c.dialAndSwap(attempt, prepared, true))
 }
 
 // dialAndSwap dials cfg, proves the session with a tools/list, then publishes it
@@ -167,8 +180,9 @@ func (c *Connections) Authorize(ctx context.Context, input ServerConfig) (err er
 // cfg.OAuthHandler on that server after a successful connect (Authorize keeps the
 // just-authorized handler for this session's later reconnects; the plain dials
 // reuse an existing one and pass false).
-func (c *Connections) dialAndSwap(attempt *connectionAttempt, cfg ServerConfig, keepHandler bool) error {
-	session, cleanupSession, err := dial(attempt.ctx, c.lifetime, c.client, cfg)
+func (c *Connections) dialAndSwap(attempt *connectionAttempt, prepared *launch, keepHandler bool) error {
+	cfg := prepared.config
+	session, cleanupSession, err := dial(attempt.ctx, c.lifetime, c.client, prepared)
 	step := mcpserver.FailureConnection
 	var verifiedTools []Executable
 	if err == nil {

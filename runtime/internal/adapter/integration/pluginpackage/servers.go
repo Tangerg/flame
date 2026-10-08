@@ -67,15 +67,10 @@ func (r *Releases) Server(ctx context.Context, installation *plugin.Installation
 	if err != nil || reach == plugins.Declared || !server.Enabled {
 		return server, err == nil, err
 	}
-	var root *os.Root
-	switch reach {
-	case plugins.Dispatchable:
-		root, _, err = r.verifiedRoot(ctx, release.Digest())
-	case plugins.Launchable:
-		root, err = r.currentRoot(ctx, release.Digest())
-	default:
+	if reach != plugins.Dispatchable {
 		return mcpserver.Server{}, false, fmt.Errorf("pluginpackage: unknown server reach %d", reach)
 	}
+	root, _, err := r.verifiedRoot(ctx, release.Digest())
 	if err != nil {
 		if cause := context.Cause(ctx); cause != nil {
 			return mcpserver.Server{}, false, cause
@@ -84,11 +79,6 @@ func (r *Releases) Server(ctx context.Context, installation *plugin.Installation
 	}
 	if err := root.Close(); err != nil {
 		return mcpserver.Server{}, false, fmt.Errorf("pluginpackage: close release %s: %w", release.Digest(), err)
-	}
-	if reach == plugins.Launchable && declared.Transport == mcpserver.TransportStdio {
-		if err := r.prepareBackend(installation.ID(), declared); err != nil {
-			return mcpserver.Server{}, false, fmt.Errorf("%w: prepare server %q backend: %w", plugin.ErrUnavailable, declared.Name, err)
-		}
 	}
 	if err := realizeBackend(server, declared, dir, data); err != nil {
 		return mcpserver.Server{}, false, fmt.Errorf("%w: server %q backend: %w", plugin.ErrUnavailable, declared.Name, err)
@@ -153,6 +143,9 @@ func (r *Releases) Realize(ctx context.Context, installation *plugin.Installatio
 	}
 	root, _, verifyErr := r.verifiedRoot(ctx, release.Digest())
 	if cause := context.Cause(ctx); cause != nil {
+		if root != nil {
+			cause = errors.Join(cause, root.Close())
+		}
 		return plugins.Realization{}, cause
 	}
 	result := plugins.Realization{Release: plugins.ReleaseUnavailable}

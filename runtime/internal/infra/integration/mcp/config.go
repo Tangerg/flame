@@ -161,6 +161,9 @@ func (s ServerConfig) SameConnection(other ServerConfig) bool {
 // Validate reports whether exactly one transport is fully specified and the
 // other transport's fields are blank.
 func (s ServerConfig) Validate() error {
+	if err := s.Source.Validate(); err != nil {
+		return fmt.Errorf("mcp: server source: %w", err)
+	}
 	if err := s.Name.Validate(); err != nil {
 		return fmt.Errorf("mcp: server name: %w", err)
 	}
@@ -212,8 +215,17 @@ func dial(
 	ctx context.Context,
 	lifetime context.Context,
 	client *sdkmcp.Client,
-	cfg ServerConfig,
-) (*sdkmcp.ClientSession, sessionCleanup, error) {
+	input *launch,
+) (_ *sdkmcp.ClientSession, _ sessionCleanup, err error) {
+	if input == nil {
+		return nil, nil, errors.New("mcp: launch is required")
+	}
+	defer func() {
+		if err != nil {
+			err = errors.Join(err, input.close())
+		}
+	}()
+	cfg := input.config
 	if ctx == nil {
 		return nil, nil, errors.New("mcp: dial context is required")
 	}
@@ -241,13 +253,13 @@ func dial(
 			}
 			return client.Connect(sessionCtx, transport, nil)
 		case TransportStdio:
-			cmd := exec.CommandContext(sessionCtx, cfg.Command, cfg.Args...)
-			if cfg.Env != nil {
-				cmd.Env = cfg.Env
+			stdio := input.stdio
+			if stdio == nil {
+				stdio = &Stdio{Command: cfg.Command, Args: cfg.Args, Env: cfg.Env, Dir: cfg.Dir}
 			}
-			if cfg.Dir != "" {
-				cmd.Dir = cfg.Dir
-			}
+			cmd := exec.CommandContext(sessionCtx, stdio.Command, stdio.Args...)
+			cmd.Env = stdio.Env
+			cmd.Dir = stdio.Dir
 			procgroup.Prepare(cmd)
 			cmd.Cancel = func() error { return procgroup.Stop(cmd) }
 			command = cmd
@@ -257,7 +269,12 @@ func dial(
 		}
 	}
 	session, cancelLifetime, err := connectSession(ctx, lifetime, cfg.HandshakeTimeout, connect)
-	cleanup := sessionCleanup(func() error {
+	retire := input.retire
+	input.retire = nil
+	cleanup := sessionCleanup(func() (err error) {
+		if retire != nil {
+			defer func() { err = errors.Join(err, retire()) }()
+		}
 		if cancelLifetime != nil {
 			cancelLifetime()
 		}

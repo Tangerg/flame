@@ -21,6 +21,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/mcpconnection"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
@@ -383,12 +384,12 @@ func (r testSourceRegistry) Dispatchable(_ context.Context, id mcpserver.ID) (mc
 	return mcpserver.Server{}, false, nil
 }
 
-func (r testSourceRegistry) Connection(ctx context.Context, name mcpserver.ID) (mcpserver.Server, error) {
+func (r testSourceRegistry) Connection(ctx context.Context, name mcpserver.ID) (mcpapp.Launch, error) {
 	server, found, err := r.Dispatchable(ctx, name)
 	if err == nil && !found {
 		err = mcpserver.ErrUnknownServer
 	}
-	return server, err
+	return mcpapp.Launch{Server: server}, err
 }
 
 // attachedRun is the Run scope every Tool resolution executes under.

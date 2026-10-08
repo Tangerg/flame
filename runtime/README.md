@@ -190,8 +190,19 @@ than the scan that stamped it is unsettled (the racy-index rule): a proof holdin
 not reused, and the next launch rescans. Proofs are cached within a 32 MiB budget derived
 from measured per-entry size; a proof that would exceed it is not cached, and a proof an
 in-flight caller holds is never evicted. Platforms without an inode-change time rescan on
-every connection. Retained connection snapshots cannot initiate a new dial.
-The registry resolves one server through one origin dispatch, realizing an installation
+every connection. A stdio launch copies from the confined verified root into private,
+sealed execution content and verifies that copy against the admitted digest. Command,
+arguments, environment and working directory are projected onto that content; replacing,
+rewriting or reclaiming the published release cannot redirect an admitted process or its
+later package reads. Connections of one digest share the content while any launch or
+session holds it. This resource claim transfers once into the MCP session ledger and is
+retired after process teardown, including failed handshakes, rejected or superseded
+attempts, detach and shutdown. Retained source descriptors contain neither the claim nor
+relocated paths and cannot launch installation stdio. Startup collects abandoned execution
+copies using directory leases, preserving copies held by another Runtime. This protects
+the launch from changes to published bytes; stdio still runs as trusted local code, without
+an OS sandbox.
+The registry resolves each server by its origin, realizing an installation
 server only as far as the read requires (desired definition, dispatch authority, or launch)
 and never its siblings. Ordinary tool dispatch reads admitted declarations and
 current installation authority for the called server alone. Resource and Skill reads verify their selected file

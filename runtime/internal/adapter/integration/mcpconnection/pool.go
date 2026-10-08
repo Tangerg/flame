@@ -46,7 +46,7 @@ func Open(
 		return nil, nil, err
 	}
 	pool := &Pool{registry: registry}
-	inner, toolset, err := mcp.Dial(ctx, lifetime, configs, oauthSessions, pool.connectionConfig)
+	inner, toolset, err := mcp.Dial(ctx, lifetime, configs, oauthSessions, pool.connectionLaunch)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -59,7 +59,7 @@ func (p *Pool) Statuses() []mcpserver.ConnectionStatus {
 }
 
 func (p *Pool) Reconnect(ctx context.Context, name mcpserver.ID) error {
-	config, err := p.admittedConfig(ctx, name)
+	config, err := p.admittedLaunch(ctx, name)
 	if err != nil {
 		return err
 	}
@@ -67,7 +67,7 @@ func (p *Pool) Reconnect(ctx context.Context, name mcpserver.ID) error {
 }
 
 func (p *Pool) Authorize(ctx context.Context, name mcpserver.ID) error {
-	config, err := p.admittedConfig(ctx, name)
+	config, err := p.admittedLaunch(ctx, name)
 	if err != nil {
 		return err
 	}
@@ -83,37 +83,53 @@ func (p *Pool) Probe(ctx context.Context, server mcpserver.Server) error {
 }
 
 func (p *Pool) Configure(ctx context.Context, name mcpserver.ID) error {
-	cfg, err := p.admittedConfig(ctx, name)
+	cfg, err := p.admittedLaunch(ctx, name)
 	if err != nil {
 		return err
 	}
 	return p.inner.Configure(ctx, cfg)
 }
 
-// admittedConfig obtains the configuration a new connection must use. When the
+// admittedLaunch obtains the source and resource a new connection must use. When the
 // source refuses, the refusal becomes the live state: a removed or disabled
 // source is detached, any other refusal settles as a configuration failure,
 // and in both cases the previous session stops serving tools.
-func (p *Pool) admittedConfig(ctx context.Context, name mcpserver.ID) (mcp.ServerConfig, error) {
-	cfg, err := p.connectionConfig(ctx, name)
+func (p *Pool) admittedLaunch(ctx context.Context, name mcpserver.ID) (*mcp.Launch, error) {
+	cfg, err := p.connectionLaunch(ctx, name)
 	if err == nil {
 		return cfg, nil
 	}
 	if cause := context.Cause(ctx); cause != nil {
-		return mcp.ServerConfig{}, errors.Join(err, cause)
+		return nil, errors.Join(err, cause)
 	}
 	if errors.Is(err, mcpapp.ErrUnknownServer) || errors.Is(err, mcpapp.ErrServerDisabled) {
-		return mcp.ServerConfig{}, errors.Join(err, p.inner.Detach(name))
+		return nil, errors.Join(err, p.inner.Detach(name))
 	}
-	return mcp.ServerConfig{}, errors.Join(err, p.inner.Refuse(ctx, name, mcpserver.FailureConfiguration))
+	return nil, errors.Join(err, p.inner.Refuse(ctx, name, mcpserver.FailureConfiguration))
 }
 
-func (p *Pool) connectionConfig(ctx context.Context, name mcpserver.ID) (mcp.ServerConfig, error) {
-	server, err := p.registry.Connection(ctx, name)
+func (p *Pool) connectionLaunch(ctx context.Context, name mcpserver.ID) (*mcp.Launch, error) {
+	connection, err := p.registry.Connection(ctx, name)
 	if err != nil {
-		return mcp.ServerConfig{}, err
+		return nil, err
 	}
-	return configFromServer(server)
+	var retire func() error
+	if connection.Retire != nil {
+		retire = connection.Retire.Close
+	}
+	config, err := configFromServer(connection.Server)
+	if err != nil {
+		if retire != nil {
+			err = errors.Join(err, retire())
+		}
+		return nil, err
+	}
+	var stdio *mcp.Stdio
+	if connection.Stdio != nil {
+		executable := connection.Stdio
+		stdio = &mcp.Stdio{Command: executable.Command, Args: executable.Args, Env: flattenEnv(executable.Env), Dir: executable.Dir}
+	}
+	return mcp.NewLaunch(config, stdio, retire)
 }
 
 func (p *Pool) Refuse(ctx context.Context, name mcpserver.ID, failure mcpserver.ConnectionFailure) error {

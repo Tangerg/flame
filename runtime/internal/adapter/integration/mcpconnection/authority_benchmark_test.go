@@ -98,7 +98,7 @@ func BenchmarkAuthorizedToolCall(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	server, err := registry.Connection(b.Context(), id)
+	server, _, err := registry.Dispatchable(b.Context(), id)
 	if err != nil {
 		b.Fatal(err)
 	}

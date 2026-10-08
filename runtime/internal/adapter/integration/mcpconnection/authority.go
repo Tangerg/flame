@@ -3,6 +3,7 @@ package mcpconnection
 import (
 	"context"
 
+	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
 	chat "github.com/Tangerg/scope/core/chat"
@@ -11,7 +12,7 @@ import (
 
 type sourceRegistry interface {
 	Dispatchable(context.Context, mcpserver.ID) (mcpserver.Server, bool, error)
-	Connection(context.Context, mcpserver.ID) (mcpserver.Server, error)
+	Connection(context.Context, mcpserver.ID) (mcpapp.Launch, error)
 }
 
 // authorizedTool rechecks revocable authority at dispatch (draft §7.5): the

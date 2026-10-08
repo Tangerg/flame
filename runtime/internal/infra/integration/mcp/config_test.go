@@ -77,6 +77,7 @@ func TestServerConfigValidate(t *testing.T) {
 		{"http non-http endpoint", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportHTTP, Endpoint: "file:///tmp/mcp"}, false},
 		{"stdio ok", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportStdio, Command: "npx"}, true},
 		{"zero handshake timeout", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportStdio, Command: "npx", HandshakeTimeout: durationPointer(0)}, false},
+		{"missing source", ServerConfig{Name: testsupport.ServerName("x"), Transport: TransportStdio, Command: "server"}, false},
 		{"missing name", ServerConfig{Transport: TransportHTTP, Endpoint: "https://e/"}, false},
 		{"zero transport", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Endpoint: "https://e/"}, false},
 		{"http without endpoint", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportHTTP}, false},
@@ -132,15 +133,13 @@ func TestSameConnectionIncludesCredentialsAndExcludesHandshakePolicy(t *testing.
 }
 
 func TestDialValidatesBeforeDialing(t *testing.T) {
-	_, _, err := dial(context.Background(), t.Context(), nil,
-		ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportHTTP})
+	_, _, err := dial(context.Background(), t.Context(), nil, &launch{config: ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportHTTP}})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Endpoint is required")
 }
 
 func TestDialNilClient(t *testing.T) {
-	_, _, err := dial(context.Background(), t.Context(), nil,
-		ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportHTTP, Endpoint: "https://e/"})
+	_, _, err := dial(context.Background(), t.Context(), nil, &launch{config: ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportHTTP, Endpoint: "https://e/"}})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "client must not be nil")
 }
@@ -152,10 +151,10 @@ func TestDialConnectionFailureSettlesAbsentLifetimeCleanup(t *testing.T) {
 	defer server.Close()
 
 	client := sdkmcp.NewClient(&sdkmcp.Implementation{Name: "failure-test", Version: "v1"}, nil)
-	_, cleanup, err := dial(t.Context(), t.Context(), client, ServerConfig{
+	_, cleanup, err := dial(t.Context(), t.Context(), client, &launch{config: ServerConfig{
 		Source: mcpserver.UserSource(),
 		Name:   testsupport.ServerName("x"), Transport: TransportHTTP, Endpoint: server.URL,
-	})
+	}})
 	require.Error(t, err)
 	assert.Nil(t, cleanup)
 }

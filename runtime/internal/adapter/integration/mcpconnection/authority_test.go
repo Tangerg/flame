@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 	"github.com/Tangerg/scope/core/chat"
@@ -253,15 +254,15 @@ func TestReconnectUsesCurrentOwnerConfiguration(t *testing.T) {
 	}
 }
 
-func (r *mutableSourceRegistry) Connection(ctx context.Context, name mcpserver.ID) (mcpserver.Server, error) {
+func (r *mutableSourceRegistry) Connection(ctx context.Context, name mcpserver.ID) (mcpapp.Launch, error) {
 	r.mu.Lock()
 	refusal := r.refusal
 	r.mu.Unlock()
 	if refusal != nil {
-		return mcpserver.Server{}, refusal
+		return mcpapp.Launch{}, refusal
 	}
 	server, _, err := r.Dispatchable(ctx, name)
-	return server, err
+	return mcpapp.Launch{Server: server}, err
 }
 
 func TestAuthorizationUsesCurrentOwnerCredentials(t *testing.T) {

@@ -35,8 +35,10 @@ type releaseCatalog interface {
 }
 
 type Releases struct {
-	directory string
-	catalog   releaseCatalog
+	directory   string
+	catalog     releaseCatalog
+	executionMu sync.Mutex
+	executions  map[fingerprint.Digest]*executionContent
 	// publishMu serializes publication and reclamation of release directories.
 	publishMu sync.Mutex
 	// mu guards the integrity cache and the verifications in flight. It is
@@ -63,10 +65,11 @@ func New(directory string, catalog releaseCatalog) (*Releases, error) {
 		return nil, fmt.Errorf("pluginpackage: resolve release directory: %w", err)
 	}
 	return &Releases{
-		directory: resolved,
-		catalog:   catalog,
-		verified:  map[fingerprint.Digest]releaseIntegrity{},
-		verifying: map[fingerprint.Digest]*verification{},
+		directory:  resolved,
+		catalog:    catalog,
+		executions: map[fingerprint.Digest]*executionContent{},
+		verified:   map[fingerprint.Digest]releaseIntegrity{},
+		verifying:  map[fingerprint.Digest]*verification{},
 	}, nil
 }
 

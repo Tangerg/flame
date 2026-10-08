@@ -31,6 +31,9 @@ func (c *Connections) Probe(ctx context.Context, cfg ServerConfig) error {
 // closes the session; a connection test that touches no live state. Honors any
 // cfg.OAuthHandler so a probe can be authorized. Returns nil on success.
 func probe(ctx context.Context, cfg ServerConfig) (err error) {
+	if _, installed := cfg.Source.Origin().Installation(); installed {
+		return errors.New("mcp: probe requires a user server candidate")
+	}
 	if validateErr := cfg.Validate(); validateErr != nil {
 		return validateErr
 	}
@@ -39,7 +42,7 @@ func probe(ctx context.Context, cfg ServerConfig) (err error) {
 	defer span.End()
 
 	client := sdkmcp.NewClient(&sdkmcp.Implementation{Name: "runtime-probe", Version: "v0.1.0"}, nil)
-	session, cleanupSession, err := dial(ctx, ctx, client, cfg)
+	session, cleanupSession, err := dial(ctx, ctx, client, &launch{config: cfg})
 	if err != nil {
 		span.SetStatus(codes.Error, err.Error())
 		return err

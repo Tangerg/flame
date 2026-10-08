@@ -67,6 +67,11 @@ func (p *singleServerPackages) Server(_ context.Context, installation *plugin.In
 	return mcpserver.Server{}, false, nil
 }
 
+func (p *singleServerPackages) Connection(ctx context.Context, installation *plugin.Installation, release plugin.Release, name mcpserver.ServerName) (mcpapp.Launch, bool, error) {
+	server, found, err := p.Server(ctx, installation, release, name, Declared)
+	return mcpapp.Launch{Server: server}, found, err
+}
+
 func TestRegistryResolvesOneServerPerOrigin(t *testing.T) {
 	release := testsupport.Release(t, "1", plugin.Declaration{Name: "package", Servers: []plugin.Server{
 		{Name: testsupport.ServerName("target"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.test/target"},
@@ -169,11 +174,11 @@ func TestRegistryResolvesOneServerPerOrigin(t *testing.T) {
 			}
 			packages.reads = nil
 			server, err := registry.Connection(t.Context(), tt.id)
-			if !errors.Is(err, tt.refusal) || (tt.refusal == nil && server.ID() != tt.id) {
+			if !errors.Is(err, tt.refusal) || (tt.refusal == nil && server.Server.ID() != tt.id) {
 				t.Fatalf("connection = %+v, %v; want %v", server, err, tt.refusal)
 			}
-			if tt.packageAt && (len(packages.reads) != 1 || packages.reads[0] != (serverRead{tt.id.Name(), Launchable})) {
-				t.Fatalf("connection package reads = %+v, want only the launchable target", packages.reads)
+			if tt.packageAt && (len(packages.reads) != 1 || packages.reads[0] != (serverRead{tt.id.Name(), Declared})) {
+				t.Fatalf("connection package reads = %+v, want only the connection target", packages.reads)
 			}
 		})
 	}

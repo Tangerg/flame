@@ -22,6 +22,7 @@ type Store interface {
 type PackageSources interface {
 	Realize(context.Context, *plugin.Installation, plugin.Release) (Realization, error)
 	Server(context.Context, *plugin.Installation, plugin.Release, mcpserver.ServerName, Reach) (mcpserver.Server, bool, error)
+	Connection(context.Context, *plugin.Installation, plugin.Release, mcpserver.ServerName) (mcpapp.Launch, bool, error)
 }
 
 // Reach is how far a single-server read realizes an installation's release.
@@ -35,9 +36,6 @@ const (
 	// Dispatchable requires verified release bytes and a realizable backend for
 	// the target server: the authority an admitted tool call rechecks.
 	Dispatchable
-	// Launchable also revalidates the bytes against tampering and prepares the
-	// backend, because a new connection is about to execute them.
-	Launchable
 )
 
 type userServers interface {
@@ -87,7 +85,7 @@ func (r *Registry) Catalog(ctx context.Context) ([]mcpapp.Source, error) {
 	return result, nil
 }
 
-// resolve is the only origin dispatch for one server. A user server is its
+// resolve reads one source without acquiring launch resources. A user server is its
 // stored descriptor; an installation server is realized from the selected
 // release only as far as reach requires, and only for the requested server.
 func (r *Registry) resolve(ctx context.Context, id mcpserver.ID, reach Reach) (mcpserver.Server, bool, error) {
@@ -119,16 +117,32 @@ func (r *Registry) Dispatchable(ctx context.Context, id mcpserver.ID) (mcpserver
 
 // Connection realizes the configuration a new connection launches with and
 // refuses an unknown or disabled server.
-func (r *Registry) Connection(ctx context.Context, id mcpserver.ID) (mcpserver.Server, error) {
-	server, found, err := r.resolve(ctx, id, Launchable)
+func (r *Registry) Connection(ctx context.Context, id mcpserver.ID) (_ mcpapp.Launch, err error) {
+	var connection mcpapp.Launch
+	var found bool
+	if installationID, installed := id.Origin().Installation(); installed {
+		snapshot, readErr := r.installations.Get(ctx, installationID)
+		if errors.Is(readErr, plugin.ErrNotFound) {
+			return mcpapp.Launch{}, mcpapp.ErrUnknownServer
+		}
+		if readErr != nil {
+			return mcpapp.Launch{}, fmt.Errorf("plugins: read installation %s: %w", installationID, readErr)
+		}
+		connection, found, err = r.packages.Connection(ctx, snapshot.Installation, snapshot.Selected, id.Name())
+	} else {
+		connection.Server, found, err = r.user.Get(ctx, id.Name())
+	}
+	if err == nil && !found {
+		err = mcpapp.ErrUnknownServer
+	}
+	if err == nil && !connection.Server.Enabled {
+		err = mcpapp.ErrServerDisabled
+	}
 	if err != nil {
-		return mcpserver.Server{}, err
+		if connection.Retire != nil {
+			err = errors.Join(err, connection.Retire.Close())
+		}
+		return mcpapp.Launch{}, err
 	}
-	if !found {
-		return mcpserver.Server{}, mcpapp.ErrUnknownServer
-	}
-	if !server.Enabled {
-		return mcpserver.Server{}, mcpapp.ErrServerDisabled
-	}
-	return server, nil
+	return connection, nil
 }

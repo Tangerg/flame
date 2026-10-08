@@ -148,10 +148,11 @@ func (c *Connections) ownSessionLocked(session *sdkmcp.ClientSession, cleanup se
 // achieve; a nonzero status after its input closed or it was signaled is how
 // many servers stop. Only a session that could not be stopped, or a process
 // group cleanup that failed, is a retirement failure.
-func retireSession(session *sdkmcp.ClientSession, cleanup sessionCleanup) error {
-	closeErr := session.Close()
-	if _, exited := errors.AsType[*exec.ExitError](closeErr); exited {
-		closeErr = nil
+func retireSession(session *sdkmcp.ClientSession, cleanup sessionCleanup) (err error) {
+	defer func() { err = errors.Join(err, cleanup()) }()
+	err = session.Close()
+	if _, exited := errors.AsType[*exec.ExitError](err); exited {
+		err = nil
 	}
-	return errors.Join(closeErr, cleanup())
+	return err
 }

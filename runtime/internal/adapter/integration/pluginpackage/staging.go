@@ -87,6 +87,10 @@ func (s *staging) extractDirectory(ctx context.Context, source string) (err erro
 		return fmt.Errorf("pluginpackage: open package source: %w", err)
 	}
 	defer func() { err = errors.Join(err, input.Close()) }()
+	return s.copyDirectory(ctx, input)
+}
+
+func (s *staging) copyDirectory(ctx context.Context, input *os.Root) error {
 	return fs.WalkDir(input.FS(), ".", func(name string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr

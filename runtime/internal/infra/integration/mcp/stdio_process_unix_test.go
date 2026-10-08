@@ -45,7 +45,7 @@ func TestStdioSessionCleanupKillsDescendants(t *testing.T) {
 	pidFile := t.TempDir() + "/descendant.pid"
 	client := sdkmcp.NewClient(&sdkmcp.Implementation{Name: "process-owner-test", Version: "v1"}, nil)
 	timeout := 2 * time.Second
-	session, cleanup, err := dial(t.Context(), t.Context(), client, ServerConfig{
+	session, cleanup, err := dial(t.Context(), t.Context(), client, &launch{config: ServerConfig{
 		Source:    mcpserver.UserSource(),
 		Name:      testsupport.ServerName("process-owner-test"),
 		Transport: TransportStdio,
@@ -55,7 +55,7 @@ func TestStdioSessionCleanupKillsDescendants(t *testing.T) {
 			stdioDescendantPID:  pidFile,
 		}),
 		HandshakeTimeout: &timeout,
-	})
+	}})
 	if err != nil {
 		t.Fatalf("dial helper server: %v", err)
 	}
@@ -164,14 +164,14 @@ func withStdioProcessEnv(base []string, replacements map[string]string) []string
 func TestStdioSessionThatExitsNonzeroRetiresCleanly(t *testing.T) {
 	client := sdkmcp.NewClient(&sdkmcp.Implementation{Name: "exit-status-test", Version: "v1"}, nil)
 	timeout := 2 * time.Second
-	session, cleanup, err := dial(t.Context(), t.Context(), client, ServerConfig{
+	session, cleanup, err := dial(t.Context(), t.Context(), client, &launch{config: ServerConfig{
 		Source:           mcpserver.UserSource(),
 		Name:             testsupport.ServerName("exit-status-test"),
 		Transport:        TransportStdio,
 		Command:          os.Args[0],
 		Env:              withStdioProcessEnv(os.Environ(), map[string]string{stdioProcessRoleEnv: "nonzero-exit"}),
 		HandshakeTimeout: &timeout,
-	})
+	}})
 	if err != nil {
 		t.Fatalf("dial helper server: %v", err)
 	}
@@ -180,14 +180,14 @@ func TestStdioSessionThatExitsNonzeroRetiresCleanly(t *testing.T) {
 	}
 
 	// The premise: the transport does report that exit status as an error.
-	raw, rawCleanup, err := dial(t.Context(), t.Context(), client, ServerConfig{
+	raw, rawCleanup, err := dial(t.Context(), t.Context(), client, &launch{config: ServerConfig{
 		Source:           mcpserver.UserSource(),
 		Name:             testsupport.ServerName("exit-status-test"),
 		Transport:        TransportStdio,
 		Command:          os.Args[0],
 		Env:              withStdioProcessEnv(os.Environ(), map[string]string{stdioProcessRoleEnv: "nonzero-exit"}),
 		HandshakeTimeout: &timeout,
-	})
+	}})
 	if err != nil {
 		t.Fatalf("dial helper server: %v", err)
 	}

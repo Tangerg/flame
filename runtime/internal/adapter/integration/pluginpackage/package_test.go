@@ -717,7 +717,7 @@ func TestReleaseKeepsItsAdmissionInterpretation(t *testing.T) {
 				return
 			}
 			if operation == "cold connection" {
-				_, found, err := cold.Server(t.Context(), installation, release, mustServerName(t, "backend"), plugins.Launchable)
+				_, found, err := cold.Connection(t.Context(), installation, release, mustServerName(t, "backend"))
 				if found || err != nil {
 					t.Fatalf("connection introduced an unadmitted backend: %v, %v", found, err)
 				}
@@ -895,7 +895,7 @@ func TestBackendPreparationDoesNotWriteThroughAReplacedDataNamespace(t *testing.
 				if err := r.Prepare(t.Context(), installation, release); err == nil {
 					t.Fatal("preparation accepted a replaced data namespace")
 				}
-			} else if _, _, err := r.Server(t.Context(), installation, release, mustServerName(t, "backend"), plugins.Launchable); err == nil {
+			} else if _, _, err := r.Connection(t.Context(), installation, release, mustServerName(t, "backend")); err == nil {
 				t.Fatal("connection accepted a replaced data namespace")
 			}
 			if entries, err := os.ReadDir(outside); err != nil || len(entries) != 0 {
