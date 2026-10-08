@@ -875,7 +875,7 @@ func TestProductionBinaryOpensAnIsolatedRuntimeAndReleasesItsLease(t *testing.T)
 	environment := terminalTestEnvironment(t, map[string]string{
 		"FLAME_HOME":     flameHome,
 		"FLAME_PROVIDER": "anthropic", "ANTHROPIC_API_KEY": "test-key",
-		"FLAME_MCP_SERVERS": "", "FLAME_A2A_AGENTS": "", "FLAME_A2A_RPC_ORIGINS": "",
+		"FLAME_A2A_AGENTS": "", "FLAME_A2A_RPC_ORIGINS": "",
 	})
 
 	profileOutput := runTestBinary(t, binary, environment, "runtime", "info", "--json")

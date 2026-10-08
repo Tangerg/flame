@@ -353,7 +353,7 @@ func TestConnectValidatesWithoutContactingOrOwningRuntime(t *testing.T) {
 
 func remoteRuntime(t *testing.T) (*Runtime, *httptest.Server, *protocol.DiscoverResponse) {
 	t.Helper()
-	for _, name := range []string{"FLAME_APIKEY", "FLAME_MODEL", "FLAME_BASEURL", "FLAME_MCP_SERVERS", "FLAME_A2A_AGENTS", "FLAME_A2A_RPC_ORIGINS"} {
+	for _, name := range []string{"FLAME_APIKEY", "FLAME_MODEL", "FLAME_BASEURL", "FLAME_A2A_AGENTS", "FLAME_A2A_RPC_ORIGINS"} {
 		t.Setenv(name, "")
 	}
 	t.Setenv("FLAME_PROVIDER", "anthropic")

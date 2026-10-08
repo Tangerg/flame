@@ -341,6 +341,15 @@ claimed by a user record or omitted from an installation record. Model-visible t
 alone; equal projections from different origins are excluded symmetrically.
 Their connection configuration is changed through installation operations. User MCP CRUD
 refuses these sources. Invalid server declarations are diagnosed independently.
+
+User MCP server membership and configuration belong exclusively to the durable resource
+commands: `mcp.servers.create`, `mcp.servers.update` and `mcp.servers.delete` (or the
+corresponding Go binding methods). Startup only restores these resources and realizes
+enabled connections. `FLAME_MCP_SERVERS` and `FLAME_MCP_<NAME>_TOKEN` no longer configure
+or seed servers. Configure new servers and credentials through the existing CLI or
+Desktop MCP controls, or the public Runtime binding. Previously persisted servers remain
+ordinary user resources; deleting one stays effective across restart.
+
 Typed declarations reject explicit `null`, including nested arguments, environment values
 and theme colors, instead of converting it to an implicit default. Invalid contribution
 lists receive their own diagnostic and do not withdraw independent contributions.

@@ -65,26 +65,6 @@ type Online struct {
 	HTTPAllowedHosts []string
 }
 
-type MCPTransport string
-
-const (
-	MCPTransportStdio          MCPTransport = "stdio"
-	MCPTransportStreamableHTTP MCPTransport = "streamableHttp"
-)
-
-func (m MCPTransport) Valid() bool {
-	return m == MCPTransportStdio || m == MCPTransportStreamableHTTP
-}
-
-type MCPServer struct {
-	Name          string
-	Transport     MCPTransport
-	Endpoint      string
-	Command       string
-	Args          []string
-	Authorization string
-}
-
 type LSPServer struct {
 	Name        string
 	Command     string
@@ -107,9 +87,8 @@ type Settings struct {
 	BaseURL      string
 	UtilityModel string
 
-	Online     Online
-	MCPServers []MCPServer
-	A2AAgents  []A2AAgent
+	Online    Online
+	A2AAgents []A2AAgent
 
 	// A non-empty table replaces the built-in language-server defaults.
 	LSPServers []LSPServer

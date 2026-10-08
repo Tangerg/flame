@@ -10,7 +10,6 @@ import (
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
 	"github.com/Tangerg/flame/runtime/internal/config"
-	mcpserversvc "github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/llm"
 )
 
@@ -50,50 +49,4 @@ func ProviderRegistry(registry models.ProviderRegistry, settings config.Settings
 		environmentKeys[settings.Provider] = apiKey
 	}
 	return modeladapter.WithEnvironmentKeys(registry, environmentKeys)
-}
-
-// MCPServers projects config-file MCP entries into the runtime registry model.
-// It rejects an unknown transport instead of preserving an invalid string for a
-// later dial attempt; configuration is an input boundary, not a best-effort
-// transport pass-through.
-func MCPServers(configuredServers []config.MCPServer) ([]mcpserversvc.Server, error) {
-	if len(configuredServers) == 0 {
-		return nil, nil
-	}
-	servers := make([]mcpserversvc.Server, len(configuredServers))
-	for index, server := range configuredServers {
-		name, err := mcpserversvc.ParseServerName(server.Name)
-		if err != nil {
-			return nil, fmt.Errorf("config: MCP server %q: %w", server.Name, err)
-		}
-		transport, err := parseMCPTransport(server.Transport)
-		if err != nil {
-			return nil, fmt.Errorf("config: MCP server %q: %w", server.Name, err)
-		}
-		candidate := mcpserversvc.Server{
-			Source:        mcpserversvc.UserSource(),
-			Name:          name,
-			Transport:     transport,
-			Enabled:       true,
-			URL:           server.Endpoint,
-			Authorization: server.Authorization,
-			Command:       server.Command,
-			Args:          append([]string(nil), server.Args...),
-		}
-		if err := candidate.Validate(); err != nil {
-			return nil, fmt.Errorf("config: MCP server %q: %w", server.Name, err)
-		}
-		servers[index] = candidate
-	}
-	return servers, nil
-}
-
-func parseMCPTransport(transport config.MCPTransport) (mcpserversvc.Transport, error) {
-	if !transport.Valid() {
-		return "", fmt.Errorf("unknown transport %q", transport)
-	}
-	if transport == config.MCPTransportStreamableHTTP {
-		return mcpserversvc.TransportStreamableHTTP, nil
-	}
-	return mcpserversvc.TransportStdio, nil
 }

@@ -69,11 +69,6 @@ func Load(configDirectories []string) (Settings, error) {
 		apiKey = EnvironmentAPIKey(environmentKey)
 	}
 
-	servers, err := parseMCPServers(mcpServersEnvironment.Value())
-	if err != nil {
-		return Settings{}, fmt.Errorf("config: %s: %w", mcpServersEnvironment, err)
-	}
-
 	a2aAgents, err := parseA2AAgents(a2aAgentsEnvironment.Value())
 	if err != nil {
 		return Settings{}, fmt.Errorf("config: %s: %w", a2aAgentsEnvironment, err)
@@ -94,7 +89,6 @@ func Load(configDirectories []string) (Settings, error) {
 		BaseURL:      source.BaseURL,
 		UtilityModel: source.UtilityModel,
 		Online:       loadOnline(source.Online),
-		MCPServers:   servers,
 		A2AAgents:    a2aAgents,
 		LSPServers:   source.LSP.Servers,
 

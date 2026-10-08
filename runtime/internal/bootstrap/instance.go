@@ -93,13 +93,6 @@ func OpenInstance(ctx context.Context, cfg InstanceConfig) (_ *Instance, _ confi
 	if err = SeedUtilityRole(ctx, stores.UtilityRole, settings); err != nil {
 		return nil, config.Settings{}, err
 	}
-	mcpServers, err := MCPServers(settings.MCPServers)
-	if err != nil {
-		return nil, config.Settings{}, err
-	}
-	if err = SeedMCPServers(ctx, stores.MCPServers, mcpServers); err != nil {
-		return nil, config.Settings{}, err
-	}
 	if err = setup.Release(); err != nil {
 		return nil, config.Settings{}, err
 	}

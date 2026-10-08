@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/config"
-	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/provider"
 )
 
@@ -28,47 +27,6 @@ func TestResolveProviderConfigAllowsCredentialConfigurationAfterStartup(t *testi
 	}
 	if settings.APIKey.Present() || settings.Provider != "openai" || settings.Model != "gpt-5.6-sol" {
 		t.Fatalf("required-key provider settings = %+v", settings)
-	}
-}
-
-func TestMCPServersProjectsConfig(t *testing.T) {
-	got, err := MCPServers([]config.MCPServer{{
-		Name:          "fs",
-		Transport:     config.MCPTransportStreamableHTTP,
-		Endpoint:      "https://mcp.example",
-		Authorization: "Bearer token",
-	}})
-	if err != nil {
-		t.Fatalf("MCPServers: %v", err)
-	}
-	if len(got) != 1 {
-		t.Fatalf("len = %d, want 1", len(got))
-	}
-	want := mcpserver.Server{
-		Source:        mcpserver.UserSource(),
-		Name:          testsupport.ServerName("fs"),
-		Transport:     mcpserver.TransportStreamableHTTP,
-		Enabled:       true,
-		URL:           "https://mcp.example",
-		Authorization: "Bearer token",
-	}
-	if got[0].Name != want.Name ||
-		got[0].Transport != want.Transport ||
-		!got[0].Enabled ||
-		got[0].URL != want.URL ||
-		got[0].Authorization != want.Authorization ||
-		got[0].Command != want.Command ||
-		len(got[0].Args) != 0 {
-		t.Fatalf("server = %+v, want %+v", got[0], want)
-	}
-}
-
-func TestMCPServersRejectsInvalidTransport(t *testing.T) {
-	_, err := MCPServers([]config.MCPServer{{
-		Name: "unknown", Transport: "websocket", Endpoint: "wss://mcp.example",
-	}})
-	if err == nil {
-		t.Fatal("MCPServers error = nil, want invalid transport")
 	}
 }
 

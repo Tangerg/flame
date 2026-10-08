@@ -743,7 +743,6 @@ describe("Go Runtime ↔ HTTP ↔ TypeScript SDK", () => {
     OPENAI_API_KEY: "",
     FLAME_SERVER_LISTEN: `127.0.0.1:${runtimePort}`,
     FLAME_SERVER_NOLOCALTOKEN: "true",
-    FLAME_MCP_SERVERS: "",
     FLAME_A2A_AGENTS: "",
     OTEL_SDK_DISABLED: "true",
   });

@@ -12,7 +12,7 @@ import (
 func TestDirectToolBindingPreservesScopeInputRejection(t *testing.T) {
 	for _, name := range []string{
 		"FLAME_MODEL", "FLAME_APIKEY", "FLAME_BASEURL", "ANTHROPIC_API_KEY",
-		"FLAME_MCP_SERVERS", "FLAME_A2A_AGENTS", "FLAME_A2A_RPC_ORIGINS",
+		"FLAME_A2A_AGENTS", "FLAME_A2A_RPC_ORIGINS",
 	} {
 		t.Setenv(name, "")
 	}

@@ -19,7 +19,7 @@ import (
 func TestFreshRuntimeSubscriptionObservesFirstSkill(t *testing.T) {
 	for _, name := range []string{
 		"FLAME_PROVIDER", "FLAME_MODEL", "FLAME_APIKEY", "FLAME_BASEURL",
-		"FLAME_MCP_SERVERS", "FLAME_A2A_AGENTS", "FLAME_A2A_RPC_ORIGINS",
+		"FLAME_A2A_AGENTS", "FLAME_A2A_RPC_ORIGINS",
 	} {
 		t.Setenv(name, "")
 	}
@@ -66,7 +66,7 @@ func TestFreshRuntimeSubscriptionObservesFirstSkill(t *testing.T) {
 func TestRuntimePreservesCallerCancellation(t *testing.T) {
 	for _, name := range []string{
 		"FLAME_PROVIDER", "FLAME_MODEL", "FLAME_APIKEY", "FLAME_BASEURL", "ANTHROPIC_API_KEY",
-		"FLAME_MCP_SERVERS", "FLAME_A2A_AGENTS", "FLAME_A2A_RPC_ORIGINS",
+		"FLAME_A2A_AGENTS", "FLAME_A2A_RPC_ORIGINS",
 	} {
 		t.Setenv(name, "")
 	}
@@ -111,7 +111,7 @@ func TestRuntimeModelDiscoveryDistinguishesMissingConfigurationFromEmptyEndpoint
 	for _, name := range []string{
 		"FLAME_MODEL", "FLAME_APIKEY", "FLAME_BASEURL", "ANTHROPIC_API_KEY",
 		"OPENAI_COMPATIBLE_API_KEY", "ANTHROPIC_COMPATIBLE_API_KEY", "AZURE_OPENAI_API_KEY",
-		"FLAME_MCP_SERVERS", "FLAME_A2A_AGENTS", "FLAME_A2A_RPC_ORIGINS",
+		"FLAME_A2A_AGENTS", "FLAME_A2A_RPC_ORIGINS",
 	} {
 		t.Setenv(name, "")
 	}
@@ -190,7 +190,6 @@ func TestRuntimeRestartDoesNotUndoAStoredProviderClear(t *testing.T) {
 	t.Setenv("FLAME_APIKEY", "")
 	t.Setenv("FLAME_BASEURL", "")
 	t.Setenv("ANTHROPIC_API_KEY", "")
-	t.Setenv("FLAME_MCP_SERVERS", "")
 	t.Setenv("FLAME_A2A_AGENTS", "")
 	t.Setenv("FLAME_A2A_RPC_ORIGINS", "")
 
@@ -254,7 +253,6 @@ func TestRuntimeCanConfigureRequiredKeyProviderAfterStartup(t *testing.T) {
 	t.Setenv("FLAME_APIKEY", "")
 	t.Setenv("FLAME_BASEURL", "")
 	t.Setenv("ANTHROPIC_API_KEY", "")
-	t.Setenv("FLAME_MCP_SERVERS", "")
 	t.Setenv("FLAME_A2A_AGENTS", "")
 	t.Setenv("FLAME_A2A_RPC_ORIGINS", "")
 
@@ -369,7 +367,6 @@ func TestResolveConfigUsesExplicitStableDefaults(t *testing.T) {
 func TestRuntimeOpenCallIdempotencyStreamAndClose(t *testing.T) {
 	t.Setenv("FLAME_PROVIDER", "anthropic")
 	t.Setenv("ANTHROPIC_API_KEY", "test-key")
-	t.Setenv("FLAME_MCP_SERVERS", "")
 	t.Setenv("FLAME_A2A_AGENTS", "")
 	t.Setenv("FLAME_A2A_RPC_ORIGINS", "")
 

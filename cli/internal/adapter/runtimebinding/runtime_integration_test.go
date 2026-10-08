@@ -423,7 +423,6 @@ func configureIntegrationRuntime(t *testing.T) {
 	t.Setenv("FLAME_PROVIDER", "anthropic")
 	t.Setenv("ANTHROPIC_API_KEY", "test-key")
 	t.Setenv("DEEPSEEK_API_KEY", "integration-env-key")
-	t.Setenv("FLAME_MCP_SERVERS", "")
 	t.Setenv("FLAME_A2A_AGENTS", "")
 	t.Setenv("FLAME_A2A_RPC_ORIGINS", "")
 }

@@ -2752,7 +2752,7 @@ func TestSessionCenterPaginatesAndManagesSelectedSession(t *testing.T) {
 	host.Type(target.Title)
 	host.Shows(t, "0/20")
 	host.Send(input.Key{Code: input.Character, Rune: 'l', Mods: input.Alt})
-	host.Shows(t, target.Title)
+	host.Shows(t, "Recent · "+target.Title)
 	host.Send(input.Key{Code: input.Character, Rune: 'f', Mods: input.Alt})
 	host.Shows(t, "Favorites · "+target.Title)
 
