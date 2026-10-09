@@ -823,6 +823,12 @@ timezone. An expression with no reachable occurrence is invalid.
 
 Abrupt process-exit tests exercise claim, business commit, and receipt commit separately against a temporary SQLite database. A committed receipt replays the same identity without executing again. A claim without a receipt remains unresolved, including when the business effect committed: restart and elapsed time do not prove success or failure. Keep the original key and store namespace, inspect authoritative session state, and do not issue a fresh command to bypass the reservation. There is no general automatic reconciliation across command receipts and arbitrary business or external effects.
 
+While the Endpoint retains a known execution result, a retry or graceful shutdown
+can persist only that exact result into its original reservation. An acknowledgement
+lost after the write is confirmed by the same completion. A missing reservation or
+a conflicting stored payload is an internal failure; the Endpoint retains its evidence
+and refuses shutdown settlement instead of recreating a claim or adopting another outcome.
+
 For an existing Session, omitting both provider and model uses that Session's stored selection. An explicit pair overrides it for the Run. Global defaults do not silently replace an existing Session's selection.
 
 Process configuration decodes YAML, defaults, and environment overrides into one

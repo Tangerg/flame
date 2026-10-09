@@ -17,6 +17,9 @@ var ErrKeyConflict = errors.New("idempotency: key reused with different request"
 // ErrClaimLost reports that completion no longer owns the reserved key.
 var ErrClaimLost = errors.New("idempotency: claim is no longer available")
 
+// ErrOutcomeConflict reports a stored result that differs from its execution's result.
+var ErrOutcomeConflict = errors.New("idempotency: completed outcome differs from the execution result")
+
 // Retention is the default replay window for a completed idempotency result.
 // An unresolved reservation does not expire: elapsed time cannot prove whether
 // its business mutation committed before a process crash.
@@ -29,12 +32,14 @@ type Record struct {
 	Payload     []byte
 }
 
-// Store atomically claims logical operations and persists their first result.
+// Store atomically claims logical operations and persists their execution result.
 type Store interface {
 	// Claim atomically reserves key for fingerprint. claimed=false returns the
 	// existing claim: an empty Payload means its first execution is still in
 	// progress; a non-empty Payload is the completed opaque result to replay.
 	Claim(ctx context.Context, key, fingerprint string) (record Record, claimed bool, err error)
-	// Complete stores the first result for a previously acquired claim.
+	// Complete stores the execution's result for a previously acquired claim.
+	// Repeating that exact completion confirms it; a different payload is an
+	// invariant violation, and a lost claim must never be recreated here.
 	Complete(ctx context.Context, record Record) error
 }

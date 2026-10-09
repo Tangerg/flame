@@ -78,16 +78,16 @@ func (r *replayStore) invoke(
 		if pending.Fingerprint != fingerprint {
 			return failed(NewFailure(protocol.ErrIdempotencyConflict, "idempotency key is already bound to another operation"))
 		}
-		payload, settlePendingCompletionErr := r.settlePendingCompletion(ctx, pending)
-		if settlePendingCompletionErr != nil {
+		completionErr := r.completeDetached(ctx, pending)
+		if completionErr != nil {
 			// The caller learns only that the receipt is unsettled; the reason it
 			// could not be settled belongs to whoever has to fix the store.
 			slog.ErrorContext(ctx, "delivery: settle idempotency receipt",
-				"method", method.Meta.Name, "error", settlePendingCompletionErr)
-			return failed(r.persistenceFailure(settlePendingCompletionErr))
+				"method", method.Meta.Name, "error", completionErr)
+			return failed(r.persistenceFailure(completionErr))
 		}
 		r.forgetPendingCompletion(key, fingerprint)
-		return r.replay(ctx, method, payload, target)
+		return r.replay(ctx, method, pending.Payload, target)
 	}
 
 	record, claimed, err := r.store.Claim(ctx, key, fingerprint)
@@ -115,14 +115,13 @@ func (r *replayStore) invoke(
 			return failed(NewFailure(protocol.ErrIdempotencyConflict, "idempotency key is already bound to another operation"))
 		}
 		r.rememberPendingCompletion(record)
-		// The command's effect is committed and only its receipt failed, so this
-		// record is the one thing standing between a retry of the same key and a
-		// second execution. It survives only until the shutdown flush, and a span
-		// carries the reason only where the host configured tracing.
-		slog.ErrorContext(ctx, "delivery: idempotency receipt is unpersisted after a committed operation",
+		// The execution outcome is known even though its receipt is unconfirmed.
+		// Retain it for completion without repeating the command or choosing a
+		// different outcome, including while shutdown settlement is refused.
+		slog.ErrorContext(ctx, "delivery: idempotency receipt is unconfirmed after a completed operation",
 			"method", method.Meta.Name, "error", err)
 		trace.SpanFromContext(ctx).RecordError(fmt.Errorf("idempotency: store replay: %w", err))
-		return failed(NewFailure(protocol.ErrIdempotencyInProgress, "operation outcome persistence is pending"))
+		return failed(r.persistenceFailure(err))
 	}
 	return result
 }
@@ -247,57 +246,6 @@ func (r *replayStore) completeWithin(ctx context.Context, record idempotency.Rec
 	return r.store.Complete(writeContext, record)
 }
 
-// settlePendingCompletion persists a known business outcome without ever
-// executing the command again. A claim can disappear between the business
-// commit and receipt completion (expiry, external cleanup, or a recovered
-// store); in that case reacquire the same fingerprint and attach the outcome to
-// the fresh claim. If another owner already completed it, its durable first
-// result wins and is replayed.
-func (r *replayStore) settlePendingCompletion(
-	ctx context.Context,
-	pending idempotency.Record,
-) ([]byte, error) {
-	return r.settlePendingCompletionWithin(context.WithoutCancel(ctx), pending)
-}
-
-func (r *replayStore) settlePendingCompletionWithin(
-	ctx context.Context,
-	pending idempotency.Record,
-) ([]byte, error) {
-	if err := r.completeWithin(ctx, pending); err != nil && !errors.Is(err, idempotency.ErrClaimLost) {
-		return nil, err
-	}
-
-	record, claimed, err := r.claimWithin(ctx, pending.Key, pending.Fingerprint)
-	if err != nil {
-		return nil, err
-	}
-	if !claimed && len(record.Payload) != 0 {
-		return record.Payload, nil
-	}
-	if completeWithinErr := r.completeWithin(ctx, pending); completeWithinErr != nil {
-		return nil, completeWithinErr
-	}
-	record, claimed, err = r.claimWithin(ctx, pending.Key, pending.Fingerprint)
-	if err != nil {
-		return nil, err
-	}
-	if claimed || len(record.Payload) == 0 {
-		return nil, idempotency.ErrClaimLost
-	}
-	return record.Payload, nil
-}
-
-func (r *replayStore) claimWithin(
-	ctx context.Context,
-	key string,
-	fingerprint string,
-) (idempotency.Record, bool, error) {
-	writeContext, cancel := context.WithTimeout(ctx, idempotencyStoreWriteTimeout)
-	defer cancel()
-	return r.store.Claim(writeContext, key, fingerprint)
-}
-
 // flushPending persists every business outcome already known to this Endpoint.
 // It runs only after admission is closed and all accepted invocations have
 // returned, so no new pending record can appear while the process owner is
@@ -316,7 +264,7 @@ func (r *replayStore) flushPending(ctx context.Context) error {
 		}
 		pending, ok := r.pendingCompletion(key)
 		if ok {
-			_, err := r.settlePendingCompletionWithin(ctx, pending)
+			err = r.completeWithin(ctx, pending)
 			if err == nil {
 				r.forgetPendingCompletion(key, pending.Fingerprint)
 			} else {
@@ -331,6 +279,9 @@ func (r *replayStore) flushPending(ctx context.Context) error {
 func (r *replayStore) persistenceFailure(err error) *Failure {
 	if errors.Is(err, idempotency.ErrKeyConflict) {
 		return NewFailure(protocol.ErrIdempotencyConflict, "idempotency key is already bound to another operation")
+	}
+	if errors.Is(err, idempotency.ErrClaimLost) || errors.Is(err, idempotency.ErrOutcomeConflict) {
+		return ProjectError(fmt.Errorf("idempotency: persist execution outcome: %w", err))
 	}
 	return NewFailure(protocol.ErrIdempotencyInProgress, "operation outcome persistence is still pending")
 }
@@ -428,6 +379,9 @@ func (m *memoryIdempotencyStore) Complete(_ context.Context, record idempotency.
 		if !time.Now().Before(stored.expiresAt) {
 			delete(m.records, record.Key)
 			return idempotency.ErrClaimLost
+		}
+		if !bytes.Equal(stored.Payload, record.Payload) {
+			return idempotency.ErrOutcomeConflict
 		}
 		return nil
 	}

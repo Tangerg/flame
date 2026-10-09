@@ -44,6 +44,14 @@ func TestIdempotencyStoreReplayConflictAndExpiry(t *testing.T) {
 	if completeErr := store.Complete(ctx, first); completeErr != nil {
 		t.Fatalf("complete aged pending record: %v", completeErr)
 	}
+	if err := store.Complete(ctx, first); err != nil {
+		t.Fatalf("confirm the same completion: %v", err)
+	}
+	rewritten := first
+	rewritten.Payload = []byte(`{"result":2}`)
+	if err := store.Complete(ctx, rewritten); err == nil {
+		t.Fatal("accepted a different outcome for the completed request")
+	}
 	got, claimed, err = store.Claim(ctx, first.Key, first.Fingerprint)
 	if err != nil || claimed || string(got.Payload) != string(first.Payload) {
 		t.Fatalf("completed claim: record=%+v claimed=%v err=%v", got, claimed, err)

@@ -6,7 +6,6 @@ import (
 	"encoding/json/jsontext"
 	json "encoding/json/v2"
 	"errors"
-	"fmt"
 	"log/slog"
 	"maps"
 	"strings"
@@ -46,9 +45,10 @@ type flakyCompletionStore struct {
 type claimLostOnceStore struct {
 	backing *memoryIdempotencyStore
 	once    sync.Once
+	claims  atomic.Int32
 }
 
-type competingCompletionStore struct {
+type unacknowledgedCompletionStore struct {
 	backing        *memoryIdempotencyStore
 	durablePayload []byte
 	durableErr     error
@@ -68,6 +68,7 @@ func (c *claimLostOnceStore) Claim(
 	key string,
 	fingerprint string,
 ) (idempotency.Record, bool, error) {
+	c.claims.Add(1)
 	return c.backing.Claim(ctx, key, fingerprint)
 }
 
@@ -85,7 +86,7 @@ func (c *claimLostOnceStore) Complete(ctx context.Context, record idempotency.Re
 	return c.backing.Complete(ctx, record)
 }
 
-func (c *competingCompletionStore) Claim(
+func (c *unacknowledgedCompletionStore) Claim(
 	ctx context.Context,
 	key string,
 	fingerprint string,
@@ -93,12 +94,14 @@ func (c *competingCompletionStore) Claim(
 	return c.backing.Claim(ctx, key, fingerprint)
 }
 
-func (c *competingCompletionStore) Complete(ctx context.Context, record idempotency.Record) error {
+func (c *unacknowledgedCompletionStore) Complete(ctx context.Context, record idempotency.Record) error {
 	intercepted := false
 	c.once.Do(func() {
 		intercepted = true
 		durable := record
-		durable.Payload = c.durablePayload
+		if c.durablePayload != nil {
+			durable.Payload = c.durablePayload
+		}
 		c.durableErr = c.backing.Complete(ctx, durable)
 	})
 	if intercepted {
@@ -244,6 +247,29 @@ func TestMemoryIdempotencyStorePrunesExpiredResultsBeforeNewClaim(t *testing.T) 
 	}
 }
 
+func TestMemoryIdempotencyStoreRejectsCompetingOutcome(t *testing.T) {
+	store := newMemoryIdempotencyStore()
+	record, claimed, err := store.Claim(t.Context(), "request", "fingerprint")
+	if err != nil || !claimed {
+		t.Fatalf("claim = (%v, %v)", claimed, err)
+	}
+	record.Payload = []byte(`{"value":1}`)
+	if err := store.Complete(t.Context(), record); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Complete(t.Context(), record); err != nil {
+		t.Fatalf("confirm the same completion: %v", err)
+	}
+	record.Payload = []byte(`{"value":2}`)
+	if err := store.Complete(t.Context(), record); err == nil {
+		t.Fatal("accepted a different outcome for the completed request")
+	}
+	stored, claimed, err := store.Claim(t.Context(), record.Key, record.Fingerprint)
+	if err != nil || claimed || string(stored.Payload) != `{"value":1}` {
+		t.Fatalf("retained outcome = (%q, %v, %v)", stored.Payload, claimed, err)
+	}
+}
+
 func TestCompletionFailureRetriesWithoutRepeatingCommand(t *testing.T) {
 	service := &countingCancelService{}
 	store := &flakyCompletionStore{Store: newMemoryIdempotencyStore()}
@@ -367,80 +393,87 @@ func TestAwaitShutdownFlushHonorsOwnerCancellation(t *testing.T) {
 	}
 }
 
-func TestLostCompletionClaimIsReacquiredWithoutRepeatingCommand(t *testing.T) {
+func TestLostCompletionClaimCannotBeRecreated(t *testing.T) {
 	service := &countingCancelService{}
 	store := &claimLostOnceStore{backing: newMemoryIdempotencyStore()}
 	endpoint := mustNewEndpoint(t, service, EndpointConfig{IdempotencyStore: store})
-	options := Options{IdempotencyKey: "recover-lost-claim"}
+	options := Options{IdempotencyKey: "lost-claim"}
 	request := protocol.CancelRunRequest{RunID: "run_1"}
 
-	_, err := endpoint.Call[protocol.CancelRunRequest, *protocol.CancelRunResponse](t.Context(), "runs.cancel", request, options)
-	if !errors.Is(err, protocol.ErrIdempotencyInProgress) {
-		t.Fatalf("first call error = %v, want idempotency_in_progress", err)
-	}
-	const callers = 16
-	errCh := make(chan error, callers)
-	var callersDone sync.WaitGroup
-	for range callers {
-		callersDone.Add(1)
-		go func() {
-			defer callersDone.Done()
-			response, err := endpoint.Call[protocol.CancelRunRequest, *protocol.CancelRunResponse](t.Context(), "runs.cancel", request, options)
-			if err != nil {
-				errCh <- err
-				return
-			}
-			if response.Run.ID != "run_1" {
-				errCh <- fmt.Errorf("replayed run = %q, want run_1", response.Run.ID)
-			}
-		}()
-	}
-	callersDone.Wait()
-	close(errCh)
-	for err := range errCh {
-		t.Errorf("recovered replay: %v", err)
+	for range 3 {
+		_, err := endpoint.Call[protocol.CancelRunRequest, *protocol.CancelRunResponse](t.Context(), "runs.cancel", request, options)
+		if !errors.Is(err, protocol.ErrInternalError) {
+			t.Fatalf("lost claim error = %v, want internal_error", err)
+		}
 	}
 	if calls := service.calls.Load(); calls != 1 {
 		t.Fatalf("CancelRun calls = %d, want 1", calls)
+	}
+	if claims := store.claims.Load(); claims != 1 {
+		t.Fatalf("claims = %d, want only the original reservation", claims)
+	}
+	endpoint.BeginShutdown()
+	if err := endpoint.AwaitShutdown(t.Context()); !errors.Is(err, idempotency.ErrClaimLost) {
+		t.Fatalf("shutdown lost outcome = %v, want ErrClaimLost", err)
 	}
 }
 
-func TestPendingCompletionReplaysDurableFirstResult(t *testing.T) {
-	durableFinishedAt := time.Date(2026, 8, 11, 2, 0, 0, 0, time.UTC)
-	durableOutcome := protocol.RunOutcome{Type: protocol.OutcomeCanceled}
-	durablePayload, err := encodeStoredOutcome(Result{Value: &protocol.CancelRunResponse{
+func TestPendingCompletionPreservesTheExecutionOutcome(t *testing.T) {
+	otherFinishedAt := time.Date(2026, 8, 11, 2, 0, 0, 0, time.UTC)
+	otherOutcome := protocol.RunOutcome{Type: protocol.OutcomeCanceled}
+	otherPayload, err := encodeStoredOutcome(Result{Value: &protocol.CancelRunResponse{
 		Type: protocol.CancelRunRoot,
 		Run: protocol.RunRef{RunSummary: protocol.RunSummary{
 			ID: "run_1", SessionID: "ses_1", Provider: "mock", Model: "balanced",
-			Status: protocol.RunStatusFinished, Outcome: &durableOutcome,
-			CreatedAt: durableFinishedAt.Add(-time.Second), FinishedAt: durableFinishedAt,
+			Status: protocol.RunStatusFinished, Outcome: &otherOutcome,
+			CreatedAt: otherFinishedAt.Add(-time.Second), FinishedAt: otherFinishedAt,
 		}},
 	}})
 	if err != nil {
-		t.Fatalf("encode durable outcome: %v", err)
+		t.Fatalf("encode conflicting outcome: %v", err)
 	}
-	service := &countingCancelService{}
-	store := &competingCompletionStore{
-		backing:        newMemoryIdempotencyStore(),
-		durablePayload: durablePayload,
-	}
-	endpoint := mustNewEndpoint(t, service, EndpointConfig{IdempotencyStore: store})
-	options := Options{IdempotencyKey: "durable-first-result"}
-	request := protocol.CancelRunRequest{RunID: "run_1"}
-
-	_, err = endpoint.Call[protocol.CancelRunRequest, *protocol.CancelRunResponse](t.Context(), "runs.cancel", request, options)
-	if !errors.Is(err, protocol.ErrIdempotencyInProgress) {
-		t.Fatalf("first call error = %v, want idempotency_in_progress", err)
-	}
-	response, err := endpoint.Call[protocol.CancelRunRequest, *protocol.CancelRunResponse](t.Context(), "runs.cancel", request, options)
-	if err != nil {
-		t.Fatalf("replay durable first result: %v", err)
-	}
-	if !response.Run.FinishedAt.Equal(durableFinishedAt) {
-		t.Fatalf("replayed FinishedAt = %v, want durable %v", response.Run.FinishedAt, durableFinishedAt)
-	}
-	if calls := service.calls.Load(); calls != 1 {
-		t.Fatalf("CancelRun calls = %d, want 1", calls)
+	for _, test := range []struct {
+		name    string
+		payload []byte
+	}{
+		{name: "lost acknowledgement"},
+		{name: "conflicting stored result", payload: otherPayload},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			service := &countingCancelService{}
+			store := &unacknowledgedCompletionStore{backing: newMemoryIdempotencyStore(), durablePayload: test.payload}
+			endpoint := mustNewEndpoint(t, service, EndpointConfig{IdempotencyStore: store})
+			options := Options{IdempotencyKey: "execution-result"}
+			request := protocol.CancelRunRequest{RunID: "run_1"}
+			_, err := endpoint.Call[protocol.CancelRunRequest, *protocol.CancelRunResponse](t.Context(), "runs.cancel", request, options)
+			if !errors.Is(err, protocol.ErrIdempotencyInProgress) {
+				t.Fatalf("lost acknowledgement = %v, want idempotency_in_progress", err)
+			}
+			for range 2 {
+				response, err := endpoint.Call[protocol.CancelRunRequest, *protocol.CancelRunResponse](t.Context(), "runs.cancel", request, options)
+				if test.payload != nil {
+					if !errors.Is(err, protocol.ErrInternalError) {
+						t.Fatalf("conflicting outcome = (%+v, %v), want internal_error", response, err)
+					}
+					continue
+				}
+				if err != nil || !response.Run.FinishedAt.Equal(otherFinishedAt.Add(-time.Hour)) {
+					t.Fatalf("retained execution outcome = (%+v, %v)", response, err)
+				}
+			}
+			if calls := service.calls.Load(); calls != 1 {
+				t.Fatalf("CancelRun calls = %d, want 1", calls)
+			}
+			endpoint.BeginShutdown()
+			shutdownErr := endpoint.AwaitShutdown(t.Context())
+			if test.payload != nil {
+				if !errors.Is(shutdownErr, idempotency.ErrOutcomeConflict) {
+					t.Fatalf("shutdown conflict = %v, want ErrOutcomeConflict", shutdownErr)
+				}
+			} else if shutdownErr != nil {
+				t.Fatalf("shutdown: %v", shutdownErr)
+			}
+		})
 	}
 }
 
@@ -711,13 +744,7 @@ func TestKeyWaitEndsWithItsOwnRequest(t *testing.T) {
 	}
 }
 
-// TestUnpersistedReceiptAfterACommittedOperationIsReported pins the diagnostic
-// for the one failure that can cost a caller a second execution. The command's
-// effect is committed and only its receipt failed, so the in-memory record is
-// all that stops a retry of the same key from running it again — and that
-// record lives only until the shutdown flush. A tracing span carries the reason
-// only where the host installed a TracerProvider.
-func TestUnpersistedReceiptAfterACommittedOperationIsReported(t *testing.T) {
+func TestUnconfirmedReceiptAfterACompletedOperationIsReported(t *testing.T) {
 	var diagnostics bytes.Buffer
 	previous := slog.Default()
 	slog.SetDefault(slog.New(slog.NewTextHandler(&diagnostics, nil)))
@@ -740,8 +767,8 @@ func TestUnpersistedReceiptAfterACommittedOperationIsReported(t *testing.T) {
 		t.Fatalf("CancelRun calls = %d, want the command to have run once", calls)
 	}
 	logged := diagnostics.String()
-	if !strings.Contains(logged, "unpersisted") {
-		t.Fatalf("diagnostics = %q, want the unpersisted receipt reported without tracing", logged)
+	if !strings.Contains(logged, "unconfirmed") {
+		t.Fatalf("diagnostics = %q, want the unconfirmed receipt reported without tracing", logged)
 	}
 	if !strings.Contains(logged, "runs.cancel") {
 		t.Fatalf("diagnostics = %q, want the operation named", logged)

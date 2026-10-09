@@ -1,6 +1,7 @@
 package sqlite
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"errors"
@@ -120,6 +121,9 @@ func (i *IdempotencyStore) Complete(ctx context.Context, record idempotency.Reco
 	}
 	if len(payload) == 0 {
 		return idempotency.ErrClaimLost
+	}
+	if !bytes.Equal(payload, record.Payload) {
+		return idempotency.ErrOutcomeConflict
 	}
 	return nil
 }
