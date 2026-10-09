@@ -18,6 +18,7 @@ import (
 	"github.com/Tangerg/scope/core/chat"
 	"github.com/Tangerg/scope/core/jsonschema"
 	toolcontract "github.com/Tangerg/scope/core/tool"
+	scopemcp "github.com/Tangerg/scope/mcp"
 )
 
 type concurrencyPolicy interface {
@@ -27,6 +28,54 @@ type concurrencyPolicy interface {
 type toolDecorator struct{ toolcontract.Tool }
 
 func (t toolDecorator) Unwrap() toolcontract.Tool { return t.Tool }
+
+func TestSourceToolsForwardsInvocationMetadataWithoutLeakingBetweenCalls(t *testing.T) {
+	serverTransport, clientTransport := sdkmcp.NewInMemoryTransports()
+	server := sdkmcp.NewServer(&sdkmcp.Implementation{Name: "metadata-test"}, nil)
+	server.AddTool(&sdkmcp.Tool{Name: "update", InputSchema: jsontext.Value(`{"type":"object"}`)}, func(_ context.Context, request *sdkmcp.CallToolRequest) (*sdkmcp.CallToolResult, error) {
+		return &sdkmcp.CallToolResult{StructuredContent: request.Params.Meta}, nil
+	})
+	serverSession, err := server.Connect(t.Context(), serverTransport, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = serverSession.Close() })
+	client := sdkmcp.NewClient(&sdkmcp.Implementation{Name: "runtime"}, nil)
+	session, err := client.Connect(t.Context(), clientTransport, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = session.Close() })
+	tools, err := sourceTools(t.Context(), nil, ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("metadata")}, session)
+	if err != nil || len(tools) != 1 {
+		t.Fatalf("discovery = %+v, %v", tools, err)
+	}
+	binding, err := toolcontract.Bind(tools[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	invocation, err := binding.Contract().Prepare(chat.ToolCall{ID: "provider-id", Name: binding.Contract().Definition().Name, Arguments: `{}`})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{"logical-first", "logical-second", ""} {
+		meta := map[string]any{}
+		if id != "" {
+			meta["io.github.tangerg.flame/invocationId"] = id
+		}
+		output, err := binding.Call(scopemcp.WithRequestMeta(t.Context(), meta), invocation)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var received map[string]any
+		if err := json.Unmarshal(output.Details, &received); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(received["io.github.tangerg.flame/invocationId"], meta["io.github.tangerg.flame/invocationId"]) {
+			t.Fatalf("received invocation identity = %v, want %v", received, meta)
+		}
+	}
+}
 
 func TestSourceToolsDoesNotPublishPartialCatalogAfterScopeRejection(t *testing.T) {
 	session := toolCatalogSession(t,

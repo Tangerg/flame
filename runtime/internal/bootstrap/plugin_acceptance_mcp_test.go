@@ -83,7 +83,8 @@ func (r *poMCPRuntime) poMCPTools(server *protocol.MCPServerID, ready func([]pro
 			return tools.Data
 		}
 		if time.Now().After(deadline) {
-			r.t.Fatalf("MCP tools never settled: %+v", tools.Data)
+			servers := r.must(delivery.MCPServersList, struct{}{}, "").(*protocol.Page[protocol.MCPServer])
+			r.t.Fatalf("MCP tools never settled: %+v; servers: %+v", tools.Data, servers.Data)
 		}
 		time.Sleep(10 * time.Millisecond)
 	}

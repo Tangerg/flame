@@ -143,6 +143,25 @@ MCP catalog validation, disabled-tool policy, discovery grouping, and automatic 
 
 MCP management reads, connected Tool counts, and execution publication derive from the same admitted Scope Tool snapshot. Listing never performs another remote discovery; reconnect replaces the snapshot for all three consumers. Scope Binding compiles each schema before a connection or probe succeeds, and Scope Registry admits the prospective catalog across connected servers. Runtime retains remote identity, description, and catalog-capacity policy. Diagnostic and MCP metadata carry Scope ToolDefinition directly; Delivery alone projects schemas to protocol objects while preserving exact numeric literals. Runtime has no parallel schema value type or parser.
 
+An admitted MCP Tool call receives Runtime's existing logical call identity in
+request metadata as `io.github.tangerg.flame/invocationId`. It is the same bounded
+identity committed with the Tool attempt, derived from Scope attribution and
+retained across approval and continuation; a provider's correlation ID is not a
+business retry identity. The Scope MCP adapter forwards this per-call projection.
+A backend may commit its own business transition and invocation receipt atomically,
+as the [review example](../../examples/plugins/reviews/README.md) does. Runtime's
+command replay, approval and execution journals keep their existing owners, and
+backend business state never acquires a Runtime writer. This metadata conveys no
+authentication or dispatch grant. Unexpected MCP failures keep their existing
+unknown-effect semantics.
+
+The current product executor admits Interaction roots. Tool-bound host actions
+require released Scope support for standalone ToolSet input/results, immutable
+call attribution and settled-result projection before another root input can be
+admitted through the same Run lifecycle. Runtime does not copy Scope's private
+wire structs, synthesize model responses, or widen diagnostic `tools.invoke` to
+provide an alternate approval or recovery path.
+
 Tool search reports its fixed initial catalog and the names selected by that invocation. Scope alone owns cumulative Tool visibility; neither a frozen description nor one search result can say which other Tools remain unloaded.
 
 Resolved Tool manifests own Scope's pinned filesystem directory authority. A successful resolution transfers that resource to the execution's deployment set; manifest copies share its lifetime. Failed assembly and recovery probes release every acquired manifest. Live execution retains them across waiting and continuation, and closes them only after Scope's Engine drains. Direct diagnostic calls and catalog reads own and close their short-lived manifests. Read-tool construction borrows a required executor and never opens an unowned fallback executor.

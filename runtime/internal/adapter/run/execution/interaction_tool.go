@@ -21,6 +21,7 @@ import (
 	"github.com/Tangerg/scope/agent/strategy/interaction"
 	corechat "github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
+	scopemcp "github.com/Tangerg/scope/mcp"
 )
 
 type observedInteractionTool struct {
@@ -122,6 +123,11 @@ func (o *observedInteractionTool) Call(ctx context.Context, bound toolcontract.I
 		}
 		callErr = failure
 	} else {
+		if o.ref.Kind() == tool.MCPKind {
+			ctx = scopemcp.WithRequestMeta(ctx, map[string]any{
+				"io.github.tangerg.flame/invocationId": callID,
+			})
+		}
 		ctx = toolset.WithToolAdvertiser(ctx, func(names ...string) error {
 			return interaction.AdvertiseTools(ctx, names...)
 		})

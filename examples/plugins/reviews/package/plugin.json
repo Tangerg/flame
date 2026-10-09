@@ -1,0 +1,6 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "flame.reviews-example",
+  "version": "1.0.0",
+  "description": "A review backend with one private business owner and revision-checked MCP tools."
+}

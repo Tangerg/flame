@@ -38,6 +38,7 @@ func sourceTools(ctx context.Context, owner *Connections, descriptor ServerConfi
 			return ref.ModelName()
 		},
 		ConcurrencyPolicy: scopemcp.AnnotatedReadOnlyConcurrencyPolicy,
+		RequestMeta:       scopemcp.RequestMetaFromContext,
 	})
 	if remoteNameErr != nil {
 		return nil, fmt.Errorf("mcp: validate tool from server %q: %w", server, remoteNameErr)
