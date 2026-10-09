@@ -212,7 +212,9 @@ func (c *Coordinator) Install(ctx context.Context, source string) (_ Inspection,
 		return Inspection{}, errors.Join(err, unreclaimed)
 	}
 	c.publish.Notify(invalidation.Notice{Resource: invalidation.Plugins})
-	inspection, err := c.inspect(ctx, committed)
+	realizationCtx, finishRealization := c.realizationContext(ctx)
+	defer finishRealization()
+	inspection, err := c.inspect(realizationCtx, committed)
 	if err = errors.Join(err, unreclaimed); err != nil {
 		return Inspection{}, fmt.Errorf("plugins: installation %s changed: %w", id, err)
 	}

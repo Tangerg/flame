@@ -327,8 +327,9 @@ waiting execution depends on the installation; revoke remains available to withd
 authority while in use. Uninstall is an acknowledgement without a result: it durably removes
 admission before asynchronous connection retirement, and leaves all retirement work in the
 existing Connections shutdown ownership graph.
-Post-commit package preparation, reconciliation, and projection survive request
-cancellation and follow the Runtime's cancellation root. A reconciliation that cannot
+Post-commit package preparation, reconciliation, and projection, including a new
+installation's first result, survive request cancellation and follow the Runtime's
+cancellation root. A reconciliation that cannot
 start settles each still-enabled source as `mcp_configuration_failed` at the connection
 status owner; a removed source stays absent. The delivery endpoint
 joins these calls before closing their dependencies; shutdown does not undo the

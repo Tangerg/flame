@@ -478,7 +478,7 @@ func TestInstallationReconcileCanReenterTheOwner(t *testing.T) {
 }
 
 func TestCommittedInstallationRealizationFollowsRuntimeLifetime(t *testing.T) {
-	for _, phase := range []string{"preparation", "reconciliation", "projection", "removal"} {
+	for _, phase := range []string{"installation", "preparation", "reconciliation", "projection", "removal"} {
 		t.Run(phase, func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
 				store, dependencies, id, catalog := installationFixture(t)
@@ -505,9 +505,16 @@ func TestCommittedInstallationRealizationFollowsRuntimeLifetime(t *testing.T) {
 					packages.prepare = func(ctx context.Context, _ *plugin.Installation) error { return wait(ctx) }
 				case "reconciliation", "removal":
 					connections.reconcile = func(ctx context.Context, _ []mcpserver.ID) error { return wait(ctx) }
-				case "projection":
+				case "installation", "projection":
 					packages.realize = func(ctx context.Context, _ *plugin.Installation) (Realization, error) {
 						return Realization{}, wait(ctx)
+					}
+				}
+				if phase == "installation" {
+					selected := catalog[store.record.Selected]
+					store.record = nil
+					packages.materialize = func(context.Context, string) (plugin.Release, error) {
+						return selected, nil
 					}
 				}
 				c, err := New(lifetime, store, catalog, packages, connections, dependencies, nil)
@@ -516,6 +523,11 @@ func TestCommittedInstallationRealizationFollowsRuntimeLifetime(t *testing.T) {
 				}
 				done := make(chan error, 1)
 				go func() {
+					if phase == "installation" {
+						_, err := c.Install(request, "/package")
+						done <- err
+						return
+					}
 					if phase == "removal" {
 						done <- c.Uninstall(request, id)
 						return
@@ -558,11 +570,48 @@ func TestCommittedInstallationRealizationFollowsRuntimeLifetime(t *testing.T) {
 					if store.record != nil {
 						t.Fatal("shutdown restored removed admission")
 					}
+				} else if phase == "installation" {
+					if store.record == nil || store.record.State != plugin.Unapproved {
+						t.Fatal("shutdown reversed durable installation")
+					}
 				} else if store.record == nil || store.record.State != plugin.Enabled {
 					t.Fatal("shutdown reversed durable enablement")
 				}
 			})
 		})
+	}
+}
+
+func TestCommittedInstallReturnsItsProjectionAfterRequestCancellation(t *testing.T) {
+	store, dependencies, _, catalog := installationFixture(t)
+	selected := catalog[store.record.Selected]
+	store.record = nil
+	request, cancelRequest := context.WithCancelCause(t.Context())
+	defer cancelRequest(nil)
+	cause := errors.New("request ended after installation commit")
+	packages := installationPackages{
+		materialize: func(context.Context, string) (plugin.Release, error) { return selected, nil },
+		realize: func(ctx context.Context, installation *plugin.Installation) (Realization, error) {
+			if store.record == nil || store.record.ID != installation.ID() || dependencies.held {
+				t.Fatal("projection preceded installation commit or retained admission")
+			}
+			cancelRequest(cause)
+			if err := context.Cause(ctx); err != nil {
+				return Realization{}, err
+			}
+			return Realization{Release: ReleaseAvailable}, nil
+		},
+	}
+	c, err := New(t.Context(), store, catalog, packages, installationConnections{}, dependencies, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	installed, err := c.Install(request, "/package")
+	if err != nil {
+		t.Fatalf("committed installation lost its result: %v", err)
+	}
+	if installed.View.ID != store.record.ID || installed.Realization.Release != ReleaseAvailable || !errors.Is(context.Cause(request), cause) {
+		t.Fatalf("installation result = %+v, request cause = %v", installed, context.Cause(request))
 	}
 }
 
