@@ -26,6 +26,25 @@ func TestExecutionFactReceiptPreservesTheProducerCancellationCause(t *testing.T)
 	}
 }
 
+func TestExecutionFactReceiptRetainsTheCommitDecision(t *testing.T) {
+	commit, receipt, err := NewExecutionFactCommit(SteerMessagesApplied{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := errors.New("authoritative commit failed")
+	commit.Complete(want)
+	for range 2 {
+		if err := receipt.Await(t.Context()); !errors.Is(err, want) {
+			t.Fatalf("receipt lost its commit decision: %v", err)
+		}
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	if err := receipt.Await(ctx); !errors.Is(err, want) {
+		t.Fatalf("completed receipt became waiter cancellation: %v", err)
+	}
+}
+
 func TestNewExecutionFactCommitRejectsUnsupportedFactRepresentation(t *testing.T) {
 	if _, _, err := NewExecutionFactCommit(&ModelCallStarted{}); err == nil {
 		t.Fatal("execution fact commit accepted a pointer representation the reducer cannot consume")

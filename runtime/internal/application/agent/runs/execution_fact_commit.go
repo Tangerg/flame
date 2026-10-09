@@ -7,6 +7,7 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/Tangerg/flame/runtime/internal/completion"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -30,13 +31,15 @@ type ExecutionFactReceipt struct {
 	state *executionFactCommitState
 }
 
+// Closing done publishes the immutable decision without consuming it on observation.
 type executionFactCommitState struct {
 	once sync.Once
-	done chan error
+	done chan struct{}
+	err  error
 }
 
 // NewExecutionFactCommit creates one authoritative fact request and its
-// one-consumer receipt. The fact remains an Application-owned closed value;
+// producer receipt. The fact remains an Application-owned closed value;
 // executor implementations receive no persistence handle or transaction capability.
 func NewExecutionFactCommit(fact ExecutionFact) (ExecutionFactCommit, ExecutionFactReceipt, error) {
 	if dependency.Missing(fact) {
@@ -49,7 +52,7 @@ func NewExecutionFactCommit(fact ExecutionFact) (ExecutionFactCommit, ExecutionF
 			fact,
 		)
 	}
-	state := &executionFactCommitState{done: make(chan error, 1)}
+	state := &executionFactCommitState{done: make(chan struct{})}
 	return ExecutionFactCommit{fact: owned, state: state}, ExecutionFactReceipt{state: state}, nil
 }
 
@@ -139,7 +142,7 @@ func (e ExecutionFactCommit) Complete(err error) {
 		return
 	}
 	e.state.once.Do(func() {
-		e.state.done <- err
+		e.state.err = err
 		close(e.state.done)
 	})
 }
@@ -150,10 +153,8 @@ func (e ExecutionFactReceipt) Await(ctx context.Context) error {
 	if e.state == nil || e.state.done == nil {
 		return errors.New("runs: malformed execution fact receipt")
 	}
-	select {
-	case err := <-e.state.done:
+	if err := completion.Wait(ctx, e.state.done); err != nil {
 		return err
-	case <-ctx.Done():
-		return context.Cause(ctx)
 	}
+	return e.state.err
 }

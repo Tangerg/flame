@@ -11,10 +11,12 @@ import (
 // control request whose durable decision belongs to the Run pump. Cancellation
 // may withdraw a queued request; after claim, the producer must observe the
 // consumer's conclusive result so it cannot act on an ambiguous write-set.
+// The decision is immutable after done closes and remains available to its producer.
 type executorRequest[T any] struct {
 	mu     sync.Mutex
 	state  executorRequestState
-	result chan executorRequestResult[T]
+	result executorRequestResult[T]
+	done   chan struct{}
 }
 
 type executorRequestState uint8
@@ -32,7 +34,7 @@ type executorRequestResult[T any] struct {
 }
 
 func newExecutorRequest[T any]() *executorRequest[T] {
-	return &executorRequest[T]{result: make(chan executorRequestResult[T], 1)}
+	return &executorRequest[T]{done: make(chan struct{})}
 }
 
 func (e *executorRequest[T]) claim() bool {
@@ -59,22 +61,23 @@ func (e *executorRequest[T]) complete(value T, err error) error {
 		return fmt.Errorf("runs: complete executor request in %s state; want claimed", state)
 	}
 	e.state = executorRequestCompleted
+	e.result = executorRequestResult[T]{value: value, err: err}
+	close(e.done)
 	e.mu.Unlock()
-	e.result <- executorRequestResult[T]{value: value, err: err}
 	return nil
 }
 
 func (e *executorRequest[T]) await(ctx context.Context) (T, error) {
 	var zero T
-	if e == nil || e.result == nil {
+	if e == nil || e.done == nil {
 		return zero, errors.New("runs: await malformed executor request")
 	}
 	if ctx == nil {
 		return zero, errors.New("runs: executor request context is required")
 	}
 	select {
-	case result := <-e.result:
-		return result.value, result.err
+	case <-e.done:
+		return e.result.value, e.result.err
 	case <-ctx.Done():
 	}
 
@@ -82,19 +85,16 @@ func (e *executorRequest[T]) await(ctx context.Context) (T, error) {
 	switch e.state {
 	case executorRequestPending:
 		e.state = executorRequestCanceled
-		e.mu.Unlock()
-		return zero, context.Cause(ctx)
-	case executorRequestClaimed, executorRequestCompleted:
-		e.mu.Unlock()
-		result := <-e.result
-		return result.value, result.err
-	case executorRequestCanceled:
-		e.mu.Unlock()
-		return zero, context.Cause(ctx)
+		e.result.err = context.Cause(ctx)
+		close(e.done)
+	case executorRequestClaimed, executorRequestCompleted, executorRequestCanceled:
 	default:
 		e.mu.Unlock()
 		return zero, errors.New("runs: executor request has an invalid state")
 	}
+	e.mu.Unlock()
+	<-e.done
+	return e.result.value, e.result.err
 }
 
 func (e executorRequestState) String() string {
