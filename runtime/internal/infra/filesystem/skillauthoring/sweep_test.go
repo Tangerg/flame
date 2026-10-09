@@ -88,6 +88,25 @@ func TestSweepIdleGivesNeverSweptSkillGrace(t *testing.T) {
 	}
 }
 
+func TestSweepIdleRetainsLatestUseAfterDelayedObservation(t *testing.T) {
+	store := newStore(t, t.TempDir(), skills.ScopeUser)
+	installActiveAgentSkill(t, store, "agent-skill")
+	latest := sweepBase.Add(20 * 24 * time.Hour)
+	for _, observed := range []time.Time{sweepBase, latest, sweepBase.Add(time.Hour)} {
+		if err := store.RecordUse(t.Context(), "agent-skill", observed); err != nil {
+			t.Fatal(err)
+		}
+	}
+	archived, _, err := store.SweepIdle(t.Context(), sweepBase.Add(sweepArchive+time.Hour), sweepArchive)
+	if err != nil || len(archived) != 0 {
+		t.Fatalf("delayed observation erased recent activity: archived=%v, err=%v", archived, err)
+	}
+	archived, _, err = store.SweepIdle(t.Context(), latest.Add(sweepArchive), sweepArchive)
+	if err != nil || len(archived) != 1 || archived[0] != "agent-skill" {
+		t.Fatalf("skill did not become idle after its latest use: archived=%v, err=%v", archived, err)
+	}
+}
+
 func TestSweepIdleRestoredSkillGetsFreshGrace(t *testing.T) {
 	root := t.TempDir()
 	store := newStore(t, root, skills.ScopeUser)

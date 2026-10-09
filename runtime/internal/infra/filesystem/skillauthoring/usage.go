@@ -30,9 +30,7 @@ const (
 
 // usageRecord tracks one skill's activity for the idle-lifecycle curator.
 // FirstSeen anchors the grace floor for a never-used skill; LastUsed drives the
-// archive threshold. Times are Unix seconds. (A stale/state field and a use
-// count were dropped as write-only — nothing reads them yet; re-add with the
-// lifecycle surface that would.)
+// archive threshold. Times are Unix seconds.
 type usageRecord struct {
 	FirstSeen int64 `json:"firstSeen"`
 	LastUsed  int64 `json:"lastUsed,omitzero"`
@@ -74,8 +72,11 @@ func (s *Store) RecordUse(ctx context.Context, name string, now time.Time) error
 	ts := now.Unix()
 	if record.FirstSeen == 0 {
 		record.FirstSeen = ts
+		record.LastUsed = ts
+	} else {
+		// Observation time is sampled before acquiring the library lease.
+		record.LastUsed = max(record.LastUsed, ts)
 	}
-	record.LastUsed = ts
 	usage[name] = record
 	return writeUsage(ctx, root, usage)
 }
