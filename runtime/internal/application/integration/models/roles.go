@@ -38,7 +38,7 @@ func (c *Coordinator) SetUtilityRole(ctx context.Context, provider, model string
 		return modelref.Role{}, err
 	}
 
-	c.utilityRoleState.Store(role)
+	c.utilityRoleState.store(role)
 	c.invalidations.Notify(invalidation.Notice{Resource: invalidation.Models})
 	return role, nil
 }
@@ -75,7 +75,7 @@ func (c *Coordinator) SetEmbeddingRole(ctx context.Context, providerID, model st
 		return modelref.Role{}, fmt.Errorf("models: persist embedding role: %w", err)
 	}
 
-	c.embeddingRoleState.Store(role)
+	c.embeddingRoleState.store(role)
 	c.invalidations.Notify(invalidation.Notice{Resource: invalidation.Models})
 	return role, nil
 }

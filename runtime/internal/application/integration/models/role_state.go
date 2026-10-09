@@ -6,9 +6,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 )
 
-// RoleState owns one live model-role assignment. Its synchronization is kept
-// inside the application boundary; consumers observe the immutable value through
-// Role rather than sharing an atomic implementation detail.
+// RoleState projects the model role committed by Coordinator. Consumers can
+// observe it; only the model configuration use case can publish a replacement.
 type RoleState struct {
 	role atomic.Pointer[modelref.Role]
 }
@@ -16,7 +15,7 @@ type RoleState struct {
 // NewRoleState builds a live role assignment with initial as its current value.
 func NewRoleState(initial modelref.Role) *RoleState {
 	state := &RoleState{}
-	state.Store(initial)
+	state.store(initial)
 	return state
 }
 
@@ -33,7 +32,6 @@ func (r *RoleState) Role() modelref.Role {
 	return *role
 }
 
-// Store atomically publishes the next immutable assignment.
-func (r *RoleState) Store(role modelref.Role) {
+func (r *RoleState) store(role modelref.Role) {
 	r.role.Store(&role)
 }
