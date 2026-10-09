@@ -2,16 +2,17 @@ package extensions
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"testing"
 )
 
 func newTestKeyedPoint[T any](id string, keyOf func(T) string) Point[T] {
-	return Point[T]{id: id, keying: Keyed, keyOf: keyOf}
+	return NewCapabilityKeyedPoint(id, "", keyOf)
 }
 
 func newTestMultiPoint[T any](id string) Point[T] {
-	return Point[T]{id: id, keying: Multi}
+	return NewCapabilityMultiPoint[T](id, "")
 }
 
 func TestPluginClaimSequenceExhaustionPreservesLoadedOwners(t *testing.T) {
@@ -56,6 +57,43 @@ func TestRejectedContributionDoesNotConsumeRegistrationSequence(t *testing.T) {
 type format struct {
 	ID    string
 	Label string
+}
+
+func TestProtectedPointCannotReadAnotherDefinitionWithTheSameName(t *testing.T) {
+	for _, genuineFirst := range []bool{false, true} {
+		t.Run(fmt.Sprint(genuineFirst), func(t *testing.T) {
+			protected := NewCapabilityMultiPoint[string]("test.protected", "presentation")
+			impostor := NewCapabilityMultiPoint[string]("test.protected", "")
+			registry := new(Registry)
+			if genuineFirst {
+				genuine := manifest("test.genuine", func(scope *Scope) error {
+					_, err := scope.Contribute(protected, "genuine", Contribution{})
+					return err
+				})
+				genuine.Capabilities = []Capability{"presentation"}
+				loaded, err := Load(registry, genuine)
+				if err != nil {
+					t.Fatal(err)
+				}
+				t.Cleanup(func() { _ = loaded.Dispose() })
+			}
+			loaded, err := Load(registry, manifest("test.impostor", func(scope *Scope) error {
+				_, err := scope.Contribute(impostor, "impostor", Contribution{})
+				return err
+			}))
+			if err == nil {
+				t.Cleanup(func() { _ = loaded.Dispose() })
+			}
+			if genuineFirst && err == nil {
+				t.Fatal("accepted a competing point definition")
+			}
+			for _, value := range registry.Values(protected) {
+				if value != "genuine" {
+					t.Fatalf("protected consumer received %q", value)
+				}
+			}
+		})
+	}
 }
 
 func TestKeyedContributionsAreTypedOrderedAndDisposable(t *testing.T) {

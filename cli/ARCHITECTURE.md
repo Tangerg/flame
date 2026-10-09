@@ -117,6 +117,8 @@ Sideloaded command protocol 2 carries both the Runtime workspace reference and t
 
 `application/extensions` owns contributed command identity, argument cardinality, availability, request snapshots, results, and the typed command contribution point. `adapter/sideload` translates manifests and bounded process I/O into that contract without importing terminal delivery. Oolong block, tool, and custom-event presentation points remain in terminal delivery.
 
+Each contribution point has one definition identity. A separately constructed point with the same name cannot publish to or read the original point, including by weakening its capability. Keyed points derive identity only through their declared key policy; registration options do not override it. Plugin and dependency names must already have their canonical spelling at admission.
+
 Remote authoring persistence is partitioned by the configured endpoint; embedded state keeps its existing directory. The terminal and command-side session deletion workflow use the same partition. Endpoint identity scopes local drafts and journals, while Runtime's advertised idempotency namespace and retention independently decide whether an exact command may replay. Neither a new process instance ID nor an endpoint spelling change authorizes migration of a pending mutation.
 
 Workbench persistence contains only CLI-authored facts. The workbench Application owner owns record names, the strict current shape, and recovery semantics; its narrow persistence port carries opaque bytes while the filesystem adapter owns rooted paths, regular-file checks, and atomic replacement. Records fail closed on unknown, malformed, oversized, truncated, or trailing content.

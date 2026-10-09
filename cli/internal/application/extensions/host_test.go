@@ -44,9 +44,11 @@ func TestManifestValidationRejectsIncompatibleOrAmbiguousMetadata(t *testing.T) 
 		mutate func(*Plugin)
 	}{
 		{"id", func(plugin *Plugin) { plugin.ID = "Bad ID" }},
+		{"noncanonical id", func(plugin *Plugin) { plugin.ID = " test.valid " }},
 		{"version", func(plugin *Plugin) { plugin.Version = "latest" }},
 		{"api", func(plugin *Plugin) { plugin.APIVersion++ }},
 		{"self dependency", func(plugin *Plugin) { plugin.Requires = []string{plugin.ID} }},
+		{"noncanonical dependency", func(plugin *Plugin) { plugin.Requires = []string{" test.base "} }},
 		{"duplicate dependency", func(plugin *Plugin) { plugin.Requires = []string{"test.base", "test.base"} }},
 		{"duplicate capability", func(plugin *Plugin) { plugin.Capabilities = []Capability{"commands", "commands"} }},
 	}

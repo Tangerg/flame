@@ -18,7 +18,7 @@ var (
 // ValidateManifest checks the metadata the extension host relies on before
 // any plugin code runs.
 func ValidateManifest(plugin Plugin) error {
-	id := strings.TrimSpace(plugin.ID)
+	id := plugin.ID
 	if !pluginIDPattern.MatchString(id) {
 		return fmt.Errorf("extensions: plugin id %q must be a lowercase dotted identifier", plugin.ID)
 	}
@@ -40,7 +40,6 @@ func ValidateManifest(plugin Plugin) error {
 func validateDependencies(pluginID string, dependencies []string) error {
 	seen := make(map[string]struct{}, len(dependencies))
 	for _, dependency := range dependencies {
-		dependency = strings.TrimSpace(dependency)
 		switch {
 		case !pluginIDPattern.MatchString(dependency):
 			return fmt.Errorf("extensions: plugin %q has invalid dependency %q", pluginID, dependency)

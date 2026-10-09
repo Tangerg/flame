@@ -11,7 +11,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"reflect"
 	"slices"
 	"strings"
 	"sync"
@@ -48,9 +47,10 @@ func (k Keying) Valid() bool { return k == Keyed || k == Multi }
 // trusting each plugin to police itself.
 type Capability string
 
-// Point is a typed handle shared by contributors and consumers. It holds no
-// state; Registry is the single source of truth.
+// Point owns a typed definition shared by contributors and consumers. Copies
+// retain its identity; the same name cannot substitute a different definition.
 type Point[T any] struct {
+	owner      *byte
 	id         string
 	keying     Keying
 	capability Capability
@@ -60,12 +60,12 @@ type Point[T any] struct {
 // NewCapabilityMultiPoint defines a protected point where ordered contributions
 // coexist.
 func NewCapabilityMultiPoint[T any](id string, capability Capability) Point[T] {
-	return Point[T]{id: id, keying: Multi, capability: capability}
+	return Point[T]{owner: new(byte), id: id, keying: Multi, capability: capability}
 }
 
 // NewCapabilityKeyedPoint defines a protected keyed point.
 func NewCapabilityKeyedPoint[T any](id string, capability Capability, keyOf func(T) string) Point[T] {
-	return Point[T]{id: id, keying: Keyed, capability: capability, keyOf: keyOf}
+	return Point[T]{owner: new(byte), id: id, keying: Keyed, capability: capability, keyOf: keyOf}
 }
 
 // Capability reports the permission required to contribute to this point.
@@ -81,8 +81,7 @@ type Registry struct {
 }
 
 type pointState struct {
-	typeOf  reflect.Type
-	keying  Keying
+	owner   *byte
 	entries map[string]entry
 }
 
@@ -95,8 +94,6 @@ type entry struct {
 
 // Contribution configures one registration.
 type Contribution struct {
-	// Key is required only when a keyed point has no keyOf function.
-	Key string
 	// Order sorts lower values first; registration order breaks ties.
 	Order int
 }
@@ -287,7 +284,7 @@ func (s *Scope) Contribute[T any](point Point[T], value T, options Contribution)
 	}
 	// keyOf belongs to the point owner and may execute arbitrary code. Run it
 	// without the scope lock, then recheck the transaction before committing.
-	key, err := point.contributionKey(value, options.Key)
+	key, err := point.contributionKey(value)
 	if err != nil {
 		return nil, err
 	}
@@ -312,7 +309,7 @@ func (s *Scope) validateContribution[T any](point Point[T]) error {
 	if !s.open {
 		return errScopeClosed
 	}
-	if strings.TrimSpace(point.id) == "" {
+	if point.owner == nil || strings.TrimSpace(point.id) == "" {
 		return errors.New("extensions: point id is required")
 	}
 	if !point.keying.Valid() {
@@ -327,12 +324,15 @@ func (s *Scope) validateContribution[T any](point Point[T]) error {
 	return nil
 }
 
-func (p Point[T]) contributionKey(value T, configured string) (string, error) {
-	key := strings.TrimSpace(configured)
-	if p.keying == Keyed && key == "" && p.keyOf != nil {
-		key = strings.TrimSpace(p.keyOf(value))
+func (p Point[T]) contributionKey(value T) (string, error) {
+	if p.keying == Multi {
+		return "", nil
 	}
-	if p.keying == Keyed && key == "" {
+	if p.keyOf == nil {
+		return "", fmt.Errorf("extensions: keyed point %q requires a key policy", p.id)
+	}
+	key := strings.TrimSpace(p.keyOf(value))
+	if key == "" {
 		return "", fmt.Errorf("extensions: keyed point %q requires a stable key", p.id)
 	}
 	return key, nil
@@ -372,13 +372,12 @@ func (r *Registry) insertContribution[T any](
 }
 
 func (r *Registry) pointStateFor[T any](point Point[T]) (pointState, error) {
-	wantType := reflect.TypeFor[T]()
 	state, exists := r.points[point.id]
-	if exists && (state.typeOf != wantType || state.keying != point.keying) {
-		return pointState{}, fmt.Errorf("extensions: point %q was defined with an incompatible type or keying", point.id)
+	if exists && state.owner != point.owner {
+		return pointState{}, fmt.Errorf("extensions: point %q already has a different definition owner", point.id)
 	}
 	if !exists {
-		state = pointState{typeOf: wantType, keying: point.keying, entries: make(map[string]entry)}
+		state = pointState{owner: point.owner, entries: make(map[string]entry)}
 	}
 	return state, nil
 }
@@ -413,7 +412,7 @@ func (r *Registry) OwnedValues[T any](point Point[T]) []OwnedValue[T] {
 	}
 	r.mu.RLock()
 	state, ok := r.points[point.id]
-	if !ok || state.typeOf != reflect.TypeFor[T]() || state.keying != point.keying {
+	if !ok || state.owner != point.owner {
 		r.mu.RUnlock()
 		return nil
 	}
