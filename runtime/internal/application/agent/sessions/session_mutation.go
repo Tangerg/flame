@@ -70,13 +70,10 @@ func (c *Coordinator) DeleteSession(ctx context.Context, sessionID string) error
 	)
 }
 
-// retireSessionResources destroys the durable state a Session is the only name
-// for: its checkpoint history and its isolated scratch tree. It runs before the
-// aggregate is deleted, so a refusal aborts the delete instead of orphaning
-// state nothing left in the catalog could ever reach.
-// The first refusal stops the sequence: the delete is already going to fail, so
-// destroying anything further would only cost a surviving Session state it can
-// still use.
+// Checkpoints and isolated copies belong to the current history. Retire them
+// before deleting the Session or replacing its history: restored Run identities
+// cannot prove that the old file boundaries belong to the replacement. A refusal
+// stops the mutation while the original history still names the remaining state.
 func (c *Coordinator) retireSessionResources(sessionID string) error {
 	if c.checkpoints != nil {
 		if err := c.checkpoints.DropSession(sessionID); err != nil {
@@ -133,13 +130,8 @@ func (c *Coordinator) restoreSession(ctx context.Context, snapshot Snapshot, pre
 			if err := c.transientState.QuiesceSession(sessionID); err != nil {
 				return fmt.Errorf("sessions: quiesce process-local Session state before restore: %w", err)
 			}
-			// The restored Session may name a different workspace and always owns a
-			// different history. Retire the old scratch tree before commit so the
-			// replacement can never resolve to incompatible isolated state.
-			if c.sandbox != nil {
-				if discardErr := c.sandbox.Discard(sessionID); discardErr != nil {
-					return fmt.Errorf("sessions: discard sandbox copy before restore: %w", discardErr)
-				}
+			if err := c.retireSessionResources(sessionID); err != nil {
+				return err
 			}
 			return c.writes.ApplyRestore(ctx, restore)
 		},

@@ -163,6 +163,14 @@ The existing Run, Segment, Item, and command identities keep their meanings.
 Portable Session artifacts carry `protocol.SessionArtifactVersion` and preserve
 unresolved-effect evidence for every terminal outcome. Any other artifact version
 is rejected; export again from the updated Runtime. The SQLite history representation is unchanged.
+Import retires the replaced Session's file checkpoints and isolated copy before
+committing its history. Artifacts carry no working-tree snapshots, so imported Run
+identities never grant access to a predecessor's file rollback boundaries. Use new
+Runs to establish new file checkpoints. Retirement failure refuses the import;
+a storage failure after retirement can leave the original history without those
+optional resources. Workspace files are unchanged by import.
+For a Session imported by an earlier build, submit a new import command to retire
+any retained file checkpoints. Replaying its earlier receipt performs no mutation.
 CLI attachment commands retain their prepared content with the original command
 and replay guard; an older dispatched or ambiguous command whose attachment bytes
 are unavailable remains unresolved and is never reconstructed from the current

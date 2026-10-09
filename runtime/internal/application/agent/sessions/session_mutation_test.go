@@ -286,6 +286,7 @@ func TestRestoreSessionAppliesPlan(t *testing.T) {
 	coordinator := mustNewCoordinator(testDependencies(stores, Dependencies{
 		ExecutionReleaser: mutationExecutions{operations: &stores.operations},
 		Paths:             testWorkspaceResolver{},
+		Checkpoints:       &mutationCheckpoints{operations: &stores.operations},
 		Sandbox:           &mutationSandbox{operations: &stores.operations},
 	}))
 	_, err := coordinator.restoreSession(
@@ -301,9 +302,38 @@ func TestRestoreSessionAppliesPlan(t *testing.T) {
 	if len(stores.restored) != 1 || stores.restored[0].SessionReplacement().State().ID() != "ses_1" || len(stores.restored[0].Snapshot().Messages) != 1 {
 		t.Fatalf("restored = %+v, want one plan for ses_1 with 1 message", stores.restored)
 	}
-	want := []string{"interrupt.read", "session.quiesce", "sandbox.discard:ses_1", "apply.restore", "session.context.forget"}
+	want := []string{"interrupt.read", "session.quiesce", "checkpoint.drop:ses_1", "sandbox.discard:ses_1", "apply.restore", "session.context.forget"}
 	if !slices.Equal(stores.operations, want) {
 		t.Fatalf("operations = %v, want %v", stores.operations, want)
+	}
+}
+
+func TestRestoreSessionPreservesHistoryWhenResourcesCannotRetire(t *testing.T) {
+	for _, resource := range []string{"checkpoints", "sandbox"} {
+		t.Run(resource, func(t *testing.T) {
+			stores := newMutationStores("")
+			stores.pending = nil
+			cause := errors.New("history resource retirement failed")
+			checkpoints := &mutationCheckpoints{operations: &stores.operations}
+			sandbox := &mutationSandbox{operations: &stores.operations}
+			want := []string{"interrupt.read", "session.quiesce", "checkpoint.drop:ses_1"}
+			if resource == "checkpoints" {
+				checkpoints.err = cause
+			} else {
+				sandbox.err = cause
+				want = append(want, "sandbox.discard:ses_1")
+			}
+			coordinator := mustNewCoordinator(testDependencies(stores, Dependencies{
+				ExecutionReleaser: mutationExecutions{operations: &stores.operations},
+				Paths:             testWorkspaceResolver{}, Checkpoints: checkpoints, Sandbox: sandbox,
+			}))
+			_, err := coordinator.restoreSession(t.Context(), Snapshot{
+				Session: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_1", Workspace: testsupport.MustWorkspace("/workspace")}),
+			}, false)
+			if !errors.Is(err, cause) || len(stores.restored) != 0 || !slices.Equal(stores.operations, want) {
+				t.Fatalf("restore = %v, committed = %d, operations = %v; want retirement refusal before replacement", err, len(stores.restored), stores.operations)
+			}
+		})
 	}
 }
 
