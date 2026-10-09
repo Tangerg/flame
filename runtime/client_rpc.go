@@ -109,7 +109,7 @@ func (c *Client) invokeOperation(ctx context.Context, name delivery.Name, parame
 		if err != nil {
 			return delivery.Result{}, call.readError(err)
 		}
-		result, err := decodeRemoteResponse(encoded, id, meta.Result)
+		result, err := decodeRemoteResponse(encoded, id, meta)
 		if err == nil && result.Failure == nil && meta.Kind == delivery.KindStream {
 			err = invalidRemote("stream acknowledgement arrived without an event stream")
 		}
@@ -133,7 +133,7 @@ func (c *Client) invokeOperation(ctx context.Context, name delivery.Name, parame
 		if frame.ID != "" || frame.Event != "message" {
 			return delivery.Result{}, invalidRemote("stream acknowledgement has invalid sse metadata")
 		}
-		result, err := decodeRemoteResponse(frame.Data, id, meta.Result)
+		result, err := decodeRemoteResponse(frame.Data, id, meta)
 		if err != nil || result.Failure != nil {
 			return result, err
 		}
@@ -168,7 +168,7 @@ func encodeRemoteRequest(id transport.ID, name delivery.Name, parameters any, me
 	return transport.EncodeMessage(&transport.Request{ID: id, Method: name.String(), Params: encoded})
 }
 
-func decodeRemoteResponse(encoded []byte, id transport.ID, resultType reflect.Type) (delivery.Result, error) {
+func decodeRemoteResponse(encoded []byte, id transport.ID, method delivery.MethodMeta) (delivery.Result, error) {
 	message, err := transport.DecodeMessage(encoded)
 	if err != nil {
 		return delivery.Result{}, invalidRemote("invalid json-rpc response")
@@ -196,11 +196,11 @@ func decodeRemoteResponse(encoded []byte, id transport.ID, resultType reflect.Ty
 		}
 		return delivery.Result{Failure: failure}, nil
 	}
-	if resultType == nil {
-		resultType = reflect.TypeFor[struct{}]()
+	value, err := method.DecodeResult(response.Result)
+	if err != nil {
+		return delivery.Result{}, invalidRemote("response violates the runtime contract")
 	}
-	value, err := decodeRemoteValue(response.Result, resultType)
-	return delivery.Result{Value: value}, err
+	return delivery.Result{Value: value}, nil
 }
 
 func decodeRemoteValue(encoded []byte, valueType reflect.Type) (any, error) {

@@ -560,6 +560,80 @@ func TestReplayRejectsUnknownStoredOutcomeFields(t *testing.T) {
 	}
 }
 
+func TestReplayRejectsInvalidStoredResultShapes(t *testing.T) {
+	for _, test := range []struct {
+		name    Name
+		payload string
+	}{
+		{name: SessionsCreate, payload: `{"value":null}`},
+		{name: HooksSetTrust, payload: `{"value":{"unexpected":true}}`},
+		{name: HooksSetTrust, payload: `{"value":null}`},
+	} {
+		t.Run(test.name.String()+test.payload, func(t *testing.T) {
+			method, ok := contract.lookup(test.name)
+			if !ok {
+				t.Fatalf("method %s is not registered", test.name)
+			}
+			result := newReplayStore(newMemoryIdempotencyStore()).replay(t.Context(), method, []byte(test.payload), nil)
+			if result.Failure == nil || !errors.Is(result.Failure, protocol.ErrInternalError) {
+				t.Fatalf("stored result = %+v, want internal_error", result)
+			}
+		})
+	}
+}
+
+func TestReplayRejectsMissingRequiredResultFields(t *testing.T) {
+	value, err := (&relocatingSessionService{}).UpdateSession(t.Context(), protocol.UpdateSessionRequest{SessionID: "ses_test"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fields map[string]jsontext.Value
+	if err := json.Unmarshal(encoded, &fields); err != nil {
+		t.Fatal(err)
+	}
+	delete(fields, "title")
+	encoded, err = json.Marshal(fields)
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload, err := json.Marshal(storedOutcome{Value: encoded})
+	if err != nil {
+		t.Fatal(err)
+	}
+	method, _ := contract.lookup(SessionsUpdate)
+	result := newReplayStore(newMemoryIdempotencyStore()).replay(t.Context(), method, payload, nil)
+	if result.Failure == nil || !errors.Is(result.Failure, protocol.ErrInternalError) {
+		t.Fatalf("missing required title = %+v, want internal_error", result)
+	}
+}
+
+func TestReplayPreservesOpaqueToolResult(t *testing.T) {
+	method, _ := contract.lookup(ToolsInvoke)
+	for _, encoded := range []string{
+		`null`,
+		`{"decimal":1.0000000000000001,"empty":{},"integer":9007199254740993}`,
+	} {
+		t.Run(encoded, func(t *testing.T) {
+			payload, err := json.Marshal(storedOutcome{Value: jsontext.Value(encoded)})
+			if err != nil {
+				t.Fatal(err)
+			}
+			result := newReplayStore(newMemoryIdempotencyStore()).replay(t.Context(), method, payload, nil)
+			if result.Failure != nil {
+				t.Fatal(result.Failure)
+			}
+			got, err := json.Marshal(result.Value, json.Deterministic(true))
+			if err != nil || string(got) != encoded {
+				t.Fatalf("opaque result = (%s, %v), want %s", got, err, encoded)
+			}
+		})
+	}
+}
+
 type countingSteerService struct{ calls atomic.Int64 }
 
 func (s *countingSteerService) SteerRun(context.Context, protocol.SteerRunRequest) (*protocol.SteerRunResponse, error) {

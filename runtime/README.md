@@ -17,6 +17,12 @@ Runtime is not another agent framework. Scope owns process execution, strategies
 
 All Runtime operations enter one delivery endpoint. The Go binding avoids JSON and HTTP encoding but uses the same admission, capability, idempotency, Application, error, and event semantics as the HTTP binding.
 
+The operation catalog owns result nullability for execution, durable replay and
+the remote Go client. A required response cannot become a successful null; a
+Session without a Goal returns null through `goals.get` in both bindings. Receipt
+and remote decoders require the declared fields before accepting typed values.
+Diagnostic Tool results remain opaque JSON, where null is a valid value.
+
 RPC parameters and `_meta` use exact, case-sensitive schema field names. Unknown members, duplicate members, invalid Unicode, trailing JSON values, and explicit `null` in typed fields are rejected. Omit optional fields; use the declared change variants to clear configuration. Opaque tool arguments may contain `null`. Clients must not rely on case folding or replacement of malformed text.
 
 Go consumers accepting authored JSON use `protocol.DecodeRequest(encoded, &request)`

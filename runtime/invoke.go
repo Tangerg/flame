@@ -43,7 +43,7 @@ func (r *binding) invoke[Request, Response any](
 	if result.Failure != nil {
 		return zero, result.Failure
 	}
-	value, ok := result.Value.(Response)
+	value, ok := result.ValueAs[Response]()
 	if !ok {
 		return zero, fmt.Errorf("runtime: %s returned an invalid response type: %w", name, ErrInvalidResponse)
 	}
@@ -77,7 +77,7 @@ func (r *binding) invokeStream[Request, Ack, Event any](
 	if result.Failure != nil {
 		return zero, nil, result.Failure
 	}
-	ack, ok := result.Value.(Ack)
+	ack, ok := result.ValueAs[Ack]()
 	if !ok || result.Events == nil {
 		return zero, nil, fmt.Errorf("runtime: %s returned an invalid stream: %w", name, ErrInvalidResponse)
 	}

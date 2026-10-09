@@ -1,9 +1,36 @@
 package transport
 
 import (
+	"encoding/json/jsontext"
 	"strings"
 	"testing"
 )
+
+func TestSuccessfulResponsePreservesNullAndRejectsInvalidJSON(t *testing.T) {
+	call, err := DecodeMessage([]byte(`{"jsonrpc":"2.0","id":"request","method":"tools.invoke"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := call.(*Request).ID
+	response, err := NewResponseResult(id, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := EncodeMessage(response)
+	if err != nil {
+		t.Fatal(err)
+	}
+	message, err := DecodeMessage(encoded)
+	if err != nil {
+		t.Fatalf("decode successful null response %s: %v", encoded, err)
+	}
+	if got := string(message.(*Response).Result); got != "null" {
+		t.Fatalf("result = %s, want explicit null", got)
+	}
+	if _, err := NewResponseResult(id, jsontext.Value(`{"unterminated":`)); err == nil {
+		t.Fatal("response accepted invalid encoded JSON")
+	}
+}
 
 func TestDecodeMessageRejectsDuplicateJSONMembersAtEveryObjectDepth(t *testing.T) {
 	t.Parallel()

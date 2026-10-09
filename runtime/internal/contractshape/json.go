@@ -14,7 +14,7 @@ import (
 
 // DecodeValue preserves authored shape before typed validation can erase it.
 func DecodeValue(raw jsontext.Value, dst any, path string) error {
-	if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
+	if bytes.Equal(bytes.TrimSpace(raw), []byte("null")) && Deref(reflect.TypeOf(dst).Elem()).Kind() != reflect.Interface {
 		return fmt.Errorf("%s must be an object, got null", path)
 	}
 	if err := json.Unmarshal(raw, dst, json.RejectUnknownMembers(true), exactjson.Numbers()); err != nil {

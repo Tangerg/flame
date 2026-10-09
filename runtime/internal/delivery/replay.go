@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"iter"
 	"log/slog"
-	"reflect"
 	"sort"
 	"sync"
 	"time"
@@ -137,7 +136,7 @@ func (r *replayStore) replay(ctx context.Context, method *Method, payload []byte
 	if stored.Problem != nil {
 		return failed(failureFromData(*stored.Problem))
 	}
-	value, err := decodeStoredValue(method.Meta.Result, stored.Value)
+	value, err := method.Meta.DecodeResult(stored.Value)
 	if err != nil {
 		return failed(ProjectError(fmt.Errorf("idempotency: decode stored result: %w", err)))
 	}
@@ -182,24 +181,6 @@ func encodeStoredOutcome(result Result) ([]byte, error) {
 		stored.Value = encoded
 	}
 	return json.Marshal(stored, json.Deterministic(true))
-}
-
-func decodeStoredValue(resultType reflect.Type, encoded jsontext.Value) (any, error) {
-	if resultType == nil {
-		return struct{}{}, nil
-	}
-	if len(encoded) == 0 {
-		return nil, errors.New("stored result is absent")
-	}
-	target := reflect.New(resultType)
-	if err := decodeStoredJSON(encoded, target.Interface()); err != nil {
-		return nil, err
-	}
-	value := target.Elem().Interface()
-	if err := protocol.ValidateWireTree(value); err != nil {
-		return nil, err
-	}
-	return value, nil
 }
 
 // A replayed receipt must name the exact stored shape: the decoder refuses an

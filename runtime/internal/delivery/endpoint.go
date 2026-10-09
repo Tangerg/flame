@@ -160,7 +160,7 @@ func (e *Endpoint) execute(ctx context.Context, method *Method, parameters any) 
 	if raw.err != nil {
 		return failed(ProjectError(raw.err))
 	}
-	if err := protocol.ValidateWireTree(raw.value); err != nil {
+	if err := method.Meta.ValidateResult(raw.value); err != nil {
 		return failed(runtimeProduced("an invalid response", err))
 	}
 	return Result{Value: raw.value, Events: validateEvents(ctx, method.Meta.Event, raw.events)}
@@ -264,7 +264,7 @@ func (e *Endpoint) Call[Params, Response any](
 	if result.Failure != nil {
 		return zero, result.Failure
 	}
-	value, ok := result.Value.(Response)
+	value, ok := result.ValueAs[Response]()
 	if !ok {
 		return zero, runtimeProduced(
 			"a response with an invalid type",

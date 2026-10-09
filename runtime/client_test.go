@@ -75,6 +75,50 @@ func TestClientsShareRuntimeWithoutSharingOwnership(t *testing.T) {
 	}
 }
 
+func TestClientPreservesAnAbsentGoal(t *testing.T) {
+	rt, server, _ := remoteRuntime(t)
+	session, err := rt.CreateSession(t.Context(), protocol.CreateSessionRequest{Title: "without a goal"}, CommandOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := protocol.GoalRequest{SessionID: session.ID}
+	if goal, err := rt.GetGoal(t.Context(), request, CallOptions{}); err != nil || goal != nil {
+		t.Fatalf("local absent goal = (%+v, %v)", goal, err)
+	}
+	client := remoteTestClient(t, server.URL)
+	if goal, err := client.GetGoal(t.Context(), request, CallOptions{}); err != nil || goal != nil {
+		t.Fatalf("remote absent goal = (%+v, %v)", goal, err)
+	}
+}
+
+type opaqueNullToolService struct{}
+
+func (opaqueNullToolService) InvokeTool(context.Context, protocol.InvokeToolRequest) (any, error) {
+	return nil, nil
+}
+
+func TestClientPreservesOpaqueNullToolResult(t *testing.T) {
+	endpoint, err := delivery.NewEndpoint(opaqueNullToolService{}, delivery.EndpointConfig{Lifetime: t.Context()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(remoteHTTPHandler(t, endpoint, protocol.ServerInfo{
+		Name: "test", Version: "1", InstanceID: testsupport.RuntimeInstanceID,
+	}))
+	t.Cleanup(server.Close)
+	request := protocol.InvokeToolRequest{Name: "read", Arguments: map[string]any{"path": "note.txt"}}
+	options := delivery.Options{IdempotencyKey: "opaque-result"}
+	for range 2 {
+		if value, err := endpoint.Call[protocol.InvokeToolRequest, any](t.Context(), delivery.ToolsInvoke, request, options); err != nil || value != nil {
+			t.Fatalf("local opaque result = (%v, %v)", value, err)
+		}
+	}
+	client := remoteTestClient(t, server.URL)
+	if value, err := client.InvokeTool(t.Context(), request, CommandOptions{}); err != nil || value != nil {
+		t.Fatalf("remote opaque result = (%v, %v)", value, err)
+	}
+}
+
 func TestClientRetainsUnknownAcknowledgementAfterCommittedMutation(t *testing.T) {
 	rt, original, discovery := remoteRuntime(t)
 	var attempts atomic.Int32

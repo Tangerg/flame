@@ -18,6 +18,20 @@ type lifetimeService struct {
 
 type nilDiscoverService struct{}
 
+type absentSessionService struct{}
+
+func (absentSessionService) GetSession(context.Context, string) (*protocol.Session, error) {
+	return nil, nil
+}
+
+func TestEndpointRejectsAnAbsentRequiredResult(t *testing.T) {
+	endpoint := mustNewEndpoint(t, absentSessionService{}, EndpointConfig{})
+	result := endpoint.Invoke(t.Context(), SessionsGet, protocol.GetSessionRequest{SessionID: "ses_test"}, Options{})
+	if result.Failure == nil || !errors.Is(result.Failure, protocol.ErrInternalError) {
+		t.Fatalf("absent session result = %+v, want internal_error", result)
+	}
+}
+
 type panickingDiscoverService struct{}
 
 func (*panickingDiscoverService) Discover(context.Context) (*protocol.DiscoverResponse, error) {

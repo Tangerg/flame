@@ -12,6 +12,9 @@ import (
 // Notifications get no response on the wire; senders are expected to
 // fire-and-forget.
 func NewNotification(method string, params any) (*Request, error) {
+	if params == nil {
+		return &Request{Method: method}, nil
+	}
 	encodedParams, err := marshalPayload(params)
 	if err != nil {
 		return nil, err
@@ -41,15 +44,8 @@ func NewError(code int, message string, data jsontext.Value) *Error {
 	return &Error{Code: int64(code), Message: message, Data: data}
 }
 
-// marshalPayload JSON-encodes a params/result value. Nil returns nil so
-// the field omits on the wire.
+// marshalPayload preserves payload values, including an explicit JSON null.
 func marshalPayload(value any) (jsontext.Value, error) {
-	if value == nil {
-		return nil, nil
-	}
-	if encoded, ok := value.(jsontext.Value); ok {
-		return encoded, nil
-	}
 	// A response carrying a map — tool arguments, a tool result, a JSON Schema —
 	// must reach the client as the same bytes every time, which is what the
 	// previous encoder did implicitly and what v2 does only on request.
