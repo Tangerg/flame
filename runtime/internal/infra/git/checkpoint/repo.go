@@ -31,25 +31,21 @@ const (
 // ensureRepo lazily initializes the session's shadow repo (idempotent).
 func (s *Store) ensureRepo(ctx context.Context, sessionID, cwd string) (string, error) {
 	gitDir := s.gitDir(sessionID, cwd)
-	if repoExists(gitDir) {
-		// A repository with a commit has completed at least one snapshot. An
-		// initialized repository without one may be residue from an interrupted
-		// first snapshot; rebuild it instead of trusting a possibly partial index
-		// or alternates file.
-		hasHead, err := s.hasHead(ctx, gitDir)
+	present, err := repoExists(gitDir)
+	if err != nil {
+		return "", err
+	}
+	if present {
+		// Initialization publishes only complete repositories. HEAD's commit
+		// state does not prove the absence of retained Run boundaries.
+		matches, err := repositoryMatchesWorkspace(gitDir, cwd)
 		if err != nil {
 			return "", err
 		}
-		if hasHead {
-			matches, matchErr := repositoryMatchesWorkspace(gitDir, cwd)
-			if matchErr != nil {
-				return "", matchErr
-			}
-			if !matches {
-				return "", errors.New("checkpoint: workspace digest collision")
-			}
-			return gitDir, nil
+		if !matches {
+			return "", errors.New("checkpoint: workspace digest collision")
 		}
+		return gitDir, nil
 	}
 
 	parent := filepath.Dir(gitDir)
@@ -121,13 +117,9 @@ func readWorkspaceIdentity(source io.Reader) ([]byte, error) {
 
 // publishRepo makes a fully initialized repository visible in one rename. The
 // staging directory is a sibling of dst, so the rename cannot cross filesystems.
-// An initialized repository without a commit is safe to replace: it has never
-// represented a completed checkpoint boundary.
 func publishRepo(stagingDir, dst string) error {
 	if _, err := os.Lstat(dst); err == nil {
-		if removeAllErr := os.RemoveAll(dst); removeAllErr != nil {
-			return fmt.Errorf("checkpoint: remove incomplete repository: %w", removeAllErr)
-		}
+		return errors.New("checkpoint: repository destination already exists")
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("checkpoint: inspect repository destination: %w", err)
 	}
@@ -304,9 +296,25 @@ func readSourceAlternates(path string) ([]byte, error) {
 	return data, nil
 }
 
-func repoExists(gitDir string) bool {
-	info, err := os.Stat(filepath.Join(gitDir, "HEAD"))
-	return err == nil && info.Mode().IsRegular()
+func repoExists(gitDir string) (bool, error) {
+	info, err := os.Stat(gitDir)
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("checkpoint: inspect repository directory: %w", err)
+	}
+	if !info.IsDir() {
+		return false, errors.New("checkpoint: repository path is not a directory")
+	}
+	info, err = os.Stat(filepath.Join(gitDir, "HEAD"))
+	if err != nil {
+		return false, fmt.Errorf("checkpoint: inspect repository head: %w", err)
+	}
+	if !info.Mode().IsRegular() {
+		return false, errors.New("checkpoint: repository head is not a regular file")
+	}
+	return true, nil
 }
 
 // materializeAlternates copies every object reachable from the shadow refs out

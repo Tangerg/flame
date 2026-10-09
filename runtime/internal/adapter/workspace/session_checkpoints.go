@@ -26,7 +26,7 @@ func (s SessionCheckpoints) Restore(ctx context.Context, sessionID, cwd, runID s
 		case errors.Is(err, ErrCheckpointConflict):
 			return fmt.Errorf("%w: %w", sessions.ErrCheckpointConflict, err)
 		case errors.Is(err, ErrCheckpointRestoreIncomplete):
-			return fmt.Errorf("%w: %v", sessions.ErrCheckpointRestoreIncomplete, err)
+			return fmt.Errorf("%w: %w", sessions.ErrCheckpointRestoreIncomplete, err)
 		default:
 			return err
 		}

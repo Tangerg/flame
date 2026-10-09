@@ -27,7 +27,11 @@ func (s *Store) Restore(ctx context.Context, sessionID, cwd, runID string) error
 	repoMu.Lock()
 	defer repoMu.Unlock()
 	gitDir := s.gitDir(sessionID, cwd)
-	if !repoExists(gitDir) {
+	present, err := repoExists(gitDir)
+	if err != nil {
+		return err
+	}
+	if !present {
 		return ErrUnavailable
 	}
 	matches, err := repositoryMatchesWorkspace(gitDir, cwd)
@@ -38,7 +42,10 @@ func (s *Store) Restore(ctx context.Context, sessionID, cwd, runID string) error
 		return ErrUnavailable
 	}
 	if _, err := s.git(ctx, gitDir, cwd, "rev-parse", "-q", "--verify", "refs/tags/"+tagFor(runID)); err != nil {
-		return ErrUnavailable
+		if gitExitCode(err) == 1 {
+			return ErrUnavailable
+		}
+		return err
 	}
 	if err := s.materializeAlternates(ctx, gitDir); err != nil {
 		return err
@@ -68,7 +75,7 @@ func (s *Store) Restore(ctx context.Context, sessionID, cwd, runID string) error
 	// reset --hard (or --merge), --no-overwrite-ignore protects ignored blockers.
 	// Once checkout starts, any error conservatively retains the recovery intent.
 	if _, err := s.git(ctx, gitDir, cwd, "checkout", "-q", "--detach", "--no-overwrite-ignore", tagFor(runID)); err != nil {
-		return fmt.Errorf("%w: %v", ErrRestoreIncomplete, err)
+		return fmt.Errorf("%w: %w", ErrRestoreIncomplete, err)
 	}
 	return nil
 }

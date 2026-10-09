@@ -209,8 +209,13 @@ func TestStoreRestoreProtectsIgnoredBlockerCreatedAfterPreflight(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
-	if err := s.Restore(t.Context(), "session", cwd, "boundary"); !errors.Is(err, ErrRestoreIncomplete) || errors.Is(err, ErrConflict) {
+	err = s.Restore(t.Context(), "session", cwd, "boundary")
+	if !errors.Is(err, ErrRestoreIncomplete) || errors.Is(err, ErrConflict) {
 		t.Fatalf("restore = %v, want conservative checkout failure", err)
+	}
+	var command *gitCommandError
+	if !errors.As(err, &command) || command.operation != "checkout" || command.ExitCode() <= 0 {
+		t.Fatalf("restore lost its checkout failure cause: %v", err)
 	}
 	if got := read(t, filepath.Join(cwd, "entry"), "late"); got != "external material" {
 		t.Fatalf("late external material = %q", got)

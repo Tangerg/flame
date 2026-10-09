@@ -172,8 +172,8 @@ func TestCheckpointCandidateRecordsAndSeedFilesAreBounded(t *testing.T) {
 	if err := os.WriteFile(oversizedAlternates, []byte(strings.Repeat("x", maxSourceAlternatesBytes+1)), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := readSourceAlternates(oversizedAlternates); !errors.Is(err, ErrSnapshotTooLarge) {
-		t.Fatalf("readSourceAlternates() error = %v, want ErrSnapshotTooLarge", err)
+	if _, err := readSourceAlternates(oversizedAlternates); !errors.Is(err, ErrSnapshotTooLarge) || !errors.Is(err, fileinput.ErrTooLarge) {
+		t.Fatalf("readSourceAlternates() lost its snapshot category or source cause: %v", err)
 	}
 	oversizedIdentity := strings.NewReader(strings.Repeat("x", maxWorkspaceIdentityBytes+1))
 	if _, err := readWorkspaceIdentity(oversizedIdentity); !errors.Is(err, ErrSnapshotTooLarge) {
@@ -184,8 +184,8 @@ func TestCheckpointCandidateRecordsAndSeedFilesAreBounded(t *testing.T) {
 	if err := os.WriteFile(source, []byte("12345"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := copyFile(source, filepath.Join(t.TempDir(), "copy"), 4); !errors.Is(err, ErrSnapshotTooLarge) {
-		t.Fatalf("copyFile() error = %v, want ErrSnapshotTooLarge", err)
+	if err := copyFile(source, filepath.Join(t.TempDir(), "copy"), 4); !errors.Is(err, ErrSnapshotTooLarge) || !errors.Is(err, fileinput.ErrTooLarge) {
+		t.Fatalf("copyFile() lost its snapshot category or source cause: %v", err)
 	}
 
 	invalidSource := t.TempDir()
@@ -469,8 +469,8 @@ func TestStore_FailedSeedDoesNotPublishRepository(t *testing.T) {
 	if err := s.Snapshot(ctx, "ses1", cwd, "run1"); err != nil {
 		t.Fatalf("snapshot after repairing source repo: %v", err)
 	}
-	if !repoExists(s.gitDir("ses1", cwd)) {
-		t.Fatal("successful retry did not publish repository")
+	if present, err := repoExists(s.gitDir("ses1", cwd)); err != nil || !present {
+		t.Fatalf("successful retry did not publish repository: %v", err)
 	}
 }
 
@@ -524,22 +524,64 @@ func TestStore_SeedsFromLinkedWorktreeIndex(t *testing.T) {
 }
 
 func TestStore_DoesNotReplaceRepositoryOnInspectionFailure(t *testing.T) {
-	s, cwd := newTestStore(t)
-	ctx := context.Background()
+	for _, shape := range []string{"invalid ref", "missing head", "directory", "symlink loop"} {
+		t.Run(shape, func(t *testing.T) {
+			s, cwd := newTestStore(t)
+			write(t, cwd, "tracked.txt", "v1")
+			if err := s.Snapshot(t.Context(), "ses1", cwd, "run1"); err != nil {
+				t.Fatalf("snapshot: %v", err)
+			}
+			gitDir := s.gitDir("ses1", cwd)
+			head := filepath.Join(gitDir, "HEAD")
+			if err := os.Remove(head); err != nil {
+				t.Fatal(err)
+			}
+			switch shape {
+			case "invalid ref":
+				if err := os.WriteFile(head, []byte("invalid ref\n"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			case "directory":
+				if err := os.Mkdir(head, 0o755); err != nil {
+					t.Fatal(err)
+				}
+			case "symlink loop":
+				if err := os.Symlink("HEAD", head); err != nil {
+					t.Skipf("symlinks unavailable: %v", err)
+				}
+			}
+			if err := s.Snapshot(t.Context(), "ses1", cwd, "run2"); err == nil {
+				t.Fatal("snapshot replaced a repository whose HEAD inspection failed")
+			}
+			if _, err := os.Stat(filepath.Join(gitDir, "refs", "tags", tagFor("run1"))); err != nil {
+				t.Fatalf("inspection failure destroyed existing snapshot refs: %v", err)
+			}
+			if err := s.Restore(t.Context(), "ses1", cwd, "run1"); err == nil || errors.Is(err, ErrUnavailable) || errors.Is(err, ErrRestoreIncomplete) {
+				t.Fatalf("restore disguised a repository inspection failure: %v", err)
+			}
+		})
+	}
+}
 
-	write(t, cwd, "tracked.txt", "v1")
-	if err := s.Snapshot(ctx, "ses1", cwd, "run1"); err != nil {
-		t.Fatalf("snapshot: %v", err)
+func TestStorePreservesExistingBoundariesWithoutACurrentHead(t *testing.T) {
+	s, cwd := newTestStore(t)
+	write(t, cwd, "tracked.txt", "first")
+	if err := s.Snapshot(t.Context(), "session", cwd, "first"); err != nil {
+		t.Fatal(err)
 	}
-	gitDir := s.gitDir("ses1", cwd)
-	if err := os.WriteFile(filepath.Join(gitDir, "HEAD"), []byte("invalid ref\n"), 0o644); err != nil {
-		t.Fatalf("corrupt HEAD: %v", err)
+	head := filepath.Join(s.gitDir("session", cwd), "HEAD")
+	if err := os.WriteFile(head, []byte("ref: refs/heads/unborn\n"), 0o600); err != nil {
+		t.Fatal(err)
 	}
-	if err := s.Snapshot(ctx, "ses1", cwd, "run2"); err == nil {
-		t.Fatal("snapshot replaced a repository whose HEAD inspection failed")
+	write(t, cwd, "tracked.txt", "second")
+	if err := s.Snapshot(t.Context(), "session", cwd, "second"); err != nil {
+		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(gitDir, "refs", "tags", tagFor("run1"))); err != nil {
-		t.Fatalf("inspection failure destroyed existing snapshot refs: %v", err)
+	if err := s.Restore(t.Context(), "session", cwd, "first"); err != nil {
+		t.Fatalf("snapshot replaced a repository that still owned a boundary: %v", err)
+	}
+	if got := read(t, cwd, "tracked.txt"); got != "first" {
+		t.Fatalf("original boundary restored %q", got)
 	}
 }
 

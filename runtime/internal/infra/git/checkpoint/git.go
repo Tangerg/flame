@@ -113,7 +113,7 @@ func copyFile(src, dst string, maxBytes int64) (err error) {
 
 func checkpointSourceError(err error) error {
 	if errors.Is(err, fileinput.ErrTooLarge) {
-		return fmt.Errorf("%w: %v", ErrSnapshotTooLarge, err)
+		return fmt.Errorf("%w: %w", ErrSnapshotTooLarge, err)
 	}
 	return err
 }

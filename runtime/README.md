@@ -824,6 +824,12 @@ changing checkpoint state. With Runtime's standard `<DataDirectory>/checkpoints`
 layout, the data directory itself and its ancestors cannot serve as checkpointed
 workspaces: Runtime durability must not be archived as project material.
 
+An existing checkpoint repository is never rebuilt from its current HEAD state:
+retained Run boundaries belong to that repository even when HEAD has no commit.
+Repository inspection and Git execution failures remain errors, preserving their
+causes. Only an absent repository or target ref reports a missing checkpoint;
+checkout failure retains the incomplete-restore classification for recovery.
+
 `sessions.rollback` with `files` or `both` restores a Run's checkpoint for that
 Session and workspace. Checkpoints archive admitted regular files and symlinks,
 respect ignore rules for untracked paths, and exclude files larger than 2 MiB.
