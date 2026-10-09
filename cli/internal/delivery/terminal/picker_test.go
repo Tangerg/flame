@@ -29,6 +29,7 @@ func TestPickerClickCommitsOnlyAfterMatchingRelease(t *testing.T) {
 	if picked != "" || picker.items.Selected() != 1 {
 		t.Fatalf("press picked %q with selection %d", picked, picker.items.Selected())
 	}
+	picker.Handle(input.Mouse{Action: input.MouseLeave})
 	if !root.Handle(input.Mouse{Pos: second, Action: input.MouseUp, Button: input.ButtonLeft}) {
 		t.Fatal("picker release was not handled")
 	}
@@ -88,6 +89,12 @@ func TestPickerCancelsAStalePointerGesture(t *testing.T) {
 		name      string
 		interrupt func(*picker[string], *headless.Root, image.Point)
 	}{
+		{
+			name: "capture cancellation",
+			interrupt: func(picker *picker[string], _ *headless.Root, point image.Point) {
+				picker.Handle(input.Mouse{Pos: point, Action: input.MouseCancel})
+			},
+		},
 		{
 			name: "different button release",
 			interrupt: func(_ *picker[string], root *headless.Root, point image.Point) {

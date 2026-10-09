@@ -17,7 +17,7 @@ import (
 
 func editWithTerminal(t *testing.T, ctx context.Context, editor *draftEditor, workspace, original string) (edited string, err error) {
 	t.Helper()
-	host := handoverTestHost{programtest.New(t, programtest.Config{Width: 40, Height: 4})}
+	host := &handoverTestHost{Host: programtest.New(t, programtest.Config{Width: 40, Height: 4})}
 	runErr := program.Run(t.Context(), program.Config{Host: host, Root: func(loop *program.Runtime) program.Component {
 		loop.Dispatcher().Post(func() {
 			edited, err = editor.Edit(ctx, loop.Session(), workspace, original)

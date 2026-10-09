@@ -1,5 +1,6 @@
 import {
   definePlugin as defineContractPlugin,
+  normalizePlainRecord,
   asyncDisposeSymbol,
   type AnyPlugin,
   type Awaitable,
@@ -50,6 +51,7 @@ export interface PluginSpec<
 }
 
 const mintedIds = new ExactSequence();
+const specFields: ReadonlySet<string> = new Set(["name", "requires", "provides", "setup"]);
 
 function itemId(item: unknown): string | undefined {
   if (typeof item !== "object" || item === null || !("id" in item)) return undefined;
@@ -128,11 +130,19 @@ function bindContext<Requires extends Requirements>(
 export function definePlugin<Requires extends Requirements = {}, Provides extends Provisions = {}>(
   spec: PluginSpec<Requires, Provides>,
 ): AnyPlugin {
+  const { name, requires, provides, setup } = normalizePlainRecord(
+    spec,
+    "flame plugin declaration",
+    {
+      fields: specFields,
+    },
+  );
+  if (typeof setup !== "function") throw new TypeError("plugin setup must be a function");
   return defineContractPlugin<void, Requires, Provides>({
-    name: spec.name,
-    ...(spec.requires ? { requires: spec.requires } : {}),
-    ...(spec.provides ? { provides: spec.provides } : {}),
-    setup: (ctx) => spec.setup(bindContext(ctx, spec.name)) as never,
+    name,
+    ...(requires === undefined ? {} : { requires }),
+    ...(provides === undefined ? {} : { provides }),
+    setup: (ctx) => setup(bindContext(ctx, ctx.meta.pluginName)) as never,
   });
 }
 

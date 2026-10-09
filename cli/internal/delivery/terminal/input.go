@@ -78,7 +78,9 @@ func (a *app) handleConfiguredAction(event input.Event, action keymap.Action) bo
 	// Completion owns its navigation and acceptance keys before prompt-level
 	// history, submission, or editing actions, matching the visual layer on top.
 	if action == sendPrompt && a.exactCommandCompletion() {
-		a.completion.Dismiss()
+		if !a.completion.Dismiss() {
+			return true
+		}
 	} else if a.handleCompletion(event) {
 		return true
 	}

@@ -25,7 +25,9 @@ import (
 	"github.com/Tangerg/flame/cli/internal/runtimefixture"
 	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/oolong/core/input"
+	"github.com/Tangerg/oolong/core/program"
 	"github.com/Tangerg/oolong/core/programtest"
+	"github.com/Tangerg/oolong/core/term"
 )
 
 func runUI(t *testing.T, plugins ...extensions.Plugin) (*programtest.Host, func()) {
@@ -37,9 +39,28 @@ func runUI(t *testing.T, plugins ...extensions.Plugin) (*programtest.Host, func(
 
 var terminalControlSequence = regexp.MustCompile(`\x1b\[[0-?]*[ -/]*[@-~]`)
 
-type handoverTestHost struct{ *programtest.Host }
+type handoverTestHost struct {
+	*programtest.Host
+	handing atomic.Bool
+}
 
-func (handoverTestHost) Hand(run func() error) error { return run() }
+var _ program.HandoverHost = (*handoverTestHost)(nil)
+
+func (h *handoverTestHost) Hand(prepare, run func() error) error {
+	if !h.handing.CompareAndSwap(false, true) {
+		return term.ErrHandoverActive
+	}
+	defer h.handing.Store(false)
+	if prepare != nil {
+		if err := prepare(); err != nil {
+			return err
+		}
+	}
+	if run != nil {
+		return run()
+	}
+	return nil
+}
 
 // Runtime and storage progress can leave the visible frame unchanged.
 func awaitState(t *testing.T, description string, ready func() bool) {
@@ -91,7 +112,7 @@ func runUIFromConfig(t *testing.T, config Config) (*programtest.Host, func()) {
 	host := programtest.New(t, programtest.Config{Width: 96, Height: 28})
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
-	config.Host = handoverTestHost{host}
+	config.Host = &handoverTestHost{Host: host}
 	go func() {
 		done <- Run(ctx, config)
 	}()
@@ -144,7 +165,7 @@ func runUIWithState(t *testing.T, backend Runtime, workspace, sessionID, stateDi
 		done <- Run(ctx, Config{
 			RuntimeProfile: featuredTerminalProfile(t),
 			Runtime:        backend, Workspace: workspace, SessionID: sessionID,
-			OpenWorkbench: openWorkbench, Host: handoverTestHost{host},
+			OpenWorkbench: openWorkbench, Host: &handoverTestHost{Host: host},
 		})
 	}()
 	var once sync.Once

@@ -62,7 +62,7 @@ func (s *transcriptSearch) Reset(content *headless.Transcript) {
 func (s *transcriptSearch) Results() <-chan headless.Result { return s.worker.Results() }
 
 func (s *transcriptSearch) Accept(content *headless.Transcript, result headless.Result) (accepted, announce bool) {
-	if result.Query != s.query {
+	if !result.Current() {
 		return false, false
 	}
 	next := s.matchIndex(content, result.Matches)

@@ -3,7 +3,7 @@ import { createHost, type AnyPlugin, type Host } from "dougong";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { defineExtensionPoint } from "./contracts";
 import { contributionsTo, publishKernel, retractKernel, subscribeContributions } from "./kernel";
-import { definePlugin } from "./definePlugin";
+import { definePlugin, type PluginContext } from "./definePlugin";
 import { usePluginErrorStore } from "./errors";
 
 interface Theme {
@@ -38,6 +38,50 @@ async function start(plugins: AnyPlugin[]) {
   publishKernel(host);
   return index;
 }
+
+describe("plugin declaration ownership", () => {
+  it("captures setup and attributes contributions to the installed identity", async () => {
+    const setup = vi.fn((ctx: PluginContext) => {
+      ctx.contribute(THEME, { id: "declared", label: "Declared" });
+    });
+    const spec = { name: "test.declared", setup };
+    const plugin = definePlugin(spec);
+    spec.name = "test.replacement";
+    spec.setup = vi.fn(() => {
+      throw new Error("replaced setup must not run");
+    });
+
+    const index = await start([plugin]);
+
+    expect(setup).toHaveBeenCalledOnce();
+    expect(index.entries(THEME)).toEqual([
+      expect.objectContaining({
+        plugin: "test.declared",
+        item: { id: "declared", label: "Declared" },
+      }),
+    ]);
+  });
+
+  it("rejects accessor declarations without executing their getters", () => {
+    const setup = vi.fn(() => () => {});
+    const spec = {
+      name: "test.accessor",
+      get setup() {
+        return setup();
+      },
+    };
+
+    expect(() => definePlugin(spec)).toThrow(TypeError);
+    expect(setup).not.toHaveBeenCalled();
+  });
+
+  it("rejects a non-callable setup before creating an installation", () => {
+    const spec = { name: "test.invalid", setup() {} };
+    Reflect.set(spec, "setup", null);
+
+    expect(() => definePlugin(spec)).toThrow(TypeError);
+  });
+});
 
 describe("kernel contribution reads", () => {
   it("reports a failing observer while still notifying the remaining consumers", async () => {

@@ -122,7 +122,7 @@ func (a *app) openScheduleForm(mode scheduleFormMode, scheduled protocol.Schedul
 	generation := a.session.context
 	draft := newScheduleFormDraft(mode, scheduled, a.session.current.Workspace.Path)
 	textField := func(label, placeholder string, value *string, check func(string) error) *headless.Text {
-		field := &headless.Text{Label: label, Placeholder: placeholder, Value: headless.Bind(value), Check: check}
+		field := headless.NewText(headless.TextConfig{Label: label, Placeholder: placeholder, Value: headless.Bind(value), Check: check})
 		field.Clipboard = a.loop.Clipboard()
 		return field
 	}
@@ -137,7 +137,7 @@ func (a *app) openScheduleForm(mode scheduleFormMode, scheduled protocol.Schedul
 		}),
 	}
 	if mode == scheduleFormUpdate {
-		enabled := &headless.Select[bool]{Same: headless.Equal[bool], Label: "Lifecycle", Value: headless.Bind(&draft.enabled), Rows: 2}
+		enabled := headless.NewSelect(headless.SelectConfig[bool]{Same: headless.Equal[bool], Label: "Lifecycle", Value: headless.Bind(&draft.enabled), Rows: 2})
 		enabled.SetOptions([]headless.Option[bool]{{Label: "Enabled", Value: true}, {Label: "Disabled", Value: false}})
 		fields = append(fields, enabled)
 	}

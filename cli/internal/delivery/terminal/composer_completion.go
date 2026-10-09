@@ -109,7 +109,9 @@ func (a *app) handleCompletion(event input.Event) bool {
 func (a *app) completeFiles(query completionQuery) {
 	// The previous offer carries its query's replacement range and must stop
 	// accepting input before the next asynchronous lookup can publish a result.
-	a.completion.Dismiss()
+	if !a.completion.Dismiss() {
+		return
+	}
 	if a.attachments == nil {
 		return
 	}

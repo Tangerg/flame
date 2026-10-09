@@ -185,6 +185,31 @@ func TestColdCanceledQuestionDoesNotPinTranscriptRetention(t *testing.T) {
 	}
 }
 
+func TestTranscriptRejectsAResultFromAnEarlierIdenticalSearch(t *testing.T) {
+	view := testTranscriptView(t)
+	view.Append(&kit.Entry{Theme: view.theme, Label: "test", Body: "needle"})
+	drawRoot(t, view, 48, 6)
+	view.Find("needle")
+	var previous headless.Result
+	select {
+	case previous = <-view.SearchResults():
+	case <-time.After(2 * time.Second):
+		t.Fatal("transcript search did not finish")
+	}
+	view.Find("needle")
+	if accepted, _ := view.AcceptSearch(previous); accepted {
+		t.Fatal("transcript accepted a superseded search with the same query")
+	}
+	select {
+	case current := <-view.SearchResults():
+		if accepted, _ := view.AcceptSearch(current); !accepted || len(view.search.matches) != 1 {
+			t.Fatal("transcript rejected its current search")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("replacement search did not finish")
+	}
+}
+
 func TestTranscriptNavigationUsesRetainedBlockAndSearchCoordinates(t *testing.T) {
 	view := testTranscriptView(t)
 	for _, body := range []string{"discarded needle", "retained middle", "retained needle"} {
@@ -717,6 +742,12 @@ func TestToolClickRequiresAnUninterruptedLeftButtonGesture(t *testing.T) {
 		name      string
 		interrupt func(*transcriptView, *headless.Root)
 	}{
+		{
+			name: "capture cancellation",
+			interrupt: func(view *transcriptView, _ *headless.Root) {
+				view.Handle(input.Mouse{Action: input.MouseCancel})
+			},
+		},
 		{
 			name: "different button release",
 			interrupt: func(_ *transcriptView, root *headless.Root) {

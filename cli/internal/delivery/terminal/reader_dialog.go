@@ -23,7 +23,7 @@ func (a *app) buildReader(theme kit.Theme, glyphs kit.Glyphs) {
 	}
 	a.dialogs.reader.onCopied = func() { a.status.note("copied reader text") }
 
-	field := &headless.Text{Label: "Find in the reader", Placeholder: "text", Value: headless.Bind(&a.dialogs.readerSearchQuery), Check: requiredText}
+	field := headless.NewText(headless.TextConfig{Label: "Find in the reader", Placeholder: "text", Value: headless.Bind(&a.dialogs.readerSearchQuery), Check: requiredText})
 	form := headless.NewForm(field)
 	form.Keys = headless.DefaultFormKeys()
 	form.Done = func() {

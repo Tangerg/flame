@@ -108,6 +108,34 @@ func TestReaderSearchStepsAcrossFullContent(t *testing.T) {
 	}
 }
 
+func TestReaderRejectsAResultFromAnEarlierIdenticalSearch(t *testing.T) {
+	reader := newReaderPane(kit.Dark(), kit.Unicode(), highlight.New("github-dark"), input.Wheel{}, nil)
+	t.Cleanup(reader.Shutdown)
+	reader.Open(readerTarget{document: readerDocument{
+		Title: "search ownership", Sections: []ToolSection{{Style: toolSectionCode, Text: "needle"}},
+	}})
+	headless.NewRoot(reader).Draw(grid.NewSurface(60, 10).View())
+	reader.Find("needle")
+	var previous headless.Result
+	select {
+	case previous = <-reader.SearchResults():
+	case <-time.After(2 * time.Second):
+		t.Fatal("reader search did not finish")
+	}
+	reader.Find("needle")
+	if reader.AcceptSearch(previous) {
+		t.Fatal("reader accepted a superseded search with the same query")
+	}
+	select {
+	case current := <-reader.SearchResults():
+		if !reader.AcceptSearch(current) || len(reader.matches) != 1 {
+			t.Fatal("reader rejected its current search")
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("replacement search did not finish")
+	}
+}
+
 func TestReaderCopiesOnlyAnUninterruptedOwnedSelectionGesture(t *testing.T) {
 	clipboard := new(recordingClipboard)
 	reader := newReaderPane(kit.Dark(), kit.Unicode(), highlight.New("github-dark"), input.Wheel{}, clipboard)
@@ -132,6 +160,9 @@ func TestReaderCopiesOnlyAnUninterruptedOwnedSelectionGesture(t *testing.T) {
 		run   func()
 	}{
 		{name: "unowned release", run: func() {}},
+		{name: "capture cancellation", begin: true, run: func() {
+			reader.Handle(input.Mouse{Pos: end, Action: input.MouseCancel})
+		}},
 		{name: "keyboard", begin: true, run: func() {
 			root.Handle(input.Key{Code: input.F3})
 		}},

@@ -98,7 +98,7 @@ func commandCategoryRank(category string) int {
 }
 
 func (a *app) buildSearchDialog(theme kit.Theme, glyphs kit.Glyphs) {
-	field := &headless.Text{Label: "Find in the live transcript", Placeholder: "text", Value: headless.Bind(&a.dialogs.searchQuery), Check: requiredText}
+	field := headless.NewText(headless.TextConfig{Label: "Find in the live transcript", Placeholder: "text", Value: headless.Bind(&a.dialogs.searchQuery), Check: requiredText})
 	keys := headless.DefaultFormKeys()
 	form := headless.NewForm(field)
 	form.Keys = keys

@@ -68,10 +68,10 @@ func (a *app) openInterruptSummary() {
 		return
 	}
 	decision := interruptReviewSubmit
-	choice := &headless.Select[interruptReviewDecision]{
+	choice := headless.NewSelect(headless.SelectConfig[interruptReviewDecision]{
 		Same:  headless.Equal[interruptReviewDecision],
 		Label: "Review complete", Value: headless.Bind(&decision), Rows: 3,
-	}
+	})
 	choice.SetOptions([]headless.Option[interruptReviewDecision]{
 		{Label: "Submit all decisions", Value: interruptReviewSubmit},
 		{Label: "Go back and edit", Value: interruptReviewBack},

@@ -276,7 +276,7 @@ func (a *app) confirmActionWithContent(title, question, action, content string, 
 	a.dismissConfirmation()
 	generation := a.session.context
 	confirmed := false
-	choice := &headless.Select[bool]{Same: headless.Equal[bool], Label: question, Value: headless.Bind(&confirmed), Rows: 2}
+	choice := headless.NewSelect(headless.SelectConfig[bool]{Same: headless.Equal[bool], Label: question, Value: headless.Bind(&confirmed), Rows: 2})
 	choice.SetOptions([]headless.Option[bool]{
 		{Label: "Cancel", Value: false},
 		{Label: action, Value: true},

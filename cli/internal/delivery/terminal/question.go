@@ -252,27 +252,27 @@ func (a *app) buildQuestionFields(response *questionResponse) ([]headless.Field,
 }
 
 func (a *app) buildQuestionText(value *string, label, placeholder string, check func(string) error) headless.Field {
-	field := &headless.Text{Label: label, Placeholder: placeholder, Value: headless.Bind(value), Check: check}
+	field := headless.NewText(headless.TextConfig{Label: label, Placeholder: placeholder, Value: headless.Bind(value), Check: check})
 	field.Clipboard = a.loop.Clipboard()
 	return field
 }
 
 func (a *app) buildQuestionSingle(response *questionResponse, specification conversation.QuestionField, label string) headless.Field {
 	options := questionOptions(specification)
-	field := &headless.Select[questionChoice]{
+	field := headless.NewSelect(headless.SelectConfig[questionChoice]{
 		Label: label, Value: headless.Bind(&response.single), Rows: min(len(options), 5),
 		Same: sameQuestionChoice,
-	}
+	})
 	field.SetOptions(options)
 	return field
 }
 
 func (a *app) buildQuestionMulti(response *questionResponse, specification conversation.QuestionField, label string) headless.Field {
 	options := questionOptions(specification)
-	field := &headless.MultiSelect[questionChoice]{
+	field := headless.NewMultiSelect(headless.MultiSelectConfig[questionChoice]{
 		Label: label, Value: headless.Bind(&response.multiple), Rows: min(len(options), 5),
 		Same: sameQuestionChoice, Check: requiredQuestionChoices,
-	}
+	})
 	field.SetOptions(options)
 	return field
 }

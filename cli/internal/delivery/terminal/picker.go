@@ -141,6 +141,17 @@ func (p *picker[T]) handleKey(key input.Key, event input.Event) bool {
 }
 
 func (p *picker[T]) handleMouse(mouse input.Mouse) bool {
+	switch mouse.Action {
+	case input.MouseCancel:
+		p.pointerGesture.cancel()
+		p.items.Handle(mouse)
+		p.query.Handle(mouse)
+		return true
+	case input.MouseLeave:
+		p.items.Handle(mouse)
+		p.query.Handle(mouse)
+		return false
+	}
 	areas := p.areas.Value()
 	if p.pointerGesture.active {
 		if mouse.Action == input.MouseDrag || mouse.Action == input.MouseUp {

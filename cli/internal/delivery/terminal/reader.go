@@ -242,6 +242,8 @@ func (r *readerPane) handleShortcut(event input.Event) bool {
 
 func (r *readerPane) handleMouse(mouse input.Mouse, handled bool) {
 	switch mouse.Action {
+	case input.MouseCancel:
+		r.interruptSelectionGesture()
 	case input.MouseDown:
 		if mouse.Button == input.ButtonLeft && handled {
 			r.selectionGesture.begin()
@@ -279,7 +281,7 @@ func (r *readerPane) Find(query string) {
 }
 
 func (r *readerPane) AcceptSearch(result headless.Result) bool {
-	if result.Query != r.query {
+	if !result.Current() {
 		return false
 	}
 	if result.Err != nil {

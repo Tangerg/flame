@@ -68,9 +68,9 @@ func TestConfirmationContentPaneWheelReadsBody(t *testing.T) {
 
 func confirmationContentTestPane() (*confirmationContentPane, *bool) {
 	confirmed := new(bool)
-	choice := &headless.Select[bool]{
+	choice := headless.NewSelect(headless.SelectConfig[bool]{
 		Same: headless.Equal[bool], Label: "Decide this exact revision", Value: headless.Bind(confirmed), Rows: 2,
-	}
+	})
 	choice.SetOptions([]headless.Option[bool]{
 		{Label: "Cancel", Value: false},
 		{Label: "Approve", Value: true},

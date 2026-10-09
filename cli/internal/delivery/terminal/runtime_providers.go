@@ -141,13 +141,13 @@ func (a *app) openProviderConfig(provider models.Provider) {
 		baseMode = formChangeSet
 	}
 	keyMode, apiKey := formChangeKeep, ""
-	baseChoice := &headless.Select[formChange]{Same: headless.Equal[formChange], Label: "Endpoint change", Value: headless.Bind(&baseMode), Rows: 3}
+	baseChoice := headless.NewSelect(headless.SelectConfig[formChange]{Same: headless.Equal[formChange], Label: "Endpoint change", Value: headless.Bind(&baseMode), Rows: 3})
 	baseChoice.SetOptions([]headless.Option[formChange]{
 		{Label: "Keep current endpoint", Value: formChangeKeep},
 		{Label: "Set endpoint", Value: formChangeSet},
 		{Label: "Clear endpoint", Value: formChangeClear},
 	})
-	baseField := &headless.Text{
+	baseField := headless.NewText(headless.TextConfig{
 		Label: "Endpoint URL", Placeholder: "https://api.example.com", Value: headless.Bind(&baseURL),
 		Check: func(value string) error {
 			if baseMode.SetsValue() {
@@ -155,8 +155,8 @@ func (a *app) openProviderConfig(provider models.Provider) {
 			}
 			return nil
 		},
-	}
-	keyChoice := &headless.Select[formChange]{Same: headless.Equal[formChange], Label: "API key change", Value: headless.Bind(&keyMode), Rows: 3}
+	})
+	keyChoice := headless.NewSelect(headless.SelectConfig[formChange]{Same: headless.Equal[formChange], Label: "API key change", Value: headless.Bind(&keyMode), Rows: 3})
 	keyOptions := []headless.Option[formChange]{
 		{Label: "Keep current key", Value: formChangeKeep},
 		{Label: "Set a stored key", Value: formChangeSet},
@@ -170,7 +170,7 @@ func (a *app) openProviderConfig(provider models.Provider) {
 	if hasCredential {
 		keyPlaceholder = credential.Masked()
 	}
-	keyField := &headless.Text{
+	keyField := headless.NewText(headless.TextConfig{
 		Label: "New API key", Placeholder: keyPlaceholder, Value: headless.Bind(&apiKey),
 		Check: func(value string) error {
 			if keyMode.SetsValue() {
@@ -178,7 +178,7 @@ func (a *app) openProviderConfig(provider models.Provider) {
 			}
 			return nil
 		},
-	}
+	})
 	keyField.SetMask("•")
 	baseField.Clipboard = a.loop.Clipboard()
 	keyField.Clipboard = a.loop.Clipboard()

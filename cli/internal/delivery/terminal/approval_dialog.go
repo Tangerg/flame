@@ -113,15 +113,15 @@ func (a *app) setApprovalForm(initial approvalAction) {
 	}
 	rememberable := a.dialogs.approval == nil || a.dialogs.approval.Rememberable
 	draft.choice = initial.Normalize(rememberable)
-	choice := &headless.Select[approvalAction]{
+	choice := headless.NewSelect(headless.SelectConfig[approvalAction]{
 		Same:  headless.Equal[approvalAction],
 		Label: "How should flame proceed?", Value: headless.Bind(&draft.choice), Rows: 3,
-	}
+	})
 	choice.SetOptions(approvalOptions(rememberable))
-	reason := &headless.Text{
+	reason := headless.NewText(headless.TextConfig{
 		Label: "Denial feedback (optional)", Placeholder: "Explain what should change before retrying",
 		Value: headless.Bind(&draft.reason),
-	}
+	})
 	reason.Clipboard = a.loop.Clipboard()
 	keys := headless.DefaultFormKeys()
 	a.dialogs.approvalForm = headless.NewForm(choice, reason)

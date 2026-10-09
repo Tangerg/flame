@@ -71,6 +71,13 @@ func (t *transcriptPointerGesture) release(
 func (t *transcriptPointerGesture) cancel() { *t = transcriptPointerGesture{} }
 
 func (t *transcriptView) handleMouse(mouse input.Mouse) {
+	if mouse.Action == input.MouseCancel {
+		t.pointerGesture.cancel()
+		return
+	}
+	if mouse.Action == input.MouseLeave {
+		return
+	}
 	if mouse.Button != input.ButtonLeft {
 		t.cancelPointerGesture(mouse)
 		return
@@ -116,7 +123,7 @@ func (t *transcriptView) handleMouse(mouse input.Mouse) {
 
 func (t *transcriptView) cancelPointerGesture(mouse input.Mouse) {
 	switch mouse.Action {
-	case input.MouseDown, input.MouseUp, input.MouseDrag:
+	case input.MouseDown, input.MouseUp, input.MouseDrag, input.MouseCancel:
 		t.pointerGesture.cancel()
 	}
 }

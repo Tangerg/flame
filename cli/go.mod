@@ -5,13 +5,13 @@ go 1.27.0
 require (
 	github.com/Tangerg/flame/runtime v0.0.0-20261008063147-97d0c5c7e56e
 	github.com/Tangerg/flame/runtime/localruntime v0.0.0-20261008063147-97d0c5c7e56e
-	github.com/Tangerg/oolong/components v0.21.0
-	github.com/Tangerg/oolong/core v0.21.0
-	github.com/Tangerg/oolong/highlight v0.21.0
-	github.com/Tangerg/oolong/latex v0.21.0
-	github.com/Tangerg/oolong/markdown v0.21.0
-	github.com/Tangerg/oolong/mermaid v0.21.0
-	github.com/Tangerg/oolong/ptytest v0.21.0
+	github.com/Tangerg/oolong/components v0.22.1
+	github.com/Tangerg/oolong/core v0.22.1
+	github.com/Tangerg/oolong/highlight v0.22.1
+	github.com/Tangerg/oolong/latex v0.22.1
+	github.com/Tangerg/oolong/markdown v0.22.1
+	github.com/Tangerg/oolong/mermaid v0.22.1
+	github.com/Tangerg/oolong/ptytest v0.22.1
 	github.com/mattn/go-shellwords v1.0.16
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/fileflow v0.1.0
@@ -22,7 +22,7 @@ require (
 
 require (
 	cloud.google.com/go v0.123.0 // indirect
-	cloud.google.com/go/auth v0.24.1-0.20261001053825-dbc26066f70a // indirect
+	cloud.google.com/go/auth v0.24.1 // indirect
 	cloud.google.com/go/compute/metadata v0.10.0 // indirect
 	codeberg.org/go-latex/latex v0.3.0 // indirect
 	github.com/BurntSushi/toml v1.6.0 // indirect
@@ -91,7 +91,7 @@ require (
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/mattn/go-runewidth v0.0.31 // indirect
 	github.com/ncruces/go-strftime v1.1.0 // indirect
-	github.com/openai/openai-go/v3 v3.73.0 // indirect
+	github.com/openai/openai-go/v3 v3.74.0 // indirect
 	github.com/pb33f/go-yaml v0.1.1 // indirect
 	github.com/pb33f/ordered-map/v2 v2.3.2 // indirect
 	github.com/pelletier/go-toml/v2 v2.4.3 // indirect
@@ -125,7 +125,7 @@ require (
 	go.yaml.in/yaml/v4 v4.0.0-rc.6 // indirect
 	golang.org/x/crypto v0.57.0 // indirect
 	golang.org/x/image v0.46.0 // indirect
-	golang.org/x/net v0.59.0 // indirect
+	golang.org/x/net v0.60.0 // indirect
 	golang.org/x/oauth2 v0.37.0 // indirect
 	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect

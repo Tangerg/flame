@@ -266,6 +266,12 @@ func (q *queueDrawer) handleMouse(mouse input.Mouse) bool {
 		return handled || delivered
 	}
 	switch mouse.Action {
+	case input.MouseCancel:
+		q.pointerGesture.cancel()
+		return true
+	case input.MouseLeave:
+		q.hovered = queueTarget{}
+		return false
 	case input.WheelUp:
 		q.pointerGesture.cancel()
 		q.moveSelection(-1)

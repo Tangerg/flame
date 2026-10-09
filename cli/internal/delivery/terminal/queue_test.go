@@ -648,6 +648,12 @@ func TestQueueDrawerCancelsAStalePointerGesture(t *testing.T) {
 		interrupt func(*queueDrawer, *headless.Root, *workbench.Queue, image.Point)
 	}{
 		{
+			name: "capture cancellation",
+			interrupt: func(drawer *queueDrawer, _ *headless.Root, _ *workbench.Queue, point image.Point) {
+				drawer.Handle(input.Mouse{Pos: point, Action: input.MouseCancel})
+			},
+		},
+		{
 			name: "different button release",
 			interrupt: func(_ *queueDrawer, root *headless.Root, _ *workbench.Queue, point image.Point) {
 				root.Handle(input.Mouse{Pos: point, Action: input.MouseUp, Button: input.ButtonRight})
