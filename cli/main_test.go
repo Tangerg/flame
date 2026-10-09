@@ -871,12 +871,22 @@ func testProcessArguments(arguments ...string) []string {
 
 func TestProductionBinaryOpensAnIsolatedRuntimeAndReleasesItsLease(t *testing.T) {
 	binary := buildProductionBinary(t)
-	flameHome := t.TempDir()
+	ambientHome := t.TempDir()
+	t.Setenv("FLAME_HOME", ambientHome)
 	environment := terminalTestEnvironment(t, map[string]string{
-		"FLAME_HOME":     flameHome,
 		"FLAME_PROVIDER": "anthropic", "ANTHROPIC_API_KEY": "test-key",
 		"FLAME_A2A_AGENTS": "", "FLAME_A2A_RPC_ORIGINS": "",
 	})
+	var flameHome string
+	for _, entry := range environment {
+		if value, found := strings.CutPrefix(entry, "FLAME_HOME="); found {
+			flameHome = value
+			break
+		}
+	}
+	if flameHome == "" || flameHome == ambientHome {
+		t.Fatal("test process did not acquire an isolated product home")
+	}
 
 	profileOutput := runTestBinary(t, binary, environment, "runtime", "info", "--json")
 	var profile struct {
@@ -903,6 +913,10 @@ func TestProductionBinaryOpensAnIsolatedRuntimeAndReleasesItsLease(t *testing.T)
 	}
 	if len(sessions.Items) != 0 {
 		t.Fatalf("fresh in-process runtime sessions = %d, want 0", len(sessions.Items))
+	}
+	entries, err := os.ReadDir(ambientHome)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("child process changed the ambient product home: %v, %v", entries, err)
 	}
 }
 
@@ -1104,6 +1118,7 @@ func terminalTestEnvironment(t *testing.T, overrides map[string]string) []string
 		"COLORTERM": "", "LANG": "", "LC_ALL": "", "TERM_PROGRAM": "",
 		"VSCODE_INJECTION": "", "WSL_INTEROP": "", "WSL_DISTRO_NAME": "",
 		"FLAME_RUNTIME_CONFIG_DIR": "", "FLAME_TEST_PROCESS": "1",
+		"FLAME_HOME": t.TempDir(),
 	}
 	maps.Copy(values, overrides)
 	values["HOME"], values["USERPROFILE"] = t.TempDir(), t.TempDir()
