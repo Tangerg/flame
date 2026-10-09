@@ -212,6 +212,6 @@ false enablement or empty change maps; use the declared clear variant. Include r
 fields explicitly, including `enabled: false` and empty `serverChanges: {}`.
 Invalid requests and replay identities are rejected before the CLI opens Runtime.
 
-Action invocation, Runtime query actions and HTML resource delivery are unavailable in
-this slice. Installed MCP tools use Runtime's existing Run/Interrupt path; the CLI does
+Tool-bound host actions, Runtime query actions and HTML resource delivery are unavailable.
+Installed MCP tools use Runtime's existing Run/Interrupt path; the CLI does
 not maintain a separate approval or effect state machine.

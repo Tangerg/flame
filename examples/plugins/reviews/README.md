@@ -73,7 +73,8 @@ Unexpected storage or commit errors remain MCP protocol failures, so Runtime
 retains execution uncertainty instead of inventing a definite failure. Do not
 automatically submit a replacement mutation after an uncertain response.
 Delivery command replay continues to use the original Run command identity;
-the backend receipt does not replace that owner.
+the backend receipt does not replace that owner. Recovering a backend receipt
+does not retroactively settle a finished Run whose response was never observed.
 
 ## Verification and current boundary
 
@@ -85,7 +86,11 @@ released dependency graph.
 From `runtime`, `go test ./internal/bootstrap -run TestReviewBackend -count=1`
 builds and installs the real stdio backend in temporary directories. It exercises
 approval, Runtime/backend restart, command replay, stale revisions, withdrawal,
-historical results, and a real CLI reading through HTTP. Its model is scripted;
+historical results, and a real CLI reading through HTTP. A transport probe drops
+an actual committed update's response: Runtime retains a lost Run and unresolved
+effect, the restarted backend recovers the original receipt, and a replacement
+call returns the revision conflict. That test also verifies process retirement
+and preserves the Run's original uncertainty after restart. Its model is scripted;
 the test needs no provider credentials or external service.
 
 Direct tool-bound host actions are unavailable. The released Scope ToolSet does

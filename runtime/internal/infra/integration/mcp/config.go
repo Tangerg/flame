@@ -273,7 +273,11 @@ func dial(
 	input.retire = nil
 	cleanup := sessionCleanup(func() (err error) {
 		if retire != nil {
-			defer func() { err = errors.Join(err, retire()) }()
+			defer func() {
+				if retireErr := retire(); retireErr != nil {
+					err = errors.Join(err, fmt.Errorf("mcp: retire launch resource: %w", retireErr))
+				}
+			}()
 		}
 		if cancelLifetime != nil {
 			cancelLifetime()
@@ -285,7 +289,10 @@ func dial(
 		if errors.Is(stopStdioProcessErr, os.ErrProcessDone) {
 			return nil
 		}
-		return stopStdioProcessErr
+		if stopStdioProcessErr != nil {
+			return fmt.Errorf("mcp: stop stdio process group: %w", stopStdioProcessErr)
+		}
+		return nil
 	})
 	if err != nil {
 		return nil, nil, errors.Join(err, cleanup())

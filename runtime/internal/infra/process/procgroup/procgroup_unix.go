@@ -4,6 +4,7 @@ package procgroup
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"syscall"
@@ -21,9 +22,9 @@ func Stop(command *exec.Cmd) error {
 	if command == nil || command.Process == nil {
 		return os.ErrProcessDone
 	}
-	err := syscall.Kill(-command.Process.Pid, syscall.SIGKILL)
-	if errors.Is(err, syscall.ESRCH) {
-		return os.ErrProcessDone
+	err := stopGroup(command.Process.Pid)
+	if err != nil && !errors.Is(err, os.ErrProcessDone) {
+		return fmt.Errorf("procgroup: stop group %d: %w", command.Process.Pid, err)
 	}
 	return err
 }
