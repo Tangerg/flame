@@ -434,3 +434,31 @@ home and owned TCP/UDP listeners, and checks positive workbench bindings, no gue
 packets or resource requests, native sender rejection, viewport resize, focus restoration,
 retirement and successor isolation. It requires exactly one terminal report. The separate
 carrier controls above remain qualification evidence for the engine boundary.
+
+For a prepared remote Runtime fixture, run the native protocol integration gate:
+
+```sh
+FLAME_NATIVE_RUNTIME_FIXTURE=/absolute/private/fixture.json \
+  wails3 task darwin:check:plugin-view:remote
+```
+
+The fixture file must be private (mode `0600`). It contains `endpoint`, `localToken`,
+`installationId`, `digest`, `viewId`, `sessionId`, `workspacePath`, and `htmlSHA256`.
+These identify an already enabled installation with a `sessionTrajectory` view and
+a `reviews` MCP server exposing `list_reviews` and `update_review`. `htmlSHA256` is
+the SHA-256 of its packaged HTML. The Session workspace must exist on the Runtime
+machine and be absent on macOS. The runner never discovers a default connection or
+installs a package; prepare the isolated Runtime through its public binding or CLI.
+
+The gate bundles the production shared SDK, native carrier, trajectory bridge and
+read lifecycle into a fixture parent. It checks exact resource bytes, canonical
+workspace identity, the same installation's connected backend and discovered tools,
+two page handshakes, closed-client refusal, and predecessor cleanup preserving the
+successor. Every page and client is retired before its single terminal report.
+The temporary parent does not open product preferences or mutation journals, and
+credentials reach only its trusted connection binding. It does not verify the full
+React workbench or tool-bound review actions.
+
+This gate passed with macOS 26.5/Wails beta.28 against an isolated Linux arm64 Runtime
+and Linux Go review backend. The packaged HTML came from the trajectory example;
+both capabilities were admitted in one test installation. No model provider was called.

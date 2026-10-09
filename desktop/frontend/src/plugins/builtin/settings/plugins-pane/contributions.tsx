@@ -13,6 +13,7 @@ import {
   retainThemeSelection,
 } from "@/plugins/builtin/theme/public/appearance";
 import { packageOperations, PACKAGES_KEY, usePackageRealization } from "./application/packages";
+import { createTrajectoryViewReads } from "./adapters/trajectoryReads";
 
 const packageThemePrefix = "package:";
 
@@ -60,29 +61,8 @@ function createPackageReconciler(
           digest: release.digest,
           viewId: view.id,
         };
-        const reads = (sessionId: string) => {
-          const read = (cursor: string | undefined, signal: AbortSignal) =>
-            client.plugins.readTrajectory({ ...binding, sessionId, cursor }, signal);
-          return {
-            read,
-            async load(signal: AbortSignal) {
-              const loading = new AbortController();
-              const owned = AbortSignal.any([signal, loading.signal]);
-              const pending = [
-                client.plugins.readView(binding, owned),
-                read(undefined, owned),
-              ] as const;
-              try {
-                const [resource, initial] = await Promise.all(pending);
-                return { html: resource.html, initial };
-              } catch (error) {
-                loading.abort(error);
-                await Promise.allSettled(pending);
-                throw error;
-              }
-            },
-          };
-        };
+        const reads = (sessionId: string) =>
+          createTrajectoryViewReads(client.plugins, binding, sessionId);
         const title = `${release.name} · ${view.title}`;
         const component = () => (
           <PackageView reads={reads} title={title} lifetime={lifetime} carrier={carrier} />

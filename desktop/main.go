@@ -1,4 +1,4 @@
-//go:build !plugincarrierprobe
+//go:build !plugincarrierprobe && !pluginruntimeprobe
 
 package main
 
