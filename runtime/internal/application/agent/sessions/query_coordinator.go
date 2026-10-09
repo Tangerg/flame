@@ -85,6 +85,7 @@ type QueryRunReader interface {
 // QueryCoordinator serves the session read projections. Stateless beyond its store
 // collaborators; safe to share.
 type QueryCoordinator struct {
+	readSnapshot     func(context.Context, func(context.Context) error) error
 	trajectory       QueryTrajectoryReader
 	modelInvocations QueryModelInvocationReader
 	transcript       QueryTranscriptReader
@@ -96,6 +97,9 @@ type QueryCoordinator struct {
 
 // QueryDependencies is the collaborator set [NewQueryCoordinator] wires into a QueryCoordinator.
 type QueryDependencies struct {
+	// An interrupt page must not join a consumed hand-off to newer answered Items.
+	// ReadSnapshot pins its store reads to one storage snapshot.
+	ReadSnapshot     func(context.Context, func(context.Context) error) error
 	Trajectory       QueryTrajectoryReader
 	ModelInvocations QueryModelInvocationReader
 	Transcript       QueryTranscriptReader
@@ -118,6 +122,7 @@ func NewQueryCoordinator(deps QueryDependencies) (*QueryCoordinator, error) {
 		{"Plan reader", deps.Plan},
 		{"model invocation reader", deps.ModelInvocations},
 		{"trajectory reader", deps.Trajectory},
+		{"snapshot read", deps.ReadSnapshot},
 	}
 	for _, required := range required {
 		if dependency.Missing(required.value) {
@@ -125,6 +130,7 @@ func NewQueryCoordinator(deps QueryDependencies) (*QueryCoordinator, error) {
 		}
 	}
 	return &QueryCoordinator{
+		readSnapshot:     deps.ReadSnapshot,
 		trajectory:       deps.Trajectory,
 		transcript:       deps.Transcript,
 		modelInvocations: deps.ModelInvocations,
@@ -498,39 +504,47 @@ func (c *QueryCoordinator) ListPendingInterruptPage(ctx context.Context, session
 	if err != nil {
 		return pagination.Page[InterruptSet]{}, err
 	}
-	if requireRootErr := c.requireRoot(ctx, rootRunID); requireRootErr != nil {
-		return pagination.Page[InterruptSet]{}, requireRootErr
-	}
-	rows, err := c.interrupts.ListPage(ctx, sessionID, rootRunID, afterCreatedAt, afterID, size+1)
-	if err != nil {
-		return pagination.Page[InterruptSet]{}, err
-	}
-	page, err := pagination.PageOf(rows, size, interruptPageNamespace, filters, func(pending runs.Pending) []string {
-		return []string{strconv.FormatInt(pending.CreatedAt.UnixNano(), 10), pending.RootRunID}
+	var result pagination.Page[InterruptSet]
+	err = c.readSnapshot(ctx, func(ctx context.Context) error {
+		if requireRootErr := c.requireRoot(ctx, rootRunID); requireRootErr != nil {
+			return requireRootErr
+		}
+		rows, err := c.interrupts.ListPage(ctx, sessionID, rootRunID, afterCreatedAt, afterID, size+1)
+		if err != nil {
+			return err
+		}
+		page, err := pagination.PageOf(rows, size, interruptPageNamespace, filters, func(pending runs.Pending) []string {
+			return []string{strconv.FormatInt(pending.CreatedAt.UnixNano(), 10), pending.RootRunID}
+		})
+		if err != nil {
+			return err
+		}
+		sets := make([]InterruptSet, 0, len(page.Rows))
+		for _, pending := range page.Rows {
+			root, found, err := c.runs.Run(ctx, pending.RootRunID)
+			if err != nil {
+				return err
+			}
+			if !found {
+				return fmt.Errorf("sessions: pending set %q has no root Run", pending.RootRunID)
+			}
+			if gap := root.Capabilities().MissingFrom(caller); !gap.IsEmpty() {
+				return &run.InsufficientCapabilitiesError{RunID: pending.RootRunID, Missing: gap}
+			}
+			set, err := c.interruptSet(ctx, pending)
+			if err != nil {
+				return err
+			}
+			set.SessionID = root.SessionID()
+			sets = append(sets, set)
+		}
+		result = pagination.Page[InterruptSet]{Rows: sets, NextCursor: page.NextCursor}
+		return nil
 	})
 	if err != nil {
 		return pagination.Page[InterruptSet]{}, err
 	}
-	sets := make([]InterruptSet, 0, len(page.Rows))
-	for _, pending := range page.Rows {
-		root, found, err := c.runs.Run(ctx, pending.RootRunID)
-		if err != nil {
-			return pagination.Page[InterruptSet]{}, err
-		}
-		if !found {
-			return pagination.Page[InterruptSet]{}, fmt.Errorf("sessions: pending set %q has no root Run", pending.RootRunID)
-		}
-		if gap := root.Capabilities().MissingFrom(caller); !gap.IsEmpty() {
-			return pagination.Page[InterruptSet]{}, &run.InsufficientCapabilitiesError{RunID: pending.RootRunID, Missing: gap}
-		}
-		set, err := c.interruptSet(ctx, pending)
-		if err != nil {
-			return pagination.Page[InterruptSet]{}, err
-		}
-		set.SessionID = root.SessionID()
-		sets = append(sets, set)
-	}
-	return pagination.Page[InterruptSet]{Rows: sets, NextCursor: page.NextCursor}, nil
+	return result, nil
 }
 
 // interruptSet projects a waiting hand-off's open interrupts from the Items

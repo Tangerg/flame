@@ -133,6 +133,9 @@ Resume acquires Session and working-tree admission before reading the open hand-
 its Items, or its parked Run tree. Run identity only locates that admission. A competing
 resume or cancellation therefore observes busy or a consumed hand-off, rather than
 combining an old waiting record with answered Items or a completed Run.
+Pending-interrupt pages read their waiting records, root Runs, and Items in one storage
+snapshot. A page already in flight remains coherent when a resume consumes its hand-off;
+the next page observes that consumption.
 
 ## Protocol 2026-10-07.2
 

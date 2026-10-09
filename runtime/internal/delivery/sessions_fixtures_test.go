@@ -1204,6 +1204,9 @@ func (inertQueryStores) State(context.Context, string) (plan.Current, error) {
 }
 
 func mustQueryCoordinator(deps sessions.QueryDependencies) *sessions.QueryCoordinator {
+	if deps.ReadSnapshot == nil {
+		deps.ReadSnapshot = func(ctx context.Context, read func(context.Context) error) error { return read(ctx) }
+	}
 	if deps.Plan == nil {
 		deps.Plan = inertQueryStores{}
 	}

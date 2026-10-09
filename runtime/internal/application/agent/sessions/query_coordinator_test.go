@@ -216,6 +216,9 @@ func (r *rawInterruptPageReader) ListPage(context.Context, string, string, int64
 
 func newQueryCoordinator(t *testing.T, deps QueryDependencies) *QueryCoordinator {
 	t.Helper()
+	if deps.ReadSnapshot == nil {
+		deps.ReadSnapshot = func(ctx context.Context, read func(context.Context) error) error { return read(ctx) }
+	}
 	if deps.Transcript == nil {
 		deps.Transcript = &fakeTranscript{}
 	}

@@ -389,6 +389,7 @@ func buildAssemblyCore(
 		return nil, fmt.Errorf("runtime: construct model invocation reader: %w", err)
 	}
 	queries, err := sessions.NewQueryCoordinator(sessions.QueryDependencies{
+		ReadSnapshot:     cfg.Stores.Transactor,
 		Trajectory:       cfg.Stores.Trajectory,
 		ModelInvocations: modelInvocations,
 		Transcript:       cfg.Stores.Transcript,
