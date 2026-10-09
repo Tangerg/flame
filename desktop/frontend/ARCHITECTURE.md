@@ -167,6 +167,13 @@ collect a second disposer stack. Plugin subscriptions follow the Host during
 renderer retirement and HMR. Only subscriptions created at module scope need a
 separate module HMR hook.
 
+Each package realization attempt owns its contributed views, themes, and event iterator
+under one Dougong child lifetime. A failed attempt joins that lifetime before publishing
+its failure, so a rejected page cleanup cannot strand sibling contributions or hide the
+original read or event failure. The Runtime generation owns the observer task, allowing
+it to join the contribution lifetime without waiting for itself. Retrying consumes only
+the current failure; a consumed or retired failure cannot start another observer.
+
 Extension contribution handles preserve Dougong's `update` operation. The SDK
 translates the item into its existing envelope without withdrawing the
 contribution or changing its domain key, owner, or precedence. Dynamic appearance

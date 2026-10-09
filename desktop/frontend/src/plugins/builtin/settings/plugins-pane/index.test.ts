@@ -10,6 +10,7 @@ import { queryClient } from "@/lib/queryClient";
 import { definePlugin, contributionsTo } from "@/plugins/sdk";
 import { COLOR_THEME, WORKSPACE_VIEW } from "@/plugins/sdk/kernelPoints";
 import { loadPluginsForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
+import { usePluginErrorStore } from "@/plugins/sdk/errors";
 import {
   RuntimeConnectionGeneration,
   RUNTIME_STREAM,
@@ -17,14 +18,19 @@ import {
 import type { ContributionLifetime } from "@/plugins/sdk/definePlugin";
 import { packageOperations, PACKAGES_KEY, usePackageRealization } from "./application/packages";
 import { createPluginsPane } from "./index";
-import { retainThemeSelection } from "@/plugins/builtin/theme/public/appearance";
+import {
+  contributePaletteTheme,
+  retainThemeSelection,
+} from "@/plugins/builtin/theme/public/appearance";
 
 vi.mock("@/plugins/builtin/theme/public/appearance", () => ({
   retainThemeSelection: vi.fn(),
-  contributePaletteTheme: (
-    owner: Pick<ContributionLifetime, "contribute">,
-    theme: { id: string; label: string; scheme: "dark" | "light" },
-  ) => owner.contribute(COLOR_THEME, { id: theme.id, label: theme.label, scheme: theme.scheme }),
+  contributePaletteTheme: vi.fn(
+    (
+      owner: Pick<ContributionLifetime, "contribute">,
+      theme: { id: string; label: string; scheme: "dark" | "light" },
+    ) => owner.contribute(COLOR_THEME, { id: theme.id, label: theme.label, scheme: theme.scheme }),
+  ),
 }));
 
 afterEach(async () => {
@@ -207,6 +213,174 @@ it("withdraws its realization failure when the owning generation retires", async
   await resetKernelForTest();
   expect(usePackageRealization.getState().failure).toBeNull();
 });
+
+it("consumes a realization retry once and refuses it after retirement", async () => {
+  const subscribe = vi
+    .fn()
+    .mockRejectedValueOnce(new Error("event stream refused"))
+    .mockImplementation(async (_params: unknown, signal: AbortSignal) => ({
+      events: connectionEvents(signal),
+    }));
+  await loadPluginsForTest(
+    runtimePlugin(),
+    createPluginsPane(() => client(async () => ({ data: [] }), subscribe), browserPluginCarrier),
+  );
+  await vi.waitFor(() => expect(usePackageRealization.getState().failure).not.toBeNull());
+  const failed = usePackageRealization.getState().failure!;
+  failed.retry();
+  failed.retry();
+  await vi.waitFor(() => expect(subscribe).toHaveBeenCalledTimes(2));
+  await resetKernelForTest();
+  expect(() => failed.retry()).not.toThrow();
+  expect(subscribe).toHaveBeenCalledTimes(2);
+});
+
+it("withdraws every contribution and reports failure when one cleanup rejects", async () => {
+  const contribute = vi.mocked(contributePaletteTheme);
+  const original = contribute.getMockImplementation()!;
+  const disposed: string[] = [];
+  contribute.mockImplementation((owner, theme) => {
+    original(owner, theme);
+    owner.cleanup(() => {
+      disposed.push(theme.label);
+      if (theme.label.startsWith("first")) throw new Error("page close failed");
+    });
+  });
+  onTestFinished(() => {
+    contribute.mockImplementation(original);
+  });
+  const failure = Promise.withResolvers<void>();
+  const subscribe = async () => ({
+    events: {
+      [Symbol.asyncIterator]() {
+        return {
+          async next() {
+            await failure.promise;
+            throw new Error("event stream failed");
+          },
+          async return() {
+            return { done: true, value: undefined } as const;
+          },
+        };
+      },
+    },
+  });
+  await loadPluginsForTest(
+    runtimePlugin(),
+    createPluginsPane(
+      () =>
+        client(
+          async () => ({
+            data: [
+              installation("d3cbafab-ef30-4e20-9583-42f5316dc865", "first"),
+              installation("0c31c796-224c-40fa-a721-6696971bb697", "second"),
+            ],
+          }),
+          subscribe,
+        ),
+      browserPluginCarrier,
+    ),
+  );
+  await vi.waitFor(() => expect(contributionsTo(COLOR_THEME)).toHaveLength(2));
+  failure.resolve();
+  await vi.waitFor(() => expect(contributionsTo(COLOR_THEME)).toEqual([]));
+  expect(disposed.sort()).toEqual(["first · first", "second · second"]);
+  await vi.waitFor(() => expect(usePackageRealization.getState().failure).not.toBeNull());
+  const reason = usePackageRealization.getState().failure!.reason;
+  expect(reason).toContain("event stream failed");
+  expect(reason).toContain("page close failed");
+});
+
+it("preserves a snapshot failure when closing its subscription also fails", async () => {
+  const defaults = queryClient.getQueryDefaults([PACKAGES_KEY]);
+  queryClient.setQueryDefaults([PACKAGES_KEY], { retry: false });
+  onTestFinished(() => queryClient.setQueryDefaults([PACKAGES_KEY], defaults));
+  const close = vi.fn(async () => {
+    throw new Error("stream close failed");
+  });
+  const subscribe = async () => ({
+    events: {
+      [Symbol.asyncIterator]() {
+        return {
+          async next() {
+            return { done: true, value: undefined } as const;
+          },
+          return: close,
+        };
+      },
+    },
+  });
+  await loadPluginsForTest(
+    runtimePlugin(),
+    createPluginsPane(
+      () =>
+        client(async () => {
+          throw new Error("snapshot refused");
+        }, subscribe),
+      browserPluginCarrier,
+    ),
+  );
+  await vi.waitFor(() => expect(usePackageRealization.getState().failure).not.toBeNull());
+  const reason = usePackageRealization.getState().failure!.reason;
+  expect(reason).toContain("snapshot refused");
+  expect(reason).toContain("stream close failed");
+  expect(close).toHaveBeenCalledOnce();
+  await resetKernelForTest();
+  expect(close).toHaveBeenCalledOnce();
+});
+
+it.each(["resolve", "reject"] as const)(
+  "joins a late subscription whose close will %s",
+  async (outcome) => {
+    const late = Promise.withResolvers<{ events: AsyncIterable<never> }>();
+    const stopping = Promise.withResolvers<void>();
+    const close = vi.fn(() => stopping.promise);
+    const acquired = {
+      events: {
+        [Symbol.asyncIterator]() {
+          return {
+            async next() {
+              return { done: true, value: undefined } as const;
+            },
+            async return() {
+              await close();
+              return { done: true, value: undefined } as const;
+            },
+          };
+        },
+      },
+    };
+    const subscribe = vi.fn((_params: unknown, _signal: AbortSignal) => late.promise);
+    const list = vi.fn(async () => ({ data: [] }));
+    onTestFinished(() => {
+      late.resolve(acquired);
+      stopping.resolve();
+    });
+    await loadPluginsForTest(
+      runtimePlugin(),
+      createPluginsPane(() => client(list, subscribe), browserPluginCarrier),
+    );
+    await vi.waitFor(() => expect(subscribe).toHaveBeenCalledOnce());
+    let stopped = false;
+    const retirement = resetKernelForTest().then(() => {
+      stopped = true;
+    });
+    await vi.waitFor(() => expect(subscribe.mock.calls[0]![1].aborted).toBe(true));
+    late.resolve(acquired);
+    await vi.waitFor(() => expect(close).toHaveBeenCalledOnce());
+    expect(stopped).toBe(false);
+    expect(list).not.toHaveBeenCalled();
+    if (outcome === "reject") stopping.reject(new Error("late stream close failed"));
+    else stopping.resolve();
+    await retirement;
+    expect(usePackageRealization.getState().failure).toBeNull();
+    expect(
+      usePluginErrorStore
+        .getState()
+        .log.filter((entry) => entry.message === "late stream close failed"),
+    ).toHaveLength(outcome === "reject" ? 1 : 0);
+  },
+);
 
 it.each(["initial snapshot", "event refresh", "event stream"] as const)(
   "releases the failed %s subscription before retry and retirement",

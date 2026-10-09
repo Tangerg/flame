@@ -1,11 +1,13 @@
 import type { PluginCarrier } from "@/foundation/pluginCarrier";
-import { asyncDisposeSymbol } from "dougong";
+import { asyncDisposeSymbol, isCancellationReason } from "dougong";
+import { isCancelledError } from "@tanstack/react-query";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import type { PluginInstallation } from "@flame/runtime-contract/wire";
 import type { ContributionLifetime } from "@/plugins/sdk/definePlugin";
 import { DATA_PROVIDER, WORKSPACE_VIEW } from "@/plugins/sdk/kernelPoints";
 import { PackageView } from "./ui/PackageView";
 import { queryClient } from "@/lib/queryClient";
+import { failureMessage } from "@/lib/diagnostics";
 import {
   contributePaletteTheme,
   retainThemeSelection,
@@ -18,18 +20,13 @@ function packageThemeId(installation: string, theme: string): string {
   return `${packageThemePrefix}${installation}:${theme}`;
 }
 
-export function registerPackageContributions(
+function createPackageReconciler(
   scope: ContributionLifetime,
   client: FlameClient,
   carrier: PluginCarrier,
-): void {
-  scope.cleanup(packageOperations.configure({ ...client.plugins, signal: scope.signal }));
-  const fetcher = async (_params?: unknown, signal?: AbortSignal) =>
-    (await client.plugins.list(signal ? AbortSignal.any([scope.signal, signal]) : scope.signal))
-      .data;
-  scope.contribute(DATA_PROVIDER, { key: PACKAGES_KEY, fetcher });
+): (installations: PluginInstallation[]) => Promise<void> {
   const resources = new Map<string, { signature: string; lifetime: ContributionLifetime }>();
-  const reconcile = async (installations: PluginInstallation[]) => {
+  return async (installations: PluginInstallation[]) => {
     const admitted = installations.filter((item) => item.presentation === "admitted");
     retainThemeSelection(
       admitted.flatMap((item) =>
@@ -108,6 +105,18 @@ export function registerPackageContributions(
       }
     }
   };
+}
+
+export function registerPackageContributions(
+  scope: ContributionLifetime,
+  client: FlameClient,
+  carrier: PluginCarrier,
+): void {
+  scope.cleanup(packageOperations.configure({ ...client.plugins, signal: scope.signal }));
+  const fetcher = async (_params?: unknown, signal?: AbortSignal) =>
+    (await client.plugins.list(signal ? AbortSignal.any([scope.signal, signal]) : scope.signal))
+      .data;
+  scope.contribute(DATA_PROVIDER, { key: PACKAGES_KEY, fetcher });
   let failure: { reason: string; retry(): void } | null = null;
   const withdrawFailure = () => {
     if (failure && usePackageRealization.getState().failure === failure)
@@ -117,6 +126,9 @@ export function registerPackageContributions(
   scope.cleanup(withdrawFailure);
   const realize = () => {
     withdrawFailure();
+    const contributions = scope.lifetime("package-realization");
+    const reconcile = createPackageReconciler(contributions, client, carrier);
+    // The generation owns the task so it can join its contribution scope on failure.
     scope.spawn(async (signal) => {
       const refresh = async () => {
         await queryClient.invalidateQueries({ queryKey: [PACKAGES_KEY], refetchType: "none" });
@@ -133,20 +145,37 @@ export function registerPackageContributions(
           signal,
         );
         const events = subscription.events[Symbol.asyncIterator]();
-        try {
-          await refresh();
-          while (!(await events.next()).done) await refresh();
-        } finally {
+        if (signal.aborted) {
           await events.return?.();
+          return;
         }
+        const closeEvents = contributions.cleanup(() => events.return?.());
+        await refresh();
+        while (!(await events.next()).done) await refresh();
+        await closeEvents[asyncDisposeSymbol]();
       } catch (error) {
-        for (const resource of resources.values()) await resource.lifetime[asyncDisposeSymbol]();
-        resources.clear();
-        if (signal.aborted) return;
-        failure = {
-          reason: error instanceof Error ? error.message : String(error),
-          retry: realize,
+        const reasons = [error];
+        try {
+          await contributions[asyncDisposeSymbol]();
+        } catch (cleanupError) {
+          reasons.push(cleanupError);
+        }
+        if (signal.aborted) {
+          const unexpected = reasons.filter(
+            (cause) => !isCancellationReason(signal, cause) && !isCancelledError(cause),
+          );
+          if (unexpected.length === 1) throw unexpected[0];
+          if (unexpected.length > 1)
+            throw new AggregateError(unexpected, "Package realization retirement failed");
+          return;
+        }
+        const failed = {
+          reason: reasons.map(failureMessage).join("; "),
+          retry() {
+            if (failure === failed && !scope.signal.aborted) realize();
+          },
         };
+        failure = failed;
         usePackageRealization.setState({ failure });
       }
     });
