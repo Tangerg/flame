@@ -8,10 +8,10 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"strings"
 	"syscall"
 
 	"github.com/Tangerg/flame/cli/internal/delivery/cmd"
+	"github.com/Tangerg/flame/runtime/localruntime"
 )
 
 const runtimeCloseAttempts = 3
@@ -74,18 +74,20 @@ func closeRuntimeOwner(owner runtimeCloser) error {
 }
 
 func flameHomeDirectory() (string, error) {
-	flameHome := strings.TrimSpace(os.Getenv("FLAME_HOME"))
-	if flameHome == "" {
-		userHome, err := os.UserHomeDir()
+	configuredRoot := os.Getenv("FLAME_HOME")
+	var userHome string
+	if configuredRoot == "" {
+		var err error
+		userHome, err = os.UserHomeDir()
 		if err != nil {
 			return "", fmt.Errorf("resolve flame home: %w", err)
 		}
-		flameHome = filepath.Join(userHome, ".flame")
 	}
-	if !filepath.IsAbs(flameHome) {
-		return "", errors.New("FLAME_HOME must be an absolute path")
+	root, err := localruntime.ResolveProductRoot(userHome, configuredRoot)
+	if err != nil {
+		return "", fmt.Errorf("resolve flame home: %w", err)
 	}
-	return filepath.Clean(flameHome), nil
+	return root, nil
 }
 
 type exitCoder interface {

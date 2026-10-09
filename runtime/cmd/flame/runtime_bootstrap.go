@@ -46,13 +46,11 @@ func resolveRuntimePaths() (runtimePaths, error) {
 	if !filepath.IsAbs(launchDirectory) {
 		return runtimePaths{}, errors.New("runtime: launch directory must be absolute")
 	}
-	flameHomePath := os.Getenv(flameHomeEnvironment)
-	var dataDirectory localruntime.DataDirectory
-	if flameHomePath == "" {
-		dataDirectory, err = localruntime.DefaultDataDirectory(userHome)
-	} else {
-		dataDirectory, err = localruntime.DataDirectoryUnder(flameHomePath)
+	productRoot, err := localruntime.ResolveProductRoot(userHome, os.Getenv(flameHomeEnvironment))
+	if err != nil {
+		return runtimePaths{}, fmt.Errorf("runtime: resolve %s: %w", flameHomeEnvironment, err)
 	}
+	dataDirectory, err := localruntime.DataDirectoryUnder(productRoot)
 	if err != nil {
 		return runtimePaths{}, fmt.Errorf("runtime: resolve %s: %w", flameHomeEnvironment, err)
 	}

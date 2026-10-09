@@ -15,11 +15,28 @@ import (
 
 func mustDesktopHost(t *testing.T, home string) *DesktopHost {
 	t.Helper()
-	host, err := newDesktopHost(home)
+	root, err := localruntime.ResolveProductRoot(home, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	host, err := newDesktopHost(root)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return host
+}
+
+func mustDesktopDataDirectory(t *testing.T, home string) localruntime.DataDirectory {
+	t.Helper()
+	root, err := localruntime.ResolveProductRoot(home, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	directory, err := localruntime.DataDirectoryUnder(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return directory
 }
 
 type workingDirectoryPickerFunc func() (string, error)
@@ -37,10 +54,7 @@ func (i imageSaverFunc) SaveImage(suggestedFilename string, contents []byte) (bo
 func TestDesktopHostBootstrap(t *testing.T) {
 	home := t.TempDir()
 	host := mustDesktopHost(t, home)
-	directory, err := localruntime.DefaultDataDirectory(home)
-	if err != nil {
-		t.Fatal(err)
-	}
+	directory := mustDesktopDataDirectory(t, home)
 	if err := os.MkdirAll(directory.Path(), 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -74,10 +88,7 @@ func TestDesktopHostBootstrapRejectsInvalidDurableCredentials(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			home := t.TempDir()
-			directory, err := localruntime.DefaultDataDirectory(home)
-			if err != nil {
-				t.Fatal(err)
-			}
+			directory := mustDesktopDataDirectory(t, home)
 			root := directory.Path()
 			if err := os.MkdirAll(root, 0o700); err != nil {
 				t.Fatal(err)
@@ -113,6 +124,66 @@ func TestDesktopHostBootstrapAllowsMissingState(t *testing.T) {
 	}
 	if bootstrap.LocalRuntime.LocalToken != "" {
 		t.Fatalf("local token = %q, want empty", bootstrap.LocalRuntime.LocalToken)
+	}
+}
+
+func TestDesktopBootstrapUsesConfiguredProductRoot(t *testing.T) {
+	for _, state := range []string{"present", "missing", "invalid"} {
+		t.Run(state, func(t *testing.T) {
+			home := t.TempDir()
+			root := filepath.Join(t.TempDir(), " product root ")
+			t.Setenv("HOME", home)
+			t.Setenv("FLAME_HOME", root)
+			defaultDirectory := mustDesktopDataDirectory(t, home)
+			if _, err := localruntime.OpenToken(defaultDirectory.LocalTokenPath()); err != nil {
+				t.Fatal(err)
+			}
+			directory, err := localruntime.DataDirectoryUnder(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var expected string
+			switch state {
+			case "present":
+				token, err := localruntime.OpenToken(directory.LocalTokenPath())
+				if err != nil {
+					t.Fatal(err)
+				}
+				expected = token.Value()
+			case "invalid":
+				if err := os.MkdirAll(directory.Path(), 0o700); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(directory.LocalTokenPath(), []byte("invalid"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			host, err := defaultDesktopHost()
+			if err != nil {
+				t.Fatal(err)
+			}
+			bootstrap, err := host.Bootstrap()
+			if state == "invalid" {
+				if !errors.Is(err, localruntime.ErrInvalidToken) {
+					t.Fatalf("Bootstrap error = %v, want invalid configured credential", err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if bootstrap.LocalRuntime.Endpoint != localRuntimeEndpoint || bootstrap.LocalRuntime.LocalToken != expected {
+				t.Fatal("Bootstrap did not use only the configured product root")
+			}
+		})
+	}
+}
+
+func TestDesktopBootstrapRejectsRelativeProductRoot(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("FLAME_HOME", "relative")
+	if _, err := defaultDesktopHost(); err == nil {
+		t.Fatal("desktop accepted a relative FLAME_HOME")
 	}
 }
 

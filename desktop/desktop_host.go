@@ -73,8 +73,8 @@ type DesktopHost struct {
 	notificationsReady atomic.Bool
 }
 
-func newDesktopHost(home string) (*DesktopHost, error) {
-	dataDirectory, err := localruntime.DefaultDataDirectory(home)
+func newDesktopHost(productRoot string) (*DesktopHost, error) {
+	dataDirectory, err := localruntime.DataDirectoryUnder(productRoot)
 	if err != nil {
 		return nil, fmt.Errorf("desktop host: resolve data directory: %w", err)
 	}
@@ -113,7 +113,11 @@ func defaultDesktopHost() (*DesktopHost, error) {
 	if err != nil {
 		return nil, fmt.Errorf("desktop host: resolve user home: %w", err)
 	}
-	return newDesktopHost(home)
+	root, err := localruntime.ResolveProductRoot(home, os.Getenv("FLAME_HOME"))
+	if err != nil {
+		return nil, fmt.Errorf("desktop host: resolve flame home: %w", err)
+	}
+	return newDesktopHost(root)
 }
 
 // Fullscreen transitions rebuild the native titlebar, so cached geometry would be stale.

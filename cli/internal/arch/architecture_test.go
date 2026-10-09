@@ -92,9 +92,9 @@ func TestExternalFrameworksStopAtTheirAdapters(t *testing.T) {
 	walkProduction(t, root, func(relative, path string) {
 		for _, imported := range imports(t, path) {
 			switch {
-			case importsPath(imported, runtimePath) && imported != runtimePath+"/protocol":
-				if !strings.HasPrefix(relative, "internal/adapter/runtimebinding/") {
-					t.Errorf("%s imports the concrete Runtime binding outside runtimebinding", relative)
+			case importsPath(imported, runtimePath):
+				if !mayImportRuntime(relative, imported) {
+					t.Errorf("%s imports %s outside its allowed Runtime boundary", relative, imported)
 				}
 			case importsPath(imported, oolongPath):
 				if strings.HasPrefix(relative, "internal/delivery/terminal/") {
@@ -112,6 +112,35 @@ func TestExternalFrameworksStopAtTheirAdapters(t *testing.T) {
 			}
 		}
 	})
+}
+
+func mayImportRuntime(relative, imported string) bool {
+	if imported == runtimePath+"/protocol" || strings.HasPrefix(relative, "internal/adapter/runtimebinding/") {
+		return true
+	}
+	return imported == runtimePath+"/localruntime" && ringOf(relative) == ringComposition
+}
+
+func TestRuntimeImportBoundaries(t *testing.T) {
+	for _, test := range []struct {
+		consumer, imported string
+		allowed            bool
+	}{
+		{consumer: "main.go", imported: runtimePath + "/localruntime", allowed: true},
+		{consumer: "main.go", imported: runtimePath},
+		{consumer: "internal/adapter/runtimebinding/connection.go", imported: runtimePath, allowed: true},
+		{consumer: "internal/adapter/runtimebinding/connection.go", imported: runtimePath + "/localruntime", allowed: true},
+		{consumer: "internal/adapter/filesystem/store.go", imported: runtimePath + "/localruntime"},
+		{consumer: "internal/domain/conversation/session.go", imported: runtimePath + "/protocol", allowed: true},
+		{consumer: "internal/domain/conversation/session.go", imported: runtimePath + "/localruntime"},
+		{consumer: "internal/application/agent/session/create.go", imported: runtimePath + "/localruntime"},
+		{consumer: "internal/delivery/cmd/sessions.go", imported: runtimePath + "/localruntime"},
+		{consumer: "internal/delivery/cmd/sessions.go", imported: runtimePath},
+	} {
+		if allowed := mayImportRuntime(test.consumer, test.imported); allowed != test.allowed {
+			t.Errorf("%s importing %s: allowed = %v, want %v", test.consumer, test.imported, allowed, test.allowed)
+		}
+	}
 }
 
 func TestApplicationDoesNotOwnOperatingSystemIO(t *testing.T) {

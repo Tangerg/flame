@@ -24,6 +24,10 @@ CLI preferences and Runtime configuration have separate owners.
 - `$FLAME_HOME/runtime/config.yaml` is Runtime-owned configuration.
 - `FLAME_RUNTIME_CONFIG_DIR` selects the sole Runtime configuration directory.
 
+`FLAME_HOME` is an absolute product root, resolved through `localruntime` with the
+same rules as Runtime and Desktop. An empty value selects `~/.flame`. Explicit
+paths retain significant whitespace; they are never trimmed into another deployment.
+
 The process working directory is never an implicit Runtime configuration source. Source checkouts that use `runtime/config/config.yaml` select it explicitly with `FLAME_RUNTIME_CONFIG_DIR`.
 
 Run subscriptions reconnect with bounded backoff until canceled.

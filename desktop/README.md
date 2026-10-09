@@ -146,6 +146,10 @@ it never assumes that loopback or a path belongs to the Runtime machine. The
 shared protocol implementation lives in `../runtime/contract/typescript/client`
 and is consumed through `@flame/runtime-contract/client`.
 
+Native bootstrap uses `localruntime` to resolve the exact `FLAME_HOME` product root
+(default `~/.flame`) and reads only its `runtime/local-token`. An explicit root must
+be absolute. Missing or invalid configured credentials do not select another deployment.
+
 From the repository root, install the shared client before its UI consumer:
 
 ```sh

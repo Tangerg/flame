@@ -1026,16 +1026,16 @@
           "signature": "func(productRoot string) (DataDirectory, error)"
         },
         {
-          "name": "DefaultDataDirectory",
-          "signature": "func(userHome string) (DataDirectory, error)"
-        },
-        {
           "name": "OpenToken",
           "signature": "func(path string) (*Token, error)"
         },
         {
           "name": "ReadToken",
           "signature": "func(path string) (*Token, error)"
+        },
+        {
+          "name": "ResolveProductRoot",
+          "signature": "func(userHome string, configuredRoot string) (string, error)"
         }
       ],
       "types": [

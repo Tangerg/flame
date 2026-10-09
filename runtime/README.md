@@ -617,7 +617,13 @@ Remote Go calls report malformed protocol replies through `ErrInvalidResponse`, 
 
 Cancellation failures returned by the Go binding also preserve `context.Canceled` or `context.DeadlineExceeded` for `errors.Is`. Request cancellation causes are local to that invocation; wire problems and persisted replay outcomes retain their protocol category and safe details.
 
-The standalone Runtime and CLI interpret `FLAME_HOME` as Flame's local product root. Runtime-owned state lives under `$FLAME_HOME/runtime`; the default is `~/.flame/runtime`.
+The standalone Runtime, CLI and Desktop resolve `FLAME_HOME` through `localruntime` as
+Flame's local product root. Only an empty value selects `~/.flame`; an explicit value
+must be absolute and keeps significant whitespace. Runtime-owned state lives under
+`$FLAME_HOME/runtime`. Desktop reads the local token only from that selected deployment;
+a missing or invalid configured token never redirects it to the default directory.
+Go consumers use `ResolveProductRoot` followed by `DataDirectoryUnder`; the former
+`DefaultDataDirectory` API has been removed. Existing data directories need no migration.
 
 ## Develop
 

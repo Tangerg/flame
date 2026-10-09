@@ -41,6 +41,11 @@ The CLI uses four responsibility rings:
 
 Application depends on Domain. Adapters and Delivery depend inward on the consumer contracts they satisfy. Cobra and Viper remain in command delivery; Oolong remains in terminal delivery. The concrete Runtime binding remains in `adapter/runtimebinding`; public Protocol values may cross consumer ports directly so CLI does not create synonymous DTOs.
 
+The separate `localruntime` module owns product-root resolution and local deployment
+handoff paths. Process composition uses it to resolve `FLAME_HOME` before constructing
+the binding and authoring store; the binding adapter derives Runtime's data directory
+from that root. Only those two boundaries may import it.
+
 Domain contains no I/O interfaces and no `context.Context`. A narrow port is declared beside the Application or Delivery behavior that consumes it. Composition supplies the concrete implementation.
 
 CLI Domain types are behavior-rich only for CLI-owned invariants. A draft, queue, replay intent, or selection owner validates its state and exposes legal transitions. Runtime snapshots, protocol values, render rows, and command inputs remain typed data; wrapping them in getters does not create a domain model.

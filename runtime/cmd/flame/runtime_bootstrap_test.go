@@ -48,7 +48,7 @@ func TestResolveRuntimePathsUsesOneUserHomeSnapshot(t *testing.T) {
 
 func TestResolveRuntimePathsUsesExplicitAbsoluteDataDirectory(t *testing.T) {
 	userHome := t.TempDir()
-	flameHome := t.TempDir()
+	flameHome := filepath.Join(t.TempDir(), " product root ")
 	t.Setenv("HOME", userHome)
 	t.Setenv("FLAME_HOME", flameHome)
 

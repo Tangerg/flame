@@ -56,16 +56,22 @@ func DataDirectoryUnder(productRoot string) (DataDirectory, error) {
 	return DataDirectoryAt(filepath.Join(filepath.Clean(productRoot), runtimeStateName))
 }
 
-// DefaultDataDirectory derives Runtime's durability root for a user with no
-// FLAME_HOME configured.
-func DefaultDataDirectory(userHome string) (DataDirectory, error) {
+// ResolveProductRoot owns FLAME_HOME's selection and path validation. Paths keep
+// significant whitespace; only an empty configuration selects the default.
+func ResolveProductRoot(userHome, configuredRoot string) (string, error) {
+	if configuredRoot != "" {
+		if !filepath.IsAbs(configuredRoot) {
+			return "", errors.New("local product root: configured path must be absolute")
+		}
+		return filepath.Clean(configuredRoot), nil
+	}
 	if userHome == "" {
-		return DataDirectory{}, invalidDataDirectory("user home is required")
+		return "", errors.New("local product root: user home is required")
 	}
 	if !filepath.IsAbs(userHome) {
-		return DataDirectory{}, invalidDataDirectory("user home must be absolute")
+		return "", errors.New("local product root: user home must be absolute")
 	}
-	return DataDirectoryUnder(filepath.Join(filepath.Clean(userHome), productRootName))
+	return filepath.Join(userHome, productRootName), nil
 }
 
 // Path returns the absolute deployment root, or an empty string for the invalid

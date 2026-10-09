@@ -1045,6 +1045,27 @@ func TestFlameHomeRejectsRelativePath(t *testing.T) {
 	}
 }
 
+func TestFlameHomeUsesCanonicalProductRoot(t *testing.T) {
+	userHome := t.TempDir()
+	configured := filepath.Join(t.TempDir(), " product root ")
+	for _, test := range []struct {
+		name, home, configured, want string
+	}{
+		{name: "default", home: userHome, want: filepath.Join(userHome, ".flame")},
+		{name: "configured", home: userHome, configured: configured, want: configured},
+		{name: "configured without home", configured: configured, want: configured},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Setenv("HOME", test.home)
+			t.Setenv("FLAME_HOME", test.configured)
+			root, err := flameHomeDirectory()
+			if err != nil || root != test.want {
+				t.Fatalf("flame home = %q, error = %v, want %q", root, err, test.want)
+			}
+		})
+	}
+}
+
 type testExitError struct{ code int }
 
 func (t testExitError) Error() string { return "coded" }
