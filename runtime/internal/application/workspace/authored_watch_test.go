@@ -16,6 +16,8 @@ type recordingAuthoredWatcher struct {
 	resources []AuthoredResource
 	accepted  []AuthoredChange
 	acceptErr error
+	closeErr  error
+	closes    int
 }
 
 func (r *recordingAuthoredWatcher) Watch(
@@ -31,7 +33,10 @@ func (r *recordingAuthoredWatcher) Watch(
 
 type recordingAuthoredObservation struct{ owner *recordingAuthoredWatcher }
 
-func (r recordingAuthoredObservation) Close() error { return nil }
+func (r recordingAuthoredObservation) Close() error {
+	r.owner.closes++
+	return r.owner.closeErr
+}
 func (r recordingAuthoredObservation) Accept(changes []AuthoredChange) error {
 	for _, change := range changes {
 		change.Identities = slices.Clone(change.Identities)
@@ -61,6 +66,28 @@ func TestAuthoredWatchReportsFailedAcceptanceAndContinuesBroadcast(t *testing.T)
 	}
 	if output := diagnostics.String(); !strings.Contains(output, watcher.acceptErr.Error()) || !strings.Contains(output, "resource=skills") {
 		t.Fatalf("missing acceptance failure diagnostic: %q", output)
+	}
+}
+
+func TestAuthoredWatchRetainsItsCloseDecision(t *testing.T) {
+	root := t.TempDir()
+	watcher := &recordingAuthoredWatcher{closeErr: errors.New("watcher close failed")}
+	useCases := newAuthoredWatch(t, newScope(t, root, root, testPaths{}), staticWorkspaceInspector{}, watcher)
+	observation, err := useCases.Watch(nil, []AuthoredResource{AuthoredSkills}, func(AuthoredResource) {}, func(error) {})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 3 {
+		if err := observation.Close(); !errors.Is(err, watcher.closeErr) {
+			t.Fatalf("close error = %v, want the original failure", err)
+		}
+	}
+	if watcher.closes != 1 {
+		t.Fatalf("watcher closes = %d, want 1", watcher.closes)
+	}
+	useCases.Accept(AuthoredChange{Resource: AuthoredSkills, Identities: []string{"retired"}})
+	if len(watcher.accepted) != 0 {
+		t.Fatalf("retired observation received changes: %v", watcher.accepted)
 	}
 }
 

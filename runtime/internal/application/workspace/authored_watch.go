@@ -181,9 +181,10 @@ func (a *AuthoredWatch) Accept(change AuthoredChange) {
 }
 
 type managedAuthoredObservation struct {
-	owner *AuthoredWatch
-	inner AuthoredObservation
-	once  sync.Once
+	owner    *AuthoredWatch
+	inner    AuthoredObservation
+	once     sync.Once
+	closeErr error
 }
 
 func (m *managedAuthoredObservation) Accept(changes []AuthoredChange) error {
@@ -191,14 +192,13 @@ func (m *managedAuthoredObservation) Accept(changes []AuthoredChange) error {
 }
 
 func (m *managedAuthoredObservation) Close() error {
-	var err error
 	m.once.Do(func() {
 		m.owner.mu.Lock()
 		delete(m.owner.active, m)
 		m.owner.mu.Unlock()
-		err = m.inner.Close()
+		m.closeErr = m.inner.Close()
 	})
-	return err
+	return m.closeErr
 }
 
 // distinctAuthoredResources refuses a resource outside the closed set rather
