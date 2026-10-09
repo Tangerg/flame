@@ -145,6 +145,40 @@ func TestPlanStoreRejectsUnknownStoredStepFields(t *testing.T) {
 	}
 }
 
+func TestPlanStoreRejectsMissingStoredCollections(t *testing.T) {
+	for _, encoded := range []string{"", "null"} {
+		t.Run(encoded, func(t *testing.T) {
+			db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = db.Close() })
+			plans, runs := sqlite.NewPlanStore(db), sqlite.NewRunStore(db)
+			const sessionID, runID = "ses_plan_collection", "run_plan_collection"
+			savePlan(t, t.Context(), plans, sessionID, []plan.Step{{Description: "keep the recorded Plan", Status: plan.StatusPending}})
+			if err := runs.Admit(t.Context(), runDraft(runID, sessionID)); err != nil {
+				t.Fatal(err)
+			}
+			finished := finishedRun(runID, sessionID, run.OutcomeCompleted)
+			if err := runs.Terminalize(t.Context(), storedRunReplacement(t, t.Context(), runs, finished)); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := db.ExecContext(t.Context(), `UPDATE session_plans SET steps = ? WHERE session_id = ?`, encoded, sessionID); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := db.ExecContext(t.Context(), `UPDATE plan_boundaries SET steps = ? WHERE run_id = ?`, encoded, runID); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := plans.State(t.Context(), sessionID); err == nil {
+				t.Fatal("damaged current Plan became an empty Plan")
+			}
+			if _, _, err := plans.Boundary(t.Context(), runID); err == nil {
+				t.Fatal("damaged historical Plan became an empty Plan")
+			}
+		})
+	}
+}
+
 // newPlanBoundaryStores pairs the Plan with the Run lifecycle, because a
 // boundary is recorded by a Run ending: the two stores share one database so the
 // terminal transition and the list it captures are the same transaction's work.

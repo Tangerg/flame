@@ -68,12 +68,12 @@ func (p *PlanStore) State(ctx context.Context, sessionID string) (plan.Current, 
 }
 
 func decodePlanSteps(stepsJSON string) ([]plan.Step, error) {
-	if stepsJSON == "" {
-		return nil, nil
-	}
 	var rows []planStepRow
 	if err := decodeStoredJSON([]byte(stepsJSON), &rows); err != nil {
 		return nil, fmt.Errorf("sqlite: decode Plan: %w", err)
+	}
+	if rows == nil {
+		return nil, errors.New("sqlite: stored Plan steps must be an array")
 	}
 	steps := make([]plan.Step, len(rows))
 	for index, row := range rows {
