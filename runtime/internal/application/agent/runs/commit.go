@@ -195,7 +195,6 @@ type EventCommit struct {
 	// the top-level CommitEvent port boundary requires it.
 	CommitID runtimeidentity.CommitID
 	State    StateChange
-	Outcome  run.Outcome
 	Items    []transcript.Item
 	// ConversationMessages are the provider-neutral messages this root
 	// execution made durable for future model context. Conversation and
@@ -434,7 +433,7 @@ func validateToolInvocationItem(invocation ToolInvocationCommit, item transcript
 func (e EventCommit) validateLifecycle() error {
 	switch e.State {
 	case StateUnchanged:
-		if e.Outcome != "" || e.Run != nil || e.ObsoleteCheckpointRootID != "" {
+		if e.Run != nil || e.ObsoleteCheckpointRootID != "" {
 			return errors.New("runs: unchanged event commit carries lifecycle facts")
 		}
 		return nil
@@ -442,7 +441,7 @@ func (e EventCommit) validateLifecycle() error {
 		if e.Run == nil || e.Run.State() != run.Waiting {
 			return errors.New("runs: suspend event commit has no waiting Run")
 		}
-		if e.Outcome != "" || e.ObsoleteCheckpointRootID != "" {
+		if e.ObsoleteCheckpointRootID != "" {
 			return errors.New("runs: suspend event commit carries terminal facts")
 		}
 	case StateTerminalize:
@@ -451,10 +450,6 @@ func (e EventCommit) validateLifecycle() error {
 		}
 		if e.Run == nil || !e.Run.State().IsTerminal() {
 			return errors.New("runs: terminal event commit has no matching terminal Run")
-		}
-		outcome, ok := e.Run.Outcome()
-		if !ok || outcome != e.Outcome {
-			return errors.New("runs: terminal event commit has no matching terminal outcome")
 		}
 	default:
 		return fmt.Errorf("runs: event commit has unknown state change %q", e.State)
@@ -481,7 +476,6 @@ func (e EventCommit) isEmpty() bool {
 		len(e.ModelInvocations) == 0 &&
 		len(e.ToolInvocations) == 0 && e.ResultPublication == nil &&
 		e.Progress == nil &&
-		e.Outcome == "" &&
 		e.Run == nil &&
 		e.ObsoleteCheckpointRootID == "" &&
 		e.State == StateUnchanged

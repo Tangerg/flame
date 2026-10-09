@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
+	"github.com/Tangerg/flame/runtime/internal/domain/instant"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -219,6 +220,9 @@ func (g Goal) validate() error {
 	}
 	if g.createdAt.IsZero() || g.updatedAt.IsZero() {
 		return fmt.Errorf("%w: creation and update times are required", ErrInvalid)
+	}
+	if err := instant.Validate(g.createdAt, g.updatedAt); err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalid, err)
 	}
 	if g.updatedAt.Before(g.createdAt) {
 		return fmt.Errorf("%w: update time precedes creation", ErrInvalid)

@@ -27,10 +27,10 @@ func TestEventCommitUsesCompleteRunStateInvariant(t *testing.T) {
 	if err := valid.Validate(); err != nil {
 		t.Fatalf("valid suspend commit: %v", err)
 	}
-	withOutcome := valid
-	withOutcome.Outcome = run.OutcomeCanceled
-	if err := withOutcome.Validate(); err == nil {
-		t.Fatal("suspend commit accepted a terminal outcome")
+	withCheckpoint := valid
+	withCheckpoint.ObsoleteCheckpointRootID = "member_root"
+	if err := withCheckpoint.Validate(); err == nil {
+		t.Fatal("suspend commit accepted a terminal checkpoint retirement")
 	}
 	// Effects dereferences Run for both states that change one, so this is the
 	// only place that can refuse a state change carrying no record at all.
@@ -41,17 +41,17 @@ func TestEventCommitUsesCompleteRunStateInvariant(t *testing.T) {
 	}
 	terminalWithoutRun := EventCommit{
 		RunID: waiting.ID(), SessionID: waiting.SessionID(), SegmentID: "segment_1",
-		State: StateTerminalize, Outcome: run.OutcomeCanceled,
+		State: StateTerminalize,
 	}
 	if err := terminalWithoutRun.Validate(); err == nil {
 		t.Fatal("terminalize commit accepted no run record")
 	}
-	unchangedWithOutcome := EventCommit{
+	unchangedWithRun := EventCommit{
 		RunID: "run_1", SessionID: "session", SegmentID: "segment_1",
-		Outcome: run.OutcomeCanceled,
+		Run: &waiting,
 	}
-	if err := unchangedWithOutcome.Validate(); err == nil || unchangedWithOutcome.isEmpty() {
-		t.Fatalf("unchanged commit with outcome = empty:%t error:%v", unchangedWithOutcome.isEmpty(), err)
+	if err := unchangedWithRun.Validate(); err == nil || unchangedWithRun.isEmpty() {
+		t.Fatalf("unchanged commit with Run = empty:%t error:%v", unchangedWithRun.isEmpty(), err)
 	}
 
 	contradictory := waiting.Snapshot()
@@ -70,7 +70,7 @@ func TestTerminalEventCommitAllowsOnlyTheTransactionalWatermarkPlaceholder(t *te
 
 	commit := EventCommit{
 		RunID: record.ID(), SessionID: record.SessionID(), SegmentID: "segment_1", State: StateTerminalize,
-		CommitID: testCommitID("run_commit_event_1"), Outcome: outcome, Run: &record,
+		CommitID: testCommitID("run_commit_event_1"), Run: &record,
 	}
 	if err := commit.Validate(); err != nil {
 		t.Fatalf("terminal commit awaiting transactional watermark: %v", err)

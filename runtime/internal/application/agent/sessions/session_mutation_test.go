@@ -16,6 +16,21 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
+func TestRestorePortableSessionRefusesUnrepresentableTimeBeforeRetiringResources(t *testing.T) {
+	stores := newMutationStores("")
+	coordinator := newCoordinator(stores, mutationExecutions{operations: &stores.operations})
+	at := time.Date(9999, 1, 1, 0, 0, 0, 0, time.UTC)
+	_, err := coordinator.RestorePortableSession(t.Context(), PortableSnapshot{Session: PortableSession{
+		ID: "ses_1", CWD: "/work", Selection: testsupport.DefaultModelSelection(), CreatedAt: at, UpdatedAt: at,
+	}})
+	if !errors.Is(err, ErrInvalidPortableSnapshot) {
+		t.Fatalf("restore error = %v, want invalid portable snapshot", err)
+	}
+	if len(stores.operations) != 0 || len(stores.restored) != 0 {
+		t.Fatalf("refused archive touched existing resources: operations=%v writes=%v", stores.operations, stores.restored)
+	}
+}
+
 // TestDeleteSessionAppliesThenReleasesExecutors: DeleteSession reads the open
 // interrupts, commits the atomic delete write-set, then tears down the parked
 // executions and the resume gate — in that order (the durable state is gone before the

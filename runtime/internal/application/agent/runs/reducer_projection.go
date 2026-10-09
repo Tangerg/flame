@@ -269,9 +269,6 @@ func (r *reducer) projectOne(event ProjectionEvent) (reduction, error) {
 		}
 		commit.State = StateTerminalize
 		commit.CommitID = newRunCommitID()
-		if outcome, terminal := e.Run.Outcome(); terminal {
-			commit.Outcome = outcome
-		}
 	case ItemStarted, ItemChanged, SegmentProgressed, PlanSnapshot, SegmentStarted, QuestionAnswered:
 		// These events have no standalone EventCommit. SegmentStarted carries a Run
 		// for the stream, but the Run's durable opening IS its admission (or its

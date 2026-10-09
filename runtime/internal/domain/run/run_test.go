@@ -21,6 +21,39 @@ func mustRunSelection(t testing.TB) modelref.Selection {
 	return selection
 }
 
+func TestRunTransitionsRefuseUnrepresentableInstants(t *testing.T) {
+	current, err := Admit(Draft{
+		RunID: "run_time", SessionID: "ses_time", SegmentID: "seg_time",
+		ModelSelection: mustRunSelection(t), CreatedAt: time.Unix(1, 0),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waiting, err := current.Suspend(time.Unix(1, 0))
+	if err != nil {
+		t.Fatal(err)
+	}
+	at := time.Unix(0, math.MaxInt64).Add(time.Nanosecond)
+	for _, test := range []struct {
+		name    string
+		advance func() (Run, error)
+	}{
+		{"progress", func() (Run, error) { return current.AdvanceProgress(current.Metrics(), 1, at) }},
+		{"suspend", func() (Run, error) { return current.Suspend(at) }},
+		{"resume", func() (Run, error) { return waiting.Resume("seg_next", at) }},
+		{"terminal", func() (Run, error) {
+			return current.Terminate(Termination{Outcome: OutcomeCompleted, FinishedAt: at, MessageMark: MessageMarkAt(0)})
+		}},
+		{"lost", func() (Run, error) { return waiting.RecoverLost(Failure{Kind: FailureLost}, at, MessageMarkAt(0)) }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if _, err := test.advance(); err == nil || !strings.Contains(err.Error(), "outside the exact Unix nanosecond range") {
+				t.Fatalf("transition error = %v, want unrepresentable instant refusal", err)
+			}
+		})
+	}
+}
+
 func TestRestoreRejectsInvalidState(t *testing.T) {
 	snapshot := Snapshot{
 		SessionID: "session_1", ID: "run_1", ModelSelection: mustRunSelection(t),

@@ -16,7 +16,7 @@ func canonicalPending(pending Pending) Pending {
 	pending.Interrupts = slices.Clone(pending.Interrupts)
 	pending.Bindings = slices.Clone(pending.Bindings)
 	pending.Continuations = slices.Clone(pending.Continuations)
-	pending.CreatedAt = canonicalTime(pending.CreatedAt)
+	pending.CreatedAt = pending.CreatedAt.UTC()
 	for index := range pending.Continuations {
 		pending.Continuations[index] = normalizeContinuationValue(pending.Continuations[index])
 	}

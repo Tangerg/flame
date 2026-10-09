@@ -3,14 +3,15 @@ package runs
 import (
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/optional"
 	"slices"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/instant"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 )
 
 // Pending is one complete Run-tree barrier awaiting human decisions. The set is
@@ -187,6 +188,9 @@ func (p Pending) requireRoot(expectedRootRunID string) error {
 }
 
 func (p Pending) validateEnvelope() error {
+	if err := instant.Validate(p.CreatedAt); err != nil {
+		return fmt.Errorf("interrupts: pending creation time: %w", err)
+	}
 	if err := resourceid.ValidateRun(p.RootRunID); err != nil {
 		return fmt.Errorf("interrupts: pending root: %w", err)
 	}

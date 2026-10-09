@@ -29,21 +29,26 @@ func TestOccurrenceIdentityOwnsScheduleAndDueCursor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dueAt := time.UnixMilli(1_725_000_000_123).UTC()
-	identity, err := newOccurrenceIdentity(scheduleID, dueAt)
-	if err != nil {
-		t.Fatal(err)
+	for _, millis := range []int64{-1, 0, 1_725_000_000_123} {
+		dueAt := time.UnixMilli(millis).UTC()
+		identity, err := newOccurrenceIdentity(scheduleID, dueAt)
+		if err != nil {
+			t.Fatal(err)
+		}
+		parsed, err := parseOccurrenceIdentity(identity.String())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if parsed.scheduleID != scheduleID || parsed.dueMillis != dueAt.UnixMilli() {
+			t.Fatalf("parsed identity = %+v", parsed)
+		}
 	}
-	parsed, err := parseOccurrenceIdentity(identity.String())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if parsed.scheduleID != scheduleID || parsed.dueMillis != dueAt.UnixMilli() {
-		t.Fatalf("parsed identity = %+v", parsed)
+	if _, err := newOccurrenceIdentity(scheduleID, time.Time{}); err == nil {
+		t.Fatal("occurrence accepted an absent due time")
 	}
 
 	invalid := []string{
-		"", "sch_1", "sch_1:", "sch_1:0", "sch_1:-1", "sch_1:01",
+		"", "sch_1", "sch_1:", "sch_1:-0", "sch_1:+1", "sch_1:01",
 		"sch_ 1:1725000000123", "sch_1:1725000000123\u200b",
 		strings.Repeat("界", MaximumOccurrenceIDCharacters+1),
 	}

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/instant"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 )
 
@@ -106,6 +107,9 @@ func (b Blob) Validate() error {
 	}
 	if b.CreatedAt.IsZero() {
 		errs = append(errs, errors.New("toolresult: creation time is required"))
+	}
+	if err := instant.Validate(b.CreatedAt); err != nil {
+		errs = append(errs, err)
 	}
 	return errors.Join(errs...)
 }

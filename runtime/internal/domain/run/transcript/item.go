@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/instant"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -35,7 +36,7 @@ func (i ItemIdentity) Validate() error {
 	if i.OccurredAt.IsZero() {
 		return errors.New("transcript: occurrence time is required")
 	}
-	return nil
+	return instant.Validate(i.OccurredAt)
 }
 
 // Item is one immutable, user-visible transcript fact. Only ToolCall has an
@@ -351,6 +352,9 @@ func (i Item) validate() error {
 func (i Item) validateToolCall() error {
 	if i.tool == nil {
 		return errors.New("transcript: ToolCall invocation is required")
+	}
+	if err := instant.Validate(i.finishedAt); err != nil {
+		return fmt.Errorf("transcript: %w", err)
 	}
 	if err := i.tool.Validate(i.status == ItemRunning); err != nil {
 		return err

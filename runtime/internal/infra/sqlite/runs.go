@@ -289,26 +289,31 @@ func (r *RunStore) Suspend(
 		return fmt.Errorf("sqlite: suspend run %q: %w", value.ID(), err)
 	}
 	commitSegmentID, commitIDValue := marker.databaseValues()
-	// The segment identity is cleared in the same statement that parks the Run:
-	// a Run waiting on a person has no segment to attach to.
-	res, err := conn(ctx, r.db).ExecContext(ctx,
-		`UPDATE runs SET state = ?, active_segment_id = '', commit_segment_id = ?, commit_id = ?,
+	return RunInTx(ctx, r.db, func(ctx context.Context) error {
+		if err := r.requireTransition(ctx, "suspend", value); err != nil {
+			return err
+		}
+		// The segment identity is cleared in the same statement that parks the Run:
+		// a Run waiting on a person has no segment to attach to.
+		res, err := conn(ctx, r.db).ExecContext(ctx,
+			`UPDATE runs SET state = ?, active_segment_id = '', commit_segment_id = ?, commit_id = ?,
 		        steps = ?, active_duration_ns = ?, usage = ?, context_tokens = ?, updated_at = ?
 		 WHERE session_id = ? AND run_id = ? AND state = ? AND active_segment_id = ?`,
-		coarseState(value.State()).databaseValue(), commitSegmentID, commitIDValue,
-		metrics.steps, metrics.durationNs, metrics.usage, value.ContextTokens(), value.UpdatedAt().UTC().UnixNano(),
-		value.SessionID(), value.ID(), runStateRunning.databaseValue(), segmentID)
-	if err != nil {
-		return fmt.Errorf("sqlite: suspend run %q: %w", value.ID(), err)
-	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("sqlite: suspend run %q: read affected rows: %w", value.ID(), err)
-	}
-	if n == 0 {
-		return fmt.Errorf("sqlite: suspend run %q: Segment %q is no longer the running Segment", value.ID(), segmentID)
-	}
-	return nil
+			coarseState(value.State()).databaseValue(), commitSegmentID, commitIDValue,
+			metrics.steps, metrics.durationNs, metrics.usage, value.ContextTokens(), value.UpdatedAt().UTC().UnixNano(),
+			value.SessionID(), value.ID(), runStateRunning.databaseValue(), segmentID)
+		if err != nil {
+			return fmt.Errorf("sqlite: suspend run %q: %w", value.ID(), err)
+		}
+		n, err := res.RowsAffected()
+		if err != nil {
+			return fmt.Errorf("sqlite: suspend run %q: read affected rows: %w", value.ID(), err)
+		}
+		if n == 0 {
+			return fmt.Errorf("sqlite: suspend run %q: Segment %q is no longer the running Segment", value.ID(), segmentID)
+		}
+		return nil
+	})
 }
 
 // Resume writes the exact parked Run's decided continuation. Unlike cleanup
@@ -320,26 +325,34 @@ func (r *RunStore) Resume(ctx context.Context, replacement rundomain.Replacement
 		return fmt.Errorf("sqlite: resume run: %w", err)
 	}
 	expected, next := replacement.Expected(), replacement.State()
-	// The accrual is untouched: a continuation inherits what the park committed,
-	// and the segment now opening has consumed nothing yet. What does move is the
-	// segment identity, which the park cleared and this one replaces.
-	res, err := conn(ctx, r.db).ExecContext(ctx,
-		`UPDATE runs SET state = ?, active_segment_id = ?, commit_segment_id = '', commit_id = '', updated_at = ?
-		 WHERE session_id = ? AND run_id = ? AND state = ? AND updated_at = ?`,
-		coarseState(next.State()).databaseValue(), next.ActiveSegmentID(), next.UpdatedAt().UTC().UnixNano(),
-		expected.SessionID(), expected.ID(), coarseState(expected.State()).databaseValue(),
-		expected.UpdatedAt().UTC().UnixNano())
+	metrics, err := runMetricsRow(next.Metrics())
 	if err != nil {
 		return fmt.Errorf("sqlite: resume run %q: %w", next.ID(), err)
 	}
-	n, err := res.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("sqlite: resume run %q: read affected rows: %w", next.ID(), err)
-	}
-	if n == 0 {
-		return fmt.Errorf("sqlite: resume run: Run %q is not the parked Run the continuation resumes", next.ID())
-	}
-	return nil
+	return RunInTx(ctx, r.db, func(ctx context.Context) error {
+		if err := r.requireExpected(ctx, "resume", expected); err != nil {
+			return err
+		}
+		res, err := conn(ctx, r.db).ExecContext(ctx,
+			`UPDATE runs SET state = ?, active_segment_id = ?, commit_segment_id = '', commit_id = '',
+		        steps = ?, active_duration_ns = ?, usage = ?, context_tokens = ?, updated_at = ?
+		 WHERE session_id = ? AND run_id = ? AND state = ? AND updated_at = ?`,
+			coarseState(next.State()).databaseValue(), next.ActiveSegmentID(),
+			metrics.steps, metrics.durationNs, metrics.usage, next.ContextTokens(), next.UpdatedAt().UTC().UnixNano(),
+			expected.SessionID(), expected.ID(), coarseState(expected.State()).databaseValue(),
+			expected.UpdatedAt().UTC().UnixNano())
+		if err != nil {
+			return fmt.Errorf("sqlite: resume run %q: %w", next.ID(), err)
+		}
+		n, err := res.RowsAffected()
+		if err != nil {
+			return fmt.Errorf("sqlite: resume run %q: read affected rows: %w", next.ID(), err)
+		}
+		if n == 0 {
+			return fmt.Errorf("sqlite: resume run: Run %q is not the parked Run the continuation resumes", next.ID())
+		}
+		return nil
+	})
 }
 
 // RequireActiveSegment proves that an event transaction still belongs to the
@@ -392,30 +405,35 @@ func (r *RunStore) UpdateProgress(ctx context.Context, progressed rundomain.Run)
 	if err != nil {
 		return fmt.Errorf("sqlite: update Run progress for %q: %w", progressed.ID(), err)
 	}
-	result, err := conn(ctx, r.db).ExecContext(ctx,
-		`UPDATE runs SET steps = ?, active_duration_ns = ?, usage = ?, context_tokens = ?, updated_at = ?
+	return RunInTx(ctx, r.db, func(ctx context.Context) error {
+		if err := r.requireTransition(ctx, "update progress", progressed); err != nil {
+			return err
+		}
+		result, err := conn(ctx, r.db).ExecContext(ctx,
+			`UPDATE runs SET steps = ?, active_duration_ns = ?, usage = ?, context_tokens = ?, updated_at = ?
 		 WHERE session_id = ? AND run_id = ? AND state = ? AND active_segment_id = ?`,
-		encoded.steps,
-		encoded.durationNs,
-		encoded.usage,
-		progressed.ContextTokens(),
-		progressed.UpdatedAt().UTC().UnixNano(),
-		progressed.SessionID(),
-		progressed.ID(),
-		runStateRunning.databaseValue(),
-		progressed.ActiveSegmentID(),
-	)
-	if err != nil {
-		return fmt.Errorf("sqlite: update Run progress for %q: %w", progressed.ID(), err)
-	}
-	changed, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("sqlite: inspect Run progress update for %q: %w", progressed.ID(), err)
-	}
-	if changed != 1 {
-		return fmt.Errorf("sqlite: update Run progress for %q lost its active-segment fence", progressed.ID())
-	}
-	return nil
+			encoded.steps,
+			encoded.durationNs,
+			encoded.usage,
+			progressed.ContextTokens(),
+			progressed.UpdatedAt().UTC().UnixNano(),
+			progressed.SessionID(),
+			progressed.ID(),
+			runStateRunning.databaseValue(),
+			progressed.ActiveSegmentID(),
+		)
+		if err != nil {
+			return fmt.Errorf("sqlite: update Run progress for %q: %w", progressed.ID(), err)
+		}
+		changed, err := result.RowsAffected()
+		if err != nil {
+			return fmt.Errorf("sqlite: inspect Run progress update for %q: %w", progressed.ID(), err)
+		}
+		if changed != 1 {
+			return fmt.Errorf("sqlite: update Run progress for %q lost its active-segment fence", progressed.ID())
+		}
+		return nil
+	})
 }
 
 // Terminalize ends the exact non-terminal Run snapshot that replacement names,
@@ -437,8 +455,13 @@ func (r *RunStore) TerminalizeEvent(
 	if err != nil {
 		return err
 	}
-	return r.finish(ctx, "terminalize", value, marker,
-		`state = ? AND active_segment_id = ?`, runStateRunning.databaseValue(), segmentID)
+	return RunInTx(ctx, r.db, func(ctx context.Context) error {
+		if err := r.requireTransition(ctx, "terminalize", value); err != nil {
+			return err
+		}
+		return r.finish(ctx, "terminalize", value, marker,
+			`state = ? AND active_segment_id = ?`, runStateRunning.databaseValue(), segmentID)
+	})
 }
 
 // RebaseMessageMark writes the watermark of an Application-decided
@@ -446,27 +469,35 @@ func (r *RunStore) TerminalizeEvent(
 // from. Compaction does not change when the Run happened or any of its
 // lifecycle facts, so updated_at deliberately remains untouched.
 func (r *RunStore) RebaseMessageMark(ctx context.Context, change rundomain.Replacement) error {
+	if err := change.Validate(); err != nil {
+		return fmt.Errorf("sqlite: rebase Run message watermark: %w", err)
+	}
 	expected := change.Expected()
 	count, known := change.State().MessageMark().Count()
 	if !known {
 		return errors.New("sqlite: rebase Run message watermark: the rebased watermark is unknown")
 	}
-	result, err := conn(ctx, r.db).ExecContext(ctx,
-		`UPDATE runs SET message_mark = ?
+	return RunInTx(ctx, r.db, func(ctx context.Context) error {
+		if err := r.requireExpected(ctx, "rebase message watermark", expected); err != nil {
+			return err
+		}
+		result, err := conn(ctx, r.db).ExecContext(ctx,
+			`UPDATE runs SET message_mark = ?
 		 WHERE session_id = ? AND run_id = ? AND state = ? AND message_mark IS ?`,
-		count, expected.SessionID(), expected.ID(), runStateTerminal.databaseValue(), messageMarkValue(expected.MessageMark()),
-	)
-	if err != nil {
-		return fmt.Errorf("sqlite: rebase Run %q message watermark: %w", expected.ID(), err)
-	}
-	changed, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("sqlite: inspect Run %q message watermark rebase: %w", expected.ID(), err)
-	}
-	if changed != 1 {
-		return fmt.Errorf("sqlite: rebase Run %q message watermark lost its expected-value fence", expected.ID())
-	}
-	return nil
+			count, expected.SessionID(), expected.ID(), runStateTerminal.databaseValue(), messageMarkValue(expected.MessageMark()),
+		)
+		if err != nil {
+			return fmt.Errorf("sqlite: rebase Run %q message watermark: %w", expected.ID(), err)
+		}
+		changed, err := result.RowsAffected()
+		if err != nil {
+			return fmt.Errorf("sqlite: inspect Run %q message watermark rebase: %w", expected.ID(), err)
+		}
+		if changed != 1 {
+			return fmt.Errorf("sqlite: rebase Run %q message watermark lost its expected-value fence", expected.ID())
+		}
+		return nil
+	})
 }
 
 // RecoverLost ends the exact non-terminal Run snapshot whose executor state is
@@ -485,9 +516,42 @@ func (r *RunStore) replace(ctx context.Context, op string, replacement rundomain
 		return fmt.Errorf("sqlite: %s run: %w", op, err)
 	}
 	expected := replacement.Expected()
-	return r.finish(ctx, op, replacement.State(), nil,
-		`state = ? AND active_segment_id = ? AND updated_at = ?`,
-		coarseState(expected.State()).databaseValue(), expected.ActiveSegmentID(), expected.UpdatedAt().UTC().UnixNano())
+	return RunInTx(ctx, r.db, func(ctx context.Context) error {
+		if err := r.requireExpected(ctx, op, expected); err != nil {
+			return err
+		}
+		return r.finish(ctx, op, replacement.State(), nil,
+			`state = ? AND active_segment_id = ? AND updated_at = ?`,
+			coarseState(expected.State()).databaseValue(), expected.ActiveSegmentID(), expected.UpdatedAt().UTC().UnixNano())
+	})
+}
+
+// Write transactions may consume the Pending set before replacing its Runs.
+// Decode the complete Run facts without requiring that transient relation;
+// the enclosing application transaction owns the hand-off's integrity.
+func (r *RunStore) requireExpected(ctx context.Context, operation string, expected rundomain.Run) error {
+	current, found, err := r.readRun(ctx, operation, expected.ID(), scanRunForRecovery)
+	if err != nil {
+		return err
+	}
+	if !found || !current.Equal(expected) {
+		return fmt.Errorf("sqlite: %s run %q: Run changed after the application prepared its replacement", operation, expected.ID())
+	}
+	return nil
+}
+
+func (r *RunStore) requireTransition(ctx context.Context, operation string, state rundomain.Run) error {
+	current, found, err := r.readRun(ctx, operation, state.ID(), scanRunForRecovery)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return fmt.Errorf("sqlite: %s run %q: Run was not found", operation, state.ID())
+	}
+	if _, err := rundomain.Replace(current, func(rundomain.Run) (rundomain.Run, error) { return state, nil }); err != nil {
+		return fmt.Errorf("sqlite: %s run %q: %w", operation, state.ID(), err)
+	}
+	return nil
 }
 
 // finish ends a non-terminal Run, writing the terminal state, its reason, and the

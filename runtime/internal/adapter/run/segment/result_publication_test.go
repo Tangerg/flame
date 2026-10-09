@@ -227,7 +227,7 @@ func TestTerminalConversationPreservesSparseResultsAcrossRestart(t *testing.T) {
 			}
 			if err := effects.CommitEvent(ctx, runs.EventCommit{
 				RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID, CommitID: testCommitID("run_commit_terminal_sparse"),
-				State: runs.StateTerminalize, Outcome: run.OutcomeCanceled, Run: finishedRunRecord(draft.RunID, draft.SessionID, run.OutcomeCanceled),
+				State: runs.StateTerminalize, Run: finishedRunRecord(draft.RunID, draft.SessionID, run.OutcomeCanceled),
 			}); err != nil {
 				t.Fatal(err)
 			}

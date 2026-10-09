@@ -21,6 +21,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/instant"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 )
 
@@ -447,6 +448,9 @@ func (i Item) ActivateFromUser(content string, now time.Time) (Item, error) {
 	if now.IsZero() || now.Before(i.updatedAt) {
 		return Item{}, errors.New("agentmemory: activation time precedes current item")
 	}
+	if err := instant.Validate(now); err != nil {
+		return Item{}, fmt.Errorf("agentmemory: activation time: %w", err)
+	}
 	i.content = content
 	i.origin = OriginUser
 	i.status = StatusActive
@@ -490,6 +494,9 @@ func (i Item) Edit(content *string, pinned *bool, now time.Time) (Item, bool, er
 	if now.IsZero() || now.Before(i.updatedAt) {
 		return Item{}, false, errors.New("agentmemory: edit time precedes current item")
 	}
+	if err := instant.Validate(now); err != nil {
+		return Item{}, false, fmt.Errorf("agentmemory: edit time: %w", err)
+	}
 	i.updatedAt = now
 	return i, true, nil
 }
@@ -507,6 +514,9 @@ func (i Item) Review(decision ReviewDecision, now time.Time) (Item, error) {
 	now = now.UTC()
 	if now.IsZero() || now.Before(i.updatedAt) {
 		return Item{}, errors.New("agentmemory: review time precedes current item")
+	}
+	if err := instant.Validate(now); err != nil {
+		return Item{}, fmt.Errorf("agentmemory: review time: %w", err)
 	}
 	i.status = status
 	i.updatedAt = now
@@ -572,6 +582,9 @@ func (i Item) validate() error {
 	if i.createdAt.IsZero() || i.updatedAt.IsZero() {
 		return errors.New("agentmemory: item timestamps are required")
 	}
+	if err := instant.Validate(i.createdAt, i.updatedAt); err != nil {
+		return fmt.Errorf("agentmemory: item timestamps: %w", err)
+	}
 	if i.updatedAt.Before(i.createdAt) {
 		return errors.New("agentmemory: item update precedes creation")
 	}
@@ -611,6 +624,9 @@ func (f FactBatch) Normalize() (FactBatch, error) {
 	if f.CapturedAt.IsZero() {
 		return FactBatch{}, errors.New("agentmemory: fact batch capture time is required")
 	}
+	if err := instant.Validate(f.CapturedAt); err != nil {
+		return FactBatch{}, fmt.Errorf("agentmemory: fact batch capture time: %w", err)
+	}
 	f.Facts, err = normalizeFactList(f.Facts, MaxFactsPerBatch, "fact batch")
 	if err != nil {
 		return FactBatch{}, err
@@ -647,7 +663,7 @@ func (l LedgerFact) Validate() error {
 	if l.CapturedAt.IsZero() {
 		return errors.New("agentmemory: ledger fact capture time is required")
 	}
-	return nil
+	return instant.Validate(l.CapturedAt)
 }
 
 // State is the curation watermark for a project: the highest ledger sequence
@@ -670,7 +686,7 @@ func (s State) Validate() error {
 	if s.Watermark > 0 && s.UpdatedAt.IsZero() {
 		return errors.New("agentmemory: advanced curation state has no update time")
 	}
-	return nil
+	return instant.Validate(s.UpdatedAt)
 }
 
 func normalizeFactList(input []string, maximum int, collection string) ([]string, error) {

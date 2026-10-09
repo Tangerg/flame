@@ -161,7 +161,6 @@ func TestToolResultItemBindingListAndRestore(t *testing.T) {
 		t.Fatal(err)
 	}
 	blob.SessionID = "restored"
-	blob.CreatedAt = time.Unix(blob.CreatedAt.Unix(), 0).UTC()
 	if err := store.Restore(t.Context(), blob); err != nil {
 		t.Fatalf("restore: %v", err)
 	}

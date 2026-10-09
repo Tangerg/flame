@@ -65,13 +65,13 @@ func TestTrajectoryExportRejectsResourceLimitsBeforeReadingBodies(t *testing.T) 
 	}{
 		{
 			name: "source bytes",
-			sql:  `INSERT INTO feedback_entries(session_id,text,created_at) VALUES('ses_export',zeroblob(?),1)`,
+			sql:  `INSERT INTO feedback_entries(session_id,text,created_at_ns) VALUES('ses_export',zeroblob(?),1)`,
 			args: []any{sessions.MaximumTrajectoryExportBytes + 1},
 		},
 		{
 			name: "feedback records",
 			sql: `WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL SELECT x+1 FROM n WHERE x < ?)
-				INSERT INTO feedback_entries(session_id,text,created_at) SELECT 'ses_export','evidence',1 FROM n`,
+				INSERT INTO feedback_entries(session_id,text,created_at_ns) SELECT 'ses_export','evidence',1 FROM n`,
 			args: []any{sessions.MaximumTrajectoryExportRecords + 1},
 		},
 		{

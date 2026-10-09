@@ -57,8 +57,8 @@ func newOccurrenceIdentity(scheduleID resourceid.ScheduleID, dueAt time.Time) (o
 		return occurrenceIdentity{}, fmt.Errorf("schedule: occurrence: %w", err)
 	}
 	dueMillis := dueAt.UTC().UnixMilli()
-	if dueAt.IsZero() || dueMillis <= 0 {
-		return occurrenceIdentity{}, errors.New("schedule: occurrence due time must be after the Unix epoch")
+	if dueAt.IsZero() {
+		return occurrenceIdentity{}, errors.New("schedule: occurrence due time is required")
 	}
 	text := scheduleID.String() + occurrenceIDSeparator + strconv.FormatInt(dueMillis, 10)
 	return occurrenceIdentity{text: text, scheduleID: scheduleID, dueMillis: dueMillis}, nil
@@ -78,7 +78,7 @@ func parseOccurrenceIdentity(text string) (occurrenceIdentity, error) {
 	}
 	rawDueMillis := text[separator+len(occurrenceIDSeparator):]
 	dueMillis, err := strconv.ParseInt(rawDueMillis, 10, 64)
-	if err != nil || dueMillis <= 0 || strconv.FormatInt(dueMillis, 10) != rawDueMillis {
+	if err != nil || strconv.FormatInt(dueMillis, 10) != rawDueMillis {
 		return occurrenceIdentity{}, errors.New("schedule: occurrence identity has a non-canonical due-time suffix")
 	}
 	return occurrenceIdentity{text: text, scheduleID: scheduleID, dueMillis: dueMillis}, nil

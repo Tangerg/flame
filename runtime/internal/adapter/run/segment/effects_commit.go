@@ -556,7 +556,8 @@ func (e *Effects) applyCommit(ctx context.Context, commit runs.EventCommit) erro
 		if err != nil {
 			return fmt.Errorf("segment: read terminal conversation: %w", err)
 		}
-		closure, err := runs.TerminalConversation(ctx, e.runState, commit.SessionID, commit.RunID, append(messages, commit.ConversationMessages...), commit.Outcome, commit.Run.Detail())
+		outcome, _ := commit.Run.Outcome()
+		closure, err := runs.TerminalConversation(ctx, e.runState, commit.SessionID, commit.RunID, append(messages, commit.ConversationMessages...), outcome, commit.Run.Detail())
 		if err != nil {
 			return err
 		}

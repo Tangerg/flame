@@ -2,6 +2,7 @@ package sqlite_test
 
 import (
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
@@ -29,5 +30,34 @@ func TestFeedbackStoreAppendsEntry(t *testing.T) {
 	}
 	if count != 1 {
 		t.Fatalf("count = %d, want 1", count)
+	}
+}
+
+func TestFeedbackRoundTripPreservesObservationTime(t *testing.T) {
+	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	store := sqlite.NewFeedbackStore(db)
+	createdAt := time.Unix(1, 123456789).UTC()
+	entry, err := feedback.NewEntry("ses_time", "run_time", "item_time", feedback.RatingPositive, "useful", createdAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Append(t.Context(), entry); err != nil {
+		t.Fatal(err)
+	}
+	earlier := entry
+	earlier.CreatedAt = createdAt.Add(-time.Nanosecond)
+	if err := store.Append(t.Context(), earlier); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := store.ListSession(t.Context(), entry.SessionID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []feedback.Entry{earlier, entry}; !slices.Equal(entries, want) {
+		t.Fatalf("restored observations = %+v, want exact observations in time order %+v", entries, want)
 	}
 }

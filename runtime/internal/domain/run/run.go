@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
+	"github.com/Tangerg/flame/runtime/internal/domain/instant"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 )
@@ -216,6 +217,9 @@ func (r Run) validate() error {
 	}
 	if err := r.lineage.Validate(r.id); err != nil {
 		return err
+	}
+	if err := instant.Validate(r.createdAt, r.updatedAt, r.finishedAt); err != nil {
+		return fmt.Errorf("run: %w", err)
 	}
 	if err := r.modelSelection.ValidateExact(); err != nil {
 		return fmt.Errorf("run: %w", err)
@@ -466,6 +470,9 @@ func (r Run) WithMessageMark(messageMark int) (Run, error) {
 func (r Run) validateTransitionTime(at time.Time) error {
 	if at.IsZero() {
 		return errors.New("run: transition time is required")
+	}
+	if err := instant.Validate(at); err != nil {
+		return fmt.Errorf("run: %w", err)
 	}
 	at = at.UTC()
 	if at.Before(r.updatedAt) {

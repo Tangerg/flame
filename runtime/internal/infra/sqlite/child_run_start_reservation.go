@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/instant"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
@@ -79,6 +80,9 @@ func (c ChildRunStartReservationRecord) validate() error {
 	}
 	if c.CreatedAt.IsZero() {
 		return fmt.Errorf("%w: creation time", ErrInvalidChildRunStartReservation)
+	}
+	if err := instant.Validate(c.CreatedAt); err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidChildRunStartReservation, err)
 	}
 	return nil
 }

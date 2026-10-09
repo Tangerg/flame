@@ -103,8 +103,8 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			provider    TEXT    NOT NULL CHECK (provider <> ''),
 			model       TEXT    NOT NULL CHECK (model <> ''),
 			reasoning_effort TEXT NOT NULL DEFAULT '',
-			favorite    INTEGER NOT NULL DEFAULT 0,
-			isolated    INTEGER NOT NULL DEFAULT 0,
+			favorite    INTEGER NOT NULL DEFAULT 0 CHECK (favorite IN (0, 1)),
+			isolated    INTEGER NOT NULL DEFAULT 0 CHECK (isolated IN (0, 1)),
 			revision    INTEGER NOT NULL DEFAULT %d CHECK (revision BETWEEN %d AND %d)
 		)`, firstExactInteger, firstExactInteger, exactint.Maximum),
 		`CREATE INDEX IF NOT EXISTS idx_sessions_updated_at
@@ -223,13 +223,13 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			segment_id  TEXT    NOT NULL,
 			state       TEXT    NOT NULL,
 			started_at  INTEGER NOT NULL,
-			finished_at INTEGER NOT NULL DEFAULT 0,
+			finished_at INTEGER,
 			%[5]s,
 			%[6]s,
 			CHECK (state IN ('%[1]s', '%[2]s', '%[3]s', '%[4]s')),
 			CHECK (
-				(state = '%[1]s' AND finished_at = 0) OR
-				(state != '%[1]s' AND finished_at >= started_at)
+				(state = '%[1]s' AND finished_at IS NULL) OR
+				(state != '%[1]s' AND finished_at IS NOT NULL AND finished_at >= started_at)
 			)
 		)`,
 			modelInvocationStarted.databaseValue(),
@@ -253,11 +253,11 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			segment_id  TEXT    NOT NULL,
 			state       TEXT    NOT NULL,
 			started_at  INTEGER NOT NULL,
-			finished_at INTEGER NOT NULL DEFAULT 0,
+			finished_at INTEGER,
 			CHECK (state IN ('%[1]s', '%[2]s', '%[3]s')),
 			CHECK (
-				(state = '%[1]s' AND finished_at = 0) OR
-				(state != '%[1]s' AND finished_at >= started_at)
+				(state = '%[1]s' AND finished_at IS NULL) OR
+				(state != '%[1]s' AND finished_at IS NOT NULL AND finished_at >= started_at)
 			),
 			PRIMARY KEY (call_id, segment_id),
 			UNIQUE (item_id, segment_id)
@@ -534,8 +534,8 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			project_root TEXT PRIMARY KEY
 		)`,
 		// Scheduled runs (schedules.*): a saved instructions fired on a cron trigger as
-		// a headless run. last_run_at / next_run_at are unix millis (0 = never /
-		// disabled); next_run_at is the worker's due index and the one record of
+		// a headless run. last_run_at / next_run_at are nullable unix millis;
+		// next_run_at is the worker's due index and the one record of
 		// whether the schedule fires.
 		fmt.Sprintf(`CREATE TABLE IF NOT EXISTS schedules (
 			id          TEXT    PRIMARY KEY,
@@ -546,8 +546,8 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			model       TEXT    NOT NULL DEFAULT '',
 			reasoning_effort TEXT NOT NULL DEFAULT '',
 			cron        TEXT    NOT NULL,
-			last_run_at INTEGER NOT NULL DEFAULT 0,
-			next_run_at INTEGER NOT NULL DEFAULT 0,
+			last_run_at INTEGER,
+			next_run_at INTEGER,
 			created_at  INTEGER NOT NULL,
 			revision    INTEGER NOT NULL DEFAULT %d CHECK (revision BETWEEN %d AND %d)
 		)`, firstExactInteger, firstExactInteger, exactint.Maximum),
@@ -571,7 +571,8 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			next_run_at INTEGER NOT NULL,
 			session_id  TEXT    NOT NULL UNIQUE,
 			run_id      TEXT    NOT NULL UNIQUE,
-			state       TEXT    NOT NULL CHECK(state IN ('%s', '%s'))
+			state       TEXT    NOT NULL CHECK(state IN ('%s', '%s')),
+			CHECK (id = schedule_id || ':' || CAST(due_at AS TEXT))
 		)`, scheduleFiringPending.databaseValue(), scheduleFiringAccepted.databaseValue()),
 		`CREATE INDEX IF NOT EXISTS idx_schedule_firings_pending
 			ON schedule_firings(state, due_at, id)`,
@@ -624,12 +625,12 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 		// Item or checkpoint names is unbound staging. An id is unique within its
 		// Session only: the preview and conversation text spell it out, so a fork
 		// copies a body under the same id rather than renaming text it cannot
-		// rewrite. created_at orders portable records.
+		// rewrite. created_at_ns preserves the exact portable creation instant.
 		`CREATE TABLE IF NOT EXISTS tool_result_blobs (
 			session_id  TEXT    NOT NULL,
 			id          TEXT    NOT NULL,
 			body        TEXT    NOT NULL,
-			created_at  INTEGER NOT NULL DEFAULT (strftime('%s','now')),
+			created_at_ns INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000000000),
 			PRIMARY KEY(session_id, id)
 		)`,
 		// session_id restates the checkpoint's Session only so both foreign keys
@@ -655,7 +656,7 @@ func installCurrentSchema(ctx context.Context, db *sql.DB) error {
 			item_id    TEXT    NOT NULL DEFAULT '',
 			rating     TEXT    NOT NULL DEFAULT '',
 			text       TEXT    NOT NULL DEFAULT '',
-			created_at INTEGER NOT NULL
+			created_at_ns INTEGER NOT NULL
 		)`,
 		// Append-only per-project fact ledger. day is the daily-ledger partition
 		// (YYYY-MM-DD); seq is both stable ordering and the curation watermark.

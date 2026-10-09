@@ -591,17 +591,20 @@ func TestScheduleStoreRejectsDuplicatePendingRows(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
-	insert := func(id, sessionID, runID string) error {
+	insert := func(occurrence schedule.Occurrence) error {
 		_, err := db.ExecContext(ctx, `INSERT INTO schedule_firings(
 			id, schedule_id, instructions, due_at, fired_at, next_run_at, session_id, run_id, state
 		) VALUES (?, ?, 'review', ?, ?, ?, ?, ?, 'pending')`,
-			id, created.ID(), dueAt.UnixMilli(), dueAt.UnixMilli(), dueAt.Add(time.Hour).UnixMilli(), sessionID, runID)
+			occurrence.ID(), occurrence.ScheduleID(), occurrence.DueAt().UnixMilli(), occurrence.FiredAt().UnixMilli(),
+			occurrence.NextRunAt().UnixMilli(), occurrence.SessionID(), occurrence.RunID())
 		return err
 	}
-	if err := insert("first", "ses_first", "run_first"); err != nil {
+	first := testClaim(created, "ses_first", "run_first", dueAt)
+	if err := insert(first.Occurrence()); err != nil {
 		t.Fatalf("insert first pending occurrence: %v", err)
 	}
-	if err := insert("second", "ses_second", "run_second"); err == nil {
+	second := testClaim(first.State(), "ses_second", "run_second", first.State().NextRunAt())
+	if err := insert(second.Occurrence()); err == nil {
 		t.Fatal("second pending occurrence inserted despite the per-schedule invariant")
 	}
 }
@@ -723,7 +726,7 @@ func TestScheduleQueriesUseIDAsStableTieBreaker(t *testing.T) {
 		_, execContextErr := db.ExecContext(t.Context(), `INSERT INTO schedules(
 			id, title, instructions, cwd, provider, model, cron,
 			last_run_at, next_run_at, created_at, revision
-		) VALUES (?, '', 'review', '', '', '', '0 9 * * *', 0, ?, ?, 1)`,
+		) VALUES (?, '', 'review', '', '', '', '0 9 * * *', NULL, ?, ?, 1)`,
 			id, nextRunAt, createdAt)
 		if execContextErr != nil {
 			t.Fatalf("insert %s: %v", id, execContextErr)
@@ -782,7 +785,7 @@ func TestScheduleDuePrioritizesOldestBacklog(t *testing.T) {
 		_, execContextErr := db.ExecContext(ctx, `INSERT INTO schedules(
 			id, title, instructions, cwd, provider, model, cron,
 			last_run_at, next_run_at, created_at, revision
-		) VALUES (?, '', 'review', '', '', '', '0 9 * * *', 0, ?, ?, 1)`,
+		) VALUES (?, '', 'review', '', '', '', '0 9 * * *', NULL, ?, ?, 1)`,
 			id, dueAt.UnixMilli(), dueAt.UnixMilli())
 		if execContextErr != nil {
 			t.Fatalf("insert %s: %v", id, execContextErr)

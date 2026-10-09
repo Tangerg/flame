@@ -201,20 +201,11 @@ func encodeContentPayload(block transcript.ContentBlock) (contentPayload, error)
 }
 
 func decodeContentPayload(payload contentPayload) (transcript.ContentBlock, error) {
-	switch payload.Kind {
-	case transcript.TextContent:
-		return transcript.ContentBlock{Kind: transcript.TextContent, Text: payload.Text}, nil
-	case transcript.ImageContent:
-		data, err := base64.StdEncoding.DecodeString(payload.Data)
-		if err != nil {
-			return transcript.ContentBlock{}, fmt.Errorf("decode image data: %w", err)
-		}
-		return transcript.ContentBlock{
-			Kind: transcript.ImageContent, MediaType: payload.MediaType, Bytes: data,
-		}, nil
-	default:
-		return transcript.ContentBlock{}, fmt.Errorf("unknown content kind %q", payload.Kind)
+	data, err := base64.StdEncoding.DecodeString(payload.Data)
+	if err != nil {
+		return transcript.ContentBlock{}, fmt.Errorf("decode content data: %w", err)
 	}
+	return transcript.ContentBlock{Kind: payload.Kind, Text: payload.Text, MediaType: payload.MediaType, Bytes: data}, nil
 }
 
 func encodeQuestionPayload(question transcript.Question) (questionPayload, error) {

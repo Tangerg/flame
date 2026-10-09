@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/instant"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/scope/core/chat"
 )
@@ -82,10 +83,13 @@ func (m *ModelInvocationStore) StartModelInvocation(
 	if startedAt.IsZero() {
 		return errors.New("sqlite: model invocation start time is required")
 	}
+	if err := instant.Validate(startedAt); err != nil {
+		return fmt.Errorf("sqlite: model invocation start time: %w", err)
+	}
 	result, err := conn(ctx, m.db).ExecContext(ctx,
 		`INSERT INTO model_invocations(
 		   call_id, session_id, run_id, segment_id, state, started_at, finished_at)
-		 SELECT ?, session_id, run_id, ?, ?, ?, 0
+		 SELECT ?, session_id, run_id, ?, ?, ?, NULL
 		   FROM runs
 		  WHERE run_id = ? AND session_id = ? AND state != ?`,
 		callID,
@@ -161,6 +165,9 @@ func (m *ModelInvocationStore) finish(
 	}
 	if finishedAt.Before(startedAt) {
 		return errors.New("sqlite: model invocation finish time precedes start time")
+	}
+	if err := instant.Validate(startedAt, finishedAt); err != nil {
+		return fmt.Errorf("sqlite: model invocation times: %w", err)
 	}
 	if firstOutputLatencyMillis != nil && (*firstOutputLatencyMillis < 0 || (state != modelInvocationCompleted.databaseValue() && state != modelInvocationFailed.databaseValue())) {
 		return errors.New("sqlite: invalid first output latency measurement")
@@ -254,7 +261,8 @@ func (m *ModelInvocationStore) PageModelInvocations(ctx context.Context, runID s
 
 func scanModelInvocation(row scanRow) (ModelInvocationRecord, error) {
 	var record ModelInvocationRecord
-	var startedAt, finishedAt int64
+	var startedAt int64
+	var finishedAt sql.NullInt64
 	var usage sql.NullString
 	var latency sql.NullInt64
 	if err := row.Scan(&record.CallID, &record.SegmentID, &record.State, &startedAt, &finishedAt, &usage, &latency); err != nil {
@@ -271,8 +279,8 @@ func scanModelInvocation(row scanRow) (ModelInvocationRecord, error) {
 		}
 	}
 	record.StartedAt = time.Unix(0, startedAt).UTC()
-	if finishedAt != 0 {
-		record.FinishedAt = time.Unix(0, finishedAt).UTC()
+	if finishedAt.Valid {
+		record.FinishedAt = time.Unix(0, finishedAt.Int64).UTC()
 	}
 	return record, nil
 }

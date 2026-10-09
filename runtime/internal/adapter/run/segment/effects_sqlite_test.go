@@ -436,7 +436,7 @@ func TestCommitEventRejectsTerminalFromReplacedSegment(t *testing.T) {
 	if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
 		RunID: draft.RunID, SessionID: draft.SessionID,
 		SegmentID: "seg_old", CommitID: testCommitID("run_commit_event_old_segment"),
-		State: runs.StateTerminalize, Outcome: run.OutcomeCompleted, Run: &staleTerminal,
+		State: runs.StateTerminalize, Run: &staleTerminal,
 	}); commitEventErr == nil {
 		t.Fatal("terminal fact from the replaced Segment ended the resumed Run")
 	}
@@ -1045,7 +1045,6 @@ func TestCommitEventRecordsGoalRunWithTerminalRun(t *testing.T) {
 	if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
 		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID, State: runs.StateTerminalize,
 		CommitID: testCommitID("run_commit_event_goal"),
-		Outcome:  run.OutcomeCompleted,
 		Run:      finished,
 	}); commitEventErr != nil {
 		t.Fatalf("CommitEvent: %v", commitEventErr)
@@ -1774,8 +1773,8 @@ func TestCommitTerminalOwnsExecutorCheckpointDeletion(t *testing.T) {
 			finished = &resolved
 			err := fixture.effects.CommitEvent(fixture.ctx, runs.EventCommit{
 				RunID: "run_terminal", SessionID: "ses_terminal", SegmentID: "seg_terminal", State: runs.StateTerminalize,
-				CommitID: testCommitID("run_commit_event_checkpoint"),
-				Outcome:  run.OutcomeCompleted, Run: finished,
+				CommitID:                 testCommitID("run_commit_event_checkpoint"),
+				Run:                      finished,
 				ObsoleteCheckpointRootID: fixture.rootMemberID,
 			})
 			if test.checkpointDeleteFail || test.childCleanupFail {
@@ -2663,7 +2662,7 @@ func TestCommitEventAppendsConversationBeforeResolvingTerminalWatermark(t *testi
 	if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
 		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID,
 		CommitID: testCommitID("run_commit_event_watermark"),
-		State:    runs.StateTerminalize, Outcome: run.OutcomeCompleted, Run: finished,
+		State:    runs.StateTerminalize, Run: finished,
 		ConversationMessages: []chat.Message{
 			chat.NewAssistantMessage(chat.NewTextPart("done")),
 		},
@@ -2721,7 +2720,7 @@ func TestCommitEventReconcilesAmbiguousTerminalCommit(t *testing.T) {
 	commit := runs.EventCommit{
 		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID,
 		CommitID: testCommitID("run_commit_event_ambiguous"),
-		State:    runs.StateTerminalize, Outcome: run.OutcomeCompleted, Run: finished,
+		State:    runs.StateTerminalize, Run: finished,
 		ConversationMessages: []chat.Message{
 			chat.NewAssistantMessage(chat.NewTextPart("durable answer")),
 		},
@@ -2802,7 +2801,7 @@ func TestCommitEventReconcilesAmbiguousTerminalCommit(t *testing.T) {
 	if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
 		RunID: otherDraft.RunID, SessionID: otherDraft.SessionID, SegmentID: otherDraft.SegmentID,
 		CommitID: testCommitID(terminalCommitID),
-		State:    runs.StateTerminalize, Outcome: run.OutcomeCompleted, Run: otherFinished,
+		State:    runs.StateTerminalize, Run: otherFinished,
 	}); commitEventErr == nil {
 		t.Fatal("terminal commit identity was reused by another Run")
 	}
@@ -3026,7 +3025,7 @@ func TestRootTerminalCommitReclaimsChildStartReservations(t *testing.T) {
 	if err := effects.CommitEvent(ctx, runs.EventCommit{
 		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID,
 		CommitID: testCommitID("run_commit_event_cleanup"),
-		State:    runs.StateTerminalize, Outcome: run.OutcomeCompleted, Run: finished,
+		State:    runs.StateTerminalize, Run: finished,
 		ObsoleteCheckpointRootID: "member_root_1",
 	}); err != nil {
 		t.Fatalf("CommitEvent: %v", err)
@@ -3085,7 +3084,7 @@ func TestCommitEventPersistsTheTerminalRunsResult(t *testing.T) {
 	if commitEventErr := effects.CommitEvent(ctx, runs.EventCommit{
 		RunID: draft.RunID, SessionID: draft.SessionID, SegmentID: draft.SegmentID, State: runs.StateTerminalize,
 		CommitID: testCommitID("run_commit_event_result"),
-		Outcome:  run.OutcomeFailed, Run: finished,
+		Run:      finished,
 	}); commitEventErr != nil {
 		t.Fatalf("CommitEvent: %v", commitEventErr)
 	}

@@ -7,11 +7,12 @@ package plan
 import (
 	"errors"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/optional"
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/instant"
 	"github.com/Tangerg/flame/runtime/internal/exactint"
+	"github.com/Tangerg/flame/runtime/internal/optional"
 )
 
 // Status is one Step's execution state.
@@ -170,6 +171,9 @@ func (s State) Replace(steps []Step, updatedAt time.Time) (State, error) {
 	if updatedAt.IsZero() {
 		return State{}, fmt.Errorf("%w: replacement time is required", ErrInvalid)
 	}
+	if err := instant.Validate(updatedAt); err != nil {
+		return State{}, fmt.Errorf("%w: %w", ErrInvalid, err)
+	}
 	if !s.updatedAt.IsZero() && updatedAt.Before(s.updatedAt) {
 		return State{}, fmt.Errorf("%w: replacement time precedes current state", ErrInvalid)
 	}
@@ -185,14 +189,11 @@ func (s State) Replace(steps []Step, updatedAt time.Time) (State, error) {
 }
 
 func create(steps []Step, updatedAt time.Time) (State, error) {
-	if err := ValidateSteps(steps); err != nil {
+	state := State{steps: cloneSteps(steps), revision: exactint.First(), updatedAt: updatedAt.UTC()}
+	if err := state.Validate(); err != nil {
 		return State{}, err
 	}
-	updatedAt = updatedAt.UTC()
-	if updatedAt.IsZero() {
-		return State{}, fmt.Errorf("%w: replacement time is required", ErrInvalid)
-	}
-	return State{steps: cloneSteps(steps), revision: exactint.First(), updatedAt: updatedAt}, nil
+	return state, nil
 }
 
 // Validate verifies the aggregate's reconstruction and lifecycle invariants.
@@ -205,6 +206,9 @@ func (s State) Validate() error {
 	}
 	if s.updatedAt.IsZero() {
 		return fmt.Errorf("%w: committed Plan has no update time", ErrInvalid)
+	}
+	if err := instant.Validate(s.updatedAt); err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalid, err)
 	}
 	return nil
 }

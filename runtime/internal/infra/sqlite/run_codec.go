@@ -282,6 +282,21 @@ func scanRunRow(row scanRow, pendingPolicy pendingReadPolicy) (rundomain.Run, er
 	if err != nil {
 		return rundomain.Run{}, fmt.Errorf("decode run effects: %w", err)
 	}
+	if outcome != "" {
+		reason, ok := rundomain.ParseOutcome(outcome)
+		if !ok {
+			return rundomain.Run{}, fmt.Errorf("run %q has unknown outcome %q", id, outcome)
+		}
+		snapshot.Outcome = &reason
+	}
+	if snapshot.Failure, err = decodeRunFailure(problem); err != nil {
+		return rundomain.Run{}, fmt.Errorf("decode run %q failure: %w", id, err)
+	}
+	// Zero encodes absence on open rows and the Unix epoch on terminal rows.
+	// Retain nonzero finish times on open rows so the Domain rejects them.
+	if finishedAt != 0 || storedState == runStateTerminal {
+		snapshot.FinishedAt = time.Unix(0, finishedAt).UTC()
+	}
 	switch storedState {
 	case runStateRunning:
 		snapshot.State = rundomain.Running
@@ -302,20 +317,14 @@ func scanRunRow(row scanRow, pendingPolicy pendingReadPolicy) (rundomain.Run, er
 			return rundomain.Run{}, fmt.Errorf("decode run %q interrupts: %w", id, decodeErr)
 		}
 	case runStateTerminal:
-		reason, ok := rundomain.ParseOutcome(outcome)
-		if !ok {
-			return rundomain.Run{}, fmt.Errorf("run %q has unknown outcome %q", id, outcome)
+		if snapshot.Outcome == nil {
+			return rundomain.Run{}, fmt.Errorf("run %q has no terminal outcome", id)
 		}
-		state, ok := rundomain.Running.Terminate(reason)
+		state, ok := rundomain.Running.Terminate(*snapshot.Outcome)
 		if !ok {
-			return rundomain.Run{}, fmt.Errorf("run %q outcome %s reaches no terminal state", id, reason)
+			return rundomain.Run{}, fmt.Errorf("run %q outcome %s reaches no terminal state", id, *snapshot.Outcome)
 		}
 		snapshot.State = state
-		snapshot.Outcome = &reason
-		snapshot.FinishedAt = time.Unix(0, finishedAt).UTC()
-		if snapshot.Failure, err = decodeRunFailure(problem); err != nil {
-			return rundomain.Run{}, fmt.Errorf("decode run %q failure: %w", id, err)
-		}
 	}
 	value, err := rundomain.Restore(snapshot)
 	if err != nil {

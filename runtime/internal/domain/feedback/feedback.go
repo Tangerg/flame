@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/instant"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 )
 
@@ -89,6 +90,9 @@ func (e Entry) Validate() error {
 	}
 	if e.CreatedAt.IsZero() {
 		return ErrInvalid
+	}
+	if err := instant.Validate(e.CreatedAt); err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalid, err)
 	}
 	return nil
 }

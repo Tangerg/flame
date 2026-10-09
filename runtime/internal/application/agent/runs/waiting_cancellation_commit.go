@@ -565,13 +565,6 @@ func sameInterruptValue(left, right OpenInterrupt) bool {
 	return reflect.DeepEqual(left, right)
 }
 
-func canonicalTime(value time.Time) time.Time {
-	if value.IsZero() {
-		return time.Time{}
-	}
-	return time.Unix(0, value.UnixNano()).UTC()
-}
-
 // parkedTreeSessionID is the Session of the parked tree's root Run, which owns
 // it; an absent root leaves it empty for validation to refuse.
 func parkedTreeSessionID(parked []rundomain.Run, rootRunID string) string {

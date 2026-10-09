@@ -935,6 +935,48 @@ Provider and MCP probes return a closed `outcome` without server-authored prose.
 
 Stored JSON uses the standard library's single-pass strict decoder. Columns require exact field names, valid UTF-8, one complete value, and no duplicate or unknown members, including inside nested values. The persisted representation is unchanged; data written by Runtime needs no migration. Manually edited records with mismatched field casing or invalid UTF-8 are rejected as corrupt rather than normalized.
 
+Transcript content decoding also retains conflicting variant fields. A text block
+with media or an image block with text fails Domain restoration; readers never
+discard those fields to make the record appear valid.
+
+Archive-owned Session, Run, Item and offloaded-result times must fall within
+the exact signed 64-bit Unix nanosecond range, inclusive:
+`1677-09-21T00:12:43.145224192Z` through
+`2262-04-11T23:47:16.854775807Z`. Their Domain owners reject times outside this
+range before import can retire existing history resources. The Unix epoch is a
+valid instant. Tool-result creation times now preserve nanoseconds on import
+and export, using the `tool_result_blobs.created_at_ns` column. This storage
+change refuses former data directories without modifying them. Use a fresh
+directory, keep the former one separately, and export historical Sessions with
+the build that can open it before importing their current artifacts. There is
+no seconds-based reader or automatic conversion.
+
+Goal, Plan and agent-memory timestamps enforce the same exact range at their
+Domain owners. Pending handoffs, child-start reservations and invocation
+journals reject unrepresentable timestamps before writing, so persistence
+cannot acknowledge one instant and later reconstruct another.
+
+Model and Tool invocation journals use SQL `NULL` for an attempt that has not
+settled. A terminal attempt requires a settlement instant, and numeric `0`
+preserves an observed settlement at the Unix epoch. The former sentinel-based
+journal schema is also refused without conversion.
+
+Schedules retain their Domain-owned millisecond precision. SQL `NULL` means no
+accepted Run or a disabled cron cursor; numeric zero is a real Unix-epoch time.
+Due scans and pending-occurrence pagination preserve zero and negative instants.
+Schedule list cursors also use milliseconds, matching the Domain and storage
+coordinate. Former nanosecond cursors are refused; restart pagination from its
+first page after replacing the Runtime.
+Occurrence identity binds the Schedule and due cursor; its indexed columns must
+encode that same identity. Session favorite and isolation columns accept only
+the exact boolean encoding, so decoding and catalog ordering cannot disagree.
+
+Feedback observations preserve their creation nanoseconds in
+`feedback_entries.created_at_ns`, within the same exact instant range above.
+The former millisecond feedback column, Schedule sentinel columns, and schemas
+without the current identity and boolean constraints require a fresh data
+directory under the same retention policy; opening them never converts data.
+
 `GOWORK=off go test ./internal/adapter/persistence -run '^$' -bench BenchmarkSessionMaterialSnapshot -benchmem` measures coherent SQLite material reads and application validation at increasing history sizes. It excludes protocol encoding and client rendering; evaluate those separately before changing snapshot completeness or the subscription fence.
 
 ## Scope integration

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/instant"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -89,6 +90,9 @@ func (i InterruptRecord) rootContinuation() (ContinuationRecord, bool) {
 }
 
 func (i InterruptRecord) validateStorageShape() error {
+	if err := instant.Validate(i.CreatedAt); err != nil {
+		return fmt.Errorf("creation time: %w", err)
+	}
 	if err := resourceid.ValidateRun(i.RootRunID); err != nil {
 		return err
 	}

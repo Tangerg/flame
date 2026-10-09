@@ -14,13 +14,14 @@ import (
 
 func TestModelInvocationReaderValidatesStoredEvidence(t *testing.T) {
 	for _, test := range []struct {
-		name string
-		edit string
+		name        string
+		edit        string
+		rejectWrite bool
 	}{
 		{name: "empty call identity", edit: "call_id = ''"},
 		{name: "invalid effect identity", edit: "call_id = 'invalid effect'"},
 		{name: "empty segment identity", edit: "segment_id = ''"},
-		{name: "terminal without settlement", edit: "started_at = -1, finished_at = 0"},
+		{name: "terminal without settlement", edit: "finished_at = NULL", rejectWrite: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			db, err := sqlite.Open(t.Context(), ":memory:")
@@ -52,8 +53,19 @@ func TestModelInvocationReaderValidatesStoredEvidence(t *testing.T) {
 				rows[0].Usage == nil || rows[0].FirstOutputLatencyMillis == nil || *rows[0].FirstOutputLatencyMillis != 0 {
 				t.Fatalf("valid evidence = %+v, %v", rows, err)
 			}
-			if _, err := db.ExecContext(t.Context(), "UPDATE model_invocations SET "+test.edit); err != nil {
-				t.Fatal(err)
+			_, editErr := db.ExecContext(t.Context(), "UPDATE model_invocations SET "+test.edit)
+			if test.rejectWrite {
+				if editErr == nil {
+					t.Fatal("terminal attempt lost its required settlement time")
+				}
+				rows, err := reader.PageModelInvocations(t.Context(), draft.RunID, 0, "", 10)
+				if err != nil || len(rows) != 1 || !rows[0].FinishedAt.Equal(at.Add(time.Second)) {
+					t.Fatalf("refused corruption changed terminal evidence: %+v, %v", rows, err)
+				}
+				return
+			}
+			if editErr != nil {
+				t.Fatal(editErr)
 			}
 			if rows, err := reader.PageModelInvocations(t.Context(), draft.RunID, 0, "", 10); err == nil || len(rows) != 0 {
 				t.Fatalf("invalid evidence was projected: %+v, %v", rows, err)

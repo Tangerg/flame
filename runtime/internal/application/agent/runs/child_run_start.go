@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/instant"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	rundomain "github.com/Tangerg/flame/runtime/internal/domain/run"
@@ -52,7 +53,7 @@ func (c ChildRunStartReservation) Validate() error {
 	if c.ReservedAt.IsZero() {
 		return errors.New("runs: child Run start reservation has no reservation time")
 	}
-	return nil
+	return instant.Validate(c.ReservedAt)
 }
 
 func (c ChildRunStartReservation) validateIdentity() error {

@@ -32,8 +32,8 @@ func (t *ToolResultStore) Stage(ctx context.Context, stage toolresult.Stage) err
 		return fmt.Errorf("sqlite: stage tool result: %w", err)
 	}
 	_, err := conn(ctx, t.db).ExecContext(ctx,
-		`INSERT INTO tool_result_blobs(id, session_id, body, created_at)
-		 VALUES (?, ?, ?, strftime('%s','now'))`,
+		`INSERT INTO tool_result_blobs(id, session_id, body)
+		 VALUES (?, ?, ?)`,
 		stage.ID, stage.SessionID, stage.Body)
 	if err != nil {
 		return fmt.Errorf("sqlite: stage tool result %q: %w", stage.ID, err)
@@ -70,12 +70,12 @@ func (t *ToolResultStore) List(ctx context.Context, sessionID string) ([]toolres
 		return nil, fmt.Errorf("sqlite: list tool results: %w", err)
 	}
 	rows, err := conn(ctx, t.db).QueryContext(ctx,
-		`SELECT id, session_id, body, created_at
+		`SELECT id, session_id, body, created_at_ns
 		 FROM tool_result_blobs AS b
 		 WHERE session_id = ? AND EXISTS (
 		   SELECT 1 FROM history_items AS h WHERE h.offload_id = b.id AND h.session_id = b.session_id
 		 )
-		 ORDER BY created_at, id`, sessionID,
+		 ORDER BY created_at_ns, id`, sessionID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list tool results: %w", err)
@@ -93,7 +93,7 @@ func (t *ToolResultStore) List(ctx context.Context, sessionID string) ([]toolres
 		if err != nil {
 			return nil, fmt.Errorf("sqlite: decode tool-result ID %q: %w", rawID, err)
 		}
-		blob.CreatedAt = time.Unix(createdAt, 0).UTC()
+		blob.CreatedAt = time.Unix(0, createdAt).UTC()
 		if err := blob.Validate(); err != nil {
 			return nil, fmt.Errorf("sqlite: invalid stored tool result %q: %w", rawID, err)
 		}
@@ -112,10 +112,10 @@ func (t *ToolResultStore) Restore(ctx context.Context, blob toolresult.Blob) err
 		return fmt.Errorf("sqlite: restore tool result: %w", err)
 	}
 	result, err := conn(ctx, t.db).ExecContext(ctx,
-		`INSERT INTO tool_result_blobs(id, session_id, body, created_at)
+		`INSERT INTO tool_result_blobs(id, session_id, body, created_at_ns)
 		 VALUES (?, ?, ?, ?)
 		 ON CONFLICT(session_id, id) DO NOTHING`,
-		blob.ID, blob.SessionID, blob.Body, blob.CreatedAt.Unix(),
+		blob.ID, blob.SessionID, blob.Body, blob.CreatedAt.UnixNano(),
 	)
 	if err != nil {
 		return fmt.Errorf("sqlite: restore tool result %q: %w", blob.ID, err)

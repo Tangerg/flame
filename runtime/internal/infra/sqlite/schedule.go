@@ -40,7 +40,7 @@ func (s *ScheduleStore) Insert(ctx context.Context, scheduled schedule.Schedule)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		snapshot.ID, snapshot.Title, snapshot.Instructions, snapshot.CWD,
 		snapshot.ModelSelection.Provider(), snapshot.ModelSelection.Model(), snapshot.ModelSelection.ReasoningEffort(), snapshot.Cron,
-		toMillis(snapshot.LastRunAt), toMillis(snapshot.NextRunAt), snapshot.CreatedAt.UnixMilli(), snapshot.Revision)
+		nullableMillis(snapshot.LastRunAt), nullableMillis(snapshot.NextRunAt), snapshot.CreatedAt.UnixMilli(), snapshot.Revision)
 	if err != nil {
 		return fmt.Errorf("sqlite: create schedule: %w", err)
 	}
@@ -57,7 +57,7 @@ func (s *ScheduleStore) Update(ctx context.Context, replacement schedule.Replace
 		 WHERE id = ? AND revision = ?`,
 		snapshot.Title, snapshot.Instructions, snapshot.CWD,
 		snapshot.ModelSelection.Provider(), snapshot.ModelSelection.Model(), snapshot.ModelSelection.ReasoningEffort(), snapshot.Cron,
-		toMillis(snapshot.NextRunAt), snapshot.Revision, snapshot.ID, expectedRevision)
+		nullableMillis(snapshot.NextRunAt), snapshot.Revision, snapshot.ID, expectedRevision)
 	if err != nil {
 		return fmt.Errorf("sqlite: update schedule: %w", err)
 	}
@@ -125,7 +125,7 @@ func (s *ScheduleStore) Due(ctx context.Context, now time.Time, limit int) ([]sc
 	return s.query(ctx, "list due schedules",
 		`SELECT `+scheduleColumns+`
 		 FROM schedules
-		 WHERE next_run_at > 0 AND next_run_at <= ?
+		 WHERE next_run_at IS NOT NULL AND next_run_at <= ?
 		   AND NOT EXISTS (SELECT 1 FROM schedule_firings WHERE schedule_id = schedules.id AND state = ?)
 		 ORDER BY next_run_at, id
 		 LIMIT ?`, now.UnixMilli(), scheduleFiringPending.databaseValue(), limit)
@@ -153,8 +153,8 @@ func (s *ScheduleStore) Claim(ctx context.Context, claim schedule.Claim) (claime
 						SELECT 1 FROM schedule_firings
 						 WHERE schedule_id = ? AND state = ?
 				   )`,
-			toMillis(state.NextRunAt()), state.Revision(), state.ID(), expectedRevision,
-			toMillis(occurrence.DueAt()), occurrence.ScheduleID(), scheduleFiringPending.databaseValue())
+			state.NextRunAt().UnixMilli(), state.Revision(), state.ID(), expectedRevision,
+			occurrence.DueAt().UnixMilli(), occurrence.ScheduleID(), scheduleFiringPending.databaseValue())
 		if execContextErr != nil {
 			return fmt.Errorf("sqlite: claim schedule occurrence: %w", execContextErr)
 		}
@@ -172,7 +172,7 @@ func (s *ScheduleStore) Claim(ctx context.Context, claim schedule.Claim) (claime
 			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			snapshot.ID, occurrence.ScheduleID(), execution.Title, execution.Instructions,
 			execution.CWD, execution.ModelSelection.Provider(), execution.ModelSelection.Model(), execution.ModelSelection.ReasoningEffort(),
-			toMillis(occurrence.DueAt()), toMillis(snapshot.FiredAt), toMillis(snapshot.NextRunAt), snapshot.SessionID, snapshot.RunID,
+			occurrence.DueAt().UnixMilli(), snapshot.FiredAt.UnixMilli(), snapshot.NextRunAt.UnixMilli(), snapshot.SessionID, snapshot.RunID,
 			scheduleFiringPending.databaseValue())
 		if execContextErr != nil {
 			return fmt.Errorf("sqlite: persist schedule occurrence: %w", execContextErr)
@@ -190,12 +190,17 @@ func (s *ScheduleStore) Pending(ctx context.Context, afterDueAt time.Time, after
 	if limit <= 0 {
 		return nil, errors.New("sqlite: schedule pending limit must be positive")
 	}
-	rows, err := conn(ctx, s.db).QueryContext(ctx,
-		`SELECT id, title, instructions, cwd, provider, model, reasoning_effort,
+	query := `SELECT id, title, instructions, cwd, provider, model, reasoning_effort,
 			fired_at, next_run_at, session_id, run_id
-		 FROM schedule_firings WHERE state = ? AND (due_at > ? OR (due_at = ? AND id > ?))
-		 ORDER BY due_at, id
-		 LIMIT ?`, scheduleFiringPending.databaseValue(), toMillis(afterDueAt), toMillis(afterDueAt), afterID, limit)
+		 FROM schedule_firings WHERE state = ?`
+	args := []any{scheduleFiringPending.databaseValue()}
+	if !afterDueAt.IsZero() || afterID != "" {
+		query += ` AND (due_at > ? OR (due_at = ? AND id > ?))`
+		args = append(args, afterDueAt.UnixMilli(), afterDueAt.UnixMilli(), afterID)
+	}
+	query += ` ORDER BY due_at, id LIMIT ?`
+	args = append(args, limit)
+	rows, err := conn(ctx, s.db).QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite: list pending schedule occurrences: %w", err)
 	}
@@ -249,7 +254,7 @@ func (s *ScheduleStore) Accept(ctx context.Context, acceptance schedule.Acceptan
 				`SELECT schedule_id, fired_at FROM schedule_firings WHERE id = ? AND run_id = ?`, occurrenceID, runID).Scan(&scheduleID, &firedAt); scanErr != nil {
 				return fmt.Errorf("sqlite: load accepted schedule occurrence: %w", scanErr)
 			}
-			_, err := s.recordAcceptedRun(ctx, scheduleID, fromMillis(firedAt))
+			_, err := s.recordAcceptedRun(ctx, scheduleID, time.UnixMilli(firedAt).UTC())
 			return err
 		}
 		var storedRunID, rawState string
@@ -308,7 +313,7 @@ func (s *ScheduleStore) recordAcceptedRun(ctx context.Context, id string, ranAt 
 		`UPDATE schedules
 		 SET last_run_at = ?, revision = ?
 		 WHERE id = ? AND revision = ?`,
-		toMillis(next.LastRunAt()), next.Revision(), next.ID(), current.Revision())
+		next.LastRunAt().UnixMilli(), next.Revision(), next.ID(), current.Revision())
 	if err != nil {
 		return false, fmt.Errorf("sqlite: persist accepted schedule run: %w", err)
 	}
@@ -357,13 +362,18 @@ func (s *ScheduleStore) query(ctx context.Context, operation, q string, args ...
 	return out, nil
 }
 
-// scanSchedule decodes one row via the given Scan func (sql.Row or sql.Rows
-// share the signature), converting the int-millis time columns back to
-// time.Time (0 ⇒ zero time).
+func nullableMillis(value time.Time) any {
+	if value.IsZero() {
+		return nil
+	}
+	return value.UnixMilli()
+}
+
 func scanSchedule(scan func(...any) error) (schedule.Schedule, error) {
 	var snapshot schedule.Snapshot
 	var provider, model, reasoningEffort string
-	var lastMillis, nextMillis, createdMillis int64
+	var lastMillis, nextMillis sql.NullInt64
+	var createdMillis int64
 	if err := scan(&snapshot.ID, &snapshot.Title, &snapshot.Instructions, &snapshot.CWD, &provider, &model, &reasoningEffort, &snapshot.Cron,
 		&lastMillis, &nextMillis, &createdMillis, &snapshot.Revision); err != nil {
 		return schedule.Schedule{}, err
@@ -373,8 +383,12 @@ func scanSchedule(scan func(...any) error) (schedule.Schedule, error) {
 		return schedule.Schedule{}, fmt.Errorf("sqlite: decode schedule model selection: %w", err)
 	}
 	snapshot.ModelSelection = selection
-	snapshot.LastRunAt = fromMillis(lastMillis)
-	snapshot.NextRunAt = fromMillis(nextMillis)
+	if lastMillis.Valid {
+		snapshot.LastRunAt = time.UnixMilli(lastMillis.Int64).UTC()
+	}
+	if nextMillis.Valid {
+		snapshot.NextRunAt = time.UnixMilli(nextMillis.Int64).UTC()
+	}
 	snapshot.CreatedAt = time.UnixMilli(createdMillis).UTC()
 	scheduled, err := schedule.Restore(snapshot)
 	if err != nil {
@@ -400,8 +414,8 @@ func scanOccurrence(scan func(...any) error) (schedule.Occurrence, error) {
 		Title: title, Instructions: instructions, CWD: cwd,
 		ModelSelection: selection,
 	}
-	snapshot.FiredAt = fromMillis(firedAt)
-	snapshot.NextRunAt = fromMillis(nextRunAt)
+	snapshot.FiredAt = time.UnixMilli(firedAt).UTC()
+	snapshot.NextRunAt = time.UnixMilli(nextRunAt).UTC()
 	occurrence, err := schedule.RestoreOccurrence(snapshot)
 	if err != nil {
 		return schedule.Occurrence{}, fmt.Errorf("decode schedule occurrence: %w", err)

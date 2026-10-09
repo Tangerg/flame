@@ -272,7 +272,6 @@ func combineTerminalEventCommit(batch reductionBatch) (EventCommit, error) {
 			terminalCommits++
 			combined.CommitID = commit.CommitID
 			combined.State = commit.State
-			combined.Outcome = commit.Outcome
 			combined.Run = commit.Run
 		}
 	}

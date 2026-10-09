@@ -156,7 +156,7 @@ func TestAuthoritativeProjectionFailurePreservesStartUntilAtomicRunLost(t *testi
 		t.Fatalf("first commit model invocations = %#v", got)
 	}
 	lost := commits[1]
-	if lost.State != StateTerminalize || lost.Outcome != run.OutcomeLost || lost.Run == nil ||
+	if lost.State != StateTerminalize || lost.Run == nil ||
 		!runHasOutcome(*lost.Run, run.OutcomeLost) {
 		t.Fatalf("lost commit = %#v", lost)
 	}
@@ -404,7 +404,7 @@ func TestConcurrentToolBatchFailurePublishesOnlyIncompleteRunLost(t *testing.T) 
 	if !failed || !strings.Contains(failure.Detail, "effect:test") || !strings.Contains(failure.Detail, writeFailure.Error()) {
 		t.Fatalf("lost root cause: %+v", failure)
 	}
-	if lost.State != StateTerminalize || lost.Outcome != run.OutcomeLost {
+	if lost.State != StateTerminalize || lost.Run == nil || !runHasOutcome(*lost.Run, run.OutcomeLost) {
 		t.Fatalf("terminal commit = %#v, want RunLost", lost)
 	}
 	if len(lost.Items) != 2 || len(lost.ToolInvocations) != 2 {
@@ -447,7 +447,8 @@ func TestTerminalTransactionFailurePreservesRunningToolsForAtomicRecovery(t *tes
 		t.Fatalf("committed write-sets = %d, want two starts + recovered terminal", len(commits))
 	}
 	terminal := commits[2]
-	if terminal.State != StateTerminalize || terminal.Outcome != run.OutcomeFailed || terminal.Run == nil ||
+	if terminal.State != StateTerminalize || terminal.Run == nil ||
+		!runHasOutcome(*terminal.Run, run.OutcomeFailed) ||
 		!runHasFailureKind(*terminal.Run, run.FailureInternal) {
 		t.Fatalf("recovered terminal = %#v, want internal failure", terminal)
 	}

@@ -122,7 +122,7 @@ func New(deps Dependencies) (*Coordinator, error) {
 
 // listPageNamespace binds cursors to this schedule read independently of other
 // paged reads.
-const listPageNamespace = "schedules"
+const listPageNamespace = "schedules-created-ms"
 
 // listPageLimit is the widest schedule page this read will serve.
 const listPageLimit = 100
@@ -140,11 +140,11 @@ func (c *Coordinator) ListPage(ctx context.Context, cursor string, limit paginat
 		if len(anchor) != 2 {
 			return pagination.Page[schedule.Schedule]{}, pagination.ErrInvalidCursor
 		}
-		afterCreatedAtNanos, parseErr := strconv.ParseInt(anchor[0], 10, 64)
+		afterCreatedAtMillis, parseErr := strconv.ParseInt(anchor[0], 10, 64)
 		if parseErr != nil {
 			return pagination.Page[schedule.Schedule]{}, pagination.ErrInvalidCursor
 		}
-		afterCreatedAt = time.Unix(0, afterCreatedAtNanos).UTC()
+		afterCreatedAt = time.UnixMilli(afterCreatedAtMillis).UTC()
 		afterID = anchor[1]
 		if err := schedule.ValidateID(afterID); err != nil {
 			return pagination.Page[schedule.Schedule]{}, pagination.ErrInvalidCursor
@@ -159,7 +159,7 @@ func (c *Coordinator) ListPage(ctx context.Context, cursor string, limit paginat
 		return pagination.Page[schedule.Schedule]{}, err
 	}
 	return pagination.PageOf(rows, size, listPageNamespace, nil, func(scheduled schedule.Schedule) []string {
-		return []string{strconv.FormatInt(scheduled.CreatedAt().UnixNano(), 10), scheduled.ID()}
+		return []string{strconv.FormatInt(scheduled.CreatedAt().UnixMilli(), 10), scheduled.ID()}
 	})
 }
 

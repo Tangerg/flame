@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/instant"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 )
 
@@ -77,10 +78,13 @@ func (t *ToolInvocationStore) StartToolInvocation(
 	if startedAt.IsZero() {
 		return errors.New("sqlite: Tool invocation start time is required")
 	}
+	if err := instant.Validate(startedAt); err != nil {
+		return fmt.Errorf("sqlite: Tool invocation start time: %w", err)
+	}
 	result, err := conn(ctx, t.db).ExecContext(ctx,
 		`INSERT INTO tool_invocations(
 		   call_id, item_id, session_id, run_id, segment_id, state, started_at, finished_at)
-		 SELECT ?, ?, session_id, run_id, ?, ?, ?, 0
+		 SELECT ?, ?, session_id, run_id, ?, ?, ?, NULL
 		   FROM runs
 		  WHERE run_id = ? AND session_id = ? AND state != ?`,
 		callID,
@@ -115,6 +119,9 @@ func (t *ToolInvocationStore) CompleteToolInvocation(
 	}
 	if startedAt.IsZero() || finishedAt.IsZero() || finishedAt.Before(startedAt) {
 		return errors.New("sqlite: completed Tool invocation requires ordered timestamps")
+	}
+	if err := instant.Validate(startedAt, finishedAt); err != nil {
+		return fmt.Errorf("sqlite: Tool invocation times: %w", err)
 	}
 	result, err := conn(ctx, t.db).ExecContext(ctx, `
 		INSERT INTO tool_invocations(call_id, item_id, session_id, run_id, segment_id, state, started_at, finished_at)
@@ -164,6 +171,9 @@ func (t *ToolInvocationStore) finish(
 	}
 	if finishedAt.Before(startedAt) {
 		return errors.New("sqlite: Tool invocation finish time precedes start time")
+	}
+	if err := instant.Validate(startedAt, finishedAt); err != nil {
+		return fmt.Errorf("sqlite: Tool invocation times: %w", err)
 	}
 	result, err := conn(ctx, t.db).ExecContext(ctx,
 		`UPDATE tool_invocations
@@ -236,7 +246,8 @@ func (t *ToolInvocationStore) ListSession(ctx context.Context, sessionID string)
 	var records []ToolInvocationRecord
 	for rows.Next() {
 		var record ToolInvocationRecord
-		var startedAt, finishedAt int64
+		var startedAt int64
+		var finishedAt sql.NullInt64
 		var ownerSessionID sql.NullString
 		if err := rows.Scan(&record.CallID, &record.ItemID, &record.RunID, &record.SegmentID,
 			&record.State, &startedAt, &finishedAt, &ownerSessionID); err != nil {
@@ -249,8 +260,8 @@ func (t *ToolInvocationStore) ListSession(ctx context.Context, sessionID string)
 			return nil, fmt.Errorf("sqlite: restore tool invocation: %w", err)
 		}
 		record.StartedAt = time.Unix(0, startedAt).UTC()
-		if finishedAt != 0 {
-			record.FinishedAt = time.Unix(0, finishedAt).UTC()
+		if finishedAt.Valid {
+			record.FinishedAt = time.Unix(0, finishedAt.Int64).UTC()
 		}
 		records = append(records, record)
 	}

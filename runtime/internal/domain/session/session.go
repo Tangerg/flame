@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/instant"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/exactint"
@@ -281,6 +282,9 @@ func (s Session) validate() error {
 	}
 	if s.createdAt.IsZero() || s.updatedAt.IsZero() {
 		return fmt.Errorf("%w: start and update times are required", ErrInvalid)
+	}
+	if err := instant.Validate(s.createdAt, s.updatedAt); err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalid, err)
 	}
 	if s.updatedAt.Before(s.createdAt) {
 		return fmt.Errorf("%w: update time precedes start time", ErrInvalid)

@@ -151,7 +151,6 @@ func TestCommitEventPersistsTranscriptAndTerminalizes(t *testing.T) {
 		SegmentID: "segment_1",
 		CommitID:  testCommitID("run_commit_event_1"),
 		State:     runs.StateTerminalize,
-		Outcome:   run.OutcomeCompleted,
 		Items: []transcript.Item{testsupport.MustRestoreItem(testsupport.ItemInput{
 			SessionID: "ses_1", RunID: "run_1", ID: "item_1", OccurredAt: time.Unix(1, 0).UTC(),
 		})},
@@ -227,7 +226,6 @@ func TestCommitEventRejectsUnresolvedTerminalMessageWatermark(t *testing.T) {
 		SegmentID: "segment_1",
 		CommitID:  testCommitID("run_commit_event_1"),
 		State:     runs.StateTerminalize,
-		Outcome:   run.OutcomeCompleted,
 		Run:       finishedRunRecord("run_1", "ses_1", run.OutcomeCompleted),
 	})
 	if !errors.Is(err, want) {

@@ -159,7 +159,7 @@ func (o OpeningCommit) validateEvents() error {
 // that can exist before execution begins. Operational observations belong to
 // later authoritative EventCommits, even when they name the same Segment.
 func validateOpeningProjection(commit EventCommit) error {
-	if commit.State != StateUnchanged || commit.Outcome != "" || commit.Run != nil ||
+	if commit.State != StateUnchanged || commit.Run != nil ||
 		commit.ObsoleteCheckpointRootID != "" {
 		return errors.New("opening projection carries lifecycle facts")
 	}

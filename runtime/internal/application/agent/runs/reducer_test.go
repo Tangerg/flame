@@ -903,6 +903,7 @@ func TestReducerCarriesLaterPausedCallIdentityAcrossSequentialResumes(t *testing
 	config := testReducerConfig()
 	config.Opened = reopened(config.Opened, func(s *run.Snapshot) { s.ActiveSegmentID = "seg_2" })
 	config.Continuation = testTreeContinuationOf(Pending{
+		CreatedAt:  firstCommit.Run.UpdatedAt(),
 		RootRunID:  "run_1",
 		Interrupts: OpenInterruptsOf(firstInterrupted.Interrupts),
 		Continuations: []Continuation{{
@@ -951,7 +952,7 @@ func TestReducerResumeKeepsEditedApprovalIdentityBesideSameNameDrainedTool(t *te
 	config := testReducerConfig()
 	config.Opened = reopened(config.Opened, func(s *run.Snapshot) { s.ActiveSegmentID = "seg_resumed" })
 	config.Continuation = testTreeContinuation(Pending{
-		RootRunID: "run_1",
+		RootRunID: "run_1", CreatedAt: approvalAt.Add(time.Second),
 		Interrupts: OpenInterruptsOf([]transcript.Interrupt{{
 			ItemID: "item_approval", ItemOccurredAt: approvalAt,
 			RunID: "run_1", Kind: interrupt.Approval,
@@ -1111,6 +1112,7 @@ func TestReducerResumeReusesInterruptedItems(t *testing.T) {
 		{ItemID: "item_question", ItemOccurredAt: questionAt, RunID: "run_1", Kind: interrupt.Question, Question: question},
 	}
 	config.Continuation = testTreeContinuationOf(Pending{
+		CreatedAt:  questionAt.Add(time.Second),
 		RootRunID:  "run_1",
 		Interrupts: OpenInterruptsOf(interrupts)}, interrupts)
 	acceptTestApproval(t, config.Continuation, "item_approval", "call_1", approval.Allow)
@@ -1278,6 +1280,7 @@ func TestReducerKeepsQuestionToolLifecycleOpenAcrossHITLResume(t *testing.T) {
 	resumeNow := config.Opened.CreatedAt().Add(time.Minute)
 	config.Now = func() time.Time { return resumeNow }
 	config.Continuation = testTreeContinuation(Pending{
+		CreatedAt:  config.Opened.UpdatedAt(),
 		RootRunID:  "run_1",
 		Interrupts: OpenInterruptsOf(finished.Interrupts),
 		Continuations: []Continuation{{
@@ -1447,7 +1450,7 @@ func TestReducerTerminalizationClosesUnrestartedResumeTool(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			config := testReducerConfig()
 			config.Continuation = testTreeContinuation(Pending{
-				RootRunID: "run_1",
+				RootRunID: "run_1", CreatedAt: config.Opened.UpdatedAt(),
 				Continuations: []Continuation{{
 					RunID: "run_1",
 					DrainedTools: []DrainedTool{{
@@ -1542,10 +1545,10 @@ func TestValidateReductionBatchRejectsMalformedBoundaries(t *testing.T) {
 	terminalCommit := func() *EventCommit {
 		outcome := run.OutcomeCompleted
 		run := testsupport.MustRestoreRun(run.Snapshot{State: run.Completed, Outcome: &outcome})
-		return &EventCommit{SegmentID: "segment_1", State: StateTerminalize, Outcome: outcome, Run: &run}
+		return &EventCommit{SegmentID: "segment_1", State: StateTerminalize, Run: &run}
 	}
 	invalidTerminalCommit := terminalCommit()
-	invalidTerminalCommit.Outcome = run.OutcomeFailed
+	invalidTerminalCommit.Run = parkCommit().Run
 	tests := []struct {
 		name  string
 		batch reductionBatch
@@ -1936,7 +1939,7 @@ func TestReducerResumeContinuesTheCommittedToolItem(t *testing.T) {
 			projected := transcript.Interrupt{ItemID: item.ID(), RunID: item.RunID(), Kind: interrupt.Approval,
 				ItemOccurredAt: item.OccurredAt(), Approval: &transcript.Approval{Tool: original}}
 			config.Continuation = testTreeContinuationOf(Pending{
-				RootRunID: item.RunID(), Interrupts: OpenInterruptsOf([]transcript.Interrupt{projected}),
+				RootRunID: item.RunID(), CreatedAt: item.OccurredAt(), Interrupts: OpenInterruptsOf([]transcript.Interrupt{projected}),
 			}, []transcript.Interrupt{projected})
 			config.Continuation.items[item.ID()] = item
 			acceptTestApproval(t, config.Continuation, item.ID(), "call_approval", approval.Allow)
