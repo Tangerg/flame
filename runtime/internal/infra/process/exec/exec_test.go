@@ -12,6 +12,33 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/process/sandbox"
 )
 
+func TestShellReadRetainsOutputAndCleanupFailure(t *testing.T) {
+	shells := unconfinedShells(t)
+	t.Cleanup(func() { _ = shells.KillAll() })
+	id, err := shells.Launch(t.Context(), "session", t.TempDir(), "printf observed", Timeout{}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitForDone(t, shells, "session", id)
+	sh := mustShell(t, shells, "session", id)
+	cause := errors.New("process cleanup failed")
+	sh.mu.Lock()
+	sh.cleanup = cause
+	sh.mu.Unlock()
+	for range 2 {
+		output, err := shells.Read("session", id)
+		if !errors.Is(err, cause) || output.Text != "observed" || !output.Finished {
+			t.Fatalf("failed read = (%+v, %v), want retained evidence and cleanup failure", output, err)
+		}
+		if _, retained := shells.Get("session", id); !retained {
+			t.Fatal("failed read discarded its owned shell")
+		}
+	}
+	if err := shells.KillAll(); !errors.Is(err, cause) {
+		t.Fatalf("shutdown = %v, want cleanup failure", err)
+	}
+}
+
 func TestLaunchRejectsCanceledCallerBeforeDetaching(t *testing.T) {
 	shells := unconfinedShells(t)
 	t.Cleanup(func() { _ = shells.KillAll() })
@@ -108,17 +135,15 @@ func TestShells_RunReadKill(t *testing.T) {
 		t.Fatal(err)
 	}
 	waitDone(t, shells, id)
-	out, _ := mustShell(t, shells, "", id).Read()
-	if !strings.Contains(out, "hello") {
-		t.Errorf("output = %q, want hello", out)
+	out, err := shells.Read("", id)
+	if err != nil || !strings.Contains(out.Text, "hello") {
+		t.Errorf("output = (%+v, %v), want hello", out, err)
 	}
-	done, info := mustShell(t, shells, "", id).Status()
-	if !done || info != "exit 0" {
-		t.Errorf("status = (%v, %q), want done exit 0", done, info)
+	if !out.Finished || out.Info != "exit 0" {
+		t.Errorf("status = (%v, %q), want done exit 0", out.Finished, out.Info)
 	}
-	// Second read returns only new output (none) — incremental.
-	if out2, _ := mustShell(t, shells, "", id).Read(); out2 != "" {
-		t.Errorf("second read = %q, want empty (incremental)", out2)
+	if _, err := shells.Read("", id); !errors.Is(err, ErrShellNotFound) {
+		t.Errorf("second final read = %v, want released handle", err)
 	}
 
 	// A long-running command: kill it.
@@ -341,7 +366,9 @@ func TestShells_RetainedForSession(t *testing.T) {
 	if got := shells.RetainedForSession("sess-b"); len(got) != 1 || got[0].ID != bID {
 		t.Fatalf("session b lost its unread command: %+v", got)
 	}
-	shells.Remove(bID)
+	if _, err := shells.Read("sess-b", bID); err != nil {
+		t.Fatalf("read b: %v", err)
+	}
 	if got := shells.RetainedForSession("sess-b"); len(got) != 0 {
 		t.Fatalf("session b after release = %d, want 0", len(got))
 	}

@@ -698,6 +698,12 @@ alongside its evidence so downstream evaluation can preserve the distinctions.
 
 Background commands remain addressable after they exit until `read_shell_output` consumes their final output. That final read reports completion and releases the shell handle and retained buffer; later reads report that the shell is absent. Compaction reminders preserve these retained handles, including commands that have finished with unread output. Reads while a command is running keep its handle available. Stopping a command preserves its unread output for the final read. Session teardown and Runtime shutdown also reclaim owned commands.
 
+The shell owner reads output and retires a completed handle as one operation.
+A terminal cleanup failure retains the handle and unread bytes for teardown,
+and reads continue to report that failure. Tool errors preserve already observed
+output through Scope's `CallError` evidence, including cancellation after process
+execution; that evidence does not declare an uncertain command safe to retry.
+
 Reading or stopping a shell requires its owning Session, even when another Session knows the exact shell ID. Host teardown retains its authority to stop a Session, a shared workspace, or the complete Runtime. A call canceled before process admission cannot launch a detached command.
 
 Shell output uses Scope's `tools/content.Content`: `stdout` is an object with `encoding` (`utf8` or `base64`) and `data`. Both foreground completion and `read_shell_output` preserve arbitrary process bytes, including output truncated inside a UTF-8 character. Background launch responses include an explicit `shell_id`; incremental reads include `shell_id`, `status`, `stdout`, and an optional `output_dropped` flag. The command transcript still renders valid text directly and represents binary output with its lossless encoded content. Consumers of raw Tool output must use this current shape; there is no string-output compatibility decoder.

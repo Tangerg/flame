@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/scope/core/chat"
 	toolcontract "github.com/Tangerg/scope/core/tool"
 	"github.com/Tangerg/scope/tools/content"
 
@@ -178,7 +179,7 @@ func (c *commandTools) run(ctx context.Context, a shellArgs) (string, error) {
 		// that never ran, so a shell that is already done reports what it did.
 		select {
 		case <-sh.Done():
-			return c.completed(id, sh)
+			return c.completed(executionctx.SessionID(ctx), id, nil)
 		default:
 			return backgroundedJSON(id)
 		}
@@ -187,7 +188,7 @@ func (c *commandTools) run(ctx context.Context, a shellArgs) (string, error) {
 	defer timer.Stop()
 	select {
 	case <-sh.Done():
-		return c.completed(id, sh)
+		return c.completed(executionctx.SessionID(ctx), id, nil)
 	case <-timer.C:
 		return backgroundedJSON(id) // still running — leave it
 	case <-ctx.Done():
@@ -195,13 +196,13 @@ func (c *commandTools) run(ctx context.Context, a shellArgs) (string, error) {
 	}
 }
 
-func (c *commandTools) completed(id string, sh *exec.Shell) (string, error) {
-	out, dropped := sh.Read()
-	code, killed, dur, cleanupErr := sh.Outcome()
-	_, info := sh.Status()
-	c.shells.Remove(id)
-	result, resultErr := completedJSON(out, dropped, code, killed, dur, info)
-	return result, errors.Join(resultErr, cleanupErr)
+func (c *commandTools) completed(sessionID, id string, cause error) (string, error) {
+	output, readErr := c.shells.Read(sessionID, id)
+	if !output.Finished {
+		return "", errors.Join(cause, readErr, errors.New("shell: completion has no finished output"))
+	}
+	result, resultErr := completedJSON(output)
+	return shellResult(result, errors.Join(cause, readErr, resultErr))
 }
 
 func (c *commandTools) cancelForeground(ctx context.Context, id string, sh *exec.Shell) (string, error) {
@@ -210,18 +211,15 @@ func (c *commandTools) cancelForeground(ctx context.Context, id string, sh *exec
 	// completed result the user can still use.
 	select {
 	case <-sh.Done():
-		return c.completed(id, sh)
+		return c.completed(executionctx.SessionID(ctx), id, nil)
 	default:
-		// Canceled mid-run: kill, join the process-tree cleanup, then remove. A
-		// discarded foreground command has no background handle that could retain
-		// ownership after this call returns.
+		// Join cleanup before consuming the final output; a cleanup failure must
+		// leave its resource in the owner ledger for teardown.
 		if _, err := c.shells.Kill(executionctx.SessionID(ctx), id); err != nil && !errors.Is(err, exec.ErrShellNotFound) {
 			return "", errors.Join(ctx.Err(), fmt.Errorf("shell: stop canceled foreground command %q: %w", id, err))
 		}
 		<-sh.Done()
-		_, _, _, cleanupErr := sh.Outcome()
-		c.shells.Remove(id)
-		return "", errors.Join(ctx.Err(), cleanupErr)
+		return c.completed(executionctx.SessionID(ctx), id, ctx.Err())
 	}
 }
 
@@ -242,28 +240,39 @@ func (c *commandTools) output(ctx context.Context, a shellOutputArgs) (string, e
 			return "", err
 		}
 	}
-	// Observe completion before draining: a finished result must include every
-	// final byte before its handle is released.
-	done, info := sh.Status()
-	out, dropped := sh.Read()
+	output, readErr := c.shells.Read(executionctx.SessionID(ctx), a.ShellID)
+	if errors.Is(readErr, exec.ErrShellNotFound) {
+		return fmt.Sprintf("No background shell %s.", a.ShellID), nil
+	}
 	state := "still running"
-	if done {
-		if _, _, _, cleanupErr := sh.Outcome(); cleanupErr != nil {
-			return "", fmt.Errorf("shell: clean background shell %q: %w", a.ShellID, cleanupErr)
-		}
-		c.shells.Remove(a.ShellID)
-		state = "finished (" + info + ")"
+	if output.Finished {
+		state = "finished (" + output.Info + ")"
 	}
 	encoded, err := json.Marshal(struct {
 		ShellID string          `json:"shell_id"`
 		Status  string          `json:"status"`
 		Stdout  content.Content `json:"stdout"`
 		Dropped bool            `json:"output_dropped,omitzero"`
-	}{ShellID: a.ShellID, Status: state, Stdout: content.New([]byte(out)), Dropped: dropped})
+	}{ShellID: a.ShellID, Status: state, Stdout: content.New([]byte(output.Text)), Dropped: output.Dropped})
 	if err != nil {
-		return "", fmt.Errorf("shell: encode background command output: %w", err)
+		return "", errors.Join(readErr, fmt.Errorf("shell: encode background command output: %w", err))
 	}
-	return string(encoded), nil
+	return shellResult(string(encoded), readErr)
+}
+
+// A failed cleanup or canceled wait does not erase observed process output.
+// CallError preserves that evidence without declaring the command retry-safe.
+func shellResult(result string, cause error) (string, error) {
+	if cause == nil || result == "" {
+		return result, cause
+	}
+	callErr, err := toolcontract.NewCallError(toolcontract.CallErrorConfig{
+		Cause: cause, Evidence: chat.NewTextToolOutput(result),
+	})
+	if err != nil {
+		return "", errors.Join(cause, err)
+	}
+	return "", callErr
 }
 
 func (c *commandTools) kill(ctx context.Context, a shellIDArgs) (string, error) {
@@ -286,29 +295,23 @@ func (c *commandTools) kill(ctx context.Context, a shellIDArgs) (string, error) 
 // completedJSON shapes a finished foreground command's result. The combined
 // stdout+stderr goes in "stdout" because the execution ring preserves their
 // combined arrival order. exit_code is always present for a finished command.
-func completedJSON(
-	out string,
-	dropped bool,
-	code int,
-	killed bool,
-	dur time.Duration,
-	info string,
-) (string, error) {
-	if dropped {
+func completedJSON(output exec.Output) (string, error) {
+	out := output.Text
+	if output.Dropped {
 		out = "[earlier output dropped — buffer overflowed]\n" + out
 	}
 	// A command with no exit status never reported one: it failed to start, or
 	// could not be waited on, and info carries the only account of why. An
 	// ordinary exit restates exit_code there, which is worth nothing here.
-	if code == exec.NoExitStatus && strings.TrimSpace(info) != "" {
-		out = strings.TrimLeft(info+"\n"+out, "\n")
+	if output.ExitCode == exec.NoExitStatus && strings.TrimSpace(output.Info) != "" {
+		out = strings.TrimLeft(output.Info+"\n"+out, "\n")
 	}
 	b, err := json.Marshal(struct {
 		Stdout   content.Content `json:"stdout"`
 		ExitCode int             `json:"exit_code"`
 		Killed   bool            `json:"killed,omitzero"`
 		Duration string          `json:"duration"`
-	}{Stdout: content.New([]byte(out)), ExitCode: code, Killed: killed, Duration: dur.String()})
+	}{Stdout: content.New([]byte(out)), ExitCode: output.ExitCode, Killed: output.Killed, Duration: output.Duration.String()})
 	if err != nil {
 		return "", fmt.Errorf("shell: encode completed command result: %w", err)
 	}

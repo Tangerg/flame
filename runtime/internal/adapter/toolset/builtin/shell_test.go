@@ -98,6 +98,53 @@ func TestShellOutputsPreserveArbitraryBytes(t *testing.T) {
 	}
 }
 
+func TestShellFailurePreservesObservedOutputThroughToolBinding(t *testing.T) {
+	for _, cause := range []error{errors.New("process cleanup failed"), context.Canceled} {
+		t.Run(cause.Error(), func(t *testing.T) {
+			observed := exec.Output{
+				Text: string([]byte{0xff, 0x00, 0xc3}), Finished: true,
+				ExitCode: 3, Info: "exit 3", Duration: time.Second,
+			}
+			result, err := completedJSON(observed)
+			if err != nil {
+				t.Fatal(err)
+			}
+			executable, err := toolcontract.NewFunc[struct{}, string](
+				toolcontract.FuncConfig{Name: "failed_shell", Description: "Return observed shell evidence"},
+				func(context.Context, struct{}) (string, error) { return shellResult(result, cause) },
+			)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = callTextTool(t.Context(), executable, `{}`)
+			callErr, observedFailure := errors.AsType[*toolcontract.CallError](err)
+			if !observedFailure || !errors.Is(err, cause) {
+				t.Fatalf("Tool error = %v, want original cause and observed evidence", err)
+			}
+			if err := callErr.Validate(); err != nil {
+				t.Fatal(err)
+			}
+			text, textual := callErr.Evidence().Text()
+			if !textual {
+				t.Fatal("shell failure lost its encoded result")
+			}
+			var evidence struct {
+				Stdout   content.Content `json:"stdout"`
+				ExitCode int             `json:"exit_code"`
+			}
+			if err := json.Unmarshal([]byte(text), &evidence); err != nil {
+				t.Fatal(err)
+			}
+			if evidence.ExitCode != observed.ExitCode || !bytes.Equal(evidence.Stdout.Bytes(), []byte(observed.Text)) {
+				t.Fatalf("failure evidence = %+v, want observed exit and exact bytes", evidence)
+			}
+			if _, definite := errors.AsType[*toolcontract.Failure](err); definite {
+				t.Fatal("observed output declared an uncertain command retry-safe")
+			}
+		})
+	}
+}
+
 func shellIntPointer(value int) *int { return &value }
 
 // shellTool returns the named tool from a freshly-built shell tool set.
@@ -413,9 +460,30 @@ func TestShellCanceledForegroundJoinsBeforeRemoval(t *testing.T) {
 		cancel()
 		t.Fatal("foreground shell was not registered")
 	}
+	if _, err := running.Write([]byte("observed before cancellation")); err != nil {
+		t.Fatal(err)
+	}
 	cancel()
-	if err := <-result; !errors.Is(err, context.Canceled) {
+	err := <-result
+	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("canceled shell error = %v, want context.Canceled", err)
+	}
+	callErr, observed := errors.AsType[*toolcontract.CallError](err)
+	if !observed {
+		t.Fatal("canceled foreground command lost its output evidence")
+	}
+	text, _ := callErr.Evidence().Text()
+	var evidence struct {
+		Stdout   content.Content `json:"stdout"`
+		ExitCode int             `json:"exit_code"`
+		Killed   bool            `json:"killed"`
+	}
+	if err := json.Unmarshal([]byte(text), &evidence); err != nil {
+		t.Fatal(err)
+	}
+	if string(evidence.Stdout.Bytes()) != "exit -1\nobserved before cancellation" ||
+		evidence.ExitCode != exec.NoExitStatus || !evidence.Killed {
+		t.Fatalf("canceled output = %+v, want killed command and observed evidence", evidence)
 	}
 	select {
 	case <-running.Done():

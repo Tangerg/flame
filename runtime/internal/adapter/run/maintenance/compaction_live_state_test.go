@@ -82,11 +82,10 @@ func TestCompactorPreservesUnreadCompletedShell(t *testing.T) {
 	if !strings.Contains(reminder, executionadapter.RuntimeContextOpening(executionadapter.RuntimeContextRetainedShells)) || !strings.Contains(reminder, id) {
 		t.Fatalf("after[1] should be the live-state reminder, got %q", reminder)
 	}
-	output, dropped := sh.Read()
-	if output != "unread-result" || dropped {
-		t.Fatalf("post-compaction shell output = %q, dropped=%t", output, dropped)
+	output, err := shells.Read(sessID, id)
+	if err != nil || output.Text != "unread-result" || output.Dropped {
+		t.Fatalf("post-compaction shell output = (%+v, %v)", output, err)
 	}
-	shells.Remove(id)
 	if !live(t.Context(), sessID).empty() {
 		t.Fatal("released shell remained in the compaction snapshot")
 	}

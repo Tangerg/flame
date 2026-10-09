@@ -5,7 +5,7 @@
 //
 // Every command the engine's shell tool runs starts here as a detached job:
 // the foreground path races the command's completion ([Shell.Done]) against an
-// auto-background window, removing the job ([Shells.Remove]) if it finishes in
+// auto-background window, consuming the job's output if it finishes in
 // time and otherwise leaving it running and addressable by its shell id. So one
 // mechanism backs both the synchronous shell result and the read_shell_output /
 // stop_shell tools — the auto-background design.
@@ -152,7 +152,7 @@ func (s *Shells) command(cwd, command string, isolated bool) (name string, args,
 
 // Shell is one background process: its handle, the tail of its combined
 // stdout+stderr (capped), and its completion state. Read its output with
-// [Shell.Read], wait for it with [Shell.Done], inspect its terminal state with
+// [Shells.Read], wait for it with [Shell.Done], inspect its terminal state with
 // [Shell.Status] / [Shell.Outcome]; the [Shells] set owns its lifecycle.
 type Shell struct {
 	cancel    context.CancelFunc
@@ -358,17 +358,37 @@ func (s *Shells) Kill(sessionID, id string) (running bool, err error) {
 	return true, nil
 }
 
-// Remove releases a finished shell after its final output has been consumed.
-// Callers must observe completion before draining the output; removing a live
-// shell would orphan its process and discard unread output.
-func (s *Shells) Remove(id string) {
+// Output is one observation of the incremental bytes and completion boundary.
+// Terminal fields are meaningful only when Finished is true.
+type Output struct {
+	Text     string
+	Dropped  bool
+	Finished bool
+	Info     string
+	ExitCode int
+	Killed   bool
+	Duration time.Duration
+}
+
+// Read consumes available output and retires a successfully cleaned, finished
+// shell in the same owner operation. Cleanup failure preserves both the unread
+// bytes and the handle so teardown cannot lose its resource or diagnostic.
+func (s *Shells) Read(sessionID, id string) (Output, error) {
 	identity, valid := parseShellID(id)
 	if !valid {
-		return
+		return Output{}, fmt.Errorf("%w: %q", ErrShellNotFound, id)
 	}
 	s.mu.Lock()
-	delete(s.shells, identity)
-	s.mu.Unlock()
+	defer s.mu.Unlock()
+	sh, found := s.shells[identity]
+	if !found || sh.sessionID != sessionID {
+		return Output{}, fmt.Errorf("%w: %q", ErrShellNotFound, id)
+	}
+	output, err := sh.read()
+	if output.Finished && err == nil {
+		delete(s.shells, identity)
+	}
+	return output, err
 }
 
 // StopSession stops, joins, and removes every shell owned by sessionID while
@@ -552,19 +572,21 @@ func (s *Shell) cleanupFailure() error {
 	return s.cleanup
 }
 
-// Read returns the output not yet returned to the caller and whether earlier
-// output had to be dropped (the buffer overflowed before this poll).
-func (s *Shell) Read() (out string, dropped bool) {
+func (s *Shell) read() (Output, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	bufStart := s.total - len(s.buf)
-	if s.readPos < bufStart {
-		dropped = true
-		s.readPos = bufStart
+	output := Output{Dropped: s.readPos < bufStart, Finished: s.finished()}
+	position := max(s.readPos, bufStart)
+	output.Text = string(s.buf[position-bufStart:])
+	if output.Finished {
+		output.Info, output.ExitCode, output.Killed, output.Duration = s.exitInfo, s.exitCode, s.killed, s.duration
+		if s.cleanup != nil {
+			return output, s.cleanup
+		}
 	}
-	out = string(s.buf[s.readPos-bufStart:])
 	s.readPos = s.total
-	return out, dropped
+	return output, nil
 }
 
 // Status reports whether the shell finished and its exit info.
@@ -579,7 +601,7 @@ func (s *Shell) Status() (done bool, info string) {
 
 // Write funnels the shell's stdout/stderr into its capped ring buffer (the
 // process's Stdout/Stderr point straight at the Shell). On overflow the oldest
-// bytes are dropped — a poll that fell behind learns so via [Shell.Read].
+// bytes are dropped — a poll that fell behind learns so via [Shells.Read].
 func (s *Shell) Write(p []byte) (int, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
