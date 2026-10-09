@@ -17,6 +17,28 @@ import (
 // semantic answer submission continues behind the Run lifecycle supervisor.
 func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result StartResult, err error) {
 	cmd = cmd.clone()
+	addressed, found, err := c.runs.Run(ctx, cmd.RunID)
+	if err != nil {
+		return StartResult{}, err
+	}
+	if !found {
+		return StartResult{}, ErrInterruptNotOpen
+	}
+	sessionID := addressed.SessionID()
+	sess, err := c.sessionReader.Get(ctx, sessionID)
+	if err != nil {
+		return StartResult{}, err
+	}
+	runAdmission, ok, leaseErr := c.admission.AcquireRun(ctx, sessionID, sess.Workspace().Path())
+	if leaseErr != nil {
+		return StartResult{}, leaseErr
+	}
+	if !ok {
+		return StartResult{}, fmt.Errorf("%w: session %q or working tree %q has a run or mutation in flight", ErrSessionBusy, sessionID, sess.Workspace().Path())
+	}
+	defer runAdmission.Release()
+	// Run identity locates admission; the answerable hand-off and its Items are
+	// read only while this command excludes competing resume and cancellation.
 	pending, found, err := c.interrupts.LookupOpenInterrupt(ctx, cmd.RunID)
 	if err != nil {
 		return StartResult{}, err
@@ -38,27 +60,6 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 	if err != nil {
 		return StartResult{}, err
 	}
-	// Reading the Session before the claim is safe only because the open interrupt
-	// this resume is answering refuses a relocation for as long as it exists
-	// ([sessions.Coordinator.ClaimIdleSession]), and it is consumed under the
-	// claim below. Without that, the tree reserved here could be one the Session
-	// no longer has.
-	sessionID, err := c.pendingSessionID(ctx, pending)
-	if err != nil {
-		return StartResult{}, err
-	}
-	sess, err := c.sessionReader.Get(ctx, sessionID)
-	if err != nil {
-		return StartResult{}, err
-	}
-	runAdmission, ok, leaseErr := c.admission.AcquireRun(ctx, sessionID, sess.Workspace().Path())
-	if leaseErr != nil {
-		return StartResult{}, leaseErr
-	}
-	if !ok {
-		return StartResult{}, fmt.Errorf("%w: session %q or working tree %q has a run or mutation in flight", ErrSessionBusy, sessionID, sess.Workspace().Path())
-	}
-	defer runAdmission.Release()
 	parkedRuns, err := c.runs.Tree(ctx, pending.RootRunID)
 	if err != nil {
 		return StartResult{}, err

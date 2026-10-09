@@ -137,15 +137,3 @@ func validateWaitingCancellationSpawningItem(plan cancellationPlan, item transcr
 	}
 	return nil
 }
-
-// pendingSessionID is the Session of a hand-off's root Run, which owns it.
-func (c *Coordinator) pendingSessionID(ctx context.Context, pending Pending) (string, error) {
-	root, found, err := c.runs.Run(ctx, pending.RootRunID)
-	if err != nil {
-		return "", fmt.Errorf("runs: read waiting root Run %q: %w", pending.RootRunID, err)
-	}
-	if !found {
-		return "", fmt.Errorf("runs: waiting root Run %q is missing", pending.RootRunID)
-	}
-	return root.SessionID(), nil
-}

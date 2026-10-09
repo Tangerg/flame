@@ -129,6 +129,10 @@ therefore complete twice: once unanswered when its Run parks, and once with its
 answers when the Run resumes. Clients fold the second completion like any other
 Item; they no longer derive answers from the command they sent or re-read the
 Session to learn them.
+Resume acquires Session and working-tree admission before reading the open hand-off,
+its Items, or its parked Run tree. Run identity only locates that admission. A competing
+resume or cancellation therefore observes busy or a consumed hand-off, rather than
+combining an old waiting record with answered Items or a completed Run.
 
 ## Protocol 2026-10-07.2
 
