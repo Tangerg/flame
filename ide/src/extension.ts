@@ -19,6 +19,7 @@ import { itemText } from "./transcript";
 type PluginCommand = Extract<Command, { method: `plugins.${string}` }>;
 
 const PLUGIN_METHODS = [
+  "plugins.renameSession",
   "plugins.install",
   "plugins.stage",
   "plugins.select",
@@ -150,9 +151,9 @@ class Workbench implements vscode.TreeDataProvider<Session> {
     const command = { method: picked.method, params: parseReviewedJSON(input) };
     assertPluginCommand(command);
     const result = await connection.execute(command);
-    if (this.#connection !== connection) return;
-    if (result.pluginResult) await this.#showPluginResult(result.pluginResult);
-    else void vscode.window.showInformationMessage(`${command.method} completed`);
+    if (!(await this.#adopt(connection, result))) return;
+    if (!result.sessionResult && !result.pluginResult)
+      void vscode.window.showInformationMessage(`${command.method} completed`);
   }
 
   getTreeItem(session: Session): vscode.TreeItem {
@@ -421,6 +422,10 @@ class Workbench implements vscode.TreeDataProvider<Session> {
 
   async #adopt(connection: Connection, result: CommandResult): Promise<boolean> {
     if (this.#connection !== connection) return false;
+    if (result.sessionResult || result.pluginResult) {
+      await this.#showPluginResult(result.sessionResult ?? result.pluginResult);
+      if (this.#connection !== connection) return false;
+    }
     if (result.sessionId) {
       const session = await connection.client.sessions.get(
         asSessionId(result.sessionId),

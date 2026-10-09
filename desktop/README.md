@@ -219,7 +219,13 @@ their state allows and reject anything else as a Runtime contract violation.
 External themes contribute through the existing Dougong Host and child lifetimes;
 connection replacement retires the predecessor before publishing new contributions.
 One optional read-only Session trajectory page now uses the qualified carriers below.
-Plugin actions, mutation bridges and general Runtime access remain unavailable. Runtime-owned MCP tools continue through
+Packages may also declare `renameSession` actions. An admitted package row displays a
+trusted host form with the operation and captured Session ID/revision. The human submits
+the title explicitly; switching Sessions cannot retarget the draft. Runtime owns admission
+and the existing Session mutation. Closing the form does not cancel an accepted command;
+connection replacement retires its local publication. Revision conflicts preserve the
+draft without silently adopting a new revision. HTML mutation bridges and general Runtime
+access remain unavailable. Runtime-owned MCP tools continue through
 the existing execution and approval path. See [Runtime's plugin contract](../runtime/README.md#portable-plugins).
 
 Package themes declare a light/dark scheme. Their portable colors pass through the same

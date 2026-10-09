@@ -127,6 +127,10 @@ The command palette provides **Inspect Runtime Plugins** and **Manage Runtime Pl
 Management uses exact Runtime request JSON and the existing
 prepared-command journal. Source paths belong to the connected Runtime. Installation
 results open as JSON documents; uninstall is an acknowledgement and reports completion only.
-Secret inputs, including every header and authorization input, appear as `configured` without their text. Plugin action invocation and HTML hosting are unavailable in this slice;
+Secret inputs, including every header and authorization input, appear as `configured` without their text.
+`plugins.renameSession` submits an admitted action with its installation, selected digest,
+action ID and `update` containing the inspected Session ID, expected revision and title.
+It uses the same prepared-command journal and opens the canonical Session result as JSON.
+An unknown acknowledgement retains those exact parameters across reconnect. HTML hosting remains unavailable;
 installed tools use the existing Runtime execution and approval path. See
 [the Runtime contract](../runtime/README.md#portable-plugins).

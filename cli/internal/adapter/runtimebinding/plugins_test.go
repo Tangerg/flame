@@ -15,6 +15,21 @@ type pluginBindingStub struct {
 	pluginBinding
 	page     *protocol.Page[protocol.PluginInstallation]
 	selected *protocol.PluginInstallation
+	renamed  *protocol.Session
+}
+
+func (s pluginBindingStub) RenamePluginSession(context.Context, protocol.RenamePluginSessionRequest, flameruntime.CommandOptions) (*protocol.Session, error) {
+	return s.renamed, nil
+}
+
+func TestPluginRenameRefusesAnotherSessionsResult(t *testing.T) {
+	request := protocol.RenamePluginSessionRequest{Update: protocol.SessionTitleEdit{SessionID: "requested"}}
+	for _, result := range []*protocol.Session{nil, {ID: "other"}} {
+		runtime := &Connection{plugins: pluginBindingStub{renamed: result}, meta: requestMeta("test")}
+		if _, err := runtime.RenamePluginSession(t.Context(), request, ""); !errors.Is(err, conversation.ErrIncompatibleRuntime) {
+			t.Fatalf("rename result: %v", err)
+		}
+	}
 }
 
 func (s pluginBindingStub) ListPlugins(context.Context, flameruntime.CallOptions) (*protocol.Page[protocol.PluginInstallation], error) {

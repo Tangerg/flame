@@ -17,6 +17,25 @@ type pluginBinding interface {
 	SetPluginEnablement(context.Context, protocol.SetPluginEnablementRequest, flameruntime.CommandOptions) (*protocol.PluginInstallation, error)
 	RevokePlugin(context.Context, protocol.PluginRequest, flameruntime.CommandOptions) (*protocol.PluginInstallation, error)
 	UninstallPlugin(context.Context, protocol.PluginRequest, flameruntime.CommandOptions) error
+	RenamePluginSession(context.Context, protocol.RenamePluginSessionRequest, flameruntime.CommandOptions) (*protocol.Session, error)
+}
+
+func (r *Connection) RenamePluginSession(ctx context.Context, request protocol.RenamePluginSessionRequest, commandID replay.CommandID) (*protocol.Session, error) {
+	options, err := r.commandOptionsFor(commandID)
+	if err != nil {
+		return nil, err
+	}
+	result, err := r.plugins.RenamePluginSession(ctx, request, options)
+	if err != nil {
+		return nil, classifyError(err)
+	}
+	if result == nil {
+		return nil, runtimeContractViolation("rename plugin session returned nil")
+	}
+	if err := requireIdentity("rename plugin session", result.ID, request.Update.SessionID); err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 func (r *Connection) ListPlugins(ctx context.Context) ([]protocol.PluginInstallation, error) {

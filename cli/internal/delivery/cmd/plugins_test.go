@@ -16,6 +16,27 @@ type pluginCommandFixture struct {
 	calls    int
 	received protocol.InstallPluginRequest
 	command  replay.CommandID
+	rename   protocol.RenamePluginSessionRequest
+}
+
+func (f *pluginCommandFixture) RenamePluginSession(_ context.Context, request protocol.RenamePluginSessionRequest, id replay.CommandID) (*protocol.Session, error) {
+	f.calls++
+	f.rename = request
+	f.command = id
+	return &protocol.Session{ID: request.Update.SessionID, Revision: request.Update.ExpectedRevision + 1, Title: request.Update.Title}, nil
+}
+
+func TestPluginRenamePreservesReviewedTargetAndCommandIdentity(t *testing.T) {
+	fixture := &pluginCommandFixture{Runtime: runtimefixture.New()}
+	key := "cli_" + strings.Repeat("a", 32)
+	request := `{"installationId":"12345678-1234-1234-1234-123456789abc","digest":"` + strings.Repeat("1", 64) + `","actionId":"rename","update":{"sessionId":"ses_1","expectedRevision":7,"title":"Reviewed"}}`
+	out, stderr, err := executeCommand(t, fixture, "", "plugins", "rename-session", "--command-id", key, "--request", request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fixture.calls != 1 || string(fixture.command) != key || fixture.rename.Update.ExpectedRevision != 7 || !strings.Contains(out, `"revision":8`) || !strings.Contains(stderr, key) {
+		t.Fatalf("rename: %s %s %+v", out, stderr, fixture)
+	}
 }
 
 func (f *pluginCommandFixture) InstallPlugin(_ context.Context, in protocol.InstallPluginRequest, id replay.CommandID) (*protocol.PluginInstallation, error) {
@@ -100,6 +121,7 @@ func TestPluginConfigureSendsComponentDeltas(t *testing.T) {
 
 func TestPluginCommandRejectsInvalidInputBeforeOpeningRuntime(t *testing.T) {
 	for _, args := range [][]string{
+		{"plugins", "rename-session", "--request", `{"installationId":"12345678-1234-1234-1234-123456789abc","digest":"` + strings.Repeat("1", 64) + `","actionId":"rename","update":{"sessionId":"ses_1","expectedRevision":7,"title":"Reviewed","favorite":false}}`},
 		{"plugins", "install", "--request", `{"source":null}`},
 		{"plugins", "install", "--request", `{"source":"/package"}`, "--command-id", "invalid"},
 	} {

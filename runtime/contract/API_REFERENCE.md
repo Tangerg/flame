@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-09.1` · 100 methods
+Protocol `2026-10-10.1` · 101 methods
 
 ## Methods
 
@@ -64,6 +64,7 @@ Protocol `2026-10-09.1` · 100 methods
 | `mcp.servers.reconnect` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_not_found`, `mcp_server_disabled`, `capability_not_negotiated` |
 | `mcp.authorizationAttempts.create` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_not_found`, `mcp_server_disabled`, `capability_not_negotiated` |
 | `mcp.authorizationAttempts.get` | query | unary | none | none | none | — | `mcp` | `mcp_authorization_attempt_not_found`, `capability_not_negotiated` |
+| `plugins.renameSession` | command | unary | replayResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_unapproved`, `plugin_stale`, `session_not_found`, `revision_conflict`, `session_busy`, `capability_not_negotiated` |
 | `plugins.readView` | query | unary | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_unapproved`, `plugin_stale`, `capability_not_negotiated` |
 | `plugins.readTrajectory` | query | unary | none | none | cursor | `sessions.trajectory` | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_unapproved`, `plugin_stale`, `session_not_found`, `capability_not_negotiated` |
 | `plugins.list` | query | unary | none | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_unapproved`, `plugin_stale`, `capability_not_negotiated` |
@@ -574,6 +575,11 @@ TypeScript validator from this single registry projection.
 | `UpdateSessionRequest` | `model` | `maxLength(256)` |
 | `UpdateSessionRequest` | `reasoningEffort` | `identity` |
 | `UpdateSessionRequest` | `reasoningEffort` | `maxLength(32)` |
+| `SessionTitleEdit` | `sessionId` | `nonEmpty` |
+| `SessionTitleEdit` | `sessionId` | `identity` |
+| `SessionTitleEdit` | `sessionId` | `maxLength(256)` |
+| `SessionTitleEdit` | `expectedRevision` | `positive` |
+| `SessionTitleEdit` | `expectedRevision` | `maximum(9007199254740991)` |
 | `SessionTrajectory` | `schemaVersion` | `minimum(2)` |
 | `SessionTrajectory` | `schemaVersion` | `maximum(2)` |
 | `ArtifactSession` | `id` | `nonEmpty` |
@@ -927,6 +933,10 @@ TypeScript validator from this single registry projection.
 | `MCPHeadersChange` | `value` | `nonEmptyProperties` |
 | `MCPEnvironmentChange` | `value` | `nonEmptyProperties` |
 | `MCPServerCandidate` | `name` | `pattern("^[a-z0-9][a-z0-9._-]{0,31}$")` |
+| `RenamePluginSessionRequest` | `actionId` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
+| `PluginAction` | `id` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
+| `PluginAction` | `title` | `nonEmpty` |
+| `PluginAction` | `title` | `maxLength(128)` |
 | `ReadPluginViewRequest` | `viewId` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `ReadPluginTrajectoryRequest` | `sessionId` | `nonEmpty` |
 | `ReadPluginTrajectoryRequest` | `sessionId` | `identity` |
@@ -1206,6 +1216,7 @@ available. Refusal is `capability_not_negotiated` — never a silent downgrade.
 | `mcp.servers.reconnect` | always | `mcp` |
 | `mcp.authorizationAttempts.create` | always | `mcp` |
 | `mcp.authorizationAttempts.get` | always | `mcp` |
+| `plugins.renameSession` | always | `plugins` |
 | `plugins.readView` | always | `plugins` |
 | `plugins.readTrajectory` | always | `plugins` |
 | `plugins.list` | always | `plugins` |

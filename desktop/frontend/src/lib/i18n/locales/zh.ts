@@ -1260,6 +1260,10 @@ export const zh: Record<string, string> = {
   "file.change.below": "包含工作树改动",
   "file.unsupported.sub": "Flame 以文本方式显示工作区文件，请用对应的应用打开它。",
 
+  "packages.action.renamed": "已将 {{sessionId}} 重命名为“{{title}}”。",
+  "packages.action.selectSession": "选择一个会话以使用此操作。",
+  "packages.action.target": "重命名会话 {{sessionId}} · 修订 {{revision}}",
+
   "packages.view.selectSession": "选择一个会话来查看其轨迹。",
   "packages.view.loading": "正在打开插件页面…",
   "packages.view.identity": "{{title}} · 只读插件",

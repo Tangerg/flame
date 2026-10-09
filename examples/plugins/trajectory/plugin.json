@@ -2,11 +2,18 @@
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "flame.trajectory-example",
   "version": "1.0.0",
-  "description": "An isolated read-only page, bounded theme and Skill for inspecting existing Session trajectory observations.",
+  "description": "An isolated read-only trajectory page, bounded theme, Skill and host-rendered Session rename action.",
   "extensions": {
     "io.github.tangerg.flame": {
       "apiVersion": 1,
       "contributes": {
+        "actions": [
+          {
+            "id": "rename-session",
+            "title": "Name this investigation",
+            "operation": "renameSession"
+          }
+        ],
         "themes": [
           {
             "id": "graphite",

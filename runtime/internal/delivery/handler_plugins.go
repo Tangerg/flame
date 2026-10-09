@@ -26,6 +26,18 @@ type pluginUseCases interface {
 	Uninstall(context.Context, resourceid.InstallationID) error
 	ReadView(context.Context, resourceid.InstallationID, fingerprint.Digest, string) (string, error)
 	WithView(context.Context, resourceid.InstallationID, fingerprint.Digest, string, func(*plugin.Installation, plugin.ViewDeclaration) error) error
+	AuthorizeAction(context.Context, resourceid.InstallationID, fingerprint.Digest, string, plugin.ActionOperation) error
+}
+
+func (s *Handler) RenamePluginSession(ctx context.Context, in protocol.RenamePluginSessionRequest) (*protocol.Session, error) {
+	id, digest, err := parseInstallationRelease(in.InstallationID, in.Digest)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.plugins.AuthorizeAction(ctx, id, digest, in.ActionID, plugin.RenameSession); err != nil {
+		return nil, wirePluginError(err)
+	}
+	return s.UpdateSession(ctx, protocol.UpdateSessionRequest{SessionID: in.Update.SessionID, ExpectedRevision: in.Update.ExpectedRevision, Title: &in.Update.Title})
 }
 
 func parseInstallationID(text string) (resourceid.InstallationID, error) {

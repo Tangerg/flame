@@ -993,7 +993,12 @@ The threat model includes malicious package authors, compromised updates, hostil
 
 Installation trust is one closed state bound to the selected release: unapproved, approved, or enabled. The user approves an exact digest, and selecting any other digest returns the installation to unapproved, so changed code is never launched or dispatched without renewed review. Revocation withdraws dispatch authority immediately; it does not erase standing tool approvals of the same code.
 
-Package capability requests and host grants are deferred (Section 21.2). With actions and views withdrawn, no contribution consumes a host-brokered operation, so a request would have no enforcement point and a grant would only pretend to restrict a trusted executable. A manifest that still declares requests receives a diagnostic and nothing is admitted from it.
+Package capability requests and host grants are deferred (Section 21.2). The bounded
+trajectory page has only its release-scoped read endpoint. The declarative `renameSession`
+action executes only after a human submits a trusted host form; package code cannot invoke
+it, and the HTML bridge has no mutation channel. Neither grants an executable additional
+host authority. A manifest that declares requests receives a diagnostic and nothing is
+admitted from that member.
 
 When a contribution that consumes host-brokered operations returns, a grant should bind at least its principal, operation, target scope, relevant origin or resource identity, and revocation state, and never let a new release inherit broader privileges through the same name.
 
@@ -1492,7 +1497,8 @@ A deferred capability is unavailable, not a placeholder implementation returning
 The current implementation includes Slice A/B and one optional Slice C Session trajectory
 page. Earlier action/view prototypes were withdrawn rather than retained as compatibility
 surfaces. The present view/resource contract was established from the qualified carrier
-gates; action forms and broader host integrations remain deferred.
+gates. A bounded declarative `renameSession` action now uses trusted client forms and the
+existing Session command owner; broader host integrations remain deferred.
 
 **Slice 0: tool identity and policy ownership.** Implement [`tool-identity-and-policy-ownership.md`](tool-identity-and-policy-ownership.md) and pass its acceptance tests. It is a breaking repair of the current product, valuable without plugins, and a prerequisite for every later slice.
 
@@ -1518,6 +1524,15 @@ Resource, bridge, browser/native isolation and lifetime checks accompany this bo
 and tested engine/OS scope. This slice introduces no mutation path or second business owner.
 
 **Slice D: broaden proven surfaces.** Add necessary action forms, result renderers, IDE hosting, or language integrations only after their consumers are concrete. Preserve one definition and one policy path.
+
+The first action declares identity, title and the closed operation `renameSession`.
+Runtime authorizes the exact installation/release/action and delegates the title edit to
+the existing Session update use case. Its closed request is a title-only projection of
+the Session command contract, sharing identity and revision constraints; additional
+Session configuration fields cannot acquire action authority. Its result is the canonical Session. Desktop renders
+the trusted form; CLI and IDE accept the same generated request and retain command replay
+identity. The HTML page remains read-only. This boundary does not introduce a generic
+dispatcher, a plugin mutation journal or a second Session transition.
 
 **Slice E: durable host integrations, only as justified.** Validate MRTR, Tasks, delegated execution, or whole-subsystem extraction individually. These are not prerequisites for the base heterogeneous plugin model.
 

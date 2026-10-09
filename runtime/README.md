@@ -42,6 +42,25 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
+## Protocol 2026-10-10.1
+
+Portable releases publish a required `actions` array. The first admitted operation is
+`renameSession`: an action declares only `id`, `title` and `operation`, with no executable
+or parameter schema. `plugins.renameSession` binds installation, selected digest, action
+and an explicit `sessions.update` title edit. Other Session fields are forbidden by the
+generated contract. The existing Session use case owns revision checks, persistence and
+events; the delivery endpoint owns command identity and durable replay.
+
+Trusted clients accept the human's title and captured Session revision. Opening or
+restoring a form does not submit it. Runtime verifies release availability, then admits
+the action against the current enabled, approved installation. Withdrawal refuses new
+commands; a previously accepted command retains its existing product owner, and replay
+returns its historical receipt. The read-only HTML bridge receives no write authority.
+
+Rebuild Runtime, the shared client, CLI, Desktop and IDE together. Earlier protocol
+versions are refused. Previously admitted immutable declarations without actions retain
+an empty action set; adding an action requires admitting new package bytes.
+
 ## Protocol 2026-10-09.1
 
 `UnresolvedEffect.output` preserves an observed Scope `chat.ToolOutput` from a
@@ -472,15 +491,26 @@ preference and the first-paint projection with it. Themes use the existing
 Dougong Host and child lifetimes; client connection replacement retires the predecessor
 before publishing its successor.
 
-The current implementation includes Slice A/B and one optional Slice C page. A package
+The current implementation includes Slice A/B, one optional Slice C page and a bounded
+Slice D human action. A package
 may declare `contributes.views` with `id`, `title`, `type: "sessionTrajectory"`, and a portable
 `.html` `entry`. Admission validates UTF-8 HTML, confined resource access and the release
 fingerprint. Invalid views produce diagnostics without withdrawing independent themes,
-Skills or MCP declarations. Action forms, arbitrary projection queries, mutation bridges,
+Skills or MCP declarations. Arbitrary projection queries, mutation bridges,
 IDE view hosting and language integrations remain unavailable.
 
+`contributes.actions` accepts at most 16 declarations with `id`, a nonempty UTF-8 `title`
+of at most 128 bytes, and `operation: "renameSession"`. Unsupported operations, unknown
+members and invalid siblings receive independent diagnostics. No package-owned schema,
+script or arbitrary RPC method is admitted. The trusted clients submit
+`plugins.renameSession` with `installationId`, `digest`, `actionId` and `update` containing
+the captured `sessionId`, `expectedRevision` and explicit `title`. Empty titles retain
+the existing Session update meaning. Release availability and current installation
+authority are checked before acceptance. The Session owner performs the edit once under
+its existing revision check; no action result store or second transition exists.
+
 The [trajectory example](../examples/plugins/trajectory/plugin.json) exercises a theme,
-a Skill and an isolated Session trajectory page. The public page API requires no code
+a Skill, an isolated Session trajectory page and a trusted Session rename form. The public page API requires no code
 execution in Runtime. Desktop's [carrier acceptance](../desktop/README.md#plugin-carrier-acceptance)
 owns rendering qualification; an unavailable renderer does not change installation state.
 Package limits are 128 MiB total copied bytes, 16 MiB per file, 4096 entries, 256 Skills and

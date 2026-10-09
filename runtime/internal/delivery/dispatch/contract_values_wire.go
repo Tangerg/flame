@@ -186,15 +186,17 @@ func registerSessionValues(s *Shapes) {
 		Constraints: append(requiredResourceIdentity("sessionId"), resourceIdentity("toRunId")...),
 	})
 
-	s.valueConstraint(FieldConstraintSpec{
-		GoType: typeOf[protocol.UpdateSessionRequest](),
-		Constraints: append(append(requiredResourceIdentity("sessionId"), []FieldConstraint{
+	for _, request := range []reflect.Type{typeOf[protocol.UpdateSessionRequest](), typeOf[protocol.SessionTitleEdit]()} {
+		constraints := append(requiredResourceIdentity("sessionId"), []FieldConstraint{
 			{Field: "expectedRevision", Kind: ConstraintPositive},
 			{Field: "expectedRevision", Kind: ConstraintMaximum, Limit: protocol.MaximumExactJSONInteger},
-			{Field: "provider", Kind: ConstraintNonEmpty},
-			{Field: "model", Kind: ConstraintNonEmpty},
-		}...), modelSelectionIdentities()...),
-	})
+		}...)
+		if request == typeOf[protocol.UpdateSessionRequest]() {
+			constraints = append(constraints, FieldConstraint{Field: "provider", Kind: ConstraintNonEmpty}, FieldConstraint{Field: "model", Kind: ConstraintNonEmpty})
+			constraints = append(constraints, modelSelectionIdentities()...)
+		}
+		s.valueConstraint(FieldConstraintSpec{GoType: request, Constraints: constraints})
+	}
 }
 
 func registerArtifactValues(s *Shapes) {
@@ -1046,6 +1048,8 @@ func registerTrajectoryValues(s *Shapes) {
 }
 
 func registerPluginValues(s *Shapes) {
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.RenamePluginSessionRequest](), Constraints: []FieldConstraint{{Field: "actionId", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}}})
+	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginAction](), Constraints: []FieldConstraint{{Field: "id", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}, {Field: "title", Kind: ConstraintNonEmpty}, {Field: "title", Kind: ConstraintMaxLength, Limit: plugin.MaxActionTitleBytes}}})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.ReadPluginViewRequest](), Constraints: []FieldConstraint{{Field: "viewId", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}}})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.ReadPluginTrajectoryRequest](), Constraints: requiredResourceIdentity("sessionId")})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginViewResource](), Constraints: []FieldConstraint{{Field: "html", Kind: ConstraintMaxLength, Limit: plugin.MaxViewBytes}}})

@@ -1267,6 +1267,10 @@ export const zhTW: Record<string, string> = {
   "file.change.renamed": "重新命名自 {{path}}",
   "file.change.below": "包含工作樹變更",
 
+  "packages.action.renamed": "已將 {{sessionId}} 重新命名為「{{title}}」。",
+  "packages.action.selectSession": "選擇一個工作階段以使用此操作。",
+  "packages.action.target": "重新命名工作階段 {{sessionId}} · 修訂 {{revision}}",
+
   "packages.view.selectSession": "選擇一個工作階段來查看其軌跡。",
   "packages.view.loading": "正在開啟外掛程式頁面…",
   "packages.view.identity": "{{title}} · 唯讀外掛程式",

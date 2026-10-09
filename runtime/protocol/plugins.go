@@ -76,8 +76,28 @@ type PluginRelease struct {
 	Inputs      []PluginInput             `json:"inputs"`
 	Themes      []PluginTheme             `json:"themes"`
 	Views       []PluginView              `json:"views"`
+	Actions     []PluginAction            `json:"actions"`
 	Skills      []PluginSkill             `json:"skills"`
 	Diagnostics []PluginDiagnostic        `json:"diagnostics"`
+}
+
+type PluginActionOperation string
+
+const PluginActionRenameSession PluginActionOperation = "renameSession"
+
+type PluginAction struct {
+	ID        string                `json:"id"`
+	Title     string                `json:"title"`
+	Operation PluginActionOperation `json:"operation"`
+}
+
+// RenamePluginSessionRequest carries an explicit Session title edit.
+// The authenticated human submits it;
+// package declarations and HTML pages cannot originate a command.
+type RenamePluginSessionRequest struct {
+	PluginReleaseRequest
+	ActionID string           `json:"actionId"`
+	Update   SessionTitleEdit `json:"update"`
 }
 
 type PluginViewType string

@@ -17,6 +17,7 @@ const (
 	PluginsUninstall      Name = "plugins.uninstall"
 	PluginsReadView       Name = "plugins.readView"
 	PluginsReadTrajectory Name = "plugins.readTrajectory"
+	PluginsRenameSession  Name = "plugins.renameSession"
 )
 
 // pluginErrors is every problem wirePluginError can raise. Each plugins method
@@ -32,6 +33,11 @@ func pluginErrors() []string {
 }
 
 func registerPlugins(r *Registry) {
+	r.command(MethodMeta{Name: PluginsRenameSession, CapabilityRules: requires(protocol.FeaturePlugins), Errors: append(pluginErrors(), protocol.ErrSessionNotFound.Error(), protocol.ErrRevisionConflict.Error(), protocol.ErrSessionBusy.Error())}, func(s interface {
+		RenamePluginSession(context.Context, protocol.RenamePluginSessionRequest) (*protocol.Session, error)
+	}, ctx context.Context, in protocol.RenamePluginSessionRequest) (*protocol.Session, error) {
+		return s.RenamePluginSession(ctx, in)
+	})
 	r.query(MethodMeta{Name: PluginsReadView, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors()}, func(s interface {
 		ReadPluginView(context.Context, protocol.ReadPluginViewRequest) (*protocol.PluginViewResource, error)
 	}, ctx context.Context, in protocol.ReadPluginViewRequest) (*protocol.PluginViewResource, error) {

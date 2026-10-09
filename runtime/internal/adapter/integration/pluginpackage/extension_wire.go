@@ -48,6 +48,11 @@ type wireView struct {
 	Type  plugin.ViewKind `json:"type"`
 	Entry string          `json:"entry"`
 }
+type wireAction struct {
+	ID        string                 `json:"id"`
+	Title     string                 `json:"title"`
+	Operation plugin.ActionOperation `json:"operation"`
+}
 type wireThemeColors struct {
 	Background *string `json:"background,omitempty"`
 	Foreground *string `json:"foreground,omitempty"`

@@ -10,6 +10,10 @@ func (r *binding) ListPlugins(ctx context.Context, options CallOptions) (*protoc
 	return r.invoke[struct{}, *protocol.Page[protocol.PluginInstallation]](ctx, delivery.PluginsList, struct{}{}, callOptions(options))
 }
 
+func (r *binding) RenamePluginSession(ctx context.Context, request protocol.RenamePluginSessionRequest, options CommandOptions) (*protocol.Session, error) {
+	return r.invoke[protocol.RenamePluginSessionRequest, *protocol.Session](ctx, delivery.PluginsRenameSession, request, commandOptions(options))
+}
+
 func (r *binding) ReadPluginView(ctx context.Context, request protocol.ReadPluginViewRequest, options CallOptions) (*protocol.PluginViewResource, error) {
 	return r.invoke[protocol.ReadPluginViewRequest, *protocol.PluginViewResource](ctx, delivery.PluginsReadView, request, callOptions(options))
 }

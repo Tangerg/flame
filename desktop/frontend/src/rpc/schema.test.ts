@@ -57,6 +57,7 @@ const pluginThemeSchemas = [
             inputs: [],
             themes: [theme],
             views: [],
+            actions: [],
             skills: [],
             diagnostics: [],
           },
@@ -102,6 +103,25 @@ describe("the published OpenRPC request schemas", () => {
     installationId: "940ac827-b431-455b-af4b-e3a170bcfda0",
     digest: "1".repeat(64),
   };
+
+  it("shares the Session contract while limiting a plugin action to a title edit", () => {
+    const validate = requestSchema("plugins.renameSession");
+    const request = {
+      ...target,
+      actionId: "rename",
+      update: { sessionId: "ses_1", expectedRevision: 7, title: "Reviewed" },
+    };
+    expect(validate(request)).toBe(true);
+    expect(validate({ ...request, update: { sessionId: "ses_1", expectedRevision: 7 } })).toBe(
+      false,
+    );
+    for (const field of ["favorite", "isolated"]) {
+      expect(validate({ ...request, update: { ...request.update, [field]: false } })).toBe(false);
+    }
+    expect(validate({ ...request, update: { ...request.update, expectedRevision: 0 } })).toBe(
+      false,
+    );
+  });
 
   it("compiles every whole request and by-name parameter", () => {
     for (const method of openrpc.methods) {

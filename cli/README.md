@@ -198,6 +198,13 @@ Configuration requests include the selected release's `digest` as well as `insta
 and are deltas: `valueChanges` sets or clears named inputs, and `serverChanges` and
 `skillChanges` map component names to `enable` or `disable`. Unnamed inputs and components
 keep their current value or enablement.
+
+`plugins rename-session` submits a declared human action and prints the canonical Session.
+Its `--request` contains `installationId`, the selected `digest`, `actionId`, and
+`update: {"sessionId":"ses_…","expectedRevision":7,"title":"Reviewed title"}`.
+Inspect the release and Session first. Runtime refuses another operation, undeclared action,
+withdrawn installation, stale digest or stale Session revision. Retain `--command-id` and
+the exact request to recover an uncertain acknowledgement; replay never retargets it.
 Runtime rejects a stale digest without applying inputs or component enablement changes;
 do not replace the digest in an unresolved request with a newly selected release.
 Authored JSON uses Runtime's strict request decoder. Explicit typed nulls cannot become

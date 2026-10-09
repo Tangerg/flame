@@ -1396,6 +1396,10 @@ export const es: Record<string, string> = {
   "file.change.renamed": "Renombrado desde {{path}}",
   "file.change.below": "Contiene cambios del árbol de trabajo",
 
+  "packages.action.renamed": "Se ha renombrado {{sessionId}} como «{{title}}».",
+  "packages.action.selectSession": "Selecciona una sesión para usar esta acción.",
+  "packages.action.target": "Renombrar sesión {{sessionId}} · revisión {{revision}}",
+
   "packages.view.selectSession": "Selecciona una sesión para consultar su trayectoria.",
   "packages.view.loading": "Abriendo la página del complemento…",
   "packages.view.identity": "{{title}} · Complemento de solo lectura",

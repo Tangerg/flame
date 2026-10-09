@@ -98,6 +98,14 @@ type UpdateSessionRequest struct {
 	Isolated         *bool         `json:"isolated,omitzero"`
 }
 
+// SessionTitleEdit cannot acquire additional write authority when Session
+// configuration grows. Delivery lowers it to the existing Session update.
+type SessionTitleEdit struct {
+	SessionID        string `json:"sessionId"`
+	ExpectedRevision uint64 `json:"expectedRevision"`
+	Title            string `json:"title"`
+}
+
 // ForkSessionRequest is the sessions.fork body. Omit fromRunId for a
 // whole-conversation fork; give it to truncate-copy up to and including that
 // run boundary. Inherits the source cwd.

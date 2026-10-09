@@ -16,6 +16,7 @@ import { space } from "@/styles/tokens.stylex";
 import { SettingsGroup, useAsyncFeedback } from "../../kit";
 import { settingStyles as ss } from "../../kit/settingStyles";
 import { packageOperations, usePackageRealization, usePackages } from "../application/packages";
+import { PackageActions } from "./PackageActions";
 
 const styles = stylex.create({
   row: { padding: space.s4, display: "flex", flexDirection: "column", gap: space.s3 },
@@ -155,6 +156,13 @@ function PackageRow({
         {request.digest}
       </div>
       <div {...stylex.props(vocab.muted)}>{t(`packages.state.${installation.state}`)}</div>
+      {installation.presentation === "admitted" && installation.selected.actions.length > 0 && (
+        <PackageActions
+          key={installation.selected.digest}
+          installation={installation}
+          operations={operations}
+        />
+      )}
       <div {...stylex.props(ss.lineWrap)}>
         {installation.state === "unapproved" && (
           <PillButton

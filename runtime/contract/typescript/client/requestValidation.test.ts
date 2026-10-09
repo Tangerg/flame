@@ -12,6 +12,40 @@ const target = {
 const configuration = { ...target, serverChanges: {}, skillChanges: {}, valueChanges: {} };
 
 describe("generated request validation", () => {
+  it("restricts a plugin rename to an explicit canonical Session title edit", () => {
+    const rename = {
+      ...target,
+      actionId: "rename",
+      update: { sessionId: "ses_1", expectedRevision: 3, title: "Reviewed" },
+    };
+    expect(validateMethodParams("plugins.renameSession", rename)).toEqual([]);
+    expect(
+      validateMethodParams("plugins.renameSession", {
+        ...rename,
+        update: { ...rename.update, title: "" },
+      }),
+    ).toEqual([]);
+    for (const update of [
+      { sessionId: "ses_1", expectedRevision: 3 },
+      { ...rename.update, title: null },
+      { ...rename.update, expectedRevision: 0 },
+      ...["workspace", "provider", "model", "reasoningEffort", "favorite", "isolated"].map(
+        (field) => ({
+          ...rename.update,
+          [field]:
+            field === "favorite" || field === "isolated"
+              ? false
+              : field === "workspace"
+                ? { path: "/other" }
+                : "other",
+        }),
+      ),
+    ]) {
+      expect(
+        validateMethodParams("plugins.renameSession", { ...rename, update }).length,
+      ).toBeGreaterThan(0);
+    }
+  });
   it("refuses invalid requests before request identity publication or transport send", async () => {
     const transport = createMemoryTransport();
     const client = createRpcClient(transport);

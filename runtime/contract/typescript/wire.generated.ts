@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-09.1";
+export const PROTOCOL_VERSION = "2026-10-10.1";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -1141,6 +1141,14 @@ export interface PlanStep {
   status: PlanStatus;
 }
 
+export interface PluginAction {
+  id: string;
+  operation: PluginActionOperation;
+  title: string;
+}
+
+export type PluginActionOperation = "renameSession";
+
 export type PluginComponent =
   | { type: "manifestField"; name: string }
   | { type: "flameExtension" }
@@ -1204,6 +1212,7 @@ export type PluginRealization =
 export type PluginRealizationType = "available" | "releaseUnavailable";
 
 export interface PluginRelease {
+  actions: PluginAction[];
   description?: string;
   diagnostics: PluginDiagnostic[];
   digest: string;
@@ -1411,6 +1420,13 @@ export interface RememberScope {
 }
 
 export type RememberScopeKind = "session" | "project" | "global";
+
+export interface RenamePluginSessionRequest {
+  actionId: string;
+  digest: string;
+  installationId: string;
+  update: SessionTitleEdit;
+}
 
 export interface RequestMeta {
   clientCapabilities?: ClientCapabilities;
@@ -1679,6 +1695,12 @@ export interface SessionSnapshot {
 }
 
 export type SessionStatus = "running" | "waiting" | "idle";
+
+export interface SessionTitleEdit {
+  expectedRevision: number;
+  sessionId: string;
+  title: string;
+}
 
 export interface SessionTrajectory {
   collectedAt: string;
@@ -2107,6 +2129,7 @@ export const WIRE_ENUMS = {
   Modality: ["text", "image", "audio", "video", "pdf"],
   ModelInvocationState: ["started", "completed", "failed", "unknown"],
   PlanStatus: ["pending", "in_progress", "completed"],
+  PluginActionOperation: ["renameSession"],
   PluginComponentChange: ["enable", "disable"],
   PluginComponentType: ["manifestField", "flameExtension", "extensionField", "contribution", "mcp", "mcpServer", "skills", "skill"],
   PluginDiagnosticCode: ["unknownField", "invalidDeclaration", "unsupportedContribution", "componentLimit", "invalidDependencies", "unavailableComponent"],

@@ -15,6 +15,7 @@ import {
   type DiscoverResponse,
   type RequestMeta,
   type PluginInstallation,
+  type Session,
 } from "@flame/runtime-contract/wire";
 import {
   type MutationCommand,
@@ -39,6 +40,7 @@ export type Command = Extract<
 export interface CommandResult {
   sessionId?: string;
   pluginResult?: PluginInstallation;
+  sessionResult?: Session;
 }
 
 const REQUEST_META: RequestMeta = {
@@ -178,6 +180,8 @@ export class Connection {
         return {};
       case "plugins.install":
         return { pluginResult: await this.client.plugins.install(command.params) };
+      case "plugins.renameSession":
+        return { sessionResult: await this.client.plugins.renameSession(command.params) };
       case "plugins.stage":
         return { pluginResult: await this.client.plugins.stage(command.params) };
       case "plugins.select":

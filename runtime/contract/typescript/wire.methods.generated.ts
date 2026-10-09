@@ -99,6 +99,7 @@ import type {
   ReadFileRequest,
   ReadPluginTrajectoryRequest,
   ReadPluginViewRequest,
+  RenamePluginSessionRequest,
   ResolveWorkspaceRequest,
   ResumeRunRequest,
   ResumeRunResponse,
@@ -226,6 +227,7 @@ const METHOD_NAMES = [
   "mcp.servers.reconnect",
   "mcp.authorizationAttempts.create",
   "mcp.authorizationAttempts.get",
+  "plugins.renameSession",
   "plugins.readView",
   "plugins.readTrajectory",
   "plugins.list",
@@ -341,6 +343,7 @@ const VALUE_METHOD_NAMES = [
   "mcp.tools.list",
   "mcp.authorizationAttempts.create",
   "mcp.authorizationAttempts.get",
+  "plugins.renameSession",
   "plugins.readView",
   "plugins.readTrajectory",
   "plugins.list",
@@ -772,6 +775,13 @@ export const WIRE_METHOD_POLICY = {
     operation: "query",
     response: "unary",
     idempotency: "none",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "plugins.renameSession": {
+    operation: "command",
+    response: "unary",
+    idempotency: "replayResponse",
     replayCursor: "none",
     pagination: "none",
   },
@@ -1260,6 +1270,9 @@ export const WIRE_CAPABILITY_POLICY: {
   "mcp.authorizationAttempts.get": [
     { requires: ["mcp"] },
   ],
+  "plugins.renameSession": [
+    { requires: ["plugins"] },
+  ],
   "plugins.readView": [
     { requires: ["plugins"] },
   ],
@@ -1398,6 +1411,7 @@ export interface WireShapes {
   "mcp.servers.reconnect": { params: MCPServerRequest };
   "mcp.authorizationAttempts.create": { params: CreateMCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
   "mcp.authorizationAttempts.get": { params: MCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
+  "plugins.renameSession": { params: RenamePluginSessionRequest; result: Session };
   "plugins.readView": { params: ReadPluginViewRequest; result: PluginViewResource };
   "plugins.readTrajectory": { params: ReadPluginTrajectoryRequest; result: PageOfTrajectoryEntry };
   "plugins.list": { params: Record<string, never>; result: PageOfPluginInstallation };

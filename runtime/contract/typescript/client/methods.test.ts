@@ -73,6 +73,33 @@ function agentMessageItem(
 afterEach(() => vi.useRealTimers());
 
 describe("methods factory", () => {
+  it("replays an action with its exact release, Session revision and command key", async () => {
+    const attempts: { params: unknown; key: string | undefined }[] = [];
+    const call = vi.fn(async (_method: string, params: unknown, options?: RpcCallOptions) => {
+      attempts.push({ params: structuredClone(params), key: options?.idempotencyKey });
+      if (attempts.length < 3) throw new RpcTransportError("acknowledgement lost");
+      return session;
+    });
+    const methods = createMethods({ call } as unknown as RpcClient);
+    const params = {
+      installationId: "940ac827-b431-455b-af4b-e3a170bcfda0",
+      digest: "1".repeat(64),
+      actionId: "rename",
+      update: { sessionId: "ses_1", expectedRevision: 7, title: "Original intent" },
+    };
+    const reviewed = structuredClone(params);
+    const mutation = methods.plugins.renameSession(params);
+    params.digest = "2".repeat(64);
+    params.update.expectedRevision = 8;
+    params.update.title = "Other intent";
+    await expect(mutation).rejects.toBeInstanceOf(RpcTransportError);
+    await expect(mutation.retry()).resolves.toEqual(session);
+    expect(attempts).toEqual([
+      { params: reviewed, key: mutation.idempotencyKey },
+      { params: reviewed, key: mutation.idempotencyKey },
+      { params: reviewed, key: mutation.idempotencyKey },
+    ]);
+  });
   it("retains the original filters for every page after the caller edits its query", async () => {
     const requests: unknown[] = [];
     const call = vi.fn(async (_method: string, params: unknown) => {

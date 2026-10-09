@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import discovery from "@flame/runtime-contract/samples/method.discover.resp.json";
+import session from "@flame/runtime-contract/samples/session.json";
 import { HTTP_ENDPOINTS, PROTOCOL_VERSION } from "@flame/runtime-contract/wire";
 import { commandFailureMessage, Connection, type Command } from "./connection";
 import { createPreparedMutationJournal, RpcError } from "@flame/runtime-contract/client";
@@ -77,6 +78,53 @@ async function fixture(
 }
 
 describe("IDE connection lifetime and replay", () => {
+  it("recovers a rename action without retargeting its release or Session revision", async () => {
+    let recover = false;
+    const server = await fixture((_request, response, message) => {
+      if (message.method !== "plugins.renameSession") return false;
+      if (!recover) {
+        response.writeHead(503);
+        response.end("acknowledgement lost");
+        return true;
+      }
+      response.writeHead(200, { "Content-Type": "application/json" });
+      response.end(JSON.stringify({ jsonrpc: "2.0", id: message.id, result: session }));
+      return true;
+    });
+    const first = await Connection.open(server.endpoint, undefined, server.directory);
+    const params = {
+      installationId: "940ac827-b431-455b-af4b-e3a170bcfda0",
+      digest: "1".repeat(64),
+      actionId: "rename",
+      update: { sessionId: "ses_1", expectedRevision: 7, title: "Reviewed" },
+    };
+    const reviewed = structuredClone(params);
+    await expect(first.execute({ method: "plugins.renameSession", params })).rejects.toThrow(
+      /acknowledgement|503/,
+    );
+    const saved = first.pendingCommands()[0]!;
+    params.digest = "2".repeat(64);
+    params.update.expectedRevision = 8;
+    await first.close();
+    recover = true;
+    const successor = await Connection.open(server.endpoint, undefined, server.directory);
+    disposers.push(() => successor.close());
+    await expect(successor.retry(saved.idempotencyKey)).resolves.toEqual({
+      sessionResult: session,
+    });
+    const attempts = server.requests.filter(
+      ({ message }) => message.method === "plugins.renameSession",
+    );
+    expect(attempts.length).toBeGreaterThan(1);
+    for (const attempt of attempts) {
+      expect(attempt.key).toBe(saved.idempotencyKey);
+      expect(attempt.message.params).toEqual({
+        ...reviewed,
+        _meta: expect.objectContaining({ protocolVersion: PROTOCOL_VERSION }),
+      });
+    }
+    expect(successor.pendingCommands()).toEqual([]);
+  });
   it("rejects the preceding Runtime protocol before dispatching any RPC", async () => {
     const server = await fixture();
     server.advertised.protocolVersion = "2026-09-26";

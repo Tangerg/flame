@@ -145,6 +145,12 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 		}
 	}
 	for _, component := range slices.Sorted(maps.Keys(contributes)) {
+		if component == "actions" {
+			admitContributions(contributes[component], release, plugin.Component{Kind: plugin.ComponentContribution, Name: component}, func(w wireAction) error {
+				return release.AdmitAction(plugin.Action{ID: w.ID, Title: w.Title, Operation: w.Operation})
+			})
+			continue
+		}
 		if component == "views" {
 			admitContributions(contributes[component], release, plugin.Component{Kind: plugin.ComponentContribution, Name: component}, func(w wireView) error {
 				view := plugin.ViewDeclaration{ID: w.ID, Title: w.Title, Kind: w.Type, Entry: w.Entry}
