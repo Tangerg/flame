@@ -80,6 +80,9 @@ export function renderBlock(block: ContentBlock, key: number, facts: TurnFacts, 
         <ApprovalCard
           key={block.itemId ?? key}
           resumeRunId={block.itemId === undefined ? undefined : facts.awaiting.get(block.itemId)}
+          decision={
+            block.itemId === undefined ? undefined : facts.toolCalls[block.itemId]?.approvalDecision
+          }
           toolName={block.toolName}
           cmd={block.command}
           reason={block.reason}

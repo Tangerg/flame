@@ -17,6 +17,67 @@ const CTX: BlockCtx = {
   textReveal: "smooth",
 };
 
+describe("approval settlement rendering", () => {
+  it.each([
+    ["approve", "Approved"],
+    ["deny", "Declined"],
+  ] as const)("keeps the Runtime's %s decision after the handoff closes", (decision, label) => {
+    const id = "approval-tool";
+    const block = {
+      kind: "approval" as const,
+      itemId: id,
+      toolName: "shell",
+      command: "pwd",
+      reason: "Runs commands in the workspace.",
+    };
+    const facts: TurnFacts = {
+      toolCalls: {
+        [id]: { ...tool(id), name: "shell", fn: "pwd", status: "running" },
+      },
+      delegatedRuns: {},
+      awaiting: new Map([[id, "root-run"]]),
+    };
+    const { rerender } = render(renderBlock(block, 0, facts, CTX));
+    expect(screen.getByRole<HTMLButtonElement>("button", { name: "Allow once" }).disabled).toBe(
+      false,
+    );
+
+    facts.awaiting = new Map();
+    facts.toolCalls[id] = { ...facts.toolCalls[id]!, approvalDecision: decision };
+    rerender(renderBlock(block, 0, facts, CTX));
+    expect(screen.getByText(label, { exact: true })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Allow once" })).toBeNull();
+
+    facts.toolCalls[id] = {
+      ...facts.toolCalls[id]!,
+      status: decision === "approve" ? "ok" : "denied",
+    };
+    rerender(renderBlock(block, 0, facts, CTX));
+    expect(screen.getByText(label, { exact: true })).toBeTruthy();
+  });
+
+  it("does not leave a withdrawn approval as a disabled request", () => {
+    const block = {
+      kind: "approval" as const,
+      itemId: "cancelled-tool",
+      toolName: "shell",
+      command: "pwd",
+      reason: "Runs commands in the workspace.",
+    };
+    const facts: TurnFacts = {
+      toolCalls: {
+        [block.itemId]: { ...tool(block.itemId), status: "err", error: "cancelled" },
+      },
+      delegatedRuns: {},
+      awaiting: new Map(),
+    };
+    const { container } = render(renderBlock(block, 0, facts, CTX));
+    expect(container.querySelector('[data-slot="approval-surface"]')).toBeNull();
+    expect(screen.queryByText("Approved", { exact: true })).toBeNull();
+    expect(screen.queryByText("Declined", { exact: true })).toBeNull();
+  });
+});
+
 it("animates opaque tool arrivals without remounting their surface when regrouped", () => {
   const first: ToolCall = {
     id: "read-first",

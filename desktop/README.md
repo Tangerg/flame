@@ -171,6 +171,10 @@ token retires the previous connection through the existing Runtime connection
 owner, then inspects the replacement. Closing a client only closes its connection;
 it does not shut down the external Runtime or cancel another client's Run.
 
+Approval cards read their verdict from the Runtime ToolCall's `approvalDecision`.
+Local response staging only disables submission; it cannot declare approval or denial.
+Once Runtime withdraws a request without a verdict, its approval controls disappear.
+
 With no active Session, New Session opens a workspace directory dialog. New Session
 reuses the active Session's workspace when one is selected; Choose Folder opens the
 directory dialog explicitly.

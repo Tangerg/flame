@@ -4,9 +4,9 @@ import { en } from "@/lib/i18n/locales/en";
 import { TOOL_FAMILIES, toolFamilyId } from "@/lib/toolFamilies";
 import { ApprovalCard } from "./ApprovalCard";
 
-const actions = vi.hoisted(() => ({
-  approve: vi.fn(),
-  decline: vi.fn(),
+const submission = vi.hoisted(() => ({
+  submit: vi.fn(),
+  pending: null as "approve" | "deny" | null,
 }));
 
 vi.mock("../../application/approvalArgsEditor", () => ({
@@ -19,12 +19,11 @@ vi.mock("../../application/approvalArgsEditor", () => ({
   }),
 }));
 
-vi.mock("../../application/approvalCardActions", () => ({
-  useApprovalCardActions: () => ({
-    pending: undefined,
-    disabled: false,
-    approve: actions.approve,
-    decline: actions.decline,
+vi.mock("@/plugins/builtin/agent/public/hitl", () => ({
+  useApprovalSubmit: () => ({
+    pending: submission.pending,
+    submit: submission.submit,
+    registerActions: () => () => undefined,
   }),
 }));
 
@@ -33,7 +32,31 @@ vi.mock("@/plugins/builtin/runtime/public/serviceStatus", () => ({
 }));
 
 describe("ApprovalCard actions", () => {
-  afterEach(() => vi.clearAllMocks());
+  afterEach(() => {
+    vi.clearAllMocks();
+    submission.pending = null;
+  });
+
+  it.each(["approve", "deny"] as const)(
+    "does not turn a locally submitted %s into a settled Runtime fact",
+    (decision) => {
+      submission.pending = decision;
+      render(
+        <ApprovalCard
+          resumeRunId="run-1"
+          itemId="approval-1"
+          toolName="shell"
+          cmd="pwd"
+          reason="Runs commands in the workspace."
+        />,
+      );
+      expect(screen.queryByText("Approved", { exact: true })).toBeNull();
+      expect(screen.queryByText("Declined", { exact: true })).toBeNull();
+      expect(screen.getByRole<HTMLButtonElement>("button", { name: "Allow once" }).disabled).toBe(
+        true,
+      );
+    },
+  );
 
   it("orders the deny action before the primary approval action", () => {
     render(
@@ -88,7 +111,7 @@ describe("ApprovalCard actions", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Approval options" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Allow for this session" }));
-    expect(actions.approve).toHaveBeenCalledWith("session");
+    expect(submission.submit).toHaveBeenCalledWith("approve", { rememberScope: "session" });
   });
 
   it.each(TOOL_FAMILIES.flatMap((family) => family.tools.map((tool) => tool.name)))(

@@ -1,7 +1,6 @@
 import { useCallback, useEffect } from "react";
 import {
   useApprovalSubmit,
-  type ApprovalDecision,
   type ApprovalSubmitOptions,
   type RememberScope,
 } from "@/plugins/builtin/agent/public/hitl";
@@ -12,7 +11,6 @@ export interface ApprovalArgsCommitter {
 }
 
 export interface ApprovalCardActionState {
-  pending: ApprovalDecision | null;
   disabled: boolean;
   approve: (rememberScope?: RememberScope) => void;
   decline: () => void;
@@ -80,7 +78,6 @@ export function useApprovalCardActions({
   }, [approve, decline, registerable, registerActions]);
 
   return {
-    pending,
     disabled: !runtimeAvailable || !canSubmitApproval({ resumeRunId, itemId, pending }),
     approve,
     decline,

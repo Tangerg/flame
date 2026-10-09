@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { toolFamilyId } from "@/lib/toolFamilies";
 import { toolIconFor } from "@/plugins/builtin/agent/public/toolIcon";
-import { type RememberScope } from "@/plugins/builtin/agent/public/hitl";
+import { type ApprovalDecision, type RememberScope } from "@/plugins/builtin/agent/public/hitl";
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
 import { useT } from "@/lib/i18n";
 import { Button, Divider, DropdownMenu, Icon, Surface, type IconName, vocab, Well } from "@/ui";
@@ -20,6 +20,7 @@ const ac = stylex.create({
 interface Props {
   /** The Run to resume; present only while this approval awaits an answer. */
   resumeRunId?: string;
+  decision?: ApprovalDecision;
   toolName?: string;
   cmd: string;
   reason: string;
@@ -39,6 +40,7 @@ const REMEMBER_ACTIONS: readonly {
 
 export function ApprovalCard({
   resumeRunId,
+  decision,
   toolName,
   cmd,
   reason,
@@ -52,20 +54,20 @@ export function ApprovalCard({
   const argsEditor = useApprovalArgsEditor({
     originalArgs: hasArgs ? JSON.stringify(args, null, 2) : "",
   });
-  const { pending, disabled, approve, decline } = useApprovalCardActions({
+  const { disabled, approve, decline } = useApprovalCardActions({
     resumeRunId,
     itemId,
     argsEditor: hasArgs ? argsEditor : undefined,
     runtimeAvailable,
   });
 
-  const finalised = pending;
-  if (finalised === "approve") {
+  if (decision === "approve") {
     return <HitlSettledRow label={t("approval.settled.approved")} />;
   }
-  if (finalised === "deny") {
+  if (decision === "deny") {
     return <Divider icon={<Icon name="x" size="xs" />}>{t("approval.settled.declined")}</Divider>;
   }
+  if (resumeRunId === undefined) return null;
 
   const identity = approvalIdentity(t, toolName);
   const title = reason.trim() || approvalHeadline(t, toolName);
