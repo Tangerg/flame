@@ -182,7 +182,7 @@ export function ModelPicker() {
           aria-label={t("composer.switchModel")}
           title={`${selected.label} · ${providerDisplayName(selected.provider)}`}
           shrink="gives"
-          leading={<ProviderIcon provider={selected.provider} size="sm" />}
+          leading={<ProviderIcon provider={selected.provider} size="composer" />}
           label={selected.label}
         />
       }

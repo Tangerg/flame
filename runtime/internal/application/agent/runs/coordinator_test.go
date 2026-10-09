@@ -1122,9 +1122,7 @@ func TestCoordinatorResumeCommitsBeforeActivation(t *testing.T) {
 	pending := testApprovalPending("member_root", spec.CreatedAt)
 	spec.Continuation = mustTreeContinuation(t, pending)
 	request := spec.Continuation.interrupts[0]
-	spec.Continuation.approvalVerdicts = map[string]approvalVerdict{
-		request.ItemID: {callID: pending.Bindings[0].ToolCallID, decision: approval.Allow},
-	}
+	acceptTestApproval(t, spec.Continuation, request.ItemID, pending.Bindings[0].ToolCallID, approval.Allow)
 	activatedAfterOpening := false
 	spec.BeginExecution = func(context.Context) error {
 		_, activatedAfterOpening = effects.opening().Resume()

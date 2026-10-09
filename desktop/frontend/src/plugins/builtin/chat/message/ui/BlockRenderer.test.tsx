@@ -17,6 +17,73 @@ const CTX: BlockCtx = {
   textReveal: "smooth",
 };
 
+describe("activity header semantics", () => {
+  it.each([
+    [
+      "a mixed wave beginning with search",
+      ["glob", "read", "shell"],
+      "last",
+      "activity",
+      "1 read · 1 search · 1 run",
+    ],
+    [
+      "a mixed wave beginning with reasoning",
+      ["read", "grep", "shell"],
+      "first",
+      "activity",
+      "1 read · 1 search · 1 run",
+    ],
+    [
+      "a read-only group with a majority of reads",
+      ["read", "read", "grep"],
+      "none",
+      "activity",
+      "2 read · 1 search",
+    ],
+    ["a homogeneous group", ["read", "read"], "none", "file-text", "2 read"],
+    ["a homogeneous wave with reasoning", ["read", "read"], "first", "file-text", "2 read"],
+  ] as const)(
+    "represents all operations in %s",
+    (_label, names, reasoningPosition, icon, summary) => {
+      const calls: ToolCall[] = names.map((name, index) => ({
+        id: `call-${index}`,
+        runId: "root-run",
+        name,
+        fn: name,
+        args: "{}",
+        status: "ok",
+        safetyClass: name === "shell" ? "exec" : "safe",
+      }));
+      const blocks: Message["blocks"] = calls.map((call) => ({
+        kind: "tool",
+        toolCallId: call.id,
+      }));
+      const reasoning = {
+        kind: "reasoning" as const,
+        reasoningId: "reasoning-1",
+        text: "Choose the next operation.",
+        status: "complete" as const,
+      };
+      if (reasoningPosition === "first") blocks.unshift(reasoning);
+      if (reasoningPosition === "last") blocks.push(reasoning);
+      blocks.push({ kind: "text", text: "Finished.", status: "complete" });
+      const row = {
+        message: { ...message("activity-message", "root-run", calls[0]!.id), blocks },
+        facts: {
+          toolCalls: Object.fromEntries(calls.map((call) => [call.id, call])),
+          delegatedRuns: {},
+          awaiting: new Map<string, string>(),
+        },
+      };
+
+      const { container } = render(renderMessageBlocks(row, CTX));
+      const header = container.querySelector('[data-slot="agent-activity-header"]');
+      expect(header?.querySelector("svg")?.getAttribute("data-icon-name")).toBe(icon);
+      expect(header?.textContent).toContain(summary);
+    },
+  );
+});
+
 describe("approval settlement rendering", () => {
   it.each([
     ["approve", "Approved"],

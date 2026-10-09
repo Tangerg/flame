@@ -382,11 +382,7 @@
   --icon-md: 16px;
   --icon-lg: 20px;
   --icon-xl: 28px;
-  --icon-stroke-xs: 2;
-  --icon-stroke-sm: 2;
-  --icon-stroke-md: 2;
-  --icon-stroke-lg: 1.8;
-  --icon-stroke-xl: 1.286;
+  --icon-composer: 16px;
 
   --fw-regular: 430;
   --fw-medium: 500;
@@ -447,7 +443,6 @@
     calc(var(--shape-composer) - var(--composer-editor-start))
   );
   --composer-control-height: 28px;
-  --composer-control-icon: 16px;
   --control-edge-width: 1px;
   --control-mark-size: 18px;
   --hairline-width: 0.5px;
@@ -1091,7 +1086,6 @@ html.theme-dark {
 
 .agent-composer-footer {
   --control-height-md: var(--composer-control-height);
-  --icon-sm: var(--composer-control-icon);
 }
 
 .agent-dock-tabs {

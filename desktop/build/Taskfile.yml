@@ -37,6 +37,7 @@ tasks:
     summary: Install frontend dependencies
     deps:
       - task: install:runtime-client:deps
+      - task: build:icon-library
     run: once
     dir: frontend
     sources:
@@ -50,6 +51,40 @@ tasks:
     cmds:
       - npm ci
 
+  install:icon-library:deps:
+    summary: Install the Flame icon library toolchain
+    run: once
+    dir: ../icons
+    sources:
+      - package.json
+      - package-lock.json
+    generates:
+      - node_modules/.package-lock.json
+    cmds:
+      - npm ci
+
+  build:icon-library:
+    summary: Build the authored icons and React adapter
+    run: once
+    dir: ../icons
+    deps:
+      - task: install:icon-library:deps
+    sources:
+      - source/**/*.svg
+      - react/*.ts
+      - scripts/build.mjs
+      - scripts/svg.mjs
+      - catalog.mjs
+      - tsconfig.json
+      - package.json
+      - preview/**/*
+    generates:
+      - dist/react/generated/index.js
+      - dist/react/generated/index.d.ts
+      - dist/catalog.js
+    cmds:
+      - npm run build
+
   build:frontend:
     summary: Build the frontend project
     # A production build runs the typecheck; the dev build skips it, because in the dev
@@ -61,6 +96,10 @@ tasks:
       - "**/*"
       - "../../runtime/contract/typescript/**/*.ts"
       - "../../runtime/contract/typescript/package.json"
+      - "../../icons/source/**/*.svg"
+      - "../../icons/react/*.ts"
+      - "../../icons/scripts/*.mjs"
+      - "../../icons/catalog.mjs"
       - exclude: node_modules/**/*
       - exclude: ../../runtime/contract/typescript/node_modules/**/*
     generates:

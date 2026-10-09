@@ -37,7 +37,7 @@ export function SkillProposals() {
         onRetry={refetch}
         skeletonCount={3}
         empty={{
-          icon: "sparkle",
+          icon: "file-edit",
           title: t("skillProposals.empty.title"),
           sub: t("skillProposals.empty.sub"),
         }}

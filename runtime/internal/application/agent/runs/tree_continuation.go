@@ -17,26 +17,25 @@ import (
 // tree whose final interrupt was canceled still has enough continuation state
 // to open fresh Segments without inventing a fake human answer.
 type treeContinuation struct {
-	rootRunID        string
-	interrupts       []transcript.Interrupt
-	approvalVerdicts map[string]approvalVerdict
-	continuations    []Continuation
+	rootRunID     string
+	interrupts    []transcript.Interrupt
+	approvalCalls map[string]string
+	continuations []Continuation
 	// runs are the parked Runs the continuations hand off, by ID. A resumed
 	// route reads its admission, accounting and creation from them; the
 	// continuation carries none of those facts.
 	runs map[string]run.Run
-	// items are the Items the hand-off names; they own each drained Tool's
-	// occurrence and invocation.
+	// items are the complete Items the hand-off names, including the claim's
+	// accepted answers and verdicts. Reducers continue these values directly.
 	items map[string]transcript.Item
-	// answeredQuestions are the Question Items the resume claim committed with
-	// their answers, in the order the hand-off named them.
-	answeredQuestions []transcript.Item
 }
 
 func (t *treeContinuation) answeredQuestionsFor(runID string) []transcript.Item {
 	var answered []transcript.Item
-	for _, item := range t.answeredQuestions {
-		if item.RunID() == runID {
+	for _, open := range t.interrupts {
+		item := t.items[open.ItemID]
+		question, present := item.Question()
+		if item.RunID() == runID && present && question.Answered() {
 			answered = append(answered, item)
 		}
 	}

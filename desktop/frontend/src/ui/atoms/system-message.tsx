@@ -50,10 +50,10 @@ const TONE = {
 } as const;
 
 const DEFAULT_ICON: Record<SystemMessageVariant, IconName> = {
-  info: "question",
+  info: "info",
   warning: "alert",
-  error: "alert",
-  success: "check",
+  error: "circle-x",
+  success: "circle-check",
 };
 
 export type SystemMessageProps = ComponentProps<"div"> & {

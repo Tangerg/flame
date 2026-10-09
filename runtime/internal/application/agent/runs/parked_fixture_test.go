@@ -2,9 +2,11 @@ package runs
 
 import (
 	"slices"
+	"testing"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
+	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
@@ -162,4 +164,27 @@ func testTreeContinuationOf(pending Pending, interrupts []transcript.Interrupt) 
 	}
 	continuation.interrupts = slices.Clone(interrupts)
 	return continuation
+}
+
+func acceptTestApproval(t *testing.T, continuation *treeContinuation, itemID, callID string, decision approval.Decision) {
+	t.Helper()
+	item, err := continuation.items[itemID].ResolveToolApproval(decision)
+	if err != nil {
+		t.Fatal(err)
+	}
+	continuation.items[itemID] = item
+	if continuation.approvalCalls == nil {
+		continuation.approvalCalls = make(map[string]string)
+	}
+	continuation.approvalCalls[itemID] = callID
+}
+
+func setTestContinuationTool(t *testing.T, continuation *treeContinuation, itemID string, invocation transcript.ToolInvocation) {
+	t.Helper()
+	original := continuation.items[itemID]
+	item, err := transcript.NewToolCall(original.Snapshot().Identity, invocation, original.SafetyClass())
+	if err != nil {
+		t.Fatal(err)
+	}
+	continuation.items[itemID] = item
 }

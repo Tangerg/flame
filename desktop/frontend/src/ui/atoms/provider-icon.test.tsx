@@ -27,7 +27,7 @@ afterEach(cleanup);
 
 function hasBrandMark(provider: string): boolean {
   const { container } = render(<ProviderIcon provider={provider} />);
-  return container.querySelector("svg[data-icon-name]") === null;
+  return container.querySelector('[data-slot="provider-mark"]') !== null;
 }
 
 describe("ProviderIcon", () => {
@@ -45,5 +45,7 @@ describe("ProviderIcon", () => {
   it("falls back for a provider it does not know, without dropping the name", () => {
     expect(providerDisplayName("acme")).toBe("Acme");
     expect(hasBrandMark("acme")).toBe(false);
+    const { container } = render(<ProviderIcon provider="acme" />);
+    expect(container.querySelector("svg")?.getAttribute("data-icon-name")).toBe("server");
   });
 });

@@ -32,7 +32,7 @@ export function SkillLibrary() {
         onRetry={refetch}
         skeletonCount={4}
         empty={{
-          icon: "sparkle",
+          icon: "book-open",
           title: t("skillLibrary.empty.title"),
           sub: t("skillLibrary.empty.sub"),
         }}

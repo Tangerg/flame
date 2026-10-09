@@ -53,7 +53,12 @@ function ContextMenuButton() {
       <DropdownMenu.Root>
         <DropdownMenu.Trigger
           render={
-            <IconButton icon="plus" aria-label={t("composer.add")} title={t("composer.add")} />
+            <IconButton
+              icon="plus"
+              iconSize="composer"
+              aria-label={t("composer.add")}
+              title={t("composer.add")}
+            />
           }
         />
         <DropdownMenu.Content align="start" sideOffset={6}>
@@ -76,7 +81,7 @@ function ContextMenuButton() {
             layout="glyph"
             onClick={() => insert(value ? `${value.replace(/\s+$/, "")} @` : "@")}
           >
-            <Icon name="filetext" size="md" />
+            <Icon name="file-text" size="md" />
             <span {...stylex.props(vocab.truncate)}>{t("composer.add.file")}</span>
           </DropdownMenu.Item>
           <DropdownMenu.Item
@@ -129,7 +134,7 @@ function ApprovalModePill() {
             aria-label={t("approvals.mode.aria")}
             variant={full ? "wash" : "ghost"}
             tone={full ? "warning" : undefined}
-            leading={<Icon name={MODE_ICON[mode]} size="sm" full />}
+            leading={<Icon name={MODE_ICON[mode]} size="composer" full />}
             label={t(APPROVAL_MODE_LABEL_KEY[mode])}
             labelVisibility={full ? "always" : "wide"}
           />

@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import type { RefObject } from "react";
-import { Icon, OptionRow, TextButton, vocab } from "@/ui";
+import { Icon, OptionRow, TextButton, fileIconName, vocab } from "@/ui";
 import { face, type as typeStep } from "@/styles/tokens.stylex";
 import { useT } from "@/lib/i18n";
 import type { FileMentions } from "../application/fileMentions";
@@ -63,7 +63,7 @@ export function FileMentionPopup({ mentions, anchor }: Props) {
             }}
           >
             <Icon
-              name="filetext"
+              name={fileIconName(path)}
               size="sm"
               className={stylex.props(vocab.hold, vocab.muted).className}
             />

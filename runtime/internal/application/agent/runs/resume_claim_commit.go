@@ -57,13 +57,6 @@ func cloneInterruptAnswers(answers []InterruptAnswer) []InterruptAnswer {
 	return owned
 }
 
-// approvalVerdict is the accepted decision on one reviewed ToolCall and the
-// executor call that resumes it.
-type approvalVerdict struct {
-	callID   string
-	decision approval.Decision
-}
-
 func (r ResumeClaimCommit) Validate() error {
 	if err := r.commitID.Validate(); err != nil {
 		return fmt.Errorf("runs: resume claim: %w", err)
@@ -149,36 +142,15 @@ func (r ResumeClaimCommit) ItemReplacements() ([]transcript.Replacement, error) 
 	return replacements, nil
 }
 
-// answeredQuestions are the Question Items this claim settles, as committed.
-func (r ResumeClaimCommit) answeredQuestions() ([]transcript.Item, error) {
-	replacements, err := r.ItemReplacements()
-	if err != nil {
-		return nil, err
-	}
-	var answered []transcript.Item
-	for _, replacement := range replacements {
-		if item := replacement.State(); item.Kind() == transcript.QuestionItem {
-			answered = append(answered, item)
-		}
-	}
-	return answered, nil
-}
-
-// approvalVerdicts names the verdict on every reviewed ToolCall by its Item.
-func (r ResumeClaimCommit) approvalVerdicts() map[string]approvalVerdict {
-	answersByItem := make(map[string]InterruptAnswer, len(r.answers))
-	for _, answer := range r.answers {
-		answersByItem[answer.InterruptItemID] = answer
-	}
-	verdicts := make(map[string]approvalVerdict)
+// approvalCalls relates each reviewed Item to its executor call. The accepted
+// verdict belongs to the committed Item, not to this routing projection.
+func (r ResumeClaimCommit) approvalCalls() map[string]string {
+	calls := make(map[string]string)
 	for index, open := range r.expected.Interrupts {
 		if open.Kind() != interrupt.Approval {
 			continue
 		}
-		verdicts[open.ItemID] = approvalVerdict{
-			callID:   r.expected.Bindings[index].ToolCallID,
-			decision: approval.DecisionOf(answersByItem[open.ItemID].Resolution.Approved),
-		}
+		calls[open.ItemID] = r.expected.Bindings[index].ToolCallID
 	}
-	return verdicts
+	return calls
 }

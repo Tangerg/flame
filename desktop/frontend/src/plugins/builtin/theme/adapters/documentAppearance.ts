@@ -6,6 +6,7 @@ import {
   publishScheme,
   publishTokens,
   publishVisualStyleMotion,
+  publishUiFontSize,
 } from "@/lib/appearance";
 import { densityCssVariables } from "../kit/density";
 import { iconScaleCssVariables } from "@/lib/iconScale";
@@ -148,6 +149,7 @@ function applyFonts(
   })) {
     root.style.setProperty(property, value);
   }
+  publishUiFontSize(fontSize);
 }
 
 function applyShape(density: string, radiusScale: number, motionScale: number): void {

@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { normalizeUiFontSize, UI_FONT_SIZE_DEFAULT_PX } from "./typography";
 
 export type Scheme = "dark" | "light";
 
@@ -31,6 +32,7 @@ let scheme: Scheme = "dark";
 let scale = 1;
 let motion = DEFAULT_MOTION;
 let tokenRevision: object = {};
+let uiFontSize = UI_FONT_SIZE_DEFAULT_PX;
 const listeners = new Set<() => void>();
 
 function announce(): void {
@@ -45,6 +47,13 @@ export function publishScheme(next: Scheme): void {
 
 export function publishTokens(): void {
   tokenRevision = {};
+  announce();
+}
+
+export function publishUiFontSize(value: number | null): void {
+  const next = normalizeUiFontSize(value);
+  if (next === uiFontSize) return;
+  uiFontSize = next;
   announce();
 }
 
@@ -81,4 +90,8 @@ export function useScheme(): Scheme {
 
 export function useTokenRevision(): object {
   return useSyncExternalStore(subscribe, () => tokenRevision);
+}
+
+export function useUiFontSize(): number {
+  return useSyncExternalStore(subscribe, () => uiFontSize);
 }

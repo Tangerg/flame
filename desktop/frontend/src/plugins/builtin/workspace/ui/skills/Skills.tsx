@@ -25,7 +25,7 @@ export function Skills() {
   );
 
   return (
-    <WorkspaceViewLayout icon="sparkle" title="skills.title" actions={actions}>
+    <WorkspaceViewLayout icon="library" title="skills.title" actions={actions}>
       {section === "available" && <AvailableSkills />}
       {section === "review" && <SkillProposals />}
       {section === "library" && <SkillLibrary />}

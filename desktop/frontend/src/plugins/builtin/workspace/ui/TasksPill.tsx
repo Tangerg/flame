@@ -1,17 +1,23 @@
 import * as stylex from "@stylexjs/stylex";
 import { useT } from "@/lib/i18n";
 import { color, radius, space, type as typeStep, weight } from "@/styles/tokens.stylex";
-import { Icon, IconButton, Popover, ProgressBar, SectionLabel, toneInk, vocab } from "@/ui";
+import {
+  Icon,
+  type IconName,
+  IconButton,
+  Popover,
+  ProgressBar,
+  SectionLabel,
+  toneInk,
+  vocab,
+} from "@/ui";
 import type { TaskReadoutStatus, TaskReadoutTask } from "../application/ports/taskReadoutPort";
 import { taskProgressPercent, useTaskReadout } from "../application/taskReadout";
 
-const STATUS_ICON: Record<
-  TaskReadoutStatus,
-  { name: "spark" | "check" | "x"; tone?: "accent" | "negative" }
-> = {
-  running: { name: "spark" },
-  succeeded: { name: "check", tone: "accent" },
-  failed: { name: "x", tone: "negative" },
+const STATUS_ICON: Record<TaskReadoutStatus, { name: IconName; tone?: "accent" | "negative" }> = {
+  running: { name: "activity" },
+  succeeded: { name: "circle-check", tone: "accent" },
+  failed: { name: "circle-x", tone: "negative" },
 };
 
 const GLYPH_COLUMN = "18px";

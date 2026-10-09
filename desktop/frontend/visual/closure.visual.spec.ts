@@ -1564,6 +1564,9 @@ test("the file mention picker paints over the transcript, not under the composer
 
   const listbox = page.locator("#composer-suggestion-listbox");
   await expect(listbox).toBeVisible();
+  await expect(
+    listbox.getByRole("option").filter({ hasText: "runtime/session/store.go" }).locator("svg"),
+  ).toHaveAttribute("data-icon-name", "file-code");
 
   const geometry = await page.evaluate(() => {
     const el = document.getElementById("composer-suggestion-listbox")!;
@@ -1597,6 +1600,9 @@ test("the composer's attachment chips are one component, not two", async ({ page
   await input.pressSequentially("@store", { delay: 30 });
   await expect(page.locator("#composer-suggestion-listbox")).toBeVisible();
   await page.keyboard.press("Tab");
+  await expect(
+    page.locator('[data-slot="chip"][data-kind="reference"] svg[data-icon-name="file-code"]'),
+  ).toBeVisible();
 
   await page.evaluate(() => {
     const ta = document.querySelector("textarea")!;

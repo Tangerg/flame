@@ -15,8 +15,8 @@ export const TOOL_FAMILIES = [
   {
     id: "files",
     tools: [
-      { name: "read", icon: "eye" },
-      { name: "apply_patch", icon: "replace" },
+      { name: "read", icon: "file-text" },
+      { name: "apply_patch", icon: "file-diff" },
     ],
   },
   {
@@ -30,9 +30,9 @@ export const TOOL_FAMILIES = [
   {
     id: "network",
     tools: [
-      { name: "web_search", icon: "globe" },
-      { name: "web_fetch", icon: "download" },
-      { name: "http_request", icon: "webhook" },
+      { name: "web_search", icon: "web-search" },
+      { name: "web_fetch", icon: "cloud-download" },
+      { name: "http_request", icon: "network" },
     ],
   },
   {
@@ -40,8 +40,8 @@ export const TOOL_FAMILIES = [
     tools: [
       { name: "list_skills", icon: "library" },
       { name: "load_skill", icon: "book-open" },
-      { name: "read_skill_resource", icon: "paperclip" },
-      { name: "propose_skill", icon: "sparkle" },
+      { name: "read_skill_resource", icon: "file" },
+      { name: "propose_skill", icon: "file-edit" },
     ],
   },
   {
@@ -54,7 +54,7 @@ export const TOOL_FAMILIES = [
   {
     id: "plan",
     tools: [
-      { name: "enter_plan_mode", icon: "map" },
+      { name: "enter_plan_mode", icon: "workflow" },
       { name: "set_plan", icon: "list-checks" },
       { name: "exit_plan_mode", icon: "flag" },
     ],
@@ -62,15 +62,15 @@ export const TOOL_FAMILIES = [
   {
     id: "recall",
     tools: [
-      { name: "search_memory", icon: "brain" },
-      { name: "search_tools", icon: "package-search" },
-      { name: "read_tool_result", icon: "archive" },
+      { name: "search_memory", icon: "memory-search" },
+      { name: "search_tools", icon: "tool-search" },
+      { name: "read_tool_result", icon: "file-output" },
     ],
   },
   {
     id: "schedules",
     tools: [
-      { name: "list_schedules", icon: "clock" },
+      { name: "list_schedules", icon: "calendar-clock" },
       { name: "create_schedule", icon: "calendar-plus" },
       { name: "delete_schedule", icon: "calendar-x" },
     ],
@@ -79,7 +79,7 @@ export const TOOL_FAMILIES = [
     id: "goals",
     tools: [
       { name: "create_goal", icon: "target" },
-      { name: "get_goal", icon: "crosshair" },
+      { name: "get_goal", icon: "clipboard-list" },
       { name: "report_goal_outcome", icon: "clipboard-check" },
     ],
   },

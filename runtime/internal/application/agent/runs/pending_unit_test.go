@@ -48,10 +48,9 @@ func TestResumeClaimSettlesReviewedToolCallsFromTheirItems(t *testing.T) {
 		replacements[1].State().ApprovalDecision() != approval.Deny {
 		t.Fatalf("Tool approval replacements = %+v", replacements)
 	}
-	verdicts := claim.approvalVerdicts()
-	if verdicts["item_grandchild"] != (approvalVerdict{callID: "call_grandchild", decision: approval.Allow}) ||
-		verdicts["item_b"] != (approvalVerdict{callID: "call_b", decision: approval.Deny}) {
-		t.Fatalf("approval verdicts = %+v", verdicts)
+	calls := claim.approvalCalls()
+	if calls["item_grandchild"] != "call_grandchild" || calls["item_b"] != "call_b" {
+		t.Fatalf("approval call bindings = %+v", calls)
 	}
 
 	claim.answers[0].Resolution.Answers = [][]string{{"unexpected"}}

@@ -1,44 +1,29 @@
 import { describe, expect, it } from "vitest";
-import { iconScaleCssVariables } from "./iconScale";
+import { iconScaleCssVariables, iconSizePx, type IconSize } from "./iconScale";
 import { UI_FONT_SIZE_MAX_PX, UI_FONT_SIZE_MIN_PX } from "./typography";
 
-const CAP_PX = 1.5;
-
-function renderedStroke(vars: Readonly<Record<string, string>>, size: string): number {
-  const box = Number.parseFloat(vars[`--icon-${size}`]!);
-  return Number(vars[`--icon-stroke-${size}`]!) * (box / 24);
-}
-
-describe("icon scale", () => {
-  it("leaves the small steps drawing at Lucide's own weight", () => {
-    const vars = iconScaleCssVariables(14);
-
-    for (const size of ["xs", "sm", "md"]) {
-      expect(vars[`--icon-stroke-${size}`]).toBe("2");
-    }
-  });
-
-  it("stops the stroke growing once a line stops reading as drawn", () => {
-    const vars = iconScaleCssVariables(14);
-
-    expect(renderedStroke(vars, "lg")).toBeCloseTo(CAP_PX, 2);
-    expect(renderedStroke(vars, "xl")).toBeCloseTo(CAP_PX, 2);
-  });
-
-  it("holds the cap across every UI text size a person can choose", () => {
-    for (let base = UI_FONT_SIZE_MIN_PX; base <= UI_FONT_SIZE_MAX_PX; base += 1) {
-      const vars = iconScaleCssVariables(base);
-      for (const size of ["xs", "sm", "md", "lg", "xl"]) {
-        expect(renderedStroke(vars, size)).toBeLessThanOrEqual(CAP_PX + 0.001);
+describe("icon sizes", () => {
+  it("derives actual pixels and CSS layout variables from the same font policy", () => {
+    for (let font = UI_FONT_SIZE_MIN_PX; font <= UI_FONT_SIZE_MAX_PX; font++) {
+      const expected = {
+        xs: font - 2,
+        sm: font,
+        md: font + 2,
+        lg: font + 6,
+        xl: font * 2,
+        composer: 16,
+      };
+      const variables = iconScaleCssVariables(font);
+      for (const [size, pixels] of Object.entries(expected)) {
+        expect(iconSizePx(size as IconSize, font)).toBe(pixels);
+        expect(variables[`--icon-${size}`]).toBe(`${pixels}px`);
       }
     }
   });
 
-  it("never asks for more than Lucide draws", () => {
-    const vars = iconScaleCssVariables(UI_FONT_SIZE_MIN_PX);
-
-    for (const size of ["xs", "sm", "md", "lg", "xl"]) {
-      expect(Number(vars[`--icon-stroke-${size}`])).toBeLessThanOrEqual(2);
-    }
+  it("normalizes missing and out-of-range font preferences", () => {
+    expect(iconSizePx("sm", null)).toBe(14);
+    expect(iconSizePx("xs", 0)).toBe(9);
+    expect(iconSizePx("xl", 100)).toBe(36);
   });
 });

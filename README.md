@@ -14,6 +14,7 @@ Runtime owns durable product semantics and exposes the same behavior through an 
 | `cli/` | Command routing, one-shot output, terminal interaction, and CLI-local authoring state |
 | `desktop/` | Shared browser/desktop presentation and the Wails host |
 | `ide/` | Native VS Code interaction over the shared Runtime client |
+| `icons/` | Original icon drawings, SVG exports, React components, and the design reference |
 
 Each module's own `README.md` carries its boundaries and module instructions.
 

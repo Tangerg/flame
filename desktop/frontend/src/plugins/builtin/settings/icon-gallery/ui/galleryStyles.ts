@@ -39,7 +39,6 @@ export const galleryStyles = stylex.create({
     color: color.fg,
     fontWeight: weight.medium,
   },
-  missing: { fontFamily: "var(--font-mono)", color: color.fgFaint },
 
   count: { fontFamily: "var(--font-mono)", color: color.fgFaint },
 });

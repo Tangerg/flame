@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"reflect"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
@@ -56,6 +55,29 @@ func (t *TranscriptStore) appendItemRecord(
 	offloadID toolresult.ID,
 ) error {
 	q := conn(ctx, t.db)
+	var sessionID, runID, currentPayload, currentOffloadID string
+	var occurredAt int64
+	err := q.QueryRowContext(ctx,
+		`SELECT session_id, run_id, occurred_at, payload, offload_id FROM history_items WHERE item_id = ?`,
+		item.ID(),
+	).Scan(&sessionID, &runID, &occurredAt, &currentPayload, &currentOffloadID)
+	if err == nil {
+		snapshot, decodeErr := storedTranscriptItem(sessionID, runID, item.ID(), occurredAt, currentPayload, currentOffloadID)
+		if decodeErr != nil {
+			return decodeErr
+		}
+		current, restoreErr := transcript.RestoreItem(snapshot)
+		if restoreErr != nil {
+			return fmt.Errorf("sqlite: decoded history item %q: %w", item.ID(), restoreErr)
+		}
+		if _, replaceErr := transcript.Replace(current, func(transcript.Item) (transcript.Item, error) {
+			return item, nil
+		}); replaceErr != nil {
+			return replaceErr
+		}
+	} else if !errors.Is(err, sql.ErrNoRows) {
+		return fmt.Errorf("sqlite: inspect history item: %w", err)
+	}
 	if offloadID != "" {
 		var staged bool
 		if err := q.QueryRowContext(ctx,
@@ -164,7 +186,7 @@ func (t *TranscriptStore) ReplaceItem(
 		if !found {
 			return fmt.Errorf("sqlite: replace history item %q: not found", expected.ID())
 		}
-		if !reflect.DeepEqual(current.Snapshot(), expected.Snapshot()) {
+		if !current.Equal(expected) {
 			return fmt.Errorf(
 				"%w: item %q changed after the application prepared its replacement",
 				transcript.ErrIdentityConflict,

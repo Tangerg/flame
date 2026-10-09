@@ -71,6 +71,16 @@ afterEach(() => {
 });
 
 describe("DiffWorkspace", () => {
+  it("pairs expand and collapse icons with the vertical file list action", () => {
+    const view = render(<DiffWorkspace />);
+    const collapse = view.getByRole("button", { name: "Collapse all files" });
+    expect(collapse.querySelector("svg")?.getAttribute("data-icon-name")).toBe("fold");
+    fireEvent.click(collapse);
+    const expand = view.getByRole("button", { name: "Expand all files" });
+    expect(expand.querySelector("svg")?.getAttribute("data-icon-name")).toBe("unfold-vertical");
+    fireEvent.click(expand);
+    expect(view.getByRole("button", { name: "Collapse all files" })).toBeTruthy();
+  });
   it("shows the resolved baseline and preserves the full object identity", () => {
     const view = render(<DiffWorkspace />);
     expect(

@@ -1,0 +1,42 @@
+{
+  "name": "@flame/icons",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md",
+    "DESIGN.md"
+  ],
+  "exports": {
+    "./react": {
+      "types": "./dist/react/generated/index.d.ts",
+      "import": "./dist/react/generated/index.js"
+    },
+    "./catalog": {
+      "types": "./dist/catalog.d.ts",
+      "import": "./dist/catalog.js"
+    },
+    "./svg/*": "./dist/svg/*"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs && tsc -p tsconfig.json",
+    "check": "npm run build && npm run lint && npm run format:check && tsc -p test/tsconfig.json && node --test test/*.test.mjs",
+    "preview": "npm run build && node scripts/preview.mjs",
+    "lint": "oxlint catalog.mjs react/*.ts scripts test preview --deny-warnings",
+    "format:check": "prettier --check catalog.mjs react/*.ts scripts test preview README.md DESIGN.md package.json tsconfig.json"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "oxlint": "^1.87.0",
+    "prettier": "^3.9.9",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "rolldown": "^1.2.13",
+    "typescript": "^7.0.2"
+  }
+}

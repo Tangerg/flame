@@ -909,9 +909,10 @@ func TestReducerCarriesLaterPausedCallIdentityAcrossSequentialResumes(t *testing
 			RunID: "run_1", DrainedTools: slices.Clone(first.drained),
 		}}}, firstInterrupted.Interrupts)
 	request := firstInterrupted.Interrupts[0]
-	config.Continuation.approvalVerdicts = map[string]approvalVerdict{
-		request.ItemID: {callID: "call-1", decision: approval.Allow},
+	for _, item := range firstCommit.Items {
+		config.Continuation.items[item.ID()] = item
 	}
+	acceptTestApproval(t, config.Continuation, request.ItemID, "call-1", approval.Allow)
 	resumed := newReducer(config)
 	mustOpen(t, resumed)
 	resumedStart := mustReduce(t, resumed, ToolCallStarted{
@@ -963,9 +964,7 @@ func TestReducerResumeKeepsEditedApprovalIdentityBesideSameNameDrainedTool(t *te
 				CallID: "call_sibling",
 			}},
 		}}})
-	config.Continuation.approvalVerdicts = map[string]approvalVerdict{
-		"item_approval": {callID: "call_approval", decision: approval.Allow},
-	}
+	acceptTestApproval(t, config.Continuation, "item_approval", "call_approval", approval.Allow)
 
 	reducer := newReducer(config)
 	mustOpen(t, reducer)
@@ -1114,9 +1113,7 @@ func TestReducerResumeReusesInterruptedItems(t *testing.T) {
 	config.Continuation = testTreeContinuationOf(Pending{
 		RootRunID:  "run_1",
 		Interrupts: OpenInterruptsOf(interrupts)}, interrupts)
-	config.Continuation.approvalVerdicts = map[string]approvalVerdict{
-		"item_approval": {callID: "call_1", decision: approval.Allow},
-	}
+	acceptTestApproval(t, config.Continuation, "item_approval", "call_1", approval.Allow)
 	reducer := newReducer(config)
 	opening := mustOpen(t, reducer)
 	if len(opening) != 1 {
@@ -1286,6 +1283,9 @@ func TestReducerKeepsQuestionToolLifecycleOpenAcrossHITLResume(t *testing.T) {
 		Continuations: []Continuation{{
 			RunID: "run_1", DrainedTools: slices.Clone(first.drained),
 		}}})
+	for _, item := range parked.parkCommit.Items {
+		config.Continuation.items[item.ID()] = item
+	}
 	resumed := newReducer(config)
 	mustOpen(t, resumed)
 	refired := mustReduce(t, resumed, ToolCallStarted{
@@ -1411,6 +1411,9 @@ func TestReducerResumesOnlyTheSameToolCall(t *testing.T) {
 						CallID: "call_original",
 					}},
 				}}})
+			setTestContinuationTool(t, config.Continuation, "item_original", transcript.ToolInvocation{
+				Name: "lookup", Arguments: mustToolArguments(`{"value":1}`),
+			})
 			reducer := newReducer(config)
 			started := mustReduce(t, reducer, ToolCallStarted{
 				CallID: "call_new", ToolName: "lookup", Arguments: arguments,
@@ -1887,7 +1890,11 @@ func TestReducerOpeningPublishesTheAnswersItsResumeCommitted(t *testing.T) {
 	}
 	mine := answered(config.Opened.ID(), "item_mine")
 	config.Continuation = testTreeContinuation(Pending{RootRunID: config.Opened.ID()})
-	config.Continuation.answeredQuestions = []transcript.Item{mine, answered("run_other", "item_other")}
+	config.Continuation.items = map[string]transcript.Item{"item_mine": mine, "item_other": answered("run_other", "item_other")}
+	config.Continuation.interrupts = []transcript.Interrupt{
+		{ItemID: "item_mine", RunID: config.Opened.ID(), Kind: interrupt.Question},
+		{ItemID: "item_other", RunID: "run_other", Kind: interrupt.Question},
+	}
 
 	opened := mustOpen(t, newReducer(config))
 	if len(opened) != 2 {
@@ -1902,5 +1909,66 @@ func TestReducerOpeningPublishesTheAnswersItsResumeCommitted(t *testing.T) {
 	}
 	if opened[1].Commit != nil {
 		t.Fatal("answered Question re-committed what the resume claim already owns")
+	}
+}
+
+func TestReducerResumeContinuesTheCommittedToolItem(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		started bool
+		finish  bool
+	}{
+		{name: "activation abandoned"},
+		{name: "attempt completed", started: true, finish: true},
+		{name: "attempt abandoned", started: true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			config := testReducerConfig()
+			identity := transcript.ItemIdentity{
+				SessionID: config.Opened.SessionID(), RunID: config.Opened.ID(),
+				ItemID: "item_approval", OccurredAt: config.Opened.CreatedAt(),
+			}
+			original := transcript.ToolInvocation{Name: "shell", Arguments: mustToolArguments(`{"command":"original"}`)}
+			item, err := transcript.NewToolCall(identity, original, tool.SafetyClassExec)
+			if err != nil {
+				t.Fatal(err)
+			}
+			projected := transcript.Interrupt{ItemID: item.ID(), RunID: item.RunID(), Kind: interrupt.Approval,
+				ItemOccurredAt: item.OccurredAt(), Approval: &transcript.Approval{Tool: original}}
+			config.Continuation = testTreeContinuationOf(Pending{
+				RootRunID: item.RunID(), Interrupts: OpenInterruptsOf([]transcript.Interrupt{projected}),
+			}, []transcript.Interrupt{projected})
+			config.Continuation.items[item.ID()] = item
+			acceptTestApproval(t, config.Continuation, item.ID(), "call_approval", approval.Allow)
+			approved := config.Continuation.items[item.ID()]
+			reducer := newReducer(config)
+			mustOpen(t, reducer)
+			if test.started {
+				mustReduce(t, reducer, ToolCallStarted{CallID: "call_approval", ToolName: "shell",
+					Arguments: `{"command":"edited"}`, SafetyClass: tool.SafetyClassSafe})
+			}
+			var events []reduction
+			if test.finish {
+				events = mustFinishTool(t, reducer, ToolCallFinished{CallID: "call_approval", Result: testToolResult(t, "ok")})
+			} else {
+				events = mustReduce(t, reducer, SegmentEnded{Reason: run.OutcomeCanceled})
+			}
+			settled := completedItem(t, events)
+			if settled.ID() != item.ID() || !settled.OccurredAt().Equal(item.OccurredAt()) ||
+				settled.SafetyClass() != tool.SafetyClassExec || settled.ApprovalDecision() != approval.Allow {
+				t.Fatalf("resume rewrote committed Tool facts: %+v", settled.Snapshot())
+			}
+			invocation, _ := settled.ToolInvocation()
+			expected := original.Arguments
+			if test.started {
+				expected = mustToolArguments(`{"command":"edited"}`)
+			}
+			if !invocation.Arguments.Equal(expected) {
+				t.Fatalf("settled input = %s, want %s", invocation.Arguments.Canonical(), expected.Canonical())
+			}
+			if _, err := transcript.Replace(approved, func(transcript.Item) (transcript.Item, error) { return settled, nil }); err != nil {
+				t.Fatalf("settlement bypassed the canonical Item: %v", err)
+			}
+		})
 	}
 }

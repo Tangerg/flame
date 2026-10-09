@@ -42,7 +42,7 @@ export const skillsView = definePlugin({
     ctx.contribute(WORKSPACE_VIEW, {
       id: "skills",
       title: "workspace.view.title.skills",
-      icon: "sparkle",
+      icon: "library",
       order: 80,
       dock: "workspace",
       component: lazy(() => import("./ui/skills/Skills").then((m) => ({ default: m.Skills }))),

@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { chipPresence } from "@/lib/motion";
 import { basename } from "@/lib/path";
 import { Chip, IconButton, LightboxDialog, Pressable, TextEditorDialog, reveal } from "@/ui";
-import { Icon } from "@/ui/icons";
+import { Icon, fileIconName } from "@/ui/icons";
 import { useT } from "@/lib/i18n";
 import { draftMentions, removeMention } from "../application/draftContext";
 import { composerStyles } from "./composerStyles";
@@ -47,7 +47,7 @@ export function ComposerAttachments({
         {mentions.map((mention) => (
           <motion.div key={`${mention.start}:${mention.path}`} {...chipPresence}>
             <Chip
-              icon="filetext"
+              icon={fileIconName(mention.path)}
               title={mention.path}
               onClose={() => onChange(removeMention(value, mention))}
             >
@@ -126,7 +126,7 @@ function PasteChip({
   return (
     <>
       <Chip
-        icon="filetext"
+        icon="file-text"
         kind="attached"
         title={t("composer.paste.review")}
         onOpen={() => setDraft(paste.text)}
@@ -140,7 +140,7 @@ function PasteChip({
         onOpenChange={(open) => {
           if (!open) setDraft(null);
         }}
-        icon={<Icon name="filetext" size="md" />}
+        icon={<Icon name="file-text" size="md" />}
         title={t("composer.paste.title")}
         closeLabel={t("common.close")}
         label={t("composer.paste.title")}

@@ -226,16 +226,14 @@ func (i Item) AbandonToolCall(failure *tool.Failure, finishedAt time.Time) (Item
 }
 
 // AbandonStartedToolCall records an inconclusive started Tool attempt whose
-// executor boundary still supplied an exact execution interval.
+// executor boundary still supplied its admitted input and exact interval.
 func (i Item) AbandonStartedToolCall(
+	invocation ToolInvocation,
 	failure *tool.Failure,
 	executionStartedAt time.Time,
 	finishedAt time.Time,
 ) (Item, error) {
-	if i.tool == nil {
-		return Item{}, errors.New("transcript: ToolCall invocation is absent")
-	}
-	return i.settleToolCall(*i.tool, failure, ItemIncomplete, executionStartedAt, finishedAt)
+	return i.settleToolCall(invocation, failure, ItemIncomplete, executionStartedAt, finishedAt)
 }
 
 // ResolveToolApproval records the exact human verdict accepted for a running
@@ -540,6 +538,9 @@ func (i Item) AnswerQuestion(answers [][]string) (Item, error) {
 	}
 	if i.question.Answered() {
 		return Item{}, errors.New("transcript: Question is already answered")
+	}
+	if answers == nil {
+		return Item{}, errors.New("transcript: accepted Question answers are required")
 	}
 	i.question = cloneQuestion(i.question)
 	i.question.Answers = CloneAnswers(answers)

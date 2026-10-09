@@ -29,7 +29,7 @@ export function ProvidersPane() {
         onRetry={refetch}
         skeletonCount={3}
         empty={{
-          icon: "spark",
+          icon: "server",
           title: t("providers.empty"),
           sub: t("providers.empty.sub"),
         }}

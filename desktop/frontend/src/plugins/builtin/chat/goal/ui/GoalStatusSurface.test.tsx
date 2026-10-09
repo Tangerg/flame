@@ -219,11 +219,13 @@ describe("Goal status surface", () => {
     expect(screen.queryByText("Steps")).toBeNull();
   });
 
-  it("uses the Codex top-tray surface and dedicated Goal glyph", () => {
+  it("uses the top-tray surface and the shared target icon", () => {
     const { container } = render(<GoalStatusSurface />);
 
     const surface = container.querySelector<HTMLElement>('[data-slot="composer-top-tray-surface"]');
     expect(surface).not.toBeNull();
-    expect(surface?.querySelector('[data-slot="goal-glyph"]')).not.toBeNull();
+    const glyph = surface?.querySelector('svg[data-icon-name="target"]');
+    expect(glyph?.getAttribute("viewBox")).toBe("0 0 16 16");
+    expect(glyph?.getAttribute("stroke-width")).toBe("1.25");
   });
 });

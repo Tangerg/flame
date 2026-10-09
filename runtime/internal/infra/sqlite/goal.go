@@ -26,29 +26,36 @@ type GoalStore struct {
 // autonomous-goal persistence surface.
 func NewGoalStore(db *sql.DB) *GoalStore { return &GoalStore{db: db} }
 
-// Get returns the Session's explicit optional Goal.
+// Get reads the Goal and its Run-owned usage from one storage snapshot.
 func (g *GoalStore) Get(ctx context.Context, sessionID string) (goal.Current, error) {
 	unwritten, err := goal.Unwritten(sessionID)
 	if err != nil {
 		return goal.Current{}, err
 	}
-	row := conn(ctx, g.db).QueryRowContext(ctx,
-		`SELECT session_id, objective, status, reason_code, reason_detail, provider, model, reasoning_effort, capabilities, incarnation_id, revision, created_at, updated_at
-		 FROM goals WHERE session_id = ?`, sessionID)
-	snapshot, err := scanGoal(row)
-	if errors.Is(err, sql.ErrNoRows) {
-		return unwritten, nil
-	}
+	current := unwritten
+	err = RunInTx(ctx, g.db, func(ctx context.Context) error {
+		row := conn(ctx, g.db).QueryRowContext(ctx,
+			`SELECT session_id, objective, status, reason_code, reason_detail, provider, model, reasoning_effort, capabilities, incarnation_id, revision, created_at, updated_at
+			 FROM goals WHERE session_id = ?`, sessionID)
+		snapshot, err := scanGoal(row)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		loaded, err := g.restore(ctx, snapshot)
+		if err != nil {
+			return err
+		}
+		current, err = goal.CurrentOf(loaded)
+		if err != nil {
+			return fmt.Errorf("sqlite: own Goal: %w", err)
+		}
+		return nil
+	})
 	if err != nil {
 		return goal.Current{}, err
-	}
-	loaded, err := g.restore(ctx, snapshot)
-	if err != nil {
-		return goal.Current{}, err
-	}
-	current, err := goal.CurrentOf(loaded)
-	if err != nil {
-		return goal.Current{}, fmt.Errorf("sqlite: own Goal: %w", err)
 	}
 	return current, nil
 }
@@ -143,30 +150,37 @@ func (g *GoalStore) ClearIf(ctx context.Context, sessionID string, expected goal
 
 // List returns every stored goal (for the boot reconcile).
 func (g *GoalStore) List(ctx context.Context) ([]goal.Goal, error) {
-	rows, err := conn(ctx, g.db).QueryContext(ctx,
-		`SELECT session_id, objective, status, reason_code, reason_detail, provider, model, reasoning_effort, capabilities, incarnation_id, revision, created_at, updated_at FROM goals`)
+	var out []goal.Goal
+	err := RunInTx(ctx, g.db, func(ctx context.Context) error {
+		rows, err := conn(ctx, g.db).QueryContext(ctx,
+			`SELECT session_id, objective, status, reason_code, reason_detail, provider, model, reasoning_effort, capabilities, incarnation_id, revision, created_at, updated_at FROM goals`)
+		if err != nil {
+			return fmt.Errorf("sqlite: list goals: %w", err)
+		}
+		var snapshots []goal.Snapshot
+		for rows.Next() {
+			snapshot, err := scanGoal(rows)
+			if err != nil {
+				_ = rows.Close()
+				return err
+			}
+			snapshots = append(snapshots, snapshot)
+		}
+		if err := errors.Join(rows.Err(), rows.Close()); err != nil {
+			return fmt.Errorf("sqlite: list goals: %w", err)
+		}
+		out = make([]goal.Goal, 0, len(snapshots))
+		for _, snapshot := range snapshots {
+			loaded, err := g.restore(ctx, snapshot)
+			if err != nil {
+				return err
+			}
+			out = append(out, loaded)
+		}
+		return nil
+	})
 	if err != nil {
-		return nil, fmt.Errorf("sqlite: list goals: %w", err)
-	}
-	var snapshots []goal.Snapshot
-	for rows.Next() {
-		snapshot, err := scanGoal(rows)
-		if err != nil {
-			_ = rows.Close()
-			return nil, err
-		}
-		snapshots = append(snapshots, snapshot)
-	}
-	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
-		return nil, fmt.Errorf("sqlite: list goals: %w", err)
-	}
-	out := make([]goal.Goal, 0, len(snapshots))
-	for _, snapshot := range snapshots {
-		loaded, err := g.restore(ctx, snapshot)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, loaded)
+		return nil, err
 	}
 	return out, nil
 }

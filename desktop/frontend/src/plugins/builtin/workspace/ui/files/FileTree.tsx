@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { useId, useState } from "react";
 import { copyText } from "@/lib/clipboard";
 import { useT } from "@/lib/i18n";
-import { ContextMenu, DataView, Icon, type IconName, Tree, chevron, vocab } from "@/ui";
+import { ContextMenu, DataView, Icon, Tree, chevron, fileIconName, vocab } from "@/ui";
 import {
   rememberWorkspaceView,
   useWorkspaceViewMemory,
@@ -12,17 +12,9 @@ import {
   type WorkspaceFileEntry,
   useWorkspaceListFiles,
 } from "@/plugins/builtin/workspace/application/workspaceQueries";
-import { type FileKind, fileKind } from "@/plugins/builtin/workspace/application/fileKind";
 import { useWorkingTreeFiles } from "@/plugins/builtin/workspace/application/workingTreeChanges";
 import { localWorkspace } from "../../application/ports/localWorkspace";
 import { color, corner, space, type as typeStep } from "@/styles/tokens.stylex";
-
-const KIND_ICON: Record<FileKind, IconName> = {
-  image: "image",
-  document: "filetext",
-  code: "code",
-  file: "file",
-};
 
 const CHANGE_MARK: Record<WorkspaceFileChange["change"], string> = {
   add: "A",
@@ -129,7 +121,7 @@ function TreeNode({
         <span {...stylex.props(ft.indent)} />
       )}
       <Icon
-        name={isDir ? (expanded ? "folder-open" : "folder") : KIND_ICON[fileKind(entry.path)]}
+        name={isDir ? (expanded ? "folder-open" : "folder") : fileIconName(entry.path)}
         size="sm"
         className={stylex.props(vocab.hold, vocab.muted).className}
       />

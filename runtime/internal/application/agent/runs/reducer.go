@@ -10,8 +10,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -80,19 +78,16 @@ type reducer struct {
 }
 
 type openTool struct {
-	argumentsText     string
 	callID            string
 	sourceCallID      string
 	modelCallSequence uint64
 	toolCallIndex     uint32
-	id                string
-	occurredAt        time.Time
+	item              transcript.Item
+	// The executor's admitted attempt input can differ from the reviewed Item
+	// after edits or hooks. Settlement commits this observation into the Item.
+	attemptInvocation transcript.ToolInvocation
 	attemptStartedAt  time.Time
 	finishedAt        time.Time
-	name              string
-	arguments         tool.Arguments
-	safetyClass       tool.SafetyClass
-	approvalDecision  approval.Decision
 }
 
 type toolPosition struct {
@@ -404,14 +399,10 @@ func (r *reducer) startToolCall(started ToolCallStarted) (factReduction, error) 
 	if ref == nil {
 		return factReduction{}, fmt.Errorf("%w: started Tool %q has no open projection", errReducerInvariant, started.CallID)
 	}
-	running, err := r.runningToolItem(ref)
-	if err != nil {
-		return factReduction{}, fmt.Errorf("%w: started Tool %q projection: %w", errReducerInvariant, started.CallID, err)
-	}
-	reduced := factReduction{events: events, items: []transcript.Item{running}}
+	reduced := factReduction{events: events, items: []transcript.Item{ref.item}}
 	if ref.modelCallSequence > 0 {
 		reduced.toolInvocations = []ToolInvocationCommit{{
-			CallID: ref.callID, ItemID: ref.id, SegmentID: r.cfg.Opened.ActiveSegmentID(),
+			CallID: ref.callID, ItemID: ref.item.ID(), SegmentID: r.cfg.Opened.ActiveSegmentID(),
 			State: ToolInvocationStarted, StartedAt: ref.attemptStartedAt,
 		}}
 	}
@@ -496,7 +487,7 @@ func closedToolInvocationCommits(segmentID string, tools []*openTool) []ToolInvo
 		}
 		state := ToolInvocationIncomplete
 		commits = append(commits, ToolInvocationCommit{
-			CallID: ref.callID, ItemID: ref.id, SegmentID: segmentID,
+			CallID: ref.callID, ItemID: ref.item.ID(), SegmentID: segmentID,
 			State: state, StartedAt: ref.attemptStartedAt, FinishedAt: ref.finishedAt,
 		})
 	}
@@ -581,14 +572,9 @@ func (r *reducer) abandonUnconsumedResumeTools() ([]ProjectionEvent, error) {
 	for _, drained := range remaining {
 		resumed := r.resume.callItems[drained.CallID]
 		ref := &openTool{
-			callID:           drained.CallID,
-			sourceCallID:     drained.SourceCallID,
-			id:               drained.ItemID,
-			occurredAt:       resumed.occurredAt,
-			name:             resumed.invocation.Name,
-			arguments:        resumed.invocation.Arguments,
-			argumentsText:    resumed.invocation.ArgumentsText,
-			approvalDecision: resumed.approvalDecision,
+			callID:       drained.CallID,
+			sourceCallID: drained.SourceCallID,
+			item:         resumed,
 		}
 		completed, err := r.abandonUnstartedToolItem(ref)
 		if err != nil {
@@ -632,7 +618,8 @@ func (r *reducer) finishToolResults(batch ToolResultsCommitted) (factReduction, 
 			return factReduction{}, errors.New("runs: result publication call set is not in declared order")
 		}
 		if ref, open := r.tools.get(start.CallID); open {
-			if ref.modelCallSequence != sequence || ref.toolCallIndex != start.ToolCallIndex || ref.sourceCallID != start.SourceCallID || ref.name != start.ToolName {
+			invocation, _ := ref.item.ToolInvocation()
+			if ref.modelCallSequence != sequence || ref.toolCallIndex != start.ToolCallIndex || ref.sourceCallID != start.SourceCallID || invocation.Name != start.ToolName {
 				return factReduction{}, errors.New("runs: result publication differs from its open call")
 			}
 			continue

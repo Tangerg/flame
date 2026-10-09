@@ -17,7 +17,7 @@ export const VISUAL_SETTINGS_PANES = [
   "plugins",
   "usage",
   "connection",
-  "brand-icons",
+  "icons",
   "shortcuts",
 ] as const;
 

@@ -93,8 +93,7 @@ export default defineConfig({
           // Brand marks are deliberately NOT named here. The composer pulls in the ten it
           // draws with whatever imports them, and the icon gallery globs the whole catalogue
           // behind a lazy route; naming the package would put that glob on the startup path,
-          // which is the one place its own laziness cannot reach. Lucide needs no rule at
-          // all — `ui/icons` imports the ninety it draws by name and the rest tree-shakes.
+          // which is the one place its own laziness cannot reach.
           // Markdown pipeline — eager: every rendered message goes through it.
           if (
             id.includes("node_modules/react-markdown/") ||

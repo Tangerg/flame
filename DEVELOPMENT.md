@@ -69,7 +69,7 @@ The graphical client has one required gate, run from `desktop/frontend`:
 npm run check
 ```
 
-Its TypeScript dependencies are installed after `runtime/contract/typescript`. Run the shared client's `npm run check` when changing that boundary, and `npm run check` from `ide` when its consumers are affected. Wails native builds follow the supported targets in `desktop/Taskfile.yml`; a browser build does not prove a native package works.
+Its TypeScript dependencies are installed after `runtime/contract/typescript` and after `icons` has been installed and built. The desktop task graph performs both prerequisites. For direct frontend commands, run `npm ci && npm run build` from `icons` first. Run the shared client's `npm run check` when changing that boundary, and `npm run check` from `ide` when its consumers are affected. Wails native builds follow the supported targets in `desktop/Taskfile.yml`; a browser build does not prove a native package works.
 
 Run `go generate ./...` in Runtime when the protocol catalog changes. Run `go mod tidy` only when imports or dependencies change, and inspect any `go.mod`, `go.sum`, or `go.work.sum` changes before keeping them. Always run `git diff --check`.
 

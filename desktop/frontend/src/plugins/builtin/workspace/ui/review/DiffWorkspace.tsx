@@ -257,7 +257,7 @@ export function DiffWorkspace() {
                   onClick={() => step(1)}
                 />
                 <IconButton
-                  icon={allCollapsed ? "unfold-horizontal" : "fold"}
+                  icon={allCollapsed ? "unfold-vertical" : "fold"}
                   size="sm"
                   title={allCollapsed ? t("diff.nav.expandAll") : t("diff.nav.collapseAll")}
                   onClick={() =>

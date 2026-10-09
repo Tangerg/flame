@@ -189,6 +189,9 @@ func TestAnswerQuestionEnrichesAnImmutablePromptExactlyOnce(t *testing.T) {
 		t.Fatalf("NewQuestion: %v", err)
 	}
 	answers := [][]string{{"B"}}
+	if _, err := prompt.AnswerQuestion(nil); err == nil {
+		t.Fatal("AnswerQuestion accepted an absent answer")
+	}
 	answered, err := prompt.AnswerQuestion(answers)
 	if err != nil {
 		t.Fatalf("AnswerQuestion: %v", err)

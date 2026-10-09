@@ -6,11 +6,6 @@ import { useActiveSessionId } from "@/plugins/builtin/agent/public/session";
 import { useGoalMaterial } from "../application/goalReadModel";
 import { GoalComposerModeOwner } from "../application/goalComposerMode";
 import { goalCanEnterComposerMode } from "../application/goalComposerSubmitMode";
-import { GoalGlyph } from "./GoalGlyph";
-
-const gi = stylex.create({
-  glyph: { height: "var(--icon-sm)", width: "var(--icon-sm)" },
-});
 
 export function GoalModeIndicator() {
   const sessionId = useActiveSessionId();
@@ -57,8 +52,10 @@ function SessionGoalModeIndicator({ sessionId }: { sessionId: string }) {
         onClick={() => owner.deactivate(sessionId)}
       >
         <GlyphSwap
-          rest={<GoalGlyph className={stylex.props(gi.glyph, vocab.hold).className} />}
-          hover={<Icon name="x" size="sm" className={stylex.props(vocab.hold).className} />}
+          rest={
+            <Icon name="target" size="composer" className={stylex.props(vocab.hold).className} />
+          }
+          hover={<Icon name="x" size="composer" className={stylex.props(vocab.hold).className} />}
         />
         <span>{t("goal.mode.label")}</span>
       </Button>

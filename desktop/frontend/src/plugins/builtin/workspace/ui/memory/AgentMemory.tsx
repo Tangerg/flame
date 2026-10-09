@@ -276,9 +276,9 @@ export function AgentMemory() {
 
   if (!available) {
     return (
-      <WorkspaceViewLayout icon="book" title="agentMemory.title">
+      <WorkspaceViewLayout icon="brain" title="agentMemory.title">
         <EmptyState
-          icon="book"
+          icon="brain"
           title={t("agentMemory.unavailable.title")}
           sub={t("agentMemory.unavailable.sub")}
         />
@@ -288,7 +288,7 @@ export function AgentMemory() {
 
   return (
     <WorkspaceViewLayout
-      icon="book"
+      icon="brain"
       title="agentMemory.title"
       sub={t("agentMemory.sub", { pending: pending.length, active: active.length })}
     >
@@ -302,9 +302,13 @@ export function AgentMemory() {
         skeletonCount={3}
         empty={
           enabled
-            ? { icon: "book", title: t("agentMemory.empty.title"), sub: t("agentMemory.empty.sub") }
+            ? {
+                icon: "brain",
+                title: t("agentMemory.empty.title"),
+                sub: t("agentMemory.empty.sub"),
+              }
             : {
-                icon: "book",
+                icon: "brain",
                 title: t("agentMemory.noProject.title"),
                 sub: t("agentMemory.noProject.sub"),
               }

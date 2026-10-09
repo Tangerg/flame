@@ -29,7 +29,7 @@ export function createSchedulesPlugin(runtimeClient: () => FlameClient) {
         label: "settings.pane.schedules",
         description: "schedules.intro",
         group: "agent",
-        icon: "clock",
+        icon: "calendar-clock",
         order: 58,
         component: SchedulesPane,
       });

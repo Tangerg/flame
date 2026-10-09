@@ -3,25 +3,9 @@ import { useMemo, useState } from "react";
 import { EmptyState, ScrollArea, SearchField, SectionLabel, vocab } from "@/ui";
 import { AgentWorkspaceView } from "@/ui/agent";
 import { useT } from "@/lib/i18n";
-import { IconMap, rawToc } from "./iconMap";
-import {
-  color,
-  corner,
-  face,
-  space,
-  surface,
-  type as typeStep,
-  weight,
-} from "@/styles/tokens.stylex";
+import { IconMap, icons } from "./iconMap";
+import { color, face, space, type as typeStep, weight } from "@/styles/tokens.stylex";
 import { gallerySpread, galleryStyles as g } from "./galleryStyles";
-
-type GroupKey = "model" | "provider" | "application";
-
-const GROUP_TITLE_KEYS: Record<GroupKey, string> = {
-  model: "iconGallery.group.model",
-  provider: "iconGallery.group.provider",
-  application: "iconGallery.group.application",
-};
 
 const ig = stylex.create({
   masthead: {
@@ -41,13 +25,6 @@ const ig = stylex.create({
     paddingBottom: space.s3,
   },
   sectionPad: { paddingBottom: space.s2_5 },
-  dot: {
-    height: space.s2,
-    width: space.s2,
-    borderWidth: "var(--hairline-width)",
-    borderStyle: "solid",
-    borderColor: surface.field,
-  },
 });
 
 export function IconGallery() {
@@ -56,24 +33,20 @@ export function IconGallery() {
 
   const items = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return rawToc;
-    return rawToc.filter(
-      (e) => e.fullTitle.toLowerCase().includes(q) || e.id.toLowerCase().includes(q),
+    if (!q) return icons;
+    return icons.filter((e) =>
+      [e.name, e.component, e.label, ...e.tags].join(" ").toLowerCase().includes(q),
     );
   }, [query]);
 
   const grouped = useMemo(() => {
-    const buckets: Record<GroupKey, typeof rawToc> = {
-      model: [],
-      provider: [],
-      application: [],
-    };
-    for (const e of items) {
-      if (e.group in buckets) buckets[e.group as GroupKey].push(e);
+    const buckets = new Map<string, (typeof icons)[number][]>();
+    for (const entry of items) {
+      const bucket = buckets.get(entry.group) ?? [];
+      bucket.push(entry);
+      buckets.set(entry.group, bucket);
     }
-    for (const k of Object.keys(buckets) as GroupKey[]) {
-      buckets[k].sort((a, b) => a.fullTitle.localeCompare(b.fullTitle));
-    }
+    for (const bucket of buckets.values()) bucket.sort((a, b) => a.name.localeCompare(b.name));
     return buckets;
   }, [items]);
 
@@ -81,9 +54,9 @@ export function IconGallery() {
     <AgentWorkspaceView>
       <div {...stylex.props(ig.masthead)}>
         <div>
-          <div {...stylex.props(ig.title, typeStep.displaySm)}>@lobehub/icons</div>
+          <div {...stylex.props(ig.title, typeStep.displaySm)}>{t("iconGallery.title")}</div>
           <div {...stylex.props(ig.sub, typeStep.uiMd)}>
-            {t("iconGallery.subtitle", { count: rawToc.length })}
+            {t("iconGallery.subtitle", { count: icons.length })}
           </div>
         </div>
         <SearchField
@@ -98,25 +71,26 @@ export function IconGallery() {
       </div>
 
       <ScrollArea>
-        {(Object.keys(grouped) as GroupKey[]).map((key) => {
-          const list = grouped[key];
-          if (list.length === 0) return null;
-          return (
-            <section key={key} {...stylex.props(ig.section)}>
-              <SectionLabel
-                className={stylex.props(ig.sectionPad).className}
-                trailing={<span {...stylex.props(g.count)}>{list.length}</span>}
-              >
-                {t(GROUP_TITLE_KEYS[key])}
-              </SectionLabel>
-              <div {...stylex.props(gallerySpread.large)}>
-                {list.map((entry) => (
-                  <IconCard key={entry.id} entry={entry} />
-                ))}
-              </div>
-            </section>
-          );
-        })}
+        {[...grouped]
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([key, list]) => {
+            if (list.length === 0) return null;
+            return (
+              <section key={key} {...stylex.props(ig.section)}>
+                <SectionLabel
+                  className={stylex.props(ig.sectionPad).className}
+                  trailing={<span {...stylex.props(g.count)}>{list.length}</span>}
+                >
+                  {t(`iconGallery.group.${key.toLowerCase()}`)}
+                </SectionLabel>
+                <div {...stylex.props(gallerySpread.large)}>
+                  {list.map((entry) => (
+                    <IconCard key={entry.name} entry={entry} />
+                  ))}
+                </div>
+              </section>
+            );
+          })}
         {items.length === 0 && (
           <EmptyState icon="search" title={t("iconGallery.empty", { q: query })} />
         )}
@@ -125,21 +99,16 @@ export function IconGallery() {
   );
 }
 
-function IconCard({ entry }: { entry: (typeof rawToc)[number] }) {
-  const Component = IconMap[entry.id];
+function IconCard({ entry }: { entry: (typeof icons)[number] }) {
+  const Component = IconMap[entry.component]!;
   return (
-    <div title={`${entry.fullTitle} — ${entry.id}`} {...stylex.props(g.card, g.cardLarge)}>
+    <div title={`${entry.component} — ${entry.name}`} {...stylex.props(g.card, g.cardLarge)}>
       <div {...stylex.props(g.plate, g.plateLarge)}>
-        {Component ? <Component size={28} /> : <span {...stylex.props(g.missing)}>?</span>}
+        <Component size={24} />
       </div>
-      <div {...stylex.props(g.name, typeStep.uiSm)}>{entry.fullTitle}</div>
+      <div {...stylex.props(g.name, typeStep.uiSm)}>{entry.component}</div>
       <div {...stylex.props(vocab.lineTight, typeStep.uiXs)}>
-        <span
-          title={entry.color}
-          className={stylex.props(ig.dot, corner.pill).className}
-          style={{ background: entry.color }}
-        />
-        <code {...stylex.props(vocab.muted, typeStep.uiXs, face.mono)}>{entry.id}</code>
+        <code {...stylex.props(vocab.muted, typeStep.uiXs, face.mono)}>{entry.name}</code>
       </div>
     </div>
   );

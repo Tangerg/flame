@@ -41,7 +41,7 @@ export function McpServersPane() {
         onRetry={refetch}
         skeletonCount={3}
         empty={{
-          icon: "tool",
+          icon: "server",
           title: t("mcp.empty"),
           sub: t("mcp.empty.sub"),
         }}

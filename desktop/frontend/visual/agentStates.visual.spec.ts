@@ -497,7 +497,7 @@ test("the standing goal stays in the composer stack instead of claiming the tran
   expect(Math.abs(composerBox!.width - goalBox!.width)).toBeLessThanOrEqual(1);
   expect(composerBox!.y - (goalBox!.y + goalBox!.height)).toBeGreaterThanOrEqual(-1);
   expect(composerBox!.y - (goalBox!.y + goalBox!.height)).toBeLessThanOrEqual(0);
-  await expect(goal.locator('[data-slot="goal-glyph"]')).toBeVisible();
+  await expect(goal.locator('svg[data-icon-name="target"]')).toBeVisible();
 });
 
 test("the composer context ring exposes the Runtime window occupancy", async ({ page }) => {

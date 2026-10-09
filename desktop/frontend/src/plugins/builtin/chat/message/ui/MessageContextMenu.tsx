@@ -110,7 +110,7 @@ export function MessageContextMenu({ msg, children }: Props) {
               </ContextMenu.SubmenuRoot>
             )}
             {menu.user.fork && (
-              <ContextMenu.IconItem icon="branch" onSelect={() => forkFromMessage(msg)}>
+              <ContextMenu.IconItem icon="fork" onSelect={() => forkFromMessage(msg)}>
                 {t("msgActions.fork")}
               </ContextMenu.IconItem>
             )}

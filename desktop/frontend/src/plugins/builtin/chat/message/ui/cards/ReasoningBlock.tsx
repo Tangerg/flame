@@ -129,7 +129,7 @@ export function ReasoningBlock({ text, status }: Props) {
 
   return (
     <AgentActivityDisclosure
-      icon="sparkle"
+      icon="brain"
       shell="line"
       label={streaming ? <Loader text={label} /> : label}
       detail={

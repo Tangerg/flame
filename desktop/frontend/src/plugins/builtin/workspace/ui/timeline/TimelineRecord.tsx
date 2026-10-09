@@ -51,14 +51,14 @@ const styles = stylex.create({
 });
 
 const KIND: Record<TimelineKind, { icon: IconName; labelKey: string }> = {
-  run: { icon: "branch", labelKey: "timeline.kind.run" },
+  run: { icon: "activity", labelKey: "timeline.kind.run" },
   model: { icon: "bot", labelKey: "timeline.kind.model" },
   toolCall: { icon: "tool", labelKey: "timeline.kind.tool" },
   userMessage: { icon: "user", labelKey: "timeline.kind.input" },
   agentMessage: { icon: "chat", labelKey: "timeline.kind.output" },
   reasoning: { icon: "brain", labelKey: "timeline.kind.reasoning" },
-  question: { icon: "chat", labelKey: "timeline.kind.question" },
-  compaction: { icon: "history", labelKey: "timeline.kind.compaction" },
+  question: { icon: "question", labelKey: "timeline.kind.question" },
+  compaction: { icon: "fold", labelKey: "timeline.kind.compaction" },
 };
 
 export function TimelineRecord({

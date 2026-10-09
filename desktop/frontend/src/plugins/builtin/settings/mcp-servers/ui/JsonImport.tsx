@@ -50,7 +50,7 @@ export function JsonImport() {
   if (!open) {
     return (
       <TextButton onClick={() => setOpen(true)}>
-        <Icon name="download" size="sm" />
+        <Icon name="file-braces" size="sm" />
         {t("mcp.import")}
       </TextButton>
     );

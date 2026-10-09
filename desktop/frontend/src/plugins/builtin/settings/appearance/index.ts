@@ -32,7 +32,7 @@ export default definePlugin({
       ],
       description: "settings.appearance.hero",
       group: "general",
-      icon: "sun",
+      icon: "palette",
       order: 0,
       component: AppearancePane,
     });

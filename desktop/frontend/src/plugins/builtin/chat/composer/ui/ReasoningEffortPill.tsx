@@ -19,14 +19,23 @@ const styles = stylex.create({
     gap: "1.5px",
   },
   bar: { width: "2px", backgroundColor: "currentColor" },
+  composerMeter: { height: "var(--icon-composer)", width: "var(--icon-composer)" },
   unlit: { opacity: 0.28 },
   row: { gap: space.s2 },
 });
 
-function EffortMeter({ index, count }: { index: number; count: number }) {
+function EffortMeter({
+  index,
+  count,
+  size = "sm",
+}: {
+  index: number;
+  count: number;
+  size?: "sm" | "composer";
+}) {
   const bars = Math.max(1, count - 1);
   return (
-    <span aria-hidden {...stylex.props(styles.meter)}>
+    <span aria-hidden {...stylex.props(styles.meter, size === "composer" && styles.composerMeter)}>
       {Array.from({ length: bars }, (_, bar) => (
         <span
           key={bar}
@@ -55,7 +64,9 @@ export function ReasoningEffortPill() {
             type="button"
             aria-label={t("composer.switchReasoningEffort")}
             variant="ghost"
-            leading={<EffortMeter index={levels.indexOf(current)} count={levels.length} />}
+            leading={
+              <EffortMeter index={levels.indexOf(current)} count={levels.length} size="composer" />
+            }
             label={reasoningEffortLabel(current, t)}
             labelVisibility="wide"
           />

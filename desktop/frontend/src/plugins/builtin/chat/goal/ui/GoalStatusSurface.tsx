@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useState } from "react";
-import { Button, IconButton, TextEditorDialog, vocab } from "@/ui";
+import { Button, Icon, IconButton, TextEditorDialog, vocab } from "@/ui";
 import { AgentComposerTopTraySurface } from "@/ui/agent";
 import { color } from "@/styles/tokens.stylex";
 
@@ -30,7 +30,6 @@ import {
   runtimeCommandsAvailable,
   useRuntimeCommandsAvailable,
 } from "@/plugins/builtin/runtime/public/serviceStatus";
-import { GoalGlyph } from "./GoalGlyph";
 import { space } from "@/styles/tokens.stylex";
 
 const gs = stylex.create({
@@ -43,8 +42,6 @@ const gs = stylex.create({
     paddingInline: space.s3,
     paddingBlock: space.s1,
   },
-  glyph: { height: "var(--icon-sm)", width: "var(--icon-sm)" },
-  bigGlyph: { height: "var(--icon-lg)", width: "var(--icon-lg)" },
   summary: {
     minHeight: space.s6,
     textDecorationLine: "underline",
@@ -137,7 +134,11 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
     <>
       <div data-slot="goal-status-row" {...stylex.props(gs.bar)}>
         <div {...stylex.props(vocab.line, vocab.fill)}>
-          <GoalGlyph className={stylex.props(gs.glyph, vocab.hold, vocab.faint).className} />
+          <Icon
+            name="target"
+            size="sm"
+            className={stylex.props(vocab.hold, vocab.faint).className}
+          />
           <Button
             type="button"
             data-goal="summary"
@@ -199,12 +200,7 @@ function GoalRow({ goal }: { goal: GoalReadModel }) {
         onOpenChange={(open) => {
           if (!editAction.busy) setEditing(open);
         }}
-        icon={
-          <GoalGlyph
-            aria-hidden="true"
-            className={stylex.props(gs.bigGlyph, vocab.muted).className}
-          />
-        }
+        icon={<Icon name="target" size="lg" className={stylex.props(vocab.muted).className} />}
         title={t("goal.edit.title")}
         closeLabel={t("common.close")}
         label={t("goal.edit.label")}

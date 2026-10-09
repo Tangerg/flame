@@ -24,7 +24,7 @@ export function ProviderSetupPrompt() {
   return (
     <Surface className={stylex.props(ps.card).className}>
       <div {...stylex.props(ps.row)}>
-        <Icon name="spark" size="md" className={stylex.props(ps.glyph).className} />
+        <Icon name="server" size="md" className={stylex.props(ps.glyph).className} />
         <div {...stylex.props(ps.stack)}>
           <div {...stylex.props(ps.title, typeStep.uiMd)}>{t("providers.setup.title")}</div>
           <p {...stylex.props(ps.body, typeStep.uiMd)}>{t("providers.setup.sub")}</p>

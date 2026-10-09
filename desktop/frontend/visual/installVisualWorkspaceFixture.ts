@@ -10,7 +10,7 @@ import { workbenchSettings } from "@/plugins/builtin/shell/workbench";
 import appearanceSettings from "@/plugins/builtin/settings/appearance";
 import { createProvidersPlugin } from "@/plugins/builtin/providers";
 import approvalsSettings from "@/plugins/builtin/settings/approvals";
-import brandIconsSettings from "@/plugins/builtin/settings/icon-gallery";
+import iconsSettings from "@/plugins/builtin/settings/icon-gallery";
 import diagnosticsView from "@/plugins/builtin/workspace/diagnostics";
 import connectionSettings from "@/plugins/builtin/settings/connection-settings";
 import { createHooksPlugin } from "@/plugins/builtin/settings/hooks";
@@ -638,7 +638,7 @@ export async function installVisualWorkspaceFixture(
     createProvidersPlugin(runtimeClient),
     shortcutsSettings,
     approvalsSettings,
-    brandIconsSettings,
+    iconsSettings,
     connectionSettings,
     createHooksPlugin(runtimeClient),
     createMCPServersPlugin(runtimeClient),

@@ -1,4 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { act, render } from "@testing-library/react";
+import { createElement } from "react";
+import { Icon } from "@/ui/icons";
 import { ACCENT, COLOR_THEME, VISUAL_STYLE } from "@/plugins/sdk/kernelPoints";
 import { useAppearanceStore } from "@/plugins/builtin/theme/adapters/appearanceStore";
 import { installDocumentAppearance } from "./documentAppearance";
@@ -317,6 +320,16 @@ describe("visual-style contract", () => {
 });
 
 describe("UI preference DOM synchronization", () => {
+  it("publishes the same font-derived size to SVGs and CSS layout tokens", () => {
+    const { container, unmount } = render(createElement(Icon, { name: "bell", size: "lg" }));
+    act(() => useAppearanceStore.getState().setFontSize(16));
+    const svg = container.querySelector("svg")!;
+    expect(document.documentElement.style.getPropertyValue("--icon-lg")).toBe("22px");
+    expect(svg.style.width).toBe("22px");
+    expect(svg.getAttribute("viewBox")).toBe("0 0 24 24");
+    unmount();
+  });
+
   it("applies and clears font preferences", async () => {
     const state = useAppearanceStore.getState();
     state.setUiFont("Inter");

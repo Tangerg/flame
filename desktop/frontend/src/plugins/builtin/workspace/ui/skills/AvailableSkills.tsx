@@ -51,12 +51,12 @@ export function AvailableSkills() {
         empty={
           skillsEnabled
             ? {
-                icon: "sparkle",
+                icon: "book-open",
                 title: t("skills.empty.title"),
                 sub: t("skills.empty.sub"),
               }
             : {
-                icon: "sparkle",
+                icon: "book-open",
                 title: t("skills.disabled.title"),
                 sub: t("skills.disabled.sub"),
               }
@@ -121,7 +121,11 @@ function SkillDetail({ cwd, name }: { cwd?: string; name: string }) {
       failure={error}
       onRetry={refetch}
       skeletonCount={1}
-      empty={{ icon: "file", title: t("skills.body.empty.title"), sub: t("skills.body.empty.sub") }}
+      empty={{
+        icon: "book-open",
+        title: t("skills.body.empty.title"),
+        sub: t("skills.body.empty.sub"),
+      }}
     >
       {(rows) =>
         rows.map((detail) => (

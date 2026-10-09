@@ -2,6 +2,7 @@ package runs
 
 import (
 	"cmp"
+	"errors"
 	"fmt"
 	"slices"
 	"time"
@@ -66,11 +67,8 @@ func (r *reducer) projectInterruptedTools(
 			}
 			continue
 		}
-		suspended, err := r.suspendedToolItem(ref)
-		if err != nil {
-			return err
-		}
-		projection.items = append(projection.items, suspended)
+		r.endToolAttempt(ref)
+		projection.items = append(projection.items, ref.item)
 	}
 	return nil
 }
@@ -165,11 +163,8 @@ func (r *reducer) suspend(duration time.Duration) (factReduction, error) {
 		drainedToolRefs(open, nil),
 	)
 	for _, ref := range open {
-		suspended, suspendedToolItemErr := r.suspendedToolItem(ref)
-		if suspendedToolItemErr != nil {
-			return factReduction{}, suspendedToolItemErr
-		}
-		parkItems = append(parkItems, suspended)
+		r.endToolAttempt(ref)
+		parkItems = append(parkItems, ref.item)
 	}
 	r.segmentDuration = duration
 	waiting, err := r.runRecord(run.Waiting)
@@ -208,26 +203,21 @@ func (r *reducer) approvalItem(prompt ApprovalPrompt, ref *openTool) (transcript
 	if err != nil {
 		return transcript.Item{}, false, fmt.Errorf("approval tool %q arguments: %w", prompt.Tool.ModelName(), err)
 	}
-	var id string
-	var startedAt time.Time
-	publishStart := false
 	if ref != nil {
-		id, startedAt = ref.id, ref.occurredAt
-	} else {
-		identity, reused, identityErr := r.reuseOrCreateToolItem(prompt.CallID)
-		if identityErr != nil {
-			return transcript.Item{}, false, identityErr
+		invocation, _ := ref.item.ToolInvocation()
+		if invocation.Name != prompt.Tool.ModelName() {
+			return transcript.Item{}, false, errors.New("approval prompt changes Tool identity")
 		}
-		id, startedAt = identity.id, identity.occurredAt
-		publishStart = !reused
-		r.removeDrained(id)
+		return ref.item, false, nil
 	}
-	item, err := transcript.NewToolCall(
-		r.itemIdentity(id, startedAt),
-		*newToolInvocation(prompt.Tool.ModelName(), arguments, nil),
-		prompt.SafetyClass,
+	item, reused, err := r.reuseOrCreateToolItem(
+		prompt.CallID, *newToolInvocation(prompt.Tool.ModelName(), arguments, nil), prompt.SafetyClass,
 	)
-	return item, publishStart, err
+	if err != nil {
+		return transcript.Item{}, false, err
+	}
+	r.removeDrained(item.ID())
+	return item, !reused, nil
 }
 
 func approvalTranscriptInterrupt(item transcript.Item, prompt ApprovalPrompt) transcript.Interrupt {
@@ -274,7 +264,7 @@ func drainedToolRefs(
 		_, activeApproval := matched[ref]
 		if !activeApproval {
 			drained = append(drained, DrainedTool{
-				ItemID: ref.id, CallID: ref.callID, SourceCallID: ref.sourceCallID,
+				ItemID: ref.item.ID(), CallID: ref.callID, SourceCallID: ref.sourceCallID,
 			})
 		}
 	}
@@ -304,11 +294,7 @@ func (r *reducer) removeDrained(itemID string) {
 
 func (r *reducer) incompleteStartedToolItem(ref *openTool) (ItemCompleted, error) {
 	r.endToolAttempt(ref)
-	item, err := r.runningToolItem(ref)
-	if err != nil {
-		return ItemCompleted{}, err
-	}
-	item, err = item.AbandonStartedToolCall(nil, ref.attemptStartedAt, ref.finishedAt)
+	item, err := ref.item.AbandonStartedToolCall(ref.attemptInvocation, nil, ref.attemptStartedAt, ref.finishedAt)
 	if err != nil {
 		return ItemCompleted{}, err
 	}
@@ -317,23 +303,14 @@ func (r *reducer) incompleteStartedToolItem(ref *openTool) (ItemCompleted, error
 
 func (r *reducer) abandonUnstartedToolItem(ref *openTool) (ItemCompleted, error) {
 	finishedAt := r.now()
-	if finishedAt.Before(ref.occurredAt) {
+	if finishedAt.Before(ref.item.OccurredAt()) {
 		return ItemCompleted{}, fmt.Errorf("tool call %q finish time precedes occurrence time", ref.callID)
 	}
-	item, err := r.runningToolItem(ref)
-	if err != nil {
-		return ItemCompleted{}, err
-	}
-	item, err = item.AbandonToolCall(nil, finishedAt)
+	item, err := ref.item.AbandonToolCall(nil, finishedAt)
 	if err != nil {
 		return ItemCompleted{}, err
 	}
 	return ItemCompleted{Item: item}, nil
-}
-
-func (r *reducer) suspendedToolItem(ref *openTool) (transcript.Item, error) {
-	r.endToolAttempt(ref)
-	return r.runningToolItem(ref)
 }
 
 // endToolAttempt stamps the moment this attempt stopped occupying its tool.

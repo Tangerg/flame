@@ -221,7 +221,7 @@ func TestToolCallTimingLifecycle(t *testing.T) {
 	if _, known := abandoned.ExecutionDuration(); known {
 		t.Fatal("unstarted abandonment fabricated an execution duration")
 	}
-	startedAbandonment, err := running.AbandonStartedToolCall(nil, executionStartedAt, finishedAt)
+	startedAbandonment, err := running.AbandonStartedToolCall(invocation, nil, executionStartedAt, finishedAt)
 	if err != nil {
 		t.Fatalf("AbandonStartedToolCall(): %v", err)
 	}

@@ -1,236 +1,197 @@
-import type { LucideIcon } from "lucide-react";
-import { memo, type CSSProperties } from "react";
-import type { IconSize } from "@/lib/iconScale";
+import { memo } from "react";
 import {
   Activity,
+  ClipboardList,
+  ToolSearch,
+  MemorySearch,
+  CloudDownload,
+  WebSearch,
+  FileOutput,
+  FileImage,
+  FileCode,
+  FileDiff,
+  Grid2,
+  GitFork,
+  Workflow,
+  Network,
+  Server,
+  Shield,
+  ExternalLink,
+  Stop,
+  Alert,
   Archive,
   ArrowLeft,
   ArrowRight,
   ArrowUp,
-  ArrowUpRight,
   Bell,
+  BellOff,
   Blocks,
   Book,
   BookOpen,
   Bot,
   Brain,
+  BrainOff,
   Bug,
   CalendarPlus,
+  CalendarClock,
   CalendarX,
   ChartColumn,
   Check,
-  Circle,
-  CircleCheck,
-  CircleDot,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
-  CircleQuestionMark,
+  Circle,
+  CircleCheck,
+  CircleDot,
+  CircleInfo,
+  CircleX,
   ClipboardCheck,
   Clock,
+  CloseAll,
+  CloseOthers,
   Code,
-  Columns2,
+  Columns,
   Command,
+  Compose,
   Copy,
-  CopyX,
   Crosshair,
   Diff,
   Download,
   Ellipsis,
   Eye,
+  EyeOff,
   File,
+  FileArchive,
+  FileBraces,
+  FileEdit,
+  FileMusic,
+  FilePdf,
+  FileSpreadsheet,
   FileText,
+  FileVideo,
   Flag,
-  FoldVertical,
+  Fold,
   Folder,
   FolderOpen,
   FolderSearch,
   Gauge,
-  GitBranch,
   Globe,
+  History,
   Image,
+  Keyboard,
   Library,
+  Lightning,
   List,
   ListChecks,
-  ListX,
   Map,
   Maximize,
-  MessageSquare,
+  Message,
   Moon,
   PackageSearch,
+  Palette,
   PanelLeft,
   PanelRight,
   Paperclip,
   Pause,
   Pencil,
+  Pin,
+  PinOff,
   Play,
+  Plug,
+  PlugOff,
   Plus,
-  RefreshCw,
+  Quote,
+  CircleQuestion,
+  Refresh,
   Replace,
-  RotateCcwClock,
   ScrollText,
   Search,
   Send,
   Settings,
-  Share2,
-  ShieldCheck,
+  Share,
   SkipBack,
   Sparkle,
   Sparkles,
-  Square,
-  SquarePen,
   Star,
+  Strikethrough,
   Sun,
   Target,
   Terminal,
   TextSearch,
-  TextWrap,
   ThumbsDown,
   ThumbsUp,
   Trash,
-  TriangleAlert,
   UnfoldHorizontal,
+  UnfoldVertical,
   User,
   Users,
   Webhook,
+  WrapText,
   Wrench,
   X,
-  Zap,
   ZoomIn,
   ZoomOut,
-} from "lucide-react";
-
-export type IconName =
-  | "search"
-  | "plus"
-  | "zoom-in"
-  | "zoom-out"
-  | "chat"
-  | "folder"
-  | "folder-open"
-  | "code"
-  | "terminal"
-  | "file"
-  | "filetext"
-  | "send"
-  | "stop"
-  | "play"
-  | "pause"
-  | "settings"
-  | "sun"
-  | "moon"
-  | "share"
-  | "more"
-  | "x"
-  | "check"
-  | "circle"
-  | "circle-check"
-  | "circle-dot"
-  | "branch"
-  | "globe"
-  | "book"
-  | "history"
-  | "tool"
-  | "sparkle"
-  | "thumbs-up"
-  | "thumbs-down"
-  | "edit"
-  | "image"
-  | "command"
-  | "panel-l"
-  | "panel-r"
-  | "user"
-  | "spark"
-  | "skip-back"
-  | "fold"
-  | "columns"
-  | "gauge"
-  | "open"
-  | "compose"
-  | "close-others"
-  | "close-all"
-  | "maximize"
-  | "diff"
-  | "list"
-  | "chart"
-  | "clock"
-  | "bell"
-  | "lightning"
-  | "bug"
-  | "shield"
-  | "loop"
-  | "copy"
-  | "chevron-up"
-  | "chevron-down"
-  | "chevron-left"
-  | "chevron-right"
-  | "arrow-left"
-  | "arrow-right"
-  | "arrow-up"
-  | "trash"
-  | "alert"
-  | "eye"
-  | "folder-search"
-  | "download"
-  | "bot"
-  | "question"
-  | "star"
-  | "scroll"
-  | "replace"
-  | "text-search"
-  | "webhook"
-  | "library"
-  | "book-open"
-  | "paperclip"
-  | "users"
-  | "map"
-  | "list-checks"
-  | "flag"
-  | "brain"
-  | "package-search"
-  | "archive"
-  | "calendar-plus"
-  | "calendar-x"
-  | "activity"
-  | "blocks"
-  | "target"
-  | "crosshair"
-  | "clipboard-check"
-  | "unfold-horizontal"
-  | "wrap-text";
+  type IconComponent,
+  type IconProps,
+} from "@flame/icons/react";
+import { useUiFontSize } from "@/lib/appearance";
+import { iconSizePx } from "@/lib/iconScale";
+import type { IconSize } from "@/lib/iconScale";
 
 const ICON_MAP = {
+  server: Server,
+  network: Network,
+  workflow: Workflow,
+  fork: GitFork,
+  "grid-2": Grid2,
+  "file-diff": FileDiff,
+  "file-text": FileText,
+  "file-image": FileImage,
+  "file-code": FileCode,
+  "file-output": FileOutput,
+  "file-archive": FileArchive,
+  "file-braces": FileBraces,
+  "file-edit": FileEdit,
+  "file-music": FileMusic,
+  "file-pdf": FilePdf,
+  "file-spreadsheet": FileSpreadsheet,
+  "file-video": FileVideo,
+  "web-search": WebSearch,
+  "cloud-download": CloudDownload,
+  "memory-search": MemorySearch,
+  "tool-search": ToolSearch,
+  "clipboard-list": ClipboardList,
   activity: Activity,
   search: Search,
   plus: Plus,
   "zoom-in": ZoomIn,
   "zoom-out": ZoomOut,
-  chat: MessageSquare,
+  chat: Message,
   folder: Folder,
   "folder-open": FolderOpen,
   code: Code,
   terminal: Terminal,
   file: File,
-  filetext: FileText,
   send: Send,
-  stop: Square,
+  stop: Stop,
   play: Play,
   pause: Pause,
   settings: Settings,
   sun: Sun,
   moon: Moon,
-  share: Share2,
+  share: Share,
   more: Ellipsis,
   x: X,
   check: Check,
   circle: Circle,
   "circle-check": CircleCheck,
   "circle-dot": CircleDot,
-  branch: GitBranch,
+  info: CircleInfo,
+  "circle-x": CircleX,
   globe: Globe,
   book: Book,
-  history: RotateCcwClock,
+  history: History,
   tool: Wrench,
   sparkle: Sparkle,
   "thumbs-up": ThumbsUp,
@@ -238,29 +199,33 @@ const ICON_MAP = {
   edit: Pencil,
   image: Image,
   command: Command,
+  keyboard: Keyboard,
+  palette: Palette,
+  quote: Quote,
   "panel-l": PanelLeft,
   "panel-r": PanelRight,
   user: User,
   spark: Sparkles,
   "skip-back": SkipBack,
-  fold: FoldVertical,
-  columns: Columns2,
+  fold: Fold,
+  columns: Columns,
   gauge: Gauge,
-  open: ArrowUpRight,
-  compose: SquarePen,
-  "close-others": CopyX,
-  "close-all": ListX,
+  open: ExternalLink,
+  compose: Compose,
+  "close-others": CloseOthers,
+  "close-all": CloseAll,
   maximize: Maximize,
   diff: Diff,
   list: List,
   chart: ChartColumn,
   clock: Clock,
+  "calendar-clock": CalendarClock,
   bell: Bell,
   blocks: Blocks,
-  lightning: Zap,
+  lightning: Lightning,
   bug: Bug,
-  shield: ShieldCheck,
-  loop: RefreshCw,
+  shield: Shield,
+  loop: Refresh,
   copy: Copy,
   "chevron-up": ChevronUp,
   "chevron-down": ChevronDown,
@@ -270,12 +235,12 @@ const ICON_MAP = {
   "arrow-right": ArrowRight,
   "arrow-up": ArrowUp,
   trash: Trash,
-  alert: TriangleAlert,
+  alert: Alert,
   eye: Eye,
   "folder-search": FolderSearch,
   download: Download,
   bot: Bot,
-  question: CircleQuestionMark,
+  question: CircleQuestion,
   star: Star,
   scroll: ScrollText,
   replace: Replace,
@@ -297,8 +262,20 @@ const ICON_MAP = {
   crosshair: Crosshair,
   "clipboard-check": ClipboardCheck,
   "unfold-horizontal": UnfoldHorizontal,
-  "wrap-text": TextWrap,
-} satisfies Record<IconName, LucideIcon>;
+  "unfold-vertical": UnfoldVertical,
+  "wrap-text": WrapText,
+
+  "bell-off": BellOff,
+  "brain-off": BrainOff,
+  "eye-off": EyeOff,
+  pin: Pin,
+  "pin-off": PinOff,
+  plug: Plug,
+  "plug-off": PlugOff,
+  strikethrough: Strikethrough,
+} satisfies Record<string, IconComponent>;
+
+export type IconName = keyof typeof ICON_MAP;
 
 export const ICON_NAMES: ReadonlySet<IconName> = new Set(Object.keys(ICON_MAP) as IconName[]);
 
@@ -309,32 +286,23 @@ export function knownIconName(value: string | null | undefined): IconName | unde
 interface Props {
   name: IconName;
   size?: IconSize;
-  style?: CSSProperties;
+  style?: IconProps["style"];
   className?: string;
   full?: boolean;
 }
 
-const SIZE_STYLE = Object.fromEntries(
-  (["xs", "sm", "md", "lg", "xl"] as const).map((size) => [
-    size,
-    {
-      width: `var(--icon-${size})`,
-      height: `var(--icon-${size})`,
-      strokeWidth: `var(--icon-stroke-${size})`,
-    },
-  ]),
-) as Readonly<Record<IconSize, CSSProperties>>;
-
 export const Icon = memo(function Icon({ name, size = "sm", style, className, full }: Props) {
+  const fontSize = useUiFontSize();
+  const pixels = iconSizePx(size, fontSize);
   const Glyph = ICON_MAP[name];
-  if (!Glyph) return null;
   return (
     <Glyph
       aria-hidden="true"
       data-icon-name={name}
       data-glyph={full ? "full" : undefined}
       className={className}
-      style={style ? { ...SIZE_STYLE[size], ...style } : SIZE_STYLE[size]}
+      size={pixels}
+      style={style}
     />
   );
 });

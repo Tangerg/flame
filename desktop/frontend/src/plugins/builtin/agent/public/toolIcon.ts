@@ -28,3 +28,10 @@ export function toolCallIconFor(tool: ToolCall): IconName {
   if (tool.status === "denied") return "stop";
   return toolIconFor(toolRoutingKey(tool));
 }
+
+export function toolGroupIconFor(tools: readonly ToolCall[]): IconName {
+  const first = tools[0];
+  if (!first) return "activity";
+  const icon = toolIconFor(toolRoutingKey(first));
+  return tools.every((tool) => toolIconFor(toolRoutingKey(tool)) === icon) ? icon : "activity";
+}

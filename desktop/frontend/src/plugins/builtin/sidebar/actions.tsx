@@ -45,10 +45,10 @@ export function SidebarActions() {
         >
           {t("sidebar.action.newSession")}
         </AgentRow>
-        <AgentRow icon="clock" onClick={() => openWorkspaceSettingsPane(SCHEDULES_PANE)}>
+        <AgentRow icon="calendar-clock" onClick={() => openWorkspaceSettingsPane(SCHEDULES_PANE)}>
           {t("settings.pane.schedules")}
         </AgentRow>
-        <AgentRow icon="tool" onClick={() => openWorkspaceSettingsPane(MCP_SERVERS_PANE)}>
+        <AgentRow icon="server" onClick={() => openWorkspaceSettingsPane(MCP_SERVERS_PANE)}>
           {t("sidebar.action.tools")}
         </AgentRow>
       </div>

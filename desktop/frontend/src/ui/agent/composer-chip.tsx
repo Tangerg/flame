@@ -48,7 +48,7 @@ export function AgentComposerChip({
       >
         {label}
       </span>
-      <Icon name="chevron-down" size="sm" {...stylex.props(chipStyles.chevron)} />
+      <Icon name="chevron-down" size="composer" {...stylex.props(chipStyles.chevron)} />
     </Button>
   );
 }

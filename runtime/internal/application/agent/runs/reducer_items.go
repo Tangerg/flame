@@ -399,16 +399,15 @@ func (r *reducer) toolStart(e ToolCallStarted) ([]ProjectionEvent, error) {
 	out = append(out, SegmentProgressed{Progress: Progress{
 		Step: &step, Activity: e.Activity,
 	}})
-	identity, reused, err := r.reuseOrCreateToolItem(e.CallID)
+	invocation := transcript.ToolInvocation{Name: e.ToolName, Arguments: arguments, ArgumentsText: e.ArgumentsText}
+	item, reused, err := r.reuseOrCreateToolItem(e.CallID, invocation, e.SafetyClass)
 	if err != nil {
 		return nil, err
 	}
 	ref := &openTool{
 		callID: e.CallID, sourceCallID: e.SourceCallID,
 		modelCallSequence: e.ModelCallSequence, toolCallIndex: e.ToolCallIndex,
-		id: identity.id, occurredAt: identity.occurredAt, attemptStartedAt: r.now(),
-		name: e.ToolName, arguments: arguments, argumentsText: e.ArgumentsText, safetyClass: e.SafetyClass,
-		approvalDecision: identity.approvalDecision,
+		item: item, attemptInvocation: invocation, attemptStartedAt: r.now(),
 	}
 	r.toolCallIDs[e.CallID] = struct{}{}
 	if e.ModelCallSequence > 0 {
@@ -418,12 +417,8 @@ func (r *reducer) toolStart(e ToolCallStarted) ([]ProjectionEvent, error) {
 		}] = e.CallID
 	}
 	r.tools.add(ref)
-	running, err := r.runningToolItem(ref)
-	if err != nil {
-		return nil, err
-	}
 	if !reused {
-		start, err := newToolItemStart(running)
+		start, err := newToolItemStart(ref.item)
 		if err != nil {
 			return nil, err
 		}
@@ -435,25 +430,11 @@ func (r *reducer) toolStart(e ToolCallStarted) ([]ProjectionEvent, error) {
 			return nil, err
 		}
 		out = append(out, ItemChanged{
-			ItemID: ref.id,
+			ItemID: ref.item.ID(),
 			Delta:  delta,
 		})
 	}
 	return out, nil
-}
-
-func (r *reducer) runningToolItem(ref *openTool) (transcript.Item, error) {
-	invocation := newToolInvocation(ref.name, ref.arguments, nil)
-	invocation.ArgumentsText = ref.argumentsText
-	item, err := transcript.NewToolCall(
-		r.itemIdentity(ref.id, ref.occurredAt),
-		*invocation,
-		ref.safetyClass,
-	)
-	if err != nil || ref.approvalDecision == "" {
-		return item, err
-	}
-	return item.ResolveToolApproval(ref.approvalDecision)
 }
 
 func (r *reducer) openToolItemID(callID string) (string, bool) {
@@ -461,7 +442,7 @@ func (r *reducer) openToolItemID(callID string) (string, bool) {
 	if !open || ref == nil {
 		return "", false
 	}
-	return ref.id, true
+	return ref.item.ID(), true
 }
 
 // spawningItem resolves the executor's immutable parent-call identity to the
@@ -487,7 +468,7 @@ func (r *reducer) spawningItem(sourceCallID string) (transcript.Item, error) {
 	if match == nil {
 		return transcript.Item{}, fmt.Errorf("source call %q has no open tool item", sourceCallID)
 	}
-	return r.runningToolItem(match)
+	return match.item, nil
 }
 
 func (r *reducer) toolEnd(e ToolCallFinished) ([]ProjectionEvent, []ToolInvocationCommit, error) {
@@ -505,7 +486,8 @@ func (r *reducer) toolEnd(e ToolCallFinished) ([]ProjectionEvent, []ToolInvocati
 		if err := e.ModelResult.Validate(); err != nil {
 			return nil, nil, err
 		}
-		if e.ModelResult.ID != ref.sourceCallID || e.ModelResult.Name != ref.name {
+		invocation, _ := ref.item.ToolInvocation()
+		if e.ModelResult.ID != ref.sourceCallID || e.ModelResult.Name != invocation.Name {
 			return nil, nil, errors.New("model-attributed Tool result differs from its source call")
 		}
 	}
@@ -517,7 +499,7 @@ func (r *reducer) toolEnd(e ToolCallFinished) ([]ProjectionEvent, []ToolInvocati
 	r.tools.remove(ref.callID)
 	var invocations []ToolInvocationCommit
 	if ref.modelCallSequence > 0 {
-		invocations = []ToolInvocationCommit{{CallID: ref.callID, ItemID: ref.id, SegmentID: r.cfg.Opened.ActiveSegmentID(), State: ToolInvocationCompleted, StartedAt: ref.attemptStartedAt, FinishedAt: ref.finishedAt}}
+		invocations = []ToolInvocationCommit{{CallID: ref.callID, ItemID: ref.item.ID(), SegmentID: r.cfg.Opened.ActiveSegmentID(), State: ToolInvocationCompleted, StartedAt: ref.attemptStartedAt, FinishedAt: ref.finishedAt}}
 	}
 	return events, invocations, nil
 }
@@ -530,32 +512,29 @@ func (r *reducer) completeTool(ref *openTool, e ToolCallFinished) ([]ProjectionE
 			return nil, err
 		}
 		out = append(out, ItemChanged{
-			ItemID: ref.id,
+			ItemID: ref.item.ID(),
 			Delta:  delta,
 		})
 	}
-	arguments := ref.arguments
+	invocation := ref.attemptInvocation
 	if e.Arguments != "" {
 		parsed, err := parseToolArguments(e.Arguments)
 		if err != nil {
-			return nil, fmt.Errorf("tool %q effective arguments: %w", ref.name, err)
+			return nil, fmt.Errorf("tool %q effective arguments: %w", invocation.Name, err)
 		}
-		arguments = parsed
+		invocation.Arguments = parsed
 	}
-	invocation := newToolInvocation(ref.name, arguments, e.Result)
-	invocation.ArgumentsText = ref.argumentsText
+	invocation.Result = e.Result
 	invocation.Offload = e.Offload
-	item, err := r.runningToolItem(ref)
-	if err != nil {
-		return nil, err
-	}
+	item := ref.item
+	var err error
 	if e.Failure != nil {
 		if validateErr := e.Failure.Validate(); validateErr != nil {
-			return nil, fmt.Errorf("tool %q failure: %w", ref.name, validateErr)
+			return nil, fmt.Errorf("tool %q failure: %w", invocation.Name, validateErr)
 		}
-		item, err = item.FailToolCall(*invocation, *e.Failure, ref.attemptStartedAt, ref.finishedAt)
+		item, err = item.FailToolCall(invocation, *e.Failure, ref.attemptStartedAt, ref.finishedAt)
 	} else {
-		item, err = item.CompleteToolCall(*invocation, ref.attemptStartedAt, ref.finishedAt)
+		item, err = item.CompleteToolCall(invocation, ref.attemptStartedAt, ref.finishedAt)
 	}
 	if err != nil {
 		return nil, err

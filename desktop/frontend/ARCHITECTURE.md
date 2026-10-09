@@ -29,10 +29,21 @@ current ownership and dependency structure.
 | `src/styles/` | StyleX tokens and the existing global stylesheets |
 | `src/test/`, `visual/` | Test setup and explicit visual-fixture composition |
 | `../../runtime/contract/typescript/` | Generated wire contract and reusable HTTP/SSE client |
+| `../../icons/` | Original icon geometry, optical masters, SVG exports, and React components |
 
 There is no graphical-client copy of the protocol implementation and no global
 client locator. `main/` constructs dependencies and passes them outward through
 plugin factories; consumers never import the composition root.
+
+`src/ui/icons` owns the application's contributed-name mapping. Its names are
+derived from that mapping, with every glyph supplied by `@flame/icons/react`.
+`src/lib/fileKind` owns file classification. `src/ui/icons/fileIcon` selects the
+file glyph used by the explorer, preview, and composer references.
+The theme preference owner
+publishes normalized UI font size through `lib/appearance`; `lib/iconScale`
+derives both SVG pixel sizes and CSS layout tokens. The library chooses its
+optical master from those pixels. Composer glyphs use an explicit fixed size,
+without overriding the meaning of a global size token.
 
 ## Product owners
 

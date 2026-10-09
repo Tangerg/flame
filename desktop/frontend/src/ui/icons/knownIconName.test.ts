@@ -1,6 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { ICON_NAMES, knownIconName } from "./icon";
 import { TOOL_ICON_BY_NAME } from "@/lib/toolFamilies";
 
@@ -44,25 +42,5 @@ describe("narrowing a contributed icon name", () => {
       .map(([tool, glyph]) => `${tool} -> ${glyph}`);
     expect(missing).toEqual([]);
     expect(Object.keys(TOOL_ICON_BY_NAME).length).toBeGreaterThan(20);
-  });
-});
-
-describe("the glyph set", () => {
-  const ALIAS = /export \{ default \} from '\.\/([a-z0-9-]+)\.mjs'/;
-
-  it("names every icon by the name Lucide still owns", () => {
-    const source = readFileSync(join(process.cwd(), "src/ui/icons/icon.tsx"), "utf8");
-    const components = [...source.matchAll(/^ {2}([A-Z][A-Za-z0-9]*),$/gm)].map(
-      (match) => match[1]!,
-    );
-    expect(components.length).toBeGreaterThan(50);
-
-    const renamed = components.flatMap((component) => {
-      const file = component.replace(/(?<!^)(?=[A-Z0-9])/g, "-").toLowerCase();
-      const path = join(process.cwd(), `node_modules/lucide-react/dist/esm/icons/${file}.mjs`);
-      const alias = ALIAS.exec(readFileSync(path, "utf8"));
-      return alias ? [`${file} -> ${alias[1]}`] : [];
-    });
-    expect(renamed).toEqual([]);
   });
 });

@@ -8,4 +8,4 @@ export const SCHEDULES_PANE = "schedules";
 export const PLUGINS_PANE = "plugins";
 export const USAGE_PANE = "usage";
 export const CONNECTION_PANE = "connection";
-export const BRAND_ICONS_PANE = "brand-icons";
+export const ICONS_PANE = "icons";

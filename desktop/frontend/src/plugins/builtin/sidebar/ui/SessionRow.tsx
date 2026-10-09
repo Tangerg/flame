@@ -136,7 +136,7 @@ export function SessionRow({
       ? [
           {
             id: "fork",
-            icon: "branch" as const,
+            icon: "fork" as const,
             label: t("session.action.fork"),
             run: () => onFork(session.id),
           },

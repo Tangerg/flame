@@ -2,7 +2,7 @@ import { lazy } from "react";
 import { definePlugin } from "@/plugins/sdk";
 import { WORKSPACE_VIEW } from "@/plugins/sdk/kernelPoints";
 import { registerSettingsPane } from "../kit";
-import { BRAND_ICONS_PANE } from "../kit/panes";
+import { ICONS_PANE } from "../kit/panes";
 
 const IconGallery = lazy(() =>
   import("./ui/IconGallery").then(({ IconGallery }) => ({ default: IconGallery })),
@@ -17,16 +17,16 @@ export default definePlugin({
     ctx.contribute(WORKSPACE_VIEW, {
       id: "icon-gallery",
       title: "workspace.view.title.iconGallery",
-      icon: "spark",
+      icon: "grid-2",
       order: 60,
       component: IconGallery,
     });
 
     registerSettingsPane(ctx, {
-      id: BRAND_ICONS_PANE,
-      label: "settings.pane.brandIcons",
+      id: ICONS_PANE,
+      label: "settings.pane.icons",
       group: "advanced",
-      icon: "image",
+      icon: "grid-2",
       order: 110,
       component: IconShowcase,
     });

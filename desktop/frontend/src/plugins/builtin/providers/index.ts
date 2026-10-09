@@ -32,7 +32,7 @@ export function createProvidersPlugin(runtimeClient: () => FlameClient) {
           "providers.embedding.title",
         ],
         group: "models",
-        icon: "spark",
+        icon: "server",
         order: 50,
         component: ProvidersPane,
       });

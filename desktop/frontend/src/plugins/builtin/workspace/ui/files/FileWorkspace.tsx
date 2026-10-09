@@ -2,6 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { Activity, useLayoutEffect, useRef, useState } from "react";
 import { copyText } from "@/lib/clipboard";
 import { fileExtension } from "@/lib/path";
+import { fileKind } from "@/lib/fileKind";
 import { isImeKey } from "@/lib/ime";
 import { lookupExtensionByKey } from "@/plugins/sdk";
 import { WORKSPACE_FILE_RENDERER } from "@/plugins/sdk/kernelPoints";
@@ -15,10 +16,11 @@ import {
   Segmented,
   TextButton,
   TextField,
+  fileIconName,
 } from "@/ui";
 import { space, type as typeStep } from "@/styles/tokens.stylex";
 import { localWorkspace } from "../../application/ports/localWorkspace";
-import { fileKind, isUnsupportedFileRead } from "../../application/fileKind";
+import { workspaceErrorClassifier } from "../../application/ports/workspaceErrorClassifier";
 import { useT } from "@/lib/i18n";
 import { FileView } from "./FileView";
 import { WorkspaceViewLayout } from "../WorkspaceViewLayout";
@@ -141,8 +143,9 @@ function FilePreview({ viewer }: { viewer: WorkspaceFileViewer }) {
   };
   const loadLater = () => setLineWindow({ start: firstShown, end: lastShown + WINDOW_RADIUS });
 
-  const unsupported = isUnsupportedFileRead(error);
+  const unsupported = workspaceErrorClassifier().isUnsupportedFile(error);
   const kind = fileKind(viewer.path);
+  const icon = fileIconName(viewer.path);
 
   const sub = data ? (
     <span>
@@ -158,7 +161,7 @@ function FilePreview({ viewer }: { viewer: WorkspaceFileViewer }) {
       scrollInset="flush"
       scrollRef={scrollPort}
       titleFace="mono"
-      icon="filetext"
+      icon={icon}
       title={viewer.path}
       dockIdentity={<FilePath path={viewer.path} />}
       actions={
@@ -201,7 +204,7 @@ function FilePreview({ viewer }: { viewer: WorkspaceFileViewer }) {
     >
       {unsupported ? (
         <EmptyState
-          icon={kind === "image" ? "image" : "file"}
+          icon={icon}
           title={t(kind === "image" ? "file.unsupported.image" : "file.unsupported.binary")}
           sub={t("file.unsupported.sub")}
           action={

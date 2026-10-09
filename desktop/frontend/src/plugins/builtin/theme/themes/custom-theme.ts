@@ -14,7 +14,7 @@ export default definePlugin({
           id: "custom",
           label: "Custom",
           scheme: colord(customTheme.bg).isDark() ? "dark" : "light",
-          icon: "spark",
+          icon: "palette",
           order: 99,
           palette: { background: customTheme.bg, foreground: customTheme.fg },
         },

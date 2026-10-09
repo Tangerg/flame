@@ -97,7 +97,7 @@ export function SelectionQuote() {
           setPending(null);
         }}
       >
-        <Icon name="chat" size="xs" />
+        <Icon name="quote" size="xs" />
         {t("quote.selection")}
       </Button>
     </div>,

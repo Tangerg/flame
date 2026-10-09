@@ -125,10 +125,14 @@ func (c *Coordinator) Resume(ctx context.Context, cmd ResumeCommand) (result Sta
 	if err != nil {
 		return StartResult{}, fmt.Errorf("runs: prepare tree continuation: %w", err)
 	}
-	continuation.approvalVerdicts = claim.approvalVerdicts()
-	continuation.answeredQuestions, err = claim.answeredQuestions()
+	continuation.approvalCalls = claim.approvalCalls()
+	replacements, err := claim.ItemReplacements()
 	if err != nil {
 		return StartResult{}, fmt.Errorf("runs: prepare tree continuation: %w", err)
+	}
+	for _, replacement := range replacements {
+		item := replacement.State()
+		continuation.items[item.ID()] = item
 	}
 	events, err := c.openSegment(ctx, segmentSpec{
 		RunID:            cmd.RunID,

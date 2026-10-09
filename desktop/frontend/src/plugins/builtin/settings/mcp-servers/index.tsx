@@ -24,7 +24,7 @@ export function createMCPServersPlugin(runtimeClient: () => FlameClient) {
         id: MCP_SERVERS_PANE,
         label: "settings.pane.mcpServers",
         group: "integrations",
-        icon: "tool",
+        icon: "server",
         order: 56,
         component: McpServersPane,
       });

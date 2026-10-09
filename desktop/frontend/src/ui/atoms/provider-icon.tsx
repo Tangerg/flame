@@ -1,33 +1,37 @@
-import { createElement, type ComponentType } from "react";
 import * as stylex from "@stylexjs/stylex";
-import Alibaba from "@lobehub/icons/es/Alibaba/components/Mono";
-import Anthropic from "@lobehub/icons/es/Anthropic/components/Mono";
-import Azure from "@lobehub/icons/es/Azure/components/Mono";
-import DeepSeek from "@lobehub/icons/es/DeepSeek/components/Mono";
-import Fireworks from "@lobehub/icons/es/Fireworks/components/Mono";
-import Gemini from "@lobehub/icons/es/Gemini/components/Mono";
-import Groq from "@lobehub/icons/es/Groq/components/Mono";
-import HuggingFace from "@lobehub/icons/es/HuggingFace/components/Mono";
-import Minimax from "@lobehub/icons/es/Minimax/components/Mono";
-import Mistral from "@lobehub/icons/es/Mistral/components/Mono";
-import Moonshot from "@lobehub/icons/es/Moonshot/components/Mono";
-import OpenAI from "@lobehub/icons/es/OpenAI/components/Mono";
-import OpenRouter from "@lobehub/icons/es/OpenRouter/components/Mono";
-import Perplexity from "@lobehub/icons/es/Perplexity/components/Mono";
-import Together from "@lobehub/icons/es/Together/components/Mono";
-import XAI from "@lobehub/icons/es/XAI/components/Mono";
-import Zhipu from "@lobehub/icons/es/Zhipu/components/Mono";
+import Alibaba from "./provider-marks/Alibaba.svg";
+import Anthropic from "./provider-marks/Anthropic.svg";
+import Azure from "./provider-marks/Azure.svg";
+import DeepSeek from "./provider-marks/DeepSeek.svg";
+import Fireworks from "./provider-marks/Fireworks.svg";
+import Gemini from "./provider-marks/Gemini.svg";
+import Groq from "./provider-marks/Groq.svg";
+import HuggingFace from "./provider-marks/HuggingFace.svg";
+import Minimax from "./provider-marks/Minimax.svg";
+import Mistral from "./provider-marks/Mistral.svg";
+import Moonshot from "./provider-marks/Moonshot.svg";
+import OpenAI from "./provider-marks/OpenAI.svg";
+import OpenRouter from "./provider-marks/OpenRouter.svg";
+import Perplexity from "./provider-marks/Perplexity.svg";
+import Together from "./provider-marks/Together.svg";
+import XAI from "./provider-marks/XAI.svg";
+import Zhipu from "./provider-marks/Zhipu.svg";
 import type { IconSize } from "@/lib/iconScale";
 import { Icon } from "@/ui/icons";
 
 const styles = stylex.create({
-  mark: { display: "inline-grid", flexShrink: 0, placeItems: "center" },
+  mark: {
+    display: "inline-block",
+    flexShrink: 0,
+    backgroundColor: "currentColor",
+    maskSize: "contain",
+    maskRepeat: "no-repeat",
+    maskPosition: "center",
+  },
 });
 
-type BrandIcon = ComponentType<{ size?: number }>;
-
 interface Brand {
-  mark: BrandIcon;
+  mark: string;
   name: string;
 }
 
@@ -65,11 +69,13 @@ export function ProviderIcon({ provider, size = "md" }: { provider: string; size
         aria-hidden
         data-slot="provider-mark"
         {...stylex.props(styles.mark)}
-        style={{ width: `var(--icon-${size})`, height: `var(--icon-${size})` }}
-      >
-        {createElement(brand.mark, { size: 0 })}
-      </span>
+        style={{
+          width: `var(--icon-${size})`,
+          height: `var(--icon-${size})`,
+          maskImage: `url("${brand.mark}")`,
+        }}
+      />
     );
   }
-  return <Icon name="spark" size={size} />;
+  return <Icon name="server" size={size} />;
 }

@@ -75,6 +75,24 @@ test("a full view sets its title in mono only when the title is a path", async (
   expect(path.isMono, `a PATH is mono, got ${path.family}`).toBe(true);
 });
 
+test("the icon gallery searches Flame glyphs by name and concept", async ({ page }) => {
+  await openWorkspace(page, { state: "full-view", fullView: "icon-gallery" });
+  const search = page.getByRole("searchbox", { name: en["iconGallery.filterLabel"]! });
+  await expect(search).toBeVisible();
+  await expect(page.getByText(en["iconGallery.title"]!, { exact: true })).toBeVisible();
+  await search.fill("file-diff");
+  await expect(page.getByText("FileDiff", { exact: true })).toBeVisible();
+  await expect(page.getByText("FileText", { exact: true })).toHaveCount(0);
+  await search.fill("patch");
+  await expect(page.getByText("FileDiff", { exact: true })).toBeVisible();
+  await search.fill("no-such-flame-glyph");
+  await expect(
+    page.getByText(en["iconGallery.empty"]!.replace("{{q}}", "no-such-flame-glyph"), {
+      exact: true,
+    }),
+  ).toBeVisible();
+});
+
 async function starveTheRow(page: Page): Promise<void> {
   const rail = page.getByRole("separator", { name: "Resize the workspace fixture sidebar" });
   await expect
