@@ -73,6 +73,7 @@ func directoryHasProductionGo(directory string) (bool, error) {
 // operation coverage is enforced by the root binding's own surface test.
 func TestPublicBindingsCompileForAnExternalModule(t *testing.T) {
 	directory := t.TempDir()
+	root := moduleRoot(t)
 	goMod := fmt.Sprintf(`module example.com/runtimeconsumer
 
 go 1.27.0
@@ -84,7 +85,7 @@ require (
 
 replace github.com/Tangerg/flame/runtime => %s
 replace github.com/Tangerg/flame/runtime/localruntime => %s
-`, filepath.ToSlash(moduleRoot(t)), filepath.ToSlash(filepath.Join(moduleRoot(t), "localruntime")))
+`, filepath.ToSlash(root), filepath.ToSlash(filepath.Join(root, "localruntime")))
 	source := `package runtimeconsumer
 
 import (
@@ -119,10 +120,15 @@ func consume(ctx context.Context, runtime *flameruntime.Runtime) error {
 `
 	writeConsumerFile(t, filepath.Join(directory, "go.mod"), goMod)
 	writeConsumerFile(t, filepath.Join(directory, "consumer.go"), source)
+	checksums, err := os.ReadFile(filepath.Join(root, "go.sum"))
+	if err != nil {
+		t.Fatalf("read Runtime dependency checksums: %v", err)
+	}
+	writeConsumerFile(t, filepath.Join(directory, "go.sum"), string(checksums))
 
 	command := exec.CommandContext(t.Context(), "go", "test", "-mod=mod", "./...")
 	command.Dir = directory
-	command.Env = append(os.Environ(), "GOWORK=off")
+	command.Env = append(os.Environ(), "GOWORK=off", "GOPROXY=off")
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("compile external Runtime consumer: %v\n%s", err, output)
 	}
