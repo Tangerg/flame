@@ -62,6 +62,9 @@ func TestFilesystemPoliciesShareScopeDirectoryAuthority(t *testing.T) {
 		t.Fatalf("read = %q, %v", read, err)
 	}
 	for _, change := range [][2]string{{"old", "new"}, {"new", "latest"}} {
+		if _, err := callTextTool(t.Context(), tools.readSearch[0], `{"path":"data.json"}`); err != nil {
+			t.Fatal(err)
+		}
 		if _, err := callTextTool(t.Context(), tools.edit, editArguments(t, "data.json", change[0], change[1])); err != nil {
 			t.Fatal(err)
 		}

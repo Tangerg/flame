@@ -149,6 +149,13 @@ Resolved Tool manifests own Scope's pinned filesystem directory authority. A suc
 
 Scope derives its filesystem executor from the manifest's open `os.Root`. Read fingerprints, protected-directory inspection, native edits, patches, and formatting share that directory authority even after its pathname is replaced. Runtime uses its existing keyed locks to coordinate file policies across concurrent Runs; Scope retains execution-tree scheduling. Separate filesystem calls are not an atomic transaction against external writers. Git-backed search and LSP still require a named workspace: search rejects a detached or rebound pathname, and mutation diagnostics report unavailability instead of attributing another directory's results. External formatter configuration also requires the original named workspace.
 
+Only a successful stable read establishes a Session's read evidence. Admitting an
+edit or patch consumes that evidence for its resolved targets before dispatch,
+including when the outcome is unresolved. A subsequent change to an existing
+file requires another read. Neither a write acknowledgement, formatting nor a
+post-write fingerprint can acknowledge unseen external contents. The guard does
+no post-write I/O that could replace Scope's acknowledged result with an error.
+
 Formatting uses Scope's bounded normalized read and exact-text edit, with host version checks around source observation and before applying the result. Scope owns replacement, parent handles, permissions, BOM, and line endings. Runtime owns formatter selection, limits, and best-effort diagnostics. Mutation attribution consumes native executor acknowledgements: a successful edit reports its target, and a patch reports every acknowledged effect, including partial creation during a failed move. Prospective patch paths remain approval and locking inputs; they are never evidence of a completed mutation.
 
 Scope owns Git patch parsing, supported operations, prospective endpoints, and execution acknowledgements. Runtime discovers `ApplyPatchTool.MutationPaths` through Scope capability traversal and uses those endpoints for approval, locking, and read-before-write policy. The query shares the executor’s parser and performs no I/O; Runtime resolves its paths under the shared directory authority. Only execution acknowledgements record actual mutations, including partial effects on failure.

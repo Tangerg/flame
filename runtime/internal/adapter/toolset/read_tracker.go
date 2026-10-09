@@ -7,7 +7,7 @@ import (
 )
 
 // readTracker records the file content each session has read. A mutation is
-// admitted only while the file still has that content.
+// admitted only while the file still has that content and consumes the evidence.
 type readTracker struct {
 	mu   sync.Mutex
 	seen map[string]map[string]readStamp

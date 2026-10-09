@@ -62,8 +62,9 @@ func withReadTracking(inner toolcontract.Tool, tr *readTracker, root *filesystem
 	})
 }
 
-// withMutationGuard requires every existing target to have been read and to
-// remain unchanged, then refreshes stamps after a successful mutation.
+// Only a stable read may establish read evidence. An admitted mutation consumes
+// it before dispatch: neither a write acknowledgement nor a later filesystem
+// observation proves what the model has read, including after a partial failure.
 func withMutationGuard(inner toolcontract.Tool, tr *readTracker, root *filesystemRoot) toolcontract.Tool {
 	if tr == nil {
 		return inner
@@ -74,7 +75,7 @@ func withMutationGuard(inner toolcontract.Tool, tr *readTracker, root *filesyste
 			return chat.ToolOutput{}, fmt.Errorf("inspect mutation paths before applying patch: %w", err)
 		}
 		sessionID := executionctx.SessionID(ctx)
-		blocked, err := admitMutationPaths(ctx, tr, root, sessionID, paths)
+		targets, blocked, err := admitMutationPaths(ctx, tr, root, sessionID, paths)
 		if err != nil {
 			return chat.ToolOutput{}, err
 		}
@@ -87,64 +88,37 @@ func withMutationGuard(inner toolcontract.Tool, tr *readTracker, root *filesyste
 			}
 			return chat.ToolOutput{}, failure
 		}
-		out, err := inner.Call(ctx, invocation)
-		if err != nil {
-			return out, err
+		for _, target := range targets {
+			tr.forget(sessionID, target)
 		}
-		if err := refreshMutationPaths(ctx, tr, root, sessionID, paths); err != nil {
-			return out, err
-		}
-		return out, nil
+		return inner.Call(ctx, invocation)
 	})
 }
 
-func admitMutationPaths(ctx context.Context, tr *readTracker, root *filesystemRoot, sessionID string, paths []string) (string, error) {
+func admitMutationPaths(ctx context.Context, tr *readTracker, root *filesystemRoot, sessionID string, paths []string) ([]string, string, error) {
+	targets := make([]string, 0, len(paths))
 	for _, path := range paths {
 		relative, err := resolveRootPath(root, path)
 		if err != nil {
-			return "", fmt.Errorf("resolve mutation path: %w", err)
+			return nil, "", fmt.Errorf("resolve mutation path: %w", err)
 		}
+		target := filepath.Join(root.identity, relative)
+		targets = append(targets, target)
 		fingerprint, exists, err := fingerprintExistingFile(ctx, root, relative)
 		if errors.Is(err, errRuntimeReadFileTooLarge) {
-			return unreadableMutationMessage(path), nil
+			return nil, unreadableMutationMessage(path), nil
 		}
 		if err != nil {
-			return "", fmt.Errorf("fingerprint mutation path %s: %w", path, err)
+			return nil, "", fmt.Errorf("fingerprint mutation path %s: %w", path, err)
 		}
 		if !exists {
 			continue
 		}
-		if verdict := tr.check(sessionID, filepath.Join(root.identity, relative), fingerprint); !verdict.allowed() {
-			return mutationGuardMessage(verdict, path), nil
+		if verdict := tr.check(sessionID, target, fingerprint); !verdict.allowed() {
+			return nil, mutationGuardMessage(verdict, path), nil
 		}
 	}
-	return "", nil
-}
-
-func refreshMutationPaths(ctx context.Context, tr *readTracker, root *filesystemRoot, sessionID string, paths []string) error {
-	for _, path := range paths {
-		relative, err := resolveRootPath(root, path)
-		if err != nil {
-			return fmt.Errorf("refresh mutation path: %w", err)
-		}
-		fingerprint, exists, err := fingerprintExistingFile(ctx, root, relative)
-		if err != nil {
-			tr.forget(sessionID, filepath.Join(root.identity, relative))
-			// The mutation already happened. A file that grew past the readable
-			// limit has no stamp this tracker can hold, which the next mutation
-			// discovers on its own; reporting it would fail a call that succeeded.
-			if errors.Is(err, errRuntimeReadFileTooLarge) {
-				continue
-			}
-			return fmt.Errorf("refresh mutation path %s: %w", path, err)
-		}
-		if !exists {
-			tr.forget(sessionID, filepath.Join(root.identity, relative))
-			continue
-		}
-		tr.record(sessionID, filepath.Join(root.identity, relative), fingerprint)
-	}
-	return nil
+	return targets, "", nil
 }
 
 func mutationGuardMessage(verdict guardVerdict, path string) string {

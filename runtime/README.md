@@ -792,6 +792,14 @@ Discovery publishes the subscription's total path budget, per-directory entry bu
 
 Filesystem tool manifests require an explicit absolute workspace and share one pinned directory authority with Scope. Tool paths are absolute or workspace-relative; home shorthand (`~` or `~/...`) is rejected rather than consulting ambient process state. Read stamps, mutation protection, edits, patches, and in-process formatting continue to address that directory after a rename or pathname replacement. Path-based search and external formatter configuration require the original named workspace; detached searches fail explicitly, and unavailable formatting or LSP diagnostics are reported with the successful mutation. Multi-file patches are not transactions: their failed results and mutation metadata retain Scope's acknowledged partial effects.
 
+Only the model's successful stable `read` creates read evidence. An admitted
+`edit` or `apply_patch` consumes its targets' evidence before execution, even
+when the outcome is unresolved. Read an existing file again before another
+mutation; successful writes and formatting no longer grant fresh read evidence.
+The guard performs no post-write filesystem observation, so cancellation after
+an acknowledged write cannot erase that result. This changes only process-local
+Tool policy and requires no protocol or persisted-data migration.
+
 The concrete local search tools return explicit failed Tool outcomes for unsuccessful queries, including invalid patterns and missing paths, so Scope commits their feedback before model continuation. Cancellation remains execution control. This guarantee applies to these non-mutating searches; the generic Tool observer still preserves unknown external outcomes and host or publication failures.
 
 Structured diff code rows always carry `code`, including `""` for a blank line; hunk rows omit it. The Go binding represents this presence with `DiffRow.Code *string`. Go consumers must migrate string construction and access; JSON consumers retain the existing required-string contract. Missing or null code remains invalid for code rows. No persisted-data migration is needed.

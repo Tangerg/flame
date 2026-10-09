@@ -116,7 +116,7 @@ func TestMutationRecordingReportsOnlyAppliedChanges(t *testing.T) {
 	}
 }
 
-func TestMutationGuardRefreshesReadStampAfterPatch(t *testing.T) {
+func TestMutationGuardRequiresAnotherReadAfterPatch(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "foo.go")
 	before := "package main\n\nfunc Foo() {}\n"
@@ -132,7 +132,14 @@ func TestMutationGuardRefreshesReadStampAfterPatch(t *testing.T) {
 	if out, err := callTextTool(t.Context(), mutation, patchArguments(t, "foo.go", before, first)); err != nil || strings.Contains(out, "must read") {
 		t.Fatalf("first patch = %q, %v", out, err)
 	}
-	if out, err := callTextTool(t.Context(), mutation, patchArguments(t, "foo.go", first, second)); err != nil || strings.Contains(out, "must read") || strings.Contains(out, "changed since") {
+	refusal := callRejectedTool(t, t.Context(), mutation, patchArguments(t, "foo.go", first, second))
+	if !strings.Contains(refusal, "must read") {
+		t.Fatalf("consecutive patch refusal = %q", refusal)
+	}
+	if _, err := callTextTool(t.Context(), read, `{"path":"foo.go"}`); err != nil {
+		t.Fatalf("read applied contents: %v", err)
+	}
+	if out, err := callTextTool(t.Context(), mutation, patchArguments(t, "foo.go", first, second)); err != nil {
 		t.Fatalf("consecutive patch = %q, %v", out, err)
 	}
 	if got, _ := os.ReadFile(path); string(got) != second {
@@ -140,7 +147,7 @@ func TestMutationGuardRefreshesReadStampAfterPatch(t *testing.T) {
 	}
 }
 
-func TestMutationGuardRefreshesStampAfterAutoFormat(t *testing.T) {
+func TestMutationGuardRequiresReadingFormattedContents(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "data.json")
 	before := `{"name":"old","count":1}` + "\n"
@@ -163,7 +170,14 @@ func TestMutationGuardRefreshesStampAfterAutoFormat(t *testing.T) {
 		t.Fatalf("json was not formatted: %q", formatted)
 	}
 	second := strings.ReplaceAll(string(formatted), "new", "newer")
-	if out, err := callTextTool(t.Context(), mutation, patchArguments(t, "data.json", string(formatted), second)); err != nil || strings.Contains(out, "changed since") {
+	refusal := callRejectedTool(t, t.Context(), mutation, patchArguments(t, "data.json", string(formatted), second))
+	if !strings.Contains(refusal, "must read") {
+		t.Fatalf("formatted contents were acknowledged without reading: %q", refusal)
+	}
+	if _, err := callTextTool(t.Context(), read, `{"path":"data.json"}`); err != nil {
+		t.Fatalf("read formatted contents: %v", err)
+	}
+	if out, err := callTextTool(t.Context(), mutation, patchArguments(t, "data.json", string(formatted), second)); err != nil {
 		t.Fatalf("second patch after format = %q, %v", out, err)
 	}
 }
@@ -385,7 +399,7 @@ func TestMutationGuardNamesTheLimitItCannotSee(t *testing.T) {
 	}
 
 	tracker := newReadTracker()
-	blocked, err := admitMutationPaths(t.Context(), tracker, mustRoot(t, dir), "ses_1", []string{"huge.bin"})
+	_, blocked, err := admitMutationPaths(t.Context(), tracker, mustRoot(t, dir), "ses_1", []string{"huge.bin"})
 	if err != nil {
 		t.Fatalf("admitMutationPaths: %v", err)
 	}

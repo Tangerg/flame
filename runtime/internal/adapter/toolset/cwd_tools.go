@@ -62,7 +62,7 @@ func openCWDTools(cwd string, ci *codeintel.Analyzer, tracker *readTracker, lock
 
 	// Guard stack, innermost → outermost: auto-format the applied
 	// change; diagnostics type-check it; read/staleness guard gates before the
-	// change and refreshes the read stamp after; per-path lock serializes
+	// change and consumes its read evidence; per-path lock serializes
 	// concurrent mutations to the same file; path guard refuses protected dirs.
 	// apply_patch declares its own paths because they are inside the patch text;
 	// edit needs no declaration, since the guards read its path argument.
