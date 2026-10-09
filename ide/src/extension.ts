@@ -15,11 +15,12 @@ import { commandFailureMessage, Connection, type Command, type CommandResult } f
 import { inputFromEditor, type EditorSnapshot } from "./editorContext";
 import { followRuntimeChanges, observeRun, readSessionSnapshot } from "./observation";
 import { itemText } from "./transcript";
+import { runPluginAction } from "./pluginActions";
 
 type PluginCommand = Extract<Command, { method: `plugins.${string}` }>;
+type PluginManagementCommand = Exclude<PluginCommand, { method: "plugins.renameSession" }>;
 
 const PLUGIN_METHODS = [
-  "plugins.renameSession",
   "plugins.install",
   "plugins.stage",
   "plugins.select",
@@ -28,10 +29,10 @@ const PLUGIN_METHODS = [
   "plugins.setEnablement",
   "plugins.revoke",
   "plugins.uninstall",
-] as const satisfies readonly PluginCommand["method"][];
+] as const satisfies readonly PluginManagementCommand["method"][];
 
 const pluginMethodsAreComplete: Exclude<
-  PluginCommand["method"],
+  PluginManagementCommand["method"],
   (typeof PLUGIN_METHODS)[number]
 > extends never
   ? true
@@ -39,9 +40,9 @@ const pluginMethodsAreComplete: Exclude<
 void pluginMethodsAreComplete;
 
 function assertPluginCommand(command: {
-  method: PluginCommand["method"];
+  method: PluginManagementCommand["method"];
   params: unknown;
-}): asserts command is PluginCommand {
+}): asserts command is PluginManagementCommand {
   checkRequest(command.method, command.params);
 }
 
@@ -115,6 +116,13 @@ class Workbench implements vscode.TreeDataProvider<Session> {
     this.#register("compareContext", () => this.#compareContext());
     this.#register("listPlugins", () => this.#listPlugins());
     this.#register("managePlugin", () => this.#managePlugin());
+    this.#register("runPluginAction", () => this.#runPluginAction());
+  }
+
+  async #runPluginAction(): Promise<void> {
+    const connection = this.#connected();
+    const result = await runPluginAction(connection, this.#selected());
+    if (result) await this.#adopt(connection, result);
   }
 
   async #showPluginResult(value: unknown): Promise<void> {

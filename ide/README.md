@@ -128,9 +128,21 @@ Management uses exact Runtime request JSON and the existing
 prepared-command journal. Source paths belong to the connected Runtime. Installation
 results open as JSON documents; uninstall is an acknowledgement and reports completion only.
 Secret inputs, including every header and authorization input, appear as `configured` without their text.
-`plugins.renameSession` submits an admitted action with its installation, selected digest,
-action ID and `update` containing the inspected Session ID, expected revision and title.
-It uses the same prepared-command journal and opens the canonical Session result as JSON.
-An unknown acknowledgement retains those exact parameters across reconnect. HTML hosting remains unavailable;
+
+**Run Plugin Action** selects an action from the enabled, admitted package catalog.
+The current operation is `renameSession`: its native title input captures the selected
+Session and revision before opening the picker, and the package's digest and action ID
+from that catalog. Selecting another Session cannot retarget it. Opening, hiding or
+restoring presentation never submits a mutation. Explicit acceptance submits
+`plugins.renameSession` through the same prepared-command journal and opens the
+canonical Session result as JSON. A refusal preserves the entered title and original
+revision; inspecting a newer target requires closing the form and opening another.
+Closing an accepted form retires its presentation without cancelling the command.
+Connection retirement disposes the picker/input and prevents late publication.
+An unknown acknowledgement retains the exact prepared parameters across reconnect;
+**Retry Unresolved Command** recovers that command. The former JSON-only rename entry
+has been removed from **Manage Runtime Plugin**.
+
+HTML hosting remains unavailable;
 installed tools use the existing Runtime execution and approval path. See
 [the Runtime contract](../runtime/README.md#portable-plugins).
