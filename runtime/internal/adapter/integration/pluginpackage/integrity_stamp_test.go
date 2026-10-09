@@ -11,6 +11,8 @@ import (
 	"testing/synctest"
 	"time"
 
+	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 )
@@ -55,6 +57,60 @@ func rewrite(t *testing.T, path, content string) {
 	if err := os.Chtimes(path, original.ModTime(), original.ModTime()); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestInspectionWithdrawsTamperedReleaseAndReadmitsRepairedBytes(t *testing.T) {
+	releases, store, _ := testReleaseStore(t)
+	owner, err := plugins.New(t.Context(), store, releases.catalog, releases, &recordedConnections{}, passthroughDependencies{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	installed, err := owner.Install(t.Context(), writePackage(t, map[string]string{
+		"plugin.json": portableManifest,
+		"mcp.json":    `{"$schema":"` + MCPSchema + `","mcpServers":{"remote":{"type":"streamable-http","url":"https://example.test/mcp"}}}`,
+		"notes.txt":   "original",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	id, digest := installed.View.ID, installed.Selected.Digest()
+	if _, err := owner.Approve(t.Context(), id, digest); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := owner.Enable(t.Context(), id); err != nil {
+		t.Fatal(err)
+	}
+	settle(t, releases, digest)
+	inspect := func(release plugins.ReleaseState, presentation plugins.Presentation, source mcpapp.SourceAvailability) {
+		t.Helper()
+		rows, err := owner.List(t.Context())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(rows) != 1 {
+			t.Fatalf("installations = %d, want 1", len(rows))
+		}
+		row := rows[0]
+		if row.View.State != plugin.Enabled || row.Selected.Digest() != digest {
+			t.Fatalf("byte availability changed installation authority: %+v", row)
+		}
+		if row.Realization.Release != release || row.Presentation != presentation {
+			t.Fatalf("inspection = %+v, want release %s, presentation %s", row, release, presentation)
+		}
+		if len(row.Realization.Sources) != 1 || row.Realization.Sources[0].Availability != source {
+			t.Fatalf("sources = %+v, want one %s source", row.Realization.Sources, source)
+		}
+	}
+	inspect(plugins.ReleaseAvailable, plugins.PresentationAdmitted, mcpapp.SourceAvailable)
+	directory, err := releases.Root(digest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	notes := filepath.Join(directory, "notes.txt")
+	rewrite(t, notes, "tampered")
+	inspect(plugins.ReleaseUnavailable, plugins.PresentationWithheld, mcpapp.SourceUnavailableRelease)
+	rewrite(t, notes, "original")
+	inspect(plugins.ReleaseAvailable, plugins.PresentationAdmitted, mcpapp.SourceAvailable)
 }
 
 func TestLaunchReusesIntegrityUntilTheTreeChanges(t *testing.T) {

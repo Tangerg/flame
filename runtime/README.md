@@ -229,8 +229,11 @@ disable returns it to `approved`, revoke to `unapproved`. Approval always names 
 selected release. Package roots are
 read-only. Admission seals the staged tree before digesting it, and admission and cold
 loading scan an entire release once; concurrent cold loads of one digest share that scan
-while other digests load independently. Startup, configuration, reconnect and OAuth read
-the current source owner before creating a connection and revalidate its package bytes:
+while other digests load independently. Installation and MCP availability reads use the
+same current byte proof as connection launches, so tampered bytes withdraw presentation
+and availability on the next read, and repaired bytes restore both. Startup,
+configuration, reconnect and OAuth read the current source owner before creating a
+connection and revalidate its package bytes:
 the cached scan is reused only while every entry of the release keeps the change stamp
 (inode, size, mode, modification and inode-change time) recorded when its bytes were
 digested, and any added, removed or changed entry or a replaced directory sends the release
@@ -239,11 +242,12 @@ a repaired directory. A launch accepts only a scan that began after it observed 
 and rechecks the stamps of the proof it receives, so a scan that read bytes before they
 changed can never vouch for them. An entry whose inode-change time is not strictly older
 than the scan that stamped it is unsettled (the racy-index rule): a proof holding one is
-not reused, and the next launch rescans. Proofs are cached within a 32 MiB budget derived
-from measured per-entry size; a proof that would exceed it is not cached, and a proof an
-in-flight caller holds is never evicted. Platforms without an inode-change time rescan on
-every connection. A stdio launch copies from the confined verified root into private,
-sealed execution content and verifies that copy against the admitted digest. Command,
+not reused, and the next inspection or launch rescans. Proofs are cached within a 32 MiB
+budget derived from measured per-entry size; a proof that would exceed it is not cached,
+and a proof an in-flight caller holds is never evicted. Platforms without an inode-change
+time rescan on every inspection or connection. A stdio launch copies from the confined
+verified root into private, sealed execution content and verifies that copy against the
+admitted digest. Command,
 arguments, environment and working directory are projected onto that content; replacing,
 rewriting or reclaiming the published release cannot redirect an admitted process or its
 later package reads. Connections of one digest share the content while any launch or

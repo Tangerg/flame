@@ -246,11 +246,11 @@ func (r *Releases) verifiedRoot(ctx context.Context, digest fingerprint.Digest) 
 	return root, integrity, nil
 }
 
-// currentRoot opens a release a new connection is about to execute. The cached
+// currentRoot opens a release whose bytes must match its digest now. The cached
 // proof is reused only while every entry keeps the settled change stamp it had
-// when it was read. Otherwise the launch takes a proof from a scan that began
+// when it was read. Otherwise the caller takes a proof from a scan that began
 // after it saw the change, and still requires that proof to match the tree it
-// opens: a proof that no longer matches is withdrawn, never launched.
+// opens: a proof that no longer matches is withdrawn, never accepted.
 func (r *Releases) currentRoot(ctx context.Context, digest fingerprint.Digest) (*os.Root, error) {
 	var since uint64
 	if integrity, found := r.cached(digest); found {

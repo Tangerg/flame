@@ -141,7 +141,7 @@ func (r *Releases) Realize(ctx context.Context, installation *plugin.Installatio
 	if err != nil {
 		return plugins.Realization{}, fmt.Errorf("pluginpackage: release directory: %w", err)
 	}
-	root, _, verifyErr := r.verifiedRoot(ctx, release.Digest())
+	root, verifyErr := r.currentRoot(ctx, release.Digest())
 	if cause := context.Cause(ctx); cause != nil {
 		if root != nil {
 			cause = errors.Join(cause, root.Close())
