@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -80,6 +81,9 @@ func decodeRunCapabilities(encoded string) (rundomain.Capabilities, error) {
 	}
 	if err := capabilities.Validate(); err != nil {
 		return rundomain.Capabilities{}, fmt.Errorf("decode run capabilities: %w", err)
+	}
+	if capabilities.IsEmpty() {
+		return rundomain.Capabilities{}, errors.New("decode run capabilities: empty capabilities must use the absent value")
 	}
 	return capabilities, nil
 }
@@ -324,17 +328,17 @@ func decodeRunUsage(encoded string) (*accounting.Usage, error) {
 	if encoded == "" {
 		return nil, nil
 	}
-	var row runUsageRow
+	var row *runUsageRow
 	if err := decodeStoredJSON([]byte(encoded), &row); err != nil {
 		return nil, err
+	}
+	if row == nil {
+		return nil, errors.New("decode run usage: stored usage must be an object")
 	}
 	return row.usage(), nil
 }
 
-func (r *runUsageRow) usage() *accounting.Usage {
-	if r == nil {
-		return nil
-	}
+func (r runUsageRow) usage() *accounting.Usage {
 	usage := &accounting.Usage{Total: accounting.Totals{
 		InputTokens:      r.InputTokens,
 		OutputTokens:     r.OutputTokens,

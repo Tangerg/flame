@@ -2,8 +2,20 @@ package sqlite
 
 import "testing"
 
-func TestRunAccountingAndFailureRejectUnknownStoredFields(t *testing.T) {
+func TestRunUsageDistinguishesMissingReportFromReportedZero(t *testing.T) {
+	missing, err := decodeRunUsage("")
+	if err != nil || missing != nil {
+		t.Fatalf("missing report = %+v, %v", missing, err)
+	}
+	reported, err := decodeRunUsage(`{}`)
+	if err != nil || reported == nil {
+		t.Fatalf("reported zero = %+v, %v", reported, err)
+	}
+}
+
+func TestRunAccountingAndFailureRejectInvalidStoredValues(t *testing.T) {
 	for _, encoded := range []string{
+		`null`,
 		`{"InputTokens":7}`,
 		`{"inputTokens":7,"future":true}`,
 		`{"byModel":{"provider/model":{"OutputTokens":7}}}`,
@@ -11,7 +23,7 @@ func TestRunAccountingAndFailureRejectUnknownStoredFields(t *testing.T) {
 	} {
 		t.Run(encoded, func(t *testing.T) {
 			if _, err := decodeRunUsage(encoded); err == nil {
-				t.Fatal("unknown stored accounting field was silently discarded")
+				t.Fatal("invalid stored accounting became reported usage")
 			}
 		})
 	}

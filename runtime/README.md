@@ -463,6 +463,13 @@ refused without modification, and no former shape is repaired in place. Pre-rele
 storage compatibility follows
 [the repository data policy](../DEVELOPMENT.md#pre-release-data-policy). Continuation
 payloads no longer carry dependency bindings. Completed historical Tool content remains generic and readable.
+
+Stored current and historical Plans require a steps array; clearing a Plan records `[]`.
+Empty text and JSON `null` are invalid Plans. Run usage and frozen capabilities use
+empty text for absence; usage objects preserve reported zero, and capability objects
+must declare at least one capability. Invalid stored values fail reads rather than
+inventing empty state or reported usage. Valid records require no migration.
+
 Publishing the new Runtime module and advancing CLI's released dependency is required
 before an independent CLI release; workspace checks alone do not prove that release.
 Installation Skill declarations expose names and descriptions. The package adapter

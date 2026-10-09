@@ -34,6 +34,8 @@ func TestRunCapabilitiesCodecOwnsCanonicalStorageShape(t *testing.T) {
 
 func TestRunCapabilitiesCodecRejectsNonCanonicalOrFormerShapes(t *testing.T) {
 	for name, encoded := range map[string]string{
+		"null capabilities":          `null`,
+		"empty capabilities object":  `{}`,
 		"former protocol vocabulary": `{"interruptTypes":["approval"]}`,
 		"unknown field":              `{"childRuns":true,"extra":true}`,
 		"duplicate kind":             `{"interruptKinds":["approval","approval"]}`,
