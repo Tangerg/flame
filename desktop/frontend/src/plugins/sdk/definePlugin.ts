@@ -52,6 +52,7 @@ export interface PluginSpec<
 
 const mintedIds = new ExactSequence();
 const specFields: ReadonlySet<string> = new Set(["name", "requires", "provides", "setup"]);
+const contributionFields: ReadonlySet<string> = new Set(["id", "key"]);
 
 function itemId(item: unknown): string | undefined {
   if (typeof item !== "object" || item === null || !("id" in item)) return undefined;
@@ -79,13 +80,17 @@ function createContribute(ctx: Pick<LifetimeContext, "contribute">, name: string
     item: T,
     opts?: ExtensionContributionOptions,
   ): ExtensionContribution<T> => {
-    const key = domainKey(point, item, opts);
-    const envelope: Contribution<T> = { key, order: opts?.order, plugin: name, item };
+    const options =
+      opts === undefined
+        ? undefined
+        : normalizePlainRecord(opts, "flame contribution options", { fields: contributionFields });
+    const key = domainKey(point, item, options);
+    const envelope: Contribution<T> = { key, plugin: name, item };
     const contribution = ctx.contribute(point.token, key, envelope);
     return {
       dispose: () => contribution.dispose(),
       update(next) {
-        if (point.keying === "single" && domainKey(point, next, opts) !== key) {
+        if (point.keying === "single" && domainKey(point, next, options) !== key) {
           throw new Error(`extension contribution "${point.id}" cannot change its key`);
         }
         contribution.update({ ...envelope, item: next });

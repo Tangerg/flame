@@ -67,8 +67,7 @@ function viewOf<T>(point: ExtensionPoint<T>): ContributionView<Contribution<T>> 
 }
 
 function sortKey(entry: Contribution<unknown>): number {
-  const own = (entry.item as { order?: number } | null)?.order;
-  return own ?? entry.order ?? 100;
+  return (entry.item as { order?: number } | null)?.order ?? 100;
 }
 
 function resolve<T>(

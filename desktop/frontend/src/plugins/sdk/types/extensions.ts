@@ -12,7 +12,6 @@ export interface ExtensionPoint<T> {
 }
 
 export interface ExtensionContributionOptions {
-  id?: string;
-  key?: string;
-  order?: number;
+  readonly id?: string;
+  readonly key?: string;
 }

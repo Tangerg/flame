@@ -171,7 +171,10 @@ Extension contribution handles preserve Dougong's `update` operation. The SDK
 translates the item into its existing envelope without withdrawing the
 contribution or changing its domain key, owner, or precedence. Dynamic appearance
 preferences update the same contribution, so readers never observe a temporary
-missing theme.
+missing theme. Extension point identity and key policy are captured and immutable.
+Contribution options are captured when registered; `update` never rereads the caller's
+options. Ordering belongs only to the contribution value's `order`; the registration
+options and envelope carry no separate sorting hint.
 
 Dougong's `SerialQueue` owns ordered execution. Client task cohorts partition
 queues by product identity and fence retired generations, releasing pending

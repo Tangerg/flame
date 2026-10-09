@@ -135,19 +135,22 @@ describe("kernel contribution reads", () => {
     expect(index.entries(THEME)).toEqual([]);
   });
 
-  it("sorts by the item's own order ahead of the contribute-time hint", async () => {
+  it("sorts by the contribution value's current order", async () => {
+    let update!: (theme: Theme) => void;
     const plugin = definePlugin({
       name: "test.many",
       setup: (ctx) => {
-        ctx.contribute(THEME, { id: "c", label: "C" }, { order: 30 });
-        ctx.contribute(THEME, { id: "a", label: "A", order: 1 }, { order: 99 });
-        ctx.contribute(THEME, { id: "b", label: "B" }, { order: 20 });
+        ctx.contribute(THEME, { id: "c", label: "C", order: 30 });
+        update = ctx.contribute(THEME, { id: "a", label: "A", order: 1 }).update;
+        ctx.contribute(THEME, { id: "b", label: "B", order: 20 });
       },
     });
 
     const index = await start([plugin]);
 
     expect(index.entries(THEME).map((e) => e.item.id)).toEqual(["a", "b", "c"]);
+    update({ id: "a", label: "A", order: 40 });
+    expect(index.entries(THEME).map((e) => e.item.id)).toEqual(["b", "c", "a"]);
   });
 
   it("gives a single point's key to the last contributor", async () => {
@@ -296,6 +299,33 @@ describe("kernel contribution reads", () => {
 });
 
 describe("contribute policy", () => {
+  it("keeps a contribution bound to the options accepted at registration", async () => {
+    const options = { key: "accepted" };
+    let update!: (theme: Theme) => void;
+    await start([
+      definePlugin({
+        name: "test.captured-options",
+        setup(ctx) {
+          update = ctx.contribute(THEME, { id: "theme", label: "Original" }, options).update;
+        },
+      }),
+    ]);
+    options.key = "replacement";
+
+    expect(() => update({ id: "theme", label: "Updated" })).not.toThrow();
+    expect(index.entries(THEME)).toEqual([
+      expect.objectContaining({ key: "accepted", item: { id: "theme", label: "Updated" } }),
+    ]);
+  });
+
+  it("keeps extension identity and resolution policy immutable", () => {
+    const point = defineExtensionPoint<Theme>({ id: "test.fixed-policy", keying: "single" });
+
+    expect(Reflect.set(point, "id", "test.other-policy")).toBe(false);
+    expect(Reflect.set(point, "keying", "multi")).toBe(false);
+    expect(point.id).toBe(point.token.id);
+  });
+
   it("derives a single point's key from keyOf ahead of item.id", async () => {
     const ICON = defineExtensionPoint<{ id: string; fn: string }>({
       id: "test.icon",
