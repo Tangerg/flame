@@ -51,6 +51,11 @@ text, so clients cannot round numbers or discard framework fields while parsing
 and re-encoding it. Its presence establishes neither a final Tool result nor
 retry safety; model history never receives it as a settled ToolResult.
 
+The replay journal charges the complete unresolved-effect evidence, including
+diagnostics and frozen output, once at publication. Its replay window and live
+subscriber queues consume that same charge. An oversized event ends a subscriber
+and makes the earlier cursor unavailable; clients recover from durable Run reads.
+
 Rebuild the shared client, Desktop, CLI and IDE against this catalog. Earlier
 protocol versions are refused. Session artifacts use version 31 so an earlier
 importer cannot discard the new evidence. Effects without an observed output

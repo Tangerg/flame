@@ -21,6 +21,7 @@ const (
 	retainedQuestionFieldBytes  = 96
 	retainedQuestionOptionBytes = 64
 	retainedInterruptBytes      = 128
+	retainedEffectHeaderBytes   = 128
 	retainedPlanEntryBytes      = 64
 )
 
@@ -51,6 +52,10 @@ func retainedRunBytes(run run.Run) int {
 	)
 	if snapshot.Failure != nil {
 		bytes += len(snapshot.Failure.Detail) + len(snapshot.Failure.DocURL)
+	}
+	bytes += cap(snapshot.UnresolvedEffects) * retainedEffectHeaderBytes
+	for _, effect := range snapshot.UnresolvedEffects {
+		bytes += stringsBytes(effect.ProcessID(), effect.EffectID(), effect.Cause(), effect.Reason(), effect.Detail(), effect.Output())
 	}
 	usage, _ := snapshot.Metrics.Usage()
 	bytes += retainedUsageBytes(&usage)

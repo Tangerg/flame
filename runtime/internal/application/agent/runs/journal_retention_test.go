@@ -1,9 +1,12 @@
 package runs
 
 import (
+	"errors"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/Tangerg/scope/core/chat"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
@@ -20,6 +23,13 @@ func TestRetentionChargeTracksEveryVariableReplayPayload(t *testing.T) {
 		t.Fatal(err)
 	}
 	canceled := run.OutcomeCanceled
+	observed := chat.ToolOutput{Content: []chat.ToolContent{{Kind: chat.PartText, Text: largeText}}}
+	effect, err := run.NewUnresolvedEffect(run.UnresolvedEffectConfig{
+		ProcessID: "process", EffectID: "effect", Cause: "host_cancellation", Output: &observed,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	tests := []struct {
 		name  string
@@ -30,6 +40,11 @@ func TestRetentionChargeTracksEveryVariableReplayPayload(t *testing.T) {
 			name:  "run",
 			small: SegmentFinished{Run: testsupport.MustRestoreRun(run.Snapshot{ID: "run", State: run.Canceled, Outcome: &canceled})},
 			large: SegmentFinished{Run: testsupport.MustRestoreRun(run.Snapshot{ID: "run", State: run.Canceled, Outcome: &canceled, Detail: largeText})},
+		},
+		{
+			name:  "unresolved effect output",
+			small: SegmentFinished{Run: testsupport.MustRestoreRun(run.Snapshot{ID: "run", State: run.Canceled, Outcome: &canceled})},
+			large: SegmentFinished{Run: testsupport.MustRestoreRun(run.Snapshot{ID: "run", State: run.Canceled, Outcome: &canceled, UnresolvedEffects: []run.UnresolvedEffect{effect}})},
 		},
 		{
 			name: "item start identity",
@@ -71,6 +86,51 @@ func TestRetentionChargeTracksEveryVariableReplayPayload(t *testing.T) {
 			large := test.large.retainedBytes()
 			if large-small < growth {
 				t.Fatalf("large payload charge grew by %d bytes, want at least %d", large-small, growth)
+			}
+		})
+	}
+}
+
+func TestJournalRetentionBoundsUnresolvedEffectEvidence(t *testing.T) {
+	const budget = 8 << 10
+	for _, test := range []struct {
+		name   string
+		config run.UnresolvedEffectConfig
+	}{
+		{
+			name: "output",
+			config: run.UnresolvedEffectConfig{
+				ProcessID: "process", EffectID: "effect", Cause: "host_cancellation",
+				Output: &chat.ToolOutput{Content: []chat.ToolContent{{Kind: chat.PartText, Text: strings.Repeat("x", budget*2)}}},
+			},
+		},
+		{
+			name: "diagnostics",
+			config: run.UnresolvedEffectConfig{
+				ProcessID: strings.Repeat("p", 512), EffectID: strings.Repeat("e", 512), Cause: strings.Repeat("c", 512),
+				Reason: strings.Repeat("r", 4096), Detail: strings.Repeat("d", 4096),
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			effect, err := run.NewUnresolvedEffect(test.config)
+			if err != nil {
+				t.Fatal(err)
+			}
+			terminal := testsupport.MustRestoreRun(run.Snapshot{
+				ID: testRunID, State: run.Canceled, UnresolvedEffects: []run.UnresolvedEffect{effect},
+			})
+			j := mustNewJournal(t, testStreamScope(testEpoch, testRunID, testSegmentID), Retention{MaxEvents: 1024, MaxBytes: budget})
+			mustAppendJournal(t, j, ev(true))
+			attached := j.tail()
+			defer attached.Cancel()
+			mustAppendJournal(t, j, Event{RunID: testRunID, SegmentID: testSegmentID, Payload: SegmentFinished{Run: terminal}})
+			mustCloseJournal(t, j)
+			if _, err := j.replay(cursorAt(t, 1)); !errors.Is(err, ErrReplayUnavailable) {
+				t.Fatalf("oversized Run evidence stayed replayable: %v", err)
+			}
+			if got := drain(attached.Events); len(got) != 0 {
+				t.Fatalf("subscriber retained evidence beyond its byte budget: %v", got)
 			}
 		})
 	}
