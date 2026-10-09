@@ -14,10 +14,12 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"github.com/Tangerg/flame/runtime/protocol"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 func TestArtifactOutcomePreservesUnresolvedEffects(t *testing.T) {
-	effect, err := run.NewUnresolvedEffect("process_source", "effect_source", "canceled", "owner stopped", "external result is unconfirmed")
+	output := chat.ToolOutput{Content: []chat.ToolContent{{Kind: chat.PartText, Text: "observed before cancellation"}}, Details: []byte(`{"receipt":9007199254740993}`)}
+	effect, err := run.NewUnresolvedEffect(run.UnresolvedEffectConfig{ProcessID: "process_source", EffectID: "effect_source", Cause: "canceled", Reason: "owner stopped", Detail: "external result is unconfirmed", Output: &output})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,6 +48,7 @@ func TestArtifactOutcomePreservesUnresolvedEffects(t *testing.T) {
 			want := []protocol.UnresolvedEffect{{
 				ProcessID: "process_source", EffectID: "effect_source", Cause: "canceled",
 				Reason: "owner stopped", Detail: "external result is unconfirmed",
+				Output: effect.Output(),
 			}}
 			if !slices.Equal(artifact.Outcome.UnresolvedEffects, want) {
 				t.Fatalf("artifact effects = %+v, want %+v", artifact.Outcome.UnresolvedEffects, want)
@@ -88,11 +91,12 @@ func TestSessionExportImportPreservesUnresolvedEffectsAsHistory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rootEffect, err := run.NewUnresolvedEffect("process_root_source", "effect_root_source", "failed", "delegate unresolved", "root observation")
+	output := chat.ToolOutput{Content: []chat.ToolContent{{Kind: chat.PartText, Text: "observed before cancellation"}}, Details: []byte(`{"receipt":9007199254740993}`)}
+	rootEffect, err := run.NewUnresolvedEffect(run.UnresolvedEffectConfig{ProcessID: "process_root_source", EffectID: "effect_root_source", Cause: "failed", Reason: "delegate unresolved", Detail: "root observation", Output: &output})
 	if err != nil {
 		t.Fatal(err)
 	}
-	childEffect, err := run.NewUnresolvedEffect("process_child_source", "effect_child_source", "canceled", "owner stopped", "child observation")
+	childEffect, err := run.NewUnresolvedEffect(run.UnresolvedEffectConfig{ProcessID: "process_child_source", EffectID: "effect_child_source", Cause: "canceled", Reason: "owner stopped", Detail: "child observation", Output: &output})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -178,6 +182,8 @@ func TestSessionImportRejectsInvalidUnresolvedEffects(t *testing.T) {
 		"noncanonical identity": {{ProcessID: " process_source", EffectID: "effect_source", Cause: "canceled"}},
 		"oversized diagnostic":  {{ProcessID: "process_source", EffectID: "effect_source", Cause: "canceled", Detail: strings.Repeat("x", 4097)}},
 		"duplicate effect":      {effect, effect},
+		"invalid output":        {{ProcessID: "process_source", EffectID: "effect_source", Cause: "canceled", Output: `{"content":[{"kind":"tool_call"}]}`}},
+		"unknown output field":  {{ProcessID: "process_source", EffectID: "effect_source", Cause: "canceled", Output: `{"result":"confirmed"}`}},
 	} {
 		t.Run(name, func(t *testing.T) {
 			handler, rt := rollbackHarness(t)

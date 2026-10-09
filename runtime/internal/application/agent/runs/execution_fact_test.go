@@ -302,7 +302,7 @@ func TestFirstOutputLatencyFactDoesNotAliasProducerOrConsumer(t *testing.T) {
 }
 
 func TestTerminalCommitOwnsUnresolvedEvidence(t *testing.T) {
-	effect, err := run.NewUnresolvedEffect("process", "effect", "host_cancellation", "stop", "unknown")
+	effect, err := run.NewUnresolvedEffect(run.UnresolvedEffectConfig{ProcessID: "process", EffectID: "effect", Cause: "host_cancellation", Reason: "stop", Detail: "unknown"})
 	if err != nil {
 		t.Fatal(err)
 	}

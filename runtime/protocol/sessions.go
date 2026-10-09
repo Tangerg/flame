@@ -186,9 +186,9 @@ type ExportSessionResponse struct {
 // artifact it doesn't recognize; development builds do not migrate old
 // artifacts.
 //
-// Version 30 carries a conversation watermark on root runs only. Imported
+// Version 31 preserves observed Scope ToolOutput on unresolved effects. Imported
 // process and effect identities never authorize execution or recovery.
-const SessionArtifactVersion = 30
+const SessionArtifactVersion = 31
 
 // SessionArtifact is the portable, round-trippable form of a session: its
 // identity plus the full conversation — chat messages (the model's context),

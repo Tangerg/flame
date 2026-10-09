@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-08.1",
+  "protocolVersion": "2026-10-09.1",
   "features": [
     "reasoning",
     "multimodal",
@@ -6948,11 +6948,11 @@
       "rules": [
         {
           "field": "version",
-          "constraint": "minimum(30)"
+          "constraint": "minimum(31)"
         },
         {
           "field": "version",
-          "constraint": "maximum(30)"
+          "constraint": "maximum(31)"
         }
       ]
     },

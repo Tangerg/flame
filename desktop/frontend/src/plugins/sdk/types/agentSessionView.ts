@@ -85,6 +85,7 @@ export interface AgentUnresolvedEffect {
   cause: string;
   reason?: string;
   detail?: string;
+  output?: string;
 }
 
 export type AgentRunFailureOutcome = {

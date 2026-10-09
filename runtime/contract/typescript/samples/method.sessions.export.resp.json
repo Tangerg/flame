@@ -1,7 +1,7 @@
 {
   "format": "json",
   "artifact": {
-      "version": 30,
+      "version": 31,
     "session": {
         "id": "ses_01",
         "title": "Refactor the runtime protocol",

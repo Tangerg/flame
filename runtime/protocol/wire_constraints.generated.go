@@ -2266,8 +2266,8 @@ func (s SessionTrajectory) ValidateWire() error {
 
 func (s SessionArtifact) ValidateWire() error {
 	return collectWireViolations("SessionArtifact",
-		minimumNumber("version", s.Version, 30),
-		maximumNumber("version", s.Version, 30),
+		minimumNumber("version", s.Version, 31),
+		maximumNumber("version", s.Version, 31),
 	)
 }
 

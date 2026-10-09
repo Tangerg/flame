@@ -14,6 +14,7 @@ import { asItemId, asRunId, asSessionId } from "@flame/runtime-contract/client/i
 import { createMethods, type Methods } from "@flame/runtime-contract/client/methods";
 import { PROTOCOL_VERSION, type Item, type RunEvent } from "@flame/runtime-contract/wire";
 import discoverResponse from "@flame/runtime-contract/samples/method.discover.resp.json";
+import sessionArtifact from "@flame/runtime-contract/samples/session.artifact.json";
 
 function agentMessageItem(
   id: string,
@@ -39,6 +40,25 @@ describe("smoke: v2 end-to-end happy path", () => {
 
   afterEach(async () => {
     await client.close();
+  });
+
+  it("preserves unresolved output evidence through client export and JSON round-trip", async () => {
+    transport = createMemoryTransport();
+    client = createRpcClient(transport);
+    methods = createMethods(client);
+
+    const exporting = methods.sessions.export(asSessionId("ses_01"), "json");
+    const request = await waitForRequest(transport, "sessions.export");
+    respondSuccess(transport, request.id, {
+      format: "json",
+      artifact: JSON.parse(JSON.stringify(sessionArtifact)),
+    });
+    const exported = await exporting;
+    if (exported.format !== "json") throw new Error("expected JSON export");
+    const transferred = JSON.parse(JSON.stringify(exported.artifact)) as typeof sessionArtifact;
+    const output = transferred.runs[0]!.outcome.unresolvedEffects[0]!.output;
+    expect(output).toBe(sessionArtifact.runs[0]!.outcome.unresolvedEffects[0]!.output);
+    expect(output).toContain("9007199254740993");
   });
 
   it("discover → create → start → interrupt → resume → completed", async () => {

@@ -11,7 +11,7 @@ import (
 )
 
 func TestPortableSnapshotPreservesUnresolvedEffectsAsTerminalHistory(t *testing.T) {
-	effect, err := run.NewUnresolvedEffect("process_source", "effect_source", "canceled", "owner stopped", "external result is unconfirmed")
+	effect, err := run.NewUnresolvedEffect(run.UnresolvedEffectConfig{ProcessID: "process_source", EffectID: "effect_source", Cause: "canceled", Reason: "owner stopped", Detail: "external result is unconfirmed"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func TestPortableSnapshotPreservesUnresolvedEffectsAsTerminalHistory(t *testing.
 }
 
 func TestPortableSnapshotRejectsInvalidUnresolvedEffects(t *testing.T) {
-	effect, err := run.NewUnresolvedEffect("process_source", "effect_source", "canceled", "", "")
+	effect, err := run.NewUnresolvedEffect(run.UnresolvedEffectConfig{ProcessID: "process_source", EffectID: "effect_source", Cause: "canceled", Reason: "", Detail: ""})
 	if err != nil {
 		t.Fatal(err)
 	}

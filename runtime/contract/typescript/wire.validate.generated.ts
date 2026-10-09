@@ -3586,7 +3586,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     runs: array(ref(() => CHECKS.ArtifactRun)),
     session: ref(() => CHECKS.ArtifactSession),
     toolResults: array(ref(() => CHECKS.ArtifactToolResult)),
-    version: allOf([integer(), minimum(30), maximum(30)]),
+    version: allOf([integer(), minimum(31), maximum(31)]),
   }, ["items", "messages", "runs", "session", "toolResults", "version"]),
   SessionSnapshot: object({
     goal: ref(() => CHECKS.Goal),
@@ -4009,6 +4009,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     cause: text(),
     detail: text(),
     effectId: text(),
+    output: text(),
     processId: text(),
     reason: text(),
   }, ["cause", "effectId", "processId"]),

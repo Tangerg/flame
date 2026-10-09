@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-08.1` · 100 methods
+Protocol `2026-10-09.1` · 100 methods
 
 ## Methods
 
@@ -622,8 +622,8 @@ TypeScript validator from this single registry projection.
 | `ArtifactToolResult` | `itemId` | `nonEmpty` |
 | `ArtifactToolResult` | `itemId` | `identity` |
 | `ArtifactToolResult` | `itemId` | `maxLength(256)` |
-| `SessionArtifact` | `version` | `minimum(30)` |
-| `SessionArtifact` | `version` | `maximum(30)` |
+| `SessionArtifact` | `version` | `minimum(31)` |
+| `SessionArtifact` | `version` | `maximum(31)` |
 | `ArtifactProblem` | `retryAfterSeconds` | `positive` |
 | `ArtifactProblem` | `retryAfterSeconds` | `maximum(9223372036)` |
 | `ContentBlock` | `text` | `pattern("\\S")` |

@@ -1,5 +1,5 @@
 {
-  "version": 30,
+  "version": 31,
   "session": {
     "id": "ses_01",
     "title": "Refactor the runtime protocol",
@@ -27,7 +27,8 @@
             "effectId": "effect_source_01",
             "cause": "canceled",
             "reason": "owner stopped",
-            "detail": "external result is unconfirmed"
+            "detail": "external result is unconfirmed",
+            "output": "{\"content\":[{\"kind\":\"text\",\"text\":\"observed before cancellation\"}],\"details\":{\"receipt\":9007199254740993}}"
           }
         ]
       },

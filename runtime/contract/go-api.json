@@ -2285,7 +2285,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-08.1\""
+          "value": "\"2026-10-09.1\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -2560,7 +2560,7 @@
         {
           "name": "SessionArtifactVersion",
           "type": "untyped int",
-          "value": "30"
+          "value": "31"
         },
         {
           "name": "SessionStatusIdle",
@@ -10016,6 +10016,11 @@
               "name": "Detail",
               "type": "string",
               "tag": "json:\"detail,omitempty\""
+            },
+            {
+              "name": "Output",
+              "type": "string",
+              "tag": "json:\"output,omitempty\""
             }
           ]
         },

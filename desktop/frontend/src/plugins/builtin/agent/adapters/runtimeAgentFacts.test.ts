@@ -52,6 +52,8 @@ describe("Runtime → Agent fact adapter", () => {
           cause: "executor_failure",
           reason: "response_lost",
           detail: "connection closed",
+          output:
+            '{"content":[{"kind":"text","text":"observed"}],"details":{"receipt":9007199254740993}}',
         },
       ];
       const outcome = {
@@ -82,6 +84,10 @@ describe("Runtime → Agent fact adapter", () => {
         run: { id: "run_child", outcome: projected.outcome },
         rootRun: projected,
       });
+      unresolvedEffects[0]!.output = "changed wire projection";
+      expect(projected.outcome?.unresolvedEffects?.[0]?.output).toBe(
+        '{"content":[{"kind":"text","text":"observed"}],"details":{"receipt":9007199254740993}}',
+      );
     },
   );
 

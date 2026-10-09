@@ -35,13 +35,13 @@ import (
 // is that the document this build writes is the version the contract named. Bumping
 // it is a breaking act, so it should cost a deliberate edit here.
 func TestArtifactVersionMatchesCurrentContractBaseline(t *testing.T) {
-	if protocol.SessionArtifactVersion != 30 {
-		t.Fatalf("SessionArtifactVersion = %d; current Runtime contract requires artifact v30",
+	if protocol.SessionArtifactVersion != 31 {
+		t.Fatalf("SessionArtifactVersion = %d; current Runtime contract requires artifact v31",
 			protocol.SessionArtifactVersion)
 	}
 }
 
-// TestArtifactV24RoundTripsEveryFieldItCarries is the rest of gate 16.
+// TestArtifactRoundTripsEveryFieldItCarries checks the complete current artifact.
 //
 // The failure mode a version bump actually has is a field the encoder writes and
 // the decoder drops — the archive still imports, still looks right, and the value is
@@ -54,7 +54,7 @@ func TestArtifactVersionMatchesCurrentContractBaseline(t *testing.T) {
 //   - the archive survives the trip WHOLE — export, wipe, import, export again, and
 //     the two documents must be identical byte for byte. Any field the decoder
 //     forgets is missing from the second document.
-func TestArtifactV24RoundTripsEveryFieldItCarries(t *testing.T) {
+func TestArtifactRoundTripsEveryFieldItCarries(t *testing.T) {
 	s, rt := rollbackHarness(t)
 	ctx := t.Context()
 	sessionID := seedMaximalSession(t, rt)
@@ -389,7 +389,8 @@ func seedCanceledRun(t *testing.T, rt *stubRuntime, sessionID string) {
 	if err != nil {
 		t.Fatalf("model selection: %v", err)
 	}
-	effect, err := run.NewUnresolvedEffect("process_historical", "effect_historical", "canceled", "execution stopped", "external result is unconfirmed")
+	observed := chat.ToolOutput{Content: []chat.ToolContent{{Kind: chat.PartText, Text: "observed before cancellation"}}, Details: []byte(`{"receipt":9007199254740993}`)}
+	effect, err := run.NewUnresolvedEffect(run.UnresolvedEffectConfig{ProcessID: "process_historical", EffectID: "effect_historical", Cause: "canceled", Reason: "execution stopped", Detail: "external result is unconfirmed", Output: &observed})
 	if err != nil {
 		t.Fatalf("unresolved effect: %v", err)
 	}

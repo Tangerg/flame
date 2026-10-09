@@ -40,7 +40,7 @@ const runStarted = (id: string, sessionId: string): StreamEvent => ({
 });
 
 describe("reducer — run lifecycle", () => {
-  it.each(["processId", "effectId", "cause", "reason", "detail"] as const)(
+  it.each(["processId", "effectId", "cause", "reason", "detail", "output"] as const)(
     "does not suppress a terminal contradiction in unresolved effect %s",
     (field) => {
       const effect = {
@@ -49,6 +49,7 @@ describe("reducer — run lifecycle", () => {
         cause: "unknown",
         reason: "lost",
         detail: "no receipt",
+        output: '{"details":{"receipt":9007199254740993,"confirmed":false}}',
       };
       const started = reduce(EMPTY_AGENT_SESSION_VIEW, runStarted("run_1", "ses_1"));
       const finish = testRunEvent(
@@ -65,7 +66,15 @@ describe("reducer — run lifecycle", () => {
             settled,
             runFinished({
               type: "canceled",
-              unresolvedEffects: [{ ...effect, [field]: "different" }],
+              unresolvedEffects: [
+                {
+                  ...effect,
+                  [field]:
+                    field === "output"
+                      ? '{"details":{"receipt":9007199254740992,"confirmed":false}}'
+                      : "different",
+                },
+              ],
             }),
           ).event,
         }),

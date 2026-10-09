@@ -42,6 +42,20 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
+## Protocol 2026-10-09.1
+
+`UnresolvedEffect.output` preserves an observed Scope `chat.ToolOutput` from a
+`CallError`. The terminal Run owns this evidence across reads, restart and
+Session export/import. The wire and artifact carry its frozen JSON document as
+text, so clients cannot round numbers or discard framework fields while parsing
+and re-encoding it. Its presence establishes neither a final Tool result nor
+retry safety; model history never receives it as a settled ToolResult.
+
+Rebuild the shared client, Desktop, CLI and IDE against this catalog. Earlier
+protocol versions are refused. Session artifacts use version 31 so an earlier
+importer cannot discard the new evidence. Effects without an observed output
+remain valid; there is no alternate storage reader or migration path.
+
 ## Protocol 2026-10-08.1
 
 Portable releases publish `views` alongside themes, Skills and MCP declarations. The only
@@ -762,7 +776,7 @@ Waiting checkpoints declare the offloaded result IDs required by their continuat
 
 Unknown-effect observations retain the Effect IDs and the first available local failure diagnostic. The RunLost record preserves these details while keeping the outcome unknown; diagnostic text is never evidence that an external operation succeeded or failed.
 
-Portable Session artifacts preserve unresolved effects on every terminal outcome, including canceled and timed-out Runs. The artifact retains the exact source process and Effect identities, cause, reason, and detail through export and import. These are read-only historical evidence: imported Runs have no active Segment, open interrupt, or execution checkpoint, and the identities do not authorize resume or retry. Import accepts only the current artifact version; earlier development artifacts are rejected rather than treated as complete evidence.
+Portable Session artifacts preserve unresolved effects on every terminal outcome, including canceled and timed-out Runs. The artifact retains the exact source process and Effect identities, cause, reason, detail, and any observed Scope ToolOutput through export and import. These are read-only historical evidence: imported Runs have no active Segment, open interrupt, or execution checkpoint, and the identities do not authorize resume or retry. Import accepts only the current artifact version; earlier development artifacts are rejected rather than treated as complete evidence.
 
 Unknown-effect termination closes every unfinished member in Run-tree postorder, retaining the same evidence on each lost Run. Completed members keep their outcomes. Each terminal commit settles open model attempts as unknown and abandons unfinished Tool Items without inventing model-visible results; the executor is released only after the terminal publication sequence.
 

@@ -45,7 +45,8 @@ function sameRunOutcome(left: AgentRunOutcome | null, right: AgentRunOutcome): b
         effect.effectId !== other.effectId ||
         effect.cause !== other.cause ||
         effect.reason !== other.reason ||
-        effect.detail !== other.detail
+        effect.detail !== other.detail ||
+        effect.output !== other.output
       );
     })
   )

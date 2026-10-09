@@ -2,10 +2,12 @@ package execution
 
 import (
 	"context"
+	json "encoding/json/v2"
 	"errors"
 	"fmt"
 	domaintool "github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"iter"
+	"reflect"
 	"runtime"
 	"slices"
 	"strings"
@@ -68,10 +70,15 @@ func (u usageOnlyModel) Stream(ctx context.Context, request *chat.Request) iter.
 
 func TestCanceledToolRetainsEvidenceAfterRootAwait(t *testing.T) {
 	entered, release := make(chan struct{}), make(chan struct{})
+	observed := chat.ToolOutput{Content: []chat.ToolContent{{Kind: chat.PartText, Text: "observed before cancellation"}}, Details: []byte(`{"receipt":9007199254740993,"confirmed":false}`)}
 	executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: "block", Description: "Await an external operation."}, func(ctx context.Context, _ struct{}) (string, error) {
 		close(entered)
 		<-release
-		return "", errors.New("external result could not be confirmed")
+		failure, err := toolcontract.NewCallError(toolcontract.CallErrorConfig{Cause: errors.New("external result could not be confirmed"), Evidence: observed})
+		if err != nil {
+			return "", err
+		}
+		return "", failure
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -101,11 +108,46 @@ func TestCanceledToolRetainsEvidenceAfterRootAwait(t *testing.T) {
 	found := false
 	for _, effect := range effects {
 		if strings.Contains(effect.Detail(), "external result") {
+			var output chat.ToolOutput
+			if err := json.Unmarshal([]byte(effect.Output()), &output); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(output, observed) {
+				t.Fatalf("Tool output evidence missing: got %+v, want %+v", effect.Output(), observed)
+			}
 			found = true
 		}
 	}
 	if !found {
 		t.Fatalf("Tool diagnostic missing: %+v", effects)
+	}
+	if results := payloadsOf[runs.ToolResultsCommitted](events); len(results) != 0 {
+		t.Fatalf("unknown output was promoted to a model result: %+v", results)
+	}
+}
+
+func TestInvalidToolCallErrorHasNoObservedOutput(t *testing.T) {
+	for _, cause := range []error{&toolcontract.CallError{}, (*toolcontract.CallError)(nil)} {
+		t.Run(fmt.Sprintf("%v", cause), func(t *testing.T) {
+			executable, err := toolcontract.NewFunc(toolcontract.FuncConfig{Name: "observe", Description: "Observe an external operation."}, func(context.Context, struct{}) (string, error) {
+				return "", cause
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			model := &observationScriptModel{responses: []*chat.Response{interactionToolResponse(chat.ToolCall{ID: "external", Name: "observe", Arguments: `{}`}, 1, 1)}}
+			executor := newObservedTestInteractionExecutor(t, model, InteractionExecutorConfig{ToolResolver: staticInteractionTools{identities: []domaintool.Ref{testsupport.A2ATool(t, "observe")}, manifest: toolset.Manifest{Visible: []toolcontract.Tool{executable}}}, ToolInterpreter: testInteractionToolInterpreter{}, ToolAuthorizer: allowInteractionTools{}})
+			events := runInteractionHarness(t.Context(), t, executor, interactionTestStart(), nil)
+			ends := payloadsOf[runs.SegmentEnded](events)
+			if len(ends) != 1 || ends[0].Reason != run.OutcomeLost || len(ends[0].UnresolvedEffects()) == 0 {
+				t.Fatalf("invalid error did not retain its unresolved outcome: %+v", ends)
+			}
+			for _, effect := range ends[0].UnresolvedEffects() {
+				if effect.Output() != "" {
+					t.Fatalf("invalid CallError invented an observed output: %s", effect.Output())
+				}
+			}
+		})
 	}
 }
 

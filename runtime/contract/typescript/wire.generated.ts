@@ -9,10 +9,10 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-08.1";
+export const PROTOCOL_VERSION = "2026-10-09.1";
 
 // The only Session Artifact version this runtime imports or exports.
-export const SESSION_ARTIFACT_VERSION = 30;
+export const SESSION_ARTIFACT_VERSION = 31;
 
 // The maximum length of one opaque pagination cursor on the public wire.
 export const MAXIMUM_PAGINATION_CURSOR_CHARACTERS = 65536;
@@ -1916,6 +1916,7 @@ export interface UnresolvedEffect {
   cause: string;
   detail?: string;
   effectId: string;
+  output?: string;
   processId: string;
   reason?: string;
 }

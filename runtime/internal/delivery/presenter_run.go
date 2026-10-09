@@ -126,7 +126,7 @@ func presentOutcome(run rundomain.Run) protocol.RunOutcome {
 func presentUnresolvedEffects(effects []rundomain.UnresolvedEffect) []protocol.UnresolvedEffect {
 	projected := make([]protocol.UnresolvedEffect, 0, len(effects))
 	for _, effect := range effects {
-		projected = append(projected, protocol.UnresolvedEffect{ProcessID: effect.ProcessID(), EffectID: effect.EffectID(), Cause: effect.Cause(), Reason: effect.Reason(), Detail: effect.Detail()})
+		projected = append(projected, protocol.UnresolvedEffect{ProcessID: effect.ProcessID(), EffectID: effect.EffectID(), Cause: effect.Cause(), Reason: effect.Reason(), Detail: effect.Detail(), Output: effect.Output()})
 	}
 	return projected
 }

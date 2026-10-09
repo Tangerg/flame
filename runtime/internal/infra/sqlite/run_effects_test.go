@@ -7,6 +7,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
+	"github.com/Tangerg/scope/core/chat"
 )
 
 func TestTerminalEffectsSurviveDatabaseReopen(t *testing.T) {
@@ -23,7 +24,8 @@ func TestTerminalEffectsSurviveDatabaseReopen(t *testing.T) {
 				t.Fatal(err)
 			}
 			value := admittedRunFromDraft(draft)
-			evidence, err := run.NewUnresolvedEffect("process-tool", "effect-tool", "host_cancellation", "operator stopped", "result unknown")
+			output := chat.ToolOutput{Content: []chat.ToolContent{{Kind: chat.PartText, Text: "observed before cancellation"}}, Details: []byte(`{"receipt":9007199254740993}`)}
+			evidence, err := run.NewUnresolvedEffect(run.UnresolvedEffectConfig{ProcessID: "process-tool", EffectID: "effect-tool", Cause: "host_cancellation", Reason: "operator stopped", Detail: "result unknown", Output: &output})
 			if err != nil {
 				t.Fatal(err)
 			}

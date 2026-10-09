@@ -148,6 +148,9 @@ type UnresolvedEffect struct {
 	Cause     string `json:"cause"`
 	Reason    string `json:"reason,omitempty"`
 	Detail    string `json:"detail,omitempty"`
+	// Output preserves a Scope chat.ToolOutput JSON document without passing
+	// through client number representations. It is never a final ToolResult.
+	Output string `json:"output,omitempty"`
 }
 
 // RunOutcome is a tag-discriminated union over why a run STOPPED FOR GOOD.

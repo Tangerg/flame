@@ -42,8 +42,11 @@ func (i *interactionSession) publishRuntimeFailure(cause error) error {
 			if process.RuntimeError == nil {
 				continue
 			}
-			for _, id := range process.RuntimeError.UnresolvedEffectIDs() {
-				effect, err := run.NewUnresolvedEffect(process.Snapshot.Relation().ProcessID().String(), id.String(), "runtime_failure", executorDiagnostic(cause), executorDiagnostic(process.RuntimeError))
+			for _, observation := range i.effectFailures.observations(process.RuntimeError.UnresolvedEffectIDs()) {
+				effect, err := run.NewUnresolvedEffect(run.UnresolvedEffectConfig{
+					ProcessID: process.Snapshot.Relation().ProcessID().String(), EffectID: observation.ID, Cause: "runtime_failure",
+					Reason: executorDiagnostic(cause), Detail: executorDiagnostic(process.RuntimeError), Output: observation.Output,
+				})
 				if err != nil {
 					return err
 				}

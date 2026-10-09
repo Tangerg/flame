@@ -202,7 +202,16 @@ func portableRunFromArtifact(path string, artifact protocol.ArtifactRun) (sessio
 func portableUnresolvedEffectsFromArtifact(path string, values []protocol.UnresolvedEffect) ([]run.UnresolvedEffect, error) {
 	effects := make([]run.UnresolvedEffect, 0, len(values))
 	for index, value := range values {
-		effect, err := run.NewUnresolvedEffect(value.ProcessID, value.EffectID, value.Cause, value.Reason, value.Detail)
+		var output *chat.ToolOutput
+		if len(value.Output) > 0 {
+			output = new(chat.ToolOutput)
+			if err := json.Unmarshal([]byte(value.Output), output); err != nil {
+				return nil, invalidArtifact(fmt.Sprintf("%s[%d].output", path, index), "%v", err)
+			}
+		}
+		effect, err := run.NewUnresolvedEffect(run.UnresolvedEffectConfig{
+			ProcessID: value.ProcessID, EffectID: value.EffectID, Cause: value.Cause, Reason: value.Reason, Detail: value.Detail, Output: output,
+		})
 		if err != nil {
 			return nil, invalidArtifact(fmt.Sprintf("%s[%d]", path, index), "%v", err)
 		}
