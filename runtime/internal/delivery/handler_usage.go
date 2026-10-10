@@ -10,7 +10,7 @@ import (
 
 // SessionUsage projects the application-owned session usage report onto the
 // usage.session wire contract.
-func (s *Handler) SessionUsage(ctx context.Context, sessionID string) (*protocol.Usage, error) {
+func (s *Handler) SessionUsage(ctx context.Context, sessionID string) (*protocol.SessionUsage, error) {
 	report, err := s.usage.Session(ctx, sessionID)
 	if err != nil {
 		return nil, err
@@ -43,15 +43,8 @@ func (s *Handler) UsageSummary(ctx context.Context, in protocol.UsageSummaryRequ
 	}, nil
 }
 
-func presentSessionUsage(report sessions.UsageReport) *protocol.Usage {
-	out := &protocol.Usage{ModelUsage: presentModelUsage(report.Total)}
-	if len(report.ByModel) > 0 {
-		out.ByModel = make(map[string]protocol.ModelUsage, len(report.ByModel))
-		for model, modelUsage := range report.ByModel {
-			out.ByModel[model] = presentModelUsage(modelUsage)
-		}
-	}
-	return out
+func presentSessionUsage(report sessions.UsageReport) *protocol.SessionUsage {
+	return &protocol.SessionUsage{ModelUsage: presentModelUsage(report.Total), ByModel: presentUsageBuckets(report.ByModel)}
 }
 
 func presentUsageBuckets(buckets []sessions.UsageBucket) []protocol.UsageBucket {

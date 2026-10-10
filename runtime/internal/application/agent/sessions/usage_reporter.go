@@ -15,14 +15,13 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 )
 
-// UsageSessionLister lists the user-facing sessions that contribute to aggregate
-// usage. Child sessions are excluded by the session use case, preventing
-// subtree-aggregated runs from being counted twice.
+// UsageSessionLister lists the Sessions whose process-owned Run usage contributes
+// to the aggregate report.
 type UsageSessionLister interface {
 	List(ctx context.Context) ([]session.Session, error)
 }
 
-// UsageBucket is one named portion of a summary report.
+// UsageBucket is one named portion of an aggregate report.
 type UsageBucket struct {
 	Key   string
 	Usage accounting.Totals
@@ -32,11 +31,11 @@ type UsageBucket struct {
 // UsageReport is one session's cumulative metering and per-model split.
 type UsageReport struct {
 	Total   accounting.Totals
-	ByModel map[string]accounting.Totals
+	ByModel []UsageBucket
 }
 
-// UsageSummary is a cross-session usage report. Provider and day buckets reconcile
-// with Total because every completed run contributes as one whole run.
+// UsageSummary is a cross-session report. Provider and day buckets reconcile with
+// Total because each terminal Run contributes its recorded process usage once.
 type UsageSummary struct {
 	Total      accounting.Totals
 	ByProvider []UsageBucket
@@ -46,7 +45,7 @@ type UsageSummary struct {
 	Runs       int
 }
 
-// UsageDependencies are the durable projections and model policy a UsageReporter needs.
+// UsageDependencies are the durable projections and clock a UsageReporter needs.
 type UsageDependencies struct {
 	Runs     RunReader
 	Sessions UsageSessionLister
@@ -86,18 +85,11 @@ func (r *UsageReporter) Session(ctx context.Context, sessionID string) (UsageRep
 	total := usageAccumulator{}
 	byModel := map[string]*usageAccumulator{}
 	for _, current := range runs {
-		if err := foldRun(current, time.Time{}, &total, nil, byModel, nil, false); err != nil {
+		if err := foldRun(current, time.Time{}, &total, nil, byModel, nil); err != nil {
 			return UsageReport{}, err
 		}
 	}
-	report := UsageReport{Total: total.usage()}
-	if len(byModel) > 0 {
-		report.ByModel = make(map[string]accounting.Totals, len(byModel))
-		for name, bucket := range byModel {
-			report.ByModel[name] = bucket.usage()
-		}
-	}
-	return report, nil
+	return UsageReport{Total: total.usage(), ByModel: bucketsBySpend(byModel)}, nil
 }
 
 // Summary returns usage across user-facing sessions under the requested
@@ -124,7 +116,7 @@ func (r *UsageReporter) Summary(ctx context.Context, period UsageSummaryPeriod) 
 		}
 		before := total.runs
 		for _, current := range runs {
-			if err := foldRun(current, since, &total, byProvider, byModel, byDay, true); err != nil {
+			if err := foldRun(current, since, &total, byProvider, byModel, byDay); err != nil {
 				return UsageSummary{}, err
 			}
 		}
@@ -143,7 +135,7 @@ func (r *UsageReporter) Summary(ctx context.Context, period UsageSummaryPeriod) 
 	}, nil
 }
 
-func foldRun(current run.Run, since time.Time, total *usageAccumulator, byProvider, byModel, byDay map[string]*usageAccumulator, qualifyModels bool) error {
+func foldRun(current run.Run, since time.Time, total *usageAccumulator, byProvider, byModel, byDay map[string]*usageAccumulator) error {
 	usage, reported := current.Metrics().Usage()
 	if !current.State().IsTerminal() || !reported {
 		return nil
@@ -174,7 +166,7 @@ func foldRun(current run.Run, since time.Time, total *usageAccumulator, byProvid
 	}
 	if len(usage.ByModel) > 0 {
 		for name, split := range usage.ByModel {
-			key := usageModelKey(current.ModelSelection().Provider(), name, qualifyModels)
+			key := usageModelKey(current.ModelSelection().Provider(), name)
 			bucket := accumulatorFor(byModel, key)
 			if err := bucket.addRun(split); err != nil {
 				return fmt.Errorf("sessions: aggregate model %q usage: %w", key, err)
@@ -182,7 +174,7 @@ func foldRun(current run.Run, since time.Time, total *usageAccumulator, byProvid
 		}
 		return nil
 	}
-	key := usageModelKey(current.ModelSelection().Provider(), current.ModelSelection().Model(), qualifyModels)
+	key := usageModelKey(current.ModelSelection().Provider(), current.ModelSelection().Model())
 	bucket := accumulatorFor(byModel, key)
 	if err := bucket.addRun(usage.Total); err != nil {
 		return fmt.Errorf("sessions: aggregate model %q usage: %w", key, err)
@@ -190,10 +182,7 @@ func foldRun(current run.Run, since time.Time, total *usageAccumulator, byProvid
 	return nil
 }
 
-func usageModelKey(provider, model string, qualified bool) string {
-	if !qualified || provider == "" {
-		return model
-	}
+func usageModelKey(provider, model string) string {
 	return provider + "/" + model
 }
 
@@ -275,6 +264,7 @@ func bucketsBySpend(byKey map[string]*usageAccumulator) []UsageBucket {
 		return cmp.Or(
 			cmp.Compare(costOf(b.Usage.CostUSD), costOf(a.Usage.CostUSD)),
 			cmp.Compare(b.Usage.InputTokens, a.Usage.InputTokens),
+			cmp.Compare(a.Key, b.Key),
 		)
 	})
 	return buckets

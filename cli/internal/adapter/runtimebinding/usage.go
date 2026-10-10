@@ -3,7 +3,6 @@ package runtimebinding
 import (
 	"context"
 	"fmt"
-	"sort"
 
 	"github.com/Tangerg/flame/cli/internal/domain/conversation"
 	flameruntime "github.com/Tangerg/flame/runtime"
@@ -11,7 +10,7 @@ import (
 )
 
 type usageBinding interface {
-	GetSessionUsage(context.Context, protocol.SessionUsageRequest, flameruntime.CallOptions) (*protocol.Usage, error)
+	GetSessionUsage(context.Context, protocol.SessionUsageRequest, flameruntime.CallOptions) (*protocol.SessionUsage, error)
 	GetUsageSummary(context.Context, protocol.UsageSummaryRequest, flameruntime.CallOptions) (*protocol.UsageSummary, error)
 }
 
@@ -27,20 +26,11 @@ func (r *Connection) SessionUsage(ctx context.Context, sessionID string) (conver
 	if result == nil {
 		return conversation.SessionUsageReport{}, runtimeContractViolation("session usage returned nil")
 	}
-	report := conversation.SessionUsageReport{
+	return conversation.SessionUsageReport{
 		SessionID: request.SessionID,
 		Total:     result.ModelUsage,
-		ByModel:   make([]protocol.UsageBucket, 0, len(result.ByModel)),
-	}
-	keys := make([]string, 0, len(result.ByModel))
-	for key := range result.ByModel {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	for _, key := range keys {
-		report.ByModel = append(report.ByModel, protocol.UsageBucket{Key: key, ModelUsage: result.ByModel[key]})
-	}
-	return report, nil
+		ByModel:   result.ByModel,
+	}, nil
 }
 
 func (r *Connection) Summary(ctx context.Context, period conversation.UsageSummaryPeriod) (conversation.UsageSummary, error) {

@@ -14,11 +14,11 @@ import (
 )
 
 type usageBindingStub struct {
-	session func(context.Context, protocol.SessionUsageRequest, flameruntime.CallOptions) (*protocol.Usage, error)
+	session func(context.Context, protocol.SessionUsageRequest, flameruntime.CallOptions) (*protocol.SessionUsage, error)
 	summary func(context.Context, protocol.UsageSummaryRequest, flameruntime.CallOptions) (*protocol.UsageSummary, error)
 }
 
-func (u usageBindingStub) GetSessionUsage(ctx context.Context, request protocol.SessionUsageRequest, options flameruntime.CallOptions) (*protocol.Usage, error) {
+func (u usageBindingStub) GetSessionUsage(ctx context.Context, request protocol.SessionUsageRequest, options flameruntime.CallOptions) (*protocol.SessionUsage, error) {
 	return u.session(ctx, request, options)
 }
 
@@ -29,14 +29,15 @@ func (u usageBindingStub) GetUsageSummary(ctx context.Context, request protocol.
 func TestUsageAdapterProjectsSessionAndSummaryReports(t *testing.T) {
 	cost := 0.25
 	stub := usageBindingStub{
-		session: func(_ context.Context, request protocol.SessionUsageRequest, options flameruntime.CallOptions) (*protocol.Usage, error) {
+		session: func(_ context.Context, request protocol.SessionUsageRequest, options flameruntime.CallOptions) (*protocol.SessionUsage, error) {
 			if request.SessionID != "ses_1" || options.RequestMeta.ProtocolVersion != protocol.ProtocolVersion {
 				t.Fatalf("session usage request = %+v, options = %+v", request, options)
 			}
-			return &protocol.Usage{
+			return &protocol.SessionUsage{
 				ModelUsage: protocol.ModelUsage{InputTokens: 12, CostUSD: new(cost)},
-				ByModel: map[string]protocol.ModelUsage{
-					"z/model": {OutputTokens: 2}, "a/model": {InputTokens: 3},
+				ByModel: []protocol.UsageBucket{
+					{Key: "z/model", ModelUsage: protocol.ModelUsage{OutputTokens: 2}},
+					{Key: "a/model", ModelUsage: protocol.ModelUsage{InputTokens: 3}},
 				},
 			}, nil
 		},
@@ -52,7 +53,7 @@ func TestUsageAdapterProjectsSessionAndSummaryReports(t *testing.T) {
 	}
 	runtime := &Connection{usage: stub, meta: requestMeta("test")}
 	session, err := runtime.SessionUsage(t.Context(), "ses_1")
-	if err != nil || len(session.ByModel) != 2 || session.ByModel[0].Key != "a/model" || session.Total.CostUSD == nil {
+	if err != nil || len(session.ByModel) != 2 || session.ByModel[0].Key != "z/model" || session.Total.CostUSD == nil {
 		t.Fatalf("SessionUsage = (%+v, %v)", session, err)
 	}
 	cost = 9
@@ -107,9 +108,9 @@ func TestSessionUsageRejectsInvalidIdentityBeforeCallingRuntime(t *testing.T) {
 	t.Parallel()
 	called := false
 	runtime := &Connection{usage: usageBindingStub{
-		session: func(context.Context, protocol.SessionUsageRequest, flameruntime.CallOptions) (*protocol.Usage, error) {
+		session: func(context.Context, protocol.SessionUsageRequest, flameruntime.CallOptions) (*protocol.SessionUsage, error) {
 			called = true
-			return &protocol.Usage{}, nil
+			return &protocol.SessionUsage{}, nil
 		},
 	}, meta: requestMeta("test")}
 

@@ -163,7 +163,7 @@ func TestProtocolCompletesAllDelegates(t *testing.T) {
 	if usageRead.Failure != nil {
 		t.Fatal(usageRead.Failure)
 	}
-	usage := usageRead.Value.(*protocol.Usage)
+	usage := usageRead.Value.(*protocol.SessionUsage)
 	if usage.InputTokens != 8 || usage.OutputTokens != 4 {
 		t.Fatalf("session lost process-owned usage: %+v, want 8 input and 4 output tokens", usage)
 	}

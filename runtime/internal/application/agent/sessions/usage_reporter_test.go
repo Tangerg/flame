@@ -86,7 +86,7 @@ func TestFoldRunFoldsAllDimensions(t *testing.T) {
 	byProvider := map[string]*usageAccumulator{}
 	byModel := map[string]*usageAccumulator{}
 	byDay := map[string]*usageAccumulator{}
-	if err := foldRun(run, time.Time{}, &total, byProvider, byModel, byDay, false); err != nil {
+	if err := foldRun(run, time.Time{}, &total, byProvider, byModel, byDay); err != nil {
 		t.Fatal(err)
 	}
 
@@ -97,7 +97,7 @@ func TestFoldRunFoldsAllDimensions(t *testing.T) {
 	if byProvider["anthropic"] == nil || byProvider["anthropic"].tokens.OutputTokens != 40 {
 		t.Errorf("byProvider missing anthropic: %+v", byProvider)
 	}
-	if byModel["claude-opus-4-8"] == nil {
+	if byModel["anthropic/claude-opus-4-8"] == nil {
 		t.Errorf("byModel missing model: %+v", byModel)
 	}
 	if byDay["2026-06-21"] == nil {
@@ -114,14 +114,14 @@ func TestFoldRunPrefersByModelSplit(t *testing.T) {
 		},
 	})
 	byModel := map[string]*usageAccumulator{}
-	if err := foldRun(run, time.Time{}, nil, nil, byModel, nil, false); err != nil {
+	if err := foldRun(run, time.Time{}, nil, nil, byModel, nil); err != nil {
 		t.Fatal(err)
 	}
 
 	if len(byModel) != 2 {
 		t.Fatalf("expected 2 model buckets, got %+v", byModel)
 	}
-	if byModel["claude-haiku-4-5"] == nil || byModel["claude-haiku-4-5"].tokens.InputTokens != 20 {
+	if byModel["anthropic/claude-haiku-4-5"] == nil || byModel["anthropic/claude-haiku-4-5"].tokens.InputTokens != 20 {
 		t.Errorf("utility model not split out: %+v", byModel)
 	}
 }
@@ -129,16 +129,16 @@ func TestFoldRunPrefersByModelSplit(t *testing.T) {
 func TestFoldRunSkipsUnfinishedAndOld(t *testing.T) {
 	total := usageAccumulator{}
 
-	if err := foldRun(testsupport.MustRestoreRun(run.Snapshot{State: run.Running}), time.Time{}, &total, nil, nil, nil, false); err != nil {
+	if err := foldRun(testsupport.MustRestoreRun(run.Snapshot{State: run.Running}), time.Time{}, &total, nil, nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	noUsage := testsupport.MustRestoreRun(run.Snapshot{State: run.Completed})
-	if err := foldRun(noUsage, time.Time{}, &total, nil, nil, nil, false); err != nil {
+	if err := foldRun(noUsage, time.Time{}, &total, nil, nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	old := finishedRun(t, "anthropic", "m", time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
 		accounting.Usage{Total: accounting.Totals{InputTokens: 99}})
-	if err := foldRun(old, time.Now().UTC().AddDate(0, 0, -1), &total, nil, nil, nil, false); err != nil {
+	if err := foldRun(old, time.Now().UTC().AddDate(0, 0, -1), &total, nil, nil, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -147,7 +147,7 @@ func TestFoldRunSkipsUnfinishedAndOld(t *testing.T) {
 	}
 }
 
-func TestFoldRunQualifiesSummaryModelsWithTheirProvider(t *testing.T) {
+func TestFoldRunQualifiesServedModelsWithTheirProvider(t *testing.T) {
 	current := finishedRun(t, "openai-compatible", "shared-model", time.Now().UTC(), accounting.Usage{
 		Total: accounting.Totals{InputTokens: 10},
 		ByModel: map[string]accounting.Totals{
@@ -155,7 +155,7 @@ func TestFoldRunQualifiesSummaryModelsWithTheirProvider(t *testing.T) {
 		},
 	})
 	byModel := map[string]*usageAccumulator{}
-	if err := foldRun(current, time.Time{}, nil, nil, byModel, nil, true); err != nil {
+	if err := foldRun(current, time.Time{}, nil, nil, byModel, nil); err != nil {
 		t.Fatal(err)
 	}
 	if byModel["openai-compatible/shared-model"] == nil || byModel["shared-model"] != nil {
@@ -212,9 +212,43 @@ func TestSessionUsageDoesNotPresentKnownPartialCostAsTotal(t *testing.T) {
 	if report.Total.InputTokens != 15 || report.Total.CostUSD != nil {
 		t.Fatalf("Session usage = %+v, want 15 input tokens with unknown total cost", report.Total)
 	}
-	model := report.ByModel["served-alias"]
-	if model.InputTokens != 15 || model.CostUSD != nil {
-		t.Fatalf("model usage = %+v, want 15 input tokens with unknown total cost", model)
+	if len(report.ByModel) != 1 || report.ByModel[0].Key != "private/served-alias" || report.ByModel[0].Usage.InputTokens != 15 || report.ByModel[0].Usage.CostUSD != nil {
+		t.Fatalf("model usage = %+v, want 15 input tokens with unknown total cost", report.ByModel)
+	}
+}
+
+func TestSessionUsageKeepsProviderModelIdentity(t *testing.T) {
+	now := time.Date(2026, 10, 11, 1, 0, 0, 0, time.UTC)
+	reporter, err := NewUsageReporter(UsageDependencies{
+		Runs: usageRunReaderStub{runs: []run.Run{
+			finishedRun(t, "anthropic", "shared-model", now, accounting.Usage{
+				Total: accounting.Totals{InputTokens: 10},
+			}),
+			finishedRun(t, "openai", "shared-model", now.Add(time.Second), accounting.Usage{
+				Total: accounting.Totals{InputTokens: 5},
+			}),
+		}}, Sessions: usageSessionListerStub{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	report, err := reporter.Session(t.Context(), "session-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(report.ByModel) != 2 || report.ByModel[0].Key != "anthropic/shared-model" || report.ByModel[0].Usage.InputTokens != 10 || report.ByModel[1].Key != "openai/shared-model" || report.ByModel[1].Usage.InputTokens != 5 {
+		t.Fatalf("session merged different providers' models: %+v", report.ByModel)
+	}
+}
+
+func TestBucketsBySpendBreaksTiesByIdentity(t *testing.T) {
+	buckets := map[string]*usageAccumulator{
+		"z/model": {tokens: accounting.Totals{InputTokens: 1}, cost: mustUsageCost(t, 0.1), runs: 1},
+		"a/model": {tokens: accounting.Totals{InputTokens: 1}, cost: mustUsageCost(t, 0.1), runs: 1},
+	}
+	ordered := bucketsBySpend(buckets)
+	if ordered[0].Key != "a/model" || ordered[1].Key != "z/model" {
+		t.Fatalf("tied buckets = %+v", ordered)
 	}
 }
 

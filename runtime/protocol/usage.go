@@ -5,6 +5,14 @@ type SessionUsageRequest struct {
 	SessionID string `json:"sessionId"`
 }
 
+// SessionUsage aggregates all retained process-owned usage in one Session.
+// ByModel keys identify the provider/model pair and follow the same spend order
+// as UsageSummary. A Run's Usage keeps model names local to its selected provider.
+type SessionUsage struct {
+	ModelUsage
+	ByModel []UsageBucket `json:"byModel,omitempty"`
+}
+
 // UsageSummaryRequest is the usage.summary body.
 type UsageSummaryRequest struct {
 	// SinceDays limits the report to runs finished within the last N days;
@@ -22,9 +30,10 @@ type UsageBucket struct {
 }
 
 // UsageSummary is the cross-session spend report (usage.summary). Every bucket
-// sums whole-run totals, so the breakdowns reconcile with Total. Attribution is
-// at run granularity: a run's spend lands under the model/provider the run ran
-// against. Request-detached utility-model maintenance is not part of Run usage.
+// sums process-owned Run usage, so the breakdowns reconcile with Total. Provider
+// attribution follows the Run's selection; model buckets use the served model
+// split when it is available. Request-detached utility-model maintenance is not
+// part of Run usage.
 type UsageSummary struct {
 	Total      ModelUsage    `json:"total"`
 	ByProvider []UsageBucket `json:"byProvider,omitempty"`

@@ -8,8 +8,8 @@ import (
 )
 
 // GetSessionUsage returns usage accumulated by one Session.
-func (r *binding) GetSessionUsage(ctx context.Context, request protocol.SessionUsageRequest, options CallOptions) (*protocol.Usage, error) {
-	return r.invoke[protocol.SessionUsageRequest, *protocol.Usage](ctx, delivery.UsageSession, request, callOptions(options))
+func (r *binding) GetSessionUsage(ctx context.Context, request protocol.SessionUsageRequest, options CallOptions) (*protocol.SessionUsage, error) {
+	return r.invoke[protocol.SessionUsageRequest, *protocol.SessionUsage](ctx, delivery.UsageSession, request, callOptions(options))
 }
 
 // GetUsageSummary returns aggregated Runtime usage.

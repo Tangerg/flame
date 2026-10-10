@@ -4385,6 +4385,15 @@ for await (const line of lines) {
       }),
     ).resolves.toBeUndefined();
 
+    const usage = await client.usage.session(asSessionId(session.id));
+    expect(usage.byModel).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: "openai-compatible/e2e-model", runs: 1 }),
+      ]),
+    );
+    expect(usage.inputTokens).toBeGreaterThan(0);
+    expect(usage.outputTokens).toBeGreaterThan(0);
+
     const summary = await client.usage.summary({ sinceDays: 30 });
     expect(summary).toMatchObject({
       total: {

@@ -15,8 +15,8 @@ func registerUsage(registry *Registry) {
 	registry.query(MethodMeta{
 		Name: UsageSession, Errors: []string{protocol.ErrSessionNotFound.Error()},
 	}, func(service interface {
-		SessionUsage(context.Context, string) (*protocol.Usage, error)
-	}, ctx context.Context, request protocol.SessionUsageRequest) (*protocol.Usage, error) {
+		SessionUsage(context.Context, string) (*protocol.SessionUsage, error)
+	}, ctx context.Context, request protocol.SessionUsageRequest) (*protocol.SessionUsage, error) {
 		return service.SessionUsage(ctx, request.SessionID)
 	})
 

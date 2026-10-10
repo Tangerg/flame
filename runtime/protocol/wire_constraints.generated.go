@@ -2923,6 +2923,17 @@ func (r RememberScope) ValidateWire() error {
 	)
 }
 
+func (s SessionUsage) ValidateWire() error {
+	return collectWireViolations("SessionUsage",
+		nonNegativeNumber("inputTokens", s.InputTokens),
+		nonNegativeNumber("outputTokens", s.OutputTokens),
+		nonNegativeNumber("cacheReadTokens", s.CacheReadTokens),
+		nonNegativeNumber("cacheWriteTokens", s.CacheWriteTokens),
+		nonNegativeNumber("reasoningTokens", s.ReasoningTokens),
+		optionalNonNegativeNumber("costUsd", s.CostUSD),
+	)
+}
+
 func (t ToolSpec) ValidateWire() error {
 	return collectWireViolations("ToolSpec",
 		closedEnum("safetyClass", string(t.SafetyClass), []string{"safe", "write", "exec", "network"}, true),

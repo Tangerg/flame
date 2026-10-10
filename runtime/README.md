@@ -42,6 +42,21 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
+## Protocol 2026-10-11.1
+
+`usage.session` now returns `SessionUsage`: its `byModel` value is a list of
+`UsageBucket` records keyed by the exact `provider/model` pair. Session and summary
+reports use the same Runtime-owned aggregation and order: cost descending, input
+tokens descending, then identity ascending. CLI and Desktop consume that order.
+Run metrics retain model-name maps local to the Run's selected provider. Qualified
+aggregate identities therefore do not inherit the length limit of a single model name.
+
+Rebuild Runtime and clients together. The former Session model-name map is removed
+without an adapter. Existing Run records require no conversion. Goal cost and steps
+also include retained delegated Runs through their root's Goal incarnation; its Run
+count continues to describe root executions. Previously omitted spending is reflected
+when the Goal is next read, including after restart.
+
 ## Protocol 2026-10-10.8
 
 MCP status describes only the connection supervisor's live outcome. The retired
@@ -106,8 +121,8 @@ replaces the input committed by Run admission. Durable-context equality remains 
 The optional [Usage package](../plugins/usage/plugin.json) replaces the compiled Desktop
 Usage pane and its dedicated query cache. A `usageSummary` view reads `plugins.readUsage`,
 which embeds `UsageSummaryRequest` and delegates to the existing `usage.summary` owner.
-The report counts finished Runs with recorded usage; child execution is included through its
-owning Run and detached utility-model work is excluded. The page renders canonical totals
+The report counts finished Runs with recorded usage, including each delegated Run's
+own process usage; detached utility-model work is excluded. The page renders canonical totals
 and provider/model/UTC-day buckets. Recorded zero remains zero, unpriced usage remains
 unpriced, and failed refresh preserves the last report with an explicit error.
 

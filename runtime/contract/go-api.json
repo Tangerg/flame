@@ -187,7 +187,7 @@
             },
             {
               "name": "GetSessionUsage",
-              "signature": "func(ctx context.Context, request protocol.SessionUsageRequest, options CallOptions) (*protocol.Usage, error)"
+              "signature": "func(ctx context.Context, request protocol.SessionUsageRequest, options CallOptions) (*protocol.SessionUsage, error)"
             },
             {
               "name": "GetUsageSummary",
@@ -727,7 +727,7 @@
             },
             {
               "name": "GetSessionUsage",
-              "signature": "func(ctx context.Context, request protocol.SessionUsageRequest, options CallOptions) (*protocol.Usage, error)"
+              "signature": "func(ctx context.Context, request protocol.SessionUsageRequest, options CallOptions) (*protocol.SessionUsage, error)"
             },
             {
               "name": "GetUsageSummary",
@@ -2384,7 +2384,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-10.8\""
+          "value": "\"2026-10-11.1\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -9355,6 +9355,27 @@
               "name": "Limitations",
               "type": "[]string",
               "tag": "json:\"limitations\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "SessionUsage",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ModelUsage",
+              "type": "ModelUsage"
+            },
+            {
+              "name": "ByModel",
+              "type": "[]UsageBucket",
+              "tag": "json:\"byModel,omitempty\""
             }
           ],
           "methods": [

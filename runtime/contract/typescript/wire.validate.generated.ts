@@ -316,6 +316,7 @@ export type WireTypeName =
   | "SessionStatus"
   | "SessionTitleEdit"
   | "SessionTrajectory"
+  | "SessionUsage"
   | "SessionUsageRequest"
   | "SetApprovalModeRequest"
   | "SetApprovalRuleRequest"
@@ -3696,6 +3697,15 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
     toolAttempts: array(ref(() => CHECKS.ToolAttempt)),
     toolResults: array(ref(() => CHECKS.ArtifactToolResult)),
   }, ["collectedAt", "feedback", "items", "limitations", "messages", "modelInvocations", "plan", "runs", "schemaVersion", "session", "toolAttempts", "toolResults"]),
+  SessionUsage: object({
+    byModel: array(ref(() => CHECKS.UsageBucket)),
+    cacheReadTokens: allOf([integer(), minimum(0)]),
+    cacheWriteTokens: allOf([integer(), minimum(0)]),
+    costUsd: allOf([numeric(), minimum(0)]),
+    inputTokens: allOf([integer(), minimum(0)]),
+    outputTokens: allOf([integer(), minimum(0)]),
+    reasoningTokens: allOf([integer(), minimum(0)]),
+  }, []),
   SessionUsageRequest: object({
     sessionId: allOf([text(), minLength(1), maxLength(256), pattern("^[^\\p{C}\\p{Z}]*$")]),
   }, ["sessionId"]),
@@ -4510,7 +4520,7 @@ const METHOD_RESULTS: Record<WireMethodName, WireCheck> = {
   "models.setEmbeddingRole": ref(() => CHECKS.EmbeddingRole),
   "tools.list": ref(() => CHECKS.PageOfToolSpec),
   "tools.invoke": anything(),
-  "usage.session": ref(() => CHECKS.Usage),
+  "usage.session": ref(() => CHECKS.SessionUsage),
   "usage.summary": ref(() => CHECKS.UsageSummary),
   "agentMemory.list": ref(() => CHECKS.PageOfAgentMemoryItem),
   "agentMemory.review": object({}, []),

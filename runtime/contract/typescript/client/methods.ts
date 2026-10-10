@@ -103,7 +103,7 @@ import type {
   RuntimeSubscribeResponse,
   UpdateSessionRequest,
   UpdateMCPServerRequest,
-  Usage,
+  SessionUsage,
   UsageSummary,
   UsageSummaryRequest,
   UtilityRole,
@@ -341,7 +341,7 @@ export interface Methods {
     setEmbeddingRole: (params: EmbeddingRole) => MutationPromise<EmbeddingRole>;
   };
   usage: {
-    session: (sessionId: SessionId, signal?: AbortSignal) => Promise<Usage>;
+    session: (sessionId: SessionId, signal?: AbortSignal) => Promise<SessionUsage>;
     summary: (params?: UsageSummaryRequest, signal?: AbortSignal) => Promise<UsageSummary>;
   };
   agentMemory: {

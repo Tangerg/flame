@@ -119,6 +119,7 @@ import type {
   Schedule,
   Session,
   SessionSnapshot,
+  SessionUsage,
   SessionUsageRequest,
   SetApprovalModeRequest,
   SetApprovalRuleRequest,
@@ -144,7 +145,6 @@ import type {
   UpdateProviderRequest,
   UpdateScheduleRequest,
   UpdateSessionRequest,
-  Usage,
   UsageSummary,
   UsageSummaryRequest,
   UtilityRole,
@@ -1561,7 +1561,7 @@ export interface WireShapes {
   "models.setEmbeddingRole": { params: EmbeddingRole; result: EmbeddingRole };
   "tools.list": { params: Record<string, never>; result: PageOfToolSpec };
   "tools.invoke": { params: InvokeToolRequest; result: unknown };
-  "usage.session": { params: SessionUsageRequest; result: Usage };
+  "usage.session": { params: SessionUsageRequest; result: SessionUsage };
   "usage.summary": { params: UsageSummaryRequest; result: UsageSummary };
   "agentMemory.list": { params: AgentMemoryListRequest; result: PageOfAgentMemoryItem };
   "agentMemory.review": { params: AgentMemoryReviewRequest };
