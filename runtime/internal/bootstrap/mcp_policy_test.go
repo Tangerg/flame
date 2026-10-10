@@ -6,7 +6,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"testing"
 
-	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
@@ -18,11 +17,11 @@ type mcpServerListStub struct {
 	calls    int
 }
 
-func (m *mcpServerListStub) Catalog(context.Context) ([]mcpapp.Source, error) {
+func (m *mcpServerListStub) Definitions(context.Context) ([]mcpserver.Server, error) {
 	m.calls++
-	out := make([]mcpapp.Source, 0, len(m.servers))
+	out := make([]mcpserver.Server, 0, len(m.servers))
 	for _, server := range m.servers {
-		out = append(out, mcpapp.Source{Server: server, Availability: mcpapp.SourceAvailable})
+		out = append(out, server.Clone())
 	}
 	return out, m.err
 }

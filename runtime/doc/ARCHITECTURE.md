@@ -257,6 +257,12 @@ package organization alone.
 
 MCP configuration requires its durable registry, live connection ports, tool catalog, and shared tool policy at construction. An empty registry represents no configured servers; it does not remove any of these use cases or turn missing implementations into empty query results. Startup and background connection failures produce diagnostics with their server identity even when tracing is unconfigured. A failed startup connection or tool catalog leaves that server unavailable while independently configured servers remain usable.
 
+The MCP registry projects desired definitions from durable user servers and selected
+installation declarations. Listing and startup use that projection without reading
+plugin release bytes or backend directories. Plugin inspection owns resource availability
+observations; the connection supervisor owns live lifecycle and published tools. Backend
+loss or repair changes an observation or connection outcome, never registry membership.
+
 Provider identity is the exact provider/model pair plus model-owned options. Credential precedence, endpoints, SDK construction, request lowering, capability mapping, and provider-specific failures remain inside provider adapters. Product and delivery code do not infer a provider from a model name.
 
 Auxiliary text generation has one live-role completion boundary. It validates the request envelope before resolving the provider and accepts only a natural stop with non-empty text. Truncated, filtered, refused, or otherwise incomplete output remains a failure; compaction and background curation never persist it as a completed artifact.

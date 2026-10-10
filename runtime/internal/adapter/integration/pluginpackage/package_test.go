@@ -16,7 +16,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
-	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -221,7 +220,7 @@ func TestOptionalEmptyInputsReachTheirDeclaredBindings(t *testing.T) {
 		if err := installation.Configure(release, plugin.Configuration{Values: map[string]plugin.ValueChange{"environment": test.change, "header": test.change}}); err != nil {
 			t.Fatal(err)
 		}
-		servers, err := realizedServers(t.Context(), releases, installation, release)
+		servers, err := releases.Definitions(t.Context(), installation, release)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -277,7 +276,7 @@ func TestDeclaredSearchPathDoesNotCompeteWithHostInheritance(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	servers, err := realizedServers(t.Context(), releases, installation, release)
+	servers, err := releases.Definitions(t.Context(), installation, release)
 	if err != nil || len(servers) != 1 {
 		t.Fatalf("declared descriptor = %d, %v", len(servers), err)
 	}
@@ -330,6 +329,10 @@ func TestMCPRegistryRetainsUnavailableDeclaredSources(t *testing.T) {
 	if err != nil || !found {
 		t.Fatalf("initial authority = %t, %v", found, err)
 	}
+	desired, err := registry.Definitions(t.Context())
+	if err != nil || len(desired) != 2 {
+		t.Fatalf("initial definitions = %+v, %v", desired, err)
+	}
 	root, err := releases.Root(release.Digest())
 	if err != nil {
 		t.Fatal(err)
@@ -340,11 +343,15 @@ func TestMCPRegistryRetainsUnavailableDeclaredSources(t *testing.T) {
 	if err := os.Mkdir(root, 0700); err != nil {
 		t.Fatal(err)
 	}
-	sources, err := registry.Catalog(t.Context())
-	if err != nil || len(sources) != 2 || sources[0].Availability != mcpapp.SourceAvailable || sources[1].Availability != mcpapp.SourceUnavailableRelease {
-		t.Fatalf("unavailable declared source = %+v, %v", sources, err)
+	sources, err := registry.Definitions(t.Context())
+	if err != nil || !reflect.DeepEqual(sources, desired) {
+		t.Fatalf("unavailable release changed desired definitions = %+v, %v", sources, err)
 	}
-	if _, found, err := registry.Dispatchable(t.Context(), sources[1].Server.ID()); found || !errors.Is(err, plugin.ErrUnavailable) {
+	realization, err := releases.Realize(t.Context(), installation, release)
+	if err != nil || realization.Release != plugins.ReleaseUnavailable || len(realization.UnavailableBackends) != 0 {
+		t.Fatalf("unavailable release observation = %+v, %v", realization, err)
+	}
+	if _, found, err := registry.Dispatchable(t.Context(), sources[1].ID()); found || !errors.Is(err, plugin.ErrUnavailable) {
 		t.Fatalf("unavailable source admitted dispatch: %t, %v", found, err)
 	}
 	current, found, err := authorities.Fingerprint(t.Context(), ref)
@@ -370,7 +377,7 @@ func mustRemoteToolName(t *testing.T, text string) mcpserver.RemoteToolName {
 	return name
 }
 
-func TestMCPCatalogRetainsAnUnavailableBackendAndItsHealthyPeer(t *testing.T) {
+func TestMCPDefinitionsStayStableWhenBackendAvailabilityChanges(t *testing.T) {
 	releases, store, users := testReleaseStore(t)
 	source := writePackage(t, map[string]string{"plugin.json": portableManifest, "mcp.json": `{"$schema":"` + MCPSchema + `","mcpServers":{"broken":{"type":"stdio","command":"fixture","cwd":"${PLUGIN_DATA}/work"},"healthy":{"type":"streamable-http","url":"https://example.test/mcp"}}}`})
 	release, err := publishPackage(t.Context(), releases, source)
@@ -394,33 +401,27 @@ func TestMCPCatalogRetainsAnUnavailableBackendAndItsHealthyPeer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	catalog, err := registry.Catalog(t.Context())
-	if err != nil || len(catalog) != 2 {
-		t.Fatalf("catalog = %+v, %v", catalog, err)
+	definitions, err := registry.Definitions(t.Context())
+	if err != nil || len(definitions) != 2 {
+		t.Fatalf("definitions = %+v, %v", definitions, err)
 	}
-	for _, source := range catalog {
-		want := mcpapp.SourceAvailable
-		if source.Server.Name.String() == "broken" {
-			want = mcpapp.SourceUnavailableBackend
-		}
-		if source.Availability != want {
-			t.Fatalf("source %s availability = %s", source.Server.Name, source.Availability)
-		}
+	realization, err := releases.Realize(t.Context(), installation, release)
+	if err != nil || realization.Release != plugins.ReleaseAvailable || !slices.Equal(realization.UnavailableBackends, []mcpserver.ServerName{mustServerName(t, "broken")}) {
+		t.Fatalf("backend observation = %+v, %v", realization, err)
 	}
 	if _, err := os.Stat(releases.dataRoot(installation.ID())); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("catalog read prepared the backend: %v", err)
+		t.Fatalf("definition or observation read prepared the backend: %v", err)
 	}
 	if err := releases.Prepare(t.Context(), installation, release); err != nil {
 		t.Fatalf("prepare = %v", err)
 	}
-	catalog, err = registry.Catalog(t.Context())
-	if err != nil {
-		t.Fatal(err)
+	prepared, err := registry.Definitions(t.Context())
+	if err != nil || !reflect.DeepEqual(prepared, definitions) {
+		t.Fatalf("backend preparation changed desired definitions: %+v, %v", prepared, err)
 	}
-	for _, source := range catalog {
-		if source.Availability != mcpapp.SourceAvailable {
-			t.Fatalf("prepared source is unavailable: %+v", source)
-		}
+	after, err := releases.Realize(t.Context(), installation, release)
+	if err != nil || after.Release != plugins.ReleaseAvailable || len(after.UnavailableBackends) != 0 {
+		t.Fatalf("prepared backend observation = %+v, %v", after, err)
 	}
 }
 
@@ -571,7 +572,7 @@ func TestArchivesRejectEscapesAndAmbiguousDestinations(t *testing.T) {
 		})
 	}
 }
-func TestInstallationServersDoNotLaunchBeforeAdmission(t *testing.T) {
+func TestInstallationDefinitionsReflectAdmission(t *testing.T) {
 	r := testReleases(t)
 	source := writePackage(t, map[string]string{"plugin.json": portableManifest, "mcp.json": `{"$schema":"https://agent-plugins.org/schemas/1.0.0/mcp.schema.json","mcpServers":{"good":{"type":"stdio","command":"test-server","args":["${PLUGIN_ROOT}","${PLUGIN_DATA}"],"cwd":"${PLUGIN_ROOT}"}}}`})
 	release, err := publishPackage(t.Context(), r, source)
@@ -585,8 +586,8 @@ func TestInstallationServersDoNotLaunchBeforeAdmission(t *testing.T) {
 	if err = i.Enable(release); !errors.Is(err, plugin.ErrUnapproved) {
 		t.Fatalf("enable without approval = %v", err)
 	}
-	before, err := observeBackends(t.Context(), r, i, release)
-	if err != nil || len(before.Servers) != 1 || before.Servers[0].Enabled {
+	before, err := r.Definitions(t.Context(), i, release)
+	if err != nil || len(before) != 1 || before[0].Enabled {
 		t.Fatalf("unadmitted projection = %+v, %v", before, err)
 	}
 	if err = i.Approve(release); err != nil {
@@ -598,8 +599,8 @@ func TestInstallationServersDoNotLaunchBeforeAdmission(t *testing.T) {
 	if err := r.Prepare(t.Context(), i, release); err != nil {
 		t.Fatal(err)
 	}
-	after, err := observeBackends(t.Context(), r, i, release)
-	if err != nil || !after.Servers[0].Enabled || after.Servers[0].Source.Origin() != mustInstallationOrigin(t, i.ID()) || after.Servers[0].Args[0] != after.Servers[0].Dir {
+	after, err := r.Definitions(t.Context(), i, release)
+	if err != nil || len(after) != 1 || !after[0].Enabled || after[0].Source.Origin() != mustInstallationOrigin(t, i.ID()) || after[0].Args[0] != after[0].Dir {
 		t.Fatalf("admitted projection = %+v, %v", after, err)
 	}
 }
@@ -662,7 +663,7 @@ func TestOverlappingAdmissionsShareAnImmutableRelease(t *testing.T) {
 }
 
 func TestReleaseKeepsItsAdmissionInterpretation(t *testing.T) {
-	for _, operation := range []string{"materialize", "cold catalog", "cold backends", "cold connection"} {
+	for _, operation := range []string{"materialize", "cold definitions", "cold backends", "cold connection"} {
 		t.Run(operation, func(t *testing.T) {
 			r, store, _ := testReleaseStore(t)
 			source := writePackage(t, map[string]string{"plugin.json": portableManifest, "mcp.json": `{"$schema":"` + MCPSchema + `","mcpServers":{"backend":{"type":"streamable-http","url":"https://example.test/mcp"}}}`})
@@ -709,10 +710,10 @@ func TestReleaseKeepsItsAdmissionInterpretation(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if operation == "cold catalog" {
-				servers, err := realizedServers(t.Context(), cold, installation, release)
+			if operation == "cold definitions" {
+				servers, err := cold.Definitions(t.Context(), installation, release)
 				if err != nil || len(servers) != 0 {
-					t.Fatalf("catalog introduced an unadmitted backend: %+v, %v", servers, err)
+					t.Fatalf("definitions introduced an unadmitted backend: %+v, %v", servers, err)
 				}
 				return
 			}
@@ -723,8 +724,8 @@ func TestReleaseKeepsItsAdmissionInterpretation(t *testing.T) {
 				}
 				return
 			}
-			backends, err := observeBackends(t.Context(), cold, installation, release)
-			if err != nil || len(backends.Servers) != 0 {
+			backends, err := cold.Realize(t.Context(), installation, release)
+			if err != nil || backends.Release != plugins.ReleaseAvailable || len(backends.UnavailableBackends) != 0 {
 				t.Fatalf("cold validation introduced an unadmitted backend: %+v, %v", backends, err)
 			}
 		})
@@ -754,8 +755,8 @@ func TestConflictingInputDoesNotWithdrawTheBackend(t *testing.T) {
 	if err := installation.Enable(release); err != nil {
 		t.Fatal(err)
 	}
-	servers, err := observeBackends(t.Context(), r, installation, release)
-	if err != nil || len(servers.Servers) != 1 || servers.Servers[0].Headers["X-Tenant"] != "fixed" {
+	servers, err := r.Definitions(t.Context(), installation, release)
+	if err != nil || len(servers) != 1 || servers[0].Headers["X-Tenant"] != "fixed" {
 		t.Fatalf("independent backend was withdrawn: %+v, %v", servers, err)
 	}
 }
@@ -839,8 +840,8 @@ func TestBackendRealizationIsPureAndIsolatesDirectoryFailures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := observeBackends(t.Context(), r, i, release); err != nil {
-		t.Fatal(err)
+	if observed, err := r.Realize(t.Context(), i, release); err != nil || observed.Release != plugins.ReleaseAvailable {
+		t.Fatalf("initial observation = %+v, %v", observed, err)
 	}
 	data := r.dataRoot(i.ID())
 	if _, err := os.Stat(data); !errors.Is(err, os.ErrNotExist) {
@@ -861,8 +862,8 @@ func TestBackendRealizationIsPureAndIsolatesDirectoryFailures(t *testing.T) {
 	if err := r.Prepare(t.Context(), i, release); err == nil {
 		t.Fatal("preparation concealed a directory failure")
 	}
-	backends, err := observeBackends(t.Context(), r, i, release)
-	if err != nil || len(backends.Servers) != 1 || backends.Servers[0].Name.String() != "good" || !slices.Equal(backends.Unavailable, []mcpserver.ServerName{mustServerName(t, "broken")}) {
+	backends, err := r.Realize(t.Context(), i, release)
+	if err != nil || backends.Release != plugins.ReleaseAvailable || !slices.Equal(backends.UnavailableBackends, []mcpserver.ServerName{mustServerName(t, "broken")}) {
 		t.Fatalf("isolated realization = %+v, %v", backends, err)
 	}
 }
@@ -960,39 +961,4 @@ func publishPackage(ctx context.Context, r *Releases, source string) (plugin.Rel
 	}
 	release, err := candidate.Publish(ctx)
 	return release, errors.Join(err, candidate.Discard())
-}
-
-func realizedServers(ctx context.Context, r *Releases, installation *plugin.Installation, release plugin.Release) ([]mcpserver.Server, error) {
-	realization, err := r.Realize(ctx, installation, release)
-	if err != nil {
-		return nil, err
-	}
-	servers := make([]mcpserver.Server, 0, len(realization.Sources))
-	for _, source := range realization.Sources {
-		servers = append(servers, source.Server)
-	}
-	return servers, nil
-}
-
-type observedBackends struct {
-	Servers     []mcpserver.Server
-	Unavailable []mcpserver.ServerName
-}
-
-func observeBackends(ctx context.Context, r *Releases, installation *plugin.Installation, release plugin.Release) (observedBackends, error) {
-	realization, err := r.Realize(ctx, installation, release)
-	if err != nil {
-		return observedBackends{}, err
-	}
-	if realization.Release != plugins.ReleaseAvailable {
-		return observedBackends{}, plugin.ErrUnavailable
-	}
-	var observed observedBackends
-	for _, source := range realization.Sources {
-		if source.Availability == mcpapp.SourceAvailable {
-			observed.Servers = append(observed.Servers, source.Server)
-		}
-	}
-	observed.Unavailable = realization.UnavailableBackends()
-	return observed, nil
 }

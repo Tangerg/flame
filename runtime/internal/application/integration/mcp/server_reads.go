@@ -12,17 +12,16 @@ import (
 // status snapshot. The registry determines membership and enablement; the
 // connection supervisor determines live lifecycle independently of package realization.
 func (c *Coordinator) Servers(ctx context.Context) ([]Server, error) {
-	sources, err := c.registry.Catalog(ctx)
+	servers, err := c.registry.Definitions(ctx)
 	if err != nil {
 		return nil, err
 	}
-	slices.SortFunc(sources, func(first, second Source) int {
-		return first.Server.ID().Compare(second.Server.ID())
+	slices.SortFunc(servers, func(first, second mcpserver.Server) int {
+		return first.ID().Compare(second.ID())
 	})
 	statuses := c.statusesByName()
-	out := make([]Server, 0, len(sources))
-	for _, source := range sources {
-		server := source.Server
+	out := make([]Server, 0, len(servers))
+	for _, server := range servers {
 		status, ok := statuses[server.ID()]
 		var live *ServerStatus
 		if ok {

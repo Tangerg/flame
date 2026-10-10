@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
-	"reflect"
 	"slices"
 	"sync"
 	"testing"
@@ -89,38 +88,6 @@ func TestServersDoNotExposeStoredMutableValues(t *testing.T) {
 	servers[0].Connection.Args[0] = "changed"
 	if server.Args[0] != "--root" {
 		t.Fatal("returned server changed stored arguments")
-	}
-}
-
-func TestSourceAvailabilityCannotOverrideAnAdmittedConnection(t *testing.T) {
-	registry := &testRegistry{servers: make(map[mcpserver.ID]mcpserver.Server), unavailable: make(map[mcpserver.ID]SourceAvailability)}
-	ports := &fakePorts{}
-	for _, state := range []struct {
-		name         string
-		enabled      bool
-		availability SourceAvailability
-		want         ServerState
-	}{
-		{"release", true, SourceUnavailableRelease, ServerState{Type: ServerConnected, ToolCount: new(9)}},
-		{"backend", true, SourceUnavailableBackend, ServerState{Type: ServerConnected, ToolCount: new(9)}},
-		{"disabled", false, SourceUnavailableRelease, ServerState{Type: ServerDisabled}},
-		{"healthy", true, SourceAvailable, ServerState{Type: ServerConnected, ToolCount: new(9)}},
-	} {
-		t.Run(state.name, func(t *testing.T) {
-			name := testsupport.UserMCPServer(state.name)
-			registry.servers[name] = mcpserver.Server{Source: mcpserver.UserSource(), Name: name.Name(), Enabled: state.enabled, Transport: mcpserver.TransportStdio, Command: "fixture"}
-			registry.unavailable[name] = state.availability
-			ports.statuses = append(ports.statuses, mcpserver.ConnectionStatus{Server: name, State: mcpserver.ConnectionConnected, ToolCount: 9})
-			coordinator := testCoordinator(t, Config{Registry: registry, Connections: ports})
-			found, err := coordinator.Servers(t.Context())
-			if err != nil {
-				t.Fatal(err)
-			}
-			index := slices.IndexFunc(found, func(server Server) bool { return server.ID == name })
-			if index < 0 || !reflect.DeepEqual(found[index].State, state.want) {
-				t.Fatalf("source read model = %+v, want %+v", found, state.want)
-			}
-		})
 	}
 }
 
@@ -808,7 +775,6 @@ type testRegistry struct {
 	exposure        map[tool.Ref]bool
 	servers         map[mcpserver.ID]mcpserver.Server
 	listed          []mcpserver.Server
-	unavailable     map[mcpserver.ID]SourceAvailability
 	listErr         error
 	saveCommitted   chan struct{}
 	releaseSave     chan struct{}
@@ -816,35 +782,24 @@ type testRegistry struct {
 	releaseRemove   chan struct{}
 }
 
-func (t *testRegistry) Catalog(context.Context) ([]Source, error) {
+func (t *testRegistry) Definitions(context.Context) ([]mcpserver.Server, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if t.listErr != nil {
 		return nil, t.listErr
 	}
+	var servers []mcpserver.Server
 	if t.listed != nil {
-		servers := make([]Source, len(t.listed))
-		for index, server := range t.listed {
-			servers[index] = t.source(server)
+		for _, server := range t.listed {
+			servers = append(servers, server.Clone())
 		}
-		return servers, nil
+	} else {
+		for _, server := range t.servers {
+			servers = append(servers, server.Clone())
+		}
 	}
-	servers := make([]Source, 0, len(t.servers))
-	for _, server := range t.servers {
-		servers = append(servers, t.source(server))
-	}
-	slices.SortFunc(servers, func(a, b Source) int {
-		return cmp.Compare(b.Server.Name.String(), a.Server.Name.String())
-	})
+	slices.SortFunc(servers, func(a, b mcpserver.Server) int { return cmp.Compare(b.Name.String(), a.Name.String()) })
 	return servers, nil
-}
-
-func (t *testRegistry) source(server mcpserver.Server) Source {
-	availability := SourceAvailable
-	if value, found := t.unavailable[server.ID()]; found {
-		availability = value
-	}
-	return Source{Server: server.Clone(), Availability: availability}
 }
 
 func (t *testRegistry) Definition(ctx context.Context, name mcpserver.ID) (mcpserver.Server, bool, error) {

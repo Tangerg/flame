@@ -10,14 +10,13 @@ import (
 	"slices"
 	"strings"
 
-	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 )
 
-// Catalog and dispatch projections never repair the filesystem as a read effect.
+// Definitions and dispatch projections never repair the filesystem as a read effect.
 // Data preparation belongs to installation changes and connection activation.
 // Its outcome is not retained here: a backend that could not be prepared stays
 // unrealizable, and [Releases.Realize] observes that from the filesystem.
@@ -130,12 +129,34 @@ func (r *Releases) prepareBackend(id resourceid.InstallationID, server plugin.Se
 	return root.Close()
 }
 
-// Realize observes the selected release once: whether its bytes verify, and for
-// each declared server its descriptor and whether its backend can be realized
-// now. Each server is realized on its own, so one that cannot be described or
-// realized is reported unavailable without withholding its siblings. Catalog
-// membership survives an unavailable release or backend directory, and the
-// observation never grants execution authority.
+// Definitions preserves declared membership without inspecting package or data
+// directories. An unresolved descriptor never grants connection authority.
+func (r *Releases) Definitions(ctx context.Context, installation *plugin.Installation, release plugin.Release) ([]mcpserver.Server, error) {
+	dir, err := r.Root(release.Digest())
+	if err != nil {
+		return nil, fmt.Errorf("pluginpackage: release directory: %w", err)
+	}
+	data := r.dataRoot(installation.ID())
+	declaration := release.Declaration()
+	result := make([]mcpserver.Server, 0, len(declaration.Servers))
+	for _, declared := range declaration.Servers {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		server, err := descriptorServer(installation, release, declaration, declared, dir, data)
+		if err != nil {
+			server, err = declaredServer(installation, release, declaration, declared)
+			if err != nil {
+				return nil, err
+			}
+		}
+		result = append(result, server)
+	}
+	return result, nil
+}
+
+// Realize observes executable bytes and backends without advancing desired
+// configuration or live connections. Each backend has its own observed outcome.
 func (r *Releases) Realize(ctx context.Context, installation *plugin.Installation, release plugin.Release) (plugins.Realization, error) {
 	dir, err := r.Root(release.Digest())
 	if err != nil {
@@ -148,39 +169,29 @@ func (r *Releases) Realize(ctx context.Context, installation *plugin.Installatio
 		}
 		return plugins.Realization{}, cause
 	}
-	result := plugins.Realization{Release: plugins.ReleaseUnavailable}
-	if verifyErr == nil {
-		if err := root.Close(); err != nil {
-			return plugins.Realization{}, fmt.Errorf("pluginpackage: close release %s: %w", release.Digest(), err)
-		}
-		result.Release = plugins.ReleaseAvailable
+	if verifyErr != nil {
+		return plugins.Realization{Release: plugins.ReleaseUnavailable}, nil
 	}
+	if err := root.Close(); err != nil {
+		return plugins.Realization{}, fmt.Errorf("pluginpackage: close release %s: %w", release.Digest(), err)
+	}
+	result := plugins.Realization{Release: plugins.ReleaseAvailable}
 	data := r.dataRoot(installation.ID())
 	declaration := release.Declaration()
 	for _, declared := range declaration.Servers {
 		if err := ctx.Err(); err != nil {
 			return plugins.Realization{}, err
 		}
-		server, describeErr := descriptorServer(installation, release, declaration, declared, dir, data)
-		if describeErr != nil {
-			if server, err = declaredServer(installation, release, declaration, declared); err != nil {
-				return plugins.Realization{}, err
-			}
+		server, err := descriptorServer(installation, release, declaration, declared, dir, data)
+		if err != nil || realizeBackend(server, declared, dir, data) != nil {
+			result.UnavailableBackends = append(result.UnavailableBackends, declared.Name)
 		}
-		availability := mcpapp.SourceUnavailableRelease
-		if result.Release == plugins.ReleaseAvailable {
-			availability = mcpapp.SourceAvailable
-			if describeErr != nil || realizeBackend(server, declared, dir, data) != nil {
-				availability = mcpapp.SourceUnavailableBackend
-			}
-		}
-		result.Sources = append(result.Sources, mcpapp.Source{Server: server, Availability: availability})
 	}
 	return result, nil
 }
 
-// declaredServer is the registry identity of a server whose descriptor cannot
-// be realized: enough to list it as unavailable, never enough to connect.
+// declaredServer retains registry identity when configuration cannot produce a
+// complete descriptor. It never supplies enough authority to connect.
 func declaredServer(installation *plugin.Installation, release plugin.Release, declaration plugin.Declaration, declared plugin.Server) (mcpserver.Server, error) {
 	source, err := installation.ServerSource(release, declared.Name)
 	if err != nil {

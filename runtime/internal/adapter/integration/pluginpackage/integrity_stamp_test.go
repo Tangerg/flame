@@ -11,7 +11,6 @@ import (
 	"testing/synctest"
 	"time"
 
-	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
@@ -81,7 +80,7 @@ func TestInspectionWithdrawsTamperedReleaseAndReadmitsRepairedBytes(t *testing.T
 		t.Fatal(err)
 	}
 	settle(t, releases, digest)
-	inspect := func(release plugins.ReleaseState, presentation plugins.Presentation, source mcpapp.SourceAvailability) {
+	inspect := func(release plugins.ReleaseState, presentation plugins.Presentation) {
 		t.Helper()
 		rows, err := owner.List(t.Context())
 		if err != nil {
@@ -97,20 +96,20 @@ func TestInspectionWithdrawsTamperedReleaseAndReadmitsRepairedBytes(t *testing.T
 		if row.Realization.Release != release || row.Presentation != presentation {
 			t.Fatalf("inspection = %+v, want release %s, presentation %s", row, release, presentation)
 		}
-		if len(row.Realization.Sources) != 1 || row.Realization.Sources[0].Availability != source {
-			t.Fatalf("sources = %+v, want one %s source", row.Realization.Sources, source)
+		if len(row.Realization.UnavailableBackends) != 0 {
+			t.Fatalf("unexpected unavailable backends: %+v", row.Realization.UnavailableBackends)
 		}
 	}
-	inspect(plugins.ReleaseAvailable, plugins.PresentationAdmitted, mcpapp.SourceAvailable)
+	inspect(plugins.ReleaseAvailable, plugins.PresentationAdmitted)
 	directory, err := releases.Root(digest)
 	if err != nil {
 		t.Fatal(err)
 	}
 	notes := filepath.Join(directory, "notes.txt")
 	rewrite(t, notes, "tampered")
-	inspect(plugins.ReleaseUnavailable, plugins.PresentationWithheld, mcpapp.SourceUnavailableRelease)
+	inspect(plugins.ReleaseUnavailable, plugins.PresentationWithheld)
 	rewrite(t, notes, "original")
-	inspect(plugins.ReleaseAvailable, plugins.PresentationAdmitted, mcpapp.SourceAvailable)
+	inspect(plugins.ReleaseAvailable, plugins.PresentationAdmitted)
 }
 
 func TestLaunchReusesIntegrityUntilTheTreeChanges(t *testing.T) {

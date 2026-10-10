@@ -166,7 +166,7 @@ func presentPluginRealization(realization plugins.Realization) (protocol.PluginR
 	switch realization.Release {
 	case plugins.ReleaseAvailable:
 		var backends []string
-		for _, name := range realization.UnavailableBackends() {
+		for _, name := range realization.UnavailableBackends {
 			backends = append(backends, name.String())
 		}
 		return protocol.PluginRealization{Type: protocol.PluginRealizationAvailable, UnavailableBackends: backends}, nil

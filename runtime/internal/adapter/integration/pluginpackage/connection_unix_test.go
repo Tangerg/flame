@@ -170,11 +170,11 @@ func TestTamperedPackageCannotLaunchThroughConnectionEntrypoints(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sources, err := registry.Catalog(t.Context())
+	sources, err := registry.Definitions(t.Context())
 	if err != nil || len(sources) != 1 {
 		t.Fatalf("sources = %v, %v", sources, err)
 	}
-	pool, err := mcpconnection.Open(t.Context(), t.Context(), []mcpserver.Server{sources[0].Server}, nil, registry)
+	pool, err := mcpconnection.Open(t.Context(), t.Context(), sources, nil, registry)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,9 +202,9 @@ func TestTamperedPackageCannotLaunchThroughConnectionEntrypoints(t *testing.T) {
 		t.Fatal(err)
 	}
 	for name, connect := range map[string]func() error{
-		"configure": func() error { return connectPool(pool, t.Context(), sources[0].Server.ID()) },
-		"reconnect": func() error { return connectPool(pool, t.Context(), sources[0].Server.ID()) },
-		"authorize": func() error { return authorizePool(pool, t.Context(), sources[0].Server.ID()) },
+		"configure": func() error { return connectPool(pool, t.Context(), sources[0].ID()) },
+		"reconnect": func() error { return connectPool(pool, t.Context(), sources[0].ID()) },
+		"authorize": func() error { return authorizePool(pool, t.Context(), sources[0].ID()) },
 	} {
 		t.Run(name, func(t *testing.T) {
 			if err := connect(); !errors.Is(err, plugin.ErrUnavailable) {
@@ -216,7 +216,7 @@ func TestTamperedPackageCannotLaunchThroughConnectionEntrypoints(t *testing.T) {
 		})
 	}
 	t.Run("startup", func(t *testing.T) {
-		pool, err := mcpconnection.Open(t.Context(), t.Context(), []mcpserver.Server{sources[0].Server}, nil, registry)
+		pool, err := mcpconnection.Open(t.Context(), t.Context(), sources, nil, registry)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -241,7 +241,7 @@ func TestTamperedPackageCannotLaunchThroughConnectionEntrypoints(t *testing.T) {
 }
 
 func TestBackendPreparationFailureIsObservedByLaterReads(t *testing.T) {
-	releases, installations, users := testReleaseStore(t)
+	releases, installations, _ := testReleaseStore(t)
 	source := writePackage(t, map[string]string{
 		"plugin.json": portableManifest,
 		"mcp.json":    `{"$schema":"` + MCPSchema + `","mcpServers":{"backend":{"type":"stdio","command":"sh","cwd":"${PLUGIN_DATA}/work"},"remote":{"type":"streamable-http","url":"https://example.test/mcp"}}}`,
@@ -284,26 +284,14 @@ func TestBackendPreparationFailureIsObservedByLaterReads(t *testing.T) {
 	want := []mcpserver.ServerName{backend}
 	for range 2 {
 		listed, err := coordinator.List(t.Context())
-		if err != nil || len(listed) != 1 || listed[0].Realization.Release != plugins.ReleaseAvailable || !reflect.DeepEqual(listed[0].Realization.UnavailableBackends(), want) {
+		if err != nil || len(listed) != 1 || listed[0].Realization.Release != plugins.ReleaseAvailable || !reflect.DeepEqual(listed[0].Realization.UnavailableBackends, want) {
 			t.Fatalf("later listing = %+v, %v; want the failed backend observed", listed, err)
 		}
 	}
-	registry, err := plugins.NewRegistry(users, installations, releases)
-	if err != nil {
-		t.Fatal(err)
-	}
-	sources, err := registry.Catalog(t.Context())
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, source := range sources {
-		want := mcpapp.SourceAvailable
-		if source.Server.Name == backend {
-			want = mcpapp.SourceUnavailableBackend
-		}
-		if source.Availability != want {
-			t.Fatalf("server %s availability = %q, want %q", source.Server.ID(), source.Availability, want)
-		}
+
+	realization, err := releases.Realize(t.Context(), installation, release)
+	if err != nil || realization.Release != plugins.ReleaseAvailable || !reflect.DeepEqual(realization.UnavailableBackends, want) {
+		t.Fatalf("backend observation = %+v, %v", realization, err)
 	}
 	if err := os.Remove(data); err != nil {
 		t.Fatal(err)
@@ -312,7 +300,7 @@ func TestBackendPreparationFailureIsObservedByLaterReads(t *testing.T) {
 		t.Fatalf("repaired preparation: %v", err)
 	}
 	listed, err := coordinator.List(t.Context())
-	if err != nil || len(listed) != 1 || len(listed[0].Realization.UnavailableBackends()) != 0 {
+	if err != nil || len(listed) != 1 || len(listed[0].Realization.UnavailableBackends) != 0 {
 		t.Fatalf("repaired backend still reads as unavailable: %+v, %v", listed, err)
 	}
 }

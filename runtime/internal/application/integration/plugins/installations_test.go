@@ -10,7 +10,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
-	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
@@ -326,10 +325,7 @@ func TestFailedPreparationIsObservedByTheChangeAndEveryLaterListing(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	unavailableBackend := Realization{Release: ReleaseAvailable, Sources: []mcpapp.Source{{
-		Server:       mcpserver.Server{Name: backend},
-		Availability: mcpapp.SourceUnavailableBackend,
-	}}}
+	unavailableBackend := Realization{Release: ReleaseAvailable, UnavailableBackends: []mcpserver.ServerName{backend}}
 	reconciled := false
 	packages := installationPackages{
 		prepare: func(ctx context.Context, installation *plugin.Installation) error {
@@ -355,7 +351,7 @@ func TestFailedPreparationIsObservedByTheChangeAndEveryLaterListing(t *testing.T
 		t.Fatal(err)
 	}
 	result, err := c.Enable(t.Context(), id)
-	if err != nil || result.View.State != plugin.Enabled || !reconciled || !slices.Equal(result.Realization.UnavailableBackends(), []mcpserver.ServerName{backend}) {
+	if err != nil || result.View.State != plugin.Enabled || !reconciled || !slices.Equal(result.Realization.UnavailableBackends, []mcpserver.ServerName{backend}) {
 		t.Fatalf("committed change realization = %+v, %v", result, err)
 	}
 	for range 2 {

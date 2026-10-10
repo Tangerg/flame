@@ -20,7 +20,7 @@ type Store interface {
 	Remove(context.Context, resourceid.InstallationID) error
 }
 type PackageSources interface {
-	Realize(context.Context, *plugin.Installation, plugin.Release) (Realization, error)
+	Definitions(context.Context, *plugin.Installation, plugin.Release) ([]mcpserver.Server, error)
 	Server(context.Context, *plugin.Installation, plugin.Release, mcpserver.ServerName, Reach) (mcpserver.Server, bool, error)
 	Connection(context.Context, *plugin.Installation, plugin.Release, mcpserver.ServerName) (mcpapp.Launch, bool, error)
 }
@@ -58,29 +58,25 @@ func NewRegistry(user userServers, installations Store, packages PackageSources)
 	return &Registry{user: user, installations: installations, packages: packages}, nil
 }
 
-// Catalog lists every source of every origin. Each installation's sources come
-// from one realization of its selected release, which reports a server it
-// cannot realize as unavailable instead of withholding the rest of the list.
-func (r *Registry) Catalog(ctx context.Context) ([]mcpapp.Source, error) {
+// Definitions projects desired configuration without observing executable bytes
+// or backend availability. Connection admission and plugin inspection own those reads.
+func (r *Registry) Definitions(ctx context.Context) ([]mcpserver.Server, error) {
 	users, err := r.user.List(ctx)
 	if err != nil {
 		return nil, err
 	}
-	result := make([]mcpapp.Source, 0, len(users))
-	for _, server := range users {
-		result = append(result, mcpapp.Source{Server: server, Availability: mcpapp.SourceAvailable})
-	}
+	result := users
 	installations, err := r.installations.List(ctx)
 	if err != nil {
 		return nil, err
 	}
 	for _, snapshot := range installations {
 		installation := snapshot.Installation
-		realization, err := r.packages.Realize(ctx, installation, snapshot.Selected)
+		servers, err := r.packages.Definitions(ctx, installation, snapshot.Selected)
 		if err != nil {
-			return nil, fmt.Errorf("plugins: realize installation %s: %w", installation.ID(), err)
+			return nil, fmt.Errorf("plugins: describe installation %s: %w", installation.ID(), err)
 		}
-		result = append(result, realization.Sources...)
+		result = append(result, servers...)
 	}
 	return result, nil
 }

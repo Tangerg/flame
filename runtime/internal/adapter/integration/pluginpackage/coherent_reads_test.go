@@ -39,7 +39,7 @@ func (s *reclaimAfterReadStore) Get(ctx context.Context, id resourceid.Installat
 }
 
 func TestReadsSurviveConcurrentReleaseReclaim(t *testing.T) {
-	for _, kind := range []string{"plugins.list", "MCP catalog", "MCP definition", "Skills bundles"} {
+	for _, kind := range []string{"plugins.list", "MCP definitions", "MCP definition", "Skills bundles"} {
 		t.Run(kind, func(t *testing.T) {
 			releases, store, users := testReleaseStore(t)
 			source := writePackage(t, map[string]string{
@@ -91,8 +91,8 @@ func TestReadsSurviveConcurrentReleaseReclaim(t *testing.T) {
 			switch kind {
 			case "plugins.list":
 				_, err = reader.List(t.Context())
-			case "MCP catalog":
-				_, err = registry.Catalog(t.Context())
+			case "MCP definitions":
+				_, err = registry.Definitions(t.Context())
 			case "MCP definition":
 				_, _, err = registry.Definition(t.Context(), serverID)
 			case "Skills bundles":

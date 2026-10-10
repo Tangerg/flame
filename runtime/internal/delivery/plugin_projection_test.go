@@ -2,7 +2,6 @@ package delivery
 
 import (
 	json "encoding/json/v2"
-	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"reflect"
 	"strings"
 	"testing"
@@ -74,7 +73,7 @@ func TestPluginRealizationProjectionIsAClosedUnion(t *testing.T) {
 		want        protocol.PluginRealization
 	}{
 		{plugins.Realization{Release: plugins.ReleaseAvailable}, protocol.PluginRealization{Type: protocol.PluginRealizationAvailable}},
-		{plugins.Realization{Release: plugins.ReleaseAvailable, Sources: []mcpapp.Source{{Server: mcpserver.Server{Name: backend}, Availability: mcpapp.SourceUnavailableBackend}}}, protocol.PluginRealization{Type: protocol.PluginRealizationAvailable, UnavailableBackends: []string{"backend"}}},
+		{plugins.Realization{Release: plugins.ReleaseAvailable, UnavailableBackends: []mcpserver.ServerName{backend}}, protocol.PluginRealization{Type: protocol.PluginRealizationAvailable, UnavailableBackends: []string{"backend"}}},
 		{plugins.Realization{Release: plugins.ReleaseUnavailable}, protocol.PluginRealization{Type: protocol.PluginRealizationReleaseUnavailable}},
 	} {
 		projected, err := presentInstallation(plugins.Inspection{View: view, Selected: release, Realization: test.realization, Presentation: plugins.PresentationWithheld})

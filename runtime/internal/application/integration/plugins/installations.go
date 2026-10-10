@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 
-	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -105,27 +104,13 @@ const (
 	PresentationWithheld Presentation = "withheld"
 )
 
-// Realization is what the selected release's bytes and backends show now: the
-// release state and every declared server as an MCP source with its
-// availability. The package owner builds it once per read and it is never
-// retained, so a repaired or lost backend is reflected by the next read rather
-// than by a remembered change outcome. The installation and MCP projections
-// both read this one value.
+// Realization observes release bytes and backend availability. It is not retained,
+// so loss or repair is reflected by the next inspection. An unavailable release
+// has no backend observations. Desired definitions and live connections have
+// independent owners.
 type Realization struct {
-	Release ReleaseState
-	Sources []mcpapp.Source
-}
-
-// UnavailableBackends names the declared servers of an available release whose
-// backend cannot be realized now.
-func (r Realization) UnavailableBackends() []mcpserver.ServerName {
-	var names []mcpserver.ServerName
-	for _, source := range r.Sources {
-		if source.Availability == mcpapp.SourceUnavailableBackend {
-			names = append(names, source.Server.Name)
-		}
-	}
-	return names
+	Release             ReleaseState
+	UnavailableBackends []mcpserver.ServerName
 }
 
 type ReleaseState string

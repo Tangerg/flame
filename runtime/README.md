@@ -518,8 +518,7 @@ the command reports that cause even though its durable change stands.
 Connection attempts own credential restoration as well as dialing. Reconfiguration
 withdraws the old session and tool snapshot before restoration; restoration failure
 settles the source as failed. A failed MCP server status names its closed failure
-category as an inline problem type without prose: `mcp_release_unavailable`,
-`mcp_backend_unavailable`, `mcp_configuration_failed` (the source refused the connection
+category as an inline problem type without prose: `mcp_configuration_failed` (the source refused the connection
 or stored credentials could not be restored), `mcp_dial_failed` (transport, process or
 handshake), `mcp_tool_discovery_failed` and `mcp_authorization_failed`. The connection
 owner records the category at the failed transition, including startup admission; the
@@ -573,10 +572,12 @@ ordinary user resources; deleting one stays effective across restart.
 Typed declarations reject explicit `null`, including nested arguments, environment values
 and theme colors, instead of converting it to an implicit default. Invalid contribution
 lists receive their own diagnostic and do not withdraw independent contributions.
-Catalog reads retain durable source membership when a release or backend directory is
-unavailable, project enabled unavailable sources as failed without stale tool counts,
-and preserve independent healthy sources. Desired descriptor projections never admit
-connections or dispatch. Temporary execution unavailability does not remove standing
+MCP definition reads project durable source membership and configuration without inspecting
+release bytes or backend directories. Plugin inspection observes release and backend
+availability; the connection owner alone reports live connection outcomes and tool counts.
+Unavailable resources therefore leave desired definitions intact, and independent healthy
+sources remain usable. Desired descriptor projections never admit connections or dispatch.
+Temporary execution unavailability does not remove standing
 tool exposure choices. Exposure inspection and edits read durable source definitions;
 reconnect and authorization reach the connection owner's launch integrity check, so a
 repaired release can recover without replacing its installation.
@@ -1175,8 +1176,9 @@ publishes connecting from that same owner. Startup, reconnect and authorization
 share this lifecycle; supersession and shutdown cancel and join preparation as well
 as dialing. The application coordinates durable configuration, exposure and ordered
 identity-only invalidations without storing a second connection phase or tombstone.
-Plugin realization describes current release and backend availability separately;
-a catalog read cannot overwrite the state of an admitted connection.
+Plugin realization describes current release and backend availability separately.
+Server listing and startup enumerate desired definitions without realizing plugin resources;
+these reads cannot overwrite the state of an admitted connection.
 Unmapped connection or authorization states fail their read or projection with
 an internal error; they never fabricate a server failure or panic during delivery.
 

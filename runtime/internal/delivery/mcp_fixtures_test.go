@@ -108,15 +108,15 @@ type mcpRegistryFake struct {
 	exposure map[tool.Ref]bool
 }
 
-func (m *mcpRegistryFake) Catalog(context.Context) ([]mcpapp.Source, error) {
+func (m *mcpRegistryFake) Definitions(context.Context) ([]mcpserver.Server, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	out := make([]mcpapp.Source, 0, len(m.servers))
+	out := make([]mcpserver.Server, 0, len(m.servers))
 	for _, srv := range m.servers {
-		out = append(out, mcpapp.Source{Server: srv.Clone(), Availability: mcpapp.SourceAvailable})
+		out = append(out, srv.Clone())
 	}
-	slices.SortFunc(out, func(a, b mcpapp.Source) int {
-		return a.Server.ID().Compare(b.Server.ID())
+	slices.SortFunc(out, func(a, b mcpserver.Server) int {
+		return a.ID().Compare(b.ID())
 	})
 	return out, nil
 }

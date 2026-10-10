@@ -48,8 +48,38 @@ type serverRead struct {
 // records every package read, so a test can see which reads a lookup made.
 type singleServerPackages struct{ reads []serverRead }
 
-func (p *singleServerPackages) Realize(context.Context, *plugin.Installation, plugin.Release) (Realization, error) {
-	return Realization{}, errors.New("unexpected realization of every server")
+func TestRegistryDefinitionsDoNotRealizePackageResources(t *testing.T) {
+	release := testsupport.Release(t, "1", plugin.Declaration{Name: "package", Servers: []plugin.Server{
+		{Name: testsupport.ServerName("remote"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.test/mcp"},
+	}})
+	installation, err := plugin.New(testsupport.InstallationID(t), "/package", release)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := &installationMemory{catalog: releaseMemory{release.Digest(): release}}
+	if err := store.Save(t.Context(), installation); err != nil {
+		t.Fatal(err)
+	}
+	registry, err := NewRegistry(userMemory{}, store, &singleServerPackages{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	servers, err := registry.Definitions(t.Context())
+	if err != nil || len(servers) != 1 {
+		t.Fatalf("declared registry depends on package realization: %+v, %v", servers, err)
+	}
+}
+
+func (p *singleServerPackages) Definitions(ctx context.Context, installation *plugin.Installation, release plugin.Release) ([]mcpserver.Server, error) {
+	var result []mcpserver.Server
+	for _, declared := range release.Declaration().Servers {
+		server, _, err := p.Server(ctx, installation, release, declared.Name, Declared)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, server)
+	}
+	return result, nil
 }
 
 func (p *singleServerPackages) Server(_ context.Context, installation *plugin.Installation, release plugin.Release, name mcpserver.ServerName, reach Reach) (mcpserver.Server, bool, error) {

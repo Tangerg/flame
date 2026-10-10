@@ -44,7 +44,7 @@ type Connections interface {
 // Registry supplies durable definitions of every origin independently of
 // executable admission.
 type Registry interface {
-	Catalog(ctx context.Context) ([]Source, error)
+	Definitions(ctx context.Context) ([]mcpserver.Server, error)
 	Definition(ctx context.Context, name mcpserver.ID) (mcpserver.Server, bool, error)
 }
 
@@ -57,24 +57,10 @@ type Store interface {
 	SetToolExposure(ctx context.Context, ref tool.Ref, disabled bool) error
 }
 
-type SourceAvailability string
-
-const (
-	SourceAvailable          SourceAvailability = "available"
-	SourceUnavailableRelease SourceAvailability = "unavailableRelease"
-	SourceUnavailableBackend SourceAvailability = "unavailableBackend"
-)
-
-// Source separates durable registry membership from executable admission.
-// An unavailable installation still supplies its desired configuration.
-type Source struct {
-	Server       mcpserver.Server
-	Availability SourceAvailability
-}
-
-// Coordinator owns durable server configuration and atomically published tool
-// exposure, and coordinates the connection owner. Commands borrow input until they return;
-// constructing a server acquires the data retained by persistence or a live dial.
+// Coordinator owns user-server configuration and tool exposure, and coordinates
+// the connection owner. Installations own installed-server definitions. Commands
+// borrow input until they return; constructing a server acquires data retained
+// by persistence or a live dial.
 type Coordinator struct {
 	// mutationMu linearizes durable registry -> exposure/live reconciliation and
 	// the short pre/post boundaries of asynchronous connection operations.
