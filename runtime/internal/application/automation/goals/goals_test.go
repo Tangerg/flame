@@ -306,7 +306,7 @@ func (m *memStore) withUsageLocked(g goal.Goal) (goal.Goal, error) {
 	}
 	snapshot := g.Snapshot()
 	var err error
-	snapshot.Used, err = goal.UsageOf(g.IncarnationID(), charged)
+	snapshot.Used, err = goal.UsageOf(g.SessionID(), g.IncarnationID(), charged)
 	if err != nil {
 		return goal.Goal{}, err
 	}

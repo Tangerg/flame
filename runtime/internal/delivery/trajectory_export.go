@@ -86,7 +86,7 @@ func presentTrajectoryExport(result sessions.TrajectoryExport) (protocol.Session
 			"Messages are the current retained conversation after compaction; per-call prompts, provider request bodies, and auxiliary model spans are not recorded here.",
 			"Feedback contains user-supplied signals whose references match this Session or its retained Runs and Items; references are unverified and may outlive their targets.",
 			"Run completion and model-call completion describe execution outcomes, not answer quality or successful task evaluation.",
-			"Run metrics include descendant accounting; adding root and child totals or combining Run totals with per-call usage double-counts consumption.",
+			"Each Run records its own process's usage; tree totals include the root and every descendant. Combining Run totals with the same per-call usage double-counts consumption.",
 			"Tool duration describes its final execution segment and excludes approval waits. Model timestamps measure Runtime observation boundaries; unknown settlements do not measure provider duration.",
 			"Tool attempts retain each Segment separately: completed means a definite result was observed, incomplete may mean suspension for input, and started has no recorded settlement. These states do not rate result quality.",
 		},

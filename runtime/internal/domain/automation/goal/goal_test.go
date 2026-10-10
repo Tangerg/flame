@@ -311,21 +311,21 @@ func TestUsageOfFoldsTheIncarnationsTerminalRuns(t *testing.T) {
 	zero := goalTestRun(t, "run_2", "inc_1", run.OutcomeCanceled, new(0.0), 3, now)
 	unpriced := goalTestRun(t, "run_3", "inc_1", run.OutcomeCompleted, nil, 4, now)
 
-	if used, err := UsageOf("inc_1", nil); err != nil || used != (Usage{}) {
+	if used, err := UsageOf("ses_1", "inc_1", nil); err != nil || used != (Usage{}) {
 		t.Fatalf("empty usage = %+v, %v", used, err)
 	}
-	used, err := UsageOf("inc_1", []run.Run{priced, zero})
+	used, err := UsageOf("ses_1", "inc_1", []run.Run{priced, zero})
 	if err != nil || used != (Usage{Runs: 2, Cost: goalTestCost(t, 0.25), Steps: 5}) {
 		t.Fatalf("priced usage = %+v, %v", used, err)
 	}
-	used, err = UsageOf("inc_1", []run.Run{priced, unpriced})
+	used, err = UsageOf("ses_1", "inc_1", []run.Run{priced, unpriced})
 	if _, available := used.Cost.USD(); err != nil || available || used.Runs != 2 || used.Steps != 6 {
 		t.Fatalf("mixed-price usage = %+v, %v", used, err)
 	}
-	if _, err := UsageOf("inc_other", []run.Run{priced}); !errors.Is(err, ErrRunIdentityConflict) {
+	if _, err := UsageOf("ses_1", "inc_other", []run.Run{priced}); !errors.Is(err, ErrRunIdentityConflict) {
 		t.Fatalf("foreign incarnation error = %v", err)
 	}
-	if _, err := UsageOf("inc_1", []run.Run{goalTestRunningRun(t, "inc_1", now)}); err == nil {
+	if _, err := UsageOf("ses_1", "inc_1", []run.Run{goalTestRunningRun(t, "inc_1", now)}); err == nil {
 		t.Fatal("usage folded a Run that has not finished")
 	}
 
@@ -333,10 +333,52 @@ func TestUsageOfFoldsTheIncarnationsTerminalRuns(t *testing.T) {
 	for index := range many {
 		many[index] = goalTestRun(t, fmt.Sprintf("run_%d", index), "inc_1", run.OutcomeCompleted, new(100.0), 10000, now)
 	}
-	used, err = UsageOf("inc_1", many)
+	used, err = UsageOf("ses_1", "inc_1", many)
 	cost, available := used.Cost.USD()
 	if err != nil || used.Runs != 1000 || used.Steps != 10000000 || !available || cost != 100000 {
 		t.Fatalf("large usage = %+v, %v", used, err)
+	}
+}
+
+func TestUsageOfChargesDescendantsWithoutCountingAnotherGoalRun(t *testing.T) {
+	now := time.Unix(10, 0).UTC()
+	root := goalTestRun(t, "run_root", "inc_1", run.OutcomeCompleted, new(0.25), 2, now)
+	childSnapshot := goalTestRun(t, "run_child", "", run.OutcomeCanceled, new(0.5), 3, now).Snapshot()
+	childSnapshot.Lineage = run.Lineage{ParentRunID: root.ID(), RootRunID: root.ID(), SpawnedByItemID: "itm_delegate"}
+	child, err := run.Restore(childSnapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	used, err := UsageOf("ses_1", "inc_1", []run.Run{child, root})
+	if err != nil || used != (Usage{Runs: 1, Cost: goalTestCost(t, 0.75), Steps: 5}) {
+		t.Fatalf("delegated usage = %+v, %v", used, err)
+	}
+	if _, err := UsageOf("ses_1", "inc_1", []run.Run{child}); !errors.Is(err, ErrRunIdentityConflict) {
+		t.Fatalf("missing root = %v", err)
+	}
+	if _, err := UsageOf("ses_1", "inc_1", []run.Run{root, child, child}); !errors.Is(err, ErrRunIdentityConflict) {
+		t.Fatalf("duplicate Run = %v", err)
+	}
+	childSnapshot.SessionID = "ses_other"
+	foreign, err := run.Restore(childSnapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := UsageOf("ses_1", "inc_1", []run.Run{root, foreign}); !errors.Is(err, ErrRunIdentityConflict) {
+		t.Fatalf("foreign Session = %v", err)
+	}
+	childSnapshot.SessionID = root.SessionID()
+	childSnapshot.Metrics, err = run.NewMetrics(nil, 3, time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unpriced, err := run.Restore(childSnapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	used, err = UsageOf("ses_1", "inc_1", []run.Run{root, unpriced})
+	if _, available := used.Cost.USD(); err != nil || available || used.Runs != 1 || used.Steps != 5 {
+		t.Fatalf("unpriced descendant = %+v, %v", used, err)
 	}
 }
 
@@ -363,7 +405,7 @@ func TestReviseObjectiveStartsFreshVersionAndPreservesFacts(t *testing.T) {
 	}
 
 	charged := paused.Snapshot()
-	charged.Used, err = UsageOf("inc_1", []run.Run{
+	charged.Used, err = UsageOf("ses_1", "inc_1", []run.Run{
 		goalTestRun(t, "run_1", "inc_1", run.OutcomeCompleted, new(0.25), 3, now),
 	})
 	if err != nil {

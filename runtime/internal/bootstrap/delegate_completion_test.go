@@ -16,16 +16,21 @@ func TestProtocolCompletesAllDelegates(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("FLAME_HOME", home)
 	var calls atomic.Int32
+	completedWithUsage := func(text string) *chat.Response {
+		response := completedTextResponse(text)
+		response.Metadata = &chat.ResponseMetadata{Model: "claude-test", Usage: &chat.Usage{InputTokens: 2, OutputTokens: 1}}
+		return response
+	}
 	model := delegateRestartModel{chat.ModelFunc(func(_ context.Context, request *chat.Request) (*chat.Response, error) {
 		calls.Add(1)
 		for _, message := range request.Messages {
 			if message.Role == chat.RoleTool {
-				return completedTextResponse("all done"), nil
+				return completedWithUsage("all done"), nil
 			}
 		}
 		for _, message := range request.Messages {
 			if message.Role == chat.RoleUser && strings.Contains(message.Text(), "finish child") {
-				return completedTextResponse("child completed"), nil
+				return completedWithUsage("child completed"), nil
 			}
 		}
 		message := chat.NewAssistantMessage(
@@ -130,6 +135,13 @@ func TestProtocolCompletesAllDelegates(t *testing.T) {
 		if value.Status != protocol.RunStatusFinished || value.Outcome == nil {
 			t.Fatalf("unfinished Run: %+v", value)
 		}
+		wantInput := int64(2)
+		if value.ID == rootRunID {
+			wantInput = 4
+		}
+		if value.Metrics.Usage == nil || value.Metrics.Usage.InputTokens != wantInput {
+			t.Fatalf("Run usage includes another process: %+v, want %d input tokens", value.Metrics.Usage, wantInput)
+		}
 		if streamed[value.ID] != value.Outcome.Type {
 			t.Fatalf("Run %s stream outcome %s differs from durable %s", value.ID, streamed[value.ID], value.Outcome.Type)
 		}
@@ -146,5 +158,21 @@ func TestProtocolCompletesAllDelegates(t *testing.T) {
 	}
 	if completedChildren != 2 {
 		t.Fatalf("completed children = %d, want both children", completedChildren)
+	}
+	usageRead := endpoint.Invoke(ctx, delivery.UsageSession, protocol.SessionUsageRequest{SessionID: session.ID}, options)
+	if usageRead.Failure != nil {
+		t.Fatal(usageRead.Failure)
+	}
+	usage := usageRead.Value.(*protocol.Usage)
+	if usage.InputTokens != 8 || usage.OutputTokens != 4 {
+		t.Fatalf("session lost process-owned usage: %+v, want 8 input and 4 output tokens", usage)
+	}
+	summaryRead := endpoint.Invoke(ctx, delivery.UsageSummary, protocol.UsageSummaryRequest{}, options)
+	if summaryRead.Failure != nil {
+		t.Fatal(summaryRead.Failure)
+	}
+	summary := summaryRead.Value.(*protocol.UsageSummary)
+	if summary.Total.InputTokens != 8 || summary.Total.OutputTokens != 4 || summary.Runs != 3 || summary.Sessions != 1 {
+		t.Fatalf("summary lost process-owned usage: %+v", summary)
 	}
 }

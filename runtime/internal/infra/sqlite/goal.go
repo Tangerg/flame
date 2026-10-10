@@ -226,7 +226,9 @@ func scanGoal(row scanRow) (goal.Snapshot, error) {
 func (g *GoalStore) restore(ctx context.Context, snapshot goal.Snapshot) (goal.Goal, error) {
 	rows, err := conn(ctx, g.db).QueryContext(ctx,
 		`SELECT `+runColumns+` FROM runs AS r `+runReadJoins+`
-		  WHERE r.session_id = ? AND r.goal_incarnation_id = ? AND r.state = ?`,
+		   JOIN runs AS root ON root.run_id = CASE
+		        WHEN r.root_run_id = '' THEN r.run_id ELSE r.root_run_id END
+		  WHERE root.session_id = ? AND root.goal_incarnation_id = ? AND root.state = ?`,
 		snapshot.SessionID, snapshot.IncarnationID, runStateTerminal.databaseValue())
 	if err != nil {
 		return goal.Goal{}, fmt.Errorf("sqlite: read goal Runs: %w", err)
@@ -243,7 +245,7 @@ func (g *GoalStore) restore(ctx context.Context, snapshot goal.Snapshot) (goal.G
 	if err := errors.Join(rows.Err(), rows.Close()); err != nil {
 		return goal.Goal{}, fmt.Errorf("sqlite: read goal Runs: %w", err)
 	}
-	snapshot.Used, err = goal.UsageOf(snapshot.IncarnationID, charged)
+	snapshot.Used, err = goal.UsageOf(snapshot.SessionID, snapshot.IncarnationID, charged)
 	if err != nil {
 		return goal.Goal{}, fmt.Errorf("sqlite: fold goal usage: %w", err)
 	}

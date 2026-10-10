@@ -943,8 +943,10 @@ Session, retained Run, or retained Item reference includes the original observat
 references remain unverified and may identify records already removed. General
 feedback without a matching reference is excluded. Export never manufactures a score
 from execution status, reconstructs missing attempts, or fills absent usage with zero.
-Run metrics include descendant accounting: do not add root and child totals together
-or combine those totals with per-call usage. The document carries these limitations
+Each Run records its own process's usage. Tree totals include the root and every
+descendant; combining those totals with the same per-call usage counts consumption
+twice. Goal usage derives cost and steps from its terminal trees while counting only
+their root Runs as Goal executions. The document carries these limitations
 alongside its evidence so downstream evaluation can preserve the distinctions.
 
 ## Background shell lifetime

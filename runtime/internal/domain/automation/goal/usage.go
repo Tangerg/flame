@@ -9,9 +9,9 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 )
 
-// Usage is the accounting accumulated across one Goal incarnation's terminal
-// Runs. Each Run owns its cost and steps, so Usage is only ever folded from
-// those Runs by [UsageOf]; nothing stores or advances it on its own.
+// Usage counts the terminal root Runs of one Goal incarnation and includes the
+// process-owned spending of all their descendants. Runs remain the only durable
+// accounting owners; Usage is derived by [UsageOf].
 type Usage struct {
 	Runs  int
 	Cost  accounting.Cost
@@ -28,32 +28,48 @@ func (u Usage) validate() error {
 	return nil
 }
 
-// UsageOf folds the terminal Runs of one Goal incarnation. Cost stays priced
-// only while every Run's cost is.
-func UsageOf(incarnationID string, runs []run.Run) (Usage, error) {
-	var used Usage
+// UsageOf requires complete terminal trees. Only roots carry Goal attribution;
+// descendants inherit it through immutable lineage. Cost stays priced only while
+// every process's cost is.
+func UsageOf(sessionID, incarnationID string, runs []run.Run) (Usage, error) {
+	byID := make(map[string]run.Run, len(runs))
 	for _, value := range runs {
-		if value.GoalIncarnationID() != incarnationID {
-			return Usage{}, fmt.Errorf("%w: Run %q belongs to another Goal", ErrRunIdentityConflict, value.ID())
+		if value.SessionID() != sessionID {
+			return Usage{}, fmt.Errorf("%w: Run %q belongs to another Session", ErrRunIdentityConflict, value.ID())
+		}
+		if _, duplicate := byID[value.ID()]; duplicate {
+			return Usage{}, fmt.Errorf("%w: Run %q appears twice", ErrRunIdentityConflict, value.ID())
 		}
 		if _, terminal := value.Outcome(); !terminal {
 			return Usage{}, fmt.Errorf("goal: Run %q is not terminal", value.ID())
+		}
+		byID[value.ID()] = value
+	}
+	var used Usage
+	for index, value := range runs {
+		root, found := byID[value.Lineage().TreeRootID(value.ID())]
+		if !found || !root.Lineage().IsRoot() || root.GoalIncarnationID() != incarnationID {
+			return Usage{}, fmt.Errorf("%w: Run %q belongs to another Goal", ErrRunIdentityConflict, value.ID())
 		}
 		cost, err := value.Metrics().Cost()
 		if err != nil {
 			return Usage{}, fmt.Errorf("goal: Run %q cost: %w", value.ID(), err)
 		}
 		steps := value.Metrics().Steps()
-		if used.Runs == math.MaxInt || steps > math.MaxInt-used.Steps {
+		if steps > math.MaxInt-used.Steps {
 			return Usage{}, errors.New("goal: usage counter overflow")
 		}
-		if used.Runs > 0 {
+		if index > 0 {
 			cost, err = used.Cost.Add(cost)
 			if err != nil {
 				return Usage{}, fmt.Errorf("goal: aggregate usage cost: %w", err)
 			}
 		}
-		used = Usage{Runs: used.Runs + 1, Cost: cost, Steps: used.Steps + steps}
+		if value.Lineage().IsRoot() {
+			used.Runs++
+		}
+		used.Cost = cost
+		used.Steps += steps
 	}
 	if err := used.validate(); err != nil {
 		return Usage{}, err

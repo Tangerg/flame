@@ -138,6 +138,59 @@ func TestGoalStoreFoldsUsageFromTheIncarnationsRuns(t *testing.T) {
 	}
 }
 
+func TestGoalUsageIncludesDelegatedSpendingAfterRestart(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "goal.db")
+	db, err := sqlite.Open(t.Context(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	goals, runs := sqlite.NewGoalStore(db), sqlite.NewRunStore(db)
+	const sessionID = "ses_delegated_goal"
+	seedSession(t, sqlite.NewSessionStore(db), sessionID)
+	now := time.Unix(10, 0).UTC()
+	active, err := goal.New(sessionID, "delegate", testReasoningSelection(t, "provider", "model", ""), run.Capabilities{}, "inc_delegated", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if applied, err := goals.Save(t.Context(), goalReplacement(t, active, unwrittenVersion(t, sessionID))); err != nil || !applied {
+		t.Fatalf("save Goal = %t, %v", applied, err)
+	}
+	root := persistTerminalGoalRun(t, runs, sessionID, active.IncarnationID(), "run_delegated_root", run.OutcomeCompleted, new(0.25), 2, now.Add(time.Second))
+	for _, descendant := range []struct {
+		id, parent string
+		outcome    run.Outcome
+		cost       float64
+		steps      int
+	}{
+		{"run_child", root.ID(), run.OutcomeCanceled, 0.5, 3},
+		{"run_grandchild", "run_child", run.OutcomeCompleted, 0.125, 2},
+	} {
+		value := testsupport.MustRestoreRun(run.Snapshot{
+			SessionID: sessionID, ID: descendant.id,
+			Lineage:   run.Lineage{ParentRunID: descendant.parent, RootRunID: root.ID(), SpawnedByItemID: "itm_" + descendant.id},
+			Outcome:   &descendant.outcome,
+			Metrics:   testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: descendant.steps, Usage: &accounting.Usage{Total: accounting.Totals{CostUSD: &descendant.cost}}}),
+			CreatedAt: now, UpdatedAt: now.Add(time.Second), FinishedAt: now.Add(time.Second),
+		})
+		if err := runs.Restore(t.Context(), value); err != nil {
+			t.Fatal(err)
+		}
+	}
+	persistTerminalGoalRun(t, runs, sessionID, "inc_previous", "run_previous", run.OutcomeCompleted, new(1.0), 7, now.Add(time.Second))
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	db, err = sqlite.Open(t.Context(), path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	current, found, err := readGoal(t.Context(), sqlite.NewGoalStore(db), sessionID)
+	if err != nil || !found || current.Used() != (goal.Usage{Runs: 1, Cost: goalRunCost(t, 0.875), Steps: 7}) {
+		t.Fatalf("delegated Goal after restart = %+v, %t, %v", current.Snapshot(), found, err)
+	}
+}
+
 func TestGoalSchemaUsesSemanticIncarnationColumns(t *testing.T) {
 	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
 	if err != nil {
