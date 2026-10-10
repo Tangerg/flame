@@ -38,8 +38,8 @@ func (w Skills) Get(ctx context.Context, cwd, name string) (workspaceapp.SkillDe
 		return workspaceapp.SkillDetail{}, err
 	}
 	detail, err := selected.get(ctx, name)
-	if context.Cause(ctx) != nil {
-		return workspaceapp.SkillDetail{}, context.Cause(ctx)
+	if cancelErr := skillSourceContextError(ctx, "inspect"); cancelErr != nil {
+		return workspaceapp.SkillDetail{}, errors.Join(err, cancelErr)
 	}
 	if errors.Is(err, sdk.ErrSkillNotFound) {
 		return workspaceapp.SkillDetail{}, fmt.Errorf("%w: %w", domainskills.ErrNotFound, err)

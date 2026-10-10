@@ -140,10 +140,10 @@ func (r *runtimeSkillSource) document(ctx context.Context, name string) (*sdk.Sk
 		return nil, nil, err
 	}
 	content, err := readSkillDocument(ctx, name, source)
-	if err != nil {
-		return nil, nil, err
+	if cancelErr := skillSourceContextError(ctx, "load"); cancelErr != nil {
+		return nil, nil, errors.Join(err, cancelErr)
 	}
-	if err := skillSourceContextError(ctx, "load"); err != nil {
+	if err != nil {
 		return nil, nil, err
 	}
 	skill, err := skilldocument.Load(ctx, name, content)
@@ -293,7 +293,11 @@ func validRuntimeSkillName(name string) bool {
 }
 
 func skillSourceContextError(ctx context.Context, operation string) error {
-	if cause := context.Cause(ctx); cause != nil {
+	if err := ctx.Err(); err != nil {
+		cause := context.Cause(ctx)
+		if !errors.Is(cause, err) {
+			cause = errors.Join(err, cause)
+		}
 		return fmt.Errorf("runtime skill source: %s: %w", operation, cause)
 	}
 	return nil
@@ -308,8 +312,8 @@ type boundedSkillResource struct {
 }
 
 func (b *boundedSkillResource) Read(buffer []byte) (int, error) {
-	if cause := context.Cause(b.ctx); cause != nil {
-		return 0, cause
+	if err := skillSourceContextError(b.ctx, "read resource"); err != nil {
+		return 0, err
 	}
 	remaining := int64(domainskills.MaxSkillResourceBytes) - b.read
 	if remaining < 0 {
@@ -320,17 +324,12 @@ func (b *boundedSkillResource) Read(buffer []byte) (int, error) {
 		limit = remaining + 1
 	}
 	read, err := b.File.Read(buffer[:limit])
-	if cause := context.Cause(b.ctx); cause != nil {
-		b.read += int64(read)
-		return read, cause
-	}
-	if int64(read) <= remaining {
-		b.read += int64(read)
-		return read, err
-	}
-	allowed := int(remaining)
 	b.read += int64(read)
-	return allowed, b.tooLarge()
+	if int64(read) > remaining {
+		read = int(remaining)
+		err = errors.Join(err, b.tooLarge())
+	}
+	return read, errors.Join(err, skillSourceContextError(b.ctx, "read resource"))
 }
 
 func (b *boundedSkillResource) tooLarge() error {

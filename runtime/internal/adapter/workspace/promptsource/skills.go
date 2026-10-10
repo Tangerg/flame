@@ -119,14 +119,17 @@ func (s *resolvedSkills) get(ctx context.Context, name string) (workspaceapp.Ski
 }
 
 func (s *resolvedSkills) list(ctx context.Context) (workspaceapp.SkillDiscovery, error) {
+	if err := skillSourceContextError(ctx, "list"); err != nil {
+		return workspaceapp.SkillDiscovery{}, err
+	}
 	out := workspaceapp.SkillDiscovery{Skills: []workspaceapp.SkillSummary{}, Diagnostics: []workspaceapp.SkillDiagnostic{}}
 	if s == nil {
 		return out, nil
 	}
 	for _, name := range s.names() {
 		detail, err := s.get(ctx, name)
-		if context.Cause(ctx) != nil {
-			return workspaceapp.SkillDiscovery{}, context.Cause(ctx)
+		if cancelErr := skillSourceContextError(ctx, "list"); cancelErr != nil {
+			return workspaceapp.SkillDiscovery{}, errors.Join(err, cancelErr)
 		}
 		switch {
 		case errors.Is(err, errPackageSkillConflict):

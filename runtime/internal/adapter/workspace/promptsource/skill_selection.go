@@ -91,8 +91,8 @@ func (s *resolvedSkills) names() []string {
 }
 
 func (s *resolvedSkills) find(ctx context.Context, name string) (selectedSkill, error) {
-	if cause := context.Cause(ctx); cause != nil {
-		return selectedSkill{}, cause
+	if err := skillSourceContextError(ctx, "select"); err != nil {
+		return selectedSkill{}, err
 	}
 	if s == nil {
 		return selectedSkill{}, sdk.ErrSkillNotFound

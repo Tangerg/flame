@@ -3,6 +3,7 @@ package promptsource
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io/fs"
 	"path/filepath"
 	"time"
@@ -35,7 +36,13 @@ func (s *packageSkillSource) Lookup(ctx context.Context, name string) (sdk.Summa
 	return skill.Summary(), nil
 }
 func (s *packageSkillSource) document(ctx context.Context, name string) (*sdk.Skill, []byte, error) {
+	if err := skillSourceContextError(ctx, "load"); err != nil {
+		return nil, nil, err
+	}
 	content, err := s.authority.ReadSkillResource(ctx, s.bundle.Dependency, name, sdk.SkillFile)
+	if cancelErr := skillSourceContextError(ctx, "load"); cancelErr != nil {
+		return nil, nil, errors.Join(err, cancelErr)
+	}
 	if err != nil {
 		return nil, nil, err
 	}
@@ -50,7 +57,13 @@ func (s *packageSkillSource) Load(ctx context.Context, name string) (*sdk.Skill,
 	return skill, err
 }
 func (s *packageSkillSource) OpenResource(ctx context.Context, name, resource string) (fs.File, error) {
+	if err := skillSourceContextError(ctx, "open resource"); err != nil {
+		return nil, err
+	}
 	content, err := s.authority.ReadSkillResource(ctx, s.bundle.Dependency, name, resource)
+	if cancelErr := skillSourceContextError(ctx, "open resource"); cancelErr != nil {
+		return nil, errors.Join(err, cancelErr)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -76,6 +89,9 @@ func (f *skillResourceBytes) IsDir() bool                { return false }
 func (f *skillResourceBytes) Sys() any                   { return nil }
 
 func (s *packageSkillSource) List(ctx context.Context) ([]sdk.Summary, error) {
+	if err := skillSourceContextError(ctx, "list"); err != nil {
+		return nil, err
+	}
 	result := make([]sdk.Summary, 0, len(s.bundle.Names))
 	for _, name := range s.bundle.Names {
 		value, err := s.Lookup(ctx, name)
