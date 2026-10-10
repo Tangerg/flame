@@ -82,7 +82,7 @@ workspace/
   ui/
     files/            file workspace, tree, and content
     review/           diff workspace and review presentation
-    skills/           available skills, library, and proposals
+    skills/           trusted document selection and Skill curation forms
     ViewHeader.tsx
     WorkspaceViewLayout.tsx
     viewStyles.ts
@@ -225,7 +225,7 @@ read models, fetchers, Runtime translation, and registration belong to the
 feature that understands the data:
 
 - Agent registers Session and model-invocation reads.
-- Workspace registers projects, files, diffs, skills, and memory reads.
+- Workspace registers projects, files, diffs, memory and the Skill reads consumed by trusted selectors and curation forms. Optional package pages read canonical Skill catalogs and documents through release-bound plugin queries; the former compiled catalog pages and document cache are removed.
 - Providers registers provider/model catalogs, configuration, and role reads.
 - Hooks registers inspection and trust reads.
 - MCP registers its server and tool data through its own plugin.

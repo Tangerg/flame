@@ -120,17 +120,17 @@ func (w *WorkingContextComposer) ComposeWorkingContext(
 	if err != nil {
 		return nil, err
 	}
-	// Only stable instructions precede the conversation. Memory recalled for
-	// this prompt follows it, so a new recall never rewrites the cached prefix;
-	// current Goal and Plan state is each call's tail, not part of this context.
-	contextMessages := make([]corechat.Message, 0, len(seed)+2)
-	contextMessages = append(contextMessages, system)
-	contextMessages = append(contextMessages, seed...)
-	if recalled, found, recallErr := w.recallMessage(ctx, input.WorkspaceCWD, input.PromptText); recallErr != nil {
+	// Recall annotates this prompt, just like hook context. The opening commits
+	// that exact message, so later model calls retain the durable conversation
+	// prefix without admitting a second, unpersisted conversational message.
+	if recalled, found, recallErr := w.recallPart(ctx, input.WorkspaceCWD, input.PromptText); recallErr != nil {
 		return nil, recallErr
 	} else if found {
-		contextMessages = append(contextMessages, recalled)
+		seed[len(seed)-1].Parts = append(seed[len(seed)-1].Parts, recalled)
 	}
+	contextMessages := make([]corechat.Message, 0, len(seed)+1)
+	contextMessages = append(contextMessages, system)
+	contextMessages = append(contextMessages, seed...)
 	return contextMessages, nil
 }
 
@@ -330,13 +330,13 @@ func (w *WorkingContextComposer) runObserveOnlyHook(
 	return nil
 }
 
-func (w *WorkingContextComposer) recallMessage(
+func (w *WorkingContextComposer) recallPart(
 	ctx context.Context,
 	cwd string,
 	query string,
-) (corechat.Message, bool, error) {
+) (corechat.Part, bool, error) {
 	if strings.TrimSpace(query) == "" || strings.TrimSpace(cwd) == "" {
-		return corechat.Message{}, false, nil
+		return corechat.Part{}, false, nil
 	}
 	ctx, span := recallTracer.Start(ctx, "memory.recall")
 	defer span.End()
@@ -349,7 +349,7 @@ func (w *WorkingContextComposer) recallMessage(
 	if err != nil {
 		span.RecordError(err)
 		slog.WarnContext(ctx, "execution: recall memory", "error", err)
-		return corechat.Message{}, false, nil
+		return corechat.Part{}, false, nil
 	}
 	var body strings.Builder
 	var sources contextSources
@@ -375,14 +375,14 @@ func (w *WorkingContextComposer) recallMessage(
 	}
 	span.SetAttributes(attribute.Int("memory.recalled", injected))
 	if injected == 0 {
-		return corechat.Message{}, false, nil
+		return corechat.Part{}, false, nil
 	}
 	loadRecallCounter().Add(ctx, int64(injected))
-	message := corechat.NewUserMessage(corechat.NewTextPart(FrameRuntimeContext(RuntimeContextRecalledMemory, strings.TrimSuffix(body.String(), "\n"))))
-	if err := sources.attach(&message.Metadata, "recalled-memory message"); err != nil {
-		return corechat.Message{}, false, err
+	part := corechat.NewTextPart(FrameRuntimeContext(RuntimeContextRecalledMemory, strings.TrimSuffix(body.String(), "\n")))
+	if err := sources.attach(&part.Metadata, "recalled-memory part"); err != nil {
+		return corechat.Part{}, false, err
 	}
-	return message, true, nil
+	return part, true, nil
 }
 
 var (

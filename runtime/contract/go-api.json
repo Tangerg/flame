@@ -318,6 +318,22 @@
               "signature": "func(ctx context.Context, request protocol.ReadPluginSchedulesRequest, options CallOptions) (*protocol.Page[protocol.Schedule], error)"
             },
             {
+              "name": "ReadPluginSkill",
+              "signature": "func(ctx context.Context, request protocol.ReadPluginSkillRequest, options CallOptions) (*protocol.SkillDetail, error)"
+            },
+            {
+              "name": "ReadPluginSkillLibrary",
+              "signature": "func(ctx context.Context, request protocol.ReadPluginViewRequest, options CallOptions) (*protocol.Page[protocol.ManagedSkill], error)"
+            },
+            {
+              "name": "ReadPluginSkillProposals",
+              "signature": "func(ctx context.Context, request protocol.ReadPluginSkillsRequest, options CallOptions) (*protocol.Page[protocol.SkillProposal], error)"
+            },
+            {
+              "name": "ReadPluginSkills",
+              "signature": "func(ctx context.Context, request protocol.ReadPluginSkillsRequest, options CallOptions) (*protocol.SkillDiscovery, error)"
+            },
+            {
               "name": "ReadPluginTrajectory",
               "signature": "func(ctx context.Context, request protocol.ReadPluginTrajectoryRequest, options CallOptions) (*protocol.Page[protocol.TrajectoryEntry], error)"
             },
@@ -836,6 +852,22 @@
             {
               "name": "ReadPluginSchedules",
               "signature": "func(ctx context.Context, request protocol.ReadPluginSchedulesRequest, options CallOptions) (*protocol.Page[protocol.Schedule], error)"
+            },
+            {
+              "name": "ReadPluginSkill",
+              "signature": "func(ctx context.Context, request protocol.ReadPluginSkillRequest, options CallOptions) (*protocol.SkillDetail, error)"
+            },
+            {
+              "name": "ReadPluginSkillLibrary",
+              "signature": "func(ctx context.Context, request protocol.ReadPluginViewRequest, options CallOptions) (*protocol.Page[protocol.ManagedSkill], error)"
+            },
+            {
+              "name": "ReadPluginSkillProposals",
+              "signature": "func(ctx context.Context, request protocol.ReadPluginSkillsRequest, options CallOptions) (*protocol.Page[protocol.SkillProposal], error)"
+            },
+            {
+              "name": "ReadPluginSkills",
+              "signature": "func(ctx context.Context, request protocol.ReadPluginSkillsRequest, options CallOptions) (*protocol.SkillDiscovery, error)"
             },
             {
               "name": "ReadPluginTrajectory",
@@ -2272,6 +2304,11 @@
           "value": "\"sessionTrajectory\""
         },
         {
+          "name": "PluginViewSkills",
+          "type": "PluginViewType",
+          "value": "\"skills\""
+        },
+        {
           "name": "PluginViewUsageSummary",
           "type": "PluginViewType",
           "value": "\"usageSummary\""
@@ -2344,7 +2381,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-10.5\""
+          "value": "\"2026-10-10.6\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -8081,6 +8118,46 @@
             {
               "name": "PageQuery",
               "type": "PageQuery"
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "ReadPluginSkillRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ReadPluginViewRequest",
+              "type": "ReadPluginViewRequest"
+            },
+            {
+              "name": "SkillDetailRequest",
+              "type": "SkillDetailRequest"
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "ReadPluginSkillsRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ReadPluginViewRequest",
+              "type": "ReadPluginViewRequest"
+            },
+            {
+              "name": "WorkspaceQuery",
+              "type": "WorkspaceQuery"
             }
           ],
           "methods": [

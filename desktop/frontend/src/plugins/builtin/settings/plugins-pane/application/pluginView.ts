@@ -1,4 +1,12 @@
-import type { AgentMemoryListRequest } from "@flame/runtime-contract/wire";
+import type {
+  AgentMemoryListRequest,
+  SkillDiscovery,
+  SkillDetail,
+  Page,
+  ManagedSkill,
+  SkillProposal,
+  WorkspaceRef,
+} from "@flame/runtime-contract/wire";
 
 export type PluginViewStatus =
   { type: "loading" } | { type: "ready" } | { type: "failure"; reason: string };
@@ -10,3 +18,14 @@ export interface PluginViewReads<T> {
 }
 
 export type MemoryViewTarget = Pick<AgentMemoryListRequest, "scope" | "workspace">;
+
+export type SkillViewTarget =
+  | { type: "available" | "review"; workspace: WorkspaceRef }
+  | { type: "library" }
+  | { type: "detail"; workspace: WorkspaceRef; name: string };
+
+export type SkillViewSnapshot =
+  | { type: "available"; data: SkillDiscovery }
+  | { type: "detail"; data: SkillDetail }
+  | { type: "library"; data: Page<ManagedSkill> }
+  | { type: "review"; data: Page<SkillProposal> };

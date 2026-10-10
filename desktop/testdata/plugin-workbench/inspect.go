@@ -64,6 +64,11 @@ type WorkbenchPages struct {
 	Physical int             `json:"physical"`
 }
 
+type WorkbenchEvaluation struct {
+	Ready bool   `json:"ready"`
+	Value string `json:"value"`
+}
+
 func (g *NativeWorkbenchGate) Pages() (result WorkbenchPages) {
 	result.Pages = []WorkbenchPage{}
 	application.InvokeSync(func() {
@@ -75,7 +80,7 @@ func (g *NativeWorkbenchGate) Pages() (result WorkbenchPages) {
 	return result
 }
 
-func (g *NativeWorkbenchGate) EvaluatePage(id, script string) (string, error) {
+func (g *NativeWorkbenchGate) EvaluatePage(id, script string) (WorkbenchEvaluation, error) {
 	result := make(chan string, 1)
 	handle := cgo.NewHandle(result)
 	var found bool
@@ -89,13 +94,21 @@ func (g *NativeWorkbenchGate) EvaluatePage(id, script string) (string, error) {
 	})
 	if !found {
 		handle.Delete()
-		return "", errors.New("native workbench: page is not ready")
+		return WorkbenchEvaluation{}, nil
 	}
 	select {
 	case value := <-result:
-		return value, nil
+		// A receipt may retire the page between enumeration and evaluation.
+		// Return availability as a fact so bounded polling need not parse errors.
+		var ready bool
+		application.InvokeSync(func() {
+			if page := g.host.pluginPages[id]; page != nil {
+				ready = bool(C.workbenchPageReady(page.pointer))
+			}
+		})
+		return WorkbenchEvaluation{Ready: ready, Value: value}, nil
 	case <-time.After(10 * time.Second):
-		return "", errors.New("native workbench: page evaluation timed out")
+		return WorkbenchEvaluation{}, errors.New("native workbench: page evaluation timed out")
 	}
 }
 

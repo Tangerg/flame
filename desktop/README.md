@@ -428,6 +428,14 @@ run-now and confirmed deletion; the guest receives canonical pages and cursor-on
 Opening a package template creates a draft, and only Runtime receipts change the schedule
 projection. Uninstalling the package leaves the Runtime worker and saved schedules intact.
 
+The optional [Skills package](../plugins/skills/plugin.json) supplies discovery, document,
+user-library and proposal presentation. Host controls capture the workspace, section and
+selected document name; the guest can refresh only that captured read. Trusted archive,
+restore and proposal decisions use the existing Runtime commands. A confirmation retains
+the exact instructions and revision the user reviewed, and a conflict requires a fresh
+review. Installation Skill enablement remains installation configuration. The compiled
+Skills view and document cache are removed; uninstall preserves Skill and proposal data.
+
 The optional Memory package renders canonical project or user memory. Trusted controls
 capture the Runtime workspace and scope; changing either retires the previous page.
 Authoring stays in the existing Runtime command path, and uninstall preserves memory.
@@ -482,7 +490,7 @@ packets or resource requests, native sender rejection, viewport resize, focus re
 retirement and successor isolation. It requires exactly one terminal report. The separate
 carrier controls above remain qualification evidence for the engine boundary.
 
-Run all four pages in the production React workbench:
+Run the first-party pages in the production React workbench:
 
 ```sh
 wails3 task darwin:check:plugin-workbench
@@ -493,7 +501,7 @@ Docker, and a cached `golang:1.27.0` image with Git. It builds the real Linux Ru
 offline Anthropic HTTP/SSE fixture, then runs them in an owned container on its own
 network with fresh tmpfs data and one ephemeral loopback port. Its provider endpoint
 is the fixture's loopback listener. Installation admission,
-memory, schedules and finished Runs enter the public Runtime Protocol. No external
+memory, schedules, Skill proposals and finished Runs enter the public Runtime Protocol. No external
 provider service is contacted; the fixture reports synthetic zero, unpriced usage.
 
 The signed App Sandbox bundle has a unique identity. Before product bootstrap, the
@@ -510,8 +518,10 @@ Wails SDK so its event dispatcher retains one owner. Test hooks are absent from 
 The gate focuses its owned window and waits for the catalogue popup to retire before
 checking page visibility. It selects each admitted contribution through the workbench, inspects the real
 opaque guest, refreshes recorded data, replaces memory scope and usage period, and
-checks withdrawal, reapproval and physical page retirement. Uninstall must preserve
-canonical trajectory, memory, schedules and usage. The application exits and cleanup
+checks withdrawal, reapproval and physical page retirement. Skills covers discovery,
+document inspection, library archive/restore and trusted publication of a proposal
+created through a normal Run. Uninstall must preserve
+canonical trajectory, memory, schedules, usage and Skill curation. The application exits and cleanup
 completes before the single terminal result. The runner removes its container, network,
 private data, canary and temporary files; macOS retains protected container metadata.
 

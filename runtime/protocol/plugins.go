@@ -107,6 +107,7 @@ const (
 	PluginViewAgentMemory       PluginViewType = "agentMemory"
 	PluginViewSchedules         PluginViewType = "schedules"
 	PluginViewUsageSummary      PluginViewType = "usageSummary"
+	PluginViewSkills            PluginViewType = "skills"
 )
 
 type PluginView struct {
@@ -153,6 +154,16 @@ type ReadPluginUsageRequest struct {
 type ReadPluginSchedulesRequest struct {
 	ReadPluginViewRequest
 	PageQuery
+}
+
+type ReadPluginSkillsRequest struct {
+	ReadPluginViewRequest
+	WorkspaceQuery
+}
+
+type ReadPluginSkillRequest struct {
+	ReadPluginViewRequest
+	SkillDetailRequest
 }
 
 // PluginServerDeclaration is a closed union by transport that projects a

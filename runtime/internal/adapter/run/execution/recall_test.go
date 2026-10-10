@@ -26,11 +26,11 @@ func TestRecalledMemoriesSkipsPinnedAndInjectsRest(t *testing.T) {
 		testsupport.MustAgentMemoryItem(agentmemory.ItemSnapshot{Content: "- relevant fact", Pinned: false}),
 	}}
 	composer := newTestWorkingContextComposer(t, WorkingContextConfig{AgentMemorySearch: search})
-	msg, ok, err := composer.recallMessage(context.Background(), "/repo", "what is the fact")
+	msg, ok, err := composer.recallPart(context.Background(), "/repo", "what is the fact")
 	if err != nil || !ok {
-		t.Fatalf("recallMessage found=%t error=%v", ok, err)
+		t.Fatalf("recallPart found=%t error=%v", ok, err)
 	}
-	text := msg.Text()
+	text := msg.Text
 	if strings.Contains(text, "pinned core") {
 		t.Fatalf("pinned item must not appear in the recall block:\n%s", text)
 	}
@@ -44,15 +44,15 @@ func TestRecalledMemoriesSkipsPinnedAndInjectsRest(t *testing.T) {
 
 func TestRecalledMemoriesEmptyCases(t *testing.T) {
 	composer := newTestWorkingContextComposer(t, WorkingContextConfig{AgentMemorySearch: &fakeAgentMemorySearcher{}})
-	if _, ok, _ := composer.recallMessage(context.Background(), "/repo", "q"); ok {
+	if _, ok, _ := composer.recallPart(context.Background(), "/repo", "q"); ok {
 		t.Fatal("no items → no block")
 	}
 	allPinned := &fakeAgentMemorySearcher{items: []agentmemory.Item{testsupport.MustAgentMemoryItem(agentmemory.ItemSnapshot{Content: "- x", Pinned: true})}}
 	composer = newTestWorkingContextComposer(t, WorkingContextConfig{AgentMemorySearch: allPinned})
-	if _, ok, _ := composer.recallMessage(context.Background(), "/repo", "q"); ok {
+	if _, ok, _ := composer.recallPart(context.Background(), "/repo", "q"); ok {
 		t.Fatal("all-pinned results → no block (already in the core)")
 	}
-	if _, ok, _ := composer.recallMessage(context.Background(), "/repo", "  "); ok {
+	if _, ok, _ := composer.recallPart(context.Background(), "/repo", "  "); ok {
 		t.Fatal("blank query → no block")
 	}
 }
@@ -66,12 +66,12 @@ func TestRecalledMemoriesIncludeRelevantUserScope(t *testing.T) {
 	})}}
 	composer := newTestWorkingContextComposer(t, WorkingContextConfig{AgentMemorySearch: search})
 
-	message, ok, err := composer.recallMessage(context.Background(), "/repo", "how should I explain this")
+	message, ok, err := composer.recallPart(context.Background(), "/repo", "how should I explain this")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !ok || !strings.Contains(message.Text(), "user prefers concise explanations") {
-		t.Fatalf("user-scope memory was not recalled: found=%t message=%q", ok, message.Text())
+	if !ok || !strings.Contains(message.Text, "user prefers concise explanations") {
+		t.Fatalf("user-scope memory was not recalled: found=%t message=%q", ok, message.Text)
 	}
 }
 
@@ -82,11 +82,11 @@ func TestRecalledMemoriesKeepWholeItemsWithinContextBudget(t *testing.T) {
 	}}
 	composer := newTestWorkingContextComposer(t, WorkingContextConfig{AgentMemorySearch: search})
 
-	message, ok, err := composer.recallMessage(context.Background(), "/repo", "relevant facts")
+	message, ok, err := composer.recallPart(context.Background(), "/repo", "relevant facts")
 	if err != nil || !ok {
-		t.Fatalf("recallMessage found=%t error=%v", ok, err)
+		t.Fatalf("recallPart found=%t error=%v", ok, err)
 	}
-	if !strings.Contains(message.Text(), "甲") || strings.Contains(message.Text(), "乙") {
+	if !strings.Contains(message.Text, "甲") || strings.Contains(message.Text, "乙") {
 		t.Fatalf("budgeted recall did not preserve the highest-ranked whole item")
 	}
 }

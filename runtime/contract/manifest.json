@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-10.5",
+  "protocolVersion": "2026-10-10.6",
   "features": [
     "reasoning",
     "multimodal",
@@ -784,6 +784,103 @@
       ],
       "features": [
         "mcp"
+      ]
+    },
+    {
+      "name": "plugins.readSkills",
+      "kind": "unary",
+      "operation": "query",
+      "idempotency": "none",
+      "replayCursor": "none",
+      "pagination": "none",
+      "errors": [
+        "plugin_unavailable",
+        "plugin_not_found",
+        "plugin_in_use",
+        "plugin_unapproved",
+        "plugin_stale",
+        "workspace_unavailable",
+        "capability_not_negotiated"
+      ],
+      "features": [
+        "plugins",
+        "skills"
+      ],
+      "materializes": [
+        "skills.discovered.list"
+      ]
+    },
+    {
+      "name": "plugins.readSkill",
+      "kind": "unary",
+      "operation": "query",
+      "idempotency": "none",
+      "replayCursor": "none",
+      "pagination": "none",
+      "errors": [
+        "plugin_unavailable",
+        "plugin_not_found",
+        "plugin_in_use",
+        "plugin_unapproved",
+        "plugin_stale",
+        "workspace_unavailable",
+        "skill_not_found",
+        "skill_unavailable",
+        "capability_not_negotiated"
+      ],
+      "features": [
+        "plugins",
+        "skills"
+      ],
+      "materializes": [
+        "skills.discovered.get"
+      ]
+    },
+    {
+      "name": "plugins.readSkillLibrary",
+      "kind": "unary",
+      "operation": "query",
+      "idempotency": "none",
+      "replayCursor": "none",
+      "pagination": "none",
+      "errors": [
+        "plugin_unavailable",
+        "plugin_not_found",
+        "plugin_in_use",
+        "plugin_unapproved",
+        "plugin_stale",
+        "capability_not_negotiated"
+      ],
+      "features": [
+        "plugins",
+        "skills"
+      ],
+      "materializes": [
+        "skills.library.list"
+      ]
+    },
+    {
+      "name": "plugins.readSkillProposals",
+      "kind": "unary",
+      "operation": "query",
+      "idempotency": "none",
+      "replayCursor": "none",
+      "pagination": "none",
+      "errors": [
+        "plugin_unavailable",
+        "plugin_not_found",
+        "plugin_in_use",
+        "plugin_unapproved",
+        "plugin_stale",
+        "workspace_unavailable",
+        "capability_not_negotiated"
+      ],
+      "features": [
+        "plugins",
+        "skills"
+      ],
+      "materializes": [
+        "skills.proposals.list"
       ]
     },
     {
@@ -1605,6 +1702,10 @@
           "plugins.list",
           "plugins.readMemory",
           "plugins.readSchedules",
+          "plugins.readSkill",
+          "plugins.readSkillLibrary",
+          "plugins.readSkillProposals",
+          "plugins.readSkills",
           "plugins.readTrajectory",
           "plugins.readUsage",
           "plugins.readView",
@@ -1797,6 +1898,10 @@
           "plugins.list",
           "plugins.readMemory",
           "plugins.readSchedules",
+          "plugins.readSkill",
+          "plugins.readSkillLibrary",
+          "plugins.readSkillProposals",
+          "plugins.readSkills",
           "plugins.readTrajectory",
           "plugins.readUsage",
           "plugins.readView",
@@ -1819,6 +1924,10 @@
           "plugins.list",
           "plugins.readMemory",
           "plugins.readSchedules",
+          "plugins.readSkill",
+          "plugins.readSkillLibrary",
+          "plugins.readSkillProposals",
+          "plugins.readSkills",
           "plugins.readTrajectory",
           "plugins.readUsage",
           "plugins.readView",
@@ -1841,6 +1950,10 @@
           "plugins.list",
           "plugins.readMemory",
           "plugins.readSchedules",
+          "plugins.readSkill",
+          "plugins.readSkillLibrary",
+          "plugins.readSkillProposals",
+          "plugins.readSkills",
           "plugins.readTrajectory",
           "plugins.readUsage",
           "plugins.readView",
@@ -1863,6 +1976,10 @@
           "plugins.list",
           "plugins.readMemory",
           "plugins.readSchedules",
+          "plugins.readSkill",
+          "plugins.readSkillLibrary",
+          "plugins.readSkillProposals",
+          "plugins.readSkills",
           "plugins.readTrajectory",
           "plugins.readUsage",
           "plugins.readView",
@@ -1885,6 +2002,10 @@
           "plugins.list",
           "plugins.readMemory",
           "plugins.readSchedules",
+          "plugins.readSkill",
+          "plugins.readSkillLibrary",
+          "plugins.readSkillProposals",
+          "plugins.readSkills",
           "plugins.readTrajectory",
           "plugins.readUsage",
           "plugins.readView",
@@ -2049,6 +2170,7 @@
         "code": -32034,
         "recoveryAction": "refetch",
         "methods": [
+          "plugins.readSkill",
           "skills.discovered.get",
           "skills.library.archive",
           "skills.library.restore"
@@ -2059,6 +2181,7 @@
         "code": -32035,
         "recoveryAction": "promptUser",
         "methods": [
+          "plugins.readSkill",
           "skills.discovered.get"
         ]
       },
@@ -2098,6 +2221,9 @@
           "agentDocs.list",
           "hooks.list",
           "hooks.setTrust",
+          "plugins.readSkill",
+          "plugins.readSkillProposals",
+          "plugins.readSkills",
           "schedules.create",
           "schedules.update",
           "sessions.create",
@@ -2561,6 +2687,50 @@
         {
           "requires": [
             "mcp"
+          ]
+        }
+      ]
+    },
+    {
+      "method": "plugins.readSkills",
+      "rules": [
+        {
+          "requires": [
+            "plugins",
+            "skills"
+          ]
+        }
+      ]
+    },
+    {
+      "method": "plugins.readSkill",
+      "rules": [
+        {
+          "requires": [
+            "plugins",
+            "skills"
+          ]
+        }
+      ]
+    },
+    {
+      "method": "plugins.readSkillLibrary",
+      "rules": [
+        {
+          "requires": [
+            "plugins",
+            "skills"
+          ]
+        }
+      ]
+    },
+    {
+      "method": "plugins.readSkillProposals",
+      "rules": [
+        {
+          "requires": [
+            "plugins",
+            "skills"
           ]
         }
       ]

@@ -6,21 +6,25 @@ import (
 )
 
 const (
-	PluginsList           Name = "plugins.list"
-	PluginsInstall        Name = "plugins.install"
-	PluginsStage          Name = "plugins.stage"
-	PluginsSelect         Name = "plugins.select"
-	PluginsApprove        Name = "plugins.approve"
-	PluginsConfigure      Name = "plugins.configure"
-	PluginsSetEnablement  Name = "plugins.setEnablement"
-	PluginsRevoke         Name = "plugins.revoke"
-	PluginsUninstall      Name = "plugins.uninstall"
-	PluginsReadView       Name = "plugins.readView"
-	PluginsReadTrajectory Name = "plugins.readTrajectory"
-	PluginsReadMemory     Name = "plugins.readMemory"
-	PluginsReadSchedules  Name = "plugins.readSchedules"
-	PluginsReadUsage      Name = "plugins.readUsage"
-	PluginsRenameSession  Name = "plugins.renameSession"
+	PluginsList               Name = "plugins.list"
+	PluginsInstall            Name = "plugins.install"
+	PluginsStage              Name = "plugins.stage"
+	PluginsSelect             Name = "plugins.select"
+	PluginsApprove            Name = "plugins.approve"
+	PluginsConfigure          Name = "plugins.configure"
+	PluginsSetEnablement      Name = "plugins.setEnablement"
+	PluginsRevoke             Name = "plugins.revoke"
+	PluginsUninstall          Name = "plugins.uninstall"
+	PluginsReadView           Name = "plugins.readView"
+	PluginsReadTrajectory     Name = "plugins.readTrajectory"
+	PluginsReadMemory         Name = "plugins.readMemory"
+	PluginsReadSchedules      Name = "plugins.readSchedules"
+	PluginsReadUsage          Name = "plugins.readUsage"
+	PluginsReadSkills         Name = "plugins.readSkills"
+	PluginsReadSkill          Name = "plugins.readSkill"
+	PluginsReadSkillLibrary   Name = "plugins.readSkillLibrary"
+	PluginsReadSkillProposals Name = "plugins.readSkillProposals"
+	PluginsRenameSession      Name = "plugins.renameSession"
 )
 
 // pluginErrors is every problem wirePluginError can raise. Each plugins method
@@ -36,6 +40,26 @@ func pluginErrors() []string {
 }
 
 func registerPlugins(r *Registry) {
+	r.query(MethodMeta{Name: PluginsReadSkills, CapabilityRules: requires(protocol.FeaturePlugins, protocol.FeatureSkills), Errors: append(pluginErrors(), protocol.ErrWorkspaceUnavailable.Error()), Materializes: []Name{SkillsDiscoveredList}}, func(s interface {
+		ReadPluginSkills(context.Context, protocol.ReadPluginSkillsRequest) (*protocol.SkillDiscovery, error)
+	}, ctx context.Context, in protocol.ReadPluginSkillsRequest) (*protocol.SkillDiscovery, error) {
+		return s.ReadPluginSkills(ctx, in)
+	})
+	r.query(MethodMeta{Name: PluginsReadSkill, CapabilityRules: requires(protocol.FeaturePlugins, protocol.FeatureSkills), Errors: append(pluginErrors(), protocol.ErrWorkspaceUnavailable.Error(), protocol.ErrSkillNotFound.Error(), protocol.ErrSkillUnavailable.Error()), Materializes: []Name{SkillsDiscoveredGet}}, func(s interface {
+		ReadPluginSkill(context.Context, protocol.ReadPluginSkillRequest) (*protocol.SkillDetail, error)
+	}, ctx context.Context, in protocol.ReadPluginSkillRequest) (*protocol.SkillDetail, error) {
+		return s.ReadPluginSkill(ctx, in)
+	})
+	r.query(MethodMeta{Name: PluginsReadSkillLibrary, CapabilityRules: requires(protocol.FeaturePlugins, protocol.FeatureSkills), Errors: pluginErrors(), Materializes: []Name{SkillsLibraryList}}, func(s interface {
+		ReadPluginSkillLibrary(context.Context, protocol.ReadPluginViewRequest) (*protocol.Page[protocol.ManagedSkill], error)
+	}, ctx context.Context, in protocol.ReadPluginViewRequest) (*protocol.Page[protocol.ManagedSkill], error) {
+		return s.ReadPluginSkillLibrary(ctx, in)
+	})
+	r.query(MethodMeta{Name: PluginsReadSkillProposals, CapabilityRules: requires(protocol.FeaturePlugins, protocol.FeatureSkills), Errors: append(pluginErrors(), protocol.ErrWorkspaceUnavailable.Error()), Materializes: []Name{SkillsProposalsList}}, func(s interface {
+		ReadPluginSkillProposals(context.Context, protocol.ReadPluginSkillsRequest) (*protocol.Page[protocol.SkillProposal], error)
+	}, ctx context.Context, in protocol.ReadPluginSkillsRequest) (*protocol.Page[protocol.SkillProposal], error) {
+		return s.ReadPluginSkillProposals(ctx, in)
+	})
 	r.query(MethodMeta{Name: PluginsReadUsage, CapabilityRules: requires(protocol.FeaturePlugins), Errors: pluginErrors(), Materializes: []Name{UsageSummary}}, func(s interface {
 		ReadPluginUsage(context.Context, protocol.ReadPluginUsageRequest) (*protocol.UsageSummary, error)
 	}, ctx context.Context, in protocol.ReadPluginUsageRequest) (*protocol.UsageSummary, error) {

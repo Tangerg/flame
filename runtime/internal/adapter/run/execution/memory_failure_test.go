@@ -50,7 +50,7 @@ func TestRecallFailureRemainsNonBlockingAndDiagnostic(t *testing.T) {
 	composer := newTestWorkingContextComposer(t, WorkingContextConfig{
 		AgentMemorySearch: &fakeAgentMemorySearcher{err: errors.New("memory search unavailable")},
 	})
-	_, found, err := composer.recallMessage(t.Context(), "/repo", "private query")
+	_, found, err := composer.recallPart(t.Context(), "/repo", "private query")
 	if err != nil || found {
 		t.Fatalf("failed recall found=%t error=%v", found, err)
 	}

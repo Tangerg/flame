@@ -113,8 +113,8 @@ func TestWorkingContextAttributesHookAndRecalledMemoryInPlace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(messages) != 3 {
-		t.Fatalf("messages=%d, want system + user + recall", len(messages))
+	if len(messages) != 2 {
+		t.Fatalf("messages=%d, want system + annotated user prompt", len(messages))
 	}
 	for index, message := range messages {
 		if err := message.Validate(); err != nil {
@@ -132,15 +132,13 @@ func TestWorkingContextAttributesHookAndRecalledMemoryInPlace(t *testing.T) {
 		hook[1].Reference != string(domainhooks.UserPromptSubmit) {
 		t.Fatalf("hook provenance=%+v", hook)
 	}
-	if len(messages[1].Parts) != 2 || messages[1].Parts[1].Text != "question" {
+	if len(messages[1].Parts) != 3 || messages[1].Parts[1].Text != "question" {
 		t.Fatalf("hook injection changed user part ordering: %+v", messages[1].Parts)
 	}
-	// Recall follows the prompt it was retrieved for, so it never precedes the
-	// conversation in the cached prefix.
-	if messages[2].Role != corechat.RoleUser {
-		t.Fatalf("recall role = %s, want a User message after the prompt", messages[2].Role)
+	if messages[1].Role != corechat.RoleUser {
+		t.Fatalf("annotated prompt role = %s, want User", messages[1].Role)
 	}
-	recalled := decodeContextProvenance(t, messages[2].Metadata)
+	recalled := decodeContextProvenance(t, messages[1].Parts[2].Metadata)
 	if len(recalled) != 1 || recalled[0].Kind != contextSourceRecalledMemory ||
 		recalled[0].Reference != recalledMemoryID.String() ||
 		recalled[0].Purpose != contextPurposeData {

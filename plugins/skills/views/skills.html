@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Skills</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font:
+          14px/1.6 system-ui,
+          sans-serif;
+        color: light-dark(#20242b, #eef0f4);
+        background: light-dark(#fafbfc, #181a1e);
+        --muted: light-dark(#586170, #a3a8b2);
+        --surface: light-dark(#eef1f5, #24282e);
+        --edge: light-dark(#c9cfd9, #484e59);
+        --accent: light-dark(#265cad, #91baff);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 24px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 600;
+      }
+      p,
+      small,
+      dt {
+        color: var(--muted);
+      }
+      header,
+      .filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+      }
+      header {
+        justify-content: space-between;
+      }
+      .filters {
+        margin: 20px 0;
+      }
+      button,
+      input {
+        font: inherit;
+        color: inherit;
+        background: var(--surface);
+        border: 1px solid var(--edge);
+        border-radius: 6px;
+        padding: 7px 12px;
+        max-width: 100%;
+      }
+      button:disabled {
+        opacity: 0.5;
+      }
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 3px;
+      }
+      article {
+        background: var(--surface);
+        border-radius: 8px;
+        padding: 16px;
+        margin: 12px 0;
+        overflow-wrap: anywhere;
+      }
+      article h2 {
+        margin: 0;
+        font-size: 16px;
+      }
+      dl {
+        display: grid;
+        grid-template-columns: max-content 1fr;
+        gap: 4px 12px;
+        font-size: 12px;
+      }
+      dd {
+        margin: 0;
+      }
+      pre {
+        font: inherit;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+      summary {
+        cursor: default;
+      }
+      #status[role="alert"] {
+        color: light-dark(#a62222, #ff9797);
+      }
+      #diagnostics {
+        white-space: pre-wrap;
+      }
+      @media (max-width: 480px) {
+        body {
+          padding: 16px;
+        }
+        dl {
+          display: block;
+        }
+        dd {
+          margin-bottom: 8px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1 id="title">Skills</h1>
+      <button id="refresh">Refresh</button>
+    </header>
+    <p>
+      Inspect available Skills and proposals. Use the controls above to manage
+      your personal library and review publication.
+    </p>
+    <div class="filters">
+      <input
+        id="search"
+        type="search"
+        aria-label="Search this catalog"
+        placeholder="Search this catalog"
+      />
+    </div>
+    <p id="summary"></p>
+    <p id="diagnostics"></p>
+    <p id="status" role="status">Waiting for the trusted Host…</p>
+    <main id="items"></main>
+    <script>
+      const refresh = document.getElementById("refresh"),
+        search = document.getElementById("search"),
+        title = document.getElementById("title"),
+        summary = document.getElementById("summary"),
+        diagnostics = document.getElementById("diagnostics"),
+        status = document.getElementById("status"),
+        items = document.getElementById("items");
+      let port,
+        snapshot,
+        pending = false;
+      function text(tag, value) {
+        const element = document.createElement(tag);
+        element.textContent = value;
+        return element;
+      }
+      function facts(article, values) {
+        const list = document.createElement("dl");
+        for (const [label, value] of values)
+          if (value !== undefined)
+            list.append(text("dt", label), text("dd", value));
+        article.append(list);
+      }
+      function body(article, instructions) {
+        const detail = document.createElement("details");
+        detail.append(
+          text("summary", "Read instructions"),
+          text("pre", instructions),
+        );
+        article.append(detail);
+      }
+      function render() {
+        items.replaceChildren();
+        diagnostics.textContent = "";
+        const titles = {
+          available: "Available Skills",
+          library: "Personal Skill library",
+          review: "Skill proposals",
+          detail: "Skill document",
+        };
+        title.textContent = titles[snapshot.type];
+        let rows;
+        switch (snapshot.type) {
+          case "available":
+            rows = snapshot.data.skills;
+            diagnostics.textContent = snapshot.data.diagnostics
+              .map((item) => item.name + ": " + item.detail)
+              .join("\n");
+            break;
+          case "detail":
+            rows = [snapshot.data];
+            break;
+          default:
+            rows = snapshot.data.data;
+        }
+        const matching = rows.filter((item) =>
+          (
+            item.name +
+            " " +
+            (item.description ?? "") +
+            " " +
+            (item.scope ?? item.lifecycle ?? "")
+          )
+            .toLocaleLowerCase()
+            .includes(search.value.toLocaleLowerCase()),
+        );
+        summary.textContent =
+          snapshot.type === "detail"
+            ? "Resolved document"
+            : rows.length +
+              (snapshot.type === "review"
+                ? " pending proposals"
+                : snapshot.type === "library"
+                  ? " user-managed Skills"
+                  : " available Skills");
+        if (!matching.length)
+          items.append(
+            text(
+              "p",
+              rows.length
+                ? "No matching Skills in this catalog."
+                : snapshot.type === "review"
+                  ? "No proposals pending review."
+                  : snapshot.type === "library"
+                    ? "No managed Skills in this library."
+                    : "No Skills offered in this workspace.",
+            ),
+          );
+        for (const item of matching) {
+          const article = document.createElement("article");
+          article.append(text("h2", item.name));
+          if (item.description) article.append(text("p", item.description));
+          facts(article, [
+            ["Scope", item.scope],
+            ["Lifecycle", item.lifecycle],
+            ["Revision", item.revision],
+            ["Source path", item.path],
+            ["Installation", item.installation?.installationId],
+            ["Release", item.installation?.digest],
+            ["Origin", item.origin],
+            ["Source Session", item.sourceSession],
+            [
+              "Revises an existing Skill",
+              snapshot.type === "review"
+                ? String(item.revises ?? false)
+                : undefined,
+            ],
+          ]);
+          if (item.instructions !== undefined) body(article, item.instructions);
+          items.append(article);
+        }
+      }
+      function accept(value) {
+        snapshot = value;
+        pending = false;
+        refresh.disabled = false;
+        render();
+        status.setAttribute("role", "status");
+        status.textContent = "Skill read completed.";
+      }
+      addEventListener("message", (event) => {
+        if (
+          event.source !== parent ||
+          port ||
+          event.data?.type !== "flame.view.connect.v2" ||
+          !["light", "dark"].includes(event.data.scheme) ||
+          event.ports.length !== 1
+        )
+          return;
+        document.documentElement.style.colorScheme = event.data.scheme;
+        port = event.ports[0];
+        port.onmessage = (message) => {
+          if (!pending) return;
+          if (message.data.type === "data") accept(message.data.data);
+          if (message.data.type === "error") {
+            pending = false;
+            refresh.disabled = false;
+            status.setAttribute("role", "alert");
+            status.textContent = message.data.reason;
+          }
+        };
+        port.start();
+        accept(event.data.initial);
+      });
+      parent.postMessage("flame.view.ready.v2", "*");
+      refresh.addEventListener("click", () => {
+        if (pending || !port) return;
+        pending = true;
+        refresh.disabled = true;
+        status.setAttribute("role", "status");
+        status.textContent = "Reading Skills…";
+        port.postMessage({ type: "read" });
+      });
+      search.addEventListener("input", () => {
+        if (snapshot) render();
+      });
+    </script>
+  </body>
+</html>

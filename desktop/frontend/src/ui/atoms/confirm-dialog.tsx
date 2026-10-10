@@ -41,7 +41,7 @@ export function ConfirmDialog({
         />
         <DialogPrimitive.Popup
           data-slot="confirm-dialog"
-          role={destructive ? "alertdialog" : undefined}
+          role={destructive ? "alertdialog" : "dialog"}
           {...stylex.props(modalPanel(), formDialog.plane, formDialog.inset, styles.panel)}
         >
           <DialogPrimitive.Title {...stylex.props(type.displaySm, styles.title)}>

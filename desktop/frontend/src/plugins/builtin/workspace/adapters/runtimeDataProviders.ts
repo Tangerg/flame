@@ -13,7 +13,6 @@ import {
   WORKSPACE_FILES_CHANGED_KEY,
   WORKSPACE_DIFF_KEY,
   WORKSPACE_SKILLS_KEY,
-  WORKSPACE_SKILL_DETAIL_KEY,
   WORKSPACE_MANAGED_SKILLS_KEY,
   WORKSPACE_SKILL_PROPOSALS_KEY,
   WORKSPACE_AGENT_MEMORY_KEY,
@@ -26,7 +25,6 @@ import {
   type WorkspaceDiff,
   type AgentMemoryQuery,
   type WorkspaceCatalogQuery,
-  type WorkspaceSkillDetailQuery,
   type WorkspaceFileChange as WorkspaceFileChangeSummary,
   type WorkspaceProjectSummary,
 } from "../application/workspaceQueries";
@@ -89,15 +87,6 @@ export function registerWorkspaceDataProviders(
         })),
         diagnostics: catalog.diagnostics,
       };
-    },
-  });
-  ctx.contribute(DATA_PROVIDER, {
-    key: WORKSPACE_SKILL_DETAIL_KEY,
-    fetcher: async (params, signal) => {
-      const query = requiredParams<WorkspaceSkillDetailQuery>(WORKSPACE_SKILL_DETAIL_KEY, params);
-      const resources = await workspace(query.cwd, signal);
-      const detail = await resources.skills.getDiscovered(query.name, signal);
-      return { ...detail, description: detail.description ?? "" };
     },
   });
   ctx.contribute(DATA_PROVIDER, {

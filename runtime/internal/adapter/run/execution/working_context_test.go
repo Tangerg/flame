@@ -2,11 +2,17 @@ package execution
 
 import (
 	"context"
+	"reflect"
+	"strings"
 	"testing"
 
+	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goal"
 	"github.com/Tangerg/flame/runtime/internal/domain/session/plan"
+	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
+	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	corechat "github.com/Tangerg/scope/core/chat"
 )
 
 func testWorkingContextConfig(t *testing.T, config WorkingContextConfig) WorkingContextConfig {
@@ -30,6 +36,36 @@ func testWorkingContextConfig(t *testing.T, config WorkingContextConfig) Working
 		config.Hooks = provenanceHookResolver{bound: apphooks.NewBound(nil, nil)}
 	}
 	return config
+}
+
+func TestWorkingContextRecallPreservesConversationAndOpeningInput(t *testing.T) {
+	seed := []corechat.Message{
+		corechat.NewUserMessage(corechat.NewTextPart("previous question")),
+		corechat.NewAssistantMessage(corechat.NewTextPart("previous answer")),
+		corechat.NewUserMessage(corechat.NewTextPart("current question"), corechat.NewTextPart("current attachment")),
+	}
+	original := cloneChatMessages(seed)
+	search := &fakeAgentMemorySearcher{items: []agentmemory.Item{
+		testsupport.MustAgentMemoryItem(agentmemory.ItemSnapshot{ID: testAgentMemoryItemID(t, '1'), Content: "relevant fact"}),
+	}}
+	composer := newTestWorkingContextComposer(t, WorkingContextConfig{AgentMemorySearch: search})
+	cwd := t.TempDir()
+	messages, err := composer.ComposeWorkingContext(t.Context(), runs.WorkingContextInput{
+		SessionID: "session:recall", CWD: cwd, WorkspaceCWD: cwd, PromptText: "current question", Seed: seed,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(messages) != len(seed)+1 {
+		t.Fatalf("context has %d messages, want instructions plus the %d seeded messages", len(messages), len(seed))
+	}
+	if !reflect.DeepEqual(seed, original) || !reflect.DeepEqual(messages[1:len(messages)-1], original[:len(original)-1]) {
+		t.Fatal("recall changed its input or the historical conversation")
+	}
+	opening := messages[len(messages)-1]
+	if opening.Role != corechat.RoleUser || len(opening.Parts) != 3 || !reflect.DeepEqual(opening.Parts[:2], original[len(original)-1].Parts) || !strings.Contains(opening.Parts[2].Text, "relevant fact") {
+		t.Fatalf("opening is not the exact user prompt followed by recalled data: %+v", opening)
+	}
 }
 
 func newTestWorkingContextComposer(t *testing.T, config WorkingContextConfig) *WorkingContextComposer {

@@ -99,6 +99,8 @@ import type {
   ReadFileRequest,
   ReadPluginMemoryRequest,
   ReadPluginSchedulesRequest,
+  ReadPluginSkillRequest,
+  ReadPluginSkillsRequest,
   ReadPluginTrajectoryRequest,
   ReadPluginUsageRequest,
   ReadPluginViewRequest,
@@ -230,6 +232,10 @@ const METHOD_NAMES = [
   "mcp.servers.reconnect",
   "mcp.authorizationAttempts.create",
   "mcp.authorizationAttempts.get",
+  "plugins.readSkills",
+  "plugins.readSkill",
+  "plugins.readSkillLibrary",
+  "plugins.readSkillProposals",
   "plugins.readUsage",
   "plugins.readSchedules",
   "plugins.readMemory",
@@ -349,6 +355,10 @@ const VALUE_METHOD_NAMES = [
   "mcp.tools.list",
   "mcp.authorizationAttempts.create",
   "mcp.authorizationAttempts.get",
+  "plugins.readSkills",
+  "plugins.readSkill",
+  "plugins.readSkillLibrary",
+  "plugins.readSkillProposals",
   "plugins.readUsage",
   "plugins.readSchedules",
   "plugins.readMemory",
@@ -781,6 +791,34 @@ export const WIRE_METHOD_POLICY = {
     pagination: "none",
   },
   "mcp.authorizationAttempts.get": {
+    operation: "query",
+    response: "unary",
+    idempotency: "none",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "plugins.readSkills": {
+    operation: "query",
+    response: "unary",
+    idempotency: "none",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "plugins.readSkill": {
+    operation: "query",
+    response: "unary",
+    idempotency: "none",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "plugins.readSkillLibrary": {
+    operation: "query",
+    response: "unary",
+    idempotency: "none",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "plugins.readSkillProposals": {
     operation: "query",
     response: "unary",
     idempotency: "none",
@@ -1300,6 +1338,18 @@ export const WIRE_CAPABILITY_POLICY: {
   "mcp.authorizationAttempts.get": [
     { requires: ["mcp"] },
   ],
+  "plugins.readSkills": [
+    { requires: ["plugins", "skills"] },
+  ],
+  "plugins.readSkill": [
+    { requires: ["plugins", "skills"] },
+  ],
+  "plugins.readSkillLibrary": [
+    { requires: ["plugins", "skills"] },
+  ],
+  "plugins.readSkillProposals": [
+    { requires: ["plugins", "skills"] },
+  ],
   "plugins.readUsage": [
     { requires: ["plugins"] },
   ],
@@ -1450,6 +1500,10 @@ export interface WireShapes {
   "mcp.servers.reconnect": { params: MCPServerRequest };
   "mcp.authorizationAttempts.create": { params: CreateMCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
   "mcp.authorizationAttempts.get": { params: MCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
+  "plugins.readSkills": { params: ReadPluginSkillsRequest; result: SkillDiscovery };
+  "plugins.readSkill": { params: ReadPluginSkillRequest; result: SkillDetail };
+  "plugins.readSkillLibrary": { params: ReadPluginViewRequest; result: PageOfManagedSkill };
+  "plugins.readSkillProposals": { params: ReadPluginSkillsRequest; result: PageOfSkillProposal };
   "plugins.readUsage": { params: ReadPluginUsageRequest; result: UsageSummary };
   "plugins.readSchedules": { params: ReadPluginSchedulesRequest; result: PageOfSchedule };
   "plugins.readMemory": { params: ReadPluginMemoryRequest; result: PageOfAgentMemoryItem };

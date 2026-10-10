@@ -35,17 +35,3 @@ export const diffView = definePlugin({
     });
   },
 });
-
-export const skillsView = definePlugin({
-  name: "flame.builtin.view-skills",
-  setup(ctx) {
-    ctx.contribute(WORKSPACE_VIEW, {
-      id: "skills",
-      title: "workspace.view.title.skills",
-      icon: "library",
-      order: 80,
-      dock: "workspace",
-      component: lazy(() => import("./ui/skills/Skills").then((m) => ({ default: m.Skills }))),
-    });
-  },
-});

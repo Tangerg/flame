@@ -21,13 +21,17 @@ const usageHTML = await readFile(
   new URL("../../../plugins/usage/views/usage.html", import.meta.url),
   "utf8",
 );
+const skillsHTML = await readFile(
+  new URL("../../../plugins/skills/views/skills.html", import.meta.url),
+  "utf8",
+);
 const policy = (
   await readFile(new URL("../public/plugin-carrier-policy.txt", import.meta.url), "utf8")
 ).trim();
 const host = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const csp = host.match(/<meta http-equiv="Content-Security-Policy"[^>]+>/)[0];
 for (const [name, engine] of Object.entries({ chromium, webkit })) {
-  test(`${name}: production plugin carrier and scoped trajectory, memory, schedule and usage reads`, async (t) => {
+  test(`${name}: production plugin carrier and scoped trajectory, memory, schedule, usage and Skill reads`, async (t) => {
     let enforce = true;
     let escapedRequests = 0;
     let packets = 0;
@@ -390,6 +394,86 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
     await page.evaluate(() => window.dispose());
     await page.reload();
     await page.waitForFunction(() => window.mount);
+    for (const initial of [
+      {
+        type: "available",
+        data: {
+          skills: [
+            {
+              name: "verify",
+              description: "<script>untrusted</script>",
+              scope: "installation",
+              installation: { installationId: "installed", digest: "release" },
+            },
+          ],
+          diagnostics: [{ name: "broken", detail: "Invalid document" }],
+        },
+      },
+      {
+        type: "detail",
+        data: {
+          name: "verify",
+          scope: "project",
+          revision: "revision",
+          path: "/remote/verify/SKILL.md",
+          instructions: "<script>document.body.remove()</script>",
+        },
+      },
+      { type: "library", data: { data: [{ name: "verify", lifecycle: "archived" }] } },
+      {
+        type: "review",
+        data: {
+          data: [
+            {
+              name: "verify",
+              scope: "user",
+              revision: "reviewed",
+              instructions: "Review canonical facts.",
+              description: "Proposed workflow",
+              origin: "requested",
+              revises: true,
+            },
+          ],
+        },
+      },
+    ]) {
+      await page.evaluate(({ html, initial }) => void window.mount(html, initial), {
+        html: skillsHTML,
+        initial,
+      });
+      await frame.getByText("Skill read completed.").waitFor();
+      assert.equal(await frame.locator("article").count(), 1);
+      assert.equal(await frame.locator("script").count(), 1);
+      assert.equal(
+        await frame.getByRole("button", { name: /Approve|Reject|Archive|Restore/ }).count(),
+        0,
+      );
+      if (initial.type === "available") {
+        await frame.getByText("Installation", { exact: true }).waitFor();
+        await frame.getByText("Release", { exact: true }).waitFor();
+        await frame.getByText("broken: Invalid document", { exact: true }).waitFor();
+      }
+      if (initial.type === "detail") {
+        await frame.getByText("Read instructions").click();
+        await frame.getByText(initial.data.instructions, { exact: true }).waitFor();
+      }
+      await frame.getByRole("searchbox", { name: "Search this catalog" }).fill("absent");
+      await frame.getByText("No matching Skills in this catalog.").waitFor();
+      await frame.getByRole("searchbox", { name: "Search this catalog" }).fill("");
+      await page.evaluate(() => (window.readFailure = true));
+      await frame.getByRole("button", { name: "Refresh" }).click();
+      await frame.getByRole("alert").waitFor();
+      assert.equal(await frame.locator("article").count(), 1);
+      assert.deepEqual(await page.evaluate(() => window.reads.map((read) => read.cursor)), [
+        undefined,
+      ]);
+      await page.evaluate(() => (window.readFailure = false));
+      await frame.getByRole("button", { name: "Refresh" }).click();
+      await frame.getByText("Skill read completed.").waitFor();
+      await page.evaluate(() => window.dispose());
+      await page.reload();
+      await page.waitForFunction(() => window.mount);
+    }
     const schedules = {
       data: [
         {

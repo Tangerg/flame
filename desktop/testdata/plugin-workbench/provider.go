@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 )
 
 func main() {
@@ -15,7 +16,8 @@ func main() {
 	})
 	mux.HandleFunc("POST /v1/messages", func(w http.ResponseWriter, r *http.Request) {
 		var request struct {
-			Model string `json:"model"`
+			Model    string          `json:"model"`
+			Messages json.RawMessage `json:"messages"`
 		}
 		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4<<20)).Decode(&request); err != nil {
 			http.Error(w, "invalid fixture request", http.StatusBadRequest)
@@ -29,6 +31,20 @@ func main() {
 			`{"type":"content_block_stop","index":0}`,
 			`{"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"output_tokens":0}}`,
 			`{"type":"message_stop"}`,
+		}
+		if strings.Contains(string(request.Messages), "Save a native reusable Skill.") && !strings.Contains(string(request.Messages), `"id":"native_skill_proposal"`) {
+			name, id, arguments := "search_tools", "native_skill_discovery", `{"query":"select:propose_skill"}`
+			if strings.Contains(string(request.Messages), `"id":"native_skill_discovery"`) {
+				name, id, arguments = "propose_skill", "native_skill_proposal", `{"name":"native-proposal","description":"Review native plugin changes","instructions":"Inspect the canonical plugin boundary before publishing.","scope":"user"}`
+			}
+			events = []string{
+				events[0],
+				fmt.Sprintf(`{"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":%q,"name":%q,"input":{}}}`, id, name),
+				fmt.Sprintf(`{"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":%q}}`, arguments),
+				`{"type":"content_block_stop","index":0}`,
+				`{"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null},"usage":{"output_tokens":0}}`,
+				`{"type":"message_stop"}`,
+			}
 		}
 		for _, event := range events {
 			var value struct{ Type string }

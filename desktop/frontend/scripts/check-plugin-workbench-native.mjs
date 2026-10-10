@@ -46,6 +46,7 @@ let idempotencyNamespace;
 let mcpEndpoint;
 let runtimeModule;
 let failure;
+const installed = {};
 const mcpToken = randomUUID();
 const manifest = JSON.parse(
   await readFile(join(repository, "runtime/contract/manifest.json"), "utf8"),
@@ -143,8 +144,11 @@ async function bound(name, args = []) {
   return typeof outcome.value === "string" ? JSON.parse(outcome.value) : outcome.value;
 }
 const pages = () => bound("main.NativeWorkbenchGate.Pages");
+const readGuest = (id, js) => bound("main.NativeWorkbenchGate.EvaluatePage", [id, js]);
 async function guest(id, js) {
-  const result = await bound("main.NativeWorkbenchGate.EvaluatePage", [id, js]);
+  const evaluation = await readGuest(id, js);
+  if (!evaluation.ready) throw new Error("native workbench: page is not ready");
+  const result = JSON.parse(evaluation.value);
   assert.equal(result?.error, undefined, JSON.stringify(result));
   return result;
 }
@@ -190,7 +194,10 @@ async function pageWith(text) {
       const visible = state.pages.filter((page) => page.visible && page.ready);
       if (state.pages.length !== 1 || visible.length !== 1) return { state };
       const page = visible[0];
-      const content = await guest(page.id, "document.body.innerText");
+      const evaluation = await readGuest(page.id, "document.body.innerText");
+      if (!evaluation.ready) return { state, retired: page.id };
+      const content = JSON.parse(evaluation.value);
+      assert.equal(content?.error, undefined, JSON.stringify(content));
       return content.includes(text) ? { ...page, content } : { state, content };
     },
     (value) => Boolean(value.id),
@@ -198,6 +205,8 @@ async function pageWith(text) {
 }
 
 async function openPanel(panel, text) {
+  await tool("window_control", { action: "focus" });
+  await waitFor("focused workbench", () => evaluate("return !document.hidden"), Boolean);
   await clickLabel("Browse panels");
   await clickText(panel, '[role="option"]');
   await waitFor(
@@ -230,6 +239,10 @@ async function refreshPage(id, method, binding, query, text) {
     "plugins.readMemory": "agentMemory.list",
     "plugins.readSchedules": "schedules.list",
     "plugins.readUsage": "usage.summary",
+    "plugins.readSkills": "skills.discovered.list",
+    "plugins.readSkill": "skills.discovered.get",
+    "plugins.readSkillLibrary": "skills.library.list",
+    "plugins.readSkillProposals": "skills.proposals.list",
   }[method];
   assert.deepEqual(
     await rpc(method, { installationId, digest, viewId, ...query }),
@@ -263,6 +276,11 @@ try {
     { env: buildEnvironment },
   );
   await cp(join(repository, "plugins"), join(fixture, "plugins"), { recursive: true });
+  await mkdir(join(fixture, "skills/native-user"), { recursive: true });
+  await writeFile(
+    join(fixture, "skills/native-user/SKILL.md"),
+    "---\nname: native-user\ndescription: Native user workflow\n---\nRead canonical facts before changing behavior.\n",
+  );
   await mkdir(join(fixture, "config"));
   await writeFile(
     join(fixture, "config/config.yaml"),
@@ -297,7 +315,7 @@ try {
     "golang:1.27.0",
     "sh",
     "-c",
-    `mkdir -p ${workspace}; /fixture/provider & exec /fixture/runtime`,
+    `mkdir -p ${workspace} /state/flame/runtime; cp -R /fixture/skills /state/flame/runtime/skills; /fixture/provider & exec /fixture/runtime`,
   ]);
   await command("docker", ["exec", containerName, "git", "--version"]);
   const { stdout: address } = await command("docker", ["port", containerName, "17171/tcp"]);
@@ -324,8 +342,7 @@ try {
   );
   const discovery = await rpc("runtime.discover");
   idempotencyNamespace = discovery.capabilities.limits.idempotency.namespace;
-  const installed = {};
-  for (const name of ["trajectory", "memory", "schedules", "usage"]) {
+  for (const name of ["trajectory", "memory", "schedules", "usage", "skills"]) {
     const installation = await rpc("plugins.install", { source: `/fixture/plugins/${name}` });
     assert.deepEqual(installation.selected.diagnostics, []);
     const view = installation.selected.views[0];
@@ -610,6 +627,109 @@ try {
     "Usage: recorded zero/unpriced usage, period replacement, withdrawal and reapproval passed",
   );
 
+  const skillPage = await openPanel(installed.skills.title, "native-user");
+  await refreshPage(
+    skillPage.id,
+    "plugins.readSkills",
+    installed.skills,
+    { workspace: { path: workspace } },
+    "native-user",
+  );
+  await clickLabel("Read skill");
+  await clickText("native-user · user", '[role="menuitem"]');
+  const documentPage = await pageWith("Skill document");
+  assert.notEqual(
+    documentPage.id,
+    skillPage.id,
+    "document selection must retire the captured catalog",
+  );
+  await refreshPage(
+    documentPage.id,
+    "plugins.readSkill",
+    installed.skills,
+    { workspace: { path: workspace }, name: "native-user" },
+    "Skill document",
+  );
+  await assert.rejects(guest(skillPage.id, "document.body.innerText"), /page is not ready/);
+  await clickText("Personal", '[role="tab"]');
+  const libraryPage = await pageWith("native-user");
+  await refreshPage(
+    libraryPage.id,
+    "plugins.readSkillLibrary",
+    installed.skills,
+    {},
+    "native-user",
+  );
+  await clickLabel("Select a personal Skill");
+  await clickText("native-user · Active", '[role="menuitem"]');
+  await clickText("Archive");
+  const archivedPage = await pageWith("archived");
+  assert.notEqual(
+    archivedPage.id,
+    libraryPage.id,
+    "a trusted receipt must create a fresh projection",
+  );
+  assert.equal(
+    (await rpc("skills.library.list")).data.find((skill) => skill.name === "native-user").lifecycle,
+    "archived",
+  );
+  await clickText("Restore");
+  await pageWith("active");
+  await rpc("approval.setMode", { mode: "yolo" });
+  const proposalSession = await rpc("sessions.create", {
+    title: "Native proposal authoring",
+    workspace: { path: workspace },
+  });
+  const proposalRun = await rpc("runs.start", {
+    sessionId: proposalSession.id,
+    input: [{ type: "text", text: "Save a native reusable Skill." }],
+  });
+  const proposalResult = await rpc("runs.get", { runId: proposalRun.runId });
+  assert.equal(proposalResult.outcome.type, "completed", JSON.stringify(proposalResult));
+  const proposed = (await rpc("skills.proposals.list", { workspace: { path: workspace } })).data;
+  assert.equal(proposed.length, 1);
+  await clickText("Review", '[role="tab"]');
+  const proposalPage = await pageWith("native-proposal");
+  await refreshPage(
+    proposalPage.id,
+    "plugins.readSkillProposals",
+    installed.skills,
+    { workspace: { path: workspace } },
+    "native-proposal",
+  );
+  await clickLabel("Select a proposal");
+  await clickText(
+    `native-proposal · Personal · ${proposed[0].revision.slice(0, 8)}`,
+    '[role="menuitem"]',
+  );
+  await clickText("Approve");
+  await waitFor(
+    "trusted proposal review",
+    () => evaluate("return {text: document.querySelector('[role=dialog]')?.textContent}"),
+    (value) =>
+      value.text?.includes(proposed[0].instructions) &&
+      value.text?.includes(proposed[0].description),
+  );
+  await clickText("Approve", '[role="dialog"] button');
+  await pageWith("No proposals pending review.");
+  assert.deepEqual(
+    (await rpc("skills.proposals.list", { workspace: { path: workspace } })).data,
+    [],
+  );
+  const preservedSkills = await rpc("skills.library.list");
+  assert.ok(
+    preservedSkills.data.some(
+      (skill) => skill.name === "native-proposal" && skill.lifecycle === "active",
+    ),
+  );
+  const finalSkillPage = await pageWith("No proposals pending review.");
+  await closePanel(installed.skills.title, finalSkillPage.id);
+  usage = await rpc("usage.summary");
+  assert.equal(usage.runs, 3);
+  console.log(
+    "Skills: canonical catalogs/documents, trusted archive/restore, proposal publication and page retirement passed",
+  );
+
   for (const name of Object.keys(installed))
     await rpc("plugins.uninstall", { installationId: installed[name].installationId });
   const preservedMemory = (
@@ -618,6 +738,7 @@ try {
   assert.deepEqual(new Set(preservedMemory), new Set([memoryFact, refreshedMemoryFact]));
   assert.equal((await rpc("schedules.list")).data[0].title, refreshedScheduleTitle);
   assert.deepEqual(await rpc("usage.summary"), usage);
+  assert.deepEqual(await rpc("skills.library.list"), preservedSkills);
   assert.equal(
     (await rpc("sessions.trajectory", { sessionId: session.id })).data.some(
       (entry) => entry.run?.id === run.runId,
@@ -681,7 +802,7 @@ if (failure) throw failure;
 console.log(
   JSON.stringify({
     result: "passed",
-    views: 4,
+    views: Object.keys(installed).length,
     remoteWorkspace: true,
     preservedRuntimeFacts: true,
     nativePages: 0,

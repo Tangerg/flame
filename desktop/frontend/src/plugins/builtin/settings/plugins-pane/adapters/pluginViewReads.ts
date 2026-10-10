@@ -8,7 +8,12 @@ import type {
   ReadPluginViewRequest,
   TrajectoryEntry,
 } from "@flame/runtime-contract/wire";
-import type { PluginViewReads, MemoryViewTarget } from "../application/pluginView";
+import type {
+  PluginViewReads,
+  MemoryViewTarget,
+  SkillViewTarget,
+  SkillViewSnapshot,
+} from "../application/pluginView";
 
 export function createTrajectoryViewReads(
   plugins: Pick<FlameClient["plugins"], "readView" | "readTrajectory">,
@@ -67,6 +72,48 @@ export function createUsageViewReads(
     if (cursor !== undefined)
       return Promise.reject(new Error("Usage reports have no cursor continuation"));
     return plugins.readUsage({ ...view, ...captured }, signal);
+  });
+}
+
+export function createSkillViewReads(
+  plugins: Pick<
+    FlameClient["plugins"],
+    "readView" | "readSkills" | "readSkill" | "readSkillLibrary" | "readSkillProposals"
+  >,
+  binding: Readonly<ReadPluginViewRequest>,
+  target: Readonly<SkillViewTarget>,
+): PluginViewReads<SkillViewSnapshot> {
+  const view = { ...binding };
+  const captured =
+    target.type === "library" ? { ...target } : { ...target, workspace: { ...target.workspace } };
+  return createViewReads(plugins, view, async (cursor, signal): Promise<SkillViewSnapshot> => {
+    if (cursor !== undefined)
+      throw new Error("Skill catalogs and documents have no cursor continuation");
+    switch (captured.type) {
+      case "available":
+        return {
+          type: captured.type,
+          data: await plugins.readSkills({ ...view, workspace: captured.workspace }, signal),
+        };
+      case "detail":
+        return {
+          type: captured.type,
+          data: await plugins.readSkill(
+            { ...view, workspace: captured.workspace, name: captured.name },
+            signal,
+          ),
+        };
+      case "library":
+        return { type: captured.type, data: await plugins.readSkillLibrary(view, signal) };
+      case "review":
+        return {
+          type: captured.type,
+          data: await plugins.readSkillProposals(
+            { ...view, workspace: captured.workspace },
+            signal,
+          ),
+        };
+    }
   });
 }
 

@@ -49,7 +49,6 @@ describe("workspace Runtime data providers", () => {
       for (const key of [
         "diff",
         "skills",
-        "skill-detail",
         "skill-proposals",
         "agent-memory",
         "list-files",

@@ -65,10 +65,10 @@ export const DOCK_VIEW_BY_STATE: Partial<Record<VisualWorkspaceState, string>> =
   "dock-subagents": "subagents",
   "dock-diagnostics": "diagnostics",
   "dock-files": "file",
-  "dock-skills": "skills",
+  "dock-skills": "package:visual:skills",
   "dock-agent-memory": "package:visual:memory",
   "dock-schedules": "package:visual:schedules",
   "dock-usage": "package:visual:usage",
-  "dock-feature-off": "skills",
+  "dock-feature-off": "package:visual:skills",
   "dock-file": "file",
 };

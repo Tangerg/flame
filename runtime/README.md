@@ -42,6 +42,35 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
+## Protocol 2026-10-10.6
+
+The optional [Skills package](../plugins/skills/plugin.json) replaces the compiled Desktop
+Skill catalogs, document inspection and proposal presentation. A `skills` view admits
+`plugins.readSkills`, `plugins.readSkill`, `plugins.readSkillLibrary` and
+`plugins.readSkillProposals`. These require plugin and Skill capabilities and return
+the existing discovery, selected document, managed library and proposal queries unchanged.
+They retain each query's bounds, provenance and failure categories; there is no plugin
+Skill store or independent visibility transition.
+
+The trusted Host captures the workspace, catalog section and document name. Each page
+receives one tagged canonical result and may request refresh only. Changing a captured
+target retires its page authority. The user library does not depend on a project selection.
+Archive and restore target only user-managed Skills; installation-provided Skill enablement
+remains installation configuration. Proposal approval and rejection use trusted forms
+that capture the reviewed instructions and revision. A concurrently replaced proposal
+fails its existing revision check and requires a new review.
+
+Rebuild Runtime and clients together and install/approve Skills 1.0.0 to expose its page.
+The compiled Skills view and its document cache have been removed without fallback.
+Removing the package withdraws presentation and controls while preserving managed Skills,
+pending proposals, published documents, discovery and mining. No persisted-data migration
+is required. The existing v2 handshake, enforcing carriers and byte limits remain in force.
+
+Native acceptance also repairs recalled-memory composition: recall annotates the opening
+User message after its authored parts, and the existing opening write-set persists that
+exact message. It no longer introduces a separate unpersisted conversation entry or
+replaces the input committed by Run admission. Durable-context equality remains enforced.
+
 ## Protocol 2026-10-10.5
 
 The optional [Usage package](../plugins/usage/plugin.json) replaces the compiled Desktop
@@ -571,7 +600,7 @@ before publishing its successor.
 
 The current implementation includes Slice A/B, optional Slice C pages and a bounded
 Slice D human action. A package may declare `contributes.views` with `id`, `title`,
-`type: "sessionTrajectory"`, `"agentMemory"`, `"schedules"` or `"usageSummary"`, and a portable
+`type: "sessionTrajectory"`, `"agentMemory"`, `"schedules"`, `"usageSummary"` or `"skills"`, and a portable
 `.html` `entry`. Admission validates UTF-8 HTML, confined resource access and the release
 fingerprint. Invalid views produce diagnostics without withdrawing independent themes,
 Skills or MCP declarations. Arbitrary projection queries, mutation bridges,
@@ -1183,10 +1212,11 @@ legacy rule conversion. Update Runtime and every client together.
 A model request is ordered so that everything a provider may have cached stays byte-stable:
 tool declarations, then the single System message of stable instructions (base prompt,
 pinned memory, agent documents), then the conversation. Nothing that changes during a
-Session precedes the conversation. Memory recalled for a prompt is a User message framed
-as `<flame-context kind="recalled-memory">` that follows that prompt, so a new recall
-never rewrites an earlier message; it belongs to the Root Run's opening context and is not
-inherited by delegated layers. The current Goal and Plan are not part of the context Scope
+Session precedes the conversation. Memory recalled for a prompt is a text part framed
+as `<flame-context kind="recalled-memory">` after the user-authored parts of that prompt.
+The opening commits that exact annotated User message; a new recall never rewrites an
+earlier message or adds an unpersisted conversation entry. It is not inherited by
+delegated layers. The current Goal and Plan are not part of the context Scope
 adopts: the context reducer reads them from their owners for every call and composes them,
 with the deferred catalog below, into that call's tail (`session-goal`, `session-plan`,
 `deferred-tools`). The reducer measures that tail in the compaction budget and hands the

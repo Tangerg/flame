@@ -7,7 +7,6 @@ import type { SkillCurationGateway, SkillProposalHandle } from "./ports/skillCur
 import {
   WORKSPACE_MANAGED_SKILLS_KEY,
   WORKSPACE_SKILLS_KEY,
-  WORKSPACE_SKILL_DETAIL_KEY,
   WORKSPACE_SKILL_PROPOSALS_KEY,
 } from "./workspaceQueries";
 
@@ -49,12 +48,9 @@ class SkillCurationGeneration {
       } finally {
         if (!this.#cohort.retired) {
           await Promise.all(
-            [
-              WORKSPACE_SKILLS_KEY,
-              WORKSPACE_SKILL_DETAIL_KEY,
-              WORKSPACE_MANAGED_SKILLS_KEY,
-              WORKSPACE_SKILL_PROPOSALS_KEY,
-            ].map((key) => this.#cohort.settle(replaceCachedRead({ queryKey: [key] }))),
+            [WORKSPACE_SKILLS_KEY, WORKSPACE_MANAGED_SKILLS_KEY, WORKSPACE_SKILL_PROPOSALS_KEY].map(
+              (key) => this.#cohort.settle(replaceCachedRead({ queryKey: [key] })),
+            ),
           );
         }
       }

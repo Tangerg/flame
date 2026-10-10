@@ -1,3 +1,9 @@
+import skillsHTML from "../../../plugins/skills/views/skills.html?raw";
+import { SkillsPackageView } from "@/plugins/builtin/settings/plugins-pane/ui/SkillsPackageView";
+import type {
+  SkillViewTarget,
+  SkillViewSnapshot,
+} from "@/plugins/builtin/settings/plugins-pane/application/pluginView";
 import usageHTML from "../../../plugins/usage/views/usage.html?raw";
 import { UsagePackageView } from "@/plugins/builtin/settings/plugins-pane/ui/UsagePackageView";
 import scheduleHTML from "../../../plugins/schedules/views/schedules.html?raw";
@@ -51,7 +57,7 @@ import {
 import { visualFeatureCapabilities } from "./agentFixtureFacts";
 import { SCHEDULES_KEY } from "@/plugins/builtin/settings/schedules/application/scheduleQueries";
 import type { Schedule } from "@flame/runtime-contract/wire";
-import { diffView, fileView, skillsView } from "@/plugins/builtin/workspace/views";
+import { diffView, fileView } from "@/plugins/builtin/workspace/views";
 import { DATA_PROVIDER, SHORTCUT, WORKSPACE_VIEW, definePlugin } from "@/plugins/sdk";
 import type { AnyPlugin } from "dougong";
 import type {
@@ -327,6 +333,60 @@ const visualMemory: AgentMemoryEntry[] = [
   },
 ];
 
+const VISUAL_SKILLS: WorkspaceSkillDiscovery = {
+  skills: [
+    {
+      name: "review-diff",
+      description: "Read a change the way a reviewer does, worst risk first.",
+      scope: "project",
+    },
+    {
+      name: "write-commit-message",
+      description: "State why the change exists, not what the diff already says.",
+      scope: "user",
+    },
+  ],
+  diagnostics: [],
+};
+
+const VISUAL_MANAGED_SKILLS: ManagedSkill[] = [
+  {
+    name: "review-diff",
+    description: "Read a change the way a reviewer does, worst risk first.",
+    lifecycle: "active",
+  },
+  {
+    name: "summarise-standup",
+    description: "Superseded by the run digest.",
+    lifecycle: "archived",
+  },
+];
+
+const VISUAL_SKILL_PROPOSALS: SkillProposal[] = [
+  {
+    workspace: "/Users/visual/scope",
+    name: "review-diff",
+    revision: "rev_02",
+    scope: "project",
+    description: "Read a change the way a reviewer does, worst risk first.",
+    instructions: "Start from the riskiest hunk. Name the invariant it could break.",
+    origin: "requested",
+    revises: true,
+    sourceSession: VISUAL_SESSION_ID,
+  },
+  {
+    workspace: "/Users/visual/scope",
+    name: "trace-flaky-test",
+    revision: "rev_01",
+    scope: "user",
+    description: "Find the shared state behind a test that passes alone.",
+    instructions: "Run it in isolation, then with its file, then with its package.",
+    origin: "mined",
+    revises: false,
+    sourceSession: VISUAL_SESSION_ID,
+  },
+];
+
 function workspaceDataPlugin(
   state: VisualWorkspaceState,
   review: WorkspaceDiff,
@@ -351,6 +411,48 @@ function workspaceDataPlugin(
             reads,
             title: "Session trajectory",
             lifetime,
+            carrier: createBrowserHost().pluginCarrier,
+          }),
+      });
+      const skillLifetime = ctx.lifetime("visual-skills");
+      const skillReads = (target: SkillViewTarget) => {
+        const read = async (): Promise<SkillViewSnapshot> => {
+          switch (target.type) {
+            case "available":
+              return { type: target.type, data: VISUAL_SKILLS };
+            case "library":
+              return { type: target.type, data: { data: VISUAL_MANAGED_SKILLS } };
+            case "review":
+              return { type: target.type, data: { data: VISUAL_SKILL_PROPOSALS } };
+            case "detail": {
+              const skill = VISUAL_SKILLS.skills.find((item) => item.name === target.name);
+              if (!skill) throw new Error("visual Skill is unavailable");
+              return {
+                type: target.type,
+                data: {
+                  ...skill,
+                  path: "/runtime/project/skills/" + skill.name + "/SKILL.md",
+                  revision: "a".repeat(64),
+                  instructions:
+                    VISUAL_SKILL_PROPOSALS.find((item) => item.name === skill.name)?.instructions ??
+                    "Describe why the change exists.",
+                },
+              };
+            }
+          }
+        };
+        return { load: async () => ({ html: skillsHTML, initial: await read() }), read };
+      };
+      skillLifetime.contribute(WORKSPACE_VIEW, {
+        id: "package:visual:skills",
+        title: "Skills",
+        icon: "library",
+        dock: "workspace",
+        component: () =>
+          createElement(SkillsPackageView, {
+            reads: skillReads,
+            title: "Skills",
+            lifetime: skillLifetime,
             carrier: createBrowserHost().pluginCarrier,
           }),
       });
@@ -452,63 +554,15 @@ function workspaceDataPlugin(
       });
       ctx.contribute(DATA_PROVIDER, {
         key: WORKSPACE_SKILLS_KEY,
-        fetcher: async (): Promise<WorkspaceSkillDiscovery> => ({
-          skills: [
-            {
-              name: "review-diff",
-              description: "Read a change the way a reviewer does, worst risk first.",
-              scope: "project",
-            },
-            {
-              name: "write-commit-message",
-              description: "State why the change exists, not what the diff already says.",
-              scope: "user",
-            },
-          ],
-          diagnostics: [],
-        }),
+        fetcher: async (): Promise<WorkspaceSkillDiscovery> => VISUAL_SKILLS,
       });
       ctx.contribute(DATA_PROVIDER, {
         key: WORKSPACE_MANAGED_SKILLS_KEY,
-        fetcher: async (): Promise<ManagedSkill[]> => [
-          {
-            name: "review-diff",
-            description: "Read a change the way a reviewer does, worst risk first.",
-            lifecycle: "active",
-          },
-          {
-            name: "summarise-standup",
-            description: "Superseded by the run digest.",
-            lifecycle: "archived",
-          },
-        ],
+        fetcher: async (): Promise<ManagedSkill[]> => VISUAL_MANAGED_SKILLS,
       });
       ctx.contribute(DATA_PROVIDER, {
         key: WORKSPACE_SKILL_PROPOSALS_KEY,
-        fetcher: async (): Promise<SkillProposal[]> => [
-          {
-            workspace: "/Users/visual/scope",
-            name: "review-diff",
-            revision: "rev_02",
-            scope: "project",
-            description: "Read a change the way a reviewer does, worst risk first.",
-            instructions: "Start from the riskiest hunk. Name the invariant it could break.",
-            origin: "requested",
-            revises: true,
-            sourceSession: VISUAL_SESSION_ID,
-          },
-          {
-            workspace: "/Users/visual/scope",
-            name: "trace-flaky-test",
-            revision: "rev_01",
-            scope: "user",
-            description: "Find the shared state behind a test that passes alone.",
-            instructions: "Run it in isolation, then with its file, then with its package.",
-            origin: "mined",
-            revises: false,
-            sourceSession: VISUAL_SESSION_ID,
-          },
-        ],
+        fetcher: async (): Promise<SkillProposal[]> => VISUAL_SKILL_PROPOSALS,
       });
 
       ctx.contribute(DATA_PROVIDER, {
@@ -598,7 +652,7 @@ const VISUAL_USAGE: UsageSummary = {
 const OPENED_BY_ITS_OWN_STATE = new Set([
   "subagents",
   "diagnostics",
-  "skills",
+  "package:visual:skills",
   "package:visual:memory",
   "package:visual:schedules",
   "package:visual:usage",
@@ -693,7 +747,6 @@ export async function installVisualWorkspaceFixture(
   await loadVisualPlugins([
     diffView,
     fileView,
-    skillsView,
     diagnosticsView,
     workbenchSettings,
     ...localePlugins,

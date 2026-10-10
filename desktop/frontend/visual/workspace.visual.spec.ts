@@ -151,6 +151,10 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     ).toContainText("unknown");
     return;
   }
+  if (state === "dock-skills") {
+    await expect(pluginViewFrame(page, "skills").getByText("2 available Skills")).toBeVisible();
+    return;
+  }
   if (state === "dock-usage") {
     await expect(pluginViewFrame(page, "usage").locator("#status")).toHaveText(
       "Recorded usage loaded.",
@@ -172,7 +176,6 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
   const CATALOGUE_READY: Partial<Record<VisualWorkspaceState, string>> = {
     "dock-subagents": "Sub-agent 4 of 4",
     "dock-diagnostics": "run + RPC spans appear here",
-    "dock-skills": "2 available",
     "dock-feature-off": "Skills are off",
   };
   const catalogueReady = CATALOGUE_READY[state];
@@ -346,39 +349,37 @@ test("files browse and preview share one dock tab", async ({ page }) => {
   await expect(page.getByTestId("active-dock-view")).toHaveText("file");
 });
 
-test("skills keeps discovery, review, and personal curation in one dock tab", async ({ page }) => {
+test("portable Skills captures discovery, review and personal targets in one dock tab", async ({
+  page,
+}) => {
   await openWorkspace(page, { state: "dock-skills" });
-  const view = page.locator(".agent-workspace-view:visible");
+  const view = page.locator('[data-dock-view-id="package:visual:skills"]:visible');
   const sections = view.getByRole("tablist", { name: "Skills" });
-  await expect(view).toContainText("2 available");
-
+  await expect(pluginViewFrame(page, "skills").locator("body")).toContainText("2 available Skills");
   await sections.getByRole("tab", { name: "Available" }).focus();
   await page.keyboard.press("ArrowRight");
   await expect(sections.getByRole("tab", { name: "Review" })).toBeFocused();
-  await expect(view).toContainText("2 awaiting review");
-  await view.getByRole("button", { name: "Read instructions" }).first().click();
-  await expect(view).toContainText("Start from the riskiest hunk.");
-  await expect(view.getByRole("button", { name: "Approve", exact: true })).toHaveCount(2);
-  await expect(view.getByRole("button", { name: "Reject", exact: true })).toHaveCount(2);
-
+  const guest = pluginViewFrame(page, "skills");
+  await expect(guest.locator("body")).toContainText("2 pending proposals");
+  await guest.getByText("Read instructions").first().click();
+  await expect(guest.locator("body")).toContainText("Start from the riskiest hunk.");
+  await expect(guest.getByRole("button", { name: /Approve|Reject/ })).toHaveCount(0);
   await sections.getByRole("tab", { name: "Personal" }).click();
-  await expect(view).toContainText("1 active · 1 archived");
-  await expect(view.getByRole("button", { name: "Archive", exact: true })).toBeVisible();
-  await expect(view.getByRole("button", { name: "Restore", exact: true })).toBeVisible();
-  await expect(page.getByTestId("active-dock-view")).toHaveText("skills");
-
+  await expect(guest.locator("body")).toContainText("2 user-managed Skills");
+  await expect(page.getByTestId("active-dock-view")).toHaveText("package:visual:skills");
   await sections.getByRole("tab", { name: "Available" }).click();
-  await expect(view).toContainText("2 available");
-  await expect(view.getByRole("button", { name: "Approve", exact: true })).toHaveCount(0);
+  await expect(guest.locator("body")).toContainText("2 available Skills");
 });
 
 for (const theme of ["light", "dark"] as const) {
   for (const section of ["Review", "Personal"] as const) {
     test(`skills ${section.toLowerCase()} golden ${theme}`, async ({ page }) => {
       await openWorkspace(page, { state: "dock-skills", theme });
-      const view = page.locator(".agent-workspace-view:visible");
+      const view = page.locator('[data-dock-view-id="package:visual:skills"]:visible');
       await view.getByRole("tab", { name: section, exact: true }).click();
-      await expect(view).toContainText(section === "Review" ? "2 awaiting review" : "1 active");
+      await expect(pluginViewFrame(page, "skills").locator("body")).toContainText(
+        section === "Review" ? "2 pending proposals" : "2 user-managed Skills",
+      );
       await expect(page).toHaveScreenshot(`skills-${section.toLowerCase()}-${theme}.png`);
     });
   }

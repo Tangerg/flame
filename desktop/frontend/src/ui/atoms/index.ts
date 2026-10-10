@@ -7,7 +7,6 @@ export type { CatalogPickerGroup } from "./catalog-picker";
 export { Checkbox } from "./checkbox";
 export { ChoiceList, ChoiceOption } from "./choice-list";
 export { Chip } from "./chip";
-export { Collapsible } from "./collapsible";
 export { ColorPickerInput } from "./color-picker-input";
 export { ConfirmDialog } from "./confirm-dialog";
 export { DataView } from "./data-view";

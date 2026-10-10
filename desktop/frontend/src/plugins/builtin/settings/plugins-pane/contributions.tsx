@@ -8,6 +8,7 @@ import { TrajectoryPackageView } from "./ui/TrajectoryPackageView";
 import { UsagePackageView } from "./ui/UsagePackageView";
 import { SchedulePackageView } from "./ui/SchedulePackageView";
 import { MemoryPackageView } from "./ui/MemoryPackageView";
+import { SkillsPackageView } from "./ui/SkillsPackageView";
 import { queryClient } from "@/lib/queryClient";
 import { failureMessage } from "@/lib/diagnostics";
 import {
@@ -20,6 +21,7 @@ import {
   createMemoryViewReads,
   createScheduleViewReads,
   createUsageViewReads,
+  createSkillViewReads,
 } from "./adapters/pluginViewReads";
 
 const packageThemePrefix = "package:";
@@ -70,6 +72,25 @@ function createPackageReconciler(
         };
         const title = `${release.name} · ${view.title}`;
         switch (view.type) {
+          case "skills": {
+            const reads = (target: Parameters<typeof createSkillViewReads>[2]) =>
+              createSkillViewReads(client.plugins, binding, target);
+            lifetime.contribute(WORKSPACE_VIEW, {
+              id: `package:${installation.id}:${view.id}`,
+              title,
+              icon: "library",
+              dock: "workspace",
+              component: () => (
+                <SkillsPackageView
+                  reads={reads}
+                  title={title}
+                  lifetime={lifetime}
+                  carrier={carrier}
+                />
+              ),
+            });
+            break;
+          }
           case "sessionTrajectory": {
             const reads = (sessionId: string, includeDescendants: boolean) =>
               createTrajectoryViewReads(client.plugins, binding, sessionId, includeDescendants);
