@@ -174,7 +174,7 @@ func TestRuntimeSkillSourceRejectsDocumentGrowthAfterOpen(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	source, err := newRuntimeSkillSource(root, root)
+	source, err := NewSkillSource(root, root)
 	if err != nil {
 		t.Fatal(err)
 	}

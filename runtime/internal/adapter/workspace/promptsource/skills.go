@@ -157,12 +157,12 @@ func (s *resolvedSkills) list(ctx context.Context) (workspaceapp.SkillDiscovery,
 	return out, out.Validate()
 }
 
-func openRuntimeSkillSource(root, boundary string) (*runtimeSkillSource, error) {
+func openRuntimeSkillSource(root, boundary string) (*SkillSource, error) {
 	present, err := skillSourceDirectory(root)
 	if err != nil || !present {
 		return nil, err
 	}
-	return newRuntimeSkillSource(root, boundary)
+	return NewSkillSource(root, boundary)
 }
 
 // skillSourceDirectory distinguishes an absent optional source from a broken

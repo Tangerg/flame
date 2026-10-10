@@ -3,11 +3,10 @@ package bootstrap
 import (
 	"fmt"
 
-	skillspec "github.com/Tangerg/scope/skills"
-
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/maintenance"
+	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/exec"
@@ -45,17 +44,14 @@ func buildRunMaintenance(
 	if err != nil {
 		return nil, nil, fmt.Errorf("runtime: build memory consolidator: %w", err)
 	}
-	skillRepository, repositoryErr := skillspec.NewDirectoryRepository(
-		cfg.SkillsUserDir,
-		skillspec.RepositoryConfig{},
-	)
-	if repositoryErr != nil {
-		return nil, nil, fmt.Errorf("runtime: open user skill repository: %w", repositoryErr)
+	skillSource, err := promptsource.NewSkillSource(cfg.SkillsUserDir, cfg.SkillsUserDir)
+	if err != nil {
+		return nil, nil, fmt.Errorf("runtime: build user skill source: %w", err)
 	}
 	skillMiner, err := maintenance.NewSkillProposalMiner(
 		conversationServices.store,
 		skills,
-		skillRepository,
+		skillSource,
 		resolveUtility,
 		maintenance.SkillMiningPolicyValues{},
 	)

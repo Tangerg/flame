@@ -1159,6 +1159,11 @@ No storage or protocol format changes are required.
 
 Managed catalogs, proposal review, approval, and idle curation load verified document bytes through the same Scope format and directory-name binding used by discovery and package admission. Idle curation leaves invalid documents in place. Archive and restore serialize lifecycle moves and usage changes under one library lease; a replay does not reset subsequent activity. Malformed usage metadata fails recording and curation without replacing history or moving an active Skill. Repair the retained metadata explicitly before retrying; Runtime does not reset it to a fresh grace floor.
 
+Automatic user-library revision reads use the same bounded document source as
+discovery and execution. Invalid or absent documents cannot enter revision
+generation; oversized documents retain the Runtime admission category and cause.
+Valid revisions remain mined proposals that require explicit approval.
+
 Inspection distinguishes invalid names (`invalid_params`), absent skills (`skill_not_found`), and invalid or oversized selected documents (`skill_unavailable`). Archive and restore also report `skill_not_found` for absent entries. Consumers should refresh a missing resource and offer document correction for an unavailable resource; public errors exclude parser diagnostics and document contents. Proposal revision failures remain `revision_conflict` because the reviewed content must be fetched again before applying it.
 
 ## MCP OAuth credentials

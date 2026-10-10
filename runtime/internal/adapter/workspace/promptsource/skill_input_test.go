@@ -44,7 +44,7 @@ func TestSkillDocumentAdmissionPreservesKindAndSizeFailures(t *testing.T) {
 			if err := test.prepare(filepath.Join(root, "review", sdk.SkillFile)); err != nil {
 				t.Fatal(err)
 			}
-			source, err := newRuntimeSkillSource(root, root)
+			source, err := NewSkillSource(root, root)
 			if err != nil {
 				t.Fatal(err)
 			}

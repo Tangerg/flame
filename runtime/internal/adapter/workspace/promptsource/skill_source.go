@@ -20,16 +20,18 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skilldocument"
 )
 
-// runtimeSkillSource is Runtime's finite admission boundary around the Agent
+// SkillSource is Runtime's finite admission boundary around the Agent
 // Skills SDK. The SDK remains the format/resource implementation; Runtime owns
 // the complete-list, document, and model-resource contract required by its
 // model and UI consumers.
-type runtimeSkillSource struct {
+type SkillSource struct {
 	root      string
 	resources sdk.ResourceSource
 }
 
-func newRuntimeSkillSource(root, boundary string) (*runtimeSkillSource, error) {
+// NewSkillSource admits documents and resources beneath an explicit physical
+// boundary. Discovery, execution and automatic revision share this admission.
+func NewSkillSource(root, boundary string) (*SkillSource, error) {
 	physicalRoot, err := pathidentity.Resolve("", root)
 	if err != nil {
 		return nil, fmt.Errorf("runtime skill source: resolve root %q: %w", root, err)
@@ -54,10 +56,10 @@ func newRuntimeSkillSource(root, boundary string) (*runtimeSkillSource, error) {
 	if err != nil {
 		return nil, fmt.Errorf("runtime skill source: open %q: %w", physicalRoot, err)
 	}
-	return &runtimeSkillSource{root: physicalRoot, resources: repository}, nil
+	return &SkillSource{root: physicalRoot, resources: repository}, nil
 }
 
-func (r *runtimeSkillSource) List(ctx context.Context) ([]sdk.Summary, error) {
+func (r *SkillSource) List(ctx context.Context) ([]sdk.Summary, error) {
 	entries, err := r.directoryEntries(ctx)
 	if err != nil {
 		return nil, err
@@ -78,7 +80,7 @@ func skillCandidateNames(entries []fs.DirEntry) []string {
 	return names
 }
 
-func (r *runtimeSkillSource) loadSummaries(ctx context.Context, names []string) ([]sdk.Summary, error) {
+func (r *SkillSource) loadSummaries(ctx context.Context, names []string) ([]sdk.Summary, error) {
 	summaries := make([]sdk.Summary, 0, len(names))
 	for _, name := range names {
 		summary, valid, err := r.loadSummary(ctx, name)
@@ -101,7 +103,7 @@ func (r *runtimeSkillSource) loadSummaries(ctx context.Context, names []string) 
 	return summaries, nil
 }
 
-func (r *runtimeSkillSource) loadSummary(ctx context.Context, name string) (sdk.Summary, bool, error) {
+func (r *SkillSource) loadSummary(ctx context.Context, name string) (sdk.Summary, bool, error) {
 	if err := skillSourceContextError(ctx, "list"); err != nil {
 		return sdk.Summary{}, false, err
 	}
@@ -115,16 +117,16 @@ func (r *runtimeSkillSource) loadSummary(ctx context.Context, name string) (sdk.
 	return skill.Summary(), true, nil
 }
 
-func (r *runtimeSkillSource) Lookup(ctx context.Context, name string) (sdk.Summary, error) {
+func (r *SkillSource) Lookup(ctx context.Context, name string) (sdk.Summary, error) {
 	return r.resources.Lookup(ctx, name)
 }
 
-func (r *runtimeSkillSource) Load(ctx context.Context, name string) (*sdk.Skill, error) {
+func (r *SkillSource) Load(ctx context.Context, name string) (*sdk.Skill, error) {
 	skill, _, err := r.document(ctx, name)
 	return skill, err
 }
 
-func (r *runtimeSkillSource) document(ctx context.Context, name string) (*sdk.Skill, []byte, error) {
+func (r *SkillSource) document(ctx context.Context, name string) (*sdk.Skill, []byte, error) {
 	if !validRuntimeSkillName(name) {
 		return nil, nil, fmt.Errorf("%w %q: invalid name", sdk.ErrInvalidSkill, name)
 	}
@@ -161,7 +163,7 @@ func (o *openedSkillDocument) close() error {
 	return errors.Join(o.file.Close(), o.root.Close())
 }
 
-func (r *runtimeSkillSource) openSkillDocument(name string) (*openedSkillDocument, error) {
+func (r *SkillSource) openSkillDocument(name string) (*openedSkillDocument, error) {
 	root, err := os.OpenRoot(r.root)
 	if err != nil {
 		return nil, fmt.Errorf("runtime skill source: open %q: %w", r.root, err)
@@ -217,7 +219,7 @@ func readSkillDocument(ctx context.Context, name string, source *openedSkillDocu
 	return content, nil
 }
 
-func (r *runtimeSkillSource) OpenResource(ctx context.Context, name, resource string) (fs.File, error) {
+func (r *SkillSource) OpenResource(ctx context.Context, name, resource string) (fs.File, error) {
 	file, err := r.resources.OpenResource(ctx, name, resource)
 	if err != nil {
 		return nil, err
@@ -251,7 +253,7 @@ func (r *runtimeSkillSource) OpenResource(ctx context.Context, name, resource st
 	return &boundedSkillResource{File: file, ctx: ctx, name: name, resource: resource}, nil
 }
 
-func (r *runtimeSkillSource) directoryEntries(ctx context.Context) ([]fs.DirEntry, error) {
+func (r *SkillSource) directoryEntries(ctx context.Context) ([]fs.DirEntry, error) {
 	if err := skillSourceContextError(ctx, "list"); err != nil {
 		return nil, err
 	}
@@ -342,6 +344,6 @@ func (b *boundedSkillResource) tooLarge() error {
 	)
 }
 
-func (r *runtimeSkillSource) documentPath(name string) string {
+func (r *SkillSource) documentPath(name string) string {
 	return filepath.Join(r.root, name, sdk.SkillFile)
 }

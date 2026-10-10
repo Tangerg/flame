@@ -67,7 +67,7 @@ func resolveSkills(ctx context.Context, workspaceRoot, userDir string, packages 
 		}
 	}
 	for _, layer := range []struct {
-		source *runtimeSkillSource
+		source *SkillSource
 		origin workspaceapp.SkillSource
 	}{
 		{user, workspaceapp.UserSkillSource()}, {project, workspaceapp.ProjectSkillSource()},
