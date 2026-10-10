@@ -13,7 +13,7 @@ var (
 	ErrNotRegular   = errors.New("file input: source is not a regular file")
 	ErrNotDirectory = errors.New("file input: source is not a directory")
 	ErrTooLarge     = errors.New("file input: source exceeds its byte limit")
-	ErrChanged      = errors.New("file input: source changed while it was being opened")
+	ErrChanged      = errors.New("file input: source changed")
 )
 
 // Open returns one read-only file only when the path still names the same

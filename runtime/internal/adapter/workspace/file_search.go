@@ -150,9 +150,6 @@ func (search *workspaceGrep) scanSource(source grepSource) error {
 		return err
 	}
 	if verifyErr != nil {
-		if errors.Is(verifyErr, fileinput.ErrChanged) {
-			return fmt.Errorf("workspace: search file %q changed while it was being read", source.path)
-		}
 		return fmt.Errorf("workspace: verify search file %q after reading: %w", source.path, verifyErr)
 	}
 	if scanErr != nil {

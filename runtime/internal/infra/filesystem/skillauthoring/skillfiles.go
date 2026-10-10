@@ -32,14 +32,10 @@ func readBoundedFile(root *os.Root, path string) ([]byte, bool, error) {
 		return nil, false, nil
 	}
 	if errors.Is(err, fileinput.ErrNotRegular) {
-		return nil, false, errors.New("skill document is not a regular file")
+		return nil, false, fmt.Errorf("skill document admission: %w", err)
 	}
 	if errors.Is(err, fileinput.ErrTooLarge) {
-		return nil, false, fmt.Errorf(
-			"%w: exceeds %d bytes",
-			skills.ErrDocumentTooLarge,
-			skills.MaxAuthoredSkillDocumentBytes,
-		)
+		return nil, false, fmt.Errorf("%w: document admission: %w", skills.ErrDocumentTooLarge, err)
 	}
 	if err != nil {
 		return nil, false, err

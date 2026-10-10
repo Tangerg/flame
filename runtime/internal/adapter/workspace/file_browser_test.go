@@ -11,6 +11,8 @@ import (
 	"testing"
 
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
+	"github.com/Tangerg/scope/tools/textread"
 )
 
 func TestFileBrowserReadOwnsSourceLineAndWindowLimits(t *testing.T) {
@@ -28,7 +30,7 @@ func TestFileBrowserReadOwnsSourceLineAndWindowLimits(t *testing.T) {
 			t.Fatal(closeErr)
 		}
 		_, err = (FileBrowser{}).Read(t.Context(), root, workspaceapp.FileReadPlan{Path: "oversized.txt", MaxBytes: workspaceapp.DefaultFileReadBytes})
-		if !errors.Is(err, workspaceapp.ErrFileReadTooLarge) {
+		if !errors.Is(err, workspaceapp.ErrFileReadTooLarge) || !errors.Is(err, fileinput.ErrTooLarge) {
 			t.Fatalf("oversized source error = %v, want ErrFileReadTooLarge", err)
 		}
 	})
@@ -41,7 +43,7 @@ func TestFileBrowserReadOwnsSourceLineAndWindowLimits(t *testing.T) {
 			t.Fatal(err)
 		}
 		_, err := (FileBrowser{}).Read(t.Context(), root, workspaceapp.FileReadPlan{Path: "line.txt", MaxBytes: workspaceapp.DefaultFileReadBytes})
-		if !errors.Is(err, workspaceapp.ErrFileReadTooLarge) {
+		if !errors.Is(err, workspaceapp.ErrFileReadTooLarge) || !errors.Is(err, textread.ErrLineTooLarge) {
 			t.Fatalf("oversized line error = %v, want ErrFileReadTooLarge", err)
 		}
 	})

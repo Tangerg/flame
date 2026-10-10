@@ -294,11 +294,8 @@ func readDirectoryEntries(root *os.Root, directory string, limit int) (_ []fs.Di
 	name := rootPath(directory)
 	dir, _, err := fileinput.OpenDirectoryAt(root, name)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return nil, fmt.Errorf("%w: %q does not exist", errInvalidListPath, directory)
-		}
-		if errors.Is(err, fileinput.ErrNotDirectory) || errors.Is(err, fileinput.ErrChanged) {
-			return nil, fmt.Errorf("%w: %q is not a stable directory", errInvalidListPath, directory)
+		if errors.Is(err, os.ErrNotExist) || errors.Is(err, fileinput.ErrNotDirectory) || errors.Is(err, fileinput.ErrChanged) {
+			return nil, fmt.Errorf("%w: %q: %w", errInvalidListPath, directory, err)
 		}
 		return nil, fmt.Errorf("list %q: %w", directory, err)
 	}

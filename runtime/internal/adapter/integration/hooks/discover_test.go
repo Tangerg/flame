@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	domainhooks "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 
 func writeHooks(t *testing.T, dir, body string) {
@@ -131,7 +132,7 @@ func TestLoadRejectsNonRegularConfiguration(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(cwd, ".flame", "hooks.json"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Load(t.Context(), cwd, ""); err == nil || !strings.Contains(err.Error(), "not a regular file") {
+	if _, err := Load(t.Context(), cwd, ""); !errors.Is(err, fileinput.ErrNotRegular) {
 		t.Fatalf("Load error = %v, want non-regular configuration", err)
 	}
 }
@@ -159,8 +160,8 @@ func TestLoadRejectsUnboundedHookFilesAndCascades(t *testing.T) {
 	t.Run("file bytes", func(t *testing.T) {
 		cwd := t.TempDir()
 		writeHooks(t, cwd, hooksDocument(0)+strings.Repeat(" ", 256<<10))
-		if _, err := Load(t.Context(), cwd, ""); err == nil {
-			t.Fatal("Load accepted hooks.json larger than 256 KiB")
+		if _, err := Load(t.Context(), cwd, ""); !errors.Is(err, domainhooks.ErrConfigurationTooLarge) || !errors.Is(err, fileinput.ErrTooLarge) {
+			t.Fatalf("oversized Hook admission lost classification or input cause: %v", err)
 		}
 	})
 

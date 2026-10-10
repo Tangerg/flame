@@ -174,10 +174,10 @@ func readUsage(ctx context.Context, root *os.Root) (map[string]usageRecord, erro
 		return map[string]usageRecord{}, nil
 	}
 	if errors.Is(err, fileinput.ErrNotRegular) {
-		return nil, errors.New("skillauthoring: usage metadata is not a regular file")
+		return nil, fmt.Errorf("skillauthoring: usage metadata admission: %w", err)
 	}
 	if errors.Is(err, fileinput.ErrTooLarge) {
-		return nil, fmt.Errorf("%w: exceeds %d bytes", skills.ErrUsageTooLarge, maxUsageMetadataBytes)
+		return nil, fmt.Errorf("%w: metadata admission: %w", skills.ErrUsageTooLarge, err)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("skillauthoring: open usage: %w", err)

@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 	"github.com/sourcegraph/jsonrpc2"
 )
 
@@ -32,7 +33,7 @@ func TestEnsureOpenRejectsOversizedDocumentBeforeNotification(t *testing.T) {
 		},
 	}
 
-	if version, err := client.ensureOpen(t.Context(), path); !errors.Is(err, ErrDocumentTooLarge) {
+	if version, err := client.ensureOpen(t.Context(), path); !errors.Is(err, ErrDocumentTooLarge) || !errors.Is(err, fileinput.ErrTooLarge) {
 		t.Fatalf("ensureOpen = (%d, %v), want ErrDocumentTooLarge", version, err)
 	}
 	if client.open[uri].version != 1 {

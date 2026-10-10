@@ -175,7 +175,7 @@ func observeFingerprintExistingFile(ctx context.Context, root *filesystemRoot, p
 	file, before, err := fileinput.OpenAtExpected(root.Root, path, preflight, maxBytes)
 	if err != nil {
 		if errors.Is(err, fileinput.ErrTooLarge) {
-			return fingerprintObservation{}, false, fmt.Errorf("%w: file grew while opening", errRuntimeReadFileTooLarge)
+			return fingerprintObservation{}, false, fmt.Errorf("%w: file grew while opening: %w", errRuntimeReadFileTooLarge, err)
 		}
 		return fingerprintObservation{}, false, err
 	}

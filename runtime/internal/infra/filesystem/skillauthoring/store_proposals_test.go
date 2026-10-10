@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skillauthoring"
 )
 
@@ -206,7 +207,7 @@ func TestListProposalsRejectsCorruptUnboundedStorage(t *testing.T) {
 			t.Fatal(err)
 		}
 		store := newStore(t, root, skills.ScopeUser)
-		if _, err := store.ListProposals(t.Context()); !errors.Is(err, skills.ErrDocumentTooLarge) {
+		if _, err := store.ListProposals(t.Context()); !errors.Is(err, skills.ErrDocumentTooLarge) || !errors.Is(err, fileinput.ErrTooLarge) {
 			t.Fatalf("ListProposals error = %v, want ErrDocumentTooLarge", err)
 		}
 	})

@@ -121,11 +121,8 @@ func readHooksFile(ctx context.Context, path string) (hooksFile, bool, error) {
 	if errors.Is(err, os.ErrNotExist) {
 		return hooksFile{}, false, nil
 	}
-	if errors.Is(err, fileinput.ErrNotRegular) {
-		return hooksFile{}, false, errors.New("not a regular file")
-	}
 	if errors.Is(err, fileinput.ErrTooLarge) {
-		return hooksFile{}, false, domainhooks.ValidateConfigurationFileSize(domainhooks.MaxConfigurationFileBytes + 1)
+		return hooksFile{}, false, fmt.Errorf("%w: %w", domainhooks.ErrConfigurationTooLarge, err)
 	}
 	if err != nil {
 		return hooksFile{}, false, err
@@ -142,9 +139,6 @@ func readHooksFile(ctx context.Context, path string) (hooksFile, bool, error) {
 		return hooksFile{}, false, err
 	}
 	if err := fileinput.VerifyPathVersion(handle, opened, path); err != nil {
-		if errors.Is(err, fileinput.ErrChanged) {
-			return hooksFile{}, false, errors.New("configuration changed while it was being read")
-		}
 		return hooksFile{}, false, fmt.Errorf("verify configuration after reading: %w", err)
 	}
 	if len(data) == 0 {

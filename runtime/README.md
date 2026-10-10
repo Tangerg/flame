@@ -354,7 +354,9 @@ Plugins 1.0, and Flame's extension namespace is `io.github.tangerg.flame` with
 Install from an absolute directory or ZIP path on the Runtime machine. Admission copies
 regular files into a bounded, SHA-256-addressed release; it does not execute package code.
 The shared filesystem input boundary owns regular-file kind, size admission and opened
-identity for package sources, release scans, resources and packaged MCP commands. Special
+identity for package sources, release scans, resources and packaged MCP commands.
+Workspace, prompt, Skill, Hook and LSP adapters project their business error categories
+without replacing the input boundary's kind, size or identity failure causes. Special
 nodes are rejected before they can block a read. Copying and hashing use the opened file's
 metadata and reject source replacement or mutation observed after reading; cancellation
 preserves its standard category, custom cause and concurrent I/O failures, and cannot

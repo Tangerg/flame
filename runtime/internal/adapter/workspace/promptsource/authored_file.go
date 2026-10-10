@@ -18,16 +18,10 @@ func readAuthoredPromptFile(ctx context.Context, path string) ([]byte, error) {
 	file, opened, err := fileinput.Open(path, workspaceapp.MaxAuthoredPromptDocumentBytes)
 	if err != nil {
 		switch {
-		case errors.Is(err, fileinput.ErrNotRegular):
-			return nil, fmt.Errorf("%w: %q is not a regular file", workspaceapp.ErrInvalidPromptSource, path)
+		case errors.Is(err, fileinput.ErrNotRegular), errors.Is(err, fileinput.ErrChanged):
+			return nil, fmt.Errorf("%w: %q: %w", workspaceapp.ErrInvalidPromptSource, path, err)
 		case errors.Is(err, fileinput.ErrTooLarge):
-			return nil, fmt.Errorf(
-				"%s: %w",
-				path,
-				workspaceapp.ValidateAuthoredPromptDocumentSize(workspaceapp.MaxAuthoredPromptDocumentBytes+1),
-			)
-		case errors.Is(err, fileinput.ErrChanged):
-			return nil, fmt.Errorf("%w: %q changed while it was being opened", workspaceapp.ErrInvalidPromptSource, path)
+			return nil, fmt.Errorf("%w: %q: %w", workspaceapp.ErrPromptSourceTooLarge, path, err)
 		}
 		return nil, fmt.Errorf("open %q: %w", path, err)
 	}
@@ -37,7 +31,7 @@ func readAuthoredPromptFile(ctx context.Context, path string) ([]byte, error) {
 	))
 	verifyErr := fileinput.VerifyPathVersion(file, opened, path)
 	if errors.Is(verifyErr, fileinput.ErrChanged) {
-		verifyErr = fmt.Errorf("%w: changed while it was being read", workspaceapp.ErrInvalidPromptSource)
+		verifyErr = fmt.Errorf("%w: %w", workspaceapp.ErrInvalidPromptSource, verifyErr)
 	}
 	closeErr := file.Close()
 	if readErr != nil || closeErr != nil {

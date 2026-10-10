@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 
 const (
@@ -68,7 +69,7 @@ func TestRecordUseRejectsOversizedUsageMetadata(t *testing.T) {
 	}
 
 	store := newStore(t, root, skills.ScopeUser)
-	if err := store.RecordUse(t.Context(), "run-tests", time.Unix(2, 0)); !errors.Is(err, skills.ErrUsageTooLarge) {
+	if err := store.RecordUse(t.Context(), "run-tests", time.Unix(2, 0)); !errors.Is(err, skills.ErrUsageTooLarge) || !errors.Is(err, fileinput.ErrTooLarge) {
 		t.Fatalf("RecordUse error = %v, want ErrUsageTooLarge beyond %d bytes", err, governedUsageBytes)
 	}
 }
