@@ -42,6 +42,29 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
+## Protocol 2026-10-10.5
+
+The optional [Usage package](../plugins/usage/plugin.json) replaces the compiled Desktop
+Usage pane and its dedicated query cache. A `usageSummary` view reads `plugins.readUsage`,
+which embeds `UsageSummaryRequest` and delegates to the existing `usage.summary` owner.
+The report counts finished Runs with recorded usage; child execution is included through its
+owning Run and detached utility-model work is excluded. The page renders canonical totals
+and provider/model/UTC-day buckets. Recorded zero remains zero, unpriced usage remains
+unpriced, and failed refresh preserves the last report with an explicit error.
+
+The trusted Host captures all-time, seven-day or thirty-day scope for each page instance;
+only Runtime interprets calendar periods. Guest filtering is local presentation and cannot
+change recorded totals. Usage pages accept refresh only, with no cursor, arbitrary query or
+mutation authority. Withdrawal and uninstall remove presentation without changing accounting.
+The existing transport and carrier byte limits refuse oversized reports explicitly.
+
+The HTML bridge uses `flame.view.ready.v2` / `flame.view.connect.v2` and replies with
+`{type: "data", data: <canonical result>}`. It carries both bounded pages and complete
+reports directly. Rebuild all clients and install/approve trajectory, memory and schedules
+2.0.0 package bytes with the new handshake. Older handshakes and page replies have no aliases.
+Install and approve Usage 1.0.0 to expose its view in the Context Dock; the former settings
+pane has no fallback. This change requires no accounting or installation data migration.
+
 ## Protocol 2026-10-10.4
 
 The optional [Schedules package](../plugins/schedules/plugin.json) replaces the compiled
@@ -78,9 +101,8 @@ pages and can request only a cursor or refresh. Mutation receipts trigger a fres
 read failure is distinct from an empty target. Ledger, generation, CAS publication, review
 and mining remain Runtime-owned. Removing the package does not delete committed memory.
 
-The common HTML handshake is `flame.view.ready.v1` / `flame.view.connect.v1`. Stage and approve
-new trajectory 1.2.0 package bytes when rebuilding; immutable older HTML is not rewritten
-and the former trajectory-specific handshake has no alias.
+The current HTML bridge and package rebuild requirements are described in Protocol 2026-10-10.5.
+Immutable older HTML is not rewritten and superseded handshakes have no aliases.
 
 `plugins.readTrajectory` embeds the canonical `sessions.trajectory` request, including
 `includeDescendants`, bounded page size and cursor scope. The existing query owns
@@ -549,7 +571,7 @@ before publishing its successor.
 
 The current implementation includes Slice A/B, optional Slice C pages and a bounded
 Slice D human action. A package may declare `contributes.views` with `id`, `title`,
-`type: "sessionTrajectory"`, `"agentMemory"` or `"schedules"`, and a portable
+`type: "sessionTrajectory"`, `"agentMemory"`, `"schedules"` or `"usageSummary"`, and a portable
 `.html` `entry`. Admission validates UTF-8 HTML, confined resource access and the release
 fingerprint. Invalid views produce diagnostics without withdrawing independent themes,
 Skills or MCP declarations. Arbitrary projection queries, mutation bridges,

@@ -23,10 +23,6 @@ vi.mock("@/plugins/builtin/agent/public/session", () => ({
   synchronizeMountedAgentSessions,
 }));
 
-vi.mock("@/plugins/builtin/settings/usage/public/queries", () => ({
-  USAGE_SUMMARY_KEY: "usage-summary",
-}));
-
 vi.mock("@/plugins/builtin/agent/public/approvalPolicy", () => ({
   APPROVAL_MODE_KEY: "approval-mode",
   APPROVAL_RULES_KEY: "approval-rules",
@@ -80,7 +76,6 @@ describe("workspace session projection invalidation", () => {
 
     expect(invalidateQueries.mock.calls.map(([options]) => options.queryKey[0])).toEqual([
       "agent-session-usage",
-      "usage-summary",
     ]);
     expect(cancelQueries.mock.calls).toEqual(invalidateQueries.mock.calls);
   });
@@ -180,8 +175,8 @@ describe("workspace session projection invalidation", () => {
       ownership: "after-live",
     });
     expect(synchronizeMountedAgentSessions).toHaveBeenCalledOnce();
-    expect(cancelQueries).toHaveBeenCalledTimes(2);
-    expect(invalidateQueries).toHaveBeenCalledTimes(2);
+    expect(cancelQueries).toHaveBeenCalledOnce();
+    expect(invalidateQueries).toHaveBeenCalledOnce();
   });
 
   it("keeps Goal and mounted HITL/Plan/Run/Tool on one monotonic recovery boundary", async () => {

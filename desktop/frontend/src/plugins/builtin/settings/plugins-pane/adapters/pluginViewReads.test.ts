@@ -1,5 +1,9 @@
 import { expect, it, vi } from "vitest";
-import { createMemoryViewReads, createScheduleViewReads } from "./pluginViewReads";
+import {
+  createMemoryViewReads,
+  createScheduleViewReads,
+  createUsageViewReads,
+} from "./pluginViewReads";
 it("captures release and workspace identity while exposing only cursor continuation", async () => {
   const binding = { installationId: "installation", digest: "digest", viewId: "memory" };
   const target = { scope: "project" as const, workspace: { path: "/captured" } };
@@ -68,4 +72,26 @@ it("binds schedule continuation to the captured release without guest-selected t
     { installationId: "installation", digest: "digest", viewId: "schedules", cursor: "next" },
     signal,
   );
+});
+
+it("captures the usage period and passes through the canonical report without pagination", async () => {
+  const binding = { installationId: "installation", digest: "digest", viewId: "usage" };
+  const period = { sinceDays: 7 };
+  const report = { total: {}, sessions: 1, runs: 1, byProvider: [{ key: "provider", runs: 1 }] };
+  const plugins = {
+    readView: vi.fn(async () => ({ html: "<!doctype html>" })),
+    readUsage: vi.fn(async () => report),
+  };
+  const reads = createUsageViewReads(plugins, binding, period);
+  binding.digest = "successor";
+  period.sinceDays = 30;
+  const signal = new AbortController().signal;
+  await expect(reads.load(signal)).resolves.toEqual({ html: "<!doctype html>", initial: report });
+  await expect(reads.read(undefined, signal)).resolves.toBe(report);
+  expect(plugins.readUsage).toHaveBeenLastCalledWith(
+    { installationId: "installation", digest: "digest", viewId: "usage", sinceDays: 7 },
+    signal,
+  );
+  await expect(reads.read("unbound", signal)).rejects.toThrow("no cursor");
+  expect(plugins.readUsage).toHaveBeenCalledTimes(2);
 });

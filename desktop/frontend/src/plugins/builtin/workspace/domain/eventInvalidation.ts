@@ -17,7 +17,6 @@ export type WorkspaceInvalidationTarget =
   | "schedules"
   | "sessionUsage"
   | "sessions"
-  | "usageSummary"
   | "utilityRole"
   | "embeddingRole"
   | "skills"
@@ -158,7 +157,7 @@ export function workspaceInvalidations(ev: WorkspaceEventLike): WorkspaceInvalid
     case "sessions.changed":
       return ["sessions"];
     case "runs.changed":
-      return ["sessionUsage", "usageSummary", "agentSessionProjection"];
+      return ["sessionUsage", "agentSessionProjection"];
     case "interrupts.changed":
       return ["agentSessionProjection"];
     case "goals.changed":

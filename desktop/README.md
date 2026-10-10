@@ -410,6 +410,15 @@ the carrier grants no external image origins.
 Complete Session trajectory export is a trusted command-menu operation against Runtime,
 independent of visible filters and pages. Execution and approval controls stay in the workbench.
 
+The optional [Usage package](../plugins/usage/plugin.json) supplies the accounting report.
+The Host captures the selected period; the guest renders canonical totals and provider,
+model and UTC-day buckets and can only refresh that captured query. Local filters leave
+totals intact. Zero reported usage, unpriced usage, an empty report and read failure remain
+separate states. Runtime alone folds recorded Run usage; uninstall preserves accounting.
+The shared bridge now uses `flame.view.ready.v2` / `flame.view.connect.v2` and data replies
+for both reports and pages. Rebuild clients and approve the updated 2.0.0 trajectory, memory
+and schedules packages; the former handshake and compiled Usage pane have no fallback.
+
 The optional Schedules package supplies the schedule list and immutable authoring templates.
 The Context Dock offers its admitted view. Host controls retain create, edit, enable/disable,
 run-now and confirmed deletion; the guest receives canonical pages and cursor-only reads.

@@ -233,7 +233,7 @@
         if (
           event.source !== parent ||
           port ||
-          event.data?.type !== "flame.view.connect.v1" ||
+          event.data?.type !== "flame.view.connect.v2" ||
           !["light", "dark"].includes(event.data.scheme) ||
           event.ports.length !== 1
         )
@@ -241,8 +241,8 @@
         document.documentElement.style.colorScheme = event.data.scheme;
         port = event.ports[0];
         port.onmessage = (message) => {
-          if (message.data.type === "page" && pending)
-            accept(message.data.page);
+          if (message.data.type === "data" && pending)
+            accept(message.data.data);
           if (message.data.type === "error" && pending) {
             pending = undefined;
             controls();
@@ -253,7 +253,7 @@
         port.start();
         accept(event.data.initial);
       });
-      parent.postMessage("flame.view.ready.v1", "*");
+      parent.postMessage("flame.view.ready.v2", "*");
       refresh.addEventListener("click", () => read([]));
       previous.addEventListener("click", () => read(history.slice(0, -1)));
       next.addEventListener("click", () => read([...history, nextCursor]));

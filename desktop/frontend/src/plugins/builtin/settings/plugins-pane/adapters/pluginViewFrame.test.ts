@@ -137,7 +137,7 @@ it("treats publication failure as terminal rather than a failed read", async () 
   f.send.mockImplementation(async (message: unknown) => {
     const value = message as { type: string; reply?: { type: string } };
     if (value.type === "boot") f.publish({ type: "connected" });
-    else if (value.reply?.type === "page") throw new Error("channel unavailable");
+    else if (value.reply?.type === "data") throw new Error("channel unavailable");
   });
   const dispose = await f.ready();
   f.publish({ type: "request", request: { type: "read" } });

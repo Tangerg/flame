@@ -1124,6 +1124,53 @@ for await (const line of lines) {
     }
   });
 
+  it("reads shipped Usage reports through canonical accounting and withdraws only presentation", async () => {
+    if (!client) throw new Error("runtime client was not initialized");
+    const installation = await client.plugins.install({
+      source: resolve(runtimeDirectory, "../plugins/usage"),
+    });
+    const release = { installationId: installation.id, digest: installation.selected.digest };
+    const view = { ...release, viewId: "usage" };
+    let remainingInstallation: string | undefined = installation.id;
+    try {
+      expect(installation.selected.diagnostics).toEqual([]);
+      expect(installation.selected.views).toEqual([
+        { id: "usage", title: "Usage", type: "usageSummary" },
+      ]);
+      await expect(client.plugins.readUsage(view)).rejects.toMatchObject({ code: -32042 });
+      await client.plugins.approve(release);
+      await client.plugins.setEnablement({ installationId: installation.id, enabled: true });
+      const session = await client.sessions.create({ workspace: { path: root } });
+      const started = await client.runs.start({
+        sessionId: session.id,
+        input: [{ type: "text", text: "E2E_USAGE produce metered output." }],
+      });
+      await collectRunEvents(started.events);
+      for (const period of [{}, { sinceDays: 7 }, { sinceDays: 30 }]) {
+        expect(await client.plugins.readUsage({ ...view, ...period })).toEqual(
+          await client.usage.summary(period),
+        );
+      }
+      expect((await client.plugins.readView(view)).html).toBe(
+        await readFile(resolve(runtimeDirectory, "../plugins/usage/views/usage.html"), "utf8"),
+      );
+      await expect(client.plugins.readUsage({ ...view, sinceDays: 0 })).rejects.toThrow(
+        "expected at least 1",
+      );
+      await expect(client.plugins.readSchedules(view)).rejects.toSatisfy(
+        (error: unknown) => error instanceof RpcError && error.data.type === "plugin_not_found",
+      );
+      const recorded = await client.usage.summary({ sinceDays: 7 });
+      await client.plugins.revoke(installation.id);
+      await expect(client.plugins.readUsage(view)).rejects.toMatchObject({ code: -32042 });
+      await client.plugins.uninstall(installation.id);
+      remainingInstallation = undefined;
+      expect(await client.usage.summary({ sinceDays: 7 })).toEqual(recorded);
+    } finally {
+      if (remainingInstallation) await client.plugins.uninstall(remainingInstallation);
+    }
+  });
+
   it("reads shipped Schedule templates and canonical pages without owning Schedule persistence", async () => {
     if (!client) throw new Error("runtime client was not initialized");
     const installation = await client.plugins.install({

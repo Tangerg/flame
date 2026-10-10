@@ -322,6 +322,10 @@
               "signature": "func(ctx context.Context, request protocol.ReadPluginTrajectoryRequest, options CallOptions) (*protocol.Page[protocol.TrajectoryEntry], error)"
             },
             {
+              "name": "ReadPluginUsage",
+              "signature": "func(ctx context.Context, request protocol.ReadPluginUsageRequest, options CallOptions) (*protocol.UsageSummary, error)"
+            },
+            {
               "name": "ReadPluginView",
               "signature": "func(ctx context.Context, request protocol.ReadPluginViewRequest, options CallOptions) (*protocol.PluginViewResource, error)"
             },
@@ -836,6 +840,10 @@
             {
               "name": "ReadPluginTrajectory",
               "signature": "func(ctx context.Context, request protocol.ReadPluginTrajectoryRequest, options CallOptions) (*protocol.Page[protocol.TrajectoryEntry], error)"
+            },
+            {
+              "name": "ReadPluginUsage",
+              "signature": "func(ctx context.Context, request protocol.ReadPluginUsageRequest, options CallOptions) (*protocol.UsageSummary, error)"
             },
             {
               "name": "ReadPluginView",
@@ -2264,6 +2272,11 @@
           "value": "\"sessionTrajectory\""
         },
         {
+          "name": "PluginViewUsageSummary",
+          "type": "PluginViewType",
+          "value": "\"usageSummary\""
+        },
+        {
           "name": "ProblemAgentStuck",
           "type": "untyped string",
           "value": "\"agent_stuck\""
@@ -2331,7 +2344,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-10.4\""
+          "value": "\"2026-10-10.5\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -8088,6 +8101,26 @@
             {
               "name": "ListSessionTrajectoryRequest",
               "type": "ListSessionTrajectoryRequest"
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "ReadPluginUsageRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ReadPluginViewRequest",
+              "type": "ReadPluginViewRequest"
+            },
+            {
+              "name": "UsageSummaryRequest",
+              "type": "UsageSummaryRequest"
             }
           ],
           "methods": [

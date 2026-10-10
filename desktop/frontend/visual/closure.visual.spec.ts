@@ -478,6 +478,7 @@ const DOCK_LOCALE_STATES = [
   "dock-subagents",
   "dock-agent-memory",
   "dock-schedules",
+  "dock-usage",
   "dock-skills",
   "dock-diagnostics",
 ] as const;

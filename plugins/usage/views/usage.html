@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Usage</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font:
+          14px/1.6 system-ui,
+          sans-serif;
+        color: light-dark(#20242b, #eef0f4);
+        background: light-dark(#fafbfc, #181a1e);
+        --muted: light-dark(#586170, #a3a8b2);
+        --surface: light-dark(#eef1f5, #24282e);
+        --edge: light-dark(#c9cfd9, #484e59);
+        --accent: light-dark(#265cad, #91baff);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 24px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 600;
+      }
+      p,
+      dt,
+      caption {
+        color: var(--muted);
+      }
+      header,
+      .filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        justify-content: space-between;
+      }
+      button,
+      select,
+      input {
+        font: inherit;
+        color: inherit;
+        background: var(--surface);
+        border: 1px solid var(--edge);
+        border-radius: 6px;
+        padding: 7px 12px;
+        max-width: 100%;
+      }
+      button:disabled {
+        opacity: 0.5;
+      }
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 3px;
+      }
+      #totals {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        gap: 16px;
+        padding: 20px;
+        margin: 24px 0;
+        border: 1px solid var(--edge);
+        border-radius: 8px;
+      }
+      dd {
+        margin: 0;
+        font-variant-numeric: tabular-nums;
+        font-size: 20px;
+      }
+      .filters {
+        justify-content: start;
+        margin: 20px 0;
+      }
+      .table {
+        overflow-x: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      caption {
+        text-align: start;
+        padding-bottom: 12px;
+      }
+      th,
+      td {
+        padding: 10px 12px;
+        text-align: end;
+        border-bottom: 1px solid var(--edge);
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+      }
+      th:first-child,
+      td:first-child {
+        text-align: start;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        min-width: 120px;
+      }
+      thead {
+        background: var(--surface);
+      }
+      #status[role="alert"] {
+        color: light-dark(#a62222, #ff9797);
+      }
+      @media (max-width: 480px) {
+        body {
+          padding: 16px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Usage</h1>
+      <button id="refresh" type="button">Refresh</button>
+    </header>
+    <p>
+      Runtime-recorded usage from finished Runs in the selected period. Child
+      execution is counted through its owning Run; detached utility-model work
+      is excluded.
+    </p>
+    <p id="status" role="status" aria-live="polite"></p>
+    <dl id="totals" aria-label="Recorded usage totals"></dl>
+    <p id="empty" hidden>
+      No finished Runs with reported usage in this period.
+    </p>
+    <section id="breakdown" aria-label="Usage breakdown">
+      <div class="filters">
+        <label
+          >Group by
+          <select id="group">
+            <option value="byProvider">Provider</option>
+            <option value="byModel">Model</option>
+            <option value="byDay">UTC day</option>
+          </select></label
+        >
+        <label
+          >Filter
+          <input id="filter" type="search" placeholder="Filter displayed rows"
+        /></label>
+      </div>
+      <div
+        class="table"
+        role="region"
+        aria-label="Scrollable usage breakdown"
+        tabindex="0"
+      >
+        <table>
+          <caption id="caption">
+            Reported usage by provider
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Source</th>
+              <th scope="col">Cost (USD)</th>
+              <th scope="col">Runs</th>
+              <th scope="col">Input</th>
+              <th scope="col">Output</th>
+              <th scope="col">Cache read</th>
+              <th scope="col">Cache write</th>
+              <th scope="col">Reasoning</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <p id="noMatches" hidden>No matching rows.</p>
+    </section>
+    <p>
+      Zero tokens are recorded values. “Not reported” means Runtime has no
+      complete price for that total or bucket; this page does not estimate it.
+      Filtering rows does not change the recorded totals.
+    </p>
+    <script>
+      const refresh = document.getElementById("refresh");
+      const status = document.getElementById("status");
+      const totals = document.getElementById("totals");
+      const empty = document.getElementById("empty");
+      const breakdown = document.getElementById("breakdown");
+      const group = document.getElementById("group");
+      const filter = document.getElementById("filter");
+      const caption = document.getElementById("caption");
+      const rows = document.getElementById("rows");
+      const noMatches = document.getElementById("noMatches");
+      const number = new Intl.NumberFormat("en-US");
+      const dollars = new Intl.NumberFormat("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 6,
+      });
+      const fields = [
+        ["Input tokens", "inputTokens"],
+        ["Output tokens", "outputTokens"],
+        ["Cache read tokens", "cacheReadTokens"],
+        ["Cache write tokens", "cacheWriteTokens"],
+        ["Reasoning tokens", "reasoningTokens"],
+      ];
+      let port;
+      let report;
+      let pending = false;
+      function text(tag, value) {
+        const node = document.createElement(tag);
+        node.textContent = value;
+        return node;
+      }
+      function cost(amount) {
+        return amount === undefined ? "Not reported" : dollars.format(amount);
+      }
+      function renderRows() {
+        if (!report) return;
+        const matching = (report[group.value] ?? []).filter((bucket) =>
+          bucket.key.toLowerCase().includes(filter.value.toLowerCase()),
+        );
+        rows.replaceChildren();
+        noMatches.hidden = matching.length !== 0;
+        caption.textContent = `Reported usage by ${group.selectedOptions[0].text.toLowerCase()}`;
+        for (const bucket of matching) {
+          const row = document.createElement("tr");
+          const source = text("th", bucket.key);
+          source.scope = "row";
+          row.append(
+            source,
+            text("td", cost(bucket.costUsd)),
+            text("td", number.format(bucket.runs ?? 0)),
+          );
+          for (const [, key] of fields)
+            row.append(text("td", number.format(bucket[key] ?? 0)));
+          rows.append(row);
+        }
+      }
+      function accept(value) {
+        report = value;
+        pending = false;
+        refresh.disabled = false;
+        totals.replaceChildren();
+        for (const [label, value] of [
+          ["Recorded cost (USD)", cost(report.total.costUsd)],
+          ...fields.map(([label, key]) => [
+            label,
+            number.format(report.total[key] ?? 0),
+          ]),
+          ["Sessions", number.format(report.sessions ?? 0)],
+          ["Finished Runs", number.format(report.runs ?? 0)],
+        ]) {
+          const pair = document.createElement("div");
+          pair.append(text("dt", label), text("dd", value));
+          totals.append(pair);
+        }
+        empty.hidden = (report.runs ?? 0) !== 0;
+        breakdown.hidden = !empty.hidden;
+        renderRows();
+        status.setAttribute("role", "status");
+        status.textContent = "Recorded usage loaded.";
+      }
+      addEventListener("message", (event) => {
+        if (
+          event.source !== parent ||
+          port ||
+          event.data?.type !== "flame.view.connect.v2" ||
+          !["light", "dark"].includes(event.data.scheme) ||
+          event.ports.length !== 1
+        )
+          return;
+        document.documentElement.style.colorScheme = event.data.scheme;
+        port = event.ports[0];
+        port.onmessage = (message) => {
+          if (message.data.type === "data" && pending)
+            accept(message.data.data);
+          if (message.data.type === "error" && pending) {
+            pending = false;
+            refresh.disabled = false;
+            status.setAttribute("role", "alert");
+            status.textContent = message.data.reason;
+          }
+        };
+        port.start();
+        accept(event.data.initial);
+      });
+      parent.postMessage("flame.view.ready.v2", "*");
+      refresh.addEventListener("click", () => {
+        if (!port || pending) return;
+        pending = true;
+        refresh.disabled = true;
+        status.setAttribute("role", "status");
+        status.textContent = "Reading usage…";
+        port.postMessage({ type: "read" });
+      });
+      group.addEventListener("change", renderRows);
+      filter.addEventListener("input", renderRows);
+    </script>
+  </body>
+</html>

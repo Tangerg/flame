@@ -105,6 +105,12 @@ explicitly opened drafts. The isolated page consumes canonical schedule pages, i
 reported firing times; it cannot submit commands or supply timers. Package withdrawal removes
 the view without changing Runtime's Schedule, Occurrence or worker ownership.
 
+Usage presentation lives in the optional `plugins/usage` portable release. The trusted
+Host binds one Runtime-owned summary period; the isolated page renders canonical reports
+and local filters without a parallel accounting cache. `settings/plugins-pane` owns one
+read-only bridge for pages and reports, and retires each captured query with its contribution.
+The former compiled Usage pane, gateway and query invalidation target are removed.
+
 ## Dependencies and public surfaces
 
 A feature uses only the rings it needs. Pure values and transitions belong in

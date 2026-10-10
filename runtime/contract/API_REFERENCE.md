@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-10.4` · 103 methods
+Protocol `2026-10-10.5` · 104 methods
 
 ## Methods
 
@@ -64,6 +64,7 @@ Protocol `2026-10-10.4` · 103 methods
 | `mcp.servers.reconnect` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_not_found`, `mcp_server_disabled`, `capability_not_negotiated` |
 | `mcp.authorizationAttempts.create` | command | unary | replayResponse | none | none | — | `mcp` | `mcp_server_not_found`, `mcp_server_disabled`, `capability_not_negotiated` |
 | `mcp.authorizationAttempts.get` | query | unary | none | none | none | — | `mcp` | `mcp_authorization_attempt_not_found`, `capability_not_negotiated` |
+| `plugins.readUsage` | query | unary | none | none | none | `usage.summary` | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_unapproved`, `plugin_stale`, `capability_not_negotiated` |
 | `plugins.readSchedules` | query | unary | none | none | cursor | `schedules.list` | `plugins`, `schedules` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_unapproved`, `plugin_stale`, `capability_not_negotiated` |
 | `plugins.readMemory` | query | unary | none | none | cursor | `agentMemory.list` | `plugins`, `agentMemory` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_unapproved`, `plugin_stale`, `capability_not_negotiated` |
 | `plugins.renameSession` | command | unary | replayResponse | none | none | — | `plugins` | `plugin_unavailable`, `plugin_not_found`, `plugin_in_use`, `plugin_unapproved`, `plugin_stale`, `session_not_found`, `revision_conflict`, `session_busy`, `capability_not_negotiated` |
@@ -1215,6 +1216,7 @@ available. Refusal is `capability_not_negotiated` — never a silent downgrade.
 | `mcp.servers.reconnect` | always | `mcp` |
 | `mcp.authorizationAttempts.create` | always | `mcp` |
 | `mcp.authorizationAttempts.get` | always | `mcp` |
+| `plugins.readUsage` | always | `plugins` |
 | `plugins.readSchedules` | always | `plugins`, `schedules` |
 | `plugins.readMemory` | always | `plugins`, `agentMemory` |
 | `plugins.renameSession` | always | `plugins` |

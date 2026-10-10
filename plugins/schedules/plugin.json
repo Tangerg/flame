@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "flame.schedules",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Optional first-party schedule presentation and authoring templates. Runtime owns occurrence claims and Run admission.",
   "extensions": {
     "io.github.tangerg.flame": {

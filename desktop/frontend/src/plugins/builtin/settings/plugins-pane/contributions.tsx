@@ -6,6 +6,7 @@ import type { PluginInstallation } from "@flame/runtime-contract/wire";
 import type { ContributionLifetime } from "@/plugins/sdk/definePlugin";
 import { DATA_PROVIDER, WORKSPACE_VIEW } from "@/plugins/sdk/kernelPoints";
 import { TrajectoryPackageView } from "./ui/TrajectoryPackageView";
+import { UsagePackageView } from "./ui/UsagePackageView";
 import { SchedulePackageView } from "./ui/SchedulePackageView";
 import { MemoryPackageView } from "./ui/MemoryPackageView";
 import { queryClient } from "@/lib/queryClient";
@@ -19,6 +20,7 @@ import {
   createTrajectoryViewReads,
   createMemoryViewReads,
   createScheduleViewReads,
+  createUsageViewReads,
 } from "./adapters/pluginViewReads";
 
 const packageThemePrefix = "package:";
@@ -78,6 +80,25 @@ function createPackageReconciler(
               dock: "session",
               component: () => (
                 <TrajectoryPackageView
+                  reads={reads}
+                  title={title}
+                  lifetime={lifetime}
+                  carrier={carrier}
+                />
+              ),
+            });
+            break;
+          }
+          case "usageSummary": {
+            const reads = (period: Parameters<typeof createUsageViewReads>[2]) =>
+              createUsageViewReads(client.plugins, binding, period);
+            lifetime.contribute(WORKSPACE_VIEW, {
+              id: `package:${installation.id}:${view.id}`,
+              title,
+              icon: "chart",
+              dock: "workspace",
+              component: () => (
+                <UsagePackageView
                   reads={reads}
                   title={title}
                   lifetime={lifetime}

@@ -106,6 +106,7 @@ const (
 	PluginViewSessionTrajectory PluginViewType = "sessionTrajectory"
 	PluginViewAgentMemory       PluginViewType = "agentMemory"
 	PluginViewSchedules         PluginViewType = "schedules"
+	PluginViewUsageSummary      PluginViewType = "usageSummary"
 )
 
 type PluginView struct {
@@ -142,6 +143,11 @@ type ReadPluginTrajectoryRequest struct {
 type ReadPluginMemoryRequest struct {
 	ReadPluginViewRequest
 	AgentMemoryListRequest
+}
+
+type ReadPluginUsageRequest struct {
+	ReadPluginViewRequest
+	UsageSummaryRequest
 }
 
 type ReadPluginSchedulesRequest struct {

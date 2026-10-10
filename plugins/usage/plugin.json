@@ -1,0 +1,21 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "flame.usage",
+  "version": "1.0.0",
+  "description": "Optional first-party usage presentation over Runtime-recorded finished Run usage. Accounting remains Runtime-owned.",
+  "extensions": {
+    "io.github.tangerg.flame": {
+      "apiVersion": 1,
+      "contributes": {
+        "views": [
+          {
+            "id": "usage",
+            "title": "Usage",
+            "type": "usageSummary",
+            "entry": "views/usage.html"
+          }
+        ]
+      }
+    }
+  }
+}

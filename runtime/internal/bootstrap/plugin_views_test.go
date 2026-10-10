@@ -244,3 +244,75 @@ func TestScheduleViewUsesCanonicalPagesAndUninstallPreservesSchedules(t *testing
 		t.Fatal("uninstall changed Runtime schedules")
 	}
 }
+
+func TestUsageViewUsesRecordedSummaryAndUninstallPreservesUsage(t *testing.T) {
+	cfg := poMCPConfig(t)
+	model := delegateRestartModel{chat.ModelFunc(func(context.Context, *chat.Request) (*chat.Response, error) {
+		message := chat.NewAssistantMessage(chat.NewTextPart("Recorded zero usage"))
+		return chat.NewResponse(&chat.Output{Message: &message, FinishReason: chat.FinishReasonStop}, &chat.ResponseMetadata{Model: "claude-test", Usage: &chat.Usage{}})
+	})}
+	client, err := chatclient.New(model, chatclient.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.ChatResolver = testChatResolver(client)
+	r := poMCPOpen(t, cfg)
+	source, err := filepath.Abs("../../../plugins/usage")
+	if err != nil {
+		t.Fatal(err)
+	}
+	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-usage").(*protocol.PluginInstallation)
+	if len(installed.Selected.Diagnostics) != 0 || len(installed.Selected.Views) != 1 || installed.Selected.Views[0].Type != protocol.PluginViewUsageSummary {
+		t.Fatalf("usage admission: %+v", installed.Selected)
+	}
+	view := protocol.ReadPluginViewRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ViewID: "usage"}
+	read := protocol.ReadPluginUsageRequest{ReadPluginViewRequest: view}
+	refused := func(input any, method delivery.Name, want error) {
+		t.Helper()
+		result := r.endpoint.Invoke(t.Context(), method, input, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+		if !errors.Is(result.Failure, want) {
+			t.Fatalf("%s: %v, want %v", method, result.Failure, want)
+		}
+	}
+	refused(read, delivery.PluginsReadUsage, protocol.ErrPluginUnapproved)
+	r.must(delivery.PluginsApprove, view.PluginReleaseRequest, "approve-usage")
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable-usage")
+	html := r.must(delivery.PluginsReadView, view, "").(*protocol.PluginViewResource)
+	authored, err := os.ReadFile(filepath.Join(source, "views", "usage.html"))
+	if err != nil || html.HTML != string(authored) {
+		t.Fatalf("usage resource differs from admitted bytes: %v", err)
+	}
+	if empty := r.must(delivery.PluginsReadUsage, read, "").(*protocol.UsageSummary); empty.Runs != 0 {
+		t.Fatalf("empty usage invented runs: %+v", empty)
+	}
+	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Title: "Reported zero"}, "usage-session").(*protocol.Session)
+	_, events, err := r.api.StartRun(t.Context(), protocol.StartRunRequest{SessionID: session.ID, Input: []protocol.ContentBlock{{Type: protocol.ContentBlockText, Text: "Record zero usage."}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitForRunEvents(t, collectRunEvents(events), "usage source record")
+	var recorded *protocol.UsageSummary
+	for _, days := range []*int{nil, new(7), new(30)} {
+		read.UsageSummaryRequest.SinceDays = days
+		recorded = r.must(delivery.PluginsReadUsage, read, "").(*protocol.UsageSummary)
+		canonical := r.must(delivery.UsageSummary, read.UsageSummaryRequest, "").(*protocol.UsageSummary)
+		if !reflect.DeepEqual(recorded, canonical) || recorded.Runs != 1 || recorded.Sessions != 1 || recorded.Total.InputTokens != 0 || recorded.Total.CostUSD != nil {
+			t.Fatalf("usage view differs from recorded zero/unpriced usage: %+v / %+v", recorded, canonical)
+		}
+	}
+	invalid := read
+	invalid.SinceDays = new(0)
+	refused(invalid, delivery.PluginsReadUsage, protocol.ErrInvalidParams)
+	refused(protocol.ReadPluginSchedulesRequest{ReadPluginViewRequest: view}, delivery.PluginsReadSchedules, protocol.ErrPluginNotFound)
+	r.close()
+	r = poMCPOpen(t, cfg)
+	if restarted := r.must(delivery.PluginsReadUsage, read, "").(*protocol.UsageSummary); !reflect.DeepEqual(restarted, recorded) {
+		t.Fatal("restart changed the recorded report")
+	}
+	r.must(delivery.PluginsRevoke, protocol.PluginRequest{InstallationID: installed.ID}, "revoke-usage")
+	refused(read, delivery.PluginsReadUsage, protocol.ErrPluginUnapproved)
+	r.must(delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}, "uninstall-usage")
+	if canonical := r.must(delivery.UsageSummary, read.UsageSummaryRequest, "").(*protocol.UsageSummary); !reflect.DeepEqual(canonical, recorded) {
+		t.Fatal("uninstall changed accounting records")
+	}
+}

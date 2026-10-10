@@ -56,7 +56,7 @@
             connected ||
             event.source !== guest.contentWindow ||
             event.origin !== "null" ||
-            event.data !== "flame.view.ready.v1"
+            event.data !== "flame.view.ready.v2"
           )
             return;
           connected = true;
@@ -66,7 +66,7 @@
           port.onmessage = (event) => publish({ type: "request", request: event.data });
           port.start();
           guest.contentWindow.postMessage(
-            { type: "flame.view.connect.v1", initial: value.initial, scheme: value.scheme },
+            { type: "flame.view.connect.v2", initial: value.initial, scheme: value.scheme },
             "*",
             [channel.port2],
           );

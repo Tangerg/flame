@@ -453,13 +453,16 @@ it.each(["initial snapshot", "event refresh", "event stream"] as const)(
   },
 );
 
-it("presents and retains only the themes Runtime admits", async () => {
+it("presents and retains only the contributions Runtime admits", async () => {
   const admitted = installation("d3cbafab-ef30-4e20-9583-42f5316dc865", "admitted");
   const withheld: PluginInstallation = {
     ...installation("0c31c796-224c-40fa-a721-6696971bb697", "withheld"),
     presentation: "withheld",
   };
-  admitted.selected.views = [{ id: "trajectory", title: "Trajectory", type: "sessionTrajectory" }];
+  admitted.selected.views = [
+    { id: "trajectory", title: "Trajectory", type: "sessionTrajectory" },
+    { id: "usage", title: "Usage", type: "usageSummary" },
+  ];
   withheld.selected.views = admitted.selected.views;
   await loadPluginsForTest(
     runtimePlugin(),
@@ -483,6 +486,7 @@ it("presents and retains only the themes Runtime admits", async () => {
       id: "package:d3cbafab-ef30-4e20-9583-42f5316dc865:trajectory",
       title: "admitted · Trajectory",
     },
+    { id: "package:d3cbafab-ef30-4e20-9583-42f5316dc865:usage", title: "admitted · Usage" },
   ]);
   expect(retainThemeSelection).toHaveBeenLastCalledWith(
     ["package:d3cbafab-ef30-4e20-9583-42f5316dc865:theme"],

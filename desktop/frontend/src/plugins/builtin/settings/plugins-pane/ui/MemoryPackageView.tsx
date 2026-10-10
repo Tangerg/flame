@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { AgentMemoryItem } from "@flame/runtime-contract/wire";
+import type { Page, AgentMemoryItem } from "@flame/runtime-contract/wire";
 import type { ContributionLifetime } from "@/plugins/sdk/definePlugin";
 import type { PluginCarrier } from "@/foundation/pluginCarrier";
 import { useActiveSessionWorkspace } from "@/plugins/builtin/agent/public/session";
@@ -18,7 +18,7 @@ const styles = stylex.create({
   page: { flex: 1, minHeight: 0 },
 });
 type Props = {
-  reads: (target: MemoryViewTarget) => PluginViewReads<AgentMemoryItem>;
+  reads: (target: MemoryViewTarget) => PluginViewReads<Page<AgentMemoryItem>>;
   title: string;
   lifetime: ContributionLifetime;
   carrier: PluginCarrier;

@@ -285,6 +285,7 @@ func runtimeAPIConsumptionByMethod() map[string]runtimeAPIConsumption {
 	return map[string]runtimeAPIConsumption{
 		"ListModelInvocations":  {Area: "model-call diagnostics", Mode: desktopDiagnostics, Entry: "Desktop exposes paged attempt history; CLI exposes Run aggregate metrics"},
 		"ReadPluginView":        {Area: "plugin page resource", Mode: desktopDiagnostics, Entry: "Desktop loads approved isolated pages; CLI does not render HTML"},
+		"ReadPluginUsage":       {Area: "plugin usage report", Mode: desktopDiagnostics, Entry: "Desktop binds read-only usage reports to an admitted release; CLI reads canonical usage directly"},
 		"ReadPluginSchedules":   {Area: "plugin page schedules", Mode: desktopDiagnostics, Entry: "Desktop binds read-only schedule pages to an admitted release; CLI reads canonical schedules directly"},
 		"ReadPluginMemory":      {Area: "plugin page memory", Mode: desktopDiagnostics, Entry: "Desktop binds read-only page queries to the selected memory target; CLI reads canonical memory directly"},
 		"ReadPluginTrajectory":  {Area: "plugin page trajectory", Mode: desktopDiagnostics, Entry: "Desktop binds read-only page queries to the selected Session; CLI reads canonical trajectory directly"},

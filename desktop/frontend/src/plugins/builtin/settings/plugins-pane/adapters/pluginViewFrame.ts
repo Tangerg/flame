@@ -118,7 +118,7 @@ export function mountPluginViewFrame<T>({
         let reply;
         try {
           const result = await reads.read(message.request.cursor, owned);
-          reply = { type: "page", page: result, cursor: message.request.cursor };
+          reply = { type: "data", data: result, cursor: message.request.cursor };
         } catch {
           reply = { type: "error", reason: "The plugin page read failed. Refresh to try again." };
         }

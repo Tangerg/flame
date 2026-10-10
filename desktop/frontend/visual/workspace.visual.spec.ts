@@ -151,6 +151,12 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     ).toContainText("unknown");
     return;
   }
+  if (state === "dock-usage") {
+    await expect(pluginViewFrame(page, "usage").locator("#status")).toHaveText(
+      "Recorded usage loaded.",
+    );
+    return;
+  }
   if (state === "dock-schedules") {
     await expect(
       pluginViewFrame(page, "schedules").getByText("1 enabled · 1 disabled on this page"),
@@ -769,6 +775,25 @@ for (const pane of VISUAL_SETTINGS_PANES) {
     await expect(page).toHaveScreenshot(`workspace-light-settings-${pane}.png`);
   });
 }
+
+test("the portable Usage page filters recorded buckets without changing totals", async ({
+  page,
+}) => {
+  await openWorkspace(page, { state: "dock-usage" });
+  await waitForWorkspaceState(page, "dock-usage");
+  const view = pluginViewFrame(page, "usage");
+  await expect(view.locator("tbody tr")).toHaveCount(2);
+  const totals = await view.locator("#totals").textContent();
+  await view.getByRole("searchbox", { name: "Filter" }).fill("anthropic");
+  await expect(view.locator("tbody tr")).toHaveCount(1);
+  await expect(view.locator("#totals")).toHaveText(totals!);
+  await view.getByRole("searchbox", { name: "Filter" }).fill("");
+  await view.getByRole("combobox", { name: "Group by" }).selectOption("byModel");
+  await expect(view.locator("tbody")).toContainText("openai/gpt-5.6-sol");
+  await page.getByRole("tab", { name: "7d", exact: true }).click();
+  await waitForWorkspaceState(page, "dock-usage");
+  await expect(view.locator("#totals")).toHaveText(totals!);
+});
 
 test("a package template fills a draft without creating a schedule", async ({ page }) => {
   await openWorkspace(page, { state: "dock-schedules" });

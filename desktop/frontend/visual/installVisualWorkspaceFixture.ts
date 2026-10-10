@@ -1,3 +1,5 @@
+import usageHTML from "../../../plugins/usage/views/usage.html?raw";
+import { UsagePackageView } from "@/plugins/builtin/settings/plugins-pane/ui/UsagePackageView";
 import scheduleHTML from "../../../plugins/schedules/views/schedules.html?raw";
 import schedulePackage from "../../../plugins/schedules/plugin.json";
 import { SchedulePackageView } from "@/plugins/builtin/settings/plugins-pane/ui/SchedulePackageView";
@@ -6,7 +8,7 @@ import { MemoryPackageView } from "@/plugins/builtin/settings/plugins-pane/ui/Me
 import trajectoryHTML from "../../../plugins/trajectory/views/trajectory.html?raw";
 import { TrajectoryPackageView } from "@/plugins/builtin/settings/plugins-pane/ui/TrajectoryPackageView";
 import { createElement } from "react";
-import type { TrajectoryEntry } from "@flame/runtime-contract/wire";
+import type { TrajectoryEntry, UsageSummary } from "@flame/runtime-contract/wire";
 import { createBrowserHost } from "@/platform/browserHost";
 import { installLocalWorkspaceActions } from "@/plugins/builtin/workspace/adapters/localWorkspaceActions";
 import { HOOKS_KEY } from "@/plugins/builtin/settings/hooks/public/queries";
@@ -26,8 +28,6 @@ import { createHooksPlugin } from "@/plugins/builtin/settings/hooks";
 import { createMCPServersPlugin } from "@/plugins/builtin/settings/mcp-servers";
 import personalizationSettings from "@/plugins/builtin/settings/personalization";
 import { createPluginsPane } from "@/plugins/builtin/settings/plugins-pane";
-import { createUsagePlugin } from "@/plugins/builtin/settings/usage";
-import { configureUsageGateway } from "@/plugins/builtin/settings/usage/application/ports/usageGateway";
 import {
   EMBEDDING_ROLE_KEY,
   PROVIDERS_KEY,
@@ -382,6 +382,24 @@ function workspaceDataPlugin(
             carrier: createBrowserHost().pluginCarrier,
           }),
       });
+      const usageLifetime = ctx.lifetime("visual-usage");
+      const usageReads = () => ({
+        load: async () => ({ html: usageHTML, initial: VISUAL_USAGE }),
+        read: async () => VISUAL_USAGE,
+      });
+      usageLifetime.contribute(WORKSPACE_VIEW, {
+        id: "package:visual:usage",
+        title: "Usage",
+        icon: "chart",
+        dock: "workspace",
+        component: () =>
+          createElement(UsagePackageView, {
+            reads: usageReads,
+            title: "Usage",
+            lifetime: usageLifetime,
+            carrier: createBrowserHost().pluginCarrier,
+          }),
+      });
       const scheduleLifetime = ctx.lifetime("visual-schedules");
       const scheduleReads = () => ({
         load: async () => ({ html: scheduleHTML, initial: { data: VISUAL_SCHEDULES } }),
@@ -596,12 +614,39 @@ async function loadVisualPlugins(plugins: readonly AnyPlugin[]): Promise<void> {
   await loadPluginsForTest(...plugins);
 }
 
+const VISUAL_USAGE: UsageSummary = {
+  total: { inputTokens: 128_400, outputTokens: 41_900, costUsd: 4.12 },
+  byProvider: [
+    { key: "openai", inputTokens: 96_300, outputTokens: 31_200, costUsd: 3.04, runs: 18 },
+    { key: "anthropic", inputTokens: 32_100, outputTokens: 10_700, costUsd: 1.08, runs: 6 },
+  ],
+  byModel: [
+    {
+      key: "openai/gpt-5.6-sol",
+      inputTokens: 96_300,
+      outputTokens: 31_200,
+      costUsd: 3.04,
+      runs: 18,
+    },
+    {
+      key: "anthropic/claude-opus-5",
+      inputTokens: 32_100,
+      outputTokens: 10_700,
+      costUsd: 1.08,
+      runs: 6,
+    },
+  ],
+  sessions: 7,
+  runs: 24,
+};
+
 const OPENED_BY_ITS_OWN_STATE = new Set([
   "subagents",
   "diagnostics",
   "skills",
   "package:visual:memory",
   "package:visual:schedules",
+  "package:visual:usage",
 ]);
 
 const FULL_VIEW_ID = "file";
@@ -707,7 +752,6 @@ export async function installVisualWorkspaceFixture(
     createMCPServersPlugin(runtimeClient),
     personalizationSettings,
     createPluginsPane(runtimeClient, createBrowserHost().pluginCarrier),
-    createUsagePlugin(runtimeClient),
     visualNotifier,
     visualShortcuts,
     workspaceDataPlugin(
@@ -719,21 +763,6 @@ export async function installVisualWorkspaceFixture(
 
   const root = document.documentElement;
   root.dataset.visualDockWidthCommits = "0";
-  configureUsageGateway({
-    loadSummary: async () => ({
-      total: { inputTokens: 128_400, outputTokens: 41_900, costUsd: 4.12 },
-      byProvider: [
-        { key: "openai", inputTokens: 96_300, outputTokens: 31_200, costUsd: 3.04, runs: 18 },
-        { key: "anthropic", inputTokens: 32_100, outputTokens: 10_700, costUsd: 1.08, runs: 6 },
-      ],
-      byModel: [
-        { key: "gpt-5.6-sol", inputTokens: 96_300, outputTokens: 31_200, costUsd: 3.04, runs: 18 },
-        { key: "claude-opus-5", inputTokens: 32_100, outputTokens: 10_700, costUsd: 1.08, runs: 6 },
-      ],
-      sessions: 7,
-      runs: 24,
-    }),
-  });
 
   useShellLayoutStore.subscribe((next, previous) => {
     if (next.dockWidthRatio === previous.dockWidthRatio) return;

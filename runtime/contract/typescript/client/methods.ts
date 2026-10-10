@@ -5,6 +5,7 @@ import type {
   ReadPluginTrajectoryRequest,
   ReadPluginMemoryRequest,
   ReadPluginSchedulesRequest,
+  ReadPluginUsageRequest,
   RenamePluginSessionRequest,
   InstallPluginRequest,
   StagePluginRequest,
@@ -294,6 +295,7 @@ export interface Methods {
       params: ReadPluginTrajectoryRequest,
       signal?: AbortSignal,
     ) => Promise<Page<TrajectoryEntry>>;
+    readUsage: (params: ReadPluginUsageRequest, signal?: AbortSignal) => Promise<UsageSummary>;
     readSchedules: (
       params: ReadPluginSchedulesRequest,
       signal?: AbortSignal,
@@ -567,6 +569,7 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       renameSession: (params) => call("plugins.renameSession", params),
       readView: (params, signal) => call("plugins.readView", params, { signal }),
       readTrajectory: (params, signal) => call("plugins.readTrajectory", params, { signal }),
+      readUsage: (params, signal) => call("plugins.readUsage", params, { signal }),
       readSchedules: (params, signal) => call("plugins.readSchedules", params, { signal }),
       readMemory: (params, signal) => call("plugins.readMemory", params, { signal }),
       list: (signal) => call("plugins.list", {}, { signal }),

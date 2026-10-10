@@ -100,6 +100,7 @@ import type {
   ReadPluginMemoryRequest,
   ReadPluginSchedulesRequest,
   ReadPluginTrajectoryRequest,
+  ReadPluginUsageRequest,
   ReadPluginViewRequest,
   RenamePluginSessionRequest,
   ResolveWorkspaceRequest,
@@ -229,6 +230,7 @@ const METHOD_NAMES = [
   "mcp.servers.reconnect",
   "mcp.authorizationAttempts.create",
   "mcp.authorizationAttempts.get",
+  "plugins.readUsage",
   "plugins.readSchedules",
   "plugins.readMemory",
   "plugins.renameSession",
@@ -347,6 +349,7 @@ const VALUE_METHOD_NAMES = [
   "mcp.tools.list",
   "mcp.authorizationAttempts.create",
   "mcp.authorizationAttempts.get",
+  "plugins.readUsage",
   "plugins.readSchedules",
   "plugins.readMemory",
   "plugins.renameSession",
@@ -778,6 +781,13 @@ export const WIRE_METHOD_POLICY = {
     pagination: "none",
   },
   "mcp.authorizationAttempts.get": {
+    operation: "query",
+    response: "unary",
+    idempotency: "none",
+    replayCursor: "none",
+    pagination: "none",
+  },
+  "plugins.readUsage": {
     operation: "query",
     response: "unary",
     idempotency: "none",
@@ -1290,6 +1300,9 @@ export const WIRE_CAPABILITY_POLICY: {
   "mcp.authorizationAttempts.get": [
     { requires: ["mcp"] },
   ],
+  "plugins.readUsage": [
+    { requires: ["plugins"] },
+  ],
   "plugins.readSchedules": [
     { requires: ["plugins", "schedules"] },
   ],
@@ -1437,6 +1450,7 @@ export interface WireShapes {
   "mcp.servers.reconnect": { params: MCPServerRequest };
   "mcp.authorizationAttempts.create": { params: CreateMCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
   "mcp.authorizationAttempts.get": { params: MCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
+  "plugins.readUsage": { params: ReadPluginUsageRequest; result: UsageSummary };
   "plugins.readSchedules": { params: ReadPluginSchedulesRequest; result: PageOfSchedule };
   "plugins.readMemory": { params: ReadPluginMemoryRequest; result: PageOfAgentMemoryItem };
   "plugins.renameSession": { params: RenamePluginSessionRequest; result: Session };

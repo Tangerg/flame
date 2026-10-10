@@ -10,7 +10,6 @@ import {
 } from "@/plugins/builtin/agent/public/approvalPolicy";
 import { HOOKS_KEY } from "@/plugins/builtin/settings/hooks/public/queries";
 import { SCHEDULES_KEY } from "@/plugins/builtin/settings/schedules/public/queries";
-import { USAGE_SUMMARY_KEY } from "@/plugins/builtin/settings/usage/public/queries";
 import {
   EMBEDDING_ROLE_KEY,
   MODELS_KEY,
@@ -60,7 +59,6 @@ const QUERY_KEYS: Record<
   schedules: SCHEDULES_KEY,
   sessions: AGENT_SESSIONS_KEY,
   sessionUsage: AGENT_SESSION_USAGE_KEY,
-  usageSummary: USAGE_SUMMARY_KEY,
   utilityRole: UTILITY_ROLE_KEY,
   embeddingRole: EMBEDDING_ROLE_KEY,
   skills: WORKSPACE_SKILLS_KEY,

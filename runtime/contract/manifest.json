@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-10.4",
+  "protocolVersion": "2026-10-10.5",
   "features": [
     "reasoning",
     "multimodal",
@@ -784,6 +784,28 @@
       ],
       "features": [
         "mcp"
+      ]
+    },
+    {
+      "name": "plugins.readUsage",
+      "kind": "unary",
+      "operation": "query",
+      "idempotency": "none",
+      "replayCursor": "none",
+      "pagination": "none",
+      "errors": [
+        "plugin_unavailable",
+        "plugin_not_found",
+        "plugin_in_use",
+        "plugin_unapproved",
+        "plugin_stale",
+        "capability_not_negotiated"
+      ],
+      "features": [
+        "plugins"
+      ],
+      "materializes": [
+        "usage.summary"
       ]
     },
     {
@@ -1584,6 +1606,7 @@
           "plugins.readMemory",
           "plugins.readSchedules",
           "plugins.readTrajectory",
+          "plugins.readUsage",
           "plugins.readView",
           "plugins.renameSession",
           "plugins.revoke",
@@ -1775,6 +1798,7 @@
           "plugins.readMemory",
           "plugins.readSchedules",
           "plugins.readTrajectory",
+          "plugins.readUsage",
           "plugins.readView",
           "plugins.renameSession",
           "plugins.revoke",
@@ -1796,6 +1820,7 @@
           "plugins.readMemory",
           "plugins.readSchedules",
           "plugins.readTrajectory",
+          "plugins.readUsage",
           "plugins.readView",
           "plugins.renameSession",
           "plugins.revoke",
@@ -1817,6 +1842,7 @@
           "plugins.readMemory",
           "plugins.readSchedules",
           "plugins.readTrajectory",
+          "plugins.readUsage",
           "plugins.readView",
           "plugins.renameSession",
           "plugins.revoke",
@@ -1838,6 +1864,7 @@
           "plugins.readMemory",
           "plugins.readSchedules",
           "plugins.readTrajectory",
+          "plugins.readUsage",
           "plugins.readView",
           "plugins.renameSession",
           "plugins.revoke",
@@ -1859,6 +1886,7 @@
           "plugins.readMemory",
           "plugins.readSchedules",
           "plugins.readTrajectory",
+          "plugins.readUsage",
           "plugins.readView",
           "plugins.renameSession",
           "plugins.revoke",
@@ -2533,6 +2561,16 @@
         {
           "requires": [
             "mcp"
+          ]
+        }
+      ]
+    },
+    {
+      "method": "plugins.readUsage",
+      "rules": [
+        {
+          "requires": [
+            "plugins"
           ]
         }
       ]

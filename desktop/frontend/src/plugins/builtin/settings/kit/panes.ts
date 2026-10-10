@@ -5,6 +5,5 @@ export const APPROVALS_PANE = "approvals";
 export const MCP_SERVERS_PANE = "mcp-servers";
 export const HOOKS_PANE = "hooks";
 export const PLUGINS_PANE = "plugins";
-export const USAGE_PANE = "usage";
 export const CONNECTION_PANE = "connection";
 export const ICONS_PANE = "icons";

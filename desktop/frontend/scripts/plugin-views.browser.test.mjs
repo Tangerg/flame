@@ -4,7 +4,7 @@ import { test } from "node:test";
 import { createSocket } from "node:dgram";
 import { once } from "node:events";
 import { createServer } from "vite";
-import { chromium, webkit } from "@playwright/test";
+import { chromium, webkit, expect } from "@playwright/test";
 const html = await readFile(
   new URL("../../../plugins/trajectory/views/trajectory.html", import.meta.url),
   "utf8",
@@ -17,13 +17,17 @@ const scheduleHTML = await readFile(
   new URL("../../../plugins/schedules/views/schedules.html", import.meta.url),
   "utf8",
 );
+const usageHTML = await readFile(
+  new URL("../../../plugins/usage/views/usage.html", import.meta.url),
+  "utf8",
+);
 const policy = (
   await readFile(new URL("../public/plugin-carrier-policy.txt", import.meta.url), "utf8")
 ).trim();
 const host = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const csp = host.match(/<meta http-equiv="Content-Security-Policy"[^>]+>/)[0];
 for (const [name, engine] of Object.entries({ chromium, webkit })) {
-  test(`${name}: production plugin carrier and scoped trajectory, memory and schedule reads`, async (t) => {
+  test(`${name}: production plugin carrier and scoped trajectory, memory, schedule and usage reads`, async (t) => {
     let enforce = true;
     let escapedRequests = 0;
     let packets = 0;
@@ -329,6 +333,63 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
     await page.evaluate(() => window.dispose());
     await page.reload();
     await page.waitForFunction(() => window.mount);
+    await page.setViewportSize({ width: 640, height: 720 });
+    const usage = {
+      total: {},
+      sessions: 1,
+      runs: 1,
+      byProvider: [{ key: "provider <script> injected", runs: 1 }],
+      byModel: [{ key: "provider/model", runs: 1, costUsd: 0 }],
+      byDay: [{ key: "2026-10-10", runs: 1 }],
+    };
+    await page.evaluate(({ html, initial }) => void window.mount(html, initial, "dark"), {
+      html: usageHTML,
+      initial: usage,
+    });
+    await frame.getByText("Recorded usage loaded.").waitFor();
+    const scrollable = frame.getByRole("region", { name: "Scrollable usage breakdown" });
+    await scrollable.focus();
+    await scrollable.press("ArrowRight");
+    await expect
+      .poll(() => scrollable.evaluate((element) => element.scrollLeft))
+      .toBeGreaterThan(0);
+
+    assert.equal(await page.evaluate(() => window.reads.length), 0);
+    assert.equal(
+      await frame.getByText("No finished Runs with reported usage in this period.").isVisible(),
+      false,
+    );
+    assert.equal(await frame.locator("#totals dd").nth(1).textContent(), "0");
+    assert.equal(await frame.locator("#totals dd").first().textContent(), "Not reported");
+    assert.equal(
+      await frame.locator("tbody").textContent(),
+      "provider <script> injectedNot reported100000",
+    );
+    assert.equal(await frame.locator("script").count(), 1);
+    await frame.getByRole("combobox", { name: "Group by" }).selectOption("byModel");
+    assert.equal(await frame.locator("tbody tr").count(), 1);
+    assert.equal(await frame.locator("tbody td").first().textContent(), "0.00");
+    await frame.getByRole("searchbox", { name: "Filter" }).fill("absent");
+    await frame.getByText("No matching rows.").waitFor();
+    await frame.getByRole("searchbox", { name: "Filter" }).fill("");
+    await page.evaluate(() => (window.readFailure = true));
+    await frame.getByRole("button", { name: "Refresh" }).click();
+    await frame.getByRole("alert").waitFor();
+    assert.equal(await frame.locator("tbody tr").count(), 1);
+    assert.equal(await frame.locator("#totals dd").first().textContent(), "Not reported");
+    assert.equal(await page.evaluate(() => window.reads[0].cursor), undefined);
+    await page.evaluate(() => (window.readFailure = false));
+    await frame.getByRole("button", { name: "Refresh" }).click();
+    await frame.getByText("Recorded usage loaded.").waitFor();
+    await page.evaluate(() => window.dispose());
+    await page.reload();
+    await page.waitForFunction(() => window.mount);
+    await page.evaluate(({ html }) => void window.mount(html, { total: {} }), { html: usageHTML });
+    await frame.getByText("No finished Runs with reported usage in this period.").waitFor();
+    assert.equal(await frame.locator("#breakdown").isVisible(), false);
+    await page.evaluate(() => window.dispose());
+    await page.reload();
+    await page.waitForFunction(() => window.mount);
     const schedules = {
       data: [
         {
@@ -385,7 +446,7 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
     await page.reload();
     await page.waitForFunction(() => window.mount);
     const malicious = `<!doctype html><script>addEventListener('message',async e=>{
-     if(e.source!==parent||e.data?.type!=='flame.view.connect.v1')return;
+     if(e.source!==parent||e.data?.type!=='flame.view.connect.v2')return;
      try{parent.parent.document.documentElement.dataset.guestEscape='true'}catch{}
      try{localStorage.setItem('guestEscape','true')}catch{}
      new Image().src='${origin}/__escape';
@@ -394,7 +455,7 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
      try{peer=new RTCPeerConnection({iceServers:[{urls:'stun:127.0.0.1:${peer.address().port}'}]});peer.createDataChannel('escape');await peer.setLocalDescription()}catch{}
      await new Promise(resolve=>setTimeout(resolve,600));peer?.close();
      e.ports[0].postMessage({type:'tools.invoke',sessionId:'other'});
-    });parent.postMessage('flame.view.ready.v1','*');</script>`;
+    });parent.postMessage('flame.view.ready.v2','*');</script>`;
     await page.evaluate((html) => {
       void window.mount(html, { data: [] });
     }, malicious);

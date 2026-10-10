@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import * as stylex from "@stylexjs/stylex";
-import type { Schedule, PluginScheduleTemplate } from "@flame/runtime-contract/wire";
+import type { Page, Schedule, PluginScheduleTemplate } from "@flame/runtime-contract/wire";
 import type { ContributionLifetime } from "@/plugins/sdk/definePlugin";
 import type { PluginCarrier } from "@/foundation/pluginCarrier";
 import { useRuntimeCapability } from "@/plugins/builtin/runtime/public/capabilities";
@@ -20,7 +20,7 @@ export function SchedulePackageView({
   templates,
   ...props
 }: {
-  reads: () => PluginViewReads<Schedule>;
+  reads: () => PluginViewReads<Page<Schedule>>;
   templates: PluginScheduleTemplate[];
   title: string;
   lifetime: ContributionLifetime;
