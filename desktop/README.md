@@ -221,14 +221,17 @@ The status, authorization attempt and connection test projections accept only th
 their state allows and reject anything else as a Runtime contract violation.
 External themes contribute through the existing Dougong Host and child lifetimes;
 connection replacement retires the predecessor before publishing new contributions.
-Optional Session trajectory and Memory pages use one qualified carrier lifecycle.
-Install the first-party packages from `plugins/trajectory` and `plugins/memory` through
-Settings → Plugins, approve their exact digests, then enable them. Memory captures
+Optional trajectory, Memory, Schedules and Usage pages use one qualified carrier lifecycle.
+Install the first-party packages from `plugins/trajectory`, `plugins/memory`,
+`plugins/schedules` and `plugins/usage` through Settings → Plugins, approve their
+exact digests, then enable them. Memory captures
 project/user scope in trusted Host controls. Its guest renders canonical candidates and
 active items, with current-page filters and pagination; trusted Host forms retain add,
 review, edit, pin and delete. Runtime remains the sole memory owner. Removing the package
 withdraws presentation without deleting memory. Rebuild all clients for protocol
-2026-10-10.3 and stage trajectory 1.2.0 bytes for the common view handshake.
+2026-10-10.5. Trajectory, Memory and Schedules use package version 2.0.0; Usage uses
+1.0.0. Approve the current bytes for the `flame.view.ready.v2` /
+`flame.view.connect.v2` handshake.
 Packages may also declare `renameSession` actions. An admitted package row displays a
 trusted host form with the operation and captured Session ID/revision. The human submits
 the title explicitly; switching Sessions cannot retarget the draft. Runtime owns admission
@@ -385,7 +388,7 @@ unavailable. Slice C uses the qualified Chromium entry document and independent 
 WebKit view; it does not qualify the original Wails frame. Independent themes, Skills and
 MCP declarations retain their existing admission and lifecycle.
 
-### Optional first-party Session trajectory page
+### Optional first-party pages
 
 An admitted `sessionTrajectory` view registers a Session dock contribution through the
 existing Dougong Host. Runtime owns package admission and canonical trajectory data.
@@ -425,6 +428,10 @@ run-now and confirmed deletion; the guest receives canonical pages and cursor-on
 Opening a package template creates a draft, and only Runtime receipts change the schedule
 projection. Uninstalling the package leaves the Runtime worker and saved schedules intact.
 
+The optional Memory package renders canonical project or user memory. Trusted controls
+capture the Runtime workspace and scope; changing either retires the previous page.
+Authoring stays in the existing Runtime command path, and uninstall preserves memory.
+
 The browser loads the fixed `/plugin-carrier.html` entry in an opaque frame. Runtime and
 Vite read its enforcing header from `frontend/public/plugin-carrier-policy.txt`. Before
 receiving any plugin HTML or data, the entry requires an actual enforcing engine report.
@@ -445,6 +452,9 @@ cleanup before registering successor contributions. Native IDs identify physical
 late allocation, reply or closure cannot advance another instance. Pending reads receive
 cancellation and retired pages refuse publication. Read failures preserve already displayed
 evidence and remain explicit; local carrier failure never disables the installation.
+The connection generation reads installation admission directly and reconciles local
+contributions before publishing the snapshot into the Settings query cache. Workspace
+cache cancellation cannot withdraw package resources or cancel that observer.
 The shared view bridge alone advances each page's initialization and terminal status;
 React renders that projection. Qualification precedes resource loading, and connection
 is accepted only after boot publication starts. The contribution receives its cleanup
@@ -472,33 +482,40 @@ packets or resource requests, native sender rejection, viewport resize, focus re
 retirement and successor isolation. It requires exactly one terminal report. The separate
 carrier controls above remain qualification evidence for the engine boundary.
 
-For a prepared remote Runtime fixture, run the native protocol integration gate:
+Run all four pages in the production React workbench:
 
 ```sh
-FLAME_NATIVE_RUNTIME_FIXTURE=/absolute/private/fixture.json \
-  wails3 task darwin:check:plugin-view:remote
+wails3 task darwin:check:plugin-workbench
 ```
 
-The fixture file must be private (mode `0600`). It contains `endpoint`, `localToken`,
-`installationId`, `digest`, `viewId`, `sessionId`, `workspacePath`, and `htmlSHA256`.
-These identify an already enabled installation with a `sessionTrajectory` view and
-a `reviews` MCP server exposing `list_reviews` and `update_review`. `htmlSHA256` is
-the SHA-256 of its packaged HTML. The Session workspace must exist on the Runtime
-machine and be absent on macOS. The runner never discovers a default connection or
-installs a package; prepare the isolated Runtime through its public binding or CLI.
+The gate requires a macOS graphical session, the installed Go and Node toolchains,
+Docker, and a cached `golang:1.27.0` image with Git. It builds the real Linux Runtime and an
+offline Anthropic HTTP/SSE fixture, then runs them in an owned container on its own
+network with fresh tmpfs data and one ephemeral loopback port. Its provider endpoint
+is the fixture's loopback listener. Installation admission,
+memory, schedules and finished Runs enter the public Runtime Protocol. No external
+provider service is contacted; the fixture reports synthetic zero, unpriced usage.
 
-The gate bundles the production shared SDK, native carrier, trajectory bridge and
-read lifecycle into a fixture parent. It checks exact resource bytes, canonical
-workspace identity, the same installation's connected backend and discovered tools,
-two page handshakes, closed-client refusal, and predecessor cleanup preserving the
-successor. Every page and client is retired before its single terminal report.
-The temporary parent does not open product preferences or mutation journals, and
-credentials reach only its trusted connection binding. It does not verify the full
-React workbench.
+The signed App Sandbox bundle has a unique identity. Before product bootstrap, the
+gate verifies its entitlement, private Foundation home and Library, permitted fixture
+reads and denial of a canary outside that root. Only the fixture root receives a
+read-only filesystem exception. A temporary `FLAME_HOME` alone cannot isolate native
+preferences, WebKit storage or mutation journals.
 
-This gate passed with macOS 26.5/Wails beta.28 against an isolated Linux arm64 Runtime
-and Linux Go review backend. The packaged HTML came from the trajectory example;
-both capabilities were admitted in one test installation. No model provider was called.
+Go overlay injects a test-only service and WebKit frame inspector while retaining
+the production `main.go`, DesktopHost, embedded assets and React entrypoint. The
+private index initializes the existing endpoint and locale preferences before startup;
+it cannot connect to a default user Runtime. Inspection uses the workbench's bundled
+Wails SDK so its event dispatcher retains one owner. Test hooks are absent from shipping builds.
+The gate focuses its owned window and waits for the catalogue popup to retire before
+checking page visibility. It selects each admitted contribution through the workbench, inspects the real
+opaque guest, refreshes recorded data, replaces memory scope and usage period, and
+checks withdrawal, reapproval and physical page retirement. Uninstall must preserve
+canonical trajectory, memory, schedules and usage. The application exits and cleanup
+completes before the single terminal result. The runner removes its container, network,
+private data, canary and temporary files; macOS retains protected container metadata.
+
+This gate passes on macOS 26.5 with Wails v3 beta.28 at the shipping deployment floor.
 
 Manual acceptance of the full production React workbench also passed on this carrier
 at the shipping macOS 13.0 deployment floor. It retained the production entrypoint,

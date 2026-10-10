@@ -14,53 +14,32 @@ const STATIC_QUERY_OPTIONS = {
 };
 
 class DataProviderGeneration {
-  readonly keys: ReadonlySet<string>;
-  readonly #providers: ReadonlyMap<string, DataProviderSpec>;
   readonly #lifetime = new AbortController();
-  #retired = false;
 
-  constructor(
-    readonly owner: Host | undefined,
-    readonly entries: ReadonlyArray<Contribution<DataProviderSpec>>,
-  ) {
-    this.#providers = new Map(entries.map(({ key, item }) => [key, item]));
-    this.keys = new Set(this.#providers.keys());
-  }
+  constructor(readonly provider: DataProviderSpec) {}
 
-  replacedKeysBy(successor: DataProviderGeneration): ReadonlySet<string> {
-    const candidates = new Set([...this.keys, ...successor.keys]);
-    if (this.owner !== successor.owner) return candidates;
-    return new Set(
-      [...candidates].filter((key) => this.#providers.get(key) !== successor.#providers.get(key)),
-    );
-  }
-
-  async load<T, P>(key: string, params: P | undefined, querySignal: AbortSignal): Promise<T> {
-    this.#assertCurrent();
-    const provider = this.#providers.get(key);
-    if (!provider) throw new Error(`No data provider registered for key "${key}"`);
+  async load<T, P>(params: P | undefined, querySignal: AbortSignal): Promise<T> {
+    this.#lifetime.signal.throwIfAborted();
     const attempt = AbortSignal.any([querySignal, this.#lifetime.signal]);
-    const value = await (provider.fetcher as (params?: P, signal?: AbortSignal) => Promise<T>)(
+    const value = await (this.provider.fetcher as (params?: P, signal?: AbortSignal) => Promise<T>)(
       params,
       attempt,
     );
-    this.#assertCurrent();
+    this.#lifetime.signal.throwIfAborted();
     return value;
   }
 
   retire(): void {
-    if (this.#retired) return;
-    this.#retired = true;
     this.#lifetime.abort(new GenerationRetiredError("data_provider_generation"));
-  }
-
-  #assertCurrent(): void {
-    if (this.#retired) throw new GenerationRetiredError("data_provider_generation");
   }
 }
 
 class DataQueryOwner {
-  #generation = new DataProviderGeneration(publishedKernel(), contributionsTo(DATA_PROVIDER));
+  #owner: Host | undefined = publishedKernel();
+  #entries: ReadonlyArray<Contribution<DataProviderSpec>> = contributionsTo(DATA_PROVIDER);
+  #providers = new Map(
+    this.#entries.map(({ key, item }) => [key, new DataProviderGeneration(item)]),
+  );
   readonly #unsubscribe: () => void;
   #disposed = false;
 
@@ -69,32 +48,52 @@ class DataQueryOwner {
   }
 
   load<T, P>(key: string, params: P | undefined, signal: AbortSignal): Promise<T> {
-    return this.#generation.load<T, P>(key, params, signal);
+    const generation = this.#providers.get(key);
+    if (!generation)
+      return Promise.reject(new Error(`No data provider registered for key "${key}"`));
+    return generation.load<T, P>(params, signal);
   }
 
   dispose(): void {
     if (this.#disposed) return;
     this.#disposed = true;
     this.#unsubscribe();
-    this.#generation.retire();
+    for (const generation of this.#providers.values()) generation.retire();
   }
 
   #reconcileProviders(): void {
     if (this.#disposed) return;
+    const owner = publishedKernel();
     const entries = contributionsTo(DATA_PROVIDER);
-    if (entries === this.#generation.entries) return;
-    const predecessor = this.#generation;
-    const successor = new DataProviderGeneration(publishedKernel(), entries);
-    this.#generation = successor;
-    predecessor.retire();
-    this.#replaceCachedWriters(predecessor, successor);
+    if (owner === this.#owner && entries === this.#entries) return;
+    const predecessor = this.#providers;
+    const successor = new Map(
+      entries.map(({ key, item }) => {
+        const previous = predecessor.get(key);
+        return [
+          key,
+          owner === this.#owner && previous?.provider === item
+            ? previous
+            : new DataProviderGeneration(item),
+        ] as const;
+      }),
+    );
+    this.#owner = owner;
+    this.#entries = entries;
+    this.#providers = successor;
+    const affected = new Set<string>();
+    for (const key of new Set([...predecessor.keys(), ...successor.keys()])) {
+      if (predecessor.get(key) === successor.get(key)) continue;
+      affected.add(key);
+      predecessor.get(key)?.retire();
+    }
+    this.#replaceCachedWriters(affected, successor);
   }
 
   #replaceCachedWriters(
-    predecessor: DataProviderGeneration,
-    successor: DataProviderGeneration,
+    affected: ReadonlySet<string>,
+    successor: ReadonlyMap<string, DataProviderGeneration>,
   ): void {
-    const affected = predecessor.replacedKeysBy(successor);
     if (affected.size === 0) return;
     const affectedQuery = (query: Query) => {
       const key = query.queryKey[0];
@@ -104,22 +103,31 @@ class DataQueryOwner {
       queryClient.getQueryCache().findAll({ predicate: affectedQuery }),
     );
     if (predecessorQueries.size === 0) return;
-    const ownedQuery = (query: Query) => predecessorQueries.has(query);
-    void queryClient.cancelQueries({ predicate: ownedQuery }).then(() => {
-      if (this.#disposed || this.#generation !== successor) return;
-      queryClient.removeQueries({
-        predicate: (query) => {
+    void queryClient
+      .cancelQueries({ predicate: (query) => predecessorQueries.has(query) })
+      .then(() => {
+        if (this.#disposed) return;
+        const ownedQuery = (query: Query) => {
           const key = query.queryKey[0];
-          return ownedQuery(query) && typeof key === "string" && !successor.keys.has(key);
-        },
+          return (
+            predecessorQueries.has(query) &&
+            typeof key === "string" &&
+            this.#providers.get(key) === successor.get(key)
+          );
+        };
+        queryClient.removeQueries({
+          predicate: (query) => {
+            const key = query.queryKey[0];
+            return ownedQuery(query) && typeof key === "string" && !successor.has(key);
+          },
+        });
+        void queryClient.resetQueries({
+          predicate: (query) => {
+            const key = query.queryKey[0];
+            return ownedQuery(query) && typeof key === "string" && successor.has(key);
+          },
+        });
       });
-      void queryClient.resetQueries({
-        predicate: (query) => {
-          const key = query.queryKey[0];
-          return ownedQuery(query) && typeof key === "string" && successor.keys.has(key);
-        },
-      });
-    });
   }
 }
 

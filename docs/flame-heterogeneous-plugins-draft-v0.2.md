@@ -1429,7 +1429,7 @@ WKWebView. Unsupported carriers refuse admission before receiving plugin content
 Installation withdrawal, release selection, Session changes and connection replacement
 retire local authority; accepted reads do not retain installation admission during I/O.
 Resource, bridge, browser/native isolation and lifetime checks accompany this boundary.
-[Desktop's acceptance](../desktop/README.md#optional-session-trajectory-page) owns commands
+[Desktop's acceptance](../desktop/README.md#optional-first-party-pages) owns commands
 and tested engine/OS scope. This slice introduces no mutation path or second business owner.
 
 **Slice D: broaden proven surfaces.** Add necessary action forms, result renderers, IDE hosting, or language integrations only after their consumers are concrete. Preserve one definition and one policy path.

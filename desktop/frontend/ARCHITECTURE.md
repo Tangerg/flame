@@ -200,6 +200,9 @@ its failure, so a rejected page cleanup cannot strand sibling contributions or h
 original read or event failure. The Runtime generation owns the observer task, allowing
 it to join the contribution lifetime without waiting for itself. Retrying consumes only
 the current failure; a consumed or retired failure cannot start another observer.
+The generation reads Runtime admission directly before reconciling its resources and
+publishes that snapshot into the Settings query cache. Cancelling or refreshing that
+cache cannot cancel realization or create a contribution transition.
 
 Extension contribution handles preserve Dougong's `update` operation. The SDK
 translates the item into its existing envelope without withdrawing the
@@ -230,6 +233,11 @@ feature that understands the data:
 Each feature registers once and removes its contribution with its own plugin
 installation. Defaults has no business-data registry or cross-feature mapper.
 Components consume query hooks and read models rather than RPC envelopes.
+
+Each data provider owns its read generation. Adding another provider to the same Host
+preserves unchanged providers and their pending reads. Replacement or removal retires
+only the affected provider; Host replacement retires every predecessor provider. Cache
+handoff checks that exact provider identity, so unrelated contributions cannot strand it.
 
 A complete list uses the SDK's paging surface. A deliberately bounded preview
 names its limit. Awaiting one page and discarding its continuation is not a

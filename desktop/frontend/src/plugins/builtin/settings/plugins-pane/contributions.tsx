@@ -1,6 +1,5 @@
 import type { PluginCarrier } from "@/foundation/pluginCarrier";
 import { asyncDisposeSymbol, isCancellationReason } from "dougong";
-import { isCancelledError } from "@tanstack/react-query";
 import type { FlameClient } from "@flame/runtime-contract/client";
 import type { PluginInstallation } from "@flame/runtime-contract/wire";
 import type { ContributionLifetime } from "@/plugins/sdk/definePlugin";
@@ -185,13 +184,11 @@ export function registerPackageContributions(
     // The generation owns the task so it can join its contribution scope on failure.
     scope.spawn(async (signal) => {
       const refresh = async () => {
-        await queryClient.invalidateQueries({ queryKey: [PACKAGES_KEY], refetchType: "none" });
-        const rows = await queryClient.fetchQuery({
-          queryKey: [PACKAGES_KEY],
-          queryFn: ({ signal: querySignal }) => fetcher(undefined, querySignal),
-        });
+        // Cache cancellation cannot retire the generation's presentation resources.
+        const rows = await fetcher(undefined, signal);
         if (signal.aborted) return;
         await reconcile(rows);
+        if (!signal.aborted) queryClient.setQueryData([PACKAGES_KEY], rows);
       };
       try {
         const subscription = await client.runtimeEvents.subscribe(
@@ -215,9 +212,7 @@ export function registerPackageContributions(
           reasons.push(cleanupError);
         }
         if (signal.aborted) {
-          const unexpected = reasons.filter(
-            (cause) => !isCancellationReason(signal, cause) && !isCancelledError(cause),
-          );
+          const unexpected = reasons.filter((cause) => !isCancellationReason(signal, cause));
           if (unexpected.length === 1) throw unexpected[0];
           if (unexpected.length > 1)
             throw new AggregateError(unexpected, "Package realization retirement failed");

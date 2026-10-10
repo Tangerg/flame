@@ -121,6 +121,30 @@ function installation(id: string, name: string): PluginInstallation {
   };
 }
 
+it("keeps package realization owned by its generation when the query cache is cancelled", async () => {
+  const pending = Promise.withResolvers<{ data: PluginInstallation[] }>();
+  const row = installation("d3cbafab-ef30-4e20-9583-42f5316dc865", "package");
+  const list = vi.fn((_signal?: AbortSignal) => pending.promise);
+  onTestFinished(() => pending.resolve({ data: [row] }));
+  await loadPluginsForTest(
+    runtimePlugin(),
+    createPluginsPane(() => client(list), browserPluginCarrier),
+  );
+  await vi.waitFor(() => expect(list).toHaveBeenCalledOnce());
+
+  await queryClient.cancelQueries({ queryKey: [PACKAGES_KEY] });
+
+  expect(list.mock.calls[0]![0]!.aborted).toBe(false);
+  pending.resolve({ data: [row] });
+  await vi.waitFor(() =>
+    expect(contributionsTo(COLOR_THEME).map((entry) => entry.item.label)).toEqual([
+      "package · package",
+    ]),
+  );
+  expect(queryClient.getQueryData([PACKAGES_KEY])).toEqual([row]);
+  expect(usePackageRealization.getState().failure).toBeNull();
+});
+
 it("joins the retired Runtime before publishing the latest package generation", async () => {
   const late = Promise.withResolvers<{ data: PluginInstallation[] }>();
   const original = vi.fn(() => late.promise);
@@ -293,9 +317,6 @@ it("withdraws every contribution and reports failure when one cleanup rejects", 
 });
 
 it("preserves a snapshot failure when closing its subscription also fails", async () => {
-  const defaults = queryClient.getQueryDefaults([PACKAGES_KEY]);
-  queryClient.setQueryDefaults([PACKAGES_KEY], { retry: false });
-  onTestFinished(() => queryClient.setQueryDefaults([PACKAGES_KEY], defaults));
   const close = vi.fn(async () => {
     throw new Error("stream close failed");
   });
@@ -386,9 +407,6 @@ it.each(["resolve", "reject"] as const)(
 it.each(["initial snapshot", "event refresh", "event stream"] as const)(
   "releases the failed %s subscription before retry and retirement",
   async (stage) => {
-    const defaults = queryClient.getQueryDefaults([PACKAGES_KEY]);
-    queryClient.setQueryDefaults([PACKAGES_KEY], { retry: false });
-    onTestFinished(() => queryClient.setQueryDefaults([PACKAGES_KEY], defaults));
     const ready = Promise.withResolvers<void>();
     const active = new Set<AbortSignal>();
     const row = installation("d3cbafab-ef30-4e20-9583-42f5316dc865", "package");

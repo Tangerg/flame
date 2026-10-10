@@ -6,7 +6,7 @@ import {
 } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { createElement, type ReactNode, useState } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import type { Host } from "dougong";
 import { queryClient } from "@/lib/queryClient";
 import { DATA_PROVIDER } from "./kernelPoints";
@@ -242,7 +242,7 @@ describe("createParameterizedDataQuery", () => {
     }
   });
 
-  it("aborts an untouched key's in-flight fetch when its generation retires", async () => {
+  it("preserves an in-flight read when another provider is contributed to the same Host", async () => {
     const stable = Promise.withResolvers<string>();
     let stableSignal: AbortSignal | undefined;
     const host = await startKernel([
@@ -261,7 +261,7 @@ describe("createParameterizedDataQuery", () => {
     ]);
     ownedHosts.push(host);
     const useResource = createParameterizedDataQuery<{ id: string }, string>("resource");
-    renderHook(() => useResource({ id: "same" }), { wrapper: productQueryWrapper });
+    const hook = renderHook(() => useResource({ id: "same" }), { wrapper: productQueryWrapper });
     await waitFor(() => expect(stableSignal).toBeDefined());
     expect(stableSignal!.aborted).toBe(false);
 
@@ -277,8 +277,9 @@ describe("createParameterizedDataQuery", () => {
       }),
     ]);
 
-    expect(stableSignal!.aborted).toBe(true);
-    stable.resolve("stale value");
+    expect(stableSignal!.aborted).toBe(false);
+    stable.resolve("stable value");
+    await waitFor(() => expect(hook.result.current.data).toBe("stable value"));
   });
 
   it("replaces one provider overridden inside the active Host", async () => {
@@ -355,5 +356,58 @@ describe("createParameterizedDataQuery", () => {
 
     expect(resourceFetcher).toHaveBeenCalledOnce();
     expect(hook.result.current.data).toBe("stable value");
+  });
+
+  it("completes a provider handoff while an unrelated provider is added", async () => {
+    const retired = Promise.withResolvers<string>();
+    const host = await startKernel([
+      definePlugin({
+        name: "test.handoff-base-provider",
+        setup(ctx) {
+          ctx.contribute(DATA_PROVIDER, { key: "resource", fetcher: () => retired.promise });
+        },
+      }),
+    ]);
+    ownedHosts.push(host);
+    const useResource = createParameterizedDataQuery<{ id: string }, string>("resource");
+    const hook = renderHook(() => useResource({ id: "same" }), { wrapper: productQueryWrapper });
+    await waitFor(() => expect(hook.result.current.fetchStatus).toBe("fetching"));
+    const cancellation = Promise.withResolvers<void>();
+    const cancel = queryClient.cancelQueries.bind(queryClient);
+    const cancelling = vi
+      .spyOn(queryClient, "cancelQueries")
+      .mockImplementation(async (filters, options) => {
+        await cancel(filters, options);
+        await cancellation.promise;
+      });
+    onTestFinished(() => {
+      cancelling.mockRestore();
+      cancellation.resolve();
+      retired.resolve("retired value");
+    });
+    const successorFetcher = vi.fn().mockResolvedValue("successor value");
+    await addPluginsForTest(host, [
+      definePlugin({
+        name: "test.handoff-successor-provider",
+        setup(ctx) {
+          ctx.contribute(DATA_PROVIDER, { key: "resource", fetcher: successorFetcher });
+        },
+      }),
+    ]);
+    await addPluginsForTest(host, [
+      definePlugin({
+        name: "test.handoff-unrelated-provider",
+        setup(ctx) {
+          ctx.contribute(DATA_PROVIDER, { key: "unrelated", fetcher: async () => "other" });
+        },
+      }),
+    ]);
+    cancellation.resolve();
+
+    await waitFor(() => expect(hook.result.current.data).toBe("successor value"));
+    expect(successorFetcher).toHaveBeenCalledOnce();
+    retired.resolve("retired value");
+    await act(async () => Promise.resolve());
+    expect(hook.result.current.data).toBe("successor value");
   });
 });

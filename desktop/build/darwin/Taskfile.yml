@@ -26,10 +26,12 @@ tasks:
       - node frontend/scripts/check-plugin-view-native.mjs '-macos={{.MACOS_MIN_VERSION}} -extldflags=-mmacosx-version-min={{.MACOS_MIN_VERSION}}'
     env: *carrierEnvironment
 
-  check:plugin-view:remote:
-    summary: Verifies native plugin pages against an explicitly configured remote Runtime
+  check:plugin-workbench:
+    summary: Verifies all portable pages in the production workbench against an isolated Linux Runtime
+    deps:
+      - task: common:install:frontend:deps
     cmds:
-      - node frontend/scripts/check-plugin-runtime-native.mjs '-macos={{.MACOS_MIN_VERSION}} -extldflags=-mmacosx-version-min={{.MACOS_MIN_VERSION}}'
+      - node frontend/scripts/check-plugin-workbench-native.mjs '-macos={{.MACOS_MIN_VERSION}} -extldflags=-mmacosx-version-min={{.MACOS_MIN_VERSION}}'
     env: *carrierEnvironment
 
   build:
