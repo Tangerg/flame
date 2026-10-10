@@ -11,26 +11,26 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 )
 
-type reclaimAfterReadStore struct {
+type afterReadStore struct {
 	plugins.Store
 	after func()
 }
 
-func (s *reclaimAfterReadStore) fire() {
+func (s *afterReadStore) fire() {
 	if s.after != nil {
 		action := s.after
 		s.after = nil
 		action()
 	}
 }
-func (s *reclaimAfterReadStore) List(ctx context.Context) ([]plugin.Snapshot, error) {
+func (s *afterReadStore) List(ctx context.Context) ([]plugin.Snapshot, error) {
 	values, err := s.Store.List(ctx)
 	if err == nil {
 		s.fire()
 	}
 	return values, err
 }
-func (s *reclaimAfterReadStore) Get(ctx context.Context, id resourceid.InstallationID) (plugin.Snapshot, error) {
+func (s *afterReadStore) Get(ctx context.Context, id resourceid.InstallationID) (plugin.Snapshot, error) {
 	value, err := s.Store.Get(ctx, id)
 	if err == nil {
 		s.fire()
@@ -63,7 +63,7 @@ func TestReadsSurviveConcurrentReleaseReclaim(t *testing.T) {
 			if _, err := owner.Enable(t.Context(), id); err != nil {
 				t.Fatal(err)
 			}
-			wrapped := &reclaimAfterReadStore{Store: store}
+			wrapped := &afterReadStore{Store: store}
 			wrapped.after = func() {
 				if err := owner.Uninstall(t.Context(), id); err != nil {
 					t.Fatal(err)

@@ -1,6 +1,7 @@
 package pluginpackage
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -16,6 +17,7 @@ import (
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 
 func TestSkillResourceReadPreservesFormatOwnerFailure(t *testing.T) {
@@ -241,9 +243,21 @@ func TestSkillReadsVerifyConsumedBytesAndEnforceResourceLimit(t *testing.T) {
 	if err != nil || string(content) != document {
 		t.Fatalf("skill document = %q, %v", content, err)
 	}
-	if content, err := skills.ReadSkillResource(t.Context(), dependency, "review", "reference.txt"); !errors.Is(err, domainskills.ErrResourceTooLarge) || len(content) != 0 {
-		t.Fatalf("oversized resource = %d bytes, %v", len(content), err)
-	}
+	t.Run("oversized resource", func(t *testing.T) {
+		if content, err := skills.ReadSkillResource(t.Context(), dependency, "review", "reference.txt"); !errors.Is(err, domainskills.ErrResourceTooLarge) || !errors.Is(err, errResourceLimit) || !errors.Is(err, fileinput.ErrTooLarge) || len(content) != 0 {
+			t.Fatalf("oversized resource = %d bytes, %v", len(content), err)
+		}
+	})
+	t.Run("cancellation after installation read", func(t *testing.T) {
+		cause := errors.New("skill read withdrawn")
+		ctx, cancel := context.WithCancelCause(t.Context())
+		defer cancel(nil)
+		wrapped := &afterReadStore{Store: store, after: func() { cancel(cause) }}
+		content, err := NewSkills(releases, wrapped).ReadSkillResource(ctx, dependency, "review", "SKILL.md")
+		if len(content) != 0 || !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
+			t.Fatalf("canceled resource read = %d bytes, %v; want cancellation class and cause", len(content), err)
+		}
+	})
 	model, _, err := promptsource.OverlaySkillSource(t.Context(), "", "", skills, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -281,5 +295,11 @@ func TestSkillReadsVerifyConsumedBytesAndEnforceResourceLimit(t *testing.T) {
 	}
 	if content, err := skills.ReadSkillResource(t.Context(), dependency, "review", "SKILL.md"); !errors.Is(err, workspaceapp.ErrSkillUnavailable) || len(content) != 0 {
 		t.Fatalf("tampered document = %q, %v", content, err)
+	}
+	if err := os.WriteFile(filename, []byte(strings.Repeat("x", domainskills.MaxAuthoredSkillDocumentBytes+1)), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if content, err := skills.ReadSkillResource(t.Context(), dependency, "review", "SKILL.md"); !errors.Is(err, domainskills.ErrDocumentTooLarge) || !errors.Is(err, errResourceLimit) || !errors.Is(err, fileinput.ErrTooLarge) || len(content) != 0 {
+		t.Fatalf("oversized document = %d bytes, %v", len(content), err)
 	}
 }

@@ -86,14 +86,14 @@ func (s *Skills) ReadSkillResource(ctx context.Context, dependency plugin.Depend
 		limit = domainskills.MaxAuthoredSkillDocumentBytes
 	}
 	content, err := s.releases.readResource(ctx, installation, "skills/"+name+"/"+resource, limit)
-	if context.Cause(ctx) != nil {
-		return nil, context.Cause(ctx)
+	if cause := context.Cause(ctx); cause != nil {
+		return nil, errors.Join(cause, err)
 	}
 	if errors.Is(err, errResourceLimit) {
 		if resource == sdk.SkillFile {
-			return nil, domainskills.ErrDocumentTooLarge
+			return nil, errors.Join(domainskills.ErrDocumentTooLarge, err)
 		}
-		return nil, domainskills.ErrResourceTooLarge
+		return nil, errors.Join(domainskills.ErrResourceTooLarge, err)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", workspaceapp.ErrSkillUnavailable, err)
