@@ -4,6 +4,7 @@ import {
   createScheduleViewReads,
   createUsageViewReads,
   createSkillViewReads,
+  createDiffViewReads,
 } from "./pluginViewReads";
 it("captures release and workspace identity while exposing only cursor continuation", async () => {
   const binding = { installationId: "installation", digest: "digest", viewId: "memory" };
@@ -136,4 +137,41 @@ it("captures the usage period and passes through the canonical report without pa
   );
   await expect(reads.read("unbound", signal)).rejects.toThrow("no cursor");
   expect(plugins.readUsage).toHaveBeenCalledTimes(2);
+});
+
+it("captures Diff workspace, baseline and focus while refusing guest continuation", async () => {
+  const binding = { installationId: "installation", digest: "digest", viewId: "diff" };
+  const target = {
+    workspace: { path: "/captured" },
+    mode: "worktree" as const,
+    focusPath: "src/a.ts",
+  };
+  const diff = { baseline: { type: "emptyTree" as const }, truncated: true };
+  const plugins = {
+    readView: vi.fn(async () => ({ html: "<!doctype html>" })),
+    readDiff: vi.fn(async () => diff),
+  };
+  const reads = createDiffViewReads(plugins, binding, target);
+  binding.digest = "replacement";
+  target.workspace.path = "/replacement";
+  target.focusPath = "other.ts";
+  const signal = new AbortController().signal;
+  await expect(reads.load(signal)).resolves.toEqual({
+    html: "<!doctype html>",
+    initial: { diff, focusPath: "src/a.ts" },
+  });
+  await reads.read(undefined, signal);
+  expect(plugins.readDiff).toHaveBeenLastCalledWith(
+    {
+      installationId: "installation",
+      digest: "digest",
+      viewId: "diff",
+      workspace: { path: "/captured" },
+      mode: "worktree",
+      format: "rows",
+    },
+    signal,
+  );
+  await expect(reads.read("unbound", signal)).rejects.toThrow("no cursor");
+  expect(plugins.readDiff).toHaveBeenCalledTimes(2);
 });

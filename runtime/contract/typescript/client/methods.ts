@@ -6,6 +6,7 @@ import type {
   ReadPluginMemoryRequest,
   ReadPluginSchedulesRequest,
   ReadPluginUsageRequest,
+  ReadPluginDiffRequest,
   ReadPluginSkillsRequest,
   ReadPluginSkillRequest,
   RenamePluginSessionRequest,
@@ -297,6 +298,7 @@ export interface Methods {
       params: ReadPluginTrajectoryRequest,
       signal?: AbortSignal,
     ) => Promise<Page<TrajectoryEntry>>;
+    readDiff: (params: ReadPluginDiffRequest, signal?: AbortSignal) => Promise<Diff>;
     readUsage: (params: ReadPluginUsageRequest, signal?: AbortSignal) => Promise<UsageSummary>;
     readSkills: (params: ReadPluginSkillsRequest, signal?: AbortSignal) => Promise<SkillDiscovery>;
     readSkill: (params: ReadPluginSkillRequest, signal?: AbortSignal) => Promise<SkillDetail>;
@@ -581,6 +583,7 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       renameSession: (params) => call("plugins.renameSession", params),
       readView: (params, signal) => call("plugins.readView", params, { signal }),
       readTrajectory: (params, signal) => call("plugins.readTrajectory", params, { signal }),
+      readDiff: (params, signal) => call("plugins.readDiff", params, { signal }),
       readUsage: (params, signal) => call("plugins.readUsage", params, { signal }),
       readSkills: (params, signal) => call("plugins.readSkills", params, { signal }),
       readSkill: (params, signal) => call("plugins.readSkill", params, { signal }),

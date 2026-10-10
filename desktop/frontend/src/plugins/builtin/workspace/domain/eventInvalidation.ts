@@ -4,7 +4,6 @@ export type WorkspaceInvalidationTarget =
   | "agentSessionProjection"
   | "approvalMode"
   | "approvalRules"
-  | "diff"
   | "fileList"
   | "fileRead"
   | "filesChanged"
@@ -67,7 +66,6 @@ interface WorkspaceQueryScope {
 
 const FILE_TARGETS = new Set<WorkspaceInvalidationTarget>([
   "filesChanged",
-  "diff",
   "fileList",
   "fileRead",
   "hooks",
@@ -102,7 +100,7 @@ export function workspaceQueryAffected(
     );
     if (!matches) return false;
   }
-  if (target !== "fileRead" && target !== "fileList" && target !== "diff") return true;
+  if (target !== "fileRead" && target !== "fileList") return true;
   if (!event.paths?.length) return true;
   const queryPath = relativePath(params?.path ?? ".", event.workspace?.path);
   const paths = event.paths.map((path) => relativePath(path, event.workspace?.path));
@@ -145,7 +143,7 @@ function atOrBelow(path: string, parent: string): boolean {
 export function workspaceInvalidations(ev: WorkspaceEventLike): WorkspaceInvalidationTarget[] {
   switch (ev.type) {
     case "files.changed":
-      return ["filesChanged", "diff", "fileList", "fileRead", "hooks", "skills"];
+      return ["filesChanged", "fileList", "fileRead", "hooks", "skills"];
     case "skills.changed":
       return ["skills", "managedSkills", "skillProposals"];
     case "plugins.changed":

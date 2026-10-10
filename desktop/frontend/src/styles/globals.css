@@ -356,13 +356,6 @@
   --tone-success: oklch(from var(--color-success) 68% calc(c * 1.4) h);
   --tone-accent: oklch(from var(--color-accent) 68% calc(c * 1.4) h);
 
-  --color-diff-added-tint: color-mix(in srgb, var(--tone-success) 11%, transparent);
-  --color-diff-added-meta: #2a713e;
-  --color-diff-deleted-tint: color-mix(in srgb, var(--tone-negative) 9%, transparent);
-  --color-diff-deleted-meta: #b0342b;
-  --color-diff-added-word: color-mix(in srgb, var(--tone-success) 26%, transparent);
-  --color-diff-deleted-word: color-mix(in srgb, var(--tone-negative) 24%, transparent);
-
   --color-cta: var(--color-accent);
   --color-cta-hover: var(--color-accent-border);
   --color-cta-text: var(--color-text-on-accent);
@@ -514,8 +507,6 @@
   --shadow-surface-card: none;
   --shadow-live-glow: 0 0 6px var(--color-accent);
   --shadow-swatch-selected: 0 0 0 1.5px var(--color-text);
-  --shadow-diff-added-spine: inset 3px 0 0 var(--color-diff-added-meta);
-  --shadow-diff-deleted-spine: inset 3px 0 0 var(--color-diff-deleted-meta);
   --color-focus-ring: var(--color-accent);
 
   --app-drawer-surface: var(--color-drawer);
@@ -747,13 +738,6 @@ html.theme-dark {
   --color-control-edge: #6a6a6c;
   --color-divider: rgb(255 255 255 / 0.04);
   --color-scrim: #00000022;
-
-  --color-diff-added-tint: color-mix(in srgb, var(--tone-success) 8%, transparent);
-  --color-diff-added-meta: #6db473;
-  --color-diff-deleted-tint: color-mix(in srgb, var(--tone-negative) 8%, transparent);
-  --color-diff-deleted-meta: #e68a8a;
-  --color-diff-added-word: #0e2713;
-  --color-diff-deleted-word: #391516;
 
   --color-negative: #e68a8a;
   --color-warning: #d6a750;

@@ -56,10 +56,10 @@ export function isVisualWorkspaceState(value: string | null): value is VisualWor
 
 export const DOCK_VIEW_BY_STATE: Partial<Record<VisualWorkspaceState, string>> = {
   "dock-light": "file",
-  "dock-review": "diff",
-  "dock-empty": "diff",
-  "dock-loading": "diff",
-  "dock-error": "diff",
+  "dock-review": "package:visual:diff",
+  "dock-empty": "package:visual:diff",
+  "dock-loading": "package:visual:diff",
+  "dock-error": "package:visual:diff",
   "dock-trajectory": "package:visual:trajectory",
   "dock-runs": "package:visual:trajectory",
   "dock-subagents": "subagents",

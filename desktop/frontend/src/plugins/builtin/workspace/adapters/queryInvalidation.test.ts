@@ -136,7 +136,6 @@ describe("workspace session projection invalidation", () => {
 
     expect(invalidateQueries.mock.calls.map(([options]) => options.queryKey[0])).toEqual([
       "files-changed",
-      "diff",
       "list-files",
       "read-file",
       "hooks",

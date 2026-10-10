@@ -13,7 +13,7 @@ export function openSettingsView(): void {
 }
 
 export function openDiffViewInDock(): void {
-  openWorkspaceViewInDock("diff");
+  openWorkspaceDiffForFile("");
 }
 
 export function openFileInWorkingTreeDiff(path: string): void {

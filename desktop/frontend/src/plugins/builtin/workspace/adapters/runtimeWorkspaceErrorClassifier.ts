@@ -3,9 +3,6 @@ import { configureWorkspaceErrorClassifier } from "../application/ports/workspac
 import type { WorkspaceErrorClassifier } from "../application/ports/workspaceErrorClassifier";
 
 const classifier: WorkspaceErrorClassifier = {
-  isVcsUnavailable(error) {
-    return isErrorType(error, "vcs_unavailable");
-  },
   isUnsupportedFile(error) {
     return isErrorType(error, "unsupported_mime");
   },

@@ -11,7 +11,6 @@ import { contributeForTest } from "@/plugins/sdk/testKernel";
 import type {
   WorkspaceFileChange as WorkspaceFileChangeSummary,
   WorkspaceProjectSummary,
-  WorkspaceDiff,
 } from "../application/workspaceQueries";
 import { registerWorkspaceDataProviders } from "./runtimeDataProviders";
 
@@ -46,14 +45,7 @@ describe("workspace Runtime data providers", () => {
     try {
       await contributeForTest((ctx) => registerWorkspaceDataProviders(ctx, () => client));
 
-      for (const key of [
-        "diff",
-        "skills",
-        "skill-proposals",
-        "agent-memory",
-        "list-files",
-        "read-file",
-      ]) {
+      for (const key of ["skills", "skill-proposals", "agent-memory", "list-files", "read-file"]) {
         const fetcher = lookupDataProvider(key);
         expect(fetcher).toBeDefined();
         await expect(fetcher!()).rejects.toThrow(`Data provider "${key}" requires parameters`);
@@ -179,21 +171,6 @@ describe("workspace Runtime data providers", () => {
         binary: true,
       },
     ]);
-  });
-
-  it("diff: pins format=rows on the wire and defaults files to []", async () => {
-    const { value, requests } = await runProvider<WorkspaceDiff>(
-      "diff",
-      [["workspace.diff.get", { baseline: { type: "emptyTree" }, truncated: true }]],
-      { cwd: "/work/auth", path: "src/a.ts", mode: "worktree" },
-    );
-    expect(requests[0]?.params).toEqual({
-      path: "src/a.ts",
-      mode: "worktree",
-      format: "rows",
-      workspace: { path: "/work/auth" },
-    });
-    expect(value).toEqual({ baseline: { type: "emptyTree" }, files: [], truncated: true });
   });
 
   it("read-file: preserves the requested and served source-line window", async () => {

@@ -4,7 +4,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { rehydrateOrDefault, ScopedPersistence } from "@/lib/persistedStore";
 import { WORKSPACE_DOCK_CATALOG } from "../application/navigation";
 import type { WorkspaceViewMemory } from "../application/ports/navigationState";
-import { DIFF_LAYOUTS, DIFF_MODES } from "../application/diffVocabulary";
+import { DIFF_MODES } from "../application/diffVocabulary";
 
 const CONTEXT_DOCK_STORAGE_KEY = "flame.context-dock";
 const NON_NEGATIVE_DECIMAL = /^(0|[1-9]\d*)$/;
@@ -19,8 +19,6 @@ const persistedDockScopeSchema = z.object({
       expandedDirs: z.array(z.string()),
       lastFilePath: z.string().nullable(),
       diffMode: z.enum(DIFF_MODES),
-      diffLayout: z.enum(DIFF_LAYOUTS),
-      collapsedDiffFiles: z.array(z.string()),
     })
     .optional(),
 });
@@ -40,8 +38,6 @@ const EMPTY_MEMORY: WorkspaceViewMemory = {
   expandedDirs: [],
   lastFilePath: null,
   diffMode: "worktree",
-  diffLayout: "unified",
-  collapsedDiffFiles: [],
 };
 
 function ancestorsOf(path: string): string[] {
@@ -143,7 +139,6 @@ function persistedSessionScopes(state: ContextDockState): [string, PersistedDock
       memory: {
         ...scope.memory,
         expandedDirs: [...scope.memory.expandedDirs],
-        collapsedDiffFiles: [...scope.memory.collapsedDiffFiles],
       },
     },
   ]);
@@ -208,10 +203,6 @@ export const useContextDockStore = create<ContextDockState & ContextDockActions>
       focusFile: (path) =>
         set((state) => ({
           fileFocus: state.fileFocus.moveTo(path),
-          memory: {
-            ...state.memory,
-            collapsedDiffFiles: state.memory.collapsedDiffFiles.filter((file) => file !== path),
-          },
         })),
       setFileViewer: (fileViewer) =>
         set((state) =>
@@ -263,6 +254,7 @@ export const useContextDockStore = create<ContextDockState & ContextDockActions>
     }),
     {
       name: CONTEXT_DOCK_STORAGE_KEY,
+      version: 1,
       storage: createJSONStorage(() => persistence.storage),
       skipHydration: true,
       partialize: (state) => ({ sessionScopes: persistedSessionScopes(state) }),

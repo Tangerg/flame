@@ -461,7 +461,6 @@ export const en: Record<string, string> = {
   "shape.opt.fast": "Fast",
   "shape.opt.slow": "Slow",
 
-  "workspace.view.title.diff": "Diff",
   "workspace.view.title.file": "Files",
   "contextDock.group.workspace": "Workspace",
   "contextDock.group.run": "Run",
@@ -753,18 +752,12 @@ export const en: Record<string, string> = {
 
   "composer.removeImage": "Remove image",
 
-  "diff.workingTree": "Working tree",
-  "diff.branchCompare": "Branch comparison",
   "diff.baselineAria": "Diff baseline",
+  "diff.noProject": "Select a project to inspect its workspace changes.",
   "diff.mode.worktree": "Worktree",
   "diff.mode.branch": "Branch",
   "diff.fileCount_one": "{{count}} file",
   "diff.fileCount_other": "{{count}} files",
-  "diff.error.noBaseline": "No baseline branch",
-  "diff.error.loadFailed": "Couldn't load the diff",
-  "diff.error.noBaselineSub":
-    "The default branch couldn't be resolved (no remote / detached HEAD).",
-  "diff.error.loadFailedSub": "The runtime rejected the request.",
   "file.lines_one": "{{count}} line",
   "file.lines_other": "{{count}} lines",
   "file.truncated": "truncated",
@@ -773,13 +766,6 @@ export const en: Record<string, string> = {
   "file.empty.sub": "This directory has no visible files.",
   "file.error.title": "Couldn't open file",
   "file.error.sub": "It may have moved or live outside the workspace.",
-  "diff.empty.title": "Nothing to compare",
-  "diff.empty.sub": "The working tree has no uncommitted changes.",
-  "diff.baseline.head": "HEAD {{commit}} → working tree, including untracked files",
-  "diff.baseline.mergeBase": "Merge base {{commit}} → working tree, tracked files only",
-  "diff.baseline.emptyTree": "Empty tree → working tree, including untracked files",
-  "diff.binary": "Binary file",
-  "diff.truncated": "Diff truncated at the row limit — the remaining files are not shown.",
 
   "compaction.compacted": "Context automatically compacted",
 
@@ -859,9 +845,6 @@ export const en: Record<string, string> = {
   "reasoning.interrupted": "interrupted",
 
   "vcs.gitNotAvailable": "Git not available",
-  "vcs.gitNotAvailableSub": "This runtime has no git binary on its PATH.",
-  "vcs.notARepo": "Not a git repository",
-  "vcs.notARepoSub": "The session's working directory is not under version control.",
 
   "rpcError.session_has_active_run":
     "This session already has a run in flight — steer it, answer it, or cancel it first.",
@@ -1156,18 +1139,6 @@ export const en: Record<string, string> = {
   "quote.selection": "Quote in message",
   "diff.worktree.open_one": "Review {{count}} changed file in the working tree",
   "diff.worktree.open_other": "Review {{count}} changed files in the working tree",
-  "diff.status.added": "Added",
-  "diff.status.modified": "Modified",
-  "diff.status.deleted": "Deleted",
-  "diff.status.renamed": "Renamed",
-  "diff.status.untracked": "Untracked",
-  "diff.nav.picker": "Go to file",
-  "diff.nav.filter": "Filter changed files",
-  "diff.nav.none": "No changed file matches",
-  "diff.nav.previous": "Previous file",
-  "diff.nav.next": "Next file",
-  "diff.nav.collapseAll": "Collapse all files",
-  "diff.nav.expandAll": "Expand all files",
   "session.row.more": "More actions for {{title}}",
   "project.row.waiting_one": "{{count}} waiting",
   "project.row.waiting_other": "{{count}} waiting",
@@ -1189,7 +1160,6 @@ export const en: Record<string, string> = {
   "shortcuts.conflict": "Already used by {{action}}",
   "shortcuts.replace": "Use it here instead",
   "shortcuts.unbound": "No shortcut",
-  "diff.layout.split": "Side by side",
   "composer.reasoningEffort": "Reasoning effort",
   "message.mermaid.actualSize": "Show at actual size",
   "model.effort.none": "Off",

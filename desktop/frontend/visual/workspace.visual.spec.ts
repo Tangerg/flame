@@ -73,10 +73,16 @@ test("a full view sets its title in mono only when the title is a path", async (
         return { text: title?.textContent?.trim() ?? "", isMono: head(family) === mono, family };
       });
 
-  await openWorkspace(page, { state: "full-view", fullView: "diff" });
-  const prose = await readTitle();
-  expect(prose.text).toBe(en["diff.workingTree"]);
-  expect(prose.isMono, `a view's NAME is prose, got ${prose.family}`).toBe(false);
+  await openWorkspace(page, { state: "full-view", fullView: "package:visual:diff" });
+  const heading = page
+    .locator("main")
+    .frameLocator("iframe")
+    .frameLocator("iframe")
+    .getByRole("heading", { name: "Workspace diff" });
+  await expect(heading).toBeVisible();
+  expect(await heading.evaluate((node) => getComputedStyle(node).fontFamily)).not.toMatch(
+    /monospace/,
+  );
 
   await openWorkspace(page, { state: "full-view", fullView: "file" });
   const path = await readTitle();
@@ -125,17 +131,21 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     return;
   }
   if (state === "dock-review") {
-    await expect(page.locator("[data-diff-file]")).toHaveCount(2);
-    await page.locator('[data-diff-file] span[style*="color"]').first().waitFor();
+    await expect(pluginViewFrame(page, "diff").locator("[data-diff-file]")).toHaveCount(2);
+    await expect(pluginViewFrame(page, "diff").getByText("Workspace diff loaded.")).toBeVisible();
     return;
   }
   if (state === "dock-empty") {
-    await expect(page.getByText("Nothing to compare", { exact: true })).toBeVisible();
+    await expect(
+      pluginViewFrame(page, "diff").getByText("No changes in this comparison.", { exact: true }),
+    ).toBeVisible();
     return;
   }
   if (state === "dock-loading") {
     await expect(
-      page.locator(".agent-context-dock [data-dock-view-id]:visible output[aria-busy=true]"),
+      page
+        .locator(".agent-context-dock [data-dock-view-id]:visible")
+        .getByText(en["packages.view.loading"]!, { exact: true }),
     ).toBeVisible();
     return;
   }
@@ -173,10 +183,15 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     ).toBeVisible();
     return;
   }
+  if (state === "dock-feature-off") {
+    await expect(
+      page.locator('[data-dock-view-id="package:visual:skills"]').getByText("Skills are off"),
+    ).toBeVisible();
+    return;
+  }
   const CATALOGUE_READY: Partial<Record<VisualWorkspaceState, string>> = {
     "dock-subagents": "Sub-agent 4 of 4",
     "dock-diagnostics": "run + RPC spans appear here",
-    "dock-feature-off": "Skills are off",
   };
   const catalogueReady = CATALOGUE_READY[state];
   if (catalogueReady !== undefined) {
@@ -190,7 +205,11 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     return;
   }
   if (state === "dock-error") {
-    await expect(page.getByText("Couldn't load the diff", { exact: true })).toBeVisible();
+    await expect(
+      page
+        .getByRole("alert")
+        .filter({ hasText: "Visual fixture could not load the workspace diff" }),
+    ).toBeVisible();
     return;
   }
   if (state === "dock-file") {
@@ -236,7 +255,9 @@ test("collapse and reopen preserve the dock workspace", async ({ page }) => {
   await page.getByRole("button", { name: "Collapse right workspace" }).click();
   await expect(page.getByTestId("dock-open")).toHaveText("false");
   await expect(page.getByTestId("active-dock-view")).toHaveText("");
-  await expect(page.getByTestId("dock-view-ids")).toHaveText("file,diff,package:visual:trajectory");
+  await expect(page.getByTestId("dock-view-ids")).toHaveText(
+    "file,package:visual:diff,package:visual:trajectory",
+  );
   await page.getByRole("button", { name: "Open right workspace" }).click();
 
   await expect(page.getByTestId("dock-open")).toHaveText("true");
@@ -273,7 +294,9 @@ test("an unsafe narrow row folds the dock without forgetting its tabs", async ({
   expect(geometry.dockVisible).toBe(false);
   expect(geometry.conversationWidth).toBe(geometry.rowWidth);
   await expect(page.getByRole("button", { name: /^Open material full width/ })).toBeEnabled();
-  await expect(page.getByTestId("dock-view-ids")).toHaveText("file,diff,package:visual:trajectory");
+  await expect(page.getByTestId("dock-view-ids")).toHaveText(
+    "file,package:visual:diff,package:visual:trajectory",
+  );
   expect(page.url()).toBe(location);
   expect(await page.evaluate(() => history.length)).toBe(historyLength);
   await page.setViewportSize({ width: 1520, height: 900 });
@@ -299,11 +322,11 @@ test("closing tabs selects a neighbor without collapsing the workspace", async (
   await expect(page.getByTestId("active-dock-view")).toHaveText("package:visual:trajectory");
   await page.getByRole("tab", { name: "Session trajectory" }).hover();
   await page.getByRole("button", { name: "Close Session trajectory" }).click();
-  await expect(page.getByTestId("active-dock-view")).toHaveText("diff");
+  await expect(page.getByTestId("active-dock-view")).toHaveText("package:visual:diff");
   await expect(page.getByTestId("dock-open")).toHaveText("true");
 
-  await page.getByRole("tab", { name: "Diff" }).hover();
-  await page.getByRole("button", { name: "Close Diff" }).click();
+  await page.getByRole("tab", { name: "Workspace diff" }).hover();
+  await page.getByRole("button", { name: "Close Workspace diff" }).click();
   await expect(page.getByTestId("active-dock-view")).toHaveText("file");
   await expect(page.getByTestId("dock-view-ids")).toHaveText("file");
 });
@@ -330,7 +353,9 @@ test("add-panel menu restores a closed singleton and focuses it", async ({ page 
   await page.keyboard.press("Enter");
 
   await expect(page.getByTestId("active-dock-view")).toHaveText("package:visual:trajectory");
-  await expect(page.getByTestId("dock-view-ids")).toHaveText("file,diff,package:visual:trajectory");
+  await expect(page.getByTestId("dock-view-ids")).toHaveText(
+    "file,package:visual:diff,package:visual:trajectory",
+  );
 });
 
 test("files browse and preview share one dock tab", async ({ page }) => {
@@ -392,17 +417,20 @@ test("dock tabs use roving focus and arrow-key activation", async ({ page }) => 
   await file.focus();
   await file.press("ArrowRight");
 
-  await expect(page.getByTestId("active-dock-view")).toHaveText("diff");
-  await expect(page.getByRole("tab", { name: "Diff" })).toBeFocused();
-  await expect(page.getByRole("tab", { name: "Diff" })).toHaveAttribute("data-active", "");
+  await expect(page.getByTestId("active-dock-view")).toHaveText("package:visual:diff");
+  await expect(page.getByRole("tab", { name: "Workspace diff" })).toBeFocused();
+  await expect(page.getByRole("tab", { name: "Workspace diff" })).toHaveAttribute(
+    "data-active",
+    "",
+  );
 });
 
 test("the active overflow tab stays visible and both hidden edges remain signposted", async ({
   page,
 }) => {
   await openWorkspace(page, { state: "dock-agent-memory" });
-  await page.getByRole("tab", { name: "Diff" }).click();
-  await expect(page.getByTestId("active-dock-view")).toHaveText("diff");
+  await page.getByRole("tab", { name: "Workspace diff" }).click();
+  await expect(page.getByTestId("active-dock-view")).toHaveText("package:visual:diff");
 
   const separator = page.getByRole("separator", { name: "Resize right workspace" });
   await separator.focus();
@@ -413,7 +441,7 @@ test("the active overflow tab stays visible and both hidden edges remain signpos
   await expect(strip).toHaveAttribute("data-overflow-end", "");
   const [stripBox, activeBox] = await Promise.all([
     strip.boundingBox(),
-    page.getByRole("tab", { name: "Diff" }).boundingBox(),
+    page.getByRole("tab", { name: "Workspace diff" }).boundingBox(),
   ]);
   expect(stripBox).not.toBeNull();
   expect(activeBox).not.toBeNull();
@@ -478,8 +506,8 @@ test("all dock views share one stable user-owned width", async ({ page }) => {
   await expect(separator).toHaveAttribute("aria-valuenow", settledWidth);
   const settledRatio = await persistedRatio.textContent();
 
-  await page.getByRole("tab", { name: "Diff" }).click();
-  await expect(page.getByTestId("active-dock-view")).toHaveText("diff");
+  await page.getByRole("tab", { name: "Workspace diff" }).click();
+  await expect(page.getByTestId("active-dock-view")).toHaveText("package:visual:diff");
   await expect(separator).toHaveAttribute("aria-valuenow", settledWidth);
   await expect(persistedRatio).toHaveText(String(settledRatio));
 
@@ -911,19 +939,24 @@ test("every dock view the app offers is a view some state opens", async ({ page 
   ).toBe(opened.size);
 });
 
-test("every dock state renders its view inside the frame that paints one", async ({ page }) => {
-  const unframed: string[] = [];
+test("every dock state keeps its visible view within the dock canvas", async ({ page }) => {
   for (const [state] of Object.entries(DOCK_VIEW_BY_STATE)) {
     if (state === "dock-catalog") continue;
     await openWorkspace(page, { state: state as VisualWorkspaceState });
     await waitForWorkspaceState(page, state as VisualWorkspaceState);
-    const framed = await page.locator(".agent-context-dock .agent-workspace-view").count();
-    if (framed === 0) unframed.push(state);
+    const dock = page.locator(".agent-context-dock");
+    const view = dock.locator("[data-dock-view-id]:visible");
+    await expect(view).toHaveCount(1);
+    const [canvas, content] = await Promise.all([dock.boundingBox(), view.boundingBox()]);
+    expect(canvas, state).not.toBeNull();
+    expect(content, state).not.toBeNull();
+    expect(content!.width, state).toBeGreaterThan(0);
+    expect(content!.height, state).toBeGreaterThan(0);
+    expect(content!.x, state).toBeGreaterThanOrEqual(canvas!.x);
+    expect(content!.y, state).toBeGreaterThanOrEqual(canvas!.y);
+    expect(content!.x + content!.width, state).toBeLessThanOrEqual(canvas!.x + canvas!.width);
+    expect(content!.y + content!.height, state).toBeLessThanOrEqual(canvas!.y + canvas!.height);
   }
-  expect(
-    unframed,
-    "`.agent-workspace-view` names the container a view measures against and paints its canvas",
-  ).toEqual([]);
 });
 
 for (const answer of [

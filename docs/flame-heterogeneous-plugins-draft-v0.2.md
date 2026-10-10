@@ -1403,9 +1403,10 @@ A deferred capability is unavailable, not a placeholder implementation returning
 
 ### 21.3 Recommended implementation slices
 
-The current implementation includes Slice A/B and one optional Slice C Session trajectory
-page. Earlier action/view prototypes were withdrawn rather than retained as compatibility
-surfaces. The present view/resource contract was established from the qualified carrier
+The current implementation includes Slice 0, Slice A/B and optional Slice C trajectory,
+memory, schedules, usage, Skills and workspace Diff pages. Earlier action/view prototypes
+were withdrawn rather than retained as compatibility surfaces. The present view/resource
+contract was established from the qualified carrier
 gates. A bounded declarative `renameSession` action now uses trusted client forms and the
 existing Session command owner; broader host integrations remain deferred.
 

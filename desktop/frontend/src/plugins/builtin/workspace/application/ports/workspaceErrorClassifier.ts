@@ -1,6 +1,5 @@
 import { createSingletonPort } from "@/lib/ports/singletonPort";
 export interface WorkspaceErrorClassifier {
-  isVcsUnavailable(error: unknown): boolean;
   isUnsupportedFile(error: unknown): boolean;
 }
 

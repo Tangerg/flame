@@ -81,7 +81,6 @@ workspace/
   public/             cross-feature commands, queries, and navigation vocabulary
   ui/
     files/            file workspace, tree, and content
-    review/           diff workspace and review presentation
     skills/           trusted document selection and Skill curation forms
     ViewHeader.tsx
     WorkspaceViewLayout.tsx
@@ -110,6 +109,14 @@ Host binds one Runtime-owned summary period; the isolated page renders canonical
 and local filters without a parallel accounting cache. `settings/plugins-pane` owns one
 read-only bridge for pages and reports, and retires each captured query with its contribution.
 The former compiled Usage pane, gateway and query invalidation target are removed.
+
+Diff presentation lives in the optional `plugins/diff` portable release. Runtime owns
+workspace/Git reads and resource bounds; Host controls bind the comparison mode and file
+focus. The guest owns layout, filtering and folding. Navigation reads admitted Workspace
+view contributions with `material: "diff"`, opens a single choice or the catalogue, and
+keeps no separate renderer registration. The compiled Diff view, read provider and cache
+invalidation target are removed. Desktop dock preferences reset on their new version;
+the former layout and folding state is not shared with the guest.
 
 ## Dependencies and public surfaces
 
@@ -225,7 +232,7 @@ read models, fetchers, Runtime translation, and registration belong to the
 feature that understands the data:
 
 - Agent registers Session and model-invocation reads.
-- Workspace registers projects, files, diffs, memory and the Skill reads consumed by trusted selectors and curation forms. Optional package pages read canonical Skill catalogs and documents through release-bound plugin queries; the former compiled catalog pages and document cache are removed.
+- Workspace registers projects, files, memory and the Skill reads consumed by trusted selectors and curation forms. Optional package pages read canonical Skill catalogs and documents through release-bound plugin queries; the former compiled catalog pages and document cache are removed.
 - Providers registers provider/model catalogs, configuration, and role reads.
 - Hooks registers inspection and trust reads.
 - MCP registers its server and tool data through its own plugin.

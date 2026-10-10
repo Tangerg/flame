@@ -341,3 +341,19 @@ func (s *Handler) ReadPluginSkillProposals(ctx context.Context, in protocol.Read
 	}
 	return page, nil
 }
+
+func (s *Handler) ReadPluginDiff(ctx context.Context, in protocol.ReadPluginDiffRequest) (diff *protocol.Diff, err error) {
+	id, digest, err := parseInstallationRelease(in.InstallationID, in.Digest)
+	if err != nil {
+		return nil, err
+	}
+	err = s.plugins.WithView(ctx, id, digest, in.ViewID, plugin.WorkspaceDiff, func(*plugin.Installation, plugin.ViewDeclaration) error {
+		var readErr error
+		diff, readErr = s.GetWorkspaceDiff(ctx, in.GetDiffRequest)
+		return readErr
+	})
+	if err != nil {
+		return nil, wirePluginError(err)
+	}
+	return diff, nil
+}

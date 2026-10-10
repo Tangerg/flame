@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-10.6",
+  "protocolVersion": "2026-10-10.7",
   "features": [
     "reasoning",
     "multimodal",
@@ -784,6 +784,32 @@
       ],
       "features": [
         "mcp"
+      ]
+    },
+    {
+      "name": "plugins.readDiff",
+      "kind": "unary",
+      "operation": "query",
+      "idempotency": "none",
+      "replayCursor": "none",
+      "pagination": "none",
+      "errors": [
+        "plugin_unavailable",
+        "plugin_not_found",
+        "plugin_in_use",
+        "plugin_unapproved",
+        "plugin_stale",
+        "workspace_unavailable",
+        "vcs_unavailable",
+        "path_outside_root",
+        "capability_not_negotiated"
+      ],
+      "features": [
+        "plugins",
+        "git"
+      ],
+      "materializes": [
+        "workspace.diff.get"
       ]
     },
     {
@@ -1700,6 +1726,7 @@
           "plugins.configure",
           "plugins.install",
           "plugins.list",
+          "plugins.readDiff",
           "plugins.readMemory",
           "plugins.readSchedules",
           "plugins.readSkill",
@@ -1870,6 +1897,7 @@
         "code": -32013,
         "recoveryAction": "promptUser",
         "methods": [
+          "plugins.readDiff",
           "tools.invoke",
           "workspace.diff.get",
           "workspace.files.head",
@@ -1896,6 +1924,7 @@
           "plugins.configure",
           "plugins.install",
           "plugins.list",
+          "plugins.readDiff",
           "plugins.readMemory",
           "plugins.readSchedules",
           "plugins.readSkill",
@@ -1922,6 +1951,7 @@
           "plugins.configure",
           "plugins.install",
           "plugins.list",
+          "plugins.readDiff",
           "plugins.readMemory",
           "plugins.readSchedules",
           "plugins.readSkill",
@@ -1948,6 +1978,7 @@
           "plugins.configure",
           "plugins.install",
           "plugins.list",
+          "plugins.readDiff",
           "plugins.readMemory",
           "plugins.readSchedules",
           "plugins.readSkill",
@@ -1974,6 +2005,7 @@
           "plugins.configure",
           "plugins.install",
           "plugins.list",
+          "plugins.readDiff",
           "plugins.readMemory",
           "plugins.readSchedules",
           "plugins.readSkill",
@@ -2000,6 +2032,7 @@
           "plugins.configure",
           "plugins.install",
           "plugins.list",
+          "plugins.readDiff",
           "plugins.readMemory",
           "plugins.readSchedules",
           "plugins.readSkill",
@@ -2209,6 +2242,7 @@
         "code": -32017,
         "recoveryAction": "promptUser",
         "methods": [
+          "plugins.readDiff",
           "workspace.changes.list",
           "workspace.diff.get"
         ]
@@ -2221,6 +2255,7 @@
           "agentDocs.list",
           "hooks.list",
           "hooks.setTrust",
+          "plugins.readDiff",
           "plugins.readSkill",
           "plugins.readSkillProposals",
           "plugins.readSkills",
@@ -2687,6 +2722,17 @@
         {
           "requires": [
             "mcp"
+          ]
+        }
+      ]
+    },
+    {
+      "method": "plugins.readDiff",
+      "rules": [
+        {
+          "requires": [
+            "plugins",
+            "git"
           ]
         }
       ]

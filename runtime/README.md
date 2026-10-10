@@ -42,6 +42,26 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
+## Protocol 2026-10-10.7
+
+The optional [Diff package](../plugins/diff/plugin.json) replaces the compiled Desktop
+Diff view and its dedicated query cache. A `workspaceDiff` view reads `plugins.readDiff`,
+which embeds canonical `GetDiffRequest`, requires plugin and Git capabilities and delegates
+to `workspace.diff.get`. Runtime retains workspace confinement, comparison baselines and
+file, row and byte limits. Canonical binary evidence, renames and whole-file truncation survive.
+
+The Host captures the Runtime workspace, comparison mode and file-focus intent. The guest
+receives structured rows and may refresh only that captured read; layout, filtering and
+folding are its presentation state. A failed read remains explicit and preserves the previous
+result. Native transport capacity still refuses an oversized publication explicitly.
+File-edit and header navigation consult admitted Diff contributions, opening the catalogue
+when none or several are available. Withdrawal removes the page without changing files,
+Git state, recorded Tool results or restore authority. There is no built-in Diff fallback.
+
+Rebuild Runtime and clients together and install/approve Diff 1.0.0 to expose its page.
+Runtime data needs no migration. Desktop dock preference version 1 resets the former
+layout/folding shape; it has no legacy reader or preference migration.
+
 ## Protocol 2026-10-10.6
 
 The optional [Skills package](../plugins/skills/plugin.json) replaces the compiled Desktop
@@ -600,7 +620,7 @@ before publishing its successor.
 
 The current implementation includes Slice A/B, optional Slice C pages and a bounded
 Slice D human action. A package may declare `contributes.views` with `id`, `title`,
-`type: "sessionTrajectory"`, `"agentMemory"`, `"schedules"`, `"usageSummary"` or `"skills"`, and a portable
+`type: "sessionTrajectory"`, `"agentMemory"`, `"schedules"`, `"usageSummary"`, `"skills"` or `"workspaceDiff"`, and a portable
 `.html` `entry`. Admission validates UTF-8 HTML, confined resource access and the release
 fingerprint. Invalid views produce diagnostics without withdrawing independent themes,
 Skills or MCP declarations. Arbitrary projection queries, mutation bridges,

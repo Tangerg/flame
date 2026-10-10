@@ -1,3 +1,5 @@
+import { contributeForTest } from "@/plugins/sdk/testKernel";
+import { WORKSPACE_VIEW } from "@/plugins/sdk/kernelPoints";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   useContextDockStore,
@@ -19,6 +21,7 @@ import {
   selectWorkspaceDockView,
   showWorkspaceDock,
   toggleWorkspaceDock,
+  openWorkspaceDiffForFile,
 } from "./navigation";
 
 function reset() {
@@ -228,4 +231,21 @@ it("keeps subagent selection in session-scoped history without replacing the mai
   expect(navigator().get().subagent).toBeNull();
   navigator().back();
   expect(navigator().get()).toMatchObject({ session: "parent-session", subagent: "child-run" });
+});
+
+it("opens the contribution catalogue when Diff has no admitted renderer or several choices", async () => {
+  openWorkspaceDiffForFile("a.ts");
+  expect(navigator().get().dock).toBe(WORKSPACE_DOCK_CATALOG);
+  await contributeForTest((ctx) => {
+    for (const id of ["package:first:diff", "package:second:diff"])
+      ctx.contribute(WORKSPACE_VIEW, {
+        id,
+        title: id,
+        material: "diff",
+        dock: "workspace",
+        component: () => null,
+      });
+  });
+  openWorkspaceDiffForFile("b.ts");
+  expect(navigator().get().dock).toBe(WORKSPACE_DOCK_CATALOG);
 });

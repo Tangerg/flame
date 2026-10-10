@@ -61,8 +61,6 @@ beforeEach(async () => {
       expandedDirs: [],
       lastFilePath: null,
       diffMode: "worktree",
-      diffLayout: "unified",
-      collapsedDiffFiles: [],
     },
   });
   client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });

@@ -21,6 +21,7 @@ export type WorkspaceFileRenderer = ComponentType<WorkspaceFileRendererProps>;
 export type ContextDockDestinationScope = "workspace" | "session" | "run";
 
 export interface WorkspaceViewSpec {
+  material?: "diff";
   id: string;
   title: string;
   icon?: string;

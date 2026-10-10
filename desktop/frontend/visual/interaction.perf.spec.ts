@@ -157,7 +157,11 @@ test.describe.configure({ mode: "serial", timeout: 1_800_000 });
 test(`a ${REVIEW_FILES}-file review opens, folds and scrolls`, async ({ page }) => {
   for (let sample = 0; sample < SAMPLES; sample++) {
     await page.setViewportSize(VISUAL_REVIEW_VIEWPORT);
-    const diffFiles = page.locator("[data-diff-file]");
+    const diff = page
+      .locator('[data-dock-view-id="package:visual:diff"]')
+      .frameLocator("iframe")
+      .frameLocator("iframe");
+    const diffFiles = diff.locator("[data-diff-file]");
     record(
       "review: open",
       await measureLoad(page, async () => {
@@ -171,16 +175,16 @@ test(`a ${REVIEW_FILES}-file review opens, folds and scrolls`, async ({ page }) 
     record(
       "review: collapse all",
       await measure(page, session, async () => {
-        await page.getByRole("button", { name: "Collapse all files" }).click();
-        await expect(page.getByRole("button", { name: "Expand all files" })).toBeVisible();
+        await diff.getByRole("button", { name: "Collapse all", exact: true }).click();
+        await expect(diff.locator("details[open]")).toHaveCount(0);
       }),
     );
 
     record(
       "review: expand all",
       await measure(page, session, async () => {
-        await page.getByRole("button", { name: "Expand all files" }).click();
-        await expect(page.getByRole("button", { name: "Collapse all files" })).toBeVisible();
+        await diff.getByRole("button", { name: "Expand all", exact: true }).click();
+        await expect(diff.locator("details[open]")).toHaveCount(REVIEW_FILES);
       }),
     );
 

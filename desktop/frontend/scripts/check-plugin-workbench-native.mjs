@@ -239,6 +239,7 @@ async function refreshPage(id, method, binding, query, text) {
     "plugins.readMemory": "agentMemory.list",
     "plugins.readSchedules": "schedules.list",
     "plugins.readUsage": "usage.summary",
+    "plugins.readDiff": "workspace.diff.get",
     "plugins.readSkills": "skills.discovered.list",
     "plugins.readSkill": "skills.discovered.get",
     "plugins.readSkillLibrary": "skills.library.list",
@@ -342,7 +343,7 @@ try {
   );
   const discovery = await rpc("runtime.discover");
   idempotencyNamespace = discovery.capabilities.limits.idempotency.namespace;
-  for (const name of ["trajectory", "memory", "schedules", "usage", "skills"]) {
+  for (const name of ["trajectory", "memory", "schedules", "usage", "skills", "diff"]) {
     const installation = await rpc("plugins.install", { source: `/fixture/plugins/${name}` });
     assert.deepEqual(installation.selected.diagnostics, []);
     const view = installation.selected.views[0];
@@ -364,6 +365,48 @@ try {
     );
     installed[name] = { ...binding, title: `${installation.selected.name} · ${view.title}` };
   }
+  await command("docker", [
+    "exec",
+    containerName,
+    "git",
+    "-C",
+    workspace,
+    "init",
+    "--initial-branch=main",
+  ]);
+  await command("docker", [
+    "exec",
+    containerName,
+    "sh",
+    "-c",
+    `printf 'baseline\n' > ${workspace}/native-diff.txt`,
+  ]);
+  await command("docker", ["exec", containerName, "git", "-C", workspace, "add", "."]);
+  await command("docker", [
+    "exec",
+    containerName,
+    "git",
+    "-C",
+    workspace,
+    "-c",
+    "user.name=Native fixture",
+    "-c",
+    "user.email=native@example.invalid",
+    "-c",
+    "commit.gpgsign=false",
+    "-c",
+    "core.hooksPath=/dev/null",
+    "commit",
+    "-m",
+    "baseline",
+  ]);
+  await command("docker", [
+    "exec",
+    containerName,
+    "sh",
+    "-c",
+    `printf 'changed native diff\n' > ${workspace}/native-diff.txt; printf '\\000binary' > ${workspace}/binary.dat`,
+  ]);
   const session = await rpc("sessions.create", { title, workspace: { path: workspace } });
   await rpc("agentMemory.add", {
     scope: "project",
@@ -627,6 +670,33 @@ try {
     "Usage: recorded zero/unpriced usage, period replacement, withdrawal and reapproval passed",
   );
 
+  const diffPage = await openPanel(installed.diff.title, "Workspace diff loaded.");
+  assert.match(
+    await guest(diffPage.id, "document.getElementById('files').textContent"),
+    /changed native diff/,
+  );
+  assert.match(
+    await guest(diffPage.id, "document.getElementById('files').textContent"),
+    /Binary content is not displayed/,
+  );
+  await refreshPage(
+    diffPage.id,
+    "plugins.readDiff",
+    installed.diff,
+    { workspace: { path: workspace }, mode: "worktree", format: "rows" },
+    "Workspace diff loaded.",
+  );
+  await clickText("Branch", "[role=tab]");
+  await waitFor("captured diff retirement", pages, (value) =>
+    value.pages.every((page) => page.id !== diffPage.id),
+  );
+  const branchDiff = await pageWith("Workspace diff loaded.");
+  assert.notEqual(branchDiff.id, diffPage.id);
+  await assert.rejects(guest(diffPage.id, "document.body.innerText"), /page is not ready/);
+  await closePanel(installed.diff.title, branchDiff.id);
+  console.log(
+    "Diff: canonical remote workspace, binary evidence, refresh and trusted baseline replacement passed",
+  );
   const skillPage = await openPanel(installed.skills.title, "native-user");
   await refreshPage(
     skillPage.id,
@@ -725,6 +795,10 @@ try {
   const finalSkillPage = await pageWith("No proposals pending review.");
   await closePanel(installed.skills.title, finalSkillPage.id);
   usage = await rpc("usage.summary");
+  const preservedDiff = await rpc("workspace.diff.get", {
+    workspace: { path: workspace },
+    format: "rows",
+  });
   assert.equal(usage.runs, 3);
   console.log(
     "Skills: canonical catalogs/documents, trusted archive/restore, proposal publication and page retirement passed",
@@ -738,6 +812,10 @@ try {
   assert.deepEqual(new Set(preservedMemory), new Set([memoryFact, refreshedMemoryFact]));
   assert.equal((await rpc("schedules.list")).data[0].title, refreshedScheduleTitle);
   assert.deepEqual(await rpc("usage.summary"), usage);
+  assert.deepEqual(
+    await rpc("workspace.diff.get", { workspace: { path: workspace }, format: "rows" }),
+    preservedDiff,
+  );
   assert.deepEqual(await rpc("skills.library.list"), preservedSkills);
   assert.equal(
     (await rpc("sessions.trajectory", { sessionId: session.id })).data.some(

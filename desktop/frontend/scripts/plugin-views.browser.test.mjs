@@ -31,7 +31,7 @@ const policy = (
 const host = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const csp = host.match(/<meta http-equiv="Content-Security-Policy"[^>]+>/)[0];
 for (const [name, engine] of Object.entries({ chromium, webkit })) {
-  test(`${name}: production plugin carrier and scoped trajectory, memory, schedule, usage and Skill reads`, async (t) => {
+  test(`${name}: production plugin carrier and scoped trajectory, memory, schedule, usage, Skill and Diff reads`, async (t) => {
     let enforce = true;
     let escapedRequests = 0;
     let packets = 0;
@@ -526,6 +526,71 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
     await frame.getByText("0 schedules loaded on this page.").waitFor();
     assert.equal(await page.evaluate(() => window.reads[1].cursor), "schedule-next");
     assert.equal(await frame.getByRole("button", { name: /Run now|Delete|Enable/ }).count(), 0);
+    await page.evaluate(() => window.dispose());
+    await page.reload();
+    await page.waitForFunction(() => window.mount);
+    const diffHTML = await readFile(
+      new URL("../../../plugins/diff/views/diff.html", import.meta.url),
+      "utf8",
+    );
+    const diffInitial = {
+      diff: {
+        baseline: { type: "head", commit: "a".repeat(40) },
+        truncated: true,
+        files: [
+          {
+            path: "new<script>.ts",
+            previousPath: "old.ts",
+            status: "renamed",
+            added: 0,
+            removed: 0,
+            rows: [
+              { type: "hunk", text: "@@ -1 +1 @@" },
+              { type: "context", leftLine: 1, rightLine: 1, code: "<script> must render as text" },
+              { type: "deleted", leftLine: 2, code: "before" },
+              { type: "added", rightLine: 2, code: "after".repeat(500) },
+            ],
+          },
+          { path: "binary.dat", status: "untracked", binary: true, rows: [] },
+        ],
+      },
+      focusPath: "new<script>.ts",
+    };
+    await page.evaluate(({ html, initial }) => void window.mount(html, initial, "dark"), {
+      html: diffHTML,
+      initial: diffInitial,
+    });
+    await frame.getByText("Workspace diff loaded.").waitFor();
+    assert.equal(await frame.locator(".focused").count(), 1);
+    assert.equal(
+      await frame.locator(".text").first().textContent(),
+      "<script> must render as text",
+    );
+    assert.match(
+      await frame.locator("summary").first().textContent(),
+      /old.ts → new<script>.ts.*renamed.*\+0 −0/,
+    );
+    await frame.getByText(/This is a partial diff/).waitFor();
+    assert.doesNotMatch(await frame.locator("summary").last().textContent(), /\+0|−0/);
+    await frame.getByText("Binary content is not displayed.").waitFor();
+    const fitsFrame = () =>
+      frame.locator("html").evaluate((node) => node.scrollWidth <= node.clientWidth);
+    assert.equal(await fitsFrame(), true, "long rows scroll inside the file, not the page");
+    await frame.getByRole("combobox", { name: "Layout" }).selectOption("split");
+    assert.equal(await frame.locator("table.split tr").last().locator("td").count(), 4);
+    assert.equal(await fitsFrame(), true);
+    await frame.getByRole("searchbox").fill("binary");
+    assert.equal(await frame.locator("details").count(), 1);
+    await frame.getByRole("searchbox").fill("");
+    await page.evaluate(() => (window.readFailure = true));
+    await frame.getByRole("button", { name: "Refresh" }).click();
+    await frame.getByRole("alert").waitFor();
+    assert.equal(await frame.locator("details").count(), 2);
+    assert.equal(await page.evaluate(() => window.reads[0].cursor), undefined);
+    await page.evaluate(() => (window.readFailure = false));
+    await frame.getByRole("button", { name: "Refresh" }).click();
+    await frame.getByText("Workspace diff loaded.").waitFor();
+    assert.equal(await frame.getByRole("button", { name: /Stage|Restore|Edit|Delete/ }).count(), 0);
     await page.evaluate(() => window.dispose());
     await page.reload();
     await page.waitForFunction(() => window.mount);

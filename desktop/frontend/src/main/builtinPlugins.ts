@@ -95,7 +95,7 @@ import {
   toolSearchPreviewPlugin,
   webSearchPreview,
 } from "@/plugins/builtin/chat/tools/previews";
-import { diffView, fileView } from "@/plugins/builtin/workspace/views";
+import { fileView } from "@/plugins/builtin/workspace/views";
 
 export const toolPreviewPlugins: AnyPlugin[] = [
   shellPreview,
@@ -175,7 +175,6 @@ export function createBuiltinPlugins(
     createMCPServersPlugin(runtimeClient),
     createHooksPlugin(runtimeClient),
     createSchedulesPlugin(runtimeClient),
-    diffView,
     fileView,
     subagentsView,
     markdownFile,

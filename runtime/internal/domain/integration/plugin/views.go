@@ -19,6 +19,7 @@ const (
 	Schedules         ViewKind = "schedules"
 	UsageSummary      ViewKind = "usageSummary"
 	Skills            ViewKind = "skills"
+	WorkspaceDiff     ViewKind = "workspaceDiff"
 )
 
 const (
@@ -59,7 +60,7 @@ func (b *Builder) AdmitView(view ViewDeclaration) error {
 	if duplicate || !idPattern.MatchString(view.ID) || view.Title == "" || len(view.Title) > MaxViewTitleBytes {
 		return refuse(DiagnosticInvalidDeclaration, "view identity or title %q", view.ID)
 	}
-	if (view.Kind != SessionTrajectory && view.Kind != AgentMemory && view.Kind != Schedules && view.Kind != UsageSummary && view.Kind != Skills) || !ValidResourcePath(view.Entry) || !strings.HasSuffix(view.Entry, ".html") {
+	if (view.Kind != SessionTrajectory && view.Kind != AgentMemory && view.Kind != Schedules && view.Kind != UsageSummary && view.Kind != Skills && view.Kind != WorkspaceDiff) || !ValidResourcePath(view.Entry) || !strings.HasSuffix(view.Entry, ".html") {
 		return refuse(DiagnosticInvalidDeclaration, "view %q kind or HTML entry", view.ID)
 	}
 	if len(view.ScheduleTemplates) > MaxScheduleTemplates || (view.Kind != Schedules && view.ScheduleTemplates != nil) {

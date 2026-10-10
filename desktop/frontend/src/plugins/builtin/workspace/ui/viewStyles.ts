@@ -10,23 +10,6 @@ export const viewStyles = stylex.create({
   sectionPad: { paddingBottom: space.s1 },
   sectionLabel: { paddingBlock: space.s2 },
 
-  diffFileHeader: {
-    display: "flex",
-    height: space.s8,
-    width: "100%",
-    minWidth: 0,
-    alignItems: "center",
-    gap: space.s2,
-    borderWidth: 0,
-    backgroundColor: surface.sunken,
-    paddingInline: space.s3,
-    textAlign: "left",
-    color: { default: color.fgMuted, ":hover": color.fg },
-    transitionProperty: "color",
-    transitionDuration: motion.color,
-    transitionTimingFunction: motion.easeState,
-  },
-
   pressRow: {
     display: "flex",
     width: "100%",
@@ -136,53 +119,7 @@ export const codeStyles = stylex.create({
   sheet: { paddingBlock: space.s2, fontFamily: "var(--font-mono)", lineHeight: leading.relaxed },
   gutter: { textAlign: "right", color: color.fgFaint, userSelect: "none" },
   wrap: { minWidth: 0, whiteSpace: "pre-wrap", overflowWrap: "anywhere" },
-  hunk: {
-    marginTop: { default: space.s2_5, ":first-child": 0 },
-    borderWidth: 0,
-    backgroundColor: surface.sunken,
-    paddingInline: space.s3,
-    paddingBlock: space.s1,
-    color: color.fgFaint,
-    overflowWrap: "anywhere",
-  },
-  sideBySide: { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))" },
-  blank: { backgroundColor: surface.sunken },
-
   lineRow: { display: "grid", alignItems: "flex-start", paddingInline: space.s3 },
   gutterOne: { gridTemplateColumns: "44px minmax(0, 1fr)", gap: space.s2 },
-  gutterPair: { gridTemplateColumns: "36px 36px minmax(0, 1fr)", gap: space.s1_5 },
-  gutterSign: { gridTemplateColumns: "34px 16px minmax(0, 1fr)", gap: space.s1_5 },
-  lineMeta: { textAlign: "right", userSelect: "none" },
-  signMeta: { textAlign: "center", userSelect: "none" },
   targetLine: { backgroundColor: surface.accentWash },
-
-  rowAdded: {
-    backgroundColor: "var(--color-diff-added-tint)",
-    boxShadow: "var(--shadow-diff-added-spine)",
-  },
-  rowDeleted: {
-    backgroundColor: "var(--color-diff-deleted-tint)",
-    boxShadow: "var(--shadow-diff-deleted-spine)",
-  },
-  metaAdded: { color: "var(--color-diff-added-meta)" },
-  metaDeleted: { color: "var(--color-diff-deleted-meta)" },
-  metaContext: { color: color.fgFaint },
-
-  fileCard: {
-    marginBottom: space.s2,
-    marginTop: { default: null, ":first-child": space.s2 },
-    overflow: "clip",
-    borderRadius: radius.card,
-    borderWidth: "var(--hairline-width)",
-    borderStyle: "solid",
-    borderColor: surface.field,
-  },
-  fileCardLast: { marginBottom: 0 },
-  note: {
-    margin: 0,
-    paddingInline: space.s3,
-    paddingBlock: space.s2,
-    fontFamily: "var(--font-mono)",
-    color: color.fgFaint,
-  },
 });

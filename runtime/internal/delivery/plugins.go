@@ -20,6 +20,7 @@ const (
 	PluginsReadMemory         Name = "plugins.readMemory"
 	PluginsReadSchedules      Name = "plugins.readSchedules"
 	PluginsReadUsage          Name = "plugins.readUsage"
+	PluginsReadDiff           Name = "plugins.readDiff"
 	PluginsReadSkills         Name = "plugins.readSkills"
 	PluginsReadSkill          Name = "plugins.readSkill"
 	PluginsReadSkillLibrary   Name = "plugins.readSkillLibrary"
@@ -40,6 +41,12 @@ func pluginErrors() []string {
 }
 
 func registerPlugins(r *Registry) {
+	r.query(MethodMeta{Name: PluginsReadDiff, CapabilityRules: requires(protocol.FeaturePlugins, protocol.FeatureGit), Errors: append(pluginErrors(), protocol.ErrWorkspaceUnavailable.Error(), protocol.ErrVcsUnavailable.Error(), protocol.ErrPathOutsideRoot.Error()), Materializes: []Name{WorkspaceDiffGet}}, func(s interface {
+		ReadPluginDiff(context.Context, protocol.ReadPluginDiffRequest) (*protocol.Diff, error)
+	}, ctx context.Context, in protocol.ReadPluginDiffRequest) (*protocol.Diff, error) {
+		return s.ReadPluginDiff(ctx, in)
+	})
+
 	r.query(MethodMeta{Name: PluginsReadSkills, CapabilityRules: requires(protocol.FeaturePlugins, protocol.FeatureSkills), Errors: append(pluginErrors(), protocol.ErrWorkspaceUnavailable.Error()), Materializes: []Name{SkillsDiscoveredList}}, func(s interface {
 		ReadPluginSkills(context.Context, protocol.ReadPluginSkillsRequest) (*protocol.SkillDiscovery, error)
 	}, ctx context.Context, in protocol.ReadPluginSkillsRequest) (*protocol.SkillDiscovery, error) {

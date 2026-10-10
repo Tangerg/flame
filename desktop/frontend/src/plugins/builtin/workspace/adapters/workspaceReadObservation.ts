@@ -2,7 +2,6 @@ import { queryClient, replaceCachedRead } from "@/lib/queryClient";
 import {
   WORKSPACE_LIST_FILES_KEY,
   WORKSPACE_READ_FILE_KEY,
-  WORKSPACE_DIFF_KEY,
   WORKSPACE_FILES_CHANGED_KEY,
 } from "../application/workspaceQueries";
 import type { WorkspaceReadTarget } from "../application/workspaceEventLoop";
@@ -42,12 +41,9 @@ export function installWorkspaceFocusRefresh(): () => void {
     if (document.visibilityState === "hidden") return;
     void replaceCachedRead({
       predicate: (query) =>
-        [
-          WORKSPACE_READ_FILE_KEY,
-          WORKSPACE_LIST_FILES_KEY,
-          WORKSPACE_DIFF_KEY,
-          WORKSPACE_FILES_CHANGED_KEY,
-        ].includes(query.queryKey[0] as string),
+        [WORKSPACE_READ_FILE_KEY, WORKSPACE_LIST_FILES_KEY, WORKSPACE_FILES_CHANGED_KEY].includes(
+          query.queryKey[0] as string,
+        ),
     });
   };
   window.addEventListener("focus", refresh);

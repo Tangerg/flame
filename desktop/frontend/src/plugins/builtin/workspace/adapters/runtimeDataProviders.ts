@@ -11,18 +11,15 @@ import { agentMemoryEntry } from "./runtimeAgentMemoryGateway";
 import {
   WORKSPACE_PROJECTS_KEY,
   WORKSPACE_FILES_CHANGED_KEY,
-  WORKSPACE_DIFF_KEY,
   WORKSPACE_SKILLS_KEY,
   WORKSPACE_MANAGED_SKILLS_KEY,
   WORKSPACE_SKILL_PROPOSALS_KEY,
   WORKSPACE_AGENT_MEMORY_KEY,
   WORKSPACE_LIST_FILES_KEY,
   WORKSPACE_READ_FILE_KEY,
-  type WorkspaceDiffQuery,
   type WorkspaceFileChangesQuery,
   type WorkspaceListFilesQuery,
   type WorkspaceReadFileQuery,
-  type WorkspaceDiff,
   type AgentMemoryQuery,
   type WorkspaceCatalogQuery,
   type WorkspaceFileChange as WorkspaceFileChangeSummary,
@@ -57,19 +54,6 @@ export function registerWorkspaceDataProviders(
         signal,
       );
       return (await pageData(resources.changes.list(signal))).map(toWorkspaceFileChangeSummary);
-    },
-  });
-  ctx.contribute(DATA_PROVIDER, {
-    key: WORKSPACE_DIFF_KEY,
-    fetcher: async (params, signal) => {
-      const { cwd, ...query } = requiredParams<WorkspaceDiffQuery>(WORKSPACE_DIFF_KEY, params);
-      const resources = await workspace(cwd, signal);
-      const diff = await resources.diff.get({ ...query, format: "rows" }, signal);
-      return {
-        baseline: diff.baseline,
-        files: diff.files ?? [],
-        truncated: diff.truncated,
-      } satisfies WorkspaceDiff;
     },
   });
   ctx.contribute(DATA_PROVIDER, {

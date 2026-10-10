@@ -5,7 +5,6 @@ describe("workspaceInvalidations", () => {
   it("maps each subscribed topic to the reads it invalidates", () => {
     expect(workspaceInvalidations({ type: "files.changed", sequence: 1 })).toEqual([
       "filesChanged",
-      "diff",
       "fileList",
       "fileRead",
       "hooks",
@@ -48,7 +47,6 @@ describe("workspaceInvalidations", () => {
       }),
     ).toEqual([
       "filesChanged",
-      "diff",
       "fileList",
       "fileRead",
       "hooks",

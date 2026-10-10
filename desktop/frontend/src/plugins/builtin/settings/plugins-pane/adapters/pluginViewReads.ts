@@ -13,6 +13,8 @@ import type {
   MemoryViewTarget,
   SkillViewTarget,
   SkillViewSnapshot,
+  DiffViewTarget,
+  DiffViewSnapshot,
 } from "../application/pluginView";
 
 export function createTrajectoryViewReads(
@@ -138,4 +140,27 @@ function createViewReads<T>(
       }
     },
   };
+}
+
+export function createDiffViewReads(
+  plugins: Pick<FlameClient["plugins"], "readView" | "readDiff">,
+  binding: Readonly<ReadPluginViewRequest>,
+  target: Readonly<DiffViewTarget>,
+): PluginViewReads<DiffViewSnapshot> {
+  const view = { ...binding };
+  const captured = { ...target, workspace: { ...target.workspace } };
+  return createViewReads(plugins, view, async (cursor, signal) => {
+    if (cursor !== undefined) throw new Error("Workspace diffs have no cursor continuation");
+    const diff = await plugins.readDiff(
+      { ...view, workspace: captured.workspace, mode: captured.mode, format: "rows" },
+      signal,
+    );
+    const prefix = captured.workspace.path.endsWith("/")
+      ? captured.workspace.path
+      : `${captured.workspace.path}/`;
+    const focusPath = captured.focusPath.startsWith(prefix)
+      ? captured.focusPath.slice(prefix.length)
+      : captured.focusPath;
+    return { diff, focusPath };
+  });
 }

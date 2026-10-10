@@ -1,3 +1,5 @@
+import { contributeForTest } from "@/plugins/sdk/testKernel";
+import { WORKSPACE_VIEW } from "@/plugins/sdk/kernelPoints";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { ToolCall } from "@/plugins/sdk/types/agentSessionView";
 import {
@@ -19,7 +21,16 @@ const toolCall = ({
 });
 
 describe("openWorkspaceViewForTool", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    await contributeForTest((ctx) =>
+      ctx.contribute(WORKSPACE_VIEW, {
+        id: "package:review:diff",
+        title: "Diff",
+        material: "diff",
+        dock: "workspace",
+        component: () => null,
+      }),
+    );
     navigator().go({ view: null, dock: null });
     useContextDockStore.setState({
       dockViewIds: [],
@@ -48,7 +59,7 @@ describe("openWorkspaceViewForTool", () => {
     openWorkspaceViewForTool(
       toolCall({ id: "t2", name: "apply_patch", fn: "src/app.ts", fnKind: "path" }),
     );
-    expect(navigator().get().dock).toBe("diff");
+    expect(navigator().get().dock).toBe("package:review:diff");
     expect(navigator().get().view).toBeNull();
     expect(useContextDockStore.getState().fileFocus).toMatchObject({
       path: "src/app.ts",
@@ -59,7 +70,7 @@ describe("openWorkspaceViewForTool", () => {
   it("does not feed a multi-file patch label to the diff's active-file focus", () => {
     useContextDockStore.getState().focusFile("src/old.ts");
     openWorkspaceViewForTool(toolCall({ id: "t3", name: "apply_patch", fn: "apply_patch" }));
-    expect(navigator().get().dock).toBe("diff");
+    expect(navigator().get().dock).toBe("package:review:diff");
     expect(useContextDockStore.getState().fileFocus).toMatchObject({ path: "", revision: 2n });
   });
 

@@ -1,3 +1,7 @@
+import diffHTML from "../../../plugins/diff/views/diff.html?raw";
+import { DiffPackageView } from "@/plugins/builtin/settings/plugins-pane/ui/DiffPackageView";
+import type { DiffViewTarget } from "@/plugins/builtin/settings/plugins-pane/application/pluginView";
+import type { Diff } from "@flame/runtime-contract/wire";
 import skillsHTML from "../../../plugins/skills/views/skills.html?raw";
 import { SkillsPackageView } from "@/plugins/builtin/settings/plugins-pane/ui/SkillsPackageView";
 import type {
@@ -17,7 +21,6 @@ import { createElement } from "react";
 import type { TrajectoryEntry, UsageSummary } from "@flame/runtime-contract/wire";
 import { createBrowserHost } from "@/platform/browserHost";
 import { installLocalWorkspaceActions } from "@/plugins/builtin/workspace/adapters/localWorkspaceActions";
-import { queryClient } from "@/lib/queryClient";
 import { WORKSPACE_DOCK_CATALOG } from "@/plugins/builtin/workspace/public/navigation";
 import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
 import shortcutsSettings from "@/plugins/builtin/command/shortcuts";
@@ -37,7 +40,6 @@ import { localePlugins } from "@/plugins/builtin/i18n";
 import { installWorkspaceErrorClassifier } from "@/plugins/builtin/workspace/adapters/runtimeWorkspaceErrorClassifier";
 import { installNotificationCentre } from "@/plugins/builtin/shell/status/adapters/systemNotifier";
 import {
-  WORKSPACE_DIFF_KEY,
   WORKSPACE_FILES_CHANGED_KEY,
   WORKSPACE_LIST_FILES_KEY,
   WORKSPACE_READ_FILE_KEY,
@@ -49,7 +51,6 @@ import {
   type ManagedSkill,
   type SkillProposal,
   type WorkspaceSkillDiscovery,
-  type WorkspaceDiff,
   type WorkspaceFileChange,
   type WorkspaceFileContent,
   type WorkspaceFileEntry,
@@ -57,7 +58,7 @@ import {
 import { visualFeatureCapabilities } from "./agentFixtureFacts";
 import { SCHEDULES_KEY } from "@/plugins/builtin/settings/schedules/application/scheduleQueries";
 import type { Schedule } from "@flame/runtime-contract/wire";
-import { diffView, fileView } from "@/plugins/builtin/workspace/views";
+import { fileView } from "@/plugins/builtin/workspace/views";
 import { DATA_PROVIDER, SHORTCUT, WORKSPACE_VIEW, definePlugin } from "@/plugins/sdk";
 import type { AnyPlugin } from "dougong";
 import type {
@@ -91,7 +92,7 @@ import {
 const ACTIVE_DIFF_FILE =
   "desktop/frontend/src/plugins/builtin/shell/workbench/panel/DockResizer.tsx";
 
-const REVIEW_DIFF: WorkspaceDiff = {
+const REVIEW_DIFF: Diff = {
   baseline: { type: "head", commit: "1234567890abcdef1234567890abcdef12345678" },
   files: [
     {
@@ -236,10 +237,10 @@ function pending<T>(): Promise<T> {
   return new Promise<T>(() => {});
 }
 
-function scaledReview(fileCount: number): WorkspaceDiff {
+function scaledReview(fileCount: number): Diff {
   const files = Array.from({ length: fileCount }, (_, index) => {
     const long = index % 10 === 0;
-    const rows: WorkspaceDiff["files"][number]["rows"] = [
+    const rows: NonNullable<Diff["files"]>[number]["rows"] = [
       { type: "hunk", text: `@@ -1,24 +1,30 @@ export function module${index}` },
     ];
     for (let line = 1; line <= 24; line++) {
@@ -389,7 +390,7 @@ const VISUAL_SKILL_PROPOSALS: SkillProposal[] = [
 
 function workspaceDataPlugin(
   state: VisualWorkspaceState,
-  review: WorkspaceDiff,
+  review: Diff,
   snapshot: typeof RUNTIME_AGENT_SESSION_SNAPSHOTS.idle,
 ): AnyPlugin {
   return definePlugin({
@@ -411,6 +412,33 @@ function workspaceDataPlugin(
             reads,
             title: "Session trajectory",
             lifetime,
+            carrier: createBrowserHost().pluginCarrier,
+          }),
+      });
+      const diffLifetime = ctx.lifetime("visual-diff");
+      const diffReads = (target: DiffViewTarget) => {
+        const read = async () => {
+          if (state === "dock-loading") return pending<{ diff: Diff; focusPath: string }>();
+          if (state === "dock-error")
+            throw new Error("Visual fixture could not load the workspace diff");
+          return {
+            diff: state === "dock-empty" ? { baseline: review.baseline } : review,
+            focusPath: target.focusPath,
+          };
+        };
+        return { load: async () => ({ html: diffHTML, initial: await read() }), read };
+      };
+      diffLifetime.contribute(WORKSPACE_VIEW, {
+        id: "package:visual:diff",
+        title: "Workspace diff",
+        icon: "diff",
+        dock: "workspace",
+        material: "diff",
+        component: () =>
+          createElement(DiffPackageView, {
+            reads: diffReads,
+            title: "Workspace diff",
+            lifetime: diffLifetime,
             carrier: createBrowserHost().pluginCarrier,
           }),
       });
@@ -521,17 +549,6 @@ function workspaceDataPlugin(
             ...schedule,
             cwd: workspace?.path,
           })),
-      });
-      ctx.contribute(DATA_PROVIDER, {
-        key: WORKSPACE_DIFF_KEY,
-        fetcher: async () => {
-          if (state === "dock-loading") return pending<WorkspaceDiff>();
-          if (state === "dock-error") {
-            throw new Error("Visual fixture could not load the workspace diff");
-          }
-          if (state === "dock-empty") return { files: [] };
-          return review;
-        },
       });
       ctx.contribute(DATA_PROVIDER, {
         key: WORKSPACE_FILES_CHANGED_KEY,
@@ -698,14 +715,11 @@ export async function installVisualWorkspaceFixture(
         ? { ...VISUAL_CAPABILITIES, features: { git: feature(true) } }
         : VISUAL_CAPABILITIES,
   });
-  queryClient.setQueryDefaults([WORKSPACE_DIFF_KEY], {
-    retry: false,
-    staleTime: Infinity,
-    refetchOnWindowFocus: false,
-  });
 
   const dockViewId =
-    state === "dock-catalog" ? WORKSPACE_DOCK_CATALOG : (DOCK_VIEW_BY_STATE[state] ?? "diff");
+    state === "dock-catalog"
+      ? WORKSPACE_DOCK_CATALOG
+      : (DOCK_VIEW_BY_STATE[state] ?? "package:visual:diff");
   useContextDockStore.setState({
     activeSessionScopeId: VISUAL_SESSION_ID,
     sessionScopes: new Map(),
@@ -715,7 +729,7 @@ export async function installVisualWorkspaceFixture(
         : [
             ...(OPENED_BY_ITS_OWN_STATE.has(dockViewId) ? [dockViewId] : []),
             "file",
-            "diff",
+            "package:visual:diff",
             "package:visual:trajectory",
           ],
     lastViewId: state === "dock-catalog" ? null : dockViewId,
@@ -745,7 +759,6 @@ export async function installVisualWorkspaceFixture(
   });
 
   await loadVisualPlugins([
-    diffView,
     fileView,
     diagnosticsView,
     workbenchSettings,

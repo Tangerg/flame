@@ -31,8 +31,6 @@ describe("workspace query invalidation scope", () => {
     expect(workspaceQueryAffected("fileList", { cwd: "/first", path: "." }, event)).toBe(true);
     expect(workspaceQueryAffected("fileList", { cwd: "/first", path: "src" }, event)).toBe(true);
     expect(workspaceQueryAffected("fileList", { cwd: "/first", path: "other" }, event)).toBe(false);
-    expect(workspaceQueryAffected("diff", { cwd: "/first" }, event)).toBe(true);
-    expect(workspaceQueryAffected("diff", { cwd: "/first", path: "other.ts" }, event)).toBe(false);
   });
 
   it("treats a directory notice as a subtree invalidation for open files", () => {

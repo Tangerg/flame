@@ -22,7 +22,6 @@ import {
   MCP_EXPOSURE_KEY,
 } from "@/plugins/builtin/settings/mcp-servers/public/serverCatalog";
 import {
-  WORKSPACE_DIFF_KEY,
   WORKSPACE_AGENT_MEMORY_KEY,
   WORKSPACE_FILES_CHANGED_KEY,
   WORKSPACE_LIST_FILES_KEY,
@@ -45,7 +44,6 @@ const QUERY_KEYS: Record<
   agentMemory: WORKSPACE_AGENT_MEMORY_KEY,
   approvalMode: APPROVAL_MODE_KEY,
   approvalRules: APPROVAL_RULES_KEY,
-  diff: WORKSPACE_DIFF_KEY,
   fileList: WORKSPACE_LIST_FILES_KEY,
   fileRead: WORKSPACE_READ_FILE_KEY,
   filesChanged: WORKSPACE_FILES_CHANGED_KEY,

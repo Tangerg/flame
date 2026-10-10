@@ -310,6 +310,10 @@
               "signature": "func(ctx context.Context, options CallOptions) (*protocol.Page[protocol.WorkspaceSummary], error)"
             },
             {
+              "name": "ReadPluginDiff",
+              "signature": "func(ctx context.Context, request protocol.ReadPluginDiffRequest, options CallOptions) (*protocol.Diff, error)"
+            },
+            {
               "name": "ReadPluginMemory",
               "signature": "func(ctx context.Context, request protocol.ReadPluginMemoryRequest, options CallOptions) (*protocol.Page[protocol.AgentMemoryItem], error)"
             },
@@ -844,6 +848,10 @@
             {
               "name": "ListWorkspaces",
               "signature": "func(ctx context.Context, options CallOptions) (*protocol.Page[protocol.WorkspaceSummary], error)"
+            },
+            {
+              "name": "ReadPluginDiff",
+              "signature": "func(ctx context.Context, request protocol.ReadPluginDiffRequest, options CallOptions) (*protocol.Diff, error)"
             },
             {
               "name": "ReadPluginMemory",
@@ -2314,6 +2322,11 @@
           "value": "\"usageSummary\""
         },
         {
+          "name": "PluginViewWorkspaceDiff",
+          "type": "PluginViewType",
+          "value": "\"workspaceDiff\""
+        },
+        {
           "name": "ProblemAgentStuck",
           "type": "untyped string",
           "value": "\"agent_stuck\""
@@ -2381,7 +2394,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-10.6\""
+          "value": "\"2026-10-10.7\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -8078,6 +8091,26 @@
               "name": "MaxBytes",
               "type": "*int",
               "tag": "json:\"maxBytes,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "ReadPluginDiffRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ReadPluginViewRequest",
+              "type": "ReadPluginViewRequest"
+            },
+            {
+              "name": "GetDiffRequest",
+              "type": "GetDiffRequest"
             }
           ],
           "methods": [

@@ -1,4 +1,4 @@
-import type { DiffLayout, WorkspaceDiffMode } from "../diffVocabulary";
+import type { DiffMode } from "@flame/runtime-contract/wire";
 import { createSingletonPort } from "@/lib/ports/singletonPort";
 
 export interface WorkspaceFileViewer {
@@ -9,9 +9,7 @@ export interface WorkspaceFileViewer {
 export interface WorkspaceViewMemory {
   expandedDirs: readonly string[];
   lastFilePath: string | null;
-  diffMode: WorkspaceDiffMode;
-  diffLayout: DiffLayout;
-  collapsedDiffFiles: readonly string[];
+  diffMode: DiffMode;
 }
 
 export interface WorkspaceFileFocusSnapshot {

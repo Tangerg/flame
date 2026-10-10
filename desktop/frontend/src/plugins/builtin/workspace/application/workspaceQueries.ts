@@ -3,13 +3,11 @@ import type {
   AgentMemoryScope,
   AgentMemoryStatus,
   FileEntryType,
-  FileStatus,
   SkillLifecycle,
   SkillProposalOrigin,
   SkillProposalScope,
   SkillScope,
 } from "@flame/runtime-contract/wire";
-import type { WorkspaceDiffMode } from "./diffVocabulary";
 import { createDataQuery, createParameterizedDataQuery } from "@/plugins/sdk";
 
 export interface WorkspaceProjectSummary {
@@ -79,39 +77,8 @@ export interface AgentMemoryEntry {
   updatedAt: string;
 }
 
-export interface WorkspaceDiffQuery {
-  cwd?: string;
-  path?: string;
-  mode?: WorkspaceDiffMode;
-  limit?: number;
-}
-
 export interface WorkspaceFileChangesQuery {
   cwd?: string;
-}
-
-export type WorkspaceDiffRow =
-  | { type: "hunk"; text: string }
-  | { type: "context"; leftLine: number; rightLine: number; code: string }
-  | { type: "added"; rightLine: number; code: string }
-  | { type: "deleted"; leftLine: number; code: string };
-
-export interface WorkspaceFileDiff {
-  path: string;
-  status: FileStatus;
-  previousPath?: string;
-  added?: number;
-  removed?: number;
-  binary?: boolean;
-  rows: WorkspaceDiffRow[];
-}
-
-type WorkspaceDiffBaseline = { type: "head" | "mergeBase"; commit: string } | { type: "emptyTree" };
-
-export interface WorkspaceDiff {
-  baseline: WorkspaceDiffBaseline;
-  files: WorkspaceFileDiff[];
-  truncated?: boolean;
 }
 
 export interface WorkspaceListFilesQuery {
@@ -144,7 +111,6 @@ export interface WorkspaceFileContent {
 
 export const WORKSPACE_PROJECTS_KEY = "projects";
 export const WORKSPACE_FILES_CHANGED_KEY = "files-changed";
-export const WORKSPACE_DIFF_KEY = "diff";
 export const WORKSPACE_SKILLS_KEY = "skills";
 export const WORKSPACE_MANAGED_SKILLS_KEY = "managed-skills";
 export const WORKSPACE_SKILL_PROPOSALS_KEY = "skill-proposals";
@@ -158,9 +124,6 @@ export const useWorkspaceFileChanges = createParameterizedDataQuery<
   WorkspaceFileChangesQuery,
   WorkspaceFileChange[]
 >(WORKSPACE_FILES_CHANGED_KEY);
-export const useWorkspaceDiff = createParameterizedDataQuery<WorkspaceDiffQuery, WorkspaceDiff>(
-  WORKSPACE_DIFF_KEY,
-);
 export const useWorkspaceSkills = createParameterizedDataQuery<
   WorkspaceCatalogQuery,
   WorkspaceSkillDiscovery
