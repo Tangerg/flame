@@ -315,7 +315,7 @@ func (c *Coordinator) change(ctx context.Context, id resourceid.InstallationID, 
 			return false, err
 		}
 		installation := snapshot.Installation
-		previous, err := plugin.Restore(installation.Snapshot())
+		previous, err := plugin.Restore(installation.Snapshot(), snapshot.Selected, snapshot.Staged)
 		if err != nil {
 			return false, err
 		}

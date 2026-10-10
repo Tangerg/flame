@@ -36,23 +36,23 @@ func (s *installationMemory) Get(ctx context.Context, _ resourceid.InstallationI
 	if s.record == nil {
 		return plugin.Snapshot{}, plugin.ErrNotFound
 	}
-	installation, err := plugin.Restore(*s.record)
+	selected, err := s.catalog.Get(ctx, s.record.Selected)
 	if err != nil {
 		return plugin.Snapshot{}, err
 	}
-	selected, err := s.catalog.Get(ctx, installation.Selected())
-	if err != nil {
-		return plugin.Snapshot{}, err
-	}
-	snapshot := plugin.Snapshot{Installation: installation, Selected: selected}
-	if digest, staged := installation.Staged(); staged {
-		staged, err := s.catalog.Get(ctx, digest)
+	var staged *plugin.Release
+	if s.record.Staged != nil {
+		candidate, err := s.catalog.Get(ctx, *s.record.Staged)
 		if err != nil {
 			return plugin.Snapshot{}, err
 		}
-		snapshot.Staged = &staged
+		staged = &candidate
 	}
-	return snapshot, nil
+	installation, err := plugin.Restore(*s.record, selected, staged)
+	if err != nil {
+		return plugin.Snapshot{}, err
+	}
+	return plugin.Snapshot{Installation: installation, Selected: selected, Staged: staged}, nil
 }
 func (s *installationMemory) Save(_ context.Context, i *plugin.Installation) error {
 	if s.saveErr != nil {

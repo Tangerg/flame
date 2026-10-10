@@ -97,7 +97,7 @@ func TestPluginRealizationProjectionIsAClosedUnion(t *testing.T) {
 
 func installationView(t *testing.T, record plugin.Record, release plugin.Release) plugin.View {
 	t.Helper()
-	installation, err := plugin.Restore(record)
+	installation, err := plugin.Restore(record, release, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

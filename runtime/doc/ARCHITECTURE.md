@@ -271,6 +271,12 @@ admission even while a session holds the release. Staging, inactive approval and
 configuration originate no execution change. A failure after commit retains the change
 evidence; a rejected transition or write cannot manufacture it.
 
+Installation restoration requires the admitted selected and staged definitions.
+The aggregate validates configuration and package bindings before it exists, using
+the same rules as its transitions. SQLite resolves both catalog references in the
+installation read transaction; it never treats a structurally valid row as proof of
+an enabled installation. Invalid persisted state fails the read without rewriting it.
+
 Provider identity is the exact provider/model pair plus model-owned options. Credential precedence, endpoints, SDK construction, request lowering, capability mapping, and provider-specific failures remain inside provider adapters. Product and delivery code do not infer a provider from a model name.
 
 Auxiliary text generation has one live-role completion boundary. It validates the request envelope before resolving the provider and accepts only a natural stop with non-empty text. Truncated, filtered, refused, or otherwise incomplete output remains a failure; compaction and background curation never persist it as a completed artifact.

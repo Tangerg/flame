@@ -92,7 +92,7 @@ func TestInstallationStateTransitionsAreClosed(t *testing.T) {
 	record := installation.Snapshot()
 	for _, invalid := range []State{"", "active", "approved,enabled"} {
 		record.State = invalid
-		if _, err := Restore(record); !errors.Is(err, ErrInvalid) {
+		if _, err := Restore(record, release, nil); !errors.Is(err, ErrInvalid) {
 			t.Fatalf("restored state %q = %v", invalid, err)
 		}
 	}
@@ -140,11 +140,11 @@ func TestExecutionChangesFollowSelectedCapabilities(t *testing.T) {
 		}, false, ErrInvalid},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			previous, err := Restore(Record{ID: testInstallationID(t), Source: "/package", Selected: release.Digest(), State: test.state})
+			previous, err := Restore(Record{ID: testInstallationID(t), Source: "/package", Selected: release.Digest(), State: test.state}, release, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
-			current, err := Restore(previous.Snapshot())
+			current, err := Restore(previous.Snapshot(), release, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -206,12 +206,49 @@ func TestSelectedReleaseCannotAlsoBecomeStaged(t *testing.T) {
 	}
 	selected := release.Digest()
 	before.Staged = &selected
-	if _, err := Restore(before); !errors.Is(err, ErrStale) {
+	if _, err := Restore(before, release, &release); !errors.Is(err, ErrStale) {
 		t.Fatalf("restored duplicate release positions = %v", err)
 	}
 	other := testRelease(t, "2", Declaration{Name: "other"})
 	if err := installation.Stage(release, other); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("staging another package = %v", err)
+	}
+}
+
+func TestRestorationRequiresTheReleasesItsRecordNames(t *testing.T) {
+	selected := testRelease(t, "1", Declaration{Name: "package"})
+	candidate := testRelease(t, "2", Declaration{Name: "package"})
+	other := testRelease(t, "3", Declaration{Name: "other"})
+	installation, err := New(testInstallationID(t), "/package", selected)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unstaged := installation.Snapshot()
+	if err := installation.Stage(selected, candidate); err != nil {
+		t.Fatal(err)
+	}
+	staged := installation.Snapshot()
+	otherPackage := installation.Snapshot()
+	otherDigest := other.Digest()
+	otherPackage.Staged = &otherDigest
+	for _, test := range []struct {
+		name     string
+		record   Record
+		selected Release
+		staged   *Release
+		wantErr  error
+	}{
+		{"selected binding", staged, candidate, &candidate, ErrStale},
+		{"missing staged release", staged, selected, nil, ErrStale},
+		{"staged binding", staged, selected, &other, ErrStale},
+		{"staged package identity", otherPackage, selected, &other, ErrInvalid},
+		{"unreferenced staged release", unstaged, selected, &candidate, ErrStale},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if restored, err := Restore(test.record, test.selected, test.staged); !errors.Is(err, test.wantErr) || restored != nil {
+				t.Fatalf("unbound record became an installation: %+v, %v; want %v", restored, err, test.wantErr)
+			}
+		})
 	}
 }
 
@@ -451,7 +488,7 @@ func TestOptionalInputPresenceAdvancesSourceConfiguration(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, change := range []ValueChange{SetValue(""), ClearValue()} {
-		previous, err := Restore(installation.Snapshot())
+		previous, err := Restore(installation.Snapshot(), release, nil)
 		if err != nil {
 			t.Fatal(err)
 		}

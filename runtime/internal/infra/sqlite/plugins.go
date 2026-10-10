@@ -132,24 +132,24 @@ func (s *InstallationStore) restore(ctx context.Context, record plugin.Record) (
 	if err := disabled.Err(); err != nil {
 		return plugin.Snapshot{}, err
 	}
-	installation, err := plugin.Restore(record)
-	if err != nil {
-		return plugin.Snapshot{}, err
-	}
 	catalog := NewReleaseStore(s.db)
 	selected, err := catalog.Get(ctx, record.Selected)
 	if err != nil {
 		return plugin.Snapshot{}, fmt.Errorf("sqlite: read installation %s selected release: %w", id, err)
 	}
-	result := plugin.Snapshot{Installation: installation, Selected: selected}
+	var staged *plugin.Release
 	if record.Staged != nil {
-		staged, err := catalog.Get(ctx, *record.Staged)
+		candidate, err := catalog.Get(ctx, *record.Staged)
 		if err != nil {
 			return plugin.Snapshot{}, fmt.Errorf("sqlite: read installation %s staged release: %w", id, err)
 		}
-		result.Staged = &staged
+		staged = &candidate
 	}
-	return result, nil
+	installation, err := plugin.Restore(record, selected, staged)
+	if err != nil {
+		return plugin.Snapshot{}, fmt.Errorf("sqlite: restore installation %s: %w", id, err)
+	}
+	return plugin.Snapshot{Installation: installation, Selected: selected, Staged: staged}, nil
 }
 
 // Save replaces the installation's state and keeps one MCP source row per

@@ -227,6 +227,72 @@ func TestInstallationStateRoundTripsRelationally(t *testing.T) {
 	requireRows(t, db, map[string]int{"plugin_installation_values": 0, "plugin_installation_disabled": 0, "mcp_sources": 0})
 }
 
+func TestInstallationReadsRejectStateOutsideItsAdmittedReleases(t *testing.T) {
+	backend, remote := testsupport.ServerName("backend"), testsupport.ServerName("remote")
+	release := testsupport.Release(t, "1", plugin.Declaration{
+		Name: "package", Servers: []plugin.Server{
+			{Name: backend, Transport: mcpserver.TransportStdio, Command: "backend"},
+			{Name: remote, Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.test/mcp"},
+		},
+		Inputs: []plugin.Input{
+			{ID: "key", Server: backend, Target: plugin.Environment, Key: "KEY", Required: true},
+			{ID: "header", Server: remote, Target: plugin.Header, Key: "X-Key", Secret: true},
+		},
+		Skills: []plugin.Skill{{Name: "audit"}},
+	})
+	other := testsupport.Release(t, "other", plugin.Declaration{Name: "other"})
+	for _, test := range []struct {
+		name      string
+		statement string
+		values    []any
+	}{
+		{"unknown input", `INSERT INTO plugin_installation_values(installation_id,input_id,value) VALUES(?,'unknown','value')`, nil},
+		{"unknown server", `INSERT INTO plugin_installation_disabled(installation_id,kind,name) VALUES(?,'server','unknown')`, nil},
+		{"unknown skill", `INSERT INTO plugin_installation_disabled(installation_id,kind,name) VALUES(?,'skill','unknown')`, nil},
+		{"missing required input", `DELETE FROM plugin_installation_values WHERE installation_id=? AND input_id='key'`, nil},
+		{"invalid header", `UPDATE plugin_installation_values SET value=?2 WHERE installation_id=?1 AND input_id='header'`, []any{"bad\r\nvalue"}},
+		{"staged package mismatch", `UPDATE plugin_installations SET staged_digest=?2 WHERE id=?1`, []any{other.Digest().String()}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = db.Close() })
+			catalog, store := sqlite.NewReleaseStore(db), sqlite.NewInstallationStore(db)
+			for _, admitted := range []plugin.Release{release, other} {
+				if err := catalog.Admit(t.Context(), admitted); err != nil {
+					t.Fatal(err)
+				}
+			}
+			installation, err := plugin.New(testsupport.InstallationID(t), "/package", release)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, err := range []error{
+				installation.Approve(release),
+				installation.Configure(release, plugin.Configuration{Values: map[string]plugin.ValueChange{"key": plugin.SetValue("value"), "header": plugin.SetValue("value")}}),
+				installation.Enable(release),
+				store.Save(t.Context(), installation),
+			} {
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			args := append([]any{installation.ID().String()}, test.values...)
+			if _, err := db.ExecContext(t.Context(), test.statement, args...); err != nil {
+				t.Fatal(err)
+			}
+			if snapshot, err := store.Get(t.Context(), installation.ID()); !errors.Is(err, plugin.ErrInvalid) || snapshot.Installation != nil {
+				t.Fatalf("invalid persisted state became an installation: %+v, %v", snapshot, err)
+			}
+			if _, err := store.List(t.Context()); !errors.Is(err, plugin.ErrInvalid) {
+				t.Fatalf("listing accepted invalid persisted state: %v", err)
+			}
+		})
+	}
+}
+
 // The installation names releases by digest. Release content has one owner,
 // the insert-only catalog, which no installation write can advance.
 func TestInstallationNeverStoresAReleaseCopy(t *testing.T) {

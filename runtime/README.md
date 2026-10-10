@@ -433,6 +433,13 @@ checkpoint depends on it; every other release, its catalog row and its directory
 reclaimed at the admission point when a change commits and at startup. A release whose
 removal fails stays admitted and is retried by the next reclamation.
 
+Restoration resolves the selected and staged definitions from the admitted catalog
+before constructing an installation. The aggregate enforces the same input, header,
+component, required-value and staged-package rules used by its transitions. Unknown
+bindings, invalid header or authentication values, enabled backends without required
+inputs and a staged release from another package fail installation reads. Valid records
+keep their format; invalid records fail reads without automatic conversion or repair.
+
 Staging never switches running code. An already selected digest cannot be staged
 again. Selecting a distinct staged release requires execution to be quiescent. It is one
 installation transition that always returns the installation to `unapproved`: changed

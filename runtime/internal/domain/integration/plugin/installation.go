@@ -105,16 +105,17 @@ type Snapshot struct {
 // Installation alone advances selection, trust, and configuration. A
 // transition that depends on release content is handed the release read from
 // the admitted catalog and refuses any release other than the one it names.
-// Facts checked against a release when written stay valid, because a release
-// never changes under its digest; Restore therefore checks only the facts
-// that do not depend on release content.
+// Construction and restoration enforce the same release-bound invariants;
+// storage records cannot originate an installation that transitions would reject.
 type Installation struct{ record Record }
 
 func New(id resourceid.InstallationID, source string, release Release) (*Installation, error) {
-	return Restore(Record{ID: id, Source: source, Selected: release.Digest(), State: Unapproved, Values: map[string]string{}})
+	return Restore(Record{ID: id, Source: source, Selected: release.Digest(), State: Unapproved, Values: map[string]string{}}, release, nil)
 }
 
-func Restore(r Record) (*Installation, error) {
+// Restore validates persisted state against its admitted release definitions.
+// A record alone cannot prove configuration, enablement or staged package identity.
+func Restore(r Record, selected Release, staged *Release) (*Installation, error) {
 	if err := r.ID.Validate(); err != nil {
 		return nil, fmt.Errorf("%w: installation identity: %w", ErrInvalid, err)
 	}
@@ -124,29 +125,48 @@ func Restore(r Record) (*Installation, error) {
 	if err := r.Selected.Validate(); err != nil {
 		return nil, fmt.Errorf("%w: selected release: %w", ErrInvalid, err)
 	}
+	if selected.Digest() != r.Selected {
+		return nil, fmt.Errorf("%w: selected release binding", ErrStale)
+	}
 	if r.Staged != nil {
 		if err := r.Staged.Validate(); err != nil {
 			return nil, fmt.Errorf("%w: staged release: %w", ErrInvalid, err)
 		}
-		if *r.Staged == r.Selected {
-			return nil, fmt.Errorf("%w: staged release is already selected", ErrStale)
+		if staged == nil || staged.Digest() != *r.Staged {
+			return nil, fmt.Errorf("%w: staged release binding", ErrStale)
 		}
+		if err := validateStaged(selected, *staged); err != nil {
+			return nil, err
+		}
+	} else if staged != nil {
+		return nil, fmt.Errorf("%w: unexpected staged release", ErrStale)
 	}
 	if err := r.State.validate(); err != nil {
 		return nil, err
 	}
-	for key, value := range r.Values {
-		if err := validateValueText(key, value); err != nil {
-			return nil, err
-		}
+	if err := validateValues(selected, r.Values); err != nil {
+		return nil, err
 	}
 	for _, name := range r.DisabledServers {
 		if err := name.Validate(); err != nil {
 			return nil, fmt.Errorf("%w: disabled server: %w", ErrInvalid, err)
 		}
+		if _, declared := selected.server(name); !declared {
+			return nil, fmt.Errorf("%w: unknown disabled server %q", ErrInvalid, name)
+		}
+	}
+	for _, name := range r.DisabledSkills {
+		if !selected.declaresSkill(name) {
+			return nil, fmt.Errorf("%w: unknown disabled skill %q", ErrInvalid, name)
+		}
 	}
 	if duplicateNames(r.DisabledServers) || duplicateNames(r.DisabledSkills) {
 		return nil, fmt.Errorf("%w: duplicate disabled component", ErrInvalid)
+	}
+	if r.State == Enabled {
+		if err := requiredValues(selected, r.Values, r.DisabledServers); err != nil {
+			return nil, err
+		}
 	}
 	i := &Installation{record: clone(r)}
 	if i.record.Values == nil {
@@ -192,14 +212,21 @@ func (i *Installation) Stage(selected, candidate Release) error {
 	if err := i.bound(selected); err != nil {
 		return err
 	}
-	if candidate.Name() != selected.Name() {
-		return fmt.Errorf("%w: staged package identity", ErrInvalid)
-	}
-	if candidate.Digest() == i.record.Selected {
-		return fmt.Errorf("%w: release is already selected", ErrStale)
+	if err := validateStaged(selected, candidate); err != nil {
+		return err
 	}
 	digest := candidate.Digest()
 	i.record.Staged = &digest
+	return nil
+}
+
+func validateStaged(selected, candidate Release) error {
+	if candidate.Name() != selected.Name() {
+		return fmt.Errorf("%w: staged package identity", ErrInvalid)
+	}
+	if candidate.Digest() == selected.Digest() {
+		return fmt.Errorf("%w: release is already selected", ErrStale)
+	}
 	return nil
 }
 
