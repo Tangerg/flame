@@ -1,11 +1,9 @@
 {
   "$schema": "https://unpkg.com/knip@latest/schema.json",
   "entry": [
-    "visual/main.tsx",
     "visual/**/*.visual.spec.ts",
     "src/plugins/sdk/index.ts",
     "postcss.config.mjs",
-    "public/focus-modality.js",
     "scripts/check-plugin-carrier-native.mjs",
     "scripts/check-plugin-view-native.mjs",
     "scripts/check-plugin-workbench-native.mjs"
