@@ -42,6 +42,24 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
+## Protocol 2026-10-10.2
+
+`plugins.readTrajectory` embeds the canonical `sessions.trajectory` request, including
+`includeDescendants`, bounded page size and cursor scope. The existing query owns
+capability admission and cursor validation. The trusted Host captures descendant scope
+from negotiated subagent capability; the guest can request only a cursor or refresh.
+
+The first-party [Session trajectory package](../plugins/trajectory/plugin.json) replaces
+the compiled Desktop Timeline. It is optional and uses ordinary package installation,
+exact-digest approval and enablement. Its display, filters and current-page metrics consume
+canonical Run, model-call and Item evidence. Runtime owns execution and recorded evidence;
+the Host owns navigation, Run controls and complete Session trajectory export.
+
+Rebuild Runtime, the shared client, CLI, Desktop and IDE together. Earlier protocol versions
+are refused. Install the new package bytes from `plugins/trajectory` and approve their digest;
+previously admitted immutable releases do not change when their source directory moves.
+There is no Timeline alias, fallback renderer or second trajectory query model.
+
 ## Protocol 2026-10-10.1
 
 Portable releases publish a required `actions` array. The first admitted operation is
@@ -172,7 +190,7 @@ keyed by their owning Item. Older Runtimes and clients are refused by the exact
 protocol-version check, and older artifacts by their version.
 
 Rebuild and deploy Runtime, CLI, Desktop/Web, IDE, and generated contract
-consumers together. The timeline requires `sessions.trajectory`, and evaluation
+consumers together. Trajectory inspection requires `sessions.trajectory`, and evaluation
 export requires `sessions.exportTrajectory`. Bundled clients reject an older
 Runtime through the existing exact protocol-version checks; an updated Runtime
 likewise refuses requests declaring an older version. There is no legacy endpoint
@@ -509,7 +527,7 @@ the existing Session update meaning. Release availability and current installati
 authority are checked before acceptance. The Session owner performs the edit once under
 its existing revision check; no action result store or second transition exists.
 
-The [trajectory example](../examples/plugins/trajectory/plugin.json) exercises a theme,
+The [first-party trajectory package](../plugins/trajectory/plugin.json) exercises a theme,
 a Skill, an isolated Session trajectory page and a trusted Session rename form. The public page API requires no code
 execution in Runtime. Desktop's [carrier acceptance](../desktop/README.md#plugin-carrier-acceptance)
 owns rendering qualification; an unavailable renderer does not change installation state.

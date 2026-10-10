@@ -24,7 +24,7 @@ describe("the round trip", () => {
     dock().adoptDockLocation("skills");
     dock().adoptDockLocation("diff");
     dock().setFileViewer({ path: "a/b.ts", line: 12 });
-    dock().revealTool("tool_1");
+    dock().toggleExpandedTool("tool_1");
 
     const key = useContextDockStore.persist.getOptions().name!;
     const payload = localStorage.getItem(key) ?? "null";
@@ -241,7 +241,7 @@ describe("per-session scopes", () => {
     dock().adoptDockLocation("diff");
     dock().focusFile("src/runtime.ts");
     dock().setFileViewer({ path: "src/runtime.ts", line: 42 });
-    dock().revealTool("call-from-retired-renderer");
+    dock().toggleExpandedTool("call-from-retired-renderer");
 
     await vi.waitFor(() =>
       expect(localStorage.getItem(useContextDockStore.persist.getOptions().name!)).not.toBeNull(),
@@ -274,12 +274,6 @@ describe("per-session scopes", () => {
 });
 
 describe("tool disclosure inside a scope", () => {
-  it("reveals a tool by expanding it", () => {
-    dock().revealTool("call-1");
-
-    expect(dock().expandedToolIds).toEqual(new Set(["call-1"]));
-  });
-
   it("toggles a tool open and shut", () => {
     dock().toggleExpandedTool("call-1");
     expect(dock().expandedToolIds).toEqual(new Set(["call-1"]));

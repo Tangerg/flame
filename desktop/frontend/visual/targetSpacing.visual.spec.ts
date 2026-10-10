@@ -8,7 +8,7 @@ const ROUTES = [
   "fixture=agent&state=tool-shells",
   "fixture=agent&state=delegated",
   "fixture=workspace&state=dock-light",
-  "fixture=workspace&state=dock-timeline",
+  "fixture=workspace&state=dock-trajectory",
   "fixture=workspace&state=settings",
 ];
 

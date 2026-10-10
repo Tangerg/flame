@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-10.1",
+  "protocolVersion": "2026-10-10.2",
   "features": [
     "reasoning",
     "multimodal",
@@ -8736,23 +8736,6 @@
         {
           "field": "viewId",
           "constraint": "pattern(\"^[a-z][a-z0-9._-]{0,63}$\")"
-        }
-      ]
-    },
-    {
-      "type": "ReadPluginTrajectoryRequest",
-      "rules": [
-        {
-          "field": "sessionId",
-          "constraint": "nonEmpty"
-        },
-        {
-          "field": "sessionId",
-          "constraint": "identity"
-        },
-        {
-          "field": "sessionId",
-          "constraint": "maxLength(256)"
         }
       ]
     },

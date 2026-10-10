@@ -649,9 +649,7 @@ for (const path of sourceFiles(SRC_DIR)) {
 // guard is not entitled to make — so they are named here, with the question, instead of
 // diverging quietly.
 {
-  const UNDECIDED = new Map([
-    ["timeline", 'tab "Timeline" vs header "Run timeline" — is the short one for the strip?'],
-  ]);
+  const UNDECIDED = new Map([]);
   const views = readFileSync(join(SRC_DIR, "plugins/builtin/workspace/views.ts"), "utf8");
   for (const match of views.matchAll(/id:\s*"([^"]+)",\s*\n\s*title:\s*"([^"]+)"/g)) {
     const [, id, tabKey] = match;

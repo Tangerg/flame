@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "./test";
 import { freezeVisualClock } from "./frozenClock";
+import type { VisualAgentState } from "./agentSessionSnapshots";
 import { en } from "@/lib/i18n/locales/en";
-import { TOOL_ICON_BY_NAME } from "@/lib/toolFamilies";
 import {
   DOCK_MIN_WIDTH_PX,
   CONVERSATION_READING_MIN_PX,
@@ -19,6 +19,13 @@ import {
   type VisualWorkspaceTheme,
 } from "./workspaceFixtureStates";
 
+function trajectoryFrame(page: Page) {
+  return page
+    .locator('[data-dock-view-id="package:visual:trajectory"]')
+    .frameLocator("iframe")
+    .frameLocator("iframe");
+}
+
 const SETTINGS_SEARCH = { name: en["settings.searchPlaceholder"]! };
 const ACTIVE_FILE_PATH =
   "desktop/frontend/src/plugins/builtin/shell/workbench/panel/DockResizer.tsx";
@@ -30,6 +37,7 @@ interface WorkspaceRoute {
   theme?: VisualWorkspaceTheme;
   pane?: VisualSettingsPane;
   fullView?: string;
+  agentState?: VisualAgentState;
 }
 
 async function openWorkspace(page: Page, route: WorkspaceRoute): Promise<void> {
@@ -39,6 +47,7 @@ async function openWorkspace(page: Page, route: WorkspaceRoute): Promise<void> {
     theme: route.theme ?? "light",
     state: route.state,
   });
+  if (route.agentState) query.set("agent-state", route.agentState);
   if (route.pane) query.set("pane", route.pane);
   if (route.fullView) query.set("full-view", route.fullView);
   await page.goto(`/visual/?${query}`);
@@ -130,21 +139,16 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     ).toBeVisible();
     return;
   }
-  if (state === "dock-runs") {
-    const view = page.locator(".agent-workspace-view:visible");
-    await expect(view.locator('[data-trajectory-kind="run"]')).toHaveCount(7);
-    await expect(view).toContainText("run_nested");
-    await expect(view).toContainText("grid-cols-subgrid");
-    for (const status of ["Canceled", "Error", "Finished"]) {
-      await expect(view.getByText(status, { exact: true }).first()).toBeVisible();
-    }
-    return;
-  }
-  if (state === "dock-timeline") {
-    const view = page.locator(".agent-workspace-view:visible");
-    await expect(view).toContainText("Counts and filters apply to this page");
-    await expect(view.getByText("Outcome unknown", { exact: true })).toBeVisible();
-    await expect(view.getByText("Failed", { exact: true }).first()).toBeVisible();
+  if (state === "dock-runs" || state === "dock-trajectory") {
+    const view = trajectoryFrame(page);
+    await expect(view.getByRole("heading", { name: "Session trajectory" })).toBeVisible();
+    await expect(view.getByText(/recorded observations loaded on this page/)).toBeVisible();
+    await expect(view.locator('[data-trajectory-kind="run"]')).toHaveCount(
+      state === "dock-runs" ? 7 : 1,
+    );
+    await expect(
+      view.locator('[data-trajectory-record="model:call_visual_recovered"]'),
+    ).toContainText("unknown");
     return;
   }
   const CATALOGUE_READY: Partial<Record<VisualWorkspaceState, string>> = {
@@ -211,7 +215,7 @@ test("collapse and reopen preserve the dock workspace", async ({ page }) => {
   await page.getByRole("button", { name: "Collapse right workspace" }).click();
   await expect(page.getByTestId("dock-open")).toHaveText("false");
   await expect(page.getByTestId("active-dock-view")).toHaveText("");
-  await expect(page.getByTestId("dock-view-ids")).toHaveText("file,diff,timeline");
+  await expect(page.getByTestId("dock-view-ids")).toHaveText("file,diff,package:visual:trajectory");
   await page.getByRole("button", { name: "Open right workspace" }).click();
 
   await expect(page.getByTestId("dock-open")).toHaveText("true");
@@ -248,7 +252,7 @@ test("an unsafe narrow row folds the dock without forgetting its tabs", async ({
   expect(geometry.dockVisible).toBe(false);
   expect(geometry.conversationWidth).toBe(geometry.rowWidth);
   await expect(page.getByRole("button", { name: /^Open material full width/ })).toBeEnabled();
-  await expect(page.getByTestId("dock-view-ids")).toHaveText("file,diff,timeline");
+  await expect(page.getByTestId("dock-view-ids")).toHaveText("file,diff,package:visual:trajectory");
   expect(page.url()).toBe(location);
   expect(await page.evaluate(() => history.length)).toBe(historyLength);
   await page.setViewportSize({ width: 1520, height: 900 });
@@ -270,8 +274,8 @@ test("the model remains readable when the dock narrows the composer", async ({ p
 test("closing tabs selects a neighbor without collapsing the workspace", async ({ page }) => {
   await openWorkspace(page, { state: "dock-light" });
 
-  await page.getByRole("tab", { name: "Timeline" }).hover();
-  await page.getByRole("button", { name: "Close Timeline" }).click();
+  await page.getByRole("tab", { name: "Session trajectory" }).hover();
+  await page.getByRole("button", { name: "Close Session trajectory" }).click();
   await expect(page.getByTestId("active-dock-view")).toHaveText("diff");
   await expect(page.getByTestId("dock-open")).toHaveText("true");
 
@@ -284,9 +288,9 @@ test("closing tabs selects a neighbor without collapsing the workspace", async (
 test("add-panel menu restores a closed singleton and focuses it", async ({ page }) => {
   await openWorkspace(page, { state: "dock-light" });
 
-  await page.getByRole("tab", { name: "Timeline" }).hover();
-  await page.getByRole("button", { name: "Close Timeline" }).click();
-  await expect(page.getByTestId("dock-view-ids")).not.toContainText("timeline");
+  await page.getByRole("tab", { name: "Session trajectory" }).hover();
+  await page.getByRole("button", { name: "Close Session trajectory" }).click();
+  await expect(page.getByTestId("dock-view-ids")).not.toContainText("package:visual:trajectory");
 
   await page.getByRole("button", { name: "Browse panels" }).click();
 
@@ -298,12 +302,12 @@ test("add-panel menu restores a closed singleton and focuses it", async ({ page 
   });
   expect(onTop).toBe(true);
 
-  await page.getByRole("combobox").fill("Timeline");
-  await page.getByRole("option", { name: "Timeline" }).waitFor();
+  await page.getByRole("combobox").fill("Session trajectory");
+  await page.getByRole("option", { name: "Session trajectory" }).waitFor();
   await page.keyboard.press("Enter");
 
-  await expect(page.getByTestId("active-dock-view")).toHaveText("timeline");
-  await expect(page.getByTestId("dock-view-ids")).toHaveText("file,diff,timeline");
+  await expect(page.getByTestId("active-dock-view")).toHaveText("package:visual:trajectory");
+  await expect(page.getByTestId("dock-view-ids")).toHaveText("file,diff,package:visual:trajectory");
 });
 
 test("files browse and preview share one dock tab", async ({ page }) => {
@@ -394,7 +398,9 @@ test("the active overflow tab stays visible and both hidden edges remain signpos
   expect(activeBox!.x + activeBox!.width).toBeLessThanOrEqual(stripBox!.x + stripBox!.width);
 });
 
-test("file and timeline tabs render through their production view plugins", async ({ page }) => {
+test("file and portable trajectory tabs render through their production views", async ({
+  page,
+}) => {
   await openWorkspace(page, { state: "dock-light" });
 
   await page.getByRole("tab", { name: "File" }).click();
@@ -403,11 +409,15 @@ test("file and timeline tabs render through their production view plugins", asyn
   await expect(fileView.getByTitle(ACTIVE_FILE_PATH)).toBeVisible();
   await expect(fileView.getByText(/const currentWidth = readDockWidth/)).toBeVisible();
 
-  await page.getByRole("tab", { name: "Timeline" }).click();
-  await expect(page.getByTestId("active-dock-view")).toHaveText("timeline");
+  await page.getByRole("tab", { name: "Session trajectory" }).click();
+  await expect(page.getByTestId("active-dock-view")).toHaveText("package:visual:trajectory");
   await expect(fileView.getByText(/const currentWidth = readDockWidth/)).toBeHidden();
-  await expect(page.locator('[data-trajectory-record="run:run_root"]')).toBeVisible();
-  await expect(page.locator('[data-dock-view-id="timeline"]')).toContainText("run_root");
+  await expect(
+    trajectoryFrame(page).locator('[data-trajectory-record="run:run_root"]'),
+  ).toBeVisible();
+  await expect(
+    trajectoryFrame(page).locator("summary").filter({ hasText: "run_root" }).first(),
+  ).toBeVisible();
 });
 
 test("automatic dock sizing never records a user preference", async ({ page }) => {
@@ -655,21 +665,21 @@ test("dock close control reveals its contextual glyph on hover and focus", async
 test("a dock tab closes on a middle click", async ({ page }) => {
   await openWorkspace(page, { state: "dock-light" });
 
-  const timeline = page.getByRole("tab", { name: "Timeline" });
+  const timeline = page.getByRole("tab", { name: "Session trajectory" });
   await expect(timeline).toBeVisible();
   await timeline.click({ button: "middle" });
 
-  await expect(page.getByTestId("dock-view-ids")).not.toContainText("timeline");
+  await expect(page.getByTestId("dock-view-ids")).not.toContainText("package:visual:trajectory");
 });
 
 test("a dock tab closes from the keyboard", async ({ page }) => {
   await openWorkspace(page, { state: "dock-light" });
 
-  const timeline = page.getByRole("tab", { name: "Timeline" });
+  const timeline = page.getByRole("tab", { name: "Session trajectory" });
   await timeline.focus();
   await expect(timeline).toBeFocused();
   await timeline.press("Delete");
-  await expect(page.getByTestId("dock-view-ids")).not.toContainText("timeline");
+  await expect(page.getByTestId("dock-view-ids")).not.toContainText("package:visual:trajectory");
 
   const reachable = await page.evaluate(() => {
     const strip = document.querySelector('[aria-label="Right workspace panels"]');
@@ -801,19 +811,18 @@ test("deleting a schedule asks first, and a declined ask changes nothing", async
   await expect(rows).toHaveCount(2);
 });
 
-test("the timeline names tools the way the transcript does, never by wire name", async ({
+test("the portable trajectory preserves canonical Tool evidence for inspection", async ({
   page,
 }) => {
-  const wireNames = Object.keys(TOOL_ICON_BY_NAME);
-  expect(wireNames.length).toBeGreaterThan(20);
-
-  for (const state of ["dock-timeline", "dock-runs"] as const) {
-    await openWorkspace(page, { state });
-    await waitForWorkspaceState(page, state);
-    const subjects = await page.locator("[data-timeline-subject]").allInnerTexts();
-    expect(subjects.length).toBeGreaterThan(3);
-    expect(subjects.filter((subject) => wireNames.includes(subject.trim()))).toEqual([]);
-  }
+  await openWorkspace(page, { state: "dock-runs" });
+  await waitForWorkspaceState(page, "dock-runs");
+  const view = trajectoryFrame(page);
+  await expect(view.locator('[data-trajectory-record="item:item_child_approval"]')).toHaveCount(0);
+  const tool = view.locator('[data-trajectory-record="item:item_nested_delegate"]');
+  await expect(tool.locator("summary")).toContainText("delegate_task");
+  await tool.locator("summary").click();
+  await expect(tool).toContainText("Verify package dependencies");
+  await expect(view.getByRole("button", { name: /Cancel|Allow once|Deny/ })).toHaveCount(0);
 });
 
 test("choosing a subagent swaps the panel's name for the way back", async ({ page }) => {
@@ -883,35 +892,30 @@ test("every dock state renders its view inside the frame that paints one", async
 });
 
 for (const answer of [
-  { button: "Allow once", mark: "Approved" },
-  { button: "Deny", mark: "Declined" },
+  { button: "Allow once", decision: "approve" },
+  { button: "Deny", decision: "deny" },
 ] as const) {
   test(`answering an approval with ${answer.button} exposes its retained tool decision`, async ({
     page,
   }) => {
-    await openWorkspace(page, { state: "dock-runs" });
-    await waitForWorkspaceState(page, "dock-runs");
+    await openWorkspace(page, { state: "dock-trajectory", agentState: "waiting" });
+    await waitForWorkspaceState(page, "dock-trajectory");
 
-    const timeline = page.locator("[data-dock-view-id='timeline']");
-    await expect(timeline.getByRole("button", { name: "Inspect item_child_approval" })).toHaveCount(
+    const view = trajectoryFrame(page);
+    await expect(view.getByRole("button", { name: /Allow once|Deny/ })).toHaveCount(0);
+
+    const workbench = page.locator("main");
+    await workbench.getByRole("button", { name: answer.button, exact: true }).click();
+    await expect(workbench.getByRole("button", { name: answer.button, exact: true })).toHaveCount(
       0,
     );
 
-    await page
-      .locator('[data-slot="delegated-run-link"][data-run-id="run_child"]')
-      .getByRole("button")
-      .first()
-      .click();
-    const subagent = page.locator('[data-dock-view-id="subagents"]');
-    await expect(subagent).toBeVisible();
-    await subagent.getByRole("button", { name: answer.button, exact: true }).click();
-    await expect(subagent.getByRole("button", { name: answer.button, exact: true })).toHaveCount(0);
-    await page.getByRole("tab", { name: "Timeline", exact: true }).click();
-
-    const settled = timeline.locator('[data-trajectory-record="item:item_child_approval"]');
-    await expect(settled).toContainText("go list -deps ./...");
-    await settled.getByRole("button", { name: "Inspect item_child_approval" }).click();
+    await view.getByRole("button", { name: "Refresh" }).click();
+    const settled = view.locator('[data-trajectory-record="item:item_approval"]');
+    await expect(settled.locator("summary")).toContainText(answer.decision);
+    await settled.locator("summary").click();
+    await expect(settled).toContainText("go test -race ./...");
     await expect(settled.getByText("Approval", { exact: true })).toBeVisible();
-    await expect(settled.getByText(answer.mark, { exact: true }).last()).toBeVisible();
+    await expect(settled.getByText(answer.decision, { exact: true }).last()).toBeVisible();
   });
 }

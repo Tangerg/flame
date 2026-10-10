@@ -379,14 +379,30 @@ unavailable. Slice C uses the qualified Chromium entry document and independent 
 WebKit view; it does not qualify the original Wails frame. Independent themes, Skills and
 MCP declarations retain their existing admission and lifecycle.
 
-### Optional Session trajectory page
+### Optional first-party Session trajectory page
 
 An admitted `sessionTrajectory` view registers a Session dock contribution through the
 existing Dougong Host. Runtime owns package admission and canonical trajectory data.
-The trusted client captures installation, selected digest, view ID and active Session;
+The trusted client captures installation, selected digest, view ID, active Session,
+negotiated descendant scope and the host's light/dark appearance;
 the guest can ask only for a cursor or refresh. Initial data is reused on connection.
 The page renders recorded Run, model-call and Item observations, including missing usage,
 without constructing execution, approval or retry state.
+
+The optional first-party package lives at [`plugins/trajectory`](../plugins/trajectory/plugin.json).
+Install, approve and enable it through the existing package lifecycle. The compiled Timeline,
+its fixed navigation target and its private trajectory data providers have been removed.
+The context catalogue lists admitted package contributions. Run failure recovery opens that
+catalogue, so navigation needs no knowledge of a particular installation ID.
+
+The guest retains only the current bounded page and its cursor history. Type, Run and text
+filters apply to that page; a failed read preserves it without advancing the cursor.
+Details show canonical identities, recorded model usage and Tool duration, keeping zero
+values distinct from absent evidence. Unknown settlement does not imply execution duration;
+redacted reasoning is excluded from display and search. Inline data images load only on expansion;
+the carrier grants no external image origins.
+Complete Session trajectory export is a trusted command-menu operation against Runtime,
+independent of visible filters and pages. Execution and approval controls stay in the workbench.
 
 The browser loads the fixed `/plugin-carrier.html` entry in an opaque frame. Runtime and
 Vite read its enforcing header from `frontend/public/plugin-carrier-policy.txt`. Before
@@ -402,7 +418,7 @@ or closing a focused page restores workbench focus. Other desktop targets report
 unavailable. The qualified target was macOS 26.5 with Wails v3 beta.28; other engine/OS
 versions require their own gate result.
 
-Session changes close the prior instance. Installation withdrawal or digest changes
+Session, descendant-scope or host-scheme changes close the prior instance. Installation withdrawal or digest changes
 retire its contribution lifetime, and Runtime connection replacement joins predecessor
 cleanup before registering successor contributions. Native IDs identify physical pages;
 late allocation, reply or closure cannot advance another instance. Pending reads receive

@@ -124,8 +124,7 @@ type PluginViewResource struct {
 // the Session selected by the trusted host. It grants no execution operations.
 type ReadPluginTrajectoryRequest struct {
 	ReadPluginViewRequest
-	SessionID string `json:"sessionId"`
-	PageQuery
+	ListSessionTrajectoryRequest
 }
 
 // PluginServerDeclaration is a closed union by transport that projects a

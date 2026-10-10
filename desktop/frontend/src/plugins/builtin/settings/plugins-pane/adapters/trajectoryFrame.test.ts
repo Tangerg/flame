@@ -42,6 +42,7 @@ function fixture() {
         reads,
         signal: signal.signal,
         status,
+        scheme: "light",
       }),
     async ready() {
       const dispose = f.mount();
@@ -55,6 +56,12 @@ it("reuses the initial read and permits only the bound cursor operation", async 
   const f = fixture();
   const dispose = await f.ready();
   expect(f.reads.load).toHaveBeenCalledOnce();
+  expect(f.send).toHaveBeenCalledWith({
+    type: "boot",
+    html: "<!doctype html>",
+    initial: { data: [] },
+    scheme: "light",
+  });
   expect(f.reads.read).not.toHaveBeenCalled();
   f.publish({ type: "request", request: { type: "read", cursor: "next" } });
   await vi.waitFor(() => expect(f.send).toHaveBeenCalledTimes(2));

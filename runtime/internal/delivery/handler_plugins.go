@@ -221,7 +221,7 @@ func (s *Handler) ReadPluginTrajectory(ctx context.Context, in protocol.ReadPlug
 	}
 	err = s.plugins.WithView(ctx, id, digest, in.ViewID, func(*plugin.Installation, plugin.ViewDeclaration) error {
 		var readErr error
-		page, readErr = s.ListSessionTrajectory(ctx, protocol.ListSessionTrajectoryRequest{SessionID: in.SessionID, PageQuery: in.PageQuery})
+		page, readErr = s.ListSessionTrajectory(ctx, in.ListSessionTrajectoryRequest)
 		return readErr
 	})
 	if err != nil {

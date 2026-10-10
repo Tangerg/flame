@@ -622,7 +622,7 @@ func TestMCPUnionPresenceCannotCrossTransportOrHideNull(t *testing.T) {
 
 func TestShippedTrajectoryPackageIsAdmittedWithoutExecutingCode(t *testing.T) {
 	releases := testReleases(t)
-	source, err := filepath.Abs("../../../../../examples/plugins/trajectory")
+	source, err := filepath.Abs("../../../../../plugins/trajectory")
 	if err != nil {
 		t.Fatal(err)
 	}

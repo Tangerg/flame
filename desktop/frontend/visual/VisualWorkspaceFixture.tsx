@@ -16,7 +16,7 @@ import { type as typeStep } from "@/styles/tokens.stylex";
 const STATE_LABELS: Record<VisualWorkspaceState, string> = {
   "dock-light": "Files workspace",
   "dock-review": "Diff review",
-  "dock-timeline": "Timeline",
+  "dock-trajectory": "Session trajectory",
   "dock-runs": "Run tree",
   "dock-subagents": "Subagents",
   "dock-diagnostics": "Diagnostics",

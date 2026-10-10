@@ -7,6 +7,7 @@ import type { AgentProblem } from "@/plugins/sdk/types/agentSessionView";
 const state = vi.hoisted(() => ({
   problem: null as AgentProblem | null,
   sent: [] as unknown[],
+  showWorkspaceDock: vi.fn(),
 }));
 
 vi.mock("@/plugins/builtin/agent/public/run", () => ({
@@ -31,12 +32,16 @@ vi.mock("@/plugins/builtin/runtime/public/serviceStatus", () => ({
 }));
 vi.mock("@/plugins/builtin/workspace/public/deeplinks", () => ({
   openDiagnosticsView: vi.fn(),
-  openTimelineView: vi.fn(),
+}));
+
+vi.mock("@/plugins/builtin/workspace/public/navigation", () => ({
+  showWorkspaceDock: state.showWorkspaceDock,
 }));
 
 afterEach(() => {
   cleanup();
   state.sent = [];
+  state.showWorkspaceDock.mockClear();
 });
 
 const retryButton = () => screen.queryByRole("button", { name: /Retry/ });
@@ -65,6 +70,13 @@ describe("run error banner", () => {
       expect(screen.getByRole("alert").textContent).toContain(problem.code!);
     },
   );
+
+  it("opens the contributed context catalog to inspect the failure", () => {
+    state.problem = { code: "internal_error", recovery: RUN_PROBLEM_RECOVERY.internal_error };
+    render(<RunErrorBanner />);
+    screen.getByRole("button", { name: "Inspect context" }).click();
+    expect(state.showWorkspaceDock).toHaveBeenCalledOnce();
+  });
 
   it("offers retry for a Run an internal error ended", () => {
     state.problem = { code: "internal_error", recovery: RUN_PROBLEM_RECOVERY.internal_error };

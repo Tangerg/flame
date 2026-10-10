@@ -90,11 +90,12 @@ async function run() {
       const controller = new AbortController();
       const container = document.getElementById("page");
       expect(container, "native gate container is missing");
-      const reads = createTrajectoryViewReads(client.plugins, binding, sessionId);
+      const reads = createTrajectoryViewReads(client.plugins, binding, sessionId, false);
       const close = mountTrajectoryFrame({
         container,
         carrier,
         signal: controller.signal,
+        scheme: "light",
         reads: {
           async load(signal) {
             const result = await reads.load(signal);

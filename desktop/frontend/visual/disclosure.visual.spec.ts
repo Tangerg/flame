@@ -3,7 +3,7 @@ import { VISUAL_AGENT_STATES } from "./agentSessionSnapshots";
 
 const ROUTES = [
   ...VISUAL_AGENT_STATES.map((state) => `fixture=agent&state=${state}`),
-  "fixture=workspace&state=dock-timeline",
+  "fixture=workspace&state=dock-trajectory",
   "fixture=workspace&state=dock-runs",
   "fixture=workspace&state=dock-subagents",
   "fixture=workspace&state=settings",

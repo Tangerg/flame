@@ -115,14 +115,7 @@ const LAZY_FEATURES = [
   // these names aligned with the entries when views are added or renamed.
   {
     label: "workspace views",
-    prefixes: [
-      "AgentMemory-",
-      "DiffWorkspace-",
-      "FileWorkspace-",
-      "Skills-",
-      "SubagentsPanel-",
-      "Timeline-",
-    ],
+    prefixes: ["AgentMemory-", "DiffWorkspace-", "FileWorkspace-", "Skills-", "SubagentsPanel-"],
     ceiling: 250_000,
   },
   { label: "syntax highlighting", prefix: "shiki-", ceiling: 3_000_000 },

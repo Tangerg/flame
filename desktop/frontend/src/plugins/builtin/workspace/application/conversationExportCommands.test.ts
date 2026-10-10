@@ -6,6 +6,7 @@ describe("conversationExportCommands", () => {
     const handlers = {
       exportMarkdown: vi.fn(),
       exportJson: vi.fn(),
+      exportTrajectory: vi.fn(),
       importJson: vi.fn(),
     };
 
@@ -19,6 +20,11 @@ describe("conversationExportCommands", () => {
         id: "chat.export.json",
         label: "convExport.json",
         run: handlers.exportJson,
+      },
+      {
+        id: "chat.export.trajectory",
+        label: "convExport.trajectory",
+        run: handlers.exportTrajectory,
       },
       {
         id: "chat.import.json",

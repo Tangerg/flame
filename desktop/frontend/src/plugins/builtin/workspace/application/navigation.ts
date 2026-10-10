@@ -150,10 +150,6 @@ export function closeWorkspaceFile(): void {
   workspaceNavigation().closeFile();
 }
 
-export function locateWorkspaceTool(id: string): void {
-  workspaceNavigation().locateTool(id);
-}
-
 export function adoptWorkspaceSessionScope(sessionId: string): void {
   workspaceNavigation().adoptSessionScope(sessionId);
 }

@@ -73,7 +73,6 @@ interface WorkspaceNavigationPort {
   focusFile(path: string): void;
   openFile(path: string, line?: number): void;
   closeFile(): void;
-  locateTool(id: string): void;
   // Adoption and activation are different moves that only look alike. At start-up
   // the location is the authority — a deep link or a surviving renderer already
   // names a dock — so the session takes it. Every later switch reverses that: the

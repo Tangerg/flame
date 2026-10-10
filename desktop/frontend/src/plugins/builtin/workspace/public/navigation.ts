@@ -14,7 +14,6 @@ export {
   closeWorkspaceView,
   closeWorkspaceFile,
   forgetWorkspaceSessionScopes,
-  locateWorkspaceTool,
   openWorkspaceFile,
   openWorkspaceSettingsPane,
   openWorkspaceView,

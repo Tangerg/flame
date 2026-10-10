@@ -19,7 +19,6 @@ import {
   useAgentProblem,
   useAgentPlan,
   useRootNarrativeMessages,
-  useRunTree,
   useTranscriptRows,
   useAgentSharedMaterial,
 } from "./agentViewSelectors";
@@ -128,7 +127,6 @@ export function installAgentStatePorts(): () => void {
     useCurrentRootRunning,
     useRootNarrativeMessages,
     useTranscriptRows,
-    useRunTree,
     useProblem: useAgentProblem,
     usePlan: useAgentPlan,
     useSharedMaterial: useAgentSharedMaterial,

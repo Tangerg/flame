@@ -8,11 +8,6 @@ import { isAgentRunFailure } from "./runOutcome";
 
 const EMPTY_MESSAGES: Message[] = [];
 
-export interface AgentRunTreeNode {
-  run: AgentRunView;
-  children: AgentRunTreeNode[];
-}
-
 export interface DelegatedRunNarrative {
   run: AgentRunView;
   messages: Message[];
@@ -81,21 +76,6 @@ export function selectDelegatedRunNarratives(
     (byItemId[run.spawnedByItemId] ??= []).push(narrative);
   }
   return byItemId;
-}
-
-export function selectRunTree(view: AgentSessionView): AgentRunTreeNode[] {
-  const runs = Object.values(view.runsById).sort(compareRuns);
-  const byRunId = new Map<string, AgentRunTreeNode>();
-  for (const run of runs) byRunId.set(run.id, { run, children: [] });
-
-  const roots: AgentRunTreeNode[] = [];
-  for (const run of runs) {
-    const node = byRunId.get(run.id)!;
-    const parent = run.parentRunId ? byRunId.get(run.parentRunId) : undefined;
-    if (parent && parent !== node) parent.children.push(node);
-    else roots.push(node);
-  }
-  return roots;
 }
 
 export function selectRunProblem(run: AgentRunView | null): AgentProblem | null {

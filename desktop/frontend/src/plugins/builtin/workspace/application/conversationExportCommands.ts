@@ -5,6 +5,7 @@ type CommandRun = CommandSpec["run"];
 export interface ConversationExportCommandHandlers {
   exportMarkdown: CommandRun;
   exportJson: CommandRun;
+  exportTrajectory: CommandRun;
   importJson: CommandRun;
 }
 
@@ -21,6 +22,11 @@ export function conversationExportCommands(
       id: "chat.export.json",
       label: "convExport.json",
       run: handlers.exportJson,
+    },
+    {
+      id: "chat.export.trajectory",
+      label: "convExport.trajectory",
+      run: handlers.exportTrajectory,
     },
     {
       id: "chat.import.json",

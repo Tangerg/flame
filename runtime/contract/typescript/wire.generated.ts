@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-10.1";
+export const PROTOCOL_VERSION = "2026-10-10.2";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -1397,6 +1397,7 @@ export interface ReadFileRequest {
 export interface ReadPluginTrajectoryRequest {
   cursor?: string;
   digest: string;
+  includeDescendants?: boolean;
   installationId: string;
   limit?: number;
   sessionId: string;

@@ -82,7 +82,6 @@ workspace/
   ui/
     files/            file workspace, tree, and content
     review/           diff workspace and review presentation
-    timeline/         timeline and model-invocation history
     skills/           available skills, library, and proposals
     memory/           Agent memory presentation
     ViewHeader.tsx
@@ -91,6 +90,11 @@ workspace/
   views.ts            view contributions
   events.ts           workspace subscription installation
 ```
+
+Trajectory analysis is a first-party portable package in `plugins/trajectory`, admitted by
+Runtime and rendered through `settings/plugins-pane`'s scoped isolated carrier. Workspace
+owns the contribution catalogue and full evidence export commands; it has no compiled
+Timeline or dedicated trajectory data provider.
 
 These UI groups share the existing Workspace owner. They do not each introduce a
 new application, domain, adapter, or navigation stack.

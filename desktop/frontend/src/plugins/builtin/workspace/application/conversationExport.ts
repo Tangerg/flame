@@ -64,6 +64,10 @@ class ConversationArchiveGeneration {
     try {
       const sessionId = getActiveSessionId();
       if (!sessionId) return;
+      if (!runtimeCapability("sessionExport")) {
+        notifyError(t("convExport.unsupported"), { source: "session" });
+        return;
+      }
       const stamp = timestampForFilename(new Date());
       const content = await this.#cohort.run(() => this.#gateway.exportTrajectory(sessionId));
       this.#download({
@@ -72,7 +76,8 @@ class ConversationArchiveGeneration {
         mime: "application/json;charset=utf-8",
       });
     } catch (error) {
-      if (!this.#cohort.retired) throw error;
+      if (this.#cohort.retired) return;
+      notifyError(failureText(error, t("convExport.exportFailed")), { source: "session" });
     }
   }
 

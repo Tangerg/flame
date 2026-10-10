@@ -532,6 +532,7 @@ it("cancels and joins both initial view reads when either one fails", async () =
       viewId: "trajectory",
       sessionId: "session-a",
       cursor: undefined,
+      limit: 100,
     });
     expect(screen.queryByRole("alert")).toBeNull();
   } finally {

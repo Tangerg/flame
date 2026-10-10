@@ -96,13 +96,7 @@ import {
   toolSearchPreviewPlugin,
   webSearchPreview,
 } from "@/plugins/builtin/chat/tools/previews";
-import {
-  diffView,
-  fileView,
-  agentMemoryView,
-  skillsView,
-  timelineView,
-} from "@/plugins/builtin/workspace/views";
+import { diffView, fileView, agentMemoryView, skillsView } from "@/plugins/builtin/workspace/views";
 
 export const toolPreviewPlugins: AnyPlugin[] = [
   shellPreview,
@@ -187,7 +181,6 @@ export function createBuiltinPlugins(
     fileView,
     subagentsView,
     markdownFile,
-    timelineView,
     skillsView,
     agentMemoryView,
     diagnostics,

@@ -5,7 +5,7 @@
 > method the Runtime does not serve. The adjacent JSON artifacts are the
 > machine-readable contract; this file is its mechanical human-readable index.
 
-Protocol `2026-10-10.1` · 101 methods
+Protocol `2026-10-10.2` · 101 methods
 
 ## Methods
 
@@ -938,9 +938,6 @@ TypeScript validator from this single registry projection.
 | `PluginAction` | `title` | `nonEmpty` |
 | `PluginAction` | `title` | `maxLength(128)` |
 | `ReadPluginViewRequest` | `viewId` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
-| `ReadPluginTrajectoryRequest` | `sessionId` | `nonEmpty` |
-| `ReadPluginTrajectoryRequest` | `sessionId` | `identity` |
-| `ReadPluginTrajectoryRequest` | `sessionId` | `maxLength(256)` |
 | `PluginViewResource` | `html` | `maxLength(524288)` |
 | `PluginView` | `id` | `pattern("^[a-z][a-z0-9._-]{0,63}$")` |
 | `PluginView` | `title` | `nonEmpty` |

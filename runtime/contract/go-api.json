@@ -2298,7 +2298,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-10.1\""
+          "value": "\"2026-10-10.2\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -7989,13 +7989,8 @@
               "type": "ReadPluginViewRequest"
             },
             {
-              "name": "SessionID",
-              "type": "string",
-              "tag": "json:\"sessionId\""
-            },
-            {
-              "name": "PageQuery",
-              "type": "PageQuery"
+              "name": "ListSessionTrajectoryRequest",
+              "type": "ListSessionTrajectoryRequest"
             }
           ],
           "methods": [

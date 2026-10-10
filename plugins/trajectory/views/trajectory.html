@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Session trajectory</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font:
+          14px/1.6 system-ui,
+          sans-serif;
+        color: light-dark(#20242b, #eef0f4);
+        background: light-dark(#fafbfc, #181a1e);
+        --muted: light-dark(#586170, #a3a8b2);
+        --surface: light-dark(#eef1f5, #24282e);
+        --edge: light-dark(#c9cfd9, #484e59);
+        --accent: light-dark(#265cad, #91baff);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 24px;
+      }
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: start;
+        justify-content: space-between;
+        gap: 16px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+      }
+      p {
+        margin: 6px 0 20px;
+        color: var(--muted);
+      }
+      button,
+      select,
+      input {
+        font: inherit;
+        color: inherit;
+        background: var(--surface);
+        border: 1px solid var(--edge);
+        border-radius: 6px;
+        padding: 7px 12px;
+        max-width: 100%;
+      }
+      button {
+        white-space: nowrap;
+      }
+      button:hover {
+        border-color: var(--accent);
+      }
+      button:disabled {
+        opacity: 0.5;
+      }
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 3px;
+      }
+      #metrics {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+      .metric {
+        background: var(--surface);
+        border-radius: 8px;
+        padding: 12px;
+      }
+      .metric strong {
+        display: block;
+        font-size: 24px;
+        font-variant-numeric: tabular-nums;
+      }
+      .metric span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      #filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+      input {
+        flex: 1;
+        min-width: 150px;
+      }
+      #status {
+        min-height: 24px;
+        color: var(--muted);
+        margin: 0 0 12px;
+        overflow-wrap: anywhere;
+      }
+      #status[role="alert"] {
+        color: light-dark(#a12621, #ffb4ae);
+      }
+      details {
+        border-top: 1px solid var(--edge);
+        padding: 12px 0;
+      }
+      summary {
+        cursor: pointer;
+        overflow-wrap: anywhere;
+      }
+      time {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+        font-variant-numeric: tabular-nums;
+      }
+      pre {
+        padding: 12px;
+        background: var(--surface);
+        border-radius: 6px;
+        overflow: auto;
+        font-size: 12px;
+        max-height: 400px;
+      }
+      dl {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+        gap: 8px;
+      }
+      dt {
+        color: var(--muted);
+      }
+      dd {
+        margin: 0;
+        overflow-wrap: anywhere;
+        font-variant-numeric: tabular-nums;
+      }
+      img {
+        max-width: 100%;
+        max-height: 320px;
+        object-fit: contain;
+      }
+      footer {
+        margin-top: 20px;
+      }
+      nav {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+      @media (max-width: 480px) {
+        body {
+          padding: 16px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1>Session trajectory</h1>
+        <p>
+          Recorded Run, model and Item evidence. Execution controls remain in
+          the trusted workbench.
+        </p>
+      </div>
+      <button id="refresh" disabled>Refresh</button>
+    </header>
+    <section id="metrics" aria-label="Current page observations"></section>
+    <div id="filters">
+      <select id="kind" aria-label="Observation type">
+        <option value="all">All observations</option>
+        <option value="run">Runs</option>
+        <option value="model">Model calls</option>
+        <option value="toolCall">Tool calls</option>
+        <option value="message">Messages</option>
+        <option value="attention">Needs attention</option>
+      </select>
+      <select id="run" aria-label="Run filter">
+        <option value="">All Runs</option>
+      </select>
+      <input
+        id="search"
+        type="search"
+        placeholder="Filter this page"
+        aria-label="Filter this page"
+      />
+    </div>
+    <p id="status" role="status" aria-live="polite">Waiting for the Host…</p>
+    <section id="records" aria-label="Trajectory observations"></section>
+    <footer>
+      <nav aria-label="Trajectory pages">
+        <button id="previous" disabled>Newer records</button
+        ><button id="next" disabled>Older records</button>
+      </nav>
+      <p>
+        Counts and filters apply to this page. Missing provider evidence stays
+        unrecorded; timestamps do not imply causality. Export complete Session
+        trajectory from the trusted command menu.
+      </p>
+    </footer>
+    <script>
+      const status = document.getElementById("status");
+      const refresh = document.getElementById("refresh");
+      const previous = document.getElementById("previous");
+      const next = document.getElementById("next");
+      const kind = document.getElementById("kind");
+      const run = document.getElementById("run");
+      const search = document.getElementById("search");
+      let port;
+      let rows = [];
+      let nextCursor;
+      let history = [];
+      let pending;
+      const runId = (row) =>
+        row.type === "run" ? row.run.id : row[row.type].runId;
+      const needsAttention = (row) => {
+        if (row.type === "model")
+          return row.model.state === "failed" || row.model.state === "unknown";
+        if (row.type === "run")
+          return (
+            row.run.status === "waiting" ||
+            ["failed", "lost"].includes(row.run.outcome?.type)
+          );
+        return (
+          row.item.status === "incomplete" ||
+          row.item.approvalDecision === "deny" ||
+          Boolean(row.item.error)
+        );
+      };
+      function evidence(row) {
+        if (
+          row.type !== "item" ||
+          row.item.type !== "reasoning" ||
+          !row.item.redacted
+        )
+          return row;
+        const { text, ...item } = row.item;
+        return { ...row, item };
+      }
+      function searchable(row) {
+        const visible = evidence(row);
+        return JSON.stringify(visible, (key, value) =>
+          key === "data" ? undefined : value,
+        ).toLowerCase();
+      }
+      function title(row) {
+        if (row.type === "run")
+          return `Run · ${row.run.id} · ${row.run.provider}/${row.run.model} · ${row.run.outcome?.type ?? row.run.status}`;
+        if (row.type === "model")
+          return `Model call · ${row.model.callId} · ${row.model.state}`;
+        const item = row.item;
+        return `${item.type} · ${item.id} · ${item.tool?.name ?? item.status}${item.approvalDecision ? ` · ${item.approvalDecision}` : ""}`;
+      }
+      function datum(list, label, value) {
+        const term = document.createElement("dt");
+        term.textContent = label;
+        const detail = document.createElement("dd");
+        detail.textContent = value === undefined ? "Unrecorded" : String(value);
+        list.append(term, detail);
+      }
+      function details(row, record) {
+        const source = row[row.type];
+        const list = document.createElement("dl");
+        datum(list, "Run ID", runId(row));
+        if (row.type === "model") {
+          datum(list, "Segment ID", source.segmentId);
+          datum(list, "Recorded settlement", source.settledAt);
+          if (
+            ["completed", "failed"].includes(source.state) &&
+            source.settledAt
+          ) {
+            const duration =
+              Date.parse(source.settledAt) - Date.parse(source.startedAt);
+            if (Number.isFinite(duration) && duration >= 0)
+              datum(list, "Wall duration (ms)", duration);
+          }
+          datum(list, "First output (ms)", source.firstOutputLatencyMillis);
+          datum(list, "Input tokens", source.usage?.inputTokens);
+          datum(list, "Output tokens", source.usage?.outputTokens);
+          for (const [key, label] of [
+            ["cacheReadTokens", "Cache read tokens"],
+            ["cacheWriteTokens", "Cache write tokens"],
+            ["reasoningTokens", "Reasoning tokens"],
+          ]) {
+            if (source.usage?.[key] !== undefined)
+              datum(list, label, source.usage[key]);
+          }
+        } else if (row.type === "run") {
+          datum(list, "Root Run ID", source.rootRunId);
+          if (source.parentRunId)
+            datum(list, "Parent Run ID", source.parentRunId);
+          if (source.spawnedByItemId)
+            datum(list, "Delegating Item ID", source.spawnedByItemId);
+        } else if (source.type === "toolCall") {
+          datum(list, "Execution duration (ms)", source.durationMillis);
+          if (source.approvalDecision)
+            datum(list, "Approval", source.approvalDecision);
+        }
+        record.append(list);
+        if (row.type === "model" && !source.usage) {
+          const missing = document.createElement("p");
+          missing.textContent = "Usage was not recorded for this call.";
+          record.append(missing);
+        }
+        if (row.type === "model" && source.state === "unknown") {
+          const unknown = document.createElement("p");
+          unknown.textContent =
+            "The final outcome was not observed. Settlement time is not measured execution time.";
+          record.append(unknown);
+        }
+        if (
+          row.type === "item" &&
+          source.type === "reasoning" &&
+          source.redacted
+        ) {
+          const redacted = document.createElement("p");
+          redacted.textContent = "Reasoning was redacted.";
+          record.append(redacted);
+        }
+        const data = document.createElement("pre");
+        data.textContent = JSON.stringify(evidence(row), null, 2);
+        record.append(data);
+        if (row.type === "item")
+          for (const part of source.content ?? []) {
+            if (part.type !== "image") continue;
+            const image = document.createElement("img");
+            image.src = `data:${part.mime};base64,${part.data}`;
+            image.alt = part.mime;
+            record.append(image);
+          }
+      }
+      function render() {
+        const metrics = document.getElementById("metrics");
+        metrics.replaceChildren();
+        const calls = rows.filter((row) => row.type === "model");
+        for (const [count, label] of [
+          [rows.length, "Page records"],
+          [calls.length, "Model calls"],
+          [
+            rows.filter(
+              (row) => row.type === "item" && row.item.type === "toolCall",
+            ).length,
+            "Tool calls",
+          ],
+          [rows.filter(needsAttention).length, "Needs attention"],
+        ]) {
+          const card = document.createElement("div");
+          card.className = "metric";
+          const value = document.createElement("strong");
+          value.textContent = count;
+          const caption = document.createElement("span");
+          caption.textContent = label;
+          card.append(value, caption);
+          metrics.append(card);
+        }
+        const records = document.getElementById("records");
+        records.replaceChildren();
+        const query = search.value.toLowerCase();
+        const visible = rows.filter((row) => {
+          const category = row.type === "item" ? row.item.type : row.type;
+          const matchesKind =
+            kind.value === "all" ||
+            kind.value === category ||
+            (kind.value === "attention" && needsAttention(row)) ||
+            (kind.value === "message" &&
+              ["userMessage", "agentMessage", "reasoning"].includes(category));
+          return (
+            matchesKind &&
+            (!run.value || runId(row) === run.value) &&
+            searchable(row).includes(query)
+          );
+        });
+        for (const row of visible) {
+          const record = document.createElement("details");
+          record.dataset.trajectoryRecord = `${row.type}:${row[row.type].id ?? row.model?.callId}`;
+          record.dataset.trajectoryKind =
+            row.type === "item" ? row.item.type : row.type;
+          const heading = document.createElement("summary");
+          heading.textContent = title(row);
+          const time = document.createElement("time");
+          time.dateTime = row.occurredAt;
+          time.textContent = new Date(row.occurredAt).toLocaleString();
+          record.append(heading, time);
+          let expanded = false;
+          record.addEventListener("toggle", () => {
+            if (record.open && !expanded) {
+              expanded = true;
+              details(row, record);
+            }
+          });
+          records.append(record);
+        }
+        if (!visible.length) {
+          const empty = document.createElement("p");
+          empty.textContent = rows.length
+            ? "No records on this page match this filter."
+            : "No recorded trajectory observations.";
+          records.append(empty);
+        }
+      }
+      function controls() {
+        refresh.disabled = Boolean(pending);
+        previous.disabled = Boolean(pending) || !history.length;
+        next.disabled = Boolean(pending) || !nextCursor;
+      }
+      function accept(page) {
+        rows = page.data;
+        nextCursor = page.nextCursor;
+        if (pending) history = pending.history;
+        pending = undefined;
+        const selected = run.value;
+        run.replaceChildren(new Option("All Runs", ""));
+        for (const id of new Set(rows.map(runId))) run.add(new Option(id, id));
+        run.value = [...run.options].some((option) => option.value === selected)
+          ? selected
+          : "";
+        render();
+        controls();
+        status.setAttribute("role", "status");
+        status.textContent = `${rows.length} recorded observations loaded on this page.`;
+      }
+      function read(targetHistory) {
+        if (pending || !port) return;
+        const cursor = targetHistory.at(-1);
+        pending = { history: targetHistory };
+        controls();
+        status.setAttribute("role", "status");
+        status.textContent = "Reading recorded observations…";
+        port.postMessage({ type: "read", ...(cursor ? { cursor } : {}) });
+      }
+      addEventListener("message", (event) => {
+        if (
+          event.source !== parent ||
+          port ||
+          event.data?.type !== "flame.trajectory.connect.v1" ||
+          !["light", "dark"].includes(event.data.scheme) ||
+          event.ports.length !== 1
+        )
+          return;
+        document.documentElement.style.colorScheme = event.data.scheme;
+        port = event.ports[0];
+        port.onmessage = (message) => {
+          if (message.data.type === "page" && pending)
+            accept(message.data.page);
+          if (message.data.type === "error" && pending) {
+            pending = undefined;
+            controls();
+            status.setAttribute("role", "alert");
+            status.textContent = message.data.reason;
+          }
+        };
+        port.start();
+        accept(event.data.initial);
+      });
+      parent.postMessage("flame.trajectory.ready.v1", "*");
+      refresh.addEventListener("click", () => read([]));
+      previous.addEventListener("click", () => read(history.slice(0, -1)));
+      next.addEventListener("click", () => read([...history, nextCursor]));
+      kind.addEventListener("change", render);
+      run.addEventListener("change", render);
+      search.addEventListener("input", render);
+    </script>
+  </body>
+</html>

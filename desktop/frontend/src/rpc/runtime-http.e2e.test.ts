@@ -1017,9 +1017,10 @@ for await (const line of lines) {
       (error: unknown) => error instanceof RpcError && error.data.type === "invalid_params",
     );
     const installed = await client.plugins.install({
-      source: resolve(runtimeDirectory, "../examples/plugins/trajectory"),
+      source: resolve(runtimeDirectory, "../plugins/trajectory"),
     });
     const target = { installationId: installed.id, digest: installed.selected.digest };
+    const reader = createSharedClient();
     try {
       expect(installed.state).toBe("unapproved");
       expect(installed.selected.diagnostics).toEqual([]);
@@ -1030,6 +1031,22 @@ for await (const line of lines) {
       ).rejects.toMatchObject({ code: -32042 });
       await client.plugins.approve(target);
       await client.plugins.setEnablement({ installationId: installed.id, enabled: true });
+      const view = { ...target, viewId: "trajectory" };
+      const resource = await client.plugins.readView(view);
+      expect(resource.html).toBe(
+        await readFile(
+          resolve(runtimeDirectory, "../plugins/trajectory/views/trajectory.html"),
+          "utf8",
+        ),
+      );
+      const session = await client.sessions.create({
+        workspace: { path: root },
+        title: "Package evidence",
+      });
+      const query = { sessionId: session.id, includeDescendants: true, limit: 1 };
+      expect(await reader.plugins.readTrajectory({ ...view, ...query })).toEqual(
+        await reader.sessions.trajectory(query),
+      );
       const skills = await client.workspace({ path: root }).skills.listDiscovered();
       expect(skills.skills).toContainEqual(
         expect.objectContaining({
@@ -1042,9 +1059,14 @@ for await (const line of lines) {
         }),
       );
       await client.plugins.revoke(installed.id);
+      await expect(client.plugins.readView(view)).rejects.toMatchObject({ code: -32042 });
+      await expect(reader.plugins.readTrajectory({ ...view, ...query })).rejects.toMatchObject({
+        code: -32042,
+      });
       const revokedSkills = await client.workspace({ path: root }).skills.listDiscovered();
       expect(revokedSkills.skills.some((skill) => skill.name === "inspect-history")).toBe(false);
     } finally {
+      await reader.close();
       await client.plugins.uninstall(installed.id);
     }
   });

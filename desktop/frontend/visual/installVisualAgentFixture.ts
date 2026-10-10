@@ -10,7 +10,6 @@ import { installInterruptResponseCoordinator } from "@/plugins/builtin/agent/app
 import {
   configureAgentRuntimeGateway,
   type AgentRuntimeGateway,
-  type AgentSessionSnapshot,
 } from "@/plugins/builtin/agent/application/ports/runtimeGateway";
 import { projectAgentSessionSnapshot } from "@/plugins/builtin/agent/application/session/sessionSnapshot";
 import type { AgentSessionView } from "@/plugins/sdk/types/agentSessionView";
@@ -78,7 +77,9 @@ import {
 } from "@/plugins/builtin/workspace/application/workspaceQueries";
 import { useComposerStore } from "@/plugins/builtin/chat/composer/adapters/composerStore";
 import {
-  AGENT_SESSION_SNAPSHOTS,
+  RUNTIME_AGENT_SESSION_SNAPSHOTS,
+  projectRuntimeAgentSnapshot,
+  type RuntimeAgentSessionSnapshot,
   AGENT_SESSION_TAIL_EVENTS,
   VISUAL_GOALS,
   VISUAL_ROOT_RUN_ID,
@@ -147,7 +148,7 @@ function visualSession(state: VisualAgentState): AgentSessionSummary {
 }
 
 function visualAgentRuntimeGateway(
-  snapshot: AgentSessionSnapshot,
+  snapshot: RuntimeAgentSessionSnapshot,
   session: AgentSessionSummary,
 ): AgentRuntimeGateway {
   return {
@@ -165,7 +166,7 @@ function visualAgentRuntimeGateway(
     }),
     forkSession: async () => ({ id: `${VISUAL_SESSION_ID}_fork` }),
     loadSessionSnapshot: async () => ({
-      snapshot,
+      snapshot: projectRuntimeAgentSnapshot(snapshot),
       projectAssociatedSharedMaterial: (shared) => shared,
     }),
     loadSessionUsage: async () => ({}),
@@ -271,7 +272,7 @@ export async function installVisualAgentFixture(
   runtimeClient: () => FlameClient,
   state: VisualAgentState,
   commandOutput?: string,
-  snapshot: AgentSessionSnapshot = structuredClone(AGENT_SESSION_SNAPSHOTS[state]),
+  snapshot: RuntimeAgentSessionSnapshot = structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS[state]),
 ): Promise<AgentSessionView> {
   const projectless = state === "empty" || state === "runtime-down";
   queryClient.clear();
@@ -359,7 +360,7 @@ export async function installVisualAgentFixture(
     },
   }));
 
-  let view = projectAgentSessionSnapshot(snapshot);
+  let view = projectAgentSessionSnapshot(projectRuntimeAgentSnapshot(snapshot));
   if (commandOutput !== undefined) {
     const command = Object.values(view.toolCalls).find((tool) => tool.name === "shell");
     if (!command) throw new Error("The fixture needs a shell call to show command output");
@@ -404,6 +405,17 @@ export async function installVisualAgentFixture(
       responses[0]?.response ?? null,
     );
     onSettled?.();
+    const refresh = store.beginViewRefresh(VISUAL_SESSION_ID, true);
+    if (
+      !refresh ||
+      !store.commitViewRefresh(
+        VISUAL_SESSION_ID,
+        refresh,
+        projectAgentSessionSnapshot(projectRuntimeAgentSnapshot(snapshot)),
+      )
+    ) {
+      throw new Error("Failed to publish the visual Runtime response");
+    }
     return true;
   });
   store.setCancelRun(VISUAL_SESSION_ID, (runId) => {
@@ -414,7 +426,7 @@ export async function installVisualAgentFixture(
 }
 
 function commitVisualInterruptResponses(
-  snapshot: AgentSessionSnapshot,
+  snapshot: RuntimeAgentSessionSnapshot,
   responses: InterruptResumeInput[],
 ): void {
   for (const { itemId, response } of responses) {
@@ -440,7 +452,7 @@ function commitVisualInterruptResponses(
           },
           ...(approved
             ? {}
-            : { finishedAt: new Date().toISOString(), error: { code: "denied_by_user" } }),
+            : { finishedAt: new Date().toISOString(), error: { type: "denied_by_user" } }),
         },
       ];
     }

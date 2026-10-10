@@ -15,6 +15,3 @@ export {
   subscribeRootRunSettlements,
 } from "../application/run/rootAttention";
 export type { RootRunSettlement } from "../application/run/rootAttention";
-
-export { useSessionTrajectory, useTrajectoryRun } from "../application/run/trajectory";
-export type { ModelInvocation, TrajectoryEntry } from "../application/run/trajectory";

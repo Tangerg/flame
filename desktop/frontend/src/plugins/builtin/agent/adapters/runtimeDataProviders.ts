@@ -1,14 +1,6 @@
 import type { Contributor } from "@/plugins/sdk";
 import { DATA_PROVIDER } from "@/plugins/sdk/kernelPoints";
-import { asRunId, asSessionId, type FlameClient } from "@flame/runtime-contract/client";
-import {
-  TRAJECTORY_KEY,
-  TRAJECTORY_RUN_KEY,
-  type TrajectoryQuery,
-  type TrajectoryRunQuery,
-  type TrajectoryEntry,
-} from "../application/run/trajectory";
-import { runtimeItem, runtimeRunFact } from "./runtimeAgentFacts";
+import { asSessionId, type FlameClient } from "@flame/runtime-contract/client";
 import {
   APPROVAL_MODE_KEY,
   APPROVAL_RULES_KEY,
@@ -27,39 +19,6 @@ export function registerAgentDataProviders(
   ctx: Contributor,
   runtimeClient: () => FlameClient,
 ): void {
-  ctx.contribute(DATA_PROVIDER, {
-    key: TRAJECTORY_KEY,
-    fetcher: async (params, signal) => {
-      const query = requiredParams<TrajectoryQuery>(TRAJECTORY_KEY, params);
-      const page = await runtimeClient().sessions.trajectory(query, signal);
-      const data: TrajectoryEntry[] = page.data.map((entry) => {
-        switch (entry.type) {
-          case "run":
-            return {
-              type: entry.type,
-              occurredAt: entry.occurredAt,
-              run: runtimeRunFact(entry.run),
-            };
-          case "item":
-            return {
-              type: entry.type,
-              occurredAt: entry.occurredAt,
-              item: runtimeItem(entry.item),
-            };
-          case "model":
-            return { type: entry.type, occurredAt: entry.occurredAt, model: entry.model };
-        }
-      });
-      return { data, ...(page.nextCursor ? { nextCursor: page.nextCursor } : {}) };
-    },
-  });
-  ctx.contribute(DATA_PROVIDER, {
-    key: TRAJECTORY_RUN_KEY,
-    fetcher: async (params, signal) => {
-      const query = requiredParams<TrajectoryRunQuery>(TRAJECTORY_RUN_KEY, params);
-      return runtimeRunFact(await runtimeClient().runs.get(asRunId(query.runId), signal));
-    },
-  });
   ctx.contribute(DATA_PROVIDER, {
     key: AGENT_SESSIONS_KEY,
     fetcher: async (_params, signal) =>

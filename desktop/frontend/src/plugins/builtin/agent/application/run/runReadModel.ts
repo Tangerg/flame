@@ -6,7 +6,6 @@ import type {
   AgentRunView,
 } from "@/plugins/sdk/types/agentSessionView";
 import { agentSessionView } from "../ports/sessionView";
-import type { AgentRunTreeNode } from "../view/runTree";
 import type { TranscriptRow } from "../conversation/transcriptRows";
 import { isAgentRunFailure } from "../view/runOutcome";
 
@@ -62,10 +61,6 @@ export function useCurrentRootMaterial(): CurrentRootMaterial {
 
 export function useIsCurrentRootRunning(): boolean {
   return agentSessionView().useCurrentRootRunning();
-}
-
-export function useActiveSessionRunTree(): AgentRunTreeNode[] {
-  return agentSessionView().useRunTree();
 }
 
 export function useActiveSessionProblem(): AgentProblem | null {

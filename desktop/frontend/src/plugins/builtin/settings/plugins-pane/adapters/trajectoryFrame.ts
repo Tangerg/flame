@@ -2,6 +2,7 @@ import { z } from "zod";
 import { validateWire } from "@flame/runtime-contract/validate";
 import type { PluginCarrier, PluginPage } from "@/foundation/pluginCarrier";
 import type { TrajectoryViewReads, TrajectoryViewStatus } from "../application/trajectoryView";
+import type { Scheme } from "@/lib/appearance";
 
 const incoming = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("ready") }),
@@ -25,12 +26,14 @@ export function mountTrajectoryFrame({
   carrier,
   signal,
   status,
+  scheme,
 }: {
   container: HTMLElement;
   reads: TrajectoryViewReads;
   carrier: PluginCarrier;
   signal: AbortSignal;
   status: (value: TrajectoryViewStatus) => void;
+  scheme: Scheme;
 }): () => Promise<void> {
   const lifetime = new AbortController();
   const owned = AbortSignal.any([signal, lifetime.signal]);
@@ -135,7 +138,7 @@ export function mountTrajectoryFrame({
     const { html, initial } = await reads.load(owned);
     owned.throwIfAborted();
     phase = { type: "booting", page };
-    await page.send({ type: "boot", html, initial });
+    await page.send({ type: "boot", html, initial, scheme });
   })().catch((error) => {
     reject(error instanceof Error ? error.message : "The plugin page could not be opened.");
   });

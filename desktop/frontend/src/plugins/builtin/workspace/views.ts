@@ -65,19 +65,3 @@ export const agentMemoryView = definePlugin({
     });
   },
 });
-
-export const timelineView = definePlugin({
-  name: "flame.builtin.view-timeline",
-  setup(ctx) {
-    ctx.contribute(WORKSPACE_VIEW, {
-      id: "timeline",
-      title: "workspace.view.title.timeline",
-      icon: "history",
-      order: 140,
-      dock: "session",
-      component: lazy(() =>
-        import("./ui/timeline/Timeline").then((m) => ({ default: m.Timeline })),
-      ),
-    });
-  },
-});

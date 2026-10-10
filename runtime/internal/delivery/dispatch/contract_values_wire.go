@@ -1051,7 +1051,6 @@ func registerPluginValues(s *Shapes) {
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.RenamePluginSessionRequest](), Constraints: []FieldConstraint{{Field: "actionId", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}}})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginAction](), Constraints: []FieldConstraint{{Field: "id", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}, {Field: "title", Kind: ConstraintNonEmpty}, {Field: "title", Kind: ConstraintMaxLength, Limit: plugin.MaxActionTitleBytes}}})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.ReadPluginViewRequest](), Constraints: []FieldConstraint{{Field: "viewId", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}}})
-	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.ReadPluginTrajectoryRequest](), Constraints: requiredResourceIdentity("sessionId")})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginViewResource](), Constraints: []FieldConstraint{{Field: "html", Kind: ConstraintMaxLength, Limit: plugin.MaxViewBytes}}})
 	s.valueConstraint(FieldConstraintSpec{GoType: typeOf[protocol.PluginView](), Constraints: []FieldConstraint{{Field: "id", Kind: ConstraintPattern, Value: plugin.ContributionIDPattern}, {Field: "title", Kind: ConstraintNonEmpty}, {Field: "title", Kind: ConstraintMaxLength, Limit: plugin.MaxViewTitleBytes}}})
 	s.valueConstraint(FieldConstraintSpec{

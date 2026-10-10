@@ -17,10 +17,8 @@ import {
 import { useT } from "@/lib/i18n";
 import { disclosureExitTransition, disclosureTransition } from "@/lib/motion";
 import { describeActiveRunRefusal, describeErrorType } from "@/lib/rpcErrors";
-import {
-  openDiagnosticsView,
-  openTimelineView,
-} from "@/plugins/builtin/workspace/public/deeplinks";
+import { openDiagnosticsView } from "@/plugins/builtin/workspace/public/deeplinks";
+import { showWorkspaceDock } from "@/plugins/builtin/workspace/public/navigation";
 import { useRuntimeCommandsAvailable } from "@/plugins/builtin/runtime/public/serviceStatus";
 import type { AgentProblem } from "@/plugins/sdk/types/agentSessionView";
 import { shellStyles as sh } from "../shellStyles";
@@ -133,8 +131,8 @@ export function RunErrorBanner() {
               )}
               <BannerAction
                 icon="history"
-                label={t("runError.action.timeline")}
-                onClick={openTimelineView}
+                label={t("runError.action.context")}
+                onClick={showWorkspaceDock}
               />
               <BannerAction
                 icon="activity"

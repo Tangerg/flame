@@ -8,16 +8,11 @@ import type {
   Message,
 } from "@/plugins/sdk/types/agentSessionView";
 import { EMPTY_AGENT_SESSION_VIEW } from "@/plugins/sdk/types/agentSessionView";
-import {
-  selectCurrentRootRun,
-  selectRootNarrativeMessages,
-  selectRunTree,
-} from "../application/view/runTree";
+import { selectCurrentRootRun, selectRootNarrativeMessages } from "../application/view/runTree";
 import {
   EMPTY_PROBLEM_PRESENTATION,
   selectVisibleProblem,
 } from "../application/view/problemPresentation";
-import type { AgentRunTreeNode } from "../application/view/runTree";
 import {
   buildTranscriptRows,
   EMPTY_TRANSCRIPT_ROW_CACHE,
@@ -90,11 +85,6 @@ export function useTranscriptRows(): readonly TranscriptRow[] {
     return (state: AgentStoreState): readonly TranscriptRow[] => projection.select(state);
   }, [sessionId]);
   return useAgentStore(selectRows);
-}
-
-export function useRunTree(): AgentRunTreeNode[] {
-  const view = useActiveAgentView((current) => current);
-  return useMemo(() => selectRunTree(view), [view]);
 }
 
 export function useAgentProblem(): AgentProblem | null {

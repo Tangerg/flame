@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
-  "name": "flame.trajectory-example",
-  "version": "1.0.0",
-  "description": "An isolated read-only trajectory page, bounded theme, Skill and host-rendered Session rename action.",
+  "name": "flame.trajectory",
+  "version": "1.1.0",
+  "description": "Optional first-party Session trajectory analysis over canonical Runtime evidence.",
   "extensions": {
     "io.github.tangerg.flame": {
       "apiVersion": 1,
@@ -17,7 +17,7 @@
         "themes": [
           {
             "id": "graphite",
-            "title": "Graphite example",
+            "title": "Graphite",
             "scheme": "dark",
             "colors": {
               "background": "#181a1e",
@@ -31,7 +31,7 @@
         "views": [
           {
             "id": "trajectory",
-            "title": "Trajectory analysis",
+            "title": "Session trajectory",
             "type": "sessionTrajectory",
             "entry": "views/trajectory.html"
           }

@@ -4,10 +4,6 @@ import {
   openWorkspaceViewInDock,
 } from "../application/navigation";
 
-export function openTimelineView(): void {
-  openWorkspaceViewInDock("timeline");
-}
-
 export function openDiagnosticsView(): void {
   openWorkspaceViewInDock("diagnostics");
 }

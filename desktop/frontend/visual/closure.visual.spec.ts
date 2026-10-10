@@ -474,7 +474,7 @@ const LOCALE_ROUTES: FixtureRoute[] = [
 const DOCK_LOCALE_STATES = [
   "dock-files",
   "dock-runs",
-  "dock-timeline",
+  "dock-trajectory",
   "dock-subagents",
   "dock-agent-memory",
   "dock-skills",

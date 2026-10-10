@@ -60,7 +60,7 @@ const PROFILE: RunProtocolProfile = {
   requiredFeatures: ["subagents"],
 };
 
-type RuntimeAgentSessionSnapshot = Omit<
+export type RuntimeAgentSessionSnapshot = Omit<
   AgentSessionSnapshot,
   "items" | "pendingInterruptSets" | "runs"
 > & {
@@ -1614,18 +1614,16 @@ export const RUNTIME_AGENT_SESSION_SNAPSHOTS: Readonly<
   },
 };
 
-export const AGENT_SESSION_SNAPSHOTS: Readonly<Record<VisualAgentState, AgentSessionSnapshot>> =
-  Object.fromEntries(
-    Object.entries(RUNTIME_AGENT_SESSION_SNAPSHOTS).map(([state, snapshot]) => [
-      state,
-      {
-        ...snapshot,
-        runs: snapshot.runs.map(runtimeRunFact),
-        items: snapshot.items.map(runtimeItem),
-        pendingInterruptSets: snapshot.pendingInterruptSets.map(runtimePendingInterruptSet),
-      },
-    ]),
-  ) as Record<VisualAgentState, AgentSessionSnapshot>;
+export function projectRuntimeAgentSnapshot(
+  snapshot: RuntimeAgentSessionSnapshot,
+): AgentSessionSnapshot {
+  return {
+    ...snapshot,
+    runs: snapshot.runs.map(runtimeRunFact),
+    items: snapshot.items.map(runtimeItem),
+    pendingInterruptSets: snapshot.pendingInterruptSets.map(runtimePendingInterruptSet),
+  };
+}
 
 export const RUNTIME_AGENT_SESSION_TAIL_EVENTS: Readonly<Record<VisualAgentState, TailFrame[]>> = {
   empty: [],

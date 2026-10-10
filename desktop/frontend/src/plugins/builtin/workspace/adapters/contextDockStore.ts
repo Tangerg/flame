@@ -93,7 +93,6 @@ interface ContextDockActions {
   focusFile: (path: string) => void;
   setFileViewer: (viewer: WorkspaceFileViewer | null) => void;
   remember: (change: Partial<WorkspaceViewMemory>) => void;
-  revealTool: (id: string) => void;
   toggleExpandedTool: (id: string) => void;
   activateSessionScope: (sessionId: string) => string | null;
   forgetSessionScopes: (openSessionIds: string[]) => void;
@@ -230,11 +229,6 @@ export const useContextDockStore = create<ContextDockState & ContextDockActions>
             : { fileViewer },
         ),
       remember: (change) => set((state) => ({ memory: { ...state.memory, ...change } })),
-      revealTool: (id) => {
-        const expandedToolIds = new Set(get().expandedToolIds);
-        expandedToolIds.add(id);
-        set({ expandedToolIds });
-      },
       toggleExpandedTool: (id) => {
         const next = new Set(get().expandedToolIds);
         if (next.has(id)) next.delete(id);

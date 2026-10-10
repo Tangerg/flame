@@ -77,13 +77,12 @@ for (const theme of ["light", "dark"] as const) {
       const { useAgentStore } = (await import(
         storePath
       )) as typeof import("../src/plugins/builtin/agent/adapters/agentStore");
-      const { AGENT_SESSION_SNAPSHOTS, VISUAL_SESSION_ID } = (await import(
-        fixturePath
-      )) as typeof import("./agentSessionSnapshots");
+      const { RUNTIME_AGENT_SESSION_SNAPSHOTS, projectRuntimeAgentSnapshot, VISUAL_SESSION_ID } =
+        (await import(fixturePath)) as typeof import("./agentSessionSnapshots");
       const { projectAgentSessionSnapshot } = (await import(
         projectionPath
       )) as typeof import("../src/plugins/builtin/agent/application/session/sessionSnapshot");
-      const snapshot = AGENT_SESSION_SNAPSHOTS["tool-shells"];
+      const snapshot = projectRuntimeAgentSnapshot(RUNTIME_AGENT_SESSION_SNAPSHOTS["tool-shells"]);
       const store = useAgentStore.getState();
       const frames: { count: number; opacity: string; transform: string; top: number }[][] = [];
       for (let count = 1; count <= snapshot.items.length; count += 1) {

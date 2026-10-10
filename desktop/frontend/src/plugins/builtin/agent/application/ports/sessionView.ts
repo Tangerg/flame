@@ -9,7 +9,6 @@ import type {
   AgentSessionView,
   Message,
 } from "@/plugins/sdk/types/agentSessionView";
-import type { AgentRunTreeNode } from "../view/runTree";
 import type { TranscriptRow } from "../conversation/transcriptRows";
 
 export type StopCurrentRootRunAction = () => boolean;
@@ -70,7 +69,6 @@ export interface AgentSessionViewPort {
   useCurrentRootRunning(): boolean;
   useRootNarrativeMessages(): Message[];
   useTranscriptRows(): readonly TranscriptRow[];
-  useRunTree(): AgentRunTreeNode[];
   useProblem(): AgentProblem | null;
   usePlan(): AgentProjectionMaterial<AgentPlan>;
   useSharedMaterial<T = unknown>(path?: string): AgentProjectionMaterial<T>;

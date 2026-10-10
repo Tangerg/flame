@@ -6,10 +6,20 @@ export function createTrajectoryViewReads(
   plugins: Pick<FlameClient["plugins"], "readView" | "readTrajectory">,
   binding: Readonly<ReadPluginViewRequest>,
   sessionId: string,
+  includeDescendants: boolean,
 ): TrajectoryViewReads {
   const view = { ...binding };
   const read = (cursor: string | undefined, signal: AbortSignal) =>
-    plugins.readTrajectory({ ...view, sessionId, cursor }, signal);
+    plugins.readTrajectory(
+      {
+        ...view,
+        sessionId,
+        ...(includeDescendants ? { includeDescendants: true } : {}),
+        cursor,
+        limit: 100,
+      },
+      signal,
+    );
   return {
     read,
     async load(signal) {

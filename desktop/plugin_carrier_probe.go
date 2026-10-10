@@ -214,12 +214,14 @@ addEventListener('message', async event=>{
  try{localStorage.length;evidence.storage=true}catch{}
  try{window.webkit.messageHandlers.external.postMessage('wails:runtime:ready')}catch{}
  try{window.webkit.messageHandlers.carrier.postMessage(JSON.stringify({type:'request',request:{cursor:'forged-native'}}))}catch{}
- try{await fetch('http://%s/leak');evidence.fetch=true}catch{evidence.fetch=false}
+ const endpoint='http://%s/leak';new Image().src=endpoint;
+ try{await fetch(endpoint);evidence.fetch=true}catch{evidence.fetch=false}
+ const image=new Image();await new Promise(resolve=>{image.onload=image.onerror=resolve;image.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGOYuOs/AAQqAktocgm/AAAAAElFTkSuQmCC';document.body.append(image)});
  if(evidence.peer){const p=new RTCPeerConnection({iceServers:[{urls:'stun:%s'}]});p.createDataChannel('escape');await p.setLocalDescription();setTimeout(()=>p.close(),500)}
- port.postMessage({type:'read',evidence});
+ port.postMessage({type:'read',evidence,imageLoaded:image.naturalWidth===1});
 });parent.postMessage('flame.trajectory.ready.v1','*');
 </script>`, endpoint, peer)
-	body, err := json.Marshal(map[string]any{"type": "boot", "html": html, "initial": map[string]any{"data": []any{}}})
+	body, err := json.Marshal(map[string]any{"type": "boot", "html": html, "initial": map[string]any{"data": []any{}}, "scheme": "light"})
 	if err != nil {
 		return err
 	}
@@ -235,14 +237,18 @@ addEventListener('message', async event=>{
 			continue
 		}
 		var request struct {
-			Evidence map[string]bool `json:"evidence"`
-			Cursor   string          `json:"cursor"`
+			Evidence    map[string]bool `json:"evidence"`
+			Cursor      string          `json:"cursor"`
+			ImageLoaded bool            `json:"imageLoaded"`
 		}
 		if e = json.Unmarshal(message["request"], &request); e != nil {
 			return e
 		}
 		if request.Cursor != "" || len(request.Evidence) != 6 {
 			return fmt.Errorf("unexpected native message: %s", message)
+		}
+		if !request.ImageLoaded {
+			return errors.New("native carrier did not render the inline image")
 		}
 		for name, value := range request.Evidence {
 			if value {

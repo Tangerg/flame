@@ -327,7 +327,7 @@ Do not introduce an unstandardized `platforms` field into `mcp.json`. Do not let
 
 The [review backend package](../examples/plugins/reviews/README.md) combines MCP tools and a Skill. Its backend owns review state; Runtime owns the Run, approval, and stored execution observations. The package declares no view or human action. Tool definitions come from the backend, and calls use the existing Run path.
 
-The [Session trajectory package](../examples/plugins/trajectory/plugin.json) combines a bounded theme, a read-only HTML page, and a declarative `renameSession` action. The page reads Runtime's canonical trajectory through a scoped bridge. A trusted host form submits the Session title edit to its existing Runtime owner. The page cannot submit that command.
+The [Session trajectory package](../plugins/trajectory/plugin.json) combines a bounded theme, a read-only HTML page, and a declarative `renameSession` action. The page reads Runtime's canonical trajectory through a scoped bridge. A trusted host form submits the Session title edit to its existing Runtime owner. The page cannot submit that command.
 
 A package may combine these supported contributions without linking its page or human actions to MCP tools. Approving a release admits its exact bytes; it does not pre-approve any tool call. Generated Runtime contracts own the supported contribution shapes.
 
@@ -1419,7 +1419,7 @@ existing Session command owner; broader host integrations remain deferred.
 
 The reproducible browser and native gates now live in [Desktop's carrier acceptance](../desktop/README.md#plugin-carrier-acceptance), which owns their commands and current carrier findings. The network gate includes WebRTC with packet observations outside the frame; a fetch-only CSP check does not establish network isolation. A failed carrier gate blocks that carrier's Slice C admission. Repair the executing carrier's authority boundary before introducing the public view/bridge contract; JavaScript global replacement is not an enforcement owner.
 
-**Slice C: one optional graphical page.** Implemented for the Session trajectory example
+**Slice C: one optional graphical page.** Implemented for the optional first-party Session trajectory package
 through the existing Dougong host and shared client. Runtime admits one bounded
 `sessionTrajectory` HTML resource and authorizes reads against the exact installation,
 release and view. Its read endpoint delegates to canonical Session trajectory queries.

@@ -14,7 +14,6 @@ import {
   closeWorkspaceDockView,
   closeActiveWorkspaceView,
   collapseWorkspaceDock,
-  locateWorkspaceTool,
   openWorkspaceView,
   openWorkspaceViewInDock,
   selectWorkspaceDockView,
@@ -210,37 +209,6 @@ describe("workspace navigation port", () => {
       dockViewIds: ["skills"],
       lastViewId: "skills",
     });
-  });
-
-  it("locates a parent task by selecting chat and atomically revealing its tool", () => {
-    const anchor = document.createElement("div");
-    anchor.id = "task-item";
-    anchor.scrollIntoView = () => {};
-    const button = document.createElement("button");
-    anchor.append(button);
-    document.body.append(anchor);
-
-    locateWorkspaceTool("task-item");
-
-    expect(navigator().get().view).toBeNull();
-    expect(useContextDockStore.getState().expandedToolIds).toEqual(new Set(["task-item"]));
-    expect(document.activeElement).toBe(button);
-  });
-
-  it("keeps looking when the anchor is mounted before its control", async () => {
-    const anchor = document.createElement("div");
-    anchor.id = "late-item";
-    anchor.scrollIntoView = () => {};
-    document.body.append(anchor);
-
-    locateWorkspaceTool("late-item");
-    expect(document.activeElement).toBe(document.body);
-
-    const button = document.createElement("button");
-    anchor.append(button);
-    await new Promise((resolve) => requestAnimationFrame(resolve));
-
-    expect(document.activeElement).toBe(button);
   });
 });
 

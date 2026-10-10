@@ -9,6 +9,7 @@ import type { ConversationArchiveGateway } from "./ports/conversationArchiveGate
 import type { FileTransferPort } from "./ports/fileTransfer";
 
 const mocks = vi.hoisted(() => ({
+  sessionExport: true,
   activeSessionId: "session-current" as string | undefined,
   invalidateAgentSessions: vi.fn().mockResolvedValue(undefined),
   notifyError: vi.fn(),
@@ -18,7 +19,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/plugins/builtin/runtime/public/capabilities", () => ({
-  runtimeCapability: () => true,
+  runtimeCapability: () => mocks.sessionExport,
 }));
 
 vi.mock("@/plugins/builtin/agent/public/session", () => ({
@@ -42,6 +43,7 @@ let files: FileTransferPort | null;
 
 beforeEach(() => {
   mocks.activeSessionId = "session-current";
+  mocks.sessionExport = true;
   mocks.invalidateAgentSessions.mockReset().mockResolvedValue(undefined);
   mocks.notifyError.mockReset();
   mocks.rehydrateSessionView.mockReset().mockResolvedValue(undefined);
@@ -76,13 +78,27 @@ describe("conversation archive generation", () => {
     );
   });
 
-  it("propagates evidence export failure without downloading a partial substitute", async () => {
+  it("does not request evidence without the Runtime export capability", async () => {
+    const exportTrajectory = vi.fn();
+    mocks.sessionExport = false;
+    installFiles({ download, pickText: vi.fn() });
+    installGateway({ exportTrajectory });
+    await exportSessionTrajectory();
+    expect(exportTrajectory).not.toHaveBeenCalled();
+    expect(download).not.toHaveBeenCalled();
+    expect(mocks.notifyError).toHaveBeenCalledOnce();
+  });
+
+  it("reports evidence export failure without downloading a partial substitute", async () => {
     const failure = new Error("session is busy");
     installFiles({ download, pickText: vi.fn() });
     installGateway({ exportTrajectory: vi.fn().mockRejectedValue(failure) });
 
-    await expect(exportSessionTrajectory()).rejects.toBe(failure);
+    await exportSessionTrajectory();
 
+    expect(mocks.notifyError).toHaveBeenCalledExactlyOnceWith("session is busy", {
+      source: "session",
+    });
     expect(download).not.toHaveBeenCalled();
   });
 

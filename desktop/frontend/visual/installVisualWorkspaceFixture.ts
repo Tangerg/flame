@@ -1,3 +1,7 @@
+import trajectoryHTML from "../../../plugins/trajectory/views/trajectory.html?raw";
+import { PackageView } from "@/plugins/builtin/settings/plugins-pane/ui/PackageView";
+import { createElement } from "react";
+import type { TrajectoryEntry } from "@flame/runtime-contract/wire";
 import { createBrowserHost } from "@/platform/browserHost";
 import { installLocalWorkspaceActions } from "@/plugins/builtin/workspace/adapters/localWorkspaceActions";
 import { HOOKS_KEY } from "@/plugins/builtin/settings/hooks/public/queries";
@@ -53,14 +57,8 @@ import {
 import { visualFeatureCapabilities } from "./agentFixtureFacts";
 import { SCHEDULES_KEY } from "@/plugins/builtin/settings/schedules/application/scheduleQueries";
 import type { ScheduleConfig } from "@/plugins/builtin/settings/schedules/application/scheduleConfig";
-import {
-  diffView,
-  fileView,
-  timelineView,
-  skillsView,
-  agentMemoryView,
-} from "@/plugins/builtin/workspace/views";
-import { DATA_PROVIDER, SHORTCUT, definePlugin } from "@/plugins/sdk";
+import { diffView, fileView, skillsView, agentMemoryView } from "@/plugins/builtin/workspace/views";
+import { DATA_PROVIDER, SHORTCUT, WORKSPACE_VIEW, definePlugin } from "@/plugins/sdk";
 import type { AnyPlugin } from "dougong";
 import type {
   FlameClient,
@@ -75,12 +73,10 @@ import { useAppearanceStore } from "@/plugins/builtin/theme/adapters/appearanceS
 import { useShellLayoutStore } from "@/plugins/builtin/workspace/adapters/shellLayoutStore";
 import { navigator } from "@/lib/navigation";
 import {
-  TRAJECTORY_KEY,
-  TRAJECTORY_RUN_KEY,
-  type TrajectoryEntry,
-} from "@/plugins/builtin/agent/application/run/trajectory";
-import { AGENT_SESSION_SNAPSHOTS, VISUAL_SESSION_ID } from "./agentSessionSnapshots";
-import type { AgentSessionSnapshot } from "@/plugins/builtin/agent/application/ports/runtimeGateway";
+  RUNTIME_AGENT_SESSION_SNAPSHOTS,
+  VISUAL_SESSION_ID,
+  type VisualAgentState,
+} from "./agentSessionSnapshots";
 import { installVisualAgentFixture } from "./installVisualAgentFixture";
 import { loadPluginsForTest } from "@/plugins/sdk/testKernel";
 import {
@@ -284,7 +280,9 @@ function scaledReview(fileCount: number): WorkspaceDiff {
   return { baseline: REVIEW_DIFF.baseline, files };
 }
 
-function visualTrajectory(snapshot: AgentSessionSnapshot): TrajectoryEntry[] {
+function visualTrajectory(
+  snapshot: typeof RUNTIME_AGENT_SESSION_SNAPSHOTS.idle,
+): TrajectoryEntry[] {
   const run = snapshot.runs[0]!;
   const entries: TrajectoryEntry[] = [
     ...snapshot.runs.map((value): TrajectoryEntry => ({
@@ -330,25 +328,29 @@ function visualTrajectory(snapshot: AgentSessionSnapshot): TrajectoryEntry[] {
 function workspaceDataPlugin(
   state: VisualWorkspaceState,
   review: WorkspaceDiff,
-  snapshot: AgentSessionSnapshot,
+  snapshot: typeof RUNTIME_AGENT_SESSION_SNAPSHOTS.idle,
 ): AnyPlugin {
   return definePlugin({
     name: "flame.visual.workspace-data",
     setup(ctx) {
       ctx.cleanup(installLocalWorkspaceActions(createBrowserHost(), () => false));
-      ctx.contribute(DATA_PROVIDER, {
-        key: TRAJECTORY_KEY,
-        fetcher: async () => ({ data: visualTrajectory(snapshot) }),
+      const lifetime = ctx.lifetime("visual-trajectory");
+      const read = async () => ({ data: visualTrajectory(snapshot) });
+      const reads = () => ({
+        load: async () => ({ html: trajectoryHTML, initial: await read() }),
+        read,
       });
-      ctx.contribute(DATA_PROVIDER, {
-        key: TRAJECTORY_RUN_KEY,
-        fetcher: async (params) => {
-          const run = snapshot.runs.find(
-            (value) => value.id === (params as { runId: string }).runId,
-          );
-          if (!run) throw new Error("visual.trajectory.runMissing");
-          return run;
-        },
+      lifetime.contribute(WORKSPACE_VIEW, {
+        id: "package:visual:trajectory",
+        title: "Session trajectory",
+        dock: "session",
+        component: () =>
+          createElement(PackageView, {
+            reads,
+            title: "Session trajectory",
+            lifetime,
+            carrier: createBrowserHost().pluginCarrier,
+          }),
       });
       ctx.contribute(DATA_PROVIDER, {
         key: HOOKS_KEY,
@@ -552,23 +554,30 @@ export interface VisualWorkspaceConfig {
   pane?: VisualSettingsPane;
   fullViewId?: string;
   reviewFiles?: number;
+  agentState?: VisualAgentState;
 }
 
 export async function installVisualWorkspaceFixture(
   runtimeClient: () => FlameClient,
   state: VisualWorkspaceState,
   theme: VisualWorkspaceTheme,
-  { pane = "appearance", fullViewId = FULL_VIEW_ID, reviewFiles }: VisualWorkspaceConfig = {},
+  {
+    pane = "appearance",
+    fullViewId = FULL_VIEW_ID,
+    reviewFiles,
+    agentState: requestedAgentState,
+  }: VisualWorkspaceConfig = {},
 ): Promise<void> {
   const agentState =
-    state === "dock-light"
+    requestedAgentState ??
+    (state === "dock-light"
       ? "running"
       : state === "dock-runs" || state === "dock-subagents"
         ? "delegated"
-        : state === "dock-timeline"
+        : state === "dock-trajectory"
           ? "tool-shells"
-          : "idle";
-  const snapshot = structuredClone(AGENT_SESSION_SNAPSHOTS[agentState]);
+          : "idle");
+  const snapshot = structuredClone(RUNTIME_AGENT_SESSION_SNAPSHOTS[agentState]);
   await installVisualAgentFixture(runtimeClient, agentState, undefined, snapshot);
 
   installWorkspaceErrorClassifier();
@@ -597,7 +606,7 @@ export async function installVisualWorkspaceFixture(
             ...(OPENED_BY_ITS_OWN_STATE.has(dockViewId) ? [dockViewId] : []),
             "file",
             "diff",
-            "timeline",
+            "package:visual:trajectory",
           ],
     lastViewId: state === "dock-catalog" ? null : dockViewId,
     fileFocus: WorkspaceFileFocus.empty().moveTo(ACTIVE_DIFF_FILE),
@@ -628,7 +637,6 @@ export async function installVisualWorkspaceFixture(
   await loadVisualPlugins([
     diffView,
     fileView,
-    timelineView,
     skillsView,
     agentMemoryView,
     diagnosticsView,

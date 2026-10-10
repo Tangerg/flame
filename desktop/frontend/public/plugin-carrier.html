@@ -2,7 +2,7 @@
 <meta charset="utf-8" />
 <meta
   http-equiv="Content-Security-Policy"
-  content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; frame-src blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
+  content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; frame-src blob:; connect-src 'none'; img-src data:; object-src 'none'; base-uri 'none'; form-action 'none'"
 />
 <style>
   html,
@@ -28,7 +28,7 @@
       native ? native.postMessage(JSON.stringify(value)) : transport?.postMessage(value);
     const fail = (reason) => publish({ type: "failure", reason });
     const policy =
-      "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; img-src 'none'; frame-src 'none'; worker-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
+      "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'none'; img-src data:; frame-src 'none'; worker-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'";
     function receive(value) {
       if (value?.type === "boot" && !booted) {
         booted = true;
@@ -66,7 +66,7 @@
           port.onmessage = (event) => publish({ type: "request", request: event.data });
           port.start();
           guest.contentWindow.postMessage(
-            { type: "flame.trajectory.connect.v1", initial: value.initial },
+            { type: "flame.trajectory.connect.v1", initial: value.initial, scheme: value.scheme },
             "*",
             [channel.port2],
           );

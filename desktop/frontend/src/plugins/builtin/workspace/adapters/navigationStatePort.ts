@@ -99,13 +99,6 @@ export function installWorkspaceNavigationPort(endpoint: () => string): () => vo
       showDockView("file", "alone");
     },
     closeFile: () => useContextDockStore.getState().setFileViewer(null),
-    locateTool: (id) => {
-      selectChat();
-      useContextDockStore.getState().revealTool(id);
-      if (!focusConversationTool(id) && typeof requestAnimationFrame === "function") {
-        requestAnimationFrame(() => focusConversationTool(id));
-      }
-    },
     adoptSessionScope: (sessionId) => {
       activateContextDockStorage(endpoint());
       const state = useContextDockStore.getState();
@@ -131,14 +124,4 @@ export function installWorkspaceNavigationPort(endpoint: () => string): () => vo
       useContextDockStore.getState().forgetSessionScopes(openSessionIds);
     },
   });
-}
-
-function focusConversationTool(itemId: string): boolean {
-  const anchor = document.getElementById(itemId);
-  if (!anchor) return false;
-  anchor.scrollIntoView?.({ block: "center" });
-  const control = anchor.querySelector<HTMLElement>("button");
-  if (!control) return false;
-  control.focus({ preventScroll: true });
-  return true;
 }

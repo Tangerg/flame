@@ -61,8 +61,8 @@ function createPackageReconciler(
           digest: release.digest,
           viewId: view.id,
         };
-        const reads = (sessionId: string) =>
-          createTrajectoryViewReads(client.plugins, binding, sessionId);
+        const reads = (sessionId: string, includeDescendants: boolean) =>
+          createTrajectoryViewReads(client.plugins, binding, sessionId, includeDescendants);
         const title = `${release.name} · ${view.title}`;
         const component = () => (
           <PackageView reads={reads} title={title} lifetime={lifetime} carrier={carrier} />

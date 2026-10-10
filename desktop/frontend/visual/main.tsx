@@ -175,6 +175,9 @@ async function fixtureNode(): Promise<ReactNode> {
       pane: settingsPane,
       fullViewId: requestedFullView,
       reviewFiles: requestedReviewFiles,
+      agentState: VISUAL_AGENT_STATES.includes(query.get("agent-state") as VisualAgentState)
+        ? (query.get("agent-state") as VisualAgentState)
+        : undefined,
     });
     return <VisualWorkspaceFixture state={workspaceState} />;
   }

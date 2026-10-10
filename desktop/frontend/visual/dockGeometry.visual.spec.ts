@@ -77,7 +77,7 @@ test.describe("the dock measure agrees between TypeScript and CSS", () => {
   });
 });
 
-const NAMING_VIEWS = ["dock-skills", "dock-review", "dock-runs", "dock-timeline"] as const;
+const NAMING_VIEWS = ["dock-skills", "dock-review", "dock-runs", "dock-trajectory"] as const;
 
 const LEGIBLE_PX = 12;
 

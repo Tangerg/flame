@@ -9,7 +9,6 @@ import {
   selectCurrentRootAttention,
   selectDelegatedRunNarratives,
   selectRootNarrativeMessages,
-  selectRunTree,
 } from "./runTree";
 
 function rootRun(id: string, createdAt: string, status: AgentRunView["status"] = "finished") {
@@ -115,31 +114,6 @@ describe("delegated narratives", () => {
     expect(narratives["task-root"]?.map((item) => item.run.id)).toEqual(["child-a", "child-b"]);
     expect(narratives["task-root"]?.[0]?.messages.map((message) => message.id)).toEqual(["a"]);
     expect(narratives["task-child"]?.map((item) => item.run.id)).toEqual(["nested"]);
-  });
-});
-
-describe("Run tree", () => {
-  it("derives root, sibling, and nested lineage without storing a second index", () => {
-    const root = rootRun("root", "2026-01-01T00:00:00.000Z");
-    const sibling = childRun("sibling", root.id, root.id, "task-root", "2026-01-01T00:00:02.000Z");
-    const child = childRun("child", root.id, root.id, "task-root", "2026-01-01T00:00:01.000Z");
-    const nested = childRun("nested", child.id, root.id, "task-child", "2026-01-01T00:00:03.000Z");
-
-    const tree = selectRunTree(view([nested, sibling, root, child]));
-    expect(tree.map((node) => node.run.id)).toEqual(["root"]);
-    expect(tree[0]?.children.map((node) => node.run.id)).toEqual(["child", "sibling"]);
-    expect(tree[0]?.children[0]?.children.map((node) => node.run.id)).toEqual(["nested"]);
-  });
-
-  it("keeps an unconnected child visible for audit", () => {
-    const detached = childRun(
-      "detached",
-      "missing",
-      "missing",
-      "task-missing",
-      "2026-01-01T00:00:00.000Z",
-    );
-    expect(selectRunTree(view([detached])).map((node) => node.run.id)).toEqual(["detached"]);
   });
 });
 
