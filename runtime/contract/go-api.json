@@ -314,6 +314,10 @@
               "signature": "func(ctx context.Context, request protocol.ReadPluginMemoryRequest, options CallOptions) (*protocol.Page[protocol.AgentMemoryItem], error)"
             },
             {
+              "name": "ReadPluginSchedules",
+              "signature": "func(ctx context.Context, request protocol.ReadPluginSchedulesRequest, options CallOptions) (*protocol.Page[protocol.Schedule], error)"
+            },
+            {
               "name": "ReadPluginTrajectory",
               "signature": "func(ctx context.Context, request protocol.ReadPluginTrajectoryRequest, options CallOptions) (*protocol.Page[protocol.TrajectoryEntry], error)"
             },
@@ -824,6 +828,10 @@
             {
               "name": "ReadPluginMemory",
               "signature": "func(ctx context.Context, request protocol.ReadPluginMemoryRequest, options CallOptions) (*protocol.Page[protocol.AgentMemoryItem], error)"
+            },
+            {
+              "name": "ReadPluginSchedules",
+              "signature": "func(ctx context.Context, request protocol.ReadPluginSchedulesRequest, options CallOptions) (*protocol.Page[protocol.Schedule], error)"
             },
             {
               "name": "ReadPluginTrajectory",
@@ -2246,6 +2254,11 @@
           "value": "\"agentMemory\""
         },
         {
+          "name": "PluginViewSchedules",
+          "type": "PluginViewType",
+          "value": "\"schedules\""
+        },
+        {
           "name": "PluginViewSessionTrajectory",
           "type": "PluginViewType",
           "value": "\"sessionTrajectory\""
@@ -2318,7 +2331,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-10.3\""
+          "value": "\"2026-10-10.4\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -7449,6 +7462,32 @@
           ]
         },
         {
+          "name": "PluginScheduleTemplate",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ID",
+              "type": "string",
+              "tag": "json:\"id\""
+            },
+            {
+              "name": "Title",
+              "type": "string",
+              "tag": "json:\"title\""
+            },
+            {
+              "name": "Instructions",
+              "type": "string",
+              "tag": "json:\"instructions\""
+            },
+            {
+              "name": "Cron",
+              "type": "string",
+              "tag": "json:\"cron\""
+            }
+          ]
+        },
+        {
           "name": "PluginServerDeclaration",
           "kind": "struct",
           "fields": [
@@ -7635,6 +7674,11 @@
               "name": "Type",
               "type": "PluginViewType",
               "tag": "json:\"type\""
+            },
+            {
+              "name": "ScheduleTemplates",
+              "type": "[]PluginScheduleTemplate",
+              "tag": "json:\"scheduleTemplates,omitempty\""
             }
           ],
           "methods": [
@@ -8004,6 +8048,26 @@
             {
               "name": "AgentMemoryListRequest",
               "type": "AgentMemoryListRequest"
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "ReadPluginSchedulesRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ReadPluginViewRequest",
+              "type": "ReadPluginViewRequest"
+            },
+            {
+              "name": "PageQuery",
+              "type": "PageQuery"
             }
           ],
           "methods": [

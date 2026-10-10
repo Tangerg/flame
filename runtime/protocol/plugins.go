@@ -105,12 +105,21 @@ type PluginViewType string
 const (
 	PluginViewSessionTrajectory PluginViewType = "sessionTrajectory"
 	PluginViewAgentMemory       PluginViewType = "agentMemory"
+	PluginViewSchedules         PluginViewType = "schedules"
 )
 
 type PluginView struct {
-	ID    string         `json:"id"`
-	Title string         `json:"title"`
-	Type  PluginViewType `json:"type"`
+	ID                string                   `json:"id"`
+	Title             string                   `json:"title"`
+	Type              PluginViewType           `json:"type"`
+	ScheduleTemplates []PluginScheduleTemplate `json:"scheduleTemplates,omitempty"`
+}
+
+type PluginScheduleTemplate struct {
+	ID           string `json:"id"`
+	Title        string `json:"title"`
+	Instructions string `json:"instructions"`
+	Cron         string `json:"cron"`
 }
 
 // ReadPluginViewRequest addresses an admitted resource, never a filesystem path.
@@ -133,6 +142,11 @@ type ReadPluginTrajectoryRequest struct {
 type ReadPluginMemoryRequest struct {
 	ReadPluginViewRequest
 	AgentMemoryListRequest
+}
+
+type ReadPluginSchedulesRequest struct {
+	ReadPluginViewRequest
+	PageQuery
 }
 
 // PluginServerDeclaration is a closed union by transport that projects a

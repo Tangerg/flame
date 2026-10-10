@@ -410,6 +410,12 @@ the carrier grants no external image origins.
 Complete Session trajectory export is a trusted command-menu operation against Runtime,
 independent of visible filters and pages. Execution and approval controls stay in the workbench.
 
+The optional Schedules package supplies the schedule list and immutable authoring templates.
+The Context Dock offers its admitted view. Host controls retain create, edit, enable/disable,
+run-now and confirmed deletion; the guest receives canonical pages and cursor-only reads.
+Opening a package template creates a draft, and only Runtime receipts change the schedule
+projection. Uninstalling the package leaves the Runtime worker and saved schedules intact.
+
 The browser loads the fixed `/plugin-carrier.html` entry in an opaque frame. Runtime and
 Vite read its enforcing header from `frontend/public/plugin-carrier-policy.txt`. Before
 receiving any plugin HTML or data, the entry requires an actual enforcing engine report.
@@ -430,19 +436,19 @@ cleanup before registering successor contributions. Native IDs identify physical
 late allocation, reply or closure cannot advance another instance. Pending reads receive
 cancellation and retired pages refuse publication. Read failures preserve already displayed
 evidence and remain explicit; local carrier failure never disables the installation.
-The trajectory bridge alone advances each page's initialization and terminal status;
+The shared view bridge alone advances each page's initialization and terminal status;
 React renders that projection. Qualification precedes resource loading, and connection
 is accepted only after boot publication starts. The contribution receives its cleanup
 handle immediately. Cleanup joins allocation, startup and pending reads even when physical
 closure fails; publication failure retires the channel instead of becoming a read error.
-Initial HTML and trajectory reads cancel and join their sibling on failure. The native
+Initial HTML and projection reads cancel and join their sibling on failure. The native
 transport preserves early messages in source order through initial positioning; the
 bridge owns their operation and handshake validation.
 
 Run the production page and transport gate from `desktop/frontend/`:
 
 ```sh
-node --test scripts/plugin-trajectory.browser.test.mjs
+node --test scripts/plugin-views.browser.test.mjs
 ```
 
 Run the native production carrier gate from `desktop/` in a macOS graphical session:

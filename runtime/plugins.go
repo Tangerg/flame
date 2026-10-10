@@ -49,3 +49,7 @@ func (r *binding) RevokePlugin(ctx context.Context, request protocol.PluginReque
 func (r *binding) UninstallPlugin(ctx context.Context, request protocol.PluginRequest, options CommandOptions) error {
 	return r.invokeAck(ctx, delivery.PluginsUninstall, request, commandOptions(options))
 }
+
+func (r *binding) ReadPluginSchedules(ctx context.Context, request protocol.ReadPluginSchedulesRequest, options CallOptions) (*protocol.Page[protocol.Schedule], error) {
+	return r.invoke[protocol.ReadPluginSchedulesRequest, *protocol.Page[protocol.Schedule]](ctx, delivery.PluginsReadSchedules, request, callOptions(options))
+}

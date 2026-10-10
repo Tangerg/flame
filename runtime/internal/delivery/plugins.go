@@ -18,6 +18,7 @@ const (
 	PluginsReadView       Name = "plugins.readView"
 	PluginsReadTrajectory Name = "plugins.readTrajectory"
 	PluginsReadMemory     Name = "plugins.readMemory"
+	PluginsReadSchedules  Name = "plugins.readSchedules"
 	PluginsRenameSession  Name = "plugins.renameSession"
 )
 
@@ -34,6 +35,12 @@ func pluginErrors() []string {
 }
 
 func registerPlugins(r *Registry) {
+	r.query(MethodMeta{Name: PluginsReadSchedules, CapabilityRules: requires(protocol.FeaturePlugins, protocol.FeatureSchedules), Errors: pluginErrors(), Materializes: []Name{SchedulesList}}, func(s interface {
+		ReadPluginSchedules(context.Context, protocol.ReadPluginSchedulesRequest) (*protocol.Page[protocol.Schedule], error)
+	}, ctx context.Context, in protocol.ReadPluginSchedulesRequest) (*protocol.Page[protocol.Schedule], error) {
+		return s.ReadPluginSchedules(ctx, in)
+	})
+
 	r.query(MethodMeta{Name: PluginsReadMemory, CapabilityRules: requires(protocol.FeaturePlugins, protocol.FeatureAgentMemory), Errors: pluginErrors(), Materializes: []Name{AgentMemoryList}}, func(s interface {
 		ReadPluginMemory(context.Context, protocol.ReadPluginMemoryRequest) (*protocol.Page[protocol.AgentMemoryItem], error)
 	}, ctx context.Context, in protocol.ReadPluginMemoryRequest) (*protocol.Page[protocol.AgentMemoryItem], error) {

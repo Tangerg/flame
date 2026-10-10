@@ -688,7 +688,6 @@ export const fr: Record<string, string> = {
   "settings.pane.usage": "Consommation",
   "settings.pane.mcpServers": "Serveurs MCP",
   "settings.pane.hooks": "Hooks",
-  "settings.pane.schedules": "Planifications",
   "settings.appearance.hero":
     "Thèmes, contraste, typographie et animation définissent la sensation de travail de Flame.",
   "context.usage.aria": "Utilisation du contexte : {{percent}}%",
@@ -881,15 +880,14 @@ export const fr: Record<string, string> = {
   "agentMemory.noProject.sub":
     "Ouvrez ou sélectionnez une session pour examiner sa mémoire de projet. Passez à Utilisateur pour la mémoire inter-projets.",
   "agentMemory.error": "Impossible de mettre à jour la mémoire.",
-  "schedules.intro":
-    "Exécute un prompt enregistré selon une planification. Chaque exécution démarre une nouvelle session tant que la runtime tourne — retrouvez sa sortie dans la barre latérale. La désactivation ou la suppression arrête la planification future. Les exécutions déjà acceptées peuvent encore démarrer et doivent être annulées séparément.",
+  "schedules.select": "Choisir une planification",
+  "schedules.template": "Utiliser un modèle",
+  "schedules.enable": "Activer",
+  "schedules.disable": "Désactiver",
   "schedules.add": "Nouvelle planification",
   "schedules.save": "Enregistrer",
   "schedules.saving": "Enregistrement…",
   "schedules.untitled": "Planification sans titre",
-  "schedules.next": "prochaine {{time}}",
-  "schedules.last": "dernière {{time}}",
-  "schedules.enable.aria": "Activer la planification",
   "schedules.runNow": "Exécuter maintenant",
   "schedules.edit": "Modifier la planification",
   "schedules.delete": "Supprimer la planification",
@@ -897,12 +895,7 @@ export const fr: Record<string, string> = {
   "schedules.delete.body":
     "« {{title}} » et ses instructions disparaissent. Cette action est irréversible. Les exécutions déjà acceptées peuvent encore démarrer et doivent être annulées séparément.",
   "schedules.delete.confirm": "Supprimer",
-  "schedules.empty": "Aucune planification",
-  "schedules.empty.sub":
-    "Ajoutez-en une pour déclencher un prompt via cron — par ex. un point quotidien en semaine ou une revue nocturne.",
   "schedules.unavailable": "Planifications indisponibles",
-  "schedules.unavailable.sub":
-    "La runtime connectée n'expose pas encore les exécutions planifiées.",
   "schedules.error.save": "Impossible d'enregistrer la planification.",
   "schedules.model.default": "Modèle par défaut du Runtime",
   "schedules.reasoning.default": "Valeur par défaut du modèle",
@@ -914,10 +907,6 @@ export const fr: Record<string, string> = {
   "schedules.form.instructions": "Instructions à exécuter…",
   "schedules.form.cron": "Expression cron",
   "schedules.form.cwd": "Répertoire de travail (facultatif)",
-  "schedules.preset.hourly": "Toutes les heures",
-  "schedules.preset.daily": "Chaque jour à 9 h",
-  "schedules.preset.weekdays": "En semaine à 9 h",
-  "schedules.preset.weekly": "Chaque lundi",
   "file.lines_one": "{{count}} ligne",
   "file.lines_many": "{{count}} de lignes",
   "file.lines_other": "{{count}} lignes",

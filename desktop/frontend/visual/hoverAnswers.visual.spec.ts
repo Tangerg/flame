@@ -7,7 +7,7 @@ const ROUTES: ReadonlyArray<{ query: string; reveal?: RegExp }> = [
   { query: "fixture=shell&state=populated" },
   { query: "fixture=workspace&state=dock-light" },
   { query: "fixture=workspace&state=settings" },
-  { query: "fixture=workspace&state=settings&pane=schedules", reveal: /New schedule/ },
+  { query: "fixture=workspace&state=dock-schedules", reveal: /New schedule/ },
   { query: "fixture=workspace&state=settings&pane=mcp-servers", reveal: /Add server/ },
 ];
 

@@ -210,7 +210,7 @@ const OPENED_SURFACES: ReadonlyArray<{
   },
   {
     name: "schedule form",
-    route: { fixture: "workspace", state: "settings", pane: "schedules" },
+    route: { fixture: "workspace", state: "dock-schedules" },
     open: /New schedule/,
     reached: (page) => page.getByPlaceholder(/Instructions to run/).first(),
   },
@@ -449,7 +449,7 @@ for (const surface of INTERACTION_SURFACES) {
 
 test("WCAG audit the schedules form, which a pane audit never opens", async ({ page }) => {
   for (const theme of ["light", "dark"] as const) {
-    await openFixture(page, { fixture: "workspace", state: "settings", theme, pane: "schedules" });
+    await openFixture(page, { fixture: "workspace", state: "dock-schedules", theme });
     await page.getByRole("button", { name: /New schedule/ }).click();
     await expect(page.getByRole("textbox", { name: "Cron expression" })).toBeVisible();
 
@@ -467,7 +467,7 @@ const LOCALE_ROUTES: FixtureRoute[] = [
   { fixture: "agent", state: "tool-remote" },
   { fixture: "agent", state: "tool-tail" },
   { fixture: "shell", state: "populated" },
-  { fixture: "workspace", state: "settings", pane: "schedules" },
+  { fixture: "workspace", state: "dock-schedules" },
   { fixture: "workspace", state: "settings", pane: "providers" },
 ];
 
@@ -477,6 +477,7 @@ const DOCK_LOCALE_STATES = [
   "dock-trajectory",
   "dock-subagents",
   "dock-agent-memory",
+  "dock-schedules",
   "dock-skills",
   "dock-diagnostics",
 ] as const;

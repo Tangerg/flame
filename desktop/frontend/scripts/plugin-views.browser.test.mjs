@@ -13,13 +13,17 @@ const memoryHTML = await readFile(
   new URL("../../../plugins/memory/views/memory.html", import.meta.url),
   "utf8",
 );
+const scheduleHTML = await readFile(
+  new URL("../../../plugins/schedules/views/schedules.html", import.meta.url),
+  "utf8",
+);
 const policy = (
   await readFile(new URL("../public/plugin-carrier-policy.txt", import.meta.url), "utf8")
 ).trim();
 const host = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const csp = host.match(/<meta http-equiv="Content-Security-Policy"[^>]+>/)[0];
 for (const [name, engine] of Object.entries({ chromium, webkit })) {
-  test(`${name}: production plugin carrier and scoped trajectory and memory reads`, async (t) => {
+  test(`${name}: production plugin carrier and scoped trajectory, memory and schedule reads`, async (t) => {
     let enforce = true;
     let escapedRequests = 0;
     let packets = 0;
@@ -322,6 +326,61 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
     await frame.getByRole("button", { name: "Previous page" }).click();
     await frame.getByText("2 memory items loaded on this page.").waitFor();
     assert.equal(await frame.locator("article").count(), 2);
+    await page.evaluate(() => window.dispose());
+    await page.reload();
+    await page.waitForFunction(() => window.mount);
+    const schedules = {
+      data: [
+        {
+          id: "sch_enabled",
+          title: "Scheduled <script> review",
+          instructions: "Review canonical changes",
+          cron: "0 9 * * 1",
+          enabled: true,
+          revision: 3,
+          nextRunAt: "2026-10-12T09:00:00Z",
+          workspace: { path: "/runtime/project" },
+        },
+        {
+          id: "sch_disabled",
+          title: "Paused",
+          instructions: "Never invent a firing time",
+          cron: "0 3 * * *",
+          enabled: false,
+          revision: 2,
+        },
+      ],
+      nextCursor: "schedule-next",
+    };
+    await page.evaluate(
+      ({ html, initial }) => {
+        window.continuation = { data: [] };
+        void window.mount(html, initial, "dark");
+      },
+      { html: scheduleHTML, initial: schedules },
+    );
+    await frame.getByText("1 enabled · 1 disabled on this page").waitFor();
+    assert.equal(await frame.locator("article").count(), 2);
+    assert.equal(await frame.locator("script").count(), 1);
+    assert.equal(
+      await frame.locator("html").evaluate((element) => element.style.colorScheme),
+      "dark",
+    );
+    await frame.getByRole("combobox", { name: "Schedule status" }).selectOption("disabled");
+    assert.equal(await frame.locator("article").count(), 1);
+    assert.equal(await frame.getByText("Not scheduled", { exact: true }).count(), 1);
+    assert.equal(await frame.getByText("Never fired", { exact: true }).count(), 1);
+    await frame.getByRole("combobox", { name: "Schedule status" }).selectOption("");
+    await page.evaluate(() => (window.readFailure = true));
+    await frame.getByRole("button", { name: "Next page" }).click();
+    await frame.getByRole("alert").waitFor();
+    assert.equal(await frame.locator("article").count(), 2);
+    assert.equal(await frame.getByRole("button", { name: "Next page" }).isEnabled(), true);
+    await page.evaluate(() => (window.readFailure = false));
+    await frame.getByRole("button", { name: "Next page" }).click();
+    await frame.getByText("0 schedules loaded on this page.").waitFor();
+    assert.equal(await page.evaluate(() => window.reads[1].cursor), "schedule-next");
+    assert.equal(await frame.getByRole("button", { name: /Run now|Delete|Enable/ }).count(), 0);
     await page.evaluate(() => window.dispose());
     await page.reload();
     await page.waitForFunction(() => window.mount);

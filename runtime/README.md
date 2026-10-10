@@ -42,6 +42,26 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
+## Protocol 2026-10-10.4
+
+The optional [Schedules package](../plugins/schedules/plugin.json) replaces the compiled
+Desktop schedule list and cron presets. `plugins.readSchedules` embeds canonical `PageQuery`,
+returns the existing `schedules.list` projection and requires both plugin and schedule capability.
+Admission grants one declared read kind; schedule pages cannot read memory or trajectory data.
+
+Schedule views may declare up to 16 `scheduleTemplates`, each containing `id`, `title`,
+`instructions` and `cron`. Admission uses the Schedule owner's instruction and cron validation.
+Templates are immutable release content. The trusted Host copies a template only after an explicit
+selection; opening a draft submits nothing. Commands use existing Schedule revisions and Runtime
+receipts. A saved Schedule retains complete instructions, never a template reference.
+
+Rebuild Runtime, the shared client, CLI, Desktop and IDE together. Install and approve the new
+package bytes to restore rich graphical scheduling. The former settings pane, sidebar shortcut
+and compiled presets have no aliases or fallback. The Context Dock lists admitted package views.
+Disable or uninstall withdraws presentation and templates, preserving Schedule/Occurrence data
+and the default Runtime worker. Disabling or deleting a Schedule stops future claims; accepted
+occurrences keep their dispatch identity and require separate Run cancellation.
+
 ## Protocol 2026-10-10.3
 
 `agentMemory.list` returns canonical `Page<AgentMemoryItem>` values, with target-bound
@@ -527,9 +547,9 @@ preference and the first-paint projection with it. Themes use the existing
 Dougong Host and child lifetimes; client connection replacement retires the predecessor
 before publishing its successor.
 
-The current implementation includes Slice A/B, one optional Slice C page and a bounded
-Slice D human action. A package
-may declare `contributes.views` with `id`, `title`, `type: "sessionTrajectory"`, and a portable
+The current implementation includes Slice A/B, optional Slice C pages and a bounded
+Slice D human action. A package may declare `contributes.views` with `id`, `title`,
+`type: "sessionTrajectory"`, `"agentMemory"` or `"schedules"`, and a portable
 `.html` `entry`. Admission validates UTF-8 HTML, confined resource access and the release
 fingerprint. Invalid views produce diagnostics without withdrawing independent themes,
 Skills or MCP declarations. Arbitrary projection queries, mutation bridges,

@@ -154,6 +154,12 @@ func parseExtensions(raw jsontext.Value, release *plugin.Builder, ctx context.Co
 		if component == "views" {
 			admitContributions(contributes[component], release, plugin.Component{Kind: plugin.ComponentContribution, Name: component}, func(w wireView) error {
 				view := plugin.ViewDeclaration{ID: w.ID, Title: w.Title, Kind: w.Type, Entry: w.Entry}
+				if w.ScheduleTemplates != nil {
+					view.ScheduleTemplates = make([]plugin.ScheduleTemplate, 0, len(w.ScheduleTemplates))
+				}
+				for _, template := range w.ScheduleTemplates {
+					view.ScheduleTemplates = append(view.ScheduleTemplates, plugin.ScheduleTemplate{ID: template.ID, Title: template.Title, Instructions: template.Instructions, Cron: template.Cron})
+				}
 				if !plugin.ValidResourcePath(view.Entry) {
 					return plugin.ErrInvalid
 				}

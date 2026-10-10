@@ -189,3 +189,58 @@ func TestMemoryViewUsesCanonicalPagesAndCannotReadAnotherKind(t *testing.T) {
 		t.Fatal("uninstall changed Runtime memory")
 	}
 }
+
+func TestScheduleViewUsesCanonicalPagesAndUninstallPreservesSchedules(t *testing.T) {
+	cfg := poMCPConfig(t)
+	r := poMCPOpen(t, cfg)
+	source, err := filepath.Abs("../../../plugins/schedules")
+	if err != nil {
+		t.Fatal(err)
+	}
+	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-schedules").(*protocol.PluginInstallation)
+	if len(installed.Selected.Diagnostics) != 0 || len(installed.Selected.Views) != 1 || installed.Selected.Views[0].Type != protocol.PluginViewSchedules || len(installed.Selected.Views[0].ScheduleTemplates) != 4 {
+		t.Fatalf("schedule admission: %+v", installed.Selected)
+	}
+	view := protocol.ReadPluginViewRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ViewID: "schedules"}
+	r.must(delivery.PluginsApprove, view.PluginReleaseRequest, "approve-schedules")
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable-schedules")
+	html := r.must(delivery.PluginsReadView, view, "").(*protocol.PluginViewResource)
+	authored, err := os.ReadFile(filepath.Join(source, "views", "schedules.html"))
+	if err != nil || html.HTML != string(authored) {
+		t.Fatalf("schedule resource differs from admitted bytes: %v", err)
+	}
+	for _, template := range installed.Selected.Views[0].ScheduleTemplates[:2] {
+		r.must(delivery.SchedulesCreate, protocol.CreateScheduleRequest{Title: template.Title, Instructions: template.Instructions, Cron: template.Cron}, template.ID)
+	}
+	query := protocol.PageQuery{Limit: new(1)}
+	for {
+		page := r.must(delivery.PluginsReadSchedules, protocol.ReadPluginSchedulesRequest{ReadPluginViewRequest: view, PageQuery: query}, "").(*protocol.Page[protocol.Schedule])
+		canonical := r.must(delivery.SchedulesList, query, "").(*protocol.Page[protocol.Schedule])
+		if !reflect.DeepEqual(page, canonical) || len(page.Data) != 1 {
+			t.Fatal("schedule view differs from canonical query")
+		}
+		if page.NextCursor == "" {
+			break
+		}
+		query.Cursor = page.NextCursor
+	}
+	wrong := r.endpoint.Invoke(t.Context(), delivery.PluginsReadMemory, protocol.ReadPluginMemoryRequest{ReadPluginViewRequest: view, AgentMemoryListRequest: protocol.AgentMemoryListRequest{Scope: protocol.AgentMemoryScopeUser}}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	if !errors.Is(wrong.Failure, protocol.ErrPluginNotFound) {
+		t.Fatalf("schedule page admitted memory: %v", wrong.Failure)
+	}
+	r.close()
+	r = poMCPOpen(t, cfg)
+	restarted := r.must(delivery.PluginsList, struct{}{}, "").(*protocol.Page[protocol.PluginInstallation])
+	if !reflect.DeepEqual(restarted.Data[0].Selected.Views, installed.Selected.Views) {
+		t.Fatal("restart changed admitted templates")
+	}
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: false}, "disable-schedules")
+	refused := r.endpoint.Invoke(t.Context(), delivery.PluginsReadSchedules, protocol.ReadPluginSchedulesRequest{ReadPluginViewRequest: view}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	if !errors.Is(refused.Failure, protocol.ErrPluginUnapproved) {
+		t.Fatalf("disabled schedule page: %v", refused.Failure)
+	}
+	r.must(delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}, "uninstall-schedules")
+	if page := r.must(delivery.SchedulesList, protocol.PageQuery{}, "").(*protocol.Page[protocol.Schedule]); len(page.Data) != 2 {
+		t.Fatal("uninstall changed Runtime schedules")
+	}
+}

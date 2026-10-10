@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
 import { wasGenerationRetired } from "@/lib/asyncOwnership";
 import { useState } from "react";
-import { PillButton, Pressable, Surface, TextArea, TextField, vocab } from "@/ui";
+import { PillButton, Surface, TextArea, TextField, vocab } from "@/ui";
 import {
   createSchedule,
   updateSchedule,
@@ -10,62 +10,42 @@ import {
 import { useCommandAction } from "@/plugins/sdk";
 import { useT } from "@/lib/i18n";
 import {
-  CRON_PRESETS,
   type ScheduleDraft,
   canSaveScheduleDraft,
   initialScheduleDraft,
   scheduleInputFromDraft,
 } from "../application/scheduleDraft";
-import {
-  color,
-  corner,
-  motion,
-  space,
-  surface,
-  type as typeStep,
-  weight,
-} from "@/styles/tokens.stylex";
 import { settingStyles as ss } from "../../kit/settingStyles";
 import { ScheduleModelFields } from "./ScheduleModelFields";
 
 interface ScheduleFormProps {
+  signal: AbortSignal;
   schedule?: ScheduleConfig;
   defaultCwd?: string;
+  template?: Pick<ScheduleConfig, "title" | "instructions" | "cron">;
   onDone: () => void;
   onCancel: () => void;
 }
 
-const sf = stylex.create({
-  preset: {
-    borderWidth: "var(--control-edge-width)",
-    borderStyle: "solid",
-    paddingInline: space.s2_5,
-    paddingBlock: space.s1,
-    fontWeight: weight.medium,
-    transitionProperty: "background-color, border-color, color",
-    transitionTimingFunction: motion.easeState,
-  },
-  presetOn: {
-    borderColor: color.accent,
-    backgroundColor: { default: surface.selected, ":hover": surface.selectedHover },
-    color: color.fg,
-  },
-  presetOff: {
-    borderColor: "transparent",
-    backgroundColor: { default: null, ":hover": surface.hover },
-    color: { default: color.fgMuted, ":hover": color.fg },
-  },
-});
-
-export function ScheduleForm({ schedule, defaultCwd, onDone, onCancel }: ScheduleFormProps) {
+export function ScheduleForm({
+  schedule,
+  defaultCwd,
+  template,
+  signal,
+  onDone,
+  onCancel,
+}: ScheduleFormProps) {
   const t = useT();
   const [basis] = useState(() =>
     schedule ? { id: schedule.id, revision: schedule.revision } : undefined,
   );
-  const [original] = useState<ScheduleDraft>(() => initialScheduleDraft(schedule, defaultCwd));
+  const [original] = useState<ScheduleDraft>(() =>
+    initialScheduleDraft(schedule, defaultCwd, template),
+  );
   const [draft, setDraft] = useState(original);
   const { busy, run } = useCommandAction({
-    wasRetired: wasGenerationRetired,
+    wasRetired: (error) =>
+      wasGenerationRetired(error) || (signal.aborted && error === signal.reason),
     fallback: t("schedules.error.save"),
   });
 
@@ -75,6 +55,7 @@ export function ScheduleForm({ schedule, defaultCwd, onDone, onCancel }: Schedul
 
   const onSave = () =>
     run(async () => {
+      signal.throwIfAborted();
       const input = scheduleInputFromDraft(draft, original);
       if (basis) {
         await updateSchedule({
@@ -84,7 +65,7 @@ export function ScheduleForm({ schedule, defaultCwd, onDone, onCancel }: Schedul
       } else {
         await createSchedule(input);
       }
-      onDone();
+      if (!signal.aborted) onDone();
     });
 
   return (
@@ -103,32 +84,12 @@ export function ScheduleForm({ schedule, defaultCwd, onDone, onCancel }: Schedul
         placeholder={t("schedules.form.instructions")}
         aria-label={t("schedules.form.instructions")}
       />
-      <div {...stylex.props(ss.lineWrap)}>
-        {CRON_PRESETS.map((preset) => (
-          <Pressable
-            key={preset.cron}
-            type="button"
-            aria-pressed={draft.cron === preset.cron}
-            onClick={() => updateDraft("cron", preset.cron)}
-            className={
-              stylex.props(
-                sf.preset,
-                corner.pill,
-                draft.cron === preset.cron ? sf.presetOn : sf.presetOff,
-                typeStep.uiSm,
-              ).className
-            }
-          >
-            {t(preset.key)}
-          </Pressable>
-        ))}
-      </div>
       <TextField
         font="mono"
         value={draft.cron}
         onChange={(event) => updateDraft("cron", event.target.value)}
         spellCheck={false}
-        placeholder="0 9 * * 1-5"
+        placeholder={t("schedules.form.cron")}
         aria-label={t("schedules.form.cron")}
       />
       <TextField

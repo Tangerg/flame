@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-10.3",
+  "protocolVersion": "2026-10-10.4",
   "features": [
     "reasoning",
     "multimodal",
@@ -787,6 +787,29 @@
       ]
     },
     {
+      "name": "plugins.readSchedules",
+      "kind": "unary",
+      "operation": "query",
+      "idempotency": "none",
+      "replayCursor": "none",
+      "pagination": "cursor",
+      "errors": [
+        "plugin_unavailable",
+        "plugin_not_found",
+        "plugin_in_use",
+        "plugin_unapproved",
+        "plugin_stale",
+        "capability_not_negotiated"
+      ],
+      "features": [
+        "plugins",
+        "schedules"
+      ],
+      "materializes": [
+        "schedules.list"
+      ]
+    },
+    {
       "name": "plugins.readMemory",
       "kind": "unary",
       "operation": "query",
@@ -1559,6 +1582,7 @@
           "plugins.install",
           "plugins.list",
           "plugins.readMemory",
+          "plugins.readSchedules",
           "plugins.readTrajectory",
           "plugins.readView",
           "plugins.renameSession",
@@ -1749,6 +1773,7 @@
           "plugins.install",
           "plugins.list",
           "plugins.readMemory",
+          "plugins.readSchedules",
           "plugins.readTrajectory",
           "plugins.readView",
           "plugins.renameSession",
@@ -1769,6 +1794,7 @@
           "plugins.install",
           "plugins.list",
           "plugins.readMemory",
+          "plugins.readSchedules",
           "plugins.readTrajectory",
           "plugins.readView",
           "plugins.renameSession",
@@ -1789,6 +1815,7 @@
           "plugins.install",
           "plugins.list",
           "plugins.readMemory",
+          "plugins.readSchedules",
           "plugins.readTrajectory",
           "plugins.readView",
           "plugins.renameSession",
@@ -1809,6 +1836,7 @@
           "plugins.install",
           "plugins.list",
           "plugins.readMemory",
+          "plugins.readSchedules",
           "plugins.readTrajectory",
           "plugins.readView",
           "plugins.renameSession",
@@ -1829,6 +1857,7 @@
           "plugins.install",
           "plugins.list",
           "plugins.readMemory",
+          "plugins.readSchedules",
           "plugins.readTrajectory",
           "plugins.readView",
           "plugins.renameSession",
@@ -2504,6 +2533,17 @@
         {
           "requires": [
             "mcp"
+          ]
+        }
+      ]
+    },
+    {
+      "method": "plugins.readSchedules",
+      "rules": [
+        {
+          "requires": [
+            "plugins",
+            "schedules"
           ]
         }
       ]

@@ -2,6 +2,7 @@ import type { FlameClient } from "@flame/runtime-contract/client";
 import type {
   AgentMemoryItem,
   Page,
+  Schedule,
   ReadPluginViewRequest,
   TrajectoryEntry,
 } from "@flame/runtime-contract/wire";
@@ -40,6 +41,16 @@ export function createMemoryViewReads(
   };
   return createViewReads(plugins, view, (cursor, signal) =>
     plugins.readMemory({ ...view, ...captured, cursor }, signal),
+  );
+}
+
+export function createScheduleViewReads(
+  plugins: Pick<FlameClient["plugins"], "readView" | "readSchedules">,
+  binding: Readonly<ReadPluginViewRequest>,
+): PluginViewReads<Schedule> {
+  const view = { ...binding };
+  return createViewReads(plugins, view, (cursor, signal) =>
+    plugins.readSchedules({ ...view, cursor }, signal),
   );
 }
 

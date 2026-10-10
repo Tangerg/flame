@@ -262,7 +262,6 @@ export const en: Record<string, string> = {
   "settings.pane.approvals": "Approvals",
   "settings.pane.mcpServers": "MCP servers",
   "settings.pane.hooks": "Hooks",
-  "settings.pane.schedules": "Schedules",
   "settings.appearance.hero":
     "Themes, contrast, typography, and motion define the working feel of Flame.",
   "context.usage.aria": "Context usage: {{percent}}%",
@@ -738,15 +737,14 @@ export const en: Record<string, string> = {
   "agentMemory.noProject.sub":
     "Open or select a session to review its project memory. Switch to User for cross-project memory.",
   "agentMemory.error": "Couldn't update memory.",
-  "schedules.intro":
-    "Run a saved prompt on a schedule. Each run starts a fresh session while the runtime is serving — find its output in the sidebar. Disabling or deleting stops future scheduling; already claimed runs may still start and require separate cancellation.",
+  "schedules.select": "Select a schedule",
+  "schedules.template": "Use a template",
+  "schedules.enable": "Enable",
+  "schedules.disable": "Disable",
   "schedules.add": "New schedule",
   "schedules.save": "Save",
   "schedules.saving": "Saving…",
   "schedules.untitled": "Untitled schedule",
-  "schedules.next": "next {{time}}",
-  "schedules.last": "last {{time}}",
-  "schedules.enable.aria": "Enable schedule",
   "schedules.runNow": "Run now",
   "schedules.edit": "Edit schedule",
   "schedules.delete": "Delete schedule",
@@ -754,11 +752,7 @@ export const en: Record<string, string> = {
   "schedules.delete.body":
     '"{{title}}" and its instructions go away. This cannot be undone. Already claimed runs may still start and require separate cancellation.',
   "schedules.delete.confirm": "Delete",
-  "schedules.empty": "No schedules",
-  "schedules.empty.sub":
-    "Add one to run a prompt on a cron trigger — e.g. a weekday standup or a nightly review.",
   "schedules.unavailable": "Schedules unavailable",
-  "schedules.unavailable.sub": "The connected runtime doesn't expose scheduled runs yet.",
   "schedules.error.save": "Couldn't save the schedule.",
   "schedules.model.default": "Runtime default",
   "schedules.reasoning.default": "Model default",
@@ -770,10 +764,6 @@ export const en: Record<string, string> = {
   "schedules.form.instructions": "Instructions to run…",
   "schedules.form.cron": "Cron expression",
   "schedules.form.cwd": "Working directory (optional)",
-  "schedules.preset.hourly": "Hourly",
-  "schedules.preset.daily": "Daily 9am",
-  "schedules.preset.weekdays": "Weekdays 9am",
-  "schedules.preset.weekly": "Weekly Mon",
 
   "shortcuts.sub":
     "Every keybinding registered by built-in and user plugins. Press a combo anywhere in the app to fire it; binding conflicts always resolve to the last registration.",

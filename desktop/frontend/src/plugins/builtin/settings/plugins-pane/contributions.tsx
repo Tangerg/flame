@@ -6,6 +6,7 @@ import type { PluginInstallation } from "@flame/runtime-contract/wire";
 import type { ContributionLifetime } from "@/plugins/sdk/definePlugin";
 import { DATA_PROVIDER, WORKSPACE_VIEW } from "@/plugins/sdk/kernelPoints";
 import { TrajectoryPackageView } from "./ui/TrajectoryPackageView";
+import { SchedulePackageView } from "./ui/SchedulePackageView";
 import { MemoryPackageView } from "./ui/MemoryPackageView";
 import { queryClient } from "@/lib/queryClient";
 import { failureMessage } from "@/lib/diagnostics";
@@ -14,7 +15,11 @@ import {
   retainThemeSelection,
 } from "@/plugins/builtin/theme/public/appearance";
 import { packageOperations, PACKAGES_KEY, usePackageRealization } from "./application/packages";
-import { createTrajectoryViewReads, createMemoryViewReads } from "./adapters/pluginViewReads";
+import {
+  createTrajectoryViewReads,
+  createMemoryViewReads,
+  createScheduleViewReads,
+} from "./adapters/pluginViewReads";
 
 const packageThemePrefix = "package:";
 
@@ -74,6 +79,25 @@ function createPackageReconciler(
               component: () => (
                 <TrajectoryPackageView
                   reads={reads}
+                  title={title}
+                  lifetime={lifetime}
+                  carrier={carrier}
+                />
+              ),
+            });
+            break;
+          }
+          case "schedules": {
+            const reads = () => createScheduleViewReads(client.plugins, binding);
+            lifetime.contribute(WORKSPACE_VIEW, {
+              id: `package:${installation.id}:${view.id}`,
+              title,
+              icon: "calendar-clock",
+              dock: "workspace",
+              component: () => (
+                <SchedulePackageView
+                  reads={reads}
+                  templates={view.scheduleTemplates ?? []}
                   title={title}
                   lifetime={lifetime}
                   carrier={carrier}

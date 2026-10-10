@@ -13,7 +13,6 @@ export const VISUAL_SETTINGS_PANES = [
   "approvals",
   "mcp-servers",
   "hooks",
-  "schedules",
   "plugins",
   "usage",
   "connection",
@@ -37,6 +36,7 @@ export const VISUAL_WORKSPACE_STATES = [
   "dock-files",
   "dock-skills",
   "dock-agent-memory",
+  "dock-schedules",
   "dock-feature-off",
   "dock-file",
   "dock-empty",
@@ -67,6 +67,7 @@ export const DOCK_VIEW_BY_STATE: Partial<Record<VisualWorkspaceState, string>> =
   "dock-files": "file",
   "dock-skills": "skills",
   "dock-agent-memory": "package:visual:memory",
+  "dock-schedules": "package:visual:schedules",
   "dock-feature-off": "skills",
   "dock-file": "file",
 };

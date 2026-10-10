@@ -57,6 +57,10 @@ func (c *capabilityRuntime) ListAgentMemory(context.Context, protocol.AgentMemor
 	return &protocol.Page[protocol.AgentMemoryItem]{Data: []protocol.AgentMemoryItem{}}, nil
 }
 
+func (c *capabilityRuntime) ReadPluginSchedules(context.Context, protocol.ReadPluginSchedulesRequest) (*protocol.Page[protocol.Schedule], error) {
+	return protocol.NewPage([]protocol.Schedule{}), nil
+}
+
 func (c *capabilityRuntime) ReadPluginMemory(context.Context, protocol.ReadPluginMemoryRequest) (*protocol.Page[protocol.AgentMemoryItem], error) {
 	return &protocol.Page[protocol.AgentMemoryItem]{Data: []protocol.AgentMemoryItem{}}, nil
 }
@@ -129,6 +133,24 @@ func TestMemoryPageRequiresBothServerCapabilities(t *testing.T) {
 			}
 		} else if got := problemType(t, response); got != "capability_not_negotiated" {
 			t.Fatalf("memory read with %v: %s", features, got)
+		}
+	}
+}
+
+func TestSchedulePageRequiresBothServerCapabilities(t *testing.T) {
+	const params = `{"installationId":"00000000-0000-4000-8000-000000000001","digest":"1111111111111111111111111111111111111111111111111111111111111111","viewId":"schedules"}`
+	for _, features := range []map[string]bool{
+		{protocol.FeaturePlugins: false, protocol.FeatureSchedules: true},
+		{protocol.FeaturePlugins: true, protocol.FeatureSchedules: false},
+		{protocol.FeaturePlugins: true, protocol.FeatureSchedules: true},
+	} {
+		response := call(t, features, "plugins.readSchedules", params)
+		if features[protocol.FeaturePlugins] && features[protocol.FeatureSchedules] {
+			if response.Error != nil {
+				t.Fatalf("enabled schedule read: %+v", response.Error)
+			}
+		} else if got := problemType(t, response); got != "capability_not_negotiated" {
+			t.Fatalf("schedule read with %v: %s", features, got)
 		}
 	}
 }

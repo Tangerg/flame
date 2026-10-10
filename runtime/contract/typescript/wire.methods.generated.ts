@@ -98,6 +98,7 @@ import type {
   ProviderTestResult,
   ReadFileRequest,
   ReadPluginMemoryRequest,
+  ReadPluginSchedulesRequest,
   ReadPluginTrajectoryRequest,
   ReadPluginViewRequest,
   RenamePluginSessionRequest,
@@ -228,6 +229,7 @@ const METHOD_NAMES = [
   "mcp.servers.reconnect",
   "mcp.authorizationAttempts.create",
   "mcp.authorizationAttempts.get",
+  "plugins.readSchedules",
   "plugins.readMemory",
   "plugins.renameSession",
   "plugins.readView",
@@ -345,6 +347,7 @@ const VALUE_METHOD_NAMES = [
   "mcp.tools.list",
   "mcp.authorizationAttempts.create",
   "mcp.authorizationAttempts.get",
+  "plugins.readSchedules",
   "plugins.readMemory",
   "plugins.renameSession",
   "plugins.readView",
@@ -780,6 +783,13 @@ export const WIRE_METHOD_POLICY = {
     idempotency: "none",
     replayCursor: "none",
     pagination: "none",
+  },
+  "plugins.readSchedules": {
+    operation: "query",
+    response: "unary",
+    idempotency: "none",
+    replayCursor: "none",
+    pagination: "cursor",
   },
   "plugins.readMemory": {
     operation: "query",
@@ -1280,6 +1290,9 @@ export const WIRE_CAPABILITY_POLICY: {
   "mcp.authorizationAttempts.get": [
     { requires: ["mcp"] },
   ],
+  "plugins.readSchedules": [
+    { requires: ["plugins", "schedules"] },
+  ],
   "plugins.readMemory": [
     { requires: ["plugins", "agentMemory"] },
   ],
@@ -1424,6 +1437,7 @@ export interface WireShapes {
   "mcp.servers.reconnect": { params: MCPServerRequest };
   "mcp.authorizationAttempts.create": { params: CreateMCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
   "mcp.authorizationAttempts.get": { params: MCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
+  "plugins.readSchedules": { params: ReadPluginSchedulesRequest; result: PageOfSchedule };
   "plugins.readMemory": { params: ReadPluginMemoryRequest; result: PageOfAgentMemoryItem };
   "plugins.renameSession": { params: RenamePluginSessionRequest; result: Session };
   "plugins.readView": { params: ReadPluginViewRequest; result: PluginViewResource };

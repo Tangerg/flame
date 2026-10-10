@@ -151,6 +151,12 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     ).toContainText("unknown");
     return;
   }
+  if (state === "dock-schedules") {
+    await expect(
+      pluginViewFrame(page, "schedules").getByText("1 enabled · 1 disabled on this page"),
+    ).toBeVisible();
+    return;
+  }
   if (state === "dock-agent-memory") {
     await expect(
       pluginViewFrame(page, "memory").getByText("1 pending · 1 active on this page"),
@@ -764,56 +770,32 @@ for (const pane of VISUAL_SETTINGS_PANES) {
   });
 }
 
-test("a chosen cron preset stays chosen while the pointer crosses the others", async ({ page }) => {
-  await openWorkspace(page, { state: "settings", pane: "schedules" });
-  await waitForWorkspaceState(page, "settings");
-  await page.getByRole("button", { name: /New schedule/ }).click();
-
-  const presets = page
-    .locator("[aria-pressed]")
-    .filter({ hasText: /Hourly|Daily|Weekdays|Weekly/ });
-  await expect(presets).toHaveCount(4);
-  expect(
-    await presets.evaluateAll(
-      (els) => els.filter((element) => element.getAttribute("aria-pressed") === "true").length,
-    ),
-  ).toBe(1);
-
-  const paint = () =>
-    presets.evaluateAll((els) =>
-      els.map((element) => ({
-        chosen: element.getAttribute("aria-pressed") === "true",
-        edge: getComputedStyle(element).borderTopColor,
-      })),
-    );
-
-  const resting = await paint();
-  await presets.first().hover();
-  const hovered = await paint();
-
-  for (const paints of [resting, hovered]) {
-    const chosen = paints.filter((option) => option.chosen);
-    expect(chosen).toHaveLength(1);
-    for (const other of paints.filter((option) => !option.chosen)) {
-      expect(other.edge).not.toBe(chosen[0]!.edge);
-    }
-  }
+test("a package template fills a draft without creating a schedule", async ({ page }) => {
+  await openWorkspace(page, { state: "dock-schedules" });
+  await waitForWorkspaceState(page, "dock-schedules");
+  await page.getByRole("button", { name: "Use a template" }).click();
+  await page.getByRole("menuitem", { name: /Weekly maintenance review/ }).click();
+  await expect(page.getByRole("textbox", { name: "Title (optional)" })).toHaveValue(
+    "Weekly maintenance review",
+  );
+  await expect(page.getByRole("textbox", { name: "Cron expression" })).toHaveValue("0 9 * * 1");
+  await expect(pluginViewFrame(page, "schedules").locator("article")).toHaveCount(2);
 });
 
 test("deleting a schedule asks first, and a declined ask changes nothing", async ({ page }) => {
-  await openWorkspace(page, { state: "settings", pane: "schedules" });
-  await waitForWorkspaceState(page, "settings");
+  await openWorkspace(page, { state: "dock-schedules" });
+  await waitForWorkspaceState(page, "dock-schedules");
 
-  const rows = page.getByRole("button", { name: "Delete schedule" });
-  await expect(rows).toHaveCount(2);
-  await rows.first().click();
+  await page.getByRole("button", { name: "Select a schedule" }).click();
+  await page.getByRole("menuitem", { name: /sch_nightly/ }).click();
+  await page.getByRole("button", { name: "Delete schedule" }).click();
 
   const dialog = page.getByRole("alertdialog");
   await expect(dialog).toContainText("Nightly dependency audit");
   await expect(dialog).toContainText("cannot be undone");
   await dialog.getByRole("button", { name: "Cancel" }).click();
 
-  await expect(rows).toHaveCount(2);
+  await expect(pluginViewFrame(page, "schedules").locator("article")).toHaveCount(2);
 });
 
 test("the portable trajectory preserves canonical Tool evidence for inspection", async ({

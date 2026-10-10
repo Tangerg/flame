@@ -1,0 +1,47 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "flame.schedules",
+  "version": "1.0.0",
+  "description": "Optional first-party schedule presentation and authoring templates. Runtime owns occurrence claims and Run admission.",
+  "extensions": {
+    "io.github.tangerg.flame": {
+      "apiVersion": 1,
+      "contributes": {
+        "views": [
+          {
+            "id": "schedules",
+            "title": "Schedules",
+            "type": "schedules",
+            "entry": "views/schedules.html",
+            "scheduleTemplates": [
+              {
+                "id": "hourly",
+                "title": "Hourly progress check",
+                "cron": "0 * * * *",
+                "instructions": "Inspect the current workspace and summarize recent progress, outstanding work and any blockers."
+              },
+              {
+                "id": "daily",
+                "title": "Daily review",
+                "cron": "0 9 * * *",
+                "instructions": "Review recent changes in the current workspace and summarize risks, test results and next steps."
+              },
+              {
+                "id": "weekdays",
+                "title": "Weekday planning",
+                "cron": "0 9 * * 1-5",
+                "instructions": "Review the current workspace and propose the most useful next steps for today."
+              },
+              {
+                "id": "weekly",
+                "title": "Weekly maintenance review",
+                "cron": "0 9 * * 1",
+                "instructions": "Review the current workspace for maintenance work and summarize concrete improvements and their priority."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

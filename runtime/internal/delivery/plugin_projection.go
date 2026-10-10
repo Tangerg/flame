@@ -88,7 +88,11 @@ func presentPluginRelease(release plugin.Release) (protocol.PluginRelease, error
 		result.Actions = append(result.Actions, protocol.PluginAction{ID: action.ID, Title: action.Title, Operation: protocol.PluginActionOperation(action.Operation)})
 	}
 	for _, view := range v.Views {
-		result.Views = append(result.Views, protocol.PluginView{ID: view.ID, Title: view.Title, Type: protocol.PluginViewType(view.Kind)})
+		presented := protocol.PluginView{ID: view.ID, Title: view.Title, Type: protocol.PluginViewType(view.Kind)}
+		for _, template := range view.ScheduleTemplates {
+			presented.ScheduleTemplates = append(presented.ScheduleTemplates, protocol.PluginScheduleTemplate{ID: template.ID, Title: template.Title, Instructions: template.Instructions, Cron: template.Cron})
+		}
+		result.Views = append(result.Views, presented)
 	}
 	for _, item := range v.Skills {
 		result.Skills = append(result.Skills, presentPluginSkill(item))

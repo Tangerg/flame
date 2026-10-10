@@ -43,11 +43,19 @@ type wireTheme struct {
 	Colors wireThemeColors `json:"colors"`
 }
 type wireView struct {
-	ID    string          `json:"id"`
-	Title string          `json:"title"`
-	Type  plugin.ViewKind `json:"type"`
-	Entry string          `json:"entry"`
+	ID                string                 `json:"id"`
+	Title             string                 `json:"title"`
+	Type              plugin.ViewKind        `json:"type"`
+	Entry             string                 `json:"entry"`
+	ScheduleTemplates []wireScheduleTemplate `json:"scheduleTemplates,omitempty"`
 }
+type wireScheduleTemplate struct {
+	ID           string `json:"id"`
+	Title        string `json:"title"`
+	Instructions string `json:"instructions"`
+	Cron         string `json:"cron"`
+}
+
 type wireAction struct {
 	ID        string                 `json:"id"`
 	Title     string                 `json:"title"`

@@ -1,5 +1,5 @@
 import { GenerationRetiredError } from "@/lib/asyncOwnership";
-import { SCHEDULES_KEY, useSchedules } from "./scheduleQueries";
+import { SCHEDULES_KEY } from "./scheduleQueries";
 import { createPublicationSlot } from "@/lib/publicationSlot";
 import { queryClient, repairCachedProjection } from "@/lib/queryClient";
 import { RetirableTaskCohort } from "@/lib/taskQueue";
@@ -163,10 +163,6 @@ export class ScheduleMutationOwner {
 }
 
 const scheduleMutationPublication = createPublicationSlot<ScheduleMutationOwner>();
-
-export function useScheduleConfigs() {
-  return useSchedules();
-}
 
 export async function createSchedule(input: ScheduleConfigInput): Promise<ScheduleConfig> {
   return ScheduleMutationOwner.current().create(input);

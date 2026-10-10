@@ -6,6 +6,31 @@ import {
 } from "./scheduleDraft";
 
 describe("scheduleDraft", () => {
+  it("copies an explicit template into an editable draft and keeps persisted instructions authoritative", () => {
+    const template = {
+      title: "Package review",
+      instructions: "Review package changes",
+      cron: "0 9 * * 1",
+    };
+    const draft = initialScheduleDraft(undefined, "/captured", template);
+    expect(draft).toEqual({ ...template, cwd: "/captured", modelSelection: null });
+    template.instructions = "Changed after draft opened";
+    expect(draft.instructions).toBe("Review package changes");
+    const saved = {
+      id: "sch_saved",
+      title: "Saved",
+      instructions: "Committed",
+      cron: "0 3 * * *",
+      enabled: true,
+      revision: 2,
+    };
+    expect(initialScheduleDraft(saved, "/active", template)).toMatchObject({
+      title: "Saved",
+      instructions: "Committed",
+      cron: "0 3 * * *",
+      cwd: "",
+    });
+  });
   it("preserves saved model intent and only patches a deliberate change", () => {
     const original = initialScheduleDraft({
       id: "sch_1",
@@ -37,7 +62,7 @@ describe("scheduleDraft", () => {
     expect(initialScheduleDraft(undefined, "/repo")).toEqual({
       title: "",
       instructions: "",
-      cron: "0 9 * * 1-5",
+      cron: "",
       cwd: "/repo",
       modelSelection: null,
     });

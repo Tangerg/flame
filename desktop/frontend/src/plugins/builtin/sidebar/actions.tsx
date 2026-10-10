@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { ariaKeyShortcuts, comboGlyph } from "@/lib/combo";
-import { MCP_SERVERS_PANE, SCHEDULES_PANE } from "@/plugins/builtin/settings/kit/panes";
+import { MCP_SERVERS_PANE } from "@/plugins/builtin/settings/kit/panes";
 import {
   SESSION_SEARCH_COMMAND,
   openSessionSearch,
@@ -44,9 +44,6 @@ export function SidebarActions() {
           onClick={actions.createSession}
         >
           {t("sidebar.action.newSession")}
-        </AgentRow>
-        <AgentRow icon="calendar-clock" onClick={() => openWorkspaceSettingsPane(SCHEDULES_PANE)}>
-          {t("settings.pane.schedules")}
         </AgentRow>
         <AgentRow icon="server" onClick={() => openWorkspaceSettingsPane(MCP_SERVERS_PANE)}>
           {t("sidebar.action.tools")}

@@ -98,6 +98,13 @@ Timeline or dedicated trajectory data provider.
 These UI groups share the existing Workspace owner. They do not each introduce a
 new application, domain, adapter, or navigation stack.
 
+Scheduling presentation and templates live in the optional `plugins/schedules` portable
+release. The Host's `settings/schedules` owns trusted authoring and command receipt projections;
+its public controls capture Runtime revision and workspace intent. Templates only initialize
+explicitly opened drafts. The isolated page consumes canonical schedule pages, including
+reported firing times; it cannot submit commands or supply timers. Package withdrawal removes
+the view without changing Runtime's Schedule, Occurrence or worker ownership.
+
 ## Dependencies and public surfaces
 
 A feature uses only the rings it needs. Pure values and transitions belong in

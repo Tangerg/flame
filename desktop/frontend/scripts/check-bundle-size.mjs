@@ -106,7 +106,6 @@ const LAZY_FEATURES = [
       "PersonalizationPane-",
       "PluginsPane-",
       "ProvidersPane-",
-      "SchedulesPane-",
       "UsagePane-",
     ],
     ceiling: 200_000,

@@ -1,12 +1,5 @@
 import type { ScheduleConfig, ScheduleConfigInput, ScheduleModelSelection } from "./scheduleConfig";
 
-export const CRON_PRESETS: Array<{ key: string; cron: string }> = [
-  { key: "schedules.preset.hourly", cron: "0 * * * *" },
-  { key: "schedules.preset.daily", cron: "0 9 * * *" },
-  { key: "schedules.preset.weekdays", cron: "0 9 * * 1-5" },
-  { key: "schedules.preset.weekly", cron: "0 9 * * 1" },
-];
-
 export interface ScheduleDraft extends ScheduleConfigInput {
   modelSelection: ScheduleModelSelection | null;
 }
@@ -14,11 +7,12 @@ export interface ScheduleDraft extends ScheduleConfigInput {
 export function initialScheduleDraft(
   schedule?: ScheduleConfig,
   defaultCwd?: string,
+  template?: Pick<ScheduleConfigInput, "title" | "instructions" | "cron">,
 ): ScheduleDraft {
   return {
-    title: schedule?.title ?? "",
-    instructions: schedule?.instructions ?? "",
-    cron: schedule?.cron ?? "0 9 * * 1-5",
+    title: schedule?.title ?? template?.title ?? "",
+    instructions: schedule?.instructions ?? template?.instructions ?? "",
+    cron: schedule?.cron ?? template?.cron ?? "",
     cwd: schedule ? (schedule.cwd ?? "") : (defaultCwd ?? ""),
     modelSelection:
       schedule?.provider && schedule.model

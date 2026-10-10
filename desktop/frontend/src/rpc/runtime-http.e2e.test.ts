@@ -1124,6 +1124,55 @@ for await (const line of lines) {
     }
   });
 
+  it("reads shipped Schedule templates and canonical pages without owning Schedule persistence", async () => {
+    if (!client) throw new Error("runtime client was not initialized");
+    const installation = await client.plugins.install({
+      source: resolve(runtimeDirectory, "../plugins/schedules"),
+    });
+    const release = { installationId: installation.id, digest: installation.selected.digest };
+    const view = { ...release, viewId: "schedules" };
+    const created: string[] = [];
+    let remainingInstallation: string | undefined = installation.id;
+    try {
+      expect(installation.selected.diagnostics).toEqual([]);
+      const templates = installation.selected.views[0]!.scheduleTemplates!;
+      await client.plugins.approve(release);
+      await client.plugins.setEnablement({ installationId: installation.id, enabled: true });
+      for (const template of templates.slice(0, 2)) {
+        const schedule = await client.schedules.create({
+          title: template.title,
+          instructions: template.instructions,
+          cron: template.cron,
+        });
+        created.push(schedule.id);
+      }
+      const query: { cursor?: string; limit: number } = { limit: 1 };
+      do {
+        const page = await client.plugins.readSchedules({ ...view, ...query });
+        expect(page).toEqual(await client.schedules.list(query));
+        query.cursor = page.nextCursor;
+      } while (query.cursor);
+      expect((await client.plugins.readView(view)).html).toBe(
+        await readFile(
+          resolve(runtimeDirectory, "../plugins/schedules/views/schedules.html"),
+          "utf8",
+        ),
+      );
+      await expect(client.plugins.readMemory({ ...view, scope: "user" })).rejects.toSatisfy(
+        (error: unknown) => error instanceof RpcError && error.data.type === "plugin_not_found",
+      );
+      await client.plugins.revoke(installation.id);
+      await expect(client.plugins.readSchedules(view)).rejects.toMatchObject({ code: -32042 });
+      await client.plugins.uninstall(installation.id);
+      remainingInstallation = undefined;
+      const persisted = await client.schedules.list().autoPagingToArray();
+      for (const id of created) expect(persisted.some((schedule) => schedule.id === id)).toBe(true);
+    } finally {
+      for (const id of created) await client.schedules.delete(id);
+      if (remainingInstallation) await client.plugins.uninstall(remainingInstallation);
+    }
+  });
+
   it("joins a CLI-owned run from independent views without canceling it when a view closes", async () => {
     const observer = createSharedClient();
     const retiringView = createSharedClient();

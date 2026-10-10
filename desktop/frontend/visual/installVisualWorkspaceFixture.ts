@@ -1,3 +1,6 @@
+import scheduleHTML from "../../../plugins/schedules/views/schedules.html?raw";
+import schedulePackage from "../../../plugins/schedules/plugin.json";
+import { SchedulePackageView } from "@/plugins/builtin/settings/plugins-pane/ui/SchedulePackageView";
 import memoryHTML from "../../../plugins/memory/views/memory.html?raw";
 import { MemoryPackageView } from "@/plugins/builtin/settings/plugins-pane/ui/MemoryPackageView";
 import trajectoryHTML from "../../../plugins/trajectory/views/trajectory.html?raw";
@@ -58,7 +61,7 @@ import {
 } from "@/plugins/builtin/workspace/application/workspaceQueries";
 import { visualFeatureCapabilities } from "./agentFixtureFacts";
 import { SCHEDULES_KEY } from "@/plugins/builtin/settings/schedules/application/scheduleQueries";
-import type { ScheduleConfig } from "@/plugins/builtin/settings/schedules/application/scheduleConfig";
+import type { Schedule } from "@flame/runtime-contract/wire";
 import { diffView, fileView, skillsView } from "@/plugins/builtin/workspace/views";
 import { DATA_PROVIDER, SHORTCUT, WORKSPACE_VIEW, definePlugin } from "@/plugins/sdk";
 import type { AnyPlugin } from "dougong";
@@ -226,12 +229,12 @@ const VISUAL_CAPABILITIES: ServerCapabilities = {
   },
 };
 
-const VISUAL_SCHEDULES: ScheduleConfig[] = [
+const VISUAL_SCHEDULES: Schedule[] = [
   {
     id: "sch_nightly",
     title: "Nightly dependency audit",
     instructions: "Check the lockfile for advisories and open an issue for anything new.",
-    cwd: "/Users/visual/scope",
+    workspace: { path: "/Users/visual/scope" },
     cron: "0 3 * * *",
     enabled: true,
     revision: 3,
@@ -243,7 +246,7 @@ const VISUAL_SCHEDULES: ScheduleConfig[] = [
     id: "sch_weekly",
     title: "Weekly changelog draft",
     instructions: "Summarise the week's merged work into a draft release note.",
-    cwd: "/Users/visual/scope",
+    workspace: { path: "/Users/visual/scope" },
     cron: "0 9 * * 1",
     enabled: false,
     revision: 1,
@@ -379,6 +382,27 @@ function workspaceDataPlugin(
             carrier: createBrowserHost().pluginCarrier,
           }),
       });
+      const scheduleLifetime = ctx.lifetime("visual-schedules");
+      const scheduleReads = () => ({
+        load: async () => ({ html: scheduleHTML, initial: { data: VISUAL_SCHEDULES } }),
+        read: async () => ({ data: VISUAL_SCHEDULES }),
+      });
+      scheduleLifetime.contribute(WORKSPACE_VIEW, {
+        id: "package:visual:schedules",
+        title: "Schedules",
+        icon: "calendar-clock",
+        dock: "workspace",
+        component: () =>
+          createElement(SchedulePackageView, {
+            reads: scheduleReads,
+            templates:
+              schedulePackage.extensions["io.github.tangerg.flame"].contributes.views[0]!
+                .scheduleTemplates,
+            title: "Schedules",
+            lifetime: scheduleLifetime,
+            carrier: createBrowserHost().pluginCarrier,
+          }),
+      });
       const memoryLifetime = ctx.lifetime("visual-memory");
       const memoryReads = () => ({
         load: async () => ({ html: memoryHTML, initial: { data: visualMemory } }),
@@ -403,7 +427,11 @@ function workspaceDataPlugin(
       });
       ctx.contribute(DATA_PROVIDER, {
         key: SCHEDULES_KEY,
-        fetcher: async () => VISUAL_SCHEDULES,
+        fetcher: async () =>
+          VISUAL_SCHEDULES.map(({ workspace, ...schedule }) => ({
+            ...schedule,
+            cwd: workspace?.path,
+          })),
       });
       ctx.contribute(DATA_PROVIDER, {
         key: WORKSPACE_DIFF_KEY,
@@ -573,6 +601,7 @@ const OPENED_BY_ITS_OWN_STATE = new Set([
   "diagnostics",
   "skills",
   "package:visual:memory",
+  "package:visual:schedules",
 ]);
 
 const FULL_VIEW_ID = "file";
