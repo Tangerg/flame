@@ -7,7 +7,6 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	corechat "github.com/Tangerg/scope/core/chat"
@@ -112,24 +111,6 @@ func TestExecutionFactCommitOwnsMutableFacts(t *testing.T) {
 	if ownedTool.ModelResult.Name != "tool" || ownedTool.MutatedPaths[0] != "/original" ||
 		ownedTool.Failure.Detail != "original" {
 		t.Fatalf("owned Tool fact = %+v", ownedTool)
-	}
-
-	question := QuestionPrompt{Fields: []QuestionFieldSpec{{
-		Prompt: "choose", Options: []QuestionOptionSpec{{Label: "original"}},
-	}}}
-	interrupted := SegmentInterrupted{Interrupts: []Interrupt{{
-		Kind: interrupt.Question, Question: &question,
-	}}}
-	interruptCommit, _, err := NewExecutionFactCommit(interrupted)
-	if err != nil {
-		t.Fatalf("new interrupt fact commit: %v", err)
-	}
-	question.Fields[0].Options[0].Label = "changed"
-	projectedInterrupt := interruptCommit.Fact().(SegmentInterrupted)
-	projectedInterrupt.Interrupts[0].Question.Fields[0].Options[0].Label = "projected"
-	ownedInterrupt := interruptCommit.Fact().(SegmentInterrupted)
-	if ownedInterrupt.Interrupts[0].Question.Fields[0].Options[0].Label != "original" {
-		t.Fatalf("owned interrupt fact = %+v", ownedInterrupt)
 	}
 
 	usage := SegmentUsage{ByModel: []accounting.ModelUsage{{Model: "model-original", Calls: 1}}}

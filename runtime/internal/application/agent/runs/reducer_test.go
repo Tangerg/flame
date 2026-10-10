@@ -81,7 +81,8 @@ func TestReducerTerminalChargesTheGoalOfAGoalOwnedRun(t *testing.T) {
 
 func TestReducerStepsCountModelCallsRatherThanParallelTools(t *testing.T) {
 	reducer := newReducer(testReducerConfig())
-	mustReduce(t, reducer, UsageReported{Steps: 1})
+	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
+	mustReduce(t, reducer, ModelCallCompleted{CallID: "model_call_1", Steps: 1})
 	mustReduce(t, reducer, ToolCallStarted{CallID: "call_1", ToolName: "inspect", Arguments: `{}`})
 	mustReduce(t, reducer, ToolCallStarted{CallID: "call_2", ToolName: "inspect", Arguments: `{}`})
 	mustFinishTool(t, reducer, ToolCallFinished{CallID: "call_2", Result: testToolResult(t, "two")})
@@ -131,12 +132,20 @@ func TestReducerModelCompletionReplacesPartialObservation(t *testing.T) {
 
 func TestReducerAccountsModelResponseWithoutMessage(t *testing.T) {
 	reducer := newReducer(testReducerConfig())
-	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
 	reported := corechat.Usage{InputTokens: 7, OutputTokens: 2}
 	usage := accounting.Tokens{InputTokens: 7, OutputTokens: 2}
-	reduced := mustReduce(t, reducer, ModelCallCompleted{
+	completed := ModelCallCompleted{
 		CallID: "model_call_1", ReportedUsage: &reported, Tokens: usage, Steps: 1,
-	})
+	}
+	if _, err := reducer.reduce(completed); !errors.Is(err, errExecutorContract) {
+		t.Fatalf("accounting without an admitted model call = %v", err)
+	}
+	started := mustReduce(t, reducer, ModelCallStarted{CallID: completed.CallID})
+	preview := started[0].Event.(SegmentProgressed).Progress
+	if preview.Step != nil || preview.Usage != nil {
+		t.Fatalf("model start reported consumption before completion: %+v", preview)
+	}
+	reduced := mustReduce(t, reducer, completed)
 	if len(completedItems(reduced)) != 0 || len(committedConversationMessages(reduced)) != 0 {
 		t.Fatalf("absent message created content: %+v", reduced)
 	}
@@ -490,7 +499,7 @@ func TestReducerSynthesizesUnsettledModelCallAsAtomicRunLost(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reductions := testReductions(batch)
+	reductions := batch.events
 	finished, ok := reductions[len(reductions)-1].Event.(SegmentFinished)
 	if !ok || !runHasOutcome(finished.Run, run.OutcomeLost) ||
 		!runHasFailureKind(finished.Run, run.FailureLost) {
@@ -514,7 +523,9 @@ func TestReducerTreatsExecutorAccountingAsCumulativeAcrossResume(t *testing.T) {
 	})
 
 	reducer := newReducer(config)
-	mustReduce(t, reducer, UsageReported{
+	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_3"})
+	mustReduce(t, reducer, ModelCallCompleted{
+		CallID: "model_call_3",
 		Tokens: accounting.Tokens{InputTokens: 15},
 		Steps:  3,
 	})
@@ -550,7 +561,9 @@ func TestReducerPreservesUsageWhenCumulativePricingBecomesUnavailable(t *testing
 	})
 
 	reducer := newReducer(config)
-	progress := mustReduce(t, reducer, UsageReported{
+	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_2"})
+	progress := mustReduce(t, reducer, ModelCallCompleted{
+		CallID: "model_call_2",
 		Tokens: accounting.Tokens{InputTokens: 20},
 		Steps:  2,
 	})
@@ -578,7 +591,9 @@ func TestReducerRejectsInconsistentOrRegressingAccounting(t *testing.T) {
 	t.Run("step regression", func(t *testing.T) {
 		config := testReducerConfig()
 		config.Opened = reopened(config.Opened, func(s *run.Snapshot) { s.Metrics = testsupport.MustRunMetrics(testsupport.RunMetricsInput{Steps: 2}) })
-		_, err := newReducer(config).reduce(UsageReported{Steps: 1})
+		reducer := newReducer(config)
+		mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
+		_, err := reducer.reduce(ModelCallCompleted{CallID: "model_call_1", Steps: 1})
 		if !errors.Is(err, errExecutorContract) {
 			t.Fatalf("error = %v, want executor protocol violation", err)
 		}
@@ -591,7 +606,10 @@ func TestReducerRejectsInconsistentOrRegressingAccounting(t *testing.T) {
 				Steps: 1})
 		})
 
-		_, err := newReducer(config).reduce(UsageReported{
+		reducer := newReducer(config)
+		mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_2"})
+		_, err := reducer.reduce(ModelCallCompleted{
+			CallID: "model_call_2",
 			Tokens: accounting.Tokens{InputTokens: 9},
 			Steps:  2,
 		})
@@ -601,7 +619,10 @@ func TestReducerRejectsInconsistentOrRegressingAccounting(t *testing.T) {
 	})
 
 	t.Run("per-model mismatch", func(t *testing.T) {
-		_, err := newReducer(testReducerConfig()).reduce(UsageReported{
+		reducer := newReducer(testReducerConfig())
+		mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
+		_, err := reducer.reduce(ModelCallCompleted{
+			CallID: "model_call_1",
 			Tokens: accounting.Tokens{InputTokens: 5},
 			ByModel: []accounting.ModelUsage{{
 				Model:  "model",
@@ -624,7 +645,7 @@ func mustOpen(t *testing.T, reducer *reducer) []reduction {
 	if err != nil {
 		t.Fatalf("open reducer: %v", err)
 	}
-	return testReductions(batch)
+	return batch.events
 }
 
 func mustReduce(t *testing.T, reducer *reducer, event ExecutionFact) []reduction {
@@ -633,28 +654,20 @@ func mustReduce(t *testing.T, reducer *reducer, event ExecutionFact) []reduction
 	if err != nil {
 		t.Fatalf("reduce %T: %v", event, err)
 	}
-	return testReductions(batch)
+	return batch.events
 }
 
-func mustReduceBatch(t *testing.T, reducer *reducer, event ExecutionFact) reductionBatch {
+func mustInterrupt(t *testing.T, reducer *reducer, requests []Interrupt, duration time.Duration) reductionBatch {
 	t.Helper()
-	batch, err := reducer.reduce(event)
+	interrupted, err := reducer.interrupt(requests, duration)
 	if err != nil {
-		t.Fatalf("reduce %T: %v", event, err)
+		t.Fatalf("interrupt reducer: %v", err)
+	}
+	batch, err := reducer.projectFact(interrupted)
+	if err != nil {
+		t.Fatalf("project interrupt: %v", err)
 	}
 	return batch
-}
-
-// testReductions keeps the event-focused reducer tests concise. Production
-// code carries a park commit on reductionBatch rather than assigning it to an
-// arbitrary event; the test projection places it alongside the first event
-// only for older helpers that inspect durable item contents.
-func testReductions(batch reductionBatch) []reduction {
-	events := slices.Clone(batch.events)
-	if batch.parkCommit != nil && len(events) > 0 {
-		events[0].Commit = batch.parkCommit
-	}
-	return events
 }
 
 func TestReducerOpeningCreatesCanonicalRunAndUserItem(t *testing.T) {
@@ -884,14 +897,14 @@ func TestReducerCarriesLaterPausedCallIdentityAcrossSequentialResumes(t *testing
 	secondID := startedItemID(t, mustReduce(t, first, ToolCallStarted{
 		CallID: "call-2", ToolName: "approval", Arguments: `{"path":"b"}`, SafetyClass: "write",
 	}))
-	firstPark := mustReduce(t, first, SegmentInterrupted{Interrupts: []Interrupt{{
+	firstPark := mustInterrupt(t, first, []Interrupt{{
 		Kind: interrupt.Approval,
 		Approval: &ApprovalPrompt{
 			CallID: "call-1", Arguments: `{"path":"a"}`, SafetyClass: "write", Risk: "medium", Tool: testsupport.A2ATool(t, "approval"), SourceFingerprint: testsupport.ToolFingerprint(testsupport.A2ATool(t, "approval")),
 		},
-	}}})
-	firstCommit := firstPark[0].Commit
-	firstInterrupted := firstPark[len(firstPark)-1].Event.(SegmentFinished)
+	}}, 0)
+	firstCommit := firstPark.parkCommit
+	firstInterrupted := firstPark.events[len(firstPark.events)-1].Event.(SegmentFinished)
 	if firstCommit == nil || firstCommit.Run == nil ||
 		firstInterrupted.Interrupts[0].ItemID != firstID ||
 		len(first.drained) != 1 ||
@@ -929,13 +942,13 @@ func TestReducerCarriesLaterPausedCallIdentityAcrossSequentialResumes(t *testing
 	}
 	mustFinishTool(t, resumed, ToolCallFinished{CallID: "call-1", Result: testToolResult(t, "approved")})
 
-	secondPark := mustReduce(t, resumed, SegmentInterrupted{Interrupts: []Interrupt{{
+	secondPark := mustInterrupt(t, resumed, []Interrupt{{
 		Kind: interrupt.Approval,
 		Approval: &ApprovalPrompt{
 			CallID: "call-2", Arguments: `{"path":"b"}`, SafetyClass: "write", Risk: "medium", Tool: testsupport.A2ATool(t, "approval"), SourceFingerprint: testsupport.ToolFingerprint(testsupport.A2ATool(t, "approval")),
 		},
-	}}})
-	secondInterrupted := secondPark[len(secondPark)-1].Event.(SegmentFinished)
+	}}, 0)
+	secondInterrupted := secondPark.events[len(secondPark.events)-1].Event.(SegmentFinished)
 	if got := secondInterrupted.Interrupts[0].ItemID; got != secondID {
 		t.Fatalf("later approval item ID = %q, want original %q", got, secondID)
 	}
@@ -995,7 +1008,9 @@ func TestReducerResumeKeepsEditedApprovalIdentityBesideSameNameDrainedTool(t *te
 
 func TestReducerCanonicalProgressSnapshotsAndOutcomes(t *testing.T) {
 	reducer := newReducer(testReducerConfig())
-	usage := mustReduce(t, reducer, UsageReported{
+	mustReduce(t, reducer, ModelCallStarted{CallID: "model_call_1"})
+	usage := mustReduce(t, reducer, ModelCallCompleted{
+		CallID: "model_call_1",
 		Tokens: accounting.Tokens{InputTokens: 1200, OutputTokens: 80, ReasoningTokens: 30},
 		Cost:   mustReducerCost(t, 0.0125), Steps: 1, ContextTokens: 4096,
 	})
@@ -1003,8 +1018,14 @@ func TestReducerCanonicalProgressSnapshotsAndOutcomes(t *testing.T) {
 	if !ok || progress.Progress.Usage == nil || progress.Progress.Usage.Total.InputTokens != 1200 || progress.Progress.Usage.Total.CostUSD == nil {
 		t.Fatalf("usage progress = %#v", usage[0].Event)
 	}
-	if usage[0].Commit != nil {
-		t.Fatal("usage progress must stay ephemeral")
+	commit := usage[0].Commit
+	if commit == nil || commit.Progress == nil || len(commit.ModelInvocations) != 1 ||
+		commit.ModelInvocations[0].CallID != "model_call_1" || commit.ModelInvocations[0].State != ModelInvocationCompleted {
+		t.Fatalf("accounting progress has no model completion write-set: %+v", commit)
+	}
+	stored, reported := commit.Progress.Metrics().Usage()
+	if !reported || !reflect.DeepEqual(stored, *progress.Progress.Usage) || commit.Progress.ContextTokens() != 4096 {
+		t.Fatalf("progress differs from its durable model accounting: %+v / %+v", commit.Progress.Snapshot(), progress.Progress)
 	}
 
 	snapshot := mustReduce(t, reducer, PlanUpdated{State: testPlanState(t, plan.Snapshot{
@@ -1153,7 +1174,7 @@ func TestReducerResumeReusesInterruptedItems(t *testing.T) {
 
 func TestReducerProjectsParkAsOneAtomicWriteSetBeforeFirstInterruptEvent(t *testing.T) {
 	reducer := newReducer(testReducerConfig())
-	batch := mustReduceBatch(t, reducer, SegmentInterrupted{Interrupts: []Interrupt{
+	batch := mustInterrupt(t, reducer, []Interrupt{
 		{Kind: interrupt.Approval, Approval: &ApprovalPrompt{
 			CallID: "call_approval", Arguments: `{}`, SafetyClass: "exec", Risk: "high", Tool: testsupport.BuiltInTool(t, "shell"), SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell")),
 		}},
@@ -1161,7 +1182,7 @@ func TestReducerProjectsParkAsOneAtomicWriteSetBeforeFirstInterruptEvent(t *test
 			ToolName: "ask_user", Arguments: `{"questions":[{"question":"Continue?"}]}`,
 			Fields: []QuestionFieldSpec{{Prompt: "Continue?"}},
 		}},
-	}})
+	}, 0)
 
 	if batch.parkCommit == nil {
 		t.Fatal("park has no atomic commit boundary")
@@ -1197,13 +1218,13 @@ func TestReducerPublishesOneStartForToolThatBecomesAnApproval(t *testing.T) {
 		CallID: "call_1", SourceCallID: "provider_1", ModelCallSequence: 1,
 		ToolName: "shell", Arguments: `{}`,
 	})
-	parked := mustReduceBatch(t, reducer, SegmentInterrupted{Interrupts: []Interrupt{{
+	parked := mustInterrupt(t, reducer, []Interrupt{{
 		Kind: interrupt.Approval,
 		Approval: &ApprovalPrompt{
 			CallID: "call_1", Arguments: `{}`,
 			SafetyClass: tool.SafetyClassExec, Risk: "high", Tool: testsupport.BuiltInTool(t, "shell"), SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell")),
 		},
-	}}})
+	}}, 0)
 
 	starts := 0
 	for _, reduced := range append(started, parked.events...) {
@@ -1234,7 +1255,7 @@ func TestReducerKeepsQuestionToolLifecycleOpenAcrossHITLResume(t *testing.T) {
 		ModelCallSequence: 1, ToolName: "ask_user", Arguments: providerArgs,
 		SafetyClass: tool.SafetyClassSafe,
 	}))
-	parked := mustReduceBatch(t, first, SegmentInterrupted{Interrupts: []Interrupt{{
+	parked := mustInterrupt(t, first, []Interrupt{{
 		Kind: interrupt.Question,
 		Question: &QuestionPrompt{
 			ToolName: "ask_user", Arguments: arguments,
@@ -1244,7 +1265,7 @@ func TestReducerKeepsQuestionToolLifecycleOpenAcrossHITLResume(t *testing.T) {
 				AllowCustom: true,
 			}},
 		},
-	}}})
+	}}, 0)
 
 	for _, reduced := range parked.events {
 		completed, ok := reduced.Event.(ItemCompleted)
@@ -1332,7 +1353,6 @@ func TestReducerRejectsExecutorProtocolViolations(t *testing.T) {
 	}{
 		{name: "unknown event", event: unsupportedEngineEvent{}},
 		{name: "invalid terminal outcome", event: SegmentEnded{Reason: run.Outcome("invalid")}},
-		{name: "malformed interrupt", event: SegmentInterrupted{Interrupts: []Interrupt{{Kind: interrupt.Kind("invalid")}}}},
 	}
 
 	for _, test := range tests {
@@ -1485,7 +1505,7 @@ func TestReducerTerminalizationClosesUnrestartedResumeTool(t *testing.T) {
 			if duration, known := settled.ExecutionDuration(); known {
 				t.Fatalf("unrestarted resume Tool fabricated execution duration %v", duration)
 			}
-			if messages := committedConversationMessages(testReductions(batch)); len(messages) != 0 {
+			if messages := committedConversationMessages(batch.events); len(messages) != 0 {
 				t.Fatalf("reducer duplicated resumed conversation ownership: %#v", messages)
 			}
 			durable := []corechat.Message{corechat.NewAssistantMessage(corechat.NewToolCallPart(corechat.ToolCall{
@@ -1733,11 +1753,11 @@ func TestReducerReportsFrozenRunCapabilitiesOnEverySegment(t *testing.T) {
 	}
 	assertFrozenCapabilities(t, started.Run.Capabilities(), frozen, "segment.started")
 
-	batch := mustReduceBatch(t, reducer, SegmentInterrupted{Interrupts: []Interrupt{
+	batch := mustInterrupt(t, reducer, []Interrupt{
 		{Kind: interrupt.Approval, Approval: &ApprovalPrompt{
 			CallID: "call_approval", Arguments: `{}`, SafetyClass: "exec", Risk: "high", Tool: testsupport.BuiltInTool(t, "shell"), SourceFingerprint: testsupport.ToolFingerprint(testsupport.BuiltInTool(t, "shell")),
 		}},
-	}})
+	}, 0)
 	if batch.parkCommit.Run == nil {
 		t.Fatal("park commit carries no run record")
 	}
@@ -1805,7 +1825,7 @@ func mustFinishTool(t *testing.T, reducer *reducer, finished ToolCallFinished) [
 	if err != nil {
 		t.Fatal(err)
 	}
-	return testReductions(batch)
+	return batch.events
 }
 
 // TestIsolatedRunAnnouncesNoWorkspaceFileChange pins that the live file-change

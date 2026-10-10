@@ -239,12 +239,6 @@ func (r *reducer) reduceFact(ev ExecutionFact) (factReduction, error) {
 		return r.startToolCall(e)
 	case ToolResultsCommitted:
 		return r.finishToolResults(e)
-	case UsageReported:
-		events, err := r.usageProgress(e)
-		if err != nil {
-			return factReduction{}, fmt.Errorf("%w: usage report: %w", errExecutorContract, err)
-		}
-		return factReduction{events: events}, nil
 	case SteerMessagesApplied:
 		events, err := r.steerMessagesApplied(e)
 		if err != nil {
@@ -270,12 +264,6 @@ func (r *reducer) reduceFact(ev ExecutionFact) (factReduction, error) {
 			return factReduction{}, fmt.Errorf("%w: compaction: %w", errReducerInvariant, err)
 		}
 		return factReduction{events: events}, nil
-	case SegmentInterrupted:
-		interrupted, err := r.interrupt(e)
-		if err != nil {
-			return factReduction{}, fmt.Errorf("%w: interrupt: %w", errExecutorContract, err)
-		}
-		return interrupted, nil
 	case SegmentEnded:
 		return r.endSegment(e)
 	default:
@@ -335,10 +323,7 @@ func (r *reducer) completeModelCall(completed ModelCallCompleted) (factReduction
 		}
 		conversationMessages = r.rootConversationMessages(message)
 	}
-	progressEvents, err := r.usageProgress(UsageReported{
-		Tokens: completed.Tokens, ByModel: completed.ByModel, Cost: completed.Cost,
-		Steps: completed.Steps, ContextTokens: completed.ContextTokens,
-	})
+	progressEvents, err := r.modelUsageProgress(completed)
 	if err != nil {
 		return factReduction{}, fmt.Errorf("%w: model call usage: %w", errExecutorContract, err)
 	}

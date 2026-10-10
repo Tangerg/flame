@@ -109,18 +109,8 @@ func cloneExecutionFact(fact ExecutionFact) (ExecutionFact, bool) {
 		return value.clone(), true
 	case CompactionBoundary:
 		return value, true
-	case SegmentInterrupted:
-		interrupts := make([]Interrupt, len(value.Interrupts))
-		for index, request := range value.Interrupts {
-			interrupts[index] = cloneInterrupt(request)
-		}
-		value.Interrupts = interrupts
-		return value, true
 	case SegmentEnded:
 		return NewSegmentEnded(value.Reason, value.failure, value.usage, value.Duration).WithUnresolvedEffects(value.unresolvedEffects), true
-	case UsageReported:
-		value.ByModel = slices.Clone(value.ByModel)
-		return value, true
 	case PlanUpdated:
 		return value, true
 	case SteerMessagesApplied:

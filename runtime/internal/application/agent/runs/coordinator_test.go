@@ -1342,8 +1342,8 @@ func TestCoordinatorTreeActivationFailureTerminalizesInCanonicalPostorder(t *tes
 	}
 }
 
-func TestCoordinatorMalformedInterruptAbortsExecutorAndTerminalizes(t *testing.T) {
-	executor := &fakeExecutor{events: []ExecutorPayload{SegmentInterrupted{Interrupts: []Interrupt{{Kind: interrupt.Kind("invalid")}}}}}
+func TestCoordinatorMalformedTreeBarrierAbortsExecutorAndTerminalizes(t *testing.T) {
+	executor := &fakeExecutor{events: []ExecutorPayload{TreeInterrupted{}}}
 	effects := &fakeEffects{}
 	coordinator := testCoordinator(executor, effects)
 
@@ -2678,7 +2678,7 @@ func TestCoordinatorTreeBarrierCommitFailurePublishesNoInterruptedFact(t *testin
 
 func TestCoordinatorCommitsSyntheticTerminalBeforeRelease(t *testing.T) {
 	executor := &fakeExecutor{
-		events:         []ExecutorPayload{SegmentInterrupted{Interrupts: []Interrupt{{Kind: interrupt.Kind("invalid")}}}},
+		events:         []ExecutorPayload{TreeInterrupted{}},
 		releaseStarted: make(chan struct{}),
 		allowRelease:   make(chan struct{}),
 	}

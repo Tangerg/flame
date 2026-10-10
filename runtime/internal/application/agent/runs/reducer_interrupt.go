@@ -18,9 +18,14 @@ type interruptProjection struct {
 	approvalItems map[int]transcript.Item
 }
 
-func (r *reducer) interrupt(e SegmentInterrupted) (factReduction, error) {
-	if err := e.validate(); err != nil {
-		return factReduction{}, err
+func (r *reducer) interrupt(requests []Interrupt, duration time.Duration) (factReduction, error) {
+	if len(requests) == 0 {
+		return factReduction{}, errors.New("runs: executor emitted an empty interrupt")
+	}
+	for _, request := range requests {
+		if err := request.Validate(); err != nil {
+			return factReduction{}, err
+		}
 	}
 	out, err := r.closeStreaming(transcript.MessageCommentary)
 	if err != nil {
@@ -31,18 +36,18 @@ func (r *reducer) interrupt(e SegmentInterrupted) (factReduction, error) {
 		approvalItems: make(map[int]transcript.Item),
 	}
 	open := r.tools.drain()
-	matched := matchToolApprovals(open, e.Interrupts)
+	matched := matchToolApprovals(open, requests)
 	priorDrained := r.resume.remainingDrainedTools()
 	r.drained = mergeDrainedTools(priorDrained, drainedToolRefs(open, matched))
-	if err := r.projectInterruptedTools(&projection, open, matched, e.Interrupts); err != nil {
+	if err := r.projectInterruptedTools(&projection, open, matched, requests); err != nil {
 		return factReduction{}, err
 	}
-	pending, err := r.projectPendingInterrupts(&projection, e.Interrupts)
+	pending, err := r.projectPendingInterrupts(&projection, requests)
 	if err != nil {
 		return factReduction{}, err
 	}
 
-	r.segmentDuration = e.Duration
+	r.segmentDuration = duration
 	waiting, err := r.runRecord(run.Waiting)
 	if err != nil {
 		return factReduction{}, err

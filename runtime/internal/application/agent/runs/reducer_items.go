@@ -542,10 +542,9 @@ func (r *reducer) completeTool(ref *openTool, e ToolCallFinished) ([]ProjectionE
 	return append(out, ItemCompleted{Item: item, mutatedPaths: e.MutatedPaths}), nil
 }
 
-// usageProgress records the executor's latest accounting report and previews the
-// Run's resulting total. The report is remembered rather than only forwarded:
-// it is what the Run commits if the segment ends without a fresh one.
-func (r *reducer) usageProgress(e UsageReported) ([]ProjectionEvent, error) {
+// The model completion supplies both durable consumption and its progress
+// projection. Terminal accounting may confirm it, but absence cannot erase it.
+func (r *reducer) modelUsageProgress(e ModelCallCompleted) ([]ProjectionEvent, error) {
 	if err := r.applyUsage(SegmentUsage{
 		Tokens:  e.Tokens,
 		ByModel: e.ByModel,

@@ -292,29 +292,6 @@ func (t TreeInterrupted) validateFor(rootMemberID, sessionID string) error {
 	return nil
 }
 
-// SegmentInterrupted is the member-Run reducer input derived from a
-// [TreeInterrupted] barrier. Executor sources never emit it directly.
-type SegmentInterrupted struct {
-	executionFactBase
-	Interrupts []Interrupt
-	// Duration is how long this segment executed before parking. A parked Run
-	// still reports what it consumed, so the executor stamps it here for the same
-	// reason it stamps it on SegmentEnded.
-	Duration time.Duration
-}
-
-func (s SegmentInterrupted) validate() error {
-	if len(s.Interrupts) == 0 {
-		return errors.New("runs: executor emitted an empty interrupt")
-	}
-	for _, interrupt := range s.Interrupts {
-		if err := interrupt.Validate(); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 type SegmentEnded struct {
 	executionFactBase
 	Reason            run.Outcome
@@ -323,12 +300,9 @@ type SegmentEnded struct {
 	// already a stable, client-safe classification; executor diagnostics
 	// never enter the event stream.
 	failure *run.Failure
-	// Usage is the segment's final accounting, and is absent only when the
-	// executor cannot produce an authoritative report. Child executors retain
-	// their subtree ledger through cancellation and failure, so those terminals
-	// can still carry usage. Absent is NOT zero: reading a missing report as
-	// "spent nothing" made a canceled Run's committed metering fall back below
-	// what its own progress events had already published.
+	// Missing final accounting cannot erase consumption already reported by
+	// this process's model completions. Cancellation and failure retain the same
+	// process ledger; a child does not charge its descendants here.
 	usage    *SegmentUsage
 	Duration time.Duration
 }
@@ -380,15 +354,6 @@ func (s SegmentEnded) Usage() *SegmentUsage {
 	usage := *s.usage
 	usage.ByModel = append([]accounting.ModelUsage(nil), s.usage.ByModel...)
 	return &usage
-}
-
-type UsageReported struct {
-	executionFactBase
-	Tokens        accounting.Tokens
-	ByModel       []accounting.ModelUsage
-	Cost          accounting.Cost
-	Steps         int
-	ContextTokens int64
 }
 
 // PlanUpdated reports the committed Plan after a replacement — read back

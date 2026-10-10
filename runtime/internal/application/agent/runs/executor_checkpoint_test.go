@@ -57,6 +57,17 @@ func TestTreeInterruptedRejectsCheckpointBoundToDifferentApplicationFacts(t *tes
 	}
 }
 
+func TestTreeInterruptedRejectsMalformedRequests(t *testing.T) {
+	for _, requests := range [][]MemberInterruption{
+		nil,
+		{{MemberID: "member_root", RequestID: "request_root", Interrupt: Interrupt{Kind: interrupt.Kind("invalid")}}},
+	} {
+		if _, err := NewTreeInterrupted(testExecutorCheckpoint(), requests); err == nil {
+			t.Fatalf("malformed tree requests were admitted: %+v", requests)
+		}
+	}
+}
+
 func TestTreeInterruptedOwnsCheckpointAndInterruptions(t *testing.T) {
 	checkpoint := testExecutorCheckpoint()
 	interruptions := []MemberInterruption{{

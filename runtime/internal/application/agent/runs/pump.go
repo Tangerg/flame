@@ -372,9 +372,6 @@ func (s *segmentPump) handleExecutionFact(member ExecutorMember, executionFact E
 	if route.reducer == nil {
 		return false, fmt.Errorf("runs: admitted child run %q has no segment reducer", route.runID)
 	}
-	if _, interrupted := executionFact.(SegmentInterrupted); interrupted {
-		return false, errors.New("runs: executor emitted a per-Run interrupt instead of a tree barrier")
-	}
 	executionFact = s.classifyChildCancellationFact(route, executionFact)
 	if route == s.routes.root {
 		if s.deferredRootTerminal != nil {

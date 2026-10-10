@@ -1005,6 +1005,17 @@ Scope alone propagates root, subtree, and owner cancellation to execution contex
 
 A validated complete model response and its reported usage publish under the release-owned lifetime, including the Delta barrier. Execution cancellation cannot discard that observed response or rewrite Scope's terminal outcome. Failed streams cross the same barrier and commit their validated text and visible reasoning as `incomplete` transcript Items tied to the failed model invocation. Preview loss cannot truncate this retained prefix. Partial Tool calls, opaque reasoning state, and incomplete responses never enter canonical model continuation. Both completion and failure close the preview boundary before terminal publication.
 
+Model-call completion is the sole live source of Run accounting progress. The same
+acknowledged fact atomically commits the model invocation, response Items, Run metrics
+and conversation; its progress event projects that write-set. There is no independent
+usage event that can advance consumption without an identified model call. Final
+process accounting retains observed consumption through termination and resume.
+
+Executor interruption uses one validated `TreeInterrupted` control payload. It captures
+the checkpoint and external-input bindings for an atomic tree barrier. Individual Run
+interruption is only an internal projection of that barrier; executor sources cannot
+emit a separate per-Run interrupt event.
+
 Repeated identical Tool results are allowed, including polling. Tool authorization and lifecycle-hook approvals remain enforced.
 
 Canceling a delegated Run still cancels that child. If its in-flight model attempt returns no definite result, Scope retains the unknown Effect and fails the parent instead of delivering a normal delegate result. Runtime projects the actual Scope outcome and preserves unresolved Effect IDs separately; it does not manufacture a settlement or retry the attempt. This intentionally replaces the earlier behavior that allowed the parent to continue despite the child's unresolved Effect. Cancellation before external dispatch and terminal children with definite results remain distinct cases.

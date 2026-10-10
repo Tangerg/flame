@@ -421,10 +421,7 @@ func (t treePublisher) reduceInterruptedRoute(
 		for index, interruption := range directInterruptions {
 			interrupts[index] = interruption.Interrupt
 		}
-		reduced, err = route.reducer.interrupt(SegmentInterrupted{
-			Interrupts: interrupts,
-			Duration:   route.activeDuration(boundaryAt),
-		})
+		reduced, err = route.reducer.interrupt(interrupts, route.activeDuration(boundaryAt))
 	} else {
 		reduced, err = route.reducer.suspend(route.activeDuration(boundaryAt))
 	}
