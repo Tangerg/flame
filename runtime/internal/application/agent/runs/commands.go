@@ -12,7 +12,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/goalref"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
-	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
@@ -76,11 +75,7 @@ var (
 	// ErrInvalidCancellationReason reports a cancellation note that cannot be
 	// represented by the Runtime product contract.
 	ErrInvalidCancellationReason = errors.New("runs: invalid cancellation reason")
-	// ErrInvalidScheduledStart reports an internal start command that carries
-	// only part of the durable schedule-occurrence identity. A scheduled run
-	// must be all-or-nothing: its Run, Session, and occurrence rows are one
-	// opening transaction, never independently creatable facts.
-	ErrInvalidScheduledStart = errors.New("runs: invalid scheduled start")
+	ErrInvalidStart              = errors.New("runs: invalid start")
 )
 
 // InputBlockError identifies one invalid field in canonical user content while
@@ -102,12 +97,9 @@ func invalidInputBlock(index int, field, detail string, cause error) error {
 	return &InputBlockError{Index: index, Field: field, Detail: detail, Cause: cause}
 }
 
-// StartCommand is the complete input for starting a Run.
+// StartCommand is the input for starting a Run in an existing Session.
 type StartCommand struct {
-	// SessionID names the existing Session a start continues. A scheduled start
-	// names no Session: Schedule creates its own.
 	SessionID      string
-	Schedule       *ScheduledStart
 	ModelSelection modelref.Selection
 	Options        *corechat.Options
 	// Capabilities is the optional behavior enabled for this Run, already resolved
@@ -126,12 +118,11 @@ type StartCommand struct {
 // the same logical Run, and the occurrence or manual record committed with the
 // opening.
 type ScheduledStart struct {
-	Request       schedule.RunRequest
-	WorkspacePath string
+	Request              schedule.RunRequest
+	DefaultWorkspacePath string
 }
 
 func (s StartCommand) clone() StartCommand {
-	s.Schedule = optional.Clone(s.Schedule)
 	if s.Options != nil {
 		options := s.Options.Clone()
 		s.Options = &options
@@ -139,27 +130,6 @@ func (s StartCommand) clone() StartCommand {
 	s.Capabilities = s.Capabilities.Clone()
 	s.Input = transcript.CloneContent(s.Input)
 	return s
-}
-
-// ValidateSessionOrigin ensures the command names exactly one Session origin:
-// an existing Session or one Schedule launch.
-func (s StartCommand) ValidateSessionOrigin() error {
-	if s.Schedule == nil {
-		if s.SessionID == "" {
-			return fmt.Errorf("%w: a start names an existing Session or a schedule origin", ErrInvalidScheduledStart)
-		}
-		if err := resourceid.ValidateSession(s.SessionID); err != nil {
-			return fmt.Errorf("%w: %v", ErrInvalidScheduledStart, err)
-		}
-		return nil
-	}
-	if s.SessionID != "" {
-		return fmt.Errorf("%w: scheduled start cannot also select an existing session", ErrInvalidScheduledStart)
-	}
-	if err := s.Schedule.Request.Validate(); err != nil {
-		return fmt.Errorf("%w: %v", ErrInvalidScheduledStart, err)
-	}
-	return nil
 }
 
 // MaterializeUserMessage converts canonical content blocks into the

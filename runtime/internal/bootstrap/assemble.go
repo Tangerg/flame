@@ -265,9 +265,13 @@ func buildAssemblyCore(
 		return nil, fmt.Errorf("runtime: construct Run coordinator: %w", err)
 	}
 	lifetime.runCoordinator = runCoordinator
+	scheduleLauncher, err := schedules.NewRunLauncher(runCoordinator, cfg.DefaultWorkspacePath)
+	if err != nil {
+		return nil, fmt.Errorf("runtime: construct scheduled run launcher: %w", err)
+	}
 	scheduleFiring, err := schedules.NewFiring(schedules.FiringDependencies{
 		Store:         cfg.Stores.Schedules,
-		RunStarter:    schedules.NewRunLauncher(runCoordinator, cfg.DefaultWorkspacePath),
+		RunStarter:    scheduleLauncher,
 		NewSessionID:  newSessionID,
 		NewRunID:      newRunID,
 		Invalidations: policy.invalidations.Publish,

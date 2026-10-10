@@ -736,10 +736,8 @@ func TestScheduledStartCarriesExactInitialSessionInOpening(t *testing.T) {
 	coordinator := newUseCaseCoordinator(executor, control, sessions, effects)
 
 	request := testsupport.MustOccurrenceRunRequest("sch_test", time.UnixMilli(1000), "ses_1", "run_new")
-	result, err := coordinator.Start(t.Context(), StartCommand{
-		Schedule:       &ScheduledStart{Request: request, WorkspacePath: "/work"},
-		ModelSelection: testsupport.MustModelSelection("provider", "model"),
-		Input:          []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "scheduled work"}},
+	result, err := coordinator.StartScheduled(t.Context(), ScheduledStart{
+		Request: request, DefaultWorkspacePath: "/work",
 	})
 	if err != nil {
 		t.Fatalf("Start scheduled: %v", err)
@@ -753,7 +751,8 @@ func TestScheduledStartCarriesExactInitialSessionInOpening(t *testing.T) {
 	}
 	if initial.ID() != "ses_1" || initial.Title() != "Scheduled" ||
 		initial.Workspace().Path() != "/work" ||
-		initial.Selection() != testsupport.MustModelSelection("provider", "model") || initial.Revision() != 1 {
+		initial.Selection() != control.started.ModelSelection ||
+		initial.Selection() != sessions.sess.Selection() || initial.Revision() != 1 {
 		t.Fatalf("opening initial Session = %+v", initial.Snapshot())
 	}
 }
@@ -770,13 +769,11 @@ func TestScheduledSessionExistsOnlyWhenItsRunOpens(t *testing.T) {
 	}
 	coordinator := newUseCaseCoordinator(&fakeExecutor{}, control, sessions, effects)
 	request := testsupport.MustOccurrenceRunRequest("sch_test", time.UnixMilli(1000), "ses_scheduled", "run_new")
-	command := StartCommand{
-		Schedule:       &ScheduledStart{Request: request, WorkspacePath: "/work"},
-		ModelSelection: testsupport.MustModelSelection("provider", "model"),
-		Input:          []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}},
+	command := ScheduledStart{
+		Request: request, DefaultWorkspacePath: "/work",
 	}
 
-	if _, err := coordinator.Start(t.Context(), command); !errors.Is(err, control.stageErr) {
+	if _, err := coordinator.StartScheduled(t.Context(), command); !errors.Is(err, control.stageErr) {
 		t.Fatalf("Start under staging failure = %v, want the staging cause", err)
 	}
 	if openings := effects.openingSnapshot(); len(openings) != 0 {
@@ -784,7 +781,7 @@ func TestScheduledSessionExistsOnlyWhenItsRunOpens(t *testing.T) {
 	}
 
 	control.stageErr = nil
-	result, err := coordinator.Start(t.Context(), command)
+	result, err := coordinator.StartScheduled(t.Context(), command)
 	if err != nil {
 		t.Fatalf("Start: %v", err)
 	}
@@ -806,8 +803,8 @@ func TestStartRefusesACommandWithNoSessionOrigin(t *testing.T) {
 	_, err := coordinator.Start(t.Context(), StartCommand{
 		Input: []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}},
 	})
-	if !errors.Is(err, ErrInvalidScheduledStart) {
-		t.Fatalf("Start without a Session origin = %v, want ErrInvalidScheduledStart", err)
+	if !errors.Is(err, ErrInvalidStart) {
+		t.Fatalf("Start without a Session origin = %v, want ErrInvalidStart", err)
 	}
 	if openings := effects.openingSnapshot(); len(openings) != 0 {
 		t.Fatalf("refused start committed %d openings, want none", len(openings))
@@ -885,10 +882,8 @@ func TestManualScheduleStartCarriesRunFactInOpening(t *testing.T) {
 	control := &fakeExecutionPorts{startRef: ExecutorRef{SessionID: "ses_manual", ExecutorID: "turn_1"}}
 	coordinator := newUseCaseCoordinator(executor, control, new(fakeRunSessions), effects)
 
-	result, err := coordinator.Start(t.Context(), StartCommand{
-		Schedule:       &ScheduledStart{Request: request, WorkspacePath: "/work"},
-		ModelSelection: testsupport.MustModelSelection("provider", "model"),
-		Input:          []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "scheduled work"}},
+	result, err := coordinator.StartScheduled(t.Context(), ScheduledStart{
+		Request: request, DefaultWorkspacePath: "/work",
 	})
 	if err != nil {
 		t.Fatalf("Start manual schedule: %v", err)
@@ -1055,26 +1050,16 @@ func TestStartReleasesStagedExecutionWhenSessionReplacementPreparationFails(t *t
 	}
 }
 
-func TestStartRejectsAmbiguousSessionOriginBeforeSideEffects(t *testing.T) {
-	request := testsupport.MustOccurrenceRunRequest("sch_test", time.UnixMilli(1000), "ses_1", "run_1")
-	for _, command := range []StartCommand{
-		{Schedule: &ScheduledStart{}},
-		{Schedule: &ScheduledStart{Request: request, WorkspacePath: "/work"}, SessionID: "ses_existing"},
-	} {
-		t.Run("partial", func(t *testing.T) {
-			exec := &fakeExecutor{}
-			control := &fakeExecutionPorts{}
-			effects := &fakeEffects{}
-			sessions := &fakeRunSessions{sess: testsupport.MustRestoreSession(session.Snapshot{ID: "ses_existing", Workspace: testsupport.MustWorkspace("/work")})}
-			command.Input = []transcript.ContentBlock{{Kind: transcript.TextContent, Text: "hello"}}
-			_, err := newUseCaseCoordinator(exec, control, sessions, effects).Start(t.Context(), command)
-			if !errors.Is(err, ErrInvalidScheduledStart) {
-				t.Fatalf("Start error = %v, want ErrInvalidScheduledStart", err)
-			}
-			if control.started.SessionID != "" || len(effects.openings) != 0 {
-				t.Fatalf("partial scheduled identity reached side effects: execution=%+v openings=%d", control.started, len(effects.openings))
-			}
-		})
+func TestStartRejectsIncompleteScheduledRequestBeforeSideEffects(t *testing.T) {
+	control := &fakeExecutionPorts{}
+	effects := &fakeEffects{}
+	coordinator := newUseCaseCoordinator(&fakeExecutor{}, control, new(fakeRunSessions), effects)
+	_, err := coordinator.StartScheduled(t.Context(), ScheduledStart{})
+	if !errors.Is(err, ErrInvalidStart) || !errors.Is(err, schedule.ErrInstructionsRequired) {
+		t.Fatalf("StartScheduled error = %v, want invalid start with its request cause", err)
+	}
+	if control.started.SessionID != "" || len(effects.openings) != 0 {
+		t.Fatalf("partial scheduled identity reached side effects: execution=%+v openings=%d", control.started, len(effects.openings))
 	}
 }
 

@@ -10,13 +10,22 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/ownership"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
+	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
 	corechat "github.com/Tangerg/scope/core/chat"
 )
 
+// Only the two start entry points form this projection. A scheduled request's
+// execution input cannot be authored separately from its ownership proof.
+type rootStartCommand struct {
+	StartCommand
+	scheduled     *schedule.RunRequest
+	workspacePath string
+}
+
 type rootStartPreparation struct {
-	command            StartCommand
+	command            rootStartCommand
 	requestedSelection modelref.Selection
 	session            session.Session
 	initialSession     *session.Session
@@ -26,13 +35,18 @@ type rootStartPreparation struct {
 	openingUserText    string
 }
 
-// Start validates and resolves the Session, claims the Session and working
-// tree, stages execution, and commits the Run opening. That durable opening is
-// the command's acceptance point: a Session this command creates is inserted by
-// the same write-set, and executor activation continues behind the package's
-// lifecycle supervisor and cannot retain the accepted response.
-func (c *Coordinator) Start(ctx context.Context, cmd StartCommand) (result StartResult, err error) {
-	cmd = cmd.clone()
+// Start opens a Run in the existing Session supplied by its caller.
+func (c *Coordinator) Start(ctx context.Context, cmd StartCommand) (StartResult, error) {
+	if err := resourceid.ValidateSession(cmd.SessionID); err != nil {
+		return StartResult{}, fmt.Errorf("%w: %w", ErrInvalidStart, err)
+	}
+	return c.startRoot(ctx, rootStartCommand{StartCommand: cmd.clone()})
+}
+
+// startRoot claims the Session and working tree, stages execution, and commits
+// the opening. A scheduled Session commits in the same write-set. Activation
+// continues under the lifecycle supervisor after that acceptance boundary.
+func (c *Coordinator) startRoot(ctx context.Context, cmd rootStartCommand) (result StartResult, err error) {
 	runAdmission, preparation, err := c.admitRootStart(ctx, cmd)
 	if err != nil {
 		return StartResult{}, err
@@ -83,8 +97,8 @@ func (c *Coordinator) Start(ctx context.Context, cmd StartCommand) (result Start
 
 	cmd = preparation.command
 	var runID string
-	if cmd.Schedule != nil {
-		runID = cmd.Schedule.Request.RunID()
+	if cmd.scheduled != nil {
+		runID = cmd.scheduled.RunID()
 	} else {
 		runID = c.newRunID()
 	}
@@ -110,7 +124,7 @@ func (c *Coordinator) Start(ctx context.Context, cmd StartCommand) (result Start
 		GoalIncarnationID:  cmd.GoalIncarnationID,
 		InitialSession:     preparation.initialSession,
 		SessionReplacement: sessionReplacement,
-		Schedule:           scheduleRequest(cmd.Schedule),
+		Schedule:           cmd.scheduled,
 		CreatedAt:          createdAt,
 		OpeningUserText:    preparation.openingUserText,
 		Input:              cmd.Input,
@@ -145,7 +159,7 @@ func (c *Coordinator) Start(ctx context.Context, cmd StartCommand) (result Start
 // one. A Session that is not durable yet has no other writer.
 func (c *Coordinator) admitRootStart(
 	ctx context.Context,
-	cmd StartCommand,
+	cmd rootStartCommand,
 ) (ownership.RunAdmission, rootStartPreparation, error) {
 	for {
 		preparation, err := c.prepareRootStart(ctx, cmd)
@@ -173,11 +187,8 @@ func (c *Coordinator) admitRootStart(
 
 func (c *Coordinator) prepareRootStart(
 	ctx context.Context,
-	cmd StartCommand,
+	cmd rootStartCommand,
 ) (rootStartPreparation, error) {
-	if err := cmd.ValidateSessionOrigin(); err != nil {
-		return rootStartPreparation{}, err
-	}
 	requestedSelection := cmd.ModelSelection
 	currentMessage, err := MaterializeUserMessage(cmd.Input)
 	if err != nil {
@@ -253,7 +264,7 @@ func (c *Coordinator) resolveOpeningError(ctx context.Context, sessionID string,
 // the opening will freeze. Existing Sessions never fall back to Runtime config.
 func (c *Coordinator) resolveSessionSelection(
 	ctx context.Context,
-	cmd StartCommand,
+	cmd rootStartCommand,
 ) (session.Session, *session.Session, modelref.Selection, error) {
 	requested := cmd.ModelSelection
 	if requested.Configured() {
@@ -261,7 +272,7 @@ func (c *Coordinator) resolveSessionSelection(
 			return session.Session{}, nil, modelref.Selection{}, err
 		}
 	}
-	sess, initial, err := c.resolveSession(ctx, cmd.SessionID, cmd.Schedule, requested)
+	sess, initial, err := c.resolveSession(ctx, cmd, requested)
 	if err != nil {
 		return session.Session{}, nil, modelref.Selection{}, err
 	}
@@ -282,17 +293,16 @@ func (c *Coordinator) resolveSessionSelection(
 
 func (c *Coordinator) resolveSession(
 	ctx context.Context,
-	id string,
-	scheduled *ScheduledStart,
+	cmd rootStartCommand,
 	selection modelref.Selection,
 ) (session.Session, *session.Session, error) {
-	if scheduled != nil {
+	if cmd.scheduled != nil {
 		return c.sessionCreator.PrepareScheduled(
-			ctx, scheduled.Request.SessionID(), scheduled.Request.Execution().Title(),
-			scheduled.WorkspacePath, selection,
+			ctx, cmd.scheduled.SessionID(), cmd.scheduled.Execution().Title(),
+			cmd.workspacePath, selection,
 		)
 	}
-	sess, err := c.sessionReader.Get(ctx, id)
+	sess, err := c.sessionReader.Get(ctx, cmd.SessionID)
 	return sess, nil, err
 }
 
@@ -351,11 +361,4 @@ func (c *Coordinator) executionCWD(ctx context.Context, sess session.Session) (c
 		return "", false, fmt.Errorf("%w: %w", ErrIsolationUnavailable, err)
 	}
 	return copyDir, true, nil
-}
-
-func scheduleRequest(scheduled *ScheduledStart) *schedule.RunRequest {
-	if scheduled == nil {
-		return nil
-	}
-	return &scheduled.Request
 }

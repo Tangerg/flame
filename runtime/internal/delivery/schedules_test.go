@@ -26,6 +26,13 @@ type fakeScheduleRegistry struct {
 	deleted []string
 }
 
+type unexpectedScheduledRunStarter struct{ test testing.TB }
+
+func (s unexpectedScheduledRunStarter) StartScheduledRun(context.Context, schedule.RunRequest) error {
+	s.test.Error("unexpected scheduled Run admission")
+	return errors.New("unexpected scheduled run")
+}
+
 func (f *fakeScheduleRegistry) ListPage(ctx context.Context, _ time.Time, _ string, _ int) ([]schedule.Schedule, error) {
 	return f.listed, f.listErr
 }
@@ -82,7 +89,7 @@ func handlerWithSchedules(t testing.TB, reg *fakeScheduleRegistry) *Handler {
 	}
 	s.schedules = coordinator
 	firing, err := schedules.NewFiring(schedules.FiringDependencies{
-		Store: reg, RunStarter: schedules.NewRunLauncher(s.runs, s.serverInfo.DefaultWorkspace.Path),
+		Store: reg, RunStarter: unexpectedScheduledRunStarter{test: t},
 		NewSessionID: func() string { return "ses_schedule" },
 		NewRunID:     func() string { return "run_schedule" },
 	})

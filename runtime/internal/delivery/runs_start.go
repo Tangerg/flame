@@ -98,7 +98,7 @@ func wireRunStartErr(err error) error {
 		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	case errors.Is(err, runs.ErrUnsupportedModelSelection):
 		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
-	case errors.Is(err, runs.ErrInvalidScheduledStart):
+	case errors.Is(err, runs.ErrInvalidStart):
 		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), err.Error())
 	case errors.Is(err, runs.ErrSessionBusy):
 		return protocol.ErrSessionBusy

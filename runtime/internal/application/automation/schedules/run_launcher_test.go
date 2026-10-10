@@ -11,19 +11,22 @@ import (
 )
 
 type fakeRunStarter struct {
-	cmd      runs.StartCommand
+	cmd      runs.ScheduledStart
 	canceled chan struct{}
 }
 
-func (f *fakeRunStarter) Start(ctx context.Context, cmd runs.StartCommand) (runs.StartResult, error) {
+func (f *fakeRunStarter) StartScheduled(ctx context.Context, cmd runs.ScheduledStart) (runs.StartResult, error) {
 	f.cmd = cmd
 	context.AfterFunc(ctx, func() { close(f.canceled) })
-	return runs.StartResult{SessionID: cmd.Schedule.Request.SessionID(), RunID: cmd.Schedule.Request.RunID()}, nil
+	return runs.StartResult{SessionID: cmd.Request.SessionID(), RunID: cmd.Request.RunID()}, nil
 }
 
 func TestRunLauncherUsesApplicationRunEntry(t *testing.T) {
 	runStarter := &fakeRunStarter{canceled: make(chan struct{})}
-	launcher := NewRunLauncher(runStarter, "/default")
+	launcher, err := NewRunLauncher(runStarter, "/default")
+	if err != nil {
+		t.Fatal(err)
+	}
 	scheduled := mustStoredSchedule(t, schedule.Snapshot{
 		ID: "sch_1", Instructions: "summarize", ModelSelection: testsupport.MustModelSelection("p", "m"),
 	})
@@ -36,12 +39,17 @@ func TestRunLauncherUsesApplicationRunEntry(t *testing.T) {
 	if err := launcher.StartScheduledRun(context.Background(), request); err != nil {
 		t.Fatalf("StartScheduledRun: %v", err)
 	}
-	if runStarter.cmd.Schedule == nil || runStarter.cmd.Schedule.WorkspacePath != "/default" ||
-		runStarter.cmd.Schedule.Request != request || runStarter.cmd.SessionID != "" {
+	if runStarter.cmd.DefaultWorkspacePath != "/default" || runStarter.cmd.Request != request {
 		t.Fatalf("scheduled start = %+v", runStarter.cmd)
 	}
-	if len(runStarter.cmd.Input) != 1 || runStarter.cmd.Input[0].Text != "summarize" || runStarter.cmd.ModelSelection.Provider() != "p" || runStarter.cmd.ModelSelection.Model() != "m" {
-		t.Fatalf("command mapping = %+v", runStarter.cmd)
-	}
 	<-runStarter.canceled
+}
+
+func TestRunLauncherRequiresRunEntry(t *testing.T) {
+	var typedNil *fakeRunStarter
+	for _, entry := range []RunStarter{nil, typedNil} {
+		if _, err := NewRunLauncher(entry, "/default"); err == nil {
+			t.Fatal("launcher accepted a missing Run entry point")
+		}
+	}
 }

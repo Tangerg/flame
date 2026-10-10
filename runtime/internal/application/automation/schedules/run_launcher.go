@@ -2,15 +2,16 @@ package schedules
 
 import (
 	"context"
+	"errors"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/automation/schedule"
-	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 )
 
 // RunStarter is schedule firing's narrow view of the complete Run entry point.
 type RunStarter interface {
-	Start(ctx context.Context, cmd runs.StartCommand) (runs.StartResult, error)
+	StartScheduled(ctx context.Context, cmd runs.ScheduledStart) (runs.StartResult, error)
 }
 
 // RunLauncher turns a due schedule into a headless application Run. It owns the
@@ -22,25 +23,21 @@ type RunLauncher struct {
 }
 
 // NewRunLauncher builds the scheduled-run execution strategy.
-func NewRunLauncher(runStarter RunStarter, defaultWorkspacePath string) RunLauncher {
-	return RunLauncher{runs: runStarter, defaultWorkspacePath: defaultWorkspacePath}
+func NewRunLauncher(runStarter RunStarter, defaultWorkspacePath string) (RunLauncher, error) {
+	if dependency.Missing(runStarter) {
+		return RunLauncher{}, errors.New("schedules: run entry point is required")
+	}
+	return RunLauncher{runs: runStarter, defaultWorkspacePath: defaultWorkspacePath}, nil
 }
 
 // StartScheduledRun starts one schedule through the shared Run entry point, then
 // immediately drops the unused event subscription.
 func (r RunLauncher) StartScheduledRun(ctx context.Context, request schedule.RunRequest) error {
-	execution := request.Execution()
-	workspacePath := execution.CWD()
-	if workspacePath == "" {
-		workspacePath = r.defaultWorkspacePath
-	}
-	command := runs.StartCommand{
-		Schedule:       &runs.ScheduledStart{Request: request, WorkspacePath: workspacePath},
-		ModelSelection: execution.ModelSelection(),
-		Input:          []transcript.ContentBlock{{Kind: transcript.TextContent, Text: execution.Instructions()}},
+	command := runs.ScheduledStart{
+		Request: request, DefaultWorkspacePath: r.defaultWorkspacePath,
 	}
 	startCtx, cancel := context.WithCancel(ctx)
-	_, err := r.runs.Start(startCtx, command)
+	_, err := r.runs.StartScheduled(startCtx, command)
 	cancel()
 	return err
 }

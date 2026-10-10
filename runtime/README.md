@@ -950,6 +950,12 @@ Shell output uses Scope's `tools/content.Content`: `stdout` is an object with `e
 
 ## Execution lifecycle
 
+Manual and cron firings pass only their captured Run request into the scheduled Run
+entry point. That request owns instructions, model selection, title, workspace and stable
+Session/Run identities; the launcher cannot author parallel overrides. An omitted workspace
+uses the Runtime default, and an omitted model uses the prepared Session's default. Both
+scheduled and ordinary starts share the same admission, staging and opening transaction.
+
 Root and delegated Interactions, ordinary Tools, and lifetime child/process counts use Scope's unlimited cumulative quotas. Usage remains metered; completion, cancellation, model-reported blocking, and actual failures control lifecycle. Delegation depth, active-child and Tool concurrency, pending mailbox capacity, and operation-specific waits bound resource use. Execution follows its owner's lifetime.
 
 ## Scope execution settlement
