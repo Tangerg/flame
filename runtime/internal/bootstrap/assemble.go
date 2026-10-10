@@ -49,11 +49,6 @@ func assemble(ctx context.Context, cfg Config, lifetime *runtimeLifetime, buildT
 	if err != nil {
 		return nil, err
 	}
-	// Startup can reclaim abandoned staging bodies before execution begins.
-	// Durable Item and checkpoint owners retain their bodies across restarts.
-	if _, err := cfg.Stores.ToolResults.PurgeUnbound(ctx); err != nil {
-		return nil, fmt.Errorf("runtime: reconcile staged tool results: %w", err)
-	}
 	policy, err := buildPolicyComposition(ctx, cfg)
 	if err != nil {
 		return nil, err
@@ -302,9 +297,6 @@ func buildAssemblyCore(
 	if err != nil {
 		return nil, err
 	}
-	if err := pluginCoordinator.Reclaim(ctx); err != nil {
-		return nil, fmt.Errorf("runtime: %w", err)
-	}
 
 	// Goal mode: the autonomous-execution loop driver over the run coordinator.
 	goalDriver, err := goals.NewDriver(
@@ -360,9 +352,6 @@ func buildAssemblyCore(
 	ownershipRecovery, err := ownership.NewRecovery(bootRecovery, goalDriver, ownershipLeases)
 	if err != nil {
 		return nil, fmt.Errorf("runtime: ownership recovery: %w", err)
-	}
-	if err := ownershipRecovery.ReconcileStartup(ctx); err != nil {
-		return nil, fmt.Errorf("runtime: reconcile abandoned ownership: %w", err)
 	}
 	workspaceFiles, err := workspace.NewFiles(workspaceServices.scope, workspaceadapter.FileBrowser{})
 	if err != nil {
@@ -423,6 +412,21 @@ func buildAssemblyCore(
 	trajectoryExports, err := sessions.NewTrajectoryExporter(sessionCoordinator, trajectoryReader)
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct trajectory exporter: %w", err)
+	}
+	// Every constructor must succeed before startup can retire retained state.
+	// Reclamation precedes recovery so restored execution sees admitted bodies
+	// and release content protected by their durable and live owners.
+	if _, err := cfg.Stores.ToolResults.PurgeUnbound(ctx); err != nil {
+		return nil, fmt.Errorf("runtime: reconcile staged tool results: %w", err)
+	}
+	if err := policy.packages.ReclaimExecutions(ctx); err != nil {
+		return nil, fmt.Errorf("runtime: reclaim plugin execution content: %w", err)
+	}
+	if err := pluginCoordinator.Reclaim(ctx); err != nil {
+		return nil, fmt.Errorf("runtime: %w", err)
+	}
+	if err := ownershipRecovery.ReconcileStartup(ctx); err != nil {
+		return nil, fmt.Errorf("runtime: reconcile abandoned ownership: %w", err)
 	}
 	host := &Instance{
 		application: &runtimeApplication{

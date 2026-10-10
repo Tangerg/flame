@@ -10,6 +10,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset/codeintel"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/models"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/accounting"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
@@ -116,7 +117,8 @@ type Config struct {
 // validateAssemblyConfig reports whether the construction-time bundle has
 // every capability required to assemble a Runtime. Bootstrap keeps this as a
 // construction function: Config is data at the composition boundary, not a
-// domain object with business behavior.
+// domain object with business behavior. Rejection precedes startup reconciliation
+// so an unusable collaborator cannot authorize changes to durable state.
 func validateAssemblyConfig(c Config) error {
 	if c.Stores == nil {
 		return errors.New("runtime: Stores is required")
@@ -155,13 +157,13 @@ func validateAssemblyConfig(c Config) error {
 			return fmt.Errorf("runtime: SandboxReadOnlyPaths[%d] must be absolute when set", index)
 		}
 	}
-	if c.ChatResolver == nil {
+	if dependency.Missing(c.ChatResolver) {
 		return errors.New("runtime: ChatResolver is required")
 	}
 	if _, err := runtimeidentity.ParseBuild(c.BuildID); err != nil {
 		return fmt.Errorf("runtime: BuildID: %w", err)
 	}
-	if c.ProviderRegistry == nil {
+	if dependency.Missing(c.ProviderRegistry) {
 		return errors.New("runtime: ProviderRegistry is required")
 	}
 	return nil

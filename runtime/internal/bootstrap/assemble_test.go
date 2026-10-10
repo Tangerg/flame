@@ -9,8 +9,11 @@ import (
 	"testing"
 	"time"
 
+	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/delivery"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/approval"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/interrupt"
@@ -21,6 +24,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/process/teardown"
 	sqlitestore "github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
+	"github.com/Tangerg/flame/runtime/protocol"
 	"github.com/Tangerg/scope/core/chatclient"
 )
 
@@ -104,10 +108,20 @@ func TestNewRequiresRuntimeDependencies(t *testing.T) {
 			want: "runtime: ChatResolver is required",
 		},
 		{
+			name: "typed nil chat resolver",
+			edit: func(cfg *Config) { cfg.ChatResolver = (*modeladapter.ChatResolver)(nil) },
+			want: "runtime: ChatResolver is required",
+		},
+		{
 			name: "provider registry",
 			edit: func(cfg *Config) {
 				cfg.ProviderRegistry = nil
 			},
+			want: "runtime: ProviderRegistry is required",
+		},
+		{
+			name: "typed nil provider registry",
+			edit: func(cfg *Config) { cfg.ProviderRegistry = (*sqlitestore.ProviderStore)(nil) },
 			want: "runtime: ProviderRegistry is required",
 		},
 	}
@@ -167,31 +181,91 @@ func TestAssemblyFailureReclaimsToolsAndOwnedResources(t *testing.T) {
 	}
 }
 
-func TestAssemblyRejectsInvalidDefaultModelBeforeStartupReconciliation(t *testing.T) {
-	cfg := runtimeConfigWithRequiredDeps(t)
-	db, err := sqlitestore.Open(t.Context(), filepath.Join(t.TempDir(), "tool-results.db"))
-	if err != nil {
-		t.Fatalf("open tool-result store: %v", err)
+func TestAssemblyRejectsInvalidConstructionBeforeStartupReconciliation(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		edit func(*Config)
+	}{
+		{name: "default model", edit: func(cfg *Config) { cfg.Provider = "" }},
+		{name: "typed nil chat resolver", edit: func(cfg *Config) { cfg.ChatResolver = (*modeladapter.ChatResolver)(nil) }},
+		{name: "typed nil provider registry", edit: func(cfg *Config) { cfg.ProviderRegistry = (*sqlitestore.ProviderStore)(nil) }},
+		{name: "session-only approval mode", edit: func(cfg *Config) { cfg.ApprovalMode = approval.ModePlan }},
+		{name: "invalid offload policy", edit: func(cfg *Config) { cfg.ToolResultOffloadEnabled = true }},
+		{name: "missing feedback store", edit: func(cfg *Config) { cfg.Stores.Feedback = nil }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			cfg := runtimeConfigWithRequiredDeps(t)
+			store := cfg.Stores.ToolResults
+			id := toolresult.ID("STAGED234")
+			if err := store.Stage(t.Context(), toolresult.Stage{
+				ID: id, SessionID: "ses_staged", Body: "unbound",
+			}); err != nil {
+				t.Fatalf("stage tool result: %v", err)
+			}
+			test.edit(&cfg)
+			host, err := assemble(t.Context(), cfg, newRuntimeLifetime(t.Context(), cfg.Resources), buildToolEnvironment)
+			if host != nil || err == nil {
+				t.Fatalf("assembly = (%v, %v), want invalid construction rejected", host, err)
+			}
+			if _, found, fetchErr := store.Fetch(t.Context(), "ses_staged", id); fetchErr != nil || !found {
+				t.Fatalf("staged tool result after rejected config = (found %v, err %v), want (true, nil)", found, fetchErr)
+			}
+		})
 	}
-	t.Cleanup(func() { _ = db.Close() })
-	store := sqlitestore.NewToolResultStore(db)
+}
+
+func TestAssemblyReclaimsStagedToolResultsAfterSuccessfulConstruction(t *testing.T) {
+	cfg := runtimeConfigWithRequiredDeps(t)
 	id := toolresult.ID("STAGED234")
-	if err := store.Stage(t.Context(), toolresult.Stage{
+	if err := cfg.Stores.ToolResults.Stage(t.Context(), toolresult.Stage{
 		ID: id, SessionID: "ses_staged", Body: "unbound",
 	}); err != nil {
-		t.Fatalf("stage tool result: %v", err)
+		t.Fatal(err)
 	}
-	cfg.Stores.ToolResults = store
-	cfg.Provider = ""
+	host, err := assemble(t.Context(), cfg, newRuntimeLifetime(t.Context(), cfg.Resources), buildToolEnvironment)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := host.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	if _, found, err := cfg.Stores.ToolResults.Fetch(t.Context(), "ses_staged", id); err != nil || found {
+		t.Fatalf("staged tool result after successful construction = (found %v, err %v), want (false, nil)", found, err)
+	}
+}
 
-	_, err = assemble(t.Context(), cfg, newRuntimeLifetime(t.Context(), cfg.Resources), buildToolEnvironment)
-	if err == nil || !strings.Contains(err.Error(), "default model selection") {
-		t.Fatalf("assembly error = %v, want invalid default model selection", err)
+func TestAssemblyRetainsUnreferencedPluginReleaseUntilConstructionSucceeds(t *testing.T) {
+	cfg := poMCPConfig(t)
+	r := poMCPOpen(t, cfg)
+	source, err := filepath.Abs("../../../plugins/memory")
+	if err != nil {
+		t.Fatal(err)
 	}
-	if _, found, fetchErr := store.Fetch(t.Context(), "ses_staged", id); fetchErr != nil || !found {
-		t.Fatalf("staged tool result after rejected config = (found %v, err %v), want (true, nil)", found, fetchErr)
+	r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-memory")
+	r.close()
+	installations, err := cfg.Stores.Installations.List(t.Context())
+	if err != nil || len(installations) != 1 {
+		t.Fatalf("installations = %+v, %v", installations, err)
 	}
-
+	installed := installations[0]
+	if err := cfg.Stores.Installations.Remove(t.Context(), installed.Installation.ID()); err != nil {
+		t.Fatal(err)
+	}
+	feedback := cfg.Stores.Feedback
+	cfg.Stores.Feedback = nil
+	if host, err := assemble(t.Context(), cfg, newRuntimeLifetime(t.Context(), cfg.Resources), buildToolEnvironment); host != nil || err == nil {
+		t.Fatalf("assembly = (%v, %v), want missing feedback rejected", host, err)
+	}
+	if _, err := cfg.Stores.PluginReleases.Get(t.Context(), installed.Selected.Digest()); err != nil {
+		t.Fatalf("failed construction reclaimed the retained release: %v", err)
+	}
+	cfg.Stores.Feedback = feedback
+	poMCPOpen(t, cfg)
+	if _, err := cfg.Stores.PluginReleases.Get(t.Context(), installed.Selected.Digest()); !errors.Is(err, plugin.ErrNotFound) {
+		t.Fatalf("successful construction retained an unreferenced release: %v", err)
+	}
 }
 
 func TestAssemblyBuilderFailureReclaimsReturnedAcquisitions(t *testing.T) {
