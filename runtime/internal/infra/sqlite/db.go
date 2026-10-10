@@ -28,10 +28,8 @@ import (
 	_ "modernc.org/sqlite" // registers the "sqlite" driver
 )
 
-// A column added to an existing database and the same column in a fresh one are
-// one definition. Spelling it twice lets a later edit leave migrated databases
-// under a constraint fresh ones no longer carry, which nothing would report.
-// The states they constrain are the Go vocabulary's, for the same reason.
+// Column constraints derive from the stored state vocabulary so SQL admission
+// and decoding cannot disagree.
 func modelInvocationLatencyColumn() string {
 	return fmt.Sprintf(
 		"first_output_latency_millis INTEGER CHECK "+
@@ -54,11 +52,9 @@ const oauthBindingColumn = "binding TEXT NOT NULL DEFAULT ''"
 const resultPublicationSourceColumn = "source_message_seq INTEGER REFERENCES messages(seq) ON DELETE SET NULL"
 const resultPublicationResultsColumn = "model_results TEXT CHECK (model_results IS NULL OR json_valid(model_results))"
 
-// Open dials a SQLite database at path and installs any missing objects from
-// the current schema. The returned *sql.DB is safe for concurrent use; callers
-// share it across every
-// sqlite-backed store (session / transcript / interrupt / provider / message /
-// agent memory).
+// Open creates the current schema in an empty database or admits an exact
+// current schema. Other schemas are refused. The returned *sql.DB is safe for
+// concurrent use and is shared by every store.
 //
 // Tuning baked in:
 //   - journal_mode = WAL — concurrent readers don't block the writer
