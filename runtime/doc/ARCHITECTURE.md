@@ -155,12 +155,12 @@ backend business state never acquires a Runtime writer. This metadata conveys no
 authentication or dispatch grant. Unexpected MCP failures keep their existing
 unknown-effect semantics.
 
-The current product executor admits Interaction roots. Tool-bound host actions
-require released Scope support for standalone ToolSet input/results, immutable
-call attribution and settled-result projection before another root input can be
-admitted through the same Run lifecycle. Runtime does not copy Scope's private
-wire structs, synthesize model responses, or widen diagnostic `tools.invoke` to
-provide an alternate approval or recovery path.
+The product executor admits Interaction roots. Installed MCP tools use the
+existing Session-owned Run and Interrupt path. Declarative human actions select
+a closed existing Runtime operation and delegate through its delivery endpoint;
+`renameSession` uses the Session update owner. HTML bridges expose bounded reads
+and cannot dispatch tools or backend mutations. Diagnostic `tools.invoke` keeps
+its diagnostic contract and is not a plugin action entrance.
 
 Tool search reports its fixed initial catalog and the names selected by that invocation. Scope alone owns cumulative Tool visibility; neither a frozen description nor one search result can say which other Tools remain unloaded.
 

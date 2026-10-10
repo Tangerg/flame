@@ -86,6 +86,8 @@ These decisions preserve the repository's product ownership, explicit compositio
 
 The first implementation does not include a public marketplace, transparent hot replacement of active execution dependencies, a universal UI description language, arbitrary plugin-to-plugin imports, cross-runtime distributed scheduling, automatic conversion of React pages to CLI interfaces, or a new language runtime embedded in Flame.
 
+Host UI and HTML pages do not invoke MCP tools directly. Tool-bound host actions and a review board that uses them are excluded from this design, rather than deferred pending a Scope extension. Installed MCP tools run through the existing Session-owned Run and Interrupt path. Declarative human actions select a closed existing Runtime operation through trusted client controls.
+
 It also does not promise that native subprocesses are safe merely because they use stdio. A subprocess operating with the user's OS privileges can act outside the broker unless an effective OS boundary restricts it. Initial native-plugin support must expose that trust model honestly.
 
 ### 1.3 Required user-visible outcome
@@ -156,7 +158,7 @@ A versioned specification is evidence of a protocol contract, not evidence that 
 | Approval | The user's admission of one exact release digest of an installation. Selecting any other digest withdraws it, so changed code always needs renewed review. |
 | Grant | Host-issued authorization for a principal, host-brokered operation, and target scope. Deferred with capability requests (Section 21.2); no current contribution consumes one. |
 | Tool | A model-facing executable capability admitted through the existing Scope contract. |
-| Action | A human-facing intent bound to an existing product operation or tool; not a duplicate business implementation. |
+| Action | A human-facing intent bound to a closed existing Runtime operation; not a duplicate business implementation. |
 | View | A presentation contribution with placement, scope, rendering requirements, and a resource origin. |
 | Environment | The machine or execution environment that owns a resource; not the client currently displaying it. |
 | Logical invocation | The operation identity used by an existing command or execution owner, independent of a transport request ID. |
@@ -321,97 +323,13 @@ A Go executable is built for a target environment, not for the machine displayin
 
 Do not introduce an unstandardized `platforms` field into `mcp.json`. Do not let installation run unrestricted build scripts by default. An interpreted server may use an already-installed approved executable; installing its interpreter or dependencies is a separate, visible operation. A Python or JavaScript backend is not a reason to embed those runtimes into Flame.
 
-### 5.6 Example full-stack package
+### 5.6 Example package boundaries
 
-The following package is illustrative. It provides review operations and a workspace view, not a duplicate Flame execution model.
+The [review backend package](../examples/plugins/reviews/README.md) combines MCP tools and a Skill. Its backend owns review state; Runtime owns the Run, approval, and stored execution observations. The package declares no view or human action. Tool definitions come from the backend, and calls use the existing Run path.
 
-```text
-acme.review-board/
-  plugin.json
-  mcp.json
-  bin/
-    review-board
-  skills/
-    review/
-      SKILL.md
-  org.example.flame/
-    ui/
-      board.html
-      board.js
-      board.css
-```
+The [Session trajectory package](../examples/plugins/trajectory/plugin.json) combines a bounded theme, a read-only HTML page, and a declarative `renameSession` action. The page reads Runtime's canonical trajectory through a scoped bridge. A trusted host form submits the Session title edit to its existing Runtime owner. The page cannot submit that command.
 
-`plugin.json`:
-
-```json
-{
-  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
-  "name": "acme.review-board",
-  "version": "1.0.0",
-  "description": "Review resources with an optional workspace board.",
-  "extensions": {
-    "org.example.flame": {
-      "apiVersion": 1,
-      "contributes": {
-        "actions": [
-          {
-            "id": "list",
-            "title": "List reviews",
-            "binding": {
-              "kind": "mcpTool",
-              "server": "reviews",
-              "tool": "list_reviews"
-            }
-          },
-          {
-            "id": "update",
-            "title": "Update review",
-            "binding": {
-              "kind": "mcpTool",
-              "server": "reviews",
-              "tool": "update_review"
-            }
-          }
-        ],
-        "views": [
-          {
-            "id": "board",
-            "title": "Review board",
-            "placement": "workspace",
-            "scope": "workspace",
-            "requires": ["ui.webview.v1"],
-            "renderer": {
-              "kind": "webview",
-              "entry": "./org.example.flame/ui/board.html",
-              "bridgeVersion": 1
-            },
-            "actions": ["list", "update"],
-            "fallbackAction": "list"
-          }
-        ]
-      }
-    }
-  }
-}
-```
-
-`mcp.json`:
-
-```json
-{
-  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
-  "mcpServers": {
-    "reviews": {
-      "type": "stdio",
-      "command": "./bin/review-board",
-      "args": ["--data", "${PLUGIN_DATA}/reviews"],
-      "cwd": "${PLUGIN_ROOT}"
-    }
-  }
-}
-```
-
-The Flame fields are proposed, not standardized. Approving the release admits its exact bytes; it does not pre-approve any tool call. Tool inputs and outputs are defined by the MCP tool descriptor, not copied into the action declaration. A fallback action is a visible user alternative; the host must not automatically execute a mutating fallback when a renderer fails. In this example, opening the page may invoke only the admitted read action for its initial data; update requires a separate authorized user intent.
+A package may combine these supported contributions without linking its page or human actions to MCP tools. Approving a release admits its exact bytes; it does not pre-approve any tool call. Generated Runtime contracts own the supported contribution shapes.
 
 ## 6. Installation, releases, and activation
 
@@ -473,9 +391,9 @@ Project-local packages may be discovered as candidates, but opening a repository
 
 ### 7.1 One definition owner
 
-A tool's executable contract remains owned by its registered Scope implementation or admitted remote descriptor. Model declarations, command forms, search results, and UI summaries are projections. An action binding references that tool instead of copying its description and argument schema into another independently editable catalog.
+A tool's executable contract remains owned by its registered Scope implementation or admitted remote descriptor. Model declarations, search results, and UI summaries are projections. Plugin-owned MCP operations execute through the existing Run path; they do not acquire a human action binding or a second argument-schema catalog.
 
-For plugin-owned business actions that are not tools, the plugin contract can define an operation once and expose it through a deliberately supported backend boundary. The first release should avoid adding a generic custom RPC platform solely for hypothetical operations; MCP tools and a small allowlist of existing Runtime operations cover the initial examples.
+A declared human action names a closed existing Runtime operation. Its trusted form consumes that operation's generated request and delegates to the same semantic owner. There is no generic plugin RPC handler.
 
 A global catalog is a derived view of accepted contributions, not a new service locator. It cannot grant access merely because an entry exists. Authorization, scope, availability, and execution profile checks still apply at invocation.
 
@@ -484,7 +402,7 @@ A global catalog is a derived view of accepted contributions, not a new service 
 | Contribution | Initial consumer | Rule protecting its boundary |
 | --- | --- | --- |
 | Tool | Scope execution and tool discovery | One validated definition; no authority inferred from name. |
-| User action | Command palette, CLI, IDE command, view bridge | Resolves to an admitted tool or specific existing product operation. |
+| User action | Trusted host form, CLI, or IDE command | Selects a closed existing Runtime operation; package code and HTML pages cannot submit it. |
 | Workspace or Session view | Graphical client and optional IDE host | Descriptor is serializable; layout remains host-owned. |
 | Result renderer | Transcript/tool-result presentation | Cannot alter the stored tool outcome or execute on historical view without authorization. |
 | Settings contribution | Plugin configuration UI | Submits validated changes to the configuration owner. |
@@ -527,7 +445,7 @@ Plugin tools join the Run's deferred set exactly as MCP tools do today. Activati
 
 A loader/search tool can expose previously admitted definitions at a safe model boundary. It cannot authorize new capabilities. A tool that asks the user or changes the execution tree may require model-only or specially controlled invocation. Do not assume arbitrary nested use is valid merely because a tool is registered.
 
-Record invocation origin as a host fact: model tool, user action, or authorized delegated plugin call. A plugin cannot choose a more trusted origin by putting a string in its arguments. Pi's separation of exposure and nested execution illustrates this distinction, while Flame's existing `search_tools` keeps executable authority separate from staged visibility. [R4] [F12]
+Record tool invocation origin as an execution-owned fact. Human product commands retain their existing delivery identity and do not become tool invocations. A plugin cannot choose a more trusted origin by putting a string in its arguments. Pi's separation of exposure and nested execution illustrates this distinction, while Flame's existing `search_tools` keeps executable authority separate from staged visibility. [R4] [F12]
 
 ## 8. Invocation semantics and delegated authority
 
@@ -537,7 +455,7 @@ All executable tools must pass the same applicable policies, independent of thei
 
 ```text
 resolve authenticated caller and target scope
-  -> resolve exact admitted tool/action
+  -> resolve exact admitted tool
   -> apply authorized input preparation
   -> validate the final effective arguments
   -> freeze identity, arguments, target, and policy binding
@@ -551,7 +469,7 @@ resolve authenticated caller and target scope
 
 If input is transformed, approval binds the transformed input actually dispatched. Any later change invalidates the approval and requires a new explicit decision. Around-execution wrappers may not substitute the tool, detach caller cancellation, or reclassify the principal.
 
-An already dispatched action can complete after a grant is revoked. Revocation prevents further unauthorized work and requests cancellation where meaningful; it must not suppress evidence that a side effect already occurred.
+An already dispatched tool call can complete after authority is revoked. Revocation prevents further unauthorized work and requests cancellation where meaningful; it must not suppress evidence that a side effect already occurred.
 
 ### 8.2 Arguments versus execution context
 
@@ -758,38 +676,34 @@ These are provisional families, not an alternative hand-maintained API specifica
 | Plugin inspection | Read installed source, selected release, desired enablement, active component status, and safe diagnostics. |
 | Install/enable/disable/update/uninstall | Explicit management commands with current command admission and replay behavior. |
 | Contribution discovery | Read accepted action/view/renderer descriptors and current revisions. |
-| Action invocation | Resolve a declared action to a specific admitted tool or permitted existing product operation. |
+| Action invocation | Authorize a declared action against the exact release and delegate to its closed existing Runtime operation. |
 | Resource access | Read authorized package or backend resources without exposing arbitrary filesystem paths. |
 | Change observation | Reuse Runtime subscription/invalidation behavior for catalog and relevant resource changes. |
 
-Do not register every third-party operation as a newly generated core method. Conversely, do not create an unrestricted `invoke(anyMethod, anyJson)` tunnel. The stable extension envelope must resolve only identities present in the accepted catalog and validate against their one authoritative contract.
+MCP business operations retain their existing tool transport and Run lifecycle. Human action requests use the generated contract for their closed Runtime operation. Do not create an unrestricted `invoke(anyMethod, anyJson)` tunnel or an arbitrary plugin operation envelope.
 
 Where a feature already has a Runtime operation, an action can reference it through an allowlisted adapter. This is a declarative binding, not a duplicated schema or alternate implementation. A newly necessary business operation should be added to its proper owner rather than hidden in a generic plugin handler.
 
-### 11.3 Illustrative action envelope
+### 11.3 Bounded Session action
+
+The implemented `plugins.renameSession` operation uses the request defined by the [generated Runtime catalog](../runtime/contract/API_REFERENCE.md). For example:
 
 ```json
 {
-  "target": {
-    "installationId": "installed-review-board",
-    "actionId": "update"
-  },
-  "expectedDefinitionRevision": "review-actions-r7",
-  "scope": {
-    "kind": "workspace",
-    "workspaceId": "runtime-owned-workspace-reference"
-  },
-  "input": {
-    "reviewId": "review-42",
-    "expectedRevision": "review-r3",
-    "status": "resolved"
+  "installationId": "installed-trajectory",
+  "digest": "<selected-release-digest>",
+  "actionId": "rename-session",
+  "update": {
+    "sessionId": "ses_example",
+    "expectedRevision": 3,
+    "title": "Reviewed investigation"
   }
 }
 ```
 
-The envelope's scope is a requested target, not proof of authority. The authenticated caller and bound bridge context must permit it. The host resolves the target action's contract and operation class; a plugin-supplied “read-only” label does not select a cheaper permission path. Mutations use the existing command options and prepared-journal machinery; the example intentionally does not invent another idempotency field.
+The trusted client captures the selected release and Session revision before submission. Runtime authorizes the declared action against that exact release, then delegates to the existing Session update use case. The release digest binds the declaration; the Session revision guards the title transition. No independent action-definition revision or backend business schema is introduced.
 
-The action definition revision guards against dispatching different code or input semantics than the caller inspected. The review revision guards the plugin business object's own update. They are different facts, not duplicate counters.
+The existing delivery command identity and shared prepared journal preserve the exact request after an uncertain acknowledgement. Package declarations and HTML pages cannot originate the command.
 
 ### 11.4 Capability negotiation
 
@@ -819,10 +733,10 @@ Do not leak package filesystem paths, credentials, command environment values, r
 
 | Capability | Desktop/Web | CLI | IDE |
 | --- | --- | --- | --- |
-| Query/action | Form, command, or page control | Explicit command and JSON/text output | Native command, picker, or document |
+| Runtime query/action | Trusted form or command; read-only page projection | Explicit command and JSON/text output | Native command, picker, or document |
 | Simple configuration | Host-rendered settings form | Typed command/input | Native input where appropriate |
 | Rich result | Generic or plugin renderer | Structured result and bounded readable content | Native document or supported Webview |
-| Complex workspace page | Isolated Web UI | Underlying actions, export, or explicit unsupported presentation | Optional generic Webview host |
+| Complex workspace page | Isolated read-only Web UI | Canonical reads, export, or explicit unsupported presentation | Optional generic Webview host |
 | Human approval | Trusted host prompt | Terminal interaction when supported | Native confirmation |
 | Local device operation | Platform adapter with explicit permission | Explicit local operation only | IDE-native adapter only |
 
@@ -830,7 +744,7 @@ Business behavior must not depend on a React component being mounted. Purely vis
 
 ### 12.2 View descriptor
 
-A view has a stable contribution identity, user-facing title, placement, scope, renderer kind, resource reference, protocol requirement, permitted action references, and optional fallback action. The package supplies intent; the client supplies actual layout, focus, and lifetime.
+A view has a stable contribution identity, user-facing title, placement, scope, renderer kind, resource reference, and protocol requirement. The package supplies intent; the client supplies actual layout, focus, and lifetime.
 
 Placement and scope are separate. A Session-scoped view can render in a side panel or main area. Moving the panel does not migrate its business state. A badge is data from a read projection, not an arbitrary React callback sent from Go.
 
@@ -842,9 +756,9 @@ Do not expose arbitrary root layout replacement to normal plugins. Begin with th
 
 **Semantic result rendering** covers file excerpts, diffs, search results, diagnostics, and task summaries. An enhanced renderer may improve presentation while the host retains a generic representation of the same data.
 
-**Custom Web UI** covers a complex board, editor, or analysis surface. It runs in an isolated container and communicates through the host broker. It owns its own frontend framework; it does not require sharing the host's React instance.
+**Custom Web UI** covers a read-only analysis or diagnostic surface. It runs in an isolated container and communicates through the host broker. It owns its own frontend framework; it does not require sharing the host's React instance.
 
-Do not build a universal JSON UI language or a second package-sharing module loader. MCP Apps can be one supported renderer protocol, while a pure Flame page can use the same host surface without inventing a fake tool solely to acquire navigation.
+Do not build a universal JSON UI language or a second package-sharing module loader. A Flame page uses the host surface without inventing a tool to acquire navigation. Any later renderer protocol must preserve the read-only bridge boundary.
 
 ### 12.4 Adapting into Dougong
 
@@ -877,9 +791,9 @@ Persist only appropriate local view state, such as selected tabs or a filter. On
 
 ### 12.6 Local drafts and concurrent edits
 
-The view owns unsent drafts. The business owner owns committed state and its revision. A save carries the revision the user edited; conflicts remain explicit. The view may offer a refresh or an intentional resubmission, but it cannot overwrite a newer value by changing the expected revision behind the user's back.
+A trusted host action form owns its unsent draft. Runtime owns committed state and its revision. A save carries the revision the user edited; conflicts remain explicit. The form may offer a refresh or an intentional resubmission, but it cannot overwrite a newer value by changing the expected revision behind the user's back. The read-only plugin page has no save operation.
 
-Connection replacement retires the previous view bridge and observation tasks. Late responses cannot update the new view or submit a follow-up through the new Runtime. Preserve an unresolved mutation in the shared journal; do not transfer it by silently substituting target identities.
+Connection replacement retires the previous view bridge and observation tasks. Late responses cannot update the successor. Unresolved commands from trusted controls remain in the shared journal with their original target; connection replacement cannot retarget them.
 
 ### 12.7 CLI and IDE requirements
 
@@ -917,24 +831,23 @@ Prefer an existing reviewed message-bridge implementation when it satisfies the 
 
 Any bootstrap mechanism that requires a wildcard target origin must confine it to a verified frame/channel handoff and must not broadcast credentials or business data. Do not invent a custom cryptographic protocol to compensate for an unclear browser origin design.
 
-Every request is correlated with its view instance. Retiring a view closes the channel, aborts local reads, and prevents new submissions. Already accepted product commands remain owned by Runtime and recover through the shared journal. Retiring the old instance cannot close a successor's channel.
+Every request is correlated with its view instance. Retiring a view closes the channel, aborts local reads, and prevents new reads. Commands from separate trusted host controls remain owned by Runtime and recover through the shared journal. Retiring the old instance cannot close a successor's channel.
 
 ### 13.4 Permitted bridge operations
 
 | Operation | Proposed initial policy |
 | --- | --- |
 | Read initial view context | Provide only approved scope references, presentation context, and allowed initial data. |
-| Invoke an action | Resolve an action explicitly available to this view; enforce all product/tool policies. |
 | Query an allowed Runtime projection | Bind to an explicit read capability; do not expose arbitrary protocol methods. |
 | Read an approved resource | Constrain to the view's permitted resource authority and size budget. |
 | Subscribe to relevant changes | Use bounded subscriptions; reuse host observation and cancellation behavior. |
 | Navigate within the plugin | Validate an app-relative destination; the host decides layout and focus. |
 | Request external navigation | Use host validation and confirmation policy; reject privileged and executable schemes. |
 | Request native functionality | Disabled unless the carrier implements that exact authorized capability. |
-| Update model context | Not an implicit rendering effect; requires a separately admitted, bounded product action. |
+| Update model context | Unavailable through the read-only view bridge. |
 | Resolve an approval | Not a normal plugin operation; the trusted host owns approval presentation and acceptance. |
 
-The bridge is not a full client SDK proxy. A view that can read a Session is not thereby allowed to export every Session, read all credentials, install packages, or execute arbitrary tools.
+The bridge exposes bounded reads. It has no action submission, MCP tool-call, or backend mutation channel. A view that can read a Session is not thereby allowed to export every Session, read all credentials, or install packages.
 
 ### 13.5 CSP and rendering isolation
 
@@ -950,13 +863,11 @@ Bundled assets and brokered reads are the initial preference. Direct remote orig
 
 Third-party themes should be bounded token data, not arbitrary CSS capable of concealing trusted UI. The host controls plugin identity chrome, permission dialogs, and failure overlays. A plugin may draw arbitrary content within its surface, but it must not be able to obscure which parts of the application are trusted controls.
 
-### 13.6 MCP Apps reuse
+### 13.6 Renderer protocol boundary
 
-MCP Apps supplies a UI-resource and postMessage-based interaction model distinct from backend MCP transport. It can be adapted into the same view host. Do not reimplement the whole bridge when a maintained implementation meets the product requirements. [M6]
+MCP Apps supplies a UI-resource and postMessage-based interaction model distinct from backend MCP transport. It is reference evidence for a renderer protocol, not admission of its tool-call capabilities into Flame. [M6]
 
-Flame still owns installation, grant checks, resource authority, Run context, and native capability restrictions. Supporting an MCP App does not grant every tool on its server to that frame automatically. A tool-originated view should consume the admitted initial result rather than repeat the business operation for first render.
-
-Static workspace/Session entrypoints and tool-result views can converge on the same internal view descriptor. They remain different triggers. A pure view need not invent a tool just to appear in navigation.
+Any later renderer integration must preserve the read-only host bridge and consume already admitted result data. A renderer requiring direct MCP calls is outside this design. Static Session entrypoints and result views may share presentation machinery while retaining their distinct triggers. A pure view need not invent a tool to appear in navigation.
 
 ### 13.7 Wails-specific release gate
 
@@ -1079,7 +990,7 @@ First-party extraction of Memory or Schedules is a separate product migration, n
 
 Security revocation prevents new privileged admission immediately at the authorization owner. In-flight work is cancelled where supported and its observed effects remain recorded. Waiting work cannot resume under a revoked grant just because it was originally admitted.
 
-A revoked UI resource should stop receiving host data and actions. Historical tool output remains readable through safe generic rendering. Do not delete evidence or silently substitute another plugin to complete outstanding work.
+A revoked UI resource should stop receiving host data. Historical tool output remains readable through safe generic rendering. Do not delete evidence or silently substitute another plugin to complete outstanding work.
 
 A compromised release may not be retained for continued execution merely to honor a dependency pin. Safety revocation supersedes availability. The resulting refusal or unknown outcome must be explicit.
 
@@ -1188,7 +1099,7 @@ Do not let a plugin grant its own build-script approval, widen its own grants, o
 | Manifest and contribution count | Package adapter limits | Typed validation/resource-limit result. |
 | MCP frames and tool output | Existing codec/transport/output limits | Preserve protocol failure or bounded offload semantics. |
 | Active processes and startup attempts | Runtime supervision limits | Explicit unavailable/quota status; bounded retries. |
-| View bridges and queued messages | Client host limits | Reject or backpressure; do not silently drop mutations. |
+| View bridges and queued messages | Client host limits | Bound reads and reject overload explicitly. |
 | UI assets and live data | Resource broker limits | Refuse oversized resource; safe renderer failure. |
 | Subscription fan-out | Existing Runtime subscription limits | Typed refusal using advertised limits. |
 | Nested calls and execution budget | Scope/Runtime execution owner | Refuse additional work rather than create another scheduler. |
@@ -1298,30 +1209,28 @@ Do not create packages named `manager`, `service`, `impl`, `common`, or `reposit
 
 ## 20. End-to-end behavior and acceptance
 
-### 20.1 Full-stack review package
+### 20.1 Review backend through a Run
 
-**Intent:** A user installs a review package, opens a board, changes one review, and reads the result in CLI.
+**Intent:** A user installs the review package, requests a review update in a normal agent Session, and reads the recorded result through CLI.
 
 ```text
-User -> Runtime: install selected release into this Runtime
-Runtime: stage, validate, request authority, admit release
-Runtime -> MCP: activate approved review service
-MCP -> Runtime: tool descriptors
-Runtime: admit tools and resolve view/action references
-Desktop -> Runtime: read accepted contributions
-Desktop: create isolated board and scoped bridge
-Board -> Host: request list action
-Host -> Runtime: authorized action with bound workspace
-Runtime -> MCP: invoke existing list tool
-Runtime -> Host -> Board: structured review data
-User -> Board: resolve one review based on revision r3
-Host/SDK: prepare exact mutation once
-Runtime -> MCP: admitted update with stable logical identity
-MCP: commit review update once or return a defined conflict
-CLI -> Runtime: read the same plugin's review data
+User -> Runtime: install, approve and enable the selected release
+Runtime -> MCP: activate the review backend
+MCP -> Runtime: admitted list_reviews and update_review descriptors
+User -> Runtime: start a Session-owned Run with a review request
+Model -> Scope/Runtime: discover and call list_reviews
+Runtime -> MCP: dispatch the admitted read
+MCP -> Runtime: current review and revision
+Model -> Scope/Runtime: propose update_review with that revision
+Runtime -> User: existing approval Interrupt
+User -> Runtime: approve the captured call
+Runtime -> MCP: dispatch with the canonical logical Tool call identity
+MCP: atomically commit review transition and invocation receipt
+Runtime: retain the observed Tool result in the Run
+CLI -> Runtime: read the canonical Session and stored result
 ```
 
-Acceptance requires one backend resource and one business object owner, not identical UI. A stale review revision yields a conflict. Closing the board during the mutation leaves the accepted operation owned by Runtime. Losing acknowledgement leaves an unresolved prepared record rather than generating a new command.
+The backend alone owns current review state. Runtime's Tool result is a historical observation; a fresh backend read is required to observe later state. A stale review revision yields an explicit conflict. A lost response preserves the original Run's uncertainty, and backend receipt recovery does not retroactively settle that Run. Closing a client leaves accepted execution with Runtime. This scenario introduces no review board or host tool-call entrance.
 
 ### 20.2 Remote Runtime and local desktop
 
@@ -1397,9 +1306,9 @@ The scenarios below are proposed tests, not executed results. Prioritize actual 
 | U02 | Frame attempts host DOM/storage/native access | Access blocked on each advertised carrier. |
 | U03 | Opaque-origin message from wrong frame | Source/channel identity rejects it. |
 | U04 | Preload or view restoration | Does not dispatch a mutating action. |
-| U05 | Result already supplied initial data | No duplicate tool execution for first render. |
-| U06 | View closes while mutation is accepted | Local observation retires; Runtime/journal still owns completion. |
-| U07 | Runtime connection replaced | Old bridge cannot invoke or publish into successor. |
+| U05 | Host already supplied initial data | No duplicate initial query for first render. |
+| U06 | Trusted action form closes after command acceptance | Runtime and the shared journal retain the original command. |
+| U07 | Runtime connection replaced | Old bridge cannot read or publish through the successor. |
 | U08 | Unsupported CLI/IDE rendering | Generic operation/result or explicit unsupported presentation. |
 | U09 | Uninstall/revoke then open history | Safe generic content; no automatic old-code execution. |
 | U10 | Malicious deep link or filename | No automatic install, credential use, path escape, or privileged navigation. |
@@ -1542,7 +1451,7 @@ Each slice is the smallest complete boundary repair. It includes affected caller
 
 The proposed system makes independent capability delivery possible without weakening Flame's existing product model. It preserves Go for Runtime and reusable backend implementations, JavaScript for graphical views, and other languages where the external protocol already provides a useful boundary.
 
-Its principal benefit is not a smaller count of adapters. It is a smaller count of competing semantic owners. One tool contract can have local and remote executors. One business object can be manipulated by a tool, a page, and a CLI command. One plugin package can have backend capabilities and optional views without requiring every client to run the same component tree.
+Its principal benefit is not a smaller count of adapters. It is a smaller count of competing semantic owners. One tool contract can have local and remote executors. Backend business transitions use admitted tools; Runtime product transitions use their existing commands. Pages render bounded read projections. One plugin package can have backend capabilities and optional views without requiring every client to run the same component tree.
 
 The cost is explicit admission, asset authority, resource lifetime, versioning, and failure semantics. Those costs already exist whenever third-party code and multiple clients are involved; making them explicit is preferable to hiding them behind dynamic imports or broad RPC tunnels.
 

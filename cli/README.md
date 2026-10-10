@@ -216,6 +216,7 @@ false enablement or empty change maps; use the declared clear variant. Include r
 fields explicitly, including `enabled: false` and empty `serverChanges: {}`.
 Invalid requests and replay identities are rejected before the CLI opens Runtime.
 
-Tool-bound host actions, Runtime query actions and HTML resource delivery are unavailable.
-Installed MCP tools use Runtime's existing Run/Interrupt path; the CLI does
-not maintain a separate approval or effect state machine.
+Installed MCP tools use Runtime's existing Run/Interrupt path. Declared human
+actions use their closed Runtime command, as `plugins rename-session` does.
+The CLI does not host HTML pages or provide a plugin action entrance to MCP tools;
+approval and execution effects retain their Runtime owners.

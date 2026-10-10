@@ -457,7 +457,7 @@ two page handshakes, closed-client refusal, and predecessor cleanup preserving t
 successor. Every page and client is retired before its single terminal report.
 The temporary parent does not open product preferences or mutation journals, and
 credentials reach only its trusted connection binding. It does not verify the full
-React workbench or tool-bound review actions.
+React workbench.
 
 This gate passed with macOS 26.5/Wails beta.28 against an isolated Linux arm64 Runtime
 and Linux Go review backend. The packaged HTML came from the trajectory example;

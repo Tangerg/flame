@@ -93,8 +93,6 @@ call returns the revision conflict. That test also verifies process retirement
 and preserves the Run's original uncertainty after restart. Its model is scripted;
 the test needs no provider credentials or external service.
 
-Direct tool-bound host actions are unavailable. The released Scope ToolSet does
-not expose its standalone input/result contract or an authoritative settled-call
-projection for that root. That contract must be repaired and released in Scope
-before Flame can add the corresponding Run entrance and trusted form. Diagnostic
-`tools.invoke` cannot substitute for a Session-owned, approved, recoverable Run.
+This package's MCP tools execute through Session-owned Runs and the existing
+approval path. It has no review board, trusted tool-call form, or HTML bridge to
+backend operations. Diagnostic `tools.invoke` is not a plugin action entrance.
