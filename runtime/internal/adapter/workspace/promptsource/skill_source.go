@@ -341,3 +341,7 @@ func (b *boundedSkillResource) tooLarge() error {
 		domainskills.MaxSkillResourceBytes,
 	)
 }
+
+func (r *runtimeSkillSource) documentPath(name string) string {
+	return filepath.Join(r.root, name, sdk.SkillFile)
+}

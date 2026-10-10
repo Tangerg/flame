@@ -29,8 +29,8 @@ type SkillUsageRecorder interface {
 // loading a skill records a use so the curator can tell active skills from idle
 // ones.
 //
-// Rebuilt per resolution because the project directory depends on the Run's
-// working directory.
+// Rebuilt per resolution because both the project directory and admitted source
+// selection belong to that execution. Existing tools never change libraries.
 func BuildReaders(ctx context.Context, cwd, userDir string, recorder SkillUsageRecorder, packages promptsource.PackageSkills) ([]toolcontract.Tool, []plugin.Dependency, error) {
 	var decorateUser func(skillspec.ResourceSource) skillspec.ResourceSource
 	if recorder != nil {

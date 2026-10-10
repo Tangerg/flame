@@ -191,3 +191,47 @@ func TestBuildReadersAbsentWhenNoDirs(t *testing.T) {
 		t.Errorf("Build returned %d tools without a skills directory", len(tools))
 	}
 }
+
+func TestBuiltSkillReaderKeepsItsSelectedLibraryAfterDeletion(t *testing.T) {
+	workspace, user := t.TempDir(), t.TempDir()
+	project := promptsource.ProjectSkillDir(workspace)
+	writeSkill(t, project, "shared", "project copy")
+	writeSkill(t, user, "shared", "user copy")
+	recorder := &recordingProbe{}
+	tools, _, err := BuildReaders(t.Context(), workspace, user, recorder, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var loader toolcontract.Tool
+	for _, candidate := range tools {
+		if candidate.Definition().Name == "load_skill" {
+			loader = candidate
+		}
+	}
+	if loader == nil {
+		t.Fatal("load_skill was not available")
+	}
+	if err := os.RemoveAll(filepath.Join(project, "shared")); err != nil {
+		t.Fatal(err)
+	}
+	if loaded, err := callTextTool(t.Context(), loader, `{"name":"shared"}`); err == nil || loaded != "" {
+		t.Fatalf("existing reader fell through to the user library: %q, %v", loaded, err)
+	}
+	if len(recorder.names) != 0 {
+		t.Fatalf("a shadowed library acquired usage: %v", recorder.names)
+	}
+	tools, _, err = BuildReaders(t.Context(), workspace, user, recorder, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, candidate := range tools {
+		if candidate.Definition().Name == "load_skill" {
+			loaded, err := callTextTool(t.Context(), candidate, `{"name":"shared"}`)
+			if err != nil || !strings.Contains(loaded, "instructions for shared") || len(recorder.names) != 1 || recorder.names[0] != "shared" {
+				t.Fatalf("fresh reader did not select and record the user library: %q, %v, %v", loaded, recorder.names, err)
+			}
+			return
+		}
+	}
+	t.Fatal("fresh load_skill was not available")
+}

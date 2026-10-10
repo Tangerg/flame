@@ -5,10 +5,9 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
-	"maps"
+	"io/fs"
 	"os"
 	"path/filepath"
-	"slices"
 
 	sdk "github.com/Tangerg/scope/skills"
 
@@ -29,38 +28,22 @@ func ProjectSkillDir(workspaceRoot string) string {
 	return filepath.Join(workspaceRoot, projectSkillsSubdir)
 }
 
-// OverlaySkillSource builds the overlaid skill source: the selected workspace's
-// project directory layered over userDir, the project copy winning on name
-// collisions. Returns nil when
-// neither directory exists, so a session that ships no skills gets no skill tool
-// at all rather than one that always lists nothing.
-//
-// decorateUser, when non-nil, wraps the USER source only (e.g. to record
-// loads for the idle-lifecycle curator). It must not wrap the project source:
-// only the user library is auto-curated, and the overlay resolves a shadowed
-// name to the project copy, so decorating the user source records exactly the
-// user-resolved loads and nothing else.
-//
-// Building a source resolves its physical confinement root and wraps it with
-// Scope's directory repository, so it remains cheap enough to call per tool
-// resolution.
+// OverlaySkillSource resolves sources once for an execution. Its callable names
+// and installation dependencies share that selection; later directory changes
+// cannot add a name or replace its authority. Selected documents remain editable.
+// decorateUser records only loads selected from the user library.
 func OverlaySkillSource(ctx context.Context, workspaceRoot, userDir string, packages PackageSkills, decorateUser func(sdk.ResourceSource) sdk.ResourceSource) (sdk.ResourceSource, []plugin.Dependency, error) {
-	layers, err := openRuntimeSkillLayers(ctx, workspaceRoot, userDir, packages)
+	selected, err := resolveSkills(ctx, workspaceRoot, userDir, packages)
 	if err != nil {
 		return nil, nil, err
 	}
-	dependencies, err := layers.dependencies(ctx)
-	if err != nil {
+	if selected == nil {
+		return nil, nil, nil
+	}
+	if _, err := selected.list(ctx); err != nil {
 		return nil, nil, err
 	}
-	return layers.overlay(decorateUser), dependencies, nil
-}
-
-func (l runtimeSkillLayers) overlay(decorateUser func(sdk.ResourceSource) sdk.ResourceSource) sdk.ResourceSource {
-	if l.project == nil && l.user == nil && len(l.packages) == 0 {
-		return nil
-	}
-	return &runtimeSkillOverlay{layers: l, decorateUser: decorateUser}
+	return &runtimeSkillOverlay{selected: selected, decorateUser: decorateUser}, selected.dependencies(), nil
 }
 
 // ListSkills enumerates the skills visible from the selected workspace layered
@@ -69,22 +52,22 @@ func (l runtimeSkillLayers) overlay(decorateUser func(sdk.ResourceSource) sdk.Re
 // rather than erroring. Malformed selected documents produce diagnostics;
 // unrelated I/O failures still fail the query.
 func ListSkills(ctx context.Context, workspaceRoot, userDir string, packages PackageSkills) (workspaceapp.SkillDiscovery, error) {
-	layers, err := openRuntimeSkillLayers(ctx, workspaceRoot, userDir, packages)
+	selected, err := resolveSkills(ctx, workspaceRoot, userDir, packages)
 	if err != nil {
 		return workspaceapp.SkillDiscovery{}, err
 	}
-	return layers.list(ctx)
+	return selected.list(ctx)
 }
 
 // Discovery and execution use the same precedence-resolved source, including
 // when a broken higher-precedence document hides an otherwise valid copy.
 type runtimeSkillOverlay struct {
-	layers       runtimeSkillLayers
+	selected     *resolvedSkills
 	decorateUser func(sdk.ResourceSource) sdk.ResourceSource
 }
 
 func (s *runtimeSkillOverlay) List(ctx context.Context) ([]sdk.Summary, error) {
-	catalog, err := s.layers.list(ctx)
+	catalog, err := s.selected.list(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -95,71 +78,53 @@ func (s *runtimeSkillOverlay) List(ctx context.Context) ([]sdk.Summary, error) {
 	return summaries, nil
 }
 
-func (l runtimeSkillLayers) get(ctx context.Context, name string) (workspaceapp.SkillDetail, error) {
-	selected, err := l.modelSource(ctx, name, nil)
+func (s *runtimeSkillOverlay) Lookup(ctx context.Context, name string) (sdk.Summary, error) {
+	source, err := s.modelSource(ctx, name)
+	if err != nil {
+		return sdk.Summary{}, err
+	}
+	return source.Lookup(ctx, name)
+}
+
+func (s *runtimeSkillOverlay) Load(ctx context.Context, name string) (*sdk.Skill, error) {
+	source, err := s.modelSource(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+	return source.Load(ctx, name)
+}
+
+func (s *runtimeSkillOverlay) OpenResource(ctx context.Context, name, resource string) (fs.File, error) {
+	source, err := s.modelSource(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+	return source.OpenResource(ctx, name, resource)
+}
+
+func (s *resolvedSkills) get(ctx context.Context, name string) (workspaceapp.SkillDetail, error) {
+	selected, err := s.find(ctx, name)
 	if err != nil {
 		return workspaceapp.SkillDetail{}, err
 	}
-	for _, layer := range []struct {
-		source *runtimeSkillSource
-		origin workspaceapp.SkillSource
-	}{
-		{l.project, workspaceapp.ProjectSkillSource()}, {l.user, workspaceapp.UserSkillSource()},
-	} {
-		if layer.source == nil || layer.source != selected {
-			continue
-		}
-		skill, content, err := layer.source.document(ctx, name)
-		if err != nil {
-			return workspaceapp.SkillDetail{}, err
-		}
-		digest := sha256.Sum256(content)
-		return workspaceapp.SkillDetail{
-			SkillSummary: workspaceapp.SkillSummary{Name: skill.Name, Description: skill.Description, Source: layer.origin},
-			Path:         filepath.Join(layer.source.root, name, sdk.SkillFile), Revision: fmt.Sprintf("%x", digest), Instructions: skill.Instructions,
-		}, nil
-	}
-	packageSource, err := l.packageSource(name)
-	if err != nil {
-		return workspaceapp.SkillDetail{}, err
-	}
-	origin, err := workspaceapp.InstallationSkillSource(packageSource.bundle.Dependency)
-	if err != nil {
-		return workspaceapp.SkillDetail{}, err
-	}
-	skill, content, err := packageSource.document(ctx, name)
+	skill, content, err := selected.source.document(ctx, name)
 	if err != nil {
 		return workspaceapp.SkillDetail{}, err
 	}
 	digest := sha256.Sum256(content)
 	return workspaceapp.SkillDetail{
-		SkillSummary: workspaceapp.SkillSummary{Name: skill.Name, Description: skill.Description, Source: origin},
-		Path:         filepath.Join(packageSource.bundle.Root, name, sdk.SkillFile), Revision: fmt.Sprintf("%x", digest), Instructions: skill.Instructions,
+		SkillSummary: workspaceapp.SkillSummary{Name: skill.Name, Description: skill.Description, Source: selected.origin},
+		Path:         selected.source.documentPath(name), Revision: fmt.Sprintf("%x", digest), Instructions: skill.Instructions,
 	}, nil
 }
 
-func (l runtimeSkillLayers) list(ctx context.Context) (workspaceapp.SkillDiscovery, error) {
-	names := make(map[string]struct{})
-	for _, source := range []*runtimeSkillSource{l.project, l.user} {
-		if source == nil {
-			continue
-		}
-		entries, err := source.directoryEntries(ctx)
-		if err != nil {
-			return workspaceapp.SkillDiscovery{}, err
-		}
-		for _, name := range skillCandidateNames(entries) {
-			names[name] = struct{}{}
-		}
-	}
-	for _, source := range l.packages {
-		for _, name := range source.bundle.Names {
-			names[name] = struct{}{}
-		}
-	}
+func (s *resolvedSkills) list(ctx context.Context) (workspaceapp.SkillDiscovery, error) {
 	out := workspaceapp.SkillDiscovery{Skills: []workspaceapp.SkillSummary{}, Diagnostics: []workspaceapp.SkillDiagnostic{}}
-	for _, name := range slices.Sorted(maps.Keys(names)) {
-		detail, err := l.get(ctx, name)
+	if s == nil {
+		return out, nil
+	}
+	for _, name := range s.names() {
+		detail, err := s.get(ctx, name)
 		if context.Cause(ctx) != nil {
 			return workspaceapp.SkillDiscovery{}, context.Cause(ctx)
 		}
@@ -181,40 +146,12 @@ func (l runtimeSkillLayers) list(ctx context.Context) (workspaceapp.SkillDiscove
 		case err != nil:
 			return workspaceapp.SkillDiscovery{}, err
 		}
-		if _, installed := detail.Source.Installation(); !installed && slices.ContainsFunc(l.packages, func(source packageSkillSource) bool { return slices.Contains(source.bundle.Names, name) }) {
+		if _, installed := detail.Source.Installation(); !installed && s.byName[name].packageCopy {
 			out.Diagnostics = append(out.Diagnostics, workspaceapp.SkillDiagnostic{Name: name, Detail: "An explicit project/user Skill overrides the installed package copy."})
 		}
 		out.Skills = append(out.Skills, detail.SkillSummary)
 	}
 	return out, out.Validate()
-}
-
-type runtimeSkillLayers struct {
-	packages []packageSkillSource
-	project  *runtimeSkillSource
-	user     *runtimeSkillSource
-}
-
-func openRuntimeSkillLayers(ctx context.Context, workspaceRoot, userDir string, packages PackageSkills) (runtimeSkillLayers, error) {
-	project, err := openRuntimeSkillSource(ProjectSkillDir(workspaceRoot), workspaceRoot)
-	if err != nil {
-		return runtimeSkillLayers{}, err
-	}
-	user, err := openRuntimeSkillSource(userDir, userDir)
-	if err != nil {
-		return runtimeSkillLayers{}, err
-	}
-	layers := runtimeSkillLayers{project: project, user: user}
-	if packages != nil {
-		bundles, err := packages.SkillBundles(ctx)
-		if err != nil {
-			return layers, err
-		}
-		for _, bundle := range bundles {
-			layers.packages = append(layers.packages, packageSkillSource{bundle: bundle, authority: packages})
-		}
-	}
-	return layers, nil
 }
 
 func openRuntimeSkillSource(root, boundary string) (*runtimeSkillSource, error) {

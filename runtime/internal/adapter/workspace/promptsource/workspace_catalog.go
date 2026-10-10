@@ -33,11 +33,11 @@ func (w Skills) Get(ctx context.Context, cwd, name string) (workspaceapp.SkillDe
 	if err := domainskills.ValidateName(name); err != nil {
 		return workspaceapp.SkillDetail{}, err
 	}
-	layers, err := openRuntimeSkillLayers(ctx, cwd, w.userDir, w.packages)
+	selected, err := resolveSkills(ctx, cwd, w.userDir, w.packages)
 	if err != nil {
 		return workspaceapp.SkillDetail{}, err
 	}
-	detail, err := layers.get(ctx, name)
+	detail, err := selected.get(ctx, name)
 	if context.Cause(ctx) != nil {
 		return workspaceapp.SkillDetail{}, context.Cause(ctx)
 	}

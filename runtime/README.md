@@ -1101,7 +1101,17 @@ An unset utility role uses the Runtime composition's default model selection. It
 
 `skills.discovered.list` returns a complete bounded `skills` catalog and `diagnostics`, replacing the former page shape. `skills.discovered.get` / `GetDiscoveredSkill` reads one named document on demand and returns its selected scope, source path, instructions, and SHA-256 revision of the exact document bytes. Upgrade consumers together; there is no legacy page adapter.
 
-Discovery, inspection, and model loading use the same Scope resolver. Project bundles own a colliding name even when malformed; they never expose the user copy as a fallback. Invalid or oversized selected documents appear as diagnostics alongside usable entries. Filesystem, confinement, capacity, and cancellation failures remain explicit query failures. Instructions retain the existing 1 MiB document bound and source directories retain their entry bounds. Inspection describes current authored content, not proof that it was loaded into an existing model conversation.
+Discovery, inspection, and model loading share one source-selection rule and Scope's document format. Project bundles own a colliding name even when malformed; they never expose the user copy as a fallback. Invalid or oversized selected documents appear as diagnostics alongside usable entries. Filesystem, confinement, capacity, and cancellation failures remain explicit query failures. Instructions retain the existing 1 MiB document bound and source directories retain their entry bounds. Inspection describes current authored content, not proof that it was loaded into an existing model conversation.
+
+Each execution resolves its callable Skill names, selected sources and installation
+dependencies together. A later directory change cannot add a name, replace its source
+or resolve an admitted package conflict inside that execution. Removing the selected
+bundle fails its reads; a fresh execution adopts the current selection. Authored
+documents can still be edited within their selected bundle. Package resource authority
+retains its exact release dependency even when its document is unavailable or omitted
+from discovery, and every resource read still checks current installation authority
+and verified bytes. Discovery and inspection resolve a fresh selection for each query.
+No storage or protocol format changes are required.
 
 Managed catalogs, proposal review, approval, and idle curation load verified document bytes through the same Scope format and directory-name binding used by discovery and package admission. Idle curation leaves invalid documents in place. Archive and restore serialize lifecycle moves and usage changes under one library lease; a replay does not reset subsequent activity. Malformed usage metadata fails recording and curation without replacing history or moving an active Skill. Repair the retained metadata explicitly before retrying; Runtime does not reset it to a fresh grace floor.
 

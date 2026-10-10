@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -187,6 +188,13 @@ func TestSkillDiscoveryDistinguishesUnavailablePackagesFromNameConflicts(t *test
 			}
 			if !strings.Contains(catalog.Diagnostics[0].Detail, "unavailable") || strings.Contains(catalog.Diagnostics[0].Detail, "Multiple installations") {
 				t.Fatalf("unavailable package was misdiagnosed: %+v", catalog.Diagnostics[0])
+			}
+			model, dependencies, err := promptsource.OverlaySkillSource(t.Context(), "", "", NewSkills(releases, store), nil)
+			if err != nil || len(dependencies) != 2 || !slices.ContainsFunc(dependencies, func(d plugin.Dependency) bool { return d.Digest == broken.Digest() }) {
+				t.Fatalf("unavailable selected package lost its execution binding: %+v, %v", dependencies, err)
+			}
+			if _, err := model.Load(t.Context(), "broken"); !errors.Is(err, workspaceapp.ErrSkillUnavailable) {
+				t.Fatalf("retained dependency bypassed current package verification: %v", err)
 			}
 		})
 	}

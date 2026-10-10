@@ -132,7 +132,14 @@ func TestMergedRuntimeSkillSourcePreservesBundleOwnership(t *testing.T) {
 	if err := os.Mkdir(filepath.Join(projectRoot, "shared"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := source.Load(t.Context(), "shared"); !errors.Is(err, sdk.ErrInvalidSkill) || errors.Is(err, sdk.ErrSkillNotFound) {
+	if skill, err := source.Load(t.Context(), "shared"); err != nil || skill.Instructions != "user instructions" {
+		t.Fatalf("existing execution changed its selected bundle: %+v, %v", skill, err)
+	}
+	fresh, _, err := OverlaySkillSource(t.Context(), workspace, userRoot, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fresh.Load(t.Context(), "shared"); !errors.Is(err, sdk.ErrInvalidSkill) || errors.Is(err, sdk.ErrSkillNotFound) {
 		t.Fatalf("broken project bundle must not expose the lower-precedence user copy: %v", err)
 	}
 }
@@ -428,8 +435,109 @@ func TestPackageSkillConflictCanOnlyBeResolvedByAnExplicitSource(t *testing.T) {
 			if len(catalog.Skills) != 0 || !strings.Contains(catalog.Diagnostics[0].Detail, "Multiple installations") || !errors.Is(err, workspaceapp.ErrSkillUnavailable) {
 				t.Fatalf("conflicted Skill = %+v, %+v, %v", catalog, skill, err)
 			}
+			writeRuntimeSkill(t, ProjectSkillDir(workspace), "review", "Inspect the project.")
+			if _, err := source.Load(t.Context(), "review"); !errors.Is(err, workspaceapp.ErrSkillUnavailable) {
+				t.Fatalf("a later override changed an admitted conflict: %v", err)
+			}
 		} else if len(catalog.Skills) != 1 || !strings.Contains(catalog.Diagnostics[0].Detail, "overrides") || err != nil || skill.Instructions != "Inspect the project." {
 			t.Fatalf("explicit override = %+v, %+v, %v", catalog, skill, err)
 		}
+	}
+}
+
+func TestExecutionSkillSourceCannotFallThroughAfterOverrideRemoval(t *testing.T) {
+	for _, scope := range []string{"project", "user"} {
+		t.Run(scope, func(t *testing.T) {
+			workspace, user := t.TempDir(), t.TempDir()
+			root := user
+			if scope == "project" {
+				root = ProjectSkillDir(workspace)
+			}
+			bundle := PackageSkillBundle{Root: t.TempDir(), Names: []string{"review"}, Dependency: plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("release")}}
+			writeRuntimeSkill(t, bundle.Root, "review", "package instructions")
+			writeRuntimeSkill(t, root, "review", "local instructions")
+			packages := packageSkillFixtures{bundle}
+			source, dependencies, err := OverlaySkillSource(t.Context(), workspace, user, packages, nil)
+			if err != nil || len(dependencies) != 0 {
+				t.Fatalf("local selection = %v, %v", dependencies, err)
+			}
+			if err := os.RemoveAll(filepath.Join(root, "review")); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := source.Lookup(t.Context(), "review"); !errors.Is(err, sdk.ErrSkillNotFound) {
+				t.Fatalf("lookup switched to an unadmitted package: %v", err)
+			}
+			if _, err := source.Load(t.Context(), "review"); !errors.Is(err, sdk.ErrSkillNotFound) {
+				t.Fatalf("load switched to an unadmitted package: %v", err)
+			}
+			if resource, err := source.OpenResource(t.Context(), "review", sdk.SkillFile); err == nil {
+				_ = resource.Close()
+				t.Fatal("resource read switched to an unadmitted package")
+			}
+			listed, err := source.List(t.Context())
+			if err != nil || len(listed) != 0 {
+				t.Fatalf("catalog switched to an unadmitted package: %+v, %v", listed, err)
+			}
+			fresh, dependencies, err := OverlaySkillSource(t.Context(), workspace, user, packages, nil)
+			if err != nil || len(dependencies) != 1 || dependencies[0] != bundle.Dependency {
+				t.Fatalf("fresh selection did not admit its package: %v, %v", dependencies, err)
+			}
+			loaded, err := fresh.Load(t.Context(), "review")
+			if err != nil || loaded.Instructions != "package instructions" {
+				t.Fatalf("fresh package selection = %+v, %v", loaded, err)
+			}
+		})
+	}
+}
+
+func TestExecutionSkillSelectionDoesNotAdmitLaterNamesOrOverrides(t *testing.T) {
+	workspace := t.TempDir()
+	project := ProjectSkillDir(workspace)
+	writeRuntimeSkill(t, project, "local", "original local instructions")
+	bundle := PackageSkillBundle{Root: t.TempDir(), Names: []string{"review"}, Dependency: plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("release")}}
+	writeRuntimeSkill(t, bundle.Root, "review", "package instructions")
+	source, dependencies, err := OverlaySkillSource(t.Context(), workspace, "", packageSkillFixtures{bundle}, nil)
+	if err != nil || len(dependencies) != 1 || dependencies[0] != bundle.Dependency {
+		t.Fatalf("package selection = %v, %v", dependencies, err)
+	}
+	writeRuntimeSkill(t, project, "review", "later override")
+	writeRuntimeSkill(t, project, "later", "later name")
+	loaded, err := source.Load(t.Context(), "review")
+	if err != nil || loaded.Instructions != "package instructions" {
+		t.Fatalf("existing selection was replaced: %+v, %v", loaded, err)
+	}
+	if _, err := source.Load(t.Context(), "later"); !errors.Is(err, sdk.ErrSkillNotFound) {
+		t.Fatalf("a later name entered an existing execution: %v", err)
+	}
+	listed, err := source.List(t.Context())
+	if err != nil || len(listed) != 2 {
+		t.Fatalf("execution catalog changed membership: %+v, %v", listed, err)
+	}
+}
+
+func TestSkillResourceAuthorityIsRetainedWithoutADiscoverableDocument(t *testing.T) {
+	bundle := PackageSkillBundle{Root: t.TempDir(), Names: []string{"review"}, Dependency: plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("release")}}
+	writeRuntimeSkill(t, bundle.Root, "review", "package instructions")
+	if err := os.WriteFile(filepath.Join(bundle.Root, "review", sdk.SkillFile), []byte("invalid document"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(bundle.Root, "review", "reference.txt"), []byte("package resource"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	source, dependencies, err := OverlaySkillSource(t.Context(), "", "", packageSkillFixtures{bundle}, nil)
+	if err != nil || len(dependencies) != 1 || dependencies[0] != bundle.Dependency {
+		t.Fatalf("callable resource lost its package authority: %v, %v", dependencies, err)
+	}
+	listed, err := source.List(t.Context())
+	if err != nil || len(listed) != 0 {
+		t.Fatalf("invalid document was discovered: %+v, %v", listed, err)
+	}
+	resource, err := source.OpenResource(t.Context(), "review", "reference.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	content, err := io.ReadAll(resource)
+	if err := errors.Join(err, resource.Close()); err != nil || string(content) != "package resource" {
+		t.Fatalf("selected package resource = %q, %v", content, err)
 	}
 }

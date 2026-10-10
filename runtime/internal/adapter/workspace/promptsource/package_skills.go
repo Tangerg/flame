@@ -3,15 +3,12 @@ package promptsource
 import (
 	"bytes"
 	"context"
-	"errors"
 	"io/fs"
-	"slices"
+	"path/filepath"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
-
-	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skilldocument"
 	sdk "github.com/Tangerg/scope/skills"
 )
@@ -28,86 +25,6 @@ type PackageSkills interface {
 type packageSkillSource struct {
 	bundle    PackageSkillBundle
 	authority PackageSkills
-}
-
-var errPackageSkillConflict = errors.New("promptsource: package Skill name conflict")
-
-func (l runtimeSkillLayers) packageSource(name string) (*packageSkillSource, error) {
-	var selected *packageSkillSource
-	for index := range l.packages {
-		candidate := &l.packages[index]
-		if !slices.Contains(candidate.bundle.Names, name) {
-			continue
-		}
-		if selected != nil {
-			return nil, errors.Join(workspaceapp.ErrSkillUnavailable, errPackageSkillConflict)
-		}
-		selected = candidate
-	}
-	if selected == nil {
-		return nil, sdk.ErrSkillNotFound
-	}
-	return selected, nil
-}
-func (l runtimeSkillLayers) modelSource(ctx context.Context, name string, decorateUser func(sdk.ResourceSource) sdk.ResourceSource) (sdk.ResourceSource, error) {
-	for _, source := range []*runtimeSkillSource{l.project, l.user} {
-		if source == nil {
-			continue
-		}
-		entries, err := source.directoryEntries(ctx)
-		if err != nil {
-			return nil, err
-		}
-		if slices.Contains(skillCandidateNames(entries), name) {
-			if source == l.user && decorateUser != nil {
-				return decorateUser(source), nil
-			}
-			return source, nil
-		}
-	}
-	selected, err := l.packageSource(name)
-	if err != nil {
-		return nil, err
-	}
-	return selected, nil
-}
-func (s *runtimeSkillOverlay) Lookup(ctx context.Context, name string) (sdk.Summary, error) {
-	source, err := s.layers.modelSource(ctx, name, s.decorateUser)
-	if err != nil {
-		return sdk.Summary{}, err
-	}
-	return source.Lookup(ctx, name)
-}
-func (s *runtimeSkillOverlay) Load(ctx context.Context, name string) (*sdk.Skill, error) {
-	source, err := s.layers.modelSource(ctx, name, s.decorateUser)
-	if err != nil {
-		return nil, err
-	}
-	return source.Load(ctx, name)
-}
-func (s *runtimeSkillOverlay) OpenResource(ctx context.Context, name, resource string) (fs.File, error) {
-	source, err := s.layers.modelSource(ctx, name, s.decorateUser)
-	if err != nil {
-		return nil, err
-	}
-	return source.OpenResource(ctx, name, resource)
-}
-func (l runtimeSkillLayers) dependencies(ctx context.Context) ([]plugin.Dependency, error) {
-	catalog, err := l.list(ctx)
-	if err != nil {
-		return nil, err
-	}
-	var result []plugin.Dependency
-	for _, skill := range catalog.Skills {
-		dependency, found := skill.Source.Installation()
-		if !found {
-			continue
-		}
-		if !slices.Contains(result, dependency) {
-			result = append(result, dependency)
-		}
-	}
-	return result, nil
 }
 
 func (s *packageSkillSource) Lookup(ctx context.Context, name string) (sdk.Summary, error) {
@@ -168,4 +85,8 @@ func (s *packageSkillSource) List(ctx context.Context) ([]sdk.Summary, error) {
 		result = append(result, value)
 	}
 	return result, nil
+}
+
+func (s *packageSkillSource) documentPath(name string) string {
+	return filepath.Join(s.bundle.Root, name, sdk.SkillFile)
 }

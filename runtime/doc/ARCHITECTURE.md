@@ -379,6 +379,14 @@ Production construction consumes the complete storage bundle opened by persisten
 
 Skill discovery, library curation, and proposal review require complete implementations. Bootstrap requires an absolute user Skill directory and constructs its store, usage recorder, and maintenance workers even when the library is empty. A Skill store requires an absolute library root and a valid scope, and a maintenance component requires its sweeper at construction.
 
+The prompt-source adapter resolves Skill source precedence once per consumer.
+An execution's callable names, source authority and installation dependencies derive
+from that same immutable selection; metadata discovery cannot omit a dependency for
+an otherwise callable package resource. Directory changes never retarget an existing
+execution or reveal a shadowed source. Interactive reads resolve again; selected
+authored documents remain editable, and installed resource reads retain live authority
+and byte verification at the package boundary.
+
 Every goroutine has one owner, stop condition, and join path. Request cancellation governs the request; accepted Run execution uses a Runtime-owned lifetime. Transport disconnect does not implicitly cancel durable execution.
 
 Language-server clients own their launched process group, including descendants left by a launcher. Initialization failure, natural launcher exit, and shutdown share one stop operation and join the process waiter. Inherited output pipes have a bounded close delay, so a descendant cannot indefinitely prevent resource reclamation.
