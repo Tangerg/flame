@@ -483,5 +483,18 @@ new actions were refused, and reapproval created a new page instance. A trusted 
 hid the guest and restored the same instance afterward. Connection replacement cleared
 the old selection and contributions; reconnecting read the canonical Session and
 created a new page. Explicit page closure and application shutdown completed, and both
-the parent application and Runtime exited successfully. This manual check called no
-model provider and does not establish populated-trajectory rendering on the native UI.
+the parent application and Runtime exited successfully. This lifecycle check called no
+model provider.
+
+A second full-workbench check used the same sandbox isolation and deployment floor,
+with the production Anthropic HTTP/SSE adapter connected to an owned offline provider
+fixture inside the isolated Linux Runtime's internal network. A normal Session-owned
+Run discovered the real review backend's deferred tools, read revision 1, updated it to
+revision 2 and read the committed result again. Each backend call passed through a
+one-time approval Interrupt in the trusted workbench. CLI read the same persisted
+results and completed Run. The native trajectory page refreshed 14 canonical records,
+including six completed model calls with recorded usage and no unknown call outcomes.
+Expanding records displayed model and Tool evidence; filtering changed only the loaded
+observations and preserved their counts. Application and Runtime shutdown both exited
+successfully. No external provider service was contacted; the fixture's responses and
+usage were synthetic, so this check does not qualify a live provider or its accounting.
