@@ -10,17 +10,6 @@
 version: '3'
 
 tasks:
-  go:work:sync:
-    summary: Synchronizes the application workspace
-    internal: true
-    # Flame is an application workspace, not a set of separately published libraries.
-    # The root go.work owns local module resolution; module-scoped tidy would incorrectly
-    # try to download the unpublished localruntime handoff from GitHub.
-    # Universal builds may invoke this from parallel deps, so keep the write once-only.
-    run: once
-    cmds:
-      - go work sync
-
   install:runtime-client:deps:
     summary: Install the Runtime-owned TypeScript client dependencies
     run: once

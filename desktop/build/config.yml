@@ -41,8 +41,6 @@ dev_mode:
       type: once
     - cmd: wails3 task common:dev:frontend
       type: background
-    - cmd: go work sync
-      type: blocking
     # DEV=true, or a Go change costs a full production frontend build: typecheck plus a
     # minified bundle, neither of which the webview loads — it is served by Vite. The dev
     # build exists only so `//go:embed all:frontend/dist` has something to embed.
