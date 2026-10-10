@@ -43,6 +43,31 @@ func TestCanonicalNormalizesSpellingsAndSymlinks(t *testing.T) {
 	}
 }
 
+func TestCanonicalRefusesUnresolvedPhysicalIdentity(t *testing.T) {
+	link := filepath.Join(t.TempDir(), "cycle")
+	if err := os.Symlink("cycle", link); err != nil {
+		t.Fatal(err)
+	}
+	if identity, err := workspaceadapter.Canonical(link); err == nil || errors.Is(err, workspaceadapter.ErrAbsolutePathRequired) {
+		t.Fatalf("Canonical cycle = (%q, %v), want physical resolution failure", identity, err)
+	}
+}
+
+func TestInspectPreservesThePhysicalIdentityOfMissingWorkspaces(t *testing.T) {
+	root := t.TempDir()
+	physicalRoot := mustCanonical(t, root)
+	link := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(root, link); err != nil {
+		t.Fatal(err)
+	}
+	missing := filepath.Join(link, "missing", "workspace")
+	identity, err := (workspaceadapter.Resolver{}).Inspect(missing)
+	want := filepath.Join(physicalRoot, "missing", "workspace")
+	if err != nil || !identity.Missing || identity.Path != want || identity.ProjectRoot != want {
+		t.Fatalf("Inspect missing alias = (%+v, %v), want physical missing identity %q", identity, err, want)
+	}
+}
+
 func TestResolverConfinesWorkspacePaths(t *testing.T) {
 	resolver := workspaceadapter.Resolver{}
 	root := t.TempDir()

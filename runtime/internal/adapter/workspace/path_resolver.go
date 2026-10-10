@@ -18,16 +18,14 @@ var ErrNotDirectory = errors.New("workspace: not a directory")
 // process cwd. Workspace roots are resolved once at process/session boundaries.
 var ErrAbsolutePathRequired = errors.New("workspace: absolute path required")
 
-// Canonical returns the stable identity used for working-tree locks,
-// checkpoints, and per-cwd indexes. Missing paths are still normalized to an
-// absolute spelling; callers that require existence use Resolver. Relative
-// values are rejected because resolving them would depend on the process cwd.
+// Canonical resolves existing aliases while retaining a not-yet-created suffix.
+// An unresolved physical identity cannot become a competing lexical identity.
+// Relative values are rejected because they depend on the process cwd.
 func Canonical(path string) (string, error) {
-	canonical, err := pathidentity.Canonical("", path)
-	if err != nil {
+	if !filepath.IsAbs(path) {
 		return "", ErrAbsolutePathRequired
 	}
-	return canonical, nil
+	return pathidentity.Resolve("", path)
 }
 
 // Resolver implements the application session coordinator's cwd-resolution

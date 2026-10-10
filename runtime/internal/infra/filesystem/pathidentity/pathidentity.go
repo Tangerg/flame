@@ -38,21 +38,6 @@ func Resolve(root, path string) (string, error) {
 	return resolve(abs, 0)
 }
 
-// Canonical returns the physical identity when it can be established and the
-// absolute lexical identity otherwise. Use Resolve instead when failure must
-// be handled conservatively at a trust boundary.
-func Canonical(root, path string) (string, error) {
-	abs, err := absolute(root, path)
-	if err != nil {
-		return "", err
-	}
-	resolved, err := resolve(abs, 0)
-	if err != nil {
-		return abs, nil
-	}
-	return resolved, nil
-}
-
 // Contains reports whether target is root itself or lies below it. Callers at
 // a filesystem trust boundary must pass values produced by Resolve so symlink
 // aliases have already been eliminated.
