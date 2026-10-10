@@ -360,6 +360,10 @@ metadata and reject source replacement or mutation observed after reading; cance
 retains its cause and cannot complete a copy successfully. The package adapter owns
 archive entry safety, extracted-byte quotas, release digests and the content index that
 checks the exact resource bytes returned to a caller.
+Staging owns one destination tree for files, declared directories and implied parents.
+It rejects each duplicate, ambiguous spelling or file/directory conflict before writing
+that destination. Implied parents count toward the entry limit; a later declaration of
+the same directory is accepted once without changing the release's content identity.
 The immutable release catalog owns the declaration accepted at first admission and is the
 only owner of release content: an installation names its selected and staged releases by
 digest. Installation reads hydrate selected and staged catalog declarations in the same

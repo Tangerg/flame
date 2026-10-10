@@ -27,10 +27,22 @@ type staging struct {
 	path   string
 	root   *os.Root
 	copied int64
-	// entries rejects a repeated name; folded rejects two names that would
-	// select one destination on a case-insensitive or normalizing filesystem.
-	entries map[string]bool
-	folded  map[string]string
+	// entries owns the complete destination tree, including implied parents.
+	// Keys identify one destination on case-insensitive or normalizing filesystems.
+	entries map[string]packageEntry
+}
+
+type entryKind uint8
+
+const (
+	implicitDirectory entryKind = iota + 1
+	directoryEntry
+	fileEntry
+)
+
+type packageEntry struct {
+	name string
+	kind entryKind
 }
 
 func newStaging(directory string) (*staging, error) {
@@ -42,7 +54,7 @@ func newStaging(directory string) (*staging, error) {
 	if err != nil {
 		return nil, errors.Join(fmt.Errorf("pluginpackage: open staging directory: %w", err), os.RemoveAll(staged))
 	}
-	return &staging{path: staged, root: root, entries: map[string]bool{}, folded: map[string]string{}}, nil
+	return &staging{path: staged, root: root, entries: map[string]packageEntry{}}, nil
 }
 
 // discard releases the staging capability and removes staging that was not
@@ -104,7 +116,7 @@ func (s *staging) copyDirectory(ctx context.Context, input *os.Root) error {
 			if name == "." {
 				return nil
 			}
-			return s.admitEntry(name, true)
+			return s.admitEntry(name, directoryEntry)
 		}
 		info, err := entry.Info()
 		if err != nil {
@@ -143,7 +155,7 @@ func (s *staging) extractArchive(ctx context.Context, source string, expected fs
 			if entry.Mode()&fs.ModeType != fs.ModeDir {
 				return fmt.Errorf("%w: invalid directory mode", plugin.ErrInvalid)
 			}
-			if err := s.admitEntry(strings.TrimSuffix(entry.Name, "/"), true); err != nil {
+			if err := s.admitEntry(strings.TrimSuffix(entry.Name, "/"), directoryEntry); err != nil {
 				return err
 			}
 			continue
@@ -166,28 +178,47 @@ func packageInputError(err error) error {
 	return err
 }
 
-func (s *staging) admitEntry(name string, isDir bool) error {
+func (s *staging) admitEntry(name string, kind entryKind) error {
 	if !plugin.ValidResourcePath(name) {
 		return fmt.Errorf("%w: invalid package entry", plugin.ErrInvalid)
 	}
-	if s.entries[name] {
-		return fmt.Errorf("%w: duplicate package entry", plugin.ErrInvalid)
-	}
-	s.entries[name] = true
+	var added int
 	for segment := name; segment != "."; segment = path.Dir(segment) {
-		key := strings.ToLower(norm.NFC.String(segment))
-		if prior, found := s.folded[key]; found && prior != segment {
+		prior, found := s.entries[destinationKey(segment)]
+		if !found {
+			added++
+			continue
+		}
+		if prior.name != segment {
 			return fmt.Errorf("%w: ambiguous package destination", plugin.ErrInvalid)
 		}
-		s.folded[key] = segment
+		if segment == name {
+			if prior.kind != implicitDirectory || kind != directoryEntry {
+				return fmt.Errorf("%w: duplicate or conflicting package entry", plugin.ErrInvalid)
+			}
+		} else if prior.kind == fileEntry {
+			return fmt.Errorf("%w: package entry parent is a file", plugin.ErrInvalid)
+		}
 	}
-	if len(s.folded) > MaxFiles {
+	if len(s.entries)+added > MaxFiles {
 		return fmt.Errorf("%w: entry limit exceeded", plugin.ErrInvalid)
 	}
-	if isDir {
+	for segment := name; segment != "."; segment = path.Dir(segment) {
+		key := destinationKey(segment)
+		if segment == name {
+			s.entries[key] = packageEntry{name: segment, kind: kind}
+		} else if _, found := s.entries[key]; !found {
+			s.entries[key] = packageEntry{name: segment, kind: implicitDirectory}
+		}
+	}
+	if kind == directoryEntry {
 		return s.root.MkdirAll(name, 0700)
 	}
 	return nil
+}
+
+func destinationKey(name string) string {
+	return strings.ToLower(norm.NFC.String(name))
 }
 
 func (s *staging) writeFile(ctx context.Context, name string, mode fs.FileMode, input io.Reader) error {
@@ -197,7 +228,7 @@ func (s *staging) writeFile(ctx context.Context, name string, mode fs.FileMode, 
 	if mode&fs.ModeType != 0 {
 		return fmt.Errorf("%w: invalid package entry mode", plugin.ErrInvalid)
 	}
-	if err := s.admitEntry(name, false); err != nil {
+	if err := s.admitEntry(name, fileEntry); err != nil {
 		return err
 	}
 	if err := s.root.MkdirAll(path.Dir(name), 0700); err != nil {

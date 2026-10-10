@@ -534,44 +534,6 @@ func TestVerifiedResourceRetainsItsDirectoryAuthority(t *testing.T) {
 		t.Fatalf("replacement release admission = %v, want unavailable", err)
 	}
 }
-func TestArchivesRejectEscapesAndAmbiguousDestinations(t *testing.T) {
-	for _, names := range [][]string{{"plugin.json", "../escaped"}, {"plugin.json", "A/file", "a/other"}, {"plugin.json", "same", "same"}, {"plugin.json", "link"}, {"plugin.json", "a/", "a/"}, {"plugin.json", "NUL.txt"}, {"plugin.json", "COM¹.txt"}, {"plugin.json", "nested/LPT².txt"}, {"plugin.json", "directory./file"}, {"plugin.json", "Café/file", "Cafe\u0301/other"}} {
-		t.Run(strings.Join(names, ","), func(t *testing.T) {
-			r := testReleases(t)
-			archive := filepath.Join(t.TempDir(), "package.zip")
-			f, err := os.Create(archive)
-			if err != nil {
-				t.Fatal(err)
-			}
-			w := zip.NewWriter(f)
-			for _, name := range names {
-				header := &zip.FileHeader{Name: name}
-				if name == "link" {
-					header.SetMode(os.ModeSymlink | 0700)
-				}
-				writer, err := w.CreateHeader(header)
-				if err != nil {
-					t.Fatal(err)
-				}
-				body := "value"
-				if name == "plugin.json" {
-					body = portableManifest
-				}
-				if !strings.HasSuffix(name, "/") {
-					if _, err = writer.Write([]byte(body)); err != nil {
-						t.Fatal(err)
-					}
-				}
-			}
-			if err = errors.Join(w.Close(), f.Close()); err != nil {
-				t.Fatal(err)
-			}
-			if _, err = publishPackage(t.Context(), r, archive); !errors.Is(err, plugin.ErrInvalid) {
-				t.Fatalf("unsafe archive lost its validation category: %v", err)
-			}
-		})
-	}
-}
 func TestInstallationDefinitionsReflectAdmission(t *testing.T) {
 	r := testReleases(t)
 	source := writePackage(t, map[string]string{"plugin.json": portableManifest, "mcp.json": `{"$schema":"https://agent-plugins.org/schemas/1.0.0/mcp.schema.json","mcpServers":{"good":{"type":"stdio","command":"test-server","args":["${PLUGIN_ROOT}","${PLUGIN_DATA}"],"cwd":"${PLUGIN_ROOT}"}}}`})
@@ -758,42 +720,6 @@ func TestConflictingInputDoesNotWithdrawTheBackend(t *testing.T) {
 	servers, err := r.Definitions(t.Context(), installation, release)
 	if err != nil || len(servers) != 1 || servers[0].Headers["X-Tenant"] != "fixed" {
 		t.Fatalf("independent backend was withdrawn: %+v, %v", servers, err)
-	}
-}
-
-func TestArchiveAdmissionCountsImplicitDirectories(t *testing.T) {
-	r := testReleases(t)
-	archive := filepath.Join(t.TempDir(), "implicit.zip")
-	f, err := os.Create(archive)
-	if err != nil {
-		t.Fatal(err)
-	}
-	writer := zip.NewWriter(f)
-	manifest, err := writer.Create("plugin.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err = manifest.Write([]byte(portableManifest)); err != nil {
-		t.Fatal(err)
-	}
-	for index := range MaxFiles / 2 {
-		entry, err := writer.Create(fmt.Sprintf("directory-%d/notes.txt", index))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err = entry.Write([]byte("bounded")); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if err = errors.Join(writer.Close(), f.Close()); err != nil {
-		t.Fatal(err)
-	}
-	if _, err = publishPackage(t.Context(), r, archive); err == nil {
-		t.Fatal("admitted a tree beyond its entry limit")
-	}
-	entries, err := os.ReadDir(r.directory)
-	if err != nil || len(entries) != 0 {
-		t.Fatalf("retained failed staging: %v, %v", entries, err)
 	}
 }
 

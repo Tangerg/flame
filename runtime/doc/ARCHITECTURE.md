@@ -282,6 +282,11 @@ ZIP extraction verifies the archive's version before completing. The package ada
 owns archive entries, extracted-byte limits and release content identity. Resource reads
 check the exact consumed bytes against the admitted content index, even with a cached
 release proof. Cancellation and read or close failures prevent successful content delivery.
+Staging owns the portable destination namespace in one tree, including implied parents.
+Node kind, declaration status, spelling and entry count are decided together before a
+destination is written. A file cannot become a parent or replace an implied directory;
+one explicit directory declaration can promote its implied parent. The filesystem
+enforces confined I/O without deciding which conflicting package entry wins.
 
 Installation aggregates identify changes to selected execution capabilities; the
 installation use case reports that fact only after the durable write. Execution
