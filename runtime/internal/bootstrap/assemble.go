@@ -274,7 +274,10 @@ func buildAssemblyCore(
 		return nil, fmt.Errorf("runtime: construct Schedule firing: %w", err)
 	}
 
-	approvalCoordinator := approvals.New(policy.approvals, sessionCoordinator)
+	approvalCoordinator, err := approvals.New(policy.approvals, sessionCoordinator)
+	if err != nil {
+		return nil, fmt.Errorf("runtime: construct approval coordinator: %w", err)
+	}
 
 	toolCoordinator, err := workspace.NewDiagnosticTools(execution.toolRegistry, workspaceServices.scope)
 	if err != nil {

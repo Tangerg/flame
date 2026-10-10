@@ -48,12 +48,6 @@ func (a *approvalStore) Forget(_ context.Context, id string) error {
 	return nil
 }
 
-func (*approvalStore) Decide(context.Context, approval.Query) (approval.Decision, bool, error) {
-	return "", false, nil
-}
-
-func (*approvalStore) Remember(context.Context, approval.RememberRequest) error { return nil }
-
 // fakeSessionLookup stubs the session getter the approval-rule scoping reads.
 type fakeSessionLookup struct {
 	sess session.Session
@@ -64,9 +58,40 @@ func (f fakeSessionLookup) Get(context.Context, string) (session.Session, error)
 	return f.sess, f.err
 }
 
+func mustCoordinator(t *testing.T, policy Policy, sessions SessionLookup) *Coordinator {
+	t.Helper()
+	coordinator, err := New(policy, sessions)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return coordinator
+}
+
+func TestNewRejectsMissingDependencies(t *testing.T) {
+	var policy *approvalStore
+	var sessions *fakeSessionLookup
+	for _, test := range []struct {
+		name     string
+		policy   Policy
+		sessions SessionLookup
+	}{
+		{"nil policy", nil, fakeSessionLookup{}},
+		{"typed nil policy", policy, fakeSessionLookup{}},
+		{"nil session lookup", &approvalStore{}, nil},
+		{"typed nil session lookup", &approvalStore{}, sessions},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			coordinator, err := New(test.policy, test.sessions)
+			if coordinator != nil || err == nil {
+				t.Fatalf("New = %v, %v; want no coordinator and an error", coordinator, err)
+			}
+		})
+	}
+}
+
 func TestDefaultModeUsesModePorts(t *testing.T) {
 	store := &approvalStore{mode: approval.ModeBalanced}
-	c := New(store, nil)
+	c := mustCoordinator(t, store, fakeSessionLookup{})
 
 	got, err := c.DefaultMode(context.Background())
 	if err != nil {
@@ -86,7 +111,7 @@ func TestDefaultModeUsesModePorts(t *testing.T) {
 
 func TestListRulesResolvesSessionProject(t *testing.T) {
 	store := &approvalStore{}
-	c := New(store, fakeSessionLookup{sess: testsupport.MustRestoreSession(session.Snapshot{
+	c := mustCoordinator(t, store, fakeSessionLookup{sess: testsupport.MustRestoreSession(session.Snapshot{
 		ID: "ses_1", Workspace: testsupport.MustWorkspace("/repo"),
 	})})
 
@@ -103,7 +128,7 @@ func TestListRulesResolvesSessionProject(t *testing.T) {
 
 func TestListRulesUnknownSessionUsesEmptyProject(t *testing.T) {
 	store := &approvalStore{}
-	c := New(store, fakeSessionLookup{err: session.ErrNotFound})
+	c := mustCoordinator(t, store, fakeSessionLookup{err: session.ErrNotFound})
 
 	if _, err := c.ListRules(context.Background(), "missing"); err != nil {
 		t.Fatalf("list rules: %v", err)
@@ -116,7 +141,7 @@ func TestListRulesUnknownSessionUsesEmptyProject(t *testing.T) {
 func TestListRulesReturnsSessionStoreFailure(t *testing.T) {
 	storeErr := errors.New("store unavailable")
 	store := &approvalStore{}
-	c := New(store, fakeSessionLookup{err: storeErr})
+	c := mustCoordinator(t, store, fakeSessionLookup{err: storeErr})
 
 	_, err := c.ListRules(context.Background(), "ses_1")
 	if !errors.Is(err, storeErr) {
@@ -129,7 +154,7 @@ func TestListRulesReturnsSessionStoreFailure(t *testing.T) {
 
 func TestForgetRuleUsesDeletionPort(t *testing.T) {
 	store := &approvalStore{}
-	c := New(store, nil)
+	c := mustCoordinator(t, store, fakeSessionLookup{})
 
 	if err := c.ForgetRule(context.Background(), "rule_1"); err != nil {
 		t.Fatalf("ForgetRule: %v", err)

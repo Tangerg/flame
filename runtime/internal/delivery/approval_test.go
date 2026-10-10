@@ -14,8 +14,13 @@ import (
 
 // handlerWithApprovals builds a Handler whose only wired coordinator is the
 // approvals one — enough for the approval.* handler tests.
-func handlerWithApprovals(policy approvals.Policy, sessions approvals.SessionLookup) *Handler {
-	return &Handler{approvals: approvals.New(policy, sessions)}
+func handlerWithApprovals(t *testing.T, policy approvals.Policy, sessions approvals.SessionLookup) *Handler {
+	t.Helper()
+	coordinator, err := approvals.New(policy, sessions)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &Handler{approvals: coordinator}
 }
 
 // approvalPolicyFake is the approval-management policy the coordinator drives; it
@@ -54,12 +59,6 @@ func (a *approvalPolicyFake) Forget(_ context.Context, id string) error {
 	return nil
 }
 
-func (*approvalPolicyFake) Decide(context.Context, approval.Query) (approval.Decision, bool, error) {
-	return "", false, nil
-}
-
-func (*approvalPolicyFake) Remember(context.Context, approval.RememberRequest) error { return nil }
-
 // fakeSessionLookup stubs the approvals coordinator's session getter (used to
 // scope approval rules to a project dir).
 type fakeSessionLookup struct {
@@ -94,7 +93,7 @@ func TestApprovalModeWireRoundTrip(t *testing.T) {
 
 func TestApprovalModeHandlersMapToWire(t *testing.T) {
 	rt := &approvalPolicyFake{mode: approval.ModeYolo}
-	s := handlerWithApprovals(rt, nil)
+	s := handlerWithApprovals(t, rt, fakeSessionLookup{})
 
 	got, err := s.GetApprovalMode(context.Background())
 	if err != nil {
@@ -117,7 +116,7 @@ func TestApprovalModeHandlersMapToWire(t *testing.T) {
 }
 
 func TestGetApprovalModeRejectsUnknownDomainValue(t *testing.T) {
-	s := handlerWithApprovals(&approvalPolicyFake{mode: approval.Mode("invalid")}, nil)
+	s := handlerWithApprovals(t, &approvalPolicyFake{mode: approval.Mode("invalid")}, fakeSessionLookup{})
 	if _, err := s.GetApprovalMode(t.Context()); !errors.Is(err, approval.ErrInvalidMode) {
 		t.Fatalf("GetApprovalMode error = %v, want ErrInvalidMode", err)
 	}
@@ -138,7 +137,7 @@ func TestListApprovalRulesMapsToWire(t *testing.T) {
 		Subject:  approval.InvocationSubject("npm test"),
 		Decision: approval.Allow,
 	}}}
-	s := handlerWithApprovals(rt, fakeSessionLookup{err: session.ErrNotFound})
+	s := handlerWithApprovals(t, rt, fakeSessionLookup{err: session.ErrNotFound})
 
 	got, err := s.ListApprovalRules(context.Background(), protocol.ListApprovalRulesRequest{SessionID: "ses_1"})
 	if err != nil {
@@ -154,7 +153,7 @@ func TestListApprovalRulesMapsToWire(t *testing.T) {
 
 func TestForgetApprovalRuleMapsToWire(t *testing.T) {
 	rt := &approvalPolicyFake{}
-	s := handlerWithApprovals(rt, nil)
+	s := handlerWithApprovals(t, rt, fakeSessionLookup{})
 
 	if err := s.ForgetApprovalRule(context.Background(), protocol.ForgetApprovalRuleRequest{ID: "rule_1"}); err != nil {
 		t.Fatalf("forget approval rule: %v", err)
@@ -179,7 +178,7 @@ func TestSetApprovalRuleProjectsActionableFailures(t *testing.T) {
 		{"storage failure", errors.New("storage unavailable"), protocol.ErrInternalError},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			handler := handlerWithApprovals(&approvalPolicyFake{setRuleErr: test.cause}, nil)
+			handler := handlerWithApprovals(t, &approvalPolicyFake{setRuleErr: test.cause}, fakeSessionLookup{})
 			err := handler.SetApprovalRule(t.Context(), protocol.SetApprovalRuleRequest{Subject: protocol.ApprovalSubject{Type: protocol.ApprovalSubjectAll}, Tool: protocol.ToolRef{Type: protocol.ToolRefBuiltIn, Name: "shell"}, Scope: protocol.ApprovalRuleScopeGlobal, Decision: protocol.ApprovalRuleDecisionAllow})
 			if failure := ProjectError(err); !errors.Is(failure, test.want) {
 				t.Fatalf("failure = %v, want %v", failure, test.want)
@@ -194,7 +193,7 @@ func TestSetApprovalRuleProjectsActionableFailures(t *testing.T) {
 // The gate a mode applies is the domain's decision; the reply publishes it so a
 // client describes modes from the policy instead of restating it.
 func TestApprovalModeReplyPublishesTheDomainGateMatrix(t *testing.T) {
-	s := handlerWithApprovals(&approvalPolicyFake{mode: approval.ModeSafe}, nil)
+	s := handlerWithApprovals(t, &approvalPolicyFake{mode: approval.ModeSafe}, fakeSessionLookup{})
 	got, err := s.GetApprovalMode(context.Background())
 	if err != nil {
 		t.Fatal(err)
