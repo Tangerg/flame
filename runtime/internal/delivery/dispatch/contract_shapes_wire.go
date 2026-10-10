@@ -113,8 +113,6 @@ func registerMCPUnions(s *Shapes) {
 			{Tag: string(protocol.MCPServerConnecting)},
 			{Tag: string(protocol.MCPServerConnected), Required: []string{"toolCount"}},
 			{Tag: string(protocol.MCPServerFailed), Required: []string{"error"}, AllowedValues: allowedMCPStatusProblems(
-				protocol.MCPStatusReleaseUnavailable,
-				protocol.MCPStatusBackendUnavailable,
 				protocol.MCPStatusConfigurationFailed,
 				protocol.MCPStatusDialFailed,
 				protocol.MCPStatusToolDiscoveryFailed,

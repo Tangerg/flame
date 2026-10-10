@@ -28,9 +28,22 @@ type reconnectObserver struct {
 	finished chan error
 }
 
-func (p reconnectObserver) Reconnect(ctx context.Context, name mcpserver.ID) error {
-	err := p.Pool.Reconnect(ctx, name)
-	p.finished <- err
+func (p reconnectObserver) BeginConnect(ctx context.Context, name mcpserver.ID) (mcpapp.Attempt, error) {
+	a, err := p.Pool.BeginConnect(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+	return observedAttempt{Attempt: a, finished: p.finished}, nil
+}
+
+type observedAttempt struct {
+	mcpapp.Attempt
+	finished chan error
+}
+
+func (a observedAttempt) Run() error {
+	err := a.Attempt.Run()
+	a.finished <- err
 	return err
 }
 
@@ -103,7 +116,7 @@ func TestRepairedReleaseReconnectsThroughItsCurrentDefinition(t *testing.T) {
 		t.Fatalf("replacement directory bypassed retained integrity: %v", err)
 	}
 	observer := reconnectObserver{Pool: pool, finished: make(chan error, 1)}
-	coordinator, err := mcpapp.New(mcpapp.Config{Registry: registry, Store: users, StatusReader: pool, ToolCatalog: emptyToolCatalog{}, ConnectionControl: observer, ConnectionLifecycle: pool, Exposure: mcpapp.NewExposureState([]mcpserver.Server{server}, nil)})
+	coordinator, err := mcpapp.New(mcpapp.Config{Registry: registry, Store: users, Connections: observer, ToolCatalog: emptyToolCatalog{}, Exposure: mcpapp.NewExposureState([]mcpserver.Server{server}, nil)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -189,9 +202,9 @@ func TestTamperedPackageCannotLaunchThroughConnectionEntrypoints(t *testing.T) {
 		t.Fatal(err)
 	}
 	for name, connect := range map[string]func() error{
-		"configure": func() error { return pool.Configure(t.Context(), sources[0].Server.ID()) },
-		"reconnect": func() error { return pool.Reconnect(t.Context(), sources[0].Server.ID()) },
-		"authorize": func() error { return pool.Authorize(t.Context(), sources[0].Server.ID()) },
+		"configure": func() error { return connectPool(pool, t.Context(), sources[0].Server.ID()) },
+		"reconnect": func() error { return connectPool(pool, t.Context(), sources[0].Server.ID()) },
+		"authorize": func() error { return authorizePool(pool, t.Context(), sources[0].Server.ID()) },
 	} {
 		t.Run(name, func(t *testing.T) {
 			if err := connect(); !errors.Is(err, plugin.ErrUnavailable) {
@@ -382,4 +395,22 @@ func (unusedDependencies) ChangeInstallation(context.Context, resourceid.Install
 
 func (unusedDependencies) UnderAdmission(context.Context, func([]plugin.Dependency) error) error {
 	return errors.New("unexpected admission")
+}
+
+func connectPool(pool *mcpconnection.Pool, ctx context.Context, name mcpserver.ID) error {
+	attempt, err := pool.BeginConnect(ctx, name)
+	if err != nil {
+		return err
+	}
+	defer attempt.Close()
+	return attempt.Run()
+}
+
+func authorizePool(pool *mcpconnection.Pool, ctx context.Context, name mcpserver.ID) error {
+	attempt, err := pool.BeginAuthorize(ctx, name)
+	if err != nil {
+		return err
+	}
+	defer attempt.Close()
+	return attempt.Run()
 }

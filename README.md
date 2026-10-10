@@ -1,6 +1,6 @@
 # Flame
 
-Flame is an agent product with a Go Runtime, a Cobra/Oolong CLI, a shared Web/Wails application, and a VS Code extension.
+Flame is an agent product with a Go Runtime, a Cobra/Oolong CLI, and a shared Web/Wails application.
 
 Runtime owns durable product semantics and exposes the same behavior through an in-process Go binding and the Runtime Protocol. Clients own interaction and presentation; Scope supplies the agent framework and provider libraries.
 
@@ -13,7 +13,6 @@ Runtime owns durable product semantics and exposes the same behavior through an 
 | `runtime/localruntime/` | Strict local Runtime credential handoff |
 | `cli/` | Command routing, one-shot output, terminal interaction, and CLI-local authoring state |
 | `desktop/` | Shared browser/desktop presentation and the Wails host |
-| `ide/` | Native VS Code interaction over the shared Runtime client |
 | `icons/` | Original icon drawings, SVG exports, React components, and the design reference |
 
 Each module's own `README.md` carries its boundaries and module instructions.
@@ -45,7 +44,7 @@ go vet ./runtime/... ./runtime/localruntime/... ./cli/...
 go build ./runtime/... ./runtime/localruntime/... ./cli/...
 ```
 
-Graphical-client commands and Wails build instructions live under [`desktop/`](desktop/README.md). IDE commands and packaging live under [`ide/`](ide/README.md).
+Graphical-client commands and Wails build instructions live under [`desktop/`](desktop/README.md).
 
 ## Share a Runtime
 
@@ -56,7 +55,7 @@ go run ./cli --runtime-url http://127.0.0.1:17171
 go run ./cli --runtime-url http://127.0.0.1:17171 run --workspace /server/project "Review this project"
 ```
 
-Supply the existing Runtime bearer token through `FLAME_RUNTIME_TOKEN` for CLI, the connection dialog for Web, or the IDE connection command. The token never belongs in the URL. A CLI with no configured endpoint owns an embedded Runtime. An explicit remote connection failure never starts a local substitute.
+Supply the existing Runtime bearer token through `FLAME_RUNTIME_TOKEN` for CLI or the connection dialog for Web. The token never belongs in the URL. A CLI with no configured endpoint owns an embedded Runtime. An explicit remote connection failure never starts a local substitute.
 
 Closing an attached view releases that client's transport and projections. Explicit cancellation remains a Runtime command; one-shot CLI interruption cancels the Run it is driving. Only the process or host that opened a Runtime owns its shutdown. Multiple processes using the same database are not substitutes for attaching to the same live Runtime.
 

@@ -19,17 +19,11 @@ func testCoordinator(t testing.TB, cfg Config) *Coordinator {
 		}
 		cfg.Store = store
 	}
-	if cfg.StatusReader == nil {
-		cfg.StatusReader = ports
+	if cfg.Connections == nil {
+		cfg.Connections = ports
 	}
 	if cfg.ToolCatalog == nil {
 		cfg.ToolCatalog = ports
-	}
-	if cfg.ConnectionControl == nil {
-		cfg.ConnectionControl = ports
-	}
-	if cfg.ConnectionLifecycle == nil {
-		cfg.ConnectionLifecycle = ports
 	}
 	if cfg.Exposure == nil {
 		cfg.Exposure = NewExposureState(nil, nil)
@@ -46,10 +40,8 @@ func TestNewRequiresCompleteDependencies(t *testing.T) {
 	t.Parallel()
 	for name, omit := range map[string]func(*Config){
 		"registry":               func(cfg *Config) { cfg.Registry = nil },
-		"status reader":          func(cfg *Config) { cfg.StatusReader = nil },
+		"connections":            func(cfg *Config) { cfg.Connections = nil },
 		"tool catalog":           func(cfg *Config) { cfg.ToolCatalog = nil },
-		"connection control":     func(cfg *Config) { cfg.ConnectionControl = nil },
-		"connection lifecycle":   func(cfg *Config) { cfg.ConnectionLifecycle = nil },
 		"exposure":               func(cfg *Config) { cfg.Exposure = nil },
 		"uninitialized exposure": func(cfg *Config) { cfg.Exposure = &ExposureState{} },
 	} {

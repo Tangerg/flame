@@ -53,14 +53,6 @@ export interface DurableMutationIdentity {
 }
 
 export interface DurableMutationJournal {
-  prepare(method: string, params: unknown): DurableMutationIdentity;
-  inspect(
-    method: string,
-    params: unknown,
-    idempotencyKey: string,
-  ): DurableMutationIdentity | undefined;
-  recover(method: string, params: unknown, idempotencyKey: string): DurableMutationIdentity;
-  entries(): DurableMutationIdentity[];
   reserve(
     method: string,
     params: unknown,
@@ -105,7 +97,7 @@ function validEntry(value: unknown): value is JournalEntry {
   );
 }
 
-export function entryKey(idempotencyKey: string): string {
+function entryKey(idempotencyKey: string): string {
   return `${ENTRY_PREFIX}${encodeURIComponent(idempotencyKey)}`;
 }
 
@@ -301,37 +293,7 @@ export function openDurableMutationJournal(
     return entry;
   };
 
-  const inspect = (method: string, params: unknown, idempotencyKey: string) => {
-    const entry = readEntry(idempotencyKey);
-    if (!entry) return undefined;
-    if (!matchesCommand(entry, method, params)) {
-      throw new MutationJournalOwnershipError(
-        "Runtime mutation identity belongs to different prepared parameters",
-      );
-    }
-    return { entry };
-  };
-
   return {
-    prepare(method, params) {
-      const scope = currentScope();
-      if (loadEntries(options.storage).length >= MAX_ENTRIES) {
-        throw new MutationJournalCapacityError("Runtime mutation journal capacity is exhausted");
-      }
-      return { entry: createEntry(method, params, scope, crypto.randomUUID()) };
-    },
-    inspect,
-    recover(method, params, idempotencyKey) {
-      const identity = inspect(method, params, idempotencyKey);
-      if (!identity) {
-        throw new MutationJournalOwnershipError(
-          "Runtime prepared mutation identity is no longer retained",
-        );
-      }
-      validateIdentity(identity, currentScope());
-      return identity;
-    },
-    entries: () => loadEntries(options.storage).map((entry) => ({ entry })),
     reserve(method, params, preferredKey, claimed) {
       const scope = options.scope();
       if (!validScope(scope)) return undefined;

@@ -107,10 +107,10 @@ func TestLaunchExecutesAdmittedContentAfterPublishedBytesChange(t *testing.T) {
 				}
 				t.Cleanup(func() { _ = pool.Shutdown(context.WithoutCancel(t.Context())) })
 				if entry == "configure" {
-					_ = pool.Configure(t.Context(), serverID)
+					_ = connectPool(pool, t.Context(), serverID)
 				}
 				if entry == "reconnect" {
-					_ = pool.Reconnect(t.Context(), serverID)
+					_ = connectPool(pool, t.Context(), serverID)
 				}
 				marker := filepath.Join(releases.dataRoot(id), "started")
 				content, err := os.ReadFile(marker)

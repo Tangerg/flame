@@ -25,12 +25,6 @@ const (
 type ConnectionFailure string
 
 const (
-	// FailureUnavailableRelease: the owning installation's release bytes
-	// cannot be verified, so no configuration exists to connect with.
-	FailureUnavailableRelease ConnectionFailure = "unavailableRelease"
-	// FailureUnavailableBackend: the release is intact but the server's
-	// backend directory cannot be realized.
-	FailureUnavailableBackend ConnectionFailure = "unavailableBackend"
 	// FailureConfiguration: the configuration owner refused the connection or
 	// could not be read, or its stored credentials could not be restored.
 	FailureConfiguration ConnectionFailure = "configuration"

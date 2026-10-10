@@ -59,8 +59,7 @@ func TestProblemCatalogPublishesExactChannelSemantics(t *testing.T) {
 		for _, status := range []protocol.MCPStatusProblemType{
 			protocol.MCPStatusAuthorizationRequired, protocol.MCPStatusAuthorizationFailed,
 			protocol.MCPStatusDialFailed, protocol.MCPStatusToolDiscoveryFailed,
-			protocol.MCPStatusConfigurationFailed, protocol.MCPStatusReleaseUnavailable,
-			protocol.MCPStatusBackendUnavailable,
+			protocol.MCPStatusConfigurationFailed,
 		} {
 			if contract.Type == string(status) {
 				t.Fatalf("MCP status category %q is also a ProblemData type", status)

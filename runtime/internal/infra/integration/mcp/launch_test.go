@@ -43,9 +43,9 @@ func TestRejectedLaunchRetiresItsResourceExactlyOnce(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				err = c.Authorize(ctx, input)
+				err = authorizeLaunch(c, ctx, input)
 			} else if err == nil {
-				err = c.Configure(ctx, input)
+				err = connectLaunch(c, ctx, input)
 			}
 			if !errors.Is(err, retirementErr) || retired.Load() != 1 {
 				t.Fatalf("refusal lost or repeated resource retirement: %v, calls=%d", err, retired.Load())
@@ -53,7 +53,7 @@ func TestRejectedLaunchRetiresItsResourceExactlyOnce(t *testing.T) {
 			if err := input.Close(); err != nil {
 				t.Fatal(err)
 			}
-			if err := c.Configure(t.Context(), input); err == nil {
+			if err := connectLaunch(c, t.Context(), input); err == nil {
 				t.Fatal("a consumed launch initiated another attempt")
 			}
 			if retired.Load() != 1 {
@@ -75,7 +75,7 @@ func TestSessionLedgerOwnsLaunchResourceThroughDetachAndShutdown(t *testing.T) {
 	}
 	c := &Connections{lifetime: t.Context(), client: newClient()}
 	t.Cleanup(func() { _ = c.Shutdown(context.WithoutCancel(t.Context())) })
-	if err := c.Configure(t.Context(), input); err != nil {
+	if err := connectLaunch(c, t.Context(), input); err != nil {
 		t.Fatal(err)
 	}
 	if err := input.Close(); err != nil {
@@ -147,7 +147,7 @@ func TestCopyingALaunchDoesNotDuplicateItsClaim(t *testing.T) {
 		t.Fatal(err)
 	}
 	c := &Connections{lifetime: t.Context(), client: newClient()}
-	if err := c.Configure(t.Context(), &copied); err == nil {
+	if err := connectLaunch(c, t.Context(), &copied); err == nil {
 		t.Fatal("a copied launch originated a competing claim")
 	}
 	if err := copied.Close(); err != nil {
@@ -172,4 +172,34 @@ func TestRetainedInstallationDescriptorCannotLaunchWithoutExecutionContent(t *te
 	if err := probe(t.Context(), config); err == nil {
 		t.Fatal("probe launched a retained installation descriptor")
 	}
+}
+
+func connectLaunch(c *Connections, ctx context.Context, input *Launch) error {
+	return runLaunch(c, ctx, input, false)
+}
+
+func authorizeLaunch(c *Connections, ctx context.Context, input *Launch) error {
+	return runLaunch(c, ctx, input, true)
+}
+
+func runLaunch(c *Connections, ctx context.Context, input *Launch, authorize bool) error {
+	name := testsupport.UserMCPServer("consumed")
+	if input != nil && input.claim != nil {
+		input.claim.mu.Lock()
+		if input.claim.pending != nil {
+			name = input.claim.pending.config.ID()
+		}
+		input.claim.mu.Unlock()
+	}
+	resolve := func(context.Context, mcpserver.ID) (*Launch, error) { return input, nil }
+	begin := c.BeginConnect
+	if authorize {
+		begin = c.BeginAuthorize
+	}
+	attempt, err := begin(ctx, name, resolve)
+	if err != nil {
+		return errors.Join(err, input.Close())
+	}
+	defer attempt.Close()
+	return attempt.Run()
 }

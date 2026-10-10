@@ -30,7 +30,7 @@ type server struct {
 	// the user signs in. It is reusable only for the same credential configuration.
 	oauth auth.OAuthHandler
 
-	attempt *connectionAttempt
+	attempt *Attempt
 }
 
 func (s *server) name() mcpserver.ID { return s.id }

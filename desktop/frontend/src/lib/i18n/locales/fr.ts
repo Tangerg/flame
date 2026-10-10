@@ -914,10 +914,6 @@ export const fr: Record<string, string> = {
     "Connecté, mais ce serveur n'a pas renvoyé de liste d'outils utilisable. Vérifiez le serveur et réessayez.",
   "mcpStatus.mcp_configuration_failed":
     "La configuration ou les identifiants enregistrés de ce serveur n'ont pas pu être utilisés. Vérifiez ses réglages et réessayez.",
-  "mcpStatus.mcp_release_unavailable":
-    "Le plugin qui fournit ce serveur a échoué à la vérification. Réinstallez ou mettez à jour le plugin.",
-  "mcpStatus.mcp_backend_unavailable":
-    "Le plugin est intact, mais le backend de ce serveur n'a pas pu être préparé. Réessayez ou réinstallez le plugin.",
   "mcpStatus.mcp_dial_failed":
     "Impossible de joindre ce serveur — vérifie la commande ou l'URL et réessaie.",
   "providers.testOutcome.notConfigured": "Terminez d'abord la configuration du fournisseur.",

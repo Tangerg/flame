@@ -68,11 +68,13 @@ type delayedFailingConnection struct {
 	err     error
 }
 
-func (p *delayedFailingConnection) Reconnect(ctx context.Context, _ mcpserver.ID) error {
-	select {
-	case <-p.release:
-		return p.err
-	case <-ctx.Done():
-		return ctx.Err()
-	}
+func (p *delayedFailingConnection) BeginConnect(ctx context.Context, name mcpserver.ID) (Attempt, error) {
+	return p.begin(ctx, name, func(ctx context.Context, _ mcpserver.ID) error {
+		select {
+		case <-p.release:
+			return p.err
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	})
 }

@@ -119,10 +119,6 @@ func mcpStatusProblem(problem *protocol.MCPStatusProblem) (string, error) {
 		return "the server connected but did not provide a valid tool list", nil
 	case protocol.MCPStatusConfigurationFailed:
 		return "the configuration or stored credentials could not be used; review the server settings", nil
-	case protocol.MCPStatusReleaseUnavailable:
-		return "the plugin release cannot be verified; reinstall or select another release", nil
-	case protocol.MCPStatusBackendUnavailable:
-		return "the plugin backend cannot be prepared; check the plugin's data directory", nil
 	default:
 		return "", fmt.Errorf("runtime contract violation: unknown MCP status category %q", problem.Type)
 	}

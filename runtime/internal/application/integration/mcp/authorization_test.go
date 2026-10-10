@@ -14,7 +14,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
 
-func TestAuthorizationReadFailureSettlesAsConfigurationFailure(t *testing.T) {
+func TestAuthorizationResultDoesNotDependOnASecondRegistryRead(t *testing.T) {
 	name := testsupport.UserMCPServer("github")
 	ports := &fakePorts{
 		statuses:         []mcpserver.ConnectionStatus{{Server: name, State: mcpserver.ConnectionConnected}},
@@ -39,13 +39,13 @@ func TestAuthorizationReadFailureSettlesAsConfigurationFailure(t *testing.T) {
 	registry.failed.Store(true)
 	close(ports.releaseAuthorize)
 	settled := awaitAuthorizationAttempt(t, c, created.ID)
-	if settled.Status != AuthorizationAttemptFailed {
-		t.Fatalf("authorization attempt = %s, want failed", settled.Status)
+	if settled.Status != AuthorizationAttemptSucceeded {
+		t.Fatalf("authorization attempt = %s, want succeeded", settled.Status)
 	}
-	if status := testServerStatus(c, name); status.State != mcpserver.ConnectionFailed || status.Failure != mcpserver.FailureConfiguration {
-		t.Fatalf("unverifiable source status = %+v, want configuration failure", status)
+	if status := testServerStatus(c, name); status.State != mcpserver.ConnectionConnected {
+		t.Fatalf("unverifiable source status = %+v, want the connection owner outcome", status)
 	}
-	for _, want := range []mcpserver.ConnectionState{mcpserver.ConnectionConnecting, mcpserver.ConnectionFailed} {
+	for _, want := range []mcpserver.ConnectionState{mcpserver.ConnectionConnecting, mcpserver.ConnectionConnected} {
 		select {
 		case got := <-states:
 			if got != want {
@@ -75,12 +75,12 @@ func TestAuthorizationShutdownRetiresConnectingStatus(t *testing.T) {
 	if err != nil || settled.Status != AuthorizationAttemptCanceled {
 		t.Fatalf("authorization after shutdown = %+v, %v", settled, err)
 	}
-	if status := testServerStatus(c, name); status.State != mcpserver.ConnectionConnected {
-		t.Fatalf("shutdown status = %+v, want live connected state", status)
+	if status := testServerStatus(c, name); status.State != mcpserver.ConnectionFailed {
+		t.Fatalf("shutdown status = %+v, want the canceled connection retired", status)
 	}
 }
 
-func TestQueuedConnectingNotificationCannotReviveRetiredAuthorization(t *testing.T) {
+func TestQueuedConnectingNotificationCannotHideCompletedAuthorization(t *testing.T) {
 	name := testsupport.UserMCPServer("github")
 	ports := &fakePorts{
 		statuses:         []mcpserver.ConnectionStatus{{Server: name, State: mcpserver.ConnectionConnected}},
@@ -123,13 +123,13 @@ func TestQueuedConnectingNotificationCannotReviveRetiredAuthorization(t *testing
 	}
 	registry.failed.Store(true)
 	close(ports.releaseAuthorize)
-	if settled := awaitAuthorizationAttempt(t, c, created.ID); settled.Status != AuthorizationAttemptFailed {
-		t.Fatalf("authorization attempt = %s, want failed", settled.Status)
+	if settled := awaitAuthorizationAttempt(t, c, created.ID); settled.Status != AuthorizationAttemptSucceeded {
+		t.Fatalf("authorization attempt = %s, want succeeded", settled.Status)
 	}
 	release()
 	requireCoordinatorShutdown(t, c)
-	if status := testServerStatus(c, name); status.State != mcpserver.ConnectionFailed || status.Failure != mcpserver.FailureConfiguration {
-		t.Fatalf("queued notification revived a retired dial: %+v", status)
+	if status := testServerStatus(c, name); status.State != mcpserver.ConnectionConnected {
+		t.Fatalf("queued notification hid the completed authorization: %+v", status)
 	}
 }
 
@@ -229,61 +229,35 @@ func TestAuthorizationAttemptIsCanceledWhenSuperseded(t *testing.T) {
 	}
 }
 
-func TestAuthorizationAttemptIsCanceledWhenSupersededDuringRegistryRead(t *testing.T) {
+func TestAuthorizationAttemptIsCanceledDuringConnectionPreparation(t *testing.T) {
 	name := testsupport.UserMCPServer("github")
-	ports := &fakePorts{
-		statuses:         []mcpserver.ConnectionStatus{{Server: name, State: mcpserver.ConnectionConnected}},
-		authorizeStarted: make(chan string, 1),
-		releaseAuthorize: make(chan struct{}),
-	}
-	cfg := configWithPorts(ports)
-	registry := &cancelableRegistryRead{
-		Registry: cfg.Registry,
-		block:    make(chan struct{}, 1),
-		started:  make(chan struct{}),
-	}
-	cfg.Registry = registry
-	c := testCoordinator(t, cfg)
+	ports := &preparingAuthorization{fakePorts: fakePorts{statuses: []mcpserver.ConnectionStatus{{Server: name, State: mcpserver.ConnectionConnected}}}, started: make(chan struct{})}
+	c := testCoordinator(t, configWithPorts(ports))
 	created, err := c.CreateAuthorizationAttempt(t.Context(), name)
 	if err != nil {
 		t.Fatal(err)
 	}
-	select {
-	case <-ports.authorizeStarted:
-	case <-time.After(time.Second):
-		t.Fatal("authorization did not start")
-	}
-	registry.block <- struct{}{}
-	close(ports.releaseAuthorize)
-	select {
-	case <-registry.started:
-	case <-time.After(time.Second):
-		t.Fatal("authorization did not reach the registry read")
-	}
+	<-ports.started
 	if err := c.ReconnectServer(t.Context(), name); err != nil {
 		t.Fatal(err)
 	}
 	settled := awaitAuthorizationAttempt(t, c, created.ID)
 	if settled.Status != AuthorizationAttemptCanceled || settled.FinishedAt == nil {
-		t.Fatalf("superseded attempt = %+v, want canceled", settled)
+		t.Fatalf("superseded attempt = %+v", settled)
 	}
 }
 
-type cancelableRegistryRead struct {
-	Registry
-	block   chan struct{}
+type preparingAuthorization struct {
+	fakePorts
 	started chan struct{}
 }
 
-func (r *cancelableRegistryRead) Definition(ctx context.Context, name mcpserver.ID) (mcpserver.Server, bool, error) {
-	select {
-	case <-r.block:
-		close(r.started)
+func (p *preparingAuthorization) BeginAuthorize(ctx context.Context, name mcpserver.ID) (Attempt, error) {
+	return p.begin(ctx, name, func(ctx context.Context, _ mcpserver.ID) error {
+		close(p.started)
 		<-ctx.Done()
-		return mcpserver.Server{}, false, ctx.Err()
-	default:
-		return r.Registry.Definition(ctx, name)
-	}
+		return ctx.Err()
+	})
 }
 
 func TestAuthorizationAttemptStoreRetainsOnlyTerminalResults(t *testing.T) {
@@ -334,8 +308,7 @@ func TestAuthorizationAttemptRejectsNonHTTPServerBeforeDispatch(t *testing.T) {
 		},
 	}}
 	c := testCoordinator(t, Config{
-		Registry: registry, StatusReader: ports,
-		ConnectionControl: ports,
+		Registry: registry, Connections: ports,
 	})
 
 	if _, err := c.CreateAuthorizationAttempt(context.Background(), name); !errors.Is(err, ErrAuthorizationUnsupported) {

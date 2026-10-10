@@ -42,7 +42,7 @@ func TestStdioLaunchResourceRetiresAfterTheProcessGroup(t *testing.T) {
 	}
 	c := &Connections{lifetime: t.Context(), client: newClient()}
 	t.Cleanup(func() { _ = c.Shutdown(context.WithoutCancel(t.Context())) })
-	if err := c.Configure(t.Context(), input); err != nil {
+	if err := connectLaunch(c, t.Context(), input); err != nil {
 		t.Fatal(err)
 	}
 	pid = waitForStdioDescendantPID(t, pidFile)

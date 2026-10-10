@@ -828,8 +828,6 @@ export const zh: Record<string, string> = {
   "mcpStatus.mcp_tool_discovery_failed":
     "已连接，但该服务器没有返回可用的工具列表。请检查服务器后重试。",
   "mcpStatus.mcp_configuration_failed": "无法使用该服务器的配置或已保存的凭据。请检查设置后重试。",
-  "mcpStatus.mcp_release_unavailable": "提供该服务器的插件未通过校验。请重新安装或更新插件。",
-  "mcpStatus.mcp_backend_unavailable": "插件完好，但无法准备该服务器的后端。请重试或重新安装插件。",
   "mcpStatus.mcp_dial_failed": "连不上这个服务器 —— 检查命令或 URL 后重试。",
   "providers.testOutcome.notConfigured": "请先完成 provider 配置。",
   "providers.testOutcome.failed": "供应方连不上，或拒绝了这次测试请求。",

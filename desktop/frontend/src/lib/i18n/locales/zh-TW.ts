@@ -832,9 +832,6 @@ export const zhTW: Record<string, string> = {
     "已連線，但這個伺服器沒有回傳可用的工具清單。請檢查伺服器後重試。",
   "mcpStatus.mcp_configuration_failed":
     "無法使用這個伺服器的設定或已儲存的憑證。請檢查設定後重試。",
-  "mcpStatus.mcp_release_unavailable": "提供這個伺服器的外掛未通過驗證。請重新安裝或更新外掛。",
-  "mcpStatus.mcp_backend_unavailable":
-    "外掛完好，但無法準備這個伺服器的後端。請重試或重新安裝外掛。",
   "mcpStatus.mcp_dial_failed": "連不上這個伺服器 —— 檢查指令或 URL 後重試。",
   "providers.testOutcome.notConfigured": "請先完成 provider 設定。",
   "providers.testOutcome.failed": "供應方連不上，或拒絕了這次測試請求。",

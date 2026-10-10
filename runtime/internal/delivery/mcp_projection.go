@@ -101,10 +101,6 @@ func presentMCPServerState(state mcpapp.ServerState) (protocol.MCPServerState, e
 
 func mcpFailureProblem(failure mcpserver.ConnectionFailure) (protocol.MCPStatusProblemType, error) {
 	switch failure {
-	case mcpserver.FailureUnavailableRelease:
-		return protocol.MCPStatusReleaseUnavailable, nil
-	case mcpserver.FailureUnavailableBackend:
-		return protocol.MCPStatusBackendUnavailable, nil
 	case mcpserver.FailureConfiguration:
 		return protocol.MCPStatusConfigurationFailed, nil
 	case mcpserver.FailureConnection:

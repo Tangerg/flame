@@ -70,14 +70,14 @@ func TestSupersededAuthorizationPreservesReplacementConnection(t *testing.T) {
 	oldCtx, supersede := context.WithCancel(context.WithValue(ctx, heldAuthorization{}, true))
 	defer supersede()
 	done := make(chan error, 1)
-	go func() { done <- pool.Authorize(oldCtx, server.ID()) }()
+	go func() { done <- authorizePool(pool, oldCtx, server.ID()) }()
 	select {
 	case <-registry.captured:
 	case <-ctx.Done():
 		t.Fatal(ctx.Err())
 	}
 	supersede()
-	if err := pool.Reconnect(ctx, server.ID()); err != nil {
+	if err := connectPool(pool, ctx, server.ID()); err != nil {
 		t.Fatal(err)
 	}
 	before := pool.Statuses()

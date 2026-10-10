@@ -80,8 +80,7 @@ it("refuses expired replay without deleting evidence or issuing a replacement ke
     MutationJournalError,
   );
   expect(() =>
-    restarted.recover("runs.start", { text: "hello" }, original.entry.idempotencyKey),
+    restarted.reserve("runs.start", { text: "hello" }, original.entry.idempotencyKey, () => false),
   ).toThrow(MutationJournalError);
   expect(durable.keys().map((key) => [key, durable.get(key)])).toEqual(before);
-  expect(restarted.entries()[0]?.entry.idempotencyKey).toBe(original.entry.idempotencyKey);
 });

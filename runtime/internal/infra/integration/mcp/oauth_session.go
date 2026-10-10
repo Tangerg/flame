@@ -264,7 +264,7 @@ func invalidateRejectedTokens(
 
 // restoredOAuthHandler deliberately does not start an interactive browser flow
 // during boot. A rejected credential is removed and the dial is classified as
-// needsAuth; the explicit Authorize command then owns user interaction.
+// needsAuth; an explicit authorization attempt owns user interaction.
 type restoredOAuthHandler struct {
 	mu      sync.RWMutex
 	source  oauth2.TokenSource

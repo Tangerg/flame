@@ -262,7 +262,7 @@ func TestToolEnvironmentReconnectsMCP(t *testing.T) {
 	built, pool := mustMCPToolEnvironment(t, []mcpserver.Server{
 		{Source: mcpserver.UserSource(), Name: testsupport.ServerName("down"), Transport: mcpserver.TransportStreamableHTTP, URL: "http://127.0.0.1:1/mcp"},
 	})
-	if err := pool.Reconnect(context.Background(), testsupport.UserMCPServer("down")); err == nil {
+	if err := connectPool(pool, context.Background(), testsupport.UserMCPServer("down")); err == nil {
 		t.Fatal("reconnect of an unreachable server must return the dial error")
 	}
 	st := pool.Statuses()
@@ -273,7 +273,7 @@ func TestToolEnvironmentReconnectsMCP(t *testing.T) {
 		t.Fatalf("MCPTools = %+v, want empty after a failed reconnect", tools)
 	}
 
-	if err := pool.Reconnect(context.Background(), testsupport.UserMCPServer("ghost")); !errors.Is(err, mcpserver.ErrUnknownServer) {
+	if err := connectPool(pool, context.Background(), testsupport.UserMCPServer("ghost")); !errors.Is(err, mcpserver.ErrUnknownServer) {
 		t.Fatalf("reconnect unknown = %v, want mcpserver.ErrUnknownServer", err)
 	}
 }
@@ -358,13 +358,13 @@ func TestMCPNameCollisionsAfterDialAndReconnect(t *testing.T) {
 			}
 		}
 		verify(true)
-		if err := pool.Reconnect(t.Context(), testsupport.UserMCPServer("a")); err != nil {
+		if err := connectPool(pool, t.Context(), testsupport.UserMCPServer("a")); err != nil {
 			t.Fatal(err)
 		}
 		verify(true)
 		if reversed {
 			second.RemoveTools("b_c")
-			if err := pool.Reconnect(t.Context(), testsupport.UserMCPServer("a")); err != nil {
+			if err := connectPool(pool, t.Context(), testsupport.UserMCPServer("a")); err != nil {
 				t.Fatal(err)
 			}
 			verify(false)
@@ -399,4 +399,22 @@ func attachedRun(t *testing.T) context.Context {
 	return executionctx.WithScope(t.Context(), runs.ExecutionScope{
 		SessionID: "session-test", CWD: workspace, WorkspaceCWD: workspace,
 	})
+}
+
+func connectPool(pool *mcpconnection.Pool, ctx context.Context, name mcpserver.ID) error {
+	attempt, err := pool.BeginConnect(ctx, name)
+	if err != nil {
+		return err
+	}
+	defer attempt.Close()
+	return attempt.Run()
+}
+
+func authorizePool(pool *mcpconnection.Pool, ctx context.Context, name mcpserver.ID) error {
+	attempt, err := pool.BeginAuthorize(ctx, name)
+	if err != nil {
+		return err
+	}
+	defer attempt.Close()
+	return attempt.Run()
 }

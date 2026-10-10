@@ -700,8 +700,6 @@ func TestMCPServerDetailNamesEachStatusCategory(t *testing.T) {
 		protocol.MCPStatusDialFailed:            {protocol.MCPServerFailed, "connection failed"},
 		protocol.MCPStatusToolDiscoveryFailed:   {protocol.MCPServerFailed, "valid tool list"},
 		protocol.MCPStatusConfigurationFailed:   {protocol.MCPServerFailed, "stored credentials"},
-		protocol.MCPStatusReleaseUnavailable:    {protocol.MCPServerFailed, "release cannot be verified"},
-		protocol.MCPStatusBackendUnavailable:    {protocol.MCPServerFailed, "backend cannot be prepared"},
 		protocol.MCPStatusAuthorizationFailed:   {protocol.MCPServerFailed, "sign-in did not complete"},
 	} {
 		server := protocol.MCPServer{ID: id, Status: protocol.MCPServerState{Type: test.state, Error: &protocol.MCPStatusProblem{Type: problem}}}

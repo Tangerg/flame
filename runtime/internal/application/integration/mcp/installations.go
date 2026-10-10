@@ -24,8 +24,7 @@ func (c *Coordinator) WithdrawInstallation(servers []mcpserver.ID) error {
 	}
 	var result error
 	for _, id := range servers {
-		c.cancelDial(id)
-		result = errors.Join(result, c.connectionLifecycle.Detach(id))
+		result = errors.Join(result, c.connections.Detach(id))
 	}
 	return result
 }
@@ -33,6 +32,9 @@ func (c *Coordinator) WithdrawInstallation(servers []mcpserver.ID) error {
 // ReconcileInstallation realizes committed installation projections in the
 // existing supervisor. It cannot save or edit an installation descriptor.
 func (c *Coordinator) ReconcileInstallation(ctx context.Context, servers []mcpserver.ID) error {
+	if ctx == nil {
+		return errors.New("mcp: realization context is required")
+	}
 	if err := validateInstallationSources(servers); err != nil {
 		return err
 	}
@@ -49,41 +51,27 @@ func (c *Coordinator) ReconcileInstallation(ctx context.Context, servers []mcpse
 		// Read the current owner under the supervisor's sequencing lock. A
 		// delayed reconcile may never dispatch a superseded command snapshot.
 		server, found, err := c.registry.Definition(write.ownerCtx, id)
-		c.cancelDial(id)
 		if err != nil {
 			// An unverifiable source must not read as merely disconnected
 			// while nothing will dial it; like a dispatch that cannot read its
 			// source, the refusal reaches status readers.
-			result = errors.Join(result, err, c.connectionLifecycle.Refuse(write.ownerCtx, id, mcpserver.FailureConfiguration))
-			status, statusErr := c.liveStatus(id)
-			if statusErr != nil {
-				result = errors.Join(result, statusErr)
-				continue
-			}
-			events = append(events, c.prepareStatus(status, nil))
+			result = errors.Join(result, err, c.connections.Refuse(write.ownerCtx, id, mcpserver.FailureConfiguration))
+			events = append(events, c.statusQueue.prepare(id))
 			continue
 		}
 		if !found || !server.Enabled {
-			result = errors.Join(result, c.connectionLifecycle.Detach(id))
+			result = errors.Join(result, c.connections.Detach(id))
 		}
 		if !found {
 			c.exposure.removeServer(id)
-			events = append(events, c.prepareStatus(ServerStatus{Server: id}, nil))
+			events = append(events, c.statusQueue.prepare(id))
 			continue
 		}
 		c.exposure.setServer(server)
-		status := ServerStatus{Server: server.ID()}
-		var operation *activeDial
 		if server.Enabled {
-			operation, err = c.redialServer(write.ownerCtx, server.ID(), start)
-			if err != nil {
-				result = errors.Join(result, err)
-			} else {
-				status.State = mcpserver.ConnectionConnecting
-				status.Known = true
-			}
+			result = errors.Join(result, c.dispatchConnection(write.ownerCtx, server.ID(), c.connections.BeginConnect, start, nil, nil))
 		}
-		events = append(events, c.prepareStatus(status, operation))
+		events = append(events, c.statusQueue.prepare(id))
 	}
 	write.unlock()
 	for _, event := range events {
@@ -108,7 +96,7 @@ func (c *Coordinator) refuseUnrealized(ctx context.Context, servers []mcpserver.
 			continue
 		}
 		if found && server.Enabled {
-			result = errors.Join(result, c.connectionLifecycle.Refuse(ctx, id, mcpserver.FailureConfiguration))
+			result = errors.Join(result, c.connections.Refuse(ctx, id, mcpserver.FailureConfiguration))
 		}
 		c.invalidations.Notify(invalidation.ForMCP(id))
 	}

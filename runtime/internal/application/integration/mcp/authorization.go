@@ -53,7 +53,12 @@ func (c *Coordinator) AuthorizationAttemptRetention() time.Duration {
 // component-owned interactive OAuth flow. A newer operation for the same server
 // cancels this attempt; operations for other servers remain independent.
 func (c *Coordinator) CreateAuthorizationAttempt(ctx context.Context, server mcpserver.ID) (AuthorizationAttempt, error) {
-	target, err := c.connectionTarget(ctx, server)
+	write, err := c.beginMutation(ctx)
+	if err != nil {
+		return AuthorizationAttempt{}, err
+	}
+	defer write.close()
+	target, err := c.connectionTarget(write.requestCtx, server)
 	if err != nil {
 		return AuthorizationAttempt{}, err
 	}
@@ -61,15 +66,18 @@ func (c *Coordinator) CreateAuthorizationAttempt(ctx context.Context, server mcp
 		return AuthorizationAttempt{}, ErrAuthorizationUnsupported
 	}
 	attempt := c.authorizationAttempts.create(server)
-	_, err = c.dispatchConnection(ctx, server, func(ctx context.Context) error {
-		return c.connectionControl.Authorize(ctx, server)
-	}, true, nil, func(outcome connectionOutcome) {
+	start := make(chan struct{})
+	defer close(start)
+	var event *statusEvent
+	err = c.dispatchConnection(write.ownerCtx, server, c.connections.BeginAuthorize, start, func() { c.statusQueue.publish(event) }, func(outcome connectionOutcome) {
 		c.authorizationAttempts.settle(attempt.ID, authorizationAttemptStatus(outcome))
 	})
 	if err != nil {
 		c.authorizationAttempts.discard(attempt.ID)
 		return AuthorizationAttempt{}, err
 	}
+	event = c.statusQueue.prepare(server)
+	write.unlock()
 	return attempt, nil
 }
 

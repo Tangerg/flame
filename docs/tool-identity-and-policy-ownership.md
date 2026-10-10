@@ -164,7 +164,6 @@ The old table and columns are dropped in the same transaction.
 | TypeScript contract | `runtime/contract/typescript` (regenerated) |
 | Desktop | `settings/mcp-servers` (`ToolControls.tsx`, `ServerForm.tsx`, `mcpServerDraft.ts`, `mcpServerInput.ts`, `mcpServerQueries.ts`, `runtimeMcpServerGateway.ts`, `runtimeMcpServerProjection.ts`), `settings/approvals` (`RulesRow.tsx`, `approvalConfig.ts`), `agent` approval policy files, `rpc/samples.test.ts` |
 | CLI | `internal/delivery/cmd/approvals.go`, `internal/adapter/runtimebinding/catalogs.go`, `internal/delivery/terminal` approval readers, `internal/runtimefixture/approvals.go` |
-| IDE | No direct references found; rerun its check after the contract changes |
 | Documentation | Runtime README and architecture sections that describe approval rules and MCP tool policy |
 
 ## 7. Steps
@@ -209,7 +208,6 @@ From `DEVELOPMENT.md`:
 (cd runtime && GOWORK=off go test ./... && GOWORK=off go vet ./... && GOWORK=off go build ./...)
 (cd runtime/contract/typescript && npm run check)
 (cd desktop/frontend && npm run check)
-(cd ide && npm run check)
 (cd cli && GOWORK=off go test ./... && GOWORK=off go vet ./... && GOWORK=off go build ./...)
 git diff --check
 ```

@@ -1917,11 +1917,6 @@
           "value": "\"mcp_authorization_required\""
         },
         {
-          "name": "MCPStatusBackendUnavailable",
-          "type": "MCPStatusProblemType",
-          "value": "\"mcp_backend_unavailable\""
-        },
-        {
           "name": "MCPStatusConfigurationFailed",
           "type": "MCPStatusProblemType",
           "value": "\"mcp_configuration_failed\""
@@ -1930,11 +1925,6 @@
           "name": "MCPStatusDialFailed",
           "type": "MCPStatusProblemType",
           "value": "\"mcp_dial_failed\""
-        },
-        {
-          "name": "MCPStatusReleaseUnavailable",
-          "type": "MCPStatusProblemType",
-          "value": "\"mcp_release_unavailable\""
         },
         {
           "name": "MCPStatusToolDiscoveryFailed",
@@ -2394,7 +2384,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-10.7\""
+          "value": "\"2026-10-10.8\""
         },
         {
           "name": "ProviderAPIKeyOptional",

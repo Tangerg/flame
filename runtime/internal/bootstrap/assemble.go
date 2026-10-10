@@ -284,14 +284,12 @@ func buildAssemblyCore(
 	}
 
 	mcpCoordinator, err := mcpapp.New(mcpapp.Config{
-		Registry:            policy.registry,
-		Store:               cfg.Stores.MCPServers,
-		StatusReader:        execution.tools.mcp,
-		ToolCatalog:         execution.tools.tools.Resolver,
-		ConnectionControl:   execution.tools.mcp,
-		ConnectionLifecycle: execution.tools.mcp,
-		Exposure:            policy.mcp.exposure,
-		Invalidations:       policy.invalidations.Publish,
+		Registry:      policy.registry,
+		Store:         cfg.Stores.MCPServers,
+		Connections:   execution.tools.mcp,
+		ToolCatalog:   execution.tools.tools.Resolver,
+		Exposure:      policy.mcp.exposure,
+		Invalidations: policy.invalidations.Publish,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("runtime: construct MCP coordinator: %w", err)

@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-10.7";
+export const PROTOCOL_VERSION = "2026-10-10.8";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -959,7 +959,7 @@ export type MCPServerState =
   | { type: "disconnected" }
   | { type: "connecting" }
   | { type: "connected"; toolCount: number }
-  | { type: "failed"; error: { type: "mcp_release_unavailable" | "mcp_backend_unavailable" | "mcp_configuration_failed" | "mcp_dial_failed" | "mcp_tool_discovery_failed" | "mcp_authorization_failed" } }
+  | { type: "failed"; error: { type: "mcp_configuration_failed" | "mcp_dial_failed" | "mcp_tool_discovery_failed" | "mcp_authorization_failed" } }
   | { type: "needsAuth"; error: { type: "mcp_authorization_required" } };
 
 export type MCPServerStateType = "disabled" | "disconnected" | "connecting" | "connected" | "failed" | "needsAuth";
@@ -968,7 +968,7 @@ export interface MCPStatusProblem {
   type: MCPStatusProblemType;
 }
 
-export type MCPStatusProblemType = "mcp_authorization_required" | "mcp_authorization_failed" | "mcp_dial_failed" | "mcp_tool_discovery_failed" | "mcp_configuration_failed" | "mcp_release_unavailable" | "mcp_backend_unavailable";
+export type MCPStatusProblemType = "mcp_authorization_required" | "mcp_authorization_failed" | "mcp_dial_failed" | "mcp_tool_discovery_failed" | "mcp_configuration_failed";
 
 export type MCPTestOutcome = "reachable" | "authorizationRequired" | "timedOut" | "failed";
 
@@ -2182,7 +2182,7 @@ export const WIRE_ENUMS = {
   MCPOriginType: ["user", "installation"],
   MCPSecretChangeType: ["set", "clear"],
   MCPServerStateType: ["disabled", "disconnected", "connecting", "connected", "failed", "needsAuth"],
-  MCPStatusProblemType: ["mcp_authorization_required", "mcp_authorization_failed", "mcp_dial_failed", "mcp_tool_discovery_failed", "mcp_configuration_failed", "mcp_release_unavailable", "mcp_backend_unavailable"],
+  MCPStatusProblemType: ["mcp_authorization_required", "mcp_authorization_failed", "mcp_dial_failed", "mcp_tool_discovery_failed", "mcp_configuration_failed"],
   MCPTestOutcome: ["reachable", "authorizationRequired", "timedOut", "failed"],
   MCPTransport: ["stdio", "streamableHttp"],
   MessagePhase: ["commentary", "finalAnswer"],

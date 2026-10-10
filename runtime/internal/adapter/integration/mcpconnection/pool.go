@@ -23,11 +23,7 @@ type Pool struct {
 	inner    *mcp.Connections
 }
 
-var (
-	_ mcpapp.StatusReader        = (*Pool)(nil)
-	_ mcpapp.ConnectionControl   = (*Pool)(nil)
-	_ mcpapp.ConnectionLifecycle = (*Pool)(nil)
-)
+var _ mcpapp.Connections = (*Pool)(nil)
 
 // Open establishes the enabled MCP connections present at runtime startup.
 // Unreachable but valid servers remain in the pool as failed, matching the
@@ -58,20 +54,20 @@ func (p *Pool) Statuses() []mcpserver.ConnectionStatus {
 	return p.inner.Statuses()
 }
 
-func (p *Pool) Reconnect(ctx context.Context, name mcpserver.ID) error {
-	config, err := p.admittedLaunch(ctx, name)
+func (p *Pool) BeginConnect(ctx context.Context, name mcpserver.ID) (mcpapp.Attempt, error) {
+	attempt, err := p.inner.BeginConnect(ctx, name, p.connectionLaunch)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return p.inner.Configure(ctx, config)
+	return attempt, nil
 }
 
-func (p *Pool) Authorize(ctx context.Context, name mcpserver.ID) error {
-	config, err := p.admittedLaunch(ctx, name)
+func (p *Pool) BeginAuthorize(ctx context.Context, name mcpserver.ID) (mcpapp.Attempt, error) {
+	attempt, err := p.inner.BeginAuthorize(ctx, name, p.connectionLaunch)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return p.inner.Authorize(ctx, config)
+	return attempt, nil
 }
 
 func (p *Pool) Probe(ctx context.Context, server mcpserver.Server) error {
@@ -82,35 +78,12 @@ func (p *Pool) Probe(ctx context.Context, server mcpserver.Server) error {
 	return p.inner.Probe(ctx, cfg)
 }
 
-func (p *Pool) Configure(ctx context.Context, name mcpserver.ID) error {
-	cfg, err := p.admittedLaunch(ctx, name)
-	if err != nil {
-		return err
-	}
-	return p.inner.Configure(ctx, cfg)
-}
-
-// admittedLaunch obtains the source and resource a new connection must use. When the
-// source refuses, the refusal becomes the live state: a removed or disabled
-// source is detached, any other refusal settles as a configuration failure,
-// and in both cases the previous session stops serving tools.
-func (p *Pool) admittedLaunch(ctx context.Context, name mcpserver.ID) (*mcp.Launch, error) {
-	cfg, err := p.connectionLaunch(ctx, name)
-	if err == nil {
-		return cfg, nil
-	}
-	if cause := context.Cause(ctx); cause != nil {
-		return nil, errors.Join(err, cause)
-	}
-	if errors.Is(err, mcpapp.ErrUnknownServer) || errors.Is(err, mcpapp.ErrServerDisabled) {
-		return nil, errors.Join(err, p.inner.Detach(name))
-	}
-	return nil, errors.Join(err, p.inner.Refuse(ctx, name, mcpserver.FailureConfiguration))
-}
-
 func (p *Pool) connectionLaunch(ctx context.Context, name mcpserver.ID) (*mcp.Launch, error) {
 	connection, err := p.registry.Connection(ctx, name)
 	if err != nil {
+		if errors.Is(err, mcpapp.ErrUnknownServer) || errors.Is(err, mcpapp.ErrServerDisabled) {
+			err = errors.Join(mcp.ErrSourceWithdrawn, err)
+		}
 		return nil, err
 	}
 	var retire func() error

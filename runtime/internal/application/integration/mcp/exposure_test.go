@@ -30,7 +30,7 @@ func testUnavailableInstallationRetainsExposureChoices(t *testing.T) {
 	registry := &testRegistry{servers: map[mcpserver.ID]mcpserver.Server{name: server}}
 	exposure := NewExposureState([]mcpserver.Server{server}, nil)
 	live := &fakePorts{configureErr: plugin.ErrUnavailable}
-	c := testCoordinator(t, Config{Registry: registry, Exposure: exposure, ConnectionLifecycle: live})
+	c := testCoordinator(t, Config{Registry: registry, Exposure: exposure, Connections: live})
 	defer requireCoordinatorShutdown(t, c)
 	if err := c.SetToolExposure(t.Context(), ref, true); err != nil {
 		t.Fatal(err)
@@ -100,7 +100,7 @@ func TestExposureRemovalSurvivesLiveDetachFailure(t *testing.T) {
 	exposure := NewExposureState([]mcpserver.Server{server}, nil)
 	registry := &testRegistry{servers: map[mcpserver.ID]mcpserver.Server{server.ID(): server}, listErr: errors.New("catalog read unavailable")}
 	detachErr := errors.New("detach failed")
-	c := testCoordinator(t, Config{Registry: registry, Exposure: exposure, ConnectionLifecycle: &fakePorts{removeErr: detachErr}})
+	c := testCoordinator(t, Config{Registry: registry, Exposure: exposure, Connections: &fakePorts{removeErr: detachErr}})
 	if err := c.DeleteServer(t.Context(), server.ID()); !errors.Is(err, detachErr) {
 		t.Fatalf("lost detach failure: %v", err)
 	}

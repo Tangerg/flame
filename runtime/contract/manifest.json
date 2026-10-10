@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-10.7",
+  "protocolVersion": "2026-10-10.8",
   "features": [
     "reasoning",
     "multimodal",
@@ -2332,10 +2332,8 @@
     "inlineStatusTypes": [
       "mcp_authorization_failed",
       "mcp_authorization_required",
-      "mcp_backend_unavailable",
       "mcp_configuration_failed",
       "mcp_dial_failed",
-      "mcp_release_unavailable",
       "mcp_tool_discovery_failed"
     ]
   },
@@ -4161,8 +4159,6 @@
             {
               "field": "error.type",
               "values": [
-                "mcp_release_unavailable",
-                "mcp_backend_unavailable",
                 "mcp_configuration_failed",
                 "mcp_dial_failed",
                 "mcp_tool_discovery_failed",

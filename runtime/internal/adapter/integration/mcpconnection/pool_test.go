@@ -113,8 +113,8 @@ func TestRefusedConnectionWithdrawsTheLiveSession(t *testing.T) {
 			pool.SetToolSink(func(tools []toolcontract.Tool) { published = tools })
 			registry.refuse(tt.refusal)
 			for operation, connect := range map[string]func() error{
-				"configure": func() error { return pool.Configure(t.Context(), server.ID()) },
-				"reconnect": func() error { return pool.Reconnect(t.Context(), server.ID()) },
+				"configure": func() error { return connectPool(pool, t.Context(), server.ID()) },
+				"reconnect": func() error { return connectPool(pool, t.Context(), server.ID()) },
 			} {
 				if err := connect(); !errors.Is(err, tt.refusal) {
 					t.Fatalf("%s = %v, want the refusal", operation, err)
@@ -148,10 +148,28 @@ func TestSupersededRefusalRecordsNothing(t *testing.T) {
 	t.Cleanup(func() { _ = pool.Shutdown(context.WithoutCancel(t.Context())) })
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if err := pool.Reconnect(ctx, server.ID()); !errors.Is(err, context.Canceled) {
+	if err := connectPool(pool, ctx, server.ID()); !errors.Is(err, context.Canceled) {
 		t.Fatalf("superseded reconnect = %v", err)
 	}
 	if statuses := pool.Statuses(); len(statuses) != 0 {
 		t.Fatalf("a superseded refusal reached status: %+v", statuses)
 	}
+}
+
+func connectPool(pool *Pool, ctx context.Context, name mcpserver.ID) error {
+	attempt, err := pool.BeginConnect(ctx, name)
+	if err != nil {
+		return err
+	}
+	defer attempt.Close()
+	return attempt.Run()
+}
+
+func authorizePool(pool *Pool, ctx context.Context, name mcpserver.ID) error {
+	attempt, err := pool.BeginAuthorize(ctx, name)
+	if err != nil {
+		return err
+	}
+	defer attempt.Close()
+	return attempt.Run()
 }

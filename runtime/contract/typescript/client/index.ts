@@ -8,8 +8,7 @@ export {
 export { asItemId, asRunId, asSegmentId, asSessionId } from "./ids";
 export type { ItemId, RunId, SegmentId } from "./ids";
 export type { MutationAttemptOptions, MutationPromise } from "./mutation";
-export { createMutationJournal, createPreparedMutationJournal } from "./mutationJournal";
-export type { MutationCommand, PreparedMutation, PreparedMutationJournal } from "./mutationJournal";
+export { createMutationJournal } from "./mutationJournal";
 export {
   createMutationSettler,
   MUTATION_ATTEMPT_TIMEOUT_MS,

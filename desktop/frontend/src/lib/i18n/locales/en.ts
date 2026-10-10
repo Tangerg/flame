@@ -890,10 +890,6 @@ export const en: Record<string, string> = {
     "Connected, but this server didn't return a usable tool list. Check the server and retry.",
   "mcpStatus.mcp_configuration_failed":
     "This server's configuration or saved credentials couldn't be used. Review its settings and retry.",
-  "mcpStatus.mcp_release_unavailable":
-    "The plugin that provides this server failed verification. Reinstall or update the plugin.",
-  "mcpStatus.mcp_backend_unavailable":
-    "The plugin is intact, but this server's backend couldn't be prepared. Retry or reinstall the plugin.",
   "mcpStatus.mcp_dial_failed": "Couldn't reach this server — check the command or URL and retry.",
   "providers.testOutcome.notConfigured": "Finish configuring the provider first.",
   "providers.testOutcome.failed":

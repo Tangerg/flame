@@ -39,24 +39,32 @@ func (c *Connections) Detach(name mcpserver.ID) error {
 		return ErrConnectionsClosed
 	}
 	if index := slices.IndexFunc(c.servers, func(s *server) bool { return s.name() == name }); index >= 0 {
-		target := c.servers[index]
-		dial := target.attempt
-		if dial != nil {
-			dial.cancel()
-			target.attempt = nil
-		}
-		closeAttempt := c.beginSessionCloseLocked(target.session)
-		if closeAttempt != nil {
-			if c.retirements == nil {
-				c.retirements = map[*sessionCloseAttempt]struct{}{}
-			}
-			c.retirements[closeAttempt] = struct{}{}
-		}
-		c.servers = slices.Delete(c.servers, index, index+1)
-		c.publishToolsLocked()
+		c.removeLocked(c.servers[index])
 	}
 	c.mu.Unlock()
 	return nil
+}
+
+func (c *Connections) removeLocked(target *server) {
+	if target.attempt != nil {
+		target.attempt.cancel()
+		target.attempt = nil
+	}
+	c.retireSessionLocked(target.session)
+	index := slices.Index(c.servers, target)
+	c.servers = slices.Delete(c.servers, index, index+1)
+	c.publishToolsLocked()
+}
+
+func (c *Connections) retireSessionLocked(session *sdkmcp.ClientSession) *sessionCloseAttempt {
+	attempt := c.beginSessionCloseLocked(session)
+	if attempt != nil {
+		if c.retirements == nil {
+			c.retirements = make(map[*sessionCloseAttempt]struct{})
+		}
+		c.retirements[attempt] = struct{}{}
+	}
+	return attempt
 }
 
 // publishToolsLocked rebuilds the model-facing catalog from each connected

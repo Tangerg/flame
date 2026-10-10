@@ -101,39 +101,16 @@ func (c *Coordinator) commitServer(write *mutationScope, srv mcpserver.Server) (
 	if err := c.store.Save(write.requestCtx, srv); err != nil {
 		return Server{}, err
 	}
-	if !srv.Enabled {
-		c.cancelDial(srv.ID())
-	}
 	reconcileErr := c.applyRegistryChange(srv)
-	// Make the committed descriptor and its first live state one ordered fact.
-	// Enabled servers enter connecting here; their detached dial suppresses its
-	// own duplicate connecting event and only publishes the status port's terminal
-	// projection. Disabled or unreconciled servers install an unknown tombstone
-	// so a stale live entry cannot resurrect the previous connection.
-	status := ServerStatus{Server: srv.ID()}
-	shouldRedial := srv.Enabled && reconcileErr == nil
 	var redialErr error
-	var startDial chan struct{}
-	var operation *activeDial
-	if shouldRedial {
-		startDial = make(chan struct{})
-		// Admit the dial before invoking the event sink. A sink may synchronously
-		// reconfigure this server; that newer dial must supersede this one rather
-		// than having this older dispatch happen after the callback returns. The
-		// gate prevents the admitted task from settling before that callback gets
-		// its chance to supersede it.
-		operation, redialErr = c.redialServer(write.ownerCtx, srv.ID(), startDial)
-		if redialErr == nil {
-			status.Known = true
-			status.State = mcpserver.ConnectionConnecting
-		}
+	start := make(chan struct{})
+	defer close(start)
+	if srv.Enabled && reconcileErr == nil {
+		redialErr = c.dispatchConnection(write.ownerCtx, srv.ID(), c.connections.BeginConnect, start, nil, nil)
 	}
-	event := c.prepareStatus(status, operation)
+	event := c.statusQueue.prepare(srv.ID())
 	write.unlock()
 	c.statusQueue.publish(event)
-	if startDial != nil {
-		close(startDial)
-	}
 	if reconcileErr != nil {
 		return Server{}, reconcileErr
 	}
@@ -166,11 +143,10 @@ func (c *Coordinator) DeleteServer(ctx context.Context, name mcpserver.ID) error
 	if err := c.store.Remove(write.requestCtx, name.Name()); err != nil {
 		return err
 	}
-	c.cancelDial(name)
 	// Detachment retires live executables; exposure still closes if it fails.
-	projectionErr := c.connectionLifecycle.Detach(name)
+	projectionErr := c.connections.Detach(name)
 	c.exposure.removeServer(name)
-	event := c.prepareStatus(ServerStatus{Server: name}, nil)
+	event := c.statusQueue.prepare(name)
 	write.unlock()
 	c.statusQueue.publish(event)
 	return projectionErr
@@ -190,6 +166,9 @@ type mutationScope struct {
 // release the lock before invoking status sinks or dispatching live dials, then
 // defer close to release the task scopes on every exit.
 func (c *Coordinator) beginMutation(ctx context.Context) (*mutationScope, error) {
+	if ctx == nil {
+		return nil, errors.New("mcp: mutation context is required")
+	}
 	ownerCtx, releaseOwner, ok := c.tasks.Attach(ctx)
 	if !ok {
 		return nil, errClosed
@@ -239,26 +218,10 @@ func (m *mutationScope) close() {
 func (c *Coordinator) applyRegistryChange(srv mcpserver.Server) error {
 	var err error
 	if !srv.Enabled {
-		err = c.connectionLifecycle.Detach(srv.ID())
+		err = c.connections.Detach(srv.ID())
 	}
 	c.exposure.setServer(srv)
 	return err
-}
-
-// redialServer dispatches a detached live (re)dial for an enabled server whose
-// registry change already committed and whose exposure already published under the
-// mutation lock. The dial runs OUTSIDE that lock (dispatchConnection's task
-// blocks on it until the caller's deferred release fires, then dials), so one slow
-// endpoint cannot freeze the whole MCP control plane. It reuses the same live
-// collaborator the synchronous path used ([connectionLifecycle.Configure] with the
-// source identity); the connection boundary reads the current owner before dialing.
-// A concurrent reconfigure supersedes a stale dial
-// through per-server generation. A dial failure does not fail the originating
-// call; status surfaces it and it remains reconnectable.
-func (c *Coordinator) redialServer(ctx context.Context, name mcpserver.ID, start <-chan struct{}) (*activeDial, error) {
-	return c.dispatchConnection(ctx, name, func(dialCtx context.Context) error {
-		return c.connectionLifecycle.Configure(dialCtx, name)
-	}, false, start, nil)
 }
 
 // TestServer dials srv with a throwaway client and proves its tools list — a
@@ -275,7 +238,7 @@ func (c *Coordinator) TestServer(ctx context.Context, input ServerInput) (TestRe
 	if err != nil {
 		return "", err
 	}
-	probeErr := c.connectionLifecycle.Probe(ctx, srv)
+	probeErr := c.connections.Probe(ctx, srv)
 	if err := ctx.Err(); err != nil {
 		return "", err
 	}

@@ -5,7 +5,7 @@
 **Status:** Draft for architecture review. Not an implementation contract or a description of shipped behavior.  
 **Date:** 2026-10-01.  
 **Product baseline:** `Tangerg/flame@1083cab5794d6bcc252bdd27dac4b23ecb8a5940`.  
-**Audience:** Runtime, Scope, Desktop/Web, CLI, IDE, and plugin SDK maintainers.  
+**Audience:** Runtime, Scope, Desktop/Web, CLI, and plugin SDK maintainers.\
 **Document language:** English.  
 **Canonical review artifact:** This Markdown document. The PDF is a generated reading copy.
 
@@ -38,7 +38,7 @@ First-party capability extraction remains a separate phase.
 - [9. MCP integration profile](#9-mcp-integration-profile)
 - [10. Strongly host-bound tools](#10-strongly-host-bound-tools)
 - [11. Runtime Protocol and shared client contracts](#11-runtime-protocol-and-shared-client-contracts)
-- [12. Desktop, Web, CLI, and IDE behavior](#12-desktop-web-cli-and-ide-behavior)
+- [12. Desktop, Web, and CLI behavior](#12-desktop-web-and-cli-behavior)
 - [13. UI resource delivery and bridge security](#13-ui-resource-delivery-and-bridge-security)
 - [14. Threat model and grants](#14-threat-model-and-grants)
 - [15. Updates, uninstallation, and compatibility](#15-updates-uninstallation-and-compatibility)
@@ -58,7 +58,7 @@ First-party capability extraction remains a separate phase.
 
 Flame should provide one plugin product model with several execution and presentation adapters. It should not require all extension code to share one language, one process, one user interface, or one transport.
 
-Portable packages describe capabilities and resources. Runtime owns installation admission, authorization, active backend resources, and product operations. Scope remains the owner of agent execution and the reusable tool contract. Desktop/Web projects accepted view contributions into the existing Dougong host. CLI and IDE consume the same Runtime-owned capabilities through their own interactions.
+Portable packages describe capabilities and resources. Runtime owns installation admission, authorization, active backend resources, and product operations. Scope remains the owner of agent execution and the reusable tool contract. Desktop/Web projects accepted view contributions into the existing Dougong host. CLI consumes the same Runtime-owned capabilities through its own interactions.
 
 The central constraint is **one behavior, one semantic owner**, not **one behavior, one mandatory IPC hop**. A local Go implementation and an MCP-backed implementation can use the same invocation policy without duplicating business logic. Conversely, two MCP services can violate ownership if both independently advance the same Plan or Run.
 
@@ -92,7 +92,7 @@ It also does not promise that native subprocesses are safe merely because they u
 
 ### 1.3 Required user-visible outcome
 
-A user installs one approved plugin release into one Runtime. Its tools become discoverable through that Runtime. Its optional view appears on capable clients. Desktop and Web can display the same packaged UI without maintaining the plugin's backend state. CLI can perform the underlying operation and read structured output when such an operation exists. IDE can offer native commands or, later, a compatible Webview. Closing any view does not cancel accepted Runtime execution.
+A user installs one approved plugin release into one Runtime. Its tools become discoverable through that Runtime. Its optional view appears on capable clients. Desktop and Web can display the same packaged UI without maintaining the plugin's backend state. CLI can perform the underlying operation and read structured output when such an operation exists. Closing any view does not cancel accepted Runtime execution.
 
 A theme-only plugin can have no backend. A backend-only plugin can have no view. A plugin that genuinely requires a visual interaction can declare that requirement and be explicitly unavailable in a headless context. The product must not fabricate equivalence where none exists.
 
@@ -110,7 +110,7 @@ The development rules prohibit ownerless forwarding packages, copied framework i
 | --- | --- |
 | The graphical application already has a Dougong host, typed extension points, and built-in feature plugins. | Extend its trust boundary and inputs; do not replace its composition system. |
 | Workspace and settings contributions contain React component types. | These are local implementation contracts, not serializable backend descriptors. |
-| Desktop/Web and IDE use the Runtime-owned TypeScript client. | Extend that client once rather than introducing a protocol fork per surface. |
+| Desktop/Web uses the Runtime-owned TypeScript client. | Extend that client once rather than introducing a protocol fork per surface. |
 | Client capabilities distinguish presentation preferences from requirements of an authoritative Run profile. | View degradation must not silently weaken execution requirements. |
 | Scope MCP exposes registration and discovery adapters around Scope tools. | Reuse these adapters and identify semantic gaps before migrating tools. |
 | Scope's referenced remote-result adapter returns an incomplete-result error when more input is required. | A multi-round-trip bridge needs execution integration; it is not enabled merely by rendering a dialog. |
@@ -122,7 +122,7 @@ The development rules prohibit ownerless forwarding packages, copied framework i
 | A call may skip its prompt through either a remembered rule or the MCP server's `AutoApproveTools`. `ResolvePromptShortcuts` merges the two by precedence. | Two owners advance the same fact. The precedence rule is the symptom; repair the ownership instead of extending it to plugin grants. |
 | MCP tools already enter the Run's deferred set behind `search_tools`. | Plugin tools reuse deferred exposure; activation does not rewrite the tool declaration block that opens the provider prompt-cache prefix. |
 
-The first three facts are documented by the graphical architecture and IDE contract. The remaining facts are supported by the capability model, tool adapters, MCP registry, approval gate, and execution implementations in the pinned baseline. [F7] [F8] [F9] [F10] [F11] [F12] [F29] [F30] [F33] [F34] [F35] [F36] [F37] [S1] [S2] [S3] [S4]
+The first three facts are documented by the graphical architecture and shared client contract. The remaining facts are supported by the capability model, tool adapters, MCP registry, approval gate, and execution implementations in the pinned baseline. [F7] [F8] [F10] [F11] [F12] [F29] [F30] [F33] [F34] [F35] [F36] [F37] [S1] [S2] [S3] [S4]
 
 ### 2.3 Reference-project lessons used here
 
@@ -233,8 +233,8 @@ These changes build on Section 3.4 and are needed only once installations exist.
           Runtime capabilities                 client presentations
                   |                                  |
         existing Scope contracts             Runtime Protocol / SDK
-          /                 \                   /       |       \
-  trusted local tools     MCP adapters     Desktop/Web  CLI     IDE
+          /                 \                   /       |
+  trusted local tools     MCP adapters     Desktop/Web  CLI
           \                 /                   |
        shared invocation policies         existing Dougong host
                   |                        + isolated view broker
@@ -402,8 +402,8 @@ A global catalog is a derived view of accepted contributions, not a new service 
 | Contribution | Initial consumer | Rule protecting its boundary |
 | --- | --- | --- |
 | Tool | Scope execution and tool discovery | One validated definition; no authority inferred from name. |
-| User action | Trusted host form, CLI, or IDE command | Selects a closed existing Runtime operation; package code and HTML pages cannot submit it. |
-| Workspace or Session view | Graphical client and optional IDE host | Descriptor is serializable; layout remains host-owned. |
+| User action | Trusted host form or CLI command | Selects a closed existing Runtime operation; package code and HTML pages cannot submit it. |
+| Workspace or Session view | Graphical client | Descriptor is serializable; layout remains host-owned. |
 | Result renderer | Transcript/tool-result presentation | Cannot alter the stored tool outcome or execute on historical view without authorization. |
 | Settings contribution | Plugin configuration UI | Submits validated changes to the configuration owner. |
 | Theme resource | Existing appearance owner | Host-rendered bounded token data; not an arbitrary stylesheet or script privilege. Shown only while Runtime reports the installation's presentation as admitted. |
@@ -534,7 +534,7 @@ Reuse the existing prepared-command journal for client mutations and the existin
 
 A wire retry can use a new JSON-RPC ID while continuing the same logical invocation. Equal argument text does not imply the same operation: a user can legitimately perform the same action twice.
 
-After lost acknowledgement, preserve exact parameters, original creation time, owning Runtime namespace, target installation/release binding, and unresolved evidence. Retrying against a different Runtime store, an expired window, or a changed operation contract must be refused rather than turned into fresh work. The client journal remains owned by the shared SDK. [F9] [F13]
+After lost acknowledgement, preserve exact parameters, original creation time, owning Runtime namespace, target installation/release binding, and unresolved evidence. Retrying against a different Runtime store, an expired window, or a changed operation contract must be refused rather than turned into fresh work. The client journal remains owned by the shared SDK. [F13]
 
 Host-level deduplication cannot guarantee exactly-once effects in an unrelated external service. If a backend performed work but failed before recording its result, require provider-side idempotency, reconciliation, or an explicit unknown outcome. Never advertise exactly-once solely because a request key is persisted.
 
@@ -665,7 +665,7 @@ The discovery tool searches a Run-frozen deferred set and stages visibility thro
 
 Runtime Protocol carries product commands and observations between Runtime and clients. MCP carries tool/resource exchanges between Runtime and capability providers. UI messages carry requests between a view and its host. None of these protocols replaces the others.
 
-Client product operations must retain Go-binding/remote-binding parity through the existing delivery endpoint. Graphical and IDE clients reuse the shared TypeScript client for validation, mutation preparation, and replay. Do not add a Desktop-only Wails shortcut for plugin business operations. [F2] [F9] [F13]
+Client product operations must retain Go-binding/remote-binding parity through the existing delivery endpoint. Graphical clients reuse the shared TypeScript client for validation, mutation preparation, and replay. Do not add a Desktop-only Wails shortcut for plugin business operations. [F2] [F13]
 
 ### 11.2 Proposed operation families
 
@@ -727,18 +727,18 @@ Errors must state the smallest meaningful condition: unsupported plugin API, una
 
 Do not leak package filesystem paths, credentials, command environment values, raw stack traces, or continuation handles in public errors. Administrative diagnostics can provide redacted source and operation references. Errors preserve their causes internally without making error text a control-flow API.
 
-## 12. Desktop, Web, CLI, and IDE behavior
+## 12. Desktop, Web, and CLI behavior
 
 ### 12.1 Consistent capability, different presentation
 
-| Capability | Desktop/Web | CLI | IDE |
-| --- | --- | --- | --- |
-| Runtime query/action | Trusted form or command; read-only page projection | Explicit command and JSON/text output | Native command, picker, or document |
-| Simple configuration | Host-rendered settings form | Typed command/input | Native input where appropriate |
-| Rich result | Generic or plugin renderer | Structured result and bounded readable content | Native document or supported Webview |
-| Complex workspace page | Isolated read-only Web UI | Canonical reads, export, or explicit unsupported presentation | Optional generic Webview host |
-| Human approval | Trusted host prompt | Terminal interaction when supported | Native confirmation |
-| Local device operation | Platform adapter with explicit permission | Explicit local operation only | IDE-native adapter only |
+| Capability | Desktop/Web | CLI |
+| --- | --- | --- |
+| Runtime query/action | Trusted form or command; read-only page projection | Explicit command and JSON/text output |
+| Simple configuration | Host-rendered settings form | Typed command/input |
+| Rich result | Generic or plugin renderer | Structured result and bounded readable content |
+| Complex workspace page | Isolated read-only Web UI | Canonical reads, export, or explicit unsupported presentation |
+| Human approval | Trusted host prompt | Terminal interaction when supported |
+| Local device operation | Platform adapter with explicit permission | Explicit local operation only |
 
 Business behavior must not depend on a React component being mounted. Purely visual contributions may be unavailable outside graphical clients. A command or deep link naming an unavailable contribution should receive an explanatory result, not a blank pane or silent disappearance.
 
@@ -795,13 +795,11 @@ A trusted host action form owns its unsent draft. Runtime owns committed state a
 
 Connection replacement retires the previous view bridge and observation tasks. Late responses cannot update the successor. Unresolved commands from trusted controls remain in the shared journal with their original target; connection replacement cannot retarget them.
 
-### 12.7 CLI and IDE requirements
+### 12.7 CLI requirements
 
 CLI should offer generic discovery, invocation, safe output, and clear capability refusals before adding plugin-specific terminal widgets. Reuse Oolong for proven terminal interactions rather than introducing another terminal runtime.
 
-IDE should consume the same shared client and action definitions. A generic Flame Webview host can later display compatible resources inside the existing extension; each Flame plugin should not need a separate VSIX. IDE buffers remain versioned client-local inputs, not automatic authority to overwrite Runtime workspace files. [F9]
-
-A graphical test proves neither native Wails security nor IDE behavior. Supported native carriers need their own bridge, navigation, disposal, focus, and file-access verification.
+A browser test does not prove native Wails security. Supported native carriers need their own bridge, navigation, disposal, focus, and file-access verification.
 
 ## 13. UI resource delivery and bridge security
 
@@ -1169,7 +1167,7 @@ Do not create separate packages for each field, icon, and converter.
 
 An optional timeline/analysis view can read Runtime's existing trajectory and model-invocation projections. It owns filtering, display layout, and derived presentation metrics. It must not keep another official execution journal or recalculate missing provider evidence as fact.
 
-The same data remains accessible to CLI and IDE through existing queries. A lost renderer affects only rich presentation. A failed query is shown as a failed read, not an empty history.
+The same data remains accessible to CLI through existing queries. A lost renderer affects only rich presentation. A failed query is shown as a failed read, not an empty history.
 
 Start by removing direct imports into the feature's private implementation and exposing only the existing appropriate read/action contracts. Do not externalize a component by exporting all of its private React hooks.
 
@@ -1202,7 +1200,7 @@ Use current owners and repository vocabulary rather than inventing a required pl
 | Runtime shared TypeScript client | Generated validation, typed operations, command preparation and shared observation |
 | Graphical host/SDK | Serializable external-descriptor adapter and isolated view broker |
 | Existing graphical feature owners | Remove direct coupling and consume their existing public reads/actions |
-| CLI and IDE | Shared-capability discovery and their own interaction adapters |
+| CLI | Shared-capability discovery and terminal interaction adapters |
 | Scope libraries | Reusable tool/MCP/execution changes only, released before Flame depends on them |
 
 Do not create packages named `manager`, `service`, `impl`, `common`, or `repository` simply to populate this table. Namespace depth and package shape must follow the existing repository rules. A single concrete implementation is sufficient unless a real boundary or variation justifies an interface. [F2]
@@ -1309,7 +1307,7 @@ The scenarios below are proposed tests, not executed results. Prioritize actual 
 | U05 | Host already supplied initial data | No duplicate initial query for first render. |
 | U06 | Trusted action form closes after command acceptance | Runtime and the shared journal retain the original command. |
 | U07 | Runtime connection replaced | Old bridge cannot read or publish through the successor. |
-| U08 | Unsupported CLI/IDE rendering | Generic operation/result or explicit unsupported presentation. |
+| U08 | Unsupported CLI rendering | Generic operation/result or explicit unsupported presentation. |
 | U09 | Uninstall/revoke then open history | Safe generic content; no automatic old-code execution. |
 | U10 | Malicious deep link or filename | No automatic install, credential use, path escape, or privileged navigation. |
 | F01 | Workspace pathname is rebound | No operation gains authority over a different directory. |
@@ -1340,7 +1338,6 @@ When implementation is authorized, use the repository's actual gates from the ow
 
 (cd runtime/contract/typescript && npm run check)
 (cd desktop/frontend && npm run check)
-(cd ide && npm run check)
 
 (cd cli && \
   GOWORK=off go test ./... && \
@@ -1433,14 +1430,14 @@ Resource, bridge, browser/native isolation and lifetime checks accompany this bo
 [Desktop's acceptance](../desktop/README.md#optional-first-party-pages) owns commands
 and tested engine/OS scope. This slice introduces no mutation path or second business owner.
 
-**Slice D: broaden proven surfaces.** Add necessary action forms, result renderers, IDE hosting, or language integrations only after their consumers are concrete. Preserve one definition and one policy path.
+**Slice D: broaden proven surfaces.** Add necessary action forms, result renderers, or language integrations only after their consumers are concrete. Preserve one definition and one policy path.
 
 The first action declares identity, title and the closed operation `renameSession`.
 Runtime authorizes the exact installation/release/action and delegates the title edit to
 the existing Session update use case. Its closed request is a title-only projection of
 the Session command contract, sharing identity and revision constraints; additional
 Session configuration fields cannot acquire action authority. Its result is the canonical Session. Desktop renders
-the trusted form; CLI and IDE accept the same generated request and retain command replay
+the trusted form; CLI accepts the same generated request and retains command replay
 identity. The HTML page remains read-only. This boundary does not introduce a generic
 dispatcher, a plugin mutation journal or a second Session transition.
 
@@ -1490,7 +1487,6 @@ Repository links below are pinned to the analyzed revision unless explicitly not
 | F6 | [Runtime documentation policy][F6] | Current-system-only architecture baseline |
 | F7 | [Graphical architecture][F7] | Existing Dougong host, feature ownership, cleanup, and generation fencing |
 | F8 | [Workspace contribution types][F8] | React component-based internal view contracts |
-| F9 | [IDE README][F9] | Shared client, prepared commands, scope, and native interaction |
 | F10 | [Protocol capabilities][F10] | Execution requirements versus suppressible presentation data |
 | F11 | [Filesystem tool authority][F11] | Retained directory handle and path-rebinding checks |
 | F12 | [Deferred tool discovery][F12] | Execution-owned tool advertisement |
@@ -1581,7 +1577,6 @@ Keep this external draft as a review artifact. Do not add it to the active Runti
 [F6]: https://github.com/Tangerg/flame/blob/1083cab5794d6bcc252bdd27dac4b23ecb8a5940/runtime/doc/README.md
 [F7]: https://github.com/Tangerg/flame/blob/1083cab5794d6bcc252bdd27dac4b23ecb8a5940/desktop/frontend/ARCHITECTURE.md
 [F8]: https://github.com/Tangerg/flame/blob/1083cab5794d6bcc252bdd27dac4b23ecb8a5940/desktop/frontend/src/plugins/sdk/types/workspace.ts
-[F9]: https://github.com/Tangerg/flame/blob/1083cab5794d6bcc252bdd27dac4b23ecb8a5940/ide/README.md
 [F10]: https://github.com/Tangerg/flame/blob/1083cab5794d6bcc252bdd27dac4b23ecb8a5940/runtime/protocol/capabilities.go
 [F11]: https://github.com/Tangerg/flame/blob/1083cab5794d6bcc252bdd27dac4b23ecb8a5940/runtime/internal/adapter/toolset/filesystem.go
 [F12]: https://github.com/Tangerg/flame/blob/1083cab5794d6bcc252bdd27dac4b23ecb8a5940/runtime/internal/adapter/toolset/discovery.go

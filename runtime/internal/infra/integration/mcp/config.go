@@ -307,7 +307,7 @@ type sessionCleanup func() error
 // abort the handshake, but after Connect succeeds the session remains alive
 // until its owner explicitly cancels it during detach, replacement, or
 // shutdown. Binding the session directly to a short-lived command context
-// makes a successful dynamic Configure look connected while its transport is
+// makes a successful connection look connected while its transport is
 // already being torn down.
 func connectSession(
 	parent context.Context,

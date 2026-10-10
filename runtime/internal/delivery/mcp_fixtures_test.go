@@ -13,10 +13,8 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
-// fakeMCPPorts implements the four narrow MCP projections consumed by the
-// integration use cases. Registry-mutation methods are inert because the
-// configuration tests drive a separate durable registry fake.
 type fakeMCPPorts struct {
+	mu            sync.Mutex
 	statuses      []mcpserver.ConnectionStatus
 	tools         []mcpserver.AdvertisedTool
 	reconnectName string
@@ -25,7 +23,11 @@ type fakeMCPPorts struct {
 	conflicts     map[tool.Ref][]tool.Ref
 }
 
-func (f *fakeMCPPorts) Statuses() []mcpserver.ConnectionStatus { return slices.Clone(f.statuses) }
+func (f *fakeMCPPorts) Statuses() []mcpserver.ConnectionStatus {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.statuses)
+}
 
 func (f *fakeMCPPorts) MCPTools(server *mcpserver.ID) ([]mcpserver.AdvertisedTool, map[tool.Ref][]tool.Ref, error) {
 	if server == nil {
@@ -40,20 +42,42 @@ func (f *fakeMCPPorts) MCPTools(server *mcpserver.ID) ([]mcpserver.AdvertisedToo
 	return out, f.conflicts, nil
 }
 
-func (f *fakeMCPPorts) Reconnect(_ context.Context, name mcpserver.ID) error {
+type fakeMCPAttempt struct{ run func() error }
+
+func (a fakeMCPAttempt) Run() error { return a.run() }
+func (fakeMCPAttempt) Close()       {}
+func (f *fakeMCPPorts) begin(name mcpserver.ID) mcpapp.Attempt {
+	f.mu.Lock()
+	f.statuses = slices.DeleteFunc(f.statuses, func(s mcpserver.ConnectionStatus) bool { return s.Server == name })
+	f.statuses = append(f.statuses, mcpserver.ConnectionStatus{Server: name, State: mcpserver.ConnectionConnecting})
+	f.mu.Unlock()
+	return fakeMCPAttempt{run: func() error {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+		for i := range f.statuses {
+			if f.statuses[i].Server == name {
+				f.statuses[i].State = mcpserver.ConnectionConnected
+			}
+		}
+		return nil
+	}}
+}
+func (f *fakeMCPPorts) BeginConnect(_ context.Context, name mcpserver.ID) (mcpapp.Attempt, error) {
 	f.reconnectName = name.Name().String()
-	return nil
+	return f.begin(name), nil
 }
-
-func (f *fakeMCPPorts) Authorize(_ context.Context, name mcpserver.ID) error {
+func (f *fakeMCPPorts) BeginAuthorize(_ context.Context, name mcpserver.ID) (mcpapp.Attempt, error) {
 	f.authorizeName = name.Name().String()
+	return f.begin(name), nil
+}
+func (f *fakeMCPPorts) Probe(context.Context, mcpserver.Server) error { return f.probeErr }
+func (f *fakeMCPPorts) Detach(name mcpserver.ID) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.statuses = slices.DeleteFunc(f.statuses, func(s mcpserver.ConnectionStatus) bool { return s.Server == name })
 	return nil
 }
-
-func (f *fakeMCPPorts) Probe(context.Context, mcpserver.Server) error { return f.probeErr }
-func (*fakeMCPPorts) Configure(context.Context, mcpserver.ID) error   { return nil }
-func (*fakeMCPPorts) Detach(mcpserver.ID) error                       { return nil }
-func (*fakeMCPPorts) Refuse(context.Context, mcpserver.ID, mcpserver.ConnectionFailure) error {
+func (f *fakeMCPPorts) Refuse(context.Context, mcpserver.ID, mcpserver.ConnectionFailure) error {
 	return nil
 }
 
@@ -68,12 +92,10 @@ func fakeMCPPortsConfig(ports *fakeMCPPorts) mcpapp.Config {
 	}
 	registry := &mcpRegistryFake{servers: servers}
 	return mcpapp.Config{
-		Registry:            registry,
-		Store:               registry,
-		StatusReader:        ports,
-		ToolCatalog:         ports,
-		ConnectionControl:   ports,
-		ConnectionLifecycle: ports,
+		Registry:    registry,
+		Store:       registry,
+		Connections: ports,
+		ToolCatalog: ports,
 	}
 }
 
@@ -145,17 +167,11 @@ func handlerWithMCP(t testing.TB, cfg mcpapp.Config) *Handler {
 	if cfg.Store == nil {
 		cfg.Store = cfg.Registry.(*mcpRegistryFake)
 	}
-	if cfg.StatusReader == nil {
-		cfg.StatusReader = ports
+	if cfg.Connections == nil {
+		cfg.Connections = ports
 	}
 	if cfg.ToolCatalog == nil {
 		cfg.ToolCatalog = ports
-	}
-	if cfg.ConnectionControl == nil {
-		cfg.ConnectionControl = ports
-	}
-	if cfg.ConnectionLifecycle == nil {
-		cfg.ConnectionLifecycle = ports
 	}
 	if cfg.Exposure == nil {
 		cfg.Exposure = mcpapp.NewExposureState(nil, nil)

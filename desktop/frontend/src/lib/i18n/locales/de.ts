@@ -900,10 +900,6 @@ export const de: Record<string, string> = {
     "Verbunden, aber dieser Server hat keine verwendbare Werkzeugliste geliefert. Prüfe den Server und versuche es erneut.",
   "mcpStatus.mcp_configuration_failed":
     "Die Konfiguration oder die gespeicherten Anmeldedaten dieses Servers konnten nicht verwendet werden. Prüfe die Einstellungen und versuche es erneut.",
-  "mcpStatus.mcp_release_unavailable":
-    "Das Plugin, das diesen Server bereitstellt, hat die Überprüfung nicht bestanden. Installiere oder aktualisiere das Plugin neu.",
-  "mcpStatus.mcp_backend_unavailable":
-    "Das Plugin ist intakt, aber das Backend dieses Servers konnte nicht vorbereitet werden. Versuche es erneut oder installiere das Plugin neu.",
   "mcpStatus.mcp_dial_failed":
     "Dieser Server ist nicht erreichbar — prüfe Befehl oder URL und versuche es erneut.",
   "providers.testOutcome.notConfigured": "Schließe zuerst die Provider-Konfiguration ab.",

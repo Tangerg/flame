@@ -80,7 +80,7 @@ func TestServersDoNotExposeStoredMutableValues(t *testing.T) {
 	}
 	registry := &testRegistry{servers: map[mcpserver.ID]mcpserver.Server{name: server}}
 	ports := &fakePorts{}
-	coordinator := testCoordinator(t, Config{Registry: registry, StatusReader: ports})
+	coordinator := testCoordinator(t, Config{Registry: registry, Connections: ports})
 
 	servers, err := coordinator.Servers(t.Context())
 	if err != nil || len(servers) != 1 {
@@ -92,7 +92,7 @@ func TestServersDoNotExposeStoredMutableValues(t *testing.T) {
 	}
 }
 
-func TestUnavailableSourcesRemainVisibleWithoutAdvertisingTools(t *testing.T) {
+func TestSourceAvailabilityCannotOverrideAnAdmittedConnection(t *testing.T) {
 	registry := &testRegistry{servers: make(map[mcpserver.ID]mcpserver.Server), unavailable: make(map[mcpserver.ID]SourceAvailability)}
 	ports := &fakePorts{}
 	for _, state := range []struct {
@@ -101,8 +101,8 @@ func TestUnavailableSourcesRemainVisibleWithoutAdvertisingTools(t *testing.T) {
 		availability SourceAvailability
 		want         ServerState
 	}{
-		{"release", true, SourceUnavailableRelease, ServerState{Type: ServerFailed, Failure: mcpserver.FailureUnavailableRelease}},
-		{"backend", true, SourceUnavailableBackend, ServerState{Type: ServerFailed, Failure: mcpserver.FailureUnavailableBackend}},
+		{"release", true, SourceUnavailableRelease, ServerState{Type: ServerConnected, ToolCount: new(9)}},
+		{"backend", true, SourceUnavailableBackend, ServerState{Type: ServerConnected, ToolCount: new(9)}},
 		{"disabled", false, SourceUnavailableRelease, ServerState{Type: ServerDisabled}},
 		{"healthy", true, SourceAvailable, ServerState{Type: ServerConnected, ToolCount: new(9)}},
 	} {
@@ -111,7 +111,7 @@ func TestUnavailableSourcesRemainVisibleWithoutAdvertisingTools(t *testing.T) {
 			registry.servers[name] = mcpserver.Server{Source: mcpserver.UserSource(), Name: name.Name(), Enabled: state.enabled, Transport: mcpserver.TransportStdio, Command: "fixture"}
 			registry.unavailable[name] = state.availability
 			ports.statuses = append(ports.statuses, mcpserver.ConnectionStatus{Server: name, State: mcpserver.ConnectionConnected, ToolCount: 9})
-			coordinator := testCoordinator(t, Config{Registry: registry, StatusReader: ports})
+			coordinator := testCoordinator(t, Config{Registry: registry, Connections: ports})
 			found, err := coordinator.Servers(t.Context())
 			if err != nil {
 				t.Fatal(err)
@@ -119,9 +119,6 @@ func TestUnavailableSourcesRemainVisibleWithoutAdvertisingTools(t *testing.T) {
 			index := slices.IndexFunc(found, func(server Server) bool { return server.ID == name })
 			if index < 0 || !reflect.DeepEqual(found[index].State, state.want) {
 				t.Fatalf("source read model = %+v, want %+v", found, state.want)
-			}
-			if state.availability != SourceAvailable && found[index].State.ToolCount != nil {
-				t.Fatal("unavailable source advertised its previous tool count")
 			}
 		})
 	}
@@ -168,7 +165,7 @@ func TestToolsRejectInvalidScopeBeforeReachingTheCatalog(t *testing.T) {
 }
 
 func TestServerStatusRejectsInvalidRequestedIdentity(t *testing.T) {
-	c := testCoordinator(t, Config{StatusReader: &fakePorts{}})
+	c := testCoordinator(t, Config{Connections: &fakePorts{}})
 	if status, err := c.ServerStatus(t.Context(), mcpserver.ID{}); err == nil || status != (ServerStatus{}) {
 		t.Fatalf("ServerStatus = (%+v, %v), want zero/error", status, err)
 	}
@@ -268,11 +265,9 @@ func TestConnectionValidationUsesDurableRegistry(t *testing.T) {
 		name: {Source: mcpserver.UserSource(), Name: name.Name(), Enabled: true, Transport: mcpserver.TransportStdio, Command: "mcp-fs"},
 	}}
 	c := testCoordinator(t, Config{
-		Registry:            registry,
-		StatusReader:        ports,
-		ToolCatalog:         ports,
-		ConnectionControl:   ports,
-		ConnectionLifecycle: ports,
+		Registry:    registry,
+		Connections: ports,
+		ToolCatalog: ports,
 	})
 
 	// The live projection intentionally has no entry. Durable configuration is
@@ -298,11 +293,9 @@ func TestConnectionRejectsDurablyDisabledServer(t *testing.T) {
 		name: {Source: mcpserver.UserSource(), Name: name.Name(), Enabled: false, Transport: mcpserver.TransportStdio, Command: "mcp-fs"},
 	}}
 	c := testCoordinator(t, Config{
-		Registry:            registry,
-		StatusReader:        ports,
-		ToolCatalog:         ports,
-		ConnectionControl:   ports,
-		ConnectionLifecycle: ports,
+		Registry:    registry,
+		Connections: ports,
+		ToolCatalog: ports,
 	})
 
 	// Even a stale connected projection cannot override the durable enablement
@@ -326,11 +319,9 @@ func TestStatusCallbackMayReenterMutationWithoutDeadlock(t *testing.T) {
 	statuses := make(chan ServerStatus, 2)
 	mutationResult := make(chan error, 1)
 	cfg := Config{
-		Registry:            registry,
-		StatusReader:        ports,
-		ToolCatalog:         ports,
-		ConnectionControl:   ports,
-		ConnectionLifecycle: ports,
+		Registry:    registry,
+		Connections: ports,
+		ToolCatalog: ports,
 	}
 	var c *Coordinator
 	cfg.Invalidations = func(notice invalidation.Notice) {
@@ -428,11 +419,11 @@ func TestReconnectServerDetachedButComponentOwned(t *testing.T) {
 	c := testCoordinator(t, configWithPorts(ports))
 
 	reqCtx, cancelRequest := context.WithCancel(context.WithValue(context.Background(), ctxKey{}, "trace"))
-	cancelRequest() // the request is done — the dial must keep running
 
 	if err := c.ReconnectServer(reqCtx, testsupport.UserMCPServer("fs")); err != nil {
 		t.Fatalf("reconnect: %v", err)
 	}
+	cancelRequest() // an accepted dial outlives its request
 	if detached := <-ports.started; !detached {
 		t.Fatal("dial context did not detach request cancellation or preserve values")
 	}
@@ -529,7 +520,7 @@ func TestServerCommandsOwnInputsAfterReturning(t *testing.T) {
 		}
 		ports := &fakePorts{}
 
-		result, err := testCoordinator(t, Config{Registry: registry, ConnectionLifecycle: ports}).TestServer(t.Context(), serverInput)
+		result, err := testCoordinator(t, Config{Registry: registry, Connections: ports}).TestServer(t.Context(), serverInput)
 		if err != nil || result != TestSucceeded {
 			t.Fatalf("TestServer = (%+v, %v), want success", result, err)
 		}
@@ -595,6 +586,8 @@ func TestCreateServerSeparatesDurableAndLiveConnectionOwnership(t *testing.T) {
 }
 
 type fakePorts struct {
+	mu        sync.Mutex
+	attempts  map[mcpserver.ID]*fakeAttempt
 	statuses  []mcpserver.ConnectionStatus
 	tools     []mcpserver.AdvertisedTool
 	conflicts map[tool.Ref][]tool.Ref
@@ -620,6 +613,8 @@ type fakePorts struct {
 }
 
 func (f *fakePorts) Statuses() []mcpserver.ConnectionStatus {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	return slices.Clone(f.statuses)
 }
 
@@ -631,37 +626,91 @@ func (f *fakePorts) MCPTools(server *mcpserver.ID) ([]mcpserver.AdvertisedTool, 
 	return slices.Clone(f.tools), f.conflicts, nil
 }
 
-func (f *fakePorts) Reconnect(_ context.Context, name mcpserver.ID) error {
-	f.reconnectName = name.String()
-	if f.reconnectDone != nil {
-		f.reconnectDone <- name.String()
-	}
-	return nil
+type fakeAttempt struct {
+	owner  *fakePorts
+	name   mcpserver.ID
+	ctx    context.Context
+	cancel context.CancelFunc
+	run    func(context.Context, mcpserver.ID) error
 }
 
-func (f *fakePorts) Authorize(ctx context.Context, name mcpserver.ID) error {
-	f.authorizeName = name.String()
-	if f.authorizeStarted != nil {
-		f.authorizeStarted <- name.String()
+func (f *fakePorts) begin(ctx context.Context, name mcpserver.ID, run func(context.Context, mcpserver.ID) error) (Attempt, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.attempts == nil {
+		f.attempts = make(map[mcpserver.ID]*fakeAttempt)
 	}
-	if f.releaseAuthorize != nil {
-		select {
-		case <-f.releaseAuthorize:
-		case <-ctx.Done():
-			return ctx.Err()
+	if old := f.attempts[name]; old != nil {
+		old.cancel()
+	}
+	ctx, cancel := context.WithCancel(ctx)
+	a := &fakeAttempt{owner: f, name: name, ctx: ctx, cancel: cancel, run: run}
+	f.attempts[name] = a
+	f.setStatus(mcpserver.ConnectionStatus{Server: name, State: mcpserver.ConnectionConnecting})
+	return a, nil
+}
+
+func (a *fakeAttempt) Run() error {
+	if err := a.ctx.Err(); err != nil {
+		return err
+	}
+	err := a.run(a.ctx, a.name)
+	f := a.owner
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.attempts[a.name] == a {
+		delete(f.attempts, a.name)
+		status := mcpserver.ConnectionStatus{Server: a.name, State: mcpserver.ConnectionConnected}
+		if err != nil {
+			status.State = mcpserver.ConnectionFailed
+			status.Failure = mcpserver.FailureConnection
+		}
+		f.setStatus(status)
+	}
+	return err
+}
+
+func (a *fakeAttempt) Close() { a.cancel() }
+
+func (f *fakePorts) setStatus(status mcpserver.ConnectionStatus) {
+	for i := range f.statuses {
+		if f.statuses[i].Server == status.Server {
+			f.statuses[i] = status
+			return
 		}
 	}
-	for index := range f.statuses {
-		if f.statuses[index].Server != name {
-			continue
+	f.statuses = append(f.statuses, status)
+}
+
+func (f *fakePorts) BeginConnect(ctx context.Context, name mcpserver.ID) (Attempt, error) {
+	return f.begin(ctx, name, func(context.Context, mcpserver.ID) error {
+		f.configureName = name
+		f.reconnectName = name.String()
+		if f.configureDone != nil {
+			close(f.configureDone)
 		}
-		if f.authorizeErr != nil {
-			f.statuses[index].State = mcpserver.ConnectionFailed
-		} else {
-			f.statuses[index].State = mcpserver.ConnectionConnected
+		if f.reconnectDone != nil {
+			f.reconnectDone <- name.String()
 		}
-	}
-	return f.authorizeErr
+		return f.configureErr
+	})
+}
+
+func (f *fakePorts) BeginAuthorize(ctx context.Context, name mcpserver.ID) (Attempt, error) {
+	return f.begin(ctx, name, func(ctx context.Context, name mcpserver.ID) error {
+		f.authorizeName = name.String()
+		if f.authorizeStarted != nil {
+			f.authorizeStarted <- name.String()
+		}
+		if f.releaseAuthorize != nil {
+			select {
+			case <-f.releaseAuthorize:
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		}
+		return f.authorizeErr
+	})
 }
 
 func (f *fakePorts) Probe(_ context.Context, cfg mcpserver.Server) error {
@@ -672,27 +721,26 @@ func (f *fakePorts) Probe(_ context.Context, cfg mcpserver.Server) error {
 	return f.probeErr
 }
 
-func (f *fakePorts) Configure(_ context.Context, name mcpserver.ID) error {
-	f.configureName = name
-	if f.configureDone != nil {
-		close(f.configureDone)
-	}
-	return f.configureErr
-}
-
 func (f *fakePorts) Refuse(_ context.Context, name mcpserver.ID, failure mcpserver.ConnectionFailure) error {
-	for index := range f.statuses {
-		if f.statuses[index].Server == name {
-			f.statuses[index] = mcpserver.ConnectionStatus{Server: name, State: mcpserver.ConnectionFailed, Failure: failure}
-			return nil
-		}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if a := f.attempts[name]; a != nil {
+		a.cancel()
+		delete(f.attempts, name)
 	}
-	f.statuses = append(f.statuses, mcpserver.ConnectionStatus{Server: name, State: mcpserver.ConnectionFailed, Failure: failure})
+	f.setStatus(mcpserver.ConnectionStatus{Server: name, State: mcpserver.ConnectionFailed, Failure: failure})
 	return nil
 }
 
 func (f *fakePorts) Detach(name mcpserver.ID) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.removeName = name.Name().String()
+	if a := f.attempts[name]; a != nil {
+		a.cancel()
+		delete(f.attempts, name)
+	}
+	f.statuses = slices.DeleteFunc(f.statuses, func(s mcpserver.ConnectionStatus) bool { return s.Server == name })
 	return f.removeErr
 }
 
@@ -705,18 +753,18 @@ type blockingPorts struct {
 	wantValue func(context.Context) bool
 }
 
-func (b *blockingPorts) Reconnect(ctx context.Context, _ mcpserver.ID) error {
-	b.started <- ctx.Err() == nil && b.wantValue(ctx)
-	<-ctx.Done()
-	close(b.stopped)
-	return ctx.Err()
+func (b *blockingPorts) BeginConnect(ctx context.Context, name mcpserver.ID) (Attempt, error) {
+	return b.begin(ctx, name, func(ctx context.Context, _ mcpserver.ID) error {
+		b.started <- ctx.Err() == nil && b.wantValue(ctx)
+		<-ctx.Done()
+		close(b.stopped)
+		return ctx.Err()
+	})
 }
 
 func configWithPorts(ports interface {
-	StatusReader
+	Connections
 	ToolCatalog
-	ConnectionControl
-	ConnectionLifecycle
 },
 ) Config {
 	registry := &testRegistry{servers: make(map[mcpserver.ID]mcpserver.Server)}
@@ -728,11 +776,9 @@ func configWithPorts(ports interface {
 		}
 	}
 	return Config{
-		Registry:            registry,
-		StatusReader:        ports,
-		ToolCatalog:         ports,
-		ConnectionControl:   ports,
-		ConnectionLifecycle: ports,
+		Registry:    registry,
+		Connections: ports,
+		ToolCatalog: ports,
 	}
 }
 

@@ -42,9 +42,7 @@ func Dial(
 	if configuration == nil {
 		return nil, errors.New("mcp: connection configuration source is required")
 	}
-	// Always carry a client, even with zero servers: the registry starts empty
-	// and the common path is a 0-server boot followed by a runtime Configure,
-	// which re-dials with this client.
+	// An empty startup catalog retains a client for later connection admission.
 	if len(servers) == 0 {
 		return &Connections{
 			lifetime: lifetime, client: newClient(), oauthSessions: oauthSessions,
@@ -70,9 +68,7 @@ func Dial(
 		}
 	}
 
-	// One client identity for every server — none of flame's connections need
-	// per-server handlers (sampling / list-changed), so they share it. Retained
-	// so Reconnect / Configure can re-dial with it.
+	// Servers share a client identity because no per-server handlers are needed.
 	client := newClient()
 	c := &Connections{lifetime: lifetime, client: client, oauthSessions: oauthSessions}
 
@@ -83,74 +79,17 @@ func Dial(
 	toolCount := 0
 	failures := 0
 	for _, srv := range servers {
-		configuredServer := &server{id: srv.ID(), config: srv, oauth: srv.OAuthHandler}
-		configuredServer.config.OAuthHandler = nil
-		input, err := configuration(ctx, srv.ID())
-		var prepared *launch
-		var current ServerConfig
+		attempt, err := c.BeginConnect(ctx, srv.ID(), configuration)
 		if err == nil {
-			prepared, err = input.take()
-			if err == nil {
-				current = prepared.config
-			}
-		} else {
-			err = errors.Join(err, input.Close())
-		}
-		if err == nil && current.ID() != srv.ID() {
-			err = errors.New("mcp: connection configuration source changed identity")
-		}
-		if err == nil && current.Transport == TransportHTTP && current.OAuthHandler == nil && current.Authorization == "" {
-			current.OAuthHandler, err = restoreOAuthHandler(ctx, lifetime, oauthSessions, current.oauthTarget())
+			err = attempt.Run()
 		}
 		if err != nil {
-			if prepared != nil {
-				err = errors.Join(err, prepared.close())
-			}
-			slog.ErrorContext(ctx, "mcp: startup admission failed", "server.name", srv.ID().String(), "error", err)
-			configuredServer.settle(nil, nil, mcpserver.ConnectionFailed, mcpserver.FailureConfiguration)
+			slog.ErrorContext(ctx, "mcp: startup connection failed", "server.name", srv.ID().String(), "error", err)
 			failures++
-			c.servers = append(c.servers, configuredServer)
-			continue
 		}
-		srv = current.Clone()
-		configuredServer.config = srv.Clone()
-		configuredServer.config.OAuthHandler = nil
-		configuredServer.oauth = srv.OAuthHandler
-		prepared.config = current
-		session, cleanupSession, derr := dial(ctx, lifetime, client, prepared)
-		if derr != nil {
-			slog.ErrorContext(ctx, "mcp: startup connection failed",
-				"server.name", srv.ID().String(), "error", derr,
-			)
-			state, failure := failedStatus(derr, mcpserver.FailureConnection)
-			configuredServer.settle(nil, nil, state, failure)
-			if state == mcpserver.ConnectionNeedsAuth {
-				configuredServer.oauth = nil
-			}
-			failures++
-			c.servers = append(c.servers, configuredServer)
-			continue
-		}
-		c.ownSessionLocked(session, cleanupSession)
-		srcTools, terr := sourceTools(ctx, c, srv, session)
-		if terr != nil {
-			// A session that cannot produce a valid tool catalog is unusable.
-			// Preserve a close failure in diagnostics as well as the primary cause;
-			// boot deliberately degrades this one server to failed rather than
-			// aborting every independent MCP connection.
-			cause := errors.Join(terr, c.closeSession(ctx, session))
-			slog.ErrorContext(ctx, "mcp: startup tool discovery failed",
-				"server.name", srv.ID().String(), "error", cause,
-			)
-			state, failure := failedStatus(terr, mcpserver.FailureToolDiscovery)
-			configuredServer.settle(nil, nil, state, failure)
-			failures++
-			c.servers = append(c.servers, configuredServer)
-			continue
-		}
-		configuredServer.settle(session, srcTools, mcpserver.ConnectionConnected, "")
-		toolCount += len(srcTools)
-		c.servers = append(c.servers, configuredServer)
+	}
+	for _, status := range c.Statuses() {
+		toolCount += status.ToolCount
 	}
 
 	span.SetAttributes(

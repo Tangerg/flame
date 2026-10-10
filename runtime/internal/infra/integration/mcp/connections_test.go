@@ -104,8 +104,8 @@ func TestConnectionsRejectMutationsAfterShutdown(t *testing.T) {
 
 	cfg := ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("closed"), Transport: TransportHTTP, Endpoint: "https://example.invalid"}
 	for name, call := range map[string]func() error{
-		"configure": func() error { return c.Configure(context.Background(), mustLaunch(t, cfg)) },
-		"authorize": func() error { return c.Authorize(context.Background(), mustLaunch(t, cfg)) },
+		"configure": func() error { return connectLaunch(c, context.Background(), mustLaunch(t, cfg)) },
+		"authorize": func() error { return authorizeLaunch(c, context.Background(), mustLaunch(t, cfg)) },
 	} {
 		t.Run(name, func(t *testing.T) {
 			if err := call(); !errors.Is(err, ErrConnectionsClosed) {
@@ -140,26 +140,30 @@ func TestDialRequiresStartupAndProcessLifetimes(t *testing.T) {
 
 func TestConnectionsShutdownCancelsAndJoinsAttempts(t *testing.T) {
 	c := &Connections{lifetime: t.Context()}
-	target := &server{id: testsupport.UserMCPServer("server"), config: ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("server")}}
-	c.servers = []*server{target}
-	c.mu.Lock()
-	attempt := c.beginAttempt(t.Context(), target)
-	c.mu.Unlock()
-
+	entered, release := make(chan struct{}), make(chan struct{})
+	attempt, err := c.BeginConnect(t.Context(), testsupport.UserMCPServer("server"), func(ctx context.Context, _ mcpserver.ID) (*Launch, error) {
+		close(entered)
+		<-ctx.Done()
+		<-release
+		return nil, ctx.Err()
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan error, 1)
+	go func() { done <- attempt.Run() }()
+	<-entered
 	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Millisecond)
 	defer cancel()
 	if err := c.Shutdown(ctx); !errors.Is(err, context.DeadlineExceeded) {
-		t.Fatalf("bounded Shutdown = %v, want context deadline exceeded", err)
+		t.Fatalf("bounded Shutdown = %v", err)
 	}
-	select {
-	case <-attempt.ctx.Done():
-	default:
-		t.Fatal("Shutdown did not cancel the active attempt")
+	close(release)
+	if err := <-done; !errors.Is(err, context.Canceled) {
+		t.Fatalf("attempt = %v", err)
 	}
-
-	c.finishAttempt(attempt)
 	if err := c.Shutdown(t.Context()); err != nil {
-		t.Fatalf("join Shutdown: %v", err)
+		t.Fatal(err)
 	}
 }
 
@@ -250,28 +254,42 @@ func TestConnectionsShutdownReportsSettledAsyncRetirementDiagnosticOnce(t *testi
 
 func TestConnectionAttemptsSupersedePerServer(t *testing.T) {
 	c := &Connections{lifetime: t.Context()}
-	first := &server{id: testsupport.UserMCPServer("first"), config: ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("first")}}
-	second := &server{id: testsupport.UserMCPServer("second"), config: ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("second")}}
-	c.servers = []*server{first, second}
-
-	c.mu.Lock()
-	oldFirst := c.beginAttempt(t.Context(), first)
-	secondAttempt := c.beginAttempt(t.Context(), second)
-	newFirst := c.beginAttempt(t.Context(), first)
-	if !c.currentAttempt(newFirst) || c.currentAttempt(oldFirst) == true {
-		t.Fatal("latest first-server attempt did not own its registration")
+	source := func(context.Context, mcpserver.ID) (*Launch, error) {
+		t.Error("unstarted attempt resolved its source")
+		return nil, errors.New("unexpected resolution")
 	}
-	c.mu.Unlock()
-
+	first, second := testsupport.UserMCPServer("first"), testsupport.UserMCPServer("second")
+	oldFirst, err := c.BeginConnect(t.Context(), first, source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondAttempt, err := c.BeginConnect(t.Context(), second, source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newFirst, err := c.BeginConnect(t.Context(), first, source)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if oldFirst.ctx.Err() == nil {
-		t.Fatal("new same-server attempt did not cancel its predecessor")
+		t.Fatal("same-server attempt did not cancel predecessor")
 	}
 	if secondAttempt.ctx.Err() != nil {
-		t.Fatal("first-server attempt canceled an unrelated server")
+		t.Fatal("unrelated server was canceled")
 	}
-	c.finishAttempt(oldFirst)
-	c.finishAttempt(secondAttempt)
-	c.finishAttempt(newFirst)
+	if err := oldFirst.Run(); !errors.Is(err, context.Canceled) {
+		t.Fatalf("superseded result = %v", err)
+	}
+	for _, status := range c.Statuses() {
+		if status.State != mcpserver.ConnectionConnecting {
+			t.Fatalf("successor status=%+v", status)
+		}
+	}
+	secondAttempt.Close()
+	newFirst.Close()
+	if err := c.Shutdown(t.Context()); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestCloneServerConfigOwnsMutableFields(t *testing.T) {
@@ -385,7 +403,7 @@ func TestReconnectPublishesRemovalBeforeVerifiedReplacement(t *testing.T) {
 	if listed := liveToolNames(c, config.ID()); !slices.Equal(listed, []string{"remote_first"}) {
 		t.Fatalf("catalog before reconnect = %v; want the admitted first tool", listed)
 	}
-	if err := c.Configure(t.Context(), mustLaunch(t, config)); err != nil {
+	if err := connectLaunch(c, t.Context(), mustLaunch(t, config)); err != nil {
 		t.Fatalf("Reconnect: %v", err)
 	}
 	if connecting := <-publications; len(connecting) != 0 {
@@ -427,7 +445,7 @@ func TestConfigureOAuthRestoreFailureWithdrawsPreviousConnection(t *testing.T) {
 	var publications [][]string
 	c.SetToolSink(func(catalog []Executable) { publications = append(publications, toolNames(catalog)) })
 	config.Endpoint = "https://example.invalid/replacement"
-	if err := c.Configure(t.Context(), mustLaunch(t, config)); !errors.Is(err, loadErr) || !errors.Is(err, closeErr) {
+	if err := connectLaunch(c, t.Context(), mustLaunch(t, config)); !errors.Is(err, loadErr) || !errors.Is(err, closeErr) {
 		t.Errorf("Configure = %v, want credential and retirement errors", err)
 	}
 	if statuses := c.Statuses(); len(statuses) != 1 || statuses[0].State != mcpserver.ConnectionFailed || statuses[0].ToolCount != 0 || statuses[0].Failure != mcpserver.FailureConfiguration {
@@ -465,7 +483,7 @@ func TestShutdownCancelsAndJoinsOAuthRestore(t *testing.T) {
 	configureCtx, cancelConfigure := context.WithCancel(t.Context())
 	defer cancelConfigure()
 	go func() {
-		configureDone <- c.Configure(configureCtx, mustLaunch(t, ServerConfig{
+		configureDone <- connectLaunch(c, configureCtx, mustLaunch(t, ServerConfig{
 			Source: mcpserver.UserSource(),
 			Name:   testsupport.ServerName("remote"), Transport: TransportHTTP, Endpoint: "https://example.invalid/mcp",
 		}))
@@ -526,10 +544,10 @@ func TestSupersededOAuthRestoreCannotReplaceCurrentConnection(t *testing.T) {
 	})
 	config := ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Transport: TransportHTTP, Endpoint: httpServer.URL}
 	previousDone := make(chan error, 1)
-	go func() { previousDone <- c.Configure(t.Context(), mustLaunch(t, config)) }()
+	go func() { previousDone <- connectLaunch(c, t.Context(), mustLaunch(t, config)) }()
 	<-started
 	config.Authorization = "Bearer replacement"
-	if err := c.Configure(t.Context(), mustLaunch(t, config)); err != nil {
+	if err := connectLaunch(c, t.Context(), mustLaunch(t, config)); err != nil {
 		t.Fatalf("replacement Configure: %v", err)
 	}
 	finishLoad()
@@ -599,7 +617,7 @@ func TestDetachCancelsAuthorizationDuringSessionRetirement(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	authorizationDone := make(chan error, 1)
-	go func() { authorizationDone <- c.Authorize(ctx, mustLaunch(t, config)) }()
+	go func() { authorizationDone <- authorizeLaunch(c, ctx, mustLaunch(t, config)) }()
 	<-started
 	if err := c.Detach(config.ID()); err != nil {
 		t.Fatalf("Detach: %v", err)
@@ -642,7 +660,7 @@ func TestConfiguredSessionOutlivesRequestScope(t *testing.T) {
 	})
 
 	requestCtx, cancelRequest := context.WithCancel(t.Context())
-	if configureErr := connections.Configure(requestCtx, mustLaunch(t, ServerConfig{
+	if configureErr := connectLaunch(connections, requestCtx, mustLaunch(t, ServerConfig{
 		Source: mcpserver.UserSource(),
 		Name:   testsupport.ServerName("dynamic"), Transport: TransportHTTP, Endpoint: httpServer.URL,
 	})); configureErr != nil {
@@ -672,7 +690,7 @@ func TestSessionLedgerOwnsReplacementUntilClose(t *testing.T) {
 	if got := ownedSessionCount(c); got != 1 {
 		t.Fatalf("owned sessions after Dial = %d, want 1", got)
 	}
-	if err := c.Configure(t.Context(), mustLaunch(t, config)); err != nil {
+	if err := connectLaunch(c, t.Context(), mustLaunch(t, config)); err != nil {
 		t.Fatal(err)
 	}
 	if got := ownedSessionCount(c); got != 1 {
@@ -828,7 +846,7 @@ func TestConfigureAdmitsCrossServerPublicToolNameCollision(t *testing.T) {
 	))
 	t.Cleanup(secondHTTP.Close)
 
-	err = c.Configure(t.Context(), mustLaunch(t, ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("a"), Transport: TransportHTTP, Endpoint: secondHTTP.URL}))
+	err = connectLaunch(c, t.Context(), mustLaunch(t, ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("a"), Transport: TransportHTTP, Endpoint: secondHTTP.URL}))
 	if err != nil {
 		t.Fatalf("Configure collision error = %v", err)
 	}
@@ -878,7 +896,7 @@ func TestReconnectAdmitsNewCrossServerPublicToolNameCollision(t *testing.T) {
 		t.Fatalf("initial publication = %v, want %v", got, toolNames(initial))
 	}
 	addRemoteTool(t, secondRemote, "b_c")
-	err = c.Configure(t.Context(), mustLaunch(t, ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("a"), Transport: TransportHTTP, Endpoint: secondHTTP.URL}))
+	err = connectLaunch(c, t.Context(), mustLaunch(t, ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("a"), Transport: TransportHTTP, Endpoint: secondHTTP.URL}))
 	if err != nil {
 		t.Fatalf("Reconnect collision error = %v", err)
 	}
@@ -954,9 +972,9 @@ func TestCanceledConnectionCommandsPreserveTheCurrentSession(t *testing.T) {
 		name    string
 		command func() error
 	}{
-		{"configure", func() error { return c.Configure(ctx, mustLaunch(t, config)) }},
+		{"configure", func() error { return connectLaunch(c, ctx, mustLaunch(t, config)) }},
 		{"refuse", func() error { return c.Refuse(ctx, config.ID(), mcpserver.FailureConfiguration) }},
-		{"authorize", func() error { return c.Authorize(ctx, mustLaunch(t, config)) }},
+		{"authorize", func() error { return authorizeLaunch(c, ctx, mustLaunch(t, config)) }},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			name, command := test.name, test.command
@@ -1018,19 +1036,19 @@ func TestToolPublicationHappensInsideTheSettlingCriticalSection(t *testing.T) {
 		}
 		publications = append(publications, toolNames(catalog))
 	})
-	if err := c.Configure(t.Context(), mustLaunch(t, config)); err != nil {
+	if err := connectLaunch(c, t.Context(), mustLaunch(t, config)); err != nil {
 		t.Fatal(err)
 	}
 	if err := c.Refuse(t.Context(), config.ID(), mcpserver.FailureConfiguration); err != nil {
 		t.Fatal(err)
 	}
-	if err := c.Configure(t.Context(), mustLaunch(t, config)); err != nil {
+	if err := connectLaunch(c, t.Context(), mustLaunch(t, config)); err != nil {
 		t.Fatal(err)
 	}
 	if err := c.Detach(config.ID()); err != nil {
 		t.Fatal(err)
 	}
-	if err := c.Configure(t.Context(), mustLaunch(t, config)); err != nil {
+	if err := connectLaunch(c, t.Context(), mustLaunch(t, config)); err != nil {
 		t.Fatal(err)
 	}
 	if err := c.Shutdown(context.WithoutCancel(t.Context())); err != nil {
@@ -1056,7 +1074,7 @@ func TestSupersededConfigureNeverResurrectsADetachedServer(t *testing.T) {
 		t.Fatal(err)
 	}
 	published = false
-	if err := c.Configure(ctx, mustLaunch(t, config)); !errors.Is(err, context.Canceled) {
+	if err := connectLaunch(c, ctx, mustLaunch(t, config)); !errors.Is(err, context.Canceled) {
 		t.Fatalf("superseded Configure = %v, want cancellation", err)
 	}
 	if statuses := c.Statuses(); len(statuses) != 0 || published {
@@ -1086,7 +1104,7 @@ func TestExecutableIsCurrentOnlyWhileItsSessionServesTheSource(t *testing.T) {
 	if initial[0].Current() {
 		t.Fatal("refusal left the withdrawn session current")
 	}
-	if err := c.Configure(t.Context(), mustLaunch(t, config)); err != nil {
+	if err := connectLaunch(c, t.Context(), mustLaunch(t, config)); err != nil {
 		t.Fatal(err)
 	}
 	if len(replacement) != 1 || !replacement[0].Current() {

@@ -859,10 +859,6 @@ export const ko: Record<string, string> = {
     "연결되었지만 이 서버가 사용 가능한 도구 목록을 반환하지 않았습니다. 서버를 확인하고 다시 시도하세요.",
   "mcpStatus.mcp_configuration_failed":
     "이 서버의 구성 또는 저장된 자격 증명을 사용할 수 없습니다. 설정을 확인하고 다시 시도하세요.",
-  "mcpStatus.mcp_release_unavailable":
-    "이 서버를 제공하는 플러그인이 검증에 실패했습니다. 플러그인을 다시 설치하거나 업데이트하세요.",
-  "mcpStatus.mcp_backend_unavailable":
-    "플러그인은 정상이지만 이 서버의 백엔드를 준비하지 못했습니다. 다시 시도하거나 플러그인을 다시 설치하세요.",
   "mcpStatus.mcp_dial_failed":
     "이 서버에 연결할 수 없습니다 — 명령이나 URL을 확인하고 다시 시도하세요.",
   "providers.testOutcome.notConfigured": "먼저 제공자 구성을 완료하세요.",

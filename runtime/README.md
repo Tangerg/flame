@@ -42,6 +42,16 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
+## Protocol 2026-10-10.8
+
+MCP status describes only the connection supervisor's live outcome. The retired
+`mcp_release_unavailable` and `mcp_backend_unavailable` status categories no longer
+appear in the contract. Plugin realization remains the authority for current release
+and backend availability. A refused new launch settles as `mcp_configuration_failed`;
+reading package availability cannot mark an existing admitted connection as failed.
+Rebuild Runtime and clients together; older protocol versions are refused. No storage
+schema changes or data conversion are required.
+
 ## Protocol 2026-10-10.7
 
 The optional [Diff package](../plugins/diff/plugin.json) replaces the compiled Desktop
@@ -127,7 +137,7 @@ Templates are immutable release content. The trusted Host copies a template only
 selection; opening a draft submits nothing. Commands use existing Schedule revisions and Runtime
 receipts. A saved Schedule retains complete instructions, never a template reference.
 
-Rebuild Runtime, the shared client, CLI, Desktop and IDE together. Install and approve the new
+Rebuild Runtime, the shared client, CLI and Desktop together. Install and approve the new
 package bytes to restore rich graphical scheduling. The former settings pane, sidebar shortcut
 and compiled presets have no aliases or fallback. The Context Dock lists admitted package views.
 Disable or uninstall withdraws presentation and templates, preserving Schedule/Occurrence data
@@ -164,7 +174,7 @@ exact-digest approval and enablement. Its display, filters and current-page metr
 canonical Run, model-call and Item evidence. Runtime owns execution and recorded evidence;
 the Host owns navigation, Run controls and complete Session trajectory export.
 
-Rebuild Runtime, the shared client, CLI, Desktop and IDE together. Earlier protocol versions
+Rebuild Runtime, the shared client, CLI and Desktop together. Earlier protocol versions
 are refused. Install the new package bytes from `plugins/trajectory` and approve their digest;
 previously admitted immutable releases do not change when their source directory moves.
 There is no Timeline alias, fallback renderer or second trajectory query model.
@@ -184,7 +194,7 @@ the action against the current enabled, approved installation. Withdrawal refuse
 commands; a previously accepted command retains its existing product owner, and replay
 returns its historical receipt. The read-only HTML bridge receives no write authority.
 
-Rebuild Runtime, the shared client, CLI, Desktop and IDE together. Earlier protocol
+Rebuild Runtime, the shared client, CLI and Desktop together. Earlier protocol
 versions are refused. Previously admitted immutable declarations without actions retain
 an empty action set; adding an action requires admitting new package bytes.
 
@@ -202,7 +212,7 @@ diagnostics and frozen output, once at publication. Its replay window and live
 subscriber queues consume that same charge. An oversized event ends a subscriber
 and makes the earlier cursor unavailable; clients recover from durable Run reads.
 
-Rebuild the shared client, Desktop, CLI and IDE against this catalog. Earlier
+Rebuild the shared client, Desktop and CLI against this catalog. Earlier
 protocol versions are refused. Session artifacts use version 31 so an earlier
 importer cannot discard the new evidence. Effects without an observed output
 remain valid; there is no alternate storage reader or migration path.
@@ -222,8 +232,8 @@ Authorization is captured under installation admission; accepted reads complete 
 that lock, and withdrawal refuses subsequent reads. Clients retire their local page when
 installation admission, selected release, Session or Runtime connection changes.
 
-This is a breaking development protocol change. Rebuild the shared client, Desktop, CLI
-and IDE against this catalog; earlier protocol versions are refused. Existing package
+This is a breaking development protocol change. Rebuild the shared client, Desktop and CLI
+against this catalog; earlier protocol versions are refused. Existing package
 releases without a view continue to describe their admitted declarative resources.
 
 ## Protocol 2026-10-07.8
@@ -298,7 +308,7 @@ root `RunRef` has `protocolProfile`, and only a root `ArtifactRun` has
 keyed by their owning Item. Older Runtimes and clients are refused by the exact
 protocol-version check, and older artifacts by their version.
 
-Rebuild and deploy Runtime, CLI, Desktop/Web, IDE, and generated contract
+Rebuild and deploy Runtime, CLI, Desktop/Web, and generated contract
 consumers together. Trajectory inspection requires `sessions.trajectory`, and evaluation
 export requires `sessions.exportTrajectory`. Bundled clients reject an older
 Runtime through the existing exact protocol-version checks; an updated Runtime
@@ -624,7 +634,7 @@ Slice D human action. A package may declare `contributes.views` with `id`, `titl
 `.html` `entry`. Admission validates UTF-8 HTML, confined resource access and the release
 fingerprint. Invalid views produce diagnostics without withdrawing independent themes,
 Skills or MCP declarations. Arbitrary projection queries, mutation bridges,
-IDE view hosting and language integrations remain unavailable.
+and language integrations remain unavailable.
 
 `contributes.actions` accepts at most 16 declarations with `id`, a nonempty UTF-8 `title`
 of at most 128 bytes, and `operation: "renameSession"`. Unsupported operations, unknown
@@ -1159,11 +1169,14 @@ and missing execution trees still explicitly report that they cannot be resumed.
 
 Runtime consumes the released Scope modules pinned in `go.mod`. Provider `Call` and `Stream` use Scope's canonical streaming transport; complete calls aggregate that same validated stream. Runtime does not retain a unary provider fallback. MCP sessions use `github.com/Tangerg/go-sdk`, the same SDK as Scope MCP, so structured results preserve large integers, decimal values, and explicit empty objects through transport and Tool publication.
 
-An MCP dial owns its temporary connecting phase for exactly its admitted lifetime.
-Completion, failed registry reads, supersession, and shutdown retire that phase;
-the connection pool supplies terminal status. The operation advances its phase
-before notification publication. Queued notifications carry only source identity
-and cannot revive a retired attempt or obscure a newer connection.
+The MCP connection supervisor admits every attempt before configuration, execution
+resource or credential I/O. Admission withdraws the previous session and tools and
+publishes connecting from that same owner. Startup, reconnect and authorization
+share this lifecycle; supersession and shutdown cancel and join preparation as well
+as dialing. The application coordinates durable configuration, exposure and ordered
+identity-only invalidations without storing a second connection phase or tombstone.
+Plugin realization describes current release and backend availability separately;
+a catalog read cannot overwrite the state of an admitted connection.
 Unmapped connection or authorization states fail their read or projection with
 an internal error; they never fabricate a server failure or panic during delivery.
 

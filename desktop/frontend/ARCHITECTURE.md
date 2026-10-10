@@ -2,7 +2,7 @@
 
 The same React application runs in a browser and a Wails WebView. Runtime owns
 execution and durable product facts; the graphical client owns authoring,
-navigation, projections, and presentation. The IDE is a separate consumer of the
+navigation, projections, and presentation. Browser and Wails environments use the
 same Runtime-owned TypeScript client.
 
 Repository rules live in [`../../AGENTS.md`](../../AGENTS.md). The Runtime

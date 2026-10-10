@@ -31,17 +31,19 @@ type blockingConfigure struct {
 	attempt chan context.Context
 }
 
-func (b *blockingConfigure) Configure(ctx context.Context, _ mcpserver.ID) error {
-	b.attempt <- ctx
-	<-ctx.Done()
-	return ctx.Err()
+func (b *blockingConfigure) BeginConnect(ctx context.Context, name mcpserver.ID) (Attempt, error) {
+	return b.begin(ctx, name, func(ctx context.Context, _ mcpserver.ID) error {
+		b.attempt <- ctx
+		<-ctx.Done()
+		return ctx.Err()
+	})
 }
 
 func TestInstallationWithdrawalSupersedesInFlightConnectionSynchronously(t *testing.T) {
 	server := installationServer(t, "files")
 	registry := &testRegistry{servers: map[mcpserver.ID]mcpserver.Server{server.ID(): server}}
 	live := &blockingConfigure{attempt: make(chan context.Context, 1)}
-	c := testCoordinator(t, Config{Registry: registry, ConnectionLifecycle: live})
+	c := testCoordinator(t, Config{Registry: registry, Connections: live})
 	defer requireCoordinatorShutdown(t, c)
 	if err := c.ReconcileInstallation(t.Context(), []mcpserver.ID{server.ID()}); err != nil {
 		t.Fatal(err)
@@ -61,10 +63,22 @@ func TestInstallationWithdrawalSupersedesInFlightConnectionSynchronously(t *test
 
 func TestInstallationWithdrawalRefusesUserSourcesWithoutEffect(t *testing.T) {
 	live := &fakePorts{}
-	c := testCoordinator(t, Config{ConnectionLifecycle: live})
+	c := testCoordinator(t, Config{Connections: live})
 	err := c.WithdrawInstallation([]mcpserver.ID{installationServer(t, "files").ID(), testsupport.UserMCPServer("files")})
 	if !errors.Is(err, ErrInvalidServerConfiguration) || live.removeName != "" {
 		t.Fatalf("withdraw user source = %v, detached %q", err, live.removeName)
+	}
+}
+
+func TestReconcileInstallationRequiresContextWithoutEffect(t *testing.T) {
+	live := &fakePorts{}
+	c := testCoordinator(t, Config{Connections: live})
+	defer requireCoordinatorShutdown(t, c)
+	if err := c.ReconcileInstallation(nil, []mcpserver.ID{installationServer(t, "files").ID()}); err == nil {
+		t.Fatal("realization without context succeeded")
+	}
+	if statuses := live.Statuses(); len(statuses) != 0 {
+		t.Fatalf("invalid realization changed connection status: %+v", statuses)
 	}
 }
 
@@ -76,7 +90,7 @@ func TestUnrealizedInstallationSourceIsVisibleAtConnectionStatus(t *testing.T) {
 	removed := installationServer(t, "retired")
 	registry := &testRegistry{servers: map[mcpserver.ID]mcpserver.Server{enabled.ID(): enabled}}
 	live := &fakePorts{}
-	c := testCoordinator(t, Config{Registry: registry, StatusReader: live, ConnectionLifecycle: live})
+	c := testCoordinator(t, Config{Registry: registry, Connections: live})
 	requireCoordinatorShutdown(t, c)
 
 	if err := c.ReconcileInstallation(t.Context(), []mcpserver.ID{enabled.ID(), removed.ID()}); !errors.Is(err, errClosed) {
@@ -129,7 +143,7 @@ func (failingDefinitions) Definition(context.Context, mcpserver.ID) (mcpserver.S
 func TestUnreadableInstallationSourceIsRefusedAtConnectionStatus(t *testing.T) {
 	server := installationServer(t, "files")
 	live := &fakePorts{}
-	c := testCoordinator(t, Config{Registry: failingDefinitions{&testRegistry{}}, StatusReader: live, ConnectionLifecycle: live})
+	c := testCoordinator(t, Config{Registry: failingDefinitions{&testRegistry{}}, Connections: live})
 	defer requireCoordinatorShutdown(t, c)
 
 	if err := c.ReconcileInstallation(t.Context(), []mcpserver.ID{server.ID()}); !errors.Is(err, errSourceUnreadable) {

@@ -871,10 +871,6 @@ export const ja: Record<string, string> = {
     "接続しましたが、このサーバーは使用可能なツール一覧を返しませんでした。サーバーを確認して再試行してください。",
   "mcpStatus.mcp_configuration_failed":
     "このサーバーの設定または保存済みの認証情報を使用できません。設定を確認して再試行してください。",
-  "mcpStatus.mcp_release_unavailable":
-    "このサーバーを提供するプラグインが検証に失敗しました。プラグインを再インストールまたは更新してください。",
-  "mcpStatus.mcp_backend_unavailable":
-    "プラグインは正常ですが、このサーバーのバックエンドを準備できませんでした。再試行するか、プラグインを再インストールしてください。",
   "mcpStatus.mcp_dial_failed":
     "このサーバーに接続できません — コマンドか URL を確認して再試行してください。",
   "providers.testOutcome.notConfigured": "先にプロバイダーの設定を完了してください。",

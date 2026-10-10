@@ -7,8 +7,6 @@ const MCP_STATUS_COPY: Record<MCPStatusProblemType, string> = {
   mcp_dial_failed: "mcpStatus.mcp_dial_failed",
   mcp_tool_discovery_failed: "mcpStatus.mcp_tool_discovery_failed",
   mcp_configuration_failed: "mcpStatus.mcp_configuration_failed",
-  mcp_release_unavailable: "mcpStatus.mcp_release_unavailable",
-  mcp_backend_unavailable: "mcpStatus.mcp_backend_unavailable",
 };
 
 export const MCP_STATUS_TYPES = Object.keys(MCP_STATUS_COPY) as MCPStatusProblemType[];

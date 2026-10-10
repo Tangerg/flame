@@ -1270,7 +1270,7 @@ func (m MCPServerState) ValidateWire() error {
 		forbiddenWhen(wireFieldEquals(m, "type", "connected"), "error", m),
 		requiredWhen(wireFieldEquals(m, "type", "failed"), "error", m),
 		forbiddenWhen(wireFieldEquals(m, "type", "failed"), "toolCount", m),
-		allowedValuesWhen(wireFieldEquals(m, "type", "failed"), "error.type", m, []string{"mcp_release_unavailable", "mcp_backend_unavailable", "mcp_configuration_failed", "mcp_dial_failed", "mcp_tool_discovery_failed", "mcp_authorization_failed"}),
+		allowedValuesWhen(wireFieldEquals(m, "type", "failed"), "error.type", m, []string{"mcp_configuration_failed", "mcp_dial_failed", "mcp_tool_discovery_failed", "mcp_authorization_failed"}),
 		requiredWhen(wireFieldEquals(m, "type", "needsAuth"), "error", m),
 		forbiddenWhen(wireFieldEquals(m, "type", "needsAuth"), "toolCount", m),
 		allowedValuesWhen(wireFieldEquals(m, "type", "needsAuth"), "error.type", m, []string{"mcp_authorization_required"}),
@@ -2882,7 +2882,7 @@ func (l ListItemsResponse) ValidateWire() error {
 
 func (m MCPStatusProblem) ValidateWire() error {
 	return collectWireViolations("MCPStatusProblem",
-		closedEnum("type", string(m.Type), []string{"mcp_authorization_required", "mcp_authorization_failed", "mcp_dial_failed", "mcp_tool_discovery_failed", "mcp_configuration_failed", "mcp_release_unavailable", "mcp_backend_unavailable"}, false),
+		closedEnum("type", string(m.Type), []string{"mcp_authorization_required", "mcp_authorization_failed", "mcp_dial_failed", "mcp_tool_discovery_failed", "mcp_configuration_failed"}, false),
 	)
 }
 

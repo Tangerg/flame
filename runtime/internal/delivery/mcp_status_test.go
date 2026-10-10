@@ -97,12 +97,10 @@ func TestMCPServerStateWire(t *testing.T) {
 
 func TestMCPServerFailureCategoryReachesTheWire(t *testing.T) {
 	for failure, want := range map[mcpserver.ConnectionFailure]protocol.MCPStatusProblemType{
-		mcpserver.FailureUnavailableRelease: protocol.MCPStatusReleaseUnavailable,
-		mcpserver.FailureUnavailableBackend: protocol.MCPStatusBackendUnavailable,
-		mcpserver.FailureConfiguration:      protocol.MCPStatusConfigurationFailed,
-		mcpserver.FailureConnection:         protocol.MCPStatusDialFailed,
-		mcpserver.FailureToolDiscovery:      protocol.MCPStatusToolDiscoveryFailed,
-		mcpserver.FailureAuthorization:      protocol.MCPStatusAuthorizationFailed,
+		mcpserver.FailureConfiguration: protocol.MCPStatusConfigurationFailed,
+		mcpserver.FailureConnection:    protocol.MCPStatusDialFailed,
+		mcpserver.FailureToolDiscovery: protocol.MCPStatusToolDiscoveryFailed,
+		mcpserver.FailureAuthorization: protocol.MCPStatusAuthorizationFailed,
 	} {
 		got, err := presentMCPServerState(mcpapp.ServerState{Type: mcpapp.ServerFailed, Failure: failure})
 		if err != nil || got.Type != protocol.MCPServerFailed || got.Error == nil || got.Error.Type != want {

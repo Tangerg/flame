@@ -1,6 +1,6 @@
 # Flame design philosophy
 
-Flame is one product with one durable model. Runtime owns product semantics and exposes them through an in-process Go binding and the Runtime Protocol. CLI, Desktop/Web, and IDE own presentation and interaction. Scope owns the agent framework and provider libraries.
+Flame is one product with one durable model. Runtime owns product semantics and exposes them through an in-process Go binding and the Runtime Protocol. CLI and Desktop/Web own presentation and interaction. Scope owns the agent framework and provider libraries.
 
 ## Why Runtime owns the durable facts
 

@@ -13,11 +13,6 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
 
-// StatusReader transfers a live status snapshot for configured MCP servers.
-type StatusReader interface {
-	Statuses() []mcpserver.ConnectionStatus
-}
-
 // ToolCatalog is the live tool set execution admits from. It borrows the
 // optional server scope and transfers one snapshot: the advertised tools and
 // the name conflicts that exclude some of them from Run manifests. A single
@@ -27,28 +22,21 @@ type ToolCatalog interface {
 	MCPTools(server *mcpserver.ID) ([]mcpserver.AdvertisedTool, map[tool.Ref][]tool.Ref, error)
 }
 
-// ConnectionControl reconnects and authorizes configured servers.
-// Implementations must sequence operations per server: a newer configure,
-// remove, reconnect, or authorize supersedes an older in-flight operation, while
-// operations for different servers may proceed concurrently. Each call blocks
-// until its live status has settled and honors ctx cancellation; the application
-// owns detachment, lifecycle, and asynchronous result publication.
-type ConnectionControl interface {
-	Reconnect(ctx context.Context, name mcpserver.ID) error
-	Authorize(ctx context.Context, name mcpserver.ID) error
+// Attempt is an admitted connection operation. The connection owner publishes
+// connecting before returning it. Run starts external I/O and joins its result;
+// Close cancels it, including an operation that has not started.
+type Attempt interface {
+	Run() error
+	Close()
 }
 
-// Probe borrows an unsaved candidate. Configure obtains the current configuration
-// from its source owner; the caller cannot advance it through a detached snapshot,
-// and a Configure whose ctx was canceled before it settles records nothing, so
-// canceling a dial before Detach keeps a detached source detached. Detach
-// withdraws the source's tools before it returns and never blocks on I/O.
-// Refuse settles a server whose connection cannot be admitted as failed in the
-// given category and withdraws its session and tools; a refusal under a
-// superseded operation's ctx records nothing.
-type ConnectionLifecycle interface {
+// Connections owns all live transitions, tools and per-server supersession.
+// Admission and withdrawal do no external I/O. Statuses is its read projection.
+type Connections interface {
+	Statuses() []mcpserver.ConnectionStatus
+	BeginConnect(ctx context.Context, name mcpserver.ID) (Attempt, error)
+	BeginAuthorize(ctx context.Context, name mcpserver.ID) (Attempt, error)
 	Probe(ctx context.Context, server mcpserver.Server) error
-	Configure(ctx context.Context, name mcpserver.ID) error
 	Refuse(ctx context.Context, name mcpserver.ID, failure mcpserver.ConnectionFailure) error
 	Detach(name mcpserver.ID) error
 }
@@ -84,26 +72,21 @@ type Source struct {
 	Availability SourceAvailability
 }
 
-// Coordinator owns durable server configuration, live connections, and the
-// atomically published tool exposure. Commands borrow input until they return;
+// Coordinator owns durable server configuration and atomically published tool
+// exposure, and coordinates the connection owner. Commands borrow input until they return;
 // constructing a server acquires the data retained by persistence or a live dial.
 type Coordinator struct {
 	// mutationMu linearizes durable registry -> exposure/live reconciliation and
 	// the short pre/post boundaries of asynchronous connection operations.
-	// Network and interactive OAuth waits never hold it; ConnectionControl owns
+	// Network and interactive OAuth waits never hold it; Connections owns
 	// per-server latest-operation-wins sequencing.
 	registry              Registry
 	store                 Store
-	statusReader          StatusReader
 	toolCatalog           ToolCatalog
-	connectionControl     ConnectionControl
-	connectionLifecycle   ConnectionLifecycle
+	connections           Connections
 	exposure              *ExposureState
 	mutationMu            sync.Mutex
-	connectionMu          sync.Mutex
-	dials                 map[mcpserver.ID]*activeDial
 	statusQueue           *statusQueue
-	statusTombstones      map[mcpserver.ID]struct{}
 	authorizationAttempts *authorizationAttemptStore
 	invalidations         invalidation.Publish
 
@@ -115,33 +98,26 @@ type Coordinator struct {
 
 // Config bundles the Coordinator's dependencies.
 type Config struct {
-	Registry            Registry
-	Store               Store
-	StatusReader        StatusReader
-	ToolCatalog         ToolCatalog
-	ConnectionControl   ConnectionControl
-	ConnectionLifecycle ConnectionLifecycle
-	Exposure            *ExposureState
+	Registry    Registry
+	Store       Store
+	ToolCatalog ToolCatalog
+	Connections Connections
+	Exposure    *ExposureState
 	// Invalidations publishes post-commit registry and live-connection changes.
 	Invalidations invalidation.Publish
 }
 
 // New constructs the complete durable configuration and live-connection use cases.
 func New(cfg Config) (*Coordinator, error) {
-	if cfg.Registry == nil || cfg.Store == nil || cfg.StatusReader == nil || cfg.ToolCatalog == nil ||
-		cfg.ConnectionControl == nil || cfg.ConnectionLifecycle == nil || cfg.Exposure == nil || cfg.Exposure.snapshot.Load() == nil {
+	if cfg.Registry == nil || cfg.Store == nil || cfg.Connections == nil || cfg.ToolCatalog == nil || cfg.Exposure == nil || cfg.Exposure.snapshot.Load() == nil {
 		return nil, errors.New("mcp: registry, store, live connections, tool catalog, and exposure are required")
 	}
 	coordinator := &Coordinator{
 		registry:              cfg.Registry,
 		store:                 cfg.Store,
-		statusReader:          cfg.StatusReader,
 		toolCatalog:           cfg.ToolCatalog,
-		connectionControl:     cfg.ConnectionControl,
-		connectionLifecycle:   cfg.ConnectionLifecycle,
+		connections:           cfg.Connections,
 		exposure:              cfg.Exposure,
-		dials:                 make(map[mcpserver.ID]*activeDial),
-		statusTombstones:      make(map[mcpserver.ID]struct{}),
 		authorizationAttempts: newAuthorizationAttemptStore(),
 		invalidations:         cfg.Invalidations,
 	}
@@ -149,13 +125,6 @@ func New(cfg Config) (*Coordinator, error) {
 		coordinator.invalidations.Notify(invalidation.ForMCP(name))
 	})
 	return coordinator, nil
-}
-
-// activeDial owns the current connection attempt's cancellation and temporary
-// connecting phase. Both are guarded by connectionMu and end with the attempt.
-type activeDial struct {
-	cancel     context.CancelFunc
-	connecting bool
 }
 
 // BeginShutdown cancels this component's post-commit reconcile work.

@@ -119,8 +119,6 @@ const (
 	MCPStatusDialFailed            MCPStatusProblemType = "mcp_dial_failed"            // the transport, process or handshake did not succeed
 	MCPStatusToolDiscoveryFailed   MCPStatusProblemType = "mcp_tool_discovery_failed"  // a session connected but did not produce a valid tool catalog
 	MCPStatusConfigurationFailed   MCPStatusProblemType = "mcp_configuration_failed"   // the configuration or stored credentials could not be used
-	MCPStatusReleaseUnavailable    MCPStatusProblemType = "mcp_release_unavailable"    // the owning plugin release cannot be verified
-	MCPStatusBackendUnavailable    MCPStatusProblemType = "mcp_backend_unavailable"    // the release is intact but this server's backend cannot be realized
 )
 
 // MCPTransport is the protocol's closed MCP transport vocabulary.

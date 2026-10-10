@@ -2084,7 +2084,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
       }, ["toolCount", "type"]),
       fields({
         error: fields({
-          type: enumOf(["mcp_release_unavailable", "mcp_backend_unavailable", "mcp_configuration_failed", "mcp_dial_failed", "mcp_tool_discovery_failed", "mcp_authorization_failed"]),
+          type: enumOf(["mcp_configuration_failed", "mcp_dial_failed", "mcp_tool_discovery_failed", "mcp_authorization_failed"]),
         }, []),
         toolCount: absent(),
         type: literal("failed"),
@@ -2102,7 +2102,7 @@ const CHECKS: Record<WireTypeName, WireCheck> = {
   MCPStatusProblem: object({
     type: ref(() => CHECKS.MCPStatusProblemType),
   }, ["type"]),
-  MCPStatusProblemType: enumOf(["mcp_authorization_required", "mcp_authorization_failed", "mcp_dial_failed", "mcp_tool_discovery_failed", "mcp_configuration_failed", "mcp_release_unavailable", "mcp_backend_unavailable"]),
+  MCPStatusProblemType: enumOf(["mcp_authorization_required", "mcp_authorization_failed", "mcp_dial_failed", "mcp_tool_discovery_failed", "mcp_configuration_failed"]),
   MCPTestOutcome: enumOf(["reachable", "authorizationRequired", "timedOut", "failed"]),
   MCPTestResult: object({
     outcome: ref(() => CHECKS.MCPTestOutcome),

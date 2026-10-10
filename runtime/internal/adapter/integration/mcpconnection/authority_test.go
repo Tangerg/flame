@@ -97,7 +97,7 @@ func TestRetainedToolRejectsChangedCredentialsBeforeReconciliation(t *testing.T)
 			}
 			var replacement []toolcontract.Tool
 			pool.SetToolSink(func(tools []toolcontract.Tool) { replacement = tools })
-			if err := pool.Configure(t.Context(), server.ID()); err != nil {
+			if err := connectPool(pool, t.Context(), server.ID()); err != nil {
 				t.Fatal(err)
 			}
 			if len(replacement) != 1 {
@@ -190,7 +190,7 @@ func TestFrozenExecutableAfterReconnectIsRejected(t *testing.T) {
 	if err := pool.Refuse(t.Context(), server.ID(), mcpserver.FailureConfiguration); err != nil {
 		t.Fatal(err)
 	}
-	if err := pool.Reconnect(t.Context(), server.ID()); err != nil {
+	if err := connectPool(pool, t.Context(), server.ID()); err != nil {
 		t.Fatal(err)
 	}
 	if len(replacement) != 1 {
@@ -236,7 +236,7 @@ func TestReconnectUsesCurrentOwnerConfiguration(t *testing.T) {
 	registry.set(server)
 	var replacement []toolcontract.Tool
 	pool.SetToolSink(func(tools []toolcontract.Tool) { replacement = tools })
-	if err := pool.Reconnect(t.Context(), server.ID()); err != nil {
+	if err := connectPool(pool, t.Context(), server.ID()); err != nil {
 		t.Fatal(err)
 	}
 	if len(replacement) != 1 {
@@ -286,7 +286,7 @@ func TestAuthorizationUsesCurrentOwnerCredentials(t *testing.T) {
 	})
 	server.Authorization = "Bearer local-test"
 	registry.set(server)
-	if err := pool.Authorize(t.Context(), server.ID()); err == nil || !strings.Contains(err.Error(), "static authorization") {
+	if err := authorizePool(pool, t.Context(), server.ID()); err == nil || !strings.Contains(err.Error(), "static authorization") {
 		t.Fatalf("authorization ignored the owner's static credentials: %v", err)
 	}
 }
