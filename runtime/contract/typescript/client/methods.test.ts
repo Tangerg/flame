@@ -411,7 +411,7 @@ describe("methods factory", () => {
     await workspace.hooks.list(signal);
     await workspace.skills.listDiscovered(signal);
     await workspace.skills.listProposals(signal);
-    await workspace.agentMemory.list(signal);
+    await workspace.agentMemory.list(undefined, signal);
     expect(call).toHaveBeenCalledTimes(6);
     for (const invocation of call.mock.calls) expect(invocation[2]).toEqual({ signal });
   });

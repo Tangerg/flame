@@ -9,7 +9,7 @@
 // in the generated validator and in schema.json.
 
 // The wire version this runtime serves; a client states it in request metadata.
-export const PROTOCOL_VERSION = "2026-10-10.2";
+export const PROTOCOL_VERSION = "2026-10-10.3";
 
 // The only Session Artifact version this runtime imports or exports.
 export const SESSION_ARTIFACT_VERSION = 31;
@@ -238,11 +238,9 @@ export interface AgentMemoryItemRequest {
   id: string;
 }
 
-export interface AgentMemoryList {
-  items: AgentMemoryItem[];
-}
-
 export interface AgentMemoryListRequest {
+  cursor?: string;
+  limit?: number;
   scope: AgentMemoryScope;
   workspace?: WorkspaceRef;
 }
@@ -1072,6 +1070,8 @@ export interface ModelUsage {
 
 export type PageOfAgentDoc = Page<AgentDoc>;
 
+export type PageOfAgentMemoryItem = Page<AgentMemoryItem>;
+
 export type PageOfFileEntry = Page<FileEntry>;
 
 export type PageOfMCPServer = Page<MCPServer>;
@@ -1276,7 +1276,7 @@ export interface PluginViewResource {
   html: string;
 }
 
-export type PluginViewType = "sessionTrajectory";
+export type PluginViewType = "sessionTrajectory" | "agentMemory";
 
 export type ProblemData =
   | { type: "agent_stuck"; detail?: string; docUrl?: string }
@@ -1392,6 +1392,16 @@ export interface ReadFileRequest {
   path: string;
   startLine?: number;
   workspace: WorkspaceRef;
+}
+
+export interface ReadPluginMemoryRequest {
+  cursor?: string;
+  digest: string;
+  installationId: string;
+  limit?: number;
+  scope: AgentMemoryScope;
+  viewId: string;
+  workspace?: WorkspaceRef;
 }
 
 export interface ReadPluginTrajectoryRequest {
@@ -2141,7 +2151,7 @@ export const WIRE_ENUMS = {
   PluginRealizationType: ["available", "releaseUnavailable"],
   PluginThemeScheme: ["dark", "light"],
   PluginValueChangeType: ["set", "clear"],
-  PluginViewType: ["sessionTrajectory"],
+  PluginViewType: ["sessionTrajectory", "agentMemory"],
   ProviderConfigChangeType: ["set", "clear"],
   ProviderCredentialRequirement: ["apiKeyRequired", "apiKeyOptional"],
   ProviderKeySource: ["stored", "env"],

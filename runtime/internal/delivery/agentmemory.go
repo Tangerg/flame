@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Tangerg/flame/runtime/internal/application/pagination"
+	memoryapp "github.com/Tangerg/flame/runtime/internal/application/workspace/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/agentmemory"
 	"github.com/Tangerg/flame/runtime/protocol"
 )
@@ -16,7 +18,7 @@ import (
 // agentMemoryUseCases is Delivery's consumer-side port. Its methods express
 // complete review use cases, rather than exposing the domain store workflow.
 type agentMemoryUseCases interface {
-	List(ctx context.Context, scope agentmemory.Scope, cwd string) ([]agentmemory.Item, error)
+	List(ctx context.Context, input memoryapp.ListInput) (pagination.Page[agentmemory.Item], error)
 	Review(ctx context.Context, id string, decision agentmemory.ReviewDecision) error
 	Update(ctx context.Context, id string, content *string, pinned *bool) (agentmemory.Item, error)
 	Delete(ctx context.Context, id string) error
@@ -25,22 +27,26 @@ type agentMemoryUseCases interface {
 
 // ListAgentMemory returns active + pending memory for one explicit target
 // (agentMemory.list).
-func (s *Handler) ListAgentMemory(ctx context.Context, in protocol.AgentMemoryListRequest) (*protocol.AgentMemoryList, error) {
+func (s *Handler) ListAgentMemory(ctx context.Context, in protocol.AgentMemoryListRequest) (*protocol.Page[protocol.AgentMemoryItem], error) {
 	scope, cwd, err := agentMemoryTargetFromWire(in.Scope, in.Workspace)
 	if err != nil {
 		return nil, err
 	}
-	items, err := s.agentMemory.List(ctx, scope, cwd)
+	limit, err := requestedPageLimit(in.Limit)
+	if err != nil {
+		return nil, wirePageError(err)
+	}
+	page, err := s.agentMemory.List(ctx, memoryapp.ListInput{Scope: scope, CWD: cwd, Cursor: in.Cursor, Limit: limit})
 	if err != nil {
 		return nil, mapAgentMemoryErr(err)
 	}
-	out := protocol.AgentMemoryList{Items: make([]protocol.AgentMemoryItem, 0, len(items))}
-	for _, item := range items {
+	out := protocol.Page[protocol.AgentMemoryItem]{Data: make([]protocol.AgentMemoryItem, 0, len(page.Rows)), NextCursor: page.NextCursor}
+	for _, item := range page.Rows {
 		wire, err := presentAgentMemoryItem(item)
 		if err != nil {
 			return nil, err
 		}
-		out.Items = append(out.Items, wire)
+		out.Data = append(out.Data, wire)
 	}
 	return &out, nil
 }
@@ -119,6 +125,8 @@ func mapAgentMemoryErr(err error) error {
 	switch {
 	case err == nil:
 		return nil
+	case errors.Is(err, pagination.ErrInvalidCursor), errors.Is(err, pagination.ErrInvalidLimit), errors.Is(err, pagination.ErrCursorTooLarge):
+		return wirePageError(err)
 	case errors.Is(err, agentmemory.ErrNotFound), errors.Is(err, agentmemory.ErrNotVisible):
 		return NewFailure(errors.Join(protocol.ErrInvalidParams, err), "no such memory item")
 	case errors.Is(err, agentmemory.ErrNotPending):

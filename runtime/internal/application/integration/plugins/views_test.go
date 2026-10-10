@@ -34,7 +34,7 @@ func TestAcceptedViewReadDoesNotRetainAdmissionOrAuthorizeSubsequentReads(t *tes
 		t.Fatal(err)
 	}
 	called := false
-	err = coordinator.WithView(t.Context(), installation.ID(), release.Digest(), "trajectory", func(snapshot *plugin.Installation, view plugin.ViewDeclaration) error {
+	err = coordinator.WithView(t.Context(), installation.ID(), release.Digest(), "trajectory", plugin.SessionTrajectory, func(snapshot *plugin.Installation, view plugin.ViewDeclaration) error {
 		called = true
 		if dependencies.held || !snapshot.Active() || view.ID != "trajectory" {
 			t.Fatal("accepted read retained admission or lost its authorized snapshot")
@@ -45,7 +45,7 @@ func TestAcceptedViewReadDoesNotRetainAdmissionOrAuthorizeSubsequentReads(t *tes
 	if err != nil || !called {
 		t.Fatalf("accepted read = %v, called = %t", err, called)
 	}
-	err = coordinator.WithView(t.Context(), installation.ID(), release.Digest(), "trajectory", func(*plugin.Installation, plugin.ViewDeclaration) error {
+	err = coordinator.WithView(t.Context(), installation.ID(), release.Digest(), "trajectory", plugin.SessionTrajectory, func(*plugin.Installation, plugin.ViewDeclaration) error {
 		t.Fatal("withdrawn installation authorized another read")
 		return nil
 	})

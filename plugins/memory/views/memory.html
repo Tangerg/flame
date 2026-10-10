@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Agent memory</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font:
+          14px/1.6 system-ui,
+          sans-serif;
+        color: light-dark(#20242b, #eef0f4);
+        background: light-dark(#fafbfc, #181a1e);
+        --muted: light-dark(#586170, #a3a8b2);
+        --surface: light-dark(#eef1f5, #24282e);
+        --edge: light-dark(#c9cfd9, #484e59);
+        --accent: light-dark(#265cad, #91baff);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 24px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 600;
+      }
+      p {
+        color: var(--muted);
+      }
+      header,
+      .filters,
+      nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+        justify-content: space-between;
+      }
+      button,
+      select,
+      input {
+        font: inherit;
+        color: inherit;
+        background: var(--surface);
+        border: 1px solid var(--edge);
+        border-radius: 6px;
+        padding: 7px 12px;
+        max-width: 100%;
+      }
+      button:disabled {
+        opacity: 0.5;
+      }
+      :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 3px;
+      }
+      .filters {
+        justify-content: start;
+        margin: 20px 0;
+      }
+      article {
+        border: 1px solid var(--edge);
+        border-radius: 8px;
+        padding: 16px;
+        margin: 12px 0;
+        overflow-wrap: anywhere;
+      }
+      article p {
+        color: inherit;
+        white-space: pre-wrap;
+      }
+      article[data-status="pending"] {
+        border-inline-start: 4px solid var(--accent);
+      }
+      small {
+        color: var(--muted);
+      }
+      dl {
+        display: grid;
+        grid-template-columns: max-content 1fr;
+        gap: 4px 12px;
+        font-size: 12px;
+      }
+      dt {
+        color: var(--muted);
+      }
+      dd {
+        margin: 0;
+      }
+      #status[role="alert"] {
+        color: light-dark(#a62222, #ff9797);
+      }
+      @media (max-width: 480px) {
+        body {
+          padding: 16px;
+        }
+        dl {
+          display: block;
+        }
+        dd {
+          margin-bottom: 8px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Agent memory</h1>
+      <button id="refresh">Refresh</button>
+    </header>
+    <p>
+      Review proposed facts before they are recalled in future conversations.
+      Manage memory with the controls above.
+    </p>
+    <p id="summary"></p>
+    <div class="filters">
+      <input
+        id="search"
+        type="search"
+        aria-label="Search this page"
+        placeholder="Search this page"
+      /><select id="state" aria-label="Memory status">
+        <option value="">All statuses</option>
+        <option value="pending">Pending review</option>
+        <option value="active">Active</option></select
+      ><select id="origin" aria-label="Memory origin">
+        <option value="">All origins</option>
+        <option value="auto">Mined</option>
+        <option value="user">User authored</option></select
+      ><label><input id="pinned" type="checkbox" /> Pinned only</label>
+    </div>
+    <p id="status" role="status">Waiting for the trusted Host…</p>
+    <main id="items"></main>
+    <nav>
+      <button id="previous">Previous page</button
+      ><button id="next">Next page</button>
+    </nav>
+    <script>
+      const refresh = document.getElementById("refresh"),
+        previous = document.getElementById("previous"),
+        next = document.getElementById("next"),
+        search = document.getElementById("search"),
+        state = document.getElementById("state"),
+        origin = document.getElementById("origin"),
+        pinned = document.getElementById("pinned"),
+        status = document.getElementById("status"),
+        summary = document.getElementById("summary"),
+        items = document.getElementById("items");
+      let port,
+        rows = [],
+        history = [],
+        nextCursor,
+        pending;
+      function controls() {
+        refresh.disabled = Boolean(pending);
+        previous.disabled = Boolean(pending) || history.length === 0;
+        next.disabled = Boolean(pending) || !nextCursor;
+      }
+      function text(tag, value) {
+        const element = document.createElement(tag);
+        element.textContent = value;
+        return element;
+      }
+      function render() {
+        items.replaceChildren();
+        const matching = rows.filter(
+          (item) =>
+            (!state.value || item.status === state.value) &&
+            (!origin.value || item.origin === origin.value) &&
+            (!pinned.checked || item.pinned) &&
+            `${item.id} ${item.content} ${item.sessionId ?? ""}`
+              .toLocaleLowerCase()
+              .includes(search.value.toLocaleLowerCase()),
+        );
+        summary.textContent = `${rows.filter((item) => item.status === "pending").length} pending · ${rows.filter((item) => item.status === "active").length} active on this page`;
+        if (!matching.length)
+          items.append(
+            text(
+              "p",
+              rows.length
+                ? "No matching items on this page."
+                : "No memory items in this target.",
+            ),
+          );
+        for (const item of matching) {
+          const article = document.createElement("article");
+          article.dataset.memoryId = item.id;
+          article.dataset.status = item.status;
+          article.append(
+            text(
+              "strong",
+              item.status === "pending" ? "Pending review" : "Active",
+            ),
+            text("p", item.content),
+          );
+          const facts = document.createElement("dl");
+          for (const [label, value] of [
+            ["Item", item.id],
+            ["Scope", item.scope],
+            ["Origin", item.origin],
+            ["Pinned", String(item.pinned)],
+            ["Created", item.createdAt],
+            ["Updated", item.updatedAt],
+            ["Session", item.sessionId],
+            ["Day", item.day],
+          ])
+            if (value !== undefined)
+              facts.append(text("dt", label), text("dd", value));
+          article.append(facts);
+          items.append(article);
+        }
+      }
+      function accept(page) {
+        rows = page.data;
+        nextCursor = page.nextCursor;
+        history = pending?.history ?? [];
+        pending = undefined;
+        render();
+        controls();
+        status.setAttribute("role", "status");
+        status.textContent = `${rows.length} memory items loaded on this page.`;
+      }
+      function read(targetHistory) {
+        if (pending || !port) return;
+        const cursor = targetHistory.at(-1);
+        pending = { history: targetHistory };
+        controls();
+        status.setAttribute("role", "status");
+        status.textContent = "Reading memory items…";
+        port.postMessage({ type: "read", ...(cursor ? { cursor } : {}) });
+      }
+      addEventListener("message", (event) => {
+        if (
+          event.source !== parent ||
+          port ||
+          event.data?.type !== "flame.view.connect.v1" ||
+          !["light", "dark"].includes(event.data.scheme) ||
+          event.ports.length !== 1
+        )
+          return;
+        document.documentElement.style.colorScheme = event.data.scheme;
+        port = event.ports[0];
+        port.onmessage = (message) => {
+          if (message.data.type === "page" && pending)
+            accept(message.data.page);
+          if (message.data.type === "error" && pending) {
+            pending = undefined;
+            controls();
+            status.setAttribute("role", "alert");
+            status.textContent = message.data.reason;
+          }
+        };
+        port.start();
+        accept(event.data.initial);
+      });
+      parent.postMessage("flame.view.ready.v1", "*");
+      refresh.addEventListener("click", () => read([]));
+      previous.addEventListener("click", () => read(history.slice(0, -1)));
+      next.addEventListener("click", () => read([...history, nextCursor]));
+      for (const control of [search, state, origin, pinned])
+        control.addEventListener("input", render);
+      controls();
+    </script>
+  </body>
+</html>

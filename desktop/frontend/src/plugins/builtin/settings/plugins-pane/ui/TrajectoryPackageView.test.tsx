@@ -6,7 +6,7 @@ import { publishScheme } from "@/lib/appearance";
 import { createMemoryNavigator } from "@/lib/navigation.testkit";
 import type { ContributionLifetime } from "@/plugins/sdk/definePlugin";
 import { contributeForTest, resetKernelForTest } from "@/plugins/sdk/testKernel";
-import { PackageView } from "./PackageView";
+import { TrajectoryPackageView } from "./TrajectoryPackageView";
 
 const capabilities = vi.hoisted(() => ({ subagents: false }));
 vi.mock("@/plugins/builtin/runtime/public/capabilities", () => ({
@@ -57,7 +57,12 @@ async function fixture(carrier: PluginCarrier) {
     read: async () => ({ data: [] }),
   }));
   const view = render(
-    <PackageView title="Recorded trajectory" reads={reads} carrier={carrier} lifetime={lifetime} />,
+    <TrajectoryPackageView
+      title="Recorded trajectory"
+      reads={reads}
+      carrier={carrier}
+      lifetime={lifetime}
+    />,
   );
   return { view, reads, navigation, lifetime };
 }
@@ -132,7 +137,7 @@ it("retires the bound cursor scope when descendant capability changes", async ()
   await waitFor(() => expect(f.reads).toHaveBeenCalledExactlyOnceWith("session-a", false));
   capabilities.subagents = true;
   f.view.rerender(
-    <PackageView
+    <TrajectoryPackageView
       title="Recorded trajectory"
       reads={f.reads}
       carrier={carrier}

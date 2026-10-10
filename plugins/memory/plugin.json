@@ -1,0 +1,21 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "flame.memory",
+  "version": "1.0.0",
+  "description": "Optional first-party memory presentation over canonical Runtime items. Review and mutation remain trusted Host commands.",
+  "extensions": {
+    "io.github.tangerg.flame": {
+      "apiVersion": 1,
+      "contributes": {
+        "views": [
+          {
+            "id": "memory",
+            "title": "Agent memory",
+            "type": "agentMemory",
+            "entry": "views/memory.html"
+          }
+        ]
+      }
+    }
+  }
+}

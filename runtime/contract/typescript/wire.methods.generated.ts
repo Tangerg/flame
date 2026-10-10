@@ -10,7 +10,6 @@ import type {
   AgentMemoryAddRequest,
   AgentMemoryItem,
   AgentMemoryItemRequest,
-  AgentMemoryList,
   AgentMemoryListRequest,
   AgentMemoryReviewRequest,
   AgentMemoryUpdateRequest,
@@ -71,6 +70,7 @@ import type {
   MCPTestResult,
   MCPToolExposure,
   PageOfAgentDoc,
+  PageOfAgentMemoryItem,
   PageOfFileEntry,
   PageOfMCPServer,
   PageOfMCPTool,
@@ -97,6 +97,7 @@ import type {
   Provider,
   ProviderTestResult,
   ReadFileRequest,
+  ReadPluginMemoryRequest,
   ReadPluginTrajectoryRequest,
   ReadPluginViewRequest,
   RenamePluginSessionRequest,
@@ -227,6 +228,7 @@ const METHOD_NAMES = [
   "mcp.servers.reconnect",
   "mcp.authorizationAttempts.create",
   "mcp.authorizationAttempts.get",
+  "plugins.readMemory",
   "plugins.renameSession",
   "plugins.readView",
   "plugins.readTrajectory",
@@ -343,6 +345,7 @@ const VALUE_METHOD_NAMES = [
   "mcp.tools.list",
   "mcp.authorizationAttempts.create",
   "mcp.authorizationAttempts.get",
+  "plugins.readMemory",
   "plugins.renameSession",
   "plugins.readView",
   "plugins.readTrajectory",
@@ -778,6 +781,13 @@ export const WIRE_METHOD_POLICY = {
     replayCursor: "none",
     pagination: "none",
   },
+  "plugins.readMemory": {
+    operation: "query",
+    response: "unary",
+    idempotency: "none",
+    replayCursor: "none",
+    pagination: "cursor",
+  },
   "plugins.renameSession": {
     operation: "command",
     response: "unary",
@@ -1077,7 +1087,7 @@ export const WIRE_METHOD_POLICY = {
     response: "unary",
     idempotency: "none",
     replayCursor: "none",
-    pagination: "none",
+    pagination: "cursor",
   },
   "agentMemory.review": {
     operation: "command",
@@ -1270,6 +1280,9 @@ export const WIRE_CAPABILITY_POLICY: {
   "mcp.authorizationAttempts.get": [
     { requires: ["mcp"] },
   ],
+  "plugins.readMemory": [
+    { requires: ["plugins", "agentMemory"] },
+  ],
   "plugins.renameSession": [
     { requires: ["plugins"] },
   ],
@@ -1411,6 +1424,7 @@ export interface WireShapes {
   "mcp.servers.reconnect": { params: MCPServerRequest };
   "mcp.authorizationAttempts.create": { params: CreateMCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
   "mcp.authorizationAttempts.get": { params: MCPAuthorizationAttemptRequest; result: MCPAuthorizationAttempt };
+  "plugins.readMemory": { params: ReadPluginMemoryRequest; result: PageOfAgentMemoryItem };
   "plugins.renameSession": { params: RenamePluginSessionRequest; result: Session };
   "plugins.readView": { params: ReadPluginViewRequest; result: PluginViewResource };
   "plugins.readTrajectory": { params: ReadPluginTrajectoryRequest; result: PageOfTrajectoryEntry };
@@ -1453,7 +1467,7 @@ export interface WireShapes {
   "tools.invoke": { params: InvokeToolRequest; result: unknown };
   "usage.session": { params: SessionUsageRequest; result: Usage };
   "usage.summary": { params: UsageSummaryRequest; result: UsageSummary };
-  "agentMemory.list": { params: AgentMemoryListRequest; result: AgentMemoryList };
+  "agentMemory.list": { params: AgentMemoryListRequest; result: PageOfAgentMemoryItem };
   "agentMemory.review": { params: AgentMemoryReviewRequest };
   "agentMemory.update": { params: AgentMemoryUpdateRequest; result: AgentMemoryItem };
   "agentMemory.delete": { params: AgentMemoryItemRequest };

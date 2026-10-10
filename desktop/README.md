@@ -136,7 +136,6 @@ perf 排查沉淀的硬规则 —— 几个"看似没事其实在累积"的坑�
 - **会漂的量（测试数 / 插件数 / 文件数）直接跑命令查，不在本文件维护硬编码数字。**
 - **沟通约定**：中文回复（用户偏好），代码 / 注释保持英文；破坏性或结构性改动前先算爆炸半径（grep 所有消费方）+ 给方案 + 权衡，等用户确认再动；改动后跑 `npm run check`，commit message 写清 _why_，commit 后默认推送；commit trailer 用 `Co-Authored-By: Claude <当前实际模型名> <noreply@anthropic.com>`（署名以实际生成该 commit 的模型为准，不硬编码型号）。
 
-
 ## Web and shared Runtime connections
 
 `frontend/` builds the same workbench for Desktop and Web. `platform/clientHost.ts`
@@ -222,7 +221,14 @@ The status, authorization attempt and connection test projections accept only th
 their state allows and reject anything else as a Runtime contract violation.
 External themes contribute through the existing Dougong Host and child lifetimes;
 connection replacement retires the predecessor before publishing new contributions.
-One optional read-only Session trajectory page now uses the qualified carriers below.
+Optional Session trajectory and Memory pages use one qualified carrier lifecycle.
+Install the first-party packages from `plugins/trajectory` and `plugins/memory` through
+Settings → Plugins, approve their exact digests, then enable them. Memory captures
+project/user scope in trusted Host controls. Its guest renders canonical candidates and
+active items, with current-page filters and pagination; trusted Host forms retain add,
+review, edit, pin and delete. Runtime remains the sole memory owner. Removing the package
+withdraws presentation without deleting memory. Rebuild all clients for protocol
+2026-10-10.3 and stage trajectory 1.2.0 bytes for the common view handshake.
 Packages may also declare `renameSession` actions. An admitted package row displays a
 trusted host form with the operation and captured Session ID/revision. The human submits
 the title explicitly; switching Sessions cannot retarget the draft. Runtime owns admission

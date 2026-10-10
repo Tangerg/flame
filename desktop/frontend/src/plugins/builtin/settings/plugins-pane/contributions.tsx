@@ -5,7 +5,8 @@ import type { FlameClient } from "@flame/runtime-contract/client";
 import type { PluginInstallation } from "@flame/runtime-contract/wire";
 import type { ContributionLifetime } from "@/plugins/sdk/definePlugin";
 import { DATA_PROVIDER, WORKSPACE_VIEW } from "@/plugins/sdk/kernelPoints";
-import { PackageView } from "./ui/PackageView";
+import { TrajectoryPackageView } from "./ui/TrajectoryPackageView";
+import { MemoryPackageView } from "./ui/MemoryPackageView";
 import { queryClient } from "@/lib/queryClient";
 import { failureMessage } from "@/lib/diagnostics";
 import {
@@ -13,7 +14,7 @@ import {
   retainThemeSelection,
 } from "@/plugins/builtin/theme/public/appearance";
 import { packageOperations, PACKAGES_KEY, usePackageRealization } from "./application/packages";
-import { createTrajectoryViewReads } from "./adapters/trajectoryReads";
+import { createTrajectoryViewReads, createMemoryViewReads } from "./adapters/pluginViewReads";
 
 const packageThemePrefix = "package:";
 
@@ -61,18 +62,46 @@ function createPackageReconciler(
           digest: release.digest,
           viewId: view.id,
         };
-        const reads = (sessionId: string, includeDescendants: boolean) =>
-          createTrajectoryViewReads(client.plugins, binding, sessionId, includeDescendants);
         const title = `${release.name} · ${view.title}`;
-        const component = () => (
-          <PackageView reads={reads} title={title} lifetime={lifetime} carrier={carrier} />
-        );
-        lifetime.contribute(WORKSPACE_VIEW, {
-          id: `package:${installation.id}:${view.id}`,
-          title,
-          dock: "session",
-          component,
-        });
+        switch (view.type) {
+          case "sessionTrajectory": {
+            const reads = (sessionId: string, includeDescendants: boolean) =>
+              createTrajectoryViewReads(client.plugins, binding, sessionId, includeDescendants);
+            lifetime.contribute(WORKSPACE_VIEW, {
+              id: `package:${installation.id}:${view.id}`,
+              title,
+              dock: "session",
+              component: () => (
+                <TrajectoryPackageView
+                  reads={reads}
+                  title={title}
+                  lifetime={lifetime}
+                  carrier={carrier}
+                />
+              ),
+            });
+            break;
+          }
+          case "agentMemory": {
+            const reads = (target: Parameters<typeof createMemoryViewReads>[2]) =>
+              createMemoryViewReads(client.plugins, binding, target);
+            lifetime.contribute(WORKSPACE_VIEW, {
+              id: `package:${installation.id}:${view.id}`,
+              title,
+              icon: "brain",
+              dock: "workspace",
+              component: () => (
+                <MemoryPackageView
+                  reads={reads}
+                  title={title}
+                  lifetime={lifetime}
+                  carrier={carrier}
+                />
+              ),
+            });
+            break;
+          }
+        }
       }
       for (const theme of release.themes) {
         const { background, foreground, accent, muted, border } = theme.colors;

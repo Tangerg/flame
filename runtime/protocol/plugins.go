@@ -102,7 +102,10 @@ type RenamePluginSessionRequest struct {
 
 type PluginViewType string
 
-const PluginViewSessionTrajectory PluginViewType = "sessionTrajectory"
+const (
+	PluginViewSessionTrajectory PluginViewType = "sessionTrajectory"
+	PluginViewAgentMemory       PluginViewType = "agentMemory"
+)
 
 type PluginView struct {
 	ID    string         `json:"id"`
@@ -125,6 +128,11 @@ type PluginViewResource struct {
 type ReadPluginTrajectoryRequest struct {
 	ReadPluginViewRequest
 	ListSessionTrajectoryRequest
+}
+
+type ReadPluginMemoryRequest struct {
+	ReadPluginViewRequest
+	AgentMemoryListRequest
 }
 
 // PluginServerDeclaration is a closed union by transport that projects a

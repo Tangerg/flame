@@ -7,6 +7,13 @@
         "github.com/Tangerg/flame/runtime/protocol",
         "iter"
       ],
+      "constants": [
+        {
+          "name": "MaximumAgentMemoryItemsPerTarget",
+          "type": "untyped int",
+          "value": "512"
+        }
+      ],
       "variables": [
         {
           "name": "ErrAcknowledgementUnknown",
@@ -216,7 +223,7 @@
             },
             {
               "name": "ListAgentMemory",
-              "signature": "func(ctx context.Context, request protocol.AgentMemoryListRequest, options CallOptions) (*protocol.AgentMemoryList, error)"
+              "signature": "func(ctx context.Context, request protocol.AgentMemoryListRequest, options CallOptions) (*protocol.Page[protocol.AgentMemoryItem], error)"
             },
             {
               "name": "ListApprovalRules",
@@ -301,6 +308,10 @@
             {
               "name": "ListWorkspaces",
               "signature": "func(ctx context.Context, options CallOptions) (*protocol.Page[protocol.WorkspaceSummary], error)"
+            },
+            {
+              "name": "ReadPluginMemory",
+              "signature": "func(ctx context.Context, request protocol.ReadPluginMemoryRequest, options CallOptions) (*protocol.Page[protocol.AgentMemoryItem], error)"
             },
             {
               "name": "ReadPluginTrajectory",
@@ -724,7 +735,7 @@
             },
             {
               "name": "ListAgentMemory",
-              "signature": "func(ctx context.Context, request protocol.AgentMemoryListRequest, options CallOptions) (*protocol.AgentMemoryList, error)"
+              "signature": "func(ctx context.Context, request protocol.AgentMemoryListRequest, options CallOptions) (*protocol.Page[protocol.AgentMemoryItem], error)"
             },
             {
               "name": "ListApprovalRules",
@@ -809,6 +820,10 @@
             {
               "name": "ListWorkspaces",
               "signature": "func(ctx context.Context, options CallOptions) (*protocol.Page[protocol.WorkspaceSummary], error)"
+            },
+            {
+              "name": "ReadPluginMemory",
+              "signature": "func(ctx context.Context, request protocol.ReadPluginMemoryRequest, options CallOptions) (*protocol.Page[protocol.AgentMemoryItem], error)"
             },
             {
               "name": "ReadPluginTrajectory",
@@ -2226,6 +2241,11 @@
           "value": "\"set\""
         },
         {
+          "name": "PluginViewAgentMemory",
+          "type": "PluginViewType",
+          "value": "\"agentMemory\""
+        },
+        {
           "name": "PluginViewSessionTrajectory",
           "type": "PluginViewType",
           "value": "\"sessionTrajectory\""
@@ -2298,7 +2318,7 @@
         {
           "name": "ProtocolVersion",
           "type": "untyped string",
-          "value": "\"2026-10-10.2\""
+          "value": "\"2026-10-10.3\""
         },
         {
           "name": "ProviderAPIKeyOptional",
@@ -3228,17 +3248,6 @@
           ]
         },
         {
-          "name": "AgentMemoryList",
-          "kind": "struct",
-          "fields": [
-            {
-              "name": "Items",
-              "type": "[]AgentMemoryItem",
-              "tag": "json:\"items\""
-            }
-          ]
-        },
-        {
           "name": "AgentMemoryListRequest",
           "kind": "struct",
           "fields": [
@@ -3251,6 +3260,10 @@
               "name": "Workspace",
               "type": "*WorkspaceRef",
               "tag": "json:\"workspace,omitzero\""
+            },
+            {
+              "name": "PageQuery",
+              "type": "PageQuery"
             }
           ],
           "methods": [
@@ -7971,6 +7984,26 @@
               "name": "MaxBytes",
               "type": "*int",
               "tag": "json:\"maxBytes,omitzero\""
+            }
+          ],
+          "methods": [
+            {
+              "name": "ValidateWire",
+              "signature": "func() error"
+            }
+          ]
+        },
+        {
+          "name": "ReadPluginMemoryRequest",
+          "kind": "struct",
+          "fields": [
+            {
+              "name": "ReadPluginViewRequest",
+              "type": "ReadPluginViewRequest"
+            },
+            {
+              "name": "AgentMemoryListRequest",
+              "type": "AgentMemoryListRequest"
             }
           ],
           "methods": [

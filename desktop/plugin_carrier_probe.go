@@ -208,7 +208,7 @@ func verifyNativePluginPages(host *DesktopHost, messages <-chan json.RawMessage,
 	}
 	html := fmt.Sprintf(`<!doctype html><script>
 addEventListener('message', async event=>{
- if(event.source!==parent || event.data?.type!=='flame.trajectory.connect.v1')return;
+ if(event.source!==parent || event.data?.type!=='flame.view.connect.v1')return;
  const port=event.ports[0];addEventListener('resize',()=>port.postMessage({type:'read',geometry:{width:innerWidth,height:innerHeight}}),{once:true});const evidence={geometry:innerWidth!==640||innerHeight!==480,peer:typeof RTCPeerConnection==='function',native:!!window.webkit?.messageHandlers?.external,dom:false,storage:false};
  try{parent.document.body;evidence.dom=true}catch{}
  try{localStorage.length;evidence.storage=true}catch{}
@@ -219,7 +219,7 @@ addEventListener('message', async event=>{
  const image=new Image();await new Promise(resolve=>{image.onload=image.onerror=resolve;image.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGOYuOs/AAQqAktocgm/AAAAAElFTkSuQmCC';document.body.append(image)});
  if(evidence.peer){const p=new RTCPeerConnection({iceServers:[{urls:'stun:%s'}]});p.createDataChannel('escape');await p.setLocalDescription();setTimeout(()=>p.close(),500)}
  port.postMessage({type:'read',evidence,imageLoaded:image.naturalWidth===1});
-});parent.postMessage('flame.trajectory.ready.v1','*');
+});parent.postMessage('flame.view.ready.v1','*');
 </script>`, endpoint, peer)
 	body, err := json.Marshal(map[string]any{"type": "boot", "html": html, "initial": map[string]any{"data": []any{}}, "scheme": "light"})
 	if err != nil {

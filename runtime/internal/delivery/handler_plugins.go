@@ -25,7 +25,7 @@ type pluginUseCases interface {
 	Configure(context.Context, resourceid.InstallationID, fingerprint.Digest, plugin.Configuration) (plugins.Inspection, error)
 	Uninstall(context.Context, resourceid.InstallationID) error
 	ReadView(context.Context, resourceid.InstallationID, fingerprint.Digest, string) (string, error)
-	WithView(context.Context, resourceid.InstallationID, fingerprint.Digest, string, func(*plugin.Installation, plugin.ViewDeclaration) error) error
+	WithView(context.Context, resourceid.InstallationID, fingerprint.Digest, string, plugin.ViewKind, func(*plugin.Installation, plugin.ViewDeclaration) error) error
 	AuthorizeAction(context.Context, resourceid.InstallationID, fingerprint.Digest, string, plugin.ActionOperation) error
 }
 
@@ -219,9 +219,25 @@ func (s *Handler) ReadPluginTrajectory(ctx context.Context, in protocol.ReadPlug
 	if err != nil {
 		return nil, err
 	}
-	err = s.plugins.WithView(ctx, id, digest, in.ViewID, func(*plugin.Installation, plugin.ViewDeclaration) error {
+	err = s.plugins.WithView(ctx, id, digest, in.ViewID, plugin.SessionTrajectory, func(*plugin.Installation, plugin.ViewDeclaration) error {
 		var readErr error
 		page, readErr = s.ListSessionTrajectory(ctx, in.ListSessionTrajectoryRequest)
+		return readErr
+	})
+	if err != nil {
+		return nil, wirePluginError(err)
+	}
+	return page, nil
+}
+
+func (s *Handler) ReadPluginMemory(ctx context.Context, in protocol.ReadPluginMemoryRequest) (page *protocol.Page[protocol.AgentMemoryItem], err error) {
+	id, digest, err := parseInstallationRelease(in.InstallationID, in.Digest)
+	if err != nil {
+		return nil, err
+	}
+	err = s.plugins.WithView(ctx, id, digest, in.ViewID, plugin.AgentMemory, func(*plugin.Installation, plugin.ViewDeclaration) error {
+		var readErr error
+		page, readErr = s.ListAgentMemory(ctx, in.AgentMemoryListRequest)
 		return readErr
 	})
 	if err != nil {

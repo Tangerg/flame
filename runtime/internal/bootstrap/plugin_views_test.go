@@ -144,3 +144,48 @@ func TestPluginViewReadsUseInstalledBytesAndExistingTrajectory(t *testing.T) {
 	checkFailure(delivery.PluginsReadView, request, protocol.ErrPluginUnapproved)
 	checkFailure(delivery.PluginsReadTrajectory, read, protocol.ErrPluginUnapproved)
 }
+
+func TestMemoryViewUsesCanonicalPagesAndCannotReadAnotherKind(t *testing.T) {
+	cfg := poMCPConfig(t)
+	r := poMCPOpen(t, cfg)
+	source, err := filepath.Abs("../../../plugins/memory")
+	if err != nil {
+		t.Fatal(err)
+	}
+	installed := r.must(delivery.PluginsInstall, protocol.InstallPluginRequest{Source: source}, "install-memory").(*protocol.PluginInstallation)
+	if len(installed.Selected.Diagnostics) != 0 || len(installed.Selected.Views) != 1 || installed.Selected.Views[0].Type != protocol.PluginViewAgentMemory {
+		t.Fatalf("memory admission: %+v", installed.Selected)
+	}
+	view := protocol.ReadPluginViewRequest{PluginReleaseRequest: protocol.PluginReleaseRequest{InstallationID: installed.ID, Digest: installed.Selected.Digest}, ViewID: "memory"}
+	r.must(delivery.PluginsApprove, view.PluginReleaseRequest, "approve-memory")
+	r.must(delivery.PluginsSetEnablement, protocol.SetPluginEnablementRequest{InstallationID: installed.ID, Enabled: true}, "enable-memory")
+	html := r.must(delivery.PluginsReadView, view, "").(*protocol.PluginViewResource)
+	authored, err := os.ReadFile(filepath.Join(source, "views", "memory.html"))
+	if err != nil || html.HTML != string(authored) {
+		t.Fatalf("memory resource differs from admitted bytes: %v", err)
+	}
+	for _, content := range []string{"first fact", "second fact"} {
+		r.must(delivery.AgentMemoryAdd, protocol.AgentMemoryAddRequest{Scope: protocol.AgentMemoryScopeUser, Content: content}, content)
+	}
+	query := protocol.AgentMemoryListRequest{Scope: protocol.AgentMemoryScopeUser, PageQuery: protocol.PageQuery{Limit: new(1)}}
+	for {
+		page := r.must(delivery.PluginsReadMemory, protocol.ReadPluginMemoryRequest{ReadPluginViewRequest: view, AgentMemoryListRequest: query}, "").(*protocol.Page[protocol.AgentMemoryItem])
+		canonical := r.must(delivery.AgentMemoryList, query, "").(*protocol.Page[protocol.AgentMemoryItem])
+		if !reflect.DeepEqual(page, canonical) || len(page.Data) != 1 {
+			t.Fatal("memory view differs from canonical query")
+		}
+		if page.NextCursor == "" {
+			break
+		}
+		query.Cursor = page.NextCursor
+	}
+	session := r.must(delivery.SessionsCreate, protocol.CreateSessionRequest{Workspace: &protocol.WorkspaceRef{Path: cfg.DefaultWorkspacePath}}, "memory-session").(*protocol.Session)
+	wrong := r.endpoint.Invoke(t.Context(), delivery.PluginsReadTrajectory, protocol.ReadPluginTrajectoryRequest{ReadPluginViewRequest: view, ListSessionTrajectoryRequest: protocol.ListSessionTrajectoryRequest{SessionID: session.ID}}, delivery.Options{RequestMeta: protocol.RequestMeta{ProtocolVersion: protocol.ProtocolVersion}})
+	if !errors.Is(wrong.Failure, protocol.ErrPluginNotFound) {
+		t.Fatalf("memory page admitted trajectory: %v", wrong.Failure)
+	}
+	r.must(delivery.PluginsUninstall, protocol.PluginRequest{InstallationID: installed.ID}, "uninstall-memory")
+	if page := r.must(delivery.AgentMemoryList, protocol.AgentMemoryListRequest{Scope: protocol.AgentMemoryScopeUser}, "").(*protocol.Page[protocol.AgentMemoryItem]); len(page.Data) != 2 {
+		t.Fatal("uninstall changed Runtime memory")
+	}
+}

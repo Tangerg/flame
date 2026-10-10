@@ -17,6 +17,7 @@ const (
 	PluginsUninstall      Name = "plugins.uninstall"
 	PluginsReadView       Name = "plugins.readView"
 	PluginsReadTrajectory Name = "plugins.readTrajectory"
+	PluginsReadMemory     Name = "plugins.readMemory"
 	PluginsRenameSession  Name = "plugins.renameSession"
 )
 
@@ -33,6 +34,11 @@ func pluginErrors() []string {
 }
 
 func registerPlugins(r *Registry) {
+	r.query(MethodMeta{Name: PluginsReadMemory, CapabilityRules: requires(protocol.FeaturePlugins, protocol.FeatureAgentMemory), Errors: pluginErrors(), Materializes: []Name{AgentMemoryList}}, func(s interface {
+		ReadPluginMemory(context.Context, protocol.ReadPluginMemoryRequest) (*protocol.Page[protocol.AgentMemoryItem], error)
+	}, ctx context.Context, in protocol.ReadPluginMemoryRequest) (*protocol.Page[protocol.AgentMemoryItem], error) {
+		return s.ReadPluginMemory(ctx, in)
+	})
 	r.command(MethodMeta{Name: PluginsRenameSession, CapabilityRules: requires(protocol.FeaturePlugins), Errors: append(pluginErrors(), protocol.ErrSessionNotFound.Error(), protocol.ErrRevisionConflict.Error(), protocol.ErrSessionBusy.Error())}, func(s interface {
 		RenamePluginSession(context.Context, protocol.RenamePluginSessionRequest) (*protocol.Session, error)
 	}, ctx context.Context, in protocol.RenamePluginSessionRequest) (*protocol.Session, error) {

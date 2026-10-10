@@ -3,6 +3,8 @@ package delivery
 import (
 	"context"
 	"errors"
+	"github.com/Tangerg/flame/runtime/internal/application/pagination"
+	memoryapp "github.com/Tangerg/flame/runtime/internal/application/workspace/agentmemory"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	"strings"
 	"testing"
@@ -45,9 +47,9 @@ type recordingAgentMemory struct {
 	err     error
 }
 
-func (r *recordingAgentMemory) List(_ context.Context, scope agentmemory.Scope, cwd string) ([]agentmemory.Item, error) {
-	r.listScope, r.listCWD = scope, cwd
-	return r.items, nil
+func (r *recordingAgentMemory) List(_ context.Context, input memoryapp.ListInput) (pagination.Page[agentmemory.Item], error) {
+	r.listScope, r.listCWD = input.Scope, input.CWD
+	return pagination.Page[agentmemory.Item]{Rows: r.items}, nil
 }
 
 func (r *recordingAgentMemory) Review(_ context.Context, id string, decision agentmemory.ReviewDecision) error {
@@ -97,8 +99,8 @@ func TestAgentMemoryListResolvesTargetAndMapsWire(t *testing.T) {
 	if rec.listScope != agentmemory.ScopeProject || rec.listCWD != "/repo/" {
 		t.Fatalf("input = %v %q, want project /repo/", rec.listScope, rec.listCWD)
 	}
-	if len(out.Items) != 1 || out.Items[0].Status != "pending" || out.Items[0].Origin != "auto" {
-		t.Fatalf("wire = %+v", out.Items)
+	if len(out.Data) != 1 || out.Data[0].Status != "pending" || out.Data[0].Origin != "auto" {
+		t.Fatalf("wire = %+v", out.Data)
 	}
 
 	if _, err := s.ListAgentMemory(context.Background(), protocol.AgentMemoryListRequest{

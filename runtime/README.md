@@ -42,7 +42,25 @@ publishing the request identity or calling the transport. OpenRPC derives closed
 request components, including `_meta`, from the same wire graph used by the
 generated client checks; its result references retain the reusable schema shapes.
 
-## Protocol 2026-10-10.2
+## Protocol 2026-10-10.3
+
+`agentMemory.list` returns canonical `Page<AgentMemoryItem>` values, with target-bound
+sort-position cursors and at most 100 items per page. CLI and shared-client collectors
+traverse the complete bounded target. The former `{items}` response is removed.
+`plugins.readMemory` embeds that same request and requires both plugin and memory capability.
+View admission grants only the declared kind: a memory page cannot read trajectory evidence,
+and a trajectory page cannot read memory items.
+
+The optional [Memory package](../plugins/memory/plugin.json) replaces the compiled Desktop
+memory view. The trusted Host captures project/user scope, workspace and command targets;
+add, review, edit, pin and delete use existing Runtime commands. The guest receives read-only
+pages and can request only a cursor or refresh. Mutation receipts trigger a fresh projection;
+read failure is distinct from an empty target. Ledger, generation, CAS publication, review
+and mining remain Runtime-owned. Removing the package does not delete committed memory.
+
+The common HTML handshake is `flame.view.ready.v1` / `flame.view.connect.v1`. Stage and approve
+new trajectory 1.2.0 package bytes when rebuilding; immutable older HTML is not rewritten
+and the former trajectory-specific handshake has no alias.
 
 `plugins.readTrajectory` embeds the canonical `sessions.trajectory` request, including
 `includeDescendants`, bounded page size and cursor scope. The existing query owns

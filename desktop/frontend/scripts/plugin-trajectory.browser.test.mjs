@@ -9,13 +9,17 @@ const html = await readFile(
   new URL("../../../plugins/trajectory/views/trajectory.html", import.meta.url),
   "utf8",
 );
+const memoryHTML = await readFile(
+  new URL("../../../plugins/memory/views/memory.html", import.meta.url),
+  "utf8",
+);
 const policy = (
   await readFile(new URL("../public/plugin-carrier-policy.txt", import.meta.url), "utf8")
 ).trim();
 const host = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const csp = host.match(/<meta http-equiv="Content-Security-Policy"[^>]+>/)[0];
 for (const [name, engine] of Object.entries({ chromium, webkit })) {
-  test(`${name}: production plugin carrier and scoped trajectory reads`, async (t) => {
+  test(`${name}: production plugin carrier and scoped trajectory and memory reads`, async (t) => {
     let enforce = true;
     let escapedRequests = 0;
     let packets = 0;
@@ -52,12 +56,12 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
               }
               response.setHeader("Content-Type", "text/html");
               response.end(`<!doctype html>${csp}<div id="frame" style="height:600px"></div><script type="module">
-      import {mountTrajectoryFrame} from '/src/plugins/builtin/settings/plugins-pane/adapters/trajectoryFrame.ts';
+      import {mountPluginViewFrame} from '/src/plugins/builtin/settings/plugins-pane/adapters/pluginViewFrame.ts';
       import {browserPluginCarrier} from '/src/platform/browserPluginCarrier.ts';
       window.mount=(html,initial,scheme="light")=>{
        window.reads=[];window.loads=0;window.failures=[];window.controller=new AbortController();
-       window.dispose=mountTrajectoryFrame({container:document.getElementById('frame'),carrier:browserPluginCarrier,signal:window.controller.signal,scheme,
-        reads:{load:async()=>{window.loads++;return {html,initial}},read:async(cursor,signal)=>{window.reads.push({cursor,signal});if(window.hold)await new Promise(resolve=>window.releaseRead=resolve);if(window.readFailure)throw new Error('read rejected');return cursor ? {data:[{type:"model",occurredAt:"2026-10-07T00:00:00Z",model:{callId:"older-call",runId:"run-2",segmentId:"segment-2",state:"failed",startedAt:"2026-10-07T00:00:00Z"}}]} : initial;}},
+       window.dispose=mountPluginViewFrame({container:document.getElementById('frame'),carrier:browserPluginCarrier,signal:window.controller.signal,scheme,
+        reads:{load:async()=>{window.loads++;return {html,initial}},read:async(cursor,signal)=>{window.reads.push({cursor,signal});if(window.hold)await new Promise(resolve=>window.releaseRead=resolve);if(window.readFailure)throw new Error('read rejected');return cursor ? window.continuation ?? {data:[{type:"model",occurredAt:"2026-10-07T00:00:00Z",model:{callId:"older-call",runId:"run-2",segmentId:"segment-2",state:"failed",startedAt:"2026-10-07T00:00:00Z"}}]} : initial;}},
         status:value=>{window.viewStatus=value;if(value.type==='failure'){window.failure=value.reason;window.failures.push(value.reason)}}});
       };
     </script>`);
@@ -261,8 +265,68 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
     await page.evaluate(() => window.dispose());
     await page.reload();
     await page.waitForFunction(() => window.mount);
+    const memoryInitial = {
+      data: [
+        {
+          id: "mem_00000000000000000000000000000001",
+          scope: "project",
+          content: "Candidate <script> must render as text.",
+          origin: "auto",
+          status: "pending",
+          pinned: false,
+          createdAt: "2026-10-10T00:00:00Z",
+          updatedAt: "2026-10-10T00:00:00Z",
+        },
+        {
+          id: "mem_00000000000000000000000000000002",
+          scope: "project",
+          content: "Approved pinned fact",
+          origin: "user",
+          status: "active",
+          pinned: true,
+          createdAt: "2026-10-09T00:00:00Z",
+          updatedAt: "2026-10-09T00:00:00Z",
+        },
+      ],
+      nextCursor: "memory-next",
+    };
+    await page.evaluate(
+      ({ html, initial }) => {
+        window.continuation = { data: [] };
+        void window.mount(html, initial);
+      },
+      { html: memoryHTML, initial: memoryInitial },
+    );
+    await frame.getByText("1 pending · 1 active on this page").waitFor();
+    assert.equal(await frame.locator("article").count(), 2);
+    assert.equal(await frame.locator("script").count(), 1);
+    await frame.getByRole("combobox", { name: "Memory status" }).selectOption("pending");
+    assert.equal(await frame.locator("article").count(), 1);
+    await frame.getByRole("combobox", { name: "Memory status" }).selectOption("");
+    await frame.getByRole("checkbox", { name: "Pinned only" }).check();
+    assert.equal(await frame.locator("article").count(), 1);
+    await frame.getByRole("checkbox", { name: "Pinned only" }).uncheck();
+    await frame.getByRole("searchbox").fill("Candidate");
+    assert.equal(await frame.locator("article").count(), 1);
+    await frame.getByRole("searchbox").fill("");
+    assert.equal(await page.evaluate(() => window.reads.length), 0);
+    await frame.getByRole("button", { name: "Next page" }).click();
+    await frame.getByText("0 memory items loaded on this page.").waitFor();
+    assert.equal(await page.evaluate(() => window.reads[0].cursor), "memory-next");
+    await page.evaluate(() => (window.readFailure = true));
+    await frame.getByRole("button", { name: "Previous page" }).click();
+    await frame.getByRole("alert").waitFor();
+    assert.equal(await frame.locator("article").count(), 0);
+    assert.equal(await frame.getByRole("button", { name: "Previous page" }).isEnabled(), true);
+    await page.evaluate(() => (window.readFailure = false));
+    await frame.getByRole("button", { name: "Previous page" }).click();
+    await frame.getByText("2 memory items loaded on this page.").waitFor();
+    assert.equal(await frame.locator("article").count(), 2);
+    await page.evaluate(() => window.dispose());
+    await page.reload();
+    await page.waitForFunction(() => window.mount);
     const malicious = `<!doctype html><script>addEventListener('message',async e=>{
-     if(e.source!==parent||e.data?.type!=='flame.trajectory.connect.v1')return;
+     if(e.source!==parent||e.data?.type!=='flame.view.connect.v1')return;
      try{parent.parent.document.documentElement.dataset.guestEscape='true'}catch{}
      try{localStorage.setItem('guestEscape','true')}catch{}
      new Image().src='${origin}/__escape';
@@ -271,7 +335,7 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
      try{peer=new RTCPeerConnection({iceServers:[{urls:'stun:127.0.0.1:${peer.address().port}'}]});peer.createDataChannel('escape');await peer.setLocalDescription()}catch{}
      await new Promise(resolve=>setTimeout(resolve,600));peer?.close();
      e.ports[0].postMessage({type:'tools.invoke',sessionId:'other'});
-    });parent.postMessage('flame.trajectory.ready.v1','*');</script>`;
+    });parent.postMessage('flame.view.ready.v1','*');</script>`;
     await page.evaluate((html) => {
       void window.mount(html, { data: [] });
     }, malicious);

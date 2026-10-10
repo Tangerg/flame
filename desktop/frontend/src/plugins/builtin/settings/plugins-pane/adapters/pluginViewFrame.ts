@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { validateWire } from "@flame/runtime-contract/validate";
 import type { PluginCarrier, PluginPage } from "@/foundation/pluginCarrier";
-import type { TrajectoryViewReads, TrajectoryViewStatus } from "../application/trajectoryView";
+import type { PluginViewReads, PluginViewStatus } from "../application/pluginView";
 import type { Scheme } from "@/lib/appearance";
 
 const incoming = z.discriminatedUnion("type", [
@@ -20,7 +20,7 @@ const incoming = z.discriminatedUnion("type", [
   }),
 ]);
 
-export function mountTrajectoryFrame({
+export function mountPluginViewFrame<T>({
   container,
   reads,
   carrier,
@@ -29,10 +29,10 @@ export function mountTrajectoryFrame({
   scheme,
 }: {
   container: HTMLElement;
-  reads: TrajectoryViewReads;
+  reads: PluginViewReads<T>;
   carrier: PluginCarrier;
   signal: AbortSignal;
-  status: (value: TrajectoryViewStatus) => void;
+  status: (value: PluginViewStatus) => void;
   scheme: Scheme;
 }): () => Promise<void> {
   const lifetime = new AbortController();
@@ -120,7 +120,7 @@ export function mountTrajectoryFrame({
           const result = await reads.read(message.request.cursor, owned);
           reply = { type: "page", page: result, cursor: message.request.cursor };
         } catch {
-          reply = { type: "error", reason: "The trajectory read failed. Refresh to try again." };
+          reply = { type: "error", reason: "The plugin page read failed. Refresh to try again." };
         }
         if (!owned.aborted) await page.send({ type: "reply", reply });
       })()

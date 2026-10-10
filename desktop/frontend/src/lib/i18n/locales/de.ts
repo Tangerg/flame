@@ -838,17 +838,13 @@ export const de: Record<string, string> = {
   "skillProposals.conflict":
     "Dieser Vorschlag kann nicht mehr wie geprüft angewendet werden. Bitte den aktuellen Vorschlag erneut prüfen.",
   "skillProposals.error": "Vorschlag konnte nicht bearbeitet werden.",
-  "workspace.view.title.agentMemory": "Agent-Gedächtnis",
-  "agentMemory.title": "Agent-Gedächtnis",
-  "agentMemory.sub": "{{pending}} ausstehend · {{active}} aktiv",
   "agentMemory.scope.project": "Projekt",
   "agentMemory.scope.user": "Benutzer",
-  "agentMemory.section.pending": "Wartet auf Prüfung",
-  "agentMemory.section.active": "Aktiv",
   "agentMemory.approve": "Genehmigen",
   "agentMemory.reject": "Ablehnen",
   "agentMemory.pin": "Anpinnen",
   "agentMemory.unpin": "Losheften",
+  "agentMemory.select": "Zu verwaltende Erinnerung auswählen",
   "agentMemory.edit": "Eintrag bearbeiten",
   "agentMemory.editAria": "Gedächtnisinhalt bearbeiten",
   "agentMemory.delete": "Eintrag löschen",
@@ -857,18 +853,7 @@ export const de: Record<string, string> = {
   "agentMemory.add": "Eintrag hinzufügen",
   "agentMemory.add.placeholder":
     "Ein dauerhafter Fakt, der über Sitzungen hinweg erinnert werden sollte…",
-  "agentMemory.origin.auto": "gefunden",
-  "agentMemory.origin.user": "du",
-  "agentMemory.fromSession": "aus einer Sitzung",
-  "agentMemory.pinnedLabel": "Angepinnt",
-  "agentMemory.updated": "Aktualisiert",
-  "agentMemory.empty.title": "Noch kein Gedächtnis",
-  "agentMemory.empty.sub":
-    "Fakten, die der Agent aus deinen Sitzungen gewinnt, warten hier auf Prüfung; genehmigte werden in späteren Zügen wieder abgerufen.",
   "agentMemory.unavailable.title": "Agent-Gedächtnis nicht verfügbar",
-  "agentMemory.unavailable.sub":
-    "Diese Runtime hat die Prüffunktion für das Agent-Gedächtnis nicht aktiviert.",
-  "agentMemory.noProject.title": "Keine Projektsitzung",
   "agentMemory.noProject.sub":
     "Öffne oder wähle eine Sitzung, um ihr Projektgedächtnis zu prüfen. Wechsle zu Benutzer für projektübergreifendes Gedächtnis.",
   "agentMemory.error": "Gedächtnis konnte nicht aktualisiert werden.",

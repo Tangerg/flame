@@ -21,6 +21,10 @@ func (r *binding) ReadPluginView(ctx context.Context, request protocol.ReadPlugi
 func (r *binding) ReadPluginTrajectory(ctx context.Context, request protocol.ReadPluginTrajectoryRequest, options CallOptions) (*protocol.Page[protocol.TrajectoryEntry], error) {
 	return r.invoke[protocol.ReadPluginTrajectoryRequest, *protocol.Page[protocol.TrajectoryEntry]](ctx, delivery.PluginsReadTrajectory, request, callOptions(options))
 }
+
+func (r *binding) ReadPluginMemory(ctx context.Context, request protocol.ReadPluginMemoryRequest, options CallOptions) (*protocol.Page[protocol.AgentMemoryItem], error) {
+	return r.invoke[protocol.ReadPluginMemoryRequest, *protocol.Page[protocol.AgentMemoryItem]](ctx, delivery.PluginsReadMemory, request, callOptions(options))
+}
 func (r *binding) InstallPlugin(ctx context.Context, request protocol.InstallPluginRequest, options CommandOptions) (*protocol.PluginInstallation, error) {
 	return r.invoke[protocol.InstallPluginRequest, *protocol.PluginInstallation](ctx, delivery.PluginsInstall, request, commandOptions(options))
 }

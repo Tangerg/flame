@@ -66,7 +66,7 @@ export const DOCK_VIEW_BY_STATE: Partial<Record<VisualWorkspaceState, string>> =
   "dock-diagnostics": "diagnostics",
   "dock-files": "file",
   "dock-skills": "skills",
-  "dock-agent-memory": "agent-memory",
+  "dock-agent-memory": "package:visual:memory",
   "dock-feature-off": "skills",
   "dock-file": "file",
 };

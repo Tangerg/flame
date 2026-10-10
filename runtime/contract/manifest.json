@@ -1,5 +1,5 @@
 {
-  "protocolVersion": "2026-10-10.2",
+  "protocolVersion": "2026-10-10.3",
   "features": [
     "reasoning",
     "multimodal",
@@ -787,6 +787,29 @@
       ]
     },
     {
+      "name": "plugins.readMemory",
+      "kind": "unary",
+      "operation": "query",
+      "idempotency": "none",
+      "replayCursor": "none",
+      "pagination": "cursor",
+      "errors": [
+        "plugin_unavailable",
+        "plugin_not_found",
+        "plugin_in_use",
+        "plugin_unapproved",
+        "plugin_stale",
+        "capability_not_negotiated"
+      ],
+      "features": [
+        "plugins",
+        "agentMemory"
+      ],
+      "materializes": [
+        "agentMemory.list"
+      ]
+    },
+    {
       "name": "plugins.renameSession",
       "kind": "unary",
       "operation": "command",
@@ -1361,7 +1384,7 @@
       "operation": "query",
       "idempotency": "none",
       "replayCursor": "none",
-      "pagination": "none",
+      "pagination": "cursor",
       "errors": [
         "capability_not_negotiated"
       ],
@@ -1535,6 +1558,7 @@
           "plugins.configure",
           "plugins.install",
           "plugins.list",
+          "plugins.readMemory",
           "plugins.readTrajectory",
           "plugins.readView",
           "plugins.renameSession",
@@ -1724,6 +1748,7 @@
           "plugins.configure",
           "plugins.install",
           "plugins.list",
+          "plugins.readMemory",
           "plugins.readTrajectory",
           "plugins.readView",
           "plugins.renameSession",
@@ -1743,6 +1768,7 @@
           "plugins.configure",
           "plugins.install",
           "plugins.list",
+          "plugins.readMemory",
           "plugins.readTrajectory",
           "plugins.readView",
           "plugins.renameSession",
@@ -1762,6 +1788,7 @@
           "plugins.configure",
           "plugins.install",
           "plugins.list",
+          "plugins.readMemory",
           "plugins.readTrajectory",
           "plugins.readView",
           "plugins.renameSession",
@@ -1781,6 +1808,7 @@
           "plugins.configure",
           "plugins.install",
           "plugins.list",
+          "plugins.readMemory",
           "plugins.readTrajectory",
           "plugins.readView",
           "plugins.renameSession",
@@ -1800,6 +1828,7 @@
           "plugins.configure",
           "plugins.install",
           "plugins.list",
+          "plugins.readMemory",
           "plugins.readTrajectory",
           "plugins.readView",
           "plugins.renameSession",
@@ -2475,6 +2504,17 @@
         {
           "requires": [
             "mcp"
+          ]
+        }
+      ]
+    },
+    {
+      "method": "plugins.readMemory",
+      "rules": [
+        {
+          "requires": [
+            "plugins",
+            "agentMemory"
           ]
         }
       ]

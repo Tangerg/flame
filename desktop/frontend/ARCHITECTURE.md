@@ -83,7 +83,6 @@ workspace/
     files/            file workspace, tree, and content
     review/           diff workspace and review presentation
     skills/           available skills, library, and proposals
-    memory/           Agent memory presentation
     ViewHeader.tsx
     WorkspaceViewLayout.tsx
     viewStyles.ts

@@ -9,8 +9,8 @@ import {
 } from "@flame/runtime-contract/client";
 import { runtimeRequestMeta } from "@/main/runtimeProtocol";
 import { desktopPluginCarrier } from "@/platform/desktopPluginCarrier";
-import { mountTrajectoryFrame } from "@/plugins/builtin/settings/plugins-pane/adapters/trajectoryFrame";
-import { createTrajectoryViewReads } from "@/plugins/builtin/settings/plugins-pane/adapters/trajectoryReads";
+import { mountPluginViewFrame } from "@/plugins/builtin/settings/plugins-pane/adapters/pluginViewFrame";
+import { createTrajectoryViewReads } from "@/plugins/builtin/settings/plugins-pane/adapters/pluginViewReads";
 
 const FixtureSchema = z.strictObject({
   endpoint: z.url(),
@@ -91,7 +91,7 @@ async function run() {
       const container = document.getElementById("page");
       expect(container, "native gate container is missing");
       const reads = createTrajectoryViewReads(client.plugins, binding, sessionId, false);
-      const close = mountTrajectoryFrame({
+      const close = mountPluginViewFrame({
         container,
         carrier,
         signal: controller.signal,

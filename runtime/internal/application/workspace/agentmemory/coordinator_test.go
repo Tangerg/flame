@@ -100,15 +100,15 @@ func TestListResolvesProjectAtApplicationBoundary(t *testing.T) {
 	store := &fakeStore{}
 	c := newCoordinator(t, Config{Store: store, Roots: rootResolver{root: "/canonical/repo"}})
 
-	items, err := c.List(context.Background(), domain.ScopeProject, "/repo/../repo")
-	if err != nil || len(items) != 1 {
+	items, err := c.List(context.Background(), ListInput{Scope: domain.ScopeProject, CWD: "/repo/../repo"})
+	if err != nil || len(items.Rows) != 1 {
 		t.Fatalf("List = (%+v, %v)", items, err)
 	}
 	if store.listScope != domain.ScopeProject || store.listProject != "/canonical/repo" {
 		t.Fatalf("store target = %v %q", store.listScope, store.listProject)
 	}
 
-	if _, err := c.List(context.Background(), domain.ScopeUser, "/ignored"); err != nil {
+	if _, err := c.List(context.Background(), ListInput{Scope: domain.ScopeUser, CWD: "/ignored"}); err != nil {
 		t.Fatal(err)
 	}
 	if store.listScope != domain.ScopeUser || store.listProject != "" {
@@ -140,12 +140,12 @@ func TestListOwnsManagementOrder(t *testing.T) {
 	}}
 	c := newCoordinator(t, Config{Store: store, Roots: rootResolver{root: "/repo"}})
 
-	items, err := c.List(t.Context(), domain.ScopeProject, "/repo")
+	items, err := c.List(t.Context(), ListInput{Scope: domain.ScopeProject, CWD: "/repo"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := make([]string, 0, len(items))
-	for _, value := range items {
+	got := make([]string, 0, len(items.Rows))
+	for _, value := range items.Rows {
 		got = append(got, value.ID().String())
 	}
 	want := []string{
@@ -228,7 +228,7 @@ func TestMutationRejectsNonCanonicalItemIdentityBeforeStore(t *testing.T) {
 func TestUnknownScopeFailsBeforeRootResolution(t *testing.T) {
 	store := &fakeStore{}
 	c := newCoordinator(t, Config{Store: store, Roots: rootResolver{root: "/canonical/repo"}})
-	if _, err := c.List(t.Context(), domain.Scope("unknown"), "/repo"); err == nil {
+	if _, err := c.List(t.Context(), ListInput{Scope: domain.Scope("unknown"), CWD: "/repo"}); err == nil {
 		t.Fatal("unknown scope was accepted")
 	}
 }

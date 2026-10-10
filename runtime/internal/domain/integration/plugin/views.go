@@ -10,7 +10,10 @@ import (
 
 type ViewKind string
 
-const SessionTrajectory ViewKind = "sessionTrajectory"
+const (
+	SessionTrajectory ViewKind = "sessionTrajectory"
+	AgentMemory       ViewKind = "agentMemory"
+)
 
 const (
 	MaxViewBytes      = 512 << 10
@@ -34,7 +37,7 @@ func (b *Builder) AdmitView(view ViewDeclaration) error {
 	if duplicate || !idPattern.MatchString(view.ID) || view.Title == "" || len(view.Title) > MaxViewTitleBytes {
 		return refuse(DiagnosticInvalidDeclaration, "view identity or title %q", view.ID)
 	}
-	if view.Kind != SessionTrajectory || !ValidResourcePath(view.Entry) || !strings.HasSuffix(view.Entry, ".html") {
+	if (view.Kind != SessionTrajectory && view.Kind != AgentMemory) || !ValidResourcePath(view.Entry) || !strings.HasSuffix(view.Entry, ".html") {
 		return refuse(DiagnosticInvalidDeclaration, "view %q kind or HTML entry", view.ID)
 	}
 	b.declaration.Views = append(b.declaration.Views, view)

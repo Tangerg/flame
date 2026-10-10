@@ -138,9 +138,11 @@ export function registerWorkspaceDataProviders(
       if (!runtimeCapability("agentMemory")) return [];
       const result =
         q.scope === "user"
-          ? await runtimeClient().agentMemory.list({ scope: "user" }, signal)
-          : await workspace(q.cwd, signal).then((resources) => resources.agentMemory.list(signal));
-      return result.items.map(agentMemoryEntry);
+          ? await runtimeClient().agentMemory.list({ scope: "user" }, signal).autoPagingToArray()
+          : await workspace(q.cwd, signal).then((resources) =>
+              resources.agentMemory.list(undefined, signal).autoPagingToArray(),
+            );
+      return result.map(agentMemoryEntry);
     },
   });
   ctx.contribute(DATA_PROVIDER, {

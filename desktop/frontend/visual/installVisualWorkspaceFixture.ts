@@ -1,5 +1,7 @@
+import memoryHTML from "../../../plugins/memory/views/memory.html?raw";
+import { MemoryPackageView } from "@/plugins/builtin/settings/plugins-pane/ui/MemoryPackageView";
 import trajectoryHTML from "../../../plugins/trajectory/views/trajectory.html?raw";
-import { PackageView } from "@/plugins/builtin/settings/plugins-pane/ui/PackageView";
+import { TrajectoryPackageView } from "@/plugins/builtin/settings/plugins-pane/ui/TrajectoryPackageView";
 import { createElement } from "react";
 import type { TrajectoryEntry } from "@flame/runtime-contract/wire";
 import { createBrowserHost } from "@/platform/browserHost";
@@ -57,7 +59,7 @@ import {
 import { visualFeatureCapabilities } from "./agentFixtureFacts";
 import { SCHEDULES_KEY } from "@/plugins/builtin/settings/schedules/application/scheduleQueries";
 import type { ScheduleConfig } from "@/plugins/builtin/settings/schedules/application/scheduleConfig";
-import { diffView, fileView, skillsView, agentMemoryView } from "@/plugins/builtin/workspace/views";
+import { diffView, fileView, skillsView } from "@/plugins/builtin/workspace/views";
 import { DATA_PROVIDER, SHORTCUT, WORKSPACE_VIEW, definePlugin } from "@/plugins/sdk";
 import type { AnyPlugin } from "dougong";
 import type {
@@ -325,6 +327,31 @@ function visualTrajectory(
   return entries.sort((left, right) => Date.parse(right.occurredAt) - Date.parse(left.occurredAt));
 }
 
+const visualMemory: AgentMemoryEntry[] = [
+  {
+    id: "mem_00000000000000000000000000000002",
+    scope: "project",
+    content: "Prefers the diff read worst-risk-first.",
+    origin: "auto",
+    status: "pending",
+    pinned: false,
+    sessionId: VISUAL_SESSION_ID,
+    createdAt: "2026-07-30T16:20:00Z",
+    updatedAt: "2026-07-30T16:20:00Z",
+  },
+  {
+    id: "mem_00000000000000000000000000000001",
+    scope: "project",
+    content: "The compaction cutpoint is chosen by the Runtime, never by the client.",
+    origin: "auto",
+    status: "active",
+    pinned: true,
+    sessionId: VISUAL_SESSION_ID,
+    createdAt: "2026-07-31T10:00:00Z",
+    updatedAt: "2026-07-31T10:00:00Z",
+  },
+];
+
 function workspaceDataPlugin(
   state: VisualWorkspaceState,
   review: WorkspaceDiff,
@@ -345,10 +372,28 @@ function workspaceDataPlugin(
         title: "Session trajectory",
         dock: "session",
         component: () =>
-          createElement(PackageView, {
+          createElement(TrajectoryPackageView, {
             reads,
             title: "Session trajectory",
             lifetime,
+            carrier: createBrowserHost().pluginCarrier,
+          }),
+      });
+      const memoryLifetime = ctx.lifetime("visual-memory");
+      const memoryReads = () => ({
+        load: async () => ({ html: memoryHTML, initial: { data: visualMemory } }),
+        read: async () => ({ data: visualMemory }),
+      });
+      memoryLifetime.contribute(WORKSPACE_VIEW, {
+        id: "package:visual:memory",
+        title: "Agent memory",
+        icon: "brain",
+        dock: "workspace",
+        component: () =>
+          createElement(MemoryPackageView, {
+            reads: memoryReads,
+            title: "Agent memory",
+            lifetime: memoryLifetime,
             carrier: createBrowserHost().pluginCarrier,
           }),
       });
@@ -453,30 +498,7 @@ function workspaceDataPlugin(
 
       ctx.contribute(DATA_PROVIDER, {
         key: WORKSPACE_AGENT_MEMORY_KEY,
-        fetcher: async (): Promise<AgentMemoryEntry[]> => [
-          {
-            id: "mem_01",
-            scope: "project",
-            content: "The compaction cutpoint is chosen by the Runtime, never by the client.",
-            origin: "auto",
-            status: "active",
-            pinned: true,
-            sessionId: VISUAL_SESSION_ID,
-            createdAt: "2026-07-31T10:00:00Z",
-            updatedAt: "2026-07-31T10:00:00Z",
-          },
-          {
-            id: "mem_02",
-            scope: "user",
-            content: "Prefers the diff read worst-risk-first.",
-            origin: "user",
-            status: "pending",
-            pinned: false,
-            sessionId: VISUAL_SESSION_ID,
-            createdAt: "2026-07-30T16:20:00Z",
-            updatedAt: "2026-07-30T16:20:00Z",
-          },
-        ],
+        fetcher: async (): Promise<AgentMemoryEntry[]> => visualMemory,
       });
       ctx.contribute(DATA_PROVIDER, {
         key: MCP_SERVERS_KEY,
@@ -546,7 +568,12 @@ async function loadVisualPlugins(plugins: readonly AnyPlugin[]): Promise<void> {
   await loadPluginsForTest(...plugins);
 }
 
-const OPENED_BY_ITS_OWN_STATE = new Set(["subagents", "diagnostics", "skills", "agent-memory"]);
+const OPENED_BY_ITS_OWN_STATE = new Set([
+  "subagents",
+  "diagnostics",
+  "skills",
+  "package:visual:memory",
+]);
 
 const FULL_VIEW_ID = "file";
 
@@ -638,7 +665,6 @@ export async function installVisualWorkspaceFixture(
     diffView,
     fileView,
     skillsView,
-    agentMemoryView,
     diagnosticsView,
     workbenchSettings,
     ...localePlugins,

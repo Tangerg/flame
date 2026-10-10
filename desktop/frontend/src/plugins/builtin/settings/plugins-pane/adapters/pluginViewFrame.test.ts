@@ -1,7 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { mountTrajectoryFrame } from "./trajectoryFrame";
+import { mountPluginViewFrame } from "./pluginViewFrame";
 import type { PluginCarrier } from "@/foundation/pluginCarrier";
-import type { TrajectoryViewStatus } from "../application/trajectoryView";
+import type { PluginViewStatus } from "../application/pluginView";
 
 afterEach(() => vi.useRealTimers());
 
@@ -26,7 +26,7 @@ function fixture() {
     read: vi.fn(async (_cursor: string | undefined, _signal: AbortSignal) => ({ data: [] })),
   };
   const signal = new AbortController();
-  const status = vi.fn<(value: TrajectoryViewStatus) => void>();
+  const status = vi.fn<(value: PluginViewStatus) => void>();
   const f = {
     carrier,
     reads,
@@ -36,7 +36,7 @@ function fixture() {
     close,
     publish: (message: unknown) => receive(message),
     mount: () =>
-      mountTrajectoryFrame({
+      mountPluginViewFrame({
         container: document.createElement("div"),
         carrier,
         reads,

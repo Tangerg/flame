@@ -18,8 +18,8 @@ func registerAgentMemory(registry *Registry) {
 	registry.query(MethodMeta{
 		Name: AgentMemoryList, CapabilityRules: requires(protocol.FeatureAgentMemory),
 	}, func(service interface {
-		ListAgentMemory(context.Context, protocol.AgentMemoryListRequest) (*protocol.AgentMemoryList, error)
-	}, ctx context.Context, request protocol.AgentMemoryListRequest) (*protocol.AgentMemoryList, error) {
+		ListAgentMemory(context.Context, protocol.AgentMemoryListRequest) (*protocol.Page[protocol.AgentMemoryItem], error)
+	}, ctx context.Context, request protocol.AgentMemoryListRequest) (*protocol.Page[protocol.AgentMemoryItem], error) {
 		return service.ListAgentMemory(ctx, request)
 	})
 

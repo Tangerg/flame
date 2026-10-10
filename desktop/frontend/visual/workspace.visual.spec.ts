@@ -19,9 +19,9 @@ import {
   type VisualWorkspaceTheme,
 } from "./workspaceFixtureStates";
 
-function trajectoryFrame(page: Page) {
+function pluginViewFrame(page: Page, view = "trajectory") {
   return page
-    .locator('[data-dock-view-id="package:visual:trajectory"]')
+    .locator(`[data-dock-view-id="package:visual:${view}"]`)
     .frameLocator("iframe")
     .frameLocator("iframe");
 }
@@ -140,7 +140,7 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     return;
   }
   if (state === "dock-runs" || state === "dock-trajectory") {
-    const view = trajectoryFrame(page);
+    const view = pluginViewFrame(page);
     await expect(view.getByRole("heading", { name: "Session trajectory" })).toBeVisible();
     await expect(view.getByText(/recorded observations loaded on this page/)).toBeVisible();
     await expect(view.locator('[data-trajectory-kind="run"]')).toHaveCount(
@@ -151,11 +151,16 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     ).toContainText("unknown");
     return;
   }
+  if (state === "dock-agent-memory") {
+    await expect(
+      pluginViewFrame(page, "memory").getByText("1 pending · 1 active on this page"),
+    ).toBeVisible();
+    return;
+  }
   const CATALOGUE_READY: Partial<Record<VisualWorkspaceState, string>> = {
     "dock-subagents": "Sub-agent 4 of 4",
     "dock-diagnostics": "run + RPC spans appear here",
     "dock-skills": "2 available",
-    "dock-agent-memory": "1 pending",
     "dock-feature-off": "Skills are off",
   };
   const catalogueReady = CATALOGUE_READY[state];
@@ -413,10 +418,10 @@ test("file and portable trajectory tabs render through their production views", 
   await expect(page.getByTestId("active-dock-view")).toHaveText("package:visual:trajectory");
   await expect(fileView.getByText(/const currentWidth = readDockWidth/)).toBeHidden();
   await expect(
-    trajectoryFrame(page).locator('[data-trajectory-record="run:run_root"]'),
+    pluginViewFrame(page).locator('[data-trajectory-record="run:run_root"]'),
   ).toBeVisible();
   await expect(
-    trajectoryFrame(page).locator("summary").filter({ hasText: "run_root" }).first(),
+    pluginViewFrame(page).locator("summary").filter({ hasText: "run_root" }).first(),
   ).toBeVisible();
 });
 
@@ -816,7 +821,7 @@ test("the portable trajectory preserves canonical Tool evidence for inspection",
 }) => {
   await openWorkspace(page, { state: "dock-runs" });
   await waitForWorkspaceState(page, "dock-runs");
-  const view = trajectoryFrame(page);
+  const view = pluginViewFrame(page);
   await expect(view.locator('[data-trajectory-record="item:item_child_approval"]')).toHaveCount(0);
   const tool = view.locator('[data-trajectory-record="item:item_nested_delegate"]');
   await expect(tool.locator("summary")).toContainText("delegate_task");
@@ -901,7 +906,7 @@ for (const answer of [
     await openWorkspace(page, { state: "dock-trajectory", agentState: "waiting" });
     await waitForWorkspaceState(page, "dock-trajectory");
 
-    const view = trajectoryFrame(page);
+    const view = pluginViewFrame(page);
     await expect(view.getByRole("button", { name: /Allow once|Deny/ })).toHaveCount(0);
 
     const workbench = page.locator("main");

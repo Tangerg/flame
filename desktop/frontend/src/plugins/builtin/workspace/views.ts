@@ -49,19 +49,3 @@ export const skillsView = definePlugin({
     });
   },
 });
-
-export const agentMemoryView = definePlugin({
-  name: "flame.builtin.view-agent-memory",
-  setup(ctx) {
-    ctx.contribute(WORKSPACE_VIEW, {
-      id: "agent-memory",
-      title: "workspace.view.title.agentMemory",
-      icon: "brain",
-      order: 105,
-      dock: "workspace",
-      component: lazy(() =>
-        import("./ui/memory/AgentMemory").then((m) => ({ default: m.AgentMemory })),
-      ),
-    });
-  },
-});

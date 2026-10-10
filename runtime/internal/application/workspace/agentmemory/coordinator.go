@@ -3,10 +3,8 @@
 package agentmemory
 
 import (
-	"cmp"
 	"context"
 	"errors"
-	"slices"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
@@ -63,43 +61,6 @@ func New(cfg Config) (*Coordinator, error) {
 		now = time.Now
 	}
 	return &Coordinator{store: cfg.Store, roots: cfg.Roots, now: now, invalidations: cfg.Invalidations}, nil
-}
-
-// List returns active and pending memory items for scope/cwd.
-func (c *Coordinator) List(ctx context.Context, scope domain.Scope, cwd string) ([]domain.Item, error) {
-	project, err := c.project(scope, cwd)
-	if err != nil {
-		return nil, err
-	}
-	items, err := c.store.List(ctx, scope, project)
-	if err != nil {
-		return nil, err
-	}
-	slices.SortFunc(items, compareManagementItems)
-	return items, nil
-}
-
-func compareManagementItems(a, b domain.Item) int {
-	if a.Status() != b.Status() {
-		if a.Status() == domain.StatusPending {
-			return -1
-		}
-		return 1
-	}
-	return compareActiveItems(a, b)
-}
-
-func compareActiveItems(a, b domain.Item) int {
-	if a.Pinned() != b.Pinned() {
-		if a.Pinned() {
-			return -1
-		}
-		return 1
-	}
-	if order := b.UpdatedAt().Compare(a.UpdatedAt()); order != 0 {
-		return order
-	}
-	return cmp.Compare(b.ID().String(), a.ID().String())
 }
 
 // Review accepts or rejects an extracted proposal.

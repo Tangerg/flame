@@ -2,6 +2,7 @@ package runtimebinding
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -20,13 +21,14 @@ type agentMemoryBindingStub struct {
 	t            *testing.T
 	actions      []string
 	now          time.Time
-	listed       *protocol.AgentMemoryList
+	listed       *protocol.Page[protocol.AgentMemoryItem]
 	nilList      bool
 	updateResult *protocol.AgentMemoryItem
 	addResult    *protocol.AgentMemoryItem
+	listPage     func(protocol.AgentMemoryListRequest) (*protocol.Page[protocol.AgentMemoryItem], error)
 }
 
-func (a *agentMemoryBindingStub) ListAgentMemory(_ context.Context, request protocol.AgentMemoryListRequest, options flameruntime.CallOptions) (*protocol.AgentMemoryList, error) {
+func (a *agentMemoryBindingStub) ListAgentMemory(_ context.Context, request protocol.AgentMemoryListRequest, options flameruntime.CallOptions) (*protocol.Page[protocol.AgentMemoryItem], error) {
 	a.assertMeta(options.RequestMeta)
 	switch request.Scope {
 	case protocol.AgentMemoryScopeProject:
@@ -40,16 +42,64 @@ func (a *agentMemoryBindingStub) ListAgentMemory(_ context.Context, request prot
 	default:
 		a.t.Fatalf("list request = %+v", request)
 	}
+	if a.listPage != nil {
+		return a.listPage(request)
+	}
 	if a.nilList {
 		return nil, nil
 	}
 	if a.listed != nil {
 		return a.listed, nil
 	}
-	return &protocol.AgentMemoryList{Items: []protocol.AgentMemoryItem{{
+	return &protocol.Page[protocol.AgentMemoryItem]{Data: []protocol.AgentMemoryItem{{
 		ID: adapterMemoryIDOne, Scope: request.Scope, Content: "durable fact", Origin: protocol.AgentMemoryOriginAuto,
 		Status: protocol.AgentMemoryStatusPending, CreatedAt: a.now, UpdatedAt: a.now,
 	}}}, nil
+}
+
+func TestAgentMemoryAdapterTraversesWithoutPartialSuccess(t *testing.T) {
+	now := time.Date(2026, 10, 10, 0, 0, 0, 0, time.UTC)
+	for _, scenario := range []string{"complete", "duplicate", "later failure"} {
+		t.Run(scenario, func(t *testing.T) {
+			calls := 0
+			item := protocol.AgentMemoryItem{ID: adapterMemoryIDOne, Scope: protocol.AgentMemoryScopeUser, Content: "fact", Origin: protocol.AgentMemoryOriginUser, Status: protocol.AgentMemoryStatusActive, CreatedAt: now, UpdatedAt: now}
+			stub := &agentMemoryBindingStub{t: t, listPage: func(request protocol.AgentMemoryListRequest) (*protocol.Page[protocol.AgentMemoryItem], error) {
+				calls++
+				if calls == 1 {
+					if request.Cursor != "" {
+						t.Fatal("first cursor")
+					}
+					return &protocol.Page[protocol.AgentMemoryItem]{Data: []protocol.AgentMemoryItem{item}, NextCursor: "next"}, nil
+				}
+				if request.Cursor != "next" {
+					t.Fatal("continuation was lost")
+				}
+				if scenario == "later failure" {
+					return nil, errors.New("storage unavailable")
+				}
+				if scenario == "complete" {
+					item.ID = adapterMemoryIDTwo
+				}
+				return &protocol.Page[protocol.AgentMemoryItem]{Data: []protocol.AgentMemoryItem{item}}, nil
+			}}
+			adapter := &AgentMemory{runtime: &Connection{agentMemory: stub, meta: requestMeta("test")}}
+			target, err := conversation.NewMemoryTarget(protocol.AgentMemoryScopeUser, "")
+			if err != nil {
+				t.Fatal(err)
+			}
+			items, err := adapter.Items(t.Context(), target)
+			if calls != 2 {
+				t.Fatalf("calls = %d", calls)
+			}
+			if scenario == "complete" {
+				if err != nil || len(items) != 2 {
+					t.Fatalf("complete = %+v, %v", items, err)
+				}
+			} else if err == nil || items != nil {
+				t.Fatalf("partial success = %+v, %v", items, err)
+			}
+		})
+	}
 }
 
 func TestAgentMemoryAdapterRejectsBrokenRuntimeProjections(t *testing.T) {
@@ -61,16 +111,16 @@ func TestAgentMemoryAdapterRejectsBrokenRuntimeProjections(t *testing.T) {
 	}
 	for _, test := range []struct {
 		name    string
-		listed  *protocol.AgentMemoryList
+		listed  *protocol.Page[protocol.AgentMemoryItem]
 		nilList bool
 	}{
 		{name: "nil list", nilList: true},
-		{name: "wrong scope", listed: &protocol.AgentMemoryList{Items: []protocol.AgentMemoryItem{{
+		{name: "wrong scope", listed: &protocol.Page[protocol.AgentMemoryItem]{Data: []protocol.AgentMemoryItem{{
 			ID: adapterMemoryIDOne, Scope: protocol.AgentMemoryScopeUser, Content: "fact",
 			Origin: protocol.AgentMemoryOriginUser, Status: protocol.AgentMemoryStatusActive,
 			CreatedAt: now, UpdatedAt: now,
 		}}}},
-		{name: "duplicate identity", listed: &protocol.AgentMemoryList{Items: []protocol.AgentMemoryItem{valid, valid}}},
+		{name: "duplicate identity", listed: &protocol.Page[protocol.AgentMemoryItem]{Data: []protocol.AgentMemoryItem{valid, valid}}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			stub := &agentMemoryBindingStub{t: t, now: now, listed: test.listed, nilList: test.nilList}

@@ -53,8 +53,12 @@ func (c *capabilityRuntime) SubscribeRuntime(context.Context, protocol.RuntimeSu
 	return &protocol.RuntimeSubscribeResponse{}, func(func(protocol.RuntimeEvent, error) bool) {}, nil
 }
 
-func (c *capabilityRuntime) ListAgentMemory(context.Context, protocol.AgentMemoryListRequest) (*protocol.AgentMemoryList, error) {
-	return &protocol.AgentMemoryList{Items: []protocol.AgentMemoryItem{}}, nil
+func (c *capabilityRuntime) ListAgentMemory(context.Context, protocol.AgentMemoryListRequest) (*protocol.Page[protocol.AgentMemoryItem], error) {
+	return &protocol.Page[protocol.AgentMemoryItem]{Data: []protocol.AgentMemoryItem{}}, nil
+}
+
+func (c *capabilityRuntime) ReadPluginMemory(context.Context, protocol.ReadPluginMemoryRequest) (*protocol.Page[protocol.AgentMemoryItem], error) {
+	return &protocol.Page[protocol.AgentMemoryItem]{Data: []protocol.AgentMemoryItem{}}, nil
 }
 
 func (c *capabilityRuntime) ListRuns(context.Context, protocol.ListRunsRequest) (*protocol.Page[protocol.RunRef], error) {
@@ -108,6 +112,24 @@ func TestCapabilityGateRefusesADisabledFeature(t *testing.T) {
 	on := call(t, map[string]bool{"agentMemory": true}, "agentMemory.list", params)
 	if on.Error != nil {
 		t.Fatalf("agentMemory.list with the feature on: %+v", on.Error)
+	}
+}
+
+func TestMemoryPageRequiresBothServerCapabilities(t *testing.T) {
+	const params = `{"installationId":"00000000-0000-4000-8000-000000000001","digest":"1111111111111111111111111111111111111111111111111111111111111111","viewId":"memory","scope":"user"}`
+	for _, features := range []map[string]bool{
+		{protocol.FeaturePlugins: false, protocol.FeatureAgentMemory: true},
+		{protocol.FeaturePlugins: true, protocol.FeatureAgentMemory: false},
+		{protocol.FeaturePlugins: true, protocol.FeatureAgentMemory: true},
+	} {
+		response := call(t, features, "plugins.readMemory", params)
+		if features[protocol.FeaturePlugins] && features[protocol.FeatureAgentMemory] {
+			if response.Error != nil {
+				t.Fatalf("enabled memory read: %+v", response.Error)
+			}
+		} else if got := problemType(t, response); got != "capability_not_negotiated" {
+			t.Fatalf("memory read with %v: %s", features, got)
+		}
 	}
 }
 

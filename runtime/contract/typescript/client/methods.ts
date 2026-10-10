@@ -3,6 +3,7 @@ import type {
   PluginViewResource,
   ReadPluginViewRequest,
   ReadPluginTrajectoryRequest,
+  ReadPluginMemoryRequest,
   RenamePluginSessionRequest,
   InstallPluginRequest,
   StagePluginRequest,
@@ -87,7 +88,6 @@ import type {
   SkillProposal,
   SkillProposalRef,
   AgentMemoryItem,
-  AgentMemoryList,
   AgentMemoryReviewDecision,
   AgentMemoryScope,
   AgentMemoryUpdateRequest,
@@ -160,7 +160,7 @@ interface WorkspaceMethods {
     rejectProposal: (ref: Omit<SkillProposalRef, "workspace">) => MutationPromise<void>;
   };
   agentMemory: {
-    list: (signal?: AbortSignal) => Promise<AgentMemoryList>;
+    list: (query?: PageQuery, signal?: AbortSignal) => AutoPagingPromise<Page<AgentMemoryItem>>;
     add: (content: string) => MutationPromise<AgentMemoryItem>;
   };
 }
@@ -293,6 +293,10 @@ export interface Methods {
       params: ReadPluginTrajectoryRequest,
       signal?: AbortSignal,
     ) => Promise<Page<TrajectoryEntry>>;
+    readMemory: (
+      params: ReadPluginMemoryRequest,
+      signal?: AbortSignal,
+    ) => Promise<Page<AgentMemoryItem>>;
     list: (signal?: AbortSignal) => Promise<Page<PluginInstallation>>;
     install: (params: InstallPluginRequest) => MutationPromise<PluginInstallation>;
     stage: (params: StagePluginRequest) => MutationPromise<PluginInstallation>;
@@ -320,7 +324,10 @@ export interface Methods {
     summary: (params?: UsageSummaryRequest, signal?: AbortSignal) => Promise<UsageSummary>;
   };
   agentMemory: {
-    list: (target: AgentMemoryTarget, signal?: AbortSignal) => Promise<AgentMemoryList>;
+    list: (
+      target: AgentMemoryTarget & PageQuery,
+      signal?: AbortSignal,
+    ) => AutoPagingPromise<Page<AgentMemoryItem>>;
     review: (id: string, decision: AgentMemoryReviewDecision) => MutationPromise<void>;
     update: (params: AgentMemoryUpdateRequest) => MutationPromise<AgentMemoryItem>;
     delete: (id: string) => MutationPromise<void>;
@@ -385,7 +392,8 @@ function bindWorkspace(call: WireCall, ref: WorkspaceRef): WorkspaceMethods {
       rejectProposal: (ref) => call("skills.proposals.reject", { ...ref, workspace }),
     },
     agentMemory: {
-      list: (signal) => call("agentMemory.list", { scope: "project", workspace }, { signal }),
+      list: (query, signal) =>
+        call("agentMemory.list", { ...query, scope: "project", workspace }, { signal }),
       add: (content) => call("agentMemory.add", { scope: "project", workspace, content }),
     },
   };
@@ -554,6 +562,7 @@ export function createMethods(client: RpcClient, options: MethodsOptions = {}): 
       renameSession: (params) => call("plugins.renameSession", params),
       readView: (params, signal) => call("plugins.readView", params, { signal }),
       readTrajectory: (params, signal) => call("plugins.readTrajectory", params, { signal }),
+      readMemory: (params, signal) => call("plugins.readMemory", params, { signal }),
       list: (signal) => call("plugins.list", {}, { signal }),
       install: (params) => call("plugins.install", params),
       stage: (params) => call("plugins.stage", params),

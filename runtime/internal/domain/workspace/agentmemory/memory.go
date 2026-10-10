@@ -48,9 +48,9 @@ const (
 	// turn the database read preceding that envelope into an unbounded query.
 	MaxLedgerFoldFacts = 128
 
-	// MaxVisiblePerTarget makes the non-paginated management and prompt read
-	// models complete but finite. Active and pending items are visible; rejected
-	// tombstones have their own larger retention window below.
+	// MaxVisiblePerTarget bounds complete-target storage and prompt reads.
+	// Management pages project this finite target. Active and pending items are
+	// visible; rejected tombstones have their own larger retention window below.
 	MaxVisiblePerTarget = 512
 
 	// MaxRejectedPerTarget bounds negative-history retention. Recent rejections

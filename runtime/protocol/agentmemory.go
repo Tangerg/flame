@@ -44,17 +44,12 @@ const (
 	AgentMemoryStatusPending AgentMemoryStatus = "pending"
 )
 
-// AgentMemoryList is the agentMemory.list result. Items are ordered pending
-// first, then pinned first, then by UpdatedAt and ID descending.
-type AgentMemoryList struct {
-	Items []AgentMemoryItem `json:"items"`
-}
-
 // AgentMemoryListRequest — agentMemory.list body. Scope is explicit. Project
 // scope requires Workspace; user scope forbids it (contract shape rules).
 type AgentMemoryListRequest struct {
 	Scope     AgentMemoryScope `json:"scope"`
 	Workspace *WorkspaceRef    `json:"workspace,omitzero"`
+	PageQuery
 }
 
 // AgentMemoryReviewRequest — agentMemory.review body. decision is

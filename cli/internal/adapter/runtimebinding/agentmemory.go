@@ -12,7 +12,7 @@ import (
 )
 
 type agentMemoryBinding interface {
-	ListAgentMemory(context.Context, protocol.AgentMemoryListRequest, flameruntime.CallOptions) (*protocol.AgentMemoryList, error)
+	ListAgentMemory(context.Context, protocol.AgentMemoryListRequest, flameruntime.CallOptions) (*protocol.Page[protocol.AgentMemoryItem], error)
 	ReviewAgentMemory(context.Context, protocol.AgentMemoryReviewRequest, flameruntime.CommandOptions) error
 	UpdateAgentMemory(context.Context, protocol.AgentMemoryUpdateRequest, flameruntime.CommandOptions) (*protocol.AgentMemoryItem, error)
 	DeleteAgentMemory(context.Context, protocol.AgentMemoryItemRequest, flameruntime.CommandOptions) error
@@ -34,28 +34,44 @@ func (a *AgentMemory) Items(ctx context.Context, target conversation.MemoryTarge
 	if err := protocol.ValidateWireTree(request); err != nil {
 		return nil, err
 	}
-	result, err := r.agentMemory.ListAgentMemory(ctx, request, r.callOptions())
+	traversal, err := newCursorTraversal("list agent memory", "", flameruntime.MaximumAgentMemoryItemsPerTarget)
 	if err != nil {
-		return nil, classifyError(err)
+		return nil, err
 	}
-	if result == nil {
-		return nil, runtimeContractViolation("list agent memory returned nil")
-	}
-	items := make([]protocol.AgentMemoryItem, 0, len(result.Items))
-	seen := make(map[string]struct{}, len(result.Items))
-	for index, value := range result.Items {
-		item := value
-		if err := conversation.ValidateMemoryItem(item); err != nil {
-			return nil, runtimeContractViolation("list agent memory item %d is invalid: %v", index+1, err)
+	items := make([]protocol.AgentMemoryItem, 0)
+	seen := make(map[string]struct{})
+	for {
+		request.Cursor = traversal.Current()
+		result, err := r.agentMemory.ListAgentMemory(ctx, request, r.callOptions())
+		if err != nil {
+			return nil, classifyError(err)
 		}
-		if item.Scope != validated.Scope {
-			return nil, runtimeContractViolation("list agent memory item %s belongs to %s, want %s", item.ID, item.Scope, validated.Scope)
+		if result == nil {
+			return nil, runtimeContractViolation("list agent memory returned nil")
 		}
-		if _, duplicate := seen[item.ID]; duplicate {
-			return nil, runtimeContractViolation("list agent memory repeats %q", item.ID)
+		if len(items)+len(result.Data) > flameruntime.MaximumAgentMemoryItemsPerTarget || (len(result.Data) == 0 && result.NextCursor != "") {
+			return nil, runtimeContractViolation("list agent memory exceeded its target capacity or returned an empty continuation")
 		}
-		seen[item.ID] = struct{}{}
-		items = append(items, item)
+		for _, item := range result.Data {
+			if err := conversation.ValidateMemoryItem(item); err != nil {
+				return nil, runtimeContractViolation("list agent memory item %d is invalid: %v", len(items)+1, err)
+			}
+			if item.Scope != validated.Scope {
+				return nil, runtimeContractViolation("list agent memory item %s belongs to %s, want %s", item.ID, item.Scope, validated.Scope)
+			}
+			if _, duplicate := seen[item.ID]; duplicate {
+				return nil, runtimeContractViolation("list agent memory repeats %q", item.ID)
+			}
+			seen[item.ID] = struct{}{}
+			items = append(items, item)
+		}
+		more, err := traversal.Advance(result.NextCursor)
+		if err != nil {
+			return nil, err
+		}
+		if !more {
+			break
+		}
 	}
 	return items, nil
 }
