@@ -201,9 +201,12 @@ func (c *Coordinator) Install(ctx context.Context, source string) (_ Inspection,
 		if err != nil {
 			return false, fmt.Errorf("plugins: publish release: %w", err)
 		}
+		if err := c.store.Save(ctx, installation); err != nil {
+			return false, err
+		}
 		committed = plugin.Snapshot{Installation: installation, Selected: published}
 		// A new identity has no former execution capability to invalidate.
-		return false, c.store.Save(ctx, installation)
+		return false, nil
 	})
 	if err != nil {
 		return Inspection{}, errors.Join(err, unreclaimed)
@@ -349,21 +352,25 @@ func (c *Coordinator) change(ctx context.Context, id resourceid.InstallationID, 
 			}
 			reconcile = append(reconcile, server)
 		}
-		committed = plugin.Snapshot{Installation: installation, Selected: after}
-		if digest, staged := installation.Staged(); staged {
-			staged, err := c.catalog.Get(ctx, digest)
+		var staged *plugin.Release
+		if digest, hasStaged := installation.Staged(); hasStaged {
+			candidate, err := c.catalog.Get(ctx, digest)
 			if err != nil {
 				return false, fmt.Errorf("plugins: read staged release %s: %w", digest, err)
 			}
-			committed.Staged = &staged
+			staged = &candidate
 		}
 		if err := c.store.Save(ctx, installation); err != nil {
 			return false, err
 		}
+		committed = plugin.Snapshot{Installation: installation, Selected: after, Staged: staged}
 		// The live tool catalog follows the commit inside the same critical
 		// section: a Run assembled after it cannot see the superseded tools.
 		return installation.ExecutionChanged(previous), c.connections.WithdrawInstallation(reconcile)
 	})
+	if committed.Installation != nil {
+		c.publish.Notify(invalidation.Notice{Resource: invalidation.Plugins}, invalidation.Notice{Resource: invalidation.Skills})
+	}
 	if err != nil {
 		return Inspection{}, errors.Join(err, unreclaimed)
 	}
@@ -381,9 +388,6 @@ func (c *Coordinator) change(ctx context.Context, id resourceid.InstallationID, 
 			slog.WarnContext(ctx, "committed plugin reconciliation failed", "installation", id, "error", err)
 		}
 	}
-	c.publish.Notify(invalidation.Notice{Resource: invalidation.Plugins}, invalidation.Notice{Resource: invalidation.Skills})
-	// The result reports observed realization or why it could not be observed;
-	// either way the durable change above stands and has been published.
 	inspection, err := c.inspect(realizationCtx, committed)
 	if err = errors.Join(err, unreclaimed); err != nil {
 		return Inspection{}, fmt.Errorf("plugins: installation %s changed: %w", id, err)
@@ -392,6 +396,7 @@ func (c *Coordinator) change(ctx context.Context, id resourceid.InstallationID, 
 }
 func (c *Coordinator) Uninstall(ctx context.Context, id resourceid.InstallationID) error {
 	var servers []mcpserver.ID
+	removed := false
 	// Removal withdraws every artifact a waiting operation needs to resume, so
 	// it requires quiescence; Revoke stays available to withdraw authority
 	// from work that is still in use.
@@ -408,8 +413,12 @@ func (c *Coordinator) Uninstall(ctx context.Context, id resourceid.InstallationI
 		if err := c.store.Remove(ctx, id); err != nil {
 			return false, err
 		}
+		removed = true
 		return true, c.connections.WithdrawInstallation(servers)
 	})
+	if removed {
+		c.publish.Notify(invalidation.Notice{Resource: invalidation.Plugins}, invalidation.Notice{Resource: invalidation.Skills})
+	}
 	if err != nil {
 		return errors.Join(err, unreclaimed)
 	}
@@ -421,7 +430,6 @@ func (c *Coordinator) Uninstall(ctx context.Context, id resourceid.InstallationI
 	if err := c.connections.ReconcileInstallation(realizationCtx, servers); err != nil {
 		slog.WarnContext(ctx, "removed plugin reconciliation failed", "installation", id, "error", err)
 	}
-	c.publish.Notify(invalidation.Notice{Resource: invalidation.Plugins}, invalidation.Notice{Resource: invalidation.Skills})
 	if unreclaimed != nil {
 		return fmt.Errorf("plugins: installation %s removed: %w", id, unreclaimed)
 	}

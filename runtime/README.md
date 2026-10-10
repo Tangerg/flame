@@ -490,6 +490,9 @@ approval and unchanged configuration do not. Quiescence controls existing execut
 while every committed execution change, including disable or revoke, invalidates
 unpublished assemblies of that installation. A withdrawal failure after the durable
 write preserves this invalidation; a rejected write cannot originate one.
+Plugin and Skill read invalidations likewise follow the durable write, outside admission
+and before realization. Withdrawal failure cannot suppress a committed change's notices;
+a refused write publishes none.
 An assembly overtaken by such a change to one of its dependencies is refused as `plugin_changed` on
 `runs.start` and `runs.resume`: nothing was started and no interrupt was consumed, so the
 person may send the same request again. Clients present it as retryable and never retry

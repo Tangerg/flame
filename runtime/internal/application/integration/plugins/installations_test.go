@@ -8,6 +8,7 @@ import (
 	"testing"
 	"testing/synctest"
 
+	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -17,9 +18,10 @@ import (
 )
 
 type installationMemory struct {
-	record  *plugin.Record
-	catalog releaseMemory
-	saveErr error
+	record    *plugin.Record
+	catalog   releaseMemory
+	saveErr   error
+	removeErr error
 }
 
 func (s *installationMemory) List(ctx context.Context) ([]plugin.Snapshot, error) {
@@ -63,6 +65,9 @@ func (s *installationMemory) Save(_ context.Context, i *plugin.Installation) err
 	return nil
 }
 func (s *installationMemory) Remove(context.Context, resourceid.InstallationID) error {
+	if s.removeErr != nil {
+		return s.removeErr
+	}
 	s.record = nil
 	return nil
 }
@@ -243,7 +248,18 @@ func TestExecutionChangeEvidenceFollowsTheDurableWrite(t *testing.T) {
 				withdraw:  func([]mcpserver.ID) error { return test.withdraw },
 				reconcile: func(context.Context, []mcpserver.ID) error { return nil },
 			}
-			coordinator, err := New(t.Context(), store, catalog, installationPackages{}, connections, dependencies, nil)
+			var notices []invalidation.Resource
+			publish := func(notice invalidation.Notice) {
+				if dependencies.held {
+					t.Fatal("publication retained installation admission")
+				}
+				current, err := store.Get(t.Context(), id)
+				if err != nil || current.Installation.State() != test.state {
+					t.Fatalf("publication preceded durable state: %+v, %v", current, err)
+				}
+				notices = append(notices, notice.Resource)
+			}
+			coordinator, err := New(t.Context(), store, catalog, installationPackages{}, connections, dependencies, publish)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -256,6 +272,68 @@ func TestExecutionChangeEvidenceFollowsTheDurableWrite(t *testing.T) {
 			}
 			if dependencies.executionChanged != test.changed {
 				t.Fatalf("committed execution change = %t, want %t", dependencies.executionChanged, test.changed)
+			}
+			var expected []invalidation.Resource
+			if test.saveErr == nil {
+				expected = []invalidation.Resource{invalidation.Plugins, invalidation.Skills}
+			}
+			if !slices.Equal(notices, expected) {
+				t.Fatalf("committed change notifications = %v, want %v", notices, expected)
+			}
+		})
+	}
+}
+
+func TestInstallationRemovalPublishesOnlyTheDurableChange(t *testing.T) {
+	storageFailure := errors.New("durable removal rejected")
+	withdrawalFailure := errors.New("connection withdrawal failed")
+	for _, test := range []struct {
+		name      string
+		removeErr error
+		withdraw  error
+	}{
+		{"committed", nil, nil},
+		{"rejected removal", storageFailure, nil},
+		{"failed withdrawal", nil, withdrawalFailure},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			store, dependencies, id, catalog := installationFixture(t)
+			store.removeErr = test.removeErr
+			var notices []invalidation.Resource
+			publish := func(notice invalidation.Notice) {
+				if dependencies.held {
+					t.Fatal("publication retained installation admission")
+				}
+				if _, err := store.Get(t.Context(), id); !errors.Is(err, plugin.ErrNotFound) {
+					t.Fatalf("publication preceded durable removal: %v", err)
+				}
+				notices = append(notices, notice.Resource)
+			}
+			connections := installationConnections{
+				withdraw:  func([]mcpserver.ID) error { return test.withdraw },
+				reconcile: func(context.Context, []mcpserver.ID) error { return nil },
+			}
+			coordinator, err := New(t.Context(), store, catalog, installationPackages{}, connections, dependencies, publish)
+			if err != nil {
+				t.Fatal(err)
+			}
+			wantErr := test.removeErr
+			if wantErr == nil {
+				wantErr = test.withdraw
+			}
+			if err := coordinator.Uninstall(t.Context(), id); !errors.Is(err, wantErr) {
+				t.Fatalf("remove = %v, want %v", err, wantErr)
+			}
+			_, readErr := store.Get(t.Context(), id)
+			if test.removeErr != nil && readErr != nil || test.removeErr == nil && !errors.Is(readErr, plugin.ErrNotFound) {
+				t.Fatalf("durable removal = %v", readErr)
+			}
+			var expected []invalidation.Resource
+			if test.removeErr == nil {
+				expected = []invalidation.Resource{invalidation.Plugins, invalidation.Skills}
+			}
+			if !slices.Equal(notices, expected) {
+				t.Fatalf("committed removal notifications = %v, want %v", notices, expected)
 			}
 		})
 	}
