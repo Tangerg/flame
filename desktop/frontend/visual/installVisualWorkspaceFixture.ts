@@ -11,7 +11,6 @@ import { createElement } from "react";
 import type { TrajectoryEntry, UsageSummary } from "@flame/runtime-contract/wire";
 import { createBrowserHost } from "@/platform/browserHost";
 import { installLocalWorkspaceActions } from "@/plugins/builtin/workspace/adapters/localWorkspaceActions";
-import { HOOKS_KEY } from "@/plugins/builtin/settings/hooks/public/queries";
 import { queryClient } from "@/lib/queryClient";
 import { WORKSPACE_DOCK_CATALOG } from "@/plugins/builtin/workspace/public/navigation";
 import { SIDEBAR_DEFAULT_WIDTH_PX } from "@/lib/shellGeometry";
@@ -28,16 +27,6 @@ import { createHooksPlugin } from "@/plugins/builtin/settings/hooks";
 import { createMCPServersPlugin } from "@/plugins/builtin/settings/mcp-servers";
 import personalizationSettings from "@/plugins/builtin/settings/personalization";
 import { createPluginsPane } from "@/plugins/builtin/settings/plugins-pane";
-import {
-  EMBEDDING_ROLE_KEY,
-  PROVIDERS_KEY,
-  ProviderConfiguration,
-  UTILITY_ROLE_KEY,
-} from "@/plugins/builtin/providers/public/queries";
-import {
-  MCP_SERVERS_KEY,
-  type MCPServerSettings,
-} from "@/plugins/builtin/settings/mcp-servers/public/serverCatalog";
 import { localePlugins } from "@/plugins/builtin/i18n";
 import { installWorkspaceErrorClassifier } from "@/plugins/builtin/workspace/adapters/runtimeWorkspaceErrorClassifier";
 import { installNotificationCentre } from "@/plugins/builtin/shell/status/adapters/systemNotifier";
@@ -188,23 +177,6 @@ const RESIZER_SOURCE: WorkspaceFileContent = {
     "}, [setWidth]);",
   ].join("\n"),
 };
-
-const PROVIDERS: ProviderConfiguration[] = [
-  ProviderConfiguration.restore({
-    id: "openai",
-    baseUrl: "https://api.openai.com/v1",
-    credential: { masked: "sk-…7F2A", source: "stored" },
-    configured: true,
-    embeddingCapable: true,
-    defaultEmbeddingModel: "text-embedding-3-large",
-  }),
-  ProviderConfiguration.restore({
-    id: "anthropic",
-    baseUrl: "https://api.anthropic.com",
-    configured: false,
-    embeddingCapable: false,
-  }),
-];
 
 function feature(enabled: boolean): FeatureCapability {
   return { enabled, clientOptIn: false, requiredByRunProtocol: false };
@@ -439,10 +411,7 @@ function workspaceDataPlugin(
             carrier: createBrowserHost().pluginCarrier,
           }),
       });
-      ctx.contribute(DATA_PROVIDER, {
-        key: HOOKS_KEY,
-        fetcher: async () => ({ hooks: [], projectTrusted: false }),
-      });
+
       ctx.contribute(DATA_PROVIDER, {
         key: SCHEDULES_KEY,
         fetcher: async () =>
@@ -546,10 +515,7 @@ function workspaceDataPlugin(
         key: WORKSPACE_AGENT_MEMORY_KEY,
         fetcher: async (): Promise<AgentMemoryEntry[]> => visualMemory,
       });
-      ctx.contribute(DATA_PROVIDER, {
-        key: MCP_SERVERS_KEY,
-        fetcher: async () => [] satisfies MCPServerSettings[],
-      });
+
       ctx.contribute(DATA_PROVIDER, {
         key: WORKSPACE_LIST_FILES_KEY,
         fetcher: async (params) =>
@@ -561,21 +527,10 @@ function workspaceDataPlugin(
                 { path: "README.md", name: "README.md", type: "file", sizeBytes: 2_048 },
               ] satisfies WorkspaceFileEntry[]),
       });
-      ctx.contribute(DATA_PROVIDER, {
-        key: PROVIDERS_KEY,
-        fetcher: async () => PROVIDERS,
-      });
+
       ctx.contribute(DATA_PROVIDER, {
         key: WORKSPACE_READ_FILE_KEY,
         fetcher: async () => RESIZER_SOURCE,
-      });
-      ctx.contribute(DATA_PROVIDER, {
-        key: UTILITY_ROLE_KEY,
-        fetcher: async () => ({ provider: "openai", model: "gpt-5.6" }),
-      });
-      ctx.contribute(DATA_PROVIDER, {
-        key: EMBEDDING_ROLE_KEY,
-        fetcher: async () => ({}),
       });
     },
   });

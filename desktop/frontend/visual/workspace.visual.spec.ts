@@ -73,9 +73,9 @@ test("a full view sets its title in mono only when the title is a path", async (
         return { text: title?.textContent?.trim() ?? "", isMono: head(family) === mono, family };
       });
 
-  await openWorkspace(page, { state: "full-view" });
+  await openWorkspace(page, { state: "full-view", fullView: "diff" });
   const prose = await readTitle();
-  expect(prose.text).toBe(en["search.title"]);
+  expect(prose.text).toBe(en["diff.workingTree"]);
   expect(prose.isMono, `a view's NAME is prose, got ${prose.family}`).toBe(false);
 
   await openWorkspace(page, { state: "full-view", fullView: "file" });
@@ -204,9 +204,10 @@ async function waitForWorkspaceState(page: Page, state: VisualWorkspaceState): P
     return;
   }
   if (state === "full-view") {
-    await expect(
-      page.getByRole("main").getByRole("searchbox", { name: en["search.aria"]! }),
-    ).toBeVisible();
+    const view = page.getByRole("main");
+    await expect(view).toContainText(ACTIVE_FILE_PATH);
+    await expect(view).toContainText("8 lines");
+    await expect(view).toContainText("clampDockWidth(currentWidth + delta, row.clientWidth)");
     return;
   }
   if (state === "settings") {
@@ -291,6 +292,8 @@ test("the model remains readable when the dock narrows the composer", async ({ p
 test("closing tabs selects a neighbor without collapsing the workspace", async ({ page }) => {
   await openWorkspace(page, { state: "dock-light" });
 
+  await page.getByRole("tab", { name: "Session trajectory" }).click();
+  await expect(page.getByTestId("active-dock-view")).toHaveText("package:visual:trajectory");
   await page.getByRole("tab", { name: "Session trajectory" }).hover();
   await page.getByRole("button", { name: "Close Session trajectory" }).click();
   await expect(page.getByTestId("active-dock-view")).toHaveText("diff");
@@ -396,7 +399,9 @@ test("dock tabs use roving focus and arrow-key activation", async ({ page }) => 
 test("the active overflow tab stays visible and both hidden edges remain signposted", async ({
   page,
 }) => {
-  await openWorkspace(page, { state: "dock-light" });
+  await openWorkspace(page, { state: "dock-agent-memory" });
+  await page.getByRole("tab", { name: "Diff" }).click();
+  await expect(page.getByTestId("active-dock-view")).toHaveText("diff");
 
   const separator = page.getByRole("separator", { name: "Resize right workspace" });
   await separator.focus();
@@ -407,7 +412,7 @@ test("the active overflow tab stays visible and both hidden edges remain signpos
   await expect(strip).toHaveAttribute("data-overflow-end", "");
   const [stripBox, activeBox] = await Promise.all([
     strip.boundingBox(),
-    page.getByRole("tab", { name: "File" }).boundingBox(),
+    page.getByRole("tab", { name: "Diff" }).boundingBox(),
   ]);
   expect(stripBox).not.toBeNull();
   expect(activeBox).not.toBeNull();
@@ -771,7 +776,24 @@ for (const pane of VISUAL_SETTINGS_PANES) {
   test(`workspace golden settings pane ${pane}`, async ({ page }) => {
     await openWorkspace(page, { state: "settings", pane });
     await waitForWorkspaceState(page, "settings");
-    await expect(page.locator('main section [aria-busy="true"]')).toHaveCount(0);
+    if (pane === "providers") {
+      await expect(page.getByRole("button", { name: en["providers.utility.title"]! })).toHaveText(
+        "GPT-5.6 Sol",
+      );
+      await expect(page.getByRole("button", { name: en["providers.embedding.title"]! })).toHaveText(
+        en["providers.embedding.off"]!,
+      );
+    }
+    const emptyLabel = {
+      "mcp-servers": en["mcp.empty"],
+      hooks: en["hooks.empty"],
+      plugins: en["packages.empty"],
+    };
+    if (pane in emptyLabel) {
+      await expect(
+        page.getByText(emptyLabel[pane as keyof typeof emptyLabel]!, { exact: true }),
+      ).toBeVisible();
+    }
     await expect(page).toHaveScreenshot(`workspace-light-settings-${pane}.png`);
   });
 }

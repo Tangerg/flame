@@ -1,5 +1,5 @@
 import { createFlameClient, type FlameClient } from "@flame/runtime-contract/client";
-import { createMemoryTransport } from "@flame/runtime-contract/client/transports/memory";
+import { createVisualRuntimeTransport } from "./createVisualRuntimeTransport";
 import { definePlugin } from "@/plugins/sdk";
 import { createRoot } from "react-dom/client";
 import type { ReactNode } from "react";
@@ -131,7 +131,7 @@ const container = document.getElementById("root");
 if (!container) throw new Error("Visual fixture root element is missing");
 
 async function installVisualRuntimeClient(): Promise<FlameClient> {
-  const client = createFlameClient(createMemoryTransport());
+  const client = createFlameClient(createVisualRuntimeTransport());
   await loadPluginsForTest(
     definePlugin({
       name: "flame.visual.runtime-client",

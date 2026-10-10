@@ -87,42 +87,12 @@ import {
   type VisualAgentState,
 } from "./agentSessionSnapshots";
 import { installVisualRuntimeServiceStatusPort } from "./installVisualRuntimeServiceStatusPort";
-import { VISUAL_PRIMARY_MODEL_CONTEXT_WINDOW } from "./agentFixtureFacts";
+import { VISUAL_MODELS } from "./runtimeSnapshots";
 
 const VISUAL_APPROVAL_MODES: ApprovalModePolicy[] = [
   { mode: "safe", write: "prompt", exec: "prompt", network: "prompt" },
   { mode: "balanced", write: "pass", exec: "prompt", network: "pass" },
   { mode: "yolo", write: "pass", exec: "pass", network: "pass" },
-];
-
-const VISUAL_MODELS: SelectableModel[] = [
-  new SelectableModel({
-    id: "gpt-5.6-sol",
-    provider: "openai",
-    label: "GPT-5.6 Sol",
-    default: true,
-    inputModalities: ["text", "image", "pdf"],
-    outputModalities: ["text"],
-    tokenLimits: {
-      contextWindow: VISUAL_PRIMARY_MODEL_CONTEXT_WINDOW,
-      maxInputTokens: 922_000,
-      maxOutputTokens: 128_000,
-    },
-    reasoning: true,
-    reasoningLevels: ["none", "low", "medium", "high", "xhigh", "max"],
-    reasoningDefaultLevel: "medium",
-    toolUse: true,
-    structuredOutput: true,
-    knowledgeCutoff: "2026-02-16T00:00:00Z",
-  }),
-  new SelectableModel({
-    id: "qwen-mt-plus",
-    provider: "alibaba",
-    label: "Qwen MT Plus",
-    inputModalities: ["text"],
-    outputModalities: ["text"],
-    tokenLimits: { contextWindow: 32_768 },
-  }),
 ];
 
 function visualSession(state: VisualAgentState): AgentSessionSummary {
@@ -138,7 +108,7 @@ function visualSession(state: VisualAgentState): AgentSessionSummary {
           : "idle",
     provider: VISUAL_MODELS[0]!.provider,
     model: VISUAL_MODELS[0]!.id,
-    reasoningEffort: VISUAL_MODELS[0]!.reasoningDefaultLevel,
+    reasoningEffort: VISUAL_MODELS[0]!.capabilities?.reasoningDefaultLevel,
     workspace: {
       path: "/Users/visual/scope",
       availability: state === "cwd-missing" ? "missing" : "available",
@@ -313,7 +283,17 @@ export async function installVisualAgentFixture(
   queryClient.setQueryDefaults([APPROVAL_MODE_KEY], { staleTime: Infinity });
   queryClient.setQueryData([AGENT_SESSIONS_KEY], projectless ? [] : [visualSession(state)]);
   queryClient.setQueryData<WorkspaceProjectSummary[]>([WORKSPACE_PROJECTS_KEY], []);
-  queryClient.setQueryData([MODELS_KEY], VISUAL_MODELS);
+  queryClient.setQueryData(
+    [MODELS_KEY],
+    VISUAL_MODELS.map(
+      (model) =>
+        new SelectableModel({
+          ...model,
+          ...model.capabilities,
+          label: model.displayName ?? model.id,
+        }),
+    ),
+  );
   queryClient.setQueryData<ApprovalModeResult>([APPROVAL_MODE_KEY], {
     mode: "balanced",
     modes: VISUAL_APPROVAL_MODES,
@@ -354,8 +334,8 @@ export async function installVisualAgentFixture(
       kind: "explicit",
       provider: VISUAL_MODELS[0]!.provider,
       model: VISUAL_MODELS[0]!.id,
-      ...(VISUAL_MODELS[0]!.reasoningDefaultLevel
-        ? { reasoningEffort: VISUAL_MODELS[0]!.reasoningDefaultLevel }
+      ...(VISUAL_MODELS[0]!.capabilities?.reasoningDefaultLevel
+        ? { reasoningEffort: VISUAL_MODELS[0]!.capabilities?.reasoningDefaultLevel }
         : {}),
     },
   }));

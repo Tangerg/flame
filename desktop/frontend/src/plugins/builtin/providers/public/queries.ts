@@ -6,6 +6,5 @@ export {
   UTILITY_ROLE_KEY,
   useModels,
   useProviders,
-  ProviderConfiguration,
   SelectableModel,
 } from "../application/providerQueries";
