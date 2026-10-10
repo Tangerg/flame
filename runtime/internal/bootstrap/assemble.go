@@ -7,7 +7,6 @@ import (
 	"time"
 
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
 	ownershipadapter "github.com/Tangerg/flame/runtime/internal/adapter/ownership"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	"github.com/Tangerg/flame/runtime/internal/adapter/run/recovery"
@@ -59,7 +58,7 @@ func assemble(ctx context.Context, cfg Config, lifetime *runtimeLifetime, buildT
 	if err != nil {
 		return nil, err
 	}
-	workspaceServices, err := buildWorkspaceComposition(cfg, policy.invalidations.Publish, pluginpackage.NewSkills(policy.packages, cfg.Stores.Installations))
+	workspaceServices, err := buildWorkspaceComposition(cfg, policy.invalidations.Publish, policy.packageSkills)
 	if err != nil {
 		return nil, err
 	}

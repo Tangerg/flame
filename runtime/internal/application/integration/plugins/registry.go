@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
@@ -52,8 +53,15 @@ type Registry struct {
 }
 
 func NewRegistry(user userServers, installations Store, packages PackageSources) (*Registry, error) {
-	if user == nil || installations == nil || packages == nil {
-		return nil, errors.New("plugins: registry dependencies are required")
+	for _, required := range []struct {
+		name  string
+		value any
+	}{
+		{"user server store", user}, {"installation store", installations}, {"package sources", packages},
+	} {
+		if dependency.Missing(required.value) {
+			return nil, fmt.Errorf("plugins: registry %s is required", required.name)
+		}
 	}
 	return &Registry{user: user, installations: installations, packages: packages}, nil
 }

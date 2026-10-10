@@ -11,6 +11,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/adapter/workspace/promptsource"
 	workspaceapp "github.com/Tangerg/flame/runtime/internal/application/workspace"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
@@ -26,8 +27,14 @@ type Skills struct {
 	installations skillInstallations
 }
 
-func NewSkills(releases *Releases, installations skillInstallations) *Skills {
-	return &Skills{releases: releases, installations: installations}
+func NewSkills(releases *Releases, installations skillInstallations) (*Skills, error) {
+	if releases == nil {
+		return nil, errors.New("pluginpackage: releases are required")
+	}
+	if dependency.Missing(installations) {
+		return nil, errors.New("pluginpackage: skill installations are required")
+	}
+	return &Skills{releases: releases, installations: installations}, nil
 }
 func (s *Skills) SkillBundles(ctx context.Context) ([]promptsource.PackageSkillBundle, error) {
 	installations, err := s.installations.List(ctx)

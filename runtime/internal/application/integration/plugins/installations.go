@@ -7,6 +7,7 @@ import (
 	"log/slog"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/domain/resourceid"
@@ -78,11 +79,19 @@ type Coordinator struct {
 }
 
 func New(lifetime context.Context, store Store, catalog Catalog, packages Packages, connections Connections, dependencies Dependencies, publish invalidation.Publish) (*Coordinator, error) {
-	if lifetime == nil {
+	if dependency.Missing(lifetime) {
 		return nil, errors.New("plugins: runtime lifetime is required")
 	}
-	if store == nil || catalog == nil || packages == nil || connections == nil || dependencies == nil {
-		return nil, errors.New("plugins: installation dependencies are required")
+	for _, required := range []struct {
+		name  string
+		value any
+	}{
+		{"installation store", store}, {"release catalog", catalog}, {"packages", packages},
+		{"connections", connections}, {"dependencies", dependencies},
+	} {
+		if dependency.Missing(required.value) {
+			return nil, fmt.Errorf("plugins: %s is required", required.name)
+		}
 	}
 	return &Coordinator{lifetime: lifetime, store: store, catalog: catalog, packages: packages, connections: connections, dependencies: dependencies, publish: publish}, nil
 }

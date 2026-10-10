@@ -16,6 +16,7 @@ import (
 
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/cancelread"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
@@ -52,7 +53,7 @@ type Releases struct {
 }
 
 func New(directory string, catalog releaseCatalog) (*Releases, error) {
-	if catalog == nil {
+	if dependency.Missing(catalog) {
 		return nil, errors.New("pluginpackage: release catalog is required")
 	}
 	if !filepath.IsAbs(directory) {

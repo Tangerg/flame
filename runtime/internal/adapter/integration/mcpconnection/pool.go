@@ -8,6 +8,7 @@ import (
 	"errors"
 
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
 	toolcontract "github.com/Tangerg/scope/core/tool"
@@ -31,7 +32,7 @@ func Open(
 	servers []mcpserver.Server,
 	oauthSessions mcp.OAuthSessionStore, registry sourceRegistry,
 ) (*Pool, error) {
-	if registry == nil {
+	if dependency.Missing(registry) {
 		return nil, errors.New("mcp connection: source registry is required")
 	}
 	configs := make([]mcp.ServerConfig, len(servers))

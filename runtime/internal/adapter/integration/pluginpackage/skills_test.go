@@ -20,9 +20,18 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 
+func mustPackageSkills(t testing.TB, releases *Releases, installations skillInstallations) *Skills {
+	t.Helper()
+	skills, err := NewSkills(releases, installations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return skills
+}
+
 func TestSkillResourceReadPreservesFormatOwnerFailure(t *testing.T) {
 	releases, store, _ := testReleaseStore(t)
-	content, err := NewSkills(releases, store).ReadSkillResource(t.Context(), plugin.Dependency{}, "Invalid", "SKILL.md")
+	content, err := mustPackageSkills(t, releases, store).ReadSkillResource(t.Context(), plugin.Dependency{}, "Invalid", "SKILL.md")
 	if len(content) != 0 || !errors.Is(err, plugin.ErrInvalid) || !errors.Is(err, sdk.ErrNameInvalid) {
 		t.Fatalf("invalid Skill name = (%q, %v), want no content and format owner cause", content, err)
 	}
@@ -83,7 +92,7 @@ func TestSkillAdmissionAndReadsShareDirectoryNameBinding(t *testing.T) {
 						t.Fatal(err)
 					}
 				}
-				skills := NewSkills(releases, store)
+				skills := mustPackageSkills(t, releases, store)
 				catalog := promptsource.NewSkills("", skills)
 				discovery, err := catalog.List(t.Context(), cwd)
 				if !test.valid {
@@ -184,14 +193,14 @@ func TestSkillDiscoveryDistinguishesUnavailablePackagesFromNameConflicts(t *test
 					t.Fatal(err)
 				}
 			}
-			catalog, err := promptsource.ListSkills(t.Context(), "", "", NewSkills(releases, store))
+			catalog, err := promptsource.ListSkills(t.Context(), "", "", mustPackageSkills(t, releases, store))
 			if err != nil || len(catalog.Skills) != 1 || catalog.Skills[0].Name != "working" || len(catalog.Diagnostics) != 1 || catalog.Diagnostics[0].Name != "broken" {
 				t.Fatalf("partial discovery = %+v, %v", catalog, err)
 			}
 			if !strings.Contains(catalog.Diagnostics[0].Detail, "unavailable") || strings.Contains(catalog.Diagnostics[0].Detail, "Multiple installations") {
 				t.Fatalf("unavailable package was misdiagnosed: %+v", catalog.Diagnostics[0])
 			}
-			model, dependencies, err := promptsource.OverlaySkillSource(t.Context(), "", "", NewSkills(releases, store), nil)
+			model, dependencies, err := promptsource.OverlaySkillSource(t.Context(), "", "", mustPackageSkills(t, releases, store), nil)
 			if err != nil || len(dependencies) != 2 || !slices.ContainsFunc(dependencies, func(d plugin.Dependency) bool { return d.Digest == broken.Digest() }) {
 				t.Fatalf("unavailable selected package lost its execution binding: %+v, %v", dependencies, err)
 			}
@@ -230,7 +239,7 @@ func TestSkillReadsVerifyConsumedBytesAndEnforceResourceLimit(t *testing.T) {
 	if err := store.Save(t.Context(), installation); err != nil {
 		t.Fatal(err)
 	}
-	skills := NewSkills(releases, store)
+	skills := mustPackageSkills(t, releases, store)
 	bundles, err := skills.SkillBundles(t.Context())
 	if err != nil || len(bundles) != 1 {
 		t.Fatalf("skill bundles = %+v, %v", bundles, err)
@@ -253,7 +262,7 @@ func TestSkillReadsVerifyConsumedBytesAndEnforceResourceLimit(t *testing.T) {
 		ctx, cancel := context.WithCancelCause(t.Context())
 		defer cancel(nil)
 		wrapped := &afterReadStore{Store: store, after: func() { cancel(cause) }}
-		content, err := NewSkills(releases, wrapped).ReadSkillResource(ctx, dependency, "review", "SKILL.md")
+		content, err := mustPackageSkills(t, releases, wrapped).ReadSkillResource(ctx, dependency, "review", "SKILL.md")
 		if len(content) != 0 || !errors.Is(err, context.Canceled) || !errors.Is(err, cause) {
 			t.Fatalf("canceled resource read = %d bytes, %v; want cancellation class and cause", len(content), err)
 		}

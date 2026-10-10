@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"slices"
 
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -33,14 +34,17 @@ func Dial(
 	oauthSessions OAuthSessionStore,
 	configuration func(context.Context, mcpserver.ID) (*Launch, error),
 ) (*Connections, error) {
-	if ctx == nil {
+	if dependency.Missing(ctx) {
 		return nil, errors.New("mcp: startup context is required")
 	}
-	if lifetime == nil {
+	if dependency.Missing(lifetime) {
 		return nil, errors.New("mcp: lifetime is required")
 	}
 	if configuration == nil {
 		return nil, errors.New("mcp: connection configuration source is required")
+	}
+	if oauthSessions != nil && dependency.Missing(oauthSessions) {
+		return nil, errors.New("mcp: supplied oauth session store is nil")
 	}
 	// An empty startup catalog retains a client for later connection admission.
 	if len(servers) == 0 {

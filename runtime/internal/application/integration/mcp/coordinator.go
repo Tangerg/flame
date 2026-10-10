@@ -5,10 +5,12 @@ package mcp
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/taskgroup"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
 )
@@ -95,8 +97,19 @@ type Config struct {
 
 // New constructs the complete durable configuration and live-connection use cases.
 func New(cfg Config) (*Coordinator, error) {
-	if cfg.Registry == nil || cfg.Store == nil || cfg.Connections == nil || cfg.ToolCatalog == nil || cfg.Exposure == nil || cfg.Exposure.snapshot.Load() == nil {
-		return nil, errors.New("mcp: registry, store, live connections, tool catalog, and exposure are required")
+	for _, required := range []struct {
+		name  string
+		value any
+	}{
+		{"registry", cfg.Registry}, {"store", cfg.Store},
+		{"live connections", cfg.Connections}, {"tool catalog", cfg.ToolCatalog},
+	} {
+		if dependency.Missing(required.value) {
+			return nil, fmt.Errorf("mcp: %s is required", required.name)
+		}
+	}
+	if cfg.Exposure == nil || cfg.Exposure.snapshot.Load() == nil {
+		return nil, errors.New("mcp: initialized exposure is required")
 	}
 	coordinator := &Coordinator{
 		registry:              cfg.Registry,

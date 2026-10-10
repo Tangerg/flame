@@ -96,7 +96,7 @@ func TestReadsSurviveConcurrentReleaseReclaim(t *testing.T) {
 			case "MCP definition":
 				_, _, err = registry.Definition(t.Context(), serverID)
 			case "Skills bundles":
-				_, err = NewSkills(releases, wrapped).SkillBundles(t.Context())
+				_, err = mustPackageSkills(t, releases, wrapped).SkillBundles(t.Context())
 			}
 			if err != nil {
 				t.Fatalf("ordinary concurrent uninstall broke %s: %v", kind, err)

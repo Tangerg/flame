@@ -3,13 +3,12 @@ package bootstrap
 import (
 	"context"
 	"fmt"
-	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
-	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"path/filepath"
 	"time"
 
 	adapterhooks "github.com/Tangerg/flame/runtime/internal/adapter/integration/hooks"
 	modeladapter "github.com/Tangerg/flame/runtime/internal/adapter/integration/model"
+	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
 	"github.com/Tangerg/flame/runtime/internal/adapter/persistence"
 	executionadapter "github.com/Tangerg/flame/runtime/internal/adapter/run/execution"
 	"github.com/Tangerg/flame/runtime/internal/adapter/toolset"
@@ -21,6 +20,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/application/automation/goals"
 	"github.com/Tangerg/flame/runtime/internal/application/automation/schedules"
 	apphooks "github.com/Tangerg/flame/runtime/internal/application/integration/hooks"
+	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/application/invalidation"
 	"github.com/Tangerg/flame/runtime/internal/application/workspace"
 	agentmemoryapp "github.com/Tangerg/flame/runtime/internal/application/workspace/agentmemory"
@@ -35,6 +35,7 @@ import (
 // process-local invalidation vocabulary. It owns no background task or closer.
 type policyComposition struct {
 	packages      *pluginpackage.Releases
+	packageSkills *pluginpackage.Skills
 	registry      *plugins.Registry
 	invalidations notificationRelay[invalidation.Notice]
 	approvals     *approvals.RuntimePolicy
@@ -51,6 +52,10 @@ func buildPolicyComposition(ctx context.Context, cfg Config) (policyComposition,
 	packages, err := pluginpackage.New(filepath.Join(cfg.Stores.DataDirectory, "plugins", "releases"), cfg.Stores.PluginReleases)
 	if err != nil {
 		return policyComposition{}, err
+	}
+	packageSkills, err := pluginpackage.NewSkills(packages, cfg.Stores.Installations)
+	if err != nil {
+		return policyComposition{}, fmt.Errorf("runtime: construct package skills: %w", err)
 	}
 	if err := packages.ReclaimExecutions(ctx); err != nil {
 		return policyComposition{}, fmt.Errorf("runtime: reclaim plugin execution content: %w", err)
@@ -100,13 +105,14 @@ func buildPolicyComposition(ctx context.Context, cfg Config) (policyComposition,
 	}
 	return policyComposition{
 		invalidations: invalidations, packages: packages, registry: registry,
-		approvals:    approvalPolicy,
-		goals:        goalStore,
-		goalReader:   goalReader,
-		goalReporter: goalReporter,
-		plans:        plans,
-		mcp:          mcpSettings,
-		schedules:    scheduleCoordinator,
+		packageSkills: packageSkills,
+		approvals:     approvalPolicy,
+		goals:         goalStore,
+		goalReader:    goalReader,
+		goalReporter:  goalReporter,
+		plans:         plans,
+		mcp:           mcpSettings,
+		schedules:     scheduleCoordinator,
 	}, nil
 }
 
@@ -255,7 +261,7 @@ func buildExecutionComposition(
 		}))
 	}
 	toolRuntime, err := buildTools(ctx, toolEnvironmentDependencies{
-		registry: policy.registry, packageSkills: pluginpackage.NewSkills(policy.packages, cfg.Stores.Installations),
+		registry: policy.registry, packageSkills: policy.packageSkills,
 		lifetime:          lifetime.context,
 		config:            cfg,
 		approvalPolicy:    policy.approvals,
