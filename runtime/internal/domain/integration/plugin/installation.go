@@ -563,6 +563,16 @@ func (i *Installation) ServerInputs(release Release, server mcpserver.ServerName
 	return result, nil
 }
 
+// ExecutionChanged excludes staging and approval of inactive releases: neither
+// changes the selected capabilities an execution can admit.
+func (i *Installation) ExecutionChanged(previous *Installation) bool {
+	return i.record.Selected != previous.record.Selected ||
+		i.Active() != previous.Active() ||
+		!maps.Equal(i.record.Values, previous.record.Values) ||
+		!slices.Equal(i.record.DisabledServers, previous.record.DisabledServers) ||
+		!slices.Equal(i.record.DisabledSkills, previous.record.DisabledSkills)
+}
+
 // ChangedServers identifies connection facts advanced by the transition from
 // previous, whose selected release is before, to this installation, whose
 // selected release is after. Staging does not invalidate a live connection.

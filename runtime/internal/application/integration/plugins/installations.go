@@ -53,8 +53,10 @@ type Connections interface {
 // the durable write, the withdrawal of superseded tools and release reclamation
 // are decided against one consistent state. Each step receives the canonical
 // releases execution holds: those of live sessions and pending checkpoints.
+// A change reports whether committed state invalidates unpublished execution,
+// independently of its quiescence requirement or a later withdrawal failure.
 type Dependencies interface {
-	ChangeInstallation(context.Context, resourceid.InstallationID, ChangeAdmission, func(held []plugin.Dependency) error) error
+	ChangeInstallation(context.Context, resourceid.InstallationID, ChangeAdmission, func(held []plugin.Dependency) (executionChanged bool, err error)) error
 	UnderAdmission(context.Context, func(held []plugin.Dependency) error) error
 }
 
@@ -178,20 +180,21 @@ func (c *Coordinator) Install(ctx context.Context, source string) (_ Inspection,
 		return Inspection{}, fmt.Errorf("plugins: admit installation: %w", err)
 	}
 	var committed plugin.Snapshot
-	unreclaimed, err := c.commit(ctx, id, AllowInUse, func() error {
+	unreclaimed, err := c.commit(ctx, id, AllowInUse, func() (bool, error) {
 		existing, err := c.store.List(ctx)
 		if err != nil {
-			return err
+			return false, err
 		}
 		if len(existing) >= plugin.MaxInstallations {
-			return fmt.Errorf("%w: installation capacity", plugin.ErrInvalid)
+			return false, fmt.Errorf("%w: installation capacity", plugin.ErrInvalid)
 		}
 		published, err := candidate.Publish(ctx)
 		if err != nil {
-			return fmt.Errorf("plugins: publish release: %w", err)
+			return false, fmt.Errorf("plugins: publish release: %w", err)
 		}
 		committed = plugin.Snapshot{Installation: installation, Selected: published}
-		return c.store.Save(ctx, installation)
+		// A new identity has no former execution capability to invalidate.
+		return false, c.store.Save(ctx, installation)
 	})
 	if err != nil {
 		return Inspection{}, errors.Join(err, unreclaimed)
@@ -237,11 +240,11 @@ func (c *Coordinator) Reclaim(ctx context.Context) error {
 // release that cannot be reclaimed stays admitted, and so owned for the next
 // commit; that failure is returned apart from the change's, because the change
 // itself stands.
-func (c *Coordinator) commit(ctx context.Context, id resourceid.InstallationID, admission ChangeAdmission, change func() error) (unreclaimed, err error) {
-	err = c.dependencies.ChangeInstallation(ctx, id, admission, func(held []plugin.Dependency) error {
-		changeErr := change()
+func (c *Coordinator) commit(ctx context.Context, id resourceid.InstallationID, admission ChangeAdmission, change func() (executionChanged bool, err error)) (unreclaimed, err error) {
+	err = c.dependencies.ChangeInstallation(ctx, id, admission, func(held []plugin.Dependency) (bool, error) {
+		executionChanged, changeErr := change()
 		unreclaimed = c.reclaim(ctx, held)
-		return changeErr
+		return executionChanged, changeErr
 	})
 	return unreclaimed, err
 }
@@ -306,34 +309,34 @@ func (c *Coordinator) Configure(ctx context.Context, id resourceid.InstallationI
 func (c *Coordinator) change(ctx context.Context, id resourceid.InstallationID, admission ChangeAdmission, transition func(context.Context, *plugin.Installation, plugin.Release) error) (Inspection, error) {
 	var reconcile []mcpserver.ID
 	var committed plugin.Snapshot
-	unreclaimed, err := c.commit(ctx, id, admission, func() error {
+	unreclaimed, err := c.commit(ctx, id, admission, func() (bool, error) {
 		snapshot, err := c.store.Get(ctx, id)
 		if err != nil {
-			return err
+			return false, err
 		}
 		installation := snapshot.Installation
 		previous, err := plugin.Restore(installation.Snapshot())
 		if err != nil {
-			return err
+			return false, err
 		}
 		before := snapshot.Selected
 		if err := transition(ctx, installation, before); err != nil {
-			return err
+			return false, err
 		}
 		after := before
 		if installation.Selected() != before.Digest() {
 			if after, err = c.catalog.Get(ctx, installation.Selected()); err != nil {
-				return fmt.Errorf("plugins: read release %s: %w", installation.Selected(), err)
+				return false, fmt.Errorf("plugins: read release %s: %w", installation.Selected(), err)
 			}
 		}
 		changed, err := installation.ChangedServers(previous, before, after)
 		if err != nil {
-			return err
+			return false, err
 		}
 		for _, local := range changed {
 			server, err := installation.ServerID(local)
 			if err != nil {
-				return err
+				return false, err
 			}
 			reconcile = append(reconcile, server)
 		}
@@ -341,16 +344,16 @@ func (c *Coordinator) change(ctx context.Context, id resourceid.InstallationID, 
 		if digest, staged := installation.Staged(); staged {
 			staged, err := c.catalog.Get(ctx, digest)
 			if err != nil {
-				return fmt.Errorf("plugins: read staged release %s: %w", digest, err)
+				return false, fmt.Errorf("plugins: read staged release %s: %w", digest, err)
 			}
 			committed.Staged = &staged
 		}
 		if err := c.store.Save(ctx, installation); err != nil {
-			return err
+			return false, err
 		}
 		// The live tool catalog follows the commit inside the same critical
 		// section: a Run assembled after it cannot see the superseded tools.
-		return c.connections.WithdrawInstallation(reconcile)
+		return installation.ExecutionChanged(previous), c.connections.WithdrawInstallation(reconcile)
 	})
 	if err != nil {
 		return Inspection{}, errors.Join(err, unreclaimed)
@@ -383,20 +386,20 @@ func (c *Coordinator) Uninstall(ctx context.Context, id resourceid.InstallationI
 	// Removal withdraws every artifact a waiting operation needs to resume, so
 	// it requires quiescence; Revoke stays available to withdraw authority
 	// from work that is still in use.
-	unreclaimed, err := c.commit(ctx, id, RequireQuiescent, func() error {
+	unreclaimed, err := c.commit(ctx, id, RequireQuiescent, func() (bool, error) {
 		snapshot, err := c.store.Get(ctx, id)
 		if err != nil {
-			return err
+			return false, err
 		}
 		installation := snapshot.Installation
 		servers, err = installation.ServerIDs(snapshot.Selected)
 		if err != nil {
-			return err
+			return false, err
 		}
 		if err := c.store.Remove(ctx, id); err != nil {
-			return err
+			return false, err
 		}
-		return c.connections.WithdrawInstallation(servers)
+		return true, c.connections.WithdrawInstallation(servers)
 	})
 	if err != nil {
 		return errors.Join(err, unreclaimed)

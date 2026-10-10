@@ -19,6 +19,7 @@ import (
 type installationMemory struct {
 	record  *plugin.Record
 	catalog releaseMemory
+	saveErr error
 }
 
 func (s *installationMemory) List(ctx context.Context) ([]plugin.Snapshot, error) {
@@ -54,6 +55,9 @@ func (s *installationMemory) Get(ctx context.Context, _ resourceid.InstallationI
 	return snapshot, nil
 }
 func (s *installationMemory) Save(_ context.Context, i *plugin.Installation) error {
+	if s.saveErr != nil {
+		return s.saveErr
+	}
 	r := i.Snapshot()
 	s.record = &r
 	return nil
@@ -117,15 +121,20 @@ func (p installationPackages) Realize(ctx context.Context, i *plugin.Installatio
 }
 
 type installationDependencies struct {
-	held  bool
-	inUse bool
+	held             bool
+	inUse            bool
+	executionChanged bool
 }
 
-func (d *installationDependencies) ChangeInstallation(ctx context.Context, _ resourceid.InstallationID, admission ChangeAdmission, change func([]plugin.Dependency) error) error {
+func (d *installationDependencies) ChangeInstallation(ctx context.Context, _ resourceid.InstallationID, admission ChangeAdmission, change func([]plugin.Dependency) (bool, error)) error {
 	if d.inUse && admission == RequireQuiescent {
 		return plugin.ErrInUse
 	}
-	return d.UnderAdmission(ctx, change)
+	return d.UnderAdmission(ctx, func(held []plugin.Dependency) error {
+		var err error
+		d.executionChanged, err = change(held)
+		return err
+	})
 }
 
 func (d *installationDependencies) UnderAdmission(_ context.Context, step func([]plugin.Dependency) error) error {
@@ -209,6 +218,46 @@ func TestCommittedInstallationLeavesConnectionOutcomeToItsSupervisor(t *testing.
 	}
 	if !reflect.DeepEqual(result.Realization, Realization{Release: ReleaseAvailable}) {
 		t.Fatalf("a one-shot reconciliation outcome replaced the observed realization: %+v", result.Realization)
+	}
+}
+
+func TestExecutionChangeEvidenceFollowsTheDurableWrite(t *testing.T) {
+	storageFailure := errors.New("durable write rejected")
+	withdrawalFailure := errors.New("connection withdrawal failed")
+	for _, test := range []struct {
+		name     string
+		saveErr  error
+		withdraw error
+		state    plugin.State
+		changed  bool
+		wantErr  error
+	}{
+		{"committed", nil, nil, plugin.Enabled, true, nil},
+		{"rejected write", storageFailure, nil, plugin.Approved, false, storageFailure},
+		{"failed withdrawal", nil, withdrawalFailure, plugin.Enabled, true, withdrawalFailure},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			store, dependencies, id, catalog := installationFixture(t)
+			store.saveErr = test.saveErr
+			connections := installationConnections{
+				withdraw:  func([]mcpserver.ID) error { return test.withdraw },
+				reconcile: func(context.Context, []mcpserver.ID) error { return nil },
+			}
+			coordinator, err := New(t.Context(), store, catalog, installationPackages{}, connections, dependencies, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := coordinator.Enable(t.Context(), id); !errors.Is(err, test.wantErr) {
+				t.Fatalf("enable = %v, want %v", err, test.wantErr)
+			}
+			current, err := store.Get(t.Context(), id)
+			if err != nil || current.Installation.State() != test.state {
+				t.Fatalf("durable state = %+v, %v; want %s", current, err, test.state)
+			}
+			if dependencies.executionChanged != test.changed {
+				t.Fatalf("committed execution change = %t, want %t", dependencies.executionChanged, test.changed)
+			}
+		})
 	}
 }
 

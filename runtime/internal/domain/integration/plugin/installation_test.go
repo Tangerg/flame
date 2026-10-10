@@ -98,6 +98,66 @@ func TestInstallationStateTransitionsAreClosed(t *testing.T) {
 	}
 }
 
+func TestExecutionChangesFollowSelectedCapabilities(t *testing.T) {
+	release := testRelease(t, "1", Declaration{
+		Name: "package", Servers: []Server{{Name: serverName("backend"), Transport: stdio, Command: "backend"}},
+		Inputs: []Input{{ID: "option", Server: serverName("backend"), Target: Environment, Key: "OPTION"}},
+		Skills: []Skill{{Name: "audit"}},
+	})
+	candidate := testRelease(t, "2", release.Declaration())
+	for _, test := range []struct {
+		name    string
+		state   State
+		change  func(*Installation) error
+		changed bool
+		wantErr error
+	}{
+		{"staging", Enabled, func(i *Installation) error { return i.Stage(release, candidate) }, false, nil},
+		{"inactive approval", Unapproved, func(i *Installation) error { return i.Approve(release) }, false, nil},
+		{"enable", Approved, func(i *Installation) error { return i.Enable(release) }, true, nil},
+		{"already enabled", Enabled, func(i *Installation) error { return i.Enable(release) }, false, nil},
+		{"disable", Enabled, func(i *Installation) error { i.Disable(); return nil }, true, nil},
+		{"revoke", Enabled, func(i *Installation) error { i.Revoke(); return nil }, true, nil},
+		{"inactive revoke", Approved, func(i *Installation) error { i.Revoke(); return nil }, false, nil},
+		{"unchanged configuration", Enabled, func(i *Installation) error { return i.Configure(release, Configuration{}) }, false, nil},
+		{"optional empty input", Enabled, func(i *Installation) error {
+			return i.Configure(release, Configuration{Values: map[string]ValueChange{"option": SetValue("")}})
+		}, true, nil},
+		{"server withdrawal", Enabled, func(i *Installation) error {
+			return i.Configure(release, Configuration{Servers: map[mcpserver.ServerName]ComponentChange{serverName("backend"): DisableComponent}})
+		}, true, nil},
+		{"skill withdrawal", Enabled, func(i *Installation) error {
+			return i.Configure(release, Configuration{Skills: map[string]ComponentChange{"audit": DisableComponent}})
+		}, true, nil},
+		{"release selection", Enabled, func(i *Installation) error {
+			if err := i.Stage(release, candidate); err != nil {
+				return err
+			}
+			return i.Select(release, candidate)
+		}, true, nil},
+		{"rejected configuration", Enabled, func(i *Installation) error {
+			return i.Configure(release, Configuration{Values: map[string]ValueChange{"missing": SetValue("value")}})
+		}, false, ErrInvalid},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			previous, err := Restore(Record{ID: testInstallationID(t), Source: "/package", Selected: release.Digest(), State: test.state})
+			if err != nil {
+				t.Fatal(err)
+			}
+			current, err := Restore(previous.Snapshot())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := test.change(current); !errors.Is(err, test.wantErr) {
+				t.Fatalf("transition = %v, want %v", err, test.wantErr)
+			}
+			if changed := current.ExecutionChanged(previous); changed != test.changed {
+				t.Fatalf("execution change = %t, want %t", changed, test.changed)
+			}
+		})
+	}
+}
+
 func TestTransitionsRefuseAReleaseTheyDoNotName(t *testing.T) {
 	declaration := Declaration{Name: "review", Servers: []Server{{Name: serverName("reviews"), Transport: stdio, Command: "review"}}, Inputs: []Input{{ID: "mode", Server: serverName("reviews"), Target: Environment, Key: "MODE"}}}
 	release := testRelease(t, "1", declaration)

@@ -463,8 +463,13 @@ projection of committed installation state, not a second copy that catches up: t
 critical section that commits a change cancels the affected sources' in-flight connection
 attempts and detaches them, in memory and without waiting for I/O, so no Run assembled
 after the commit can freeze the superseded release's tools. Launching or dialing the
-committed release happens afterwards, outside the lock. An assembly that a quiescent
-change to one of its dependencies overtook is refused as `plugin_changed` on
+committed release happens afterwards, outside the lock. The installation owner reports
+whether its durable change affected selected execution capabilities; staging, inactive
+approval and unchanged configuration do not. Quiescence controls existing executions,
+while every committed execution change, including disable or revoke, invalidates
+unpublished assemblies of that installation. A withdrawal failure after the durable
+write preserves this invalidation; a rejected write cannot originate one.
+An assembly overtaken by such a change to one of its dependencies is refused as `plugin_changed` on
 `runs.start` and `runs.resume`: nothing was started and no interrupt was consumed, so the
 person may send the same request again. Clients present it as retryable and never retry
 it on their own. Revoke and disable withdraw dispatch authority immediately; an already

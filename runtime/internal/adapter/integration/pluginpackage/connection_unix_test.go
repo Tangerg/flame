@@ -377,7 +377,7 @@ func (unusedConnections) ReconcileInstallation(context.Context, []mcpserver.ID) 
 
 type unusedDependencies struct{}
 
-func (unusedDependencies) ChangeInstallation(context.Context, resourceid.InstallationID, plugins.ChangeAdmission, func([]plugin.Dependency) error) error {
+func (unusedDependencies) ChangeInstallation(context.Context, resourceid.InstallationID, plugins.ChangeAdmission, func([]plugin.Dependency) (bool, error)) error {
 	return errors.New("unexpected installation change")
 }
 

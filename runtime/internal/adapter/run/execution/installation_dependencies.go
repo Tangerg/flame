@@ -34,7 +34,7 @@ type installationAdmission struct {
 	assemblies   map[*installationAssembly]struct{}
 }
 
-// installationAssembly collects the installations whose quiescent changes
+// installationAssembly collects the installations whose execution changes
 // committed while one session assembled. Those changes could not observe the
 // session, and its manifest may predate the withdrawal of their superseded
 // tools, so publication refuses it if it depends on any of them.
@@ -68,7 +68,7 @@ func (a *installationAdmission) begin() (*installationAssembly, func()) {
 	}
 }
 
-// changed records a committed quiescent change against every in-flight
+// changed records a committed execution change against every in-flight
 // assembly. The caller holds the serialization point.
 func (a *installationAdmission) changed(id resourceid.InstallationID) {
 	a.assembliesMu.Lock()
@@ -102,10 +102,11 @@ func (a *installationAdmission) publish(ctx context.Context, assembly *installat
 // receives that same held set, so whatever it reclaims is decided against the
 // state that admission serializes. change commits durably and withdraws the
 // superseded live tools before it returns, so a session assembled after this
-// call observes only the committed state. A failing change may already have
-// committed, so in-flight assemblies are marked whenever it ran; a spurious mark
-// costs only a retryable refusal.
-func (i *InteractionExecutor) ChangeInstallation(ctx context.Context, id resourceid.InstallationID, admission plugins.ChangeAdmission, change func(held []plugin.Dependency) error) error {
+// call observes only the committed state. The installation owner reports an
+// execution change only after committing, including when withdrawal then fails.
+// Quiescence controls existing dependencies; every execution change invalidates
+// unpublished assemblies that depended on the previous state.
+func (i *InteractionExecutor) ChangeInstallation(ctx context.Context, id resourceid.InstallationID, admission plugins.ChangeAdmission, change func(held []plugin.Dependency) (executionChanged bool, err error)) error {
 	if admission != plugins.RequireQuiescent && admission != plugins.AllowInUse {
 		return plugin.ErrInvalid
 	}
@@ -118,14 +119,13 @@ func (i *InteractionExecutor) ChangeInstallation(ctx context.Context, id resourc
 	if err != nil {
 		return err
 	}
-	if admission == plugins.AllowInUse {
-		return change(held)
-	}
-	if slices.ContainsFunc(held, func(dependency plugin.Dependency) bool { return dependency.InstallationID == id }) {
+	if admission == plugins.RequireQuiescent && slices.ContainsFunc(held, func(dependency plugin.Dependency) bool { return dependency.InstallationID == id }) {
 		return plugin.ErrInUse
 	}
-	err = change(held)
-	i.installations.changed(id)
+	executionChanged, err := change(held)
+	if executionChanged {
+		i.installations.changed(id)
+	}
 	return err
 }
 

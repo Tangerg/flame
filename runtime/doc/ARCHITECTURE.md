@@ -263,6 +263,14 @@ plugin release bytes or backend directories. Plugin inspection owns resource ava
 observations; the connection supervisor owns live lifecycle and published tools. Backend
 loss or repair changes an observation or connection outcome, never registry membership.
 
+Installation aggregates identify changes to selected execution capabilities; the
+installation use case reports that fact only after the durable write. Execution
+admission uses it to invalidate unpublished assemblies, independently of whether
+existing dependencies require quiescence. Disable and revoke therefore withdraw new
+admission even while a session holds the release. Staging, inactive approval and no-op
+configuration originate no execution change. A failure after commit retains the change
+evidence; a rejected transition or write cannot manufacture it.
+
 Provider identity is the exact provider/model pair plus model-owned options. Credential precedence, endpoints, SDK construction, request lowering, capability mapping, and provider-specific failures remain inside provider adapters. Product and delivery code do not infer a provider from a model name.
 
 Auxiliary text generation has one live-role completion boundary. It validates the request envelope before resolving the provider and accepts only a natural stop with non-empty text. Truncated, filtered, refused, or otherwise incomplete output remains a failure; compaction and background curation never persist it as a completed artifact.

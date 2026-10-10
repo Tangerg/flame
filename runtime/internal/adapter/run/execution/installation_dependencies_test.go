@@ -90,9 +90,9 @@ func TestQuiescentInstallationChangeReadsOnlyDependencyProjections(t *testing.T)
 				})
 			}
 			changed := false
-			err := executor.ChangeInstallation(t.Context(), dependedInstallation, test.admission, func([]plugin.Dependency) error {
+			err := executor.ChangeInstallation(t.Context(), dependedInstallation, test.admission, func([]plugin.Dependency) (bool, error) {
 				changed = true
-				return nil
+				return true, nil
 			})
 			if test.refused {
 				if !errors.Is(err, plugin.ErrInUse) || changed {
@@ -130,7 +130,7 @@ func TestInstallationChangeDoesNotWaitForAssembly(t *testing.T) {
 
 		unrelated := make(chan error, 1)
 		go func() {
-			unrelated <- executor.ChangeInstallation(t.Context(), unrelatedInstallation, plugins.RequireQuiescent, func([]plugin.Dependency) error { return nil })
+			unrelated <- executor.ChangeInstallation(t.Context(), unrelatedInstallation, plugins.RequireQuiescent, func([]plugin.Dependency) (bool, error) { return true, nil })
 		}()
 		synctest.Wait()
 		select {
@@ -147,13 +147,13 @@ func TestInstallationChangeDoesNotWaitForAssembly(t *testing.T) {
 		if err != nil {
 			t.Fatalf("assembly behind a pending change: %v", err)
 		}
-		if err := executor.ChangeInstallation(t.Context(), dependedInstallation, plugins.RequireQuiescent, func([]plugin.Dependency) error { return nil }); !errors.Is(err, plugin.ErrInUse) {
+		if err := executor.ChangeInstallation(t.Context(), dependedInstallation, plugins.RequireQuiescent, func([]plugin.Dependency) (bool, error) { return true, nil }); !errors.Is(err, plugin.ErrInUse) {
 			t.Fatalf("change under a published dependency = %v", err)
 		}
 		if err := executor.Release(t.Context(), ref); err != nil {
 			t.Fatal(err)
 		}
-		if err := executor.ChangeInstallation(t.Context(), dependedInstallation, plugins.RequireQuiescent, func([]plugin.Dependency) error { return nil }); err != nil {
+		if err := executor.ChangeInstallation(t.Context(), dependedInstallation, plugins.RequireQuiescent, func([]plugin.Dependency) (bool, error) { return true, nil }); err != nil {
 			t.Fatalf("change after release: %v", err)
 		}
 

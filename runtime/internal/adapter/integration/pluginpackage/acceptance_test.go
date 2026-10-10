@@ -38,8 +38,9 @@ func TestUnknownRootFieldIsDiagnosedAndOtherwiseIgnored(t *testing.T) {
 
 type passthroughDependencies struct{}
 
-func (passthroughDependencies) ChangeInstallation(_ context.Context, _ resourceid.InstallationID, _ plugins.ChangeAdmission, change func([]plugin.Dependency) error) error {
-	return change(nil)
+func (passthroughDependencies) ChangeInstallation(_ context.Context, _ resourceid.InstallationID, _ plugins.ChangeAdmission, change func([]plugin.Dependency) (bool, error)) error {
+	_, err := change(nil)
+	return err
 }
 
 func (passthroughDependencies) UnderAdmission(_ context.Context, inspect func([]plugin.Dependency) error) error {
