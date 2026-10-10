@@ -353,6 +353,13 @@ Plugins 1.0, and Flame's extension namespace is `io.github.tangerg.flame` with
 
 Install from an absolute directory or ZIP path on the Runtime machine. Admission copies
 regular files into a bounded, SHA-256-addressed release; it does not execute package code.
+The shared filesystem input boundary owns regular-file kind, size admission and opened
+identity for package sources, release scans, resources and packaged MCP commands. Special
+nodes are rejected before they can block a read. Copying and hashing use the opened file's
+metadata and reject source replacement or mutation observed after reading; cancellation
+retains its cause and cannot complete a copy successfully. The package adapter owns
+archive entry safety, extracted-byte quotas, release digests and the content index that
+checks the exact resource bytes returned to a caller.
 The immutable release catalog owns the declaration accepted at first admission and is the
 only owner of release content: an installation names its selected and staged releases by
 digest. Installation reads hydrate selected and staged catalog declarations in the same

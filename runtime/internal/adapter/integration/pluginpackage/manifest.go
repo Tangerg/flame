@@ -16,6 +16,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/skilldocument"
 	sdk "github.com/Tangerg/scope/skills"
 )
@@ -325,17 +326,12 @@ func portableServer(name string, raw jsontext.Value) (plugin.Server, error) {
 // directory to exist in the exact bytes being admitted.
 func inspectServerFiles(root *os.Root, s plugin.Server) error {
 	if packaged, found := s.PackagedCommand(); found {
-		f, err := root.Open(packaged)
+		f, _, err := fileinput.OpenAt(root, packaged, MaxFileBytes)
 		if err != nil {
-			return fmt.Errorf("pluginpackage: open server command: %w", err)
+			return fmt.Errorf("pluginpackage: open server command: %w", packageInputError(err))
 		}
-		info, err := f.Stat()
-		err = errors.Join(err, f.Close())
-		if err != nil {
+		if err := f.Close(); err != nil {
 			return fmt.Errorf("pluginpackage: inspect server command: %w", err)
-		}
-		if !info.Mode().IsRegular() {
-			return fmt.Errorf("%w: server command is not a regular file", plugin.ErrInvalid)
 		}
 	}
 	workingDirectory, err := s.WorkingDirectory()

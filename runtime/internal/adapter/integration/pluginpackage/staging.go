@@ -14,7 +14,9 @@ import (
 
 	"golang.org/x/text/unicode/norm"
 
+	"github.com/Tangerg/flame/runtime/internal/cancelread"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 
 // staging is a private directory inside the release directory that receives
@@ -68,6 +70,9 @@ func removeSealed(path string) error {
 }
 
 func (s *staging) extract(ctx context.Context, source string) error {
+	if cause := context.Cause(ctx); cause != nil {
+		return cause
+	}
 	info, err := os.Stat(source)
 	if err != nil {
 		return fmt.Errorf("pluginpackage: inspect package source: %w", err)
@@ -75,10 +80,7 @@ func (s *staging) extract(ctx context.Context, source string) error {
 	if info.IsDir() {
 		return s.extractDirectory(ctx, source)
 	}
-	if info.Size() > MaxPackageBytes {
-		return fmt.Errorf("%w: archive byte limit exceeded", plugin.ErrInvalid)
-	}
-	return s.extractArchive(ctx, source)
+	return s.extractArchive(ctx, source, info)
 }
 
 func (s *staging) extractDirectory(ctx context.Context, source string) (err error) {
@@ -95,8 +97,8 @@ func (s *staging) copyDirectory(ctx context.Context, input *os.Root) error {
 		if walkErr != nil {
 			return walkErr
 		}
-		if err := ctx.Err(); err != nil {
-			return err
+		if cause := context.Cause(ctx); cause != nil {
+			return cause
 		}
 		if entry.IsDir() {
 			if name == "." {
@@ -108,32 +110,35 @@ func (s *staging) copyDirectory(ctx context.Context, input *os.Root) error {
 		if err != nil {
 			return err
 		}
-		if !info.Mode().IsRegular() {
-			return fmt.Errorf("%w: package must contain only directories and regular files", plugin.ErrInvalid)
-		}
-		f, err := input.Open(name)
+		f, opened, err := fileinput.OpenAtExpected(input, name, info, MaxFileBytes)
 		if err != nil {
-			return err
+			return packageInputError(err)
 		}
-		return errors.Join(s.writeFile(ctx, name, info.Mode(), f), f.Close())
+		copyErr := s.writeFile(ctx, name, opened.Mode(), f)
+		verifyErr := fileinput.VerifyAtVersion(f, opened, input, name)
+		return packageInputError(errors.Join(copyErr, verifyErr, f.Close()))
 	})
 }
 
-func (s *staging) extractArchive(ctx context.Context, source string) (err error) {
-	archive, err := zip.OpenReader(source)
+func (s *staging) extractArchive(ctx context.Context, source string, expected fs.FileInfo) (err error) {
+	file, opened, err := fileinput.OpenExpected(source, expected, MaxPackageBytes)
 	if err != nil {
-		if errors.Is(err, zip.ErrFormat) {
-			return fmt.Errorf("%w: package archive: %w", plugin.ErrInvalid, err)
-		}
-		return fmt.Errorf("pluginpackage: open package archive: %w", err)
+		return fmt.Errorf("pluginpackage: open package archive: %w", packageInputError(err))
 	}
 	defer func() {
-		err = errors.Join(err, archive.Close())
+		err = packageInputError(errors.Join(err, fileinput.VerifyPathVersion(file, opened, source), file.Close()))
 		if errors.Is(err, zip.ErrFormat) || errors.Is(err, zip.ErrChecksum) || errors.Is(err, zip.ErrAlgorithm) {
 			err = errors.Join(plugin.ErrInvalid, err)
 		}
 	}()
+	archive, err := zip.NewReader(file, opened.Size())
+	if err != nil {
+		return fmt.Errorf("pluginpackage: package archive: %w", err)
+	}
 	for _, entry := range archive.File {
+		if cause := context.Cause(ctx); cause != nil {
+			return cause
+		}
 		if entry.FileInfo().IsDir() {
 			if entry.Mode()&fs.ModeType != fs.ModeDir {
 				return fmt.Errorf("%w: invalid directory mode", plugin.ErrInvalid)
@@ -152,6 +157,13 @@ func (s *staging) extractArchive(ctx context.Context, source string) (err error)
 		}
 	}
 	return nil
+}
+
+func packageInputError(err error) error {
+	if errors.Is(err, fileinput.ErrNotRegular) || errors.Is(err, fileinput.ErrTooLarge) || errors.Is(err, fileinput.ErrChanged) {
+		return errors.Join(plugin.ErrInvalid, err)
+	}
+	return err
 }
 
 func (s *staging) admitEntry(name string, isDir bool) error {
@@ -179,8 +191,8 @@ func (s *staging) admitEntry(name string, isDir bool) error {
 }
 
 func (s *staging) writeFile(ctx context.Context, name string, mode fs.FileMode, input io.Reader) error {
-	if err := ctx.Err(); err != nil {
-		return err
+	if cause := context.Cause(ctx); cause != nil {
+		return cause
 	}
 	if mode&fs.ModeType != 0 {
 		return fmt.Errorf("%w: invalid package entry mode", plugin.ErrInvalid)
@@ -196,7 +208,7 @@ func (s *staging) writeFile(ctx context.Context, name string, mode fs.FileMode, 
 		return err
 	}
 	limit := min(MaxFileBytes, MaxPackageBytes-s.copied)
-	n, copyErr := io.Copy(f, io.LimitReader(input, limit+1))
+	n, copyErr := io.Copy(f, io.LimitReader(cancelread.Reader(ctx, input), limit+1))
 	closeErr := f.Close()
 	s.copied += n
 	if n > limit {

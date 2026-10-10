@@ -10,8 +10,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/Tangerg/flame/runtime/internal/cancelread"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 
 // maxVerifiedBytes bounds the heap the integrity cache retains; it is the
@@ -363,12 +365,12 @@ func treeDigest(ctx context.Context, root *os.Root) (fingerprint.Digest, treeCon
 	}
 	var total int64
 	var count int
-	err = fs.WalkDir(root.FS(), ".", func(name string, entry fs.DirEntry, err error) error {
-		if err != nil {
-			return err
+	err = fs.WalkDir(root.FS(), ".", func(name string, entry fs.DirEntry, walkErr error) (err error) {
+		if walkErr != nil {
+			return walkErr
 		}
-		if err = ctx.Err(); err != nil {
-			return err
+		if cause := context.Cause(ctx); cause != nil {
+			return cause
 		}
 		if name == "." {
 			return nil
@@ -377,9 +379,23 @@ func treeDigest(ctx context.Context, root *os.Root) (fingerprint.Digest, treeCon
 		if count > MaxFiles {
 			return errors.New("pluginpackage: entry limit exceeded")
 		}
+		if !plugin.ValidResourcePath(name) {
+			return plugin.ErrInvalid
+		}
 		info, err := entry.Info()
 		if err != nil {
 			return err
+		}
+		if entry.IsDir() != info.IsDir() {
+			return fileinput.ErrChanged
+		}
+		var file *os.File
+		if !entry.IsDir() {
+			file, info, err = fileinput.OpenAtExpected(root, name, info, MaxFileBytes)
+			if err != nil {
+				return err
+			}
+			defer func() { err = errors.Join(err, file.Close()) }()
 		}
 		if contents.stamps != nil {
 			if stamp, stamped := stampOf(info); stamped {
@@ -389,27 +405,17 @@ func treeDigest(ctx context.Context, root *os.Root) (fingerprint.Digest, treeCon
 			}
 		}
 		if entry.IsDir() {
-			if !plugin.ValidResourcePath(name) {
-				return plugin.ErrInvalid
-			}
 			fmt.Fprintf(h, "%d:%s:dir:", len(name), name)
 			return nil
 		}
-		if !plugin.ValidResourcePath(name) || !info.Mode().IsRegular() {
-			return errors.New("pluginpackage: invalid release entry")
-		}
 		total += info.Size()
-		if total > MaxPackageBytes || info.Size() > MaxFileBytes {
+		if total > MaxPackageBytes {
 			return errors.New("pluginpackage: release limit exceeded")
 		}
 		fmt.Fprintf(h, "%d:%s:%o:%d:", len(name), name, info.Mode().Perm()&0111, info.Size())
-		f, err := root.Open(name)
-		if err != nil {
-			return err
-		}
 		fileHash := sha256.New()
-		n, err := io.Copy(io.MultiWriter(h, fileHash), io.LimitReader(f, MaxFileBytes+1))
-		err = errors.Join(err, f.Close())
+		n, err := io.Copy(io.MultiWriter(h, fileHash), io.LimitReader(cancelread.Reader(ctx, file), MaxFileBytes+1))
+		err = errors.Join(err, fileinput.VerifyAtVersion(file, info, root, name))
 		if n != info.Size() {
 			return errors.Join(errors.New("pluginpackage: release changed during inspection"), err)
 		}

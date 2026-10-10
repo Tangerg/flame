@@ -15,8 +15,10 @@ import (
 	"sync"
 
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
+	"github.com/Tangerg/flame/runtime/internal/cancelread"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+	"github.com/Tangerg/flame/runtime/internal/infra/filesystem/fileinput"
 )
 
 const MaxPackageBytes int64 = 128 << 20
@@ -273,18 +275,22 @@ func (r *Releases) readResource(ctx context.Context, installation *plugin.Instal
 			err = plugin.ErrUnavailable
 		}
 	}
+	err = errors.Join(err, root.Close())
 	if err != nil {
 		content = nil
 	}
-	return content, errors.Join(err, root.Close())
+	return content, err
 }
 
 func read(ctx context.Context, root *os.Root, name string, limit int64) (body []byte, err error) {
-	if err := ctx.Err(); err != nil {
-		return nil, err
+	if cause := context.Cause(ctx); cause != nil {
+		return nil, cause
 	}
-	f, err := root.Open(name)
+	f, _, err := fileinput.OpenAt(root, name, limit)
 	if err != nil {
+		if errors.Is(err, fileinput.ErrTooLarge) {
+			return nil, errors.Join(errResourceLimit, err)
+		}
 		return nil, err
 	}
 	defer func() {
@@ -293,22 +299,12 @@ func read(ctx context.Context, root *os.Root, name string, limit int64) (body []
 			body = nil
 		}
 	}()
-	info, err := f.Stat()
-	if err != nil {
-		return nil, err
-	}
-	if !info.Mode().IsRegular() {
-		return nil, errors.New("pluginpackage: resource must be a regular file")
-	}
-	if info.Size() > limit {
-		return nil, errResourceLimit
-	}
-	body, err = io.ReadAll(io.LimitReader(f, limit+1))
+	body, err = io.ReadAll(io.LimitReader(cancelread.Reader(ctx, f), limit+1))
 	if err != nil {
 		return nil, err
 	}
 	if int64(len(body)) > limit {
 		return nil, errResourceLimit
 	}
-	return body, ctx.Err()
+	return body, context.Cause(ctx)
 }

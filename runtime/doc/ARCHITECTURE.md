@@ -275,6 +275,14 @@ plugin release bytes or backend directories. Plugin inspection owns resource ava
 observations; the connection supervisor owns live lifecycle and published tools. Backend
 loss or repair changes an observation or connection outcome, never registry membership.
 
+Plugin package file inputs use the shared `infra/filesystem/fileinput` boundary for
+regular-file admission and identity across opening. Directory copies and release scans
+encode metadata from the opened file and verify its version after consuming its bytes;
+ZIP extraction verifies the archive's version before completing. The package adapter
+owns archive entries, extracted-byte limits and release content identity. Resource reads
+check the exact consumed bytes against the admitted content index, even with a cached
+release proof. Cancellation and read or close failures prevent successful content delivery.
+
 Installation aggregates identify changes to selected execution capabilities; the
 installation use case reports that fact only after the durable write. Execution
 admission uses it to invalidate unpublished assemblies, independently of whether
