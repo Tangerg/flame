@@ -196,10 +196,9 @@ func (a *app) observeCurrentRunStatus() {
 
 func (a *app) settleCurrentRunStatus() {
 	run, ok := a.execution.conversation.CurrentRun()
-	if !ok {
-		run.Outcome = a.execution.conversation.Outcome()
+	if ok {
+		a.status.settled(run)
 	}
-	a.status.settled(run)
 }
 
 func displayTitle(session conversation.Session) string {

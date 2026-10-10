@@ -20,6 +20,8 @@ Run observation retries classified transient transport failures until its caller
 
 Ending terminal observation releases live presentation blocks while retaining the last Runtime Tool status and observed output. Only an authoritative Runtime Item updates a Tool outcome; a local observation error is displayed separately.
 
+Ending the local start wait makes the terminal idle without creating a Run outcome. An unconfirmed start can still have been accepted; the durable outbox preserves its exact command and cancellation intent until Runtime confirms settlement.
+
 Steer acknowledgement preserves Runtime's exact reserved User Item ID. Acceptance means the instruction is waiting to enter model context; only a completed User Item with that identity in the same Run proves application. Pending steer signals may survive an interruption and apply in a later Segment of that Run. After the Run finishes, a separate authoritative Session read settles missing Items as not applied; an unavailable read or unknown receipt remains unconfirmed. The terminal retains Item and final-read evidence when either arrives before the acknowledgement. Replayed receipts remain bound to their original Sessions. Acknowledged receipts are presentation state for the current terminal lifetime; after another restart, durable Items remain the available application evidence. These observations neither create a durable input inbox nor authorize submission to another Run.
 
 One-shot execution reads the complete tree interruption from Conversation after the root Segment closes. Member interrupts alone do not authorize a resume; a stream lost before the root boundary must reconnect or recover the durable snapshot first.

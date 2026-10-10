@@ -36,10 +36,9 @@ type Conversation struct {
 	plan       *protocol.Plan
 	interrupts []Interrupt
 
-	// opening is the only lifecycle fact held outside a Run: a root start the
-	// terminal requested before Runtime named its Run. Once runID is set the
-	// root Run alone answers phase, usage and outcome.
-	opening     opening
+	// starting keeps the terminal busy before Runtime names the requested Run.
+	// Ending this local wait cannot determine the Runtime's execution outcome.
+	starting    bool
 	runID       string
 	segmentID   string
 	checkpoint  string
@@ -68,14 +67,6 @@ const (
 	recoveryNone tailRecovery = iota
 	recoveryColdTail
 	recoveryOverlap
-)
-
-type opening uint8
-
-const (
-	openingNone opening = iota
-	openingPending
-	openingCanceled
 )
 
 func New() *Conversation {
@@ -118,9 +109,6 @@ func (c *Conversation) Interrupts() []Interrupt { return CloneInterrupts(c.inter
 
 func (c *Conversation) Outcome() Outcome {
 	if c.runID == "" {
-		if c.opening == openingCanceled {
-			return Outcome{Status: protocol.OutcomeCanceled}
-		}
 		return Outcome{}
 	}
 	return c.runs[c.runID].Outcome.Clone()
@@ -128,7 +116,7 @@ func (c *Conversation) Outcome() Outcome {
 
 func (c *Conversation) Phase() Phase {
 	if c.runID == "" {
-		if c.opening == openingPending {
+		if c.starting {
 			return Running
 		}
 		return Idle
@@ -151,7 +139,7 @@ func (c *Conversation) Checkpoint() string { return c.checkpoint }
 
 func (c *Conversation) Busy() bool { return c.Phase() != Idle }
 
-// CurrentRun returns the root Run whose lifecycle the conversation owns.
+// CurrentRun returns the root Run whose lifecycle the conversation projects.
 // Descendant activity never replaces this root identity.
 func (c *Conversation) CurrentRun() (Run, bool) {
 	if c == nil || c.runID == "" {
@@ -217,7 +205,7 @@ func (c *Conversation) Starting() error {
 	if c.Busy() {
 		return fmt.Errorf("%w: conversation is already busy", ErrInvalidTransition)
 	}
-	c.opening = openingPending
+	c.starting = true
 	c.runID = ""
 	c.segmentID = ""
 	c.checkpoint = ""
@@ -227,11 +215,11 @@ func (c *Conversation) Starting() error {
 	return nil
 }
 
-func (c *Conversation) CancelStarting() error {
-	if c.runID != "" || c.opening != openingPending {
+func (c *Conversation) StopStarting() error {
+	if c.runID != "" || !c.starting {
 		return fmt.Errorf("%w: conversation is not starting", ErrInvalidTransition)
 	}
-	c.opening = openingCanceled
+	c.starting = false
 	c.recovery = recoveryNone
 	return nil
 }
@@ -241,7 +229,7 @@ func (c *Conversation) ClearPresentation() {
 	c.plan = nil
 	if c.Phase() == Idle {
 		c.runID = ""
-		c.opening = openingNone
+		c.starting = false
 	}
 	c.index = make(map[string]int)
 	c.textStreams = make(map[string]StreamedText)

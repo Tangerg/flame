@@ -162,11 +162,11 @@ func (a *app) prepareRunStart(input *prompt.StartRun, prepared *workbench.Prepar
 	}
 	replayGuard, err := a.replayPolicy.NewGuard()
 	if err != nil {
-		a.fail(errors.Join(err, a.execution.conversation.CancelStarting()))
+		a.fail(errors.Join(err, a.execution.conversation.StopStarting()))
 		return replay.Guard{}, false
 	}
 	if err := a.workbench.MarkPendingRunDispatching(input.SessionID, input.CommandID, replayGuard, prepared); err != nil {
-		rollbackErr := a.execution.conversation.CancelStarting()
+		rollbackErr := a.execution.conversation.StopStarting()
 		a.message("run start blocked: save dispatching run: " + err.Error())
 		if rollbackErr != nil {
 			a.fail(errors.Join(err, rollbackErr))
@@ -394,7 +394,7 @@ func (a *app) fail(err error) {
 	a.dismissInterruptProjection()
 	if a.execution.conversation.Phase() == conversation.Running &&
 		a.execution.conversation.RunID() == "" && a.execution.openingRunID == "" {
-		err = errors.Join(err, a.execution.conversation.CancelStarting())
+		err = errors.Join(err, a.execution.conversation.StopStarting())
 	}
 	a.transcript.rejectLivePresentation()
 	a.transcript.Append(presentError(a.transcript.theme, err.Error()))

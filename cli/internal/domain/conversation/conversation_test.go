@@ -412,11 +412,22 @@ func TestConversationStartingWindow(t *testing.T) {
 	if err := projection.Starting(); !errors.Is(err, ErrInvalidTransition) {
 		t.Fatalf("second Starting error = %v", err)
 	}
-	if err := projection.CancelStarting(); err != nil {
+	if err := projection.StopStarting(); err != nil {
 		t.Fatal(err)
 	}
-	if projection.Outcome().Status != protocol.OutcomeCanceled {
-		t.Fatalf("outcome = %+v", projection.Outcome())
+	if projection.Busy() || projection.RunID() != "" || !projection.Outcome().Equal(Outcome{}) {
+		t.Fatalf("stopped local opening = phase %v, run %q, outcome %+v", projection.Phase(), projection.RunID(), projection.Outcome())
+	}
+	if _, exists := projection.CurrentRun(); exists {
+		t.Fatal("stopping local opening created a Run")
+	}
+	apply(t, projection, RunEvent{EventID: "late-start", RunID: "run_1", SegmentID: "seg_1", Event: SegmentStarted{Run: runningRun("seg_1")}})
+	if err := projection.StopStarting(); !errors.Is(err, ErrInvalidTransition) {
+		t.Fatalf("stopping an observed Run = %v", err)
+	}
+	apply(t, projection, RunEvent{EventID: "late-finish", RunID: "run_1", SegmentID: "seg_1", Event: finishedSegment(runningRun("seg_1"), Outcome{Status: protocol.OutcomeCompleted}, Usage{})})
+	if projection.Outcome().Status != protocol.OutcomeCompleted {
+		t.Fatalf("runtime outcome = %+v", projection.Outcome())
 	}
 }
 

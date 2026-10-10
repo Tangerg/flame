@@ -63,7 +63,7 @@ func (a *app) cancel() {
 			return
 		}
 		a.dropStream()
-		if err := a.execution.conversation.CancelStarting(); err != nil {
+		if err := a.execution.conversation.StopStarting(); err != nil {
 			a.fail(err)
 			return
 		}

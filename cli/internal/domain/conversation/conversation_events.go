@@ -209,7 +209,7 @@ func (c *Conversation) applyRootSegmentStarted(run, previous Run, exists bool) e
 		return fmt.Errorf("%w: root segment started: %w", ErrInvalidTransition, err)
 	}
 	c.runID = run.ID
-	c.opening = openingNone
+	c.starting = false
 	c.interrupts = nil
 	return nil
 }
