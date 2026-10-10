@@ -1113,6 +1113,9 @@ An unset utility role uses the Runtime composition's default model selection. It
 `skills.discovered.list` returns a complete bounded `skills` catalog and `diagnostics`, replacing the former page shape. `skills.discovered.get` / `GetDiscoveredSkill` reads one named document on demand and returns its selected scope, source path, instructions, and SHA-256 revision of the exact document bytes. Upgrade consumers together; there is no legacy page adapter.
 
 Discovery, inspection, and model loading share one source-selection rule and Scope's document format. Project bundles own a colliding name even when malformed; they never expose the user copy as a fallback. Invalid or oversized selected documents appear as diagnostics alongside usable entries. Filesystem, confinement, capacity, and cancellation failures remain explicit query failures. Instructions retain the existing 1 MiB document bound and source directories retain their entry bounds. Inspection describes current authored content, not proof that it was loaded into an existing model conversation.
+Document admission classifies a non-regular `SKILL.md` as an invalid selected bundle,
+preserving its file-kind cause; oversized documents retain their size-admission cause.
+Cleanup failures remain I/O failures rather than skippable document diagnostics.
 
 Each execution resolves its callable Skill names, selected sources and installation
 dependencies together. A later directory change cannot add a name, replace its source

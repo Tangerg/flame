@@ -133,7 +133,7 @@ func (s *resolvedSkills) list(ctx context.Context) (workspaceapp.SkillDiscovery,
 			out.Diagnostics = append(out.Diagnostics, workspaceapp.SkillDiagnostic{Name: name, Detail: "Multiple installations supply this Skill; disable a package copy or provide an explicit project/user override."})
 			continue
 		case errors.Is(err, sdk.ErrInvalidSkill):
-			out.Diagnostics = append(out.Diagnostics, workspaceapp.SkillDiagnostic{Name: name, Detail: "Invalid SKILL.md; repair the selected bundle's frontmatter and name."})
+			out.Diagnostics = append(out.Diagnostics, workspaceapp.SkillDiagnostic{Name: name, Detail: "Invalid SKILL.md; provide a regular document with valid frontmatter and the selected bundle's name."})
 			continue
 		case errors.Is(err, domainskills.ErrDocumentTooLarge):
 			out.Diagnostics = append(out.Diagnostics, workspaceapp.SkillDiagnostic{Name: name, Detail: "SKILL.md exceeds the 1 MiB document limit; move supporting material into resource files."})

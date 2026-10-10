@@ -58,31 +58,46 @@ func TestDiscoveryAndDetailShareExecutionSource(t *testing.T) {
 }
 
 func TestPartialSkillDiscoveryDoesNotExposeShadowedUserBundle(t *testing.T) {
-	workspace, user := t.TempDir(), t.TempDir()
-	project := ProjectSkillDir(workspace)
-	writeRuntimeSkill(t, user, "broken", "must not fall through")
-	writeRuntimeSkill(t, user, "working", "still discoverable")
-	writeRuntimeSkill(t, project, "broken", "invalid content")
-	if err := os.WriteFile(filepath.Join(project, "broken", sdk.SkillFile), []byte("malformed document"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	found, err := ListSkills(t.Context(), workspace, user, nil)
-	if err != nil || len(found.Skills) != 1 || found.Skills[0].Name != "working" || len(found.Diagnostics) != 1 || found.Diagnostics[0].Name != "broken" {
-		t.Fatalf("partial discovery = %+v, %v", found, err)
-	}
-	source, _, err := OverlaySkillSource(t.Context(), workspace, user, nil, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	listed, err := source.List(t.Context())
-	if err != nil || len(listed) != 1 || listed[0].Name != "working" {
-		t.Fatalf("model discovery = %+v, %v", listed, err)
-	}
-	if _, err := source.Load(t.Context(), "broken"); !errors.Is(err, sdk.ErrInvalidSkill) {
-		t.Fatalf("model loaded broken or shadowed bundle: %v", err)
-	}
-	if _, err := NewSkills(user, nil).Get(t.Context(), workspace, "broken"); !errors.Is(err, workspaceapp.ErrSkillUnavailable) {
-		t.Fatalf("detail loaded broken or shadowed bundle: %v", err)
+	for _, malformed := range []struct {
+		name   string
+		create func(string) error
+	}{
+		{"invalid document", func(path string) error { return os.WriteFile(path, []byte("malformed document"), 0o644) }},
+		{"directory instead of document", func(path string) error {
+			if err := os.Remove(path); err != nil {
+				return err
+			}
+			return os.Mkdir(path, 0o755)
+		}},
+	} {
+		t.Run(malformed.name, func(t *testing.T) {
+			workspace, user := t.TempDir(), t.TempDir()
+			project := ProjectSkillDir(workspace)
+			writeRuntimeSkill(t, user, "broken", "must not fall through")
+			writeRuntimeSkill(t, user, "working", "still discoverable")
+			writeRuntimeSkill(t, project, "broken", "invalid content")
+			if err := malformed.create(filepath.Join(project, "broken", sdk.SkillFile)); err != nil {
+				t.Fatal(err)
+			}
+			found, err := ListSkills(t.Context(), workspace, user, nil)
+			if err != nil || len(found.Skills) != 1 || found.Skills[0].Name != "working" || len(found.Diagnostics) != 1 || found.Diagnostics[0].Name != "broken" {
+				t.Fatalf("partial discovery = %+v, %v", found, err)
+			}
+			source, _, err := OverlaySkillSource(t.Context(), workspace, user, nil, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			listed, err := source.List(t.Context())
+			if err != nil || len(listed) != 1 || listed[0].Name != "working" {
+				t.Fatalf("model discovery = %+v, %v", listed, err)
+			}
+			if _, err := source.Load(t.Context(), "broken"); !errors.Is(err, sdk.ErrInvalidSkill) {
+				t.Fatalf("model loaded broken or shadowed bundle: %v", err)
+			}
+			if _, err := NewSkills(user, nil).Get(t.Context(), workspace, "broken"); !errors.Is(err, workspaceapp.ErrSkillUnavailable) {
+				t.Fatalf("detail loaded broken or shadowed bundle: %v", err)
+			}
+		})
 	}
 }
 

@@ -169,21 +169,22 @@ func (r *runtimeSkillSource) openSkillDocument(name string) (*openedSkillDocumen
 	path := filepath.Join(name, sdk.SkillFile)
 	file, info, openErr := fileinput.OpenAt(root, path, domainskills.MaxAuthoredSkillDocumentBytes)
 	if openErr != nil {
-		var err error
+		if closeErr := root.Close(); closeErr != nil {
+			return nil, fmt.Errorf("runtime skill source: open %q: %w", name, errors.Join(openErr, closeErr))
+		}
 		switch {
 		case errors.Is(openErr, fileinput.ErrNotRegular):
-			err = fmt.Errorf("runtime skill source: %q is not a regular document", name)
+			return nil, fmt.Errorf("%w %q: document admission: %w", sdk.ErrInvalidSkill, name, openErr)
 		case errors.Is(openErr, fileinput.ErrTooLarge):
-			err = fmt.Errorf(
-				"%w: %q exceeds %d bytes",
+			return nil, fmt.Errorf(
+				"%w: %q document admission: %w",
 				domainskills.ErrDocumentTooLarge,
 				name,
-				domainskills.MaxAuthoredSkillDocumentBytes,
+				openErr,
 			)
 		default:
-			err = fmt.Errorf("runtime skill source: open %q: %w", name, openErr)
+			return nil, fmt.Errorf("runtime skill source: open %q: %w", name, openErr)
 		}
-		return nil, errors.Join(err, root.Close())
 	}
 	return &openedSkillDocument{root: root, file: file, info: info, path: path}, nil
 }
