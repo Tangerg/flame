@@ -7,6 +7,7 @@ import (
 	"iter"
 	"reflect"
 
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/idempotency"
 	runtimeidentity "github.com/Tangerg/flame/runtime/internal/identity"
 	"github.com/Tangerg/flame/runtime/protocol"
@@ -52,8 +53,11 @@ type EndpointConfig struct {
 
 // NewEndpoint constructs the binding-neutral Runtime delivery endpoint.
 func NewEndpoint(target any, config EndpointConfig) (*Endpoint, error) {
-	if config.Lifetime == nil {
+	if dependency.Missing(config.Lifetime) {
 		return nil, errors.New("delivery endpoint: lifetime is required")
+	}
+	if config.IdempotencyStore != nil && dependency.Missing(config.IdempotencyStore) {
+		return nil, errors.New("delivery endpoint: supplied idempotency store is nil")
 	}
 	namespace, _, err := runtimeidentity.ParseOptionalIdempotencyNamespace(config.IdempotencyNamespace)
 	if err != nil {

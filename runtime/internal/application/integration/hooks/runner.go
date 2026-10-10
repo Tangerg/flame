@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	domain "github.com/Tangerg/flame/runtime/internal/domain/integration/hooks"
 )
 
@@ -100,6 +101,9 @@ type Runner struct {
 // nil. A nil commands runner means declarative inject hooks still work and
 // command hooks degrade to non-blocking errors.
 func NewRunner(commands CommandRunner, onError func(ctx context.Context, source string, err error)) *Runner {
+	if dependency.Missing(commands) {
+		commands = nil
+	}
 	return &Runner{commands: commands, onError: onError}
 }
 

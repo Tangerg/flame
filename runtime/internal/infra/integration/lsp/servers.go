@@ -21,6 +21,8 @@ import (
 	"slices"
 	"sync"
 	"time"
+
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 )
 
 // ErrNoServer means no configured language server handles the target — an
@@ -68,7 +70,7 @@ type clientStart struct {
 // NewServers builds a server set over specs (see DefaultServers for the
 // built-in table). It starts no processes — servers launch lazily on first use.
 func NewServers(lifetime context.Context, specs []ServerSpec) (*Servers, error) {
-	if lifetime == nil {
+	if dependency.Missing(lifetime) {
 		return nil, errors.New("lsp: lifetime is required")
 	}
 	table, err := newServerTable(specs)

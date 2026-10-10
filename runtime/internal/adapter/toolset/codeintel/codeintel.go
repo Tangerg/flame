@@ -12,6 +12,7 @@ import (
 	"errors"
 	"slices"
 
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/lsp"
 )
 
@@ -42,7 +43,7 @@ type Analyzer struct {
 // process-owned lifetime from which lazy language-server launches derive.
 // An empty table falls back to the built-in LSP server table.
 func New(lifetime context.Context, servers []ServerSpec) (*Analyzer, error) {
-	if lifetime == nil {
+	if dependency.Missing(lifetime) {
 		return nil, errors.New("codeintel: lifetime is required")
 	}
 	if len(servers) == 0 {

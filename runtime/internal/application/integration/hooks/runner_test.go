@@ -50,6 +50,20 @@ func TestRunner_DeclarativeInject(t *testing.T) {
 	}
 }
 
+func TestRunnerTreatsAbsentCommandRunnerAsDeclarativeOnly(t *testing.T) {
+	for _, commands := range []CommandRunner{nil, (*commandStub)(nil)} {
+		var observed error
+		runner := NewRunner(commands, func(_ context.Context, _ string, err error) { observed = err })
+		decision := runner.Run(t.Context(), []hookdomain.Hook{
+			{Event: hookdomain.SessionStart, Command: "hook"},
+			{Event: hookdomain.SessionStart, Inject: "retained context"},
+		}, hookdomain.Input{Event: hookdomain.SessionStart})
+		if observed == nil || decision.InjectContext != "retained context" || decision.Verdict == hookdomain.VerdictBlock {
+			t.Fatalf("declarative-only execution = %+v, %v", decision, observed)
+		}
+	}
+}
+
 func TestRunner_CommandReceivesTypedEvent(t *testing.T) {
 	cmds := &commandStub{results: []CommandResult{{Decision: CommandDecision{Verdict: CommandAllow, InjectContext: "saw-event"}}}}
 	r := NewRunner(cmds, nil)

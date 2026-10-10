@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/application/agent/runs"
+	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/run"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/transcript"
 	"github.com/Tangerg/flame/runtime/internal/domain/session"
@@ -116,42 +117,36 @@ type Persistence struct {
 }
 
 func New(config Config) (*Persistence, error) {
-	switch {
-	case config.Sessions == nil:
-		return nil, errors.New("recovery: Session store is required")
-	case config.Runs == nil:
-		return nil, errors.New("recovery: Run store is required")
-	case config.Interrupts == nil:
-		return nil, errors.New("recovery: interrupt store is required")
-	case config.Transcript == nil:
-		return nil, errors.New("recovery: transcript store is required")
-	case config.Messages == nil:
-		return nil, errors.New("recovery: message counter is required")
-	case config.ExecutorCheckpoints == nil:
-		return nil, errors.New("recovery: executor checkpoint store is required")
-	case config.ModelInvocations == nil:
-		return nil, errors.New("recovery: model invocation store is required")
-	case config.ToolInvocations == nil:
-		return nil, errors.New("recovery: Tool invocation store is required")
-	case config.ChildRunStarts == nil:
-		return nil, errors.New("recovery: child Run start reservation store is required")
-	case config.Tx == nil:
-		return nil, errors.New("recovery: transactor is required")
-	default:
-		return &Persistence{
-			sessions:            config.Sessions,
-			runs:                config.Runs,
-			interrupts:          config.Interrupts,
-			transcript:          config.Transcript,
-			messages:            config.Messages,
-			goalRuns:            config.GoalRuns,
-			executorCheckpoints: config.ExecutorCheckpoints,
-			modelInvocations:    config.ModelInvocations,
-			toolInvocations:     config.ToolInvocations,
-			childRunStarts:      config.ChildRunStarts,
-			tx:                  config.Tx,
-		}, nil
+	for _, required := range []struct {
+		name  string
+		value any
+	}{
+		{"session store", config.Sessions}, {"run store", config.Runs},
+		{"interrupt store", config.Interrupts}, {"transcript store", config.Transcript},
+		{"conversation store", config.Messages}, {"executor checkpoint store", config.ExecutorCheckpoints},
+		{"model invocation store", config.ModelInvocations}, {"tool invocation store", config.ToolInvocations},
+		{"child run start reservation store", config.ChildRunStarts}, {"transactor", config.Tx},
+	} {
+		if dependency.Missing(required.value) {
+			return nil, fmt.Errorf("recovery: %s is required", required.name)
+		}
 	}
+	if config.GoalRuns != nil && dependency.Missing(config.GoalRuns) {
+		return nil, errors.New("recovery: supplied goal run recorder is nil")
+	}
+	return &Persistence{
+		sessions:            config.Sessions,
+		runs:                config.Runs,
+		interrupts:          config.Interrupts,
+		transcript:          config.Transcript,
+		messages:            config.Messages,
+		goalRuns:            config.GoalRuns,
+		executorCheckpoints: config.ExecutorCheckpoints,
+		modelInvocations:    config.ModelInvocations,
+		toolInvocations:     config.ToolInvocations,
+		childRunStarts:      config.ChildRunStarts,
+		tx:                  config.Tx,
+	}, nil
 }
 
 func (p *Persistence) SessionByID(ctx context.Context, sessionID string) (session.Session, error) {
