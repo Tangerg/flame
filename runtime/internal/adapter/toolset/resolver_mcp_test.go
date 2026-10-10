@@ -31,7 +31,7 @@ func (m mcpToolStub) MCPToolIdentity() (string, string) { return m.server, m.rem
 
 // A stub's server is a user server; installation tools override the source.
 func (m mcpToolStub) SourceConfig() mcp.ServerConfig {
-	return mcp.ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName(m.server)}
+	return mcp.ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName(m.server)}}
 }
 
 func TestResolverMCPToolsReadsCurrentPolicy(t *testing.T) {

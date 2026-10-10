@@ -202,18 +202,17 @@ func decodeStrings(s string) ([]string, error) {
 	return v, nil
 }
 
-// encodeStringMap JSON-encodes a string map for a TEXT column; a nil/empty map
-// stores "" (decoded back to nil) so empty and absent read identically.
+// Preserve absence separately from an empty map: process environments assign
+// different inheritance semantics to them.
 func encodeStringMap(m map[string]string) (string, error) {
-	if len(m) == 0 {
+	if m == nil {
 		return "", nil
 	}
 	b, err := encodeStoredJSON(m)
 	return string(b), err
 }
 
-// decodeStringMap reverses encodeStringMap. A blank column is the canonical
-// empty value; malformed persisted JSON is a storage error, never an empty map.
+// A blank column means absent; malformed persisted JSON remains a storage error.
 func decodeStringMap(s string) (map[string]string, error) {
 	if s == "" {
 		return nil, nil

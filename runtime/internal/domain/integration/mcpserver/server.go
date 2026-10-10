@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/httporigin"
 )
 
 // Transport names an MCP server connection mode using the standard
@@ -60,9 +62,9 @@ type Server struct {
 	// Args are the command arguments (stdio).
 	Args []string
 
-	// Env REPLACES the subprocess environment (stdio) as a KEY→value map; it does
-	// not extend the parent env. Values are sensitive and must never be logged or
-	// exposed without masking.
+	// Env replaces the subprocess environment (stdio) as a KEY→value map. nil
+	// inherits the parent; an empty map supplies no environment. Values are
+	// sensitive and must never be logged or exposed without masking.
 	Env map[string]string
 
 	// Dir sets the subprocess working directory; empty inherits the parent's (stdio).
@@ -143,6 +145,9 @@ func (s Server) ValidateConnection() error {
 	case TransportStreamableHTTP:
 		if s.URL == "" {
 			return fmt.Errorf("mcpserver %q: URL is required for streamableHttp transport", s.ID())
+		}
+		if _, err := httporigin.Parse(s.URL); err != nil {
+			return fmt.Errorf("mcpserver %q: invalid HTTP endpoint: %w", s.ID(), err)
 		}
 		if s.Command != "" {
 			return fmt.Errorf("mcpserver %q: Command must be empty for streamableHttp transport", s.ID())

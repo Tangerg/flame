@@ -27,9 +27,9 @@ func (c *Connections) configure(attempt *Attempt, prepared *launch) error {
 	cfg.OAuthHandler = oauth
 	c.mu.Unlock()
 
-	if cfg.Transport == TransportHTTP && oauth == nil && cfg.Authorization == "" {
+	if cfg.Transport == mcpserver.TransportStreamableHTTP && oauth == nil && cfg.Authorization == "" {
 		var err error
-		oauth, err = restoreOAuthHandler(attempt.ctx, c.lifetime, c.oauthSessions, cfg.oauthTarget())
+		oauth, err = restoreOAuthHandler(attempt.ctx, c.lifetime, c.oauthSessions, cfg.OAuthTarget())
 		if err != nil {
 			return err
 		}
@@ -47,10 +47,10 @@ func (c *Connections) configure(attempt *Attempt, prepared *launch) error {
 
 func reusableOAuth(current, candidate ServerConfig, handler auth.OAuthHandler) auth.OAuthHandler {
 	if handler == nil ||
-		current.Transport != TransportHTTP ||
-		candidate.Transport != TransportHTTP ||
+		current.Transport != mcpserver.TransportStreamableHTTP ||
+		candidate.Transport != mcpserver.TransportStreamableHTTP ||
 		candidate.Authorization != "" ||
-		current.oauthTarget().Fingerprint() != candidate.oauthTarget().Fingerprint() {
+		current.OAuthTarget().Fingerprint() != candidate.OAuthTarget().Fingerprint() {
 		return nil
 	}
 	return handler
@@ -61,7 +61,7 @@ func (c *Connections) authorize(attempt *Attempt, prepared *launch) (err error) 
 	if cfg.OAuthHandler != nil {
 		return errors.New("mcp: explicit authorization cannot supply an OAuth handler")
 	}
-	if cfg.Transport != TransportHTTP {
+	if cfg.Transport != mcpserver.TransportStreamableHTTP {
 		return errors.New("mcp: OAuth applies to HTTP servers only")
 	}
 	if cfg.Authorization != "" {
@@ -79,14 +79,14 @@ func (c *Connections) authorize(attempt *Attempt, prepared *launch) (err error) 
 	// The human flow has its own deadline; a handshake timeout cannot bound it.
 	ctx, cancel := context.WithTimeout(attempt.ctx, oauthFlowTimeout)
 	defer cancel()
-	cfg.HandshakeTimeout = nil
+	cfg.HandshakeTimeout = mcpserver.HandshakeTimeout{}
 	flow, err := newOAuthFlow(ctx)
 	if err != nil {
 		c.failAttempt(attempt, mcpserver.FailureAuthorization)
 		return err
 	}
 	defer func() { err = errors.Join(err, flow.close(ctx)) }()
-	handler, err := newOAuthHandler(ctx, flow, c.lifetime, c.oauthSessions, cfg.oauthTarget())
+	handler, err := newOAuthHandler(ctx, flow, c.lifetime, c.oauthSessions, cfg.OAuthTarget())
 	if err != nil {
 		c.failAttempt(attempt, mcpserver.FailureAuthorization)
 		return err

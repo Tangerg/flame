@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Tangerg/flame/runtime/internal/httporigin"
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/httporigin"
 )
 
 // parseA2AAgents parses the FLAME_A2A_AGENTS env var: a comma-separated list of

@@ -11,7 +11,7 @@ import (
 	"github.com/Tangerg/scope/tools/web"
 	"github.com/Tangerg/scope/tools/web/jina"
 
-	"github.com/Tangerg/flame/runtime/internal/httporigin"
+	"github.com/Tangerg/flame/runtime/internal/infra/integration/httpredirect"
 )
 
 func TestOnlineHTTPClientBoundsProviderResponseBeforeSDKDecode(t *testing.T) {
@@ -55,7 +55,7 @@ func TestOnlineHTTPClientBlocksCredentialRedirectAcrossOrigins(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, err = client.Fetch(t.Context(), &web.FetchRequest{URL: "https://example.test"})
-	if !errors.Is(err, httporigin.ErrCrossOriginRedirect) {
+	if !errors.Is(err, httpredirect.ErrCrossOriginRedirect) {
 		t.Fatalf("Fetch error = %v, want ErrCrossOriginRedirect", err)
 	}
 	if targetHit.Load() {

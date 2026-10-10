@@ -55,6 +55,17 @@ func TestServerValidateRejectsCrossTransportState(t *testing.T) {
 	}
 }
 
+func TestServerValidateRejectsInvalidHTTPEndpoints(t *testing.T) {
+	for _, endpoint := range []string{"/mcp", "file:///tmp/mcp", "https://", "https://user:secret@example.test/mcp"} {
+		t.Run(endpoint, func(t *testing.T) {
+			server := Server{Source: UserSource(), Name: testMCPServerName("remote"), Transport: TransportStreamableHTTP, URL: endpoint}
+			if err := server.Validate(); err == nil {
+				t.Fatal("invalid HTTP endpoint admitted as a server")
+			}
+		})
+	}
+}
+
 func TestServerFormattingRedactsCredentials(t *testing.T) {
 	server := Server{
 		Source:        UserSource(),

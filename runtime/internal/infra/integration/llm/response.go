@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/Tangerg/flame/runtime/internal/httporigin"
+	"github.com/Tangerg/flame/runtime/internal/infra/integration/httpredirect"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/httpresponse"
 )
 
@@ -14,6 +14,6 @@ var errModelResponseFrameTooLarge = errors.New("llm: response frame too large")
 
 func newModelHTTPClient() *http.Client {
 	client := httpresponse.NewClient(maxModelResponseFrameBytes, errModelResponseFrameTooLarge)
-	client.CheckRedirect = httporigin.CheckRedirect
+	client.CheckRedirect = httpredirect.CheckRedirect
 	return client
 }

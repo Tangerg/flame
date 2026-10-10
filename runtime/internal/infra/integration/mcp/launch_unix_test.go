@@ -22,13 +22,13 @@ func TestStdioLaunchResourceRetiresAfterTheProcessGroup(t *testing.T) {
 		t.Fatal(err)
 	}
 	pidFile := filepath.Join(t.TempDir(), "descendant.pid")
-	config := ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("server"), Transport: TransportStdio, Command: "logical-command"}
+	config := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("server"), Transport: mcpserver.TransportStdio, Command: "logical-command"}}
 	var retired atomic.Int32
 	var pid int
 	input, err := NewLaunch(config, &Stdio{
 		Command: os.Args[0],
 		Dir:     content,
-		Env:     withStdioProcessEnv(os.Environ(), map[string]string{stdioProcessRoleEnv: "server", stdioDescendantPID: pidFile}),
+		Env:     stdioProcessEnvironment(map[string]string{stdioProcessRoleEnv: "server", stdioDescendantPID: pidFile}),
 	}, func() error {
 		retired.Add(1)
 		var processErr error

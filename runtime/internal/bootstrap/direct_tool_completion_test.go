@@ -170,5 +170,5 @@ func (directAnswerTool) SourceFingerprint() fingerprint.Digest {
 
 func (directAnswerTool) SourceConfig() mcp.ServerConfig {
 	name, _ := mcpserver.ParseServerName("fixture")
-	return mcp.ServerConfig{Source: mcpserver.UserSource(), Name: name}
+	return mcp.ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: name}}
 }

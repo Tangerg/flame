@@ -46,7 +46,7 @@ func TestSourceToolsForwardsInvocationMetadataWithoutLeakingBetweenCalls(t *test
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = session.Close() })
-	tools, err := sourceTools(t.Context(), nil, ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("metadata")}, session)
+	tools, err := sourceTools(t.Context(), nil, ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("metadata")}}, session)
 	if err != nil || len(tools) != 1 {
 		t.Fatalf("discovery = %+v, %v", tools, err)
 	}
@@ -83,7 +83,7 @@ func TestSourceToolsDoesNotPublishPartialCatalogAfterScopeRejection(t *testing.T
 		&sdkmcp.Tool{Name: "read_file", InputSchema: jsontext.Value(`{"type":"object"}`)},
 		&sdkmcp.Tool{Name: "other", InputSchema: jsontext.Value(`{"type":"object"}`)},
 	)
-	tools, err := sourceTools(t.Context(), nil, ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("catalog")}, session)
+	tools, err := sourceTools(t.Context(), nil, ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("catalog")}}, session)
 	if err == nil || len(tools) != 0 {
 		t.Fatalf("Scope discovery rejection published a partial catalog: %v, %v", tools, err)
 	}
@@ -97,7 +97,7 @@ func TestSourceToolsCompilesSchemasBeforePublishing(t *testing.T) {
 	} {
 		t.Run(schema, func(t *testing.T) {
 			session := toolCatalogSession(t, &sdkmcp.Tool{Name: "read", InputSchema: jsontext.Value(schema)})
-			tools, err := sourceTools(t.Context(), nil, ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("catalog")}, session)
+			tools, err := sourceTools(t.Context(), nil, ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("catalog")}}, session)
 			if len(tools) != 0 || !errors.Is(err, toolcontract.ErrInvalidTool) || !errors.Is(err, jsonschema.ErrInvalid) {
 				t.Fatalf("sourceTools = %v, %v; want Scope schema admission failure", tools, err)
 			}
@@ -136,7 +136,7 @@ func TestSourceToolsEnablesOnlyAnnotatedReadOnlyConcurrencyPolicy(t *testing.T) 
 	}
 	t.Cleanup(func() { _ = clientSession.Close() })
 
-	wrapped, err := sourceTools(t.Context(), nil, ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("catalog")}, clientSession)
+	wrapped, err := sourceTools(t.Context(), nil, ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("catalog")}}, clientSession)
 	if err != nil {
 		t.Fatalf("sourceTools: %v", err)
 	}
@@ -184,7 +184,7 @@ func TestRemoteToolCatalogRejectsUnboundedMaterial(t *testing.T) {
 			Description: strings.Repeat("x", mcpserver.MaxRemoteToolDescriptionBytes+1),
 			InputSchema: jsontext.Value(`{"type":"object"}`),
 		})
-		if _, err := sourceTools(t.Context(), nil, ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("catalog")}, session); err == nil {
+		if _, err := sourceTools(t.Context(), nil, ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("catalog")}}, session); err == nil {
 			t.Fatal("sourceTools accepted a description larger than 64 KiB")
 		}
 	})
@@ -195,7 +195,7 @@ func TestRemoteToolCatalogRejectsUnboundedMaterial(t *testing.T) {
 			InputSchema: jsontext.Value(`{"type":"object","description":"` +
 				strings.Repeat("x", (1<<20)+1) + `"}`),
 		})
-		if _, err := sourceTools(t.Context(), nil, ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("catalog")}, session); err == nil {
+		if _, err := sourceTools(t.Context(), nil, ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("catalog")}}, session); err == nil {
 			t.Fatal("sourceTools accepted a schema larger than Scope's 1 MiB bound")
 		}
 	})
@@ -254,7 +254,7 @@ func TestSourceToolsPreservesStructuredResultThroughTransport(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer session.Close()
-			tools, err := sourceTools(t.Context(), nil, ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("catalog")}, session)
+			tools, err := sourceTools(t.Context(), nil, ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("catalog")}}, session)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -301,8 +301,8 @@ func TestSourceToolsCarryTheRealizedServerIdentity(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, config := range []ServerConfig{
-		{Source: mcpserver.UserSource(), Name: testsupport.ServerName("catalog")},
-		{Source: source, Name: testsupport.ServerName("catalog")},
+		{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("catalog")}},
+		{Server: mcpserver.Server{Source: source, Name: testsupport.ServerName("catalog")}},
 	} {
 		session := toolCatalogSession(t, &sdkmcp.Tool{Name: "lookup", InputSchema: jsontext.Value(`{"type":"object"}`)})
 		tools, err := sourceTools(t.Context(), nil, config, session)

@@ -38,15 +38,14 @@ func (t authorizedTool) Call(ctx context.Context, invocation toolcontract.Invoca
 	if !found || !current.Enabled {
 		return chat.ToolOutput{}, rejected("source authority is no longer admitted")
 	}
-	config, err := configFromServer(current)
-	if err != nil {
+	if err := current.Validate(); err != nil {
 		failure, failureErr := toolcontract.NewFailure(toolcontract.FailureConfig{Kind: toolcontract.FailureKindFailed, Cause: err, Output: chat.NewTextToolOutput("current source configuration could not be verified")})
 		if failureErr != nil {
 			return chat.ToolOutput{}, failureErr
 		}
 		return chat.ToolOutput{}, failure
 	}
-	if !t.config.SameConnection(config) {
+	if !t.config.Server.SameConnection(current) {
 		return chat.ToolOutput{}, rejected("source configuration is no longer current")
 	}
 	if !t.source.Current() {

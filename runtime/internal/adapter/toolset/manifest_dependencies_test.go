@@ -20,7 +20,7 @@ type releasedMCPToolStub struct {
 }
 
 func (r releasedMCPToolStub) SourceConfig() mcp.ServerConfig {
-	return mcp.ServerConfig{Source: r.source, Name: testsupport.ServerName(r.server)}
+	return mcp.ServerConfig{Server: mcpserver.Server{Source: r.source, Name: testsupport.ServerName(r.server)}}
 }
 
 // unrealizedMCPTool reports a remote identity without the connection that

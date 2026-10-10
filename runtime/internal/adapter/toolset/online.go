@@ -14,7 +14,7 @@ import (
 	"github.com/Tangerg/scope/tools/web/jina"
 	"github.com/Tangerg/scope/tools/web/tavily"
 
-	"github.com/Tangerg/flame/runtime/internal/httporigin"
+	"github.com/Tangerg/flame/runtime/internal/infra/integration/httpredirect"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/httpresponse"
 )
 
@@ -110,7 +110,7 @@ func definiteReadTool[T toolcontract.Tool](inner T, err error) (toolcontract.Too
 
 func newOnlineHTTPClient() *http.Client {
 	client := httpresponse.NewClient(maxOnlineResponseFrameBytes, errOnlineResponseFrameTooLarge)
-	client.CheckRedirect = httporigin.CheckRedirect
+	client.CheckRedirect = httpredirect.CheckRedirect
 	return client
 }
 

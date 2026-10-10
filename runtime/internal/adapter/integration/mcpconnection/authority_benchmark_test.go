@@ -12,6 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/adapter/integration/pluginpackage"
 	"github.com/Tangerg/flame/runtime/internal/application/integration/plugins"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
+	"github.com/Tangerg/flame/runtime/internal/infra/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	chat "github.com/Tangerg/scope/core/chat"
@@ -102,10 +103,7 @@ func BenchmarkAuthorizedToolCall(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	config, err := configFromServer(server)
-	if err != nil {
-		b.Fatal(err)
-	}
+	config := mcp.ServerConfig{Server: server.Clone()}
 	authorized := authorizedTool{Tool: idleTool{}, registry: registry, config: config}
 	for b.Loop() {
 		if _, err := authorized.Call(b.Context(), toolcontract.Invocation{}); err != nil {

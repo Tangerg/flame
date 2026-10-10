@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/flame/runtime/internal/httporigin"
+	"github.com/Tangerg/flame/runtime/internal/infra/integration/httpredirect"
 	"github.com/Tangerg/flame/runtime/internal/testsupport"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 	"github.com/stretchr/testify/assert"
@@ -72,24 +72,30 @@ func TestServerConfigValidate(t *testing.T) {
 		cfg  ServerConfig
 		ok   bool
 	}{
-		{"http ok", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportHTTP, Endpoint: "https://e/"}, true},
-		{"http relative endpoint", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportHTTP, Endpoint: "/mcp"}, false},
-		{"http non-http endpoint", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportHTTP, Endpoint: "file:///tmp/mcp"}, false},
-		{"stdio ok", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportStdio, Command: "npx"}, true},
-		{"zero handshake timeout", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportStdio, Command: "npx", HandshakeTimeout: durationPointer(0)}, false},
-		{"missing source", ServerConfig{Name: testsupport.ServerName("x"), Transport: TransportStdio, Command: "server"}, false},
-		{"missing name", ServerConfig{Transport: TransportHTTP, Endpoint: "https://e/"}, false},
-		{"zero transport", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Endpoint: "https://e/"}, false},
-		{"http without endpoint", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportHTTP}, false},
-		{"http with command", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportHTTP, Endpoint: "https://e/", Command: "npx"}, false},
-		{"stdio without command", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportStdio}, false},
-		{"stdio with endpoint", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportStdio, Command: "npx", Endpoint: "https://e/"}, false},
-		{"http auth fields ok", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportHTTP, Endpoint: "https://e", Authorization: "Bearer t", Headers: map[string]string{"X-API-Key": "k"}}, true},
-		{"http authorization header duplicate", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportHTTP, Endpoint: "https://e", Headers: map[string]string{"authorization": "Bearer t"}}, false},
-		{"http oauth with static authorization", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportHTTP, Endpoint: "https://e", Authorization: "Bearer t", OAuthHandler: oauthHandlerStub{}}, false},
-		{"http oauth with authorization header", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportHTTP, Endpoint: "https://e", Headers: map[string]string{"authorization": "Bearer t"}, OAuthHandler: oauthHandlerStub{}}, false},
-		{"stdio with auth", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportStdio, Command: "echo", Authorization: "Bearer t"}, false},
-		{"stdio with headers", ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportStdio, Command: "echo", Headers: map[string]string{"X-API-Key": "k"}}, false},
+		{"http ok", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e/"}}, true},
+		{"http relative endpoint", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "/mcp"}}, false},
+		{"http non-http endpoint", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "file:///tmp/mcp"}}, false},
+		{"stdio ok", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStdio, Command: "npx"}}, true},
+		{"missing source", ServerConfig{Server: mcpserver.Server{Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStdio, Command: "server"}}, false},
+		{"missing name", ServerConfig{Server: mcpserver.Server{Transport: mcpserver.TransportStreamableHTTP, URL: "https://e/"}}, false},
+		{"zero transport", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), URL: "https://e/"}}, false},
+		{"http without endpoint", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP}}, false},
+		{"http with command", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e/", Command: "npx"}}, false},
+		{"http with args", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e/", Args: []string{"--stdio"}}}, false},
+		{"http with environment", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e/", Env: map[string]string{"TOKEN": "value"}}}, false},
+		{"http with directory", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e/", Dir: "/tmp"}}, false},
+		{"http invalid header", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e/", Headers: map[string]string{"X-Key": "bad\r\nvalue"}}}, false},
+		{"http invalid authorization", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e/", Authorization: "bad\r\nvalue"}}, false},
+		{"stdio loader injection", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStdio, Command: "server", Env: map[string]string{"LD_PRELOAD": "/tmp/inject.so"}}}, false},
+		{"stdio NUL argument", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStdio, Command: "server", Args: []string{"bad\x00value"}}}, false},
+		{"stdio without command", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStdio}}, false},
+		{"stdio with endpoint", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStdio, Command: "npx", URL: "https://e/"}}, false},
+		{"http auth fields ok", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e", Authorization: "Bearer t", Headers: map[string]string{"X-API-Key": "k"}}}, true},
+		{"http authorization header duplicate", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e", Headers: map[string]string{"authorization": "Bearer t"}}}, false},
+		{"http oauth with static authorization", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e", Authorization: "Bearer t"}, OAuthHandler: oauthHandlerStub{}}, false},
+		{"http oauth with authorization header", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e", Headers: map[string]string{"authorization": "Bearer t"}}, OAuthHandler: oauthHandlerStub{}}, false},
+		{"stdio with auth", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStdio, Command: "echo", Authorization: "Bearer t"}}, false},
+		{"stdio with headers", ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStdio, Command: "echo", Headers: map[string]string{"X-API-Key": "k"}}}, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -103,43 +109,60 @@ func TestServerConfigValidate(t *testing.T) {
 	}
 }
 
-func durationPointer(value time.Duration) *time.Duration { return &value }
+func mustHandshakeTimeout(t *testing.T, value time.Duration) mcpserver.HandshakeTimeout {
+	t.Helper()
+	policy, err := mcpserver.NewHandshakeTimeout(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return policy
+}
 
 func TestSameConnectionIncludesCredentialsAndExcludesHandshakePolicy(t *testing.T) {
-	stdio := ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("local"), Transport: TransportStdio, Command: "server", Env: []string{"TOKEN=first"}}
+	stdio := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("local"), Transport: mcpserver.TransportStdio, Command: "server", Env: map[string]string{"TOKEN": "first"}}}
 	rotated := stdio.Clone()
-	rotated.Env[0] = "TOKEN=second"
-	if stdio.SameConnection(rotated) {
+	rotated.Env["TOKEN"] = "second"
+	if stdio.Server.SameConnection(rotated.Server) {
 		t.Fatal("rotated process credentials retained the old connection binding")
 	}
 	inherited := stdio.Clone()
 	inherited.Env = nil
 	empty := inherited.Clone()
-	empty.Env = []string{}
-	if inherited.SameConnection(empty) {
+	empty.Env = map[string]string{}
+	if inherited.Server.SameConnection(empty.Server) {
 		t.Fatal("inherited and explicitly empty process environments share a binding")
 	}
 	changedLimit := stdio.Clone()
-	changedLimit.HandshakeTimeout = durationPointer(time.Minute)
-	if !stdio.SameConnection(changedLimit) {
+	changedLimit.HandshakeTimeout = mustHandshakeTimeout(t, time.Minute)
+	if !stdio.Server.SameConnection(changedLimit.Server) {
 		t.Fatal("future handshake policy invalidated a connected executable")
 	}
-	http := ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Transport: TransportHTTP, Endpoint: "https://mcp.example/tools"}
+	http := ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://mcp.example/tools"}}
 	refreshed := http.Clone()
 	refreshed.OAuthHandler = oauthHandlerStub{}
-	if !http.SameConnection(refreshed) {
+	if !http.Server.SameConnection(refreshed.Server) {
 		t.Fatal("live OAuth credentials became a competing connection descriptor")
 	}
 }
 
+func TestProcessEnvironmentPreservesInheritanceAndExplicitEmpty(t *testing.T) {
+	if inherited := processEnvironment(nil); inherited != nil {
+		t.Fatal("absent environment stopped inheriting the parent")
+	}
+	if empty := processEnvironment(map[string]string{}); empty == nil || len(empty) != 0 {
+		t.Fatal("explicitly empty environment became parent inheritance")
+	}
+	require.Equal(t, []string{"A=one", "B=two"}, processEnvironment(map[string]string{"B": "two", "A": "one"}))
+}
+
 func TestDialValidatesBeforeDialing(t *testing.T) {
-	_, _, err := dial(context.Background(), t.Context(), nil, &launch{config: ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportHTTP}})
+	_, _, err := dial(context.Background(), t.Context(), nil, &launch{config: ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP}}})
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "Endpoint is required")
+	assert.Contains(t, err.Error(), "URL is required")
 }
 
 func TestDialNilClient(t *testing.T) {
-	_, _, err := dial(context.Background(), t.Context(), nil, &launch{config: ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: TransportHTTP, Endpoint: "https://e/"}})
+	_, _, err := dial(context.Background(), t.Context(), nil, &launch{config: ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://e/"}}})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "client must not be nil")
 }
@@ -152,8 +175,10 @@ func TestDialConnectionFailureSettlesAbsentLifetimeCleanup(t *testing.T) {
 
 	client := sdkmcp.NewClient(&sdkmcp.Implementation{Name: "failure-test", Version: "v1"}, nil)
 	_, cleanup, err := dial(t.Context(), t.Context(), client, &launch{config: ServerConfig{
-		Source: mcpserver.UserSource(),
-		Name:   testsupport.ServerName("x"), Transport: TransportHTTP, Endpoint: server.URL,
+		Server: mcpserver.Server{
+			Source: mcpserver.UserSource(),
+			Name:   testsupport.ServerName("x"), Transport: mcpserver.TransportStreamableHTTP, URL: server.URL,
+		},
 	}})
 	require.Error(t, err)
 	assert.Nil(t, cleanup)
@@ -270,7 +295,7 @@ func TestEndpointHTTPClientRejectsCrossOriginRedirect(t *testing.T) {
 	require.NoError(t, err)
 	resp, err := client.Get(source.URL)
 	require.Error(t, err)
-	assert.ErrorIs(t, err, httporigin.ErrCrossOriginRedirect)
+	assert.ErrorIs(t, err, httpredirect.ErrCrossOriginRedirect)
 	assert.False(t, targetHit.Load(), "cross-origin redirect reached target")
 	if resp != nil {
 		_ = resp.Body.Close()
@@ -294,13 +319,15 @@ func TestHeaderRoundTripperRejectsUnboundTarget(t *testing.T) {
 // one.
 func TestServerConfigFormattingRedactsCredentials(t *testing.T) {
 	config := ServerConfig{
-		Source:        mcpserver.UserSource(),
-		Name:          testsupport.ServerName("private"),
-		Transport:     TransportHTTP,
-		Endpoint:      "https://url-user:url-secret@example.com/mcp",
-		Authorization: "Bearer authorization-secret",
-		Headers:       map[string]string{"X-Key": "header-secret"},
-		Env:           []string{"TOKEN=environment-secret"},
+		Server: mcpserver.Server{
+			Source:        mcpserver.UserSource(),
+			Name:          testsupport.ServerName("private"),
+			Transport:     mcpserver.TransportStreamableHTTP,
+			URL:           "https://url-user:url-secret@example.com/mcp",
+			Authorization: "Bearer authorization-secret",
+			Headers:       map[string]string{"X-Key": "header-secret"},
+			Env:           map[string]string{"TOKEN": "environment-secret"},
+		},
 	}
 
 	formatted := fmt.Sprintf("%+v", config)

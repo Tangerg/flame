@@ -46,15 +46,17 @@ func TestStdioSessionCleanupKillsDescendants(t *testing.T) {
 	client := sdkmcp.NewClient(&sdkmcp.Implementation{Name: "process-owner-test", Version: "v1"}, nil)
 	timeout := 2 * time.Second
 	session, cleanup, err := dial(t.Context(), t.Context(), client, &launch{config: ServerConfig{
-		Source:    mcpserver.UserSource(),
-		Name:      testsupport.ServerName("process-owner-test"),
-		Transport: TransportStdio,
-		Command:   os.Args[0],
-		Env: withStdioProcessEnv(os.Environ(), map[string]string{
-			stdioProcessRoleEnv: "server",
-			stdioDescendantPID:  pidFile,
-		}),
-		HandshakeTimeout: &timeout,
+		Server: mcpserver.Server{
+			Source:    mcpserver.UserSource(),
+			Name:      testsupport.ServerName("process-owner-test"),
+			Transport: mcpserver.TransportStdio,
+			Command:   os.Args[0],
+			Env: stdioProcessEnvironment(map[string]string{
+				stdioProcessRoleEnv: "server",
+				stdioDescendantPID:  pidFile,
+			}),
+			HandshakeTimeout: mustHandshakeTimeout(t, timeout),
+		},
 	}})
 	if err != nil {
 		t.Fatalf("dial helper server: %v", err)
@@ -85,9 +87,9 @@ func TestStdioSessionCleanupKillsDescendants(t *testing.T) {
 
 func runStdioProcessServer() {
 	descendant := exec.Command(os.Args[0]) //nolint:noctx // the test process must outlive its parent
-	descendant.Env = withStdioProcessEnv(os.Environ(), map[string]string{
+	descendant.Env = processEnvironment(stdioProcessEnvironment(map[string]string{
 		stdioProcessRoleEnv: "descendant",
-	})
+	}))
 	if err := descendant.Start(); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "start descendant: %v\n", err)
 		os.Exit(2)
@@ -145,18 +147,16 @@ func waitForStdioProcessExit(pid int, timeout time.Duration) bool {
 	return false
 }
 
-func withStdioProcessEnv(base []string, replacements map[string]string) []string {
-	env := make([]string, 0, len(base)+len(replacements))
-	for _, entry := range base {
-		key, _, _ := strings.Cut(entry, "=")
-		if _, replace := replacements[key]; !replace {
-			env = append(env, entry)
-		}
+func stdioProcessEnvironment(replacements map[string]string) map[string]string {
+	environment := make(map[string]string)
+	for _, entry := range os.Environ() {
+		key, value, _ := strings.Cut(entry, "=")
+		environment[key] = value
 	}
 	for key, value := range replacements {
-		env = append(env, key+"="+value)
+		environment[key] = value
 	}
-	return env
+	return environment
 }
 
 // A server that exits nonzero once its input closes has still exited: its
@@ -165,12 +165,14 @@ func TestStdioSessionThatExitsNonzeroRetiresCleanly(t *testing.T) {
 	client := sdkmcp.NewClient(&sdkmcp.Implementation{Name: "exit-status-test", Version: "v1"}, nil)
 	timeout := 2 * time.Second
 	session, cleanup, err := dial(t.Context(), t.Context(), client, &launch{config: ServerConfig{
-		Source:           mcpserver.UserSource(),
-		Name:             testsupport.ServerName("exit-status-test"),
-		Transport:        TransportStdio,
-		Command:          os.Args[0],
-		Env:              withStdioProcessEnv(os.Environ(), map[string]string{stdioProcessRoleEnv: "nonzero-exit"}),
-		HandshakeTimeout: &timeout,
+		Server: mcpserver.Server{
+			Source:           mcpserver.UserSource(),
+			Name:             testsupport.ServerName("exit-status-test"),
+			Transport:        mcpserver.TransportStdio,
+			Command:          os.Args[0],
+			Env:              stdioProcessEnvironment(map[string]string{stdioProcessRoleEnv: "nonzero-exit"}),
+			HandshakeTimeout: mustHandshakeTimeout(t, timeout),
+		},
 	}})
 	if err != nil {
 		t.Fatalf("dial helper server: %v", err)
@@ -181,12 +183,14 @@ func TestStdioSessionThatExitsNonzeroRetiresCleanly(t *testing.T) {
 
 	// The premise: the transport does report that exit status as an error.
 	raw, rawCleanup, err := dial(t.Context(), t.Context(), client, &launch{config: ServerConfig{
-		Source:           mcpserver.UserSource(),
-		Name:             testsupport.ServerName("exit-status-test"),
-		Transport:        TransportStdio,
-		Command:          os.Args[0],
-		Env:              withStdioProcessEnv(os.Environ(), map[string]string{stdioProcessRoleEnv: "nonzero-exit"}),
-		HandshakeTimeout: &timeout,
+		Server: mcpserver.Server{
+			Source:           mcpserver.UserSource(),
+			Name:             testsupport.ServerName("exit-status-test"),
+			Transport:        mcpserver.TransportStdio,
+			Command:          os.Args[0],
+			Env:              stdioProcessEnvironment(map[string]string{stdioProcessRoleEnv: "nonzero-exit"}),
+			HandshakeTimeout: mustHandshakeTimeout(t, timeout),
+		},
 	}})
 	if err != nil {
 		t.Fatalf("dial helper server: %v", err)

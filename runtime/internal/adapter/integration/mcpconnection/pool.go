@@ -6,9 +6,6 @@ package mcpconnection
 import (
 	"context"
 	"errors"
-	"fmt"
-	"maps"
-	"slices"
 
 	mcpapp "github.com/Tangerg/flame/runtime/internal/application/integration/mcp"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -37,9 +34,9 @@ func Open(
 	if registry == nil {
 		return nil, errors.New("mcp connection: source registry is required")
 	}
-	configs, err := configsFromServers(servers)
-	if err != nil {
-		return nil, err
+	configs := make([]mcp.ServerConfig, len(servers))
+	for index, server := range servers {
+		configs[index] = mcp.ServerConfig{Server: server.Clone()}
 	}
 	pool := &Pool{registry: registry}
 	inner, err := mcp.Dial(ctx, lifetime, configs, oauthSessions, pool.connectionLaunch)
@@ -71,11 +68,7 @@ func (p *Pool) BeginAuthorize(ctx context.Context, name mcpserver.ID) (mcpapp.At
 }
 
 func (p *Pool) Probe(ctx context.Context, server mcpserver.Server) error {
-	cfg, err := configFromServer(server)
-	if err != nil {
-		return err
-	}
-	return p.inner.Probe(ctx, cfg)
+	return p.inner.Probe(ctx, mcp.ServerConfig{Server: server.Clone()})
 }
 
 func (p *Pool) connectionLaunch(ctx context.Context, name mcpserver.ID) (*mcp.Launch, error) {
@@ -90,19 +83,12 @@ func (p *Pool) connectionLaunch(ctx context.Context, name mcpserver.ID) (*mcp.La
 	if connection.Retire != nil {
 		retire = connection.Retire.Close
 	}
-	config, err := configFromServer(connection.Server)
-	if err != nil {
-		if retire != nil {
-			err = errors.Join(err, retire())
-		}
-		return nil, err
-	}
 	var stdio *mcp.Stdio
 	if connection.Stdio != nil {
 		executable := connection.Stdio
-		stdio = &mcp.Stdio{Command: executable.Command, Args: executable.Args, Env: flattenEnv(executable.Env), Dir: executable.Dir}
+		stdio = &mcp.Stdio{Command: executable.Command, Args: executable.Args, Env: executable.Env, Dir: executable.Dir}
 	}
-	return mcp.NewLaunch(config, stdio, retire)
+	return mcp.NewLaunch(mcp.ServerConfig{Server: connection.Server}, stdio, retire)
 }
 
 func (p *Pool) Refuse(ctx context.Context, name mcpserver.ID, failure mcpserver.ConnectionFailure) error {
@@ -122,76 +108,4 @@ func (p *Pool) SetToolSink(sink func([]toolcontract.Tool)) {
 // Shutdown releases every live connection under the caller's shutdown budget.
 func (p *Pool) Shutdown(ctx context.Context) error {
 	return p.inner.Shutdown(ctx)
-}
-
-func configsFromServers(servers []mcpserver.Server) ([]mcp.ServerConfig, error) {
-	if len(servers) == 0 {
-		return nil, nil
-	}
-	out := make([]mcp.ServerConfig, len(servers))
-	for i, server := range servers {
-		cfg, err := configFromServer(server)
-		if err != nil {
-			return nil, fmt.Errorf("mcp connection: map server %q: %w", server.ID(), err)
-		}
-		out[i] = cfg
-	}
-	return out, nil
-}
-
-func configFromServer(server mcpserver.Server) (mcp.ServerConfig, error) {
-	if err := server.Validate(); err != nil {
-		return mcp.ServerConfig{}, fmt.Errorf("validate domain server: %w", err)
-	}
-	transport, err := transportFromDomain(server.Transport)
-	if err != nil {
-		return mcp.ServerConfig{}, err
-	}
-	cfg := mcp.ServerConfig{
-		SourceFingerprint: server.AuthorityFingerprint(),
-		Source:            server.Source,
-		Name:              server.Name,
-		Transport:         transport,
-	}
-	if timeout, bounded := server.HandshakeTimeout.Duration(); bounded {
-		cfg.HandshakeTimeout = &timeout
-	}
-	switch server.Transport {
-	case mcpserver.TransportStreamableHTTP:
-		cfg.Endpoint = server.URL
-		cfg.Authorization = server.Authorization
-		cfg.Headers = maps.Clone(server.Headers)
-	case mcpserver.TransportStdio:
-		cfg.Command = server.Command
-		cfg.Args = slices.Clone(server.Args)
-		cfg.Env = flattenEnv(server.Env)
-		cfg.Dir = server.Dir
-	}
-	if err := cfg.Validate(); err != nil {
-		return mcp.ServerConfig{}, fmt.Errorf("validate runtime config: %w", err)
-	}
-	return cfg, nil
-}
-
-func transportFromDomain(transport mcpserver.Transport) (mcp.Transport, error) {
-	switch transport {
-	case mcpserver.TransportStreamableHTTP:
-		return mcp.TransportHTTP, nil
-	case mcpserver.TransportStdio:
-		return mcp.TransportStdio, nil
-	default:
-		return "", fmt.Errorf("unknown domain transport %q", transport)
-	}
-}
-
-func flattenEnv(values map[string]string) []string {
-	if len(values) == 0 {
-		return nil
-	}
-	entries := make([]string, 0, len(values))
-	for key, value := range values {
-		entries = append(entries, key+"="+value)
-	}
-	slices.Sort(entries)
-	return entries
 }

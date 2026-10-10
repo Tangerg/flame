@@ -3,6 +3,7 @@ package mcp
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"sync"
 
@@ -23,7 +24,7 @@ type launchClaim struct {
 type Stdio struct {
 	Command string
 	Args    []string
-	Env     []string
+	Env     map[string]string
 	Dir     string
 }
 
@@ -44,12 +45,16 @@ func NewLaunch(config ServerConfig, stdio *Stdio, retire func() error) (_ *Launc
 		return nil, err
 	}
 	if stdio != nil {
-		if config.Transport != TransportStdio || stdio.Command == "" || retire == nil {
+		if config.Transport != mcpserver.TransportStdio || retire == nil {
 			return nil, errors.New("mcp: leased stdio requires a command, resource and stdio transport")
 		}
-		stdio = &Stdio{Command: stdio.Command, Args: slices.Clone(stdio.Args), Env: slices.Clone(stdio.Env), Dir: stdio.Dir}
+		descriptor := mcpserver.Server{Source: config.Source, Name: config.Name, Transport: mcpserver.TransportStdio, Command: stdio.Command, Args: stdio.Args, Env: stdio.Env, Dir: stdio.Dir}
+		if err := descriptor.ValidateConnection(); err != nil {
+			return nil, fmt.Errorf("mcp: relocated stdio: %w", err)
+		}
+		stdio = &Stdio{Command: stdio.Command, Args: slices.Clone(stdio.Args), Env: maps.Clone(stdio.Env), Dir: stdio.Dir}
 	}
-	if _, _, installed := config.Source.Release(); installed && config.Transport == TransportStdio && stdio == nil {
+	if _, _, installed := config.Source.Release(); installed && config.Transport == mcpserver.TransportStdio && stdio == nil {
 		return nil, errors.New("mcp: installation stdio requires leased execution content")
 	}
 	return &Launch{claim: &launchClaim{pending: &launch{config: config.Clone(), stdio: stdio, retire: retire}}}, nil

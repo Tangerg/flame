@@ -1,21 +1,13 @@
-// Package httporigin provides shared fail-closed HTTP(S) origin normalization and
-// comparison for credential and redirect boundaries.
+// Package httporigin owns HTTP(S) origin identity for credential and endpoint
+// admission. It has no request or network capability.
 package httporigin
 
 import (
 	"errors"
 	"fmt"
-	"net"
-	"net/http"
 	"net/url"
 	"strings"
 )
-
-const maximumRedirects = 10
-
-// ErrCrossOriginRedirect reports an attempted redirect outside the first
-// request's credential authority.
-var ErrCrossOriginRedirect = errors.New("httporigin: cross-origin redirect blocked")
 
 // Origin is a normalized, comparable HTTP(S) origin: a lowercased scheme and
 // host with the effective default port filled in, so two origins are equal iff
@@ -33,6 +25,11 @@ func (o Origin) String() string { return o.scheme + "://" + o.host }
 func Parse(raw string) (Origin, error) {
 	u, err := url.Parse(raw)
 	if err != nil {
+		// url.Error retains the complete URL, which may contain credentials.
+		// Keep the syntax cause without carrying that decorated input forward.
+		if failure, ok := errors.AsType[*url.Error](err); ok {
+			err = failure.Err
+		}
 		return Origin{}, fmt.Errorf("parse URL: %w", err)
 	}
 	return FromURL(u)
@@ -63,7 +60,10 @@ func FromURL(u *url.URL) (Origin, error) {
 			port = "80"
 		}
 	}
-	return Origin{scheme: scheme, host: net.JoinHostPort(host, port)}, nil
+	if strings.Contains(host, ":") {
+		host = "[" + host + "]"
+	}
+	return Origin{scheme: scheme, host: host + ":" + port}, nil
 }
 
 // Same reports whether two endpoints share the same origin. Invalid or
@@ -75,35 +75,4 @@ func Same(left, right string) bool {
 	}
 	rightOrigin, err := Parse(right)
 	return err == nil && leftOrigin == rightOrigin
-}
-
-// CheckRedirect permits redirects only within the initial request's origin.
-// It is suitable for clients whose credential and endpoint authority must stay
-// inseparable; callers with an explicit multi-origin policy need their own
-// callback.
-func CheckRedirect(request *http.Request, via []*http.Request) error {
-	if request == nil {
-		return errors.New("httporigin: redirect request is nil")
-	}
-	if len(via) == 0 {
-		return errors.New("httporigin: redirect chain is empty")
-	}
-	if via[0] == nil {
-		return errors.New("httporigin: initial redirect request is nil")
-	}
-	if len(via) >= maximumRedirects {
-		return fmt.Errorf("httporigin: stopped after %d redirects", maximumRedirects)
-	}
-	source, err := FromURL(via[0].URL)
-	if err != nil {
-		return fmt.Errorf("httporigin: initial redirect request: %w", err)
-	}
-	target, err := FromURL(request.URL)
-	if err != nil {
-		return fmt.Errorf("httporigin: redirect target: %w", err)
-	}
-	if source != target {
-		return fmt.Errorf("%w: %s to %s", ErrCrossOriginRedirect, source, target)
-	}
-	return nil
 }

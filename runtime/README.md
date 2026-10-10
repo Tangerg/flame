@@ -1182,6 +1182,17 @@ and missing execution trees still explicitly report that they cannot be resumed.
 
 Runtime consumes the released Scope modules pinned in `go.mod`. Provider `Call` and `Stream` use Scope's canonical streaming transport; complete calls aggregate that same validated stream. Runtime does not retain a unary provider fallback. MCP sessions use `github.com/Tangerg/go-sdk`, the same SDK as Scope MCP, so structured results preserve large integers, decimal values, and explicit empty objects through transport and Tool publication.
 
+MCP descriptors retain `mcpserver.Server` from persistence through connection and
+dispatch. The domain owns transport, endpoint, process, header and handshake
+invariants; the connection configuration adds only live OAuth state. Tool authority
+fingerprints and connection comparisons derive from that descriptor rather than
+separately stored copies. Environment maps become process entries only at `exec.Cmd`:
+an absent environment inherits the parent, and an explicitly empty one stays empty.
+Storage preserves that distinction; a previously written absent environment remains
+absent, while an explicit empty map no longer silently inherits parent credentials.
+Malformed persisted HTTP endpoints fail reads without automatic repair; valid records
+and the public protocol keep their format.
+
 The MCP connection supervisor admits every attempt before configuration, execution
 resource or credential I/O. Admission withdraws the previous session and tools and
 publishes connecting from that same owner. Startup, reconnect and authorization

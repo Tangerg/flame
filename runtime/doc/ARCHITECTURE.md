@@ -257,6 +257,18 @@ package organization alone.
 
 MCP configuration requires its durable registry, live connection ports, tool catalog, and shared tool policy at construction. An empty registry represents no configured servers; it does not remove any of these use cases or turn missing implementations into empty query results. Startup and background connection failures produce diagnostics with their server identity even when tracing is unconfigured. A failed startup connection or tool catalog leaves that server unavailable while independently configured servers remain usable.
 
+The MCP domain descriptor owns connection validation, comparison and authority
+fingerprints. Persistence, source realization and live connection configuration
+retain that value; live configuration adds OAuth state without copying the descriptor
+into another transport vocabulary or raw timeout representation. Relocated stdio
+content uses the same process invariants, and environment encoding happens only at
+the process boundary. The connection adapter owns fresh configuration admission and
+launch-resource transfer, not a parallel descriptor or validator.
+HTTP origin identity is a pure integration domain value. Redirect chain policy
+belongs to its HTTP adapter and consumes that identity; domain validation never
+depends on HTTP requests or clients. Parse failures preserve their syntax cause
+without carrying a credential-bearing URL into diagnostics.
+
 The MCP registry projects desired definitions from durable user servers and selected
 installation declarations. Listing and startup use that projection without reading
 plugin release bytes or backend directories. Plugin inspection owns resource availability

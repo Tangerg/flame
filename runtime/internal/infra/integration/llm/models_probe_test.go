@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/modelref"
-	"github.com/Tangerg/flame/runtime/internal/httporigin"
+	"github.com/Tangerg/flame/runtime/internal/infra/integration/httpredirect"
 )
 
 func TestListRemoteModels(t *testing.T) {
@@ -202,7 +202,7 @@ func TestListRemoteModelsBlocksCredentialRedirectAcrossOrigins(t *testing.T) {
 	t.Cleanup(source.Close)
 
 	_, err := listRemoteModels(t.Context(), source.URL, "test-key", modelListProtocolAnthropic)
-	if !errors.Is(err, httporigin.ErrCrossOriginRedirect) {
+	if !errors.Is(err, httpredirect.ErrCrossOriginRedirect) {
 		t.Fatalf("ListRemoteModels error = %v, want ErrCrossOriginRedirect", err)
 	}
 	if targetHit.Load() {

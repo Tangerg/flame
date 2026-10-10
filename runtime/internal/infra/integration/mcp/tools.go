@@ -102,5 +102,5 @@ func (t Executable) Current() bool {
 }
 
 func (t Executable) Unwrap() toolcontract.Tool             { return t.Tool }
-func (t Executable) SourceFingerprint() fingerprint.Digest { return t.config.SourceFingerprint }
+func (t Executable) SourceFingerprint() fingerprint.Digest { return t.config.AuthorityFingerprint() }
 func (t Executable) SourceConfig() ServerConfig            { return t.config.Clone() }

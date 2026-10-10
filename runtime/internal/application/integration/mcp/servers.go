@@ -8,9 +8,9 @@ import (
 	"maps"
 	"slices"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/httporigin"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/run/tool"
-	"github.com/Tangerg/flame/runtime/internal/httporigin"
 )
 
 // errClosed reports that a post-commit reconcile / background task could not be
@@ -362,13 +362,6 @@ func resolveHTTPConnection(
 		return mcpserver.Server{}, fmt.Errorf(
 			"%w: environment applies to stdio transport only",
 			ErrInvalidServerConfiguration,
-		)
-	}
-	if _, err := httporigin.Parse(input.URL); err != nil {
-		return mcpserver.Server{}, fmt.Errorf(
-			"%w: invalid HTTP endpoint: %w",
-			ErrInvalidServerConfiguration,
-			err,
 		)
 	}
 	sameOrigin := current != nil &&

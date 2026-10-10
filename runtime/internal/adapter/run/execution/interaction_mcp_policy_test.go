@@ -26,7 +26,7 @@ func (i identifiedPolicyTool) SourceFingerprint() fingerprint.Digest {
 
 func (i identifiedPolicyTool) SourceConfig() mcp.ServerConfig {
 	name, _ := mcpserver.ParseServerName(i.server)
-	return mcp.ServerConfig{Source: mcpserver.UserSource(), Name: name}
+	return mcp.ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: name}}
 }
 
 type decoratedPolicyTool struct{ toolcontract.Tool }

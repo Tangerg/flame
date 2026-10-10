@@ -15,6 +15,63 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/infra/sqlite"
 )
 
+func TestMCPServerStoreCannotPersistOrRestoreInvalidHTTPEndpoints(t *testing.T) {
+	for _, endpoint := range []string{"/mcp", "file:///tmp/mcp", "https://", "https://user:secret@example.test/mcp"} {
+		t.Run(endpoint, func(t *testing.T) {
+			db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = db.Close() })
+			store := sqlite.NewMCPServerStore(db)
+			valid := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("remote"), Transport: mcpserver.TransportStreamableHTTP, URL: "https://example.test/mcp"}
+			if err := store.Save(t.Context(), valid); err != nil {
+				t.Fatal(err)
+			}
+			invalid := valid.Clone()
+			invalid.URL = endpoint
+			if err := store.Save(t.Context(), invalid); err == nil {
+				t.Fatal("invalid endpoint persisted")
+			}
+			if stored, found, err := store.Get(t.Context(), valid.Name); err != nil || !found || stored.URL != valid.URL {
+				t.Fatalf("rejected write changed the existing server: found=%t, err=%v", found, err)
+			}
+			if _, err := db.ExecContext(t.Context(), `UPDATE mcp_servers SET url=?`, endpoint); err != nil {
+				t.Fatal(err)
+			}
+			if _, found, err := store.Get(t.Context(), valid.Name); err == nil || found {
+				t.Fatal("invalid persisted endpoint became an MCP server")
+			}
+			if _, err := store.List(t.Context()); err == nil {
+				t.Fatal("listing accepted an invalid persisted endpoint")
+			}
+		})
+	}
+}
+
+func TestMCPServerStoreRetainsProcessEnvironmentPresence(t *testing.T) {
+	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	store := sqlite.NewMCPServerStore(db)
+	for _, environment := range []map[string]string{nil, {}, {"TOKEN": "value"}} {
+		server := mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName("local"), Transport: mcpserver.TransportStdio, Command: "server", Env: environment}
+		if err := store.Save(t.Context(), server); err != nil {
+			t.Fatal(err)
+		}
+		stored, found, err := store.Get(t.Context(), server.Name)
+		if err != nil || !found || !server.SameConnection(stored) {
+			t.Errorf("stored environment changed process inheritance: absent=%t, restoredAbsent=%t, found=%t, err=%v", environment == nil, stored.Env == nil, found, err)
+		}
+		listed, err := store.List(t.Context())
+		if err != nil || len(listed) != 1 || !server.SameConnection(listed[0]) {
+			t.Errorf("listed environment changed process inheritance: absent=%t, err=%v", environment == nil, err)
+		}
+	}
+}
+
 func TestMCPServerStoreRoundTrip(t *testing.T) {
 	db, err := sqlite.Open(t.Context(), filepath.Join(t.TempDir(), "flame.db"))
 	if err != nil {
@@ -190,7 +247,7 @@ func equalMCPServer(a, b mcpserver.Server) bool {
 	return a.ID() == b.ID() && a.Transport == b.Transport && a.Enabled == b.Enabled &&
 		a.Description == b.Description && a.URL == b.URL && a.Authorization == b.Authorization &&
 		maps.Equal(a.Headers, b.Headers) && a.Command == b.Command && slices.Equal(a.Args, b.Args) &&
-		maps.Equal(a.Env, b.Env) && a.Dir == b.Dir && a.HandshakeTimeout == b.HandshakeTimeout
+		(a.Env == nil) == (b.Env == nil) && maps.Equal(a.Env, b.Env) && a.Dir == b.Dir && a.HandshakeTimeout == b.HandshakeTimeout
 }
 
 func TestMCPServerStoreRejectsMalformedJSONFields(t *testing.T) {

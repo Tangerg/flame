@@ -42,7 +42,7 @@ func (m mcpTool) Call(context.Context, toolcontract.Invocation) (chat.ToolOutput
 func (m mcpTool) MCPToolIdentity() (string, string) { return m.server, m.remote }
 
 func (m mcpTool) SourceConfig() mcp.ServerConfig {
-	return mcp.ServerConfig{Source: mcpserver.UserSource(), Name: testsupport.ServerName(m.server)}
+	return mcp.ServerConfig{Server: mcpserver.Server{Source: mcpserver.UserSource(), Name: testsupport.ServerName(m.server)}}
 }
 
 func catalog() []toolcontract.Tool {

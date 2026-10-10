@@ -321,7 +321,7 @@ func TestDomainDoesNotRenderAgentOrToolPresentation(t *testing.T) {
 func TestSharedCapabilitiesStayPure(t *testing.T) {
 	root := moduleRoot(t)
 	for _, name := range []string{
-		"capture", "completion", "exactint", "exactjson", "httporigin", "idempotency",
+		"capture", "completion", "exactint", "exactjson", "idempotency",
 		"identity", "optional",
 	} {
 		forbidExternalImports(t, filepath.Join(root, "internal", name), []string{
@@ -1471,7 +1471,6 @@ func TestRememberScopeUsesApprovalDomainType(t *testing.T) {
 
 var crossRingCapabilityImports = []string{
 	"github.com/Tangerg/flame/runtime/internal/completion",
-	"github.com/Tangerg/flame/runtime/internal/httporigin",
 	"github.com/Tangerg/flame/runtime/internal/idempotency",
 }
 
@@ -1873,7 +1872,7 @@ func layerOf(rel string) string {
 	switch rel {
 	case "internal/dependency", "internal/exactint", "internal/exactjson", "internal/fingerprint", "internal/identity", "internal/optional":
 		return ringValue
-	case "internal/cancelread", "internal/capture", "internal/completion", "internal/httporigin", "internal/idempotency", "internal/keylock":
+	case "internal/cancelread", "internal/capture", "internal/completion", "internal/idempotency", "internal/keylock":
 		return ringMechanism
 	case "internal/contractshape":
 		return ringProtocol

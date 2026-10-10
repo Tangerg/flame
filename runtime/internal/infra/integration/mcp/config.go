@@ -10,205 +10,62 @@ import (
 	"os"
 	"os/exec"
 	"slices"
-	"strings"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/domain/integration/httporigin"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
-	"github.com/Tangerg/flame/runtime/internal/fingerprint"
-	"github.com/Tangerg/flame/runtime/internal/httporigin"
+	"github.com/Tangerg/flame/runtime/internal/infra/integration/httpredirect"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/httpresponse"
 	"github.com/Tangerg/flame/runtime/internal/infra/process/procgroup"
-	"github.com/Tangerg/flame/runtime/internal/optional"
 	"github.com/Tangerg/go-sdk/auth"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 	"golang.org/x/oauth2"
 )
 
-// Transport is the wire mode of an MCP server connection. The zero value is
-// invalid so a misconfigured runtime entry fails validation instead of silently
-// defaulting.
-type Transport string
-
-const (
-	// TransportHTTP is Streamable HTTP. [ServerConfig.Endpoint] is the URL.
-	TransportHTTP Transport = "http"
-	// TransportStdio is a local subprocess over stdin/stdout.
-	TransportStdio Transport = "stdio"
-)
-
-func (s ServerConfig) oauthTarget() mcpserver.OAuthTarget {
-	return mcpserver.OAuthTarget{Source: s.Source, Name: s.Name, URL: s.Endpoint, Headers: maps.Clone(s.Headers)}
-}
-
-// Valid reports whether transport names one supported MCP connection mode.
-func (t Transport) Valid() bool {
-	return t == TransportHTTP || t == TransportStdio
-}
-
-func (t Transport) String() string {
-	if !t.Valid() {
-		return "invalid"
-	}
-	return string(t)
-}
-
-// ServerConfig declaratively describes one runtime MCP server connection. This
-// is application configuration, not part of the reusable mcp package: the
-// protocol package exposes transports and sessions, while the runtime owns how
-// persisted descriptors become live sessions.
+// ServerConfig combines an owned domain descriptor with live OAuth state.
+// The descriptor alone owns connection invariants, identity and authority;
+// OAuth refresh cannot create another representation of those facts.
 type ServerConfig struct {
-	// SourceFingerprint is the authority this connection realizes; tool
-	// policy compares it with the registry's current authority.
-	SourceFingerprint fingerprint.Digest
-	// Source owns the record and, for an installation, names the release
-	// this connection realizes. Required.
-	Source mcpserver.Source
-	// Name namespaces the server's tools. Required.
-	Name mcpserver.ServerName
-
-	// Transport picks the connection mode. Required.
-	Transport Transport
-
-	// Endpoint is the Streamable HTTP URL. Used with [TransportHTTP].
-	Endpoint string
-
-	// Command is the executable to spawn. Used with [TransportStdio].
-	Command string
-
-	// Args are command arguments. Used with [TransportStdio].
-	Args []string
-
-	// Env, when non-nil, replaces the subprocess environment.
-	Env []string
-
-	// Dir sets the subprocess working directory.
-	Dir string
-
-	// Authorization is sent as the HTTP Authorization header.
-	Authorization string
-
-	// Headers carries extra static HTTP headers.
-	Headers map[string]string
-
-	// HandshakeTimeout bounds MCP initialization when present. nil is the
-	// explicit unbounded policy and does not affect the live session.
-	HandshakeTimeout *time.Duration
-
-	// OAuthHandler authorizes an HTTP connection via OAuth 2.1. The handler is
-	// live process state; its opaque session may be persisted separately through
-	// [OAuthSessionStore].
+	mcpserver.Server
 	OAuthHandler auth.OAuthHandler
 }
 
-func (s ServerConfig) ID() mcpserver.ID { return s.Source.ID(s.Name) }
-
-// Format keeps the credential-bearing fields behind a redaction boundary for
-// every fmt verb, as mcpserver.Server does for the same fields upstream. This
-// is the connection adapter the domain type's comment defers the raw values to,
-// so it is the last place a diagnostic or a failing test could print them.
 func (s ServerConfig) Format(state fmt.State, _ rune) {
-	timeout := "unbounded"
-	if s.HandshakeTimeout != nil {
-		timeout = s.HandshakeTimeout.String()
-	}
-	_, _ = fmt.Fprintf(
-		state,
-		"ServerConfig{ID:%q, Transport:%q, Endpoint:%s, Command:%q, Args:%q, Env:%s, Dir:%q, "+
-			"Authorization:%s, Headers:%s, HandshakeTimeout:%s, OAuthHandler:%s}",
-		s.ID(),
-		s.Transport,
-		mcpserver.SecretPresence(s.Endpoint != ""),
-		s.Command,
-		s.Args,
-		mcpserver.SecretPresence(len(s.Env) > 0),
-		s.Dir,
-		mcpserver.SecretPresence(s.Authorization != ""),
-		mcpserver.SecretPresence(len(s.Headers) > 0),
-		timeout,
-		mcpserver.SecretPresence(s.OAuthHandler != nil),
-	)
+	_, _ = fmt.Fprintf(state, "ServerConfig{Server:%v, OAuthHandler:%s}", s.Server, mcpserver.SecretPresence(s.OAuthHandler != nil))
 }
 
-// Clone returns an independently owned configuration snapshot. Live handler
-// values are intentionally shared; only mutable collection storage is copied.
 func (s ServerConfig) Clone() ServerConfig {
-	s.Args = slices.Clone(s.Args)
-	s.Env = slices.Clone(s.Env)
-	s.Headers = maps.Clone(s.Headers)
-	s.HandshakeTimeout = optional.Clone(s.HandshakeTimeout)
+	s.Server = s.Server.Clone()
 	return s
 }
 
-// SameConnection compares the configuration realized by an executable. OAuth
-// refresh belongs to the credential store; handshake limits govern a future
-// attempt. Neither changes the configuration of an already connected session.
-func (s ServerConfig) SameConnection(other ServerConfig) bool {
-	if s.Source != other.Source || s.Name != other.Name || s.Transport != other.Transport ||
-		s.SourceFingerprint != other.SourceFingerprint {
-		return false
-	}
-	switch s.Transport {
-	case TransportHTTP:
-		return s.Endpoint == other.Endpoint && s.Authorization == other.Authorization && maps.Equal(s.Headers, other.Headers)
-	case TransportStdio:
-		return s.Command == other.Command && s.Dir == other.Dir && slices.Equal(s.Args, other.Args) &&
-			(s.Env == nil) == (other.Env == nil) && slices.Equal(s.Env, other.Env)
-	default:
-		return false
-	}
-}
-
-// Validate reports whether exactly one transport is fully specified and the
-// other transport's fields are blank.
 func (s ServerConfig) Validate() error {
-	if err := s.Source.Validate(); err != nil {
-		return fmt.Errorf("mcp: server source: %w", err)
+	if err := s.Server.Validate(); err != nil {
+		return err
 	}
-	if err := s.Name.Validate(); err != nil {
-		return fmt.Errorf("mcp: server name: %w", err)
-	}
-	if s.HandshakeTimeout != nil && *s.HandshakeTimeout <= 0 {
-		return fmt.Errorf("mcp server %q: HandshakeTimeout must be positive when present", s.ID())
-	}
-	switch s.Transport {
-	case TransportHTTP:
-		if s.Endpoint == "" {
-			return fmt.Errorf("mcp server %q: Endpoint is required for HTTP transport", s.ID())
-		}
-		if _, err := httporigin.Parse(s.Endpoint); err != nil {
-			return fmt.Errorf("mcp server %q: invalid Endpoint: %w", s.ID(), err)
-		}
-		if s.Command != "" {
-			return fmt.Errorf("mcp server %q: Command must be empty for HTTP transport", s.ID())
-		}
-		for name := range s.Headers {
-			if strings.EqualFold(name, "Authorization") {
-				return fmt.Errorf("mcp server %q: Headers must not duplicate Authorization", s.ID())
-			}
-		}
-		if s.OAuthHandler != nil && s.Authorization != "" {
-			return fmt.Errorf("mcp server %q: OAuth and static Authorization are mutually exclusive", s.ID())
-		}
-	case TransportStdio:
-		if s.Command == "" {
-			return fmt.Errorf("mcp server %q: Command is required for stdio transport", s.ID())
-		}
-		if s.Endpoint != "" {
-			return fmt.Errorf("mcp server %q: Endpoint must be empty for stdio transport", s.ID())
-		}
-		if s.Authorization != "" {
-			return fmt.Errorf("mcp server %q: Authorization applies to HTTP transport only", s.ID())
-		}
-		if len(s.Headers) > 0 {
-			return fmt.Errorf("mcp server %q: Headers apply to HTTP transport only", s.ID())
-		}
-		if s.OAuthHandler != nil {
+	if s.OAuthHandler != nil {
+		if s.Transport != mcpserver.TransportStreamableHTTP {
 			return fmt.Errorf("mcp server %q: OAuth applies to HTTP transport only", s.ID())
 		}
-	default:
-		return fmt.Errorf("mcp server %q: unknown transport %q", s.ID(), s.Transport)
+		if s.Authorization != "" {
+			return fmt.Errorf("mcp server %q: OAuth and static Authorization are mutually exclusive", s.ID())
+		}
 	}
 	return nil
+}
+
+// Process environment encoding belongs at the exec boundary. Preserve nil:
+// exec.Cmd inherits the parent only when Env is absent, not when it is empty.
+func processEnvironment(values map[string]string) []string {
+	if values == nil {
+		return nil
+	}
+	entries := make([]string, 0, len(values))
+	for key, value := range values {
+		entries = append(entries, key+"="+value)
+	}
+	slices.Sort(entries)
+	return entries
 }
 
 func dial(
@@ -241,24 +98,24 @@ func dial(
 	var command *exec.Cmd
 	connect := func(sessionCtx context.Context) (*sdkmcp.ClientSession, error) {
 		switch cfg.Transport {
-		case TransportHTTP:
-			httpClient, err := endpointHTTPClient(cfg.Endpoint, cfg.Authorization, cfg.Headers)
+		case mcpserver.TransportStreamableHTTP:
+			httpClient, err := endpointHTTPClient(cfg.URL, cfg.Authorization, cfg.Headers)
 			if err != nil {
 				return nil, fmt.Errorf("mcp server %q: build HTTP client: %w", cfg.ID(), err)
 			}
 			transport := &sdkmcp.StreamableClientTransport{
-				Endpoint:     cfg.Endpoint,
+				Endpoint:     cfg.URL,
 				HTTPClient:   httpClient,
 				OAuthHandler: authorizationChallenge{oauth: cfg.OAuthHandler},
 			}
 			return client.Connect(sessionCtx, transport, nil)
-		case TransportStdio:
+		case mcpserver.TransportStdio:
 			stdio := input.stdio
 			if stdio == nil {
 				stdio = &Stdio{Command: cfg.Command, Args: cfg.Args, Env: cfg.Env, Dir: cfg.Dir}
 			}
 			cmd := exec.CommandContext(sessionCtx, stdio.Command, stdio.Args...)
-			cmd.Env = stdio.Env
+			cmd.Env = processEnvironment(stdio.Env)
 			cmd.Dir = stdio.Dir
 			procgroup.Prepare(cmd)
 			cmd.Cancel = func() error { return procgroup.Stop(cmd) }
@@ -268,7 +125,11 @@ func dial(
 			return nil, fmt.Errorf("mcp: unknown transport %q", cfg.Transport)
 		}
 	}
-	session, cancelLifetime, err := connectSession(ctx, lifetime, cfg.HandshakeTimeout, connect)
+	var timeout *time.Duration
+	if duration, bounded := cfg.HandshakeTimeout.Duration(); bounded {
+		timeout = &duration
+	}
+	session, cancelLifetime, err := connectSession(ctx, lifetime, timeout, connect)
 	retire := input.retire
 	input.retire = nil
 	cleanup := sessionCleanup(func() (err error) {
@@ -369,7 +230,7 @@ func endpointHTTPClient(endpoint, authorization string, headers map[string]strin
 	}
 	// The transport pins every request, including the first, to the configured
 	// origin, so the shared same-origin redirect policy keeps the chain there.
-	return &http.Client{Transport: transport, CheckRedirect: httporigin.CheckRedirect}, nil
+	return &http.Client{Transport: transport, CheckRedirect: httpredirect.CheckRedirect}, nil
 }
 
 type headerRoundTripper struct {
