@@ -357,7 +357,8 @@ The shared filesystem input boundary owns regular-file kind, size admission and 
 identity for package sources, release scans, resources and packaged MCP commands. Special
 nodes are rejected before they can block a read. Copying and hashing use the opened file's
 metadata and reject source replacement or mutation observed after reading; cancellation
-retains its cause and cannot complete a copy successfully. The package adapter owns
+preserves its standard category, custom cause and concurrent I/O failures, and cannot
+complete a copy successfully. The package adapter owns
 archive entry safety, extracted-byte quotas, release digests and the content index that
 checks the exact resource bytes returned to a caller.
 Staging owns one destination tree for files, declared directories and implied parents.
