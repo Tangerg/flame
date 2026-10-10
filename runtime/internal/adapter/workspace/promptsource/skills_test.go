@@ -21,6 +21,8 @@ import (
 	domainskills "github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 )
 
+const runtimeSkillDescription = "A valid Runtime skill used by the bounded-source counterexample."
+
 func TestDiscoveryAndDetailShareExecutionSource(t *testing.T) {
 	workspace, user := t.TempDir(), t.TempDir()
 	project := ProjectSkillDir(workspace)
@@ -107,7 +109,7 @@ func writeRuntimeSkill(t *testing.T, root, name, body string) {
 	if err := os.MkdirAll(directory, 0o755); err != nil {
 		t.Fatalf("create skill %q: %v", name, err)
 	}
-	document := fmt.Sprintf("---\nname: %s\ndescription: A valid Runtime skill used by the bounded-source counterexample.\n---\n%s", name, body)
+	document := fmt.Sprintf("---\nname: %s\ndescription: %s\n---\n%s", name, runtimeSkillDescription, body)
 	if err := os.WriteFile(filepath.Join(directory, "SKILL.md"), []byte(document), 0o644); err != nil {
 		t.Fatalf("write skill %q: %v", name, err)
 	}
@@ -407,7 +409,7 @@ func TestInstallationSkillCapacityIsPerSelectedSource(t *testing.T) {
 		for index := range 129 {
 			name := fmt.Sprintf("%s-%03d", prefix, index)
 			writeRuntimeSkill(t, bundle.Root, name, "Read the results.")
-			bundle.Names = append(bundle.Names, name)
+			bundle.Skills = append(bundle.Skills, plugin.Skill{Name: name, Description: runtimeSkillDescription})
 		}
 		fixtures = append(fixtures, bundle)
 	}
@@ -425,7 +427,7 @@ func TestInstallationSkillCapacityIsPerSelectedSource(t *testing.T) {
 func TestPackageSkillConflictCanOnlyBeResolvedByAnExplicitSource(t *testing.T) {
 	var fixtures packageSkillFixtures
 	for range 2 {
-		bundle := PackageSkillBundle{Root: t.TempDir(), Names: []string{"review"}, Dependency: plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1")}}
+		bundle := PackageSkillBundle{Root: t.TempDir(), Skills: []plugin.Skill{{Name: "review", Description: runtimeSkillDescription}}, Dependency: plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("1")}}
 		writeRuntimeSkill(t, bundle.Root, "review", "Inspect this package.")
 		fixtures = append(fixtures, bundle)
 	}
@@ -468,7 +470,7 @@ func TestExecutionSkillSourceCannotFallThroughAfterOverrideRemoval(t *testing.T)
 			if scope == "project" {
 				root = ProjectSkillDir(workspace)
 			}
-			bundle := PackageSkillBundle{Root: t.TempDir(), Names: []string{"review"}, Dependency: plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("release")}}
+			bundle := PackageSkillBundle{Root: t.TempDir(), Skills: []plugin.Skill{{Name: "review", Description: runtimeSkillDescription}}, Dependency: plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("release")}}
 			writeRuntimeSkill(t, bundle.Root, "review", "package instructions")
 			writeRuntimeSkill(t, root, "review", "local instructions")
 			packages := packageSkillFixtures{bundle}
@@ -509,7 +511,7 @@ func TestExecutionSkillSelectionDoesNotAdmitLaterNamesOrOverrides(t *testing.T) 
 	workspace := t.TempDir()
 	project := ProjectSkillDir(workspace)
 	writeRuntimeSkill(t, project, "local", "original local instructions")
-	bundle := PackageSkillBundle{Root: t.TempDir(), Names: []string{"review"}, Dependency: plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("release")}}
+	bundle := PackageSkillBundle{Root: t.TempDir(), Skills: []plugin.Skill{{Name: "review", Description: runtimeSkillDescription}}, Dependency: plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("release")}}
 	writeRuntimeSkill(t, bundle.Root, "review", "package instructions")
 	source, dependencies, err := OverlaySkillSource(t.Context(), workspace, "", packageSkillFixtures{bundle}, nil)
 	if err != nil || len(dependencies) != 1 || dependencies[0] != bundle.Dependency {
@@ -531,7 +533,7 @@ func TestExecutionSkillSelectionDoesNotAdmitLaterNamesOrOverrides(t *testing.T) 
 }
 
 func TestSkillResourceAuthorityIsRetainedWithoutADiscoverableDocument(t *testing.T) {
-	bundle := PackageSkillBundle{Root: t.TempDir(), Names: []string{"review"}, Dependency: plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("release")}}
+	bundle := PackageSkillBundle{Root: t.TempDir(), Skills: []plugin.Skill{{Name: "review", Description: runtimeSkillDescription}}, Dependency: plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("release")}}
 	writeRuntimeSkill(t, bundle.Root, "review", "package instructions")
 	if err := os.WriteFile(filepath.Join(bundle.Root, "review", sdk.SkillFile), []byte("invalid document"), 0600); err != nil {
 		t.Fatal(err)

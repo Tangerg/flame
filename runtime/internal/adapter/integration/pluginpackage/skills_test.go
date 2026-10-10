@@ -193,6 +193,9 @@ func TestSkillDiscoveryDistinguishesUnavailablePackagesFromNameConflicts(t *test
 			if err != nil || len(dependencies) != 2 || !slices.ContainsFunc(dependencies, func(d plugin.Dependency) bool { return d.Digest == broken.Digest() }) {
 				t.Fatalf("unavailable selected package lost its execution binding: %+v, %v", dependencies, err)
 			}
+			if summary, err := model.Lookup(t.Context(), "broken"); err != nil || summary != (sdk.Summary{Name: "broken", Description: "Inspect the results"}) {
+				t.Fatalf("metadata lookup loaded unavailable instructions: %+v, %v", summary, err)
+			}
 			if _, err := model.Load(t.Context(), "broken"); !errors.Is(err, workspaceapp.ErrSkillUnavailable) {
 				t.Fatalf("retained dependency bypassed current package verification: %v", err)
 			}
@@ -230,6 +233,9 @@ func TestSkillReadsVerifyConsumedBytesAndEnforceResourceLimit(t *testing.T) {
 	if err != nil || len(bundles) != 1 {
 		t.Fatalf("skill bundles = %+v, %v", bundles, err)
 	}
+	if !slices.Equal(bundles[0].Skills, []plugin.Skill{{Name: "review", Description: "Review a result"}}) {
+		t.Fatalf("skill bundle lost admitted metadata: %+v", bundles[0].Skills)
+	}
 	dependency := bundles[0].Dependency
 	content, err := skills.ReadSkillResource(t.Context(), dependency, "review", "SKILL.md")
 	if err != nil || string(content) != document {
@@ -237,6 +243,10 @@ func TestSkillReadsVerifyConsumedBytesAndEnforceResourceLimit(t *testing.T) {
 	}
 	if content, err := skills.ReadSkillResource(t.Context(), dependency, "review", "reference.txt"); !errors.Is(err, domainskills.ErrResourceTooLarge) || len(content) != 0 {
 		t.Fatalf("oversized resource = %d bytes, %v", len(content), err)
+	}
+	model, _, err := promptsource.OverlaySkillSource(t.Context(), "", "", skills, nil)
+	if err != nil {
+		t.Fatal(err)
 	}
 	setSkill := func(change plugin.ComponentChange) {
 		t.Helper()
@@ -250,6 +260,12 @@ func TestSkillReadsVerifyConsumedBytesAndEnforceResourceLimit(t *testing.T) {
 	setSkill(plugin.DisableComponent)
 	if content, err := skills.ReadSkillResource(t.Context(), dependency, "review", "SKILL.md"); !errors.Is(err, workspaceapp.ErrSkillUnavailable) || errors.Is(err, plugin.ErrUnapproved) || len(content) != 0 {
 		t.Fatalf("disabled skill of an approved release = %q, %v; want unavailable, not unapproved", content, err)
+	}
+	if summary, err := model.Lookup(t.Context(), "review"); err != nil || summary != (sdk.Summary{Name: "review", Description: "Review a result"}) {
+		t.Fatalf("withdrawal changed admitted metadata: %+v, %v", summary, err)
+	}
+	if _, err := model.Load(t.Context(), "review"); !errors.Is(err, workspaceapp.ErrSkillUnavailable) {
+		t.Fatalf("metadata lookup bypassed current document authority: %v", err)
 	}
 	setSkill(plugin.EnableComponent)
 	root, err := releases.Root(release.Digest())

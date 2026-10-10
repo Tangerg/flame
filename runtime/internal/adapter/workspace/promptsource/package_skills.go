@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io/fs"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/plugin"
@@ -17,7 +18,7 @@ import (
 type PackageSkillBundle struct {
 	Root       string
 	Dependency plugin.Dependency
-	Names      []string
+	Skills     []plugin.Skill
 }
 type PackageSkills interface {
 	SkillBundles(context.Context) ([]PackageSkillBundle, error)
@@ -29,11 +30,15 @@ type packageSkillSource struct {
 }
 
 func (s *packageSkillSource) Lookup(ctx context.Context, name string) (sdk.Summary, error) {
-	skill, err := s.Load(ctx, name)
-	if err != nil {
+	if err := skillSourceContextError(ctx, "lookup"); err != nil {
 		return sdk.Summary{}, err
 	}
-	return skill.Summary(), nil
+	index := slices.IndexFunc(s.bundle.Skills, func(skill plugin.Skill) bool { return skill.Name == name })
+	if index < 0 {
+		return sdk.Summary{}, sdk.ErrSkillNotFound
+	}
+	skill := s.bundle.Skills[index]
+	return sdk.Summary{Name: skill.Name, Description: skill.Description}, nil
 }
 func (s *packageSkillSource) document(ctx context.Context, name string) (*sdk.Skill, []byte, error) {
 	if err := skillSourceContextError(ctx, "load"); err != nil {
@@ -92,13 +97,9 @@ func (s *packageSkillSource) List(ctx context.Context) ([]sdk.Summary, error) {
 	if err := skillSourceContextError(ctx, "list"); err != nil {
 		return nil, err
 	}
-	result := make([]sdk.Summary, 0, len(s.bundle.Names))
-	for _, name := range s.bundle.Names {
-		value, err := s.Lookup(ctx, name)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, value)
+	result := make([]sdk.Summary, 0, len(s.bundle.Skills))
+	for _, skill := range s.bundle.Skills {
+		result = append(result, sdk.Summary{Name: skill.Name, Description: skill.Description})
 	}
 	return result, nil
 }

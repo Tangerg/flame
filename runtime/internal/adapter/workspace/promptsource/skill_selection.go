@@ -58,12 +58,12 @@ func resolveSkills(ctx context.Context, workspaceRoot, userDir string, packages 
 			return nil, err
 		}
 		source := &packageSkillSource{bundle: bundle, authority: packages}
-		for _, name := range bundle.Names {
-			if _, found := selected.byName[name]; found {
-				selected.byName[name] = selectedSkill{packageCopy: true}
+		for _, skill := range bundle.Skills {
+			if _, found := selected.byName[skill.Name]; found {
+				selected.byName[skill.Name] = selectedSkill{packageCopy: true}
 				continue
 			}
-			selected.byName[name] = selectedSkill{source: source, origin: origin, packageCopy: true}
+			selected.byName[skill.Name] = selectedSkill{source: source, origin: origin, packageCopy: true}
 		}
 	}
 	for _, layer := range []struct {

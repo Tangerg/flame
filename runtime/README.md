@@ -618,7 +618,8 @@ Package Skills join the existing resolver. Explicit project Skills override user
 which override package Skills. Conflicting package names are excluded rather than chosen
 by installation order. Discovery, loads and frozen Run dependencies use the same source
 resolution. Discovery diagnoses explicit project/user overrides and counts capacity per
-selected source. Revoked or disabled package Skills become unavailable.
+selected source. Revoked or disabled package Skills become unavailable for document
+and resource reads; existing execution metadata retains its admitted release identity.
 Discovery distinguishes package name conflicts from unavailable release bytes or
 withdrawn authority. An override diagnostic can accompany its available project
 or user Skill; independent installations do not share one Skill capacity budget.
@@ -1129,6 +1130,9 @@ documents can still be edited within their selected bundle. Package resource aut
 retains its exact release dependency even when its document is unavailable or omitted
 from discovery, and every resource read still checks current installation authority
 and verified bytes. Discovery and inspection resolve a fresh selection for each query.
+Package metadata lookup projects the selected release's admitted name and description
+without loading instructions. Release admission validates that complete metadata with
+Scope; document and resource reads separately enforce current authority and exact bytes.
 No storage or protocol format changes are required.
 
 Managed catalogs, proposal review, approval, and idle curation load verified document bytes through the same Scope format and directory-name binding used by discovery and package admission. Idle curation leaves invalid documents in place. Archive and restore serialize lifecycle moves and usage changes under one library lease; a replay does not reset subsequent activity. Malformed usage metadata fails recording and curation without replacing history or moving an active Skill. Repair the retained metadata explicitly before retrying; Runtime does not reset it to a fresh grace floor.

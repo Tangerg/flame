@@ -3,16 +3,38 @@ package plugin
 import (
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+	sdk "github.com/Tangerg/scope/skills"
 )
 
 const (
 	stdio = mcpserver.TransportStdio
 	http  = mcpserver.TransportStreamableHTTP
 )
+
+func TestReleaseRejectsInvalidSkillMetadata(t *testing.T) {
+	for _, test := range []struct {
+		name        string
+		description string
+		cause       error
+	}{
+		{"empty", "", sdk.ErrDescriptionEmpty},
+		{"blank", " \t", sdk.ErrDescriptionEmpty},
+		{"too long", strings.Repeat("x", 1025), sdk.ErrDescriptionTooLong},
+		{"invalid UTF-8", string([]byte{0xff}), sdk.ErrInvalidSkill},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := NewRelease(testDigest("release"), Declaration{Name: "review", Skills: []Skill{{Name: "audit", Description: test.description}}})
+			if !errors.Is(err, ErrInvalid) || !errors.Is(err, test.cause) {
+				t.Fatalf("invalid admitted Skill metadata = %v", err)
+			}
+		})
+	}
+}
 
 func TestReleaseIsAdmittedOnceAndImmutable(t *testing.T) {
 	declaration := Declaration{Name: "review", Servers: []Server{{Name: serverName("reviews"), Transport: stdio, Command: "review", Env: map[string]string{"MODE": "strict"}}}}

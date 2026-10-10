@@ -102,7 +102,7 @@ func TestExecutionChangesFollowSelectedCapabilities(t *testing.T) {
 	release := testRelease(t, "1", Declaration{
 		Name: "package", Servers: []Server{{Name: serverName("backend"), Transport: stdio, Command: "backend"}},
 		Inputs: []Input{{ID: "option", Server: serverName("backend"), Target: Environment, Key: "OPTION"}},
-		Skills: []Skill{{Name: "audit"}},
+		Skills: []Skill{{Name: "audit", Description: "Audit changes"}},
 	})
 	candidate := testRelease(t, "2", release.Declaration())
 	for _, test := range []struct {
@@ -568,8 +568,8 @@ func testInstallationID(t *testing.T) resourceid.InstallationID {
 func TestEnabledSkillsAreDeclaredUndisabledAndActive(t *testing.T) {
 	release := testRelease(t, "1", Declaration{Name: "review", Skills: []Skill{{Name: "audit", Description: "a"}, {Name: "explain", Description: "e"}}})
 	installation := approvedInstallation(t, release, nil)
-	if names, err := installation.EnabledSkills(release); err != nil || names != nil {
-		t.Fatalf("approved installation skills = %v, %v; want none", names, err)
+	if enabled, err := installation.EnabledSkills(release); err != nil || enabled != nil {
+		t.Fatalf("approved installation skills = %v, %v; want none", enabled, err)
 	}
 	if err := installation.Enable(release); err != nil {
 		t.Fatal(err)
@@ -577,8 +577,16 @@ func TestEnabledSkillsAreDeclaredUndisabledAndActive(t *testing.T) {
 	if err := installation.Configure(release, Configuration{Skills: map[string]ComponentChange{"audit": DisableComponent}}); err != nil {
 		t.Fatal(err)
 	}
-	if names, err := installation.EnabledSkills(release); err != nil || !reflect.DeepEqual(names, []string{"explain"}) {
-		t.Fatalf("enabled skills = %v, %v; want [explain]", names, err)
+	if enabled, err := installation.EnabledSkills(release); err != nil || !reflect.DeepEqual(enabled, []Skill{{Name: "explain", Description: "e"}}) {
+		t.Fatalf("enabled skills = %v, %v; want [explain]", enabled, err)
+	}
+	projection, err := installation.EnabledSkills(release)
+	if err != nil {
+		t.Fatal(err)
+	}
+	projection[0].Description = "modified"
+	if enabled, err := installation.EnabledSkills(release); err != nil || enabled[0].Description != "e" {
+		t.Fatalf("projection mutated admitted metadata: %v, %v", enabled, err)
 	}
 	other := testRelease(t, "2", Declaration{Name: "review", Skills: []Skill{{Name: "audit", Description: "a"}}})
 	if _, err := installation.EnabledSkills(other); !errors.Is(err, ErrStale) {

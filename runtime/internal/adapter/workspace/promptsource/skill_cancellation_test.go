@@ -25,7 +25,7 @@ func TestExecutionSkillSourcePreservesCancellationClassAndCause(t *testing.T) {
 			case "user":
 				writeRuntimeSkill(t, user, "review", "Review the result.")
 			case "package":
-				bundle := PackageSkillBundle{Root: t.TempDir(), Names: []string{"review"}, Dependency: plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("release")}}
+				bundle := PackageSkillBundle{Root: t.TempDir(), Skills: []plugin.Skill{{Name: "review", Description: runtimeSkillDescription}}, Dependency: plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("release")}}
 				writeRuntimeSkill(t, bundle.Root, "review", "Review the result.")
 				packages = packageSkillFixtures{bundle}
 			}
@@ -89,7 +89,7 @@ func (p retiringPackageRead) ReadSkillResource(ctx context.Context, dependency p
 func TestPackageSkillReadsPreserveConcurrentCancellationAndFailure(t *testing.T) {
 	for _, operation := range []string{"load", "resource"} {
 		t.Run(operation, func(t *testing.T) {
-			bundle := PackageSkillBundle{Root: t.TempDir(), Names: []string{"review"}, Dependency: plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("release")}}
+			bundle := PackageSkillBundle{Root: t.TempDir(), Skills: []plugin.Skill{{Name: "review", Description: runtimeSkillDescription}}, Dependency: plugin.Dependency{InstallationID: testsupport.InstallationID(t), Digest: testsupport.Digest("release")}}
 			writeRuntimeSkill(t, bundle.Root, "review", "Review the result.")
 			cause, failure := errors.New("package read retired"), errors.New("package I/O failed")
 			ctx, cancel := context.WithCancelCause(t.Context())

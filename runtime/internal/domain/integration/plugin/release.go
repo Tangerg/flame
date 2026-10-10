@@ -12,6 +12,7 @@ import (
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/domain/workspace/skills"
 	"github.com/Tangerg/flame/runtime/internal/fingerprint"
+	skillspec "github.com/Tangerg/scope/skills"
 )
 
 var namePattern = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$`)
@@ -316,8 +317,8 @@ func (b *Builder) AdmitSkill(skill Skill) error {
 	if len(b.declaration.Skills) >= skills.MaxSkillsPerSource {
 		return refuse(DiagnosticComponentLimit, "skill capacity")
 	}
-	if err := skills.ValidateName(skill.Name); err != nil {
-		return &Refusal{Code: DiagnosticInvalidDeclaration, cause: fmt.Errorf("%w: skill identity: %w", ErrInvalid, err)}
+	if err := (skillspec.Summary{Name: skill.Name, Description: skill.Description}).Validate(); err != nil {
+		return &Refusal{Code: DiagnosticInvalidDeclaration, cause: fmt.Errorf("%w: skill metadata: %w", ErrInvalid, err)}
 	}
 	if b.release().declaresSkill(skill.Name) {
 		return refuse(DiagnosticInvalidDeclaration, "duplicate skill %q", skill.Name)

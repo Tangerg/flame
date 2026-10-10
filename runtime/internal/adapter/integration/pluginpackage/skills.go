@@ -40,18 +40,18 @@ func (s *Skills) SkillBundles(ctx context.Context) ([]promptsource.PackageSkillB
 		if !installation.Active() {
 			continue
 		}
-		names, err := installation.EnabledSkills(release)
+		enabled, err := installation.EnabledSkills(release)
 		if err != nil {
 			return nil, err
 		}
-		if len(names) == 0 {
+		if len(enabled) == 0 {
 			continue
 		}
 		root, err := s.releases.Root(release.Digest())
 		if err != nil {
 			return nil, err
 		}
-		bundles = append(bundles, promptsource.PackageSkillBundle{Root: filepath.Join(root, "skills"), Names: names, Dependency: installation.Dependency()})
+		bundles = append(bundles, promptsource.PackageSkillBundle{Root: filepath.Join(root, "skills"), Skills: enabled, Dependency: installation.Dependency()})
 	}
 	return bundles, nil
 }
@@ -78,7 +78,7 @@ func (s *Skills) ReadSkillResource(ctx context.Context, dependency plugin.Depend
 	if err != nil {
 		return nil, err
 	}
-	if !slices.Contains(enabled, name) {
+	if !slices.ContainsFunc(enabled, func(skill plugin.Skill) bool { return skill.Name == name }) {
 		return nil, workspaceapp.ErrSkillUnavailable
 	}
 	limit := int64(domainskills.MaxSkillResourceBytes)

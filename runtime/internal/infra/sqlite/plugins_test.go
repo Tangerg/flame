@@ -238,7 +238,7 @@ func TestInstallationReadsRejectStateOutsideItsAdmittedReleases(t *testing.T) {
 			{ID: "key", Server: backend, Target: plugin.Environment, Key: "KEY", Required: true},
 			{ID: "header", Server: remote, Target: plugin.Header, Key: "X-Key", Secret: true},
 		},
-		Skills: []plugin.Skill{{Name: "audit"}},
+		Skills: []plugin.Skill{{Name: "audit", Description: "Audit changes"}},
 	})
 	other := testsupport.Release(t, "other", plugin.Declaration{Name: "other"})
 	for _, test := range []struct {

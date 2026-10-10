@@ -542,22 +542,22 @@ func (i *Installation) Dependency() Dependency {
 	return Dependency{InstallationID: i.record.ID, Digest: i.record.Selected}
 }
 
-// EnabledSkills names the skills of the selected release an execution may load
-// now: none unless the installation is enabled, and never one the user disabled.
-func (i *Installation) EnabledSkills(release Release) ([]string, error) {
+// EnabledSkills projects admitted metadata from the selected release: none
+// unless the installation is enabled, and never a Skill the user disabled.
+func (i *Installation) EnabledSkills(release Release) ([]Skill, error) {
 	if err := i.bound(release); err != nil {
 		return nil, err
 	}
 	if !i.Active() {
 		return nil, nil
 	}
-	var names []string
+	var enabled []Skill
 	for _, skill := range release.declaration.Skills {
 		if !slices.Contains(i.record.DisabledSkills, skill.Name) {
-			names = append(names, skill.Name)
+			enabled = append(enabled, skill)
 		}
 	}
-	return names, nil
+	return enabled, nil
 }
 
 // ServerInputs is where the configured values of one server's inputs go when
