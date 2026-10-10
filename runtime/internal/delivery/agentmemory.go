@@ -12,8 +12,8 @@ import (
 )
 
 // Agent Memory operations provide HITL review of the agent's self-maintained
-// memory: proposals wait as pending until the user approves them, and only
-// approved memory reaches the prompt or the search_memory tool.
+// memory: proposals wait as pending until the user approves or rewrites them;
+// only active memory reaches the prompt or the search_memory tool.
 
 // agentMemoryUseCases is Delivery's consumer-side port. Its methods express
 // complete review use cases, rather than exposing the domain store workflow.

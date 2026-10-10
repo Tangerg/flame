@@ -370,6 +370,116 @@ func TestAgentMemorySchemaRejectsContentBeyondDomainBound(t *testing.T) {
 	}
 }
 
+func TestPinningAgentMemoryPreservesItsEmbeddingCache(t *testing.T) {
+	store := newAgentMemoryStore(t)
+	now := time.Date(2026, 7, 19, 4, 0, 0, 0, time.UTC)
+	item, _, err := store.Add(t.Context(), agentmemory.ScopeProject, "/repo", "cached memory", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	embedding, err := agentmemory.NewEmbeddingUpdate(item, "provider:model", []float32{1, 2, 3})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SetEmbeddings(t.Context(), []agentmemory.EmbeddingUpdate{embedding}); err != nil {
+		t.Fatal(err)
+	}
+	pinned := true
+	if _, err := store.Update(t.Context(), item.ID(), nil, &pinned, now.Add(time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	corpus, err := store.SearchCorpus(t.Context(), "/repo")
+	if err != nil || len(corpus) != 1 {
+		t.Fatalf("search corpus = %+v, %v", corpus, err)
+	}
+	space, vector, cached := corpus[0].Embedding()
+	if !corpus[0].Pinned() || !cached || space != embedding.Space || !slices.Equal(vector, embedding.Vector) {
+		t.Fatalf("pin replaced the cache: %+v", corpus[0].Snapshot())
+	}
+}
+
+func TestRejectedMemoryContentEditPreservesTheCompleteProposal(t *testing.T) {
+	store := newAgentMemoryStore(t)
+	now := time.Date(2026, 7, 19, 4, 0, 0, 0, time.UTC)
+	facts := appendAgentFacts(t, store, "/repo", "2026-07-19", "proposal")
+	publication := agentMemoryPublication(t, "/repo", agentmemory.State{}, facts[0].Sequence, []string{"proposal"}, now)
+	if published, err := store.Reconcile(t.Context(), publication); err != nil || !published {
+		t.Fatalf("curation = %t, %v", published, err)
+	}
+	items, err := store.List(t.Context(), agentmemory.ScopeProject, "/repo")
+	if err != nil || len(items) != 1 {
+		t.Fatalf("proposal = %+v, %v", items, err)
+	}
+	existing, _, err := store.Add(t.Context(), agentmemory.ScopeProject, "/repo", "existing user memory", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	content, pinned := existing.Content(), true
+	if _, err := store.Update(t.Context(), items[0].ID(), &content, &pinned, now.Add(time.Minute)); err == nil {
+		t.Fatal("content edit overwrote another item's digest identity")
+	}
+	retained, found, err := store.Get(t.Context(), items[0].ID())
+	if err != nil || !found || retained.Content() != items[0].Content() || retained.Pinned() ||
+		retained.Origin() != agentmemory.OriginAuto || retained.Status() != agentmemory.StatusPending ||
+		!retained.UpdatedAt().Equal(items[0].UpdatedAt()) {
+		t.Fatalf("failed edit partially adopted user content: %+v, %t, %v", retained.Snapshot(), found, err)
+	}
+}
+
+func TestUserEditedAutomaticMemorySurvivesCuration(t *testing.T) {
+	for _, status := range []agentmemory.Status{agentmemory.StatusPending, agentmemory.StatusActive} {
+		t.Run(status.String(), func(t *testing.T) {
+			store := newAgentMemoryStore(t)
+			createdAt := time.Date(2026, 7, 19, 4, 0, 0, 0, time.UTC)
+			facts := appendAgentFacts(t, store, "/repo", "2026-07-19", "automatic proposal", "obsolete proposal")
+			publication := agentMemoryPublication(t, "/repo", agentmemory.State{}, facts[1].Sequence,
+				[]string{"automatic proposal", "obsolete proposal"}, createdAt)
+			if published, err := store.Reconcile(t.Context(), publication); err != nil || !published {
+				t.Fatalf("first curation = %t, %v", published, err)
+			}
+			items, err := store.List(t.Context(), agentmemory.ScopeProject, "/repo")
+			if err != nil || len(items) != 2 {
+				t.Fatalf("proposals = %+v, %v", items, err)
+			}
+			var original agentmemory.Item
+			for _, item := range items {
+				if item.Content() == "automatic proposal" {
+					original = item
+				}
+			}
+			if status == agentmemory.StatusActive {
+				if err := store.Review(t.Context(), original.ID(), agentmemory.ReviewApprove, createdAt); err != nil {
+					t.Fatal(err)
+				}
+			}
+			content := "user correction"
+			editedAt := createdAt.Add(24 * time.Hour)
+			edited, err := store.Update(t.Context(), original.ID(), &content, nil, editedAt)
+			if err != nil {
+				t.Fatal(err)
+			}
+			nextFacts := appendAgentFacts(t, store, "/repo", "2026-07-19", "later fact")
+			next := agentMemoryPublication(t, "/repo", publication.State(), nextFacts[0].Sequence, nil, editedAt.Add(time.Minute))
+			if published, err := store.Reconcile(t.Context(), next); err != nil || !published {
+				t.Fatalf("next curation = %t, %v", published, err)
+			}
+			stored, found, err := store.Get(t.Context(), original.ID())
+			if err != nil || !found {
+				t.Fatalf("curation lost user-edited memory: found=%t, error=%v", found, err)
+			}
+			if stored.Content() != content || stored.Origin() != agentmemory.OriginUser || stored.Status() != agentmemory.StatusActive ||
+				!stored.CreatedAt().Equal(original.CreatedAt()) || !stored.UpdatedAt().Equal(edited.UpdatedAt()) ||
+				stored.Day() != edited.Day() || stored.SessionID() != edited.SessionID() {
+				t.Fatalf("stored user edit = %+v", stored.Snapshot())
+			}
+			remaining, err := store.List(t.Context(), agentmemory.ScopeProject, "/repo")
+			if err != nil || len(remaining) != 1 || remaining[0].ID() != original.ID() {
+				t.Fatalf("curation did not retain only the user correction: %+v, %v", remaining, err)
+			}
+		})
+	}
+}
+
 func TestAgentMemoryManagementOps(t *testing.T) {
 	store := newAgentMemoryStore(t)
 	now := time.Date(2026, 7, 19, 4, 0, 0, 0, time.UTC)

@@ -892,6 +892,15 @@ Session across subsequent writes; refresh the read after execution changes, and
 use the idle Session evidence export when a coherent complete document is needed.
 Completed observations survive restart for as long as their source records remain.
 
+## Agent Memory authoring
+
+Agent Memory content edits transfer the item to active user authorship while preserving
+its identity and creation time. Automatic curation cannot prune that correction. Pin-only
+updates leave authorship and review state unchanged. Persistence stores the Item's complete
+transition, including provenance and derived embedding invalidation.
+Older automatic items contain no durable evidence of previous user edits, so they are
+not reclassified by inference. Explicit review can retain an existing pending correction.
+
 ## Auxiliary model observation
 
 Compaction, memory extraction and curation, skill mining, and title generation emit an `auxiliary model` OpenTelemetry span through the existing Runtime exporter. `auxiliary.operation` identifies the caller's purpose. Auxiliary calls follow their caller's cancellation and deadline; the adapter adds no wall-clock timeout. Input and output envelopes remain bounded. The span covers selection resolution, the model request, and response acceptance; its duration is not isolated provider latency. The live resolver records the exact provider/model selection, and a valid response contributes its finish reason and reported token usage. Optional cache and reasoning counts remain absent when unreported, including the distinction between absence and an explicit zero. A valid but incomplete response retains its reported usage even though its text is rejected.

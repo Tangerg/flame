@@ -41,11 +41,11 @@ func validMemoryItem(id domain.ItemID, scope domain.Scope, project, content stri
 	if err != nil {
 		panic(err)
 	}
-	item, _, err = item.Edit(nil, &pinned, now)
+	change, err := item.Edit(nil, &pinned, now)
 	if err != nil {
 		panic(err)
 	}
-	return item
+	return change.Item()
 }
 
 func (f *fakeStore) List(_ context.Context, scope domain.Scope, project string) ([]domain.Item, error) {

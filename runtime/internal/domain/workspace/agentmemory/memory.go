@@ -291,6 +291,26 @@ type ItemSnapshot struct {
 	Embedding      []float32
 }
 
+// ItemChange carries the authoring transition and its effect on the search cache.
+// Ordinary reads omit cached vectors, so their absence cannot authorize clearing
+// the cache. Only a user-content transition discards it.
+type ItemChange struct {
+	item Item
+	kind itemChangeKind
+}
+
+type itemChangeKind uint8
+
+const (
+	itemUnchanged itemChangeKind = iota
+	itemMetadataChanged
+	itemContentAuthored
+)
+
+func (c ItemChange) Item() Item              { return c.item }
+func (c ItemChange) Changed() bool           { return c.kind != itemUnchanged }
+func (c ItemChange) DiscardsEmbedding() bool { return c.kind == itemContentAuthored }
+
 // RestoreItem reconstructs a persisted item.
 func RestoreItem(snapshot ItemSnapshot) (Item, error) {
 	item := Item{
@@ -434,71 +454,77 @@ func NewUserItem(id ItemID, scope Scope, project, content string, now time.Time)
 
 // ActivateFromUser replaces a pending or rejected proposal with explicit user
 // authorship while preserving its durable identity and creation time. The
-// supplied user item owns the canonical content and new update timestamp; any
-// proposal provenance, pin, or derived embedding is deliberately discarded.
-func (i Item) ActivateFromUser(content string, now time.Time) (Item, error) {
+// user-authored content retires proposal provenance, pin, and derived embedding.
+func (i Item) ActivateFromUser(content string, now time.Time) (ItemChange, error) {
 	if i.status == StatusActive {
-		return Item{}, errors.New("agentmemory: active item cannot be activated again")
+		return ItemChange{}, errors.New("agentmemory: active item cannot be activated again")
 	}
 	content, err := NormalizeContent(content)
 	if err != nil {
-		return Item{}, err
+		return ItemChange{}, err
 	}
 	now = now.UTC()
 	if now.IsZero() || now.Before(i.updatedAt) {
-		return Item{}, errors.New("agentmemory: activation time precedes current item")
+		return ItemChange{}, errors.New("agentmemory: activation time precedes current item")
 	}
 	if err := instant.Validate(now); err != nil {
-		return Item{}, fmt.Errorf("agentmemory: activation time: %w", err)
+		return ItemChange{}, fmt.Errorf("agentmemory: activation time: %w", err)
 	}
-	i.content = content
-	i.origin = OriginUser
-	i.status = StatusActive
+	i = i.withUserContent(content, now)
 	i.pinned = false
-	i.sessionID = ""
-	i.day = now.Format(time.DateOnly)
 	i.updatedAt = now
-	i.embeddingSpace = ""
-	i.embedding = nil
-	return i, nil
+	return ItemChange{item: i, kind: itemContentAuthored}, nil
 }
 
 // Edit applies a management-surface content and pin change while protecting
-// hidden tombstones and derived embedding identity. It returns changed=false
-// when the requested values already match the aggregate.
-func (i Item) Edit(content *string, pinned *bool, now time.Time) (Item, bool, error) {
+// hidden tombstones. Changed content becomes active user-authored memory, so
+// automatic curation cannot remove the user's correction. Pinning alone leaves
+// authorship and review unchanged.
+func (i Item) Edit(content *string, pinned *bool, now time.Time) (ItemChange, error) {
 	if err := i.ValidateVisible(); err != nil {
-		return Item{}, false, fmt.Errorf("agentmemory: edit existing item: %w", err)
+		return ItemChange{}, fmt.Errorf("agentmemory: edit existing item: %w", err)
 	}
-	changed := false
+	canonicalContent := i.content
 	if content != nil {
 		canonical, err := NormalizeContent(*content)
 		if err != nil {
-			return Item{}, false, err
+			return ItemChange{}, err
 		}
-		if canonical != i.content {
-			i.content = canonical
-			i.embeddingSpace = ""
-			i.embedding = nil
-			changed = true
-		}
+		canonicalContent = canonical
 	}
-	if pinned != nil && i.pinned != *pinned {
-		i.pinned = *pinned
-		changed = true
-	}
-	if !changed {
-		return i, false, nil
+	contentChanged := canonicalContent != i.content
+	pinChanged := pinned != nil && i.pinned != *pinned
+	if !contentChanged && !pinChanged {
+		return ItemChange{item: i}, nil
 	}
 	now = now.UTC()
 	if now.IsZero() || now.Before(i.updatedAt) {
-		return Item{}, false, errors.New("agentmemory: edit time precedes current item")
+		return ItemChange{}, errors.New("agentmemory: edit time precedes current item")
 	}
 	if err := instant.Validate(now); err != nil {
-		return Item{}, false, fmt.Errorf("agentmemory: edit time: %w", err)
+		return ItemChange{}, fmt.Errorf("agentmemory: edit time: %w", err)
+	}
+	kind := itemMetadataChanged
+	if contentChanged {
+		i = i.withUserContent(canonicalContent, now)
+		kind = itemContentAuthored
+	}
+	if pinChanged {
+		i.pinned = *pinned
 	}
 	i.updatedAt = now
-	return i, true, nil
+	return ItemChange{item: i, kind: kind}, nil
+}
+
+func (i Item) withUserContent(content string, now time.Time) Item {
+	i.content = content
+	i.origin = OriginUser
+	i.status = StatusActive
+	i.sessionID = ""
+	i.day = now.Format(time.DateOnly)
+	i.embeddingSpace = ""
+	i.embedding = nil
+	return i
 }
 
 // Review resolves a pending proposal while preserving its content, provenance,

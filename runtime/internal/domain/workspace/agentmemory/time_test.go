@@ -37,7 +37,7 @@ func TestMemoryTimesRemainExactlyRepresentable(t *testing.T) {
 		t.Fatal(err)
 	}
 	outside := item.UpdatedAt().Add(time.Nanosecond)
-	if _, _, err := item.Edit(new("edited"), nil, outside); err == nil {
+	if _, err := item.Edit(new("edited"), nil, outside); err == nil {
 		t.Error("Edit past exact range succeeded")
 	}
 	if _, err := item.Review(ReviewApprove, outside); err == nil {

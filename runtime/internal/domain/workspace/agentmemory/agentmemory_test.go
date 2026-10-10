@@ -210,10 +210,11 @@ func TestItemActivateFromUserPreservesIdentityAndClearsProposalState(t *testing.
 	proposal.sessionID = "session"
 	proposal.embeddingSpace = "provider:model"
 	proposal.embedding = []float32{1, 2}
-	activated, err := proposal.ActivateFromUser("new fact", updatedAt)
+	change, err := proposal.ActivateFromUser("new fact", updatedAt)
 	if err != nil {
 		t.Fatal(err)
 	}
+	activated := change.Item()
 	if activated.id != proposal.id || !activated.createdAt.Equal(proposal.createdAt) {
 		t.Fatalf("activation changed stable identity: %+v", activated)
 	}
@@ -235,29 +236,81 @@ func TestItemEditProtectsVisibilityAndDerivedState(t *testing.T) {
 	item.embedding = []float32{1, 2}
 	content := "new fact"
 	pinned := true
-	edited, changed, err := item.Edit(&content, &pinned, createdAt.Add(time.Hour))
-	if err != nil || !changed {
-		t.Fatalf("Edit = (%+v, %t, %v)", edited, changed, err)
+	change, err := item.Edit(&content, &pinned, createdAt.Add(time.Hour))
+	if err != nil || !change.Changed() {
+		t.Fatalf("Edit = (%+v, %t, %v)", change.Item(), change.Changed(), err)
 	}
+	edited := change.Item()
 	if edited.content != content || !edited.pinned || !edited.updatedAt.Equal(createdAt.Add(time.Hour)) {
 		t.Fatalf("edited item = %+v", edited)
 	}
 	if edited.embeddingSpace != "" || edited.embedding != nil {
 		t.Fatalf("content edit retained derived embedding: %+v", edited)
 	}
-	if same, changed, err := edited.Edit(&content, &pinned, createdAt); err != nil || changed ||
+	sameChange, err := edited.Edit(&content, &pinned, createdAt)
+	same := sameChange.Item()
+	if err != nil || sameChange.Changed() ||
 		same.id != edited.id || same.content != edited.content || same.pinned != edited.pinned ||
 		!same.updatedAt.Equal(edited.updatedAt) || !slices.Equal(same.embedding, edited.embedding) {
-		t.Fatalf("no-op Edit = (%+v, %t, %v)", same, changed, err)
+		t.Fatalf("no-op Edit = (%+v, %t, %v)", same, sameChange.Changed(), err)
 	}
 	rejected := item
 	rejected.origin = OriginAuto
 	rejected.status = StatusRejected
-	if _, _, err := rejected.Edit(&content, nil, createdAt.Add(time.Hour)); !errors.Is(err, ErrNotVisible) {
+	if _, err := rejected.Edit(&content, nil, createdAt.Add(time.Hour)); !errors.Is(err, ErrNotVisible) {
 		t.Fatalf("rejected Edit error = %v, want ErrNotVisible", err)
 	}
-	if _, _, err := item.Edit(&content, nil, createdAt.Add(-time.Second)); err == nil {
+	if _, err := item.Edit(&content, nil, createdAt.Add(-time.Second)); err == nil {
 		t.Fatal("Edit accepted a timestamp before the current item")
+	}
+}
+
+func TestContentEditTransfersAutomaticMemoryToUserAuthorship(t *testing.T) {
+	createdAt := time.Date(2026, time.September, 4, 8, 0, 0, 0, time.UTC)
+	for _, status := range []Status{StatusPending, StatusActive} {
+		t.Run(status.String(), func(t *testing.T) {
+			item, err := NewProposal(testItemID(t, '5'), "/repo", "automatic proposal", createdAt)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if status == StatusActive {
+				item, err = item.Review(ReviewApprove, createdAt)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			snapshot := item.Snapshot()
+			snapshot.SessionID = "ses_1"
+			item, err = RestoreItem(snapshot)
+			if err != nil {
+				t.Fatal(err)
+			}
+			noOp, err := item.Edit(new(item.Content()), nil, createdAt)
+			if err != nil || noOp.Changed() || noOp.Item().Origin() != OriginAuto || noOp.Item().Status() != status {
+				t.Fatalf("unchanged content changed authorship: %+v, %v", noOp.Item().Snapshot(), err)
+			}
+			pinned := true
+			pinChange, err := item.Edit(nil, &pinned, createdAt.Add(time.Hour))
+			pinOnly := pinChange.Item()
+			if err != nil || pinOnly.Origin() != OriginAuto || pinOnly.Status() != status {
+				t.Fatalf("pin changed authorship: %+v, %v", pinOnly.Snapshot(), err)
+			}
+			editedAt := createdAt.Add(24 * time.Hour)
+			content := "user correction"
+			change, err := pinOnly.Edit(&content, nil, editedAt)
+			edited := change.Item()
+			if err != nil || !change.Changed() {
+				t.Fatalf("Edit = (%+v, %t, %v)", edited.Snapshot(), change.Changed(), err)
+			}
+			if edited.Origin() != OriginUser || edited.Status() != StatusActive || !edited.Pinned() ||
+				edited.Content() != content || edited.ID() != item.ID() || !edited.CreatedAt().Equal(createdAt) ||
+				edited.SessionID() != "" || edited.Day() != editedAt.Format(time.DateOnly) {
+				t.Fatalf("user-edited item = %+v", edited.Snapshot())
+			}
+			if _, err := RestoreItem(edited.Snapshot()); err != nil {
+				t.Fatalf("edited item cannot be restored: %v", err)
+			}
+		})
 	}
 }
 

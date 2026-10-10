@@ -350,25 +350,18 @@ func (a *AgentMemoryStore) Update(ctx context.Context, id agentmemory.ItemID, co
 		if !found {
 			return agentmemory.ErrNotFound
 		}
-		replacement, changed, err := current.Edit(content, pinned, now)
+		change, err := current.Edit(content, pinned, now)
 		if err != nil {
 			return err
 		}
-		if !changed {
+		if !change.Changed() {
 			updated = current
 			return nil
 		}
-		if replacement.Content() != current.Content() {
-			if err := a.updateContent(ctx, id, replacement.Content(), replacement.UpdatedAt()); err != nil {
-				return err
-			}
+		if err := a.replaceItem(ctx, change); err != nil {
+			return err
 		}
-		if replacement.Pinned() != current.Pinned() {
-			if err := a.setPinned(ctx, id, replacement.Pinned(), replacement.UpdatedAt()); err != nil {
-				return err
-			}
-		}
-		updated = replacement
+		updated = change.Item()
 		return nil
 	})
 	if err != nil {
@@ -424,26 +417,6 @@ func (a *AgentMemoryStore) pruneRejectedItems(ctx context.Context, preserved age
 		return fmt.Errorf("sqlite: prune rejected agent memory items: %w", err)
 	}
 	return nil
-}
-
-func (a *AgentMemoryStore) setPinned(ctx context.Context, id agentmemory.ItemID, pinned bool, now time.Time) error {
-	result, err := conn(ctx, a.db).ExecContext(ctx,
-		`UPDATE agent_memory_items SET pinned = ?, updated_at = ? WHERE id = ?`,
-		boolToInt(pinned), now.UTC().UnixNano(), id.String())
-	if err != nil {
-		return fmt.Errorf("sqlite: pin agent memory: %w", err)
-	}
-	return affectedOne(result, "pin")
-}
-
-func (a *AgentMemoryStore) updateContent(ctx context.Context, id agentmemory.ItemID, content string, now time.Time) error {
-	result, err := conn(ctx, a.db).ExecContext(ctx,
-		`UPDATE agent_memory_items SET content = ?, digest = ?, embedding_space = '', embedding = x'', updated_at = ? WHERE id = ?`,
-		content, agentmemory.Digest(content), now.UTC().UnixNano(), id.String())
-	if err != nil {
-		return fmt.Errorf("sqlite: edit agent memory: %w", err)
-	}
-	return affectedOne(result, "edit")
 }
 
 // Delete removes one visible management item without exposing retained tombstones.
@@ -523,14 +496,14 @@ func (addition *userMemoryAddition) reuseOrActivate(
 			return err
 		}
 	}
-	activated, err := existing.ActivateFromUser(addition.content, addition.now)
+	change, err := existing.ActivateFromUser(addition.content, addition.now)
 	if err != nil {
 		return err
 	}
-	if err := addition.persistActivation(ctx, activated); err != nil {
+	if err := addition.store.replaceItem(ctx, change); err != nil {
 		return err
 	}
-	addition.stored = activated
+	addition.stored = change.Item()
 	addition.changed = true
 	return nil
 }
@@ -571,15 +544,18 @@ func (addition *userMemoryAddition) ensureCapacity(ctx context.Context) error {
 	return nil
 }
 
-func (addition *userMemoryAddition) persistActivation(
+func (a *AgentMemoryStore) replaceItem(
 	ctx context.Context,
-	item agentmemory.Item,
+	change agentmemory.ItemChange,
 ) error {
-	space, vector, _ := item.Embedding()
-	result, err := conn(ctx, addition.store.db).ExecContext(ctx, `
+	item := change.Item()
+	discardEmbedding := boolToInt(change.DiscardsEmbedding())
+	result, err := conn(ctx, a.db).ExecContext(ctx, `
 		UPDATE agent_memory_items
 		SET content = ?, digest = ?, origin = ?, status = ?, pinned = ?,
-			session_id = ?, day = ?, embedding_space = ?, embedding = ?, updated_at = ?
+			session_id = ?, day = ?,
+			embedding_space = CASE WHEN ? THEN '' ELSE embedding_space END,
+			embedding = CASE WHEN ? THEN x'' ELSE embedding END, updated_at = ?
 		WHERE id = ?`,
 		item.Content(),
 		agentmemory.Digest(item.Content()),
@@ -588,15 +564,15 @@ func (addition *userMemoryAddition) persistActivation(
 		boolToInt(item.Pinned()),
 		item.SessionID(),
 		item.Day(),
-		space,
-		encodeVec(vector),
+		discardEmbedding,
+		discardEmbedding,
 		item.UpdatedAt().UTC().UnixNano(),
 		item.ID().String(),
 	)
 	if err != nil {
-		return fmt.Errorf("sqlite: activate agent memory item: %w", err)
+		return fmt.Errorf("sqlite: replace agent memory item: %w", err)
 	}
-	return affectedOne(result, "activate")
+	return affectedOne(result, "replace")
 }
 
 func (a *AgentMemoryStore) countVisibleItems(
