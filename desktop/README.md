@@ -462,3 +462,26 @@ React workbench.
 This gate passed with macOS 26.5/Wails beta.28 against an isolated Linux arm64 Runtime
 and Linux Go review backend. The packaged HTML came from the trajectory example;
 both capabilities were admitted in one test installation. No model provider was called.
+
+Manual acceptance of the full production React workbench also passed on this carrier
+at the shipping macOS 13.0 deployment floor. It retained the production entrypoint,
+DesktopHost, embedded workbench and shared SDK. A unique signed App Sandbox bundle
+isolated native preferences, WebKit storage and mutation journals. Before product
+bootstrap, added assertions verified the bundle identity, Foundation's private Library
+path, permitted fixture reads and denial of a private canary outside the fixture root.
+Only the owned fixture root received a read-only filesystem exception. A temporary
+`FLAME_HOME` alone does not isolate the production workbench's native storage.
+
+The workbench connected to an isolated Linux Runtime and created a Session whose
+workspace existed only on Linux. One installation supplied the review backend's two
+tools, the bounded theme, the read-only trajectory page and `renameSession`. The native
+page loaded and refreshed an empty canonical trajectory. Trusted action drafts left
+the Session unchanged; submission advanced its revision once, and CLI read the same
+title. A form captured before a CLI title edit received a revision conflict and could
+not overwrite the newer Session. CLI revocation retired the page, theme and backend;
+new actions were refused, and reapproval created a new page instance. A trusted popup
+hid the guest and restored the same instance afterward. Connection replacement cleared
+the old selection and contributions; reconnecting read the canonical Session and
+created a new page. Explicit page closure and application shutdown completed, and both
+the parent application and Runtime exited successfully. This manual check called no
+model provider and does not establish populated-trajectory rendering on the native UI.
