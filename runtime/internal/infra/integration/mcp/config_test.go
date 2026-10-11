@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
@@ -49,21 +50,23 @@ func TestConnectSessionLifetimeDoesNotInheritHandshakeDeadline(t *testing.T) {
 }
 
 func TestConnectSessionHandshakeTimeoutCancelsInFlightConnect(t *testing.T) {
-	started := make(chan struct{})
-	timeout := 20 * time.Millisecond
-	_, _, err := connectSession(t.Context(), t.Context(), &timeout, func(ctx context.Context) (*sdkmcp.ClientSession, error) {
-		close(started)
-		<-ctx.Done()
-		return nil, ctx.Err()
+	synctest.Test(t, func(t *testing.T) {
+		started := make(chan struct{})
+		timeout := 20 * time.Millisecond
+		_, _, err := connectSession(t.Context(), t.Context(), &timeout, func(ctx context.Context) (*sdkmcp.ClientSession, error) {
+			close(started)
+			<-ctx.Done()
+			return nil, ctx.Err()
+		})
+		select {
+		case <-started:
+		default:
+			t.Fatal("connect callback did not start")
+		}
+		if !errors.Is(err, context.Canceled) || !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("connectSession error = %v, want canceled transport and handshake timeout", err)
+		}
 	})
-	select {
-	case <-started:
-	default:
-		t.Fatal("connect callback did not start")
-	}
-	if !errors.Is(err, context.Canceled) {
-		t.Fatalf("connectSession error = %v, want canceled handshake transport", err)
-	}
 }
 
 func TestServerConfigValidate(t *testing.T) {

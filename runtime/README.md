@@ -1378,6 +1378,13 @@ waiter cannot cancel retirement or discard its eventual diagnostic.
 The supervisor checks the dial lifetime under its publication
 lock; an expired authorization cannot publish a verified session. An already published
 session retains its successful result if the caller later cancels.
+The handshake owns its temporary callback, timer and untransferred session lifetime.
+Admission rejects an expired request or stopped session owner before connection I/O.
+Failures retain transport diagnostics, the handshake's timeout or cancellation and
+the session owner's cancellation cause before cleanup cancels temporary contexts.
+Only the returned release handle transfers the live lifetime to its session owner;
+failure and panic keep cleanup with the handshake. Cleanup never reclassifies an
+ordinary transport failure as caller cancellation.
 Plugin realization describes current release and backend availability separately.
 Server listing and startup enumerate desired definitions without realizing plugin resources;
 these reads cannot overwrite the state of an admitted connection.

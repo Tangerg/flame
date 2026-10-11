@@ -12,6 +12,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/httporigin"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/flame/runtime/internal/infra/integration/httpredirect"
@@ -175,7 +176,7 @@ func connectSession(
 	lifetime context.Context,
 	timeout *time.Duration,
 	connect func(context.Context) (*sdkmcp.ClientSession, error),
-) (*sdkmcp.ClientSession, context.CancelFunc, error) {
+) (_ *sdkmcp.ClientSession, release context.CancelFunc, _ error) {
 	if parent == nil {
 		return nil, nil, errors.New("mcp: handshake context is required")
 	}
@@ -183,29 +184,33 @@ func connectSession(
 		return nil, nil, errors.New("mcp: session lifetime is required")
 	}
 	lifetimeCtx, cancelLifetime := context.WithCancel(lifetime)
+	defer func() {
+		if release == nil {
+			cancelLifetime()
+		}
+	}()
 	handshakeCtx := parent
 	cancelHandshake := func() {}
 	if timeout != nil {
 		handshakeCtx, cancelHandshake = context.WithTimeout(parent, *timeout)
 	}
+	defer cancelHandshake()
 	stopHandshake := context.AfterFunc(handshakeCtx, cancelLifetime)
-
-	session, err := connect(lifetimeCtx)
-	if err != nil {
-		stopHandshake()
-		cancelHandshake()
-		cancelLifetime()
+	defer stopHandshake()
+	if err := errors.Join(cancellation.Err(handshakeCtx), cancellation.Err(lifetime)); err != nil {
 		return nil, nil, err
 	}
-	if handshakeErr := handshakeCtx.Err(); handshakeErr != nil || !stopHandshake() {
-		if handshakeErr == nil {
-			handshakeErr = context.Canceled
-		}
-		cancelHandshake()
-		cancelLifetime()
-		return nil, nil, errors.Join(handshakeErr, session.Close())
+
+	session, err := connect(lifetimeCtx)
+	stopHandshake()
+	lifetimeErr := errors.Join(cancellation.Err(handshakeCtx), cancellation.Err(lifetime))
+	if err != nil {
+		return nil, nil, errors.Join(err, lifetimeErr)
 	}
-	cancelHandshake()
+	if lifetimeErr != nil {
+		cancelLifetime()
+		return nil, nil, errors.Join(lifetimeErr, session.Close())
+	}
 	return session, cancelLifetime, nil
 }
 
