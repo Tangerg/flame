@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"github.com/Tangerg/go-sdk/auth"
 )
@@ -13,9 +12,9 @@ import (
 func (c *Connections) configure(attempt *Attempt, prepared *launch) error {
 	cfg := &prepared.config
 	c.mu.Lock()
-	if !c.currentAttempt(attempt) || attempt.ctx.Err() != nil {
+	if err := c.cancellationErr(attempt.ctx); !c.currentAttempt(attempt) || err != nil {
 		c.mu.Unlock()
-		return errors.Join(errConnectionSuperseded, cancellation.Err(attempt.ctx))
+		return errors.Join(errConnectionSuperseded, err)
 	}
 	target := attempt.target
 	oauth := reusableOAuth(target.config, *cfg, target.oauth)
@@ -35,9 +34,9 @@ func (c *Connections) configure(attempt *Attempt, prepared *launch) error {
 			return err
 		}
 		c.mu.Lock()
-		if !c.currentAttempt(attempt) || attempt.ctx.Err() != nil {
+		if err := c.cancellationErr(attempt.ctx); !c.currentAttempt(attempt) || err != nil {
 			c.mu.Unlock()
-			return errors.Join(errConnectionSuperseded, cancellation.Err(attempt.ctx))
+			return errors.Join(errConnectionSuperseded, err)
 		}
 		target.oauth = oauth
 		c.mu.Unlock()
@@ -69,9 +68,9 @@ func (c *Connections) authorize(attempt *Attempt, prepared *launch) (err error) 
 		return errors.New("mcp: clear static authorization before starting OAuth")
 	}
 	c.mu.Lock()
-	if !c.currentAttempt(attempt) || attempt.ctx.Err() != nil {
+	if err := c.cancellationErr(attempt.ctx); !c.currentAttempt(attempt) || err != nil {
 		c.mu.Unlock()
-		return errors.Join(errConnectionSuperseded, cancellation.Err(attempt.ctx))
+		return errors.Join(errConnectionSuperseded, err)
 	}
 	attempt.target.config = cfg.Clone()
 	attempt.target.oauth = nil
@@ -110,21 +109,21 @@ func (c *Connections) dialAndSwap(ctx context.Context, attempt *Attempt, prepare
 	}
 	c.mu.Lock()
 	// Authorization may expire while waiting for the publication lock.
-	err = errors.Join(err, cancellation.Err(ctx))
+	err = errors.Join(err, c.cancellationErr(ctx))
 	c.ownSessionLocked(session, cleanupSession)
-	current := c.currentAttempt(attempt) && attempt.ctx.Err() == nil
+	current := c.currentAttempt(attempt) && c.cancellationErr(attempt.ctx) == nil
 	closed := c.closed
 	if closed || !current {
 		// Shutdown ran while we were dialing outside the lock: it niled c.servers
 		// (so this server is detached) and closed every session. Storing the fresh
 		// session here would strand it past Shutdown's sweep — a connection leak.
-		// Drop it instead. Mirrors lsp.Servers.clientFor's closed re-check.
+		// The unpublished session stays in the retirement ledger.
 		c.mu.Unlock()
 		closeErr := c.closeSession(attempt.ctx, session)
 		if closed {
-			return errors.Join(ErrConnectionsClosed, cancellation.Err(attempt.ctx), err, closeErr)
+			return errors.Join(ErrConnectionsClosed, c.cancellationErr(attempt.ctx), err, closeErr)
 		}
-		return errors.Join(errConnectionSuperseded, cancellation.Err(attempt.ctx), err, closeErr)
+		return errors.Join(errConnectionSuperseded, c.cancellationErr(attempt.ctx), err, closeErr)
 	}
 	if err != nil {
 		state, failure := failedStatus(err, step)
@@ -144,9 +143,7 @@ func (c *Connections) dialAndSwap(ctx context.Context, attempt *Attempt, prepare
 	// transient tools/list failure or cancellation silently erase its tools
 	// while its status remained connected.
 	c.publishToolsLocked()
-	// A session that dialed OK but then failed verification or lost the collision
-	// race is now detached (target.session was set nil above). Close it after
-	// releasing c.mu — never hold the lock across a session teardown.
+	// Failed verification withdraws the session. Teardown must run outside mu.
 	staleSession := session
 	if err == nil {
 		staleSession = nil
@@ -176,7 +173,7 @@ func (c *Connections) Refuse(ctx context.Context, name mcpserver.ID, failure mcp
 		c.mu.Unlock()
 		return ErrConnectionsClosed
 	}
-	if err := cancellation.Err(ctx); err != nil {
+	if err := c.cancellationErr(ctx); err != nil {
 		c.mu.Unlock()
 		return err
 	}

@@ -7,7 +7,6 @@ import (
 	"runtime/debug"
 	"sync"
 
-	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/completion"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 )
@@ -53,7 +52,7 @@ func (c *Connections) begin(ctx context.Context, name mcpserver.ID, resolve func
 	if c.closed {
 		return nil, ErrConnectionsClosed
 	}
-	if err := cancellation.Err(ctx); err != nil {
+	if err := c.cancellationErr(ctx); err != nil {
 		return nil, err
 	}
 	target := c.find(name)
@@ -64,7 +63,12 @@ func (c *Connections) begin(ctx context.Context, name mcpserver.ID, resolve func
 	if target.attempt != nil {
 		target.attempt.cancel()
 	}
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancelCause := context.WithCancelCause(ctx)
+	stopOwner := context.AfterFunc(c.lifetime, func() { cancelCause(c.cancellationErr(ctx)) })
+	cancel := func() {
+		stopOwner()
+		cancelCause(nil)
+	}
 	attempt := &Attempt{
 		owner: c, target: target, ctx: ctx, cancel: cancel, resolve: resolve,
 		authorize: authorize, withdrawn: c.retireSessionLocked(target.session),
@@ -112,10 +116,13 @@ func (a *Attempt) execute() (err error) {
 		if recovered := recover(); recovered != nil {
 			err = fmt.Errorf("mcp: connection attempt panicked: %v\n%s", recovered, debug.Stack())
 		}
+		if err != nil {
+			err = errors.Join(err, a.owner.cancellationErr(a.ctx))
+		}
 	}()
 	select {
 	case <-a.ctx.Done():
-		return cancellation.Err(a.ctx)
+		return a.owner.cancellationErr(a.ctx)
 	case <-a.start:
 		return a.connect()
 	}
@@ -133,12 +140,12 @@ func (a *Attempt) connect() (err error) {
 		delete(c.retirements, a.withdrawn)
 		c.mu.Unlock()
 	}
-	if err := cancellation.Err(a.ctx); err != nil {
+	if err := c.cancellationErr(a.ctx); err != nil {
 		return errors.Join(closeErr, err)
 	}
 	input, err := a.resolve(a.ctx, a.target.name())
 	if err != nil {
-		return errors.Join(closeErr, err, cancellation.Err(a.ctx), input.Close())
+		return errors.Join(closeErr, err, input.Close())
 	}
 	prepared, err := input.take()
 	if err != nil {

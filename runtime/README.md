@@ -1375,6 +1375,11 @@ Canceled connection and authorization admission, configuration reads and retirem
 waits retain both the standard cancellation category and the owner's cause, alongside
 concurrent I/O failures. Preparation shares the completion join rule; canceling its
 waiter cannot cancel retirement or discard its eventual diagnostic.
+Connections owns operation eligibility for both the caller and the pool lifetime.
+Startup, reconnect, authorization and refusal read that same rule. Each admitted
+attempt links preparation I/O to the pool lifetime and releases its callback when
+it settles. A stopped pool cannot start configuration or credential reads, and
+concurrent read failures retain both cancellation categories and owner causes.
 The supervisor checks the dial lifetime under its publication
 lock; an expired authorization cannot publish a verified session. An already published
 session retains its successful result if the caller later cancels.

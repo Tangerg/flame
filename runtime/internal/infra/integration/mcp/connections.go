@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"sync"
 
+	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/go-sdk/auth"
 	sdkmcp "github.com/Tangerg/go-sdk/mcp"
 
@@ -90,6 +91,10 @@ type Connections struct {
 	// attempts joins every in-flight dial/OAuth operation during Shutdown. Add is
 	// performed under mu before closed can be set, so no Add races the Wait.
 	attempts sync.WaitGroup
+}
+
+func (c *Connections) cancellationErr(ctx context.Context) error {
+	return errors.Join(cancellation.Err(ctx), cancellation.Err(c.lifetime))
 }
 
 // SetToolSink publishes the current catalog and every subsequent connection

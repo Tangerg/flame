@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"slices"
 
-	"github.com/Tangerg/flame/runtime/internal/cancellation"
 	"github.com/Tangerg/flame/runtime/internal/dependency"
 	"github.com/Tangerg/flame/runtime/internal/domain/integration/mcpserver"
 	"go.opentelemetry.io/otel"
@@ -68,41 +67,33 @@ func Dial(
 			return nil, fmt.Errorf("mcp: invalid server %q: %w", srv.ID(), verr)
 		}
 	}
-	cancellationErr := func() error {
-		return errors.Join(cancellation.Err(ctx), cancellation.Err(lifetime))
-	}
-	if err := cancellationErr(); err != nil {
-		return nil, err
-	}
-	operationCtx, cancelOperation := context.WithCancelCause(ctx)
-	defer cancelOperation(nil)
-	stopOwner := context.AfterFunc(lifetime, func() { cancelOperation(cancellation.Err(lifetime)) })
-	defer stopOwner()
-
 	// Servers share a client identity because no per-server handlers are needed.
 	client := newClient()
 	c := &Connections{lifetime: lifetime, client: client, oauthSessions: oauthSessions}
+	if err := c.cancellationErr(ctx); err != nil {
+		return nil, err
+	}
 	defer func() {
 		if result == nil {
 			err = errors.Join(err, c.Shutdown(context.WithoutCancel(ctx)))
 		}
 	}()
 
-	operationCtx, span := tracer.Start(operationCtx, "mcp.dial_servers",
+	operationCtx, span := tracer.Start(ctx, "mcp.dial_servers",
 		trace.WithAttributes(attribute.Int("mcp.server.count", len(servers))))
 	defer span.End()
 
 	toolCount := 0
 	failures := 0
 	for _, srv := range servers {
-		if err := cancellationErr(); err != nil {
+		if err := c.cancellationErr(ctx); err != nil {
 			return nil, err
 		}
 		attempt, err := c.BeginConnect(operationCtx, srv.ID(), configuration)
 		if err == nil {
 			err = attempt.Run()
 		}
-		if stopped := cancellationErr(); stopped != nil {
+		if stopped := c.cancellationErr(ctx); stopped != nil {
 			return nil, errors.Join(err, stopped)
 		}
 		if err != nil {
@@ -121,7 +112,7 @@ func Dial(
 	if failures > 0 {
 		span.SetStatus(codes.Error, fmt.Sprintf("%d/%d MCP servers failed to connect", failures, len(servers)))
 	}
-	if err := cancellationErr(); err != nil {
+	if err := c.cancellationErr(ctx); err != nil {
 		return nil, err
 	}
 	return c, nil
