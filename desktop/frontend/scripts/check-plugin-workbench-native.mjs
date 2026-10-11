@@ -187,7 +187,13 @@ async function noPages() {
   );
 }
 
+async function focusWorkbench() {
+  await tool("window_control", { action: "focus" });
+  await waitFor("focused workbench", () => evaluate("return !document.hidden"), Boolean);
+}
+
 async function pageWith(text) {
+  await focusWorkbench();
   return waitFor(
     `native page ${text}`,
     async () => {
@@ -207,8 +213,7 @@ async function pageWith(text) {
 }
 
 async function choosePanel(panel) {
-  await tool("window_control", { action: "focus" });
-  await waitFor("focused workbench", () => evaluate("return !document.hidden"), Boolean);
+  await focusWorkbench();
   await clickLabel("Browse panels");
   await clickText(panel, '[role="option"]');
   await waitFor(
@@ -234,6 +239,25 @@ async function openPanel(panel, text) {
 
 async function closePanel(panel, id) {
   await clickLabel(`Close ${panel}`);
+  await noPages();
+  await assert.rejects(guest(id, "document.body.innerText"), /page is not ready/);
+}
+
+async function closeWithdrawnPanel(binding, id) {
+  const panel = `package:${binding.installationId}:${binding.viewId}`;
+  await clickText(panel, '[role="tab"]');
+  await waitFor(
+    "withdrawn view unavailable",
+    () =>
+      evaluate(
+        `return document.querySelector(${JSON.stringify(`[data-dock-view-id="${panel}"]`)})?.innerText.includes('View unavailable')`,
+      ),
+    Boolean,
+  );
+  await evaluate(
+    `const tab = [...document.querySelectorAll('[role="tab"]')].find(e => e.textContent.trim() === ${JSON.stringify(panel)}); const rect = tab.getBoundingClientRect(); tab.dispatchEvent(new MouseEvent('contextmenu', {bubbles:true, button:2, clientX:rect.x + rect.width / 2, clientY:rect.y + rect.height / 2})); return true`,
+  );
+  await clickText("Close all panels", '[role="menuitem"]');
   await noPages();
   await assert.rejects(guest(id, "document.body.innerText"), /page is not ready/);
 }
@@ -841,6 +865,14 @@ try {
   );
 
   await clickText("Native proposal authoring");
+  await waitFor(
+    "recorded proposal transcript",
+    () =>
+      evaluate(
+        'return document.body.innerText.includes("Save a native reusable Skill.") && !!document.querySelector(\'[data-slot="agent-activity-disclosure"]:not([data-tool]) > [data-slot="agent-activity-header"] button[aria-expanded]\')',
+      ),
+    Boolean,
+  );
   await evaluate(
     `for(const e of document.querySelectorAll('[data-slot="agent-activity-disclosure"]:not([data-tool]) > [data-slot="agent-activity-header"] button[aria-expanded="false"]'))e.click(); return true`,
   );
@@ -930,7 +962,7 @@ try {
   assert.deepEqual(await rpc("usage.summary"), canonicalUsage);
   await rpc("plugins.revoke", { installationId: installed.diagnostics.installationId });
   await noPages();
-  await closePanel(installed.diagnostics.title, clearedPage.id);
+  await closeWithdrawnPanel(installed.diagnostics, clearedPage.id);
   console.log(
     "Client diagnostics: renewed read admission, trusted clear, retired page and unchanged Runtime usage passed",
   );
@@ -947,7 +979,7 @@ try {
   await rpc("plugins.revoke", { installationId: installed["icon-gallery"].installationId });
   await noPages();
   await assert.rejects(guest(galleryPage.id, "document.body.innerText"), /page is not ready/);
-  await closePanel(installed["icon-gallery"].title, galleryPage.id);
+  await closeWithdrawnPanel(installed["icon-gallery"], galleryPage.id);
   console.log("Icon gallery: static released SVGs, local search and native retirement passed");
 
   for (const name of Object.keys(installed))

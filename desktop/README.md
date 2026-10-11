@@ -573,9 +573,9 @@ Runtime usage; the static icon gallery covers SVG display, filtering and retirem
 The runner removes its container, network,
 private data, canary and temporary files; macOS retains protected container metadata.
 
-The latest result, file, Diagnostics and static-view workbench checks remain pending
-an unlocked macOS graphical session. Browser carrier and real Runtime package gates
-have passed; they do not qualify those new paths in the production native workbench.
+The production native workbench gate also qualifies Tool results, File renderers,
+Diagnostics and static icon views. Recorded data refresh, trusted clearing, withdrawal,
+unavailable-view presentation, physical retirement and canonical data preservation pass.
 
 The qualified carrier and first-party page lifecycle were verified on macOS 26.5 with
 Wails v3 beta.28 at the shipping deployment floor. A run requires an unlocked graphical
